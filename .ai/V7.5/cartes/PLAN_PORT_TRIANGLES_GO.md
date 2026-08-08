@@ -160,10 +160,46 @@ etre linke par le serveur** : l'app lit l'asset fige, elle ne le fabrique pas.
    deux passent ou aucune, s'arreter et remonter.
 5. Reprise de session : ce fichier est la source de verite de l'avancement. Relire le §7
    puis reprendre a la premiere case non statuee.
+6. **La doc suit la cadence des etapes, pas celle du chantier** (regle utilisateur du
+   2026-08-08). A CHAQUE etape close : la case est statuee ici avec le CHIFFRE mesure, la
+   decouverte eventuelle va au §7, et l'entree `thought_log` est ecrite — le tout dans le
+   commit de l'etape, jamais reporte a la fin. Une doc redigee d'un bloc a la cloture est
+   deja une doc reconstruite de memoire.
 
-## 7. Decouvertes (a remplir en cours d'execution, non traitees)
+## 7. Decouvertes (en cours d'execution)
 
-_(vide a l'ouverture)_
+**D1 — « une carte = un module » est FAUX pour la geometrie de rendu, pas seulement pour la
+collision** (mesure du 2026-08-08, ridgeline, 10 357 instances).
+
+Le champ `RuntimeGeoMeshReference` (28 octets a +0x3C) est structure ainsi : les offsets
+0, 4, 20 et 24 sont CONSTANTS sur toutes les instances (une seule valeur distincte
+chacun) ; les offsets 8, 12 et 16 portent l'identite, avec 548 valeurs distinctes chacun.
+**L'offset 8 est le `GlobalID` du tag `rtgo`** — 525 des 548 references (95,8 %) y
+resolvent contre les identifiants globaux des modules, ce qui n'arrive pas par hasard.
+
+Mais elles resolvent dans QUATRE modules differents :
+
+| module | references resolues | instances |
+|---|---:|---:|
+| `levels/multi/ridgeline` | 324 | 2 730 |
+| `globals/common` | 70 | 4 198 |
+| `globals/multiplayer` | 102 | 2 519 |
+| `globals/multiplayer_r3` | 29 | 385 |
+| **non resolu** apres balayage des **44 modules de `pc/`** | **23** | **525 (5,1 %)** |
+
+Le module de la carte ne couvre donc que **26 % des instances**. Le §5 du handoff ne
+signalait ce piege que pour la COLLISION (195 des 552 modeles dans des modules globaux) ;
+il vaut aussi pour le rendu, et plus fortement.
+
+**Consequence sur le plan** : T1 doit resoudre les references contre un ENSEMBLE de modules,
+pas contre celui de la carte. `himodule` ouvre un fichier ; il faut un index
+`GlobalID -> (module, entree)` construit sur le module de la carte plus les modules globaux.
+A traiter DANS T1, pas apres — sans lui, 74 % des instances n'ont pas de maillage.
+
+**Reste ouvert** : les 23 references (5,1 % des instances) que les 44 modules de `pc/` ne
+portent pas. Pistes non explorees : les variantes `ds/` et `any/`, ou un contenu non
+installe localement. A quantifier au moment du rendu — 5 % d'instances manquantes se voient
+sur une image, ou ne se voient pas.
 
 ## 8. Journal
 
