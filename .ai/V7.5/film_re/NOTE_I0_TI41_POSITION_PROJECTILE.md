@@ -479,7 +479,7 @@ une accélération bornée (deuxième différence des positions petite devant la
 
 ## 10. LES DUMPS — CE QUI ÉTAIT DISPONIBLE ET QUE JE N'AI PAS UTILISÉ
 
-Signalé par l'utilisateur. Inventaire de `.ai/V5.5/dumps/` (cf. `.ai/HANDOFF_DUMPS_2026-07-31.md`
+Signalé par l'utilisateur. Inventaire de `.ai/V7.5/dumps/` (cf. `.ai/HANDOFF_DUMPS_2026-07-31.md`
 pour le raisonnement de conservation). Trois fichiers changent la donne de cette note :
 
 | fichier | ce que c'est | ce qu'il débloque ICI |
@@ -516,3 +516,36 @@ pour le raisonnement de conservation). Trois fichiers changent la donne de cette
   `ce_prec_widths_*.bin` (la globale que je déclarais non dérivable), `ce_prec_ranges_*.bin` et
   `ce_pos_oracle.csv` (le contrôle positif manquant).** T2 n'avait pas à être une mesure
   statistique. L'ordre des travaux du §8.3 est remplacé par celui du §10.
+
+### 10.1 CE QUE L'ORACLE CONTIENT VRAIMENT — vérifié, et sa portée est plus étroite que son nom
+
+`.ai/V7.5/dumps/ce_pos_oracle.csv`, en-tête `# filmdec_pos totalHits=277008 recordsEcrits=46790`,
+colonnes `eid,slot,bitCursor,x,y,z`.
+
+```
+lignes  46 790      slots  32      eids  32
+x  [-6.3 .. 35.7]           z  [-4.2 .. 7.1]        -> echelle carte, coherente avec la boite +-100
+slots les plus fournis : 545 (3 719), 536 (3 681), 552 (2 794), 559 (2 512), 547 (2 370)...
+```
+
+**Les 32 slots sont dans la bande 528-559 : ce sont les BIPÈDES, pas les projectiles.**
+
+**Ce que ça vaut, et ce que ça ne vaut pas :**
+
+- ✅ **La colonne `bitCursor` en fait une pierre de Rosette** : chaque position vraie est
+  rattachée à une position de bit dans le flux. On peut donc valider **la formule de
+  déquantification et la dérivation des largeurs** contre une vérité terrain, au lieu de les
+  déduire. C'est le contrôle positif que §8.3 réclamait, et il est direct.
+- ❌ **Il ne valide PAS `i0` de `ti=41`.** L'oracle ne contient aucun projectile : il porte
+  l'autre `i0` (dynamic-precision, `FUN_1406cfe44`). Il calibre l'INSTRUMENT ; il ne tranche pas
+  la branche opaque.
+
+**Donc l'ordre du §10 tient, avec cette nuance à sa place** : l'oracle sert au point (2) comme
+*calibrage* de la méthode, et c'est `ce_prec_widths_*.bin` qui doit trancher le point (1) pour
+`ti=41`. Ne pas annoncer « on a un oracle de projectiles » — on a un oracle de bipèdes, et c'est
+déjà beaucoup.
+- **2026-08-08 (8)** — chemin des dumps corrigé (`.ai/V7.5/dumps/`, pas V5.5) et **contenu de
+  l'oracle vérifié** : 46 790 lignes, **32 slots dans la bande 528-559 = des BIPÈDES**, avec un
+  `bitCursor` par ligne. Il calibre l'instrument (contrôle positif direct sur la
+  déquantification), **il ne valide pas `ti=41`** — c'est `ce_prec_widths_*.bin` qui doit le
+  faire. Nuance écrite en §10.1 pour qu'on ne surestime pas ce qu'on a.
