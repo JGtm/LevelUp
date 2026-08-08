@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Revue des icones d'armes extraites du jeu — Halo Infinite</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171a21; --line: #262b36; --txt: #e6e9ef;
+    --dim: #97a0b0; --ok: #7ee2a8; --warn: #ffcf7a; --gap: #ff8f8f; --accent: #7ec8ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+         font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { padding: 28px 32px 16px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+  h2 { margin: 32px 0 6px; font-size: 17px; font-weight: 600; }
+  p.note { color: var(--dim); margin: 6px 0; max-width: 105ch; }
+  main { padding: 8px 32px 64px; }
+  .toolbar { display: flex; gap: 20px; align-items: center; padding: 14px 0; flex-wrap: wrap; }
+  .toolbar label { color: var(--dim); display: flex; gap: 6px; align-items: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .card .idx { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .card .meta { color: var(--dim); font-size: 12.5px; }
+  .shots { display: flex; gap: 10px; align-items: center; margin: 10px 0 6px; }
+  .shot { flex: 1; background: #0b0d12; border: 1px solid var(--line); border-radius: 8px;
+          min-height: 76px; display: flex; align-items: center; justify-content: center; padding: 6px; }
+  .shot img { max-width: 100%; max-height: 68px; display: block; }
+  body.light .shot { background: #eef1f6; }
+  body.light .shot img { filter: invert(1); }
+  .name { font-weight: 600; margin-top: 4px; }
+  .conf { font-size: 12.5px; }
+  .conf.forte { color: var(--ok); }
+  .conf.faible { color: var(--warn); }
+  .conf.aucune { color: var(--gap); }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  th { color: var(--dim); font-weight: 600; }
+  td.ico { width: 130px; }
+  td.ico img { max-height: 34px; max-width: 120px; }
+  body.light td.ico img.game { filter: invert(1); }
+  .tag { font-size: 12px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+  code { color: var(--accent); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Icones d'armes extraites des archives du jeu — revue avant integration</h1>
+  <p class="note">
+    39 icones, extraites hors ligne des archives <code>.module</code> d'Halo Infinite par
+    <code>apps/go-api/cmd/weapon-icons-build</code>, en deux styles que le jeu porte lui-meme :
+    <b>contour</b> (tag <code>bc17adf1</code>) et <b>silhouette</b> (tag <code>e39747c8</code>).
+    Meme jeu d'images, meme ordre, memes dimensions index par index.
+  </p>
+  <p class="note">
+    <b>Ce qui est etabli sur pieces</b> : le chemin arme &rarr; atlas (les 29 <code>weap</code> du
+    registre referencent ces deux bitmaps et eux seuls), l'appariement image &rarr; pixels
+    (controle arithmetique exact : mip0+mip1+mip2 a l'octet pres), et le contenu (le canal alpha
+    porte le dessin ; R et G sont constants, B est une rampe de teinte appliquee au rendu).
+  </p>
+  <p class="note">
+    <b>Ce qui ne l'est PAS, et qui est l'objet de cette page</b> : <b>quelle image designe quelle
+    arme</b>. L'index d'icone n'est pas un petit entier a offset constant dans le tag <code>weap</code>
+    (mesure : 0 candidat sur 29 armes) et l'appariement automatique par silhouette contre les icones
+    deja nommees du depot n'est pas discriminant (marges de 0,00 a 0,10). Les fichiers sont donc
+    nommes par leur <b>index d'atlas</b>, jamais par un nom d'arme devine. Les noms ci-dessous sont
+    des <b>propositions de lecture visuelle</b> : elles n'engagent rien tant qu'elles ne sont pas
+    validees ici.
+  </p>
+  <p class="note">
+    <b>Pieces jointes</b> (meme dossier) : <code>planche_contour.png</code> et
+    <code>planche_silhouette.png</code> montrent les 39 icones d'un coup dans chaque style ;
+    <code>controle_paires.png</code> place 22 propositions face a l'icone dessinee correspondante —
+    c'est cette planche qui a fait retrograder plusieurs propositions de « forte » a « a valider ».
+  </p>
+</header>
+<main>
+  <div class="toolbar">
+    <label><input type="checkbox" id="light"> fond clair (icones inversees)</label>
+    <label><input type="checkbox" id="onlyUnknown"> n'afficher que les icones a nommer</label>
+    <span class="tag" id="count"></span>
+  </div>
+
+  <h2>1. Les 39 icones de l'atlas</h2>
+  <p class="note">Pour chaque index : le style contour (gauche) et le style silhouette (droite),
+     puis la proposition de nom et, quand une icone dessinee a la main existe deja pour cette arme,
+     la reference du depot pour comparaison directe.</p>
+  <div class="grid" id="grid"></div>
+
+  <h2>2. Les 29 armes du registre Halo Infinite</h2>
+  <p class="note">Une ligne par arme du registre (<code>internal/games/weapons/registry.go</code>),
+     avec le nom affiche (<code>weapon_names.toml</code>), l'icone actuelle du depot et l'index
+     d'atlas propose. Les lignes sans proposition sont les manques a trancher.</p>
+  <table id="reg"><thead><tr>
+    <th>weapon_key</th><th>Nom FR</th><th>Nom EN</th>
+    <th class="ico">Icone actuelle</th><th class="ico">Icone du jeu proposee</th><th>Confiance</th>
+  </tr></thead><tbody></tbody></table>
+
+  <h2>3. Manques et incertitudes</h2>
+  <div id="gaps"></div>
+</main>
+<script>
+const BASE = "../../../static/weapons-assets/halo_infinite/";
+const JEU  = BASE + "jeu/";
+
+// Proposition de nom par index d'atlas. `conf` :
+//   forte  = lecture visuelle sans ambiguite raisonnable
+//   faible = plusieurs armes de la meme famille restent possibles
+//   aucune = non attribue (objet d'objectif, ou arme non identifiee)
+// `arme` = weapon_key du registre. `ref` = fichier de l'icone dessinee a la main correspondante, pour comparaison.
+const ATLAS = [
+ {i:0,  nom:"BR75",                 arme:"hinf_br75",          conf:"faible",  ref:"BR75.png"},
+ {i:1,  nom:"M392 Bandit",          arme:"hinf_bandit",        conf:"faible",  ref:"Bandit.png"},
+ {i:2,  nom:"VK78 Commando",        arme:"hinf_vk78_commando", conf:"faible",  ref:"Commando.png"},
+ {i:3,  nom:"Mk50 Sidekick",        arme:"hinf_sidekick",      conf:"forte",  ref:"Sidekick.png"},
+ {i:4,  nom:"CQS48 Bulldog",        arme:"hinf_cqs48_bulldog", conf:"faible",  ref:"Bulldog.png"},
+ {i:5,  nom:"S7 Sniper",            arme:"hinf_s7_sniper",     conf:"forte",  ref:"Sniper-S7.png"},
+ {i:6,  nom:"M41 SPNKr",            arme:"hinf_m41_spnkr",     conf:"forte",  ref:"M41.png"},
+ {i:7,  nom:"MLRS-2 Hydra",         arme:"hinf_hydra",         conf:"faible",  ref:"Hydra.png"},
+ {i:8,  nom:"",                     arme:"",                   conf:"aucune", ref:""},
+ {i:9,  nom:"Needler",              arme:"hinf_needler",       conf:"forte",  ref:"Needler-1.png"},
+ {i:10, nom:"",                     arme:"",                   conf:"aucune", ref:""},
+ {i:11, nom:"Plasma Pistol",        arme:"hinf_plasma_pistol", conf:"forte",  ref:"Plasma.png"},
+ {i:12, nom:"Stalker Rifle",        arme:"hinf_stalker_rifle", conf:"faible", ref:"Stalker.png"},
+ {i:13, nom:"Pulse Carbine",        arme:"hinf_pulse_carbine", conf:"faible", ref:"Carabine.png"},
+ {i:14, nom:"Energy Sword",         arme:"hinf_energy_sword",  conf:"forte",  ref:"Sword.png"},
+ {i:15, nom:"Ravager",              arme:"hinf_ravager",       conf:"faible", ref:"Ravager.png"},
+ {i:16, nom:"Gravity Hammer",       arme:"hinf_gravity_hammer",conf:"forte",  ref:"Hammer.png"},
+ {i:17, nom:"Skewer",               arme:"hinf_skewer",        conf:"forte",  ref:"Skewer.png"},
+ {i:18, nom:"Disruptor",            arme:"hinf_disruptor",     conf:"forte",  ref:"Disruptor.png"},
+ {i:19, nom:"Cindershot",           arme:"hinf_cindershot",    conf:"faible", ref:"Cremator.png"},
+ {i:20, nom:"",                     arme:"",                   conf:"aucune", ref:""},
+ {i:21, nom:"Heatwave",             arme:"hinf_heatwave",      conf:"faible", ref:"Heatwave.png"},
+ {i:22, nom:"Mangler",              arme:"hinf_mangler",       conf:"faible", ref:"Mangler.png"},
+ {i:23, nom:"Shock Rifle",          arme:"hinf_shock_rifle",   conf:"faible", ref:"Shock-rifle.png"},
+ {i:24, nom:"",                     arme:"",                   conf:"aucune", ref:""},
+ {i:25, nom:"Oddball (objectif)",   arme:"",                   conf:"forte",  ref:""},
+ {i:26, nom:"Drapeau (objectif)",   arme:"",                   conf:"forte",  ref:""},
+ {i:27, nom:"Objet d'objectif",     arme:"",                   conf:"aucune", ref:""},
+ {i:28, nom:"Objet d'objectif",     arme:"",                   conf:"aucune", ref:""},
+ {i:29, nom:"Marteau (variante)",   arme:"",                   conf:"faible", ref:"Hammer.png"},
+ {i:30, nom:"Objet d'objectif",     arme:"",                   conf:"aucune", ref:""},
+ {i:31, nom:"Objet d'objectif",     arme:"",                   conf:"aucune", ref:""},
+ {i:32, nom:"Objet d'objectif",     arme:"",                   conf:"aucune", ref:""},
+ {i:33, nom:"",                     arme:"",                   conf:"aucune", ref:""},
+ {i:34, nom:"Objet d'objectif",     arme:"",                   conf:"aucune", ref:""},
+ {i:35, nom:"Sandwich",             arme:"",                   conf:"forte",  ref:""},
+ {i:36, nom:"MA40 AR",              arme:"hinf_ma40_ar",       conf:"forte",  ref:"MA40.png"},
+ {i:37, nom:"",                     arme:"",                   conf:"aucune", ref:""},
+ {i:38, nom:"",                     arme:"",                   conf:"aucune", ref:""},
+];
+
+// Les 29 armes Halo Infinite du registre, dans l'ordre de registry.go.
+// `ref` = icone dessinee actuellement servie par weaponImageFiles (adapter_asset_urls.go).
+const REGISTRE = [
+ ["hinf_br75","BR75","BR75","BR75.png"],
+ ["hinf_bandit","Bandit EVO","M392 Bandit","Bandit.png"],
+ ["hinf_ma40_ar","MA40 AR","MA40 AR","MA40.png"],
+ ["hinf_ma5k_avenger","MA5K Avenger","MA5K Avenger","Storm.png"],
+ ["hinf_vk78_commando","VK78 Commando","VK78 Commando","Commando.png"],
+ ["hinf_s7_sniper","S7 Sniper","S7 Sniper","Sniper-S7.png"],
+ ["hinf_cqs48_bulldog","CQS48 Bulldog","CQS48 Bulldog","Bulldog.png"],
+ ["hinf_hydra","Hydra","MLRS-2 Hydra","Hydra.png"],
+ ["hinf_m41_spnkr","M41 SPNKr","M41 SPNKr","M41.png"],
+ ["hinf_fuel_rod_spnkr","SPNKr a combustible","Fuel Rod SPNKr","M41.png"],
+ ["hinf_sidekick","MK50 Sidekick","Mk50 Sidekick","Sidekick.png"],
+ ["hinf_plasma_pistol","Pistolet a plasma","Plasma Pistol","Plasma.png"],
+ ["hinf_needler","Needler","Needler","Needler-1.png"],
+ ["hinf_sentinel_beam","Rayon de Sentinelle","Sentinel Beam","Sentinel.png"],
+ ["hinf_energy_sword","Epee a energie","Energy Sword","Sword.png"],
+ ["hinf_gravity_hammer","Marteau antigravite","Gravity Hammer","Hammer.png"],
+ ["hinf_skewer","Empaleur","Skewer","Skewer.png"],
+ ["hinf_cindershot","Cremateur","Cindershot","Cremator.png"],
+ ["hinf_heatwave","Calcineur","Heatwave","Heatwave.png"],
+ ["hinf_ravager","Ravageur","Ravager","Ravager.png"],
+ ["hinf_shock_rifle","Fusil electrique","Shock Rifle","Shock-rifle.png"],
+ ["hinf_disruptor","Disrupteur","Disruptor","Disruptor.png"],
+ ["hinf_mangler","Dechiqueteur","Mangler","Mangler.png"],
+ ["hinf_pulse_carbine","Carabine a impulsion","Pulse Carbine","Carabine.png"],
+ ["hinf_stalker_rifle","Fusil traqueur","Stalker Rifle","Stalker.png"],
+ ["hinf_vestige_carbine","Carabine Vestige","Vestige Carbine","Carabine.png"],
+ ["hinf_frag_grenade","Grenade frag","Frag Grenade","Grenade.png"],
+ ["hinf_plasma_grenade","Grenade plasma","Plasma Grenade","Grenade.png"],
+ ["hinf_dynamo_grenade","Grenade dynamo","Dynamo Grenade","Grenade.png"],
+];
+
+const pad = n => String(n).padStart(2, "0");
+const grid = document.getElementById("grid");
+
+function renderGrid(onlyUnknown) {
+  grid.innerHTML = "";
+  let shown = 0;
+  for (const a of ATLAS) {
+    if (onlyUnknown && a.conf !== "aucune") continue;
+    shown++;
+    const el = document.createElement("div");
+    el.className = "card";
+    const nom = a.nom || "a nommer";
+    const label = { forte: "proposition forte", faible: "a valider (famille incertaine)",
+                    aucune: "non attribuee" }[a.conf];
+    el.innerHTML =
+      '<div class="idx">#' + pad(a.i) + '</div>' +
+      '<div class="shots">' +
+        '<div class="shot"><img loading="lazy" src="' + JEU + 'contour-' + pad(a.i) + '.png" alt=""></div>' +
+        '<div class="shot"><img loading="lazy" src="' + JEU + 'silhouette-' + pad(a.i) + '.png" alt=""></div>' +
+      '</div>' +
+      '<div class="name">' + nom + '</div>' +
+      '<div class="conf ' + a.conf + '">' + label + '</div>' +
+      (a.ref
+        ? '<div class="shots"><div class="shot" title="icone dessinee actuelle : ' + a.ref + '">' +
+          '<img loading="lazy" class="hand" src="' + BASE + a.ref + '" alt=""></div></div>' +
+          '<div class="meta">comparaison : ' + a.ref + '</div>'
+        : '') +
+      '<div class="meta">contour-' + pad(a.i) + '.png / silhouette-' + pad(a.i) + '.png</div>';
+    grid.appendChild(el);
+  }
+  document.getElementById("count").textContent = shown + " icones affichees sur " + ATLAS.length;
+}
+
+const parArme = {};
+for (const a of ATLAS) { if (a.arme) parArme[a.arme] = a; }
+
+const tb = document.querySelector("#reg tbody");
+const sansProposition = [];
+for (const [key, fr, en, ref] of REGISTRE) {
+  const a = parArme[key];
+  if (!a) sansProposition.push(fr + " (" + key + ")");
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    "<td><code>" + key + "</code></td><td>" + fr + "</td><td>" + en + "</td>" +
+    '<td class="ico">' + (ref ? '<img loading="lazy" src="' + BASE + ref + '" alt="">' : "&mdash;") + "</td>" +
+    '<td class="ico">' + (a ? '<img loading="lazy" class="game" src="' + JEU + "silhouette-" + pad(a.i) +
+      '.png" alt=""> #' + pad(a.i) : "&mdash;") + "</td>" +
+    '<td class="conf ' + (a ? a.conf : "aucune") + '">' + (a ? a.conf : "aucune proposition") + "</td>";
+  tb.appendChild(tr);
+}
+
+const nonAttribuees = ATLAS.filter(a => a.conf === "aucune").map(a => "#" + pad(a.i));
+document.getElementById("gaps").innerHTML =
+  "<ul>" +
+  "<li><b>" + sansProposition.length + " armes du registre sans proposition d'icone du jeu</b> : " +
+    (sansProposition.join(", ") || "aucune") + ".</li>" +
+  "<li><b>" + nonAttribuees.length + " icones de l'atlas non attribuees</b> : " + nonAttribuees.join(", ") +
+    ". Une partie sont des objets d'objectif (crane, drapeau, caisses) et non des armes.</li>" +
+  "<li><b>Grenades</b> : les trois grenades du registre ne sont pas des tags <code>weap</code> " +
+    "(elles vivent en <code>eqip</code> + <code>proj</code>, declares par le tag de globals " +
+    "<code>gggl</code>) : elles ne sont pas atteintes par le chemin utilise ici. Aucune icone de " +
+    "grenade n'a ete identifiee dans l'atlas.</li>" +
+  "<li><b>Halo 5</b> : les 55 armes du registre H5 ne sont pas couvertes. Le jeu n'est pas " +
+    "installe sur ce poste et son format d'archives differe ; la voie a explorer est l'API de " +
+    "metadonnees officielle H5, pas ces archives.</li>" +
+  "<li><b>Fidelite du decodage</b> : le decodeur BC7 embarque les modes 4, 5 et 6 (99 % des blocs " +
+    "mesures). Les blocs des modes 0-3 et 7 sont rendus par la moyenne de leurs points extremes " +
+    "et <b>comptes</b> : le taux par image figure dans <code>index.json</code> " +
+    "(<code>bc7_fallback_pct</code>), maximum mesure 1,4 %.</li>" +
+  "</ul>";
+
+document.getElementById("light").addEventListener("change", e => {
+  document.body.classList.toggle("light", e.target.checked);
+});
+document.getElementById("onlyUnknown").addEventListener("change", e => renderGrid(e.target.checked));
+renderGrid(false);
+</script>
+</body>
+</html>

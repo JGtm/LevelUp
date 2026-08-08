@@ -1,3 +1,91 @@
+## [2026-08-08] v7.5 voie C — les icones d'armes du jeu, extraites ; le NOM, lui, reste au gate humain
+
+**Statut** : Complété pour la phase d'extraction. Branche `feat/v75-icones`, worktree
+`LevelUp-wt-icones`. NON mergée, et surtout **NON branchée** : l'intégration web attend le
+gate visuel de l'utilisateur (décision #4 du master plan). Aucune ligne de `apps/web/` ni de
+`adapter_asset_urls.go` n'a été touchée.
+
+**Décision technique principale.** Le plan `PLAN_RECHERCHE_ASSETS_ICONES` proposait trois
+voies ; c'est la voie A (graphe de dépendances des `.module`) qui rend une correspondance
+vérifiable, et elle est allée jusqu'au pixel. La chaîne complète, chaque maillon mesuré :
+
+1. **Ancre d'identité, déjà versionnée** : les 32 bits HAUTS d'un identifiant filmshell de
+   `weapons/registry.go` sont le global tag id du `weap`. Contrôle croisé : `80977ba5`
+   (Mangler) et `d7915565` (Mutilator) apparaissent tels quels dans la colonne `detail` de
+   `damagetag/data/labels.tsv`. Aucune devinette, aucun nouveau catalogue.
+2. **Les 29 `weap` du registre référencent tous les DEUX MÊMES `bitm`** (`bc17adf1`,
+   `e39747c8`). Le troisième bitm varie mais se PARTAGE par groupes d'armes
+   (Mangler+Needler, MA40+MA5K, six armes Covenant ensemble) : c'est un réticule, pas une
+   icône. Les deux bitmaps communs déclarent 39 images de tailles TOUTES différentes.
+3. **Où vivent les pixels** : l'entrée `.module` porte à `+0x10` un index dans la table de
+   ressources du module. Il vaut 0 dans la variante `ds/` (qui n'a pas les images) et 2707
+   dans `pc/` — c'est ce zéro qui a fait la preuve du champ. Les 39 ressources qui suivent
+   correspondent une à une aux 39 images.
+4. **Format prouvé par l'arithmétique, pas par un plugin** : image 0 (333x117), ressource de
+   53372 o = en-tête 212 + données 72 + 53088, et 53088 = 40320 + 10080 + 2688, soit
+   mip0+mip1+mip2 en blocs 4x4 sur 16 octets. À l'octet près. Les blocs sont du BC7 : le mode
+   se lit en unaire dans les bits bas et l'histogramme donne 99 % de modes 4/5/6.
+5. **Le contenu** : R constant à 255, G constant à 0, B = rampe verticale de teinte appliquée
+   au rendu, **A = LE DESSIN**. Seul l'alpha est extrait, rendu blanc sur fond transparent —
+   même convention que `static/abilities-assets`.
+
+**Résultat.** 39 icônes x 2 styles (contour et silhouette pleine, que le jeu porte tous les
+deux) = 78 PNG, 616 Ko, sous `static/weapons-assets/halo_infinite/jeu/` + `index.json`
+(tag source, dimensions d'origine, dimensions recadrées, taux de repli BC7 par image).
+Le style du jeu est celui des icônes dessinées à la main par l'utilisateur : le trait se
+raccorde, le manque se comble sans rupture visuelle.
+
+**Décodeur BC7 : périmètre assumé et COMPTÉ.** Les modes 4, 5 et 6 (mono-sous-ensemble) sont
+décodés exactement. Les modes 0-3 et 7 exigent les tables de partition ; les recopier de
+mémoire ferait courir un risque d'erreur SILENCIEUSE (une table fausse rend une image
+plausible mais fausse). Ils sont donc rendus par la moyenne de leurs points extrêmes et
+comptés : `bc7_fallback_pct` par image dans `index.json`, **maximum mesuré 1,4 %**.
+
+**Le mur, et il est nommé : attribuer un NOM à une icône.** Deux voies essayées, deux échecs
+mesurés, tous deux consignés dans l'en-tête du binaire :
+
+- *structurelle* — l'index d'icône n'est pas un petit entier à offset constant dans le corps
+  du `weap` : sur les 29 armes, **0 offset candidat** (critère posé avant de regarder :
+  valeurs < 40 et au moins la moitié distinctes) ;
+- *visuelle automatique* — l'appariement par silhouette contre les 28 icônes déjà nommées du
+  dépôt **n'est pas discriminant** : marges de 0,00 à 0,10 pour des scores de 0,44 à 0,90.
+  La cause est structurelle et pas réglable : une fois remplies, des armes toutes « longues
+  et horizontales » se ressemblent trop. Corriger le bug de normalisation (le rapport
+  d'aspect était écrasé) n'a rien changé — c'est ce qui rend le verdict solide.
+
+Conséquence tenue jusqu'au bout : **les fichiers sont nommés par leur index d'atlas**,
+`contour-NN.png` / `silhouette-NN.png`, jamais par un nom d'arme deviné. La règle du plan
+(« afficher un mauvais fusil est pire qu'un libellé ») est ce qui a tranché.
+
+**Ce que la planche de contrôle a corrigé dans mes propres propositions.** L'artefact de revue
+porte des propositions de lecture visuelle. En plaçant 22 d'entre elles face à l'icône
+dessinée correspondante (`controle_paires.png`), sept se sont révélées non tenables en
+l'état et sont passées de « forte » à « à valider » — dont BR75, Bandit, Commando, Bulldog,
+Hydra, Disruptor et MA40. Il ne reste « forte » que ce que deux vues indépendantes
+confirment (épée, marteau, empaleur, Needler, pistolet à plasma, Sidekick, S7, SPNKr,
+crâne, drapeau, sandwich).
+
+**Manques, énoncés et non tus** :
+- **3 grenades** du registre : ce ne sont pas des `weap` (elles vivent en `eqip` + `proj`
+  déclarés par le tag `gggl`), le chemin utilisé ici ne les atteint pas et aucune icône de
+  grenade n'a été identifiée dans l'atlas.
+- **12 icônes de l'atlas non attribuées**, dont une partie sont des objets d'objectif (crâne
+  Oddball, drapeau, caisses) et non des armes.
+- **Halo 5** : les 55 armes du registre H5 ne sont pas couvertes. Le jeu n'est pas installé
+  sur ce poste et son format d'archives diffère ; la voie à explorer est l'API de
+  métadonnées officielle H5, pas ces archives.
+
+**Livrables** : `apps/go-api/cmd/weapon-icons-build/` (le binaire reste : il régénère un
+artefact versionné, critère de la purge J3 lot A), les 78 PNG + `index.json`, et l'artefact
+de revue `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` (+ trois planches jointes).
+
+**Gates joués** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...`
+0 issue, `go test ./internal/archlint/... ./internal/games/weapons/...` vert.
+
+**Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` et
+nommer les icônes arme par arme. Sans ce passage, rien ne se branche : la table
+`weaponImageFiles` de `adapter_asset_urls.go` ne peut être écrite qu'après.
+
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
 **Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
