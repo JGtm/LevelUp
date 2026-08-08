@@ -33,6 +33,11 @@ portent **les sept films de 79,7-93,4 % à 88,7-96,4 %**, avec **+12,3 points su
 Leurs deux garde-fous ont refusé un tiers des déductions, ce qui est la raison de leur croire.
 Détail et échec de réglage compris : §7.5.
 
+**ATTENTION AU DÉNOMINATEUR (§3bis)** : tous ces taux portent sur les tirs **que le film contient**,
+pas sur les tirs du match. Le film n'en porte que 69 à 87 % en arène (23 % en Fiesta), si bien que
+la part des tirs RÉELS posés sur la carte vaut **61 à 83 %**, pas 90 %. Cette autre moitié du
+sujet est le chantier de la piste E, pas celui-ci.
+
 **Recommandation (§7)** : le rejeu public n'est pas livrable **avec le code d'aujourd'hui**, mais
 le blocage n'est plus une inconnue — c'est **un lot d'implémentation borné**, sans aucune
 rétro-ingénierie nouvelle. Exécuter ce lot dans v7.5 ou plus tard est une décision utilisateur.
@@ -104,6 +109,45 @@ Ce que ce tableau dit, et qui n'était pas dit :
 - **Deux films sur sept passent sous 85 %**, et ce sont deux CTF. Le garde a donc raison de
   refuser, mais pas pour la raison écrite : il refuse une classe de MATCHS (ceux qui finissent
   sans que les joueurs meurent), pas une classe de MODES.
+
+## 3bis. CE QUE LE TAUX MESURE — ET CE QU'IL NE MESURE PAS
+
+**Question posée par l'utilisateur le 2026-08-08, et elle est la bonne** : « 90 %, ça veut dire
+qu'on a 90 % des tirs du match ? » **Non.** Le dénominateur de tout ce document est le nombre
+d'événements de tir **que le film porte**, pas le nombre de tirs du match. `ETAT_DU_POC.md` le
+disait déjà — « confondre les deux ferait passer un plafond de format pour un échec de
+décodage » — et ce verdict laissait la même ambiguïté. Corrigé ici.
+
+Deux facteurs se multiplient :
+
+| film | mode | ① part des tirs du match présente dans le film | ② taux de placement (§7.5) | **① × ② = tirs réels sur la carte** |
+|---|---|---|---|---|
+| `0edb8512` | Team Slayer | 86,6 % | 96,4 % | **83,4 %** |
+| `db7b8c3c` | **CTF** | 86,0 % | 94,5 % | **81,2 %** |
+| `64e8adfa` | **CTF** | 80,3 % | 92,6 % | **74,3 %** |
+| `9aeca4b3` | Team Slayer | 71,9 % | 95,0 % | **68,3 %** |
+| `01e1f945` | KOTH | 74,4 % | 89,7 % | **66,7 %** |
+| `829abef9` | **CTF** | 69,3 % | 88,7 % | **61,5 %** |
+| `000d5950` | Fiesta Slayer | **23,3 %** | 93,3 % | **21,7 %** |
+
+(① = records de tir décodés / `match_participants.shots_fired` sommé sur les 8 joueurs.)
+
+**Sur un match d'arène, 6 à 8 tirs sur 10 réellement tirés apparaissent sur la carte. Pas 9
+sur 10.** Tout ce document, garde local compris, porte sur la colonne ② — c'est la seule que le
+pont peut changer.
+
+**La colonne ① est un AUTRE chantier, et il est déjà ouvert** : la piste E (worktree
+`research/v75-precision`, `VERDICT_PRECISION_PROJECTILES.md`) mesure le même phénomène par un
+instrument indépendant — `records / tirs API` à **0,92 en Tactical contre 0,31 en Fiesta**. Deux
+sessions, deux méthodes de sélection différentes, même constat : la complétude du flux de tirs
+dépend fortement de la playlist. Savoir si c'est le format qui n'écrit pas tout ou notre balayage
+qui ne trouve pas tout **n'est pas tranché**, et ce n'est pas l'objet de cette session.
+
+**Conséquence pour le garde local** : un plancher exprimé en ② (proposition §7.3 : 88 %) dit « on
+place presque tout ce que le film porte ». Il ne dit RIEN sur ①. Si l'écran doit un jour annoncer
+une exhaustivité à l'utilisateur, c'est ① × ② qu'il faut publier — et le bandeau du POC, qui
+affiche déjà « tirs placés / lisibles », est **honnête à condition de ne pas lire « lisibles »
+comme « tirés »**.
 
 ## 4. LA CAUSE, ÉTABLIE
 

@@ -1,3 +1,43 @@
+## [2026-08-08] Recherche v7.5 voie B — le denominateur, corrige par une question de l'utilisateur
+
+**Statut** : Complété (correction de fond du verdict, aucun code touché).
+
+**LA QUESTION** : « 90 %, ça veut dire qu'on a 90 % des tirs effectués durant un match ? » **Non**,
+et le verdict laissait l'ambiguïté. `ETAT_DU_POC.md` l'avait pourtant déjà écrit : le dénominateur
+est le nombre de records que LE FILM PORTE, pas le nombre de tirs du match — « confondre les deux
+ferait passer un plafond de format pour un échec de décodage ».
+
+**LE CHIFFRE JUSTE** — deux facteurs qui se multiplient (① = records décodés / `shots_fired` sommé) :
+
+| film | ① dans le film | ② placement | ① x ② |
+|---|---|---|---|
+| `0edb8512` | 86,6 % | 96,4 % | **83,4 %** |
+| `db7b8c3c` | 86,0 % | 94,5 % | **81,2 %** |
+| `64e8adfa` | 80,3 % | 92,6 % | **74,3 %** |
+| `9aeca4b3` | 71,9 % | 95,0 % | **68,3 %** |
+| `01e1f945` | 74,4 % | 89,7 % | **66,7 %** |
+| `829abef9` | 69,3 % | 88,7 % | **61,5 %** |
+| `000d5950` | **23,3 %** | 93,3 % | **21,7 %** |
+
+**Sur un match d'arène, 6 à 8 tirs sur 10 réellement tirés apparaissent sur la carte, pas 9 sur 10.**
+
+**CE QUE ÇA CONFIRME AU PASSAGE** : le film Fiesta `000d5950` ne porte que 23,3 % des tirs de son
+match. Le « témoin Slayer » historique du constat d'origine était donc doublement inadapté — non
+seulement 5,5x plus petit en dénominateur, mais 3,7x moins complet en couverture.
+
+**CONVERGENCE AVEC LA PISTE E** : la session `research/v75-precision` mesure le même phénomène par
+un instrument indépendant (balayage de PAQUETS et non de bits) — `records / tirs API` à 0,92 en
+Tactical contre 0,31 en Fiesta. Deux méthodes de sélection différentes, même constat : la
+complétude du flux de tirs dépend fortement de la playlist. Format ou balayage : NON TRANCHÉ.
+
+**Conséquence pour le garde local** : le plancher proposé (88 %) porte sur ② seulement. Il dit « on
+place presque tout ce que le film porte », et rien sur ①. Si l'écran annonce un jour une
+exhaustivité, c'est ① x ② qu'il faut publier. Le bandeau du POC (« tirs placés / lisibles ») reste
+honnête À CONDITION de ne pas lire « lisibles » comme « tirés ».
+
+**Conclusion / prochaine étape** : verdict corrigé (§3bis neuf + avertissement en §0). Le lot
+d'implémentation du §7.2 est inchangé — il agit sur ②. La colonne ① appartient à la piste E.
+
 ## [2026-08-08] Recherche v7.5 voie B (suite) — le correctif cesse d'etre une hypothese
 
 **Statut** : Complété. Même branche `research/v75-ctf`. Prolonge l'entrée précédente du même
