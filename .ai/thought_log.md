@@ -60378,3 +60378,40 @@ verts ; page.go a 185 lignes, aucun fichier au-dessus du seuil.
 
 **Prochaine etape**. Gate visuel utilisateur sur `NOMMAGE_ICONES.html` — l integration web
 reste HORS de ce lot par consigne.
+
+## [2026-08-08] v7.5 voie C — icones : le vocabulaire « designations » ne prend pas, et deux pistes fermees
+
+**Statut** : Complete.
+
+**Vocabulaire soumis par l utilisateur** (vestige, coil, fall, turret, mangler, cannon, scrap,
+spnkr, m41, pulse, carbine, heatwave, cindershot, ravager, disruptor + les designations MK50 et
+CQS48 pour Sidekick et Bulldog). Decline en `<qualifiant>_<classe>` et essaye seul :
+**26 166 formes, 0 correspondance** sur les vraies cibles. Le kill feed ne hache pas les
+designations.
+
+**Correction de methode au passage**. Le mode `kfgaps` reconstruisait un dictionnaire plus
+pauvre que celui de la production : sa liste de « trous » contenait des SID deja resolus
+(`d253deb2` = `killfeed_turret_plasma`, index 21 — verifie). Sur-ensemble, donc aucune cible
+manquee, mais decompte fausse. Nouveau mode `truegaps` : la liste se lit dans `index.json`.
+Verdict exact — **30 index sans nom mais seulement 26 identifiants** dans la table `bitd` :
+quatre images n ont aucune entree de nommage et ne seront jamais nommees par cette voie. Borne
+dure, a consigner comme telle.
+
+**Deux pistes tentees et fermees, mesures a l appui.**
+
+1. *Moisson UTF-16LE du binaire.* Vrai trou de methode identifie (la moisson ASCII coupe une
+   chaine large a chaque caractere, elle n en sort jamais). Corrige puis mesure : **1749
+   chaines** seulement, 0 correspondance. Le binaire est quasi entierement ASCII.
+2. *Appariement par silhouette ENTRE LES DEUX ATLAS DU JEU.* La refutation existante portait
+   sur les icones dessinees du depot — autre trace, autre artiste ; comparer les deux atlas du
+   meme jeu est un probleme different et n avait pas ete tente. Controle pose AVANT de conclure :
+   13 paires connues des deux cotes. Resultat **2/13**, marges de 0,01 a 0,07. Le matcheur n a
+   pas ete publie. Le verdict est desormais general : la silhouette ne discrimine pas ces
+   icones, meme a source identique.
+
+**Resultats observes**. Aucun nom gagne cette fois. L etat reste 58/88 cote kill feed,
+26 weapon_key et 23 noms craques cote armes. Doc mise a jour (3 lignes de reserve ajoutees au
+registre des pistes mortes, borne des 26 SID consignee).
+
+**Prochaine etape**. Gate visuel utilisateur — c est desormais la seule voie pour les 30
+restants, et 4 d entre eux sont hors de portee de tout craquage.
