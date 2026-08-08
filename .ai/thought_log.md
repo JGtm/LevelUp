@@ -1,3 +1,67 @@
+## [2026-08-08] v7.5 icones — le maillon manquant existe et il s appelle « sprite index »
+
+**Statut** : Trouvé, versé au dépôt, NON encore exploité. Branche `feat/v75-icones`.
+
+**Question de l'utilisateur** : « pour le plan A on a ce qu'il faut ? Ce weap.xml me dit
+quelque chose ». Il disait vrai des deux côtés : le nom lui parlait, et la réponse était à
+portée.
+
+**Pourquoi ça lui disait quelque chose.** `ETAT_DE_L_ART_FORGE_PALETTE_ZONES` §Q1.0-nonies a
+DÉJÀ posé la question — et a répondu « sans objet ». **Cette réponse reste juste pour cette
+question-là, et ne s'applique pas à la nôtre.** La session Forge cherchait un DICTIONNAIRE
+(quelle chaîne hache vers tel murmur3) ; un schéma ne répond jamais à ça. Nous cherchons une
+DISPOSITION DE CHAMPS, c'est-à-dire exactement ce qu'un schéma est. Ne pas relire ce « non »
+comme une fin de non-recevoir.
+
+**Ce que le dépôt avait déjà** : `internal/himap/sbsp.xml` (le field-walker éprouvé) et quatre
+définitions Forge copiées sous `.ai/V7.5/dumps/forge_zones/`, toutes de la même source
+publique — `Gamergotten/Infinite-runtime-tagviewer`, 479 définitions dumpées par Lord Zedd et
+Exhibit. L'opération était donc précédentée ; `weap.xml`, lui, n'était nulle part sur le poste.
+
+**LE CHAMP EXISTE.** `Plugins/weap.xml` (86 623 o, 3 001 lignes), bloc `_38 "player interface"`,
+sous-bloc `_40 "UI display info"` :
+
+```
+_2  "name"              <- StringID
+_2  "alt name "
+_2  "description"
+_2  "help text"
+_2  "icon string id"
+_41 "sprite"            <- REFERENCE DE TAG = le bitmap d atlas
+_6  "sprite index"      <- L INDEX DANS L ATLAS — le maillon cherche
+_41 "alt sprite"
+_6  "alt sprite index"
+_6  "damage sprite index"
+```
+
+**Corroboration indépendante, et elle est forte.** Le bloc déclare DEUX références de sprite
+(`sprite` + `alt sprite`) et le réticule vit ailleurs (`hip fire reticle screen reference`).
+C'est EXACTEMENT ce que j'avais mesuré à l'aveugle sur les 29 `weap` : deux bitmaps communs à
+toutes les armes (bc17adf1 contour, e39747c8 silhouette) plus un troisième qui varie par
+groupes d'armes — le réticule. La structure du plugin et la mesure se recoupent sans avoir été
+confrontées avant.
+
+**Contrôle intégré pour l'implémentation** : le walker n'aura pas à être cru sur parole. S'il
+lit `sprite` et que la valeur vaut bc17adf1, alors le `_6` qui suit EST le bon champ. La
+validation est gratuite et exacte.
+
+**Bonus non anticipé** : le même bloc porte `name`, `alt name`, `description`, `help text` en
+StringID — donc en murmur3. Le dépôt a déjà craqué des noms par murmur3 direct côté Forge
+(§Q1.0-septies). Les NOMS d'armes pourraient donc tomber par la même voie que les icônes.
+
+**Versé au dépôt** : `.ai/V7.5/icones/reference_weap_tag_definition.xml`, même convention que
+`reference_food_tag_definition.xml`.
+
+**Conséquence pratique, à dire avant que l'utilisateur ne nomme à la main** : si le walker
+aboutit, l'attribution des 40 icônes d'armes devient AUTOMATIQUE et vérifiable, et la page de
+nommage ne sert plus que pour le reste (véhicules, objectifs, pictogrammes). Nommer les armes
+à la main maintenant serait du travail jeté.
+
+**Conclusion / prochaine étape** : porter le field-walker de `himap` sur `weap` (parcours de
+l'arbre de structures + appariement par rang, la mécanique existe pour `sbsp`), lire
+`UI display info` pour les 29 armes du registre, et contrôler que `sprite` vaut bien
+bc17adf1. Décision utilisateur attendue avant de lancer.
+
 ## [2026-08-08] v7.5 voie C — les images rayees n etaient pas un probleme de decodage, mais de comptage
 
 **Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
