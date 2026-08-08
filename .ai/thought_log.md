@@ -1,3 +1,62 @@
+## [2026-08-08] v7.5 icones — le nom interne se craque : Mutilateur, Sandwich, crane, drapeau
+
+**Statut** : Complété. Branche `feat/v75-icones`. Non branché côté web.
+
+**Origine** : trois questions de l'utilisateur, dont deux qui pointaient une affirmation que
+j'avais faite sans la mesurer.
+
+**« Pour l'atlas sandbox tu n'as rien trouvé ? »** — j'avais écrit « aucun lien structurel
+connu » sans avoir cherché. Mesuré depuis : `alt sprite` du bloc `UI display info` pointe sur
+l'atlas SILHOUETTE (97 `weap` sur 104), pas sur le sandbox. Et surtout, l'atlas sandbox
+`0302cad3` n'est référencé que par **un seul tag `cusc`** (`00cfaf01`) et un `bitd`. Ce n'est
+donc pas une impasse mais une piste précise : `cusc.xml` existe dans le même dépôt de
+définitions (15 664 o), et c'est probablement lui qui liste les entrées sandbox avec leur
+index. Non fait.
+
+**« Et le Mutilateur / le Sandwich ? »** — ils sortent, et la raison de leur absence est
+instructive : le walker itérait le REGISTRE CANONIQUE (29 armes), or ni l'un ni l'autre n'y
+figure — ils ne vivent que dans `weapon_labels`. En balayant les 194 `weap` du jeu :
+**Mutilateur → index 37**, **Sandwich et Mythic Sandwich → index 35** (même icône, deux
+StringID de nom). Le Sandwich est bien le sandwich du sheet.
+
+**Le craquage des noms — la piste que je n'avais pas suivie, et elle paie.** Le champ `name`
+du bloc est un StringID, pas une chaîne : les tags portent bien une table de chaînes, mais
+elle ne contient QUE des couples (index, hash) — les textes sont strippés en release. La
+recette déjà validée côté Forge (§Q1.0-septies) s'applique telle quelle : moissonner les
+chaînes du binaire du jeu, les hacher avec `mapvar.LabelHash` (murmur3 x86_32 seed 0, déjà
+dans le dépôt et testée), et confronter.
+
+**16 index nommés**, dont exactement ce qui manquait : `mutilator` (37), `skull` (25),
+`flag` (26), `ball | bomb` (34), `plasma_turret` (12), `shade_turret` (31).
+
+**Deux pièges traversés, tous deux mesurés** :
+
+1. *le mauvais binaire* — le `HaloInfinite.exe` à la racine de l'installation est un lanceur
+   de 3,9 Mo : **0 nom craqué**. Le vrai binaire est sous `game/` et pèse 80 Mo : 408 525
+   chaînes, 669 467 hachages, 38 noms. Prendre « le premier trouvé » donnait un zéro
+   silencieux qui ressemblait à un échec de méthode ;
+2. *les tags de campagne à index périmé* — un `weap` legacy baptisait l'index 7 « shotgun »
+   là où le registre y lit la Hydra, et l'index 5 recevait « needler » en plus de
+   « sniper_rifle ». Filtre posé : un index que le registre revendique n'accepte que le nom
+   d'un tag canonique. Les conflits restants sont donc SIGNIFIANTS.
+
+**Une divergence reste, et elle est publiée plutôt qu'arbitrée** : l'index 20 se nomme
+`heatwave` dans le jeu alors que le registre y lit `hinf_cindershot` — et les deux viennent du
+MÊME tag canonique `230447b1`. Soit le registre étiquette mal ce tag, soit le nom interne est
+un reliquat de développement. Le dépôt a déjà une confusion documentée dans ce coin
+(`Cremator.png` est en réalité le Cindershot). À trancher à l'oeil sur les icônes 20 et 21.
+
+**Livré** : `cmd/weapon-icons-build/names.go` ; `index.json` porte `nom_jeu` à côté de
+`arme` ; la page pré-remplit le champ libre avec le nom interne quand le registre ne couvre
+pas l'icône.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...
+./internal/analysis/replay/mapvar/...` vert, `node --check` sur la page.
+
+**Conclusion / prochaine étape** : la piste sandbox est nommée et bornée — `cusc.xml` sur le
+tag `00cfaf01`. Reste aussi 8 index de l'atlas d'armes sans nom ni clé (#08 #19 #27 #28 #29
+#30 #32 #35), et la divergence #20 à trancher.
+
 ## [2026-08-08] v7.5 icones — PLAN A ABOUTI : 29 armes sur 29, lues dans le jeu et auto-validees
 
 **Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web (l'intégration
