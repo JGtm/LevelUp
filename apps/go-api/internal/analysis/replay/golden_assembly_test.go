@@ -31,10 +31,20 @@ import (
 // constantes vient d une mesure datee du chantier ; si l une bouge, c est le decodeur ou
 // l assemblage qui a bouge, et le test doit le dire par son nom.
 const (
-	// wantShotsAttached / wantShotsAvailable : 475/519 = 91,5 %. Mesure du 2026-07-28, apres le
-	// retrait du repli vote (496/519 avec lui, pour 4 desaccords entre sources).
-	wantShotsAttached  = 475
+	// wantShotsAttached / wantShotsAvailable : 484/519 = 93,3 %. Mesure du 2026-08-08, apres
+	// l ajout des FERMETURES (closures.go) : 475/519 avant elles, 496/519 avec le repli VOTE
+	// retire le 2026-07-28.
+	//
+	// LES TROIS CHIFFRES NE SE COMPARENT PAS COMME TROIS ETAPES D UN MEME PROGRES. 496 venait
+	// d un CHOIX (4 desaccords entre sources) ; 484 vient d une DEDUCTION qui s abstient des
+	// qu il reste deux candidats, et dont les refus sont comptes et publies.
+	wantShotsAttached  = 484
 	wantShotsAvailable = 519
+	// wantClosedByShot / wantClosedByRespawn : ce que les fermetures ajoutent sur ce film.
+	// La fermeture A n y ferme RIEN (son unique candidate est contestee) ; c est B qui porte
+	// les 5 entrees. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
+	wantClosedByShot    = 0
+	wantClosedByRespawn = 5
 	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 105. Les 15 restantes sont 4 vies
 	// anterieures au debut reel du match et 6 survivants de fin de partie, que le film ne clot
 	// par aucun evenement.
@@ -117,12 +127,12 @@ func ligneAssembly(ls []string, i int) string {
 // Les tests NOMMES : un chiffre du chantier, une phrase, un test.
 // ---------------------------------------------------------------------------
 
-// TestShotsCoverageIsFourSeventyFiveOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
+// TestShotsCoverageIsFourEightyFourOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
 //
-// 475 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
-// publier 475 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
+// 484 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
+// publier 484 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
 // des rejets sont donc verifies ensemble.
-func TestShotsCoverageIsFourSeventyFiveOfFiveNineteen(t *testing.T) {
+func TestShotsCoverageIsFourEightyFourOfFiveNineteen(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Shots
 	if c.Attached != wantShotsAttached || c.Available != wantShotsAvailable {
@@ -154,10 +164,20 @@ func TestBridgeNamesNinetyLivesOfHundredFive(t *testing.T) {
 		t.Errorf("vies nommees : %d/%d, attendu %d/%d — le fil des morts ou le decoupage des "+
 			"vies a bouge", b.LivesNamed, b.LivesTotal, wantLivesNamed, wantLivesTotal)
 	}
-	if b.FromReading != b.Slots {
-		t.Errorf("%d entrees du pont pour %d issues de la lecture : une SECONDE SOURCE est "+
-			"reapparue dans le pont, alors qu il ne doit rien contenir d autre qu une lecture",
-			b.Slots, b.FromReading)
+	// LA REGLE DE PROVENANCE, DANS SA VERSION DU 2026-08-08. Elle exigeait auparavant
+	// `FromReading == Slots` — « rien d autre qu une lecture ». Les FERMETURES (closures.go) ne
+	// sont pas des lectures mais des deductions par elimination, et elles alimentent le pont.
+	// Ce qui est conserve est l ESPRIT de la regle : toute entree doit venir d une source NOMMEE
+	// ET COMPTEE. Un ecart signale une troisieme source, non comptee — exactement ce que la
+	// version d origine interdisait.
+	if got := b.FromReading + b.ClosedByShot + b.ClosedByRespawn; got != b.Slots {
+		t.Errorf("%d entrees du pont pour %d justifiees (%d lecture + %d fermeture A + %d "+
+			"fermeture B) : une source NON COMPTEE a alimente le pont",
+			b.Slots, got, b.FromReading, b.ClosedByShot, b.ClosedByRespawn)
+	}
+	if b.ClosedByShot != wantClosedByShot || b.ClosedByRespawn != wantClosedByRespawn {
+		t.Errorf("fermetures : A=%d B=%d, attendu A=%d B=%d — le raisonnement de fermeture a bouge",
+			b.ClosedByShot, b.ClosedByRespawn, wantClosedByShot, wantClosedByRespawn)
 	}
 	if b.SlotCollisions != 0 {
 		t.Errorf("%d collision(s) de slot : un slot change de porteur, la table slot -> joueur "+
@@ -285,7 +305,7 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	}
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
-	p("%d trace(s) NOMMEE(S) par le fil des morts · %d anonyme(s) — une vie que le film ne clot",
+	p("%d trace(s) NOMMEE(S) par le pont (fil des morts, puis fermetures) · %d anonyme(s) — une vie que le film ne clot",
 		named, len(doc.Tracks)-named)
 	p("par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur")
 	p("%d point(s) portent un cap de visee · %d un bouclier · %d une fraction de vie",
@@ -393,9 +413,15 @@ func renderLoadouts(p func(string, ...any), doc ReplayDocument) {
 
 func renderBridge(p func(string, ...any), doc ReplayDocument) {
 	b := doc.Coverage.Bridge
-	p("## PONT SLOT -> JOUEUR — une seule source : la LECTURE")
-	p("%d entree(s) · %d issue(s) de la lecture (un ecart signalerait une SECONDE SOURCE)",
-		b.Slots, b.FromReading)
+	p("## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE")
+	p("%d entree(s) · %d issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures "+
+		"signalerait une TROISIEME SOURCE)", b.Slots, b.FromReading)
+	p("fermetures : %d par le corps disponible · %d par la reapparition — une fermeture n attribue "+
+		"QUE lorsqu un seul candidat reste possible, jamais par vote",
+		b.ClosedByShot, b.ClosedByRespawn)
+	p("refus des fermetures : %d contestee(s) (deux joueurs, un corps) · %d rejetee(s) par le "+
+		"recouvrement (un joueur n a qu un corps) — un controle qui ne rejette rien ne prouve rien",
+		b.ClosedContested, b.ClosedRefused)
 	p("%d vie(s) nommee(s) / %d — un rapport publie sans son denominateur ne se juge pas",
 		b.LivesNamed, b.LivesTotal)
 	p("%d chunk(s) de replication concordants · %d desaccord(s) d identite · %d collision(s) de slot",

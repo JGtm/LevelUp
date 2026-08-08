@@ -149,6 +149,19 @@ type BridgeHealth struct {
 	// SlotCollisions : slots dont les vies nommées désignent des joueurs différents. Non
 	// nul, la table slot -> joueur n'est pas représentable et le verdict le dit.
 	SlotCollisions int `json:"slotCollisions"`
+	// ClosedByShot : entrées ajoutées par la fermeture A (le corps disponible).
+	ClosedByShot int `json:"closedByShot"`
+	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).
+	ClosedByRespawn int `json:"closedByRespawn"`
+	// ClosedContested : déductions ABANDONNÉES parce que deux candidats subsistaient.
+	ClosedContested int `json:"closedContested"`
+	// ClosedRefused : déductions REJETÉES par le contrôle de recouvrement (un joueur n'a
+	// qu'un corps).
+	//
+	// LES DEUX COMPTEURS DE REFUS SONT PUBLIÉS AU MÊME TITRE QUE LES SUCCÈS, et ce n'est pas
+	// de la décoration : un contrôle qui ne rejette jamais rien ne prouve rien. Mesuré sur
+	// sept films, 33 attributions pour 17 refus.
+	ClosedRefused int `json:"closedRefused"`
 }
 
 // VerdictNominal est le verdict d'un calque publiable sans réserve. Nommé plutôt que répété :
@@ -188,14 +201,25 @@ func verdictOf(c LayerCoverage) string {
 }
 
 // verdictOfBridge rend le verdict du pont lui-même.
+//
+// LA RÈGLE DE PROVENANCE A CHANGÉ LE 2026-08-08, ET LE COMMENTAIRE AVEC ELLE. Elle exigeait
+// `FromReading == Slots` — « une source autre que la lecture a alimenté le pont ». Cette règle
+// est née du retrait du repli VOTÉ (2026-07-28) et elle visait juste : rien ne devait entrer au
+// pont par un choix. Elle deviendrait FAUSSE telle quelle depuis l'ajout des FERMETURES
+// (closures.go), qui ne sont pas des lectures mais des déductions par élimination.
+//
+// Ce qui est conservé, et c'est l'esprit de la règle : **toute entrée du pont doit être
+// justifiée par une source nommée**. La somme lecture + fermetures doit donc rendre EXACTEMENT
+// le nombre d'entrées ; un écart signalerait qu'une troisième source, elle non comptée, s'est
+// glissée dans le pont — précisément ce que la règle d'origine interdisait.
 func verdictOfBridge(b BridgeHealth) string {
 	switch {
 	case b.Slots == 0:
 		return "non publiable : aucun pont"
 	case b.SlotCollisions > 0:
 		return "non publiable : un slot change de porteur"
-	case b.FromReading != b.Slots:
-		return "non publiable : une source autre que la lecture a alimenté le pont"
+	case b.FromReading+b.ClosedByShot+b.ClosedByRespawn != b.Slots:
+		return "non publiable : une source non comptée a alimenté le pont"
 	case b.IndexDisagreements > 0:
 		return "non publiable : une identité est lue de deux façons"
 	case b.IndexReadings < bridgeMinReadings:
@@ -213,6 +237,10 @@ func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport) *
 		IndexReadings:      own.IndexReadings,
 		IndexDisagreements: own.IndexDisagreements,
 		SlotCollisions:     own.SlotCollisions,
+		ClosedByShot:       own.Closures.byShot,
+		ClosedByRespawn:    own.Closures.byRespawn,
+		ClosedContested:    own.Closures.contested,
+		ClosedRefused:      own.Closures.refused,
 	}
 	return &Coverage{
 		Shots: shots, Grenades: grenades, Objectives: objectives, Bridge: b,

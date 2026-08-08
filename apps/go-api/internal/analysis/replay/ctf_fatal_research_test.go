@@ -114,17 +114,10 @@ func ctfFatalReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 	table, _ := injectiveOrEmpty(idx)
 	sort.SliceStable(pos, func(i, j int) bool { return pos[i].TimestampUS < pos[j].TimestampUS })
 	tracks := indexBySlot(pos)
-	own := buildOwners(tracks, deaths, table)
-	lives := buildLifeSpans(tracks)
-	off, _ := bestDeathOffset(lives, deaths)
-	nameLivesByDeaths(lives, deaths, off)
-
 	// Le pont AVANT et APRÈS les deux fermetures : la question « les tirs fatals » se juge sur
-	// les deux, sinon on ne sait pas ce que le lot du §7.2 apporterait à ce qui compte le plus.
-	augA, _ := ctfCloseByExclusion(tracks, own.Owner, lives, fire)
-	_, p50, _, _ := ctfRespawnCalib(lives, deaths, off)
-	augB, _ := ctfCloseByRespawn(tracks, augA, lives, deaths, off, table.ByXUID,
-		p50-ctfRespawnHalfWidthMS, p50+ctfRespawnHalfWidthMS)
+	// les deux, sinon on ne sait pas ce que les fermetures apportent à ce qui compte le plus.
+	owners, lives, off := ctfReadingOnlyOwners(tracks, deaths, table)
+	augB, _ := closeBridge(tracks, owners, lives, deaths, off, table.ByXUID, fireRefs(fire))
 
 	pairs, nKills, nUnpaired := ctfPairKills(evs, off)
 	var b strings.Builder
@@ -133,7 +126,7 @@ func ctfFatalReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, mapN
 		len(deaths), nKills, len(pairs), nUnpaired)
 	ctfWriteFatalDelays(&b, pairs, fire, table)
 	fmt.Fprintf(&b, "\n# maillon 3 et 4 — le tir du tueur existe-t-il, et sait-on le placer\n")
-	ctfWriteFatalCoverage(&b, "pont_actuel", pairs, fire, tracks, own.Owner, table)
+	ctfWriteFatalCoverage(&b, "pont_actuel", pairs, fire, tracks, owners, table)
 	ctfWriteFatalCoverage(&b, "pont_ferme", pairs, fire, tracks, augB, table)
 	// Détail par mort, pour la jointure hors ligne avec la CLASSE de la source. Les colonnes
 	// sont volontairement plates : ce bloc est fait pour être relu par DuckDB, pas par un humain.
