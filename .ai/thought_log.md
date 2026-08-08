@@ -1,3 +1,56 @@
+## [2026-08-08] v7.5 piste E — je fermais trop vite : le test qui manquait, et ce qu'il laisse ouvert
+
+**Statut** : Complété. Correction de l'entrée précédente du jour, même branche
+`research/v75-precision`. Déclencheur : objection de l'utilisateur — « on a longtemps cru que
+l'arme du kill était indisponible dans le film, et on a prouvé le contraire la semaine
+dernière ». L'objection était fondée.
+
+**L'erreur de raisonnement, nommée.** L'entrée précédente concluait de la lecture Ghidra que
+« la voie du décodage est fermée par construction du format ». Ce que la lecture établissait
+réellement, c'est que les compteurs **AGRÉGÉS** par arme ne sont pas répliqués. Le saut de l'un
+à l'autre est exactement celui qui avait fait rater l'arme du kill : l'agrégat n'y était pas
+non plus, mais l'information **PAR ÉVÉNEMENT** y était (le dead-state porte le tag de source de
+dégât). Un négatif sur les compteurs n'est pas un négatif sur les événements.
+
+**Le test qui manquait.** Une application de dégât produit un record type 105 à table non vide
+(un porteur). Sur arme à trace instantanée, c'est le record de tir lui-même ; sur projectile le
+dégât arrive plus tard, donc le porteur d'impact — s'il existe — est un AUTRE record, et rien
+ne garantit qu'il porte l'identifiant d'arme du suffixe commun. Or mon propre filtre `isFire`
+jette 12,8 % des records type 105 sans jamais les compter en porteurs. J'ai donc recompté les
+porteurs **sans aucun filtre d'arme**, contre les touches de l'API.
+
+```
+famille     films  porteurs (tir)  porteurs (TOUS)  touches API   TOUS/touches   gain hors filtre
+TACTICAL       22           3 988            4 142        4 841       0,8556           x1,039
+STANDARD       40          34 307           36 404       47 792       0,7617           x1,061
+BTB            40          49 077           56 535      149 582       0,3780           x1,152
+FIESTA         40           5 876            6 564       37 964       0,1729           x1,117
+```
+
+Contrôle positif atteint : en Tactical (BR75 seul) le film rend 0,8556 des touches API — le
+déficit de porteurs de ~15 % déjà documenté. **Résultat : en Fiesta il n'en rend que 0,1729, et
+lever le filtre d'arme n'ajoute que 12 % quand il aurait fallu un facteur ~5. 31 400 touches sur
+37 964 (82,7 %) n'ont aucun porteur dans le flux des records de dégât.** Elles ne s'y cachent
+pas sous un autre identifiant : elles n'y sont pas.
+
+**Ce qui est fermé, et ce qui ne l'est pas.** Fermé par cette mesure : la voie des records de
+dégât. Fermé par mesure antérieure : les événements d'impact codes 6/7, dont le corps ne porte
+ni arme (168 380 observations, zéro exception, 7ter.91/7ter.94) ni tireur (7ter.86 (5a)).
+**PAS fermé : la voie de la RÉPLICATION.** Le handle du code 7 est un slot identifié
+(`objet + 0x114`) et l'enregistrement qui CRÉE ce slot n'a jamais été cherché ;
+`FUN_141fd8460` sérialise ce champ et la table de dispatch a 123 codes. C'est la piste nommée
+par le handoff du 2026-07-31, et ma lecture Ghidra du jour ne l'a **pas** touchée : j'ai lu le
+chemin des STATISTIQUES, pas celui de la RÉPLICATION. Deux chemins de code distincts — et c'est
+précisément la distinction qui avait fait rater l'arme du kill.
+
+**Conclusion / prochaine étape.** Le plan de la session 2 est réordonné : l'étape 0 (voie de la
+réplication, cible Ghidra 3, timeboxée à une demi-session avec critère d'arrêt écrit) passe
+DEVANT la déconvolution, qui redevient le repli. Deux voies de décodage sur trois sont fermées
+par mesure ; la troisième porte la même forme que le précédent qui a résolu l'arme du kill, et
+elle mérite d'être instruite avant qu'on se rabatte sur de l'inférence. Le verdict est corrigé
+en §4bis.4 et §6 ; la ligne « conclure fermé depuis l'absence d'un compteur agrégé » est ajoutée
+à la liste de ce qu'il ne faut pas refaire.
+
 ## [2026-08-08] v7.5 piste E — lecture Ghidra (cible 1) : le moteur calcule la précision par arme, mais il ne la réplique pas
 
 **Statut** : Complété. Addendum à l'entrée du jour sur la piste E, même branche

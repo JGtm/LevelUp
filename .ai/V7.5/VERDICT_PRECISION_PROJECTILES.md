@@ -354,9 +354,65 @@ celui du bloc de statistiques (`param_1 + 4`). Autrement dit : au moment de l'im
 sait parfaitement qui a tiré et avec quoi — **il le sait par le graphe d'objets du serveur**,
 celui-là même dont 7ter.88 (6) avait déjà noté qu'il n'est pas répliqué.
 
-**Ce que cela change pour la piste E : la voie du DÉCODAGE est fermée par construction du
-format, pas par insuffisance de notre décodeur. Il ne reste que la voie de l'INFÉRENCE** — la
-déconvolution du §4 — et son plafond est celui de son contrôle positif.
+### 4bis.4 CORRECTION DE CE QUI PRÉCÈDE — la portée de l'argument était trop large
+
+> **Cette sous-section corrige la première rédaction de §4bis, écrite le même jour.** Elle
+> concluait « la voie du DÉCODAGE est fermée par construction du format ». **C'était un saut**,
+> et le contre-exemple est dans ce chantier même : l'arme du kill a longtemps été déclarée
+> absente du film, puis résolue à 97,6 % — parce que l'AGRÉGAT n'y était pas mais que
+> l'information PAR ÉVÉNEMENT y était (le dead-state porte le tag de source de dégât).
+> « Les compteurs ne sont pas répliqués » ne dit rien sur « l'événement est irrécupérable ».
+
+Ce que §4bis.1 à §4bis.3 établissent réellement, et pas plus : **les compteurs AGRÉGÉS par arme
+ne sont pas répliqués**, et le chemin de comptabilisation des statistiques résout l'arme par le
+graphe d'objets du serveur. C'est une corroboration de 7ter.83 (2) par l'autre bout, rien de
+plus.
+
+**Le test qui manquait, et qui a été joué.** Une application de dégât produit un record type 105
+à table non vide (un porteur). Sur arme à trace instantanée, c'est le record de tir lui-même ;
+sur projectile le dégât arrive plus tard, donc le porteur d'impact — s'il existe — est un AUTRE
+record, et rien ne garantit qu'il porte l'identifiant d'arme du suffixe commun. On compte donc
+les porteurs **sans aucun filtre d'arme**, et on les confronte aux touches de l'API.
+
+```
+famille     films  porteurs (tir)  porteurs (TOUS)  touches API   TOUS/touches   gain hors filtre
+TACTICAL       22           3 988            4 142        4 841       0,8556           x1,039
+STANDARD       40          34 307           36 404       47 792       0,7617           x1,061
+BTB            40          49 077           56 535      149 582       0,3780           x1,152
+FIESTA         40           5 876            6 564       37 964       0,1729           x1,117
+```
+
+**Contrôle positif** : en Tactical (BR75 seul, arsenal hitscan pur) le film rend **0,8556** des
+touches de l'API — le déficit de porteurs de ~15 % déjà documenté (§3quater réserve 2). C'est le
+plafond de l'instrument, et il est atteint.
+
+**Résultat** : en Fiesta le film n'en rend que **0,1729**. Lever mon filtre d'arme n'ajoute que
+**12 %** de porteurs — il aurait fallu un facteur ~5. **31 400 touches sur 37 964 (82,7 %)
+n'ont AUCUN porteur dans le flux des records de dégât.** Elles ne s'y cachent pas sous un autre
+identifiant d'arme : elles n'y sont pas.
+
+**Ce qui est donc fermé, et ce qui ne l'est PAS :**
+
+```
+FERMÉ (mesuré ici)      la voie des RECORDS DE DÉGÂT. Les touches de projectile n'y sont
+                        pas, filtre d'arme levé compris.
+FERMÉ (mesuré ailleurs) la voie des ÉVÉNEMENTS D'IMPACT codes 6 / 7 : leur corps ne porte ni
+                        arme (168 380 observations, zéro exception, 7ter.91/7ter.94) ni
+                        tireur (7ter.86 (5a)).
+PAS FERMÉ               la voie de la RÉPLICATION. Le handle du code 7 est un SLOT identifié
+                        (`objet + 0x114`) et l'enregistrement qui CRÉE ce slot n'a jamais été
+                        cherché — `FUN_141fd8460` sérialise ce champ, la table de dispatch a
+                        123 codes. C'est la piste nommée par le handoff du 2026-07-31, et ma
+                        lecture Ghidra du jour ne l'a PAS touchée : j'ai lu le chemin des
+                        STATISTIQUES, pas celui de la RÉPLICATION. Ce sont deux chemins de
+                        code distincts, et c'est exactement la distinction qui avait fait
+                        rater l'arme du kill.
+```
+
+**Ce que cela change pour la piste E : deux des trois voies de décodage sont fermées par
+mesure ; la troisième — la réplication du projectile — reste ouverte et porte la même forme que
+le précédent qui a résolu l'arme du kill.** L'inférence (§4) reste le repli, pas la seule
+option.
 
 ---
 
@@ -378,10 +434,13 @@ déconvolution du §4 — et son plafond est celui de son contrôle positif.
   fausse prémisse ;
 - une voie **neuve** existe, elle est chiffrée, et ses deux défauts sont nommés.
 
-- la lecture Ghidra (§4bis) **ferme la voie du décodage par construction du format** : le moteur
-  calcule bien la précision par arme, mais dans une structure de télémétrie qu'il ne réplique
-  pas, et son chemin de touche résout l'arme par le graphe d'objets du serveur. Il ne reste que
-  l'inférence.
+- la lecture Ghidra (§4bis.1-3) montre que le moteur calcule bien la précision par arme, mais
+  dans une structure de statistiques / télémétrie qu'il ne réplique pas ;
+- **deux voies de décodage sur trois sont fermées par mesure** (§4bis.4) : les records de dégât
+  ne portent pas les touches de projectile (0,1729 des touches API en Fiesta contre 0,8556 en
+  Tactical, filtre d'arme levé), et les événements d'impact codes 6/7 ne nomment ni arme ni
+  tireur. **La troisième — la réplication du projectile — reste ouverte**, et c'est la piste
+  nommée par le handoff.
 
 **Ce qui n'a PAS changé** : le plafond de validation du handoff tient intégralement. Même une
 estimation juste ne se **valide** pas par une population à arme dominante — le Needler ne
@@ -392,10 +451,24 @@ intra-joueur**, comme écrit.
 
 ## 6. SESSION 2/2 — LE PLAN, DANS L'ORDRE
 
-Trois étapes, chacune avec son critère d'arrêt. **Si l'étape A échoue, le verdict devient
-définitivement « non faisable » et la session s'arrête là.**
+> **ORDRE RÉVISÉ le 2026-08-08 après §4bis.4.** La première rédaction envoyait la session 2
+> directement sur la déconvolution. C'était l'ordre d'un verdict qui croyait le décodage fermé.
+> Il ne l'est pas : **l'étape 0 passe devant**, parce qu'elle peut rendre la déconvolution
+> inutile — et parce que c'est la seule voie qui porte la forme du précédent « arme du kill ».
 
-**A. Réparer le contrôle positif de la déconvolution (le go/no-go).**
+**0. La voie de la réplication — priorité, et elle est timeboxée à une demi-session.**
+   - Ghidra, cible 3 : `FUN_141fd8460` sérialise le slot `objet + 0x114` que porte le code 7.
+     Question unique : **quel enregistrement CRÉE ce slot, et nomme-t-il un propriétaire ?**
+     Point d'entrée connu, table de dispatch à 123 codes dont le découpage est écrit.
+   - **CRITÈRE D'ARRÊT** : si l'enregistrement de création n'existe pas ou ne porte aucun
+     propriétaire répliqué, la voie est close et on passe à A. Si un champ est nommé, il se
+     vérifie sur le film AVANT toute conclusion (règle du chantier : Ghidra nomme, le film
+     mesure).
+   - Si un tireur devient rattachable : le critère de succès est celui du handoff — compte par
+     joueur égalant `shots_hit` **à l'unité**, et **gain LOCALISÉ** (il doit apparaître chez les
+     joueurs à forte part de projectile et ne rien changer aux joueurs hitscan).
+
+**A. Réparer le contrôle positif de la déconvolution (le repli).**
    - passer au grain **JOUEUR** (et non match) : il multiplie les observations par ~10 et
      décorrèle les mélanges d'armes, ce qui est exactement ce qui manque à l'identifiabilité.
      Coût : l'appariement indice → xuid, qui existe (`resolveFilmPlayerIndices`, mesuré à
@@ -425,8 +498,9 @@ définitivement « non faisable » et la session s'arrête là.**
      ci-dessus (l'unité du record par arme) et l'identité `eventStart+106 == payload bit 110`
      du §1.
 
-**Budget** : 1 session. Si A n'est pas tranchée à mi-session, écrire le verdict négatif —
-le timebox prime.
+**Budget** : 1 session, partagée — étape 0 sur la première moitié, A (puis B si A passe) sur la
+seconde. Si l'étape 0 déborde, elle s'arrête quand même à la mi-session : le timebox prime sur
+la piste, et un négatif écrit vaut mieux qu'une piste laissée ouverte sans verdict.
 
 ---
 
@@ -438,6 +512,8 @@ le timebox prime.
 | **Traiter le record de projectile comme une touche** | taux de porteur 0,0067 et cadence 83,4 ms (q90 100 ms) : c'est un TIR. Compter les records du Needler comme ses touches surestime sa précision d'un facteur ~4 |
 | **La déconvolution au grain MATCH sans normalisation de visibilité** | coefficients inintelligibles (MA40 0,53, BR75 0,61, Sniper 5,04) : la fraction de tirs visible varie de 0,31 à 0,92 selon le mode et entre dans les coefficients |
 | **Chercher le dénominateur** | il n'a jamais manqué. Chercher les TOUCHES |
+| **Chercher les touches de projectile dans les records de dégât** | filtre d'arme levé, le film ne rend que **0,1729** des touches API en Fiesta contre **0,8556** en Tactical : 31 400 touches sur 37 964 n'ont aucun porteur. Elles ne s'y cachent pas sous un autre identifiant |
+| **Conclure « fermé » depuis l'absence d'un compteur AGRÉGÉ** | c'est le saut qui avait fait rater l'arme du kill : l'agrégat manquait, l'information par événement était là. Un négatif sur les compteurs n'est pas un négatif sur les événements |
 
 ---
 

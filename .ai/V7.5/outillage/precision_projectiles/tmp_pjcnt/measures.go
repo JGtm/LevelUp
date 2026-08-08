@@ -19,7 +19,7 @@ func runMain(root string, pfxs []string, refs map[string]*matchRef, outCSV, outP
 	matchW, closeMatch := openCSV(outCSV, []string{
 		"pfx", "famille", "pair_name", "roster_api", "indices_film",
 		"records_longs", "records_courts", "pas_total", "pas_total_avec_courts",
-		"api_shots_fired", "api_shots_hit",
+		"porteurs_tir", "porteurs_tous", "api_shots_fired", "api_shots_hit",
 	})
 	defer closeMatch()
 	plrW, closePlr := openCSV(outPlr, []string{
@@ -40,6 +40,23 @@ func runMain(root string, pfxs []string, refs map[string]*matchRef, outCSV, outP
 			gapSum += a.gapSum
 			gapAll += a.gapSumAll
 		}
+		// OU SONT LES TOUCHES DE PROJECTILE ? Un degat applique produit un record type 105
+		// a table non vide (un PORTEUR). Sur arme a trace instantanee c est le record de tir
+		// lui-meme ; sur projectile le degat arrive plus tard, donc le porteur d impact — s il
+		// existe — est un AUTRE record, et rien ne dit qu il porte l identifiant d arme du
+		// suffixe commun. On compte donc les porteurs DEUX FOIS : sur la population de tir
+		// (`isFire`) et sur TOUS les records longs, filtre d arme compris. L ecart entre les
+		// deux est exactement la population que `isFire` jette.
+		var portFire, portAll int
+		for _, r := range recs {
+			if !r.long || !r.porteur {
+				continue
+			}
+			portAll++
+			if isFire(r) {
+				portFire++
+			}
+		}
 		var apiFired, apiHit int
 		for _, p := range m.players {
 			apiFired += p.shotsFired
@@ -47,7 +64,7 @@ func runMain(root string, pfxs []string, refs map[string]*matchRef, outCSV, outP
 		}
 		fam := familyOf(m.pairName)
 		writeRow(matchW, pfx, fam, m.pairName, len(m.players), len(agg),
-			recLong, recShort, gapSum, gapAll, apiFired, apiHit)
+			recLong, recShort, gapSum, gapAll, portFire, portAll, apiFired, apiHit)
 
 		if plrW != nil {
 			for _, pi := range sortedKeys(agg) {
