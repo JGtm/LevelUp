@@ -455,6 +455,78 @@ base ne corrige pas l'ordre. À utiliser comme signal de tri grossier, jamais co
 
 ---
 
+## §8 — LES TIRS FATALS  *(priorité utilisateur, posée le 2026-08-08)*
+
+> « Moi en priorité je veux les tirs fatals — quelle couverture on a sur les tirs qui ont causé
+> des morts ? » Mesuré par `ctf_fatal_research_test.go` sur les sept films, **717 morts**, croisé
+> avec la CLASSE de la source de dégât (`match_kill_events_latest.source_tag` -> table de nommage
+> `jpt!` de `damagetag/data/labels.tsv`).
+
+### 8.1 Ce qui est DÉJÀ acquis, en base, sans rien faire
+
+| | matchs | morts | arme du kill | tueur nommé |
+|---|---|---|---|---|
+| **film en cache** | **951** | **74 909** | **99,55 %** | 98,87 % |
+| film absent du cache | 392 | 49 785 | 0 % (aucun film à décoder) | 100 % (fil de l'API) |
+
+**Qui a tué qui, quand, avec quelle arme : résolu et persisté.** Ce qui manque est le **OÙ** — et
+le dépôt porte déjà une table `kill_positions` (`killer_x/y/z`, `victim_x/y/z`, `time_ms`)
+**VIDE : 0 ligne, 0 match.** Elle a été créée pour cela et jamais alimentée.
+
+### 8.2 Ce que la mesure ajoute — et une mort sur cinq n'est pas un tir
+
+Un tir fatal posé sur la carte exige quatre maillons ; le plus faible commande. Sur 717 morts :
+
+| classe de la source | morts | part | tir placé | aucun tir | non placé | **taux** |
+|---|---|---|---|---|---|---|
+| **ARME** | 562 | 78,4 % | 397 | 138 | 27 | **70,6 %** |
+| MÊLÉE | 82 | 11,4 % | 76 | 2 | 4 | 92,7 % |
+| (tag inconnu) | 32 | 4,5 % | 6 | 25 | 1 | 18,8 % |
+| GRENADE | 18 | 2,5 % | 11 | 5 | 2 | 61,1 % |
+| OBJET EXPLOSIF | 10 | 1,4 % | 2 | 7 | 1 | 20,0 % |
+| VÉHICULE | 8 | 1,1 % | 0 | 8 | 0 | 0 % |
+| DÉGÂT GLOBAL | 5 | 0,7 % | 0 | 5 | 0 | 0 % |
+
+**21,6 % des morts ne sont pas causées par un tir** et ne peuvent porter aucun record de tir.
+Les juger sur ce critère serait une faute de mesure.
+
+Sur les morts **par arme**, film par film : `0edb8512` 87,2 % · `db7b8c3c` 78,2 % · `9aeca4b3`
+78,1 % · `829abef9` 76,4 % · `64e8adfa` 72,0 % · `01e1f945` 64,9 % · **`000d5950` 41,4 %** (le
+film Fiesta, qui ne porte que 23,3 % des tirs de son match — cf. §3bis).
+
+### 8.3 CE QUI COMMANDE N'EST PLUS LE PONT
+
+Sur les 562 morts par arme, la perte se répartit ainsi :
+
+```
+24,6 %   AUCUN record de tir du tueur dans les 1,5 s qui précèdent   -> colonne ① (piste E)
+ 4,8 %   le tir existe mais le pont ne sait pas le placer            -> colonne ② (ce document)
+```
+
+**Après les fermetures du §7.5, le pont ne coûte plus que 4,8 % sur ce qui compte le plus.** Le
+reste appartient à la complétude du flux de tirs, c'est-à-dire à un autre chantier.
+
+### 8.4 LA LIMITE DE CETTE MESURE, ET ELLE EST IMPORTANTE
+
+Cet instrument mesure « sait-on placer **UN** tir du tueur dans la fenêtre qui précède la mort »,
+**PAS** « sait-on placer **LE COUP QUI A TUÉ** ». La preuve est dans le tableau : les morts à la
+**mêlée** affichent 92,7 % — absurde pour un tir fatal. Ce qui est trouvé là, c'est le dernier tir
+du tueur avant qu'il ne frappe au corps à corps.
+
+L'imputation du coup mortel n'est pas l'objet de ce document : elle est faite par le chantier
+arme-par-kill (`killsource`), et elle est à **99,55 %** (§8.1). Les 70,6 % ci-dessus sont donc une
+mesure de **LOCALISATION**, pas d'imputation — et une **borne haute** de ce qu'un fil des
+éliminations pourrait poser sur la carte.
+
+### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
+
+`kill_positions` devient le meilleur rapport valeur/coût du chantier, et **il ne dépend pas du
+rejeu 2D** : le tueur, la victime, l'instant et l'arme existent déjà pour 74 909 morts ; seules
+les coordonnées manquent, et le pont sait les produire. Ordre proposé au §7.2, amendé :
+`kill_positions` d'abord, les fermetures comme préalable technique, le garde du rejeu ensuite.
+
+---
+
 ## ANNEXE — REPRODUIRE
 
 ```bash
@@ -479,5 +551,5 @@ corpus film est lu en LECTURE SEULE ; aucune sortie n'est écrite dans `data/`.
 ~40 min pour les sept films et ~25 min pour les quatre anatomies.
 
 **Les sorties brutes de cette session sont versionnées** sous
-`replay2d/mesures_ctf_2026-08-08/` (18 fichiers, 80 Ko) : tout chiffre de ce document s'y relit
+`replay2d/mesures_ctf_2026-08-08/` (26 fichiers, 168 Ko) : tout chiffre de ce document s'y relit
 sans re-décoder un film.

@@ -1,3 +1,53 @@
+## [2026-08-08] Recherche v7.5 voie B — les tirs fatals, et l'ordre des priorites qui bascule
+
+**Statut** : Complété. Répond à la priorité posée par l'utilisateur : « moi en priorité je veux
+les tirs fatals, quelle couverture on a ? ». Instrument #4 `ctf_fatal_research_test.go`,
+717 morts sur les 7 films, croisées avec la CLASSE de la source de dégât.
+
+**CE QUI ÉTAIT DÉJÀ ACQUIS ET QUE JE N'AVAIS PAS REGARDÉ** : `match_kill_events_latest` porte
+124 694 morts sur 1 343 matchs. Sur les 951 matchs dont le film est en cache : **arme du kill
+99,55 %, tueur nommé 98,87 %** (74 909 morts). Qui-tue-qui-avec-quoi est RÉSOLU ET PERSISTÉ.
+Ce qui manque est le OÙ — et `kill_positions` (killer_x/y/z, victim_x/y/z) existe et est **VIDE,
+0 ligne**. Créée pour ça, jamais alimentée.
+
+**RÉSULTAT PAR CLASSE (717 morts)** :
+
+| classe | morts | part | tir placé | aucun tir | non placé | taux |
+|---|---|---|---|---|---|---|
+| ARME | 562 | 78,4 % | 397 | 138 | 27 | **70,6 %** |
+| MÊLÉE | 82 | 11,4 % | 76 | 2 | 4 | 92,7 % |
+| tag inconnu | 32 | 4,5 % | 6 | 25 | 1 | 18,8 % |
+| GRENADE | 18 | 2,5 % | 11 | 5 | 2 | 61,1 % |
+| OBJET EXPLOSIF | 10 | 1,4 % | 2 | 7 | 1 | 20,0 % |
+| VÉHICULE | 8 | 1,1 % | 0 | 8 | 0 | 0 % |
+| DÉGÂT GLOBAL | 5 | 0,7 % | 0 | 5 | 0 | 0 % |
+
+**21,6 % des morts ne sont pas causées par un tir** : les juger sur ce critère serait une faute de
+mesure. Sur les morts par arme, la perte se répartit en **24,6 % « aucun record de tir »**
+(colonne ①, piste E) et **4,8 % « le pont ne sait pas placer »** (colonne ②, ce chantier).
+
+**LE PONT N'EST PLUS CE QUI COMMANDE, sur ce qui compte le plus.** Après les fermetures, il coûte
+4,8 % des morts par arme.
+
+**DEUX ESTIMATIONS À MOI, DÉMENTIES PAR LA MESURE, ET C'EST LA LEÇON DE LA SESSION.** (1) J'avais
+annoncé « ~96 % sur les morts par arme » par croisement de deux agrégats ; la jointure directe dit
+**70,6 %**. (2) J'avais présenté « 90 % » sans son dénominateur (§3bis). Dans les deux cas
+l'utilisateur a demandé le chiffre, et dans les deux cas l'inférence était fausse. **Ne pas
+croiser des agrégats quand la jointure ligne à ligne est possible.**
+
+**LIMITE DE L'INSTRUMENT, POSÉE EXPLICITEMENT** : il mesure « sait-on placer UN tir du tueur dans
+la fenêtre avant la mort », pas « sait-on placer LE COUP QUI A TUÉ ». Preuve : les morts à la
+mêlée sortent à 92,7 %, ce qui est absurde — c'est le dernier tir avant le corps à corps.
+L'imputation du coup mortel appartient à `killsource` (99,55 %). Les 70,6 % sont une mesure de
+LOCALISATION et une BORNE HAUTE.
+
+**Conclusion / prochaine étape — l'ordre des priorités bascule.** `kill_positions` devient le
+meilleur rapport valeur/coût, et il NE DÉPEND PAS du rejeu 2D : tueur, victime, instant et arme
+existent pour 74 909 morts, seules les coordonnées manquent. Ordre proposé : (1) alimenter
+`kill_positions` ; (2) les deux fermetures du §7.5 comme préalable technique ; (3) le garde du
+rejeu 2D et son plancher à 88 %. La colonne ① (complétude du flux de tirs) reste le chantier de
+la piste E et n'est pas tranchée.
+
 ## [2026-08-08] Recherche v7.5 voie B — le denominateur, corrige par une question de l'utilisateur
 
 **Statut** : Complété (correction de fond du verdict, aucun code touché).
