@@ -1,3 +1,25 @@
+## [2026-08-08] v7.5 — triangles, T6 : la surface marchable est batie, l'etage reste a choisir
+
+**Statut** : En cours. Plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+
+**Fait** : `himap.HeightField` rasterise les 46,6 M de triangles PAR TRIANGLE et ne retient
+que les faces marchables (normale a moins de 45 degres de la verticale). Rasteriser par
+sommet laisserait le sol troue — un plancher est fait de grandes faces peu denses en
+sommets. Trois tests unitaires purs, chacun avec sa mutation.
+
+**Non resolu, et c'est le vrai sujet** : « la surface marchable la plus haute » est le
+sommet des falaises sur une carte encaissee. Sur Cliffhanger le marchable s'etale de -107 a
++60 m SANS bande dominante — aucune tranche de 2 m ne depasse 2,7 % des cellules. Trois
+plafonds essayes (2, 8, 20 m) : tous illisibles, l'arene reste noyee. Le probleme n'est donc
+pas un seuil a regler, c'est qu'il faut savoir OU LES JOUEURS MARCHENT.
+
+**Conclusion / prochaine etape** : brancher les positions de joueurs du film. Elles servent
+deux fois — elles designent l'etage a cartographier, et elles tranchent T4 (une geometrie
+decalee d'une demi-boite fait flotter ou s'enfoncer les joueurs). Sans elles, tout reglage
+de plafond serait un ajustement sur le resultat qu'il doit prouver.
+
+---
+
 ## [2026-08-08] v7.5 — portage des triangles, etapes T2 a T4 : 46,6 M de triangles
 
 **Statut** : En cours. Plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.

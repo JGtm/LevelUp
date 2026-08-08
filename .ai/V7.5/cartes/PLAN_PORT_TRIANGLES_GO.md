@@ -114,12 +114,24 @@ monde » est vrai par construction, ecart median 0,0000 m).
       tautologique) : l'indice maximal du tampon d'INDICES doit etre strictement inferieur
       au nombre de sommets du tampon apparie. Rend 100 % pour le bon appariement et **5,1 %**
       pour un LOD voisin — c'est ce contraste qui fait le test.
-- [ ] **T6 — assembler en monde** par `LocalToWorld` de l'instance (deja en Go), et
+- [~] **T6 — assembler en monde** par `LocalToWorld` de l'instance (deja en Go), et
       produire le champ d'altitude / la surface.
       *Temoin de non-regression, a refaire PROPREMENT* : le handoff donne 82,0 % de
       positions de joueur a moins de **25 cm** du sol, quand le fond en boites etait valide
       a 80,6 % sous **5 cm**. **Ces deux nombres ne se comparent pas** (seuil cinq fois plus
       large). Remesurer les deux au MEME seuil avant toute conclusion.
+      **MECANISME FAIT, CHOIX DE L'ETAGE NON RESOLU (2026-08-08).** `himap.HeightField`
+      rasterise par TRIANGLE (pas par sommet : un sol est fait de grandes faces peu denses
+      en sommets, les compter par sommet le laisse troue) et ne garde que les faces dont la
+      normale s'ecarte de moins de 45 degres de la verticale. Trois tests unitaires purs,
+      sans fichiers de jeu : filtre des murs, rasterisation par surface, choix de l'etage
+      par le plafond — chacun avec sa mutation.
+      **CE QUI RESTE, et c'est le vrai sujet** : « la surface marchable la plus haute » est
+      le SOMMET DES FALAISES sur une carte encaissee. Mesure sur Cliffhanger : le marchable
+      s'etale de -107 a +60 m **sans bande dominante** (aucune tranche de 2 m ne depasse
+      2,7 % des cellules), donc aucun plafond fixe n'isole l'arene — essais a 2, 8 et 20 m,
+      tous illisibles. Il ne s'agit pas de regler un seuil : il faut savoir OU LES JOUEURS
+      MARCHENT. C'est l'oracle des positions du film, qui tranchera aussi T4.
 
 **Gate T** : les six temoins verts sur ridgeline, ET l'image produite comparee cote a cote
 avec `carte_validee_v1.png`.
