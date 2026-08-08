@@ -122,16 +122,35 @@ existe : `.ai/PLAN_OBJECTIFS_TEMPS_REEL.md`, etape 1.
    Il y vit plutot que dans `objectivescore` parce qu'il reutilise `readBitsBE`,
    `decompressChunk` et `walkFrames` : une troisieme copie du lecteur de bits aurait viole
    la regle des 2 copies.
-2. **Trancher le sort de `internal/analysis/objectivescore`.** Ce paquet documente lui-meme
-   son statut : « CODE EXPERIMENTAL, NON CABLE EN PROD, conserve a la demande user **en
-   attente d'une RE plus poussee** » et « NE PAS afficher comme score ». Cette RE a eu lieu
-   et son resultat est meilleur sur tous les axes (per-joueur, a la ms, sans calibration).
-   **La condition de conservation a donc expire** — proposition : le supprimer avec le mode
-   `-score` de `cmd/diag_weapons_v3` qui l'appelle. Non fait ici : c'est une suppression
-   hors perimetre du jalon, elle revient a l'utilisateur. Un renvoi a ete pose dans son
-   en-tete de paquet pour que personne ne construise dessus entre-temps.
+2. **[STATUE — SUPPRIME le 2026-08-08, v7.5 lot 3]** Le sort de
+   `internal/analysis/objectivescore` est tranche : **suppression**, decidee par
+   l'utilisateur sur le verdict des octets reels du lot 2. Le paquet, son repo
+   (`platform/duckdb/objective_score_repo.go`), le mode `-score` de `cmd/diag_weapons_v3`
+   et la table `match_objective_score_timeline` (step de DROP au nom neuf
+   `shared_objective_score_v1_drop`) sont partis dans le meme commit. Ce qui SURVIT : le
+   corpus d'octets reels, re-domicilie sous
+   `internal/games/halo_infinite/film/testdata/corpus_objectifs/` avec son README — il ne
+   decrit pas un decodeur, il decrit un format, et il contraindra le futur peuplement
+   evenementiel des modes a zones / KOTH.
+
+   Ce que la proposition d'origine disait, et qui reste vrai : la condition de conservation
+   (« en attente d'une RE plus poussee ») avait expire, cette RE ayant eu lieu et son
+   resultat etant meilleur sur tous les axes (per-joueur, a la ms, sans calibration).
+   Le lot 2 y a ajoute la preuve directe : sur films reels, la brute Strongholds plafonne
+   quel que soit le final, la courbe n'etait pas un score per-equipe.
 3. **Le faire produire par la synchronisation**, pas par un CLI de diagnostic : aujourd'hui les
    8 140 evenements d'objectif en base existent parce que quelqu'un a lance un outil a la main.
+
+   **Re-scopage du 2026-08-08 (le `[!]` laisse ouvert par le lot 1).** Le lot 1 avait laisse
+   « le peuplement live des events objectif » comme seul moyen de rendre la courbe CTF
+   disponible ET « de brancher un jour le decodeur zones/KOTH ». Cette seconde branche
+   n'existe plus : le decodeur en question a ete supprime. Le peuplement live signifie
+   desormais **la source evenementielle et elle seule** (`analysis/objectiveevents` ->
+   `match_objective_events`), et **le pont vers les modes a zones / KOTH passe par elle** —
+   il n'y a plus d'autre chemin, ni de score per-equipe a aller relire ailleurs. La table
+   `match_objective_events` reste donc pleinement vivante : elle a deux lecteurs applicatifs
+   (la dominance CTF de `sync/comeback.go` et `MatchViewService`), et n'a rien a voir avec la
+   table supprimee au point 2.
 4. **Persister la courbe de score** (append-only, regle ART n°2 : ecriture INSERT, lecture par
    vue `_latest`).
 5. **Exposer et consommer** : le front n'affiche que 7 % des evenements deja en base.
