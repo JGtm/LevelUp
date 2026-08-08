@@ -1,3 +1,33 @@
+## [2026-08-08] v7.5 — triangles : LA CARTE APPARAIT, et le blocage etait le rendu
+
+**Statut** : En cours, mais l'etape visuelle est franchie. Plan
+`.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+
+**Correction utilisateur, et c'est elle qui a debloque.** Je cherchais quel ETAGE
+cartographier, avec trois essais de plafond tous illisibles, et je m'appretais a brancher
+les positions du film pour trancher. Remarque de l'utilisateur : « tu ne te compliques pas
+la vie ? Cette etape est venue APRES le dessin de la carte, on est en 2D, qu'il y ait
+plusieurs niveaux nous importe peu tant qu'on sait qu'ils existent ». Juste — et le defaut
+n'etait ni l'etage ni la geometrie, c'etait mon RENDU.
+
+**Deux corrections de dessin, et la carte apparait** : (1) echelle de couleur ROBUSTE par
+centiles 2/98 au lieu de min/max — une seule cellule a -131 m ecrasait toute l'arene dans
+deux nuances de blanc indiscernables ; (2) OMBRAGE DE RELIEF depuis la pente locale, parce
+qu'un degrade d'altitude seul est plat a l'oeil. Sur Cliffhanger on lit desormais la roche,
+distincte des plateformes construites, le batiment a arcades, la plateforme circulaire
+ajouree et les passerelles. Sans plafond, sans choix d'etage, sans aucun reglage sur le
+resultat.
+
+**Lecon a retenir** : avant de soupconner la donnee, verifier son AFFICHAGE. Trois essais de
+plafond passes a chercher un probleme de geometrie qui etait un probleme de dessin — et le
+chantier avait deja la regle ecrite (« toujours DESSINER un resultat »), il lui manquait son
+corollaire : bien le dessiner.
+
+**Prochaine etape** : promouvoir le rendu en code de production (il ne vit que dans une
+sonde), puis C1 — comparaison cote a cote avec `carte_validee_v1.png` et gate visuel.
+
+---
+
 ## [2026-08-08] v7.5 — triangles, T6 : la surface marchable est batie, l'etage reste a choisir
 
 **Statut** : En cours. Plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.

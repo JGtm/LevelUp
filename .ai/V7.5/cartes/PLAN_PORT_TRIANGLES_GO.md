@@ -132,6 +132,21 @@ monde » est vrai par construction, ecart median 0,0000 m).
       2,7 % des cellules), donc aucun plafond fixe n'isole l'arene — essais a 2, 8 et 20 m,
       tous illisibles. Il ne s'agit pas de regler un seuil : il faut savoir OU LES JOUEURS
       MARCHENT. C'est l'oracle des positions du film, qui tranchera aussi T4.
+      **CORRECTION UTILISATEUR DU 2026-08-08, et elle a debloque l'etape.** « Tu ne te
+      compliques pas la vie ? Le choix de l'etage est venu APRES le dessin de la carte, on
+      est en 2D, qu'il y ait plusieurs niveaux nous importe peu tant qu'on sait qu'ils
+      existent. » C'etait juste. Le defaut n'etait ni l'etage ni la geometrie : c'etait le
+      RENDU. Deux corrections, et la carte apparait :
+      (1) echelle de couleur ROBUSTE, centiles 2 et 98 au lieu de min/max — une seule
+      cellule a -131 m ecrasait toute la carte dans deux nuances de blanc ;
+      (2) OMBRAGE DE RELIEF depuis la pente. Un degrade d'altitude seul est plat a l'oeil ;
+      c'est l'ombre qui fait apparaitre les aretes, les plateformes et le bati.
+      Resultat sur Cliffhanger : la roche se distingue des plateformes construites, le
+      batiment a arcades, la plateforme circulaire ajouree et les passerelles se lisent.
+      **Aucun plafond, aucun choix d'etage, aucun reglage sur le resultat.**
+      **Lecon** : avant de soupconner la donnee, verifier son AFFICHAGE. J'ai passe trois
+      essais de plafond a chercher un probleme de geometrie qui etait un probleme de
+      dessin.
 
 **Gate T** : les six temoins verts sur ridgeline, ET l'image produite comparee cote a cote
 avec `carte_validee_v1.png`.
