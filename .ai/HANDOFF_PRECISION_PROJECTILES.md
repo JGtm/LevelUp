@@ -1,3 +1,16 @@
+> ⛔ **CONSOMMÉ LE 2026-08-08 — NE PAS REPARTIR DE CE DOCUMENT.** Le lot qu'il ouvrait a été
+> exécuté (timebox de 2 sessions, décision #6 du master plan) et son **verdict est NÉGATIF**.
+> Plusieurs pistes qu'il nomme comme ouvertes sont désormais **fermées par mesure** : le
+> compteur de tir comme source des tirs de projectile, les records de dégât comme porteurs des
+> touches, et l'enregistrement créateur du slot `objet + 0x114`.
+>
+> **Aller à `.ai/HANDOFF_PRECISION_PROJECTILES_2026-08-08.md`** (état, ce qui reste ouvert,
+> prochain geste) et `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md` §0bis (le verdict en une page).
+>
+> Ce qui reste juste ici : le **plafond de validation** (pas de population mono-arme pour le
+> Needler — la validation passe par le contraste intra-joueur) et les **quatre interdits de
+> méthode** de la section « CE QU IL NE FAUT PAS REFAIRE ». Le reste est daté.
+
 # HANDOFF — rendre la precision universelle (les armes a projectile)
 
 > Ecrit le 2026-07-31, en fin de contexte. **Lot CIBLE, pas un chantier** : une question, une cible,
