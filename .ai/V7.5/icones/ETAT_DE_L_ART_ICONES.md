@@ -146,6 +146,18 @@ la ou `commando` et `ma5k` seuls echouaient. Le kill feed passe a **58 sur 88**.
 17 006 formes, le filon ne rend plus rien : les 30 restants portent un vocabulaire interne
 qu aucune declinaison raisonnee n atteint. **Le gate humain reste la seule voie pour eux.**
 
+**COMBIEN SONT ENCORE ATTEIGNABLES — 26, pas 30.** Les 30 index sans nom ne correspondent qu a
+**26 identifiants** dans la table `bitd` : quatre images n ont AUCUNE entree de nommage. Aucun
+craquage ne les nommera jamais, quel que soit le vocabulaire. C est une borne dure, pas un
+manque d effort. (Les trous, dans l ordre : 3, 4, 8, 9, 10, 11, 12, 14, 20, 23, 25 cote armes ;
+39-45 cote vehicules et tourelles ; 48, 52, 58, 62, 63, 68, 74, 75, 77, 82, 84, 87 ensuite.)
+
+**Attention au decompte des trous** : le mode `kfgaps` reconstruisait son propre dictionnaire,
+plus pauvre que celui de la production — sa liste contenait des SID DEJA resolus (`d253deb2` =
+`killfeed_turret_plasma`, index 21). C est un sur-ensemble, donc aucune cible n a ete manquee,
+mais viser du bruit fausse le decompte. La liste juste se lit dans `index.json` : un index kill
+feed sans `nom_jeu` est un trou, point.
+
 **Calibration avant application** : le #35 est le Sandwich d'apres le registre, et
 `LabelHash("sandwich")` retombe sur son StringID. La methode est verifiee sur un cas connu
 AVANT d'etre appliquee aux inconnus.
@@ -257,6 +269,9 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 |---|---|---|
 | Index d'icone = petit entier a offset CONSTANT dans le corps du `weap` | **MORTE** | 0 candidat sur 29 armes (criteres poses avant de regarder : valeur < 40, >= 50 % distinctes). Le corps est un arbre de structures, les offsets bougent |
 | Appariement automatique par SILHOUETTE contre les icones dessinees du depot | **MORTE** | marges de 0,00 a 0,10 pour des scores de 0,44 a 0,90. Corriger le rapport d'aspect ecrase n'a rien change : des armes toutes « longues et horizontales » se ressemblent trop une fois remplies |
+| Appariement par SILHOUETTE **entre les deux atlas du JEU** (silhouette <-> kill feed) | **MORTE** | la refutation precedente portait sur un autre trace (icones dessinees du depot) ; celle-ci porte sur la MEME source, seule la resolution change — donc le verdict est general. Controle pose AVANT de conclure : 13 paires connues des deux cotes (`battle_rifle` contour 1 <-> kf 0, `needler` 9 <-> 19...). Resultat **2/13**, marges de 0,01 a 0,07 pour des scores de 0,45 a 0,72. Aspect ecrase : 1/13. Aspect preserve : 2/13. Le matcheur n a pas ete publie |
+| Moisson des chaines **UTF-16LE** du binaire | **MORTE** | vrai trou de methode (la moisson ASCII coupe `s.i.d.e.k.i.c.k` a chaque caractere) mais gisement vide : **1749 chaines** seulement, 0 correspondance sur les 26 SID cherches. Le binaire est quasi entierement ASCII |
+| Vocabulaire « designations » (MK50, CQS48, M41, S7, VK78) et mots vus a l ecran (scrap, coil, fall, turret, vestige) | **MORTE** | 26 166 formes declinees, **0 correspondance** sur les 26 vrais SID. Les designations ne sont pas ce que le kill feed hache |
 | Appariement par RANG plugin <-> tag (la mecanique de `himap` pour `sbsp`) | **MORTE** | tombe UNE UNITE a cote — le bloc obtenu portait des references `mode`/`jmad`/`aset`. Un `+1` correctif ne serait garanti par aucune mesure d'une version a l'autre |
 | Sonde de recalage plus profonde (24 au lieu de 6) | **PIRE** | la corruption remonte de l'index 73 a l'index 42 et emporte grenades et pictogrammes : 84 images appariees dont 42 lisibles, contre 85 dont 73 |
 | Densite de transitions d'opacite comme detecteur d'image corrompue | **NE SEPARE PAS** | l'icone d'explosion, parfaitement legitime, sort en tete du classement de bruit (0,1437) devant les images reellement rayees |
