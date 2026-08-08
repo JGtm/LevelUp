@@ -195,7 +195,12 @@ func entryResourceIndex(m *hmod, entry int) int {
 	return int(binary.LittleEndian.Uint32(m.entries[entry*0x58+0x10:]))
 }
 
-const imgStride = 0x2c
+// imgStride : pas du tableau de descripteurs d'images, MESURÉ (0xe8 → 0x110 → 0x138 sur les
+// trois atlas examinés). imgProbe est la fenêtre nécessaire pour vérifier la signature.
+const (
+	imgStride = 0x28
+	imgProbe  = 0x2c
+)
 
 // bitmImg décrit une image déclarée par un tag `bitm`.
 type bitmImg struct {
@@ -206,13 +211,21 @@ type bitmImg struct {
 	Mips   int
 }
 
-// scanImgs recense les images déclarées par le corps du tag. Ancrage INDÉPENDANT des offsets
-// absolus (donc des versions du jeu) : chaque enregistrement de 44 octets répète ses
-// dimensions à +0x00 et à +0x14 ; ce doublon sert de signature.
+// scanImgs recense les images déclarées par le corps du tag.
+//
+// DEUX TEMPS, ET LE SECOND EST CE QUI A SUPPRIMÉ LA DÉRIVE. Le balayage seul (chercher
+// partout une signature « dimensions répétées à +0x14 ») trouvait 91 enregistrements là où le
+// tag en déclare 88, et 24 là où il en déclare 22 : les faux positifs consommaient des
+// ressources et décalaient tout ce qui suivait, d'où les images rayées en queue d'atlas.
+//
+// Le balayage ne sert donc plus qu'à TROUVER LE PREMIER enregistrement — son offset n'est pas
+// codé en dur, il est retrouvé, ce qui garde la lecture robuste aux versions. Ensuite le
+// tableau est lu tel qu'il est : un compte (u32 juste avant le premier enregistrement) et un
+// pas régulier de 0x28 octets, mesurés tous deux sur les trois atlas examinés.
 func scanImgs(data []byte) []bitmImg {
-	var out []bitmImg
 	u16 := func(o int) int { return int(binary.LittleEndian.Uint16(data[o:])) }
-	for o := 0; o+imgStride <= len(data); o += 4 {
+	first := -1
+	for o := 0; o+imgProbe <= len(data); o += 4 {
 		w, h := u16(o), u16(o+2)
 		if w < 4 || h < 4 || w > 8192 || h > 8192 {
 			continue
@@ -220,7 +233,28 @@ func scanImgs(data []byte) []bitmImg {
 		if u16(o+0x14) != w || u16(o+0x16) != h {
 			continue
 		}
-		out = append(out, bitmImg{Off: o, W: w, H: h, Depth: u16(o + 4), Format: u16(o + 8), Mips: u16(o + 0x0a)})
+		first = o
+		break
+	}
+	if first < 0 {
+		return nil
+	}
+	count := 0
+	if first >= 4 {
+		count = int(binary.LittleEndian.Uint32(data[first-4:]))
+	}
+	// Le compte doit rester plausible ET tenir dans le corps du tag ; sinon on retombe sur
+	// ce que le corps peut porter, plutôt que de faire confiance à un champ mal lu.
+	if max := (len(data) - first) / imgStride; count <= 0 || count > max {
+		count = max
+	}
+	out := make([]bitmImg, 0, count)
+	for i := 0; i < count; i++ {
+		o := first + i*imgStride
+		out = append(out, bitmImg{
+			Off: o, W: u16(o), H: u16(o + 2),
+			Depth: u16(o + 4), Format: u16(o + 8), Mips: u16(o + 0x0a),
+		})
 	}
 	return out
 }

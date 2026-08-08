@@ -47,20 +47,23 @@ func max1(v int) int {
 // alignImages apparie les descripteurs d'images aux ressources par CONTRÔLE ARITHMÉTIQUE,
 // et non par simple rang.
 //
-// POURQUOI. Le rang seul (ressource[base+i] pour le descripteur i) tient sur l'atlas des
-// armes mais DÉRIVE sur l'atlas sandbox après ~41 images : le recensement des descripteurs
-// est heuristique (signature « dimensions répétées à +0x14 ») et laisse passer des faux
-// positifs, qui décalent tout ce qui suit. Un décalage silencieux servirait l'icône d'une
-// autre entrée — exactement ce qu'il ne faut pas.
+// POURQUOI. Le rang seul (ressource[base+i] pour le descripteur i) dérivait sur l'atlas
+// sandbox : le recensement des descripteurs était alors heuristique et ses faux positifs
+// consommaient des ressources, décalant tout ce qui suivait — d'où des images rayées en queue
+// d'atlas. LA CAUSE EST TRAITÉE À LA SOURCE depuis (scanImgs lit le tableau déclaré au lieu
+// de chercher une signature) et plus aucune image ne dérive.
+//
+// Ce contrôle reste comme FILET, et il n'est pas décoratif : un décalage silencieux servirait
+// l'icône d'une autre entrée, c'est-à-dire exactement le genre de faute qu'on ne voit pas.
 //
 // COMMENT. Le rang reste le point de départ, mais chaque appariement est CONTRÔLÉ : le
 // contenu utile de la ressource doit peser exactement une somme cumulée de la chaîne de
 // mips. S'il ne colle pas, on sonde vers l'avant dans une fenêtre courte et on se recale
-// sur la première ressource qui colle — c'est ce qui répare la dérive.
+// sur la première ressource qui colle.
 //
 // Si aucune ne colle, l'appariement par rang est CONSERVÉ mais marqué non vérifié
-// (`verified=false`) : le rejeter ferait perdre 8 icônes d'armes pourtant correctes à
-// l'oeil. Le doute est reporté dans index.json, il n'est pas avalé.
+// (`align_verified=false`) : le rejeter ferait perdre des icônes pourtant correctes à l'oeil.
+// Le doute est reporté dans index.json, il n'est pas avalé.
 // probeWindow : profondeur de la sonde de recalage. Reglable pour mesurer son effet.
 var probeWindow = 6
 

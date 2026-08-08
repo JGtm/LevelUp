@@ -54,20 +54,14 @@ import (
 var atlasTags = []struct {
 	ID    uint32
 	Style string
-	// CleanThrough : dernier index dont le decodage a ete CONFIRME A L OEIL. Au-dela, les
-	// images sont quand meme livrees mais marquees suspectes dans index.json — rien n est
-	// coupe, le doute est etiquete. C est un constat visuel, pas une mesure : la densite de
-	// transitions d opacite a ete essayee et NE SEPARE PAS (l icone d explosion, legitime,
-	// sort en tete du classement de bruit).
-	CleanThrough int
 }{
-	{0xbc17adf1, "contour", 38},
-	{0xe39747c8, "silhouette", 38},
+	{0xbc17adf1, "contour"},
+	{0xe39747c8, "silhouette"},
 	// Atlas « sandbox » : armes, vehicules, grenades lancees, et pictogrammes de mort. Le tag
 	// en declare 88 ; les images au-dela de l index 72 sortent RAYEES (des descripteurs faux
 	// positifs y tombent sur une ressource du bon poids, donc le controle arithmetique les
 	// laisse passer). La coupe est ASSUMEE et bornee ici plutot que servie corrompue.
-	{0x0302cad3, "sandbox", 72},
+	{0x0302cad3, "sandbox"},
 }
 
 // iconEntry décrit une icône extraite, telle qu'écrite dans index.json.
@@ -82,7 +76,6 @@ type iconEntry struct {
 	CroppedH   int    `json:"cropped_h"`
 	BC7Format  int    `json:"bc7_format"`
 	Verified   bool   `json:"align_verified"`
-	Suspect    bool   `json:"decode_suspect"`
 	Noise      string `json:"alpha_noise"`
 	RebuiltPc  string `json:"bc7_rebuilt_pct"`
 	OpaquePc   string `json:"bc7_opaque_pct"`
@@ -139,7 +132,6 @@ func main() {
 				SourceW:   im.W, SourceH: im.H,
 				CroppedW: img.Bounds().Dx(), CroppedH: img.Bounds().Dy(),
 				BC7Format: im.Format, Verified: imageVerified(ix, at.ID, idx),
-				Suspect:    idx > at.CleanThrough,
 				Noise:      fmt.Sprintf("%.4f", alphaNoise(img)),
 				RebuiltPc:  pct(st.Rebuilt, st.Blocks),
 				OpaquePc:   pct(st.Opaque, st.Blocks),
