@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "title_slug": "halo_infinite",
-  "generated_at": "2026-08-02T10:45:27.0784418Z",
+  "generated_at": "2026-08-08T13:51:29.4690509Z",
   "maps": {
     "003c828e-c2b3-43b5-b482-4005f9d4ec25": {
       "map_id": "003c828e-c2b3-43b5-b482-4005f9d4ec25",
@@ -2763,6 +2763,463 @@
           -0.14068210124969482,
           -76.98831176757812,
           -0.4085889160633087
+        ]
+      }
+    },
+    "105f5d84-8de1-4908-af3a-1c4f3bf9d642": {
+      "map_id": "105f5d84-8de1-4908-af3a-1c4f3bf9d642",
+      "version_id": "1f2f2310-65a6-4a08-937c-dbdcd7dc2f56",
+      "public_name": "Vagabond",
+      "mvar_file": "map.mvar",
+      "module": "map",
+      "level_id": 88891201,
+      "objects_n": 4709,
+      "fetched_at": "2026-08-08T13:51:33.6392865Z",
+      "objectives": [
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 125.00001525878906,
+            "y": 56.40001678466797,
+            "z": 52.57999038696289
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn",
+            "oddball_include"
+          ],
+          "object_index": 1586
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 132.59996032714844,
+            "y": 62.4000244140625,
+            "z": 53.495426177978516
+          },
+          "forward": {
+            "x": -0.0004485623794607818,
+            "y": -0.9999998807907104,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 385,
+          "shape": {
+            "family": "box",
+            "half_x": 2.0999984741210938,
+            "half_y": 3.6999969482421875,
+            "up_z": 3.6999969482421875,
+            "down_z": 0.25,
+            "forward": {
+              "x": -0.0004485623794607818,
+              "y": -0.9999998807907104,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 275251,
+              "s6": 484966,
+              "s7": 242483,
+              "s8": 16384
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 138.13150024414062,
+            "y": 44.03400421142578,
+            "z": 52.707664489746094
+          },
+          "forward": {
+            "x": -0.7068687677383423,
+            "y": 0.7073447108268738,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 387,
+          "shape": {
+            "family": "box",
+            "half_x": 2.0499954223632812,
+            "half_y": 3.399993896484375,
+            "up_z": 3.6999969482421875,
+            "down_z": 0.25,
+            "forward": {
+              "x": -0.7068687677383423,
+              "y": 0.7073447108268738,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 268697,
+              "s6": 445644,
+              "s7": 242483,
+              "s8": 16384
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 115.6034927368164,
+            "y": 51.19986343383789,
+            "z": 51.49136734008789
+          },
+          "forward": {
+            "x": 0.00014990569616202265,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 2933,
+          "shape": {
+            "family": "box",
+            "half_x": 3,
+            "half_y": 3.1749954223632812,
+            "up_z": 3.6999969482421875,
+            "down_z": 0.25,
+            "forward": {
+              "x": 0.00014990569616202265,
+              "y": 1,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 393216,
+              "s6": 416153,
+              "s7": 242483,
+              "s8": 16384
+            }
+          }
+        }
+      ],
+      "unresolved_labels": {
+        "-1246645531": 3,
+        "-1482301937": 5,
+        "-2086997171": 12,
+        "-767961569": 5,
+        "-831896525": 6,
+        "2005903245": 6,
+        "2062593711": 12,
+        "2133978317": 10
+      },
+      "names": [
+        "Prefab 0",
+        "Prefab 7",
+        "Prefab 5",
+        "Prefab 1",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 7",
+        "Prefab 1",
+        "Prefab 6",
+        "Prefab 4",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 6",
+        "Prefab 16",
+        "Prefab 2",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 4",
+        "Prefab 5",
+        "Prefab 0",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 6",
+        "Prefab 1",
+        "Prefab 1",
+        "ꀀ혧Ū",
+        "Prefab 4",
+        "Prefab 2",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 5",
+        "Prefab 6",
+        "Tree, Elder, Large",
+        "Birch tree",
+        "Oak tree",
+        "Willow tree",
+        "Bonsai Tree",
+        "Large Tree Canopy",
+        "Bonsai Tree (Cherry Blossom)",
+        "Tree, Tall",
+        "Tree, Tall",
+        "Simple tree",
+        "Tree, Small",
+        "Dead tree",
+        "Swampy tree",
+        "Autumn tree",
+        "Autumn tree",
+        "Red maple tree",
+        "Tree",
+        "Tree, Large",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 6",
+        "Prefab 5",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 5",
+        "Prefab 2",
+        "Prefab 5",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 7",
+        "Prefab 7",
+        "Prefab 8",
+        "Prefab 8",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 5",
+        "Prefab 3",
+        "Prefab 0",
+        "Prefab 6",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 4",
+        "Prefab 4",
+        "Prefab 6",
+        "Prefab 1",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 5",
+        "Prefab 0",
+        "Prefab 8",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 2",
+        "Prefab 7",
+        "Prefab 1",
+        "Prefab 5",
+        "Prefab 6",
+        "Prefab 11",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 3",
+        "Prefab 4",
+        "Prefab 5",
+        "Prefab 6",
+        "Prefab 7",
+        "Prefab 0",
+        "Prefab 16",
+        "Prefab 16",
+        "Prefab 16",
+        "Prefab 9",
+        "Prefab 10",
+        "Prefab 11",
+        "Prefab 12",
+        "Prefab 13",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 14",
+        "Prefab 15",
+        "Prefab 14",
+        "Prefab 15",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 5",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 5",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 0",
+        "Camera",
+        "RAMEN",
+        "Add",
+        "Prefab 4",
+        "",
+        "Prefab 0",
+        "Prefab 1"
+      ],
+      "bounds": {
+        "max": [
+          195.0000762939453,
+          139.34555053710938,
+          194.4212646484375
+        ],
+        "min": [
+          -149.64495849609375,
+          -139.55728149414062,
+          27.200653076171875
         ]
       }
     },
@@ -6150,6 +6607,890 @@
           -3.5353102684020996,
           -16.232921600341797,
           -0.7130851149559021
+        ]
+      }
+    },
+    "33c6505d-1cfa-43c6-9fa9-311eb0502ad9": {
+      "map_id": "33c6505d-1cfa-43c6-9fa9-311eb0502ad9",
+      "version_id": "d550b178-a436-4821-ba21-f11a57f35b63",
+      "public_name": "Highpower",
+      "mvar_file": "map.mvar",
+      "module": "map",
+      "level_id": -2109972058,
+      "objects_n": 638,
+      "fetched_at": "2026-08-08T12:10:17.656252Z",
+      "objectives": [
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -125.05030059814453,
+            "y": -40.21873474121094,
+            "z": 42.58635330200195
+          },
+          "forward": {
+            "x": 0.585797905921936,
+            "y": 0.8104572892189026,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone",
+            "extraction_zone"
+          ],
+          "object_index": 478,
+          "shape": {
+            "family": "box",
+            "half_x": 2,
+            "half_y": 3.5,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 0.585797905921936,
+              "y": 0.8104572892189026,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 262144,
+              "s6": 458752,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -131.398681640625,
+            "y": -4.5791239738464355,
+            "z": 44.868595123291016
+          },
+          "forward": {
+            "x": 1,
+            "y": 4.701171674170723e-10,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 479,
+          "shape": {
+            "family": "cylinder",
+            "radius": 5,
+            "up_z": 0.5,
+            "down_z": 3,
+            "forward": {
+              "x": 1,
+              "y": 4.701171674170723e-10,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 327680,
+              "s6": 131072,
+              "s7": 32768,
+              "s8": 196608
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -165.6693572998047,
+            "y": -36.794578552246094,
+            "z": 44.4925537109375
+          },
+          "forward": {
+            "x": 1,
+            "y": 4.701171674170723e-10,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 480,
+          "shape": {
+            "family": "cylinder",
+            "radius": 7,
+            "up_z": 3.79998779296875,
+            "down_z": 4,
+            "forward": {
+              "x": 1,
+              "y": 4.701171674170723e-10,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 458752,
+              "s6": 131072,
+              "s7": 249036,
+              "s8": 262144
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -123.70806884765625,
+            "y": -86.52886962890625,
+            "z": 45.83527755737305
+          },
+          "forward": {
+            "x": 0.9086241722106934,
+            "y": 0.41761478781700134,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 481,
+          "shape": {
+            "family": "box",
+            "half_x": 4,
+            "half_y": 4,
+            "up_z": 1,
+            "down_z": 3,
+            "forward": {
+              "x": 0.9086241722106934,
+              "y": 0.41761478781700134,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 524288,
+              "s6": 524288,
+              "s7": 65536,
+              "s8": 196608
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -90.083251953125,
+            "y": -21.977785110473633,
+            "z": 42.99382781982422
+          },
+          "forward": {
+            "x": 1,
+            "y": 6.695772269971201e-10,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 482,
+          "shape": {
+            "family": "cylinder",
+            "radius": 5.5,
+            "up_z": 1,
+            "down_z": 2,
+            "forward": {
+              "x": 1,
+              "y": 6.695772269971201e-10,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 360448,
+              "s6": 196608,
+              "s7": 65536,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": -93.40773010253906,
+            "y": -11.559955596923828,
+            "z": 46.437198638916016
+          },
+          "forward": {
+            "x": -0.939692497253418,
+            "y": -0.3420204520225525,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 446
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": -138.882080078125,
+            "y": -61.02223587036133,
+            "z": 49.00279235839844
+          },
+          "forward": {
+            "x": 0.9961947202682495,
+            "y": -0.08715549111366272,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 452
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -863615175,
+          "pos": {
+            "x": -132.1001434326172,
+            "y": -69.50113677978516,
+            "z": 44.747867584228516
+          },
+          "forward": {
+            "x": -0.9980708360671997,
+            "y": -0.0620855838060379,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "flag_delivery"
+          ],
+          "unresolved_labels": [
+            755967513,
+            -363505968,
+            -1734121946
+          ],
+          "object_index": 628,
+          "shape": {
+            "family": "box",
+            "half_x": 3.899993896484375,
+            "half_y": 3.899993896484375,
+            "up_z": 7.79998779296875,
+            "down_z": 0,
+            "forward": {
+              "x": -0.9980708360671997,
+              "y": -0.0620855838060379,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 511180,
+              "s6": 511180,
+              "s7": 511180,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -863615175,
+          "pos": {
+            "x": -89.62478637695312,
+            "y": -5.272123336791992,
+            "z": 42.152183532714844
+          },
+          "forward": {
+            "x": -0.8664755821228027,
+            "y": -0.49921953678131104,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_delivery"
+          ],
+          "unresolved_labels": [
+            -1793455665,
+            -363505968,
+            -1734121946
+          ],
+          "object_index": 631,
+          "shape": {
+            "family": "box",
+            "half_x": 3.899993896484375,
+            "half_y": 3.899993896484375,
+            "up_z": 7.79998779296875,
+            "down_z": 0,
+            "forward": {
+              "x": -0.8664755821228027,
+              "y": -0.49921953678131104,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 511180,
+              "s6": 511180,
+              "s7": 511180,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -138.87327575683594,
+            "y": -61.31623077392578,
+            "z": 49.01057052612305
+          },
+          "forward": {
+            "x": 0.8191521763801575,
+            "y": 0.5735763311386108,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            1186941395
+          ],
+          "object_index": 184
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -93.4077377319336,
+            "y": -11.559955596923828,
+            "z": 46.444976806640625
+          },
+          "forward": {
+            "x": -0.5000000596046448,
+            "y": -0.8660253882408142,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 447
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -126.92820739746094,
+            "y": 2.42299485206604,
+            "z": 41.15645217895508
+          },
+          "forward": {
+            "x": -0.5000000596046448,
+            "y": -0.8660253882408142,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn",
+            "ctf_multi_exclude"
+          ],
+          "object_index": 448
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -104.73748779296875,
+            "y": -37.049991607666016,
+            "z": 42.79053497314453
+          },
+          "forward": {
+            "x": -0.5000000596046448,
+            "y": -0.8660253882408142,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn",
+            "ctf_multi_exclude"
+          ],
+          "object_index": 449
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -160.24319458007812,
+            "y": -31.625991821289062,
+            "z": 43.14970397949219
+          },
+          "forward": {
+            "x": 0.8191521167755127,
+            "y": 0.5735763311386108,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn",
+            "ctf_multi_exclude"
+          ],
+          "object_index": 450
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -138.882080078125,
+            "y": -61.02223587036133,
+            "z": 49.01057052612305
+          },
+          "forward": {
+            "x": 0.8191521167755127,
+            "y": 0.5735763311386108,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 451
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -106.25819396972656,
+            "y": -64.04673767089844,
+            "z": 40.709720611572266
+          },
+          "forward": {
+            "x": 0.8191521167755127,
+            "y": 0.5735763311386108,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn",
+            "ctf_multi_exclude"
+          ],
+          "object_index": 453
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -124.72391510009766,
+            "y": -27.5877685546875,
+            "z": 40.76573944091797
+          },
+          "forward": {
+            "x": 0.8191521167755127,
+            "y": 0.5735763311386108,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_neutral_include",
+            "flag_spawn"
+          ],
+          "object_index": 454
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": -85.84545135498047,
+            "y": -5.387598037719727,
+            "z": 42.15077590942383
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn"
+          ],
+          "unresolved_labels": [
+            755967513,
+            -363505968,
+            -1843278509
+          ],
+          "object_index": 630
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": -129.27757263183594,
+            "y": -71.25104522705078,
+            "z": 44.75607681274414
+          },
+          "forward": {
+            "x": -0.9992566704750061,
+            "y": -0.03855070471763611,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn"
+          ],
+          "unresolved_labels": [
+            -1793455665,
+            -363505968,
+            -1843278509
+          ],
+          "object_index": 634
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": -124.90521240234375,
+            "y": -40.3001708984375,
+            "z": 41.87474822998047
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn"
+          ],
+          "unresolved_labels": [
+            -1793455665,
+            -363505968,
+            -1537427652
+          ],
+          "object_index": 636
+        },
+        {
+          "role": "stockpile_navpoint",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -135.09999084472656,
+            "y": -68.34992218017578,
+            "z": 44.800079345703125
+          },
+          "forward": {
+            "x": 0.9981182217597961,
+            "y": 0.06132064759731293,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_navpoint"
+          ],
+          "object_index": 491,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2,
+            "up_z": 4,
+            "down_z": 1,
+            "forward": {
+              "x": 0.9981182217597961,
+              "y": 0.06132064759731293,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 131072,
+              "s6": 131072,
+              "s7": 262144,
+              "s8": 65536
+            }
+          }
+        },
+        {
+          "role": "stockpile_navpoint",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -91.95001220703125,
+            "y": -5.649998188018799,
+            "z": 42.15007781982422
+          },
+          "forward": {
+            "x": 0.8760701417922974,
+            "y": 0.4821837246417999,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_navpoint"
+          ],
+          "object_index": 492,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2,
+            "up_z": 4,
+            "down_z": 1,
+            "forward": {
+              "x": 0.8760701417922974,
+              "y": 0.4821837246417999,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 131072,
+              "s6": 131072,
+              "s7": 262144,
+              "s8": 65536
+            }
+          }
+        },
+        {
+          "role": "stockpile_socket",
+          "type_id": -621870361,
+          "pos": {
+            "x": -91.63706970214844,
+            "y": -6.1517486572265625,
+            "z": 42.15043640136719
+          },
+          "forward": {
+            "x": 0.8639498353004456,
+            "y": 0.5035778880119324,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_socket"
+          ],
+          "object_index": 484
+        },
+        {
+          "role": "stockpile_socket",
+          "type_id": -621870361,
+          "pos": {
+            "x": -91.86907196044922,
+            "y": -5.749950408935547,
+            "z": 42.15043640136719
+          },
+          "forward": {
+            "x": 0.8639498353004456,
+            "y": 0.5035778880119324,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_socket"
+          ],
+          "object_index": 485
+        },
+        {
+          "role": "stockpile_socket",
+          "type_id": -621870361,
+          "pos": {
+            "x": -92.10000610351562,
+            "y": -5.350005149841309,
+            "z": 42.15043640136719
+          },
+          "forward": {
+            "x": 0.8639498353004456,
+            "y": 0.5035778880119324,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_socket"
+          ],
+          "object_index": 486
+        },
+        {
+          "role": "stockpile_socket",
+          "type_id": -621870361,
+          "pos": {
+            "x": -134.89996337890625,
+            "y": -68.79988098144531,
+            "z": 44.79999923706055
+          },
+          "forward": {
+            "x": 0.9981182217597961,
+            "y": 0.06132064759731293,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_socket"
+          ],
+          "object_index": 488
+        },
+        {
+          "role": "stockpile_socket",
+          "type_id": -621870361,
+          "pos": {
+            "x": -134.93246459960938,
+            "y": -68.33708953857422,
+            "z": 44.79999923706055
+          },
+          "forward": {
+            "x": 0.9981182217597961,
+            "y": 0.06132064759731293,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_socket"
+          ],
+          "object_index": 489
+        },
+        {
+          "role": "stockpile_socket",
+          "type_id": -621870361,
+          "pos": {
+            "x": -134.96502685546875,
+            "y": -67.87313079833984,
+            "z": 44.79999923706055
+          },
+          "forward": {
+            "x": 0.9981182217597961,
+            "y": 0.06132064759731293,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "stockpile_include",
+            "stockpile_socket"
+          ],
+          "object_index": 490
+        }
+      ],
+      "unresolved_labels": {
+        "-1265790513": 2,
+        "-1537427652": 1,
+        "-1734121946": 6,
+        "-1793455665": 4,
+        "-1843278509": 2,
+        "-363505968": 10,
+        "-752088371": 1,
+        "-767961569": 2,
+        "-87414042": 2,
+        "-961536527": 1,
+        "1071996474": 9,
+        "1140968013": 2,
+        "1186941395": 1,
+        "1589616376": 13,
+        "1750425936": 13,
+        "755967513": 6
+      },
+      "names": [
+        "stockpile_blue_socket_01",
+        "stockpile_blue_socket_02",
+        "stockpile_blue_socket_03",
+        "stockpile_blue_socket_04",
+        "stockpile_blue_socket_05",
+        "stockpile_red_socket_01",
+        "stockpile_red_socket_02",
+        "stockpile_red_socket_03",
+        "stockpile_red_socket_04",
+        "stockpile_red_socket_05",
+        "Highpower Extra Cover",
+        "Prefab",
+        ""
+      ],
+      "bounds": {
+        "max": [
+          -68.6438217163086,
+          13.211479187011719,
+          49.97456741333008
+        ],
+        "min": [
+          -169.09999084472656,
+          -94.29943084716797,
+          39.38895034790039
         ]
       }
     },
@@ -17927,6 +19268,526 @@
         ]
       }
     },
+    "e859cf75-9b8a-429a-91be-2376681c8537": {
+      "map_id": "e859cf75-9b8a-429a-91be-2376681c8537",
+      "version_id": "463a6db1-b0a7-4477-b20b-0c51a7916d4f",
+      "public_name": "Catalyst",
+      "mvar_file": "catalyst.mvar",
+      "module": "catalyst",
+      "level_id": -1044063363,
+      "objects_n": 337,
+      "fetched_at": "2026-08-08T12:10:18.7877758Z",
+      "objectives": [
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -12.368281364440918,
+            "y": 0.01580991968512535,
+            "z": 25.1970157623291
+          },
+          "forward": {
+            "x": -4.371138828673793e-8,
+            "y": 1,
+            "z": -1.1920928955078125e-7
+          },
+          "team_index": 0,
+          "instance_id": 286386796,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 331,
+          "shape": {
+            "family": "box",
+            "half_x": 1.6046829223632812,
+            "half_y": 1.4999923706054688,
+            "up_z": 1,
+            "down_z": 1.0999908447265625,
+            "forward": {
+              "x": -4.371138828673793e-8,
+              "y": 1,
+              "z": -1.1920928955078125e-7
+            },
+            "up": {
+              "x": -5.21080354294037e-15,
+              "y": 1.1920928955078125e-7,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 210329,
+              "s6": 196607,
+              "s7": 65536,
+              "s8": 72089
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": 8.025069236755371,
+            "y": -10.220605850219727,
+            "z": 24.58722686767578
+          },
+          "forward": {
+            "x": -4.371138828673793e-8,
+            "y": 1,
+            "z": -1.1920928955078125e-7
+          },
+          "team_index": 0,
+          "instance_id": -1795350844,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 332,
+          "shape": {
+            "family": "box",
+            "half_x": 3.25,
+            "half_y": 2.5,
+            "up_z": 1,
+            "down_z": 3,
+            "forward": {
+              "x": -4.371138828673793e-8,
+              "y": 1,
+              "z": -1.1920928955078125e-7
+            },
+            "up": {
+              "x": -5.21080354294037e-15,
+              "y": 1.1920928955078125e-7,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 425984,
+              "s6": 327680,
+              "s7": 65536,
+              "s8": 196608
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -7.936629772186279,
+            "y": 9.508225440979004,
+            "z": 25.381668090820312
+          },
+          "forward": {
+            "x": -1,
+            "y": 1.5099580252808664e-7,
+            "z": -1.1920927533992653e-7
+          },
+          "team_index": 0,
+          "instance_id": -1799815126,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 333,
+          "shape": {
+            "family": "box",
+            "half_x": 2.5,
+            "half_y": 2.5,
+            "up_z": 0.5,
+            "down_z": 3,
+            "forward": {
+              "x": -1,
+              "y": 1.5099580252808664e-7,
+              "z": -1.1920927533992653e-7
+            },
+            "up": {
+              "x": -1.1920927533992653e-7,
+              "y": 1.8000100650457374e-14,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 327680,
+              "s6": 327680,
+              "s7": 32768,
+              "s8": 196608
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": 14.083120346069336,
+            "y": -8.691558837890625,
+            "z": 24.19038200378418
+          },
+          "forward": {
+            "x": -1,
+            "y": 1.5099580252808664e-7,
+            "z": -1.1920927533992653e-7
+          },
+          "team_index": 0,
+          "instance_id": 1139092187,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 334,
+          "shape": {
+            "family": "box",
+            "half_x": 3,
+            "half_y": 2.5,
+            "up_z": 0.5,
+            "down_z": 3,
+            "forward": {
+              "x": -1,
+              "y": 1.5099580252808664e-7,
+              "z": -1.1920927533992653e-7
+            },
+            "up": {
+              "x": -1.1920927533992653e-7,
+              "y": 1.8000100650457374e-14,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 393216,
+              "s6": 327680,
+              "s7": 32768,
+              "s8": 196608
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": 13.496058464050293,
+            "y": -0.012772554531693459,
+            "z": 23.523115158081055
+          },
+          "forward": {
+            "x": -2.821299744937278e-7,
+            "y": -1,
+            "z": -1.1920928955078125e-7
+          },
+          "team_index": 0,
+          "instance_id": 1384999457,
+          "labels": [
+            "extraction_include",
+            "extraction_zone",
+            "extraction_zone"
+          ],
+          "object_index": 335,
+          "shape": {
+            "family": "box",
+            "half_x": 2.5,
+            "half_y": 3,
+            "up_z": 1,
+            "down_z": 3,
+            "forward": {
+              "x": -2.821299744937278e-7,
+              "y": -1,
+              "z": -1.1920928955078125e-7
+            },
+            "up": {
+              "x": -7.626508474224691e-14,
+              "y": -1.1920928955078125e-7,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 327680,
+              "s6": 393216,
+              "s7": 65536,
+              "s8": 196608
+            }
+          }
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": -1.271718872430938e-7,
+            "y": 21.099950790405273,
+            "z": 26.51656150817871
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 3.576278970740532e-7
+          },
+          "team_index": 0,
+          "instance_id": 1169896517,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 288
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": -6.457610766119615e-7,
+            "y": -21.109209060668945,
+            "z": 26.504451751708984
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 3.576278970740532e-7
+          },
+          "team_index": 1,
+          "instance_id": -321359028,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 291
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 5.226851840234303e-7,
+            "y": 21.098894119262695,
+            "z": 26.512840270996094
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 1803981767,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 289
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -2.131628503741832e-15,
+            "y": -21.111865997314453,
+            "z": 26.5
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 1743768389,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 290
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 0,
+            "y": 0,
+            "z": 27.29871368408203
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": -1987286594,
+          "labels": [
+            "ctf_neutral_include",
+            "flag_spawn"
+          ],
+          "object_index": 292
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 0,
+            "y": 0,
+            "z": 27.29768943786621
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 1.1920928955078125e-7
+          },
+          "team_index": -1,
+          "instance_id": 493429428,
+          "labels": [
+            "oddball_include",
+            "oddball_spawn"
+          ],
+          "object_index": 336
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -15.195722579956055,
+            "y": -0.00923919677734375,
+            "z": 22.5645694732666
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": -1.1920928955078125e-7
+          },
+          "team_index": -1,
+          "instance_id": 1519774285,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 316,
+          "shape": {
+            "family": "box",
+            "half_x": 2.4983901977539062,
+            "half_y": 3,
+            "up_z": 1.5593414306640625,
+            "down_z": 1,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": -1.1920928955078125e-7
+            },
+            "up": {
+              "x": 1.1920928955078125e-7,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 327469,
+              "s6": 393216,
+              "s7": 102193,
+              "s8": 65536
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -0.004873722791671753,
+            "y": -14.782732009887695,
+            "z": 24.77855682373047
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": -1.1920928955078125e-7
+          },
+          "team_index": 1,
+          "instance_id": 755329890,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 317,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2,
+            "up_z": 3,
+            "down_z": 0,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": -1.1920928955078125e-7
+            },
+            "up": {
+              "x": 1.1920928955078125e-7,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 131072,
+              "s6": 458752,
+              "s7": 196608,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 0,
+            "y": 14.699999809265137,
+            "z": 24.700000762939453
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": -92680034,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 318,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2,
+            "up_z": 3,
+            "down_z": 0.5,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 131072,
+              "s6": 458752,
+              "s7": 196608,
+              "s8": 32768
+            }
+          }
+        }
+      ],
+      "unresolved_labels": {
+        "-1246645531": 3,
+        "-1482301937": 6,
+        "-2072819386": 1,
+        "-767961569": 6,
+        "-886053664": 18,
+        "-941529218": 9,
+        "2062593711": 3,
+        "2133978317": 12,
+        "996801386": 9
+      },
+      "bounds": {
+        "max": [
+          21,
+          25.299999237060547,
+          27.732315063476562
+        ],
+        "min": [
+          -20.74813461303711,
+          -25.200000762939453,
+          21.352766036987305
+        ]
+      }
+    },
     "e8d56863-9ad4-4efe-9059-81270884589c": {
       "map_id": "e8d56863-9ad4-4efe-9059-81270884589c",
       "version_id": "",
@@ -21292,6 +23153,7 @@
     }
   },
   "notes": {
+    "carried_from_schema": "présent sur une carte REPORTÉE d'un schéma antérieur sans re-parse (.mvar absent au refresh) : ses objectifs n'ont pas les champs du schéma courant. Une zone sans `shape` y est NON MIGRÉE, pas ponctuelle — ne pas l'afficher en point",
     "labels": "murmur3_x86_32(seed=0) du nom snake_case du label de mode",
     "regeneration": "go run ./cmd/mapobj-build --player \u003cGT\u003e --map-id \u003cuuid\u003e ; hors ligne : --refresh-from \u003cdossier de .mvar\u003e",
     "repere": "positions en repère monde du .mvar, mètres, non transformées",
@@ -21316,6 +23178,10 @@
       "objectives": 24,
       "unresolved_label_hashes": 10
     },
+    "105f5d84-8de1-4908-af3a-1c4f3bf9d642": {
+      "objectives": 4,
+      "unresolved_label_hashes": 8
+    },
     "142a5e23-46de-4429-a232-aac4e6459a11": {
       "objectives": 20,
       "unresolved_label_hashes": 13
@@ -21339,6 +23205,10 @@
     "336b5174-3579-4fd8-b2f0-922e4a5f7628": {
       "objectives": 14,
       "unresolved_label_hashes": 8
+    },
+    "33c6505d-1cfa-43c6-9fa9-311eb0502ad9": {
+      "objectives": 28,
+      "unresolved_label_hashes": 16
     },
     "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702": {
       "objectives": 14,
@@ -21415,6 +23285,10 @@
     "e6cbfe01-665b-4a8c-bf3a-d63a65a7c890": {
       "objectives": 20,
       "unresolved_label_hashes": 16
+    },
+    "e859cf75-9b8a-429a-91be-2376681c8537": {
+      "objectives": 14,
+      "unresolved_label_hashes": 9
     },
     "e8d56863-9ad4-4efe-9059-81270884589c": {
       "objectives": 19,
