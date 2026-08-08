@@ -39,15 +39,15 @@
 //     porté par index.json, ce qui évite de renommer 168 fichiers à chaque évolution.
 //
 //  6. L ATLAS « SANDBOX » EST CELUI DU KILL FEED, et le tag `bitd` porte sa table de nommage
-//     (identifiant StringID + index). 44 de ses 88 index sont nommés — véhicules compris
+//     (identifiant StringID + index). 58 de ses 88 index sont nommés — véhicules compris
 //     (warthog, scorpion, banshee...), grenades, et pictogrammes (headshot, melee, splatter,
 //     suicide, player_joined). Cf. killfeed.go.
 //
 // CE QUI RESTE AU GATE HUMAIN : les index sans nom ni clé, et les noms marqués
 // `nom_a_verifier` — ils viennent d un `weap` NON canonique, dont l index peut être périmé.
 // Cas avéré : l index 31 se faisait appeler `shade_turret` alors que l image est une caisse.
-// Les index encore sans nom : 8 sur l’atlas d’armes, 44 sur
-// celui du kill feed. Rien n’y est deviné : afficher un mauvais fusil est pire qu’un libellé.
+// Les index encore sans nom : 19 sur l’atlas d’armes, 30 sur celui du kill feed. Rien n’y est
+// deviné : afficher un mauvais fusil est pire qu’un libellé absent.
 //
 // DEUX VOIES ÉCARTÉES, notées pour ne pas les re-tenter : chercher un petit entier à offset
 // CONSTANT dans le corps du tag (0 candidat sur 29 — le corps est un arbre de structures),
@@ -106,6 +106,8 @@ func main() {
 	deploy := flag.String("deploy", "", "racine `deploy` des archives du jeu (auto-détectée si vide)")
 	out := flag.String("out", filepath.Join("..", "..", "static", "weapons-assets", "halo_infinite", "jeu"),
 		"dossier de sortie des PNG")
+	page := flag.String("page", filepath.Join("..", "..", filepath.FromSlash(pageRelPath)),
+		"page de nommage dont les tables sont réécrites")
 	probe := flag.Int("probe", 6, "profondeur de la sonde de recalage descripteur -> ressource")
 	maxIdx := flag.Int("max", 120, "nombre d'images à extraire par atlas")
 	flag.Parse()
@@ -239,6 +241,14 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("\n%d entrées -> %s\n", len(entries), filepath.Join(*out, "index.json"))
+
+	// La page de nommage porte une COPIE de ces tables : elle est réécrite ici, sinon elle
+	// vieillit sans que rien ne le signale (défaut vécu — cf. page.go).
+	if err := writePageTables(*page, entries); err != nil {
+		fmt.Fprintln(os.Stderr, "page de nommage:", err)
+		os.Exit(1)
+	}
+	fmt.Printf("tables réécrites -> %s\n", pageRelPath)
 }
 
 // pct rend un pourcentage lisible, ou "0.00" si le dénominateur est nul.

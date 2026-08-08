@@ -60341,3 +60341,40 @@ A5, A6, A7, A8 (mock HaloClient + engine_test) non implémentés cette session �
 
 ---
 
+
+## [2026-08-08] v7.5 voie C — icones : le schema de nommage du kill feed, et la fin des tables recopiees
+
+**Statut** : Complete.
+
+**Question de depart (utilisateur)** : « c'est curieux que tu en trouves certains et pas
+d'autres, y a pas une structure similaire ? »
+
+**Decision technique**. Deux reponses, mesurees et non supposees.
+
+1. *Pourquoi certains sortent.* Le craquage est LEXICAL : un murmur3 ne rend aucune information
+   partielle, un nom sort si et seulement si la chaine exacte a ete essayee. Mesure decisive :
+   `bulldog`, `sidekick`, `disruptor`, `mangler`, `ravager`, `cindershot` SONT dans les chaines
+   du binaire — `killfeed_<mot>` a donc bien ete essaye et a echoue. Le kill feed ne les nomme
+   pas par leur nom commercial. Ce que les noms qui MARCHENT ont en commun : ils s ecrivent
+   `<qualifiant>_<classe>` (`battle_rifle`, `assault_rifle`, `plasma_pistol`). Decliner ce
+   schema rend `commando_rifle`, `ma5k_smg`, `plasma_blaster` — kill feed a 58/88. Elargi a
+   17 006 formes, le filon ne rend plus rien : les 30 restants relevent du gate humain.
+   Mesures annexes : l ordre de la table `bitd` ne groupe rien (rang 0 -> index 10, rang 1 ->
+   index 32) ; l ATLAS, lui, est ordonne par famille (armes 0-25, vehicules 26-45, grenades
+   46-51, pictogrammes 52-72) — utile pour choisir quoi essayer, pas pour deviner un nom.
+
+2. *La cause du « il manque des etiquettes ».* Les tables de `NOMMAGE_ICONES.html` et de l etat
+   de l art etaient une COPIE MANUELLE d `index.json`. Rien ne comparait les deux : elles ont
+   vieilli en silence. Corrige a la source — `weapon-icons-build` REECRIT desormais ces quatre
+   tables entre marqueurs (`cmd/weapon-icons-build/page.go`), et un marqueur absent est une
+   erreur bloquante. Une table perimee est structurellement impossible. Defaut collateral
+   corrige au passage : le `|` de `bandit | bandit_evo` cassait les colonnes Markdown, il est
+   echappe par le generateur.
+
+**Resultats observes**. 168 PNG inchanges (40 contour + 40 silhouette + 88 kill feed) ;
+26 weapon_key lus dans le jeu ; 23 noms craques cote armes (21 dans la plage de l atlas, dont
+10 marques `nom_a_verifier`) ; 58 noms cote kill feed. `gofmt`, `go vet`, `go build ./...`
+verts ; page.go a 185 lignes, aucun fichier au-dessus du seuil.
+
+**Prochaine etape**. Gate visuel utilisateur sur `NOMMAGE_ICONES.html` — l integration web
+reste HORS de ce lot par consigne.

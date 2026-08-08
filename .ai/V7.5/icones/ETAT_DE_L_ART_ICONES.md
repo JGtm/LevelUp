@@ -22,13 +22,13 @@ grenades lancees et pictogrammes de mort.
 
 **Les noms internes sont CRAQUES** : les tags ne portent que des murmur3, les chaines sont
 strippees en release. **21 index nommes cote armes** (dont 10 marques « ? », voir §4) et
-**55 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
+**58 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
 
 | Atlas | Tag | Images | Dimensions | Nommes |
 |---|---|---|---|---|
 | Armes, contour | `bc17adf1` | 40 | ~330x117 | 26 par le registre, 21 par le nom interne |
 | Armes, silhouette | `e39747c8` | 40 | idem, index par index | idem |
-| Kill feed | `0302cad3` | 88 | ~110x38 | 55 par sa table `bitd` |
+| Kill feed | `0302cad3` | 88 | ~110x38 | 58 par sa table `bitd` |
 
 ---
 
@@ -124,6 +124,28 @@ fourni une liste de mots en parcourant la page (`perfect`, `waterfall`, `backsma
 — dont la declinaison systematique (`patternVocabulary`) en a rendu **3 de plus**. Le kill feed
 passe de 43 a **55 noms sur 88**. Aucune moisson automatique n avait donne ca.
 
+**POURQUOI CERTAINS NOMS SORTENT ET PAS D AUTRES — la reponse est LEXICALE, pas structurelle.**
+Un hachage ne rend AUCUNE information partielle : un nom sort si et seulement si la chaine
+exacte a ete essayee. Il n y a donc ni « presque trouve » ni voisinage a exploiter. Trois
+mesures le montrent :
+
+1. **L ordre de la table `bitd` ne groupe rien** : rang 0 -> index 10, rang 1 -> index 32,
+   rang 2 -> index 59. Aucune famille a suivre.
+2. **L atlas, lui, EST ordonne** (armes 0-25, vehicules et tourelles 26-45, grenades 46-51,
+   pictogrammes 52-72, divers 73-87) — ce qui donne le VOISINAGE d un trou, donc de bons
+   candidats a essayer, mais pas le nom.
+3. **Mesure decisive** : `bulldog`, `sidekick`, `disruptor`, `mangler`, `ravager` et
+   `cindershot` SONT dans les chaines du binaire. `killfeed_<ce mot>` a donc bien ete essaye,
+   et a echoue. Ce n est pas un defaut de moisson : **le kill feed ne les nomme pas par leur
+   nom commercial**.
+
+Ce que ces mots ont en commun, c est ce qui a permis d en debloquer trois de plus. Les noms qui
+MARCHENT s ecrivent `<qualifiant>_<classe>` : `battle_rifle`, `assault_rifle`, `plasma_pistol`,
+`sniper_rifle`. Decliner ce schema rend **`commando_rifle`, `ma5k_smg`, `plasma_blaster`** —
+la ou `commando` et `ma5k` seuls echouaient. Le kill feed passe a **58 sur 88**. Elargi a
+17 006 formes, le filon ne rend plus rien : les 30 restants portent un vocabulaire interne
+qu aucune declinaison raisonnee n atteint. **Le gate humain reste la seule voie pour eux.**
+
 **Calibration avant application** : le #35 est le Sandwich d'apres le registre, et
 `LabelHash("sandwich")` retombe sur son StringID. La methode est verifiee sur un cas connu
 AVANT d'etre appliquee aux inconnus.
@@ -152,7 +174,8 @@ Regenerees par la commande ; `index.json` fait foi.
 
 Un « ? » signale un nom issu d un `weap` NON canonique : son index peut etre perime.
 
-| # | weapon_key du registre | nom interne du jeu |
+<!-- <<MD_WEAP>> -->
+| # | weapon_key (registre) | nom interne craque |
 |---|---|---|
 | 00 | hinf_ma40_ar | assault_rifle |
 | 01 | hinf_br75 | battle_rifle |
@@ -187,25 +210,27 @@ Un « ? » signale un nom issu d un `weap` NON canonique : son index peut etre p
 | 30 | — | — |
 | 31 | — | shade_turret ? |
 | 32 | — | — |
-| 33 | hinf_bandit | bandit | bandit_evo |
-| 34 | — | ball | bomb ? |
-| 35 | — | mythic_sandwich | sandwich ? |
+| 33 | hinf_bandit | bandit \| bandit_evo |
+| 34 | — | ball \| bomb ? |
+| 35 | — | mythic_sandwich \| sandwich ? |
 | 36 | hinf_ma5k_avenger | — |
 | 37 | — | mutilator ? |
 | 38 | hinf_fuel_rod_spnkr | — |
 | 39 | hinf_vestige_carbine | — |
+<!-- <</MD_WEAP>> -->
 
 ### Atlas du kill feed (88 index)
 
 Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 
+<!-- <<MD_KF>> -->
 | # | nom | # | nom | # | nom | # | nom |
 |---|---|---|---|---|---|---|---|
-| 00 | battle_rifle | 01 | — | 02 | assault_rifle | 03 | — |
+| 00 | battle_rifle | 01 | commando_rifle | 02 | assault_rifle | 03 | — |
 | 04 | — | 05 | turret_chaingun | 06 | hydra | 07 | sniper |
 | 08 | — | 09 | — | 10 | — | 11 | — |
 | 12 | — | 13 | gravity_hammer | 14 | — | 15 | skewer |
-| 16 | — | 17 | plasma_pistol | 18 | sword | 19 | needler |
+| 16 | plasma_blaster | 17 | plasma_pistol | 18 | sword | 19 | needler |
 | 20 | — | 21 | turret_plasma | 22 | heatwave | 23 | — |
 | 24 | sentinelbeam | 25 | — | 26 | warthog | 27 | rockethog |
 | 28 | mongoose | 29 | gungoose | 30 | pelican | 31 | scorpion |
@@ -221,8 +246,9 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 | 68 | — | 69 | player_left | 70 | player_joined | 71 | player_rejoined |
 | 72 | grappleshot | 73 | bandit | 74 | — | 75 | — |
 | 76 | sandwich | 77 | — | 78 | waterfall | 79 | quantum |
-| 80 | — | 81 | mutilator | 82 | — | 83 | perfect |
+| 80 | ma5k_smg | 81 | mutilator | 82 | — | 83 | perfect |
 | 84 | — | 85 | falcon | 86 | falcon_chaingun | 87 | — |
+<!-- <</MD_KF>> -->
 ---
 
 ## 3. CE QUI A ETE REFUTE (ne pas re-tenter)
