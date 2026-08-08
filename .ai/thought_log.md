@@ -1,3 +1,45 @@
+## [2026-08-08] v7.5 — je retire « l'arme fournie au respawn », et la vraie question est aussi refutee
+
+**Statut** : Complété (correction + mesure). Deux hypothèses éliminées, un fait consolidé.
+
+**CE QUE JE RETIRE.** J'avais écrit que Fiesta et Husky Raid partagent « l'arme fournie à la
+réapparition », et présenté ça comme l'explication du déficit du flux de tirs. **L'utilisateur a
+demandé : « quel rapport avec notre objectif ? » — il n'y en a aucun.** Je n'ai AUCUN mécanisme
+reliant la façon dont un joueur obtient son arme à la façon dont le film enregistre ses tirs.
+C'était un point commun trouvé après coup et habillé en cause. Ces deux modes partagent aussi
+d'être des playlists sociales, chaotiques, à armes lourdes permanentes : n'importe quelle
+étiquette aurait « expliqué » autant, c'est-à-dire rien.
+
+**LA BONNE QUESTION, ET ELLE EST TESTABLE** : perd-on vraiment des tirs, ou le compteur de
+référence compte-t-il autre chose ? Si les armes à faisceau continu comptaient un « tir » par
+tick côté API, le dénominateur serait gonflé et le film ne perdrait rien.
+
+**MESURÉ, par joueur et par seconde de match** :
+
+| famille | tirs comptés par l'API | événements décodés | précision API |
+|---|---|---|---|
+| Husky Raid | 0,840 | 0,387 | 0,288 |
+| autres modes | 0,575 | **0,505** | 0,428 |
+| Fiesta | **0,558** | **0,215** | 0,270 |
+
+**En Fiesta les joueurs tirent au MÊME rythme qu'ailleurs** (0,558 contre 0,575) : le dénominateur
+n'est pas gonflé. **Mais le film n'enregistre que 0,215 événement par joueur-seconde contre
+0,505.** On perd donc réellement plus de la moitié des tirs, et la référence n'y est pour rien.
+
+**BILAN.** Le fait est solide : deux familles de modes décrochent, sans que l'arsenal (stratifié)
+ni le compteur de référence (mesuré) ne l'expliquent. **La cause reste inconnue**, et trois
+explications ont été proposées puis éliminées dans la même session — arsenal, mécanique de
+spawn, dénominateur.
+
+**PORTÉE, et c'est ce qui compte pour la décision** : ces deux familles font ~30 % du corpus ;
+pour les 70 % restants le flux est décodé à 95 % ; et le déficit **n'affecte pas les tirs
+fatals** — le film Fiesta du corpus localise 91,4 % de ses morts, parce que localiser une mort ne
+demande aucun record de tir.
+
+**LEÇON.** Trouver ce que deux populations ont en commun n'est pas trouver une cause. Tant qu'il
+n'y a pas de mécanisme, une étiquette partagée est une description, et la présenter autrement fait
+perdre du temps à celui qui lit.
+
 ## [2026-08-08] v7.5 — l'arsenal n'explique PAS le trou Fiesta : ce sont les modes a arme fournie
 
 **Statut** : Complété (mesure en base, 890 matchs, aucun décodage). Réfute l'explication que
