@@ -769,3 +769,94 @@ tout le corpus** (chaque film decode avec les bornes de SA carte), en deux regim
 testent pas la meme hypothese — coordonnee MONDE si la plage est FIXE, coordonnee NORMALISEE si
 elle suit la carte. Si aucun des deux ne mord sur un echantillon dix fois plus grand, le negatif
 est solide.
+
+### 11.8 LE DURCISSEMENT — négatif SOLIDE, et le R2 BAISSE quand l'échantillon grandit
+
+**300 films, 16 cartes, 4 505 034 records `ti=41`, 2 336 records opaques encadres** (contre 127
+sur Cliffhanger seule) :
+
+```
+regime                          axe X              axe Y              axe Z
+position ABSOLUE, monde         0.1475 (q99 .1475) 0.0804 (q99 .0804) 0.2799 (q99 .2799)
+position ABSOLUE, normalisee    0.1551 (q99 .1550) 0.2886 (q99 .2886) 0.4502 (q99 .4501)
+```
+
+**Sur les six colonnes, le meilleur candidat EST le q99 de sa propre distribution.** Aucun
+n'est aberrant : ce sont des maxima de bruit.
+
+**LE DIAGNOSTIC QUI TRANCHE, ET IL EST PLUS PARLANT QUE LES R2 EUX-MEMES.** En multipliant
+l'echantillon par 18, les R2 ont **BAISSE** :
+
+```
+             n = 127 (Cliffhanger)      n = 2 336 (16 cartes)
+axe X              0.2785          ->        0.1475
+axe Y              0.4843          ->        0.2886
+axe Z              0.6728          ->        0.4502
+```
+
+C'est exactement la signature d'une **correlation fortuite de petit echantillon qui se dilue**.
+Un vrai signal se renforce quand n grandit ; celui-ci s'efface. La « signature a ne pas jeter »
+du §11.7 (Y et Z aux offsets de la branche basse) etait donc bien du bruit, et c'est
+l'echantillon qui l'a dit — pas une intuition.
+
+**LA PART DE 6,2 % SE CONFIRME A GRANDE ECHELLE** : 274 833 records opaques sur 4 505 034, soit
+**6,1 %**, avec une dispersion par carte de 3,9 % (Breaker) a 9,3 % (Launch Site). Le chiffre ne
+depend ni de la carte ni du film.
+
+> ⚠ **CE QUE CE NEGATIF DIT, ET CE QU'IL NE DIT PAS.** Il dit : *aucun champ de bits CONTIGU,
+> a un offset de 1 a 59 et d'une largeur de 10 a 24, n'est en relation affine avec la position
+> absolue* — ni dans une plage fixe, ni aux largeurs de la carte. Il ne dit PAS que la branche
+> ne porte aucune position. Trois echappatoires restent, et la premiere est serieuse :
+>
+> 1. **La position pourrait etre encodee en DELTA**, pas en absolu. C'est ce qu'un protocole de
+>    replication fait quand il annonce « haute precision » : on n'envoie que le petit
+>    changement. Et cela expliquerait la plage `DAT_143b8c6d0` = **± 100**, absurde pour une
+>    position absolue sur une carte de 113 unites, tres naturelle pour un DEPLACEMENT par
+>    image. Le depot connait deja ce motif : `components_movement.go` modelise un chemin delta
+>    a dequantification CENTREE-ZERO pour l'autre `i0`. **Ce test est lance** (regime 3).
+> 2. **La longueur de 60 bits pourrait etre fausse**, auquel cas la fenetre de bits est
+>    decalee. Elle n'a jamais ete verifiee autrement que par l'alignement global.
+> 3. **Une part des « records opaques » pourrait etre des faux positifs.** Un record opaque
+>    n'est retenu que sur son bit de porte, sans filtre de validite de contenu — la branche
+>    basse, elle, en a un (trois bits de porte nuls + quanta non satures).
+
+### 11.9 LE RÉGIME DELTA — négatif lui aussi, mais AVEC UN CONTRÔLE QUI NE PASSE QU'À MOITIÉ
+
+Troisieme regime teste : la cible n'est plus la position absolue mais le **DEPLACEMENT** depuis
+la derniere position connue. Motivation serieuse — c'est ce qu'un protocole de replication fait
+quand il annonce « haute precision », et cela expliquerait la plage ± 100, absurde en absolu sur
+une carte de 113 unites, naturelle pour un deplacement par image.
+
+```
+axe X   R2 max 0.0455   (q99 0.0322)   nulle par permutation 0.0032
+axe Y   R2 max 0.0052   (q99 0.0052)   —
+```
+
+**Negatif.** Les R2 sont d'un ordre de grandeur SOUS ceux des regimes absolus : rien.
+
+> ⚠ **ET VOICI CE QUI AFFAIBLIT TOUT LE RUN MUTUALISÉ, a dire avant d'en tirer un verdict.**
+> Le controle positif, rejoue dans le MEME regime mutualise, **ne passe que sur un axe sur
+> trois** :
+>
+> ```
+> axe X   off 3, w 13, R2 0.9499, etendue implicite 0.96 (reference 1.00)   -> RETROUVE
+> axe Y   R2 0.2883                                                         -> NON retrouve
+> axe Z   R2 0.2273                                                         -> NON retrouve
+> ```
+>
+> La cause est dans l'elagage : `keepMixedLives` ne garde que les vies qui melangent les deux
+> branches, ce qui reduit l'echantillon de controle de 130 846 a 18 756 records ET le biaise
+> (ce sont des vies atypiques, par construction). **Dans le reglage exact ou le negatif a ete
+> mesure, l'instrument n'est donc calibre que sur un axe.**
+>
+> **CE QUI SAUVE MALGRE TOUT LE VERDICT, et il faut peser les deux :** le run Cliffhanger seul
+> (§11.7) avait un controle qui passait sur les TROIS axes (0.997 / 0.998 / 0.974, sur 130 846
+> records non elagues) et rendait deja un negatif ; le run mutualise le confirme sur un
+> echantillon 18 fois plus grand ; et les trois regimes concordent. **Le negatif est solide,
+> il n'est pas hermetique.** Le durcir demanderait de rejouer le controle SANS elagage sur le
+> corpus mutualise — ce qui coute la memoire que l'elagage economisait.
+
+**ÉTAT DE LA BRANCHE OPAQUE À LA CLÔTURE** : trois regimes testes (absolu monde, absolu
+normalise, delta), trois negatifs, avec un instrument dont le controle passe integralement sur
+une carte et partiellement sur le corpus mutualise. **Elle reste non decodee, elle vaut 6,1 %
+des records, et on n'y revient pas sans raison neuve.**

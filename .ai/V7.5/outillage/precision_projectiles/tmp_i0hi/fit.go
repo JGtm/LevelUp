@@ -52,17 +52,43 @@ func runRegression(all []sample, wr *filmdec.Vec3Range, hi bool) {
 	}
 	fmt.Printf("echantillon : %d records encadres par deux positions vraies\n\n", len(pairs))
 
-	for _, norm := range []bool{false, true} {
-		label := "coordonnee MONDE (teste une plage FIXE : +-100, +-20000)"
-		if norm {
-			label = "coordonnee NORMALISEE [0,1] (teste les largeurs de la CARTE)"
-		}
-		fmt.Printf("-- regime : %s\n", label)
-		runOneRegime(pairs, wr, total, norm)
+	// TROIS REGIMES, ET LE TROISIEME EST LE PLUS PLAUSIBLE DES TROIS.
+	//
+	// Les deux premiers supposent que la branche opaque encode une position ABSOLUE — dans
+	// une plage fixe, ou aux largeurs de la carte. Le troisieme suppose qu'elle encode un
+	// DELTA depuis la position precedente, et c'est ce qu'un protocole de replication fait
+	// quand il annonce « haute precision » : on n'envoie que le petit changement. La plage
+	// +-100 de `DAT_143b8c6d0`, absurde pour une position absolue sur une carte de 113 unites,
+	// devient tres naturelle pour un DEPLACEMENT par image.
+	//
+	// Le depot connait deja ce motif : `components_movement.go` modelise un chemin delta a
+	// dequantification CENTREE-ZERO pour l'autre i0 (`q` dans [0, 2^W) recentre sur
+	// [-2^(W-1), 2^(W-1))). Une regression affine le retrouve sans avoir a le supposer : le
+	// recentrage est une constante additive, qu'elle absorbe dans l'ordonnee a l'origine.
+	for _, r := range []int{regimeWorld, regimeNorm, regimeDelta} {
+		fmt.Printf("-- regime : %s\n", regimeLabel(r))
+		runOneRegime(pairs, wr, total, r)
 	}
 }
 
-func runOneRegime(pairs []pair, wr *filmdec.Vec3Range, total int, norm bool) {
+const (
+	regimeWorld = iota // position absolue, coordonnee monde -> teste une plage FIXE
+	regimeNorm         // position absolue, coordonnee normalisee -> teste les largeurs de la CARTE
+	regimeDelta        // DEPLACEMENT depuis le record precedent -> teste un encodage delta
+)
+
+func regimeLabel(r int) string {
+	switch r {
+	case regimeNorm:
+		return "position ABSOLUE, coordonnee NORMALISEE [0,1] (teste les largeurs de la CARTE)"
+	case regimeDelta:
+		return "DEPLACEMENT depuis la position precedente (teste un encodage DELTA)"
+	default:
+		return "position ABSOLUE, coordonnee MONDE (teste une plage FIXE : +-100, +-20000)"
+	}
+}
+
+func runOneRegime(pairs []pair, wr *filmdec.Vec3Range, total int, regime int) {
 	var cands []candidate
 	for w := 10; w <= 24; w++ {
 		for off := 1; off+w <= total; off++ {
@@ -71,10 +97,7 @@ func runOneRegime(pairs []pair, wr *filmdec.Vec3Range, total int, norm bool) {
 	}
 
 	for a := 0; a < 3; a++ {
-		axis := a
-		if norm {
-			axis = a + 3
-		}
+		axis := a + 3*regime
 		axisName := []string{"X", "Y", "Z"}[a]
 		results := make([]fitResult, 0, len(cands))
 		for _, c := range cands {
@@ -113,8 +136,11 @@ func runOneRegime(pairs []pair, wr *filmdec.Vec3Range, total int, norm bool) {
 				axisName, best.r2, q99)
 		} else {
 			ref := float64(wr[a].Max - wr[a].Min)
-			if norm {
+			switch regime {
+			case regimeNorm:
 				ref = 1
+			case regimeDelta:
+				ref = 200 // l'etendue de DAT_143b8c6d0, +-100
 			}
 			fmt.Printf("   VERDICT axe %s : champ off %d largeur %d, R2 %.6f. Etendue implicite %.2f "+
 				"(reference : %.2f)\n", axisName, best.cand.off, best.cand.w, best.r2, best.extent, ref)
@@ -139,10 +165,15 @@ func collectPairs(all []sample, hi bool) []pair {
 			if !ok {
 				continue
 			}
+			prev, ok := prevLowPos(l, i)
+			if !ok {
+				continue
+			}
 			p := pair{bits: s.bits}
 			for a := 0; a < 3; a++ {
 				p.val[a] = float64(v[a])
 				p.val[a+3] = float64(nv[a])
+				p.val[a+6] = float64(v[a] - prev[a]) // le DEPLACEMENT depuis la position precedente
 			}
 			out = append(out, p)
 		}
@@ -150,11 +181,23 @@ func collectPairs(all []sample, hi bool) []pair {
 	return out
 }
 
-// pair porte les 64 bits d'i0 et la position vraie : 0..2 en coordonnee MONDE, 3..5 en
-// coordonnee normalisee dans l'AABB de la carte du film.
+// pair porte les 64 bits d'i0 et la cible de la regression : 0..2 position absolue en
+// coordonnee MONDE, 3..5 position absolue NORMALISEE dans l'AABB de la carte du film,
+// 6..8 DEPLACEMENT depuis la derniere position connue.
 type pair struct {
 	bits uint64
-	val  [6]float64
+	val  [9]float64
+}
+
+// prevLowPos rend la position du dernier record de la branche BASSE qui precede l'indice i
+// dans la vie. C'est la reference du regime DELTA.
+func prevLowPos(l []sample, i int) ([3]float32, bool) {
+	for j := i - 1; j >= 0; j-- {
+		if !l[j].hi {
+			return l[j].pos, true
+		}
+	}
+	return [3]float32{}, false
 }
 
 // fieldAt extrait le champ (off, w) des 64 bits d'i0. PeekBits range le PREMIER bit lu en
