@@ -1,3 +1,46 @@
+## [2026-08-08] filmdec — i0 de `ti=41` (position du projectile) : ouverture, et une règle de lecture du binaire
+
+**Statut** : En cours. Note de travail tenue au fil de l'eau :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+**Travail de DÉCODEUR**, hors piste E (close, verdict négatif) — feu vert utilisateur explicite.
+Aucun fichier de production touché, rien de porté dans `traverse.go`.
+
+**Ce que la vérification sur pièces a corrigé d'entrée.** L'index présente `FUN_14076e29c` comme
+le bloqueur, « non bit-exact, 45 / 60 bits ». C'est **en partie périmé** : le composant EST
+implémenté dans `filmdec/traverse.go`, et sa branche basse précision a été corrigée le
+2026-07-26 (`R(1)` d'index puis **13/13/14**, frontières 16/29/43 par profil de bascule sur
+6 794 paires). Le « 45 / 60 » n'est pas « on lit 45 là où il en faut 60 » : ce sont **deux
+branches**, et la faiblesse est ailleurs — le port consomme la branche haute comme **59 bits
+opaques**, ce qui garde l'alignement mais **ne rend aucune position**.
+
+**Résultat principal — la position du projectile n'est pas hors de portée.** `FUN_141f85880`,
+la branche « plage par défaut », **n'est pas une structure opaque** : `FUN_140be9b88` y construit
+un descripteur de largeurs et `FUN_1406d7f18` lit un vec3 quantifié. Les 59 bits se décomposent
+donc, et l'hypothèse est arithmétiquement propre : **59 = 3 x 19 + 2** (trois axes + le `R(2)`
+final). À confronter à la forme fermée du dossier, avec **L = 16** câblé au site d'appel
+(`FUN_14076e420(br, st+4, 0x10)`). Piège noté : `DAT_143b8c6d0` (plage de cette branche) n'est
+PAS `DAT_143b8c6b8` (± 20000, citée par le dossier) — 0x18 d'écart, soit exactement un AABB.
+
+**Et une règle de lecture, parce que c'est la TROISIÈME fois.** J'avais écrit qu'il y avait trois
+encodages de position et que le port n'en modélisait que deux. **L'écart s'est retiré tout
+seul** : `FUN_14076f91c`, qui aiguille vers le troisième, **ne lit aucun bit** — c'est un test de
+deux globales. Le port a raison de l'ignorer. C'est le même motif que la porte du tag des codes
+6/7 (`b0 == 1`, 168 380 observations) et que la porte `DAT_1451222c8` des stats 0x0D/0x0E,
+trouvée le matin même. **Ce binaire est truffé de chemins conditionnés par des globales qui ne
+s'ouvrent jamais en jeu ; lire un décompilé sans vérifier ses portes revient à inventer du
+travail.** Règle posée dans la note : pour toute branche vue dans un décompilé, établir si sa
+condition vient du BITSTREAM ou d'une GLOBALE **avant** de la porter.
+
+**Deux écarts de longueur restent à tester sur film** (ils prédisent des décalages observables,
+donc ils sont falsifiables) : le `R(2)` final est **conditionnel** dans l'asm
+(`FUN_140492128(st+4)`) alors que le port le lit inconditionnellement ; et le handle-tail
+`FUN_14076e3e4` est appelé **inconditionnellement**, sa garde n'étant pas la porte R(1) du port.
+
+**Conclusion / prochaine étape.** Ne RIEN porter avant le test sur film : profil de bascule +
+chaînage sur i1 (`[1][1][19][10]`), le critère qui avait déjà départagé les lectures rivales en
+juillet. Le composant est sur le chemin de tous les archétypes qui le portent — une régression y
+serait silencieuse. Liste de lecture restante en §4 de la note.
+
 ## [2026-08-08] v7.5 piste E — la porte `DAT_1451222c8`, une erreur à moi, et la passe d'amendement
 
 **Statut** : Complété. Branche `research/v75-precision`. Déclencheur : l'utilisateur conteste ma
