@@ -101,14 +101,64 @@ FUN_14076e494(br, out, L, ..., range) {
    le même vec3 lu avec des largeurs différentes.** Si cette lecture se confirme, la position du
    projectile est récupérable **sur les deux branches**, et le `ReadBits(59)` opaque devient
    décomposable.
-3. **`FUN_14076e304` (le R(2)) est CONDITIONNEL** — gardé par `FUN_140492128(st + 4)`, un
-   prédicat sur la position décodée. Le port le lit **inconditionnellement** sur la branche basse
-   précision. Si le prédicat est parfois faux, le port lit 2 bits de trop, et tout ce qui suit
-   dans le record est décalé.
+3. ~~**`FUN_14076e304` (le R(2)) est CONDITIONNEL.**~~ **RETIRÉ — le prédicat est
+   `isfinite(vec3)`** : `FUN_140492128` teste les bits d'exposant (`& 0x7f800000 != 0x7f800000`)
+   des trois flottants et ne rend 1 que si les trois sont finis. Or un vec3 **déquantifié dans
+   une plage bornée est toujours fini** (cf. la formule de §2.2). Le port a donc raison de lire
+   le `R(2)` inconditionnellement. **Deuxième écart qui se retire à la lecture de sa propre
+   garde** — la règle de l'écart 1 se confirme.
 4. **`FUN_14076e3e4` (handle-tail) est appelé INCONDITIONNELLEMENT**, pas seulement sur la
    branche haute. Il ne consomme des bits que si son paramètre de garde est non nul (sinon il
    pose des sentinelles `0xffffffff` sans rien lire), mais **cette garde n'est pas la porte R(1)**
    du port.
+
+### 2.2 LA GRAMMAIRE DE LA BRANCHE PAR DÉFAUT — établie, mais ses LARGEURS ne sont pas statiques
+
+`FUN_141f85880` enchaîne trois appels, et les deux qui comptent sont lisibles :
+
+```c
+FUN_140be9b88(L, aabb /* float[6] : minX,maxX,minY,maxY,minZ,maxZ */, _, W /* out int[3] */) {
+    extent[a] = aabb[2a+1] - aabb[2a];
+    step = FUN_140be9c78();                       // <- SANS ARGUMENT : une globale de runtime
+    if (step < EPS) { W[0..2] = 0x1a; }           // 26, le plafond
+    else for a in 0..2:
+        n    = ceilf(extent[a] / (2*step));       // sature a 0x400000 si l extent est trop grand
+        W[a] = min(FUN_1406d310c(n), 0x1a);       // bitLen, plafonne a 26
+}
+
+FUN_1406d7f18(raw, aabb, W, out) {                // la DEQUANTIFICATION
+    scale  = (aabb[2a+1] - aabb[2a]) / (1 << W[a]);
+    out[a] = raw[a] * scale + aabb[2a] + scale * 0.5;
+}
+```
+
+**C'est la forme fermée du dossier, confirmée dans le binaire** — `W = min(26, bitLen(ceil(extent /
+(2·step))))`, plafond `0x1a`. Trois précisions neuves :
+
+- la déquantification divise par `1 << W`, **pas** par `2^W - 1`, et ajoute un **demi-pas** ;
+- **`FUN_140be9b88` n'utilise PAS le `L` qu'on lui passe** pour la largeur : il l'écrit dans
+  `W[0..2]` puis l'écrase dans les deux branches. Le pas vient de `FUN_140be9c78()`, **sans
+  argument** — donc d'un état global posé au chargement de carte ;
+- la lecture des bits n'est pas dans `FUN_1406d7f18` (qui ne fait que déquantifier) mais dans
+  `FUN_1424cbed4(_, br, W)`, qui lit trois valeurs de largeurs `W[0..2]`.
+
+**LES DEUX PLAGES, DÉCODÉES OCTET PAR OCTET — et ce ne sont pas les mêmes :**
+
+```
+DAT_143b8c6d0  00 00 C8 C2 | 00 00 C8 42   x3   ->  -100.0 .. +100.0   <- LA PLAGE DE CETTE BRANCHE
+DAT_143b8c6b8  00 40 9C C6 | 00 40 9C 46   x3   ->  -20000.0 .. +20000.0  <- celle citee par le dossier
+```
+
+Le piège annoncé en §4 est donc réel : **la plage de la branche par défaut de `ti=41` est
+± 100, pas ± 20000.** Deux entrées voisines de la même table, à 0x18 (un AABB) d'écart.
+
+**CONSÉQUENCE, ET ELLE TRANCHE LA SUITE.** Le pas venant d'une globale de runtime, **les largeurs
+ne sont PAS dérivables statiquement** : l'hypothèse « 59 = 3 x 19 + 2 » ne peut ni se confirmer
+ni s'infirmer dans Ghidra. À ± 100 et au pas `q(16) = 1/120` elle donnerait 14 bits par axe
+(soit 44, pas 59) — donc **le pas réel n'est pas `q(16)`**, et il n'y a rien à en déduire de
+plus au désassembleur. **La largeur se MESURE sur le film**, exactement comme
+`DetectI0Layout` le fait déjà pour l'autre `i0` : profil de bascule bit à bit, sans aucun a
+priori de largeur. C'est la fin de la phase RE.
 
 > ⚠ **STATUT : `[MESURE]` sur le décompilé, RIEN N'EST VÉRIFIÉ SUR LE FILM.** La règle du
 > chantier s'applique intégralement — *Ghidra nomme, le film mesure*. Les points 3 et 4 en
@@ -152,18 +202,72 @@ pour le Needler — la validation passerait par le contraste intra-joueur).
       de 19 bits + le `R(2)` final). À confronter à la forme fermée du dossier
       `W = min(26, bitLen(ceil(span / (2*step))))`, `step(L) = 2^(16-L)/120`, ici **L = 16**
       (câblé au site d'appel : `FUN_14076e420(br, st+4, 0x10)`).
-- [ ] `DAT_143b8c6d0` — la plage par défaut de CETTE branche. ⚠ **Ne pas la confondre** avec
-      `DAT_143b8c6b8` (± 20000), citée par le dossier : les deux adresses sont distantes de
-      **0x18 = 24 octets = un AABB (min+max en vec3)**, donc ce sont probablement deux entrées
-      voisines d'une même table. Une plage plus petite donnerait les 19 bits de l'hypothèse.
-- [ ] `FUN_140be9b88` / `FUN_1406d7f18` — la fonction de largeur et le lecteur, pour confirmer
-      19 plutôt que de le déduire d'une soustraction.
-- [ ] `FUN_14076e524` — d'où viennent exactement les trois largeurs d'axe, et la porte
-      `index-sel` / `index de région`.
-- [ ] `FUN_140492128` — le prédicat qui garde le R(2).
+- [x] `DAT_143b8c6d0` — **± 100** (et non ± 20000 : c'est `DAT_143b8c6b8`, entrée voisine).
+- [x] `FUN_140be9b88` / `FUN_1406d7f18` — formule de largeur et déquantification établies
+      (§2.2). **Les largeurs ne sont PAS dérivables statiquement** : le pas vient d'une globale
+      de runtime. L'hypothèse « 3 x 19 + 2 » n'est ni confirmée ni infirmée au désassembleur.
+- [x] `FUN_140492128` — c'est `isfinite(vec3)`. Écart 3 retiré.
 - [ ] `FUN_14076e3e4` — la garde réelle du handle-tail, et sa largeur (un `0x40 - n < 0xb`
-      suggère 11 bits).
-- [ ] **PUIS SEULEMENT** : test sur film (profil de bascule + chaînage i1), avant tout portage.
+      suggère 11 bits). **Seul écart encore ouvert.**
+- [ ] `FUN_14076e524` — la porte `index-sel` / `index de région` de la branche carte (le port la
+      modélise déjà ; à confronter seulement si le test film échoue).
+
+**FIN DE LA PHASE RE.** Ce qui reste se mesure, plus se lit :
+
+- [x] **T1 — atteignabilité : POSITIF, mais il ne prouve que la moitié.** Cf. §6.
+- [ ] **T2 — largeurs** : profil de bascule bit à bit sur la branche par défaut, sans a priori
+      (méthode `DetectI0Layout`).
+- [ ] **T3 — chaînage** : vérifier l'alignement sur `i1`
+      (`object-translational-velocity` = `[1][1][19][10]`), le critère qui avait départagé les
+      lectures rivales le 2026-07-26.
+- [ ] **PUIS SEULEMENT** : portage dans `traverse.go`.
+
+---
+
+## 6. T1 — LES ENTITÉS PROJECTILE SONT BIEN DANS LE MONDE RÉPLIQUÉ
+
+Outil : `apps/go-api/cmd/tmp_ti41` (archivé sous
+`.ai/V7.5/outillage/precision_projectiles/`). Instrument réutilisé sans réécriture :
+`filmdec.WalkKeyframeWorld`, déjà validé 249/250 entités et 8/8 bipèdes.
+
+**12 films, recensement des archétypes du monde de keyframe :**
+
+```
+archetype       records   slots distincts
+ti=38            31 425          690
+ti=6             14 629           48
+ti=17            10 065           33
+ti=5              9 760           32
+ti=14             9 312           74
+ti=37             5 825        1 561
+ti=43             3 845          194
+ti=42             3 805        1 284
+ti=41               185          132   <- PROJECTILE, present sur 11 films sur 12
+```
+
+**Ce que ça établit** : l'entité projectile **existe bel et bien comme entité répliquée du film**,
+avec un slot, sur 11 films sur 12. La voie n'est pas morte — c'était le risque que T1 devait
+écarter, et il est écarté.
+
+**Ce que ça n'établit PAS, et il faut le dire aussi net.** 185 records pour ~11 entités
+distinctes par film, quand un film Fiesta porte des milliers de tirs de projectile. **Ce n'est
+pas un déficit de réplication, c'est un artefact d'échantillonnage** : un keyframe tombe toutes
+les ~20 s et un projectile vit une fraction de seconde — on ne capte que ceux en vol à l'instant
+du cliché. Le rapport 185 records / 132 slots (la plupart des projectiles n'apparaissent que
+dans UN keyframe) est exactement la signature attendue d'une durée de vie courte.
+
+**La trajectoire ne vit donc pas dans les keyframes : elle vit dans le flux DELTA.** Et là, le
+test bute sur le mur connu du chantier — un record delta (type-3) **ne porte aucun typeIndex** :
+il résout son archétype par le World (`filmdec/world.go`, en-tête). Compter les `ti=41` du flux
+delta exige donc le décodeur STATEFUL avec un binding World complet, c'est-à-dire précisément ce
+que `.ai/README_KILLWEAPON_INDEX.md` §0bis décrit comme le blocage de fond (« binding World
+incomplet », cascading-desync).
+
+> **CONSÉQUENCE DE PÉRIMÈTRE, et elle est structurante.** La voie trajectoire ne dépend pas
+> seulement de `i0` de `ti=41` : elle dépend du **binding World** du décodeur stateful. `i0`
+> exact est nécessaire, pas suffisant. C'est un chantier de décodeur à part entière, pas un
+> correctif de composant — et cette note doit le dire avant que quiconque estime le coût sur la
+> seule base du §2.
 
 ---
 
@@ -178,6 +282,20 @@ pour le Needler — la validation passerait par le contraste intra-joueur).
   ouverte » dans ce binaire — promue en **règle de lecture** (§2.1). Et
   `FUN_141f85880` **n'est pas opaque** : c'est un vec3 quantifié à plage par défaut, donc les
   59 bits du port se décomposent et la position sort sur les deux branches.
-  **Bilan à cette heure : 1 écart retiré, 2 écarts de longueur encore à tester sur film
-  (le `R(2)` conditionnel, la garde réelle du handle-tail), 1 gain potentiel (la position sur
-  la branche par défaut).** Rien de porté, rien de vérifié sur film.
+  Bilan intermédiaire : 1 écart retiré, 2 restants, 1 gain potentiel.
+- **2026-08-08 (3)** — **fin de la phase RE.** L'écart 3 se retire à son tour (`FUN_140492128`
+  est `isfinite`, toujours vrai sur un vec3 déquantifié borné). La grammaire de la branche par
+  défaut est établie et la formule de largeur du dossier est **confirmée dans le binaire**, avec
+  trois précisions neuves (§2.2) et les deux plages décodées octet par octet (± 100 ici,
+  ± 20000 pour l'entrée voisine). **Mais le pas de quantification vient d'une globale de
+  runtime : les largeurs ne sont pas dérivables statiquement.** L'hypothèse « 3 x 19 + 2 » reste
+  donc ouverte et **se mesurera sur le film**, pas au désassembleur.
+  **Bilan de la phase RE : sur 4 écarts annoncés contre le port, 3 étaient à moi** — le port
+  était juste, et c'est ma lecture des gardes qui ne l'était pas. Le seul écart encore ouvert est
+  la garde du handle-tail. **Rien de porté, rien de vérifié sur film.**
+- **2026-08-08 (4)** — **T1 joué : POSITIF.** L'entité `ti=41` est bien une entité répliquée du
+  film (185 records, 132 slots distincts, 11 films sur 12). Le risque que la voie soit morte
+  d'avance est écarté. **Mais la trajectoire vit dans le flux DELTA, pas dans les keyframes**, et
+  un record delta ne porte pas de typeIndex : le compter exige le binding World du décodeur
+  stateful. **`i0` exact est nécessaire, pas suffisant** — c'est un chantier de décodeur, pas un
+  correctif de composant (§6).
