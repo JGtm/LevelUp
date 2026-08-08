@@ -342,3 +342,69 @@ func loadWeaponNames(path string) map[uint64]string {
 	}
 	return out
 }
+
+// boundedFit resout min ||Xp - y||^2 sous contrainte p dans [0,1], par descente de gradient
+// PROJETEE sur les equations normales. Les taux de touche negatifs du grain match n etaient
+// pas du bruit : c etait de l information jetee par une resolution non contrainte. Un taux de
+// touche vit dans [0,1] par definition — le dire au solveur, c est retirer un degre de liberte
+// qui ne correspond a rien de physique.
+func boundedFit(rows []playerRow, ids []uint64, iters int) []float64 {
+	n := len(ids)
+	if n == 0 {
+		return nil
+	}
+	// equations normales : G = X'X, c = X'y
+	g := make([][]float64, n)
+	for i := range g {
+		g[i] = make([]float64, n)
+	}
+	c := make([]float64, n)
+	for _, r := range rows {
+		for i, idi := range ids {
+			xi := r.shots[idi]
+			if xi == 0 {
+				continue
+			}
+			for j, idj := range ids {
+				if xj := r.shots[idj]; xj != 0 {
+					g[i][j] += xi * xj
+				}
+			}
+			c[i] += xi * r.apiHits
+		}
+	}
+	// pas = 1 / L, L majore par la trace (borne de Gershgorin suffisante ici)
+	var l float64
+	for i := 0; i < n; i++ {
+		l += g[i][i]
+	}
+	if l <= 0 {
+		return make([]float64, n)
+	}
+	step := 1 / l
+	p := make([]float64, n)
+	for i := range p {
+		p[i] = 0.3 // depart neutre : l ordre de grandeur d une precision
+	}
+	grad := make([]float64, n)
+	for it := 0; it < iters; it++ {
+		for i := 0; i < n; i++ {
+			s := -c[i]
+			for j := 0; j < n; j++ {
+				s += g[i][j] * p[j]
+			}
+			grad[i] = s
+		}
+		for i := 0; i < n; i++ {
+			v := p[i] - step*grad[i]
+			switch {
+			case v < 0:
+				v = 0
+			case v > 1:
+				v = 1
+			}
+			p[i] = v
+		}
+	}
+	return p
+}
