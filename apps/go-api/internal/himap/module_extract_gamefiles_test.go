@@ -12,17 +12,17 @@ import (
 // retour en arrière.
 func TestModuleExtractionRate(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		path    string
-		minRate float64
+		name     string
+		variante string
+		carte    string
+		minRate  float64
 	}{
-		{"ds/ridgeline", ridgelineDS, 1.0},
-		{"any/catalyst", catalystAny, 0.99},
-		{"pc/ridgeline", ridgelinePC, 0.95},
+		{"ds/ridgeline", "ds", "ridgeline", 1.0},
+		{"any/catalyst", "any", "catalyst", 0.99},
+		{"pc/ridgeline", "pc", "ridgeline", 0.95},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			requireModule(t, tc.path)
-			m, err := himodule.Open(tc.path)
+			m, err := himodule.Open(moduleDuJeu(t, tc.variante, tc.carte))
 			if err != nil {
 				t.Fatal(err)
 			}

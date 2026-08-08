@@ -28,8 +28,10 @@ import (
 	"levelup/go-api/internal/himap"
 )
 
-// defaultLevelsDir : arborescence des cartes multijoueur d'une installation Steam.
-const defaultLevelsDir = `D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/ds/levels/multi`
+// deployVariant : les bornes monde du BSP se lisent dans le build serveur dédié. La racine
+// de l'installation est résolue par himap.LevelsDir (emplacements connus ou
+// LEVELUP_HALO_DEPLOY), jamais écrite en dur ici.
+const deployVariant = "ds"
 
 // mapModule associe le nom de carte affiché (celui de match_registry.map_name) au dossier
 // du module. Chaque entrée porte la RAISON pour laquelle le lien est tenu pour établi.
@@ -72,10 +74,20 @@ var mapModule = map[string]string{
 }
 
 func main() {
-	levels := flag.String("levels", defaultLevelsDir, "racine des dossiers de cartes (.module)")
+	levels := flag.String("levels", "", "racine des dossiers de cartes (.module) ; vide = installation détectée")
 	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
 	out := flag.String("out", "", "fichier de sortie (défaut : PathResolver.MapQuantBoundsPath)")
 	flag.Parse()
+
+	if *levels == "" {
+		dir, err := himap.LevelsDir(deployVariant)
+		if err != nil {
+			slog.Error("installation du jeu", "err", err)
+			os.Exit(1)
+		}
+		*levels = dir
+		slog.Info("installation détectée", "levels", dir)
+	}
 
 	outPath := *out
 	if outPath == "" {
