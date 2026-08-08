@@ -1,3 +1,70 @@
+## [2026-08-08] v7.5 piste E — précision projectiles, session 1/2 : le blocage n'est pas où on le croyait
+
+**Statut** : Complété pour la session 1/2 (timebox décision #6 : 2 sessions, verdict écrit).
+Branche `research/v75-precision`, worktree `LevelUp-wt-precision`. Mesure pure : aucun fichier
+de production touché, le cache de films du dépôt principal lu en LECTURE SEULE, tout balayage
+plafonné par `-limit`. Livrable : `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`.
+
+**Décision technique principale — un instrument neuf, et un gate joué avant toute conclusion.**
+Le nouvel outil `cmd/tmp_pjcnt` lit les records type 105 par balayage de PAQUETS
+(`filmdec.WalkPackets`, `pay[0]>>1 == 105`) là où les lots `mu` / `mu.ref` balayaient les bits
+à la recherche d'un marqueur 11 bits : deux instruments qui ne partagent pas leur méthode de
+sélection. Reproduction avant de conclure — records/tirs API Tactical **0,9232** contre 0,9300
+publié, Fiesta **0,3060** contre 0,3147 ; cadences MA40 **83,4 ms** (publié 83,4), Sidekick
+**184,1 ms** (publié 183,8) ; contrôle d'alignement du compteur 7 bits **0,5452 / 0,8465 /
+0,0015** à -1 / 0 / +1 bit, soit le profil de 7ter.80. Coût : **50 ms par film** contre 1,65 s
+au balayage bit à bit.
+
+**Résultat 1 — la piste nommée par le handoff est morte.** L'hypothèse « le compteur de tir
+7 bits avance sur les tirs de projectile qui n'émettent aucun record, donc il porte le
+dénominateur manquant » prédisait un pas moyen de 2,5 à 4 sur le Needler contre ~1 sur les
+armes à trace instantanée. Mesure sur les mêmes matchs : Needler **1,3383** (4 960 paires)
+contre BR75 **1,3545** (2 863 paires) en Fiesta ; Needler 1,2017 contre MA40 1,2166 en mode
+standard. Aucun contraste. Contrôle positif intégré : le pas monte de 1,15 à 1,35 là où le film
+montre trois fois moins de records, et le MA40 porte le pas le plus élevé du mode standard —
+exactement l'ordre que 7ter.80 avait établi pour la perte d'échantillonnage des automatiques.
+**Le pas mesure la complétude de notre scan, pas les tirs invisibles.**
+
+**Résultat 2, et c'est le principal — le blocage change de côté.** L'état de l'art (7ter.101)
+dit que le record est une TOUCHE sur arsenal à projectiles. Deux mesures le contredisent au
+grain de l'ARME : (a) le taux de porteur — records dont le drapeau « compteurs nuls » (bit 110)
+vaut 0 — vaut **0,0067** au Needler, 0,0096 à la Pulse Carbine, 0,0033 à la Cindershot, quand
+il vaut 0,44 au MA40 et 0,42 au BR75 ; si le record était la touche, il vaudrait ~1 partout.
+(b) la cadence inter-record du Needler vaut **83,4 ms de médiane, q90 100,1 ms** — son temps de
+cycle, un flux périodique, ce qu'un flux de touches ne peut pas être. **Un record est un TIR,
+pour toutes les armes.** L'agrégat Fiesta `records/touches = 1,0983` reste vrai mais s'explique
+par une coïncidence : le film n'y montre que 0,306 des tirs et la précision y vaut 0,283.
+Conséquence : **le dénominateur par arme n'a jamais manqué** (c'est le compte de records, déjà
+stocké par `shared.match_weapon_shots`) — c'est le NUMÉRATEUR, les touches par arme, qui est
+absent. Le handoff cherchait du bon côté du problème mais le nommait mal.
+
+Correction de nomenclature au passage : `eventStart+106` (le « drapeau de touche » de 7ter.80 /
+7ter.82) **est** le bit 110 du payload, que `filmdec/fire_events.go` nomme déjà « compteurs
+nuls » dans le layout du record type 105. Même bit, deux noms, deux dossiers.
+
+**Résultat 3 — une voie neuve, chiffrée, insuffisante.** Déconvolution : `touches_API(match) =
+somme des p_W x tirs_W(match)`, résolue aux moindres carrés sur 891 matchs et 23 armes, sans
+aucun appariement indice → xuid (la mesure vit au grain du match des deux côtés), avec les
+armes à trace instantanée comme contrôle positif intégré. Normalisation indispensable de la
+visibilité par match (0,92 en Tactical, 0,31 en Fiesta) — sans elle les coefficients sont
+inintelligibles. R2 hors échantillon **0,9666 / 0,9591**. Les armes à fort volume sortent
+stables entre moitiés : Needler **0,2964** (0,3156 / 0,2771), Pulse Carbine 0,3956, Plasma
+Pistol 0,2821 — et l'ordre MA40 < Sidekick est retrouvé là où le calcul naïf l'inversait.
+**Mais le contrôle positif échoue** : MA40 0,3748 contre une référence API de 0,4196, Sidekick
+0,5435 contre 0,4491 — erreurs de 0,045 et 0,095 pour une tolérance de dossier à ±0,03. Et le
+système n'est pas identifiable en faible volume (Hydra -1,06, Skewer -1,30).
+
+**Conclusion / prochaine étape.** Verdict de la session 1/2 : **non publiable en l'état**, voie
+non fermée. La session 2/2 a un go/no-go net, écrit au §6 du verdict : passer la déconvolution
+au grain JOUEUR avec moindres carrés bornés dans [0,1], reconstruire la référence API des
+quatre armes publiables, et **exiger ±0,03 hors échantillon sur ces quatre-là** — en dessous,
+la méthode ne mesure pas ce qu'elle prétend et le verdict se ferme. Si le contrôle passe, la
+validation des armes à projectile se fait par contraste intra-joueur, jamais par population à
+arme dominante (le Needler n'a que 2 observations à >= 80 % de pureté). Deux amendements à
+l'index sont dus quel que soit le résultat : l'unité du record par arme, et l'identité
+`eventStart+106 == payload bit 110`. Aucun merge, aucune écriture en base, aucun décodeur
+touché.
+
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
 **Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
