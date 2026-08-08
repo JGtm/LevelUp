@@ -55,6 +55,7 @@ func refreshOffline(ctx context.Context, dir, outPath, titleSlug string, dryRun 
 	}
 	sort.Strings(ids)
 
+	shared := sharedMvarNames(prev)
 	shaped, total := 0, 0
 	for _, id := range ids {
 		e := prev.Maps[id]
@@ -63,7 +64,14 @@ func refreshOffline(ctx context.Context, dir, outPath, titleSlug string, dryRun 
 			carryOver(cat, prev, id)
 			continue
 		}
-		path := filepath.Join(dir, e.MvarFile)
+		path, err := mvarPath(dir, id, e.MvarFile, shared)
+		if err != nil {
+			slog.ErrorContext(ctx, "mapobj: nom de .mvar ambigu, carte conservée en l'état",
+				"map_id", id, "file", e.MvarFile, "err", err)
+			failed = append(failed, e.MvarFile)
+			carryOver(cat, prev, id)
+			continue
+		}
 		buf, err := os.ReadFile(path)
 		if err != nil {
 			slog.WarnContext(ctx, "mapobj: .mvar local absent, carte conservée en l'état",
@@ -121,6 +129,38 @@ func refreshOffline(ctx context.Context, dir, outPath, titleSlug string, dryRun 
 		return nil
 	}
 	return cat.write(outPath)
+}
+
+// sharedMvarNames recense les noms de `.mvar` portés par PLUSIEURS cartes. Ils existent :
+// Vagabond et une variante de Highpower exposent chacune un fichier nommé `map.mvar`.
+func sharedMvarNames(cat *catalog) map[string]int {
+	n := map[string]int{}
+	for _, e := range cat.Maps {
+		if e != nil && e.MvarFile != "" {
+			n[e.MvarFile]++
+		}
+	}
+	return n
+}
+
+// mvarPath résout le fichier local d'une carte : d'abord le sous-dossier par map_id que
+// --save-mvar produit, sinon le fichier à plat.
+//
+// Le repli à plat est REFUSÉ quand le nom est partagé par plusieurs cartes : servir
+// `map.mvar` à deux cartes leur donnerait les mêmes objectifs, et le catalogue publierait
+// les zones d'une carte sous le nom d'une autre — une erreur muette et indétectable en
+// aval. Un refus daté vaut mieux (même arbitrage que fetch.go).
+func mvarPath(dir, mapID, mvarFile string, shared map[string]int) (string, error) {
+	perMap := filepath.Join(dir, mapID, mvarFile)
+	if _, err := os.Stat(perMap); err == nil {
+		return perMap, nil
+	}
+	if shared[mvarFile] > 1 {
+		return "", fmt.Errorf("%q est le nom de %d cartes et %s est absent — "+
+			"régénérer le dossier avec --save-mvar (un sous-dossier par map_id)",
+			mvarFile, shared[mvarFile], perMap)
+	}
+	return filepath.Join(dir, mvarFile), nil
 }
 
 // carryOver recopie une carte non rafraîchie, avec sa couverture.

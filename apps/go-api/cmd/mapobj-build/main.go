@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,6 +50,11 @@ func main() {
 			"régénérer HORS LIGNE tout le catalogue depuis un dossier de .mvar locaux")
 		rateMS = flag.Int("rate-ms", 1000, "délai entre deux requêtes réseau (politesse)")
 		dryRun = flag.Bool("dry-run", false, "ne pas écrire le catalogue")
+		// Sans ce dépôt, --refresh-from n'a aucune source : le chemin hors ligne exige un
+		// dossier de .mvar que rien ne produisait. Les fichiers y sont nommés comme le
+		// catalogue les enregistre (mvar_file), c'est ce que --refresh-from relit.
+		saveMvar = flag.String("save-mvar", "",
+			"déposer chaque .mvar téléchargé dans ce dossier (source de --refresh-from)")
 	)
 	flag.Var(&mapIDs, "map-id", "identifiant d'asset de carte (répétable)")
 	flag.Parse()
@@ -109,7 +115,7 @@ func main() {
 		if i > 0 && *rateMS > 0 {
 			time.Sleep(time.Duration(*rateMS) * time.Millisecond)
 		}
-		if err := ingestRemote(ctx, cat, client, t); err != nil {
+		if err := ingestRemote(ctx, cat, client, t, *saveMvar); err != nil {
 			// Échec documenté, jamais contourné : une carte absente du catalogue
 			// vaut mieux qu'un objectif affiché au mauvais endroit.
 			slog.ErrorContext(ctx, "mapobj: carte non traitée",
@@ -177,7 +183,7 @@ func resolveTargets(ctx context.Context, cfg *config.AppConfig, explicit []strin
 }
 
 // ingestRemote télécharge et ingère toutes les variantes .mvar d'une carte.
-func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) error {
+func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target, saveDir string) error {
 	asset, err := c.fetchAsset(ctx, t.mapID, "")
 	if err != nil {
 		return err
@@ -188,12 +194,17 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) err
 			asset.Files.FileRelativePaths)
 	}
 	// Une carte peut exposer plusieurs .mvar (Cliffhanger : map.mvar + ridgeline.mvar).
-	// On retient celle qui porte le plus d'objets d'objectif ; les autres sont loguées.
+	// On retient celle qui porte le plus d'objets d'objectif, APRÈS avoir écarté les
+	// variantes dont les objectifs sont rangés hors terrain (cf. variant.go).
 	var best *mapEntry
 	var bestVariant *mapvar.Variant
+	parked := 0
 	for _, rel := range files {
 		buf, err := c.fetchMvar(ctx, asset, rel)
 		if err != nil {
+			return err
+		}
+		if err := saveVariantFile(ctx, saveDir, t.mapID, rel, buf); err != nil {
 			return err
 		}
 		v, err := mapvar.Parse(buf)
@@ -203,6 +214,12 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) err
 		nObj := len(v.Objectives())
 		slog.InfoContext(ctx, "mapobj: variante parsée",
 			"map_id", t.mapID, "file", rel, "objets", len(v.Objects), "objectifs", nObj)
+		if isParkedPalette(v) {
+			parked++
+			slog.WarnContext(ctx, "mapobj: variante écartée, objectifs rangés hors terrain",
+				"map_id", t.mapID, "file", rel, "objectifs", nObj)
+			continue
+		}
 		if best == nil || nObj > len(best.Objectives) {
 			best = &mapEntry{
 				MapID: t.mapID, VersionID: asset.VersionID, PublicName: asset.PublicName,
@@ -213,7 +230,38 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) err
 			bestVariant = v
 		}
 	}
+	if best == nil {
+		// Carte absente du catalogue plutôt qu'objectif au mauvais endroit (fetch.go).
+		return fmt.Errorf("aucune variante exploitable : %d fichier(s), %d écarté(s) pour objectifs rangés",
+			len(files), parked)
+	}
 	cat.addVariant(best, bestVariant)
+	return nil
+}
+
+// saveVariantFile dépose un .mvar téléchargé dans un SOUS-DOSSIER par map_id.
+//
+// Pas à plat : plusieurs cartes exposent un fichier nommé `map.mvar` (Vagabond et une
+// variante de Highpower, mesuré le 2026-08-08). À plat, la seconde écrase la première et
+// --refresh-from rendrait ensuite les objectifs d'une carte pour une autre, sans un mot.
+// mvarPath (refresh.go) lit ce sous-dossier en priorité.
+func saveVariantFile(ctx context.Context, dir, mapID, rel string, buf []byte) error {
+	if dir == "" {
+		return nil
+	}
+	dir = filepath.Join(dir, mapID)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	base := rel
+	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
+		base = base[i+1:]
+	}
+	path := filepath.Join(dir, base)
+	if err := os.WriteFile(path, buf, 0o644); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "mapobj: .mvar déposé", "path", path, "octets", len(buf))
 	return nil
 }
 
