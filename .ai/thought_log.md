@@ -1,3 +1,56 @@
+## [2026-08-08] v7.5 icones — l'atlas « sandbox » EST celui du KILL FEED, et il porte sa table
+
+**Statut** : Complété. Branche `feat/v75-icones`. Non branché côté web.
+
+**Origine** : « pour l'atlas sandbox tu n'as rien trouvé ? » et « les barils, tu n'as rien
+trouvé non plus ? ». Les deux pointaient un abandon trop rapide de ma part.
+
+**LE RÉSULTAT PRINCIPAL, ET IL BOUCLE LA PREMIÈRE QUESTION DE LA SÉRIE** : l'atlas dit
+« sandbox » est **l'atlas du KILL FEED**. Le tag `bitd 8646f61a` porte sa table de nommage —
+un bloc `entries` dont chaque enregistrement est le triplet `identifier` (StringID) +
+`bitmap` (référence d'atlas) + `bitmap index`. 85 entrées, toutes vers cet atlas. La
+corrélation avec les armes de kill que l'utilisateur cherchait depuis le début n'était pas
+absente : elle était dans un tag que je n'avais pas ouvert.
+
+**43 des 88 index nommés**, dont tout ce qui manquait : les **véhicules** (warthog, rockethog,
+mongoose, gungoose, pelican, scorpion, wasp, wraith, phantom, banshee, ghost, chopper,
+falcon), les **grenades** (frag, plasma, spike), les **pictogrammes** (headshot, melee,
+suicide, ricochet, callout, environment, player_left/joined/rejoined), et sandwich, mutilator,
+grappleshot, repulsor, quantum, ball.
+
+**Comment le motif a été trouvé, parce que ça n'allait pas de soi.** Les identifiants ne sont
+NI dans le binaire (408 525 chaînes moissonnées : zéro correspondance) NI en clair dans les
+tags — tout est haché en release. En essayant des préfixes plausibles sur un vocabulaire connu
+(23 préfixes x 8 suffixes x 83 mots = 14 608 combinaisons), **4 correspondances immédiates**
+ont révélé le motif `killfeed_<nom>`. Préfixer ensuite tout le vocabulaire du binaire a porté
+le total à 43.
+
+**Les barils : `fusion_coil`.** Index 27 de l'atlas d'armes. Et avec lui, dans la même passe :
+`power_seed` (28), `machine_gun` (8), `sandwich` (35), `mythic_sandwich`. Ils ne sortaient pas
+de la moisson du binaire — ces chaînes n'y figurent pas comme jeton isolé. Un vocabulaire
+CURATÉ de 90 mots les rend, et chaque entrée n'est retenue que si son hachage tombe
+EXACTEMENT sur un StringID cherché : sur 32 bits, une centaine de candidats rend une collision
+fortuite négligeable. Le test échoue bruyamment, il ne devine pas.
+
+**Contrôle de méthode** : le #35 est le Sandwich d'après le registre. `LabelHash("sandwich")`
+retombe sur son StringID. La méthode est donc calibrée sur un cas connu AVANT d'être appliquée
+aux inconnus — et le témoin `mapvar` (`stockpile_socket` = 2110778921) est vérifié à chaque
+passage.
+
+**Ce que ça corrige dans mon vocabulaire à moi** : j'appelais cet atlas « sandbox » depuis le
+début, sur la foi de son contenu. Le jeu l'appelle kill feed. Les fichiers sont renommés
+`killfeed-NN.png`, la page aussi.
+
+**Une piste explorée et fermée** : `cusc` (l'autre référenceur de l'atlas) est une composition
+d'UI générique — components, long properties, string_id properties — sans champ `sprite index`.
+Rien à en tirer sans un walk beaucoup plus lourd, et le `bitd` a répondu mieux.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur la page.
+
+**Reste** : 8 index sans nom sur l'atlas d'armes, 45 sur celui du kill feed. Le vocabulaire
+curaté est le levier — chaque mot ajouté est testé, jamais affiché sans preuve.
+
 ## [2026-08-08] v7.5 icones — le nom interne se craque : Mutilateur, Sandwich, crane, drapeau
 
 **Statut** : Complété. Branche `feat/v75-icones`. Non branché côté web.

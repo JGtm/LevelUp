@@ -132,6 +132,13 @@ func resolveIconNames(ix *tagIndex, canon map[uint32]bool, owned map[int]bool) (
 		return map[int][]string{}, nil //nolint:nilerr // le nom est un bonus, pas un requis
 	}
 	dict := make(map[uint32]string, len(strs)*2)
+	// Le vocabulaire cure comble ce que la moisson ne rend pas : le binaire ne contient pas
+	// « fusion_coil » ni « sandwich » comme jeton isole.
+	for _, w := range curatedVocabulary {
+		if h := uint32(mapvar.LabelHash(w)); dict[h] == "" {
+			dict[h] = w
+		}
+	}
 	for s := range strs {
 		for _, v := range nameVariants(s) {
 			h := uint32(mapvar.LabelHash(v))

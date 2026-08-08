@@ -33,15 +33,18 @@
 //     au rendu, A = LE DESSIN. Seul l'alpha est extrait, rendu en blanc sur fond transparent
 //     — même convention que static/abilities-assets.
 //
+//  6. L ATLAS « SANDBOX » EST CELUI DU KILL FEED, et le tag `bitd` porte sa table de nommage
+//     (identifiant StringID + index). 43 de ses 88 index sont nommés — véhicules compris
+//     (warthog, scorpion, banshee...), grenades, et les pictogrammes (headshot, melee,
+//     suicide, player_joined). Cf. killfeed.go.
+//
 //  5. QUELLE IMAGE DÉSIGNE QUELLE ARME — établi depuis, et c'est le champ `sprite index` du
 //     bloc `UI display info` du tag `weap` (cf. weapui.go). 29 armes sur 29, chacune
 //     auto-validée. Les fichiers restent nommés par leur INDEX d'atlas ; le weapon_key est
 //     porté par index.json, ce qui évite de renommer 168 fichiers à chaque évolution.
 //
-// CE QUI RESTE AU GATE HUMAIN : l'atlas sandbox (véhicules, objectifs, grenades lancées,
-// pictogrammes) n'a aucun lien structurel connu vers le registre, et les index de l'atlas
-// d'armes qui ne correspondent à aucune arme de notre registre restent à nommer. Rien n'y est
-// deviné : afficher un mauvais fusil est pire qu'un libellé.
+// CE QUI RESTE AU GATE HUMAIN : les index sans nom ni clé — 8 sur l’atlas d’armes, 45 sur
+// celui du kill feed. Rien n’y est deviné : afficher un mauvais fusil est pire qu’un libellé.
 //
 // DEUX VOIES ÉCARTÉES, notées pour ne pas les re-tenter : chercher un petit entier à offset
 // CONSTANT dans le corps du tag (0 candidat sur 29 — le corps est un arbre de structures),
@@ -72,7 +75,7 @@ var atlasTags = []struct {
 	// Atlas « sandbox » : armes vues de plus loin (~110x38 contre ~330x117), véhicules,
 	// grenades lancées et pictogrammes de mort. Les 88 images déclarées sortent toutes
 	// propres depuis que scanImgs lit le tableau déclaré au lieu de chercher une signature.
-	{0x0302cad3, "sandbox"},
+	{sandboxAtlasTag, "killfeed"},
 }
 
 // iconEntry décrit une icône extraite, telle qu'écrite dans index.json.
@@ -155,7 +158,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "noms d'icônes:", err)
 		os.Exit(1)
 	}
-	fmt.Printf("noms craqués   : %d index de l'atlas d'armes\n\n", len(names))
+	fmt.Printf("noms craqués   : %d index de l'atlas d'armes\n", len(names))
+
+	// L'atlas « sandbox » est celui du KILL FEED, et il porte sa propre table de nommage
+	// (le tag `bitd`). Cf. killfeed.go.
+	kfNames := resolveKillfeedNames(ix)
+	fmt.Printf("kill feed      : %d index nommés par sa table `bitd`\n\n", len(kfNames))
 
 	var entries []iconEntry
 	for _, at := range atlasTags {
@@ -181,6 +189,8 @@ func main() {
 				// campagne à index périmé). Tous sont publiés : arbitrer donnerait une
 				// étiquette fausse avec l'apparence d'une certitude.
 				gameName = strings.Join(names[idx], " | ")
+			} else if at.ID == sandboxAtlasTag {
+				gameName = kfNames[idx]
 			}
 			entries = append(entries, iconEntry{
 				Index: idx, Style: at.Style, File: name, WeaponKey: key, GameName: gameName,

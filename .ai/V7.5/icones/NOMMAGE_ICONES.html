@@ -145,11 +145,12 @@
      rendus : un seul nom a donner par index.</p>
   <div class="grid" id="gWeap"></div>
 
-  <h2>Atlas sandbox — 88 icones</h2>
+  <h2>Atlas du KILL FEED — 88 icones</h2>
   <p class="note">Armes vues de plus loin, vehicules, grenades lancees (regarder autour de
-     l'index 46) et pictogrammes de mort.
+     l'index 46), vehicules et pictogrammes. <b>43 sont deja nommes</b> : le tag `bitd` du jeu porte
+     leur table (identifiant + index), et les identifiants craquent en `killfeed_     l'index 46) et pictogrammes de mort.lt;nom     l'index 46) et pictogrammes de mort.gt;`.
      Un seul style — rien n'y est pre-rempli.</p>
-  <div class="grid" id="gSand"></div>
+  <div class="grid" id="gKF"></div>
 
   <h2>Armes du registre restant sans icone</h2>
   <table id="reg"><thead><tr><th>weapon_key</th><th>Nom FR</th><th>Nom EN</th><th>Icone attribuee</th></tr></thead><tbody></tbody></table>
@@ -161,7 +162,7 @@
 </main>
 <script>
 const BASE = "../../../static/weapons-assets/halo_infinite/jeu/";
-const NB_WEAP = 40, NB_SAND = 88;
+const NB_WEAP = 40, NB_KF = 88;
 
 // RESOLU : index d'atlas -> weapon_key, LU DANS LE JEU et non deduit. Source : le champ
 // `sprite index` du bloc `UI display info` du tag `weap` (plugin weap.xml). Chaque ligne est
@@ -181,6 +182,18 @@ const RESOLU = {
 // et pas une chaine — les textes sont strippes en release. Le nom est retrouve en hachant les
 // chaines du binaire du jeu (meme recette que le nommage des objets Forge). Un « | » separe
 // des noms concurrents : plusieurs tags revendiquent l'index, et on ne tranche pas.
+const NOMS_KILLFEED = {
+  0:"battle_rifle", 2:"assault_rifle", 6:"hydra", 7:"sniper", 13:"gravity_hammer", 15:"skewer", 
+  17:"plasma_pistol", 18:"sword", 19:"needler", 22:"heatwave", 24:"sentinelbeam", 26:"warthog", 
+  27:"rockethog", 28:"mongoose", 29:"gungoose", 30:"pelican", 31:"scorpion", 32:"wasp", 
+  33:"wraith", 34:"phantom", 35:"banshee", 36:"ghost", 37:"chopper", 46:"frag_grenade", 
+  47:"plasma_grenade", 49:"spike_grenade", 54:"callout", 55:"environment", 56:"repulsor", 
+  57:"ricochet", 59:"ball", 61:"suicide", 64:"headshot", 65:"melee", 69:"player_left", 
+  70:"player_joined", 71:"player_rejoined", 72:"grappleshot", 73:"bandit", 76:"sandwich", 
+  79:"quantum", 81:"mutilator", 85:"falcon", 
+};
+// 43 nommes sur 88
+
 const NOMS_JEU = {
   0:"assault_rifle", 1:"battle_rifle", 5:"sniper_rifle", 9:"needler", 11:"plasma_pistol",
   12:"plasma_turret", 16:"gravity_hammer", 17:"skewer", 20:"heatwave", 22:"sentinel_beam",
@@ -252,7 +265,7 @@ function carte(atlas, i) {
   // Pre-remplissage : ce que le jeu declare. L'utilisateur garde la main — le champ reste
   // modifiable, et une saisie deja enregistree n'est jamais ecrasee.
   const resolu = atlas === "weap" ? (RESOLU[i] || "") : "";
-  const nomJeu = atlas === "weap" ? (NOMS_JEU[i] || "") : "";
+  const nomJeu = atlas === "weap" ? (NOMS_JEU[i] || "") : (NOMS_KILLFEED[i] || "");
   let v = etat[k];
   if (!v && (resolu || nomJeu)) {
     // Le nom interne ne remplace jamais l'arme du registre : il remplit le champ libre,
@@ -268,11 +281,11 @@ function carte(atlas, i) {
   const shots = atlas === "weap"
     ? '<div class="shot"><img loading="lazy" src="' + BASE + "contour-" + pad(i) + '.png" alt=""></div>' +
       '<div class="shot"><img loading="lazy" src="' + BASE + "silhouette-" + pad(i) + '.png" alt=""></div>'
-    : '<div class="shot"><img loading="lazy" src="' + BASE + "sandbox-" + pad(i) + '.png" alt=""></div>';
+    : '<div class="shot"><img loading="lazy" src="' + BASE + "killfeed-" + pad(i) + '.png" alt=""></div>';
   el.innerHTML =
     '<div class="top"><span class="idx">#' + pad(i) + '</span>' +
       (resolu || nomJeu ? '<span class="badge auto" title="lu dans le tag weap du jeu : index par « sprite index », nom par craquage murmur3">resolu depuis le jeu</span>' : "") +
-      '<span class="meta">' + (atlas === "weap" ? "contour + silhouette " : "sandbox-") + pad(i) + '</span></div>' +
+      '<span class="meta">' + (atlas === "weap" ? "contour + silhouette " : "killfeed-") + pad(i) + '</span></div>' +
     '<div class="shots">' + shots + '</div>' +
     '<select>' + optionsSelect() + '</select>' +
     '<div class="row"><input type="text" placeholder="libelle libre (facultatif)"></div>' +
@@ -292,9 +305,9 @@ function carte(atlas, i) {
   return el;
 }
 
-const gWeap = document.getElementById("gWeap"), gSand = document.getElementById("gSand");
+const gWeap = document.getElementById("gWeap"), gKF = document.getElementById("gKF");
 for (let i = 0; i < NB_WEAP; i++) gWeap.appendChild(carte("weap", i));
-for (let i = 0; i < NB_SAND; i++) gSand.appendChild(carte("sand", i));
+for (let i = 0; i < NB_KF; i++) gKF.appendChild(carte("kf", i));
 
 // Un weapon_key attribue deux fois est signale : c'est presque toujours une erreur de saisie.
 function signalerDoublons() {
@@ -325,15 +338,15 @@ function libelle(v) {
 
 function lignes() {
   const out = [];
-  for (const [atlas, n] of [["weap", NB_WEAP], ["sand", NB_SAND]]) {
+  for (const [atlas, n] of [["weap", NB_WEAP], ["kf", NB_KF]]) {
     for (let i = 0; i < n; i++) {
       const v = etat[cle(atlas, i)];
       if (!v || (!v.choix && !v.libre)) continue;
       const fichiers = atlas === "weap"
         ? "contour-" + pad(i) + ".png|silhouette-" + pad(i) + ".png"
-        : "sandbox-" + pad(i) + ".png";
+        : "killfeed-" + pad(i) + ".png";
       const wk = v.choix && !v.choix.startsWith("libre:") ? v.choix : "";
-      out.push([atlas === "weap" ? "armes" : "sandbox", pad(i), fichiers, libelle(v), wk].join("\t"));
+      out.push([atlas === "weap" ? "armes" : "killfeed", pad(i), fichiers, libelle(v), wk].join("\t"));
     }
   }
   return out;
@@ -361,7 +374,7 @@ function rendreRegistre() {
 
 function majProgression() {
   const n = Object.values(etat).filter(v => v.choix || v.libre).length;
-  document.getElementById("prog").textContent = n + " / " + (NB_WEAP + NB_SAND) + " icones nommees";
+  document.getElementById("prog").textContent = n + " / " + (NB_WEAP + NB_KF) + " icones nommees";
 }
 
 function appliquerFiltre() {
