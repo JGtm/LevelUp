@@ -21,16 +21,33 @@ import (
 //
 // Recette du prototype — volume borne en Z, praticabilite par
 // degagement, COUPE horizontale.
-func TestCarteCliffhanger(t *testing.T) {
+// optionsCarte : les choix qui font une reconstruction. Ils sont explicites parce que ce
+// sont EUX qu'on compare — l'oracle (`carte_oracle_gamefiles_test.go`) rejoue le meme
+// volume sous plusieurs jeux d'options pour les departager sur donnees reelles.
+type optionsCarte struct {
+	Carte      string
+	ZMin, ZMax float64
+	CarteSeule bool // ne garder que les instances du module de la carte
+	Dequant    Dequant
+	// BorneAABB : marge du bornage a la boite monde de l'instance, en metres. Negatif =
+	// pas de bornage (cf. AddMeshBorne).
+	BorneAABB float64
+}
+
+// construitVolume rasterise la carte dans un volume, selon les options donnees.
+func construitVolume(t *testing.T, o optionsCarte) *Volume {
+	t.Helper()
 	racine, err := DeployRoot()
 	if err != nil {
 		t.Skip(err)
 	}
-	carte := os.Getenv("PROBE_CARTE")
-	if carte == "" {
-		carte = "ridgeline"
+	if o.Carte == "" {
+		o.Carte = "ridgeline"
 	}
-	modCarte := moduleDuJeu(t, "pc", carte)
+	if o.Dequant == nil {
+		o.Dequant = DequantBrut
+	}
+	modCarte := moduleDuJeu(t, "pc", o.Carte)
 	chemins, _ := GeometrySearchPath(racine, modCarte)
 	idx, err := NewModuleIndex(chemins...)
 	if err != nil {
@@ -45,15 +62,10 @@ func TestCarteCliffhanger(t *testing.T) {
 	}
 	lo := [2]float64{bsp.Bounds.Min[0], bsp.Bounds.Min[1]}
 	hi := [2]float64{bsp.Bounds.Max[0], bsp.Bounds.Max[1]}
-	zmin, zmax := VolumeZMin, VolumeZMax
-	if v := os.Getenv("PROBE_Z"); v != "" {
-		fmt.Sscanf(v, "%f,%f", &zmin, &zmax)
-	}
-	vol := NewVolumeZ(lo, hi, zmin, zmax)
+	vol := NewVolumeZ(lo, hi, o.ZMin, o.ZMax)
 	t.Logf("volume %d x %d x %d (cellule %.2f m, bande %.1f m, tranche [%.0f ; %.0f])",
 		vol.NX, vol.NY, vol.NZ, vol.Cell, vol.ZBand, vol.ZMin, vol.ZMin+float64(vol.NZ)*vol.ZBand)
 
-	carteSeule := os.Getenv("PROBE_TOUS_MODULES") == ""
 	assets := map[uint32]*RuntimeGeoAsset{}
 	rendues, ecartees := 0, 0
 	for _, in := range bsp.Instances {
@@ -65,7 +77,7 @@ func TestCarteCliffhanger(t *testing.T) {
 		if !ok || g != "rtgo" {
 			continue
 		}
-		if carteSeule && filepath.Base(mod) != filepath.Base(modCarte) {
+		if o.CarteSeule && filepath.Base(mod) != filepath.Base(modCarte) {
 			ecartees++
 			continue
 		}
@@ -80,14 +92,37 @@ func TestCarteCliffhanger(t *testing.T) {
 			}
 			assets[id] = a
 		}
-		if m := a.Mesh(in.MeshIndex); m != nil {
+		if m := a.MeshDequant(in.MeshIndex, o.Dequant); m != nil {
 			rendues++
-			vol.AddMesh(m, in)
+			if o.BorneAABB < 0 {
+				vol.AddMesh(m, in)
+			} else {
+				vol.AddMeshBorne(m, in, o.BorneAABB)
+			}
 		}
 	}
 	t.Logf("%d instances rasterisees · %d ecartees (modules globaux)", rendues, ecartees)
+	return vol
+}
 
-	sol := vol.Floors(HeadroomBands)
+func TestCarteCliffhanger(t *testing.T) {
+	zmin, zmax := VolumeZMin, VolumeZMax
+	if v := os.Getenv("PROBE_Z"); v != "" {
+		fmt.Sscanf(v, "%f,%f", &zmin, &zmax)
+	}
+	vol := construitVolume(t, optionsCarte{
+		Carte:      os.Getenv("PROBE_CARTE"),
+		ZMin:       zmin,
+		ZMax:       zmax,
+		CarteSeule: os.Getenv("PROBE_TOUS_MODULES") == "",
+		BorneAABB:  0.5,
+	})
+
+	degagement := HeadroomBands
+	if v := os.Getenv("PROBE_DEGAGEMENT"); v != "" {
+		fmt.Sscanf(v, "%d", &degagement)
+	}
+	sol := vol.Floors(degagement)
 	niveau, cellules := sol.NiveauLePlusPeuple()
 	if v := os.Getenv("PROBE_NIVEAU"); v != "" {
 		fmt.Sscanf(v, "%f", &niveau)
