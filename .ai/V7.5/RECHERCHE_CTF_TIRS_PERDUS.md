@@ -731,6 +731,61 @@ contre 84-99 % ailleurs. Les tirs manquants d'un match Fiesta ne sont donc **pas
 sélection : ils ne sont pas dans le flux type 105 du tout. Cause toujours inconnue, mais le
 périmètre de recherche vient d'être réduit.
 
+### 8.4sexies OÙ LE RECORD COURT PORTE-T-IL SON TIREUR — recherche par balayage
+
+Suite directe du §8.4quinquies. Instrument : `ctf_shortauthor_research_test.go`. Il balaie les
+offsets du payload court à la recherche d'un champ qui se comporte comme un index de joueur.
+
+**LE CRITÈRE EST ÉCRIT AVANT LA MESURE, ET IL EST STRICT — sinon le hasard gagne.** Balayer ~250
+offsets sur 4 largeurs et 2 décalages, c'est ~2 000 candidats par film. À ce volume, des champs
+passeront par chance : un compteur de munitions ou un identifiant tronqué peut tomber dans [0,7]
+et couvrir huit valeurs. Quatre garde-fous :
+
+| # | critère | ce qu'il élimine |
+|---|---|---|
+| 1 | **couverture** : les huit index présents, **aucun à zéro** | le champ concentré sur deux joueurs (le défaut de l'offset actuel) |
+| 2 | **pureté** : moins de 1 % de valeurs hors [0,7] | les champs plus larges qui débordent du roster |
+| 3 | **corrélation** ≥ 0,5 entre le profil par joueur des COURTS et celui des LONGS | **le contrôle INDÉPENDANT** — un champ qui passe 1 et 2 par hasard n'a aucune raison de suivre l'activité de tir mesurée par une autre source |
+| 4 | **reproductibilité** : le même offset passe sur les **quatre** films | la coïncidence mono-film |
+
+**Le critère 4 est celui qui rend le balayage licite.** Sans lui, un balayage large trouve
+toujours « quelque chose », et ce quelque chose n'est rien.
+
+#### RÉSULTAT : AUCUN CANDIDAT NE SURVIT AU CRITÈRE 4. LA VOIE EST FERMÉE.
+
+| film | candidats passant les critères 1-3 |
+|---|---|
+| `9aeca4b3` | 26 |
+| `64e8adfa` | 25 |
+| `0edb8512` | 6 |
+| `000d5950` | 4 |
+| **sur les QUATRE films** | **0** |
+
+**Soixante et un candidats passent sur un film ; aucun n'en passe deux.** Les meilleurs, pris
+isolément, sont pourtant convaincants — bit 77 largeur 3 sur `0edb8512` : huit index couverts,
+**0 % hors roster**, corrélation **0,755** avec le profil des longs. Sur ce seul film, on
+publierait une découverte. Elle ne tient sur aucun autre.
+
+**C'est exactement ce que le critère 4 était écrit pour attraper**, et il valait la peine d'être
+posé avant : un balayage de ~2 000 candidats par film trouve toujours « quelque chose », et ce
+quelque chose n'est rien. Sans ce garde-fou, ce document annoncerait aujourd'hui un offset faux.
+
+**Ce que ça établit** : l'auteur du record court **n'est pas un champ de 3 à 6 bits situé dans les
+256 premiers bits du payload**. La voie du balayage d'offset est close.
+
+**Ce que ça n'exclut PAS**, et il faut le dire pour que personne ne rouvre la même porte :
+- un champ **plus large** (au-delà de 6 bits) ou situé **au-delà du bit 256** ;
+- un auteur **indirect** — un handle d'entité qu'il faudrait résoudre, et non un index de joueur.
+  Les valeurs hors roster observées au §8.4quinquies (**9, 14, 15**) ressemblent d'ailleurs
+  davantage à un index d'ENTITÉ qu'à un index de joueur ;
+- que le court ne porte **aucun** auteur, parce qu'il décrirait un objet (fin de vol d'un
+  projectile, impact) et non un geste de joueur — auquel cas le total qui « colle » avec les tirs
+  de l'API serait une conséquence, pas une identité.
+
+**La suite n'est plus du balayage, c'est de la rétro-ingénierie** : lire le désérialiseur du
+record 105 dans le binaire pour savoir ce que la variante courte décrit. C'est le seul chemin qui
+reste, et il est plus lourd que tout ce qui précède.
+
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 
 `kill_positions` devient le meilleur rapport valeur/coût du chantier, et **il ne dépend pas du

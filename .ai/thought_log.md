@@ -1,3 +1,43 @@
+## [2026-08-08] v7.5 colonne (1) — l'auteur du record court : voie du balayage FERMEE
+
+**Statut** : Complété (résultat négatif, et c'en est un). Instrument #6
+`ctf_shortauthor_research_test.go`, quatre films, ~2 000 candidats balayés par film
+(offsets 0-255, largeurs 3-6 bits, avec et sans décalage).
+
+**LE CRITÈRE ÉTAIT ÉCRIT AVANT LA MESURE, et c'est lui qui sauve la conclusion.** Quatre
+garde-fous : (1) huit index couverts, aucun à zéro ; (2) moins de 1 % hors roster ; (3)
+corrélation ≥ 0,5 avec le profil par joueur des records LONGS — le contrôle INDÉPENDANT ; (4)
+**le même offset doit passer sur les quatre films**.
+
+**RÉSULTAT : 61 candidats passent les critères 1-3 sur UN film. AUCUN n'en passe DEUX.**
+
+| film | candidats retenus (critères 1-3) |
+|---|---|
+| `9aeca4b3` | 26 |
+| `64e8adfa` | 25 |
+| `0edb8512` | 6 |
+| `000d5950` | 4 |
+| **sur les quatre** | **0** |
+
+Les meilleurs sont pourtant convaincants pris isolément — bit 77 largeur 3 sur `0edb8512` :
+huit index couverts, **0 % hors roster**, corrélation **0,755**. Sur ce seul film on publierait
+une découverte. **Sans le critère 4, ce journal annoncerait aujourd'hui un offset faux.**
+
+**CE QUE ÇA ÉTABLIT** : l'auteur du record court n'est pas un champ de 3 à 6 bits dans les 256
+premiers bits du payload. La voie du balayage d'offset est CLOSE.
+
+**CE QUE ÇA N'EXCLUT PAS** (écrit pour que personne ne rouvre la même porte) : un champ plus
+large ou au-delà du bit 256 ; un auteur INDIRECT — un handle d'entité à résoudre, ce que les
+valeurs hors roster 9/14/15 suggèrent ; ou que le court ne porte aucun auteur parce qu'il
+décrirait un OBJET (fin de vol, impact) et non un geste de joueur — auquel cas l'accord des
+totaux avec les tirs de l'API serait une conséquence, pas une identité.
+
+**Conclusion / prochaine étape.** La suite n'est plus du balayage mais de la rétro-ingénierie :
+lire le désérialiseur du record 105 dans le binaire pour savoir ce que la variante courte décrit.
+C'est le seul chemin restant sur la colonne (1), et il est plus lourd que tout ce qui précède.
+L'autre question ouverte — pourquoi un Fiesta ne porte qu'un tiers de ses tirs — reste entière et
+pèse plus en volume.
+
 ## [2026-08-08] v7.5 colonne (1) — la variante courte : c'est un tir, mais son auteur n'est pas la
 
 **Statut** : Complété (recherche). Instrument #5 `ctf_shortvariant_research_test.go`, quatre
