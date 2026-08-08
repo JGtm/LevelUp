@@ -1,3 +1,46 @@
+## [2026-08-08] v7.5 colonne (1) — la variante courte : c'est un tir, mais son auteur n'est pas la
+
+**Statut** : Complété (recherche). Instrument #5 `ctf_shortvariant_research_test.go`, quatre
+films, **10 674 records type 105** lus dans LES DEUX variantes.
+
+**D'ABORD, UNE CORRECTION DE MA PROPRE AFFIRMATION.** J'avais écrit que « le rejeu balaie les
+bits, la piste E lit les paquets ». **FAUX** : les deux utilisent `WalkPackets`. La différence
+tient à une seule ligne de `ScanFilmFireEvents` — `int(pay[0])&1 != 0 { continue }`, qui **écarte
+la variante COURTE**. L'écart de 10-17 % entre les deux comptes, ce sont les courts.
+
+**CE QUE LA MESURE ÉTABLIT.**
+
+1. **Le court est très probablement un TIR.** Hors Fiesta, longs+courts rendent **84 à 99 %** des
+   tirs de l'API (`0edb8512` 99,3 % · `64e8adfa` 94,7 % · `9aeca4b3` 84,0 %) là où les longs
+   seuls plafonnent à 72-87 %. Le total colle.
+2. **MAIS SON AUTEUR N'EST PAS LISIBLE À L'OFFSET DU LONG, et c'est rédhibitoire.** Les longs
+   couvrent les huit index de façon équilibrée ; les courts se concentrent sur **deux index**
+   (0 et 6), laissent 1/3/5/7 à **zéro**, et produisent des index **9, 14, 15 — impossibles à
+   huit joueurs**. Ce champ n'est pas un index de joueur.
+3. **Ce n'est pas une suite de rafale** : écart médian au long précédent du même index de **4 à
+   32 secondes**, seuls 1,4-4,6 % sous 50 ms.
+4. **La taille du payload ne discrimine pas** (1 392 à 2 104 bits, aucun mode).
+
+**VERDICT — la piste est REDIRIGÉE, pas fermée.** Le décodeur a RAISON de ne pas émettre les
+courts : les publier attribuerait 13-15 % de tirs de plus à deux joueurs sur huit, avec des index
+hors roster. Mais le total dit que ces records SONT des tirs ; c'est leur AUTEUR qui se lit
+ailleurs. La question ouverte devient **« où le record court porte-t-il son tireur »**, avec un
+critère de succès déjà écrit : une distribution sur les huit index comparable à celle des longs —
+le même critère qui vient de disqualifier l'offset actuel.
+
+**ET LE TROU FIESTA N'EST PAS LÀ.** `000d5950` reste à **37,3 %** même en comptant les courts,
+contre 84-99 % ailleurs. Les tirs manquants d'un Fiesta ne sont pas une affaire de sélection :
+ils ne sont pas dans le flux type 105 du tout. Cause inconnue, périmètre réduit.
+
+**Un accesseur exporté**, `filmdec.ReadAttackerIndex` — pour que l'instrument n'ait pas à
+recopier `fireAttackerBit`/`fireAttackerW`. Un seul endroit déclare ces offsets.
+
+**Vérifications** : `go test` vert sur `replay` (30,0 s) et `filmdec` (0,9 s), `go vet` propre.
+
+**Conclusion / prochaine étape.** Deux questions ouvertes et bien bornées : (a) où le record
+court porte son tireur ; (b) pourquoi le flux 105 d'un Fiesta ne porte qu'un tiers des tirs. La
+seconde est la plus grosse en volume, et la première la plus proche d'aboutir.
+
 ## [2026-08-08] v7.5 voie B — la mort sur la carte : 88,2 %, et deux pistes remises droit par l'utilisateur
 
 **Statut** : Complété (mesure + documentation). Branche `research/v75-ctf`.
