@@ -46,7 +46,20 @@ ARME reste ce que §3bis en dit, sans un mot de change (§3quater.4 tranche le p
 
 ### 1.1 Un fire-event est un tir, exactement — SUR ARSENAL A TRACE INSTANTANEE
 
-> ⚠ **PORTEE AJOUTEE LE 2026-07-28 (RE_LOG 7ter.101, index §22) — ELLE EST DANS LE TITRE PARCE
+> ⚠⚠ **CONTESTE LE 2026-08-08 PAR LA PISTE E — LIRE CECI AVANT LE PARAGRAPHE QUI SUIT.**
+> Mesure PAR ARME (et non par famille de mode) : le **taux de porteur** du Needler vaut
+> **0.0067** en Fiesta — s il s agissait de touches il vaudrait ~1 — et sa **cadence
+> inter-record** vaut **83.4 ms de mediane, q90 100.1 ms**, c est-a-dire son temps de cycle.
+> **Un record est un TIR pour toutes les armes, projectiles compris** ; l agregat Fiesta
+> s explique par une coincidence (le film n y montre que 0.306 des tirs, et la precision y vaut
+> 0.283). Ceci **retablit 7ter.81 (5)**. Statut du contestataire : `[MESURE]`, non reproduit par
+> un tiers. Details : `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md` §3.
+> **CONSEQUENCE PRATIQUE POUR CETTE TABLE : AUCUNE.** Que le record soit un tir ne rend pas la
+> Fiesta publiable — la porte la refuse toujours, et pour la meme raison mesuree (le film n y
+> voit qu un tir sur trois).
+>
+> *Paragraphe d origine, conserve :* **PORTEE AJOUTEE LE 2026-07-28 (RE_LOG 7ter.101, index
+> §22) — ELLE EST DANS LE TITRE PARCE
 > QU ELLE CHANGE LE SENS DE LA MESURE.** La loi `k = 1` vaut sur les arsenaux a **trace
 > instantanee**. Sur un arsenal a **projectiles**, le meme evenement ne compte plus les tirs :
 > il suit les **TOUCHES**. Mesure par famille de mode, egalite a `|d| <= 5` contre un fond
@@ -318,6 +331,18 @@ n existe aucune base pour les calibrer, et un correctif non calibrable serait un
 > **1.0000** et une reproduction independante a l unite (7ter.91, verifiee par 7ter.94).
 > **Reponse a la question de l utilisateur : NON — la precision reste publiable pour ces QUATRE
 > armes et pour aucune autre, et aucune arme a projectile n en fera partie par cette voie.**
+>
+> ⚠ **NI PAR AUCUNE AUTRE — TIMEBOX CLOS LE 2026-08-08 (piste E, verdict NEGATIF).** La question
+> a ete rouverte sous trois angles et les trois sont fermes : le **compteur de tir 7 bits** ne
+> porte pas les tirs de projectile invisibles (pas moyen Needler 1.3383 contre BR75 1.3545) ; les
+> **touches de projectile ne sont pas dans les records de degat**, filtre d arme leve (Fiesta
+> 0.1729 des touches API contre 0.8556 en Tactical — 31 400 touches sans porteur) ; et la
+> **deconvolution** contre les touches API, menee au grain joueur avec coefficients bornes sur
+> 8 562 observations, rate son controle positif (2 armes sur 4 a +-0.03). **NE PAS re-ouvrir sans
+> raison neuve.** La seule voie restante ne depend pas de cette table : rattacher l ENTITE
+> projectile a un joueur par sa TRAJECTOIRE, bloque par `object-position-component` de `ti=41`
+> (non bit-exact, 45 bits contre 60) — c est un travail de DECODEUR.
+> Verdict complet : `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md` (§0bis = une page).
 > Ce qui reste ouvert, et qui est une AUTRE question : les touches **RECUES** (§3ter.2) — sans
 > reference API.
 
@@ -501,6 +526,15 @@ toutes les contraintes ; le scan cible d un film rend 292 candidats pour 87 kill
   TAUX DE REMPLISSAGE   porteurs / records, par joueur et par match.
 ```
 
+> ⚠⚠ **CONTESTE LE 2026-08-08 (piste E)** — mesure par ARME : taux de porteur du Needler
+> **0.0067**, cadence inter-record **83.4 ms** (son temps de cycle). **Le record est un TIR pour
+> toutes les armes.** Ce qui **NE CHANGE PAS** : `porteurs/records` reste la precision du joueur
+> sur arsenal a trace instantanee (mes propres chiffres la reproduisent — MA40 0.4405, BR75
+> 0.4242 contre une reference API a 0.4293), et sa portee s arrete toujours en Fiesta. La piste E
+> **explique** cette borne au lieu de la constater : le quotient y est tire vers zero par les
+> armes dont le record de tir ne porte jamais de degat. Cf. `VERDICT_PRECISION_PROJECTILES.md` §3.
+>
+> *Enonce d origine, conserve :*
 **L UNITE DU RECORD DEPEND DE L ARSENAL** (7ter.101) : c est un **TIR** sur arme a trace
 instantanee (Tactical : `records == shots_fired` **45** egalites a `|d| <= 5` contre **14.3** au
 fond permute intra-film, **0/200**) et une **TOUCHE** sur arsenal a projectiles (Fiesta : 174

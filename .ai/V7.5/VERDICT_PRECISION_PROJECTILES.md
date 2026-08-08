@@ -44,8 +44,11 @@ LA SEULE VOIE QUI RESTE, ET ELLE N'APPARTIENT PAS À CETTE PISTE
 
 **Ce qui doit remonter au dossier, quel que soit l'avenir de la piste :** la correction d'offset
 de `RoundsCorrected` (§4bis.2), l'identité `eventStart+106 == payload bit 110` (§1), l'unité du
-record par arme (§3.3), et le fait que la précision par arme est une grandeur que **le moteur
-calcule nativement** mais n'expédie qu'à sa télémétrie (§4bis.1).
+record par arme (§3.3), le fait que la précision par arme est une grandeur que **le moteur
+calcule nativement**, par arme, dans un enregistrement de pas 0xa8 (§4bis.1), et — le plus utile
+au dossier — **la CAUSE de l'absence des stats 0x0D / 0x0E du film : une porte
+(`DAT_1451222c8`) dont aucun écrivain n'apparaît dans le binaire** (§4bis.3). Le négatif
+empirique de 7ter.83 (1) cesse d'être un résultat sans explication.
 
 ---
 
@@ -374,14 +377,56 @@ de la référence.
 > `FUN_140181e60` et ses voisins) **n'a pas été tracé**. L'énoncé juste est *« aucune sommation
 > dans le chemin lu »*, pas *« prouvé que l'API ne somme jamais »*.
 
-### 4bis.3 POURQUOI LE FILM NE PORTERA JAMAIS CES COMPTEURS — l'argument de fermeture
+### 4bis.3 POURQUOI LE FILM NE PORTE PAS CES COMPTEURS — LA PORTE, ET LA CORRECTION D'UNE ERREUR À MOI
 
-Ces compteurs vivent dans une structure de **statistiques / télémétrie**, pas dans un composant
-ECS répliqué. C'est exactement ce que 7ter.83 (2) avait mesuré par l'autre bout — énumération
-exhaustive de **325 noms de composants** et **118 archétypes** du registre `chunk_00`, **zéro**
-composant portant une statistique de tir, et côté arme seulement l'ÉTAT (identité par
-emplacement, munitions, inventaire de chargeurs, surchauffe). **Les deux lectures se rejoignent :
-le moteur calcule la précision par arme et l'expédie à la télémétrie ; il ne la réplique pas.**
+> ⚠ **PREMIÈRE RÉDACTION FAUSSE, corrigée le 2026-08-08 après objection de l'utilisateur.**
+> J'avais écrit : *« le moteur calcule la précision par arme et l'expédie à la télémétrie ; il ne
+> la réplique pas »*. **C'est faux, et l'index le disait déjà** (§ « Les compteurs sont-ils
+> poussés vers la réplication ? » — `[ETABLI]` dans l'.exe) : `ShotsFired++` appelle
+> `FUN_142bb2d80` → **stat 0x0D**, `ShotsLanded++` appelle `FUN_142bb2e28` → **stat 0x0E**, et
+> `FUN_142bb7074` **recalcule 0x0F, la précision**, à partir des deux. Ces deux appels étaient
+> dans mes propres décompilés de §4bis.1 et je ne les ai pas reconnus. La télémétrie est un
+> **second** consommateur, pas le seul. *Leçon : greper l'index AVANT d'écrire une conclusion,
+> pas seulement avant d'ouvrir une piste.*
+
+**Le push existe donc — et il est derrière une porte.** Les deux fonctions ont la même forme :
+
+```c
+if (*(char *)(param_1 + 0x59d09) == '\0') { ...simple mise a jour d horloge, AUCUN push... }
+else if (DAT_1451222c8 != '\0') {
+    ... FUN_142b63d98(&world_stats, desc, 0xd);   // 0x0E pour les touches
+    if (desc_present) { FUN_142b995b8(...); FUN_142bb7074(...); }   // push + recalcul de 0x0F
+}
+```
+
+**`DAT_1451222c8` porte EXACTEMENT QUATRE références dans tout le binaire, et les quatre sont des
+LECTURES** — `FUN_142bb2d80` (0x0D tirs), `FUN_142bb2e28` (0x0E touches), `FUN_142bb24c8` (0x13)
+et `FUN_142bb2580` (0x14). **Aucune écriture.** Les quatre statistiques de cette famille
+partagent la même porte ; les kills et le score, eux, passent par un autre chemin — et ce sont
+précisément eux qui **arrivent** dans le film, à l'unité.
+
+**Les deux méthodes se rejoignent, et c'est ce qui rend le négatif solide :**
+
+```
+  le code           le push de 0x0D / 0x0E existe, derriere une porte dont aucun ecrivain
+                    n apparait dans le binaire
+  la mesure         7ter.83 (1) : 0x0D 4/23 · 0x0E 4/23 · 0x0F 7/23 contre un fond permute de
+                    3/23 · 4/23 · 7/23 — le niveau du bruit — pendant que le MEME balayage
+                    rend kills 23/23 et score 23/23
+```
+
+C'est **le même motif que la porte du tag des codes 6/7** (`b0 == 1` sur 168 380 observations,
+zéro exception) : un chemin qui existe dans le code et dont la porte n'est jamais ouverte. Deux
+occurrences du même motif dans ce moteur.
+
+> **PORTÉE, et elle limite ce qui précède** : « aucune écriture parmi les xrefs de Ghidra » n'est
+> pas « aucune écriture ». Un écrivain par adresse calculée (système de configuration, CVar)
+> échapperait à l'analyse. Ce qui rend l'énoncé exploitable, ce n'est pas le décompilé seul —
+> c'est **sa convergence avec la mesure offline**, qui a son propre contrôle positif.
+
+Reste vrai, et par une troisième voie : 7ter.83 (2) a énuméré **325 noms de composants** et
+**118 archétypes** du registre `chunk_00` sans trouver **aucune** statistique de tir — côté arme
+il n'y a que l'ÉTAT (identité par emplacement, munitions, inventaire de chargeurs, surchauffe).
 
 Et le chemin de la touche confirme pourquoi elle est hors de portée hors ligne :
 `FUN_1408df6a4` résout son arme en **déréférençant une chaîne de handles** — objet de dégât,
