@@ -16,6 +16,7 @@ réfuté. Ce qui reste à faire ou à terminer n'est pas ici mais à la racine d
 | `killweapon/` | Arme / source de dégât par kill : kill feed, dead-state, same-clock, walk biped, journal RE | 22 |
 | `replay2d/` | POC du rejeu 2D : trajectoires, inventaire/loadout, vérité terrain | 7 |
 | `cartes/` | Géométrie 2D des maps depuis les `.module`, triangles, noms de zones | 3 |
+| `icones/` | Icônes d'armes et du **kill feed** extraites des `.module` : chaîne, tables de correspondance, page de nommage, planches-contact | 5 |
 | `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 69 Mo, lus par du code | 40 entrées |
 
 À la racine de `V7.5/` : `PLAN_RECONCILIATION_BRANCHES.md` — la réconciliation des deux
@@ -32,6 +33,9 @@ sept grandeurs de non-régression des trois films, encore citées comme gate par
 - **Reverse externe / handoff** : `film_re/HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md`,
   `film_re/GITHUB_RE_FINDINGS_EN.md` (EN).
 - **Cartes** : `cartes/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md`.
+- **Icônes (armes, véhicules, kill feed)** : `icones/ETAT_DE_L_ART_ICONES.md` — chaîne complète,
+  tables index → arme/nom, pistes réfutées. Le nommage restant se fait dans
+  `icones/NOMMAGE_ICONES.html` (page locale, hors app).
 
 ## Ce qui est resté à la racine de `.ai/`
 
