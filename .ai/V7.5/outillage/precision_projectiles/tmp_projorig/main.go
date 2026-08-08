@@ -72,6 +72,7 @@ func main() {
 	minShots := flag.Int("mintirs", 300, "tirs minimum pour publier une arme")
 	catalog := flag.String("catalogue", "", "chemin de map_quant_bounds.json")
 	mapsCSV := flag.String("cartes", "", "CSV matchID,carte")
+	dropGrenades := flag.Bool("sansgrenades", false, "retirer du vivier les naissances appariables a un lancer")
 	flag.Parse()
 
 	if *films == "" || *catalog == "" || *mapsCSV == "" {
@@ -102,6 +103,14 @@ func main() {
 		fires = append(fires, scanThrows(d)...)
 		wr := ranges[di]
 		births := scanBirthsProd(d, &wr)
+		if *dropGrenades {
+			// LE CONFONDANT A ECARTER. Les armes lourdes se tirent dans les melees, ou des
+			// grenades volent aussi : une fenetre de 200 ms pourrait apparier un tir de
+			// roquette a la naissance de la grenade du voisin. On retire donc du vivier toute
+			// naissance appariable a un LANCER, et on refait la mesure. Si le groupe lourd
+			// tient, le confondant est mort.
+			births = dropNear(births, scanThrows(d), 200_000)
+		}
 		totFires += len(fires)
 		totBirths += len(births)
 		if len(fires) == 0 || len(births) == 0 {
@@ -140,6 +149,25 @@ func main() {
 	fmt.Printf("%d films : %d records de tir, %d naissances d'entite ti=41\n", len(dirs), totFires, totBirths)
 	fmt.Printf("fenetre %d ms apres le tir ; nulle = naissances decalees de %d ms\n\n", *windowMS, *shiftMS)
 	report(tally, names, *minShots)
+}
+
+// dropNear retire les naissances appariables a l'un des evenements donnes.
+func dropNear(births []birth, evts []fire, win uint64) []birth {
+	if len(evts) == 0 {
+		return births
+	}
+	ts := make([]uint64, len(evts))
+	for i, e := range evts {
+		ts[i] = e.tsUS
+	}
+	sort.Slice(ts, func(i, j int) bool { return ts[i] < ts[j] })
+	out := births[:0:0]
+	for _, b := range births {
+		if !hasBirthIn(ts, b.tsUS, win) {
+			out = append(out, b)
+		}
+	}
+	return out
 }
 
 // hasBirthIn dit si une naissance tombe dans [t-win, t+win] — la fenetre SYMETRIQUE de

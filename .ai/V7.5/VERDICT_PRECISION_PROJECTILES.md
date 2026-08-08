@@ -796,3 +796,118 @@ tmp_pjcnt -films <cache> -ref ref.csv -famille TACTICAL -limit 22 -out m.csv   #
 Coût mesuré : **50 ms par film** en balayage de paquets (300 films en 15,0 s, chronométré) —
 un ordre de grandeur sous le balayage bit à bit de 1,65 s/film mesuré en §4 du guide. Aucune
 écriture hors du répertoire de sortie ; le cache de films n'est jamais ouvert en écriture.
+
+---
+
+## 9. ADDENDUM DU 2026-08-08 (soir) — LA PRÉMISSE DE LA VOIE TRAJECTOIRE EST MESURÉE, ET ELLE SÉPARE LES ARMES EN TROIS
+
+> Ajouté à la demande de l'utilisateur (« teste cette dernière voie juste pour voir et être
+> sûr »). **Le verdict des §0 à §7 n'est pas modifié** : la précision par arme reste non
+> livrable, et le timebox reste consommé. Ce qui change, c'est qu'une prémisse qui était
+> SUPPOSÉE est maintenant MESURÉE — et elle n'est ni vraie ni fausse en bloc.
+
+### 9.1 La question, et pourquoi elle décidait d'une voie entière
+
+La dernière voie non essayée vers le NUMÉRATEUR (les touches par arme) est : lire la
+trajectoire du projectile et regarder où elle finit. Elle repose sur une prémisse que personne
+n'avait vérifiée — **que le tir d'une arme à projectile CRÉE une entité `ti=41`**. Les 70
+lancers sur 70 de `filmdec/projectiles.go` ne prouvent que le cas des GRENADES.
+
+**Le test** : pour chaque record de tir (type 105, avec identifiant d'arme), une naissance
+d'entité `ti=41` survient-elle dans la fenêtre de ± 200 ms — celle de la production
+(`grenadeBirthWindowUS`, mesurée : 65 lancers sur 70 y apparient contre 11 à 13 décalés) ?
+Puis ventilation par arme.
+
+**Le contrôle positif est DANS le tableau** : les lancers de grenade y figurent comme une arme
+de plus. S'ils ne ressortent pas, l'instrument ne lit rien.
+
+### 9.2 Le tableau — 80 films, 110 308 records de tir, 32 412 naissances
+
+```
+arme                                    tirs    suivi    nulle     ecart
+>> LANCER DE GRENADE (controle)         5798   0.8763   0.1469   +0.7294   <- LE CONTROLE PASSE
+M41 SPNKr        (roquette)             1036   0.8745   0.1834   +0.6911
+Cindershot                              1461   0.9035   0.2313   +0.6721
+Fuel Rod SPNKr                           329   0.8936   0.2584   +0.6353
+MLRS-2 Hydra                             930   0.8785   0.2677   +0.6108
+Ravager                                 2045   0.8655   0.2660   +0.5995
+--------------------------------------------------------------------- FALAISE
+Skewer                                   457   0.5952   0.2210   +0.3742
+Mangler                                  993   0.4673   0.1873   +0.2800
+--------------------------------------------------------------------- FALAISE
+CQS48 Bulldog                           1059   0.2125   0.1615   +0.0510
+Plasma Pistol                           2118   0.2413   0.2106   +0.0307
+S7 Sniper                               1926   0.1911   0.1719   +0.0192
+NEEDLER                                 8673   0.1881   0.1731   +0.0150
+Pulse Carbine                           2993   0.1941   0.1811   +0.0130
+Mk51 Sidekick                          12547   0.1432   0.1313   +0.0119
+BR75                                   17647   0.1697   0.1693   +0.0004
+MA40 AR                                32021   0.1428   0.1455   -0.0027
+```
+
+**Le contrôle positif passe** : 0,8763 contre une nulle de 0,1469, ce qui reproduit la mesure
+de production (65/70 contre 11-13/70). L'instrument sait dire OUI.
+
+### 9.3 Le confondant testé et écarté
+
+Les armes lourdes se tirent dans les mêlées, où des grenades volent aussi : une fenêtre de
+200 ms pourrait apparier un tir de roquette à la naissance de la grenade du voisin. **Test** :
+retirer du vivier TOUTE naissance appariable à un lancer, puis refaire la mesure (40 films).
+
+```
+M41 SPNKr    +0.6907  (contre +0.6911 avant retrait)   Ravager  +0.6704
+Cindershot   +0.6602                                    Hydra    +0.6414
+Skewer       +0.3807                                    Mangler  +0.2716
+Plasma Pistol +0.1178                                   NEEDLER  +0.0196
+```
+
+**Le groupe lourd tient exactement.** Le confondant est mort. (Le Plasma Pistol monte à
++0,1178 : son tir CHARGÉ est un gros projectile lent, ses bolts ne le sont pas — une
+réplication partielle est cohérente.)
+
+### 9.4 CE QUE ÇA ÉTABLIT, ET CE QUE ÇA NE CHANGE PAS
+
+**Trois groupes, et la ligne de partage a un sens moteur immédiat** :
+
+| groupe | armes | lecture |
+|---|---|---|
+| **répliqué** | roquette, Cindershot, Fuel Rod, Hydra, Ravager | gros projectiles lents : chacun est une entité du monde |
+| **partiel** | Skewer, Mangler, Plasma Pistol | projectiles rapides ou à deux modes de tir |
+| **non répliqué** | **Needler**, Pulse Carbine, Heatwave, Disruptor, + toutes les armes à trace | petits projectiles rapides : prédits côté client, jamais répliqués |
+
+Répliquer chaque aiguille d'un Needler — dix par rafale, trente-deux joueurs — coûterait trop
+cher au moteur. **C'est la raison, et elle est structurelle : aucune version du décodeur ne
+rendra la précision du Needler.**
+
+**CE QUI NE CHANGE PAS, ET IL FAUT LE DIRE NET :**
+
+1. **La prémisse mesurée porte sur le TIREUR, pas sur la TOUCHE.** Savoir qu'un tir crée une
+   entité donne un DÉNOMINATEUR par arme — qu'on avait déjà par les records type 105. Le
+   NUMÉRATEUR exige l'étape suivante, **non testée** : la dernière position du projectile
+   est-elle près d'un joueur ?
+2. **Cette étape porte un avertissement écrit dans le code de production** : « la réplication
+   cesse ~1,4 s après le lancer alors que la mèche court jusqu'à ~3 s : le dernier point
+   approche le point d'explosion parce que l'objet ne bouge plus, pas parce qu'on lit
+   l'explosion. Écrire "dernière position connue", jamais "impact". »
+3. **Le périmètre atteignable est étroit** : 5 armes pleines + 3 partielles, toutes des armes
+   lourdes, et 1 036 tirs de roquette sur 80 films (13 par film). Aucune arme courante.
+
+**DONC** : la piste E reste close et son verdict inchangé. Ce qui est acquis, c'est que la voie
+trajectoire n'est **pas morte** — elle est **étroite et inachevée**. Sa poursuite est une
+décision produit (« veut-on la précision du lance-roquettes ? »), pas une question de recherche
+ouverte.
+
+### 9.5 Outillage
+
+`apps/go-api/cmd/tmp_projorig/` (archivé sous `.ai/V7.5/outillage/precision_projectiles/`).
+Le contrôle positif est intégré : les lancers de grenade entrent dans la population sous une
+clé synthétique et figurent dans le tableau à chaque exécution.
+
+> **LEÇON DE MÉTHODE PAYÉE ICI, ET C'EST LA MÊME QUE TOUTE LA JOURNÉE.** La première version de
+> cet instrument réécrivait la grammaire de record en laissant tomber deux filtres de
+> `filmdec/projectiles.go` (validité de la position décodée, minimum de trois points par vie)
+> et choisissait sa fenêtre au jugé (8 ms). Elle rendait **un tableau où une arme à trace
+> battait le Needler**, et un contrôle positif à 0,06 contre 0,93 attendu. **J'ai failli
+> publier ce tableau comme un négatif.** Ce qui l'a arrêté est le contrôle positif — pas une
+> intuition. Appeler `ScanFilmProjectiles` directement, avec la fenêtre de production, a
+> inversé le résultat.
