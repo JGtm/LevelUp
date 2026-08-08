@@ -608,9 +608,25 @@ Sur les playlists normales, la chaîne décode déjà **95 %** des tirs. Le trou
 d'**armes Fiesta**, pas un plafond de format. Et le sur-décodage est quasi nul (11 matchs sur 941),
 donc le décodeur ne fabrique pas de tirs.
 
-**2. Le rejeu et la piste E n'utilisent PAS le même scanner, et celui du rejeu trouve moins.**
-`ScanFilmFireEvents` balaie les bits ; l'instrument de la piste E parcourt les PAQUETS par leur
-en-tête (`pay[0]>>1 == 105`). Sur les sept films :
+**2. CORRECTION DU 2026-08-08 — mon explication de cet écart était FAUSSE.** J'avais écrit que
+« le rejeu balaie les bits, la piste E lit les paquets ». Vérifié sur pièces : **les deux
+utilisent `WalkPackets`**. La différence tient à UNE LIGNE de `ScanFilmFireEvents` :
+
+```go
+if int(pay[0]>>1) != FireEventType || int(pay[0])&1 != 0 { continue }
+//                                    ^^^^^^^^^^^^^^^^^^ la VARIANTE COURTE est ECARTEE
+```
+
+La piste E sélectionne `pay[0]>>1 == 105` sans regarder le bit de variante. **L'écart de 10 à
+17 %, ce sont les records COURTS** — et le décodeur a RAISON de s'en abstenir tant que leur
+sémantique n'est pas établie (« ne porte pas d'arme, mesuré 3/313 »). Émettre comme tir un record
+qui serait un rechargement ou une fin de rafale gonflerait le calque de faux.
+
+La question n'est donc plus « quel scanner » mais **« qu'est-ce que la variante courte »**, et
+elle est instruite par `ctf_shortvariant_research_test.go` (§8.4quinquies). Le tableau ci-dessous
+reste juste ; c'est son explication qui était fausse.
+
+Sur les sept films :
 
 | film | rejeu (`ScanFilmFireEvents`) | piste E (paquets) | API |
 |---|---|---|---|
@@ -658,6 +674,62 @@ localise à 88,2 % alors que les tirs plafonnent à 61-83 %.
 nuage de tirs exhaustif ne le sera pas tant que la colonne ① n'est pas traitée. Ce sont deux
 livrables de maturité différente, et les confondre exposerait le second au reproche fait au
 premier.
+
+### 8.4quinquies LA VARIANTE COURTE — MESURÉE, ET LA PISTE EST REDIRIGÉE
+
+Instrument : `ctf_shortvariant_research_test.go`, quatre films, **10 674 records type 105** lus
+dans les deux variantes. Quatre mesures posées AVANT de conclure.
+
+**1. Le compte : les courts pèsent 13 à 38 % des records.**
+
+| film | records 105 | longs | courts | part courts | **long+court / tirs API** |
+|---|---|---|---|---|---|
+| `0edb8512` | 3 221 | 2 808 | 413 | 12,8 % | **99,3 %** |
+| `64e8adfa` | 3 395 | 2 879 | 516 | 15,2 % | **94,7 %** |
+| `9aeca4b3` | 3 226 | 2 760 | 466 | 14,5 % | **84,0 %** |
+| `000d5950` (Fiesta) | 832 | 519 | 313 | **37,6 %** | **37,3 %** |
+
+**Le total colle** : hors Fiesta, longs + courts rendent 84 à 99 % des tirs de l'API, là où les
+longs seuls plafonnent à 72-87 %. **Le court est donc très probablement un TIR.**
+
+**2. MAIS SON AUTEUR N'EST PAS LISIBLE AU MÊME ENDROIT — et c'est rédhibitoire en l'état.**
+L'index d'attaquant lu à l'offset du record long ne se distribue PAS sur le roster :
+
+| | index 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | hors roster (9, 14, 15) |
+|---|---|---|---|---|---|---|---|---|---|
+| `0edb8512` **longs** | 270 | 426 | 295 | 332 | 334 | 380 | 433 | 338 | 0 |
+| `0edb8512` **courts** | **261** | **0** | 4 | **0** | 27 | **0** | **111** | 1 | **9** |
+| `64e8adfa` **courts** | **319** | 2 | 5 | **0** | 27 | 1 | **132** | **0** | **30** |
+| `9aeca4b3` **courts** | **322** | **0** | 3 | **0** | 18 | 1 | **102** | 2 | **18** |
+
+Les longs couvrent les huit joueurs de façon équilibrée. Les courts se concentrent sur **deux
+index** (0 et 6), laissent 1/3/5/7 à **zéro**, et produisent des index **9, 14, 15 — impossibles
+dans un match à huit**. Ce champ n'est pas un index de joueur : c'est autre chose qui occupe ces
+bits.
+
+**3. Ce n'est pas non plus une suite de rafale.** L'écart entre un court et le long précédent du
+même index a une médiane de **4 à 32 secondes**, et seuls **1,4 à 4,6 %** tombent sous 50 ms. Un
+court ne prolonge pas le tir qui le précède.
+
+**4. La taille du payload ne dit rien** : elle s'étale de 1 392 à 2 104 bits sans mode marqué. Le
+court n'est pas un record d'un autre type à format fixe.
+
+#### Verdict, et il redirige la piste au lieu de la fermer
+
+**Le décodeur a RAISON de ne pas émettre les courts.** Les publier reviendrait à attribuer 13 à
+15 % de tirs supplémentaires à deux joueurs sur huit, avec des index hors roster — une fausse
+attribution massive, exactement ce que ce chantier refuse partout.
+
+**Mais la piste n'est pas morte, elle est déplacée** : le total dit que ces records SONT des
+tirs ; c'est leur AUTEUR qui se lit ailleurs. La question ouverte n'est plus « faut-il émettre les
+courts » mais **« où le record court porte-t-il son tireur »**. C'est une question de
+rétro-ingénierie, avec un critère de succès déjà écrit : *une distribution sur les huit index,
+comparable à celle des longs*. Le même critère qui vient de disqualifier l'offset actuel.
+
+**ET LE TROU FIESTA N'EST PAS LÀ.** `000d5950` reste à **37,3 %** même en comptant les courts,
+contre 84-99 % ailleurs. Les tirs manquants d'un match Fiesta ne sont donc **pas** une affaire de
+sélection : ils ne sont pas dans le flux type 105 du tout. Cause toujours inconnue, mais le
+périmètre de recherche vient d'être réduit.
 
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 
