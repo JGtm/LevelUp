@@ -1,3 +1,36 @@
+## [2026-08-08] v7.5 — portage des triangles, etapes E et T1
+
+**Statut** : En cours. Branche `feat/v75`, plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+
+**Etape E — le lecteur de module est sain, et un garde-rail dormait.** Regeneration de
+`ridgeline.json` et `sgh_streets.json` depuis les modules, comparees aux versions figees :
+egalite EXACTE (10 223 et 10 908 emprises, zero ecart). Fige en test, mutation `insOffAABB`
+0x7C -> 0x80 vue rouge. Decouverte traitee au passage : le chemin de l'installation etait
+cable a TROIS endroits vers `D:/SteamLibrary`, disque demonte — les tests `gamefiles` se
+declaraient « module absent » et passaient au VERT. Centralise dans `himap.DeployRoot()`
+avec garde-rail grep ; les deux tests tournent enfin.
+
+**T1 — « une carte = un module » est FAUX pour la geometrie de rendu.** Le champ
+`RuntimeGeoMeshReference` porte le GlobalID du tag `rtgo` a +8. Mais sur ridgeline, le
+module de la carte ne couvre que **26 % des instances** : le reste vit dans
+`globals/common`, `globals/multiplayer` et `globals/multiplayer_r3`. Le handoff ne
+signalait ce piege que pour la collision. `himap.ModuleIndex` resout desormais sur la
+carte PLUS les globaux : 9 832/10 357 instances (94,9 %), 525 tags rtgo ouverts, 1 195
+maillages, pas de 144 respecte partout.
+
+**Decision technique principale : un temoin qui ne departage pas ne teste rien.** Le premier
+temoin ecrit pour T1 (taux de resolution + borne de `MeshIndex`) passait AUSSI avec
+l'offset 12 — les deux offsets resolvent vers des `rtgo` valides et 98,6 % des instances y
+portent la meme valeur. Il a fallu chercher le critere qui separe : a l'offset 8 la
+resolution est un sur-ensemble STRICT de celle a 12 (147 instances de plus, jamais
+l'inverse). Le temoin exige maintenant l'argmax strict, et la mutation le fait rougir.
+
+**Prochaine etape** : T2, atteindre le maillage (champ racine `meshes`, TagBlock enfant a
+`foff = meshIndex * 60`, records de LOD render data de 148 octets), temoin = 100 % des
+couples (globalID, meshIndex) resolus.
+
+---
+
 ## [2026-08-08] v7.5 lot 5 — cartes Catalyst et Vagabond : l'oracle est la, les fonds de carte non
 
 **Statut** : Complété, périmètre fermé, chaque item statué. Série de commits sur `feat/v75`
