@@ -21,13 +21,14 @@ grenades lancees et pictogrammes de mort.
 `UI display info` du tag `weap`. **29 armes sur 29**, chacune auto-validee.
 
 **Les noms internes sont CRAQUES** : les tags ne portent que des murmur3, les chaines sont
-strippees en release. 23 index nommes cote armes, 43 cote kill feed.
+strippees en release. **21 index nommes cote armes** (dont 10 marques « ? », voir §4) et
+**44 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
 
 | Atlas | Tag | Images | Dimensions | Nommes |
 |---|---|---|---|---|
-| Armes, contour | `bc17adf1` | 40 | ~330x117 | 26 par le registre, 23 par le nom interne |
+| Armes, contour | `bc17adf1` | 40 | ~330x117 | 26 par le registre, 21 par le nom interne |
 | Armes, silhouette | `e39747c8` | 40 | idem, index par index | idem |
-| Kill feed | `0302cad3` | 88 | ~110x38 | 43 par sa table `bitd` |
+| Kill feed | `0302cad3` | 88 | ~110x38 | 44 par sa table `bitd` |
 
 ---
 
@@ -141,6 +142,8 @@ Regenerees par la commande ; `index.json` fait foi.
 
 ### Atlas des armes (40 index)
 
+Un « ? » signale un nom issu d un `weap` NON canonique : son index peut etre perime.
+
 | # | weapon_key du registre | nom interne du jeu |
 |---|---|---|
 | 00 | hinf_ma40_ar | assault_rifle |
@@ -151,11 +154,11 @@ Regenerees par la commande ; `index.json` fait foi.
 | 05 | hinf_s7_sniper | sniper_rifle |
 | 06 | hinf_m41_spnkr | — |
 | 07 | hinf_hydra | — |
-| 08 | — | machine_gun |
+| 08 | — | machine_gun ? |
 | 09 | hinf_needler | needler |
 | 10 | hinf_stalker_rifle | — |
 | 11 | hinf_plasma_pistol | plasma_pistol |
-| 12 | — | plasma_turret |
+| 12 | — | plasma_turret ? |
 | 13 | hinf_pulse_carbine | — |
 | 14 | hinf_energy_sword | energy_sword |
 | 15 | hinf_ravager | — |
@@ -168,25 +171,27 @@ Regenerees par la commande ; `index.json` fait foi.
 | 22 | hinf_sentinel_beam | sentinel_beam |
 | 23 | hinf_shock_rifle | — |
 | 24 | hinf_disruptor | — |
-| 25 | — | skull |
-| 26 | — | flag |
-| 27 | — | fusion_coil |
-| 28 | — | power_seed |
+| 25 | — | skull ? |
+| 26 | — | flag ? |
+| 27 | — | fusion_coil ? |
+| 28 | — | power_seed ? |
 | 29 | — | — |
 | 30 | — | — |
-| 31 | — | shade_turret |
+| 31 | — | shade_turret ? |
 | 32 | — | — |
 | 33 | hinf_bandit | bandit | bandit_evo |
-| 34 | — | ball | bomb |
-| 35 | — | mythic_sandwich | sandwich |
+| 34 | — | ball | bomb ? |
+| 35 | — | mythic_sandwich | sandwich ? |
 | 36 | hinf_ma5k_avenger | — |
-| 37 | — | mutilator |
+| 37 | — | mutilator ? |
 | 38 | hinf_fuel_rod_spnkr | — |
 | 39 | hinf_vestige_carbine | — |
 
 ### Atlas du kill feed (88 index)
 
-| # | nom interne | # | nom interne | # | nom interne | # | nom interne |
+Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
+
+| # | nom | # | nom | # | nom | # | nom |
 |---|---|---|---|---|---|---|---|
 | 00 | battle_rifle | 01 | — | 02 | assault_rifle | 03 | — |
 | 04 | — | 05 | — | 06 | hydra | 07 | sniper |
@@ -203,14 +208,13 @@ Regenerees par la commande ; `index.json` fait foi.
 | 48 | — | 49 | spike_grenade | 50 | — | 51 | — |
 | 52 | — | 53 | — | 54 | callout | 55 | environment |
 | 56 | repulsor | 57 | ricochet | 58 | — | 59 | ball |
-| 60 | — | 61 | suicide | 62 | — | 63 | — |
+| 60 | splatter | 61 | suicide | 62 | — | 63 | — |
 | 64 | headshot | 65 | melee | 66 | — | 67 | — |
 | 68 | — | 69 | player_left | 70 | player_joined | 71 | player_rejoined |
 | 72 | grappleshot | 73 | bandit | 74 | — | 75 | — |
 | 76 | sandwich | 77 | — | 78 | — | 79 | quantum |
 | 80 | — | 81 | mutilator | 82 | — | 83 | — |
 | 84 | — | 85 | falcon | 86 | — | 87 | — |
-
 ---
 
 ## 3. CE QUI A ETE REFUTE (ne pas re-tenter)
@@ -225,6 +229,8 @@ Regenerees par la commande ; `index.json` fait foi.
 | `gggl -> eqip -> bitm` pour les grenades | **RIEN** | les 8 equipements lancables declares ne referencent aucun bitmap |
 | `cusc` (l'autre referenceur de l'atlas kill feed) | **SANS OBJET** | composition d'UI generique (components, long/string_id properties), aucun champ `sprite index`. Le `bitd` a repondu mieux |
 | `HaloInfinite.exe` a la racine de l'installation | **PIEGE** | c'est un lanceur de 3,9 Mo : **0 nom craque**. Le binaire du jeu est sous `game/` et pese 80 Mo (408 525 chaines) |
+| Les paquets `.cms` comme vocabulaire (`gamecms.cms`, 493 Mo) | **RIEN, ET DANGEREUX** | 6 068 000 chaines pour **une seule** correspondance — `killfeed_3O1\`, du bruit. A ce volume l'esperance de collision fortuite vaut ~0,2 : l'argument « une egalite de hachage vaut certitude » NE TIENT PLUS. C'est ce qui a motive le filtre `plausibleIdent` (`[a-z0-9_]+`) |
+| Elargir le vocabulaire par combinaison (456 formes : prefixes x suffixes x mots) | **EPUISE** | +1 seul nom (`splatter`). Les 41 identifiants restants du kill feed emploient des mots hors de tout vocabulaire devinable — il faut une source, pas plus d'essais |
 
 ---
 
@@ -238,7 +244,13 @@ Regenerees par la commande ; `index.json` fait foi.
 - **Tags de campagne a index perime** : un `weap` legacy baptisait l'index 7 « shotgun » la ou
   le registre lit la Hydra. Filtre pose — un index revendique par le registre n'accepte que le
   nom d'un tag canonique. Les conflits restants sont donc signifiants.
-- **8 index sans nom ni cle** cote armes, **45** cote kill feed. Le levier est le vocabulaire
+- **Noms marques « ? » (10 index cote armes)** : ils viennent d un `weap` NON canonique, et
+  les tags de campagne portent des index PERIMES. **Cas avere signale par l utilisateur** :
+  l index 31 se faisait appeler `shade_turret` alors que l image est une caisse. Les noms
+  restent publies — mais marques, jamais servis comme des faits. A l inverse `fusion_coil`
+  (27), `power_seed` (28) et `machine_gun` (8) collent a l image : le marquage dit le DOUTE,
+  pas la faute.
+- **8 index sans nom ni cle** cote armes, **44** cote kill feed. Le levier est le vocabulaire
   curate : chaque mot ajoute est teste, jamais affiche sans preuve.
 - **Les 3 grenades du registre** n'ont pas de bloc `UI display info` : ce ne sont pas des `weap`
   (elles vivent en `eqip` + `proj` declares par `gggl`). Leurs icones existent en revanche dans

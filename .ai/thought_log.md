@@ -1,3 +1,49 @@
+## [2026-08-08] v7.5 icones — `shade_turret` etait faux, et le vocabulaire par supposition s'epuise
+
+**Statut** : Complété. Branche `feat/v75-icones`.
+
+**Origine** : « il manque toujours des étiquettes […] je crois que shade_turret est mal attribué
+aussi ». Les deux remarques sont justes, et la seconde a révélé un défaut de méthode.
+
+**`shade_turret` (#31) EST faux, confirmé sur pièces.** Rendue en grand, l'image est une
+CAISSE, pas une tourelle Covenant. Le nom venait d'un `weap` NON canonique — et les tags de
+campagne portent des index d'atlas PÉRIMÉS. J'avais déjà posé ce filtre, mais uniquement sur
+les index que le REGISTRE revendique ; l'index 31 n'étant revendiqué par personne, un tag
+legacy pouvait le baptiser sans contradicteur.
+
+**Correctif : la PROVENANCE devient une donnée.** `index.json` porte `nom_a_verifier` — vrai
+quand le nom vient d'un `weap` non canonique. 10 index sur 21 sont concernés. La page les
+affiche suffixés d'un « ? ». Je ne les retire PAS : à l'inverse de #31, `fusion_coil` (27),
+`power_seed` (28) et `machine_gun` (8) collent parfaitement à l'image — vérifié en les rendant
+en grand. Le marquage dit le DOUTE, pas la faute.
+
+**Une erreur de raisonnement corrigée au passage, et elle est importante.** J'avais écrit qu'une
+égalité de hachage sur 32 bits « vaut certitude ». C'est vrai pour un vocabulaire PETIT.
+Mesuré en essayant `gamecms.cms` (493 Mo) comme source : **6 068 000 chaînes pour une seule
+correspondance**, et cette correspondance était `killfeed_3O1\` — du bruit. À ce volume
+l'espérance de collision fortuite vaut ~0,2, l'argument s'effondre. Deux conséquences :
+- source `.cms` REJETÉE (rendement réel nul, risque de collision réel) ;
+- filtre `plausibleIdent` (`[a-z0-9_]+`) ajouté aux DEUX craqueurs : un faux positif ne peut
+  plus passer pour un nom. La moisson du binaire (408 525 chaînes, espérance ~0,07) reste sûre.
+
+**Le vocabulaire par supposition s'épuise.** 456 formes essayées (23 préfixes x 8 suffixes x
+83 mots, variantes de séparateur comprises) : **+1 nom** (`killfeed_splatter`, 44/88). Les 41
+identifiants restants emploient des mots hors de tout vocabulaire devinable. Ce n'est pas
+« essayer plus » qui débloquera, c'est une SOURCE — et je n'en ai pas trouvé.
+
+**Vérification faite pour l'utilisateur** : il regardait bien le bon artefact. Ce qu'il voyait
+manquer, ce sont les index réellement non craqués — pas un défaut d'affichage.
+
+**Décompte** : 21 noms côté armes (dont 10 « ? »), 44 côté kill feed, 26 weapon_key. Restent
+8 index sans rien côté armes et 44 côté kill feed.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur la page. Doc et planches régénérées.
+
+**Conclusion / prochaine étape** : les noms « ? » sont exactement ce que la page sert à
+trancher. Si l'utilisateur reconnaît des objets parmi les non nommés, leurs noms internes
+probables sont ce qu'il me faut — un mot juste vaut mieux que mille essais.
+
 ## [2026-08-08] v7.5 icones — la documentation sort du journal
 
 **Statut** : Complété. Branche `feat/v75-icones`.

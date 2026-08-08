@@ -170,11 +170,22 @@ func resolveIconNames(ix *tagIndex, canon map[uint32]bool, owned map[int]bool) (
 		}
 		sid := readU32LE(data, abs+offName)
 		name, hit := dict[sid]
+		if hit && !plausibleIdent(name) {
+			hit = false // collision : un nom du jeu s ecrit [a-z0-9_]+
+		}
 		if !hit {
 			continue
 		}
 		idx := int(readU32LE(data, abs+offIndex))
 		isCanon := canon[r.ID]
+		if !isCanon {
+			// PROVENANCE, et elle change tout. Un nom issu d'un `weap` NON canonique n'est
+			// fiable que si son index l'est aussi — or les tags de campagne portent des index
+			// PÉRIMÉS. Cas avéré : l'index 31 se faisait appeler `shade_turret` alors que
+			// l'image est une caisse. Le nom est conservé mais MARQUÉ, jamais servi comme un
+			// fait ; c'est la page de nommage qui le donne à vérifier.
+			name = "?" + name
+		}
 		// Un index que le registre REVENDIQUE n accepte que le nom d un tag canonique, meme
 		// si aucun canonique n a craque : sinon un tag legacy baptisait l index 7 « shotgun »
 		// la ou le registre y lit la Hydra.

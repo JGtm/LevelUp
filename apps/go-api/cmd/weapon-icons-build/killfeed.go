@@ -84,12 +84,35 @@ func resolveKillfeedNames(ix *tagIndex) map[int]string {
 	return out
 }
 
+// plausibleIdent : un identifiant du jeu s'écrit `[a-z0-9_]+`. Ce filtre n'est pas cosmétique.
+//
+// L'argument « une égalité de hachage sur 32 bits vaut certitude » ne tient que pour un
+// vocabulaire PETIT. Mesuré : le paquet `gamecms.cms` rend 6 068 000 chaînes, soit ~24 M de
+// hachages contre 42 cibles — l'espérance de collision fortuite y vaut ~0,2, et le seul
+// « match » obtenu était `killfeed_3O1\`, du bruit. La moisson du binaire (408 525 chaînes,
+// espérance ~0,07) reste sûre ; le filtre garantit qu'un faux positif ne PASSE PAS pour un nom.
+func plausibleIdent(s string) bool {
+	t := strings.TrimPrefix(s, killfeedPrefix)
+	if len(t) < 3 || len(t) > 40 {
+		return false
+	}
+	for _, c := range t {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '_' {
+			return false
+		}
+	}
+	return true
+}
+
 // killfeedDict : hachage -> nom, à partir des chaînes du binaire du jeu ET du vocabulaire
 // curaté, chacune essayée telle quelle et préfixée.
 func killfeedDict() map[uint32]string {
 	dict := make(map[uint32]string, 1<<20)
 	add := func(s string) {
 		for _, v := range []string{s, killfeedPrefix + s} {
+			if !plausibleIdent(v) {
+				continue
+			}
 			h := uint32(mapvar.LabelHash(v))
 			if _, dup := dict[h]; !dup {
 				dict[h] = v
@@ -128,6 +151,6 @@ var curatedVocabulary = []string{
 	"grappleshot", "thruster", "repulsor", "shroud_screen", "quantum", "quantum_translocator",
 	"warthog", "rockethog", "gungoose", "mongoose", "scorpion", "wraith", "banshee", "ghost",
 	"chopper", "wasp", "pelican", "phantom", "falcon", "razorback",
-	"headshot", "melee", "suicide", "ricochet", "callout", "environment",
+	"headshot", "melee", "suicide", "ricochet", "callout", "environment", "splatter",
 	"player_left", "player_joined", "player_rejoined", "assist", "betrayal",
 }
