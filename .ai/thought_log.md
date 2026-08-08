@@ -1,3 +1,53 @@
+## [2026-08-08] v7.5 lot 5 — cartes Catalyst et Vagabond : l'oracle est la, les fonds de carte non
+
+**Statut** : Complété, périmètre fermé, chaque item statué. Série de commits sur `feat/v75`
+(mode branche unique) — pas de merge. Worktree `LevelUp-wt-replay2d`. Rapport complet :
+`.ai/V7.5/cartes/RAPPORT_LOT5_CARTES_2026-08-08.md`.
+
+**Décision technique principale — le rack du canevas.** En vérifiant sur pièces ce que
+`cmd/mapobj-build` allait publier pour Vagabond, la sortie s'est révélée fausse : trois
+« zones de Bastion » de 1 m de rayon posées à 2 m l'une de l'autre, toutes au même
+millimètre d'altitude. Le sélecteur de variante retenait « le plus d'objectifs », et sur une
+carte bâtie dans Forge ce critère retient le **canevas livré avec le jeu** — le rack des
+objets de mode, un exemplaire de chaque, rangé hors terrain (`fo08_wetland.mvar` : 100
+objets, 20 objectifs sur 8,2 m) — au lieu de la carte réellement jouée (`map.mvar` : 4 709
+objets, 4 objectifs sur 22,3 m). Correction : une variante dont les objectifs tiennent dans
+moins de 5 % de l'emprise de ses propres objets est écartée, et si toutes le sont la carte
+n'entre pas au catalogue. Calibration sur les 37 cartes : le rack est à 2,3 %, la suivante
+(`corpo_map`) à 15,8 %, puis 44,4 %. Deux mutations du seuil (0,0 et 0,9) vues rouges.
+
+**Effet de bord traité dans le même commit** : deux cartes exposent désormais un fichier
+nommé `map.mvar`. À plat, `--refresh-from` leur aurait servi le MÊME fichier — les zones
+d'une carte publiées sous le nom d'une autre, en silence. `--save-mvar` (nouveau) dépose par
+`map_id`, et le repli à plat est refusé quand le nom est partagé (test + mutation).
+
+**Résultats observés.**
+- L5a Catalyst `[x]` pour les zones et les bornes (elles existaient déjà ; une 2e variante
+  d'asset ajoutée), `[!]` pour le fond de carte : `mapstruct-build` plafonne à **8,6 %** de
+  couverture utile contre 51,1 % (ridgeline) et 76,6 % (sgh_streets) pour les deux cartes
+  publiées. Sa structure vit dans le maillage de rendu NON instancié, non lu.
+- L5b Vagabond `[x]` : 3 zones de Bastion réelles au catalogue — **l'oracle du containment
+  du lot 4 est disponible**. Fond de carte `[!]` : le BSP `fo08_wetland` est le canevas, pas
+  la carte ; celle-ci est faite d'objets Forge, autre source.
+- L5c `[x]` : suffixe ` heavies` retiré dans `NormalizeMapName`. La justification n'est pas
+  le nom mais le **level_id identique** entre base et variante dans `map_objectives.json`
+  (Fragmentation, Highpower, Breaker) — même niveau, même BSP, mêmes bornes. **+43 matchs**.
+- L5d `[!]` prouvé négatif : les 4 variantes des 2 assets Highpower déclarent zéro
+  `strongholds_zone`, et une recherche murmur3 (45 modes x 26 suffixes + 40 candidats) ne
+  fait retomber aucun hash non résolu sur un label de zone. Or 25 matchs de Total Control y
+  sont joués : la donnée est ailleurs (variante de MODE), consigné au registre.
+- L5e `[x]` : artefact de revue HTML autonome généré. **Le gate humain n'est PAS déclaré
+  passé** — les témoins propres à chaque carte sont laissés vides, la session ayant déjà vu
+  son rendu ne peut pas les choisir.
+
+**Conclusion / prochaine étape.** Le containment peut être re-statué : son oracle existe
+maintenant (3 matchs Strongholds sur Vagabond). Les deux fonds de carte refusés renvoient au
+même manque, déjà identifié : le portage en Go de la chaîne `.module -> triangles`, qui
+n'existe qu'en Python jetable sur Cliffhanger. Registre mis à jour (2 items sortis, 5
+entrés). En attente : validation expresse de l'utilisateur sur l'artefact, carte par carte.
+
+---
+
 ## [2026-08-08] v7.5 lot 4 — containment « lettre de zone » : le croisement marche, l'horloge non
 
 **Statut** : Complété. Périmètre fermé à P1–P5, chaque item statué. Série de commits sur
