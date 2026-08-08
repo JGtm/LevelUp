@@ -1,3 +1,121 @@
+## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
+
+**Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
+`chore/v75-lot3-suppression-objectivescore` depuis `origin/main` (`20f0dfc8a`, lot 2 mergé),
+worktree `LevelUp-wt-replay2d`. NON mergée — le merge (= déploiement prod) reste au
+superviseur. La garde d'amorçage a été jouée et, pour la première fois de la série, elle est
+passée du premier coup : `origin/main` contenait bien la minibobine du lot 2.
+
+**Ce que la vérification sur pièces a corrigé dans le cadrage, et qui devait remonter.**
+L'énoncé du lot demandait d'établir « zéro lecteur des deux tables
+`match_objective_events` / `match_objective_score_timeline` » et de s'arrêter si un lecteur
+apparaissait. Un lecteur est apparu — et l'arrêt aurait été une erreur, parce que les deux
+tables ne sont pas dans le même bateau. Elles appartiennent à deux décodeurs différents :
+
+| table | producteur | lecteurs applicatifs | sort |
+|---|---|---|---|
+| `match_objective_score_timeline` | `analysis/objectivescore` (supprimé) | **zéro** | droppée |
+| `match_objective_events` | `analysis/objectiveevents` (le successeur) | **deux, vivants** | intacte |
+
+`match_objective_events` est la table du SUCCESSEUR, celle que le lot interdisait précisément
+de toucher. Elle est lue par `sync/comeback.go:loadCaptureEvents` — la dominance CTF livrée au
+lot 1, déployée en prod — et par `MatchViewService` via `port.ObjectiveEventsRepository`, câblé
+dans `api/wire/registry_pages.go`. Elle porte **8 140 events** en base. La confondre avec la
+table du paquet supprimé aurait fait tomber la dominance CTF d'un tiers du corpus.
+
+**L3a [x] — l'inventaire, et il est net.** Le paquet n'avait aucun consommateur applicatif :
+`ObjectiveScoreRepo.LoadMatch` n'a AUCUN appelant hors son propre test — ni port, ni service,
+ni handler, ni entrée de wire. Son unique écrivain était `cmd/diag_weapons_v3 -score -write`,
+un CLI manuel dont les chemins par défaut pointent un poste de développement. Et la table
+compte **0 ligne** en base locale : il n'y avait rien à préserver. Aucune entrée openapi ni
+i18n, comme attendu.
+
+**L3b [x] — ce qui part.** 14 fichiers supprimés, **2 146 lignes de Go retirées pour 60
+ajoutées** : le paquet `analysis/objectivescore` en entier (10 fichiers, dont les 7 tests
+neufs du lot 2 — ils ont rendu leur verdict, c'était leur travail), le repo
+`platform/duckdb/objective_score_repo.go` et son test, le mode `-score` du CLI de diagnostic,
+le step de création de la table. **18 tests disparaissent** (13 du paquet, 5 du repo).
+
+Le mode `-score` part seul, pas l'outil ni son `-write` : vérifié sur pièces, `diag_weapons_v3`
+porte quatre modes et son `-write` est le SEUL peupleur de `match_objective_events`. Le
+retirer aurait coupé l'alimentation d'une table lue en prod.
+
+**L3c [x] — le corpus survit, et il change de nature.** Les deux mini-bobines (chunks +
+PROVENANCE + manifestes) et les deux goldens sont re-domiciliés sous
+`internal/games/halo_infinite/film/testdata/corpus_objectifs/`, par `git mv` (les renommages
+sont détectés, l'historique des octets suit). Le choix se justifie sur trois points : le film
+est une donnée spécifique au titre, le précédent identique y vit déjà
+(`film/killsource/testdata/minibobine_000d5950/`), et surtout `film/` est un dossier
+CONTENEUR sans paquet Go à sa racine — un corpus posé là n'appartient à aucun décodeur, donc
+ne meurt avec aucun. `internal/testfixtures/` a été écarté : son propre doc.go le définit
+comme un paquet de helpers résolvant des chemins vers les fixtures de sync/persist, une autre
+nature.
+
+Un README y explique la provenance, les six oracles sourcés, et POURQUOI ces octets survivent :
+ils ne décrivent pas un décodeur, ils décrivent un format. Le jour où la source événementielle
+peuplera la courbe des modes à zones et KOTH, il faudra des octets réels datés pour la
+contraindre ; les reprélever coûterait l'accès au cache film d'un poste précis, les garder
+coûte 400 Ko.
+
+**Découverte corrigée au passage, parce qu'elle était dans le fichier même qu'on
+re-domiciliait** : les deux `PROVENANCE.txt` annonçaient « les 8 PREMIERS chunks TYPE-2
+ancrés ». C'est faux, et les instants conservés le démentent (460–600 s pour un film qui
+commence à 20 s ; 640–780 s pour l'autre). Ce sont les 8 DERNIERS — le lot 2 l'avait mesuré et
+écrit dans son journal, mais la provenance versionnée disait l'inverse. Corrigée dans les deux
+fichiers, avec la mesure qui la motive.
+
+**L3d [x] — la table est droppée, par un step au NOM NEUF.** `shared_objective_score_v1_drop`
+(`DROP TABLE IF EXISTS`), inscrit dans `canonicalOrder` à la position exacte de l'ancien step,
+qui disparaît. Le nom neuf n'est pas du style : `runSteps` saute tout step déjà inscrit dans
+`schema_migrations`, donc étendre `shared_objective_score_v1` d'un DROP ne l'aurait JAMAIS
+rejoué là où il compte — même leçon ledger que S6c de la campagne UTC.
+
+**Pourquoi ne pas conserver le schéma « pour le successeur ».** Sa forme ne convient pas :
+elle est per-équipe (`team_0_score`/`team_1_score`) quand `objectiveevents.ScoreCurve` produit
+du per-joueur à la milliseconde ; et elle s'écrit en DELETE-then-INSERT sur une PK
+`(match_id, time_ms)`, exactement le motif ART qu'ADR 0026 éradique, alors que la persistance
+prescrite pour cette courbe est append-only + vue `_latest` (handoff §6.4). La réutiliser
+serait recréer la dette. Le jour venu, le successeur crée la sienne, avec ses propres tests de
+vérité terrain.
+
+**L3e [x] — le verrou killcollector est intact, vérifié sur pièces, aucun ajustement.**
+`film_read_paths_test.go` ne référence que `games/halo_infinite/film/killsource` ; il résout ce
+chemin par `runtime.Caller` + un `os.Stat` qui échoue bruyamment si le paquet déménage, et son
+`parser.ParseDir` n'est pas récursif. Rien de ce lot ne déplace `killsource/`, et le
+`testdata/` ajouté sous `film/` est hors de sa portée.
+
+**La réconciliation baseline était annoncée comme le piège central du lot. Elle est SANS
+OBJET, et c'est doublement prouvé.** Les 18 tests supprimés ont été cherchés NOMMÉMENT dans
+`.ai/baselines/tests_pre_migration.jsonl` : **0 occurrence sur 18**, `shared_objective_score_v1`
+comprise. La chronologie l'explique — le paquet et le repo ont été créés le 2026-07-31
+(`2044b7139`), la baseline capture un run du 2026-06-26. Et le sens du gate le confirme :
+`check_test_baseline.sh` fait `comm -23 baseline current`, seuls les tests PRÉSENTS en baseline
+et disparus échouent. Aucune ligne retirée, donc, et cette absence est un résultat vérifié, pas
+un oubli.
+
+**L3f [x] — doc.** Le point 2 du handoff `MODE_SCORE_CHAINE` (la proposition de suppression)
+est statué FAIT avec le sort de chaque pièce. Le `[!]` laissé par le lot 1 est re-scopé, au
+handoff et dans l'en-tête de `sync/comeback.go` : « peuplement live » ne désigne plus que la
+source ÉVÉNEMENTIELLE, et le pont vers les modes à zones / KOTH passe désormais par elle
+uniquement — il n'y a plus d'autre décodeur à brancher. Le commentaire de `comeback.go`
+serait devenu de la doc inversée dès ce commit : il annonçait un décodeur qui n'existe plus.
+
+**Gates joués dans la session** : `go build ./...` exit 0 ; `go vet ./...` **0** ;
+`go test ./internal/migration/... ./internal/games/halo_infinite/migrations/... -p 1` vert —
+c'est le gate qui compte pour ce lot, les deux garde-rails d'ordre y vivent
+(`TestCanonicalCoversGlobalAndTitle` exige la bijection entre `canonicalOrder` et les steps
+enregistrés, `TestSortByCanonicalIsNoOpOnCurrentRegistry` exige que l'ordre suive
+l'enregistrement).
+
+**Découvertes non traitées, consignées sans être corrigées** : cinq documents `.ai/`
+mentionnent encore `objectivescore` (`PLAN_MASTER_FILM_KILLFEED_REJEU`,
+`V7.5/PLAN_RECONCILIATION_BRANCHES`, les trois `V7.5/film_re/*`) — ce sont des inventaires
+datés qui décrivent un état passé, pas des index vivants orientant du travail futur ; les
+réécrire serait réécrire l'histoire. L'écart KOTH du lot 2 (`pickKOTHVariant` choisissant par
+ordre de grandeur du final) meurt avec le paquet et n'a plus d'objet.
+
+---
+
 ## [2026-08-07] v7.5 lot 2 — le décodeur de score de mode rencontre enfin des octets réels
 
 **Statut** : Complété. Les 4 constats « tests objectifs » de l'audit du 2026-08-06 sont
