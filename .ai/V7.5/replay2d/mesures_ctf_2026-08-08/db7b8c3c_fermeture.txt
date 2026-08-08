@@ -1,0 +1,24 @@
+film	db7b8c3c
+carte	Aquarius
+slots_pont_avant	139
+slots_pont_apres	140
+vies_non_nommees_candidates	8
+designees_par_un_tir	1
+attribuees	1	contestees	0	rejetees_recouvrement	0
+tirs_orphelins	407	dont_instant_a_une_seule_vie	35
+
+# couverture des tirs
+avant	rattaches	3140	sur	3547	taux	0.8853	sans_slot	342	ambigus	65
+apres	rattaches	3206	sur	3547	taux	0.9039	sans_slot	276	ambigus	65
+gain_points_A	1.86
+
+# fermeture B — par la reapparition
+calibration_vies	130	p05_ms	10103	mediane_ms	10306	p95_ms	14308
+vies_restantes	7	designees	7	attribuees	1	contestees	6	rejetees_recouvrement	0
+apresB	rattaches	3225	sur	3547	taux	0.9092	sans_slot	257	ambigus	65
+gain_points_total_fenetre_large	2.40
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	7	designees	7	attribuees	5	contestees	2	rejetees_recouvrement	0
+apresT	rattaches	3350	sur	3547	taux	0.9445	sans_slot	132	ambigus	65
+gain_points_total_fenetre_serree	5.92
