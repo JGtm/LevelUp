@@ -33,17 +33,20 @@
 //     au rendu, A = LE DESSIN. Seul l'alpha est extrait, rendu en blanc sur fond transparent
 //     — même convention que static/abilities-assets.
 //
-//  6. L ATLAS « SANDBOX » EST CELUI DU KILL FEED, et le tag `bitd` porte sa table de nommage
-//     (identifiant StringID + index). 43 de ses 88 index sont nommés — véhicules compris
-//     (warthog, scorpion, banshee...), grenades, et les pictogrammes (headshot, melee,
-//     suicide, player_joined). Cf. killfeed.go.
-//
 //  5. QUELLE IMAGE DÉSIGNE QUELLE ARME — établi depuis, et c'est le champ `sprite index` du
 //     bloc `UI display info` du tag `weap` (cf. weapui.go). 29 armes sur 29, chacune
 //     auto-validée. Les fichiers restent nommés par leur INDEX d'atlas ; le weapon_key est
 //     porté par index.json, ce qui évite de renommer 168 fichiers à chaque évolution.
 //
-// CE QUI RESTE AU GATE HUMAIN : les index sans nom ni clé — 8 sur l’atlas d’armes, 45 sur
+//  6. L ATLAS « SANDBOX » EST CELUI DU KILL FEED, et le tag `bitd` porte sa table de nommage
+//     (identifiant StringID + index). 44 de ses 88 index sont nommés — véhicules compris
+//     (warthog, scorpion, banshee...), grenades, et pictogrammes (headshot, melee, splatter,
+//     suicide, player_joined). Cf. killfeed.go.
+//
+// CE QUI RESTE AU GATE HUMAIN : les index sans nom ni clé, et les noms marqués
+// `nom_a_verifier` — ils viennent d un `weap` NON canonique, dont l index peut être périmé.
+// Cas avéré : l index 31 se faisait appeler `shade_turret` alors que l image est une caisse.
+// Les index encore sans nom : 8 sur l’atlas d’armes, 44 sur
 // celui du kill feed. Rien n’y est deviné : afficher un mauvais fusil est pire qu’un libellé.
 //
 // DEUX VOIES ÉCARTÉES, notées pour ne pas les re-tenter : chercher un petit entier à offset
@@ -80,22 +83,23 @@ var atlasTags = []struct {
 
 // iconEntry décrit une icône extraite, telle qu'écrite dans index.json.
 type iconEntry struct {
-	Index      int    `json:"index"`
-	Style      string `json:"style"`
-	File       string `json:"file"`
-	GameName   string `json:"nom_jeu,omitempty"` // nom INTERNE du jeu, craqué (cf. names.go)
-	WeaponKey  string `json:"arme,omitempty"`    // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
-	SourceTag  string `json:"source_tag"`
-	SourceW    int    `json:"source_w"`
-	SourceH    int    `json:"source_h"`
-	CroppedW   int    `json:"cropped_w"`
-	CroppedH   int    `json:"cropped_h"`
-	BC7Format  int    `json:"bc7_format"`
-	Verified   bool   `json:"align_verified"`
-	Noise      string `json:"alpha_noise"`
-	RebuiltPc  string `json:"bc7_rebuilt_pct"`
-	OpaquePc   string `json:"bc7_opaque_pct"`
-	DegradedPc string `json:"bc7_degraded_pct"`
+	Index          int    `json:"index"`
+	Style          string `json:"style"`
+	File           string `json:"file"`
+	GameName       string `json:"nom_jeu,omitempty"`        // nom INTERNE du jeu, craqué (cf. names.go)
+	NameUnverified bool   `json:"nom_a_verifier,omitempty"` // le nom vient d un `weap` non canonique : son index peut être périmé
+	WeaponKey      string `json:"arme,omitempty"`           // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
+	SourceTag      string `json:"source_tag"`
+	SourceW        int    `json:"source_w"`
+	SourceH        int    `json:"source_h"`
+	CroppedW       int    `json:"cropped_w"`
+	CroppedH       int    `json:"cropped_h"`
+	BC7Format      int    `json:"bc7_format"`
+	Verified       bool   `json:"align_verified"`
+	Noise          string `json:"alpha_noise"`
+	RebuiltPc      string `json:"bc7_rebuilt_pct"`
+	OpaquePc       string `json:"bc7_opaque_pct"`
+	DegradedPc     string `json:"bc7_degraded_pct"`
 }
 
 func main() {
@@ -183,17 +187,29 @@ func main() {
 			// Le weapon_key ne vaut que pour les deux atlas d'armes : l'atlas sandbox a
 			// sa propre numérotation, sans rapport avec `sprite index`.
 			key, gameName := "", ""
+			aVerifier := false
 			if at.ID == 0xbc17adf1 || at.ID == 0xe39747c8 {
 				key = keyByIndex[idx]
 				// Plusieurs noms = plusieurs `weap` revendiquent l'index (variantes de
 				// campagne à index périmé). Tous sont publiés : arbitrer donnerait une
 				// étiquette fausse avec l'apparence d'une certitude.
-				gameName = strings.Join(names[idx], " | ")
+				// Le marqueur « ? » pose par resolveIconNames sort ici dans son propre
+				// champ : la valeur reste propre, et le doute reste visible.
+				parts := make([]string, 0, len(names[idx]))
+				for _, n := range names[idx] {
+					if strings.HasPrefix(n, "?") {
+						n = n[1:]
+						aVerifier = true
+					}
+					parts = append(parts, n)
+				}
+				gameName = strings.Join(parts, " | ")
 			} else if at.ID == sandboxAtlasTag {
 				gameName = kfNames[idx]
 			}
 			entries = append(entries, iconEntry{
-				Index: idx, Style: at.Style, File: name, WeaponKey: key, GameName: gameName,
+				Index: idx, Style: at.Style, File: name, WeaponKey: key,
+				GameName: gameName, NameUnverified: aVerifier,
 				SourceTag: fmt.Sprintf("%08x", at.ID),
 				SourceW:   im.W, SourceH: im.H,
 				CroppedW: img.Bounds().Dx(), CroppedH: img.Bounds().Dy(),

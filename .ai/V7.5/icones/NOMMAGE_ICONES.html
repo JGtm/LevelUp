@@ -108,11 +108,13 @@
       cote. Seule l'identification du bloc PAR SON CONTENU tient.
     </p>
     <p class="note">
-      <b>Le NOM INTERNE est craque aussi</b>, pour 16 index — le tag porte un StringID (murmur3),
+      <b>Le NOM INTERNE est craque aussi</b>, pour 21 index cote armes et 44 cote kill feed — le tag porte un StringID (murmur3),
       pas une chaine, et il est retrouve en hachant les chaines du binaire du jeu (meme recette
       que le nommage des objets Forge). C est ce qui a rendu <code>mutilator</code> (#37),
       <code>skull</code> (#25), <code>flag</code> (#26), <code>ball | bomb</code> (#34),
-      <code>plasma_turret</code> (#12) et <code>shade_turret</code> (#31). <b>Une divergence
+      <code>plasma_turret</code> (#12). <b>Attention</b> : un nom suivi de « ? » vient d'un tag
+      <code>weap</code> NON canonique, dont l'index peut etre PERIME — l'index 31 se faisait
+      ainsi appeler <code>shade_turret</code> alors que l'image est une caisse. <b>Une divergence
       reste a trancher</b> : l index 20 se nomme <code>heatwave</code> dans le jeu alors que le
       registre y lit <code>hinf_cindershot</code> — les deux viennent du MEME tag canonique.
     </p>
@@ -149,7 +151,7 @@
   <p class="note">Armes vues de plus loin, vehicules, grenades lancees (regarder autour de
      l'index 46), vehicules et pictogrammes. <b>43 sont deja nommes</b> : le tag `bitd` du jeu porte
      leur table (identifiant + index), et les identifiants craquent en `killfeed_     l'index 46) et pictogrammes de mort.lt;nom     l'index 46) et pictogrammes de mort.gt;`.
-     Un seul style — rien n'y est pre-rempli.</p>
+     Un seul style. <b>44 sont deja nommes</b> par la table `bitd` du jeu.</p>
   <div class="grid" id="gKF"></div>
 
   <h2>Armes du registre restant sans icone</h2>
@@ -182,22 +184,26 @@ const RESOLU = {
 // et pas une chaine — les textes sont strippes en release. Le nom est retrouve en hachant les
 // chaines du binaire du jeu (meme recette que le nommage des objets Forge). Un « | » separe
 // des noms concurrents : plusieurs tags revendiquent l'index, et on ne tranche pas.
+// Un « ? » en fin de nom = il vient d un `weap` NON canonique, dont l index peut etre PERIME.
+// Cas avere : l index 31 se faisait appeler `shade_turret` alors que l image est une caisse.
+// Ces noms sont donnes A VERIFIER, pas comme des faits.
+
+const NOMS_JEU = {
+  0:"assault_rifle", 1:"battle_rifle", 5:"sniper_rifle", 8:"machine_gun ?", 9:"needler", 
+  11:"plasma_pistol", 12:"plasma_turret ?", 14:"energy_sword", 16:"gravity_hammer", 
+  17:"skewer", 20:"heatwave", 22:"sentinel_beam", 25:"skull ?", 26:"flag ?", 
+  27:"fusion_coil ?", 28:"power_seed ?", 31:"shade_turret ?", 33:"bandit | bandit_evo", 
+  34:"ball | bomb ?", 35:"mythic_sandwich | sandwich ?", 37:"mutilator ?", 
+};
 const NOMS_KILLFEED = {
   0:"battle_rifle", 2:"assault_rifle", 6:"hydra", 7:"sniper", 13:"gravity_hammer", 15:"skewer", 
   17:"plasma_pistol", 18:"sword", 19:"needler", 22:"heatwave", 24:"sentinelbeam", 26:"warthog", 
   27:"rockethog", 28:"mongoose", 29:"gungoose", 30:"pelican", 31:"scorpion", 32:"wasp", 
   33:"wraith", 34:"phantom", 35:"banshee", 36:"ghost", 37:"chopper", 46:"frag_grenade", 
   47:"plasma_grenade", 49:"spike_grenade", 54:"callout", 55:"environment", 56:"repulsor", 
-  57:"ricochet", 59:"ball", 61:"suicide", 64:"headshot", 65:"melee", 69:"player_left", 
-  70:"player_joined", 71:"player_rejoined", 72:"grappleshot", 73:"bandit", 76:"sandwich", 
-  79:"quantum", 81:"mutilator", 85:"falcon", 
-};
-// 43 nommes sur 88
-
-const NOMS_JEU = {
-  0:"assault_rifle", 1:"battle_rifle", 5:"sniper_rifle", 9:"needler", 11:"plasma_pistol",
-  12:"plasma_turret", 16:"gravity_hammer", 17:"skewer", 20:"heatwave", 22:"sentinel_beam",
-  25:"skull", 26:"flag", 31:"shade_turret", 33:"bandit", 34:"ball | bomb", 37:"mutilator",
+  57:"ricochet", 59:"ball", 60:"splatter", 61:"suicide", 64:"headshot", 65:"melee", 
+  69:"player_left", 70:"player_joined", 71:"player_rejoined", 72:"grappleshot", 73:"bandit", 
+  76:"sandwich", 79:"quantum", 81:"mutilator", 85:"falcon", 
 };
 
 // Les 29 armes Halo Infinite du registre (registry.go + weapon_names.toml).
