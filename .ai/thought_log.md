@@ -1,3 +1,48 @@
+## [2026-08-08] Piste E — la prémisse de la voie trajectoire est MESURÉE : elle sépare les armes en trois
+
+**Statut** : Complété. Addendum §9 de `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`. Branche
+`research/v75-precision`. Test demandé par l'utilisateur (« teste cette dernière voie juste
+pour voir et être sûr »). Aucun fichier de production touché, aucune écriture en base.
+
+**Décision technique principale** : la dernière voie non essayée vers le numérateur repose sur
+une prémisse jamais vérifiée — que le tir d'une arme à projectile CRÉE une entité `ti=41`. Test :
+pour chaque record de tir type 105, une naissance survient-elle dans la fenêtre de production
+(± 200 ms) ? Le contrôle positif est DANS le tableau — les lancers de grenade y figurent comme
+une arme de plus, et doivent ressortir à ~0,9.
+
+**Résultats observés** (80 films, 110 308 records de tir, 32 412 naissances) :
+
+- **Le contrôle passe** : lancer de grenade 0,8763 contre une nulle de 0,1469 — reproduit la
+  mesure de production (65/70 contre 11-13/70).
+- **Trois groupes, séparés par deux falaises** : répliqués (roquette +0,691, Cindershot +0,672,
+  Fuel Rod +0,635, Hydra +0,611, Ravager +0,600) · partiels (Skewer +0,374, Mangler +0,280) ·
+  non répliqués (**Needler +0,015 sur 8 673 tirs**, Pulse Carbine +0,013, BR75 +0,000,
+  MA40 −0,003, et toutes les armes à trace).
+- **Confondant testé et écarté** : après retrait de toute naissance appariable à un lancer de
+  grenade, le groupe lourd tient exactement (roquette +0,6907 contre +0,6911). Le Plasma Pistol
+  émerge alors à +0,118 — son tir chargé est un gros projectile, ses bolts non.
+- **La ligne de partage a un sens moteur** : répliquer chaque aiguille d'un Needler (dix par
+  rafale, trente-deux joueurs) coûterait trop cher. **Aucune version du décodeur ne rendra la
+  précision du Needler** — c'est structurel, pas un défaut d'outil.
+
+**Ce que ça ne change pas** : la prémisse mesurée porte sur le TIREUR, pas sur la TOUCHE. Elle
+donne un dénominateur qu'on avait déjà. Le numérateur exige l'étape suivante — la dernière
+position du projectile est-elle près d'un joueur — **non testée**, et le code de production
+avertit explicitement que la dernière position répliquée n'est PAS l'impact. Périmètre
+atteignable : 5 armes pleines + 3 partielles, toutes lourdes, 13 tirs de roquette par film.
+**La piste E reste close ; la voie trajectoire n'est pas morte, elle est étroite et inachevée.**
+
+**Leçon de méthode, et c'est la même que toute la journée** : la première version de
+l'instrument réécrivait la grammaire de `filmdec/projectiles.go` en laissant tomber deux de ses
+filtres et choisissait sa fenêtre au jugé (8 ms). Elle rendait **un tableau où une arme à trace
+battait le Needler**, avec un contrôle positif à 0,06 contre 0,93 attendu. **J'ai failli publier
+ce tableau comme un négatif.** Ce qui l'a arrêté est le contrôle positif intégré, pas une
+intuition. Appeler la production directement a inversé le résultat.
+
+**Prochaine étape** : aucune de ma part. La poursuite est une décision produit (« veut-on la
+précision du lance-roquettes ? »), pas une question de recherche ouverte. Outillage archivé :
+`.ai/V7.5/outillage/precision_projectiles/tmp_projorig/`.
+
 ## [2026-08-08] filmdec i0 `ti=41` — les dumps sont lus : ils CONFIRMENT la production, ils ne la débloquent pas
 
 **Statut** : Complété pour cette session (reprise depuis le handoff). Note §11 :
