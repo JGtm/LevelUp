@@ -626,10 +626,36 @@ le disait deja. `apps/go-api/internal/analysis/filmdec/projectiles.go` :
   direction initiale a **1,0°** du cap de visee, durees de vie par type de grenade separees a
   p < 5e-4 sur 20 000 permutations.
 
-**Autrement dit : la chaine « premiere position du projectile -> joueur le plus proche -> le
-tireur », que §3 presentait comme la troisieme et derniere voie a construire, est CONSTRUITE
-ET VALIDEE depuis le chantier rejeu 2D.** T1 et T1' ont re-mesure a la main, avec un
-instrument plus faible, ce que la production faisait deja.
+**CORRECTION DE MA PROPRE PHRASE, faite une heure apres l'avoir ecrite, en lisant
+`replay/grenades.go`.** J'avais ecrit « la chaine premiere position -> joueur le plus proche ->
+tireur est CONSTRUITE ET VALIDEE ». **C'est trop fort, et le sens de l'inference est inverse.**
+Ce que la production fait :
+
+```
+GrenadeThrow (evenement de LANCER decode — il porte deja son auteur)
+   -> apparie par INSTANT a une naissance de projectile
+   -> la naissance donne la POSITION ou afficher le lancer
+```
+
+L'auteur vient de l'evenement ; le projectile ne sert qu'a placer le point. **Le `0,77 u` n'est
+pas un mecanisme d'attribution, c'est un CONTROLE** : il verifie que la naissance tombe bien a
+la main du lanceur connu.
+
+**Ce qui est donc reellement acquis — et c'est deja beaucoup :** la PREMISSE PHYSIQUE de la
+chaine de §3 est **mesuree et validee** (0,77 u contre 6,4 u a instant permute et 33,9 u au
+hasard : une naissance de projectile designe son auteur sans ambiguite). **Ce qui ne l'est
+pas :** l'inference en sens inverse — naissance -> bipede le plus proche -> tireur — pour les
+projectiles qui n'ont **aucun evenement de lancer**, c'est-a-dire les projectiles d'ARME. C'est
+exactement ce que §3 voulait, et ce n'est pas construit.
+
+**UN CHIFFRE QUI DIT QUE ÇA VAUT LE COUP, ET QUI RESTE À VÉRIFIER** : le film temoin porte
+**688 vies de projectile** pour **70 lancers de grenade**. Les grenades sont donc une petite
+minorite de `ti=41` — le reste est vraisemblablement des projectiles d'arme, ce qui rendrait la
+voie applicable la ou elle sert. **A VERIFIER** : que les projectiles d'arme (aiguille de
+Needler, plasma) sont bien des entites `ti=41` et non un autre archetype. Ni mesure ni preuve
+a ce stade, juste un rapport de comptes.
+
+T1 et T1' restent, eux, de la re-mesure a la main de ce que la production faisait deja.
 
 ### 11.4 LA PART DE LA BRANCHE OPAQUE EST 6,2 %, PAS « LA MOITIÉ » — §8.1 EST FAUX
 
