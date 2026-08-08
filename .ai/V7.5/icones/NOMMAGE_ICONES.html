@@ -43,6 +43,8 @@
   .row{display:flex;gap:8px;margin-top:6px}
   .row > *{flex:1}
   .dup{color:var(--gap);font-size:12.5px;margin-top:4px}
+  .card.suspect{border-color:#6a4a2a}
+  .badge{font-size:11.5px;padding:1px 7px;border-radius:999px;border:1px solid #6a4a2a;color:var(--warn)}
   textarea{width:100%;height:230px;background:var(--field);color:var(--txt);border:1px solid var(--line);
         border-radius:8px;padding:10px;font:13px/1.45 Consolas,monospace}
   table{border-collapse:collapse;width:100%;margin-top:8px}
@@ -57,7 +59,7 @@
 <header>
   <h1>Nommer les icones extraites du jeu</h1>
   <p class="note">
-    Deux atlas, 113 icones. Pour chacune : choisir l'arme du registre dans la liste, ou taper
+    Deux atlas, 125 icones a nommer. Pour chacune : choisir l'arme du registre dans la liste, ou taper
     un libelle libre (objet d'objectif, vehicule, pictogramme...). Le travail est
     <b>sauvegarde automatiquement</b> dans le navigateur : la page peut etre fermee et reprise.
     Quand c'est fini, <b>Copier le resultat</b> ou <b>Telecharger</b> — c'est ce bloc qui sert
@@ -82,10 +84,13 @@
       Les fichiers sont donc nommes par leur index d'atlas, jamais par un nom devine.
     </p>
     <p class="note">
-      Reserve sur l'atlas sandbox : son tag en declare 88 images, 73 sont servies ici. Au-dela
+      Reserve sur l'atlas sandbox : son tag en declare 88 images, 85 recoivent une ressource et
+      sont livrees ici. Au-dela
       de l'index 72 le decodage sort raye — des descripteurs faux positifs y tombent sur une
-      ressource du bon poids, donc le controle de taille les laisse passer. La coupe est
-      assumee plutot que de servir des images corrompues.
+      ressource du bon poids, donc le controle de taille les laisse passer. Elles sont MARQUEES
+      et non retirees : le doute est etiquete, rien n'est cache. Approfondir la sonde de
+      recalage a ete essaye et rend les choses PIRES (la corruption remonte alors a l'index 42
+      et emporte les grenades) : la profondeur 6 est celle qui est retenue.
     </p>
   </details>
 </header>
@@ -94,6 +99,7 @@
     <button id="copy" class="primary">Copier le resultat</button>
     <button id="dl">Telecharger (.tsv)</button>
     <label><input type="checkbox" id="only"> a nommer seulement</label>
+    <label><input type="checkbox" id="hideSusp"> masquer les decodages suspects</label>
     <label><input type="checkbox" id="light"> fond clair</label>
     <button id="reset">Tout effacer</button>
     <span class="pill" id="prog"></span>
@@ -104,9 +110,10 @@
      rendus : un seul nom a donner par index.</p>
   <div class="grid" id="gWeap"></div>
 
-  <h2>Atlas sandbox — 73 icones</h2>
+  <h2>Atlas sandbox — 85 icones</h2>
   <p class="note">Armes vues de plus loin, vehicules, grenades lancees (regarder autour de
-     l'index 46) et pictogrammes de mort. Un seul style.</p>
+     l'index 46) et pictogrammes de mort. Un seul style. Les douze dernieres portent le badge
+     « decodage suspect » : elles sortent rayees et ne representent probablement rien de lisible.</p>
   <div class="grid" id="gSand"></div>
 
   <h2>Armes du registre restant sans icone</h2>
@@ -119,7 +126,11 @@
 </main>
 <script>
 const BASE = "../../../static/weapons-assets/halo_infinite/jeu/";
-const NB_WEAP = 40, NB_SAND = 73;
+const NB_WEAP = 40, NB_SAND = 85;
+// Au-dela de cet index, le decodage du sandbox sort raye : les images sont livrees quand meme
+// mais signalees. Constat visuel assume — la densite de transitions d opacite a ete essayee
+// comme critere automatique et NE SEPARE PAS (l icone d explosion, legitime, sort en tete).
+const SAND_CLEAN_THROUGH = 72;
 
 // Les 29 armes Halo Infinite du registre (registry.go + weapon_names.toml).
 const REGISTRE = [
@@ -184,15 +195,18 @@ function optionsSelect() {
 function carte(atlas, i) {
   const k = cle(atlas, i);
   const v = etat[k] || { choix: "", libre: "" };
+  const suspect = atlas === "sand" && i > SAND_CLEAN_THROUGH;
   const el = document.createElement("div");
-  el.className = "card" + (v.choix ? " done" : "");
+  el.className = "card" + (v.choix ? " done" : "") + (suspect ? " suspect" : "");
   el.dataset.cle = k;
+  el.dataset.suspect = suspect ? "1" : "";
   const shots = atlas === "weap"
     ? '<div class="shot"><img loading="lazy" src="' + BASE + "contour-" + pad(i) + '.png" alt=""></div>' +
       '<div class="shot"><img loading="lazy" src="' + BASE + "silhouette-" + pad(i) + '.png" alt=""></div>'
     : '<div class="shot"><img loading="lazy" src="' + BASE + "sandbox-" + pad(i) + '.png" alt=""></div>';
   el.innerHTML =
     '<div class="top"><span class="idx">#' + pad(i) + '</span>' +
+      (suspect ? '<span class="badge" title="decodage raye : l image ne represente probablement rien de lisible">decodage suspect</span>' : "") +
       '<span class="meta">' + (atlas === "weap" ? "contour + silhouette " : "sandbox-") + pad(i) + '</span></div>' +
     '<div class="shots">' + shots + '</div>' +
     '<select>' + optionsSelect() + '</select>' +
@@ -286,14 +300,18 @@ function majProgression() {
 }
 
 function appliquerFiltre() {
+  const cacher = document.getElementById("hideSusp").checked;
   const only = document.getElementById("only").checked;
   document.querySelectorAll(".card").forEach(c => {
     const v = etat[c.dataset.cle];
-    c.style.display = only && v && (v.choix || v.libre) ? "none" : "";
+    const nomme = !!(v && (v.choix || v.libre));
+    const masque = (only && nomme) || (cacher && c.dataset.suspect === "1");
+    c.style.display = masque ? "none" : "";
   });
 }
 
 document.getElementById("only").addEventListener("change", appliquerFiltre);
+document.getElementById("hideSusp").addEventListener("change", appliquerFiltre);
 document.getElementById("light").addEventListener("change", e =>
   document.body.classList.toggle("light", e.target.checked));
 document.getElementById("copy").addEventListener("click", async () => {

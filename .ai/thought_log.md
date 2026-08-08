@@ -1,3 +1,41 @@
+## [2026-08-08] v7.5 voie C — tout est affiche, y compris les douze decodages rates
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
+
+**Origine** : « Tu peux tout m'afficher quand même stp ? ». La demande corrige une décision que
+j'avais prise seul et mal : j'avais COUPÉ les 12 dernières images du sandbox parce qu'elles
+sortent rayées. Couper, c'est décider à la place de l'utilisateur ce qu'il a le droit de
+regarder. Elles sont désormais livrées et MARQUÉES.
+
+**Tentative de réparation, et son verdict.** Avant d'afficher du raté, j'ai testé l'hypothèse
+la plus plausible : la sonde de recalage descripteur → ressource (profondeur 6) serait trop
+courte. Mesure à profondeur 24 : **c'est pire**. La corruption remonte de l'index 73 à l'index
+42, ce qui emporte les caisses, les grenades lancées et les pictogrammes de mort — 84 images
+« appariées » dont seules 42 sont lisibles, contre 85 dont 73 lisibles à profondeur 6. Une
+sonde profonde laisse un descripteur attraper une ressource lointaine du bon poids. La
+profondeur 6 est donc retenue, et ce n'est plus un défaut par défaut : c'est un réglage mesuré.
+
+**Ce qui change dans le code** : `Max` (un plafond qui coupait) devient `CleanThrough` (le
+dernier index dont le décodage est confirmé à l'oeil). Rien n'est retiré ; `index.json` porte
+`decode_suspect` pour les 12 concernées. Le drapeau est un CONSTAT VISUEL et le commentaire le
+dit — la densité de transitions d'opacité avait été essayée comme critère automatique et ne
+sépare pas (l'icône d'explosion, parfaitement légitime, sort en tête du classement de bruit).
+
+**Ce qui change dans la page** : bordure et badge « decodage suspect » sur les 12, plus une
+case « masquer les decodages suspects » — décochée par défaut, donc tout est visible d'entrée.
+
+**Décompte final** : 40 contour + 40 silhouette + 85 sandbox = **165 PNG**, 125 index à nommer.
+
+**Chiffres remis d'aplomb au passage** (une question de l'utilisateur les a fait re-vérifier) :
+le champ de comptage du tag vaut 0x28 = 40 pour l'atlas des armes — où 40 images sont
+effectivement extraites, ce qui corrobore la lecture du champ — et 0x58 = 88 pour le sandbox.
+Mon recensement heuristique, lui, comptait 91 et 24 là où les tags déclarent 88 et 22 : il
+sur-compte, ce qui est exactement la cause de la dérive d'alignement.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `node --check` sur le script.
+
+**Conclusion / prochaine étape** : inchangée — ouvrir la page, nommer, me remettre le TSV.
+
 ## [2026-08-08] v7.5 voie C (suite) — les grenades etaient dans un second atlas, et le nommage devient une page
 
 **Statut** : Complété. Branche `feat/v75-icones`, worktree `LevelUp-wt-icones`. Toujours NON
