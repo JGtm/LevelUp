@@ -845,18 +845,46 @@ l'intérieur des autres modes, elle ne bouge pas non plus** : 93 à 96 % de moin
 d'appartenir à une famille de modes — et le gradient du premier tableau n'était que le reflet de
 cette appartenance.
 
-#### CE QUE LA MESURE TROUVE À LA PLACE, ET C'EST PLUS PRÉCIS
+#### CE QUE LA MESURE TROUVE À LA PLACE — un FAIT, et une explication que je retire
 
 Les **neuf** matchs hors Fiesta qui s'effondrent sont **tous des Husky Raid** (couverture 19,5 %
-à 86,9 %). Fiesta et Husky Raid partagent une mécanique que les autres modes n'ont pas :
-**l'arme est FOURNIE à la réapparition**, elle n'est pas ramassée sur la carte.
+à 86,9 %). Deux familles de modes, et elles seules, décrochent.
 
-Le déficit du flux de tirs suit donc une frontière de **mécanique de mode**, pas de composition
-d'arsenal. C'est une hypothèse plus étroite que la précédente, et elle reste à instruire.
+**J'AVAIS ÉCRIT ICI QUE CES DEUX MODES PARTAGENT « L'ARME FOURNIE À LA RÉAPPARITION ». JE LE
+RETIRE.** Relevé par l'utilisateur : « quel rapport avec notre objectif ? » — aucun, et il a
+raison. Je n'ai **aucun mécanisme** reliant la façon dont un joueur obtient son arme à la façon
+dont le film enregistre ses tirs. C'était un point commun trouvé après coup et présenté comme une
+cause. Ces deux modes partagent aussi d'être des playlists sociales, d'être chaotiques, de donner
+des armes lourdes en permanence : n'importe laquelle de ces étiquettes aurait « expliqué » autant,
+c'est-à-dire rien.
 
-**Portée pratique** : ces deux familles représentent environ **30 % du corpus**. Pour les
-**70 % restants**, le flux de tirs est déjà décodé à **95 %** — le « trou » n'est ni général ni
-la norme.
+#### L'HYPOTHÈSE UTILE, TESTÉE ET RÉFUTÉE ELLE AUSSI
+
+La bonne question n'était pas « qu'ont-ils en commun » mais **« perd-on vraiment des tirs, ou le
+compteur de référence compte-t-il autre chose ? »**. Si les armes à faisceau continu comptaient un
+« tir » par tick côté API, le dénominateur serait gonflé et le film ne perdrait rien.
+
+Mesuré, par joueur et par seconde de match :
+
+| famille | tirs comptés par l'API | événements décodés | précision API |
+|---|---|---|---|
+| Husky Raid | 0,840 | 0,387 | 0,288 |
+| autres modes | 0,575 | **0,505** | 0,428 |
+| **Fiesta** | **0,558** | **0,215** | 0,270 |
+
+**En Fiesta, les joueurs tirent au MÊME rythme qu'ailleurs** (0,558 contre 0,575) — le
+dénominateur n'est pas gonflé. **Mais le film n'enregistre que 0,215 événement par joueur et par
+seconde, contre 0,505.** On perd donc réellement plus de la moitié des tirs, et la référence n'y
+est pour rien.
+
+**Bilan honnête sur cette question** : le fait est solide (deux familles de modes décrochent,
+sans que l'arsenal ni le compteur de référence l'expliquent), et **la cause reste inconnue**. Deux
+explications ont été proposées et éliminées dans la même session.
+
+**Portée pratique, et c'est ce qui compte pour la décision** : ces deux familles représentent
+environ **30 % du corpus**. Pour les **70 % restants**, le flux de tirs est décodé à **95 %**. Et
+le déficit **n'affecte pas du tout les tirs fatals** : le film Fiesta du corpus localise **91,4 %**
+de ses morts (§8.4ter), parce que localiser une mort ne demande aucun record de tir.
 
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 
