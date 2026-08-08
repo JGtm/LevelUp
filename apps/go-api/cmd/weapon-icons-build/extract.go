@@ -48,6 +48,7 @@ type tagIndex struct {
 	nEntry  int
 	nMods   int
 	opened  map[string]*hmod
+	atlases map[uint32]*atlas
 }
 
 func listModules(only string) []string {
@@ -111,6 +112,7 @@ func buildIndex(only string) *tagIndex {
 		byID:    map[uint32][]tagRef{},
 		byGroup: map[string][]tagRef{},
 		opened:  map[string]*hmod{},
+		atlases: map[uint32]*atlas{},
 	}
 	for _, mp := range listModules(only) {
 		data, err := readEntryTable(mp)
@@ -191,49 +193,6 @@ func resourceTable(m *hmod) ([]uint32, error) {
 // entryResourceIndex : champ +0x10 de l'entrée = index dans la table de ressources.
 func entryResourceIndex(m *hmod, entry int) int {
 	return int(binary.LittleEndian.Uint32(m.entries[entry*0x58+0x10:]))
-}
-
-// resBlob rend le contenu de la ressource appariée à l'image idx, et l'offset de ses pixels.
-// La ressource est elle-même un blob à en-tête `ucsh` : les pixels commencent après
-// headerSize + dataSize (vérifié à l'octet près, cf. l'en-tête du paquet).
-func resBlob(ix *tagIndex, id uint32, idx int) (blob []byte, px int, im bitmImg, err error) {
-	r, ok := pickRef(ix.byID[id])
-	if !ok {
-		return nil, 0, im, fmt.Errorf("tag %08x absent des archives", id)
-	}
-	m, err := ix.open(r.Module)
-	if err != nil {
-		return nil, 0, im, err
-	}
-	tab, err := resourceTable(m)
-	if err != nil {
-		return nil, 0, im, err
-	}
-	data, err := ix.extract(r)
-	if err != nil {
-		return nil, 0, im, err
-	}
-	h, ok := parseTagHeader(data)
-	if !ok {
-		return nil, 0, im, fmt.Errorf("tag %08x sans en-tête ucsh", id)
-	}
-	imgs := scanImgs(data[h.HeaderSize:])
-	if idx < 0 || idx >= len(imgs) {
-		return nil, 0, im, fmt.Errorf("index %d hors borne (%d images)", idx, len(imgs))
-	}
-	ri := entryResourceIndex(m, r.Entry) + idx
-	if ri >= len(tab) {
-		return nil, 0, im, fmt.Errorf("ressource %d hors table", ri)
-	}
-	blob, err = m.extract(m.file(int(tab[ri])))
-	if err != nil {
-		return nil, 0, im, err
-	}
-	rh, ok := parseTagHeader(blob)
-	if !ok {
-		return nil, 0, im, fmt.Errorf("ressource %d sans en-tête ucsh", ri)
-	}
-	return blob, int(rh.HeaderSize) + int(rh.DataSize), imgs[idx], nil
 }
 
 const imgStride = 0x2c
@@ -325,4 +284,31 @@ func writePNG(path string, img image.Image) error {
 	defer func() { _ = f.Close() }()
 	enc := png.Encoder{CompressionLevel: png.BestCompression}
 	return enc.Encode(f, img)
+}
+
+// alphaNoise mesure la densité de TRANSITIONS d'opacité par pixel, ligne par ligne.
+//
+// À quoi ça sert : le contrôle arithmétique valide le POIDS d'une ressource, pas son
+// contenu. En queue d'atlas, des descripteurs faux positifs tombent parfois sur une
+// ressource du bon poids : le décodage rend alors du bruit rayé, plausible pour la machine
+// et évident à l'oeil. Un dessin d'interface a des contours nets et peu nombreux (mesuré
+// < 0,06 transition par pixel) ; un décodage désaligné en a un ordre de grandeur de plus.
+func alphaNoise(img *image.NRGBA) float64 {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w < 2 || h < 1 {
+		return 0
+	}
+	trans := 0
+	for y := 0; y < h; y++ {
+		prev := img.Pix[img.PixOffset(0, y)+3] > 127
+		for x := 1; x < w; x++ {
+			cur := img.Pix[img.PixOffset(x, y)+3] > 127
+			if cur != prev {
+				trans++
+				prev = cur
+			}
+		}
+	}
+	return float64(trans) / float64(w*h)
 }
