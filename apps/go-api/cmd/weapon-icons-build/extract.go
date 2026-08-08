@@ -225,19 +225,43 @@ func scanImgs(data []byte) []bitmImg {
 	return out
 }
 
+// glyphStats rapporte ce que le décodage a dû approximer sur une image.
+type glyphStats struct {
+	Blocks   int // blocs 4x4 du mip0
+	Rebuilt  int // blocs de mode 7 reconstruits par ajustement sur le mip inférieur
+	Opaque   int // blocs modes 0-3 : pas de canal alpha, alpha 255 EXACT, RGB approché (jeté)
+	Degraded int // blocs mode 7 sans témoin : alpha en aplat — la seule vraie dégradation
+}
+
+// mipGuide décode le niveau de mip SUIVANT (deux fois plus petit) et l'agrandit, pour servir
+// de témoin à la reconstruction des blocs de mode 7. Retourne nil si la ressource ne porte
+// pas ce niveau — le décodeur retombe alors sur le repli en aplat, comme avant.
+func mipGuide(blob []byte, px, w, h int) *image.NRGBA {
+	off := px + bcSize(w, h)
+	w1, h1 := max1(w/2), max1(h/2)
+	need := bcSize(w1, h1)
+	if off+need > len(blob) {
+		return nil
+	}
+	small, _, _, _ := decodeBC7(blob[off:off+need], w1, h1, nil)
+	return upscale2(small, w, h)
+}
+
 // decodeAlphaGlyph rend l'image `idx` du tag `id` en glyphe BLANC sur fond transparent,
-// recadré à sa boîte englobante. Retourne aussi le taux de blocs BC7 tombés en repli.
-func decodeAlphaGlyph(ix *tagIndex, id uint32, idx int) (*image.NRGBA, float64, bitmImg, error) {
+// recadré à sa boîte englobante. Retourne aussi ce que le décodage a dû approximer.
+func decodeAlphaGlyph(ix *tagIndex, id uint32, idx int) (*image.NRGBA, glyphStats, bitmImg, error) {
+	var st glyphStats
 	blob, px, im, err := resBlob(ix, id, idx)
 	if err != nil {
-		return nil, 0, im, err
+		return nil, st, im, err
 	}
 	bw, bh := (im.W+3)/4, (im.H+3)/4
 	need := bw * bh * 16
 	if px+need > len(blob) {
-		return nil, 0, im, fmt.Errorf("mip0 déborde la ressource (%d+%d > %d)", px, need, len(blob))
+		return nil, st, im, fmt.Errorf("mip0 déborde la ressource (%d+%d > %d)", px, need, len(blob))
 	}
-	src, fb := decodeBC7(blob[px:px+need], im.W, im.H)
+	src, rebuilt, opaque, degraded := decodeBC7(blob[px:px+need], im.W, im.H, mipGuide(blob, px, im.W, im.H))
+	st = glyphStats{Blocks: bw * bh, Rebuilt: rebuilt, Opaque: opaque, Degraded: degraded}
 	glyph := image.NewNRGBA(image.Rect(0, 0, im.W, im.H))
 	minX, minY, maxX, maxY := im.W, im.H, -1, -1
 	for y := 0; y < im.H; y++ {
@@ -262,9 +286,8 @@ func decodeAlphaGlyph(ix *tagIndex, id uint32, idx int) (*image.NRGBA, float64, 
 			}
 		}
 	}
-	rate := 100 * float64(fb) / float64(bw*bh)
 	if maxX < minX || maxY < minY {
-		return glyph, rate, im, nil
+		return glyph, st, im, nil
 	}
 	crop := image.NewNRGBA(image.Rect(0, 0, maxX-minX+1, maxY-minY+1))
 	for y := minY; y <= maxY; y++ {
@@ -273,7 +296,7 @@ func decodeAlphaGlyph(ix *tagIndex, id uint32, idx int) (*image.NRGBA, float64, 
 			copy(crop.Pix[do:do+4], glyph.Pix[so:so+4])
 		}
 	}
-	return crop, rate, im, nil
+	return crop, st, im, nil
 }
 
 func writePNG(path string, img image.Image) error {

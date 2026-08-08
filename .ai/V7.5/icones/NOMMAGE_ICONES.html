@@ -77,6 +77,16 @@
       G constants, B = rampe de teinte du shader).
     </p>
     <p class="note">
+      <b>Artefacts BC7 — corriges.</b> Le decodeur couvrait les modes 4, 5 et 6 ; les blocs de
+      mode 7 tombaient en aplat et se voyaient (une arete du dessin rendue en barre unie). Le
+      mode 7 est desormais RECONSTRUIT : points extremes, bits P et index sont lus exactement,
+      et ce qui manque (la partition, dont la table n'est pas reproduite ici) est retrouve par
+      ajustement sur le niveau de mip inferieur, decode lui aussi. Mesure apres correction :
+      <b>zero bloc degrade</b> sur les 153 images saines. Les blocs de modes 0 a 3 restent en
+      repli mais ne degradent rien — ces modes n'ont pas de canal alpha, leur alpha vaut 255
+      partout et le repli le rend exactement.
+    </p>
+    <p class="note">
       Ce qui n'est PAS etabli, et c'est exactement l'objet de cette page : <b>quelle image
       designe quelle arme</b>. L'index d'icone n'est pas un petit entier a offset constant
       dans le tag <code>weap</code> (0 candidat sur 29 armes) et l'appariement automatique par
@@ -86,7 +96,7 @@
     <p class="note">
       Reserve sur l'atlas sandbox : son tag en declare 88 images, 85 recoivent une ressource et
       sont livrees ici. Au-dela
-      de l'index 72 le decodage sort raye — des descripteurs faux positifs y tombent sur une
+      de l'index 72 (et de l'index 38 pour l'atlas des armes) le decodage sort raye — des descripteurs faux positifs y tombent sur une
       ressource du bon poids, donc le controle de taille les laisse passer. Elles sont MARQUEES
       et non retirees : le doute est etiquete, rien n'est cache. Approfondir la sonde de
       recalage a ete essaye et rend les choses PIRES (la corruption remonte alors a l'index 42
@@ -131,6 +141,7 @@ const NB_WEAP = 40, NB_SAND = 85;
 // mais signalees. Constat visuel assume — la densite de transitions d opacite a ete essayee
 // comme critere automatique et NE SEPARE PAS (l icone d explosion, legitime, sort en tete).
 const SAND_CLEAN_THROUGH = 72;
+const WEAP_CLEAN_THROUGH = 38;
 
 // Les 29 armes Halo Infinite du registre (registry.go + weapon_names.toml).
 const REGISTRE = [
@@ -195,7 +206,7 @@ function optionsSelect() {
 function carte(atlas, i) {
   const k = cle(atlas, i);
   const v = etat[k] || { choix: "", libre: "" };
-  const suspect = atlas === "sand" && i > SAND_CLEAN_THROUGH;
+  const suspect = i > (atlas === "sand" ? SAND_CLEAN_THROUGH : WEAP_CLEAN_THROUGH);
   const el = document.createElement("div");
   el.className = "card" + (v.choix ? " done" : "") + (suspect ? " suspect" : "");
   el.dataset.cle = k;

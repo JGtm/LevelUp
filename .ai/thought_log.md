@@ -1,3 +1,51 @@
+## [2026-08-08] v7.5 voie C — les artefacts venaient du mode 7, reconstruit sans recopier de table
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
+
+**Origine** : « j'ai l'impression qu'il y a de petits artefacts sur certaines images ».
+Impression juste, et la cause était nommée depuis le début — le repli du décodeur BC7.
+
+**Établi sur pièces avant de coder.** Un mode de diagnostic (`tmp_wicons marks`) rend l'icône
+en marquant EN ROUGE les blocs tombés en repli. Sur l'icône #21 de l'atlas contour : 28 blocs,
+**tous de mode 7**, et ils forment une ligne horizontale continue le long d'une arête du
+dessin — exactement la barre unie que l'utilisateur voyait.
+
+**Le périmètre s'est réduit, et c'est le vrai résultat de la séance.** Je croyais devoir
+implémenter cinq modes (0-3 et 7). En réalité **un seul dégrade le livrable** : les modes 0 à 3
+n'ont PAS de canal alpha, leur alpha vaut donc 255 partout — et le repli le rendait déjà
+exactement. Or seul l'alpha est conservé dans le glyphe final ; leur RGB approché est jeté.
+Vérifier cette propriété du format avant de coder a divisé le travail par cinq.
+
+**Comment le mode 7 est traité sans recopier les tables de partition.** Tout ce qui se lit se
+lit exactement : largeurs de champs, points extrêmes, bits P, index. Ce qui manque — la
+partition et la position de la seconde ancre — est retrouvé par AJUSTEMENT SUR DES DONNÉES DU
+FICHIER : le niveau de mip inférieur est décodé lui aussi, agrandi, et sert de témoin. Les 15
+positions d'ancre possibles sont essayées ; pour chacune, chaque pixel prend le sous-ensemble
+dont la valeur colle le mieux au témoin ; la position qui minimise l'écart gagne. Les tables
+ne sont toujours pas reproduites de mémoire — une table fausse rendrait une image plausible
+mais fausse, et c'est le pire cas.
+
+**Contrôle visuel qui tranche** : avant/après zoomé sur la zone (`tmp_wicons cmp`). L'aplat
+uniforme devient une ligne de petits crans RÉGULIERS, alignée sur le trait au-dessus. Une
+reconstruction fausse donnerait du bruit, pas un motif périodique aligné — c'est ce qui rend
+le résultat crédible au-delà du « ça a l'air mieux ».
+
+**Mesure après correction : zéro bloc dégradé** sur les images saines. Les compteurs
+d'`index.json` ont été refaits pour dire la vérité utile plutôt qu'un chiffre alarmant :
+`bc7_flat_pct` (qui montait à 42 % et ne signalait rien) est remplacé par trois compteurs —
+`bc7_rebuilt_pct` (mode 7 reconstruit), `bc7_opaque_pct` (modes 0-3, alpha exact, sans effet)
+et `bc7_degraded_pct` (mode 7 sans témoin : la seule vraie dégradation, à 0).
+
+**Découvert en régénérant les planches** : l'index 39 de l'atlas des armes sort rayé lui aussi.
+Le seuil `CleanThrough` passe donc de 39 à 38 pour les deux styles d'armes, et la page marque
+désormais les suspects des DEUX atlas (14 images au total, contre 12).
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur le script de la page. Tous les fichiers du paquet sous 500 lignes
+(le plus gros, `extract.go`, à 337).
+
+**Conclusion / prochaine étape** : inchangée — ouvrir la page, nommer, me remettre le TSV.
+
 ## [2026-08-08] v7.5 voie C — tout est affiche, y compris les douze decodages rates
 
 **Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
