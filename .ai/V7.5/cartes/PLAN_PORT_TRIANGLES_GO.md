@@ -54,10 +54,23 @@ Chaque etape porte son temoin FALSIFIABLE. Les temoins tautologiques sont interd
 §2.3 du handoff en a deja retire un (« les bornes locales transformees reproduisent l'AABB
 monde » est vrai par construction, ecart median 0,0000 m).
 
-- [ ] **T1 — lire `rtgo`.** Depuis `RuntimeGeoMeshReference` de l'instance : `PerMeshData`
+- [x] **T1 — lire `rtgo`.** Depuis `RuntimeGeoMeshReference` de l'instance : `PerMeshData`
       @16 (pas de 144), `Sections` @64, `BoundingBoxes` @104, `TotalVertexBufferCount` @190,
       `MeshResourceGroups` @196. *Temoin* : le bloc `PerMeshData` doit mesurer un multiple
       ENTIER de 144 (mesure sur nos tags : 864 = 6 x 144, 1 296 = 9 x 144, 720 = 5 x 144).
+      **FAIT le 2026-08-08.** `himap.ModuleIndex` (index GlobalID -> module, carte puis
+      globaux) + `himap.ReadRuntimeGeoTag`. Mesure sur ridgeline : 11 modules, 57 251
+      entrees indexees, **9 832/10 357 instances resolues (94,9 %)**, **525 tags rtgo
+      ouverts, 1 195 maillages**, pas de 144 respecte partout, `MeshIndex` dans la borne
+      pour 100 % des instances.
+      **PIEGE RENCONTRE, a ne pas perdre** : les offsets 8 ET 12 de la reference resolvent
+      tous deux vers des `rtgo` valides — 98,6 % des instances y portent la MEME valeur.
+      Ni le taux de resolution, ni la borne de `MeshIndex` (satisfaite a 100 % par les
+      deux) ne les departagent : le premier temoin ecrit passait avec l'offset 12, donc il
+      ne testait rien. Ce qui departage : a l'offset 8 la resolution est un SUR-ENSEMBLE
+      STRICT (147 instances de plus, et jamais l'inverse). Le temoin exige desormais que
+      `refOffGlobalID` soit l'ARGMAX STRICT sur tous les offsets de la reference — et la
+      mutation 8 -> 12 le fait rougir.
 - [ ] **T2 — atteindre le maillage.** Champ racine `meshes`, TagBlock enfant a
       `foff = meshIndex * 60`, records de LOD render data de 148 octets, `u16` @0x64 =
       index du tampon de SOMMETS, `u16` @0x8A = index du tampon d'INDICES.
