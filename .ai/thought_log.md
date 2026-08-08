@@ -1,3 +1,60 @@
+## [2026-08-08] v7.5 piste E — session 2/2 : voie de la réplication reformulée, déconvolution ratée de peu, timebox CLOS
+
+**Statut** : Complété. **Le timebox de la décision #6 est consommé, le verdict est NÉGATIF et
+il est écrit** (`.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`, §0bis + §5). Branche
+`research/v75-precision`. Aucun fichier de production touché, aucun merge, aucune écriture en
+base.
+
+**Étape 0 — la voie de la réplication, et elle reformule le problème.** `objet + 0x114` est bien
+l'indice de slot de réplication : `FUN_141fd8460` est le convertisseur handle → slot commun à
+l'émission d'événements (il écarte toute entité dont ce champ vaut -1, et son `param_2` indexe
+la table d'événements de pas 0x18). Le fait qui change tout est dans `FUN_142f1c44c` : **la
+touche de projectile n'est comptée QUE si `projectile+0x114 != -1`**, c'est-à-dire **que si le
+projectile est une entité RÉPLIQUÉE**. Tout projectile qui touche est donc dans le film. Le
+propriétaire, lui, est lu par déréférencement (`projectile+0xe0`, `FUN_1404969f0`) et n'est
+**jamais** transmis à l'émetteur `FUN_140de8cb0`, qui ne reçoit que le projectile et la cible —
+confirmation par le code du négatif déjà mesuré sur le corps des codes 6/7. **La question du
+handoff (« que porte l'enregistrement qui crée le slot ? ») est donc close, et remplacée par une
+autre : comment rattacher l'ENTITÉ projectile à un joueur ?** Réponse candidate qui échappe aux
+deux impasses connues (pas un champ de propriétaire, pas un appariement d'horloge) : **la
+trajectoire** — un projectile part de son tireur. Bloqueur nommé et borné :
+`object-position-component` de `ti=41` n'est pas bit-exact (45 bits contre 60, 7ter.84 (5)(6)(7)).
+**C'est un travail de décodeur, pas de piste E** — report valide au sens du contrat, consigné.
+
+**Étape A — déconvolution au grain joueur.** 898 films, **8 562 observations (match x joueur)**,
+23 armes, coefficients bornés dans [0,1], référence API par arme reconstruite sur la population
+à arme dominante >= 80 % (6 armes, effectifs publiés : MA40 0,3793 sur 1 006 joueurs, BR75
+0,4111 sur 750, Sidekick 0,4522 sur 226, Bandit Evo 0,5124 sur 70).
+
+**Le gate de l'appariement a servi, et c'est la leçon de méthode du jour.** Le résolveur du
+dépôt (`weaponv3.ResolveXuidToPI`) ne finit pas en 10 minutes sur 60 films ; réécrit en
+recherche d'octets sur les 8 alignements, il fait 898 films en 3 min 10. Première version :
+**277 accords contre 299 désaccords** — le dépôt retient la première occurrence EN POSITION DE
+BIT, la mienne la première de CHAQUE DÉCALAGE. Corrigé par le minimum sur les huit décalages :
+**576 accords, 0 désaccord.** Sans ce gate, l'erreur contaminait tout l'aval en silence.
+
+**Résultat, et le critère n'est pas atteint.** Contrôle positif : BR75 **+0,0043**, Bandit Evo
+**-0,0246** (les deux passent) ; MA40 **-0,0324**, Sidekick **+0,0461** (les deux ratent). Le
+critère écrit exigeait les quatre à ±0,03 — **deux sur quatre**. Verdict clos, négatif. L'étape
+B (contraste intra-joueur) n'est **pas** jouée : elle était conditionnée à la réussite de A, et
+la jouer quand même serait chercher une confirmation après un critère raté.
+
+**Ce qui a quand même progressé, et qu'il faut consigner.** Le grain joueur borné divise
+l'erreur du contrôle positif par 2 à 3 contre le grain match (0,045-0,095 → 0,004-0,046), rend
+les coefficients stables entre moitiés pour les armes à fort volume, et supprime les valeurs
+négatives. Le Needler passe de **0,007** (chiffre naïf du dossier) à **0,2238**
+(0,2111 / 0,2316) — d'une réponse fausse d'un facteur 30 à une réponse plausible mais **non
+validable**. ⚠ **Aucune nulle n'a été jouée au grain joueur** (le critère a échoué avant) : les
+chiffres par arme à projectile sont INDICATIFS, personne ne doit les publier ni les citer.
+
+**Conclusion / prochaine étape.** Piste E close sur un négatif documenté. Quatre corrections
+sont dues au dossier indépendamment de la piste : l'offset de `RoundsCorrected` (`entry+0x10`,
+pas `+0x08`), l'identité `eventStart+106 == payload bit 110`, l'unité du record par arme (un
+record = un TIR pour toutes les armes), et le fait que la précision par arme est une grandeur
+que le moteur calcule nativement (`+0x08` tirs / `+0x0c` touches, pas 0xa8) mais n'expédie qu'à
+sa télémétrie. Le seul item transmis ailleurs : rendre i0 de `ti=41` bit-exact, au registre du
+décodeur (chantier rejeu 2D / filmdec).
+
 ## [2026-08-08] v7.5 piste E — je fermais trop vite : le test qui manquait, et ce qu'il laisse ouvert
 
 **Statut** : Complété. Correction de l'entrée précédente du jour, même branche

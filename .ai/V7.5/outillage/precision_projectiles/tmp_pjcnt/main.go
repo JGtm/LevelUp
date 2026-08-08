@@ -100,6 +100,7 @@ func newPlayerAgg() *playerAgg {
 
 // apiRow porte la reference API d un joueur (jamais dans le critere de decodage).
 type apiRow struct {
+	xuid                 string
 	shotsFired, shotsHit int
 }
 
@@ -111,19 +112,22 @@ type matchRef struct {
 
 func main() {
 	var (
-		filmsDir = flag.String("films", "", "racine du cache de films (lecture seule)")
-		refCSV   = flag.String("ref", "", "CSV de reference API (pfx,match_id,pair_name,xuid,gamertag,shots_fired,shots_hit,...)")
-		famille  = flag.String("famille", "", "filtre de famille de mode : FIESTA|TACTICAL|BTB|STANDARD (vide = tout)")
-		limit    = flag.Int("limit", 20, "nombre maximum de films traites (plafond memoire/CPU)")
-		outCSV   = flag.String("out", "", "CSV de sortie par match")
-		outPlr   = flag.String("outplayer", "", "CSV de sortie par (match, indice de tireur)")
-		align    = flag.Bool("align", false, "controle d alignement : mesure P(pas=+1) a -1/0/+1 bit")
-		hdrStats = flag.Bool("hdr", false, "ventile les records par classe d en-tete et par suffixe d arme")
-		perWeap  = flag.Bool("arme", false, "pas moyen du compteur par arme (test de la piste E)")
-		doFit    = flag.Bool("fit", false, "deconvolution du taux de touche par arme contre les touches API du match")
-		minShots = flag.Float64("minshots", 3000, "tirs minimum pour qu une arme entre dans le systeme")
-		normVis  = flag.Bool("norm", false, "normalise les tirs decodes de chaque match par sa visibilite (total API)")
-		weapCSV  = flag.String("armes", "", "CSV weapon_id,name_en exporte de metadata.duckdb")
+		filmsDir  = flag.String("films", "", "racine du cache de films (lecture seule)")
+		refCSV    = flag.String("ref", "", "CSV de reference API (pfx,match_id,pair_name,xuid,gamertag,shots_fired,shots_hit,...)")
+		famille   = flag.String("famille", "", "filtre de famille de mode : FIESTA|TACTICAL|BTB|STANDARD (vide = tout)")
+		limit     = flag.Int("limit", 20, "nombre maximum de films traites (plafond memoire/CPU)")
+		outCSV    = flag.String("out", "", "CSV de sortie par match")
+		outPlr    = flag.String("outplayer", "", "CSV de sortie par (match, indice de tireur)")
+		align     = flag.Bool("align", false, "controle d alignement : mesure P(pas=+1) a -1/0/+1 bit")
+		hdrStats  = flag.Bool("hdr", false, "ventile les records par classe d en-tete et par suffixe d arme")
+		perWeap   = flag.Bool("arme", false, "pas moyen du compteur par arme (test de la piste E)")
+		doFit     = flag.Bool("fit", false, "deconvolution du taux de touche par arme contre les touches API du match")
+		minShots  = flag.Float64("minshots", 3000, "tirs minimum pour qu une arme entre dans le systeme")
+		piGate    = flag.Bool("pigate", false, "confronte le resolveur rapide a celui du depot")
+		perPlayer = flag.Bool("joueur", false, "etape A : reference par arme + deconvolution bornee au grain joueur")
+		purete    = flag.Float64("purete", 0.8, "purete minimale de l arme dominante pour la reference API")
+		normVis   = flag.Bool("norm", false, "normalise les tirs decodes de chaque match par sa visibilite (total API)")
+		weapCSV   = flag.String("armes", "", "CSV weapon_id,name_en exporte de metadata.duckdb")
 	)
 	flag.Parse()
 
@@ -151,6 +155,14 @@ func main() {
 	}
 	if *perWeap {
 		runWeapon(*filmsDir, pfxs, loadWeaponNames(*weapCSV), *outCSV)
+		return
+	}
+	if *piGate {
+		runPIGate(*filmsDir, pfxs, refs)
+		return
+	}
+	if *perPlayer {
+		runPlayer(*filmsDir, pfxs, refs, loadWeaponNames(*weapCSV), *minShots, *purete, *outCSV, *normVis)
 		return
 	}
 	if *doFit {
@@ -283,7 +295,7 @@ func loadRef(path string) (map[string]*matchRef, error) {
 	for i, h := range rows[0] {
 		col[h] = i
 	}
-	need := []string{"pfx", "match_id", "pair_name", "shots_fired", "shots_hit"}
+	need := []string{"pfx", "match_id", "pair_name", "xuid", "shots_fired", "shots_hit"}
 	for _, k := range need {
 		if _, ok := col[k]; !ok {
 			return nil, fmt.Errorf("colonne %q absente", k)
@@ -298,6 +310,7 @@ func loadRef(path string) (map[string]*matchRef, error) {
 			out[pfx] = m
 		}
 		m.players = append(m.players, apiRow{
+			xuid:       row[col["xuid"]],
 			shotsFired: atoi(row[col["shots_fired"]]),
 			shotsHit:   atoi(row[col["shots_hit"]]),
 		})

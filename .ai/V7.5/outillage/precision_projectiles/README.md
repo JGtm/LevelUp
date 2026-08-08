@@ -65,3 +65,24 @@ tmp_pjcnt -films <cache> -ref ref.csv -famille TACTICAL -limit 22 -out m.csv
 3. **Le cout est de 50 ms par film**, deux ordres de grandeur sous le balayage bit a bit,
    parce qu'un record se reconnait a son premier octet (`pay[0]>>1 == 105`) et non par un
    marqueur cherche au bit pres.
+
+## Ajout du 2026-08-08 (session 2) — le grain JOUEUR
+
+| drapeau | ce qu'il mesure |
+|---|---|
+| `-pigate` | **GATE OBLIGATOIRE AVANT `-joueur`** : confronte le resolveur rapide `resolvePIFast` a celui du depot (`weaponv3.ResolveXuidToPI`), chunk par chunk. Attendu : `desaccord=0`. Il a deja rattrape une erreur reelle (277 accords contre 299 desaccords sur la premiere version) |
+| `-joueur` | etape A : reference API par arme sur la population a arme dominante (`-purete`, defaut 0.8) + deconvolution BORNEE dans [0,1] au grain (match x joueur), moities hors echantillon. **Toujours avec `-norm`** |
+
+```bash
+tmp_pjcnt -films <cache> -ref ref.csv -limit 3 -pigate           # gate du resolveur
+tmp_pjcnt -films <cache> -ref ref.csv -armes weapons.csv -limit 900 -joueur -norm -minshots 8000
+```
+
+**Pourquoi `resolvePIFast` existe** : le resolveur du depot relit 64 bits a chaque position de
+bit et pour chaque xuid — 60 films ne finissent pas en 10 minutes. La version rapide cherche les
+8 octets du xuid (ecriture LITTLE-ENDIAN) par `bytes.Index` dans les 8 versions decalees du
+chunk : 898 films en 3 min 10. **Piege, et il a ete pris au gate** : le depot retient la
+premiere occurrence EN POSITION DE BIT ; balayer decalage par decalage retient la premiere de
+CHAQUE decalage, ce qui n est pas la meme occurrence. Il faut le minimum sur les huit decalages.
+
+**Cout mesure** : `-joueur -norm` sur 900 films = **3 min 10** (appariement compris).

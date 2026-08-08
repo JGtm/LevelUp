@@ -1,9 +1,15 @@
-# VERDICT — précision par arme pour les armes à projectile (piste E, session 1/2)
+# VERDICT — précision par arme pour les armes à projectile (piste E) — CLOS
 
-> Session de mesure du 2026-08-08, branche `research/v75-precision`, worktree
-> `LevelUp-wt-precision`. Timebox décision #6 du master plan : 2 sessions, verdict écrit
-> quel que soit le résultat. **Ceci est l'état à la fin de la session 1/2** — il conclut sur
-> trois hypothèses et laisse une voie ouverte, avec son plan de test.
+> Timebox décision #6 du master plan : 2 sessions, verdict écrit quel que soit le résultat.
+> **Les deux sessions ont été jouées le 2026-08-08**, branche `research/v75-precision`,
+> worktree `LevelUp-wt-precision`. **Le verdict est NÉGATIF et le timebox est consommé.**
+>
+> Ordre de lecture si vous êtes pressé : **§0** (les cinq lignes) puis **§5** (le verdict) puis
+> **§7** (ce qu'il ne faut pas refaire). Le reste est la démonstration.
+>
+> Ce qui a été fait : cinq hypothèses testées, deux voies de décodage fermées par mesure, une
+> voie de décodage reformulée et renvoyée au décodeur, une voie d'inférence menée jusqu'à son
+> critère d'arrêt — et raté.
 >
 > Corpus : les 951 films du cache du dépôt principal, lus en LECTURE SEULE. Aucun fichier de
 > production touché. Instrument : `apps/go-api/cmd/tmp_pjcnt/` (binaire de recherche).
@@ -12,7 +18,38 @@
 
 ---
 
-## 0. LES CINQ LIGNES
+## 0bis. LE VERDICT EN UNE PAGE  *(écrit à la clôture, il prime sur le §0 historique)*
+
+**La précision par arme des armes à projectile n'est pas livrable.** Ni par décodage — deux des
+trois voies sont fermées par mesure, la troisième dépend d'un composant du décodeur qui n'est
+pas bit-exact — ni par inférence : le meilleur estimateur construit ici rate son contrôle
+positif sur 2 des 4 armes dont on connaît la réponse.
+
+```
+CE QUI EST DISPONIBLE, ET NE L'ÉTAIT PAS AVANT CETTE SESSION
+  les TIRS par arme, projectiles compris        le compte de records type 105 (cadence
+                                                 mesurée = temps de cycle de l'arme)
+  la référence API PAR ARME, 6 armes            reconstruite, effectifs publiés (§4quater.2)
+  un appariement indice -> xuid rapide          898 films en 3 min, gate 576/576 (§4quater.1)
+
+CE QUI MANQUE, ET C'EST TOUT CE QUI MANQUE
+  les TOUCHES par arme sur les projectiles      absentes des records de dégât (82,7 % des
+                                                 touches Fiesta n'ont aucun porteur),
+                                                 absentes des codes 6/7 (ni arme ni tireur)
+
+LA SEULE VOIE QUI RESTE, ET ELLE N'APPARTIENT PAS À CETTE PISTE
+  attribuer l'ENTITÉ projectile à un joueur par sa TRAJECTOIRE — bloqué par
+  `object-position-component` de ti=41, non bit-exact (45 bits contre 60). Travail de décodeur.
+```
+
+**Ce qui doit remonter au dossier, quel que soit l'avenir de la piste :** la correction d'offset
+de `RoundsCorrected` (§4bis.2), l'identité `eventStart+106 == payload bit 110` (§1), l'unité du
+record par arme (§3.3), et le fait que la précision par arme est une grandeur que **le moteur
+calcule nativement** mais n'expédie qu'à sa télémétrie (§4bis.1).
+
+---
+
+## 0. LES CINQ LIGNES  *(rédaction de mi-parcours, conservée telle quelle)*
 
 1. **Le blocage n'est pas là où le handoff le plaçait.** Le record de tir d'une arme à
    projectile est un **TIR**, pas une touche : le dénominateur par arme est **disponible**.
@@ -416,12 +453,176 @@ option.
 
 ---
 
+## 4ter. LA VOIE DE LA RÉPLICATION — étape 0 de la session 2, et elle reformule le problème
+
+> Lecture statique du 2026-08-08, seconde passe. **La question du handoff** : « le handle porté
+> par le code 7 est un slot de réplication (`objet + 0x114`) — que porte l'enregistrement qui
+> CRÉE ce slot ? » Réponse : la question était mal posée, et ce qu'on trouve à la place vaut
+> mieux.
+
+### 4ter.1 `objet + 0x114` EST BIEN LE SLOT DE RÉPLICATION — deux sites d'appel le confirment
+
+`FUN_141fd8460` est le **convertisseur commun handle → slot** de l'émission d'événements : il
+résout chaque handle d'entité (`FUN_140471c88`), lit `*(int *)(objet + 0x114)`, et **écarte
+l'entité si ce champ vaut -1**. Son `param_2` indexe une table d'événements de pas 0x18
+(`&DAT_144989fb0 + param_2 * 0x18`) : c'est bien le code d'événement. **Les codes 6 et 7
+passent par là — c'est pour cela qu'ils portent des slots et non des handles.**
+
+### 4ter.2 LE FAIT QUI CHANGE LE PROBLÈME — la touche n'est comptée QUE si le projectile est répliqué
+
+Dans `FUN_142f1c44c` (impact de projectile), le comptage de la touche est gardé par :
+
+```c
+lVar9 = FUN_140477aa0(&param_1, 0x20);            // param_1 = handle du PROJECTILE
+...
+if ((lVar9 != 0) && (*(int *)(lVar9 + 0x114) != -1)) {   // <- le projectile EST REPLIQUE
+    if (FUN_140f052cc(lVar10 + 0x180e0, param_1) == '\0') {   // porte de deduplication
+        lVar9 = FUN_1404969f0(lVar9 + 0xe0);       // <- LE PROPRIETAIRE, par pointeur
+        if (lVar9 != 0) { ... FUN_1408df6a4(...);   // <- le compteur de touches
+```
+
+**Conséquence, et elle est structurelle : tout projectile dont une touche est comptée est une
+entité PRÉSENTE dans le flux de réplication, avec un slot.** Le projectile n'est pas un objet
+fantôme du serveur — il est dans le film.
+
+Et le propriétaire, lui, n'y est pas : il est lu **par déréférencement de pointeur**
+(`projectile + 0xe0`), et il n'est **pas** transmis à l'émetteur d'événement. L'appel final
+`FUN_140de8cb0(param_1, composant_proj, param_4, ..., cible, ...)` reçoit le **projectile** et
+la **cible**, jamais le tireur. C'est la confirmation, côté code, du négatif déjà mesuré sur le
+corps des codes 6/7.
+
+L'ossature d'ownership existe pourtant côté moteur : `FUN_1406b312c` remonte de `objet - 0xc`
+vers son ancêtre et s'arrête sur le premier qui porte un slot — « le plus proche ancêtre
+répliqué ». Elle est appelée depuis le sous-système de dégât (`FUN_1404d6fb4`). Mais c'est une
+marche dans le graphe d'objets du serveur, pas un champ répliqué.
+
+### 4ter.3 CE QUE ÇA REFORMULE — on ne cherche plus un CHAMP, on cherche une ENTITÉ
+
+```
+  ANCIENNE FORMULATION  « quel champ de l'evenement d'impact nomme le tireur ? »
+                        -> ferme, par mesure (corps des codes 6/7) ET par le code (4ter.2)
+
+  FORMULATION JUSTE     « le projectile est une ENTITE REPLIQUEE du film, portant un slot.
+                        Comment rattache-t-on cette entite a un joueur ? »
+                        -> PAS ferme, et ce n'est meme pas la meme question
+```
+
+Et il existe une réponse candidate qui n'est **ni** un champ de propriétaire **ni** un
+appariement d'horloge — donc qui échappe aux deux impasses du dossier : **la trajectoire**. Un
+projectile part de son tireur. La première position répliquée de l'entité projectile, confrontée
+aux positions des joueurs au même instant, attribue le projectile **géométriquement**. C'est
+offline-pur, universel, et cela réutilise ce que le chantier rejeu 2D décode déjà.
+
+**Le bloqueur est nommé, borné, et il n'est pas dans cette piste** : `object-position-component`
+de l'archétype `ti=41` (i0, `FUN_14076e29c`) n'est **pas bit-exact** — 45 bits contre 60 — et i0
+précède tous les autres composants (7ter.84 (5)(6)(7)). Tant qu'il ne l'est pas, aucune position
+de projectile ne sort. **C'est un travail de décodeur, pas un travail de piste E.**
+
+---
+
+## 4quater. ÉTAPE A — la déconvolution au grain JOUEUR, et son critère d'arrêt
+
+> Exécutée le 2026-08-08. **898 films exploitables, 8 562 observations (match x joueur),
+> 23 armes.** Trois changements sur le §4 : grain joueur au lieu du match, coefficients
+> **bornés dans [0,1]**, et la référence API par arme **reconstruite** au lieu d'être citée.
+
+### 4quater.1 L'APPARIEMENT, ET LE GATE QUI L'A SAUVÉ
+
+Le grain joueur exige l'appariement indice de film → xuid. Le résolveur du dépôt
+(`weaponv3.ResolveXuidToPI`) relit 64 bits à chaque position de bit et pour chaque xuid : sur
+60 films **il ne finit pas en 10 minutes**. Réécrit en recherche d'octets sur les 8 alignements
+(`bytes.Index` sur le chunk décalé), il rend la même réponse en trois ordres de grandeur de
+moins — **898 films en 3 min 10**.
+
+**Et le gate a servi.** Première version : **277 accords contre 299 désaccords**. Cause : le
+résolveur du dépôt retient la première occurrence **en position de bit**, la mienne retenait la
+première de **chaque décalage** — deux occurrences différentes du même motif, donc deux
+indices différents. Corrigé en prenant le minimum sur les huit décalages :
+**576 accords, 0 désaccord.** *Un instrument réécrit pour la vitesse ne vaut que confronté à
+celui qu'il remplace ; ici la confrontation a rattrapé une erreur qui aurait contaminé tout
+l'aval en silence.*
+
+Couverture : **8 562 joueurs appariés sur 10 296** (83,2 %). Les indices non rattachés au
+roster sont **jetés**, jamais devinés.
+
+### 4quater.2 LA RÉFÉRENCE API PAR ARME, RECONSTRUITE
+
+Population à arme dominante >= 80 % des tirs décodés, effectif publié avec le chiffre :
+
+```
+arme              joueurs    tirs API   précision API
+MA40 AR             1 006     433 621       0,3793
+BR75                  750     253 866       0,4111
+Mk51 Sidekick         226      42 693       0,4522
+Bandit Evo             70      12 457       0,5124
+M392 Bandit            37      14 765       0,3211
+S7 Sniper              33       2 820       0,2759
+```
+
+Le dossier ne citait en clair que MA40 **0,4196** et Sidekick **0,4491** ; on retrouve 0,3793 et
+0,4522 sur un corpus et une pureté qui ne sont pas exactement les siens. **Le contrôle positif
+passe donc de deux points à six.**
+
+### 4quater.3 LE RÉSULTAT, ET LE CRITÈRE N'EST PAS ATTEINT
+
+```
+CONTROLE POSITIF                coef      moitié A   moitié B   réf API    écart
+BR75                           0,4155      0,4265     0,4051     0,4111   +0,0043   OK
+Bandit Evo                     0,4878      0,4096     0,5778     0,5124   -0,0246   OK
+MA40 AR                        0,3469      0,3425     0,3520     0,3793   -0,0324   limite
+M392 Bandit                    0,2879      0,2536     0,3141     0,3211   -0,0332   limite
+Mk51 Sidekick                  0,4984      0,5127     0,4796     0,4522   +0,0461   NON
+S7 Sniper                      0,4390      0,4855     0,3762     0,2759   +0,1632   NON
+
+ARMES A PROJECTILE (indicatif — aucune référence pour les valider)
+Needler        0,2238  (0,2111 / 0,2316)      Mangler         0,3769  (0,3227 / 0,4627)
+Ravager        0,2145  (0,2675 / 0,1598)      Fuel Rod SPNKr  0,2412  (0,2145 / 0,2487)
+Plasma Pistol  0,1747  (0,1749 / 0,1632)      Cindershot      0,1608  (0,1653 / 0,1198)
+Pulse Carbine  0,1474  (0,1185 / 0,1862)      CQS48 Bulldog   0,1153  (0,1835 / 0,0684)
+M41 SPNKr      0,0687  (0,0510 / 0,2005)      MLRS-2 Hydra    0,0355  (0,0000 / 0,2412)
+```
+
+**CRITÈRE D'ARRÊT DU §6 : « MA40, BR75, Sidekick et Bandit Evo à ± 0,03 hors échantillon ».
+DEUX SUR QUATRE.** BR75 (+0,0043) et Bandit Evo (-0,0246) passent ; MA40 rate de 0,0024 et le
+Sidekick de 0,0161. **Le critère n'est pas atteint — le verdict est donc clos, et il est
+négatif.**
+
+**Ce qui a quand même changé, et il faut le dire aussi.** Le grain joueur borné divise l'erreur
+du contrôle positif par ~2 à 3 par rapport au grain match (0,045 à 0,095 → 0,004 à 0,046), rend
+les coefficients **stables entre moitiés** pour les armes à fort volume (Needler
+0,2111 / 0,2316), et supprime les valeurs négatives. Le Needler passe de **0,007** (chiffre naïf
+du dossier) à **0,2238**, dans l'ordre de grandeur attendu. **On est passé d'une réponse fausse
+d'un facteur 30 à une réponse plausible mais non validable.**
+
+**Trois réserves, et la première est disqualifiante à elle seule :**
+
+1. **AUCUNE NULLE N'A ÉTÉ JOUÉE AU GRAIN JOUEUR.** Le critère ayant échoué avant, la nulle par
+   permutation des touches entre joueurs du même match n'a pas été mesurée. **Les chiffres par
+   arme à projectile ci-dessus sont donc INDICATIFS et rien de plus** — personne ne doit les
+   publier ni les citer comme mesure.
+2. **La référence est elle-même contaminée** : un joueur à 80 % de pureté porte 20 % de tirs
+   d'autres armes, et §3bis.1 réserve 2 montre que ce biais existe (BR75). Une part du résidu
+   est dans la référence, pas dans l'estimation — ce n'est pas une excuse, c'est une limite de
+   la méthode de validation elle-même.
+3. **Les armes rares restent non identifiables** : Hydra 0,0000 / 0,2412 entre moitiés, SPNKr
+   0,0510 / 0,2005. Le grain joueur n'a pas résolu ce point, il l'a seulement borné.
+
+---
+
 ## 5. VERDICT DE FAISABILITÉ AU 2026-08-08
 
 > **La précision par arme des armes à projectile n'est PAS dérivable à un niveau publiable
 > dans l'état actuel du décodage.** Le meilleur estimateur produit cette session (déconvolution
 > normalisée) est stable hors échantillon mais rate son contrôle positif de 0,02 à 0,095, soit
 > 3 fois la tolérance qui rend quatre armes publiables aujourd'hui.
+>
+> **ET LE BLOCAGE A UN NOM, UNE ADRESSE ET UN PROPRIÉTAIRE** (§4ter) : la donnée manquante est
+> l'attribution d'une **entité projectile** à un joueur ; la voie candidate est **géométrique**
+> (la trajectoire part du tireur) ; et elle est bloquée par un composant précis —
+> `object-position-component` de `ti=41`, non bit-exact, 45 bits contre 60. **Ce n'est pas un
+> travail de piste E, c'est un travail de décodeur.** La piste E ne peut pas se conclure
+> positivement tant que ce composant n'est pas porté ; elle ne doit pas non plus être déclarée
+> impossible à cause de lui.
 
 **Ce qui a changé, et qui n'est pas rien :**
 
@@ -456,19 +657,27 @@ intra-joueur**, comme écrit.
 > Il ne l'est pas : **l'étape 0 passe devant**, parce qu'elle peut rendre la déconvolution
 > inutile — et parce que c'est la seule voie qui porte la forme du précédent « arme du kill ».
 
-**0. La voie de la réplication — priorité, et elle est timeboxée à une demi-session.**
-   - Ghidra, cible 3 : `FUN_141fd8460` sérialise le slot `objet + 0x114` que porte le code 7.
-     Question unique : **quel enregistrement CRÉE ce slot, et nomme-t-il un propriétaire ?**
-     Point d'entrée connu, table de dispatch à 123 codes dont le découpage est écrit.
-   - **CRITÈRE D'ARRÊT** : si l'enregistrement de création n'existe pas ou ne porte aucun
-     propriétaire répliqué, la voie est close et on passe à A. Si un champ est nommé, il se
-     vérifie sur le film AVANT toute conclusion (règle du chantier : Ghidra nomme, le film
-     mesure).
-   - Si un tireur devient rattachable : le critère de succès est celui du handoff — compte par
-     joueur égalant `shots_hit` **à l'unité**, et **gain LOCALISÉ** (il doit apparaître chez les
-     joueurs à forte part de projectile et ne rien changer aux joueurs hitscan).
+**0. La voie de la réplication — FAITE le 2026-08-08, résultat en §4ter.** `[x]`
+   Le slot `objet + 0x114` est confirmé, la touche n'est comptée que si le projectile est
+   répliqué, et le propriétaire n'est jamais transmis à l'émetteur d'événement. **La question
+   du handoff est close** ; elle est remplacée par « comment rattacher l'ENTITÉ projectile à un
+   joueur », dont la réponse candidate est géométrique et dont le bloqueur est
+   `object-position-component` de `ti=41`.
 
-**A. Réparer le contrôle positif de la déconvolution (le repli).**
+**0bis. Le report, et il est explicite.** Rendre i0 de `ti=41` bit-exact **n'appartient pas à
+   la piste E** — c'est le décodeur (chantier rejeu 2D / filmdec, item déjà décrit en
+   7ter.84 (5)(6)(7)). Le report est donc *valide* au sens du contrat d'exécution : dépendance
+   externe explicite, pas un « je le ferai plus tard ». À porter au registre du décodeur, avec
+   son critère : i0 de ti=41 bit-exact **et** une trajectoire de projectile qui sort.
+
+**A. FAITE le 2026-08-08, critère NON ATTEINT — résultat en §4quater.** `[x]`
+   Deux armes de contrôle sur quatre à ± 0,03 (BR75 +0,0043, Bandit Evo -0,0246 ; MA40 -0,0324,
+   Sidekick +0,0461). **Le timebox est consommé et le verdict est clos.** L'étape B (contraste
+   intra-joueur) n'est PAS jouée : elle était conditionnée à la réussite de A, et la jouer
+   quand même reviendrait à chercher une confirmation après un critère raté.
+   *Ce qui suit reste écrit comme la marche à suivre si la piste est un jour rouverte.*
+
+**A (spécification d'origine, conservée pour une réouverture éventuelle).**
    - passer au grain **JOUEUR** (et non match) : il multiplie les observations par ~10 et
      décorrèle les mélanges d'armes, ce qui est exactement ce qui manque à l'identifiabilité.
      Coût : l'appariement indice → xuid, qui existe (`resolveFilmPlayerIndices`, mesuré à
