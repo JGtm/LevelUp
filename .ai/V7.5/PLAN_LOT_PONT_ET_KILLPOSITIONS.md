@@ -74,18 +74,30 @@ moins `000d5950` et `64e8adfa`.
 (`shared_create_kill_positions`, « Halo 5 natif, Infinite plus tard »), `KillPositionInsert`,
 `BatchBuilder.AddKillPositions` et `persistKillPositions` existent déjà et servent Halo 5.
 
-- [ ] 2.1 Producteur pur dans `internal/analysis/replay/` : à partir des positions décodées, du
-      pont fermé et du fil des morts apparié (frag ⋈ mort), rendre pour chaque mort les
-      coordonnées monde du tueur ET de la victime à l'instant de la mort.
-- [ ] 2.2 **Règle de prudence identique au reste du chantier** : une mort dont le tueur OU la
-      victime n'a pas de position à moins de la tolérance n'est PAS écrite. Se taire vaut mieux
-      que poser un kill au mauvais endroit. Le nombre d'écartés est journalisé.
-- [ ] 2.3 Écriture via `persist.BatchBuilder.AddKillPositions` → `Submit()`. **Aucun SQL direct,
-      aucun UPSERT** (ADR 0019/0030).
-- [ ] 2.4 CLI hors ligne `cmd/killpos-build` sur le modèle de `cmd/replay-build` (chemins par
-      `PathResolver`, `--map` obligatoire, film en lecture seule).
-- [ ] 2.5 Tests : producteur pur testé sans I/O ; un test d'intégration si l'écriture est touchée.
-- [ ] 2.6 Exécution sur **un** match de contrôle, et relecture en base (`SELECT count(*)`).
+- [x] 2.1 Producteur pur dans `internal/analysis/replay/` (`killpos.go`, `BuildKillPositions`).
+      **AMENDÉ SUR UN POINT D'ARCHITECTURE** : les couples tueur↔victime ne sont PAS redécodés
+      ici. Ils arrivent en ENTRÉE (`[]KillRef`), comme `Options.Objectives` — la règle « deux
+      décodeurs du même fait divergeraient » l'impose, et l'appariement canonique vit déjà dans
+      `killsource`, dont la sortie est persistée dans `match_kill_events`.
+- [~] 2.2 Règle de prudence — **couverte, mais PLUS FINE que ce que le plan écrivait**. Le plan
+      disait « une mort dont le tueur OU la victime manque n'est pas écrite ». Vérifié sur
+      pièces : la table est NULLABLE par axe et Halo 5 y écrit déjà des lignes partielles
+      (`ingest/positions.go`). Aligné dessus : une position absente reste `nil`, une mort dont
+      AUCUN des deux n'est localisable n'est pas écrite, et les quatre cas sont comptés
+      (`KillPosReport`). Écrire différemment d'Halo 5 dans la même table aurait été le vrai
+      défaut.
+- [!] 2.3 Écriture via `persist` — **NON TRAITÉ, et c'est un arrêt propre, pas un oubli.**
+      Justification : vérifié sur pièces, **aucun CLI du dépôt n'utilise `BatchBuilder`** ; le
+      chemin persist est piloté par le pipeline de sync, et la seule construction de
+      `BatchQueue` est dans `cmd/server/main.go`. Câbler une file WAL + ses persisters depuis un
+      binaire hors ligne est une DÉCISION DE CONCEPTION (quelle cible DB, quel lease, quelle
+      sémantique de rejeu WAL) sur le chemin critique anti-ART du dépôt (ADR 0019/0030). La
+      bâcler en fin de session serait le contraire de ce que ce chantier exige.
+- [!] 2.4 CLI `cmd/killpos-build` — NON TRAITÉ : il dépend de 2.3.
+- [~] 2.5 Tests — le producteur pur a **cinq tests**, dont quatre portent sur des abstentions
+      (hors tolérance, aucune position, deux corps pour un joueur, décalage d'horloge). Le test
+      d'intégration d'écriture est reporté avec 2.3.
+- [!] 2.6 Exécution sur un match de contrôle — NON TRAITÉ : dépend de 2.3 et 2.4.
 
 **Gate 2** :
 ```bash
@@ -101,12 +113,12 @@ demander à l'utilisateur avec une durée estimée.
 
 ## ÉTAPE 3 — LE CRITÈRE DU GARDE LOCAL
 
-- [ ] 3.1 Réécrire l'en-tête de `replay_local_gate.go` : plancher **88 %** sur TOUS les films du
+- [x] 3.1 Réécrire l'en-tête de `replay_local_gate.go` : plancher **88 %** sur TOUS les films du
       corpus nommé, verdict du pont nominal, **corpus nommé explicitement** (les 7 films), et
       **date de réexamen**. Les trois éléments qu'exige la règle du dépôt sur les kill-switches.
-- [ ] 3.2 Ne PAS retirer le garde : le retrait est une décision utilisateur, et le lot ne le
+- [x] 3.2 Ne PAS retirer le garde : le retrait est une décision utilisateur, et le lot ne le
       franchit pas de lui-même (il faut d'abord que les artefacts soient reconstruits).
-- [ ] 3.3 Mettre à jour `PLAN_FINALISATION_REJEU_2D.md` §1.4 : `01e1f945` est un **KOTH**, pas un
+- [x] 3.3 Mettre à jour `PLAN_FINALISATION_REJEU_2D.md` §1.4 : `01e1f945` est un **KOTH**, pas un
       Slayer (erreur de fiche relevée en recherche).
 
 **Gate 3** : `go test ./internal/api/handlers/ -run Replay` + relecture du commentaire.
@@ -148,3 +160,41 @@ au troisième exemplaire, est factorisé en `ctfDecodeFilm`.
 régénéré et relu en diff, non-régression vérifiée sur trois films —
 `000d5950` 93,26 % (+1,73) · `64e8adfa` 92,57 % (+12,26) · `829abef9` 88,68 % (+8,95), aux
 chiffres publiés au §7.5 du verdict.
+
+### Étape 2 — PARTIELLE, arrêtée proprement le 2026-08-08
+
+**Ce qui est livré** : le producteur pur `BuildKillPositions` et ses cinq tests. Il rend, pour
+chaque mort fournie, les coordonnées monde du tueur et de la victime, avec son compte rendu
+(placés des deux côtés / d'un seul / écartés / hors pont).
+
+**Ce qui ne l'est pas, et pourquoi** : l'écriture. La reconnaissance disait « rien à créer côté
+écriture » — c'était vrai du SCHÉMA (table, migration, `KillPositionInsert`, `AddKillPositions`,
+`persistKillPositions` existent et servent Halo 5), **et faux du CHEMIN D'APPEL** : aucun binaire
+du dépôt ne pilote `BatchBuilder`, la seule construction de `BatchQueue` est dans
+`cmd/server/main.go`, et le reste passe par le pipeline de sync. Alimenter la table depuis un
+outil hors ligne demande donc de décider comment un binaire court draine une file WAL — sur le
+chemin critique anti-ART (ADR 0019/0030). Ce n'est pas une ligne de code oubliée, c'est une
+étape de conception qui mérite la sienne.
+
+**Ce que ça ne remet pas en cause** : ni l'étape 1 (close), ni l'étape 3 (close), ni le fait que
+la moitié difficile du problème — SAVOIR où était chaque joueur — est résolue et testée.
+
+### Étape 3 — CLOSE le 2026-08-08
+
+Critère du garde réécrit : plancher **88 %** sur un corpus de **sept films nommés**, verdict du
+pont nominal sur tous, **réexamen au plus tard le 2026-11-08**. 88 et non 90 : mesuré, le corpus
+passe 7/7 à 88 et 5/7 à 90 — une exception négociée serait exactement le défaut corrigé.
+L'en-tête porte aussi l'avertissement sur le DÉNOMINATEUR (les taux portent sur les tirs que le
+film contient, pas sur ceux du match), sans quoi un lecteur retirerait le garde sur un
+malentendu. Gate joué : `go test ./internal/api/handlers/ -run Replay` vert.
+
+`PLAN_FINALISATION_REJEU_2D.md` §1.4 corrigé : `01e1f945` est un **KOTH**, et l'hypothèse qui y
+était écrite (« un mode où l'on meurt davantage produit plus de vies courtes ») est **inversée**
+par la mesure.
+
+## Suite proposée — une étape, pas un reste
+
+**Étape 2bis — le chemin d'écriture hors ligne.** Décider comment un binaire court alimente une
+table partagée : réutiliser la file WAL de `cmd/server` ou définir un drain synchrone dédié.
+C'est la seule chose qui sépare `kill_positions` de son remplissage, et c'est une question de
+conception, pas de volume. Le backfill des 951 matchs suit, en opération à fenêtre.
