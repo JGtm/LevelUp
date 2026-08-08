@@ -438,3 +438,81 @@ instrument de validation qui ait fait ses preuves (point 1).
   deux branches d'i0 sont empruntées à parts comparables (264 / 277), donc les 59 bits opaques
   concernent la MOITIÉ des records projectile.** Verrou identifié : la couverture du flux delta,
   qui exige le localisateur de boucle de `killsource` (non exporté). Rien de porté.
+
+---
+
+## 9. DEUX CORRECTIONS DE L'UTILISATEUR SUR LA CONCEPTION DE T3, ET ELLES SONT DÉCISIVES
+
+> Reçues le 2026-08-08 en fin de session. **Elles ne portent pas sur l'échantillon, elles
+> portent sur le CRITÈRE** — c'est-à-dire sur ce que j'ai conçu, pas sur ce que j'ai mesuré.
+> Elles expliquent, en plus de `n = 7`, pourquoi T3 rendait zéro.
+
+### 9.1 « Les projectiles ne parcourent pas forcément une longue distance »
+
+Un duel se joue rarement à distance. Beaucoup de trajectoires font quelques mètres. Or mon
+critère est **RELATIF** : la distance des points intermédiaires au segment, divisée par la
+**longueur du segment**. Sur une trajectoire courte, le dénominateur est petit et le bruit de
+quantification — le demi-pas de `1 << W` — devient énorme en proportion. **Le critère se
+disqualifie tout seul précisément sur la population la plus fréquente.**
+
+**Correctif** : un critère **ABSOLU**, pas relatif. Une **continuité** — aucun saut supérieur à
+`vitesse_max × dt` entre deux positions consécutives — plutôt qu'une colinéarité. Une continuité
+ne dépend pas de la longueur de la trajectoire, et elle est falsifiable de la même façon (un
+découpage faux produit des sauts aberrants).
+
+### 9.2 « Le tracé est plutôt droit, mais ça peut être légèrement courbé »
+
+Chute balistique, guidage du Needler, arc du plasma : **la droite était un modèle faux**, pas
+seulement un modèle serré. Une tolérance de 5 % sur une trajectoire réellement courbée rejette
+un décodage JUSTE.
+
+**Correctif** : ne jamais tester la droite. Tester la **régularité** — pas de discontinuité, et
+une accélération bornée (deuxième différence des positions petite devant la première).
+
+> **CE QUE ÇA APPREND SUR LA MÉTHODE, ET C'EST LE VRAI ENSEIGNEMENT** : j'ai conçu un
+> discriminant à partir d'une intuition physique (« un projectile vole droit ») sans la
+> confronter à quelqu'un qui connaît le jeu. Les deux corrections viennent de la connaissance du
+> TERRAIN, pas du binaire. **Un critère de validation physique doit être validé par la
+> connaissance du jeu avant d'être codé** — sinon on mesure la fausseté de son propre modèle.
+
+---
+
+## 10. LES DUMPS — CE QUI ÉTAIT DISPONIBLE ET QUE JE N'AI PAS UTILISÉ
+
+Signalé par l'utilisateur. Inventaire de `.ai/V5.5/dumps/` (cf. `.ai/HANDOFF_DUMPS_2026-07-31.md`
+pour le raisonnement de conservation). Trois fichiers changent la donne de cette note :
+
+| fichier | ce que c'est | ce qu'il débloque ICI |
+|---|---|---|
+| `ce_prec_widths_1445cc9e0.bin` | la table des **LARGEURS de précision**, dumpée de la mémoire | **exactement la globale que §2.2 déclare non dérivable statiquement.** T2 n'avait pas à être une mesure statistique : la réponse est dumpée |
+| `ce_prec_ranges_14462cbe0.bin` | la table des **PLAGES** | permet de vérifier que `DAT_143b8c6d0` (± 100) est bien l'entrée utilisée, au lieu de le déduire |
+| `ce_pos_oracle.csv` / `ce_pos_rosetta.csv` | **oracle de POSITIONS** capturé au runtime | **le contrôle positif qui manquait à T3** (§8.3 point 1) : un décodage se confronte à une position vraie, plus à une heuristique de forme |
+
+> ⚠ **RÉSERVE DÉJÀ ÉCRITE AU DOSSIER, à ne pas oublier en s'en servant** : les tables dumpées
+> sont un **instantané installé PAR CARTE**, pas une spécification portable — injectées telles
+> quelles elles effondrent 3 films sur 4 (index, « Les tables de precision dumpees
+> remplacent-elles le balayage ? **NON** », 7ter.54 AXE3). **Elles valent comme ORACLE sur la
+> carte où elles ont été capturées** (`ce_run2_cliffhanger.bin.gz`), pas comme constante du
+> décodeur. C'est suffisant pour calibrer un instrument et valider un découpage — c'est
+> précisément ce dont T2 et T3 ont besoin.
+
+**CONSÉQUENCE SUR L'ORDRE DES TRAVAUX (§8.3 est remplacé) :**
+
+1. **Décoder `ce_prec_widths_*.bin` et `ce_prec_ranges_*.bin`** et en tirer les largeurs de
+   `ti=41` sur Cliffhanger. C'est une LECTURE, plus une inférence statistique.
+2. **Confronter le découpage obtenu à `ce_pos_oracle.csv`** sur le même film — égalité de
+   position, pas heuristique de forme. C'est le contrôle positif, et il est direct.
+3. **Seulement si (1) et (2) passent** : généraliser aux autres cartes par la forme fermée
+   (`W = min(26, bitLen(ceil(extent / (2·step))))`, §2.2), la table dumpée servant de vérité de
+   référence et non de source.
+4. La couverture du flux delta (localisateur de boucle de `killsource`) redevient un problème
+   de VOLUME, plus un préalable de validation.
+- **2026-08-08 (7)** — **deux corrections utilisateur sur la CONCEPTION de T3** (§9) : les
+  trajectoires sont souvent COURTES (un critère relatif à la longueur du segment se disqualifie
+  sur la population la plus fréquente) et **légèrement COURBÉES** (la droite était un modèle
+  faux, pas seulement serré). Le critère doit être une **continuité absolue**, pas une
+  colinéarité relative. Leçon : un discriminant physique doit être validé par la connaissance du
+  jeu AVANT d'être codé. **Et surtout (§10) : les dumps existants portent
+  `ce_prec_widths_*.bin` (la globale que je déclarais non dérivable), `ce_prec_ranges_*.bin` et
+  `ce_pos_oracle.csv` (le contrôle positif manquant).** T2 n'avait pas à être une mesure
+  statistique. L'ordre des travaux du §8.3 est remplacé par celui du §10.
