@@ -1,0 +1,47 @@
+# GOLDEN objectivescore — MINI-BOBINES VERSIONNEES
+#
+# Fige la sortie du decodeur sur des PAQUETS REELS VERSIONNES. Ne PAS editer a la main.
+#
+# CE GOLDEN TOURNE EN CI, SANS FIXTURE ET SANS VARIABLE D ENVIRONNEMENT. C est sa raison
+# d etre : TestGoldenFilmsReels et les tests cache-backed, eux, se skippent sans
+# FILM_CACHE_ROOT. Deux fois deja sur ce chantier un vert a ete annonce sur un garde qui ne
+# tournait pas (killsource 2026-08-02 ; le test cache-backed de ce paquet, mort depuis des
+# mois, trouve par l audit du 2026-08-06).
+#
+# CHAQUE FICHIER DE LA BOBINE est un PREFIXE d octets bruts d un chunk TYPE-2, tronque juste
+# apres son premier paquet TYPE_2 complet. Aucun octet n est reecrit. La troncature est
+# licite parce que ce decodeur est SANS ETAT d un chunk a l autre, et la recette de
+# fabrication REFUSE d ecrire si le chunk tronque ne decode pas comme le chunk entier.
+#
+# LES BRUTES SONT LA SUBSTANCE : ce sont bitpos, brut0/brut1 (Strongholds) et les octets
+# lus (KOTH) qui repondent du token, de sa fenetre et des offsets. Les colonnes calibrees
+# retombent sur le final PAR CONSTRUCTION et ne prouvent aucune position de bit.
+#
+# REGENERATION :
+#   go test ./internal/analysis/objectivescore/ -run TestGoldenMiniBobineObjectifs -update
+
+## strongholds_7344d24f — film 7344d24f — Arena:Strongholds (final passe au decodeur : 193-112)
+chunks=8 type2=8 ancres=8 token=0x7B6 fenetre=[835,912)
+# instant_ms  bitpos  brut0(+24)  brut1(+23)  octets[+12,+13,+14,+16]  publie
+460082  6712  41  32  0,10,2,0  158-112
+480088  6712  41  32  0,10,131,0  158-112
+500100  6712  41  32  0,11,67,0  158-112
+520110  6712  43  32  0,12,3,0  166-112
+540114  6712  43  32  0,12,195,0  166-112
+560122  6712  44  32  0,13,3,0  170-112
+580132  6712  48  32  0,14,3,0  185-112
+600135  6712  50  32  0,14,131,0  193-112
+source=film_strongholds_t2 conf=approx  fin publiee 193-112
+
+## koth_0a247154 — film 0a247154 — Ranked:King of the Hill (final passe au decodeur : 4-2)
+chunks=8 type2=8 ancres=8 token=0x7B6 fenetre=[835,912)
+# instant_ms  bitpos  brut0(+24)  brut1(+23)  octets[+12,+13,+14,+16]  publie
+640120  6712  0  0  15,67,208,7  3-1
+660122  6712  0  0  15,131,240,8  3-1
+680127  6712  0  0  16,4,32,8  3-1
+700130  6712  0  0  17,4,64,8  3-1
+720137  6712  0  0  18,4,64,9  3-1
+740139  6712  0  0  18,68,112,9  3-1
+760142  6712  0  0  19,4,160,9  3-1
+780149  6712  0  0  20,4,192,10  4-2
+source=film_koth_t2_b conf=approx  fin publiee 4-2
