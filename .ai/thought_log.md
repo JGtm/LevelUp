@@ -1,3 +1,34 @@
+## [2026-08-08] v7.5 — triangles : la primitive de rendu est trouvee (HANDOFF)
+
+**Statut** : En cours, fin de session sur avancee critique. Handoff complet :
+`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : la carte est une COUPE d'un VOLUME, pas une vue de dessus.**
+Lu dans le prototype (`s31_raster.py`, `s37_all.py`, `s40_render.py`) au lieu d'etre
+re-derive : grille 0,10 m, bandes de 0,5 m BORNEES a la tranche de jeu, praticabilite =
+surface avec 2 m de degagement au-dessus, puis coupe horizontale a une altitude. Porte dans
+`internal/himap/volume.go`. Sur Cliffhanger : niveau le plus peuple z = -1,75 m ; en
+multi-niveaux 17,5 % de l'emprise, et l'annexe sud, sa liaison et l'annexe est apparaissent.
+
+**Trois lecons que cette session a payees cher.** (1) Un temoin qui ne departage pas ne teste
+rien — trois fois : le premier temoin de T1 passait avec le mauvais offset, l'ecart aux
+bornes de T4 donne raison a la lecture FAUSSE, deux metriques de coherence ne separent pas.
+(2) Avant de soupconner la donnee, verifier son AFFICHAGE : trois essais de plafond depenses
+sur un probleme de dessin (echelle min/max au lieu de centiles, aucun ombrage). (3) Ajouter
+de la donnee peut DEGRADER le resultat : la resolution multi-module est juste et elle a rendu
+la carte illisible en y versant 976 instances de rochers partages.
+
+**Trois observations utilisateur ouvertes** : un pont manquant en bas a gauche, un ilot en
+haut a gauche, et la partie gauche vide alors qu'elle est praticable. Le bornage en Z n'etait
+PAS universel (verifie : elargi, +1,7 point de couverture et du contenu bas apparait) ; le
+filtre « module de la carte seul » est probablement trop brutal, les globaux portant aussi de
+vraies structures.
+
+**Prochaine etape** : jouer l'ORACLE des 29 217 positions de joueur (95,6 % sur le sol dans
+la carte validee, cf. `ETAT_DU_POC.md`) — il tranche T4 et juge le rendu d'un seul coup.
+
+---
+
 ## [2026-08-08] v7.5 — triangles : LA CARTE APPARAIT, et le blocage etait le rendu
 
 **Statut** : En cours, mais l'etape visuelle est franchie. Plan
