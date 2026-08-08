@@ -192,6 +192,21 @@ malentendu. Gate joué : `go test ./internal/api/handlers/ -run Replay` vert.
 était écrite (« un mode où l'on meurt davantage produit plus de vies courtes ») est **inversée**
 par la mesure.
 
+## Deux pistes remises droit par l'utilisateur le 2026-08-08 — À NE PAS PERDRE
+
+**1. La corrélation mort ↔ position ne demande aucun record de tir.** J'avais mesuré « sait-on
+placer un TIR du tueur avant la mort » (70,6 %) là où la question était « sait-on placer la
+MORT ». La seconde ne dépend que du pont — tueur, victime, instant et positions suffisent. Mesure
+lancée (`ctfWriteKillPositions`), verdict §8.4bis. **Conséquence sur l'étape 2bis** : le
+producteur `BuildKillPositions` n'a PAS besoin du chantier de complétude des tirs pour être utile,
+il est déjà servi par le pont fermé.
+
+**2. Le rejeu n'utilise pas le meilleur scanner de tirs disponible dans le dépôt.**
+`ScanFilmFireEvents` balaie les bits ; l'instrument de la piste E parcourt les paquets et trouve
+**10 à 17 % de tirs de plus sur les sept films**, dont deux à la complétude. Verdict §8.4ter.
+**Réserve à lever avant tout portage** : la piste E ne rend que des totaux, le rejeu a besoin d'un
+instant par tir. À vérifier, pas à supposer.
+
 ## Suite proposée — une étape, pas un reste
 
 **Étape 2bis — le chemin d'écriture hors ligne.** Décider comment un binaire court alimente une

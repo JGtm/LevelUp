@@ -518,6 +518,72 @@ arme-par-kill (`killsource`), et elle est à **99,55 %** (§8.1). Les 70,6 % ci-
 mesure de **LOCALISATION**, pas d'imputation — et une **borne haute** de ce qu'un fil des
 éliminations pourrait poser sur la carte.
 
+### 8.4bis LA QUESTION ÉTAIT MAL POSÉE — remise droit par l'utilisateur le 2026-08-08
+
+> « On a la victime, on a le tueur, on a le tir fatal, on a le timing et on a la position du
+> joueur assez précisément. Pourquoi c'est si dur de faire une corrélation ? »
+
+**Elle ne l'est pas.** Le 70,6 % du §8.2 répond à une question que la demande n'impose pas :
+« existe-t-il un **record de tir** du tueur dans la fenêtre qui précède la mort, et sait-on le
+placer ». Cette contrainte vient de ma lecture littérale de « les tirs qui ont causé des morts »,
+pas du besoin.
+
+**Poser une MORT sur la carte ne demande AUCUN record de tir.** Il faut le tueur (✓, 98,9 %), la
+victime (✓), l'instant (✓) et **la position des deux joueurs à cet instant** — qui ne dépend que
+du pont, désormais fermé. C'est exactement ce que produit `BuildKillPositions`, et c'est ce qui
+remplirait `kill_positions`.
+
+**LA LEÇON DE MÉTHODE, et elle vaut d'être gardée** : une mesure hérite des contraintes de la
+question qu'on lui pose. En anchrant sur le record de tir, j'ai importé dans le chiffre une
+dépendance à la COMPLÉTUDE DU FLUX (colonne ①, 24,6 % de perte) qui n'a rien à faire dans une
+mesure de LOCALISATION. Les deux chiffres coexistent désormais dans ce document, chacun avec la
+question à laquelle il répond — et le §8.4bis existe pour qu'on ne les reconfonde pas.
+
+| ce qu'on veut poser sur la carte | ce qu'il faut | mesuré au |
+|---|---|---|
+| **la mort** (tueur + victime, où) | le pont seul | §8.4ter |
+| le **tir fatal** (le coup lui-même) | le pont **et** un record de tir | §8.2 — 70,6 % |
+
+### 8.4ter LES TIRS MANQUANTS : LA CAUSE EST IDENTIFIÉE, ET ON PEUT FAIRE MIEUX
+
+Seconde question de l'utilisateur, même échange. Deux faits, mesurés en base sur les 941 films
+décodés, sans rien re-décoder :
+
+**1. Le manque est concentré sur Fiesta, il n'est pas général.** Rapport tirs décodés / tirs de
+l'API, par match :
+
+| population | matchs | ratio médian | p10 | p90 |
+|---|---|---|---|---|
+| **hors Fiesta** | 668 | **0,952** | 0,571 | 1,007 |
+| Fiesta | 273 | **0,392** | 0,278 | 0,503 |
+
+Sur les playlists normales, la chaîne décode déjà **95 %** des tirs. Le trou est un problème
+d'**armes Fiesta**, pas un plafond de format. Et le sur-décodage est quasi nul (11 matchs sur 941),
+donc le décodeur ne fabrique pas de tirs.
+
+**2. Le rejeu et la piste E n'utilisent PAS le même scanner, et celui du rejeu trouve moins.**
+`ScanFilmFireEvents` balaie les bits ; l'instrument de la piste E parcourt les PAQUETS par leur
+en-tête (`pay[0]>>1 == 105`). Sur les sept films :
+
+| film | rejeu (`ScanFilmFireEvents`) | piste E (paquets) | API |
+|---|---|---|---|
+| `0edb8512` | 2 808 (86,6 %) | **3 277 (101,0 %)** | 3 244 |
+| `db7b8c3c` | 3 547 (86,0 %) | **4 150 (100,6 %)** | 4 126 |
+| `64e8adfa` | 2 879 (80,3 %) | **3 298 (92,0 %)** | 3 585 |
+| `01e1f945` | 2 154 (74,4 %) | **2 472 (85,4 %)** | 2 896 |
+| `829abef9` | 2 614 (69,3 %) | **2 937 (77,9 %)** | 3 770 |
+| `9aeca4b3` | 2 760 (71,9 %) | **2 973 (77,4 %)** | 3 841 |
+| `000d5950` | 519 (23,3 %) | **605 (27,2 %)** | 2 228 |
+
+**Le parcours de paquets trouve 10 à 17 % de tirs de plus, sur les sept films, et deux d'entre
+eux atteignent la complétude.** Basculer le rejeu sur ce scanner ferait passer sa colonne ① de
+69-87 % à 77-101 %.
+
+**RÉSERVE, et elle est sérieuse** : la piste E ne produit que des TOTAUX par arme et par joueur.
+Le rejeu a besoin d'un INSTANT par tir. Les paquets portent leur horodatage, donc c'est probable,
+mais **ce n'est pas vérifié** — et un scanner qui compte bien sans dater ne servirait pas le
+rejeu. À instruire avant de s'engager.
+
 ### 8.5 CE QUE ÇA CHANGE DANS L'ORDRE DES PRIORITÉS
 
 `kill_positions` devient le meilleur rapport valeur/coût du chantier, et **il ne dépend pas du
