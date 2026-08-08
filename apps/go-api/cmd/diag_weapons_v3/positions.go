@@ -21,6 +21,7 @@ import (
 	"math"
 
 	"levelup/go-api/internal/analysis/positions"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -42,7 +43,7 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 	} else if !ok {
 		return fmt.Errorf("absent de match_registry")
 	}
-	src, ok, err := newDiskFilmSource(cfg.cacheDir, m.short)
+	src, ok, err := filmcache.Open(cfg.cacheDir, m.short)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 
 // collectPositionChunks lit + décompresse chaque chunk TYPE_2 du film et le
 // présente sous forme de positions.ChunkInput (Data = contenu DÉCOMPRESSÉ).
-func collectPositionChunks(src *diskFilmSource) []positions.ChunkInput {
+func collectPositionChunks(src *filmcache.Source) []positions.ChunkInput {
 	var out []positions.ChunkInput
 	for _, meta := range src.Chunks() {
 		raw, ok := src.ChunkData(meta.Index)

@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -19,7 +20,7 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 	if !ok {
 		return fmt.Errorf("absent de match_registry")
 	}
-	src, ok, err := newDiskFilmSource(cfg.cacheDir, m.short)
+	src, ok, err := filmcache.Open(cfg.cacheDir, m.short)
 	if err != nil {
 		return err
 	}
