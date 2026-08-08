@@ -49,6 +49,20 @@ montrait rien, il a fallu bâtir une carte d'altitude sur les 4 709 objets Forge
 et une remontée oblique à +2,6 m de l'autre, conforme au repère donné. L'emplacement d'arme
 reste invisible faute de table type_id -> nom.
 
+**CORRECTION (même jour, après remarque utilisateur).** Deux affirmations de cette entrée
+étaient fausses. (1) Le refus du fond de Catalyst s'appuyait sur 8,6 % de couverture contre
+51-77 % : ces nombres ne sont PAS comparables entre cartes, `coveragePct` divisant par les
+bornes monde du BSP, qui valent 297 x 408 m sur Catalyst contre 113 x 114 m sur ridgeline.
+Remesure à périmètre égal (boîte des objectifs + 15 m) : Catalyst 79,0 %, Cliffhanger
+83,1 % — la structure instanciée de Catalyst est aussi complète. Le refus tient pour une
+autre raison : `mapstruct-build` ne publie que des AABB, et la belle carte de Cliffhanger
+vient de la chaîne des TRIANGLES. (2) « Vagabond restera à sa carte d'altitude » était faux
+aussi : la vraie différence n'est pas Forge/pas Forge — Cliffhanger a été conçue dans Forge
+elle aussi, mais 343 l'a CUITE dans un module dédié (ridgeline : 10 223 instances / 443
+objets, contre fo08_wetland : 788 / 4 709). Rendre Vagabond demande une étape 2
+(`type_id` -> tag de modèle), pas un miracle. Décision utilisateur : le portage en Go de la
+chaîne des triangles est PRIORITAIRE — plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+
 **Conclusion / prochaine étape.** Le containment peut être re-statué : son oracle existe
 maintenant (3 matchs Strongholds sur Vagabond). Les deux fonds de carte refusés renvoient au
 même manque, déjà identifié : le portage en Go de la chaîne `.module -> triangles`, qui

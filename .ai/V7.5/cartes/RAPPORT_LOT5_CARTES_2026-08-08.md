@@ -67,28 +67,50 @@ donc leur aurait servi le MEME fichier — les zones d'une carte publiees sous l
 autre, sans un mot. `--save-mvar` depose maintenant dans un sous-dossier par `map_id`, et
 le repli a plat est REFUSE quand le nom est partage.
 
-## 4. Les fonds de carte : refuses, et sur quel chiffre
+## 4. Les fonds de carte : non publies — et la premiere justification etait FAUSSE
 
-`cmd/mapstruct-build` lit le bloc `instanced geometry instances` du tag sbsp et publie des
-AABB. Mesure du 2026-08-08 (depot de jeu `C:/Program Files (x86)/Steam/.../deploy/pc`) :
+> **CORRECTION DU 2026-08-08, apres remarque de l'utilisateur.** Ce paragraphe refusait
+> Catalyst sur une couverture de 8,6 % contre 51 a 77 % pour les cartes publiees. **Ces
+> nombres ne sont pas comparables entre cartes** : `coveragePct` divise par les bornes
+> monde du BSP, qui valent **297 × 408 m** sur Catalyst (elles englobent la skybox) contre
+> **113 × 114 m** sur ridgeline. Le denominateur de Catalyst est 40 fois la zone de jeu.
+> Remesure a perimetre egal — boite des objectifs + 15 m, meme rasterisation :
+>
+> | carte | couverture brute | sans les boites > 200 m² |
+> |---|---:|---:|
+> | ridgeline (Cliffhanger) — *publiee* | 100 % | **83,1 %** |
+> | catalyst | 94,9 % | **79,0 %** |
+>
+> La structure instanciee de Catalyst est donc aussi complete que celle de Cliffhanger. Le
+> « fond troue » n'existe pas. **Lecon : `coveragePct` n'est un indicateur QUE pour une
+> carte dont les bornes monde epousent la zone de jeu ; l'utiliser en comparaison entre
+> cartes est un piege.**
 
-| carte | emprises | couverture brute | **couverture sans les boites > 200 m²** |
-|---|---:|---:|---:|
-| ridgeline (Cliffhanger) — *publiee* | 10 223 | 100 % | **51,1 %** |
-| sgh_streets (Streets) — *publiee* | 10 908 | 100 % | **76,6 %** |
-| catalyst | 11 178 | 49,0 % | **8,6 %** |
-| fo08_wetland (Vagabond) | 788 | 100 % | **12,6 %** |
+Le refus tient malgre tout, pour une raison qui n'a rien a voir avec la couverture :
+**`mapstruct-build` ne publie que des AABB**, et la belle carte de Cliffhanger validee le
+2026-07-26 n'a jamais ete produite par ce chemin. Elle vient de la chaine des TRIANGLES
+(instances -> `rtgo` -> LOD render data -> tampons de sommets `u16` -> dequantification),
+`cartes/HANDOFF_GEOMETRIE_TRIANGLES.md`, qui n'existe qu'en Python jetable sur ridgeline.
+Publier des boites, c'est publier l'etage d'en dessous : le critere « aucun rectangle » du
+gate le dit deja.
 
-- **Catalyst** : sa structure vit dans le maillage de rendu NON instancie, que ce binaire
-  ne lit pas. C'est ecrit dans l'en-tete de `cmd/mapstruct-build` depuis sa creation, et la
-  mesure le confirme. Figer ce fichier donnerait un fond troue qui se lirait comme une
-  carte.
-- **Vagabond** : ses 100 % bruts sont tautologiques (une seule boite de 312 182 m²). Et
-  surtout, **le canevas n'est pas la carte** : Vagabond est batie dans Forge, ses 4 709
-  objets sont dans `map.mvar`, pas dans le BSP. Aucun reglage de `mapstruct-build` ne peut
-  rendre cette carte — c'est une autre source.
+**Sur Vagabond, la vraie difference n'est pas « Forge ou pas »** — Cliffhanger aussi a ete
+concue dans Forge. C'est que 343 a **cuit** Cliffhanger dans un module dedie, et pas
+Vagabond :
 
-Aucun fichier n'a donc ete ajoute a `reference/map_structure/`.
+| module | instances de geometrie | objets Forge du `.mvar` | ou vit la carte |
+|---|---:|---:|---|
+| ridgeline (Cliffhanger) | 10 223 | 443 | dans le MODULE |
+| catalyst | 11 178 | 357 | dans le MODULE |
+| fo08_wetland (Vagabond) | 788 | 4 709 | dans le `.mvar` |
+
+Consequence pour le portage : l'etape 1 (instances -> triangles) rend Catalyst comme elle
+rend Cliffhanger. Pour Vagabond elle ne rend que la toile ; il faut une etape 2 —
+resoudre `type_id -> tag de modele` puis poser les triangles du modele par la transformation
+de chaque objet. C'est du travail en plus, **pas une impasse** : dire que Vagabond resterait
+a sa carte d'altitude etait une erreur de plus, corrigee ici.
+
+Aucun fichier n'a ete ajoute a `reference/map_structure/`.
 
 ## 5. Highpower : la donnee n'est pas la, et c'est mesure
 
