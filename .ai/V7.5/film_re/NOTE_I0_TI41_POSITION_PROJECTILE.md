@@ -356,3 +356,85 @@ avec le périmètre correct : **un travail de composant, pas un chantier de déc
   Réserves : borne inférieure (pas de localisateur de boucle exporté), et `ti=0` domine
   (couverture partielle). **Le bloqueur redevient T2 — les largeurs de la branche par défaut —
   et le périmètre est celui d'un composant, pas d'un chantier de décodeur.**
+
+---
+
+## 8. T2 ET T3 — DEUX INSTRUMENTS QUI NE MORDENT PAS, ET POURQUOI
+
+### 8.1 T2 — le profil de bascule NE TRANSFÈRE PAS aux projectiles
+
+Outil `apps/go-api/cmd/tmp_i0w`. 8 films, échantillons i0 de `ti=41` : **264 à porte = 0**,
+**277 à porte = 1** — les deux branches sont donc bien empruntées, à parts comparables. Le
+`ReadBits(59)` opaque concerne **la moitié des records projectile** : ce n'est pas un cas
+marginal.
+
+Profil de bascule, 239 paires consécutives d'un même slot (porte = 1) :
+
+```
+b00  0.28 0.23 0.21 0.24 0.26 0.27 0.39 0.33 0.37 0.38 0.39 0.38 0.44 0.44 0.34 0.30
+b16  0.36 0.36 0.36 0.35 0.38 0.41 0.39 0.41 0.27 0.12 0.17 0.24 0.23 0.26 0.35 0.31
+b32  0.39 0.43 0.41 0.18 0.21 0.28 0.18 0.18 0.26 0.27 0.31 0.35 0.31 0.29 0.30 0.33
+b48  0.25 0.16 0.19 0.18 0.20 0.24 0.23 0.21 0.31 0.33 0.45 0.10 0.13 0.16 0.10 0.13
+```
+
+**Plat entre 0,10 et 0,45, aucune dent de scie lisible.** La cause est dans la prémisse de la
+méthode : `DetectI0Layout` suppose une valeur qui **bouge peu** d'une frame à la suivante — vrai
+d'un bipède, **faux d'un projectile**, qui traverse la carte entre deux frames et fait donc
+basculer les bits de poids fort autant que les autres. **L'instrument n'est pas en cause, sa
+prémisse ne s'applique pas.** Forcer une lecture de frontières sur ce profil serait exactement le
+défaut que ce chantier s'interdit (un balayage FABRIQUE des distributions crédibles).
+
+### 8.2 T3 — le discriminant physique est INCONCLUANT PAR L'INSTRUMENT
+
+Discriminant de remplacement, et il est bien plus fort en principe : **un projectile vole droit**.
+Si le découpage est bon, les positions successives d'un même projectile sont colinéaires ; s'il
+est faux, les bits d'un axe polluent le suivant et le nuage n'a aucune structure.
+
+```
+decoupage      traj>=3   colineaire   nulle melangee
+19/19/19             7       0.0000         0.0000
+18/19/20             7       0.0000         0.0000
+20/19/18             7       0.0000         0.0000
+17/20/20             7       0.0000         0.0000
+13/13/14             7       0.0000         0.0000
+```
+
+> ⚠ **CE N'EST PAS UN NÉGATIF SUR LA QUESTION, C'EST UN NÉGATIF SUR L'INSTRUMENT** — et le
+> dossier a déjà nommé ce piège : *« un négatif dont la nulle vaut zéro est un négatif sur
+> l'instrument »* (index §20.1). **Ma nulle vaut zéro elle aussi** : le test ne pouvait pas
+> réussir. Deux causes, et elles se corrigent :
+>
+> 1. **n = 7 trajectoires à 3 points ou plus**, sur 277 échantillons porte = 1. La couverture
+>    delta actuelle rend 1 à 2 positions par projectile — il en faut au moins 3 pour tester une
+>    droite. **C'est la couverture qu'il faut lever avant le test, pas le test qu'il faut
+>    interpréter.**
+> 2. **Aucun contrôle positif.** La tolérance (5 % de la longueur du segment) n'a jamais été
+>    calibrée sur un composant dont le décodage est SÛR.
+
+### 8.3 CE QU'IL FAUT FAIRE AVANT DE REJOUER T3 — dans cet ordre
+
+1. **Un CONTRÔLE POSITIF de l'instrument de colinéarité** : le rejouer sur les positions de
+   **bipèdes** (`ti=35`, i0 dynamic-precision, décodage sûr et déjà capturé par
+   `position_capture.go`). Un bipède ne vole pas droit — le critère doit donc être recalibré sur
+   une trajectoire connue, ou remplacé par un critère de **continuité** (pas de saut supérieur à
+   la vitesse maximale d'un projectile). **Tant que l'instrument n'a pas montré qu'il sait dire
+   OUI quelque part, ses zéros ne valent rien.**
+2. **Lever la couverture du flux delta** : `DecodeFrameInfer` démarre au bit 0 et meurt tôt sur
+   les paquets à événements. `killsource` a un localisateur de boucle (`locateStrict` + repli,
+   690/690 paquets) — **il n'est pas exporté**. L'exporter, ou le rejouer, multiplierait les
+   échantillons par slot. C'est le vrai verrou de T3.
+3. **Alors seulement** rejouer T3, puis T3bis (chaînage sur `i1`), puis le portage.
+
+**ÉTAT À LA CLÔTURE DE CETTE SESSION** : la voie n'est ni ouverte ni fermée. Ce qui est acquis —
+le projectile est une entité répliquée qui porte des trajectoires dans le flux delta (§7), les
+deux branches de son i0 sont empruntées à parts égales (§8.1), et la grammaire de la branche
+opaque est établie (§2.2). Ce qui manque — **la couverture** (point 2) avant tout, puis un
+instrument de validation qui ait fait ses preuves (point 1).
+- **2026-08-08 (6)** — **T2 et T3 joués, aucun des deux ne mord, et les deux échecs sont
+  instrumentaux.** T2 : le profil de bascule ne transfère pas (sa prémisse — une valeur qui bouge
+  peu entre frames — est fausse pour un projectile) ; profil plat 0,10-0,45. T3 : colinéarité des
+  trajectoires, **zéro partout NULLE COMPRISE** — donc un négatif sur l'instrument, pas sur la
+  question (n = 7 trajectoires à 3+ points, et aucun contrôle positif). **Acquis au passage : les
+  deux branches d'i0 sont empruntées à parts comparables (264 / 277), donc les 59 bits opaques
+  concernent la MOITIÉ des records projectile.** Verrou identifié : la couverture du flux delta,
+  qui exige le localisateur de boucle de `killsource` (non exporté). Rien de porté.

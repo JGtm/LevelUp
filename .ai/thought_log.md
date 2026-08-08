@@ -1,3 +1,48 @@
+## [2026-08-08] filmdec i0 `ti=41` — T2 et T3 : deux instruments qui ne mordent pas, et les deux échecs sont instrumentaux
+
+**Statut** : Complété pour cette session. Note §8 :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+Rien de porté dans `traverse.go`.
+
+**Acquis chiffré, et il compte pour la suite** : sur 8 films, les échantillons i0 de `ti=41` se
+répartissent **264 à porte = 0** (plage de la carte, décodée) et **277 à porte = 1** (plage par
+défaut, les 59 bits opaques). **Les deux branches sont empruntées à parts comparables** — le
+`ReadBits(59)` opaque concerne donc la MOITIÉ des records projectile, ce n'est pas un cas
+marginal qu'on pourrait ignorer.
+
+**T2 — le profil de bascule ne transfère pas.** 239 paires consécutives d'un même slot : profil
+**plat entre 0,10 et 0,45, aucune dent de scie**. La cause est dans la prémisse de
+`DetectI0Layout` — elle suppose une valeur qui **bouge peu** d'une frame à la suivante, ce qui
+est vrai d'un bipède et **faux d'un projectile**, qui traverse la carte entre deux frames et fait
+basculer les bits de poids fort autant que les autres. L'instrument n'est pas en cause ; sa
+prémisse ne s'applique pas. Lire des frontières là-dedans aurait été exactement le défaut que le
+chantier s'interdit (un balayage FABRIQUE des distributions crédibles).
+
+**T3 — le discriminant physique est inconcluant PAR L'INSTRUMENT.** Idée de remplacement, bien
+plus forte en principe : un projectile vole droit, donc un bon découpage rend des positions
+successives colinéaires. Résultat : **zéro colinéaire pour les cinq découpages candidats — ET
+zéro pour la nulle mélangée.** C'est le piège que le dossier nomme en §20.1 : *un négatif dont la
+nulle vaut zéro est un négatif sur l'instrument, pas sur la question*. Deux causes identifiées :
+(1) **n = 7 trajectoires à 3 points ou plus** sur 277 échantillons — la couverture delta rend 1 à
+2 positions par projectile, il en faut 3 pour tester une droite ; (2) **aucun contrôle positif** —
+la tolérance n'a jamais été calibrée sur un composant dont le décodage est sûr.
+
+**Ce qui est écrit dans la note comme condition de réouverture, dans l'ordre.** (1) Donner à
+l'instrument de colinéarité un **contrôle positif** — le rejouer sur des positions dont le
+décodage est sûr (bipèdes, `position_capture.go`), ou le remplacer par un critère de continuité.
+*Tant qu'un instrument n'a pas montré qu'il sait dire OUI quelque part, ses zéros ne valent
+rien.* (2) **Lever la couverture du flux delta** : `DecodeFrameInfer` démarre au bit 0 et meurt
+tôt sur les paquets à événements ; `killsource` a un localisateur de boucle (`locateStrict` +
+repli, 690/690 paquets) **qui n'est pas exporté**. C'est le vrai verrou. (3) Alors seulement
+rejouer T3, puis le chaînage sur `i1`, puis le portage.
+
+**Conclusion / prochaine étape.** La voie n'est ni ouverte ni fermée, et c'est dit tel quel. Ce
+qui est acquis : le projectile est une entité répliquée qui porte des trajectoires dans le flux
+delta, les deux branches de son i0 sont empruntées à parts égales, et la grammaire de la branche
+opaque est établie. Ce qui manque : la couverture, puis un instrument de validation qui ait fait
+ses preuves. Le prochain geste utile est **d'exporter le localisateur de boucle de
+`killsource`** — il débloque la couverture, et il sert à tout le reste du décodeur.
+
 ## [2026-08-08] filmdec i0 `ti=41` — T1' : le flux delta rend des trajectoires, et ma conclusion de la veille était fausse
 
 **Statut** : Complété. Note : `.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md` §7.
