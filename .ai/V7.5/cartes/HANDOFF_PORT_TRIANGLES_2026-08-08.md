@@ -69,6 +69,76 @@ la regle qui garde les etages joues sans ramener le decor** — piste : ne dessi
 bandes praticables qui portent (ou jouxtent) des positions observees, l'oracle servant cette
 fois de filtre et plus seulement de juge.
 
+## 1 ter. SUPPRIMER LA CALIBRATION (2026-08-09)
+
+**Le probleme, pose par l'utilisateur** : regler la tranche d'altitude, l'etage a dessiner et
+le cadrage carte par carte est impossible en principe. L'oracle fort n'existe que pour
+Cliffhanger — une seule carte a un film decode. Les 29 autres ne pourraient jamais etre
+verifiees.
+
+**Le renversement** : on calibre la REGLE une fois sur la carte qui possede les deux oracles,
+et on valide la REGLE — pas ses parametres — sur les autres, avec l'oracle FAIBLE des ancres
+(`map_objectives.json`, 37 cartes, positions x/y/z dans l'espace de jeu, produites au lot 5).
+
+**Etalonnage de l'ancre**, sans passer par la geometrie reconstruite (14 ancres de Cliffhanger
+contre les positions de joueur a leur aplomb) :
+
+    centre de l'ancre -> sol : median +0,29 m   dispersion 0,46 m   <- LE repere
+    bas de zone       -> sol : median -0,49 m   dispersion 1,54 m   (down_z varie de 0,5 a 2 m)
+
+D'ou `reference.go` : `AncrageDecalageSol = 0,29`, `PorteeAncre = 25`, `SurfaceReference`
+(altitude interpolee sur les ancres) et `Volume.CarteParReference` (par cellule, le sol le plus
+proche de cette surface). Le voisinage des ancres borne aussi l'emprise — **51 x 55 m** la ou le
+sbsp en declare 113 x 114, et c'est ce meme bornage qui evite d'allouer 4 Go sur les grandes
+cartes.
+
+**Disparaissent** : la tranche Z reglee a la main, l'altitude de coupe choisie a l'oeil, le
+recadrage. Le degagement redevient une constante physique.
+
+### Deux pistes de rendu REFUTEES — ne pas les rejouer
+
+| piste | verdict | mesure |
+|---|---|---|
+| **LOD trop grossier** | **innocent** | plafond 40 000 triangles contre illimite : chiffres identiques a l'octet sur 4 configurations. Aucun maillage de ridgeline n'atteint le plafond. |
+| **filtre de PENTE** | **refute** | le prototype filtrait par l'inclinaison (`marchable_zmax`). Reintroduit, il resserre le dessin mais l'oracle le condamne : trous 0,8 % -> **4,8 %**, « sous 2 m » 88,0 % -> **82,0 %**, precision inchangee. Il supprime du vrai sol. RETIRE du code. |
+
+### La regle TRANSFERE — balayage par les ancres
+
+Critere : chaque ancre, ramenee au sol, doit trouver un sol a moins d'1 m.
+
+    behemoth        14/14    illusion       14/14    forbidden     14/14
+    highpower       25/28    highpower_hv   23/26    hp_sentry     17/20
+    catalyst_map    18/19    chasm          14/19    recharge      13/14 (x2 variantes)
+    breaker         13/20    breaker_hv     12/22    forest        11/19
+    cliffhanger     10/14    catalyst       10/14    launch_site   10/15
+    streets         10/14    forest_ranked   9/14    bazaar         8/14
+    prism            8/14    aquarius        7/19    aquarius_rkd   6/17
+    fragmentation   10/30    fragmentation_hv 7/24
+    live_fire        0/14    live_fire_rkd   0/14   <- AUCUNE ancre ne trouve de sol
+
+    BILAN : 27 cartes mesurees · 306/474 ancres (64,6 %)
+    9 modules absents de l'installation (corpo, deadlock, oasis, scarr) — non mesurables ici
+
+Catalyst, jamais utilisee pour calibrer quoi que ce soit, se comporte comme Cliffhanger qui a
+servi d'etalon. Trois cartes sont a 100 %.
+
+**Ce que le balayage DESIGNE, et c'est son interet** — il ne dilue pas l'echec dans une moyenne :
+
+- **live_fire (sgh_interlock)** : 0 ancre sur 28 trouve un sol, sur les deux variantes. Chaine
+  cassee sur cette carte, pas un reglage a retoucher. **Premier suspect a instruire.**
+- **fragmentation** : 10/30 avec un ecart median de **-1,54 m**, un ordre de grandeur au-dessus
+  de toutes les autres — hors du regime « quantification ».
+- **aquarius** : 6/17 et 7/19 avec un ecart median NORMAL (-0,15 m). Le defaut n'est donc pas
+  une altitude fausse mais une dispersion — profil different des deux precedents.
+
+**Le pont de noms** : le jeu prefixe ses dossiers par le mode d'origine (`ctf_bazaar`,
+`btb_highpower`, `sgh_interlock`, `va_behemoth`) quand le catalogue dit « bazaar_map ». On
+enumere donc l'installation et on apparie sur les jetons — deviner le prefixe ne marche pas.
+
+**Biais systematique identifie** : l'ecart median tourne autour de -0,3 m, soit une demi-bande.
+`SolLePlusProche` rend le CENTRE de la bande quand la surface est vers son bord bas. C'est de la
+quantification, pas de la carte — a corriger dans la convention d'altitude.
+
 ## 2. T4 — TRANCHEE PAR L'ORACLE (§1 bis). Ce qui suit dit pourquoi les temoins INTERNES avaient echoue
 
 Trois metriques essayees sur les MEMES octets pour departager `u16` brut et `i16 + 32768` :

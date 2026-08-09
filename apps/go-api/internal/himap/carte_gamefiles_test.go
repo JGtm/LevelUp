@@ -33,6 +33,14 @@ type optionsCarte struct {
 	// BorneAABB : marge du bornage a la boite monde de l'instance, en metres. Negatif =
 	// pas de bornage (cf. AddMeshBorne).
 	BorneAABB float64
+	// Plafond : plafond de triangles par maillage (0 = MaxTrianglesPerMesh). Il decide du
+	// niveau de detail retenu.
+	Plafond int
+	// CheminModule court-circuite la resolution par nom de carte, pour le balayage.
+	CheminModule string
+	// Emprise borne le volume en X/Y. Nulle = l emprise complete du sbsp, qui peut etre
+	// enorme : la premiere carte du balayage a demande 11 324 x 12 308 cellules, soit 4 Go.
+	EmpriseMin, EmpriseMax *[2]float64
 }
 
 // construitVolume rasterise la carte dans un volume, selon les options donnees.
@@ -48,7 +56,10 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 	if o.Dequant == nil {
 		o.Dequant = DequantBrut
 	}
-	modCarte := moduleDuJeu(t, "pc", o.Carte)
+	modCarte := o.CheminModule
+	if modCarte == "" {
+		modCarte = moduleDuJeu(t, "pc", o.Carte)
+	}
 	chemins, _ := GeometrySearchPath(racine, modCarte)
 	idx, err := NewModuleIndex(chemins...)
 	if err != nil {
@@ -63,6 +74,12 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 	}
 	lo := [2]float64{bsp.Bounds.Min[0], bsp.Bounds.Min[1]}
 	hi := [2]float64{bsp.Bounds.Max[0], bsp.Bounds.Max[1]}
+	if o.EmpriseMin != nil && o.EmpriseMax != nil {
+		for k := 0; k < 2; k++ {
+			lo[k] = math.Max(lo[k], o.EmpriseMin[k])
+			hi[k] = math.Min(hi[k], o.EmpriseMax[k])
+		}
+	}
 	vol := NewVolumeZ(lo, hi, o.ZMin, o.ZMax)
 	t.Logf("volume %d x %d x %d (cellule %.2f m, bande %.1f m, tranche [%.0f ; %.0f])",
 		vol.NX, vol.NY, vol.NZ, vol.Cell, vol.ZBand, vol.ZMin, vol.ZMin+float64(vol.NZ)*vol.ZBand)
@@ -91,6 +108,7 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 			if a, err = NewRuntimeGeoAsset(tag, blob); err != nil {
 				t.Fatal(err)
 			}
+			a.PlafondTriangles = o.Plafond
 			assets[id] = a
 		}
 		if m := a.MeshDequant(in.MeshIndex, o.Dequant); m != nil {
