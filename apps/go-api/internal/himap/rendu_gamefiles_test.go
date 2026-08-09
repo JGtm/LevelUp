@@ -273,9 +273,10 @@ func TestRenduCliffhanger(t *testing.T) {
 			masque, _ = matiereReference(validee, bo, larg, haut)
 			t.Log("REPLI : carte masquee par la silhouette de la reference (Cliffhanger UNIQUEMENT)")
 		}
+		// `combine` est le defaut depuis sa validation par l'utilisateur le 2026-08-09.
 		style := styleRendu(os.Getenv("RENDU_STYLE"))
 		if style == "" {
-			style = styleDoux
+			style = StyleCarteParDefaut
 		}
 		bas, haute, _ := rendu.BornesAltitudeRobustes()
 		t.Logf("style %q · bornes d'altitude robustes (centiles 2/98) [%+.2f ; %+.2f] m",
@@ -289,10 +290,15 @@ func TestRenduCliffhanger(t *testing.T) {
 type styleRendu string
 
 const (
-	styleDoux     styleRendu = "doux"     // Lambert continu — l'existant
+	styleDoux     styleRendu = "doux"     // Lambert continu — l'ancien defaut
 	stylePlat     styleRendu = "plat"     // aplats + aretes
 	styleAltitude styleRendu = "altitude" // nuancier d'altitude + ombrage
 	styleCombine  styleRendu = "combine"  // nuancier + aplats + aretes
+
+	// StyleCarteParDefaut : choisi par l'utilisateur au gate du 2026-08-09. `doux` seul ne
+	// peut PAS separer deux dalles de meme inclinaison a des hauteurs differentes — c'est
+	// structurel, pas un reglage (cf. `rendu_couleur.go`).
+	StyleCarteParDefaut = styleCombine
 )
 
 // carteSeulePNG rend la reconstruction sans reference, sans separateur et sans diagnostic —
