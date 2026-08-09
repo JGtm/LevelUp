@@ -36,7 +36,8 @@
 
 ## 1. DECISION — le mapping vit dans le CODE, pas en base
 
-**Retenu : `index.json` genere + une table Go derivee, keyee par `weapon_key`.**
+**Retenu : `index.json` genere + une table Go derivee, keyee par le TAG `weap`** (voir
+l amendement de l etape 1 : `weapon_key` a ete essaye et refute par la mesure).
 
 Pourquoi pas la base :
 
@@ -49,9 +50,9 @@ Pourquoi pas la base :
 - La base garde ce qui lui revient et qu'elle porte deja tres bien : le registre des armes, les
   libelles FR/EN, les identifiants filmshell. **Le plan n'y touche pas.**
 
-Ce qui va en base : **rien**. Ce qui va en code : une table `weapon_key -> index d'atlas`,
-GENEREE depuis `index.json` par la commande d'extraction, avec un garde-rail qui echoue si un
-`weapon_key` du registre n'a pas d'icone ou si un PNG reference manque sur disque.
+Ce qui va en base : **rien**. Ce qui va en code : une table `tag weap -> index d atlas`, GENEREE
+depuis `index.json` par la commande d extraction, avec un garde-rail qui echoue si une arme du
+registre n a pas d icone ou si un PNG reference manque sur disque.
 
 ---
 
@@ -110,18 +111,50 @@ devient-il une liste ?
 Chaque etape se clot par : gate passe, items statues `[x]`/`[~]`/`[!]`, entree thought_log,
 point d'etape. Aucune ne commence avant que la precedente soit close.
 
-### Etape 1 — la cle devient `weapon_key` (aucun changement visuel)
+### Etape 1 — la cle devient le TAG `weap` (aucun changement visuel)
 
-- [ ] `games/adapter.go` : `WeaponImageURL(weaponKey, nameEN string) string` (2 params, sous le
-      seuil de 5 ; `nameEN` reste pour Halo 5 qui resout par nom depuis la base)
-- [ ] `halo_infinite/adapter_asset_urls.go` : lookup par `weapon_key`, `name_en` ignore
+**AMENDEMENT DU 2026-08-09 — la mesure a refute la premiere version de cette etape.** Elle
+prevoyait de keyer par `weapon_key`. Mesure sur la metadata de prod : **42 etiquettes, 36
+identifiants, 29 armes au registre, et 7 etiquettes SANS `weapon_key`** — dont MA5K Avenger et
+Mutilator, qui ont une icone aujourd hui. Keyer par `weapon_key` les aurait fait disparaitre.
+
+**La bonne cle etait deja documentee** (§1.1 de l etat de l art) : les **32 bits HAUTS** d un
+identifiant filmshell sont le global tag id du `weap`. Verifie sur les donnees reelles, 6/6 :
+
+| arme | weapon_id | tag (32 bits hauts) | index |
+|---|---|---|---|
+| BR75 | `0x2b1824d5_42c9679f` | `2b1824d5` | 1 |
+| Diminisher of Hope (variante) | `0x841ac5e5_a730e49f` | `841ac5e5` | 16 |
+| MA5K Avenger (sans `weapon_key`) | `0xf5c335df_e7232c0b` | `f5c335df` | 36 |
+| Mutilator (hors registre) | `0xd7915565_42c9679f` | `d7915565` | 37 |
+| Sandwich (hors registre) | `0x880fe0bc_42c9679f` | `880fe0bc` | 35 |
+| Mythic Sandwich (hors registre) | `0xb7262ca1_c8fb11d0` | `b7262ca1` | 35 |
+
+Cette cle ne depend ni d un nom, ni du registre, ni d une table produit. Elle couvre les armes
+enregistrees, leurs VARIANTES et celles qui ne sont PAS au registre — trois cas que ni `name_en`
+ni `weapon_key` ne couvraient ensemble.
+
+**FAIT** : `index.json` porte desormais `tags_weap` par index, produit par un balayage de TOUS
+les groupes de tags (`cmd/weapon-icons-build/weaptags.go`) — le bloc `UI display info` n est pas
+propre au `weap`, et c est ce balayage qui a fait sortir l index 29.
+
+**RESTE A FAIRE** :
+
+- [ ] `games/adapter.go` : `WeaponImageURL(weaponID int64) string` — un seul parametre, et il
+      porte deja tout (le tag est dans ses 32 bits hauts)
+- [ ] `halo_infinite/adapter_asset_urls.go` : lookup par tag `weap`, table GENEREE depuis
+      `index.json` ; `name_en` disparait, avec ses 39 alias ecrits a la main
 - [ ] `halo_5/adapter_asset_urls.go` et `synthetic_title_b/adapter.go` : signature suivie,
       comportement inchange
 - [ ] `match_view_converters.go:224` : passer `weaponResolved.weaponKey` (il existe deja,
       `weapon_resolver.go:41`, il n'etait juste pas transmis)
 - [ ] `asset_service.go:64-81` : idem
+- [ ] Les 3 SENTINELLES (`weapon_id` 0 grenade, 1 melee, 2 vehicule) restent hors de portee du
+      tag : ce sont des concepts produit, pas des objets du jeu. Table explicite keyee par ID —
+      jamais par nom — ou pas d icone, a statuer
 - [ ] Test : une arme dont `name_en` diverge entre `weapon_labels` et `weapon_names.toml`
-      (Sidekick) rend la BONNE image
+      (Sidekick) rend la BONNE image ; MA5K Avenger et Mutilator, sans `weapon_key`, gardent la
+      leur
 - **Gate** : `go test ./internal/games/... ./internal/service/...` vert, `go vet` vert, aucune
   URL d'image changee (comparaison avant/apres sur les 29 armes)
 
