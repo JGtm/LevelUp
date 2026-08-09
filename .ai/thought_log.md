@@ -60456,3 +60456,44 @@ voie la moins couteuse.
 des pistes mortes enrichi de 4 lignes avec leurs mesures.
 
 **Prochaine etape**. Labellisation manuelle par l utilisateur sur `NOMMAGE_ICONES.html`.
+
+## [2026-08-09] v7.5 voie C — icones : la passe humaine verse 22 cles et etablit une regle de priorite
+
+**Statut** : Complete.
+
+**Ce qui rentre**. `NOMMAGE_GATE_2026-08-09.tsv` — la passe de nommage de l utilisateur, versee
+telle quelle (elle ne vivait qu en localStorage et dans un fichier de telechargement : travail
+manuel non reproductible, donc a versionner sans attendre). 22 weapon_key ajoutes sur l atlas du
+kill feed, dont neuf que le jeu ne savait pas nommer.
+
+**Controle croise**. Les 26 cles de l atlas d armes issues du `sprite index` sont reproduites a
+l identique par la passe humaine : **zero divergence**. Les deux sources, lecture machine et
+oeil humain, se confirment.
+
+**Decision technique — regle de priorite**. Le jeu nomme `killfeed_heatwave` l index 22 du kill
+feed, mais l image y est le Cremateur (`hinf_cindershot`) ; le Calcineur est a l index 23. Le
+meme decalage etait deja constate sur l atlas d armes (index 20). Confirme deux fois sur deux
+atlas independants, ce n est plus une reserve : **en cas de desaccord, `sprite index` + registre
+font foi, jamais le nom craque**. Sans cette regle l integration afficherait le Calcineur a la
+place du Cremateur. Consequence pratique : les libelles FR/EN ne sont PAS recopies dans le TSV —
+pour toute ligne portant un weapon_key ils sont deja canoniques dans `weapon_names.toml`, et
+dupliquer creerait une seconde source de verite.
+
+**Pistes tentees ce jour, toutes negatives**. (1) `HaloInfinite.exe.c`, 40 Mo de decompilation
+Ghidra deja presents sur la machine : 0 correspondance sur les 26 identifiants — et le CONTROLE
+echoue aussi (meme les identifiants connus, tag `bitd` et atlas, n y figurent pas). Ces
+constantes ne sont jamais des litteraux dans le code, elles viennent des donnees. (2)
+`hardlight`, propose par l utilisateur : le mot EST dans le binaire, donc deja essaye sous 22
+prefixes ; 3848 formes composees en plus (tonneaux, bobines, hasards) rendent 0.
+
+**Defaut corrige**. La page de nommage portait un paragraphe corrompu par un ancien `sed`
+(texte melange, `&lt;nom&gt;` casse) et deux compteurs perimes contradictoires (43 puis 55). La
+prose ne porte plus de chiffre : le compteur calcule fait foi.
+
+**Restent sans etiquette** : atlas d armes 19, 31, 32 ; kill feed 25, 39, 40, 48, 63, 75, 77, 87.
+Les tonneaux/bobines (kill feed 41-45, armes 27-30) sont donnes comme des SUPPOSITIONS par
+l utilisateur — a confirmer par observation en Theater avant toute publication.
+
+**Prochaine etape**. Etudier la correlation film -> icone demandee par l utilisateur : lister
+les kills dont la source de degat n est pas une arme du registre (tonneaux, bobines, chute) pour
+qu il les constate en Theater, plutot que de deviner.
