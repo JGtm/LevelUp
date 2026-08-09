@@ -222,7 +222,7 @@ func volumeDuModule(t *testing.T, chemin string, ancres [][3]float64) *Volume {
 		zhi = math.Max(zhi, a[2]+PorteeAncre)
 	}
 	return construitVolume(t, optionsCarte{
-		CheminModule: chemin, ZMin: zlo, ZMax: zhi, BorneAABB: 0.5,
+		CheminModule: chemin, ZMin: zlo, ZMax: zhi, BorneAABB: 0.5, Ancres: ancres,
 		EmpriseMin: &lo, EmpriseMax: &hi,
 	})
 }

@@ -124,12 +124,30 @@ servi d'etalon. Trois cartes sont a 100 %.
 
 **Ce que le balayage DESIGNE, et c'est son interet** — il ne dilue pas l'echec dans une moyenne :
 
-- **live_fire (sgh_interlock)** : 0 ancre sur 28 trouve un sol, sur les deux variantes. Chaine
-  cassee sur cette carte, pas un reglage a retoucher. **Premier suspect a instruire.**
+- **live_fire (sgh_interlock)** : 0 ancre sur 28 trouve un sol, sur les deux variantes.
+  **INSTRUIT le 2026-08-09 — CAUSE TROUVEE, hors de notre chaine** : le fichier
+  `sgh_interlock-rtx-new.module` ne contient AUCUN tag `sbsp`, et c'est le seul fichier du
+  dossier. Sa geometrie n'est pas la ou celle des 26 autres se trouve. Verifie qu'elle n'est
+  pas empruntee a une autre carte : son `level_id` (1253388187) ne regroupe que ses deux
+  propres variantes, contrairement au partage observe sur les Heavies. **Exception reelle a
+  consigner, pas un defaut a corriger** — reste a trouver ou vit sa structure.
 - **fragmentation** : 10/30 avec un ecart median de **-1,54 m**, un ordre de grandeur au-dessus
   de toutes les autres — hors du regime « quantification ».
 - **aquarius** : 6/17 et 7/19 avec un ecart median NORMAL (-0,15 m). Le defaut n'est donc pas
-  une altitude fausse mais une dispersion — profil different des deux precedents.
+  une altitude fausse mais une dispersion — profil different des deux precedents. **Cause
+  toujours inconnue.**
+
+### Troisieme piste REFUTEE — le choix du bsp
+
+Le diagnostic de live_fire a montre que Cliffhanger declare DEUX bsp : l'arene (113 x 114 m,
+10 357 instances) et un horizon (6 619 x 10 471 m, 3 971 instances). La selection retenait
+« le plus d'instances » — juste ici, mais rien ne le garantissait ailleurs, et cela ressemblait
+fort a la cause du profil d'aquarius (bonne altitude, mauvais endroit).
+
+Regle remplacee par « le bsp qui contient le plus d'ANCRES », avec repli sur le compte
+d'instances. **Resultat : 306/474, identique ligne pour ligne.** Sur les 27 cartes, le bsp le
+plus peuple est TOUJOURS celui des ancres. La regle est conservee parce qu'elle supprime une
+dependance au hasard, mais **elle ne corrige rien** — et la cause d'aquarius reste ouverte.
 
 **Le pont de noms** : le jeu prefixe ses dossiers par le mode d'origine (`ctf_bazaar`,
 `btb_highpower`, `sgh_interlock`, `va_behemoth`) quand le catalogue dit « bazaar_map ». On
