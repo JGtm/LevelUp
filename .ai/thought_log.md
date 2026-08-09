@@ -60686,3 +60686,38 @@ code (`8464c10d3`), inchange depuis.
 **Prochaine etape**. Rien de bloquant cote extraction. Decisions utilisateur en attente : rendu
 du kill feed (chart ou liste DOM) et redistribution des assets, toutes deux prealables a
 l execution de `PLAN_INTEGRATION_ICONES.md`.
+
+## [2026-08-09] v7.5 voie C — icones : la cle d icone n est ni un nom ni un weapon_key, c est le tag
+
+**Statut** : Complete (activateur livre, plan fige ; implementation produit NON commencee).
+
+**Decisions utilisateur enregistrees** : index 29 = Diminisher of Hope, variante du marteau
+antigravite (coherent avec l image) ; kill feed en LISTE DOM, plus recent en HAUT, les kills
+s ajoutant en haut a la lecture du replay ; redistribution des assets approuvee, avec les tests
+comblant les trous releves.
+
+**Decision technique — mon propre plan etait faux, la mesure l a corrige.** L etape 1 prevoyait
+de keyer la resolution d image par `weapon_key`. Mesure sur la metadata de prod : 42 etiquettes,
+36 identifiants, 29 armes au registre, **7 etiquettes SANS `weapon_key`** — dont MA5K Avenger et
+Mutilator, qui ont une icone AUJOURD HUI. Keyer par `weapon_key` les aurait fait disparaitre.
+
+La bonne cle etait deja ecrite au §1.1 de l etat de l art et je ne l avais pas reliee : les
+**32 bits HAUTS** d un identifiant filmshell sont le global tag id du `weap`. Verifie 6/6 sur les
+donnees reelles, y compris les trois cas durs — une VARIANTE (Diminisher of Hope -> index 16),
+une arme sans `weapon_key` (MA5K -> 36) et deux armes HORS registre (Mutilator -> 37,
+Sandwich/Mythic Sandwich -> 35). Ni `name_en` ni `weapon_key` ne couvraient ces trois cas
+ensemble.
+
+**Livre** : `cmd/weapon-icons-build/weaptags.go` — balayage de TOUS les groupes de tags (le bloc
+`UI display info` n est pas propre au `weap` ; c est ce balayage qui avait fait sortir l index
+29), auto-valide par l atlas. `index.json` porte desormais `tags_weap` par index. C est
+l activateur de l etape 1 : la table produit s en derive sans nom ni registre.
+
+**Reste** : la modification produit (interface `WeaponImageURL`, adapters, tests, garde-rail).
+Non commencee — l utilisateur a signale de preserver le contexte et de privilegier le plan fige.
+
+**Gates** : `gofmt`, `go vet`, extraction rejouee (168 entrees, 61 noms kill feed), seuils de
+taille respectes. Aucun code produit touche, donc aucune suite de tests applicative concernee.
+
+**Prochaine etape**. Etape 1 « reste a faire » du plan : `WeaponImageURL(weaponID int64)`, table
+generee, sentinelles 0/1/2 statuees, tests de divergence et de presence des PNG.

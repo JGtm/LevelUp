@@ -83,23 +83,24 @@ var atlasTags = []struct {
 
 // iconEntry décrit une icône extraite, telle qu'écrite dans index.json.
 type iconEntry struct {
-	Index          int    `json:"index"`
-	Style          string `json:"style"`
-	File           string `json:"file"`
-	GameName       string `json:"nom_jeu,omitempty"`        // nom INTERNE du jeu, craqué (cf. names.go)
-	NameUnverified bool   `json:"nom_a_verifier,omitempty"` // le nom vient d un `weap` non canonique : son index peut être périmé
-	WeaponKey      string `json:"arme,omitempty"`           // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
-	SourceTag      string `json:"source_tag"`
-	SourceW        int    `json:"source_w"`
-	SourceH        int    `json:"source_h"`
-	CroppedW       int    `json:"cropped_w"`
-	CroppedH       int    `json:"cropped_h"`
-	BC7Format      int    `json:"bc7_format"`
-	Verified       bool   `json:"align_verified"`
-	Noise          string `json:"alpha_noise"`
-	RebuiltPc      string `json:"bc7_rebuilt_pct"`
-	OpaquePc       string `json:"bc7_opaque_pct"`
-	DegradedPc     string `json:"bc7_degraded_pct"`
+	Index          int      `json:"index"`
+	Style          string   `json:"style"`
+	File           string   `json:"file"`
+	GameName       string   `json:"nom_jeu,omitempty"`        // nom INTERNE du jeu, craqué (cf. names.go)
+	NameUnverified bool     `json:"nom_a_verifier,omitempty"` // le nom vient d un `weap` non canonique : son index peut être périmé
+	WeaponKey      string   `json:"arme,omitempty"`           // le weapon_key du registre ; nomme `arme` car gitleaks voit un secret dans tout identifiant contenant « key » suivi d une chaine a forte entropie
+	WeapTags       []string `json:"tags_weap,omitempty"`      // les tags qui revendiquent cet index : la CLE universelle (32 bits hauts d un weapon_id filmshell)
+	SourceTag      string   `json:"source_tag"`
+	SourceW        int      `json:"source_w"`
+	SourceH        int      `json:"source_h"`
+	CroppedW       int      `json:"cropped_w"`
+	CroppedH       int      `json:"cropped_h"`
+	BC7Format      int      `json:"bc7_format"`
+	Verified       bool     `json:"align_verified"`
+	Noise          string   `json:"alpha_noise"`
+	RebuiltPc      string   `json:"bc7_rebuilt_pct"`
+	OpaquePc       string   `json:"bc7_opaque_pct"`
+	DegradedPc     string   `json:"bc7_degraded_pct"`
 }
 
 func main() {
@@ -169,6 +170,11 @@ func main() {
 	// L'atlas « sandbox » est celui du KILL FEED, et il porte sa propre table de nommage
 	// (le tag `bitd`). Cf. killfeed.go.
 	kfNames := resolveKillfeedNames(ix)
+	tagsParIndex, err := weapTagsByIndex(ix)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "tags par index:", err)
+		os.Exit(1)
+	}
 	fmt.Printf("kill feed      : %d index nommés par sa table `bitd`\n\n", len(kfNames))
 
 	var entries []iconEntry
@@ -211,6 +217,7 @@ func main() {
 			}
 			entries = append(entries, iconEntry{
 				Index: idx, Style: at.Style, File: name, WeaponKey: key,
+				WeapTags: tagsParIndex[idx],
 				GameName: gameName, NameUnverified: aVerifier,
 				SourceTag: fmt.Sprintf("%08x", at.ID),
 				SourceW:   im.W, SourceH: im.H,
