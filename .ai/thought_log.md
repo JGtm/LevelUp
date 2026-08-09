@@ -1,3 +1,46 @@
+## [2026-08-10] v7.5 — cartes : l'accessibilite ne delimite pas la zone jouable (NO-GO), deux cibles nommees pour la suite
+
+**Statut** : Complete. Cinquieme critere de zone jouable refute par la mesure. Detail :
+`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` et le registre des reports.
+
+**Decision technique principale : la connexite pietonne ne separe pas l'arene du decor, et la
+raison est structurelle.** Le rendu est un CHAMP D'ALTITUDE — la surface la plus haute par
+pixel — et sur un champ d'altitude la connexite est presque gratuite : le relief alentour
+rejoint l'arene par des pentes douces. Seconde cause, independante : marcher SOUS-ESTIME
+l'accessibilite reelle (un joueur tombe, saute, prend un ascenseur), donc le critere perd des
+positions jouees par construction.
+
+    marche (m)      manquants   exces    ACCORD   positions jouees gardees
+    aucune              4,0 %   149,3 %   38,5 %          95,21 %
+    0,50               16,2 %   108,8 %   40,2 %          89,21 %
+    0,85                8,3 %   136,9 %   38,7 %          90,96 %
+    1,20                7,2 %   137,7 %   39,0 %          91,89 %
+    0,85 + grain       33,8 %    16,0 %   57,1 %          86,58 %
+
+Toutes perdent des positions reellement jouees — critere disqualifiant annonce d'avance.
+
+**Contre-verification de l'investigation deleguee sur la COLLISION** : la table de l'oracle
+reproduit A LA DECIMALE depuis le worktree. Deux reserves ajoutees au dossier : le temoin
+d'offset ne separe pas (triple unitaire a 100 % sur CINQ offsets, pas au seul nominal), et le
+document de rejeu de l'oracle etait absent du worktree — la sonde s'y declarait SKIP en
+silence, un oracle absent qui passe au vert. `data/` est ignore par git et un worktree ne
+partage pas les fichiers non suivis : le copier avant toute mesure d'oracle.
+
+**LA PISTE QUI RESTE, et elle vient de l'utilisateur** : « si je quitte la zone jouable je
+meurs, parfois avec un delai de 10 secondes ». Sondage : `sddt` (structure design — kill
+volumes et soft ceilings dans les Halo precedents) et `pfnd` (pathfinding/navmesh) existent
+dans la variante `any/` des DEUX cartes et portent des coordonnees MONDE reparties dans la
+boite du bsp — pas l'amas a l'origine qui avait piege `scgt`.
+
+**Lecon** : cinq criteres refutes, tous par la meme methode — un oracle exterieur et un score
+qui ne se laisse pas gagner d'un cote. Ce qui a change depuis le debut du chantier, ce n'est
+pas la qualite des idees, c'est l'existence du banc qui les tue en une minute.
+
+**Prochaine etape** : decoder `sddt` et/ou `pfnd`. Le navmesh est la definition POSITIVE de
+« ou un agent peut marcher », les kill volumes la definition NEGATIVE.
+
+---
+
 ## [2026-08-09] v7.5 — cartes : la nettete tient a trois leviers, pas a un reglage d'eclairage
 
 **Statut** : Complete cote outillage ; le CHOIX DU STYLE revient a l'utilisateur (gate visuel).

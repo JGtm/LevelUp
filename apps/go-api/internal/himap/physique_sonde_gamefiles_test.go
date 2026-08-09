@@ -582,15 +582,21 @@ func TestSondePhysiqueRendu(t *testing.T) {
 
 	pos := chargePositions(t)
 
+	// `marche` > 0 applique, APRES rendu, le masque d'accessibilite depuis les ancres. Les
+	// tris par instance et le masque de connexite ne sont pas de meme nature : l'un choisit
+	// ce qu'on dessine, l'autre ce qui reste atteignable une fois dessine.
 	configs := []struct {
-		nom   string
-		garde func(itemRendu) bool
+		nom    string
+		garde  func(itemRendu) bool
+		marche float64
 	}{
-		{"aucun-tri", func(it itemRendu) bool { return true }},
-		{"grain-0.005", func(it itemRendu) bool { return it.aire <= AireMaxTriangleJouable }},
-		{"physique-any", func(it itemRendu) bool { return it.physAny }},
-		{"physique-play", func(it itemRendu) bool { return it.physJeu }},
-		{"play-et-grain", func(it itemRendu) bool { return it.physJeu && it.aire <= AireMaxTriangleJouable }},
+		{"aucun-tri", func(it itemRendu) bool { return true }, 0},
+		{"grain-0.005", func(it itemRendu) bool { return it.aire <= AireMaxTriangleJouable }, 0},
+		{"physique-any", func(it itemRendu) bool { return it.physAny }, 0},
+		{"acces-0.85", func(it itemRendu) bool { return true }, MarcheMaxMetres},
+		{"acces-0.50", func(it itemRendu) bool { return true }, 0.50},
+		{"acces-1.20", func(it itemRendu) bool { return true }, 1.20},
+		{"acces-et-grain", func(it itemRendu) bool { return it.aire <= AireMaxTriangleJouable }, MarcheMaxMetres},
 	}
 	for _, cfg := range configs {
 		t.Run(cfg.nom, func(t *testing.T) {
@@ -605,6 +611,17 @@ func TestSondePhysiqueRendu(t *testing.T) {
 				rendu.AddMeshBorne(it.m, it.in, 0.5)
 			}
 			t.Logf("%s : %d/%d instances gardees", cfg.nom, n, len(items))
+			if cfg.marche > 0 {
+				acc := rendu.ComposanteAccessible(ancresCliffhanger(t), cfg.marche)
+				garde := 0
+				for _, ok := range acc {
+					if ok {
+						garde++
+					}
+				}
+				rendu.Restreindre(acc)
+				t.Logf("%s : composante accessible (marche %.2f m) = %d cellules", cfg.nom, cfg.marche, garde)
+			}
 
 			out := image.NewRGBA(image.Rect(0, 0, 3*larg+16, haut))
 			for py := 0; py < haut; py++ {
