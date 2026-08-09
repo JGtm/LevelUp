@@ -49,9 +49,16 @@ type OwnerReport struct {
 	// film. `SlotXUID` sert à publier QUI porte une trace, et un index publié serait
 	// inexploitable par un client : il n'a de sens qu'à l'intérieur de ce film.
 	SlotXUID map[uint32]uint64
-	// FromDeaths compte les slots nommés par la lecture. C'est désormais la seule source, donc
-	// ce compteur vaut toujours len(Owner) — il est conservé parce qu'un écart entre les deux
-	// signalerait qu'une seconde source est réapparue sans qu'on l'ait voulu.
+	// FromDeaths compte les slots nommés par la LECTURE SEULE, figé avant les fermetures.
+	//
+	// IL NE VAUT PLUS len(Owner) DEPUIS LES FERMETURES (2026-08-08), et le commentaire qui
+	// l'affirmait a survécu au changement qui le rendait faux. L'écart entre les deux est
+	// exactement ce que les déductions ont ajouté ; la règle de provenance qui remplace
+	// l'égalité est vérifiée par `verdictOfBridge` :
+	//
+	//	FromDeaths + Closures.byShot + Closures.byRespawn == len(Owner)
+	//
+	// Un écart à CETTE somme signale une troisième source, non comptée.
 	FromDeaths int
 	// DeathsNamed / LivesTotal disent combien de vies le fil des morts a nommées. Un rapport
 	// publié sans son dénominateur ne se juge pas.

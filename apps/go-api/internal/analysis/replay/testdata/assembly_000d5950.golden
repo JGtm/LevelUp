@@ -10,7 +10,7 @@ schema 2 · titre halo_infinite
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 99 trace(s) · 29221 point(s) de grille
-95 trace(s) NOMMEE(S) par le pont (fil des morts, puis fermetures) · 4 anonyme(s) — une vie que le film ne clot
+93 trace(s) NOMMEE(S) par le pont (fil des morts, puis fermetures) · 6 anonyme(s) — une vie que le film ne clot
 par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur
 15315 point(s) portent un cap de visee · 4620 un bouclier · 163 une fraction de vie
 
@@ -26,11 +26,11 @@ par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur
   2533274826120416  idx=7  "VitaminA1688"
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-484 rattache(s) / 519 disponible(s) = 93.3 %
-rejets : slot introuvable=35 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+483 rattache(s) / 519 disponible(s) = 93.1 %
+rejets : slot introuvable=36 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 519 = 519 (equilibre : true)
 verdict : nominal
-484 tir(s) publie(s) · 90 avec un cap de visee lisible · 484 avec une arme nommee
+483 tir(s) publie(s) · 90 avec un cap de visee lisible · 483 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 70 rattache(s) / 70 disponible(s) = 100.0 %
@@ -55,9 +55,9 @@ capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans l
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
-95 entree(s) · 90 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
-fermetures : 0 par le corps disponible · 5 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
-refus des fermetures : 4 contestee(s) (deux joueurs, un corps) · 1 rejetee(s) par le recouvrement (un joueur n a qu un corps) — un controle qui ne rejette rien ne prouve rien
+93 entree(s) · 90 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
+fermetures : 0 par le corps disponible · 3 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
+refus des fermetures : 13 contestee(s) (l unicite manque : deux corps, deux joueurs, ou deux corps pour une meme mort) · 1 rejetee(s) (recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
 90 vie(s) nommee(s) / 105 — un rapport publie sans son denominateur ne se juge pas
 26 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal

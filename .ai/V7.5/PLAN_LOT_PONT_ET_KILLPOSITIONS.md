@@ -87,17 +87,19 @@ moins `000d5950` et `64e8adfa`.
       (`KillPosReport`). Écrire différemment d'Halo 5 dans la même table aurait été le vrai
       défaut.
 - [!] 2.3 Écriture via `persist` — **NON TRAITÉ, et c'est un arrêt propre, pas un oubli.**
+      **Échéance 2026-11-08** (cf. « Échéance de l'étape 2bis » en fin de plan).
       Justification : vérifié sur pièces, **aucun CLI du dépôt n'utilise `BatchBuilder`** ; le
       chemin persist est piloté par le pipeline de sync, et la seule construction de
       `BatchQueue` est dans `cmd/server/main.go`. Câbler une file WAL + ses persisters depuis un
       binaire hors ligne est une DÉCISION DE CONCEPTION (quelle cible DB, quel lease, quelle
       sémantique de rejeu WAL) sur le chemin critique anti-ART du dépôt (ADR 0019/0030). La
       bâcler en fin de session serait le contraire de ce que ce chantier exige.
-- [!] 2.4 CLI `cmd/killpos-build` — NON TRAITÉ : il dépend de 2.3.
+- [!] 2.4 CLI `cmd/killpos-build` — NON TRAITÉ : il dépend de 2.3. **Échéance 2026-11-08.**
 - [~] 2.5 Tests — le producteur pur a **cinq tests**, dont quatre portent sur des abstentions
       (hors tolérance, aucune position, deux corps pour un joueur, décalage d'horloge). Le test
       d'intégration d'écriture est reporté avec 2.3.
 - [!] 2.6 Exécution sur un match de contrôle — NON TRAITÉ : dépend de 2.3 et 2.4.
+      **Échéance 2026-11-08.**
 
 **Gate 2** :
 ```bash
@@ -131,6 +133,13 @@ demander à l'utilisateur avec une durée estimée.
 - H2 : `0xC7D5091200000000`, famille hors catalogue, 29 rejets sur 29.
 - H3 : les 99 rejets « ambigu » de `829abef9`, première cause de ce film après fermeture.
 - La colonne ① (complétude du flux de tirs) — chantier de la piste E.
+- **H4 (relevée le 2026-08-09, NON TRAITÉE — hors périmètre de la ronde de correction) : le
+  contrat d'API ne porte pas les quatre compteurs de fermeture.** `apps/go-api/api/openapi.yaml`
+  (schéma `BridgeHealth`) et `apps/web/src/lib/api/generated.ts` déclarent sept champs ; le type Go
+  en a onze depuis l'item 1.3 du 2026-08-08. `additionalProperties: false` y est posé, si bien que
+  le document publié porte quatre clés que le contrat interdit. La régénération (`make
+  generate-types`) n'a pas été jouée dans le lot d'origine. **À traiter au repli dans `feat/v75`**,
+  où le gate front (typecheck + build Vite) s'applique.
 
 ## Journal d'exécution
 
@@ -160,6 +169,31 @@ au troisième exemplaire, est factorisé en `ctfDecodeFilm`.
 régénéré et relu en diff, non-régression vérifiée sur trois films —
 `000d5950` 93,26 % (+1,73) · `64e8adfa` 92,57 % (+12,26) · `829abef9` 88,68 % (+8,95), aux
 chiffres publiés au §7.5 du verdict.
+
+### RONDE DE CORRECTION — 2026-08-09, périmètre FERMÉ par la revue adversariale
+
+La revue à contexte frais du 2026-08-09 a rendu un **NO-GO** sur l'étape 1 telle que livrée. Trois
+constats P1 et deux P2, tous recevables, tous traités ici — et rien d'autre.
+
+| | constat | correctif |
+|---|---|---|
+| P1-1 | Fermeture A jugeait l'unicité sur l'ÉCHANTILLON (120 ms) alors qu'une vie survit à un trou de 5 s : le vrai tireur, en trou de réplication, était INVISIBLE et le corps d'un autre lui était attribué | l'unicité se juge sur l'INTERVALLE ; l'échantillon ne sert plus qu'au rattachement |
+| P1-2 | Fermeture B n'excluait pas par la MORT : deux vies revendiquant la même mort étaient toutes deux attribuées, l'ordre des slots décidant | map `claims` victime -> vies, symétrique de A ; abstention dès deux revendications |
+| P1-3 | Doc inversée : `owners.go` « FromDeaths vaut toujours len(Owner) », `coverage.go` « FromReading est la SEULE source » — faux depuis les fermetures | les deux commentaires décrivent la règle réellement appliquée par `verdictOfBridge` |
+| P2-a | `closures.go` : `continue` muet quand le xuid manque à la table d'index | compté en refus, et testé |
+| P2-b | Items `[!]` 2.3/2.4/2.6 sans échéance | échéance 2026-11-08 + critère mesurable + issue à l'échéance |
+
+**Chaque P1 a son test versionné, et chacun a été vu ROUGE sans son correctif** (mutation
+appliquée puis retirée) : `map[2:3]` pour P1-1 — le corps d'autrui — et `map[1:0 2:1 3:1]` pour
+P1-2 — deux corps issus d'une seule mort. Un test qui passe avec ET sans le correctif ne teste rien.
+
+**Les chiffres épinglés BAISSENT, et c'est le sens attendu.** Golden `000d5950` : pont 95 -> 93,
+tirs 484 -> 483 (93,3 -> 93,1 %), contestations 4 -> 13. Corpus des sept films rejoué : trois
+reculent (95,0 -> 91,6 · 92,6 -> 90,8 · 93,3 -> 93,1), quatre inchangés, **plancher 88,68 %** sur
+`829abef9` — au-dessus des 88 % du garde. Détail au §7.5bis de la recherche.
+
+**Gate joué** : `go test ./internal/analysis/replay/` vert, `go vet` propre, ratchet lint 0. Pas de
+CI de branche : `research/**` est hors globs, le gate complet se jouera au repli.
 
 ### Étape 2 — PARTIELLE, arrêtée proprement le 2026-08-08
 
@@ -213,3 +247,21 @@ instant par tir. À vérifier, pas à supposer.
 table partagée : réutiliser la file WAL de `cmd/server` ou définir un drain synchrone dédié.
 C'est la seule chose qui sépare `kill_positions` de son remplissage, et c'est une question de
 conception, pas de volume. Le backfill des 951 matchs suit, en opération à fenêtre.
+
+### Échéance de l'étape 2bis — posée le 2026-08-09, et ce n'est pas une formalité
+
+Les items `[!]` 2.3, 2.4 et 2.6 étaient justifiés mais **sans date**, ce qui les rendait
+indiscernables d'un report indéfini : le dépôt appelle ça un *compatibility guard forever*, et il
+l'interdit pour les kill-switches exactement pour cette raison. Ils portent donc les trois
+éléments exigés :
+
+| | |
+|---|---|
+| REPORTÉ LE | 2026-08-08, à la clôture partielle de l'étape 2 (conception du drain WAL hors ligne, chemin critique anti-ART — ADR 0019/0030) |
+| ÉCHÉANCE | **2026-11-08**, la même date que le réexamen du garde local (`replay_local_gate.go`) — les deux verrouillent le même chantier, les séparer ferait rater l'un des deux |
+| CRITÈRE MESURABLE | `kill_positions` porte des lignes pour au moins un match Halo Infinite, écrites via `persist` |
+
+**À l'échéance, deux issues et pas de troisième** : soit l'étape est programmée, soit
+`BuildKillPositions` et ses tests sont SUPPRIMÉS du dépôt. Un producteur qu'aucun appelant ne
+branche est du code mort avec des tests verts — le premier des anti-patrons de revue du dépôt, et
+le plus difficile à déloger une fois installé.

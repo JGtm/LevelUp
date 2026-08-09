@@ -31,20 +31,27 @@ import (
 // constantes vient d une mesure datee du chantier ; si l une bouge, c est le decodeur ou
 // l assemblage qui a bouge, et le test doit le dire par son nom.
 const (
-	// wantShotsAttached / wantShotsAvailable : 484/519 = 93,3 %. Mesure du 2026-08-08, apres
-	// l ajout des FERMETURES (closures.go) : 475/519 avant elles, 496/519 avec le repli VOTE
-	// retire le 2026-07-28.
+	// wantShotsAttached / wantShotsAvailable : 483/519 = 93,1 %. Mesure du 2026-08-09, apres la
+	// RONDE DE CORRECTION des fermetures : 484/519 avant elle, 475/519 avant les fermetures,
+	// 496/519 avec le repli VOTE retire le 2026-07-28.
 	//
-	// LES TROIS CHIFFRES NE SE COMPARENT PAS COMME TROIS ETAPES D UN MEME PROGRES. 496 venait
-	// d un CHOIX (4 desaccords entre sources) ; 484 vient d une DEDUCTION qui s abstient des
-	// qu il reste deux candidats, et dont les refus sont comptes et publies.
-	wantShotsAttached  = 484
+	// LE CHIFFRE A BAISSE, ET C EST LE RESULTAT ATTENDU. La revue a montre deux deductions que
+	// rien ne fondait : un candidat en trou de replication etait invisible (donc l unique
+	// candidat restant n en etait pas un), et deux vies pouvaient revendiquer LA MEME mort sans
+	// s exclure. Les corriger retire des attributions ; un correctif de justesse qui ferait
+	// MONTER le compte serait le signal qu il a elargi au lieu de resserrer.
+	//
+	// CES CHIFFRES NE SE COMPARENT PAS COMME LES ETAPES D UN MEME PROGRES. 496 venait d un CHOIX
+	// (4 desaccords entre sources) ; 483 vient d une DEDUCTION qui s abstient des qu il reste
+	// deux candidats, et dont les refus sont comptes et publies.
+	wantShotsAttached  = 483
 	wantShotsAvailable = 519
 	// wantClosedByShot / wantClosedByRespawn : ce que les fermetures ajoutent sur ce film.
-	// La fermeture A n y ferme RIEN (son unique candidate est contestee) ; c est B qui porte
-	// les 5 entrees. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
+	// La fermeture A n y ferme RIEN (ses candidates sont contestees) ; c est B qui porte les
+	// 3 entrees — 5 avant la ronde de correction du 2026-08-09, dont DEUX revendiquaient la meme
+	// mort qu une autre vie. Sur d autres films le partage s inverse : cf. §7.5 du verdict.
 	wantClosedByShot    = 0
-	wantClosedByRespawn = 5
+	wantClosedByRespawn = 3
 	// wantLivesNamed / wantLivesTotal : 90 vies nommees sur 105. Les 15 restantes sont 4 vies
 	// anterieures au debut reel du match et 6 survivants de fin de partie, que le film ne clot
 	// par aucun evenement.
@@ -127,12 +134,12 @@ func ligneAssembly(ls []string, i int) string {
 // Les tests NOMMES : un chiffre du chantier, une phrase, un test.
 // ---------------------------------------------------------------------------
 
-// TestShotsCoverageIsFourEightyFourOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
+// TestShotsCoverageIsFourEightyThreeOfFiveNineteen : LE CHIFFRE CENTRAL DU CHANTIER.
 //
-// 484 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
-// publier 484 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
+// 483 tirs rattaches sur 519 disponibles. Le denominateur compte autant que le numerateur :
+// publier 483 sans dire 519 laisserait croire a l exhaustivite. Le rapport et la ventilation
 // des rejets sont donc verifies ensemble.
-func TestShotsCoverageIsFourEightyFourOfFiveNineteen(t *testing.T) {
+func TestShotsCoverageIsFourEightyThreeOfFiveNineteen(t *testing.T) {
 	doc := buildGolden(t)
 	c := doc.Coverage.Shots
 	if c.Attached != wantShotsAttached || c.Available != wantShotsAvailable {
@@ -419,8 +426,9 @@ func renderBridge(p func(string, ...any), doc ReplayDocument) {
 	p("fermetures : %d par le corps disponible · %d par la reapparition — une fermeture n attribue "+
 		"QUE lorsqu un seul candidat reste possible, jamais par vote",
 		b.ClosedByShot, b.ClosedByRespawn)
-	p("refus des fermetures : %d contestee(s) (deux joueurs, un corps) · %d rejetee(s) par le "+
-		"recouvrement (un joueur n a qu un corps) — un controle qui ne rejette rien ne prouve rien",
+	p("refus des fermetures : %d contestee(s) (l unicite manque : deux corps, deux joueurs, ou "+
+		"deux corps pour une meme mort) · %d rejetee(s) (recouvrement, ou identite hors table "+
+		"d index) — un controle qui ne rejette rien ne prouve rien",
 		b.ClosedContested, b.ClosedRefused)
 	p("%d vie(s) nommee(s) / %d — un rapport publie sans son denominateur ne se juge pas",
 		b.LivesNamed, b.LivesTotal)

@@ -1,3 +1,55 @@
+## [2026-08-09] v7.5 voie B — la ronde de correction des fermetures : deux deductions que rien ne fondait
+
+**Statut** : Complété. Périmètre fermé par la revue adversariale (3 P1 + 2 P2), rien d'autre touché.
+
+**LE CONSTAT QUI COMMANDE TOUT LE RESTE.** La revue à contexte frais a montré que la fermeture A
+jugeait l'unicité d'un candidat sur son ÉCHANTILLON de position (`shotPosToleranceUS`, 120 ms),
+alors qu'une vie survit à un trou de réplication de 5 s (`lifeGapUS`). Conséquence reproduite :
+deux vies anonymes couvrent l'instant d'un tir, celle du VRAI tireur est dans son trou — donc
+invisible — et l'autre passe pour l'unique candidate. **Le corps d'un autre joueur lui était
+attribué, et aucun garde-fou ne pouvait s'en apercevoir** : du point de vue du code, il n'y avait
+qu'un candidat. Le second défaut est symétrique côté B : refuser la vie qui voit deux morts était
+fait, refuser la MORT que deux vies revendiquent ne l'était pas — l'ordre des slots décidait.
+
+**DÉCISION TECHNIQUE.** L'unicité se juge désormais sur l'INTERVALLE de vie ; l'échantillon ne sert
+plus qu'au rattachement (`slotFor`, qui refuse toujours de poser un événement sans position
+proche). Côté B, une map `claims` victime -> vies, symétrique de celle de A : deux revendications
+d'une même mort annulent les deux déductions. Le troisième constat était une doc inversée
+(`owners.go` « FromDeaths vaut toujours len(Owner) », `coverage.go` « FromReading est la SEULE
+source ») : faux depuis les fermetures, réécrit sur la règle que `verdictOfBridge` applique
+vraiment. Et un `continue` muet sur xuid absent est devenu un refus compté.
+
+**LA PREUVE QUE LES TESTS TESTENT.** Chaque P1 a son test versionné, et chacun a été VU ROUGE en
+appliquant puis retirant la mutation correspondante : `pont = map[2:3]` pour P1-1 (le corps
+d'autrui), `pont = map[1:0 2:1 3:1]` pour P1-2 (deux corps issus d'une seule mort), compte rendu
+tout à zéro pour le rejet muet. Un test qui passe avec ET sans le correctif ne teste rien.
+
+**RÉSULTATS — LES CHIFFRES BAISSENT, ET C'EST LE SENS ATTENDU.** Golden `000d5950` : pont 95 -> 93
+entrées, tirs 484 -> 483 (93,3 -> 93,1 %), contestations 4 -> 13, verdict du pont toujours nominal.
+Corpus des sept films rejoué avec l'instrument de recherche : quatre inchangés, **trois reculent**
+— `9aeca4b3` 95,0 -> 91,6 · `64e8adfa` 92,6 -> 90,8 · `000d5950` 93,3 -> 93,1. **Plancher du corpus
+88,68 % (`829abef9`), au-dessus des 88 % du garde local** : seuil dur respecté, pas de remontée
+bloquante. Un correctif de justesse qui aurait fait MONTER les sept taux aurait signalé qu'il
+élargissait au lieu de resserrer. Garde-fous : 37 attributions pour 86 refus (76 contestées,
+10 recouvrement) — non comparable aux « 33 / 17 » du 08/08, la contestation couvrant désormais
+l'ambiguïté d'intervalle qui n'était comptée nulle part.
+
+**DÉCOUVERTE HORS PÉRIMÈTRE, NON TRAITÉE.** `api/openapi.yaml` (schéma `BridgeHealth`) et
+`apps/web/src/lib/api/generated.ts` déclarent sept champs ; le type Go en porte onze depuis le
+2026-08-08, et `additionalProperties: false` y est posé — le document publié porte quatre clés que
+le contrat interdit. `make generate-types` n'a pas été joué dans le lot d'origine. Consigné en
+H4 du plan, à traiter au repli dans `feat/v75` où le gate front s'applique.
+
+**GATE** : `go test ./internal/analysis/replay/...` vert (116 tests, 10 skips tous préexistants et
+gated par variable d'environnement), `go vet` propre sur replay et handlers, ratchet golangci-lint
+**0 issue**. Pas de CI de branche : `research/**` est hors globs — le gate complet se jouera au
+repli.
+
+**PROCHAINE ÉTAPE** : décision du superviseur sur le repli de `research/v75-ctf` dans `feat/v75`
+(worktree tenu par le lot 5). L'étape 2bis de killpos porte désormais une échéance datée
+(2026-11-08) avec critère mesurable et issue explicite — suppression du producteur si elle n'est
+pas tenue.
+
 ## [2026-08-08] v7.5 — je retire « l'arme fournie au respawn », et la vraie question est aussi refutee
 
 **Statut** : Complété (correction + mesure). Deux hypothèses éliminées, un fait consolidé.
