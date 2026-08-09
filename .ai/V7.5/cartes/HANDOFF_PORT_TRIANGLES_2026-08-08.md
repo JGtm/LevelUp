@@ -682,6 +682,48 @@ Quatre styles produits pour le gate : `doux` (l'existant), `plat`, `altitude`, `
 
 C'est la quatrieme fois que ce chantier bute sur un temoin qui ne teste rien. La regle tient en
 une ligne : **une mutation annoncee dans un commentaire doit etre JOUEE**.
+
+Style `combine` VALIDE par l'utilisateur le 2026-08-09 — c'est le defaut (`StyleCarteParDefaut`).
+
+## 11. LA DEUXIEME CARTE — CATALYST PASSE, ET REFUTE LA REGLE DE ZONE JOUABLE
+
+`rendu_carte_gamefiles_test.go` rend une carte QUELCONQUE : cadre deduit des ancres, aucune
+reference, juge = l'oracle FAIBLE des ancres (chaque ancre d'objectif a-t-elle du sol dessine
+sous elle ?). C'est le renversement du §1 ter applique au rendu.
+
+    carte                  instances   dessinees   ecartees   ancres avec sol   ecart median
+    cliffhanger_ridgeline     10 357       5 102        859       14/14 (100 %)      -0,32 m
+    catalyst_map              11 468       7 796        162       19/19 (100 %)      -0,29 m
+
+**La geometrie transfere sans retouche.** Catalyst n'a jamais servi a calibrer quoi que ce
+soit : la tranche de jeu, l'echelle d'instance, le tri des projecteurs d'ombre et l'ecart
+median de -0,3 m (le biais de quantification connu) s'y comportent a l'identique.
+
+**MAIS LE TRI DE LA ZONE JOUABLE NE TRANSFERE PAS**, et Catalyst le refute du premier coup :
+**162 instances ecartees contre 859**. Ce n'est pas un seuil a retoucher, c'est le CRITERE qui
+ne s'applique pas. Cliffhanger est une carte de ROCHE — son decor est un relief modelise
+grossierement, donc le grain le designe. Catalyst est une STATION SPATIALE : ses abords sont de
+l'architecture, modelisee au meme grain que l'arene. Le rendu montre l'aire de jeu correcte,
+noyee dans des structures sombres qui la debordent largement.
+
+Conclusion, et elle etait annoncee au registre : la regle du grain est valide sur les cartes
+naturelles et muette sur les cartes construites. Il faut un critere qui vaille pour les deux —
+piste la plus plausible, l'ACCESSIBILITE (composante connexe de sol praticable depuis les
+ancres), qui ne suppose rien du materiau.
+
+### 11.1 VAGABOND — NE PAS ESSAYER, c'est un autre chantier (mesure)
+
+    fo08_wetland  bsp #2  : 13 281 instances sur 3 867 x 3 662 m   <- la TOILE Forge
+    fo08_wetland  bsp #15 :    814 instances sur   463 x  453 m
+
+La carte de Vagabond n'est pas dans le bsp : elle vit dans les **4 709 objets Forge du
+`.mvar`** (mesure du lot 5). La chaine actuelle rendrait la toile, pas la carte. C'est l'etape 2
+du plan (§4 : F1 `type_id -> tag de modele`, F2 poser les triangles du modele par la
+transformation de chaque objet), pas une variante du rendu.
+
+S'ajoute un blocage d'entree : Vagabond n'a pas de nom de module exploitable au catalogue
+d'objectifs — son entree porte le module generique `map`. Sans ancres resolvables, ni cadre
+ni oracle.
 (`s31_raster.py`, sommets + points barycentriques a densite proportionnelle a l'aire projetee,
 budget de triangles proportionnel a l'empreinte au sol, plafonne a 40 000). Un enorme maillage
 de relief lointain recoit donc un budget SATURE, donc une densite de points tres faible par
