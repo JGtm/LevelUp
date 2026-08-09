@@ -22,13 +22,13 @@ grenades lancees et pictogrammes de mort.
 
 **Les noms internes sont CRAQUES** : les tags ne portent que des murmur3, les chaines sont
 strippees en release. **21 index nommes cote armes** (dont 10 marques « ? », voir §4) et
-**58 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
+**59 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
 
 | Atlas | Tag | Images | Dimensions | Nommes |
 |---|---|---|---|---|
 | Armes, contour | `bc17adf1` | 40 | ~330x117 | 26 par le registre, 21 par le nom interne |
 | Armes, silhouette | `e39747c8` | 40 | idem, index par index | idem |
-| Kill feed | `0302cad3` | 88 | ~110x38 | 58 par sa table `bitd` |
+| Kill feed | `0302cad3` | 88 | ~110x38 | 59 par sa table `bitd` |
 
 ---
 
@@ -173,8 +173,23 @@ Sans cette regle, l integration afficherait le Calcineur a la place du Cremateur
 Meme nature, encore a verifier : l index 16 est nomme `plasma_blaster` par le jeu et lu comme
 **Fusil traqueur** (`hinf_stalker_rifle`) par l oeil humain.
 
-**RESTENT SANS ETIQUETTE** : atlas d armes 19, 31, 32 ; kill feed 25, 39, 40, 48, 63, 75, 77,
-87. Et les tonneaux/bobines (kill feed 41 a 45, atlas d armes 27 a 30) sont donnes comme des
+**DEUXIEME PASSE (meme jour) — et un nom rendu par l oeil, pas par la machine.** L utilisateur
+a complete : armes 19 = Canon a mitraille (Scrap Cannon, coherent avec kill feed 14), kill feed
+39 = tourelle Shade banie, 40 = tourelle Shade, 48 = grenade Dynamo (le trou entre plasma 47 et
+spike 49, comme la position le laissait attendre).
+
+Et surtout : « le 87 est une autre variante du Falcon, peut-etre celle equipee d un
+lance-grenades ». Hache, **`killfeed_falcon_grenade_launcher` tombe exactement sur le StringID
+de l index 87**. Le kill feed passe a **59 sur 88**. Ce que la declinaison avait manque : un
+armement en DEUX mots — `patternVocabulary` ne composait que des armements d un seul mot. Le
+defaut est corrige, la composition a deux mots est desormais declinee.
+
+**RESTENT SANS ETIQUETTE — trois, et une hypothese.** Kill feed **25, 63, 75** : l utilisateur ne
+les reconnait pas. Kill feed **77** : « ca pourrait etre la bombe/balle, le dessin se rapproche
+de l arme 34 » — hypothese, pas un fait. Les index d armes **31 et 32** ne sont pas des trous :
+ce sont les variantes de bobine listees en 30.
+
+Les tonneaux et bobines (kill feed 41 a 45, atlas d armes 27 a 30) restent donnes comme des
 SUPPOSITIONS par l utilisateur lui-meme — a confirmer par observation en Theater, pas a publier.
 
 **LA VOIE AUTOMATIQUE EST EPUISEE, ET C EST MESURE.** Six routes ont ete tentees jusqu au bout
@@ -293,7 +308,7 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 | 72 | grappleshot | 73 | bandit | 74 | — | 75 | — |
 | 76 | sandwich | 77 | — | 78 | waterfall | 79 | quantum |
 | 80 | ma5k_smg | 81 | mutilator | 82 | — | 83 | perfect |
-| 84 | — | 85 | falcon | 86 | falcon_chaingun | 87 | — |
+| 84 | — | 85 | falcon | 86 | falcon_chaingun | 87 | falcon_grenade_launcher |
 <!-- <</MD_KF>> -->
 ---
 
