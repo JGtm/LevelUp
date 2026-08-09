@@ -129,6 +129,9 @@ func killfeedDict() map[uint32]string {
 	for _, w := range curatedVocabulary {
 		add(w)
 	}
+	for _, w := range assetVocabulary() {
+		add(w)
+	}
 	for _, w := range patternVocabulary() {
 		add(w)
 	}
