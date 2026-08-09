@@ -89,7 +89,7 @@ monde » est vrai par construction, ecart median 0,0000 m).
       Le blob de ressources manquait entierement a `himodule` : `ResourceBlob` le
       reconstitue (table de slots avant la table des blocs). **0 descripteur hors du blob**
       sur les 525 tags. Resultat : **46,6 M de triangles** assembles en repere monde.
-- [!] **T4 — dequantifier.** Sommets `u16` x4, 4e composante nulle. **`u16` BRUT, jamais
+- [x] **T4 — dequantifier.** Sommets `u16` x4, 4e composante nulle. **`u16` BRUT, jamais
       `i16 + 32768`** (§2.1 : 5,8 mm d'ecart aux bornes contre 84 mm avec la mauvaise
       lecture — tout resultat geometrique anterieur au 2026-07-26 est entache de 8,4 cm).
       *Temoin* : ecart median aux bornes < 1 cm.
@@ -110,6 +110,12 @@ monde » est vrai par construction, ecart median 0,0000 m).
       interne. Le juge est donc un oracle EXTERNE : les positions de joueurs du film
       (temoin de T6). Le `u16` brut est retenu en attendant, sur la foi du handoff §2.1
       et du rendu compare, PAS d'une mesure de ce chantier.
+      **TRANCHE LE 2026-08-08 par l'oracle externe, et le statut passe a `[x]`** : les
+      29 221 positions de joueur de `000d5950.json` donnent **63,6 % des positions a moins
+      de 25 cm du sol pour le `u16` BRUT contre 34,3 % pour `i16 + 32768`**, a reglage egal
+      (`carte_oracle_gamefiles_test.go`, handoff §1 bis). L'oracle a tranche du meme coup le
+      filtre de module. La statistique INTERNE ne pouvait pas separer — c'est le temoin
+      venu de DEHORS qui l'a fait.
 - [ ] **T5 — appariement sommets/indices.** *Temoin* **T1 du handoff** (le seul non
       tautologique) : l'indice maximal du tampon d'INDICES doit etre strictement inferieur
       au nombre de sommets du tampon apparie. Rend 100 % pour le bon appariement et **5,1 %**
@@ -262,8 +268,35 @@ portent pas. Pistes non explorees : les variantes `ds/` et `any/`, ou un contenu
 installe localement. A quantifier au moment du rendu — 5 % d'instances manquantes se voient
 sur une image, ou ne se voient pas.
 
+**D2 — l'echelle d'instance n'etait pas appliquee, et Reclaimer n'avait jamais ete lu**
+(2026-08-09, seconde session ; detail chiffre au §10 du handoff `HANDOFF_PORT_TRIANGLES_2026-08-08.md`).
+
+La lecture croisee de `ScenarioStructureBspTag.cs` / `RuntimeGeoTag.cs` et du plugin
+`sbsp.xml` — qui concordent a l'octet sur les 320 d'une instance — a rendu trois resultats :
+
+1. **`TransformScale` @0x00 doit etre applique.** 12 009 des 14 328 instances portent une
+   echelle differente de 1 (de -38,86 a +116,33). Temoin qui separe : ecart a la boite monde
+   declaree de l'instance, source independante du maillage, median **0,2238 sans l'echelle
+   contre 0,0665 avec**. `LocalToWorld` l'applique desormais.
+2. **`mesh flags override` @0x110 n'etait pas lu.** 4 343 instances portent
+   `mesh is custom shadow caster`, que Reclaimer ecarte. Les retirer coute 47 % des instances
+   rendues pour 0,1 point de couverture : c'etaient bien des proxys redondants.
+3. **La geometrie NON INSTANCIEE du sbsp n'existe pas** sur ces cartes : blocs `meshes`,
+   `compression info`, `mesh resource groups` et `raw_resources` tous a **count=0**. Sixieme
+   porte fermee, par la mesure.
+
+**Consequence sur le plan** : tout resultat geometrique produit avant le 2026-08-09 l'a ete
+avec 84 % des instances a la mauvaise taille. Les mesures du handoff §9.2 (les cinq portes)
+ont ete rendues sur cette geometrie — elles restent valides comme constats de l'epoque, elles
+ne valent plus comme refutations definitives.
+
+**Reste non porte** : `MeshResourcePackingPolicy` @186 du `rtgo` (au registre des reports).
+
 ## 8. Journal
 
+- **2026-08-09** — dette de lecture Reclaimer soldee (§9.4 point 1 du handoff). Voir D2
+  ci-dessus. Le gate visuel du point 3 reste du : trois artefacts A/B/C produits, chaque
+  correction isolable, juge = l'utilisateur.
 - **2026-08-08** — plan ouvert. Contexte : le lot 5 a livre les zones de Catalyst et
   Vagabond mais a montre des fonds en boites englobantes ; l'utilisateur a rappele que la
   belle carte de Cliffhanger vient des triangles et que ce chemin est le seul valable en

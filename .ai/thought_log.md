@@ -1,3 +1,137 @@
+## [2026-08-09] v7.5 — cartes : la zone jouable se lit dans la FINESSE du maillage (carte B validee)
+
+**Statut** : Complete. Carte de Cliffhanger validee par l'utilisateur (« je valide carte B
+finesse »). Detail : §10.11 de `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : le decor se separe de l'aire de jeu par le GRAIN DU
+MAILLAGE, pas par sa provenance ni par sa position.** L'observation vient du rendu lui-meme —
+le decor est fait de facettes enormes, l'arene est finement trianglee. L'aire projetee du
+triangle MEDIAN par instance s'etale sur quatre ordres de grandeur (p50 0,0001 m2, p90 0,0161,
+p99 1,8739) et le decor est tout entier dans la queue. Seuil retenu **0,005 m2** — un triangle
+de ~10 cm de cote : les surfaces jouees sont modelisees a ce grain, le decor lointain non.
+Vit dans `zone_jouable.go`, actif par defaut.
+
+**L'arbitrage a demande un score qui ne se laisse pas gagner d'un cote** : l'ACCORD =
+intersection / union avec la silhouette validee. Tout dessiner rend 0 manquant et un accord
+catastrophique ; ne rien dessiner l'inverse. Sans filtre 38,5 % ; a 0,003 m2 67,4 % (optimum) ;
+a 0,005 m2 66,7 %. **0,005 retenu contre l'optimum strict** : a 0,7 point pres il garde 89,2 %
+de la zone jouable contre 81,7 %, et perdre de la structure jouee est le defaut que
+l'utilisateur signale depuis le debut.
+
+**Voie concurrente ECARTEE — masquer par la silhouette de la reference.** Produite et
+regardee : bords dechiquetes, decoupes rectangulaires, et les blocs de decor qui tombent dans
+la silhouette sont conserves. Elle n'etait pas seulement inapplicable aux 36 autres cartes,
+elle etait visuellement mauvaise.
+
+**PIEGE PAYE, et c'est la lecon de la session** : le premier jeu de temoins du tri ne separait
+PAS. Sur des grilles uniformes, moyenne et mediane coincident — la mutation « mediane ->
+moyenne » passait au VERT alors que le commentaire affirmait qu'elle devait rougir. Le cas qui
+separe est celui que la doc decrivait : un sol fin pose sur de grandes faces de socle. **Ecrire
+« cette mutation doit faire rougir » ne suffit pas, il faut la jouer.** C'est la troisieme fois
+que ce chantier bute sur un temoin qui ne teste rien.
+
+**Ce qui reste ouvert** : le seuil est calibre sur la SEULE carte qui possede une reference
+validee. La REGLE doit etre confrontee aux 26 autres par l'oracle faible des ancres (methode du
+§1 ter) ; si le seuil doit se retoucher carte par carte, c'est la regle qui est mauvaise.
+Registre des reports.
+
+**Prochaine etape** : la nettete du rendu — echelle de couleur fonction de l'altitude et rendu
+plus plat, deux pistes nommees par l'utilisateur. Premier suspect : l'eclairage Lambert avec
+ambiante hemispherique (`0,25 + 0,75 x d`), qui tasse les valeurs vers le blanc.
+
+---
+
+## [2026-08-09] v7.5 — cartes : le PLANCHER manquait ; rendu VALIDE par l'utilisateur
+
+**Statut** : Complete pour le rendu (gate visuel PASSE). Reste la zone jouable, cf. §10.10 de
+`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : construire l'INSTRUMENT avant de chercher la cause.** Le
+premier gate visuel a ete refuse (« toujours pas ce putain de pont »). Au lieu d'enchainer les
+hypotheses, j'ai ecrit la comparaison PIXEL A PIXEL avec la carte validee
+(`rendu_diff_gamefiles_test.go`) : matiere de la reference, MANQUANTS, EXCES, et une vignette
+rouge/bleu. Premiere mesure : la reference couvre 23,1 % du cadre, nous 14,1 %, **il manquait
+52,1 % de sa matiere**. Jusque-la le rendu se jugeait sur une couverture globale — un chiffre
+qui peut monter pendant qu'un pont disparait.
+
+**Deux causes, et l'utilisateur avait designe la bonne piste (« regarde AUSSI les basses
+altitudes »).**
+1. **Le filtre « module de la carte seul » retirait la moitie de la carte.** Manquants
+   52,1 % -> 0,8 % en prenant tous les modules. Le pont et la zone haut-gauche vivent dans
+   `common` et `multiplayer`.
+2. **Il n'y avait aucun PLANCHER.** `rendu.go` ne portait qu'un plafond. Repartition en
+   altitude : sous -10 m, 96 % de ce qu'on dessine est en trop (~807 000 px contre ~30 000
+   justes). Le prototype le portait depuis le debut — `s31_raster.py` borne son volume a
+   `ZB0, ZB1 = -12.0, 28.0` — et le handoff §3 l'ecrivait : « volume BORNE a la tranche de
+   jeu ». La traduction en z-buffer n'en avait garde que la moitie.
+   Corollaire : le plafond « deduit des ancres » a +6,95 m etait FAUX aussi — 118 000 pixels
+   justes vivent entre +10 et +35 m, 31 % de la reference.
+
+Resultat : manquants **52,1 % -> 4,0 %**. Rendu VALIDE par l'utilisateur.
+
+**Confirmation independante du correctif du matin** : `geo2.py` du prototype porte en toutes
+lettres « convention vecteur-ligne, **scale ACTIF** ». L'echelle d'instance, que le portage Go
+tenait pour vestigiale, etait appliquee par la source qui a produit la reference.
+
+**Trois pistes REFUTEES sur pieces, a ne pas rejouer** : le tri par module (aucun module n'est
+« le decor » — ridgeline couvre 50,3 % de la reference, `common` 60,2 %, `multiplayer` 47,5 %,
+ils se completent) ; l'emprise bornee aux ancres (100 x 100 m sur cette carte, 92 instances
+ecartees, exces inchange) ; le bornage a la boite de l'instance et le plafond comme causes des
+manques (0 pixel et 3 instances respectivement).
+
+**Lecon** : quand un gate visuel echoue deux fois, le probleme n'est pas l'hypothese suivante,
+c'est l'absence d'instrument. Une couverture globale ne dit jamais OU il manque quelque chose.
+
+**Prochaine etape** : la zone jouable. L'utilisateur a donne le temoin — gris+rouge de la carte
+des ecarts = jouable, bleu = decor. Verifier d'abord si la silhouette de la reference est un
+effet du semis de points du prototype avant d'inventer une regle de tri.
+
+---
+
+## [2026-08-09] v7.5 — cartes : la dette de lecture Reclaimer est soldee, l'echelle d'instance etait fausse
+
+**Statut** : En cours — gate visuel du a l'utilisateur. Detail chiffre : §10 de
+`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : LIRE la source avant de supposer, comme l'ordonnait le
+§9.4.** Les cinq hypotheses du §9.2 avaient toutes ete mesurees et honnetement refutees,
+mais aucune n'etait adossee a une source : la recette du z-buffer avait ete INFEREE de
+l'image validee, jamais lue dans Reclaimer. Lecture croisee de `ScenarioStructureBspTag.cs`
+et `RuntimeGeoTag.cs` avec le plugin `sbsp.xml` — ils concordent a l'octet sur les 320 d'une
+instance, et deux offsets independants le confirment sur nos tags (`clusters` @300,
+`instanced geometry instances` @420). La chaine n'etait pas fausse, elle etait INCOMPLETE.
+
+**Resultat 1 — l'echelle d'instance n'etait pas appliquee.** `instances.go` portait « Scale :
+champ @0x00. Repute vestigial ». 12 009 des 14 328 instances portent une echelle differente
+de 1, de -38,86 a +116,33. Le temoin qui separe : l'ecart du maillage transforme a la boite
+monde DECLAREE de l'instance — source independante du maillage — passe d'un median de 0,2238
+a 0,0665 de sa diagonale quand on applique l'echelle. La base etant orthonormee (temoin
+existant, |v|=1 a 1e-3), l'echelle ne pouvait pas y etre bakee : le commentaire disait
+l'inverse de ce que le code voisin prouvait deja.
+
+**Resultat 2 — 30 % des instances sont des projecteurs d'ombre**, que Reclaimer ecarte
+(`mesh flags override` @0x110, bit 3). Que l'offset soit le bon se verifie : 22 valeurs
+distinctes, aucune hors des 11 drapeaux du plugin. Les retirer coute 47 % des instances
+rendues pour 0,1 point de couverture — la preuve qu'elles doublaient de la vraie geometrie.
+
+**Resultat 3 — sixieme porte fermee, par la mesure.** L'hypothese non testee du §9.3 (les
+dalles viendraient de la geometrie NON INSTANCIEE) est refutee : les blocs `meshes`,
+`compression info`, `mesh resource groups` et `raw_resources` du sbsp sont tous a count=0.
+
+**Piege pose au passage** : une `Instance{}` litterale a desormais `Scale = (0,0,0)` et
+ecrase tout le maillage sur sa position. `instanceIdentite()` porte un scale unitaire
+explicite.
+
+**Lecon** : une mesure honnete rendue sur une donnee fausse reste une mesure fausse. Les cinq
+portes du §9.2 ont ete fermees avec 84 % des instances a la mauvaise taille — elles valent
+comme constats de l'epoque, plus comme refutations definitives.
+
+**Prochaine etape** : gate visuel — trois artefacts A/B/C sur le Bureau, chaque correction
+isolable (A reproduit exactement `rendu_v2.png`, 2 730 instances). Le juge est l'utilisateur,
+pas la couverture en pixels : elle BAISSE de A a C alors que la geometrie est plus juste.
+
+---
+
 ## [2026-08-08] v7.5 — triangles : la primitive de rendu est trouvee (HANDOFF)
 
 **Statut** : En cours, fin de session sur avancee critique. Handoff complet :

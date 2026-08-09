@@ -26,14 +26,35 @@ import "math"
 // universelle — une lumiere par carte n'aurait aucun sens.
 var LumiereRendu = normalise([3]float64{-0.4, 0.5, 0.75})
 
+// TrancheDeJeuMin / TrancheDeJeuMax : la tranche d'altitude hors de laquelle la matiere
+// n'appartient plus a la carte.
+//
+// D'OU ELLES VIENNENT. Du prototype, qui les portait depuis le debut — `s31_raster.py` borne
+// son volume a `ZB0, ZB1 = -12.0, 28.0` — et le handoff §3 les nommait « la tranche de jeu ».
+// Le portage en z-buffer n'avait retenu que le plafond, et c'est ce qui noyait la carte.
+//
+// CE QUI LES CONFIRME (ridgeline, comparaison pixel a pixel avec la carte validee) : sous
+// -10 m, la matiere dessinee est en trop a 96 % (~807 000 px contre ~30 000 justes). Remonter
+// le plancher a -6 fait passer les pixels manquants de 4,0 a 7,3 % ; le plafond entre +20 et
+// +28 ne change rien.
+//
+// CE QU'ELLES NE SONT PAS : une regle generale. Elles sont mesurees sur UNE carte. Leur
+// generalisation aux 36 autres est ouverte (registre des reports) — sur une carte plus haute
+// ou plus encaissee, un plafond a +28 m coupera. Ne pas les prendre pour un invariant.
+const (
+	TrancheDeJeuMin = -12.0
+	TrancheDeJeuMax = 28.0
+)
+
 // Rendu porte un z-buffer et la normale retenue par pixel.
 type Rendu struct {
-	Cell    float64
-	Min     [2]float64
-	NX, NY  int
-	z       []float64
-	plafond float64
-	n       [][3]float64
+	Cell     float64
+	Min      [2]float64
+	NX, NY   int
+	z        []float64
+	plafond  float64
+	plancher float64
+	n        [][3]float64
 }
 
 // NewRendu prepare un rendu sur une emprise et une resolution donnees.
@@ -41,7 +62,8 @@ func NewRendu(min, max [2]float64, cell float64) *Rendu {
 	nx := int((max[0]-min[0])/cell) + 1
 	ny := int((max[1]-min[1])/cell) + 1
 	r := &Rendu{Cell: cell, Min: min, NX: nx, NY: ny,
-		z: make([]float64, nx*ny), n: make([][3]float64, nx*ny), plafond: math.NaN()}
+		z: make([]float64, nx*ny), n: make([][3]float64, nx*ny),
+		plafond: math.NaN(), plancher: math.NaN()}
 	for i := range r.z {
 		r.z[i] = math.Inf(-1)
 	}
@@ -116,13 +138,7 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 		for i := i0; i <= i1; i++ {
 			x := r.Min[0] + (float64(i)+0.5)*r.Cell
 			z, dedans := altitudeAuPoint(a, b, c, det, x, y)
-			if !dedans {
-				continue
-			}
-			if z < lo[2] || z > hi[2] {
-				continue
-			}
-			if !math.IsNaN(r.plafond) && z > r.plafond {
+			if !dedans || !r.accepteZ(z, lo[2], hi[2]) {
 				continue
 			}
 			k := j*r.NX + i
@@ -131,6 +147,18 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 			}
 		}
 	}
+}
+
+// accepteZ dit si une altitude passe les DEUX filtres : la boite de l'instance (bornage) et
+// la tranche de jeu du rendu (plancher / plafond). Ils sont independants et se cumulent.
+func (r *Rendu) accepteZ(z, zLo, zHi float64) bool {
+	if z < zLo || z > zHi {
+		return false
+	}
+	if !math.IsNaN(r.plafond) && z > r.plafond {
+		return false
+	}
+	return math.IsNaN(r.plancher) || z >= r.plancher
 }
 
 // Eclairement rend l'intensite d'un pixel dans [0,1], et dit si le pixel porte de la matiere.
@@ -190,3 +218,23 @@ func normalise(v [3]float64) [3]float64 {
 //
 // Le plafond se DEDUIT des ancres d'objectifs (cf. reference.go), il ne se regle pas par carte.
 func (r *Rendu) Plafond(z float64) { r.plafond = z }
+
+// Plancher limite le rendu aux surfaces AU-DESSUS d'une altitude donnee. NaN = aucun plancher.
+//
+// IL MANQUAIT, et c'est ce qui noyait la carte des qu'on prenait les modules globaux. Le
+// prototype le portait depuis le debut — `s31_raster.py` borne son volume a
+// `ZB0, ZB1 = -12.0, 28.0`, la « tranche de jeu » citee par le handoff §3 — et la traduction
+// en z-buffer n'a retenu que le plafond.
+//
+// MESURE (ridgeline, tous modules, contre la carte validee) : sous -10 m, la matiere dessinee
+// est en trop a 96 % (~807 000 pixels contre ~30 000 justes). Ce n'est pas de la carte, c'est
+// la vallee autour.
+//
+// La TRANCHE se deduit, elle ne se regle pas : cf. `TrancheDeJeu`.
+func (r *Rendu) Plancher(z float64) { r.plancher = z }
+
+// Tranche pose plancher et plafond d'un coup.
+func (r *Rendu) Tranche(zmin, zmax float64) {
+	r.Plancher(zmin)
+	r.Plafond(zmax)
+}
