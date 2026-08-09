@@ -30,7 +30,17 @@ const (
 	insOffSphere    = 0x94
 	insOffRadius    = 0xA0
 	insOffFlags2    = 0xB2
+	// insOffMeshFlags : `mesh flags override`, dans la struct `material override data`.
+	// Reclaimer le lit (`BspGeometryInstanceBlock.FlagsOverride`, offset 272 = 0x110) et
+	// ECARTE l'instance quand le bit `mesh is custom shadow caster` est pose. Le plugin
+	// confirme l'offset au champ pres : 0xF0 `per Instance Material Block` (20 o) + 3 x _6.
+	insOffMeshFlags = 0x110
 )
+
+// FlagMeshCustomShadowCaster : bit `mesh is custom shadow caster` de `mesh flags override`.
+// Une instance qui le porte n'est PAS de la geometrie visible — c'est un volume dedie a la
+// projection d'ombre. Reclaimer la saute.
+const FlagMeshCustomShadowCaster = 1 << 3
 
 // FlagQuickDeleted : bit « is quick deleted » de flags2 — instance supprimée en
 // édition, jamais rendue par le moteur.
@@ -53,6 +63,9 @@ type Instance struct {
 	UniqueIO  int        `json:"unique_io"`
 	Flags     uint16     `json:"flags"`
 	Flags2    uint16     `json:"flags2"`
+	// MeshFlags est `mesh flags override` (@0x110), le champ sur lequel Reclaimer ecarte
+	// les projecteurs d'ombre.
+	MeshFlags uint16 `json:"mesh_flags"`
 	// MeshRef est le champ `Runtime geo mesh reference` brut (0x1C octets). Son layout
 	// interne est INCONNU : il n'est utilisé que comme clé opaque d'identité de mesh.
 	MeshRef [insSizeMeshRef]byte `json:"-"`
@@ -66,9 +79,36 @@ func (in Instance) MeshKey() string {
 // QuickDeleted signale une instance marquée supprimée en édition.
 func (in Instance) QuickDeleted() bool { return in.Flags2&FlagQuickDeleted != 0 }
 
-// LocalToWorld applique la transformation de placement (convention VECTEUR-LIGNE,
-// échelle bakée dans la base) : v = position + lx*forward + ly*left + lz*up.
+// ProjecteurOmbre signale une instance dont le maillage n'est qu'un volume d'ombre.
+func (in Instance) ProjecteurOmbre() bool { return in.MeshFlags&FlagMeshCustomShadowCaster != 0 }
+
+// LocalToWorld applique la transformation de placement — la lecture CANONIQUE.
+//
+// Convention VECTEUR-LIGNE, l'echelle appliquee AVANT la base :
+//
+//	v = position + (lx*sx)*forward + (ly*sy)*left + (lz*sz)*up
+//
+// L'ECHELLE N'EST PAS VESTIGIALE, et la croire telle a fausse tous les rendus jusqu'au
+// 2026-08-09. Deux faits independants l'etablissent :
+//   - la base est ORTHONORMEE (temoin TestRidgelineInstancesGeometry, |v|=1 a 1e-3 sur les
+//     10 357 instances) — l'echelle ne peut donc pas y etre bakee ;
+//   - Reclaimer l'applique separement : `SetTransform(TransformScale, translation, rotation)`
+//     avec un quaternion construit depuis la 3x3, donc renormalise.
+//
+// MESURE QUI TRANCHE (ridgeline, 5 817 instances, TestReclaimerEchelleInstance) : ecart a la
+// boite monde declaree de l'instance — une source INDEPENDANTE du maillage — en fraction de
+// sa diagonale, median 0,2238 sans l'echelle contre 0,0665 avec. 12 009 des 14 328 instances
+// portent une echelle differente de 1, de -38,9 a +116,3.
 func (in Instance) LocalToWorld(l [3]float64) [3]float64 {
+	return in.localToWorld([3]float64{l[0] * in.Scale[0], l[1] * in.Scale[1], l[2] * in.Scale[2]})
+}
+
+// LocalToWorldSansEchelle est la lecture CONCURRENTE — celle qui ignore le champ `scale`.
+// Elle n'existe que pour etre departagee par un temoin ; ne jamais s'en servir pour produire
+// une carte (meme role que DequantSigne pour la dequantification).
+func (in Instance) LocalToWorldSansEchelle(l [3]float64) [3]float64 { return in.localToWorld(l) }
+
+func (in Instance) localToWorld(l [3]float64) [3]float64 {
 	var w [3]float64
 	for a := 0; a < 3; a++ {
 		w[a] = in.Position[a] + l[0]*in.Forward[a] + l[1]*in.Left[a] + l[2]*in.Up[a]
@@ -208,6 +248,7 @@ func decodeInstance(tag []byte, o, idx int) Instance {
 		UniqueIO:  int(u16(tag, o+insOffUniqueIO)),
 		Flags:     u16(tag, o+insOffFlags),
 		Flags2:    u16(tag, o+insOffFlags2),
+		MeshFlags: u16(tag, o+insOffMeshFlags),
 		Radius:    f32(tag, o+insOffRadius),
 	}
 	copy(in.MeshRef[:], tag[o+insOffMeshRef:o+insOffMeshRef+insSizeMeshRef])
