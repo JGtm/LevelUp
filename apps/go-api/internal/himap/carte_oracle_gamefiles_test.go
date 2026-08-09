@@ -171,18 +171,18 @@ func TestOracleCarteCliffhanger(t *testing.T) {
 		carteSeule bool
 		dq         Dequant
 		borne      float64
+		plafond    int
 	}{
-		{"carte seule · libre", true, DequantBrut, -1},
-		{"carte seule · borne", true, DequantBrut, 0.5},
-		{"tous modules · libre", false, DequantBrut, -1},
-		{"tous modules · borne", false, DequantBrut, 0.5},
-		{"signe · carte seule", true, DequantSigne, -1},
+		{"tous modules · LOD 40k", false, DequantBrut, 0.5, 0},
+		{"tous modules · LOD plein", false, DequantBrut, 0.5, 100000000},
+		{"carte seule · LOD 40k", true, DequantBrut, 0.5, 0},
+		{"carte seule · LOD plein", true, DequantBrut, 0.5, 100000000},
 	}
 	degagements := []int{2, 4}
 	filtre := os.Getenv("ORACLE_CAS")
 	reference := os.Getenv("ORACLE_REF")
 	if reference == "" {
-		reference = "tous modules · borne/4"
+		reference = "tous modules · LOD plein/2"
 	}
 
 	var verdicts []verdict
@@ -190,7 +190,7 @@ func TestOracleCarteCliffhanger(t *testing.T) {
 		if filtre != "" && !strings.Contains(c.nom, filtre) {
 			continue
 		}
-		vol := construitVolume(t, optionsCarte{ZMin: zmin, ZMax: zmax, CarteSeule: c.carteSeule, Dequant: c.dq, BorneAABB: c.borne})
+		vol := construitVolume(t, optionsCarte{ZMin: zmin, ZMax: zmax, CarteSeule: c.carteSeule, Dequant: c.dq, BorneAABB: c.borne, Plafond: c.plafond})
 		for _, d := range degagements {
 			nom := fmt.Sprintf("%s/%d", c.nom, d)
 			sol := vol.Floors(d)

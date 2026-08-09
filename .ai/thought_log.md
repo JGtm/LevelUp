@@ -60069,3 +60069,66 @@ reglage de carte.
 gate visuel cote a cote avec `carte_validee_v1.png`. Le rendu de Cliffhanger montre desormais
 l'arene et ses structures, mais reste bruite en peripherie — suspect a instruire : le choix de
 LOD (`MaxTrianglesPerMesh = 40000` retient un LOD grossier sur les grands maillages de terrain).
+
+## [2026-08-09] Cartes v7.5 — deux pistes de rendu REFUTEES par l'oracle, et la regle transfere
+
+**Statut** : En cours
+
+**Decision technique principale** — soumettre chaque piste de rendu a l'oracle AVANT de la
+garder, et retirer ce qu'il refute plutot que de le conserver derriere un reglage.
+
+**Resultats observes**
+- **LOD : innocent.** Plafond 40 000 triangles contre plafond illimite : chiffres identiques
+  a l'octet sur les quatre configurations. Aucun maillage de ridgeline n'atteint le plafond.
+  Le suspect designe la veille est disculpe.
+- **Filtre de pente : REFUTE.** Le prototype filtrait les faces par leur inclinaison (ses
+  donnees s'appellent `marchable_zmax`). Reintroduit comme seconde couche du volume
+  (candidature par la pente, degagement par l'occupation complete), il resserre le dessin
+  mais l'oracle le condamne : trous 0,8 % -> 4,8 %, « sous 2 m » 88,0 % -> 82,0 %, precision
+  inchangee (53,2 % -> 52,4 %). Il achete de la nettete en supprimant du vrai sol. RETIRE du
+  code (pas de reglage laisse en place) ; la mesure est consignee ici pour ne pas etre rejouee.
+- **La regle TRANSFERE.** Balayage par les ancres : Catalyst, jamais calibree, rend 11/14
+  ancres sur un sol a moins d'1 m avec un ecart median de -0,26 m, contre 10/14 et -0,27 m
+  pour Cliffhanger qui a servi d'etalon.
+- Biais systematique identifie : l'ecart median de -0,27 m vaut une demi-bande. `SolLePlusProche`
+  rend le CENTRE de la bande alors que la surface est vers son bord bas — artefact de
+  quantification, universel et explicable, a corriger dans la convention d'altitude.
+
+**Livre** : `carte_balayage_gamefiles_test.go` (la mesure des 37 cartes, avec le pont entre le
+nom de module du catalogue et le dossier de l'installation), `optionsCarte.CheminModule`,
+`RuntimeGeoAsset.PlafondTriangles` (expose parce que ce plafond decide du niveau de detail).
+
+**Prochaine etape** : depouiller le balayage complet, corriger le biais de demi-bande, puis le
+gate visuel cote a cote avec `carte_validee_v1.png`.
+
+## [2026-08-09] Cartes v7.5 — le balayage des 27 cartes designe les cartes en defaut
+
+**Statut** : En cours
+
+**Decision technique principale** — mesurer la regle sur toutes les cartes plutot que de la
+juger a l'oeil sur une seule. Critere : chaque ancre d'objectif, ramenee au sol par
+`AncrageDecalageSol`, doit trouver un sol a moins d'1 m.
+
+**Resultats observes**
+- **27 cartes mesurees, 306/474 ancres (64,6 %)**. 9 modules absents de l'installation
+  (corpo, deadlock, oasis, scarr) — non mesurables ici, signales et non supposes.
+- Trois cartes a 100 % (behemoth, illusion, forbidden), highpower a 25/28 sur trois
+  variantes coherentes entre elles. Catalyst, jamais utilisee pour calibrer, se comporte
+  comme Cliffhanger.
+- **Le balayage DESIGNE trois defauts de profils differents**, au lieu de les diluer :
+  live_fire (sgh_interlock) rend 0 ancre sur 28 avec un sol, sur ses deux variantes —
+  chaine cassee sur cette carte ; fragmentation sort a 10/30 avec un ecart median de
+  -1,54 m, hors du regime de quantification ; aquarius echoue (6/17, 7/19) avec un ecart
+  median NORMAL de -0,15 m, donc par dispersion et non par altitude fausse.
+- Le pont de noms passe par l'ENUMERATION de l'installation : le jeu prefixe ses dossiers
+  par le mode d'origine (`ctf_bazaar`, `btb_highpower`, `sgh_interlock`, `va_behemoth`) la ou
+  le catalogue dit « bazaar_map ». Deviner le prefixe ne marchait que pour 10 cartes sur 36 ;
+  l'enumeration en resout 27.
+- Deux avaries corrigees : le volume etait alloue sur l'emprise du sbsp entier (une carte a
+  reclame 11 324 x 12 308 x 240 cellules, 4 Go) — le bornage au voisinage des ancres, deja
+  ecrit pour le cadrage, s'applique aussi a l'allocation ; et une carte sans aucune ancre au
+  sol faisait paniquer la mediane, elle est desormais publiee avec un ecart indefini.
+
+**Prochaine etape** : instruire live_fire (0/28, le defaut le plus net), puis fragmentation.
+Le biais de demi-bande (-0,1 a -0,5 m partout) reste a corriger dans la convention
+d'altitude de `SolLePlusProche`.

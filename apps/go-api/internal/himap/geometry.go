@@ -76,6 +76,10 @@ type RuntimeGeoAsset struct {
 	blob        []byte
 	vertexDescs []bufferDesc
 	indexDescs  []bufferDesc
+	// PlafondTriangles remplace MaxTrianglesPerMesh quand il est > 0. Expose parce que ce
+	// plafond n'est pas neutre : il decide quel niveau de detail est retenu, et donc si un
+	// grand maillage de terrain arrive entier ou grossier.
+	PlafondTriangles int
 }
 
 // VertexDescCount / IndexDescCount exposent la taille des tables (diagnostic et temoins).
@@ -230,12 +234,16 @@ func (a *RuntimeGeoAsset) chooseLOD(meshIndex int) (lodEntry, bool) {
 	if len(lods) == 0 {
 		return lodEntry{}, false
 	}
+	plafond := MaxTrianglesPerMesh
+	if a.PlafondTriangles > 0 {
+		plafond = a.PlafondTriangles
+	}
 	choix := -1
 	for k, l := range lods {
 		if l.indexBuf >= len(a.indexDescs) || l.vertexBuf >= len(a.vertexDescs) {
 			continue
 		}
-		if a.indexDescs[l.indexBuf].Count/3 <= MaxTrianglesPerMesh {
+		if a.indexDescs[l.indexBuf].Count/3 <= plafond {
 			choix = k
 			break
 		}
