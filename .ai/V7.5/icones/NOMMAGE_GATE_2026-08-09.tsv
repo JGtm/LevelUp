@@ -1,0 +1,118 @@
+atlas	index	fichiers	libelle	weapon_key
+armes	00	contour-00.png|silhouette-00.png	MA40 AR	hinf_ma40_ar
+armes	01	contour-01.png|silhouette-01.png	BR75	hinf_br75
+armes	02	contour-02.png|silhouette-02.png	VK78 Commando	hinf_vk78_commando
+armes	03	contour-03.png|silhouette-03.png	MK50 Sidekick	hinf_sidekick
+armes	04	contour-04.png|silhouette-04.png	CQS48 Bulldog	hinf_cqs48_bulldog
+armes	05	contour-05.png|silhouette-05.png	S7 Sniper	hinf_s7_sniper
+armes	06	contour-06.png|silhouette-06.png	M41 SPNKr	hinf_m41_spnkr
+armes	07	contour-07.png|silhouette-07.png	Hydra	hinf_hydra
+armes	08	contour-08.png|silhouette-08.png	machine_gun ?	
+armes	09	contour-09.png|silhouette-09.png	Needler	hinf_needler
+armes	10	contour-10.png|silhouette-10.png	Fusil traqueur	hinf_stalker_rifle
+armes	11	contour-11.png|silhouette-11.png	Pistolet a plasma	hinf_plasma_pistol
+armes	12	contour-12.png|silhouette-12.png	plasma_turret	
+armes	13	contour-13.png|silhouette-13.png	Carabine a impulsion	hinf_pulse_carbine
+armes	14	contour-14.png|silhouette-14.png	Epee a energie	hinf_energy_sword
+armes	15	contour-15.png|silhouette-15.png	Ravageur	hinf_ravager
+armes	16	contour-16.png|silhouette-16.png	Marteau antigravite	hinf_gravity_hammer
+armes	17	contour-17.png|silhouette-17.png	Empaleur	hinf_skewer
+armes	18	contour-18.png|silhouette-18.png	Dechiqueteur	hinf_mangler
+armes	20	contour-20.png|silhouette-20.png	Cremateur	hinf_cindershot
+armes	21	contour-21.png|silhouette-21.png	Calcineur	hinf_heatwave
+armes	22	contour-22.png|silhouette-22.png	Rayon de Sentinelle	hinf_sentinel_beam
+armes	23	contour-23.png|silhouette-23.png	Fusil electrique	hinf_shock_rifle
+armes	24	contour-24.png|silhouette-24.png	Disrupteur	hinf_disruptor
+armes	25	contour-25.png|silhouette-25.png	skull	
+armes	26	contour-26.png|silhouette-26.png	flag	
+armes	27	contour-27.png|silhouette-27.png	fusion_coil ?	
+armes	28	contour-28.png|silhouette-28.png	power_seed ?	
+armes	29	contour-29.png|silhouette-29.png	Diminisher of Hope	
+armes	30	contour-30.png|silhouette-30.png	Blast, Plasma, schock, hardlight coil ??	
+armes	33	contour-33.png|silhouette-33.png	Bandit EVO	hinf_bandit
+armes	34	contour-34.png|silhouette-34.png	ball | bomb	
+armes	35	contour-35.png|silhouette-35.png	mythic_sandwich | sandwich ?	
+armes	36	contour-36.png|silhouette-36.png	MA5K Avenger	hinf_ma5k_avenger
+armes	37	contour-37.png|silhouette-37.png	mutilator	
+armes	38	contour-38.png|silhouette-38.png	SPNKr a combustible	hinf_fuel_rod_spnkr
+armes	39	contour-39.png|silhouette-39.png	Carabine Vestige	hinf_vestige_carbine
+killfeed	00	killfeed-00.png	battle_rifle	hinf_br75
+killfeed	01	killfeed-01.png	commando_rifle	hinf_vk78_commando
+killfeed	02	killfeed-02.png	assault_rifle	hinf_ma40_ar
+killfeed	03	killfeed-03.png	MK50 Sidekick	hinf_sidekick
+killfeed	04	killfeed-04.png	CQS48 Bulldog	hinf_cqs48_bulldog
+killfeed	05	killfeed-05.png	turret_chaingun	
+killfeed	06	killfeed-06.png	hydra	hinf_hydra
+killfeed	07	killfeed-07.png	sniper	hinf_s7_sniper
+killfeed	08	killfeed-08.png	M41 SPNKr	hinf_m41_spnkr
+killfeed	09	killfeed-09.png	Disrupteur	hinf_disruptor
+killfeed	10	killfeed-10.png	Ravageur	hinf_ravager
+killfeed	11	killfeed-11.png	Dechiqueteur	hinf_mangler
+killfeed	12	killfeed-12.png	Fusil electrique	hinf_shock_rifle
+killfeed	13	killfeed-13.png	gravity_hammer	hinf_gravity_hammer
+killfeed	14	killfeed-14.png	Canon à mitraille - Scrap cannon	
+killfeed	15	killfeed-15.png	skewer	hinf_skewer
+killfeed	16	killfeed-16.png	plasma_blaster	hinf_stalker_rifle
+killfeed	17	killfeed-17.png	plasma_pistol	hinf_plasma_pistol
+killfeed	18	killfeed-18.png	sword	hinf_energy_sword
+killfeed	19	killfeed-19.png	needler	hinf_needler
+killfeed	20	killfeed-20.png	Carabine à impulsion - Pulse Carbine	
+killfeed	21	killfeed-21.png	turret_plasma	
+killfeed	22	killfeed-22.png	heatwave	hinf_cindershot
+killfeed	23	killfeed-23.png	Calcineur	hinf_heatwave
+killfeed	24	killfeed-24.png	sentinelbeam	hinf_sentinel_beam
+killfeed	26	killfeed-26.png	warthog	
+killfeed	27	killfeed-27.png	rockethog	
+killfeed	28	killfeed-28.png	mongoose	
+killfeed	29	killfeed-29.png	gungoose	
+killfeed	30	killfeed-30.png	pelican	
+killfeed	31	killfeed-31.png	scorpion	
+killfeed	32	killfeed-32.png	wasp	
+killfeed	33	killfeed-33.png	wraith	
+killfeed	34	killfeed-34.png	phantom	
+killfeed	35	killfeed-35.png	banshee	
+killfeed	36	killfeed-36.png	ghost	
+killfeed	37	killfeed-37.png	chopper	
+killfeed	38	killfeed-38.png	scorpion_turret	
+killfeed	41	killfeed-41.png	Power seed ?	
+killfeed	42	killfeed-42.png	Shock coil	
+killfeed	43	killfeed-43.png	Blast coil	
+killfeed	44	killfeed-44.png	UNSC fusion coil	
+killfeed	45	killfeed-45.png	Plasma coil	
+killfeed	46	killfeed-46.png	frag_grenade	
+killfeed	47	killfeed-47.png	plasma_grenade	
+killfeed	49	killfeed-49.png	spike_grenade	
+killfeed	50	killfeed-50.png	plasma_grenade_stick	
+killfeed	51	killfeed-51.png	spike_grenade_stick	
+killfeed	52	killfeed-52.png	Fall	
+killfeed	53	killfeed-53.png	bomb_melee	
+killfeed	54	killfeed-54.png	callout	
+killfeed	55	killfeed-55.png	environment	
+killfeed	56	killfeed-56.png	repulsor	
+killfeed	57	killfeed-57.png	ricochet	
+killfeed	58	killfeed-58.png	Schock	
+killfeed	59	killfeed-59.png	ball	
+killfeed	60	killfeed-60.png	splatter	
+killfeed	61	killfeed-61.png	suicide	
+killfeed	62	killfeed-62.png	Assist	
+killfeed	64	killfeed-64.png	headshot	
+killfeed	65	killfeed-65.png	melee	
+killfeed	66	killfeed-66.png	back_smack	
+killfeed	67	killfeed-67.png	flag_melee	
+killfeed	68	killfeed-68.png	Diminisher of hope	
+killfeed	69	killfeed-69.png	player_left	
+killfeed	70	killfeed-70.png	player_joined	
+killfeed	71	killfeed-71.png	player_rejoined	
+killfeed	72	killfeed-72.png	grappleshot	
+killfeed	73	killfeed-73.png	bandit	
+killfeed	74	killfeed-74.png	VIP or king kill	
+killfeed	76	killfeed-76.png	sandwich	
+killfeed	78	killfeed-78.png	waterfall	
+killfeed	79	killfeed-79.png	quantum	
+killfeed	80	killfeed-80.png	ma5k_smg	
+killfeed	81	killfeed-81.png	mutilator	
+killfeed	82	killfeed-82.png	Fuel Rod SPNKr	
+killfeed	83	killfeed-83.png	perfect	
+killfeed	84	killfeed-84.png	Carabine Vestige	hinf_vestige_carbine
+killfeed	85	killfeed-85.png	falcon	
+killfeed	86	killfeed-86.png	falcon_chaingun	

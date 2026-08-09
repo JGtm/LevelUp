@@ -152,6 +152,31 @@ craquage ne les nommera jamais, quel que soit le vocabulaire. C est une borne du
 manque d effort. (Les trous, dans l ordre : 3, 4, 8, 9, 10, 11, 12, 14, 20, 23, 25 cote armes ;
 39-45 cote vehicules et tourelles ; 48, 52, 58, 62, 63, 68, 74, 75, 77, 82, 84, 87 ensuite.)
 
+### 1.11 La passe humaine (2026-08-09) — et la regle qu elle etablit
+
+`NOMMAGE_GATE_2026-08-09.tsv` porte la passe de nommage de l utilisateur, versee telle quelle.
+Elle apporte **22 weapon_key sur l atlas du kill feed**, dont neuf que le jeu ne savait pas
+nommer : Sidekick (3), Bulldog (4), M41 SPNKr (8), Disrupteur (9), Ravageur (10), Dechiqueteur
+(11), Fusil electrique (12), Calcineur (23), Carabine Vestige (84).
+
+**CONTROLE** : les 26 cles de l atlas d armes issues du `sprite index` sont reproduites a
+l identique par la passe humaine — zero divergence. Les deux sources se confirment.
+
+**LA REGLE QUI EN SORT — le nom interne ne designe pas l arme, `sprite index` si.** Le jeu
+nomme `killfeed_heatwave` l index 22, mais l image y est le **Cremateur** (`hinf_cindershot`) ;
+le Calcineur (`hinf_heatwave`) est a l index 23. Le meme decalage etait deja constate sur
+l atlas d armes (index 20 : nom craque `heatwave`, registre `hinf_cindershot`) et il est
+desormais confirme **deux fois, sur deux atlas independants**. Ce n est plus une reserve, c est
+un fait : **en cas de desaccord, le `sprite index` + le registre font foi, jamais le nom craque**.
+Sans cette regle, l integration afficherait le Calcineur a la place du Cremateur.
+
+Meme nature, encore a verifier : l index 16 est nomme `plasma_blaster` par le jeu et lu comme
+**Fusil traqueur** (`hinf_stalker_rifle`) par l oeil humain.
+
+**RESTENT SANS ETIQUETTE** : atlas d armes 19, 31, 32 ; kill feed 25, 39, 40, 48, 63, 75, 77,
+87. Et les tonneaux/bobines (kill feed 41 a 45, atlas d armes 27 a 30) sont donnes comme des
+SUPPOSITIONS par l utilisateur lui-meme — a confirmer par observation en Theater, pas a publier.
+
 **LA VOIE AUTOMATIQUE EST EPUISEE, ET C EST MESURE.** Six routes ont ete tentees jusqu au bout
 (voir §3) : vocabulaire et declinaisons, moisson UTF-16, appariement par silhouette entre les
 deux atlas du jeu, champ `damage sprite index`, balayage exhaustif des tags, force brute. La
