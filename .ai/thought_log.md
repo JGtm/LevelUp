@@ -1,3 +1,65 @@
+## [2026-08-10] v7.5 — cartes : les volumes de mort TROUVES dans les .mvar (cartes Forge), type_id resolu
+
+**Statut** : Complete. Detail : `.ai/V7.5/cartes/INVESTIGATION_VOLUMES_MORT_MVAR_2026-08-10.md`.
+
+**Decision technique principale : le `type_id` des objets .mvar est le GlobalID d'un tag
+`food` (Forge object definition) de `forge_objects-rtx-new.module` — 20/20 resolus.** Les
+tags food etant des coquilles generiques (1 388 o, hash de nom non craque), l'identification
+des volumes de mort est passee par l'empreinte fonctionnelle sur 101 cartes Forge :
+`-588988541` = LE volume de mort principal (exactement 1 par carte sur 61, aire mediane
+2 206 m2, 5,5 m sous le sol median — et sur Dynasty il est au centre, 7 m sous le sol :
+c'est la fontaine du temoin utilisateur) ; `176825834` et `937132837` = planchers de mort ;
+`-1751270658` = murs de limite en hauteur (+8 m) ; a l'oppose `-696190206` (2 960 petits
+volumes, dz 0) = profil spawn/influence, pas mort.
+
+**Cartes integrees : toutes les portes disque fermees.** Leurs .mvar ne portent que des
+zones de mode ; `scnr` n'existe pas dans Infinite (zero occurrence sur toute
+l'installation) ; `stse` est l'enveloppe convexe de la structure (coins exacts de la boite
+du bsp) ; dwsg/hlds/cage/sred/snad balayes sans profil volume. Les zones a compte a rebours
+des cartes integrees restent non localisees sur disque.
+
+**Riviere (retour utilisateur)** : l'eau n'est pas dans les instances de rendu — elle est
+dans sddt (233 prismes, lecture etablie). A dessiner sur le fond de carte, donnees pretes.
+
+**Conclusion / prochaine etape** : pour les cartes Forge, le decoupage zone/decor par les
+volumes .mvar est pret a l'emploi (donnees locales + parseur en prod). Pour Cliffhanger et
+Catalyst, le verdict de la phase 1 tient : grain 0,005, coquille sddt en cadrage.
+
+## [2026-08-10] v7.5 — cartes : sddt et pfnd decodes, et NO-GO pour la zone jouable (sixieme et septieme criteres)
+
+**Statut** : Complete. Verdict negatif chiffre. Detail :
+`.ai/V7.5/cartes/INVESTIGATION_SDDT_PFND_2026-08-10.md` (sondes non commitees dans
+`internal/himap/sonde_sddt_*.go`).
+
+**Decision technique principale : les deux tags se DECODENT (acquis), mais aucun ne porte la
+silhouette de la zone jouable.** `sddt` (variante any/ uniquement, comme pfnd — verifie sur
+pc/ et ds/) porte deux choses : la COQUILLE-FRONTIERE de mort (6-8 plans convexes, normales
+vers l'interieur — 100,00 % des 29 221 positions jouees dedans, c'est la donnee « je meurs
+si je sors » de l'utilisateur) et LA RIVIERE de Cliffhanger (233 prismes triangulaires
+minces de ~1 m, 5 plans + 8 triangles chacun, coherence plans<->sommets au residu 0,0000,
+dessines : la bande serpente au nord de l'arene ; 0,438 % des positions jouees dedans).
+`pfnd` ne contient PAS de navmesh : 55 liens de saut/escalade (40 sur Catalyst), 4 points
+chacun, zero donnee surfacique.
+
+**Chiffres du banc** (references reproduites a la decimale avant mesure) : coquille complete
+accord 38,6 %, positions 84,91 % (son plafond z=+20 applique au toit de matiere du champ
+d'altitude efface des etages inferieurs) ; coquille laterale : exces 149,3 -> 148,7 %,
+positions 95,21 % — les murs sont hors du cadre utile. Critere (>= 95 % positions ET accord
+> 66,7 %) : echec structurel — l'exces de 149 % vit DANS le volume de survie. « On y
+survit » ne separe pas « on y marche » de « on le regarde », comme « on s'y cogne » avant lui.
+
+**Temoins joues** : normales unitaires 100,0 % a l'offset 0 et 0,0 % a +4 (la mutation
+separe — la reserve n°1 de l'investigation collision est soldee ici) ; orientation des
+prismes et de la coquille etablies chacune par un temoin qui echoue en sens inverse.
+
+**Acquis pour la suite** : (1) la coquille sddt est un CADRE naturel des cartes sans
+reference — sur Catalyst elle retire 46,4 % de pixels de decor lointain sans percer aucune
+des 19 ancres ; a rejouer comme cadrage, pas comme zone. (2) La lecture generique des tags
+sans plugin (liens type 1 de la struct-table) decode un tag inconnu en une seance.
+
+**Conclusion / prochaine etape** : sept criteres de zone jouable refutes, aucun candidat
+disque restant identifie. Le grain 0,005 (66,7 % d'accord) reste la meilleure regle connue.
+
 ## [2026-08-10] v7.5 — cartes : l'accessibilite ne delimite pas la zone jouable (NO-GO), deux cibles nommees pour la suite
 
 **Statut** : Complete. Cinquieme critere de zone jouable refute par la mesure. Detail :
