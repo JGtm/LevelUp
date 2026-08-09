@@ -353,3 +353,305 @@ diagnostics. NON commite a l'arret : les sondes du §9.2 (bornage et plafond dan
 compteurs de causes, empreinte des instances non resolues). Elles ne servent plus le rendu mais
 portent les mesures qui ferment les portes — les conserver comme instruments, ou les retirer en
 gardant les chiffres ici.
+
+---
+
+## 10. ETAT AU 2026-08-09 (seconde session) — LA DETTE DE LECTURE EST SOLDEE
+
+Le §9.4 ordonnait de LIRE Reclaimer avant de supposer quoi que ce soit. Fait :
+`Reclaimer.Blam/Blam/HaloInfinite/ScenarioStructureBspTag.cs` et `RuntimeGeoTag.cs`
+(`LevelUp-re/scratchpad_recherche/refs/`), croises avec le plugin `sbsp.xml`. **Les deux
+concordent a l'octet pres sur les 320 d'une instance**, et deux offsets independants le
+confirment sur nos tags : `clusters` @300 = 0x12c et `instanced geometry instances`
+@420 = 0x1a4, tous deux retrouves par l'appariement par rang du plugin. La chaine de lecture
+n'etait pas fausse — elle etait INCOMPLETE.
+
+### 10.1 LA LISTE demandee au §9.4 point 1
+
+`ScenarioStructureBspTag` :
+
+| champ | offset | notre chaine |
+|---|---|---|
+| `Clusters` | 300 | **non lu** — voir §10.2, la porte se ferme par la mesure |
+| `GeometryInstances` | 420 | lu |
+
+`BspGeometryInstanceBlock` (320 o) :
+
+| champ | offset | notre chaine |
+|---|---|---|
+| `TransformScale` (Vector3) | 0x00 | lu, **JAMAIS APPLIQUE** -> corrige, §10.3 |
+| `Transform` (3x4) | 0x0C | lu (forward / left / up / position) |
+| `RuntimeGeoMeshReference` | 0x3C | lu (GlobalID a +8) |
+| `MeshIndex` | 0x74 | lu |
+| `BoundsIndex` | 0x76 | lu sous le nom du plugin, `unique io index` — Reclaimer ne s'en sert pas non plus |
+| `Material` | 0xF0 | non lu — materiaux, hors geometrie |
+| `FlagsOverride` | 0x110 | **non lu** -> porte, §10.4 |
+| `Guid` | 0x12C | non lu — identite d'edition |
+
+`RuntimeGeoTag` — seul champ encore non porte : **`MeshResourcePackingPolicy` @186**
+(`SingleResource` vs `ResourcePerPermutation`). Nous concatenons les ressources en un blob
+unique ; si un tag declarait une ressource par permutation, les offsets de descripteurs
+seraient relatifs a chaque ressource. Aucun symptome mesure a ce jour (0 maillage nil,
+0 descripteur hors bornes) — inscrit au registre des reports.
+
+**Et les regles de rendu de `GetContent()`**, qui valaient autant que les offsets :
+sauter l'instance sans tag, sauter le `MeshIsCustomShadowCaster`, appliquer
+`SetTransform(TransformScale, translation, rotation)`. Les deux dernieres nous manquaient.
+
+### 10.2 SIXIEME PORTE FERMEE — la geometrie non instanciee n'existe pas ici
+
+L'hypothese non testee du §9.3 (« les dalles viendraient de la geometrie NON INSTANCIEE du
+sbsp ») est **REFUTEE par la mesure**, pas par un raisonnement. Inventaire des tag-blocks
+racine du sbsp de Cliffhanger (`TestReclaimerBlocsRacine`) :
+
+    clusters                  count=1        <- une seule entree
+    meshes                    count=0        <- AUCUN maillage non instancie
+    compression info          count=0
+    mesh resource groups      count=0
+    raw_resources             count=0
+    instanced geometry instances  count=10357
+
+Toute la geometrie de rendu passe par les instances. Reclaimer dit la meme chose de son
+cote : il DECLARE `Clusters` et ne le rend jamais. La porte est fermee.
+
+### 10.3 CE QUI ETAIT FAUX DEPUIS LE DEBUT — l'echelle d'instance
+
+`instances.go` portait « Scale : champ @0x00. Repute vestigial ». **Il ne l'est pas.**
+Reclaimer l'applique separement de la rotation, et deux faits independants l'exigeaient :
+la base est ORTHONORMEE (temoin `TestRidgelineInstancesGeometry`, |v|=1 a 1e-3 sur les
+10 357 instances), donc l'echelle ne peut pas y etre bakee.
+
+Mesure (`TestReclaimerEchelleInstance`) : **12 009 des 14 328 instances portent une echelle
+differente de 1**, de -38,86 a +116,33 (les valeurs negatives repondent au drapeau
+`negative scale` de `flags2`).
+
+**LE TEMOIN QUI SEPARE** — ecart du maillage transforme a la boite monde DECLAREE de
+l'instance (@0x7C), source independante du maillage, en fraction de sa diagonale :
+
+    5 817 instances            median   p90
+    sans echelle               0,2238   0,3785
+    avec echelle               0,0665   0,1550     <- 3,4x mieux
+
+    restreint aux 4 641 instances a scale != 1
+    sans echelle               0,2622   0,4408
+    avec echelle               0,0816   0,1529
+
+`LocalToWorld` applique desormais l'echelle ; `LocalToWorldSansEchelle` ne survit que comme
+lecture concurrente pour ce temoin (meme role que `DequantSigne`).
+
+**Piege pose par ce changement** : une `Instance{}` litterale a maintenant `Scale = (0,0,0)`
+et ecrase tout le maillage sur sa position. `instanceIdentite()` des tests unitaires porte
+desormais un scale unitaire explicite.
+
+### 10.4 30 % DES INSTANCES SONT DES PROJECTEURS D'OMBRE
+
+`mesh flags override` @0x110, bit 3 `mesh is custom shadow caster` : **4 343 des 14 328
+instances**. Reclaimer les saute — leur maillage est un volume de projection d'ombre, pas de
+la geometrie visible.
+
+Que l'offset soit le bon se VERIFIE : le champ prend **22 valeurs distinctes et aucune ne
+sort des 11 drapeaux declares** par le plugin. Un offset faux etalerait les valeurs sur
+65 536. Et la confirmation vient du rendu : ecarter ces instances retire **47 % des
+instances rendues** (2 730 -> 1 433) pour **0,1 point de couverture** (14,2 % -> 14,1 %).
+Elles etaient donc redondantes avec de la vraie geometrie — c'est exactement ce qu'est un
+proxy d'ombre.
+
+### 10.5 Ce qui a change dans le rendu, et ce qui reste au juge
+
+`rendu_gamefiles_test.go` prend desormais le bsp DESIGNE PAR LES ANCRES (`choisitBSP`, deja
+la regle partout ailleurs) au lieu de « tous les bsp » — prendre tous les bsp ramenait
+l'horizon de 6 619 x 10 471 m, dont la dalle de fond de scene couvre 100 % du cadre, porte
+deja fermee au §9.2.
+
+Trois artefacts produits, chaque correction isolable (variables `RENDU_SANS_ECHELLE`,
+`RENDU_GARDE_OMBRES`) :
+
+    A  lecture d'avant           2 730 instances rendues   15,7 % de pixels
+    B  + echelle                 2 730                     14,2 %
+    C  + ombres ecartees         1 433                     14,1 %
+
+A reproduit exactement l'etat de `rendu_v2.png` (2 730 instances) : la comparaison est
+attribuable.
+
+**LE GATE VISUEL RESTE DU. C'est le juge, et il n'est pas dans cette session** — les deux
+manques signales par l'utilisateur (second pont en bas a gauche, zone en haut a gauche) se
+constatent a l'oeil sur le comparatif, pas sur un pourcentage de couverture. La couverture
+n'est pas le critere : elle baisse de A a C alors que la geometrie est plus juste.
+
+### 10.6 Ce qui n'a PAS ete touche, et pourquoi
+
+Le plafond deduit des ancres (+6,95 m) reste actif : c'etait la configuration commitee, et
+le modifier aurait rendu le A/B inattribuable. Son verdict du §9.2 (« sans effet ») a ete
+rendu sur une geometrie fausse — il pourra etre rejoue, mais APRES le gate visuel, pas avant.
+
+Aucune des cinq portes du §9.2 n'a ete rouverte.
+
+### 10.7 LE PLANCHER MANQUAIT — et c'est lui qui vidait la carte
+
+Gate visuel REFUSE par l'utilisateur : ni le second pont ni la zone haut-gauche. Sa question
+— « t'as bien regarde l'altitude, si tu zappais pas des elements que tu supposes trop bas ? »
+— etait la bonne, et elle a demande UN INSTRUMENT pour y repondre.
+
+**L'instrument qui manquait** (`rendu_diff_gamefiles_test.go`) : comparaison PIXEL A PIXEL
+avec la carte validee. Trois chiffres — matiere de la reference, MANQUANTS, EXCES — et une
+troisieme vignette rouge/bleu. Jusque-la le rendu se jugeait sur une couverture globale, qui
+peut monter pendant qu'un pont disparait.
+
+Premiere mesure, et elle disqualifie tout ce qui precede : **la reference couvre 23,1 % du
+cadre, nous 14,1 %, et il manque 52,1 % de sa matiere.**
+
+**Ce que l'instrument a designe :**
+
+| configuration | manquants | exces |
+|---|---:|---:|
+| module de la carte seul (l'etat commite) | **52,1 %** | 13,4 % |
+| tous modules, sans tranche | 0,8 % | **328 %** |
+| tous modules, tranche [-12 ; +28] | **4,0 %** | 149 % |
+
+La geometrie du pont ET de la zone haut-gauche est donc dans les MODULES GLOBAUX. Le filtre
+« module de la carte seul » retirait la moitie de la carte.
+
+**Et l'altitude, exactement comme le disait l'utilisateur.** Repartition de ce que nous
+dessinons, tous modules, sans tranche :
+
+    sous -10 m        ~30 000 px justes   ~807 000 EN TROP   <- le decor, a 96 %
+    -10 a +35 m      ~370 000 px justes   ~530 000 EN TROP
+    au-dessus +35 m    ~2 500 px justes    ~56 000 EN TROP
+
+**Le prototype le portait depuis le debut** : `s31_raster.py` borne son volume a
+`ZB0, ZB1 = -12.0, 28.0`, et le handoff §3 l'ecrivait noir sur blanc — « volume BORNE a la
+tranche de jeu ». La traduction en z-buffer (`rendu.go`) n'a retenu que le PLAFOND. D'ou
+`Rendu.Plancher` / `Rendu.Tranche`.
+
+Le balayage confirme le reglage du prototype : plancher -12 (le remonter a -6 fait passer les
+manquants de 4,0 a 7,3 %), plafond entre +20 et +28 indifferent. **Corollaire : le plafond
+« deduit des ancres » a +6,95 m etait FAUX** — 118 000 pixels justes vivent entre +10 et
++35 m, soit 31 % de la reference.
+
+**Confirmation du §10.3 par la source qui a produit la reference** : `geo2.py`
+(`instance_matrix`) porte en toutes lettres « convention vecteur-ligne, **scale ACTIF** ». Le
+prototype appliquait l'echelle ; seul le portage Go l'avait perdue.
+
+### 10.8 CE QUI RESTE OUVERT — l'exces de 149 %
+
+Nous dessinons encore une fois et demie la matiere de la reference en trop. Ce n'est PAS une
+bande d'altitude (l'exces se repartit sur toute la tranche) : c'est du decor LATERAL, le
+relief autour de l'arene.
+
+**Piste refutee sur pieces, ne pas la rejouer** : borner l'emprise au voisinage des ancres
+(`PorteeAncre`, la regle de `reference.go`). Sur Cliffhanger elle rend 100 x 100 m — les
+ancres sont trop dispersees pour cadrer quoi que ce soit — et n'ecarte que **92 instances**,
+exces inchange (149,3 -> 149,2 %).
+
+**Piste non testee, la plus plausible** : le prototype echantillonne des POINTS
+(voir §10.10 — elle reste la meilleure candidate).
+
+### 10.9 GATE VISUEL PASSE — et l'utilisateur a donne LE TEMOIN de ce qui reste
+
+Validation du 2026-08-09 : « je vois le second pont et les autres zones jouables. Je valide
+le rendu. » Le rendu par defaut est donc bascule sur la configuration validee — **tous les
+modules, tranche `[TrancheDeJeuMin ; TrancheDeJeuMax]` = [-12 ; +28]** — et l'ancien defaut
+ne survit que comme temoin (`RENDU_CARTE_SEULE`, `RENDU_TRANCHE`).
+
+**LE TEMOIN, et il vient de l'utilisateur, pas de la session** (regle du gate visuel) :
+
+> « la carte affiche une zone bien plus grande que la zone jouable, qui correspond a la zone
+> GRISE ET ROUGE sur le rendu, la partie BLEUE n'etant pas jouable »
+
+Autrement dit, dans la carte des ecarts : **gris + rouge = la zone jouable ; bleu = du decor**.
+C'est la definition operationnelle qui manquait — la silhouette de la carte validee EST la
+zone jouable, et nos 149 % d'exces sont tous hors-jeu. Un critere de zone jouable se calibre
+desormais contre ce temoin, il ne s'invente plus.
+
+Second retour utilisateur : il reste **des trous au milieu de la zone de jeu** (les 4,0 % de
+manquants), qu'un FOND sous la carte masquerait — le rendu ecrit du noir la ou il n'y a pas de
+matiere. A traiter comme une question de presentation, pas de geometrie.
+
+**Piste REFUTEE ce jour — le module n'est pas le discriminant.** Contribution de chaque module,
+mesuree seule, tranche posee :
+
+    module        couverture   couvre de la reference   exces
+    ridgeline        12,8 %            50,3 %            5,3 %
+    common           25,7 %            60,2 %           51,2 %
+    multiplayer      38,3 %            47,5 %          118,3 %
+    multiplayer_r3    1,1 %             4,4 %            0,4 %
+
+`multiplayer` est le premier pourvoyeur de bleu — mais il apporte AUSSI 47,5 % de la vraie
+carte. Aucun module n'est « le decor » : ils se completent. Trier par module est impossible.
+
+### 10.10 ORDRE DE REPRISE
+
+1. **Le fond.** Les trous au milieu de la zone jouee se masquent par un fond, pas par de la
+   geometrie. Decision de presentation.
+2. **La zone jouable.** Trouver le critere qui garde le gris+rouge et jette le bleu. Ce qui
+   est deja REFUTE et ne doit pas etre rejoue : le module (§10.9), l'emprise par les ancres
+   (§10.8), la tranche d'altitude seule (l'exces se repartit dessus). Ce qui reste :
+   - verifier d'abord l'hypothese de RASTERISATION (§10.8) — si la silhouette de la reference
+     est un effet du semis de points du prototype, il n'y a aucune regle de tri a chercher ;
+   - sinon, une regle d'ACCESSIBILITE : composante connexe de sol praticable atteignable
+     depuis les ancres. Physique, sans reglage par carte, et calibrable sur le temoin
+     ci-dessus. Attention : le filtre de PENTE seul est deja refute (§1 ter).
+3. **Generaliser la tranche.** [-12 ; +28] est mesure sur UNE carte (registre des reports).
+
+### 10.11 LA ZONE JOUABLE — LA FINESSE DU MAILLAGE SEPARE
+
+Les deux voies demandees par l'utilisateur ont ete jouees. Un score unique les arbitre :
+**l'ACCORD = intersection / union** avec la silhouette de la carte validee. Il ne se laisse pas
+gagner d'un cote aux depens de l'autre — tout dessiner rend 0 manquant et un accord
+catastrophique, ne rien dessiner l'inverse.
+
+**Voie A — masquer par la silhouette de la reference.** Produite (`RENDU_MASQUE_REFERENCE`).
+**A ECARTER**, et pas seulement parce qu'elle ne vaut que pour Cliffhanger : elle est
+VISUELLEMENT mauvaise. Bords dechiquetes, decoupes rectangulaires, et les gros blocs de decor
+qui tombent dans la silhouette sont conserves — le masque ne sait pas ce qu'il garde.
+
+**Voie B — filtrer par la FINESSE du maillage.** Observation faite sur le rendu : le decor est
+fait de facettes enormes, l'arene est finement trianglee. Mesure de l'aire projetee du triangle
+MEDIAN par instance : **p50 = 0,0001 m2, p90 = 0,0161, p99 = 1,8739** — quatre ordres de
+grandeur, le decor est tout entier dans la queue.
+
+    seuil (m2)   manquants   exces    ACCORD
+    aucun            4,0 %   149,3 %   38,5 %
+    0,002           26,6 %    15,2 %   63,7 %
+    0,003           18,3 %    21,2 %   67,4 %   <- optimum d'accord
+    0,005           10,8 %    33,8 %   66,7 %   <- RETENU
+    0,008            7,9 %    49,1 %   61,7 %
+    0,012            7,9 %    59,9 %   57,6 %
+
+**0,005 m2 est retenu plutot que l'optimum strict** : a 0,7 point d'accord pres, il garde
+89,2 % de la zone jouable contre 81,7 %. Perdre de la structure jouee est le defaut que
+l'utilisateur signale depuis le debut ; l'exces, non.
+
+Un triangle de 50 cm2 fait ~10 cm de cote : les surfaces jouees sont modelisees a ce grain, le
+decor lointain non. C'est une propriete du MAILLAGE, pas un reglage d'image — d'ou son interet
+face au masque.
+
+**CE QU'IL FAUT ENCORE PROUVER, et c'est la meme methode qu'au §1 ter** : le seuil est calibre
+sur la seule carte qui possede une reference. La REGLE doit etre validee sur les autres par
+l'oracle FAIBLE des ancres, et le seuil ne doit pas se retoucher carte par carte. Tant que ce
+balayage n'a pas tourne, 0,005 est une valeur mesuree sur un cas, pas une constante.
+
+**VALIDE PAR L'UTILISATEUR le 2026-08-09** (« je valide carte B finesse »). Le tri est donc
+sorti du test et vit dans `zone_jouable.go` — `AireMaxTriangleJouable`, `AireMedianeProjetee`,
+`EstDecorGrossier` — avec ses temoins unitaires. Il est ACTIF PAR DEFAUT ; `RENDU_AIRE_MAX=0`
+le desactive pour la comparaison.
+
+**Piege paye au passage, et c'est la meme lecon que le §8** : le premier jeu de temoins du tri
+ne separait PAS. Sur des grilles uniformes, moyenne et mediane coincident — la mutation
+« mediane -> moyenne » passait au VERT alors que le commentaire affirmait le contraire. Le cas
+qui separe est celui que la doc decrit : un sol finement maille pose sur de grandes faces de
+socle (`TestMedianeResisteAuSocle`). **Ecrire « cette mutation doit faire rougir » ne suffit
+pas — il faut la jouer.**
+
+### 10.12 Retour utilisateur sur le rendu lui-meme
+
+« Ca manque un peu de nettete. » Deux pistes nommees par l'utilisateur, a explorer ensuite :
+une **echelle de couleur fonction de l'altitude**, et un **rendu plus plat**. L'eclairage actuel
+est un Lambert avec ambiante hemispherique (`0,25 + 0,75 x d`) qui tasse tout vers le blanc :
+c'est le premier suspect de ce manque de contraste.
+(`s31_raster.py`, sommets + points barycentriques a densite proportionnelle a l'aire projetee,
+budget de triangles proportionnel a l'empreinte au sol, plafonne a 40 000). Un enorme maillage
+de relief lointain recoit donc un budget SATURE, donc une densite de points tres faible par
+metre carre, donc des cellules vides — la silhouette de la reference pourrait etre un effet de
+son mode de rasterisation, pas d'un filtre de selection. A verifier avant d'inventer une regle
+de tri.
