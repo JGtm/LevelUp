@@ -471,3 +471,52 @@ kinetic UNSC 03:16, meme film) — ce sont les plus faciles a retrouver, le POV 
 **Regeneration de la table** : le balayage est un script d exploitation, pas un livrable — il se
 rejoue en enchainant `cmd/killsource json` sur les films tries par date et en ne retenant que
 les morts dont la nature n est pas `arme`.
+
+---
+
+## 6. LES BIDONS DE L ATLAS D ARMES — ce que la correlation offline rend, et ou elle s arrete
+
+Question posee : les index 27, 30, 31 et 32, « de toute evidence des fusion coils », ont-ils une
+correlation lisible hors ligne comme le kill feed en a une ?
+
+**Reponse : pour 27 oui et c est desormais certain ; pour 30 et 32 non, et c est definitif.**
+
+### 6.1 La chaine suivie
+
+Le bloc `UI display info` n est pas propre au `weap` : c est une structure partagee du systeme de
+tags. En la balayant sur TOUS les groupes (l auto-validation par l atlas servant de filtre — un
+bloc n est retenu que si son champ `sprite` porte un atlas connu), on obtient qui revendique
+chaque index. Croise avec le catalogue de degats, qui cite parfois le `weap` d un objet explosif
+ET son type d energie, la correspondance se lit sans rien deviner.
+
+| index | tags qui le revendiquent | nom craque | verdict |
+|---|---|---|---|
+| 27 | `1d63a8cd`, `2e4faab6`, `b44e6c18`, `e9e7ff79` | `fusion_coil` | **CERTAIN** — quatre tags concordent, et le catalogue identifie DEUX d entre eux comme objets explosifs **kinetic UNSC**. Le marqueur « ? » tombe |
+| 28 | `af8c936a` | `power_seed` | nom craque, image coherente |
+| 29 | `cfad30bb` | *(ne craque pas)* | **PAS un bidon** : l image est un marteau a long manche. L utilisateur y lit « Diminisher of Hope », la variante mythique du marteau — coherent avec l image |
+| 30 | *aucun* | — | aucun tag ne le revendique |
+| 31 | `73c6270e`, `be080b17` | `shade_turret` | **NOM FAUX, CONFIRME PAR L IMAGE** : c est un bidon, pas une tourelle. Deux tags concordants portent le meme index PERIME |
+| 32 | *aucun* | — | aucun tag ne le revendique |
+
+### 6.2 Ce que ca etablit, et ce que ca refuse d etablir
+
+**Le marqueur « ? » n est pas cosmetique, et 31 le prouve.** Deux tags independants s accordent
+sur `shade_turret` et l image dit le contraire. La concordance de deux tags NON canoniques ne
+vaut donc pas canonicite : ils partagent simplement le meme index perime. C est la troisieme
+confirmation de la regle du §1.11 — le nom craque ne designe pas l objet, l image et le registre
+le font.
+
+**30 et 32 ne sont revendiques par AUCUN tag.** Il n existe donc pas de correlation a suivre :
+ni `weap`, ni objet, ni catalogue ne pointe ces deux images. Les ranger parmi les variantes de
+bidon reste une inference d aspect — raisonnable (meme famille graphique, et le catalogue decrit
+bien QUATRE types d energie), mais **non etablie**. Dire laquelle porte quelle energie serait de
+la devinette, et ce document ne publie pas de devinettes.
+
+### 6.3 Reports
+
+- **Verification Theater** (§5) : reportee — la machine de l utilisateur ne fait pas tourner
+  Halo Infinite. Condition de reprise : une machine capable de lancer le jeu. Les temoins sont
+  dates et nommes, ils restent valables tant que les films sont dans Theater — le hardlight, deja
+  limite a des films de mars, est le plus perissable.
+- **Identite des bidons 30 et 32** : sans correlation offline possible, elle depend de la
+  verification Theater ci-dessus.
