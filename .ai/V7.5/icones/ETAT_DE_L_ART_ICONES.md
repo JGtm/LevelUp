@@ -22,13 +22,13 @@ grenades lancees et pictogrammes de mort.
 
 **Les noms internes sont CRAQUES** : les tags ne portent que des murmur3, les chaines sont
 strippees en release. **21 index nommes cote armes** (dont 10 marques « ? », voir §4) et
-**59 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
+**61 cote kill feed**, ces derniers lies a leur index par le jeu lui-meme.
 
 | Atlas | Tag | Images | Dimensions | Nommes |
 |---|---|---|---|---|
 | Armes, contour | `bc17adf1` | 40 | ~330x117 | 26 par le registre, 21 par le nom interne |
 | Armes, silhouette | `e39747c8` | 40 | idem, index par index | idem |
-| Kill feed | `0302cad3` | 88 | ~110x38 | 59 par sa table `bitd` |
+| Kill feed | `0302cad3` | 88 | ~110x38 | 61 par sa table `bitd` |
 
 ---
 
@@ -184,6 +184,33 @@ de l index 87**. Le kill feed passe a **59 sur 88**. Ce que la declinaison avait
 armement en DEUX mots — `patternVocabulary` ne composait que des armements d un seul mot. Le
 defaut est corrige, la composition a deux mots est desormais declinee.
 
+### 1.12 La source qui manquait : le catalogue de tags de degat
+
+La voie automatique n etait pas epuisee, elle etait mal alimentee. `damagetag/data/labels.tsv`
+— **deja versionne dans le depot**, deja embarque — porte le NOM D ASSET INTERNE de chaque
+source de degat, et personne n avait pense a le donner au craqueur :
+
+```
+sb_010_grn_un_lightninggrenade        sb_008_exp_single_small_hardlight
+sb_010_veh_un_falcongrenadelauncher   sb_008_exp_single_small_kineticunsc
+sb_010_veh_un_falconlmgturret         sb_008_exp_single_small_plasma
+sb_010_tur_bt_gatlingmortar           sb_008_exp_single_small_shock
+```
+
+Les noms y sont COLLES la ou le kill feed separe : on genere donc toutes les insertions d un ou
+deux underscores, sur le nom entier et sur chacune de ses queues (`sb_010_grn_un_` est un
+classement, pas un nom). Rendu : **`killfeed_lightning_grenade` (index 48)** — la grenade Dynamo
+s appelle « lightning grenade » en interne, ce qui explique pourquoi `dynamo_grenade` echouait
+depuis le debut — et **`killfeed_gatling_mortar` (index 14)**. La meme source retrouve
+`killfeed_falcon_grenade_launcher` de facon INDEPENDANTE : source machine et oeil humain
+concordent, ce qui vaut controle. Le kill feed passe a **61 sur 88**.
+
+**Et elle repond a la question des bobines sans craquage.** Le catalogue distingue **quatre
+types d energie** (`hardlight`, `kineticunsc`, `plasma`, `shock`) sur deux chassis
+(`hlmt 95b23ee5` et `a2fb33e4`) — soit exactement la famille que l utilisateur voyait sans
+pouvoir la trancher. Identifier UNE occurrence de chaque type en Theater lie les quatre icones
+d un coup ; c est l objet de §5.
+
 **RESTENT SANS ETIQUETTE — trois, et une hypothese.** Kill feed **25, 63, 75** : l utilisateur ne
 les reconnait pas. Kill feed **77** : « ca pourrait etre la bombe/balle, le dessin se rapproche
 de l arme 34 » — hypothese, pas un fait. Les index d armes **31 et 32** ne sont pas des trous :
@@ -290,7 +317,7 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 | 00 | battle_rifle | 01 | commando_rifle | 02 | assault_rifle | 03 | — |
 | 04 | — | 05 | turret_chaingun | 06 | hydra | 07 | sniper |
 | 08 | — | 09 | — | 10 | — | 11 | — |
-| 12 | — | 13 | gravity_hammer | 14 | — | 15 | skewer |
+| 12 | — | 13 | gravity_hammer | 14 | gatling_mortar | 15 | skewer |
 | 16 | plasma_blaster | 17 | plasma_pistol | 18 | sword | 19 | needler |
 | 20 | — | 21 | turret_plasma | 22 | heatwave | 23 | — |
 | 24 | sentinelbeam | 25 | — | 26 | warthog | 27 | rockethog |
@@ -299,7 +326,7 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 | 36 | ghost | 37 | chopper | 38 | scorpion_turret | 39 | — |
 | 40 | — | 41 | — | 42 | — | 43 | — |
 | 44 | — | 45 | — | 46 | frag_grenade | 47 | plasma_grenade |
-| 48 | — | 49 | spike_grenade | 50 | plasma_grenade_stick | 51 | spike_grenade_stick |
+| 48 | lightning_grenade | 49 | spike_grenade | 50 | plasma_grenade_stick | 51 | spike_grenade_stick |
 | 52 | — | 53 | bomb_melee | 54 | callout | 55 | environment |
 | 56 | repulsor | 57 | ricochet | 58 | — | 59 | ball |
 | 60 | splatter | 61 | suicide | 62 | — | 63 | — |

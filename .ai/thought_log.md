@@ -60534,3 +60534,35 @@ sont les variantes de bobine listees en 30.
 
 **Prochaine etape**. Correlation film -> icone pour les tonneaux et bobines (proposee, non
 lancee : hors perimetre « extraction + revue » de ce lot).
+
+## [2026-08-09] v7.5 voie C — icones : le catalogue de tags de degat etait la source manquante
+
+**Statut** : En cours (le balayage des films tourne).
+
+**Decision technique**. La voie automatique n etait pas epuisee, elle etait MAL ALIMENTEE.
+`internal/games/halo_infinite/film/damagetag/data/labels.tsv` — deja versionne, deja embarque —
+porte le nom d asset INTERNE de chaque source de degat (`sb_010_grn_un_lightninggrenade`,
+`sb_008_exp_single_small_hardlight`, `sb_010_tur_bt_gatlingmortar`). Ce vocabulaire n avait
+jamais ete donne au craqueur. Branche via l API du paquet (`damagetag.IDs` + `Lookup`), pas par
+un chemin de fichier.
+
+Les noms y sont COLLES la ou le kill feed separe : toutes les insertions d un ou deux
+underscores sont generees, sur le nom entier et sur chacune de ses queues (le prefixe
+`sb_010_grn_un_` est un classement, pas un nom). Aucune heuristique de dictionnaire.
+
+**Resultats observes**. `killfeed_lightning_grenade` -> index 48 : la grenade Dynamo s appelle
+« lightning grenade » en interne, ce qui explique pourquoi `dynamo_grenade` echouait depuis le
+debut. `killfeed_gatling_mortar` -> index 14. La source retrouve aussi
+`killfeed_falcon_grenade_launcher` de facon INDEPENDANTE de l hypothese humaine — controle
+croise. **Kill feed a 61 sur 88**, 27 trous restants.
+
+**Ce que ca change pour les bobines**. Le catalogue distingue QUATRE types d energie
+(`hardlight`, `kineticunsc`, `plasma`, `shock`) sur deux chassis — exactement la famille que
+l utilisateur voyait sans pouvoir la trancher, et il avait devine juste en citant « hardlight ».
+Une occurrence observee par type lie les quatre icones d un coup.
+
+**En cours**. Balayage `killsource json` des 60 films les plus RECENTS (Theater ne garde que le
+recent) pour produire, par tag de source non-arme : film, date, carte, horodatage. Les films
+sont apparies aux matchs par prefixe de 8 caracteres du `match_id` — verifie.
+
+**Prochaine etape**. Livrer la table des temoins, un par type d energie.
