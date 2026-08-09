@@ -170,8 +170,10 @@ desormais confirme **deux fois, sur deux atlas independants**. Ce n est plus une
 un fait : **en cas de desaccord, le `sprite index` + le registre font foi, jamais le nom craque**.
 Sans cette regle, l integration afficherait le Calcineur a la place du Cremateur.
 
-Meme nature, encore a verifier : l index 16 est nomme `plasma_blaster` par le jeu et lu comme
-**Fusil traqueur** (`hinf_stalker_rifle`) par l oeil humain.
+Meme nature, TRANCHE de la meme facon : l index 16 est nomme `plasma_blaster` par le jeu et lu
+comme **Fusil traqueur** (`hinf_stalker_rifle`) par l oeil humain, qui a CONFIRME son attribution
+(2026-08-09) — les deux icones sont distinctes et chacune est a sa place. Troisieme occurrence du
+meme ecart : le nom interne qualifie le TYPE DE PROJECTILE, pas l arme.
 
 **DEUXIEME PASSE (meme jour) — et un nom rendu par l oeil, pas par la machine.** L utilisateur
 a complete : armes 19 = Canon a mitraille (Scrap Cannon, coherent avec kill feed 14), kill feed
@@ -437,13 +439,13 @@ d objet explosif par son asset (`sb_008_exp_single_small_<energie>`).
 
 ### 5.1 Objets explosifs — un temoin par type d energie
 
-| energie | tag | film | date | carte | timing | occurrences |
+| energie | tag | film | date | carte | timing | tueur -> victime |
 |---|---|---|---|---|---|---|
-| plasma | `5e389b5d` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **00:45** | 11 |
-| kinetic UNSC | `0d203522` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **03:16** | 23 |
-| shock | `15cdba9d` | `4f77afc1` | 2026-07-24 22:20 | Flood Gulch | **06:28** | 10 |
-| hardlight | `c14e9cea` | `e151b467` | 2026-03-19 13:08 | Chasm | **04:57** | 3 |
-| non qualifie | `bd6cae8b` | `a5975e9e` | 2026-04-06 23:11 | Curfew | **01:15** | 1 |
+| plasma | `5e389b5d` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **08:38** | **JGtm** -> LORD83DAN |
+| kinetic UNSC | `0d203522` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **03:16** | **JGtm** -> Just1nBurn3y |
+| shock | `15cdba9d` | `4f77afc1` | 2026-07-24 22:20 | Flood Gulch | **06:28** | Shiloh0209 -> SKR DRAAK |
+| hardlight | `c14e9cea` | `e151b467` | 2026-03-19 13:08 | Chasm | **04:57** | Chocoboflor -> LoiTarse4647604 |
+| non qualifie | `bd6cae8b` | `a5975e9e` | 2026-04-06 23:11 | Curfew | **01:15** | Malignant673 -> **JGtm** |
 
 **Reserve sur le hardlight** : il n apparait que sur **Chasm**, et seulement dans des films de
 MARS. Le film peut avoir quitte Theater. S il manque, il faut d abord rejouer un match sur
@@ -457,9 +459,14 @@ juillet, le plus recent du corpus : c est le temoin a tenter en premier.
 **Vehicules** : 12 tags distincts, l essentiel sur `4f77afc1` (Flood Gulch, 2026-07-24) —
 notamment `f712c64a` avec 37 occurrences a 08:29, et `674a7d69` avec 11 a 02:33.
 
-**Environnement** : un seul tag, `00403594`, vu sur Nemesis et Banished Narrows le 2026-04-06
-(par exemple `1eedd3c8` a 02:04). C est le candidat naturel pour l icone de CHUTE (index 52,
-etiquetee « Fall » par l utilisateur).
+**Environnement** : un seul tag, `00403594`. Temoin : `1eedd3c8`, Nemesis, 2026-04-06 22:49,
+**02:04, JGtm -> EIcRriizz** ; deux autres dans le meme film a 04:53 et 05:04
+(El sir jorge -> TriksyFTW, puis -> JGtm). C est le candidat naturel pour l icone de CHUTE
+(index 52, etiquetee « Fall » par l utilisateur).
+
+**Le tueur est donne parce qu il rend le temoin trouvable** : dans Theater on cherche un
+evenement, pas un horodatage a la seconde. Deux temoins ont JGtm pour tueur (plasma 08:38 et
+kinetic UNSC 03:16, meme film) — ce sont les plus faciles a retrouver, le POV etant le sien.
 
 **Regeneration de la table** : le balayage est un script d exploitation, pas un livrable — il se
 rejoue en enchainant `cmd/killsource json` sur les films tries par date et en ne retenant que

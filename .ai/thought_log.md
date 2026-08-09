@@ -60599,3 +60599,49 @@ vet et build verts au commit precedent, aucune modification de code dans celui-c
 
 **Prochaine etape**. Observation Theater par l utilisateur ; puis, si les tonneaux sont
 tranches, l integration web reste derriere le gate visuel (hors de ce lot).
+
+## [2026-08-09] v7.5 voie C — icones : temoins nommes, et le plan d integration
+
+**Statut** : Complete (plan ecrit, non execute).
+
+**Temoins enrichis**. La table §5 porte desormais TUEUR -> VICTIME, extrait par une seconde passe
+`killsource json` sur les 5 films temoins. Deux temoins ont JGtm pour tueur (plasma 08:38 et
+kinetic UNSC 03:16, meme film `fccc61cd`) : ce sont les plus faciles a retrouver, le POV du film
+etant le sien. Le tueur est donne parce que dans Theater on cherche un EVENEMENT, pas un
+horodatage a la seconde.
+
+**Index 16 tranche**. L utilisateur confirme son attribution : `plasma_blaster` (nom du jeu) est
+le Fusil traqueur, les deux icones sont distinctes et chacune est a sa place. **Troisieme
+occurrence** du meme ecart apres heatwave/cindershot sur deux atlas : le nom interne qualifie le
+TYPE DE PROJECTILE, pas l arme. La regle « sprite index + registre font foi, jamais le nom
+craque » est confirmee une fois de plus.
+
+**Decision technique — le mapping va dans le CODE, pas en base.** `index.json` est genere par
+l extraction et porte deja `index -> weapon_key`, LU dans le jeu. Le mettre en base imposerait
+migration + seed pour une donnee statique deja versionnee, et creerait une seconde source de
+verite que rien ne comparerait — exactement le defaut des tables recopiees de la page de nommage,
+corrige au commit `5543dc170`. Precedent du depot : `abilities-assets/index.json`. La base garde
+ce qu elle porte bien (registre, libelles FR/EN, identifiants filmshell) et n est pas touchee.
+
+**Trois defauts de l existant, mesures par la cartographie** : (1) la resolution d image est
+keyee par `weapon_labels.name_en`, dernier reste du domaine arme keye par nom EN brut, et il
+DIVERGE deja de la source canonique (Mk51 vs Mk50 pour le Sidekick) ; (2) `Cindershot` est servi
+par un fichier nomme `Cremator.png` ; (3) aucun test ne verifie qu un PNG existe sur disque — un
+renommage passe la CI et casse l UI en silence. L etape 1 du plan corrige (1), l etape 2 corrige
+(2) et (3).
+
+**Teinte d equipe — faisable, avec une limite dure.** Verifie sur les pixels : le dessin est
+porte par l alpha, en blanc (`killfeed-00.png`, 1638 opaques dont 94,7 % blanc pur ; le reste est
+l anticrenelage premultiplie). Un masque CSS teinte par `tokenCssVar('team-ally')` suffit, sans
+nouvel asset, et suit automatiquement les couleurs d outline choisies in-game
+(`theme-provider.tsx:27-30`). MAIS le kill feed web est un `scatter` ECharts : un symbole image
+ECharts NE PEUT PAS etre teinte. Trois issues chiffrees dans le plan ; la pre-teinte est REFUSEE
+(les couleurs d equipe sont configurables, le produit cartesien n existe pas). A trancher avec
+l utilisateur : le kill feed reste-t-il un chart, ou devient-il une liste DOM ?
+
+**Livrable**. `.ai/V7.5/icones/PLAN_INTEGRATION_ICONES.md` — 4 etapes, chacune avec son gate,
+plus un §5 « ce qui n est PAS dans ce plan » (le rejeu 2D refuse deliberement les couleurs
+d equipe, `ReplayTeams.tsx:102-110` ; Halo 5 sert des URL CDN ; la licence de redistribution
+reste une decision utilisateur).
+
+**Prochaine etape**. Decision utilisateur sur le rendu du kill feed, puis execution de l etape 1.
