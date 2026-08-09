@@ -107,3 +107,33 @@ func TestAireMedianeSuitLEchelleDeLInstance(t *testing.T) {
 		t.Fatalf("instance a l'echelle 10 : aire mediane %.6f m2, attendu %.6f", got, veut)
 	}
 }
+
+// TestComposanteAccessibleSArreteALaMarcheTropHaute — deux dalles voisines ne communiquent que
+// si leur denivele se franchit. C'est ce qui distingue la connexite de la simple presence de
+// matiere.
+//
+// MUTATION QUI LE FAIT ROUGIR : retirer le test `math.Abs(zv-z) > marcheMax` dans
+// `ComposanteAccessible` — la dalle inatteignable rejoint la composante.
+func TestComposanteAccessibleSArreteALaMarcheTropHaute(t *testing.T) {
+	// Depart sur la dalle gauche (z=0) ; la dalle droite est a `marche` au-dessus.
+	depart := [][3]float64{{2, 2, 0}}
+	cas := []struct {
+		marche  float64
+		attendu bool
+	}{
+		{0.2, true},  // une marche franchissable : les deux dalles communiquent
+		{3.0, false}, // un mur de 3 m : la dalle droite est inatteignable a pied
+	}
+	for _, c := range cas {
+		r := rendulDeuxDalles(c.marche)
+		acc := r.ComposanteAccessible(depart, MarcheMaxMetres)
+		// (6,2) est sur la dalle DROITE.
+		if got := acc[2*r.NX+6]; got != c.attendu {
+			t.Errorf("marche %.1f m : dalle droite accessible=%v, attendu %v", c.marche, got, c.attendu)
+		}
+		// La dalle de depart est toujours dans la composante.
+		if !acc[2*r.NX+2] {
+			t.Errorf("marche %.1f m : la dalle de depart doit etre dans la composante", c.marche)
+		}
+	}
+}
