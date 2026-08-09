@@ -273,10 +273,27 @@ func TestRenduCliffhanger(t *testing.T) {
 			masque, _ = matiereReference(validee, bo, larg, haut)
 			t.Log("REPLI : carte masquee par la silhouette de la reference (Cliffhanger UNIQUEMENT)")
 		}
-		ecritPNG(t, seule, carteSeulePNG(rendu, larg, haut, masque))
+		style := styleRendu(os.Getenv("RENDU_STYLE"))
+		if style == "" {
+			style = styleDoux
+		}
+		bas, haute, _ := rendu.BornesAltitudeRobustes()
+		t.Logf("style %q · bornes d'altitude robustes (centiles 2/98) [%+.2f ; %+.2f] m",
+			style, bas, haute)
+		ecritPNG(t, seule, carteSeulePNG(rendu, larg, haut, masque, style))
 		fmt.Println("carte seule ecrite:", seule)
 	}
 }
+
+// styleRendu : les habillages compares au gate de nettete du 2026-08-09.
+type styleRendu string
+
+const (
+	styleDoux     styleRendu = "doux"     // Lambert continu — l'existant
+	stylePlat     styleRendu = "plat"     // aplats + aretes
+	styleAltitude styleRendu = "altitude" // nuancier d'altitude + ombrage
+	styleCombine  styleRendu = "combine"  // nuancier + aplats + aretes
+)
 
 // carteSeulePNG rend la reconstruction sans reference, sans separateur et sans diagnostic —
 // l'empreinte des instances non resolues n'y figure PAS, c'est un outil de revue.
@@ -284,8 +301,9 @@ func TestRenduCliffhanger(t *testing.T) {
 // `masque` non nil ne garde que les pixels ou il vaut true. Il n'existe que pour le REPLI
 // explicite decrit au §10.11 du handoff : masquer par la silhouette de la carte validee ne
 // vaut que pour Cliffhanger, seule carte a en posseder une. Ne jamais s'en servir comme regle.
-func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool) *image.RGBA {
+func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool, style styleRendu) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, larg, haut))
+	bas, haute, bornesOK := rendu.BornesAltitudeRobustes()
 	for py := 0; py < haut; py++ {
 		j := haut - 1 - py
 		for px := 0; px < larg; px++ {
@@ -296,8 +314,18 @@ func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool) *image.RGBA {
 			if !ok {
 				continue // alpha 0 : pas de matiere, pas de pixel
 			}
-			g := uint8(255 * e)
-			img.Set(px, py, color.RGBA{g, g, g, 255})
+			if style == stylePlat || style == styleCombine {
+				e, _ = rendu.EclairementPlat(px, j)
+			}
+			c := color.RGBA{uint8(255 * e), uint8(255 * e), uint8(255 * e), 255}
+			if (style == styleAltitude || style == styleCombine) && bornesOK {
+				z, _ := rendu.Altitude(px, j)
+				c = TeinteAltitude((z-bas)/(haute-bas), e)
+			}
+			if (style == stylePlat || style == styleCombine) && rendu.Arete(px, j) {
+				c = color.RGBA{c.R / 3, c.G / 3, c.B / 3, 255}
+			}
+			img.Set(px, py, c)
 		}
 	}
 	return img

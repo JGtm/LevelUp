@@ -1,3 +1,38 @@
+## [2026-08-09] v7.5 — cartes : la nettete tient a trois leviers, pas a un reglage d'eclairage
+
+**Statut** : Complete cote outillage ; le CHOIX DU STYLE revient a l'utilisateur (gate visuel).
+Detail : §10.12 de `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : l'ombrage ne peut PAS tout montrer, et aucun reglage ne l'y
+amenera.** Deux dalles horizontales a deux hauteurs ont exactement le meme eclairement — le
+Lambert les confond par construction. Ce qui les separe est une rupture d'ALTITUDE entre
+pixels voisins, pas une rupture de normale. D'ou `rendu_couleur.go` et ses trois leviers, tous
+constants : paliers d'eclairement (5), aretes (seuil 0,5 m, PHYSIQUE — a 9 cm par pixel une
+marche d'un demi-metre est un rebord, pas une pente), nuancier d'altitude borne aux
+centiles 2/98.
+
+**Bornes robustes, jamais min/max** : la regression est deja survenue sur ce chantier, une
+cellule a -131 m ecrasait la carte dans deux nuances de blanc. Sur Cliffhanger les bornes
+valent [-10,97 ; +25,50] m.
+
+**DEUX TEMOINS TAUTOLOGIQUES ECRITS PUIS CORRIGES DANS LA MEME SEANCE.** (1) Le triangle
+aberrant du temoin des centiles etait pose SOUS une dalle : le z-buffer garde la surface la
+plus haute, la cellule aberrante n'existait donc jamais et la mutation min/max passait au vert.
+(2) Une fois la cellule rendue visible, l'echantillon de 50 cellules rendait le 2e centile egal
+a la cellule aberrante : le temoin condamnait du code JUSTE. Il porte desormais 20 000 cellules,
+l'ordre de grandeur d'une vraie carte.
+
+**Lecon, quatrieme occurrence sur ce chantier** : une mutation annoncee dans un commentaire
+doit etre JOUEE. Ecrire « cette mutation doit faire rougir » ne coute rien et ne prouve rien —
+et un temoin faux se trompe dans les DEUX sens : il peut valider une regression comme il peut
+condamner du code juste.
+
+**Prochaine etape** : choix du style par l'utilisateur parmi `doux` / `plat` / `altitude` /
+`combine`, puis bascule du defaut. Ensuite seulement, le balayage du seuil de finesse sur les
+26 autres cartes par l'oracle des ancres.
+
+---
+
 ## [2026-08-09] v7.5 — cartes : la zone jouable se lit dans la FINESSE du maillage (carte B validee)
 
 **Statut** : Complete. Carte de Cliffhanger validee par l'utilisateur (« je valide carte B
