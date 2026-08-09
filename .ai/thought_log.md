@@ -60369,3 +60369,28 @@ en haut a gauche non rendue. Les deux correspondent aux grandes dalles de terrai
 dans les modules GLOBAUX ecartes ici pour chasser les rochers. Le bon reglage est entre les
 deux, et le bornage a la boite de l'instance (`AddMeshBorne`, deja mesure sur le volume) est le
 candidat : il avait ramene les trous de 11,1 % a 0,8 % sans faire entrer le decar aberrant.
+
+## [2026-08-09] Investigation : la zone jouable par la COLLISION (instanced physics instances)
+
+**Statut : Complété — VERDICT NÉGATIF ARGUMENTÉ.**
+
+**Décision technique** : décoder le bloc `instanced physics instances` du sbsp par
+l'appariement par rang du plugin (jamais d'offset câblé), le vérifier par invariants joués
+(orthonormalité 100 % à l'offset nominal, 0 % à +4 octets ; typeMask entièrement dans les
+4 drapeaux déclarés ; positions dans la boîte du bsp), puis juger le filtre par l'oracle des
+29 221 positions et la comparaison pixel à pixel.
+
+**Résultats** : stride réel 192 (plugin : 176 + 16 o de padding final) ; références de
+collision = groupe `scgt`, 552/552 résolues sur les 132 modules de l'installation, format
+non décodé ; appariement m_guid -> external_guid opérationnel (91 % des instances de rendu
+ont une physique). MAIS le décor porte lui aussi la collision Play (parois, falaises) :
+filtre physique-any : excès 149,3 -> 129,3 %, accord 38,5 -> 41,9 % (grain : 66,7 %) ;
+physique-play PERD 158 positions jouées ; play-et-grain : +0,5 pt d'accord contre 254
+positions perdues. Sur Catalyst, Play garde 88 % des instances — sans effet sur l'excès.
+
+**Conclusion** : la collision dit « le joueur se cogne ici », pas « le joueur marche ici » —
+porte fermée, chiffres et portes annexes consignés dans
+`.ai/V7.5/cartes/INVESTIGATION_PHYSIQUE_ZONE_JOUABLE_2026-08-09.md`. Le décodage du bloc
+(structure complète vérifiée) est un acquis réutilisable ; sondes non commitées dans
+`physique_sonde_gamefiles_test.go`. Prochaine piste restante : l'ACCESSIBILITÉ (composante
+connexe depuis les ancres), renforcée par ce négatif.
