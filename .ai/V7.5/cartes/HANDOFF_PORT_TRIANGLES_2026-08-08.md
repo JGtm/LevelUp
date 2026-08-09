@@ -643,12 +643,45 @@ qui separe est celui que la doc decrit : un sol finement maille pose sur de gran
 socle (`TestMedianeResisteAuSocle`). **Ecrire « cette mutation doit faire rougir » ne suffit
 pas — il faut la jouer.**
 
-### 10.12 Retour utilisateur sur le rendu lui-meme
+### 10.12 LA NETTETE — trois leviers, aucun reglage par carte
 
-« Ca manque un peu de nettete. » Deux pistes nommees par l'utilisateur, a explorer ensuite :
-une **echelle de couleur fonction de l'altitude**, et un **rendu plus plat**. L'eclairage actuel
-est un Lambert avec ambiante hemispherique (`0,25 + 0,75 x d`) qui tasse tout vers le blanc :
-c'est le premier suspect de ce manque de contraste.
+« Ca manque un peu de nettete » (utilisateur, 2026-08-09), avec deux pistes nommees : une
+echelle de couleur fonction de l'altitude, et un rendu plus plat. Le suspect etait le bon —
+l'eclairage de `rendu.go` est un Lambert avec ambiante hemispherique `0,25 + 0,75 x d` : il ne
+descend jamais sous 25 %, sature vite, donc tout se tasse vers le blanc.
+
+`rendu_couleur.go` porte trois leviers, tous CONSTANTS, jamais regles par carte :
+
+| levier | ce qu'il apporte | valeur |
+|---|---|---|
+| **paliers** | des aplats au lieu d'un degrade continu ; les faces se separent | `PaliersEclairement = 5` |
+| **aretes** | une rupture d'ALTITUDE entre voisins, pas une rupture de normale | `SeuilAreteMetres = 0,5` |
+| **nuancier d'altitude** | teinte par la hauteur, bornes aux centiles 2/98 | rampe sequentielle |
+
+**Pourquoi les aretes portent sur l'altitude et non sur la normale** : deux dalles horizontales
+a deux hauteurs ont exactement le meme eclairement — l'ombrage ne peut pas les separer, quel
+que soit son reglage. C'est ce que le temoin `TestAreteReveleCeQueLOmbrageCache` verifie
+d'abord, avant meme de tester l'arete.
+
+Le seuil de 0,5 m est PHYSIQUE : a ~9 cm par pixel, une marche d'un demi-metre n'est pas une
+pente, c'est un rebord ; en dessous, un Spartan franchit sans sauter.
+
+**Bornes du nuancier : centiles 2/98, jamais min/max.** Lecon deja payee le 2026-08-08 — une
+seule cellule a -131 m ecrasait toute la carte dans deux nuances de blanc. Sur Cliffhanger les
+bornes robustes valent [-10,97 ; +25,50] m.
+
+Quatre styles produits pour le gate : `doux` (l'existant), `plat`, `altitude`, `combine`
+(variable `RENDU_STYLE`). **Le choix revient a l'utilisateur.**
+
+**DEUX TEMOINS TAUTOLOGIQUES CORRIGES CE JOUR, meme lecon que le §8 :**
+- le triangle aberrant du temoin des centiles etait pose SOUS une dalle — le z-buffer garde la
+  surface la plus haute, donc la cellule aberrante n'existait jamais. Mutation min/max verte.
+- une fois la cellule rendue visible, l'echantillon de 50 cellules rendait le 2e centile egal
+  a la cellule aberrante elle-meme : le temoin condamnait du code juste. Il porte desormais
+  20 000 cellules, l'ordre de grandeur d'une vraie carte.
+
+C'est la quatrieme fois que ce chantier bute sur un temoin qui ne teste rien. La regle tient en
+une ligne : **une mutation annoncee dans un commentaire doit etre JOUEE**.
 (`s31_raster.py`, sommets + points barycentriques a densite proportionnelle a l'aire projetee,
 budget de triangles proportionnel a l'empreinte au sol, plafonne a 40 000). Un enorme maillage
 de relief lointain recoit donc un budget SATURE, donc une densite de points tres faible par
