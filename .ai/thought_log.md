@@ -60645,3 +60645,44 @@ d equipe, `ReplayTeams.tsx:102-110` ; Halo 5 sert des URL CDN ; la licence de re
 reste une decision utilisateur).
 
 **Prochaine etape**. Decision utilisateur sur le rendu du kill feed, puis execution de l etape 1.
+
+## [2026-08-09] v7.5 voie C — icones : les bidons de l atlas d armes, correlation offline
+
+**Statut** : Complete.
+
+**Question** : les index 27, 30, 31, 32 de l atlas d armes (« de toute evidence des fusion
+coils ») ont-ils une correlation lisible hors ligne, comme le kill feed en a une ?
+
+**Decision technique**. Le bloc `UI display info` n est PAS propre au `weap` : c est une
+structure partagee du systeme de tags. Balaye sur tous les groupes — l auto-validation par
+l atlas servant de filtre — il rend qui revendique chaque index. Croise avec le catalogue de
+degats, qui cite parfois le `weap` d un objet explosif ET son type d energie, la correspondance
+se lit sans rien deviner.
+
+**Resultats observes**.
+- **Index 27 = `fusion_coil`, CERTAIN** : quatre tags concordent, et le catalogue identifie DEUX
+  d entre eux (`1d63a8cd`, `2e4faab6`) comme objets explosifs **kinetic UNSC**. Le marqueur
+  « ? » tombe. C est la correlation demandee, et elle est offline.
+- **Index 29 n est PAS un bidon** : l image est un marteau a long manche. La lecture
+  « Diminisher of Hope » de l utilisateur (variante mythique du marteau) est coherente.
+- **Index 31 : le nom craque est FAUX, et l image le prouve** — `shade_turret` revendique par
+  DEUX tags alors que l image est un bidon. La concordance de deux tags NON canoniques ne vaut
+  donc pas canonicite : ils partagent le meme index perime. Troisieme confirmation de la regle
+  « le nom craque ne designe pas l objet ».
+- **Index 30 et 32 : AUCUN tag ne les revendique.** Il n existe pas de correlation a suivre. Les
+  ranger parmi les variantes de bidon reste une inference d aspect, raisonnable mais NON etablie
+  — dire laquelle porte quelle energie serait de la devinette, non publiee.
+
+**Reports consignes** (§6.3 de l etat de l art) : la verification Theater est reportee, la
+machine de l utilisateur ne faisant pas tourner Halo Infinite ; condition de reprise = une
+machine capable de lancer le jeu. Les temoins restent valables tant que les films sont dans
+Theater, le hardlight (deja limite a des films de mars) etant le plus perissable. L identite des
+bidons 30 et 32 depend de cette verification.
+
+**Gates**. Diff de documentation seule (aucun code produit modifie ; la sonde `coils` vit dans
+`cmd/tmp_wicons`, gitignore). `gofmt`, `go vet` et `go build` etaient verts au dernier commit de
+code (`8464c10d3`), inchange depuis.
+
+**Prochaine etape**. Rien de bloquant cote extraction. Decisions utilisateur en attente : rendu
+du kill feed (chart ou liste DOM) et redistribution des assets, toutes deux prealables a
+l execution de `PLAN_INTEGRATION_ICONES.md`.
