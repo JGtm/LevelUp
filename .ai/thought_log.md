@@ -60132,3 +60132,34 @@ juger a l'oeil sur une seule. Critere : chaque ancre d'objectif, ramenee au sol 
 **Prochaine etape** : instruire live_fire (0/28, le defaut le plus net), puis fragmentation.
 Le biais de demi-bande (-0,1 a -0,5 m partout) reste a corriger dans la convention
 d'altitude de `SolLePlusProche`.
+
+## [2026-08-09] Cartes v7.5 — live_fire instruite (cause hors chaine), choix du bsp refute
+
+**Statut** : En cours
+
+**Decision technique principale** — instruire la carte que le balayage designe le plus
+nettement, plutot que de travailler la moyenne.
+
+**Resultats observes**
+- **live_fire : CAUSE TROUVEE, et elle est hors de notre chaine.** Le fichier
+  `sgh_interlock-rtx-new.module` ne contient AUCUN tag `sbsp`, et c'est le seul fichier de son
+  dossier. Verifie qu'elle n'emprunte pas sa geometrie a une autre carte : son `level_id`
+  (1253388187) ne regroupe que ses deux propres variantes, contrairement au partage observe
+  sur les Heavies. Exception a consigner ; reste a trouver ou vit sa structure.
+- **Decouverte collaterale** : une carte declare PLUSIEURS bsp. Cliffhanger en a deux —
+  l'arene (113 x 114 m, 10 357 instances) et un horizon (6 619 x 10 471 m, 3 971 instances).
+  La selection retenait « le plus d'instances », ce qui etait juste ici sans garantie ailleurs.
+- **Choix du bsp par les ancres : REFUTE comme correctif.** Regle remplacee par « le bsp qui
+  contient le plus d'ancres » : resultat 306/474, IDENTIQUE ligne pour ligne. Sur les 27
+  cartes, le bsp le plus peuple est toujours celui des ancres. La regle est conservee (elle
+  supprime une dependance au hasard) mais elle ne corrige rien, et la mesure est ecrite dans
+  son commentaire pour que personne ne lui prete un effet qu'elle n'a pas.
+- **La cause d'aquarius reste ouverte** : 6/17 et 7/19 avec un ecart median NORMAL (-0,15 m).
+  Bonne altitude, mauvais taux — c'est une dispersion, pas un decalage.
+
+**Bilan des pistes de rendu instruites depuis hier** : LOD innocent, filtre de pente refute
+(retire), choix du bsp sans effet. Trois hypotheses, trois mesures, zero correctif — mais
+zero fausse piste laissee dans le code.
+
+**Prochaine etape** : le biais de demi-bande dans `SolLePlusProche` (-0,1 a -0,5 m partout),
+seule correction identifiee dont l'effet soit previsible. Puis le gate visuel cote a cote.
