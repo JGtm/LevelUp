@@ -28,11 +28,12 @@ var LumiereRendu = normalise([3]float64{-0.4, 0.5, 0.75})
 
 // Rendu porte un z-buffer et la normale retenue par pixel.
 type Rendu struct {
-	Cell   float64
-	Min    [2]float64
-	NX, NY int
-	z      []float64
-	n      [][3]float64
+	Cell    float64
+	Min     [2]float64
+	NX, NY  int
+	z       []float64
+	plafond float64
+	n       [][3]float64
 }
 
 // NewRendu prepare un rendu sur une emprise et une resolution donnees.
@@ -40,7 +41,7 @@ func NewRendu(min, max [2]float64, cell float64) *Rendu {
 	nx := int((max[0]-min[0])/cell) + 1
 	ny := int((max[1]-min[1])/cell) + 1
 	r := &Rendu{Cell: cell, Min: min, NX: nx, NY: ny,
-		z: make([]float64, nx*ny), n: make([][3]float64, nx*ny)}
+		z: make([]float64, nx*ny), n: make([][3]float64, nx*ny), plafond: math.NaN()}
 	for i := range r.z {
 		r.z[i] = math.Inf(-1)
 	}
@@ -61,13 +62,47 @@ func (r *Rendu) AddMesh(m *Mesh, in Instance) {
 	}
 }
 
+// AddMeshBorne projette un maillage en n'ecrivant que dans la boite monde declaree de son
+// instance.
+//
+// Meme raison que pour le volume : la boite (sbsp @0x7C) et le maillage (tag rtgo) viennent de
+// deux sources independantes, et quelques instances des modules globaux debordent d'un facteur
+// 42,8 de leur diagonale au 99e centile. Sans bornage elles deversent du decor sur toute la
+// carte. Avec, on peut enfin prendre TOUS les modules — donc les dalles de terrain qui portent
+// le second pont — sans ramener l'aberration.
+func (r *Rendu) AddMeshBorne(m *Mesh, in Instance, marge float64) {
+	if m == nil {
+		return
+	}
+	monde := make([][3]float64, len(m.Vertices))
+	for i, s := range m.Vertices {
+		monde[i] = in.LocalToWorld(s)
+	}
+	lo := [3]float64{in.AABBMin[0] - marge, in.AABBMin[1] - marge, in.AABBMin[2] - marge}
+	hi := [3]float64{in.AABBMax[0] + marge, in.AABBMax[1] + marge, in.AABBMax[2] + marge}
+	for _, t := range m.Triangles {
+		r.triangleBorne(monde[t[0]], monde[t[1]], monde[t[2]], lo, hi)
+	}
+}
+
 func (r *Rendu) triangle(a, b, c [3]float64) {
+	inf := [3]float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)}
+	sup := [3]float64{math.Inf(1), math.Inf(1), math.Inf(1)}
+	r.triangleBorne(a, b, c, inf, sup)
+}
+
+func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 	minX := math.Min(a[0], math.Min(b[0], c[0]))
 	maxX := math.Max(a[0], math.Max(b[0], c[0]))
 	minY := math.Min(a[1], math.Min(b[1], c[1]))
 	maxY := math.Max(a[1], math.Max(b[1], c[1]))
 	if maxX < r.Min[0] || maxY < r.Min[1] ||
 		minX > r.Min[0]+float64(r.NX)*r.Cell || minY > r.Min[1]+float64(r.NY)*r.Cell {
+		return
+	}
+	minX, maxX = math.Max(minX, lo[0]), math.Min(maxX, hi[0])
+	minY, maxY = math.Max(minY, lo[1]), math.Min(maxY, hi[1])
+	if minX > maxX || minY > maxY {
 		return
 	}
 	nrm := normaleFace(a, b, c)
@@ -82,6 +117,12 @@ func (r *Rendu) triangle(a, b, c [3]float64) {
 			x := r.Min[0] + (float64(i)+0.5)*r.Cell
 			z, dedans := altitudeAuPoint(a, b, c, det, x, y)
 			if !dedans {
+				continue
+			}
+			if z < lo[2] || z > hi[2] {
+				continue
+			}
+			if !math.IsNaN(r.plafond) && z > r.plafond {
 				continue
 			}
 			k := j*r.NX + i
@@ -137,3 +178,15 @@ func normalise(v [3]float64) [3]float64 {
 	}
 	return [3]float64{v[0] / n, v[1] / n, v[2] / n}
 }
+
+// Plafond limite le rendu aux surfaces sous une altitude donnee. NaN = aucun plafond.
+//
+// C'est le discriminant qui manquait. Ni le module ni la boite de l'instance ne separent
+// l'arene de ce qui l'enterre : mesure du 2026-08-09, le bornage a la boite ne deplace la
+// couverture que de 86,7 % a 86,5 %. Les rochers ne sont pas des maillages aberrants, ce sont
+// de vrais rochers — SUSPENDUS AU-DESSUS de l'aire de jeu, et un z-buffer qui garde la surface
+// la plus haute les garde eux. Le prototype le disait deja : son volume etait « borne a la
+// tranche de jeu ».
+//
+// Le plafond se DEDUIT des ancres d'objectifs (cf. reference.go), il ne se regle pas par carte.
+func (r *Rendu) Plafond(z float64) { r.plafond = z }

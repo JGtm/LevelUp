@@ -283,3 +283,73 @@ bornage, ponts localises). Ce qui reste :
 - **Un test rouge peut etre une decouverte.** Le temoin unitaire du degagement a echoue parce
   qu'il reproduisait fidelement le phenomene reel — le plafond devient praticable quand il
   disqualifie le sol. C'etait le diagnostic, pas un bug de test.
+
+---
+
+## 9. ETAT AU 2026-08-09 SOIR — LE RENDU EST TROUVE, DEUX MORCEAUX MANQUENT
+
+### 9.1 Ce qui est acquis et commite
+
+**La carte est un RENDU DE MAILLAGE vu du dessus, pas une carte de praticabilite.**
+`internal/himap/rendu.go` (commit `4cd36e5b9`) : z-buffer par pixel, normale de la face
+retenue, eclairage de Lambert oblique. Trois lignes, aucun reglage par carte. Au calage de la
+carte validee (0,0920 m/px, X0 -43,5, Y1 61,0), l'arene est SUPERPOSABLE : plateforme
+circulaire, batiments, structure diagonale, annexe sud aux memes formes et memes positions.
+
+Le meilleur rendu est `rendu_v2.png` : module de la carte SEUL, 2 730 instances, 17,8 % de
+pixels. Le comparatif projette la reconstruction DANS la grille de pixels de la reference —
+deux images decalees de deux metres se comparent mal, l'oeil comble les ecarts.
+
+**Deux erreurs de methode corrigees ce jour, a ne pas refaire :**
+- « l'arene est illisible sous les rochers » a ete lu comme un probleme de SELECTION alors que
+  c'etait un probleme d'ECLAIRAGE. Deux jours perdus a construire volume / degagement / ancres.
+  Le calcul juste existait des le premier jour.
+- « le LOD est innocent » (refutation du 08/08) etait FAUX. Le defaut n'etait pas le PLAFOND de
+  triangles mais l'ORDRE : on retenait le PREMIER LOD sous le plafond au lieu du plus FIN. Le
+  test mesurait le bon parametre au mauvais endroit et passait vert pour de mauvaises raisons.
+
+### 9.2 CE QUI MANQUE, ET LES CINQ PORTES FERMEES
+
+L'utilisateur signale deux manques sur `rendu_v2.png` : **le second pont en bas a gauche** et
+**une zone en haut a gauche non rendue**. Ce sont les grandes DALLES PLATES de la reference.
+
+| hypothese | mesure | verdict |
+|---|---|---|
+| modules globaux | 86,7 % de couverture, arene noyee | non |
+| maillages aberrants (bornage a la boite) | 86,5 % | sans effet |
+| decor en surplomb (plafond deduit des ancres, +6,95 m) | 85,3 % | sans effet |
+| instances non resolues | 525, petits accessoires disperses (verifie a l'image) | non |
+| second bsp du module | 100 %, dalle uniforme de fond de scene | non |
+
+Diagnostic complementaire : **0 maillage nil, 0 instance `QuickDeleted`**. Rien n'est ecarte
+par erreur dans le chemin actuel.
+
+### 9.3 LA DETTE DE METHODE — a solder AVANT toute nouvelle hypothese
+
+**Le code de Reclaimer n'a jamais ete lu dans ce chantier.** Quand l'utilisateur a demande de
+repartir de Reclaimer, la recette du z-buffer a ete INFEREE de l'image validee, pas lue dans la
+source. Les cinq hypotheses ci-dessus sont des suppositions — mesurees et honnetement
+refutees, mais des suppositions. Y compris la sixieme, non testee : « les dalles viendraient de
+la geometrie NON INSTANCIEE du sbsp ». Elle est plausible et n'est adossee a aucune source.
+
+Nuance a garder sur l'altitude : seul le PLAFOND a ete teste. Ni plancher, ni tranche fermee.
+L'altitude n'est donc pas refutee, seulement une de ses formes.
+
+### 9.4 ORDRE DE REPRISE — commencer par LIRE, pas par supposer
+
+1. **Ouvrir les sources Reclaimer** (`scratchpad/refs/*.cs`, cf. §6 du handoff du 26/07 ;
+   sinon les retelecharger depuis `Gravemind2401/Reclaimer`) :
+   `Reclaimer.Blam/Blam/HaloInfinite/ScenarioStructureBspTag.cs` et `RuntimeGeoTag.cs`.
+   Etablir la LISTE de ce que Reclaimer lit dans un sbsp et que notre chaine ne lit pas — nous
+   n'avons porte que le bloc `instanced geometry instances` a l'offset 420.
+2. Seulement ensuite, decider quoi rendre. Ne pas rouvrir les cinq portes du §9.2.
+3. Le gate reste le comparatif au pixel pres avec `carte_validee_v1.png`
+   (`rendu_gamefiles_test.go`).
+
+### 9.5 Etat du depot
+
+Commite et pousse : `rendu.go`, le comparatif, l'oracle, le balayage des 27 cartes, les
+diagnostics. NON commite a l'arret : les sondes du §9.2 (bornage et plafond dans le rendu,
+compteurs de causes, empreinte des instances non resolues). Elles ne servent plus le rendu mais
+portent les mesures qui ferment les portes — les conserver comme instruments, ou les retirer en
+gardant les chiffres ici.

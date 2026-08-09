@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,6 +37,14 @@ func TestRenduCliffhanger(t *testing.T) {
 	lo := [2]float64{gateX0, gateY1 - float64(haut)*gateEchelle}
 	hi := [2]float64{gateX0 + float64(larg)*gateEchelle, gateY1}
 	rendu := NewRendu(lo, hi, gateEchelle)
+	// Plafond DEDUIT des ancres : la plus haute, plus une hauteur de Spartan et sa marge de
+	// saut. Aucun reglage par carte.
+	zmax := math.Inf(-1)
+	for _, a := range ancresCliffhanger(t) {
+		zmax = math.Max(zmax, a[2])
+	}
+	rendu.Plafond(zmax + 6)
+	t.Logf("plafond deduit des ancres : %+.2f m", zmax+6)
 
 	modCarte := moduleDuJeu(t, "pc", "ridgeline")
 	chemins, _ := GeometrySearchPath(racine, modCarte)
@@ -44,21 +53,32 @@ func TestRenduCliffhanger(t *testing.T) {
 		t.Fatal(err)
 	}
 	bsps, _ := ReadModuleInstances(modCarte)
-	bsp := choisitBSP(bsps, ancresCliffhanger(t))
+	// TOUS les bsp du module : une carte en declare plusieurs, et rien ne dit que les grandes
+	// dalles de terrain vivent dans celui qui porte les objectifs.
+	var toutes []Instance
+	for _, b := range bsps {
+		toutes = append(toutes, b.Instances...)
+	}
+	bsp := BSPInstances{Instances: toutes}
 	assets := map[uint32]*RuntimeGeoAsset{}
-	n := 0
+	n, globaux, nonResolues, maillageNil, supprimees := 0, 0, 0, 0, 0
+	var inconnues []Instance
 	for _, in := range bsp.Instances {
 		if in.QuickDeleted() {
+			supprimees++
 			continue
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
 		if !ok || g != "rtgo" {
+			nonResolues++
+			inconnues = append(inconnues, in)
 			continue
 		}
 		// Le module de la carte SEUL : les modules globaux apportent le decor lointain, qui
 		// noie l'arene. La carte validee ne lisait qu'un module.
 		if filepath.Base(mod) != filepath.Base(modCarte) {
+			globaux++
 			continue
 		}
 		a, deja := assets[id]
@@ -74,9 +94,14 @@ func TestRenduCliffhanger(t *testing.T) {
 		}
 		if m := a.Mesh(in.MeshIndex); m != nil {
 			n++
-			rendu.AddMesh(m, in)
+			rendu.AddMeshBorne(m, in, 0.5)
+		} else {
+			maillageNil++
 		}
 	}
+	t.Logf("bsp %d instances · %d rendues · %d globales · %d non resolues · %d maillage nil · %d supprimees",
+		len(bsp.Instances), n, globaux, nonResolues, maillageNil, supprimees)
+	t.Logf("%d bsp dans le module", len(bsps))
 	t.Logf("%d instances rendues sur une grille %d x %d a %.4f m/px", n, rendu.NX, rendu.NY, rendu.Cell)
 
 	out := image.NewRGBA(image.Rect(0, 0, 2*larg+8, haut))
@@ -97,6 +122,18 @@ func TestRenduCliffhanger(t *testing.T) {
 				c = color.RGBA{g, g, g, 255}
 			}
 			out.Set(larg+8+px, py, c)
+		}
+	}
+	// Empreinte des instances NON RESOLUES, en rouge : ou manque-t-il de la geometrie ?
+	for _, in := range inconnues {
+		for y := in.AABBMin[1]; y <= in.AABBMax[1]; y += gateEchelle {
+			for x := in.AABBMin[0]; x <= in.AABBMax[0]; x += gateEchelle {
+				px := int((x - gateX0) / gateEchelle)
+				py := int((gateY1 - y) / gateEchelle)
+				if px >= 0 && px < larg && py >= 0 && py < haut {
+					out.Set(larg+8+px, py, color.RGBA{210, 40, 40, 255})
+				}
+			}
 		}
 	}
 	t.Logf("%d px couverts sur %d (%.1f %%)", couverts, larg*haut, 100*float64(couverts)/float64(larg*haut))
