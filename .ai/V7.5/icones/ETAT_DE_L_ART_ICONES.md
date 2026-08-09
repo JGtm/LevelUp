@@ -219,6 +219,16 @@ ce sont les variantes de bobine listees en 30.
 Les tonneaux et bobines (kill feed 41 a 45, atlas d armes 27 a 30) restent donnes comme des
 SUPPOSITIONS par l utilisateur lui-meme — a confirmer par observation en Theater, pas a publier.
 
+**CINQ INDEX N ONT AUCUNE ENTREE DE NOMMAGE** — mesure directe, en listant les index presents
+dans `bitd` : **25, 40, 62, 63, 68**. Aucun craquage ne les nommera jamais, quel que soit le
+vocabulaire. Deux d entre eux (25 et 63) sont precisement ceux que l utilisateur ne reconnait
+pas : pour ceux-la il n existe AUCUNE source, ni machine ni table — seul l oeil tranche.
+
+**Les chemins d assets ne sont pas disponibles non plus.** L en-tete `.module` declare bien un
+`stringsSize` a +0x24, et le lecteur le parse sans s en servir — piste evidente. Mesure :
+**0 archive sur 132 porte une section de chaines non vide**. Les chemins de tags
+(`objects/.../fusion_coil`) sont strippes en release comme le reste. Piste close.
+
 **LA VOIE AUTOMATIQUE EST EPUISEE, ET C EST MESURE.** Six routes ont ete tentees jusqu au bout
 (voir §3) : vocabulaire et declinaisons, moisson UTF-16, appariement par silhouette entre les
 deux atlas du jeu, champ `damage sprite index`, balayage exhaustif des tags, force brute. La
@@ -405,3 +415,52 @@ Noms lus dans la table `bitd`, donc lies a leur index par le jeu lui-meme.
 
 **Rien n'est branche cote web.** Ni `apps/web/` ni `adapter_asset_urls.go` ne sont touches :
 l'integration attend le gate visuel (decision #4 du master plan).
+
+---
+
+## 5. LES TEMOINS EN THEATER — constater au lieu de deviner
+
+Les tonneaux et bobines ne se craquent pas et l oeil seul ne les distingue pas. La sortie est
+d aller les VOIR : le kill feed du jeu affiche l icone, le film dit la source du degat, et la
+correspondance se lit sur place. Elle vaut ce que vaut une observation, c est-a-dire mieux
+qu une supposition.
+
+**Comment cette table est produite.** `cmd/killsource json` rend, pour chaque mort, la source du
+degat fatal avec sa NATURE. Les morts dont la nature n est pas une arme sont retenues, groupees
+par tag, et pour chaque tag on garde l occurrence la PLUS RECENTE (Theater ne conserve pas
+l ancien). Le film est appari au match par le prefixe de 8 caracteres du `match_id` — verifie —
+ce qui donne la carte et la date. Balayage : les **60 films les plus recents** du cache local,
+1103 morts non-armes relevees.
+
+**Le type d energie vient du catalogue**, pas d une supposition : `damagetag` qualifie chaque tag
+d objet explosif par son asset (`sb_008_exp_single_small_<energie>`).
+
+### 5.1 Objets explosifs — un temoin par type d energie
+
+| energie | tag | film | date | carte | timing | occurrences |
+|---|---|---|---|---|---|---|
+| plasma | `5e389b5d` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **00:45** | 11 |
+| kinetic UNSC | `0d203522` | `fccc61cd` | 2026-07-24 21:40 | Launch Site | **03:16** | 23 |
+| shock | `15cdba9d` | `4f77afc1` | 2026-07-24 22:20 | Flood Gulch | **06:28** | 10 |
+| hardlight | `c14e9cea` | `e151b467` | 2026-03-19 13:08 | Chasm | **04:57** | 3 |
+| non qualifie | `bd6cae8b` | `a5975e9e` | 2026-04-06 23:11 | Curfew | **01:15** | 1 |
+
+**Reserve sur le hardlight** : il n apparait que sur **Chasm**, et seulement dans des films de
+MARS. Le film peut avoir quitte Theater. S il manque, il faut d abord rejouer un match sur
+Chasm — l objet y est present, ailleurs non.
+
+Les deux tonneaux les plus courants (plasma et kinetic UNSC) sont dans le MEME film du 24
+juillet, le plus recent du corpus : c est le temoin a tenter en premier.
+
+### 5.2 Autres natures relevees
+
+**Vehicules** : 12 tags distincts, l essentiel sur `4f77afc1` (Flood Gulch, 2026-07-24) —
+notamment `f712c64a` avec 37 occurrences a 08:29, et `674a7d69` avec 11 a 02:33.
+
+**Environnement** : un seul tag, `00403594`, vu sur Nemesis et Banished Narrows le 2026-04-06
+(par exemple `1eedd3c8` a 02:04). C est le candidat naturel pour l icone de CHUTE (index 52,
+etiquetee « Fall » par l utilisateur).
+
+**Regeneration de la table** : le balayage est un script d exploitation, pas un livrable — il se
+rejoue en enchainant `cmd/killsource json` sur les films tries par date et en ne retenant que
+les morts dont la nature n est pas `arme`.

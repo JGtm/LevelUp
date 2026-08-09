@@ -60566,3 +60566,36 @@ recent) pour produire, par tag de source non-arme : film, date, carte, horodatag
 sont apparies aux matchs par prefixe de 8 caracteres du `match_id` — verifie.
 
 **Prochaine etape**. Livrer la table des temoins, un par type d energie.
+
+## [2026-08-09] v7.5 voie C — icones : les temoins Theater, et deux pistes de plus fermees
+
+**Statut** : Complete.
+
+**Livrable**. §5 de l etat de l art — la table des temoins a constater en Theater. Produite en
+balayant les **60 films les plus recents** du cache avec `cmd/killsource json` (Theater ne garde
+pas l ancien), en retenant les morts dont la nature n est pas `arme`, groupees par tag, et en
+gardant l occurrence la plus recente de chaque. **1103 morts non-armes relevees.** Le film est
+appari au match par le prefixe de 8 caracteres du `match_id`, ce qui donne carte et date.
+
+Le TYPE D ENERGIE de chaque tonneau vient du catalogue `damagetag`
+(`sb_008_exp_single_small_<energie>`), pas d une supposition. Quatre types, quatre temoins :
+plasma et kinetic UNSC dans le MEME film du 24 juillet (Launch Site, 00:45 et 03:16), shock le
+meme jour (Flood Gulch, 06:28). **Reserve : le hardlight n existe que sur Chasm et seulement
+dans des films de MARS** — il a pu quitter Theater, auquel cas il faut rejouer un match sur
+Chasm.
+
+**Fait nouveau, mesure directe**. En listant les index presents dans `bitd` : **cinq index n ont
+AUCUNE entree de nommage — 25, 40, 62, 63, 68**. Aucun craquage ne les nommera, jamais. Deux
+d entre eux (25 et 63) sont precisement ceux que l utilisateur ne reconnait pas : pour ceux-la
+il n existe aucune source, ni machine ni table. Corrige l estimation precedente (« quatre »),
+qui etait derivee et non mesuree.
+
+**Piste fermee**. L en-tete `.module` declare un `stringsSize` a +0x24 que le lecteur parse sans
+jamais s en servir — piste evidente pour recuperer les chemins d assets. Mesure : **0 archive
+sur 132** porte une section de chaines non vide. Strippee en release comme le reste.
+
+**Resultats observes**. Kill feed a 61/88, 27 trous. Aucun gate technique en attente : gofmt,
+vet et build verts au commit precedent, aucune modification de code dans celui-ci (doc seule).
+
+**Prochaine etape**. Observation Theater par l utilisateur ; puis, si les tonneaux sont
+tranches, l integration web reste derriere le gate visuel (hors de ce lot).
