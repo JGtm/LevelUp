@@ -6,8 +6,12 @@ import (
 )
 
 // instanceIdentite : une instance qui ne deplace rien, pour tester la rasterisation seule.
+//
+// Le `Scale` unitaire n'est PAS decoratif : depuis que LocalToWorld applique le champ
+// `scale` du sbsp, une instance zero-value ecraserait tout le maillage sur sa position.
 func instanceIdentite() Instance {
 	return Instance{
+		Scale:   [3]float64{1, 1, 1},
 		Forward: [3]float64{1, 0, 0},
 		Left:    [3]float64{0, 1, 0},
 		Up:      [3]float64{0, 0, 1},
