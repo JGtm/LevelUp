@@ -21,6 +21,12 @@ import (
 // d'être localisable. Les FERMETURES (`analysis/replay/closures.go`) ont depuis porté les sept
 // films de 79,7-93,4 % à 88,7-96,4 %.
 //
+// CORPUS REMESURÉ LE 2026-08-09, après la ronde de correction des fermetures (revue adversariale :
+// deux déductions infondées retirées). Trois films reculent — le plus fort de 95,0 à 91,6 % — sans
+// que la borne basse bouge. **La marge sur le critère est mince : 88,68 % sur `829abef9`, pour un
+// plancher à 88 %.** Tout changement du pont doit donc rejouer le corpus AVANT de conclure, jamais
+// après (cf. §7.5bis de la recherche).
+//
 // ATTENTION AU DÉNOMINATEUR, ET C'EST LA PREMIÈRE CHOSE À COMPRENDRE AVANT DE RETIRER CE GARDE :
 // ces taux portent sur les tirs QUE LE FILM CONTIENT, pas sur les tirs du match. Le film n'en
 // porte que 69 à 87 % en arène (23 % en Fiesta), si bien que la part des tirs RÉELS posés sur la

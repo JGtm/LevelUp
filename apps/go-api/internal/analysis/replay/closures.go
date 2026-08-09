@@ -26,30 +26,43 @@ import "sort"
 // # LES DEUX FERMETURES
 //
 //	A — par le corps disponible   un joueur tire alors qu'aucune de ses vies nommées ne le
-//	                              couvre : son corps est l'une des vies anonymes vivantes à cet
-//	                              instant. S'il n'y en a QU'UNE, c'est elle.
+//	                              couvre : son corps est l'une des vies anonymes dont l'INTERVALLE
+//	                              couvre cet instant. S'il n'y en a QU'UNE, c'est elle.
 //	B — par la réapparition       une vie commence UNE RÉAPPARITION après la mort qui l'a causée,
 //	                              et le fil des morts NOMME cette victime. Si UNE SEULE mort tombe
-//	                              dans la fenêtre, la vie est la sienne.
+//	                              dans la fenêtre, ET qu'aucune autre vie ne revendique cette
+//	                              mort, la vie est la sienne.
 //
-// # LES DEUX GARDE-FOUS, ET ILS MORDENT
+// # LES GARDE-FOUS, ET ILS MORDENT
 //
-//	contestation   deux joueurs revendiquent le même corps -> aucune attribution
+//	contestation   l'unicité manque, dans l'un des trois sens -> aucune attribution
+//	               deux corps possibles pour un même tir (A) · deux joueurs revendiquent le même
+//	               corps (A) · deux corps revendiquent la même mort (B — une mort ne rend qu'un
+//	               corps, symétrique du refus de la vie qui voit deux morts)
 //	recouvrement   un joueur n'a qu'un corps : si le corps déduit chevauche dans le temps une vie
 //	               DÉJÀ nommée du même joueur, l'attribution est impossible -> rejetée
 //
-// Mesuré sur les sept films : **33 vies attribuées, 17 refusées** par ces deux contrôles. Un
-// contrôle qui ne rejette jamais rien ne prouve rien ; celui-ci rejette. C'est le pendant du
-// critère « huit entités distinctes » qui a réfuté la piste i19 le 2026-07-28.
+// Mesuré sur les sept films, APRÈS LA RONDE DE CORRECTION DU 2026-08-09 : **37 vies attribuées,
+// 86 refusées** — 76 contestées, 10 rejetées par le recouvrement. Ce compte de refus NE SE COMPARE
+// PAS aux 17 du 2026-08-08 : la contestation couvre désormais aussi les vies écartées faute
+// d'unicité d'INTERVALLE, qui n'étaient alors comptées nulle part. Un contrôle qui ne rejette
+// jamais rien ne prouve rien ; celui-ci refuse plus de deux fois pour une attribution. C'est le
+// pendant du critère « huit entités distinctes » qui a réfuté la piste i19 le 2026-07-28.
 //
-// # RÉSULTAT MESURÉ (avant -> après, sept films)
+// # RÉSULTAT MESURÉ (avant -> après, sept films, 2026-08-09)
 //
 //	0edb8512 Team Slayer  93,4 -> 96,4      db7b8c3c CTF   88,5 -> 94,5
-//	9aeca4b3 Team Slayer  89,0 -> 95,0      64e8adfa CTF   80,3 -> 92,6  (+12,3)
-//	000d5950 Fiesta       91,5 -> 93,3      829abef9 CTF   79,7 -> 88,7  (+9,0)
+//	9aeca4b3 Team Slayer  89,0 -> 91,6      64e8adfa CTF   80,3 -> 90,8  (+10,5)
+//	000d5950 Fiesta       91,5 -> 93,1      829abef9 CTF   79,7 -> 88,7  (+9,0)
 //	01e1f945 KOTH         86,4 -> 89,7
 //
-// Détail, méthode et échec de réglage : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md` §7.5.
+// TROIS FILMS ONT RECULÉ depuis la mesure du 2026-08-08 (95,0 -> 91,6 · 92,6 -> 90,8 ·
+// 93,3 -> 93,1), et c'est le résultat ATTENDU d'un correctif de justesse : ce qui disparaît, ce
+// sont les attributions que la revue a montrées infondées. Un correctif de ce genre qui ferait
+// MONTER le compte serait le signal qu'il a élargi au lieu de resserrer. Le plancher du corpus
+// reste 88,7 % (`829abef9`), au-dessus du critère du garde local (88 %).
+//
+// Détail, méthode et échec de réglage : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md` §7.5 et §7.5bis.
 
 // respawnHalfWidthUS : demi-largeur de la fenêtre de réapparition, en microsecondes.
 //
@@ -91,7 +104,18 @@ type FireEventRef struct {
 }
 
 // closeByAvailableBody — FERMETURE A. Un tir dont l'auteur n'a aucune vie nommée à cet instant
-// désigne l'unique vie anonyme vivante, s'il n'y en a qu'une.
+// désigne l'unique vie anonyme QUI COUVRE cet instant, s'il n'y en a qu'une.
+//
+// L'UNICITÉ SE JUGE SUR L'INTERVALLE DE LA VIE, PAS SUR SES ÉCHANTILLONS, et ce point a été payé.
+// Le premier jet exigeait du candidat une position répliquée à moins de `shotPosToleranceUS`
+// (120 ms) de l'instant du tir. Or une vie survit à un trou de réplication de `lifeGapUS` (5 s) :
+// deux vies anonymes pouvaient couvrir l'instant, celle du VRAI tireur être dans son trou, et
+// l'autre — la seule échantillonnée — passer pour l'unique candidate. Le corps d'autrui était
+// alors attribué sans qu'aucun garde-fou ne s'en aperçoive, puisque du point de vue du code il
+// n'y avait qu'un candidat.
+//
+// L'échantillon ne sert donc qu'au RATTACHEMENT (`slotFor`, qui refuse toujours de poser un
+// événement sans position proche), jamais à trancher l'unicité.
 func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 	lives []lifeSpan, fire []FireEventRef, rep *closureReport) {
 	free := freeLives(owner, lives)
@@ -99,18 +123,24 @@ func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 		return
 	}
 	claims := map[uint32]map[int]int{}
+	// blocked retient les vies écartées faute d'unicité : sans elles, l'abstention la plus
+	// fréquente de la fermeture A ne serait comptée nulle part.
+	blocked := map[uint32]bool{}
 	for _, e := range fire {
 		if _, r := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS); r == reasonAttached {
 			continue
 		}
-		alive := livesAliveAt(free, tracks, e.TimestampUS)
-		if len(alive) != 1 { // deux corps possibles : on ne tranche pas
+		cand := livesCoveringAt(free, e.TimestampUS)
+		if len(cand) != 1 { // plusieurs corps possibles : on ne tranche pas
+			for _, l := range cand {
+				blocked[l.slot] = true
+			}
 			continue
 		}
-		if claims[alive[0].slot] == nil {
-			claims[alive[0].slot] = map[int]int{}
+		if claims[cand[0].slot] == nil {
+			claims[cand[0].slot] = map[int]int{}
 		}
-		claims[alive[0].slot][e.FilmIndex]++
+		claims[cand[0].slot][e.FilmIndex]++
 	}
 	for _, slot := range sortedClaimSlots(claims) {
 		if len(claims[slot]) != 1 {
@@ -125,10 +155,25 @@ func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 		owner[slot] = pi
 		rep.byShot++
 	}
+	// Une vie contestée à un instant peut être seule candidate à un autre : seules celles qui
+	// n'ont JAMAIS été revendiquées sont des déductions abandonnées. Le comptage ne dépend pas
+	// de l'ordre d'itération de la map, donc rien à trier ici.
+	for slot := range blocked {
+		if _, claimed := claims[slot]; !claimed {
+			rep.contested++
+		}
+	}
 }
 
 // closeByRespawn — FERMETURE B. Une vie commence une réapparition après la mort qui l'a causée ;
 // si une seule mort du fil tombe dans la fenêtre, la vie est celle de sa victime.
+//
+// L'EXCLUSION JOUE DANS LES DEUX SENS, et il a manqué le second. Refuser la vie qui voit deux
+// morts ne suffit pas : il faut aussi refuser la MORT que deux vies revendiquent. Une mort ne
+// rend qu'un corps ; deux vies qui la réclament chacune sans concurrente ne sont pas deux
+// déductions, c'est une déduction impossible — et sans ce contrôle, l'ordre de parcours des slots
+// décidait laquelle des deux gagnait, l'autre héritant du même joueur quelques instants plus tard.
+// Le comptage des revendications est donc symétrique de la map `claims` de la fermeture A.
 func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
 	deaths []Death, off int64, byXUID map[uint64]int, rep *closureReport) {
 	free := freeLives(owner, lives)
@@ -139,6 +184,7 @@ func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []l
 	if lo == 0 && hi == 0 {
 		return // aucune vie nommée : rien à calibrer, donc rien à déduire
 	}
+	claims := map[uint64][]uint32{} // victime -> slots des vies qui la revendiquent
 	for _, l := range free {
 		cand := victimsInWindow(deaths, off, l.from, lo, hi)
 		if len(cand) == 0 {
@@ -148,15 +194,26 @@ func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []l
 			rep.contested++
 			continue
 		}
-		pi, ok := byXUID[cand[0]]
-		if !ok {
+		claims[cand[0]] = append(claims[cand[0]], l.slot)
+	}
+	for _, xuid := range sortedVictims(claims) {
+		slots := claims[xuid]
+		if len(slots) != 1 { // une mort, deux corps : les deux déductions tombent
+			rep.contested += len(slots)
 			continue
 		}
-		if overlapsNamedLife(tracks, owner, l.slot, pi) {
+		pi, ok := byXUID[xuid]
+		if !ok {
+			// L'identité n'est dans aucune table d'index : la déduction est REJETÉE, pas
+			// silencieusement perdue. Un rejet non compté ferait mentir la somme publiée.
 			rep.refused++
 			continue
 		}
-		owner[l.slot] = pi
+		if overlapsNamedLife(tracks, owner, slots[0], pi) {
+			rep.refused++
+			continue
+		}
+		owner[slots[0]] = pi
 		rep.byRespawn++
 	}
 }
@@ -223,18 +280,20 @@ func freeLives(owner map[uint32]int, lives []lifeSpan) []lifeSpan {
 	return out
 }
 
-// livesAliveAt rend les vies libres qui portent une position à moins de la tolérance de
-// rattachement de tUS — « vivante » au sens du rattachement, pas au sens du jeu.
-func livesAliveAt(free []lifeSpan, tracks map[uint32]slotTrack, tUS uint64) []lifeSpan {
+// livesCoveringAt rend les vies libres dont l'INTERVALLE contient tUS — c'est-à-dire tous les
+// corps qui pouvaient être là, y compris ceux dont la réplication a un trou à cet instant.
+//
+// C'EST VOLONTAIREMENT PLUS LARGE QUE LE RATTACHEMENT. Filtrer ici sur la présence d'un
+// échantillon rendrait INVISIBLES les candidats en trou de réplication, et une candidature
+// invisible ne conteste rien : la fermeture croirait n'avoir qu'un candidat là où elle en a deux.
+func livesCoveringAt(free []lifeSpan, tUS uint64) []lifeSpan {
 	var out []lifeSpan
 	t := int64(tUS)
 	for _, l := range free {
 		if t < l.from || t > l.to {
 			continue
 		}
-		if _, d := tracks[l.slot].at(tUS); d <= shotPosToleranceUS {
-			out = append(out, l)
-		}
+		out = append(out, l)
 	}
 	return out
 }
@@ -277,6 +336,18 @@ func sortedClaimSlots(m map[uint32]map[int]int) []uint32 {
 	out := make([]uint32, 0, len(m))
 	for s := range m {
 		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+// sortedVictims rend les victimes revendiquées dans un ordre STABLE. La raison est la même que
+// pour `sortedClaimSlots` : le garde-fou de recouvrement lit le pont EN COURS de construction,
+// donc l'ordre d'attribution est observable dans le résultat.
+func sortedVictims(m map[uint64][]uint32) []uint64 {
+	out := make([]uint64, 0, len(m))
+	for x := range m {
+		out = append(out, x)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out

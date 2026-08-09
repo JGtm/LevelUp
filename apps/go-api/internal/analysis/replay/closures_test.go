@@ -50,6 +50,39 @@ func TestFermetureASAbstientQuandDeuxCorpsSontPossibles(t *testing.T) {
 	}
 }
 
+// TestFermetureASAbstientQuandUnCandidatEstDansUnTrouDeReplication — LE SCÉNARIO QUI FAISAIT
+// ATTRIBUER LE CORPS D'AUTRUI, ET IL N'AVAIT AUCUN TEST.
+//
+// Deux vies anonymes couvrent l'instant du tir. Celle du VRAI tireur traverse un trou de
+// réplication à cet instant ; l'autre y est échantillonnée. Juger la candidature sur
+// l'ÉCHANTILLON rendait la première invisible : la seconde passait pour l'unique candidate, et
+// son corps — celui d'un autre joueur — était attribué au tireur sans qu'aucun garde-fou ne
+// puisse s'en apercevoir, puisque du point de vue du code il n'y avait qu'un candidat.
+//
+// LES DEUX CONSTANTES QUI RENDENT LE SCÉNARIO POSSIBLE SONT DANS LE CODE, pas inventées ici :
+// une vie survit à un trou de `lifeGapUS` (5 s), le rattachement exige un échantillon à
+// `shotPosToleranceUS` (120 ms). Entre les deux, il y a 4,88 s de fenêtre pour se tromper.
+func TestFermetureASAbstientQuandUnCandidatEstDansUnTrouDeReplication(t *testing.T) {
+	// slot 2 : échantillonné À l'instant du tir. slot 3 : échantillons à 0,5 s et 3,0 s — un trou
+	// de 2,5 s qui contient le tir, sous lifeGapUS, donc UNE SEULE vie qui couvre l'instant.
+	tracks := tracksOf(at(2, 1_000_000), at(3, 500_000), at(3, 3_000_000))
+	owner := map[uint32]int{}
+	lives := []lifeSpan{{slot: 2, from: 900_000, to: 1_100_000},
+		{slot: 3, from: 500_000, to: 3_000_000}}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{{FilmIndex: 3, TimestampUS: 1_000_000}}, &rep)
+	if len(owner) != 0 {
+		t.Fatalf("un corps en trou de réplication reste un corps possible : rien ne devait être "+
+			"attribué, pont = %v", owner)
+	}
+	if rep.byShot != 0 {
+		t.Fatalf("aucune attribution attendue, compte rendu %+v", rep)
+	}
+	if rep.contested != 2 {
+		t.Fatalf("les deux vies écartées faute d'unicité devaient être comptées, compte rendu %+v", rep)
+	}
+}
+
 // TestFermetureARefuseQuandDeuxJoueursRevendiquentLeMemeCorps.
 func TestFermetureARefuseQuandDeuxJoueursRevendiquentLeMemeCorps(t *testing.T) {
 	tracks := tracksOf(at(2, 1_000_000), at(2, 1_200_000))
@@ -129,6 +162,62 @@ func TestFermetureBSAbstientQuandDeuxMortsSontDansLaFenetre(t *testing.T) {
 	}
 	if rep.contested != 1 {
 		t.Fatalf("une contestation attendue, compte rendu %+v", rep)
+	}
+}
+
+// TestFermetureBSAbstientQuandDeuxViesRevendiquentLaMemeMort — UNE MORT NE REND QU'UN CORPS.
+//
+// L'exclusion mutuelle manquait DANS CE SENS-LÀ. Refuser la vie qui voit deux morts était déjà
+// fait ; refuser la mort que deux vies revendiquent ne l'était pas. Chacune des deux vies voyait
+// alors un candidat unique, et c'est l'ORDRE DE PARCOURS DES SLOTS qui décidait laquelle serait
+// nommée en premier — la seconde héritant du même joueur un instant plus tard, faute de
+// chevauchement qui la fasse rejeter.
+func TestFermetureBSAbstientQuandDeuxViesRevendiquentLaMemeMort(t *testing.T) {
+	// Une vie nommée calibre la fenêtre à 8 000 ms. Les deux vies anonymes commencent chacune ~8 s
+	// après LA MÊME mort (celle de 222) ; aucune autre mort n'entre dans leur fenêtre. Leurs traces
+	// ne se chevauchent pas : le contrôle de recouvrement ne peut pas rattraper le défaut.
+	tracks := tracksOf(at(1, 9_000_000), at(2, 20_000_000), at(3, 20_100_000))
+	lives := []lifeSpan{
+		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
+		{slot: 2, from: 20_000_000, to: 20_000_000},
+		{slot: 3, from: 20_100_000, to: 20_100_000},
+	}
+	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	owner := map[uint32]int{1: 0}
+	var rep closureReport
+	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
+	if len(owner) != 1 {
+		t.Fatalf("une mort ne rend qu'un corps : aucune des deux vies ne devait être attribuée, "+
+			"pont = %v", owner)
+	}
+	if rep.byRespawn != 0 {
+		t.Fatalf("aucune fermeture attendue, compte rendu %+v", rep)
+	}
+	if rep.contested != 2 {
+		t.Fatalf("les deux déductions abandonnées devaient être comptées, compte rendu %+v", rep)
+	}
+}
+
+// TestFermetureBCompteLeRejetDUneIdentiteHorsTable : un rejet muet ferait mentir la somme publiée.
+//
+// La victime est connue du fil des morts, mais la table d'index ne porte pas son identité : on
+// sait QUI est mort, pas quel index de film lui répond. L'attribution est impossible — et ce
+// refus doit se voir, comme tous les autres.
+func TestFermetureBCompteLeRejetDUneIdentiteHorsTable(t *testing.T) {
+	tracks := tracksOf(at(1, 9_000_000), at(2, 20_000_000))
+	lives := []lifeSpan{
+		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
+		{slot: 2, from: 20_000_000, to: 21_000_000},
+	}
+	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	owner := map[uint32]int{1: 0}
+	var rep closureReport
+	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0}, &rep)
+	if _, ok := owner[2]; ok {
+		t.Fatalf("sans index de film, rien ne peut être attribué, pont = %v", owner)
+	}
+	if rep.refused != 1 {
+		t.Fatalf("le rejet d'une identité hors table devait être compté, compte rendu %+v", rep)
 	}
 }
 

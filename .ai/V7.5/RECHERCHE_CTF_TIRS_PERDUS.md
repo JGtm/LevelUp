@@ -418,6 +418,51 @@ C'est le résultat le plus important de cette section : la méthode se censure e
 contrôle qui ne rejette jamais rien ne prouve rien ; celui-ci rejette, donc quand il laisse
 passer, il a été mis à l'épreuve.
 
+### 7.5bis LES MÊMES SEPT FILMS, APRÈS LA RONDE DE CORRECTION DU 2026-08-09
+
+**Le tableau du §7.5 reste ce qui a été mesuré le 2026-08-08 — il n'est pas réécrit.** Une revue
+adversariale à contexte frais a trouvé deux déductions que rien ne fondait, et les corriger fait
+BAISSER trois des sept taux. Réécrire l'ancien tableau effacerait précisément l'information utile :
+de combien la mesure d'origine était optimiste.
+
+**Les deux défauts corrigés** (`internal/analysis/replay/closures.go`) :
+
+1. **Fermeture A jugeait l'unicité sur l'ÉCHANTILLON de position, pas sur l'intervalle de vie.**
+   Une vie survit à un trou de réplication de 5 s (`lifeGapUS`), le rattachement exige une position
+   à 120 ms (`shotPosToleranceUS`). Deux vies anonymes pouvaient donc couvrir l'instant d'un tir,
+   celle du VRAI tireur être dans son trou — donc invisible — et l'autre passer pour l'unique
+   candidate. **Le corps d'un autre joueur était attribué**, sans qu'aucun garde-fou ne puisse s'en
+   apercevoir : du point de vue du code, il n'y avait qu'un candidat.
+2. **Fermeture B n'excluait pas mutuellement par la MORT.** Refuser la vie qui voit deux morts
+   était fait ; refuser la mort que deux vies revendiquent ne l'était pas. Chacune voyait alors un
+   candidat unique, et c'est l'ordre de parcours des slots qui décidait laquelle serait nommée.
+
+**Résultats, à méthode et corpus identiques :**
+
+| film | mode | lecture seule | **A+B corrigées** | A+B du 08/08 | écart |
+|---|---|---|---|---|---|
+| `0edb8512` | Team Slayer | 93,4 % | **96,4 %** | 96,4 % | — |
+| `db7b8c3c` | **CTF** | 88,5 % | **94,5 %** | 94,5 % | — |
+| `000d5950` | Fiesta Slayer | 91,5 % | **93,1 %** | 93,3 % | −0,24 |
+| `9aeca4b3` | Team Slayer | 89,0 % | **91,6 %** | 95,0 % | **−3,37** |
+| `64e8adfa` | **CTF** | 80,3 % | **90,8 %** | 92,6 % | −1,77 |
+| `01e1f945` | KOTH | 86,4 % | **89,7 %** | 89,7 % | — |
+| `829abef9` | **CTF** | 79,7 % | **88,7 %** | 88,7 % | — |
+
+**Le plancher du corpus tient : 88,68 % sur `829abef9`**, au-dessus des 88 % du garde local
+(`replay_local_gate.go`). Quatre films sont inchangés, trois reculent — et c'est le sens dans
+lequel un correctif de justesse DOIT pousser : ce qui disparaît, ce sont des attributions
+infondées. Un correctif qui aurait fait monter les sept taux aurait signalé qu'il élargissait au
+lieu de resserrer.
+
+**Les garde-fous après correction : 37 vies attribuées, 86 refusées** (76 contestées, 10 rejetées
+par le recouvrement). **Ce compte ne se compare pas aux « 33 attribuées, 17 refusées » du §7.5** :
+la contestation couvre désormais les vies écartées faute d'unicité d'intervalle, qui n'étaient
+alors comptées nulle part — c'était le troisième constat de la revue (un `continue` muet).
+
+Sur le film figé `000d5950`, l'effet se lit dans le golden : pont **95 → 93** entrées, tirs
+**484 → 483**, contestations **4 → 13**, verdict du pont toujours nominal.
+
 #### Ce qui reste après les deux fermetures
 
 De 3,6 % (`0edb8512`) à 11,3 % (`829abef9`) des tirs restent non placés. Le résidu est fait

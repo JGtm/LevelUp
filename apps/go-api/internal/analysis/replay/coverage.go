@@ -134,8 +134,12 @@ type Coverage struct {
 type BridgeHealth struct {
 	// Slots est le nombre d'entrées du pont.
 	Slots int `json:"slots"`
-	// FromReading : le nombre d'entrées issues de la lecture. C'est la SEULE source depuis le
-	// retrait du repli voté ; un écart avec Slots signalerait qu'une autre est réapparue.
+	// FromReading : le nombre d'entrées issues de la LECTURE SEULE.
+	//
+	// CE N'EST PLUS LA SEULE SOURCE, et l'écrire ici l'aurait laissé croire : les FERMETURES
+	// (closures.go, 2026-08-08) alimentent le pont par déduction. La règle que `verdictOfBridge`
+	// applique réellement est `FromReading + ClosedByShot + ClosedByRespawn == Slots` — un écart
+	// à cette somme, et non à `Slots` seul, signale une source non comptée.
 	FromReading int `json:"fromReading"`
 	// LivesNamed / LivesTotal : ce que le fil des morts a nommé.
 	LivesNamed int `json:"livesNamed"`
@@ -153,10 +157,13 @@ type BridgeHealth struct {
 	ClosedByShot int `json:"closedByShot"`
 	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).
 	ClosedByRespawn int `json:"closedByRespawn"`
-	// ClosedContested : déductions ABANDONNÉES parce que deux candidats subsistaient.
+	// ClosedContested : déductions ABANDONNÉES faute d'unicité — deux corps possibles pour un
+	// même tir, deux joueurs pour un même corps, ou deux corps pour une même mort.
 	ClosedContested int `json:"closedContested"`
-	// ClosedRefused : déductions REJETÉES par le contrôle de recouvrement (un joueur n'a
-	// qu'un corps).
+	// ClosedRefused : déductions REJETÉES alors qu'un seul candidat subsistait, pour l'une des
+	// deux causes qui rendent l'attribution IMPOSSIBLE : le recouvrement (un joueur n'a qu'un
+	// corps, et le corps déduit chevauche un corps déjà nommé du même joueur), ou une identité
+	// que la table d'index ne porte pas (on saurait quelle victime, pas quel index de film).
 	//
 	// LES DEUX COMPTEURS DE REFUS SONT PUBLIÉS AU MÊME TITRE QUE LES SUCCÈS, et ce n'est pas
 	// de la décoration : un contrôle qui ne rejette jamais rien ne prouve rien. Mesuré sur
