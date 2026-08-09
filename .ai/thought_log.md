@@ -60163,3 +60163,40 @@ zero fausse piste laissee dans le code.
 
 **Prochaine etape** : le biais de demi-bande dans `SolLePlusProche` (-0,1 a -0,5 m partout),
 seule correction identifiee dont l'effet soit previsible. Puis le gate visuel cote a cote.
+
+## [2026-08-09] Cartes v7.5 — LA CARTE EST UN RENDU DE MAILLAGE, pas une carte de praticabilite
+
+**Statut** : En cours (percee)
+
+**Decision technique principale** — repartir de zero sur le rendu, en s'inspirant uniquement de
+ce que fait `Gravemind2401/Reclaimer` : exporter le maillage, puis le regarder du dessus.
+L'artefact valide le 26/07 n'est pas une carte de sol praticable, c'est un RENDU 3D A PLAT.
+Recette complete, sans aucun reglage par carte : z-buffer par pixel (altitude la plus haute),
+memorisation de la normale de la face retenue, teinte par un eclairage de Lambert oblique.
+
+**L'ERREUR QUI A COUTE DEUX JOURS** : avoir lu « l'arene est illisible sous les rochers » comme
+un probleme de SELECTION (quelles surfaces garder) alors que c'etait un probleme d'ECLAIRAGE.
+Un champ d'altitude peint par une rampe de couleur est illisible ; le meme champ ombre par sa
+normale est une carte. Le calcul juste existait des le premier jour et a ete jete. Tout
+l'echafaudage volume / degagement / ancres / surface de reference ne servait pas le rendu.
+
+**CORRECTION D'UNE REFUTATION FAUSSE D'HIER** : « le LOD est innocent » etait faux. Le defaut
+n'etait pas le PLAFOND mais l'ORDRE de selection — on retenait le PREMIER LOD sous le plafond
+au lieu du plus FIN, d'ou des maillages a grandes facettes. Cela explique aussi pourquoi
+relever le plafond ne changeait rien : le premier passait deja. Le test d'hier mesurait le bon
+parametre au mauvais endroit.
+
+**Resultats observes** : au calage de la carte validee (0,0920 m/px, X0 -43,5, Y1 61,0),
+l'arene est superposable — plateforme circulaire, batiments, structure diagonale, annexe sud
+aux memes formes et memes positions. Module de la carte seul : 2 730 instances, 17,8 % de
+pixels couverts. Tous modules : 9 832 instances, 86,7 % — le decor noie l'arene.
+
+**Livre** : `internal/himap/rendu.go` (`Rendu`, `AddMesh`, `Eclairement`), le comparatif
+`rendu_gamefiles_test.go` qui projette la reconstruction DANS la grille de pixels de la
+reference — deux images decalees de deux metres se comparent mal, l'oeil comble les ecarts.
+
+**Reste, signale par l'utilisateur sur le rendu** : le second pont en bas a gauche, et une zone
+en haut a gauche non rendue. Les deux correspondent aux grandes dalles de terrain, qui vivent
+dans les modules GLOBAUX ecartes ici pour chasser les rochers. Le bon reglage est entre les
+deux, et le bornage a la boite de l'instance (`AddMeshBorne`, deja mesure sur le volume) est le
+candidat : il avait ramene les trous de 11,1 % a 0,8 % sans faire entrer le decar aberrant.

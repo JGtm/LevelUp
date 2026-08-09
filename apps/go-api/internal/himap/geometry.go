@@ -238,14 +238,18 @@ func (a *RuntimeGeoAsset) chooseLOD(meshIndex int) (lodEntry, bool) {
 	if a.PlafondTriangles > 0 {
 		plafond = a.PlafondTriangles
 	}
-	choix := -1
+	// Le LOD le plus FIN sous le plafond, et non le PREMIER de la liste. Rien ne garantit que
+	// les niveaux y soient ranges du plus fin au plus grossier, et prendre le premier donnait
+	// un maillage a grandes facettes la ou la carte validee est finement triangulee. Cela
+	// explique aussi pourquoi relever le plafond ne changeait rien : le premier passait deja.
+	choix, mieux := -1, -1
 	for k, l := range lods {
 		if l.indexBuf >= len(a.indexDescs) || l.vertexBuf >= len(a.vertexDescs) {
 			continue
 		}
-		if a.indexDescs[l.indexBuf].Count/3 <= plafond {
-			choix = k
-			break
+		n := a.indexDescs[l.indexBuf].Count / 3
+		if n <= plafond && n > mieux {
+			mieux, choix = n, k
 		}
 	}
 	if choix < 0 {

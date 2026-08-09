@@ -242,6 +242,17 @@ func (v *Volume) Colonne(x, y float64) (bandes []int, dansEmprise bool) {
 // Altitude rend l'altitude du centre d'une bande.
 func (v *Volume) Altitude(iz int) float64 { return v.ZMin + (float64(iz)+0.5)*v.ZBand }
 
+// AltitudeSol rend l'altitude de la SURFACE portee par une bande, c'est-a-dire sa base.
+//
+// Pourquoi la base et non le centre. Une bande de 0,5 m qui contient un sol ne dit pas ou le
+// sol se trouve dedans, et le centre semble l'estimateur naturel. La mesure dit autre chose :
+// sur les 27 cartes du balayage, l'ecart entre une ancre ramenee au sol et le sol rendu par le
+// centre vaut -0,1 a -0,5 m — le sol rendu est SYSTEMATIQUEMENT trop haut, d'environ une
+// demi-bande. Les surfaces se rangent donc vers le bas de leur bande, ce qui est attendu :
+// c'est la face du dessus d'un plancher qui est rasterisee, et l'epaisseur du plancher occupe
+// le reste de la bande.
+func (v *Volume) AltitudeSol(iz int) float64 { return v.ZMin + float64(iz)*v.ZBand }
+
 // SolLePlusProche rend l'altitude du sol le plus proche de z a l'aplomb du point, et
 // l'ecart signe (positif = le point est AU-DESSUS du sol).
 //
@@ -255,7 +266,7 @@ func (v *Volume) SolLePlusProche(x, y, z float64) (sol, ecart float64, ok bool) 
 	}
 	meilleur := math.Inf(1)
 	for _, iz := range bandes {
-		a := v.Altitude(iz)
+		a := v.AltitudeSol(iz)
 		if d := math.Abs(z - a); d < meilleur {
 			meilleur, sol = d, a
 		}
