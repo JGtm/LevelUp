@@ -163,6 +163,18 @@ func patternVocabulary() []string {
 	for _, e := range engins {
 		out = append(out, e+"_turret")
 	}
+	// Armements composes : `falcon_grenade_launcher` (index 87) est sorti de la seule
+	// hypothese de l utilisateur regardant l image — « un Falcon avec une autre tourelle,
+	// peut-etre un lance-grenades ». Un armement en DEUX mots n etait pas decline.
+	for _, a := range []string{
+		"grenade_launcher", "rocket_launcher", "machine_gun", "gauss_cannon", "missile_pod",
+		"chain_gun", "plasma_cannon", "fuel_rod", "flak_cannon",
+	} {
+		out = append(out, a, "turret_"+a, a+"_turret")
+		for _, e := range engins {
+			out = append(out, e+"_"+a)
+		}
+	}
 	for _, g := range []string{"frag", "plasma", "spike", "dynamo", "splinter"} {
 		out = append(out, g+"_grenade_stick", g+"_stick", "stick_"+g)
 	}

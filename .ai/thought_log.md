@@ -60497,3 +60497,40 @@ l utilisateur — a confirmer par observation en Theater avant toute publication
 **Prochaine etape**. Etudier la correlation film -> icone demandee par l utilisateur : lister
 les kills dont la source de degat n est pas une arme du registre (tonneaux, bobines, chute) pour
 qu il les constate en Theater, plutot que de deviner.
+
+## [2026-08-09] v7.5 voie C — icones : l oeil humain rend un nom que la machine avait manque
+
+**Statut** : Complete.
+
+**Deuxieme passe de nommage** versee (`NOMMAGE_GATE_2026-08-09.tsv`, remplace la premiere) :
+armes 19 = Canon a mitraille (coherent avec kill feed 14), kill feed 39 = tourelle Shade banie,
+40 = tourelle Shade, 48 = grenade Dynamo — ce dernier exactement dans le trou entre plasma (47)
+et spike (49), comme la position le laissait attendre.
+
+**Decision technique — un armement peut s ecrire en DEUX mots.** L utilisateur a suppose « le 87
+est une autre variante du Falcon, peut-etre celle equipee d un lance-grenades ». Hache :
+`killfeed_falcon_grenade_launcher` tombe **exactement** sur le StringID de l index 87 (verifie
+dans la table `bitd`). Kill feed a **59 sur 88**. Cause de l echec precedent identifiee et
+corrigee : `patternVocabulary` ne composait `<engin>_<armement>` qu avec des armements d UN mot
+(`chaingun`, `gauss`, `rocket`), jamais `grenade_launcher`. La composition a deux mots est
+desormais declinee — 9 armements composes x les engins.
+
+**Ce que ca confirme sur la methode**. Deux fois de suite, ce sont les mots de l utilisateur
+REGARDANT les images qui ont debloque ce qu aucune moisson n atteignait. Le craquage est
+lexical : il ne trouve que ce qu on lui donne a essayer, et un humain qui voit un lance-grenades
+sur un Falcon est une meilleure source de vocabulaire que 408 000 chaines de binaire.
+
+**Doc inversee corrigee**. La page annoncait encore « une divergence reste a trancher » pour
+l index 20 (`heatwave` vs `hinf_cindershot`) : elle EST tranchee depuis la passe humaine, qui a
+confirme le meme decalage sur le kill feed (index 22). La page dit maintenant la regle. Deux
+compteurs en dur y ont ete supprimes au profit du compteur calcule.
+
+**Resultats observes**. 168 PNG, 26 weapon_key, 23 noms craques cote armes, 59 cote kill feed.
+`gofmt`, `go vet`, `go build` verts ; aucun fichier au-dessus du seuil ; zero `fmt.Println`.
+
+**Restent sans etiquette** : kill feed 25, 63, 75 (non reconnus par l utilisateur) et 77
+(hypothese « bombe/balle », a confirmer). Les index d armes 31 et 32 ne sont pas des trous : ce
+sont les variantes de bobine listees en 30.
+
+**Prochaine etape**. Correlation film -> icone pour les tonneaux et bobines (proposee, non
+lancee : hors perimetre « extraction + revue » de ce lot).

@@ -18,6 +18,7 @@ armes	15	contour-15.png|silhouette-15.png	Ravageur	hinf_ravager
 armes	16	contour-16.png|silhouette-16.png	Marteau antigravite	hinf_gravity_hammer
 armes	17	contour-17.png|silhouette-17.png	Empaleur	hinf_skewer
 armes	18	contour-18.png|silhouette-18.png	Dechiqueteur	hinf_mangler
+armes	19	contour-19.png|silhouette-19.png	Canon à mitraille - Scrap cannon	
 armes	20	contour-20.png|silhouette-20.png	Cremateur	hinf_cindershot
 armes	21	contour-21.png|silhouette-21.png	Calcineur	hinf_heatwave
 armes	22	contour-22.png|silhouette-22.png	Rayon de Sentinelle	hinf_sentinel_beam
@@ -74,6 +75,8 @@ killfeed	35	killfeed-35.png	banshee
 killfeed	36	killfeed-36.png	ghost	
 killfeed	37	killfeed-37.png	chopper	
 killfeed	38	killfeed-38.png	scorpion_turret	
+killfeed	39	killfeed-39.png	Banished Shade Turret	
+killfeed	40	killfeed-40.png	Shade turret	
 killfeed	41	killfeed-41.png	Power seed ?	
 killfeed	42	killfeed-42.png	Shock coil	
 killfeed	43	killfeed-43.png	Blast coil	
@@ -81,6 +84,7 @@ killfeed	44	killfeed-44.png	UNSC fusion coil
 killfeed	45	killfeed-45.png	Plasma coil	
 killfeed	46	killfeed-46.png	frag_grenade	
 killfeed	47	killfeed-47.png	plasma_grenade	
+killfeed	48	killfeed-48.png	dynamo_grenade	
 killfeed	49	killfeed-49.png	spike_grenade	
 killfeed	50	killfeed-50.png	plasma_grenade_stick	
 killfeed	51	killfeed-51.png	spike_grenade_stick	

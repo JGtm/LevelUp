@@ -108,19 +108,21 @@
       cote. Seule l'identification du bloc PAR SON CONTENU tient.
     </p>
     <p class="note">
-      <b>Le NOM INTERNE est craque aussi</b>, pour 21 index cote armes et 55 cote kill feed — le tag porte un StringID (murmur3),
+      <b>Le NOM INTERNE est craque aussi</b> — le compteur en haut de page fait foi sur le nombre, cette prose ne le repete plus — le tag porte un StringID (murmur3),
       pas une chaine, et il est retrouve en hachant les chaines du binaire du jeu (meme recette
       que le nommage des objets Forge). C est ce qui a rendu <code>mutilator</code> (#37),
       <code>skull</code> (#25), <code>flag</code> (#26), <code>ball | bomb</code> (#34),
       <code>plasma_turret</code> (#12). <b>Attention</b> : un nom suivi de « ? » vient d'un tag
       <code>weap</code> NON canonique, dont l'index peut etre PERIME — l'index 31 se faisait
-      ainsi appeler <code>shade_turret</code> alors que l'image est une caisse. <b>Une divergence
-      reste a trancher</b> : l index 20 se nomme <code>heatwave</code> dans le jeu alors que le
-      registre y lit <code>hinf_cindershot</code> — les deux viennent du MEME tag canonique.
+      ainsi appeler <code>shade_turret</code> alors que l'image est une caisse. <b>DIVERGENCE TRANCHEE</b> : l index 20 se nomme <code>heatwave</code> dans le jeu alors que
+      le registre y lit <code>hinf_cindershot</code>, et le meme decalage existe sur le kill feed
+      (index 22). Confirme deux fois sur deux atlas independants par la passe humaine : en cas de
+      desaccord, <b>le sprite index et le registre font foi, jamais le nom craque</b>.
     </p>
     <p class="note">
-      Ce qui reste a nommer a la main : l'atlas sandbox en entier, et les quelques armes de
-      l'atlas d'armes qui ne sont pas dans notre registre.
+      Ce qui reste a nommer a la main, apres deux passes : le kill feed 25, 63 et 75 (non reconnus),
+      et le 77 (hypothese « bombe/balle » a confirmer). Les tonneaux et bobines sont des
+      SUPPOSITIONS assumees — a constater en Theater avant toute publication.
     </p>
     <p class="note">
       Reserve levee : l'atlas sandbox declare 88 images et les 88 sont servies. Le recensement
@@ -216,7 +218,7 @@ const NOMS_KILLFEED = {
   64:"headshot", 65:"melee", 66:"back_smack", 67:"flag_melee", 69:"player_left",
   70:"player_joined", 71:"player_rejoined", 72:"grappleshot", 73:"bandit", 76:"sandwich",
   78:"waterfall", 79:"quantum", 80:"ma5k_smg", 81:"mutilator", 83:"perfect", 85:"falcon",
-  86:"falcon_chaingun",
+  86:"falcon_chaingun", 87:"falcon_grenade_launcher",
 };
 // <</NOMS_KILLFEED>>
 
