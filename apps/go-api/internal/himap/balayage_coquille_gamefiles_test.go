@@ -47,47 +47,64 @@ func TestBalayageCoquille(t *testing.T) {
 		ancresAvant, ancresApres int
 		pxAvant, pxApres         int
 		plans                    int
+		refusee                  bool
 	}
 	var bilans []bilan
 	var sansCoquille, absentes []string
 
 	for _, mod := range modules {
-		chemin, ok := chercheModule(racine, mod)
-		if !ok {
-			absentes = append(absentes, mod)
-			continue
-		}
-		var ancres [][3]float64
-		for _, e := range ancresDuModule(t, mod) {
-			for _, o := range e.Objectives {
-				ancres = append(ancres, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
+		// UN SOUS-TEST PAR CARTE : un `t.Fatal` dans `peupleRendu` (module illisible) ne doit tuer
+		// QUE sa carte. Le premier balayage complet est mort en entier sur une seule — meme
+		// piege que celui deja documente pour `TestBalayageDesCartes`.
+		mod := mod
+		t.Run(mod, func(t *testing.T) {
+			chemin, ok := chercheModule(racine, mod)
+			if !ok {
+				absentes = append(absentes, mod)
+				return
 			}
-		}
-		if len(ancres) == 0 {
-			continue
-		}
-		b := bilan{carte: mod}
-		rendu := cadreSurAncres(t, ancres)
-		rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
-		zJeu := medianeZ(ancres) - AncrageDecalageSol
-		peupleRendu(t, rendu, racine, chemin, ancres)
-		b.ancresAvant, b.pxAvant = compteAncresEtPixels(rendu, ancres)
+			var ancres [][3]float64
+			for _, e := range ancresDuModule(t, mod) {
+				for _, o := range e.Objectives {
+					ancres = append(ancres, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
+				}
+			}
+			if len(ancres) == 0 {
+				return
+			}
+			b := bilan{carte: mod}
+			rendu := cadreSurAncres(t, ancres)
+			rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+			zJeu := medianeZ(ancres) - AncrageDecalageSol
+			peupleRendu(t, rendu, racine, chemin, ancres)
+			b.ancresAvant, b.pxAvant = compteAncresEtPixels(rendu, ancres)
 
-		coq := coquilleDeLaCarte(t, chemin)
-		if len(coq) == 0 {
-			sansCoquille = append(sansCoquille, mod)
-			continue
-		}
-		b.plans = len(coq)
-		rendu.RestreintALaCoquille(coq, zJeu)
-		b.ancresApres, b.pxApres = compteAncresEtPixels(rendu, ancres)
-		bilans = append(bilans, b)
+			coq := coquilleDeLaCarte(t, chemin)
+			if len(coq) == 0 {
+				sansCoquille = append(sansCoquille, mod)
+				return
+			}
+			b.plans = len(coq)
+			if !CoquilleGardeLesAncres(coq, ancres, zJeu) {
+				b.ancresApres, b.pxApres = b.ancresAvant, b.pxAvant
+				b.refusee = true
+				bilans = append(bilans, b)
+				return
+			}
+			rendu.RestreintALaCoquille(coq, zJeu)
+			b.ancresApres, b.pxApres = compteAncresEtPixels(rendu, ancres)
+			bilans = append(bilans, b)
+		})
 	}
 
-	perdantes := 0
+	perdantes, refusees := 0, 0
 	for _, b := range bilans {
 		perdu := b.ancresAvant - b.ancresApres
 		marque := "  "
+		if b.refusee {
+			marque = "--"
+			refusees++
+		}
 		if perdu > 0 {
 			marque = "!!"
 			perdantes++
@@ -102,7 +119,8 @@ func TestBalayageCoquille(t *testing.T) {
 	if len(absentes) > 0 {
 		t.Logf("%d modules absents de l'installation", len(absentes))
 	}
-	t.Logf("BILAN : %d cartes mesurees · %d perdent des ancres", len(bilans), perdantes)
+	t.Logf("BILAN : %d cartes mesurees · %d coquilles REFUSEES (elles excluaient des ancres) · %d perdent des ancres",
+		len(bilans), refusees, perdantes)
 }
 
 func compteAncresEtPixels(r *Rendu, ancres [][3]float64) (int, int) {

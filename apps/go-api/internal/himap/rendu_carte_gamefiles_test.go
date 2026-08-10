@@ -56,7 +56,7 @@ func TestRenduCarte(t *testing.T) {
 	n, ecartees := peupleRendu(t, rendu, racine, chemin, ancres)
 	t.Logf("%d instances dessinees · %d ecartees comme decor", n, ecartees)
 
-	appliqueCoquille(t, rendu, chemin, medianeZ(ancres)-AncrageDecalageSol)
+	appliqueCoquille(t, rendu, chemin, medianeZ(ancres)-AncrageDecalageSol, ancres)
 	jugeParLesAncres(t, rendu, ancres)
 	poseEauDepuisSddt(t, rendu, chemin)
 
@@ -215,7 +215,7 @@ func jugeParLesAncres(t *testing.T, r *Rendu, ancres [][3]float64) {
 //
 // Une carte sans coquille exploitable est SIGNALEE au journal, jamais tuee — un oracle absent
 // qui passe au vert est le piege le plus cher de ce chantier.
-func appliqueCoquille(t *testing.T, r *Rendu, cheminModule string, zJeu float64) {
+func appliqueCoquille(t *testing.T, r *Rendu, cheminModule string, zJeu float64, ancres [][3]float64) {
 	t.Helper()
 	if os.Getenv("RENDU_SANS_COQUILLE") != "" {
 		t.Log("TEMOIN : coquille de mort NON appliquee")
@@ -234,6 +234,14 @@ func appliqueCoquille(t *testing.T, r *Rendu, cheminModule string, zJeu float64)
 	coq := s.Coquille()
 	if len(coq) == 0 {
 		t.Logf("coquille : aucune frontiere dans le sddt de %s", filepath.Base(chemin))
+		return
+	}
+	// LA COQUILLE NE S'APPLIQUE QUE SI ELLE GARDE TOUTES LES ANCRES. Quatre cartes sur 25 y
+	// perdent de la zone jouable (cf. `CoquilleGardeLesAncres`) — sur celles-la on s'en passe
+	// plutot que d'amputer la carte.
+	if !CoquilleGardeLesAncres(coq, ancres, zJeu) {
+		t.Logf("coquille : %d plans mais elle EXCLUT des ancres — NON appliquee sur %s",
+			len(coq), filepath.Base(chemin))
 		return
 	}
 	efface := r.RestreintALaCoquille(coq, zJeu)
