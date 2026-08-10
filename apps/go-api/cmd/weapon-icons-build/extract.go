@@ -12,26 +12,23 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"levelup/go-api/internal/himap"
 )
 
-// moduleRoots : racines candidates, dans l'ordre. La première qui existe gagne.
-// Surchargeable par HALO_DEPLOY (ou le drapeau -deploy).
-var moduleRoots = []string{
-	`C:/Program Files (x86)/Steam/steamapps/common/Halo Infinite/deploy`,
-	`C:/XboxGames/Halo Infinite/Content/deploy`,
-	`D:/SteamLibrary/steamapps/common/Halo Infinite/deploy`,
-}
-
+// moduleRoot rend la racine `deploy` de l'installation Halo Infinite. Le drapeau -deploy la
+// surcharge via HALO_DEPLOY (priorité, historique de cet outil) ; à défaut, la résolution des
+// racines connues et de LEVELUP_HALO_DEPLOY passe par himap — source UNIQUE des chemins du jeu
+// (garde-rail himap.TestAucuneAutreCopieDuCheminDuJeu : aucune seconde copie de ces chemins).
 func moduleRoot() string {
 	if v := os.Getenv("HALO_DEPLOY"); v != "" {
 		return v
 	}
-	for _, r := range moduleRoots {
-		if fi, err := os.Stat(r); err == nil && fi.IsDir() {
-			return r
-		}
+	root, err := himap.DeployRoot()
+	if err != nil {
+		return ""
 	}
-	return ""
+	return root
 }
 
 // tagRef désigne une entrée de .module.
