@@ -121,6 +121,57 @@ func TeinteEau(berge bool) color.RGBA {
 	return couleurEau
 }
 
+// PorteeNiveauDeJeu : distance verticale, en metres, au-dela de laquelle une surface n'est
+// plus tenue pour un etage joue et recule dans le fond.
+//
+// 10 m est de l'ordre de deux etages de carte. Ce n'est pas un reglage d'image : le niveau de
+// reference vient des ancres d'objectifs (`AncrageDecalageSol`, `reference.go`), donc de la
+// carte elle-meme, et cette portee dit seulement a partir de quand on quitte l'aire de jeu.
+const PorteeNiveauDeJeu = 10.0
+
+// TeinteNiveauDeJeu rend la couleur d'une surface selon son ECART SIGNE au niveau de jeu.
+//
+// POURQUOI ELLE EXISTE. `TeinteAltitude` normalise entre les centiles 2 et 98 de TOUTE la
+// matiere dessinee : sur une carte encaissee comme Cliffhanger, ce sont les rochers hauts qui
+// prennent le haut de la rampe, donc le blanc, donc l'oeil — pendant que l'arene, plus basse,
+// recule dans le sombre. **La hierarchie visuelle est inversee** : le decor domine le sujet.
+//
+// Ici l'altitude n'est plus mesuree contre elle-meme mais contre LE NIVEAU JOUE. Ce qui est a
+// hauteur de jeu reste clair et contraste ; ce qui s'en eloigne, au-dessus comme au-dessous,
+// perd en clarte et en saturation. Le decor ne disparait pas — il cesse d'etre le sujet.
+//
+// `dz` est l'ecart signe a ce niveau, en metres.
+func TeinteNiveauDeJeu(dz, eclairement float64) color.RGBA {
+	// Recession : 1 au niveau de jeu, tend vers un plancher quand on s'en eloigne. Le carre
+	// donne un plateau autour du niveau joue au lieu d'un cone — les etages proches restent
+	// tous lisibles, la falaise lointaine seule s'efface.
+	x := math.Min(1, math.Abs(dz)/PorteeNiveauDeJeu)
+	recul := 1 - 0.62*x*x
+
+	// Teinte : legerement chaude au niveau de jeu, froide en s'eloignant vers le haut, plus
+	// sombre et neutre vers le bas. L'ordre reste lisible sans inverser la hierarchie.
+	chaud := [3]float64{0.92, 0.90, 0.86}
+	froid := [3]float64{0.42, 0.50, 0.60}
+	if dz < 0 {
+		froid = [3]float64{0.34, 0.36, 0.42}
+	}
+	var c [3]uint8
+	for a := 0; a < 3; a++ {
+		v := chaud[a]*(1-x) + froid[a]*x
+		c[a] = uint8(math.Round(255 * math.Max(0, math.Min(1, v*eclairement*recul))))
+	}
+	return color.RGBA{c[0], c[1], c[2], 255}
+}
+
+// TeinteEncre rend une carte quasi monochrome : la lisibilite vient de l'ombrage et des
+// aretes, pas de la couleur. L'ecart au niveau de jeu ne joue que sur la valeur.
+func TeinteEncre(dz, eclairement float64) color.RGBA {
+	x := math.Min(1, math.Abs(dz)/PorteeNiveauDeJeu)
+	v := (0.30 + 0.70*eclairement) * (1 - 0.45*x)
+	g := uint8(math.Round(255 * math.Max(0, math.Min(1, v))))
+	return color.RGBA{g, g, g, 255}
+}
+
 // TeinteAltitude rend la couleur d'une altitude normalisee dans [0,1], modulee par
 // l'eclairement. `t` hors bornes est ECRETE, jamais extrapole.
 func TeinteAltitude(t, eclairement float64) color.RGBA {

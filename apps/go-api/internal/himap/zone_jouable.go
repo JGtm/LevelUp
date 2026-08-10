@@ -84,6 +84,95 @@ func EstDecorGrossier(m *Mesh, in Instance, aireMax float64) bool {
 	return AireMedianeProjetee(m, in) > aireMax
 }
 
+// HauteurClotureMetres : hauteur, au-dessus du sol de reference, a laquelle on cherche les
+// MURS qui enferment l'aire de jeu.
+//
+// 1,2 m = la poitrine d'un Spartan. Plus bas on toucherait les marches et le mobilier, plus
+// haut on passerait au-dessus des rambardes. Ce n'est pas un reglage d'image : c'est la
+// hauteur a laquelle une carte close est effectivement close.
+const HauteurClotureMetres = 1.2
+
+// ZoneClose rend, cellule par cellule, la partie de l'emprise ENFERMEE par de la matiere —
+// celle que l'exterieur n'atteint pas.
+//
+// POURQUOI DANS LE VOLUME ET PAS DANS LE RENDU. Un rendu vu du dessus est un champ
+// d'altitude : un mur vertical s'y ecrase sur son arete superieure et n'y bloque rien. La
+// cloture ne peut donc se lire que dans le volume, ou le mur occupe des cellules a hauteur
+// d'homme. C'est aussi ce qui distingue ce critere de l'ACCESSIBILITE, refutee le 2026-08-10 :
+// celle-la partait de l'interieur et se noyait dans les pentes douces du champ d'altitude.
+//
+// La methode est l'inondation par l'EXTERIEUR : on part des bords du cadre, on se propage a
+// travers les cellules VIDES a hauteur de poitrine, et ce que l'eau n'atteint pas est
+// enferme. Un decor lointain, ouvert sur les bords, est atteint ; une arene close ne l'est pas.
+//
+// `zBas`/`zHaut` bornent la tranche ou l'on cherche les murs. Une cellule bloque si elle porte
+// de la matiere dans CETTE tranche, pas ailleurs.
+func (v *Volume) ZoneClose(zBas, zHaut float64) []bool {
+	iz0 := int((zBas - v.ZMin) / v.ZBand)
+	iz1 := int((zHaut - v.ZMin) / v.ZBand)
+	iz0, iz1 = max(iz0, 0), min(iz1, v.NZ-1)
+
+	bloque := make([]bool, v.NX*v.NY)
+	for j := 0; j < v.NY; j++ {
+		for i := 0; i < v.NX; i++ {
+			for iz := iz0; iz <= iz1; iz++ {
+				if v.Get(iz, j, i) {
+					bloque[j*v.NX+i] = true
+					break
+				}
+			}
+		}
+	}
+
+	// Inondation depuis les quatre bords du cadre.
+	dehors := make([]bool, v.NX*v.NY)
+	var file [][2]int
+	pousse := func(i, j int) {
+		if i < 0 || i >= v.NX || j < 0 || j >= v.NY {
+			return
+		}
+		k := j*v.NX + i
+		if dehors[k] || bloque[k] {
+			return
+		}
+		dehors[k] = true
+		file = append(file, [2]int{i, j})
+	}
+	for i := 0; i < v.NX; i++ {
+		pousse(i, 0)
+		pousse(i, v.NY-1)
+	}
+	for j := 0; j < v.NY; j++ {
+		pousse(0, j)
+		pousse(v.NX-1, j)
+	}
+	for len(file) > 0 {
+		c := file[len(file)-1]
+		file = file[:len(file)-1]
+		pousse(c[0]+1, c[1])
+		pousse(c[0]-1, c[1])
+		pousse(c[0], c[1]+1)
+		pousse(c[0], c[1]-1)
+	}
+
+	close := make([]bool, v.NX*v.NY)
+	for k := range close {
+		close[k] = !dehors[k]
+	}
+	return close
+}
+
+// CelluleDe rend l'indice de cellule d'une position monde, et si elle tombe dans l'emprise.
+// Sert a confronter un masque de volume a un rendu qui n'a pas le meme pas.
+func (v *Volume) CelluleDe(x, y float64) (int, bool) {
+	i := int((x - v.Min[0]) / v.Cell)
+	j := int((y - v.Min[1]) / v.Cell)
+	if i < 0 || i >= v.NX || j < 0 || j >= v.NY {
+		return 0, false
+	}
+	return j*v.NX + i, true
+}
+
 // MarcheMaxMetres : denivele qu'un Spartan franchit entre deux cellules voisines.
 //
 // PHYSIQUE, pas esthetique : le pas d'escalade automatique de Halo Infinite est de l'ordre du

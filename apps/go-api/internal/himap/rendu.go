@@ -54,7 +54,9 @@ type Rendu struct {
 	z        []float64
 	plafond  float64
 	plancher float64
-	n        [][3]float64
+	// niveauJeu : altitude du sol JOUE, deduite des ancres. NaN = inconnu.
+	niveauJeu float64
+	n         [][3]float64
 	// eau : cellules couvertes par un volume d'eau (PoseEau, cf. sddt.go). Un habillage —
 	// jamais consulte par le z-buffer ni par les metriques du banc.
 	eau []bool
@@ -66,7 +68,7 @@ func NewRendu(min, max [2]float64, cell float64) *Rendu {
 	ny := int((max[1]-min[1])/cell) + 1
 	r := &Rendu{Cell: cell, Min: min, NX: nx, NY: ny,
 		z: make([]float64, nx*ny), n: make([][3]float64, nx*ny),
-		plafond: math.NaN(), plancher: math.NaN()}
+		plafond: math.NaN(), plancher: math.NaN(), niveauJeu: math.NaN()}
 	for i := range r.z {
 		r.z[i] = math.Inf(-1)
 	}
@@ -240,4 +242,21 @@ func (r *Rendu) Plancher(z float64) { r.plancher = z }
 func (r *Rendu) Tranche(zmin, zmax float64) {
 	r.Plancher(zmin)
 	r.Plafond(zmax)
+}
+
+// NiveauDeJeu declare l'altitude du sol joue, deduite des ancres d'objectifs. Elle sert aux
+// habillages qui font reculer ce qui n'est pas a hauteur de jeu (cf. `rendu_couleur.go`).
+func (r *Rendu) NiveauDeJeu(z float64) { r.niveauJeu = z }
+
+// EcartAuNiveauDeJeu rend l'ecart signe d'une cellule au niveau joue. `ok` est faux si la
+// cellule est vide ou si aucun niveau n'a ete declare.
+func (r *Rendu) EcartAuNiveauDeJeu(i, j int) (float64, bool) {
+	if math.IsNaN(r.niveauJeu) {
+		return 0, false
+	}
+	z, ok := r.Altitude(i, j)
+	if !ok {
+		return 0, false
+	}
+	return z - r.niveauJeu, true
 }

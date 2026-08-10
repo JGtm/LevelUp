@@ -206,6 +206,8 @@ func TestRenduForgeVagabond(t *testing.T) {
 		t.Logf("tranche relative au sol des ancres (%.2f m) : [%.2f ; %.2f]",
 			sol, sol+TrancheDeJeuMin, sol+TrancheDeJeuMax)
 	}
+	// Le niveau JOUE, pour les habillages qui mesurent l'altitude contre lui (`jeu`, `encre`).
+	rendu.NiveauDeJeu(medianeZAncres(ancres) - AncrageDecalageSol)
 	assets := map[uint32]*RuntimeGeoAsset{}
 	dessines, sautes, morts := 0, 0, 0
 	for _, o := range v.Objects {
@@ -265,7 +267,11 @@ func TestRenduForgeVagabond(t *testing.T) {
 	}
 
 	if sortie := os.Getenv("RENDU_PNG_FORGE"); sortie != "" {
-		ecritPNG(t, sortie, carteSeulePNG(rendu, rendu.NX, rendu.NY, nil, StyleCarteParDefaut))
+		style := styleRendu(os.Getenv("RENDU_STYLE"))
+		if style == "" {
+			style = StyleCarteParDefaut
+		}
+		ecritPNG(t, sortie, carteSeulePNG(rendu, rendu.NX, rendu.NY, nil, style))
 		fmt.Println("carte forge ecrite:", sortie)
 	}
 }
