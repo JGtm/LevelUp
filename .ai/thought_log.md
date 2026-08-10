@@ -1,3 +1,31 @@
+## [2026-08-10] v7.5 — cartes : fin de contexte, handoff pose ; AUCUN asset n'est encore produit
+
+**Statut** : chaine de rendu COMPLETE et validee, LIVRAISON NON COMMENCEE. Handoff et prompt de
+reprise : `.ai/V7.5/cartes/HANDOFF_CARTES_2026-08-10.md`.
+
+**Le constat qui compte, souleve par l'utilisateur** : j'ai ecrit « les cartes sont livrees »,
+c'etait faux. Les PNG existants sont des ARTEFACTS DE REVUE ecrits par des TESTS a des chemins
+arbitraires du Bureau, via des variables d'environnement. Rien n'est versionne, rien ne passe
+par `PathResolver`, et `cmd/mapstruct-build` produit toujours l'ancien JSON de surfaces AABB.
+Les etapes C1/C2/C3 du plan (« cuire les cartes ») sont TOUTES encore ouvertes. C'est desormais
+le §0 du handoff et la premiere entree du prompt de reprise.
+
+**Ce qui EST acquis** : la chaine complete sans aucun reglage par carte — cadre par les ancres ·
+tranche de jeu translatee au sol · tri du decor par le grain · frontiere de mort `sddt` par
+parite de rayon · eau · couleur par ecart au niveau joue. Gates : `TestBancCliffhanger` asserte
+accord 66,7 % et positions 93,82 % ; `TestBalayageCoquille` rend 25 cartes a 0 ancre perdue.
+Trois cartes validees a l'oeil par l'utilisateur.
+
+**Leçon de la journee, et elle vaut d'etre gardee** : j'ai livre plusieurs diagnostics assures
+qui se sont reveles faux — l'union des volumes, la cloture refutee sur une seule carte, « les
+cartes sont livrees ». Chacun a ete rattrape par la mesure ou par l'utilisateur, mais je les
+avais annonces avec trop d'aplomb. **Marquer explicitement ce qui est MESURE et ce qui est
+SUPPOSE, dans le texte meme.**
+
+**Prochaine etape** : lot A du prompt — produire les assets. Puis lot B, les 1 139 objets Forge.
+
+---
+
 ## [2026-08-10] v7.5 — cartes : la frontiere de mort est un MAILLAGE, pas un convexe — 25/25 cartes
 
 **Statut** : Complete. Detail : §14.6 du handoff.
