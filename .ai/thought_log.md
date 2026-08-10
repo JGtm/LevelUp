@@ -60534,3 +60534,32 @@ de sonde migrés vers l'API promue pour que l'arbre compile.
 **Prochaine étape** : gate visuel utilisateur sur les images, puis lot 2 (prototype
 carte Forge : F1 food -> modèle, F2 pose des triangles, exclusion volumes de mort,
 oracle des ancres — cas Vagabond module générique `map` traité explicitement).
+
+## [2026-08-10] Lot prototype Forge — F1 fermé, Vagabond rendu depuis le .mvar
+
+**Statut : Complété (prototype)**
+
+**Décision technique principale** : le chaînon `type_id -> modèle` est fermé et il est
+INLINE — les deps des tags `food` sont vides (457/467) et `root+0x08` est l'auto-référence ;
+le scan des octets contre l'index complet de l'installation (même méthode que
+`type_id -> food`) montre que les food dessinables portent des refs `rtgo` directes :
+374/467 type_id, 3 558/4 697 objets placés (75,7 %). `rtgo` = le groupe déjà décodé par
+la chaîne sbsp, donc `NewRuntimeGeoAsset` rend les objets Forge tel quel.
+
+**Résultats observés** :
+- `TestRenduForgeVagabond` : 3 558 objets dessinés, 38 volumes de mort EXCLUS (comptés),
+  ORACLE DES ANCRES 4/4 (100 %). Sélection de Vagabond par map_id (module générique
+  `map` partagé avec Highpower — cas traité explicitement), jointure vérifiée par le
+  compte d'objets (4 709 == 4 709).
+- Échelle : le piège payé côté sbsp est INVERSE ici — champ [6] absent, champ [9] struct
+  vide sur 4 709/4 709 objets : AUCUNE échelle dans le .mvar, mesuré sur pièces.
+- Tranche translatée au sol des ancres (médiane - AncrageDecalageSol) — règle, pas réglage.
+- Mutation JOUÉE : z de pose ignoré -> 0/4 ancres (rouge), révert -> 4/4 (vert).
+- Reports au registre : 1 139 objets via bloc/scen/mach non traités ; choix de variante
+  rtgo naïf ; toile fo08_wetland non rendue ; chiralité à juger au gate visuel.
+- Gates : build, vet, golangci 0 issue ; fichiers <= 500 L (sonde scindée).
+- Image gate visuel : Bureau, `vagabond_forge_proto.png`.
+
+**Prochaine étape** : gate visuel utilisateur (rivière Cliffhanger/Forbidden + Vagabond),
+puis selon verdict : saut bloc->hlmt pour les 24 % manquants, toile sous les objets,
+généralisation aux ~100 variantes Forge du catalogue.
