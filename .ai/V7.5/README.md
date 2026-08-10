@@ -19,7 +19,11 @@ réfuté. Ce qui reste à faire ou à terminer n'est pas ici mais à la racine d
 | `icones/` | Icônes d'armes et du **kill feed** extraites des `.module` : chaîne, tables de correspondance, page de nommage, planches-contact | 5 |
 | `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 69 Mo, lus par du code | 40 entrées |
 
-À la racine de `V7.5/` : `PLAN_RECONCILIATION_BRANCHES.md` — la réconciliation des deux
+À la racine de `V7.5/` : `RECHERCHE_CTF_TIRS_PERDUS.md` — le verdict de la **décision #2** du
+master plan (pourquoi le rejeu perd des tirs, et si le rejeu public est livrable). Ses sorties
+brutes sont sous `replay2d/mesures_ctf_2026-08-08/`.
+
+À la racine de `V7.5/` également : `PLAN_RECONCILIATION_BRANCHES.md` — la réconciliation des deux
 lignées (killweapon + rejeu 2D) sur `feat/replay2d-prod`, close le 2026-07-31. Son §5 porte les
 sept grandeurs de non-régression des trois films, encore citées comme gate par
 `../PLAN_DETTE_AVANT_MERGE.md`.

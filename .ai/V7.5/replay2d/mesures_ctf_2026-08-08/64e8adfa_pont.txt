@@ -1,0 +1,53 @@
+film	64e8adfa
+carte	Catalyst
+duree_s	833.7
+slots_distincts	138
+vies	141
+vies_nommees	122
+morts_du_fil	123
+morts_appariees	122
+offset_ms	3885404
+
+# sensibilite a la fenetre d'appariement
+fenetre_ms	150	vies_nommees	122	sur	141
+fenetre_ms	500	vies_nommees	123	sur	141
+fenetre_ms	2000	vies_nommees	123	sur	141
+fenetre_ms	10000	vies_nommees	123	sur	141
+
+# vies non nommees (t relatif au debut du film)
+vie	slot	527	debut_s	76.6	fin_s	76.6	duree_s	0.0	tirs_dans_la_fenetre	0
+vie	slot	534	debut_s	143.9	fin_s	214.0	duree_s	70.1	tirs_dans_la_fenetre	161
+vie	slot	567	debut_s	344.2	fin_s	344.3	duree_s	0.1	tirs_dans_la_fenetre	0
+vie	slot	571	debut_s	370.1	fin_s	384.7	duree_s	14.6	tirs_dans_la_fenetre	108
+vie	slot	602	debut_s	530.9	fin_s	748.8	duree_s	218.0	tirs_dans_la_fenetre	844
+vie	slot	607	debut_s	554.2	fin_s	749.7	duree_s	195.5	tirs_dans_la_fenetre	738
+vie	slot	623	debut_s	681.9	fin_s	745.2	duree_s	63.2	tirs_dans_la_fenetre	219
+vie	slot	626	debut_s	696.2	fin_s	749.7	duree_s	53.4	tirs_dans_la_fenetre	194
+vie	slot	627	debut_s	700.7	fin_s	749.0	duree_s	48.3	tirs_dans_la_fenetre	163
+vie	slot	628	debut_s	711.5	fin_s	744.3	duree_s	32.9	tirs_dans_la_fenetre	102
+vie	slot	629	debut_s	730.3	fin_s	749.7	duree_s	19.4	tirs_dans_la_fenetre	73
+vie	slot	630	debut_s	741.5	fin_s	749.5	duree_s	8.0	tirs_dans_la_fenetre	17
+vie	slot	633	debut_s	751.5	fin_s	833.7	duree_s	82.2	tirs_dans_la_fenetre	265
+vie	slot	636	debut_s	753.9	fin_s	828.9	duree_s	75.0	tirs_dans_la_fenetre	235
+vie	slot	639	debut_s	774.9	fin_s	828.4	duree_s	53.5	tirs_dans_la_fenetre	213
+vie	slot	645	debut_s	806.2	fin_s	828.6	duree_s	22.4	tirs_dans_la_fenetre	103
+vie	slot	647	debut_s	813.1	fin_s	829.3	duree_s	16.2	tirs_dans_la_fenetre	80
+vie	slot	648	debut_s	816.3	fin_s	832.5	duree_s	16.2	tirs_dans_la_fenetre	101
+vie	slot	649	debut_s	820.2	fin_s	830.8	duree_s	10.6	tirs_dans_la_fenetre	36
+
+# sonde de derive d'horloge
+offset_global_ms	3885404
+offset_premiere_moitie_ms	3885444	apparies	61
+offset_seconde_moitie_ms	4277425	apparies	10
+
+# residu median d'appariement par decile (ms)
+decile	1	vies_nommees	9	residu_moyen_ms	34.3
+decile	2	vies_nommees	11	residu_moyen_ms	34.2
+decile	3	vies_nommees	14	residu_moyen_ms	34.3
+decile	4	vies_nommees	12	residu_moyen_ms	34.5
+decile	5	vies_nommees	15	residu_moyen_ms	34.2
+decile	6	vies_nommees	15	residu_moyen_ms	34.7
+decile	7	vies_nommees	16	residu_moyen_ms	28.7
+decile	8	vies_nommees	10	residu_moyen_ms	34.0
+decile	9	vies_nommees	8	residu_moyen_ms	34.6
+decile	10	vies_nommees	12	residu_moyen_ms	33.9

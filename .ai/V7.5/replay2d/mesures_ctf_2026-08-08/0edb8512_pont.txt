@@ -1,0 +1,36 @@
+film	0edb8512
+carte	Aquarius
+duree_s	538.4
+slots_distincts	95
+vies	95
+vies_nommees	93
+morts_du_fil	93
+morts_appariees	93
+offset_ms	8188651
+
+# sensibilite a la fenetre d'appariement
+fenetre_ms	150	vies_nommees	93	sur	95
+fenetre_ms	500	vies_nommees	93	sur	95
+fenetre_ms	2000	vies_nommees	93	sur	95
+fenetre_ms	10000	vies_nommees	93	sur	95
+
+# vies non nommees (t relatif au debut du film)
+vie	slot	601	debut_s	467.7	fin_s	532.7	duree_s	65.0	tirs_dans_la_fenetre	321
+vie	slot	605	debut_s	508.7	fin_s	538.4	duree_s	29.7	tirs_dans_la_fenetre	138
+
+# sonde de derive d'horloge
+offset_global_ms	8188651
+offset_premiere_moitie_ms	8188651	apparies	47
+offset_seconde_moitie_ms	8439074	apparies	10
+
+# residu median d'appariement par decile (ms)
+decile	1	vies_nommees	7	residu_moyen_ms	35.7
+decile	2	vies_nommees	9	residu_moyen_ms	35.6
+decile	3	vies_nommees	11	residu_moyen_ms	35.2
+decile	4	vies_nommees	10	residu_moyen_ms	26.7
+decile	5	vies_nommees	10	residu_moyen_ms	35.2
+decile	6	vies_nommees	12	residu_moyen_ms	34.9
+decile	7	vies_nommees	8	residu_moyen_ms	35.5
+decile	8	vies_nommees	7	residu_moyen_ms	35.0
+decile	9	vies_nommees	9	residu_moyen_ms	35.4
+decile	10	vies_nommees	10	residu_moyen_ms	35.0

@@ -135,6 +135,22 @@ func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
 	return out, nil
 }
 
+// ReadAttackerIndex lit l'index d'attaquant d'un payload de record type 105, aux MÊMES offsets
+// que `decodeFireEvent`. Rend -1 si le payload est trop court.
+//
+// EXPORTÉ POUR LA RECHERCHE, ET POUR UNE RAISON PRÉCISE. La variante COURTE du record 105 n'est
+// pas émise par ce décodeur (sa sémantique n'est pas établie), mais savoir si elle porte un
+// index d'attaquant AU MÊME ENDROIT est justement ce qui permettra de trancher ce qu'elle est.
+// Sans cet accesseur, l'instrument de recherche devrait recopier `fireAttackerBit` et
+// `fireAttackerW` — une seconde copie d'un offset de bit, exactement ce que ce chantier a payé
+// cher ailleurs. Un seul endroit déclare ces offsets, et c'est ce fichier.
+func ReadAttackerIndex(pay []byte) int {
+	if len(pay)*8 < fireAttackerBit+fireAttackerW {
+		return -1
+	}
+	return int(readBitsAt(pay, fireAttackerBit, fireAttackerW)) >> 1
+}
+
 // decodeFireEvent lit la tête du record type 105 d'un payload de paquet. Rend ok=false, sans
 // rien lire, si le payload est trop court pour porter cette tête.
 //

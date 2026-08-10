@@ -165,7 +165,7 @@ func TestBuildOwnersPublishesNothingWithoutDeaths(t *testing.T) {
 	// un rejeu qui pose des tirs sur le mauvais joueur ne se voit pas.
 	tr := tracksOf(posAt(512, 1_000_000, 0, 0, 90), posAt(512, 2_000_000, 0, 0, 90),
 		posAt(513, 1_000_000, 5, 5, 270), posAt(513, 2_000_000, 5, 5, 270))
-	rep := buildOwners(tr, nil, PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26})
+	rep := buildOwners(tr, nil, PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26}, nil)
 	if len(rep.Owner) != 0 {
 		t.Errorf("sans morts, AUCUN slot ne doit etre attribue : %+v", rep.Owner)
 	}
@@ -175,13 +175,13 @@ func TestBuildOwnersPublishesNothingWithoutDeaths(t *testing.T) {
 
 	// SANS TABLE D'INDEX non plus, rien n'est publié : le pont a DEUX maillons lus, et il lui
 	// faut les deux.
-	if rep3 := buildOwners(tr, []Death{{XUID: 111, TimeMS: 2_000}}, PlayerIndexTable{}); len(rep3.Owner) != 0 {
+	if rep3 := buildOwners(tr, []Death{{XUID: 111, TimeMS: 2_000}}, PlayerIndexTable{}, nil); len(rep3.Owner) != 0 {
 		t.Errorf("sans table d'index, AUCUN slot ne doit etre attribue : %+v", rep3.Owner)
 	}
 
 	// Avec les deux maillons, la lecture nomme le slot.
 	deaths := []Death{{XUID: 111, TimeMS: 2_000}}
-	rep2 := buildOwners(tr, deaths, PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26})
+	rep2 := buildOwners(tr, deaths, PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26}, nil)
 	if rep2.DeathsNamed == 0 {
 		t.Fatalf("attendu au moins une vie nommee, obtenu %d", rep2.DeathsNamed)
 	}
