@@ -4415,6 +4415,14 @@ export interface components {
         };
         BridgeHealth: {
             /** Format: int64 */
+            closedByRespawn: number;
+            /** Format: int64 */
+            closedByShot: number;
+            /** Format: int64 */
+            closedContested: number;
+            /** Format: int64 */
+            closedRefused: number;
+            /** Format: int64 */
             fromReading: number;
             /** Format: int64 */
             indexDisagreements: number;

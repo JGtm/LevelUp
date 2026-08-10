@@ -8418,6 +8418,18 @@ components:
     BridgeHealth:
       additionalProperties: false
       properties:
+        closedByRespawn:
+          format: int64
+          type: integer
+        closedByShot:
+          format: int64
+          type: integer
+        closedContested:
+          format: int64
+          type: integer
+        closedRefused:
+          format: int64
+          type: integer
         fromReading:
           format: int64
           type: integer
@@ -8447,6 +8459,10 @@ components:
         - indexReadings
         - indexDisagreements
         - slotCollisions
+        - closedByShot
+        - closedByRespawn
+        - closedContested
+        - closedRefused
       type: object
     BucketInfo:
       additionalProperties: false
