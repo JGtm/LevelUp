@@ -71,7 +71,10 @@ func ctfClosureReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, ma
 	var b strings.Builder
 	fmt.Fprintf(&b, "film\t%s\ncarte\t%s\n", short, mapName)
 	fmt.Fprintf(&b, "slots_pont_avant\t%d\nslots_pont_apres\t%d\n", len(owners), len(closed))
-	fmt.Fprintf(&b, "fermeture_par_tir\t%d\tfermeture_par_reapparition\t%d\tcontestees\t%d\trefusees_recouvrement\t%d\n",
+	// « refusees » couvre depuis le 2026-08-11 les trois causes de rejet à candidat unique, dont
+	// l'absence de corroboration de la fermeture A ; l'ancien libellé `refusees_recouvrement` ne
+	// nommait que celle de la fermeture B et aurait fait lire un chiffre pour un autre.
+	fmt.Fprintf(&b, "fermeture_par_tir\t%d\tfermeture_par_reapparition\t%d\tcontestees\t%d\trefusees\t%d\n",
 		rep.byShot, rep.byRespawn, rep.contested, rep.refused)
 	fmt.Fprintf(&b, "\n# couverture des tirs\n")
 	fmt.Fprintf(&b, "avant\trattaches\t%d\tsur\t%d\ttaux\t%.4f\tsans_slot\t%d\tambigus\t%d\n",

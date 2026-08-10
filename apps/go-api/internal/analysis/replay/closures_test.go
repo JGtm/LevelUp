@@ -4,8 +4,8 @@ package replay
 //
 // L'ESSENTIEL DE CE FICHIER TESTE DES ABSTENTIONS. Une fermeture qui attribue est banale ; ce
 // qui la distingue du vote retiré le 2026-07-28, c'est qu'elle se TAIT dès que deux candidats
-// subsistent. Un test qui ne vérifierait que les succès laisserait passer un retour au vote sans
-// que rien ne casse.
+// subsistent, ET qu'elle n'attribue rien que le film ne corrobore. Un test qui ne vérifierait que
+// les succès laisserait passer un retour au vote sans que rien ne casse.
 
 import (
 	"testing"
@@ -18,20 +18,110 @@ import (
 // troisième copie divergerait, et la règle du dépôt l'interdit.
 func at(slot uint32, tUS uint64) filmdec.BipedPosition { return posAt(slot, tUS, 0, 0, 0) }
 
-// TestFermetureAAttribueQuandUnSeulCorpsEstPossible : le cas nominal de la fermeture A.
-func TestFermetureAAttribueQuandUnSeulCorpsEstPossible(t *testing.T) {
-	// Slot 1 appartient au joueur 0 (lu). Slot 2 est une vie anonyme, seule vivante à t=1s.
-	tracks := tracksOf(at(1, 500_000), at(2, 1_000_000))
-	owner := map[uint32]int{1: 0}
+// TestFermetureAAttribueLeCorpsQuiProlongeLeTireur : le cas nominal de la fermeture A, ET SA
+// SÉMANTIQUE EXACTE.
+//
+// CE TEST A ÉTÉ REPENSÉ LE 2026-08-11, parce que sa version d'origine ENCODAIT UN DÉFAUT. Elle
+// faisait tirer un joueur QUE RIEN NE SITUAIT DANS LE FILM — aucune vie, aucun corps connu — et
+// exigeait que le corps anonyme unique lui revienne. Elle verrouillait donc l'attribution d'un
+// corps sans la moindre corroboration : « un seul corps libre est là » y valait « ce corps est le
+// sien », ce qui ne s'ensuit pas.
+//
+// LA SÉMANTIQUE JUSTE, ET C'EST CE QUE LA VERSION CI-DESSOUS VÉRIFIE : le corps déduit doit
+// PROLONGER le tireur. Le joueur 3 a un corps connu (slot 1) qui s'achève à 0,6 s ; le corps
+// anonyme (slot 2) commence après, et il est seul à couvrir l'instant du tir. Il est donc la
+// suite possible de sa vie — la vie qu'aucune mort ne termine, celle où les tirs se perdent.
+func TestFermetureAAttribueLeCorpsQuiProlongeLeTireur(t *testing.T) {
+	// Le tir tombe à 1,0 s, où le slot 2 n'a AUCUN échantillon : l'unicité se juge sur
+	// l'intervalle de vie, jamais sur la position répliquée (cf. closures.go).
+	tracks := tracksOf(at(1, 400_000), at(1, 600_000), at(2, 900_000), at(2, 1_100_000))
+	owner := map[uint32]int{1: 3}
 	lives := []lifeSpan{{slot: 1, from: 400_000, to: 600_000, xuid: 111},
 		{slot: 2, from: 900_000, to: 1_100_000}}
 	var rep closureReport
 	closeByAvailableBody(tracks, owner, lives, []FireEventRef{{FilmIndex: 3, TimestampUS: 1_000_000}}, &rep)
 	if owner[2] != 3 {
-		t.Fatalf("le slot 2 devait revenir au joueur 3, pont = %v", owner)
+		t.Fatalf("le slot 2 prolonge le joueur 3 et devait lui revenir, pont = %v", owner)
 	}
 	if rep.byShot != 1 || rep.contested != 0 || rep.refused != 0 {
 		t.Fatalf("compte rendu inattendu : %+v", rep)
+	}
+}
+
+// TestFermetureARefuseUnCorpsQueLeTireurNePeutProlonger — LE DUAL DU DÉFAUT DU 2026-08-09, ET IL
+// ÉTAIT RESTÉ OUVERT.
+//
+// La ronde précédente a fermé le cas « le corps du tireur couvre l'instant ET un autre aussi » :
+// deux candidats, abstention. Le DUAL est celui-ci : le tireur n'a AUCUN corps qui couvre
+// l'instant, un seul corps ÉTRANGER le couvre, et il lui était attribué — sans que rien ne
+// corrobore qu'il soit le sien, et sans qu'aucun compteur ne s'en émeuve.
+//
+// ICI LE FILM RÉFUTE L'ATTRIBUTION, ET C'EST MESURABLE : le tireur REPREND un corps à 5-6 s,
+// APRÈS le corps candidat. Le candidat serait donc une vie INTERMÉDIAIRE de sa vie, donc une vie
+// terminée par sa mort — mort qui l'aurait NOMMÉE. Elle ne l'a pas été : ce corps est celui d'un
+// autre. Le contrôle de recouvrement ne pouvait pas le voir, les deux traces étant disjointes.
+func TestFermetureARefuseUnCorpsQueLeTireurNePeutProlonger(t *testing.T) {
+	tracks := tracksOf(at(2, 900_000), at(2, 1_100_000), at(3, 5_000_000), at(3, 6_000_000))
+	owner := map[uint32]int{3: 3}
+	lives := []lifeSpan{{slot: 2, from: 900_000, to: 1_100_000},
+		{slot: 3, from: 5_000_000, to: 6_000_000, xuid: 333}}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{{FilmIndex: 3, TimestampUS: 1_000_000}}, &rep)
+	if _, ok := owner[2]; ok {
+		t.Fatalf("le tireur reprend un corps APRÈS celui-ci : l'attribution devait être rejetée, "+
+			"pont = %v", owner)
+	}
+	if rep.byShot != 0 || rep.refused != 1 {
+		t.Fatalf("un rejet faute de corroboration attendu, compte rendu %+v", rep)
+	}
+}
+
+// TestFermetureARefuseUnCorpsQuandLeTireurNEstAncreNullePart — L'AUTRE MOITIÉ DU DUAL.
+//
+// Le tireur n'a AUCUN corps connu : rien ne le situe dans le film. L'unicité du candidat ne dit
+// alors qu'une chose — un seul corps libre couvre cet instant — et rien du tout sur son
+// appartenance. Un corps attribué là est un corps attribué au hasard de ce qui restait libre.
+func TestFermetureARefuseUnCorpsQuandLeTireurNEstAncreNullePart(t *testing.T) {
+	tracks := tracksOf(at(1, 400_000), at(1, 600_000), at(2, 900_000), at(2, 1_100_000))
+	owner := map[uint32]int{1: 0} // le joueur 3 n'apparaît nulle part au pont
+	lives := []lifeSpan{{slot: 1, from: 400_000, to: 600_000, xuid: 111},
+		{slot: 2, from: 900_000, to: 1_100_000}}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{{FilmIndex: 3, TimestampUS: 1_000_000}}, &rep)
+	if _, ok := owner[2]; ok {
+		t.Fatalf("le tireur n'est ancré nulle part : rien ne devait lui être attribué, pont = %v", owner)
+	}
+	if rep.byShot != 0 || rep.refused != 1 {
+		t.Fatalf("un rejet faute d'ancrage attendu, compte rendu %+v", rep)
+	}
+}
+
+// TestFermetureASAbstientQuandDeuxCorpsRevendiquentLeMemeTireur — UN JOUEUR N'A QU'UN DERNIER
+// CORPS.
+//
+// C'est le symétrique du refus « deux joueurs revendiquent le même corps », et il devient
+// nécessaire AVEC la corroboration : la première attribution fait du corps déduit un corps connu
+// du tireur, ce qui fait tomber la seconde — ou pas, selon que son numéro de slot est plus petit
+// ou plus grand. L'ORDRE DES SLOTS déciderait alors laquelle des deux passe, exactement le défaut
+// corrigé à la fermeture B le 2026-08-09. Deux déductions qui s'excluent tombent toutes les deux.
+func TestFermetureASAbstientQuandDeuxCorpsRevendiquentLeMemeTireur(t *testing.T) {
+	tracks := tracksOf(at(1, 200_000), at(1, 300_000),
+		at(2, 900_000), at(2, 1_100_000), at(4, 2_900_000), at(4, 3_100_000))
+	owner := map[uint32]int{1: 3}
+	lives := []lifeSpan{{slot: 1, from: 200_000, to: 300_000, xuid: 111},
+		{slot: 2, from: 900_000, to: 1_100_000},
+		{slot: 4, from: 2_900_000, to: 3_100_000}}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{
+		{FilmIndex: 3, TimestampUS: 1_000_000},
+		{FilmIndex: 3, TimestampUS: 3_000_000},
+	}, &rep)
+	if len(owner) != 1 {
+		t.Fatalf("un joueur n'a qu'un dernier corps : aucune des deux déductions ne devait "+
+			"passer, pont = %v", owner)
+	}
+	if rep.byShot != 0 || rep.contested != 2 {
+		t.Fatalf("les deux déductions exclusives devaient être comptées, compte rendu %+v", rep)
 	}
 }
 
@@ -105,6 +195,11 @@ func TestFermetureARefuseQuandDeuxJoueursRevendiquentLeMemeCorps(t *testing.T) {
 //
 // C'EST LE GARDE-FOU QUI PEUT RÉFUTER LA MÉTHODE, et il doit donc mordre au moins une fois dans
 // les tests — sinon rien ne prouve qu'il est branché.
+//
+// LE RECOUVREMENT EST DEPUIS ABSORBÉ PAR LA CORROBORATION (2026-08-11) : exiger que tous les corps
+// connus du tireur s'achèvent AVANT le corps candidat interdit le chevauchement comme cas
+// particulier. Le cas garde son test — c'est celui qui échouerait en premier si la corroboration
+// était affaiblie en simple test de non-contradiction.
 func TestLeControleDeRecouvrementRejette(t *testing.T) {
 	// Le joueur 3 possède déjà le slot 1, dont la VIE ENCADRE l'instant du tir sans qu'aucun
 	// échantillon n'y soit assez proche (500 ms, au-delà de la tolérance de 120 ms). Le tir est
