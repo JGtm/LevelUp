@@ -102,6 +102,25 @@ var nuancierAltitude = [...][3]float64{
 	{0.97, 0.95, 0.90}, // craie
 }
 
+// couleurEau / couleurBergeEau : l'eau du fond de carte (volumes d'eau du tag sddt).
+//
+// L'eau est PLATE : pas d'ombrage, pas de nuancier d'altitude — une surface d'eau n'a ni
+// relief ni etages. Un bleu moyen, desature, hors de la rampe ardoise->craie du terrain pour
+// que la riviere se lise sans ecraser le sol qui l'entoure ; la berge est le meme bleu
+// assombri, meme role que l'arete du terrain (une rupture, pas une couleur de plus).
+var (
+	couleurEau      = color.RGBA{62, 112, 152, 255}
+	couleurBergeEau = color.RGBA{38, 70, 96, 255}
+)
+
+// TeinteEau rend la couleur d'une cellule d'eau, berge ou pleine eau.
+func TeinteEau(berge bool) color.RGBA {
+	if berge {
+		return couleurBergeEau
+	}
+	return couleurEau
+}
+
 // TeinteAltitude rend la couleur d'une altitude normalisee dans [0,1], modulee par
 // l'eclairement. `t` hors bornes est ECRETE, jamais extrapole.
 func TeinteAltitude(t, eclairement float64) color.RGBA {

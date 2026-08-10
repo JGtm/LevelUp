@@ -262,6 +262,10 @@ func TestRenduCliffhanger(t *testing.T) {
 	ecritPNG(t, sortie, out)
 	fmt.Println("planche de revue ecrite:", sortie)
 
+	// L'EAU — volumes du tag sddt (variante any/), posee APRES comparePixels : le banc juge le
+	// terrain, l'eau est un habillage du livrable.
+	poseEauDepuisSddt(t, rendu, modCarte)
+
 	// LA CARTE SEULE — le livrable, par opposition a la planche de revue ci-dessus.
 	//
 	// Fond TRANSPARENT, pas noir : le noir est une couleur, et il se retrouverait tel quel
@@ -314,6 +318,13 @@ func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool, style styleRendu
 		j := haut - 1 - py
 		for px := 0; px < larg; px++ {
 			if masque != nil && !masque[py*larg+px] {
+				continue
+			}
+			// L'eau (volumes sddt, cf. PoseEau) prend le pixel — y compris la ou le rendu n'a
+			// pas de matiere : l'eau n'est pas dans les instances de rendu, c'est justement
+			// pourquoi elle manquait.
+			if rendu.Eau(px, j) {
+				img.Set(px, py, TeinteEau(rendu.BordEau(px, j)))
 				continue
 			}
 			e, ok := rendu.Eclairement(px, j)

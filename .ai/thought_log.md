@@ -60499,3 +60499,38 @@ porte fermée, chiffres et portes annexes consignés dans
 (structure complète vérifiée) est un acquis réutilisable ; sondes non commitées dans
 `physique_sonde_gamefiles_test.go`. Prochaine piste restante : l'ACCESSIBILITÉ (composante
 connexe depuis les ancres), renforcée par ce négatif.
+
+## [2026-08-10] Lot riviere — lecteur sddt en production, l'eau sur le fond de carte
+
+**Statut : Complété**
+
+**Décision technique principale** : promotion du lecteur `sddt` des sondes vers
+`internal/himap/sddt.go`, avec un critère STRUCTUREL pour séparer les deux natures (deux
+champs distincts du root block : coquille-frontière `@0x58 -> @0x08`, volumes d'eau
+`@0x94`) — pas de seuil deviné. L'eau est un HABILLAGE : `Rendu.PoseEau` marque des
+cellules sans toucher le z-buffer, `TeinteEau` (rendu_couleur.go) colore, la règle du
+pont (matière au-dessus du toit du volume + 0,25 m garde son pixel) est testée.
+
+**Résultats observés** :
+- Banc inchangé à la décimale : accord 66,7 %, positions gardées 93,82 % (assertés
+  dans `TestBancCliffhanger`), terrain comparé à l'octet avant/après PoseEau.
+- Oracle rejoué en production : coquille 29 221/29 221, eau 128/29 221 (0,438 %),
+  orientation 233/233 contre 0 en sens inverse, résidu 0,0000.
+- Mutation JOUÉE : sens d'orientation inversé dans `Contient` -> 2 témoins rouges
+  (TestVolumeEauOrientation, TestPoseEauHabillePasLaMatiere), révert -> verts.
+- Balayage 31 cartes installées : 10 avec volumes d'eau (ridgeline 233, forbidden 208,
+  forest 51, drydock 26, exiled 12, engine 10, launchsite 6, highpower 2, blueprint 2,
+  crystalcaves 2) — feature GÉNÉRALE, pas mono-carte. Canevas Forge fo* : zéro eau sddt.
+- Sondes sddt/pfnd supprimées (double emploi) ; outils de test communs relocalisés
+  (`sonde_outils_gamefiles_test.go`) ; gates : build, vet, golangci 0 issue.
+- Images gate visuel : Bureau, `cliffhanger_riviere.png`, `forbidden_riviere.png`,
+  `cliffhanger_riviere_planche.png`.
+
+**Découverte de session** : écriture CONCURRENTE dans le worktree pendant le lot (une
+autre session a déposé `cloture_gamefiles_test.go` + `Volume.ZoneClose`, hypothèse
+« environnement fermé »). Travail non commité par ce lot ; ses appels à l'ancienne API
+de sonde migrés vers l'API promue pour que l'arbre compile.
+
+**Prochaine étape** : gate visuel utilisateur sur les images, puis lot 2 (prototype
+carte Forge : F1 food -> modèle, F2 pose des triangles, exclusion volumes de mort,
+oracle des ancres — cas Vagabond module générique `map` traité explicitement).
