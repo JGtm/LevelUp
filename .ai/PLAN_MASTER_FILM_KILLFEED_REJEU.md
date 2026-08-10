@@ -1025,7 +1025,7 @@ Précisions d'usage :
 | 3 | GO merge → prod + fenêtre backfill VPS (deux déploiements) | J5 | push main = deploy auto |
 | 4 | Licence / redistribution des assets d'icônes extraits du jeu | J6-D | AVANT toute intégration |
 | 5 | Le rejeu en prod : quel producteur d'artefacts (sync ? à la demande ? plus tard ?) | J6-F | coût 8-30 s/film, disque VPS, films expirants |
-| 6 | Timebox de la piste E (précision projectiles) | J6-E | proposition : 2 sessions de mesure, verdict écrit, stop ou branchement |
+| 6 | Timebox de la piste E (précision projectiles) | J6-E | **CLOSE le 2026-08-08 — 2 sessions jouées, verdict NÉGATIF écrit** : `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md` (§0bis = le verdict en une page). Aucun branchement. Le seul item transmis ailleurs : rendre `object-position-component` de `ti=41` bit-exact (45 bits contre 60) — **registre du décodeur**, pas de cette piste |
 
 **Tranchées le 2026-07-31 (avec l'utilisateur, session master plan)** :
 

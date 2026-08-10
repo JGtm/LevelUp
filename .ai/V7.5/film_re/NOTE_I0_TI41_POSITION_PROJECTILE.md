@@ -1,0 +1,862 @@
+# NOTE DE TRAVAIL — `object-position-component` de `ti=41` (le PROJECTILE), i0
+
+> Ouverte le 2026-08-08, branche `research/v75-precision`. **Travail de DÉCODEUR**, pas de
+> piste E : celle-ci est close (verdict négatif, `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`).
+> Ce qui l'a fait ouvrir : la seule voie restante vers l'attribution d'une touche de projectile
+> est de rattacher l'**entité** projectile à un joueur par sa **trajectoire**, et la trajectoire
+> exige que i0 de `ti=41` soit bit-exact. i0 précède tous les autres composants : un i0 inexact
+> ferme l'accès à tout l'archétype.
+>
+> **Note tenue au fil de l'eau.** Ce qui est écrit ici est ce qui est lu ; ce qui reste à lire
+> est en §4.
+
+---
+
+## 1. L'ÉTAT RÉEL, ET IL EST PLUS AVANCÉ QUE CE QUE DIT L'INDEX
+
+L'index (`ETAT_DE_L_ART_KILLWEAPON.md`, §2.1 et la ligne « Ne PAS confondre les deux `i0` »)
+présente `FUN_14076e29c` comme le bloqueur, « non bit-exact, 45 / 60 bits ». **Vérification sur
+pièces : le composant est implémenté dans `filmdec/traverse.go`** (cas
+`object-position-component`), et son découpage basse précision a été **corrigé le 2026-07-26** —
+`R(1)` d'index puis **13/13/14** (et non `R(2)` puis 13/13/13), frontières placées à 16/29/43 par
+un profil de bascule sur 6 794 paires de records consécutifs.
+
+**Le « 45 / 60 » n'est donc pas « on lit 45 bits là où il en faut 60 ».** Ce sont **deux
+branches** du même composant, et le port en modélise deux :
+
+```go
+if br.ReadBit() {          // "precHigh"
+    br.ReadBits(59)        // <- 59 bits OPAQUES, decrits comme "AABB + handle-tail + R(2)"
+} else {
+    if !br.ReadBit() { br.ReadBits(IndexW) }
+    for a := 0; a < 3; a++ { br.ReadBits(AxisW[a]) }   // 13/13/14 sur Cliffhanger
+    br.ReadBits(2)
+}
+```
+
+**Le point faible est le `ReadBits(59)`** : c'est un TOTAL MESURÉ, pas une décomposition. Tant
+qu'il est juste en longueur la traversée reste alignée — mais **aucune position n'en sort**, et
+c'est précisément la position qu'il faut pour une trajectoire.
+
+---
+
+## 2. CE QUE LE DÉSASSEMBLAGE DIT — TROIS BRANCHES, PAS DEUX
+
+```c
+FUN_14076e29c(br, ctx) {
+    st = *(ctx + 0x10);
+    FUN_14076e420(br, st + 4, 0x10);        // 0x10 = NIVEAU DE PRECISION L = 16
+    FUN_14076e3e4(br, st);                  // handle-tail
+    if (FUN_140492128(st + 4))              // predicat SUR LA POSITION DECODEE
+        FUN_14076e304(br, st + 0x10);       // R(2) "finite"
+}
+
+FUN_14076e420(br, out, L) {
+    g = FUN_1406cf008();                     // R(1)
+    range = g ? &DAT_143b8c6d0 : NULL;       // la porte choisit une PLAGE, pas un layout
+    FUN_14076e494(br, out, L, ..., range);
+    return g;
+}
+
+FUN_14076e494(br, out, L, ..., range) {
+    c = FUN_14076f91c(br, out, L, L);        // <- PREMIER lecteur, rend un char
+    if (c == 0) {
+        if (range == 0) FUN_14076e524(&pos, br, tmp);   // <- vec3 quantifie, plage de la CARTE
+        else            FUN_141f85880();                // <- plage PAR DEFAUT
+    } else {
+        FUN_1411b259c(&pos, br);                        // <- TROISIEME chemin
+    }
+}
+```
+
+### 2.1 Les trois écarts avec le port Go — `[MESURE]` sur le désassemblage
+
+1. ~~**Il y a TROIS encodages de position, le port en modélise DEUX.**~~ **RETIRÉ le
+   2026-08-08, une heure après avoir été écrit** — `FUN_14076f91c` **ne lit AUCUN bit** :
+
+   ```c
+   undefined1 FUN_14076f91c(void) {
+       uVar1 = 1;
+       if ((DAT_144e61ea0 == '\0') && (DAT_145121140 != '\x01')) uVar1 = 0;
+       return uVar1;
+   }
+   ```
+
+   C'est un test de **deux globales**, pas un champ du flux. Le troisième chemin
+   (`FUN_1411b259c`) est donc derrière une porte de mode runtime, et le port qui l'ignore a
+   raison de l'ignorer : il fonctionne sur les films réels, donc `FUN_14076f91c` y rend 0.
+   **Le port n'a pas un défaut de moins — il n'en avait pas ici.**
+
+   > **TROISIÈME OCCURRENCE DU MÊME MOTIF, et ça devient une règle de lecture de ce moteur.**
+   > La porte du tag des codes 6/7 (`b0 == 1`, 168 380 observations), la porte
+   > `DAT_1451222c8` des stats 0x0D / 0x0E, et maintenant celle-ci. **Ce binaire est truffé de
+   > chemins conditionnés par des globales qui ne s'ouvrent jamais en jeu.** Lire un décompilé
+   > sans vérifier ses portes conduit à modéliser des branches qui ne s'exécutent pas —
+   > c'est-à-dire à inventer du travail. **Règle : pour toute branche vue dans un décompilé,
+   > établir si sa condition vient du BITSTREAM ou d'une GLOBALE avant de la porter.**
+2. **La porte R(1) n'est pas un « precHigh » qui changerait le layout : elle choisit une
+   PLAGE** (`DAT_143b8c6d0` contre la plage de la carte). Or la largeur d'axe **dérive de
+   l'étendue** — `W = min(26, ceilLog2(ceil(60 * extent)))` à L = 16. Une plage plus large donne
+   des axes plus larges. **« 45 contre 60 » s'explique donc sans changement de grammaire : c'est
+   le même vec3 lu avec des largeurs différentes.** Si cette lecture se confirme, la position du
+   projectile est récupérable **sur les deux branches**, et le `ReadBits(59)` opaque devient
+   décomposable.
+3. ~~**`FUN_14076e304` (le R(2)) est CONDITIONNEL.**~~ **RETIRÉ — le prédicat est
+   `isfinite(vec3)`** : `FUN_140492128` teste les bits d'exposant (`& 0x7f800000 != 0x7f800000`)
+   des trois flottants et ne rend 1 que si les trois sont finis. Or un vec3 **déquantifié dans
+   une plage bornée est toujours fini** (cf. la formule de §2.2). Le port a donc raison de lire
+   le `R(2)` inconditionnellement. **Deuxième écart qui se retire à la lecture de sa propre
+   garde** — la règle de l'écart 1 se confirme.
+4. **`FUN_14076e3e4` (handle-tail) est appelé INCONDITIONNELLEMENT**, pas seulement sur la
+   branche haute. Il ne consomme des bits que si son paramètre de garde est non nul (sinon il
+   pose des sentinelles `0xffffffff` sans rien lire), mais **cette garde n'est pas la porte R(1)**
+   du port.
+
+### 2.2 LA GRAMMAIRE DE LA BRANCHE PAR DÉFAUT — établie, mais ses LARGEURS ne sont pas statiques
+
+`FUN_141f85880` enchaîne trois appels, et les deux qui comptent sont lisibles :
+
+```c
+FUN_140be9b88(L, aabb /* float[6] : minX,maxX,minY,maxY,minZ,maxZ */, _, W /* out int[3] */) {
+    extent[a] = aabb[2a+1] - aabb[2a];
+    step = FUN_140be9c78();                       // <- SANS ARGUMENT : une globale de runtime
+    if (step < EPS) { W[0..2] = 0x1a; }           // 26, le plafond
+    else for a in 0..2:
+        n    = ceilf(extent[a] / (2*step));       // sature a 0x400000 si l extent est trop grand
+        W[a] = min(FUN_1406d310c(n), 0x1a);       // bitLen, plafonne a 26
+}
+
+FUN_1406d7f18(raw, aabb, W, out) {                // la DEQUANTIFICATION
+    scale  = (aabb[2a+1] - aabb[2a]) / (1 << W[a]);
+    out[a] = raw[a] * scale + aabb[2a] + scale * 0.5;
+}
+```
+
+**C'est la forme fermée du dossier, confirmée dans le binaire** — `W = min(26, bitLen(ceil(extent /
+(2·step))))`, plafond `0x1a`. Trois précisions neuves :
+
+- la déquantification divise par `1 << W`, **pas** par `2^W - 1`, et ajoute un **demi-pas** ;
+- **`FUN_140be9b88` n'utilise PAS le `L` qu'on lui passe** pour la largeur : il l'écrit dans
+  `W[0..2]` puis l'écrase dans les deux branches. Le pas vient de `FUN_140be9c78()`, **sans
+  argument** — donc d'un état global posé au chargement de carte ;
+- la lecture des bits n'est pas dans `FUN_1406d7f18` (qui ne fait que déquantifier) mais dans
+  `FUN_1424cbed4(_, br, W)`, qui lit trois valeurs de largeurs `W[0..2]`.
+
+**LES DEUX PLAGES, DÉCODÉES OCTET PAR OCTET — et ce ne sont pas les mêmes :**
+
+```
+DAT_143b8c6d0  00 00 C8 C2 | 00 00 C8 42   x3   ->  -100.0 .. +100.0   <- LA PLAGE DE CETTE BRANCHE
+DAT_143b8c6b8  00 40 9C C6 | 00 40 9C 46   x3   ->  -20000.0 .. +20000.0  <- celle citee par le dossier
+```
+
+Le piège annoncé en §4 est donc réel : **la plage de la branche par défaut de `ti=41` est
+± 100, pas ± 20000.** Deux entrées voisines de la même table, à 0x18 (un AABB) d'écart.
+
+**CONSÉQUENCE, ET ELLE TRANCHE LA SUITE.** Le pas venant d'une globale de runtime, **les largeurs
+ne sont PAS dérivables statiquement** : l'hypothèse « 59 = 3 x 19 + 2 » ne peut ni se confirmer
+ni s'infirmer dans Ghidra. À ± 100 et au pas `q(16) = 1/120` elle donnerait 14 bits par axe
+(soit 44, pas 59) — donc **le pas réel n'est pas `q(16)`**, et il n'y a rien à en déduire de
+plus au désassembleur. **La largeur se MESURE sur le film**, exactement comme
+`DetectI0Layout` le fait déjà pour l'autre `i0` : profil de bascule bit à bit, sans aucun a
+priori de largeur. C'est la fin de la phase RE.
+
+> ⚠ **STATUT : `[MESURE]` sur le décompilé, RIEN N'EST VÉRIFIÉ SUR LE FILM.** La règle du
+> chantier s'applique intégralement — *Ghidra nomme, le film mesure*. Les points 3 et 4 en
+> particulier prédisent des **décalages de longueur observables** : ils se testent par le profil
+> de bascule et par le chaînage sur i1 (`object-translational-velocity`, `[1][1][19][10]`), le
+> même critère qui avait départagé les lectures rivales en 2026-07-26. **Aucun de ces quatre
+> points ne doit être porté dans `traverse.go` avant ce test** — le composant est sur le chemin
+> de tous les archétypes qui le portent, et une régression y est silencieuse.
+
+---
+
+## 3. POURQUOI ÇA VAUT LE DÉTOUR
+
+Si la position du projectile sort sur les deux branches, la chaîne devient :
+
+```
+entite projectile (repliquee, slot != -1)  ->  ses positions successives
+   -> sa PREMIERE position  ->  le joueur le plus proche a cet instant  ->  le TIREUR
+   -> et l arme suit, par le record de tir de ce joueur a cet instant
+```
+
+C'est **offline-pur**, **universel**, et cela n'utilise **ni** un champ de propriétaire (fermé,
+7ter.88 (6)) **ni** un appariement d'horloge (le motif « same-clock », formellement invalidé sur
+ce chantier). C'est une troisième voie, et c'est la dernière.
+
+**Ce que ça ne résout pas** : le plafond de validation reste entier (pas de population mono-arme
+pour le Needler — la validation passerait par le contraste intra-joueur).
+
+---
+
+## 4. CE QUI RESTE À LIRE — la liste, dans l'ordre
+
+- [x] `FUN_14076f91c` — **ne lit aucun bit**, test de deux globales. Écart 1 retiré (§2.1).
+- [~] `FUN_1411b259c` — le troisième encodage : **sans objet** tant que la porte ci-dessus est
+      fermée sur les films réels (elle l'est, sinon le port actuel ne marcherait pas).
+- [x] `FUN_141f85880` — **c'est un vec3 quantifié, pas une structure opaque** :
+      `FUN_140be9b88(L, plage, plage, desc)` construit le descripteur de largeurs, puis
+      `FUN_1406d7f18(&val, plage, desc, out)` lit. **Donc les 59 bits du port SONT
+      décomposables**, et la position du projectile sort **sur les deux branches**.
+      **HYPOTHÈSE À TESTER, et elle est arithmétiquement propre : 59 = 3 x 19 + 2** (trois axes
+      de 19 bits + le `R(2)` final). À confronter à la forme fermée du dossier
+      `W = min(26, bitLen(ceil(span / (2*step))))`, `step(L) = 2^(16-L)/120`, ici **L = 16**
+      (câblé au site d'appel : `FUN_14076e420(br, st+4, 0x10)`).
+- [x] `DAT_143b8c6d0` — **± 100** (et non ± 20000 : c'est `DAT_143b8c6b8`, entrée voisine).
+- [x] `FUN_140be9b88` / `FUN_1406d7f18` — formule de largeur et déquantification établies
+      (§2.2). **Les largeurs ne sont PAS dérivables statiquement** : le pas vient d'une globale
+      de runtime. L'hypothèse « 3 x 19 + 2 » n'est ni confirmée ni infirmée au désassembleur.
+- [x] `FUN_140492128` — c'est `isfinite(vec3)`. Écart 3 retiré.
+- [ ] `FUN_14076e3e4` — la garde réelle du handle-tail, et sa largeur (un `0x40 - n < 0xb`
+      suggère 11 bits). **Seul écart encore ouvert.**
+- [ ] `FUN_14076e524` — la porte `index-sel` / `index de région` de la branche carte (le port la
+      modélise déjà ; à confronter seulement si le test film échoue).
+
+**FIN DE LA PHASE RE.** Ce qui reste se mesure, plus se lit :
+
+- [x] **T1 — atteignabilité : POSITIF, mais il ne prouve que la moitié.** Cf. §6.
+- [ ] **T2 — largeurs** : profil de bascule bit à bit sur la branche par défaut, sans a priori
+      (méthode `DetectI0Layout`).
+- [ ] **T3 — chaînage** : vérifier l'alignement sur `i1`
+      (`object-translational-velocity` = `[1][1][19][10]`), le critère qui avait départagé les
+      lectures rivales le 2026-07-26.
+- [ ] **PUIS SEULEMENT** : portage dans `traverse.go`.
+
+---
+
+## 6. T1 — LES ENTITÉS PROJECTILE SONT BIEN DANS LE MONDE RÉPLIQUÉ
+
+Outil : `apps/go-api/cmd/tmp_ti41` (archivé sous
+`.ai/V7.5/outillage/precision_projectiles/`). Instrument réutilisé sans réécriture :
+`filmdec.WalkKeyframeWorld`, déjà validé 249/250 entités et 8/8 bipèdes.
+
+**12 films, recensement des archétypes du monde de keyframe :**
+
+```
+archetype       records   slots distincts
+ti=38            31 425          690
+ti=6             14 629           48
+ti=17            10 065           33
+ti=5              9 760           32
+ti=14             9 312           74
+ti=37             5 825        1 561
+ti=43             3 845          194
+ti=42             3 805        1 284
+ti=41               185          132   <- PROJECTILE, present sur 11 films sur 12
+```
+
+**Ce que ça établit** : l'entité projectile **existe bel et bien comme entité répliquée du film**,
+avec un slot, sur 11 films sur 12. La voie n'est pas morte — c'était le risque que T1 devait
+écarter, et il est écarté.
+
+**Ce que ça n'établit PAS, et il faut le dire aussi net.** 185 records pour ~11 entités
+distinctes par film, quand un film Fiesta porte des milliers de tirs de projectile. **Ce n'est
+pas un déficit de réplication, c'est un artefact d'échantillonnage** : un keyframe tombe toutes
+les ~20 s et un projectile vit une fraction de seconde — on ne capte que ceux en vol à l'instant
+du cliché. Le rapport 185 records / 132 slots (la plupart des projectiles n'apparaissent que
+dans UN keyframe) est exactement la signature attendue d'une durée de vie courte.
+
+**La trajectoire ne vit donc pas dans les keyframes : elle vit dans le flux DELTA.** Et là, le
+test bute sur le mur connu du chantier — un record delta (type-3) **ne porte aucun typeIndex** :
+il résout son archétype par le World (`filmdec/world.go`, en-tête). Compter les `ti=41` du flux
+delta exige donc le décodeur STATEFUL avec un binding World complet, c'est-à-dire précisément ce
+que `.ai/README_KILLWEAPON_INDEX.md` §0bis décrit comme le blocage de fond (« binding World
+incomplet », cascading-desync).
+
+> **CONSÉQUENCE DE PÉRIMÈTRE, et elle est structurante.** La voie trajectoire ne dépend pas
+> seulement de `i0` de `ti=41` : elle dépend du **binding World** du décodeur stateful. `i0`
+> exact est nécessaire, pas suffisant. C'est un chantier de décodeur à part entière, pas un
+> correctif de composant — et cette note doit le dire avant que quiconque estime le coût sur la
+> seule base du §2.
+
+---
+
+## 5. JOURNAL
+
+- **2026-08-08 (1)** — ouverture. Vérification sur pièces de l'état du port (le « bloqueur » de
+  l'index est en partie périmé : le composant est implémenté, la branche basse précision est
+  corrigée depuis le 2026-07-26). Désassemblage de la chaîne `FUN_14076e29c` →
+  `FUN_14076e420` → `FUN_14076e494` : trois branches d'encodage, quatre écarts avec le port.
+- **2026-08-08 (2)** — l'écart 1 **se retire lui-même** : `FUN_14076f91c` ne lit aucun bit, c'est
+  une porte de globales. Troisième occurrence du motif « chemin derrière une porte jamais
+  ouverte » dans ce binaire — promue en **règle de lecture** (§2.1). Et
+  `FUN_141f85880` **n'est pas opaque** : c'est un vec3 quantifié à plage par défaut, donc les
+  59 bits du port se décomposent et la position sort sur les deux branches.
+  Bilan intermédiaire : 1 écart retiré, 2 restants, 1 gain potentiel.
+- **2026-08-08 (3)** — **fin de la phase RE.** L'écart 3 se retire à son tour (`FUN_140492128`
+  est `isfinite`, toujours vrai sur un vec3 déquantifié borné). La grammaire de la branche par
+  défaut est établie et la formule de largeur du dossier est **confirmée dans le binaire**, avec
+  trois précisions neuves (§2.2) et les deux plages décodées octet par octet (± 100 ici,
+  ± 20000 pour l'entrée voisine). **Mais le pas de quantification vient d'une globale de
+  runtime : les largeurs ne sont pas dérivables statiquement.** L'hypothèse « 3 x 19 + 2 » reste
+  donc ouverte et **se mesurera sur le film**, pas au désassembleur.
+  **Bilan de la phase RE : sur 4 écarts annoncés contre le port, 3 étaient à moi** — le port
+  était juste, et c'est ma lecture des gardes qui ne l'était pas. Le seul écart encore ouvert est
+  la garde du handle-tail. **Rien de porté, rien de vérifié sur film.**
+- **2026-08-08 (4)** — **T1 joué : POSITIF.** L'entité `ti=41` est bien une entité répliquée du
+  film (185 records, 132 slots distincts, 11 films sur 12). Le risque que la voie soit morte
+  d'avance est écarté. **Mais la trajectoire vit dans le flux DELTA, pas dans les keyframes**, et
+  un record delta ne porte pas de typeIndex : le compter exige le binding World du décodeur
+  stateful. **`i0` exact est nécessaire, pas suffisant** — c'est un chantier de décodeur, pas un
+  correctif de composant (§6).
+
+---
+
+## 7. T1' — LE FLUX DELTA REND DES TRAJECTOIRES, ET §6 ÉTAIT FAUX
+
+> **CORRECTION DE §6, sur objection de l'utilisateur (« le binding World est normalement déjà
+> décodé »).** J'y concluais que la voie dépendait d'un binding World non résolu, en citant
+> `README_KILLWEAPON_INDEX.md` §0bis — **un document du 13 juin qui précède la résolution du
+> chantier**. C'est la deuxième fois dans la journée que je conclus sur une source périmée.
+> Vérification sur pièces : `filmdec` porte `DecodeFrameRecords`, `DecodeFrameInfer`,
+> `TryDeltaAt`, `ScanFrameTargets`, `DecodeFrameViews`, `DecodeFrameResync`, et `killsource` les
+> pilote en production. **Le binding fonctionne.**
+
+Outil : `apps/go-api/cmd/tmp_ti41d`. Tout est réutilisé — `ParseRegistryChunk`,
+`WalkKeyframeWorld` + `World.BindFull` (même règle que `killsource`), et **`DecodeFrameInfer`,
+qui INFÈRE l'archétype des entités transitoires absentes du binding** : exactement le cas du
+projectile.
+
+```
+film       paquets delta   records   ti=41 records   ti=41 slots
+000d5950          30 371    37 510            543            49
+0014603f          23 381    37 851            110            60
+00162144          27 287    41 705            163            68
+00502e52          33 177    52 368            263            78
+00761d27          26 252    45 440            279            62
+008e1bba          10 989    17 016             30            21
+--------------------------------------------------------------
+6 films                              1 388 records    281 slots
+```
+
+**Ce que ça établit : ~4,9 records par entité projectile.** Ce n'est plus une apparition
+ponctuelle comme dans les keyframes (185 records / 132 slots = 1,4) — **c'est une suite de
+positions successives, c'est-à-dire une trajectoire.** La voie est vivante, et le mur que
+j'annonçais en §6 n'existe pas.
+
+**Les deux réserves, et elles sont sérieuses :**
+
+1. **C'est une BORNE INFÉRIEURE.** `DecodeFrameInfer` démarre au bit 0 du payload ; les paquets
+   portant une liste d'événements avant la boucle de records désynchronisent tôt — c'est pour
+   cela que `killsource` a un localisateur (`locateStrict` + repli), **qui n'est pas exporté**.
+   Un `ti=41` trouvé est un vrai `ti=41` ; un film à zéro ne prouverait rien.
+2. **`ti=0` domine le recensement : 119 307 records sur 6 535 slots.** C'est le seau des records
+   dont l'archétype n'est pas résolu. La marche couvre donc une fraction du flux, et 281
+   projectiles sur 6 films est à comparer aux milliers de tirs de projectile qu'ils portent.
+   **Couverture partielle, pas nulle.**
+
+**CE QUI DEVIENT LE VRAI BLOQUEUR, ET C'EST BIEN CELUI DU §2.2** : les records sortent, donc
+`i0` est consommé — mais sur la branche « plage par défaut » le port avale 59 bits opaques et
+**aucune position n'en sort**. C'est T2 (les largeurs, par profil de bascule) qui débloque la
+trajectoire, pas le binding. La note revient donc exactement là où §2.2 l'avait laissée, mais
+avec le périmètre correct : **un travail de composant, pas un chantier de décodeur.**
+- **2026-08-08 (5)** — **T1' joué, et il CORRIGE le §6.** Le binding World fonctionne (le doc que
+  je citais datait du 13 juin, avant la résolution du chantier). Sur 6 films, le flux delta rend
+  **1 388 records `ti=41` sur 281 slots — ~4,9 records par projectile, donc des trajectoires.**
+  Réserves : borne inférieure (pas de localisateur de boucle exporté), et `ti=0` domine
+  (couverture partielle). **Le bloqueur redevient T2 — les largeurs de la branche par défaut —
+  et le périmètre est celui d'un composant, pas d'un chantier de décodeur.**
+
+---
+
+## 8. T2 ET T3 — DEUX INSTRUMENTS QUI NE MORDENT PAS, ET POURQUOI
+
+### 8.1 T2 — le profil de bascule NE TRANSFÈRE PAS aux projectiles
+
+Outil `apps/go-api/cmd/tmp_i0w`. 8 films, échantillons i0 de `ti=41` : **264 à porte = 0**,
+**277 à porte = 1** — les deux branches sont donc bien empruntées, à parts comparables. Le
+`ReadBits(59)` opaque concerne **la moitié des records projectile** : ce n'est pas un cas
+marginal.
+
+Profil de bascule, 239 paires consécutives d'un même slot (porte = 1) :
+
+```
+b00  0.28 0.23 0.21 0.24 0.26 0.27 0.39 0.33 0.37 0.38 0.39 0.38 0.44 0.44 0.34 0.30
+b16  0.36 0.36 0.36 0.35 0.38 0.41 0.39 0.41 0.27 0.12 0.17 0.24 0.23 0.26 0.35 0.31
+b32  0.39 0.43 0.41 0.18 0.21 0.28 0.18 0.18 0.26 0.27 0.31 0.35 0.31 0.29 0.30 0.33
+b48  0.25 0.16 0.19 0.18 0.20 0.24 0.23 0.21 0.31 0.33 0.45 0.10 0.13 0.16 0.10 0.13
+```
+
+**Plat entre 0,10 et 0,45, aucune dent de scie lisible.** La cause est dans la prémisse de la
+méthode : `DetectI0Layout` suppose une valeur qui **bouge peu** d'une frame à la suivante — vrai
+d'un bipède, **faux d'un projectile**, qui traverse la carte entre deux frames et fait donc
+basculer les bits de poids fort autant que les autres. **L'instrument n'est pas en cause, sa
+prémisse ne s'applique pas.** Forcer une lecture de frontières sur ce profil serait exactement le
+défaut que ce chantier s'interdit (un balayage FABRIQUE des distributions crédibles).
+
+### 8.2 T3 — le discriminant physique est INCONCLUANT PAR L'INSTRUMENT
+
+Discriminant de remplacement, et il est bien plus fort en principe : **un projectile vole droit**.
+Si le découpage est bon, les positions successives d'un même projectile sont colinéaires ; s'il
+est faux, les bits d'un axe polluent le suivant et le nuage n'a aucune structure.
+
+```
+decoupage      traj>=3   colineaire   nulle melangee
+19/19/19             7       0.0000         0.0000
+18/19/20             7       0.0000         0.0000
+20/19/18             7       0.0000         0.0000
+17/20/20             7       0.0000         0.0000
+13/13/14             7       0.0000         0.0000
+```
+
+> ⚠ **CE N'EST PAS UN NÉGATIF SUR LA QUESTION, C'EST UN NÉGATIF SUR L'INSTRUMENT** — et le
+> dossier a déjà nommé ce piège : *« un négatif dont la nulle vaut zéro est un négatif sur
+> l'instrument »* (index §20.1). **Ma nulle vaut zéro elle aussi** : le test ne pouvait pas
+> réussir. Deux causes, et elles se corrigent :
+>
+> 1. **n = 7 trajectoires à 3 points ou plus**, sur 277 échantillons porte = 1. La couverture
+>    delta actuelle rend 1 à 2 positions par projectile — il en faut au moins 3 pour tester une
+>    droite. **C'est la couverture qu'il faut lever avant le test, pas le test qu'il faut
+>    interpréter.**
+> 2. **Aucun contrôle positif.** La tolérance (5 % de la longueur du segment) n'a jamais été
+>    calibrée sur un composant dont le décodage est SÛR.
+
+### 8.3 CE QU'IL FAUT FAIRE AVANT DE REJOUER T3 — dans cet ordre
+
+1. **Un CONTRÔLE POSITIF de l'instrument de colinéarité** : le rejouer sur les positions de
+   **bipèdes** (`ti=35`, i0 dynamic-precision, décodage sûr et déjà capturé par
+   `position_capture.go`). Un bipède ne vole pas droit — le critère doit donc être recalibré sur
+   une trajectoire connue, ou remplacé par un critère de **continuité** (pas de saut supérieur à
+   la vitesse maximale d'un projectile). **Tant que l'instrument n'a pas montré qu'il sait dire
+   OUI quelque part, ses zéros ne valent rien.**
+2. **Lever la couverture du flux delta** : `DecodeFrameInfer` démarre au bit 0 et meurt tôt sur
+   les paquets à événements. `killsource` a un localisateur de boucle (`locateStrict` + repli,
+   690/690 paquets) — **il n'est pas exporté**. L'exporter, ou le rejouer, multiplierait les
+   échantillons par slot. C'est le vrai verrou de T3.
+3. **Alors seulement** rejouer T3, puis T3bis (chaînage sur `i1`), puis le portage.
+
+**ÉTAT À LA CLÔTURE DE CETTE SESSION** : la voie n'est ni ouverte ni fermée. Ce qui est acquis —
+le projectile est une entité répliquée qui porte des trajectoires dans le flux delta (§7), les
+deux branches de son i0 sont empruntées à parts égales (§8.1), et la grammaire de la branche
+opaque est établie (§2.2). Ce qui manque — **la couverture** (point 2) avant tout, puis un
+instrument de validation qui ait fait ses preuves (point 1).
+- **2026-08-08 (6)** — **T2 et T3 joués, aucun des deux ne mord, et les deux échecs sont
+  instrumentaux.** T2 : le profil de bascule ne transfère pas (sa prémisse — une valeur qui bouge
+  peu entre frames — est fausse pour un projectile) ; profil plat 0,10-0,45. T3 : colinéarité des
+  trajectoires, **zéro partout NULLE COMPRISE** — donc un négatif sur l'instrument, pas sur la
+  question (n = 7 trajectoires à 3+ points, et aucun contrôle positif). **Acquis au passage : les
+  deux branches d'i0 sont empruntées à parts comparables (264 / 277), donc les 59 bits opaques
+  concernent la MOITIÉ des records projectile.** Verrou identifié : la couverture du flux delta,
+  qui exige le localisateur de boucle de `killsource` (non exporté). Rien de porté.
+
+---
+
+## 9. DEUX CORRECTIONS DE L'UTILISATEUR SUR LA CONCEPTION DE T3, ET ELLES SONT DÉCISIVES
+
+> Reçues le 2026-08-08 en fin de session. **Elles ne portent pas sur l'échantillon, elles
+> portent sur le CRITÈRE** — c'est-à-dire sur ce que j'ai conçu, pas sur ce que j'ai mesuré.
+> Elles expliquent, en plus de `n = 7`, pourquoi T3 rendait zéro.
+
+### 9.1 « Les projectiles ne parcourent pas forcément une longue distance »
+
+Un duel se joue rarement à distance. Beaucoup de trajectoires font quelques mètres. Or mon
+critère est **RELATIF** : la distance des points intermédiaires au segment, divisée par la
+**longueur du segment**. Sur une trajectoire courte, le dénominateur est petit et le bruit de
+quantification — le demi-pas de `1 << W` — devient énorme en proportion. **Le critère se
+disqualifie tout seul précisément sur la population la plus fréquente.**
+
+**Correctif** : un critère **ABSOLU**, pas relatif. Une **continuité** — aucun saut supérieur à
+`vitesse_max × dt` entre deux positions consécutives — plutôt qu'une colinéarité. Une continuité
+ne dépend pas de la longueur de la trajectoire, et elle est falsifiable de la même façon (un
+découpage faux produit des sauts aberrants).
+
+### 9.2 « Le tracé est plutôt droit, mais ça peut être légèrement courbé »
+
+Chute balistique, guidage du Needler, arc du plasma : **la droite était un modèle faux**, pas
+seulement un modèle serré. Une tolérance de 5 % sur une trajectoire réellement courbée rejette
+un décodage JUSTE.
+
+**Correctif** : ne jamais tester la droite. Tester la **régularité** — pas de discontinuité, et
+une accélération bornée (deuxième différence des positions petite devant la première).
+
+> **CE QUE ÇA APPREND SUR LA MÉTHODE, ET C'EST LE VRAI ENSEIGNEMENT** : j'ai conçu un
+> discriminant à partir d'une intuition physique (« un projectile vole droit ») sans la
+> confronter à quelqu'un qui connaît le jeu. Les deux corrections viennent de la connaissance du
+> TERRAIN, pas du binaire. **Un critère de validation physique doit être validé par la
+> connaissance du jeu avant d'être codé** — sinon on mesure la fausseté de son propre modèle.
+
+---
+
+## 10. LES DUMPS — CE QUI ÉTAIT DISPONIBLE ET QUE JE N'AI PAS UTILISÉ
+
+Signalé par l'utilisateur. Inventaire de `.ai/V7.5/dumps/` (cf. `.ai/HANDOFF_DUMPS_2026-07-31.md`
+pour le raisonnement de conservation). Trois fichiers changent la donne de cette note :
+
+| fichier | ce que c'est | ce qu'il débloque ICI |
+|---|---|---|
+| `ce_prec_widths_1445cc9e0.bin` | la table des **LARGEURS de précision**, dumpée de la mémoire | **exactement la globale que §2.2 déclare non dérivable statiquement.** T2 n'avait pas à être une mesure statistique : la réponse est dumpée |
+| `ce_prec_ranges_14462cbe0.bin` | la table des **PLAGES** | permet de vérifier que `DAT_143b8c6d0` (± 100) est bien l'entrée utilisée, au lieu de le déduire |
+| `ce_pos_oracle.csv` / `ce_pos_rosetta.csv` | **oracle de POSITIONS** capturé au runtime | **le contrôle positif qui manquait à T3** (§8.3 point 1) : un décodage se confronte à une position vraie, plus à une heuristique de forme |
+
+> ⚠ **RÉSERVE DÉJÀ ÉCRITE AU DOSSIER, à ne pas oublier en s'en servant** : les tables dumpées
+> sont un **instantané installé PAR CARTE**, pas une spécification portable — injectées telles
+> quelles elles effondrent 3 films sur 4 (index, « Les tables de precision dumpees
+> remplacent-elles le balayage ? **NON** », 7ter.54 AXE3). **Elles valent comme ORACLE sur la
+> carte où elles ont été capturées** (`ce_run2_cliffhanger.bin.gz`), pas comme constante du
+> décodeur. C'est suffisant pour calibrer un instrument et valider un découpage — c'est
+> précisément ce dont T2 et T3 ont besoin.
+
+**CONSÉQUENCE SUR L'ORDRE DES TRAVAUX (§8.3 est remplacé) :**
+
+1. **Décoder `ce_prec_widths_*.bin` et `ce_prec_ranges_*.bin`** et en tirer les largeurs de
+   `ti=41` sur Cliffhanger. C'est une LECTURE, plus une inférence statistique.
+2. **Confronter le découpage obtenu à `ce_pos_oracle.csv`** sur le même film — égalité de
+   position, pas heuristique de forme. C'est le contrôle positif, et il est direct.
+3. **Seulement si (1) et (2) passent** : généraliser aux autres cartes par la forme fermée
+   (`W = min(26, bitLen(ceil(extent / (2·step))))`, §2.2), la table dumpée servant de vérité de
+   référence et non de source.
+4. La couverture du flux delta (localisateur de boucle de `killsource`) redevient un problème
+   de VOLUME, plus un préalable de validation.
+- **2026-08-08 (7)** — **deux corrections utilisateur sur la CONCEPTION de T3** (§9) : les
+  trajectoires sont souvent COURTES (un critère relatif à la longueur du segment se disqualifie
+  sur la population la plus fréquente) et **légèrement COURBÉES** (la droite était un modèle
+  faux, pas seulement serré). Le critère doit être une **continuité absolue**, pas une
+  colinéarité relative. Leçon : un discriminant physique doit être validé par la connaissance du
+  jeu AVANT d'être codé. **Et surtout (§10) : les dumps existants portent
+  `ce_prec_widths_*.bin` (la globale que je déclarais non dérivable), `ce_prec_ranges_*.bin` et
+  `ce_pos_oracle.csv` (le contrôle positif manquant).** T2 n'avait pas à être une mesure
+  statistique. L'ordre des travaux du §8.3 est remplacé par celui du §10.
+
+### 10.1 CE QUE L'ORACLE CONTIENT VRAIMENT — vérifié, et sa portée est plus étroite que son nom
+
+`.ai/V7.5/dumps/ce_pos_oracle.csv`, en-tête `# filmdec_pos totalHits=277008 recordsEcrits=46790`,
+colonnes `eid,slot,bitCursor,x,y,z`.
+
+```
+lignes  46 790      slots  32      eids  32
+x  [-6.3 .. 35.7]           z  [-4.2 .. 7.1]        -> echelle carte, coherente avec la boite +-100
+slots les plus fournis : 545 (3 719), 536 (3 681), 552 (2 794), 559 (2 512), 547 (2 370)...
+```
+
+**Les 32 slots sont dans la bande 528-559 : ce sont les BIPÈDES, pas les projectiles.**
+
+**Ce que ça vaut, et ce que ça ne vaut pas :**
+
+- ✅ **La colonne `bitCursor` en fait une pierre de Rosette** : chaque position vraie est
+  rattachée à une position de bit dans le flux. On peut donc valider **la formule de
+  déquantification et la dérivation des largeurs** contre une vérité terrain, au lieu de les
+  déduire. C'est le contrôle positif que §8.3 réclamait, et il est direct.
+- ❌ **Il ne valide PAS `i0` de `ti=41`.** L'oracle ne contient aucun projectile : il porte
+  l'autre `i0` (dynamic-precision, `FUN_1406cfe44`). Il calibre l'INSTRUMENT ; il ne tranche pas
+  la branche opaque.
+
+**Donc l'ordre du §10 tient, avec cette nuance à sa place** : l'oracle sert au point (2) comme
+*calibrage* de la méthode, et c'est `ce_prec_widths_*.bin` qui doit trancher le point (1) pour
+`ti=41`. Ne pas annoncer « on a un oracle de projectiles » — on a un oracle de bipèdes, et c'est
+déjà beaucoup.
+- **2026-08-08 (8)** — chemin des dumps corrigé (`.ai/V7.5/dumps/`, pas V5.5) et **contenu de
+  l'oracle vérifié** : 46 790 lignes, **32 slots dans la bande 528-559 = des BIPÈDES**, avec un
+  `bitCursor` par ligne. Il calibre l'instrument (contrôle positif direct sur la
+  déquantification), **il ne valide pas `ti=41`** — c'est `ce_prec_widths_*.bin` qui doit le
+  faire. Nuance écrite en §10.1 pour qu'on ne surestime pas ce qu'on a.
+
+---
+
+## 11. LES DUMPS SONT LUS — ET ILS NE DÉBLOQUENT RIEN, PARCE QUE LA PRODUCTION AVAIT DÉJÀ TOUT
+
+> Session du 2026-08-08 (reprise depuis le handoff). Le « prochain geste » annoncé était :
+> décoder `ce_prec_widths_*.bin` pour obtenir les largeurs que §2.2 déclarait non dérivables.
+> **C'est fait. Le résultat est un négatif partiel sur mon propre handoff**, et il vaut mieux
+> que ce qu'il annonçait : il retire une inconnue du dossier au lieu d'en ouvrir une.
+
+### 11.1 `ce_prec_widths_1445cc9e0.bin` — 32 niveaux, et ce n'est QUE la loi précalculée
+
+Outil : `apps/go-api/cmd/tmp_precdump` (mode `-widths`, `-ranges`, `-verify`).
+
+```
+L0..L16   6/6/6, 7/7/7, ... 22/22/22        (W = 6 + L)
+L17..L22  22/22/22                           (saturation du compte a 2^22)
+L23..L31  26/26/26                           (0x1a : le pas passe sous le seuil DAT_143cd837c)
+```
+
+**Confrontation a la forme fermee : 32 / 32 niveaux en ACCORD**, avec
+`table[L] = min(26, ceilLog2(min(ceil(40000 / (2·step(L))), 2^22)))` et `step(L) = 2^(16-L)/120`.
+L'etendue 40000 est celle de `DAT_143b8c6b8` (± 20000), la plage par defaut.
+
+**CONSÉQUENCE, ET ELLE ANNULE LE GESTE ANNONCÉ.** La table n'est pas une donnee de runtime
+opaque : c'est la meme loi, precalculee au chargement de carte. **Elle confirme le
+desassemblage, elle n'ajoute rien.** §2.2 avait raison sur les faits (le pas vient d'une
+globale) et tort sur la conclusion (« les largeurs ne sont pas derivables ») : la globale est
+elle-meme derivee de constantes statiques, et la chaine se remonte entierement.
+
+**UNE CORRECTION AU PASSAGE** : `FUN_1406d310c` n'est pas `bitLen` mais **`ceilLog2`**. Les deux
+coincident partout SAUF sur les puissances exactes de deux — et c'est exactement ce cas qui
+decide des niveaux 17 a 22. §2.2 ecrivait `bitLen` ; `map_bounds.go` de production ecrivait
+`ceilLog2`, et c'est la production qui avait raison.
+
+### 11.2 `ce_prec_ranges_14462cbe0.bin` — 768 AABB, et l'entree 0 coincide avec le `.module`
+
+```
+idx 0        x[-41.1032..72.1096] y[-56.6070..57.2126] z[-84.3708..53.1803]   etendues 113.21 / 113.82 / 137.55
+idx 1        x[+-3309.51] y[+-5235.79] z[-195.48..502.07]
+idx 2..767   +-20000 par axe                                                   (la plage par defaut)
+```
+
+**L'entree 0 est l'AABB de la carte, et elle EGALE le catalogue de production au flottant pres**
+(`data/titles/halo_infinite/reference/map_quant_bounds.json`, entree `cliffhanger` /
+module `ridgeline` : min `[-41.102932, -56.606728, -84.37054]`, max `[72.109375, 57.211975,
+53.179653]`). Ce catalogue est produit hors ligne par `cmd/mapquant-build` **depuis les
+`.module`**, pour 15 cartes.
+
+**La chaine est donc validee de bout en bout, et pour la premiere fois par une source
+independante** : `.module` (sbsp world bounds) -> table de precision runtime -> largeurs de
+quantification du film -> positions decodees. Jusqu'ici le catalogue n'etait controle que par
+`DetectI0Layout`, c'est-a-dire par les largeurs mesurees dans le film — un controle indirect.
+Le dump memoire confirme **les bornes elles-memes**.
+
+**Et la reserve du §10 (7ter.54 AXE3) se comprend enfin.** « Les tables dumpees effondrent
+3 films sur 4 » n'a rien de mysterieux : la table est celle de **Cliffhanger**, et l'appliquer
+a une autre carte est exactement le bug que l'en-tete de `map_bounds.go` decrit (« jusqu'ici
+toutes les cartes etaient dequantifiees avec les bornes de Cliffhanger, ce qui multipliait
+l'echelle par un facteur arbitraire — 0,38 sur Catalyst »). Le probleme n'etait pas la
+portabilite de la table : c'etait qu'il fallait une table PAR CARTE, et la production en a
+une depuis `cmd/mapquant-build`.
+
+### 11.3 CE QUE §7 AURAIT DÛ DIRE : `filmdec/projectiles.go` EXISTE, EN PRODUCTION
+
+**Troisieme conclusion de ce dossier tiree sans greper l'existant Go**, et la regle du chantier
+le disait deja. `apps/go-api/internal/analysis/filmdec/projectiles.go` :
+
+- decode les trajectoires de projectile `ti=41` du flux delta (`ScanFilmProjectiles`) ;
+- est **cable en production** dans `replay.BuildFromFilm` (rejeu 2D), avec goldens
+  (`replay/golden_inputs_test.go`) ;
+- porte une **verite terrain autrement plus forte que mon T1'** : 70 lancers de grenade sur 70
+  apparies a une naissance d'entite (contre 5,3 % par decalage circulaire), distance
+  naissance <-> bipede lanceur **0,77 u** (contre 6,4 u a instant permute et 33,9 u au hasard),
+  direction initiale a **1,0°** du cap de visee, durees de vie par type de grenade separees a
+  p < 5e-4 sur 20 000 permutations.
+
+**CORRECTION DE MA PROPRE PHRASE, faite une heure apres l'avoir ecrite, en lisant
+`replay/grenades.go`.** J'avais ecrit « la chaine premiere position -> joueur le plus proche ->
+tireur est CONSTRUITE ET VALIDEE ». **C'est trop fort, et le sens de l'inference est inverse.**
+Ce que la production fait :
+
+```
+GrenadeThrow (evenement de LANCER decode — il porte deja son auteur)
+   -> apparie par INSTANT a une naissance de projectile
+   -> la naissance donne la POSITION ou afficher le lancer
+```
+
+L'auteur vient de l'evenement ; le projectile ne sert qu'a placer le point. **Le `0,77 u` n'est
+pas un mecanisme d'attribution, c'est un CONTROLE** : il verifie que la naissance tombe bien a
+la main du lanceur connu.
+
+**Ce qui est donc reellement acquis — et c'est deja beaucoup :** la PREMISSE PHYSIQUE de la
+chaine de §3 est **mesuree et validee** (0,77 u contre 6,4 u a instant permute et 33,9 u au
+hasard : une naissance de projectile designe son auteur sans ambiguite). **Ce qui ne l'est
+pas :** l'inference en sens inverse — naissance -> bipede le plus proche -> tireur — pour les
+projectiles qui n'ont **aucun evenement de lancer**, c'est-a-dire les projectiles d'ARME. C'est
+exactement ce que §3 voulait, et ce n'est pas construit.
+
+**UN CHIFFRE QUI DIT QUE ÇA VAUT LE COUP, ET QUI RESTE À VÉRIFIER** : le film temoin porte
+**688 vies de projectile** pour **70 lancers de grenade**. Les grenades sont donc une petite
+minorite de `ti=41` — le reste est vraisemblablement des projectiles d'arme, ce qui rendrait la
+voie applicable la ou elle sert. **A VERIFIER** : que les projectiles d'arme (aiguille de
+Needler, plasma) sont bien des entites `ti=41` et non un autre archetype. Ni mesure ni preuve
+a ce stade, juste un rapport de comptes.
+
+T1 et T1' restent, eux, de la re-mesure a la main de ce que la production faisait deja.
+
+### 11.4 LA PART DE LA BRANCHE OPAQUE EST 6,2 %, PAS « LA MOITIÉ » — §8.1 EST FAUX
+
+Outil : `apps/go-api/cmd/tmp_i0hi`, qui reprend **mot pour mot** la grammaire de record de
+`scanProjectileRecords` (celle qui porte les 70/70), a une difference pres : la branche haute
+n'est pas rejetee, elle est etiquetee.
+
+```
+30 films Cliffhanger        152 535 records ti=41       9 382 sur la branche opaque    6,2 %
+par film                                                                 3,9 % .. 10,6 %
+```
+
+**Deuxieme instrument, independant, deja present dans le cache film depuis toujours** :
+`data/cache/film_chunks/<match>/calib.txt` porte `object-position-component:45` avec une
+frequence modale de **0,98**. Les 45 bits sont la branche BASSE.
+
+**La mesure `tmp_i0w` de §8.1 (264 a porte = 0 contre 277 a porte = 1) est donc fausse**, et
+d'un facteur ~8. Elle a ete faite avec un balayage qui n'avait pas la selectivite de la
+grammaire de production ; ses « records » a porte = 1 sont pour l'essentiel des faux positifs.
+**Lecon, et c'est la meme que 11.3** : quand un instrument de production existe et porte une
+verite terrain, mesurer avec autre chose n'est pas une verification independante, c'est une
+degradation.
+
+**Ce que la branche opaque coute VRAIMENT** — le seul chiffre qui justifierait de la decoder :
+
+```
+5 083 vies de projectile     124 melangent les deux branches     608 n'ont QUE l'opaque (12 %)
+```
+
+Douze pour cent des vies sont integralement perdues par le rejeu 2D. C'est reel, mais c'est un
+gain de couverture sur une feature livree — **pas un deblocage**, et pas ce que le handoff
+annoncait.
+
+### 11.5 L'INSTRUMENT DE VALIDATION A ENFIN UN CONTRÔLE POSITIF — ET IL LE FRANCHIT
+
+C'est ce qui manquait a T3 (§8.2, §8.3 point 1). La methode ne teste plus une FORME
+(colinearite, continuite) mais une **egalite numerique avec une position vraie** : pour chaque
+record opaque encadre dans sa vie par deux records de la branche BASSE, on interpole la
+position vraie, puis on regresse cette coordonnee sur l'entier brut de chaque champ candidat.
+Un champ juste donne une relation affine ; un champ faux donne du bruit.
+
+**Controle positif — la meme mecanique appliquee a la branche BASSE, dont les champs sont
+connus. 130 846 records encadres, 12 films :**
+
+```
+axe   champ retrouve   R2         etendue implicite   AABB de la carte   nulle (mediane / permutation)
+X     off  3, w 13     0.997083   112.99              113.21             0.0001 / 0.000002
+Y     off 16, w 13     0.997659   113.65              113.82             0.0010 / 0.000321
+Z     off 29, w 14     0.974280   135.88              137.55             0.0004 / 0.000544
+```
+
+**Les trois champs de production (3/13, 16/13, 29/14) sont retrouves, et l'etendue implicite
+tombe sur l'AABB de la carte a moins de 1,5 % pres.** La nulle par permutation vaut 3e-4 au
+pire. **L'instrument sait dire OUI** — ce que T3 n'avait jamais montre, et sans quoi ses zeros
+ne valaient rien.
+
+> Note de lecture : les largeurs sont **degenerees** (off 16 avec w 13, 14, 15, 17, 18 rendent
+> le meme R2). C'est attendu : ajouter des bits de poids faible ne change pas la relation
+> affine. **Ce que la regression determine, c'est l'OFFSET et l'ECHELLE** ; la largeur se lit
+> ensuite sur l'etendue implicite via la forme fermee. Il faut le dire, sinon on croit la
+> methode plus precise qu'elle n'est.
+
+### 11.6 CE QUE LA FORME FERMÉE PRÉDIT POUR LA BRANCHE OPAQUE — et aucun candidat ne fait 60
+
+Au niveau `L = 16` cable au site d'appel (`FUN_14076e420(br, st+4, 0x10)`) :
+
+```
+plage                                        largeurs   axes   + porte + R(2)
+AABB Cliffhanger (branche basse, VALIDEE)    13/13/14     40   43  (45 avec index-sel + index)
+DAT_143b8c6d0  +-100                         14/14/14     42   45
+DAT_143b8c6b8  +-20000                       22/22/22     66   69
+```
+
+**Aucun ne fait 60**, le total mesure de la branche opaque. Deux ajustements arithmetiques
+existent — `3 x 19 + 2 = 59` avec ± 20000 au niveau 13, ou avec ± 100 au niveau 21 — mais **ce
+sont des ajustements, pas des mesures** : deux inconnues (plage et niveau) pour une equation.
+C'est la regression qui doit trancher, pas l'arithmetique.
+
+### 11.7 LA RÉGRESSION SUR LA BRANCHE OPAQUE — NÉGATIVE, avec une signature à ne pas jeter
+
+30 films Cliffhanger, **127 records opaques encadres** par deux positions vraies :
+
+```
+axe   meilleur champ   R2       q99 de sa propre distribution   nulle permutation   etendue implicite
+X     off  7, w 10     0.2785   0.2785   <- le gagnant EST le q99   0.1161            39.47
+Y     off 16, w 13     0.4843   0.4843   <- idem                    0.0031            64.20
+Z     off 29, w 14     0.6728   0.6728   <- idem                    0.0006            96.23
+```
+
+**VERDICT : NÉGATIF.** Sur les trois axes, le meilleur candidat **est exactement le q99 de sa
+propre distribution** — c'est-a-dire le maximum d'un bruit, pas une valeur aberrante. Le meme
+instrument rendait 0,97-0,997 avec une nulle a 3e-4 sur la branche basse (§11.5). Il sait dire
+oui ; ici il dit non.
+
+**MAIS DEUX CHOSES INTERDISENT DE CLORE SUR CE CHIFFRE.**
+
+1. **Les axes Y et Z culminent EXACTEMENT aux offsets de la branche basse** (16 et 29), avec
+   une nulle par permutation de 3e-3 et 6e-4. Un R2 de 0,67 contre une nulle de 0,0006 n'est
+   pas du bruit pur — quelque chose se lit a ces offsets. Deux lectures possibles : soit la
+   branche opaque partage le decoupage de la branche basse et change seulement de plage (les
+   etendues implicites 64,20 et 96,23 ne collent alors a aucune plage connue), soit une part
+   des « records opaques » sont des faux positifs qui sont en realite des records BAS mal
+   localises. La seconde est la plus probable et se testerait par la longueur.
+2. **n = 127.** Le dossier a deja paye ce piege avec T3 : *« un negatif dont la nulle vaut zero
+   est un negatif sur l'instrument »*. Ici la nulle n'est pas nulle et l'instrument est
+   calibre, mais l'echantillon reste mince et **biaise** : un record opaque n'est encadre que
+   dans une vie MIXTE, or il n'y en a que 124 sur 5 083.
+
+**Ce qui est donc lance avant de conclure** : la meme regression, mutualisee sur **300 films de
+tout le corpus** (chaque film decode avec les bornes de SA carte), en deux regimes qui ne
+testent pas la meme hypothese — coordonnee MONDE si la plage est FIXE, coordonnee NORMALISEE si
+elle suit la carte. Si aucun des deux ne mord sur un echantillon dix fois plus grand, le negatif
+est solide.
+
+### 11.8 LE DURCISSEMENT — négatif SOLIDE, et le R2 BAISSE quand l'échantillon grandit
+
+**300 films, 16 cartes, 4 505 034 records `ti=41`, 2 336 records opaques encadres** (contre 127
+sur Cliffhanger seule) :
+
+```
+regime                          axe X              axe Y              axe Z
+position ABSOLUE, monde         0.1475 (q99 .1475) 0.0804 (q99 .0804) 0.2799 (q99 .2799)
+position ABSOLUE, normalisee    0.1551 (q99 .1550) 0.2886 (q99 .2886) 0.4502 (q99 .4501)
+```
+
+**Sur les six colonnes, le meilleur candidat EST le q99 de sa propre distribution.** Aucun
+n'est aberrant : ce sont des maxima de bruit.
+
+**LE DIAGNOSTIC QUI TRANCHE, ET IL EST PLUS PARLANT QUE LES R2 EUX-MEMES.** En multipliant
+l'echantillon par 18, les R2 ont **BAISSE** :
+
+```
+             n = 127 (Cliffhanger)      n = 2 336 (16 cartes)
+axe X              0.2785          ->        0.1475
+axe Y              0.4843          ->        0.2886
+axe Z              0.6728          ->        0.4502
+```
+
+C'est exactement la signature d'une **correlation fortuite de petit echantillon qui se dilue**.
+Un vrai signal se renforce quand n grandit ; celui-ci s'efface. La « signature a ne pas jeter »
+du §11.7 (Y et Z aux offsets de la branche basse) etait donc bien du bruit, et c'est
+l'echantillon qui l'a dit — pas une intuition.
+
+**LA PART DE 6,2 % SE CONFIRME A GRANDE ECHELLE** : 274 833 records opaques sur 4 505 034, soit
+**6,1 %**, avec une dispersion par carte de 3,9 % (Breaker) a 9,3 % (Launch Site). Le chiffre ne
+depend ni de la carte ni du film.
+
+> ⚠ **CE QUE CE NEGATIF DIT, ET CE QU'IL NE DIT PAS.** Il dit : *aucun champ de bits CONTIGU,
+> a un offset de 1 a 59 et d'une largeur de 10 a 24, n'est en relation affine avec la position
+> absolue* — ni dans une plage fixe, ni aux largeurs de la carte. Il ne dit PAS que la branche
+> ne porte aucune position. Trois echappatoires restent, et la premiere est serieuse :
+>
+> 1. **La position pourrait etre encodee en DELTA**, pas en absolu. C'est ce qu'un protocole de
+>    replication fait quand il annonce « haute precision » : on n'envoie que le petit
+>    changement. Et cela expliquerait la plage `DAT_143b8c6d0` = **± 100**, absurde pour une
+>    position absolue sur une carte de 113 unites, tres naturelle pour un DEPLACEMENT par
+>    image. Le depot connait deja ce motif : `components_movement.go` modelise un chemin delta
+>    a dequantification CENTREE-ZERO pour l'autre `i0`. **Ce test est lance** (regime 3).
+> 2. **La longueur de 60 bits pourrait etre fausse**, auquel cas la fenetre de bits est
+>    decalee. Elle n'a jamais ete verifiee autrement que par l'alignement global.
+> 3. **Une part des « records opaques » pourrait etre des faux positifs.** Un record opaque
+>    n'est retenu que sur son bit de porte, sans filtre de validite de contenu — la branche
+>    basse, elle, en a un (trois bits de porte nuls + quanta non satures).
+
+### 11.9 LE RÉGIME DELTA — négatif lui aussi, mais AVEC UN CONTRÔLE QUI NE PASSE QU'À MOITIÉ
+
+Troisieme regime teste : la cible n'est plus la position absolue mais le **DEPLACEMENT** depuis
+la derniere position connue. Motivation serieuse — c'est ce qu'un protocole de replication fait
+quand il annonce « haute precision », et cela expliquerait la plage ± 100, absurde en absolu sur
+une carte de 113 unites, naturelle pour un deplacement par image.
+
+```
+axe X   R2 max 0.0455   (q99 0.0322)   nulle par permutation 0.0032
+axe Y   R2 max 0.0052   (q99 0.0052)   —
+```
+
+**Negatif.** Les R2 sont d'un ordre de grandeur SOUS ceux des regimes absolus : rien.
+
+> ⚠ **ET VOICI CE QUI AFFAIBLIT TOUT LE RUN MUTUALISÉ, a dire avant d'en tirer un verdict.**
+> Le controle positif, rejoue dans le MEME regime mutualise, **ne passe que sur un axe sur
+> trois** :
+>
+> ```
+> axe X   off 3, w 13, R2 0.9499, etendue implicite 0.96 (reference 1.00)   -> RETROUVE
+> axe Y   R2 0.2883                                                         -> NON retrouve
+> axe Z   R2 0.2273                                                         -> NON retrouve
+> ```
+>
+> La cause est dans l'elagage : `keepMixedLives` ne garde que les vies qui melangent les deux
+> branches, ce qui reduit l'echantillon de controle de 130 846 a 18 756 records ET le biaise
+> (ce sont des vies atypiques, par construction). **Dans le reglage exact ou le negatif a ete
+> mesure, l'instrument n'est donc calibre que sur un axe.**
+>
+> **CE QUI SAUVE MALGRE TOUT LE VERDICT, et il faut peser les deux :** le run Cliffhanger seul
+> (§11.7) avait un controle qui passait sur les TROIS axes (0.997 / 0.998 / 0.974, sur 130 846
+> records non elagues) et rendait deja un negatif ; le run mutualise le confirme sur un
+> echantillon 18 fois plus grand ; et les trois regimes concordent. **Le negatif est solide,
+> il n'est pas hermetique.** Le durcir demanderait de rejouer le controle SANS elagage sur le
+> corpus mutualise — ce qui coute la memoire que l'elagage economisait.
+
+**ÉTAT DE LA BRANCHE OPAQUE À LA CLÔTURE** : trois regimes testes (absolu monde, absolu
+normalise, delta), trois negatifs, avec un instrument dont le controle passe integralement sur
+une carte et partiellement sur le corpus mutualise. **Elle reste non decodee, elle vaut 6,1 %
+des records, et on n'y revient pas sans raison neuve.**
