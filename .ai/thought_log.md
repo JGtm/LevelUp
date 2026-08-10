@@ -60563,3 +60563,15 @@ la chaîne sbsp, donc `NewRuntimeGeoAsset` rend les objets Forge tel quel.
 **Prochaine étape** : gate visuel utilisateur (rivière Cliffhanger/Forbidden + Vagabond),
 puis selon verdict : saut bloc->hlmt pour les 24 % manquants, toile sous les objets,
 généralisation aux ~100 variantes Forge du catalogue.
+
+## [2026-08-10] Lots rivière + Forge — verdict CI de branche
+
+**Statut : Complété**
+
+CI `feat/v75` VERTE AU NIVEAU JOB sur `62d105538` (run 31374863589) : Build+Test
+ubuntu/windows, Frontend, OpenAPI Lint, Lease Enforcement, Contract Test, golangci,
+Coverage+Baseline — tous success (E2E skipped, régime normal). Le premier run
+(dc0627fa9) avait échoué sur : (1) `medianeZ` défini dans le fichier NON committé de la
+session concurrente — dépendance accidentelle, corrigée par helper local ; (2) OpenAPI
+Lint sur timeouts Docker Hub (infra, résolu au run suivant). Leçon : deux sessions dans
+un même worktree = un tree local qui compile n'est pas un tree committé qui compile.
