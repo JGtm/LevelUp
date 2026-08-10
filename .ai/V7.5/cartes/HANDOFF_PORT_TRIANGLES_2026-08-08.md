@@ -730,3 +730,55 @@ de relief lointain recoit donc un budget SATURE, donc une densite de points tres
 metre carre, donc des cellules vides — la silhouette de la reference pourrait etre un effet de
 son mode de rasterisation, pas d'un filtre de selection. A verifier avant d'inventer une regle
 de tri.
+
+## 12. LOT RIVIERE (2026-08-10) — le lecteur `sddt` est en PRODUCTION, l'eau est dessinee
+
+### 12.1 Ce qui a change
+
+- **`internal/himap/sddt.go`** : lecteur du tag `sddt` promu des sondes. Les DEUX natures
+  sont rendues separement, et le critere est STRUCTUREL (deux champs distincts du root
+  block : coquille-frontiere via `@0x58 -> @0x08`, volumes d'eau via `@0x94`) — pas un
+  seuil sur le nombre de plans. La navigation generique de struct-table (meilleurTagInfo,
+  liensBlocs, compteChamp) est promue avec lui ; les sondes restantes (food/scnr/stse)
+  s'en servent.
+- **L'eau sur le fond de carte** : `Rendu.PoseEau` marque les cellules couvertes par un
+  volume d'eau SANS toucher le z-buffer (l'eau est un habillage). Regle du pont : une
+  matiere au-dessus du toit du volume (+`MargeEauMetres` = 0,25 m) garde son pixel. La
+  couleur vit dans `rendu_couleur.go` (`TeinteEau`, bleu desature + berge assombrie),
+  appliquee par `carteSeulePNG` — y compris sur les cellules SANS matiere (l'eau n'est pas
+  dans les instances de rendu, elle comble ses propres trous).
+- **Sondes supprimees** (double emploi apres promotion) : `sonde_sddt_pfnd`,
+  `sonde_sddt_banc`, `sonde_sddt_xy`. Leurs mesures vivent dans
+  `INVESTIGATION_SDDT_PFND_2026-08-10.md` ; les temoins promus dans
+  `sddt_test.go` (synthetiques, mutation d'orientation JOUEE dans le test) et
+  `sddt_gamefiles_test.go` (octets reels).
+- **LE BANC est promu** : `TestBancCliffhanger` (sddt_gamefiles_test.go) remplace
+  `TestSondeSddtRendu`. Il ASSERT les references (accord >= 66,6 %, positions >= 93,8 %)
+  et PROUVE que l'eau ne touche pas le terrain (z-buffer et normales compares a l'octet).
+
+### 12.2 Les chiffres du banc — inchanges a la decimale
+
+    config par defaut (grain 0,005, tranche, tous modules)
+    manquants 10,8 % · exces 33,8 % · ACCORD 66,7 % · positions gardees 93,82 %
+    233 volumes d'eau -> 5 467 cellules d'eau, terrain intact (compare a l'octet)
+
+Oracle sddt rejoue en production : coquille 29 221/29 221 positions, volumes d'eau
+128/29 221 (0,438 %), orientation 233/233 contre 0 en sens inverse, residu max 0,0000.
+
+### 12.3 Generalisation — l'eau sddt est une feature GENERALE
+
+Balayage des 31 cartes installees (`TestSddtBalayageEau`) : **10 cartes portent des volumes
+d'eau** — ridgeline 233, ctf_forbidden 208, forest 51, btb_drydock 26, btb_exiled 12,
+btb_engine 10, va_launchsite 6, btb_highpower 2, sgh_blueprint 2, sgh_crystalcaves 2.
+29/31 portent une coquille-frontiere (exceptions : academy_tutorial et sgh_interlock, ce
+dernier deja connu sans sbsp). Les canevas Forge (fo*) n'ont AUCUNE eau sddt : l'eau des
+cartes Forge, si elle existe, vit ailleurs (probablement dans les objets du .mvar).
+
+### 12.4 Note de session — ecriture concurrente dans le worktree
+
+Pendant ce lot, une AUTRE session a depose `cloture_gamefiles_test.go` (hypothese
+utilisateur « environnement ferme » : inondation depuis les bords) et `Volume.ZoneClose`
+dans `zone_jouable.go`. Ce travail n'est PAS commite par ce lot ; ses deux appels a
+l'ancienne API de sonde (`litSddt`) ont ete migres vers l'API promue (`LitSddt`,
+`Coquille()`, `Contient`) pour que l'arbre compile. Son verdict reste a rendre par sa
+session.

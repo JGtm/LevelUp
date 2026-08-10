@@ -56,6 +56,7 @@ func TestRenduCarte(t *testing.T) {
 	t.Logf("%d instances dessinees · %d ecartees comme decor", n, ecartees)
 
 	jugeParLesAncres(t, rendu, ancres)
+	poseEauDepuisSddt(t, rendu, chemin)
 
 	if sortie := os.Getenv("RENDU_PNG_CARTE"); sortie != "" {
 		style := styleRendu(os.Getenv("RENDU_STYLE"))
@@ -139,6 +140,38 @@ func peupleRendu(t *testing.T, rendu *Rendu, racine, chemin string, ancres [][3]
 		rendu.AddMeshBorne(m, in, 0.5)
 	}
 	return n, decor
+}
+
+// poseEauDepuisSddt pose les volumes d'eau du tag sddt (variante any/) sur un rendu.
+//
+// Une carte sans module any/, sans tag sddt ou sans volume d'eau est SIGNALEE au journal du
+// test, jamais tue — piege paye par ce chantier : un oracle absent qui passe au vert.
+func poseEauDepuisSddt(t *testing.T, r *Rendu, cheminModule string) {
+	t.Helper()
+	chemin, err := ModuleVariante(cheminModule, "any")
+	if err != nil {
+		t.Logf("eau : %v", err)
+		return
+	}
+	s, err := LitSddt(chemin)
+	if err != nil {
+		t.Logf("eau : lecture sddt : %v", err)
+		return
+	}
+	if len(s.VolumesEau) == 0 {
+		t.Logf("eau : aucun volume d'eau dans le sddt de %s", filepath.Base(chemin))
+		return
+	}
+	r.PoseEau(s.VolumesEau)
+	n := 0
+	for j := 0; j < r.NY; j++ {
+		for i := 0; i < r.NX; i++ {
+			if r.Eau(i, j) {
+				n++
+			}
+		}
+	}
+	t.Logf("eau : %d volumes sddt -> %d cellules d'eau posees", len(s.VolumesEau), n)
 }
 
 // jugeParLesAncres : chaque ancre, ramenee au sol, doit trouver de la matiere sous elle.

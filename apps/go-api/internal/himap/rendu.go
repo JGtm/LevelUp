@@ -55,6 +55,9 @@ type Rendu struct {
 	plafond  float64
 	plancher float64
 	n        [][3]float64
+	// eau : cellules couvertes par un volume d'eau (PoseEau, cf. sddt.go). Un habillage —
+	// jamais consulte par le z-buffer ni par les metriques du banc.
+	eau []bool
 }
 
 // NewRendu prepare un rendu sur une emprise et une resolution donnees.
