@@ -33,7 +33,7 @@ func action(xuid string, frame int) ObjectiveAction {
 
 func track(xuid string, pts ...Point) Track { return Track{XUID: xuid, Points: pts} }
 
-func at(frame int, x, y, z float32) Point { return Point{T: frame, X: x, Y: y, Z: z} }
+func pointAt(frame int, x, y, z float32) Point { return Point{T: frame, X: x, Y: y, Z: z} }
 
 // checkInvariant garde la promesse ecrite sur ZoneCoverage : les compteurs somment au
 // total. Un motif de rejet ajoute sans compteur ferait disparaitre des actions en
@@ -53,7 +53,7 @@ func checkInvariant(t *testing.T, cov ZoneCoverage) {
 // premiere de la liste.
 func TestActionDansLaZoneEstAttribueeALaBonneInstance(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, -20, 0, 0), zoneAt(1, 102, 0, 0, 0), zoneAt(2, 103, 20, 0, 0)}
-	tracks := []Track{track("2533", at(50, 20.5, 0.5, 0.2))}
+	tracks := []Track{track("2533", pointAt(50, 20.5, 0.5, 0.2))}
 
 	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
 	checkInvariant(t, cov)
@@ -74,7 +74,7 @@ func TestActionDansLaZoneEstAttribueeALaBonneInstance(t *testing.T) {
 // illisible.
 func TestPositionHorsDeTouteZoneNEstPasAttribuee(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
-	tracks := []Track{track("2533", at(50, 50, 50, 0))}
+	tracks := []Track{track("2533", pointAt(50, 50, 50, 0))}
 
 	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
 	checkInvariant(t, cov)
@@ -92,8 +92,8 @@ func TestPositionHorsDeTouteZoneNEstPasAttribuee(t *testing.T) {
 func TestLaHauteurTrancheEntreDeuxEtages(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
 	tracks := []Track{
-		track("auRezDeChaussee", at(50, 1, 1, 0.5)),
-		track("aLEtage", at(50, 1, 1, 6)),
+		track("auRezDeChaussee", pointAt(50, 1, 1, 0.5)),
+		track("aLEtage", pointAt(50, 1, 1, 6)),
 	}
 	actions := []ObjectiveAction{action("auRezDeChaussee", 50), action("aLEtage", 50)}
 
@@ -116,8 +116,8 @@ func TestLaHauteurTrancheEntreDeuxEtages(t *testing.T) {
 func TestLesViesDUnMemeJoueurSontFusionnees(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
 	tracks := []Track{
-		track("2533", at(10, 1, 0, 0)),  // premiere vie
-		track("2533", at(200, 1, 0, 0)), // seconde vie, apres respawn
+		track("2533", pointAt(10, 1, 0, 0)),  // premiere vie
+		track("2533", pointAt(200, 1, 0, 0)), // seconde vie, apres respawn
 	}
 	actions := []ObjectiveAction{action("2533", 10), action("2533", 200)}
 
@@ -137,7 +137,7 @@ func TestLesViesDUnMemeJoueurSontFusionnees(t *testing.T) {
 // l'action serait posee sur une trajectoire dont on ignore le porteur.
 func TestUneVieAnonymeNeSertAPersonne(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
-	tracks := []Track{track("", at(50, 1, 0, 0))} // vie non nommee, pile dans la zone
+	tracks := []Track{track("", pointAt(50, 1, 0, 0))} // vie non nommee, pile dans la zone
 
 	_, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
 	checkInvariant(t, cov)
@@ -171,7 +171,7 @@ func TestLaToleranceDEchantillonnageEstBornee(t *testing.T) {
 		{"echantillon a 3 frames (au-dela)", 47, false, 0},
 	}
 	for _, c := range cas {
-		tracks := []Track{track("2533", at(c.frameEchant, 1, 0, 0))}
+		tracks := []Track{track("2533", pointAt(c.frameEchant, 1, 0, 0))}
 		res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{MaxGapFrames: DefaultMaxGapFrames})
 		checkInvariant(t, cov)
 		if res[0].Attributed != c.attribuee {
@@ -188,8 +188,8 @@ func TestLaToleranceDEchantillonnageEstBornee(t *testing.T) {
 func TestAEgaliteDEcartLEchantillonAnterieurLEmporte(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0), zoneAt(1, 102, 20, 0, 0)}
 	tracks := []Track{track("2533",
-		at(49, 1, 0, 0),  // avant : dans la zone 101
-		at(51, 21, 0, 0), // apres : dans la zone 102
+		pointAt(49, 1, 0, 0),  // avant : dans la zone 101
+		pointAt(51, 21, 0, 0), // apres : dans la zone 102
 	)}
 
 	res, _ := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
@@ -204,7 +204,7 @@ func TestAEgaliteDEcartLEchantillonAnterieurLEmporte(t *testing.T) {
 // regeneration du catalogue.
 func TestZonesQuiSeRecouvrentSontDeclareesAmbigues(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0), zoneAt(1, 102, 1, 0, 0)} // rayon 3, centres a 1 m
-	tracks := []Track{track("2533", at(50, 0.5, 0, 0))}
+	tracks := []Track{track("2533", pointAt(50, 0.5, 0, 0))}
 
 	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
 	checkInvariant(t, cov)
@@ -225,7 +225,7 @@ func TestLeTemoinNegatifEffondreLAttribution(t *testing.T) {
 	var actions []ObjectiveAction
 	for i := 0; i < 10; i++ {
 		x := float32(i%2) * 30 // alterne entre les deux zones
-		tracks = append(tracks, track("j", at(i, x, 0, 0)))
+		tracks = append(tracks, track("j", pointAt(i, x, 0, 0)))
 		actions = append(actions, action("j", i))
 	}
 
@@ -260,7 +260,7 @@ func TestTranslateZonesNeTouchePasALOriginal(t *testing.T) {
 // remarque que la proposition a change de sens.
 func TestLeSeuilDeDistanceRelacheLAppartenance(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)} // cylindre de rayon 3
-	tracks := []Track{track("2533", at(50, 8, 0, 0))}
+	tracks := []Track{track("2533", pointAt(50, 8, 0, 0))}
 	actions := []ObjectiveAction{action("2533", 50)}
 
 	res, strict := AttributeZones(actions, tracks, zones, AttributeOptions{})
@@ -288,7 +288,7 @@ func TestLeSeuilDeDistanceRelacheLAppartenance(t *testing.T) {
 // etre dans la fenetre. C'est la PLUS PROCHE qui gagne, pas la premiere du tri.
 func TestSousSeuilLaPlusProcheLEmporte(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0), zoneAt(1, 102, 14, 0, 0)}
-	tracks := []Track{track("2533", at(50, 10, 0, 0))} // 7 m du bord de 101, 1 m de celui de 102
+	tracks := []Track{track("2533", pointAt(50, 10, 0, 0))} // 7 m du bord de 101, 1 m de celui de 102
 
 	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones,
 		AttributeOptions{MaxDistanceM: 10})
