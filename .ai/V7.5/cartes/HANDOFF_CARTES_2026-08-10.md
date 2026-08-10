@@ -1,6 +1,6 @@
 # Handoff — fonds de carte Halo (2026-08-10, fin de contexte)
 
-> Worktree `LevelUp-wt-replay2d`, branche `feat/v75`, HEAD `7652fff83`. Aucun merge, `main`
+> Worktree `LevelUp-wt-replay2d`, branche `feat/v75`, HEAD `5b5b0d48a`. Aucun merge, `main`
 > intact. Historique complet et chiffre : `HANDOFF_PORT_TRIANGLES_2026-08-08.md` §10 a §14.6.
 > Reports et portes fermees : `.ai/V7.5/REGISTRE_REPORTS.md`.
 
@@ -90,7 +90,7 @@ LOT CARTES — produire les ASSETS, puis finir Forge
 
 ## Ou travailler
 
-Worktree `C:\Users\Guillaume\Projects\LevelUp-wt-replay2d`, branche `feat/v75`, HEAD `7652fff83`.
+Worktree `C:\Users\Guillaume\Projects\LevelUp-wt-replay2d`, branche `feat/v75`, HEAD `5b5b0d48a`.
 JAMAIS sur `main`. Ne pas merger.
 
 A lire avant d'agir, dans cet ordre : `CLAUDE.md` (Go uniquement, JAMAIS de Python, pas
