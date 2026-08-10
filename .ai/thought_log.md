@@ -816,6 +816,583 @@ verdict.
 
 ---
 
+## [2026-08-08] Piste E — la prémisse de la voie trajectoire est MESURÉE : elle sépare les armes en trois
+
+**Statut** : Complété. Addendum §9 de `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`. Branche
+`research/v75-precision`. Test demandé par l'utilisateur (« teste cette dernière voie juste
+pour voir et être sûr »). Aucun fichier de production touché, aucune écriture en base.
+
+**Décision technique principale** : la dernière voie non essayée vers le numérateur repose sur
+une prémisse jamais vérifiée — que le tir d'une arme à projectile CRÉE une entité `ti=41`. Test :
+pour chaque record de tir type 105, une naissance survient-elle dans la fenêtre de production
+(± 200 ms) ? Le contrôle positif est DANS le tableau — les lancers de grenade y figurent comme
+une arme de plus, et doivent ressortir à ~0,9.
+
+**Résultats observés** (80 films, 110 308 records de tir, 32 412 naissances) :
+
+- **Le contrôle passe** : lancer de grenade 0,8763 contre une nulle de 0,1469 — reproduit la
+  mesure de production (65/70 contre 11-13/70).
+- **Trois groupes, séparés par deux falaises** : répliqués (roquette +0,691, Cindershot +0,672,
+  Fuel Rod +0,635, Hydra +0,611, Ravager +0,600) · partiels (Skewer +0,374, Mangler +0,280) ·
+  non répliqués (**Needler +0,015 sur 8 673 tirs**, Pulse Carbine +0,013, BR75 +0,000,
+  MA40 −0,003, et toutes les armes à trace).
+- **Confondant testé et écarté** : après retrait de toute naissance appariable à un lancer de
+  grenade, le groupe lourd tient exactement (roquette +0,6907 contre +0,6911). Le Plasma Pistol
+  émerge alors à +0,118 — son tir chargé est un gros projectile, ses bolts non.
+- **La ligne de partage a un sens moteur** : répliquer chaque aiguille d'un Needler (dix par
+  rafale, trente-deux joueurs) coûterait trop cher. **Aucune version du décodeur ne rendra la
+  précision du Needler** — c'est structurel, pas un défaut d'outil.
+
+**Ce que ça ne change pas** : la prémisse mesurée porte sur le TIREUR, pas sur la TOUCHE. Elle
+donne un dénominateur qu'on avait déjà. Le numérateur exige l'étape suivante — la dernière
+position du projectile est-elle près d'un joueur — **non testée**, et le code de production
+avertit explicitement que la dernière position répliquée n'est PAS l'impact. Périmètre
+atteignable : 5 armes pleines + 3 partielles, toutes lourdes, 13 tirs de roquette par film.
+**La piste E reste close ; la voie trajectoire n'est pas morte, elle est étroite et inachevée.**
+
+**Leçon de méthode, et c'est la même que toute la journée** : la première version de
+l'instrument réécrivait la grammaire de `filmdec/projectiles.go` en laissant tomber deux de ses
+filtres et choisissait sa fenêtre au jugé (8 ms). Elle rendait **un tableau où une arme à trace
+battait le Needler**, avec un contrôle positif à 0,06 contre 0,93 attendu. **J'ai failli publier
+ce tableau comme un négatif.** Ce qui l'a arrêté est le contrôle positif intégré, pas une
+intuition. Appeler la production directement a inversé le résultat.
+
+**Prochaine étape** : aucune de ma part. La poursuite est une décision produit (« veut-on la
+précision du lance-roquettes ? »), pas une question de recherche ouverte. Outillage archivé :
+`.ai/V7.5/outillage/precision_projectiles/tmp_projorig/`.
+
+## [2026-08-08] filmdec i0 `ti=41` — les dumps sont lus : ils CONFIRMENT la production, ils ne la débloquent pas
+
+**Statut** : Complété pour cette session (reprise depuis le handoff). Note §11 :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+Rien de porté dans `traverse.go`, aucune écriture en base, aucune action prod.
+
+**Décision technique principale** : le « prochain geste » que mon propre handoff annonçait —
+décoder `ce_prec_widths_1445cc9e0.bin`, « la globale que je déclarais non dérivable » — a été
+joué, et il rend un **négatif partiel sur ce handoff**. La table est **32/32 niveaux en accord**
+avec la forme fermée `min(26, ceilLog2(min(ceil(40000/(2·step(L))), 2^22)))`,
+`step(L)=2^(16-L)/120` : ce n'est que la loi précalculée au chargement de carte. Elle confirme
+le désassemblage, elle ne le complète pas. Et l'entrée 0 de `ce_prec_ranges_14462cbe0.bin`
+**égale au flottant près** l'entrée `cliffhanger`/`ridgeline` du catalogue `.module` de
+production — donc la chaîne `.module` -> table runtime -> largeurs de quantification ->
+positions est validée de bout en bout, pour la première fois par une source indépendante.
+Corollaire : « les largeurs ne sont pas dérivables statiquement » (note §2.2) est faux, et
+`cmd/mapquant-build` résout déjà le problème *en général*, pour 15 cartes, offline-pur.
+
+**Résultats observés**
+
+- **Correction de désassemblage** : `FUN_1406d310c` est `ceilLog2`, pas `bitLen`. Les deux ne
+  diffèrent que sur les puissances exactes de deux — et c'est ce cas qui décide des niveaux 17
+  à 22 (saturation du compte à 2^22). `filmdec/map_bounds.go` écrivait déjà `ceilLog2` :
+  **la production avait raison contre le dossier.**
+- **Deux affirmations du dossier tombent, et les deux pour la même raison** — n'avoir pas grepé
+  l'existant Go avant de conclure :
+  1. `filmdec/projectiles.go` **existe en production** : il décode les trajectoires `ti=41`,
+     est câblé dans `replay.BuildFromFilm` avec goldens, et porte **70 lancers de grenade sur
+     70** appariés à une naissance d'entité (0,77 u du bipède lanceur contre 6,4 u à instant
+     permuté et 33,9 u au hasard ; direction initiale à 1,0° du cap de visée). La chaîne
+     « première position -> joueur le plus proche -> tireur », que la note §3 présentait comme
+     la troisième et dernière voie *à construire*, **est construite et validée**. T1 et T1'
+     l'ont re-mesurée à la main avec un instrument plus faible.
+  2. La branche opaque n'est pas « la moitié » des records (`tmp_i0w` : 264 / 277) mais
+     **6,2 %**. Deux instruments indépendants : la grammaire de production sur 30 films
+     (9 382 / 152 535) et `calib.txt`, **déjà dans le cache film depuis toujours**, qui porte
+     `object-position-component:45` à une fréquence modale de **0,98**. Facteur ~8.
+- **L'instrument de validation que T3 n'avait pas existe, et il franchit son contrôle positif.**
+  Méthode : plus de critère de FORME (colinéarité, continuité) mais une **égalité numérique** —
+  régression de la position vraie interpolée sur l'entier brut de chaque champ candidat. Sur la
+  branche BASSE (130 846 records, 12 films) elle retrouve les trois champs de production
+  `off 3/w 13`, `off 16/w 13`, `off 29/w 14`, avec des étendues implicites à moins de 1,5 % de
+  l'AABB (112,99 / 113,65 / 135,88 contre 113,21 / 113,82 / 137,55) et une nulle par permutation
+  à 3e-4 au pire.
+- **Sur la branche opaque : NÉGATIF.** 127 records encadrés, 30 films Cliffhanger. Le meilleur
+  candidat de chaque axe **est exactement le q99 de sa propre distribution** — le maximum d'un
+  bruit, pas une valeur aberrante. Signature à ne pas jeter : Y et Z culminent aux offsets de la
+  branche basse (16 et 29) avec des nulles de 3e-3 et 6e-4 ; soit la branche partage le
+  découpage et change de plage, soit une part des « records opaques » sont des faux positifs.
+
+**Leçon de méthode, et c'est la troisième fois dans ce dossier** : greper l'existant Go **avant
+d'écrire une conclusion**, pas seulement avant d'ouvrir une piste. Les trois affirmations
+corrigées aujourd'hui l'ont été par un fichier de production, un fichier de cache et un
+catalogue JSON — aucune n'a demandé de désassemblage. Corollaire neuf : **quand un instrument de
+production existe et porte une vérité terrain, mesurer avec autre chose n'est pas une
+vérification indépendante, c'est une dégradation.**
+
+**Prochaine étape** : campagne de durcissement lancée (300 films de tout le corpus, chaque film
+décodé avec les bornes de SA carte, deux régimes — coordonnée monde si la plage est fixe,
+normalisée si elle suit la carte). Si aucun ne mord sur un échantillon dix fois plus grand, le
+négatif est solide et la branche opaque se documente comme non décodée, à 6,2 % des records.
+Outillage archivé sous `.ai/V7.5/outillage/precision_projectiles/` (`tmp_precdump`, `tmp_i0hi`),
+avec un bandeau de réfutation sur `tmp_i0w`.
+
+## [2026-08-08] filmdec i0 `ti=41` — T2 et T3 : deux instruments qui ne mordent pas, et les deux échecs sont instrumentaux
+
+**Statut** : Complété pour cette session. Note §8 :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+Rien de porté dans `traverse.go`.
+
+**Acquis chiffré, et il compte pour la suite** : sur 8 films, les échantillons i0 de `ti=41` se
+répartissent **264 à porte = 0** (plage de la carte, décodée) et **277 à porte = 1** (plage par
+défaut, les 59 bits opaques). **Les deux branches sont empruntées à parts comparables** — le
+`ReadBits(59)` opaque concerne donc la MOITIÉ des records projectile, ce n'est pas un cas
+marginal qu'on pourrait ignorer.
+
+**T2 — le profil de bascule ne transfère pas.** 239 paires consécutives d'un même slot : profil
+**plat entre 0,10 et 0,45, aucune dent de scie**. La cause est dans la prémisse de
+`DetectI0Layout` — elle suppose une valeur qui **bouge peu** d'une frame à la suivante, ce qui
+est vrai d'un bipède et **faux d'un projectile**, qui traverse la carte entre deux frames et fait
+basculer les bits de poids fort autant que les autres. L'instrument n'est pas en cause ; sa
+prémisse ne s'applique pas. Lire des frontières là-dedans aurait été exactement le défaut que le
+chantier s'interdit (un balayage FABRIQUE des distributions crédibles).
+
+**T3 — le discriminant physique est inconcluant PAR L'INSTRUMENT.** Idée de remplacement, bien
+plus forte en principe : un projectile vole droit, donc un bon découpage rend des positions
+successives colinéaires. Résultat : **zéro colinéaire pour les cinq découpages candidats — ET
+zéro pour la nulle mélangée.** C'est le piège que le dossier nomme en §20.1 : *un négatif dont la
+nulle vaut zéro est un négatif sur l'instrument, pas sur la question*. Deux causes identifiées :
+(1) **n = 7 trajectoires à 3 points ou plus** sur 277 échantillons — la couverture delta rend 1 à
+2 positions par projectile, il en faut 3 pour tester une droite ; (2) **aucun contrôle positif** —
+la tolérance n'a jamais été calibrée sur un composant dont le décodage est sûr.
+
+**Ce qui est écrit dans la note comme condition de réouverture, dans l'ordre.** (1) Donner à
+l'instrument de colinéarité un **contrôle positif** — le rejouer sur des positions dont le
+décodage est sûr (bipèdes, `position_capture.go`), ou le remplacer par un critère de continuité.
+*Tant qu'un instrument n'a pas montré qu'il sait dire OUI quelque part, ses zéros ne valent
+rien.* (2) **Lever la couverture du flux delta** : `DecodeFrameInfer` démarre au bit 0 et meurt
+tôt sur les paquets à événements ; `killsource` a un localisateur de boucle (`locateStrict` +
+repli, 690/690 paquets) **qui n'est pas exporté**. C'est le vrai verrou. (3) Alors seulement
+rejouer T3, puis le chaînage sur `i1`, puis le portage.
+
+**Conclusion / prochaine étape.** La voie n'est ni ouverte ni fermée, et c'est dit tel quel. Ce
+qui est acquis : le projectile est une entité répliquée qui porte des trajectoires dans le flux
+delta, les deux branches de son i0 sont empruntées à parts égales, et la grammaire de la branche
+opaque est établie. Ce qui manque : la couverture, puis un instrument de validation qui ait fait
+ses preuves. Le prochain geste utile est **d'exporter le localisateur de boucle de
+`killsource`** — il débloque la couverture, et il sert à tout le reste du décodeur.
+
+## [2026-08-08] filmdec i0 `ti=41` — T1' : le flux delta rend des trajectoires, et ma conclusion de la veille était fausse
+
+**Statut** : Complété. Note : `.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md` §7.
+Branche `research/v75-precision`. Rien de porté dans `traverse.go`.
+
+**Correction, sur objection de l'utilisateur.** J'avais conclu (§6) que la voie trajectoire
+dépendait du binding World du décodeur stateful, donc d'un chantier entier — en citant
+`README_KILLWEAPON_INDEX.md` §0bis. **Ce document date du 13 juin et précède la résolution du
+chantier killweapon.** C'est la DEUXIÈME fois dans la journée que je conclus sur une source
+périmée (la première : « les compteurs ne sont pas répliqués », démentie par une ligne de
+l'index). La mémoire du chantier dit de greper l'index avant toute piste ; il faut y ajouter
+**vérifier la DATE de ce qu'on cite, et préférer le CODE au document**.
+
+**Vérification sur pièces.** `filmdec` porte `DecodeFrameRecords`, `DecodeFrameInfer`,
+`TryDeltaAt`, `ScanFrameTargets`, `DecodeFrameViews`, `DecodeFrameResync` ; `killsource/walk.go`
+les pilote en production avec un World construit depuis les keyframes
+(`WalkKeyframeWorld` -> `BindFull`). **Le binding fonctionne.**
+
+**T1' — mesure.** Outil `cmd/tmp_ti41d`, tout réutilisé (`ParseRegistryChunk`,
+`WalkKeyframeWorld` + `BindFull`, `DecodeFrameInfer` — cette dernière **infère l'archétype des
+entités transitoires absentes du binding**, exactement le cas du projectile). Sur 6 films :
+**1 388 records `ti=41` sur 281 slots distincts**, soit **~4,9 records par entité projectile**.
+À comparer aux keyframes (185 records / 132 slots = 1,4 par entité). **Ce ne sont plus des
+apparitions ponctuelles : ce sont des suites de positions, donc des trajectoires.**
+
+**Deux réserves écrites avec le chiffre.** (1) C'est une **borne inférieure** :
+`DecodeFrameInfer` démarre au bit 0 et les paquets portant une liste d'événements
+désynchronisent tôt — le localisateur de boucle de `killsource` n'est pas exporté. Un `ti=41`
+trouvé est vrai ; un zéro ne prouverait rien. (2) **`ti=0` domine le recensement** (119 307
+records / 6 535 slots) : c'est le seau des archétypes non résolus, donc la couverture est
+partielle — 281 projectiles sur 6 films face aux milliers de tirs qu'ils portent.
+
+**Conclusion / prochaine étape.** Le bloqueur redevient exactement celui du §2.2 : sur la branche
+« plage par défaut », le port avale **59 bits opaques** et aucune position n'en sort. C'est **T2**
+(les largeurs, par profil de bascule bit à bit, méthode `DetectI0Layout` déjà éprouvée sur
+l'autre `i0`) qui débloque la trajectoire — **et le périmètre est celui d'un composant, pas d'un
+chantier de décodeur**, contrairement à ce que j'annonçais. Puis T3 (chaînage sur `i1`), puis
+seulement le portage.
+
+## [2026-08-08] filmdec i0 `ti=41` — fin de la phase RE, T1 positif, et le vrai périmètre
+
+**Statut** : Complété pour ce que je peux conclure seul. Note :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+Rien de porté dans `traverse.go`, aucun fichier de production touché.
+
+**Bilan de la phase RE, et il est humiliant dans le bon sens : sur 4 écarts que j'avais annoncés
+contre le port Go, 3 étaient à moi.** (1) le « troisième encodage de position » n'existe pas —
+`FUN_14076f91c` ne lit aucun bit, c'est un test de deux globales ; (2) le `R(2)` prétendument
+conditionnel est gardé par `FUN_140492128` = `isfinite(vec3)`, toujours vrai sur un vec3
+déquantifié borné, donc le port a raison de le lire inconditionnellement ; (3) reste ouvert
+seulement la garde réelle du handle-tail `FUN_14076e3e4`. **Le port était juste ; c'est ma
+lecture des gardes qui ne l'était pas.** D'où la règle posée dans la note : pour toute branche
+vue dans un décompilé, établir si sa condition vient du BITSTREAM ou d'une GLOBALE avant de la
+porter. Troisième occurrence du motif dans ce binaire en une seule journée.
+
+**Ce que la RE a quand même rapporté.** La branche « plage par défaut » n'est pas opaque : la
+formule de largeur du dossier est **confirmée dans le binaire** (`W = min(26, bitLen(ceil(extent
+/ (2*step))))`, plafond `0x1a`), avec trois précisions neuves — la déquantification divise par
+`1 << W` et ajoute un demi-pas ; `FUN_140be9b88` **n'utilise pas** le `L` qu'on lui passe pour la
+largeur ; la lecture des bits est dans `FUN_1424cbed4`, pas dans le déquantifieur. Et les deux
+plages sont décodées octet par octet : **`DAT_143b8c6d0` vaut ± 100** (celle de cette branche) et
+`DAT_143b8c6b8` ± 20000 (celle que citait le dossier) — 0x18 d'écart, un AABB, piège confirmé.
+**Mais le pas vient d'une globale de runtime : les largeurs ne sont PAS dérivables
+statiquement.** L'hypothèse « 59 = 3 x 19 + 2 » ne peut ni se confirmer ni s'infirmer au
+désassembleur ; elle se mesurera sur le film. Fin de la phase RE.
+
+**T1 (atteignabilité) — POSITIF, et c'est le risque principal qui s'écarte.** Recensement des
+archétypes du monde de keyframe sur 12 films (`cmd/tmp_ti41`, via `WalkKeyframeWorld` déjà
+validé) : `ti=41` porte **185 records sur 132 slots distincts, présent sur 11 films sur 12**.
+L'entité projectile est donc bien une entité répliquée du film.
+
+**Ce que T1 ne prouve pas, et c'est ce qui redéfinit le périmètre.** 11 entités par film quand un
+Fiesta porte des milliers de tirs : ce n'est pas un déficit de réplication mais un **artefact
+d'échantillonnage** (un keyframe toutes les ~20 s, un projectile vit une fraction de seconde ; le
+rapport 185 records / 132 slots — la plupart n'apparaissent qu'une fois — en est la signature).
+**La trajectoire vit dans le flux DELTA**, où un record ne porte aucun typeIndex et résout son
+archétype par le World. **Donc la voie trajectoire ne dépend pas seulement de `i0` de `ti=41` :
+elle dépend du binding World du décodeur stateful** — le blocage de fond décrit en §0bis de
+`README_KILLWEAPON_INDEX.md`. `i0` exact est NÉCESSAIRE, pas SUFFISANT.
+
+**Conclusion / prochaine étape.** Ce qui reste (T2 largeurs par profil de bascule, T3 chaînage
+sur i1, puis portage) est du travail de décodeur stateful, pas un correctif de composant — et il
+faut que ce soit dit avant que quiconque estime le coût sur la seule base de la grammaire. Rien
+ne doit être porté dans `traverse.go` avant T2 et T3 : le composant est sur le chemin de tous les
+archétypes qui le portent, une régression y serait silencieuse.
+
+## [2026-08-08] filmdec — i0 de `ti=41` (position du projectile) : ouverture, et une règle de lecture du binaire
+
+**Statut** : En cours. Note de travail tenue au fil de l'eau :
+`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+**Travail de DÉCODEUR**, hors piste E (close, verdict négatif) — feu vert utilisateur explicite.
+Aucun fichier de production touché, rien de porté dans `traverse.go`.
+
+**Ce que la vérification sur pièces a corrigé d'entrée.** L'index présente `FUN_14076e29c` comme
+le bloqueur, « non bit-exact, 45 / 60 bits ». C'est **en partie périmé** : le composant EST
+implémenté dans `filmdec/traverse.go`, et sa branche basse précision a été corrigée le
+2026-07-26 (`R(1)` d'index puis **13/13/14**, frontières 16/29/43 par profil de bascule sur
+6 794 paires). Le « 45 / 60 » n'est pas « on lit 45 là où il en faut 60 » : ce sont **deux
+branches**, et la faiblesse est ailleurs — le port consomme la branche haute comme **59 bits
+opaques**, ce qui garde l'alignement mais **ne rend aucune position**.
+
+**Résultat principal — la position du projectile n'est pas hors de portée.** `FUN_141f85880`,
+la branche « plage par défaut », **n'est pas une structure opaque** : `FUN_140be9b88` y construit
+un descripteur de largeurs et `FUN_1406d7f18` lit un vec3 quantifié. Les 59 bits se décomposent
+donc, et l'hypothèse est arithmétiquement propre : **59 = 3 x 19 + 2** (trois axes + le `R(2)`
+final). À confronter à la forme fermée du dossier, avec **L = 16** câblé au site d'appel
+(`FUN_14076e420(br, st+4, 0x10)`). Piège noté : `DAT_143b8c6d0` (plage de cette branche) n'est
+PAS `DAT_143b8c6b8` (± 20000, citée par le dossier) — 0x18 d'écart, soit exactement un AABB.
+
+**Et une règle de lecture, parce que c'est la TROISIÈME fois.** J'avais écrit qu'il y avait trois
+encodages de position et que le port n'en modélisait que deux. **L'écart s'est retiré tout
+seul** : `FUN_14076f91c`, qui aiguille vers le troisième, **ne lit aucun bit** — c'est un test de
+deux globales. Le port a raison de l'ignorer. C'est le même motif que la porte du tag des codes
+6/7 (`b0 == 1`, 168 380 observations) et que la porte `DAT_1451222c8` des stats 0x0D/0x0E,
+trouvée le matin même. **Ce binaire est truffé de chemins conditionnés par des globales qui ne
+s'ouvrent jamais en jeu ; lire un décompilé sans vérifier ses portes revient à inventer du
+travail.** Règle posée dans la note : pour toute branche vue dans un décompilé, établir si sa
+condition vient du BITSTREAM ou d'une GLOBALE **avant** de la porter.
+
+**Deux écarts de longueur restent à tester sur film** (ils prédisent des décalages observables,
+donc ils sont falsifiables) : le `R(2)` final est **conditionnel** dans l'asm
+(`FUN_140492128(st+4)`) alors que le port le lit inconditionnellement ; et le handle-tail
+`FUN_14076e3e4` est appelé **inconditionnellement**, sa garde n'étant pas la porte R(1) du port.
+
+**Conclusion / prochaine étape.** Ne RIEN porter avant le test sur film : profil de bascule +
+chaînage sur i1 (`[1][1][19][10]`), le critère qui avait déjà départagé les lectures rivales en
+juillet. Le composant est sur le chemin de tous les archétypes qui le portent — une régression y
+serait silencieuse. Liste de lecture restante en §4 de la note.
+
+## [2026-08-08] v7.5 piste E — la porte `DAT_1451222c8`, une erreur à moi, et la passe d'amendement
+
+**Statut** : Complété. Branche `research/v75-precision`. Déclencheur : l'utilisateur conteste ma
+formulation « ces compteurs vivent en RAM » — argument architectural : reposer sur la RAM de
+chaque joueur (jusqu'à 32 en BTB) serait bancal, la donnée doit être envoyée telle quelle et
+enregistrée dans le film. **Il avait raison, et l'index le disait déjà.**
+
+**MON ERREUR, nommée.** J'avais écrit en §4bis.3 du verdict : « le moteur calcule la précision
+par arme et l'expédie à la télémétrie ; il ne la réplique pas ». **C'est faux.** L'index porte
+depuis 7ter.81 (3), en `[ETABLI]` : `ShotsFired++ -> FUN_142bb2d80 -> stat 0x0D`,
+`ShotsLanded++ -> FUN_142bb2e28 -> stat 0x0E`, `FUN_142bb7074` recalcule 0x0F (la précision).
+**Ces deux appels étaient dans mes propres décompilés et je ne les ai pas reconnus.** La
+télémétrie est un second consommateur, pas le seul. Leçon de méthode : la mémoire du chantier dit
+« greper l'index avant toute piste » — il faut lire « et avant d'écrire une conclusion », pas
+seulement avant d'ouvrir.
+
+**CE QUE LA RE A TROUVÉ EN ALLANT VOIR — la cause d'un négatif qui n'en avait pas.** Le dossier
+portait une tension : le code pousse 0x0D/0x0E vers la réplication, et 7ter.83 (1) mesure qu'ils
+n'arrivent pas dans le film (4/23 · 4/23 · 7/23 contre un fond de 3/23 · 4/23 · 7/23, pendant que
+le même balayage rend kills 23/23 et score 23/23). **Le push est conditionnel** :
+
+```c
+if (*(char *)(param_1 + 0x59d09) == '\0') { ... aucun push ... }
+else if (DAT_1451222c8 != '\0') { ... FUN_142b63d98(&stats, desc, 0xd); si present -> push ... }
+```
+
+**`DAT_1451222c8` porte EXACTEMENT QUATRE références dans tout le binaire, et les quatre sont des
+LECTURES** — 0x0D (tirs, `FUN_142bb2d80`), 0x0E (touches, `FUN_142bb2e28`), 0x13
+(`FUN_142bb24c8`), 0x14 (`FUN_142bb2580`). **Aucune écriture.** Les quatre statistiques de cette
+famille partagent la porte ; les kills et le score passent par un autre chemin — et ce sont
+justement eux qui arrivent. **C'est le même motif que la porte du tag des codes 6/7** (`b0 == 1`
+sur 168 380 observations, zéro exception) : un chemin qui existe et dont la porte n'est jamais
+ouverte. Deux occurrences du même motif dans ce moteur. Portée à respecter : « aucune écriture
+parmi les xrefs de Ghidra » n'est pas « aucune écriture » — un écrivain par adresse calculée y
+échapperait. Ce qui rend l'énoncé exploitable est sa **convergence avec la mesure offline**, qui
+a son propre contrôle positif.
+
+**Résultat net : le négatif de 7ter.83 (1) cesse d'être un résultat sans explication**, et
+l'intuition architecturale de l'utilisateur est validée sur le fond (le code EST écrit pour
+envoyer la donnée) tout en étant démentie sur le runtime (la porte est fermée).
+
+**PASSE D'AMENDEMENT (accord utilisateur).** Les deux documents qui font foi portaient encore des
+affirmations fausses ou incomplètes ; c'est réparé, avec les statuts explicites :
+- `ETAT_DE_L_ART_KILLWEAPON.md` : l'offset de `RoundsCorrected` corrigé (`entry+0x10`, pas
+  `+0x08`) + la levée du `NON TESTE` sur la sommation ; une ligne NEUVE sur la porte
+  `DAT_1451222c8` ; la ligne « le record est un TIR ou une TOUCHE » marquée CONTESTÉE avec les
+  deux mesures (taux de porteur 0.0067, cadence 83.4 ms) et la ligne d'origine conservée ; une
+  entrée de motifs de grep pour la piste E, avec ses cinq résultats à ne pas re-chercher.
+- `GUIDE_WEAPON_SHOTS.md` : §1.1 et §3quater.1 marqués contestés (avec la conséquence pratique
+  écrite : AUCUNE pour la porte de publication) ; §3bis.1 porte désormais « ni par aucune autre
+  voie — timebox clos, ne pas ré-ouvrir sans raison neuve ».
+- `PLAN_MASTER_FILM_KILLFEED_REJEU.md` : décision #6 close, avec son issue.
+
+Le contestataire est partout marqué `[MESURE]` non reproduit par un tiers, et les énoncés
+d'origine sont **conservés** à côté : deux formulations coexistent explicitement plutôt qu'une
+substitution silencieuse.
+
+**Conclusion / prochaine étape.** Verdict de la piste E inchangé (négatif), mais mieux fondé : la
+dernière voie « la donnée est peut-être dans le film » est fermée par une CAUSE lue dans le code,
+plus seulement par un balayage. Reste, hors piste E : `object-position-component` de `ti=41`
+bit-exact, au registre du décodeur.
+
+## [2026-08-08] v7.5 piste E — session 2/2 : voie de la réplication reformulée, déconvolution ratée de peu, timebox CLOS
+
+**Statut** : Complété. **Le timebox de la décision #6 est consommé, le verdict est NÉGATIF et
+il est écrit** (`.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`, §0bis + §5). Branche
+`research/v75-precision`. Aucun fichier de production touché, aucun merge, aucune écriture en
+base.
+
+**Étape 0 — la voie de la réplication, et elle reformule le problème.** `objet + 0x114` est bien
+l'indice de slot de réplication : `FUN_141fd8460` est le convertisseur handle → slot commun à
+l'émission d'événements (il écarte toute entité dont ce champ vaut -1, et son `param_2` indexe
+la table d'événements de pas 0x18). Le fait qui change tout est dans `FUN_142f1c44c` : **la
+touche de projectile n'est comptée QUE si `projectile+0x114 != -1`**, c'est-à-dire **que si le
+projectile est une entité RÉPLIQUÉE**. Tout projectile qui touche est donc dans le film. Le
+propriétaire, lui, est lu par déréférencement (`projectile+0xe0`, `FUN_1404969f0`) et n'est
+**jamais** transmis à l'émetteur `FUN_140de8cb0`, qui ne reçoit que le projectile et la cible —
+confirmation par le code du négatif déjà mesuré sur le corps des codes 6/7. **La question du
+handoff (« que porte l'enregistrement qui crée le slot ? ») est donc close, et remplacée par une
+autre : comment rattacher l'ENTITÉ projectile à un joueur ?** Réponse candidate qui échappe aux
+deux impasses connues (pas un champ de propriétaire, pas un appariement d'horloge) : **la
+trajectoire** — un projectile part de son tireur. Bloqueur nommé et borné :
+`object-position-component` de `ti=41` n'est pas bit-exact (45 bits contre 60, 7ter.84 (5)(6)(7)).
+**C'est un travail de décodeur, pas de piste E** — report valide au sens du contrat, consigné.
+
+**Étape A — déconvolution au grain joueur.** 898 films, **8 562 observations (match x joueur)**,
+23 armes, coefficients bornés dans [0,1], référence API par arme reconstruite sur la population
+à arme dominante >= 80 % (6 armes, effectifs publiés : MA40 0,3793 sur 1 006 joueurs, BR75
+0,4111 sur 750, Sidekick 0,4522 sur 226, Bandit Evo 0,5124 sur 70).
+
+**Le gate de l'appariement a servi, et c'est la leçon de méthode du jour.** Le résolveur du
+dépôt (`weaponv3.ResolveXuidToPI`) ne finit pas en 10 minutes sur 60 films ; réécrit en
+recherche d'octets sur les 8 alignements, il fait 898 films en 3 min 10. Première version :
+**277 accords contre 299 désaccords** — le dépôt retient la première occurrence EN POSITION DE
+BIT, la mienne la première de CHAQUE DÉCALAGE. Corrigé par le minimum sur les huit décalages :
+**576 accords, 0 désaccord.** Sans ce gate, l'erreur contaminait tout l'aval en silence.
+
+**Résultat, et le critère n'est pas atteint.** Contrôle positif : BR75 **+0,0043**, Bandit Evo
+**-0,0246** (les deux passent) ; MA40 **-0,0324**, Sidekick **+0,0461** (les deux ratent). Le
+critère écrit exigeait les quatre à ±0,03 — **deux sur quatre**. Verdict clos, négatif. L'étape
+B (contraste intra-joueur) n'est **pas** jouée : elle était conditionnée à la réussite de A, et
+la jouer quand même serait chercher une confirmation après un critère raté.
+
+**Ce qui a quand même progressé, et qu'il faut consigner.** Le grain joueur borné divise
+l'erreur du contrôle positif par 2 à 3 contre le grain match (0,045-0,095 → 0,004-0,046), rend
+les coefficients stables entre moitiés pour les armes à fort volume, et supprime les valeurs
+négatives. Le Needler passe de **0,007** (chiffre naïf du dossier) à **0,2238**
+(0,2111 / 0,2316) — d'une réponse fausse d'un facteur 30 à une réponse plausible mais **non
+validable**. ⚠ **Aucune nulle n'a été jouée au grain joueur** (le critère a échoué avant) : les
+chiffres par arme à projectile sont INDICATIFS, personne ne doit les publier ni les citer.
+
+**Conclusion / prochaine étape.** Piste E close sur un négatif documenté. Quatre corrections
+sont dues au dossier indépendamment de la piste : l'offset de `RoundsCorrected` (`entry+0x10`,
+pas `+0x08`), l'identité `eventStart+106 == payload bit 110`, l'unité du record par arme (un
+record = un TIR pour toutes les armes), et le fait que la précision par arme est une grandeur
+que le moteur calcule nativement (`+0x08` tirs / `+0x0c` touches, pas 0xa8) mais n'expédie qu'à
+sa télémétrie. Le seul item transmis ailleurs : rendre i0 de `ti=41` bit-exact, au registre du
+décodeur (chantier rejeu 2D / filmdec).
+
+## [2026-08-08] v7.5 piste E — je fermais trop vite : le test qui manquait, et ce qu'il laisse ouvert
+
+**Statut** : Complété. Correction de l'entrée précédente du jour, même branche
+`research/v75-precision`. Déclencheur : objection de l'utilisateur — « on a longtemps cru que
+l'arme du kill était indisponible dans le film, et on a prouvé le contraire la semaine
+dernière ». L'objection était fondée.
+
+**L'erreur de raisonnement, nommée.** L'entrée précédente concluait de la lecture Ghidra que
+« la voie du décodage est fermée par construction du format ». Ce que la lecture établissait
+réellement, c'est que les compteurs **AGRÉGÉS** par arme ne sont pas répliqués. Le saut de l'un
+à l'autre est exactement celui qui avait fait rater l'arme du kill : l'agrégat n'y était pas
+non plus, mais l'information **PAR ÉVÉNEMENT** y était (le dead-state porte le tag de source de
+dégât). Un négatif sur les compteurs n'est pas un négatif sur les événements.
+
+**Le test qui manquait.** Une application de dégât produit un record type 105 à table non vide
+(un porteur). Sur arme à trace instantanée, c'est le record de tir lui-même ; sur projectile le
+dégât arrive plus tard, donc le porteur d'impact — s'il existe — est un AUTRE record, et rien
+ne garantit qu'il porte l'identifiant d'arme du suffixe commun. Or mon propre filtre `isFire`
+jette 12,8 % des records type 105 sans jamais les compter en porteurs. J'ai donc recompté les
+porteurs **sans aucun filtre d'arme**, contre les touches de l'API.
+
+```
+famille     films  porteurs (tir)  porteurs (TOUS)  touches API   TOUS/touches   gain hors filtre
+TACTICAL       22           3 988            4 142        4 841       0,8556           x1,039
+STANDARD       40          34 307           36 404       47 792       0,7617           x1,061
+BTB            40          49 077           56 535      149 582       0,3780           x1,152
+FIESTA         40           5 876            6 564       37 964       0,1729           x1,117
+```
+
+Contrôle positif atteint : en Tactical (BR75 seul) le film rend 0,8556 des touches API — le
+déficit de porteurs de ~15 % déjà documenté. **Résultat : en Fiesta il n'en rend que 0,1729, et
+lever le filtre d'arme n'ajoute que 12 % quand il aurait fallu un facteur ~5. 31 400 touches sur
+37 964 (82,7 %) n'ont aucun porteur dans le flux des records de dégât.** Elles ne s'y cachent
+pas sous un autre identifiant : elles n'y sont pas.
+
+**Ce qui est fermé, et ce qui ne l'est pas.** Fermé par cette mesure : la voie des records de
+dégât. Fermé par mesure antérieure : les événements d'impact codes 6/7, dont le corps ne porte
+ni arme (168 380 observations, zéro exception, 7ter.91/7ter.94) ni tireur (7ter.86 (5a)).
+**PAS fermé : la voie de la RÉPLICATION.** Le handle du code 7 est un slot identifié
+(`objet + 0x114`) et l'enregistrement qui CRÉE ce slot n'a jamais été cherché ;
+`FUN_141fd8460` sérialise ce champ et la table de dispatch a 123 codes. C'est la piste nommée
+par le handoff du 2026-07-31, et ma lecture Ghidra du jour ne l'a **pas** touchée : j'ai lu le
+chemin des STATISTIQUES, pas celui de la RÉPLICATION. Deux chemins de code distincts — et c'est
+précisément la distinction qui avait fait rater l'arme du kill.
+
+**Conclusion / prochaine étape.** Le plan de la session 2 est réordonné : l'étape 0 (voie de la
+réplication, cible Ghidra 3, timeboxée à une demi-session avec critère d'arrêt écrit) passe
+DEVANT la déconvolution, qui redevient le repli. Deux voies de décodage sur trois sont fermées
+par mesure ; la troisième porte la même forme que le précédent qui a résolu l'arme du kill, et
+elle mérite d'être instruite avant qu'on se rabatte sur de l'inférence. Le verdict est corrigé
+en §4bis.4 et §6 ; la ligne « conclure fermé depuis l'absence d'un compteur agrégé » est ajoutée
+à la liste de ce qu'il ne faut pas refaire.
+
+## [2026-08-08] v7.5 piste E — lecture Ghidra (cible 1) : le moteur calcule la précision par arme, mais il ne la réplique pas
+
+**Statut** : Complété. Addendum à l'entrée du jour sur la piste E, même branche
+`research/v75-precision`. Lecture statique seule (HaloInfinite.exe, 311 104 fonctions), via
+l'API HTTP du plugin GhidraMCP en lecture seule. Aucun rename, aucune écriture dans le
+programme Ghidra.
+
+**Note d'outillage** : le bridge MCP `ghidra` n'a pas pu s'attacher — la découverte UDS voit
+bien l'instance (pid 22736) mais celle-ci ne déclare **ni projet ni programme**, et le bridge
+refuse alors de retomber sur le port TCP (il ne veut pas risquer le mauvais projet). Le plugin,
+lui, sert parfaitement son schéma sur `127.0.0.1:8089` : la session s'est faite en appelant les
+endpoints HTTP directement (`/decompile_function`, `/get_xrefs_to`, `/search_strings`,
+`/get_current_program_info`). À retenir pour la prochaine fois plutôt qu'à re-diagnostiquer.
+
+**Ce que la lecture établit — un enregistrement de statistiques PAR ARME.** Trois fonctions
+écrivent dans le même enregistrement, base commune, pas de **0xa8**, index résolu par le même
+`FUN_1408df3dc` : `FUN_1408df45c` fait `entry+0x08 += 1` (TIRS), `FUN_1408df6a4` fait
+`entry+0x0c += 1` (TOUCHES), `FUN_1410af034` fait `entry+0x10 += (short)(dMag+dReserve)`
+(correction par les munitions). Les deux compteurs partagent le même repli
+`FUN_1408df4f4` (« trouver ou créer l'entrée »), qui écrit aux mêmes offsets. **Le numérateur
+et le dénominateur de la précision par arme sont côte à côte, indexés par la même arme** : ce
+n'est pas une grandeur que nous fabriquerions, c'est une grandeur que le moteur calcule.
+
+**Correction au dossier.** 7ter.81 (1f) écrit que `FUN_1410af034` ajoute à `entry+0x08`. Il
+ajoute à `entry+0x10`. Huit octets, et ils changent le sens : en mémoire la réconciliation par
+les munitions **ne touche jamais** le compteur de tirs. Les trois compteurs sortent d'ailleurs
+comme trois champs nommés distincts du même événement de télémétrie Xbox CELL
+(`FUN_140ad4e74`) — les trois chaînes sont adjacentes, espacées de 0x10, et référencées depuis
+cette seule fonction : `RoundsCorrected` 14369eec0, `ShotsLanded` 14369eed0, `ShotsFired`
+14369eee0. **La réserve `NON TESTE` de 7ter.81 (1f) se lève donc dans le sens rassurant** : le
+critère « ±0,03 contre la référence API » de la session 2 mesure le film, pas un artefact de la
+référence. Portée à respecter : le producteur des noms agrégés `TotalShotsFired` /
+`TotalShotsLanded` (143ba7d28 / 143ba7d38, enregistrés chacun dans son propre global par
+`FUN_140181e60`) n'a **pas** été tracé — l'énoncé juste est « aucune sommation dans le chemin
+lu », pas « prouvé que l'API ne somme jamais ».
+
+**L'argument de fermeture, et c'est le vrai gain de la session.** Ces compteurs vivent dans une
+structure de statistiques / télémétrie, pas dans un composant ECS répliqué — ce qui rejoint par
+l'autre bout l'énumération exhaustive de 7ter.83 (2) : 325 noms de composants, 118 archétypes,
+zéro statistique de tir, et côté arme seulement l'ÉTAT (munitions, chargeurs, surchauffe). Le
+chemin de la touche dit pourquoi : `FUN_1408df6a4` résout son arme en déréférençant une chaîne
+de handles — objet de dégât, champ `+0x2f8` vers le propriétaire, indice de joueur en `+0x340`
+ou `+0x2dc`, indice d'arme par `FUN_1408df3dc` — et ne compte que si cet indice égale celui du
+bloc de statistiques (`param_1 + 4`). **Au moment de l'impact le moteur sait parfaitement qui a
+tiré et avec quoi ; il le sait par le graphe d'objets du serveur**, celui dont 7ter.88 (6) avait
+déjà noté qu'il n'est pas répliqué.
+
+**Conclusion / prochaine étape.** La voie du DÉCODAGE de la précision par arme des armes à
+projectile est fermée **par construction du format**, pas par insuffisance de notre décodeur —
+c'est un négatif définitif, et il valait la session. Il ne reste que la voie de l'INFÉRENCE (la
+déconvolution du §4 du verdict), dont le plafond est celui de son contrôle positif. La cible 2
+du plan Ghidra (le chemin d'impact `FUN_142f1c44c`) **n'a plus d'objet** : la réponse qu'elle
+devait chercher est déjà donnée ci-dessus. La session 2/2 se consacre donc entièrement à
+l'étape A du §6 du verdict, avec son critère d'arrêt dé-risqué.
+
+## [2026-08-08] v7.5 piste E — précision projectiles, session 1/2 : le blocage n'est pas où on le croyait
+
+**Statut** : Complété pour la session 1/2 (timebox décision #6 : 2 sessions, verdict écrit).
+Branche `research/v75-precision`, worktree `LevelUp-wt-precision`. Mesure pure : aucun fichier
+de production touché, le cache de films du dépôt principal lu en LECTURE SEULE, tout balayage
+plafonné par `-limit`. Livrable : `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`.
+
+**Décision technique principale — un instrument neuf, et un gate joué avant toute conclusion.**
+Le nouvel outil `cmd/tmp_pjcnt` lit les records type 105 par balayage de PAQUETS
+(`filmdec.WalkPackets`, `pay[0]>>1 == 105`) là où les lots `mu` / `mu.ref` balayaient les bits
+à la recherche d'un marqueur 11 bits : deux instruments qui ne partagent pas leur méthode de
+sélection. Reproduction avant de conclure — records/tirs API Tactical **0,9232** contre 0,9300
+publié, Fiesta **0,3060** contre 0,3147 ; cadences MA40 **83,4 ms** (publié 83,4), Sidekick
+**184,1 ms** (publié 183,8) ; contrôle d'alignement du compteur 7 bits **0,5452 / 0,8465 /
+0,0015** à -1 / 0 / +1 bit, soit le profil de 7ter.80. Coût : **50 ms par film** contre 1,65 s
+au balayage bit à bit.
+
+**Résultat 1 — la piste nommée par le handoff est morte.** L'hypothèse « le compteur de tir
+7 bits avance sur les tirs de projectile qui n'émettent aucun record, donc il porte le
+dénominateur manquant » prédisait un pas moyen de 2,5 à 4 sur le Needler contre ~1 sur les
+armes à trace instantanée. Mesure sur les mêmes matchs : Needler **1,3383** (4 960 paires)
+contre BR75 **1,3545** (2 863 paires) en Fiesta ; Needler 1,2017 contre MA40 1,2166 en mode
+standard. Aucun contraste. Contrôle positif intégré : le pas monte de 1,15 à 1,35 là où le film
+montre trois fois moins de records, et le MA40 porte le pas le plus élevé du mode standard —
+exactement l'ordre que 7ter.80 avait établi pour la perte d'échantillonnage des automatiques.
+**Le pas mesure la complétude de notre scan, pas les tirs invisibles.**
+
+**Résultat 2, et c'est le principal — le blocage change de côté.** L'état de l'art (7ter.101)
+dit que le record est une TOUCHE sur arsenal à projectiles. Deux mesures le contredisent au
+grain de l'ARME : (a) le taux de porteur — records dont le drapeau « compteurs nuls » (bit 110)
+vaut 0 — vaut **0,0067** au Needler, 0,0096 à la Pulse Carbine, 0,0033 à la Cindershot, quand
+il vaut 0,44 au MA40 et 0,42 au BR75 ; si le record était la touche, il vaudrait ~1 partout.
+(b) la cadence inter-record du Needler vaut **83,4 ms de médiane, q90 100,1 ms** — son temps de
+cycle, un flux périodique, ce qu'un flux de touches ne peut pas être. **Un record est un TIR,
+pour toutes les armes.** L'agrégat Fiesta `records/touches = 1,0983` reste vrai mais s'explique
+par une coïncidence : le film n'y montre que 0,306 des tirs et la précision y vaut 0,283.
+Conséquence : **le dénominateur par arme n'a jamais manqué** (c'est le compte de records, déjà
+stocké par `shared.match_weapon_shots`) — c'est le NUMÉRATEUR, les touches par arme, qui est
+absent. Le handoff cherchait du bon côté du problème mais le nommait mal.
+
+Correction de nomenclature au passage : `eventStart+106` (le « drapeau de touche » de 7ter.80 /
+7ter.82) **est** le bit 110 du payload, que `filmdec/fire_events.go` nomme déjà « compteurs
+nuls » dans le layout du record type 105. Même bit, deux noms, deux dossiers.
+
+**Résultat 3 — une voie neuve, chiffrée, insuffisante.** Déconvolution : `touches_API(match) =
+somme des p_W x tirs_W(match)`, résolue aux moindres carrés sur 891 matchs et 23 armes, sans
+aucun appariement indice → xuid (la mesure vit au grain du match des deux côtés), avec les
+armes à trace instantanée comme contrôle positif intégré. Normalisation indispensable de la
+visibilité par match (0,92 en Tactical, 0,31 en Fiesta) — sans elle les coefficients sont
+inintelligibles. R2 hors échantillon **0,9666 / 0,9591**. Les armes à fort volume sortent
+stables entre moitiés : Needler **0,2964** (0,3156 / 0,2771), Pulse Carbine 0,3956, Plasma
+Pistol 0,2821 — et l'ordre MA40 < Sidekick est retrouvé là où le calcul naïf l'inversait.
+**Mais le contrôle positif échoue** : MA40 0,3748 contre une référence API de 0,4196, Sidekick
+0,5435 contre 0,4491 — erreurs de 0,045 et 0,095 pour une tolérance de dossier à ±0,03. Et le
+système n'est pas identifiable en faible volume (Hydra -1,06, Skewer -1,30).
+
+**Conclusion / prochaine étape.** Verdict de la session 1/2 : **non publiable en l'état**, voie
+non fermée. La session 2/2 a un go/no-go net, écrit au §6 du verdict : passer la déconvolution
+au grain JOUEUR avec moindres carrés bornés dans [0,1], reconstruire la référence API des
+quatre armes publiables, et **exiger ±0,03 hors échantillon sur ces quatre-là** — en dessous,
+la méthode ne mesure pas ce qu'elle prétend et le verdict se ferme. Si le contrôle passe, la
+validation des armes à projectile se fait par contraste intra-joueur, jamais par population à
+arme dominante (le Needler n'a que 2 observations à >= 80 % de pureté). Deux amendements à
+l'index sont dus quel que soit le résultat : l'unité du record par arme, et l'identité
+`eventStart+106 == payload bit 110`. Aucun merge, aucune écriture en base, aucun décodeur
+touché.
+
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
 **Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
