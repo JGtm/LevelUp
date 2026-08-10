@@ -1,3 +1,45 @@
+## [2026-08-10] v7.5 — cartes : la zone jouable est RESOLUE, et j'avais ferme deux verdicts trop vite
+
+**Statut** : Complete pour la regle ; gate du balayage des 27 cartes en cours. Detail : §14 du
+handoff `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : ce n'etait pas le critere qui bloquait, c'etait L'ALTITUDE A
+LAQUELLE ON LE TESTAIT.** La coquille de mort du tag `sddt` etait testee au z DESSINE de chaque
+pixel : un rocher haut au-dessus de l'arene en sort verticalement, sa cellule est effacee, et
+la position jouee EN DESSOUS perd son sol — 10 points de positions perdues, d'ou le NO-GO. La
+bonne question n'est pas « ce pixel est-il dans la coquille » mais « ce pixel est-il au-dessus
+d'un endroit ou l'on joue ». Testee au niveau de jeu (mediane des ancres moins
+`AncrageDecalageSol`) :
+
+    Cliffhanger  garde 99 % du cadre, cout NUL (accord 66,7 %, positions 93,82 % inchangees)
+    Catalyst     retire 47,1 % du decor, 19/19 ancres gardent leur sol
+
+Gratuite la ou elle ne sert pas, decisive la ou le grain est muet. Premiere regle du chantier
+qui ne coute rien nulle part. Active par defaut.
+
+**Second acquis : la couleur.** `TeinteAltitude` normalisait entre les centiles de TOUTE la
+matiere — sur une carte encaissee, les rochers hauts prenaient le blanc, donc l'oeil, et
+l'arene reculait dans le sombre : la hierarchie visuelle etait INVERSEE. `TeinteNiveauDeJeu`
+mesure l'altitude contre le niveau JOUE. Le decor n'est plus supprime, il RECULE — ce que sept
+criteres de zone n'avaient pas obtenu.
+
+**DEUX VERDICTS QUE J'AVAIS ECRITS TROP FORT, corriges par l'utilisateur :**
+1. « Coquille comme cadre universel : NO-GO » — vrai a l'altitude dessinee, FAUX au niveau de
+   jeu. Corrige en GO.
+2. « Environnement ferme : NO-GO » — rendu sur UNE SEULE carte, et la moins favorable :
+   Cliffhanger est une arene a ciel ouvert sur une falaise. Catalyst n'a jamais ete testee.
+   Requalifie en « refute sur Cliffhanger, non teste ailleurs ».
+
+**Lecon** : j'ai reproche a une investigation deleguee de generaliser depuis un oracle trop
+faible, et j'ai commis l'erreur symetrique — conclure depuis un oracle fort mais un echantillon
+d'UNE carte non representative. **Un NO-GO se mesure sur les cartes ou l'hypothese a une
+chance, pas seulement sur celle qu'on a sous la main.**
+
+**Prochaine etape** : gate du balayage (`TestBalayageCoquille`) — une carte qui PERD des ancres
+sous la coquille est disqualifiante et doit se voir avant livraison.
+
+---
+
 ## [2026-08-10] v7.5 — cartes : les volumes de mort TROUVES dans les .mvar (cartes Forge), type_id resolu
 
 **Statut** : Complete. Detail : `.ai/V7.5/cartes/INVESTIGATION_VOLUMES_MORT_MVAR_2026-08-10.md`.

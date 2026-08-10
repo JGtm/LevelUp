@@ -56,6 +56,7 @@ func TestRenduCarte(t *testing.T) {
 	n, ecartees := peupleRendu(t, rendu, racine, chemin, ancres)
 	t.Logf("%d instances dessinees · %d ecartees comme decor", n, ecartees)
 
+	appliqueCoquille(t, rendu, chemin, medianeZ(ancres)-AncrageDecalageSol)
 	jugeParLesAncres(t, rendu, ancres)
 	poseEauDepuisSddt(t, rendu, chemin)
 
@@ -204,4 +205,37 @@ func jugeParLesAncres(t *testing.T, r *Rendu, ancres [][3]float64) {
 	}
 	t.Logf("ORACLE DES ANCRES : %d/%d ont du sol dessine sous elles (%.0f %%) · ecart median %+.2f m",
 		avecSol, dansLeCadre, 100*float64(avecSol)/float64(dansLeCadre), med)
+}
+
+// appliqueCoquille borne le rendu a la frontiere de mort declaree par la carte.
+//
+// Defaut depuis le 2026-08-10 : gratuite sur Cliffhanger (99 % du cadre garde, accord et
+// positions jouees inchanges) et decisive sur Catalyst (47,1 % de decor retire, 19/19 ancres).
+// RENDU_SANS_COQUILLE la retire pour comparaison.
+//
+// Une carte sans coquille exploitable est SIGNALEE au journal, jamais tuee — un oracle absent
+// qui passe au vert est le piege le plus cher de ce chantier.
+func appliqueCoquille(t *testing.T, r *Rendu, cheminModule string, zJeu float64) {
+	t.Helper()
+	if os.Getenv("RENDU_SANS_COQUILLE") != "" {
+		t.Log("TEMOIN : coquille de mort NON appliquee")
+		return
+	}
+	chemin, err := ModuleVariante(cheminModule, "any")
+	if err != nil {
+		t.Logf("coquille : %v", err)
+		return
+	}
+	s, err := LitSddt(chemin)
+	if err != nil {
+		t.Logf("coquille : lecture sddt : %v", err)
+		return
+	}
+	coq := s.Coquille()
+	if len(coq) == 0 {
+		t.Logf("coquille : aucune frontiere dans le sddt de %s", filepath.Base(chemin))
+		return
+	}
+	efface := r.RestreintALaCoquille(coq, zJeu)
+	t.Logf("coquille : %d plans · %d cellules hors frontiere effacees", len(coq), efface)
 }

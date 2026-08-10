@@ -316,6 +316,7 @@ func TestCoquilleEnXYCatalyst(t *testing.T) {
 	}
 	rendu := cadreSurAncres(t, ancres)
 	rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+	rendu.NiveauDeJeu(zRef)
 	n, ecartees := peupleRendu(t, rendu, racine, chemin, ancres)
 	t.Logf("%d instances dessinees · %d ecartees par le grain", n, ecartees)
 
@@ -349,6 +350,10 @@ func TestCoquilleEnXYCatalyst(t *testing.T) {
 	jugeParLesAncres(t, rendu, ancres)
 
 	if sortie := os.Getenv("CLOTURE_PNG"); sortie != "" {
-		ecritPNG(t, sortie, carteSeulePNG(rendu, rendu.NX, rendu.NY, nil, StyleCarteParDefaut))
+		style := styleRendu(os.Getenv("RENDU_STYLE"))
+		if style == "" {
+			style = StyleCarteParDefaut
+		}
+		ecritPNG(t, sortie, carteSeulePNG(rendu, rendu.NX, rendu.NY, nil, style))
 	}
 }

@@ -837,3 +837,55 @@ que `mapvar/containment.go`, deja validee par l'oracle de containment des zones.
 - la chiralite du repere n'est verifiable qu'a l'oeil (l'oracle des ancres n'y est pas
   sensible) — gate visuel utilisateur.
 
+
+## 14. LA ZONE JOUABLE EST RESOLUE — la COQUILLE, testee a l'altitude de JEU (2026-08-10)
+
+Apres sept criteres refutes, c'est la frontiere de mort declaree par la carte qui tranche —
+et le blocage n'etait pas le critere, c'etait **a quelle altitude on le testait**.
+
+### 14.1 Le defaut de mecanisme, et sa correction
+
+La premiere mesure de la coquille la testait au z **DESSINE** de chaque pixel. Un rocher haut
+au-dessus de l'arene sort de la coquille verticalement, sa cellule est effacee, et la position
+jouee EN DESSOUS perd son sol : 10 points de positions perdues, verdict NO-GO.
+
+La bonne question n'est pas « ce pixel est-il dans la coquille » mais **« ce pixel est-il
+au-dessus d'un endroit ou l'on joue »**. Testee au NIVEAU DE JEU (mediane des ancres moins
+`AncrageDecalageSol`) :
+
+    carte        effet de la coquille          cout
+    Cliffhanger  garde 99 % du cadre           ZERO — accord 66,7 %, positions 93,82 %,
+                 (sans effet)                  identiques au grain seul
+    Catalyst     retire 47,1 % du decor        19/19 ancres gardent leur sol
+
+**Gratuite la ou elle ne sert pas, decisive la ou le grain est muet.** C'est la premiere regle
+du chantier qui ne coute rien nulle part. `Rendu.RestreintALaCoquille`, active par defaut
+(`RENDU_SANS_COQUILLE` la retire).
+
+### 14.2 La couleur : le decor RECULE au lieu d'etre supprime
+
+`TeinteAltitude` normalisait entre les centiles 2 et 98 de TOUTE la matiere : sur une carte
+encaissee, les rochers hauts prenaient le blanc, donc l'oeil, pendant que l'arene reculait dans
+le sombre. **La hierarchie visuelle etait inversee.**
+
+`TeinteNiveauDeJeu` mesure l'altitude contre le NIVEAU JOUE et non contre elle-meme
+(`PorteeNiveauDeJeu` = 10 m, deux etages). Styles `jeu` et `encre`. Sur Catalyst, l'arene
+ressort et les structures alentour passent au noir.
+
+**Ce que ca change au-dela de l'esthetique** : le decor n'a plus besoin d'etre supprime pour
+cesser de nuire. La zone jouable et la lisibilite sont deux problemes distincts, et le second
+se resout a l'affichage.
+
+### 14.3 CORRECTION DE DEUX VERDICTS QUE J'AVAIS ECRITS TROP FORT
+
+1. **« Coquille comme cadre universel : NO-GO »** (§10.8 et registre) — le NO-GO portait sur la
+   coquille testee a l'altitude DESSINEE. Au niveau de jeu, c'est un GO. L'entree du registre
+   est corrigee.
+2. **« Environnement ferme : NO-GO »** — teste sur **UNE SEULE carte**, et la moins favorable :
+   Cliffhanger est une arene A CIEL OUVERT sur une falaise. Catalyst, station spatiale, n'a
+   jamais ete testee. Le verdict est requalifie en « refute sur Cliffhanger, non teste
+   ailleurs ». C'est la meme erreur que celle reprochee a l'investigation collision — conclure
+   d'un echantillon non representatif — commise dans l'autre sens.
+
+**Lecon, et elle vaut pour tout le chantier** : un NO-GO se mesure sur les cartes ou l'hypothese
+a une CHANCE, pas seulement sur celle qu'on a sous la main.
