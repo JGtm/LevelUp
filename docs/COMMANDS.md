@@ -90,6 +90,25 @@ go run ./cmd/levelup migrate              # migrate data into the multi-title na
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
 
+### Game-asset extraction (offline, needs Halo Infinite installed)
+
+Regenerates versioned image assets from the game's own `.module` archives. Read-only on the
+game files; writes only to the output directory. Requires cgo (Kraken decompression).
+
+```bash
+cd apps/go-api
+go run ./cmd/weapon-icons-build                      # game root auto-detected
+go run ./cmd/weapon-icons-build -deploy "D:/SteamLibrary/.../Halo Infinite/deploy"
+# flags: -out DIR  -max N (images per atlas)  -probe N (descriptor→resource re-sync depth)
+```
+
+Output: `static/weapons-assets/halo_infinite/jeu/` — 168 PNG (weapon icons in outline and
+silhouette, plus the kill-feed atlas) and `index.json`, which carries the weapon key and the
+game's internal name per icon. Re-run after a game content update: these tables GROW.
+
+Full chain, correspondence tables and refuted leads:
+`.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+
 ### Media
 
 ```bash

@@ -1392,6 +1392,664 @@ arme dominante (le Needler n'a que 2 observations à >= 80 % de pureté). Deux a
 l'index sont dus quel que soit le résultat : l'unité du record par arme, et l'identité
 `eventStart+106 == payload bit 110`. Aucun merge, aucune écriture en base, aucun décodeur
 touché.
+## [2026-08-08] v7.5 icones — le vocabulaire de l'utilisateur bat toutes les moissons automatiques
+
+**Statut** : Complété. Branche `feat/v75-icones`.
+
+**Origine** : l'utilisateur a parcouru la page et donné une liste de mots vus sur les icônes —
+`perfect`, `waterfall`, `VIP`, `backsmack`, `assist`, `stick` (« deux icônes différentes, plasma
+et spike »), `core`/`stockpile`, `kinetic barrel`, `flag` (« un frag en frappant avec le
+drapeau »), « le Falcon avec des tourelles différentes », « les tourelles fixes », plus
+« sidekick et bulldog ne sont pas résolus ».
+
+**9 correspondances immédiates** : `perfect`, `waterfall`, `back_smack`, `flag_melee`,
+`plasma_grenade_stick`, `spike_grenade_stick`, `turret_plasma`, `falcon_chaingun`, `splatter`.
+
+**Et surtout, ses mots ont révélé des MOTIFS.** Ce n'était pas une liste, c'était une grammaire :
+`turret_<type>` · `<engin>_turret` · `<grenade>_grenade_stick` · `<objet>_melee` ·
+`falcon_<arme>`. Les décliner systématiquement en a rendu **3 de plus** (`turret_chaingun`,
+`scorpion_turret`, `bomb_melee`). La déclinaison est passée en production (`patternVocabulary`)
+— elle nommera automatiquement ce qu'une mise à jour du jeu ajoutera dans ces familles.
+
+**Kill feed : 43 → 55 noms sur 88.** À comparer aux tentatives automatiques de la séance
+précédente : 456 formes combinatoires = +1 nom, et 6 068 000 chaînes du paquet CMS = 0 nom réel.
+**Un humain qui regarde bat toutes les moissons.** C'est la leçon de méthode de la journée, et
+elle vaut au-delà de ce chantier : quand le décodage est fini et qu'il ne reste qu'un problème
+de VOCABULAIRE, le meilleur outil est l'oeil de quelqu'un qui connaît le jeu.
+
+**Sûreté du procédé, inchangée** : chaque nom reste une égalité de hachage exacte, filtrée par
+`plausibleIdent`. Un mot faux ne coûte rien — il ne sort simplement pas. Le vocabulaire ajouté
+est petit (~95 mots curatés + ~350 formes déclinées), donc l'espérance de collision reste
+négligeable, contrairement à la source CMS écartée hier.
+
+**Ce que l'utilisateur a signalé et qui reste ouvert** : `VIP`, `assist`, `core`/`stockpile`,
+`kinetic barrel` n'ont PAS craqué — le jeu les nomme autrement. Et `sidekick`/`bulldog` restent
+sans nom interne côté armes, alors que leurs `weapon_key` sont connus (#03 et #04) : l'icône est
+donc bien identifiée, c'est seulement son nom interne qui manque.
+
+**Restent** 33 index sans nom côté kill feed, 8 côté armes.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur la page. Page, état de l'art et planches régénérés.
+
+**Conclusion / prochaine étape** : le même aller-retour reste la voie la plus rentable — un mot
+juste vaut mille essais.
+
+## [2026-08-08] v7.5 icones — `shade_turret` etait faux, et le vocabulaire par supposition s'epuise
+
+**Statut** : Complété. Branche `feat/v75-icones`.
+
+**Origine** : « il manque toujours des étiquettes […] je crois que shade_turret est mal attribué
+aussi ». Les deux remarques sont justes, et la seconde a révélé un défaut de méthode.
+
+**`shade_turret` (#31) EST faux, confirmé sur pièces.** Rendue en grand, l'image est une
+CAISSE, pas une tourelle Covenant. Le nom venait d'un `weap` NON canonique — et les tags de
+campagne portent des index d'atlas PÉRIMÉS. J'avais déjà posé ce filtre, mais uniquement sur
+les index que le REGISTRE revendique ; l'index 31 n'étant revendiqué par personne, un tag
+legacy pouvait le baptiser sans contradicteur.
+
+**Correctif : la PROVENANCE devient une donnée.** `index.json` porte `nom_a_verifier` — vrai
+quand le nom vient d'un `weap` non canonique. 10 index sur 21 sont concernés. La page les
+affiche suffixés d'un « ? ». Je ne les retire PAS : à l'inverse de #31, `fusion_coil` (27),
+`power_seed` (28) et `machine_gun` (8) collent parfaitement à l'image — vérifié en les rendant
+en grand. Le marquage dit le DOUTE, pas la faute.
+
+**Une erreur de raisonnement corrigée au passage, et elle est importante.** J'avais écrit qu'une
+égalité de hachage sur 32 bits « vaut certitude ». C'est vrai pour un vocabulaire PETIT.
+Mesuré en essayant `gamecms.cms` (493 Mo) comme source : **6 068 000 chaînes pour une seule
+correspondance**, et cette correspondance était `killfeed_3O1\` — du bruit. À ce volume
+l'espérance de collision fortuite vaut ~0,2, l'argument s'effondre. Deux conséquences :
+- source `.cms` REJETÉE (rendement réel nul, risque de collision réel) ;
+- filtre `plausibleIdent` (`[a-z0-9_]+`) ajouté aux DEUX craqueurs : un faux positif ne peut
+  plus passer pour un nom. La moisson du binaire (408 525 chaînes, espérance ~0,07) reste sûre.
+
+**Le vocabulaire par supposition s'épuise.** 456 formes essayées (23 préfixes x 8 suffixes x
+83 mots, variantes de séparateur comprises) : **+1 nom** (`killfeed_splatter`, 44/88). Les 41
+identifiants restants emploient des mots hors de tout vocabulaire devinable. Ce n'est pas
+« essayer plus » qui débloquera, c'est une SOURCE — et je n'en ai pas trouvé.
+
+**Vérification faite pour l'utilisateur** : il regardait bien le bon artefact. Ce qu'il voyait
+manquer, ce sont les index réellement non craqués — pas un défaut d'affichage.
+
+**Décompte** : 21 noms côté armes (dont 10 « ? »), 44 côté kill feed, 26 weapon_key. Restent
+8 index sans rien côté armes et 44 côté kill feed.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur la page. Doc et planches régénérées.
+
+**Conclusion / prochaine étape** : les noms « ? » sont exactement ce que la page sert à
+trancher. Si l'utilisateur reconnaît des objets parmi les non nommés, leurs noms internes
+probables sont ce qu'il me faut — un mot juste vaut mieux que mille essais.
+
+## [2026-08-08] v7.5 icones — la documentation sort du journal
+
+**Statut** : Complété. Branche `feat/v75-icones`.
+
+**Origine** : « documente tout ça, pas seulement dans le journal ». Juste — le thought_log est
+une chronologie, pas un point d'entrée : personne n'y cherche « comment sont extraites les
+icônes ».
+
+**Ce qui est écrit, et pourquoi là** :
+
+- **`.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`** (266 lignes) — le document de référence, à la
+  convention du dossier (les états de l'art font foi sur ce qui est prouvé / assumé / réfuté).
+  Il porte la chaîne maillon par maillon avec son contrôle, **les deux tables de correspondance
+  complètes** (index → weapon_key → nom interne, générées depuis `index.json`), un tableau des
+  **8 pistes réfutées** avec leur mesure, les réserves ouvertes, et un « où est quoi ».
+- **`.ai/PLAN_RECHERCHE_ASSETS_ICONES.md`** — CLOS. En-tête de clôture, et **chaque case statuée**
+  (`[x]` / `[~]` / `[!]` avec justification) au lieu d'être laissée vide. Le gate 1 est marqué
+  passé avec la nuance qui compte : le critère demandait une vérification à l'oeil sur 10 armes,
+  le résultat est plus fort (lecture dans le jeu, 29/29) — et la réserve « BR75 / Bandit
+  visuellement proches » était fondée, je les avais interverties.
+- **`.ai/V7.5/README.md`** — `icones/` ajouté à la table des dossiers et aux points d'entrée.
+- **`.ai/README_KILLWEAPON_INDEX.md`** — entrée §1.11. C'est sa place : la table `bitd` est le
+  nommage que la chaîne sonore n'avait pas su donner, et **le Falcon y figure sous son vrai nom**
+  là où la banque Wwise disait « Pelican » (le piège documenté en tête du plan icônes).
+- **`.ai/PLAN_MASTER_FILM_KILLFEED_REJEU.md`** — chantier D marqué phase 1 close, avec le renvoi.
+- **`docs/COMMANDS.md` + `docs/FR/COMMANDS.md`** — nouvelle section « extraction d'assets du
+  jeu ». Les deux dans le même commit : règle de bilinguisme du dépôt (CLAUDE.md §15), et le
+  hook `docs-fr-sync` la vérifie.
+- **Mémoire** `reference_weap_xml_sprite_index` réécrite : elle pointait le seul `sprite index`,
+  elle porte maintenant la table `bitd`, le piège du lanceur 3,9 Mo et la liste des pistes mortes.
+
+**Ce que je n'ai PAS touché**, et c'est délibéré : `.ai/project_map.md` porte en tête
+« HISTORIQUE — GELÉ, NE FAIT PLUS FOI ». Y ajouter une ligne aurait donné l'illusion d'un
+document vivant.
+
+**Contrôle** : les 7 chemins cités par l'état de l'art ont été vérifiés sur pièces (tous
+existent). Les tables de correspondance sont générées depuis `index.json`, pas recopiées.
+
+**Conclusion / prochaine étape** : inchangée — la page de nommage, puis le TSV.
+
+## [2026-08-08] v7.5 icones — l'atlas « sandbox » EST celui du KILL FEED, et il porte sa table
+
+**Statut** : Complété. Branche `feat/v75-icones`. Non branché côté web.
+
+**Origine** : « pour l'atlas sandbox tu n'as rien trouvé ? » et « les barils, tu n'as rien
+trouvé non plus ? ». Les deux pointaient un abandon trop rapide de ma part.
+
+**LE RÉSULTAT PRINCIPAL, ET IL BOUCLE LA PREMIÈRE QUESTION DE LA SÉRIE** : l'atlas dit
+« sandbox » est **l'atlas du KILL FEED**. Le tag `bitd 8646f61a` porte sa table de nommage —
+un bloc `entries` dont chaque enregistrement est le triplet `identifier` (StringID) +
+`bitmap` (référence d'atlas) + `bitmap index`. 85 entrées, toutes vers cet atlas. La
+corrélation avec les armes de kill que l'utilisateur cherchait depuis le début n'était pas
+absente : elle était dans un tag que je n'avais pas ouvert.
+
+**43 des 88 index nommés**, dont tout ce qui manquait : les **véhicules** (warthog, rockethog,
+mongoose, gungoose, pelican, scorpion, wasp, wraith, phantom, banshee, ghost, chopper,
+falcon), les **grenades** (frag, plasma, spike), les **pictogrammes** (headshot, melee,
+suicide, ricochet, callout, environment, player_left/joined/rejoined), et sandwich, mutilator,
+grappleshot, repulsor, quantum, ball.
+
+**Comment le motif a été trouvé, parce que ça n'allait pas de soi.** Les identifiants ne sont
+NI dans le binaire (408 525 chaînes moissonnées : zéro correspondance) NI en clair dans les
+tags — tout est haché en release. En essayant des préfixes plausibles sur un vocabulaire connu
+(23 préfixes x 8 suffixes x 83 mots = 14 608 combinaisons), **4 correspondances immédiates**
+ont révélé le motif `killfeed_<nom>`. Préfixer ensuite tout le vocabulaire du binaire a porté
+le total à 43.
+
+**Les barils : `fusion_coil`.** Index 27 de l'atlas d'armes. Et avec lui, dans la même passe :
+`power_seed` (28), `machine_gun` (8), `sandwich` (35), `mythic_sandwich`. Ils ne sortaient pas
+de la moisson du binaire — ces chaînes n'y figurent pas comme jeton isolé. Un vocabulaire
+CURATÉ de 90 mots les rend, et chaque entrée n'est retenue que si son hachage tombe
+EXACTEMENT sur un StringID cherché : sur 32 bits, une centaine de candidats rend une collision
+fortuite négligeable. Le test échoue bruyamment, il ne devine pas.
+
+**Contrôle de méthode** : le #35 est le Sandwich d'après le registre. `LabelHash("sandwich")`
+retombe sur son StringID. La méthode est donc calibrée sur un cas connu AVANT d'être appliquée
+aux inconnus — et le témoin `mapvar` (`stockpile_socket` = 2110778921) est vérifié à chaque
+passage.
+
+**Ce que ça corrige dans mon vocabulaire à moi** : j'appelais cet atlas « sandbox » depuis le
+début, sur la foi de son contenu. Le jeu l'appelle kill feed. Les fichiers sont renommés
+`killfeed-NN.png`, la page aussi.
+
+**Une piste explorée et fermée** : `cusc` (l'autre référenceur de l'atlas) est une composition
+d'UI générique — components, long properties, string_id properties — sans champ `sprite index`.
+Rien à en tirer sans un walk beaucoup plus lourd, et le `bitd` a répondu mieux.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur la page.
+
+**Reste** : 8 index sans nom sur l'atlas d'armes, 45 sur celui du kill feed. Le vocabulaire
+curaté est le levier — chaque mot ajouté est testé, jamais affiché sans preuve.
+
+## [2026-08-08] v7.5 icones — le nom interne se craque : Mutilateur, Sandwich, crane, drapeau
+
+**Statut** : Complété. Branche `feat/v75-icones`. Non branché côté web.
+
+**Origine** : trois questions de l'utilisateur, dont deux qui pointaient une affirmation que
+j'avais faite sans la mesurer.
+
+**« Pour l'atlas sandbox tu n'as rien trouvé ? »** — j'avais écrit « aucun lien structurel
+connu » sans avoir cherché. Mesuré depuis : `alt sprite` du bloc `UI display info` pointe sur
+l'atlas SILHOUETTE (97 `weap` sur 104), pas sur le sandbox. Et surtout, l'atlas sandbox
+`0302cad3` n'est référencé que par **un seul tag `cusc`** (`00cfaf01`) et un `bitd`. Ce n'est
+donc pas une impasse mais une piste précise : `cusc.xml` existe dans le même dépôt de
+définitions (15 664 o), et c'est probablement lui qui liste les entrées sandbox avec leur
+index. Non fait.
+
+**« Et le Mutilateur / le Sandwich ? »** — ils sortent, et la raison de leur absence est
+instructive : le walker itérait le REGISTRE CANONIQUE (29 armes), or ni l'un ni l'autre n'y
+figure — ils ne vivent que dans `weapon_labels`. En balayant les 194 `weap` du jeu :
+**Mutilateur → index 37**, **Sandwich et Mythic Sandwich → index 35** (même icône, deux
+StringID de nom). Le Sandwich est bien le sandwich du sheet.
+
+**Le craquage des noms — la piste que je n'avais pas suivie, et elle paie.** Le champ `name`
+du bloc est un StringID, pas une chaîne : les tags portent bien une table de chaînes, mais
+elle ne contient QUE des couples (index, hash) — les textes sont strippés en release. La
+recette déjà validée côté Forge (§Q1.0-septies) s'applique telle quelle : moissonner les
+chaînes du binaire du jeu, les hacher avec `mapvar.LabelHash` (murmur3 x86_32 seed 0, déjà
+dans le dépôt et testée), et confronter.
+
+**16 index nommés**, dont exactement ce qui manquait : `mutilator` (37), `skull` (25),
+`flag` (26), `ball | bomb` (34), `plasma_turret` (12), `shade_turret` (31).
+
+**Deux pièges traversés, tous deux mesurés** :
+
+1. *le mauvais binaire* — le `HaloInfinite.exe` à la racine de l'installation est un lanceur
+   de 3,9 Mo : **0 nom craqué**. Le vrai binaire est sous `game/` et pèse 80 Mo : 408 525
+   chaînes, 669 467 hachages, 38 noms. Prendre « le premier trouvé » donnait un zéro
+   silencieux qui ressemblait à un échec de méthode ;
+2. *les tags de campagne à index périmé* — un `weap` legacy baptisait l'index 7 « shotgun »
+   là où le registre y lit la Hydra, et l'index 5 recevait « needler » en plus de
+   « sniper_rifle ». Filtre posé : un index que le registre revendique n'accepte que le nom
+   d'un tag canonique. Les conflits restants sont donc SIGNIFIANTS.
+
+**Une divergence reste, et elle est publiée plutôt qu'arbitrée** : l'index 20 se nomme
+`heatwave` dans le jeu alors que le registre y lit `hinf_cindershot` — et les deux viennent du
+MÊME tag canonique `230447b1`. Soit le registre étiquette mal ce tag, soit le nom interne est
+un reliquat de développement. Le dépôt a déjà une confusion documentée dans ce coin
+(`Cremator.png` est en réalité le Cindershot). À trancher à l'oeil sur les icônes 20 et 21.
+
+**Livré** : `cmd/weapon-icons-build/names.go` ; `index.json` porte `nom_jeu` à côté de
+`arme` ; la page pré-remplit le champ libre avec le nom interne quand le registre ne couvre
+pas l'icône.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...
+./internal/analysis/replay/mapvar/...` vert, `node --check` sur la page.
+
+**Conclusion / prochaine étape** : la piste sandbox est nommée et bornée — `cusc.xml` sur le
+tag `00cfaf01`. Reste aussi 8 index de l'atlas d'armes sans nom ni clé (#08 #19 #27 #28 #29
+#30 #32 #35), et la divergence #20 à trancher.
+
+## [2026-08-08] v7.5 icones — PLAN A ABOUTI : 29 armes sur 29, lues dans le jeu et auto-validees
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web (l'intégration
+reste derrière le gate visuel), mais le nommage des armes n'est plus un travail manuel.
+
+**Ce qui est acquis** : le champ `sprite index` du bloc `UI display info` du tag `weap` rend,
+pour chacune des 29 armes du registre, l'index de son icône dans l'atlas. **29/29**, soit
+26 index distincts — les deux Bandit, les deux épées et les deux Shock Rifle partagent leur
+icône, ce qui est cohérent et non un défaut.
+
+**Trois appariements essayés, un seul tient.** Le détail compte pour ne pas les re-tenter :
+
+1. *petit entier à offset constant dans le corps du tag* — 0 candidat sur 29 (essayé lors de
+   la première passe) : le corps est un arbre de structures, les offsets bougent ;
+2. *appariement par RANG plugin↔tag* (la mécanique de `himap` pour `sbsp`) — tombe **une unité
+   à côté** : le bloc obtenu portait des références `mode`/`jmad`/`aset`, pas des sprites.
+   Corriger par un `+1` aurait été un réglage qu'aucune mesure ne garantit d'une version à
+   l'autre ; écarté ;
+3. *identification du bloc PAR SON CONTENU* — retenu. On ne retient un bloc que si son champ
+   `sprite` porte l'un des deux atlas connus. C'est auto-validant : si aucun bloc ne matche,
+   la commande le dit au lieu de rendre un index faux.
+
+**La calibration qui a débloqué** : en dumpant le bloc trouvé par rang, les identifiants
+d'atlas apparaissaient à l'offset absolu 23892 alors que le bloc s'arrêtait à 23864. Or
+`sprite` est à +20 du bloc et l'identifiant à +8 du champ : 23864 + 20 + 8 = 23892, à l'octet
+près, et `alt sprite` à +52 tombe pareil sur 23924. Le bloc correct commençait exactement là
+où finissait le mauvais.
+
+**Ce que ça corrige dans mes propres propositions.** Le gate visuel avait bien raison d'exister :
+sur les icônes que j'avais annoncées « proposition forte », plusieurs étaient fausses —
+l'index 0 est le **MA40 AR** et non le BR75, l'index 1 est le **BR75** et non le Bandit (qui
+est à 33), l'index 24 est le Disrupteur là où j'avais dit 18. Les identifications
+non-ambiguës (épée 14, Needler 9, marteau 16, empaleur 17, Sidekick 3, S7 5, SPNKr 6,
+Bulldog 4, Hydra 7, pistolet à plasma 11) étaient justes et servent de contrôle croisé.
+
+**Livré** : `cmd/weapon-icons-build/weapui.go` (le walker), `weap.xml` embarqué par `go:embed`
+comme `himap` embarque `sbsp.xml` — une seule copie, la précédente sous `.ai/` a été déplacée
+et non dupliquée. `index.json` porte désormais `weapon_key` sur les icônes d'armes. La page de
+nommage pré-remplit les 26, badge vert « résolu depuis le jeu », champ laissé modifiable.
+
+**Reste manuel** : l'atlas sandbox (88 icônes : véhicules, objectifs, grenades lancées,
+pictogrammes) et les 14 index de l'atlas d'armes qui ne correspondent à aucune arme de notre
+registre.
+
+**Piste ouverte, non exploitée** : le même bloc porte `name`, `alt name`, `description`,
+`help text` en StringID (murmur3). Les valeurs sont lues et remontées dans le walker. Le dépôt
+a déjà craqué des noms par murmur3 direct côté Forge — les NOMS d'armes du jeu pourraient
+tomber par cette voie.
+
+**Gates** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...` 0 issue,
+`go test ./internal/archlint/... ./internal/games/weapons/...` vert, `node --check` sur le
+script de la page. Tous les fichiers du paquet sous 500 lignes.
+
+**Conclusion / prochaine étape** : ouvrir la page, vérifier d'un oeil les 26 pré-remplies
+(elles sont lues, pas devinées, mais un contrôle coûte une minute), nommer le sandbox, puis
+me remettre le TSV pour écrire `weaponImageFiles`.
+
+## [2026-08-08] v7.5 icones — le maillon manquant existe et il s appelle « sprite index »
+
+**Statut** : Trouvé, versé au dépôt, NON encore exploité. Branche `feat/v75-icones`.
+
+**Question de l'utilisateur** : « pour le plan A on a ce qu'il faut ? Ce weap.xml me dit
+quelque chose ». Il disait vrai des deux côtés : le nom lui parlait, et la réponse était à
+portée.
+
+**Pourquoi ça lui disait quelque chose.** `ETAT_DE_L_ART_FORGE_PALETTE_ZONES` §Q1.0-nonies a
+DÉJÀ posé la question — et a répondu « sans objet ». **Cette réponse reste juste pour cette
+question-là, et ne s'applique pas à la nôtre.** La session Forge cherchait un DICTIONNAIRE
+(quelle chaîne hache vers tel murmur3) ; un schéma ne répond jamais à ça. Nous cherchons une
+DISPOSITION DE CHAMPS, c'est-à-dire exactement ce qu'un schéma est. Ne pas relire ce « non »
+comme une fin de non-recevoir.
+
+**Ce que le dépôt avait déjà** : `internal/himap/sbsp.xml` (le field-walker éprouvé) et quatre
+définitions Forge copiées sous `.ai/V7.5/dumps/forge_zones/`, toutes de la même source
+publique — `Gamergotten/Infinite-runtime-tagviewer`, 479 définitions dumpées par Lord Zedd et
+Exhibit. L'opération était donc précédentée ; `weap.xml`, lui, n'était nulle part sur le poste.
+
+**LE CHAMP EXISTE.** `Plugins/weap.xml` (86 623 o, 3 001 lignes), bloc `_38 "player interface"`,
+sous-bloc `_40 "UI display info"` :
+
+```
+_2  "name"              <- StringID
+_2  "alt name "
+_2  "description"
+_2  "help text"
+_2  "icon string id"
+_41 "sprite"            <- REFERENCE DE TAG = le bitmap d atlas
+_6  "sprite index"      <- L INDEX DANS L ATLAS — le maillon cherche
+_41 "alt sprite"
+_6  "alt sprite index"
+_6  "damage sprite index"
+```
+
+**Corroboration indépendante, et elle est forte.** Le bloc déclare DEUX références de sprite
+(`sprite` + `alt sprite`) et le réticule vit ailleurs (`hip fire reticle screen reference`).
+C'est EXACTEMENT ce que j'avais mesuré à l'aveugle sur les 29 `weap` : deux bitmaps communs à
+toutes les armes (bc17adf1 contour, e39747c8 silhouette) plus un troisième qui varie par
+groupes d'armes — le réticule. La structure du plugin et la mesure se recoupent sans avoir été
+confrontées avant.
+
+**Contrôle intégré pour l'implémentation** : le walker n'aura pas à être cru sur parole. S'il
+lit `sprite` et que la valeur vaut bc17adf1, alors le `_6` qui suit EST le bon champ. La
+validation est gratuite et exacte.
+
+**Bonus non anticipé** : le même bloc porte `name`, `alt name`, `description`, `help text` en
+StringID — donc en murmur3. Le dépôt a déjà craqué des noms par murmur3 direct côté Forge
+(§Q1.0-septies). Les NOMS d'armes pourraient donc tomber par la même voie que les icônes.
+
+**Versé au dépôt** : `.ai/V7.5/icones/reference_weap_tag_definition.xml`, même convention que
+`reference_food_tag_definition.xml`.
+
+**Conséquence pratique, à dire avant que l'utilisateur ne nomme à la main** : si le walker
+aboutit, l'attribution des 40 icônes d'armes devient AUTOMATIQUE et vérifiable, et la page de
+nommage ne sert plus que pour le reste (véhicules, objectifs, pictogrammes). Nommer les armes
+à la main maintenant serait du travail jeté.
+
+**Conclusion / prochaine étape** : porter le field-walker de `himap` sur `weap` (parcours de
+l'arbre de structures + appariement par rang, la mécanique existe pour `sbsp`), lire
+`UI display info` pour les 29 armes du registre, et contrôler que `sprite` vaut bien
+bc17adf1. Décision utilisateur attendue avant de lancer.
+
+## [2026-08-08] v7.5 voie C — les images rayees n etaient pas un probleme de decodage, mais de comptage
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
+
+**Origine** : trois questions de l'utilisateur (corrélation avec les armes de kill, taille
+maximale des images, apport possible de Ghidra). Deux d'entre elles se répondent par la
+mesure, et la troisième a produit la correction la plus importante de la série.
+
+**La question « Ghidra peut-il corriger les dernières images distordues ? » a la réponse
+inverse de celle attendue : il n'en fallait pas.** En dumpant les 44 octets de chaque
+descripteur pour chercher un éventuel index de ressource, deux faits sautent aux yeux :
+
+1. le descripteur fait **0x28 = 40 octets**, pas 44 (0xe8 → 0x110 → 0x138), et il est
+   parfaitement régulier ; les 0xbcbc sont du remplissage ;
+2. il ne porte **aucun index de ressource** — l'appariement est donc bien positionnel.
+
+Or mon recensement cherchait une SIGNATURE partout dans le corps du tag, et sur-comptait :
+**91 enregistrements pour 88 déclarés** côté sandbox, 24 pour 22 sur l'atlas d'emblèmes. Ces
+faux positifs consommaient des ressources et décalaient tout ce qui suivait — c'était ça, les
+images rayées en queue d'atlas. Le balayage ne sert plus qu'à TROUVER LE PREMIER
+enregistrement (l'offset n'est pas codé en dur, il reste retrouvé) ; ensuite le tableau est lu
+tel qu'il est déclaré : un compte (u32 juste avant) et un pas de 0x28.
+
+**Résultat : 88 icônes sandbox sur 88 déclarées, 40 sur 40 côté armes, ZÉRO image rayée.**
+Les 14 marquées « décodage suspect » à la livraison précédente sont toutes récupérées, et ce
+qu'elles contenaient est du contenu utile : explosion, couronne, sandwich, cible, chute d'eau,
+étoile, armes supplémentaires et trois hélicoptères en 85-87. Le mécanisme `CleanThrough` /
+`decode_suspect` est SUPPRIMÉ avec son affichage dans la page : il ne marque plus rien, et un
+mécanisme qui ne marque plus rien est du code mort.
+
+**Ce que la mesure dit des deux autres questions.**
+
+- *Taille maximale* : oui. Les dimensions déclarées sont identiques dans les variantes `ds/`
+  et `pc/`, et **0 ressource sur 41 (armes) et 0 sur 91 (sandbox) ne porte le drapeau hd1** —
+  rien ne vit dans le compagnon haute résolution. C'est bien le mip0 natif qui est extrait.
+  Réserve utile pour l'UI : les deux atlas n'ont PAS la même définition — armes ~330x117,
+  sandbox ~110x38.
+- *Corrélation avec les armes de kill* : le lien existe et il manque un seul maillon, l'index
+  d'icône dans le tag `weap`. Ma recherche précédente (petit entier à offset constant) était
+  trop naïve : le corps d'un tag est un arbre de structures dont les offsets bougent. Le dépôt
+  possède DÉJÀ la bonne machinerie — `internal/himap` marche les champs d'un `sbsp` avec le
+  plugin `sbsp.xml`, et `.ai/V7.5/dumps/forge_zones/` montre que d'autres définitions de tags
+  ont déjà été obtenues. Il faut `weap.xml`, pas Ghidra.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur le script de la page. Fichiers du paquet tous sous 500 lignes.
+
+**Décompte final** : 40 contour + 40 silhouette + 88 sandbox = **168 PNG**, 128 index à nommer.
+
+**Conclusion / prochaine étape** : inchangée — ouvrir la page, nommer, me remettre le TSV. Si
+le nommage confirme que l'atlas couvre bien plus que les armes de kill (véhicules, objectifs,
+pictogrammes), le maillon `weap.xml` devient le chantier suivant naturel.
+
+## [2026-08-08] v7.5 voie C — les artefacts venaient du mode 7, reconstruit sans recopier de table
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
+
+**Origine** : « j'ai l'impression qu'il y a de petits artefacts sur certaines images ».
+Impression juste, et la cause était nommée depuis le début — le repli du décodeur BC7.
+
+**Établi sur pièces avant de coder.** Un mode de diagnostic (`tmp_wicons marks`) rend l'icône
+en marquant EN ROUGE les blocs tombés en repli. Sur l'icône #21 de l'atlas contour : 28 blocs,
+**tous de mode 7**, et ils forment une ligne horizontale continue le long d'une arête du
+dessin — exactement la barre unie que l'utilisateur voyait.
+
+**Le périmètre s'est réduit, et c'est le vrai résultat de la séance.** Je croyais devoir
+implémenter cinq modes (0-3 et 7). En réalité **un seul dégrade le livrable** : les modes 0 à 3
+n'ont PAS de canal alpha, leur alpha vaut donc 255 partout — et le repli le rendait déjà
+exactement. Or seul l'alpha est conservé dans le glyphe final ; leur RGB approché est jeté.
+Vérifier cette propriété du format avant de coder a divisé le travail par cinq.
+
+**Comment le mode 7 est traité sans recopier les tables de partition.** Tout ce qui se lit se
+lit exactement : largeurs de champs, points extrêmes, bits P, index. Ce qui manque — la
+partition et la position de la seconde ancre — est retrouvé par AJUSTEMENT SUR DES DONNÉES DU
+FICHIER : le niveau de mip inférieur est décodé lui aussi, agrandi, et sert de témoin. Les 15
+positions d'ancre possibles sont essayées ; pour chacune, chaque pixel prend le sous-ensemble
+dont la valeur colle le mieux au témoin ; la position qui minimise l'écart gagne. Les tables
+ne sont toujours pas reproduites de mémoire — une table fausse rendrait une image plausible
+mais fausse, et c'est le pire cas.
+
+**Contrôle visuel qui tranche** : avant/après zoomé sur la zone (`tmp_wicons cmp`). L'aplat
+uniforme devient une ligne de petits crans RÉGULIERS, alignée sur le trait au-dessus. Une
+reconstruction fausse donnerait du bruit, pas un motif périodique aligné — c'est ce qui rend
+le résultat crédible au-delà du « ça a l'air mieux ».
+
+**Mesure après correction : zéro bloc dégradé** sur les images saines. Les compteurs
+d'`index.json` ont été refaits pour dire la vérité utile plutôt qu'un chiffre alarmant :
+`bc7_flat_pct` (qui montait à 42 % et ne signalait rien) est remplacé par trois compteurs —
+`bc7_rebuilt_pct` (mode 7 reconstruit), `bc7_opaque_pct` (modes 0-3, alpha exact, sans effet)
+et `bc7_degraded_pct` (mode 7 sans témoin : la seule vraie dégradation, à 0).
+
+**Découvert en régénérant les planches** : l'index 39 de l'atlas des armes sort rayé lui aussi.
+Le seuil `CleanThrough` passe donc de 39 à 38 pour les deux styles d'armes, et la page marque
+désormais les suspects des DEUX atlas (14 images au total, contre 12).
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
+vert, `node --check` sur le script de la page. Tous les fichiers du paquet sous 500 lignes
+(le plus gros, `extract.go`, à 337).
+
+**Conclusion / prochaine étape** : inchangée — ouvrir la page, nommer, me remettre le TSV.
+
+## [2026-08-08] v7.5 voie C — tout est affiche, y compris les douze decodages rates
+
+**Statut** : Complété. Branche `feat/v75-icones`. Toujours non branché côté web.
+
+**Origine** : « Tu peux tout m'afficher quand même stp ? ». La demande corrige une décision que
+j'avais prise seul et mal : j'avais COUPÉ les 12 dernières images du sandbox parce qu'elles
+sortent rayées. Couper, c'est décider à la place de l'utilisateur ce qu'il a le droit de
+regarder. Elles sont désormais livrées et MARQUÉES.
+
+**Tentative de réparation, et son verdict.** Avant d'afficher du raté, j'ai testé l'hypothèse
+la plus plausible : la sonde de recalage descripteur → ressource (profondeur 6) serait trop
+courte. Mesure à profondeur 24 : **c'est pire**. La corruption remonte de l'index 73 à l'index
+42, ce qui emporte les caisses, les grenades lancées et les pictogrammes de mort — 84 images
+« appariées » dont seules 42 sont lisibles, contre 85 dont 73 lisibles à profondeur 6. Une
+sonde profonde laisse un descripteur attraper une ressource lointaine du bon poids. La
+profondeur 6 est donc retenue, et ce n'est plus un défaut par défaut : c'est un réglage mesuré.
+
+**Ce qui change dans le code** : `Max` (un plafond qui coupait) devient `CleanThrough` (le
+dernier index dont le décodage est confirmé à l'oeil). Rien n'est retiré ; `index.json` porte
+`decode_suspect` pour les 12 concernées. Le drapeau est un CONSTAT VISUEL et le commentaire le
+dit — la densité de transitions d'opacité avait été essayée comme critère automatique et ne
+sépare pas (l'icône d'explosion, parfaitement légitime, sort en tête du classement de bruit).
+
+**Ce qui change dans la page** : bordure et badge « decodage suspect » sur les 12, plus une
+case « masquer les decodages suspects » — décochée par défaut, donc tout est visible d'entrée.
+
+**Décompte final** : 40 contour + 40 silhouette + 85 sandbox = **165 PNG**, 125 index à nommer.
+
+**Chiffres remis d'aplomb au passage** (une question de l'utilisateur les a fait re-vérifier) :
+le champ de comptage du tag vaut 0x28 = 40 pour l'atlas des armes — où 40 images sont
+effectivement extraites, ce qui corrobore la lecture du champ — et 0x58 = 88 pour le sandbox.
+Mon recensement heuristique, lui, comptait 91 et 24 là où les tags déclarent 88 et 22 : il
+sur-compte, ce qui est exactement la cause de la dérive d'alignement.
+
+**Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `node --check` sur le script.
+
+**Conclusion / prochaine étape** : inchangée — ouvrir la page, nommer, me remettre le TSV.
+
+## [2026-08-08] v7.5 voie C (suite) — les grenades etaient dans un second atlas, et le nommage devient une page
+
+**Statut** : Complété. Branche `feat/v75-icones`, worktree `LevelUp-wt-icones`. Toujours NON
+branché : rien de `apps/web/` ni de `adapter_asset_urls.go` n'est touché.
+
+**Origine** : retour utilisateur sur la première livraison — « manque juste les grenades » et
+« peu de tes suggestions matchent ; une page pour indiquer clairement quoi est quoi ? ». Les
+deux remarques pointent le même défaut : l'attribution d'un nom n'est pas mon travail, elle
+est le sien, et je ne lui avais donné qu'une page en lecture.
+
+**Les grenades — trouvées, par une voie qui a d'abord échoué.** La remontée
+`gggl -> eqip -> bitm` ne rend RIEN : les huit équipements lançables déclarés par le tag de
+globals ne référencent aucun bitmap. Ce qui a marché est un balayage : chercher dans les
+58 604 `bitm` du jeu la SIGNATURE d'un atlas d'interface — un tag petit (il ne porte que des
+descripteurs) déclarant plusieurs images de tailles TOUTES différentes. 8 candidats sur les
+2 104 tags dans la borne, dont **`0302cad3`, 88 images** : armes vues de plus loin, véhicules,
+**grenades lancées (index ~46, l'arc de trajectoire)** et pictogrammes de mort. Les deux
+autres candidats sont un jeu d'emblèmes d'équipe et un atlas de police.
+
+**L'appariement image <-> ressource devait être durci, et c'est la vraie leçon.** Le rang seul
+(ressource[base+i] pour le descripteur i) tient sur l'atlas des armes mais DÉRIVE sur le
+sandbox après 41 images : le recensement des descripteurs est heuristique et laisse passer des
+faux positifs qui décalent tout ce qui suit. Trois versions ont été nécessaires :
+
+1. contrôle arithmétique strict (poids = chaîne de mips exacte) : répare le sandbox (75) mais
+   **fait perdre 9 des 39 icônes d'armes** — d'autres entrées stockent une chaîne plus courte ;
+2. contrôle sur toute troncature de la chaîne (toujours une égalité stricte, pas une
+   tolérance) : 31 armes seulement, insuffisant ;
+3. retenu — le rang reste le point de départ, le contrôle sert à SE RECALER (sonde courte vers
+   l'avant), et le repli par rang n'est accepté que si la ressource peut au moins contenir le
+   mip0. Un descripteur qui échoue à ce test est écarté **sans consommer de ressource**, donc
+   sans décaler ses suivants. Résultat : **40 armes** (une de plus qu'avant) et **73 sandbox**.
+
+**Une mesure qui n'a PAS marché, et qui est écartée plutôt que gardée « au cas où ».** Pour
+couper automatiquement la queue corrompue du sandbox, j'ai mesuré la densité de transitions
+d'opacité par pixel. Elle ne sépare pas : l'icône d'explosion (légitime, hérissée) sort en tête
+à 0,1437 quand les images réellement corrompues sont en dessous. La coupe est donc MANUELLE et
+bornée dans le code (73 sur 88 déclarées), avec sa justification écrite — pas un seuil qui
+donnerait l'illusion d'un critère.
+
+**La page de nommage.** `.ai/V7.5/icones/NOMMAGE_ICONES.html` remplace la page en lecture :
+une carte par icône (les deux styles côte à côte pour l'atlas des armes, un seul nom à donner
+par index), une liste déroulante des 29 armes du registre plus les catégories hors registre
+(objectif, véhicule, tourelle, pictogramme, équipement), un champ libre, **sauvegarde
+automatique en localStorage**, filtre « à nommer seulement », signalement des doublons
+d'attribution, table des armes du registre encore sans icône, et export TSV (copie ou
+téléchargement). C'est ce bloc TSV qui servira à écrire `weaponImageFiles`.
+
+**Ce que je retire**, parce que ça ne sert plus et que le garder ferait diverger deux pages sur
+les mêmes images : `REVUE_ICONES_ARMES.html` et sa planche de contrôle des paires. Mes
+propositions de nom disparaissent avec — elles étaient majoritairement « à valider » et la page
+interactive fait mieux.
+
+**Décompte** : 40 contour + 40 silhouette + 73 sandbox = **153 PNG**, 957 Ko, sous
+`static/weapons-assets/halo_infinite/jeu/` + `index.json` (tag source, dimensions, drapeau
+d'appariement vérifié, taux de repli BC7).
+
+**Reste ouvert** : 15 images déclarées par l'atlas sandbox (73 sur 88) ne sont pas servies ;
+les 55 armes Halo 5 ne sont pas couvertes (jeu non installé, format différent — la voie est
+l'API de métadonnées officielle H5).
+
+**Gates joués** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...`
+0 issue, `go test ./internal/archlint/...` vert, `node --check` sur le script de la page.
+`extract.go` dépassait 500 lignes après ces ajouts : scindé en `align.go` (l'appariement, là
+où le risque d'erreur silencieuse est le plus élevé) et `extract.go`.
+
+**Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/NOMMAGE_ICONES.html`, nommer, puis
+me remettre le bloc TSV — c'est lui qui débloque l'écriture de la table de correspondance et
+l'intégration web.
+
+## [2026-08-08] v7.5 voie C — les icones d'armes du jeu, extraites ; le NOM, lui, reste au gate humain
+
+**Statut** : Complété pour la phase d'extraction. Branche `feat/v75-icones`, worktree
+`LevelUp-wt-icones`. NON mergée, et surtout **NON branchée** : l'intégration web attend le
+gate visuel de l'utilisateur (décision #4 du master plan). Aucune ligne de `apps/web/` ni de
+`adapter_asset_urls.go` n'a été touchée.
+
+**Décision technique principale.** Le plan `PLAN_RECHERCHE_ASSETS_ICONES` proposait trois
+voies ; c'est la voie A (graphe de dépendances des `.module`) qui rend une correspondance
+vérifiable, et elle est allée jusqu'au pixel. La chaîne complète, chaque maillon mesuré :
+
+1. **Ancre d'identité, déjà versionnée** : les 32 bits HAUTS d'un identifiant filmshell de
+   `weapons/registry.go` sont le global tag id du `weap`. Contrôle croisé : `80977ba5`
+   (Mangler) et `d7915565` (Mutilator) apparaissent tels quels dans la colonne `detail` de
+   `damagetag/data/labels.tsv`. Aucune devinette, aucun nouveau catalogue.
+2. **Les 29 `weap` du registre référencent tous les DEUX MÊMES `bitm`** (`bc17adf1`,
+   `e39747c8`). Le troisième bitm varie mais se PARTAGE par groupes d'armes
+   (Mangler+Needler, MA40+MA5K, six armes Covenant ensemble) : c'est un réticule, pas une
+   icône. Les deux bitmaps communs déclarent 39 images de tailles TOUTES différentes.
+3. **Où vivent les pixels** : l'entrée `.module` porte à `+0x10` un index dans la table de
+   ressources du module. Il vaut 0 dans la variante `ds/` (qui n'a pas les images) et 2707
+   dans `pc/` — c'est ce zéro qui a fait la preuve du champ. Les 39 ressources qui suivent
+   correspondent une à une aux 39 images.
+4. **Format prouvé par l'arithmétique, pas par un plugin** : image 0 (333x117), ressource de
+   53372 o = en-tête 212 + données 72 + 53088, et 53088 = 40320 + 10080 + 2688, soit
+   mip0+mip1+mip2 en blocs 4x4 sur 16 octets. À l'octet près. Les blocs sont du BC7 : le mode
+   se lit en unaire dans les bits bas et l'histogramme donne 99 % de modes 4/5/6.
+5. **Le contenu** : R constant à 255, G constant à 0, B = rampe verticale de teinte appliquée
+   au rendu, **A = LE DESSIN**. Seul l'alpha est extrait, rendu blanc sur fond transparent —
+   même convention que `static/abilities-assets`.
+
+**Résultat.** 39 icônes x 2 styles (contour et silhouette pleine, que le jeu porte tous les
+deux) = 78 PNG, 616 Ko, sous `static/weapons-assets/halo_infinite/jeu/` + `index.json`
+(tag source, dimensions d'origine, dimensions recadrées, taux de repli BC7 par image).
+Le style du jeu est celui des icônes dessinées à la main par l'utilisateur : le trait se
+raccorde, le manque se comble sans rupture visuelle.
+
+**Décodeur BC7 : périmètre assumé et COMPTÉ.** Les modes 4, 5 et 6 (mono-sous-ensemble) sont
+décodés exactement. Les modes 0-3 et 7 exigent les tables de partition ; les recopier de
+mémoire ferait courir un risque d'erreur SILENCIEUSE (une table fausse rend une image
+plausible mais fausse). Ils sont donc rendus par la moyenne de leurs points extrêmes et
+comptés : `bc7_fallback_pct` par image dans `index.json`, **maximum mesuré 1,4 %**.
+
+**Le mur, et il est nommé : attribuer un NOM à une icône.** Deux voies essayées, deux échecs
+mesurés, tous deux consignés dans l'en-tête du binaire :
+
+- *structurelle* — l'index d'icône n'est pas un petit entier à offset constant dans le corps
+  du `weap` : sur les 29 armes, **0 offset candidat** (critère posé avant de regarder :
+  valeurs < 40 et au moins la moitié distinctes) ;
+- *visuelle automatique* — l'appariement par silhouette contre les 28 icônes déjà nommées du
+  dépôt **n'est pas discriminant** : marges de 0,00 à 0,10 pour des scores de 0,44 à 0,90.
+  La cause est structurelle et pas réglable : une fois remplies, des armes toutes « longues
+  et horizontales » se ressemblent trop. Corriger le bug de normalisation (le rapport
+  d'aspect était écrasé) n'a rien changé — c'est ce qui rend le verdict solide.
+
+Conséquence tenue jusqu'au bout : **les fichiers sont nommés par leur index d'atlas**,
+`contour-NN.png` / `silhouette-NN.png`, jamais par un nom d'arme deviné. La règle du plan
+(« afficher un mauvais fusil est pire qu'un libellé ») est ce qui a tranché.
+
+**Ce que la planche de contrôle a corrigé dans mes propres propositions.** L'artefact de revue
+porte des propositions de lecture visuelle. En plaçant 22 d'entre elles face à l'icône
+dessinée correspondante (`controle_paires.png`), sept se sont révélées non tenables en
+l'état et sont passées de « forte » à « à valider » — dont BR75, Bandit, Commando, Bulldog,
+Hydra, Disruptor et MA40. Il ne reste « forte » que ce que deux vues indépendantes
+confirment (épée, marteau, empaleur, Needler, pistolet à plasma, Sidekick, S7, SPNKr,
+crâne, drapeau, sandwich).
+
+**Manques, énoncés et non tus** :
+- **3 grenades** du registre : ce ne sont pas des `weap` (elles vivent en `eqip` + `proj`
+  déclarés par le tag `gggl`), le chemin utilisé ici ne les atteint pas et aucune icône de
+  grenade n'a été identifiée dans l'atlas.
+- **12 icônes de l'atlas non attribuées**, dont une partie sont des objets d'objectif (crâne
+  Oddball, drapeau, caisses) et non des armes.
+- **Halo 5** : les 55 armes du registre H5 ne sont pas couvertes. Le jeu n'est pas installé
+  sur ce poste et son format d'archives diffère ; la voie à explorer est l'API de
+  métadonnées officielle H5, pas ces archives.
+
+**Livrables** : `apps/go-api/cmd/weapon-icons-build/` (le binaire reste : il régénère un
+artefact versionné, critère de la purge J3 lot A), les 78 PNG + `index.json`, et l'artefact
+de revue `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` (+ trois planches jointes).
+
+**Gates joués** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...`
+0 issue, `go test ./internal/archlint/... ./internal/games/weapons/...` vert.
+
+**Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` et
+nommer les icônes arme par arme. Sans ce passage, rien ne se branche : la table
+`weaponImageFiles` de `adapter_asset_urls.go` ne peut être écrite qu'après.
 
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
@@ -61384,3 +62042,382 @@ Coverage+Baseline — tous success (E2E skipped, régime normal). Le premier run
 session concurrente — dépendance accidentelle, corrigée par helper local ; (2) OpenAPI
 Lint sur timeouts Docker Hub (infra, résolu au run suivant). Leçon : deux sessions dans
 un même worktree = un tree local qui compile n'est pas un tree committé qui compile.
+## [2026-08-08] v7.5 voie C — icones : le schema de nommage du kill feed, et la fin des tables recopiees
+
+**Statut** : Complete.
+
+**Question de depart (utilisateur)** : « c'est curieux que tu en trouves certains et pas
+d'autres, y a pas une structure similaire ? »
+
+**Decision technique**. Deux reponses, mesurees et non supposees.
+
+1. *Pourquoi certains sortent.* Le craquage est LEXICAL : un murmur3 ne rend aucune information
+   partielle, un nom sort si et seulement si la chaine exacte a ete essayee. Mesure decisive :
+   `bulldog`, `sidekick`, `disruptor`, `mangler`, `ravager`, `cindershot` SONT dans les chaines
+   du binaire — `killfeed_<mot>` a donc bien ete essaye et a echoue. Le kill feed ne les nomme
+   pas par leur nom commercial. Ce que les noms qui MARCHENT ont en commun : ils s ecrivent
+   `<qualifiant>_<classe>` (`battle_rifle`, `assault_rifle`, `plasma_pistol`). Decliner ce
+   schema rend `commando_rifle`, `ma5k_smg`, `plasma_blaster` — kill feed a 58/88. Elargi a
+   17 006 formes, le filon ne rend plus rien : les 30 restants relevent du gate humain.
+   Mesures annexes : l ordre de la table `bitd` ne groupe rien (rang 0 -> index 10, rang 1 ->
+   index 32) ; l ATLAS, lui, est ordonne par famille (armes 0-25, vehicules 26-45, grenades
+   46-51, pictogrammes 52-72) — utile pour choisir quoi essayer, pas pour deviner un nom.
+
+2. *La cause du « il manque des etiquettes ».* Les tables de `NOMMAGE_ICONES.html` et de l etat
+   de l art etaient une COPIE MANUELLE d `index.json`. Rien ne comparait les deux : elles ont
+   vieilli en silence. Corrige a la source — `weapon-icons-build` REECRIT desormais ces quatre
+   tables entre marqueurs (`cmd/weapon-icons-build/page.go`), et un marqueur absent est une
+   erreur bloquante. Une table perimee est structurellement impossible. Defaut collateral
+   corrige au passage : le `|` de `bandit | bandit_evo` cassait les colonnes Markdown, il est
+   echappe par le generateur.
+
+**Resultats observes**. 168 PNG inchanges (40 contour + 40 silhouette + 88 kill feed) ;
+26 weapon_key lus dans le jeu ; 23 noms craques cote armes (21 dans la plage de l atlas, dont
+10 marques `nom_a_verifier`) ; 58 noms cote kill feed. `gofmt`, `go vet`, `go build ./...`
+verts ; page.go a 185 lignes, aucun fichier au-dessus du seuil.
+
+**Prochaine etape**. Gate visuel utilisateur sur `NOMMAGE_ICONES.html` — l integration web
+reste HORS de ce lot par consigne.
+
+## [2026-08-08] v7.5 voie C — icones : le vocabulaire « designations » ne prend pas, et deux pistes fermees
+
+**Statut** : Complete.
+
+**Vocabulaire soumis par l utilisateur** (vestige, coil, fall, turret, mangler, cannon, scrap,
+spnkr, m41, pulse, carbine, heatwave, cindershot, ravager, disruptor + les designations MK50 et
+CQS48 pour Sidekick et Bulldog). Decline en `<qualifiant>_<classe>` et essaye seul :
+**26 166 formes, 0 correspondance** sur les vraies cibles. Le kill feed ne hache pas les
+designations.
+
+**Correction de methode au passage**. Le mode `kfgaps` reconstruisait un dictionnaire plus
+pauvre que celui de la production : sa liste de « trous » contenait des SID deja resolus
+(`d253deb2` = `killfeed_turret_plasma`, index 21 — verifie). Sur-ensemble, donc aucune cible
+manquee, mais decompte fausse. Nouveau mode `truegaps` : la liste se lit dans `index.json`.
+Verdict exact — **30 index sans nom mais seulement 26 identifiants** dans la table `bitd` :
+quatre images n ont aucune entree de nommage et ne seront jamais nommees par cette voie. Borne
+dure, a consigner comme telle.
+
+**Deux pistes tentees et fermees, mesures a l appui.**
+
+1. *Moisson UTF-16LE du binaire.* Vrai trou de methode identifie (la moisson ASCII coupe une
+   chaine large a chaque caractere, elle n en sort jamais). Corrige puis mesure : **1749
+   chaines** seulement, 0 correspondance. Le binaire est quasi entierement ASCII.
+2. *Appariement par silhouette ENTRE LES DEUX ATLAS DU JEU.* La refutation existante portait
+   sur les icones dessinees du depot — autre trace, autre artiste ; comparer les deux atlas du
+   meme jeu est un probleme different et n avait pas ete tente. Controle pose AVANT de conclure :
+   13 paires connues des deux cotes. Resultat **2/13**, marges de 0,01 a 0,07. Le matcheur n a
+   pas ete publie. Le verdict est desormais general : la silhouette ne discrimine pas ces
+   icones, meme a source identique.
+
+**Resultats observes**. Aucun nom gagne cette fois. L etat reste 58/88 cote kill feed,
+26 weapon_key et 23 noms craques cote armes. Doc mise a jour (3 lignes de reserve ajoutees au
+registre des pistes mortes, borne des 26 SID consignee).
+
+**Prochaine etape**. Gate visuel utilisateur — c est desormais la seule voie pour les 30
+restants, et 4 d entre eux sont hors de portee de tout craquage.
+
+## [2026-08-08] v7.5 voie C — icones : quatre routes de plus tentees, la voie automatique est epuisee
+
+**Statut** : Complete.
+
+**Question** : « as-tu des idees de resolution ? » Quatre pistes, toutes menees jusqu au verdict.
+
+1. **Champ `damage sprite index`** (le kill feed affiche la SOURCE DE DEGAT, et le plugin
+   declare bien ce champ dans le meme bloc `UI display info` que le `sprite index` deja
+   exploite). Offsets verifies sur les octets bruts et non postules : `sprite index` +48,
+   `alt sprite` +52 (porte l atlas silhouette `e39747c8`), `alt sprite index` +80 — il vaut le
+   MEME index, ce qui valide la lecture — puis `damage sprite index` +84. Verdict : **0 pour
+   les 29 armes**. Le champ existe, il n est pas renseigne.
+
+2. **Balayage exhaustif des tags.** Si un tag portait un des 26 identifiants, il designerait
+   l icone sans qu on ait a craquer le nom — et le depot sait deja relier `jpt!` a l arme.
+   **260 415 tags, 3,9 Go** : les 26 identifiants n apparaissent QUE dans `bitd 8646f61a`
+   lui-meme. Rien dans les DONNEES ne les relie a une arme : la correspondance est faite par le
+   CODE a l execution. C est le resultat le plus structurant de la serie.
+
+3. **Force brute** sur le suffixe (prefixe `killfeed_` connu, alphabet `[a-z_]`). Controle
+   prealable : l implementation locale de murmur3 reproduit `mapvar.LabelHash` sur trois valeurs
+   connues, sinon on s arretait. Jusqu a 5 caracteres : exhaustivement rien. Jusqu a 7
+   (1,05e10 essais, 2 min) : 68 candidats, soit exactement le bruit attendu (~64), tous du
+   charabia. Les vrais noms font 12 a 20 caracteres — hors de portee de toute enumeration.
+
+4. **Prefixes composes** (`killfeed_weapon_`, `killfeed_vehicle_`, `killfeed_medal_`, `kf_`,
+   `hud_`... 22 en tout) sur tout le vocabulaire : 408 608 mots x 22 = **8 989 376 formes,
+   0 correspondance**.
+
+**Conclusion**. La voie automatique est epuisee, et c est desormais mesure plutot que suppose.
+Le seul chemin restant serait de retrouver la table a l execution (Ghidra / CheatEngine) —
+chantier de retro-ingenierie a part entiere, hors de ce lot, et dont le precedent (scan statique
+de l EXE pour les WID d armes) etait negatif. Le gate humain n est pas un pis-aller : c est la
+voie la moins couteuse.
+
+**Resultats observes**. Etat inchange : 168 PNG, 26 weapon_key, 23 noms craques cote armes,
+58 cote kill feed, 30 index a nommer a la main dont 4 sans aucune entree de nommage. Registre
+des pistes mortes enrichi de 4 lignes avec leurs mesures.
+
+**Prochaine etape**. Labellisation manuelle par l utilisateur sur `NOMMAGE_ICONES.html`.
+
+## [2026-08-09] v7.5 voie C — icones : la passe humaine verse 22 cles et etablit une regle de priorite
+
+**Statut** : Complete.
+
+**Ce qui rentre**. `NOMMAGE_GATE_2026-08-09.tsv` — la passe de nommage de l utilisateur, versee
+telle quelle (elle ne vivait qu en localStorage et dans un fichier de telechargement : travail
+manuel non reproductible, donc a versionner sans attendre). 22 weapon_key ajoutes sur l atlas du
+kill feed, dont neuf que le jeu ne savait pas nommer.
+
+**Controle croise**. Les 26 cles de l atlas d armes issues du `sprite index` sont reproduites a
+l identique par la passe humaine : **zero divergence**. Les deux sources, lecture machine et
+oeil humain, se confirment.
+
+**Decision technique — regle de priorite**. Le jeu nomme `killfeed_heatwave` l index 22 du kill
+feed, mais l image y est le Cremateur (`hinf_cindershot`) ; le Calcineur est a l index 23. Le
+meme decalage etait deja constate sur l atlas d armes (index 20). Confirme deux fois sur deux
+atlas independants, ce n est plus une reserve : **en cas de desaccord, `sprite index` + registre
+font foi, jamais le nom craque**. Sans cette regle l integration afficherait le Calcineur a la
+place du Cremateur. Consequence pratique : les libelles FR/EN ne sont PAS recopies dans le TSV —
+pour toute ligne portant un weapon_key ils sont deja canoniques dans `weapon_names.toml`, et
+dupliquer creerait une seconde source de verite.
+
+**Pistes tentees ce jour, toutes negatives**. (1) `HaloInfinite.exe.c`, 40 Mo de decompilation
+Ghidra deja presents sur la machine : 0 correspondance sur les 26 identifiants — et le CONTROLE
+echoue aussi (meme les identifiants connus, tag `bitd` et atlas, n y figurent pas). Ces
+constantes ne sont jamais des litteraux dans le code, elles viennent des donnees. (2)
+`hardlight`, propose par l utilisateur : le mot EST dans le binaire, donc deja essaye sous 22
+prefixes ; 3848 formes composees en plus (tonneaux, bobines, hasards) rendent 0.
+
+**Defaut corrige**. La page de nommage portait un paragraphe corrompu par un ancien `sed`
+(texte melange, `&lt;nom&gt;` casse) et deux compteurs perimes contradictoires (43 puis 55). La
+prose ne porte plus de chiffre : le compteur calcule fait foi.
+
+**Restent sans etiquette** : atlas d armes 19, 31, 32 ; kill feed 25, 39, 40, 48, 63, 75, 77, 87.
+Les tonneaux/bobines (kill feed 41-45, armes 27-30) sont donnes comme des SUPPOSITIONS par
+l utilisateur — a confirmer par observation en Theater avant toute publication.
+
+**Prochaine etape**. Etudier la correlation film -> icone demandee par l utilisateur : lister
+les kills dont la source de degat n est pas une arme du registre (tonneaux, bobines, chute) pour
+qu il les constate en Theater, plutot que de deviner.
+
+## [2026-08-09] v7.5 voie C — icones : l oeil humain rend un nom que la machine avait manque
+
+**Statut** : Complete.
+
+**Deuxieme passe de nommage** versee (`NOMMAGE_GATE_2026-08-09.tsv`, remplace la premiere) :
+armes 19 = Canon a mitraille (coherent avec kill feed 14), kill feed 39 = tourelle Shade banie,
+40 = tourelle Shade, 48 = grenade Dynamo — ce dernier exactement dans le trou entre plasma (47)
+et spike (49), comme la position le laissait attendre.
+
+**Decision technique — un armement peut s ecrire en DEUX mots.** L utilisateur a suppose « le 87
+est une autre variante du Falcon, peut-etre celle equipee d un lance-grenades ». Hache :
+`killfeed_falcon_grenade_launcher` tombe **exactement** sur le StringID de l index 87 (verifie
+dans la table `bitd`). Kill feed a **59 sur 88**. Cause de l echec precedent identifiee et
+corrigee : `patternVocabulary` ne composait `<engin>_<armement>` qu avec des armements d UN mot
+(`chaingun`, `gauss`, `rocket`), jamais `grenade_launcher`. La composition a deux mots est
+desormais declinee — 9 armements composes x les engins.
+
+**Ce que ca confirme sur la methode**. Deux fois de suite, ce sont les mots de l utilisateur
+REGARDANT les images qui ont debloque ce qu aucune moisson n atteignait. Le craquage est
+lexical : il ne trouve que ce qu on lui donne a essayer, et un humain qui voit un lance-grenades
+sur un Falcon est une meilleure source de vocabulaire que 408 000 chaines de binaire.
+
+**Doc inversee corrigee**. La page annoncait encore « une divergence reste a trancher » pour
+l index 20 (`heatwave` vs `hinf_cindershot`) : elle EST tranchee depuis la passe humaine, qui a
+confirme le meme decalage sur le kill feed (index 22). La page dit maintenant la regle. Deux
+compteurs en dur y ont ete supprimes au profit du compteur calcule.
+
+**Resultats observes**. 168 PNG, 26 weapon_key, 23 noms craques cote armes, 59 cote kill feed.
+`gofmt`, `go vet`, `go build` verts ; aucun fichier au-dessus du seuil ; zero `fmt.Println`.
+
+**Restent sans etiquette** : kill feed 25, 63, 75 (non reconnus par l utilisateur) et 77
+(hypothese « bombe/balle », a confirmer). Les index d armes 31 et 32 ne sont pas des trous : ce
+sont les variantes de bobine listees en 30.
+
+**Prochaine etape**. Correlation film -> icone pour les tonneaux et bobines (proposee, non
+lancee : hors perimetre « extraction + revue » de ce lot).
+
+## [2026-08-09] v7.5 voie C — icones : le catalogue de tags de degat etait la source manquante
+
+**Statut** : En cours (le balayage des films tourne).
+
+**Decision technique**. La voie automatique n etait pas epuisee, elle etait MAL ALIMENTEE.
+`internal/games/halo_infinite/film/damagetag/data/labels.tsv` — deja versionne, deja embarque —
+porte le nom d asset INTERNE de chaque source de degat (`sb_010_grn_un_lightninggrenade`,
+`sb_008_exp_single_small_hardlight`, `sb_010_tur_bt_gatlingmortar`). Ce vocabulaire n avait
+jamais ete donne au craqueur. Branche via l API du paquet (`damagetag.IDs` + `Lookup`), pas par
+un chemin de fichier.
+
+Les noms y sont COLLES la ou le kill feed separe : toutes les insertions d un ou deux
+underscores sont generees, sur le nom entier et sur chacune de ses queues (le prefixe
+`sb_010_grn_un_` est un classement, pas un nom). Aucune heuristique de dictionnaire.
+
+**Resultats observes**. `killfeed_lightning_grenade` -> index 48 : la grenade Dynamo s appelle
+« lightning grenade » en interne, ce qui explique pourquoi `dynamo_grenade` echouait depuis le
+debut. `killfeed_gatling_mortar` -> index 14. La source retrouve aussi
+`killfeed_falcon_grenade_launcher` de facon INDEPENDANTE de l hypothese humaine — controle
+croise. **Kill feed a 61 sur 88**, 27 trous restants.
+
+**Ce que ca change pour les bobines**. Le catalogue distingue QUATRE types d energie
+(`hardlight`, `kineticunsc`, `plasma`, `shock`) sur deux chassis — exactement la famille que
+l utilisateur voyait sans pouvoir la trancher, et il avait devine juste en citant « hardlight ».
+Une occurrence observee par type lie les quatre icones d un coup.
+
+**En cours**. Balayage `killsource json` des 60 films les plus RECENTS (Theater ne garde que le
+recent) pour produire, par tag de source non-arme : film, date, carte, horodatage. Les films
+sont apparies aux matchs par prefixe de 8 caracteres du `match_id` — verifie.
+
+**Prochaine etape**. Livrer la table des temoins, un par type d energie.
+
+## [2026-08-09] v7.5 voie C — icones : les temoins Theater, et deux pistes de plus fermees
+
+**Statut** : Complete.
+
+**Livrable**. §5 de l etat de l art — la table des temoins a constater en Theater. Produite en
+balayant les **60 films les plus recents** du cache avec `cmd/killsource json` (Theater ne garde
+pas l ancien), en retenant les morts dont la nature n est pas `arme`, groupees par tag, et en
+gardant l occurrence la plus recente de chaque. **1103 morts non-armes relevees.** Le film est
+appari au match par le prefixe de 8 caracteres du `match_id`, ce qui donne carte et date.
+
+Le TYPE D ENERGIE de chaque tonneau vient du catalogue `damagetag`
+(`sb_008_exp_single_small_<energie>`), pas d une supposition. Quatre types, quatre temoins :
+plasma et kinetic UNSC dans le MEME film du 24 juillet (Launch Site, 00:45 et 03:16), shock le
+meme jour (Flood Gulch, 06:28). **Reserve : le hardlight n existe que sur Chasm et seulement
+dans des films de MARS** — il a pu quitter Theater, auquel cas il faut rejouer un match sur
+Chasm.
+
+**Fait nouveau, mesure directe**. En listant les index presents dans `bitd` : **cinq index n ont
+AUCUNE entree de nommage — 25, 40, 62, 63, 68**. Aucun craquage ne les nommera, jamais. Deux
+d entre eux (25 et 63) sont precisement ceux que l utilisateur ne reconnait pas : pour ceux-la
+il n existe aucune source, ni machine ni table. Corrige l estimation precedente (« quatre »),
+qui etait derivee et non mesuree.
+
+**Piste fermee**. L en-tete `.module` declare un `stringsSize` a +0x24 que le lecteur parse sans
+jamais s en servir — piste evidente pour recuperer les chemins d assets. Mesure : **0 archive
+sur 132** porte une section de chaines non vide. Strippee en release comme le reste.
+
+**Resultats observes**. Kill feed a 61/88, 27 trous. Aucun gate technique en attente : gofmt,
+vet et build verts au commit precedent, aucune modification de code dans celui-ci (doc seule).
+
+**Prochaine etape**. Observation Theater par l utilisateur ; puis, si les tonneaux sont
+tranches, l integration web reste derriere le gate visuel (hors de ce lot).
+
+## [2026-08-09] v7.5 voie C — icones : temoins nommes, et le plan d integration
+
+**Statut** : Complete (plan ecrit, non execute).
+
+**Temoins enrichis**. La table §5 porte desormais TUEUR -> VICTIME, extrait par une seconde passe
+`killsource json` sur les 5 films temoins. Deux temoins ont JGtm pour tueur (plasma 08:38 et
+kinetic UNSC 03:16, meme film `fccc61cd`) : ce sont les plus faciles a retrouver, le POV du film
+etant le sien. Le tueur est donne parce que dans Theater on cherche un EVENEMENT, pas un
+horodatage a la seconde.
+
+**Index 16 tranche**. L utilisateur confirme son attribution : `plasma_blaster` (nom du jeu) est
+le Fusil traqueur, les deux icones sont distinctes et chacune est a sa place. **Troisieme
+occurrence** du meme ecart apres heatwave/cindershot sur deux atlas : le nom interne qualifie le
+TYPE DE PROJECTILE, pas l arme. La regle « sprite index + registre font foi, jamais le nom
+craque » est confirmee une fois de plus.
+
+**Decision technique — le mapping va dans le CODE, pas en base.** `index.json` est genere par
+l extraction et porte deja `index -> weapon_key`, LU dans le jeu. Le mettre en base imposerait
+migration + seed pour une donnee statique deja versionnee, et creerait une seconde source de
+verite que rien ne comparerait — exactement le defaut des tables recopiees de la page de nommage,
+corrige au commit `5543dc170`. Precedent du depot : `abilities-assets/index.json`. La base garde
+ce qu elle porte bien (registre, libelles FR/EN, identifiants filmshell) et n est pas touchee.
+
+**Trois defauts de l existant, mesures par la cartographie** : (1) la resolution d image est
+keyee par `weapon_labels.name_en`, dernier reste du domaine arme keye par nom EN brut, et il
+DIVERGE deja de la source canonique (Mk51 vs Mk50 pour le Sidekick) ; (2) `Cindershot` est servi
+par un fichier nomme `Cremator.png` ; (3) aucun test ne verifie qu un PNG existe sur disque — un
+renommage passe la CI et casse l UI en silence. L etape 1 du plan corrige (1), l etape 2 corrige
+(2) et (3).
+
+**Teinte d equipe — faisable, avec une limite dure.** Verifie sur les pixels : le dessin est
+porte par l alpha, en blanc (`killfeed-00.png`, 1638 opaques dont 94,7 % blanc pur ; le reste est
+l anticrenelage premultiplie). Un masque CSS teinte par `tokenCssVar('team-ally')` suffit, sans
+nouvel asset, et suit automatiquement les couleurs d outline choisies in-game
+(`theme-provider.tsx:27-30`). MAIS le kill feed web est un `scatter` ECharts : un symbole image
+ECharts NE PEUT PAS etre teinte. Trois issues chiffrees dans le plan ; la pre-teinte est REFUSEE
+(les couleurs d equipe sont configurables, le produit cartesien n existe pas). A trancher avec
+l utilisateur : le kill feed reste-t-il un chart, ou devient-il une liste DOM ?
+
+**Livrable**. `.ai/V7.5/icones/PLAN_INTEGRATION_ICONES.md` — 4 etapes, chacune avec son gate,
+plus un §5 « ce qui n est PAS dans ce plan » (le rejeu 2D refuse deliberement les couleurs
+d equipe, `ReplayTeams.tsx:102-110` ; Halo 5 sert des URL CDN ; la licence de redistribution
+reste une decision utilisateur).
+
+**Prochaine etape**. Decision utilisateur sur le rendu du kill feed, puis execution de l etape 1.
+
+## [2026-08-09] v7.5 voie C — icones : les bidons de l atlas d armes, correlation offline
+
+**Statut** : Complete.
+
+**Question** : les index 27, 30, 31, 32 de l atlas d armes (« de toute evidence des fusion
+coils ») ont-ils une correlation lisible hors ligne, comme le kill feed en a une ?
+
+**Decision technique**. Le bloc `UI display info` n est PAS propre au `weap` : c est une
+structure partagee du systeme de tags. Balaye sur tous les groupes — l auto-validation par
+l atlas servant de filtre — il rend qui revendique chaque index. Croise avec le catalogue de
+degats, qui cite parfois le `weap` d un objet explosif ET son type d energie, la correspondance
+se lit sans rien deviner.
+
+**Resultats observes**.
+- **Index 27 = `fusion_coil`, CERTAIN** : quatre tags concordent, et le catalogue identifie DEUX
+  d entre eux (`1d63a8cd`, `2e4faab6`) comme objets explosifs **kinetic UNSC**. Le marqueur
+  « ? » tombe. C est la correlation demandee, et elle est offline.
+- **Index 29 n est PAS un bidon** : l image est un marteau a long manche. La lecture
+  « Diminisher of Hope » de l utilisateur (variante mythique du marteau) est coherente.
+- **Index 31 : le nom craque est FAUX, et l image le prouve** — `shade_turret` revendique par
+  DEUX tags alors que l image est un bidon. La concordance de deux tags NON canoniques ne vaut
+  donc pas canonicite : ils partagent le meme index perime. Troisieme confirmation de la regle
+  « le nom craque ne designe pas l objet ».
+- **Index 30 et 32 : AUCUN tag ne les revendique.** Il n existe pas de correlation a suivre. Les
+  ranger parmi les variantes de bidon reste une inference d aspect, raisonnable mais NON etablie
+  — dire laquelle porte quelle energie serait de la devinette, non publiee.
+
+**Reports consignes** (§6.3 de l etat de l art) : la verification Theater est reportee, la
+machine de l utilisateur ne faisant pas tourner Halo Infinite ; condition de reprise = une
+machine capable de lancer le jeu. Les temoins restent valables tant que les films sont dans
+Theater, le hardlight (deja limite a des films de mars) etant le plus perissable. L identite des
+bidons 30 et 32 depend de cette verification.
+
+**Gates**. Diff de documentation seule (aucun code produit modifie ; la sonde `coils` vit dans
+`cmd/tmp_wicons`, gitignore). `gofmt`, `go vet` et `go build` etaient verts au dernier commit de
+code (`8464c10d3`), inchange depuis.
+
+**Prochaine etape**. Rien de bloquant cote extraction. Decisions utilisateur en attente : rendu
+du kill feed (chart ou liste DOM) et redistribution des assets, toutes deux prealables a
+l execution de `PLAN_INTEGRATION_ICONES.md`.
+
+## [2026-08-09] v7.5 voie C — icones : la cle d icone n est ni un nom ni un weapon_key, c est le tag
+
+**Statut** : Complete (activateur livre, plan fige ; implementation produit NON commencee).
+
+**Decisions utilisateur enregistrees** : index 29 = Diminisher of Hope, variante du marteau
+antigravite (coherent avec l image) ; kill feed en LISTE DOM, plus recent en HAUT, les kills
+s ajoutant en haut a la lecture du replay ; redistribution des assets approuvee, avec les tests
+comblant les trous releves.
+
+**Decision technique — mon propre plan etait faux, la mesure l a corrige.** L etape 1 prevoyait
+de keyer la resolution d image par `weapon_key`. Mesure sur la metadata de prod : 42 etiquettes,
+36 identifiants, 29 armes au registre, **7 etiquettes SANS `weapon_key`** — dont MA5K Avenger et
+Mutilator, qui ont une icone AUJOURD HUI. Keyer par `weapon_key` les aurait fait disparaitre.
+
+La bonne cle etait deja ecrite au §1.1 de l etat de l art et je ne l avais pas reliee : les
+**32 bits HAUTS** d un identifiant filmshell sont le global tag id du `weap`. Verifie 6/6 sur les
+donnees reelles, y compris les trois cas durs — une VARIANTE (Diminisher of Hope -> index 16),
+une arme sans `weapon_key` (MA5K -> 36) et deux armes HORS registre (Mutilator -> 37,
+Sandwich/Mythic Sandwich -> 35). Ni `name_en` ni `weapon_key` ne couvraient ces trois cas
+ensemble.
+
+**Livre** : `cmd/weapon-icons-build/weaptags.go` — balayage de TOUS les groupes de tags (le bloc
+`UI display info` n est pas propre au `weap` ; c est ce balayage qui avait fait sortir l index
+29), auto-valide par l atlas. `index.json` porte desormais `tags_weap` par index. C est
+l activateur de l etape 1 : la table produit s en derive sans nom ni registre.
+
+**Reste** : la modification produit (interface `WeaponImageURL`, adapters, tests, garde-rail).
+Non commencee — l utilisateur a signale de preserver le contexte et de privilegier le plan fige.
+
+**Gates** : `gofmt`, `go vet`, extraction rejouee (168 entrees, 61 noms kill feed), seuils de
+taille respectes. Aucun code produit touche, donc aucune suite de tests applicative concernee.
+
+**Prochaine etape**. Etape 1 « reste a faire » du plan : `WeaponImageURL(weaponID int64)`, table
+generee, sentinelles 0/1/2 statuees, tests de divergence et de presence des PNG.
