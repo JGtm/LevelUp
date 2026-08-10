@@ -1,3 +1,40 @@
+## [2026-08-10] v7.5 — cartes : la frontiere de mort est un MAILLAGE, pas un convexe — 25/25 cartes
+
+**Statut** : Complete. Detail : §14.6 du handoff.
+
+**Decision technique principale : la frontiere `sddt` est un MAILLAGE FERME NON CONVEXE, et le
+test d'appartenance est une PARITE DE RAYON.** L'intersection des demi-espaces n'etait exacte
+que par accident, sur les cartes dont la frontiere est une boite.
+
+    ridgeline     12 triangles ->  6 plans   (boite : l'intersection tombait juste)
+    catalyst      20 triangles ->  8 plans
+    va_behemoth  116 triangles -> 64 plans   (concave : intersection VIDE -> 100 % efface)
+
+Balayage des 25 cartes mesurables avec la parite : **0 ancre perdue, 0 coquille refusee**,
+decor retire de 0 a 87,8 %. Les quatre cartes que le gate avait attrapees sont REPAREES :
+behemoth 12,1 %, forbidden 36,8 %, fragmentation 27,2 %, heavies 22,9 %.
+
+**MA CAUSE PRESUMEE ETAIT FAUSSE.** J'avais ecrit au handoff §14.4 que `Coquille()` fusionnait
+PLUSIEURS volumes et qu'il fallait leur UNION. La sonde montre qu'il n'y a qu'UN enregistrement
+de 28 o par carte. J'aurais construit un correctif d'union — inutile — sans cette mesure de
+trois minutes. **« Cause presumee » n'est pas un laissez-passer pour sauter la mesure.** Le
+§14.6 corrige le §14.4 explicitement plutot que de reecrire l'histoire.
+
+**UN PIEGE ATTRAPE PAR LE TEMOIN AVANT LES DONNEES REELLES** — une premiere aujourd'hui. Le
+rayon +X vise pile la diagonale partagee par les deux triangles d'une face axee : intersection
+comptee deux fois, parite paire, centre de la boite declare dehors. Le temoin a rougi tout de
+suite ; il aurait rougi pareil sur les vraies cartes, pleines de faces axees. D'ou
+`directionRayonParite`, volontairement de travers.
+
+**Le gate ne rougit plus sur une exception connue mais la NOMME** : `live_fire` (sgh_interlock)
+n'a aucun tag sbsp — instruit au §1 ter. Le balayage la declare NON MESURABLE avec sa raison au
+lieu de faire `t.Fatal`. Signaler n'est pas avaler.
+
+**Prochaine etape** : la suite Forge — les 1 139 objets de Vagabond sans modele `rtgo`
+(saut `bloc`/`scen`/`mach` -> `hlmt`), dernier morceau ouvert du chantier.
+
+---
+
 ## [2026-08-10] v7.5 — cartes : le gate de la coquille attrape 4 cartes, et la regle devient auto-verifiee
 
 **Statut** : Complete. Detail : §14.4 et §14.5 du handoff

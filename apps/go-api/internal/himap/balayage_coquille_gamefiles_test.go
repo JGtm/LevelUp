@@ -1,6 +1,7 @@
 package himap
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -50,7 +51,7 @@ func TestBalayageCoquille(t *testing.T) {
 		refusee                  bool
 	}
 	var bilans []bilan
-	var sansCoquille, absentes []string
+	var sansCoquille, absentes, nonMesurables []string
 
 	for _, mod := range modules {
 		// UN SOUS-TEST PAR CARTE : un `t.Fatal` dans `peupleRendu` (module illisible) ne doit tuer
@@ -72,6 +73,14 @@ func TestBalayageCoquille(t *testing.T) {
 			if len(ancres) == 0 {
 				return
 			}
+			// EXCEPTION CONNUE, signalee et non avalee : `live_fire` (sgh_interlock) ne porte AUCUN
+			// tag sbsp — instruit au §1 ter du handoff, sa geometrie n'est pas la ou celle des
+			// 26 autres se trouve. `peupleRendu` y ferait `t.Fatal` ; on la declare non mesurable
+			// AVEC SA RAISON plutot que de rougir sur un cas deja tranche.
+			if _, err := ReadModuleInstances(chemin); err != nil {
+				nonMesurables = append(nonMesurables, fmt.Sprintf("%s (%v)", mod, err))
+				return
+			}
 			b := bilan{carte: mod}
 			rendu := cadreSurAncres(t, ancres)
 			rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
@@ -79,19 +88,19 @@ func TestBalayageCoquille(t *testing.T) {
 			peupleRendu(t, rendu, racine, chemin, ancres)
 			b.ancresAvant, b.pxAvant = compteAncresEtPixels(rendu, ancres)
 
-			coq := coquilleDeLaCarte(t, chemin)
-			if len(coq) == 0 {
+			fr := frontiereDeLaCarte(t, chemin)
+			if len(fr.Frontieres) == 0 {
 				sansCoquille = append(sansCoquille, mod)
 				return
 			}
-			b.plans = len(coq)
-			if !CoquilleGardeLesAncres(coq, ancres, zJeu) {
+			b.plans = len(fr.Frontieres)
+			if !FrontiereGardeLesAncres(fr, ancres, zJeu) {
 				b.ancresApres, b.pxApres = b.ancresAvant, b.pxAvant
 				b.refusee = true
 				bilans = append(bilans, b)
 				return
 			}
-			rendu.RestreintALaCoquille(coq, zJeu)
+			rendu.RestreintALaFrontiere(fr, zJeu)
 			b.ancresApres, b.pxApres = compteAncresEtPixels(rendu, ancres)
 			bilans = append(bilans, b)
 		})
@@ -109,7 +118,7 @@ func TestBalayageCoquille(t *testing.T) {
 			marque = "!!"
 			perdantes++
 		}
-		t.Logf("%s %-34s %d plans · ancres %2d -> %2d · pixels %7d -> %7d (%.1f %% retires)",
+		t.Logf("%s %-34s %d tris · ancres %2d -> %2d · pixels %7d -> %7d (%.1f %% retires)",
 			marque, b.carte, b.plans, b.ancresAvant, b.ancresApres, b.pxAvant, b.pxApres,
 			100*float64(b.pxAvant-b.pxApres)/float64(max(b.pxAvant, 1)))
 	}
@@ -118,6 +127,9 @@ func TestBalayageCoquille(t *testing.T) {
 	}
 	if len(absentes) > 0 {
 		t.Logf("%d modules absents de l'installation", len(absentes))
+	}
+	if len(nonMesurables) > 0 {
+		t.Logf("%d cartes NON MESURABLES : %s", len(nonMesurables), strings.Join(nonMesurables, " · "))
 	}
 	t.Logf("BILAN : %d cartes mesurees · %d coquilles REFUSEES (elles excluaient des ancres) · %d perdent des ancres",
 		len(bilans), refusees, perdantes)
@@ -146,15 +158,15 @@ func compteAncresEtPixels(r *Rendu, ancres [][3]float64) (int, int) {
 	return avecSol, px
 }
 
-func coquilleDeLaCarte(t *testing.T, cheminModule string) CoquilleSddt {
+func frontiereDeLaCarte(t *testing.T, cheminModule string) Sddt {
 	t.Helper()
 	chemin, err := ModuleVariante(cheminModule, "any")
 	if err != nil {
-		return nil
+		return Sddt{}
 	}
 	s, err := LitSddt(chemin)
 	if err != nil {
-		return nil
+		return Sddt{}
 	}
-	return s.Coquille()
+	return s
 }

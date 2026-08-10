@@ -212,20 +212,20 @@ func (v *Volume) CelluleDe(x, y float64) (int, bool) {
 // ou une frontiere non convexe, y perd tout — l'intersection de volumes disjoints est vide, ce
 // qui colle exactement au cas de `behemoth`. Le garde ci-dessous protege la livraison ; il ne
 // remplace pas le correctif.
-func CoquilleGardeLesAncres(c CoquilleSddt, ancres [][3]float64, zJeu float64) bool {
-	if len(c) == 0 || len(ancres) == 0 {
+func FrontiereGardeLesAncres(s Sddt, ancres [][3]float64, zJeu float64) bool {
+	if len(s.Frontieres) == 0 || len(ancres) == 0 {
 		return false
 	}
 	for _, a := range ancres {
-		if !c.Contient([3]float64{a[0], a[1], zJeu}, 0) {
+		if !s.ContientFrontiere([3]float64{a[0], a[1], zJeu}) {
 			return false
 		}
 	}
 	return true
 }
 
-func (r *Rendu) RestreintALaCoquille(c CoquilleSddt, zJeu float64) int {
-	if len(c) == 0 {
+func (r *Rendu) RestreintALaFrontiere(s Sddt, zJeu float64) int {
+	if len(s.Frontieres) == 0 {
 		return 0
 	}
 	masque := make([]bool, r.NX*r.NY)
@@ -234,7 +234,7 @@ func (r *Rendu) RestreintALaCoquille(c CoquilleSddt, zJeu float64) int {
 		y := r.Min[1] + (float64(j)+0.5)*r.Cell
 		for i := 0; i < r.NX; i++ {
 			x := r.Min[0] + (float64(i)+0.5)*r.Cell
-			if c.Contient([3]float64{x, y, zJeu}, 0) {
+			if s.ContientFrontiere([3]float64{x, y, zJeu}) {
 				masque[j*r.NX+i] = true
 				garde++
 			}
