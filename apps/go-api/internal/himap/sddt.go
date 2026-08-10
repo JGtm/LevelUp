@@ -120,7 +120,71 @@ func (s Sddt) Coquille() CoquilleSddt {
 	return out
 }
 
+// ContientFrontiere dit si un point est DANS le volume de survie, par PARITE DE RAYON sur le
+// maillage des triangles-frontieres.
+//
+// POURQUOI PAS L'INTERSECTION DES DEMI-ESPACES (`CoquilleSddt`). Parce que la frontiere n'est
+// pas un convexe : c'est un MAILLAGE FERME. Mesure du 2026-08-10 — le bloc parent ne porte
+// qu'UN enregistrement par carte (donc un seul volume, pas plusieurs), mais le nombre de
+// triangles varie enormement :
+//
+//	ridgeline     12 triangles ->  6 plans   (une boite : convexe, l'intersection marche)
+//	catalyst      20 triangles ->  8 plans   (convexe aussi)
+//	va_behemoth  116 triangles -> 64 plans   (NON CONVEXE : l'intersection s'effondre)
+//
+// C'est ce qui effacait 100 % de behemoth et 92,5 % de forbidden : l'intersection des
+// demi-espaces d'un maillage non convexe est vide ou minuscule. La parite de rayon, elle, est
+// exacte sur tout maillage ferme, convexe ou non.
+//
+// LA DIRECTION DU RAYON N'EST PAS +X, ET C'EST DELIBERE. Un rayon axial tombe exactement sur
+// les aretes des maillages axes — le centre d'une boite [0,10]^3 vise pile la diagonale
+// partagee par les deux triangles de sa face, l'intersection est comptee DEUX fois, la parite
+// devient paire et le point est declare dehors. Constate en ecrivant le temoin. La direction
+// ci-dessous est volontairement « de travers » : aucune arete d'un maillage axe ne s'y aligne.
+func (s Sddt) ContientFrontiere(p [3]float64) bool {
+	croisements := 0
+	for _, f := range s.Frontieres {
+		if rayonCoupeTriangle(p, f.Sommets) {
+			croisements++
+		}
+	}
+	return croisements%2 == 1
+}
+
+// directionRayonParite : direction « de travers », pour qu'aucune arete d'un maillage axe ne
+// s'y aligne (cf. `ContientFrontiere`). Normalisee, composantes sans rapport rationnel simple.
+var directionRayonParite = normalise([3]float64{1, 0.0037111, 0.0091347})
+
+// rayonCoupeTriangle : Moller-Trumbore avec le rayon de parite, sans test de face arriere (la parite
+// exige de compter TOUTES les intersections, quel que soit le sens de la face).
+func rayonCoupeTriangle(orig [3]float64, tri [3][3]float64) bool {
+	const eps = 1e-9
+	dir := directionRayonParite
+	e1 := [3]float64{tri[1][0] - tri[0][0], tri[1][1] - tri[0][1], tri[1][2] - tri[0][2]}
+	e2 := [3]float64{tri[2][0] - tri[0][0], tri[2][1] - tri[0][1], tri[2][2] - tri[0][2]}
+	h := [3]float64{dir[1]*e2[2] - dir[2]*e2[1], dir[2]*e2[0] - dir[0]*e2[2], dir[0]*e2[1] - dir[1]*e2[0]}
+	a := e1[0]*h[0] + e1[1]*h[1] + e1[2]*h[2]
+	if a > -eps && a < eps {
+		return false // rayon parallele au triangle
+	}
+	f := 1 / a
+	s := [3]float64{orig[0] - tri[0][0], orig[1] - tri[0][1], orig[2] - tri[0][2]}
+	u := f * (s[0]*h[0] + s[1]*h[1] + s[2]*h[2])
+	if u < 0 || u > 1 {
+		return false
+	}
+	q := [3]float64{s[1]*e1[2] - s[2]*e1[1], s[2]*e1[0] - s[0]*e1[2], s[0]*e1[1] - s[1]*e1[0]}
+	v := f * (dir[0]*q[0] + dir[1]*q[1] + dir[2]*q[2])
+	if v < 0 || u+v > 1 {
+		return false
+	}
+	return f*(e2[0]*q[0]+e2[1]*q[1]+e2[2]*q[2]) > eps
+}
+
 // Contient dit si un point est dans le volume de survie, avec une tolerance en metres.
+//
+// LECTURE CONCURRENTE, conservee pour les temoins : elle n'est exacte que si la frontiere est
+// CONVEXE. Preferer `Sddt.ContientFrontiere`.
 func (c CoquilleSddt) Contient(p [3]float64, eps float64) bool {
 	for _, pl := range c {
 		if pl[0]*p[0]+pl[1]*p[1]+pl[2]*p[2] < pl[3]-eps {
@@ -406,4 +470,18 @@ func ModuleVariante(cheminModule, variante string) (string, error) {
 		return "", fmt.Errorf("module %s/%s introuvable : %w", variante, dossier, err)
 	}
 	return p, nil
+}
+
+// CoquilleDepuisPlans rend la lecture CONCURRENTE (intersection des demi-espaces), calculee
+// depuis les sommets. N'existe que pour les temoins qui la departagent de la parite.
+func (s Sddt) CoquilleDepuisPlans() CoquilleSddt {
+	out := make(CoquilleSddt, 0, len(s.Frontieres))
+	for _, f := range s.Frontieres {
+		e1 := [3]float64{f.Sommets[1][0] - f.Sommets[0][0], f.Sommets[1][1] - f.Sommets[0][1], f.Sommets[1][2] - f.Sommets[0][2]}
+		e2 := [3]float64{f.Sommets[2][0] - f.Sommets[0][0], f.Sommets[2][1] - f.Sommets[0][1], f.Sommets[2][2] - f.Sommets[0][2]}
+		n := normalise([3]float64{e1[1]*e2[2] - e1[2]*e2[1], e1[2]*e2[0] - e1[0]*e2[2], e1[0]*e2[1] - e1[1]*e2[0]})
+		d := n[0]*f.Sommets[0][0] + n[1]*f.Sommets[0][1] + n[2]*f.Sommets[0][2]
+		out = append(out, [4]float64{n[0], n[1], n[2], d})
+	}
+	return out
 }

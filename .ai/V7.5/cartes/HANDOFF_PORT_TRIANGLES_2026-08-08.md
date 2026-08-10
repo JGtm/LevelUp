@@ -931,3 +931,47 @@ refusees, le decor reste entier.
 2. Le tableau ne s'imprimait qu'a la fin : aucun resultat partiel pendant 25 minutes de run.
 3. Mon filtre de lecture des resultats ne matchait pas le format de mes propres lignes — j'ai
    d'abord conclu a un echec muet la ou le tableau existait.
+
+### 14.6 CORRECTION DU §14.4 — la cause n'etait pas « plusieurs volumes »
+
+Le §14.4 annonce comme cause presumee que `Coquille()` fusionnerait PLUSIEURS volumes de
+frontiere. **C'est faux, et la sonde le montre** : le bloc parent (root @0x58) ne porte qu'UN
+enregistrement de 28 o par carte, avec UNE liste de triangles.
+
+    ridgeline     12 triangles ->  6 plans distincts
+    catalyst      20 triangles ->  8 plans
+    va_behemoth  116 triangles -> 64 plans
+
+La vraie cause est plus simple et plus profonde : **la frontiere est un MAILLAGE FERME, pas un
+convexe.** Ridgeline est une boite (6 plans), donc l'intersection des demi-espaces y tombe
+juste par accident. Behemoth est concave : l'intersection de ses 64 demi-espaces est vide, d'ou
+les 100 % effaces. Aucune union n'aurait corrige ca.
+
+**Le correctif : PARITE DE RAYON** (`Sddt.ContientFrontiere`, Moller-Trumbore). Exacte sur tout
+maillage ferme, convexe ou non, et sans aucun parametre. Resultat :
+
+    carte                   tris  ancres        decor retire      avant le correctif
+    behemoth                 116  14 -> 14           12,1 %       100 % efface
+    forbidden                 28  13 -> 13           36,8 %        92,5 % efface
+    fragmentation             60  22 -> 22           27,2 %        12 ancres perdues
+    fragmentation_heavies     60  20 -> 20           22,9 %         7 ancres perdues
+    catalyst                  20  19 -> 19           47,0 %       inchange
+    bazaar                    12  14 -> 14           82,7 %       inchange
+    cliffhanger               12  14 -> 14            0,0 %       inchange
+
+**0 coquille refusee, 0 ancre perdue.** Le garde `FrontiereGardeLesAncres` ne se declenche plus
+nulle part — il reste en place comme filet, il n'a plus rien a rattraper.
+
+**UN PIEGE ATTRAPE PAR LE TEMOIN, avant les donnees reelles.** Le premier jet lancait le rayon
+vers +X. Sur une boite axee, il vise pile la diagonale partagee par les deux triangles d'une
+face : l'intersection est comptee DEUX fois, la parite devient paire, et le centre de la boite
+est declare dehors. Le temoin a rougi immediatement — et il aurait rougi pareil sur les vraies
+cartes, pleines de faces axees. D'ou `directionRayonParite`, volontairement de travers.
+
+Le temoin qui SEPARE : deux boites disjointes et un point entre les deux. La parite repond
+« dehors » (juste) ; l'intersection des demi-espaces rend un volume VIDE et se trompe partout —
+exactement ce qui effacait behemoth.
+
+**Lecon** : ma cause presumee etait plausible, ecrite avec assurance, et fausse. Une sonde de
+trois minutes l'a defaite. Ecrire « cause presumee » ne dispense pas de la mesurer avant de
+construire le correctif dessus.

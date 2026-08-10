@@ -231,19 +231,19 @@ func appliqueCoquille(t *testing.T, r *Rendu, cheminModule string, zJeu float64,
 		t.Logf("coquille : lecture sddt : %v", err)
 		return
 	}
-	coq := s.Coquille()
-	if len(coq) == 0 {
+	fr := s
+	if len(fr.Frontieres) == 0 {
 		t.Logf("coquille : aucune frontiere dans le sddt de %s", filepath.Base(chemin))
 		return
 	}
 	// LA COQUILLE NE S'APPLIQUE QUE SI ELLE GARDE TOUTES LES ANCRES. Quatre cartes sur 25 y
 	// perdent de la zone jouable (cf. `CoquilleGardeLesAncres`) — sur celles-la on s'en passe
 	// plutot que d'amputer la carte.
-	if !CoquilleGardeLesAncres(coq, ancres, zJeu) {
+	if !FrontiereGardeLesAncres(fr, ancres, zJeu) {
 		t.Logf("coquille : %d plans mais elle EXCLUT des ancres — NON appliquee sur %s",
-			len(coq), filepath.Base(chemin))
+			len(fr.Frontieres), filepath.Base(chemin))
 		return
 	}
-	efface := r.RestreintALaCoquille(coq, zJeu)
-	t.Logf("coquille : %d plans · %d cellules hors frontiere effacees", len(coq), efface)
+	efface := r.RestreintALaFrontiere(fr, zJeu)
+	t.Logf("frontiere : %d triangles · %d cellules hors frontiere effacees", len(fr.Frontieres), efface)
 }
