@@ -26,7 +26,7 @@ func TestSondeScnr(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			bsp := choisitBSP(bsps, nil)
+			bsp := ChoisitBSP(bsps, nil)
 			bb := bsp.Bounds
 			for _, grp := range []string{"dwsg", "hlds", "cage", "stse", "trac", "sred", "snad"} {
 				for _, f := range m.Files(grp) {

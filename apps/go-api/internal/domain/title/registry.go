@@ -766,6 +766,33 @@ func (p *PathResolver) MapStructurePath(titleSlug, module string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_structure", module+".json")
 }
 
+// MapBackgroundDir retourne le répertoire des FONDS DE CARTE : l'image vue du dessus de
+// chaque carte, reconstruite depuis les triangles du maillage de rendu de son .module.
+// À distinguer de map_structure/, qui ne publie que des boîtes englobantes (AABB) et ne
+// dessine aucune forme. Donnée de RÉFÉRENCE versionnée (cmd/mapfond-build, exige les
+// fichiers du jeu). Ex: data/titles/halo_infinite/reference/map_backgrounds/
+func (p *PathResolver) MapBackgroundDir(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_backgrounds")
+}
+
+// MapBackgroundPath retourne le chemin de l'IMAGE du fond de carte d'un module (PNG RGBA,
+// fond transparent). La clé est le nom de MODULE, celui déjà porté par map_quant_bounds.json
+// et map_structure/ — le lien nom affiché -> module reste déclaré à un seul endroit.
+// Ex: data/titles/halo_infinite/reference/map_backgrounds/ridgeline.png
+func (p *PathResolver) MapBackgroundPath(titleSlug, module string) string {
+	return filepath.Join(p.MapBackgroundDir(titleSlug), module+".png")
+}
+
+// MapBackgroundMetaPath retourne le chemin du SIDECAR de calage du fond de carte
+// (replay.MapBackground) : mètres par pixel, origine monde, convention monde->pixel, stats
+// de cuisson. Un sidecar PAR CARTE et non un manifeste unique : une re-cuisson partielle ne
+// peut alors jamais abîmer l'entrée d'une autre carte, et chaque PNG porte sa propre vérité
+// — le défaut exact de carte_validee_v1.png, dont le calage a dû être retrouvé à la main.
+// Ex: data/titles/halo_infinite/reference/map_backgrounds/ridgeline.json
+func (p *PathResolver) MapBackgroundMetaPath(titleSlug, module string) string {
+	return filepath.Join(p.MapBackgroundDir(titleSlug), module+".json")
+}
+
 // SyncCacheDir retourne le répertoire racine du cache fetch intermédiaire
 // (Phase 2 refactor Collect→Persist). Chaque cycle de sync crée un
 // sous-dossier `{cycle_id}/` à l'intérieur. Ex: data/sync_cache/

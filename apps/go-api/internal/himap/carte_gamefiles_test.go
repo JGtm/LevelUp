@@ -69,7 +69,7 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 		t.Fatal(err)
 	}
 	bsps, _ := ReadModuleInstances(modCarte)
-	bsp := choisitBSP(bsps, o.Ancres)
+	bsp := ChoisitBSP(bsps, o.Ancres)
 	lo := [2]float64{bsp.Bounds.Min[0], bsp.Bounds.Min[1]}
 	hi := [2]float64{bsp.Bounds.Max[0], bsp.Bounds.Max[1]}
 	if o.EmpriseMin != nil && o.EmpriseMax != nil {
@@ -90,7 +90,7 @@ func construitVolume(t *testing.T, o optionsCarte) *Volume {
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
-		if !ok || g != "rtgo" {
+		if !ok || g != GroupeRtgo {
 			continue
 		}
 		if o.CarteSeule && filepath.Base(mod) != filepath.Base(modCarte) {
@@ -230,46 +230,4 @@ func TestCarteCliffhanger(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println("PNG ecrit:", sortie)
-}
-
-// choisitBSP retient le bsp qui contient le PLUS D'ANCRES, et a defaut celui qui porte le plus
-// d'instances.
-//
-// MESURE DU 2026-08-09 : sur les 27 cartes du balayage, le bsp le plus peuple est TOUJOURS
-// celui qui contient les ancres. Cette regle ne change donc AUCUN chiffre — elle supprime une
-// dependance au hasard, elle ne corrige rien. Le taux de 306/474 est identique avec et sans.
-//
-// Pourquoi le compte d instances ne suffit pas en principe : une carte declare plusieurs bsp, dont un
-// decor lointain. Cliffhanger en a deux — l'arene, 113 x 114 m et 10 357 instances, et un
-// horizon de 6 619 x 10 471 m avec 3 971 instances. Ici le plus peuple est le bon, par chance ;
-// rien ne le garantit ailleurs, et retenir l'horizon donne une carte vide de tout ce qui
-// interesse. Les ancres, elles, sont dans l'aire de jeu par construction : elles designent le
-// bon bsp sans qu'on ait a le deviner.
-func choisitBSP(bsps []BSPInstances, ancres [][3]float64) BSPInstances {
-	var meilleur BSPInstances
-	if len(ancres) > 0 {
-		mieux := 0
-		for _, b := range bsps {
-			n := 0
-			for _, a := range ancres {
-				if a[0] >= b.Bounds.Min[0] && a[0] <= b.Bounds.Max[0] &&
-					a[1] >= b.Bounds.Min[1] && a[1] <= b.Bounds.Max[1] &&
-					a[2] >= b.Bounds.Min[2] && a[2] <= b.Bounds.Max[2] {
-					n++
-				}
-			}
-			if n > mieux {
-				mieux, meilleur = n, b
-			}
-		}
-		if mieux > 0 {
-			return meilleur
-		}
-	}
-	for _, b := range bsps {
-		if len(b.Instances) > len(meilleur.Instances) {
-			meilleur = b
-		}
-	}
-	return meilleur
 }

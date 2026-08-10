@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "module": "chasm",
+  "mapNames": [
+    "chasm",
+    "chasm_map"
+  ],
+  "image": "chasm.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:33:40.0016413Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -132.40003204345703,
+    "originY": 6.517996948242171,
+    "widthPx": 1418,
+    "heightPx": 1479,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 17,
+    "anchorsInFrame": 17,
+    "anchorsWithGround": 17,
+    "anchorMedianGapM": -5.01525685029398,
+    "instancesDrawn": 1507,
+    "instancesScenery": 97,
+    "playLevelZ": -136.7340460205078,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 1158506,
+    "waterVolumes": 0,
+    "waterCells": 0
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de chasm-rtx-new.module"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "module": "sgh_crystalcaves",
+  "mapNames": [
+    "prism",
+    "prism_sgh_crystalcaves"
+  ],
+  "image": "sgh_crystalcaves.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:21:44.6137715Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -149.4000015258789,
+    "originY": 88.612,
+    "widthPx": 1400,
+    "heightPx": 1436,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 14,
+    "anchorsInFrame": 14,
+    "anchorsWithGround": 14,
+    "anchorMedianGapM": -6.11360651338391,
+    "instancesDrawn": 3997,
+    "instancesScenery": 541,
+    "playLevelZ": 17.88648506164551,
+    "boundaryApplied": true,
+    "boundaryPlanes": 20,
+    "boundaryCellsCleared": 1499480,
+    "waterVolumes": 2,
+    "waterCells": 825
+  }
+}

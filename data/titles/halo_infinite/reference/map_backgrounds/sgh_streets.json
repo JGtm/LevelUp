@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "module": "sgh_streets",
+  "mapNames": [
+    "streets",
+    "streets_sgh_streets",
+    "streets_-_ranked_map"
+  ],
+  "image": "sgh_streets.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:32:17.0847236Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -59.522034645080566,
+    "originY": 64.44047800445557,
+    "widthPx": 1353,
+    "heightPx": 1417,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 16,
+    "anchorsInFrame": 16,
+    "anchorsWithGround": 16,
+    "anchorMedianGapM": -4.332619753628968,
+    "instancesDrawn": 5824,
+    "instancesScenery": 70,
+    "playLevelZ": 0.7029631948471069,
+    "boundaryApplied": true,
+    "boundaryPlanes": 60,
+    "boundaryCellsCleared": 1683327,
+    "waterVolumes": 0,
+    "waterCells": 0
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de sgh_streets-rtx-new.module"
+  ]
+}

@@ -47,7 +47,7 @@ func TestGeometrieCliffhanger(t *testing.T) {
 			continue
 		}
 		id := in.RuntimeGeoID()
-		if g, _, ok := idx.Lookup(id); !ok || g != "rtgo" {
+		if g, _, ok := idx.Lookup(id); !ok || g != GroupeRtgo {
 			sansGeo++
 			continue
 		}

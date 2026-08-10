@@ -24,6 +24,7 @@ import (
 	_ "embed"
 	"encoding/binary"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -137,10 +138,19 @@ func ReadModuleBSPBounds(modulePath string) ([]BSP, error) {
 		if firstErr != nil {
 			return nil, firstErr
 		}
-		return nil, fmt.Errorf("himap: aucun tag sbsp dans %s", modulePath)
+		return nil, fmt.Errorf("%w dans %s", ErrAucunTagSbsp, modulePath)
 	}
 	return out, nil
 }
+
+// ErrAucunTagSbsp : le module ne porte aucun tag scenario_structure_bsp.
+//
+// SENTINELLE ET NON MESSAGE, parce que ce n'est pas toujours une panne. `live_fire`
+// (sgh_interlock) n'a AUCUN tag sbsp — exception instruite au §1 ter du handoff : sa geometrie
+// n'est pas la ou celle des 26 autres cartes se trouve. Un producteur d'assets doit pouvoir
+// distinguer « cette carte n'est pas cuisinable, on le sait » d'un echec de chaine, sinon son
+// code de sortie ne veut plus rien dire et plus personne ne le lit.
+var ErrAucunTagSbsp = errors.New("himap: aucun tag sbsp")
 
 // ---------------- plugin : ordre des champs ----------------
 

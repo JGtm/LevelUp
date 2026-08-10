@@ -17,12 +17,11 @@ import (
 // disjoints, la question n'est plus « pourquoi le sol manque » mais « pourquoi les ancres sont
 // ailleurs », ce qui est un tout autre probleme.
 func TestDiagnosticLiveFire(t *testing.T) {
-	racine, err := DeployRoot()
-	if err != nil {
+	if _, err := DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	for _, module := range []string{"live_fire_sgh_interlock", "recharge_sgh_blueprint", "cliffhanger_ridgeline"} {
-		chemin, ok := chercheModule(racine, module)
+		chemin, ok := ChercheModuleInstalle(module)
 		if !ok {
 			t.Logf("%-26s module introuvable", module)
 			continue

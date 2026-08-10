@@ -52,7 +52,7 @@ func TestGlobauxBienResolus(t *testing.T) {
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
-		if !ok || g != "rtgo" {
+		if !ok || g != GroupeRtgo {
 			continue
 		}
 		a, deja := assets[id]

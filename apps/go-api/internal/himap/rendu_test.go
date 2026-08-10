@@ -36,7 +36,7 @@ func TestTrancheEcarteLeDecorSousLaCarte(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			r := NewRendu([2]float64{0, 0}, [2]float64{4, 4}, 1)
 			if c.tranche {
-				r.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+				r.Tranche(TrancheDeJeu(0))
 			}
 			m, in := solPlat(c.zSol)
 			r.AddMesh(m, in)

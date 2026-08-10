@@ -132,7 +132,7 @@ func TestReclaimerEchelleInstance(t *testing.T) {
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
-		if !ok || g != "rtgo" || filepath.Base(mod) != filepath.Base(modCarte) {
+		if !ok || g != GroupeRtgo || filepath.Base(mod) != filepath.Base(modCarte) {
 			continue
 		}
 		a, deja := assets[id]
@@ -160,15 +160,15 @@ func TestReclaimerEchelleInstance(t *testing.T) {
 	}
 	t.Logf("%d instances mesurees", len(sans))
 	t.Logf("ecart a la boite declaree (fraction de la diagonale) — TOUTES :")
-	t.Logf("   sans echelle : median %.4f   p90 %.4f", centile(sans, 0.5), centile(sans, 0.90))
-	t.Logf("   avec echelle : median %.4f   p90 %.4f", centile(avec, 0.5), centile(avec, 0.90))
+	t.Logf("   sans echelle : median %.4f   p90 %.4f", Centile(sans, 0.5), Centile(sans, 0.90))
+	t.Logf("   avec echelle : median %.4f   p90 %.4f", Centile(avec, 0.5), Centile(avec, 0.90))
 	if len(sansNU) == 0 {
 		t.Log("aucune instance a scale != (1,1,1) : le champ est bien vestigial ici")
 		return
 	}
 	t.Logf("ecart — seulement les %d instances a scale != (1,1,1) :", len(sansNU))
-	t.Logf("   sans echelle : median %.4f   p90 %.4f", centile(sansNU, 0.5), centile(sansNU, 0.90))
-	t.Logf("   avec echelle : median %.4f   p90 %.4f", centile(avecNU, 0.5), centile(avecNU, 0.90))
+	t.Logf("   sans echelle : median %.4f   p90 %.4f", Centile(sansNU, 0.5), Centile(sansNU, 0.90))
+	t.Logf("   avec echelle : median %.4f   p90 %.4f", Centile(avecNU, 0.5), Centile(avecNU, 0.90))
 }
 
 // instancesDeCliffhanger rend les instances de TOUS les bsp du module de la carte. Le
@@ -227,17 +227,4 @@ func ecartBoite(m *Mesh, in Instance, echelle bool) float64 {
 		pire = math.Max(pire, math.Abs(mx[ax]-in.AABBMax[ax]))
 	}
 	return pire
-}
-
-// centile rend le centile p d'un echantillon, sans le modifier. (La `mediane` du package de
-// test existe deja dans geometry_gamefiles_test.go, mais elle panique sur un echantillon
-// vide — ici les echantillons peuvent l'etre si l'installation ne resout aucun tag.)
-func centile(v []float64, p float64) float64 {
-	if len(v) == 0 {
-		return math.NaN()
-	}
-	c := append([]float64(nil), v...)
-	sort.Float64s(c)
-	i := int(p * float64(len(c)-1))
-	return c[i]
 }

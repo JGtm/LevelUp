@@ -58,7 +58,7 @@ func TestRuntimeGeoResolutionMultiModule(t *testing.T) {
 		n := 0
 		for _, in := range ins {
 			id := binary.LittleEndian.Uint32(in.MeshRef[off:])
-			if g, _, ok := idx.Lookup(id); ok && g == "rtgo" {
+			if g, _, ok := idx.Lookup(id); ok && g == GroupeRtgo {
 				n++
 			}
 		}
@@ -89,7 +89,7 @@ func TestRuntimeGeoResolutionMultiModule(t *testing.T) {
 	for _, in := range ins {
 		id := in.RuntimeGeoID()
 		g, _, ok := idx.Lookup(id)
-		if !ok || g != "rtgo" {
+		if !ok || g != GroupeRtgo {
 			continue
 		}
 		n, vu := nMesh[id]

@@ -435,7 +435,7 @@ func TestSondeForgeF1CouvertureRtgo(t *testing.T) {
 			continue
 		}
 		tailleTags[len(tag)]++
-		if len(refsDe(tag, "rtgo")) > 0 {
+		if len(refsDe(tag, GroupeRtgo)) > 0 {
 			typesAvecRtgo++
 			objetsAvecRtgo += n
 		} else {
@@ -476,7 +476,7 @@ func TestSondeForgeF1CouvertureRtgo(t *testing.T) {
 			continue
 		}
 		tag, err := forge.Extract(f)
-		if err != nil || len(refsDe(tag, "rtgo")) > 0 {
+		if err != nil || len(refsDe(tag, GroupeRtgo)) > 0 {
 			continue
 		}
 		vus := map[string]bool{}

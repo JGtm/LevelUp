@@ -66,10 +66,10 @@ func TestRenduCliffhanger(t *testing.T) {
 	// Le bsp DESIGNE PAR LES ANCRES, comme partout ailleurs dans ce package. Prendre « tous
 	// les bsp » ramenait l'horizon de 6 619 x 10 471 m, dont la dalle de fond de scene couvre
 	// 100 % du cadre — porte deja fermee au §9.2 du handoff.
-	bsp := choisitBSP(bsps, ancresCliffhanger(t))
+	bsp := ChoisitBSP(bsps, ancresCliffhanger(t))
 	// Le niveau JOUE, deduit des ancres : c'est contre lui que les habillages `jeu` et `encre`
 	// mesurent l'altitude, au lieu de la mesurer contre elle-meme.
-	rendu.NiveauDeJeu(medianeZ(ancresCliffhanger(t)) - AncrageDecalageSol)
+	rendu.NiveauDeJeu(MedianeZ(ancresCliffhanger(t)) - AncrageDecalageSol)
 	// Temoin A/B : neutraliser le champ `scale` reproduit la lecture d'avant le 2026-08-09.
 	// N'existe que pour departager, jamais pour produire une carte.
 	sansEchelle := os.Getenv("RENDU_SANS_ECHELLE") != ""
@@ -159,7 +159,7 @@ func TestRenduCliffhanger(t *testing.T) {
 		}
 		id := in.RuntimeGeoID()
 		g, mod, ok := idx.Lookup(id)
-		if !ok || g != "rtgo" {
+		if !ok || g != GroupeRtgo {
 			nonResolues++
 			inconnues = append(inconnues, in)
 			continue
@@ -219,7 +219,7 @@ func TestRenduCliffhanger(t *testing.T) {
 	t.Logf("%d instances entierement au-dessus du plafond · %d hors emprise des ancres", coupeesParPlafond, horsEmprise)
 	if len(aires) > 0 {
 		t.Logf("aire mediane de triangle, par instance : p10 %.4f · p50 %.4f · p90 %.4f · p99 %.4f m2 (%d instances ecartees)",
-			centile(aires, 0.10), centile(aires, 0.50), centile(aires, 0.90), centile(aires, 0.99), tropGrossieres)
+			Centile(aires, 0.10), Centile(aires, 0.50), Centile(aires, 0.90), Centile(aires, 0.99), tropGrossieres)
 	}
 
 	// Trois vignettes : reference | reconstruction | carte des ecarts (cf. comparePixels).
@@ -280,90 +280,17 @@ func TestRenduCliffhanger(t *testing.T) {
 			masque, _ = matiereReference(validee, bo, larg, haut)
 			t.Log("REPLI : carte masquee par la silhouette de la reference (Cliffhanger UNIQUEMENT)")
 		}
-		// `combine` est le defaut depuis sa validation par l'utilisateur le 2026-08-09.
-		style := styleRendu(os.Getenv("RENDU_STYLE"))
+		// Le style de PRODUCTION (cf. StyleFondParDefaut, fond_png.go) ; RENDU_STYLE le force.
+		style := StyleFond(os.Getenv("RENDU_STYLE"))
 		if style == "" {
-			style = StyleCarteParDefaut
+			style = StyleFondParDefaut
 		}
 		bas, haute, _ := rendu.BornesAltitudeRobustes()
 		t.Logf("style %q · bornes d'altitude robustes (centiles 2/98) [%+.2f ; %+.2f] m",
 			style, bas, haute)
-		ecritPNG(t, seule, carteSeulePNG(rendu, larg, haut, masque, style))
+		ecritPNG(t, seule, FondPNG(rendu, larg, haut, masque, style))
 		fmt.Println("carte seule ecrite:", seule)
 	}
-}
-
-// styleRendu : les habillages compares au gate de nettete du 2026-08-09.
-type styleRendu string
-
-const (
-	styleDoux     styleRendu = "doux"     // Lambert continu — l'ancien defaut
-	stylePlat     styleRendu = "plat"     // aplats + aretes
-	styleAltitude styleRendu = "altitude" // nuancier d'altitude + ombrage
-	styleCombine  styleRendu = "combine"  // nuancier + aplats + aretes
-	styleJeu      styleRendu = "jeu"      // teinte par l ecart au NIVEAU JOUE + aplats + aretes
-	styleEncre    styleRendu = "encre"    // quasi monochrome, la lisibilite vient des aretes
-
-	// StyleCarteParDefaut : choisi par l'utilisateur au gate du 2026-08-09. `doux` seul ne
-	// peut PAS separer deux dalles de meme inclinaison a des hauteurs differentes — c'est
-	// structurel, pas un reglage (cf. `rendu_couleur.go`).
-	StyleCarteParDefaut = styleCombine
-)
-
-// carteSeulePNG rend la reconstruction sans reference, sans separateur et sans diagnostic —
-// l'empreinte des instances non resolues n'y figure PAS, c'est un outil de revue.
-//
-// `masque` non nil ne garde que les pixels ou il vaut true. Il n'existe que pour le REPLI
-// explicite decrit au §10.11 du handoff : masquer par la silhouette de la carte validee ne
-// vaut que pour Cliffhanger, seule carte a en posseder une. Ne jamais s'en servir comme regle.
-func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool, style styleRendu) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, larg, haut))
-	bas, haute, bornesOK := rendu.BornesAltitudeRobustes()
-	for py := 0; py < haut; py++ {
-		j := haut - 1 - py
-		for px := 0; px < larg; px++ {
-			if masque != nil && !masque[py*larg+px] {
-				continue
-			}
-			// L'eau (volumes sddt, cf. PoseEau) prend le pixel — y compris la ou le rendu n'a
-			// pas de matiere : l'eau n'est pas dans les instances de rendu, c'est justement
-			// pourquoi elle manquait.
-			if rendu.Eau(px, j) {
-				img.Set(px, py, TeinteEau(rendu.BordEau(px, j)))
-				continue
-			}
-			e, ok := rendu.Eclairement(px, j)
-			if !ok {
-				continue // alpha 0 : pas de matiere, pas de pixel
-			}
-			if style == stylePlat || style == styleCombine || style == styleJeu || style == styleEncre {
-				e, _ = rendu.EclairementPlat(px, j)
-			}
-			c := color.RGBA{uint8(255 * e), uint8(255 * e), uint8(255 * e), 255}
-			if (style == styleAltitude || style == styleCombine) && bornesOK {
-				z, _ := rendu.Altitude(px, j)
-				c = TeinteAltitude((z-bas)/(haute-bas), e)
-			}
-			// Les deux habillages qui remettent l'ARENE au premier plan : l'altitude y est
-			// mesuree contre le niveau JOUE, pas contre elle-meme.
-			if style == styleJeu || style == styleEncre {
-				dz, okDz := rendu.EcartAuNiveauDeJeu(px, j)
-				if !okDz {
-					dz = 0
-				}
-				if style == styleJeu {
-					c = TeinteNiveauDeJeu(dz, e)
-				} else {
-					c = TeinteEncre(dz, e)
-				}
-			}
-			if style != styleDoux && style != styleAltitude && rendu.Arete(px, j) {
-				c = color.RGBA{c.R / 3, c.G / 3, c.B / 3, 255}
-			}
-			img.Set(px, py, c)
-		}
-	}
-	return img
 }
 
 func ecritPNG(t *testing.T, chemin string, img image.Image) {

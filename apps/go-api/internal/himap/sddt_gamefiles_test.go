@@ -8,6 +8,7 @@ package himap
 // 93,82 %) sont ceux consignes dans l'investigation — toute regression est un echec.
 
 import (
+	"context"
 	"image/png"
 	"math"
 	"os"
@@ -181,9 +182,24 @@ func TestSddtOracleCliffhanger(t *testing.T) {
 }
 
 // TestBancCliffhanger — LE BANC : la carte par defaut (grain, tranche, tous modules) contre
-// la reference validee et l'oracle des positions jouees. References consignees le
-// 2026-08-10 : ACCORD 66,7 %, positions gardees 93,82 %. Toute regression est un echec de
-// lot, quelle que soit la beaute du resultat.
+// la reference validee et l'oracle des positions jouees. Toute regression est un echec de lot,
+// quelle que soit la beaute du resultat.
+//
+// REFERENCES RE-BASEES LE 2026-08-10, PAR DECISION UTILISATEUR, ET IL FAUT QUE CE SOIT ECRIT :
+//
+//	                  avant (tranche ABSOLUE)   apres (tranche RELATIVE au sol joue)
+//	accord                    66,7 %                    64,7 %
+//	exces                     33,8 %                    39,1 %
+//	positions jouees          93,82 %                   93,95 %
+//
+// Ce n'est PAS une regression toleree, c'est un ARBITRAGE : la tranche absolue rendait `chasm`
+// (5/17 ancres) et `btb_highpower` (14/51) inexploitables — Chasm se reduisait litteralement a
+// deux traits. La translater au sol joue les repare (17/17 et 38/51) et coute a Cliffhanger
+// 5,3 points d'exces, c'est-a-dire un peu de vallee en plus autour de l'arene. L'utilisateur a
+// tranche sur pieces, images a l'appui. Detail : `PLAN_PORT_TRIANGLES_GO.md` §7 D3.
+//
+// Le banc applique desormais `TrancheDeJeu`, LA MEME fonction que la production : une copie de
+// la translation ici cesserait de garder ce qui est reellement cuit.
 //
 // L'eau est ensuite posee et le test PROUVE qu'elle ne touche pas le terrain : z-buffer et
 // eclairement identiques a l'octet.
@@ -211,7 +227,7 @@ func TestBancCliffhanger(t *testing.T) {
 	hi := [2]float64{gateX0 + float64(larg)*gateEchelle, gateY1}
 
 	rendu := NewRendu(lo, hi, gateEchelle)
-	rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+	rendu.Tranche(TrancheDeJeu(MedianeZ(ancresCliffhanger(t)) - AncrageDecalageSol))
 
 	modCarte := moduleDuJeu(t, "pc", "ridgeline")
 	chemins, _ := GeometrySearchPath(racine, modCarte)
@@ -220,33 +236,13 @@ func TestBancCliffhanger(t *testing.T) {
 		t.Fatal(err)
 	}
 	bsps, _ := ReadModuleInstances(modCarte)
-	bsp := choisitBSP(bsps, ancresCliffhanger(t))
-	assets := map[uint32]*RuntimeGeoAsset{}
-	for _, in := range bsp.Instances {
-		if in.QuickDeleted() || in.ProjecteurOmbre() {
-			continue
-		}
-		id := in.RuntimeGeoID()
-		if g, _, ok := idx.Lookup(id); !ok || g != "rtgo" {
-			continue
-		}
-		a, deja := assets[id]
-		if !deja {
-			tg, blob, err := idx.ExtractWithResources(id)
-			if err != nil {
-				continue
-			}
-			if a, err = NewRuntimeGeoAsset(tg, blob); err != nil {
-				continue
-			}
-			assets[id] = a
-		}
-		m := a.Mesh(in.MeshIndex)
-		if m == nil || EstDecorGrossier(m, in, AireMaxTriangleJouable) {
-			continue
-		}
-		rendu.AddMeshBorne(m, in, 0.5)
-	}
+	bsp := ChoisitBSP(bsps, ancresCliffhanger(t))
+	// LE BANC PASSE PAR LA CHAINE DE PRODUCTION (`PeupleRendu`), et c'est le point : une boucle
+	// jumelle ici aurait diverge de la production, et le banc aurait alors cesse de la garder.
+	// Seul le CADRE reste propre au banc — il est celui de la carte validee, pas celui des
+	// ancres, pour que la comparaison pixel a pixel ait un sens.
+	dessinees, decor := PeupleRendu(context.Background(), rendu, idx, bsp)
+	t.Logf("BANC : %d instances dessinees · %d ecartees comme decor", dessinees, decor)
 
 	// ACCORD contre la silhouette de la reference (memes formules que comparePixels).
 	refPlein, _ := matiereReference(validee, bo, larg, haut)
@@ -270,8 +266,8 @@ func TestBancCliffhanger(t *testing.T) {
 	accord := 100 * float64(nRef-manquants) / float64(nRef+exces)
 	t.Logf("BANC : manquants %.1f %% · exces %.1f %% · ACCORD %.1f %%",
 		100*float64(manquants)/float64(nRef), 100*float64(exces)/float64(nRef), accord)
-	if accord < 66.6 {
-		t.Errorf("ACCORD %.1f %% sous la reference du 2026-08-10 (66,7 %%)", accord)
+	if accord < 64.6 {
+		t.Errorf("ACCORD %.1f %% sous la reference RE-BASEE du 2026-08-10 (64,7 %%, tranche relative)", accord)
 	}
 
 	// L'ORACLE : part des positions jouees qui tombent sur une cellule de matiere.
@@ -291,8 +287,8 @@ func TestBancCliffhanger(t *testing.T) {
 	nb := len(pos) - horsCadre
 	gardees := 100 * float64(dans) / float64(nb)
 	t.Logf("BANC : %d positions dans le cadre · gardees %.2f %%", nb, gardees)
-	if gardees < 93.8 {
-		t.Errorf("positions gardees %.2f %% sous la reference du 2026-08-10 (93,82 %%)", gardees)
+	if gardees < 93.9 {
+		t.Errorf("positions gardees %.2f %% sous la reference RE-BASEE du 2026-08-10 (93,95 %%, tranche relative)", gardees)
 	}
 
 	// L'EAU NE TOUCHE PAS LE TERRAIN : z-buffer et normales identiques avant/apres.

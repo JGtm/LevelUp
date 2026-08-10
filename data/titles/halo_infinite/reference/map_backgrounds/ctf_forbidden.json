@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "module": "ctf_forbidden",
+  "mapNames": [
+    "forbidden",
+    "forbidden_map"
+  ],
+  "image": "ctf_forbidden.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:28:50.9472597Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -62.05194282531738,
+    "originY": 61.727999237060544,
+    "widthPx": 1345,
+    "heightPx": 1434,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 12,
+    "anchorMedianGapM": -0.34827948159939986,
+    "instancesDrawn": 7116,
+    "instancesScenery": 343,
+    "playLevelZ": 1.9431724166870117,
+    "boundaryApplied": true,
+    "boundaryPlanes": 28,
+    "boundaryCellsCleared": 1528847,
+    "waterVolumes": 208,
+    "waterCells": 2299
+  }
+}

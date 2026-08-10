@@ -3,7 +3,6 @@ package himap
 import (
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -38,8 +37,7 @@ type bilanCarte struct {
 
 // TestBalayageDesCartes mesure la regle sur toutes les cartes du catalogue d'objectifs.
 func TestBalayageDesCartes(t *testing.T) {
-	racine, err := DeployRoot()
-	if err != nil {
+	if _, err := DeployRoot(); err != nil {
 		t.Skip(err)
 	}
 	p, err := cheminCatalogue()
@@ -68,7 +66,7 @@ func TestBalayageDesCartes(t *testing.T) {
 	var bilans []bilanCarte
 	var absents []string
 	for _, mod := range modules {
-		chemin, ok := chercheModule(racine, mod)
+		chemin, ok := ChercheModuleInstalle(mod)
 		if !ok {
 			absents = append(absents, mod)
 			continue
@@ -106,54 +104,6 @@ func chargeCatalogue(p string) ([]replay.MapObjectivesEntry, error) {
 		out = append(out, e)
 	}
 	return out, nil
-}
-
-// chercheModule fait le pont entre le nom de module du CATALOGUE et le dossier de l'INSTALLATION.
-//
-// Ils ne coincident pas : le catalogue nomme « cliffhanger_ridgeline » ce que le jeu range sous
-// « ridgeline ». Les deux moities du nom sont donc essayees, entiere puis par jeton, du plus
-// specifique au plus general. Un module introuvable est SIGNALE, jamais suppose absent.
-func chercheModule(racine, nom string) (string, bool) {
-	dir, err := LevelsDir("pc")
-	if err != nil {
-		return "", false
-	}
-	dossiers, err := os.ReadDir(dir)
-	if err != nil {
-		return "", false
-	}
-	// Le jeu PREFIXE ses dossiers par le mode d'origine de la carte : `ctf_bazaar`,
-	// `btb_highpower`, `sgh_interlock`, `va_behemoth`. Le catalogue, lui, nomme
-	// « bazaar_map » ou « live_fire_sgh_interlock ». On enumere donc l'installation et on
-	// apparie sur les jetons, plutot que de deviner un prefixe.
-	generiques := map[string]bool{"map": true, "ranked": true, "": true, "-": true}
-	var jetons []string
-	for _, j := range strings.FieldsFunc(nom, func(r rune) bool { return r == '_' || r == '-' }) {
-		if !generiques[j] {
-			jetons = append(jetons, j)
-		}
-	}
-	for _, d := range dossiers {
-		if !d.IsDir() {
-			continue
-		}
-		base := d.Name()
-		p := filepath.Join(dir, base, base+"-rtx-new.module")
-		if _, err := os.Stat(p); err != nil {
-			continue
-		}
-		if base == nom {
-			return p, true
-		}
-		for _, j := range jetons {
-			// Suffixe : `ctf_bazaar` porte `bazaar`. Egalite pour les dossiers sans prefixe.
-			if base == j || strings.HasSuffix(base, "_"+j) {
-				return p, true
-			}
-		}
-	}
-	_ = racine
-	return "", false
 }
 
 // jugeUneCarte confronte les ancres d'une carte a sa geometrie reconstruite.

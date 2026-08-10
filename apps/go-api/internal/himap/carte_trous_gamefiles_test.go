@@ -79,7 +79,7 @@ func TestDiagnosticTrousDeCarte(t *testing.T) {
 			}
 			id := in.RuntimeGeoID()
 			g, mod, ok := idx.Lookup(id)
-			if !ok || g != "rtgo" {
+			if !ok || g != GroupeRtgo {
 				tally[cause{"(non resolu)", "-"}]++
 				trouve = true
 				continue

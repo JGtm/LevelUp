@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "module": "fo08_wetland",
+  "mapNames": [
+    "Vagabond",
+    "map"
+  ],
+  "image": "fo08_wetland.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:36:55.6908892Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": 65.6034927368164,
+    "originY": 112.43800421142578,
+    "widthPx": 1332,
+    "heightPx": 1287,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 4,
+    "anchorsInFrame": 4,
+    "anchorsWithGround": 4,
+    "anchorMedianGapM": -4.1549572111413084,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 52.28999038696289,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "forgeObjects": 4709,
+    "forgeObjectsDrawn": 3558,
+    "forgeObjectsWithoutModel": 1113,
+    "forgeDeathVolumes": 38
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "module": "btb_exiled",
+  "mapNames": [
+    "oasis_sentry_defense_map",
+    "oasis_map",
+    "oasis_heavies_map",
+    "oasis_firefight_map"
+  ],
+  "image": "btb_exiled.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:17:09.3229766Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -76.89517402648926,
+    "originY": 99.06799923706055,
+    "widthPx": 1900,
+    "heightPx": 2204,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 35,
+    "anchorsInFrame": 35,
+    "anchorsWithGround": 30,
+    "anchorMedianGapM": -4.383229955277564,
+    "instancesDrawn": 9076,
+    "instancesScenery": 656,
+    "playLevelZ": 24.910510025024415,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 1606051,
+    "waterVolumes": 12,
+    "waterCells": 95096
+  }
+}
