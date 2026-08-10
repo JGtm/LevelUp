@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "module": "btb_highpower",
+  "mapNames": [
+    "highpower",
+    "highpower_sentry_defense_map",
+    "highpower_map",
+    "highpower_heavies_map"
+  ],
+  "image": "btb_highpower.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:18:49.753757Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -215.6693572998047,
+    "originY": 52.49213653564453,
+    "widthPx": 1955,
+    "heightPx": 2055,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 51,
+    "anchorsInFrame": 51,
+    "anchorsWithGround": 38,
+    "anchorMedianGapM": -0.29355015255337236,
+    "instancesDrawn": 7475,
+    "instancesScenery": 785,
+    "playLevelZ": 44.50999923706055,
+    "boundaryApplied": true,
+    "boundaryPlanes": 76,
+    "boundaryCellsCleared": 2600578,
+    "waterVolumes": 2,
+    "waterCells": 13515
+  }
+}

@@ -59,7 +59,7 @@ func TestBalayageCoquille(t *testing.T) {
 		// piege que celui deja documente pour `TestBalayageDesCartes`.
 		mod := mod
 		t.Run(mod, func(t *testing.T) {
-			chemin, ok := chercheModule(racine, mod)
+			chemin, ok := ChercheModuleInstalle(mod)
 			if !ok {
 				absentes = append(absentes, mod)
 				return
@@ -83,8 +83,8 @@ func TestBalayageCoquille(t *testing.T) {
 			}
 			b := bilan{carte: mod}
 			rendu := cadreSurAncres(t, ancres)
-			rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
-			zJeu := medianeZ(ancres) - AncrageDecalageSol
+			zJeu := MedianeZ(ancres) - AncrageDecalageSol
+			rendu.Tranche(TrancheDeJeu(zJeu))
 			peupleRendu(t, rendu, racine, chemin, ancres)
 			b.ancresAvant, b.pxAvant = compteAncresEtPixels(rendu, ancres)
 
@@ -133,6 +133,18 @@ func TestBalayageCoquille(t *testing.T) {
 	}
 	t.Logf("BILAN : %d cartes mesurees · %d coquilles REFUSEES (elles excluaient des ancres) · %d perdent des ancres",
 		len(bilans), refusees, perdantes)
+
+	// LE GATE, ET IL MANQUAIT (pose le 2026-08-10, lot A). Ce test ne faisait que JOURNALISER :
+	// « 0 ancre perdue » n'etait verifie que par un humain qui lisait la sortie, et un run sans
+	// `-v` rendait `ok` quoi qu'il arrive. Un gate qui ne peut pas rougir n'est pas un gate —
+	// c'est la faute que ce chantier paie depuis le debut, sous une autre forme.
+	if len(bilans) == 0 {
+		t.Fatal("AUCUNE carte mesuree — le balayage n'a rien fait (reference du 2026-08-10 : 25 cartes)")
+	}
+	if perdantes > 0 {
+		t.Errorf("%d cartes PERDENT des ancres a cause de la coquille (reference du 2026-08-10 : 0) "+
+			"— une ancre perdue est de la zone jouable effacee", perdantes)
+	}
 }
 
 func compteAncresEtPixels(r *Rendu, ancres [][3]float64) (int, int) {

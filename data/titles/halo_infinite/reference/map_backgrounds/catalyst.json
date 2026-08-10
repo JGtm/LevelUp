@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "module": "catalyst",
+  "mapNames": [
+    "Catalyst",
+    "catalyst",
+    "catalyst_map"
+  ],
+  "image": "catalyst.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:34:04.3402391Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -65.19572257995605,
+    "originY": 71.476004196167,
+    "widthPx": 1406,
+    "heightPx": 1553,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 24,
+    "anchorsInFrame": 24,
+    "anchorsWithGround": 24,
+    "anchorMedianGapM": -13.330580129315607,
+    "instancesDrawn": 7796,
+    "instancesScenery": 162,
+    "playLevelZ": 24.410136184692384,
+    "boundaryApplied": true,
+    "boundaryPlanes": 20,
+    "boundaryCellsCleared": 1695636,
+    "waterVolumes": 0,
+    "waterCells": 0
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de catalyst-rtx-new.module"
+  ]
+}

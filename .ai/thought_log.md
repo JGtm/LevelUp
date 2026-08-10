@@ -1,3 +1,91 @@
+## [2026-08-10] v7.5 — cartes lot A : les fonds de carte sont PRODUITS, et la cuisson revele ce que les tests taisaient
+
+**Statut** : Complete. 21 assets. Gate visuel TENU, deux defauts de rendu ouverts par lui,
+portes au registre. Plan : `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md` §3 et §7 (D3).
+Rapport : `.ai/V7.5/cartes/RAPPORT_CUISSON_FONDS_2026-08-10.md`.
+
+**Decision technique principale : sortir la chaine des tests SANS la modifier.** Chaque etape
+de `cuisson.go` est le portage litteral d'un helper de test, avec ses chiffres d'origine ; les
+tests l'appellent desormais. Le point qui compte : la boucle de rendu du banc de
+non-regression EST celle de la production (`PeupleRendu`), et non plus sa jumelle — deux
+boucles jumelles finissent par diverger, et le banc aurait alors cesse de garder le livrable.
+Verification : accord 66,7 % et positions 93,82 %, identiques avant et apres le refactor.
+
+**Trois decisions de format, publiees dans le fichier qui les porte** : PNG RGBA fond
+transparent · 0,0920 m/px, la MEME echelle que la carte validee a l'oeil (un nombre rond aurait
+oblige a re-valider) · calage dans un SIDECAR PAR CARTE, avec sa formule en clair. Le sidecar
+vit cote CONSOMMATEUR (`internal/analysis/replay/`) et non dans `himap` : lire un calage ne doit
+jamais faire linker `himap -> himodule -> ooz`, qui est GPLv3.
+
+**Resultats observes** : **21 assets** (19 cartes natives + Vagabond et Corpo), 7,70 Mio, 413/448 ancres avec
+sol. Cliffhanger 5 102 instances / 14 ancres sur 14 / ecart median -0,32 m. Vagabond 3 558
+objets sur 4 709 (75,6 %), 38 volumes de mort exclus, 4/4 ancres. Determinisme verifie : deux
+cuissons independantes rendent des PNG identiques au bit.
+
+**CE QUE LA CUISSON A APPRIS, ET QU'AUCUN TEST N'AVAIT DIT.** La tranche de jeu `[-12 ; +28]`
+est en altitudes ABSOLUES, mesurees sur Cliffhanger dont le sol joue est a -2,2 m. Le niveau
+joue des 17 cartes va de **-136,7 m (`chasm`) a +52,3 m (Vagabond)** : la tranche decapite
+`chasm` (5/17 ancres) et `btb_highpower` (14/51). Le balayage ne pouvait pas le voir — il
+compare les ancres AVANT et APRES la coquille, jamais leur total. **C'est l'asset produit, avec
+son oracle publie, qui a rendu le defaut visible.** Un test qui n'ecrit rien ne dit pas tout.
+
+La lecture concurrente a ete MESUREE, pas supposee : la tranche translatee au sol des ancres
+repare `chasm` (17/17) et `btb_highpower` (38/51), ne touche ni Catalyst ni Cliffhanger sur
+leurs ancres — mais elle fait entrer la vallee sous Cliffhanger (exces 33,8 -> 39,1 %, accord
+66,7 -> 64,7 %). **L'utilisateur a tranche sur pieces, images a l'appui : bascule en relative,
+banc RE-BASE par ecrit.** Deux cartes inexploitables valent plus que deux points d'accord sur
+une carte deja lisible. La translation vit desormais dans UNE seule expression
+(`himap.TrancheDeJeu`) partagee par la chaine native, la chaine Forge et le banc — elle etait
+ecrite a six endroits.
+
+**LE GATE VISUEL A TROUVE CE QU'AUCUN CHIFFRE NE DISAIT.** Verdict utilisateur sur les 17 :
+sept cartes « nickel », deux « un peu rudimentaires » (Streets, Bazaar), et surtout **trois ou
+l'on ne voit que les TOITS** (Illusion, Prism, Aquarius) — le z-buffer garde la surface la plus
+haute, et sur une arene couverte c'est le plafond. J'ai cru tenir un predicteur (l'ecart median
+aux ancres) et je l'ai VERIFIE avant de l'annoncer : il est faux — Behemoth (-12,73 m) est juge
+nickel, Forbidden (-0,35 m) est touche. Piste pour la suite, au registre : `CarteParReference`
+retient deja « la bande la plus PROCHE du sol de reference » au lieu de « la plus haute », mais
+elle n'est ecrite que pour le `Volume`, et la brancher changerait Cliffhanger — a mesurer sur
+l'oracle fort AVANT.
+
+**Manque revele par le gate, corrige** : les assets ne portaient pas leur nom affiche
+(`public_name` est vide pour 35 des 37 entrees du catalogue d'objectifs) — l'utilisateur ne
+reconnaissait ni `sgh_blueprint` (Recharge) ni `fo08_wetland` (Vagabond). Les noms sont
+desormais lus dans deux sources DECLAREES, jamais inventes.
+
+**Trois garde-rails, chacun avec sa MUTATION JOUEE** — la regle du chantier est qu'un temoin qui
+ne departage pas ne teste rien : licence GPLv3 (`cmd/server` ne linke pas `ooz` ; 108 paquets
+parcourus, interdire un paquet reellement atteint le fait rougir) · le calage publie decrit
+l'image produite (inverser le bord Y rougit avec 3,68 m d'ecart, soit la hauteur de l'image) ·
+l'echelle de production egale celle du banc.
+
+**Et un quatrieme, trouve en voulant passer le gate : `TestBalayageCoquille` N'ASSERTAIT RIEN.**
+Il journalisait « 0 perdent des ancres » et rendait `ok` quoi qu'il arrive ; sans `-v`, le
+critere du gate n'etait meme pas lisible. Un gate qui ne peut pas rougir n'est pas un gate —
+c'est la meme faute que ce chantier paie depuis le debut, sous une autre forme. L'assertion est
+posee (`perdantes > 0` echoue, `len(bilans) == 0` est fatal).
+
+**QUATRE CARTES DE PLUS, TROUVEES PARCE QUE L'UTILISATEUR A DEMANDE « y en a bien plus dans le
+jeu non ? ».** La commande rangeait `deadlock_map`, `oasis_map` et `scarr_map` sous « non
+installees localement » — c'etait FAUX : leurs dossiers `btb_drydock`, `btb_exiled`,
+`btb_engine` etaient la, et l'appariement par jetons de nom echouait en silence en fabriquant
+une explication. J'ai d'abord tente de le remplacer par une MESURE (« le module dont un bsp
+contient les ancres ») : **son temoin l'a refutee deux fois** — les bsp d'HORIZON contiennent
+les ancres de tout le monde, et une fois departages par le volume, la mesure contredisait le nom
+sur ~20 cartes connues. Chaque carte Halo est batie autour de SA propre origine ; une position
+monde ne designe aucune carte. Code supprime. La regle qui tient est une DONNEE : le depot de
+variantes contient `deadlock_btb_drydock.mvar` a cote de `deadlock_map.mvar` — convention
+validee sur les 18 appariements deja connus, 0 manquant. Resultat : Deadlock (46/46 ancres),
+Oasis (30/35), Scarr (19/19), et Corpo qui s'est revelee etre une carte FORGE — son canevas
+`fo11_blank` est vide par construction, et c'est la chaine native qui l'a dit en echouant.
+**21 cartes publiees.**
+
+**Prochaine etape** : traiter les deux defauts ouverts par le gate — les TOITS des cartes
+couvertes (Illusion, Prism, Aquarius) et le « rudimentaire » de Streets/Bazaar. Puis lot B, les
+1 113 objets Forge sans modele `rtgo` direct.
+
+---
+
 ## [2026-08-10] v7.5 — cartes : fin de contexte, handoff pose ; AUCUN asset n'est encore produit
 
 **Statut** : chaine de rendu COMPLETE et validee, LIVRAISON NON COMMENCEE. Handoff et prompt de

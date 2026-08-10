@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "module": "ctf_aquarius",
+  "mapNames": [
+    "aquarius",
+    "aquarius_-_ranked_map",
+    "aquarius_map"
+  ],
+  "image": "ctf_aquarius.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:27:50.916397Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -69,
+    "originY": 63.708003051757814,
+    "widthPx": 1501,
+    "heightPx": 1374,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 22,
+    "anchorsInFrame": 22,
+    "anchorsWithGround": 22,
+    "anchorMedianGapM": -2.55526153995533,
+    "instancesDrawn": 14761,
+    "instancesScenery": 241,
+    "playLevelZ": 4.08974739074707,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 1892358,
+    "waterVolumes": 0,
+    "waterCells": 0
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de ctf_aquarius-rtx-new.module"
+  ]
+}

@@ -158,7 +158,7 @@ func ReadModuleInstances(modulePath string) ([]BSPInstances, error) {
 		if firstErr != nil {
 			return nil, firstErr
 		}
-		return nil, fmt.Errorf("himap: aucun tag sbsp dans %s", modulePath)
+		return nil, fmt.Errorf("%w dans %s", ErrAucunTagSbsp, modulePath)
 	}
 	return out, nil
 }
@@ -355,7 +355,7 @@ func DescribeRootBlocks(modulePath string) ([]RootBlockInfo, error) {
 	}
 	files := m.Files("sbsp")
 	if len(files) == 0 {
-		return nil, fmt.Errorf("himap: aucun tag sbsp dans %s", modulePath)
+		return nil, fmt.Errorf("%w dans %s", ErrAucunTagSbsp, modulePath)
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].UncompSize > files[j].UncompSize })
 	tag, err := m.Extract(files[0])

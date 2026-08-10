@@ -165,7 +165,7 @@ func bspPrincipal(t *testing.T, chemin string) ([]byte, BSPInstances) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bsp := choisitBSP(bsps, nil)
+	bsp := ChoisitBSP(bsps, nil)
 	m, err := himodule.Open(chemin)
 	if err != nil {
 		t.Fatal(err)
@@ -321,7 +321,7 @@ func TestSondePhysique(t *testing.T) {
 	if p := moduleDuJeu(t, "pc", "ridgeline"); p != "" {
 		cartes = append(cartes, struct{ nom, chemin string }{"cliffhanger", p})
 	}
-	if p, ok := chercheModule(racine, "catalyst_map"); ok {
+	if p, ok := ChercheModuleInstalle("catalyst_map"); ok {
 		cartes = append(cartes, struct{ nom, chemin string }{"catalyst", p})
 	}
 
@@ -523,7 +523,7 @@ func TestSondePhysiqueRendu(t *testing.T) {
 		t.Fatal(err)
 	}
 	bsps, _ := ReadModuleInstances(modCarte)
-	bsp := choisitBSP(bsps, ancresCliffhanger(t))
+	bsp := ChoisitBSP(bsps, ancresCliffhanger(t))
 
 	// Le bloc physique du MEME bsp que le rendu.
 	tag, bspP := bspPrincipal(t, modCarte)
@@ -552,7 +552,7 @@ func TestSondePhysiqueRendu(t *testing.T) {
 			continue
 		}
 		id := in.RuntimeGeoID()
-		if g, _, ok := idx.Lookup(id); !ok || g != "rtgo" {
+		if g, _, ok := idx.Lookup(id); !ok || g != GroupeRtgo {
 			continue
 		}
 		a, deja := assets[id]
@@ -601,7 +601,7 @@ func TestSondePhysiqueRendu(t *testing.T) {
 	for _, cfg := range configs {
 		t.Run(cfg.nom, func(t *testing.T) {
 			rendu := NewRendu(lo, hi, gateEchelle)
-			rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+			rendu.Tranche(TrancheDeJeu(MedianeZ(ancresCliffhanger(t)) - AncrageDecalageSol))
 			n := 0
 			for _, it := range items {
 				if !cfg.garde(it) {

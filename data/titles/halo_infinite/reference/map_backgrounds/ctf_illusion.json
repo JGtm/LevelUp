@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "module": "ctf_illusion",
+  "mapNames": [
+    "illusion",
+    "illusion_map"
+  ],
+  "image": "ctf_illusion.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:33:13.3984718Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -62.61043453216553,
+    "originY": 64.81599923706054,
+    "widthPx": 1312,
+    "heightPx": 1473,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 12,
+    "anchorsInFrame": 12,
+    "anchorsWithGround": 12,
+    "anchorMedianGapM": -9.770537234660445,
+    "instancesDrawn": 8109,
+    "instancesScenery": 197,
+    "playLevelZ": 0.5099999523162841,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de ctf_illusion-rtx-new.module"
+  ]
+}

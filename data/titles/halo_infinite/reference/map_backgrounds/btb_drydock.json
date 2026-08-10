@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "module": "btb_drydock",
+  "mapNames": [
+    "deadlock_map",
+    "deadlock_heavies_map"
+  ],
+  "image": "btb_drydock.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:17:41.9463808Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -64.28119945526123,
+    "originY": 155.88884497070313,
+    "widthPx": 1892,
+    "heightPx": 1937,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 46,
+    "anchorsInFrame": 46,
+    "anchorsWithGround": 46,
+    "anchorMedianGapM": -0.29708668844536135,
+    "instancesDrawn": 3538,
+    "instancesScenery": 389,
+    "playLevelZ": 77.31009002685546,
+    "boundaryApplied": true,
+    "boundaryPlanes": 76,
+    "boundaryCellsCleared": 2592061,
+    "waterVolumes": 26,
+    "waterCells": 129926
+  }
+}

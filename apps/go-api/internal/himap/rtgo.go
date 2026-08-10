@@ -38,6 +38,13 @@ const perMeshStride = 144
 const refOffGlobalID = 8
 
 // RuntimeGeoID rend le GlobalID du tag `rtgo` qui porte la geometrie de cette instance.
+// GroupeRtgo : le groupe de tag du maillage de rendu (`render_geometry`).
+//
+// Le litteral etait ecrit a 13 endroits du paquet. Un groupe de tag est un identifiant du
+// format, pas une chaine libre : une faute de frappe y rend un `Lookup` toujours faux, et un
+// rendu silencieusement vide.
+const GroupeRtgo = "rtgo"
+
 func (in Instance) RuntimeGeoID() uint32 {
 	return binary.LittleEndian.Uint32(in.MeshRef[refOffGlobalID:])
 }

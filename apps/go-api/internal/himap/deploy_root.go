@@ -64,3 +64,55 @@ func LevelsDir(variant string) (string, error) {
 	}
 	return filepath.Join(root, variant, "levels", "multi"), nil
 }
+
+// modulesGeneriques : jetons de nom de carte qui ne designent aucun dossier.
+var modulesGeneriques = map[string]bool{"map": true, "ranked": true, "": true, "-": true}
+
+// ChercheModuleInstalle fait le pont entre le nom de module du CATALOGUE et le dossier de
+// l'INSTALLATION.
+//
+// Ils ne coincident pas : le catalogue nomme « cliffhanger_ridgeline » ce que le jeu range sous
+// « ridgeline ». Le jeu PREFIXE en outre ses dossiers par le mode d'origine de la carte —
+// `ctf_bazaar`, `btb_highpower`, `sgh_interlock`, `va_behemoth` — quand le catalogue, lui, dit
+// « bazaar_map ». On enumere donc l'installation et on apparie sur les JETONS, plutot que de
+// deviner un prefixe.
+//
+// Un module introuvable est SIGNALE par `false`, jamais suppose absent : plusieurs cartes du
+// catalogue ne sont pas installees localement, et les confondre avec une chaine cassee ferait
+// passer une absence pour un echec.
+func ChercheModuleInstalle(nom string) (string, bool) {
+	dir, err := LevelsDir("pc")
+	if err != nil {
+		return "", false
+	}
+	dossiers, err := os.ReadDir(dir)
+	if err != nil {
+		return "", false
+	}
+	var jetons []string
+	for _, j := range strings.FieldsFunc(nom, func(r rune) bool { return r == '_' || r == '-' }) {
+		if !modulesGeneriques[j] {
+			jetons = append(jetons, j)
+		}
+	}
+	for _, d := range dossiers {
+		if !d.IsDir() {
+			continue
+		}
+		base := d.Name()
+		p := filepath.Join(dir, base, base+"-rtx-new.module")
+		if _, err := os.Stat(p); err != nil {
+			continue
+		}
+		if base == nom {
+			return p, true
+		}
+		for _, j := range jetons {
+			// Suffixe : `ctf_bazaar` porte `bazaar`. Egalite pour les dossiers sans prefixe.
+			if base == j || strings.HasSuffix(base, "_"+j) {
+				return p, true
+			}
+		}
+	}
+	return "", false
+}

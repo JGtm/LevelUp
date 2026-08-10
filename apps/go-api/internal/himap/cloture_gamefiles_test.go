@@ -50,14 +50,14 @@ func TestClotureCliffhanger(t *testing.T) {
 	}
 	bsps, _ := ReadModuleInstances(modCarte)
 	ancres := ancresCliffhanger(t)
-	bsp := choisitBSP(bsps, ancres)
+	bsp := ChoisitBSP(bsps, ancres)
 
 	// Le sol de reference : la mediane des ancres, comme partout ailleurs.
-	zRef := medianeZ(ancres)
+	zRef := MedianeZ(ancres)
 	t.Logf("sol de reference (mediane des ancres) : %+.2f m", zRef)
 
 	rendu := NewRendu(lo, hi, gateEchelle)
-	rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+	rendu.Tranche(TrancheDeJeu(zRef - AncrageDecalageSol))
 	vol := NewVolumeZ(lo, hi, TrancheDeJeuMin, TrancheDeJeuMax)
 
 	assets := map[uint32]*RuntimeGeoAsset{}
@@ -67,7 +67,7 @@ func TestClotureCliffhanger(t *testing.T) {
 			continue
 		}
 		id := in.RuntimeGeoID()
-		if g, _, ok := idx.Lookup(id); !ok || g != "rtgo" {
+		if g, _, ok := idx.Lookup(id); !ok || g != GroupeRtgo {
 			continue
 		}
 		a, deja := assets[id]
@@ -151,17 +151,6 @@ func TestClotureCliffhanger(t *testing.T) {
 	}
 }
 
-func medianeZ(pts [][3]float64) float64 {
-	zs := make([]float64, 0, len(pts))
-	for _, p := range pts {
-		zs = append(zs, p[2])
-	}
-	if len(zs) == 0 {
-		return 0
-	}
-	return centile(zs, 0.5)
-}
-
 // TestCoquilleEnXY — la coquille testee a l'altitude DE JEU et non a l'altitude DESSINEE.
 //
 // D'OU VIENT L'IDEE. `masqueCoquille` (sonde) teste chaque pixel au z de la surface dessinee :
@@ -213,18 +202,18 @@ func TestCoquilleEnXY(t *testing.T) {
 	}
 	bsps, _ := ReadModuleInstances(modCarte)
 	ancres := ancresCliffhanger(t)
-	bsp := choisitBSP(bsps, ancres)
-	zRef := medianeZ(ancres)
+	bsp := ChoisitBSP(bsps, ancres)
+	zRef := MedianeZ(ancres)
 
 	rendu := NewRendu(lo, hi, gateEchelle)
-	rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+	rendu.Tranche(TrancheDeJeu(zRef - AncrageDecalageSol))
 	assets := map[uint32]*RuntimeGeoAsset{}
 	for _, in := range bsp.Instances {
 		if in.QuickDeleted() || in.ProjecteurOmbre() {
 			continue
 		}
 		id := in.RuntimeGeoID()
-		if g, _, ok := idx.Lookup(id); !ok || g != "rtgo" {
+		if g, _, ok := idx.Lookup(id); !ok || g != GroupeRtgo {
 			continue
 		}
 		a, deja := assets[id]
@@ -308,14 +297,14 @@ func TestCoquilleEnXYCatalyst(t *testing.T) {
 	if len(ancres) == 0 {
 		t.Skip("aucune ancre pour catalyst_map")
 	}
-	zRef := medianeZ(ancres)
+	zRef := MedianeZ(ancres)
 
-	chemin, ok := chercheModule(racine, "catalyst_map")
+	chemin, ok := ChercheModuleInstalle("catalyst_map")
 	if !ok {
 		t.Skip("module catalyst absent")
 	}
 	rendu := cadreSurAncres(t, ancres)
-	rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+	rendu.Tranche(TrancheDeJeu(zRef - AncrageDecalageSol))
 	rendu.NiveauDeJeu(zRef)
 	n, ecartees := peupleRendu(t, rendu, racine, chemin, ancres)
 	t.Logf("%d instances dessinees · %d ecartees par le grain", n, ecartees)
@@ -350,10 +339,10 @@ func TestCoquilleEnXYCatalyst(t *testing.T) {
 	jugeParLesAncres(t, rendu, ancres)
 
 	if sortie := os.Getenv("CLOTURE_PNG"); sortie != "" {
-		style := styleRendu(os.Getenv("RENDU_STYLE"))
+		style := StyleFond(os.Getenv("RENDU_STYLE"))
 		if style == "" {
-			style = StyleCarteParDefaut
+			style = StyleFondParDefaut
 		}
-		ecritPNG(t, sortie, carteSeulePNG(rendu, rendu.NX, rendu.NY, nil, style))
+		ecritPNG(t, sortie, FondPNG(rendu, rendu.NX, rendu.NY, nil, style))
 	}
 }

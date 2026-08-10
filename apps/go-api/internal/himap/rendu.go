@@ -27,7 +27,7 @@ import "math"
 var LumiereRendu = normalise([3]float64{-0.4, 0.5, 0.75})
 
 // TrancheDeJeuMin / TrancheDeJeuMax : la tranche d'altitude hors de laquelle la matiere
-// n'appartient plus a la carte.
+// n'appartient plus a la carte. Elles sont RELATIVES AU SOL JOUE — cf. `TrancheDeJeu`.
 //
 // D'OU ELLES VIENNENT. Du prototype, qui les portait depuis le debut — `s31_raster.py` borne
 // son volume a `ZB0, ZB1 = -12.0, 28.0` — et le handoff §3 les nommait « la tranche de jeu ».
@@ -38,13 +38,42 @@ var LumiereRendu = normalise([3]float64{-0.4, 0.5, 0.75})
 // le plancher a -6 fait passer les pixels manquants de 4,0 a 7,3 % ; le plafond entre +20 et
 // +28 ne change rien.
 //
-// CE QU'ELLES NE SONT PAS : une regle generale. Elles sont mesurees sur UNE carte. Leur
-// generalisation aux 36 autres est ouverte (registre des reports) — sur une carte plus haute
-// ou plus encaissee, un plafond a +28 m coupera. Ne pas les prendre pour un invariant.
+// CE QU'ELLES NE SONT PAS : une regle generale en EPAISSEUR. L'epaisseur de 40 m est mesuree
+// sur UNE carte (registre des reports). Ce qui a ete tranche le 2026-08-10, c'est leur ORIGINE :
+// relative, pas absolue.
 const (
 	TrancheDeJeuMin = -12.0
 	TrancheDeJeuMax = 28.0
 )
+
+// TrancheDeJeu rend la tranche d'altitude d'une carte, translatee au sol JOUE.
+//
+// POURQUOI RELATIVE, ET POURQUOI CA A CHANGE LE 2026-08-10. Ces bornes etaient appliquees en
+// altitudes ABSOLUES sur les cartes natives — un accident propre a Cliffhanger, dont le sol
+// joue est a -2,2 m. La cuisson des 17 cartes a montre que le niveau joue s'etale de
+// **-136,7 m (`chasm`) a +52,3 m (Vagabond)** : la tranche absolue decapitait les cartes qui ne
+// jouent pas vers zero. Mesure :
+//
+//	                     absolue [-12;+28]   relative au sol des ancres
+//	chasm                      5/17 ancres        17/17
+//	btb_highpower             14/51              38/51
+//	catalyst                  24/24              24/24
+//	ridgeline                 14/14              14/14
+//	ridgeline, oracle FORT    accord 66,7 %      accord 64,7 % · positions 93,95 %
+//
+// Le cout est reel et assume par decision utilisateur du 2026-08-10 : sur Cliffhanger l'exces
+// passe de 33,8 a 39,1 % (la vallee entre dans le cadre) et l'accord perd 2 points. Deux cartes
+// inexploitables valent plus qu'un point d'accord sur une carte deja lisible.
+//
+// LA CHAINE FORGE FAISAIT DEJA CECI. C'est meme d'elle que vient la lecture juste : le sol de
+// Vagabond vit vers z=52, personne n'aurait pu lui appliquer une tranche absolue.
+//
+// UNE SEULE EXPRESSION, partagee par la production et par le banc de non-regression : deux
+// copies de cette translation finiraient par diverger, et le banc cesserait de garder la
+// production.
+func TrancheDeJeu(zJeu float64) (min, max float64) {
+	return zJeu + TrancheDeJeuMin, zJeu + TrancheDeJeuMax
+}
 
 // Rendu porte un z-buffer et la normale retenue par pixel.
 type Rendu struct {

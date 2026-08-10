@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "module": "va_launchsite",
+  "mapNames": [
+    "launch_site",
+    "launch site",
+    "launch_site_va_launchsite"
+  ],
+  "image": "va_launchsite.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:26:36.3543699Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -54.04544639587402,
+    "originY": 66.12800152587891,
+    "widthPx": 1468,
+    "heightPx": 1584,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 12,
+    "anchorMedianGapM": -6.288951703310013,
+    "instancesDrawn": 12861,
+    "instancesScenery": 298,
+    "playLevelZ": -1.0118143939971924,
+    "boundaryApplied": true,
+    "boundaryPlanes": 24,
+    "boundaryCellsCleared": 1891124,
+    "waterVolumes": 6,
+    "waterCells": 52289
+  }
+}

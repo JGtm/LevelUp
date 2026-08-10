@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "module": "ridgeline",
+  "mapNames": [
+    "cliffhanger",
+    "cliffhanger_ridgeline"
+  ],
+  "image": "ridgeline.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:25:25.9364553Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -57.30403518676758,
+    "originY": 78.87359236145019,
+    "widthPx": 1633,
+    "heightPx": 1627,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 14,
+    "anchorsInFrame": 14,
+    "anchorsWithGround": 14,
+    "anchorMedianGapM": -0.3213047900233179,
+    "instancesDrawn": 5102,
+    "instancesScenery": 859,
+    "playLevelZ": -2.150161304473877,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 781739,
+    "waterVolumes": 233,
+    "waterCells": 5468
+  }
+}

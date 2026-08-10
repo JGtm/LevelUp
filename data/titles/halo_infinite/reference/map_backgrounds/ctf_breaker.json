@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "module": "ctf_breaker",
+  "mapNames": [
+    "breaker",
+    "breaker_heavies_map",
+    "breaker_map"
+  ],
+  "image": "ctf_breaker.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-10T20:30:43.6319324Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -67.64591026306152,
+    "originY": 95.94590533447266,
+    "widthPx": 1553,
+    "heightPx": 2046,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 42,
+    "anchorsInFrame": 42,
+    "anchorsWithGround": 41,
+    "anchorMedianGapM": -3.290846988818858,
+    "instancesDrawn": 7563,
+    "instancesScenery": 232,
+    "playLevelZ": 16.133669815063477,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 2014848,
+    "waterVolumes": 0,
+    "waterCells": 0
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de ctf_breaker-rtx-new.module"
+  ]
+}
