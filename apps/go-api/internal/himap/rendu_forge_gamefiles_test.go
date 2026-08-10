@@ -201,7 +201,7 @@ func TestRenduForgeVagabond(t *testing.T) {
 	// etalonne) — une regle, pas un reglage par carte. RENDU_FORGE_SANS_TRANCHE la retire
 	// pour comparaison.
 	if os.Getenv("RENDU_FORGE_SANS_TRANCHE") == "" {
-		sol := medianeZ(ancres) - AncrageDecalageSol
+		sol := medianeZAncres(ancres) - AncrageDecalageSol
 		rendu.Tranche(sol+TrancheDeJeuMin, sol+TrancheDeJeuMax)
 		t.Logf("tranche relative au sol des ancres (%.2f m) : [%.2f ; %.2f]",
 			sol, sol+TrancheDeJeuMin, sol+TrancheDeJeuMax)
@@ -273,4 +273,16 @@ func TestRenduForgeVagabond(t *testing.T) {
 func existe(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// medianeZAncres rend l'altitude mediane d'un jeu d'ancres.
+func medianeZAncres(pts [][3]float64) float64 {
+	zs := make([]float64, 0, len(pts))
+	for _, p := range pts {
+		zs = append(zs, p[2])
+	}
+	if len(zs) == 0 {
+		return 0
+	}
+	return centile(zs, 0.5)
 }
