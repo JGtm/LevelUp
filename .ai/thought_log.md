@@ -1,3 +1,81 @@
+## [2026-08-11] v7.5 voie B — ronde P1-1-bis : le DUAL, et le plancher du corpus passe sous 88 %
+
+**Statut** : Complété. Périmètre fermé au seul défaut dual ; **une escalade utilisateur ouverte**
+(plancher du garde local). Ni le seuil ni la règle n'ont été touchés pour sauver un chiffre.
+
+**LE DÉFAUT, VÉRIFIÉ SUR PIÈCES.** La ronde du 09/08 avait fermé le cas « le corps du tireur couvre
+l'instant du tir ET un autre aussi » : deux candidats, abstention. Son DUAL restait ouvert dans
+`closeByAvailableBody` : quand le tireur n'a **aucun** corps couvrant l'instant — aucun corps du
+tout, ou des corps disjoints (un trou de plus de `lifeGapUS` scinde la vie via `buildLifeSpans` ;
+une vie peut aussi s'achever avant le tir, l'événement 0xd2 étant un record indépendant des
+positions de biped) — et qu'un seul corps **étranger** couvre l'instant, `len(cand) == 1` suffisait
+à écrire `owner[slot] = tireur`. Silencieusement : aucun compteur, verdict du pont nominal, et le
+contrôle de recouvrement aveugle puisque les traces sont disjointes. **Le test nominal ENCODAIT ce
+défaut** : `TestFermetureAAttribueQuandUnSeulCorpsEstPossible` faisait tirer un joueur 3 sans
+aucune vie et exigeait `owner[2] = 3`.
+
+**DÉCISION TECHNIQUE — la corroboration est POSITIVE, pas une non-contradiction.** L'unicité d'un
+candidat ne dit qu'une chose : un seul corps libre est là. Le corps déduit n'est attribué que s'il
+**PROLONGE** le tireur, sous deux conditions (`bodyExtendsShooter`) : **ancrage** — le tireur a au
+moins un corps connu, sinon rien ne le situe dans le film ; **terminalité** — tous ses corps connus
+s'achèvent AVANT que le candidat ne commence, parce qu'une vie anonyme est une vie que nulle mort
+ne termine, donc la DERNIÈRE d'un joueur ; un corps connu postérieur ferait du candidat une vie
+intermédiaire, donc nommée par la mort qui la termine. La terminalité **absorbe et durcit** l'ancien
+recouvrement (le chevauchement en est le cas particulier) ; `overlapsNamedLife` reste, pour la seule
+fermeture B, dont l'identité vient du fil des morts. Troisième refus, rendu **nécessaire** par les
+deux premiers : deux corps qui revendiquent le même tireur tombent tous les deux
+(`shootersClaimingTwoBodies`) — sans lui, la première attribution devient un corps connu du tireur
+et fait tomber la seconde selon le seul numéro de slot, exactement le défaut corrigé côté B le
+09/08. C'est le seul élargissement, et il évite d'introduire le défaut qu'on venait de retirer.
+
+**LA PREUVE QUE LES TESTS TESTENT — quatre mutations, chacune isolant une condition.**
+
+| mutation | nominal | ne peut prolonger | non ancré | deux corps même tireur | recouvrement |
+|---|---|---|---|---|---|
+| comportement d'avant le correctif | PASS | **FAIL** | **FAIL** | **FAIL** | PASS |
+| ancrage retiré | PASS | PASS | **FAIL** | PASS | PASS |
+| terminalité retirée | PASS | **FAIL** | PASS | PASS | **FAIL** |
+| A n'attribue plus rien | **FAIL** | PASS | PASS | PASS | PASS |
+
+Ponts fautifs vus sous la première mutation : `map[2:3 3:3]` (le corps d'autrui, scénario des
+relecteurs), `map[1:0 2:3]` (tireur ancré nulle part), `map[1:3 2:3 4:3]` (un joueur, deux corps).
+Le test nominal ne rougit que sous la dernière mutation : il n'est pas vide.
+
+**RÉSULTATS — LE PLANCHER PASSE SOUS LE CRITÈRE, ET C'EST L'ESCALADE.** Corpus des sept films
+rejoué avant ET après dans cette session (l'« avant » reproduit le §7.5bis au centième) :
+
+| film | lecture seule | 09/08 | **11/08** | écart |
+|---|---|---|---|---|
+| `0edb8512` · `db7b8c3c` · `000d5950` · `829abef9` | — | — | **inchangés** | — |
+| `9aeca4b3` | 89,0 % | 91,63 % | **91,30 %** | −0,33 |
+| `01e1f945` | 86,4 % | 89,69 % | **89,18 %** | −0,51 |
+| `64e8adfa` | 80,3 % | 90,80 % | **87,39 %** | **−3,41** |
+
+**`64e8adfa` tombe à 87,39 %, sous les 88 % du garde local** (`api/handlers/replay_local_gate.go`) :
+le corpus passe **6 sur 7**. Les 98 tirs perdus sur ce film étaient posés sur des joueurs que rien
+ne situait à cet instant — c'est le prix de la justesse, et **l'arbitrage appartient à
+l'utilisateur**. Le seuil n'a pas été rabaissé, la règle n'a pas été relâchée, aucune exception
+négociée pour ce film (ce serait le défaut « choisir ses films », déjà tranché le 2026-07-31).
+Détail instructif : sur `64e8adfa` la fermeture A passe de 3 à 0 tandis que B passe de 4 à 5 — le
+corps qu'A ne prend plus redevient déductible par la réapparition, qui tient son identité du fil
+des morts ; sur `829abef9` ce même transfert A→B laisse le taux **strictement inchangé**.
+Garde-fous : **31 attributions pour 99 refus** (87 contestées, 12 rejetées), contre 37/86 au 09/08.
+
+**Le film figé `000d5950` ne bouge pas** (483/519, pont 93, A=0, B=3) : la fermeture A n'y
+attribuait déjà rien. Le golden n'a changé que par la phrase qui nomme les causes de refus.
+
+**LIMITE ASSUMÉE, ÉCRITE DANS LE CODE.** Un tireur dont tous les corps connus PRÉCÈDENT le candidat
+reste attribuable même s'il était en réalité invisible à cet instant : ce cas ne se distingue pas du
+cas nominal avec les pièces disponibles. C'est la limite de la fermeture A, pas un contrôle oublié.
+
+**Gates** : `go test ./internal/analysis/replay/...` vert (les SKIP sont les instruments de
+recherche à variables d'environnement), `go vet` analysis + handlers vert, ratchet golangci-lint
+**0 issues**. Contrat openapi (`BridgeHealth`) NON régénéré — dette connue, à traiter au repli dans
+`feat/v75` où le gate contrat tourne. Pas de CI sur `research/**` (hors globs).
+
+**PROCHAINE ÉTAPE** : décision utilisateur sur le plancher du garde local (le maintenir à 88 % et
+garder le rejeu local, ou le réviser). Rien d'autre n'est ouvert sur ce défaut.
+
 ## [2026-08-09] v7.5 voie B — la ronde de correction des fermetures : deux deductions que rien ne fondait
 
 **Statut** : Complété. Périmètre fermé par la revue adversariale (3 P1 + 2 P2), rien d'autre touché.

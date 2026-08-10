@@ -35,34 +35,45 @@ import "sort"
 //
 // # LES GARDE-FOUS, ET ILS MORDENT
 //
-//	contestation   l'unicité manque, dans l'un des trois sens -> aucune attribution
+//	contestation   l'unicité manque, dans l'un des quatre sens -> aucune attribution
 //	               deux corps possibles pour un même tir (A) · deux joueurs revendiquent le même
-//	               corps (A) · deux corps revendiquent la même mort (B — une mort ne rend qu'un
-//	               corps, symétrique du refus de la vie qui voit deux morts)
+//	               corps (A) · deux corps revendiquent le même joueur (A — un joueur n'a qu'un
+//	               DERNIER corps) · deux corps revendiquent la même mort (B — une mort ne rend
+//	               qu'un corps, symétrique du refus de la vie qui voit deux morts)
+//	corroboration  l'unicité du candidat ne prouve RIEN de son appartenance (A) : le corps déduit
+//	               n'est attribué que si le tireur peut le PROLONGER — il a un corps connu, et
+//	               tous ses corps connus s'achèvent avant que le candidat ne commence -> sinon
+//	               rejetée. Ce contrôle absorbe et durcit l'ancien « recouvrement ».
 //	recouvrement   un joueur n'a qu'un corps : si le corps déduit chevauche dans le temps une vie
-//	               DÉJÀ nommée du même joueur, l'attribution est impossible -> rejetée
+//	               DÉJÀ nommée du même joueur, l'attribution est impossible -> rejetée (B)
 //
-// Mesuré sur les sept films, APRÈS LA RONDE DE CORRECTION DU 2026-08-09 : **37 vies attribuées,
-// 86 refusées** — 76 contestées, 10 rejetées par le recouvrement. Ce compte de refus NE SE COMPARE
-// PAS aux 17 du 2026-08-08 : la contestation couvre désormais aussi les vies écartées faute
-// d'unicité d'INTERVALLE, qui n'étaient alors comptées nulle part. Un contrôle qui ne rejette
-// jamais rien ne prouve rien ; celui-ci refuse plus de deux fois pour une attribution. C'est le
-// pendant du critère « huit entités distinctes » qui a réfuté la piste i19 le 2026-07-28.
+// Mesuré sur les sept films, APRÈS LA RONDE DE CORROBORATION DU 2026-08-11 : **31 vies attribuées,
+// 99 refusées** — 87 contestées, 12 rejetées. Ce compte de refus NE SE COMPARE PAS aux 17 du
+// 2026-08-08 : la contestation couvre depuis le 2026-08-09 les vies écartées faute d'unicité
+// d'INTERVALLE, qui n'étaient alors comptées nulle part. Un contrôle qui ne rejette jamais rien ne
+// prouve rien ; celui-ci refuse plus de trois fois pour une attribution. C'est le pendant du
+// critère « huit entités distinctes » qui a réfuté la piste i19 le 2026-07-28.
 //
-// # RÉSULTAT MESURÉ (avant -> après, sept films, 2026-08-09)
+// # RÉSULTAT MESURÉ (lecture seule -> fermetures, sept films, 2026-08-11)
 //
 //	0edb8512 Team Slayer  93,4 -> 96,4      db7b8c3c CTF   88,5 -> 94,5
-//	9aeca4b3 Team Slayer  89,0 -> 91,6      64e8adfa CTF   80,3 -> 90,8  (+10,5)
-//	000d5950 Fiesta       91,5 -> 93,1      829abef9 CTF   79,7 -> 88,7  (+9,0)
-//	01e1f945 KOTH         86,4 -> 89,7
+//	9aeca4b3 Team Slayer  89,0 -> 91,3      64e8adfa CTF   80,3 -> 87,4
+//	000d5950 Fiesta       91,5 -> 93,1      829abef9 CTF   79,7 -> 88,7
+//	01e1f945 KOTH         86,4 -> 89,2
 //
-// TROIS FILMS ONT RECULÉ depuis la mesure du 2026-08-08 (95,0 -> 91,6 · 92,6 -> 90,8 ·
-// 93,3 -> 93,1), et c'est le résultat ATTENDU d'un correctif de justesse : ce qui disparaît, ce
-// sont les attributions que la revue a montrées infondées. Un correctif de ce genre qui ferait
-// MONTER le compte serait le signal qu'il a élargi au lieu de resserrer. Le plancher du corpus
-// reste 88,7 % (`829abef9`), au-dessus du critère du garde local (88 %).
+// LE PLANCHER DU CORPUS EST PASSÉ SOUS LE CRITÈRE DU GARDE LOCAL, ET CE N'EST PAS UN DÉFAUT DE CE
+// FICHIER : 87,4 % sur `64e8adfa` contre 88 % exigés. La corroboration a retiré 3 fermetures A sur
+// ce film (98 tirs), toutes attribuées à des tireurs que rien ne situait — exactement le « corps
+// d'autrui » que le chantier interdit. Le seuil n'a PAS été touché et la règle n'a PAS été
+// relâchée pour faire remonter le chiffre : l'arbitrage entre la justesse et le seuil
+// d'activation appartient à l'utilisateur (cf. `api/handlers/replay_local_gate.go`).
 //
-// Détail, méthode et échec de réglage : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md` §7.5 et §7.5bis.
+// LES CHIFFRES BAISSENT, ET C'EST LE SENS ATTENDU d'un correctif de justesse : quatre films sont
+// inchangés, trois reculent (90,8 -> 87,4 · 89,7 -> 89,2 · 91,6 -> 91,3). Un correctif de ce genre
+// qui ferait MONTER le compte serait le signal qu'il a élargi au lieu de resserrer.
+//
+// Détail, méthode et échec de réglage : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md` §7.5, §7.5bis
+// et §7.5ter.
 
 // respawnHalfWidthUS : demi-largeur de la fenêtre de réapparition, en microsecondes.
 //
@@ -122,9 +133,25 @@ func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 	if len(free) == 0 {
 		return
 	}
+	claims, blocked := claimsFromShots(tracks, owner, free, fire)
+	attributeClaimedBodies(tracks, owner, claims, rep)
+	// Une vie contestée à un instant peut être seule candidate à un autre : seules celles qui
+	// n'ont JAMAIS été revendiquées sont des déductions abandonnées. Le comptage ne dépend pas
+	// de l'ordre d'itération de la map, donc rien à trier ici.
+	for slot := range blocked {
+		if _, claimed := claims[slot]; !claimed {
+			rep.contested++
+		}
+	}
+}
+
+// claimsFromShots dépouille les tirs ORPHELINS — ceux dont l'auteur n'a aucun corps rattachable
+// à cet instant — et rend qui revendique quel corps libre. Le second retour retient les corps
+// écartés faute d'unicité : sans lui, l'abstention la plus fréquente de la fermeture A ne serait
+// comptée nulle part.
+func claimsFromShots(tracks map[uint32]slotTrack, owner map[uint32]int, free []lifeSpan,
+	fire []FireEventRef) (map[uint32]map[int]int, map[uint32]bool) {
 	claims := map[uint32]map[int]int{}
-	// blocked retient les vies écartées faute d'unicité : sans elles, l'abstention la plus
-	// fréquente de la fermeture A ne serait comptée nulle part.
 	blocked := map[uint32]bool{}
 	for _, e := range fire {
 		if _, r := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS); r == reasonAttached {
@@ -142,27 +169,111 @@ func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 		}
 		claims[cand[0].slot][e.FilmIndex]++
 	}
+	return claims, blocked
+}
+
+// attributeClaimedBodies pose au pont les corps qu'UN SEUL tireur revendique, que ce tireur ne
+// revendique QU'UNE FOIS, et qu'il peut PROLONGER. Chacun des trois refus est compté.
+func attributeClaimedBodies(tracks map[uint32]slotTrack, owner map[uint32]int,
+	claims map[uint32]map[int]int, rep *closureReport) {
+	twice := shootersClaimingTwoBodies(claims)
 	for _, slot := range sortedClaimSlots(claims) {
-		if len(claims[slot]) != 1 {
+		if len(claims[slot]) != 1 { // deux joueurs pour un même corps
 			rep.contested++
 			continue
 		}
 		pi := onlyPlayerIndex(claims[slot])
-		if overlapsNamedLife(tracks, owner, slot, pi) {
+		if twice[pi] { // deux corps pour un même joueur
+			rep.contested++
+			continue
+		}
+		if !bodyExtendsShooter(tracks, owner, slot, pi) {
 			rep.refused++
 			continue
 		}
 		owner[slot] = pi
 		rep.byShot++
 	}
-	// Une vie contestée à un instant peut être seule candidate à un autre : seules celles qui
-	// n'ont JAMAIS été revendiquées sont des déductions abandonnées. Le comptage ne dépend pas
-	// de l'ordre d'itération de la map, donc rien à trier ici.
-	for slot := range blocked {
-		if _, claimed := claims[slot]; !claimed {
-			rep.contested++
+}
+
+// shootersClaimingTwoBodies rend les tireurs que DEUX corps libres revendiquent.
+//
+// UN JOUEUR N'A QU'UN DERNIER CORPS, et sans ce contrôle l'ORDRE DES SLOTS déciderait laquelle
+// des deux déductions passe : la première attribuée devient un corps connu du tireur, ce qui fait
+// tomber la seconde — ou pas, selon que son numéro de slot est plus petit ou plus grand. Deux
+// déductions qui s'excluent ne sont pas deux déductions ; les deux tombent. C'est le symétrique
+// exact du refus « deux joueurs revendiquent le même corps » ici, et de « deux corps revendiquent
+// la même mort » à la fermeture B.
+func shootersClaimingTwoBodies(claims map[uint32]map[int]int) map[int]bool {
+	n := map[int]int{}
+	for _, m := range claims {
+		if len(m) != 1 {
+			continue
+		}
+		n[onlyPlayerIndex(m)]++
+	}
+	out := map[int]bool{}
+	for pi, c := range n {
+		if c > 1 {
+			out[pi] = true
 		}
 	}
+	return out
+}
+
+// bodyExtendsShooter — LA CORROBORATION, ET ELLE EST POSITIVE.
+//
+// L'UNICITÉ DU CANDIDAT NE PROUVE RIEN DE SON APPARTENANCE, et c'est le défaut que cette fonction
+// ferme. `livesCoveringAt` rend les corps libres dont l'intervalle couvre l'instant du tir ; qu'il
+// n'y en ait qu'un dit seulement qu'UN SEUL CORPS LIBRE EST LÀ — jamais qu'il est celui du tireur.
+// Le tireur, lui, peut n'être nulle part dans les positions à cet instant : l'événement de tir est
+// un record INDÉPENDANT de la réplication des bipeds, un trou de plus de `lifeGapUS` scinde une vie
+// en deux dont aucune ne couvre l'instant, et une vie peut s'achever avant lui. Sans corroboration,
+// le corps d'AUTRUI était alors attribué au tireur — silencieusement, puisque du point de vue du
+// code il ne restait qu'un candidat. C'est exactement ce que le chantier interdit.
+//
+// CE QUE LE MODÈLE AUTORISE, ET RIEN D'AUTRE. Une vie anonyme est une vie QUE NULLE MORT NE TERMINE
+// (`lives.go`) : dans la vie d'un joueur, c'est donc sa DERNIÈRE — celle qui court de sa dernière
+// mort au coup de sifflet, précisément la zone où les tirs se perdent. Le corps déduit n'est donc
+// attribuable au tireur que sous DEUX conditions, toutes deux positives :
+//
+//	ancrage        le tireur possède AU MOINS UN corps déjà connu. Sans ancre, rien ne le situe
+//	               dans le film, et l'unicité du candidat ne dit rien de lui.
+//	terminalité    TOUS ses corps connus s'achèvent AVANT que le corps candidat ne commence. Un
+//	               corps connu postérieur ferait du candidat une vie INTERMÉDIAIRE du tireur —
+//	               donc une vie terminée par une mort, qui l'aurait NOMMÉE. Elle ne l'a pas été :
+//	               le candidat n'est pas de lui.
+//
+// LA SECONDE CONDITION ABSORBE LE CONTRÔLE DE RECOUVREMENT et le durcit. « S'achever avant que le
+// candidat ne commence » interdit à la fois le chevauchement (un joueur n'a qu'un corps) et la
+// postériorité. C'est le même invariant, énoncé dans le sens qui PROUVE au lieu de celui qui ne
+// réfute pas — un test de non-contradiction laisse passer tout ce qu'il ne voit pas.
+//
+// CE QU'ELLE NE COUVRE PAS, ET IL FAUT LE DIRE : un tireur dont TOUS les corps connus précèdent le
+// candidat reste attribuable même s'il était en réalité invisible à cet instant. Ce cas-là ne se
+// distingue pas du cas nominal avec les pièces disponibles — c'est la limite de la fermeture A,
+// pas un contrôle oublié.
+func bodyExtendsShooter(tracks map[uint32]slotTrack, owner map[uint32]int, slot uint32, pi int) bool {
+	cand := tracks[slot].pts
+	if len(cand) == 0 {
+		return false
+	}
+	from := cand[0].TimestampUS
+	anchored := false
+	for s, p := range owner {
+		if p != pi || s == slot {
+			continue
+		}
+		pts := tracks[s].pts
+		if len(pts) == 0 {
+			continue
+		}
+		if pts[len(pts)-1].TimestampUS >= from {
+			return false // chevauchement, ou corps postérieur : le candidat n'est pas terminal
+		}
+		anchored = true
+	}
+	return anchored
 }
 
 // closeByRespawn — FERMETURE B. Une vie commence une réapparition après la mort qui l'a causée ;
@@ -298,9 +409,13 @@ func livesCoveringAt(free []lifeSpan, tUS uint64) []lifeSpan {
 	return out
 }
 
-// overlapsNamedLife — LE GARDE-FOU QUI PEUT RÉFUTER UNE DÉDUCTION. Un joueur n'a qu'un corps :
-// si le slot déduit porte des positions en même temps qu'un slot déjà attribué au même joueur,
-// l'attribution est IMPOSSIBLE, et on la rejette plutôt que de la publier.
+// overlapsNamedLife — LE GARDE-FOU QUI PEUT RÉFUTER UNE DÉDUCTION DE LA FERMETURE B. Un joueur
+// n'a qu'un corps : si le slot déduit porte des positions en même temps qu'un slot déjà attribué
+// au même joueur, l'attribution est IMPOSSIBLE, et on la rejette plutôt que de la publier.
+//
+// LA FERMETURE A NE L'APPELLE PLUS : sa corroboration (`bodyExtendsShooter`) exige davantage — non
+// pas l'absence de contradiction, mais la preuve que le corps PROLONGE le tireur. B n'en a pas
+// besoin : son identité vient du fil des morts, pas de l'unicité d'un candidat.
 func overlapsNamedLife(tracks map[uint32]slotTrack, owner map[uint32]int, slot uint32, pi int) bool {
 	cand := tracks[slot].pts
 	if len(cand) == 0 {

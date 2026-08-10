@@ -37,9 +37,13 @@ d'horloge, les familles d'armes non mappées, les flux propres au mode. Détail 
 
 **LE CORRECTIF N'EST PAS UNE HYPOTHÈSE : IL EST ÉCRIT ET MESURÉ.** Deux **fermetures**
 déterministes — pas des votes : elles n'attribuent que lorsqu'un seul candidat reste possible —
-portent **les sept films de 79,7-93,4 % à 88,7-96,4 %**, avec **+12,3 points sur le pire film**.
-Leurs deux garde-fous ont refusé un tiers des déductions, ce qui est la raison de leur croire.
-Détail et échec de réglage compris : §7.5.
+portent **les sept films de 79,7-93,4 % à 87,4-96,4 %** (mesure du 2026-08-11 ; 88,7-96,4 % au
+08/08, avant deux rondes de correction). Leurs garde-fous refusent trois déductions sur quatre,
+ce qui est la raison de leur croire. Détail et échecs compris : §7.5, §7.5bis, **§7.5ter**.
+
+**LE PLANCHER NE PASSE PLUS LE CRITÈRE DE 88 % DEPUIS LA RONDE DE CORROBORATION DU 2026-08-11** :
+`64e8adfa` tombe à 87,39 %, et le corpus passe 6 sur 7. Le seuil n'a pas été touché ; l'arbitrage
+appartient à l'utilisateur (§7.5ter).
 
 **ATTENTION AU DÉNOMINATEUR (§3bis)** : tous ces taux portent sur les tirs **que le film contient**,
 pas sur les tirs du match. Le film n'en porte que 69 à 87 % en arène (23 % en Fiesta), si bien que
@@ -313,8 +317,9 @@ n'appelle pas d'autre mesure — elle appelle une décision.
   phase la plus regardée : le dernier décile perd 40 à 74 % de ses tirs dans les sept films.
   Livrer ça, ce serait un écran qui tait la moitié d'une fin de match sans le dire.
 - **Mais le correctif n'est plus une hypothèse : il est écrit et mesuré** (§7.5). Les deux
-  fermetures portent **les sept films à 88,7 % ou mieux**, avec +12,3 points sur le pire. Le
-  blocage n'est plus « on ne sait pas pourquoi » ; c'est **un lot d'implémentation borné**.
+  fermetures portent **les sept films à 87,4 % ou mieux** — 88,7 % ou mieux à la mesure du 08/08,
+  avant deux rondes de correction (§7.5bis, §7.5ter). Le blocage n'est plus « on ne sait pas
+  pourquoi » ; c'est **un lot d'implémentation borné**.
 
 **Ce qui reste à la décision de l'utilisateur** : exécuter ce lot dans v7.5 et ouvrir le rejeu, ou
 le garder en local et livrer le lot plus tard. Les deux sont défendables ; ce document ne tranche
@@ -471,6 +476,66 @@ des vies encore anonymes que ni A ni B ne peuvent trancher, et — sur `829abef9
 (H3, découpage des vies). Le plafond du §4.6 (94,7-98,5 %) n'est donc pas atteint, mais l'essentiel
 de l'écart l'est.
 
+### 7.5ter LA RONDE DE CORROBORATION DU 2026-08-11 — et le plancher passe sous le critère
+
+**Les tableaux des §7.5 et §7.5bis ne sont pas réécrits**, même convention qu'à la ronde
+précédente : ce qu'ils gardent d'utile est de combien chaque mesure était optimiste.
+
+**LE DÉFAUT, ET C'ÉTAIT LE DUAL DE CELUI DU 2026-08-09.** La ronde précédente a fermé le cas
+« le corps du tireur couvre l'instant du tir ET un autre aussi » : deux candidats, abstention.
+Elle a laissé ouvert son symétrique : **le tireur n'a AUCUN corps qui couvre l'instant** — aucun
+corps du tout, ou des corps temporellement disjoints (un trou de plus de `lifeGapUS` scinde la vie
+en deux dont aucune ne couvre l'instant ; une vie peut aussi s'achever avant le tir, l'événement
+0xd2 étant un record indépendant des positions de biped) — **et un seul corps ÉTRANGER couvre
+l'instant**. `len(cand) == 1` : le corps d'autrui lui était attribué. Silencieusement : aucun
+compteur ne bougeait, le verdict du pont restait nominal, et le contrôle de recouvrement ne
+pouvait rien voir puisque les deux traces sont disjointes. Zone réelle : les survivants anonymes
+de fin de match, c'est-à-dire exactement le dernier décile où 40 à 74 % des tirs se perdent.
+
+**LA RÈGLE RETENUE — la corroboration est POSITIVE.** L'unicité d'un candidat ne dit qu'une chose :
+un seul corps libre est là. Elle ne dit rien de son appartenance. Le corps déduit n'est désormais
+attribué au tireur que s'il peut le **PROLONGER**, sous deux conditions vérifiables :
+
+| condition | raison |
+|---|---|
+| **ancrage** — le tireur a au moins un corps déjà connu | sans ancre, rien ne le situe dans le film ; l'unicité du candidat ne dit rien de lui |
+| **terminalité** — tous ses corps connus s'achèvent AVANT que le candidat ne commence | une vie anonyme est une vie **que nulle mort ne termine**, donc la DERNIÈRE d'un joueur. Un corps connu postérieur ferait du candidat une vie intermédiaire, donc terminée par une mort — qui l'aurait nommée. Elle ne l'a pas été |
+
+La terminalité **absorbe et durcit** l'ancien contrôle de recouvrement : « s'achever avant » interdit
+le chevauchement comme cas particulier. C'est le même invariant énoncé dans le sens qui PROUVE au
+lieu de celui qui ne réfute pas — un test de non-contradiction laisse passer tout ce qu'il ne voit
+pas. S'y ajoute un troisième refus, rendu nécessaire par les deux premiers : **deux corps qui
+revendiquent le même tireur tombent tous les deux** (un joueur n'a qu'un DERNIER corps), sans quoi
+l'ordre des slots déciderait lequel passe — le défaut même corrigé à la fermeture B le 08/09.
+
+**Résultats, à méthode et corpus identiques :**
+
+| film | mode | lecture seule | **corroborée** | 09/08 | écart |
+|---|---|---|---|---|---|
+| `0edb8512` | Team Slayer | 93,4 % | **96,37 %** | 96,37 % | — |
+| `db7b8c3c` | **CTF** | 88,5 % | **94,45 %** | 94,45 % | — |
+| `000d5950` | Fiesta Slayer | 91,5 % | **93,06 %** | 93,06 % | — |
+| `9aeca4b3` | Team Slayer | 89,0 % | **91,30 %** | 91,63 % | −0,33 |
+| `01e1f945` | KOTH | 86,4 % | **89,18 %** | 89,69 % | −0,51 |
+| `829abef9` | **CTF** | 79,7 % | **88,68 %** | 88,68 % | — |
+| `64e8adfa` | **CTF** | 80,3 % | **87,39 %** | 90,80 % | **−3,41** |
+
+**LE PLANCHER PASSE SOUS LE CRITÈRE DU GARDE LOCAL : 87,39 % contre 88 % exigés**, et le corpus
+passe 6 sur 7 au lieu de 7 sur 7. Ni le seuil ni la règle n'ont été touchés pour le faire remonter.
+Ce que ces 98 tirs de `64e8adfa` avaient de commun : ils étaient posés sur des joueurs que **rien
+ne situait à cet instant**. Les perdre est le prix de la justesse, et l'arbitrage « justesse contre
+seuil d'activation » revient à l'utilisateur.
+
+**Le détail par film est instructif** : sur `64e8adfa`, la fermeture A passe de 3 à 0 attributions
+tandis que B passe de 4 à 5 — le corps qu'A ne prend plus redevient déductible par la réapparition,
+qui, elle, tient son identité du fil des morts. Sur `829abef9` (l'ancien plancher), le même
+transfert A→B laisse le taux **strictement inchangé** : la couverture perdue par A y est rendue par
+B, sur une source mieux fondée. Garde-fous : **31 attributions pour 99 refus** (87 contestées,
+12 rejetées), contre 37/86 le 09/08.
+
+**Sur le film figé `000d5950`, rien ne bouge** — la fermeture A n'y attribuait déjà rien (toutes ses
+candidates contestées). Le golden n'a changé que par la phrase qui nomme les causes de refus.
+
 ### 7.3 Et le garde local, alors ?
 
 **Le garde reste en place**, et son critère doit être **réécrit** — ce que le plan de
@@ -496,6 +561,12 @@ Proposition à soumettre, **chiffrée sur le corpus réel et non sur un plafond 
 TOUS les films mesurés, sans exception à négocier. Avec, dans le même critère : verdict du pont
 nominal sur tous, **corpus nommé** (les sept films de ce document, modes et cartes explicites,
 rejoués à chaque changement du pont), et **date de réexamen**.
+
+> **CE TABLEAU EST DATÉ DU 2026-08-08 ET IL N'EST PLUS ATTEINT.** Après les rondes de correction
+> du 09/08 puis du 11/08, la colonne « après le lot » vaut **6 sur 7 à 88 %** (`64e8adfa` à
+> 87,39 %) et 7 sur 7 à 85 %. Le seuil n'a pas été rabaissé pour sauver la ligne : c'est
+> l'arbitrage de l'utilisateur, posé au §7.5ter. Le raisonnement du tableau — « ne jamais choisir
+> ses films » — reste exact, et c'est lui qui interdit de négocier une exception pour `64e8adfa`.
 
 Poser 90 % obligerait à excepter deux films, donc à retomber dans le défaut de 2026-07-31 — un
 critère qu'on satisfait en choisissant ses films. Poser 85 % laisserait passer le code actuel sur

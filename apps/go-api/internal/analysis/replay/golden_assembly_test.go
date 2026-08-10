@@ -426,9 +426,10 @@ func renderBridge(p func(string, ...any), doc ReplayDocument) {
 	p("fermetures : %d par le corps disponible · %d par la reapparition — une fermeture n attribue "+
 		"QUE lorsqu un seul candidat reste possible, jamais par vote",
 		b.ClosedByShot, b.ClosedByRespawn)
-	p("refus des fermetures : %d contestee(s) (l unicite manque : deux corps, deux joueurs, ou "+
-		"deux corps pour une meme mort) · %d rejetee(s) (recouvrement, ou identite hors table "+
-		"d index) — un controle qui ne rejette rien ne prouve rien",
+	p("refus des fermetures : %d contestee(s) (l unicite manque : deux corps, deux joueurs, deux "+
+		"corps pour un meme joueur, ou deux corps pour une meme mort) · %d rejetee(s) (le corps "+
+		"ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle "+
+		"qui ne rejette rien ne prouve rien",
 		b.ClosedContested, b.ClosedRefused)
 	p("%d vie(s) nommee(s) / %d — un rapport publie sans son denominateur ne se juge pas",
 		b.LivesNamed, b.LivesTotal)

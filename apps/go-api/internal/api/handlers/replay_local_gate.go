@@ -19,13 +19,20 @@ import (
 // tirs, dans TOUS les modes. Cause établie le 2026-08-08 (`.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`)
 // : le pont nomme une vie par la mort qui la termine, donc un joueur qui cesse de mourir cesse
 // d'être localisable. Les FERMETURES (`analysis/replay/closures.go`) ont depuis porté les sept
-// films de 79,7-93,4 % à 88,7-96,4 %.
+// films de 79,7-93,4 % à 87,4-96,4 %.
 //
-// CORPUS REMESURÉ LE 2026-08-09, après la ronde de correction des fermetures (revue adversariale :
-// deux déductions infondées retirées). Trois films reculent — le plus fort de 95,0 à 91,6 % — sans
-// que la borne basse bouge. **La marge sur le critère est mince : 88,68 % sur `829abef9`, pour un
-// plancher à 88 %.** Tout changement du pont doit donc rejouer le corpus AVANT de conclure, jamais
-// après (cf. §7.5bis de la recherche).
+// CORPUS REMESURÉ LE 2026-08-11, après la ronde de CORROBORATION de la fermeture A (revue
+// adversariale : le corps déduit n'est plus attribué à un tireur que rien ne situe). **LE CRITÈRE
+// CI-DESSOUS N'EST PLUS SATISFAIT : `64e8adfa` tombe à 87,39 %, sous le plancher de 88 %.**
+//
+// LE GARDE RESTE DONC EN PLACE, et c'est le sens dans lequel il doit échouer : un critère qui
+// n'est plus atteint interdit le retrait, il ne se renégocie pas. Ni le seuil ni la règle de
+// déduction n'ont été touchés pour faire remonter le chiffre — les 98 tirs perdus sur ce film
+// étaient posés sur des joueurs que rien ne corroborait. L'arbitrage « justesse contre seuil
+// d'activation » appartient à l'utilisateur ; tant qu'il n'est pas rendu, le corpus passe 6 sur 7.
+//
+// Tout changement du pont doit rejouer le corpus AVANT de conclure, jamais après (cf. §7.5ter de
+// la recherche).
 //
 // ATTENTION AU DÉNOMINATEUR, ET C'EST LA PREMIÈRE CHOSE À COMPRENDRE AVANT DE RETIRER CE GARDE :
 // ces taux portent sur les tirs QUE LE FILM CONTIENT, pas sur les tirs du match. Le film n'en

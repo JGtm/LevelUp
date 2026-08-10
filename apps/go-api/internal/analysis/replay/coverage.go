@@ -158,12 +158,15 @@ type BridgeHealth struct {
 	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).
 	ClosedByRespawn int `json:"closedByRespawn"`
 	// ClosedContested : déductions ABANDONNÉES faute d'unicité — deux corps possibles pour un
-	// même tir, deux joueurs pour un même corps, ou deux corps pour une même mort.
+	// même tir, deux joueurs pour un même corps, deux corps pour un même joueur (un joueur n'a
+	// qu'un DERNIER corps), ou deux corps pour une même mort.
 	ClosedContested int `json:"closedContested"`
 	// ClosedRefused : déductions REJETÉES alors qu'un seul candidat subsistait, pour l'une des
-	// deux causes qui rendent l'attribution IMPOSSIBLE : le recouvrement (un joueur n'a qu'un
-	// corps, et le corps déduit chevauche un corps déjà nommé du même joueur), ou une identité
-	// que la table d'index ne porte pas (on saurait quelle victime, pas quel index de film).
+	// causes qui rendent l'attribution IMPOSSIBLE OU NON CORROBORÉE : le corps déduit ne
+	// PROLONGE pas le tireur (fermeture A — aucun corps connu pour l'ancrer, ou un corps connu
+	// qui ne s'achève pas avant lui ; le recouvrement en est le cas particulier), le
+	// recouvrement (fermeture B — un joueur n'a qu'un corps), ou une identité que la table
+	// d'index ne porte pas (on saurait quelle victime, pas quel index de film).
 	//
 	// LES DEUX COMPTEURS DE REFUS SONT PUBLIÉS AU MÊME TITRE QUE LES SUCCÈS, et ce n'est pas
 	// de la décoration : un contrôle qui ne rejette jamais rien ne prouve rien. Mesuré sur

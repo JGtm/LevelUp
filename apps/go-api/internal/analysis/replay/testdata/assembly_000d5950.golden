@@ -57,7 +57,7 @@ capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans l
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 93 entree(s) · 90 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
 fermetures : 0 par le corps disponible · 3 par la reapparition — une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote
-refus des fermetures : 13 contestee(s) (l unicite manque : deux corps, deux joueurs, ou deux corps pour une meme mort) · 1 rejetee(s) (recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
+refus des fermetures : 13 contestee(s) (l unicite manque : deux corps, deux joueurs, deux corps pour un meme joueur, ou deux corps pour une meme mort) · 1 rejetee(s) (le corps ne PROLONGE pas le tireur, recouvrement, ou identite hors table d index) — un controle qui ne rejette rien ne prouve rien
 90 vie(s) nommee(s) / 105 — un rapport publie sans son denominateur ne se juge pas
 26 chunk(s) de replication concordants · 0 desaccord(s) d identite · 0 collision(s) de slot
 verdict : nominal
