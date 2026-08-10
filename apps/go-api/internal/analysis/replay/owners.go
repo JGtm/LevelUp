@@ -49,9 +49,16 @@ type OwnerReport struct {
 	// film. `SlotXUID` sert à publier QUI porte une trace, et un index publié serait
 	// inexploitable par un client : il n'a de sens qu'à l'intérieur de ce film.
 	SlotXUID map[uint32]uint64
-	// FromDeaths compte les slots nommés par la lecture. C'est désormais la seule source, donc
-	// ce compteur vaut toujours len(Owner) — il est conservé parce qu'un écart entre les deux
-	// signalerait qu'une seconde source est réapparue sans qu'on l'ait voulu.
+	// FromDeaths compte les slots nommés par la LECTURE SEULE, figé avant les fermetures.
+	//
+	// IL NE VAUT PLUS len(Owner) DEPUIS LES FERMETURES (2026-08-08), et le commentaire qui
+	// l'affirmait a survécu au changement qui le rendait faux. L'écart entre les deux est
+	// exactement ce que les déductions ont ajouté ; la règle de provenance qui remplace
+	// l'égalité est vérifiée par `verdictOfBridge` :
+	//
+	//	FromDeaths + Closures.byShot + Closures.byRespawn == len(Owner)
+	//
+	// Un écart à CETTE somme signale une troisième source, non comptée.
 	FromDeaths int
 	// DeathsNamed / LivesTotal disent combien de vies le fil des morts a nommées. Un rapport
 	// publié sans son dénominateur ne se juge pas.
@@ -67,6 +74,11 @@ type OwnerReport struct {
 	// SlotCollisions compte les slots dont les vies nommées désignent des joueurs différents.
 	// Mesuré à 0 sur 000d5950 ; un film non nul invaliderait la table slot -> joueur.
 	SlotCollisions int
+	// Closures porte ce que les FERMETURES ont ajouté et refusé (cf. closures.go). Elles ne
+	// sont pas des lectures : ce sont des déductions par élimination, et elles se comptent donc
+	// à part de FromDeaths — sans quoi le pont dirait « tout vient de la lecture » alors que
+	// non.
+	Closures closureReport
 }
 
 // buildOwners construit le pont à partir du seul fil des morts.
@@ -74,7 +86,8 @@ type OwnerReport struct {
 // PAS DE REPLI. Si le film ne porte pas son fil des morts, le pont est VIDE et aucun tir n'est
 // publié — c'est le comportement voulu. Un rejeu muet se voit ; un rejeu qui pose des tirs sur
 // le mauvais joueur ne se voit pas, et c'est bien pire.
-func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTable) OwnerReport {
+func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTable,
+	fire []FireEventRef) OwnerReport {
 	rep := OwnerReport{Owner: map[uint32]int{}, SlotXUID: map[uint32]uint64{}}
 	if len(deaths) == 0 || len(tracks) == 0 || len(idx.ByXUID) == 0 {
 		return rep
@@ -90,8 +103,36 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	rep.IndexDisagreements = idx.Disagreements
 	owners, byXUID, collisions := ownersFromLives(lives, idx.ByXUID)
 	rep.SlotCollisions = collisions
-	rep.Owner = owners
-	rep.SlotXUID = byXUID
 	rep.FromDeaths = len(owners)
+	// LES FERMETURES VIENNENT APRÈS LA LECTURE, JAMAIS À SA PLACE (cf. closures.go). Elles ne
+	// touchent que les vies que le fil des morts n'a pas nommées, et elles s'abstiennent dès que
+	// deux candidats subsistent. `FromDeaths` est figé AVANT, pour que l'écart entre lui et
+	// `len(Owner)` reste lisible : c'est exactement ce que les fermetures ont ajouté.
+	rep.Owner, rep.Closures = closeBridge(tracks, owners, lives, deaths, off, idx.ByXUID, fire)
+	rep.SlotXUID = extendSlotXUID(byXUID, rep.Owner, idx.ByXUID)
 	return rep
+}
+
+// extendSlotXUID pose l'identité sur les slots que les fermetures ont attribués. Sans cela, un
+// slot déduit porterait des tirs sans que le client puisse nommer son joueur — les deux tables
+// diraient deux choses différentes du même pont, ce que `ownersFromLives` interdit déjà.
+func extendSlotXUID(byXUID map[uint32]uint64, owner map[uint32]int,
+	xuidToIndex map[uint64]int) map[uint32]uint64 {
+	indexToXUID := make(map[int]uint64, len(xuidToIndex))
+	for x, i := range xuidToIndex {
+		indexToXUID[i] = x
+	}
+	out := make(map[uint32]uint64, len(owner))
+	for s, x := range byXUID {
+		out[s] = x
+	}
+	for s, pi := range owner {
+		if _, ok := out[s]; ok {
+			continue
+		}
+		if x, ok := indexToXUID[pi]; ok {
+			out[s] = x
+		}
+	}
+	return out
 }

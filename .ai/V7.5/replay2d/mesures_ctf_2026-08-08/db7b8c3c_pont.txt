@@ -1,0 +1,45 @@
+film	db7b8c3c
+carte	Aquarius
+duree_s	670.7
+slots_distincts	147
+vies	150
+vies_nommees	139
+morts_du_fil	139
+morts_appariees	139
+offset_ms	1395496
+
+# sensibilite a la fenetre d'appariement
+fenetre_ms	150	vies_nommees	139	sur	150
+fenetre_ms	500	vies_nommees	139	sur	150
+fenetre_ms	2000	vies_nommees	139	sur	150
+fenetre_ms	10000	vies_nommees	139	sur	150
+
+# vies non nommees (t relatif au debut du film)
+vie	slot	523	debut_s	41.8	fin_s	65.8	duree_s	24.0	tirs_dans_la_fenetre	124
+vie	slot	533	debut_s	91.4	fin_s	146.4	duree_s	55.1	tirs_dans_la_fenetre	331
+vie	slot	576	debut_s	549.3	fin_s	549.3	duree_s	0.0	tirs_dans_la_fenetre	0
+vie	slot	647	debut_s	628.4	fin_s	670.7	duree_s	42.3	tirs_dans_la_fenetre	303
+vie	slot	652	debut_s	643.9	fin_s	667.9	duree_s	24.0	tirs_dans_la_fenetre	157
+vie	slot	653	debut_s	647.1	fin_s	669.5	duree_s	22.3	tirs_dans_la_fenetre	178
+vie	slot	654	debut_s	649.0	fin_s	670.7	duree_s	21.6	tirs_dans_la_fenetre	191
+vie	slot	655	debut_s	653.3	fin_s	668.2	duree_s	14.9	tirs_dans_la_fenetre	102
+vie	slot	657	debut_s	660.6	fin_s	670.1	duree_s	9.5	tirs_dans_la_fenetre	120
+vie	slot	656	debut_s	660.7	fin_s	663.3	duree_s	2.6	tirs_dans_la_fenetre	15
+vie	slot	658	debut_s	662.1	fin_s	670.7	duree_s	8.6	tirs_dans_la_fenetre	116
+
+# sonde de derive d'horloge
+offset_global_ms	1395496
+offset_premiere_moitie_ms	1395496	apparies	66
+offset_seconde_moitie_ms	1714131	apparies	12
+
+# residu median d'appariement par decile (ms)
+decile	1	vies_nommees	11	residu_moyen_ms	43.5
+decile	2	vies_nommees	15	residu_moyen_ms	43.6
+decile	3	vies_nommees	14	residu_moyen_ms	43.6
+decile	4	vies_nommees	13	residu_moyen_ms	43.7
+decile	5	vies_nommees	13	residu_moyen_ms	41.9
+decile	6	vies_nommees	16	residu_moyen_ms	43.2
+decile	7	vies_nommees	11	residu_moyen_ms	42.8
+decile	8	vies_nommees	14	residu_moyen_ms	43.3
+decile	9	vies_nommees	19	residu_moyen_ms	43.5
+decile	10	vies_nommees	13	residu_moyen_ms	43.3

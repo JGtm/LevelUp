@@ -205,7 +205,7 @@ films de cartes différentes**, sans collision de trace ». Le second artefact a
 | film | carte / mode | tirs rattachés | |
 |---|---|---|---|
 | `000d5950` | Cliffhanger, Slayer | 475/519 = **91,5 %** | au-dessus |
-| `01e1f945` | Catalyst, Slayer | 1862/2154 = **86,4 %** | au-dessus |
+| `01e1f945` | Catalyst, KOTH | 1862/2154 = **86,4 %** | au-dessus |
 | `64e8adfa` | Catalyst, **CTF** | 2312/2879 = **80,3 %** | **SOUS LE SEUIL** |
 
 Le critère est **littéralement** satisfait — deux films, deux cartes, tous deux au-dessus de
@@ -218,11 +218,20 @@ ses films ne protège de rien. Les trois ponts restent pourtant **nominaux, sans
 de trace** — ce n'est donc pas le rattachement qui faiblit, c'est la part d'événements dont le
 tireur n'a pas de trace publiée.
 
-- [ ] Avant de retirer le garde : comprendre pourquoi le CTF perd 564 tirs pour « slot
-      introuvable » là où le Slayer en perd 44. Un mode où l'on meurt davantage produit plus de
-      vies courtes, donc plus de traces non publiées — hypothèse à mesurer, pas à supposer.
-- [ ] Puis **réécrire le critère** sur ce qu'on veut vraiment : un plancher sur **tous** les
+- [x] Avant de retirer le garde : comprendre pourquoi le CTF perd 564 tirs pour « slot
+      introuvable » là où le Slayer en perd 44.
+      *FAIT le 2026-08-08 — `V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`. **L'hypothèse écrite ici était
+      INVERSÉE** : ce n'est pas le joueur qui meurt beaucoup qui coûte des tirs, c'est celui qui
+      meurt PEU. Le pont nomme une vie par la mort qui la termine ; une vie que nulle mort ne
+      termine reste anonyme. Le facteur 13 n'existe pas (comptes absolus sur des dénominateurs
+      différents) : en taux c'est 2,3x, et un Team Slayer sur la même carte est déjà à 11 % de
+      perte. Deux FERMETURES déterministes portent les sept films à 88,7 % ou mieux.*
+- [x] Puis **réécrire le critère** sur ce qu'on veut vraiment : un plancher sur **tous** les
       films mesurés, et une date.
+      *FAIT le 2026-08-08 dans `replay_local_gate.go` : plancher **88 %** sur un corpus de sept
+      films NOMMÉS, verdict du pont nominal sur tous, réexamen au plus tard le 2026-11-08. 88 et
+      non 90 parce que le corpus passe 7/7 à 88 et seulement 5/7 à 90 — une exception négociée
+      serait le défaut qu'on corrige.*
 
 - [ ] Retirer `replay_local_gate.go` **d'un bloc**, avec son test et sa variable
       `LEVELUP_REPLAY_PUBLIC` — un garde dont le critère est atteint et qu'on garde « au cas où »

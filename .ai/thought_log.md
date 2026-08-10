@@ -2050,6 +2050,662 @@ de revue `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` (+ trois planches jointes).
 **Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` et
 nommer les icônes arme par arme. Sans ce passage, rien ne se branche : la table
 `weaponImageFiles` de `adapter_asset_urls.go` ne peut être écrite qu'après.
+## [2026-08-11] v7.5 voie B — ronde P1-1-bis : le DUAL, et le plancher du corpus passe sous 88 %
+
+**Statut** : Complété. Périmètre fermé au seul défaut dual ; **une escalade utilisateur ouverte**
+(plancher du garde local). Ni le seuil ni la règle n'ont été touchés pour sauver un chiffre.
+
+**LE DÉFAUT, VÉRIFIÉ SUR PIÈCES.** La ronde du 09/08 avait fermé le cas « le corps du tireur couvre
+l'instant du tir ET un autre aussi » : deux candidats, abstention. Son DUAL restait ouvert dans
+`closeByAvailableBody` : quand le tireur n'a **aucun** corps couvrant l'instant — aucun corps du
+tout, ou des corps disjoints (un trou de plus de `lifeGapUS` scinde la vie via `buildLifeSpans` ;
+une vie peut aussi s'achever avant le tir, l'événement 0xd2 étant un record indépendant des
+positions de biped) — et qu'un seul corps **étranger** couvre l'instant, `len(cand) == 1` suffisait
+à écrire `owner[slot] = tireur`. Silencieusement : aucun compteur, verdict du pont nominal, et le
+contrôle de recouvrement aveugle puisque les traces sont disjointes. **Le test nominal ENCODAIT ce
+défaut** : `TestFermetureAAttribueQuandUnSeulCorpsEstPossible` faisait tirer un joueur 3 sans
+aucune vie et exigeait `owner[2] = 3`.
+
+**DÉCISION TECHNIQUE — la corroboration est POSITIVE, pas une non-contradiction.** L'unicité d'un
+candidat ne dit qu'une chose : un seul corps libre est là. Le corps déduit n'est attribué que s'il
+**PROLONGE** le tireur, sous deux conditions (`bodyExtendsShooter`) : **ancrage** — le tireur a au
+moins un corps connu, sinon rien ne le situe dans le film ; **terminalité** — tous ses corps connus
+s'achèvent AVANT que le candidat ne commence, parce qu'une vie anonyme est une vie que nulle mort
+ne termine, donc la DERNIÈRE d'un joueur ; un corps connu postérieur ferait du candidat une vie
+intermédiaire, donc nommée par la mort qui la termine. La terminalité **absorbe et durcit** l'ancien
+recouvrement (le chevauchement en est le cas particulier) ; `overlapsNamedLife` reste, pour la seule
+fermeture B, dont l'identité vient du fil des morts. Troisième refus, rendu **nécessaire** par les
+deux premiers : deux corps qui revendiquent le même tireur tombent tous les deux
+(`shootersClaimingTwoBodies`) — sans lui, la première attribution devient un corps connu du tireur
+et fait tomber la seconde selon le seul numéro de slot, exactement le défaut corrigé côté B le
+09/08. C'est le seul élargissement, et il évite d'introduire le défaut qu'on venait de retirer.
+
+**LA PREUVE QUE LES TESTS TESTENT — quatre mutations, chacune isolant une condition.**
+
+| mutation | nominal | ne peut prolonger | non ancré | deux corps même tireur | recouvrement |
+|---|---|---|---|---|---|
+| comportement d'avant le correctif | PASS | **FAIL** | **FAIL** | **FAIL** | PASS |
+| ancrage retiré | PASS | PASS | **FAIL** | PASS | PASS |
+| terminalité retirée | PASS | **FAIL** | PASS | PASS | **FAIL** |
+| A n'attribue plus rien | **FAIL** | PASS | PASS | PASS | PASS |
+
+Ponts fautifs vus sous la première mutation : `map[2:3 3:3]` (le corps d'autrui, scénario des
+relecteurs), `map[1:0 2:3]` (tireur ancré nulle part), `map[1:3 2:3 4:3]` (un joueur, deux corps).
+Le test nominal ne rougit que sous la dernière mutation : il n'est pas vide.
+
+**RÉSULTATS — LE PLANCHER PASSE SOUS LE CRITÈRE, ET C'EST L'ESCALADE.** Corpus des sept films
+rejoué avant ET après dans cette session (l'« avant » reproduit le §7.5bis au centième) :
+
+| film | lecture seule | 09/08 | **11/08** | écart |
+|---|---|---|---|---|
+| `0edb8512` · `db7b8c3c` · `000d5950` · `829abef9` | — | — | **inchangés** | — |
+| `9aeca4b3` | 89,0 % | 91,63 % | **91,30 %** | −0,33 |
+| `01e1f945` | 86,4 % | 89,69 % | **89,18 %** | −0,51 |
+| `64e8adfa` | 80,3 % | 90,80 % | **87,39 %** | **−3,41** |
+
+**`64e8adfa` tombe à 87,39 %, sous les 88 % du garde local** (`api/handlers/replay_local_gate.go`) :
+le corpus passe **6 sur 7**. Les 98 tirs perdus sur ce film étaient posés sur des joueurs que rien
+ne situait à cet instant — c'est le prix de la justesse, et **l'arbitrage appartient à
+l'utilisateur**. Le seuil n'a pas été rabaissé, la règle n'a pas été relâchée, aucune exception
+négociée pour ce film (ce serait le défaut « choisir ses films », déjà tranché le 2026-07-31).
+Détail instructif : sur `64e8adfa` la fermeture A passe de 3 à 0 tandis que B passe de 4 à 5 — le
+corps qu'A ne prend plus redevient déductible par la réapparition, qui tient son identité du fil
+des morts ; sur `829abef9` ce même transfert A→B laisse le taux **strictement inchangé**.
+Garde-fous : **31 attributions pour 99 refus** (87 contestées, 12 rejetées), contre 37/86 au 09/08.
+
+**Le film figé `000d5950` ne bouge pas** (483/519, pont 93, A=0, B=3) : la fermeture A n'y
+attribuait déjà rien. Le golden n'a changé que par la phrase qui nomme les causes de refus.
+
+**LIMITE ASSUMÉE, ÉCRITE DANS LE CODE.** Un tireur dont tous les corps connus PRÉCÈDENT le candidat
+reste attribuable même s'il était en réalité invisible à cet instant : ce cas ne se distingue pas du
+cas nominal avec les pièces disponibles. C'est la limite de la fermeture A, pas un contrôle oublié.
+
+**Gates** : `go test ./internal/analysis/replay/...` vert (les SKIP sont les instruments de
+recherche à variables d'environnement), `go vet` analysis + handlers vert, ratchet golangci-lint
+**0 issues**. Contrat openapi (`BridgeHealth`) NON régénéré — dette connue, à traiter au repli dans
+`feat/v75` où le gate contrat tourne. Pas de CI sur `research/**` (hors globs).
+
+**PROCHAINE ÉTAPE** : décision utilisateur sur le plancher du garde local (le maintenir à 88 % et
+garder le rejeu local, ou le réviser). Rien d'autre n'est ouvert sur ce défaut.
+
+## [2026-08-09] v7.5 voie B — la ronde de correction des fermetures : deux deductions que rien ne fondait
+
+**Statut** : Complété. Périmètre fermé par la revue adversariale (3 P1 + 2 P2), rien d'autre touché.
+
+**LE CONSTAT QUI COMMANDE TOUT LE RESTE.** La revue à contexte frais a montré que la fermeture A
+jugeait l'unicité d'un candidat sur son ÉCHANTILLON de position (`shotPosToleranceUS`, 120 ms),
+alors qu'une vie survit à un trou de réplication de 5 s (`lifeGapUS`). Conséquence reproduite :
+deux vies anonymes couvrent l'instant d'un tir, celle du VRAI tireur est dans son trou — donc
+invisible — et l'autre passe pour l'unique candidate. **Le corps d'un autre joueur lui était
+attribué, et aucun garde-fou ne pouvait s'en apercevoir** : du point de vue du code, il n'y avait
+qu'un candidat. Le second défaut est symétrique côté B : refuser la vie qui voit deux morts était
+fait, refuser la MORT que deux vies revendiquent ne l'était pas — l'ordre des slots décidait.
+
+**DÉCISION TECHNIQUE.** L'unicité se juge désormais sur l'INTERVALLE de vie ; l'échantillon ne sert
+plus qu'au rattachement (`slotFor`, qui refuse toujours de poser un événement sans position
+proche). Côté B, une map `claims` victime -> vies, symétrique de celle de A : deux revendications
+d'une même mort annulent les deux déductions. Le troisième constat était une doc inversée
+(`owners.go` « FromDeaths vaut toujours len(Owner) », `coverage.go` « FromReading est la SEULE
+source ») : faux depuis les fermetures, réécrit sur la règle que `verdictOfBridge` applique
+vraiment. Et un `continue` muet sur xuid absent est devenu un refus compté.
+
+**LA PREUVE QUE LES TESTS TESTENT.** Chaque P1 a son test versionné, et chacun a été VU ROUGE en
+appliquant puis retirant la mutation correspondante : `pont = map[2:3]` pour P1-1 (le corps
+d'autrui), `pont = map[1:0 2:1 3:1]` pour P1-2 (deux corps issus d'une seule mort), compte rendu
+tout à zéro pour le rejet muet. Un test qui passe avec ET sans le correctif ne teste rien.
+
+**RÉSULTATS — LES CHIFFRES BAISSENT, ET C'EST LE SENS ATTENDU.** Golden `000d5950` : pont 95 -> 93
+entrées, tirs 484 -> 483 (93,3 -> 93,1 %), contestations 4 -> 13, verdict du pont toujours nominal.
+Corpus des sept films rejoué avec l'instrument de recherche : quatre inchangés, **trois reculent**
+— `9aeca4b3` 95,0 -> 91,6 · `64e8adfa` 92,6 -> 90,8 · `000d5950` 93,3 -> 93,1. **Plancher du corpus
+88,68 % (`829abef9`), au-dessus des 88 % du garde local** : seuil dur respecté, pas de remontée
+bloquante. Un correctif de justesse qui aurait fait MONTER les sept taux aurait signalé qu'il
+élargissait au lieu de resserrer. Garde-fous : 37 attributions pour 86 refus (76 contestées,
+10 recouvrement) — non comparable aux « 33 / 17 » du 08/08, la contestation couvrant désormais
+l'ambiguïté d'intervalle qui n'était comptée nulle part.
+
+**DÉCOUVERTE HORS PÉRIMÈTRE, NON TRAITÉE.** `api/openapi.yaml` (schéma `BridgeHealth`) et
+`apps/web/src/lib/api/generated.ts` déclarent sept champs ; le type Go en porte onze depuis le
+2026-08-08, et `additionalProperties: false` y est posé — le document publié porte quatre clés que
+le contrat interdit. `make generate-types` n'a pas été joué dans le lot d'origine. Consigné en
+H4 du plan, à traiter au repli dans `feat/v75` où le gate front s'applique.
+
+**GATE** : `go test ./internal/analysis/replay/...` vert (116 tests, 10 skips tous préexistants et
+gated par variable d'environnement), `go vet` propre sur replay et handlers, ratchet golangci-lint
+**0 issue**. Pas de CI de branche : `research/**` est hors globs — le gate complet se jouera au
+repli.
+
+**PROCHAINE ÉTAPE** : décision du superviseur sur le repli de `research/v75-ctf` dans `feat/v75`
+(worktree tenu par le lot 5). L'étape 2bis de killpos porte désormais une échéance datée
+(2026-11-08) avec critère mesurable et issue explicite — suppression du producteur si elle n'est
+pas tenue.
+
+## [2026-08-08] v7.5 — je retire « l'arme fournie au respawn », et la vraie question est aussi refutee
+
+**Statut** : Complété (correction + mesure). Deux hypothèses éliminées, un fait consolidé.
+
+**CE QUE JE RETIRE.** J'avais écrit que Fiesta et Husky Raid partagent « l'arme fournie à la
+réapparition », et présenté ça comme l'explication du déficit du flux de tirs. **L'utilisateur a
+demandé : « quel rapport avec notre objectif ? » — il n'y en a aucun.** Je n'ai AUCUN mécanisme
+reliant la façon dont un joueur obtient son arme à la façon dont le film enregistre ses tirs.
+C'était un point commun trouvé après coup et habillé en cause. Ces deux modes partagent aussi
+d'être des playlists sociales, chaotiques, à armes lourdes permanentes : n'importe quelle
+étiquette aurait « expliqué » autant, c'est-à-dire rien.
+
+**LA BONNE QUESTION, ET ELLE EST TESTABLE** : perd-on vraiment des tirs, ou le compteur de
+référence compte-t-il autre chose ? Si les armes à faisceau continu comptaient un « tir » par
+tick côté API, le dénominateur serait gonflé et le film ne perdrait rien.
+
+**MESURÉ, par joueur et par seconde de match** :
+
+| famille | tirs comptés par l'API | événements décodés | précision API |
+|---|---|---|---|
+| Husky Raid | 0,840 | 0,387 | 0,288 |
+| autres modes | 0,575 | **0,505** | 0,428 |
+| Fiesta | **0,558** | **0,215** | 0,270 |
+
+**En Fiesta les joueurs tirent au MÊME rythme qu'ailleurs** (0,558 contre 0,575) : le dénominateur
+n'est pas gonflé. **Mais le film n'enregistre que 0,215 événement par joueur-seconde contre
+0,505.** On perd donc réellement plus de la moitié des tirs, et la référence n'y est pour rien.
+
+**BILAN.** Le fait est solide : deux familles de modes décrochent, sans que l'arsenal (stratifié)
+ni le compteur de référence (mesuré) ne l'expliquent. **La cause reste inconnue**, et trois
+explications ont été proposées puis éliminées dans la même session — arsenal, mécanique de
+spawn, dénominateur.
+
+**PORTÉE, et c'est ce qui compte pour la décision** : ces deux familles font ~30 % du corpus ;
+pour les 70 % restants le flux est décodé à 95 % ; et le déficit **n'affecte pas les tirs
+fatals** — le film Fiesta du corpus localise 91,4 % de ses morts, parce que localiser une mort ne
+demande aucun record de tir.
+
+**LEÇON.** Trouver ce que deux populations ont en commun n'est pas trouver une cause. Tant qu'il
+n'y a pas de mécanisme, une étiquette partagée est une description, et la présenter autrement fait
+perdre du temps à celui qui lit.
+
+## [2026-08-08] v7.5 — l'arsenal n'explique PAS le trou Fiesta : ce sont les modes a arme fournie
+
+**Statut** : Complété (mesure en base, 890 matchs, aucun décodage). Réfute l'explication que
+j'avais avancée deux heures plus tôt, et la remplace par une frontière plus étroite.
+
+**LE TEST NAÏF SEMBLAIT CONFIRMER.** Classés par part de frags aux armes non tendues (marteau,
+épée, grenade, projectiles), les matchs donnent un gradient net : 99,8 % de couverture du flux de
+tirs sous 10 %, 38,2 % au-dessus de 55 %.
+
+**LE CONTRÔLE LE DÉMOLIT.** Le bucket haut est composé à 89 % de matchs Fiesta. En regardant DANS
+chaque famille :
+
+| | < 30 % | 30-45 % | 45-60 % | > 60 % |
+|---|---|---|---|---|
+| Fiesta | 39,6 % (4) | 42,3 % (18) | 44,4 % (26) | 37,6 % (211) |
+| hors Fiesta | 95,9 % (423) | 96,1 % (177) | 92,9 % (22) | 45,0 % (9) |
+
+**À l'intérieur de Fiesta la couverture ne bouge pas** (38-44 % quelle que soit la part d'armes
+non tendues) ; **hors Fiesta non plus** (93-96 %). La composition de l'arsenal n'explique donc
+PAS le déficit — le gradient n'était que le reflet de l'appartenance à Fiesta.
+
+**CE QUE LA MESURE TROUVE À LA PLACE.** Les NEUF matchs hors Fiesta qui s'effondrent sont **tous
+des Husky Raid**. Fiesta et Husky Raid partagent une mécanique que les autres modes n'ont pas :
+**l'arme est FOURNIE à la réapparition**, elle n'est pas ramassée sur la carte. Le déficit suit
+une frontière de MÉCANIQUE DE MODE, pas de composition d'arsenal.
+
+**PORTÉE PRATIQUE** : ces deux familles font ~30 % du corpus. Pour les 70 % restants, le flux de
+tirs est décodé à **95 %**. Le trou n'est ni général ni la norme.
+
+**LEÇON DE MÉTHODE, la deuxième de la journée sur le même motif.** Un gradient sur cinq buckets
+paraissait probant ; il était entièrement porté par une variable confondue. Le réflexe qui a
+sauvé la conclusion est le même que pour le balayage d'offsets : **stratifier avant de conclure**.
+Une corrélation entre deux grandeurs qui varient toutes deux avec le mode ne dit rien tant qu'on
+n'a pas regardé à l'intérieur d'un mode.
+
+**Conclusion / prochaine étape.** L'hypothèse « arme fournie au spawn » est plus étroite et reste
+à instruire ; elle n'est pas nécessaire aux tirs fatals (88,2 % de morts localisées, §8.4ter) ni
+au rejeu des 70 % de matchs normaux.
+
+## [2026-08-08] v7.5 — le trou Fiesta expliqué par l'arsenal : l'intuition de l'utilisateur, et ma reponse fausse
+
+**Statut** : Complété (mesure en base, aucun décodage). Fait suite au résultat négatif du
+balayage d'offset : la piste du « trou Fiesta » se déplace de la rétro-ingénierie vers une
+propriété du format, et c'est l'utilisateur qui a donné la bonne direction.
+
+**SON INTUITION** : « beaucoup de frags en Fiesta sont des armes à projectiles ou des frags au
+marteau ou à l'épée ».
+
+**MA PREMIÈRE RÉPONSE ÉTAIT FAUSSE, ET LA FAUTE EST INSTRUCTIVE.** J'ai répondu que la mêlée
+était 4,4x plus rare en Fiesta (3,4 % contre 15,1 %) — en comptant la classe `MELEE` de
+`damagetag/data/labels.tsv`, qui désigne **le coup de crosse générique partagé par tout
+l'arsenal**. Le marteau gravitationnel et l'épée à énergie ont leurs PROPRES identifiants et sont
+classés `ARME`. **Je comparais une classe technique là où la question portait sur des armes.**
+Leçon : vérifier ce qu'une classe CONTIENT avant de s'en servir pour réfuter quoi que ce soit.
+
+**RECOMPTÉ PAR ARME RÉELLEMENT EMPLOYÉE** (21 190 frags Fiesta, 53 379 hors Fiesta) :
+
+| famille | Fiesta | hors Fiesta | rapport |
+|---|---|---|---|
+| marteau + épée | **21,3 %** | 2,1 % | **10x** |
+| armes à projectiles (SPNKr, Needler, Ravager, Cindershot, Skewer, Sentinel Beam, Disruptor) | **39,0 %** | 6,9 % | **5,7x** |
+| tir tendu | ~36 % | ~76 % | 0,5x |
+
+Marteau gravitationnel : **3 261 frags en Fiesta contre 580 ailleurs**. Sentinel Beam : 1 581
+contre 254. Disruptor : 1 092 contre 98.
+
+**CE QUE ÇA CHANGE.** Le flux du film compte des ÉVÉNEMENTS DE TIR ; `shots_fired` de l'API
+compte des tirs. Un coup de marteau, un lancer d'épée, une roquette ou une bordée de Needler ne
+produisent pas le même nombre d'événements qu'une rafale de fusil d'assaut. Un mode où 60 % des
+frags viennent d'armes de corps-à-corps ou à projectiles n'a **aucune raison** d'avoir le même
+rapport événements/`shots_fired` qu'un mode à tir tendu. Le déficit Fiesta (37 % contre 84-99 %)
+cesse d'être une anomalie de décodage : c'est probablement une **différence de composition
+d'arsenal**.
+
+**Conclusion / prochaine étape.** Pour trancher, plus besoin du binaire : comparer PAR ARME les
+événements de tir décodés aux tirs de l'API. Si le déficit se concentre sur le marteau, l'épée et
+les projectiles, le « trou Fiesta » devient une propriété documentée du format et non un défaut à
+corriger. C'est la mesure la moins chère qui reste sur la colonne (1).
+
+## [2026-08-08] v7.5 colonne (1) — l'auteur du record court : voie du balayage FERMEE
+
+**Statut** : Complété (résultat négatif, et c'en est un). Instrument #6
+`ctf_shortauthor_research_test.go`, quatre films, ~2 000 candidats balayés par film
+(offsets 0-255, largeurs 3-6 bits, avec et sans décalage).
+
+**LE CRITÈRE ÉTAIT ÉCRIT AVANT LA MESURE, et c'est lui qui sauve la conclusion.** Quatre
+garde-fous : (1) huit index couverts, aucun à zéro ; (2) moins de 1 % hors roster ; (3)
+corrélation ≥ 0,5 avec le profil par joueur des records LONGS — le contrôle INDÉPENDANT ; (4)
+**le même offset doit passer sur les quatre films**.
+
+**RÉSULTAT : 61 candidats passent les critères 1-3 sur UN film. AUCUN n'en passe DEUX.**
+
+| film | candidats retenus (critères 1-3) |
+|---|---|
+| `9aeca4b3` | 26 |
+| `64e8adfa` | 25 |
+| `0edb8512` | 6 |
+| `000d5950` | 4 |
+| **sur les quatre** | **0** |
+
+Les meilleurs sont pourtant convaincants pris isolément — bit 77 largeur 3 sur `0edb8512` :
+huit index couverts, **0 % hors roster**, corrélation **0,755**. Sur ce seul film on publierait
+une découverte. **Sans le critère 4, ce journal annoncerait aujourd'hui un offset faux.**
+
+**CE QUE ÇA ÉTABLIT** : l'auteur du record court n'est pas un champ de 3 à 6 bits dans les 256
+premiers bits du payload. La voie du balayage d'offset est CLOSE.
+
+**CE QUE ÇA N'EXCLUT PAS** (écrit pour que personne ne rouvre la même porte) : un champ plus
+large ou au-delà du bit 256 ; un auteur INDIRECT — un handle d'entité à résoudre, ce que les
+valeurs hors roster 9/14/15 suggèrent ; ou que le court ne porte aucun auteur parce qu'il
+décrirait un OBJET (fin de vol, impact) et non un geste de joueur — auquel cas l'accord des
+totaux avec les tirs de l'API serait une conséquence, pas une identité.
+
+**Conclusion / prochaine étape.** La suite n'est plus du balayage mais de la rétro-ingénierie :
+lire le désérialiseur du record 105 dans le binaire pour savoir ce que la variante courte décrit.
+C'est le seul chemin restant sur la colonne (1), et il est plus lourd que tout ce qui précède.
+L'autre question ouverte — pourquoi un Fiesta ne porte qu'un tiers de ses tirs — reste entière et
+pèse plus en volume.
+
+## [2026-08-08] v7.5 colonne (1) — la variante courte : c'est un tir, mais son auteur n'est pas la
+
+**Statut** : Complété (recherche). Instrument #5 `ctf_shortvariant_research_test.go`, quatre
+films, **10 674 records type 105** lus dans LES DEUX variantes.
+
+**D'ABORD, UNE CORRECTION DE MA PROPRE AFFIRMATION.** J'avais écrit que « le rejeu balaie les
+bits, la piste E lit les paquets ». **FAUX** : les deux utilisent `WalkPackets`. La différence
+tient à une seule ligne de `ScanFilmFireEvents` — `int(pay[0])&1 != 0 { continue }`, qui **écarte
+la variante COURTE**. L'écart de 10-17 % entre les deux comptes, ce sont les courts.
+
+**CE QUE LA MESURE ÉTABLIT.**
+
+1. **Le court est très probablement un TIR.** Hors Fiesta, longs+courts rendent **84 à 99 %** des
+   tirs de l'API (`0edb8512` 99,3 % · `64e8adfa` 94,7 % · `9aeca4b3` 84,0 %) là où les longs
+   seuls plafonnent à 72-87 %. Le total colle.
+2. **MAIS SON AUTEUR N'EST PAS LISIBLE À L'OFFSET DU LONG, et c'est rédhibitoire.** Les longs
+   couvrent les huit index de façon équilibrée ; les courts se concentrent sur **deux index**
+   (0 et 6), laissent 1/3/5/7 à **zéro**, et produisent des index **9, 14, 15 — impossibles à
+   huit joueurs**. Ce champ n'est pas un index de joueur.
+3. **Ce n'est pas une suite de rafale** : écart médian au long précédent du même index de **4 à
+   32 secondes**, seuls 1,4-4,6 % sous 50 ms.
+4. **La taille du payload ne discrimine pas** (1 392 à 2 104 bits, aucun mode).
+
+**VERDICT — la piste est REDIRIGÉE, pas fermée.** Le décodeur a RAISON de ne pas émettre les
+courts : les publier attribuerait 13-15 % de tirs de plus à deux joueurs sur huit, avec des index
+hors roster. Mais le total dit que ces records SONT des tirs ; c'est leur AUTEUR qui se lit
+ailleurs. La question ouverte devient **« où le record court porte-t-il son tireur »**, avec un
+critère de succès déjà écrit : une distribution sur les huit index comparable à celle des longs —
+le même critère qui vient de disqualifier l'offset actuel.
+
+**ET LE TROU FIESTA N'EST PAS LÀ.** `000d5950` reste à **37,3 %** même en comptant les courts,
+contre 84-99 % ailleurs. Les tirs manquants d'un Fiesta ne sont pas une affaire de sélection :
+ils ne sont pas dans le flux type 105 du tout. Cause inconnue, périmètre réduit.
+
+**Un accesseur exporté**, `filmdec.ReadAttackerIndex` — pour que l'instrument n'ait pas à
+recopier `fireAttackerBit`/`fireAttackerW`. Un seul endroit déclare ces offsets.
+
+**Vérifications** : `go test` vert sur `replay` (30,0 s) et `filmdec` (0,9 s), `go vet` propre.
+
+**Conclusion / prochaine étape.** Deux questions ouvertes et bien bornées : (a) où le record
+court porte son tireur ; (b) pourquoi le flux 105 d'un Fiesta ne porte qu'un tiers des tirs. La
+seconde est la plus grosse en volume, et la première la plus proche d'aboutir.
+
+## [2026-08-08] v7.5 voie B — la mort sur la carte : 88,2 %, et deux pistes remises droit par l'utilisateur
+
+**Statut** : Complété (mesure + documentation). Branche `research/v75-ctf`.
+
+**L'UTILISATEUR A REMIS DROIT MA QUESTION, ET LE CHIFFRE A GAGNÉ 17,6 POINTS.** J'avais mesuré
+« sait-on placer un TIR du tueur dans la 1,5 s avant la mort » — 70,6 % sur les morts par arme.
+Sa remarque : « on a la victime, le tueur, le timing et la position du joueur assez précisément,
+pourquoi c'est si dur de faire une corrélation ? » Elle ne l'est pas : **poser une MORT sur la
+carte ne demande AUCUN record de tir**, seulement la position des deux joueurs, donc le seul pont.
+
+**RÉSULTAT, 718 morts sur les sept films, pont fermé, sans aucun record de tir** :
+
+| film | morts | deux positions | au moins une |
+|---|---|---|---|
+| `0edb8512` | 93 | **95,7 %** | 100 % |
+| `9aeca4b3` | 81 | **92,6 %** | 97,5 % |
+| `000d5950` | 93 | **91,4 %** | 98,9 % |
+| `64e8adfa` | 121 | **90,1 %** | 100 % |
+| `db7b8c3c` | 139 | **89,9 %** | 100 % |
+| `01e1f945` | 104 | **83,7 %** | 95,2 % |
+| `829abef9` | 87 | **72,4 %** | 95,4 % |
+
+**633 morts sur 718 portent LES DEUX positions (88,2 %), 98,3 % en portent au moins une, 12
+seulement (1,7 %) sont inplaçables, et `hors_pont` vaut ZÉRO partout.**
+
+**Deux enseignements** : (1) le film Fiesta `000d5950`, à 41,4 % sur la métrique du tir fatal
+parce qu'il ne porte que 27 % des tirs de son match, est à **91,4 %** ici — la localisation des
+morts ne dépend PAS de la complétude du flux de tirs ; (2) `829abef9` reste à 72,4 % avec 16
+morts dont seule la victime est placée, et c'est le film aux 99 rejets « ambigu » — même cause,
+le découpage des vies.
+
+**LEÇON DE MÉTHODE** : une mesure hérite des contraintes de la question qu'on lui pose. En
+m'ancrant sur le record de tir, j'avais importé dans le chiffre une dépendance à la complétude du
+flux (24,6 % de perte) qui n'a rien à faire dans une mesure de LOCALISATION. Les deux chiffres
+coexistent désormais au verdict, chacun avec sa question (§8.4bis).
+
+**SECONDE PISTE — les tirs manquants, cause identifiée.** (1) Le manque est concentré sur FIESTA :
+ratio décodé/API médian **0,952 hors Fiesta** (668 matchs) contre **0,392 en Fiesta** (273), et le
+sur-décodage est quasi nul (11 matchs sur 941). (2) **Le rejeu n'utilise pas le meilleur scanner
+du dépôt** : `ScanFilmFireEvents` balaie les bits, l'instrument de la piste E parcourt les PAQUETS
+et trouve **10 à 17 % de tirs de plus** sur les sept films, deux atteignant la complétude (101 %).
+Réserve écrite : la piste E ne rend que des totaux, le rejeu a besoin d'un instant par tir —
+probable, NON VÉRIFIÉ.
+
+**Conclusion / prochaine étape.** La localisation des morts est acquise à 88,2 % et n'attend plus
+que le chemin d'écriture (étape 2bis). Le portage du scanner de paquets est la piste à plus fort
+levier sur la colonne ①, sous réserve qu'il date ses tirs.
+
+## [2026-08-08] v7.5 voie B — le lot d'implementation : pont ferme, positions de mort, garde reecrit
+
+**Statut** : Étapes 1 et 3 **Complétées**, étape 2 **partielle et arrêtée proprement**. Branche
+`research/v75-ctf`. Plan : `.ai/V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md`, chaque item statué.
+Aucun merge — le rattachement à `feat/v75` est une décision du superviseur.
+
+**ÉTAPE 1 — les deux fermetures en production (`closures.go`).** Ce qui distingue une fermeture
+d'un vote est de nature : elle n'attribue que lorsqu'un SEUL candidat reste possible. Mesure sur
+le film de référence : 475 → **484 tirs** (91,5 → 93,3 %), rejets « slot introuvable » 44 → 35,
+pont 90 → 95 entrées. Non-régression vérifiée sur trois films aux chiffres publiés :
+`000d5950` 93,26 % · `64e8adfa` 92,57 % (+12,26) · `829abef9` 88,68 % (+8,95).
+
+**LE POINT DÉLICAT ÉTAIT LA RÈGLE DE PROVENANCE DU PONT, et il a mordu.** `verdictOfBridge`
+exigeait `FromReading == Slots` — « rien d'autre qu'une lecture ». Cette règle, née du retrait du
+repli VOTÉ, serait devenue FAUSSE : une fermeture est une déduction, pas une lecture. Réécrite en
+`FromReading + ClosedByShot + ClosedByRespawn == Slots` : un écart signale désormais une
+TROISIÈME source non comptée. L'esprit est conservé, la lettre non, et le commentaire est mis à
+jour dans le même commit.
+
+**UN TEST DE GARDE-FOU NE MORDAIT PAS, et c'est la leçon de l'étape.** Le premier scénario de
+`TestLeControleDeRecouvrementRejette` laissait le tir RATTACHÉ : aucune revendication n'était
+émise, le contrôle n'était jamais atteint, et le test passait sans rien prouver. Reconstruit avec
+un tir orphelin. **Écrire un test de garde-fou ne suffit pas — il faut vérifier qu'il ÉCHOUE
+quand on retire ce qu'il protège.**
+
+**ÉTAPE 2 — producteur livré, écriture NON câblée.** `BuildKillPositions` rend les coordonnées du
+tueur et de la victime par mort, avec son compte rendu ; cinq tests, dont quatre sur des
+abstentions. Point d'architecture : les couples tueur↔victime arrivent en ENTRÉE, ils ne sont pas
+redécodés — l'appariement canonique vit dans `killsource` et sa sortie est dans
+`match_kill_events` (« deux décodeurs du même fait divergeraient »).
+
+**LA RECONNAISSANCE ÉTAIT VRAIE DU SCHÉMA ET FAUSSE DU CHEMIN D'APPEL.** J'avais conclu « rien à
+créer côté écriture » : la table, la migration, `KillPositionInsert`, `AddKillPositions` et
+`persistKillPositions` existent bien et servent Halo 5. Mais **aucun binaire du dépôt ne pilote
+`BatchBuilder`** — la seule construction de `BatchQueue` est dans `cmd/server/main.go`, le reste
+passe par le pipeline de sync. Alimenter la table hors ligne exige donc de décider comment un
+binaire court draine une file WAL, sur le chemin critique anti-ART (ADR 0019/0030). Arrêt propre
+plutôt que câblage bâclé en fin de session.
+
+**ÉTAPE 3 — critère du garde réécrit.** Plancher **88 %** sur un corpus de **sept films nommés**,
+verdict du pont nominal sur tous, réexamen au plus tard le **2026-11-08**. 88 et non 90 : mesuré,
+le corpus passe 7/7 à 88 et 5/7 à 90 — une exception négociée serait exactement le défaut qu'on
+corrige. L'en-tête porte aussi l'avertissement sur le DÉNOMINATEUR, sans quoi un lecteur
+retirerait le garde sur un malentendu. `PLAN_FINALISATION_REJEU_2D` §1.4 corrigé : `01e1f945` est
+un KOTH, et l'hypothèse qui y était écrite est inversée par la mesure.
+
+**Vérifications** : `go test ./internal/analysis/replay/` vert (108,7 s) · `go vet` propre ·
+`go test ./internal/api/handlers/ -run Replay` vert · figé régénéré et relu en diff · deux
+libellés du rendu corrigés parce qu'ils devenaient inexacts (anti-patron « doc inversée »).
+
+**Conclusion / prochaine étape.** Une seule chose sépare `kill_positions` de son remplissage :
+**le chemin d'écriture hors ligne** (étape 2bis) — réutiliser la file WAL de `cmd/server` ou
+définir un drain synchrone dédié. C'est une question de conception, pas de volume. Le backfill
+des 951 matchs suit, en opération à fenêtre.
+
+## [2026-08-08] Recherche v7.5 voie B — les tirs fatals, et l'ordre des priorites qui bascule
+
+**Statut** : Complété. Répond à la priorité posée par l'utilisateur : « moi en priorité je veux
+les tirs fatals, quelle couverture on a ? ». Instrument #4 `ctf_fatal_research_test.go`,
+717 morts sur les 7 films, croisées avec la CLASSE de la source de dégât.
+
+**CE QUI ÉTAIT DÉJÀ ACQUIS ET QUE JE N'AVAIS PAS REGARDÉ** : `match_kill_events_latest` porte
+124 694 morts sur 1 343 matchs. Sur les 951 matchs dont le film est en cache : **arme du kill
+99,55 %, tueur nommé 98,87 %** (74 909 morts). Qui-tue-qui-avec-quoi est RÉSOLU ET PERSISTÉ.
+Ce qui manque est le OÙ — et `kill_positions` (killer_x/y/z, victim_x/y/z) existe et est **VIDE,
+0 ligne**. Créée pour ça, jamais alimentée.
+
+**RÉSULTAT PAR CLASSE (717 morts)** :
+
+| classe | morts | part | tir placé | aucun tir | non placé | taux |
+|---|---|---|---|---|---|---|
+| ARME | 562 | 78,4 % | 397 | 138 | 27 | **70,6 %** |
+| MÊLÉE | 82 | 11,4 % | 76 | 2 | 4 | 92,7 % |
+| tag inconnu | 32 | 4,5 % | 6 | 25 | 1 | 18,8 % |
+| GRENADE | 18 | 2,5 % | 11 | 5 | 2 | 61,1 % |
+| OBJET EXPLOSIF | 10 | 1,4 % | 2 | 7 | 1 | 20,0 % |
+| VÉHICULE | 8 | 1,1 % | 0 | 8 | 0 | 0 % |
+| DÉGÂT GLOBAL | 5 | 0,7 % | 0 | 5 | 0 | 0 % |
+
+**21,6 % des morts ne sont pas causées par un tir** : les juger sur ce critère serait une faute de
+mesure. Sur les morts par arme, la perte se répartit en **24,6 % « aucun record de tir »**
+(colonne ①, piste E) et **4,8 % « le pont ne sait pas placer »** (colonne ②, ce chantier).
+
+**LE PONT N'EST PLUS CE QUI COMMANDE, sur ce qui compte le plus.** Après les fermetures, il coûte
+4,8 % des morts par arme.
+
+**DEUX ESTIMATIONS À MOI, DÉMENTIES PAR LA MESURE, ET C'EST LA LEÇON DE LA SESSION.** (1) J'avais
+annoncé « ~96 % sur les morts par arme » par croisement de deux agrégats ; la jointure directe dit
+**70,6 %**. (2) J'avais présenté « 90 % » sans son dénominateur (§3bis). Dans les deux cas
+l'utilisateur a demandé le chiffre, et dans les deux cas l'inférence était fausse. **Ne pas
+croiser des agrégats quand la jointure ligne à ligne est possible.**
+
+**LIMITE DE L'INSTRUMENT, POSÉE EXPLICITEMENT** : il mesure « sait-on placer UN tir du tueur dans
+la fenêtre avant la mort », pas « sait-on placer LE COUP QUI A TUÉ ». Preuve : les morts à la
+mêlée sortent à 92,7 %, ce qui est absurde — c'est le dernier tir avant le corps à corps.
+L'imputation du coup mortel appartient à `killsource` (99,55 %). Les 70,6 % sont une mesure de
+LOCALISATION et une BORNE HAUTE.
+
+**Conclusion / prochaine étape — l'ordre des priorités bascule.** `kill_positions` devient le
+meilleur rapport valeur/coût, et il NE DÉPEND PAS du rejeu 2D : tueur, victime, instant et arme
+existent pour 74 909 morts, seules les coordonnées manquent. Ordre proposé : (1) alimenter
+`kill_positions` ; (2) les deux fermetures du §7.5 comme préalable technique ; (3) le garde du
+rejeu 2D et son plancher à 88 %. La colonne ① (complétude du flux de tirs) reste le chantier de
+la piste E et n'est pas tranchée.
+
+## [2026-08-08] Recherche v7.5 voie B — le denominateur, corrige par une question de l'utilisateur
+
+**Statut** : Complété (correction de fond du verdict, aucun code touché).
+
+**LA QUESTION** : « 90 %, ça veut dire qu'on a 90 % des tirs effectués durant un match ? » **Non**,
+et le verdict laissait l'ambiguïté. `ETAT_DU_POC.md` l'avait pourtant déjà écrit : le dénominateur
+est le nombre de records que LE FILM PORTE, pas le nombre de tirs du match — « confondre les deux
+ferait passer un plafond de format pour un échec de décodage ».
+
+**LE CHIFFRE JUSTE** — deux facteurs qui se multiplient (① = records décodés / `shots_fired` sommé) :
+
+| film | ① dans le film | ② placement | ① x ② |
+|---|---|---|---|
+| `0edb8512` | 86,6 % | 96,4 % | **83,4 %** |
+| `db7b8c3c` | 86,0 % | 94,5 % | **81,2 %** |
+| `64e8adfa` | 80,3 % | 92,6 % | **74,3 %** |
+| `9aeca4b3` | 71,9 % | 95,0 % | **68,3 %** |
+| `01e1f945` | 74,4 % | 89,7 % | **66,7 %** |
+| `829abef9` | 69,3 % | 88,7 % | **61,5 %** |
+| `000d5950` | **23,3 %** | 93,3 % | **21,7 %** |
+
+**Sur un match d'arène, 6 à 8 tirs sur 10 réellement tirés apparaissent sur la carte, pas 9 sur 10.**
+
+**CE QUE ÇA CONFIRME AU PASSAGE** : le film Fiesta `000d5950` ne porte que 23,3 % des tirs de son
+match. Le « témoin Slayer » historique du constat d'origine était donc doublement inadapté — non
+seulement 5,5x plus petit en dénominateur, mais 3,7x moins complet en couverture.
+
+**CONVERGENCE AVEC LA PISTE E** : la session `research/v75-precision` mesure le même phénomène par
+un instrument indépendant (balayage de PAQUETS et non de bits) — `records / tirs API` à 0,92 en
+Tactical contre 0,31 en Fiesta. Deux méthodes de sélection différentes, même constat : la
+complétude du flux de tirs dépend fortement de la playlist. Format ou balayage : NON TRANCHÉ.
+
+**Conséquence pour le garde local** : le plancher proposé (88 %) porte sur ② seulement. Il dit « on
+place presque tout ce que le film porte », et rien sur ①. Si l'écran annonce un jour une
+exhaustivité, c'est ① x ② qu'il faut publier. Le bandeau du POC (« tirs placés / lisibles ») reste
+honnête À CONDITION de ne pas lire « lisibles » comme « tirés ».
+
+**Conclusion / prochaine étape** : verdict corrigé (§3bis neuf + avertissement en §0). Le lot
+d'implémentation du §7.2 est inchangé — il agit sur ②. La colonne ① appartient à la piste E.
+
+## [2026-08-08] Recherche v7.5 voie B (suite) — le correctif cesse d'etre une hypothese
+
+**Statut** : Complété. Même branche `research/v75-ctf`. Prolonge l'entrée précédente du même
+jour après une correction de fond apportée par l'utilisateur.
+
+**LA CORRECTION, ET ELLE PORTE.** J'avais écrit « les positions sont rangées sous un numéro qui
+change à chaque réapparition ». L'utilisateur a signalé que la stabilité du numéro avait été
+prouvée maintes fois. Vérification sur pièces : **nous parlions de deux objets différents, et je
+les avais écrasés en un seul.**
+
+| numéro | désigne | stable | statut |
+|---|---|---|---|
+| player-slot / index de joueur | LE JOUEUR | OUI | PROUVÉ, déjà utilisé (chunk_27 b36+b37 ; 5 bits devant le xuid, 116 films/116) |
+| identifiant d'entité biped | UNE VIE | NON | MESURÉ (journal 2026-07-03 « 99 ENTITÉS biped ≠ 99 joueurs ») ; 138 identifiants pour 8 joueurs sur `64e8adfa` |
+| le lien entre les deux | quel corps pour quel joueur | — | NON RÉSOLU (journal 2026-07-28, piste i19 réfutée par son propre contrôle) |
+
+Conséquence NON cosmétique : ma recommandation n°1 (« nommer la dernière vie par continuité de
+slot ») reposait sur une prémisse fausse — il n'y a aucune continuité à exploiter. Retirée.
+
+**DÉCISION TECHNIQUE : deux FERMETURES, et la distinction avec le vote retiré le 2026-07-28 est
+de nature.** Le vote gardait le mieux placé parmi plusieurs candidats ; une fermeture n'attribue
+que lorsqu'un SEUL candidat reste possible. Dès que deux subsistent, rien n'est attribué.
+
+- **A — par le corps disponible** : un joueur tire alors qu'aucune de ses vies nommées ne le
+  couvre ; son corps est l'une des vies anonymes vivantes à cet instant ; s'il n'y en a qu'une,
+  c'est elle.
+- **B — par la réapparition** : une vie commence une réapparition après la mort qui l'a causée, et
+  le fil des morts nomme cette victime. Fenêtre calibrée SUR LE FILM traité.
+
+Deux garde-fous posés avant la mesure : contestation (deux joueurs, un corps) et recouvrement
+(un joueur n'a qu'un corps — rejet si le corps déduit chevauche une vie déjà nommée du même
+joueur). C'est le pendant du critère qui a réfuté i19.
+
+**RÉSULTATS (7 films, avant -> après A+B)** :
+
+| film | mode | avant | après | gain |
+|---|---|---|---|---|
+| `0edb8512` | Team Slayer | 93,4 % | 96,4 % | +2,96 |
+| `9aeca4b3` | Team Slayer | 89,0 % | 95,0 % | +5,98 |
+| `db7b8c3c` | CTF | 88,5 % | 94,5 % | +5,92 |
+| `000d5950` | Fiesta Slayer | 91,5 % | 93,3 % | +1,73 |
+| `64e8adfa` | CTF | 80,3 % | 92,6 % | **+12,26** |
+| `01e1f945` | KOTH | 86,4 % | 89,7 % | +3,25 |
+| `829abef9` | CTF | 79,7 % | 88,7 % | +8,95 |
+
+**Les sept films passent au-dessus de 88,7 %**, contre deux sous 85 % avant. Les garde-fous ont
+mordu : **33 vies attribuées, 17 refusées** (10 contestées, 7 par recouvrement) — un tiers des
+déductions refusées par leurs propres contrôles, ce qui est la raison de leur croire.
+
+**DÉCOUVERTE INCIDENTE : la réapparition est déterministe, et c'est une constante DU MATCH.**
+8 090 -> 8 092 ms sur trois films, 10 176 -> 10 179 ms sur quatre (centile 5 -> médiane, mesuré
+sur les vies déjà nommées). Deux millisecondes d'écart : ce n'est pas une distribution.
+
+**UN ÉCHEC DE RÉGLAGE, CONSIGNÉ PARCE QU'IL INSTRUIT.** Ma première fenêtre pour B était
+`[p05, p95]`, par prudence. Le centile 95 monte à 51 717 ms et 67 688 ms sur les deux films CTF
+(vies dont la mort précédente du même joueur n'est pas celle qui les a fait réapparaître) : 13
+vies sur 13 contestées, gain NUL sur `64e8adfa`. Corrigé par médiane ± 750 ms. Les deux réglages
+sont publiés.
+
+**Vérifications** : `go vet` propre ; `go test ./internal/analysis/replay/` vert (56,8 s) ; les
+trois instruments sautent proprement sans leur variable d'environnement (SKIP vérifié) ; aucun
+fichier au-dessus de 500 lignes ; aucun `fmt.Println`. Le décodeur et l'assemblage ne sont
+touchés d'aucune ligne.
+
+**Conclusion / prochaine étape.** La recommandation change de nature : le rejeu public n'est pas
+livrable avec le code d'aujourd'hui, mais le blocage n'est plus une inconnue — c'est un LOT
+D'IMPLÉMENTATION BORNÉ (porter les deux fermetures dans `owners.go` avec leurs garde-fous et
+leurs compteurs publiés dans `coverage` ; élargir la fenêtre d'appariement des morts à 500 ms,
+pas encore composée avec les fermetures ; instruire H1). Plancher de garde proposé : **88 %** sur
+TOUS les films du corpus nommé — le plus exigeant que le lot franchit 7/7, sans exception à
+négocier. Exécuter ce lot dans v7.5 ou plus tard est une décision utilisateur.
+
+## [2026-08-08] Recherche v7.5 voie B — les tirs perdus du CTF ne sont pas un probleme de CTF
+
+**Statut** : Complété (recherche, aucune feature). Branche `research/v75-ctf`, worktree
+`LevelUp-wt-ctf`. Verdict écrit : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`, sorties brutes
+versionnées sous `.ai/V7.5/replay2d/mesures_ctf_2026-08-08/`. Répond à la décision #2 du master
+plan, qui conditionne le lot rejeu 2D public (piste F). **La décision finale reste à
+l'utilisateur.**
+
+**Décision technique principale.** Mesurer au lieu de supposer, avec deux instruments SOUS GARDE
+D'ENVIRONNEMENT (`ctf_research_test.go`, `ctf_bridge_research_test.go`) qui rejouent
+l'enchaînement de `BuildFromFilm` et comptent à côté de lui — le décodeur et l'assemblage ne sont
+pas touchés d'une ligne. Corpus de 7 films (3 CTF, 3 Slayer, 1 KOTH), **contrôle apparié par
+carte** : sans appariement on mesure la taille de la carte en croyant mesurer le mode.
+
+**Résultats observés.**
+
+1. **Le facteur ~13x n'existe pas** : 564/2 879 contre 44/519, ce sont des comptes absolus sur des
+   dénominateurs qui diffèrent d'un facteur 5,5. En taux, 19,6 % contre 8,5 % = **2,3x**. Et le
+   témoin Slayer historique porte 0,23 record de tir par tir effectué contre 0,80 au CTF : il est
+   quatre fois moins dense que le film qu'on lui opposait.
+2. **Les modes se recouvrent** : un CTF à 88,5 % passe devant le KOTH (86,4 %) et talonne un Team
+   Slayer de la même carte (89,0 %). Apparié par carte il reste un effet de mode réel, mais de
+   **5 à 9 points**, pas un facteur.
+3. **La cause est établie** : 63 à 92 % des rejets tombent pendant une **vie non nommée**. Le pont
+   nomme une vie par la mort qui la termine ; **un joueur qui cesse de mourir cesse d'être
+   localisable**. Le dernier décile porte le plus gros rejet dans les SEPT films (40 à 74 %),
+   tous modes confondus. Sur `64e8adfa`, deux vies non nommées de 218 s et 195 s portent
+   l'essentiel de la perte, et ce sont les deux joueurs les moins morts du film.
+4. **L'hypothèse du plan est INVERSÉE** : il supposait « un mode où l'on meurt davantage produit
+   plus de vies courtes, donc plus de traces non publiées ». C'est le contraire — c'est le joueur
+   qui meurt PEU qui coûte des tirs.
+5. **Quatre hypothèses réfutées, chiffres à l'appui** : réplication clairsemée (pas médian
+   16,7 ms dans les 7 films, 0,07-0,29 % des pas au-delà de la tolérance), dérive d'horloge
+   (résidu d'appariement plat par décile : 34,3 → 33,9 ms), familles d'armes non mappées (le
+   rejet suit l'exposition), flux propres au mode (même ventilation dans les trois modes).
+6. **Cause secondaire réelle** : la fenêtre d'appariement de 150 ms (`deathMatchWindowMS`). À
+   500 ms, le KOTH nomme **7 vies de plus** ; ailleurs 0 ou +1.
+7. **Le plafond est chiffré** : vies toutes nommées, les 7 films monteraient à **94,7-98,5 %**.
+   Le reste du pipeline est sain.
+
+**Une prédiction enregistrée puis démentie, et c'est consigné comme tel.** J'avais prédit, avant
+résultats, que `9aeca4b3` (13,9 % de temps-joueur non couvert) perdrait plus que `64e8adfa`
+(8,6 %). Il perd moins (11,0 % contre 19,6 %). Le prédicteur « temps non couvert », calculable en
+base sans décoder, ordonne donc mal : signal de tri grossier, jamais critère.
+
+**Erreur de fiche corrigée** : `PLAN_FINALISATION_REJEU_2D.md` §1.4 classe `01e1f945` en
+« Catalyst, Slayer ». `match_registry` dit `Arena:King of the Hill on Catalyst`. Le tableau des
+trois films opposait un Fiesta Slayer, un KOTH et un CTF — pas deux Slayer et un CTF.
+
+**Conclusion / prochaine étape.** Recommandation écrite : le rejeu public **n'est pas livrable en
+v7.5**, non parce que le CTF serait cassé mais parce que 2 films sur 7 passent sous 85 % et que le
+mécanisme frappe TOUS les modes dans la phase la plus regardée du match. Le garde local reste, et
+son critère doit être réécrit sur un plancher tous-films + corpus nommé + date. Le chantier qui
+débloque tout est le **nommage des vies que nulle mort ne termine** (§7.2 du verdict), suivi de
+l'élargissement de la fenêtre à 500 ms. Hypothèse restante la plus prometteuse : sur `64e8adfa`,
+sept vies se terminent entre 744 s et 750 s sans qu'aucune mort ne l'explique — candidat naturel,
+la réinitialisation d'après-capture du CTF ; à corréler sur les 129 CTF du cache.
 
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 

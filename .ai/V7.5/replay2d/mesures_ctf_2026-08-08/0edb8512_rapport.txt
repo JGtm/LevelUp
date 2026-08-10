@@ -1,0 +1,56 @@
+film	0edb8512
+carte	Aquarius
+duree_s	538.4
+tirs_disponibles	2808
+rattaches	2623	ambigus	21	sans_slot	164
+taux_rattachement	0.9341
+taux_sans_slot	0.0584
+vies	95	nommees	93	non_nommees	2	slots_pont	93
+echantillons_position	201268
+pas_median_ms	16.7
+pas_p90_ms	17.2
+part_pas_sup_120ms	0.0007
+
+# ventilation des rejets sans-slot
+cause	trou de position	25	0.0089
+cause	vie non nommee	139	0.0495
+
+# ecart au plus proche echantillon du tireur (rejets sans-slot, joueur au pont)
+ecart_max_ms	120	0
+ecart_max_ms	250	8
+ecart_max_ms	500	4
+ecart_max_ms	1000	0
+ecart_max_ms	2000	0
+ecart_max_ms	5000	10
+ecart_max_ms	15000	42
+ecart_max_ms	infini	100
+
+# repartition temporelle (deciles du film)
+decile	1	disponibles	233	sans_slot	0	taux	0.0000
+decile	2	disponibles	228	sans_slot	3	taux	0.0132
+decile	3	disponibles	292	sans_slot	0	taux	0.0000
+decile	4	disponibles	293	sans_slot	13	taux	0.0444
+decile	5	disponibles	387	sans_slot	0	taux	0.0000
+decile	6	disponibles	303	sans_slot	0	taux	0.0000
+decile	7	disponibles	230	sans_slot	3	taux	0.0130
+decile	8	disponibles	303	sans_slot	3	taux	0.0099
+decile	9	disponibles	239	sans_slot	15	taux	0.0628
+decile	10	disponibles	300	sans_slot	127	taux	0.4233
+
+# par index de joueur du film
+joueur	0	slots	11	disponibles	270	sans_slot	2	taux	0.0074
+joueur	1	slots	13	disponibles	426	sans_slot	21	taux	0.0493
+joueur	2	slots	9	disponibles	295	sans_slot	21	taux	0.0712
+joueur	3	slots	17	disponibles	332	sans_slot	13	taux	0.0392
+joueur	4	slots	13	disponibles	334	sans_slot	11	taux	0.0329
+joueur	5	slots	13	disponibles	380	sans_slot	13	taux	0.0342
+joueur	6	slots	10	disponibles	433	sans_slot	32	taux	0.0739
+joueur	7	slots	7	disponibles	338	sans_slot	51	taux	0.1509
+
+# par arme (identifiant brut du film)
+arme	0x2B1824D542C9679F	disponibles	2086	sans_slot	105	taux	0.0503
+arme	0x48C19D2D42C9679F	disponibles	511	sans_slot	27	taux	0.0528
+arme	0x3E07021742C9679F	disponibles	111	sans_slot	32	taux	0.2883
+arme	0xF408190F42C9679F	disponibles	77	sans_slot	0	taux	0.0000
+arme	0xD791556542C9679F	disponibles	18	sans_slot	0	taux	0.0000
+arme	0x2FB21C8742C9679F	disponibles	5	sans_slot	0	taux	0.0000

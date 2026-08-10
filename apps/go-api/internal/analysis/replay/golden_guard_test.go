@@ -26,6 +26,7 @@ var phrasesGolden = []string{
 	"AUCUN OCTET DE FILM n est lu pour produire cette sortie",
 	"l ASSEMBLAGE ; le DECODAGE est verrouille a part par la mini-bobine",
 	"une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)",
+	"NOMMEE(S) par le pont (fil des morts, puis fermetures)",
 	"une vie que le film ne clot",
 	"par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur",
 	"le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables",
@@ -42,8 +43,10 @@ var phrasesGolden = []string{
 	"nombre de candidats est publie, pour que le departage reste visible",
 	"TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu",
 	"l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee",
-	"une seule source : la LECTURE",
-	"un ecart signalerait une SECONDE SOURCE",
+	"deux sources nommees : la LECTURE, puis la FERMETURE",
+	"signalerait une TROISIEME SOURCE",
+	"une fermeture n attribue QUE lorsqu un seul candidat reste possible, jamais par vote",
+	"un controle qui ne rejette rien ne prouve rien",
 	"un rapport publie sans son denominateur ne se juge pas",
 	"le tag brut reste A COTE du libelle, jamais a sa place",
 	"n emprunte pas le nom d une arme voisine",
@@ -94,7 +97,9 @@ func TestGoldenAssemblyPorteSesDenominateurs(t *testing.T) {
 func TestGoldenAssemblyFigeLesChiffresDuChantier(t *testing.T) {
 	g := lireGoldenAssembly(t)
 	for _, l := range []string{
-		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 91.5 %%", wantShotsAttached, wantShotsAvailable),
+		// 483/519 = 93.1 % depuis la ronde de correction du 2026-08-09 (93.3 % avec les
+		// fermetures non corrigees, 91.5 % avant elles).
+		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 93.1 %%", wantShotsAttached, wantShotsAvailable),
 		fmt.Sprintf("%d rattache(s) / %d disponible(s) = 100.0 %%", wantGrenades, wantGrenades),
 		fmt.Sprintf("%d vie(s) nommee(s) / %d", wantLivesNamed, wantLivesTotal),
 		fmt.Sprintf("%d trajectoire(s) ·", wantProjectiles),
