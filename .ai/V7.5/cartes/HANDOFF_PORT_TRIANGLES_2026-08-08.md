@@ -776,9 +776,64 @@ cartes Forge, si elle existe, vit ailleurs (probablement dans les objets du .mva
 
 ### 12.4 Note de session — ecriture concurrente dans le worktree
 
-Pendant ce lot, une AUTRE session a depose `cloture_gamefiles_test.go` (hypothese
+Pendant le lot riviere, une AUTRE session a depose `cloture_gamefiles_test.go` (hypothese
 utilisateur « environnement ferme » : inondation depuis les bords) et `Volume.ZoneClose`
-dans `zone_jouable.go`. Ce travail n'est PAS commite par ce lot ; ses deux appels a
+dans `zone_jouable.go`. Ce travail n'est PAS commite par ces lots ; ses deux appels a
 l'ancienne API de sonde (`litSddt`) ont ete migres vers l'API promue (`LitSddt`,
 `Coquille()`, `Contient`) pour que l'arbre compile. Son verdict reste a rendre par sa
 session.
+
+## 13. LOT PROTOTYPE FORGE (2026-08-10) — F1 FERME, VAGABOND SE REND
+
+### 13.1 F1 — le chainon `type_id -> modele` est FERME, et il est INLINE
+
+Trois mesures successives (sondes `sonde_forge_gamefiles_test.go`, `sonde_forge_mvar_...`) :
+
+1. **La table de dependances des tags food est VIDE** : 457/467 type_id de Vagabond n'ont
+   AUCUNE dep (les 10 restants pointent foki/fosp — kits et spawns, pas des modeles).
+2. **`root+0x08` n'est PAS un lien** : il se resout 467/467... vers le tag LUI-MEME
+   (0x55897BE3 = type_id 1435073507). Le « hash non craque » de l'investigation est
+   l'auto-reference. Porte fermee.
+3. **Le lien est INLINE dans les octets du tag** (scan de chaque u32 contre l'index complet
+   de l'installation, la methode qui avait etabli type_id -> food) : les food dessinables
+   portent une liste de variantes referencant `bloc` + `rtgo` + `scgt` + `rtmp` a offsets
+   reguliers. **374/467 type_id portent >= 1 ref `rtgo` directe — 3 558 des 4 697 objets
+   places (75,7 %)**. Les 93 type_id restants (1 139 objets) passent par `bloc` (963),
+   `scen` (173), `mach` (9) — un saut supplementaire, NON traite par le prototype.
+
+`rtgo` est le MEME groupe que la chaine sbsp : `NewRuntimeGeoAsset` les decode tel quel.
+
+### 13.2 L'echelle — le piege verifie sur pieces, et il est INVERSE
+
+Le champ objet [6] du .mvar n'existe pas ; le champ [9] est une struct VIDE sur
+4 709/4 709 objets. **Aucune echelle dans le .mvar de Vagabond** — pose a echelle
+unitaire, mesuree et non supposee. Le repere : `Left = Up x Forward` — la MEME convention
+que `mapvar/containment.go`, deja validee par l'oracle de containment des zones.
+
+### 13.3 Le prototype (`rendu_forge_gamefiles_test.go`, TestRenduForgeVagabond)
+
+    3 558 objets dessines · 1 113 sautes (sans rtgo direct) · 38 volumes de mort EXCLUS
+    ORACLE DES ANCRES : 4/4 ont du sol dessine (100 %)
+    mutation JOUEE : z de pose ignore -> 0/4 ancres (rouge), revert -> 4/4 (vert)
+
+- **Cas Vagabond traite explicitement** : module generique `map` au catalogue (partage
+  avec Highpower) — selection par map_id (`105f5d84-...`), jointure VERIFIEE par le compte
+  d'objets (4 709 == 4 709).
+- **Tranche relative** : `TrancheDeJeuMin/Max` sont absolues (sol Cliffhanger vers z=0),
+  le sol de Vagabond vit vers z=52. La meme tranche est translatee au sol deduit des
+  ancres (mediane - `AncrageDecalageSol`) — une regle, pas un reglage par carte.
+- **Volumes de mort** : les 4 type_id de l'empreinte fonctionnelle sont exclus ET comptes
+  (38 objets sur Vagabond). Ils n'ont de toute facon aucune ref rtgo.
+- Ecarts par ancre : -2,7 a -4,2 m sur trois ancres, -19,6 m sur une zone Bastion — le
+  z-buffer retient la surface la plus haute (toits, passerelles), meme comportement que
+  Cliffhanger. Le juge du rendu reste l'utilisateur (`vagabond_forge_proto.png`, Bureau).
+
+### 13.4 Ce que le prototype NE fait PAS (reporte au registre)
+
+- les 1 139 objets sans rtgo direct (saut bloc/scen/mach -> hlmt -> geometrie) ;
+- le choix de VARIANTE (la premiere ref rtgo du tag est prise — les suivantes sont
+  probablement les etats casses/skins) ;
+- la TOILE (bsp fo08_wetland) n'est pas rendue sous les objets — a decider au gate visuel ;
+- la chiralite du repere n'est verifiable qu'a l'oeil (l'oracle des ancres n'y est pas
+  sensible) — gate visuel utilisateur.
+
