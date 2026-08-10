@@ -889,3 +889,45 @@ se resout a l'affichage.
 
 **Lecon, et elle vaut pour tout le chantier** : un NO-GO se mesure sur les cartes ou l'hypothese
 a une CHANCE, pas seulement sur celle qu'on a sous la main.
+
+### 14.4 LE GATE A ATTRAPE QUATRE CARTES — la coquille n'est PAS universellement sure
+
+Balayage des 25 cartes mesurables (`TestBalayageCoquille`, 2026-08-10) :
+
+    21 cartes    aucune ancre perdue · decor retire de 0 a 88,4 %
+                 (cliffhanger 0 % · aquarius 17 % · catalyst 47 % · recharge 66 %
+                  highpower 73 % · bazaar 82,7 % · streets 88,4 %)
+
+    !! behemoth_va_behemoth        64 plans · ancres 14 ->  0 · 100,0 % efface
+    !! forbidden_map               11 plans · ancres 13 ->  0 ·  92,5 %
+    !! fragmentation_map           18 plans · ancres 22 -> 12 ·  78,0 %
+    !! fragmentation_heavies_map   18 plans · ancres 20 ->  7 ·  76,7 %
+
+    live_fire (2 variantes) : sous-tests en ECHEC — c'est la carte sans tag sbsp deja
+    instruite au §1 ter, pas une regression de la coquille.
+
+**CAUSE PRESUMEE, a confirmer** : `Coquille()` intersecte TOUS les triangles-frontieres du tag
+comme un SEUL convexe (`CoquilleSddt` = liste de demi-espaces, `Contient` exige tous les plans).
+Une carte qui declare PLUSIEURS volumes de frontiere, ou une frontiere non convexe, y perd
+tout — l'intersection de volumes disjoints est vide, ce qui colle exactement a `behemoth` et
+ses 64 plans pour 100 % efface. Piste du correctif : grouper les triangles par volume (comme
+les volumes d'eau, deja lus en liste) et prendre l'UNION, pas l'intersection globale.
+
+**LE GARDE, en attendant** : `CoquilleGardeLesAncres` — la coquille ne s'applique QUE si elle
+contient toutes les ancres d'objectifs au niveau de jeu. Ce n'est pas une precaution
+arbitraire : c'est l'oracle faible applique a la PRODUCTION et plus seulement au gate. Une
+ancre est jouable par definition ; une coquille qui l'exclut est fausse pour cette carte.
+Verifie : les trois coquilles fautives sont REFUSEES, 0 ancre perdue, et Catalyst garde ses
+47 %.
+
+**Ce garde protege la livraison, il ne remplace pas le correctif** — sur les quatre cartes
+refusees, le decor reste entier.
+
+### 14.5 Trois defauts de mes propres instruments, corriges
+
+1. `peupleRendu` fait `t.Fatal` : une carte illisible tuait le balayage ENTIER. Corrige par un
+   sous-test `t.Run` par carte — meme piege que celui deja documente pour
+   `TestBalayageDesCartes`, reproduit sans le voir.
+2. Le tableau ne s'imprimait qu'a la fin : aucun resultat partiel pendant 25 minutes de run.
+3. Mon filtre de lecture des resultats ne matchait pas le format de mes propres lignes — j'ai
+   d'abord conclu a un echec muet la ou le tableau existait.

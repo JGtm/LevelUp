@@ -194,6 +194,36 @@ func (v *Volume) CelluleDe(x, y float64) (int, bool) {
 //
 // Gratuite la ou elle ne sert pas, decisive la ou le grain est muet (cartes construites).
 // Rend le nombre de cellules effacees.
+// CoquilleGardeLesAncres dit si la coquille contient TOUTES les ancres d'objectifs, au niveau
+// de jeu.
+//
+// C'EST LA CONDITION D'APPLICATION, et elle n'est pas une precaution : c'est l'oracle faible
+// applique a la PRODUCTION et non plus seulement au gate. Une ancre d'objectif est jouable par
+// definition ; une coquille qui l'exclut est fausse pour cette carte, et on ne l'applique pas.
+//
+// POURQUOI IL EN FAUT UNE. Le balayage des 25 cartes (2026-08-10) a montre que la coquille
+// n'est pas universellement sure : 21 cartes n'y perdent aucune ancre et y gagnent de 0 a
+// 88,4 % de decor retire, mais quatre s'y amputent — `behemoth` (64 plans, 14 ancres -> 0,
+// 100 % efface), `forbidden` (11 plans, 13 -> 0), `fragmentation` et sa variante Heavies
+// (18 plans, 22 -> 12 et 20 -> 7).
+//
+// CAUSE PRESUMEE, a confirmer et inscrite au registre : `Coquille()` intersecte TOUS les
+// triangles-frontieres du tag comme un SEUL convexe. Une carte qui declare plusieurs volumes,
+// ou une frontiere non convexe, y perd tout — l'intersection de volumes disjoints est vide, ce
+// qui colle exactement au cas de `behemoth`. Le garde ci-dessous protege la livraison ; il ne
+// remplace pas le correctif.
+func CoquilleGardeLesAncres(c CoquilleSddt, ancres [][3]float64, zJeu float64) bool {
+	if len(c) == 0 || len(ancres) == 0 {
+		return false
+	}
+	for _, a := range ancres {
+		if !c.Contient([3]float64{a[0], a[1], zJeu}, 0) {
+			return false
+		}
+	}
+	return true
+}
+
 func (r *Rendu) RestreintALaCoquille(c CoquilleSddt, zJeu float64) int {
 	if len(c) == 0 {
 		return 0

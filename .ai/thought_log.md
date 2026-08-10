@@ -1,3 +1,40 @@
+## [2026-08-10] v7.5 — cartes : le gate de la coquille attrape 4 cartes, et la regle devient auto-verifiee
+
+**Statut** : Complete. Detail : §14.4 et §14.5 du handoff
+`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+
+**Decision technique principale : la coquille ne s'applique QUE si elle garde toutes les ancres
+d'objectifs.** Ce n'est pas une precaution ajoutee apres coup, c'est l'oracle faible applique a
+la PRODUCTION et plus seulement au gate — une ancre d'objectif est jouable par definition, donc
+une coquille qui l'exclut est fausse pour cette carte.
+
+**Ce que le balayage des 25 cartes a montre** : 21 cartes ne perdent aucune ancre et gagnent de
+0 a 88,4 % de decor retire (cliffhanger 0 %, catalyst 47 %, bazaar 82,7 %, streets 88,4 %).
+Quatre s'amputent : behemoth (64 plans, 14 ancres -> 0, 100 % efface), forbidden (11 plans,
+13 -> 0), fragmentation et sa variante Heavies (18 plans, 22 -> 12 et 20 -> 7). Avec le garde :
+0 ancre perdue, trois coquilles refusees, Catalyst garde ses 47 %.
+
+**Cause presumee, inscrite au registre** : `Coquille()` intersecte TOUS les triangles-frontieres
+comme un SEUL convexe. Une carte qui declare plusieurs volumes y perd tout — l'intersection de
+volumes disjoints est vide, ce qui colle a behemoth. Correctif : grouper par volume et prendre
+l'UNION.
+
+**TROIS DEFAUTS DE MES PROPRES INSTRUMENTS, corriges dans la foulee** : `peupleRendu` fait
+`t.Fatal`, donc une carte illisible tuait le balayage ENTIER (corrige par un sous-test par
+carte — meme piege que celui deja documente pour `TestBalayageDesCartes`, reproduit sans le
+voir) ; le tableau ne s'imprimait qu'a la fin, donc aucun resultat partiel sur 25 minutes ; et
+mon propre filtre de lecture ne matchait pas le format de mes propres lignes, ce qui m'a fait
+conclure a un echec muet la ou le tableau existait.
+
+**Lecon** : le gate a fait exactement ce pour quoi il a ete ecrit — attraper avant livraison ce
+que deux cartes bien choisies ne montraient pas. Une regle validee sur deux cartes n'est pas
+une regle validee.
+
+**Prochaine etape** : le correctif de l'union des volumes de frontiere, qui rendrait leur decor
+aux quatre cartes refusees. Puis la suite Forge (1 139 objets sans modele `rtgo`).
+
+---
+
 ## [2026-08-10] v7.5 — cartes : la zone jouable est RESOLUE, et j'avais ferme deux verdicts trop vite
 
 **Statut** : Complete pour la regle ; gate du balayage des 27 cartes en cours. Detail : §14 du
