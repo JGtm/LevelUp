@@ -77,7 +77,12 @@
 10. Référence RE statique : **`V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`**, **`RESEARCH_THEATER_RE.md`**,
     **`reference_film_chunks_structure`** (mémoire). Pour reverse externe : `V7.5/film_re/HANDOFF_FILM_RE_STATE.md`,
     `V7.5/film_re/GITHUB_RE_FINDINGS_EN.md`.
-11. Handoffs historiques (contexte, redondants) : `V7.5/killweapon/HANDOFF_WEAPON_ATTRIBUTION.md`, `V7.5/killweapon/HANDOFF_KILLFEED_VOIE_A.md`,
+11. **`V7.5/icones/ETAT_DE_L_ART_ICONES.md`** (2026-08-08) — les ICÔNES du kill feed, extraites
+    du jeu. Sans rapport avec la résolution de l'arme (elle est résolue), mais c'est là que se
+    trouve la table `bitd 8646f61a` : `identifier` (murmur3) + `bitmap` + `bitmap index`, 85
+    entrées, motif `killfeed_<nom>`. C'est le nommage que la chaîne sonore n'avait pas su donner
+    — et le **Falcon** y figure sous son vrai nom, là où la banque Wwise disait « Pelican ».
+12. Handoffs historiques (contexte, redondants) : `V7.5/killweapon/HANDOFF_WEAPON_ATTRIBUTION.md`, `V7.5/killweapon/HANDOFF_KILLFEED_VOIE_A.md`,
     `V7.5/killweapon/HANDOFF_KILLFEED_2026-06-07.md`, `V7.5/film_re/HANDOFF_FRAME_DECODER_L3.md`, `V7.5/killweapon/REPRISE_KILLWEAPON_FILM.md`.
 
 **Mémoires à charger** : [[reference_killfeed_deadstate_fields]], [[project_kill_feed_frame_decoder]],
