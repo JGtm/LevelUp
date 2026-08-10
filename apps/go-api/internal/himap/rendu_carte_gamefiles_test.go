@@ -52,6 +52,7 @@ func TestRenduCarte(t *testing.T) {
 
 	rendu := cadreSurAncres(t, ancres)
 	rendu.Tranche(TrancheDeJeuMin, TrancheDeJeuMax)
+	rendu.NiveauDeJeu(medianeZ(ancres) - AncrageDecalageSol)
 	n, ecartees := peupleRendu(t, rendu, racine, chemin, ancres)
 	t.Logf("%d instances dessinees · %d ecartees comme decor", n, ecartees)
 

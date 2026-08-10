@@ -67,6 +67,9 @@ func TestRenduCliffhanger(t *testing.T) {
 	// les bsp » ramenait l'horizon de 6 619 x 10 471 m, dont la dalle de fond de scene couvre
 	// 100 % du cadre — porte deja fermee au §9.2 du handoff.
 	bsp := choisitBSP(bsps, ancresCliffhanger(t))
+	// Le niveau JOUE, deduit des ancres : c'est contre lui que les habillages `jeu` et `encre`
+	// mesurent l'altitude, au lieu de la mesurer contre elle-meme.
+	rendu.NiveauDeJeu(medianeZ(ancresCliffhanger(t)) - AncrageDecalageSol)
 	// Temoin A/B : neutraliser le champ `scale` reproduit la lecture d'avant le 2026-08-09.
 	// N'existe que pour departager, jamais pour produire une carte.
 	sansEchelle := os.Getenv("RENDU_SANS_ECHELLE") != ""
@@ -298,6 +301,8 @@ const (
 	stylePlat     styleRendu = "plat"     // aplats + aretes
 	styleAltitude styleRendu = "altitude" // nuancier d'altitude + ombrage
 	styleCombine  styleRendu = "combine"  // nuancier + aplats + aretes
+	styleJeu      styleRendu = "jeu"      // teinte par l ecart au NIVEAU JOUE + aplats + aretes
+	styleEncre    styleRendu = "encre"    // quasi monochrome, la lisibilite vient des aretes
 
 	// StyleCarteParDefaut : choisi par l'utilisateur au gate du 2026-08-09. `doux` seul ne
 	// peut PAS separer deux dalles de meme inclinaison a des hauteurs differentes — c'est
@@ -331,7 +336,7 @@ func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool, style styleRendu
 			if !ok {
 				continue // alpha 0 : pas de matiere, pas de pixel
 			}
-			if style == stylePlat || style == styleCombine {
+			if style == stylePlat || style == styleCombine || style == styleJeu || style == styleEncre {
 				e, _ = rendu.EclairementPlat(px, j)
 			}
 			c := color.RGBA{uint8(255 * e), uint8(255 * e), uint8(255 * e), 255}
@@ -339,7 +344,20 @@ func carteSeulePNG(rendu *Rendu, larg, haut int, masque []bool, style styleRendu
 				z, _ := rendu.Altitude(px, j)
 				c = TeinteAltitude((z-bas)/(haute-bas), e)
 			}
-			if (style == stylePlat || style == styleCombine) && rendu.Arete(px, j) {
+			// Les deux habillages qui remettent l'ARENE au premier plan : l'altitude y est
+			// mesuree contre le niveau JOUE, pas contre elle-meme.
+			if style == styleJeu || style == styleEncre {
+				dz, okDz := rendu.EcartAuNiveauDeJeu(px, j)
+				if !okDz {
+					dz = 0
+				}
+				if style == styleJeu {
+					c = TeinteNiveauDeJeu(dz, e)
+				} else {
+					c = TeinteEncre(dz, e)
+				}
+			}
+			if style != styleDoux && style != styleAltitude && rendu.Arete(px, j) {
 				c = color.RGBA{c.R / 3, c.G / 3, c.B / 3, 255}
 			}
 			img.Set(px, py, c)
