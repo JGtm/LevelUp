@@ -173,6 +173,47 @@ func (v *Volume) CelluleDe(x, y float64) (int, bool) {
 	return j*v.NX + i, true
 }
 
+// RestreintALaCoquille efface du rendu tout ce qui tombe HORS de la frontiere de mort
+// declaree par la carte, testee A L'ALTITUDE DE JEU.
+//
+// POURQUOI LA COQUILLE, ET POURQUOI A CETTE ALTITUDE-LA. La frontiere d'une carte native est
+// DECLARATIVE, pas geometrique : ce n'est pas un mur qui borne le jeu, c'est le volume de mort
+// du tag `sddt`. Les 29 221 positions jouees de Cliffhanger tombent toutes dedans (100,00 %).
+//
+// Le tester au z DESSINE etait un piege, et il a coute 10 points de positions jouees : un
+// rocher haut au-dessus de l'arene sort de la coquille verticalement, sa cellule est effacee,
+// et la position au sol EN DESSOUS perd son sol. La question n'est pas « ce pixel est-il dans
+// la coquille » mais « ce pixel est-il au-dessus d'un endroit ou l'on joue » — d'ou le test au
+// niveau de jeu, deduit des ancres.
+//
+// MESURE (2026-08-10) :
+//
+//	Cliffhanger  garde 99 % du cadre — sans effet, et sans COUT : accord 66,7 % et
+//	             positions jouees 93,82 %, identiques au grain seul
+//	Catalyst     retire 47,1 % du decor, 19/19 ancres gardent leur sol
+//
+// Gratuite la ou elle ne sert pas, decisive la ou le grain est muet (cartes construites).
+// Rend le nombre de cellules effacees.
+func (r *Rendu) RestreintALaCoquille(c CoquilleSddt, zJeu float64) int {
+	if len(c) == 0 {
+		return 0
+	}
+	masque := make([]bool, r.NX*r.NY)
+	garde := 0
+	for j := 0; j < r.NY; j++ {
+		y := r.Min[1] + (float64(j)+0.5)*r.Cell
+		for i := 0; i < r.NX; i++ {
+			x := r.Min[0] + (float64(i)+0.5)*r.Cell
+			if c.Contient([3]float64{x, y, zJeu}, 0) {
+				masque[j*r.NX+i] = true
+				garde++
+			}
+		}
+	}
+	r.Restreindre(masque)
+	return r.NX*r.NY - garde
+}
+
 // MarcheMaxMetres : denivele qu'un Spartan franchit entre deux cellules voisines.
 //
 // PHYSIQUE, pas esthetique : le pas d'escalade automatique de Halo Infinite est de l'ordre du
