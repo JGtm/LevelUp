@@ -69,6 +69,18 @@ fourni, a regarder en theme CLAIR **et** SOMBRE (les icones sont des masques tei
 `currentColor`). Le kill feed teinte attend soit un chemin mesure `jpt! -> weap`, soit un
 `weapon_id` par kill dans le contrat.
 
+**MAJ 2026-08-11 (post-livraison)** : **gate visuel utilisateur PASSE** (« tout est parfait »)
+sur l'artefact arme par arme, apres ajout d'une bascule de theme clair/sombre dans la page —
+une page de gate dont l'objet est de juger les deux themes ne peut pas dependre du reglage de
+l'hote pour en changer. Le rendu `currentColor` des grandes images est donc VALIDE, l'arbitrage
+qui restait ouvert est clos. **Trois points renvoyes au lot de fin de v7.5** (avec les cartes
+v2), consignes au registre : (1) armes qui partagent une icone — 5 index servent 13 etiquettes,
+et c'est LE JEU qui ne les distingue pas (meme `sprite index`, voire un seul tag `weap` pour 3
+etiquettes) : chercher ailleurs que dans l'atlas d'armes, sinon ne garder que la variante de
+BASE ; (2) grenades — chercher l'icone la ou l'objet est declare (`eqip`/`proj`/`gggl`), dernier
+trou consequent ; (3) la teinte alliee/ennemie ne concernera QUE les icones du kill feed, pas
+les grandes images.
+
 ## [2026-08-10] v7.5 — cartes lot A : les fonds de carte sont PRODUITS, et la cuisson revele ce que les tests taisaient
 
 **Statut** : Complete. 21 assets. Gate visuel TENU, deux defauts de rendu ouverts par lui,
