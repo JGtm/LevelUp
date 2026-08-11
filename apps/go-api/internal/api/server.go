@@ -284,8 +284,16 @@ func buildAssetMetadataHandler(cfg *config.AppConfig, hiAssetURL *halo_games.Ass
 				WithMapImageURL(func(_ string, nameEN string) string {
 					return hiAssetURL.MapImageURL(nameEN)
 				}).
-				WithWeaponImageURL(func(_ string, nameEN string) string {
-					return hiAssetURL.WeaponImageURL(nameEN)
+				WithWeaponImageURL(func(titleID string, weaponID int64) (string, bool) {
+					// Cet adapter ne connaît QUE son titre : appelé pour un autre, il
+					// rendrait l'icône d'un homonyme d'identifiant. Pas d'icône vaut
+					// mieux que l'icône d'un autre jeu. Comparaison entre deux valeurs
+					// d'exécution — aucun slug littéral (ratchet title-agnostic).
+					if titleID != "" && titleID != hiAssetURL.TitleSlug() {
+						return "", false
+					}
+					url := hiAssetURL.WeaponImageURL(weaponID)
+					return url, url != "" && hiAssetURL.WeaponImageIsTinted(weaponID)
 				}),
 			func(slug string, cap titlePkg.Capability) bool {
 				d := titleRegistry.Get(slug)

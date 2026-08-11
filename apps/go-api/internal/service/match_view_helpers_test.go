@@ -44,9 +44,9 @@ func TestIndexBulkMedalsByXUID_EmptyInput(t *testing.T) {
 
 func TestIndexBulkWeaponsByXUID_GroupsByXUID(t *testing.T) {
 	bulk := []domain.BulkWeaponKillRaw{
-		{XUID: "A", WeaponID: 101, NameEN: "BR75 Battle Rifle", WeaponLabel: "BR75", Kills: 5},
-		{XUID: "A", WeaponID: 102, NameEN: "AK-47", WeaponLabel: "AK-47", Kills: 2},
-		{XUID: "B", WeaponID: 101, NameEN: "BR75 Battle Rifle", WeaponLabel: "BR75", Kills: 3},
+		{XUID: "A", WeaponID: 101, WeaponLabel: "BR75", Kills: 5},
+		{XUID: "A", WeaponID: 102, WeaponLabel: "AK-47", Kills: 2},
+		{XUID: "B", WeaponID: 101, WeaponLabel: "BR75", Kills: 3},
 	}
 	got := indexBulkWeaponsByXUID(bulk, nil, len(bulk))
 	if len(got["A"]) != 2 {

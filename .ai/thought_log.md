@@ -1,3 +1,74 @@
+## [2026-08-11] v7.5 — integration des icones d'armes : la cle devient le tag `weap`, et deux etapes du plan tombent sous la mesure
+
+**Statut** : Complete pour ce qui etait mesurable ; deux etapes REFUTEES et consignees.
+Plan : `.ai/V7.5/icones/PLAN_INTEGRATION_ICONES.md` (etapes 1, 2 et 4 statuees ; etape 3 `[!]`).
+Registre des reports : 4 entrees.
+
+**Decision technique principale : la resolution arme -> icone quitte le NOM pour le TAG `weap`.**
+`weaponImageFiles`, une map de 39 alias `name_en` ecrits a la main, a disparu. A sa place, une
+table GENEREE depuis `index.json` (124 tags, `weapon_icons_gen.go`) et keyee sur les 32 bits
+HAUTS de l'identifiant filmshell. Cette cle couvre trois cas que ni `name_en` ni `weapon_key` ne
+couvraient ensemble : les armes du registre, leurs VARIANTES (Diminisher of Hope suit son
+Gravity Hammer sans entree dediee), et celles qui n'y sont PAS (Mutilator, Sandwich).
+
+Les trois defauts mesures de l'existant sont fermes, chacun par un test qui echoue s'il revient :
+la divergence Mk51/Mk50 ne casse plus l'image du Sidekick ; Cindershot n'affiche plus un
+Cremateur ; et un PNG reference qui manque sur disque fait desormais echouer la suite.
+
+**Le generateur est une commande SEPAREE, et c'est le point qui rend la table verifiable.**
+`weapon-icons-build` exige les archives du jeu installe : verifier la fraicheur de sa sortie
+serait impossible en CI, et la table divergerait en silence — le defaut deja vecu par les tables
+de la page de nommage. `cmd/weapon-icons-table` ne lit qu'`index.json`, versionne ;
+`TestTableGenereeEstAJour` rejoue la generation et compare octet a octet.
+
+**CE QUE LA MESURE A REFUTE, et qui etait ecrit dans le plan.**
+
+1. **L'etape 3 (exposer l'atlas du kill feed) ne peut pas s'executer.** `index.json` porte bien
+   `tags_weap` sur les entrees `killfeed`, mais ce champ est indexe par `sprite index`, qui n'a
+   de sens que pour les atlas d'ARMES : l'index 0 du kill feed est le Battle Rifle la ou le
+   contour 0 est le fusil d'assaut. C'est un artefact de generation
+   (`weapon-icons-build/main.go:220` l'ecrit pour les trois styles alors que `weaptags.go` ne le
+   calcule que pour les armes). Le lire aurait donne une icone fausse pour CHAQUE arme. Le
+   consommateur filtre donc sur le style `contour`, et un test verrouille ce filtre.
+2. **L'etape 4 ne peut pas s'appliquer au kill feed : il n'y a AUCUNE arme a teindre.**
+   `domain.EventRaw` n'a pas de champ arme, `highlight_events` pas de colonne `weapon_id`, et la
+   seule source de degat par kill — `match_kill_events.source_tag` — est un tag **`jpt!`**, PAS
+   un tag `weap` : 11 lignes sur 114 de classe ARME portent un `[effet weap ...]` exploitable
+   dans `damagetag/labels.tsv`. Poser une icone dessus revenait a inventer le lien. Le composant
+   est livre et teste ; c'est son APPLICATION au kill feed qui attend une donnee.
+
+**Une mesure a impose un champ de contrat non prevu.** Les icones extraites sont a **100 %
+blanches** (masque porte par l'alpha) ; les deux PNG dessines a la main sont en couleur (31,6 %
+et 55,6 % de pixels colores). Rendre un masque tel quel le rend INVISIBLE en theme clair ;
+teindre une image finie l'aplatit en silhouette. Le front ne peut pas deviner lequel il tient et
+n'a pas le droit de le renifler dans l'URL : `image_tinted` est donc publie par l'adapter du
+titre (`WeaponImageIsTinted`), sur le modele de `MedalIcon` — aucune logique par titre cote web.
+
+**Deux PNG dessines a la main SURVIVENT, et c'est une decision.** L'etape 2 disait « les 28
+anciens PNG sont SUPPRIMES ». 26 le sont. `Grenade.png` et `Melee.png` restent : l'atlas extrait
+ne porte NI grenade NI melee generique — les grenades ne sont pas des `weap`, elles vivent en
+`eqip`+`proj` et n'ont pas de bloc « UI display info » a lire. Les supprimer aurait fait perdre
+son icone a 5 etiquettes sur 42. La regle « 0 code mort » vise le code inutilise, pas un asset
+encore servi ; et elles ne sont plus keyees par nom mais par ID/tag, donc le defaut n°1 tombe
+quand meme.
+
+**Piege rencontre : un `weapon_id` Halo Infinite DEPASSE int64 en decimal.** `strconv.ParseInt`
+sur l'ID d'un `AssetMeta` echouait sur les deux tiers du referentiel, VK78 Commando compris —
+en silence, l'arme perdant simplement son icone. `canonical.AssetMeta.WeaponID()` fait ParseUint
+puis conversion : int64 porte le MOTIF BINAIRE, comme partout ailleurs dans le domaine. Meme
+cause cote test : `int64(uint64(N))` sur une CONSTANTE est refuse a la compilation, il faut
+convertir a l'execution.
+
+**Resultats observes** : 42 etiquettes du referentiel, 36 servies par l'atlas du jeu, 5 par les
+deux PNG conserves, 1 sans icone (sentinelle « vehicule », qui n'en avait pas non plus avant).
+Deux GAINS : Sandwich et Mythic Sandwich, jamais servies jusqu'ici (tags `880fe0bc` / `b7262ca1`
+-> index 35). Poids servi : ~8 Ko par icone contre jusqu'a 453 Ko.
+
+**Conclusion / prochaine etape** : le gate visuel appartient a l'utilisateur — artefact de revue
+fourni, a regarder en theme CLAIR **et** SOMBRE (les icones sont des masques teintes par
+`currentColor`). Le kill feed teinte attend soit un chemin mesure `jpt! -> weap`, soit un
+`weapon_id` par kill dans le contrat.
+
 ## [2026-08-10] v7.5 — cartes lot A : les fonds de carte sont PRODUITS, et la cuisson revele ce que les tests taisaient
 
 **Statut** : Complete. 21 assets. Gate visuel TENU, deux defauts de rendu ouverts par lui,

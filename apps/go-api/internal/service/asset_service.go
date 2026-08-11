@@ -11,9 +11,12 @@ import (
 
 // AssetService construit les métadonnées d'assets pour l'Asset Drawer.
 type AssetService struct {
-	repo           port.AssetMetaRepository
-	mapImageURL    func(titleID, nameEN string) string // nil = UUID-based URL (fallback)
-	weaponImageURL func(titleID, nameEN string) string // nil = pas d'image
+	repo        port.AssetMetaRepository
+	mapImageURL func(titleID, nameEN string) string // nil = UUID-based URL (fallback)
+	// weaponImageURL rend l'URL d'icône ET son mode de rendu (masque à teindre vs
+	// image finie) : les deux sont indissociables, le front ne peut pas deviner le
+	// second. nil = pas d'image.
+	weaponImageURL func(titleID string, weaponID int64) (url string, tinted bool)
 }
 
 // NewAssetService crée un AssetService.
@@ -28,8 +31,9 @@ func (s *AssetService) WithMapImageURL(fn func(titleID, nameEN string) string) *
 	return s
 }
 
-// WithWeaponImageURL configure une fonction de construction d'URL d'image d'arme.
-func (s *AssetService) WithWeaponImageURL(fn func(titleID, nameEN string) string) *AssetService {
+// WithWeaponImageURL configure une fonction de construction d'URL d'image d'arme,
+// keyée par weapon_id (l'ID natif du titre — cf. games.TitleAssetURLAdapter).
+func (s *AssetService) WithWeaponImageURL(fn func(titleID string, weaponID int64) (string, bool)) *AssetService {
 	s.weaponImageURL = fn
 	return s
 }
@@ -69,8 +73,13 @@ func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) 
 	}
 	for i := range items {
 		// Conserver l'ImageURL déjà résolue depuis la DB (ex. h5 : icon_url officielle).
-		if items[i].ImageURL == "" && s.weaponImageURL != nil {
-			items[i].ImageURL = s.weaponImageURL(titleID, items[i].NameEN)
+		if items[i].ImageURL != "" || s.weaponImageURL == nil {
+			continue
+		}
+		// Un ID d'arme non numérique n'a pas d'icône résolvable : on laisse "" plutôt
+		// que d'appeler le builder avec un identifiant inventé.
+		if id, ok := items[i].WeaponID(); ok {
+			items[i].ImageURL, items[i].ImageTinted = s.weaponImageURL(titleID, id)
 		}
 	}
 	// Init [] plutôt que nil : même raison que ListMaps.

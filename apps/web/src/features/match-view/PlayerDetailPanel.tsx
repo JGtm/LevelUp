@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { MedalIcon } from '@/components/ui/MedalIcon'
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { citationMastery } from '@/lib/citations/mastery'
 import { tokenCssVar } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
@@ -81,21 +82,24 @@ function KvRow({ label, value, labelStyle }: { label: string; value: React.React
 function WeaponItem({ w }: { w: PlayerWeaponKillRow }) {
   const [imgFailed, setImgFailed] = useState(false)
   const showImage = w.image_url && !imgFailed
-  const fallbackText = w.label ?? `#${w.weapon_id}`
+  const label = w.label ?? `#${w.weapon_id}`
   return (
     <div className="flex items-center gap-2" title={w.label ?? String(w.weapon_id)}>
-      <div style={{ width: 56, height: 24 }} className="flex items-center justify-center flex-shrink-0">
+      <div style={{ width: 56, height: 24 }} className="flex items-center justify-center flex-shrink-0 text-foreground">
         {showImage ? (
-          <img
-            src={w.image_url}
-            alt=""
-            className="max-h-full max-w-full object-contain"
-            loading="lazy"
+          // Repli sur le LIBELLÉ quand l'arme n'a pas d'icône (trou d'atlas assumé,
+          // arme hors référentiel) — jamais l'icône d'une autre arme.
+          <WeaponIcon
+            imageUrl={w.image_url}
+            tinted={w.image_tinted}
+            label={label}
+            width={56}
+            height={24}
             onError={() => setImgFailed(true)}
           />
         ) : (
           <span className="text-2xs text-muted-foreground text-center leading-tight truncate w-full">
-            {fallbackText}
+            {label}
           </span>
         )}
       </div>
