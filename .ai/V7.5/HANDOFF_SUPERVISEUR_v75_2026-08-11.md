@@ -9,8 +9,8 @@
 
 Release v7.5 en cours d'assemblage sur la branche unique **`feat/v75`** (HEAD `758abcf17`,
 CI de branche 9/9 verte). Prod figee a `781daf0c6` (lots objectifs 1-3) jusqu'a UN SEUL merge
-final = release + tag v7.5.0. Le lot **piste F (rejeu 2D)** est le prochain (prompt remis a
-l'utilisateur, non demarre).
+final = release + tag v7.5.0. Le lot **piste F (rejeu 2D)** est LIVRE (2026-08-12) : reste son
+gate visuel utilisateur et son push.
 
 ## 1. MODE DE TRAVAIL (decisions utilisateur, non negociables)
 
@@ -47,17 +47,30 @@ l'utilisateur, non demarre).
 
 ## 3. RESTE AVANT LE TAG v7.5.0
 
-1. **PISTE F — rejeu 2D** (PROCHAIN, prompt remis 11/08, NON demarre). Le rejeu 2D EXISTE DEJA
-   et fonctionne en local (`match-replay/ReplayCanvas`, API sert l'artefact, garde local
-   `replay_local_gate.go` local-only). NE PAS le reimplementer. Le lot = 2 ajouts :
-   - **F1 fonds de carte** : brancher les 21 PNG `map_backgrounds/` (actif DORMANT, lecteur
-     `map_background.go:MondeVersPixel` pret, AUCUN consommateur) comme fond du rejeu. Fallback
-     sur le sol `structure`/`geometry` actuel (seules 2 cartes ont `map_structure`).
-   - **F2 kill feed dans la page replay** (« Etape C » du contrat, PAS faite) : amener
-     `MatchKillFeed.tsx` (deja livre, icone+couleur team) dans la page replay, synchronise avec
-     l'horloge du rejeu. Reutiliser le composant, alimenter avec les kills+sources cote front.
-   - Garde local INCHANGE (rejeu reste OFF prod). Decisions user : local-only OK, seuil 88 %
-     non atteint (87,39 %) donc garde maintenu.
+1. ~~**PISTE F — rejeu 2D**~~ **LIVREE le 2026-08-12** (plan et verdict :
+   `.ai/V7.5/PLAN_PISTE_F_REJEU2D.md`). Ce qui a ete fait, et ce qui reste :
+   - **F1 fond de carte** : servi par l'API (`GET .../replay/background` = calage,
+     `.../replay/background.png` = image), dessine SOUS le rejeu A LA PLACE du sol
+     reconstruit, repli propre quand la carte n'a pas de PNG. Resolution
+     `match -> nom de carte -> module` par la chaine EXISTANTE (catalogue de bornes) ; aucune
+     seconde regle de nommage. Oracle : 15/15 cartes du catalogue.
+   - **F2 kill feed** : `ReplayKillFeed.tsx` sous la carte, synchronise a l'instant du rejeu.
+     Il REUTILISE les briques du kill feed de la Match View (collecte des kills, cascade de
+     couleur d'equipe, `WeaponIcon`) mais n'EST PAS `MatchKillFeed` : celui-la aligne tous
+     les kills du match sur l'axe de categories d'un graphe ECharts (position calculee depuis
+     `binIdx` + encart de grille), et il n'y a pas de graphe dans la page de rejeu. Le monter
+     tel quel aurait affiche une frise figee sous un rejeu qui avance.
+   - **DECOUVERTE QUI A CHANGE LE LOT** : les deux horloges different. Les events de la Match
+     View sont recales sur le debut du GAMEPLAY, le film part du debut du MATCH. Mesure sur
+     000d5950 (T0 = 18 465 ms) : ecart median **-0,6 s a offset nul** contre 3,1 s en ajoutant
+     T0. `t0_ms` a donc ete expose au contrat (il ne l'etait pas) — sans quoi le feed aurait
+     eu 18 s de retard.
+   - Garde local **INCHANGE** : le rejeu reste OFF en prod.
+   - **RESTE** : accord de commit/push utilisateur, CI de branche verte, **gate visuel sur
+     000d5950 avec temoins nommes par l'utilisateur**. PIEGE : le worktree n'a pas les bases
+     (12 Kio) et le kill feed depend de la Match View — lancer le serveur sur la racine de
+     donnees du depot principal.
+
 2. **COMPLETION DES CARTES** (requis user 11/08 AVANT le tag) : il manque des cartes au-dela des
    21 (Halo en a bien plus). Extraire leurs fonds depuis le jeu, comme le lot 5. A grouper avec
    « cartes v2 ».

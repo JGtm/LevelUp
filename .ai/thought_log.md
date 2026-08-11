@@ -63285,3 +63285,65 @@ taille respectes. Aucun code produit touche, donc aucune suite de tests applicat
 
 **Prochaine etape**. Etape 1 « reste a faire » du plan : `WeaponImageURL(weaponID int64)`, table
 generee, sentinelles 0/1/2 statuees, tests de divergence et de presence des PNG.
+
+## [2026-08-12] v7.5 piste F — le rejeu 2D recoit ses fonds de carte et son kill feed
+
+**Statut** : Complete cote code et gates ; reste l accord de commit/push utilisateur, la CI de
+branche et le gate visuel.
+
+**Perimetre** : F1 fond de carte servi + dessine, F2 kill feed synchronise, F3 verification du
+lien header. Branche unique `feat/v75`, worktree `LevelUp-wt-replay2d`. Le garde local du rejeu
+(`handlers/replay_local_gate.go`) n a PAS ete touche : le rejeu reste OFF en prod.
+
+**Decision technique n1 — le fond se resout au SERVICE, pas au build.** L artefact de rejeu ne
+porte aucune identite de carte (il sort des seuls chunks du film, qui ne la nomment pas). Deux
+voies existaient : injecter le module au build, ou resoudre a la lecture. La premiere aurait
+exige de re-decoder les films pour les trois artefacts deja produits — donc une feature
+invisible sur le seul match dont on possede un artefact. Retenue : `match -> nom de carte`
+(registre partage + cascade EN par `asset_translations` quand `map_name` est un UUID) puis
+`nom -> module` par la chaine QUI EXISTAIT DEJA (`filmdec.NormalizeMapName` +
+`map_quant_bounds.json`, seul endroit ou ce lien est declare), puis `module -> image + calage`.
+Aucune seconde regle de nommage n a ete ecrite.
+
+**Decision technique n2 — la doc du paquet rejeu etait fausse, et c est ce qui bloquait la
+piste.** `analysis/replay/document.go` affirmait que « l echelle/offset absolus ne sont PAS
+garantis ». C etait vrai AVANT `filmdec/map_bounds.go` : toutes les cartes etaient alors
+dequantifiees avec les bornes de Cliffhanger. Depuis, `cmd/replay-build` EXIGE `-map` et refuse
+de produire sans les bornes de la carte : les positions sont des metres monde, donc le fond
+figé se superpose. Verifie : les bornes de `000d5950` tombent dans le cadre de `ridgeline.png`.
+La doc est corrigee dans le meme lot, et le controle est un test (`TestMapBackground_
+DonneesReelles`), pas un commentaire.
+
+**Decision technique n3 — LES DEUX HORLOGES NE SONT PAS LA MEME, et je l ai mesure avant de
+coder.** La Match View sert ses events recales sur le debut du GAMEPLAY
+(`correctMatchViewEventsT0`) ; le film part du debut du MATCH, countdown compris. En rapprochant
+les 91 fins de vie exploitables du rejeu des 93 morts du registre sur `000d5950` (T0 = 18 465 ms),
+l ecart median vaut **-629 ms a offset nul**, contre 3,1 s en ajoutant T0 et 4,2 s en le
+retranchant. Le rejeu suit donc l horloge BRUTE, et le recalage est `msRejeu = event_time_ms +
+t0_ms` — ce qui a exige d exposer `t0_ms` au contrat, ou il ne figurait pas. Sans cette mesure,
+le feed aurait eu 18 secondes de retard et rien a l ecran ne l aurait dit.
+
+**Resultats observes** :
+- Oracle sur les assets VERSIONNES : **15 cartes du catalogue sur 15** livrent un calage et une
+  image exploitables (aucun sous-test saute — verifie en `-v`, c est le piege « un oracle absent
+  passe au vert »).
+- Mutation JOUEE sur la convention de calage cote web (signe du Y inverse) : 2 tests passent au
+  ROUGE, revert, vert. Le temoin departage.
+- Gates : golangci-lint ratchet **0 issue** ; check-types, lint web (0 erreur, 19
+  avertissements contre 20 avant le lot), lint:fields, couleurs, contrat, knip 0/0/0, build
+  Vite ; tests Go cibles + `make go-api-test` + integration `TestReplayMapRepo` ; `make
+  test-web`. `himap` non joue en local (>60 min), la CI tranche.
+- `lint-cross-feature-imports` : 7 / plafond 7, plafond NON releve — la paire
+  `match-replay=>match-view` est entree a l allowlist avec sa justification.
+
+**Effet de bord assume — regle n6 appliquee.** Le kill feed avait besoin de l index
+« qui est allie » ; la cascade existait deja en deux copies identiques
+(`MatchTugOfWarChart`, `MatchKDCumulChart`). La troisieme copie etant interdite, elle est
+centralisee dans `match-view/xuidMeta.ts` avec son garde-rail — lequel a DEBUSQUE une
+quatrieme variante dans `MatchCadenceChart` que le grep manuel avait manquee. Meme
+traitement pour la cascade de couleur d equipe (`match-view/teamColor.ts`).
+
+**Conclusion / prochaine etape** : le rendu change, donc le verdict appartient a l utilisateur.
+Gate visuel sur `000d5950`, temoins nommes par lui. PIEGE D ENVIRONNEMENT a signaler : le
+worktree n a pas les bases (12 Kio de `shared_matches_v2.duckdb`) et le kill feed depend de la
+Match View — le serveur doit tourner sur la racine de donnees du depot principal.
