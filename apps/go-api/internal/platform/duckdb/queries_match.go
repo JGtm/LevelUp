@@ -468,6 +468,44 @@ LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC NULLS LAST`
 
+// Q21b : la SOURCE DE DÉGÂT de chaque mort du match, pour l'arme affichée au kill feed.
+//
+// Requête SÉPARÉE de Q21, et c'est une précaution, pas une commodité : la table
+// `match_kill_events` peut être absente d'une base non migrée, ou vide sur un match jamais
+// passé au décodeur de film. La greffer en jointure dans Q21 ferait tomber la requête —
+// donc DISPARAÎTRE tout le kill feed — là où une requête à part se contente de ne rien
+// rendre. La carte Dominance survit sans arme ; elle ne survit pas sans events.
+//
+// TROIS FILTRES, TROIS RAISONS MESURÉES :
+//   - `publishable` : la passe de décodage autorisait-elle la publication LIGNE PAR LIGNE ?
+//     C'est LA colonne dont le DDL dit qu'elle « se lira le jour où une surface affichera
+//     l'ARME d'une mort ». Ce jour est arrivé. Sans elle, 366 matchs (BTB, marge de
+//     bijection nulle) serviraient des armes justes en agrégat et fausses individuellement.
+//   - `source_tag IS NOT NULL` : NULL veut dire « source non mesurée », pas « aucune arme ».
+//   - `HAVING count(DISTINCT source_tag) = 1` : deux morts au même millisecond pour le même
+//     tueur (double kill) donnent deux lignes. Si elles ne s'accordent pas sur l'arme, on
+//     n'en publie AUCUNE. Mesure sur la base de production : 0 désaccord sur 152 009 kills
+//     — la garde ne coûte donc rien aujourd'hui, et évite l'arme fausse le jour où elle en
+//     coûterait.
+//
+// Pas de filtre sur les bots : `feed_killer_xuid` NULL les porte, et un xuid NULL ne peut
+// pas s'apparier avec un event. Ne JAMAIS le normaliser en chaîne vide (piège documenté
+// dans kill_events_source.go).
+//
+// Paramètre : ?1 = match_id. Retourne 3 colonnes : feed_killer_xuid, time_ms, source_tag.
+const Q21bKillSources = `
+SELECT
+    feed_killer_xuid,
+    time_ms,
+    min(source_tag) AS source_tag
+FROM ` + KillEventsCanonicalTable + `
+WHERE match_id = ?
+  AND publishable
+  AND source_tag IS NOT NULL
+  AND feed_killer_xuid IS NOT NULL
+GROUP BY feed_killer_xuid, time_ms
+HAVING count(DISTINCT source_tag) = 1`
+
 // Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
 // Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).
 // Ordre : start_time DESC (plus récent = index 0).

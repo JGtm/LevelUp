@@ -1,3 +1,80 @@
+## [2026-08-11] v7.5 — l'icone de l'arme du kill dans le kill feed : le pont passe par le NOM, pas par le tag `weap`
+
+**Statut** : Complete (L1-L4). Gate visuel utilisateur EN ATTENTE — le rendu change a l'ecran.
+
+**Decision technique principale** : les deux etapes du plan icones fermees la veille
+(« l'atlas kill feed n'est pas exposable », « le kill feed ne porte aucune arme ») reposaient
+sur une contrainte que la mesure ne demandait pas — atteindre le tag `weap` depuis la source
+de degat. Elle est effectivement hors d'atteinte (11 lignes sur 114 de classe ARME portent un
+`[effet weap ...]` dans `damagetag/labels.tsv` ; les autres portent un `proj`, un `hlmt` ou un
+`weme`). Mais designer une VIGNETTE ne demande pas le tag : le NOM suffit, et `jpt! -> nom`
+est deja resolu a 97,6 %. Le maillon manquant etait donc `nom -> vignette`, et il etait deja
+versionne dans le depot — la passe humaine `.ai/V7.5/icones/NOMMAGE_GATE_2026-08-09.tsv`
+(`index kill feed -> weapon_key` pour 26 vignettes, libelle humain pour les autres).
+
+Le pont vit dans `internal/games/halo_infinite/film/killicon` : `data/rules.tsv`, 36 regles
+versionnees en trois genres — NOM (31 armes), GGGL (4 entrees de la liste des grenades du jeu),
+CLASSE (la melee, qui EST une classe et pas une arme). Les regles s'ECRIVENT par nom, mais se
+RESOLVENT une fois pour toutes a l'initialisation en une table `tag -> vignette` : le runtime
+ne compare jamais de chaine, donc la divergence de nommage connue du depot (« Mk51 Sidekick »
+en base contre « Mk50 Sidekick » au registre) ne peut pas deplacer une icone en silence. 100 %
+hors ligne : deux tables embarquees, aucun acces au jeu.
+
+**Ce qui a failli faire poser une icone fausse, et ce qui l'a empeche** : le nom INTERNE de la
+vignette 22 est `heatwave`, et la vignette represente le CINDERSHOT. Keyer sur le nom interne
+aurait interverti deux armes. Deux sources independantes le disent — la passe humaine
+(22 -> `hinf_cindershot`, 23 -> `hinf_heatwave`) et `weapon_names.toml` (Cremateur = Cindershot,
+Calcineur = Heatwave). Le test `TestChaqueRegleEstCorroboreeParLeRegistre` rejoue cette
+corroboration a chaque CI : toute regle qui declare un `weapon_key` doit voir le nom EN du
+registre correspondre a sa cle, directement, par branche d'alternative, ou par alias assume et
+date (un seul : Mk51/Mk50).
+
+**Regle de surete, verifiee et non crue** : un nom alternatif (« A / B ») n'obtient une vignette
+que si toutes ses branches designent la meme. `TestUneAlternativeNeSertQuUneVignetteUnanime` le
+verifie sur la table ; `TestLesAlternativesContradictoiresNObtiennentAucuneIcone` verifie en
+plus que les 5 alternatives ECARTEES le sont pour une raison MESUREE (au moins deux branches a
+vignettes differentes), pas par prudence decorative.
+
+**Resultats observes** :
+- Couverture de la table : ARME 105/114 lignes publiables, MELEE 14/14, GRENADE 15/15 (les 2
+  AMBIGUES exclues par `Publishable()`). Vehicules (89), objets explosifs (19) et degat global
+  (9) restent SANS icone, par decision : la source ne nomme ni le chassis, ni l'objet, ni la
+  cause — en servir une au hasard serait le defaut que ce lot evite.
+- Appariement feed/film mesure sur la base de production : 152 009 kills de `highlight_events`,
+  **0 contradiction** de source sur les instants ou deux morts coincident. La garde
+  `HAVING count(DISTINCT source_tag) = 1` ne coute donc rien aujourd'hui et protege demain.
+- Couverture bout en bout : **34,3 % des kills recoivent une icone**. Les 65,7 % restants se
+  repartissent en 47,1 % de passes de film non publiables ligne par ligne (BTB) ou sans source
+  mesuree, et 18,5 % de matchs sans aucune ligne de film.
+- **Le retard de donnee est le vrai plafond** : 55 a 72 % de couverture jusqu'a mars 2026, puis
+  5,5 % en avril, 0 % en mai et juin, 4,4 % en juillet — les matchs les plus recents n'ont pas
+  UNE ligne dans `match_kill_events`. `backfill-killsource` n'a pas ete rejoue. C'est une
+  operation de production, hors perimetre de ce lot ; consignee au registre des reports.
+
+**Ce qui bouge a l'ecran** : le kill feed de la carte Dominance quitte ECharts pour le DOM
+(`features/match-view/MatchKillFeed.tsx`). Motif technique, pas cosmetique : un symbole image
+ECharts se dessine tel quel et ne se teinte pas, or l'icone extraite du jeu est un masque blanc
+— servie telle quelle elle disparait en theme clair. Les lanes et les vagues restent dans le
+graphe (leur position en Y n'a de sens que sur l'echelle des barres) ; seuls les points de kill
+passent en DOM, a la MEME abscisse (la formule d'axe categoriel d'ECharts est reproduite en
+pourcentage, donc exacte a toute largeur, sans ResizeObserver). Le compteur « n/N avec arme »
+est AFFICHE en tete du fil : la couverture depend du backfill, pas du rendu, et un fil sans
+icone doit se lire comme un etat de donnee, pas comme une panne.
+
+**Gates** : `go test` sur tout `apps/go-api` sauf `himap` vert ; `-tags=integration -p 1` sur
+`platform/duckdb` + `service` vert ; `go vet ./internal/...` vert ; golangci-lint ratchet
+**0 issue** ; `tsc -b --force` (cache purge) vert ; vitest complet **402 fichiers / 3545 tests**
+vert (un echec isole de `PalmaresRelationsPage` au premier run ne s'est pas reproduit et ne
+touche aucun fichier du diff) ; `make openapi-check` a jour, contrat regenere dans le meme
+commit. Baseline de tests Go non affectee : aucun test existant supprime ni renomme.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur requis — artefact arme par arme
+publie (chaque vignette en face du nom qui la declenche, teintee allie et ennemi, dans les deux
+themes). Les temoins de match sont a nommer par l'utilisateur ; l'artefact previent qu'un match
+posterieur a mars 2026 montrera un fil SANS icone, faute de backfill. Deux arbitrages ouverts au
+registre : rejouer `backfill-killsource` en production, et decider si le nom du tueur doit
+apparaitre en permanence plutot qu'au survol.
+
 ## [2026-08-11] v7.5 — integration des icones d'armes : la cle devient le tag `weap`, et deux etapes du plan tombent sous la mesure
 
 **Statut** : Complete pour ce qui etait mesurable ; deux etapes REFUTEES et consignees.

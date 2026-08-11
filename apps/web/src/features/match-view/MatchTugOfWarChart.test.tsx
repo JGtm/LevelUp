@@ -116,19 +116,14 @@ describe('MatchTugOfWarChart — tooltips (W2)', () => {
     expect(tip).not.toContain('0:01')
   })
 
-  it('tip per-kill au survol d’un point kill (gamertag — mm:ss)', async () => {
+  it('les kills ne sont plus des symboles ECharts (ils sont rendus en DOM)', async () => {
     const opt = await renderAndCapture()
-    const scatter = (opt.series ?? []).find((s) => s.type === 'scatter' && s.name === 'Mes kills')
-    expect(scatter).toBeTruthy()
-    // Pas de `trigger` par-série (ECharts l'ignore ; garde-rail anti-régression W2).
-    expect(scatter?.tooltip?.trigger).toBeUndefined()
-    const datum = scatter?.data?.[0]
-    const tip = scatter?.tooltip?.formatter?.({ data: datum }) ?? ''
-    // 1er kill allié = 'me' à 1000 ms → 0:01.
-    expect(tip).toContain('0:01')
-    expect(tip).toContain('—')
-    // Ce n'est PAS le résumé de bin.
-    expect(tip).not.toContain('Écart')
+    // Garde-rail de non-retour : un symbole image ECharts ne se teint pas, donc l'icône
+    // d'arme du kill feed ne peut PAS revivre en `scatter`. Les lanes et les vagues, si.
+    const scatter = (opt.series ?? []).filter((s) => s.type === 'scatter')
+    expect(scatter).toHaveLength(0)
+    const lanes = (opt.series ?? []).filter((s) => s.name === 'Lane alliée' || s.name === 'Lane ennemie')
+    expect(lanes).toHaveLength(2)
   })
 
   it('tip de vague au survol d’un segment (détail ×N)', async () => {

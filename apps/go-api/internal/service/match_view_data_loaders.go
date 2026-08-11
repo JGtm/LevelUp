@@ -41,8 +41,12 @@ type matchViewData struct {
 	// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
 	// seul si la repo retourne nil.
 	encounterStats []domain.EncounterStatsRaw
-	kvPairs        []domain.KVPairRaw
-	skillRank      *domain.SkillRankRaw
+	// killSources : source de dégât par (tueur, instant), pour l'arme du kill feed
+	// (Q21b). Vide si le titre n'a pas de décodeur de film ou si le match n'y est pas
+	// passé — le feed s'affiche alors sans icône d'arme.
+	killSources []domain.KillSourceRaw
+	kvPairs     []domain.KVPairRaw
+	skillRank   *domain.SkillRankRaw
 	// sharedCSRs : CSR de tous les participants depuis shared.match_csrs_latest.
 	// Nil si match non-ranked ou table absente. Utilisé comme fallback pour les
 	// joueurs non-trackés dans buildTeamTabFull.
@@ -131,6 +135,11 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
 	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
 	// bas, après `g.Wait()`.
+	goLoad(gctx, g, matchID, "kill_sources", func() error {
+		var e error
+		d.killSources, e = s.repo.GetMatchKillSources(gctx, matchID)
+		return e
+	})
 	goLoad(gctx, g, matchID, "kv_pairs", func() error {
 		var e error
 		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
@@ -333,6 +342,11 @@ func (s *MatchViewService) buildMatchViewFromData(
 		}
 	}
 	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	// L'arme du kill et l'équipe du tueur se posent APRÈS l'assemblage : ce sont des
+	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
+	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull
+	// à sa responsabilité et rend la décoration testable seule.
+	decorateKillFeed(ctx, combat.HighlightEvents, d.killSources, d.scoreboard, s.assetURL)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).

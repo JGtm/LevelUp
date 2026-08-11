@@ -38,13 +38,30 @@ export interface MomentumBin {
   trend: MomentumTrend
 }
 
-/** Un kill affecté à un bin, avec sa position fractionnaire (scatter/vagues). */
+/** Un kill affecté à un bin, avec sa position fractionnaire (kill feed / vagues). */
 export interface MomentumKill {
   tMs: number
   xuid: string
   ally: boolean
   binIdx: number
   fracInBin: number
+  /**
+   * Équipe du TUEUR (`actor_team_id`), pour la couleur d'identité — la même que
+   * l'en-tête du scoreboard. Null si le backend ne l'a pas résolue (acteur hors
+   * scoreboard) : le feed retombe alors sur le couple allié/ennemi.
+   */
+  teamID: number | null
+  /**
+   * L'ARME DU KILL, telle que le backend l'a résolue. Les trois champs voyagent
+   * ensemble et sont vides ensemble : une source de dégât non identifiée sans
+   * ambiguïté ne donne AUCUNE icône, jamais celle d'une autre arme.
+   *
+   * `weaponLabel` est un nom propre (BR75), pas un libellé traduit. Vide pour les
+   * sources sans nom propre (mêlée, grenade) qui gardent pourtant leur icône.
+   */
+  weaponLabel: string
+  weaponImageUrl: string
+  weaponTinted: boolean
 }
 
 interface MomentumData {
@@ -94,7 +111,17 @@ export function computeMomentumBins(
     const bin = bins[idx]
     const span = Math.max(1, bin.bin_end - bin.bin_start)
     const frac = Math.min(0.999, Math.max(0, (tSec - bin.bin_start) / span))
-    kills.push({ tMs: e.event_time_ms, xuid: e.actor_xuid, ally: meta.ally, binIdx: idx, fracInBin: frac })
+    kills.push({
+      tMs: e.event_time_ms,
+      xuid: e.actor_xuid,
+      ally: meta.ally,
+      binIdx: idx,
+      fracInBin: frac,
+      teamID: e.actor_team_id ?? null,
+      weaponLabel: e.weapon_label ?? '',
+      weaponImageUrl: e.weapon_image_url ?? '',
+      weaponTinted: e.weapon_image_tinted ?? false,
+    })
     if (meta.ally) teamKills[idx]++
     else enemyKills[idx]++
   }

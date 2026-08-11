@@ -9,6 +9,9 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/assets/static"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/killicon"
 )
 
 // TitleSlug est le slug canonique d'Halo Infinite côté adapter.
@@ -211,6 +214,36 @@ func (a *AssetURLAdapter) weaponIcon(weaponID int64) (url string, tinted bool) {
 		return static.URL(static.KindWeapon, a.titleSlug, stem, ".png"), false
 	}
 	return "", false
+}
+
+// KillSourceIcon résout l'icône de la source de dégât d'une mort — le tag `jpt!` que le
+// décodeur de film publie dans `match_kill_events.source_tag`.
+//
+// Toute l'intelligence vit dans `film/killicon`, hors ligne et versionnée : cet adapter
+// ne fait que composer l'URL. Les vignettes viennent de l'atlas KILL FEED (format
+// bandeau), pas de l'atlas `contour` : le feed lit en petit, et l'atlas d'armes ne porte
+// ni grenade ni mêlée — deux classes qui pèsent 18 % des morts mesurées.
+//
+// Toujours `tinted` : ces PNG sont des masques blancs portés par l'alpha (mesuré à
+// l'extraction). C'est ce qui permet de les teindre à la couleur d'équipe du tueur sans
+// produire un asset par couleur.
+func (a *AssetURLAdapter) KillSourceIcon(sourceTag uint32) (canonical.KillSourceIcon, bool) {
+	ic, ok := killicon.Lookup(sourceTag)
+	if !ok {
+		return canonical.KillSourceIcon{}, false
+	}
+	out := canonical.KillSourceIcon{
+		WeaponKey: ic.WeaponKey,
+		ImageURL:  static.URL(static.KindWeapon, a.titleSlug, weaponIconDir+ic.Sprite, ".png"),
+		Tinted:    true,
+	}
+	// Le nom PROPRE vient de la même table embarquée que l'icône, et n'est publié que si
+	// elle autorise à l'afficher (statut AMBIGU exclu). Une mêlée ou une grenade n'a pas
+	// de nom propre : l'icône se sert quand même, c'est elle qui porte le sens.
+	if l, ok := damagetag.Lookup(sourceTag); ok && l.Publishable() {
+		out.Label = l.Name
+	}
+	return out, true
 }
 
 // waypointMatchBaseURL est la base des pages de détail de match sur Waypoint.

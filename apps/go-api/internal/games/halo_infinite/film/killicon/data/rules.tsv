@@ -1,0 +1,103 @@
+# TABLE DE PONT `source de degat` -> ICONE DU KILL FEED. Precalculee, versionnee, embarquee.
+# colonnes : genre<TAB>cle<TAB>sprite<TAB>weapon_key<TAB>justification
+#
+# CE QUE CE FICHIER EST. Le decodeur de film rend, pour chaque mort, un tag `jpt!`
+# (`match_kill_events.source_tag`). Le paquet `damagetag` le traduit en CLASSE + NOM. Ce
+# fichier dit quelle vignette de l atlas KILL FEED represente cette source. Rien d autre :
+# il ne nomme pas, il ne traduit pas, il ne lit jamais le jeu.
+#
+# POURQUOI PAS UNE CLE `weap`. Le tag `weap` d une arme n est PAS derivable du `jpt!` : sur
+# les 114 lignes de classe ARME de `damagetag/data/labels.tsv`, 11 seulement portent un
+# `[effet weap ...]` ; les autres portent un `proj`, un `hlmt` ou un `weme`. La seule
+# quantite qui traverse TOUTES les lignes est le NOM, deja resolu a 97,6 %. Le pont se
+# construit donc sur le nom — mais HORS LIGNE : la resolution effective est indexee par TAG
+# a l initialisation (cf. killicon.go), le runtime ne compare jamais de chaine.
+#
+# TROIS GENRES DE REGLE, dans cet ordre de priorite :
+#   NOM     la cle est le champ `nom` de labels.tsv, VERBATIM (espaces et casse compris).
+#   GGGL    la cle est l entree de la liste des grenades (`gggl entree N/4` du champ detail).
+#   CLASSE  la cle est la classe damagetag ; c est le repli le plus large, pour les sources
+#           dont le nom propre n existe pas et n existera pas (la melee est partagee par
+#           tout l arsenal : c est une CLASSE, pas une arme).
+#
+# LE `sprite` est le stem d un PNG de `static/weapons-assets/halo_infinite/jeu/`, atlas
+# KILL FEED (format bandeau, dessine pour etre lu petit). L atlas `contour` n est PAS
+# utilise ici : il ne porte ni grenade, ni melee, ni pictogramme.
+#
+# D OU VIENT `sprite` POUR CHAQUE LIGNE. De la passe humaine `.ai/V7.5/icones/
+# NOMMAGE_GATE_2026-08-09.tsv` (index d atlas -> libelle + weapon_key), corroboree par
+# `config/titles/halo_infinite/mappings/weapon_names.toml` (weapon_key -> {en, fr}). Le
+# test `TestChaqueRegleEstCorroboreeParLeRegistre` rejoue cette corroboration : si le nom
+# EN du registre ne correspond pas au nom labels.tsv, la ligne DOIT porter un alias
+# justifie ci-dessous, sinon la suite echoue.
+#
+# LE PIEGE QUE CETTE TABLE DESAMORCE, mesure : le nom INTERNE de la vignette 22 est
+# `heatwave`, et la vignette represente le CINDERSHOT. Deux sources independantes le
+# disent — la passe humaine (index 22 -> hinf_cindershot, index 23 -> hinf_heatwave) et
+# l etat de l art (`ETAT_DE_L_ART_ICONES.md` : << heatwave = Cremateur >>, et
+# weapon_names.toml donne Cremateur = Cindershot). Keyer sur le nom interne aurait
+# interverti les deux armes.
+#
+# REGLE DE SURETE, NON NEGOCIABLE : une source dont le nom est une ALTERNATIVE (<< A / B >>)
+# n a de regle QUE si toutes les branches designent la meme vignette. Sinon : AUCUNE ligne,
+# donc aucune icone. Une icone absente est un repli ; une icone fausse est un mensonge.
+# Les 5 noms alternatifs ecartes pour cette raison sont listes en fin de fichier.
+#
+# date=2026-08-11 regles=36
+genre	cle	sprite	weapon_key	justification
+NOM	BR75	killfeed-00	hinf_br75	NOMMAGE_GATE index 00 ; nom interne battle_rifle concordant
+NOM	VK78 Commando	killfeed-01	hinf_vk78_commando	NOMMAGE_GATE index 01 ; nom interne commando_rifle concordant
+NOM	MA40 AR	killfeed-02	hinf_ma40_ar	NOMMAGE_GATE index 02 ; nom interne assault_rifle concordant
+NOM	Mk51 Sidekick	killfeed-03	hinf_sidekick	NOMMAGE_GATE index 03 ; ALIAS assume Mk51 (labels.tsv) = Mk50 (registre), meme arme, divergence connue du depot
+NOM	CQS48 Bulldog	killfeed-04	hinf_cqs48_bulldog	NOMMAGE_GATE index 04
+NOM	MLRS-2 Hydra	killfeed-06	hinf_hydra	NOMMAGE_GATE index 06 ; nom interne hydra concordant
+NOM	S7 Sniper	killfeed-07	hinf_s7_sniper	NOMMAGE_GATE index 07 ; nom interne sniper concordant
+NOM	M41 SPNKr	killfeed-08	hinf_m41_spnkr	NOMMAGE_GATE index 08
+NOM	Disruptor	killfeed-09	hinf_disruptor	NOMMAGE_GATE index 09 (libelle humain Disrupteur = FR de Disruptor au registre)
+NOM	Ravager	killfeed-10	hinf_ravager	NOMMAGE_GATE index 10 (libelle humain Ravageur = FR de Ravager)
+NOM	Mangler	killfeed-11	hinf_mangler	NOMMAGE_GATE index 11 (libelle humain Dechiqueteur = FR de Mangler)
+NOM	Shock Rifle	killfeed-12	hinf_shock_rifle	NOMMAGE_GATE index 12 (libelle humain Fusil electrique = FR de Shock Rifle)
+NOM	Shock Rifle / Shock Rifle (Ranked)	killfeed-12	hinf_shock_rifle	alternative SURE : les deux branches sont la meme arme, variante classee comprise
+NOM	Gravity Hammer	killfeed-13	hinf_gravity_hammer	NOMMAGE_GATE index 13 ; nom interne gravity_hammer concordant
+NOM	Skewer	killfeed-15	hinf_skewer	NOMMAGE_GATE index 15 ; nom interne skewer concordant
+NOM	Stalker Rifle	killfeed-16	hinf_stalker_rifle	NOMMAGE_GATE index 16 ; le nom interne plasma_blaster NE nomme PAS l arme, la passe humaine tranche
+NOM	Plasma Pistol	killfeed-17	hinf_plasma_pistol	NOMMAGE_GATE index 17 ; nom interne plasma_pistol concordant
+NOM	Energy Sword	killfeed-18	hinf_energy_sword	NOMMAGE_GATE index 18 ; nom interne sword concordant
+NOM	Infected Energy Sword	killfeed-18		variante d infection de l epee : meme vignette, l atlas n en porte pas d autre ; ABSENTE du registre d armes, donc sans weapon_key propre (y mettre celui de l epee de base ferait mentir la colonne)
+NOM	Energy Sword / Infected Energy Sword	killfeed-18	hinf_energy_sword	alternative SURE : les deux branches sont l epee, base et variante
+NOM	Needler	killfeed-19	hinf_needler	NOMMAGE_GATE index 19 ; nom interne needler concordant
+NOM	Pulse Carbine	killfeed-20	hinf_pulse_carbine	NOMMAGE_GATE index 20 (libelle humain << Carabine a impulsion - Pulse Carbine >>)
+NOM	Cindershot	killfeed-22	hinf_cindershot	NOMMAGE_GATE index 22 ; le nom interne heatwave MENT, cf. en-tete
+NOM	Heatwave	killfeed-23	hinf_heatwave	NOMMAGE_GATE index 23 (libelle humain Calcineur = FR de Heatwave au registre) ; index sans nom interne
+NOM	Sentinel Beam	killfeed-24	hinf_sentinel_beam	NOMMAGE_GATE index 24 ; nom interne sentinelbeam concordant
+NOM	Bandit Evo / M392 Bandit	killfeed-73	hinf_bandit	alternative SURE : le registre donne en=M392 Bandit et fr=Bandit EVO, une seule arme ; nom interne bandit concordant
+NOM	Mythic Sandwich / Sandwich	killfeed-76		alternative SURE : base et variante mythique du meme objet ; nom interne sandwich concordant ; hors registre d armes, donc sans weapon_key
+NOM	MA5K Avenger	killfeed-80	hinf_ma5k_avenger	NOMMAGE_GATE index 80 (nom interne ma5k_smg) ; sans weapon_key cote index.json, d ou la colonne vide de la passe humaine
+NOM	Mutilator	killfeed-81		NOMMAGE_GATE index 81 ; nom interne mutilator concordant ; arme HORS registre, donc sans weapon_key
+NOM	Fuel Rod SPNKr	killfeed-82	hinf_fuel_rod_spnkr	NOMMAGE_GATE index 82 (libelle humain identique au nom du registre)
+NOM	Vestige Carbine	killfeed-84	hinf_vestige_carbine	NOMMAGE_GATE index 84 (libelle humain Carabine Vestige = FR de Vestige Carbine)
+GGGL	0	killfeed-46	hinf_frag_grenade	entree 0 de la liste gggl = banque sb_008_exp_single_med_kineticunsc (cinetique UNSC) ; vignette 46 nommee frag_grenade dans le jeu
+GGGL	1	killfeed-47	hinf_plasma_grenade	entree 1 = sb_010_grn_cv_plasmagrenade (cv = Covenant) ; vignette 47 nommee plasma_grenade dans le jeu
+GGGL	2	killfeed-48	hinf_dynamo_grenade	entree 2 = sb_010_grn_un_lightninggrenade ; vignette 48 nommee lightning_grenade dans le jeu — concordance textuelle directe
+GGGL	3	killfeed-49		entree 3 = sb_008_exp_single_med_kineticbanished (cinetique Banished) = grenade a pointes ; vignette 49 nommee spike_grenade ; absente du registre d armes
+CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tout l arsenal (12 a 65 weap selon la ligne), aucune arme particuliere ne peut etre nommee — la vignette 65 est le pictogramme generique de melee du jeu
+#
+# NOMS ALTERNATIFS ECARTES — branches designant des vignettes DIFFERENTES. Aucune regle,
+# donc repli sans icone. Les rouvrir demanderait de departager les branches, ce que la
+# source de degat ne permet pas.
+#   CQS48 Bulldog / Mutilator
+#   Disruptor / Shock Rifle / Shock Rifle (Ranked)
+#   Gravity Hammer / Mutilator
+#   Mangler / Ravager / Shock Rifle / Skewer
+#   Needler / Plasma Pistol
+#
+# CLASSES SANS REGLE, et pourquoi :
+#   VEHICULE        labels.tsv ne nomme pas le chassis (detail : << ARME DE VEHICULE (vehi
+#                   XXXXXXXX, classe fixed) >>). L atlas porte 12 vehicules distincts :
+#                   en servir un au hasard serait une icone fausse.
+#   OBJET_EXPLOSIF  bidons de decor ; la flaveur de banque donne le TYPE D ENERGIE, pas
+#                   l identite de l objet (reserve 7ter.51 de labels.tsv).
+#   DEGAT_GLOBAL    chute ET environnement sont confondus sur la meme entree glda : les
+#                   deux vignettes du jeu (Fall, environment) sont distinctes, on ne peut
+#                   pas choisir.
+#   INCONNU         par definition.

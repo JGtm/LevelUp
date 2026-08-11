@@ -165,6 +165,21 @@ func Lookup(tag uint32) (Label, bool) {
 	return l, ok
 }
 
+// Labels : TOUTES les etiquettes, triees par tag. La tranche rendue est une copie.
+//
+// Sert aux tables DERIVEES de celle-ci (pont vers les icones du kill feed : paquet
+// `killicon`) : elles doivent enumerer les etiquettes pour s indexer par tag a
+// l initialisation, sans relire le fichier embarque une seconde fois — deux lectures,
+// c est deux verites.
+func Labels() []Label {
+	out := make([]Label, 0, len(labels))
+	for _, l := range labels {
+		out = append(out, l)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Tag < out[j].Tag })
+	return out
+}
+
 // Source : la provenance des tables embarquees.
 func Source() Provenance { return provided }
 

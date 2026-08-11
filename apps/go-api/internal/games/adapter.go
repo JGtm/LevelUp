@@ -281,6 +281,21 @@ type TitleAssetURLAdapter interface {
 	// silhouette. Seul l'adapter du titre sait ce qu'il sert.
 	WeaponImageIsTinted(weaponID int64) bool
 
+	// KillSourceIcon retourne l'icône de la SOURCE DE DÉGÂT d'une mort, à partir de
+	// l'identifiant d'effet que le décodeur de film du titre publie
+	// (`match_kill_events.source_tag`). Second retour faux = ce titre n'a pas d'image
+	// pour cette source : le kill feed affiche alors le libellé seul.
+	//
+	// Pourquoi une méthode distincte de WeaponImageURL : une mort ne porte PAS de
+	// `weapon_id`. Elle porte un identifiant d'effet, dont la traduction en arme est une
+	// table propre au titre (Halo Infinite : `film/killicon`, adossée à `damagetag`).
+	// Faire passer l'un pour l'autre poserait l'icône d'un homonyme d'identifiant.
+	//
+	// Contrat NON NÉGOCIABLE de cette méthode : elle ne rend une image que si la source
+	// est identifiée SANS AMBIGUÏTÉ. Une source qui désigne plusieurs armes possibles
+	// rend faux. Une icône fausse sur un kill est indétectable à l'œil.
+	KillSourceIcon(sourceTag uint32) (canonical.KillSourceIcon, bool)
+
 	// MatchWebURL retourne l'URL de la page publique d'un match sur le portail
 	// officiel du titre (ex: Waypoint pour Halo Infinite). "" si le titre n'a pas
 	// de page de détail publique (dégradation : pas de lien externe).

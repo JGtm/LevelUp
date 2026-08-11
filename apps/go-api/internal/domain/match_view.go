@@ -248,6 +248,29 @@ type MatchHighlightEvent struct {
 	EventTimeMS   *int64  `json:"event_time_ms,omitempty"`
 	ActorXUID     *string `json:"actor_xuid,omitempty"`
 	ActorGamertag *string `json:"actor_gamertag,omitempty"`
+
+	// ActorTeamID : équipe de l'acteur (le TUEUR sur un event `kill`), résolue depuis le
+	// scoreboard du match. Nil si l'acteur n'y figure pas (bot sans ligne, joueur parti).
+	//
+	// Publié pour que le kill feed colore le nom et l'icône avec la couleur d'IDENTITÉ de
+	// l'équipe — la même que l'en-tête du scoreboard, Eagle bleu contre Cobra rouge — et
+	// pas seulement un allié/ennemi binaire.
+	ActorTeamID *int `json:"actor_team_id,omitempty"`
+
+	// WeaponKey / WeaponLabel / WeaponImageURL / WeaponImageTinted : l'ARME DU KILL.
+	//
+	// Peuplés seulement pour les events `kill` dont la source de dégât est connue ET
+	// identifiée sans ambiguïté (cf. domain.KillSourceRaw et
+	// games.TitleAssetURLAdapter.KillSourceIcon). Tous vides sinon : le feed affiche
+	// alors le kill sans icône. C'est le repli assumé du lot — mesuré, compté, jamais
+	// remplacé par l'icône d'une autre arme.
+	//
+	// WeaponLabel est un nom PROPRE (BR75, Needler), pas un libellé traduit : il vient de
+	// la table de nommage embarquée du titre, pas d'un dictionnaire i18n.
+	WeaponKey         string `json:"weapon_key,omitempty"`
+	WeaponLabel       string `json:"weapon_label,omitempty"`
+	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
+	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`
 }
 
 // MatchTugOfWarBin : tranche temporelle de la timeline tug-of-war.

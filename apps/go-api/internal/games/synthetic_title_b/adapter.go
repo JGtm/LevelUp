@@ -182,5 +182,8 @@ func (a *AssetURLAdapter) CSRRankImageURL(_ string, _ int) string { return "" }
 func (a *AssetURLAdapter) CSRRankImageURLOnyx() string            { return "" }
 func (a *AssetURLAdapter) WeaponImageURL(_ int64) string          { return "" }
 func (a *AssetURLAdapter) WeaponImageIsTinted(_ int64) bool       { return false }
-func (a *AssetURLAdapter) MatchWebURL(_ string) string            { return "" }
-func (a *AssetURLAdapter) PlayerMatchWebURL(_, _ string) string   { return "" }
+func (a *AssetURLAdapter) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
+func (a *AssetURLAdapter) MatchWebURL(_ string) string          { return "" }
+func (a *AssetURLAdapter) PlayerMatchWebURL(_, _ string) string { return "" }

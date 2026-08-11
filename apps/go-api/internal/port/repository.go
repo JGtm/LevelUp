@@ -238,6 +238,11 @@ type MatchViewRepository interface {
 	// GetMatchEvents retourne les events highlight du match (Q21).
 	GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error)
 
+	// GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b),
+	// pour l'arme affichée au kill feed. Tranche vide si le titre n'a pas de décodeur de
+	// film ou si le match n'y est pas passé — jamais une erreur (dégradation gracieuse).
+	GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error)
+
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
 
@@ -454,6 +459,9 @@ func (n *noopMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]do
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {

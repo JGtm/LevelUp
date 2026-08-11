@@ -13951,12 +13951,23 @@ components:
       properties:
         actor_gamertag:
           type: string
+        actor_team_id:
+          format: int64
+          type: integer
         actor_xuid:
           type: string
         event_time_ms:
           format: int64
           type: integer
         event_type:
+          type: string
+        weapon_image_tinted:
+          type: boolean
+        weapon_image_url:
+          type: string
+        weapon_key:
+          type: string
+        weapon_label:
           type: string
       required:
         - event_type

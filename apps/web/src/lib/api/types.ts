@@ -1658,6 +1658,29 @@ export interface MatchHighlightEvent {
   actor_gamertag?: string | null
   target_xuid: string | null
   weapon_id: number | null
+  /**
+   * Équipe de l'acteur (le TUEUR sur un event `kill`), résolue côté backend depuis le
+   * scoreboard. Absent si l'acteur n'y figure pas. Sert à colorer le nom et l'icône avec
+   * la couleur d'IDENTITÉ de l'équipe (Eagle bleu / Cobra rouge), la même que l'en-tête
+   * du scoreboard — pas un allié/ennemi binaire.
+   */
+  actor_team_id?: number | null
+  /**
+   * L'ARME DU KILL. Peuplée seulement quand la source de dégât du kill est connue ET
+   * identifiée sans ambiguïté par le backend. Absente sinon : le feed affiche le kill
+   * sans icône, et c'est le repli assumé — jamais l'icône d'une autre arme.
+   *
+   * `weapon_label` est un nom PROPRE (BR75, Needler), pas un libellé traduit : il ne
+   * passe pas par i18n.ts. Vide pour les sources sans nom propre (mêlée, grenade), qui
+   * gardent leur icône.
+   *
+   * `weapon_image_tinted` dit que l'image est un MASQUE à teindre (cf. WeaponIcon) —
+   * ne jamais le déduire de la forme de l'URL.
+   */
+  weapon_key?: string | null
+  weapon_label?: string | null
+  weapon_image_url?: string | null
+  weapon_image_tinted?: boolean | null
 }
 
 export type MatchTugOfWarBin = components['schemas']['MatchTugOfWarBin']

@@ -200,7 +200,21 @@ propre au `weap`, et c est ce balayage qui a fait sortir l index 29.
 
 ### Etape 3 — l'atlas kill feed est expose
 
-`[!]` **ETAPE REFUTEE PAR LA MESURE — NE PAS L'EXECUTER TELLE QUELLE.**
+`[x]` **ROUVERTE ET FERMEE LE 2026-08-11** (lot « arme du kill »). La refutation ci-dessous
+reste JUSTE sur les deux liens qu'elle examinait — mais elle en avait manque un TROISIEME,
+deja versionne dans ce meme dossier et jamais consulte : la passe humaine
+`NOMMAGE_GATE_2026-08-09.tsv`, qui donne `index kill feed -> weapon_key` pour 26 vignettes et
+un libelle humain pour les autres. Elle CORRIGE precisement le piege des noms internes
+(l'index 22, nomme `heatwave` par le jeu, porte `hinf_cindershot`), et
+`config/titles/halo_infinite/mappings/weapon_names.toml` la corrobore independamment
+(Cremateur = Cindershot, Calcineur = Heatwave).
+
+Le pont vit dans `internal/games/halo_infinite/film/killicon` : 36 regles versionnees,
+resolution indexee par TAG a l'initialisation, garde-rail de corroboration par le registre
+d'armes. Detail : entree du 2026-08-11 au thought log.
+
+Ce qui suit est conserve tel quel — c'est la trace de ce qui avait ete mesure et pourquoi
+l'etape avait ete fermee une premiere fois :
 
 Elle supposait un lien `index kill feed -> arme`. Il n'existe pas :
 
@@ -226,14 +240,16 @@ la surface produit utilise l'atlas `contour`, dont le lien est lu dans le jeu. C
 - [x] Zero hex, zero classe Tailwind couleur — verifie par `grep` ET par le test du composant
 - [~] Strings FR **et** EN : aucun libelle neuf n'apparait. Le `aria-label` reprend le libelle
       d'arme deja localise par le back
-- `[!]` **APPLICATION AU KILL FEED** : impossible en l'etat, et ce n'est pas un choix de
-      confort. Le kill feed de la Match View ne porte AUCUNE arme : `EventRaw` n'a pas de
-      champ arme, la table `highlight_events` n'a pas de colonne `weapon_id`, et la seule
-      source de degat par kill (`match_kill_events.source_tag`) est un tag **`jpt!`**, PAS un
-      tag `weap` — 11 lignes sur 114 de classe ARME portent un `[effet weap …]` exploitable
-      dans `damagetag/labels.tsv`. Poser une icone dessus reviendrait a inventer le lien.
-      Ce que la teinte demande d'abord : un chemin mesure `jpt! -> weap`, ou un `weapon_id`
-      par kill dans le contrat. Consigne au `REGISTRE_REPORTS.md`.
+- `[x]` **APPLICATION AU KILL FEED — FAITE LE 2026-08-11** (lot « arme du kill »). Le
+      prealable pose ici (« un chemin mesure `jpt! -> weap` ») etait un DETOUR : le tag
+      `weap` n'est pas necessaire pour designer une vignette, le NOM suffit, et
+      `jpt! -> nom` est deja resolu a 97,6 % par `damagetag`. Exiger le `weap` revenait a
+      se donner une contrainte que la mesure ne demandait pas (11 lignes sur 114 le
+      portent, d'ou le blocage apparent).
+      Livre : `MatchHighlightEvent` porte `weapon_key` / `weapon_label` /
+      `weapon_image_url` / `weapon_image_tinted` + `actor_team_id` ; le feed passe en DOM
+      (`features/match-view/MatchKillFeed.tsx`) et teinte l'icone a la couleur d'identite
+      de l'equipe du tueur — meme cascade que l'en-tete du scoreboard.
 - **Gate** : `make check-types` **vert**, `make test-web` **vert**, grep couleurs **vide**,
   revue visuelle **PASSEE le 2026-08-11** (cf. etape 2).
 

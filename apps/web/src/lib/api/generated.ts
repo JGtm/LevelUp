@@ -6704,10 +6704,16 @@ export interface components {
         };
         MatchHighlightEvent: {
             actor_gamertag?: string;
+            /** Format: int64 */
+            actor_team_id?: number;
             actor_xuid?: string;
             /** Format: int64 */
             event_time_ms?: number;
             event_type: string;
+            weapon_image_tinted?: boolean;
+            weapon_image_url?: string;
+            weapon_key?: string;
+            weapon_label?: string;
         };
         MatchHistoryExportRequest: {
             columns?: string[] | null;
