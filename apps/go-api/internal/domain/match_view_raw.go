@@ -297,6 +297,24 @@ type EventRaw struct {
 	Gamertag *string
 }
 
+// KillSourceRaw : la SOURCE DE DÉGÂT d'une mort (Q21b), telle que le décodeur de film
+// l'a inscrite dans `match_kill_events`.
+//
+// Une ligne par couple (tueur, instant) et SEULEMENT quand la source est UNANIME : deux
+// morts au même millisecond pour le même tueur (un double kill) donnent deux lignes dans
+// la table ; si elles ne portent pas la même source, Q21b n'en publie aucune. La règle est
+// la même que celle du pont vers les icônes — jamais une arme fausse. Mesuré sur la base
+// de production : 0 cas contradictoire sur 152 009 kills, mais la garde reste.
+type KillSourceRaw struct {
+	// XUID du tueur, tel que le kill-feed le crédite (`feed_killer_xuid`).
+	XUID string
+	// TimeMS : instant de la mort, même échelle que highlight_events.time_ms.
+	TimeMS int64
+	// SourceTag : identifiant `jpt!` de l'effet de dégât fatal. Ne dépend d'aucune table
+	// de nommage — c'est l'adapter du titre qui le traduit en icône.
+	SourceTag uint32
+}
+
 // KVPairRaw : données brutes de Q20 (single-match, MatchID non peuplé) et du
 // loader batch SquadRepository.LoadKVPairs (Q32c, MatchID peuplé pour le
 // regroupement multi-match de la synthèse d'events kill/death title-agnostic).

@@ -45,6 +45,47 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	return results, rows.Err()
 }
 
+// GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b).
+// Exécutée sur SharedReader (ADR 0016, shared-only).
+//
+// Dégradation gracieuse assumée à DEUX endroits : reader indisponible, ou table absente
+// d'une base non migrée. Dans les deux cas on rend une tranche vide, jamais une erreur —
+// le kill feed s'affiche alors sans arme, ce qui est son état d'avant ce lot. L'échec est
+// loggé pour qu'il ne soit pas SILENCIEUX (règle : jamais d'erreur avalée).
+func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.sharedRead().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill sources indisponibles (shared reader)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q21bKillSources, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill sources indisponibles (Q21b)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer rows.Close()
+
+	var results []domain.KillSourceRaw
+	for rows.Next() {
+		var (
+			ks  domain.KillSourceRaw
+			tag uint32
+		)
+		if err := rows.Scan(&ks.XUID, &ks.TimeMS, &tag); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources scan: %w", err)
+		}
+		ks.SourceTag = tag
+		results = append(results, ks)
+	}
+	return results, rows.Err()
+}
+
 // GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
 func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error) {

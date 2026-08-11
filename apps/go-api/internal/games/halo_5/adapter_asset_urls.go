@@ -169,6 +169,14 @@ func (a *AssetURLAdapter) WeaponImageURL(weaponID int64) string {
 // en couleur — les teinter les aplatirait en silhouette.
 func (a *AssetURLAdapter) WeaponImageIsTinted(_ int64) bool { return false }
 
+// KillSourceIcon : rien à servir. Halo 5 n'a pas de décodeur de film, donc pas
+// d'identifiant d'effet de dégât par mort — le second retour faux fait afficher au kill
+// feed le libellé seul, sans dégradation ni erreur. Le jour où un tel décodeur existera,
+// c'est ici que sa table s'accrochera, pas dans le service.
+func (a *AssetURLAdapter) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
+
 // MatchWebURL / PlayerMatchWebURL : Halo 5 n'a pas de page de détail de match
 // publique équivalente à Waypoint → "" (pas de lien externe, F3).
 func (a *AssetURLAdapter) MatchWebURL(_ string) string          { return "" }

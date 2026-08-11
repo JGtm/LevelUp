@@ -27,6 +27,33 @@ type AssetMeta struct {
 	SpriteHeight int    `json:"sprite_height,omitempty"` // hauteur de la découpe
 }
 
+// KillSourceIcon décrit l'icône de la SOURCE DE DÉGÂT d'une mort — ce que le kill feed
+// montre à côté du nom du tueur.
+//
+// Distincte de l'icône d'arme du tiroir d'assets, et pour deux raisons mesurées :
+//   - la clé n'est pas la même. Une mort ne porte pas de `weapon_id` : elle porte un
+//     identifiant d'EFFET de dégât, propre au format de film du titre. Le titre est seul
+//     à savoir le traduire en image.
+//   - le format n'est pas le même. Le feed lit en petit : les titres qui ont un atlas
+//     dédié à cet usage doivent pouvoir le servir ici sans changer l'autre surface.
+//
+// Un titre sans réponse rend le zéro de ce type : le produit affiche alors le libellé
+// seul. Aucune icône vaut toujours mieux que l'icône d'une autre arme.
+type KillSourceIcon struct {
+	// WeaponKey : clé canonique du registre d'armes du titre. Vide quand l'objet n'y
+	// figure pas (variantes, objets hors registre) — l'icône reste valable.
+	WeaponKey string `json:"weapon_key,omitempty"`
+	// Label : le nom PROPRE de la source (BR75, Needler). Pas un libellé traduit : il
+	// vient de la table de nommage du titre, seule à savoir ce que l'identifiant désigne.
+	// Vide si le titre nomme l'objet sans certitude — l'icône peut alors rester servie.
+	Label string `json:"label,omitempty"`
+	// ImageURL : URL relative de l'image, "" si le titre n'en a pas pour cette source.
+	ImageURL string `json:"image_url,omitempty"`
+	// Tinted : l'image est un MASQUE à teindre, pas un visuel fini.
+	// Cf. games.TitleAssetURLAdapter.WeaponImageIsTinted pour le pourquoi.
+	Tinted bool `json:"image_tinted,omitempty"`
+}
+
 // WeaponID décode l'ID d'un asset ARME en identifiant numérique. Second retour
 // faux si l'ID n'est pas un entier décimal (asset non-arme, ID vide).
 //
