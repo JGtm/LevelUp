@@ -18,6 +18,7 @@ import { resolveToken } from '@/lib/accessibility'
 import type { MatchScoreboardRow, MatchViewCadence } from '@/lib/api/types'
 import { formatBinSeconds } from './_chartSeries'
 import type { MatchViewText } from './i18n'
+import { resolveXuidMeta } from './xuidMeta'
 
 interface Props {
   cadence: MatchViewCadence | null | undefined
@@ -57,15 +58,12 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
       if (s.length === 0 || !cadence || cadence.datapoints.length === 0) {
         return { backgroundColor: CHART_BG }
       }
-      const sb = scoreboard ?? []
-      const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
-      const allyTeam = meRow?.team_side ?? null
-      const isAlly = (xuid: string): boolean => {
-        if (xuid === meXUID) return true
-        if (allyTeam == null) return false
-        const r = sb.find((s) => s.xuid === xuid)
-        return r?.team_side === allyTeam
-      }
+      // Cascade « allié = même camp que moi » : source unique (xuidMeta.ts). Le `xuid ===
+      // meXUID` est conservé pour le cas — anormal — où le joueur de la page n'a pas de
+      // ligne au scoreboard : il reste son propre allié.
+      const meta = resolveXuidMeta(scoreboard, meXUID)
+      const isAlly = (xuid: string): boolean =>
+        xuid === meXUID || (meta.get(xuid)?.ally ?? false)
 
       const phaseSeconds = (cadence.meta?.phase_seconds as number | undefined) ?? 30
       const categories = cadence.datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds))

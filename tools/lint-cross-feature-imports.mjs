@@ -74,6 +74,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'career=>explorer',
   // Career réutilise MatchEncountersTable pour les "Joueurs les plus croisés"
   'career=>match-view',
+  // Le rejeu 2D pose les kills de la Match View sur sa propre horloge : il réutilise la
+  // COLLECTE des kills (`_momentum.collectKillEvents`), la cascade de couleur d'équipe
+  // (`teamColor`) et l'index des joueurs (`xuidMeta`) plutôt que d'en écrire une seconde
+  // version. Dépendance durable et voulue — la dupliquer donnerait deux définitions de
+  // « ce qui est un kill » et deux couleurs pour la même équipe.
+  'match-replay=>match-view',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

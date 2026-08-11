@@ -38,13 +38,18 @@ export interface MomentumBin {
   trend: MomentumTrend
 }
 
-/** Un kill affecté à un bin, avec sa position fractionnaire (kill feed / vagues). */
-export interface MomentumKill {
+/**
+ * Un KILL, indépendamment de tout découpage temporel.
+ *
+ * POURQUOI CE TYPE EXISTE À PART DE `MomentumKill`. Le binning n'appartient qu'à
+ * l'histogramme de la carte « Dominance » : le rejeu 2D, lui, pose les mêmes kills sur
+ * l'horloge du film, où un bin n'a aucun sens. Ce qui est COMMUN — ce qui fait qu'un event
+ * est un kill, qui l'a porté, et comment son arme voyage — se lit donc ici, une seule fois.
+ */
+export interface KillEvent {
   tMs: number
   xuid: string
   ally: boolean
-  binIdx: number
-  fracInBin: number
   /**
    * Équipe du TUEUR (`actor_team_id`), pour la couleur d'identité — la même que
    * l'en-tête du scoreboard. Null si le backend ne l'a pas résolue (acteur hors
@@ -64,13 +69,49 @@ export interface MomentumKill {
   weaponTinted: boolean
 }
 
+/** Métadonnée minimale par xuid nécessaire au calcul (appartenance équipe). */
+type XuidAllyMeta = ReadonlyMap<string, { ally: boolean }>
+
+/**
+ * collectKillEvents extrait les kills d'une liste d'events bruts, dans leur ordre d'arrivée.
+ *
+ * Un event est ignoré s'il n'est pas un `kill`, s'il n'a ni acteur ni horodatage, ou si son
+ * acteur est hors scoreboard — les mêmes exclusions qu'avant l'extraction, parce que ce sont
+ * celles du binning serveur.
+ */
+export function collectKillEvents(
+  events: MatchHighlightEvent[] | null | undefined,
+  xuidMeta: XuidAllyMeta,
+): KillEvent[] {
+  const out: KillEvent[] = []
+  for (const e of events ?? []) {
+    if ((e.event_type ?? '').toLowerCase() !== 'kill') continue
+    if (!e.actor_xuid || e.event_time_ms == null) continue
+    const meta = xuidMeta.get(e.actor_xuid)
+    if (!meta) continue
+    out.push({
+      tMs: e.event_time_ms,
+      xuid: e.actor_xuid,
+      ally: meta.ally,
+      teamID: e.actor_team_id ?? null,
+      weaponLabel: e.weapon_label ?? '',
+      weaponImageUrl: e.weapon_image_url ?? '',
+      weaponTinted: e.weapon_image_tinted ?? false,
+    })
+  }
+  return out
+}
+
+/** Un kill affecté à un bin, avec sa position fractionnaire (kill feed / vagues). */
+export interface MomentumKill extends KillEvent {
+  binIdx: number
+  fracInBin: number
+}
+
 interface MomentumData {
   momentum: MomentumBin[]
   kills: MomentumKill[]
 }
-
-/** Métadonnée minimale par xuid nécessaire au calcul (appartenance équipe). */
-type XuidAllyMeta = ReadonlyMap<string, { ally: boolean }>
 
 /**
  * Calcule le momentum par bin depuis les events `kill` et les bornes de bins.
@@ -90,12 +131,11 @@ export function computeMomentumBins(
   const enemyKills = new Array<number>(bins.length).fill(0)
   const kills: MomentumKill[] = []
 
-  for (const e of events ?? []) {
-    if ((e.event_type ?? '').toLowerCase() !== 'kill') continue
-    if (!e.actor_xuid || e.event_time_ms == null) continue
-    const meta = xuidMeta.get(e.actor_xuid)
-    if (!meta) continue
-    const tSec = e.event_time_ms / 1000
+  // Les kills sont collectés par le MÊME chemin que le rejeu 2D ; seul le binning est
+  // propre à cette carte. Deux collectes, ce serait deux définitions de « ce qui est un
+  // kill » sur la même page.
+  for (const k of collectKillEvents(events, xuidMeta)) {
+    const tSec = k.tMs / 1000
     let idx = bins.findIndex((b) => tSec >= b.bin_start && tSec < b.bin_end)
     if (idx < 0) {
       // Parité avec le clamp backend (tug_of_war.go) : un event au-delà du dernier
@@ -111,18 +151,8 @@ export function computeMomentumBins(
     const bin = bins[idx]
     const span = Math.max(1, bin.bin_end - bin.bin_start)
     const frac = Math.min(0.999, Math.max(0, (tSec - bin.bin_start) / span))
-    kills.push({
-      tMs: e.event_time_ms,
-      xuid: e.actor_xuid,
-      ally: meta.ally,
-      binIdx: idx,
-      fracInBin: frac,
-      teamID: e.actor_team_id ?? null,
-      weaponLabel: e.weapon_label ?? '',
-      weaponImageUrl: e.weapon_image_url ?? '',
-      weaponTinted: e.weapon_image_tinted ?? false,
-    })
-    if (meta.ally) teamKills[idx]++
+    kills.push({ ...k, binIdx: idx, fracInBin: frac })
+    if (k.ally) teamKills[idx]++
     else enemyKills[idx]++
   }
 

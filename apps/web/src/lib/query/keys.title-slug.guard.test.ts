@@ -58,6 +58,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchObjectiveEvents: () => queryKeys.matchObjectiveEvents(P, T, 'm'),
   matchPositions: () => queryKeys.matchPositions(P, T, 'm'),
   matchReplay: () => queryKeys.matchReplay(P, T, 'm'),
+  matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
+  matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
   // Engagement.
   engagementMatch: () => queryKeys.engagementMatch(P, T, 'm'),
   engagementProfile: () => queryKeys.engagementProfile(P, T),

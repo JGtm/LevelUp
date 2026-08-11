@@ -16,21 +16,17 @@
  * ci-dessous appliquent la MÊME formule en pourcentage de la zone tracée, ce qui la rend
  * exacte à toute largeur, sans ResizeObserver ni recalcul au redimensionnement.
  *
- * LA COULEUR est celle de l'IDENTITÉ de l'équipe, résolue par la cascade EXACTE de
- * l'en-tête du scoreboard (`MatchScoreboard.tsx`) : couleur fournie par le backend
- * (`team_color`, Halo 5) d'abord, sinon la map officielle par team_id (Halo Infinite :
- * Eagle bleu, Cobra rouge…), sinon le token sémantique allié/ennemi — surchargeable par
- * les réglages d'accessibilité. Aucun hex n'est écrit ici : ils vivent dans `lib/halo/`,
- * référentiel de couleurs de jeu au même titre que `rarity.ts`.
+ * LA COULEUR est celle de l'IDENTITÉ de l'équipe, résolue par `teamColor.ts` — la cascade
+ * EXACTE de l'en-tête du scoreboard, extraite d'ici quand le rejeu 2D a eu besoin de la
+ * même. Elle n'est plus écrite dans ce fichier, et c'est le but : une seule cascade.
  */
 import { useMemo } from 'react'
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
-import { tokenCssVar } from '@/lib/accessibility'
 import { displayPlayerName } from '@/lib/players/displayName'
-import { parseTeamSideID, resolveTeamColorFromID } from '@/lib/halo/teamNames'
 import type { MatchScoreboardRow, MatchTugOfWarBin } from '@/lib/api/types'
 import type { MomentumKill } from './_momentum'
 import type { MatchViewText } from './i18n'
+import { teamColorResolver } from './teamColor'
 
 /** Encart horizontal de la grille ECharts, en pixels (cf. `grid.left` / `grid.right`). */
 const GRID_INSET_PX = 14
@@ -60,33 +56,6 @@ function formatMmSs(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.max(0, Math.floor(seconds % 60))
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-/**
- * teamColorResolver — la cascade de l'en-tête du scoreboard, en une fonction.
- *
- * Réutilisée telle quelle plutôt que réinventée : deux cascades divergentes, ce sont
- * deux couleurs pour la même équipe sur la même page.
- */
-function teamColorResolver(
-  scoreboard: MatchScoreboardRow[] | null | undefined,
-): (teamID: number | null, ally: boolean) => string {
-  const backendByTeamID = new Map<number, string>()
-  for (const r of scoreboard ?? []) {
-    const id = parseTeamSideID(r.team_side)
-    if (id != null && r.team_color && !backendByTeamID.has(id)) {
-      backendByTeamID.set(id, r.team_color)
-    }
-  }
-  return (teamID, ally) => {
-    if (teamID != null) {
-      const backend = backendByTeamID.get(teamID)
-      if (backend) return backend
-      const official = resolveTeamColorFromID(teamID)
-      if (official) return official
-    }
-    return tokenCssVar(ally ? 'team-ally' : 'team-enemy')
-  }
 }
 
 /** Position horizontale d'un kill dans la zone tracée, en CSS. Voir l'en-tête. */
