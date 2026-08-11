@@ -140,55 +140,102 @@ propre au `weap`, et c est ce balayage qui a fait sortir l index 29.
 
 **RESTE A FAIRE** :
 
-- [ ] `games/adapter.go` : `WeaponImageURL(weaponID int64) string` — un seul parametre, et il
-      porte deja tout (le tag est dans ses 32 bits hauts)
-- [ ] `halo_infinite/adapter_asset_urls.go` : lookup par tag `weap`, table GENEREE depuis
-      `index.json` ; `name_en` disparait, avec ses 39 alias ecrits a la main
-- [ ] `halo_5/adapter_asset_urls.go` et `synthetic_title_b/adapter.go` : signature suivie,
-      comportement inchange
-- [ ] `match_view_converters.go:224` : passer `weaponResolved.weaponKey` (il existe deja,
-      `weapon_resolver.go:41`, il n'etait juste pas transmis)
-- [ ] `asset_service.go:64-81` : idem
-- [ ] Les 3 SENTINELLES (`weapon_id` 0 grenade, 1 melee, 2 vehicule) restent hors de portee du
-      tag : ce sont des concepts produit, pas des objets du jeu. Table explicite keyee par ID —
-      jamais par nom — ou pas d icone, a statuer
-- [ ] Test : une arme dont `name_en` diverge entre `weapon_labels` et `weapon_names.toml`
-      (Sidekick) rend la BONNE image ; MA5K Avenger et Mutilator, sans `weapon_key`, gardent la
-      leur
-- **Gate** : `go test ./internal/games/... ./internal/service/...` vert, `go vet` vert, aucune
-  URL d'image changee (comparaison avant/apres sur les 29 armes)
+- [x] `games/adapter.go` : `WeaponImageURL(weaponID int64) string` — un seul parametre, et il
+      porte deja tout (le tag est dans ses 32 bits hauts). **Amende** : une seconde methode
+      `WeaponImageIsTinted(weaponID int64) bool` l'accompagne. Mesure : les icones extraites
+      sont a **100 % blanches** (masque pur), les deux PNG dessines a la main sont en couleur
+      (31,6 % et 55,6 % de pixels colores). Rendre un masque tel quel le rend INVISIBLE en
+      theme clair ; teindre une image finie l'aplatit en silhouette. Le front ne peut pas
+      deviner lequel il tient — seul l'adapter du titre le sait.
+- [x] `halo_infinite/adapter_asset_urls.go` : lookup par tag `weap`, table GENEREE
+      (`weapon_icons_gen.go`, 124 tags) ; `name_en` a disparu avec ses 39 alias
+- [x] `halo_5/adapter_asset_urls.go` et `synthetic_title_b/adapter.go` : signature suivie.
+      H5 s'indexe desormais par `weapon_id` et non par `name_en` (meme raison), via
+      `canonical.AssetMeta.WeaponID()` — ParseUint puis conversion, car un weapon_id Infinite
+      DEPASSE int64 en decimal (ParseInt echouait sur les deux tiers du referentiel)
+- [x] `match_view_converters.go` : **amende** — le plan disait « passer `weaponResolved.weaponKey` ».
+      Refute par l'amendement de cette meme etape : la cle est le TAG, pas le `weapon_key`.
+      C'est `w.WeaponID` qui est passe, et il etait deja sur la ligne
+- [x] `asset_service.go` : idem, via `AssetMeta.WeaponID()`
+- [x] Les 3 SENTINELLES — **STATUEES** : table explicite keyee par ID, jamais par nom.
+      `0` grenade et `1` melee gardent leur PNG dessine a la main ; `2` vehicule n'a PAS
+      d'icone (aucun dessin ne represente « un vehicule » en general, et il n'en avait pas
+      non plus avant). Les 3 grenades REELLES du referentiel (Frag/Plasma/Dynamo) rejoignent
+      la meme table, keyees par TAG : ce ne sont pas des `weap` (elles vivent en `eqip`+`proj`),
+      l'atlas ne les porte donc pas — mesure, pas supposition
+- [x] Test : `TestAssetURLAdapter_WeaponImageURL_ResoutParTagWeap` couvre le Sidekick malgre
+      la divergence Mk51/Mk50, MA5K Avenger et Mutilator sans `weapon_key`, la variante
+      Diminisher of Hope, et Cindershot ≠ Heatwave (defaut n°2)
+- **Gate** : `go test ./internal/games/... ./internal/service/...` **vert**, `go vet` **vert**.
+  `[!]` **« aucune URL d'image changee »** : IMPOSSIBLE ET CONTRADICTOIRE avec l'ordre recu,
+  qui fusionne les etapes 1 et 2 en un seul lot — les URL changent par construction (c'est
+  l'objet de l'etape 2). Remplace par la comparaison avant/apres portee par l'artefact de
+  revue, arme par arme.
 
 ### Etape 2 — les nouvelles images remplacent les anciennes
 
-- [ ] Les PNG de `jeu/` deviennent la source servie ; les 28 anciens PNG sont SUPPRIMES avec
-      leurs entrees de map (regle « 0 code mort » : rien n'est garde « au cas ou », git a
-      l'historique)
-- [ ] `Needler-2.png` orphelin : supprime
-- [ ] Table `weapon_key -> index` GENEREE depuis `index.json` par `cmd/weapon-icons-build`
-- [ ] **Garde-rail neuf** : un test qui echoue si (a) un `weapon_key` du registre n'a pas
-      d'icone, (b) un PNG reference manque sur disque. C'est le defaut n°3 du §0
-- [ ] Les 3 armes sans image (`Vehicle` sentinelle, `Sandwich`, `Mythic Sandwich`) : statuer —
-      l'atlas du jeu porte `sandwich` (index 35), donc 2 des 3 se comblent
-- **Gate** : garde-rail vert, `make check-types`, revue visuelle utilisateur sur >= 10 armes
-  (GATE 1 du plan d'origine)
+- [x] Les PNG de `jeu/` deviennent la source servie ; **26 des 28** anciens PNG sont supprimes
+      avec la map `name_en`. `Grenade.png` et `Melee.png` SURVIVENT, et c'est une decision,
+      pas un oubli : l'atlas extrait ne porte NI grenade NI melee generique (elles ne sont pas
+      des `weap`). Les supprimer aurait fait perdre son icone a 5 etiquettes sur 42 — une
+      regression visible, la ou la regle « 0 code mort » vise le code inutilise, pas un asset
+      encore servi. Elles ne sont plus keyees par nom mais par ID/tag : le defaut n°1 tombe
+      quand meme
+- [x] `Needler-2.png` orphelin : supprime, et `TestAucunPNGOrphelin` ferme le trou par lequel
+      il etait passe (un PNG non reference par une table fait echouer la suite)
+- [x] Table GENEREE depuis `index.json` — **amende** : `tag weap -> fichier`, pas
+      `weapon_key -> index`, et par une commande DEDIEE `cmd/weapon-icons-table`. Motif :
+      `weapon-icons-build` exige les archives du jeu installe ; verifier la fraicheur de la
+      table serait alors impossible en CI, et elle divergerait en silence. La commande dediee
+      ne lit qu'`index.json`, versionne — `TestTableGenereeEstAJour` la rejoue et compare
+      octet a octet
+- [x] **Garde-rail neuf** : `TestChaqueArmeDuRegistreAUneIcone` (a — toute famille du registre
+      est servie, atlas ou concept declare) et `TestWeaponIconFilesExistentSurDisque` (b —
+      chaque PNG reference existe). Defaut n°3 ferme
+- [x] Les 3 armes sans image — **STATUEES** : `Sandwich` et `Mythic Sandwich` se comblent
+      (tags `880fe0bc` / `b7262ca1` -> index 35), `Vehicle` reste sans icone (cf. etape 1)
+- **Gate** : garde-rails **verts**, `make check-types` **vert**. `[!]` **revue visuelle
+  utilisateur** : artefact de revue fourni (comparaison arme par arme, avant/apres) — la
+  revue elle-meme appartient a l'utilisateur, elle ne peut pas etre jouee ici.
 
 ### Etape 3 — l'atlas kill feed est expose
 
-- [ ] Servir les icones kill feed par `weapon_key` (surface distincte de l'atlas d'armes)
-- [ ] Les entrees NON-armes (vehicules, grenades, pictogrammes) : exposees par leur nom interne,
-      pas par un `weapon_key` — elles n'en ont pas
-- [ ] Les index encore non identifies (25, 63, 75, 77 et les tonneaux non confirmes) ne sont PAS
-      exposes : afficher une mauvaise icone est pire qu'aucune
-- **Gate** : aucun index sans etiquette servi ; test de non-regression sur la liste exposee
+`[!]` **ETAPE REFUTEE PAR LA MESURE — NE PAS L'EXECUTER TELLE QUELLE.**
+
+Elle supposait un lien `index kill feed -> arme`. Il n'existe pas :
+
+1. `index.json` porte bien `tags_weap` sur les entrees `killfeed`, mais ce champ est indexe
+   par `sprite index`, qui n'a de sens que pour les DEUX atlas d'armes. L'atlas du kill feed
+   a sa propre numerotation : son index 0 est le Battle Rifle la ou le contour 0 est le fusil
+   d'assaut. Le champ est un artefact de generation (`weapon-icons-build/main.go` l'ecrit sur
+   les trois styles alors qu'il ne le calcule que pour les armes) — le lire donnerait une
+   icone fausse pour CHAQUE arme.
+2. Le seul autre lien serait le nom interne, et l'etat de l'art le refute explicitement :
+   `heatwave` = Cremateur, `plasma_blaster` = Fusil traqueur, `shade_turret` = un bidon.
+
+Rouvrir cette etape demande d'abord de MESURER un lien arme -> index kill feed. En attendant,
+la surface produit utilise l'atlas `contour`, dont le lien est lu dans le jeu. Consigne au
+`REGISTRE_REPORTS.md`.
 
 ### Etape 4 — la teinte d'equipe au kill feed
 
-Precede d'une decision utilisateur (§3 : chart ou liste).
-
-- [ ] Composant d'icone teintee (masque CSS + `tokenCssVar`), dans `components/`
-- [ ] Zero hex, zero classe Tailwind couleur — verifie par `grep`
-- [ ] Strings FR **et** EN si un libelle apparait
-- **Gate** : `make check-types`, `make test-web`, grep couleurs vide, revue visuelle
+- [x] Composant d'icone teintee (masque CSS + token) : `components/ui/WeaponIcon.tsx`, avec
+      son test. Le MODE de rendu vient du back (`image_tinted`), jamais du titre ni de la
+      forme de l'URL — meme discipline que `MedalIcon`. Branche sur `PlayerDetailPanel`
+      (armes du scoreboard) et `AssetCard` (tiroir d'assets)
+- [x] Zero hex, zero classe Tailwind couleur — verifie par `grep` ET par le test du composant
+- [~] Strings FR **et** EN : aucun libelle neuf n'apparait. Le `aria-label` reprend le libelle
+      d'arme deja localise par le back
+- `[!]` **APPLICATION AU KILL FEED** : impossible en l'etat, et ce n'est pas un choix de
+      confort. Le kill feed de la Match View ne porte AUCUNE arme : `EventRaw` n'a pas de
+      champ arme, la table `highlight_events` n'a pas de colonne `weapon_id`, et la seule
+      source de degat par kill (`match_kill_events.source_tag`) est un tag **`jpt!`**, PAS un
+      tag `weap` — 11 lignes sur 114 de classe ARME portent un `[effet weap …]` exploitable
+      dans `damagetag/labels.tsv`. Poser une icone dessus reviendrait a inventer le lien.
+      Ce que la teinte demande d'abord : un chemin mesure `jpt! -> weap`, ou un `weapon_id`
+      par kill dans le contrat. Consigne au `REGISTRE_REPORTS.md`.
+- **Gate** : `make check-types` **vert**, `make test-web` **vert**, grep couleurs **vide**.
+  `[!]` revue visuelle : meme statut qu'a l'etape 2 (artefact fourni).
 
 ---
 
@@ -206,10 +253,36 @@ Precede d'une decision utilisateur (§3 : chart ou liste).
 
 ---
 
+## 5 bis. RENVOYE AU LOT DE FIN DE v7.5 (decisions utilisateur du 2026-08-11)
+
+Trois points, a traiter avec les cartes v2 dans le dernier lot avant le tag. Detail et
+condition de reprise : `.ai/V7.5/REGISTRE_REPORTS.md`.
+
+1. **Armes qui partagent une icone** — 5 index servent 13 etiquettes, et c'est LE JEU qui ne
+   les distingue pas (meme `sprite index`, voire un seul tag `weap` pour trois etiquettes).
+   Chercher une image specifique AILLEURS que dans l'atlas d'armes ; a defaut, ne presenter
+   que la variante de BASE.
+2. **Grenades** — verifier qu'il n'existe vraiment aucune image, en cherchant la ou l'objet
+   est declare (`eqip`/`proj`/`gggl`) et non dans le `weap`. Dernier trou consequent.
+3. **La teinte alliee/ennemie ne concerne QUE les icones du kill feed**, pas les grandes
+   images. L'etat livre y est conforme : aucune couleur d'equipe n'est appliquee.
+
+---
+
 ## 6. DECOUVERTES (a ne pas traiter dans ce chantier)
 
 - `weapon_labels.name_en` diverge de `weapon_names.toml` sur le Sidekick (Mk51 vs Mk50). L'etape
   1 rend l'image insensible a cette divergence, mais **la divergence elle-meme reste** et merite
   son propre correctif.
+- **`index.json` publie `tags_weap` sur les entrees `killfeed` alors que ce champ ne vaut que
+  pour les atlas d'armes** (`weapon-icons-build/main.go:220` l'ecrit pour les trois styles ;
+  `weaptags.go` ne le calcule que depuis le `sprite index`). Le consommateur s'en protege en
+  filtrant sur le style `contour`, et `TestSeulLAtlasContourEstLu` le verrouille — mais
+  l'artefact versionne porte toujours un champ faux, piege pour le prochain lecteur. Non
+  corrige ici : le corriger demande de REGENERER `index.json`, donc une machine avec le jeu
+  installe. Consigne au registre des reports.
+- Les anciennes icones pesaient jusqu'a 453 Ko ; les nouvelles font ~8 Ko. Le poids servi par
+  le tiroir d'assets chute d'environ deux ordres de grandeur — effet de bord favorable, non
+  mesure finement.
 - Les anciens PNG pesent jusqu'a 453 Ko et ne sont pas optimises.
 - `abilities-assets` et `grenades-assets` ont un `index.json` que personne ne consomme.

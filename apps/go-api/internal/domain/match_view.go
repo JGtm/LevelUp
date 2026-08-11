@@ -371,6 +371,10 @@ type PlayerWeaponKillRow struct {
 	Kills    int    `json:"kills"`
 	Label    string `json:"label,omitempty"`
 	ImageURL string `json:"image_url,omitempty"`
+	// ImageTinted : l'icône est un MASQUE (dessin porté par l'alpha, sans couleur
+	// propre) que le front doit teindre, et non une image finie. Le front ne peut pas
+	// le deviner depuis l'URL — cf. games.TitleAssetURLAdapter.WeaponImageIsTinted.
+	ImageTinted bool `json:"image_tinted,omitempty"`
 }
 
 // MatchScoreboardSkillRank : skill rank d'un joueur pour ce match (extrait

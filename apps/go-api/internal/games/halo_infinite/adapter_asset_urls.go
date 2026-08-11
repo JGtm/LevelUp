@@ -14,12 +14,15 @@ import (
 // TitleSlug est le slug canonique d'Halo Infinite côté adapter.
 const TitleSlug = "halo_infinite"
 
-// Stems de fichiers image partagés par plusieurs entrées de weaponImageFiles.
-// Externalisés pour éviter les doublons signalés par goconst.
-const (
-	weaponImageStemGrenade = "Grenade"
-	weaponImageStemSword   = "Sword"
-)
+// weaponIconDir est le sous-dossier des icônes EXTRAITES DU JEU sous
+// static/weapons-assets/halo_infinite/. Les PNG y sont nommés par index d'atlas
+// (contour-NN.png) : aucun nom de fichier ne prétend désigner une arme — c'est le
+// `sprite index` lu dans le tag `weap` qui fait le lien, jamais un nom.
+const weaponIconDir = "jeu/"
+
+// weaponImageStemGrenade est le stem du seul PNG dessiné à la main encore servi
+// (cf. weaponIconSentinelFiles / weaponIconConceptFiles).
+const weaponImageStemGrenade = "Grenade"
 
 // uuidRe matche un UUID v4 — utilisé pour rejeter les map names qui sont en
 // fait des UUID bruts (non utilisables comme nom de fichier statique).
@@ -31,48 +34,32 @@ var uuidRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 // en amont par SQL (NOT LIKE '% - %').
 var mapVariantSuffixes = []string{" Heavies", " Sentry Defense", " Firefight"}
 
-// weaponImageFiles mappe le name_en d'une arme vers le stem du fichier PNG
-// dans static/weapons-assets/halo_infinite/. Armes sans entrée → ImageURL vide.
-var weaponImageFiles = map[string]string{
-	"Grenade":               weaponImageStemGrenade,
-	"Frag Grenade":          weaponImageStemGrenade,
-	"Plasma Grenade":        weaponImageStemGrenade,
-	"Dynamo Grenade":        weaponImageStemGrenade,
-	"Melee":                 "Melee",
-	"Bandit Evo":            "Bandit",
-	"M392 Bandit":           "Bandit",
-	"BR75":                  "BR75",
-	"Cindershot":            "Cremator",
-	"CQS48 Bulldog":         "Bulldog",
-	"Disruptor":             "Disruptor",
-	"Fuel Rod SPNKr":        "M41",
-	"M41 SPNKr":             "M41",
-	"Gravity Hammer":        "Hammer",
-	"Diminisher of Hope":    "Hammer",
-	"Rushdown Hammer":       "Hammer",
-	"Heatwave":              "Heatwave",
-	"MA40 AR":               "MA40",
-	"MA5K Avenger":          "Storm",
-	"Mangler":               "Mangler",
-	"MLRS-2 Hydra":          "Hydra",
-	"Mk51 Sidekick":         "Sidekick",
-	"Mutilator":             "Mutilator",
-	"Needler":               "Needler-1",
-	"Plasma Pistol":         "Plasma",
-	"Pulse Carbine":         "Carabine",
-	"Vestige Carbine":       "Carabine",
-	"Ravager":               "Ravager",
-	"S7 Sniper":             "Sniper-S7",
-	"Sentinel Beam":         "Sentinel",
-	"Shock Rifle":           "Shock-rifle",
-	"Shock Rifle (Ranked)":  "Shock-rifle",
-	"Skewer":                "Skewer",
-	"Stalker Rifle":         "Stalker",
-	"VK78 Commando":         "Commando",
-	"Energy Sword":          weaponImageStemSword,
-	"Duelist Energy Sword":  weaponImageStemSword,
-	"Elite Bloodblade":      weaponImageStemSword,
-	"Infected Energy Sword": weaponImageStemSword,
+// weaponIconSentinelFiles couvre les SENTINELLES produit : des weapon_id
+// conventionnels (0 grenade, 1 mêlée, 2 véhicule) qui ne désignent aucun objet du
+// jeu et sont donc hors de portée du tag `weap`. Ils sont keyés par ID — jamais par
+// nom, la divergence de nom étant précisément le défaut que ce chemin corrige.
+//
+// La sentinelle 2 (véhicule) est ABSENTE volontairement : aucun dessin ne représente
+// « un véhicule » en général, et servir celui d'un véhicule particulier serait une
+// icône fausse. Elle n'en avait pas non plus avant ce chantier.
+var weaponIconSentinelFiles = map[int64]string{
+	0: weaponImageStemGrenade,
+	1: "Melee",
+}
+
+// weaponIconConceptFiles couvre les grenades RÉELLES du référentiel. Elles ont un
+// identifiant filmshell, mais ne sont pas des `weap` : elles vivent en `eqip`+`proj`
+// (déclarées par le tag de globals `gggl`) et n'ont donc pas de bloc « UI display
+// info » à lire — l'atlas d'armes extrait du jeu ne les porte pas. Mesuré, pas
+// supposé : le balayage de TOUS les groupes de tags par cmd/weapon-icons-build ne
+// les fait pas sortir.
+//
+// Elles gardent donc le PNG dessiné à la main, keyé par le TAG (32 bits hauts) et non
+// par le nom : les variantes d'une même grenade partagent leur tag et suivent.
+var weaponIconConceptFiles = map[uint32]string{
+	0x3ad55da4: weaponImageStemGrenade, // Dynamo Grenade
+	0xb6dbead8: weaponImageStemGrenade, // Frag Grenade
+	0xc1e1bab0: weaponImageStemGrenade, // Plasma Grenade
 }
 
 // AssetURLAdapter implémente games.TitleAssetURLAdapter pour Halo Infinite.
@@ -184,14 +171,46 @@ func defaultMapImageExt(mapName string) string {
 	return ".jpg"
 }
 
-// WeaponImageURL retourne l'URL de l'image d'une arme à partir de son name_en.
-// Retourne "" si aucun fichier ne correspond au nom.
-func (a *AssetURLAdapter) WeaponImageURL(nameEN string) string {
-	stem, ok := weaponImageFiles[nameEN]
-	if !ok {
-		return ""
+// WeaponImageURL retourne l'URL de l'icône d'une arme à partir de son identifiant
+// filmshell. "" si l'arme n'a pas d'icône : un trou d'atlas se rend en repli propre
+// côté produit (le libellé), jamais par une icône d'une autre arme.
+//
+// LA CLÉ EST LE TAG `weap` — les 32 bits HAUTS de l'identifiant (état de l'art §1.1).
+// Elle ne dépend ni d'un nom, ni du registre : elle couvre les armes enregistrées,
+// leurs VARIANTES et celles qui ne sont PAS au registre, trois cas que ni `name_en`
+// ni `weapon_key` ne couvraient ensemble (7 étiquettes sur 42 n'ont pas de
+// `weapon_key`, dont deux qui ont une icône).
+//
+// Ordre : sentinelles produit d'abord (leurs ID tiennent dans les 32 bits bas, donc
+// leur tag vaut 0 et ne peut pas les distinguer), puis l'atlas du jeu, puis les
+// concepts hors atlas.
+func (a *AssetURLAdapter) WeaponImageURL(weaponID int64) string {
+	url, _ := a.weaponIcon(weaponID)
+	return url
+}
+
+// WeaponImageIsTinted : vrai pour les icônes EXTRAITES DU JEU, dont le dessin est
+// porté par l'alpha en blanc (mesuré : 100 % des pixels opaques sont blancs purs).
+// Faux pour les deux PNG dessinés à la main, qui sont des images finies en couleur —
+// les teinter les aplatirait en silhouette.
+func (a *AssetURLAdapter) WeaponImageIsTinted(weaponID int64) bool {
+	_, tinted := a.weaponIcon(weaponID)
+	return tinted
+}
+
+// weaponIcon porte l'ORDRE de résolution, une seule fois pour les deux accesseurs.
+func (a *AssetURLAdapter) weaponIcon(weaponID int64) (url string, tinted bool) {
+	if stem, ok := weaponIconSentinelFiles[weaponID]; ok {
+		return static.URL(static.KindWeapon, a.titleSlug, stem, ".png"), false
 	}
-	return static.URL(static.KindWeapon, a.titleSlug, stem, ".png")
+	tag := uint32(uint64(weaponID) >> 32) //nolint:gosec // troncature voulue : les 32 bits hauts SONT le tag
+	if stem, ok := weaponIconFileByTag[tag]; ok {
+		return static.URL(static.KindWeapon, a.titleSlug, weaponIconDir+stem, ".png"), true
+	}
+	if stem, ok := weaponIconConceptFiles[tag]; ok {
+		return static.URL(static.KindWeapon, a.titleSlug, stem, ".png"), false
+	}
+	return "", false
 }
 
 // waypointMatchBaseURL est la base des pages de détail de match sur Waypoint.

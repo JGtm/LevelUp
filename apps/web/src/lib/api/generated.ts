@@ -4233,6 +4233,7 @@ export interface components {
             description?: string;
             description_fr?: string;
             id: string;
+            image_tinted?: boolean;
             image_url: string;
             name_en: string;
             name_fr: string;
@@ -8230,6 +8231,7 @@ export interface components {
             xuid: string;
         };
         PlayerWeaponKillRow: {
+            image_tinted?: boolean;
             image_url?: string;
             /** Format: int64 */
             kills: number;

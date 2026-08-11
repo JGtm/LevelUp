@@ -7985,6 +7985,8 @@ components:
           type: string
         id:
           type: string
+        image_tinted:
+          type: boolean
         image_url:
           type: string
         name_en:
@@ -17567,6 +17569,8 @@ components:
     PlayerWeaponKillRow:
       additionalProperties: false
       properties:
+        image_tinted:
+          type: boolean
         image_url:
           type: string
         kills:

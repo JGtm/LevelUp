@@ -261,9 +261,25 @@ type TitleAssetURLAdapter interface {
 	// CSRRankImageURLOnyx retourne l'URL du badge Onyx (sans sub-tier).
 	CSRRankImageURLOnyx() string
 
-	// WeaponImageURL retourne l'URL de l'image d'une arme à partir de son
-	// nom EN officiel (ex. "BR75", "Energy Sword"). Retourne "" si non reconnu.
-	WeaponImageURL(nameEN string) string
+	// WeaponImageURL retourne l'URL de l'icône d'une arme à partir de son
+	// identifiant natif (weapon_id du titre). Retourne "" si l'arme n'a pas
+	// d'icône : le produit doit alors se replier sur le libellé, jamais sur
+	// l'icône d'une autre arme.
+	//
+	// L'identifiant, et pas le nom : un nom d'arme est un LIBELLÉ, il diverge
+	// entre les tables qui le portent (« Mk51 Sidekick » vs « Mk50 Sidekick »)
+	// et une résolution keyée dessus casse en silence à la première correction
+	// de traduction. Chaque titre décide de la sous-clé pertinente pour lui.
+	WeaponImageURL(weaponID int64) string
+
+	// WeaponImageIsTinted dit si l'icône de cette arme est un MASQUE — un dessin
+	// porté par l'alpha, sans couleur propre — que le produit doit teinter, ou
+	// une image finie à afficher telle quelle.
+	//
+	// Le produit ne peut pas le deviner : afficher un masque tel quel le rend
+	// invisible sur fond clair, et teinter une image finie l'aplatit en
+	// silhouette. Seul l'adapter du titre sait ce qu'il sert.
+	WeaponImageIsTinted(weaponID int64) bool
 
 	// MatchWebURL retourne l'URL de la page publique d'un match sur le portail
 	// officiel du titre (ex: Waypoint pour Halo Infinite). "" si le titre n'a pas

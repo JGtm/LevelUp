@@ -247,7 +247,6 @@ type BulkWeaponKillRaw struct {
 	WeaponID    int64
 	Kills       int
 	WeaponLabel string
-	NameEN      string // nom EN officiel → lookup WeaponImageURL dans l'adapter
 	// Class / Role / Family : dimensions du registre d'armes (axe manipulation + fonction
 	// de combat + famille), résolues dans la même passe que le label (resolveWeaponMeta).
 	// Vides si l'arme est absente du registre. Alimentent la FragDistribution par-match

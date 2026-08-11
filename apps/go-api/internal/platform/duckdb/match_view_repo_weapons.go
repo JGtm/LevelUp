@@ -179,7 +179,6 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	for i := range results {
 		if m, ok := weapMeta[results[i].WeaponID]; ok {
 			results[i].WeaponLabel = m.label
-			results[i].NameEN = m.nameEN
 			results[i].Class = m.class
 			results[i].Role = m.role
 			results[i].Family = m.family

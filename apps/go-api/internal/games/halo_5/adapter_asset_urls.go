@@ -28,8 +28,10 @@ type AssetURLAdapter struct {
 	// mapURLByName indexe l'URL d'image par nom canonique (name_canonical), pour
 	// le cas où le caller passe un nom EN plutôt que le GUID.
 	mapURLByName map[string]string
-	// weaponURLByName indexe l'URL d'icône d'arme par name_en officiel.
-	weaponURLByName map[string]string
+	// weaponURLByID indexe l'URL d'icône d'arme par weapon_id (stock_id officiel).
+	// Keyé par l'ID et non par name_en : un libellé diverge entre les tables qui
+	// le portent, l'identifiant non (cf. games.TitleAssetURLAdapter).
+	weaponURLByID map[int64]string
 	// csrResolver retourne l'URL du badge CSR pour (designation, tier_id).
 	// Injecté depuis csr_designations (server.go). Nil = pas de seed CSR.
 	csrResolver func(designation string, subTier int) string
@@ -47,9 +49,9 @@ type AssetURLAdapter struct {
 // ajoutées via les builders WithMaps / WithWeapons / WithCSRResolver.
 func NewAssetURLAdapter() *AssetURLAdapter {
 	return &AssetURLAdapter{
-		mapURLByID:      map[string]string{},
-		mapURLByName:    map[string]string{},
-		weaponURLByName: map[string]string{},
+		mapURLByID:    map[string]string{},
+		mapURLByName:  map[string]string{},
+		weaponURLByID: map[int64]string{},
 	}
 }
 
@@ -71,17 +73,19 @@ func (a *AssetURLAdapter) WithMaps(maps []canonical.AssetMeta) *AssetURLAdapter 
 	return a
 }
 
-// WithWeapons indexe les armes par name_en (ImageURL = icon_url officielle).
-// Les entrées sans ImageURL sont ignorées.
+// WithWeapons indexe les armes par weapon_id (ImageURL = icon_url officielle).
+// Les entrées sans ImageURL, ou dont l'ID n'est pas un entier, sont ignorées.
 func (a *AssetURLAdapter) WithWeapons(weapons []canonical.AssetMeta) *AssetURLAdapter {
 	for _, w := range weapons {
 		url := strings.TrimSpace(w.ImageURL)
 		if url == "" {
 			continue
 		}
-		if name := strings.TrimSpace(w.NameEN); name != "" {
-			a.weaponURLByName[name] = url
+		id, ok := w.WeaponID()
+		if !ok {
+			continue
 		}
+		a.weaponURLByID[id] = url
 	}
 	return a
 }
@@ -151,18 +155,19 @@ func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 	return ""
 }
 
-// WeaponImageURL résout l'URL d'icône d'une arme par son name_en officiel.
-// "" si vide/inconnu.
-func (a *AssetURLAdapter) WeaponImageURL(nameEN string) string {
-	nameEN = strings.TrimSpace(nameEN)
-	if nameEN == "" {
-		return ""
-	}
-	if url, ok := a.weaponURLByName[nameEN]; ok {
+// WeaponImageURL résout l'URL d'icône d'une arme par son weapon_id (stock_id
+// officiel). "" si inconnu. Halo 5 sert des URL CDN peuplées par l'API officielle :
+// rien à extraire, seule la clé change.
+func (a *AssetURLAdapter) WeaponImageURL(weaponID int64) string {
+	if url, ok := a.weaponURLByID[weaponID]; ok {
 		return url
 	}
 	return ""
 }
+
+// WeaponImageIsTinted : toujours faux. Halo 5 sert des visuels officiels finis,
+// en couleur — les teinter les aplatirait en silhouette.
+func (a *AssetURLAdapter) WeaponImageIsTinted(_ int64) bool { return false }
 
 // MatchWebURL / PlayerMatchWebURL : Halo 5 n'a pas de page de détail de match
 // publique équivalente à Waypoint → "" (pas de lien externe, F3).
