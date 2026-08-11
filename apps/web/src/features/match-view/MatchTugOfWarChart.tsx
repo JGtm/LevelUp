@@ -45,6 +45,9 @@ import { computeMomentumBins, type MomentumBin, type MomentumKill } from './_mom
 import { extractCtfCaptures, type CtfCapture } from './_objectiveCaptures'
 import { MatchKillFeed } from './MatchKillFeed'
 import type { MatchViewText } from './i18n'
+// La cascade « allie = meme camp que moi » etait ecrite ici ET dans MatchKDCumulChart, a
+// l'identique : elle vit desormais dans xuidMeta.ts, sous garde-rail.
+import { resolveXuidMeta, type XuidMeta } from './xuidMeta'
 
 interface Props {
   bins: MatchTugOfWarBin[] | null | undefined
@@ -69,8 +72,6 @@ const BAR_GAP = '20%'
 const LANE_FACTOR = 1.5 // lane des kills alliés, au-dessus des barres positives
 const TOP_FACTOR = 1.95 // headroom pour les labels ×N des vagues alliées
 const BOTTOM_FACTOR = 1.15 // juste sous la barre négative la plus profonde
-
-type XuidMeta = Map<string, { gamertag: string; ally: boolean }>
 
 interface TeamWave {
   xStart: number; xEnd: number; count: number
@@ -104,19 +105,6 @@ function formatMmSs(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.max(0, Math.floor(seconds % 60))
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-/** Résout l'appartenance d'équipe (allié/ennemi) et le gamertag par xuid. */
-function resolveXuidMeta(scoreboard: MatchScoreboardRow[] | null | undefined, meXUID: string | null): XuidMeta {
-  const sb = scoreboard ?? []
-  const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
-  const allyTeam = meRow?.team_side ?? null
-  const meta: XuidMeta = new Map()
-  for (const r of sb) {
-    const ally = r.is_me || (allyTeam != null && r.team_side === allyTeam)
-    meta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
-  }
-  return meta
 }
 
 /** Résumé de tranche (delta signé, X/Y kills, cumuls) — servi par le tooltip item des barres (remplace DEC-3). */

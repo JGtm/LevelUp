@@ -26,6 +26,14 @@ interface ReplayText {
   floorMid: string
   floorHigh: string
   propsSuffix: string
+  /** Fond de carte figé : présent, ou remplacé par le sol reconstruit. */
+  mapBackgroundNote: string
+  mapBackgroundFallback: string
+  /** Kill feed synchronisé sur l'horloge du rejeu. */
+  killFeedTitle: string
+  killFeedEmpty: string
+  killFeedUnknownWeapon: string
+  killFeedTotal: (n: number) => string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -85,6 +93,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     floorMid: 'Milieu',
     floorHigh: 'Haut',
     propsSuffix: 'objets de décor',
+    mapBackgroundNote:
+      'Fond : la carte du jeu, reconstruite hors ligne et calée au mètre sur le repère du rejeu.',
+    mapBackgroundFallback:
+      "Fond : sol reconstruit — cette carte n'a pas encore d'image figée.",
+    killFeedTitle: 'Éliminations',
+    killFeedEmpty: 'Rien à cet instant du match.',
+    killFeedUnknownWeapon: 'Arme non identifiée',
+    killFeedTotal: (n) => `${n} sur le match`,
     layers: 'Calques',
     layerAim: 'Visée',
     layerShield: 'Bouclier',
@@ -146,6 +162,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     floorMid: 'Mid',
     floorHigh: 'Upper',
     propsSuffix: 'map props',
+    mapBackgroundNote: 'Background: the in-game map, rebuilt offline and aligned to the metre with the replay frame of reference.',
+    mapBackgroundFallback: 'Background: reconstructed floor — this map has no baked image yet.',
+    killFeedTitle: 'Kills',
+    killFeedEmpty: 'Nothing at this point of the match.',
+    killFeedUnknownWeapon: 'Unidentified weapon',
+    killFeedTotal: (n) => `${n} in the match`,
     layers: 'Layers',
     layerAim: 'Aim',
     layerShield: 'Shield',

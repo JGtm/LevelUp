@@ -19,9 +19,11 @@ import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
+import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import { readInk } from './canvasInk'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { backgroundRect, coversPlayedArea } from './mapBackground'
 import { buildFloorGrid } from './mapFloor'
 import type { ReplayDocumentReady } from './replayNormalize'
 import {
@@ -87,14 +89,30 @@ const MIN_FLOOR_SPAN = 1
  */
 const FRAME_PUBLISH_MS = 150
 
+/**
+ * Le FOND DE CARTE : l'image cuite de la carte, et le calage qui la pose dans le repère
+ * monde du rejeu. Les deux voyagent ensemble — une image sans calage ne se superpose à rien,
+ * et l'appelant ne doit jamais pouvoir en fournir une seule.
+ */
+export interface ReplayMapBackgroundLayer {
+  calibration: ReplayMapBackgroundCalibration
+  image: HTMLImageElement
+}
+
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
   locale: ReplayLocale
   /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
   onFrameChange?: (frame: number) => void
+  /**
+   * Fond de carte figé. Absent = la carte n'a pas d'image (seules 21 en ont) : le rejeu
+   * garde son sol reconstruit, qui reste lisible. Ce n'est pas un mode dégradé caché,
+   * c'est le cas nominal des autres cartes.
+   */
+  background?: ReplayMapBackgroundLayer | null
 }
 
-export function ReplayCanvas({ doc, locale, onFrameChange }: ReplayCanvasProps) {
+export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Fond de carte peint UNE fois puis recopié : il ne dépend ni de la frame ni de la lecture.
@@ -154,13 +172,25 @@ export function ReplayCanvas({ doc, locale, onFrameChange }: ReplayCanvasProps) 
     [],
   )
 
+  const bounds = useMemo(() => sceneBounds(doc), [doc])
+
+  // LE FOND DE CARTE PREND LA PLACE DU SOL RECONSTRUIT, il ne s'y ajoute pas : l'image
+  // porte la carte telle que le jeu la dessine, la trame d'altitudes n'en est que
+  // l'approximation. Les superposer ne ferait que voiler la meilleure des deux.
+  //
+  // Il est ÉCARTÉ quand il ne recouvre pas la zone jouée : un fond qui ne contient pas le
+  // terrain n'est pas un défaut d'affichage, c'est le signe que les deux repères ne sont
+  // pas le même — mieux vaut alors le sol reconstruit qu'une carte posée à côté des joueurs.
+  const mapImage = useMemo(() => {
+    if (!background) return null
+    return coversPlayedArea(background.calibration, doc.bounds) ? background : null
+  }, [background, doc.bounds])
+
   // La trame d'altitudes ne dépend QUE du document : construite une fois, pas à chaque resize.
   const floorGrid = useMemo(
-    () => (doc.structure?.length ? buildFloorGrid(doc.structure, doc.bounds) : null),
-    [doc.structure, doc.bounds],
+    () => (!mapImage && doc.structure?.length ? buildFloorGrid(doc.structure, doc.bounds) : null),
+    [doc.structure, doc.bounds, mapImage],
   )
-
-  const bounds = useMemo(() => sceneBounds(doc), [doc])
   // Largeur de dessin = ratio de la scène à hauteur fixée (évite les marges latérales).
   const renderWidth = useMemo(
     () => (width === 0 ? 0 : Math.floor(fitWidth(bounds, width, CANVAS_HEIGHT, CANVAS_PAD))),
@@ -215,7 +245,14 @@ export function ReplayCanvas({ doc, locale, onFrameChange }: ReplayCanvasProps) 
     const frame = frameRef.current
     // ORDRE DES CALQUES, du fond vers le sujet : le sol porte les trajectoires, qui portent les
     // événements. Inverser noierait les joueurs.
-    if (floorRef.current) {
+    const bgRect = mapImage
+      ? backgroundRect(mapImage.calibration, bounds, renderWidth, CANVAS_HEIGHT, CANVAS_PAD)
+      : null
+    if (mapImage && bgRect) {
+      // L'image ENTIÈRE est posée sur son emprise monde ; le canvas rogne le débord. La
+      // projection est affine et sans rotation, donc deux coins suffisent (mapBackground.ts).
+      ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
+    } else if (floorRef.current) {
       ctx.drawImage(floorRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
     } else if (doc.geometry?.length) {
       // REPLI, pas un doublon : sans fichier de structure figé, la carte n'a pas de sol
@@ -279,6 +316,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange }: ReplayCanvasProps) 
     showAim,
     showShield,
     onFrameChange,
+    mapImage,
   ])
 
   // Le sol est repeint quand SA géométrie, SON cadrage ou SES encres changent — jamais à
@@ -452,6 +490,9 @@ export function ReplayCanvas({ doc, locale, onFrameChange }: ReplayCanvasProps) 
         <p className="mt-2 text-xs text-muted-foreground">
           {t.note}
           {doc.geometry?.length ? ` ${doc.geometry.length} ${t.propsSuffix}.` : ''}
+          {/* CE QUI EST SOUS LES JOUEURS EST DIT. Une carte du jeu et un sol reconstruit ne
+              se lisent pas de la même façon, et rien à l'écran ne les distingue. */}
+          {` ${mapImage ? t.mapBackgroundNote : t.mapBackgroundFallback}`}
         </p>
       </div>
     </div>

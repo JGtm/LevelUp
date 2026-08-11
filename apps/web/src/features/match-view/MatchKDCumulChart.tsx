@@ -27,9 +27,9 @@ import type {
   MatchObjectiveEvent,
   MatchScoreboardRow,
 } from '@/lib/api/types'
-import { displayPlayerName } from '@/lib/players/displayName'
 import { extractCtfCaptures } from './_objectiveCaptures'
 import type { MatchViewText } from './i18n'
+import { resolveXuidMeta } from './xuidMeta'
 
 interface Props {
   events: MatchHighlightEvent[] | null | undefined
@@ -96,14 +96,8 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, objectiv
     (s: ChartSeries<MatchHighlightEvent>[]): EChartsCoreOption => {
       if (s.length === 0 || !events || events.length === 0) return { backgroundColor: CHART_BG }
 
-      const sb = scoreboard ?? []
-      const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
-      const allyTeam = meRow?.team_side ?? null
-      const xuidMeta = new Map<string, { gamertag: string; ally: boolean }>()
-      for (const r of sb) {
-        const ally = r.is_me || (allyTeam != null && r.team_side === allyTeam)
-        xuidMeta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
-      }
+      // Cascade « allie = meme camp que moi » : source unique (xuidMeta.ts).
+      const xuidMeta = resolveXuidMeta(scoreboard, meXUID)
 
       // ---- Cumulatifs par équipe via highlight_events (event_type=kill) ----
       const sortedKills = events

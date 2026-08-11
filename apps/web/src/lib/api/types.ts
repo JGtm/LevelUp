@@ -2556,8 +2556,9 @@ export interface MatchPlayerPosition {
 // noms plat partagé par toute l'API. Le préfixe `Replay` dit de quel document ils sont les
 // pièces, et évite qu'un `Point` du rejeu soit confondu avec un point de série temporelle.
 //
-// Artefact pré-construit hors ligne (`cmd/replay-build`). Positions dans le repère monde
-// PARTAGÉ ; le client auto-ajuste via `bounds` (échelle absolue non garantie).
+// Artefact pré-construit hors ligne (`cmd/replay-build`). Positions en MÈTRES MONDE : le
+// build exige les bornes de la carte (`-map`) et refuse de produire un artefact sans elles,
+// ce qui rend le fond de carte figé superposable au rejeu. Le client auto-cadre via `bounds`.
 // `points[].t` = index de pas de temps ∈ [0, frameCount).
 export type ReplayPoint = components['schemas']['Point']
 export type ReplayTrack = components['schemas']['Track']
@@ -2574,6 +2575,13 @@ export type ReplayLayerCoverage = components['schemas']['LayerCoverage']
 export type ReplayBridgeHealth = components['schemas']['BridgeHealth']
 export type ReplayCoverage = components['schemas']['Coverage']
 export type ReplayDocument = components['schemas']['ReplayDocument']
+
+// Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le
+// repère monde du rejeu. Le calage voyage AVEC l'image parce qu'une image dont on ignore où
+// elle se pose ne se superpose à rien — leçon de la première carte reconstruite, dont le
+// calage a dû être retrouvé à la main sur des trajectoires de joueur.
+export type ReplayMapBackground = components['schemas']['MapBackground']
+export type ReplayMapBackgroundCalibration = components['schemas']['MapBackgroundCalibration']
 
 // La table d'appariement du film : xuid ET index de slot.
 //

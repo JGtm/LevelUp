@@ -222,19 +222,31 @@ function getLocaleHeader(): Record<string, string> {
   return { 'X-LevelUp-Locale': _currentLocale }
 }
 
-async function request<T>(
+interface RequestOptions {
+  body?: unknown
+  headers?: Record<string, string>
+  /**
+   * `keepalive` fetch : la requête survit à la fermeture / au rechargement de
+   * l'onglet (flush best-effort au unload). Voir `api.postKeepalive`.
+   */
+  keepalive?: boolean
+}
+
+/**
+ * sendRequest fait l'appel et rend la RÉPONSE BRUTE, une fois les erreurs mappées et la
+ * garde anti-fuite cross-titre passée.
+ *
+ * POURQUOI CETTE COUCHE EXISTE. Toutes les réponses de l'API ne sont pas du JSON : le fond
+ * de carte du rejeu 2D est un PNG. Le décodage est donc la SEULE chose qui change entre un
+ * appel JSON et un appel binaire — tout le reste (URL, en-têtes de titre et de locale,
+ * cookies, mapping d'erreurs, événement `auth-required`, garde cross-titre) doit rester
+ * commun, sans quoi une seconde porte d'entrée finirait par en oublier un morceau.
+ */
+async function sendRequest(
   method: string,
   path: string,
-  options?: {
-    body?: unknown
-    headers?: Record<string, string>
-    /**
-     * `keepalive` fetch : la requête survit à la fermeture / au rechargement de
-     * l'onglet (flush best-effort au unload). Voir `api.postKeepalive`.
-     */
-    keepalive?: boolean
-  },
-): Promise<T> {
+  options?: RequestOptions,
+): Promise<Response> {
   const url = `${BASE_URL}${path}`
   // Titre affirmé sur CETTE requête (peut être nul : page agnostique au boot). Capturé
   // avant le fetch pour la garde anti-fuite cross-titre (guardResolvedTitle).
@@ -279,7 +291,11 @@ async function request<T>(
   // qu'elle ne serve de donnée (et donc n'entre dans le cache TanStack) ; une
   // mutation est seulement tracée (cf. guardResolvedTitle).
   guardResolvedTitle(response, sentTitle, path, method)
+  return response
+}
 
+async function request<T>(method: string, path: string, options?: RequestOptions): Promise<T> {
+  const response = await sendRequest(method, path, options)
   if (response.status === 204) {
     return undefined as unknown as T
   }
@@ -289,6 +305,17 @@ async function request<T>(
 export const api = {
   get: <T>(path: string, headers?: Record<string, string>) =>
     request<T>('GET', path, { headers }),
+
+  /**
+   * GET d'une ressource BINAIRE (image, export). Même client que `get` — donc mêmes
+   * en-têtes de titre et de locale, mêmes cookies, même mapping d'erreurs.
+   *
+   * POURQUOI PAS UN `<img src>` DIRECT : une balise `img` n'emporte pas l'en-tête
+   * `X-LevelUp-Title`, et l'API résoudrait le titre de la session au lieu de celui de la
+   * page. Le blob passe ensuite par `URL.createObjectURL`.
+   */
+  getBlob: async (path: string, headers?: Record<string, string>): Promise<Blob> =>
+    (await sendRequest('GET', path, { headers })).blob(),
 
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     request<T>('POST', path, { body, headers }),

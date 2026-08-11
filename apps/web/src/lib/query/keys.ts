@@ -112,6 +112,14 @@ export const queryKeys = {
     ['match-positions', playerSlug, titleSlug, matchId] as const,
   matchReplay: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay', playerSlug, titleSlug, matchId] as const,
+  // Fond de carte du rejeu : clé DISTINCTE de l'artefact. Les deux ne s'invalident pas
+  // ensemble — l'artefact est propre au match, le fond est propre à la carte et ne change
+  // qu'à une re-cuisson.
+  matchReplayBackground: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-background', playerSlug, titleSlug, matchId] as const,
+  // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage.
+  matchReplayBackgroundImage: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-background-image', playerSlug, titleSlug, matchId] as const,
 
   // Engagement (Phase 4 plan engagement)
   engagementMatch: (playerSlug: string, titleSlug: string, matchId: string) =>
