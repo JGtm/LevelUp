@@ -63343,6 +63343,11 @@ centralisee dans `match-view/xuidMeta.ts` avec son garde-rail — lequel a DEBUS
 quatrieme variante dans `MatchCadenceChart` que le grep manuel avait manquee. Meme
 traitement pour la cascade de couleur d equipe (`match-view/teamColor.ts`).
 
+**CI de branche VERTE au niveau job** (3 commits pousses, e0109af19 -> d7daa86aa) : 8 jobs
+verts, meme forme que la reference 758abcf17 (E2E Playwright saute), plus ADR 0021 Gate,
+gitleaks et Deploy Pre-Check. Le job Go Coverage + Baseline a joue le ./... complet en
+23 min 39 s — donc himap, la partie que le local ne peut pas tenir.
+
 **Conclusion / prochaine etape** : le rendu change, donc le verdict appartient a l utilisateur.
 Gate visuel sur `000d5950`, temoins nommes par lui. PIEGE D ENVIRONNEMENT a signaler : le
 worktree n a pas les bases (12 Kio de `shared_matches_v2.duckdb`) et le kill feed depend de la

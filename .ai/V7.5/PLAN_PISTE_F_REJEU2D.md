@@ -113,8 +113,11 @@ est HORS PERIMETRE — les decouvertes vont en section « Decouvertes », pas da
   `make go-api-test`. Tout vert. `himap` NON joue en local (>60 min) — la CI tranche.
 - `[x]` `make test-web` : suite complete.
 - `[x]` thought_log + plan a jour.
-- `[!]` Push `feat/v75` + CI de branche verte AU NIVEAU JOB — a faire, l'accord de commit
-  appartient a l'utilisateur (regle du depot).
+- `[x]` Push `feat/v75` (3 commits, `e0109af19` -> `d7daa86aa`) + **CI de branche VERTE au
+  niveau JOB** : 8 jobs verts sur le workflow CI (E2E Playwright saute, comme sur la
+  reference `758abcf17`), plus « ADR 0021 Gate », « Secrets (gitleaks) » et « Deploy
+  Pre-Check » verts. Le job « Go Coverage + Baseline (./... complet) » a donc joue `himap`
+  en 23 min 39 s — la partie que le local ne peut pas tenir.
 - `[!]` Gate visuel utilisateur sur `000d5950` — le rendu change (fond de carte + kill
   feed), donc le verdict appartient a l'utilisateur, et les temoins sont NOMMES PAR LUI.
   PIEGE D'ENVIRONNEMENT a lui signaler : le worktree `LevelUp-wt-replay2d` n'a PAS les
