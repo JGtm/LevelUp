@@ -102,6 +102,19 @@ type MatchViewHeader struct {
 	// front ne pose le lien « Rejeu 2D » que quand ce booléen est vrai, sans quoi
 	// il mènerait à un 404. Faux aussi quand le titre ne produit pas de rejeu.
 	ReplayAvailable bool `json:"replay_available"`
+	// T0Ms : durée du countdown pré-match, en millisecondes (real_start_time −
+	// start_time_utc, cf. domain.MatchTimeline). 0 quand elle est inconnue.
+	//
+	// POURQUOI CE CHAMP EST PUBLIÉ. Les events servis par cette page sont recalés sur
+	// le début du GAMEPLAY (correctMatchViewEventsT0) tandis que le film — donc le rejeu
+	// 2D — part du début du MATCH, countdown compris. Sans cet offset, un consommateur
+	// qui pose les deux sur la même timeline décale les kills de ~18 à 28 s. Mesuré sur
+	// 000d5950 : l'écart médian entre fins de vie du rejeu et morts du registre vaut
+	// -0,6 s à offset nul, contre 3,1 s en retranchant T0 une seconde fois.
+	//
+	// C'est un OFFSET, pas une durée d'affichage : rien ne l'affiche, il sert à remettre
+	// deux horloges l'une sur l'autre (`msFilm = event_time_ms + t0_ms`).
+	T0Ms int64 `json:"t0_ms,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.

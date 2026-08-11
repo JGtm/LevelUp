@@ -109,7 +109,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// Rejeu 2D : MÊME service que l'endpoint /replay (une seule résolution de
 		// chemin dans le dépôt). Seule IsAvailable est appelée par la Match View,
 		// pour publier `replay_available` sans lire l'artefact.
-		WithReplay(service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot))
+		WithReplay(r.replayServiceFor(pdb))
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}
@@ -124,7 +124,18 @@ func (r *ServiceRegistry) Replay(ctx context.Context, slug string) (port.ReplayS
 	if err != nil {
 		return nil, err
 	}
-	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot), nil
+	return r.replayServiceFor(pdb), nil
+}
+
+// replayServiceFor construit le service de rejeu d'un joueur — UN SEUL endroit, partagé par
+// l'endpoint /replay et la Match View (qui n'en appelle qu'IsAvailable). Deux constructions
+// divergentes, ce serait une Match View qui annonce un rejeu que l'endpoint ne sert pas.
+//
+// La résolution de carte (fond de carte) lit le registre partagé et les traductions d'assets ;
+// elle est passée au service, jamais reconstruite ailleurs.
+func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayService {
+	maps := duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata)
+	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot, maps)
 }
 
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique

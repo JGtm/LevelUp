@@ -20,11 +20,19 @@ import (
 type replayService struct {
 	titleSlug string
 	repoRoot  string
+	// maps nomme la carte d'un match (fond de carte). Nil = pas de fond servi, jamais
+	// d'erreur : le rejeu reste lisible sur son sol structurel.
+	maps port.ReplayMapNameRepo
 }
 
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
-func NewReplayService(titleSlug, repoRoot string) port.ReplayService {
-	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot}
+//
+// `maps` est la SEULE dépendance base du service — elle nomme la carte du match, ce que
+// l'artefact ne sait pas faire. Nil est un cas servi : pas de fond de carte, le rejeu garde
+// son sol structurel. Un paramètre plutôt qu'un `With*` : un service à deux formes de
+// construction finit toujours par n'en avoir qu'une de testée.
+func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo) port.ReplayService {
+	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot, maps: maps}
 }
 
 // IsAvailable dit si l'artefact existe, par un os.Stat — JAMAIS par une lecture : la

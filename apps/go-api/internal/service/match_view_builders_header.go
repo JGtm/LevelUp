@@ -56,6 +56,11 @@ func buildMatchHeader(
 	applyMatchHeaderMetaLabels(&h, meta, ctxkeys.Locale(ctx))
 	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
 	h.PlayableDurationSeconds = headerGameplayDurationSeconds(meta)
+	// L'offset de countdown voyage tel quel : les events de cette page sont recalés sur le
+	// gameplay, le film ne l'est pas. Cf. MatchViewHeader.T0Ms pour la mesure.
+	if meta.T0Ms != nil && *meta.T0Ms > 0 {
+		h.T0Ms = *meta.T0Ms
+	}
 	h.IsRanked = meta.IsRanked
 	// Lien vers la page publique du match (Waypoint pour Infinite). Via l'adapter
 	// du titre (F3) : un titre sans page publique (H5) → "" → pas de lien mort.
