@@ -332,7 +332,7 @@ func TestCouvertureParClasse(t *testing.T) {
 		damagetag.ClassArme:     {114, 105},
 		damagetag.ClassMelee:    {14, 14},
 		damagetag.ClassGrenade:  {15, 15},
-		damagetag.ClassVehicule: {89, 36},
+		damagetag.ClassVehicule: {89, 46},
 	}
 	got := map[damagetag.Class][2]int{}
 	for _, l := range damagetag.Labels() {

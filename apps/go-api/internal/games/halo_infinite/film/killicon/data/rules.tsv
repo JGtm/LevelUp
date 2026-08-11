@@ -47,7 +47,7 @@
 # donc aucune icone. Une icone absente est un repli ; une icone fausse est un mensonge.
 # Les 5 noms alternatifs ecartes pour cette raison sont listes en fin de fichier.
 #
-# date=2026-08-11 regles=49
+# date=2026-08-11 regles=50
 genre	cle	sprite	weapon_key	justification
 NOM	BR75	killfeed-00	hinf_br75	NOMMAGE_GATE index 00 ; nom interne battle_rifle concordant
 NOM	VK78 Commando	killfeed-01	hinf_vk78_commando	NOMMAGE_GATE index 01 ; nom interne commando_rifle concordant
@@ -97,6 +97,7 @@ BANQUE	veh_un_falconlmgturret	killfeed-86		vignette 86 nommee falcon_chaingun : 
 BANQUE	veh_un_falcongrenadelauncher	killfeed-87		vignette 87 nommee falcon_grenade_launcher, concordance textuelle exacte
 BANQUE	tur_un_machinegun	killfeed-05		vignette 05 nommee turret_chaingun : meme tourelle UNSC
 BANQUE	tur_cv_plasmacannon	killfeed-21		vignette 21 nommee turret_plasma
+BANQUE	tur_cv_shadeturret	killfeed-39		vignette 39, nommee << Banished Shade Turret >> par la passe humaine ; toutes les racines `cv` d Infinite sont des engins Banished (ghost, banshee, wraith, phantom), la Shade `cv` est donc la version Banished — tranche par l utilisateur le 2026-08-11
 CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tout l arsenal (12 a 65 weap selon la ligne), aucune arme particuliere ne peut etre nommee — la vignette 65 est le pictogramme generique de melee du jeu
 #
 # NOMS ALTERNATIFS ECARTES — branches designant des vignettes DIFFERENTES. Aucune regle,
@@ -110,9 +111,9 @@ CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tou
 #
 # RACINES DE BANQUE PRESENTES MAIS SANS REGLE, et pourquoi — le detail compte, c est ici
 # que se joue l ecart entre << pas d icone >> et << la mauvaise icone >> :
-#   tur_cv_shadeturret    DEUX vignettes candidates et aucun moyen de trancher : la passe
-#                         humaine nomme l index 39 << Banished Shade Turret >> et l index 40
-#                         << Shade turret >>. Choisir serait tirer a pile ou face.
+#   (`tur_cv_shadeturret` A ETE TRANCHE le 2026-08-11 et porte desormais une regle : la
+#    passe humaine nomme l index 39 << Banished Shade Turret >>, et toutes les racines `cv`
+#    d Infinite designent des engins Banished. Ce fichier avait tort de le lister ici.)
 #   tur_bt_gatlingmortar  CONFLIT DE SOURCES : le nom interne de la vignette 14 est
 #                         `gatling_mortar`, mais la passe HUMAINE y a lu << Canon a mitraille
 #                         - Scrap cannon >>. Quand l humain contredit le nom interne, c est
