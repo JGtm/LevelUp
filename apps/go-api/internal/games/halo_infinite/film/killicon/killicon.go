@@ -48,6 +48,13 @@ const (
 	GenreNom Genre = "NOM"
 	// GenreGGGL : la cle est l entree de la liste des grenades du jeu (`gggl entree N/4`).
 	GenreGGGL Genre = "GGGL"
+	// GenreBanque : la cle est la racine de banque sonore citee par le champ detail
+	// (`sb_010_veh_cv_ghost` -> `veh_cv_ghost`). C est ainsi que le CHASSIS d un vehicule
+	// se nomme : la classe VEHICULE ne porte pas de nom propre, mais 55 de ses 89 lignes
+	// citent UNE racine, et une seule. Ne s applique JAMAIS quand la ligne en cite
+	// plusieurs — un effet partage par le Chopper, la Banshee et le Wasp ne designe aucun
+	// des trois.
+	GenreBanque Genre = "BANQUE"
 	// GenreClasse : la cle est la classe damagetag. Repli le plus large.
 	GenreClasse Genre = "CLASSE"
 )
@@ -91,6 +98,31 @@ var (
 // La forme AMBIGUE (<< entrees `gggl` atteintes : 0+1 sur 4 >>) ne matche PAS, et c est
 // voulu : plusieurs entrees atteintes = aucune grenade designable.
 var ggglRe = regexp.MustCompile(`gggl entree (\d+)/`)
+
+// banqueRe extrait les racines de banque sonore citees par le champ `detail`
+// (`sb_010_veh_cv_ghost` -> `veh_cv_ghost`). Le prefixe `sb_NNN_` est un numero de
+// paquet, pas une information : deux paquets peuvent porter la meme racine.
+var banqueRe = regexp.MustCompile(`sb_\d+_([a-z]+_[a-z]+_[a-z0-9]+)`)
+
+// uniqueBanque rend la racine de banque d une ligne, et SEULEMENT si elle est unique.
+//
+// C est toute la surete de ce genre de regle. Une ligne comme
+// « vehi 3d4a8a5a, veh_bt_chopper / veh_cv_banshee / veh_cv_ghost / veh_un_wasp » decrit un
+// effet PARTAGE par quatre chassis : lui donner l icone de l un des quatre serait faux trois
+// fois sur quatre. Meme regle que pour les noms alternatifs << A / B >>.
+func uniqueBanque(detail string) (string, bool) {
+	seen := ""
+	for _, m := range banqueRe.FindAllStringSubmatch(detail, -1) {
+		if seen == "" {
+			seen = m[1]
+			continue
+		}
+		if m[1] != seen {
+			return "", false
+		}
+	}
+	return seen, seen != ""
+}
 
 func init() {
 	var err error
@@ -138,19 +170,12 @@ func Source() Provenance { return provided }
 // publiable (statut AMBIGU, ou INCONNU sans nom) n obtient jamais de vignette — le
 // meme critere que celui qui interdit de publier son libelle.
 func resolve(rs []Rule, labels []damagetag.Label) map[uint32]Icon {
-	byName := map[string]Rule{}
-	byGGGL := map[int]Rule{}
-	byClass := map[string]Rule{}
+	idx := map[Genre]map[string]Rule{
+		GenreNom: {}, GenreGGGL: {}, GenreBanque: {}, GenreClasse: {},
+	}
 	for _, r := range rs {
-		switch r.Genre {
-		case GenreNom:
-			byName[r.Key] = r
-		case GenreGGGL:
-			if n, err := strconv.Atoi(r.Key); err == nil {
-				byGGGL[n] = r
-			}
-		case GenreClasse:
-			byClass[r.Key] = r
+		if m, ok := idx[r.Genre]; ok {
+			m[r.Key] = r
 		}
 	}
 	out := make(map[uint32]Icon, len(labels))
@@ -158,33 +183,33 @@ func resolve(rs []Rule, labels []damagetag.Label) map[uint32]Icon {
 		if !l.Publishable() {
 			continue
 		}
-		if r, ok := matchRule(l, byName, byGGGL, byClass); ok {
+		if r, ok := matchRule(l, idx); ok {
 			out[l.Tag] = Icon{Sprite: r.Sprite, WeaponKey: r.WeaponKey, Genre: r.Genre}
 		}
 	}
 	return out
 }
 
-// matchRule applique les trois genres dans l ordre de priorite.
-func matchRule(
-	l damagetag.Label,
-	byName map[string]Rule,
-	byGGGL map[int]Rule,
-	byClass map[string]Rule,
-) (Rule, bool) {
+// matchRule applique les quatre genres dans l ordre de priorite : le nom propre d abord
+// (le plus specifique), puis les deux quantites qui designent un objet precis sans le
+// nommer, puis la classe (le plus large).
+func matchRule(l damagetag.Label, idx map[Genre]map[string]Rule) (Rule, bool) {
 	if l.Name != "" {
-		if r, ok := byName[l.Name]; ok {
+		if r, ok := idx[GenreNom][l.Name]; ok {
 			return r, true
 		}
 	}
 	if m := ggglRe.FindStringSubmatch(l.Detail); m != nil {
-		if n, err := strconv.Atoi(m[1]); err == nil {
-			if r, ok := byGGGL[n]; ok {
-				return r, true
-			}
+		if r, ok := idx[GenreGGGL][m[1]]; ok {
+			return r, true
 		}
 	}
-	if r, ok := byClass[string(l.Class)]; ok {
+	if racine, ok := uniqueBanque(l.Detail); ok {
+		if r, ok := idx[GenreBanque][racine]; ok {
+			return r, true
+		}
+	}
+	if r, ok := idx[GenreClasse][string(l.Class)]; ok {
 		return r, true
 	}
 	return Rule{}, false
@@ -250,7 +275,7 @@ func parseRules(raw string) ([]Rule, string, int, error) {
 // sans vignette ne dit rien, une regle sans justification n est pas auditable.
 func validate(r Rule, line int) error {
 	switch r.Genre {
-	case GenreNom, GenreGGGL, GenreClasse:
+	case GenreNom, GenreGGGL, GenreBanque, GenreClasse:
 	default:
 		return fmt.Errorf("ligne %d: genre %q inconnu", line, r.Genre)
 	}

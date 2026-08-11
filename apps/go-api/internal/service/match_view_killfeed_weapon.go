@@ -13,15 +13,17 @@
 // déjà écarté en amont les instants où deux morts simultanées du même tueur ne
 // s'accordent pas sur l'arme.
 //
-// LES TROUS SONT UN RÉSULTAT, PAS UN BUG — et ils sont majoritaires. Mesure du
-// 2026-08-11 sur les 152 009 kills : 34,3 % reçoivent une arme. Les 65,7 % restants se
-// répartissent en trois causes, toutes légitimes :
+// LES TROUS SONT UN RÉSULTAT, PAS UN BUG — et ils viennent presque tous de la DONNÉE, pas
+// du pont. Mesure du 2026-08-11 sur les 152 009 kills du feed :
+//   - 34,3 % ont une source de dégât connue et non contradictoire. De celles-là, le pont
+//     en habille **98,0 %** : le résidu est le seul cas où la source désigne plusieurs
+//     objets possibles (nom alternatif contradictoire, effet partagé par plusieurs
+//     châssis, bidon dont la banque ne dit que le type d'énergie, chute confondue avec
+//     l'environnement). Soit **33,7 % du feed** avec une icône.
 //   - 47,1 % : le match a une passe de film, mais elle n'est pas publiable ligne par
 //     ligne (BTB, marge de bijection nulle) ou n'a pas mesuré la source. Publier l'arme
 //     y serait juste en agrégat et faux sur la ligne affichée.
 //   - 18,5 % : le match n'a aucune ligne de film (jamais passé au décodeur).
-//   - le reste : source identifiée mais non traduisible en image sans ambiguïté (véhicule
-//     sans châssis nommé, bidon, chute, nom alternatif contradictoire) — cf. `killicon`.
 //
 // Dans les trois cas le feed affiche le kill SANS icône. Une icône absente est un repli ;
 // une icône fausse est un mensonge, et un mensonge sur l'arme d'un kill est indétectable

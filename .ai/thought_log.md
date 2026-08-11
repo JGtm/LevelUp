@@ -1,3 +1,51 @@
+## [2026-08-11] v7.5 — correction du lot arme du kill : les vehicules SONT nommes, par leur banque sonore
+
+**Statut** : Complete. Correction d'une affirmation fausse du lot precedent, signalee par l'utilisateur.
+
+**Ce qui etait faux** : le lot avait ecarte les 89 lignes de classe VEHICULE au motif que
+« labels.tsv ne nomme pas le chassis ». Litteralement vrai — la colonne `nom` est vide sur
+ces lignes — mais la conclusion sautait une etape. **78 lignes sur 89 citent la racine de
+banque sonore du chassis dans leur champ `detail`** : `sb_010_veh_cv_ghost`,
+`sb_010_tur_un_machinegun`, `sb_010_veh_cv_wraith`... C'est EXACTEMENT le mecanisme que le
+meme lot exploitait deja pour les grenades (`gggl entree N/4` + racine de banque). Il a ete
+applique a une classe et pas a l'autre, sans que rien ne le justifie.
+
+**Correctif** : quatrieme genre de regle, `BANQUE`, 13 regles. Applique UNIQUEMENT quand la
+ligne cite UNE racine et une seule — un tag qui cite le Chopper, la Banshee, le Ghost et le
+Wasp decrit un effet PARTAGE et ne designe aucun des quatre. Meme regle de surete que les
+noms alternatifs, meme garde-rail : `TestUnEffetPartageParPlusieursChassisNObtientAucuneIcone`
+verifie les deux sens (ces lignes n'ont pas d'icone, et il en existe vraiment).
+
+**Deux exclusions ciblees, gardees** :
+- `tur_cv_shadeturret` : deux vignettes candidates (index 39 « Banished Shade Turret »,
+  index 40 « Shade turret »). Choisir serait tirer a pile ou face.
+- `tur_bt_gatlingmortar` : CONFLIT DE SOURCES — le nom interne de la vignette 14 est
+  `gatling_mortar`, la passe humaine y a lu « Canon a mitraille - Scrap cannon ». Quand
+  l'humain contredit le nom interne, c'est l'humain qui fait foi ; c'est cette meme regle qui
+  a sauve le couple Cindershot / Heatwave.
+
+**Resultats observes** :
+- Vehicules : **36 lignes couvertes sur 89**, soit **472 des 574 kills de vehicule (82,2 %)**.
+  Ghost 191, Banshee 88, tourelle mitrailleuse 79, Wraith 58, Wasp 33, Chopper 7, canon a
+  plasma 5, Rockethog 5, tourelle du Falcon 5, Pelican 1.
+- Couverture des sources CONNUES : **90,7 % -> 98,0 %** (51 298 kills sur 52 346). Le residu
+  est desormais exactement l'ensemble des sources qui designent plusieurs objets possibles.
+- Couverture du fil entier : 33,7 %. Inchangee en substance — elle est plafonnee par le
+  backfill de film, pas par le pont.
+- Verifie que le meme mecanisme NE s'applique PAS aux objets explosifs : leur banque nomme le
+  TYPE D'ENERGIE (`kineticunsc`, `shock`, `plasma`, `hardlight`), pas l'objet. La reserve
+  7ter.51 de labels.tsv tient, ligne a ligne. DEGAT_GLOBAL ne cite aucune banque.
+
+**Lecon a retenir** : l'affirmation « la table ne nomme pas X » etait une lecture de la
+COLONNE `nom`, pas de la ligne. Le champ `detail` de `damagetag` porte des identifiants
+exploitables (`gggl`, `vehi`, racine de banque) que la colonne `nom` n'expose pas — le lot les
+a utilises pour les grenades et les a oublies pour les vehicules. Toute nouvelle classe a
+ecarter doit etre justifiee par ce que dit le DETAIL, pas par ce que dit le nom.
+
+**Conclusion / prochaine etape** : artefact de revue regenere (49 regles, vehicules inclus).
+Gate visuel utilisateur toujours requis — et il peut trancher un point de plus : departager
+les vignettes 39 et 40 pour la tourelle Shade se fait a l'oeil.
+
 ## [2026-08-11] v7.5 — l'icone de l'arme du kill dans le kill feed : le pont passe par le NOM, pas par le tag `weap`
 
 **Statut** : Complete (L1-L4). Gate visuel utilisateur EN ATTENTE — le rendu change a l'ecran.
