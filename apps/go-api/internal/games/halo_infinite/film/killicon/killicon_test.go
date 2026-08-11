@@ -77,6 +77,7 @@ func TestChaqueRegleTrouveSaSource(t *testing.T) {
 	noms := map[string]bool{}
 	classes := map[string]bool{}
 	gggl := map[string]bool{}
+	banques := map[string]bool{}
 	for _, l := range damagetag.Labels() {
 		if l.Name != "" {
 			noms[l.Name] = true
@@ -84,6 +85,9 @@ func TestChaqueRegleTrouveSaSource(t *testing.T) {
 		classes[string(l.Class)] = true
 		if m := ggglRe.FindStringSubmatch(l.Detail); m != nil {
 			gggl[m[1]] = true
+		}
+		for _, m := range banqueRe.FindAllStringSubmatch(l.Detail, -1) {
+			banques[m[1]] = true
 		}
 	}
 	for _, r := range Rules() {
@@ -99,6 +103,10 @@ func TestChaqueRegleTrouveSaSource(t *testing.T) {
 		case GenreGGGL:
 			if !gggl[r.Key] {
 				t.Errorf("regle GGGL %q : aucune ligne ne porte cette entree de grenade", r.Key)
+			}
+		case GenreBanque:
+			if !banques[r.Key] {
+				t.Errorf("regle BANQUE %q : aucune ligne ne cite cette racine de banque", r.Key)
 			}
 		}
 	}
@@ -246,6 +254,38 @@ func TestLesAlternativesContradictoiresNObtiennentAucuneIcone(t *testing.T) {
 	}
 }
 
+// TestUnEffetPartageParPlusieursChassisNObtientAucuneIcone : le pendant, cote vehicules, de
+// la regle des noms alternatifs. Une ligne qui cite plusieurs racines de banque decrit un
+// effet PARTAGE — par exemple le Chopper, la Banshee, le Ghost et le Wasp sur le meme tag :
+// lui donner l icone de l un des quatre serait faux trois fois sur quatre.
+//
+// Le test verifie les deux sens : ces lignes n ont pas d icone, ET il en existe vraiment
+// (sinon il ne protegerait rien).
+func TestUnEffetPartageParPlusieursChassisNObtientAucuneIcone(t *testing.T) {
+	partagees, uniques := 0, 0
+	for _, l := range damagetag.Labels() {
+		if l.Class != damagetag.ClassVehicule || !l.Publishable() {
+			continue
+		}
+		racines := map[string]bool{}
+		for _, m := range banqueRe.FindAllStringSubmatch(l.Detail, -1) {
+			racines[m[1]] = true
+		}
+		switch {
+		case len(racines) > 1:
+			partagees++
+			if ic, ok := Lookup(l.Tag); ok {
+				t.Errorf("tag %08x cite %d chassis mais recoit %q", l.Tag, len(racines), ic.Sprite)
+			}
+		case len(racines) == 1:
+			uniques++
+		}
+	}
+	if partagees == 0 || uniques == 0 {
+		t.Fatalf("le test ne prouve rien : %d lignes partagees, %d a chassis unique", partagees, uniques)
+	}
+}
+
 // TestAucuneSourceNonPubliableNObtientDIcone : les statuts AMBIGU (effet generique qui
 // traverse plusieurs entrees de grenade) ne peuvent pas recevoir d image, exactement
 // comme ils ne peuvent pas recevoir de libelle.
@@ -289,9 +329,10 @@ func TestEnteteAnnonceLeBonNombreDeRegles(t *testing.T) {
 // consigner.
 func TestCouvertureParClasse(t *testing.T) {
 	attendu := map[damagetag.Class][2]int{ // classe -> {publiables, avec icone}
-		damagetag.ClassArme:    {114, 105},
-		damagetag.ClassMelee:   {14, 14},
-		damagetag.ClassGrenade: {15, 15},
+		damagetag.ClassArme:     {114, 105},
+		damagetag.ClassMelee:    {14, 14},
+		damagetag.ClassGrenade:  {15, 15},
+		damagetag.ClassVehicule: {89, 36},
 	}
 	got := map[damagetag.Class][2]int{}
 	for _, l := range damagetag.Labels() {
@@ -310,10 +351,10 @@ func TestCouvertureParClasse(t *testing.T) {
 			t.Errorf("classe %s : %v publiables/avec icone, attendu %v", cl, got[cl], want)
 		}
 	}
-	// Les classes sans regle ne doivent JAMAIS recevoir d icone (vehicule, bidon, chute,
-	// inconnu) : servir l image d un chassis au hasard serait le defaut que ce lot evite.
+	// Les classes sans regle ne doivent JAMAIS recevoir d icone (bidon, chute, inconnu) :
+	// servir une image au hasard serait le defaut que ce lot evite.
 	for _, cl := range []damagetag.Class{
-		damagetag.ClassVehicule, damagetag.ClassObjet, damagetag.ClassGlobal, damagetag.ClassInconnu,
+		damagetag.ClassObjet, damagetag.ClassGlobal, damagetag.ClassInconnu,
 	} {
 		if n := got[cl][1]; n != 0 {
 			t.Errorf("classe %s : %d icones alors qu aucune regle ne la couvre", cl, n)

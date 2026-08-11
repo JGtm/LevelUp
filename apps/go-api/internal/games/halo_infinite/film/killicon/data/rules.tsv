@@ -13,9 +13,13 @@
 # construit donc sur le nom — mais HORS LIGNE : la resolution effective est indexee par TAG
 # a l initialisation (cf. killicon.go), le runtime ne compare jamais de chaine.
 #
-# TROIS GENRES DE REGLE, dans cet ordre de priorite :
+# QUATRE GENRES DE REGLE, dans cet ordre de priorite :
 #   NOM     la cle est le champ `nom` de labels.tsv, VERBATIM (espaces et casse compris).
 #   GGGL    la cle est l entree de la liste des grenades (`gggl entree N/4` du champ detail).
+#   BANQUE  la cle est la racine de banque sonore citee par le champ detail
+#           (`sb_010_veh_cv_ghost` -> `veh_cv_ghost`). C est ainsi qu un CHASSIS de vehicule
+#           se nomme : la classe VEHICULE n a pas de nom propre, mais 55 de ses 89 lignes
+#           citent UNE racine et une seule. Une ligne qui en cite PLUSIEURS n obtient rien.
 #   CLASSE  la cle est la classe damagetag ; c est le repli le plus large, pour les sources
 #           dont le nom propre n existe pas et n existera pas (la melee est partagee par
 #           tout l arsenal : c est une CLASSE, pas une arme).
@@ -43,7 +47,7 @@
 # donc aucune icone. Une icone absente est un repli ; une icone fausse est un mensonge.
 # Les 5 noms alternatifs ecartes pour cette raison sont listes en fin de fichier.
 #
-# date=2026-08-11 regles=36
+# date=2026-08-11 regles=49
 genre	cle	sprite	weapon_key	justification
 NOM	BR75	killfeed-00	hinf_br75	NOMMAGE_GATE index 00 ; nom interne battle_rifle concordant
 NOM	VK78 Commando	killfeed-01	hinf_vk78_commando	NOMMAGE_GATE index 01 ; nom interne commando_rifle concordant
@@ -80,6 +84,19 @@ GGGL	0	killfeed-46	hinf_frag_grenade	entree 0 de la liste gggl = banque sb_008_e
 GGGL	1	killfeed-47	hinf_plasma_grenade	entree 1 = sb_010_grn_cv_plasmagrenade (cv = Covenant) ; vignette 47 nommee plasma_grenade dans le jeu
 GGGL	2	killfeed-48	hinf_dynamo_grenade	entree 2 = sb_010_grn_un_lightninggrenade ; vignette 48 nommee lightning_grenade dans le jeu — concordance textuelle directe
 GGGL	3	killfeed-49		entree 3 = sb_008_exp_single_med_kineticbanished (cinetique Banished) = grenade a pointes ; vignette 49 nommee spike_grenade ; absente du registre d armes
+BANQUE	veh_cv_ghost	killfeed-36		chassis nomme par sa banque sonore ; vignette 36 nommee ghost dans le jeu
+BANQUE	veh_cv_banshee	killfeed-35		vignette 35 nommee banshee
+BANQUE	veh_cv_wraith	killfeed-33		vignette 33 nommee wraith
+BANQUE	veh_cv_phantom	killfeed-34		vignette 34 nommee phantom
+BANQUE	veh_bt_chopper	killfeed-37		vignette 37 nommee chopper
+BANQUE	veh_un_wasp	killfeed-32		vignette 32 nommee wasp
+BANQUE	veh_un_scorpion	killfeed-31		vignette 31 nommee scorpion (le char ; la tourelle detachee a sa propre vignette 38, jamais citee seule par une racine)
+BANQUE	veh_un_rockethog	killfeed-27		vignette 27 nommee rockethog
+BANQUE	veh_un_pelican	killfeed-30		vignette 30 nommee pelican
+BANQUE	veh_un_falconlmgturret	killfeed-86		vignette 86 nommee falcon_chaingun : lmg = chaingun, concordance textuelle entre la banque sonore et la table de chaines du jeu, deux sources independantes
+BANQUE	veh_un_falcongrenadelauncher	killfeed-87		vignette 87 nommee falcon_grenade_launcher, concordance textuelle exacte
+BANQUE	tur_un_machinegun	killfeed-05		vignette 05 nommee turret_chaingun : meme tourelle UNSC
+BANQUE	tur_cv_plasmacannon	killfeed-21		vignette 21 nommee turret_plasma
 CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tout l arsenal (12 a 65 weap selon la ligne), aucune arme particuliere ne peut etre nommee — la vignette 65 est le pictogramme generique de melee du jeu
 #
 # NOMS ALTERNATIFS ECARTES — branches designant des vignettes DIFFERENTES. Aucune regle,
@@ -91,12 +108,29 @@ CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tou
 #   Mangler / Ravager / Shock Rifle / Skewer
 #   Needler / Plasma Pistol
 #
+# RACINES DE BANQUE PRESENTES MAIS SANS REGLE, et pourquoi — le detail compte, c est ici
+# que se joue l ecart entre << pas d icone >> et << la mauvaise icone >> :
+#   tur_cv_shadeturret    DEUX vignettes candidates et aucun moyen de trancher : la passe
+#                         humaine nomme l index 39 << Banished Shade Turret >> et l index 40
+#                         << Shade turret >>. Choisir serait tirer a pile ou face.
+#   tur_bt_gatlingmortar  CONFLIT DE SOURCES : le nom interne de la vignette 14 est
+#                         `gatling_mortar`, mais la passe HUMAINE y a lu << Canon a mitraille
+#                         - Scrap cannon >>. Quand l humain contredit le nom interne, c est
+#                         l humain qui fait foi (c est exactement ce qui a sauve le couple
+#                         Cindershot / Heatwave) — donc ici : aucune regle.
+#   tur_un_gausscannon    aucune vignette de canon gauss dans l atlas du kill feed.
+#   tur_un_rocketturret   idem, aucune vignette.
+#   wea_fr_heatwave, wea_cv_plasmapistol, prototype_weapon_lightrifle, chm_ge_weaanim,
+#   cfx_un_spartan, lvl_moments_ge    ce ne sont pas des chassis : ces racines apparaissent
+#                         sur des lignes de classe VEHICULE parce que l effet est declare a
+#                         cote d une arme ou d une animation, pas parce qu un vehicule tue.
+#
 # CLASSES SANS REGLE, et pourquoi :
-#   VEHICULE        labels.tsv ne nomme pas le chassis (detail : << ARME DE VEHICULE (vehi
-#                   XXXXXXXX, classe fixed) >>). L atlas porte 12 vehicules distincts :
-#                   en servir un au hasard serait une icone fausse.
-#   OBJET_EXPLOSIF  bidons de decor ; la flaveur de banque donne le TYPE D ENERGIE, pas
-#                   l identite de l objet (reserve 7ter.51 de labels.tsv).
+#   OBJET_EXPLOSIF  bidons de decor ; la flaveur de banque donne le TYPE D ENERGIE
+#                   (`kineticunsc`, `shock`, `plasma`, `hardlight`), pas l identite de
+#                   l objet — reserve 7ter.51 de labels.tsv, verifiee ligne a ligne.
+#                   C est ce qui distingue ce cas des vehicules : la banque y nomme le
+#                   CHASSIS, ici elle ne nomme que l energie.
 #   DEGAT_GLOBAL    chute ET environnement sont confondus sur la meme entree glda : les
 #                   deux vignettes du jeu (Fall, environment) sont distinctes, on ne peut
 #                   pas choisir.
