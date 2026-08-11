@@ -194,9 +194,9 @@ propre au `weap`, et c est ce balayage qui a fait sortir l index 29.
       chaque PNG reference existe). Defaut n°3 ferme
 - [x] Les 3 armes sans image — **STATUEES** : `Sandwich` et `Mythic Sandwich` se comblent
       (tags `880fe0bc` / `b7262ca1` -> index 35), `Vehicle` reste sans icone (cf. etape 1)
-- **Gate** : garde-rails **verts**, `make check-types` **vert**. `[!]` **revue visuelle
-  utilisateur** : artefact de revue fourni (comparaison arme par arme, avant/apres) — la
-  revue elle-meme appartient a l'utilisateur, elle ne peut pas etre jouee ici.
+- **Gate** : garde-rails **verts**, `make check-types` **vert**, **revue visuelle utilisateur
+  PASSEE le 2026-08-11** (« tout est parfait ») sur l'artefact arme par arme, thème clair et
+  sombre. GATE 1 du plan d'origine : `[x]`.
 
 ### Etape 3 — l'atlas kill feed est expose
 
@@ -234,8 +234,8 @@ la surface produit utilise l'atlas `contour`, dont le lien est lu dans le jeu. C
       dans `damagetag/labels.tsv`. Poser une icone dessus reviendrait a inventer le lien.
       Ce que la teinte demande d'abord : un chemin mesure `jpt! -> weap`, ou un `weapon_id`
       par kill dans le contrat. Consigne au `REGISTRE_REPORTS.md`.
-- **Gate** : `make check-types` **vert**, `make test-web` **vert**, grep couleurs **vide**.
-  `[!]` revue visuelle : meme statut qu'a l'etape 2 (artefact fourni).
+- **Gate** : `make check-types` **vert**, `make test-web` **vert**, grep couleurs **vide**,
+  revue visuelle **PASSEE le 2026-08-11** (cf. etape 2).
 
 ---
 
