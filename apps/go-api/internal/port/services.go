@@ -167,6 +167,27 @@ type ReplayService interface {
 	// Contrat : aucune erreur remontée — un artefact illisible, un titre sans rejeu
 	// ou un chemin absent valent tous « pas de rejeu » (dégradation gracieuse).
 	IsAvailable(ctx context.Context, matchID string) bool
+	// MapBackground retourne le CALAGE du fond de carte du match : où l'image se pose
+	// dans le repère monde, celui-là même où vivent les trajectoires. Retourne
+	// ErrMapBackgroundNotAvailable quand la carte du match n'a pas d'image figée —
+	// 21 cartes en ont, pas toutes : le rejeu retombe alors sur son sol structurel.
+	MapBackground(ctx context.Context, matchID string) (*replay.MapBackground, error)
+	// MapBackgroundImage retourne les octets PNG du fond, même sentinelle d'absence.
+	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, error)
+}
+
+// ErrMapBackgroundNotAvailable est renvoyé quand aucun fond de carte figé n'existe pour la
+// carte du match. C'est une ABSENCE NORMALE, pas une panne : toutes les cartes n'ont pas
+// d'image (production hors ligne, jeu installé requis), et le client dégrade sur le sol
+// reconstruit. Distinct de ErrReplayNotAvailable : un rejeu peut exister sans fond.
+var ErrMapBackgroundNotAvailable = errors.New("replay: aucun fond de carte pour ce match")
+
+// ReplayMapNameRepo résout la carte d'un match. Le document de rejeu ne porte aucune
+// identité de carte (il est décodé des seuls chunks du film) : c'est la base qui la nomme.
+type ReplayMapNameRepo interface {
+	// MapNamesForMatch retourne les noms de carte candidats, du plus fiable au moins
+	// fiable. Erreur = carte inconnue, l'appelant dégrade sans fond.
+	MapNamesForMatch(ctx context.Context, matchID string) ([]string, error)
 }
 
 // MatchEventsService construit la timeline canonique d'events d'un match

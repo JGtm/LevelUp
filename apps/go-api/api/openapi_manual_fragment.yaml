@@ -1810,6 +1810,38 @@ paths:
       responses:
         '200':
           description: Statut mis à jour
+  # Route chi BRUTE (charge utile binaire) : Huma décrit du JSON typé, et forcer
+  # 700 Kio de PNG dans ce moule ne produirait qu'un schéma qui ment. Elle est donc
+  # documentée ici, comme l'export CSV et les images d'assets. Le CALAGE de ce même
+  # fond, lui, est une route Huma (`/replay/background`) et se dérive tout seul.
+  /players/{player_slug}/matches/{match_id}/replay/background.png:
+    get:
+      tags:
+        - match-view
+      operationId: getMatchReplayBackgroundImage
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: match_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert l'image du fond de carte du rejeu 2D
+      description: |
+        Image vue du dessus de la carte du match (PNG), cuite hors ligne par
+        `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
+        `GET .../replay/background` : une image dont on ignore où elle se pose ne se
+        superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
+        (cf. `handlers/replay_local_gate.go`).
+      responses:
+        '200':
+          description: Image PNG du fond de carte
+        '404':
+          description: Aucun fond de carte figé pour la carte de ce match
   /players/{player_slug}/pages/squad/v2:
     get:
       responses:

@@ -71,8 +71,14 @@ func isKnownChiBrut(path string) bool {
 			return true
 		}
 	}
-	// Routes chi-brut sous /players/{player_slug} (média multipart + export CSV).
-	brutSuffixes := []string{"/media/upload", "/media/files/*", "/pages/match-history/export"}
+	// Routes chi-brut sous /players/{player_slug} : média multipart, export CSV, et
+	// l'image du fond de carte du rejeu 2D (PNG — Huma décrit du JSON typé, et forcer
+	// 700 Kio d'octets dans ce moule ne produirait qu'un schéma qui ment ; son CALAGE,
+	// lui, est bien une route Huma). Documentée dans le fragment manuel, comme les autres.
+	brutSuffixes := []string{
+		"/media/upload", "/media/files/*", "/pages/match-history/export",
+		"/replay/background.png",
+	}
 	for _, s := range brutSuffixes {
 		if strings.HasSuffix(path, s) {
 			return true

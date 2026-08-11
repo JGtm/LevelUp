@@ -1995,6 +1995,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/replay/background": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calage du fond de carte du rejeu 2D d'un match */
+        get: operations["getMatchReplayBackground"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/replay/background.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert l'image du fond de carte du rejeu 2D
+         * @description Image vue du dessus de la carte du match (PNG), cuite hors ligne par
+         *     `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
+         *     `GET .../replay/background` : une image dont on ignore où elle se pose ne se
+         *     superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
+         *     (cf. `handlers/replay_local_gate.go`).
+         */
+        get: operations["getMatchReplayBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media": {
         parameters: {
             query?: never;
@@ -6513,6 +6554,66 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        MapBackground: {
+            calibration: components["schemas"]["MapBackgroundCalibration"];
+            degradations?: string[] | null;
+            /** Format: date-time */
+            generatedAt: string;
+            image: string;
+            mapNames?: string[] | null;
+            module: string;
+            /** Format: int64 */
+            schemaVersion: number;
+            source: string;
+            stats: components["schemas"]["MapBackgroundStats"];
+            style: string;
+        };
+        MapBackgroundCalibration: {
+            convention: string;
+            /** Format: int64 */
+            heightPx: number;
+            /** Format: double */
+            metersPerPixel: number;
+            /** Format: double */
+            originX: number;
+            /** Format: double */
+            originY: number;
+            /** Format: int64 */
+            widthPx: number;
+        };
+        MapBackgroundStats: {
+            /** Format: double */
+            anchorMedianGapM?: number;
+            /** Format: int64 */
+            anchors: number;
+            /** Format: int64 */
+            anchorsInFrame: number;
+            /** Format: int64 */
+            anchorsWithGround: number;
+            boundaryApplied: boolean;
+            /** Format: int64 */
+            boundaryCellsCleared: number;
+            /** Format: int64 */
+            boundaryPlanes: number;
+            /** Format: int64 */
+            forgeDeathVolumes?: number;
+            /** Format: int64 */
+            forgeObjects?: number;
+            /** Format: int64 */
+            forgeObjectsDrawn?: number;
+            /** Format: int64 */
+            forgeObjectsWithoutModel?: number;
+            /** Format: int64 */
+            instancesDrawn: number;
+            /** Format: int64 */
+            instancesScenery: number;
+            /** Format: double */
+            playLevelZ: number;
+            /** Format: int64 */
+            waterCells: number;
+            /** Format: int64 */
+            waterVolumes: number;
+        };
         MapBreakdownRow: {
             /** Format: int64 */
             historical_match_count?: number;
@@ -7298,6 +7399,8 @@ export interface components {
             /** Format: date-time */
             start_time?: string;
             start_time_label: string;
+            /** Format: int64 */
+            t0_ms?: number;
             waypoint_url?: string;
         };
         MatchViewImpactRole: {
@@ -14677,6 +14780,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiError"];
                 };
+            };
+        };
+    };
+    getMatchReplayBackground: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackground"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchReplayBackgroundImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image PNG du fond de carte */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour la carte de ce match */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

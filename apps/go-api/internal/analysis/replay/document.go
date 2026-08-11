@@ -8,10 +8,17 @@
 // délibérément un DTO d'artefact bespoke (pas un type canonical) : c'est une charge utile
 // de rendu, versionnée par SchemaVersion pour la compat client.
 //
-// Repère : les positions sont dans le repère monde quantifié PARTAGÉ par les joueurs
-// (cohérent entre slots). L'échelle/offset absolus ne sont PAS garantis (cf handoff
-// ALL_PLAYERS_TRAJECTORIES point 1) ; c'est sans effet sur le rendu car le client
-// auto-ajuste la scène via Bounds — seule la disposition RELATIVE compte.
+// Repère : les positions sont en MÈTRES MONDE. Ce paragraphe disait le contraire
+// (« l'échelle/offset absolus ne sont PAS garantis », handoff ALL_PLAYERS_TRAJECTORIES) et
+// c'était vrai AVANT filmdec/map_bounds.go : le film ne porte que des indices de quantum, et
+// tant que les bornes du BSP manquaient, la déquantification employait celles de Cliffhanger
+// pour toutes les cartes — d'où un facteur d'échelle arbitraire. Depuis, cmd/replay-build
+// EXIGE la carte (`-map`) et refuse de produire un artefact sans ses bornes.
+//
+// CE QUE ÇA AUTORISE, et pourquoi la correction n'est pas cosmétique : le fond de carte
+// figé (`MapBackground`) est calé dans ce même repère, donc il se superpose au rejeu.
+// Contrôle sur 000d5950 : les bornes du rejeu tombent dans le cadre de `ridgeline.png`
+// (cf. TestMapBackground_DonneesReelles). Le client garde son auto-cadrage via Bounds.
 package replay
 
 // SchemaVersion est incrémenté quand la forme de ReplayDocument change d'une façon que le
