@@ -26,11 +26,12 @@ import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import { teamColorResolver } from '@/features/match-view/teamColor'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { freshnessOf, killsAt, toReplayKills } from './killFeedLogic'
+import { attachVictims, freshnessOf, killsAt, toReplayKills, type ReplayKill, type VictimPair } from './killFeedLogic'
 import { formatClock } from './replayLogic'
 
 /**
@@ -51,6 +52,8 @@ const DOT_PX = 7
 interface Props {
   /** Kills du match, tels que `collectKillEvents` les a lus (horloge gameplay). */
   kills: KillEvent[]
+  /** Paires tueur→victime datées (contrat `killer_victim`), pour NOMMER la victime. */
+  victims?: VictimPair[] | null
   /** Offset du countdown pré-match, en ms (`header.t0_ms`). 0 = inconnu. */
   t0Ms: number
   /** Instant courant du rejeu, en ms depuis le début du match. */
@@ -60,11 +63,14 @@ interface Props {
   locale: ReplayLocale
 }
 
-export function ReplayKillFeed({ kills, t0Ms, nowMs, scoreboard, xuidMeta, locale }: Props) {
+export function ReplayKillFeed({ kills, victims, t0Ms, nowMs, scoreboard, xuidMeta, locale }: Props) {
   const t = REPLAY_TEXT[locale]
   // Le recalage et le tri ne dépendent PAS de l'image courante : les refaire soixante fois
   // par seconde coûterait le budget d'animation pour un résultat identique.
-  const recales = useMemo(() => toReplayKills(kills, t0Ms), [kills, t0Ms])
+  const recales = useMemo(
+    () => toReplayKills(attachVictims(kills, victims), t0Ms),
+    [kills, victims, t0Ms],
+  )
   const colorOf = useMemo(() => teamColorResolver(scoreboard), [scoreboard])
   const visibles = killsAt(recales, nowMs, WINDOW_MS, MAX_LINES)
 
@@ -85,42 +91,125 @@ export function ReplayKillFeed({ kills, t0Ms, nowMs, scoreboard, xuidMeta, local
           <li className="text-xs text-muted-foreground">{t.killFeedEmpty}</li>
         )}
         {visibles.map((k) => (
-          <li
+          <FeedLine
             key={`${k.xuid}-${k.replayMs}`}
-            className="flex items-center gap-2 text-xs"
-            style={{ color: colorOf(k.teamID, k.ally), opacity: freshnessOf(k, nowMs, WINDOW_MS) }}
-          >
-            {k.weaponImageUrl ? (
-              <WeaponIcon
-                imageUrl={k.weaponImageUrl}
-                tinted={k.weaponTinted}
-                label={k.weaponLabel || t.killFeedUnknownWeapon}
-                width={ICON_W}
-                height={ICON_H}
-              />
-            ) : (
-              /* Repli assumé : la source du dégât n'est pas identifiable sans ambiguïté. */
-              <span
-                aria-hidden
-                className="rounded-full"
-                style={{
-                  width: DOT_PX,
-                  height: DOT_PX,
-                  backgroundColor: 'currentColor',
-                  opacity: 0.7,
-                  flex: 'none',
-                }}
-              />
-            )}
-            <span className="truncate font-medium">
-              {displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)}
-            </span>
-            <span className="ml-auto font-mono tabular-nums text-muted-foreground">
-              {formatClock(k.replayMs)}
-            </span>
-          </li>
+            kill={k}
+            nowMs={nowMs}
+            colorOf={colorOf}
+            xuidMeta={xuidMeta}
+            locale={locale}
+          />
         ))}
       </ul>
     </div>
+  )
+}
+
+/**
+ * FeedLine — UNE mort du feed, au format du POC : arme, tueur → victime, horodatage, puis
+ * l'ASSISTANCE en dessous quand elle a quelque chose à dire.
+ *
+ * LES TROIS ÉTATS DE L'ASSISTANCE, JAMAIS CONFONDUS :
+ *   - nommé   : « + Nom (part %) · tueur part % », fond BLEUTÉ sur la ligne — le fond
+ *     affirme une contribution, il ne comble pas un trou ;
+ *   - aucun   : RIEN d'affiché (76 morts sur 93 sur le film de référence : l'écrire
+ *     remplirait le fil de lignes qui ne disent rien) — l'information reste en infobulle,
+ *     DISTINCTE de « inconnu » ;
+ *   - inconnu : « ? assistant inconnu » — une lacune se signale au lieu de se combler.
+ */
+function FeedLine({
+  kill: k,
+  nowMs,
+  colorOf,
+  xuidMeta,
+  locale,
+}: {
+  kill: ReplayKill
+  nowMs: number
+  colorOf: (teamID: number | null, ally: boolean) => string
+  xuidMeta: XuidMeta
+  locale: ReplayLocale
+}) {
+  const t = REPLAY_TEXT[locale]
+  const assisted = k.assistState === 'named'
+  const lineHint =
+    k.assistState === 'none'
+      ? k.killerDamagePct != null
+        ? `${t.killFeedNoAssistHint} ${t.killFeedKillerShare(k.killerDamagePct)}.`
+        : t.killFeedNoAssistHint
+      : undefined
+  return (
+    <li
+      className="flex flex-col rounded-sm text-xs"
+      style={{
+        opacity: freshnessOf(k, nowMs, WINDOW_MS),
+        background: assisted ? `color-mix(in srgb, ${tokenCssVar('info')} 10%, transparent)` : undefined,
+      }}
+      title={lineHint}
+    >
+      <div className="flex items-center gap-2" style={{ color: colorOf(k.teamID, k.ally) }}>
+        {k.weaponImageUrl ? (
+          <WeaponIcon
+            imageUrl={k.weaponImageUrl}
+            tinted={k.weaponTinted}
+            label={k.weaponLabel || t.killFeedUnknownWeapon}
+            width={ICON_W}
+            height={ICON_H}
+          />
+        ) : (
+          /* Repli assumé : la source du dégât n'est pas identifiable sans ambiguïté. */
+          <span
+            aria-hidden
+            className="rounded-full"
+            style={{
+              width: DOT_PX,
+              height: DOT_PX,
+              backgroundColor: 'currentColor',
+              opacity: 0.7,
+              flex: 'none',
+            }}
+          />
+        )}
+        <span className="truncate font-medium">
+          {displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)}
+        </span>
+        {k.victimGamertag && (
+          <>
+            <span aria-hidden className="opacity-60">
+              →
+            </span>
+            <span className="truncate">{k.victimGamertag}</span>
+          </>
+        )}
+        <span className="ml-auto font-mono tabular-nums text-muted-foreground">
+          {formatClock(k.replayMs)}
+        </span>
+      </div>
+      {assisted && (
+        <div className="flex items-baseline gap-1 pl-7 text-3xs text-muted-foreground" title={t.killFeedAssistHint}>
+          <span className="font-semibold" style={{ color: colorOf(k.assistTeamID, k.ally) }}>
+            +
+          </span>
+          <span className="truncate">{k.assistGamertag}</span>
+          {k.assistDamagePct != null && (
+            <span className="font-mono tabular-nums">{k.assistDamagePct} %</span>
+          )}
+          {k.killerDamagePct != null && (
+            <span className="font-mono tabular-nums opacity-70">
+              · {t.killFeedKillerShare(k.killerDamagePct)}
+            </span>
+          )}
+        </div>
+      )}
+      {k.assistState === '' && (
+        <div
+          className="flex items-baseline gap-1 pl-7 text-3xs text-muted-foreground/70"
+          title={t.killFeedAssistUnknownHint}
+        >
+          <span aria-hidden>?</span>
+          <span>{t.killFeedAssistUnknown}</span>
+        </div>
+      )}
+    </li>
   )
 }

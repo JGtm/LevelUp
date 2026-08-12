@@ -67,6 +67,18 @@ export interface KillEvent {
   weaponLabel: string
   weaponImageUrl: string
   weaponTinted: boolean
+  /**
+   * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent jamais :
+   * '' (on ne sait pas), 'none' (mesuré : pas d'assistant), 'named' (assistant nommé,
+   * avec sa part de dégâts quand elle est lue). Ne JAMAIS traiter '' comme « pas
+   * d'assistant » : c'est le mensonge que cette énumération existe pour empêcher.
+   */
+  assistState: '' | 'none' | 'named'
+  assistGamertag: string
+  assistTeamID: number | null
+  /** Parts de dégâts en % entiers, NON bornées à 100. Null = non mesurée, jamais 0. */
+  killerDamagePct: number | null
+  assistDamagePct: number | null
 }
 
 /** Métadonnée minimale par xuid nécessaire au calcul (appartenance équipe). */
@@ -97,6 +109,11 @@ export function collectKillEvents(
       weaponLabel: e.weapon_label ?? '',
       weaponImageUrl: e.weapon_image_url ?? '',
       weaponTinted: e.weapon_image_tinted ?? false,
+      assistState: e.assist_state === 'named' || e.assist_state === 'none' ? e.assist_state : '',
+      assistGamertag: e.assist_gamertag ?? '',
+      assistTeamID: e.assist_team_id ?? null,
+      killerDamagePct: e.killer_damage_pct ?? null,
+      assistDamagePct: e.assist_damage_pct ?? null,
     })
   }
   return out

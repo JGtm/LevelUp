@@ -20,6 +20,46 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 export interface ReplayKill extends KillEvent {
   /** Instant du kill dans le repère du film, en millisecondes depuis le début du match. */
   replayMs: number
+  /**
+   * La VICTIME, jointe par (tueur, instant) depuis `killer_victim`. Vide quand la paire
+   * manque ou quand deux victimes distinctes partagent la même clé (double kill au même
+   * millisecond) : nommer l'une des deux au hasard accrocherait la mauvaise victime à la
+   * ligne — on n'en nomme alors aucune.
+   */
+  victimGamertag: string
+}
+
+/** La forme minimale d'une paire tueur→victime datée (contrat `killer_victim`). */
+export interface VictimPair {
+  killer_xuid: string
+  victim_gamertag: string
+  time_ms?: number | null
+}
+
+/**
+ * attachVictims joint la victime de chaque kill par (tueur, instant) — la seule clé que le
+ * feed et les paires partagent, la même que celle de l'arme côté back.
+ *
+ * DEUX VICTIMES DISTINCTES SUR LA MÊME CLÉ (double kill au même millisecond) : aucune n'est
+ * nommée sur ces lignes. C'est la règle d'unanimité du back, tenue ici pour la même raison —
+ * une victime fausse est indétectable à l'œil de qui la lit.
+ */
+export function attachVictims(
+  kills: KillEvent[],
+  pairs: VictimPair[] | null | undefined,
+): (KillEvent & { victimGamertag: string })[] {
+  const byKey = new Map<string, string>()
+  for (const p of pairs ?? []) {
+    if (!p.killer_xuid || p.time_ms == null || !p.victim_gamertag) continue
+    const key = `${p.killer_xuid}|${p.time_ms}`
+    const seen = byKey.get(key)
+    if (seen === undefined) {
+      byKey.set(key, p.victim_gamertag)
+    } else if (seen !== p.victim_gamertag) {
+      byKey.set(key, '') // désaccord : personne n'est nommé
+    }
+  }
+  return kills.map((k) => ({ ...k, victimGamertag: byKey.get(`${k.xuid}|${k.tMs}`) ?? '' }))
 }
 
 /**
@@ -28,10 +68,13 @@ export interface ReplayKill extends KillEvent {
  * `t0Ms` vaut 0 quand le countdown est inconnu : la correction T0 n'a alors pas eu lieu non
  * plus côté events, et ne rien ajouter est exactement juste.
  */
-export function toReplayKills(kills: KillEvent[], t0Ms: number): ReplayKill[] {
+export function toReplayKills(
+  kills: (KillEvent & { victimGamertag?: string })[],
+  t0Ms: number,
+): ReplayKill[] {
   const offset = Number.isFinite(t0Ms) && t0Ms > 0 ? t0Ms : 0
   return kills
-    .map((k) => ({ ...k, replayMs: k.tMs + offset }))
+    .map((k) => ({ ...k, victimGamertag: k.victimGamertag ?? '', replayMs: k.tMs + offset }))
     .sort((a, b) => a.replayMs - b.replayMs)
 }
 
