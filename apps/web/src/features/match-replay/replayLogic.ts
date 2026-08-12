@@ -207,6 +207,18 @@ export function formatClock(ms: number): string {
   return `${Math.floor(total / 60)}:${sec < 10 ? '0' : ''}${sec}`
 }
 
+/** formatSeconds rend un délai court en secondes avec une décimale (virgule décimale FR/EN). */
+export function formatSeconds(ms: number): string {
+  return `${(Math.max(0, ms) / 1000).toFixed(1)} s`
+}
+
+/**
+ * READING_FADE — une lecture au plancher d'âge garde la moitié de son opacité : elle
+ * s'estompe, elle ne disparaît pas. C'est le `fade` passé à `freshness` par toutes les
+ * surfaces des fiches (vitals, armes, inventaire), pour qu'« ancien » se lise pareil partout.
+ */
+export const READING_FADE = 0.5
+
 /**
  * trackWindow borne la vie d'une track sur l'axe de temps. Les champs sont omitempty
  * côté artefact : startFrame absent = 0, endFrame absent = t du dernier point.

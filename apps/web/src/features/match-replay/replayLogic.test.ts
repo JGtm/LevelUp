@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayDocument } from '@/lib/api/types'
-
 import {
   advanceFrame,
   altitudeAt,
@@ -23,32 +21,14 @@ import {
   trailAt,
   worldToCanvas,
 } from './replayLogic'
-import {
-  normalizeReplayDocument,
-  type ReplayDocumentReady,
-  type ReplayTrackReady,
-} from './replayNormalize'
+import type { ReplayTrackReady } from './replayNormalize'
+import { testReplayDoc as makeDoc } from './test/testDoc'
 
 const pts = [
   { t: 0, x: 0, y: 0 },
   { t: 10, x: 10, y: 20 },
   { t: 20, x: 10, y: 20 },
 ]
-
-// Le document de test entre par la MÊME porte que celui du serveur : on décrit un document
-// de transport (champs facultatifs omis) et la frontière le complète. Un test qui bâtirait
-// directement la forme normalisée testerait un document que le serveur n'envoie jamais.
-function makeDoc(over: Partial<ReplayDocument> = {}): ReplayDocumentReady {
-  return normalizeReplayDocument({
-    schemaVersion: 1,
-    matchId: 'm',
-    titleSlug: 'halo_infinite',
-    frameCount: 100,
-    bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
-    tracks: [],
-    ...over,
-  })
-}
 
 describe('positionAt', () => {
   it('null avant le 1er point', () => expect(positionAt(pts, -1)).toBeNull())

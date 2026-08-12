@@ -45,8 +45,18 @@ interface ReplayText {
   teamUnknown: string
   unknownPlayer: string
   shieldUnread: string
+  healthUnread: string
+  healthLabel: string
+  shieldLabel: string
+  abilityLabel: string
   loadoutUnread: string
   loadoutAge: string
+  weaponInHand: string
+  weaponInHandHint: string
+  weaponSecondaryHint: string
+  weaponsHolstered: string
+  weaponSwap: string
+  weaponSwapHint: string
   respawnIn: string
   respawnUnknown: string
   respawnUnknownHint: string
@@ -113,8 +123,20 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     teamUnknown: 'Sans équipe',
     unknownPlayer: 'Joueur inconnu',
     shieldUnread: 'bouclier non transmis',
+    healthUnread: 'santé non transmise',
+    healthLabel: 'Santé',
+    shieldLabel: 'Bouclier',
+    abilityLabel: "Capacité d'armure équipée",
     loadoutUnread: 'armes non lues sur cette vie',
     loadoutAge: 'Armes lues il y a',
+    weaponInHand: 'en main',
+    weaponInHandHint:
+      "Arme dégainée à la dernière image-clé lue (~20 s d'écart entre deux) : un changement de main entre deux lectures est invisible.",
+    weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
+    weaponsHolstered: 'Rien en main à la dernière lecture — armes rangées',
+    weaponSwap: 'échange',
+    weaponSwapHint:
+      'Dotation changée entre les deux dernières images-clés (~20 s) — état de référence, pas un suivi continu :',
     respawnIn: 'retour dans',
     respawnUnknown: 'retour ?',
     respawnUnknownHint:
@@ -179,8 +201,20 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     teamUnknown: 'No team',
     unknownPlayer: 'Unknown player',
     shieldUnread: 'shield not transmitted',
+    healthUnread: 'health not transmitted',
+    healthLabel: 'Health',
+    shieldLabel: 'Shield',
+    abilityLabel: 'Equipped armor ability',
     loadoutUnread: 'weapons not read on this life',
     loadoutAge: 'Weapons read',
+    weaponInHand: 'in hand',
+    weaponInHandHint:
+      'Weapon drawn at the last keyframe read (~20 s between two): a hand change between two readings is invisible.',
+    weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
+    weaponsHolstered: 'Nothing drawn at the last reading — weapons holstered',
+    weaponSwap: 'swap',
+    weaponSwapHint:
+      'Loadout changed between the two last keyframes (~20 s) — a reference state, not continuous tracking:',
     respawnIn: 'back in',
     respawnUnknown: 'back ?',
     respawnUnknownHint:
