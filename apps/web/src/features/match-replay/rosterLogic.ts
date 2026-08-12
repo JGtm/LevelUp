@@ -141,6 +141,14 @@ export interface PlayerState {
   life: ReplayTrackReady | null
   /** Bouclier lu, avec l'âge de la lecture ; null = aucune mesure fraîche. */
   shield: { value: number; age: number } | null
+  /**
+   * Santé lue, même contrat que le bouclier : null = aucune mesure fraîche, JAMAIS un
+   * plein par défaut. La santé est répliquée AU CHANGEMENT et rarement transmise (médiane
+   * zéro échantillon par vie sur le film de référence) : le report AVANT est honnête —
+   * la valeur n'a pas changé — mais reporter la seule mesure en ARRIÈRE peindrait faux
+   * tout le début de vie. D'où le même maintien court que le bouclier.
+   */
+  health: { value: number; age: number } | null
   /** Nombre d'images écoulées depuis la fin de la dernière vie (mort) ; -1 s'il est en vie. */
   sinceDeath: number
   /**
@@ -164,6 +172,7 @@ export function playerStateAt(
   player: ReplayPlayer,
   frame: number,
   shieldHold: number,
+  healthHold: number,
 ): PlayerState {
   const live = player.lives.find((l) => isAliveAt(l, frame)) ?? null
   if (live) {
@@ -171,6 +180,7 @@ export function playerStateAt(
       alive: true,
       life: live,
       shield: heldReading(live.points, frame, (p) => p.sh, shieldHold),
+      health: heldReading(live.points, frame, (p) => p.hp, healthHold),
       sinceDeath: -1,
       respawnFrame: -1,
     }
@@ -188,6 +198,7 @@ export function playerStateAt(
     alive: false,
     life: null,
     shield: null,
+    health: null,
     sinceDeath: last ? frame - trackWindow(last).end : -1,
     respawnFrame: next,
   }

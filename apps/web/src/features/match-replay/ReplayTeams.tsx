@@ -18,14 +18,14 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { catalogText } from './catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { frameToMs, freshness, msToFrames } from './replayLogic'
+import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
   grenadesCarried,
   groupByTeam,
   inventoryAt,
-  loadoutAt,
   playerName,
   playerStateAt,
   selectedGrenadeRank,
@@ -36,12 +36,16 @@ import {
 /** Maintien du bouclier : même valeur que sur la carte, pour que les deux disent la même chose. */
 const SHIELD_HOLD_MS = 2_000
 /**
+ * Maintien de la santé : même valeur initiale que le bouclier (décision du plan fiches
+ * enrichies, ajustable au gate visuel). La santé est transmise encore plus rarement que le
+ * bouclier — 0,56 % des points du film de référence — donc la LACUNE est l'état ordinaire.
+ */
+const HEALTH_HOLD_MS = 2_000
+/**
  * Au-delà, une lecture d'inventaire est au plancher d'opacité. 20 s est l'écart médian entre
  * deux images-clés du film : c'est donc l'âge maximal ordinaire d'une lecture.
  */
 const READING_FULL_MS = 20_000
-/** Une lecture au plancher garde la moitié de son opacité : elle s'estompe, elle ne disparaît pas. */
-const READING_FADE = 0.5
 
 interface ReplayTeamsProps {
   doc: ReplayDocumentReady
@@ -57,6 +61,7 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
     [doc, scoreboard],
   )
   const shieldHold = useMemo(() => msToFrames(SHIELD_HOLD_MS, doc), [doc])
+  const healthHold = useMemo(() => msToFrames(HEALTH_HOLD_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
 
   if (groups.length === 0) {
@@ -88,6 +93,7 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
                 doc={doc}
                 frame={frame}
                 shieldHold={shieldHold}
+                healthHold={healthHold}
                 readingFull={readingFull}
                 locale={locale}
               />
@@ -114,13 +120,14 @@ interface PlayerCardProps {
   doc: ReplayDocumentReady
   frame: number
   shieldHold: number
+  healthHold: number
   readingFull: number
   locale: ReplayLocale
 }
 
-function PlayerCard({ player, doc, frame, shieldHold, readingFull, locale }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, shieldHold, healthHold, readingFull, locale }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
-  const state = playerStateAt(player, frame, shieldHold)
+  const state = playerStateAt(player, frame, shieldHold, healthHold)
   const name = playerName(player) ?? t.unknownPlayer
   return (
     <div
@@ -138,11 +145,15 @@ function PlayerCard({ player, doc, frame, shieldHold, readingFull, locale }: Pla
         <KdaBadge board={player.board} />
       </div>
       {state.alive ? (
-        <ShieldBar state={state} label={t.shieldUnread} />
+        <>
+          {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
+          <ShieldBar state={state} label={t.shieldUnread} name={t.shieldLabel} />
+          <HealthBar state={state} label={t.healthUnread} name={t.healthLabel} />
+        </>
       ) : (
         <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
       )}
-      <WeaponsRow
+      <ReplayWeaponsRow
         doc={doc}
         state={state}
         frame={frame}
@@ -217,7 +228,7 @@ function InventoryRow({
       {ability && (
         <span
           className={ability.known ? undefined : 'border-b border-dashed border-border'}
-          title={ability.known ? undefined : t.abilityUnknownHint}
+          title={ability.known ? t.abilityLabel : t.abilityUnknownHint}
         >
           {ability.text}
         </span>
@@ -355,18 +366,56 @@ function KdaBadge({ board }: { board?: MatchScoreboardRow }) {
  * UNE PISTE VIDE EST UNE MESURE : bouclier brisé. Une piste ABSENTE est une lacune. Les deux ne
  * doivent jamais se ressembler, d'où le libellé explicite quand rien n'a été lu.
  */
-function ShieldBar({ state, label }: { state: PlayerState; label: string }) {
+function ShieldBar({ state, label, name }: { state: PlayerState; label: string; name: string }) {
   if (!state.shield) {
     return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{label}</span>
   }
   const fresh = freshness(state.shield.age, 20, READING_FADE)
   return (
-    <div className="h-1 overflow-hidden rounded-sm bg-muted" style={{ opacity: fresh }}>
+    <div
+      className="h-1 overflow-hidden rounded-sm bg-muted"
+      style={{ opacity: fresh }}
+      title={name}
+      aria-label={name}
+    >
       <div
         className="h-full rounded-sm"
         style={{
           width: `${Math.max(0, Math.min(1, state.shield.value)) * 100}%`,
           background: tokenCssVar('info'),
+        }}
+      />
+    </div>
+  )
+}
+
+/**
+ * HealthBar — la santé, sur le MÊME patron que le bouclier : maintien court, fondu de
+ * fraîcheur, LACUNE explicite quand rien n'a été lu. JAMAIS un plein par défaut.
+ *
+ * POURQUOI CE PATRON ET PAS UNE JAUGE PERMANENTE. La santé est répliquée AU CHANGEMENT et
+ * presque jamais transmise (0,56 % des points, un tiers des vies sur le film de référence,
+ * médiane zéro échantillon par vie) : une barre permanente serait vide ou fausse la plupart
+ * du temps. Le report AVANT est honnête — valeur absolue inchangée depuis la mesure — mais
+ * reporter la seule mesure d'une vie en ARRIÈRE peindrait faux tout le début de vie.
+ */
+function HealthBar({ state, label, name }: { state: PlayerState; label: string; name: string }) {
+  if (!state.health) {
+    return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{label}</span>
+  }
+  const fresh = freshness(state.health.age, 20, READING_FADE)
+  return (
+    <div
+      className="h-1 overflow-hidden rounded-sm bg-muted"
+      style={{ opacity: fresh }}
+      title={name}
+      aria-label={name}
+    >
+      <div
+        className="h-full rounded-sm"
+        style={{
+          width: `${Math.max(0, Math.min(1, state.health.value)) * 100}%`,
+          background: tokenCssVar('success'),
         }}
       />
     </div>
@@ -408,59 +457,6 @@ function RespawnRow({
   )
 }
 
-/** formatSeconds rend un délai court en secondes avec une décimale (virgule décimale FR/EN). */
-function formatSeconds(ms: number): string {
-  return `${(Math.max(0, ms) / 1000).toFixed(1)} s`
-}
-
-/**
- * WeaponsRow — les armes portées, lues aux images-clés.
- *
- * DEUX CHOSES QUE CETTE RANGÉE NE DIT PAS, et qu'il faut se garder de laisser croire :
- *   - QUELLE arme est en main. Le loadout est l'inventaire, pas la main : le sélecteur
- *     d'emplacement n'est pas dans ce document.
- *   - la CONTINUITÉ. Une image-clé toutes les ~20 s : un ramassage entre deux est invisible.
- * D'où l'estompage avec l'âge, et l'âge exact dans l'infobulle.
- *
- * UNE ARME NON CATALOGUÉE GARDE SON IDENTIFIANT plutôt que d'emprunter un nom voisin.
- */
-function WeaponsRow({
-  doc,
-  state,
-  frame,
-  readingFull,
-  locale,
-}: {
-  doc: ReplayDocumentReady
-  state: PlayerState
-  frame: number
-  readingFull: number
-  locale: ReplayLocale
-}) {
-  const t = REPLAY_TEXT[locale]
-  if (!state.life) return null
-  const read = loadoutAt(doc, state.life.slot, frame)
-  if (!read) {
-    return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{t.loadoutUnread}</span>
-  }
-  const ageMs = frameToMs(read.age, doc)
-  const hint = `${t.loadoutAge} ${formatSeconds(ageMs)}`
-  return (
-    <div
-      className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
-      style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
-      title={hint}
-    >
-      {read.weapons.map((id) => {
-        // Le tag brut reste À CÔTÉ du libellé, jamais à sa place : une arme hors
-        // catalogue garde son hexadécimal, souligné en pointillés pour le dire.
-        const name = catalogText(doc.weaponLabels?.[id], locale)
-        return (
-          <span key={id} className={name ? '' : 'border-b border-dashed border-border'}>
-            {name ?? id}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
+// La rangée d'armes (arme en main, secondaire, indicateur de swap) vit dans
+// ReplayWeaponsRow.tsx — extraite avec sa logique d'infobulles quand ce fichier a franchi
+// le seuil de taille du dépôt.

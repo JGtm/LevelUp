@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import {
-  normalizeReplayDocument,
-  type ReplayDocumentReady,
-  type ReplayInventoryReady,
-  type ReplayTrackReady,
-} from './replayNormalize'
+import type { ReplayInventoryReady, ReplayTrackReady } from './replayNormalize'
+import { testReplayDoc as doc } from './test/testDoc'
 import {
   buildPlayers,
   grenadesCarried,
@@ -62,20 +58,6 @@ function row(xuid: string, gamertag: string, side: string | null): MatchScoreboa
     melee_kills: null,
     outcome_label: 'Victoire',
   }
-}
-
-// Comme en production, le document de test passe par la frontière : ce qu'on décrit ici est
-// le document de transport, ce que les fonctions reçoivent est sa forme normalisée.
-function doc(over: Partial<ReplayDocument> = {}): ReplayDocumentReady {
-  return normalizeReplayDocument({
-    schemaVersion: 1,
-    matchId: 'm',
-    titleSlug: 'halo_infinite',
-    frameCount: 200,
-    bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
-    tracks: [],
-    ...over,
-  })
 }
 
 /** Un inventaire tel que la frontière le livre : ce qui n'a pas été lu y est un tableau vide. */
@@ -171,7 +153,7 @@ describe('playerStateAt', () => {
   const [a] = buildPlayers(d, [])
 
   it('vivant : rend la vie en cours et le bouclier lu', () => {
-    const s = playerStateAt(a, 10, 100)
+    const s = playerStateAt(a, 10, 100, 100)
     expect(s.alive).toBe(true)
     expect(s.life?.slot).toBe(512)
     expect(s.shield).toEqual({ value: 1, age: 10 })
@@ -179,7 +161,7 @@ describe('playerStateAt', () => {
 
   it('mort : date la mort et LIT l’image du retour', () => {
     // Le retour est l'image de départ de la vie suivante, jamais une constante ajoutée.
-    const s = playerStateAt(a, 90, 100)
+    const s = playerStateAt(a, 90, 100, 100)
     expect(s.alive).toBe(false)
     expect(s.sinceDeath).toBe(40)
     expect(s.respawnFrame).toBe(130)
@@ -187,12 +169,51 @@ describe('playerStateAt', () => {
 
   it('sans vie suivante, le retour reste une LACUNE', () => {
     const solo = buildPlayers(doc({ tracks: [track(512, 'A', 0, 50)] }), [])[0]
-    expect(playerStateAt(solo, 90, 100).respawnFrame).toBe(-1)
+    expect(playerStateAt(solo, 90, 100, 100).respawnFrame).toBe(-1)
   })
 
   it('mort : aucun bouclier, jamais un zéro inventé', () => {
     // Zéro voudrait dire « bouclier brisé, mesuré ». Un mort n'a pas de mesure du tout.
-    expect(playerStateAt(a, 90, 100).shield).toBeNull()
+    expect(playerStateAt(a, 90, 100, 100).shield).toBeNull()
+  })
+})
+
+describe('playerStateAt — santé', () => {
+  // La santé suit le MÊME contrat que le bouclier : report EN AVANT dans la fenêtre de
+  // maintien, LACUNE au-delà — jamais un plein par défaut. Elle est encore plus rare que
+  // le bouclier (médiane zéro échantillon par vie), donc la lacune est l'état ordinaire.
+  const d = doc({
+    tracks: [
+      {
+        slot: 512,
+        team: -1,
+        xuid: 'A',
+        startFrame: 0,
+        endFrame: 100,
+        points: [
+          { t: 0, x: 0, y: 0 }, // rien de transmis au départ de la vie
+          { t: 40, x: 1, y: 1, hp: 0.3 }, // l'unique mesure de la vie
+        ],
+      },
+    ],
+  })
+  const [a] = buildPlayers(d, [])
+
+  it('reporte la mesure EN AVANT, avec son âge, tant que le maintien la couvre', () => {
+    expect(playerStateAt(a, 50, 100, 30).health).toEqual({ value: 0.3, age: 10 })
+  })
+
+  it('ne peint JAMAIS en arrière : avant la mesure, lacune', () => {
+    // La seule mesure de cette vie date de t=40 ; à t=20 elle n'existe pas encore.
+    expect(playerStateAt(a, 20, 100, 30).health).toBeNull()
+  })
+
+  it('au-delà du maintien, la lecture expire en lacune — pas un plein par défaut', () => {
+    expect(playerStateAt(a, 80, 100, 30).health).toBeNull()
+  })
+
+  it('mort : aucune santé, jamais un zéro inventé', () => {
+    expect(playerStateAt(a, 150, 100, 30).health).toBeNull()
   })
 })
 

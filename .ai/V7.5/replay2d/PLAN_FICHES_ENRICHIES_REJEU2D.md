@@ -109,38 +109,74 @@ Points d'ancrage code (verifies) :
 > et le contrat OpenAPI genere : `Point.hp/sh`, `Inventory.d/a/g/am`, `doc.grenades`). Livrable
 > independamment. Perimetre FERME ci-dessous.
 
-- [ ] **1.1 Barre de sante** — ajouter `health: {value, age} | null` a `PlayerState`
+- [x] **1.1 Barre de sante** — ajouter `health: {value, age} | null` a `PlayerState`
   (`rosterLogic.ts`), peuple par `heldReading(live.points, frame, p => p.hp, HEALTH_HOLD)` ;
   composant `HealthBar` calque sur `ShieldBar` (fondu `freshness`, LACUNE si null, token couleur
   sante). JAMAIS 100 % par defaut. `HEALTH_HOLD = 2000` ms initial.
   - Gate : `grep -n "p.hp" apps/web/src/features/match-replay/*.ts*` retourne >=1 lecteur ;
     `make check-types` ; `make test-web` (nouveau test `rosterLogic` sur report+lacune sante).
-- [ ] **1.2 Arme en main a gauche / secondaire a droite** — dans `WeaponsRow` (ou nouveau
+  - FAIT (2026-08-12) : `rosterLogic.ts` (PlayerState.health + healthHold), `HealthBar` dans
+    `ReplayTeams.tsx` (token `success`, bouclier au-dessus), 4 tests sante (report avant,
+    jamais arriere, expiration, mort). Gates verts.
+- [x] **1.2 Arme en main a gauche / secondaire a droite** — dans `WeaponsRow` (ou nouveau
   `EquippedWeaponsRow`), ordonner par `Inventory.D` : `W[D]` a gauche marquee « en main »,
   `W[1-D]` a droite ; `D=2`/absent gere selon Decision 2. Reutiliser l'icone d'arme si dispo.
   - Gate : test `killFeedLogic`/nouveau `equippedLogic` sur les 3 cas (`D=0`, `D=1`, `D=2`) ;
     `make test-web`.
-- [ ] **1.3 Capacite equipee dans la fiche** — afficher `abilityLabels[Inventory.A]` (nom
+  - FAIT (2026-08-12) : nouveau `equippedLogic.ts` (equippedWeapons, pur), `WeaponsRow`
+    reordonne + tag « en main » typographique (pas d'icone : le document replay ne porte pas
+    d'URL d'icone — `WeaponLabel = {en, fr, fx?}` — le libelle fait foi, comme prevu par le
+    plan). 7 tests (D=0/1/2, absent, desapparie, fuite de slot, null). Gates verts.
+- [x] **1.3 Capacite equipee dans la fiche** — afficher `abilityLabels[Inventory.A]` (nom
   bilingue), index hors table -> numero marque non interpretable. Reutiliser `abilityText`.
   - Gate : test rendu capacite connue + inconnue ; `make test-web`.
-- [ ] **1.4 Grenades portees** — verifier que `InventoryRow` rend deja `Inventory.G` par rang ;
+  - FAIT (2026-08-12) : le rendu existait DEJA (`InventoryRow`/`abilityText`, verifie sur
+    pieces — l'etat de l'art « pas dans la fiche » etait perime sur ce point) ; ajout du test
+    de rendu manquant (`ReplayTeams.test.tsx` : connue, inconnue, non lue) + title
+    `abilityLabel` bilingue. Gates verts.
+- [x] **1.4 Grenades portees** — verifier que `InventoryRow` rend deja `Inventory.G` par rang ;
   si non, l'ajouter (labels `grenadeLabels`). Optionnel : pastille de LANCER depuis `doc.grenades`.
   - Gate : test rendu comptes + lacune (`GrenadesRead=false`) ; `make test-web`.
-- [ ] **1.5 Swaps (diff keyframe)** — deriver cote client le changement de `Loadout.W` d'un meme
+  - FAIT (2026-08-12) : rendu deja cable (verifie sur pieces : `grenadesCarried` +
+    `InventoryRow`), tests de rendu ajoutes (comptes par rang, lacune `g` absent). Pastille de
+    lancer : NON RETENUE — les lancers sont deja un calque du canvas (`layerGrenades`) ; la
+    dupliquer dans la fiche melangerait evenement et etat porte. Gates verts.
+- [x] **1.5 Swaps (diff keyframe)** — deriver cote client le changement de `Loadout.W` d'un meme
   slot entre deux keyframes ; indicateur discret avec AGE. PAS de calque serveur.
   - Gate : test diff sur 2 loadouts same-slot ; `make test-web`.
-- [ ] **1.6 i18n FR+EN** — toutes les strings nouvelles dans `match-replay/i18n.ts` (parite par
+  - FAIT (2026-08-12) : `loadoutSwapAt` (diff MULTIENSEMBLE des deux dernieres lectures du
+    slot) + `SwapMark` discret (libelle « echange », detail +/- et age dans l'infobulle,
+    mention « etat de reference, pas un suivi continu »). 6 tests. Gates verts.
+- [x] **1.6 i18n FR+EN** — toutes les strings nouvelles dans `match-replay/i18n.ts` (parite par
   typage `Record<Locale, T>`). Libelles « en main », « secondaire », « Sante », « Capacite ».
   - Gate : `make check-types` ; lint i18n vert.
-- [ ] **1.7 Couleurs** — tokens semantiques uniquement (skill `color-tokens`), zero hex/Tailwind
+  - FAIT (2026-08-12) : 10 strings nouvelles FR+EN (healthUnread/healthLabel/shieldLabel/
+    abilityLabel/weaponInHand/-Hint/weaponSecondaryHint/weaponsHolstered/weaponSwap/-Hint),
+    parite forcee par le typage (`ReplayText`). « secondaire » = infobulle sur l'arme non
+    degainee quand une main est designee. `tsc -b` vert ; eslint 0 erreur (19 warnings
+    preexistants hors match-replay, downgrades documentes dans eslint.config.js).
+- [x] **1.7 Couleurs** — tokens semantiques uniquement (skill `color-tokens`), zero hex/Tailwind
   couleur.
   - Gate : `grep -rnE "#[0-9a-fA-F]{3,6}|bg-(red|blue|green)" apps/web/src/features/match-replay/` = vide.
-- [ ] **1.8 Degradation multi-titre** — verifier qu'un artefact sans `hp`/`d`/`a` (ou H5) rend la
+  - FAIT (2026-08-12) : sante = token `success` (distinct du bouclier `info`), marquage « en
+    main » purement typographique. Le grep du gate remonte UNE ligne : un hex CITE dans un
+    commentaire preexistant de `canvasInk.ts:10` qui documente precisement l'interdiction des
+    litteraux — aucune couleur appliquee ; le meme grep restreint aux fichiers touches par ce
+    lot est VIDE. Fichier hors perimetre non modifie (zero fix opportuniste).
+- [x] **1.8 Degradation multi-titre** — verifier qu'un artefact sans `hp`/`d`/`a` (ou H5) rend la
   fiche SANS ces lignes, sans erreur (les champs sont deja `?:` dans le contrat genere).
   - Gate : test rendu fiche avec `Point` sans `hp` et `Inventory` sans `d/a`.
+  - FAIT (2026-08-12) : 2 tests de rendu (`titleSlug` neutre + champs absents -> lacunes
+    dites, aucun marquage, zero erreur ; document reduit aux traces -> toutes lacunes dites).
+    Aucune comparaison de slug nulle part. Gates verts.
 
 **Gate de Phase 1** : `make check-types` + `make test-web` verts ; gate visuel utilisateur sur
 `000d5950` (temoins choisis par l'utilisateur) ; entree `thought_log.md`.
+
+**Etat du gate de Phase 1 (2026-08-12)** : `make check-types` VERT + `make test-web` VERT
+(409 fichiers, 3600 tests, 14 skips preexistants) ; entree `thought_log.md` FAITE ; **gate
+visuel utilisateur EN ATTENTE** (report valide : temoins choisis par l'utilisateur, rendu
+pret sur `000d5950`). Couverture mesuree sur l'artefact (voir journal ci-dessous).
 
 ---
 
@@ -191,7 +227,47 @@ etablie, temoin de recharge echoue).
 
 ## Decouvertes (a consigner ici pendant l'execution, NE PAS traiter hors perimetre)
 
-- (vide au demarrage)
+- (2026-08-12, Phase 1) **Flake local d'un guard-test** : sur deux runs `vitest run` complets
+  A CODE IDENTIQUE, un guard-test scannant `src/` (famille `srcRoot = resolve(process.cwd(),
+  'src')`, ligne ~35 — fragDetailBreakdown/dominance/divergentZeroGradient) a echoue UNE fois
+  puis passe DEUX fois. Ressemble a une contention I/O Windows (readFileSync recursif sous
+  antivirus/indexeur), pas a un defaut de code. A surveiller si la CI (Linux) le reproduit —
+  rien fait dans ce lot.
+- (2026-08-12, Phase 1) **L'etat de l'art du plan etait perime sur 1.3/1.4** : la capacite et
+  les grenades etaient DEJA rendues dans la fiche (`InventoryRow`) — seuls les tests de rendu
+  manquaient. Le tableau « publie, pas dans la fiche » date d'avant le cablage d'InventoryRow.
+- (2026-08-12, Phase 1) **`canvasInk.ts:10`** : un hex cite dans un COMMENTAIRE (qui documente
+  l'interdiction des hex) fait remonter une ligne au grep du gate 1.7. Pas une violation
+  (aucune couleur appliquee) ; a reformuler un jour si on veut un grep strictement vide —
+  hors perimetre de ce lot.
+- (2026-08-12, Phase 1) **Regle « <= 2 copies » declenchee sur les fixtures de test** : la 3e
+  copie du document-de-test allait naitre -> kit `test/testDoc.ts` + garde-rail
+  `testDoc.guard.test.ts` (interdit `normalizeReplayDocument(` dans les tests de la feature
+  hors frontiere), 2 fixtures existantes migrees. Le kit vit sous `test/` : segment whiteliste
+  par la regle eslint `@levelup/no-title-slug-literal` (fixtures), qui frappe a raison tout
+  fichier non-test portant un slug litteral.
+
+## Journal Phase 1 (2026-08-12)
+
+- Commit unique du lot (voir git) ; executeur : plan-execution au contrat, ordre 1.1 -> 1.8.
+- **Couverture mesuree sur `000d5950`** (script Node ponctuel sur l'artefact, 99 vies,
+  29 221 points, 184 lectures d'inventaire, 150 loadouts, 80 slots) :
+  - Sante : 163 points porteurs (0,56 %), 32/99 vies (32,3 %) — la LACUNE est l'etat
+    ordinaire, conforme a la decision 1 (pas de jauge permanente).
+  - Selecteur d'emplacement `D` : 150/184 lectures (81,5 %), distribution {0: 70, 1: 70,
+    2: 10} — une main designee sur 140 lectures, « armes rangees » sur 10 (1re image-cle).
+  - Capacite `A` : 132/184 (71,7 %) et 132/132 dans la table du document -> AUCUN
+    « capacite inconnue (N) » attendu sur CE match (la table 4/11 couvre tout ce qui y est lu).
+  - Grenades `G` : 120/184 (65,2 %). Lancers publies : 70.
+  - Swaps same-slot entre lectures consecutives : 14 sur 70 paires — l'indicateur « echange »
+    apparaitra ~14 fois sur le match, conforme a l'estimation du plan (12-14).
+- Gate visuel : rendu PRET sur `000d5950` (page replay, garde local inchange). Les temoins
+  restent a choisir par l'utilisateur.
+- Seuil de taille (regle repo n° 5) : les ajouts ont fait franchir 500 L a `ReplayTeams.tsx`
+  (579) -> extraction de la rangee d'armes dans `ReplayWeaponsRow.tsx` (WeaponsRow + SwapMark,
+  122 L) ; `formatSeconds` et `READING_FADE` remontes dans `replayLogic.ts` (partages sans
+  import circulaire). ReplayTeams.tsx retombe a 462 L. Gates rejoues apres extraction :
+  typecheck (cache tsbuildinfo purge), eslint, vitest complet — VERTS.
 
 ## Contraintes transverses (rappel grille plan-review)
 

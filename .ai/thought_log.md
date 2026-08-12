@@ -1,3 +1,37 @@
+## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D, Phase 1 : le cablage web est livre
+
+**Statut** : Complete (code + gates). Gate visuel utilisateur EN ATTENTE (temoins a choisir
+par l'utilisateur sur 000d5950) — seul item du gate de phase qui ne m'appartient pas.
+
+**Decision technique principale** : Phase 1 du plan `PLAN_FICHES_ENRICHIES_REJEU2D.md`
+executee au contrat plan-execution, 8 items [x], ZERO ligne Go — tout etait deja publie
+(Point.hp, Inventory.d/a/g, doc.grenades). Trois choix structurants : (1) la sante suit le
+MEME patron que le bouclier (heldReading + maintien 2 s + fondu + LACUNE dite — jamais un
+plein par defaut), token `success` distinct du bouclier `info` ; (2) l'arme EN MAIN vient du
+selecteur i42 (`Inventory.D`) et s'affiche A GAUCHE marquee « en main » (typographie, pas
+d'icone : le document ne porte pas d'URL), la mise en valeur S'ABSTIENT quand les scans
+loadout/inventaire ne se recouvrent pas ; (3) le swap est un diff MULTIENSEMBLE des deux
+dernieres lectures d'un slot, marque « echange » avec age en infobulle — un etat de
+reference ~20 s, pas un suivi. Regle <= 2 copies declenchee au passage : la 3e fixture de
+document de test allait naitre -> kit `match-replay/test/testDoc.ts` (segment `test/`
+whiteliste par la regle no-title-slug-literal) + garde-rail `testDoc.guard.test.ts`, les 2
+fixtures existantes migrees. Seuil 500 L franchi par ReplayTeams.tsx (579) -> rangee d'armes
+extraite dans `ReplayWeaponsRow.tsx` (462 + 122 L), formatSeconds/READING_FADE remontes dans
+replayLogic.ts.
+
+**Resultats observes** : `make check-types` VERT, `make test-web` VERT (409 fichiers, 3600
+tests, +22 nouveaux), eslint 0 erreur. Couverture mesuree sur l'artefact 000d5950 : sante
+0,56 % des points / 32,3 % des vies (la lacune est l'etat ordinaire, comme decide) ; D lu
+sur 150/184 avec {0:70, 1:70, 2:10} ; capacite 132/184 et 132/132 DANS la table (aucun
+« capacite inconnue » attendu sur ce match) ; grenades 120/184 ; swaps 14/70 paires (les
+12-14 estimes). Flake local releve : un guard-test scannant src/ a echoue UNE fois sur deux
+runs a code identique (contention I/O Windows presumee) — consigne au plan, rien corrige.
+
+**Conclusion / prochaine etape** : pousser sur feat/v75, CI de branche verte au niveau job,
+puis gate visuel utilisateur sur 000d5950 (rendu pret, garde replay_local_gate.go INCHANGE —
+rejeu OFF prod). Phase 2 (drops ti=42, Go borne) NE DEMARRE PAS avant ce gate et la decision
+d'inclusion utilisateur ; Phase 3 reste au registre (RE, hors v7.5).
+
 ## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D : la frontiere offline-pur, et un plan en 3 phases
 
 **Statut** : Plan ecrit (`.ai/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md`), a confier a un
