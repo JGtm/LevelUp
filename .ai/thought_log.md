@@ -63413,3 +63413,58 @@ gitleaks et Deploy Pre-Check. Le job Go Coverage + Baseline a joue le ./... comp
 Gate visuel sur `000d5950`, temoins nommes par lui. PIEGE D ENVIRONNEMENT a signaler : le
 worktree n a pas les bases (12 Kio de `shared_matches_v2.duckdb`) et le kill feed depend de la
 Match View — le serveur doit tourner sur la racine de donnees du depot principal.
+
+## [2026-08-12] Rejeu 2D — Phase 2.1 : les armes au sol se NOMMENT, elles ne se LOCALISENT pas
+
+**Statut** : **Complete** — lot de MESURE livre + REPORT acte. Decision utilisateur du 2026-08-12
+(option 1) : la Phase 2 spatiale est abandonnee pour v7.5, **2.2/2.3 ANNULEES** (pas « en attente »),
+report inscrit au registre avec sa condition de reprise.
+
+**Decision technique principale**. Le plan
+`.ai/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md` posait la Phase 2 comme un cablage :
+« l'identite ET la position des armes au sol (ti=42) sont decodables, il ne reste qu'a lever le
+filtre et a recolter ». La mesure separe les deux grandeurs et elles ne se comportent pas pareil.
+Le decodage d'identite est factorise plutot que duplique : le balayage bit a bit de familles
+d'arme vivait dans `keyframeLoadouts` avec un filtre d'archetype en dur ; il devient
+`familiesByRecord(pay, known, wantTI)` et n'a plus que deux appelants (ti=35 armes portees,
+ti=42 armes au sol). Nouveau fichier `filmdec/keyframe_ground_weapons.go` +
+`replay/ground_weapon_research_test.go` (instrument sous garde `GW_FILM`, saute en CI).
+
+**Resultats observes** (film `000d5950`, Cliffhanger, catalogue de production
+`weaponv3.KnownWeaponHigh32`) :
+- IDENTITE ACQUISE : 26 images-cles, 269 records ti=42, **196 lectures portant une famille
+  connue**, 169 vies (slot,gen), **22 armes nommees** (Gravity Hammer 22, Sentinel Beam 16,
+  SPNKr 11, S7 Sniper 11...). Fuite d'alias **0 / 172 paires consecutives** — l'attribution
+  occurrence -> record ne deborde pas sur la voisine.
+- L'etat de l'art annoncait « 397 occ. » : la regle de compte differe. Temoin de comparabilite
+  sur le meme film, cote arme PORTEE : le meme balayage rend 300 occurrences la ou l'en-tete du
+  decodeur annonce 495. Le chiffre juste avec le catalogue de production est **196**.
+- POSITION REFUTEE : temoin fantome de meme cardinalite (899 slots jamais vus en image-cle) ->
+  493 slots peuples / 10 950 echantillons, contre 661 / 44 498 pour la vraie bande. Discriminant
+  spatial (une arme posee ne bouge pas) : **3,3 % seulement** des 458 slots reels a >=3
+  echantillons tiennent dans 0,5 u, **62,4 % s'etalent au-dela de 20 u**. La majorite des
+  positions de slots reels est du bruit.
+
+**Ce que ca corrige dans nos propres notes**. `.ai/SUIVI_REPLAY_2D.md` portait le verdict
+« objets au sol — bloque, et proprement » depuis le 2026-07-28 ; le plan de Phase 2 ne l'avait pas
+reprise et affirmait le contraire. La mesure d'aujourd'hui confirme l'ancien verdict au lieu de le
+lever. Cause structurelle : au keyframe, l'offset d'i0 suit le default-state de l'archetype, non
+resolu pour ti=42 (`defaultStateDeserByTI` sans entree 42) ; sur la voie delta, le record ne porte
+aucun typeIndex et la bande de slots comblee est contaminee.
+
+**Conclusion / prochaine etape**. Un calque « armes au sol » POSE SUR LA CARTE est hors de portee
+offline-pur : 2.2 (champ `GroundWeapons` dans le document) et 2.3 (rendu canvas) sont **ANNULEES** —
+zero ligne de contrat, zero ligne web, `make generate-types` non joue faute de changement de
+contrat. **Ce qui est conserve et commite** : le decodeur d'IDENTITE
+(`filmdec/keyframe_ground_weapons.go` + factorisation `familiesByRecord`) et l'instrument de mesure
+`replay/ground_weapon_research_test.go` sous garde `GW_FILM` — sa raison d'etre est de garder la
+REFUTATION REJOUABLE, et c'est ecrit en tete des deux fichiers (les helpers de position n'ont que
+lui comme consommateur, dit noir sur blanc). **Report** : registre `.ai/V7.5/REGISTRE_REPORTS.md`,
+condition de reprise = default-state de `ti=42` resolu (entree `defaultStateDeserByTI`) OU
+evenements de cycle de vie d'entite decodes offline ; a la reprise, une version NON SPATIALE (liste
+des armes au sol sans position) reste une option produit. **Plan CORRIGE, pas seulement annote** :
+l'affirmation « position via i0 45 bits deja portee » est marquee fausse, le chiffre 397 devient 196
+(regle de compte), le perimetre final est ecrit en tete. Gates : `-run GroundWeapon` 7/7,
+`filmdec/` + `replay/` verts, gofmt propre, `golangci-lint` 0 issue, instrument saute sans
+`GW_FILM`, `make gate-push`. Garde `handlers/replay_local_gate.go` INCHANGE (rejeu toujours OFF en
+prod).

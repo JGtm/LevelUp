@@ -11,6 +11,11 @@ Enrichir les fiches joueur de la page replay (`features/match-replay/ReplayTeams
 joueur et a l'instant lu : la **sante**, l'**arme en main** (a gauche) / **secondaire** (a droite),
 la **capacite d'armure equipee**, les **grenades portees** — et un calque **armes au sol (drops)**.
 
+> **PERIMETRE FINAL (2026-08-12)** : le calque **armes au sol est HORS v7.5** — sa position s'est
+> revelee indecodable offline-pur (mesure 2.1, temoin fantome). Seule la Phase 1 est livree cote
+> produit ; la Phase 2 laisse un decodeur d'IDENTITE et son instrument de mesure, et un report au
+> registre. Le reste de ce document conserve l'enonce d'origine, corrige la ou il etait faux.
+
 **Critere de succes** : sur le match `000d5950` (Cliffhanger, seul artefact sur disque), gate
 visuel utilisateur PASSE ; chaque donnee affichee est soit une mesure du film soit une LACUNE
 explicite (jamais un zero ni une valeur par defaut) ; parite FR+EN ; zero couleur en dur ; CI de
@@ -44,7 +49,8 @@ absent aujourd'hui. Aucune comparaison de slug ; aucune panic ; aucune donnee d'
 | Munitions (i30..i42) | oui | oui (`Inventory.Am`) | keyframe ~20 s | 150/184 | **DEJA AFFICHE** |
 | Lancers de grenade (events) | oui | oui (`doc.grenades`) | evenement | 70/70 (100 %) | publie, pas dans la fiche |
 | Swap d'arme (diff keyframe) | oui | derivable | ~20 s (grossier) | 12-14/70 transitions | non calque |
-| Armes au sol / DROPS (ti=42) | identite oui, position portee | NON (filtree) | keyframe ~20 s | 397 occ. familles | **needs_wiring Go** |
+| Armes au sol — IDENTITE (ti=42) | oui | oui depuis 2.1 (`KeyframeGroundWeapon`) | keyframe ~20 s | **196 lectures / 22 armes** (000d5950) | **LIVRE (decodeur)**, non publie |
+| Armes au sol — POSITION (ti=42) | **NON (refutee, cf. 2.1)** | non | — | 3,3 % de slots stables ; temoin fantome | **INDECODABLE offline-pur** |
 | Capacite ACTIVE (i57) | consumed_only | non | delta | — | not_offline dense |
 | Grenade SELECTIONNEE / en main (i47) | consumed_only | non | delta | — | not_offline (voir Decisions) |
 | Swap fin / arme equipee dense (i43) | not offline (calib CE) | non | delta | — | **Phase 3 (RE, hors v7.5)** |
@@ -60,9 +66,18 @@ Points d'ancrage code (verifies) :
 - Scan keyframe loadout : `filmdec/keyframe_loadout.go:64` ; `replay/loadouts.go:59-97`.
 - Front fiches : `web ReplayTeams.tsx` (PlayerCard, ShieldBar, InventoryRow, WeaponsRow) ;
   helper report+fondu `web replayLogic.ts:254-270` (`heldReading`, `freshness`).
-- DROPS : identite d'arme au sol deja decodable mais FILTREE `filmdec/keyframe_loadout.go:36-39`
-  (`keyframeBipedTI=35` ecarte `ti=42`) ; position via object-position-component (i0 world-object,
-  45 bits) `filmdec/traverse.go:229-258`.
+- DROPS — IDENTITE : le filtre `keyframeBipedTI=35` de `filmdec/keyframe_loadout.go` ecartait
+  `ti=42` ; depuis 2.1 le balayage est factorise (`familiesByRecord(pay, known, wantTI)`) et les
+  armes au sol se lisent dans `filmdec/keyframe_ground_weapons.go`.
+- DROPS — POSITION : **CORRIGE le 2026-08-12, l'affirmation initiale de ce plan etait FAUSSE.**
+  Il etait ecrit « position via object-position-component (i0 world-object, 45 bits) deja porte
+  `filmdec/traverse.go:229-258` ». Le COMPOSANT est bien porte, mais cela ne donne ni OU il commence
+  dans un record de keyframe `ti=42` (le default-state de l'archetype n'est pas resolu — pas
+  d'entree 42 dans `defaultStateDeserByTI`), ni QUEL slot d'un paquet delta est une arme (un record
+  delta ne porte aucun typeIndex, et la bande de slots comblee est contaminee). La verite est celle
+  de `.ai/SUIVI_REPLAY_2D.md` (2026-07-28) : « Objets au sol — bloque, et proprement ». La mesure
+  2.1 la CONFIRME (temoin fantome + discriminant spatial). Ce plan aurait du reprendre ce verdict
+  au lieu de le contredire.
 
 ---
 
@@ -92,8 +107,9 @@ Points d'ancrage code (verifies) :
 5. **Swaps** : deriver du DIFF des loadouts d'un meme slot entre keyframes (granularite ~20 s),
    avec age affiche. PAS de swap fin intra-keyframe (Phase 3). Marquer clairement « etat de
    reference, ~20 s », jamais un suivi continu.
-6. **Drops (armes au sol)** : calque OPTIONNEL Phase 2 (Go). Recommandation : le faire APRES le
-   gate de la Phase 1, decision d'inclusion v7.5 par l'utilisateur sur le chiffre de couverture.
+6. **Drops (armes au sol)** : calque OPTIONNEL Phase 2 (Go). **TRANCHE le 2026-08-12 : HORS v7.5.**
+   La mesure 2.1 a rendu son chiffre — identite acquise (196 lectures / 22 armes), position REFUTEE
+   — et l'utilisateur a choisi le report post-v7.5 (registre). Aucun calque n'est livre.
 7. **Cadence honnete partout** : vitals = au changement ; loadout/arme-en-main/capacite/grenades
    = keyframe ~20 s avec AGE affiche et fondu. Toute valeur non lue = LACUNE, jamais un defaut.
 8. **HORS PERIMETRE v7.5, renvoye Phase 3 / registre** : suivi dense per-record (arme equipee au
@@ -180,30 +196,73 @@ pret sur `000d5950`). Couverture mesuree sur l'artefact (voir journal ci-dessous
 
 ---
 
-## Phase 2 — Calque DROPS (armes au sol) — offline-pur, cablage Go borne
+## Phase 2 — Calque DROPS (armes au sol) — MESURE LIVREE, CALQUE ABANDONNE POUR v7.5
 
-> Effort : MOYEN (Go : filmdec + replay + contrat + web). A faire APRES le gate Phase 1.
-> Decision d'inclusion v7.5 par l'utilisateur sur le chiffre de couverture mesure en 2.1.
+> **ETAT AU 2026-08-12 (decision utilisateur, OPTION 1 : REPORT POST-v7.5).** 2.1 est livree :
+> l'IDENTITE des armes au sol est decodee (196 lectures / 22 armes sur `000d5950`). La POSITION est
+> REFUTEE sur pieces — le calque cartographique n'a donc pas d'entree, et **2.2 / 2.3 sont
+> ANNULEES** (pas « en attente »). Report inscrit au registre
+> `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise. Une version NON SPATIALE (liste
+> « quelles armes gisent au sol », sans position) reste une option produit si reprise.
+>
+> Effort constate : la mesure a coute l'essentiel du lot ; le cablage suppose n'a jamais eu lieu
+> faute d'entree decodable.
 
-- [ ] **2.1 Recolter l'identite + la position des armes au sol (ti=42)** au keyframe : lever le
-  filtre `keyframeBipedTI=35` (`filmdec/keyframe_loadout.go:36-39`) pour COLLECTER aussi les
-  familles `ti=42` (397 occ. mesurees) et leur position (object-position-component i0 world-object,
-  45 bits, deja porte `traverse.go:229-258`). Nouveau scan `ScanFilmKeyframeGroundWeapons`
-  (analysis/filmdec), pur, sans capture. MESURER la couverture sur `000d5950` et la consigner.
+- [x] **2.1 Recolter l'identite des armes au sol (ti=42) et MESURER, position comprise** au
+  keyframe : lever le filtre `keyframeBipedTI=35` (`filmdec/keyframe_loadout.go`) pour COLLECTER
+  aussi les familles `ti=42` — **196 lectures mesurees** avec le catalogue de production (le « 397 »
+  de la premiere redaction de ce plan est une autre regle de compte, cf. ci-dessous) — puis
+  eprouver leur position. Nouveau scan `ScanFilmKeyframeGroundWeapons` (analysis/filmdec), pur,
+  sans capture. MESURER la couverture sur `000d5950` et la consigner.
+  L'enonce initial « et leur position (object-position-component i0 world-object, 45 bits, deja
+  porte `traverse.go:229-258`) » est **CORRIGE : cette position n'existe pas a la lecture** (voir
+  POSITION ci-dessous et les points d'ancrage code, section Etat de l'art).
   - Gate : `cd apps/go-api && go test ./internal/analysis/filmdec/ -run GroundWeapon` vert ;
     couverture consignee dans le CR.
-- [ ] **2.2 Calque document** — nouveau champ optionnel `GroundWeapons []GroundWeapon` dans
-  `ReplayDocument` (`replay/document.go`, `omitempty`, symetrique de `Loadouts`) ; `build*` +
-  `keepOfPublishedTracks` non requis (objets, pas tracks) ; cablage `replay/build.go:143` (scan) +
-  `:265` (publish). Regen contrat : `go run ./cmd/openapi-gen` + `make generate-types`.
-  - Gate : `go test ./internal/analysis/replay/` ; `make generate-types` sans diff non commite.
-- [ ] **2.3 Rendu web** — calque discret « armes au sol » sur le canvas (`ReplayCanvas`/
-  `replayMarkers.ts`), style neutre, sous les joueurs. i18n + tokens.
-  - Gate : `make test-web` ; gate visuel.
+  - FAIT (2026-08-12) : `filmdec/keyframe_ground_weapons.go` (scan `ScanFilmKeyframeGroundWeapons`,
+    pur, hors ligne) + factorisation `familiesByRecord(pay, known, wantTI)` dans
+    `keyframe_loadout.go` (le balayage bit a bit n'existe QU'UNE FOIS : ti=35 et ti=42 ne sont plus
+    que deux appelants) + 7 tests `-run GroundWeapon` VERTS + instrument de mesure
+    `replay/ground_weapon_research_test.go` (sous garde `GW_FILM`, saute en CI).
+  - **IDENTITE : ACQUISE.** `000d5950` : 26 images-cles, 269 records ti=42 (178 slots distincts),
+    **196 lectures portant une famille d'arme connue**, 196 occurrences, 169 vies (slot,gen),
+    **22 armes nommees distinctes** (Gravity Hammer 22, Sentinel Beam 16, SPNKr 11, S7 Sniper 11,
+    Stalker Rifle 11, Disruptor 10, Energy Sword 10...). **Zero fuite d'alias** : 0 paire
+    consecutive « meme nom, famille differente » sur 172 paires (4 paires legitimes du meme
+    modele). Correction de l'etat de l'art : les « 397 occ. » de l'en-tete du decodeur relevent
+    d'une autre regle de compte (occurrences brutes, alias et familles hors catalogue comprises) —
+    temoin de comparabilite sur le MEME film : cote arme PORTEE le meme balayage rend 300
+    occurrences la ou l'en-tete annonce 495. Avec le catalogue de PRODUCTION
+    (`weaponv3.KnownWeaponHigh32`), le chiffre juste est **196**.
+  - **POSITION : REFUTEE, mesuree.** [!] La position d'une arme au sol n'est PAS publiable.
+    Bande ti=42 (899 slots apres comblement) -> 661 slots peuples / 44 498 echantillons ; TEMOIN
+    FANTOME de meme cardinalite (899 slots jamais vus dans aucune image-cle) -> 493 slots peuples /
+    10 950 echantillons : la seule PRESENCE d'une position n'informe donc presque rien (55 % des
+    slots fantomes en ont). Discriminant spatial (une arme posee NE BOUGE PAS) : sur 458 slots
+    reels a >=3 echantillons, **3,3 % seulement tiennent dans 0,5 u** et **62,4 % s'etalent sur
+    plus de 20 u** (fantome : 0,5 % et 82,4 %). L'ecart de distribution existe mais la majorite des
+    « positions » de slots reels est du bruit. Ceci CONFIRME le verdict du 2026-07-28
+    (`.ai/SUIVI_REPLAY_2D.md`, « objets au sol — bloque, et proprement ») au lieu de le lever :
+    l'hypothese du plan (« position deja portee, reste a recolter ») est FAUSSE. Cause structurelle :
+    au keyframe l'offset d'i0 depend du default-state de l'archetype, non resolu pour ti=42
+    (`defaultStateDeserByTI` n'a pas d'entree 42) ; sur la voie delta le record ne porte pas de
+    typeIndex et la bande de slots comblee est contaminee.
+  - **CONSEQUENCE DE PERIMETRE** : un calque « armes au sol » POSE SUR LA CARTE est hors de portee
+    offline-pur ; 2.2/2.3 n'ont plus d'entree. **DECISION UTILISATEUR (2026-08-12) : OPTION 1,
+    report post-v7.5** — la mesure est livree, la Phase 2 spatiale est abandonnee pour v7.5.
+- [!] **2.2 Calque document — ANNULEE** (decision utilisateur 2026-08-12, report post-v7.5). Le
+  champ `GroundWeapons` dans `ReplayDocument` n'a pas de contenu publiable : sans position, un
+  calque de document ne porterait rien que le client puisse poser. Ni `document.go`, ni
+  `build.go`, ni le contrat OpenAPI, ni `generate-types` ne sont touches par ce lot.
+  Justification : POSITION refutee en 2.1. Report : registre `.ai/V7.5/REGISTRE_REPORTS.md`.
+- [!] **2.3 Rendu web — ANNULEE** (meme decision, meme cause). Zero ligne web dans ce lot.
+  Une version NON SPATIALE (liste des armes au sol a l'instant lu, sans position) reste une option
+  produit a la reprise — elle exigerait 2.2 sous une autre forme, donc un nouveau lot.
 
-**Gate de Phase 2** : tests Go + web verts ; `make gate-push` (filet local) ; gate visuel ; entree
-`thought_log.md`. Si l'utilisateur juge la couverture trop faible, Phase 2 est renvoyee post-v7.5
-(consigner au registre).
+**Gate de Phase 2 (cloture 2026-08-12)** : la phase se clot sur la MESURE, pas sur un rendu.
+Tests Go verts (`-run GroundWeapon` 7/7, `filmdec/` et `replay/` complets), `golangci-lint` 0 issue,
+`make gate-push`, entree `thought_log.md`, report au registre. **Aucun gate visuel** : rien de
+visible n'a ete produit (2.3 annulee). Garde `handlers/replay_local_gate.go` INCHANGE.
 
 ---
 
@@ -246,6 +305,20 @@ etablie, temoin de recharge echoue).
   hors frontiere), 2 fixtures existantes migrees. Le kit vit sous `test/` : segment whiteliste
   par la regle eslint `@levelup/no-title-slug-literal` (fixtures), qui frappe a raison tout
   fichier non-test portant un slug litteral.
+
+- (2026-08-12, Phase 2.1) **L'etat de l'art du plan etait FAUX sur la position des armes au sol** :
+  le tableau la disait « portee » (« position via object-position-component i0 world-object, 45 bits,
+  deja porte `traverse.go:229-258` »). Le composant est effectivement porte, mais rien ne dit OU il
+  commence dans un record ti=42 (default-state d'archetype non resolu) ni quel slot delta est
+  reellement une arme (record delta sans typeIndex). Le doc `.ai/SUIVI_REPLAY_2D.md` portait deja le
+  verdict depuis le 2026-07-28 et le plan ne l'avait pas repris. Lecon : greper les verdicts
+  anterieurs sur la MEME grandeur avant d'ecrire « il ne reste qu'a recolter ».
+- (2026-08-12, Phase 2.1) **`filmdec.GroundWeaponPositions` / `WorldObjectPositionsForBand` n'ont
+  qu'un consommateur : l'instrument de mesure** — arbitrage RENDU a la cloture : on les GARDE, parce
+  que la refutation doit rester rejouable (`GW_FILM=<film> go test ./internal/analysis/replay/ -run
+  GroundWeapon`) ; sans elles, la seule trace du NO-GO serait une phrase de doc. Leur unique
+  consommateur est ecrit en tete de chaque fonction, comme l'exige la regle « zero code mort » : ce
+  n'est pas du code « au cas ou », c'est l'instrument d'une mesure datee.
 
 ## Journal Phase 1 (2026-08-12)
 
