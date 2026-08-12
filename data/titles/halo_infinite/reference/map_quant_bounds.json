@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "world bounds x/y/z du tag sbsp principal, lus dans D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/ds/levels/multi",
+  "source": "world bounds x/y/z du tag sbsp principal, lus dans C:\\Program Files (x86)\\Steam\\steamapps\\common\\Halo Infinite\\deploy\\ds\\levels\\multi",
   "maps": {
     "aquarius": {
       "module": "ctf_aquarius",
@@ -128,6 +128,42 @@
         14
       ]
     },
+    "corpo": {
+      "module": "fo11_blank",
+      "min": [
+        -1929.5576,
+        -1838.3002,
+        -946.215
+      ],
+      "max": [
+        1937.2299,
+        1823.7852,
+        1717.2988
+      ],
+      "axisWidths": [
+        18,
+        18,
+        18
+      ]
+    },
+    "deadlock": {
+      "module": "btb_drydock",
+      "min": [
+        -250,
+        -250,
+        -250
+      ],
+      "max": [
+        250,
+        250,
+        250
+      ],
+      "axisWidths": [
+        15,
+        15,
+        15
+      ]
+    },
     "forbidden": {
       "module": "ctf_forbidden",
       "min": [
@@ -233,6 +269,78 @@
       "axisWidths": [
         17,
         17,
+        15
+      ]
+    },
+    "oasis": {
+      "module": "btb_exiled",
+      "min": [
+        -191.43637,
+        -151.62828,
+        -78.3619
+      ],
+      "max": [
+        146.81325,
+        140.49544,
+        112.80506
+      ],
+      "axisWidths": [
+        15,
+        15,
+        14
+      ]
+    },
+    "prism": {
+      "module": "sgh_crystalcaves",
+      "min": [
+        -114.45093,
+        -27.205103,
+        -250
+      ],
+      "max": [
+        28.68396,
+        68.92768,
+        61.703808
+      ],
+      "axisWidths": [
+        14,
+        13,
+        15
+      ]
+    },
+    "recharge": {
+      "module": "sgh_blueprint",
+      "min": [
+        -993.9214,
+        -1320.3536,
+        -250
+      ],
+      "max": [
+        1713.4697,
+        1320.3536,
+        250
+      ],
+      "axisWidths": [
+        18,
+        18,
+        15
+      ]
+    },
+    "scarr": {
+      "module": "btb_engine",
+      "min": [
+        -70.57142,
+        -48.46288,
+        -250
+      ],
+      "max": [
+        68.996315,
+        41.17087,
+        63.835415
+      ],
+      "axisWidths": [
+        14,
+        13,
         15
       ]
     },
