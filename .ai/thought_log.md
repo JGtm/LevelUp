@@ -1,3 +1,54 @@
+## [2026-08-12] v7.5 — portage du POC execute : fiches (icones, i47, echanges) + kill feed (victime, assistant, %)
+
+**Statut** : Complete (code + gates techniques) — reste le gate VISUEL utilisateur (comparaison au
+POC sur 000d5950) et la CI de branche a verifier apres push.
+
+**Decision technique principale** : le POC (artefact eb7b8af2) a ete pris comme CONTRAT DE RENDU
+feature par feature, re-exprime dans le design system de l'app (tokens, i18n FR+EN, WeaponIcon).
+Quatre commits : `20bfd1c8d` (A.1 — i47 grenade selectionnee DECODEE dans les images-cles : le POC
+ne l'avait JAMAIS localisee, ses 98 selections etaient toutes deduites « unique compteur non nul » ;
+position MESUREE par instrument rejouable `i47_research_test.go` — fenetre +200..+210 bits apres la
+derniere famille d'arme, publication gardee par masque==i22 + unanimite, oracle des decrements 7/7
+avant lancer dont 2/2 non tautologiques ; 92/120 lus dont 18/22 a 2+ types, contrat `Inventory.gs`) ;
+`cd3743784` (A.2 — killsource decodait DEJA l'assistant et les parts, la base portait DEJA les
+colonnes : livre la REMONTEE seule — Q21c soeur de Q21b avec unanimite par tuple, `assist_state` a
+3 etats ''/none/named jamais confondus ; 000d5950 : 93/93 attachees, 17 nommees = total API a
+l'unite, 76 « aucun » MESURES, 0 inconnue) ; `4f2bdec65` (B — report de vitalite sur TOUTE la vie
+(differentiel : non retransmis = inchange) + estompage 6 s, armes portees en ICONES extraites
+(`WeaponLabel.img/tinted`, jointure famille->tag weap par la couche titre), marque unique EN MAIN
+(le rendu REEL du POC final : AUCUNE regle CSS `.prim` n'y existe — le plan citait une doctrine
+anterieure), permutation animee a delai negatif, selection encadree token warning avec provenance
+lue/deduite/indeterminee, munitions dans l'ordre des armes + degainee surlignee + jetons
+rangees/degainee?, barre de respawn, eclats mort/renaissance, prefers-reduced-motion) ;
+`2c107fbd5` (C — feed replay au format POC : victime jointe par (tueur, instant) avec regle
+d'unanimite, assistant nomme + parts sur fond bleute color-mix(info 10%), « aucun » en infobulle
+seulement, « inconnu » signale).
+
+**Resultats observes** : artefact 000d5950 reconstruit (replay-build) : 92 `gs` (18/22 a 2+ types,
+identique a l'instrument), 39/39 armes nommees avec icone. Gates : check-types vert, test-web
+3615 verts (1 flake au 1er passage hors match-replay, non reproduit x2), paquets Go touches verts
+(replay, filmdec, killsource, service, duckdb, domain, replaylabels), generate-types sans diff,
+Q21c validee sur DuckDB (desaccord exclu, doublon dedoublonne). DECOUVERTE hors perimetre (non
+traitee, consignee au plan) : `make go-api-test` echoue en LOCAL sur weaponv3 (paquet a 61,2 s pour
+-timeout 60s, smoke 54 s isole) — diff VIDE sur weaponv3/filmdec depuis la base du lot, dette de
+budget locale, la CI fait foi. Grenades/capacites SANS icone extraite au depot (dessins main du POC
+interdits) : repli libelle, prevu au plan.
+
+**Gates de cloture (verdicts)** : golangci ratchet VERT ; typecheck web VERT au tsc -b apres purge
+du cache (les `tsc --noEmit` intermediaires etaient des FAUX VERTS — tsconfig a references, piege
+documente de la delivery-checklist ; le vrai gate a revele que `MatchHighlightEvent` cote web est
+une interface MANUSCRITE de types.ts, pas un alias du contrat genere : champs assist ajoutes +
+2 fixtures, fix `3deb41697`) ; lint web VERT. Baseline de tests ROUGE EN LOCAL pour cause
+ENVIRONNEMENTALE : 57 paquets « [build failed] » MUETS (zero sortie compilateur dans le JSONL),
+tous CGO et HORS lot (cmd/*, pkg/duckdbbackup, tests/e2e — diff vide depuis la base), non
+reproductibles a la main ; preuve de sante du code : `CGO_ENABLED=1 go build ./...` et `go vet`
+VERTS. Doctrine du repo : la baseline est un gate Linux, la CI de branche fait foi.
+
+**Conclusion / prochaine etape** : pousser feat/v75, verifier la CI au niveau job,
+puis GATE VISUEL utilisateur sur 000d5950 (les temoins viennent de l'utilisateur — rendu pret :
+artefact reconstruit, page replay locale). Les parts de degats du feed dependent des lignes
+killsource en base locale pour le match affiche.
+
 ## [2026-08-12] v7.5 — les fiches du rejeu etaient une REINVENTION du POC : plan de portage ecrit
 
 **Statut** : Plan ecrit (`.ai/V7.5/replay2d/PLAN_PORTAGE_POC_FICHES_KILLFEED.md`), a confier a un

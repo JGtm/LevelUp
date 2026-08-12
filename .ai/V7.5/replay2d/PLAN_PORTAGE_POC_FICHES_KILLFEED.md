@@ -202,6 +202,12 @@ Par phase : gate ci-dessus (commandes exactes). Global : `make check-types` + `m
 - (A.1, 2026-08-12) Le POC n'a JAMAIS lu i47 (98 × « unique compteur non nul », « sél. ? » à
   2+ types) : la lecture i47 keyframe livrée en A.1 va AU-DELÀ du POC — 18 sélections nommées
   sur 22 états à 2+ types, là où le POC affichait « sél. ? ».
+- (clôture, 2026-08-12) **`make go-api-test` échoue en LOCAL sur `analysis/weaponv3`**
+  (`TestBuildV3Attributions_Smoke000d5950` : paquet à 61,2 s pour un budget `-timeout 60s`,
+  smoke mesuré à 54 s isolé). INDÉPENDANT de ce lot — `git diff` de la base du lot sur
+  `weaponv3/` et `filmdec/` est VIDE, aucun import du code touché. Dette locale de budget
+  (même famille que himap : lent en local seulement) ; NON traitée ici (hors périmètre),
+  la CI de branche fait foi. Tous les paquets TOUCHÉS par le lot sont verts.
 
 ## 7. SUIVI / REPRISE
 
