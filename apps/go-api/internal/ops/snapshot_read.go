@@ -78,7 +78,7 @@ func createParquetViewStrict(ctx context.Context, db *sql.DB, viewName, file str
 // (CREATE TABLE IF NOT EXISTS + CREATE VIEW) s'appliquent sans conflit de nom.
 func sharedSnapshotRequiredTables() []string {
 	out := append([]string{}, sharedSnapshotTables...)
-	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs, match_objective_stats (raw)
+	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs, match_objective_stats, match_kill_events (raw)
 	out = append(out, sharedSnapshotGlobalTables...)  // xuid_aliases
 	return out
 }

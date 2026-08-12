@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -181,6 +182,45 @@ func TestDecorateKillFeed_DegradationsGracieuses(t *testing.T) {
 	}
 	// Tranche vide : pas de panique, pas d'allocation.
 	decorateKillFeed(context.Background(), nil, nil, nil, nil, nil)
+}
+
+// TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed : VERROU du bug du
+// 2026-08-12. La correction T0 recalait d.events mais laissait killSources/killAssists
+// sur l'horloge film → decorateKillFeed (clé exacte xuid+time_ms) n'appariait plus RIEN
+// sur un match à T0 non nul : kill feed sans arme ni assistant, sans erreur ni log.
+// Valeurs du match réel 000d5950 : T0 = 18465 ms, premier kill 35306 → 16841.
+func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T) {
+	d := matchViewData{
+		events:      []domain.EventRaw{{EventType: analysis.EventTypeKill, TimeMS: ptrI64k(35306), XUID: ptrS("A")}},
+		killSources: []domain.KillSourceRaw{{XUID: "A", TimeMS: 35306, SourceTag: 0x11}},
+		killAssists: []domain.KillAssistRaw{{XUID: "A", TimeMS: 35306, KillerDamagePct: ptrIk(100)}},
+	}
+	correctMatchViewEventsT0(&d, "m1", timeline.BuildForMatchMs(600000, 18465))
+
+	if d.events[0].TimeMS == nil || *d.events[0].TimeMS != 16841 {
+		t.Fatalf("event : TimeMS = %v, attendu 16841", d.events[0].TimeMS)
+	}
+	if d.killSources[0].TimeMS != 16841 {
+		t.Errorf("killSource : TimeMS = %d, attendu 16841 (même référentiel que les events)", d.killSources[0].TimeMS)
+	}
+	if d.killAssists[0].TimeMS != 16841 {
+		t.Errorf("killAssist : TimeMS = %d, attendu 16841 (même référentiel que les events)", d.killAssists[0].TimeMS)
+	}
+
+	// Preuve de bout en bout : après correction, la décoration apparie.
+	events := []domain.MatchHighlightEvent{
+		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(16841), ActorXUID: ptrS("A")},
+	}
+	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{
+		0x11: {WeaponKey: "hinf_br75", Label: "BR75", ImageURL: "/static/x/killfeed-00.png"},
+	}}
+	decorateKillFeed(context.Background(), events, d.killSources, d.killAssists, feedScoreboard(), adapter)
+	if events[0].WeaponKey != "hinf_br75" {
+		t.Errorf("l'arme ne s'apparie pas après correction T0 : %+v", events[0])
+	}
+	if events[0].AssistState != domain.AssistStateNone {
+		t.Errorf("l'assistance ne s'apparie pas après correction T0 : état %q", events[0].AssistState)
+	}
 }
 
 // TestKillFeedWeaponCoverage : le compteur ne regarde QUE les kills. Un feed de 4 events

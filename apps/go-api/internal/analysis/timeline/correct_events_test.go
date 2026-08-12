@@ -186,6 +186,57 @@ func TestCorrectEventRaws_PreGameplayNegative(t *testing.T) {
 	}
 }
 
+// TestCorrectKillSourceRaws_AppliqueT0SansMuterLInput : les sources Q21b (arme du
+// kill feed) doivent vivre dans le même référentiel que les events corrigés —
+// c'est la clé d'appariement (xuid, time_ms) de decorateKillFeed. Valeurs du bug
+// réel (000d5950 : T0 = 18465 ms, premier kill film 35306 → gameplay 16841).
+func TestCorrectKillSourceRaws_AppliqueT0SansMuterLInput(t *testing.T) {
+	if got := CorrectKillSourceRaws(nil, domain.NewMatchTimeline(0, 0)); got != nil {
+		t.Errorf("nil rows doit rendre nil, got %v", got)
+	}
+	in := []domain.KillSourceRaw{{XUID: "A", TimeMS: 35306, SourceTag: 0x11}}
+	tl := domain.NewMatchTimeline(600000, 18465)
+	out := CorrectKillSourceRaws(in, tl)
+	if out[0].TimeMS != 16841 {
+		t.Errorf("TimeMS corrigé = %d, attendu 16841", out[0].TimeMS)
+	}
+	if out[0].XUID != "A" || out[0].SourceTag != 0x11 {
+		t.Errorf("champs non-temporels doivent être préservés, got %+v", out[0])
+	}
+	if in[0].TimeMS != 35306 {
+		t.Errorf("l'input ne doit pas être muté, got %d", in[0].TimeMS)
+	}
+	// tl zéro-value → identité (match sans T0 connu).
+	id := CorrectKillSourceRaws(in, domain.MatchTimeline{})
+	if id[0].TimeMS != 35306 {
+		t.Errorf("tl zéro-value doit être identité, got %d", id[0].TimeMS)
+	}
+}
+
+// TestCorrectKillAssistRaws_AppliqueT0SansMuterLInput : même contrat pour Q21c
+// (assistant + parts de dégâts) — les champs pointeurs sont partagés, jamais
+// modifiés.
+func TestCorrectKillAssistRaws_AppliqueT0SansMuterLInput(t *testing.T) {
+	if got := CorrectKillAssistRaws(nil, domain.NewMatchTimeline(0, 0)); got != nil {
+		t.Errorf("nil rows doit rendre nil, got %v", got)
+	}
+	gt := "Bob"
+	pct := 63
+	in := []domain.KillAssistRaw{{XUID: "A", TimeMS: 35306, AssistGamertag: &gt, KillerDamagePct: &pct}}
+	tl := domain.NewMatchTimeline(600000, 18465)
+	out := CorrectKillAssistRaws(in, tl)
+	if out[0].TimeMS != 16841 {
+		t.Errorf("TimeMS corrigé = %d, attendu 16841", out[0].TimeMS)
+	}
+	if out[0].AssistGamertag == nil || *out[0].AssistGamertag != "Bob" ||
+		out[0].KillerDamagePct == nil || *out[0].KillerDamagePct != 63 {
+		t.Errorf("champs d'assistance doivent être préservés, got %+v", out[0])
+	}
+	if in[0].TimeMS != 35306 {
+		t.Errorf("l'input ne doit pas être muté, got %d", in[0].TimeMS)
+	}
+}
+
 func TestCorrectEvents_PreservesRelativeOrder(t *testing.T) {
 	in := []canonical.HighlightEvent{
 		ev("m1", 50000),

@@ -67,6 +67,48 @@ func CorrectEventRaws(events []domain.EventRaw, tl domain.MatchTimeline) []domai
 	return out
 }
 
+// CorrectKillSourceRaws est l'équivalent de CorrectEventRaws pour les
+// domain.KillSourceRaw (Q21b — l'arme du kill feed). Retourne une copie avec
+// TimeMS ramené au référentiel gameplay (T0 retranché). Même signature UNITAIRE
+// que CorrectEventRaws : Match View est strictement mono-match.
+//
+// RAISON D'ÊTRE : decorateKillFeed apparie sources et events sur la clé EXACTE
+// (xuid, time_ms). Les events Q21 passent par CorrectEventRaws — si les sources
+// restaient sur l'horloge film, AUCUNE clé ne coïnciderait sur un match à T0
+// non nul et tout le feed perdrait arme et assistance (bug du 2026-08-12 :
+// décalage constant de T0 ms entre les deux tranches, zéro appariement). La
+// correction doit être LA MÊME fonction des deux côtés de la jointure.
+//
+// TimeMS est un int64 plein : copy() isole l'input (pas de pointeur partagé).
+func CorrectKillSourceRaws(rows []domain.KillSourceRaw, tl domain.MatchTimeline) []domain.KillSourceRaw {
+	if rows == nil {
+		return nil
+	}
+	out := make([]domain.KillSourceRaw, len(rows))
+	copy(out, rows)
+	for i := range out {
+		out[i].TimeMS = tl.CorrectEventTime(out[i].TimeMS)
+	}
+	return out
+}
+
+// CorrectKillAssistRaws — même rôle que CorrectKillSourceRaws pour les
+// domain.KillAssistRaw (Q21c — l'assistant du kill feed), même raison d'être :
+// la clé d'appariement (xuid, time_ms) doit vivre dans le même référentiel que
+// les events corrigés. Les champs pointeurs (gamertag, parts de dégâts) sont
+// partagés avec l'input mais jamais modifiés ici.
+func CorrectKillAssistRaws(rows []domain.KillAssistRaw, tl domain.MatchTimeline) []domain.KillAssistRaw {
+	if rows == nil {
+		return nil
+	}
+	out := make([]domain.KillAssistRaw, len(rows))
+	copy(out, rows)
+	for i := range out {
+		out[i].TimeMS = tl.CorrectEventTime(out[i].TimeMS)
+	}
+	return out
+}
+
 // CorrectImpactEvents est l'équivalent de CorrectEvents pour les
 // domain.ImpactEventRow (page Escouade / TeammatesService, type Q32 distinct de
 // canonical.HighlightEvent). Retourne une copie avec TimeMS ramené au
