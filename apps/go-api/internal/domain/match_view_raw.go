@@ -315,6 +315,31 @@ type KillSourceRaw struct {
 	SourceTag uint32
 }
 
+// KillAssistRaw : l'ASSISTANCE d'une mort (Q21c), telle que le décodeur de film l'a
+// inscrite dans `match_kill_events`.
+//
+// UNE LIGNE PRÉSENTE = ON SAIT (`assist_known` en base). AssistGamertag nil dit alors
+// « PAS d'assistant », MESURÉ — à ne jamais confondre avec l'état « on ne sait pas », qui
+// n'a PAS de ligne : c'est l'absence d'appariement qui le porte, et le feed doit préserver
+// cette distinction jusqu'à l'écran.
+type KillAssistRaw struct {
+	// XUID du tueur, tel que le kill-feed le crédite (`feed_killer_xuid`).
+	XUID string
+	// TimeMS : instant de la mort, même échelle que highlight_events.time_ms.
+	TimeMS int64
+	// AssistGamertag : l'assistant nommé, nil quand la mort n'en porte pas (mesuré).
+	AssistGamertag *string
+	// AssistXUID : le xuid de l'assistant nommé, pour résoudre son équipe. Nil sans
+	// assistant.
+	AssistXUID *string
+	// KillerDamagePct / AssistDamagePct : parts de dégâts en pourcentage ENTIER, non
+	// bornées à 100 (valeurs mesurées jusqu'à 228 — dégât excédentaire, hypothèse non
+	// établie). Nil = non mesurée, jamais 0. AssistDamagePct n'existe que si l'assistant
+	// est nommé (le persister refuse une part sans porteur).
+	KillerDamagePct *int
+	AssistDamagePct *int
+}
+
 // KVPairRaw : données brutes de Q20 (single-match, MatchID non peuplé) et du
 // loader batch SquadRepository.LoadKVPairs (Q32c, MatchID peuplé pour le
 // regroupement multi-match de la synthèse d'events kill/death title-agnostic).

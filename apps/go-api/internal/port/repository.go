@@ -243,6 +243,11 @@ type MatchViewRepository interface {
 	// film ou si le match n'y est pas passé — jamais une erreur (dégradation gracieuse).
 	GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error)
 
+	// GetMatchKillAssists retourne l'assistance de chaque mort du match (Q21c) : assistant
+	// nommé ou « pas d'assistant » mesuré, avec les parts de dégâts. Une mort ABSENTE de la
+	// tranche est un « on ne sait pas » — même dégradation gracieuse que Q21b.
+	GetMatchKillAssists(ctx context.Context, matchID string) ([]domain.KillAssistRaw, error)
+
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
 
@@ -462,6 +467,9 @@ func (n *noopMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domai
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {

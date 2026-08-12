@@ -45,7 +45,7 @@ func TestDecorateKillFeed_PoseArmeEtEquipe(t *testing.T) {
 		0x22: {Label: "", ImageURL: "/static/x/killfeed-65.png", Tinted: true}, // melee : sans nom propre
 	}}
 
-	decorateKillFeed(context.Background(), events, sources, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, sources, nil, feedScoreboard(), adapter)
 
 	if events[0].WeaponKey != "hinf_br75" || events[0].WeaponLabel != "BR75" {
 		t.Errorf("kill 0 : arme = %q/%q, attendu hinf_br75/BR75", events[0].WeaponKey, events[0].WeaponLabel)
@@ -80,7 +80,7 @@ func TestDecorateKillFeed_AucuneArmeSurUnEventNonKill(t *testing.T) {
 		0x11: {ImageURL: "/static/x/killfeed-00.png"},
 	}}
 
-	decorateKillFeed(context.Background(), events, sources, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, sources, nil, feedScoreboard(), adapter)
 
 	if events[0].WeaponImageURL != "" {
 		t.Errorf("event medal : arme posée (%q) alors qu'il n'en a pas", events[0].WeaponImageURL)
@@ -95,13 +95,58 @@ func TestDecorateKillFeed_SourceSansIconeResteSansArme(t *testing.T) {
 	sources := []domain.KillSourceRaw{{XUID: "A", TimeMS: 1000, SourceTag: 0xdead}}
 	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{}} // le pont ne connaît rien
 
-	decorateKillFeed(context.Background(), events, sources, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, sources, nil, feedScoreboard(), adapter)
 
 	for i, e := range events {
 		if e.WeaponImageURL != "" || e.WeaponKey != "" || e.WeaponLabel != "" {
 			t.Errorf("event %d : décoré (%q/%q/%q) alors que le pont n'a rien rendu",
 				i, e.WeaponKey, e.WeaponLabel, e.WeaponImageURL)
 		}
+	}
+}
+
+// TestDecorateKillFeed_AssistTroisEtats : les trois états de l'assistance, JAMAIS
+// confondus. Le kill (A,1000) porte un assistant nommé avec les deux parts ; (B,2000) est
+// MESURÉ sans assistant (part du tueur seule) ; (A,3000) n'a aucune entrée appariée et
+// reste « on ne sait pas » — AssistState vide, aucune part. La médaille n'est pas touchée.
+func TestDecorateKillFeed_AssistTroisEtats(t *testing.T) {
+	events := feedFixture()
+	assists := []domain.KillAssistRaw{
+		{XUID: "A", TimeMS: 1000, AssistGamertag: ptrS("Bob"), AssistXUID: ptrS("B"),
+			KillerDamagePct: ptrIk(63), AssistDamagePct: ptrIk(37)},
+		{XUID: "B", TimeMS: 2000, KillerDamagePct: ptrIk(100)},
+	}
+
+	decorateKillFeed(context.Background(), events, nil, assists, feedScoreboard(), nil)
+
+	named := events[0]
+	if named.AssistState != domain.AssistStateNamed || named.AssistGamertag != "Bob" {
+		t.Errorf("kill (A,1000) : état %q / assistant %q, attendu named/Bob",
+			named.AssistState, named.AssistGamertag)
+	}
+	if named.KillerDamagePct == nil || *named.KillerDamagePct != 63 ||
+		named.AssistDamagePct == nil || *named.AssistDamagePct != 37 {
+		t.Errorf("kill (A,1000) : parts %v/%v, attendu 63/37",
+			named.KillerDamagePct, named.AssistDamagePct)
+	}
+	if named.AssistTeamID == nil || *named.AssistTeamID != 1 {
+		t.Errorf("kill (A,1000) : équipe de l'assistant %v, attendu 1 (scoreboard)", named.AssistTeamID)
+	}
+	none := events[1]
+	if none.AssistState != domain.AssistStateNone || none.AssistGamertag != "" {
+		t.Errorf("kill (B,2000) : état %q / assistant %q, attendu none/vide",
+			none.AssistState, none.AssistGamertag)
+	}
+	if none.KillerDamagePct == nil || *none.KillerDamagePct != 100 || none.AssistDamagePct != nil {
+		t.Errorf("kill (B,2000) : parts %v/%v, attendu 100/nil", none.KillerDamagePct, none.AssistDamagePct)
+	}
+	unknown := events[2]
+	if unknown.AssistState != "" || unknown.KillerDamagePct != nil || unknown.AssistDamagePct != nil {
+		t.Errorf("kill (A,3000) sans entrée : état %q parts %v/%v — un « on ne sait pas » a été "+
+			"comblé", unknown.AssistState, unknown.KillerDamagePct, unknown.AssistDamagePct)
+	}
+	if medal := events[3]; medal.AssistState != "" {
+		t.Errorf("la médaille porte un état d'assistance (%q)", medal.AssistState)
 	}
 }
 
@@ -123,9 +168,9 @@ func TestDecorateKillFeed_DegradationsGracieuses(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			events := feedFixture()
 			if c.adapter == nil {
-				decorateKillFeed(context.Background(), events, c.sources, c.scoreboard, nil)
+				decorateKillFeed(context.Background(), events, c.sources, nil, c.scoreboard, nil)
 			} else {
-				decorateKillFeed(context.Background(), events, c.sources, c.scoreboard, c.adapter)
+				decorateKillFeed(context.Background(), events, c.sources, nil, c.scoreboard, c.adapter)
 			}
 			for i, e := range events {
 				if e.WeaponImageURL != "" {
@@ -135,7 +180,7 @@ func TestDecorateKillFeed_DegradationsGracieuses(t *testing.T) {
 		})
 	}
 	// Tranche vide : pas de panique, pas d'allocation.
-	decorateKillFeed(context.Background(), nil, nil, nil, nil)
+	decorateKillFeed(context.Background(), nil, nil, nil, nil, nil)
 }
 
 // TestKillFeedWeaponCoverage : le compteur ne regarde QUE les kills. Un feed de 4 events

@@ -6811,8 +6811,16 @@ export interface components {
             actor_team_id?: number;
             actor_xuid?: string;
             /** Format: int64 */
+            assist_damage_pct?: number;
+            assist_gamertag?: string;
+            assist_state?: string;
+            /** Format: int64 */
+            assist_team_id?: number;
+            /** Format: int64 */
             event_time_ms?: number;
             event_type: string;
+            /** Format: int64 */
+            killer_damage_pct?: number;
             weapon_image_tinted?: boolean;
             weapon_image_url?: string;
             weapon_key?: string;

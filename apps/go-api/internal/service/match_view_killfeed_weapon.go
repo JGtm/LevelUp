@@ -46,15 +46,19 @@ type killFeedKey struct {
 	timeMS int64
 }
 
-// decorateKillFeed pose l'équipe du tueur et l'arme du kill sur les events du feed.
+// decorateKillFeed pose l'équipe du tueur, l'arme du kill et l'ASSISTANCE sur les events
+// du feed.
 //
 // Modifie la tranche EN PLACE (les events sont déjà dans l'onglet assemblé). Tolère
-// chaque entrée absente : scoreboard vide, sources vides, adapter nil. Aucun de ces cas
-// n'est une erreur — ce sont les états nominaux d'un titre sans décodeur de film.
+// chaque entrée absente : scoreboard vide, sources vides, assists vides, adapter nil.
+// Aucun de ces cas n'est une erreur — ce sont les états nominaux d'un titre sans décodeur
+// de film. Un kill sans entrée d'assistance appariée garde AssistState vide : ON NE SAIT
+// PAS, et cet état-là ne s'écrit jamais « pas d'assistant ».
 func decorateKillFeed(
 	ctx context.Context,
 	events []domain.MatchHighlightEvent,
 	sources []domain.KillSourceRaw,
+	assists []domain.KillAssistRaw,
 	scoreboard []domain.ScoreboardRaw,
 	assetURL games.TitleAssetURLAdapter,
 ) {
@@ -64,7 +68,8 @@ func decorateKillFeed(
 	defer func() {
 		avec, total := killFeedWeaponCoverage(events)
 		slog.DebugContext(ctx, "match_view: couverture arme du kill feed",
-			"kills", total, "avec_icone", avec, "sources_appariables", len(sources))
+			"kills", total, "avec_icone", avec, "sources_appariables", len(sources),
+			"assists_appariables", len(assists))
 	}()
 	teamByXUID := make(map[string]int, len(scoreboard))
 	for _, r := range scoreboard {
@@ -76,6 +81,11 @@ func decorateKillFeed(
 	for _, s := range sources {
 		tagByKill[killFeedKey{xuid: s.XUID, timeMS: s.TimeMS}] = s.SourceTag
 	}
+	assistByKill := make(map[killFeedKey]*domain.KillAssistRaw, len(assists))
+	for i := range assists {
+		a := &assists[i]
+		assistByKill[killFeedKey{xuid: a.XUID, timeMS: a.TimeMS}] = a
+	}
 
 	for i := range events {
 		e := &events[i]
@@ -86,10 +96,17 @@ func decorateKillFeed(
 			t := team
 			e.ActorTeamID = &t
 		}
-		if e.EventType != analysis.EventTypeKill || e.EventTimeMS == nil || assetURL == nil {
+		if e.EventType != analysis.EventTypeKill || e.EventTimeMS == nil {
 			continue
 		}
-		tag, ok := tagByKill[killFeedKey{xuid: *e.ActorXUID, timeMS: *e.EventTimeMS}]
+		key := killFeedKey{xuid: *e.ActorXUID, timeMS: *e.EventTimeMS}
+		if a, ok := assistByKill[key]; ok {
+			decorateAssist(e, a, teamByXUID)
+		}
+		if assetURL == nil {
+			continue
+		}
+		tag, ok := tagByKill[key]
 		if !ok {
 			continue
 		}
@@ -101,6 +118,26 @@ func decorateKillFeed(
 		e.WeaponLabel = icon.Label
 		e.WeaponImageURL = icon.ImageURL
 		e.WeaponImageTinted = icon.Tinted
+	}
+}
+
+// decorateAssist pose l'assistance d'UN kill : l'état, l'assistant s'il est nommé, son
+// équipe si le scoreboard la connaît, et les parts de dégâts telles qu'elles sont
+// mesurées — jamais complétées.
+func decorateAssist(e *domain.MatchHighlightEvent, a *domain.KillAssistRaw, teamByXUID map[string]int) {
+	e.KillerDamagePct = a.KillerDamagePct
+	if a.AssistGamertag == nil {
+		e.AssistState = domain.AssistStateNone
+		return
+	}
+	e.AssistState = domain.AssistStateNamed
+	e.AssistGamertag = *a.AssistGamertag
+	e.AssistDamagePct = a.AssistDamagePct
+	if a.AssistXUID != nil {
+		if team, ok := teamByXUID[*a.AssistXUID]; ok {
+			t := team
+			e.AssistTeamID = &t
+		}
 	}
 }
 

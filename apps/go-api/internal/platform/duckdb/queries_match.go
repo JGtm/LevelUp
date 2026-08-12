@@ -506,6 +506,49 @@ WHERE match_id = ?
 GROUP BY feed_killer_xuid, time_ms
 HAVING count(DISTINCT source_tag) = 1`
 
+// Q21c : l'ASSISTANT de chaque mort du match et les deux parts de dégâts, pour le kill feed.
+//
+// Requête SŒUR de Q21b, séparée pour la même raison ET une de plus : l'assistance est lue
+// même quand la source de dégât ne l'est pas (les deux viennent de structures différentes du
+// paquet — kill-event contre dead-state). La conditionner à `source_tag IS NOT NULL`
+// perdrait des assistants mesurés.
+//
+// LES TROIS ÉTATS DE L'ASSISTANCE, ET LA REQUÊTE N'EN REND QUE DEUX :
+//   - `assist_known = FALSE` (ON NE SAIT PAS) n'est PAS remonté : l'absence de ligne
+//     appariée EST l'état « inconnu » côté feed — écrire « pas d'assistant » à sa place
+//     serait le mensonge que tout le schéma évite ;
+//   - une ligne avec `assist_gamertag` NULL = MESURÉ, pas d'assistant ;
+//   - une ligne nommée porte l'assistant et les parts (killer_damage_pct dès l'attachement,
+//     assist_damage_pct seulement si le champ assistant était présent — DDL de la table).
+//
+// UNANIMITÉ par (tueur, instant), même garde que Q21b mais sur le TUPLE COMPLET : deux morts
+// au même millisecond du même tueur qui ne s'accordent pas sur l'assistance ne publient
+// RIEN — accrocher l'assistant du kill A au kill B serait indétectable à l'écran. Les
+// sentinelles du COALESCE n'existent pas en données réelles (gamertag vide, part négative).
+//
+// Paramètre : ?1 = match_id. Retourne 6 colonnes : feed_killer_xuid, time_ms,
+// assist_gamertag, assist_xuid, killer_damage_pct, assist_damage_pct.
+const Q21cKillAssists = `
+SELECT
+    feed_killer_xuid,
+    time_ms,
+    min(assist_gamertag)   AS assist_gamertag,
+    min(assist_xuid)       AS assist_xuid,
+    min(killer_damage_pct) AS killer_damage_pct,
+    min(assist_damage_pct) AS assist_damage_pct
+FROM ` + KillEventsCanonicalTable + `
+WHERE match_id = ?
+  AND publishable
+  AND assist_known
+  AND feed_killer_xuid IS NOT NULL
+GROUP BY feed_killer_xuid, time_ms
+HAVING count(DISTINCT (
+    COALESCE(assist_gamertag, ''),
+    COALESCE(assist_xuid, ''),
+    COALESCE(killer_damage_pct, -1),
+    COALESCE(assist_damage_pct, -1)
+)) = 1`
+
 // Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
 // Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).
 // Ordre : start_time DESC (plus récent = index 0).
