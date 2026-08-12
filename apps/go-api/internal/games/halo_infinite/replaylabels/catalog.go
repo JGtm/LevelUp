@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
@@ -49,8 +50,8 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 		weapons.FilmshellWeaponKeysByFamily(),
 		weaponNames(names.Names()),
 		labels.ShotEffects(),
-		toLabels(labels.GrenadeRanks()),
-		abilitiesByIndex(labels.Abilities()),
+		toLabels(titleSlug, labels.GrenadeRanks()),
+		abilitiesByIndex(titleSlug, labels.Abilities()),
 	)
 	cat.Icons = weaponIcons(weapons.FilmshellWeaponKeysByFamily())
 	return cat, nil
@@ -90,24 +91,36 @@ func weaponNames(in map[string]mappings.WeaponName) map[string]replay.Label {
 
 // toLabels convertit les libellés bilingues du loader vers le DTO d'artefact, en
 // PRÉSERVANT L'ORDRE — pour les grenades, l'ordre EST le rang.
-func toLabels(in []mappings.BilingualLabel) []replay.Label {
+func toLabels(slug string, in []mappings.BilingualLabel) []replay.Label {
 	if len(in) == 0 {
 		return nil
 	}
 	out := make([]replay.Label, 0, len(in))
 	for _, l := range in {
-		out = append(out, replay.Label{En: l.En, Fr: l.Fr})
+		out = append(out, toLabel(slug, l))
 	}
 	return out
 }
 
-func abilitiesByIndex(in map[int]mappings.BilingualLabel) map[int]replay.Label {
+func abilitiesByIndex(slug string, in map[int]mappings.BilingualLabel) map[int]replay.Label {
 	if len(in) == 0 {
 		return nil
 	}
 	out := make(map[int]replay.Label, len(in))
 	for idx, l := range in {
-		out[idx] = replay.Label{En: l.En, Fr: l.Fr}
+		out[idx] = toLabel(slug, l)
+	}
+	return out
+}
+
+// toLabel joint le libellé et sa vignette de HUD quand le TOML en pointe une. Les
+// vignettes sont des masques (blanc/gris + alpha) : Tinted, comme les icônes d'arme
+// extraites — le client les teint à l'encre du thème.
+func toLabel(slug string, l mappings.BilingualLabel) replay.Label {
+	out := replay.Label{En: l.En, Fr: l.Fr}
+	if l.Icon != "" {
+		out.Img = static.URL(static.KindWeapon, slug, l.Icon, ".png")
+		out.Tinted = true
 	}
 	return out
 }

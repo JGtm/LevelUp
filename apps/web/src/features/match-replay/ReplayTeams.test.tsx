@@ -74,8 +74,20 @@ describe('ReplayTeams — grenades portées', () => {
       grenadeLabels: LABELS,
       inventory: [{ t: 0, slot: 512, g: [1, 2] }],
     })
-    expect(screen.getByText(/Fragmentation ×1/)).toBeTruthy()
-    expect(screen.getByText(/Plasma ×2/)).toBeTruthy()
+    expect(screen.getByTitle('Fragmentation').textContent).toContain('×1')
+    expect(screen.getByTitle('Plasma').textContent).toContain('×2')
+  })
+
+  it('rend la VIGNETTE du HUD quand le document en sert une, le nom restant en infobulle', () => {
+    renderTeams({
+      grenadeLabels: [
+        { en: 'Frag', fr: 'Fragmentation', img: '/static/weapons-assets/halo_infinite/hud/Frag.png', tinted: true },
+      ],
+      inventory: [{ t: 0, slot: 512, g: [2] }],
+    })
+    expect(screen.getByRole('img', { name: 'Fragmentation' })).toBeTruthy()
+    // Le nom n'est plus écrit en clair : la vignette porte l'identité.
+    expect(screen.queryByText('Fragmentation')).toBeNull()
   })
 
   it('compteurs NON LUS (GrenadesRead=false) : aucune grenade affichée, jamais des zéros', () => {
@@ -102,10 +114,9 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
       grenadeLabels: LABELS,
       inventory: [{ t: 0, slot: 512, g: [1, 2], gs: 1 }],
     })
-    const sel = screen.getByText(/Plasma ×2/)
-    expect(sel.title).toMatch(/LU dans le film/)
+    expect(screen.getByTitle(/^Plasma — .*LU dans le film/)).toBeTruthy()
     // L'autre type porté n'est pas marqué.
-    expect(screen.getByText(/Fragmentation ×1/).title).toBe('')
+    expect(screen.getByTitle('Fragmentation')).toBeTruthy()
   })
 
   it('un seul type porté sans lecture : sélection DÉDUITE, dite déduite', () => {
@@ -113,7 +124,7 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
       grenadeLabels: LABELS,
       inventory: [{ t: 0, slot: 512, g: [0, 2] }],
     })
-    expect(screen.getByText(/Plasma ×2/).title).toMatch(/le seul porté/)
+    expect(screen.getByTitle(/^Plasma — .*le seul porté/)).toBeTruthy()
   })
 
   it('deux types sans lecture : « sél. ? » — l’indétermination se dit, elle ne se devine pas', () => {
@@ -122,7 +133,9 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
       inventory: [{ t: 0, slot: 512, g: [1, 2] }],
     })
     expect(screen.getByText('sél. ?')).toBeTruthy()
-    expect(screen.getByText(/Plasma ×2/).title).toBe('')
+    // Aucun des deux types n'est marqué sélectionné (title = nom seul).
+    expect(screen.getByTitle('Plasma')).toBeTruthy()
+    expect(screen.getByTitle('Fragmentation')).toBeTruthy()
   })
 })
 

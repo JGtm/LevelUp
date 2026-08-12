@@ -6379,6 +6379,8 @@ export interface components {
         Label: {
             en: string;
             fr: string;
+            img?: string;
+            tinted?: boolean;
         };
         LabelValue: {
             /** Format: int64 */

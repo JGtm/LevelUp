@@ -1,3 +1,27 @@
+## [2026-08-12] v7.5 — correctif sur retour utilisateur (3) : vignettes HUD grenades/capacites portees du POC
+
+**Statut** : Complete.
+
+**Decision technique principale** : troisieme retour — les icones grenades/equipements du POC
+etaient REUTILISABLES : pas des dessins main mais « les vignettes du HUD du jeu » (data URIs du
+POC). Ma regle « pas de dessins main » etait appliquee trop largement. Extraites (15 PNG : 4
+grenades + LES 11 capacites du jeu) vers static/weapons-assets/halo_infinite/hud/, cablees par le
+TOML du titre (replay_labels.toml, champ `icon` par rang/index a cote du libelle — une seule
+source, halo_5-ready) -> `replay.Label.img/tinted` au contrat -> ReplayInventoryRow (WeaponIcon
+masque teint, nom en infobulle, repli libelle sans icone). Artefact 000d5950 reconstruit : 4+4
+vignettes servies. LECTURE AU SPAWN : grenades/munitions NE se lisent PAS au spawn — doctrine POC
+conservee (compteurs VOLATILS : « reporter en avant une lecture future serait inventer des
+munitions que le joueur n'a pas encore ») ; seules les ARMES (identite stable) ont le repli.
+
+**Resultats observes** : loader mappings + replaylabels + replay verts ; openapi/generated regen ;
+typecheck purge vert ; 216 tests match-replay verts (vignette rendue par role img, nom en title,
+encadre de selection sur vignette). DECOUVERTE consignee (non traitee) : la table capacites du
+TOML (3=mur, 6=capteur — celle du POC) est CONTREDITE par la lecture sofd (§13 recette) ; icone et
+libelle partagent l'index, ils bougeront ensemble a la correction.
+
+**Conclusion / prochaine etape** : push + CI, puis gate visuel utilisateur (000d5950, artefact
+reconstruit avec armes + grenades + capacites en vignettes).
+
 ## [2026-08-12] v7.5 — correctif sur retour utilisateur (2) : les armes se lisent AU SPAWN (repli POC)
 
 **Statut** : Complete.

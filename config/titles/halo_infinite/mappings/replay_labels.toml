@@ -27,32 +27,43 @@ schema_version = 1
 
 # Rangs de grenade, DANS L'ORDRE. L'index de la ligne EST le rang lu dans le film ; il
 # sert aussi bien au compteur porte (Inventory.G) qu'au type d'un lancer (Grenade.rank).
+#
+# `icon` : vignette du HUD DU JEU (blanc/gris + alpha, a teindre), servie sous
+# static/weapons-assets/{slug}/ — extraites du POC de rejeu (2026-08-12), qui les
+# portait en data URI. Optionnel : sans icon, le client garde le libelle.
 [[grenades]]
 en = "Frag"
 fr = "Fragmentation"
+icon = "hud/Frag"
 
 [[grenades]]
 en = "Plasma"
 fr = "Plasma"
+icon = "hud/Plasma"
 
 [[grenades]]
 en = "Dynamo"
 fr = "Dynamo"
+icon = "hud/Dynamo"
 
 [[grenades]]
 en = "Spike"
 fr = "Spike"
+icon = "hud/Spike"
 
 # Capacites d'armure, par index lu dans le record de biped.
 #
 # TABLE PARTIELLE, ET C'EST PUBLIE COMME TEL : 4 index observes, 11 capacites existent
 # dans le jeu. Un index absent de cette table s'affiche avec son NUMERO — jamais devine,
 # jamais approche par le nom d'une capacite voisine.
+# L'icone suit LE MEME index que le libelle : si la table est un jour corrigee (la
+# lecture binaire `sofd` CONTREDIT les index 3 et 6, cf. RECETTE_LOADOUT §13), nom et
+# vignette bougent ensemble. Les 11 vignettes HUD sont au depot sous hud/.
 [abilities]
-"3" = { en = "Drop Wall", fr = "mur portatif" }
-"4" = { en = "Grappleshot", fr = "grappin" }
-"5" = { en = "Thruster", fr = "propulseur" }
-"6" = { en = "Threat Sensor", fr = "capteur de menace" }
+"3" = { en = "Drop Wall", fr = "mur portatif", icon = "hud/DropWall" }
+"4" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
+"5" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
+"6" = { en = "Threat Sensor", fr = "capteur de menace", icon = "hud/ThreatSensor" }
 
 # Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
 #

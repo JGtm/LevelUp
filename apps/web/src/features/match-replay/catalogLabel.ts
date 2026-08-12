@@ -16,6 +16,13 @@ import type { ReplayLocale } from './i18n'
 export interface CatalogLabel {
   en?: string
   fr?: string
+  /**
+   * Vignette du HUD du jeu (grenades, capacités), servie par le document. Absente = pas
+   * de visuel : l'appelant garde le libellé — jamais la vignette d'un voisin. `tinted`
+   * dit un masque à teindre (même contrat que les icônes d'arme).
+   */
+  img?: string
+  tinted?: boolean
 }
 
 /**
