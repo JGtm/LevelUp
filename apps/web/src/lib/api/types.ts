@@ -1681,6 +1681,21 @@ export interface MatchHighlightEvent {
   weapon_label?: string | null
   weapon_image_url?: string | null
   weapon_image_tinted?: boolean | null
+  /**
+   * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent JAMAIS :
+   * absent/'' = ON NE SAIT PAS (aucun kill-event apparié) ; 'none' = MESURÉ, pas
+   * d'assistant ; 'named' = assistant nommé (+ parts de dégâts quand elles sont lues).
+   * Ne jamais traiter l'absence comme « pas d'assistant » : c'est le mensonge que cette
+   * énumération existe pour empêcher.
+   *
+   * Les parts sont des % ENTIERS, NON bornés à 100 (mesures jusqu'à 228 — dégât
+   * excédentaire, hypothèse non établie). Absentes = non mesurées, jamais 0.
+   */
+  assist_state?: string | null
+  assist_gamertag?: string | null
+  assist_team_id?: number | null
+  killer_damage_pct?: number | null
+  assist_damage_pct?: number | null
 }
 
 export type MatchTugOfWarBin = components['schemas']['MatchTugOfWarBin']
