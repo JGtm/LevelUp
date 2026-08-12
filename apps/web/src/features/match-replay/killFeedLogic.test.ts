@@ -22,6 +22,11 @@ function kill(tMs: number, xuid = 'x1'): KillEvent {
     weaponLabel: 'BR75',
     weaponImageUrl: '/static/weapons/br75.png',
     weaponTinted: true,
+    assistState: '',
+    assistGamertag: '',
+    assistTeamID: null,
+    killerDamagePct: null,
+    assistDamagePct: null,
   }
 }
 

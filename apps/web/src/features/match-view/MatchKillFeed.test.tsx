@@ -39,6 +39,11 @@ function kill(over: Partial<MomentumKill>): MomentumKill {
     weaponLabel: '',
     weaponImageUrl: '',
     weaponTinted: false,
+    assistState: '',
+    assistGamertag: '',
+    assistTeamID: null,
+    killerDamagePct: null,
+    assistDamagePct: null,
     ...over,
   }
 }
