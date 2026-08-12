@@ -492,6 +492,12 @@ func correctMatchViewEventsT0(d *matchViewData, matchID string, tl domain.MatchT
 		)
 	}
 	d.events = timeline.CorrectEventRaws(d.events, tl)
+	// Q21b/Q21c s'apparient aux events par clé EXACTE (xuid, time_ms) dans
+	// decorateKillFeed : ils DOIVENT subir la même correction que d.events.
+	// Sans ça, sur tout match à T0 non nul, aucun kill ne recevait son arme ni
+	// son assistance (décalage constant de T0 ms entre les clés — 2026-08-12).
+	d.killSources = timeline.CorrectKillSourceRaws(d.killSources, tl)
+	d.killAssists = timeline.CorrectKillAssistRaws(d.killAssists, tl)
 }
 
 // loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard

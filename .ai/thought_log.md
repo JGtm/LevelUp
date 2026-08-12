@@ -1,3 +1,37 @@
+## [2026-08-13] v7.5 — kill feed sans arme ni assistant : CAUSE REELLE = appariement T0, corrige et prouve de bout en bout
+
+**Statut** : Complete.
+
+**Decision technique principale** : le « maillon ouvert » de l'entree precedente est ELUCIDE, et
+son hypothese (« SnapshotPreferredSharedReader non invoque sur ce chemin ») est REFUTEE sur
+pieces : le reader est cable et le refus du snapshot v81 fonctionne (compteur expvar
+`snapshot_read_live_fallback_total` = 72, `snapshot_read_served_total` jamais cree, warning
+« version inexploitable » present dans logs/general.log, Q21b rejouee sur le live rend 93/93 —
+les compteurs « absents » de l'entree precedente ne l'etaient que parce qu'aucune requete
+MatchView n'avait encore ete servie depuis le redemarrage). La CAUSE REELLE :
+`correctMatchViewEventsT0` recalait d.events (et canonicalEvents) au referentiel gameplay mais
+laissait d.killSources (Q21b) et d.killAssists (Q21c) sur l'horloge film ; `decorateKillFeed`
+apparie sur la cle EXACTE (xuid, time_ms) → zero appariement sur tout match a T0 non nul
+(000d5950 : T0 = 18465 ms, kills servis a 16841 contre 35306 en table, decalage constant). Fix :
+deux correcteurs freres `CorrectKillSourceRaws` / `CorrectKillAssistRaws` dans
+`analysis/timeline` (la MEME fonction `CorrectEventTime` des deux cotes de la jointure),
+appliques dans `correctMatchViewEventsT0`.
+
+**Resultats observes** : preuve de bout en bout sur le serveur local (binaire air reconstruit) :
+93 kills, 92 avec arme (le trou = source non appariable, repli assume), 93/93 avec assist_state
+(ex. Sentinel Beam, assistant nomme, parts 68/31 %). Tests timeline + service verts ; suite
+complete verte HORS `internal/himap` en TIMEOUT local preexistant (604 s > plafond 10 min,
+cuissons 25-30 min, deja au registre) ; go vet 0. Verrous ajoutes :
+`TestCorrectKillSourceRaws/KillAssistRaws` (timeline) et
+`TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed` (service, valeurs du match reel).
+
+**Conclusion / prochaine etape** : gate fiches VALIDE par l'utilisateur (12/08, affinements
+reportes au registre sans liste — condition de reprise : retour utilisateur). Note transitoire :
+tant que le snapshot courant n'exporte pas match_kill_events, MatchView lit le live (fallback
+global) — des 404 transitoires restent possibles pendant une fenetre d'ecriture, resorbes au
+prochain cut (v82+) qui exporte complet. Chantier suivant : cartes manquantes (investigation
+2 agents lancee — inventaire cartes jouees sans fond + etat pipeline himap).
+
 ## [2026-08-12] v7.5 — retours utilisateur (4) : inventaire au spawn, feed sans « assistant inconnu », CAUSE RACINE du feed vide (snapshot MatchView)
 
 **Statut** : Complete cote code — UN maillon d'environnement local reste ouvert (voir Resultats).
