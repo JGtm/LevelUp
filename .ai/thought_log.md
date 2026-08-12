@@ -1,3 +1,23 @@
+## [2026-08-12] v7.5 — correctif sur retour utilisateur (2) : les armes se lisent AU SPAWN (repli POC)
+
+**Statut** : Complete.
+
+**Decision technique principale** : deuxieme retour utilisateur — l'inventaire n'etait pas lu au
+spawn alors que le POC le faisait. Sur pieces : le POC replie le LOADOUT sur la premiere image-cle
+A VENIR du meme slot (un slot = une vie, repli sur, 25,2 % de ses fiches), age NEGATIF honnete +
+estompage sur |age| ; pour GRENADES/MUNITIONS il refusait explicitement la lecture future
+(« inventer des munitions que le joueur n'a pas encore »). Notre `loadoutAt` ignorait le futur →
+« armes non lues » jusqu'a 20 s par vie : manque de portage de B.2. Corrige : repli a-venir dans
+`loadoutAt`, `freshness` en valeur absolue, infobulle « premiere image-cle de cette vie, lue
+dans X s » (i18n FR+EN) ; grenades/munitions inchangees (ISO POC).
+
+**Resultats observes** : typecheck purge vert ; 215 tests match-replay verts (nouveaux temoins :
+lecture a venir a age negatif, lecture passee prime, aucun repli inter-slot, rendu spawn sans
+« armes non lues »). Plan B.2 amende.
+
+**Conclusion / prochaine etape** : push + CI ; il ne reste du plan que le GATE VISUEL utilisateur
+(000d5950) — tout le reste est statue.
+
 ## [2026-08-12] v7.5 — correctif sur retour utilisateur : vitalite PLEINE au spawn, plus de « non transmis »
 
 **Statut** : Complete.

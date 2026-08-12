@@ -248,8 +248,21 @@ describe('loadoutAt', () => {
     expect(loadoutAt(d, 513, 60)).toEqual({ weapons: ['0xCCCC'], age: 50 })
   })
 
-  it('ne lit pas dans le futur', () => {
-    expect(loadoutAt(d, 512, 5)).toBeNull()
+  it('avant la première image-clé de la vie : la lecture À VENIR, âge NÉGATIF publié tel quel', () => {
+    // Un slot EST une vie : la première lecture à venir du même slot appartient à cette vie
+    // — c'est ce qui rend le repli sûr (doctrine du POC, 25,2 % de ses fiches). L'âge
+    // négatif n'est jamais déguisé : l'affichage le dit « à venir » et estompe sur |âge|.
+    expect(loadoutAt(d, 512, 5)).toEqual({ weapons: ['0xAAAA'], age: -5 })
+  })
+
+  it('une lecture PASSÉE prime toujours la lecture à venir', () => {
+    // À frame 60 : la lecture passée (t=10) est rendue, pas la suivante (t=200).
+    expect(loadoutAt(d, 512, 60)?.age).toBe(50)
+  })
+
+  it('le repli à venir ne lit JAMAIS le slot d’un autre', () => {
+    const solo = doc({ loadouts: [{ t: 10, slot: 513, w: ['0xCCCC'] }] })
+    expect(loadoutAt(solo, 512, 5)).toBeNull()
   })
 
   it('sans loadouts, rend null plutôt qu’un inventaire vide', () => {

@@ -54,6 +54,7 @@ interface ReplayText {
   abilityLabel: string
   loadoutUnread: string
   loadoutAge: string
+  loadoutAhead: string
   weaponInHand: string
   weaponInHandHint: string
   weaponSecondaryHint: string
@@ -146,6 +147,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityLabel: "Capacité d'armure équipée",
     loadoutUnread: 'armes non lues sur cette vie',
     loadoutAge: 'Armes lues il y a',
+    loadoutAhead:
+      'Armes de la première image-clé de cette vie, lue dans',
     weaponInHand: 'en main',
     weaponInHandHint:
       "Arme dégainée à la dernière image-clé lue (~20 s d'écart entre deux) : un changement de main entre deux lectures est invisible.",
@@ -242,6 +245,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityLabel: 'Equipped armor ability',
     loadoutUnread: 'weapons not read on this life',
     loadoutAge: 'Weapons read',
+    loadoutAhead: 'Weapons from the first keyframe of this life, read in',
     weaponInHand: 'in hand',
     weaponInHandHint:
       'Weapon drawn at the last keyframe read (~20 s between two): a hand change between two readings is invisible.',
