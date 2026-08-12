@@ -188,6 +188,19 @@ describe('ReplayTeams — mort et réapparition', () => {
   })
 })
 
+describe('ReplayTeams — armes au SPAWN (avant la première image-clé de la vie)', () => {
+  it('montre les armes de la première image-clé à venir, jamais « armes non lues »', () => {
+    // Le loadout n'est lu qu'à t=80 ; à frame 10, la fiche montre déjà ces armes (lecture
+    // à venir de la MÊME vie, âge négatif dit en infobulle) — doctrine du POC.
+    renderTeams({
+      weaponLabels: { '0xAAAA': { fr: 'Fusil', en: 'Rifle' } },
+      loadouts: [{ t: 80, slot: 512, w: ['0xAAAA'] }],
+    })
+    expect(screen.getByText('Fusil')).toBeTruthy()
+    expect(screen.queryByText('armes non lues sur cette vie')).toBeNull()
+  })
+})
+
 describe('ReplayTeams — armes en icônes', () => {
   it('une arme avec visuel rend son icône (accessible par son nom), pas son libellé en texte', () => {
     renderTeams({

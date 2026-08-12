@@ -266,15 +266,28 @@ export interface LoadoutReading {
  * La recherche porte sur le slot et non sur le joueur : le loadout est écrit pour un biped, et
  * un slot est réattribué à chaque réapparition. C'est aussi ce qui rend le report SÛR — une
  * dotation ne peut pas franchir une mort, puisqu'elle ne survit pas à son porteur.
+ *
+ * AVANT LA PREMIÈRE IMAGE-CLÉ D'UNE VIE, la lecture rendue est la plus proche À VENIR du même
+ * slot — donc de la MÊME vie, jamais d'une autre : c'est ce qui rend le repli sûr. L'âge est
+ * alors NÉGATIF et publié tel quel : l'affichage l'estompe sur sa valeur absolue et
+ * l'infobulle le dit « à venir », jamais déguisé en lecture passée. C'est la doctrine du POC
+ * (readAgeAt) : 25,2 % de ses fiches affichaient des armes lues dans le futur — sans ce
+ * repli, chaque début de vie dit « armes non lues » pendant jusqu'à 20 s.
  */
 export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
   let best: LoadoutReading | null = null
+  let ahead: LoadoutReading | null = null
   for (const l of doc.loadouts ?? []) {
-    if (l.slot !== slot || l.t > frame) continue
+    if (l.slot !== slot) continue
     const age = frame - l.t
+    if (age < 0) {
+      // La plus PROCHE à venir : l'âge le moins négatif.
+      if (!ahead || age > ahead.age) ahead = { weapons: l.w, age }
+      continue
+    }
     if (!best || age < best.age) best = { weapons: l.w, age }
   }
-  return best
+  return best ?? ahead
 }
 
 /** InventoryReading — l'inventaire d'un slot et l'ÂGE de cette lecture, en frames. */

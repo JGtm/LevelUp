@@ -127,6 +127,14 @@ Inventaire des features du POC (cible) :
   à GAUCHE via `Inventory.D`/i42 déjà décodé, souligné = primaire slot 0, **animation d'échange**
   au basculement du sélecteur — cf. POC `wswapL/R`), grenades (icône + « ×N »), capacité (icône +
   nom). Repli libellé si pas d'icône. Estompage d'âge (`--fr`/`freshness`).
+  - AMENDÉ (2026-08-12, retour utilisateur) : le REPLI DU POC AU SPAWN manquait — avant la
+    première image-clé d'une vie, `loadoutAt` rend désormais la lecture la plus proche À
+    VENIR du MÊME slot (un slot = une vie, le repli ne franchit jamais une mort), âge
+    NÉGATIF publié (infobulle « à venir », estompage sur |âge| — `freshness` passe en valeur
+    absolue). 25,2 % des fiches du POC étaient dans ce cas ; sans le repli, chaque début de
+    vie disait « armes non lues » jusqu'à 20 s. GRENADES/MUNITIONS : PAS de repli futur —
+    doctrine du POC conservée (« reporter en avant une lecture future serait inventer des
+    munitions que le joueur n'a pas encore »).
   - FAIT (2026-08-12), avec DEUX écarts au plan CONSIGNES en §6 : (1) la marque est « EN MAIN »
     (souligné + pleine encre, l'autre estompée), pas « primaire » — c'est le rendu RÉEL du POC
     final (aucune règle CSS `.prim` n'y existe) ; (2) grenades et capacités N'ONT PAS d'icône

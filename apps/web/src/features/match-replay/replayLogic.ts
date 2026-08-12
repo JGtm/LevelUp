@@ -298,10 +298,14 @@ export function lastIndexAt(points: ReplayPoint[], t: number): number {
  * freshness convertit un âge en facteur d'opacité dans [1 - fade, 1] : franc quand la mesure
  * vient d'arriver, atténué quand elle date. C'est la même graduation partout dans le rejeu —
  * cône de visée, bouclier, inventaire — pour qu'« ancien » se lise toujours de la même façon.
+ *
+ * L'âge peut être NÉGATIF (lecture d'une image-clé à venir, cf. loadoutAt) : une lecture
+ * éloignée dans le temps est une lecture éloignée, quel que soit le sens — l'estompage porte
+ * sur la valeur absolue.
  */
 export function freshness(age: number, hold: number, fade: number): number {
   if (hold <= 0) return 1
-  return 1 - fade * Math.min(1, age / hold)
+  return 1 - fade * Math.min(1, Math.abs(age) / hold)
 }
 
 /** altitudeRatio normalise un Z dans [0,1] sur l'amplitude verticale connue (0,5 si plate). */

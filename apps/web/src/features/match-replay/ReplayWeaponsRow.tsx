@@ -71,10 +71,14 @@ export function ReplayWeaponsRow({
   const swapAge = drawnSwapAt(doc, state.life.slot, frame, swapFrames)
   const swap = loadoutSwapAt(doc, state.life.slot, frame)
   const drawnKnown = read.drawn !== null
-  const ageMs = frameToMs(read.age, doc)
-  const hint = read.holstered
-    ? `${t.weaponsHolstered} — ${t.loadoutAge} ${formatSeconds(ageMs)}`
-    : `${t.loadoutAge} ${formatSeconds(ageMs)}`
+  // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. loadoutAt) : l'infobulle
+  // le dit — l'estompage, lui, porte déjà sur la valeur absolue.
+  const ageMs = frameToMs(Math.abs(read.age), doc)
+  const ageTxt =
+    read.age < 0
+      ? `${t.loadoutAhead} ${formatSeconds(ageMs)}`
+      : `${t.loadoutAge} ${formatSeconds(ageMs)}`
+  const hint = read.holstered ? `${t.weaponsHolstered} — ${ageTxt}` : ageTxt
   return (
     <div
       className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
