@@ -28,19 +28,22 @@ var sharedSnapshotTables = []string{
 
 // sharedSnapshotMatchKeyedRaw : tables shared append-only exportées RAW (toutes
 // générations des matchs ready) — leurs vues (v_weapon_kills DENSE_RANK,
-// match_csrs_latest / match_objective_stats_latest QUALIFY) sont reconstruites à la
-// LECTURE par les DDL canoniques. Exporter le raw (et non le collapsed) permet aussi
-// les lectures directes de ces tables hors vue. match_objective_stats ajoutée le
-// 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN match_objective_stats_latest
-// depuis v7.2 — sans l'export, la vue manquait du schéma snapshot et TOUT match du
-// cut sortait scoreboard_empty (bandeau « match partiel »).
-// match_kill_events N'Y FIGURE PAS ENCORE, et c'est délibéré (2026-08-02). Toute table de
-// cette liste est REQUISE à la lecture (createParquetViewStrict / materializeParquetTable) :
-// l'y ajouter rendrait ILLISIBLE tout snapshot exporté avant ce jour — le lecteur ne dégrade
-// pas sur la table manquante, il refuse le snapshot entier et retombe en live. La table entre
-// ici le jour où un lecteur du snapshot en a besoin, dans le même commit que la ré-exportation.
-// D'ici là, le kill-feed du snapshot vient de killer_victim_pairs, exportée juste au-dessus.
-var sharedSnapshotMatchKeyedRaw = []string{"weapon_kills", "match_csrs", "match_objective_stats"}
+// match_csrs_latest / match_objective_stats_latest QUALIFY, match_kill_events_latest)
+// sont reconstruites à la LECTURE par les DDL canoniques. Exporter le raw (et non le
+// collapsed) permet aussi les lectures directes de ces tables hors vue.
+// match_objective_stats ajoutée le 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN
+// match_objective_stats_latest depuis v7.2 — sans l'export, la vue manquait du schéma
+// snapshot et TOUT match du cut sortait scoreboard_empty (bandeau « match partiel »).
+// match_kill_events ajoutée le 2026-08-12 : le jour prévu par la note du 2026-08-02 est
+// arrivé — Q21b (arme du kill feed) et Q21c (assistant + parts de dégâts) la lisent
+// depuis le lot portage POC, et MatchView servi du snapshot rendait ces deux lectures
+// STRUCTURELLEMENT vides (0 icône, 0 assistant), sans erreur ni log, alors que le live
+// portait tout. Toute table de cette liste étant REQUISE à la lecture, les snapshots
+// antérieurs sont refusés (ErrSnapshotIncomplete) → fallback LIVE global, comportement
+// prévu — jusqu'au prochain cut qui ré-exporte complet.
+var sharedSnapshotMatchKeyedRaw = []string{
+	"weapon_kills", "match_csrs", "match_objective_stats", "match_kill_events",
+}
 
 // sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en
 // ENTIER (petites, globales) — requises par v_gamertag_lookup au moment de la lecture.

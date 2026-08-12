@@ -1,3 +1,36 @@
+## [2026-08-12] v7.5 — retours utilisateur (4) : inventaire au spawn, feed sans « assistant inconnu », CAUSE RACINE du feed vide (snapshot MatchView)
+
+**Statut** : Complete cote code — UN maillon d'environnement local reste ouvert (voir Resultats).
+
+**Decision technique principale** : trois decisions utilisateur appliquees. (1) L'INVENTAIRE
+(grenades/capacite/munitions/selecteur) se lit AU SPAWN par le meme repli que les armes
+(`inventoryAt` ahead : premiere image-cle A VENIR du meme slot, age negatif honnete, estompage
+|age|, infobulle « a venir ») — decision au-dela du POC (qui refusait la lecture future des
+compteurs volatils), l'honnetete portee par l'age affiche. (2) Le feed n'affiche l'assistance QUE
+nommee : « ? assistant inconnu » SUPPRIME (les 3 etats restent distincts dans la donnee). (3) La
+jauge/marteau n'etaient pas perdus (3 cas POC portes) — ils n'apparaissaient qu'apres la 1re
+image-cle, couvert par (1). CAUSE RACINE du « killfeed sans arme ni assistant » (constat user) :
+**le snapshot MatchView (parquets) n'exportait pas `match_kill_events`** — Q21b (arme) et Q21c
+(assistant) rendaient VIDE structurellement (signature 93 kills / 0 icone / 0 assist), sans
+erreur, alors que le live porte tout (93/93 prouve). Fix prevu par la note du code du 2026-08-02 :
+table ajoutee a `sharedSnapshotMatchKeyedRaw` (export RAW), vue `match_kill_events_latest`
+reconstruite a la lecture par la fonction canonique `migration.EnsureMatchKillEvents`, contrat
+`TestOpenSnapshotShared_SchemaContract_integration` etendu ; les snapshots anterieurs sont
+REFUSES (ErrSnapshotIncomplete) -> fallback live global, comportement prevu, jusqu'au prochain cut.
+
+**Resultats observes** : tests integration ops verts ; 217 tests match-replay verts ; typecheck
+purge vert ; diag sur pieces : OpenSnapshotShared refuse v81 (« schema shared incomplet:
+match_kill_events ») et Q21b via driver Go RO sur le live rend 93. MAILLON OUVERT : le serveur
+air LOCAL relance (binaire verifie porteur du fix) sert ENCORE 93/0 — et les compteurs expvar
+`snapshot_read_served/live_fallback` n'existent pas dans le process, donc le
+SnapshotPreferredSharedReader du wire n'est PAS invoque sur ce chemin : le process sert la
+signature snapshot par un autre maillon (a elucider : cablage reel du repo dans CE mode de
+lancement, ou reader legacy attachShared). A reprendre avec le lancement make dev de l'utilisateur
+et LEVELUP_LOG_LEVEL=debug.
+
+**Conclusion / prochaine etape** : push + CI ; gate visuel utilisateur ; elucider le maillon local
+(session dediee) — le fix snapshot est necessaire quel que soit ce maillon.
+
 ## [2026-08-12] v7.5 — correctif sur retour utilisateur (3) : vignettes HUD grenades/capacites portees du POC
 
 **Statut** : Complete.

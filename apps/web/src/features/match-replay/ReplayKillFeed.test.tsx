@@ -176,8 +176,12 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
     expect(line?.getAttribute('style') ?? '').not.toContain('color-mix')
   })
 
-  it('INCONNU : la lacune se signale — « assistant inconnu », sans fond', () => {
-    renderFeed([kill({ tMs: 1_000, assistState: '' })], 20_000)
-    expect(screen.getByText('assistant inconnu')).toBeTruthy()
+  it('INCONNU : RIEN d’affiché — l’assistance ne se précise que quand on a l’info', () => {
+    // Décision utilisateur (2026-08-12) : la plupart des kills n'ont pas d'assistant ;
+    // marteler « assistant inconnu » ne renseignait personne. L'état reste distinct dans
+    // la donnée (assistState: ''), l'écran n'en dit rien.
+    const { container } = renderFeed([kill({ tMs: 1_000, assistState: '' })], 20_000)
+    expect(screen.queryByText(/assistant inconnu|unknown assist/)).toBeNull()
+    expect(container.querySelector('li')?.getAttribute('title')).toBeNull()
   })
 })

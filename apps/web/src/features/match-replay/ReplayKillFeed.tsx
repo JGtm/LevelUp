@@ -109,13 +109,11 @@ export function ReplayKillFeed({ kills, victims, t0Ms, nowMs, scoreboard, xuidMe
  * FeedLine — UNE mort du feed, au format du POC : arme, tueur → victime, horodatage, puis
  * l'ASSISTANCE en dessous quand elle a quelque chose à dire.
  *
- * LES TROIS ÉTATS DE L'ASSISTANCE, JAMAIS CONFONDUS :
- *   - nommé   : « + Nom (part %) · tueur part % », fond BLEUTÉ sur la ligne — le fond
- *     affirme une contribution, il ne comble pas un trou ;
- *   - aucun   : RIEN d'affiché (76 morts sur 93 sur le film de référence : l'écrire
- *     remplirait le fil de lignes qui ne disent rien) — l'information reste en infobulle,
- *     DISTINCTE de « inconnu » ;
- *   - inconnu : « ? assistant inconnu » — une lacune se signale au lieu de se combler.
+ * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : « + Nom
+ * (part %) · tueur part % », fond BLEUTÉ sur la ligne — le fond affirme une contribution.
+ * « Aucun » (mesuré) garde sa précision en infobulle ; « inconnu » n'écrit RIEN — la
+ * plupart des kills n'ont pas d'assistant, marteler « assistant inconnu » ne renseignait
+ * personne. Les trois états restent distincts dans la DONNÉE (assist_state).
  */
 function FeedLine({
   kill: k,
@@ -199,15 +197,6 @@ function FeedLine({
               · {t.killFeedKillerShare(k.killerDamagePct)}
             </span>
           )}
-        </div>
-      )}
-      {k.assistState === '' && (
-        <div
-          className="flex items-baseline gap-1 pl-7 text-3xs text-muted-foreground/70"
-          title={t.killFeedAssistUnknownHint}
-        >
-          <span aria-hidden>?</span>
-          <span>{t.killFeedAssistUnknown}</span>
         </div>
       )}
     </li>

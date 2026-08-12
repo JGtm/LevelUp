@@ -285,9 +285,19 @@ describe('inventoryAt', () => {
     expect(r?.state.a).toBe(4)
   })
 
-  it('ne lit jamais l’inventaire d’un autre slot ni dans le futur', () => {
+  it('ne lit jamais l’inventaire d’un autre slot', () => {
     expect(inventoryAt(d, 513, 60)?.state.a).toBe(9)
-    expect(inventoryAt(d, 512, 5)).toBeNull()
+    const solo = doc({ inventory: [{ t: 10, slot: 513, a: 9 }] })
+    expect(inventoryAt(solo, 512, 5)).toBeNull()
+  })
+
+  it('avant la première image-clé de la vie : la lecture À VENIR, âge NÉGATIF publié tel quel', () => {
+    // Même repli que loadoutAt (décision utilisateur 2026-08-12, au-delà du POC pour les
+    // compteurs) : la dotation de spawn affichée avec son âge « à venir » informe mieux
+    // que vingt secondes de vide. Un slot est une vie : aucun repli ne franchit une mort.
+    const r = inventoryAt(d, 512, 5)
+    expect(r?.age).toBe(-5)
+    expect(r?.state.a).toBe(4)
   })
 
   it('sans inventaire, rend null', () => {

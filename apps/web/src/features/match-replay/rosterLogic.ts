@@ -302,6 +302,14 @@ export interface InventoryReading {
  * LA RECHERCHE PORTE SUR LE SLOT, PAS SUR LE JOUEUR, et c'est ce qui rend le report SÛR : un
  * slot est réattribué à chaque réapparition, donc une dotation ne peut jamais franchir une
  * mort. Chercher par joueur ferait survivre un inventaire à son porteur.
+ *
+ * AVANT LA PREMIÈRE IMAGE-CLÉ D'UNE VIE, la lecture rendue est la plus proche À VENIR du
+ * même slot — même repli que loadoutAt, et même honnêteté : âge NÉGATIF publié tel quel,
+ * estompé sur sa valeur absolue, dit « à venir » en infobulle. DÉCISION UTILISATEUR
+ * (2026-08-12) : elle va AU-DELÀ du POC, qui refusait la lecture future pour les compteurs
+ * (grenades, munitions) au motif qu'ils sont volatils — l'arbitrage produit est qu'une
+ * dotation de spawn affichée avec son âge « à venir » informe mieux que vingt secondes de
+ * vide. Le repli ne franchit jamais une mort : un slot est une vie.
  */
 export function inventoryAt(
   doc: ReplayDocumentReady,
@@ -309,12 +317,18 @@ export function inventoryAt(
   frame: number,
 ): InventoryReading | null {
   let best: InventoryReading | null = null
+  let ahead: InventoryReading | null = null
   for (const inv of doc.inventory ?? []) {
-    if (inv.slot !== slot || inv.t > frame) continue
+    if (inv.slot !== slot) continue
     const age = frame - inv.t
+    if (age < 0) {
+      // La plus PROCHE à venir : l'âge le moins négatif.
+      if (!ahead || age > ahead.age) ahead = { state: inv, age }
+      continue
+    }
     if (!best || age < best.age) best = { state: inv, age }
   }
-  return best
+  return best ?? ahead
 }
 
 /**
