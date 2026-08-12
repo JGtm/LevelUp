@@ -34,8 +34,6 @@ interface ReplayText {
   killFeedEmpty: string
   killFeedUnknownWeapon: string
   killFeedTotal: (n: number) => string
-  killFeedAssistUnknown: string
-  killFeedAssistUnknownHint: string
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
@@ -67,6 +65,7 @@ interface ReplayText {
   respawnUnknownHint: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */
   inventoryAge: string
+  inventoryAhead: string
   grenadeSelected: string
   grenadeSelectedRead: string
   grenadeSelUnknown: string
@@ -123,9 +122,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedEmpty: 'Rien à cet instant du match.',
     killFeedUnknownWeapon: 'Arme non identifiée',
     killFeedTotal: (n) => `${n} sur le match`,
-    killFeedAssistUnknown: 'assistant inconnu',
-    killFeedAssistUnknownHint:
-      "Aucune assistance n'a pu être lue pour cette mort : ON NE SAIT PAS. À ne pas confondre avec une absence d'assistant, qui elle est mesurée.",
     killFeedNoAssistHint:
       'Mort sans assistant — MESURÉ : la mort porte son événement dans le film, et il ne déclare personne.',
     killFeedAssistHint:
@@ -163,6 +159,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     respawnUnknownHint:
       "Le film ne porte aucune vie suivante pour ce joueur : le délai n'est pas lisible, et il n'est pas deviné. Le cas se produit en fin de partie, que le film ne clôt par aucun événement.",
     inventoryAge: 'Inventaire lu il y a',
+    inventoryAhead: 'Inventaire de la première image-clé de cette vie, lue dans',
     grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
     grenadeSelectedRead:
       'Type équipé, LU dans le film (sélecteur de grenade de l’image-clé) : celui qui partira au prochain lancer.',
@@ -222,9 +219,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedEmpty: 'Nothing at this point of the match.',
     killFeedUnknownWeapon: 'Unidentified weapon',
     killFeedTotal: (n) => `${n} in the match`,
-    killFeedAssistUnknown: 'unknown assist',
-    killFeedAssistUnknownHint:
-      'No assist could be read for this death: WE DO NOT KNOW. Not to be confused with a measured absence of assist.',
     killFeedNoAssistHint:
       'Death without an assist — MEASURED: the death carries its event in the film, and it names no one.',
     killFeedAssistHint:
@@ -260,6 +254,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     respawnUnknownHint:
       'The film carries no next life for this player: the delay is not readable, and it is not guessed. This happens at the end of the match, which the film closes with no event.',
     inventoryAge: 'Inventory read',
+    inventoryAhead: 'Inventory from the first keyframe of this life, read in',
     grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
     grenadeSelectedRead:
       'Equipped type, READ from the film (keyframe grenade selector): the one the next throw will use.',

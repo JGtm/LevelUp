@@ -55,12 +55,16 @@ export function ReplayInventoryRow({
   // deux lignes partagent la même lecture d'ordre, sinon chaque cellule se rattacherait à la
   // mauvaise arme. Le numéro d'emplacement lève l'ambiguïté quand l'ordre bascule.
   const ammoOrder = (equipped?.order ?? ammo.map((_, i) => i)).filter((i) => i < ammo.length)
+  // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. inventoryAt) :
+  // l'infobulle le dit — l'estompage porte déjà sur la valeur absolue.
+  const ageMs = formatSeconds(frameToMs(Math.abs(read.age), doc))
+  const ageTitle = read.age < 0 ? `${t.inventoryAhead} ${ageMs}` : `${t.inventoryAge} ${ageMs}`
 
   return (
     <div
       className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
-      title={`${t.inventoryAge} ${formatSeconds(frameToMs(read.age, doc))}`}
+      title={ageTitle}
     >
       {grenades.map((g) => {
         const isSel = typeof selected === 'object' && selected !== null && g.rank === selected.rank

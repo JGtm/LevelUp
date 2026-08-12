@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 )
 
 // seedFidelityShared monte une DB shared LIVE au schéma RÉALISTE (toutes les colonnes
@@ -54,6 +55,11 @@ func seedFidelityShared(t *testing.T) *sql.DB {
 	// match_objective_stats RAW (colonnes lues par match_objective_stats_latest :
 	// written_at, id) — jointe par Q12 (scoreboard MatchView) depuis v7.2.
 	snapExecT(t, db, `CREATE TABLE match_objective_stats (id BIGINT, match_id VARCHAR, xuid VARCHAR, flag_captures INTEGER, written_at TIMESTAMP)`)
+	// match_kill_events : par la fonction canonique (schéma complet + vue _latest) — la
+	// table est exportée RAW depuis le 2026-08-12 (Q21b/Q21c la lisent au kill feed).
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("EnsureMatchKillEvents (fixture): %v", err)
+	}
 
 	// Données. m1 = ready ; m2 = not-ready. Gamertag participants/kv ≠ alias → exerce
 	// la priorité de v_gamertag_lookup (alias > participant > kv).
@@ -245,11 +251,15 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		// Tables de base matérialisées (sharedSnapshotTables + MatchKeyedRaw + Global).
 		"match_registry", "match_participants", "medals_earned", "highlight_events",
 		"killer_victim_pairs", "weapon_kills", "match_csrs", "match_objective_stats",
-		"xuid_aliases",
+		"match_kill_events", "xuid_aliases",
 		// Vues reconstruites aux noms live. v_killer_victim_full n'y figure plus : supprimée
 		// le 2026-08-02 (ses deux LEFT JOIN étaient du travail mort), Q20 lit la table.
+		// match_kill_events_latest ajoutée le 2026-08-12 (Q21b arme + Q21c assistant du
+		// kill feed) : son absence rendait ces lectures VIDES sur tout MatchView servi du
+		// snapshot, sans erreur — 0 icône, 0 assistant, indiscernable d'un match non décodé.
 		"v_gamertag_lookup", "v_match_full", "v_weapon_kills",
-		"match_csrs_latest", "match_objective_stats_latest", "mv_player_matches",
+		"match_csrs_latest", "match_objective_stats_latest", "match_kill_events_latest",
+		"mv_player_matches",
 	}
 	for _, rel := range expected {
 		var n int
