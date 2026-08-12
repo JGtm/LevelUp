@@ -41,6 +41,11 @@ const SchemaVersion = 2
 type Label struct {
 	En string `json:"en"`
 	Fr string `json:"fr"`
+	// Img est l'URL de la vignette du HUD du jeu (grenades, capacités des fiches joueur).
+	// Vide = pas de visuel : le client garde le libellé, jamais la vignette d'un voisin.
+	// Tinted dit si le visuel est un masque à teindre (même contrat que WeaponLabel).
+	Img    string `json:"img,omitempty"`
+	Tinted bool   `json:"tinted,omitempty"`
 }
 
 // WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.

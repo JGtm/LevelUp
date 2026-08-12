@@ -25,9 +25,14 @@ import (
 // BilingualLabel — un libelle affichable dans les deux langues du produit. en ET fr sont
 // obligatoires ; quand aucun FR officiel n'est connu, le fichier met le EN dans les deux
 // (jamais de FR invente — meme regle que weapon_names.toml).
+//
+// Icon (OPTIONNEL) : stem de la vignette du HUD du jeu sous static/weapons-assets/{slug}/
+// (ex. « hud/Frag »). Sans icon, le client garde le libelle — jamais la vignette d'un
+// voisin.
 type BilingualLabel struct {
-	En string
-	Fr string
+	En   string
+	Fr   string
+	Icon string
 }
 
 // ReplayLabelSet porte les libelles de rejeu d'un titre.
@@ -48,8 +53,9 @@ type replayLabelsTOML struct {
 }
 
 type bilingualEntry struct {
-	En string `toml:"en"`
-	Fr string `toml:"fr"`
+	En   string `toml:"en"`
+	Fr   string `toml:"fr"`
+	Icon string `toml:"icon"`
 }
 
 // shotEffectFamilies — les familles de rendu ADMISES. La liste est fermee a dessein :
@@ -205,7 +211,7 @@ func parseShotEffects(path string, rows map[string]string) (map[string]string, e
 	return out, nil
 }
 
-// bilingual valide qu'un libelle porte bien ses deux langues.
+// bilingual valide qu'un libelle porte bien ses deux langues. L'icone reste optionnelle.
 func bilingual(path, what string, e bilingualEntry) (BilingualLabel, error) {
 	en := strings.TrimSpace(e.En)
 	fr := strings.TrimSpace(e.Fr)
@@ -215,5 +221,5 @@ func bilingual(path, what string, e bilingualEntry) (BilingualLabel, error) {
 	if fr == "" {
 		return BilingualLabel{}, fmt.Errorf("%s: %s sans fr (mettre le EN si aucun FR officiel)", path, what)
 	}
-	return BilingualLabel{En: en, Fr: fr}, nil
+	return BilingualLabel{En: en, Fr: fr, Icon: strings.TrimSpace(e.Icon)}, nil
 }

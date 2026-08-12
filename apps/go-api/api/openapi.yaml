@@ -13163,6 +13163,10 @@ components:
           type: string
         fr:
           type: string
+        img:
+          type: string
+        tinted:
+          type: boolean
       required:
         - en
         - fr

@@ -218,6 +218,18 @@ Par phase : gate ci-dessus (commandes exactes). Global : `make check-types` + `m
 - (A.1, 2026-08-12) Le POC n'a JAMAIS lu i47 (98 × « unique compteur non nul », « sél. ? » à
   2+ types) : la lecture i47 keyframe livrée en A.1 va AU-DELÀ du POC — 18 sélections nommées
   sur 22 états à 2+ types, là où le POC affichait « sél. ? ».
+- (retour user, 2026-08-12) **Les vignettes grenades/capacités du POC sont RÉUTILISABLES** :
+  ce ne sont PAS des dessins main mais « les vignettes du HUD du jeu » (commentaire du POC),
+  embarquées en data URI. J'avais appliqué la règle « pas de dessins main » trop largement.
+  EXTRAITES (15 PNG : 4 grenades + les 11 capacités du jeu) vers
+  `static/weapons-assets/halo_infinite/hud/`, câblées via `replay_labels.toml` (champ `icon`
+  par rang/index, à côté du libellé — une seule source par titre) → `Label.img/tinted` au
+  contrat → `ReplayInventoryRow` (masques teints, nom en infobulle, repli libellé).
+- (retour user, 2026-08-12) **DIVERGENCE table capacités ↔ binaire** : le TOML (et le POC)
+  disent 3=mur portatif / 6=capteur de menace, la lecture `sofd` (RECETTE_LOADOUT §13, qui
+  fait foi) CONTREDIT ces deux index (mur au rang 2, rang 6 = répulseur). NON traité ici
+  (hors périmètre — les icônes suivent le MÊME index que le libellé, les deux bougeront
+  ensemble) ; les 11 vignettes sont au dépôt, prêtes. À trancher dans un lot référentiel.
 - (clôture, 2026-08-12) **`make go-api-test` échoue en LOCAL sur `analysis/weaponv3`**
   (`TestBuildV3Attributions_Smoke000d5950` : paquet à 61,2 s pour un budget `-timeout 60s`,
   smoke mesuré à 54 s isolé). INDÉPENDANT de ce lot — `git diff` de la base du lot sur

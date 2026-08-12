@@ -13,14 +13,18 @@
  *
  * L'ensemble pâlit avec l'âge de la lecture, comme les armes portées et pour la même raison.
  */
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import { catalogText } from './catalogLabel'
+import { catalogText, type CatalogLabel } from './catalogLabel'
 import type { EquippedReading } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { grenadesCarried, inventoryAt, selectedGrenade } from './rosterLogic'
+
+/** Boîte d'une vignette de HUD (grenade, capacité) : la hauteur de la ligne. */
+const HUD_ICON_PX = 16
 
 export function ReplayInventoryRow({
   doc,
@@ -60,10 +64,13 @@ export function ReplayInventoryRow({
     >
       {grenades.map((g) => {
         const isSel = typeof selected === 'object' && selected !== null && g.rank === selected.rank
+        // La vignette du HUD porte l'identité, le nom passe en infobulle : à cette taille
+        // le dessin est plus lisible que le mot (POC). Sans vignette, le libellé reste.
+        const lbl: CatalogLabel | undefined = doc.grenadeLabels?.[g.rank]
         return (
           <span
             key={g.rank}
-            className={isSel ? 'rounded-sm px-0.5 font-semibold' : undefined}
+            className={`inline-flex items-center gap-0.5 ${isSel ? 'rounded-sm px-0.5 font-semibold' : ''}`}
             style={
               isSel
                 ? {
@@ -73,9 +80,24 @@ export function ReplayInventoryRow({
                   }
                 : undefined
             }
-            title={isSel ? (selected.read ? t.grenadeSelectedRead : t.grenadeSelected) : undefined}
+            title={
+              isSel
+                ? `${g.name} — ${selected.read ? t.grenadeSelectedRead : t.grenadeSelected}`
+                : g.name
+            }
           >
-            {g.name} ×{g.count}
+            {lbl?.img ? (
+              <WeaponIcon
+                imageUrl={lbl.img}
+                tinted={lbl.tinted}
+                label={g.name}
+                width={HUD_ICON_PX}
+                height={HUD_ICON_PX}
+              />
+            ) : (
+              g.name
+            )}
+            <span className="tabular-nums">×{g.count}</span>
           </span>
         )
       })}
@@ -86,10 +108,24 @@ export function ReplayInventoryRow({
       )}
       {ability && (
         <span
-          className={ability.known ? undefined : 'border-b border-dashed border-border'}
-          title={ability.known ? t.abilityLabel : t.abilityUnknownHint}
+          className={
+            ability.known
+              ? 'inline-flex items-center'
+              : 'border-b border-dashed border-border'
+          }
+          title={ability.known ? `${t.abilityLabel} — ${ability.text}` : t.abilityUnknownHint}
         >
-          {ability.text}
+          {ability.img ? (
+            <WeaponIcon
+              imageUrl={ability.img}
+              tinted={ability.tinted}
+              label={ability.text}
+              width={HUD_ICON_PX}
+              height={HUD_ICON_PX}
+            />
+          ) : (
+            ability.text
+          )}
         </span>
       )}
       {ammoOrder.map((i) => (
@@ -117,7 +153,8 @@ export function ReplayInventoryRow({
 }
 
 /**
- * abilityText nomme la capacité, ou rend son numéro quand la table ne la connaît pas.
+ * abilityText nomme la capacité — et porte sa vignette de HUD quand le document en sert
+ * une. Un index hors table garde son numéro : ni nom ni vignette empruntés à un voisin.
  * Renvoie null quand rien n'a été lu — l'absence de capacité et une capacité inconnue sont
  * deux états différents.
  */
@@ -126,10 +163,11 @@ function abilityText(
   index: number | undefined,
   unknownLabel: string,
   locale: ReplayLocale,
-): { text: string; known: boolean } | null {
+): { text: string; known: boolean; img?: string; tinted?: boolean } | null {
   if (index === undefined) return null
-  const name = catalogText(doc.abilityLabels?.[String(index)], locale)
-  if (name) return { text: name, known: true }
+  const lbl: CatalogLabel | undefined = doc.abilityLabels?.[String(index)]
+  const name = catalogText(lbl, locale)
+  if (name) return { text: name, known: true, img: lbl?.img, tinted: lbl?.tinted }
   return { text: `${unknownLabel} (${index})`, known: false }
 }
 
