@@ -8,43 +8,69 @@
  * ou qu'il dit « rien de dégainé » (D=2, l'état d'avant le départ), l'ordre reste celui des
  * emplacements et rien n'est marqué.
  *
+ * UNE SEULE MARQUE, ET ELLE DIT « EN MAIN » : l'arme dégainée est soulignée et en pleine
+ * encre, l'autre s'estompe. Sans sélecteur lu, les deux gardent la même encre — n'estomper
+ * qu'une dirait un faux. (La notion de « primaire » du record n'est pas montrée : elle
+ * vient du format, pas du jeu.)
+ *
+ * LES VISUELS SONT LES ICÔNES EXTRAITES DU JEU, servies par le document (`weaponLabels`,
+ * champ `img`) et rendues par le composant commun `WeaponIcon`. Une arme sans visuel garde
+ * son LIBELLÉ — jamais l'icône d'une arme voisine — et une arme sans libellé garde son
+ * identifiant, souligné en pointillés.
+ *
+ * L'ÉCHANGE D'ARME EST ANIMÉ : quand le sélecteur bascule d'un emplacement à l'autre, les
+ * deux vignettes permutent en se croisant. Sans mouvement, une permutation est
+ * indiscernable d'un changement d'arme. L'animation reçoit un délai NÉGATIF égal à son
+ * avancement réel : elle reste juste après un saut dans le temps de lecture.
+ *
  * CE QUE CETTE RANGÉE NE DIT PAS : la CONTINUITÉ. Une image-clé toutes les ~20 s, un
  * ramassage entre deux est invisible. D'où l'estompage avec l'âge, l'âge exact dans
- * l'infobulle — et l'indicateur de swap, qui date un CHANGEMENT entre les deux dernières
- * lectures sans prétendre le suivre.
- *
- * UNE ARME NON CATALOGUÉE GARDE SON IDENTIFIANT plutôt que d'emprunter un nom voisin.
+ * l'infobulle.
  */
+import type { CSSProperties } from 'react'
+
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+
 import { catalogText } from './catalogLabel'
-import { equippedWeapons, loadoutSwapAt, type SwapReading } from './equippedLogic'
+import { drawnSwapAt, loadoutSwapAt, type EquippedReading, type SwapReading } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
+import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { PlayerState } from './rosterLogic'
+
+/** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
+const SWAP_ANIM_MS = 340
+
+/** Boîte d'une vignette d'arme : hauteur de la ligne, largeur bornée. */
+const ICON_H = 16
+const ICON_W = 40
 
 export function ReplayWeaponsRow({
   doc,
   state,
+  read,
   frame,
   readingFull,
   locale,
 }: {
   doc: ReplayDocumentReady
   state: PlayerState
+  /** La lecture ORDONNÉE des armes — calculée par la fiche, partagée avec les munitions. */
+  read: EquippedReading | null
   frame: number
   readingFull: number
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
   if (!state.life) return null
-  const read = equippedWeapons(doc, state.life.slot, frame)
   if (!read) {
     return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{t.loadoutUnread}</span>
   }
+  const swapFrames = Math.max(1, msToFrames(SWAP_ANIM_MS, doc))
+  const swapAge = drawnSwapAt(doc, state.life.slot, frame, swapFrames)
   const swap = loadoutSwapAt(doc, state.life.slot, frame)
-  // « Secondaire » n'a de sens que si une arme est EN MAIN : sans sélecteur lu, aucune des
-  // deux n'est désignée, et on ne baptise pas l'ordre d'emplacement.
-  const drawnKnown = read.weapons.some((w) => w.inHand)
+  const drawnKnown = read.drawn !== null
   const ageMs = frameToMs(read.age, doc)
   const hint = read.holstered
     ? `${t.weaponsHolstered} — ${t.loadoutAge} ${formatSeconds(ageMs)}`
@@ -55,36 +81,84 @@ export function ReplayWeaponsRow({
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
       title={hint}
     >
-      {read.weapons.map((w, i) => {
-        // Le tag brut reste À CÔTÉ du libellé, jamais à sa place : une arme hors
-        // catalogue garde son hexadécimal, souligné en pointillés pour le dire.
-        const name = catalogText(doc.weaponLabels?.[w.id], locale)
-        const classes = [
-          w.inHand ? 'font-semibold text-foreground' : '',
-          name ? '' : 'border-b border-dashed border-border',
-        ]
-          .filter(Boolean)
-          .join(' ')
-        return (
-          <span
-            key={`${i}-${w.id}`}
-            className={classes || undefined}
-            title={drawnKnown && !w.inHand ? t.weaponSecondaryHint : undefined}
-          >
-            {name ?? w.id}
-            {w.inHand && (
-              <i
-                className="ml-0.5 align-middle text-[8px] not-italic uppercase tracking-wide text-muted-foreground"
-                title={t.weaponInHandHint}
-              >
-                {t.weaponInHand}
-              </i>
-            )}
-          </span>
-        )
-      })}
+      {read.weapons.map((w, k) => (
+        <WeaponChip
+          key={`${k}-${w.id}`}
+          doc={doc}
+          id={w.id}
+          inHand={w.inHand}
+          dimmed={drawnKnown && !w.inHand}
+          swap={swapAge !== null ? { cls: k === 0 ? 'replay-wswap-l' : 'replay-wswap-r', age: swapAge, span: swapFrames } : null}
+          hint={w.inHand ? t.weaponInHandHint : drawnKnown ? t.weaponSecondaryHint : undefined}
+          locale={locale}
+        />
+      ))}
       {swap && <SwapMark swap={swap} doc={doc} locale={locale} />}
     </div>
+  )
+}
+
+/**
+ * WeaponChip — UNE vignette d'arme : l'icône extraite quand le document en pointe une, le
+ * libellé sinon (jamais le visuel d'une arme voisine). La marque « en main » est un souligné
+ * plein encre ; l'autre arme s'estompe quand le sélecteur est lu.
+ */
+function WeaponChip({
+  doc,
+  id,
+  inHand,
+  dimmed,
+  swap,
+  hint,
+  locale,
+}: {
+  doc: ReplayDocumentReady
+  id: string
+  inHand: boolean
+  dimmed: boolean
+  swap: { cls: string; age: number; span: number } | null
+  hint?: string
+  locale: ReplayLocale
+}) {
+  const lbl = doc.weaponLabels?.[id]
+  const name = catalogText(lbl, locale)
+  const style: CSSProperties = {
+    borderBottom: `2px solid ${inHand ? tokenCssVar('success') : 'transparent'}`,
+    opacity: dimmed ? 0.45 : 1,
+  }
+  if (swap) {
+    // Délai négatif = avancement réel : l'animation reprend où elle en était malgré les
+    // re-rendus, et reste juste après un saut de lecture.
+    style.animationDelay = `${(-(Math.min(swap.age, swap.span) / swap.span) * (SWAP_ANIM_MS / 1000)).toFixed(3)}s`
+  }
+  return (
+    <span
+      className={`inline-flex items-center px-0.5 ${swap ? swap.cls : ''}`}
+      style={style}
+      title={hint}
+    >
+      {lbl?.img ? (
+        <WeaponIcon
+          imageUrl={lbl.img}
+          tinted={lbl.tinted}
+          label={name ?? id}
+          width={ICON_W}
+          height={ICON_H}
+          className={inHand ? 'text-foreground' : undefined}
+        />
+      ) : (
+        <span
+          className={[
+            inHand ? 'font-semibold text-foreground' : '',
+            name ? '' : 'border-b border-dashed border-border',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {name ?? id}
+        </span>
+      )}
+    </span>
   )
 }
 

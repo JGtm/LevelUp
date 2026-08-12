@@ -12,7 +12,7 @@ import {
   loadoutAt,
   playerName,
   playerStateAt,
-  selectedGrenadeRank,
+  selectedGrenade,
 } from './rosterLogic'
 
 function track(
@@ -153,7 +153,7 @@ describe('playerStateAt', () => {
   const [a] = buildPlayers(d, [])
 
   it('vivant : rend la vie en cours et le bouclier lu', () => {
-    const s = playerStateAt(a, 10, 100, 100)
+    const s = playerStateAt(a, 10)
     expect(s.alive).toBe(true)
     expect(s.life?.slot).toBe(512)
     expect(s.shield).toEqual({ value: 1, age: 10 })
@@ -161,7 +161,7 @@ describe('playerStateAt', () => {
 
   it('mort : date la mort et LIT l’image du retour', () => {
     // Le retour est l'image de départ de la vie suivante, jamais une constante ajoutée.
-    const s = playerStateAt(a, 90, 100, 100)
+    const s = playerStateAt(a, 90)
     expect(s.alive).toBe(false)
     expect(s.sinceDeath).toBe(40)
     expect(s.respawnFrame).toBe(130)
@@ -169,19 +169,21 @@ describe('playerStateAt', () => {
 
   it('sans vie suivante, le retour reste une LACUNE', () => {
     const solo = buildPlayers(doc({ tracks: [track(512, 'A', 0, 50)] }), [])[0]
-    expect(playerStateAt(solo, 90, 100, 100).respawnFrame).toBe(-1)
+    expect(playerStateAt(solo, 90).respawnFrame).toBe(-1)
   })
 
   it('mort : aucun bouclier, jamais un zéro inventé', () => {
     // Zéro voudrait dire « bouclier brisé, mesuré ». Un mort n'a pas de mesure du tout.
-    expect(playerStateAt(a, 90, 100, 100).shield).toBeNull()
+    expect(playerStateAt(a, 90).shield).toBeNull()
   })
 })
 
 describe('playerStateAt — santé', () => {
-  // La santé suit le MÊME contrat que le bouclier : report EN AVANT dans la fenêtre de
-  // maintien, LACUNE au-delà — jamais un plein par défaut. Elle est encore plus rare que
-  // le bouclier (médiane zéro échantillon par vie), donc la lacune est l'état ordinaire.
+  // La santé suit le MÊME contrat que le bouclier : report EN AVANT sur TOUTE la vie —
+  // le flux est différentiel, non retransmis veut dire inchangé, et les points appartiennent
+  // à la vie donc le report ne franchit jamais une mort. Ce qui vieillit s'ESTOMPE à
+  // l'affichage (l'âge voyage avec la valeur) ; ce qui n'a jamais été mesuré reste une
+  // LACUNE — jamais un plein par défaut.
   const d = doc({
     tracks: [
       {
@@ -199,21 +201,23 @@ describe('playerStateAt — santé', () => {
   })
   const [a] = buildPlayers(d, [])
 
-  it('reporte la mesure EN AVANT, avec son âge, tant que le maintien la couvre', () => {
-    expect(playerStateAt(a, 50, 100, 30).health).toEqual({ value: 0.3, age: 10 })
+  it('reporte la mesure EN AVANT, avec son âge', () => {
+    expect(playerStateAt(a, 50).health).toEqual({ value: 0.3, age: 10 })
   })
 
   it('ne peint JAMAIS en arrière : avant la mesure, lacune', () => {
     // La seule mesure de cette vie date de t=40 ; à t=20 elle n'existe pas encore.
-    expect(playerStateAt(a, 20, 100, 30).health).toBeNull()
+    expect(playerStateAt(a, 20).health).toBeNull()
   })
 
-  it('au-delà du maintien, la lecture expire en lacune — pas un plein par défaut', () => {
-    expect(playerStateAt(a, 80, 100, 30).health).toBeNull()
+  it('le report tient JUSQU’À LA FIN DE LA VIE, avec son âge — c’est l’estompage qui dit le temps', () => {
+    // Non retransmis = inchangé : couper le report à une constante peignait une fausse
+    // lacune. La valeur reste, l'âge grandit, et l'affichage l'estompe.
+    expect(playerStateAt(a, 80).health).toEqual({ value: 0.3, age: 40 })
   })
 
   it('mort : aucune santé, jamais un zéro inventé', () => {
-    expect(playerStateAt(a, 150, 100, 30).health).toBeNull()
+    expect(playerStateAt(a, 150).health).toBeNull()
   })
 })
 
@@ -299,18 +303,28 @@ describe('grenadesCarried', () => {
   })
 })
 
-describe('selectedGrenadeRank', () => {
-  it('désigne le type quand il ne peut pas être un autre', () => {
-    expect(selectedGrenadeRank(inv({ g: [0, 0, 2, 0] }))).toBe(2)
+describe('selectedGrenade', () => {
+  it('déduit le type quand il ne peut pas être un autre — et le dit DÉDUIT', () => {
+    expect(selectedGrenade(inv({ g: [0, 0, 2, 0] }))).toEqual({ rank: 2, read: false })
   })
 
-  it('ne désigne RIEN quand deux types sont portés', () => {
-    // Le sélecteur de type n'est pas dans ce qu'on sait lire : deviner afficherait une
-    // certitude qu'on n'a pas.
-    expect(selectedGrenadeRank(inv({ g: [1, 2, 0, 0] }))).toBeNull()
+  it('la LECTURE du film (gs) prime la déduction, et se dit LUE', () => {
+    expect(selectedGrenade(inv({ g: [1, 2, 0, 0], gs: 1 }))).toEqual({ rank: 1, read: true })
+  })
+
+  it('deux types portés sans sélecteur lu : INDÉTERMINÉ, jamais deviné', () => {
+    // L'écran doit le dire (« sél. ? »), pas choisir : deviner afficherait une certitude
+    // qu'on n'a pas.
+    expect(selectedGrenade(inv({ g: [1, 2, 0, 0] }))).toBe('indeterminate')
+  })
+
+  it('un gs qui désigne un rang NON porté ne prime rien — la garde de cohérence du décodeur', () => {
+    // Le décodeur publie gs sous masque == compteurs : ce cas ne doit pas arriver, et s'il
+    // arrivait (artefact d'une autre version), on retombe sur la règle sans lecture.
+    expect(selectedGrenade(inv({ g: [0, 0, 2, 0], gs: 1 }))).toEqual({ rank: 2, read: false })
   })
 
   it('ne désigne rien sans lecture', () => {
-    expect(selectedGrenadeRank(inv())).toBeNull()
+    expect(selectedGrenade(inv())).toBeNull()
   })
 })

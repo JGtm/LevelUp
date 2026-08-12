@@ -14,7 +14,14 @@ package replay
 // règle du chantier — mieux vaut un identifiant qu'un mot faux, parce qu'un mot faux se
 // lit comme une certitude.
 
-// LabelCatalog porte les trois tables de libellés d'un titre pour le rejeu 2D.
+// WeaponIconRef pointe l'icône EXTRAITE DU JEU d'une famille d'arme, telle que le titre
+// la sert. Tinted dit si le visuel est un masque à teindre (cf. WeaponImageIsTinted).
+type WeaponIconRef struct {
+	URL    string
+	Tinted bool
+}
+
+// LabelCatalog porte les tables de libellés et d'icônes d'un titre pour le rejeu 2D.
 type LabelCatalog struct {
 	// Weapons associe une FAMILLE d'arme (high-32 du weapon-id) à son libellé et à
 	// l'effet de rendu de ses tirs. Une famille absente n'est pas nommée.
@@ -24,6 +31,11 @@ type LabelCatalog struct {
 	Grenades []Label
 	// Abilities nomme les index de capacité d'armure. Table partielle par nature.
 	Abilities map[int]Label
+	// Icons pointe l'icône extraite d'une famille d'arme. Posée par la COUCHE TITRE
+	// (elle seule connaît ses URLs d'assets), APRÈS NewLabelCatalog — d'où un champ et
+	// pas un sixième paramètre. Une famille absente garde son libellé sans visuel :
+	// le client affiche alors le texte, jamais l'icône d'une arme voisine.
+	Icons map[uint32]WeaponIconRef
 }
 
 // Empty dit si le catalogue ne nomme rien. Utile aux appelants qui veulent journaliser

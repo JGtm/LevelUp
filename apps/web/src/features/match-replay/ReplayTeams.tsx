@@ -11,14 +11,15 @@
  *      une toutes les ~20 s, et le faire passer pour l'instant courant était un défaut réel.
  *   3. Aucun littéral de couleur : les rôles passent par des tokens sémantiques.
  */
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { catalogText } from './catalogLabel'
+import { equippedWeapons, type EquippedReading } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from './replayLogic'
+import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
@@ -28,24 +29,33 @@ import {
   inventoryAt,
   playerName,
   playerStateAt,
-  selectedGrenadeRank,
+  selectedGrenade,
   type ReplayPlayer,
   type PlayerState,
 } from './rosterLogic'
 
-/** Maintien du bouclier : même valeur que sur la carte, pour que les deux disent la même chose. */
-const SHIELD_HOLD_MS = 2_000
 /**
- * Maintien de la santé : même valeur initiale que le bouclier (décision du plan fiches
- * enrichies, ajustable au gate visuel). La santé est transmise encore plus rarement que le
- * bouclier — 0,56 % des points du film de référence — donc la LACUNE est l'état ordinaire.
+ * Estompage COMPLET d'une lecture de vitalité à 6 s : la même graduation que le bouclier
+ * sur la carte. Le REPORT, lui, n'a pas de limite dans une vie — le flux est différentiel,
+ * non retransmis veut dire inchangé — et les points appartiennent à la vie, donc il ne
+ * franchit jamais une mort. Ce qui vieillit pâlit ; ce qui n'a jamais été mesuré reste
+ * une lacune dite.
  */
-const HEALTH_HOLD_MS = 2_000
+const VITALITY_FADE_MS = 6_000
 /**
  * Au-delà, une lecture d'inventaire est au plancher d'opacité. 20 s est l'écart médian entre
  * deux images-clés du film : c'est donc l'âge maximal ordinaire d'une lecture.
  */
 const READING_FULL_MS = 20_000
+/**
+ * Durée des DEUX éclats d'événement (coup fatal, réapparition), en temps réel — assez pour
+ * être vus sans être subis, calée sur la rémanence des lancers. L'état de mort, lui, est
+ * porté en continu par le fond de la fiche.
+ */
+const FLASH_MS = 1_400
+/** Durées CSS des deux animations d'éclat (cf. globals.css) — le délai négatif s'y rapporte. */
+const DEATH_FLASH_TOTAL_S = 1.86
+const RESPAWN_FLASH_S = 0.55
 
 interface ReplayTeamsProps {
   doc: ReplayDocumentReady
@@ -60,9 +70,9 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
     () => groupByTeam(buildPlayers(doc, scoreboard)),
     [doc, scoreboard],
   )
-  const shieldHold = useMemo(() => msToFrames(SHIELD_HOLD_MS, doc), [doc])
-  const healthHold = useMemo(() => msToFrames(HEALTH_HOLD_MS, doc), [doc])
+  const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
+  const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
 
   if (groups.length === 0) {
     return (
@@ -92,9 +102,9 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
                 player={p}
                 doc={doc}
                 frame={frame}
-                shieldHold={shieldHold}
-                healthHold={healthHold}
+                vitalityFade={vitalityFade}
                 readingFull={readingFull}
+                flashFrames={flashFrames}
                 locale={locale}
               />
             ))}
@@ -119,20 +129,41 @@ interface PlayerCardProps {
   player: ReplayPlayer
   doc: ReplayDocumentReady
   frame: number
-  shieldHold: number
-  healthHold: number
+  vitalityFade: number
   readingFull: number
+  flashFrames: number
   locale: ReplayLocale
 }
 
-function PlayerCard({ player, doc, frame, shieldHold, healthHold, readingFull, locale }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, vitalityFade, readingFull, flashFrames, locale }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
-  const state = playerStateAt(player, frame, shieldHold, healthHold)
+  const state = playerStateAt(player, frame)
   const name = playerName(player) ?? t.unknownPlayer
+  const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
+  // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
+  // leur animation ; le délai NÉGATIF la fait reprendre à son avancement réel, donc elle
+  // reste juste après un saut dans le temps de lecture (cf. globals.css).
+  const deathAge = state.sinceDeath
+  const lifeAge = state.alive && state.life && trackWindow(state.life).start > 0
+    ? frame - trackWindow(state.life).start
+    : -1
+  let flashClass = ''
+  const style: CSSProperties = {}
+  if (!state.alive) {
+    style.boxShadow = `inset 2px 0 0 ${tokenCssVar('destructive')}`
+    style.background = `color-mix(in srgb, ${tokenCssVar('destructive')} 12%, transparent)`
+    if (deathAge >= 0 && deathAge <= flashFrames) {
+      flashClass = 'replay-flash-death'
+      style.animationDelay = `${(-(deathAge / flashFrames) * DEATH_FLASH_TOTAL_S).toFixed(3)}s`
+    }
+  } else if (lifeAge >= 0 && lifeAge <= flashFrames) {
+    flashClass = 'replay-flash-respawn'
+    style.animationDelay = `${(-(lifeAge / flashFrames) * RESPAWN_FLASH_S).toFixed(3)}s`
+  }
   return (
     <div
-      className="flex flex-col gap-0.5 border-t border-border py-1 first:border-t-0"
-      style={state.alive ? undefined : { boxShadow: `inset 2px 0 0 ${tokenCssVar('destructive')}` }}
+      className={`flex flex-col gap-0.5 border-t border-border py-1 first:border-t-0 ${flashClass}`}
+      style={style}
     >
       <div className="flex items-baseline justify-between gap-1.5">
         <span
@@ -147,8 +178,8 @@ function PlayerCard({ player, doc, frame, shieldHold, healthHold, readingFull, l
       {state.alive ? (
         <>
           {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
-          <ShieldBar state={state} label={t.shieldUnread} name={t.shieldLabel} />
-          <HealthBar state={state} label={t.healthUnread} name={t.healthLabel} />
+          <ShieldBar state={state} fade={vitalityFade} label={t.shieldUnread} name={t.shieldLabel} />
+          <HealthBar state={state} fade={vitalityFade} label={t.healthUnread} name={t.healthLabel} />
         </>
       ) : (
         <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
@@ -156,6 +187,7 @@ function PlayerCard({ player, doc, frame, shieldHold, healthHold, readingFull, l
       <ReplayWeaponsRow
         doc={doc}
         state={state}
+        read={equipped}
         frame={frame}
         readingFull={readingFull}
         locale={locale}
@@ -164,6 +196,7 @@ function PlayerCard({ player, doc, frame, shieldHold, healthHold, readingFull, l
         <InventoryRow
           doc={doc}
           slot={state.life.slot}
+          equipped={equipped}
           frame={frame}
           readingFull={readingFull}
           locale={locale}
@@ -189,12 +222,14 @@ function PlayerCard({ player, doc, frame, shieldHold, healthHold, readingFull, l
 function InventoryRow({
   doc,
   slot,
+  equipped,
   frame,
   readingFull,
   locale,
 }: {
   doc: ReplayDocumentReady
   slot: number
+  equipped: EquippedReading | null
   frame: number
   readingFull: number
   locale: ReplayLocale
@@ -204,10 +239,15 @@ function InventoryRow({
   if (!read) return null
   const { state } = read
   const grenades = grenadesCarried(state, doc.grenadeLabels, locale)
-  const selected = selectedGrenadeRank(state)
+  const selected = selectedGrenade(state)
   const ability = abilityText(doc, state.a, t.abilityUnknown, locale)
   const ammo = state.am ?? []
   if (grenades.length === 0 && !ability && ammo.length === 0) return null
+
+  // LA LIGNE DES MUNITIONS SUIT L'ORDRE DES ARMES AU-DESSUS (l'arme dégainée d'abord) : les
+  // deux lignes partagent la même lecture d'ordre, sinon chaque cellule se rattacherait à la
+  // mauvaise arme. Le numéro d'emplacement lève l'ambiguïté quand l'ordre bascule.
+  const ammoOrder = (equipped?.order ?? ammo.map((_, i) => i)).filter((i) => i < ammo.length)
 
   return (
     <div
@@ -215,16 +255,32 @@ function InventoryRow({
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
       title={`${t.inventoryAge} ${formatSeconds(frameToMs(read.age, doc))}`}
     >
-      {grenades.map((g) => (
-        <span
-          key={g.rank}
-          className={g.rank === selected ? 'font-semibold' : undefined}
-          style={g.rank === selected ? { color: tokenCssVar('warning') } : undefined}
-          title={g.rank === selected ? t.grenadeSelected : undefined}
-        >
-          {g.name} ×{g.count}
+      {grenades.map((g) => {
+        const isSel = typeof selected === 'object' && selected !== null && g.rank === selected.rank
+        return (
+          <span
+            key={g.rank}
+            className={isSel ? 'rounded-sm px-0.5 font-semibold' : undefined}
+            style={
+              isSel
+                ? {
+                    color: tokenCssVar('warning'),
+                    boxShadow: `0 0 0 1px ${tokenCssVar('warning')}`,
+                    background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
+                  }
+                : undefined
+            }
+            title={isSel ? (selected.read ? t.grenadeSelectedRead : t.grenadeSelected) : undefined}
+          >
+            {g.name} ×{g.count}
+          </span>
+        )
+      })}
+      {selected === 'indeterminate' && (
+        <span className="border-b border-dashed border-border opacity-80" title={t.grenadeSelUnknownHint}>
+          {t.grenadeSelUnknown}
         </span>
-      ))}
+      )}
       {ability && (
         <span
           className={ability.known ? undefined : 'border-b border-dashed border-border'}
@@ -233,17 +289,26 @@ function InventoryRow({
           {ability.text}
         </span>
       )}
-      {ammo.map((a, i) => (
+      {ammoOrder.map((i) => (
         <AmmoCell
           key={i}
           index={i}
-          ammo={a}
+          ammo={ammo[i]}
+          drawn={equipped?.drawn === i}
           noneLabel={t.ammoNone}
           noneHint={t.ammoNoneHint}
-          hint={t.ammoSlotHint}
+          hint={equipped?.drawn === i ? `${t.ammoSlotHint} ${t.ammoDrawnHint}` : t.ammoSlotHint}
           gaugeLabel={t.gaugeLabel}
         />
       ))}
+      {ammo.length > 0 && equipped && equipped.drawn === null && (
+        <span
+          className="border-b border-dashed border-border opacity-80"
+          title={equipped.holstered ? t.weaponsHolstered : t.drawnUnknownHint}
+        >
+          {equipped.holstered ? t.weaponsHolsteredShort : t.drawnUnknown}
+        </span>
+      )}
     </div>
   )
 }
@@ -280,6 +345,7 @@ function abilityText(
 function AmmoCell({
   index,
   ammo,
+  drawn,
   noneLabel,
   noneHint,
   hint,
@@ -287,14 +353,24 @@ function AmmoCell({
 }: {
   index: number
   ammo: { mag?: number; res?: number; gauge?: number }
+  /** L'emplacement est DÉGAINÉ selon le sélecteur : encre plus franche, index accentué. */
+  drawn: boolean
   noneLabel: string
   noneHint: string
   hint: string
   gaugeLabel: string
 }) {
   return (
-    <span className="inline-flex items-center gap-1 tabular-nums" title={hint}>
-      <i className="not-italic text-[8px] opacity-45">{index}</i>
+    <span
+      className={`inline-flex items-center gap-1 tabular-nums ${drawn ? 'text-foreground' : ''}`}
+      title={hint}
+    >
+      <i
+        className={`not-italic text-[8px] ${drawn ? '' : 'opacity-45'}`}
+        style={drawn ? { color: tokenCssVar('warning') } : undefined}
+      >
+        {index}
+      </i>
       {ammo.mag !== undefined ? (
         <span>
           {ammo.mag}
@@ -366,11 +442,11 @@ function KdaBadge({ board }: { board?: MatchScoreboardRow }) {
  * UNE PISTE VIDE EST UNE MESURE : bouclier brisé. Une piste ABSENTE est une lacune. Les deux ne
  * doivent jamais se ressembler, d'où le libellé explicite quand rien n'a été lu.
  */
-function ShieldBar({ state, label, name }: { state: PlayerState; label: string; name: string }) {
+function ShieldBar({ state, fade, label, name }: { state: PlayerState; fade: number; label: string; name: string }) {
   if (!state.shield) {
     return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{label}</span>
   }
-  const fresh = freshness(state.shield.age, 20, READING_FADE)
+  const fresh = freshness(state.shield.age, fade, READING_FADE)
   return (
     <div
       className="h-1 overflow-hidden rounded-sm bg-muted"
@@ -399,11 +475,11 @@ function ShieldBar({ state, label, name }: { state: PlayerState; label: string; 
  * du temps. Le report AVANT est honnête — valeur absolue inchangée depuis la mesure — mais
  * reporter la seule mesure d'une vie en ARRIÈRE peindrait faux tout le début de vie.
  */
-function HealthBar({ state, label, name }: { state: PlayerState; label: string; name: string }) {
+function HealthBar({ state, fade, label, name }: { state: PlayerState; fade: number; label: string; name: string }) {
   if (!state.health) {
     return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{label}</span>
   }
-  const fresh = freshness(state.health.age, 20, READING_FADE)
+  const fresh = freshness(state.health.age, fade, READING_FADE)
   return (
     <div
       className="h-1 overflow-hidden rounded-sm bg-muted"
@@ -450,8 +526,26 @@ function RespawnRow({
     )
   }
   const remainMs = frameToMs(state.respawnFrame - frame, doc)
+  // La barre montre l'AVANCEMENT DEPUIS LA MORT : la mort est datée par la fin de la vie
+  // précédente, le retour par le départ de la suivante — deux lectures, aucune constante.
+  // Quand la mort n'est pas datée (sinceDeath < 0), le compte s'affiche sans barre plutôt
+  // qu'avec un avancement faux.
+  const span = state.sinceDeath >= 0 ? state.respawnFrame - (frame - state.sinceDeath) : 0
+  const progress = span > 0 ? Math.max(0, Math.min(1, state.sinceDeath / span)) : null
   return (
-    <span className="font-mono text-[9.5px] text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] text-muted-foreground">
+      {progress !== null && (
+        <span
+          className="inline-block h-1 w-9 overflow-hidden rounded-sm bg-muted"
+          role="progressbar"
+          aria-label={t.respawnBarLabel}
+        >
+          <span
+            className="block h-full rounded-sm opacity-80"
+            style={{ width: `${(progress * 100).toFixed(1)}%`, background: tokenCssVar('success') }}
+          />
+        </span>
+      )}
       {t.respawnIn} <b className="tabular-nums">{formatSeconds(remainMs)}</b>
     </span>
   )

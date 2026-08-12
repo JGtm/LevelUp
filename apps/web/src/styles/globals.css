@@ -334,3 +334,38 @@
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
+
+/* Rejeu 2D, fiches joueur — les DEUX éclats d'événement (coup fatal, réapparition) et la
+   permutation d'armes. Les trois reçoivent un animation-delay NÉGATIF égal à l'avancement
+   réel de l'événement : l'animation reprend où elle en était, donc reste juste après un
+   saut dans le temps de lecture. Les éclats sont courts parce que ce sont des repères
+   d'événement ; l'état de mort, lui, est porté en continu par le fond de la fiche. */
+@keyframes replay-death-flash {
+  0%, 49%   { background-color: color-mix(in srgb, var(--ac-destructive) 42%, transparent); }
+  50%, 100% { background-color: color-mix(in srgb, var(--ac-destructive) 10%, transparent); }
+}
+@keyframes replay-respawn-flash {
+  from { background-color: color-mix(in srgb, var(--ac-success) 52%, transparent); }
+  to   { background-color: transparent; }
+}
+/* La permutation translate chaque vignette de la place de l'AUTRE (--replay-dx) : c'est la
+   seule distance qui fasse réellement se croiser les deux. Sans mouvement, un échange est
+   indiscernable d'un changement d'arme. */
+@keyframes replay-wswap-left {
+  from { transform: translateX(var(--replay-dx, 46px)); opacity: 0.25; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes replay-wswap-right {
+  from { transform: translateX(calc(-1 * var(--replay-dx, 46px))); opacity: 0.25; }
+  to   { transform: none; opacity: 1; }
+}
+.replay-flash-death   { animation: replay-death-flash 0.62s steps(1) 3; }
+.replay-flash-respawn { animation: replay-respawn-flash 0.55s ease-out 1; }
+.replay-wswap-l { animation: replay-wswap-left 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.replay-wswap-r { animation: replay-wswap-right 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .replay-flash-death,
+  .replay-flash-respawn,
+  .replay-wswap-l,
+  .replay-wswap-r { animation: none; }
+}

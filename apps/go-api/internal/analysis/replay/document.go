@@ -56,6 +56,11 @@ type WeaponLabel struct {
 	// melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
 	// jamais l'effet d'une arme voisine.
 	Fx string `json:"fx,omitempty"`
+	// Img est l'URL de l'icône EXTRAITE DU JEU (fiches joueur du rejeu). Vide = pas de
+	// visuel : le client affiche le libellé, jamais l'icône d'une arme voisine. Tinted
+	// dit si le visuel est un masque à teindre (même contrat que le kill feed).
+	Img    string `json:"img,omitempty"`
+	Tinted bool   `json:"tinted,omitempty"`
 }
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.

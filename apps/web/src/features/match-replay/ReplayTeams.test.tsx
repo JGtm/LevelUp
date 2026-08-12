@@ -91,6 +91,119 @@ describe('ReplayTeams — grenades portées', () => {
   })
 })
 
+describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
+  const LABELS = [
+    { en: 'Frag', fr: 'Fragmentation' },
+    { en: 'Plasma', fr: 'Plasma' },
+  ]
+
+  it('la sélection LUE (gs) encadre son type, même à deux types portés', () => {
+    renderTeams({
+      grenadeLabels: LABELS,
+      inventory: [{ t: 0, slot: 512, g: [1, 2], gs: 1 }],
+    })
+    const sel = screen.getByText(/Plasma ×2/)
+    expect(sel.title).toMatch(/LU dans le film/)
+    // L'autre type porté n'est pas marqué.
+    expect(screen.getByText(/Fragmentation ×1/).title).toBe('')
+  })
+
+  it('un seul type porté sans lecture : sélection DÉDUITE, dite déduite', () => {
+    renderTeams({
+      grenadeLabels: LABELS,
+      inventory: [{ t: 0, slot: 512, g: [0, 2] }],
+    })
+    expect(screen.getByText(/Plasma ×2/).title).toMatch(/le seul porté/)
+  })
+
+  it('deux types sans lecture : « sél. ? » — l’indétermination se dit, elle ne se devine pas', () => {
+    renderTeams({
+      grenadeLabels: LABELS,
+      inventory: [{ t: 0, slot: 512, g: [1, 2] }],
+    })
+    expect(screen.getByText('sél. ?')).toBeTruthy()
+    expect(screen.getByText(/Plasma ×2/).title).toBe('')
+  })
+})
+
+describe('ReplayTeams — munitions et sélecteur', () => {
+  const TWO_WEAPONS = {
+    weaponLabels: {
+      '0xAAAA': { fr: 'Fusil', en: 'Rifle' },
+      '0xBBBB': { fr: 'Pistolet', en: 'Pistol' },
+    },
+    loadouts: [{ t: 0, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
+  }
+
+  it('les cellules suivent l’ordre des armes : la dégainée d’abord, index d’emplacement gardé', () => {
+    renderTeams({
+      ...TWO_WEAPONS,
+      inventory: [
+        { t: 0, slot: 512, d: 1, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] },
+      ],
+    })
+    const cells = screen.getAllByTitle(/Munitions de l'emplacement/)
+    // L'emplacement 1 (dégainé) est rendu en premier, et son index reste « 1 ».
+    expect(cells[0].textContent).toContain('1')
+    expect(cells[0].textContent).toContain('5/6')
+    expect(cells[0].title).toMatch(/DÉGAINÉ/)
+    expect(cells[1].textContent).toContain('10/20')
+  })
+
+  it('sélecteur disant « rien de dégainé » : jeton « rangées » — une mesure, pas une lacune', () => {
+    renderTeams({
+      ...TWO_WEAPONS,
+      inventory: [{ t: 0, slot: 512, d: 2, am: [{ mag: 10 }, { mag: 5 }] }],
+    })
+    expect(screen.getByText('rangées')).toBeTruthy()
+  })
+
+  it('sélecteur NON LU : jeton « dégainée ? » — une lacune dite', () => {
+    renderTeams({
+      ...TWO_WEAPONS,
+      inventory: [{ t: 0, slot: 512, am: [{ mag: 10 }, { mag: 5 }] }],
+    })
+    expect(screen.getByText('dégainée ?')).toBeTruthy()
+  })
+})
+
+describe('ReplayTeams — mort et réapparition', () => {
+  it('mort avec retour lu : compte à rebours ET barre d’avancement depuis la mort', () => {
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [
+        TRACK,
+        { slot: 514, team: -1, xuid: 'A', startFrame: 180, endFrame: 260, points: [{ t: 180, x: 0, y: 0 }] },
+      ],
+    })
+    render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
+    expect(screen.getByText('retour dans')).toBeTruthy()
+    expect(screen.getByRole('progressbar')).toBeTruthy()
+  })
+
+  it('mort sans vie suivante : « retour ? », jamais un délai deviné, et pas de barre', () => {
+    renderTeams({}, 140)
+    expect(screen.getByText('retour ?')).toBeTruthy()
+    expect(screen.queryByRole('progressbar')).toBeNull()
+  })
+})
+
+describe('ReplayTeams — armes en icônes', () => {
+  it('une arme avec visuel rend son icône (accessible par son nom), pas son libellé en texte', () => {
+    renderTeams({
+      weaponLabels: {
+        '0xAAAA': { fr: 'Fusil', en: 'Rifle', img: '/static/weapons-assets/halo_infinite/jeu/contour-01.png', tinted: true },
+        '0xBBBB': { fr: 'Pistolet', en: 'Pistol' },
+      },
+      loadouts: [{ t: 0, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
+    })
+    // L'icône porte le nom en accessibilité ; le texte n'est plus rendu pour elle.
+    expect(screen.getByRole('img', { name: 'Fusil' })).toBeTruthy()
+    // L'arme SANS visuel garde son libellé : jamais l'icône d'une arme voisine.
+    expect(screen.getByText('Pistolet')).toBeTruthy()
+  })
+})
+
 describe('ReplayTeams — dégradation par ABSENCE DE DONNÉE (multi-titre)', () => {
   // Un titre sans décodage film (ou un match sans film) publie des champs simplement
   // ABSENTS : `hp` sur les points, `d`/`a` dans l'inventaire. La fiche doit rendre ce
