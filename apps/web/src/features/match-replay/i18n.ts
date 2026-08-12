@@ -34,6 +34,11 @@ interface ReplayText {
   killFeedEmpty: string
   killFeedUnknownWeapon: string
   killFeedTotal: (n: number) => string
+  killFeedAssistUnknown: string
+  killFeedAssistUnknownHint: string
+  killFeedNoAssistHint: string
+  killFeedAssistHint: string
+  killFeedKillerShare: (pct: number) => string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -119,6 +124,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedEmpty: 'Rien à cet instant du match.',
     killFeedUnknownWeapon: 'Arme non identifiée',
     killFeedTotal: (n) => `${n} sur le match`,
+    killFeedAssistUnknown: 'assistant inconnu',
+    killFeedAssistUnknownHint:
+      "Aucune assistance n'a pu être lue pour cette mort : ON NE SAIT PAS. À ne pas confondre avec une absence d'assistant, qui elle est mesurée.",
+    killFeedNoAssistHint:
+      'Mort sans assistant — MESURÉ : la mort porte son événement dans le film, et il ne déclare personne.',
+    killFeedAssistHint:
+      'Assistant lu dans le film, avec sa part de dégâts quand elle est mesurée. Les parts ne sont pas bornées à 100 %.',
+    killFeedKillerShare: (pct) => `tueur ${pct} %`,
     layers: 'Calques',
     layerAim: 'Visée',
     layerShield: 'Bouclier',
@@ -210,6 +223,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedEmpty: 'Nothing at this point of the match.',
     killFeedUnknownWeapon: 'Unidentified weapon',
     killFeedTotal: (n) => `${n} in the match`,
+    killFeedAssistUnknown: 'unknown assist',
+    killFeedAssistUnknownHint:
+      'No assist could be read for this death: WE DO NOT KNOW. Not to be confused with a measured absence of assist.',
+    killFeedNoAssistHint:
+      'Death without an assist — MEASURED: the death carries its event in the film, and it names no one.',
+    killFeedAssistHint:
+      'Assist read from the film, with its damage share when measured. Shares are not capped at 100%.',
+    killFeedKillerShare: (pct) => `killer ${pct}%`,
     layers: 'Layers',
     layerAim: 'Aim',
     layerShield: 'Shield',

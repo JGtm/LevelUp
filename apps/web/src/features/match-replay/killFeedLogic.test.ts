@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 
-import { freshnessOf, killsAt, toReplayKills } from './killFeedLogic'
+import { attachVictims, freshnessOf, killsAt, toReplayKills } from './killFeedLogic'
 
 const T0 = 18_465
 
@@ -87,5 +87,60 @@ describe('freshnessOf', () => {
 
   it('ne descend jamais sous le plancher, même très en retard', () => {
     expect(freshnessOf(k, 100_000, 8_000)).toBeCloseTo(0.4, 5)
+  })
+})
+
+describe('attachVictims — la victime jointe par (tueur, instant)', () => {
+  const base = {
+    ally: true,
+    teamID: 0,
+    weaponLabel: '',
+    weaponImageUrl: '',
+    weaponTinted: false,
+    assistState: '' as const,
+    assistGamertag: '',
+    assistTeamID: null,
+    killerDamagePct: null,
+    assistDamagePct: null,
+  }
+
+  it('joint la victime sur la clé exacte, et laisse vides les kills sans paire', () => {
+    const out = attachVictims(
+      [
+        { ...base, tMs: 1_000, xuid: 'A' },
+        { ...base, tMs: 2_000, xuid: 'A' },
+      ],
+      [{ killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 }],
+    )
+    expect(out[0].victimGamertag).toBe('V1')
+    expect(out[1].victimGamertag).toBe('')
+  })
+
+  it('DEUX victimes distinctes sur la même clé : personne n’est nommé — jamais au hasard', () => {
+    const out = attachVictims(
+      [{ ...base, tMs: 1_000, xuid: 'A' }],
+      [
+        { killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 },
+        { killer_xuid: 'A', victim_gamertag: 'V2', time_ms: 1_000 },
+      ],
+    )
+    expect(out[0].victimGamertag).toBe('')
+  })
+
+  it('deux paires IDENTIQUES (double kill unanime) : la victime est nommée', () => {
+    const out = attachVictims(
+      [{ ...base, tMs: 1_000, xuid: 'A' }],
+      [
+        { killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 },
+        { killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 },
+      ],
+    )
+    expect(out[0].victimGamertag).toBe('V1')
+  })
+
+  it('paires absentes ou incomplètes : tout reste vide, rien ne casse', () => {
+    const kills = [{ ...base, tMs: 1_000, xuid: 'A' }]
+    expect(attachVictims(kills, null)[0].victimGamertag).toBe('')
+    expect(attachVictims(kills, [{ killer_xuid: 'A', victim_gamertag: '', time_ms: 1_000 }])[0].victimGamertag).toBe('')
   })
 })

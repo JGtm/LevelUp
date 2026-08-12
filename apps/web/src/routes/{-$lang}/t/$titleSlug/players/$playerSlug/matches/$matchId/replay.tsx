@@ -116,6 +116,7 @@ function ReplayPage() {
               complète du match est déjà racontée par la carte « Dominance ». */}
           <ReplayKillFeed
             kills={kills}
+            victims={matchView?.combat_tab.killer_victim}
             t0Ms={t0Ms}
             nowMs={nowMs}
             scoreboard={scoreboard}

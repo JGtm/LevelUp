@@ -33,6 +33,11 @@ function kill(over: Partial<KillEvent>): KillEvent {
     weaponLabel: '',
     weaponImageUrl: '',
     weaponTinted: false,
+    assistState: '',
+    assistGamertag: '',
+    assistTeamID: null,
+    killerDamagePct: null,
+    assistDamagePct: null,
     ...over,
   }
 }
@@ -44,10 +49,16 @@ const META = new Map([
 
 const SCOREBOARD: MatchScoreboardRow[] = []
 
-function renderFeed(kills: KillEvent[], nowMs: number, t0Ms = T0) {
+function renderFeed(
+  kills: KillEvent[],
+  nowMs: number,
+  t0Ms = T0,
+  victims?: { killer_xuid: string; victim_gamertag: string; time_ms?: number | null }[],
+) {
   return render(
     <ReplayKillFeed
       kills={kills}
+      victims={victims}
       t0Ms={t0Ms}
       nowMs={nowMs}
       scoreboard={SCOREBOARD}
@@ -114,5 +125,59 @@ describe('ReplayKillFeed — arme du kill', () => {
   it("n'écrit aucun hex de couleur (règle color-tokens)", () => {
     const { container } = renderFeed([kill({ tMs: 1_000 })], 20_000)
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{6}/)
+  })
+})
+
+describe('ReplayKillFeed — la victime, jointe par (tueur, instant)', () => {
+  it('nomme la victime quand la paire existe', () => {
+    renderFeed([kill({ tMs: 1_000 })], 20_000, T0, [
+      { killer_xuid: 'me', victim_gamertag: 'Cobra01', time_ms: 1_000 },
+    ])
+    expect(screen.getByText('JGtm')).toBeTruthy()
+    expect(screen.getByText('Cobra01')).toBeTruthy()
+  })
+
+  it('sans paire, la ligne vit sans victime — rien n’est inventé', () => {
+    renderFeed([kill({ tMs: 1_000 })], 20_000, T0, [])
+    expect(screen.getByText('JGtm')).toBeTruthy()
+    expect(screen.queryByText('→')).toBeNull()
+  })
+})
+
+describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondus', () => {
+  it('assistant NOMMÉ : le nom, sa part, la part du tueur — et le fond affirme la contribution', () => {
+    const { container } = renderFeed(
+      [
+        kill({
+          tMs: 1_000,
+          assistState: 'named',
+          assistGamertag: 'Aidant77',
+          assistTeamID: 0,
+          killerDamagePct: 63,
+          assistDamagePct: 37,
+        }),
+      ],
+      20_000,
+    )
+    expect(screen.getByText('Aidant77')).toBeTruthy()
+    expect(screen.getByText('37 %')).toBeTruthy()
+    expect(screen.getByText(/tueur 63 %/)).toBeTruthy()
+    expect(container.querySelector('li')?.getAttribute('style')).toContain('color-mix')
+  })
+
+  it('« aucun » MESURÉ : rien d’affiché — l’information vit en infobulle, distincte d’« inconnu »', () => {
+    const { container } = renderFeed(
+      [kill({ tMs: 1_000, assistState: 'none', killerDamagePct: 100 })],
+      20_000,
+    )
+    expect(screen.queryByText(/assistant inconnu/)).toBeNull()
+    const line = container.querySelector('li')
+    expect(line?.getAttribute('title')).toMatch(/MESURÉ/)
+    expect(line?.getAttribute('style') ?? '').not.toContain('color-mix')
+  })
+
+  it('INCONNU : la lacune se signale — « assistant inconnu », sans fond', () => {
+    renderFeed([kill({ tMs: 1_000, assistState: '' })], 20_000)
+    expect(screen.getByText('assistant inconnu')).toBeTruthy()
   })
 })

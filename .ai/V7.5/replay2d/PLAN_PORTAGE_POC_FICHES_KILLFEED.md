@@ -157,12 +157,25 @@ Inventaire des features du POC (cible) :
 
 ### Phase C — Kill feed de la page replay (front : porter le POC dans le design app)
 
-- [ ] **C.1 Assistant + part de dégâts %** (A.2) : 3 états (nommé/aucun/inconnu), fond bleuté
+- [x] **C.1 Assistant + part de dégâts %** (A.2) : 3 états (nommé/aucun/inconnu), fond bleuté
   (token) sur morts assistées, la part de dégâts collée à qui elle appartient (tueur + assistant).
-- [ ] **C.2 Icônes killicon** (déjà dispo) ; format POC (tueur → victime, arme, %, assistant),
+  - FAIT (2026-08-12). `KillEvent` étendu (assistState/assistGamertag/assistTeamID/parts,
+    propagés par `collectKillEvents`) ; rendu POC : nommé = « + Nom part% · tueur part% »
+    (le « + » à la couleur d'équipe de l'assistant) + fond bleuté `color-mix(info 10%)` —
+    le fond affirme une contribution, jamais un trou ; « aucun » = RIEN d'affiché,
+    l'information vit en infobulle (mesurée, distincte d'inconnu — 76/93 morts sur le film
+    de référence, l'écrire remplirait le fil) ; « inconnu » = « ? assistant inconnu ».
+- [x] **C.2 Icônes killicon** (déjà dispo) ; format POC (tueur → victime, arme, %, assistant),
   design app.
-- [ ] **C.3** i18n FR+EN + tokens.
+  - FAIT (2026-08-12). La VICTIME est jointe par (tueur, instant) depuis `killer_victim`
+    (`attachVictims`) avec la règle d'unanimité du back : deux victimes distinctes sur la
+    même clé → aucune nommée. Ligne : [icône killicon inchangée] tueur → victime,
+    horodatage à droite.
+- [x] **C.3** i18n FR+EN + tokens.
   - Gate C : `make test-web` (rendu des 3 états d'assistant, lacune) ; anti-hex 0.
+  - PASSÉ (2026-08-12) : 208 tests match-replay + 186 match-view verts (rendu des 3 états,
+    victime jointe/absente/désaccord, garde anti-hex du composant inchangée) ; 5 clés i18n
+    FR+EN ajoutées.
 
 ### Multi-titre (transverse)
 
