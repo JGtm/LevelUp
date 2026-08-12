@@ -34,8 +34,9 @@ import (
 // dégainée. Un keyframe toutes les ~20 s : c'est un ÉTAT DE RÉFÉRENCE, pas un suivi continu.
 
 // keyframeBipedTI est l'archétype (typeIndex) des records de biped joueur dans la table
-// keyframe. Les armes au sol (ti=42) portent aussi un identifiant de famille : les retenir
-// donnerait « l'arme posée par terre » comme arme d'un joueur.
+// keyframe. Les armes au sol (ti=42) portent aussi un identifiant de famille : les retenir ICI
+// donnerait « l'arme posée par terre » comme arme d'un joueur. Elles se lisent séparément, sous
+// leur propre archétype (cf. keyframe_ground_weapons.go).
 const keyframeBipedTI = 35
 
 // KeyframeLoadout est l'ensemble des identifiants de FAMILLE d'arme trouvés dans le record
@@ -93,6 +94,34 @@ func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoad
 // keyframeLoadouts balaye un payload de keyframe et rend un loadout par record biped
 // porteur d'au moins une famille connue. PUR (aucune I/O).
 func keyframeLoadouts(pay []byte, known map[uint32]bool) []KeyframeLoadout {
+	rf := familiesByRecord(pay, known, keyframeBipedTI)
+	if len(rf) == 0 {
+		return nil
+	}
+	out := make([]KeyframeLoadout, 0, len(rf))
+	for _, r := range rf {
+		out = append(out, KeyframeLoadout{Slot: uint32(r.Rec.Slot), Families: r.Families})
+	}
+	return out
+}
+
+// recordFamilies porte les familles d'arme trouvées DANS un record de keyframe, avec le record
+// qui les contient (son archétype, son slot, sa position en bits).
+type recordFamilies struct {
+	Rec      KeyframeRec
+	Families []uint32
+}
+
+// familiesByRecord attribue chaque occurrence de famille connue au record de keyframe qui la
+// CONTIENT et ne retient que les records d'archétype wantTI. L'ordre de sortie est celui de la
+// PREMIÈRE occurrence de famille dans chaque record ; les alias ne sont PAS repliés (cf.
+// KeyframeLoadout.Families). PUR (aucune I/O).
+//
+// C'est le cœur partagé des deux lectures d'armes du keyframe : les armes PORTÉES
+// (wantTI = keyframeBipedTI, cf. keyframeLoadouts) et les armes AU SOL
+// (wantTI = keyframeGroundWeaponTI, cf. keyframe_ground_weapons.go). Le balayage bit à bit
+// est identique — seul l'archétype retenu change.
+func familiesByRecord(pay []byte, known map[uint32]bool, wantTI int) []recordFamilies {
 	recs := WalkKeyframeWorld(pay)
 	if len(recs) == 0 {
 		return nil
@@ -114,7 +143,7 @@ func keyframeLoadouts(pay []byte, known map[uint32]bool) []KeyframeLoadout {
 			continue
 		}
 		ri := recordContaining(starts, b-31)
-		if ri < 0 || recs[ri].TI != keyframeBipedTI {
+		if ri < 0 || recs[ri].TI != wantTI {
 			continue
 		}
 		if byRec[ri] == nil {
@@ -122,9 +151,9 @@ func keyframeLoadouts(pay []byte, known map[uint32]bool) []KeyframeLoadout {
 		}
 		byRec[ri] = append(byRec[ri], w)
 	}
-	out := make([]KeyframeLoadout, 0, len(order))
+	out := make([]recordFamilies, 0, len(order))
 	for _, ri := range order {
-		out = append(out, KeyframeLoadout{Slot: uint32(recs[ri].Slot), Families: byRec[ri]})
+		out = append(out, recordFamilies{Rec: recs[ri], Families: byRec[ri]})
 	}
 	return out
 }
