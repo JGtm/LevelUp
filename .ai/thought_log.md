@@ -1,3 +1,30 @@
+## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D : la frontiere offline-pur, et un plan en 3 phases
+
+**Statut** : Plan ecrit (`.ai/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md`), a confier a un
+executeur. Investigation close.
+
+**Decision technique principale** : investigation 7 agents sur pieces (le doc ETAT_DU_POC.md du
+27/07 etant repute perime par l'utilisateur), pour etablir composant par composant ce qui est
+decode / extrait / OFFLINE-PUR / a quelle cadence. Resultat : le film a DEUX chemins. (1) Keyframe
+~20 s + walk vitals leger = offline-pur et DEJA publie dans l'artefact : arme en main (drawn slot
+i42 -> Inventory.D), capacite equipee (i48 -> Inventory.A + noms TOML), grenades (comptes i22 ->
+Inventory.G), munitions, plus les vitals per-record AU CHANGEMENT (sante i4, bouclier i5). (2) Dense
+per-record (swap fin, grenade selectionnee i47, capacite active i57, arme equipee i43) = walk delta
+qui exige une calibration Cheat Engine (largeurs i0/i21, traverse.go:1199 « NOT a general decode
+path ») + a une faute de corps i22 (92 % de comptes impossibles) = PAS offline-pur.
+
+**Resultats observes** : mesures sur 000d5950 confirmees (hp 0,56 %, sh 15,81 %, D 150/184, A
+132/184, G 120/184, 150 loadouts / 24 keyframes). Le POC montrait probablement le dense via capture
+CE sur le seul film de reference, non reproductible sur les 948 autres -> jamais passe en prod par
+doctrine offline-pur + universel. ETAT_DU_POC.md contredit sur i43/i42 (dits non decodes/non cables,
+FAUX au regard du code actuel).
+
+**Conclusion / prochaine etape** : plan en 3 phases. Phase 1 = cablage WEB (donnees deja publiees) :
+barre de sante (patron bouclier, jamais 100 % par defaut), arme en main a GAUCHE / secondaire a
+DROITE, capacite, grenades. Phase 2 = calque drops (armes au sol ti=42, Go borne). Phase 3 = dense
+per-record = chantier RE HORS v7.5 (registre). Un executeur deroule la Phase 1 sur feat/v75, gate
+visuel sur 000d5950. Frontiere consignee en memoire : reference-replay2d-fiches-offline-boundary.
+
 ## [2026-08-11] v7.5 — correction du lot arme du kill : les vehicules SONT nommes, par leur banque sonore
 
 **Statut** : Complete. Correction d'une affirmation fausse du lot precedent, signalee par l'utilisateur.
