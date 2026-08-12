@@ -1,3 +1,30 @@
+## [2026-08-12] v7.5 — les fiches du rejeu etaient une REINVENTION du POC : plan de portage ecrit
+
+**Statut** : Plan ecrit (`.ai/V7.5/replay2d/PLAN_PORTAGE_POC_FICHES_KILLFEED.md`), a confier a un
+executeur.
+
+**Decision technique principale** : l'utilisateur a signale (a juste titre, artefact a l'appui) que
+la Phase 1 des fiches enrichies est une REINVENTION appauvrie de son POC (bati sur des semaines),
+pas une reprise. Recuperation du POC (artefact claude.ai eb7b8af2, via WebFetch) et etude sur
+pieces : le POC porte vie+bouclier (deux barres, report), inventaire en ICONES (vignettes HUD),
+grenade selectionnee (i47), animation d'echange d'arme, et kill feed avec ASSISTANT + part de
+degats % (decode killsource, bloc assistMeta). La Phase 1 avait supprime la sante, mis des libelles
+au lieu d'icones, omis la grenade selectionnee et l'assistant. i57 (capacite active) et le compteur
+d'utilisations : testes puis RETIRES du POC (i57 constant 386/386, compteur non localise) — pas des
+manques a combler.
+
+**Resultats observes** : `components/ui/WeaponIcon.tsx` + `lib/staticAssets.ts` existent (icones
+inventaire) ; l'assistant+% N'EST PAS dans le contrat match-view (a exposer cote Go depuis
+killsource). Grammaire i47 etablie (RECETTE_LOADOUT §1, accord i22<->i47 194/194). Sante i4 deja
+dans `Point.Hp` (simple oubli de cablage front en Phase 1).
+
+**Conclusion / prochaine etape** : plan de PORTAGE du POC (contrat de rendu) sur les donnees/assets
+de prod, DANS le design de l'app (tokens semantiques, i18n FR+EN, zero hex, reutiliser WeaponIcon).
+Phase A donnees (i47 grenade selectionnee + assistant/% par kill), Phase B fiches, Phase C kill
+feed. Assets : inventaire = icones extraites (WeaponIcon), kill feed = killicon, PAS les images
+dessinees a la main du POC. Lecon consignee en memoire (project-v75-poc-replay-reference) : regarder
+le POC EN PREMIER, porter, ne pas reinventer.
+
 ## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D, Phase 1 : le cablage web est livre
 
 **Statut** : Complete (code + gates). Gate visuel utilisateur EN ATTENTE (temoins a choisir
