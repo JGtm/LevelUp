@@ -16,20 +16,17 @@ import { useMemo, type CSSProperties } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { catalogText } from './catalogLabel'
-import { equippedWeapons, type EquippedReading } from './equippedLogic'
+import { equippedWeapons } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
-  grenadesCarried,
   groupByTeam,
-  inventoryAt,
   playerName,
   playerStateAt,
-  selectedGrenade,
   type ReplayPlayer,
   type PlayerState,
 } from './rosterLogic'
@@ -193,7 +190,7 @@ function PlayerCard({ player, doc, frame, vitalityFade, readingFull, flashFrames
         locale={locale}
       />
       {state.life && (
-        <InventoryRow
+        <ReplayInventoryRow
           doc={doc}
           slot={state.life.slot}
           equipped={equipped}
@@ -203,208 +200,6 @@ function PlayerCard({ player, doc, frame, vitalityFade, readingFull, flashFrames
         />
       )}
     </div>
-  )
-}
-
-/**
- * InventoryRow — grenades portées, capacité d'armure, munitions.
- *
- * TOUT CE QUI N'EST PAS LU S'AFFICHE COMME LACUNE, jamais comme une valeur par défaut :
- * - une capacité hors table garde son NUMÉRO, marquée non interprétable — la table est
- *   partielle (4 index observés pour 11 capacités), et la combler se lirait comme une certitude ;
- * - un compteur d'utilisations n'est jamais affiché : il n'est pas localisé dans le film
- *   (36 006 positions testées, aucune ne reproduit le relevé) ;
- * - un emplacement dont le film n'écrit RIEN affiche « aucune » : pour une arme à charge,
- *   cela veut dire PLEIN, le plein étant la valeur par défaut d'un flux différentiel.
- *
- * L'ensemble pâlit avec l'âge de la lecture, comme les armes portées et pour la même raison.
- */
-function InventoryRow({
-  doc,
-  slot,
-  equipped,
-  frame,
-  readingFull,
-  locale,
-}: {
-  doc: ReplayDocumentReady
-  slot: number
-  equipped: EquippedReading | null
-  frame: number
-  readingFull: number
-  locale: ReplayLocale
-}) {
-  const t = REPLAY_TEXT[locale]
-  const read = inventoryAt(doc, slot, frame)
-  if (!read) return null
-  const { state } = read
-  const grenades = grenadesCarried(state, doc.grenadeLabels, locale)
-  const selected = selectedGrenade(state)
-  const ability = abilityText(doc, state.a, t.abilityUnknown, locale)
-  const ammo = state.am ?? []
-  if (grenades.length === 0 && !ability && ammo.length === 0) return null
-
-  // LA LIGNE DES MUNITIONS SUIT L'ORDRE DES ARMES AU-DESSUS (l'arme dégainée d'abord) : les
-  // deux lignes partagent la même lecture d'ordre, sinon chaque cellule se rattacherait à la
-  // mauvaise arme. Le numéro d'emplacement lève l'ambiguïté quand l'ordre bascule.
-  const ammoOrder = (equipped?.order ?? ammo.map((_, i) => i)).filter((i) => i < ammo.length)
-
-  return (
-    <div
-      className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
-      style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
-      title={`${t.inventoryAge} ${formatSeconds(frameToMs(read.age, doc))}`}
-    >
-      {grenades.map((g) => {
-        const isSel = typeof selected === 'object' && selected !== null && g.rank === selected.rank
-        return (
-          <span
-            key={g.rank}
-            className={isSel ? 'rounded-sm px-0.5 font-semibold' : undefined}
-            style={
-              isSel
-                ? {
-                    color: tokenCssVar('warning'),
-                    boxShadow: `0 0 0 1px ${tokenCssVar('warning')}`,
-                    background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
-                  }
-                : undefined
-            }
-            title={isSel ? (selected.read ? t.grenadeSelectedRead : t.grenadeSelected) : undefined}
-          >
-            {g.name} ×{g.count}
-          </span>
-        )
-      })}
-      {selected === 'indeterminate' && (
-        <span className="border-b border-dashed border-border opacity-80" title={t.grenadeSelUnknownHint}>
-          {t.grenadeSelUnknown}
-        </span>
-      )}
-      {ability && (
-        <span
-          className={ability.known ? undefined : 'border-b border-dashed border-border'}
-          title={ability.known ? t.abilityLabel : t.abilityUnknownHint}
-        >
-          {ability.text}
-        </span>
-      )}
-      {ammoOrder.map((i) => (
-        <AmmoCell
-          key={i}
-          index={i}
-          ammo={ammo[i]}
-          drawn={equipped?.drawn === i}
-          noneLabel={t.ammoNone}
-          noneHint={t.ammoNoneHint}
-          hint={equipped?.drawn === i ? `${t.ammoSlotHint} ${t.ammoDrawnHint}` : t.ammoSlotHint}
-          gaugeLabel={t.gaugeLabel}
-        />
-      ))}
-      {ammo.length > 0 && equipped && equipped.drawn === null && (
-        <span
-          className="border-b border-dashed border-border opacity-80"
-          title={equipped.holstered ? t.weaponsHolstered : t.drawnUnknownHint}
-        >
-          {equipped.holstered ? t.weaponsHolsteredShort : t.drawnUnknown}
-        </span>
-      )}
-    </div>
-  )
-}
-
-/**
- * abilityText nomme la capacité, ou rend son numéro quand la table ne la connaît pas.
- * Renvoie null quand rien n'a été lu — l'absence de capacité et une capacité inconnue sont
- * deux états différents.
- */
-function abilityText(
-  doc: ReplayDocumentReady,
-  index: number | undefined,
-  unknownLabel: string,
-  locale: ReplayLocale,
-): { text: string; known: boolean } | null {
-  if (index === undefined) return null
-  const name = catalogText(doc.abilityLabels?.[String(index)], locale)
-  if (name) return { text: name, known: true }
-  return { text: `${unknownLabel} (${index})`, known: false }
-}
-
-/**
- * AmmoCell — une cellule par EMPLACEMENT du record, numérotée.
- *
- * L'EMPLACEMENT k EST L'ARME k, mais seulement quand la lecture du bloc est UNIQUE : 197
- * appariements sur 198 concordent dans ce cas. Sur une lecture à plusieurs candidats, la
- * correspondance se brouille — c'est ce bruit qui avait fait conclure, à tort, que le
- * rattachement échouait.
- *
- * LE NUMÉRO RESTE AFFICHÉ parce qu'il coûte deux caractères et qu'il lève l'ambiguïté sans
- * rien affirmer. La réserve, elle, est portée par l'infobulle et par le marquage des lectures
- * ambiguës.
- */
-function AmmoCell({
-  index,
-  ammo,
-  drawn,
-  noneLabel,
-  noneHint,
-  hint,
-  gaugeLabel,
-}: {
-  index: number
-  ammo: { mag?: number; res?: number; gauge?: number }
-  /** L'emplacement est DÉGAINÉ selon le sélecteur : encre plus franche, index accentué. */
-  drawn: boolean
-  noneLabel: string
-  noneHint: string
-  hint: string
-  gaugeLabel: string
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 tabular-nums ${drawn ? 'text-foreground' : ''}`}
-      title={hint}
-    >
-      <i
-        className={`not-italic text-[8px] ${drawn ? '' : 'opacity-45'}`}
-        style={drawn ? { color: tokenCssVar('warning') } : undefined}
-      >
-        {index}
-      </i>
-      {ammo.mag !== undefined ? (
-        <span>
-          {ammo.mag}
-          {ammo.res !== undefined && <span className="opacity-60">/{ammo.res}</span>}
-        </span>
-      ) : ammo.gauge !== undefined ? (
-        // LA BARRE MONTRE CE QUI RESTE, ET LA DONNÉE DIT CE QUI A ÉTÉ CONSOMMÉ : d'où le
-        // complément. L'afficher tel quel donnait une barre INVERSÉE — un marteau à 10 %
-        // consommé s'affichait presque vide alors qu'il lui reste 90 %.
-        //
-        // Deux témoins fondent cette lecture (cf. ReplayAmmoSlot) : à la première image-clé du
-        // match, quand personne n'a tiré, les armes à charge n'émettent AUCUN champ ; et dans
-        // une même vie la valeur ne redescend jamais (6 hausses, 0 baisse).
-        //
-        // PAS DE COMPTEUR « n / N » : le quantum est propre à l'arme et le film ne dit pas
-        // combien de charges font un plein.
-        <span
-          className="inline-block h-1 w-5 overflow-hidden rounded-sm bg-muted align-middle"
-          aria-label={gaugeLabel}
-        >
-          <span
-            className="block h-full rounded-sm"
-            style={{
-              width: `${Math.max(0, 1 - ammo.gauge) * 100}%`,
-              background: tokenCssVar('warning'),
-            }}
-          />
-        </span>
-      ) : (
-        <span className="italic opacity-70" title={noneHint}>
-          {noneLabel}
-        </span>
-      )}
-    </span>
   )
 }
 
