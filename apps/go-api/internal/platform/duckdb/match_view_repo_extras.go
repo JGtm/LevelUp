@@ -86,6 +86,63 @@ func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string)
 	return results, rows.Err()
 }
 
+// GetMatchKillAssists retourne l'assistance de chaque mort du match (Q21c).
+// Exécutée sur SharedReader (ADR 0016, shared-only).
+//
+// Même dégradation gracieuse que Q21b : reader indisponible ou table absente rendent une
+// tranche vide, loggée — le feed affiche alors ses kills avec l'assistance « inconnue »,
+// ce qui est son état d'avant ce lot.
+func (r *MatchViewRepo) GetMatchKillAssists(ctx context.Context, matchID string) ([]domain.KillAssistRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.sharedRead().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill assists indisponibles (shared reader)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q21cKillAssists, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill assists indisponibles (Q21c)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer rows.Close()
+
+	var results []domain.KillAssistRaw
+	for rows.Next() {
+		var (
+			ka     domain.KillAssistRaw
+			gt, ax sql.NullString
+			kPct   sql.NullInt64
+			aPct   sql.NullInt64
+		)
+		if err := rows.Scan(&ka.XUID, &ka.TimeMS, &gt, &ax, &kPct, &aPct); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchKillAssists scan: %w", err)
+		}
+		if gt.Valid {
+			s := gt.String
+			ka.AssistGamertag = &s
+		}
+		if ax.Valid {
+			s := ax.String
+			ka.AssistXUID = &s
+		}
+		if kPct.Valid {
+			v := int(kPct.Int64)
+			ka.KillerDamagePct = &v
+		}
+		if aPct.Valid {
+			v := int(aPct.Int64)
+			ka.AssistDamagePct = &v
+		}
+		results = append(results, ka)
+	}
+	return results, rows.Err()
+}
+
 // GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
 func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error) {

@@ -14151,11 +14151,24 @@ components:
           type: integer
         actor_xuid:
           type: string
+        assist_damage_pct:
+          format: int64
+          type: integer
+        assist_gamertag:
+          type: string
+        assist_state:
+          type: string
+        assist_team_id:
+          format: int64
+          type: integer
         event_time_ms:
           format: int64
           type: integer
         event_type:
           type: string
+        killer_damage_pct:
+          format: int64
+          type: integer
         weapon_image_tinted:
           type: boolean
         weapon_image_url:

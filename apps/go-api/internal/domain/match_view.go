@@ -284,7 +284,38 @@ type MatchHighlightEvent struct {
 	WeaponLabel       string `json:"weapon_label,omitempty"`
 	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
 	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`
+
+	// AssistState : l'état de la lecture d'ASSISTANCE de ce kill — TROIS valeurs qui ne
+	// se confondent JAMAIS (décodeur de film, cf. domain.KillAssistRaw) :
+	//   ""      (champ omis)  ON NE SAIT PAS — aucun kill-event apparié à cette mort ;
+	//   "none"                MESURÉ : la mort porte son événement, sans assistant ;
+	//   "named"               assistant nommé (AssistGamertag + parts de dégâts).
+	// Écrire « pas d'assistant » quand c'est « on ne sait pas » est le mensonge que cette
+	// énumération existe pour empêcher : le front n'affiche un état neutre que sur "none".
+	AssistState string `json:"assist_state,omitempty"`
+	// AssistGamertag : l'assistant, résolu comme ActorGamertag. Peuplé ssi AssistState
+	// vaut "named".
+	AssistGamertag string `json:"assist_gamertag,omitempty"`
+	// AssistTeamID : équipe de l'assistant, résolue depuis le scoreboard comme
+	// ActorTeamID. Nil si l'assistant n'y figure pas.
+	AssistTeamID *int `json:"assist_team_id,omitempty"`
+	// KillerDamagePct / AssistDamagePct : parts de dégâts en pourcentage ENTIER, telles
+	// que le film les porte — NON bornées à 100 (mesures jusqu'à 228, dégât excédentaire
+	// non établi). Nil = non mesurée, jamais 0. KillerDamagePct peut exister sur un kill
+	// "none" (la part du tueur se mesure dès que la mort porte son événement).
+	KillerDamagePct *int `json:"killer_damage_pct,omitempty"`
+	AssistDamagePct *int `json:"assist_damage_pct,omitempty"`
 }
+
+// États de la lecture d'assistance d'un kill (MatchHighlightEvent.AssistState). L'état
+// « on ne sait pas » est l'ABSENCE de valeur — il n'a pas de constante, et c'est voulu :
+// personne ne doit pouvoir l'écrire par accident.
+const (
+	// AssistStateNone : mesuré, pas d'assistant sur cette mort.
+	AssistStateNone = "none"
+	// AssistStateNamed : un assistant est nommé, avec sa part de dégâts quand elle est lue.
+	AssistStateNamed = "named"
+)
 
 // MatchTugOfWarBin : tranche temporelle de la timeline tug-of-war.
 type MatchTugOfWarBin struct {

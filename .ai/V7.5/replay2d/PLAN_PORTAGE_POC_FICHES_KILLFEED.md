@@ -79,7 +79,7 @@ Inventaire des features du POC (cible) :
     dont 2/2 non tautologiques ; APRÈS 4/8 (attendu : la sélection bouge après un lancer).
     Publié `Inventory.Gs *int` (`gs` au contrat), rendement figé au test
     (`wantInvGrenadeSel = 92`) + invariant « sélection ⇒ compteur porté ».
-- [ ] **A.2 Assistant + PART DE DÉGÂTS % par kill.** D'ABORD vérifier sur pièces si c'est déjà
+- [x] **A.2 Assistant + PART DE DÉGÂTS % par kill.** D'ABORD vérifier sur pièces si c'est déjà
   décodé/exposé : killsource (`internal/games/halo_infinite/film/killsource/`) et
   `domain.MatchHighlightEvent`. Le POC le décode du film (bloc `assistMeta`) ; le kill-event
   component porte `+0x10` = assistant, `+0x14` = % dégâts assistant (cf. FIRE_MELEE_GRENADE_EVENTS
@@ -89,6 +89,17 @@ Inventaire des features du POC (cible) :
   d'assistant » quand c'est « on ne sait pas »). Contrat regen.
   - Gate : `go test` (killsource + match_view) ; `make generate-types` ; couverture assist mesurée
     dans le CR (sur 000d5950 : combien de morts ont un assistant nommé / aucun / inconnu).
+  - FAIT (2026-08-12). Vérifié sur pièces : killsource décodait DÉJÀ tout (`Assist{Name, Known,
+    Extra}`, `KillerDamage`/`AssistDamage` non bornées, publication sous `LineByLinePublishable`)
+    et la base portait DÉJÀ les colonnes (`assist_gamertag/assist_xuid/assist_known/
+    killer_damage_pct/assist_damage_pct`, DDL 3 états). Le manque était la REMONTÉE : livré
+    Q21c (`Q21cKillAssists`, sœur de Q21b, indépendante de `source_tag`, unanimité par tuple
+    complet sur (tueur, instant) — validée sur DuckDB : désaccord exclu, doublon unanime
+    dédoublonné), `domain.KillAssistRaw`, `GetMatchKillAssists` (port+repo, dégradation
+    gracieuse), extension de `decorateKillFeed` et `MatchHighlightEvent.{AssistState
+    (""/none/named), AssistGamertag, AssistTeamID, KillerDamagePct, AssistDamagePct}`.
+    Couverture 000d5950 (compteurs figés killsource) : 93/93 morts attachées, 17 nommées,
+    76 « aucun » mesurés, 0 inconnue ; les 17 nommées = total API à l'unité.
 - Santé i4 : **déjà** dans `Point.Hp` (artefact) — rien côté données, c'est un oubli de câblage
   front (Phase B.1).
 
