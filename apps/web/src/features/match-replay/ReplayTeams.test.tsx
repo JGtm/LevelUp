@@ -208,7 +208,7 @@ describe('ReplayTeams — dégradation par ABSENCE DE DONNÉE (multi-titre)', ()
   // Un titre sans décodage film (ou un match sans film) publie des champs simplement
   // ABSENTS : `hp` sur les points, `d`/`a` dans l'inventaire. La fiche doit rendre ce
   // qu'elle sait, dire ses lacunes, et ne JAMAIS jeter — aucune comparaison de slug.
-  it('Point sans hp et Inventory sans d/a : fiche rendue, lacune santé, aucun marquage en main, pas de capacité', () => {
+  it('document sans AUCUNE vitalité (Point sans sh/hp) : PAS de barres — on n’invente pas une jauge', () => {
     renderTeams({
       titleSlug: 'autre_titre',
       weaponLabels: { '0xAAAA': { fr: 'Fusil', en: 'Rifle' }, '0xBBBB': { fr: 'Pistolet', en: 'Pistol' } },
@@ -218,8 +218,10 @@ describe('ReplayTeams — dégradation par ABSENCE DE DONNÉE (multi-titre)', ()
     })
     // La fiche existe et nomme le joueur.
     expect(screen.getByText('Alpha')).toBeTruthy()
-    // La santé jamais transmise est une LACUNE dite, pas une jauge pleine.
-    expect(screen.getByText('santé non transmise')).toBeTruthy()
+    // Aucun point du document ne porte sh/hp : AUCUNE barre — un titre qui ne transmet pas
+    // la vitalité n'affiche pas des jauges pleines inventées.
+    expect(screen.queryByLabelText('Bouclier')).toBeNull()
+    expect(screen.queryByLabelText('Santé')).toBeNull()
     // Les armes s'affichent par emplacement, sans main désignée.
     expect(screen.getByText('Fusil')).toBeTruthy()
     expect(screen.getByText('Pistolet')).toBeTruthy()
@@ -228,11 +230,42 @@ describe('ReplayTeams — dégradation par ABSENCE DE DONNÉE (multi-titre)', ()
     expect(screen.queryByText(/capacité inconnue/)).toBeNull()
   })
 
-  it('document réduit aux traces (ni inventaire, ni loadout, ni santé) : la fiche dit toutes ses lacunes sans erreur', () => {
+  it('document réduit aux traces (ni inventaire, ni loadout, ni vitalité) : la fiche dit ses lacunes sans erreur', () => {
     renderTeams({})
     expect(screen.getByText('Alpha')).toBeTruthy()
-    expect(screen.getByText('bouclier non transmis')).toBeTruthy()
-    expect(screen.getByText('santé non transmise')).toBeTruthy()
+    expect(screen.queryByLabelText('Bouclier')).toBeNull()
+    expect(screen.queryByLabelText('Santé')).toBeNull()
     expect(screen.getByText('armes non lues sur cette vie')).toBeTruthy()
+  })
+})
+
+describe('ReplayTeams — vitalité : plein d’apparition', () => {
+  it('le document porte la vitalité mais la vie n’a pas encore de mesure : barres PLEINES', () => {
+    // On apparaît vie et bouclier pleins (règle du jeu) et le flux différentiel ne
+    // retransmet que ce qui change : « rien d'arrivé » = « plein », pas « inconnu »
+    // (décision utilisateur 2026-08-12, doctrine du POC).
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [
+        TRACK, // la vie affichée : aucun point ne porte sh/hp
+        {
+          slot: 513,
+          team: -1,
+          xuid: 'B',
+          startFrame: 0,
+          endFrame: 100,
+          // C'est un AUTRE joueur qui prouve que le document transmet la vitalité.
+          points: [{ t: 0, x: 0, y: 0, sh: 0.4, hp: 0.7 }],
+        },
+      ],
+    })
+    render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    const shield = screen.getAllByLabelText('Bouclier')
+    const health = screen.getAllByLabelText('Santé')
+    // La fiche d'Alpha (sans mesure) montre des barres PLEINES, pas une lacune.
+    const alphaShield = shield[0].firstElementChild as HTMLElement
+    const alphaHealth = health[0].firstElementChild as HTMLElement
+    expect(alphaShield.style.width).toBe('100%')
+    expect(alphaHealth.style.width).toBe('100%')
   })
 })
