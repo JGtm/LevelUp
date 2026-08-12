@@ -105,23 +105,55 @@ Inventaire des features du POC (cible) :
 
 ### Phase B — Fiches joueur (front : porter le POC dans le design app)
 
-- [ ] **B.1 Vie (i4) + bouclier (i5)** : DEUX barres, report (`heldReading`) + estompage d'âge,
+- [x] **B.1 Vie (i4) + bouclier (i5)** : DEUX barres, report (`heldReading`) + estompage d'âge,
   cachées à la mort. **RÉTABLIR la santé** (supprimée en Phase 1) sur le MÊME patron que le
   bouclier — le POC la montre par report malgré la couverture faible. Tokens : vie = santé/success,
   bouclier = info. Jamais 100 % par défaut ; lacune = rien.
-- [ ] **B.2 Inventaire en ICÔNES** via `WeaponIcon` + `staticAssets` : armes portées (arme EN MAIN
+  - FAIT (2026-08-12). Les deux barres existaient (santé rétablie par `71bdb589f`) ; ce lot porte
+    le REPORT au patron POC : maintien sur TOUTE la vie (le flux est différentiel, non retransmis
+    = inchangé ; les points appartiennent à la vie donc aucun report ne franchit une mort),
+    estompage complet à 6 s (`VITALITY_FADE_MS`, même graduation que la carte), lacune = jamais
+    mesuré dans la vie. Le « assumed 1.0 » du POC n'est PAS repris (règle du plan : jamais un
+    plein par défaut). Test : report jusqu'à fin de vie avec âge.
+- [x] **B.2 Inventaire en ICÔNES** via `WeaponIcon` + `staticAssets` : armes portées (arme EN MAIN
   à GAUCHE via `Inventory.D`/i42 déjà décodé, souligné = primaire slot 0, **animation d'échange**
   au basculement du sélecteur — cf. POC `wswapL/R`), grenades (icône + « ×N »), capacité (icône +
   nom). Repli libellé si pas d'icône. Estompage d'âge (`--fr`/`freshness`).
-- [ ] **B.3 Grenade SÉLECTIONNÉE** (A.1) encadrée, token accent + nom en accent.
-- [ ] **B.4 Munitions** par emplacement (dégainé surligné, index d'emplacement), **jauge de
+  - FAIT (2026-08-12), avec DEUX écarts au plan CONSIGNES en §6 : (1) la marque est « EN MAIN »
+    (souligné + pleine encre, l'autre estompée), pas « primaire » — c'est le rendu RÉEL du POC
+    final (aucune règle CSS `.prim` n'y existe) ; (2) grenades et capacités N'ONT PAS d'icône
+    extraite dans le dépôt (les visuels du POC sont dessinés main, interdits par §2 ; les
+    grenades du jeu sont des `eqip`+`proj`, hors du balayage `weap`) → REPLI LIBELLÉ, prévu au
+    plan. Armes : icônes extraites servies par le document (`WeaponLabel.img/tinted`, jointure
+    famille→tag `weap` posée par la couche titre `replaylabels` + adapter), rendues par
+    `WeaponIcon` (masque teinté par `currentColor`). Animation d'échange : `drawnSwapAt`
+    (bascule i42 entre keyframes) + keyframes `replay-wswap-l/r` à délai négatif (globals.css).
+- [x] **B.3 Grenade SÉLECTIONNÉE** (A.1) encadrée, token accent + nom en accent.
+  - FAIT (2026-08-12). `selectedGrenade` : la LECTURE (`gs`, i47) prime, la déduction « seul
+    type porté » reste (dite déduite en infobulle), et 2+ types sans lecture = « sél. ? »
+    (indéterminé affiché, jamais deviné). Encadré token `warning` (l'accent de l'app) : liseré
+    + fond `color-mix` 13 % + nom en accent, patron POC `.gsel`.
+- [x] **B.4 Munitions** par emplacement (dégainé surligné, index d'emplacement), **jauge de
   charge** (fraction 0..1, barre — pas un %), **respawn** (compte à rebours + barre), états
   **mort** (fond tenu, liséré, nom teinté) / **renaissance** (flash), `prefers-reduced-motion`.
   Réutiliser ce qui est correct en Phase 1.
-- [ ] **B.5 Design app** : toutes strings i18n FR+EN ; **0 hex** (tokens sémantiques) ; réutilisation
+  - FAIT (2026-08-12). Munitions : cellules dans l'ORDRE des armes (helper `order` partagé —
+    même lecture que la rangée, jamais deux ordres), dégainée surlignée (index accent + encre
+    franche), jeton fin de ligne « rangées » (mesuré, D=2) / « dégainée ? » (non lu) ; jauge
+    inchangée (complément, barre). Respawn : barre d'avancement depuis la mort (mort datée par
+    la fin de vie, retour lu au départ de la suivante ; sans mort datée : compte sans barre) +
+    « retour ? » lacune inchangé. Mort : fond rouge tenu (`color-mix` 12 %) + liséré + nom
+    teinté ; ÉCLATS courts coup-fatal (`replay-death-flash`, steps(1)×3) et réapparition
+    (`replay-respawn-flash`) à délai négatif (justes après un saut de lecture) ;
+    `prefers-reduced-motion: reduce` coupe les trois animations.
+- [x] **B.5 Design app** : toutes strings i18n FR+EN ; **0 hex** (tokens sémantiques) ; réutilisation
   `WeaponIcon`/`heldReading`/`freshness`.
   - Gate B : `make check-types` ; `make test-web` (tests rendu + report + lacune + dégradation) ;
     `grep` anti-hex à 0 ; lint i18n vert.
+  - PASSÉ (2026-08-12) : check-types vert ; test-web 3615 verts / 409 fichiers (1 flake au
+    premier passage hors match-replay, non reproduit sur deux runs complets) ; grep anti-hex
+    match-replay = 0 (seul hit : un commentaire préexistant qui documente le refus du littéral) ;
+    parité i18n par typage `Record<Locale, ReplayText>` (compilée). 13 clés i18n ajoutées FR+EN.
 
 ### Phase C — Kill feed de la page replay (front : porter le POC dans le design app)
 

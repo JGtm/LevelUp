@@ -83,6 +83,11 @@ func buildWeaponLabels(loadouts []Loadout, shots []Shot, cat LabelCatalog) map[s
 			high = uint32(v >> 32)
 		}
 		if lbl, ok := cat.Weapons[high]; ok {
+			// L'icône suit le libellé quand la couche titre en pointe une pour la famille ;
+			// une famille nommée sans visuel garde son texte (repli du client).
+			if ic, okIc := cat.Icons[high]; okIc {
+				lbl.Img, lbl.Tinted = ic.URL, ic.Tinted
+			}
 			out[id] = lbl
 		}
 	}

@@ -31,10 +31,20 @@ export interface EquippedWeapon {
  */
 export interface EquippedReading {
   weapons: EquippedWeapon[]
+  /**
+   * Indices d'EMPLACEMENT du record, dans l'ordre d'affichage de `weapons`. La ligne des
+   * MUNITIONS suit ce même ordre — les deux lignes doivent rester alignées, la seconde se
+   * lisant « dans l'ordre des armes au-dessus ».
+   */
+  order: number[]
+  /** Emplacement dégainé (0 ou 1) quand le sélecteur le désigne, sinon null. */
+  drawn: number | null
   /** Âge de la lecture du loadout, en frames. */
   age: number
   /** true = le sélecteur dit « rien de dégainé » (D=2) — une mesure, pas une lacune. */
   holstered: boolean
+  /** true = le sélecteur n'a PAS été lu sur ce record — une lacune, pas une mesure. */
+  drawnUnread: boolean
 }
 
 /**
@@ -57,18 +67,54 @@ export function equippedWeapons(
   if (held === undefined) {
     return {
       weapons: lo.weapons.map((id) => ({ id, inHand: false })),
+      order: lo.weapons.map((_, i) => i),
+      drawn: null,
       age: lo.age,
       holstered: d === 2,
+      drawnUnread: d === undefined,
     }
   }
+  const rest = lo.weapons.map((_, i) => i).filter((i) => i !== d)
   return {
     weapons: [
       { id: held, inHand: true },
-      ...lo.weapons.filter((_, i) => i !== d).map((id) => ({ id, inHand: false })),
+      ...rest.map((i) => ({ id: lo.weapons[i], inHand: false })),
     ],
+    order: [d as number, ...rest],
+    drawn: d as number,
     age: lo.age,
     holstered: false,
+    drawnUnread: false,
   }
+}
+
+/**
+ * drawnSwapAt — l'ÉCHANGE D'ARME en cours : l'âge, en frames, de la dernière BASCULE du
+ * sélecteur d'emplacement (i42) pour ce slot, ou null hors fenêtre.
+ *
+ * LA BASCULE EST DATÉE À L'IMAGE-CLÉ — le moment où le changement devient LISIBLE, pas le
+ * moment du geste : vingt secondes séparent deux images-clés et le film ne dit pas l'instant
+ * exact. L'animation marque donc une lecture, pas un événement. Sans mouvement, une
+ * permutation de vignettes est indiscernable d'un changement d'arme — c'est sa raison d'être.
+ */
+export function drawnSwapAt(
+  doc: ReplayDocumentReady,
+  slot: number,
+  frame: number,
+  windowFrames: number,
+): number | null {
+  let prev: number | null = null
+  let swapT: number | null = null
+  for (const inv of doc.inventory) {
+    if (inv.slot !== slot || inv.t > frame) continue
+    const d = inv.d
+    if (d !== 0 && d !== 1) continue
+    if (prev !== null && d !== prev) swapT = inv.t
+    prev = d
+  }
+  if (swapT === null) return null
+  const age = frame - swapT
+  return age >= 0 && age <= windowFrames ? age : null
 }
 
 /**

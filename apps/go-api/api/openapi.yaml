@@ -23450,6 +23450,10 @@ components:
           type: string
         fx:
           type: string
+        img:
+          type: string
+        tinted:
+          type: boolean
       required:
         - en
         - fr

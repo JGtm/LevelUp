@@ -59,6 +59,22 @@ func TestLoad_CatalogueReelDuTitre(t *testing.T) {
 			t.Errorf("famille %08X : libellé incomplet %+v", fam, w)
 		}
 	}
+	// Les ICÔNES EXTRAITES suivent le catalogue (fiches joueur du rejeu). Toutes les familles
+	// n'en ont pas — le repli libellé est la règle — mais un catalogue réel sans AUCUNE icône
+	// dirait que la jointure famille -> tag `weap` est cassée.
+	if len(cat.Icons) == 0 {
+		t.Fatal("aucune icône d'arme dans le catalogue : la jointure par tag weap ne rend plus rien")
+	}
+	for fam, ic := range cat.Icons {
+		if ic.URL == "" {
+			t.Errorf("famille %08X : icône à URL vide — une entrée sans visuel ne doit pas entrer", fam)
+		}
+		if _, nommee := cat.Weapons[fam]; !nommee {
+			// Une icône sans libellé ne s'affiche pas (buildWeaponLabels n'entre que les armes
+			// nommées) : signal d'un registre incomplet, pas une erreur de jointure.
+			t.Logf("famille %08X : icône sans libellé (registre incomplet ?) : %s", fam, ic.URL)
+		}
+	}
 }
 
 // TestLoad_TitreSansMappings — un titre sans ces fichiers ÉCHOUE, il ne dégrade pas en

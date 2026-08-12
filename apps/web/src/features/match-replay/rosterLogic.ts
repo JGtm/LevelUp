@@ -163,24 +163,25 @@ export interface PlayerState {
 /**
  * playerStateAt lit l'état d'un joueur à une image.
  *
+ * LE REPORT DE VITALITÉ COUVRE LA VIE ENTIÈRE, et c'est une lecture juste : le flux est
+ * différentiel — non retransmis veut dire INCHANGÉ — et les points appartiennent à la vie,
+ * donc le report ne franchit jamais une mort. Ce qui vieillit doit se VOIR : l'âge voyage
+ * avec la valeur et l'affichage l'estompe (cf. barres). Ce qui n'a JAMAIS été mesuré dans
+ * la vie reste null — jamais un plein par défaut.
+ *
  * LE DÉLAI DE RÉAPPARITION EST LU, PAS DÉDUIT. Mesuré sur le film de référence : 90 épisodes de
  * mort, 82 avec un retour lisible, médiane 8,0 s et 66 sur 82 exactement à 7,9-8,0 s. C'est un
  * palier net — mais mesuré sur UN match, ce qui n'en fait pas une constante du jeu. Les 8
  * épisodes sans retour restent sans délai affiché.
  */
-export function playerStateAt(
-  player: ReplayPlayer,
-  frame: number,
-  shieldHold: number,
-  healthHold: number,
-): PlayerState {
+export function playerStateAt(player: ReplayPlayer, frame: number): PlayerState {
   const live = player.lives.find((l) => isAliveAt(l, frame)) ?? null
   if (live) {
     return {
       alive: true,
       life: live,
-      shield: heldReading(live.points, frame, (p) => p.sh, shieldHold),
-      health: heldReading(live.points, frame, (p) => p.hp, healthHold),
+      shield: heldReading(live.points, frame, (p) => p.sh, Number.POSITIVE_INFINITY),
+      health: heldReading(live.points, frame, (p) => p.hp, Number.POSITIVE_INFINITY),
       sinceDeath: -1,
       respawnFrame: -1,
     }
@@ -286,14 +287,32 @@ export function grenadesCarried(
 }
 
 /**
- * selectedGrenadeRank désigne le type ÉQUIPÉ, celui qui partira au prochain lancer.
- *
- * IL N'EST DÉDUIT QUE QUAND IL NE PEUT PAS ÊTRE AUTRE CHOSE : un seul type porté, donc c'est
- * lui. Dès qu'un joueur porte deux types, le sélecteur n'est pas dans ce que nous savons lire —
- * on rend null, et l'écran n'en désigne aucun. Deviner ici reviendrait à afficher une certitude
- * qu'on n'a pas.
+ * GrenadeSelection — le type ÉQUIPÉ, celui qui partira au prochain lancer, avec sa
+ * PROVENANCE. Les trois formes ne se confondent jamais :
+ *   - { rank, read: true }  : LU dans le film (sélecteur i47 de l'image-clé) ;
+ *   - { rank, read: false } : DÉDUIT — un seul type porté, donc c'est lui ;
+ *   - 'indeterminate'       : plusieurs types portés et sélecteur non lu — l'écran doit le
+ *     DIRE (« sél. ? »), pas choisir ;
+ *   - null                  : rien à désigner (compteurs non lus, ou aucun type porté).
  */
-export function selectedGrenadeRank(state: ReplayInventoryReady): number | null {
+export type GrenadeSelection = { rank: number; read: boolean } | 'indeterminate' | null
+
+/**
+ * selectedGrenade désigne le type équipé.
+ *
+ * LA LECTURE PRIME LA DÉDUCTION : le sélecteur du film (`gs`) est publié sous garde de
+ * cohérence (masque == compteurs, unanimité) — quand il est là, c'est lui. À défaut, la
+ * déduction ne vaut que quand elle ne peut pas être autre chose : un seul type porté.
+ * Dès qu'un joueur porte deux types sans sélecteur lu, on rend 'indeterminate' : deviner
+ * reviendrait à afficher une certitude qu'on n'a pas.
+ */
+export function selectedGrenade(state: ReplayInventoryReady): GrenadeSelection {
   const carried = (state.g ?? []).map((c, r) => ({ c, r })).filter((x) => x.c > 0)
-  return carried.length === 1 ? carried[0].r : null
+  if (carried.length === 0) return null
+  const gs = state.gs
+  if (gs !== undefined && carried.some((x) => x.r === gs)) {
+    return { rank: gs, read: true }
+  }
+  if (carried.length === 1) return { rank: carried[0].r, read: false }
+  return 'indeterminate'
 }

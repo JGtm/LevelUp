@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 )
@@ -44,13 +45,36 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 		return replay.LabelCatalog{}, fmt.Errorf("libellés de rejeu du titre %s: %w", titleSlug, err)
 	}
 
-	return replay.NewLabelCatalog(
+	cat := replay.NewLabelCatalog(
 		weapons.FilmshellWeaponKeysByFamily(),
 		weaponNames(names.Names()),
 		labels.ShotEffects(),
 		toLabels(labels.GrenadeRanks()),
 		abilitiesByIndex(labels.Abilities()),
-	), nil
+	)
+	cat.Icons = weaponIcons(weapons.FilmshellWeaponKeysByFamily())
+	return cat, nil
+}
+
+// weaponIcons pointe, par famille, l'icône EXTRAITE que le titre sert (fiches joueur du
+// rejeu). La clé d'icône EST la famille (le tag `weap` est la moitié haute de
+// l'identifiant) : la jointure passe par l'adapter d'assets du titre, jamais par un nom.
+// Une famille sans visuel n'entre pas — le client garde le libellé.
+func weaponIcons(families map[uint32]string) map[uint32]replay.WeaponIconRef {
+	adapter := halo.NewAssetURLAdapter()
+	out := map[uint32]replay.WeaponIconRef{}
+	for family := range families {
+		id := int64(uint64(family) << 32) //nolint:gosec // recomposition voulue : le tag est la moitié haute
+		url := adapter.WeaponImageURL(id)
+		if url == "" {
+			continue
+		}
+		out[family] = replay.WeaponIconRef{URL: url, Tinted: adapter.WeaponImageIsTinted(id)}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // weaponNames convertit les noms d'armes du loader vers le DTO d'artefact. La JOINTURE
