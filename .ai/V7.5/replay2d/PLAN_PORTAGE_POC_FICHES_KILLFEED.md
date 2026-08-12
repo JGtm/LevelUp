@@ -60,7 +60,7 @@ Inventaire des features du POC (cible) :
 
 ### Phase A — Données (Go, offline-pur ; garde local inchangé)
 
-- [ ] **A.1 Grenade SÉLECTIONNÉE (i47)** dans l'inventaire keyframe. Grammaire ÉTABLIE
+- [x] **A.1 Grenade SÉLECTIONNÉE (i47)** dans l'inventaire keyframe. Grammaire ÉTABLIE
   (`.ai/V7.5/replay2d/RECETTE_LOADOUT_2026-07-27.md` §1 : `i47 = [6b masque = bitmap des compteurs
   i22 non nuls][3b sélection base-1]`, accord i22↔i47 **194/194**). Câbler dans
   `ScanFilmKeyframeInventory` (`replay/inventory_decode.go`) → nouveau champ `Inventory`
@@ -68,6 +68,17 @@ Inventaire des features du POC (cible) :
   être cohérent avec les compteurs i22). Contrat : `go run ./cmd/openapi-gen` + `make generate-types`.
   - Gate : `go test ./internal/analysis/filmdec/ ./internal/analysis/replay/` ; `make generate-types`
     sans diff non commité ; couverture chiffrée dans le CR.
+  - FAIT (2026-08-12). i47 n'était PAS localisé dans les keyframes (le POC affichait ses 98
+    sélections par « unique compteur non nul », jamais par i47) : la position a été MESURÉE par
+    instrument rejouable (`replay/i47_research_test.go`, garde `I47_FILM`) — fenêtre
+    [+200..+210] bits après la fin de la DERNIÈRE famille d'arme, 69/92 lectures à +203..+205.
+    Règle R5 en production (`invGrenadeSelection`) : masque == bitmap i22 + sélection ∈ masque +
+    UNANIMITÉ en fenêtre, sinon non lu. Couverture 000d5950 : 92/120 records à i22 lu (74/98 à
+    un type porté, 18/22 à 2+ types — l'information nouvelle), 1 ambigu refusé. Validation :
+    stabilité intra-vie 26/29 ; oracle des décréments i22 : sélection AVANT lancer juste 7/7,
+    dont 2/2 non tautologiques ; APRÈS 4/8 (attendu : la sélection bouge après un lancer).
+    Publié `Inventory.Gs *int` (`gs` au contrat), rendement figé au test
+    (`wantInvGrenadeSel = 92`) + invariant « sélection ⇒ compteur porté ».
 - [ ] **A.2 Assistant + PART DE DÉGÂTS % par kill.** D'ABORD vérifier sur pièces si c'est déjà
   décodé/exposé : killsource (`internal/games/halo_infinite/film/killsource/`) et
   `domain.MatchHighlightEvent`. Le POC le décode du film (bloc `assistMeta`) ; le kill-event
@@ -125,7 +136,16 @@ Par phase : gate ci-dessus (commandes exactes). Global : `make check-types` + `m
 
 ## 6. DÉCOUVERTES (à consigner ici pendant l'exécution, NE PAS traiter hors périmètre)
 
-- (vide au démarrage)
+- (A.1, 2026-08-12) **La marque verte du POC FINAL dit « en main », pas « primaire »** : le CSS
+  livré n'a AUCUNE règle `.prim` (la classe est posée par le JS mais sans effet) et son
+  commentaire le dit en toutes lettres (« UNE SEULE MARQUE, ET ELLE DIT EN MAIN »). Le §4 B.2 de
+  ce plan (« souligné = primaire slot 0 ») décrit une doctrine antérieure du POC. Le rendu
+  RÉEL du POC fait foi : B.2 portera la marque unique « en main » (arme dégainée à gauche,
+  pleine encre, soulignée ; l'autre estompée quand le sélecteur est lu ; sans sélecteur lu :
+  ordre du record, encres égales, aucune marque).
+- (A.1, 2026-08-12) Le POC n'a JAMAIS lu i47 (98 × « unique compteur non nul », « sél. ? » à
+  2+ types) : la lecture i47 keyframe livrée en A.1 va AU-DELÀ du POC — 18 sélections nommées
+  sur 22 états à 2+ types, là où le POC affichait « sél. ? ».
 
 ## 7. SUIVI / REPRISE
 

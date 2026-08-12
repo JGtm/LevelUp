@@ -63,6 +63,12 @@ type Inventory struct {
 	// non lu ; un tableau présent dont une case vaut 0 dit « ce type, aucune en réserve »,
 	// ce qui est une mesure.
 	G []uint32 `json:"g,omitempty"`
+	// Gs est le rang de grenade SÉLECTIONNÉ (i47) — le type qui partira au prochain lancer.
+	// POINTEUR : le rang 0 est une valeur. Nil = non lu ; publié seulement quand le masque
+	// lu recoupe exactement les compteurs G et que la lecture est unanime (cf. décodeur) —
+	// une sélection ne se devine pas, un client peut toutefois la DÉDUIRE quand un seul
+	// type est porté.
+	Gs *int `json:"gs,omitempty"`
 	// A est l'index de capacité lu. POINTEUR : l'index 0 est une valeur, et omitempty
 	// l'effacerait. Nil = non lu.
 	A *int `json:"a,omitempty"`
@@ -97,6 +103,10 @@ func buildInventory(raw []KeyframeInventory, origin, step uint64) []Inventory {
 		}
 		if r.GrenadesRead {
 			inv.G = append(inv.G, r.Grenades[:]...)
+		}
+		if r.SelectedGrenadeRank >= 0 {
+			gs := r.SelectedGrenadeRank
+			inv.Gs = &gs
 		}
 		if r.AbilityIndex >= 0 {
 			a := r.AbilityIndex

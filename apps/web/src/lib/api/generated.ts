@@ -6211,6 +6211,8 @@ export interface components {
             /** Format: int64 */
             d?: number;
             g?: number[] | null;
+            /** Format: int64 */
+            gs?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */

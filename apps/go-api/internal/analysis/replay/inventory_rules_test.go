@@ -292,6 +292,70 @@ func buildRecordWithAmmoThenFamily(mag, res uint32, sel int) ([]byte, int, uint3
 	return w.buf, familyBit, mag, res
 }
 
+// buildGrenadeSelTail ecrit [off bits a UN][masque 6b][selection 3b][tail a UN] : la queue de
+// record apres la fin de la derniere famille (famEnd = 0 dans ces tests). Le remplissage a UN
+// ne peut pas valoir un masque valide (ses deux bits hauts sont toujours nuls) : tout ce que la
+// regle trouve, c est ce qu on y a mis.
+func buildGrenadeSelTail(off int, mask, sel uint32, tail int) []byte {
+	w := &bitWriter{}
+	for i := 0; i < off; i++ {
+		w.put(1, 1)
+	}
+	w.put(mask, 6)
+	w.put(sel, 3)
+	for i := 0; i < tail; i++ {
+		w.put(1, 1)
+	}
+	return w.buf
+}
+
+// TestR5GrenadeSelectionInWindow : le motif i47 est lu DANS la fenetre, refuse au-dela.
+func TestR5GrenadeSelectionInWindow(t *testing.T) {
+	gren := [invGrenadeSlots]uint32{0, 2, 1, 0} // rangs 1 et 2 portes : masque 0b000110
+	pay := buildGrenadeSelTail(invGrenadeSelLo, 0b110, 3, 40)
+	if got := invGrenadeSelection(pay, 0, len(pay)*8, gren); got != 2 {
+		t.Errorf("rang %d, attendu 2 — le motif en fenetre n est plus lu", got)
+	}
+	pay = buildGrenadeSelTail(invGrenadeSelHi+1, 0b110, 3, 40)
+	if got := invGrenadeSelection(pay, 0, len(pay)*8, gren); got != -1 {
+		t.Errorf("motif HORS fenetre lu (rang %d), attendu -1 — la fenetre ne borne plus rien", got)
+	}
+}
+
+// TestR5MaskMustMatchCounters : le masque doit etre EXACTEMENT le bitmap des compteurs i22, et
+// la selection designer un rang porte. Sans ces deux gardes, neuf bits se trouveraient partout.
+func TestR5MaskMustMatchCounters(t *testing.T) {
+	gren := [invGrenadeSlots]uint32{2, 0, 0, 0} // masque attendu 0b000001
+	pay := buildGrenadeSelTail(invGrenadeSelLo, 0b000010, 2, 40)
+	if got := invGrenadeSelection(pay, 0, len(pay)*8, gren); got != -1 {
+		t.Errorf("masque etranger accepte (rang %d), attendu -1", got)
+	}
+	pay = buildGrenadeSelTail(invGrenadeSelLo, 0b000001, 2, 40)
+	if got := invGrenadeSelection(pay, 0, len(pay)*8, gren); got != -1 {
+		t.Errorf("selection HORS masque acceptee (rang %d), attendu -1", got)
+	}
+}
+
+// TestR5ContradictoryReadsRefuse : deux occurrences en fenetre qui ne disent pas la meme
+// selection = non lu. On ne departage pas au hasard — meme doctrine que R1.
+func TestR5ContradictoryReadsRefuse(t *testing.T) {
+	gren := [invGrenadeSlots]uint32{0, 2, 1, 0}
+	w := &bitWriter{}
+	for i := 0; i < invGrenadeSelLo; i++ {
+		w.put(1, 1)
+	}
+	w.put(0b110, 6)
+	w.put(2, 3) // rang 1
+	w.put(0b110, 6)
+	w.put(3, 3) // rang 2, a +209 : encore dans la fenetre
+	for i := 0; i < 40; i++ {
+		w.put(1, 1)
+	}
+	if got := invGrenadeSelection(w.buf, 0, len(w.buf)*8, gren); got != -1 {
+		t.Errorf("deux lectures contradictoires rendent %d, attendu -1", got)
+	}
+}
+
 // TestInventoryRulesOnRealBinary : LES QUATRE REGLES, SUR LE BINAIRE REEL.
 //
 // Les tests ci-dessus verifient la mecanique de chaque regle sur un flux construit. Celui-ci
@@ -306,7 +370,7 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}
-	var ability, grenades, ammo, multi, drawn int
+	var ability, grenades, ammo, multi, drawn, grenSel int
 	for _, i := range inv {
 		if i.AbilityIndex >= 0 {
 			ability++
@@ -322,6 +386,14 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 		}
 		if i.DrawnSlot >= 0 {
 			drawn++
+		}
+		if i.SelectedGrenadeRank >= 0 {
+			grenSel++
+			if !i.GrenadesRead || i.SelectedGrenadeRank >= invGrenadeSlots ||
+				i.Grenades[i.SelectedGrenadeRank] == 0 {
+				t.Fatalf("slot %d : selection de grenade rang %d sans compteur porte — la garde "+
+					"masque==i22 ne tient plus", i.Slot, i.SelectedGrenadeRank)
+			}
 		}
 		for k := range i.Ammo {
 			if i.Ammo[k].Mag != nil && i.Ammo[k].Gauge != nil {
@@ -339,6 +411,7 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 		{"grenades lues (R2)", grenades, wantInvGrenades},
 		{"munitions lues (R3+R4)", ammo, wantInvAmmo},
 		{"lectures a plusieurs candidats", multi, wantInvMultiCandidate},
+		{"selection de grenade lue (R5)", grenSel, wantInvGrenadeSel},
 	} {
 		if c.got != c.want {
 			t.Errorf("%s : %d, attendu %d — une regle d ancrage a change de rendement",
@@ -358,4 +431,5 @@ const (
 	wantInvGrenades       = 120
 	wantInvAmmo           = 150
 	wantInvMultiCandidate = 51
+	wantInvGrenadeSel     = 92
 )
