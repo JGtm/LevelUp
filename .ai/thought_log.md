@@ -1,3 +1,32 @@
+## [2026-08-13] v7.5 cartes — lot 1 bornes de dequantification : 6 cartes debloquees par la preuve level_id, Live Fire documente
+
+**Statut** : Complete.
+
+**Decision technique principale** : les 6 fonds cuits mais inatteignables (Deadlock, Oasis,
+Scarr, Recharge, Prism, Corpo) entrent au catalogue `map_quant_bounds.json` par la SEULE voie
+que la doctrine de `cmd/mapquant-build` admet — la methode level_id du precedent Vagabond —
+et cette preuve, jouee jusqu'ici par un outil jetable supprime, est MATERIALISEE en test
+gamefiles durable (`internal/himap/sonde_levelid_gamefiles_test.go`, `TestPreuveLevelIDCartes`)
+avec deux verrous : le level_id est lu dans `<carte>_map.mvar` (nom SANS module — la preuve ne
+presuppose pas la regle de nommage des fichiers-liens, elle la corrobore), et l'unicite est
+exigee sur les 64 modules de `any/levels` + `ds/levels` (GlobalID a +0x28, groupe `levl`).
+
+**Resultats observes** : preuve 9/9 (2 temoins historiques Catalyst/Vagabond aux valeurs
+consignees + 7 cibles), unicite 1/1 partout. Catalogue regenere 15 -> 21 entrees, les 15
+preexistantes bit-identiques au diff (seule la ligne `source` change : installation C: au lieu
+de D:). Preuve de service bout-en-bout sur le serveur local : GET .../replay/background 404 ->
+200 sur les 6 cartes (match Deadlock 1ea71def temoin, + PNG 1 288 978 octets servis) — soit
+322 matchs debloques (93+67+57+55+48+2). Live Fire : module PROUVE (`sgh_interlock`, 1/1) mais
+`himap.ErrAucunTagSbsp` sur le module ds — NON catalogue (pas de coordonnee devinee), raison
+ecrite dans `mapModule` et au registre avec deux pistes de reprise. Tests filmdec (oracle du
+catalogue livre) et service (oracle passe a 21/21 cartes) verts ; gofmt/vet propres.
+
+**Conclusion / prochaine etape** : la ligne « 6 fonds INATTEIGNABLES » sort du registre ;
+entrent : Live Fire (bornes indisponibles) et les variantes Sentry Defense / Firefight non
+normalisees (3 matchs, condition de reprise = preuve meme-level_id comme Heavies). Gate visuel
+utilisateur : 6 PNG copies dans `Desktop/gate_cartes_v75/lot1_bornes/` (l'AVANT est un 404,
+pas une image). Suite du chantier cartes : lots suivants du superviseur (toits, cartes v2).
+
 ## [2026-08-13] v7.5 — kill feed sans arme ni assistant : CAUSE REELLE = appariement T0, corrige et prouve de bout en bout
 
 **Statut** : Complete.

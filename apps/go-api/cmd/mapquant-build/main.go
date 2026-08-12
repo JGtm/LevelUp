@@ -45,16 +45,32 @@ const deployVariant = "ds"
 //
 // Vagabond : le module `fo08_wetland` est établi par le `level_id` du .mvar, pas par le
 // nom. `vagabond_fo08_wetland.mvar` porte level_id 88891201 (0x054C5F41) ; balayé sur les
-// 88 modules de `deploy/any` + `deploy/ds`, il rend EXACTEMENT UNE occurrence,
+// modules de `deploy/any` + `deploy/ds`, il rend EXACTEMENT UNE occurrence,
 // `multi/fo08_wetland/fo08_wetland-rtx-new.module` à +0x28, groupe `levl`. Témoin de la
 // méthode : le level_id de Catalyst (−1044063363) rend de même une seule occurrence,
 // `multi/catalyst`. Preuve externe à toute mesure de largeur (plan maître §J0.2, 2026-07-31).
 // Vagabond est une carte Forge : `fo08_wetland` est sa TOILE, et c'est bien la toile qui
 // porte les bornes de déquantification.
 //
-// NON CATALOGUÉES faute de module établi : Live Fire, Recharge, Prism. Leurs largeurs
-// mesurées désignent un module compatible, mais rien n'établit le lien ; les cataloguer
-// reviendrait à deviner des coordonnées.
+// Les 6 entrées du 2026-08-13 (Corpo, Deadlock, Oasis, Prism, Recharge, Scarr) sont
+// établies par la MÊME méthode level_id, désormais REJOUÉE en continu par le test
+// gamefiles `TestPreuveLevelIDCartes` (internal/himap/sonde_levelid_gamefiles_test.go) :
+// level_id lu dans `<carte>_map.mvar` (variante par défaut, nom sans module), corroboré par
+// le fichier-lien `<carte>_<module>.mvar`, unicité exigée sur les 64 modules de
+// `any/levels` + `ds/levels`. Level_id mesurés (2026-08-13, unicité 1/1 chacun) :
+//
+//	Corpo     426470249  (0x196B6B69) -> fo11_blank (Forge : sa toile porte les bornes)
+//	Deadlock  -785503777 (0xD12E29DF) -> btb_drydock
+//	Oasis     -611378397 (0xDB8F1B23) -> btb_exiled
+//	Prism     2068765158 (0x7B4ED9E6) -> sgh_crystalcaves
+//	Recharge  -687782121 (0xD7014717) -> sgh_blueprint
+//	Scarr     799711266  (0x2FAAA022) -> btb_engine
+//
+// NON CATALOGUÉE malgré un module PROUVÉ : Live Fire (level_id 1253388187 / 0x4AB52F9B
+// -> `sgh_interlock`, unicité 1/1, rejouée par le même test). Son module ds ne porte
+// AUCUN tag sbsp (mesuré le 2026-08-13 : `himap.ErrAucunTagSbsp` — même exception que la
+// cuisson des fonds, handoff cartes §1 ter) : la source déclarée des bornes n'existe pas
+// pour cette carte, et une entrée sans bornes vraies serait une coordonnée devinée.
 var mapModule = map[string]string{
 	"Aquarius":      "ctf_aquarius",
 	"Bazaar":        "ctf_bazaar",
@@ -63,12 +79,18 @@ var mapModule = map[string]string{
 	"Catalyst":      "catalyst",
 	"Chasm":         "chasm",
 	"Cliffhanger":   "ridgeline",
+	"Corpo":         "fo11_blank",
+	"Deadlock":      "btb_drydock",
 	"Forbidden":     "ctf_forbidden",
 	"Forest":        "forest",
 	"Fragmentation": "btb_fragmentation",
 	"Highpower":     "btb_highpower",
 	"Illusion":      "ctf_illusion",
 	"Launch Site":   "va_launchsite",
+	"Oasis":         "btb_exiled",
+	"Prism":         "sgh_crystalcaves",
+	"Recharge":      "sgh_blueprint",
+	"Scarr":         "btb_engine",
 	"Streets":       "sgh_streets",
 	"Vagabond":      "fo08_wetland",
 }
