@@ -115,6 +115,14 @@ Inventaire des features du POC (cible) :
     estompage complet à 6 s (`VITALITY_FADE_MS`, même graduation que la carte), lacune = jamais
     mesuré dans la vie. Le « assumed 1.0 » du POC n'est PAS repris (règle du plan : jamais un
     plein par défaut). Test : report jusqu'à fin de vie avec âge.
+  - AMENDÉ (2026-08-12, décision UTILISATEUR — retour sur CR) : le « jamais 100 % par défaut »
+    du plan est ANNULÉ pour la vitalité — au spawn, vie et bouclier sont PLEINS (règle du jeu),
+    et le flux différentiel ne retransmet que ce qui change : avant la première mesure d'une
+    vie, la valeur juste est 1,0 (âge 0), pas une lacune. C'est la doctrine du POC (`lastOf`
+    assumed), rétablie. Les libellés « bouclier/santé non transmis » sont SUPPRIMÉS. GARDE
+    multi-titre : `vitalityPresence(doc)` par champ — un document dont AUCUN point ne porte
+    sh/hp (titre sans décodage film) n'affiche PAS de barres (dégradation par absence de
+    donnée, zéro slug).
 - [x] **B.2 Inventaire en ICÔNES** via `WeaponIcon` + `staticAssets` : armes portées (arme EN MAIN
   à GAUCHE via `Inventory.D`/i42 déjà décodé, souligné = primaire slot 0, **animation d'échange**
   au basculement du sélecteur — cf. POC `wswapL/R`), grenades (icône + « ×N »), capacité (icône +

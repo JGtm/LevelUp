@@ -49,8 +49,6 @@ interface ReplayText {
   rosterEmpty: string
   teamUnknown: string
   unknownPlayer: string
-  shieldUnread: string
-  healthUnread: string
   healthLabel: string
   shieldLabel: string
   abilityLabel: string
@@ -143,8 +141,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
     teamUnknown: 'Sans équipe',
     unknownPlayer: 'Joueur inconnu',
-    shieldUnread: 'bouclier non transmis',
-    healthUnread: 'santé non transmise',
     healthLabel: 'Santé',
     shieldLabel: 'Bouclier',
     abilityLabel: "Capacité d'armure équipée",
@@ -241,8 +237,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
     teamUnknown: 'No team',
     unknownPlayer: 'Unknown player',
-    shieldUnread: 'shield not transmitted',
-    healthUnread: 'health not transmitted',
     healthLabel: 'Health',
     shieldLabel: 'Shield',
     abilityLabel: 'Equipped armor ability',

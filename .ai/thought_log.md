@@ -1,3 +1,24 @@
+## [2026-08-12] v7.5 — correctif sur retour utilisateur : vitalite PLEINE au spawn, plus de « non transmis »
+
+**Statut** : Complete.
+
+**Decision technique principale** : retour utilisateur sur le CR du lot portage POC — les statuts
+« sante/bouclier non transmis » n'ont pas de sens pour un vivant : au spawn les deux sont a 100 %
+(regle du jeu), et le flux differentiel ne retransmet que ce qui change. C'est la doctrine du POC
+(`lastOf` assumed 1.0) que le plan contredisait (« jamais 100 % par defaut ») ; l'utilisateur a
+retabli le POC. Implémente : `playerStateAt` rend `{value: 1, age: 0}` avant la premiere mesure
+d'une vie ; libelles « non transmis » SUPPRIMES (i18n FR+EN) ; ShieldBar/HealthBar fusionnees en
+`VitalityBar` (plus de branche lacune-texte). GARDE multi-titre : `vitalityPresence(doc)` par
+champ — un document dont AUCUN point ne porte sh/hp n'affiche pas de barres (degradation par
+absence de donnee, zero slug).
+
+**Resultats observes** : typecheck (tsc -b apres purge du cache) vert ; 212 tests match-replay
+verts (nouveaux temoins : plein d'apparition a 100 %, pas de barres sur document sans vitalite,
+mesure future jamais peinte en arriere). Plan B.1 amende (decision user consignee), memoire
+produit ecrite (feedback-replay-vitality-spawn-full).
+
+**Conclusion / prochaine etape** : push + CI, puis gate visuel utilisateur (inchange : 000d5950).
+
 ## [2026-08-12] v7.5 — portage du POC execute : fiches (icones, i47, echanges) + kill feed (victime, assistant, %)
 
 **Statut** : Complete (code + gates techniques) — reste le gate VISUEL utilisateur (comparaison au

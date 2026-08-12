@@ -27,8 +27,10 @@ import {
   groupByTeam,
   playerName,
   playerStateAt,
+  vitalityPresence,
   type ReplayPlayer,
   type PlayerState,
+  type VitalityPresence,
 } from './rosterLogic'
 
 /**
@@ -70,6 +72,7 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
+  const presence = useMemo(() => vitalityPresence(doc), [doc])
 
   if (groups.length === 0) {
     return (
@@ -99,6 +102,7 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
                 player={p}
                 doc={doc}
                 frame={frame}
+                presence={presence}
                 vitalityFade={vitalityFade}
                 readingFull={readingFull}
                 flashFrames={flashFrames}
@@ -126,15 +130,16 @@ interface PlayerCardProps {
   player: ReplayPlayer
   doc: ReplayDocumentReady
   frame: number
+  presence: VitalityPresence
   vitalityFade: number
   readingFull: number
   flashFrames: number
   locale: ReplayLocale
 }
 
-function PlayerCard({ player, doc, frame, vitalityFade, readingFull, flashFrames, locale }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
-  const state = playerStateAt(player, frame)
+  const state = playerStateAt(player, frame, presence)
   const name = playerName(player) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
@@ -175,8 +180,8 @@ function PlayerCard({ player, doc, frame, vitalityFade, readingFull, flashFrames
       {state.alive ? (
         <>
           {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
-          <ShieldBar state={state} fade={vitalityFade} label={t.shieldUnread} name={t.shieldLabel} />
-          <HealthBar state={state} fade={vitalityFade} label={t.healthUnread} name={t.healthLabel} />
+          <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" />
+          <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" />
         </>
       ) : (
         <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
@@ -232,16 +237,29 @@ function KdaBadge({ board }: { board?: MatchScoreboardRow }) {
 }
 
 /**
- * ShieldBar — le bouclier lu dans le MÊME enregistrement que la position.
+ * VitalityBar — bouclier ou santé, lus dans le MÊME enregistrement que la position.
  *
- * UNE PISTE VIDE EST UNE MESURE : bouclier brisé. Une piste ABSENTE est une lacune. Les deux ne
- * doivent jamais se ressembler, d'où le libellé explicite quand rien n'a été lu.
+ * LA BARRE EST TOUJOURS PLEINE AU DÉPART D'UNE VIE : on apparaît vie et bouclier pleins
+ * (règle du jeu), et le flux différentiel ne retransmet que ce qui change — l'absence de
+ * mesure depuis le spawn veut dire « plein », pas « inconnu » (décision utilisateur
+ * 2026-08-12, doctrine du POC). UNE PISTE VIDE reste une MESURE : bouclier brisé, vie
+ * entamée. Reading null = le document ne porte pas ce champ (titre sans décodage film) :
+ * la ligne n'existe pas — on n'invente pas une jauge pour une donnée qui n'existe nulle
+ * part dans le document.
  */
-function ShieldBar({ state, fade, label, name }: { state: PlayerState; fade: number; label: string; name: string }) {
-  if (!state.shield) {
-    return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{label}</span>
-  }
-  const fresh = freshness(state.shield.age, fade, READING_FADE)
+function VitalityBar({
+  reading,
+  fade,
+  name,
+  token,
+}: {
+  reading: { value: number; age: number } | null
+  fade: number
+  name: string
+  token: 'info' | 'success'
+}) {
+  if (!reading) return null
+  const fresh = freshness(reading.age, fade, READING_FADE)
   return (
     <div
       className="h-1 overflow-hidden rounded-sm bg-muted"
@@ -252,41 +270,8 @@ function ShieldBar({ state, fade, label, name }: { state: PlayerState; fade: num
       <div
         className="h-full rounded-sm"
         style={{
-          width: `${Math.max(0, Math.min(1, state.shield.value)) * 100}%`,
-          background: tokenCssVar('info'),
-        }}
-      />
-    </div>
-  )
-}
-
-/**
- * HealthBar — la santé, sur le MÊME patron que le bouclier : maintien court, fondu de
- * fraîcheur, LACUNE explicite quand rien n'a été lu. JAMAIS un plein par défaut.
- *
- * POURQUOI CE PATRON ET PAS UNE JAUGE PERMANENTE. La santé est répliquée AU CHANGEMENT et
- * presque jamais transmise (0,56 % des points, un tiers des vies sur le film de référence,
- * médiane zéro échantillon par vie) : une barre permanente serait vide ou fausse la plupart
- * du temps. Le report AVANT est honnête — valeur absolue inchangée depuis la mesure — mais
- * reporter la seule mesure d'une vie en ARRIÈRE peindrait faux tout le début de vie.
- */
-function HealthBar({ state, fade, label, name }: { state: PlayerState; fade: number; label: string; name: string }) {
-  if (!state.health) {
-    return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{label}</span>
-  }
-  const fresh = freshness(state.health.age, fade, READING_FADE)
-  return (
-    <div
-      className="h-1 overflow-hidden rounded-sm bg-muted"
-      style={{ opacity: fresh }}
-      title={name}
-      aria-label={name}
-    >
-      <div
-        className="h-full rounded-sm"
-        style={{
-          width: `${Math.max(0, Math.min(1, state.health.value)) * 100}%`,
-          background: tokenCssVar('success'),
+          width: `${Math.max(0, Math.min(1, reading.value)) * 100}%`,
+          background: tokenCssVar(token),
         }}
       />
     </div>

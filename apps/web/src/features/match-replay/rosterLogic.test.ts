@@ -13,7 +13,11 @@ import {
   playerName,
   playerStateAt,
   selectedGrenade,
+  vitalityPresence,
 } from './rosterLogic'
+
+/** Présence standard : le document porte les deux champs (cas Halo Infinite décodé). */
+const BOTH = { shield: true, health: true }
 
 function track(
   slot: number,
@@ -153,7 +157,7 @@ describe('playerStateAt', () => {
   const [a] = buildPlayers(d, [])
 
   it('vivant : rend la vie en cours et le bouclier lu', () => {
-    const s = playerStateAt(a, 10)
+    const s = playerStateAt(a, 10, BOTH)
     expect(s.alive).toBe(true)
     expect(s.life?.slot).toBe(512)
     expect(s.shield).toEqual({ value: 1, age: 10 })
@@ -161,7 +165,7 @@ describe('playerStateAt', () => {
 
   it('mort : date la mort et LIT l’image du retour', () => {
     // Le retour est l'image de départ de la vie suivante, jamais une constante ajoutée.
-    const s = playerStateAt(a, 90)
+    const s = playerStateAt(a, 90, BOTH)
     expect(s.alive).toBe(false)
     expect(s.sinceDeath).toBe(40)
     expect(s.respawnFrame).toBe(130)
@@ -169,12 +173,12 @@ describe('playerStateAt', () => {
 
   it('sans vie suivante, le retour reste une LACUNE', () => {
     const solo = buildPlayers(doc({ tracks: [track(512, 'A', 0, 50)] }), [])[0]
-    expect(playerStateAt(solo, 90).respawnFrame).toBe(-1)
+    expect(playerStateAt(solo, 90, BOTH).respawnFrame).toBe(-1)
   })
 
   it('mort : aucun bouclier, jamais un zéro inventé', () => {
     // Zéro voudrait dire « bouclier brisé, mesuré ». Un mort n'a pas de mesure du tout.
-    expect(playerStateAt(a, 90).shield).toBeNull()
+    expect(playerStateAt(a, 90, BOTH).shield).toBeNull()
   })
 })
 
@@ -182,8 +186,9 @@ describe('playerStateAt — santé', () => {
   // La santé suit le MÊME contrat que le bouclier : report EN AVANT sur TOUTE la vie —
   // le flux est différentiel, non retransmis veut dire inchangé, et les points appartiennent
   // à la vie donc le report ne franchit jamais une mort. Ce qui vieillit s'ESTOMPE à
-  // l'affichage (l'âge voyage avec la valeur) ; ce qui n'a jamais été mesuré reste une
-  // LACUNE — jamais un plein par défaut.
+  // l'affichage (l'âge voyage avec la valeur). AVANT LA PREMIÈRE MESURE, la valeur juste
+  // est 1,0 : on apparaît plein (règle du jeu, décision utilisateur 2026-08-12), gardé par
+  // la PRÉSENCE du champ dans le document.
   const d = doc({
     tracks: [
       {
@@ -202,22 +207,27 @@ describe('playerStateAt — santé', () => {
   const [a] = buildPlayers(d, [])
 
   it('reporte la mesure EN AVANT, avec son âge', () => {
-    expect(playerStateAt(a, 50).health).toEqual({ value: 0.3, age: 10 })
+    expect(playerStateAt(a, 50, BOTH).health).toEqual({ value: 0.3, age: 10 })
   })
 
-  it('ne peint JAMAIS en arrière : avant la mesure, lacune', () => {
-    // La seule mesure de cette vie date de t=40 ; à t=20 elle n'existe pas encore.
-    expect(playerStateAt(a, 20).health).toBeNull()
+  it('avant la première mesure : PLEIN d’apparition, jamais la mesure future peinte en arrière', () => {
+    // La seule mesure de cette vie date de t=40 ; à t=20 la valeur juste est le plein du
+    // spawn (1,0, âge 0) — pas 0,3, qui n'existe pas encore, et pas une lacune non plus.
+    expect(playerStateAt(a, 20, BOTH).health).toEqual({ value: 1, age: 0 })
+  })
+
+  it('document SANS ce champ : rien — on n’invente pas une jauge pour un titre qui ne la transmet pas', () => {
+    expect(playerStateAt(a, 20, { shield: true, health: false }).health).toBeNull()
   })
 
   it('le report tient JUSQU’À LA FIN DE LA VIE, avec son âge — c’est l’estompage qui dit le temps', () => {
     // Non retransmis = inchangé : couper le report à une constante peignait une fausse
     // lacune. La valeur reste, l'âge grandit, et l'affichage l'estompe.
-    expect(playerStateAt(a, 80).health).toEqual({ value: 0.3, age: 40 })
+    expect(playerStateAt(a, 80, BOTH).health).toEqual({ value: 0.3, age: 40 })
   })
 
   it('mort : aucune santé, jamais un zéro inventé', () => {
-    expect(playerStateAt(a, 150).health).toBeNull()
+    expect(playerStateAt(a, 150, BOTH).health).toBeNull()
   })
 })
 
@@ -326,5 +336,33 @@ describe('selectedGrenade', () => {
 
   it('ne désigne rien sans lecture', () => {
     expect(selectedGrenade(inv())).toBeNull()
+  })
+})
+
+describe('vitalityPresence — la garde multi-titre du plein d’apparition', () => {
+  it('détecte chaque champ séparément, sur l’ensemble du document', () => {
+    const d = doc({
+      tracks: [
+        track(512, 'A', 0, 50), // la fixture porte sh, jamais hp
+        {
+          slot: 513,
+          team: -1,
+          xuid: 'B',
+          startFrame: 0,
+          endFrame: 50,
+          points: [{ t: 10, x: 0, y: 0, hp: 0.5 }],
+        },
+      ],
+    })
+    expect(vitalityPresence(d)).toEqual({ shield: true, health: true })
+  })
+
+  it('document sans AUCUNE vitalité (titre sans décodage film) : rien n’est présent', () => {
+    const nu = doc({
+      tracks: [
+        { slot: 512, team: -1, xuid: 'A', startFrame: 0, endFrame: 50, points: [{ t: 0, x: 0, y: 0 }] },
+      ],
+    })
+    expect(vitalityPresence(nu)).toEqual({ shield: false, health: false })
   })
 })
