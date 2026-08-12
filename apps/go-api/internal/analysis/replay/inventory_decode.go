@@ -90,6 +90,22 @@ const DefaultGrenadeMax uint32 = 2
 // ouvrir la porte à des débuts absurdes.
 const invAmmoSearchSpan = 300
 
+// invGrenadeSelLo / invGrenadeSelHi bornent, en bits APRÈS la fin de la dernière occurrence
+// de famille d'arme du record, la fenêtre où vit le composant i47 (jeu de grenades :
+// [6 bits masque][3 bits sélection en base 1] — grammaire du dispatch, accord i22↔i47
+// 194/194, RECETTE_LOADOUT_2026-07-27 §1). Position MESURÉE sur les 120 records à i22 lu de
+// 000d5950 : 69 lectures sur 92 tombent à +203..+205, le reste du jitter venant de petits
+// champs à porte en amont ; la fenêtre l'absorbe. LA PUBLICATION NE REPOSE PAS SUR LA
+// POSITION : elle exige masque == bitmap des compteurs i22 ET une sélection UNANIME dans la
+// fenêtre — un débordement rend « non lu », jamais un faux. Validation interne : stabilité
+// intra-vie 26/29, et l'oracle des décréments (un compteur qui décroît entre deux keyframes
+// dit le type lancé) donne 7/7 d'accord côté AVANT, dont 2/2 non tautologiques (porteur à
+// 2+ types). Instrument rejouable : i47_research_test.go (garde I47_FILM).
+const (
+	invGrenadeSelLo = 200
+	invGrenadeSelHi = 210
+)
+
 // SlotAmmo est l'état de munitions d'UN emplacement d'arme.
 //
 // LES TROIS CAS NE SE CONFONDENT PAS, et c'est tout l'intérêt des pointeurs :
@@ -120,6 +136,11 @@ type KeyframeInventory struct {
 	// 2 Dynamo, 3 Spike). Nulle et GrenadesRead faux = non lu, jamais « zéro grenade ».
 	Grenades     [invGrenadeSlots]uint32
 	GrenadesRead bool
+	// SelectedGrenadeRank est le rang de grenade SÉLECTIONNÉ (i47), ou -1 non lu. C'est le
+	// type qui partira au prochain lancer. Publié seulement si le masque lu recoupe
+	// exactement les compteurs i22 et si la sélection est unanime dans la fenêtre (cf.
+	// invGrenadeSelLo) : à défaut, -1 — une sélection ne se devine pas.
+	SelectedGrenadeRank int
 	// AbilityIndex est l'index de capacité lu, ou -1. Le NOM ne se décide pas ici : la table
 	// est partielle, et la nommer est le travail de la couche qui possède le catalogue.
 	AbilityIndex int
@@ -187,7 +208,9 @@ func keyframeInventories(pay []byte, known map[uint32]bool, grenMax uint32) []Ke
 		if sp.ti != invBipedTI {
 			continue
 		}
-		inv := KeyframeInventory{Slot: uint32(sp.slot), AbilityIndex: -1, DrawnSlot: -1}
+		inv := KeyframeInventory{
+			Slot: uint32(sp.slot), AbilityIndex: -1, DrawnSlot: -1, SelectedGrenadeRank: -1,
+		}
 		// R1 : l'ancre doit être UNIQUE dans le record. Deux ancres, c'est une lecture qu'on
 		// ne sait pas départager — et on ne départage pas au hasard.
 		if hits := invAbilityIn(pay, sp.from, sp.to); len(hits) == 1 {
@@ -201,6 +224,13 @@ func keyframeInventories(pay []byte, known map[uint32]bool, grenMax uint32) []Ke
 		// R3 puis R4 : la première famille d'arme borne le bloc de munitions par la DROITE.
 		if first, ok := invFirstFamily(pay, sp.from, sp.to, known); ok {
 			readAmmo(pay, &inv, sp.from, first)
+		}
+		// R5 : la sélection de grenade (i47) vit après la DERNIÈRE famille d'arme ; sa
+		// lecture est bornée par les compteurs i22 eux-mêmes (masque == bitmap).
+		if inv.GrenadesRead {
+			if last, ok := invLastFamily(pay, sp.from, sp.to, known); ok {
+				inv.SelectedGrenadeRank = invGrenadeSelection(pay, last+32, sp.to, inv.Grenades)
+			}
 		}
 		out = append(out, inv)
 	}
@@ -323,6 +353,62 @@ func invFirstFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool)
 		}
 	}
 	return 0, false
+}
+
+// invLastFamily rend la position bit de la DERNIÈRE famille d'arme connue du record : c'est
+// le repère avant du composant i47 (cf. invGrenadeSelLo).
+func invLastFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool) {
+	var w uint32
+	last, found := 0, false
+	for b := from; b < to; b++ {
+		w = w<<1 | invBitAt(pay, b)
+		if b-from < 31 {
+			continue
+		}
+		if known[w] {
+			last, found = b-31, true
+		}
+	}
+	return last, found
+}
+
+// invGrenadeSelection lit le composant i47 dans la fenêtre qui suit la fin de la dernière
+// famille d'arme (famEnd = position de la famille + 32) et rend le RANG sélectionné, ou -1.
+//
+// LE MOTIF EST CONTRAINT PAR i22, PAS PAR SA POSITION : [6 bits masque][3 bits sélection en
+// base 1], où le masque doit être EXACTEMENT le bitmap des compteurs non nuls (bit r = rang r)
+// et la sélection désigner un rang porté. Neuf bits sont trop courts pour valoir preuve seuls ;
+// la fenêtre les cadre, et l'UNANIMITÉ départage : plusieurs occurrences qui ne disent pas la
+// même sélection = non lu. Mesures et oracle : en-tête d'invGrenadeSelLo.
+func invGrenadeSelection(pay []byte, famEnd, to int, gren [invGrenadeSlots]uint32) int {
+	var mask uint32
+	for r, v := range gren {
+		if v > 0 {
+			mask |= 1 << uint(r)
+		}
+	}
+	if mask == 0 {
+		return -1
+	}
+	sel := -1
+	for off := invGrenadeSelLo; off <= invGrenadeSelHi; off++ {
+		b := famEnd + off
+		if b+9 > to {
+			break
+		}
+		if invBits(pay, b, 6) != mask {
+			continue
+		}
+		s := int(invBits(pay, b+6, 3))
+		if s < 1 || s > invGrenadeSlots || mask&(1<<uint(s-1)) == 0 {
+			continue
+		}
+		if sel >= 0 && sel != s-1 {
+			return -1 // deux occurrences en désaccord : on ne départage pas au hasard
+		}
+		sel = s - 1
+	}
+	return sel
 }
 
 // invParseAmmoBlock parse le bloc i30..i42 depuis le bit s : quatre fois

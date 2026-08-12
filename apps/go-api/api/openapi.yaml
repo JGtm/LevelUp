@@ -12753,6 +12753,9 @@ components:
           type:
             - array
             - "null"
+        gs:
+          format: int64
+          type: integer
         slot:
           format: int32
           minimum: 0
