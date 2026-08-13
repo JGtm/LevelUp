@@ -95,6 +95,14 @@ integration -p 1 (dont le rouge herite). Aucun autre job CI en echec sur `242001
 job. Gates visuels utilisateur pendants : toits (12 paires) + Vagabond lot B (1 paire),
 artefacts sous Desktop/gate_cartes_v75/.
 
+**Addendum 3 (meme jour)** : CI rouge du push map_id elucidee et reparee —
+`TestCatalogueLivreEstExploitable` refusait la zone Bastion de Salvation (objet 446, entree
+cd08bc7a) : la SOURCE ne porte pas de sac de forme (mesure corpus mapvar/shape.go : 430/431,
+aucune famille inconnue sur 16 434 formes). Ni suppression (perte d'ancre + falsification de
+la source) ni assouplissement : exception NOMINATIVE expliquee dans le garde-fou
+(pointlessConnues, auto-nettoyante — une forme trouvee un jour rendrait l'entree fausse).
+Les consommateurs l'ecartaient deja (ZonesOfRole.Pointless).
+
 **Addendum 2 (meme jour, cloture superviseur)** : lot fonds par map_id LIVRE par l'executeur
 (3 commits 1fe9f835e/121e9c4e6/79cf8e803, verifie sur pieces : 37 fonds map_id publies,
 33+2 artefacts au Bureau, arbre propre, plan 100 % statue). Verdict du gate TOITS consigne
