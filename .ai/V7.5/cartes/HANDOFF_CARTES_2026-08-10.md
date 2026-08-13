@@ -117,7 +117,7 @@ inondation exterieure (Cliffhanger n'est pas close).
 | **Regression visuelle sur Catalyst** (+11,5 % de matiere) | non detectee : l'oracle des ancres ne juge pas l'aspect |
 | **Regles generales contre regles par carte** | question utilisateur ouverte, cf. compte rendu |
 | **T5 : appariement sommets/indices jamais MESURE** | invariant applique, contraste jamais joue |
-| 1 113 objets Forge sans modele `rtgo` (23,6 %) | saut `bloc`/`scen`/`mach` -> `hlmt` — LOT B |
+| ~~1 113 objets Forge sans modele `rtgo` (23,6 %)~~ | **LOT B FAIT le 2026-08-13** : saut `food -> bloc/scen/mach -> hlmt -> mode` (les hlmt du saut ne referencent AUCUN rtgo — la geometrie est un tag `mode`/render_model, lecteur `NewRenderModelAsset`, offsets Reclaimer `RenderModelTag.cs` ; bornes UNIQUES au modele, BoundingBoxBlock 84 o) + index Forge elargi aux globals `any`. Vagabond 3 558 -> **4 633/4 709 objets (98,4 %)**, ancres 4/4, ecart median -0,01 m. Sonde durable `sonde_forge_saut_gamefiles_test.go`. Restent 38 objets (registre). GATE VISUEL utilisateur PENDANT (`gate_cartes_v75/forge/`) |
 | 199 `.mvar` au dump, DEUX branches | le gisement suivant |
 | toile `fo08_wetland` non rendue sous les objets | registre |
 | aucun consommateur ne lit encore `map_backgrounds/` | chantier d'affichage |

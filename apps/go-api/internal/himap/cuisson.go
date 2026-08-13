@@ -222,7 +222,7 @@ func PeupleRendu(ctx context.Context, r *Rendu, idx *ModuleIndex, bsp BSPInstanc
 		}
 		a, deja := assets[id]
 		if !deja {
-			a = ouvreAsset(ctx, idx, id)
+			a = ouvreAsset(ctx, idx, id, GroupeRtgo)
 			assets[id] = a
 		}
 		if a == nil {
@@ -242,17 +242,23 @@ func PeupleRendu(ctx context.Context, r *Rendu, idx *ModuleIndex, bsp BSPInstanc
 	return dessinees, decor
 }
 
-// ouvreAsset extrait et decode un tag rtgo. Un tag illisible est LOGGE puis saute — une carte
-// ne doit pas mourir sur un maillage, mais une extraction muette masquerait un trou.
-func ouvreAsset(ctx context.Context, idx *ModuleIndex, id uint32) *RuntimeGeoAsset {
+// ouvreAsset extrait et decode un tag de geometrie (`rtgo`, ou `mode` — lot B Forge). Un tag
+// illisible est LOGGE puis saute — une carte ne doit pas mourir sur un maillage, mais une
+// extraction muette masquerait un trou.
+func ouvreAsset(ctx context.Context, idx *ModuleIndex, id uint32, groupe string) *RuntimeGeoAsset {
 	tag, blob, err := idx.ExtractWithResources(id)
 	if err != nil {
-		slog.DebugContext(ctx, "rtgo illisible", "id", fmt.Sprintf("%08x", id), "err", err)
+		slog.DebugContext(ctx, "tag de geometrie illisible", "groupe", groupe, "id", fmt.Sprintf("%08x", id), "err", err)
 		return nil
 	}
-	a, err := NewRuntimeGeoAsset(tag, blob)
+	var a *RuntimeGeoAsset
+	if groupe == GroupeMode {
+		a, err = NewRenderModelAsset(tag, blob)
+	} else {
+		a, err = NewRuntimeGeoAsset(tag, blob)
+	}
 	if err != nil {
-		slog.DebugContext(ctx, "rtgo indecodable", "id", fmt.Sprintf("%08x", id), "err", err)
+		slog.DebugContext(ctx, "tag de geometrie indecodable", "groupe", groupe, "id", fmt.Sprintf("%08x", id), "err", err)
 		return nil
 	}
 	return a

@@ -89,19 +89,29 @@ func (a *RuntimeGeoAsset) IndexDescCount() int  { return len(a.indexDescs) }
 // MeshCount rend le nombre de maillages du tag.
 func (a *RuntimeGeoAsset) MeshCount() int { return a.geo.MeshCount }
 
-// NewRuntimeGeoAsset assemble tout ce qu'il faut pour decoder les maillages d'un tag.
+// NewRuntimeGeoAsset assemble tout ce qu'il faut pour decoder les maillages d'un tag `rtgo`.
 func NewRuntimeGeoAsset(tag, resourceBlob []byte) (*RuntimeGeoAsset, error) {
+	return nouvelAsset(tag, resourceBlob, runtimeGeoFromTagInfo, GroupeRtgo)
+}
+
+// NewRenderModelAsset assemble les maillages d'un tag `mode` (render_model) — meme mecanique
+// de sections, de descripteurs et de blob que le rtgo, seul le root struct change (rtgo.go).
+func NewRenderModelAsset(tag, resourceBlob []byte) (*RuntimeGeoAsset, error) {
+	return nouvelAsset(tag, resourceBlob, modeGeoFromTagInfo, GroupeMode)
+}
+
+func nouvelAsset(tag, blob []byte, decode func(tagInfo) (RuntimeGeo, error), groupe string) (*RuntimeGeoAsset, error) {
 	for _, ti := range tagCandidates(tag) {
-		geo, err := runtimeGeoFromTagInfo(ti)
+		geo, err := decode(ti)
 		if err != nil {
 			continue
 		}
-		a := &RuntimeGeoAsset{info: ti, geo: geo, blob: resourceBlob}
+		a := &RuntimeGeoAsset{info: ti, geo: geo, blob: blob}
 		a.vertexDescs = a.findDescTable(vertexDescStride, decodeVertexDesc)
 		a.indexDescs = a.findDescTable(indexDescStride, decodeIndexDesc)
 		return a, nil
 	}
-	return nil, fmt.Errorf("himap: tag rtgo illisible")
+	return nil, fmt.Errorf("himap: tag %s illisible", groupe)
 }
 
 // findDescTable retient le data-block qui est un tableau COHERENT de descripteurs.
@@ -193,22 +203,43 @@ func (a *RuntimeGeoAsset) lods(meshIndex int) []lodEntry {
 	return out
 }
 
-// bounds rend les bornes de dequantification d'un maillage.
+// bounds rend les bornes de dequantification d'un maillage : par maillage sur un rtgo,
+// uniques au modele sur un mode (BoundingBoxBlock, paires min/max entrelacees).
 func (a *RuntimeGeoAsset) bounds(meshIndex int) (mn, mx [3]float64, ok bool) {
+	if meshIndex < 0 || meshIndex >= a.geo.MeshCount {
+		return mn, mx, false
+	}
+	if a.geo.PerMeshAbs < 0 {
+		off := a.geo.BoundsAbs + bboxOffBounds
+		if a.geo.BoundsAbs < 0 || off+24 > len(a.info.tag) {
+			return mn, mx, false
+		}
+		for i := 0; i < 3; i++ {
+			mn[i] = float64(math.Float32frombits(binary.LittleEndian.Uint32(a.info.tag[off+i*8:])))
+			mx[i] = float64(math.Float32frombits(binary.LittleEndian.Uint32(a.info.tag[off+4+i*8:])))
+		}
+		return mn, mx, bornesValides(mn, mx)
+	}
 	off := a.geo.PerMeshAbs + meshIndex*perMeshStride
-	if meshIndex < 0 || meshIndex >= a.geo.MeshCount || off+perMeshStride > len(a.info.tag) {
+	if off+perMeshStride > len(a.info.tag) {
 		return mn, mx, false
 	}
 	for i := 0; i < 3; i++ {
 		mn[i] = float64(math.Float32frombits(binary.LittleEndian.Uint32(a.info.tag[off+meshOffBoundsMin+i*4:])))
 		mx[i] = float64(math.Float32frombits(binary.LittleEndian.Uint32(a.info.tag[off+meshOffBoundsMax+i*4:])))
 	}
+	return mn, mx, bornesValides(mn, mx)
+}
+
+// bornesValides rejette une borne NaN ou inversee — dequantifier avec la rendrait des
+// coordonnees inventees.
+func bornesValides(mn, mx [3]float64) bool {
 	for i := 0; i < 3; i++ {
 		if math.IsNaN(mn[i]) || math.IsNaN(mx[i]) || mx[i] < mn[i] {
-			return mn, mx, false
+			return false
 		}
 	}
-	return mn, mx, true
+	return true
 }
 
 // MaxTrianglesPerMesh : plafond de finesse. On prend le LOD le plus fin qui tient dessous,

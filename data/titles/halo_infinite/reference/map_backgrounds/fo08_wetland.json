@@ -7,7 +7,7 @@
   ],
   "image": "fo08_wetland.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-12T23:22:53.0151619Z",
+  "generatedAt": "2026-08-13T09:00:48.7962134Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -30,12 +30,12 @@
     "boundaryCellsCleared": 0,
     "waterVolumes": 0,
     "waterCells": 0,
-    "coveredShare": 0.5852985272365645,
+    "coveredShare": 0.787970700236536,
     "covered": true,
-    "cellsSubstituted": 257039,
+    "cellsSubstituted": 413983,
     "forgeObjects": 4709,
-    "forgeObjectsDrawn": 3558,
-    "forgeObjectsWithoutModel": 1113,
+    "forgeObjectsDrawn": 4633,
+    "forgeObjectsWithoutModel": 38,
     "forgeDeathVolumes": 38
   }
 }
