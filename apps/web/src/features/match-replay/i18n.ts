@@ -20,11 +20,6 @@ interface ReplayText {
   aliveSuffix: string
   speed: string
   time: string
-  floor: string
-  floorAll: string
-  floorLow: string
-  floorMid: string
-  floorHigh: string
   propsSuffix: string
   /** Fond de carte figé : présent, ou remplacé par le sol reconstruit. */
   mapBackgroundNote: string
@@ -40,9 +35,7 @@ interface ReplayText {
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
-  layerShield: string
   layerAimHint: string
-  layerShieldHint: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
   teamUnknown: string
@@ -80,18 +73,6 @@ interface ReplayText {
   drawnUnknownHint: string
   gaugeLabel: string
   respawnBarLabel: string
-  /** Bandeau de couverture : ce que chaque calque a rattaché sur ce qui existait. */
-  coverageTitle: string
-  coverageHint: string
-  layerShots: string
-  layerGrenades: string
-  causeNoSlot: string
-  causeAmbiguous: string
-  causeOutOfWindow: string
-  causeUnpublished: string
-  bridgeRead: string
-  bridgeNotRead: string
-  coverageLeak: string
 }
 
 export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
@@ -108,11 +89,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     aliveSuffix: 'en jeu',
     speed: 'Vitesse',
     time: 'Temps de match',
-    floor: 'Étage',
-    floorAll: 'Tous',
-    floorLow: 'Bas',
-    floorMid: 'Milieu',
-    floorHigh: 'Haut',
     propsSuffix: 'objets de décor',
     mapBackgroundNote:
       'Fond : la carte du jeu, reconstruite hors ligne et calée au mètre sur le repère du rejeu.',
@@ -129,11 +105,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedKillerShare: (pct) => `tueur ${pct} %`,
     layers: 'Calques',
     layerAim: 'Visée',
-    layerShield: 'Bouclier',
     layerAimHint:
       "Direction du regard, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
-    layerShieldHint:
-      "Bouclier lu dans le même enregistrement que la position. Une piste vide soulignée d'un trait est un bouclier BRISÉ, pas une absence de mesure.",
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
     teamUnknown: 'Sans équipe',
@@ -181,18 +154,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     drawnUnknown: 'dégainée ?',
     drawnUnknownHint:
       'Le sélecteur d’emplacement n’a pas été lu sur ce record : on ne sait pas quelle arme est en main.',
-    coverageTitle: 'Ce qui est rattaché',
-    coverageHint:
-      "Le dénominateur est ce que LE FILM porte, pas ce que la partie a compté : le film n'enregistre que les tirs qui infligent un dégât.",
-    layerShots: 'Tirs',
-    layerGrenades: 'Lancers de grenade',
-    causeNoSlot: 'aucune trace connue pour ce joueur à cet instant',
-    causeAmbiguous: 'plusieurs traces possibles',
-    causeOutOfWindow: 'aucune position assez proche dans le temps',
-    causeUnpublished: 'trace trop courte pour être publiée',
-    bridgeRead: 'Rattachement lu dans le film',
-    bridgeNotRead: 'Rattachement incomplet — une partie des événements n’est pas publiée',
-    coverageLeak: 'Comptage incohérent : des événements manquent à l’appel',
   },
   en: {
     title: '2D replay',
@@ -207,11 +168,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     aliveSuffix: 'on the map',
     speed: 'Speed',
     time: 'Match time',
-    floor: 'Floor',
-    floorAll: 'All',
-    floorLow: 'Lower',
-    floorMid: 'Mid',
-    floorHigh: 'Upper',
     propsSuffix: 'map props',
     mapBackgroundNote: 'Background: the in-game map, rebuilt offline and aligned to the metre with the replay frame of reference.',
     mapBackgroundFallback: 'Background: reconstructed floor — this map has no baked image yet.',
@@ -226,11 +182,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedKillerShare: (pct) => `killer ${pct}%`,
     layers: 'Layers',
     layerAim: 'Aim',
-    layerShield: 'Shield',
     layerAimHint:
       'Look direction, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
-    layerShieldHint:
-      'Shield read from the same record as the position. An empty bar with a line under it is a BROKEN shield, not a missing measurement.',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
     teamUnknown: 'No team',
     unknownPlayer: 'Unknown player',
@@ -276,17 +229,5 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     drawnUnknown: 'drawn ?',
     drawnUnknownHint:
       'The slot selector was not read on this record: which weapon is in hand is unknown.',
-    coverageTitle: 'What is attached',
-    coverageHint:
-      'The denominator is what THE FILM carries, not what the match counted: the film only records shots that deal damage.',
-    layerShots: 'Shots',
-    layerGrenades: 'Grenade throws',
-    causeNoSlot: 'no known trail for that player at that moment',
-    causeAmbiguous: 'several possible trails',
-    causeOutOfWindow: 'no position close enough in time',
-    causeUnpublished: 'trail too short to be published',
-    bridgeRead: 'Attachment read from the film',
-    bridgeNotRead: 'Incomplete attachment — some events are not published',
-    coverageLeak: 'Inconsistent count: events are unaccounted for',
   },
 }

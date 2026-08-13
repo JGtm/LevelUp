@@ -20,7 +20,6 @@ import {
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
-import { ReplayCoverageBanner } from '@/features/match-replay/ReplayCoverage'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
@@ -131,9 +130,6 @@ function ReplayPage() {
             frame={frame}
             locale={locale}
           />
-          {/* CE QUI N'EST PAS À L'ÉCRAN doit être lisible à côté de ce qui y est : le rejeu
-              publie 475 tirs sur les 519 que le film porte, et l'écart a sa cause nommée. */}
-          <ReplayCoverageBanner doc={data} locale={locale} />
         </>
       )}
     </div>
