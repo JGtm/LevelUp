@@ -23,8 +23,16 @@ import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
+
 import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
 import { readInk } from './canvasInk'
+import {
+  buildObjectivePulses,
+  drawObjectivePulses,
+  drawObjectivesLayer,
+  normalizeMapObjectives,
+} from './objectivesLayer'
 import {
   buildGrenadeRestFx,
   DYNAMO_REST_HOLD_MS,
@@ -147,6 +155,8 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const floorRef = useRef<HTMLCanvasElement | null>(null)
   // Zones nommées : même règle que le sol — calque statique cuit hors écran, recopié.
   const zonesRef = useRef<HTMLCanvasElement | null>(null)
+  // Objectifs statiques du mode (lot 4) : même règle — le calque ne bouge jamais.
+  const objectivesRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
@@ -227,6 +237,23 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     const nBig = calloutZones.reduce((n, z) => n + (z.big ? 1 : 0), 0)
     return nBig > 0 ? getSeriesColors(nBig, TRACK_TOKENS) : []
   }, [calloutZones, paletteVersion])
+
+  // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
+  // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
+  const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
+  // Couleur d'un index d'équipe : le référentiel d'identité du jeu (lib/halo — donnée de
+  // domaine, pas un choix d'UI), encre neutre du thème pour -1 ou un index hors
+  // référentiel. `team` est DÉJÀ arbitré côté serveur (Bastion/Extraction = neutres).
+  const objectiveColorOfTeam = useCallback(
+    (team: number) => (team >= 0 ? resolveTeamColorFromID(team) : null) ?? floorStyle.edge,
+    [floorStyle.edge],
+  )
+  // Les PULSES d'action d'objectif (doc.objectives, rendu nulle part avant le lot 4.4) :
+  // précalculés en monde, comme les effets de mort.
+  const objectivePulses = useMemo(
+    () => buildObjectivePulses(doc, mapObjectives),
+    [doc, mapObjectives],
+  )
 
   // La trame d'altitudes ne dépend QUE du document : construite une fois, pas à chaque resize.
   const floorGrid = useMemo(
@@ -322,6 +349,11 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     if (showZones && zonesRef.current) {
       ctx.drawImage(zonesRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
     }
+    // Les OBJECTIFS DU MODE par-dessus le vocabulaire : c'est l'enjeu du match (zones de
+    // capture, apparitions de drapeau), il prime sur les noms de lieux. Statique aussi.
+    if (objectivesRef.current) {
+      ctx.drawImage(objectivesRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
+    }
     // Les projectiles passent SOUS les joueurs : ce sont des objets du terrain, pas le sujet.
     if (doc.projectiles?.length) {
       drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
@@ -365,6 +397,12 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
         reducedMotion,
       )
     }
+    // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
+    // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
+    if (objectivePulses.length > 0) {
+      drawObjectivePulses(ctx, objectivePulses, view, win,
+        { colorOfTeam: objectiveColorOfTeam }, reducedMotion)
+    }
     // Les MORTS par-dessus les tirs : c'est l'événement le plus lourd de sens du calque,
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
     if (killFx.length > 0) {
@@ -399,6 +437,8 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     killFx,
     grenadeRestFx,
     restWindow,
+    objectivePulses,
+    objectiveColorOfTeam,
     floorStyle.edge,
     colorBySlot,
     reducedMotion,
@@ -473,6 +513,30 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     zonesRef.current = off
     draw()
   }, [calloutZones, zoneColors, renderWidth, bounds, floorStyle.edge, locale, draw])
+
+  // Les objectifs statiques se cuisent quand LEURS données, LEUR cadrage ou LEURS encres
+  // changent — jamais à l'image (même règle que le sol et les zones nommées).
+  useEffect(() => {
+    if (mapObjectives.length === 0 || renderWidth === 0) {
+      objectivesRef.current = null
+      return
+    }
+    const dpr = window.devicePixelRatio || 1
+    const off = document.createElement('canvas')
+    off.width = Math.round(renderWidth * dpr)
+    off.height = Math.round(CANVAS_HEIGHT * dpr)
+    const octx = off.getContext('2d')
+    if (!octx) return
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawObjectivesLayer(
+      octx,
+      mapObjectives,
+      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
+      { colorOfTeam: objectiveColorOfTeam },
+    )
+    objectivesRef.current = off
+    draw()
+  }, [mapObjectives, objectiveColorOfTeam, renderWidth, bounds, draw])
 
   // Redraw hors animation (thème, resize, données, pause).
   useEffect(() => {

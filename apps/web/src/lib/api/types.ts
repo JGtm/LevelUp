@@ -2622,6 +2622,16 @@ export type ReplayMapBackgroundCalibration = components['schemas']['MapBackgroun
 export type ReplayMapCallouts = components['schemas']['MapCalloutsEntry']
 export type ReplayCalloutZone = components['schemas']['CalloutZone']
 
+// Les OBJECTIFS STATIQUES du mode joué : zones (boîtes orientées, cylindres) et
+// marqueurs ponctuels (apparitions, livraisons, socles), joints par map_id au catalogue
+// versionné et servis AVEC le document (`mapObjectives` — rempli à la requête, jamais
+// écrit dans l'artefact). Absents = mode sans objectifs statiques (Slayer), carte hors
+// catalogue ou map_id vide — jamais un dégradé. `team` = index d'équipe À AFFICHER,
+// -1 = neutre (les modes à possession dynamique arrivent déjà neutralisés).
+export type ReplayMapObjectives = components['schemas']['MapObjectives']
+export type ReplayObjectiveZone = components['schemas']['ObjectiveZoneDTO']
+export type ReplayObjectiveMarker = components['schemas']['ObjectiveMarkerDTO']
+
 // La table d'appariement du film : xuid ET index de slot.
 //
 // LES DEUX CHAMPS NE SONT PAS INTERCHANGEABLES : le xuid IDENTIFIE, l'index ORDONNE et n'a de
