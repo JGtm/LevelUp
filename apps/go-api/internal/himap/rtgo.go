@@ -23,6 +23,25 @@ const (
 	rtgoOffMeshResourceGroups = 196
 )
 
+// Offsets des champs tag-block du root struct de `mode` (render_model), de Reclaimer
+// `RenderModelTag.cs` — la meme source tierce, validee par l'usage, que les offsets rtgo.
+// Le `mode` porte les MEMES SectionBlock (60 o) et SectionLodBlock (148 o) que le rtgo ;
+// ce qui change est leur place au root, et des bornes UNIQUES au modele (BoundingBoxBlock)
+// au lieu de bornes par maillage.
+const (
+	modeOffSections           = 192
+	modeOffBoundingBoxes      = 232
+	modeOffMeshResourceGroups = 324
+)
+
+// bboxStride / bboxOffBounds : un enregistrement `BoundingBoxBlock` (84 o) porte les paires
+// (min, max) ENTRELACEES des axes X/Y/Z a partir de +4 — la ou le per-mesh du rtgo range
+// les trois minima puis les trois maxima (cf. meshOffBoundsMin/Max).
+const (
+	bboxStride    = 84
+	bboxOffBounds = 4
+)
+
 // perMeshStride : un enregistrement `Per Mesh Data` mesure 144 octets. TEMOIN : le bloc
 // doit mesurer un multiple ENTIER de ce pas — mesure sur nos tags, 864 = 6 x 144,
 // 1 296 = 9 x 144, 720 = 5 x 144. Un offset faux ne donne pas un multiple entier.
@@ -49,13 +68,19 @@ func (in Instance) RuntimeGeoID() uint32 {
 	return binary.LittleEndian.Uint32(in.MeshRef[refOffGlobalID:])
 }
 
-// RuntimeGeo est ce qu'on sait lire d'un tag `rtgo`.
+// RuntimeGeo est ce qu'on sait lire d'un tag de geometrie — `rtgo`, ou `mode` depuis le
+// lot B Forge (les deux partagent SectionBlock et la mecanique de tampons).
 type RuntimeGeo struct {
-	// MeshCount est le nombre d'enregistrements `Per Mesh Data`.
+	// MeshCount est le nombre de maillages : enregistrements `Per Mesh Data` d'un rtgo,
+	// enregistrements `Sections` d'un mode.
 	MeshCount int
-	// PerMeshAbs / PerMeshSize localisent le bloc dans les octets du tag.
+	// PerMeshAbs / PerMeshSize localisent le bloc dans les octets du tag. PerMeshAbs < 0 :
+	// pas de bloc per-mesh (tag `mode`), les bornes sont uniques (BoundsAbs).
 	PerMeshAbs  int
 	PerMeshSize int
+	// BoundsAbs localise l'enregistrement BoundingBoxBlock d'un `mode` : des bornes de
+	// dequantification UNIQUES au modele, la ou le rtgo les porte par maillage.
+	BoundsAbs int
 	// Champs reperes mais non encore decodes — leur presence est publiee pour que la
 	// suite du portage (T2, T3) parte d'un constat, pas d'une supposition.
 	SectionsTarget       int
@@ -109,8 +134,49 @@ func runtimeGeoFromTagInfo(ti tagInfo) (RuntimeGeo, error) {
 		MeshCount:            size / perMeshStride,
 		PerMeshAbs:           abs,
 		PerMeshSize:          size,
+		BoundsAbs:            -1,
 		SectionsTarget:       parOffset[rtgoOffSections],
 		BoundingBoxesTarget:  parOffset[rtgoOffBoundingBoxes],
 		ResourceGroupsTarget: parOffset[rtgoOffMeshResourceGroups],
+	}, nil
+}
+
+// modeGeoFromTagInfo decode le root struct d'un tag `mode` (render_model) : les Sections
+// donnent les maillages, le BoundingBoxBlock donne les bornes uniques du modele.
+func modeGeoFromTagInfo(ti tagInfo) (RuntimeGeo, error) {
+	offs, targets, err := ti.rootBlockRefs()
+	if err != nil {
+		return RuntimeGeo{}, err
+	}
+	parOffset := map[int]int{}
+	for i, o := range offs {
+		parOffset[o] = targets[i]
+	}
+	sections, ok := parOffset[modeOffSections]
+	if !ok {
+		return RuntimeGeo{}, fmt.Errorf("himap: aucun tag-block Sections a l'offset %d (offsets vus: %v)",
+			modeOffSections, offs)
+	}
+	absS, sizeS := ti.blockAbs(sections)
+	if absS < 0 || sizeS <= 0 || sizeS%sectionStride != 0 || absS+sizeS > len(ti.tag) {
+		return RuntimeGeo{}, fmt.Errorf("himap: bloc Sections de taille %d non multiple de %d", sizeS, sectionStride)
+	}
+	bbox, ok := parOffset[modeOffBoundingBoxes]
+	if !ok {
+		return RuntimeGeo{}, fmt.Errorf("himap: aucun tag-block BoundingBoxes a l'offset %d", modeOffBoundingBoxes)
+	}
+	absB, sizeB := ti.blockAbs(bbox)
+	// Reclaimer documente des modes SANS bounding box (attaches) : sans bornes, aucune
+	// dequantification possible — le tag est declare illisible, jamais devine.
+	if absB < 0 || sizeB < bboxStride || sizeB%bboxStride != 0 || absB+bboxStride > len(ti.tag) {
+		return RuntimeGeo{}, fmt.Errorf("himap: bloc BoundingBoxes de taille %d non multiple de %d", sizeB, bboxStride)
+	}
+	return RuntimeGeo{
+		MeshCount:            sizeS / sectionStride,
+		PerMeshAbs:           -1,
+		BoundsAbs:            absB,
+		SectionsTarget:       sections,
+		BoundingBoxesTarget:  bbox,
+		ResourceGroupsTarget: parOffset[modeOffMeshResourceGroups],
 	}, nil
 }

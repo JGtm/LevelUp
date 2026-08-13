@@ -1,3 +1,38 @@
+## [2026-08-13] v7.5 cartes — lot B Forge : le saut bloc/scen/mach -> hlmt -> mode, Vagabond passe de 75,6 % a 98,4 % d'objets rendus
+
+**Statut** : Complete (gate visuel utilisateur PENDANT, au registre).
+
+**Decision technique principale** : les 1 113 objets de Vagabond sans ref `rtgo` directe se
+resolvent par le saut `food -> bloc/scen/mach -> hlmt` — et la MESURE a montre que ces `hlmt`
+ne referencent AUCUN `rtgo` : leur geometrie est un tag `mode` (render_model). Nouveau lecteur
+`NewRenderModelAsset` (offsets du root Reclaimer `RenderModelTag.cs`, meme source tierce que
+rtgo.go) : memes SectionBlock (60 o) / SectionLodBlock (148 o) / descripteurs 80-72 que le
+rtgo, seuls changent la place des Sections au root (192) et des bornes de dequantification
+UNIQUES au modele (BoundingBoxBlock 84 o a 232, paires min/max entrelacees) au lieu de
+per-mesh. `indexForge` elargi aux globals de la variante `any` (17 food y resolvaient leurs
+definitions bloc/scen/mach). Chaine de resolution : `modeleParType`/`modeleParSaut` rendent
+(id, groupe), `ouvreAsset` route rtgo/mode.
+
+**Pistes refutees par la mesure avant d'arriver au mode** : hlmt -> rtgo (0/125, meme avec
+l'index COMPLET de l'installation), hlmt -> mode -> rtgo (0/125), motif per-mesh(144)+
+sections(60) au root du mode (0/125) et niche dans ses structs (0/125). C'est l'histogramme
+des refs des hlmt (index complet, sondes exploratoires supprimees apres mesure) qui a nomme
+le `mode`, et Reclaimer qui a donne son root.
+
+**Resultats observes** : sonde durable `TestSondeForgeSautBlocScenMach` (index et fonctions
+de PRODUCTION) — saut = 83 type_id / 1 083 objets via mode, 0 via rtgo ; restants 6 type_id /
+18 objets (food sans ref bloc/scen/mach) + 1 type sans food (12 objets) ; 76/77 modeles du
+saut s'ouvrent et decodent tous au moins un maillage. `TestRenduForgeVagabond` : 4 633/4 709
+objets dessines (98,4 %, avant : 3 558 = 75,6 %), ancres 4/4, ecart median -0,01 m.
+Re-cuisson `--maps fo08_wetland` : asset re-publie, ancres 4/4, artefacts avant/apres sur
+`Desktop/gate_cartes_v75/forge/`. Tests unitaires himap cibles verts, build complet vert,
+gofmt/vet propres.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur fo08_wetland avant/apres (la
+matiere nouvelle peripherique — grands blocs et arcs sombres — est a juger par lui). Registre :
+ligne 1 139 objets CLOSE, 38 restants et industrialisation ~99 cartes Forge ajoutees. Hors
+perimetre intact : toile du canevas (13 830 instances bsp, decision au gate visuel).
+
 ## [2026-08-13] v7.5 cartes — lot toits : la voie de reference contre les plafonds, 9 cartes re-cuites
 
 **Statut** : Complete (gate visuel utilisateur PENDANT, au registre).

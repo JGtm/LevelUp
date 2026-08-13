@@ -16,7 +16,8 @@
 //   - food -> rtgo : les deps des tags food sont VIDES (457/467) et root+0x08 est
 //     l'auto-reference — le lien est INLINE. 374 type_id portent au moins une ref rtgo,
 //     couvrant 3 558 des 4 697 objets (75,7 %). Les 93 restants passent par `bloc`/`scen`/`mach`
-//     (963/173/9 objets) : saut supplementaire NON traite ici, c'est le lot B ;
+//     (963/173/9 objets) : le SAUT `bloc`/`scen`/`mach` -> `hlmt` -> `rtgo` les resout (lot B,
+//     2026-08-13, mesure : `sonde_forge_saut_gamefiles_test.go`) ;
 //   - echelle : AUCUNE dans le `.mvar` de Vagabond. MESURE, pas suppose — le champ objet [6]
 //     n'existe pas et [9] est une struct VIDE sur 4 709/4 709 objets. Le piege de l'echelle
 //     d'instance sbsp, paye deux jours, a ete verifie ici sur pieces.
@@ -201,6 +202,11 @@ func indexForge(opts OptionsCuissonForge) (*ModuleIndex, *himodule.Module, error
 	}
 	globs, _ := filepath.Glob(filepath.Join(opts.RacineDeploy, "pc", "globals", "*.module"))
 	chemins = append(chemins, globs...)
+	// Les definitions d'objet du SAUT (`bloc`/`scen`/`mach`, lot B) vivent pour partie dans
+	// les globals de la variante `any` (globals-rtx-new, common-rtx-new) : sans eux, 17 food
+	// de Vagabond ne resolvent aucune definition (sonde du 2026-08-13).
+	globsAny, _ := filepath.Glob(filepath.Join(opts.RacineDeploy, "any", "globals", "*.module"))
+	chemins = append(chemins, globsAny...)
 
 	idx, err := NewModuleIndex(chemins...)
 	if err != nil {
@@ -216,22 +222,22 @@ func indexForge(opts OptionsCuissonForge) (*ModuleIndex, *himodule.Module, error
 // poseObjetsForge resout le modele de chaque type d'objet, puis pose ses triangles.
 func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module) {
-	rtgoDuType := rtgoParType(ctx, objets, idx, forge)
+	modeleDuType := modeleParType(ctx, objets, idx, forge)
 	assets := map[uint32]*RuntimeGeoAsset{}
 	for _, o := range objets {
 		if _, mort := TypesVolumesDeMort[o.TypeID]; mort {
 			b.VolumesDeMort++
 			continue
 		}
-		id, ok := rtgoDuType[o.TypeID]
+		m, ok := modeleDuType[o.TypeID]
 		if !ok {
 			b.ObjetsSansModele++
 			continue
 		}
-		a, deja := assets[id]
+		a, deja := assets[m.id]
 		if !deja {
-			a = ouvreAsset(ctx, idx, id)
-			assets[id] = a
+			a = ouvreAsset(ctx, idx, m.id, m.groupe)
+			assets[m.id] = a
 		}
 		if a == nil {
 			b.ObjetsSansModele++
@@ -239,26 +245,30 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 		}
 		in := InstanceForge(o)
 		for mi := 0; mi < a.MeshCount(); mi++ {
-			if m := a.Mesh(mi); m != nil {
-				r.AddMesh(m, in)
+			if mesh := a.Mesh(mi); mesh != nil {
+				r.AddMesh(mesh, in)
 			}
 		}
 		b.ObjetsDessines++
 	}
 }
 
-// rtgoParType etablit, une fois par type d'objet, le tag `rtgo` de son modele.
-func rtgoParType(ctx context.Context, objets []mapvar.Object,
-	idx *ModuleIndex, forge *himodule.Module) map[int32]uint32 {
+// refModele designe le tag de geometrie d'un type d'objet : son GlobalID et son groupe —
+// `rtgo` (lecture directe) ou `mode` (render_model, lot B), qui ne s'ouvrent pas pareil.
+type refModele struct {
+	id     uint32
+	groupe string
+}
+
+// modeleParType etablit, une fois par type d'objet, le tag de geometrie de son modele : la
+// ref `rtgo` directe du `food` d'abord, le saut `bloc`/`scen`/`mach` -> `hlmt` sinon.
+func modeleParType(ctx context.Context, objets []mapvar.Object,
+	idx *ModuleIndex, forge *himodule.Module) map[int32]refModele {
 	foodParID := map[uint32]himodule.File{}
 	for _, f := range forge.Files("food") {
 		foodParID[f.GlobalID] = f
 	}
-	estRtgo := func(h uint32) bool {
-		g, _, ok := idx.Lookup(h)
-		return ok && g == GroupeRtgo
-	}
-	out := map[int32]uint32{}
+	out := map[int32]refModele{}
 	vus := map[int32]bool{}
 	for _, o := range objets {
 		if vus[o.TypeID] {
@@ -274,21 +284,84 @@ func rtgoParType(ctx context.Context, objets []mapvar.Object,
 			slog.DebugContext(ctx, "tag food illisible", "typeID", o.TypeID, "err", err)
 			continue
 		}
-		if refs := RtgoRefsInline(tag, estRtgo); len(refs) > 0 {
-			out[o.TypeID] = refs[0]
+		if refs := refsInlineDuGroupe(tag, idx, GroupeRtgo); len(refs) > 0 {
+			out[o.TypeID] = refModele{id: refs[0], groupe: GroupeRtgo}
+			continue
+		}
+		if m, ok := modeleParSaut(ctx, idx, tag); ok {
+			out[o.TypeID] = m
 		}
 	}
 	return out
 }
 
-// RtgoRefsInline rend les GlobalID `rtgo` references dans les octets d'un tag `food`, dans
-// l'ordre du tag. Le premier est la variante principale — convention etablie au lot 2.
-func RtgoRefsInline(tag []byte, estRtgo func(uint32) bool) []uint32 {
+// GroupeHlmt / GroupeMode : le tag de modele (`model`) et le render_model, maillons du saut.
+const (
+	GroupeHlmt = "hlmt"
+	GroupeMode = "mode"
+)
+
+// groupesSautForge : les groupes de definition d'objet Forge SANS ref rtgo directe dans leur
+// `food`, dans l'ordre de frequence mesure sur Vagabond — 963 objets via `bloc`, 173 via
+// `scen`, 9 via `mach` (sonde F1CouvertureRtgo, 2026-08-10).
+var groupesSautForge = []string{"bloc", "scen", "mach"}
+
+// modeleParSaut resout le modele d'un `food` sans ref rtgo directe : la definition d'objet
+// passe par un tag `bloc`/`scen`/`mach`, qui reference son modele `hlmt`, lequel porte la
+// geometrie — un `rtgo`, ou un `mode` (mesure 2026-08-13 : les 125 hlmt du saut de Vagabond
+// ne referencent QUE des `mode`). Meme mecanique a chaque maillon — le scan des octets
+// contre l'index, la methode qui a ferme F1 (`sonde_forge_saut_gamefiles_test.go`).
+func modeleParSaut(ctx context.Context, idx *ModuleIndex, tagFood []byte) (refModele, bool) {
+	for _, groupe := range groupesSautForge {
+		for _, hObjet := range refsInlineDuGroupe(tagFood, idx, groupe) {
+			objet, err := idx.Extract(hObjet)
+			if err != nil {
+				slog.DebugContext(ctx, "tag de saut illisible", "groupe", groupe, "id", hObjet, "err", err)
+				continue
+			}
+			if m, ok := modeleDuHlmt(ctx, idx, objet); ok {
+				return m, true
+			}
+		}
+	}
+	return refModele{}, false
+}
+
+// modeleDuHlmt rend la premiere ref de geometrie (`rtgo`, sinon `mode`) portee par les
+// modeles `hlmt` d'un tag d'objet.
+func modeleDuHlmt(ctx context.Context, idx *ModuleIndex, objet []byte) (refModele, bool) {
+	for _, hModele := range refsInlineDuGroupe(objet, idx, GroupeHlmt) {
+		hlmt, err := idx.Extract(hModele)
+		if err != nil {
+			slog.DebugContext(ctx, "tag hlmt illisible", "id", hModele, "err", err)
+			continue
+		}
+		if refs := refsInlineDuGroupe(hlmt, idx, GroupeRtgo); len(refs) > 0 {
+			return refModele{id: refs[0], groupe: GroupeRtgo}, true
+		}
+		if refs := refsInlineDuGroupe(hlmt, idx, GroupeMode); len(refs) > 0 {
+			return refModele{id: refs[0], groupe: GroupeMode}, true
+		}
+	}
+	return refModele{}, false
+}
+
+// refsInlineDuGroupe rend les GlobalID du groupe donne references dans les octets d'un tag.
+func refsInlineDuGroupe(tag []byte, idx *ModuleIndex, groupe string) []uint32 {
+	return RefsInline(tag, func(h uint32) bool {
+		g, _, ok := idx.Lookup(h)
+		return ok && g == groupe
+	})
+}
+
+// RefsInline rend les GlobalID retenus par le predicat dans les octets d'un tag, par pas de
+// 4, dans l'ordre du tag. Le premier est la variante principale — convention etablie au lot 2.
+func RefsInline(tag []byte, retient func(uint32) bool) []uint32 {
 	var out []uint32
 	vus := map[uint32]bool{}
 	for o := 0; o+4 <= len(tag); o += 4 {
 		h := uint32(u32(tag, o))
-		if !vus[h] && estRtgo(h) {
+		if !vus[h] && retient(h) {
 			vus[h] = true
 			out = append(out, h)
 		}
