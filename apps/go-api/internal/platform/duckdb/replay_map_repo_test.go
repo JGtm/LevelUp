@@ -21,7 +21,7 @@ func seedReplayMapFixtures(t *testing.T) (*DB, *DB) {
 	meta := openMemDB(t)
 
 	if _, err := shared.Exec(ctx, `CREATE TABLE match_registry (
-		match_id VARCHAR PRIMARY KEY, map_name VARCHAR, map_id VARCHAR)`); err != nil {
+		match_id VARCHAR PRIMARY KEY, map_name VARCHAR, map_id VARCHAR, pair_name VARCHAR)`); err != nil {
 		t.Fatalf("ddl registry: %v", err)
 	}
 	if _, err := meta.Exec(ctx, `CREATE TABLE asset_translations (
@@ -33,9 +33,14 @@ func seedReplayMapFixtures(t *testing.T) (*DB, *DB) {
 
 func insertRegistry(t *testing.T, shared *DB, matchID string, mapName, mapID any) {
 	t.Helper()
+	insertRegistryPair(t, shared, matchID, mapName, mapID, nil)
+}
+
+func insertRegistryPair(t *testing.T, shared *DB, matchID string, mapName, mapID, pairName any) {
+	t.Helper()
 	if _, err := shared.Exec(context.Background(),
-		`INSERT INTO match_registry (match_id, map_name, map_id) VALUES (?, ?, ?)`,
-		matchID, mapName, mapID,
+		`INSERT INTO match_registry (match_id, map_name, map_id, pair_name) VALUES (?, ?, ?, ?)`,
+		matchID, mapName, mapID, pairName,
 	); err != nil {
 		t.Fatalf("insert registry %s: %v", matchID, err)
 	}
@@ -138,6 +143,30 @@ func TestReplayMapRepo_MapIDSansNom(t *testing.T) {
 	}
 	if len(got.Names) != 0 {
 		t.Errorf("candidats = %v, attendu aucun", got.Names)
+	}
+}
+
+// TestReplayMapRepo_PairName — le pair_name voyage BRUT avec les clés de carte (lot 4 :
+// c'est la clé des rôles d'objectif du rejeu) ; NULL en base = champ vide, pas d'erreur.
+func TestReplayMapRepo_PairName(t *testing.T) {
+	shared, meta := seedReplayMapFixtures(t)
+	insertRegistryPair(t, shared, "m1", "Catalyst", "asset-catalyst", "Arena:CTF on Catalyst")
+	insertRegistry(t, shared, "m2", "Catalyst", "asset-catalyst")
+	repo := NewReplayMapRepo(LegacySharedReader(shared), meta)
+
+	got, err := repo.MapKeysForMatch(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("MapKeysForMatch: %v", err)
+	}
+	if got.PairName != "Arena:CTF on Catalyst" {
+		t.Errorf("pair_name = %q, attendu brut du registre", got.PairName)
+	}
+	sans, err := repo.MapKeysForMatch(context.Background(), "m2")
+	if err != nil {
+		t.Fatalf("MapKeysForMatch sans pair_name: %v", err)
+	}
+	if sans.PairName != "" {
+		t.Errorf("pair_name = %q, attendu vide (NULL en base)", sans.PairName)
 	}
 }
 

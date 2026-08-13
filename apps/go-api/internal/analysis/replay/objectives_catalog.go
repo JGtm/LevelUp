@@ -3,9 +3,10 @@ package replay
 // CATALOGUE D'OBJECTIFS — lecteur du fichier de référence figé par titre
 // (data/titles/{slug}/reference/map_objectives.json, cf. PathResolver.MapObjectivesPath).
 //
-// Ce fichier était jusqu'ici PRODUIT (cmd/mapobj-build) et jamais LU : 34 cartes,
-// 63 zones de Bastion et 161 zones d'Extraction versionnées sans aucun consommateur Go.
-// C'est ce lecteur qui les branche.
+// Ce fichier était jusqu'ici PRODUIT (cmd/mapobj-build) et jamais LU. Il porte
+// aujourd'hui 72 cartes (recompté 2026-08-13, lot 4 — ce commentaire disait 34, l'état
+// d'avant les recuissons), dont 158 zones de Bastion et 236 zones d'Extraction. C'est ce
+// lecteur qui les branche.
 //
 // RÈGLE, la même que map_structure et map_quant_bounds : la production exige un accès
 // réseau aux variantes UGC, donc le résultat est VERSIONNÉ comme donnée de référence et
@@ -34,7 +35,7 @@ import (
 const MapObjectivesSchemaVersion = 2
 
 // ErrUnknownMap signale une carte absente du catalogue. C'est le cas NOMINAL et
-// fréquent : le catalogue couvre 34 cartes sur la centaine jouée. L'appelant doit
+// fréquent : le catalogue couvre 72 cartes sur la centaine jouée. L'appelant doit
 // dégrader (rejeu sans zones), jamais échouer.
 var ErrUnknownMap = errors.New("replay: carte absente du catalogue d'objectifs")
 
@@ -100,8 +101,12 @@ type Zone struct {
 	// ObjectIdx est le rang de l'objet dans le fichier. Conservé pour la traçabilité,
 	// JAMAIS pour nommer la zone : l'ordre du fichier n'est pas l'ordre du jeu.
 	ObjectIdx int
-	// TeamIndex est l'index d'équipe brut du fichier ; -1 = neutre (cas de toutes les
-	// zones de Bastion, qui n'appartiennent à personne au départ).
+	// TeamIndex est l'index d'équipe brut du fichier ; -1 = neutre. ATTENTION : sur le
+	// catalogue 72 cartes, 95 zones de Bastion sur 158 portent un team_index 0 ou 1
+	// (mesuré 2026-08-13 — la version 34 cartes n'en avait aucune). C'est une affinité
+	// d'emplacement, PAS la possession : celle-ci est dynamique et non décodée. Le choix
+	// d'afficher ou non cette couleur appartient à la table de rôles du titre
+	// (objective_roles.toml, drapeau neutral).
 	TeamIndex int
 	// SpatialRank est un rang STABLE dérivé de la position (tri x, puis y, puis z),
 	// 0-based.
@@ -114,6 +119,10 @@ type Zone struct {
 	SpatialRank int
 	Center      mapvar.Vec3
 	Volume      mapvar.Volume
+	// Shape est la forme BRUTE dont Volume a été construit. Conservée parce que Volume ne
+	// publie pas son repère : la sérialisation du calque d'objectifs (lot 4) a besoin des
+	// demi-extents, du rayon et du Forward pour que le client dessine la boîte orientée.
+	Shape *mapvar.Shape
 }
 
 // ZoneSet est l'ensemble des zones exploitables d'une carte, avec ce qui a été écarté.
@@ -160,10 +169,50 @@ func (e MapObjectivesEntry) ZonesOfRole(role mapvar.Role) ZoneSet {
 			TeamIndex:  o.TeamIndex,
 			Center:     o.Pos,
 			Volume:     vol,
+			Shape:      o.Shape,
 		})
 	}
 	sortZonesSpatially(set.Zones)
 	return set
+}
+
+// PointObjective est un objectif PONCTUEL posé : un point d'apparition ou de livraison,
+// sans forme (65,8 % des objectifs du catalogue — apparitions de drapeau 285/285,
+// socles Stockpile 101/101). Le rendu doit afficher un MARQUEUR, jamais un disque
+// inventé (règle de shape.go).
+type PointObjective struct {
+	Role       mapvar.Role
+	InstanceID int32
+	ObjectIdx  int
+	// TeamIndex : même sémantique (et même piège) que Zone.TeamIndex.
+	TeamIndex int
+	Center    mapvar.Vec3
+}
+
+// PointsOfRole rend les objectifs PONCTUELS d'un rôle donné — le complément exact de
+// ZonesOfRole (qui les compte sous Pointless sans les publier). Un rôle peut porter les
+// deux : mesuré sur Catalyst, flag_delivery = 2 points + 2 cylindres.
+//
+// L'ordre de sortie est le tri spatial de sortZonesSpatially (déterminisme, jamais un
+// nom de zone — la lettre A/B/C n'existe pas dans le fichier).
+func (e MapObjectivesEntry) PointsOfRole(role mapvar.Role) []PointObjective {
+	var out []PointObjective
+	for _, o := range e.Objectives {
+		if o.Role != role || o.Shape != nil {
+			continue
+		}
+		out = append(out, PointObjective{
+			Role:       o.Role,
+			InstanceID: o.InstanceID,
+			ObjectIdx:  o.ObjectIdx,
+			TeamIndex:  o.TeamIndex,
+			Center:     o.Pos,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return lessSpatially(out[i].Center, out[i].InstanceID, out[j].Center, out[j].InstanceID)
+	})
+	return out
 }
 
 // sortZonesSpatially trie par position puis fige SpatialRank.
@@ -173,19 +222,25 @@ func (e MapObjectivesEntry) ZonesOfRole(role mapvar.Role) ZoneSet {
 // d'être stable — ce qui est précisément ce qu'il promet.
 func sortZonesSpatially(zs []Zone) {
 	sort.SliceStable(zs, func(i, j int) bool {
-		a, b := zs[i], zs[j]
-		if a.Center.X != b.Center.X {
-			return a.Center.X < b.Center.X
-		}
-		if a.Center.Y != b.Center.Y {
-			return a.Center.Y < b.Center.Y
-		}
-		if a.Center.Z != b.Center.Z {
-			return a.Center.Z < b.Center.Z
-		}
-		return a.InstanceID < b.InstanceID
+		return lessSpatially(zs[i].Center, zs[i].InstanceID, zs[j].Center, zs[j].InstanceID)
 	})
 	for i := range zs {
 		zs[i].SpatialRank = i
 	}
+}
+
+// lessSpatially est l'ordre spatial partagé zones/points : x, puis y, puis z, puis
+// InstanceID en dernier recours (deux objets superposés garderaient sinon un ordre
+// dépendant de l'entrée).
+func lessSpatially(a mapvar.Vec3, aID int32, b mapvar.Vec3, bID int32) bool {
+	if a.X != b.X {
+		return a.X < b.X
+	}
+	if a.Y != b.Y {
+		return a.Y < b.Y
+	}
+	if a.Z != b.Z {
+		return a.Z < b.Z
+	}
+	return aID < bID
 }

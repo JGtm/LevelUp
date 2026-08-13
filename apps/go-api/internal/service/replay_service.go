@@ -58,7 +58,11 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
 // si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.
-func (s *replayService) GetReplay(_ context.Context, matchID string) (replay.ReplayDocument, error) {
+//
+// Le calque d'objectifs statiques (MapObjectives) est joint ICI, à la requête : il
+// dépend de la carte et du mode, que l'artefact ne connaît pas (décodé des seuls chunks
+// du film). Son absence n'est jamais une erreur — le rejeu se sert entier sans lui.
+func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error) {
 	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -71,5 +75,6 @@ func (s *replayService) GetReplay(_ context.Context, matchID string) (replay.Rep
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
+	doc.MapObjectives = s.mapObjectivesForMatch(ctx, matchID)
 	return doc, nil
 }

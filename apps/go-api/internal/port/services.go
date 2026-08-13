@@ -203,6 +203,11 @@ type MatchMapKeys struct {
 	MapID string
 	// Names sont les noms de carte candidats, du plus fiable au moins fiable.
 	Names []string
+	// PairName est le pair_name BRUT du match (match_registry.pair_name) : la clé du
+	// choix des rôles d'objectif servis avec le rejeu (lot 4 — le service le normalise
+	// via analysis.NormalizeModeLabel). Vide quand la base ne le porte pas ; il peut
+	// aussi être un UUID brut — l'appelant dégrade alors par absence, il ne devine pas.
+	PairName string
 }
 
 // ReplayMapNameRepo résout la carte d'un match. Le document de rejeu ne porte aucune

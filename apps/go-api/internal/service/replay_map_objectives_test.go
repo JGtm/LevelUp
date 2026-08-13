@@ -1,0 +1,216 @@
+package service
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/title"
+)
+
+// objectifsFixture pose, sous une racine neuve, tout ce que le calque d'objectifs
+// exige : un artefact de rejeu minimal pour le match "m1", la table de rôles du titre et
+// un catalogue d'objectifs v2 à une carte ("map-ctf") portant les trois natures d'objet
+// mesurées sur Catalyst : des points drapeau, une livraison EN CYLINDRE (le rôle est
+// MIXTE : 2 points + 2 cylindres sur la vraie carte) et une zone de Bastion en boîte.
+func objectifsFixture(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	res := title.NewPathResolver(root)
+	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "m1"),
+		`{"schemaVersion":3,"matchId":"m1","titleSlug":"halo_infinite","frameCount":10,`+
+			`"bounds":{"minX":0,"minY":0,"maxX":10,"maxY":10},"tracks":[]}`)
+	ecrire(t, res.TitleMappingsDir(title.DefaultSlug)+"/objective_roles.toml", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[[modes]]
+match = ["CTF"]
+roles = ["flag_spawn", "flag_delivery"]
+
+[[modes]]
+match = ["Strongholds"]
+roles = ["strongholds_zone"]
+neutral = true
+`)
+	ecrire(t, res.MapObjectivesPath(title.DefaultSlug),
+		`{"schema_version":2,"title_slug":"halo_infinite","generated_at":"2026-08-13T00:00:00Z","maps":{`+
+			`"map-ctf":{"map_id":"map-ctf","version_id":"v1","public_name":"Testmap","module":"testmod","objects_n":5,"objectives":[`+
+			`{"role":"flag_spawn","type_id":1,"pos":{"x":0,"y":21,"z":26},"forward":{"x":1,"y":0,"z":0},"team_index":0,"instance_id":11,"labels":["flag_spawn"],"object_index":0},`+
+			`{"role":"flag_spawn","type_id":1,"pos":{"x":0,"y":-21,"z":26},"forward":{"x":1,"y":0,"z":0},"team_index":1,"instance_id":12,"labels":["flag_spawn"],"object_index":1},`+
+			`{"role":"flag_delivery","type_id":2,"pos":{"x":0,"y":20,"z":26},"forward":{"x":1,"y":0,"z":0},"team_index":0,"instance_id":13,"labels":["flag_delivery"],"object_index":2},`+
+			`{"role":"flag_delivery","type_id":2,"pos":{"x":0,"y":-20,"z":26},"forward":{"x":0,"y":1,"z":0},"team_index":1,"instance_id":14,"labels":["flag_delivery"],"object_index":3,`+
+			`"shape":{"family":"cylinder","radius":4.8,"up_z":2,"down_z":1,"forward":{"x":0,"y":1,"z":0},"up":{"x":0,"y":0,"z":1},"raw":{"family":2,"s5":314572,"s6":0,"s7":131072,"s8":65536}}},`+
+			`{"role":"strongholds_zone","type_id":3,"pos":{"x":-15,"y":0,"z":22},"forward":{"x":0,"y":-1,"z":0},"team_index":1,"instance_id":15,"labels":["strongholds_zone"],"object_index":4,`+
+			`"shape":{"family":"box","half_x":2.5,"half_y":3,"up_z":4,"down_z":1,"forward":{"x":0,"y":-1,"z":0},"up":{"x":0,"y":0,"z":1},"raw":{"family":3,"s5":327680,"s6":393216,"s7":262144,"s8":65536}}}`+
+			`]}}}`)
+	return root
+}
+
+// TestMapObjectives_CTF — le contrat du lot 4.2 : pair_name CTF -> rôles drapeau ->
+// objets joints par map_id, points en marqueurs et volumes en zones, équipes CONSERVÉES
+// (le drapeau appartient réellement à un camp).
+func TestMapObjectives_CTF(t *testing.T) {
+	root := objectifsFixture(t)
+	repo := &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"}
+	svc := NewReplayService(title.DefaultSlug, root, repo)
+
+	doc, err := svc.GetReplay(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("GetReplay: %v", err)
+	}
+	mo := doc.MapObjectives
+	if mo == nil {
+		t.Fatal("MapObjectives absent, attendu servi")
+	}
+	// 3 marqueurs (2 spawns + 1 livraison ponctuelle), 1 zone (livraison cylindre) —
+	// la zone de Bastion N'EST PAS servie : son rôle n'appartient pas au mode CTF.
+	if len(mo.Markers) != 3 || len(mo.Zones) != 1 {
+		t.Fatalf("markers=%d zones=%d, attendu 3/1 (%+v)", len(mo.Markers), len(mo.Zones), mo)
+	}
+	z := mo.Zones[0]
+	if z.Role != "flag_delivery" || z.Family != "cylinder" || z.Radius != 4.8 || z.Team != 1 {
+		t.Errorf("zone livraison inattendue: %+v", z)
+	}
+	teams := map[int]bool{}
+	for _, m := range mo.Markers {
+		teams[m.Team] = true
+		if m.Role != "flag_spawn" && m.Role != "flag_delivery" {
+			t.Errorf("rôle de marqueur hors mode: %+v", m)
+		}
+	}
+	if !teams[0] || !teams[1] {
+		t.Errorf("les équipes du drapeau doivent être conservées: %+v", mo.Markers)
+	}
+}
+
+// TestMapObjectives_StrongholdsNeutre — la règle produit : la table marque le mode
+// `neutral`, la zone s'affiche SANS camp même si le fichier lui donne team_index=1
+// (possession dynamique non décodée — mesuré : 95/158 zones de Bastion du catalogue
+// portent un camp de fichier).
+func TestMapObjectives_StrongholdsNeutre(t *testing.T) {
+	root := objectifsFixture(t)
+	repo := &mapNamesStub{mapID: "map-ctf", pairName: "Arena:Strongholds on Testmap"}
+	svc := NewReplayService(title.DefaultSlug, root, repo)
+
+	doc, err := svc.GetReplay(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("GetReplay: %v", err)
+	}
+	mo := doc.MapObjectives
+	if mo == nil || len(mo.Zones) != 1 || len(mo.Markers) != 0 {
+		t.Fatalf("attendu 1 zone / 0 marqueur, reçu %+v", mo)
+	}
+	z := mo.Zones[0]
+	if z.Team != replay.TeamNeutral {
+		t.Errorf("team = %d, attendu neutre (%d) — la possession est dynamique", z.Team, replay.TeamNeutral)
+	}
+	if z.Family != "box" || z.HalfX != 2.5 || z.HalfY != 3 || z.FwdY != -1 {
+		t.Errorf("géométrie de boîte inattendue: %+v", z)
+	}
+}
+
+// TestMapObjectives_Absences — CHAQUE maillon manquant rend un champ ABSENT sur un
+// document ENTIER : jamais d'erreur, jamais de rejeu perdu (règle du lot : « map_id
+// vide / carte inconnue = champ absent »).
+func TestMapObjectives_Absences(t *testing.T) {
+	cas := []struct {
+		nom  string
+		stub *mapNamesStub
+	}{
+		{"mode sans objectifs (Slayer)", &mapNamesStub{mapID: "map-ctf", pairName: "Super Fiesta:Slayer on Testmap - Forge"}},
+		{"mode inconnu de la table (KOTH)", &mapNamesStub{mapID: "map-ctf", pairName: "Arena:King of the Hill on Testmap"}},
+		{"map_id vide", &mapNamesStub{pairName: "Arena:CTF on Testmap"}},
+		{"pair_name vide", &mapNamesStub{mapID: "map-ctf"}},
+		{"pair_name UUID brut", &mapNamesStub{mapID: "map-ctf", pairName: "100e12e4-402a-4163-8073-9d0cf5f658ec"}},
+		{"carte hors catalogue", &mapNamesStub{mapID: "map-inconnue", pairName: "Arena:CTF on Testmap"}},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			svc := NewReplayService(title.DefaultSlug, objectifsFixture(t), c.stub)
+			doc, err := svc.GetReplay(context.Background(), "m1")
+			if err != nil {
+				t.Fatalf("GetReplay doit servir le document: %v", err)
+			}
+			if doc.MapObjectives != nil {
+				t.Errorf("MapObjectives = %+v, attendu absent", doc.MapObjectives)
+			}
+			if doc.MatchID != "m1" {
+				t.Errorf("le document lui-même doit rester entier: %+v", doc.MatchID)
+			}
+		})
+	}
+}
+
+// TestMapObjectives_TitreSansTable — un titre sans objective_roles.toml n'a pas de
+// calque, silencieusement (cas nominal d'un second titre) ; et un repo absent (maps nil)
+// ne casse pas GetReplay.
+func TestMapObjectives_TitreSansTable(t *testing.T) {
+	root := objectifsFixture(t)
+	res := title.NewPathResolver(root)
+	if err := os.Remove(res.TitleMappingsDir(title.DefaultSlug) + "/objective_roles.toml"); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"})
+	doc, err := svc.GetReplay(context.Background(), "m1")
+	if err != nil || doc.MapObjectives != nil {
+		t.Errorf("attendu document entier sans calque, reçu err=%v mo=%+v", err, doc.MapObjectives)
+	}
+
+	sansRepo := NewReplayService(title.DefaultSlug, root, nil)
+	doc, err = sansRepo.GetReplay(context.Background(), "m1")
+	if err != nil || doc.MapObjectives != nil {
+		t.Errorf("maps nil : attendu document entier sans calque, reçu err=%v mo=%+v", err, doc.MapObjectives)
+	}
+}
+
+// TestMapObjectives_DonneesReelles — L'ORACLE SUR LE CATALOGUE VERSIONNÉ (même règle que
+// les callouts : pas de SKIP quand le catalogue manque, il est versionné).
+//
+// Catalyst en CTF (le match de vérification du gate, 64e8adfa) : 3 apparitions de
+// drapeau + 2 livraisons ponctuelles = 5 marqueurs, et 2 livraisons en cylindre =
+// 2 zones — relevé au champ près du catalogue le 2026-08-13. La zone de Bastion, les
+// zones d'Extraction et les apparitions d'Oddball de la même carte ne sortent PAS.
+func TestMapObjectives_DonneesReelles(t *testing.T) {
+	root, err := title.FindRepoRoot()
+	if err != nil {
+		t.Skipf("racine du dépôt introuvable : %v", err)
+	}
+	res := title.NewPathResolver(root)
+	if _, statErr := os.Stat(res.MapObjectivesPath(title.DefaultSlug)); statErr != nil {
+		t.Fatalf("catalogue d'objectifs versionné absent : %v", statErr)
+	}
+	cat, err := replay.LoadMapObjectives(res.MapObjectivesPath(title.DefaultSlug))
+	if err != nil {
+		t.Fatalf("catalogue versionné illisible : %v", err)
+	}
+	entry, err := cat.Lookup("f7e8cde9-0c0a-487c-94a3-61bfa0f20465") // Catalyst
+	if err != nil {
+		t.Fatalf("Catalyst absent du catalogue : %v", err)
+	}
+	mo := replay.BuildMapObjectives(entry, []replay.ObjectiveRoleSpec{
+		{Role: "flag_spawn"}, {Role: "flag_delivery"},
+	})
+	if mo == nil || len(mo.Markers) != 5 || len(mo.Zones) != 2 {
+		t.Fatalf("Catalyst CTF : markers=%d zones=%d, attendu 5/2",
+			len(mo.Markers), len(mo.Zones))
+	}
+	for _, z := range mo.Zones {
+		if z.Role != "flag_delivery" || z.Family != "cylinder" {
+			t.Errorf("zone CTF inattendue: %+v", z)
+		}
+	}
+	// Le spawn NEUTRE (drapeau du milieu, team -1) est servi tel quel : c'est le
+	// variant Neutral Flag qui l'emploie, et l'absence de camp est une donnée.
+	neutres := 0
+	for _, m := range mo.Markers {
+		if m.Team == replay.TeamNeutral {
+			neutres++
+		}
+	}
+	if neutres != 1 {
+		t.Errorf("marqueurs neutres = %d, attendu 1 (le drapeau central)", neutres)
+	}
+}
