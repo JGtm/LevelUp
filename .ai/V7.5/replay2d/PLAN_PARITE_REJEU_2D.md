@@ -145,36 +145,82 @@ at-rest, tous Spike), 29 cles killEffects. La verification visuelle est remise a
 
 ## Lot 3 — Callouts (regression POC, tout existe hors depot)
 
-- [ ] 3.1 MATIERE PREMIERE — CORRIGE 13/08 (user) : le jeu EST installe sur
+- [x] 3.1 MATIERE PREMIERE — CORRIGE 13/08 (user) : le jeu EST installe sur
       C:/Program Files (x86)/Steam/steamapps/common/Halo Infinite (verifie : deploy/ds/
       levels/multi = 31 dossiers, deploy/any present). `himap.LevelsDir`/deploy_root.go
       resout deja cette racine (preuve : lot bornes). Source PRIMAIRE = l'installation ;
       les copies LevelUp-re/jeu_deploy_* et la clef PNY ne sont que des secours. L'agent
       d'inventaire avait teste l'ancien chemin D:/SteamLibrary — conclusion invalidee.
-- [ ] 3.2 OUTIL Go `cmd/mapcallouts-build` (porte de callouts_all.py + callouts.py,
+      VERIFIE (2026-08-13) : installation presente (31 dossiers ds, any present),
+      callouts.py/callouts_all.py/callouts_i18n.csv (816 lignes) presents dans
+      LevelUp-re/scratchpad_recherche, dump decoupe Ridgeline versionne dans .ai/V7.5/dumps.
+- [x] 3.2 OUTIL Go `cmd/mapcallouts-build` (porte de callouts_all.py + callouts.py,
       offsets documentes au champ pres : tag levl, named locations root+0x91C stride 0x28,
       volumes root+0x3BC stride 0xD0, polygone bloc enfant @0x6C, top/bottom @0x64/0x68)
       sur internal/himap (sait deja ouvrir modules et tags). Libelles : jointure par
       string_id sur callouts_i18n.csv EXISTANT (816/816 resolus, copier le CSV en
       reference versionnee) — PAS de re-extraction uslg.
-- [ ] 3.3 Referentiel versionne data/titles/halo_infinite/reference/map_callouts.json
+      FAIT (2026-08-13) : lecteur `internal/himap/callouts.go` (navigation struct-table
+      de sddt.go ; temoins gamefiles : Horseshoe au champ pres contre le dump, balayage
+      22 cartes / 816 zones / liaison nom<->volume verifiee a chaque lecture) + outil
+      `cmd/mapcallouts-build` (jointure CSV par carte+volumeIndex avec verification du
+      string_id contre le tag, invariants 22/816 bloquants). CSV copie en reference
+      versionnee (data/titles/halo_infinite/reference/callouts_i18n.csv). DECOUVERTES
+      mesurees en cours de portage : sommets du polygone RELATIFS a pos (cf. Decouvertes)
+      + classement grandes/fines par recouvrement etalonne sur le POC (classify_test.go).
+- [x] 3.3 Referentiel versionne data/titles/halo_infinite/reference/map_callouts.json
       (22 cartes, 816 zones, polygones complets + FR/EN + top/bottom) +
       PathResolver.MapCalloutsPath + garde-fou de catalogue (patron
       TestCatalogueLivreEstExploitable).
-- [ ] 3.4 Service : servir les callouts de la carte du match (modele
+      FAIT (2026-08-13) : catalogue genere (733 Ko, schema_version 1, cle = module
+      installe — celle de map_quant_bounds), loader `replay/callouts_catalog.go`
+      (verrou de version, ErrCalloutsUnknownMap = cas nominal Forge),
+      `TestCatalogueCalloutsLivreEstExploitable` (22 cartes / 816 zones / libelles
+      816/816 / tranches ordonnees / ridgeline 28 zones dont 11 grandes = POC).
+- [x] 3.4 Service : servir les callouts de la carte du match (modele
       replay_map_background : resolution au service par map-module, PAS de re-cuisson des
       artefacts). Forge = 0 callouts PAR CONSTRUCTION (mesure) → champ absent, propre.
-- [ ] 3.5 Web : couche canvas portee du POC (l.1033-1094 : zones fines pointillees sans
+      FAIT (2026-08-13) : `MapCallouts` sur port.ReplayService (sentinelle
+      ErrMapCalloutsNotAvailable), `service/replay_map_callouts.go` (match -> noms ->
+      module via catalogue de bornes -> entree callouts ; PAS d'essai map_id, voulu : le
+      canevas Forge n'a aucune zone, absence propre testee sur Dynasty), endpoint Huma
+      GET /matches/{id}/replay/callouts (404 nomme, garde local herite du montage),
+      openapi-gen + generate-types DANS LE MEME lot de commit. Oracle reel :
+      Cliffhanger -> ridgeline 28 zones / 11 grandes servies.
+- [x] 3.5 Web : couche canvas portee du POC (l.1033-1094 : zones fines pointillees sans
       remplissage, 11 grandes zones pair-impair avec parts/holes, libelles 25px MAJUSCULES
       FR blanc cerne noir — pixels d'ECRAN, piege du canevas documente), toggle « Zones »
       (i18n FR/EN), zone courante du joueur sur la fiche (zoneAt 3D — les etages se
       confondent en 2D).
-- [ ] 3.6 Decoupage sur sol praticable : Ridgeline SEULE est decoupee (dump existant,
-      versionne) — la conserver ; les 21 autres livrent le polygone designer BRUT, et le
-      decoupage universel va au registre (depend du chantier cartes, en pause user).
+      FAIT (2026-08-13) : `calloutsLayer.ts` (fines pointillees teinte neutre, grandes
+      pair-impair avec parts/holes, une couleur de serie par grande zone = la rotation de
+      teinte du POC en tokens, libelles 25 px MAJUSCULES blanc cerne noir dedoublonnes
+      par nom sur la zone la plus haute — encre structurelle documentee ; libelle dans la
+      LANGUE DE L'UI, fr et en servis). Le piege du canevas ne s'applique PAS ici : le
+      contexte est transforme au devicePixelRatio, une unite de dessin EST un pixel
+      d'ecran (documente au fichier). Calque STATIQUE cuit hors ecran (regle du sol),
+      toggle « Zones » FR/EN visible seulement si la carte a des zones, zone courante sur
+      la fiche par zoneAt 3D (position interpolee x/y/z de la vie courante), ligne a
+      hauteur RESERVEE vivant/mort (regle 1.1). 10 tests calloutsLayer + 3 tests fiches.
+- [x] 3.6 Decoupage sur sol praticable : Ridgeline SEULE est decoupee (dump existant,
+      versionne) — la conserver ; les 21 autres livrent le polygone brut (ecrit dans le
+      sidecar/catalogue).
+      FAIT (2026-08-13) : l'outil ingere le dump versionne
+      (.ai/V7.5/dumps/callout_zones_ridgeline_clipped.json) pour ridgeline — contour
+      decoupe + parties + trous, choix de fiabilite PAR ZONE respecte (21 decoupees,
+      7 replis brut declares par le dump), jointure verifiee par libelle. Champ
+      `provenance` au catalogue (decoupe/brut). Le decoupage universel est au
+      REGISTRE_REPORTS (depend du chantier cartes, en pause user).
 
 Gate 3 : catalogue garde-fou vert ; go test cibles + web verts ; verif visuelle user sur
 000d5950 (Cliffhanger/Ridgeline = la reference du POC).
+PASSE (2026-08-13) : garde-fou catalogue vert (22 cartes / 816 zones / ridgeline 28 dont
+11 grandes) ; go test service + handlers + replay + title + mapcallouts-build OK, himap
+par -run ancre (TestCallouts*) OK, go vet ./... OK, golangci-lint cible : 0 issue sur les
+fichiers du lot ; web : tsc -b OK (cache .tmp purge), eslint 0 erreur sur les fichiers
+touches, vitest match-replay 15 fichiers / 241 tests verts. La verification visuelle sur
+000d5950 est remise au user (instructions dans le compte rendu — la session ne juge pas
+l'aspect).
 
 ## Lot 4 — Objectifs statiques par mode
 
@@ -278,6 +324,27 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   disparait, il ne s'immobilise pas). Le « 78/79 » du POC comptait les vols TERMINES tous
   types projectiles confondus, pas les grenades liees. Toute logique future qui exigerait
   at-rest sur une grenade non-Spike s'eteindra en silence.
+
+- (lot 3, 2026-08-13) les sommets du polygone d'un volume levl sont RELATIFS a pos, et
+  c'est mesure deux fois : pos+rel reproduit a 0,0000 m les polygones monde du dump de
+  Ridgeline (16 zones dessinees), et l'AABB @0x94 du record ([minX maxX minY maxY minZ
+  maxZ]) est la boite des sommets RELATIFS sur toutes les cartes — donc pas de rotation
+  supplementaire. L'invariant est verifie A CHAQUE extraction (verifieAABBRelative) : un
+  record qui ne le porte plus est refuse, pas translate au petit bonheur.
+- (lot 3, 2026-08-13) les volumes SANS forme propre portent un polygone par defaut
+  (sommets ±0,5, AABB nulle) : ce n'est pas une forme dessinee — le lecteur ne publie le
+  polygone que sur has_shape. Ils restent au catalogue SANS contour : ce sont les etages
+  secondaires d'un meme nom, et ils rendent zoneAt juste (l'etage bas de « Tuyaux » vit
+  dans un volume secondaire).
+- (lot 3, 2026-08-13) le classement grandes/fines du POC se DERIVE du recouvrement 2D
+  (raster 0,25 m) : sur Ridgeline les 11 grandes sont recouvertes a 0,00 par les autres
+  (un pavage ne se recouvre pas), les 5 fines a 0,56-1,00. Seuil de majorite (0,5),
+  etalonnage rejoue en continu par classify_test.go contre le classement du POC.
+- (lot 3, 2026-08-13) le piege « libelles en pixels d'ecran » du POC ne s'applique pas au
+  canvas du rejeu : le POC dessinait dans un canevas de 1600 px affiche a ~840 px (d'ou
+  son facteur K) ; notre contexte est transforme au devicePixelRatio et le canvas
+  s'affiche a sa taille CSS — une unite de dessin EST un pixel d'ecran, 25 px se dessine
+  25, sans K.
 
 ## Reprise
 
