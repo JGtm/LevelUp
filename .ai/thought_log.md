@@ -64092,3 +64092,15 @@ sous 8 m monde, sans eclair) + drawDeathMarker (anneau pointille non oriente).
 la melee GENERIQUE (classe sans weapon_key, mesure killicon) tombe sur le rendu neutre —
 le film ne donne pas la classe au feed.
 **Prochaine etape** : 2.2 recalage tirs.
+
+## [2026-08-13] Parite rejeu 2D — lot 2 item 2.2, recalage des tirs sur le POC
+**Statut** : En cours (lot 2)
+**Decision technique** : PAS de re-conception — recalage. Deux causes d'invisibilite :
+remanence partagee 1,4 s (le trait trainait dim) et longueur 26 px. Corrige : SHOT_HOLD_MS
+600 ms distinct d'EVENT_HOLD_MS 1,4 s (lancers + morts), SHOT_LENGTH 62 px (longueur de
+trace POC), courbes d'intensite POC (balistique deux horloges : eclat au carre + trait
+p=1,5 largeur 2,2 ; plasma racine carree ; choc p=1,6 largeur 1,7 ; lumiere 6,5/2,0 ;
+melee 2e arc concentrique). canvasRecording.test.ts mis a jour (il figeait l'ancienne
+geometrie) + 1 test arc de liaison melee target/meleeLink.
+**Resultats** : vitest match-replay 13 fichiers / 222 tests verts.
+**Prochaine etape** : 2.3 effet au point de repos des grenades.

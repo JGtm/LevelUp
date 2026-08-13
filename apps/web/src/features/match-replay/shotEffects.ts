@@ -191,30 +191,49 @@ function endOf(s: Oriented): { x: number; y: number } {
   return { x: s.x + Math.cos(s.angle) * s.length, y: s.y + Math.sin(s.angle) * s.length }
 }
 
-/** drawBallistic — une poudre : trait net et bref, qui s'éteint sec. */
+/**
+ * drawBallistic — une poudre : trait net et bref, qui s'éteint sec.
+ *
+ * DEUX HORLOGES, recalées sur le POC : l'ÉCLAT s'éteint vite (carré du temps restant) —
+ * c'est la détonation sèche demandée ; le TRAIT décroît plus lentement (puissance 1,5)
+ * parce qu'il porte QUI a tiré sur QUI, et une information de ce prix ne doit pas
+ * disparaître en deux images. Le POC avait mesuré le défaut inverse : tout au cube, et
+ * l'effet était absent des vitesses 4x et 8x.
+ */
 function drawBallistic(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const e = endOf(s)
-  ctx.globalAlpha = 0.9 * s.fade
-  ctx.lineWidth = 1.6
+  const k = s.fade * s.fade
+  const kt = Math.pow(Math.max(0, s.fade), 1.5)
+  ctx.globalAlpha = 0.9 * kt
+  ctx.lineWidth = 2.2
   ctx.beginPath()
   ctx.moveTo(s.x, s.y)
   ctx.lineTo(e.x, e.y)
   ctx.stroke()
-  drawOrigin(ctx, s, s.fade)
+  // L'éclat de bouche : il grandit en s'éteignant (POC), au carré — une détonation.
+  ctx.globalAlpha = Math.min(1, 1.1 * k)
+  ctx.beginPath()
+  ctx.arc(s.x, s.y, 2 + 4.2 * k, 0, Math.PI * 2)
+  ctx.fill()
 }
 
-/** drawPlasma — l'énergie ne s'éteint pas comme une poudre : le trait ONDULE et s'épaissit. */
+/**
+ * drawPlasma — l'énergie ne s'éteint pas comme une poudre : décroissance MOLLE (racine
+ * carrée, recalée POC — c'est le contraste voulu avec la balistique : même geste,
+ * extinction opposée), et le trait ONDULE.
+ */
 function drawPlasma(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const nx = -Math.sin(s.angle)
   const ny = Math.cos(s.angle)
   const phase = (s.seed % 13) * 0.48
-  ctx.globalAlpha = 0.85 * s.fade
-  ctx.lineWidth = 2.2
+  const k = Math.sqrt(Math.max(0, s.fade))
+  ctx.globalAlpha = 0.8 * k
+  ctx.lineWidth = 2.3
   ctx.beginPath()
   const steps = 14
   for (let i = 0; i <= steps; i++) {
     const u = i / steps
-    const off = Math.sin(u * 7.5 + phase + s.advance * 2.2) * 3.4 * (1 - u)
+    const off = Math.sin(u * 7.5 + phase + s.advance * 2.2) * 3.6 * (1 - u) * k
     const px = s.x + Math.cos(s.angle) * s.length * u + nx * off
     const py = s.y + Math.sin(s.angle) * s.length * u + ny * off
     if (i === 0) ctx.moveTo(px, py)
@@ -223,27 +242,35 @@ function drawPlasma(ctx: CanvasRenderingContext2D, s: Oriented): void {
   ctx.stroke()
 }
 
-/** drawLight — un RAI CONTINU : deux traits superposés, large et pâle sous fin et franc. */
+/**
+ * drawLight — un RAI CONTINU : deux traits superposés, large et pâle sous fin et franc.
+ * L'épaisseur ne varie pas avec l'âge, seule l'opacité baisse : un faisceau ne se
+ * disperse pas, il s'éteint (largeurs recalées POC : 6,5 / 2,0).
+ */
 function drawLight(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const e = endOf(s)
   ctx.beginPath()
   ctx.moveTo(s.x, s.y)
   ctx.lineTo(e.x, e.y)
   ctx.globalAlpha = 0.28 * s.fade
-  ctx.lineWidth = 5
+  ctx.lineWidth = 6.5
   ctx.stroke()
   ctx.globalAlpha = 0.95 * s.fade
-  ctx.lineWidth = 1.2
+  ctx.lineWidth = 2
   ctx.stroke()
 }
 
-/** drawShock — un arc BRISÉ : une ligne en zigzag, jamais droite. */
+/**
+ * drawShock — un arc BRISÉ : une ligne en zigzag, jamais droite. Décroissance recalée
+ * POC (puissance 1,6) : plus vif qu'un plasma, moins sec qu'une poudre.
+ */
 function drawShock(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const nx = -Math.sin(s.angle)
   const ny = Math.cos(s.angle)
   const segments = 6
-  ctx.globalAlpha = 0.9 * s.fade
-  ctx.lineWidth = 1.4
+  const k = Math.pow(Math.max(0, s.fade), 1.6)
+  ctx.globalAlpha = Math.min(1, 1.1 * k)
+  ctx.lineWidth = 1.7
   ctx.beginPath()
   for (let i = 0; i <= segments; i++) {
     const u = i / segments
