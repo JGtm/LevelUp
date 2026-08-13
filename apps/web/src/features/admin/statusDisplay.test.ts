@@ -88,6 +88,8 @@ describe('jobTypeLabel', () => {
     expect(jobTypeLabel('forced_sync_cycle', 'fr')).toBe('Cycle de sync forcé')
     expect(jobTypeLabel('forced_sync_cycle', 'en')).toBe('Forced sync cycle')
     expect(jobTypeLabel('scan_media', 'fr')).toBe('Scan médias')
+    expect(jobTypeLabel('replay_build', 'fr')).toBe('Construction du rejeu 2D')
+    expect(jobTypeLabel('replay_build', 'en')).toBe('2D replay build')
   })
 
   it('retourne le type brut pour un type inconnu (repérable sans crash)', () => {

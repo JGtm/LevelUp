@@ -44,7 +44,11 @@ const (
 	JobTypeAdminInitialSync JobType = "admin_initial_sync"
 	JobTypeCatalogRefresh   JobType = "catalog_refresh"
 	JobTypeCatalogUGCDrain  JobType = "catalog_ugc_drain"
-	JobTypeOther            JobType = "other"
+	// JobTypeReplayBuild : construction de l'artefact de rejeu 2D d'UN match depuis le
+	// cache film local (action admin, décodage hors ligne sérialisé par le verrou
+	// process filmdec — jamais un exec de CLI).
+	JobTypeReplayBuild JobType = "replay_build"
+	JobTypeOther       JobType = "other"
 )
 
 // JobErrorDetail encapsule les détails d'erreur d'un job.

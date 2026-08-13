@@ -325,11 +325,22 @@ Gate 5 : gate d'ecoute user. NE PAS rouvrir l'extraction audio du jeu.
       replaybuild (reprise + resolution sur le catalogue livre), filmcache, killsource,
       replay verts ; vet + golangci-lint cible 0 issue. PILOTE 25 films au gate 6 ; RUN
       DE MASSE = orchestrateur (borne dure de la session).
-- [ ] 6.2 JobType « replay_build » (domain/job.go) + libelle FR/EN admin + worker
+- [x] 6.2 JobType « replay_build » (domain/job.go) + libelle FR/EN admin + worker
       serialise sur le patron admin_actions (goroutine bgCtx, mutex process filmdec
       PARTAGE avec killsource) → visible dans /admin/monitoring/jobs sans travail UI.
       Job manuel unitaire (semantique jobs.json suffit en local ; la file durable = piste F
       prod, registre).
+      FAIT (2026-08-14) : JobTypeReplayBuild + POST /admin/actions/replay-build/run
+      {match_id} (patron convergence : body decode maison 400, 409 avec job_id actif par
+      match, goroutine bgCtx + recover, 202 AsyncJobStatus) ; runner
+      ServiceRegistry.RunReplayBuild (registry_replay_build.go) : single-flight
+      replayBuildMu, handles base relaches AVANT le decodage (dataQualityHandles),
+      forme courte ACCEPTEE (resolution LIKE + refus des prefixes ambigus — piege lot 4),
+      candidats de carte = asset EN puis map_name brut (ordre ReplayMapRepo), LIBRAIRIE
+      replaybuild (jamais exec CLI, verrou filmdec partage). Libelle FR/EN
+      statusDisplay.ts (« Construction du rejeu 2D » / « 2D replay build ») + test.
+      openapi-gen + generate-types + typecheck purge OK dans le meme commit. 4 tests
+      handler (503/400/202/409) verts.
 - [ ] 6.3 FIL DE L'EAU post-sync : etape apres runWeaponKills (convergence.go:471-604,
       heritee par V2) + LE PONT DISQUE : writer de chunks DANS le paquet filmcache
       (garde-rail de disposition existant — bonus : persiste les films qui expirent,

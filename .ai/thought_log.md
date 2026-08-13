@@ -20,6 +20,24 @@ replay + filmdec verts ; go vet OK ; golangci-lint cible 0 issue.
 
 **Prochaine etape** : item 6.2 (JobType replay_build + action admin).
 
+## [2026-08-14] v7.5 parite rejeu 2D — lot 6 item 6.2 : job admin replay_build
+
+**Statut** : Complete.
+
+**Decision technique principale** : action admin sur le patron convergence (POST
+/admin/actions/replay-build/run, 409 avec job_id actif PAR MATCH, goroutine bgCtx) ;
+runner RunReplayBuild par la LIBRAIRIE replaybuild (jamais exec CLI — regle
+admin_actions ; verrou filmdec partage avec killsource), single-flight replayBuildMu,
+handles base relaches avant le decodage, forme courte de match_id acceptee (piege lot 4 :
+registre indexe par id complet — resolution LIKE, prefixe ambigu refuse).
+
+**Resultats observes** : 4 tests handler verts (503/400/202/409) ; libelle FR/EN admin
++ test vitest ; openapi-gen + generate-types + tsc -b (cache purge) OK ; vet OK ; lint :
+0 issue sur les fichiers du lot (42 = dette gelee preexistante des paquets).
+
+**Prochaine etape** : item 6.3 (fil de l'eau post-sync + pont disque filmcache +
+replay_retention_months).
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — CTF 64e8adfa, Strongholds

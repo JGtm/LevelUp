@@ -571,6 +571,31 @@ paths:
       summary: Action admin — résout les assets UUID bruts de match_registry via metadata.asset_translations (dry_run supporté, writer shared sérialisé dblease) (auth admin requis)
       tags:
         - admin
+  /admin/actions/replay-build/run:
+    post:
+      operationId: postAdminActionReplayBuildRun
+      parameters:
+        - explode: false
+          in: query
+          name: title
+          schema:
+            type: string
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatus'
+          description: Accepted
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Action admin — construit l'artefact de rejeu 2D d'un match depuis le cache film local (job asynchrone, décodage hors ligne, auth admin requis)
+      tags:
+        - admin
   /admin/actions/translations/asset:
     post:
       operationId: postAdminActionAssetTranslation
