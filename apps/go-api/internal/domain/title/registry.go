@@ -744,6 +744,16 @@ func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
 }
 
+// MapCalloutsPath retourne le chemin du catalogue des CALLOUTS (zones nommées
+// officielles) par carte : polygones monde, tranche verticale et libellés FR/EN, extraits
+// du tag levl des modules du jeu par cmd/mapcallouts-build. Donnée de RÉFÉRENCE
+// versionnée — pas un cache : elle ne se régénère qu'avec les fichiers du jeu installé.
+// La clé d'entrée est le nom de MODULE, celui de map_quant_bounds.json.
+// Ex: data/titles/halo_infinite/reference/map_callouts.json
+func (p *PathResolver) MapCalloutsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_callouts.json")
+}
+
 // MapGeometryDir retourne le répertoire des PROPS de carte (géométrie Forge : socles,
 // caisses, rampes posées dans la variante), lus par cmd/replay-build pour poser des
 // repères contextuels sur le rejeu 2D — à distinguer de la STRUCTURE, qui est le sol.
