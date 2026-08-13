@@ -293,6 +293,18 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 			})
 		}
 
+		// 2b. Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) — LOCAL SEULEMENT
+		// (« le VPS web ne décode JAMAIS »), fenêtre relue à chaque cycle. Parité
+		// avec scheduler.BuildEngine.
+		if !deps.Cfg.IsProduction() && deps.Settings != nil {
+			engine.WithReplayArtifacts(syncpkg.NewReplayArtifactsHook(deps.Cfg.RepoRoot, func() int {
+				if cfg, _ := deps.Settings.Load(); cfg != nil {
+					return cfg.ReplayRetentionMonths
+				}
+				return 0
+			}))
+		}
+
 		// 3. Custom client pinned via pool
 		if deps.TokenPool != nil {
 			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, p.Gamertag, p.XUID, 0)

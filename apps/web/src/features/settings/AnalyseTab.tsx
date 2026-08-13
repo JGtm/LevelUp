@@ -125,6 +125,35 @@ export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
         </CardContent>
       </Card>
 
+      {/* Card : Rejeu 2D — fenêtre de rétention des artefacts (0 = illimité).
+          Les films téléchargés ne sont JAMAIS purgés, seulement les artefacts. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.replayRetentionTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-1 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">{t.replayRetentionLabel}</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm text-foreground"
+                  value={merged.replay_retention_months ?? 0}
+                  onChange={(e) =>
+                    handleChange('replay_retention_months', parseInt(e.target.value, 10) || 0)
+                  }
+                />
+                <span className="text-sm text-muted-foreground">{t.replayRetentionUnit}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.replayRetentionHint}</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Card : Badges de performance */}
       <Card>
         <CardHeader>

@@ -190,6 +190,16 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	if h.cfg.SharedProvider != nil {
 		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
 	}
+	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) — LOCAL SEULEMENT (« le VPS
+	// web ne décode JAMAIS »), fenêtre relue à chaque cycle. Parité scheduler/BuildEngine.
+	if !h.cfg.IsProduction() && h.settingsStore != nil {
+		engine = engine.WithReplayArtifacts(go_sync.NewReplayArtifactsHook(h.cfg.RepoRoot, func() int {
+			if s, _ := h.settingsStore.Load(); s != nil {
+				return s.ReplayRetentionMonths
+			}
+			return 0
+		}))
+	}
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
 	// timezone REQUISE pour parseCaptureTimeFromFilename (cf. media_index_service).
 	if h.settingsStore != nil {

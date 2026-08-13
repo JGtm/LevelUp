@@ -277,6 +277,12 @@ func (e *SyncEngine) runPostSyncPipeline(
 	clock.lap("convergence_events", r.ConvergedEvents)
 	films.runWeaponKills(ctx, insertedIDs)
 	clock.lap("weapon_kills", r.WeaponKillsProcessed)
+	// 1.58 artefacts de rejeu 2D (fil de l'eau LOCAL, lot 6 v7.5) : pont disque
+	// filmcache + construction replaybuild des matchs insérés, fenêtre
+	// replay_retention_months relue à chaque cycle. No-op si le hook n'est pas
+	// installé (VPS web : jamais). Cf. engine_postsync_replay.go.
+	films.runReplayArtifacts(ctx, insertedIDs)
+	clock.lap("replay_artifacts", 0)
 
 	// 1.56 PSA — convergence des personal_score_awards. Cas nominal : matchs
 	// delta-skippés (insérés en shared par un coéquipier) dont seul le

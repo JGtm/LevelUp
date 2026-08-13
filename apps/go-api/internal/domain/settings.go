@@ -49,6 +49,10 @@ type SettingsResponse struct {
 	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
 	SessionTeamChangeMode      string `json:"session_team_change_mode"`
 
+	// ReplayRetentionMonths : fenêtre des artefacts de rejeu 2D (fil de l'eau + purge).
+	// 0 = illimité (tout construire, ne rien purger).
+	ReplayRetentionMonths int `json:"replay_retention_months" doc:"Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité."`
+
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
@@ -121,6 +125,9 @@ type UpdateSettingsRequest struct {
 	SessionGapMinutes          *int    `json:"session_gap_minutes,omitempty"`
 	SessionSplitOnRankedChange *bool   `json:"session_split_on_ranked_change,omitempty"`
 	SessionTeamChangeMode      *string `json:"session_team_change_mode,omitempty"`
+
+	// ReplayRetentionMonths : fenêtre des artefacts de rejeu 2D. 0 = illimité.
+	ReplayRetentionMonths *int `json:"replay_retention_months,omitempty"`
 
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  *bool   `json:"outcome_exclude_bot_matches_from_badges,omitempty"`

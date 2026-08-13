@@ -210,6 +210,12 @@ export interface SettingsText {
   sessionRecalcConfirmOk: string
   sessionRecalcConfirmCancel: string
 
+  // Onglet Analyse — Rejeu 2D
+  replayRetentionTitle: string
+  replayRetentionLabel: string
+  replayRetentionUnit: string
+  replayRetentionHint: string
+
   // Onglet Analyse — Badges de performance
   badgesTitle: string
   badgeSensitivityLabel: string
@@ -485,6 +491,15 @@ const FR_TEXT: SettingsText = {
     'L\'opération est rapide mais irréversible.',
   sessionRecalcConfirmOk: 'Recalculer',
   sessionRecalcConfirmCancel: 'Annuler',
+
+  // Onglet Analyse — Rejeu 2D
+  replayRetentionTitle: 'Rejeu 2D',
+  replayRetentionLabel: 'Fenêtre de conservation des rejeux',
+  replayRetentionUnit: 'mois',
+  replayRetentionHint:
+    'Les rejeux 2D des matchs plus anciens que cette fenêtre sont purgés, et les nouveaux ' +
+    'matchs hors fenêtre ne sont pas construits. 0 = illimité (tout conserver). ' +
+    'Les films téléchargés ne sont jamais supprimés.',
 
   // Onglet Analyse — Badges de performance
   badgesTitle: 'Badges de performance',
@@ -785,6 +800,15 @@ const EN_TEXT: SettingsText = {
     'The operation is fast but irreversible.',
   sessionRecalcConfirmOk: 'Recalculate',
   sessionRecalcConfirmCancel: 'Cancel',
+
+  // Analyse tab — 2D replay
+  replayRetentionTitle: '2D replay',
+  replayRetentionLabel: 'Replay retention window',
+  replayRetentionUnit: 'months',
+  replayRetentionHint:
+    '2D replays of matches older than this window are purged, and new matches outside the ' +
+    'window are not built. 0 = unlimited (keep everything). ' +
+    'Downloaded films are never deleted.',
 
   // Analyse tab — Performance badges
   badgesTitle: 'Performance badges',
