@@ -64144,3 +64144,17 @@ visuel remis au user (kill balistique, plasma, melee, lancer Shock — instants 
 compte rendu). Decouvertes consignees au plan : melee generique sans weapon_key = rendu
 neutre ; --map = nom de carte (cliffhanger), pas module.
 **Conclusion / prochaine etape** : lot 3 callouts (3.1 matiere premiere corrigee 13/08).
+
+## [2026-08-13] Parite rejeu 2D — lot 2 correctif au gate : at-rest est propre au type
+**Statut** : Complété (amende l'item 2.3)
+**Decision technique** : verification sur pieces du temoin AVANT remise du gate visuel :
+`projectile-at-rest-state` n'existe QUE sur les vols Spike (15/21 lies), JAMAIS
+frag/plasma/Dynamo (0/44 — l'objet detone, il ne s'immobilise pas). La garde « rest
+obligatoire » de la premiere version eteignait l'effet pour trois types sur quatre, dont
+la nappe Dynamo demandee par le plan. Corrige : l'effet se pose au dernier point replique
+du vol LIE (ce que l'ecran dit deja — « derniere position connue ») ; la certification
+reste portee (GrenadeRestFx.rest) sans conditionner le rendu.
+**Resultats** : vitest match-replay 228 verts (tests mis a jour), tsc OK, eslint 0 erreur.
+Decouverte consignee au plan (le « 78/79 » du POC comptait tous projectiles, pas les
+grenades liees).
+**Conclusion** : lot 2 reste CLOS ; gate visuel user inchange.

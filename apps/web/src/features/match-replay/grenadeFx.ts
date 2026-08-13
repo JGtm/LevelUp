@@ -30,24 +30,22 @@ export const GRENADE_THROW_HOLD_MS = 1_400
 
 /** Un effet de fin de vol, précalculé en coordonnées monde. */
 export interface GrenadeRestFx {
-  /** Frame où le vol s'arrête (t0 + dernier pas du projectile lié). */
+  /** Frame où la réplication du vol s'arrête (t0 + dernier pas du projectile lié). */
   frame: number
   x: number
   y: number
   /** Rang du type de grenade (index dans grenadeLabels). */
   rank: number
+  /** Fin de vol CERTIFIÉE (`projectile-at-rest-state`). MESURE sur le témoin 000d5950 :
+   *  le composant n'apparaît QUE sur des vols Spike (15/21 liés) — jamais frag, plasma ni
+   *  Dynamo (0/44), dont l'objet DÉTONE au lieu de s'immobiliser. Conditionner l'effet à
+   *  cette certification éteindrait donc trois types sur quatre — l'effet se pose au
+   *  dernier point répliqué, et l'écran dit ce que c'est. */
+  rest: boolean
   /** Germe stable pour la géométrie brisée : revenir en arrière redonne la même forme. */
   seed: number
 }
 
-/**
- * buildGrenadeRestFx relie chaque lancer à la fin de vol de SON projectile.
- *
- * SEULES les fins de vol CERTIFIÉES (`rest`) produisent un effet : l'arrêt de la
- * réplication n'est pas une preuve d'arrêt du projectile, y poser un effet affirmerait un
- * point que le film ne donne pas. Un lien hors bornes (artefact d'une autre version) est
- * ignoré — jamais un effet posé au hasard.
- */
 /** Le lancer actif d'un joueur : son rang, et l'âge du geste (en frames). */
 export interface ThrowReading {
   rank: number
@@ -77,12 +75,23 @@ export function grenadeThrowActive(
   return best
 }
 
+/**
+ * buildGrenadeRestFx relie chaque lancer à la fin de vol de SON projectile.
+ *
+ * LE POINT EST LA DERNIÈRE POSITION RÉPLIQUÉE — c'est exactement ce que l'écran en dit
+ * (« dernière position connue », jamais « impact » : aucun événement de détonation
+ * n'existe dans le film, et pour une frag la réplication cesse ~1,4 s avant la mèche).
+ * L'effet n'est PAS conditionné à la certification `at-rest` : mesurée par type, elle
+ * n'existe que sur les Spike (cf. GrenadeRestFx.rest) — l'exiger éteindrait les autres.
+ * Un lien hors bornes (artefact d'une autre version) est ignoré — jamais un effet posé
+ * au hasard.
+ */
 export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
   const out: GrenadeRestFx[] = []
   for (const g of doc.grenades) {
     if (g.proj === undefined || g.proj === null) continue
     const pr = doc.projectiles[g.proj]
-    if (!pr || !pr.rest || pr.p.length === 0) continue
+    if (!pr || pr.p.length === 0) continue
     const last = pr.p[pr.p.length - 1]
     const frame = (pr.t0 ?? 0) + last[0]
     out.push({
@@ -90,6 +99,7 @@ export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
       x: last[1],
       y: last[2],
       rank: g.rank ?? 0,
+      rest: !!pr.rest,
       seed: (frame * 2654435761) % 100003,
     })
   }

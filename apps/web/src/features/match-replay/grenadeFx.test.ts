@@ -1,7 +1,8 @@
 /**
- * grenadeFx.test.ts — les règles de la fin de vol : SEUL un vol certifié `rest` produit un
- * effet, le point est le DERNIER pas du projectile LIÉ (jamais le point de lancer), et un
- * lien hors bornes est ignoré plutôt que de poser un effet au hasard.
+ * grenadeFx.test.ts — les règles de la fin de vol : l'effet se pose au DERNIER pas du
+ * projectile LIÉ (jamais au point de lancer — c'est la « dernière position connue »), la
+ * certification `at-rest` est PORTÉE mais pas exigée (mesure : elle n'existe que sur les
+ * Spike), et un lien hors bornes est ignoré plutôt que de poser un effet au hasard.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -16,7 +17,8 @@ function docWith(over: Partial<ReplayDocument> = {}) {
     projectiles: [
       // Vol certifié : repos en (8, 9) à la frame 10 + 14 = 24.
       { t0: 10, p: [[0, 2, 3], [7, 5, 6], [14, 8, 9]], rest: true },
-      // Réplication interrompue SANS repos certifié : aucun effet.
+      // Réplication interrompue SANS repos certifié (le cas des frag/plasma/Dynamo, qui
+      // détonent) : l'effet se pose quand même, au dernier point répliqué.
       { t0: 30, p: [[0, 1, 1], [5, 2, 2]] },
     ],
     grenades: [
@@ -30,15 +32,15 @@ function docWith(over: Partial<ReplayDocument> = {}) {
 }
 
 describe('buildGrenadeRestFx', () => {
-  it('pose l effet au DERNIER pas du projectile lié, à sa frame de repos', () => {
+  it('pose l effet au DERNIER pas du projectile lié, à sa frame d arrêt', () => {
     const fx = buildGrenadeRestFx(docWith())
-    expect(fx).toHaveLength(1)
-    expect(fx[0]).toMatchObject({ frame: 24, x: 8, y: 9, rank: DYNAMO_RANK })
+    expect(fx).toHaveLength(2)
+    expect(fx[0]).toMatchObject({ frame: 24, x: 8, y: 9, rank: DYNAMO_RANK, rest: true })
   })
 
-  it('un vol NON certifié rest ne produit rien : l arrêt de réplication n est pas une preuve', () => {
+  it('un vol NON certifié produit AUSSI son effet (frag/plasma/Dynamo détonent sans at-rest), marqué non certifié', () => {
     const fx = buildGrenadeRestFx(docWith())
-    expect(fx.some((e) => e.frame === 35)).toBe(false)
+    expect(fx[1]).toMatchObject({ frame: 35, x: 2, y: 2, rank: 0, rest: false })
   })
 
   it('un lien hors bornes est ignoré — jamais un effet posé au hasard', () => {
