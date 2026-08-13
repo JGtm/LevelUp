@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "title_slug": "halo_infinite",
-  "generated_at": "2026-08-08T13:51:29.4690509Z",
+  "generated_at": "2026-08-13T10:26:44.9675423Z",
   "maps": {
     "003c828e-c2b3-43b5-b482-4005f9d4ec25": {
       "map_id": "003c828e-c2b3-43b5-b482-4005f9d4ec25",
@@ -12855,6 +12855,352 @@
         ]
       }
     },
+    "7a9265af-a880-487b-8829-68d88fcfb145": {
+      "map_id": "7a9265af-a880-487b-8829-68d88fcfb145",
+      "version_id": "",
+      "public_name": "",
+      "mvar_file": "starboard_map.mvar",
+      "module": "starboard_map",
+      "level_id": -747133697,
+      "objects_n": 3964,
+      "fetched_at": "2026-08-13T10:26:39.6575949Z",
+      "objectives": [
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": -8.54818058013916,
+            "y": -93.16249084472656,
+            "z": 83.06916046142578
+          },
+          "forward": {
+            "x": 1,
+            "y": -0.00014946631563361734,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 1167
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": 16.326108932495117,
+            "y": -93.16978454589844,
+            "z": 83.06916046142578
+          },
+          "forward": {
+            "x": -1,
+            "y": 0.00014962979184929281,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 3753
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -8.550010681152344,
+            "y": -93.16503143310547,
+            "z": 83.09869384765625
+          },
+          "forward": {
+            "x": 0,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 1166
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 16.324960708618164,
+            "y": -93.16834259033203,
+            "z": 83.07707214355469
+          },
+          "forward": {
+            "x": 0.00014962979184929281,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 1948
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 3.90460205078125,
+            "y": -93.16526794433594,
+            "z": 80.64250183105469
+          },
+          "forward": {
+            "x": 0.00014962979184929281,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn",
+            "ctf_exclude",
+            "oddball_include"
+          ],
+          "unresolved_labels": [
+            -253235056
+          ],
+          "object_index": 1927
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -8.382600784301758,
+            "y": -102.81170654296875,
+            "z": 82.41250610351562
+          },
+          "forward": {
+            "x": 0.7070803046226501,
+            "y": 0.7071331739425659,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 3805,
+          "shape": {
+            "family": "box",
+            "half_x": 2.9249954223632812,
+            "half_y": 2.0999984741210938,
+            "up_z": 3.649993896484375,
+            "down_z": 0.649993896484375,
+            "forward": {
+              "x": 0.7070803046226501,
+              "y": 0.7071331739425659,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 383385,
+              "s6": 275251,
+              "s7": 239206,
+              "s8": 42598
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 3.898606538772583,
+            "y": -81.64120483398438,
+            "z": 85.47512817382812
+          },
+          "forward": {
+            "x": 0.00014962979184929281,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_zone",
+            "strongholds_include"
+          ],
+          "object_index": 3806,
+          "shape": {
+            "family": "box",
+            "half_x": 1.9249954223632812,
+            "half_y": 2.0999984741210938,
+            "up_z": 1.3499908447265625,
+            "down_z": 1,
+            "forward": {
+              "x": 0.00014962979184929281,
+              "y": 1,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 252313,
+              "s6": 275251,
+              "s7": 88473,
+              "s8": 65536
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 16.16828155517578,
+            "y": -102.8222427368164,
+            "z": 82.41250610351562
+          },
+          "forward": {
+            "x": -0.7071331739425659,
+            "y": 0.7070803046226501,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 3809,
+          "shape": {
+            "family": "box",
+            "half_x": 2.9249954223632812,
+            "half_y": 2.0999984741210938,
+            "up_z": 3.649993896484375,
+            "down_z": 0.649993896484375,
+            "forward": {
+              "x": -0.7071331739425659,
+              "y": 0.7070803046226501,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 383385,
+              "s6": 275251,
+              "s7": 239206,
+              "s8": 42598
+            }
+          }
+        }
+      ],
+      "unresolved_labels": {
+        "-1246645531": 3,
+        "-1355525370": 8,
+        "-1482301937": 4,
+        "-2072819386": 1,
+        "-2086997171": 9,
+        "-253235056": 3,
+        "-767961569": 4,
+        "-831896525": 7,
+        "-847085993": 4,
+        "-87414042": 1,
+        "1081676545": 1,
+        "1191941951": 5,
+        "2005903245": 2,
+        "2062593711": 9,
+        "2133978317": 8
+      },
+      "names": [
+        "Heirloom_Pieces",
+        "assignSymbols",
+        "p_o",
+        "p_x",
+        "displayO",
+        "teepee",
+        "displayX",
+        "available_o",
+        "Prefab 0",
+        "available_x",
+        "Prefab 1",
+        "hideAllSymbols",
+        "unassignSymbols",
+        "hasSymbols",
+        "p_gone",
+        "available_gone",
+        "displayGone",
+        "openClose",
+        "UNSC Frigate Low cost non-bugged",
+        "UNSC Frigate Low cost non-bugged",
+        "topDoorOpen",
+        "closePos",
+        "openPos",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 3",
+        "Prefab 4",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 0",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 4",
+        "Prefab 3",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 2",
+        "Prefab 0",
+        "Medium Shipping Container",
+        "Prefab 0",
+        "Prefab 0",
+        "Prefab 1",
+        "Prefab 2",
+        "Ship A",
+        "Prefab"
+      ],
+      "bounds": {
+        "max": [
+          256.87335205078125,
+          178,
+          194.97525024414062
+        ],
+        "min": [
+          -178.10000610351562,
+          -190.50003051757812,
+          35.521697998046875
+        ]
+      }
+    },
     "7f56a242-c93a-4a19-b084-a9bf9cdd0246": {
       "map_id": "7f56a242-c93a-4a19-b084-a9bf9cdd0246",
       "version_id": "",
@@ -18568,6 +18914,293 @@
         ]
       }
     },
+    "e4bb06db-065f-4902-b93b-d8dac315eac4": {
+      "map_id": "e4bb06db-065f-4902-b93b-d8dac315eac4",
+      "version_id": "",
+      "public_name": "",
+      "mvar_file": "dredge_map.mvar",
+      "module": "dredge_map",
+      "level_id": 2123870979,
+      "objects_n": 5479,
+      "fetched_at": "2026-08-13T10:26:45.0301735Z",
+      "objectives": [
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": 3.3583767414093018,
+            "y": 14.453964233398438,
+            "z": 78.33486938476562
+          },
+          "forward": {
+            "x": 0.00014962979184929281,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 375
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": 3.3050413131713867,
+            "y": -12.5449800491333,
+            "z": 78.33917236328125
+          },
+          "forward": {
+            "x": 0.00015074016118887812,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_delivery"
+          ],
+          "object_index": 377
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 3.354398012161255,
+            "y": 14.460648536682129,
+            "z": 78.37689971923828
+          },
+          "forward": {
+            "x": 0.00014962979184929281,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 374
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 3.301063060760498,
+            "y": -12.538284301757812,
+            "z": 78.3812026977539
+          },
+          "forward": {
+            "x": 0.0001521110680187121,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "ctf_include",
+            "flag_spawn"
+          ],
+          "object_index": 376
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 3.594862937927246,
+            "y": 0.9681509733200073,
+            "z": 76.13499450683594
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn"
+          ],
+          "object_index": 373
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 3.369403839111328,
+            "y": 9.639566421508789,
+            "z": 78.525390625
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 379,
+          "shape": {
+            "family": "cylinder",
+            "radius": 1.79998779296875,
+            "up_z": 1.25,
+            "down_z": 0.1999969482421875,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 117964,
+              "s6": -2147483648,
+              "s7": 81920,
+              "s8": 13107
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": 3.369403839111328,
+            "y": -7.78887939453125,
+            "z": 78.525390625
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 380,
+          "shape": {
+            "family": "cylinder",
+            "radius": 1.79998779296875,
+            "up_z": 1.25,
+            "down_z": 0.1999969482421875,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 117964,
+              "s6": -2147483648,
+              "s7": 81920,
+              "s8": 13107
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -12.209212303161621,
+            "y": 0.936116099357605,
+            "z": 79.83000183105469
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "object_index": 381,
+          "shape": {
+            "family": "box",
+            "half_x": 1.5,
+            "half_y": 2.375,
+            "up_z": 1.25,
+            "down_z": 0.1999969482421875,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 196608,
+              "s6": 311296,
+              "s7": 81920,
+              "s8": 13107
+            }
+          }
+        }
+      ],
+      "unresolved_labels": {
+        "-1246645531": 3,
+        "-2072819386": 1,
+        "-767961569": 4,
+        "-886053664": 9,
+        "2133978317": 4,
+        "996801386": 9
+      },
+      "names": [
+        "Prefab 0",
+        "Prefab 8",
+        "Prefab 0",
+        "Prefab 3",
+        "Prefab 3",
+        "Prefab 4",
+        "Prefab 4",
+        "Prefab 1",
+        "Prefab 2",
+        "Prefab 2",
+        "lookylook",
+        "Prefab",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "bounds": {
+        "max": [
+          191.4209747314453,
+          193.0874481201172,
+          195.86134338378906
+        ],
+        "min": [
+          -178.10000610351562,
+          -198.13339233398438,
+          32.860416412353516
+        ]
+      }
+    },
     "e6cbfe01-665b-4a8c-bf3a-d63a65a7c890": {
       "map_id": "e6cbfe01-665b-4a8c-bf3a-d63a65a7c890",
       "version_id": "",
@@ -23242,6 +23875,10 @@
       "objectives": 14,
       "unresolved_label_hashes": 13
     },
+    "7a9265af-a880-487b-8829-68d88fcfb145": {
+      "objectives": 8,
+      "unresolved_label_hashes": 15
+    },
     "7f56a242-c93a-4a19-b084-a9bf9cdd0246": {
       "objectives": 14,
       "unresolved_label_hashes": 4
@@ -23281,6 +23918,10 @@
     "e23ea388-9bcb-4180-a0dc-fbe987751b9e": {
       "objectives": 14,
       "unresolved_label_hashes": 10
+    },
+    "e4bb06db-065f-4902-b93b-d8dac315eac4": {
+      "objectives": 8,
+      "unresolved_label_hashes": 6
     },
     "e6cbfe01-665b-4a8c-bf3a-d63a65a7c890": {
       "objectives": 20,

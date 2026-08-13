@@ -52,6 +52,9 @@ var preuvesLevelID = []struct {
 	{"Prism", "sgh_crystalcaves"},
 	{"Recharge", "sgh_blueprint"},
 	{"Scarr", "btb_engine"},
+	// Pilotes du lot fonds par map_id (2026-08-13) : cartes Forge seules sur leur canevas.
+	{"Starboard", "fo03_space"},
+	{"Dredge", "fo06_deepsea"},
 }
 
 // TestPreuveLevelIDCartes rejoue la preuve level_id de chaque appariement : lecture du

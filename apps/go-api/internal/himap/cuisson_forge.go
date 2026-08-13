@@ -93,6 +93,21 @@ var CartesForge = []CarteForge{
 		FichierMvar:   "corpo_map.mvar",
 		ModuleCanevas: "fo11_blank",
 	},
+	// Pilotes du lot fonds par map_id (2026-08-13) : seules cartes jouees SEULES sur leur
+	// canevas. Preuve level_id : Starboard -747133697 (0xD377A4FF) -> fo03_space, Dredge
+	// 2123870979 (0x7E97B303) -> fo06_deepsea, unicite 1/1 (`TestPreuveLevelIDCartes`).
+	{
+		MapID:         "7a9265af-a880-487b-8829-68d88fcfb145",
+		Nom:           "Starboard",
+		FichierMvar:   "starboard_map.mvar",
+		ModuleCanevas: "fo03_space",
+	},
+	{
+		MapID:         "e4bb06db-065f-4902-b93b-d8dac315eac4",
+		Nom:           "Dredge",
+		FichierMvar:   "dredge_map.mvar",
+		ModuleCanevas: "fo06_deepsea",
+	},
 }
 
 // EstCanevasForge dit si un dossier installe est le CANEVAS d'une carte Forge declaree — donc
