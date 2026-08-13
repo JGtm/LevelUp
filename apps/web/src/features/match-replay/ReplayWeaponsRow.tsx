@@ -78,12 +78,13 @@ export function ReplayWeaponsRow({
     read.age < 0
       ? `${t.loadoutAhead} ${formatSeconds(ageMs)}`
       : `${t.loadoutAge} ${formatSeconds(ageMs)}`
-  const hint = read.holstered ? `${t.weaponsHolstered} — ${ageTxt}` : ageTxt
+  // L'état « armes rangées » n'est plus dit ici : son pictogramme (et son unique
+  // infobulle) vit dans la rangée d'inventaire — décision produit 4 du plan parité.
   return (
     <div
       className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
-      title={hint}
+      title={ageTxt}
     >
       {read.weapons.map((w, k) => (
         <WeaponChip
@@ -93,7 +94,7 @@ export function ReplayWeaponsRow({
           inHand={w.inHand}
           dimmed={drawnKnown && !w.inHand}
           swap={swapAge !== null ? { cls: k === 0 ? 'replay-wswap-l' : 'replay-wswap-r', age: swapAge, span: swapFrames } : null}
-          hint={w.inHand ? t.weaponInHandHint : drawnKnown ? t.weaponSecondaryHint : undefined}
+          hint={!w.inHand && drawnKnown ? t.weaponSecondaryHint : undefined}
           locale={locale}
         />
       ))}
@@ -189,10 +190,12 @@ function SwapMark({
   if (swap.picked.length > 0) parts.push(`+ ${swap.picked.map(name).join(', ')}`)
   if (swap.dropped.length > 0) parts.push(`− ${swap.dropped.map(name).join(', ')}`)
   const when = `${t.loadoutAge} ${formatSeconds(frameToMs(swap.age, doc))}`
+  // L'infobulle garde le DÉTAIL (entrées, sorties, âge) et perd la phrase de méthode sur
+  // les images-clés : l'information reste, le jargon de flux sort de l'écran.
   return (
     <span
       className="text-[8px] uppercase tracking-wide opacity-70"
-      title={`${t.weaponSwapHint} ${parts.join(' ; ')}. ${when}.`}
+      title={`${parts.join(' ; ')}. ${when}.`}
     >
       {t.weaponSwap}
     </span>

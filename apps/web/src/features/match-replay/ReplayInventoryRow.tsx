@@ -8,11 +8,15 @@
  *   partielle (4 index observés pour 11 capacités), et la combler se lirait comme une certitude ;
  * - un compteur d'utilisations n'est jamais affiché : il n'est pas localisé dans le film
  *   (36 006 positions testées, aucune ne reproduit le relevé) ;
- * - un emplacement dont le film n'écrit RIEN affiche « aucune » : pour une arme à charge,
- *   cela veut dire PLEIN, le plein étant la valeur par défaut d'un flux différentiel.
+ * - un emplacement dont le film n'écrit RIEN est PLEIN (flux différentiel : le plein est la
+ *   valeur par défaut, jamais transmise) — rendu par un pictogramme discret, comme l'état
+ *   « armes rangées » (décision produit 4 du plan parité : ces deux états MESURÉS se
+ *   montrent sans jargon de flux, un dessin + un tooltip simple chacun).
  *
  * L'ensemble pâlit avec l'âge de la lecture, comme les armes portées et pour la même raison.
  */
+import type { ReactNode } from 'react'
+
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
@@ -106,7 +110,7 @@ export function ReplayInventoryRow({
         )
       })}
       {selected === 'indeterminate' && (
-        <span className="border-b border-dashed border-border opacity-80" title={t.grenadeSelUnknownHint}>
+        <span className="border-b border-dashed border-border opacity-80">
           {t.grenadeSelUnknown}
         </span>
       )}
@@ -117,7 +121,7 @@ export function ReplayInventoryRow({
               ? 'inline-flex items-center'
               : 'border-b border-dashed border-border'
           }
-          title={ability.known ? `${t.abilityLabel} — ${ability.text}` : t.abilityUnknownHint}
+          title={ability.known ? `${t.abilityLabel} — ${ability.text}` : undefined}
         >
           {ability.img ? (
             <WeaponIcon
@@ -138,21 +142,70 @@ export function ReplayInventoryRow({
           index={i}
           ammo={ammo[i]}
           drawn={equipped?.drawn === i}
-          noneLabel={t.ammoNone}
-          noneHint={t.ammoNoneHint}
-          hint={equipped?.drawn === i ? `${t.ammoSlotHint} ${t.ammoDrawnHint}` : t.ammoSlotHint}
+          fullLabel={t.ammoFullLabel}
+          drawnHint={t.ammoDrawnHint}
           gaugeLabel={t.gaugeLabel}
         />
       ))}
       {ammo.length > 0 && equipped && equipped.drawn === null && (
-        <span
-          className="border-b border-dashed border-border opacity-80"
-          title={equipped.holstered ? t.weaponsHolstered : t.drawnUnknownHint}
-        >
-          {equipped.holstered ? t.weaponsHolsteredShort : t.drawnUnknown}
-        </span>
+        equipped.holstered ? (
+          <HolsterMark label={t.holsteredLabel} />
+        ) : (
+          <span className="border-b border-dashed border-border opacity-80">
+            {t.drawnUnknown}
+          </span>
+        )
       )}
     </div>
+  )
+}
+
+/**
+ * StateMark — le socle des pictogrammes d'état MESURÉ rendus muets (décision produit 4 du
+ * plan parité) : « armes rangées » (sélecteur D=2) et « munitions pleines » (emplacement
+ * jamais écrit — flux différentiel, le plein est la valeur par défaut). Un dessin discret,
+ * UNE infobulle simple : l'explication de flux vit dans le code, pas à l'écran. Encre en
+ * currentColor : la couleur vient du texte environnant, aucun littéral.
+ */
+function StateMark({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span role="img" aria-label={label} title={label} className="inline-flex items-center opacity-70">
+      {children}
+    </span>
+  )
+}
+
+/** HolsterMark — armes rangées : une flèche qui descend dans un étui. */
+function HolsterMark({ label }: { label: string }) {
+  return (
+    <StateMark label={label}>
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M6 1.5v5" />
+        <path d="M3.8 4.5 6 6.7l2.2-2.2" />
+        <path d="M2 8v2.5h8V8" />
+      </svg>
+    </StateMark>
+  )
+}
+
+/** AmmoFullMark — munitions pleines : un chargeur rempli. */
+function AmmoFullMark({ label }: { label: string }) {
+  return (
+    <StateMark label={label}>
+      <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
+        <rect x="4" y="1.5" width="4" height="9" rx="1" fill="currentColor" />
+      </svg>
+    </StateMark>
   )
 }
 
@@ -184,31 +237,29 @@ function abilityText(
  * rattachement échouait.
  *
  * LE NUMÉRO RESTE AFFICHÉ parce qu'il coûte deux caractères et qu'il lève l'ambiguïté sans
- * rien affirmer. La réserve, elle, est portée par l'infobulle et par le marquage des lectures
- * ambiguës.
+ * rien affirmer. Seule la cellule DÉGAINÉE porte une infobulle (le rattachement au
+ * sélecteur) ; la méthode d'appariement emplacement↔arme vit dans le code, pas à l'écran.
  */
 function AmmoCell({
   index,
   ammo,
   drawn,
-  noneLabel,
-  noneHint,
-  hint,
+  fullLabel,
+  drawnHint,
   gaugeLabel,
 }: {
   index: number
   ammo: { mag?: number; res?: number; gauge?: number }
   /** L'emplacement est DÉGAINÉ selon le sélecteur : encre plus franche, index accentué. */
   drawn: boolean
-  noneLabel: string
-  noneHint: string
-  hint: string
+  fullLabel: string
+  drawnHint: string
   gaugeLabel: string
 }) {
   return (
     <span
       className={`inline-flex items-center gap-1 tabular-nums ${drawn ? 'text-foreground' : ''}`}
-      title={hint}
+      title={drawn ? drawnHint : undefined}
     >
       <i
         className={`not-italic text-[8px] ${drawn ? '' : 'opacity-45'}`}
@@ -245,9 +296,8 @@ function AmmoCell({
           />
         </span>
       ) : (
-        <span className="italic opacity-70" title={noneHint}>
-          {noneLabel}
-        </span>
+        // Emplacement jamais écrit = PLEIN (décision produit 4) : pictogramme, pas de texte.
+        <AmmoFullMark label={fullLabel} />
       )}
     </span>
   )
