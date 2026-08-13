@@ -2,19 +2,29 @@
  * killFeedLogic.ts — LE FIL DES ÉLIMINATIONS SUR L'HORLOGE DU REJEU.
  *
  * DEUX HORLOGES, ET C'EST TOUT LE SUJET. Les events servis par la Match View sont recalés
- * sur le début du GAMEPLAY (`correctMatchViewEventsT0`) ; le film, lui, part du début du
- * MATCH, countdown compris. Poser les uns sur l'autre sans rien faire décale le feed de
- * 18 à 28 secondes — assez pour qu'un kill s'affiche pendant que son auteur est encore en
- * train de courir vers sa victime.
+ * sur le début du GAMEPLAY (`correctMatchViewEventsT0`) ; l'artefact de rejeu, lui, cale
+ * sa frame 0 sur le PREMIER PAQUET DE POSITION du film (`build.go` : origin =
+ * sorted[0].TimestampUS) — un instant qui varie d'un match à l'autre. Additionner
+ * `event_time_ms + t0Ms` reconstruit l'horloge brute du film, PAS celle de l'artefact.
  *
- * LA MESURE QUI TRANCHE (000d5950, T0 = 18 465 ms) : en rapprochant les 91 fins de vie
- * exploitables du rejeu des 93 morts du registre, l'écart médian vaut -0,6 s à offset nul,
- * contre 3,1 s en ajoutant T0 et 4,2 s en le retranchant. Le rejeu suit donc l'horloge
- * BRUTE, et le recalage va dans ce sens : `msRejeu = event_time_ms + t0Ms`.
+ * LA MESURE QUI TRANCHE (2026-08-14, appariement ordonné kill↔fin de vie par victime,
+ * artefacts v3 + Match View locale) : l'écart `event_time_ms + t0Ms − fin de vie` est
+ * un décalage SYSTÉMATIQUE PAR MATCH — médiane +3 678 ms sur 000d5950 (87/91 paires à
+ * ±150 ms), +10 589 ms sur 64e8adfa, +39 856 ms sur e94163af. Aucune constante ne peut
+ * donc le corriger. Le référentiel JUSTE est celui que le client tient déjà : les fins
+ * de vie des pistes (`doc.tracks`), qui datent aussi le flash des fiches. Le recalage
+ * (`alignFeedToTracks`) pose chaque kill SUR la fin de vie de sa victime : le fil et la
+ * fiche partent alors du même instant par construction.
  *
  * LE FIL EST PERMANENT (verdict utilisateur 2026-08-13, aligné POC) : il garde TOUT
  * depuis le début du match, le plus récent en tête, et défile pour remonter aux frags
  * anciens. Aucune fenêtre, aucune rémanence — l'éphémère précédent faisait perdre le fil.
+ *
+ * LES MORTS SANS TUEUR (suicides, chutes, sorties) font leur propre ligne NEUTRE
+ * (décision produit 2026-08-13) : une fin de vie close qu'aucun kill ne revendique est
+ * une mort que le fil doit dire — mesure témoin 64e8adfa : 123 morts au scoreboard pour
+ * 121 kills, et exactement 2 fins de vie orphelines. L'appariement par victime garantit
+ * qu'une mort déjà servie par une ligne de kill n'est JAMAIS doublée.
  *
  * LES MÉDAILLES viennent des mêmes highlight events (event_type `medal`), identité
  * résolue côté backend (label/description locale-aware + visuel). Une médaille se
@@ -26,6 +36,9 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchHighlightEvent } from '@/lib/api/types'
+
+import { frameToMs, msToFrames, trackWindow } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 
 /**
  * Tolérance de rattachement d'une médaille au kill du même acteur, en ms. Mesuré sur
@@ -84,9 +97,10 @@ export function collectMedalEvents(
 }
 
 /**
- * Une ligne du fil : un kill (avec ses médailles rattachées), OU une médaille seule —
- * jamais les deux. La médaille seule existe parce que forcer un rattachement lointain
- * accrocherait la médaille au mauvais kill.
+ * Une ligne du fil : un kill (avec ses médailles rattachées), OU une médaille seule, OU
+ * une mort neutre — jamais deux à la fois. La médaille seule existe parce que forcer un
+ * rattachement lointain accrocherait la médaille au mauvais kill ; la mort neutre parce
+ * qu'une mort sans tueur crédité reste une mort que le fil doit dire.
  */
 export interface ReplayFeedEntry {
   /** Clé stable de rendu. */
@@ -95,10 +109,14 @@ export interface ReplayFeedEntry {
   replayMs: number
   kill: ReplayKill | null
   medal: MedalEvent | null
+  death: ReplayDeath | null
 }
 
 /**
- * toReplayKills recale les kills sur l'horloge du film et les trie chronologiquement.
+ * toReplayKills recale les kills sur l'horloge BRUTE du film et les trie
+ * chronologiquement. C'est le repli quand aucun document n'est disponible — le chemin
+ * nominal est `alignFeedToTracks`, qui corrige en plus le décalage d'origine de
+ * l'artefact (cf. en-tête).
  *
  * `t0Ms` vaut 0 quand le countdown est inconnu : la correction T0 n'a alors pas eu lieu
  * non plus côté events, et ne rien ajouter est exactement juste.
@@ -115,16 +133,174 @@ function replayOffset(t0Ms: number): number {
 }
 
 /**
- * buildFeedEntries assemble le fil : kills recalés, médailles rattachées au kill du même
- * acteur le plus proche (±MEDAL_ATTACH_MS, sur l'horloge gameplay commune aux deux
- * sources), médailles orphelines en lignes seules. Trié chronologiquement.
+ * Tolérance d'appariement d'un kill à une fin de vie de sa victime, en ms, APRÈS
+ * correction du décalage médian mesuré. Les paires justes se groupent à ±150 ms de la
+ * médiane (87/91 sur 000d5950) et deux vies d'un même joueur sont séparées d'au moins un
+ * délai de réapparition (~8 s mesurés) : 2 s ne peut ni rater une vraie paire ni en
+ * confondre deux.
+ */
+export const KILL_MATCH_TOL_MS = 2_000
+
+/**
+ * Fenêtre de veto d'une ligne de mort neutre autour d'un kill SANS victime nommée : tant
+ * que la couverture killer_victim_pairs est partielle, un kill non attribué peut être
+ * celui de cette mort — on ne double jamais une mort qui a peut-être déjà sa ligne.
+ */
+export const NEUTRAL_DEATH_VETO_MS = 4_000
+
+/**
+ * Marge sous l'horizon de l'artefact au-delà de laquelle une fin de vie est une VRAIE
+ * mort et non un survivant de fin de partie (mesure 000d5950 : les 3 vies des survivants
+ * se ferment dans les 3 dernières secondes du document).
+ */
+export const SURVIVOR_GRACE_MS = 3_000
+
+/** Une mort SANS ligne de kill (suicide, chute, sortie), lue dans les pistes du film. */
+export interface ReplayDeath {
+  /** Instant de la fin de vie sur l'horloge du rejeu — le même que le flash de fiche. */
+  replayMs: number
+  xuid: string
+}
+
+/** Le fil recalé sur les pistes : kills alignés, morts neutres, décalage mesuré. */
+export interface AlignedFeed {
+  kills: ReplayKill[]
+  deaths: ReplayDeath[]
+  /**
+   * Décalage médian mesuré `event_time_ms + t0Ms − fin de vie` sur CE document, en ms.
+   * Null quand aucune paire (victime, fin de vie) n'existe — rien n'est alors corrigible.
+   */
+  offsetMs: number | null
+}
+
+/** Une fin de vie candidate à l'appariement — interne à l'alignement. */
+interface LifeEnd {
+  xuid: string
+  endMs: number
+  /** Close AVANT l'horizon du document : une vraie mort, pas un survivant. */
+  closed: boolean
+  used: boolean
+}
+
+/**
+ * alignFeedToTracks recale les kills sur le référentiel des PISTES — celui qui date le
+ * flash des fiches — et en déduit les morts neutres.
+ *
+ * DEUX PASSES, TOUTES DEUX MESURÉES :
+ *  1. le décalage médian par match (appariement ordonné kill↔fin de vie par victime —
+ *     la médiane résiste aux vies non publiées par le film) ;
+ *  2. l'appariement au plus proche une fois le décalage retranché, chaque fin de vie
+ *     consommée UNE fois. Un kill apparié est posé SUR la fin de vie de sa victime
+ *     (même instant que le flash) ; un kill inappariable est corrigé du décalage médian ;
+ *     sans aucune mesure (aucune victime nommée), l'horloge brute reste la moins fausse.
+ *
+ * Les MORTS NEUTRES ne sortent que d'un document où l'appariement a eu lieu : sans
+ * victimes nommées, impossible de garantir qu'une fin de vie n'a pas déjà sa ligne.
+ */
+export function alignFeedToTracks(
+  kills: KillEvent[],
+  t0Ms: number,
+  doc: ReplayDocumentReady,
+): AlignedFeed {
+  const offset = replayOffset(t0Ms)
+  const ends: LifeEnd[] = []
+  let maxEndFrame = 0
+  for (const tr of doc.tracks) {
+    if (!tr.xuid || tr.points.length === 0) continue
+    const endFrame = trackWindow(tr).end
+    if (endFrame > maxEndFrame) maxEndFrame = endFrame
+    ends.push({ xuid: tr.xuid, endMs: frameToMs(endFrame, doc), closed: false, used: false })
+  }
+  const horizonFrame = (doc.frameCount ?? 0) > 1 ? (doc.frameCount ?? 0) - 1 : maxEndFrame
+  const graceMs = frameToMs(Math.max(0, horizonFrame - msToFrames(SURVIVOR_GRACE_MS, doc)), doc)
+  for (const e of ends) e.closed = e.endMs < graceMs
+
+  // PASSE 1 — la mesure : fins de vie et kills d'une même victime, triés, appariés par
+  // rang. La médiane des écarts est le décalage du document (robuste aux vies que le
+  // film n'a pas publiées : elles décalent des rangs, pas la moitié des paires).
+  const rawKills = kills.map((k) => ({ k, raw: k.tMs + offset }))
+  const endsByXuid = new Map<string, number[]>()
+  for (const e of ends) {
+    const list = endsByXuid.get(e.xuid)
+    if (list) list.push(e.endMs)
+    else endsByXuid.set(e.xuid, [e.endMs])
+  }
+  const killsByVictim = new Map<string, number[]>()
+  for (const { k, raw } of rawKills) {
+    if (!k.victimXuid) continue
+    const list = killsByVictim.get(k.victimXuid)
+    if (list) list.push(raw)
+    else killsByVictim.set(k.victimXuid, [raw])
+  }
+  const dts: number[] = []
+  for (const [xuid, kts] of killsByVictim) {
+    const es = (endsByXuid.get(xuid) ?? []).slice().sort((a, b) => a - b)
+    kts.sort((a, b) => a - b)
+    for (let i = 0; i < Math.min(kts.length, es.length); i++) dts.push(kts[i] - es[i])
+  }
+  dts.sort((a, b) => a - b)
+  const offsetMs = dts.length > 0 ? dts[Math.floor(dts.length / 2)] : null
+
+  // PASSE 2 — l'appariement : au plus proche une fois le décalage retranché, dans
+  // l'ordre chronologique, chaque fin de vie servie une seule fois.
+  const aligned: ReplayKill[] = []
+  for (const { k, raw } of [...rawKills].sort((a, b) => a.raw - b.raw)) {
+    let best: LifeEnd | null = null
+    let bestScore = Number.POSITIVE_INFINITY
+    if (k.victimXuid && offsetMs !== null) {
+      for (const e of ends) {
+        if (e.used || e.xuid !== k.victimXuid) continue
+        const score = Math.abs(raw - e.endMs - offsetMs)
+        if (score < bestScore) {
+          bestScore = score
+          best = e
+        }
+      }
+    }
+    if (best && bestScore <= KILL_MATCH_TOL_MS) {
+      best.used = true
+      aligned.push({ ...k, replayMs: best.endMs, medals: [] })
+    } else {
+      aligned.push({ ...k, replayMs: raw - (offsetMs ?? 0), medals: [] })
+    }
+  }
+  aligned.sort((a, b) => a.replayMs - b.replayMs)
+
+  // MORTS NEUTRES : les fins de vie closes qu'aucun kill n'a consommées — sous garde
+  // d'appariement effectif, et sous veto d'un kill sans victime au voisinage.
+  const deaths: ReplayDeath[] = []
+  if (offsetMs !== null) {
+    const unattributed = aligned.filter((k) => !k.victimXuid)
+    for (const e of ends) {
+      if (!e.closed || e.used) continue
+      const vetoed = unattributed.some((k) => Math.abs(k.replayMs - e.endMs) <= NEUTRAL_DEATH_VETO_MS)
+      if (!vetoed) deaths.push({ replayMs: e.endMs, xuid: e.xuid })
+    }
+    deaths.sort((a, b) => a.replayMs - b.replayMs)
+  }
+  return { kills: aligned, deaths, offsetMs }
+}
+
+/**
+ * buildFeedEntries assemble le fil : kills recalés sur les PISTES quand le document est
+ * fourni (`alignFeedToTracks` — même instant que le flash de fiche), morts neutres en
+ * lignes propres, médailles rattachées au kill du même acteur le plus proche
+ * (±MEDAL_ATTACH_MS, sur l'horloge gameplay commune aux deux sources), médailles
+ * orphelines en lignes seules. Trié chronologiquement.
+ *
+ * Sans document (tests, appels historiques) : recalage brut `+t0Ms`, aucune mort neutre.
  */
 export function buildFeedEntries(
   kills: KillEvent[],
   medals: MedalEvent[],
   t0Ms: number,
+  doc?: ReplayDocumentReady | null,
 ): ReplayFeedEntry[] {
-  const rk = toReplayKills(kills, t0Ms)
+  const alignedFeed: AlignedFeed =
+    doc && doc.tracks.length > 0
+      ? alignFeedToTracks(kills, t0Ms, doc)
+      : { kills: toReplayKills(kills, t0Ms), deaths: [], offsetMs: null }
+  const rk = alignedFeed.kills
   const offset = replayOffset(t0Ms)
   const alone: MedalEvent[] = []
   for (const m of medals) {
@@ -146,13 +322,26 @@ export function buildFeedEntries(
     replayMs: k.replayMs,
     kill: k,
     medal: null,
+    death: null,
   }))
   alone.forEach((m, i) => {
     entries.push({
       key: `m-${m.xuid}-${m.tMs}-${i}`,
-      replayMs: m.tMs + offset,
+      // La médaille seule suit la même correction de décalage que les kills : une ligne
+      // du fil ne vit pas sur une autre horloge que ses voisines.
+      replayMs: m.tMs + offset - (alignedFeed.offsetMs ?? 0),
       kill: null,
       medal: m,
+      death: null,
+    })
+  })
+  alignedFeed.deaths.forEach((d, i) => {
+    entries.push({
+      key: `d-${d.xuid}-${d.replayMs}-${i}`,
+      replayMs: d.replayMs,
+      kill: null,
+      medal: null,
+      death: d,
     })
   })
   return entries.sort((a, b) => a.replayMs - b.replayMs)

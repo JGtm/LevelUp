@@ -128,12 +128,15 @@ function ReplayPage() {
           />
           {/* LE FIL SOUS LA CARTE, jamais dessus : même règle que les fiches. Il est
               PERMANENT (verdict user 2026-08-13) : tout ce qui est déjà survenu reste
-              lisible, le plus récent en tête, et la liste défile. */}
+              lisible, le plus récent en tête, et la liste défile. Le document lui donne
+              le référentiel des pistes : lignes recalées sur les fins de vie (le même
+              instant que le flash des fiches) et morts neutres. */}
           <ReplayKillFeed
             kills={kills}
             medals={medalEvents}
             t0Ms={t0Ms}
             nowMs={nowMs}
+            doc={data}
             scoreboard={scoreboard}
             xuidMeta={xuidMeta}
             locale={locale}

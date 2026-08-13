@@ -36,6 +36,9 @@ interface ReplayText {
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
+  /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
+  killFeedDeathLabel: string
+  killFeedDeathHint: string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -106,6 +109,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedAssistHint:
       'Assistant lu dans le film, avec sa part de dégâts quand elle est mesurée. Les parts ne sont pas bornées à 100 %.',
     killFeedKillerShare: (pct) => `tueur ${pct} %`,
+    killFeedDeathLabel: 'mort',
+    killFeedDeathHint:
+      'Mort sans tueur crédité (suicide, chute ou sortie), lue dans les trajectoires du film.',
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
@@ -171,6 +177,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedAssistHint:
       'Assist read from the film, with its damage share when measured. Shares are not capped at 100%.',
     killFeedKillerShare: (pct) => `killer ${pct}%`,
+    killFeedDeathLabel: 'died',
+    killFeedDeathHint:
+      'Death with no credited killer (suicide, fall or leaving), read from the film trails.',
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:

@@ -20,6 +20,8 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { MedalEvent } from './killFeedLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
+import { testReplayDoc } from './test/testDoc'
+import type { ReplayDocumentReady } from './replayNormalize'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(${token})`,
@@ -76,6 +78,8 @@ function renderFeed(
   nowMs: number,
   t0Ms = T0,
   medals: MedalEvent[] = [],
+  doc: ReplayDocumentReady | null = null,
+  scoreboard: MatchScoreboardRow[] = SCOREBOARD,
 ) {
   return render(
     <ReplayKillFeed
@@ -83,7 +87,8 @@ function renderFeed(
       medals={medals}
       t0Ms={t0Ms}
       nowMs={nowMs}
-      scoreboard={SCOREBOARD}
+      doc={doc}
+      scoreboard={scoreboard}
       xuidMeta={META}
       locale="fr"
     />,
@@ -153,6 +158,69 @@ describe('ReplayKillFeed — arme du kill', () => {
   it("n'écrit aucun hex de couleur (règle color-tokens)", () => {
     const { container } = renderFeed([kill({ tMs: 1_000 })], 20_000)
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{6}/)
+  })
+
+  it("TEINTE l'icône à la couleur d'équipe du TUEUR (constat gate 2026-08-13)", () => {
+    // La couleur d'identité vient de la cascade du scoreboard (team_color prioritaire) :
+    // l'icône-masque doit la porter, comme dans le kill feed de la carte « Dominance ».
+    const sb = [
+      { xuid: 'me', gamertag: 'JGtm', team_side: 't0', team_color: 'var(--team-témoin)' },
+    ] as MatchScoreboardRow[]
+    renderFeed(
+      [
+        kill({
+          tMs: 1_000,
+          teamID: 0,
+          weaponImageUrl: '/static/weapons/br75.png',
+          weaponLabel: 'BR75',
+          weaponTinted: true,
+        }),
+      ],
+      20_000,
+      T0,
+      [],
+      null,
+      sb,
+    )
+    const icon = screen.getByRole('img', { name: 'BR75' })
+    expect(icon.getAttribute('style') ?? '').toContain('var(--team-témoin)')
+  })
+})
+
+describe('ReplayKillFeed — le fil sur le référentiel des pistes (document fourni)', () => {
+  /**
+   * Un document 10 Hz : la victime « foe » meurt à la frame 20 (2 000 ms) puis, sur une
+   * seconde vie, à la frame 80 (8 000 ms) sans qu'aucun kill ne la revendique. Le kill
+   * arrive avec le décalage d'origine de l'artefact (+3 000 ms ici, +3 678 ms mesurés
+   * sur le témoin 000d5950).
+   */
+  const doc = testReplayDoc({
+    frameIntervalMs: 100,
+    tracks: [
+      { slot: 2, team: -1, xuid: 'foe', points: [{ t: 0, x: 0, y: 0 }], startFrame: 0, endFrame: 20 },
+      { slot: 2, team: -1, xuid: 'foe', points: [{ t: 40, x: 0, y: 0 }], startFrame: 40, endFrame: 80 },
+    ],
+  })
+  const kills = [kill({ tMs: 5_000, xuid: 'me', victimXuid: 'foe', victimGamertag: 'Cobra01' })]
+
+  it("la ligne part au MÊME instant que le flash de fiche — la fin de vie, pas l'event brut", () => {
+    // À 2 100 ms de rejeu, la fin de vie (2 000 ms) est passée : la ligne est là, alors
+    // que l'horloge brute (5 000 ms) l'aurait fait attendre 3 s après le flash.
+    renderFeed(kills, 2_100, 0, [], doc)
+    expect(screen.getByText('JGtm')).toBeTruthy()
+  })
+
+  it('la mort sans kill fait sa ligne NEUTRE : le défunt, « mort », pas d\'arme ni de tueur', () => {
+    renderFeed(kills, 9_000, 0, [], doc)
+    expect(screen.getByText('mort')).toBeTruthy()
+    // Le défunt est nommé sur SA ligne — « Cobra01 » vit aussi en victime du kill.
+    expect(screen.getAllByText('Cobra01')).toHaveLength(2)
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('avant la fin de vie orpheline, la ligne neutre n\'existe pas encore', () => {
+    renderFeed(kills, 7_000, 0, [], doc)
+    expect(screen.queryByText('mort')).toBeNull()
   })
 })
 
