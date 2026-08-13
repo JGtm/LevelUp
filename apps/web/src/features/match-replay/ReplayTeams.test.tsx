@@ -149,26 +149,44 @@ describe('ReplayTeams — munitions et sélecteur', () => {
   }
 
   it('les cellules suivent l’ordre des armes : la dégainée d’abord, index d’emplacement gardé', () => {
-    renderTeams({
+    const view = renderTeams({
       ...TWO_WEAPONS,
       inventory: [
         { t: 0, slot: 512, d: 1, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] },
       ],
     })
-    const cells = screen.getAllByTitle(/Munitions de l'emplacement/)
-    // L'emplacement 1 (dégainé) est rendu en premier, et son index reste « 1 ».
-    expect(cells[0].textContent).toContain('1')
-    expect(cells[0].textContent).toContain('5/6')
-    expect(cells[0].title).toMatch(/DÉGAINÉ/)
-    expect(cells[1].textContent).toContain('10/20')
+    // Seule la cellule DÉGAINÉE porte une infobulle (item 1.2 : le rattachement méthodique
+    // emplacement↔arme est sorti de l'écran) : c'est elle qui s'identifie, et son index
+    // d'emplacement reste « 1 ».
+    const drawn = screen.getByTitle(/DÉGAINÉ/)
+    expect(drawn.textContent).toContain('1')
+    expect(drawn.textContent).toContain('5/6')
+    // L'ordre du DOM suit l'ordre des armes : la dégainée (5/6) précède l'autre (10/20).
+    const txt = view.container.textContent ?? ''
+    expect(txt.indexOf('5/6')).toBeGreaterThanOrEqual(0)
+    expect(txt.indexOf('5/6')).toBeLessThan(txt.indexOf('10/20'))
   })
 
-  it('sélecteur disant « rien de dégainé » : jeton « rangées » — une mesure, pas une lacune', () => {
+  it('sélecteur disant « rien de dégainé » : pictogramme « Armes rangées » — une mesure, muette', () => {
+    // Décision produit 4 : l'état mesuré D=2 se montre par un dessin discret et UNE
+    // infobulle simple, sans jargon de flux ni jeton de texte.
     renderTeams({
       ...TWO_WEAPONS,
       inventory: [{ t: 0, slot: 512, d: 2, am: [{ mag: 10 }, { mag: 5 }] }],
     })
-    expect(screen.getByText('rangées')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Armes rangées' })).toBeTruthy()
+    expect(screen.queryByText('rangées')).toBeNull()
+  })
+
+  it('emplacement jamais écrit : pictogramme « Munitions pleines », jamais « aucune »', () => {
+    // Décision produit 4 : non écrit = PLEIN (flux différentiel). Le pictogramme le dit
+    // sans exposer la mécanique du flux.
+    renderTeams({
+      ...TWO_WEAPONS,
+      inventory: [{ t: 0, slot: 512, d: 0, am: [{}, { mag: 5 }] }],
+    })
+    expect(screen.getByRole('img', { name: 'Munitions pleines' })).toBeTruthy()
+    expect(screen.queryByText('aucune')).toBeNull()
   })
 
   it('sélecteur NON LU : jeton « dégainée ? » — une lacune dite', () => {
@@ -177,6 +195,30 @@ describe('ReplayTeams — munitions et sélecteur', () => {
       inventory: [{ t: 0, slot: 512, am: [{ mag: 10 }, { mag: 5 }] }],
     })
     expect(screen.getByText('dégainée ?')).toBeTruthy()
+  })
+})
+
+describe('ReplayTeams — hauteur constante vivant/mort', () => {
+  it('la fiche d’un mort garde ses zones armes et inventaire : la place est réservée', () => {
+    // Item 1.1 du plan parité : le même document rend, pour la même fiche, le même NOMBRE
+    // de rangées vivant (frame 10) et mort (frame 140, aucune vie suivante). Les zones
+    // fantômes réservent la place ; l'égalité au pixel se vérifie au gate visuel user.
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [{ ...TRACK, points: [{ t: 0, x: 0, y: 0, sh: 1, hp: 1 }] }],
+      loadouts: [{ t: 0, slot: 512, w: ['0xAAAA'] }],
+      inventory: [{ t: 0, slot: 512, g: [1, 0] }],
+    })
+    const cardRows = (view: ReturnType<typeof render>) => {
+      const card = view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+      return card.childElementCount
+    }
+    const alive = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    const aliveRows = cardRows(alive)
+    alive.unmount()
+    const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
+    expect(dead.getByText('retour ?')).toBeTruthy()
+    expect(cardRows(dead)).toBe(aliveRows)
   })
 })
 

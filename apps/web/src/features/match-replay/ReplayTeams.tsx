@@ -177,33 +177,47 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
         </span>
         <KdaBadge board={player.board} />
       </div>
-      {state.alive ? (
-        <>
-          {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
-          <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" />
-          <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" />
-        </>
-      ) : (
-        <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
-      )}
-      <ReplayWeaponsRow
-        doc={doc}
-        state={state}
-        read={equipped}
-        frame={frame}
-        readingFull={readingFull}
-        locale={locale}
-      />
-      {state.life && (
-        <ReplayInventoryRow
-          doc={doc}
-          slot={state.life.slot}
-          equipped={equipped}
-          frame={frame}
-          readingFull={readingFull}
-          locale={locale}
-        />
-      )}
+      {/* HAUTEUR CONSTANTE vivant/mort : les trois zones ci-dessous RÉSERVENT leur place
+          dans les DEUX états. La mort remplace le contenu d'une zone, jamais la zone —
+          une fiche qui se compacte fait sauter toute la colonne à chaque mort. Les
+          hauteurs réservées sont celles du contenu vivant : deux barres empilées (14px),
+          une rangée d'icônes d'armes (16px + 2px de souligné), une rangée d'icônes de
+          HUD (16px). */}
+      <div className="flex h-3.5 flex-col justify-center gap-0.5">
+        {state.alive ? (
+          <>
+            {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
+            <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" />
+            <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" />
+          </>
+        ) : (
+          <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
+        )}
+      </div>
+      <div className="flex min-h-[18px] items-center">
+        {state.alive && (
+          <ReplayWeaponsRow
+            doc={doc}
+            state={state}
+            read={equipped}
+            frame={frame}
+            readingFull={readingFull}
+            locale={locale}
+          />
+        )}
+      </div>
+      <div className="flex min-h-4 items-center">
+        {state.alive && state.life && (
+          <ReplayInventoryRow
+            doc={doc}
+            slot={state.life.slot}
+            equipped={equipped}
+            frame={frame}
+            readingFull={readingFull}
+            locale={locale}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -299,8 +313,10 @@ function RespawnRow({
 }) {
   const t = REPLAY_TEXT[locale]
   if (state.respawnFrame < 0) {
+    // « retour ? » sans infobulle de méthode : la justification (fin de partie sans vie
+    // suivante) vit dans le commentaire de PlayerState.respawnFrame, pas à l'écran.
     return (
-      <span className="font-mono text-[9.5px] text-muted-foreground" title={t.respawnUnknownHint}>
+      <span className="font-mono text-[9.5px] text-muted-foreground">
         {t.respawnUnknown}
       </span>
     )
