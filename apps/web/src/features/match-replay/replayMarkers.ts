@@ -114,16 +114,11 @@ export interface MarkerStyle {
   ink: string
   frame: number
   timing: MarkerTiming
-  /** Tranche d'altitude sélectionnée (null = toutes) ; hors tranche = estompé. */
-  floor: number | null
   z: { min: number; max: number }
   /** Densité du canevas : tout ce qui s'adresse à l'œil est multiplié par ce facteur. */
   k: number
   showAim: boolean
-  showShield: boolean
 }
-
-const OFF_FLOOR_ALPHA = 0.12
 
 /**
  * drawTracksLayer dessine chaque vie à la frame courante : celles qui vivent, et celles qui
@@ -189,15 +184,15 @@ function drawLivingTrack(
 ): void {
   const head = positionAt(track.points, style.frame)
   if (!head) return
-  const alpha = trackAlpha(track, style)
   const c = project(head, view)
   const fl = floorIndex(track, style)
 
-  drawTrail(ctx, track, view, style, color, alpha)
-  if (style.showAim) drawAimCone(ctx, track, c, style, color, alpha)
-  drawSpawnRing(ctx, track, c, style, color, alpha)
-  drawMarker(ctx, c, style, color, alpha, fl)
-  if (style.showShield) drawShieldBar(ctx, track, c, style, color, alpha, fl)
+  drawTrail(ctx, track, view, style, color)
+  if (style.showAim) drawAimCone(ctx, track, c, style, color)
+  drawSpawnRing(ctx, track, c, style, color)
+  drawMarker(ctx, c, style, color, fl)
+  // Le bouclier est PERMANENT (décision user 2026-08-13, alignée POC) : pas de toggle.
+  drawShieldBar(ctx, track, c, style, color, fl)
 }
 
 function drawTrail(
@@ -206,7 +201,6 @@ function drawTrail(
   view: CanvasView,
   style: MarkerStyle,
   color: string,
-  alpha: number,
 ): void {
   const trail = trailAt(track.points, style.frame, style.timing.trail)
   if (trail.length < 2) return
@@ -217,7 +211,7 @@ function drawTrail(
     else ctx.lineTo(c.x, c.y)
   })
   ctx.strokeStyle = color
-  ctx.globalAlpha = TRAIL_ALPHA * alpha
+  ctx.globalAlpha = TRAIL_ALPHA
   ctx.lineWidth = TRAIL_WIDTH * style.k
   ctx.stroke()
   ctx.globalAlpha = 1
@@ -237,11 +231,10 @@ function drawAimCone(
   c: XY,
   style: MarkerStyle,
   color: string,
-  alpha: number,
 ): void {
   const read = heldReading(track.points, style.frame, (p) => p.h, style.timing.aimHold)
   if (!read) return
-  const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE) * alpha
+  const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE)
   // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
   const ang = (-read.value * Math.PI) / 180
   const R = AIM_LENGTH * style.k
@@ -290,7 +283,6 @@ function drawSpawnRing(
   c: XY,
   style: MarkerStyle,
   color: string,
-  alpha: number,
 ): void {
   const age = style.frame - trackWindow(track).start
   if (age < 0 || age > style.timing.spawn) return
@@ -298,7 +290,7 @@ function drawSpawnRing(
   ctx.beginPath()
   ctx.arc(c.x, c.y, (SPAWN_RADIUS + SPAWN_GROWTH * (1 - f)) * style.k, 0, Math.PI * 2)
   ctx.strokeStyle = color
-  ctx.globalAlpha = SPAWN_ALPHA * f * alpha
+  ctx.globalAlpha = SPAWN_ALPHA * f
   ctx.lineWidth = 2 * style.k
   ctx.stroke()
   ctx.globalAlpha = 1
@@ -317,12 +309,11 @@ function drawMarker(
   c: XY,
   style: MarkerStyle,
   color: string,
-  alpha: number,
   fl: number,
 ): void {
   const core = (CORE_RADIUS + CORE_PER_FLOOR * fl) * style.k
   ctx.fillStyle = color
-  ctx.globalAlpha = HALO_ALPHA * alpha
+  ctx.globalAlpha = HALO_ALPHA
   ctx.beginPath()
   ctx.arc(c.x, c.y, (HALO_RADIUS + HALO_PER_FLOOR * fl) * style.k, 0, Math.PI * 2)
   ctx.fill()
@@ -330,24 +321,23 @@ function drawMarker(
   ctx.strokeStyle = color
   ctx.lineWidth = 1.5 * style.k
   for (let r = 1; r <= fl; r++) {
-    ctx.globalAlpha = (RING_ALPHA - RING_ALPHA_DECAY * (r - 1)) * alpha
+    ctx.globalAlpha = RING_ALPHA - RING_ALPHA_DECAY * (r - 1)
     ctx.beginPath()
     ctx.arc(c.x, c.y, core + RING_GAP * style.k * r, 0, Math.PI * 2)
     ctx.stroke()
   }
 
-  ctx.globalAlpha = OUTLINE_ALPHA * alpha
+  ctx.globalAlpha = OUTLINE_ALPHA
   ctx.fillStyle = style.ink
   ctx.beginPath()
   ctx.arc(c.x, c.y, core + OUTLINE_PAD * style.k, 0, Math.PI * 2)
   ctx.fill()
 
-  ctx.globalAlpha = alpha
+  ctx.globalAlpha = 1
   ctx.fillStyle = color
   ctx.beginPath()
   ctx.arc(c.x, c.y, core, 0, Math.PI * 2)
   ctx.fill()
-  ctx.globalAlpha = 1
 }
 
 /**
@@ -365,12 +355,11 @@ function drawShieldBar(
   c: XY,
   style: MarkerStyle,
   color: string,
-  alpha: number,
   fl: number,
 ): void {
   const read = heldReading(track.points, style.frame, (p) => p.sh, style.timing.shieldHold)
   if (!read) return // aucune mesure dans la fenêtre : on n'invente rien
-  const fresh = freshness(read.age, style.timing.shieldHold, SHIELD_FADE) * alpha
+  const fresh = freshness(read.age, style.timing.shieldHold, SHIELD_FADE)
   const w = SHIELD_WIDTH * style.k
   const h = SHIELD_HEIGHT * style.k
   const x0 = c.x - w / 2
@@ -441,10 +430,4 @@ function project(p: XY, view: CanvasView): XY {
 function floorIndex(track: ReplayTrackReady, style: MarkerStyle): number {
   const z = altitudeAt(track.points, style.frame)
   return z === null ? 0 : floorOf(z, style.z.min, style.z.max)
-}
-
-/** trackAlpha estompe les entités hors de la tranche d'altitude sélectionnée. */
-function trackAlpha(track: ReplayTrackReady, style: MarkerStyle): number {
-  if (style.floor === null) return 1
-  return floorIndex(track, style) === style.floor ? 1 : OFF_FLOOR_ALPHA
 }

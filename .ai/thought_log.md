@@ -1,3 +1,28 @@
+## [2026-08-13] v7.5 rejeu 2D — retraits verdicts user 13/08 : couverture, filtre etages, toggle bouclier
+
+**Statut** : Complete (lot UI rejeu, items 2/3/4 du verdict — l'item 1 kill feed suit dans
+les commits suivants).
+
+**Decision technique principale** : trois retraits complets, regle 0 code mort. (2) Le
+bandeau « Ce qui est rattache » (ReplayCoverage.tsx + coverageLogic.ts + test + 11 cles
+i18n FR/EN + 3 alias de types ReplayCoverage/ReplayLayerCoverage/ReplayBridgeHealth) —
+info d'atelier, l'utilisateur final s'en fiche ; l'artefact serveur garde ses champs
+coverage, seul l'ecran les lisait. (3) Le filtre d'etage (boutons Etage Tous/Bas/Milieu/
+Haut, MarkerStyle.floor, trackAlpha/OFF_FLOOR_ALPHA, 5 cles i18n) ne fonctionnait pas —
+les ANNEAUX d'altitude du marqueur et le sol reconstruit (mapFloor/floorOf/FLOOR_BANDS)
+restent : ce ne sont pas des calques. (4) Le toggle Bouclier disparait, le rendu devient
+PERMANENT (aligne POC eb7b8af2 qui n'a aucun toggle) ; le parametre alpha des helpers de
+replayMarkers, qui n'existait que pour l'estompage hors-tranche, est retire de bout en bout.
+
+**Resultats observes** : typecheck OK, lint 0 erreur (19 warnings baseline pre-existants),
+vitest 408 fichiers / 3621 tests verts apres purge node_modules/.tmp.
+
+**Conclusion / prochaine etape** : item 1 (kill feed niveau POC) : lot Go d'abord —
+victime (killer_victim_pairs, cle tueur+instant) et identite medaille (raw_json.medal_name,
+mesure 44/44 nommees sur 000d5950 ; rattachement a un kill du meme acteur a moins de 500 ms
+= 42/44, 2 lignes seules) poses sur MatchHighlightEvent, puis portage front du fil
+permanent du POC.
+
 ## [2026-08-13] v7.5 cartes — fonds par map_id, phase C : la masse, 33 cartes Forge cuites, 0 echec
 
 **Statut** : Complete (plan PLAN_FONDS_PAR_MAP_ID.md INTEGRALEMENT execute ; gate visuel

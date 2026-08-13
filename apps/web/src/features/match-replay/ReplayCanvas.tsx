@@ -7,7 +7,7 @@
  * - frameIntervalMs : la vitesse « 1× » suit le TEMPS RÉEL du match (avant : 60 frames/s
  *   sur un axe qui n'était qu'un index de record → rejeu très court et figé) ;
  * - geometry : fond de carte (props Forge) dessiné SOUS les trajectoires ;
- * - bounds.minZ/maxZ + points[].z : indication d'étage (opacité du décor, filtre de tranche).
+ * - bounds.minZ/maxZ + points[].z : indication d'étage (opacité du décor, anneaux du marqueur).
  *
  * Couleurs = tokens sémantiques résolus en valeurs concrètes (getSeriesColors/resolveToken),
  * re-résolus au changement de thème/palette via useColorPaletteVersion (règle color-tokens).
@@ -34,7 +34,6 @@ import {
 } from './replayDraw'
 import {
   fitWidth,
-  FLOOR_BANDS,
   formatClock,
   frameToMs,
   framesPerSecond,
@@ -76,8 +75,6 @@ const TIMING_MS = {
   death: 1_500,
   spawn: 800,
 } as const
-// En dessous de ce dénivelé (mètres), la carte est considérée plate : pas de filtre d'étage.
-const MIN_FLOOR_SPAN = 1
 
 /**
  * Cadence de publication de l'image courante vers React, en millisecondes.
@@ -126,10 +123,8 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
 
   const [playing, setPlaying] = useState(true)
   const [multiplier, setMultiplier] = useState(1)
-  const [floor, setFloor] = useState<number | null>(null)
   const [width, setWidth] = useState(0)
   const [showAim, setShowAim] = useState(true)
-  const [showShield, setShowShield] = useState(true)
 
   const paletteVersion = useColorPaletteVersion()
   const colors = useMemo(() => {
@@ -200,7 +195,6 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     () => ({ min: doc.bounds.minZ ?? 0, max: doc.bounds.maxZ ?? 0 }),
     [doc.bounds.minZ, doc.bounds.maxZ],
   )
-  const hasFloors = zRange.max - zRange.min > MIN_FLOOR_SPAN
   const baseFps = useMemo(() => framesPerSecond(doc), [doc])
   const timing = useMemo<MarkerTiming>(
     () => ({
@@ -269,11 +263,9 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
       ink: floorStyle.edge,
       frame,
       timing,
-      floor: hasFloors ? floor : null,
       z: zRange,
       k: dpr,
       showAim,
-      showShield,
     })
 
     // Les événements passent APRÈS les trajectoires : ils se lisent sur elles.
@@ -305,7 +297,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
       }
     }
   }, [
-    doc, colors, geometryColor, bounds, zRange, hasFloors, floor, timing, totalLabel,
+    doc, colors, geometryColor, bounds, zRange, timing, totalLabel,
     t.aliveSuffix, renderWidth,
     shotColor,
     grenadeColor,
@@ -314,7 +306,6 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     colorBySlot,
     reducedMotion,
     showAim,
-    showShield,
     onFrameChange,
     mapImage,
   ])
@@ -343,7 +334,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     draw()
   }, [floorGrid, renderWidth, bounds, floorStyle, draw])
 
-  // Redraw hors animation (thème, resize, données, pause, filtre d'étage).
+  // Redraw hors animation (thème, resize, données, pause).
   useEffect(() => {
     draw()
   }, [draw])
@@ -380,8 +371,6 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     setPlaying(true)
   }
 
-  const floorLabels = [t.floorLow, t.floorMid, t.floorHigh].slice(0, FLOOR_BANDS)
-
   return (
     <div ref={containerRef} className="rounded-lg border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
@@ -403,42 +392,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
           >
             {t.layerAim}
           </Button>
-          <Button
-            variant={showShield ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setShowShield((v) => !v)}
-            className="h-7 px-2 text-xs"
-            title={t.layerShieldHint}
-            aria-pressed={showShield}
-          >
-            {t.layerShield}
-          </Button>
           <span aria-hidden className="mx-2 h-4 w-px bg-border" />
-          {hasFloors && (
-            <>
-              <span className="mr-1 text-xs text-muted-foreground">{t.floor}</span>
-              <Button
-                variant={floor === null ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setFloor(null)}
-                className="h-7 px-2 text-xs"
-              >
-                {t.floorAll}
-              </Button>
-              {floorLabels.map((label, i) => (
-                <Button
-                  key={label}
-                  variant={floor === i ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setFloor(i)}
-                  className="h-7 px-2 text-xs"
-                >
-                  {label}
-                </Button>
-              ))}
-              <span aria-hidden className="mx-2 h-4 w-px bg-border" />
-            </>
-          )}
           <span className="mr-1 text-xs text-muted-foreground">{t.speed}</span>
           {SPEED_MULTIPLIERS.map((m) => (
             <Button
