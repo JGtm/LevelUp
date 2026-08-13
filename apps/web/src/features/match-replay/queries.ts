@@ -9,7 +9,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
-import type { ReplayDocument, ReplayMapBackground } from '@/lib/api/types'
+import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -96,6 +96,28 @@ export function useReplayMapImage(
     retry: false,
   })
   return data ?? null
+}
+
+/**
+ * useReplayMapCallouts charge les ZONES NOMMÉES de la carte du match.
+ *
+ * 404 = la carte n'en a pas : cas NOMINAL des cartes Forge (leur canevas n'en porte
+ * aucune — par construction, pas par lacune). Pas de retry, pas d'erreur à l'écran : le
+ * calque zones ne s'affiche simplement pas.
+ */
+export function useReplayMapCallouts(playerSlug: string, matchId: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  return useQuery({
+    queryKey: queryKeys.matchReplayCallouts(playerSlug, titleSlug, matchId),
+    queryFn: () =>
+      api.get<ReplayMapCallouts>(
+        `/players/${playerSlug}/matches/${matchId}/replay/callouts`,
+      ),
+    // Donnée de RÉFÉRENCE versionnée : rien ne la périme pendant une session.
+    staleTime: Infinity,
+    enabled: !!playerSlug && !!matchId,
+    retry: false,
+  })
 }
 
 /** decodeImage rend l'élément une fois l'image RÉELLEMENT décodée (cf. useReplayMapImage). */

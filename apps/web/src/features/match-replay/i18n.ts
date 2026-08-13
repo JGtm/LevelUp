@@ -40,6 +40,10 @@ interface ReplayText {
   layers: string
   layerAim: string
   layerAimHint: string
+  /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
+  layerZones: string
+  layerZonesHint: string
+  zoneLabel: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
   teamUnknown: string
@@ -106,6 +110,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerAim: 'Visée',
     layerAimHint:
       "Direction du regard, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
+    layerZones: 'Zones',
+    layerZonesHint:
+      'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
+    zoneLabel: 'Zone de la carte',
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
     teamUnknown: 'Sans équipe',
@@ -167,6 +175,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerAim: 'Aim',
     layerAimHint:
       'Look direction, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
+    layerZones: 'Zones',
+    layerZonesHint:
+      'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
+    zoneLabel: 'Map zone',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
     teamUnknown: 'No team',
     unknownPlayer: 'Unknown player',

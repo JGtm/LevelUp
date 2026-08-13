@@ -23,6 +23,7 @@ import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
 import { readInk } from './canvasInk'
 import {
   buildGrenadeRestFx,
@@ -76,6 +77,9 @@ const CANVAS_HEIGHT = 480
 const CANVAS_PAD = 24
 const SPEED_MULTIPLIERS = [0.5, 1, 2, 4]
 
+/** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
+const EMPTY_ZONES: CalloutZoneReady[] = []
+
 /**
  * Réglages temporels du calque des joueurs, en TEMPS RÉEL — jamais en nombre de frames : la
  * cadence d'échantillonnage est choisie au build et peut changer sans que la lecture change.
@@ -128,13 +132,21 @@ interface ReplayCanvasProps {
    * c'est le cas nominal des autres cartes.
    */
   background?: ReplayMapBackgroundLayer | null
+  /**
+   * Zones nommées de la carte (callouts officiels), déjà normalisées par la route —
+   * la même liste sert les fiches (zone courante). Vide = la carte n'en a pas (cas
+   * Forge, par construction) : pas de calque, pas de bouton.
+   */
+  callouts?: CalloutZoneReady[]
 }
 
-export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, background }: ReplayCanvasProps) {
+export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, background, callouts }: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Fond de carte peint UNE fois puis recopié : il ne dépend ni de la frame ni de la lecture.
   const floorRef = useRef<HTMLCanvasElement | null>(null)
+  // Zones nommées : même règle que le sol — calque statique cuit hors écran, recopié.
+  const zonesRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
@@ -149,6 +161,9 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const [multiplier, setMultiplier] = useState(1)
   const [width, setWidth] = useState(0)
   const [showAim, setShowAim] = useState(true)
+  // Le calque zones s'allume par défaut, comme dans le POC : c'est le vocabulaire de la
+  // carte, pas un ornement.
+  const [showZones, setShowZones] = useState(true)
 
   const paletteVersion = useColorPaletteVersion()
   const colors = useMemo(() => {
@@ -204,6 +219,14 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     if (!background) return null
     return coversPlayedArea(background.calibration, doc.bounds) ? background : null
   }, [background, doc.bounds])
+
+  // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
+  const calloutZones = callouts ?? EMPTY_ZONES
+  const zoneColors = useMemo(() => {
+    void paletteVersion
+    const nBig = calloutZones.reduce((n, z) => n + (z.big ? 1 : 0), 0)
+    return nBig > 0 ? getSeriesColors(nBig, TRACK_TOKENS) : []
+  }, [calloutZones, paletteVersion])
 
   // La trame d'altitudes ne dépend QUE du document : construite une fois, pas à chaque resize.
   const floorGrid = useMemo(
@@ -294,6 +317,11 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       // 3,4 % du terrain — c'est peu, et c'est mieux qu'un fond vide.
       drawGeometryLayer(ctx, doc.geometry, view, { color: geometryColor, z: zRange })
     }
+    // Les ZONES NOMMÉES par-dessus le fond, sous tout ce qui bouge : c'est le vocabulaire
+    // du terrain, pas un événement. Calque statique recopié (cuit hors écran).
+    if (showZones && zonesRef.current) {
+      ctx.drawImage(zonesRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
+    }
     // Les projectiles passent SOUS les joueurs : ce sont des objets du terrain, pas le sujet.
     if (doc.projectiles?.length) {
       drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
@@ -375,6 +403,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     colorBySlot,
     reducedMotion,
     showAim,
+    showZones,
     onFrameChange,
     mapImage,
   ])
@@ -419,6 +448,31 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     floorRef.current = off
     draw()
   }, [floorGrid, renderWidth, bounds, floorStyle, draw])
+
+  // Les zones nommées se cuisent quand LEURS données, LEUR cadrage ou LEURS encres
+  // changent — jamais à l'image (28 polygones + libellés cernés repeints 60 fois par
+  // seconde coûteraient pour rien, même règle que le sol).
+  useEffect(() => {
+    if (calloutZones.length === 0 || renderWidth === 0) {
+      zonesRef.current = null
+      return
+    }
+    const dpr = window.devicePixelRatio || 1
+    const off = document.createElement('canvas')
+    off.width = Math.round(renderWidth * dpr)
+    off.height = Math.round(CANVAS_HEIGHT * dpr)
+    const octx = off.getContext('2d')
+    if (!octx) return
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawCalloutsLayer(
+      octx,
+      calloutZones,
+      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
+      { bigColors: zoneColors, fineInk: floorStyle.edge, locale },
+    )
+    zonesRef.current = off
+    draw()
+  }, [calloutZones, zoneColors, renderWidth, bounds, floorStyle.edge, locale, draw])
 
   // Redraw hors animation (thème, resize, données, pause).
   useEffect(() => {
@@ -478,6 +532,20 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
           >
             {t.layerAim}
           </Button>
+          {/* Le bouton n'existe que si la carte a des zones : un interrupteur qui ne
+              commande rien tromperait plus qu'il n'informe. */}
+          {calloutZones.length > 0 && (
+            <Button
+              variant={showZones ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setShowZones((v) => !v)}
+              className="h-7 px-2 text-xs"
+              title={t.layerZonesHint}
+              aria-pressed={showZones}
+            >
+              {t.layerZones}
+            </Button>
+          )}
           <span aria-hidden className="mx-2 h-4 w-px bg-border" />
           <span className="mr-1 text-xs text-muted-foreground">{t.speed}</span>
           {SPEED_MULTIPLIERS.map((m) => (

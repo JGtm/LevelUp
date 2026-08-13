@@ -11,10 +11,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 
+import { normalizeCallouts } from '@/features/match-replay/calloutsLayer'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n'
 import {
   useMatchReplay,
   useReplayMapBackground,
+  useReplayMapCallouts,
   useReplayMapImage,
 } from '@/features/match-replay/queries'
 import { collectMedalEvents } from '@/features/match-replay/killFeedLogic'
@@ -61,6 +63,10 @@ function ReplayPage() {
     () => (background && mapImage ? { calibration: background.calibration, image: mapImage } : null),
     [background, mapImage],
   )
+  // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
+  // la zone courante des fiches. 404 = la carte n'en a pas (Forge) — liste vide, rien.
+  const { data: calloutsEntry } = useReplayMapCallouts(playerSlug, matchId)
+  const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
 
   // LE KILL FEED VIENT DE LA BASE, PAS DU FILM. Le rejeu ne porte pas les kills ; la Match
   // View, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône). On
@@ -118,6 +124,7 @@ function ReplayPage() {
             t0Ms={t0Ms}
             onFrameChange={setFrame}
             background={mapBackground}
+            callouts={callouts}
           />
           {/* LE FIL SOUS LA CARTE, jamais dessus : même règle que les fiches. Il est
               PERMANENT (verdict user 2026-08-13) : tout ce qui est déjà survenu reste
@@ -138,6 +145,7 @@ function ReplayPage() {
             scoreboard={scoreboard}
             frame={frame}
             locale={locale}
+            callouts={callouts}
           />
         </>
       )}
