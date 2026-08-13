@@ -1369,6 +1369,26 @@ func main() {
 			"interval", scheduler.DefaultWorldLeaderboardInterval)
 	}
 
+	// Purge récurrente des artefacts de rejeu 2D hors fenêtre replay_retention_months
+	// (lot 6 v7.5). SUPPRIME DES ARTEFACTS, JAMAIS DES FILMS. La fenêtre est relue à
+	// chaque tick (0 = illimité → tick no-op rapporté en succès). Visible sur
+	// /admin/monitoring/crons (ReportCronRun).
+	if settingsStore != nil {
+		replayPurgeCron := scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int {
+			if s, _ := settingsStore.Load(); s != nil {
+				return s.ReplayRetentionMonths
+			}
+			return 0
+		}, 0)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			replayPurgeCron.Run(schedulerCtx)
+		}()
+		slog.InfoContext(ctx, "replay_purge_cron: scheduled",
+			"interval", scheduler.DefaultReplayPurgeInterval)
+	}
+
 	// MT-19 / axe E : notifier « titre prêt » injecté dans cfg (lu au runtime par le
 	// Runner live h5 via cfg.TitleReadyNotifier). Posé APRÈS NewRouter (reg dispo) et
 	// AVANT que les syncs scheduler/watcher tournent (runtime post-boot). Émet une

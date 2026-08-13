@@ -362,8 +362,18 @@ Gate 5 : gate d'ecoute user. NE PAS rouvrir l'extraction audio du jeu.
       fabrique unique NewReplayArtifactsHook. Gates : go test sync/scheduler/handlers/
       settings/filmcache verts, integration -p 1 -run ancre OK, tsc -b (purge) OK,
       eslint 0, vitest settings 69 verts, lint 0 issue sur les fichiers du lot.
-- [ ] 6.4 PURGE recurrente des artefacts hors fenetre (patron *_cron.go + ReportCronRun,
+- [x] 6.4 PURGE recurrente des artefacts hors fenetre (patron *_cron.go + ReportCronRun,
       visible sur /admin/monitoring/crons) — supprime des ARTEFACTS, JAMAIS des films.
+      FAIT (2026-08-14) : scheduler/replay_purge_cron.go (patron world_leaderboard :
+      RunOnce + ReportCronRun "replay_purge", tick quotidien, fenetre relue a CHAQUE
+      tick ; 0 = illimite -> no-op rapporte en SUCCES). L'age d'un artefact est celui de
+      SON MATCH (SQLStartTimeCanonical du registre, jamais le mtime — re-cuire ne
+      rajeunit pas) ; un artefact SANS ligne de registre n'est JAMAIS detruit
+      (indatable) ; seuls les {short8}.json du dossier d'artefacts sont touches —
+      film_chunks/film_manifests jamais. Lecture par OpenReadForQuery (mono-process
+      safe). PathResolver.ReplayArtifactsDir ajoute (ReplayArtifactPath derive).
+      Cable dans cmd/server (settingsStore -> retention). 2 tests (purge selective
+      vieux/recent/indatable sur vraie DuckDB temporaire ; dossier absent nominal).
 - [ ] 6.5 DATA RUN : rejouer backfill-killsource (couverture arme-du-kill 0-5 % sur les
       matchs recents — les effets de mort par famille et le kill feed en dependent).
 
