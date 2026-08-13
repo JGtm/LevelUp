@@ -374,12 +374,34 @@ Gate 5 : gate d'ecoute user. NE PAS rouvrir l'extraction audio du jeu.
       safe). PathResolver.ReplayArtifactsDir ajoute (ReplayArtifactPath derive).
       Cable dans cmd/server (settingsStore -> retention). 2 tests (purge selective
       vieux/recent/indatable sur vraie DuckDB temporaire ; dossier absent nominal).
-- [ ] 6.5 DATA RUN : rejouer backfill-killsource (couverture arme-du-kill 0-5 % sur les
+- [!] 6.5 DATA RUN : rejouer backfill-killsource (couverture arme-du-kill 0-5 % sur les
       matchs recents — les effets de mort par famille et le kill feed en dependent).
+      PILOTE TENTE ET BLOQUE (2026-08-14) : `backfill-killsource --limit 5 --films-only`
+      echoue au premier pas sur le lock DuckDB — la commande exige OpenReadWrite sur
+      shared (SERVEUR ARRETE, contrat documente en tete du fichier), et le serveur air
+      du user tient le fichier (server.exe~ PID 27448) avec INTERDICTION de session de
+      le redemarrer. L'erreur est propre et actionnable (« serveur arrete ? »). Ligne au
+      REGISTRE_REPORTS : orchestrateur, pilote --limit PUIS run complet dans une fenetre
+      serveur arrete (accord user).
 
 Gate 6 : tests Go (dont integration si sync/ touche) ; backfill pilote 25 films AVANT le
 run complet (taux d'echec ≤ 20 % hors carte-hors-catalogue) ; couverture finale publiee
 (artefacts / films / matchs par categorie) ; jobs visibles dans l'admin.
+PASSE (2026-08-14, hors 6.5 bloque ci-dessus) : tests Go verts par lot (sync 51 s,
+scheduler, handlers, settings, filmcache, replaybuild, replay, killsource, filmdec par
+-run ancre) + integration -p 1 -run ancre sur sync/ OK. PILOTE 25 FILMS (14 min 51 s,
+un a la fois, avant-plan) : 19 construits / 2 deja a jour / 6 carte hors catalogue
+(echec VOULU : Outlook, Live Fire, Disciple, Merchant's Square... — cartes communautaires
+sans bornes) / 0 hors registre / 0 ERREUR DE DECODAGE → taux d'echec hors
+carte-hors-catalogue = 0 % ≤ 20 %. COUVERTURE au moment de la cloture : 951 films en
+cache, 21 artefacts a jour (schema 3), 2 artefacts v2 a re-cuire, 928 restants — le run
+de masse (~8 h) revient a l'orchestrateur (registre ; de preference SERVEUR ARRETE pour
+la resolution EN metadata). Jobs admin : JobType replay_build + libelle FR/EN livres,
+route montee (tests 202/409/400/503) — verification VISUELLE /admin/monitoring/jobs
+remise au user. Verification visuelle user (gate) : 1) ouvrir un match du pilote (ex.
+e94163af CTF Bazaar ou 606d9844 Chasm) → l'onglet Rejeu 2D doit servir le nouvel
+artefact ; 2) Reglages → Analyse → carte « Rejeu 2D » : champ « Fenetre de conservation
+des rejeux » (0 par defaut) ; 3) /admin/monitoring/crons : ligne replay_purge en succes.
 
 ## Hors perimetre (registre)
 
@@ -418,6 +440,18 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   types projectiles confondus, pas les grenades liees. Toute logique future qui exigerait
   at-rest sur une grenade non-Spike s'eteindra en silence.
 
+- (lot 6, 2026-08-14) killsource serialisait son decodage par un verrou LOCAL de paquet
+  (decodeMu) : deux verrous locaux (killsource + rejeu) ne se protegent pas l'un de
+  l'autre — la serialisation est remontee au paquet qui POSSEDE les globaux
+  (filmdec.LockProcessDecode), et les deux consommateurs l'empruntent.
+- (lot 6, 2026-08-14) GET /settings sert un body NON TYPE (settingsJSONOutput{Body any})
+  : un champ ajoute a SettingsResponse ne change PAS openapi.yaml — le contrat web vit
+  dans lib/api/types.ts (manuel), a mettre a jour a la main. Verifie sur pieces
+  (openapi-gen re-joue, 0 diff).
+- (lot 6, 2026-08-14) un serveur qui tourne tient metadata.duckdb RW : la resolution EN
+  des noms de carte du backfill-replay DEGRADE alors sur map_name brut (les map_name
+  UUID tombent en « hors catalogue » au lieu de se resoudre). Le run de masse gagne a
+  tourner SERVEUR ARRETE — note au REGISTRE_REPORTS avec le run.
 - (lot 3, 2026-08-13) les sommets du polygone d'un volume levl sont RELATIFS a pos, et
   c'est mesure deux fois : pos+rel reproduit a 0,0000 m les polygones monde du dump de
   Ridgeline (16 zones dessinees), et l'AABB @0x94 du record ([minX maxX minY maxY minZ
