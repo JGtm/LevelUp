@@ -1,3 +1,25 @@
+## [2026-08-13] v7.5 cartes — fonds par map_id, phase B : pilotes Starboard et Dredge, chaine complete a blanc
+
+**Statut** : Complete (gate visuel utilisateur PENDANT — mapid_pilotes/).
+
+**Decision technique principale** : premiere application de la chaine map_id de bout en
+bout sur les deux seules cartes jouees SEULES sur leur canevas (zero risque de collision) :
+preuve level_id (Starboard -747133697 -> fo03_space, Dredge 2123870979 -> fo06_deepsea,
+unicite 1/1, sonde `TestPreuveLevelIDCartes` etendue), bornes par `mapquant-build` (table
+`mapModule` + preuve citee, catalogue 23 cartes), ancres par `mapobj-build --from-file` sur
+`<carte>_map.mvar` (JAMAIS le rack `<carte>_<canevas>.mvar` — verifie par l'emprise :
+24,9 x 21,2 m et 15,8 x 27,0 m, roles complets), declaration `CartesForge`, cuisson.
+
+**Resultats observes** : Starboard 3902/3964 objets (98,4 %), Dredge 5410/5479 (98,7 %),
+oracle des ancres 16/16 (8/8 chacune). Determinisme : deux cuissons independantes -> PNG
+identiques au bit (sha256 c3157d68/aa0d0a62). Endpoint local 200 sur un match reel de
+chaque (1af26997 Starboard, 113195e6 Dredge), fond servi par la cle map_id. Artefacts
+gate visuel : Desktop/gate_cartes_v75/mapid_pilotes/{starboard,dredge}.png.
+
+**Conclusion / prochaine etape** : phase C — la masse (33 cartes listees par nombre de
+matchs), meme chaine par carte, un echec n'arrete pas le lot, rapport
+RAPPORT_FONDS_MAP_ID_2026-08-13.md + artefacts mapid_masse/.
+
 ## [2026-08-13] v7.5 cartes — fonds par map_id, phase A : la cle d'un fond Forge devient le map_id
 
 **Statut** : Complete (phase A du plan PLAN_FONDS_PAR_MAP_ID.md ; phases B et C a suivre).

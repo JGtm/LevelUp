@@ -63,16 +63,25 @@ endpoint local `GET /api/v1/players/JGtm/matches/{id}/replay/background` : Vagab
 Seules cartes jouees SEULES sur leur canevas (fo03_space, fo06_deepsea) — zero risque de
 collision, chaine complete a blanc.
 
-- [ ] B1. Preuve level_id des 2 cartes (etendre la sonde) + entrees `map_quant_bounds.json`
-      (via `mapquant-build`, table `mapModule` completee avec preuve citee).
-- [ ] B2. Ancres : entrees `map_objectives.json` pour les 2 map_id (outil `mapobj-build`,
-      variante `.mvar` du depot ; piege du rack de canevas — la variante aux objectifs
-      dans <5 % de l'emprise est le RACK, pas la carte).
-- [ ] B3. Declarations `CartesForge` + cuisson ciblee + oracle des ancres (aucune perdue).
-- [ ] B4. Artefacts : `Desktop/gate_cartes_v75/mapid_pilotes/{starboard,dredge}.png`.
+- [x] B1. Preuve level_id des 2 cartes (etendre la sonde) + entrees `map_quant_bounds.json`
+      (via `mapquant-build`, table `mapModule` completee avec preuve citee). Mesure :
+      Starboard -747133697 (0xD377A4FF) -> fo03_space, Dredge 2123870979 (0x7E97B303) ->
+      fo06_deepsea, unicite 1/1 chacun ; catalogue regenere (23 cartes, diff +36 lignes =
+      les 2 entrees seules).
+- [x] B2. Ancres : entrees `map_objectives.json` pour les 2 map_id (`mapobj-build
+      --from-file` sur `<carte>_map.mvar` — PAS le rack). Starboard 7a9265af... : 3964
+      objets, 8 objectifs (emprise 24,9 x 21,2 m, z 80,6-85,5 — pas un rack) ; Dredge
+      e4bb06db... : 5479 objets, 8 objectifs (15,8 x 27,0 m, z 76,1-79,8). Roles complets
+      (CTF + oddball + 3 strongholds) sur les deux.
+- [x] B3. Declarations `CartesForge` + cuisson ciblee + oracle des ancres. Starboard
+      3902/3964 objets (98,4 %), Dredge 5410/5479 (98,7 %), ancres 16/16.
+- [x] B4. Artefacts : `Desktop/gate_cartes_v75/mapid_pilotes/{starboard,dredge}.png`
+      (146 Ko / 254 Ko). GATE VISUEL UTILISATEUR PENDANT.
 
-Gate B : oracle ancres 100 % sur les 2 cartes ; endpoint 200 sur un match reel de chaque ;
-determinisme (2 cuissons = PNG identiques). Commit.
+Gate B TENU (2026-08-13) : oracle ancres 8/8 + 8/8 ; endpoint 200 — Starboard match
+1af26997 (calage -58.5500/-31.5662, 1358x1318), Dredge match 113195e6 (-62.2092/64.5070,
+1259x1381) ; determinisme : 2 cuissons -> SHA256 identiques (c3157d68..., aa0d0a62...).
+Commit.
 
 ## Phase C — La masse, par nombre de matchs (fermee par liste)
 

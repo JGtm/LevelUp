@@ -71,6 +71,12 @@ const deployVariant = "ds"
 // AUCUN tag sbsp (mesuré le 2026-08-13 : `himap.ErrAucunTagSbsp` — même exception que la
 // cuisson des fonds, handoff cartes §1 ter) : la source déclarée des bornes n'existe pas
 // pour cette carte, et une entrée sans bornes vraies serait une coordonnée devinée.
+//
+// Les 2 pilotes du lot fonds par map_id (2026-08-13), même méthode level_id, unicité 1/1
+// chacun, rejoués en continu par `TestPreuveLevelIDCartes` :
+//
+//	Starboard -747133697 (0xD377A4FF) -> fo03_space   (Forge : sa toile porte les bornes)
+//	Dredge    2123870979 (0x7E97B303) -> fo06_deepsea (Forge : idem)
 var mapModule = map[string]string{
 	"Aquarius":      "ctf_aquarius",
 	"Bazaar":        "ctf_bazaar",
@@ -81,6 +87,7 @@ var mapModule = map[string]string{
 	"Cliffhanger":   "ridgeline",
 	"Corpo":         "fo11_blank",
 	"Deadlock":      "btb_drydock",
+	"Dredge":        "fo06_deepsea",
 	"Forbidden":     "ctf_forbidden",
 	"Forest":        "forest",
 	"Fragmentation": "btb_fragmentation",
@@ -91,6 +98,7 @@ var mapModule = map[string]string{
 	"Prism":         "sgh_crystalcaves",
 	"Recharge":      "sgh_blueprint",
 	"Scarr":         "btb_engine",
+	"Starboard":     "fo03_space",
 	"Streets":       "sgh_streets",
 	"Vagabond":      "fo08_wetland",
 }
