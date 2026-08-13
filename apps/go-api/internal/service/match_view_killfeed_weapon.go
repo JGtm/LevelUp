@@ -46,46 +46,84 @@ type killFeedKey struct {
 	timeMS int64
 }
 
-// decorateKillFeed pose l'équipe du tueur, l'arme du kill et l'ASSISTANCE sur les events
-// du feed.
+// killFeedInputs regroupe les sources de décoration du feed. Un struct, pas des
+// paramètres : la décoration a gagné la VICTIME (killer_victim_pairs) et la signature
+// dépassait la règle des 5 paramètres. Toute tranche peut être vide, l'adapter nil —
+// ce sont les états nominaux d'un titre sans décodeur de film.
+type killFeedInputs struct {
+	sources []domain.KillSourceRaw
+	assists []domain.KillAssistRaw
+	// victims : paires killer→victim (Q20) DÉJÀ corrigées T0 (kvPairsFeed) — la clé
+	// (tueur, instant) doit vivre dans le même référentiel que les events corrigés.
+	victims    []domain.KVPairRaw
+	scoreboard []domain.ScoreboardRaw
+	assetURL   games.TitleAssetURLAdapter
+}
+
+// victimRef : la victime d'une clé (tueur, instant), et le conflit éventuel — deux
+// victimes distinctes sur la même clé (double kill au même millisecond) n'en nomment
+// AUCUNE, exactement la règle de Q21b pour l'arme.
+type victimRef struct {
+	xuid     string
+	gamertag string
+	conflict bool
+}
+
+// victimsByKill indexe les paires killer→victim par clé de mort, avec la garde
+// d'unanimité.
+func victimsByKill(pairs []domain.KVPairRaw) map[killFeedKey]*victimRef {
+	out := make(map[killFeedKey]*victimRef, len(pairs))
+	for i := range pairs {
+		kv := &pairs[i]
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
+		key := killFeedKey{xuid: kv.KillerXUID, timeMS: kv.TimeMS}
+		if v, ok := out[key]; ok {
+			if v.xuid != kv.VictimXUID {
+				v.conflict = true
+			}
+			continue
+		}
+		out[key] = &victimRef{xuid: kv.VictimXUID, gamertag: kv.VictimGT}
+	}
+	return out
+}
+
+// decorateKillFeed pose l'équipe du tueur, l'arme du kill, l'ASSISTANCE et la VICTIME
+// sur les events du feed.
 //
 // Modifie la tranche EN PLACE (les events sont déjà dans l'onglet assemblé). Tolère
-// chaque entrée absente : scoreboard vide, sources vides, assists vides, adapter nil.
-// Aucun de ces cas n'est une erreur — ce sont les états nominaux d'un titre sans décodeur
-// de film. Un kill sans entrée d'assistance appariée garde AssistState vide : ON NE SAIT
-// PAS, et cet état-là ne s'écrit jamais « pas d'assistant ».
-func decorateKillFeed(
-	ctx context.Context,
-	events []domain.MatchHighlightEvent,
-	sources []domain.KillSourceRaw,
-	assists []domain.KillAssistRaw,
-	scoreboard []domain.ScoreboardRaw,
-	assetURL games.TitleAssetURLAdapter,
-) {
+// chaque entrée absente — aucun de ces cas n'est une erreur. Un kill sans entrée
+// d'assistance appariée garde AssistState vide : ON NE SAIT PAS, et cet état-là ne
+// s'écrit jamais « pas d'assistant ». Un kill sans paire appariée (ou à paire
+// contradictoire) reste sans victime nommée.
+func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, in killFeedInputs) {
 	if len(events) == 0 {
 		return
 	}
 	defer func() {
 		avec, total := killFeedWeaponCoverage(events)
 		slog.DebugContext(ctx, "match_view: couverture arme du kill feed",
-			"kills", total, "avec_icone", avec, "sources_appariables", len(sources),
-			"assists_appariables", len(assists))
+			"kills", total, "avec_icone", avec, "sources_appariables", len(in.sources),
+			"assists_appariables", len(in.assists), "victimes_appariables", len(in.victims))
 	}()
-	teamByXUID := make(map[string]int, len(scoreboard))
-	for _, r := range scoreboard {
+	teamByXUID := make(map[string]int, len(in.scoreboard))
+	for _, r := range in.scoreboard {
 		if r.TeamID != nil {
 			teamByXUID[r.XUID] = *r.TeamID
 		}
 	}
-	tagByKill := make(map[killFeedKey]uint32, len(sources))
-	for _, s := range sources {
+	tagByKill := make(map[killFeedKey]uint32, len(in.sources))
+	for _, s := range in.sources {
 		tagByKill[killFeedKey{xuid: s.XUID, timeMS: s.TimeMS}] = s.SourceTag
 	}
-	assistByKill := make(map[killFeedKey]*domain.KillAssistRaw, len(assists))
-	for i := range assists {
-		a := &assists[i]
+	assistByKill := make(map[killFeedKey]*domain.KillAssistRaw, len(in.assists))
+	for i := range in.assists {
+		a := &in.assists[i]
 		assistByKill[killFeedKey{xuid: a.XUID, timeMS: a.TimeMS}] = a
 	}
+	victimByKill := victimsByKill(in.victims)
 
 	for i := range events {
 		e := &events[i]
@@ -100,17 +138,20 @@ func decorateKillFeed(
 			continue
 		}
 		key := killFeedKey{xuid: *e.ActorXUID, timeMS: *e.EventTimeMS}
+		if v, ok := victimByKill[key]; ok && !v.conflict {
+			decorateVictim(e, v, teamByXUID)
+		}
 		if a, ok := assistByKill[key]; ok {
 			decorateAssist(e, a, teamByXUID)
 		}
-		if assetURL == nil {
+		if in.assetURL == nil {
 			continue
 		}
 		tag, ok := tagByKill[key]
 		if !ok {
 			continue
 		}
-		icon, ok := assetURL.KillSourceIcon(tag)
+		icon, ok := in.assetURL.KillSourceIcon(tag)
 		if !ok {
 			continue
 		}
@@ -118,6 +159,21 @@ func decorateKillFeed(
 		e.WeaponLabel = icon.Label
 		e.WeaponImageURL = icon.ImageURL
 		e.WeaponImageTinted = icon.Tinted
+	}
+}
+
+// decorateVictim pose la victime d'UN kill : son xuid, son gamertag (celui de la paire,
+// jamais complété par une supposition) et son équipe si le scoreboard la connaît.
+func decorateVictim(e *domain.MatchHighlightEvent, v *victimRef, teamByXUID map[string]int) {
+	x := v.xuid
+	e.VictimXUID = &x
+	if v.gamertag != "" {
+		gt := v.gamertag
+		e.VictimGamertag = &gt
+	}
+	if team, ok := teamByXUID[v.xuid]; ok {
+		t := team
+		e.VictimTeamID = &t
 	}
 }
 

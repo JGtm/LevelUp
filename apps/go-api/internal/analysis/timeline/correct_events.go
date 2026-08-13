@@ -92,6 +92,24 @@ func CorrectKillSourceRaws(rows []domain.KillSourceRaw, tl domain.MatchTimeline)
 	return out
 }
 
+// CorrectKVPairRaws — même rôle que CorrectKillSourceRaws pour les
+// domain.KVPairRaw (Q20 — la victime du kill feed), même raison d'être : la clé
+// d'appariement (tueur, time_ms) doit vivre dans le même référentiel que les
+// events corrigés. La correction s'applique à une COPIE réservée au feed : les
+// consommateurs historiques des paires (tug-of-war, KD timeline) restent sur
+// l'horloge brute, leur changer d'horloge changerait leurs bins.
+func CorrectKVPairRaws(rows []domain.KVPairRaw, tl domain.MatchTimeline) []domain.KVPairRaw {
+	if rows == nil {
+		return nil
+	}
+	out := make([]domain.KVPairRaw, len(rows))
+	copy(out, rows)
+	for i := range out {
+		out[i].TimeMS = tl.CorrectEventTime(out[i].TimeMS)
+	}
+	return out
+}
+
 // CorrectKillAssistRaws — même rôle que CorrectKillSourceRaws pour les
 // domain.KillAssistRaw (Q21c — l'assistant du kill feed), même raison d'être :
 // la clé d'appariement (xuid, time_ms) doit vivre dans le même référentiel que

@@ -14183,6 +14183,24 @@ components:
         killer_damage_pct:
           format: int64
           type: integer
+        medal_description:
+          type: string
+        medal_image_url:
+          type: string
+        medal_label:
+          type: string
+        medal_name:
+          type: string
+        medal_name_id:
+          format: int64
+          type: integer
+        victim_gamertag:
+          type: string
+        victim_team_id:
+          format: int64
+          type: integer
+        victim_xuid:
+          type: string
         weapon_image_tinted:
           type: boolean
         weapon_image_url:

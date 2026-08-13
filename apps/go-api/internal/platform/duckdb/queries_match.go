@@ -457,12 +457,18 @@ ORDER BY kvf.time_ms ASC`
 // + fallback xuid raw, donc gamertag retourné est toujours non vide quand le
 // xuid est présent en DB. Pour un xuid orphelin (jamais vu en match_participants
 // ni xuid_aliases), vg.gamertag est NULL → caller fallback sur xuid brut.
+//
+// medal_raw : le raw_json des SEULS events `medal` — il porte le nom anglais de la
+// médaille (medal_name), parsé côté Go (medalNameFromRawJSON), jamais par une
+// extension JSON DuckDB. La colonne raw_json est garantie par la chaîne de
+// migration (ApplyHighlightEventsAutoincrement la crée avec la table).
 const Q21MatchEventsWithXUID = `
 SELECT
     he.event_type,
     he.time_ms,
     he.xuid,
-    vg.gamertag AS gamertag
+    vg.gamertag AS gamertag,
+    CASE WHEN he.event_type = 'medal' THEN he.raw_json END AS medal_raw
 FROM highlight_events he
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id = ?

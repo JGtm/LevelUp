@@ -6828,6 +6828,16 @@ export interface components {
             event_type: string;
             /** Format: int64 */
             killer_damage_pct?: number;
+            medal_description?: string;
+            medal_image_url?: string;
+            medal_label?: string;
+            medal_name?: string;
+            /** Format: int64 */
+            medal_name_id?: number;
+            victim_gamertag?: string;
+            /** Format: int64 */
+            victim_team_id?: number;
+            victim_xuid?: string;
             weapon_image_tinted?: boolean;
             weapon_image_url?: string;
             weapon_key?: string;

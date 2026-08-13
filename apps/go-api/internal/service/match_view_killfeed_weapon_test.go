@@ -46,7 +46,9 @@ func TestDecorateKillFeed_PoseArmeEtEquipe(t *testing.T) {
 		0x22: {Label: "", ImageURL: "/static/x/killfeed-65.png", Tinted: true}, // melee : sans nom propre
 	}}
 
-	decorateKillFeed(context.Background(), events, sources, nil, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: sources, scoreboard: feedScoreboard(), assetURL: adapter,
+	})
 
 	if events[0].WeaponKey != "hinf_br75" || events[0].WeaponLabel != "BR75" {
 		t.Errorf("kill 0 : arme = %q/%q, attendu hinf_br75/BR75", events[0].WeaponKey, events[0].WeaponLabel)
@@ -81,7 +83,9 @@ func TestDecorateKillFeed_AucuneArmeSurUnEventNonKill(t *testing.T) {
 		0x11: {ImageURL: "/static/x/killfeed-00.png"},
 	}}
 
-	decorateKillFeed(context.Background(), events, sources, nil, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: sources, scoreboard: feedScoreboard(), assetURL: adapter,
+	})
 
 	if events[0].WeaponImageURL != "" {
 		t.Errorf("event medal : arme posée (%q) alors qu'il n'en a pas", events[0].WeaponImageURL)
@@ -96,7 +100,9 @@ func TestDecorateKillFeed_SourceSansIconeResteSansArme(t *testing.T) {
 	sources := []domain.KillSourceRaw{{XUID: "A", TimeMS: 1000, SourceTag: 0xdead}}
 	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{}} // le pont ne connaît rien
 
-	decorateKillFeed(context.Background(), events, sources, nil, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: sources, scoreboard: feedScoreboard(), assetURL: adapter,
+	})
 
 	for i, e := range events {
 		if e.WeaponImageURL != "" || e.WeaponKey != "" || e.WeaponLabel != "" {
@@ -118,7 +124,9 @@ func TestDecorateKillFeed_AssistTroisEtats(t *testing.T) {
 		{XUID: "B", TimeMS: 2000, KillerDamagePct: ptrIk(100)},
 	}
 
-	decorateKillFeed(context.Background(), events, nil, assists, feedScoreboard(), nil)
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		assists: assists, scoreboard: feedScoreboard(),
+	})
 
 	named := events[0]
 	if named.AssistState != domain.AssistStateNamed || named.AssistGamertag != "Bob" {
@@ -168,11 +176,11 @@ func TestDecorateKillFeed_DegradationsGracieuses(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			events := feedFixture()
-			if c.adapter == nil {
-				decorateKillFeed(context.Background(), events, c.sources, nil, c.scoreboard, nil)
-			} else {
-				decorateKillFeed(context.Background(), events, c.sources, nil, c.scoreboard, c.adapter)
+			in := killFeedInputs{sources: c.sources, scoreboard: c.scoreboard}
+			if c.adapter != nil {
+				in.assetURL = c.adapter
 			}
+			decorateKillFeed(context.Background(), events, in)
 			for i, e := range events {
 				if e.WeaponImageURL != "" {
 					t.Errorf("event %d : arme posée sans adapter/source valide", i)
@@ -181,7 +189,7 @@ func TestDecorateKillFeed_DegradationsGracieuses(t *testing.T) {
 		})
 	}
 	// Tranche vide : pas de panique, pas d'allocation.
-	decorateKillFeed(context.Background(), nil, nil, nil, nil, nil)
+	decorateKillFeed(context.Background(), nil, killFeedInputs{})
 }
 
 // TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed : VERROU du bug du
@@ -194,6 +202,7 @@ func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T)
 		events:      []domain.EventRaw{{EventType: analysis.EventTypeKill, TimeMS: ptrI64k(35306), XUID: ptrS("A")}},
 		killSources: []domain.KillSourceRaw{{XUID: "A", TimeMS: 35306, SourceTag: 0x11}},
 		killAssists: []domain.KillAssistRaw{{XUID: "A", TimeMS: 35306, KillerDamagePct: ptrIk(100)}},
+		kvPairs:     []domain.KVPairRaw{{KillerXUID: "A", VictimXUID: "B", VictimGT: "Bob", TimeMS: 35306}},
 	}
 	correctMatchViewEventsT0(&d, "m1", timeline.BuildForMatchMs(600000, 18465))
 
@@ -206,6 +215,12 @@ func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T)
 	if d.killAssists[0].TimeMS != 16841 {
 		t.Errorf("killAssist : TimeMS = %d, attendu 16841 (même référentiel que les events)", d.killAssists[0].TimeMS)
 	}
+	if len(d.kvPairsFeed) != 1 || d.kvPairsFeed[0].TimeMS != 16841 {
+		t.Fatalf("kvPairsFeed : %+v, attendu 1 paire à 16841", d.kvPairsFeed)
+	}
+	if d.kvPairs[0].TimeMS != 35306 {
+		t.Errorf("kvPairs (horloge brute, tug/KD) a été corrigé : %d", d.kvPairs[0].TimeMS)
+	}
 
 	// Preuve de bout en bout : après correction, la décoration apparie.
 	events := []domain.MatchHighlightEvent{
@@ -214,13 +229,97 @@ func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T)
 	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{
 		0x11: {WeaponKey: "hinf_br75", Label: "BR75", ImageURL: "/static/x/killfeed-00.png"},
 	}}
-	decorateKillFeed(context.Background(), events, d.killSources, d.killAssists, feedScoreboard(), adapter)
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: d.killSources, assists: d.killAssists, victims: d.kvPairsFeed,
+		scoreboard: feedScoreboard(), assetURL: adapter,
+	})
 	if events[0].WeaponKey != "hinf_br75" {
 		t.Errorf("l'arme ne s'apparie pas après correction T0 : %+v", events[0])
 	}
 	if events[0].AssistState != domain.AssistStateNone {
 		t.Errorf("l'assistance ne s'apparie pas après correction T0 : état %q", events[0].AssistState)
 	}
+	if events[0].VictimXUID == nil || *events[0].VictimXUID != "B" {
+		t.Errorf("la victime ne s'apparie pas après correction T0 : %v", events[0].VictimXUID)
+	}
+}
+
+// TestDecorateKillFeed_VictimeTroisEtats : la victime suit la même discipline que
+// l'arme. (A,1000) : paire unique → nommée, avec son équipe. (B,2000) : DEUX victimes
+// distinctes sur la même clé (double kill au même millisecond) → AUCUNE n'est nommée,
+// jamais une au hasard. (A,3000) : aucune paire → rien.
+func TestDecorateKillFeed_VictimeTroisEtats(t *testing.T) {
+	events := feedFixture()
+	victims := []domain.KVPairRaw{
+		{KillerXUID: "A", VictimXUID: "B", VictimGT: "Bob", TimeMS: 1000},
+		{KillerXUID: "B", VictimXUID: "A", VictimGT: "Ana", TimeMS: 2000},
+		{KillerXUID: "B", VictimXUID: "C", VictimGT: "Cid", TimeMS: 2000},
+	}
+
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		victims: victims, scoreboard: feedScoreboard(),
+	})
+
+	nomme := events[0]
+	if nomme.VictimXUID == nil || *nomme.VictimXUID != "B" ||
+		nomme.VictimGamertag == nil || *nomme.VictimGamertag != "Bob" {
+		t.Errorf("kill (A,1000) : victime %v/%v, attendu B/Bob", nomme.VictimXUID, nomme.VictimGamertag)
+	}
+	if nomme.VictimTeamID == nil || *nomme.VictimTeamID != 1 {
+		t.Errorf("kill (A,1000) : équipe de la victime %v, attendu 1 (scoreboard)", nomme.VictimTeamID)
+	}
+	if conflit := events[1]; conflit.VictimXUID != nil || conflit.VictimGamertag != nil {
+		t.Errorf("kill (B,2000) à double victime contradictoire : une victime a été nommée (%v)",
+			conflit.VictimXUID)
+	}
+	if absent := events[2]; absent.VictimXUID != nil || absent.VictimTeamID != nil {
+		t.Errorf("kill (A,3000) sans paire : victime posée (%v)", absent.VictimXUID)
+	}
+	if medal := events[3]; medal.VictimXUID != nil {
+		t.Errorf("la médaille porte une victime (%v)", medal.VictimXUID)
+	}
+}
+
+// TestDecorateMedalEvents_ResolutionEtRepli : la médaille résolue porte id, label,
+// description et visuel ; la médaille inconnue du référentiel garde son SEUL nom brut
+// (le front l'écrit en toutes lettres) ; un kill n'est jamais touché.
+func TestDecorateMedalEvents_ResolutionEtRepli(t *testing.T) {
+	events := []domain.MatchHighlightEvent{
+		{EventType: analysis.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
+		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A"),
+			MedalName: "Odin's Raven"},
+		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("B"),
+			MedalName: "Inconnue Totale"},
+		{EventType: analysis.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("B")},
+	}
+	repo := &mockMatchViewRepo{medalMetasByName: map[string]domain.MedalNameMeta{
+		"Odin's Raven": {MedalNameID: 1512363953, Label: "Corbeau d'Odin", Description: "Desc"},
+	}}
+	adapter := &stubAssetURL{medalImg: "/static/medals/1512363953.png"}
+
+	decorateMedalEvents(context.Background(), events, repo, adapter)
+
+	res := events[1]
+	if res.MedalNameID == nil || *res.MedalNameID != 1512363953 ||
+		res.MedalLabel != "Corbeau d'Odin" || res.MedalDescription != "Desc" {
+		t.Errorf("médaille résolue : %+v", res)
+	}
+	if res.MedalImageURL == "" {
+		t.Errorf("médaille résolue sans visuel (adapter présent)")
+	}
+	if inc := events[2]; inc.MedalNameID != nil || inc.MedalLabel != "" || inc.MedalImageURL != "" {
+		t.Errorf("médaille inconnue : décorée (%+v) alors que le référentiel ne la connaît pas", inc)
+	}
+	if anon := events[3]; anon.MedalNameID != nil || anon.MedalLabel != "" {
+		t.Errorf("médaille sans nom brut : décorée (%+v)", anon)
+	}
+	if k := events[0]; k.MedalLabel != "" || k.MedalImageURL != "" {
+		t.Errorf("un kill porte une identité de médaille (%+v)", k)
+	}
+
+	// Dégradations : repo nil, tranche vide — pas de panique.
+	decorateMedalEvents(context.Background(), events, nil, nil)
+	decorateMedalEvents(context.Background(), nil, repo, nil)
 }
 
 // TestKillFeedWeaponCoverage : le compteur ne regarde QUE les kills. Un feed de 4 events

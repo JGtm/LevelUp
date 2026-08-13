@@ -1,3 +1,33 @@
+## [2026-08-13] v7.5 rejeu 2D — kill feed niveau POC, lot Go : victime + identite medaille sur les highlight events
+
+**Statut** : Complete (lot Go/contrat ; le portage front du fil suit).
+
+**Decision technique principale** : deux decorations posees APRES l'assemblage de
+l'onglet Combat, meme modele que l'arme du kill. (1) VICTIME : jointure
+killer_victim_pairs -> events kill par la cle exacte (tueur, instant), sur une COPIE des
+paires corrigee T0 (kvPairsFeed via timeline.CorrectKVPairRaws) — kvPairs brut reste aux
+consommateurs tug/KD ; garde d'unanimite : deux victimes sur la meme cle n'en nomment
+AUCUNE. Mesure temoin 000d5950 : bijection 93/93, 0 cle dupliquee. (2) MEDAILLE : le nom
+anglais est extrait cote repo du raw_json des events medal (medalNameFromRawJSON, parse
+Go — pas d'extension JSON DuckDB), puis resolu par LookupMedalMetaByName
+(medal_definitions par name_en, chaine locale-aware medalLabelDescCoalesceSQL) + visuel
+via MedalImageURL de l'adapter. Repli = nom brut en toutes lettres, jamais un visuel
+voisin. decorateKillFeed passe a un struct killFeedInputs (regle <= 5 parametres).
+Nouveaux champs MatchHighlightEvent : victim_xuid/gamertag/team_id,
+medal_name/name_id/label/description/image_url — openapi-gen + generate-types +
+interface manuelle types.ts dans le meme commit.
+
+**Resultats observes** : go build OK ; tests service/duckdb/timeline/api verts (dont
+nouveaux : victime 3 etats, medaille resolution+repli, T0 recale kvPairsFeed en
+laissant kvPairs brut, extraction raw_json 8 cas, Q21 integration avec event medal) ;
+golangci-lint 0 issue ; typecheck web vert. raw_json garanti par la chaine de migration
+(ApplyHighlightEventsAutoincrement) ; fixtures de test alignees.
+
+**Conclusion / prochaine etape** : portage front du fil permanent du POC
+(ReplayKillFeed : tueur/arme/victime couleurs equipe, medailles image+tooltip
+rattachees au kill du meme acteur a moins de 500 ms — 42/44 sur le temoin, 2 lignes
+seules — fil scrollable qui garde tout).
+
 ## [2026-08-13] v7.5 rejeu 2D — retraits verdicts user 13/08 : couverture, filtre etages, toggle bouclier
 
 **Statut** : Complete (lot UI rejeu, items 2/3/4 du verdict — l'item 1 kill feed suit dans

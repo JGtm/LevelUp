@@ -295,6 +295,20 @@ type EventRaw struct {
 	// match_participants ni xuid_aliases) ; dans ce cas le service affichera
 	// le XUID brut.
 	Gamertag *string
+	// MedalName : nom ANGLAIS de la médaille (events `medal` uniquement), extrait
+	// côté repo du raw_json de highlight_events (champ medal_name). Nil pour les
+	// autres event_types, et pour un event medal dont le raw_json est absent ou
+	// illisible — le service dégrade alors en event medal anonyme.
+	MedalName *string
+}
+
+// MedalNameMeta : l'identité d'une médaille résolue depuis son nom ANGLAIS
+// (medal_definitions.name_en, metadata.duckdb). Label/Description suivent la
+// locale de requête — même chaîne BCP-47 que lookupMedalMeta (GH-5b).
+type MedalNameMeta struct {
+	MedalNameID int64
+	Label       string
+	Description string
 }
 
 // KillSourceRaw : la SOURCE DE DÉGÂT d'une mort (Q21b), telle que le décodeur de film

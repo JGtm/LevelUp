@@ -7,6 +7,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -15,6 +16,27 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
+
+// medalNameFromRawJSON extrait le nom anglais de la médaille du raw_json d'un
+// event `medal` de highlight_events ({"medal_name": "Odin's Raven", ...}).
+// Nil si le JSON est vide, illisible ou sans champ medal_name non vide — l'event
+// reste servi, simplement anonyme (le service ne résout alors rien).
+func medalNameFromRawJSON(raw string) *string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var payload struct {
+		MedalName string `json:"medal_name"`
+	}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return nil
+	}
+	name := strings.TrimSpace(payload.MedalName)
+	if name == "" {
+		return nil
+	}
+	return &name
+}
 
 // GetMatchEvents retourne les events highlight du match (Q21).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
@@ -37,8 +59,12 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	var results []domain.EventRaw
 	for rows.Next() {
 		var e domain.EventRaw
-		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &e.Gamertag); err != nil {
+		var medalRaw sql.NullString
+		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &e.Gamertag, &medalRaw); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
+		}
+		if medalRaw.Valid {
+			e.MedalName = medalNameFromRawJSON(medalRaw.String)
 		}
 		results = append(results, e)
 	}

@@ -50,6 +50,10 @@ type matchViewData struct {
 	// « pas d'assistant ».
 	killAssists []domain.KillAssistRaw
 	kvPairs     []domain.KVPairRaw
+	// kvPairsFeed : COPIE des paires killer→victim corrigée T0, réservée à la
+	// décoration du kill feed (clé exacte tueur+instant contre les events corrigés).
+	// kvPairs reste sur l'horloge brute : tug-of-war et KD timeline en dépendent.
+	kvPairsFeed []domain.KVPairRaw
 	skillRank   *domain.SkillRankRaw
 	// sharedCSRs : CSR de tous les participants depuis shared.match_csrs_latest.
 	// Nil si match non-ranked ou table absente. Utilisé comme fallback pour les
@@ -355,7 +359,16 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
 	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull
 	// à sa responsabilité et rend la décoration testable seule.
-	decorateKillFeed(ctx, combat.HighlightEvents, d.killSources, d.killAssists, d.scoreboard, s.assetURL)
+	decorateKillFeed(ctx, combat.HighlightEvents, killFeedInputs{
+		sources:    d.killSources,
+		assists:    d.killAssists,
+		victims:    d.kvPairsFeed,
+		scoreboard: d.scoreboard,
+		assetURL:   s.assetURL,
+	})
+	// L'identité des médailles se pose par le même modèle : une décoration du feed,
+	// résolue contre le référentiel du titre (best-effort).
+	decorateMedalEvents(ctx, combat.HighlightEvents, s.repo, s.assetURL)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).
@@ -498,6 +511,9 @@ func correctMatchViewEventsT0(d *matchViewData, matchID string, tl domain.MatchT
 	// son assistance (décalage constant de T0 ms entre les clés — 2026-08-12).
 	d.killSources = timeline.CorrectKillSourceRaws(d.killSources, tl)
 	d.killAssists = timeline.CorrectKillAssistRaws(d.killAssists, tl)
+	// La VICTIME s'apparie par la même clé exacte : copie corrigée, kvPairs intact
+	// (tug-of-war et KD timeline restent sur l'horloge brute).
+	d.kvPairsFeed = timeline.CorrectKVPairRaws(d.kvPairs, tl)
 }
 
 // loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
