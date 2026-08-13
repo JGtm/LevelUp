@@ -28,7 +28,6 @@ interface ReplayText {
   killFeedTitle: string
   killFeedEmpty: string
   killFeedUnknownWeapon: string
-  killFeedTotal: (n: number) => string
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
@@ -97,7 +96,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedTitle: 'Éliminations',
     killFeedEmpty: 'Rien à cet instant du match.',
     killFeedUnknownWeapon: 'Arme non identifiée',
-    killFeedTotal: (n) => `${n} sur le match`,
     killFeedNoAssistHint:
       'Mort sans assistant — MESURÉ : la mort porte son événement dans le film, et il ne déclare personne.',
     killFeedAssistHint:
@@ -174,7 +172,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedTitle: 'Kills',
     killFeedEmpty: 'Nothing at this point of the match.',
     killFeedUnknownWeapon: 'Unidentified weapon',
-    killFeedTotal: (n) => `${n} in the match`,
     killFeedNoAssistHint:
       'Death without an assist — MEASURED: the death carries its event in the film, and it names no one.',
     killFeedAssistHint:

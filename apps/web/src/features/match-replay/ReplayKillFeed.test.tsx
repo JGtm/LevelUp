@@ -1,13 +1,16 @@
 /**
- * Tests — ReplayKillFeed (kill feed de la page de rejeu).
+ * Tests — ReplayKillFeed (fil des éliminations de la page de rejeu).
  *
  * Ce qu'ils protègent, dans l'ordre :
- *  1. LA SYNCHRONISATION. Un kill ne s'affiche pas avant son instant dans le rejeu, et il
- *     sort du feed quand il a dépassé la fenêtre. C'est toute la raison d'être du composant.
- *  2. LE RECALAGE DES DEUX HORLOGES. Les events arrivent sur l'horloge du gameplay, le rejeu
- *     tourne sur celle du film : sans `t0_ms`, le feed a ~18 s de retard.
- *  3. AUCUNE ICÔNE FAUSSE : une arme non résolue rend un repère neutre, jamais l'icône d'un
- *     autre kill (même règle que le kill feed de la Match View).
+ *  1. LA SYNCHRONISATION. Un kill ne s'affiche pas avant son instant dans le rejeu.
+ *  2. LA PERMANENCE (verdict user 2026-08-13) : les lignes passées RESTENT — le fil se
+ *     lit en entier, il ne s'évapore plus après 8 s.
+ *  3. LE RECALAGE DES DEUX HORLOGES. Les events arrivent sur l'horloge du gameplay, le
+ *     rejeu tourne sur celle du film : sans `t0_ms`, le feed a ~18 s de retard.
+ *  4. TUEUR / ARME / VICTIME : la victime est nommée et colorée par SON équipe ; une
+ *     arme non résolue rend un repère neutre, jamais l'icône d'un autre kill.
+ *  5. LES MÉDAILLES : badge en image + libellé/description en infobulle, rattachées au
+ *     kill ; une médaille sans visuel garde son texte.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -15,6 +18,7 @@ import { render, screen } from '@testing-library/react'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import type { MedalEvent } from './killFeedLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
 
 vi.mock('@/lib/accessibility', () => ({
@@ -38,6 +42,23 @@ function kill(over: Partial<KillEvent>): KillEvent {
     assistTeamID: null,
     killerDamagePct: null,
     assistDamagePct: null,
+    victimXuid: '',
+    victimGamertag: '',
+    victimTeamID: null,
+    ...over,
+  }
+}
+
+function medal(over: Partial<MedalEvent>): MedalEvent {
+  return {
+    tMs: 1_000,
+    xuid: 'me',
+    gamertag: 'JGtm',
+    teamID: 0,
+    name: 'No Scope',
+    label: 'Sans lunette',
+    description: 'Tuer au sniper sans lunette.',
+    imageUrl: '/static/medals/1.png',
     ...over,
   }
 }
@@ -53,12 +74,12 @@ function renderFeed(
   kills: KillEvent[],
   nowMs: number,
   t0Ms = T0,
-  victims?: { killer_xuid: string; victim_gamertag: string; time_ms?: number | null }[],
+  medals: MedalEvent[] = [],
 ) {
   return render(
     <ReplayKillFeed
       kills={kills}
-      victims={victims}
+      medals={medals}
       t0Ms={t0Ms}
       nowMs={nowMs}
       scoreboard={SCOREBOARD}
@@ -68,7 +89,7 @@ function renderFeed(
   )
 }
 
-describe('ReplayKillFeed — synchronisation', () => {
+describe('ReplayKillFeed — synchronisation et permanence', () => {
   const kills = [kill({ tMs: 16_841, xuid: 'me' }), kill({ tMs: 40_000, xuid: 'foe' })]
 
   it("n'affiche pas un kill qui n'a pas encore eu lieu", () => {
@@ -85,9 +106,15 @@ describe('ReplayKillFeed — synchronisation', () => {
     expect(screen.queryByText('Cobra01')).toBeNull()
   })
 
-  it('le laisse sortir du feed passé la fenêtre', () => {
-    renderFeed(kills, 45_000)
-    expect(screen.queryByText('JGtm')).toBeNull()
+  it('LE GARDE ensuite — le fil est permanent, aucune fenêtre (verdict user 2026-08-13)', () => {
+    renderFeed(kills, 120_000)
+    expect(screen.getByText('JGtm')).toBeTruthy()
+    expect(screen.getByText('Cobra01')).toBeTruthy()
+  })
+
+  it('dit le compte : lignes affichées / total du match', () => {
+    renderFeed(kills, 35_400)
+    expect(screen.getByText('1 / 2')).toBeTruthy()
   })
 
   it('SANS RECALAGE, le même kill serait affiché ~18 s trop tôt — le témoin le montre', () => {
@@ -128,19 +155,48 @@ describe('ReplayKillFeed — arme du kill', () => {
   })
 })
 
-describe('ReplayKillFeed — la victime, jointe par (tueur, instant)', () => {
-  it('nomme la victime quand la paire existe', () => {
-    renderFeed([kill({ tMs: 1_000 })], 20_000, T0, [
-      { killer_xuid: 'me', victim_gamertag: 'Cobra01', time_ms: 1_000 },
-    ])
-    expect(screen.getByText('JGtm')).toBeTruthy()
-    expect(screen.getByText('Cobra01')).toBeTruthy()
+describe('ReplayKillFeed — la victime, servie par le backend', () => {
+  it('nomme la victime et la colore par SON équipe, pas celle du tueur', () => {
+    renderFeed(
+      [kill({ tMs: 1_000, teamID: 0, victimXuid: 'foe', victimGamertag: 'Cobra01', victimTeamID: 1 })],
+      20_000,
+    )
+    const tueur = screen.getByText('JGtm')
+    const victime = screen.getByText('Cobra01')
+    expect(victime).toBeTruthy()
+    expect(victime.getAttribute('style')).not.toBe(tueur.getAttribute('style'))
   })
 
   it('sans paire, la ligne vit sans victime — rien n’est inventé', () => {
-    renderFeed([kill({ tMs: 1_000 })], 20_000, T0, [])
+    renderFeed([kill({ tMs: 1_000 })], 20_000)
     expect(screen.getByText('JGtm')).toBeTruthy()
-    expect(screen.queryByText('→')).toBeNull()
+    expect(screen.queryByText('Cobra01')).toBeNull()
+  })
+})
+
+describe('ReplayKillFeed — les médailles du fil', () => {
+  it('badge en IMAGE, libellé + description en infobulle, rattaché au kill (±500 ms)', () => {
+    renderFeed([kill({ tMs: 1_000, xuid: 'me' })], 20_000, T0, [
+      medal({ tMs: 1_200, xuid: 'me' }),
+    ])
+    const badge = screen.getByRole('img', { name: 'Sans lunette' })
+    expect(badge.getAttribute('title')).toBe('Sans lunette — Tuer au sniper sans lunette.')
+    // Rattachée : une seule ligne, pas de ligne médaille séparée.
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+  })
+
+  it('médaille SEULE (aucun kill proche du même acteur) : sa propre ligne, au nom du décoré', () => {
+    renderFeed([], 60_000, T0, [medal({ tMs: 10_000, xuid: 'me', gamertag: 'JGtm' })])
+    expect(screen.getByText('JGtm')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Sans lunette' })).toBeTruthy()
+  })
+
+  it('médaille sans visuel : son TEXTE — jamais le badge d’une autre', () => {
+    renderFeed([], 60_000, T0, [
+      medal({ tMs: 10_000, imageUrl: '', label: '', description: '' }),
+    ])
+    expect(screen.queryAllByRole('img')).toEqual([])
+    expect(screen.getByText('No Scope')).toBeTruthy()
   })
 })
 

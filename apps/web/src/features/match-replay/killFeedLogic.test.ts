@@ -1,15 +1,24 @@
 /**
- * killFeedLogic.test.ts — le recalage des deux horloges, et la fenêtre du feed.
+ * killFeedLogic.test.ts — le recalage des deux horloges, le fil PERMANENT, et le
+ * rattachement des médailles.
  *
  * Les chiffres viennent du match 000d5950 : T0 = 18 465 ms (real_start_time −
  * start_time_utc), premier kill à 35 306 ms sur l'horloge BRUTE, donc 16 841 ms sur
- * l'horloge gameplay que sert la Match View.
+ * l'horloge gameplay que sert la Match View. Rattachement médaille→kill mesuré sur ce
+ * même match : 42/44 à ≤ 500 ms, 2 médailles seules.
  */
 import { describe, expect, it } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
+import type { MatchHighlightEvent } from '@/lib/api/types'
 
-import { attachVictims, freshnessOf, killsAt, toReplayKills } from './killFeedLogic'
+import {
+  buildFeedEntries,
+  collectMedalEvents,
+  feedAt,
+  toReplayKills,
+  type MedalEvent,
+} from './killFeedLogic'
 
 const T0 = 18_465
 
@@ -27,11 +36,27 @@ function kill(tMs: number, xuid = 'x1'): KillEvent {
     assistTeamID: null,
     killerDamagePct: null,
     assistDamagePct: null,
+    victimXuid: '',
+    victimGamertag: '',
+    victimTeamID: null,
+  }
+}
+
+function medal(tMs: number, xuid = 'x1', name = 'No Scope'): MedalEvent {
+  return {
+    tMs,
+    xuid,
+    gamertag: 'GT',
+    teamID: 0,
+    name,
+    label: 'Sans lunette',
+    description: 'Desc',
+    imageUrl: '/static/medals/1.png',
   }
 }
 
 describe('toReplayKills', () => {
-  it("remet le countdown que la Match View avait retranché", () => {
+  it('remet le countdown que la Match View avait retranché', () => {
     // 16 841 ms sur l'horloge gameplay = 35 306 ms sur celle du film, la seule que le
     // rejeu connaisse.
     const [k] = toReplayKills([kill(16_841)], T0)
@@ -45,107 +70,112 @@ describe('toReplayKills', () => {
     expect(toReplayKills([kill(16_841)], Number.NaN)[0].replayMs).toBe(16_841)
   })
 
-  it('trie chronologiquement — killsAt en dépend', () => {
+  it('trie chronologiquement — feedAt en dépend', () => {
     const out = toReplayKills([kill(30_000), kill(10_000), kill(20_000)], T0)
     expect(out.map((k) => k.tMs)).toEqual([10_000, 20_000, 30_000])
   })
 })
 
-describe('killsAt', () => {
-  const kills = toReplayKills([kill(10_000), kill(12_000), kill(14_000), kill(60_000)], 0)
+describe('collectMedalEvents', () => {
+  const ev = (over: Partial<MatchHighlightEvent>): MatchHighlightEvent => ({
+    event_type: 'medal',
+    event_time_ms: 1_000,
+    actor_xuid: 'x1',
+    target_xuid: null,
+    weapon_id: null,
+    medal_name: 'No Scope',
+    ...over,
+  })
+
+  it("lit les events medal avec leur identité résolue", () => {
+    const [m] = collectMedalEvents([
+      ev({
+        actor_gamertag: 'JGtm',
+        actor_team_id: 1,
+        medal_label: 'Sans lunette',
+        medal_description: 'Desc',
+        medal_image_url: '/static/medals/1.png',
+      }),
+    ])
+    expect(m).toMatchObject({
+      tMs: 1_000,
+      xuid: 'x1',
+      gamertag: 'JGtm',
+      teamID: 1,
+      name: 'No Scope',
+      label: 'Sans lunette',
+      imageUrl: '/static/medals/1.png',
+    })
+  })
+
+  it('écarte ce qui ne se montre pas : mauvais type, sans acteur, sans instant, sans nom', () => {
+    expect(
+      collectMedalEvents([
+        ev({ event_type: 'kill' }),
+        ev({ actor_xuid: null }),
+        ev({ event_time_ms: null }),
+        ev({ medal_name: null }),
+      ]),
+    ).toEqual([])
+  })
+})
+
+describe('buildFeedEntries — rattachement des médailles', () => {
+  it('rattache une médaille au kill du MÊME acteur à ≤ 500 ms', () => {
+    const entries = buildFeedEntries([kill(10_000)], [medal(10_240)], 0)
+    expect(entries).toHaveLength(1)
+    expect(entries[0].kill?.medals.map((m) => m.name)).toEqual(['No Scope'])
+  })
+
+  it("une médaille d'un AUTRE acteur au même instant fait sa propre ligne", () => {
+    const entries = buildFeedEntries([kill(10_000, 'x1')], [medal(10_000, 'x2')], 0)
+    expect(entries).toHaveLength(2)
+    expect(entries.find((e) => e.medal)?.medal?.xuid).toBe('x2')
+  })
+
+  it('au-delà de la tolérance, la médaille reste seule — jamais forcée', () => {
+    const entries = buildFeedEntries([kill(10_000)], [medal(11_000)], 0)
+    expect(entries).toHaveLength(2)
+    expect(entries[0].kill?.medals).toEqual([])
+    expect(entries[1].medal?.name).toBe('No Scope')
+  })
+
+  it('choisit le kill le PLUS PROCHE quand deux se disputent la médaille', () => {
+    const entries = buildFeedEntries([kill(10_000), kill(10_400)], [medal(10_390)], 0)
+    const porteur = entries.find((e) => (e.kill?.medals.length ?? 0) > 0)
+    expect(porteur?.kill?.tMs).toBe(10_400)
+  })
+
+  it('la médaille seule est recalée sur la même horloge que les kills', () => {
+    const entries = buildFeedEntries([], [medal(16_841)], T0)
+    expect(entries[0].replayMs).toBe(35_306)
+  })
+})
+
+describe('feedAt — le fil est PERMANENT', () => {
+  const entries = buildFeedEntries(
+    [kill(10_000), kill(12_000), kill(14_000), kill(60_000)],
+    [],
+    0,
+  )
 
   it("n'affiche RIEN de ce qui n'est pas encore arrivé", () => {
-    // LE POINT DE F2 : à 11 s de rejeu, le kill de 12 s ne doit pas être à l'écran.
-    const vus = killsAt(kills, 11_000, 8_000, 6)
-    expect(vus.map((k) => k.replayMs)).toEqual([10_000])
+    const vus = feedAt(entries, 11_000)
+    expect(vus.map((e) => e.replayMs)).toEqual([10_000])
   })
 
-  it('rend les kills de la fenêtre, du plus récent au plus ancien', () => {
-    expect(killsAt(kills, 15_000, 8_000, 6).map((k) => k.replayMs)).toEqual([
-      14_000, 12_000, 10_000,
-    ])
+  it('GARDE TOUT ce qui est survenu, le plus récent en tête — aucune fenêtre', () => {
+    // Le point du verdict user 2026-08-13 : à 59 s de rejeu, les kills de 10/12/14 s
+    // sont TOUJOURS là. L'ancien feed les faisait disparaître après 8 s.
+    const vus = feedAt(entries, 59_000)
+    expect(vus.map((e) => e.replayMs)).toEqual([14_000, 12_000, 10_000])
   })
 
-  it('laisse sortir un kill quand il a dépassé la fenêtre', () => {
-    // À 19 s, le kill de 10 s a 9 s d'âge : il est hors fenêtre de 8 s.
-    expect(killsAt(kills, 19_000, 8_000, 6).map((k) => k.replayMs)).toEqual([14_000, 12_000])
-    // Et à 30 s, plus rien de cette rafale.
-    expect(killsAt(kills, 30_000, 8_000, 6)).toEqual([])
+  it('fil complet en fin de match', () => {
+    expect(feedAt(entries, 120_000)).toHaveLength(4)
   })
 
-  it('borne le nombre de lignes sans changer leur ordre', () => {
-    expect(killsAt(kills, 15_000, 8_000, 2).map((k) => k.replayMs)).toEqual([14_000, 12_000])
-  })
-
-  it('rend une liste vide avant le premier kill', () => {
-    expect(killsAt(kills, 0, 8_000, 6)).toEqual([])
-  })
-})
-
-describe('freshnessOf', () => {
-  const [k] = toReplayKills([kill(10_000)], 0)
-
-  it('est franc à l’instant du kill et atténué à la sortie de fenêtre', () => {
-    expect(freshnessOf(k, 10_000, 8_000)).toBeCloseTo(1, 5)
-    expect(freshnessOf(k, 18_000, 8_000)).toBeCloseTo(0.4, 5)
-  })
-
-  it('ne descend jamais sous le plancher, même très en retard', () => {
-    expect(freshnessOf(k, 100_000, 8_000)).toBeCloseTo(0.4, 5)
-  })
-})
-
-describe('attachVictims — la victime jointe par (tueur, instant)', () => {
-  const base = {
-    ally: true,
-    teamID: 0,
-    weaponLabel: '',
-    weaponImageUrl: '',
-    weaponTinted: false,
-    assistState: '' as const,
-    assistGamertag: '',
-    assistTeamID: null,
-    killerDamagePct: null,
-    assistDamagePct: null,
-  }
-
-  it('joint la victime sur la clé exacte, et laisse vides les kills sans paire', () => {
-    const out = attachVictims(
-      [
-        { ...base, tMs: 1_000, xuid: 'A' },
-        { ...base, tMs: 2_000, xuid: 'A' },
-      ],
-      [{ killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 }],
-    )
-    expect(out[0].victimGamertag).toBe('V1')
-    expect(out[1].victimGamertag).toBe('')
-  })
-
-  it('DEUX victimes distinctes sur la même clé : personne n’est nommé — jamais au hasard', () => {
-    const out = attachVictims(
-      [{ ...base, tMs: 1_000, xuid: 'A' }],
-      [
-        { killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 },
-        { killer_xuid: 'A', victim_gamertag: 'V2', time_ms: 1_000 },
-      ],
-    )
-    expect(out[0].victimGamertag).toBe('')
-  })
-
-  it('deux paires IDENTIQUES (double kill unanime) : la victime est nommée', () => {
-    const out = attachVictims(
-      [{ ...base, tMs: 1_000, xuid: 'A' }],
-      [
-        { killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 },
-        { killer_xuid: 'A', victim_gamertag: 'V1', time_ms: 1_000 },
-      ],
-    )
-    expect(out[0].victimGamertag).toBe('V1')
-  })
-
-  it('paires absentes ou incomplètes : tout reste vide, rien ne casse', () => {
-    const kills = [{ ...base, tMs: 1_000, xuid: 'A' }]
-    expect(attachVictims(kills, null)[0].victimGamertag).toBe('')
-    expect(attachVictims(kills, [{ killer_xuid: 'A', victim_gamertag: '', time_ms: 1_000 }])[0].victimGamertag).toBe('')
+  it('vide avant le premier événement', () => {
+    expect(feedAt(entries, 0)).toEqual([])
   })
 })

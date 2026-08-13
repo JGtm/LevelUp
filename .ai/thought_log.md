@@ -1,3 +1,31 @@
+## [2026-08-13] v7.5 rejeu 2D — kill feed niveau POC, lot front : fil permanent, tueur/arme/victime, medailles
+
+**Statut** : Complete (gate visuel utilisateur PENDANT — serveur local :8000, match
+temoin 000d5950).
+
+**Decision technique principale** : portage du fil du POC, pas de reinvention. (a) FIL
+PERMANENT : plus de fenetre 8 s / 6 lignes — buildFeedEntries + feedAt gardent TOUT
+depuis le debut, le plus recent en tete, liste scrollable (max-h-64) qui ne recolle en
+tete que si le lecteur y etait (regle POC, seuil 4 px) ; killsAt/freshnessOf/WINDOW_MS
+supprimes avec leurs tests. (b) LIGNE : TUEUR (couleur de SON equipe) — icone d'arme
+(reste le point neutre en repli) — VICTIME (couleur de SON equipe, servie par le
+backend via KillEvent.victimXuid/Gamertag/TeamID) ; lisere gauche 3 px couleur equipe
+du tueur ; horodatage a droite ; compteur « n / total ». (c) MEDAILLES :
+collectMedalEvents lit les events medal (identite resolue backend) ; rattachement au
+kill du MEME acteur a <= 500 ms (mesure temoin : 42/44, seuil dans un plateau — aucune
+de plus avant 5 s), sinon ligne seule au nom du decore ; badge image 15 px, libelle +
+description en infobulle, repli TEXTE si pas de visuel. Assistance inchangee (3 etats,
+nomme seul affiche — decision user 12/08). attachVictims/VictimPair supprimes (cablage
+mort : les paires agregees n'avaient pas de time_ms, la victime ne sortait jamais).
+
+**Resultats observes** : typecheck OK, lint 0 erreur, vitest 408 fichiers / 3625 tests
+verts (48 cibles sur les fichiers du fil, dont permanence, rattachement medaille au
+plus proche, victime coloree par SON equipe, repli texte).
+
+**Conclusion / prochaine etape** : les 4 items du verdict user 13/08 sont livres
+(commits 6654c0f36 retraits, 142ea9d4b Go/contrat, celui-ci front). GATE VISUEL user
+sur 000d5950 ; le total du compteur monte a kills + medailles seules (2 sur le temoin).
+
 ## [2026-08-13] v7.5 rejeu 2D — kill feed niveau POC, lot Go : victime + identite medaille sur les highlight events
 
 **Statut** : Complete (lot Go/contrat ; le portage front du fil suit).
