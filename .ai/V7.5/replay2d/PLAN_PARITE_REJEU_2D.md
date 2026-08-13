@@ -218,8 +218,10 @@ PASSE (2026-08-13) : garde-fou catalogue vert (22 cartes / 816 zones / ridgeline
 11 grandes) ; go test service + handlers + replay + title + mapcallouts-build OK, himap
 par -run ancre (TestCallouts*) OK, go vet ./... OK, golangci-lint cible : 0 issue sur les
 fichiers du lot ; web : tsc -b OK (cache .tmp purge), eslint 0 erreur sur les fichiers
-touches, vitest match-replay 15 fichiers / 241 tests verts. La verification visuelle sur
-000d5950 est remise au user (instructions dans le compte rendu — la session ne juge pas
+touches, vitest COMPLET 411 fichiers / 3657 tests verts (14 skips preexistants) — la
+suite complete a attrape le garde-rail titleSlug des query keys (V72-29), la cle
+matchReplayCallouts y est classee (commit dedie). La verification visuelle sur 000d5950
+est remise au user (instructions dans le compte rendu — la session ne juge pas
 l'aspect).
 
 ## Lot 4 — Objectifs statiques par mode
