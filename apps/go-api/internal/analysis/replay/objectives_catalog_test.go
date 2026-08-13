@@ -187,15 +187,26 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 	if len(cat.Maps) == 0 {
 		t.Fatal("catalogue vide")
 	}
+	// pointlessConnues : les zones surfaciques SANS forme du corpus, nominatives et
+	// EXPLIQUEES — pas une tolerance. La mesure corpus (mapvar/shape.go : zones Bastion
+	// 430/431 avec forme, et AUCUNE famille de forme inconnue sur les 16 434 formes des
+	// 199 variantes) etablit que la SOURCE ne porte pas de sac de forme pour cette zone :
+	// Salvation (extraction masse du 2026-08-13), zone Bastion a l'objet 446. Les
+	// consommateurs la voient deja via ZonesOfRole().Pointless et l'ecartent. Toute
+	// occurrence NON listee ici reste une erreur ; si une regeneration lui trouve un jour
+	// une forme, l'entree devient fausse et se retire.
+	pointlessConnues := map[string]map[mapvar.Role]int{
+		"cd08bc7a-7ba5-4502-be87-c58b641fc94d": {mapvar.RoleStrongholdZone: 1}, // Salvation
+	}
 	roles := []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone}
 	total := map[mapvar.Role]int{}
 	for id, e := range cat.Maps {
 		for _, role := range roles {
 			set := e.ZonesOfRole(role)
 			total[role] += len(set.Zones)
-			if set.Pointless != 0 {
-				t.Errorf("carte %s, role %s : %d objectif(s) SURFACIQUE(s) sans forme",
-					id, role, set.Pointless)
+			if attendu := pointlessConnues[id][role]; set.Pointless != attendu {
+				t.Errorf("carte %s, role %s : %d objectif(s) SURFACIQUE(s) sans forme (attendu %d — cf. pointlessConnues)",
+					id, role, set.Pointless, attendu)
 			}
 			if set.Degenerate != 0 {
 				t.Errorf("carte %s, role %s : %d forme(s) degeneree(s)", id, role, set.Degenerate)
