@@ -95,6 +95,12 @@ integration -p 1 (dont le rouge herite). Aucun autre job CI en echec sur `242001
 job. Gates visuels utilisateur pendants : toits (12 paires) + Vagabond lot B (1 paire),
 artefacts sous Desktop/gate_cartes_v75/.
 
+**Addendum 2 (meme jour, cloture superviseur)** : lot fonds par map_id LIVRE par l'executeur
+(3 commits 1fe9f835e/121e9c4e6/79cf8e803, verifie sur pieces : 37 fonds map_id publies,
+33+2 artefacts au Bureau, arbre propre, plan 100 % statue). Verdict du gate TOITS consigne
+au registre : VALIDE par l'utilisateur, exceptions Vagabond + Catalyst « on y reviendra »
+(Catalyst = grief anterieur au lot, PNG intact au bit). Push groupe -> CI.
+
 **Addendum (meme jour)** : le run du push groupe a revele un 2e rouge, distinct :
 `TestOpenAPIYAMLIsUpToDate` — les lots toits/Forge ont enrichi le type de calage du fond
 (cellsSubstituted, coveredShare, forgeDeathVolumes...) sans relancer `make openapi-gen`.
