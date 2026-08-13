@@ -64078,3 +64078,17 @@ module) : schema 3, 65/70 lancers lies (= mesure POC), 15 vols avec rest certifi
 29 cles killEffects.
 **Prochaine etape** : couches web 2.1 (effet de mort oriente), 2.2 (recalage tirs),
 2.3 (effet au point de repos), 2.4 (lancers mis en evidence).
+
+## [2026-08-13] Parite rejeu 2D — lot 2 item 2.1, effet de mort oriente (web)
+**Statut** : En cours (lot 2)
+**Decision technique** : portage drawKillFx du POC — precalcul monde (buildKillFx,
+killFx.ts pur + teste) : horloge du fil reutilisee (toReplayKills), positions relues dans
+les trajectoires (vivant = positionAt, vie close = derniere position sous fenetre DEATH
+1,5 s), orientation SEULEMENT sur couple complet (regle 89/93), famille par
+doc.killEffects[weaponKey], couleur = tueur (arbitrage 3.2 conserve). shotEffects gagne
+target (extremite reelle : explosif/aiguilles a l'extremite) + meleeLink (arc de liaison
+sous 8 m monde, sans eclair) + drawDeathMarker (anneau pointille non oriente).
+**Resultats** : vitest 54 tests verts sur les 5 fichiers touches, tsc -b OK. Limite notee :
+la melee GENERIQUE (classe sans weapon_key, mesure killicon) tombe sur le rendu neutre —
+le film ne donne pas la classe au feed.
+**Prochaine etape** : 2.2 recalage tirs.

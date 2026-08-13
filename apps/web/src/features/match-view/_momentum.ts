@@ -63,7 +63,12 @@ export interface KillEvent {
    *
    * `weaponLabel` est un nom propre (BR75), pas un libellé traduit. Vide pour les
    * sources sans nom propre (mêlée, grenade) qui gardent pourtant leur icône.
+   *
+   * `weaponKey` est la clé canonique du registre d'armes du titre — la clé de jointure
+   * de l'effet de mort du rejeu (`doc.killEffects`). Vide quand la source n'y figure
+   * pas (mêlée générique, objets) : l'effet reste neutre, jamais celui d'une voisine.
    */
+  weaponKey: string
   weaponLabel: string
   weaponImageUrl: string
   weaponTinted: boolean
@@ -114,6 +119,7 @@ export function collectKillEvents(
       xuid: e.actor_xuid,
       ally: meta.ally,
       teamID: e.actor_team_id ?? null,
+      weaponKey: e.weapon_key ?? '',
       weaponLabel: e.weapon_label ?? '',
       weaponImageUrl: e.weapon_image_url ?? '',
       weaponTinted: e.weapon_image_tinted ?? false,

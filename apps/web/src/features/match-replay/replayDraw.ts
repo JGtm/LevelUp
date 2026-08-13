@@ -8,7 +8,8 @@
 import type { ReplayBounds, ReplayGrenade, ReplayMapObject, ReplayShot } from '@/lib/api/types'
 
 import { altitudeTint, floorRun, hasEdge, type FloorGrid } from './mapFloor'
-import { drawShotEffect, familyOf } from './shotEffects'
+import { drawDeathMarker, drawShotEffect, familyOf } from './shotEffects'
+import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
@@ -240,6 +241,67 @@ export interface ShotStyle {
    */
   effectOf: (weaponId: string | undefined) => string | undefined
   reducedMotion: boolean
+}
+
+/** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */
+export interface KillFxStyle {
+  colorOfSlot: (slot: number) => string | null
+  fallback: string
+  reducedMotion: boolean
+}
+
+/**
+ * drawKillFxLayer dessine les EFFETS DE MORT de la fenêtre courante.
+ *
+ * ORIENTÉ TUEUR -> VICTIME seulement quand le couple est complet (règle POC 89/93, portée
+ * par `buildKillFx` : `vx` null = pas d'axe) ; sinon un marqueur pointillé non orienté.
+ * L'extrémité est RÉELLE (`target`) : c'est la seule différence de nature avec les tirs,
+ * dont la longueur n'est qu'une trace. La COULEUR est celle du tueur — la famille d'arme
+ * se lit dans la FORME (arbitrage du lot 3.2, conservé).
+ */
+export function drawKillFxLayer(
+  ctx: CanvasRenderingContext2D,
+  fx: KillFxEntry[],
+  view: CanvasView,
+  win: EventWindow,
+  style: KillFxStyle,
+): void {
+  for (const e of fx) {
+    const age = win.frame - e.frame
+    if (age < 0 || age > win.hold) continue
+    const fade = 1 - age / (win.hold + 1)
+    const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
+    const color = (e.slot !== null ? style.colorOfSlot(e.slot) : null) ?? style.fallback
+    let angle: number | null = null
+    let length = 0
+    if (e.vx !== null && e.vy !== null) {
+      const v = worldToCanvas({ x: e.vx, y: e.vy }, view.bounds, view.width, view.height, view.pad)
+      const dx = v.x - c.x
+      const dy = v.y - c.y
+      const d = Math.hypot(dx, dy)
+      // < 1,5 px : tueur et victime au même endroit à l'écran (corps à corps). Aucun axe
+      // fiable à en tirer — le marqueur non orienté vaut mieux qu'un angle calculé sur du
+      // bruit d'arrondi (règle POC).
+      if (d > 1.5) {
+        angle = Math.atan2(dy, dx)
+        length = d
+      }
+    }
+    const shape = {
+      x: c.x,
+      y: c.y,
+      angle,
+      length,
+      fade,
+      reduced: style.reducedMotion,
+      seed: e.seed,
+      target: angle !== null,
+      meleeLink: e.dist !== null && e.dist < MELEE_LINK_MAX_M,
+    }
+    if (angle === null) drawDeathMarker(ctx, shape, color)
+    else drawShotEffect(ctx, e.fam, shape, color)
+  }
+  ctx.globalAlpha = 1
 }
 
 /**

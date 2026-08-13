@@ -21,8 +21,11 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
+import type { KillEvent } from '@/features/match-view/_momentum'
+
 import { readInk } from './canvasInk'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { buildKillFx } from './killFx'
 import { backgroundRect, coversPlayedArea } from './mapBackground'
 import { buildFloorGrid } from './mapFloor'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -30,6 +33,7 @@ import {
   drawFloorLayer,
   drawGeometryLayer,
   drawGrenadesLayer,
+  drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
 import {
@@ -99,6 +103,13 @@ export interface ReplayMapBackgroundLayer {
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
   locale: ReplayLocale
+  /**
+   * Kills du match (mêmes events que le fil, horloge gameplay) : la carte en tire les
+   * EFFETS DE MORT orientés tueur -> victime. Absents = pas d'effet, jamais une erreur.
+   */
+  kills?: KillEvent[]
+  /** Offset du countdown pré-match, en ms (`header.t0_ms`) — même recalage que le fil. */
+  t0Ms?: number
   /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
   onFrameChange?: (frame: number) => void
   /**
@@ -109,7 +120,7 @@ interface ReplayCanvasProps {
   background?: ReplayMapBackgroundLayer | null
 }
 
-export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayCanvasProps) {
+export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, background }: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Fond de carte peint UNE fois puis recopié : il ne dépend ni de la frame ni de la lecture.
@@ -207,6 +218,12 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     [doc],
   )
   const eventHoldFrames = useMemo(() => msToFrames(EVENT_HOLD_MS, doc), [doc])
+  // Les effets de mort sont PRÉCALCULÉS en monde (positions relues une fois, patron POC) :
+  // pendant la lecture, seul le passage monde -> pixels reste à faire.
+  const killFx = useMemo(
+    () => buildKillFx(doc, kills ?? [], t0Ms ?? 0),
+    [doc, kills, t0Ms],
+  )
   const totalLabel = formatClock(doc.durationMs ?? frameToMs(doc.frameCount, doc))
 
   // Largeur responsive (ResizeObserver du conteneur).
@@ -281,6 +298,15 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     if (doc.grenades?.length) {
       drawGrenadesLayer(ctx, doc.grenades, view, win, grenadeColor)
     }
+    // Les MORTS par-dessus les tirs : c'est l'événement le plus lourd de sens du calque,
+    // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
+    if (killFx.length > 0) {
+      drawKillFxLayer(ctx, killFx, view, win, {
+        colorOfSlot: (slot) => colorBySlot.get(slot) ?? null,
+        fallback: shotColor,
+        reducedMotion,
+      })
+    }
 
     if (clockRef.current) {
       clockRef.current.textContent = `${formatClock(frameToMs(frame, doc))} / ${totalLabel}`
@@ -302,6 +328,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
     shotColor,
     grenadeColor,
     eventHoldFrames,
+    killFx,
     floorStyle.edge,
     colorBySlot,
     reducedMotion,

@@ -82,6 +82,20 @@ export interface ShotShape {
   reduced: boolean
   /** Départage les formes irrégulières pour que deux tirs voisins ne se superposent pas. */
   seed: number
+  /**
+   * true SEULEMENT quand l'extrémité est une position RÉELLE — celle de la victime d'une
+   * mort (règle POC : couple tueur-victime complet). Sur un TIR, `length` n'est qu'une
+   * longueur de trace : y poser un halo d'impact inventerait un point de chute que le film
+   * ne donne pas. Les familles `explosive`, `needles` et `melee` s'en servent pour ne pas
+   * mentir sur leur extrémité.
+   */
+  target?: boolean
+  /**
+   * Mêlée UNIQUEMENT : la victime est à PORTÉE du geste (distance monde < 8 m, seuil
+   * mesuré côté killFx). L'arc de liaison tueur -> victime ne se dessine qu'alors — au
+   * delà, le geste garde son arc ouvert vers la victime, sans trait qui la relie.
+   */
+  meleeLink?: boolean
 }
 
 /**
@@ -139,6 +153,30 @@ export function drawShotEffect(
 interface Oriented extends Omit<ShotShape, 'angle'> {
   angle: number
   advance: number
+}
+
+/**
+ * drawDeathMarker — la mort dont AUCUN axe n'est lisible (couple incomplet, règle 89/93) :
+ * un anneau POINTILLÉ, daté et localisé, qui n'affirme aucune direction. Convention déjà
+ * établie par le POC — le pointillé est la marque du « lu mais non orientable ».
+ */
+export function drawDeathMarker(
+  ctx: CanvasRenderingContext2D,
+  shape: ShotShape,
+  color: string,
+): void {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.75 * shape.fade
+  ctx.beginPath()
+  ctx.arc(shape.x, shape.y, 5.5, 0, Math.PI * 2)
+  ctx.lineWidth = 1.3
+  ctx.setLineDash([2, 2])
+  ctx.stroke()
+  ctx.setLineDash([])
+  drawOrigin(ctx, shape, shape.fade)
+  ctx.restore()
 }
 
 /** drawOrigin — l'éclat d'un tir dont la visée n'est pas lisible. Aucune direction inventée. */
@@ -218,11 +256,16 @@ function drawShock(ctx: CanvasRenderingContext2D, s: Oriented): void {
   ctx.stroke()
 }
 
-/** drawExplosive — DEUX TEMPS : un départ épais et bref, puis une onde qui s'ouvre. */
+/**
+ * drawExplosive — DEUX TEMPS : un départ épais et bref, puis une onde qui s'ouvre.
+ * L'onde ne se pose à l'EXTRÉMITÉ que si elle est RÉELLE (`target`, la victime d'une
+ * mort) ; sur un tir elle reste centrée sur le tireur — le film ne date aucun impact.
+ */
 function drawExplosive(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const burst = Math.max(0, (s.fade - 0.7) / 0.3)
   if (burst > 0) {
-    const e = { x: s.x + Math.cos(s.angle) * 22, y: s.y + Math.sin(s.angle) * 22 }
+    const dl = Math.min(s.length, 22)
+    const e = { x: s.x + Math.cos(s.angle) * dl, y: s.y + Math.sin(s.angle) * dl }
     ctx.globalAlpha = 0.9 * burst
     ctx.lineWidth = 3.4
     ctx.beginPath()
@@ -230,14 +273,21 @@ function drawExplosive(ctx: CanvasRenderingContext2D, s: Oriented): void {
     ctx.lineTo(e.x, e.y)
     ctx.stroke()
   }
+  const cx = s.target ? s.x + Math.cos(s.angle) * s.length : s.x
+  const cy = s.target ? s.y + Math.sin(s.angle) * s.length : s.y
   ctx.globalAlpha = 0.5 * s.fade
   ctx.lineWidth = 1.4
   ctx.beginPath()
-  ctx.arc(s.x, s.y, 5 + 24 * s.advance, 0, Math.PI * 2)
+  ctx.arc(cx, cy, 5 + 24 * s.advance, 0, Math.PI * 2)
   ctx.stroke()
 }
 
-/** drawMelee — AUCUN éclair de bouche : le geste n'est pas un tir, c'est un arc court. */
+/**
+ * drawMelee — AUCUN éclair de bouche : le geste n'est pas un tir, c'est un arc court,
+ * ouvert du côté de la victime. L'ARC DE LIAISON entre les deux ne se dessine que si la
+ * victime est réellement à portée (`meleeLink`, seuil 8 m mesuré côté killFx) : relier un
+ * marteau à une victime à 20 m affirmerait un contact qui n'a pas eu lieu.
+ */
 function drawMelee(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const r = 7 + 13 * s.advance
   ctx.globalAlpha = 0.9 * s.fade
@@ -245,9 +295,31 @@ function drawMelee(ctx: CanvasRenderingContext2D, s: Oriented): void {
   ctx.beginPath()
   ctx.arc(s.x, s.y, r, s.angle - 0.9, s.angle + 0.9)
   ctx.stroke()
+  ctx.globalAlpha = 0.45 * s.fade
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.arc(s.x, s.y, r * 0.6, s.angle - 1.25, s.angle + 1.25)
+  ctx.stroke()
+  if (s.target && s.meleeLink) {
+    const ex = s.x + Math.cos(s.angle) * s.length
+    const ey = s.y + Math.sin(s.angle) * s.length
+    const nx = -Math.sin(s.angle)
+    const ny = Math.cos(s.angle)
+    const b = s.length * 0.3
+    ctx.globalAlpha = 0.75 * s.fade
+    ctx.lineWidth = 1.9
+    ctx.beginPath()
+    ctx.moveTo(s.x, s.y)
+    ctx.quadraticCurveTo((s.x + ex) / 2 + nx * b, (s.y + ey) / 2 + ny * b, ex, ey)
+    ctx.stroke()
+  }
 }
 
-/** drawNeedles — la signature est la GERBE, pas le trait : cinq brins qui s'écartent. */
+/**
+ * drawNeedles — la signature est la GERBE, pas le trait : cinq brins qui s'écartent.
+ * La petite détonation à l'extrémité ne se joue QUE si elle est réelle (`target`, une
+ * mort) : un tir du Needler ne dit pas où ses aiguilles ont fini.
+ */
 function drawNeedles(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const nx = -Math.sin(s.angle)
   const ny = Math.cos(s.angle)
@@ -261,6 +333,15 @@ function drawNeedles(ctx: CanvasRenderingContext2D, s: Oriented): void {
     ctx.beginPath()
     ctx.moveTo(s.x, s.y)
     ctx.lineTo(ex, ey)
+    ctx.stroke()
+  }
+  if (s.target && s.advance > 0.55) {
+    const ex = s.x + Math.cos(s.angle) * s.length
+    const ey = s.y + Math.sin(s.angle) * s.length
+    ctx.globalAlpha = 0.65 * s.fade
+    ctx.beginPath()
+    ctx.arc(ex, ey, 4 + 15 * ((s.advance - 0.55) / 0.45), 0, Math.PI * 2)
+    ctx.lineWidth = 1.2
     ctx.stroke()
   }
 }
