@@ -110,3 +110,13 @@ hinf_hydra          = "explosive"
 hinf_gravity_hammer = "melee"
 hinf_energy_sword   = "melee"
 hinf_needler        = "needles"
+# Cles vues UNIQUEMENT sur les KILLS du feed (killicon rend un weapon_key par source de
+# degat) : la meme table sert desormais les effets de MORT (ReplayDocument.killEffects),
+# joints par weapon_key. La Dynamo est electrique — elle rejoint la famille `shock`, pas
+# l'explosif generique. La grenade Spike n'a PAS de weapon_key (mesure, killicon GGGL 3) :
+# elle reste sans effet de famille, jamais celui d'une voisine.
+hinf_frag_grenade   = "explosive"
+hinf_plasma_grenade = "explosive"
+hinf_dynamo_grenade = "shock"
+hinf_bandit         = "ballistic"
+hinf_ma5k_avenger   = "ballistic"

@@ -30,7 +30,15 @@ package replay
 // (`rank`) au lieu d'un nom. Motif : les catalogues étaient codés en Go, dont deux en
 // français — ce qui interdisait l'anglais autant qu'un second titre — et les grenades
 // étaient nommées deux fois, différemment, sur la même fiche.
-const SchemaVersion = 2
+//
+// v3 (2026-08-13, plan parité lot 2) : le lancer de grenade publie son LIEN vers le
+// projectile né de lui (`Grenade.proj`), et le document publie la table
+// `killEffects` (weapon_key -> famille de rendu) qui donne leur famille aux effets de
+// mort du kill feed. Les deux champs sont sérialisés en omitempty, mais la version
+// monte quand même : les effets de repos de grenade côté client N'EXISTENT que si
+// l'artefact porte le lien, et la reprise du backfill (lot 6) se fait par
+// SchemaVersion — un artefact v2 doit se voir comme « à re-cuire », pas comme à jour.
+const SchemaVersion = 3
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -148,6 +156,13 @@ type ReplayDocument struct {
 	// Source : `weapon_names.toml` du titre (nom, bilingue) + `replay_labels.toml`
 	// (effet de rendu), joints par le weapon_key du registre d'armes.
 	WeaponLabels map[string]WeaponLabel `json:"weaponLabels,omitempty"`
+	// KillEffects associe un weapon_key du titre à la famille de RENDU de ses effets
+	// (mêmes valeurs que WeaponLabel.Fx). C'est la table qui donne leur famille aux
+	// EFFETS DE MORT : les kills du feed portent un weapon_key (résolu côté base),
+	// jamais un identifiant d'arme film — sans cette table, le client ne peut joindre
+	// aucun effet à un kill. Une clé absente = effet neutre, jamais celui d'une voisine.
+	// Source : replay_labels.toml du titre ([shot_effects]).
+	KillEffects map[string]string `json:"killEffects,omitempty"`
 	// Roster est la liste des joueurs du film : leur identité et leur index de film.
 	//
 	// CE QU'IL SERT : le client y trouve l'ensemble des joueurs du match, y compris ceux dont

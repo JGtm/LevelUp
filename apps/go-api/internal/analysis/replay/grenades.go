@@ -65,11 +65,25 @@ type Grenade struct {
 	Rank int `json:"rank"`
 	// Src dit d'où vient la position : GrenadeSrcProjectile ou GrenadeSrcBiped.
 	Src string `json:"s"`
+	// Proj est l'index, dans ReplayDocument.Projectiles, du projectile né de ce lancer
+	// (appariement à ±200 ms, cf. grenadeBirthWindowUS). C'est le lien qui permet au
+	// client de poser l'effet du type de grenade au point de REPOS du vol — la dernière
+	// position répliquée, jamais un « impact » (aucun événement de détonation n'existe).
+	//
+	// POINTEUR, PAS int : le piège omitempty du dépôt — l'index 0 est un projectile
+	// valide, un int l'omettrait exactement comme une absence de lien. Nil quand aucun
+	// projectile n'apparie, ou quand celui qui appariait n'est pas publié (trop court).
+	Proj *int `json:"proj,omitempty"`
 }
 
 // buildGrenades situe les lancers et rend la couverture.
+//
+// `pubProjByRaw` traduit l'index BRUT d'une piste de projectile (rang dans `proj`) vers son
+// index PUBLIÉ (cf. buildProjectiles) : c'est lui qui alimente Grenade.Proj. Nil = aucun
+// projectile publié, les lancers sortent sans lien — jamais un index qui ne pointe rien.
 func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
-	origin, step uint64, owner map[uint32]int, proj []filmdec.ProjectileTrack) ([]Grenade, LayerCoverage) {
+	origin, step uint64, owner map[uint32]int, proj []filmdec.ProjectileTrack,
+	pubProjByRaw map[int]int) ([]Grenade, LayerCoverage) {
 	cov := LayerCoverage{Available: len(throws)}
 	if len(throws) == 0 {
 		return nil, cov
@@ -86,10 +100,16 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 			cov.count(reasonNoSlot)
 			continue
 		}
-		gr, ok := locateThrow(g, births, tracks, owner)
+		gr, rawProj, ok := locateThrow(g, births, tracks, owner)
 		if !ok {
 			cov.count(reasonNoSlot)
 			continue
+		}
+		if rawProj >= 0 {
+			if pub, published := pubProjByRaw[rawProj]; published {
+				p := pub
+				gr.Proj = &p
+			}
 		}
 		cov.count(reasonAttached)
 		gr.T = int((g.TimestampUS - origin) / step)
@@ -118,21 +138,31 @@ func buildGrenades(pos []filmdec.BipedPosition, throws []filmdec.GrenadeThrow,
 }
 
 // locateThrow situe un lancer : d'abord par la naissance de son projectile, sinon par le biped
-// de son auteur quand le pont le connaît.
-func locateThrow(g filmdec.GrenadeThrow, births []filmdec.ProjectileSample,
-	tracks map[uint32]slotTrack, owner map[uint32]int) (Grenade, bool) {
+// de son auteur quand le pont le connaît. La seconde valeur est l'index BRUT de la piste de
+// projectile appariée (-1 quand la position vient du biped) : c'est lui qui fonde le lien
+// Grenade.Proj, une fois traduit en index publié par l'appelant.
+func locateThrow(g filmdec.GrenadeThrow, births []projectileBirth,
+	tracks map[uint32]slotTrack, owner map[uint32]int) (Grenade, int, bool) {
 	if b, ok := birthNear(births, g.TimestampUS); ok {
-		return Grenade{X: round2(b.X), Y: round2(b.Y), Src: GrenadeSrcProjectile}, true
+		return Grenade{X: round2(b.s.X), Y: round2(b.s.Y), Src: GrenadeSrcProjectile}, b.raw, true
 	}
 	slot, reason := slotFor(tracks, owner, g.FilmIndex, g.TimestampUS)
 	if reason != reasonAttached {
-		return Grenade{}, false
+		return Grenade{}, -1, false
 	}
 	p, d := tracks[slot].at(g.TimestampUS)
 	if d > shotPosToleranceUS || !p.HasWorld {
-		return Grenade{}, false
+		return Grenade{}, -1, false
 	}
-	return Grenade{Slot: slot, X: round2(p.X), Y: round2(p.Y), Src: GrenadeSrcBiped}, true
+	return Grenade{Slot: slot, X: round2(p.X), Y: round2(p.Y), Src: GrenadeSrcBiped}, -1, true
+}
+
+// projectileBirth est la naissance d'une piste de projectile, avec l'index BRUT de sa piste
+// (rang dans la tranche décodée) : c'est cette clé que buildProjectiles sait traduire en
+// index publié.
+type projectileBirth struct {
+	s   filmdec.ProjectileSample
+	raw int
 }
 
 // projectileBirths rend le premier point de chaque projectile, trié par instant.
@@ -143,16 +173,17 @@ func locateThrow(g filmdec.GrenadeThrow, births []filmdec.ProjectileSample,
 // publiée pour le lancer. Sur l'instant seul, ce départage venait de l'ordre d'arrivée — issu
 // d'une itération de map — et deux constructions du même film donnaient deux positions
 // différentes (mesuré : 12,72 / −187,11 contre 11,41 / 17,99 sur le lancer t=1580 de
-// `01e1f945`). Départager par la position rend le choix indépendant de l'amont.
-func projectileBirths(proj []filmdec.ProjectileTrack) []filmdec.ProjectileSample {
-	out := make([]filmdec.ProjectileSample, 0, len(proj))
-	for _, p := range proj {
+// `01e1f945`). Départager par la position rend le choix indépendant de l'amont ; l'index brut
+// ferme le dernier ex æquo depuis que la naissance porte aussi le LIEN vers sa piste.
+func projectileBirths(proj []filmdec.ProjectileTrack) []projectileBirth {
+	out := make([]projectileBirth, 0, len(proj))
+	for raw, p := range proj {
 		if len(p.Pts) > 0 {
-			out = append(out, p.Pts[0])
+			out = append(out, projectileBirth{s: p.Pts[0], raw: raw})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
+		a, b := out[i].s, out[j].s
 		switch {
 		case a.TimestampUS != b.TimestampUS:
 			return a.TimestampUS < b.TimestampUS
@@ -160,8 +191,10 @@ func projectileBirths(proj []filmdec.ProjectileTrack) []filmdec.ProjectileSample
 			return a.X < b.X
 		case a.Y != b.Y:
 			return a.Y < b.Y
-		default:
+		case a.Z != b.Z:
 			return a.Z < b.Z
+		default:
+			return out[i].raw < out[j].raw
 		}
 	})
 	return out
@@ -169,17 +202,17 @@ func projectileBirths(proj []filmdec.ProjectileTrack) []filmdec.ProjectileSample
 
 // birthNear rend la naissance de projectile la plus proche de `at`, si elle tombe dans la
 // fenêtre.
-func birthNear(births []filmdec.ProjectileSample, at uint64) (filmdec.ProjectileSample, bool) {
+func birthNear(births []projectileBirth, at uint64) (projectileBirth, bool) {
 	if len(births) == 0 {
-		return filmdec.ProjectileSample{}, false
+		return projectileBirth{}, false
 	}
-	i := sort.Search(len(births), func(k int) bool { return births[k].TimestampUS >= at })
-	best, bestD := filmdec.ProjectileSample{}, uint64(1)<<62
+	i := sort.Search(len(births), func(k int) bool { return births[k].s.TimestampUS >= at })
+	best, bestD := projectileBirth{raw: -1}, uint64(1)<<62
 	for _, k := range []int{i - 1, i} {
 		if k < 0 || k >= len(births) {
 			continue
 		}
-		if d := absDiffU64(births[k].TimestampUS, at); d < bestD {
+		if d := absDiffU64(births[k].s.TimestampUS, at); d < bestD {
 			bestD, best = d, births[k]
 		}
 	}

@@ -12194,6 +12194,9 @@ components:
         i:
           format: int64
           type: integer
+        proj:
+          format: int64
+          type: integer
         rank:
           format: int64
           type: integer
@@ -18778,6 +18781,10 @@ components:
           type:
             - array
             - "null"
+        killEffects:
+          additionalProperties:
+            type: string
+          type: object
         loadouts:
           items:
             $ref: '#/components/schemas/Loadout'

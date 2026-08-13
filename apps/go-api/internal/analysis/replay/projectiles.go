@@ -40,12 +40,21 @@ type Projectile struct {
 // DÉCIMATION : le film réplique à ~60 Hz, la grille du rejeu est à 10 Hz. On garde UN point
 // par frame — le premier — plutôt que de moyenner : un projectile suit une parabole, et
 // moyenner deux positions distantes de 100 ms couperait le sommet de l'arc.
-func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) []Projectile {
+//
+// LA SECONDE VALEUR DE RETOUR est la table index brut (rang dans `tracks`) -> index PUBLIÉ
+// (rang dans la tranche rendue, après filtre et tri). C'est elle qui permet au lancer de
+// grenade de publier son lien vers le projectile né de lui (Grenade.Proj) : l'appariement
+// se fait sur les pistes brutes, l'artefact ne connaît que les publiées.
+func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int) {
 	if len(tracks) == 0 {
-		return nil
+		return nil, nil
 	}
-	out := make([]Projectile, 0, len(tracks))
-	for _, tr := range tracks {
+	type withRaw struct {
+		p   Projectile
+		raw int
+	}
+	kept := make([]withRaw, 0, len(tracks))
+	for raw, tr := range tracks {
 		if len(tr.Pts) < 3 || tr.Pts[0].TimestampUS < origin {
 			continue
 		}
@@ -66,14 +75,17 @@ func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) []P
 		if len(pts) < 2 { // une trajectoire d'un seul point de grille ne se dessine pas
 			continue
 		}
-		out = append(out, Projectile{T0: t0, P: pts, Rest: tr.Pts[len(tr.Pts)-1].AtRest})
+		kept = append(kept, withRaw{
+			p:   Projectile{T0: t0, P: pts, Rest: tr.Pts[len(tr.Pts)-1].AtRest},
+			raw: raw,
+		})
 	}
 	// Tri TOTAL : T0 est un index de frame de la grille 10 Hz, donc les ex æquo sont la règle,
 	// pas l'exception. Départager par la première position publiée puis par la longueur rend
-	// l'ordre indépendant de celui des `tracks` reçues — deux projectiles que ces trois clés ne
-	// séparent pas produisent les mêmes octets, quel que soit leur rang.
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
+	// l'ordre indépendant de celui des `tracks` reçues ; l'index brut ferme le dernier ex æquo
+	// pour que le LIEN publié par un lancer ne dépende pas non plus du rang d'arrivée.
+	sort.Slice(kept, func(i, j int) bool {
+		a, b := kept[i].p, kept[j].p
 		switch {
 		case a.T0 != b.T0:
 			return a.T0 < b.T0
@@ -81,9 +93,17 @@ func buildProjectiles(tracks []filmdec.ProjectileTrack, origin, step uint64) []P
 			return a.P[0][1] < b.P[0][1]
 		case a.P[0][2] != b.P[0][2]:
 			return a.P[0][2] < b.P[0][2]
-		default:
+		case len(a.P) != len(b.P):
 			return len(a.P) < len(b.P)
+		default:
+			return kept[i].raw < kept[j].raw
 		}
 	})
-	return out
+	out := make([]Projectile, len(kept))
+	pubByRaw := make(map[int]int, len(kept))
+	for i, k := range kept {
+		out[i] = k.p
+		pubByRaw[k.raw] = i
+	}
+	return out, pubByRaw
 }

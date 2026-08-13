@@ -64058,3 +64058,23 @@ mesurable 6 -> 4), Smallhalla (sculpt organique dans la bande) = cause distincte
 l'arbre (le diff vit dans le doc) ; sonde `sonde_bouillie_gamefiles_test.go` en brouillon non
 versionne. Suite : gate visuel utilisateur, puis lot de production (appliquer le diff, re-cuire les
 35, garde-rails) ou cran PlafondArene selon verdict.
+
+## [2026-08-13] Parite rejeu 2D — lot 2 Effets, socle Go (contrat v3)
+**Statut** : En cours (lot 2, commit 1/N)
+**Decision technique** : ReplayDocument passe en SchemaVersion 3 : (a) `killEffects`
+(weapon_key -> famille de rendu, table [shot_effects] publiee telle quelle) — les kills du
+feed sont keyes par weapon_key, pas par id d'arme film, sans cette table aucun effet de
+mort n'est joignable cote client ; (b) `Grenade.proj` (*int, piege omitempty : l'index 0
+est valide) — lien lancer -> projectile publie, l'appariement +/-200 ms existait deja dans
+grenades.go mais jetait l'identite de la piste. buildProjectiles rend desormais la table
+index brut -> index publie et se construit AVANT les lancers. Bump de version justifie :
+c'est la cle de reprise du backfill (lot 6), un artefact v2 doit se lire « a re-cuire ».
+[shot_effects] gagne les cles kill-only (frag/plasma=explosive, dynamo=shock, bandit et
+ma5k_avenger=ballistic ; Spike sans weapon_key = sans effet, mesure killicon GGGL 3).
+**Resultats** : go test ./internal/analysis/replay OK (golden assembly regenere : seule la
+ligne schema change) ; openapi-gen + generate-types + tsc -b (cache purge) verts ; temoin
+000d5950 re-cuit --map cliffhanger (la cle du catalogue est le NOM, ridgeline est le
+module) : schema 3, 65/70 lancers lies (= mesure POC), 15 vols avec rest certifie,
+29 cles killEffects.
+**Prochaine etape** : couches web 2.1 (effet de mort oriente), 2.2 (recalage tirs),
+2.3 (effet au point de repos), 2.4 (lancers mis en evidence).
