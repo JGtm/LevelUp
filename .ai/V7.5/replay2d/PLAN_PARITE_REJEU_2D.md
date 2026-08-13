@@ -31,21 +31,49 @@
 
 ## Lot 1 — Fiches joueur (produit, rapide, tres visible)
 
-- [ ] 1.1 HAUTEUR CONSTANTE vivant/mort : reserver la place (min-height ou rangees
+- [x] 1.1 HAUTEUR CONSTANTE vivant/mort : reserver la place (min-height ou rangees
       fantomes) — aujourd'hui ReplayWeaponsRow/InventoryRow rendent null a la mort et la
       fiche se compacte (ReplayTeams.tsx l.140-209, rosterLogic l.239-246).
-- [ ] 1.2 TOOLTIPS dev supprimes : ammoSlotHint, abilityUnknownHint, respawnUnknownHint,
+      FAIT (2026-08-13) : PlayerCard rend TOUJOURS 4 rangees — zone vitalite/retour a
+      hauteur FIXE (h-3.5), zone armes min-h-[18px], zone inventaire min-h-4 — le contenu
+      change a la mort, jamais la place. Test structurel « meme nombre de rangees
+      vivant/mort » ajoute (ReplayTeams.test.tsx) ; l'egalite au pixel = gate visuel user.
+- [x] 1.2 TOOLTIPS dev supprimes : ammoSlotHint, abilityUnknownHint, respawnUnknownHint,
       weaponSwapHint, grenadeSelUnknownHint, ammoNoneHint, drawnUnknownHint,
       weaponInHandHint (+ les title= porteurs). CONSERVES : gamertag, Bouclier/Sante,
       aria-labels a11y (barre respawn, jauge charge).
-- [ ] 1.3 « rangees »/« aucune » remplaces selon la decision 4 (i18n FR+EN).
-- [ ] 1.4 INVESTIGATION bornee equipement actif : les events MobilityAction*
+      FAIT (2026-08-13) : les 8 cles retirees d'i18n.ts + leurs title= ; les infobulles
+      composites gardent leur partie INFORMATIVE (detail du swap + age, age de lecture) et
+      perdent la phrase de methode. Conserves intacts : title gamertag, title+aria des
+      barres Bouclier/Sante, aria barre respawn + jauge charge. Decouverte : weaponInHand
+      (sans Hint) etait deja orphelin — retire avec (0 code mort).
+- [x] 1.3 « rangees »/« aucune » remplaces selon la decision 4 (i18n FR+EN).
+      FAIT (2026-08-13) : deux pictogrammes discrets en currentColor (HolsterMark : fleche
+      vers l'etui ; AmmoFullMark : chargeur rempli), UN tooltip simple chacun, FR+EN
+      (holsteredLabel « Armes rangees »/« Weapons holstered », ammoFullLabel « Munitions
+      pleines »/« Ammo full »), role=img + aria-label ; tests mis a jour + 1 nouveau
+      (pictogramme plein). « degainee ? » (selecteur non lu, hors decision 4) garde son
+      jeton texte, sans tooltip de methode (1.2).
+- [!] 1.4 INVESTIGATION bornee equipement actif : les events MobilityAction*
       (filmdec/components_biped_ability.go) donnent-ils un USAGE date de capacite,
       offline-pur, sur 000d5950 ? Si oui : effet plein-fiche a l'usage (duree fixe courte),
       les 3 rendus de la decision 3. Si non : ligne registre RE, item [!] justifie.
+      INVESTIGATION FAITE, verdict NON-DECIDABLE (2026-08-13) : instrument
+      `internal/analysis/filmdec/i54_research_test.go` (garde I54_FILM, lecture seule).
+      Mesure sur 000d5950 : 2 819 records delta portent i54, 67 EPISODES discrets
+      (~0,6 s, 1-3 par vie, 39/99 vies, 3/67 seulement pres du spawn) — c'est un
+      EVENEMENT date en cours de vie, pas du bruit de mouvement. MAIS rien offline
+      n'etablit que c'est un usage d'EQUIPEMENT (vs escalade/mantle) et aucune IDENTITE
+      d'equipement ne voyage avec — la decision 3 exige l'identite pour choisir le rendu.
+      Pas d'effet simule. Ligne au REGISTRE_REPORTS avec deux conditions de reprise
+      (croisement i56 energie de capacite, ou verite Theater datee).
 
 Gate 1 : typecheck purge + lint + vitest verts ; capture des fiches avant/apres pour le
 gate visuel user (mort ET vivant cote a cote, hauteur identique).
+PASSE (2026-08-13) : tsc -b OK (cache .tmp purge), eslint 0 erreur (19 warnings
+preexistants hors match-replay), vitest 408 fichiers / 3627 tests verts. Go : vet OK,
+instrument i54 SKIP proprement sans I54_FILM (CI sure). La capture visuelle est remise
+au user (instructions dans le compte rendu du lot — la session ne juge pas l'aspect).
 
 ## Lot 2 — Effets de mort, grenades, lancers
 
@@ -77,10 +105,12 @@ un lancer Shock).
 
 ## Lot 3 — Callouts (regression POC, tout existe hors depot)
 
-- [ ] 3.1 VERIFIER LA MATIERE PREMIERE d'abord : le jeu n'est PLUS installe. Sources =
-      C:/Users/Guillaume/Projects/LevelUp-re/jeu_deploy_ds/ (modules cartes) +
-      jeu_deploy_any/ (modules uslg) + clef PNY en secours. Inventorier les 31 modules
-      AVANT de coder ; s'il en manque → le dire, pas contourner.
+- [ ] 3.1 MATIERE PREMIERE — CORRIGE 13/08 (user) : le jeu EST installe sur
+      C:/Program Files (x86)/Steam/steamapps/common/Halo Infinite (verifie : deploy/ds/
+      levels/multi = 31 dossiers, deploy/any present). `himap.LevelsDir`/deploy_root.go
+      resout deja cette racine (preuve : lot bornes). Source PRIMAIRE = l'installation ;
+      les copies LevelUp-re/jeu_deploy_* et la clef PNY ne sont que des secours. L'agent
+      d'inventaire avait teste l'ancien chemin D:/SteamLibrary — conclusion invalidee.
 - [ ] 3.2 OUTIL Go `cmd/mapcallouts-build` (porte de callouts_all.py + callouts.py,
       offsets documentes au champ pres : tag levl, named locations root+0x91C stride 0x28,
       volumes root+0x3BC stride 0xD0, polygone bloc enfant @0x6C, top/bottom @0x64/0x68)
@@ -128,10 +158,16 @@ Gate 3 : catalogue garde-fou vert ; go test cibles + web verts ; verif visuelle 
 Gate 4 : tests Go service + web verts ; verification sur un match CTF (64e8adfa Catalyst,
 5 captures) et un Strongholds ; sur un Slayer : AUCUNE zone.
 
-## Lot 5 — Sons (demarre a reception des fichiers sons user)
+## Lot 5 — Sons (SOURCE RECUE 13/08 : D:/Halo Infinite Gun Sounds.zip)
 
-- [ ] 5.1 Reception + rangement des sons (static/, nommage par famille fx ou weapon_key),
-      troncature ~1 s si besoin.
+- [ ] 5.1 Source verifiee (superviseur 13/08) : 76 WAV dans 22 dossiers d'armes + MISC —
+      noms ANGLAIS propres (Assault Rifle, Battle Rifle, Bulldog, Cindershot, Commando,
+      Disruptor, Energy Sword, Gravity Hammer, Heatwave, Hydra, Mangler, Needler, Plasma
+      Pistol, Pulse Carbine, Ravager, S7 Sniper, Sentinel Beam, Shock Rifle, Sidekick,
+      Skewer, Spanker, Stalker Rifle), variantes Equip/Reload/Shot/Spray/ADS par arme.
+      Rangement dans static/ (nommage par weapon_key hinf_* via la table de noms EN —
+      PAS les noms de fichiers FR des images, piege Cremator/Cindershot), variante
+      « Shot » prioritaire, troncature ~1 s si besoin, inventorier MISC.
 - [ ] 5.2 Web Audio : son sur les KILLS a minima (weapon_key du feed → fichier), bouton
       mute + volume, coupe par defaut ? (decision au gate), respect prefers-reduced-motion.
 - [ ] 5.3 Sons de grenades si le pack en porte (lancer/explosion, Shock = nappe electrique).
@@ -175,7 +211,18 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
 
 ## Decouvertes
 
-(a remplir en cours d'execution)
+- (lot 1, 2026-08-13) `weaponInHand` (i18n match-replay) etait deja orphelin AVANT le
+  lot — aucune reference hors i18n.ts. Retire avec les 8 cles de l'item 1.2 (0 code mort).
+- (lot 1, 2026-08-13) i54 « biped-mobility-action » est un SIGNAL D'EVENEMENT date
+  exploitable (67 episodes discrets ~0,6 s sur 000d5950, en cours de vie — pas du bruit de
+  mouvement, pas du spawn), mesure par l'instrument versionne
+  `internal/analysis/filmdec/i54_research_test.go`. Non identifiable comme usage
+  d'equipement aujourd'hui (item 1.4 [!]) ; la piste de reprise la plus courte est le
+  croisement i56 (chute d'energie de capacite) — cf. REGISTRE_REPORTS.
+- (lot 1, 2026-08-13) la reservation de hauteur des fiches (1.1) est en min-height pour
+  les zones armes/inventaire : une rangee VIVANTE qui passerait sur deux lignes (colonne
+  tres etroite, flex-wrap) depasserait la reserve. Cas non observe aux largeurs de la
+  page ; a surveiller au gate visuel.
 
 ## Reprise
 

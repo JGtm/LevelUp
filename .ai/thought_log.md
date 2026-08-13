@@ -1,3 +1,36 @@
+## [2026-08-13] v7.5 parite rejeu 2D — lot 1 : fiches joueur (hauteur constante, tooltips, pictogrammes, investigation i54)
+
+**Statut** : Complete (gate visuel utilisateur PENDANT — fiches mort/vivant cote a cote).
+
+**Decision technique principale** : (1.1) la fiche PlayerCard rend TOUJOURS 4 rangees —
+zone vitalite/retour a hauteur FIXE (h-3.5, deux barres empilees ou la ligne de retour),
+zone armes min-h-[18px], zone inventaire min-h-4 : a la mort le CONTENU change, jamais la
+place. (1.2) les 8 tooltips de methode (ammoSlotHint, abilityUnknownHint,
+respawnUnknownHint, weaponSwapHint, grenadeSelUnknownHint, ammoNoneHint, drawnUnknownHint,
+weaponInHandHint) retires d'i18n + leurs title= ; les composites gardent la partie
+informative (detail du swap + age) ; conserves : gamertag, Bouclier/Sante, aria respawn +
+jauge. (1.3) decision produit 4 : « rangees »/« aucune » deviennent deux pictogrammes
+discrets en currentColor (HolsterMark, AmmoFullMark) avec UN tooltip simple FR+EN chacun
+(« Armes rangees », « Munitions pleines »), role=img + aria-label. (1.4) INVESTIGATION
+bornee i54 « biped-mobility-action » : instrument versionne
+internal/analysis/filmdec/i54_research_test.go (garde I54_FILM, lecture seule, detecteur
+d'en-tete de production + marche consumeByName jusqu'au flag1).
+
+**Resultats observes** : web — tsc -b OK (cache purge), eslint 0 erreur (19 warnings
+preexistants hors feature), vitest 408 fichiers / 3627 tests verts (2 nouveaux : rangees
+constantes vivant/mort, pictogramme munitions pleines). Go — vet OK ; mesure 000d5950 :
+171 851 records delta biped, 2 819 portent i54, flag1==1 sur 2 753, 67 EPISODES discrets
+(salves ~36-40 records ~0,6 s, 1-3 par vie, 39/99 vies, 3/67 pres du spawn). Verdict 1.4 :
+signal d'evenement DATE en cours de vie, mais RIEN n'etablit offline que c'est un usage
+d'equipement (vs escalade) et aucune identite d'equipement ne voyage avec -> item [!],
+pas d'effet simule, ligne REGISTRE_REPORTS (reprise : croisement i56 energie, ou Theater
+date).
+
+**Conclusion / prochaine etape** : lot 1 clos cote code (plan statue 3x [x] + 1x [!]).
+Reste le gate visuel user : comparer une fiche vivante et une fiche morte cote a cote sur
+000d5950 (hauteur identique au pixel), verifier les deux pictogrammes et l'absence des
+infobulles de jargon. Lot 2 (effets de mort) ensuite.
+
 ## [2026-08-13] v7.5 rejeu 2D — kill feed niveau POC, lot front : fil permanent, tueur/arme/victime, medailles
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — serveur local :8000, match
