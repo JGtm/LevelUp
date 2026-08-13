@@ -164,6 +164,9 @@ type stubAssetURL struct {
 	mapImg     string
 	csrPattern string
 	onyxImg    string
+	// medalImg : URL fixe rendue par MedalImageURL pour tout id. "" = titre sans
+	// visuels de médaille (défaut, préserve les assertions existantes).
+	medalImg string
 	// killIcons : icônes de source de dégât par tag `jpt!`. Nil = titre sans atlas de
 	// kill feed (le cas d'Halo 5), ce qui doit rester un chemin nominal.
 	killIcons map[uint32]canonical.KillSourceIcon
@@ -176,7 +179,7 @@ func (s *stubAssetURL) MapImageURL(name string) string {
 	}
 	return s.mapImg
 }
-func (s *stubAssetURL) MedalImageURL(_ uint64) string { return "" }
+func (s *stubAssetURL) MedalImageURL(_ uint64) string { return s.medalImg }
 func (s *stubAssetURL) CSRRankImageURL(tier string, subTier int) string {
 	if tier == "" {
 		return ""

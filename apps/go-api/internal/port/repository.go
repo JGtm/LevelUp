@@ -238,6 +238,12 @@ type MatchViewRepository interface {
 	// GetMatchEvents retourne les events highlight du match (Q21).
 	GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error)
 
+	// LookupMedalMetaByName résout l'identité de médailles (medal_name_id, label,
+	// description locale-aware) depuis leur nom ANGLAIS — le pont entre les events
+	// `medal` du feed et medal_definitions. Best-effort : map vide si le référentiel
+	// est indisponible, jamais une erreur bloquante.
+	LookupMedalMetaByName(ctx context.Context, namesEN []string) (map[string]domain.MedalNameMeta, error)
+
 	// GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b),
 	// pour l'arme affichée au kill feed. Tranche vide si le titre n'a pas de décodeur de
 	// film ou si le match n'y est pas passé — jamais une erreur (dégradation gracieuse).
@@ -464,6 +470,9 @@ func (n *noopMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]do
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string) (map[string]domain.MedalNameMeta, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {

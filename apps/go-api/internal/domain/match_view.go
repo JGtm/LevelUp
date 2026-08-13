@@ -305,6 +305,31 @@ type MatchHighlightEvent struct {
 	// "none" (la part du tueur se mesure dès que la mort porte son événement).
 	KillerDamagePct *int `json:"killer_damage_pct,omitempty"`
 	AssistDamagePct *int `json:"assist_damage_pct,omitempty"`
+
+	// VictimXUID / VictimGamertag / VictimTeamID : la VICTIME du kill, jointe depuis
+	// killer_victim_pairs par la clé (tueur, instant) — la même que l'arme et
+	// l'assistance, corrigée T0 des deux côtés. Mesuré sur 000d5950 : 93/93 appariés,
+	// 0 clé dupliquée (bijection). Tous absents quand la paire manque ou quand deux
+	// victimes distinctes partagent la même clé (double kill au même millisecond) :
+	// on n'en nomme alors AUCUNE — une victime fausse est indétectable à l'œil.
+	VictimXUID     *string `json:"victim_xuid,omitempty"`
+	VictimGamertag *string `json:"victim_gamertag,omitempty"`
+	VictimTeamID   *int    `json:"victim_team_id,omitempty"`
+
+	// L'IDENTITÉ DE LA MÉDAILLE — events `medal` uniquement.
+	//
+	// MedalName est le nom ANGLAIS lu dans le film (highlight_events.raw_json,
+	// champ medal_name) : c'est la quantité MESURÉE, elle ne dépend d'aucune table.
+	// MedalNameID / MedalLabel / MedalDescription en sont la résolution locale-aware
+	// via medal_definitions (metadata.duckdb), MedalImageURL le visuel du référentiel
+	// (TitleAssetURLAdapter.MedalImageURL). Résolution absente → seuls MedalName
+	// voyage et le front l'écrit en toutes lettres — jamais le visuel d'une autre
+	// médaille.
+	MedalName        string `json:"medal_name,omitempty"`
+	MedalNameID      *int64 `json:"medal_name_id,omitempty"`
+	MedalLabel       string `json:"medal_label,omitempty"`
+	MedalDescription string `json:"medal_description,omitempty"`
+	MedalImageURL    string `json:"medal_image_url,omitempty"`
 }
 
 // États de la lecture d'assistance d'un kill (MatchHighlightEvent.AssistState). L'état

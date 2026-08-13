@@ -6,7 +6,9 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -114,6 +116,70 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) m
 		result[id] = medalMeta{label: label, difficulty: "Normal"}
 	}
 	return result
+}
+
+// LookupMedalMetaByName résout l'identité de médailles depuis leur nom ANGLAIS
+// (medal_definitions.name_en, metadata.duckdb) — le pont entre les events `medal`
+// du film (raw_json.medal_name, ex. « Odin's Raven ») et le référentiel du jeu.
+// Locale-aware par la même chaîne que lookupMedalMeta (medalLabelDescCoalesceSQL).
+// Best-effort : metadata absente ou requête en échec → map vide, jamais d'erreur
+// (le kill feed affiche alors le nom brut plutôt que rien). La comparaison est
+// stricte au caractère près : le nom du film EST la clé du référentiel (mesuré
+// 21 noms/21 résolus sur 000d5950, apostrophe et esperluette comprises).
+func (r *MatchViewRepo) LookupMedalMetaByName(
+	ctx context.Context,
+	namesEN []string,
+) (map[string]domain.MedalNameMeta, error) {
+	result := make(map[string]domain.MedalNameMeta, len(namesEN))
+	if len(namesEN) == 0 || r.pdb.Metadata == nil {
+		return result, nil
+	}
+	unique := make([]string, 0, len(namesEN))
+	seen := make(map[string]struct{}, len(namesEN))
+	for _, n := range namesEN {
+		if n == "" {
+			continue
+		}
+		if _, ok := seen[n]; ok {
+			continue
+		}
+		seen[n] = struct{}{}
+		unique = append(unique, n)
+	}
+	if len(unique) == 0 {
+		return result, nil
+	}
+	locale := ctxkeys.Locale(ctx)
+	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
+	placeholders := make([]string, len(unique))
+	args := make([]interface{}, len(unique))
+	for i, n := range unique {
+		placeholders[i] = "?"
+		args[i] = n
+	}
+	q := `SELECT md.name_en, md.medal_name_id,
+	             ` + labelExpr + ` AS label,
+	             ` + descExpr + ` AS description
+	      FROM medal_definitions md
+	      ` + medalTranslationJoinsSQL(locale) + `
+	      WHERE md.name_en IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: lookup médailles par nom en échec",
+			"noms", len(unique), "err", err)
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var nameEN, label, desc string
+		var id int64
+		if err := rows.Scan(&nameEN, &id, &label, &desc); err != nil {
+			slog.WarnContext(ctx, "match_view: scan médaille par nom en échec", "err", err)
+			continue
+		}
+		result[nameEN] = domain.MedalNameMeta{MedalNameID: id, Label: label, Description: desc}
+	}
+	return result, nil
 }
 
 // GetMatchBulkMedals retourne les médailles de tous les joueurs du match (Q27).

@@ -64,12 +64,18 @@ func buildCombatTabFull(
 		if e.TimeMS != nil && *e.TimeMS < 0 {
 			continue
 		}
-		evtList = append(evtList, domain.MatchHighlightEvent{
+		ev := domain.MatchHighlightEvent{
 			EventType:     e.EventType,
 			EventTimeMS:   e.TimeMS,
 			ActorXUID:     e.XUID,
 			ActorGamertag: e.Gamertag,
-		})
+		}
+		// Le nom brut de la médaille voyage avec l'event ; sa résolution (label,
+		// visuel) est une décoration posée après l'assemblage (decorateMedalEvents).
+		if e.MedalName != nil {
+			ev.MedalName = *e.MedalName
+		}
+		evtList = append(evtList, ev)
 	}
 
 	// Tug-of-war

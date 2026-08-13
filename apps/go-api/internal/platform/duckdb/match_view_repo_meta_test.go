@@ -380,7 +380,8 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	)
 	for _, q := range []string{
 		`CREATE TABLE shared.highlight_events (
-			match_id VARCHAR, event_type VARCHAR, time_ms BIGINT, xuid VARCHAR, type_hint VARCHAR)`,
+			match_id VARCHAR, event_type VARCHAR, time_ms BIGINT, xuid VARCHAR, type_hint VARCHAR,
+			raw_json VARCHAR)`,
 		`CREATE TABLE shared.match_participants (
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR)`,
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
@@ -397,9 +398,12 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	for _, q := range []string{
 		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES ('2535472884034919', 'JGtm')`,
 		`INSERT INTO shared.match_participants VALUES ('m1', 'bid(7.0)', NULL)`,
-		`INSERT INTO shared.highlight_events VALUES ('m1', 'first_blood', 43000, '2535472884034919', 'kill')`,
-		`INSERT INTO shared.highlight_events VALUES ('m1', 'killing_spree', 60000, 'bid(7.0)', 'spree')`,
-		`INSERT INTO shared.highlight_events VALUES ('m1', 'kill', 90000, '9999999999999999', 'kill')`, // orphelin
+		`INSERT INTO shared.highlight_events VALUES ('m1', 'first_blood', 43000, '2535472884034919', 'kill', NULL)`,
+		`INSERT INTO shared.highlight_events VALUES ('m1', 'killing_spree', 60000, 'bid(7.0)', 'spree', NULL)`,
+		`INSERT INTO shared.highlight_events VALUES ('m1', 'kill', 90000, '9999999999999999', 'kill', NULL)`, // orphelin
+		// Event medal : le raw_json porte le nom anglais, extrait dans EventRaw.MedalName.
+		`INSERT INTO shared.highlight_events VALUES ('m1', 'medal', 95000, '2535472884034919', '50',
+			'{"medal_name": "Odin''s Raven", "medal_value": 91}')`,
 	} {
 		if _, err := pdb.Player.Exec(ctx, q); err != nil {
 			t.Fatalf("seed events: %v\nSQL: %s", err, q)
@@ -411,8 +415,8 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchEvents: %v", err)
 	}
-	if len(events) != 3 {
-		t.Fatalf("len(events) = %d, want 3", len(events))
+	if len(events) != 4 {
+		t.Fatalf("len(events) = %d, want 4", len(events))
 	}
 	// Vérifier la résolution dans l'ordre time_ms ASC
 	if events[0].Gamertag == nil || *events[0].Gamertag != "JGtm" {
@@ -424,6 +428,15 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	// Orphelin : LEFT JOIN renvoie NULL — le service décidera du fallback (xuid brut)
 	if events[2].Gamertag != nil {
 		t.Errorf("events[2].Gamertag (orphelin) = %v, want nil (caller fallback xuid)", events[2].Gamertag)
+	}
+	// L'event medal porte son nom anglais (raw_json.medal_name) ; les autres non.
+	if events[3].MedalName == nil || *events[3].MedalName != "Odin's Raven" {
+		t.Errorf("events[3].MedalName = %v, want Odin's Raven", events[3].MedalName)
+	}
+	for i := 0; i < 3; i++ {
+		if events[i].MedalName != nil {
+			t.Errorf("events[%d].MedalName = %q, want nil (pas un event medal)", i, *events[i].MedalName)
+		}
 	}
 }
 

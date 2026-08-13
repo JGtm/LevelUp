@@ -1696,6 +1696,27 @@ export interface MatchHighlightEvent {
   assist_team_id?: number | null
   killer_damage_pct?: number | null
   assist_damage_pct?: number | null
+  /**
+   * La VICTIME du kill, jointe côté backend depuis killer_victim_pairs par la clé
+   * (tueur, instant) avec garde d'unanimité : deux victimes distinctes sur la même
+   * clé (double kill au même millisecond) n'en nomment AUCUNE. Absents quand la
+   * paire manque — jamais une victime au hasard.
+   */
+  victim_xuid?: string | null
+  victim_gamertag?: string | null
+  victim_team_id?: number | null
+  /**
+   * L'IDENTITÉ DE LA MÉDAILLE (events `medal` uniquement). medal_name est le nom
+   * ANGLAIS lu dans le film (quantité mesurée) ; label/description sont résolus
+   * locale-aware côté backend (medal_definitions), medal_image_url est le visuel du
+   * référentiel. Résolution absente → seul medal_name voyage : le front l'écrit en
+   * toutes lettres, jamais le visuel d'une autre médaille.
+   */
+  medal_name?: string | null
+  medal_name_id?: number | null
+  medal_label?: string | null
+  medal_description?: string | null
+  medal_image_url?: string | null
 }
 
 export type MatchTugOfWarBin = components['schemas']['MatchTugOfWarBin']
