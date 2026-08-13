@@ -83,6 +83,11 @@ func MountAdminMonitoringRoutes(
 	drainH := handlers.NewAdminCatalogDrainHandler(reg.RunCatalogUGCDrain, jobStore, serverCtx)
 	drainH.Mount(r, apiOpt) // POST /actions/catalog/ugc-drain
 
+	// Construction du rejeu 2D d'un match (job asynchrone — décodage hors ligne du film
+	// en cache via la librairie replaybuild, sérialisé par le verrou process filmdec).
+	replayBuildH := handlers.NewAdminReplayBuildActionHandler(reg.RunReplayBuild, jobStore, serverCtx)
+	replayBuildH.Mount(r, apiOpt) // POST /actions/replay-build/run
+
 	// Viewer de logs : modules + tail filtré (lecture par la fin chunkée).
 	logsH := handlers.NewAdminLogsHandler(logging.LoadConfig(reg.cfg.RepoRoot).LogsDir)
 	logsH.Mount(r.With(middleware.NoStore), apiOpt) // GET /monitoring/logs/{modules,tail}
