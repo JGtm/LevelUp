@@ -105,6 +105,12 @@ type SyncEngine struct {
 	// (les nouveaux matchs resteront is_with_friends=FALSE jusqu'au prochain
 	// recompute manuel via PATCH /settings ou CLI levelup recompute-friends).
 	friendsLoader FriendsLoader
+	// replayArtifacts (lot 6 v7.5) — fil de l'eau des artefacts de rejeu 2D : après
+	// runWeaponKills, les matchs insérés (fenêtre replay_retention_months) voient leur
+	// film persisté au cache disque (filmcache.Write) puis leur artefact construit
+	// (replaybuild). Nil = étape absente — le wiring ne l'installe qu'en LOCAL : « le
+	// VPS web ne décode JAMAIS » (cf. WithReplayArtifacts).
+	replayArtifacts *ReplayArtifactsHook
 	// metaDB (optionnel) — connexion ouverte par run() au démarrage de la sync
 	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
 	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs

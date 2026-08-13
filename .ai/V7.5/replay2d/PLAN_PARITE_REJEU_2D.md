@@ -341,12 +341,27 @@ Gate 5 : gate d'ecoute user. NE PAS rouvrir l'extraction audio du jeu.
       statusDisplay.ts (« Construction du rejeu 2D » / « 2D replay build ») + test.
       openapi-gen + generate-types + typecheck purge OK dans le meme commit. 4 tests
       handler (503/400/202/409) verts.
-- [ ] 6.3 FIL DE L'EAU post-sync : etape apres runWeaponKills (convergence.go:471-604,
+- [x] 6.3 FIL DE L'EAU post-sync : etape apres runWeaponKills (convergence.go:471-604,
       heritee par V2) + LE PONT DISQUE : writer de chunks DANS le paquet filmcache
       (garde-rail de disposition existant — bonus : persiste les films qui expirent,
       archive irremplacable) ; gate fenetre `replay_retention_months` dans AppSettings
       (+ PATCH + UI admin, patron scheduler qui relit a chaque tick) ; conditionne LOCAL
       (« le VPS web ne decode JAMAIS » — la garde replay_local_gate existe).
+      FAIT (2026-08-14) : (a) PONT DISQUE `filmcache.Write` (chunks d'abord, manifeste
+      EN DERNIER = marqueur de commit ; manifeste historique JAMAIS reecrit — il porte le
+      blob_prefix CDN ; chunks immuables jamais reecrits ; 3 tests). (b) Etape 1.58
+      `runReplayArtifacts` (engine_postsync_replay.go) apres runWeaponKills — heritee par
+      V2 : GetFilmChunks (assertion OPTIONNELLE sur le client, les mocks ne bougent pas),
+      persistance cache, construction replaybuild, borne 5 matchs/cycle (solde au CLI),
+      fenetre par SQLStartTimeCanonical, compteurs expvar. (c)
+      `replay_retention_months` (0 = illimite, defaut) : AppSettings + Apply/ToResponse
+      + validation PATCH >= 0 + types.ts + carte « Rejeu 2D » AnalyseTab (i18n FR+EN) —
+      le GET /settings est un body non type, openapi.yaml inchange (verifie). (d)
+      CONDITIONNE LOCAL aux 3 sites de wiring (BuildEngine scheduler via
+      wireReplayArtifacts, factory V2, handler HTTP) : IsProduction() -> hook absent ;
+      fabrique unique NewReplayArtifactsHook. Gates : go test sync/scheduler/handlers/
+      settings/filmcache verts, integration -p 1 -run ancre OK, tsc -b (purge) OK,
+      eslint 0, vitest settings 69 verts, lint 0 issue sur les fichiers du lot.
 - [ ] 6.4 PURGE recurrente des artefacts hors fenetre (patron *_cron.go + ReportCronRun,
       visible sur /admin/monitoring/crons) — supprime des ARTEFACTS, JAMAIS des films.
 - [ ] 6.5 DATA RUN : rejouer backfill-killsource (couverture arme-du-kill 0-5 % sur les

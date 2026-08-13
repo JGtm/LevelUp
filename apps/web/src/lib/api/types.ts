@@ -420,6 +420,8 @@ export interface SettingsResponse {
   session_gap_minutes: number
   session_split_on_ranked_change: boolean
   session_team_change_mode: 'ignore' | 'group' | 'friends'
+  // --- Rejeu 2D : fenêtre de rétention des artefacts (0 = illimité) ---
+  replay_retention_months: number
   // --- Règles de badges narratifs ---
   outcome_exclude_bot_matches_from_badges: boolean
   outcome_exclude_bot_matches_from_records: boolean

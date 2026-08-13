@@ -241,6 +241,10 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_session_gap",
 			"session_gap_minutes doit être ≥ 0.")
 	}
+	if req.ReplayRetentionMonths != nil && *req.ReplayRetentionMonths < 0 {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_replay_retention",
+			"replay_retention_months doit être ≥ 0 (0 = illimité).")
+	}
 	if req.SessionTeamChangeMode != nil {
 		switch *req.SessionTeamChangeMode {
 		case "ignore", "group", "friends":

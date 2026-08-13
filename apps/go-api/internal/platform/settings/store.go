@@ -63,6 +63,13 @@ type AppSettings struct {
 	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
 	SessionTeamChangeMode      string `json:"session_team_change_mode"`
 
+	// ReplayRetentionMonths borne la fenêtre des artefacts de rejeu 2D : le fil de l'eau
+	// post-sync ne construit que les matchs plus récents que N mois, et la purge
+	// récurrente supprime les ARTEFACTS (jamais les films) plus anciens. 0 = illimité
+	// (défaut : tout construire, ne rien purger). Relu à CHAQUE cycle/tick — un
+	// changement prend effet sans redémarrage (patron scheduler).
+	ReplayRetentionMonths int `json:"replay_retention_months"`
+
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
@@ -400,6 +407,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.SessionTeamChangeMode != nil {
 		cfg.SessionTeamChangeMode = *req.SessionTeamChangeMode
 	}
+	if req.ReplayRetentionMonths != nil {
+		cfg.ReplayRetentionMonths = *req.ReplayRetentionMonths
+	}
 	if req.OutcomeExcludeBotMatchesFromBadges != nil {
 		cfg.OutcomeExcludeBotMatchesFromBadges = *req.OutcomeExcludeBotMatchesFromBadges
 	}
@@ -473,6 +483,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SessionGapMinutes:                   cfg.SessionGapMinutes,
 		SessionSplitOnRankedChange:          cfg.SessionSplitOnRankedChange,
 		SessionTeamChangeMode:               cfg.SessionTeamChangeMode,
+		ReplayRetentionMonths:               cfg.ReplayRetentionMonths,
 		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,

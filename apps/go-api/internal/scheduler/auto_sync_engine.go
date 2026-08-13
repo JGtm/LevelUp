@@ -61,6 +61,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 			return cfg.FriendGamertags, nil
 		})
 	}
+	s.wireReplayArtifacts(engine)
 	if s.pool != nil {
 		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid, 0) // 0 = defaultPooledRPS
 		engine.SetCustomClient(pooledClient)
@@ -133,6 +134,22 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 		})
 	}
 	return engine
+}
+
+// wireReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) —
+// LOCAL SEULEMENT : « le VPS web ne décode JAMAIS » (gate CPU, distinct du garde de
+// lecture replay_local_gate). La fenêtre replay_retention_months est relue à chaque
+// cycle (patron settings live).
+func (s *AutoSyncScheduler) wireReplayArtifacts(engine *sync.SyncEngine) {
+	if s.cfg.IsProduction() || s.settings == nil {
+		return
+	}
+	engine.WithReplayArtifacts(sync.NewReplayArtifactsHook(s.cfg.RepoRoot, func() int {
+		if cfg, _ := s.settings.Load(); cfg != nil {
+			return cfg.ReplayRetentionMonths
+		}
+		return 0
+	}))
 }
 
 // defaultRunnerFactory adapte BuildEngine vers l'interface DeltaRunner

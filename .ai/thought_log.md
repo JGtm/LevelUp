@@ -38,6 +38,28 @@ registre indexe par id complet — resolution LIKE, prefixe ambigu refuse).
 **Prochaine etape** : item 6.3 (fil de l'eau post-sync + pont disque filmcache +
 replay_retention_months).
 
+## [2026-08-14] v7.5 parite rejeu 2D — lot 6 item 6.3 : fil de l'eau post-sync + pont disque
+
+**Statut** : Complete.
+
+**Decision technique principale** : writer de chunks DANS filmcache (chunks d'abord,
+manifeste en dernier = marqueur de commit ; manifeste historique et chunks existants
+JAMAIS reecrits) — les films qui expirent cote Halo deviennent une archive locale.
+Etape post-sync 1.58 apres runWeaponKills, heritee par V2 : GetFilmChunks par assertion
+OPTIONNELLE (l'interface HaloClient ne bouge pas, aucun mock a toucher), borne 5
+matchs/cycle (un sync initial ne bloque pas des heures — solde au CLI backfill-replay),
+fenetre replay_retention_months relue a CHAQUE cycle (0 = illimite, defaut).
+CONDITIONNE LOCAL aux 3 sites de wiring (IsProduction() -> pas de hook : le VPS web ne
+decode jamais). Reglage expose : AppSettings + PATCH (validation >= 0) + carte Rejeu 2D
+dans AnalyseTab (FR/EN). GET /settings est un body non type -> openapi inchange (verifie
+sur pieces), types.ts manuel mis a jour.
+
+**Resultats observes** : tests sync 51 s + scheduler + handlers + settings + filmcache
+verts ; integration -p 1 -run ancre OK ; tsc -b purge OK ; vitest settings 69 verts ;
+lint 0 issue fichiers du lot (extraction wireReplayArtifacts pour rester sous gocyclo).
+
+**Prochaine etape** : item 6.4 (purge recurrente des artefacts).
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — CTF 64e8adfa, Strongholds
