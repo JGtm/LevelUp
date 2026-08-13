@@ -16,9 +16,19 @@ import { useMemo, type CSSProperties } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { calloutLabel, zoneAt, type CalloutZoneReady } from './calloutsLayer'
 import { equippedWeapons } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE, trackWindow } from './replayLogic'
+import {
+  altitudeAt,
+  formatSeconds,
+  frameToMs,
+  freshness,
+  msToFrames,
+  positionAt,
+  READING_FADE,
+  trackWindow,
+} from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
@@ -61,9 +71,15 @@ interface ReplayTeamsProps {
   scoreboard: MatchScoreboardRow[]
   frame: number
   locale: ReplayLocale
+  /**
+   * Zones nommées de la carte (normalisées par la route, les mêmes que le calque du
+   * canvas) : la fiche affiche la ZONE COURANTE du joueur. Vide = pas de ligne remplie —
+   * la place reste réservée (hauteur constante).
+   */
+  callouts?: CalloutZoneReady[]
 }
 
-export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps) {
+export function ReplayTeams({ doc, scoreboard, frame, locale, callouts }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const groups = useMemo(
     () => groupByTeam(buildPlayers(doc, scoreboard)),
@@ -107,6 +123,7 @@ export function ReplayTeams({ doc, scoreboard, frame, locale }: ReplayTeamsProps
                 readingFull={readingFull}
                 flashFrames={flashFrames}
                 locale={locale}
+                callouts={callouts}
               />
             ))}
           </div>
@@ -135,13 +152,19 @@ interface PlayerCardProps {
   readingFull: number
   flashFrames: number
   locale: ReplayLocale
+  callouts?: CalloutZoneReady[]
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   const state = playerStateAt(player, frame, presence)
   const name = playerName(player) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
+  // La ZONE COURANTE, affectée en 3D (zoneAt) : les étages d'une même zone se confondent
+  // en 2D — c'est le z qui départage « Fer à cheval » de sa version inférieure.
+  const zone = state.alive && state.life && callouts?.length
+    ? currentZone(callouts, state.life, frame)
+    : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
   const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null
   // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
@@ -179,6 +202,20 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
         </span>
         <KdaBadge board={player.board} />
       </div>
+      {/* La zone courante RÉSERVE sa ligne dès que la carte a des zones : vivant elle se
+          remplit, mort elle reste vide — jamais une fiche qui se compacte (règle 1.1). */}
+      {(callouts?.length ?? 0) > 0 && (
+        <div className="flex h-3 items-center">
+          {zone && (
+            <span
+              className="truncate font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
+              title={t.zoneLabel}
+            >
+              {calloutLabel(zone, locale)}
+            </span>
+          )}
+        </div>
+      )}
       {/* HAUTEUR CONSTANTE vivant/mort : les trois zones ci-dessous RÉSERVENT leur place
           dans les DEUX états. La mort remplace le contenu d'une zone, jamais la zone —
           une fiche qui se compacte fait sauter toute la colonne à chaque mort. Les
@@ -223,6 +260,22 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
       </div>
     </div>
   )
+}
+
+/**
+ * currentZone affecte le joueur à sa zone nommée, à l'instant lu : position interpolée
+ * de la vie courante (x, y ET z) puis plus-proche-centre 3D (zoneAt, portage POC).
+ * Position non transmise = pas de zone — on n'affecte pas quelqu'un qu'on ne situe pas.
+ */
+function currentZone(
+  zones: CalloutZoneReady[],
+  life: NonNullable<PlayerState['life']>,
+  frame: number,
+): CalloutZoneReady | null {
+  const p = positionAt(life.points, frame)
+  if (!p) return null
+  const z = altitudeAt(life.points, frame)
+  return zoneAt(zones, p.x, p.y, z ?? 0)
 }
 
 /**

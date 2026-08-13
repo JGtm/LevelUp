@@ -120,6 +120,10 @@ export const queryKeys = {
   // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage.
   matchReplayBackgroundImage: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay-background-image', playerSlug, titleSlug, matchId] as const,
+  // Zones nommées (callouts) : même logique que le fond — propres à la CARTE, servies par
+  // match, figées entre deux régénérations du catalogue versionné.
+  matchReplayCallouts: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-callouts', playerSlug, titleSlug, matchId] as const,
 
   // Engagement (Phase 4 plan engagement)
   engagementMatch: (playerSlug: string, titleSlug: string, matchId: string) =>

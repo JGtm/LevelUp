@@ -11,6 +11,7 @@ import { render, screen } from '@testing-library/react'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
+import { normalizeCallouts } from './calloutsLayer'
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from './test/testDoc'
 
@@ -219,6 +220,60 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
     expect(dead.getByText('retour ?')).toBeTruthy()
     expect(cardRows(dead)).toBe(aliveRows)
+  })
+})
+
+describe('ReplayTeams — zone courante (callouts)', () => {
+  const ZONES = normalizeCallouts({
+    module: 'ridgeline',
+    provenance: 'brut',
+    zones: [
+      {
+        volume_index: 1, name: 'yard', en: 'Yard', fr: 'Cour',
+        x: 0, y: 0, z: 0, z_bottom: -1, z_top: 3,
+        polygon: [[-2, -2], [2, -2], [2, 2]],
+      },
+      {
+        volume_index: 2, name: 'far', en: 'Far', fr: 'Loin',
+        x: 50, y: 50, z: 0, z_bottom: -1, z_top: 3,
+        polygon: [[48, 48], [52, 48], [52, 52]],
+      },
+    ],
+  })
+
+  it('affiche la zone du joueur vivant, affectée à sa position', () => {
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [TRACK],
+    })
+    render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" callouts={ZONES} />)
+    expect(screen.getByTitle('Zone de la carte').textContent).toBe('Cour')
+  })
+
+  it('mort : la ligne de zone RÉSERVE sa place, vide — la fiche ne se compacte pas', () => {
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [TRACK],
+    })
+    const cardRows = (view: ReturnType<typeof render>) => {
+      const card = view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+      return card.childElementCount
+    }
+    const alive = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" callouts={ZONES} />)
+    const aliveRows = cardRows(alive)
+    alive.unmount()
+    const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" callouts={ZONES} />)
+    expect(dead.queryByTitle('Zone de la carte')).toBeNull()
+    expect(cardRows(dead)).toBe(aliveRows)
+  })
+
+  it('sans callouts : aucune ligne de zone — pas de place réservée pour rien', () => {
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [TRACK],
+    })
+    render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    expect(screen.queryByTitle('Zone de la carte')).toBeNull()
   })
 })
 
