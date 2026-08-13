@@ -109,4 +109,26 @@ func ManifestPath(root, shortID string) string {
 	return filepath.Join(root, manifestsDir, shortID+".json")
 }
 
+// ListShortIDs enumere les films du cache par leurs MANIFESTES (le manifeste est la piece
+// d'entree du cache : un dossier de chunks sans manifeste n'est pas lisible par Open).
+// Un cache absent rend une liste vide, pas une erreur : le cache est local et partiel.
+func ListShortIDs(root string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(root, manifestsDir))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("enumeration du cache film (%s) : %w", root, err)
+	}
+	out := make([]string, 0, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || filepath.Ext(name) != ".json" {
+			continue
+		}
+		out = append(out, name[:len(name)-len(".json")])
+	}
+	return out, nil
+}
+
 func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }

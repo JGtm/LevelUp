@@ -26,6 +26,8 @@ import (
 	"os"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmdec"
 )
 
 // assistAttendu : ce que chaque film de reference rend. Ces nombres ne sont PAS des cibles, ce
@@ -82,8 +84,8 @@ func fixturesRoot(t *testing.T) string {
 // le bon doit gagner d un facteur au moins 4.
 func TestAssistOrdreDesChamps(t *testing.T) {
 	root := fixturesRoot(t)
-	decodeMu.Lock()
-	defer decodeMu.Unlock()
+	release := filmdec.LockProcessDecode()
+	defer release()
 	for id := range assistAttendu {
 		c, s := prepareForAssist(t, root, id)
 		lu, inverse := 0, 0

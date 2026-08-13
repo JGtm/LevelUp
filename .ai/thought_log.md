@@ -1,3 +1,25 @@
+## [2026-08-14] v7.5 parite rejeu 2D — lot 6 item 6.1 : CLI backfill-replay + verrou filmdec
+
+**Statut** : Complete (pilote 25 films au gate 6 ; run de masse = orchestrateur).
+
+**Decision technique principale** : (a) le verrou de decodage devient un VERROU DE
+PAQUET filmdec (`LockProcessDecode`, decode_gate.go) — killsource.decodeMu migre dessus,
+replay.BuildFromFilm l acquiert : deux verrous locaux ne se protegeaient pas l un de
+l autre, et compWidthObs est ecrite sans verrou pendant tout balayage. (b) l assemblage
+d artefact est CENTRALISE dans `internal/replaybuild` (3e consommateur = regle des 2
+copies) : catalogue de bornes + labels charges une fois, cache structure par module,
+ArtifactUpToDate (reprise par replay.SchemaVersion=3), ErrMapNotInCatalog = echec VOULU
+compte a part. cmd/replay-build refactore en enveloppe CLI. (c)
+`levelup backfill-replay` : enumeration filmcache.ListShortIDs, jointure registre en
+LECTURE COURTE (OpenReadForQuery, handle relache avant le premier decodage), metadata EN
+best-effort (serveur RW -> degrade sur map_name brut), filtre deja-a-jour AVANT
+tri/limit, rapport 5 categories.
+
+**Resultats observes** : go build OK ; tests replaybuild + filmcache + killsource +
+replay + filmdec verts ; go vet OK ; golangci-lint cible 0 issue.
+
+**Prochaine etape** : item 6.2 (JobType replay_build + action admin).
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — CTF 64e8adfa, Strongholds

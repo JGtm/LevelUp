@@ -110,6 +110,13 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige les bornes de la carte",
 			filmdec.ErrUnknownMapBounds, matchID)
 	}
+	// UN SEUL decodage filmdec a la fois par process (verrou de paquet partage avec
+	// killsource.Decode) : les balayages ci-dessous lisent et ecrivent les globaux de
+	// filmdec (dont compWidthObs, sans verrou propre). Tenu jusqu'au retour : l'assemblage
+	// pur qui suit est negligeable devant le decodage, et relacher plus tot inviterait un
+	// entrelacement entre deux sous-balayages du MEME film.
+	release := filmdec.LockProcessDecode()
+	defer release()
 	scan := filmdec.DefaultScanFilmOptions()
 	if opt.Scan != nil {
 		scan = *opt.Scan

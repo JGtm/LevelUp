@@ -303,12 +303,28 @@ Gate 5 : gate d'ecoute user. NE PAS rouvrir l'extraction audio du jeu.
 
 ## Lot 6 — Generation pour tous les matchs + jobs/monitoring local
 
-- [ ] 6.1 CLI `levelup backfill-replay` (patron backfill-killsource : 100 % hors ligne,
+- [x] 6.1 CLI `levelup backfill-replay` (patron backfill-killsource : 100 % hors ligne,
       tri par cout croissant, --dry-run/--limit/--force, reprise par SchemaVersion) :
       enumere le cache films (951), joint match_registry en RO pour la carte, appelle la
       LIBRAIRIE replay.BuildFromFilm (jamais exec du CLI), rapport par categories —
       construits / deja a jour / carte hors catalogue (COMPTEE A PART, echec voulu) /
       erreurs de decodage. Puis LE RUN DE MASSE (~8 h, artefacts ~2 Go).
+      FAIT (2026-08-14) : trois briques. (1) VERROU PROCESS filmdec unique
+      (`filmdec.LockProcessDecode`, decode_gate.go) — killsource.decodeMu MIGRE dessus et
+      replay.BuildFromFilm l'acquiert : la course compWidthObs killsource/rejeu est
+      fermee au niveau du paquet qui possede les globaux. (2) LIBRAIRIE
+      `internal/replaybuild` (Builder : catalogue de bornes + labels charges UNE fois,
+      cache de structure par module, ArtifactUpToDate = cle de reprise SchemaVersion,
+      ErrMapNotInCatalog = echec voulu) — cmd/replay-build refactore dessus (3e
+      consommateur = centralisation obligatoire, 0 copie restante). (3) CLI
+      `levelup backfill-replay` : enumeration par filmcache.ListShortIDs (disposition
+      centralisee), jointure registre en LECTURE COURTE relachee avant tout decodage
+      (OpenReadForQuery ; metadata EN best-effort — un serveur qui la tient RW degrade
+      sur map_name brut), filtre deja-a-jour AVANT tri/limit (un pilote --limit 25 livre
+      25 constructions reelles), rapport 5 categories (+ hors-registre). Tests :
+      replaybuild (reprise + resolution sur le catalogue livre), filmcache, killsource,
+      replay verts ; vet + golangci-lint cible 0 issue. PILOTE 25 films au gate 6 ; RUN
+      DE MASSE = orchestrateur (borne dure de la session).
 - [ ] 6.2 JobType « replay_build » (domain/job.go) + libelle FR/EN admin + worker
       serialise sur le patron admin_actions (goroutine bgCtx, mutex process filmdec
       PARTAGE avec killsource) → visible dans /admin/monitoring/jobs sans travail UI.
