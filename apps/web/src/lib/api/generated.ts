@@ -6600,6 +6600,11 @@ export interface components {
             /** Format: int64 */
             boundaryPlanes: number;
             /** Format: int64 */
+            cellsSubstituted?: number;
+            covered: boolean;
+            /** Format: double */
+            coveredShare: number;
+            /** Format: int64 */
             forgeDeathVolumes?: number;
             /** Format: int64 */
             forgeObjects?: number;

@@ -13654,6 +13654,14 @@ components:
         boundaryPlanes:
           format: int64
           type: integer
+        cellsSubstituted:
+          format: int64
+          type: integer
+        covered:
+          type: boolean
+        coveredShare:
+          format: double
+          type: number
         forgeDeathVolumes:
           format: int64
           type: integer
@@ -13693,6 +13701,8 @@ components:
         - boundaryCellsCleared
         - waterVolumes
         - waterCells
+        - coveredShare
+        - covered
       type: object
     MapBreakdownRow:
       additionalProperties: false

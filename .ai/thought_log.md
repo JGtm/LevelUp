@@ -19,6 +19,14 @@ integration -p 1 (dont le rouge herite). Aucun autre job CI en echec sur `242001
 job. Gates visuels utilisateur pendants : toits (12 paires) + Vagabond lot B (1 paire),
 artefacts sous Desktop/gate_cartes_v75/.
 
+**Addendum (meme jour)** : le run du push groupe a revele un 2e rouge, distinct :
+`TestOpenAPIYAMLIsUpToDate` — les lots toits/Forge ont enrichi le type de calage du fond
+(cellsSubstituted, coveredShare, forgeDeathVolumes...) sans relancer `make openapi-gen`.
+Repare : openapi.yaml regenere (591 437 octets), `make generate-types` (generated.ts),
+typecheck web purge vert, garde-fou local vert. Le plan du lot suivant
+(PLAN_FONDS_PAR_MAP_ID.md, decision user 13/08 : industrialisation Forge en v7.5) part
+dans le meme commit.
+
 ## [2026-08-13] v7.5 cartes — lot B Forge : le saut bloc/scen/mach -> hlmt -> mode, Vagabond passe de 75,6 % a 98,4 % d'objets rendus
 
 **Statut** : Complete (gate visuel utilisateur PENDANT, au registre).
