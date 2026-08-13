@@ -1,0 +1,67 @@
+# config/titles/halo_infinite/mappings/objective_roles.toml
+#
+# TABLE MODE DE JEU -> ROLES D'OBJECTIF STATIQUES du rejeu 2D. Lue par le SERVICE de
+# rejeu (une requete de rejeu joint le catalogue map_objectives.json par map_id) : c'est
+# le serveur qui choisit les roles servis, le client n'affiche que ce qui arrive
+# (title-agnostic, degradation par absence).
+#
+# POURQUOI EN DONNEE ET PAS EN GO (lot 4.1) : la liste des modes a objectifs et leurs
+# roles sont un savoir DU TITRE, pas du decodeur — la meme frontiere que replay_labels
+# (ADR 0011). Un second titre apportera sa propre table, ou aucune.
+#
+# COMMENT UNE ENTREE MATCHE. Le service normalise le pair_name du match
+# (analysis.NormalizeModeLabel : "Arena:CTF on Aquarius" -> "CTF") puis cherche chaque
+# jeton de `match` comme MOT ENTIER, insensible a la casse, dans le libelle normalise
+# (analysis.ExtractKnownMode). "Fiesta CTF", "One Flag CTF", "CTF 3 Captures" matchent
+# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer, King of the Hill,
+# un UUID brut) = aucun role = aucun calque. Plusieurs entrees peuvent matcher : leurs
+# roles s'additionnent.
+#
+# `neutral = true` : les objets du mode s'affichent NEUTRES meme si le fichier .mvar
+# leur donne un team_index. MESURE sur le catalogue 72 cartes : 48 zones de Bastion en
+# equipe 0 et 47 en equipe 1 (Vagabond en porte) — or la possession d'une zone de
+# Bastion ou d'Extraction est DYNAMIQUE et n'est pas decodee (registre : « etat vivant
+# des objectifs »). Colorer la zone a la couleur du team_index affirmerait une
+# allegeance que le jeu ne donne qu'en cours de partie. Les spawns et livraisons de
+# drapeau, eux, appartiennent reellement a un camp : ils gardent leur couleur.
+#
+# Les roles admis sont ceux du decodeur (mapvar) : flag_spawn, flag_delivery,
+# stockpile_socket, stockpile_navpoint, strongholds_zone, extraction_zone,
+# oddball_spawn, assault_bomb. Un role inconnu est une erreur de configuration
+# (validation stricte au chargement), jamais un silence.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[[modes]]
+# Toutes les variantes drapeau : le jeton "CTF" attrape CTF / One Flag CTF / Fiesta CTF /
+# Neutral Flag CTF / CTF 3 Captures ; "Neutral Flag" attrape "Arena Neutral Flag" (mesure
+# sur les 435 pair_name du registre local, 2026-08-13).
+match = ["CTF", "Neutral Flag"]
+roles = ["flag_spawn", "flag_delivery"]
+
+[[modes]]
+match   = ["Strongholds"]
+roles   = ["strongholds_zone"]
+neutral = true
+
+[[modes]]
+match = ["Oddball"]
+roles = ["oddball_spawn"]
+
+[[modes]]
+match = ["Stockpile"]
+roles = ["stockpile_socket", "stockpile_navpoint"]
+
+[[modes]]
+match   = ["Extraction"]
+roles   = ["extraction_zone"]
+neutral = true
+
+[[modes]]
+# Les variantes bombe sont des habillages d'Assaut : "Neutral Bomb", "One Bomb",
+# "Neutral Bomb Squad" (mesure registre local). L'objet assault_bomb est l'apparition
+# de la bombe — neutre dans le fichier (4/4 en team_index -1).
+match = ["Assault", "Neutral Bomb", "One Bomb"]
+roles = ["assault_bomb"]
