@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "76043dc6-2724-45e2-9b5a-6fe2e75da588",
+  "mapNames": [
+    "Elevation",
+    "elevation_map"
+  ],
+  "image": "76043dc6-2724-45e2-9b5a-6fe2e75da588.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:19:27.3554228Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -61.14681816101074,
+    "originY": 65.7895224456787,
+    "widthPx": 1292,
+    "heightPx": 1464,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 15,
+    "anchorsInFrame": 15,
+    "anchorsWithGround": 15,
+    "anchorMedianGapM": -0.24670054519400253,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 95.55368133544921,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5884530558232998,
+    "covered": true,
+    "cellsSubstituted": 229310,
+    "forgeObjects": 5277,
+    "forgeObjectsDrawn": 5186,
+    "forgeObjectsWithoutModel": 85,
+    "forgeDeathVolumes": 6
+  }
+}

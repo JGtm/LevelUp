@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "921aebb1-783d-45e4-bacd-7ad869fa8dae",
+  "mapNames": [
+    "Domicile",
+    "domicile_map"
+  ],
+  "image": "921aebb1-783d-45e4-bacd-7ad869fa8dae.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:02:13.8353575Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -39.38837909698486,
+    "originY": 39.49104537963866,
+    "widthPx": 1335,
+    "heightPx": 1200,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -8.617673471180893,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 176.24416442871095,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.16196115130666514,
+    "covered": false,
+    "forgeObjects": 5539,
+    "forgeObjectsDrawn": 5478,
+    "forgeObjectsWithoutModel": 34,
+    "forgeDeathVolumes": 27
+  }
+}

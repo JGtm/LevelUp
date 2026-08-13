@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3",
+  "mapNames": [
+    "Fortitude",
+    "fortitude_map"
+  ],
+  "image": "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:34:27.6043822Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -77.73077583312988,
+    "originY": 63.1924176940918,
+    "widthPx": 1808,
+    "heightPx": 1678,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 23,
+    "anchorsInFrame": 23,
+    "anchorsWithGround": 23,
+    "anchorMedianGapM": -0.1057339923926861,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 95.02850433349609,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.6023497527697504,
+    "covered": true,
+    "cellsSubstituted": 964352,
+    "forgeObjects": 5418,
+    "forgeObjectsDrawn": 5331,
+    "forgeObjectsWithoutModel": 44,
+    "forgeDeathVolumes": 43
+  }
+}

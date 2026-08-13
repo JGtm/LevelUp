@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "98783453-ce40-4020-9e87-62099a290b62",
+  "mapNames": [
+    "Smallhalla",
+    "smallhalla_map"
+  ],
+  "image": "98783453-ce40-4020-9e87-62099a290b62.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:46:50.1072497Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": 13.090225219726562,
+    "originY": 113.4393807067871,
+    "widthPx": 1413,
+    "heightPx": 1242,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 27,
+    "anchorsInFrame": 27,
+    "anchorsWithGround": 27,
+    "anchorMedianGapM": 0.030845208924276335,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 99.07930847167968,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.7311699430448997,
+    "covered": true,
+    "cellsSubstituted": 464841,
+    "forgeObjects": 3901,
+    "forgeObjectsDrawn": 3751,
+    "forgeObjectsWithoutModel": 122,
+    "forgeDeathVolumes": 28
+  }
+}

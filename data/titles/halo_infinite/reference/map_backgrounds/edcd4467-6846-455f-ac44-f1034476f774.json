@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "edcd4467-6846-455f-ac44-f1034476f774",
+  "mapNames": [
+    "Takamanohara",
+    "takamanohara_map"
+  ],
+  "image": "edcd4467-6846-455f-ac44-f1034476f774.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:17:27.5428252Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -68.86499977111816,
+    "originY": 19.73785647583007,
+    "widthPx": 1504,
+    "heightPx": 1301,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -0.28828993830939,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 140.07000061035157,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.41116059800750654,
+    "covered": true,
+    "cellsSubstituted": 506025,
+    "forgeObjects": 5542,
+    "forgeObjectsDrawn": 5499,
+    "forgeObjectsWithoutModel": 31,
+    "forgeDeathVolumes": 12
+  }
+}

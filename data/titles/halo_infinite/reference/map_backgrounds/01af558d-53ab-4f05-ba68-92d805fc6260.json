@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "01af558d-53ab-4f05-ba68-92d805fc6260",
+  "mapNames": [
+    "Isolation",
+    "isolation_map"
+  ],
+  "image": "01af558d-53ab-4f05-ba68-92d805fc6260.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:08:08.447365Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -85.58584594726562,
+    "originY": 27.303223236083994,
+    "widthPx": 1311,
+    "heightPx": 1424,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 15,
+    "anchorsInFrame": 15,
+    "anchorsWithGround": 15,
+    "anchorMedianGapM": -0.04425681041028895,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 114.9900064086914,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.3729165656010306,
+    "covered": true,
+    "cellsSubstituted": 460430,
+    "forgeObjects": 5042,
+    "forgeObjectsDrawn": 4945,
+    "forgeObjectsWithoutModel": 91,
+    "forgeDeathVolumes": 6
+  }
+}

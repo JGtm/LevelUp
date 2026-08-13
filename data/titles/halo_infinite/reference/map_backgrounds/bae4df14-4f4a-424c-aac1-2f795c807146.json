@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "bae4df14-4f4a-424c-aac1-2f795c807146",
+  "mapNames": [
+    "Critical Dewpoint",
+    "critical_dewpoint_map"
+  ],
+  "image": "bae4df14-4f4a-424c-aac1-2f795c807146.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:37:52.0485974Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -60.600013732910156,
+    "originY": 62.015999046325675,
+    "widthPx": 1318,
+    "heightPx": 1348,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 6,
+    "anchorsInFrame": 6,
+    "anchorsWithGround": 6,
+    "anchorMedianGapM": -0.008112786565490637,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 77.41000457763671,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.42171987697533087,
+    "covered": true,
+    "cellsSubstituted": 221858,
+    "forgeObjects": 5133,
+    "forgeObjectsDrawn": 5098,
+    "forgeObjectsWithoutModel": 32,
+    "forgeDeathVolumes": 3
+  }
+}

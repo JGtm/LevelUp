@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "c5ac9f12-660e-4f1a-83e7-2e7536bbcb04",
+  "mapNames": [
+    "Perilous",
+    "perilous_map"
+  ],
+  "image": "c5ac9f12-660e-4f1a-83e7-2e7536bbcb04.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:40:45.2160395Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -52.660789489746094,
+    "originY": 56.99380229187011,
+    "widthPx": 1147,
+    "heightPx": 1346,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 4,
+    "anchorsInFrame": 4,
+    "anchorsWithGround": 4,
+    "anchorMedianGapM": -0.028426688728245608,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 170.10218139648438,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.3742198313782447,
+    "covered": true,
+    "cellsSubstituted": 314499,
+    "forgeObjects": 4959,
+    "forgeObjectsDrawn": 4881,
+    "forgeObjectsWithoutModel": 36,
+    "forgeDeathVolumes": 42
+  }
+}

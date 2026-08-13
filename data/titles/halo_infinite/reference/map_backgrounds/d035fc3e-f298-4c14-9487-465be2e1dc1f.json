@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "d035fc3e-f298-4c14-9487-465be2e1dc1f",
+  "mapNames": [
+    "Empyrean",
+    "empyrean_map"
+  ],
+  "image": "d035fc3e-f298-4c14-9487-465be2e1dc1f.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T10:46:55.3803665Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -69.02503204345703,
+    "originY": 19.645856475830072,
+    "widthPx": 1504,
+    "heightPx": 1300,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -14.406560437211255,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 140.11000915527345,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.2690028161894272,
+    "covered": false,
+    "forgeObjects": 5297,
+    "forgeObjectsDrawn": 5255,
+    "forgeObjectsWithoutModel": 29,
+    "forgeDeathVolumes": 13
+  }
+}

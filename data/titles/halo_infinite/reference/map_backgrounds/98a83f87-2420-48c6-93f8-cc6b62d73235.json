@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "98a83f87-2420-48c6-93f8-cc6b62d73235",
+  "mapNames": [
+    "Kaiketsu",
+    "kaiketsu_map"
+  ],
+  "image": "98a83f87-2420-48c6-93f8-cc6b62d73235.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:25:32.1750556Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -87.03749465942383,
+    "originY": 85.56500667572021,
+    "widthPx": 1411,
+    "heightPx": 1320,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": 0.007726596939292563,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 119.20000549316406,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.35848050262653786,
+    "covered": true,
+    "cellsSubstituted": 444355,
+    "forgeObjects": 5497,
+    "forgeObjectsDrawn": 5404,
+    "forgeObjectsWithoutModel": 60,
+    "forgeDeathVolumes": 33
+  }
+}

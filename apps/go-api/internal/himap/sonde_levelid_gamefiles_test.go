@@ -55,6 +55,42 @@ var preuvesLevelID = []struct {
 	// Pilotes du lot fonds par map_id (2026-08-13) : cartes Forge seules sur leur canevas.
 	{"Starboard", "fo03_space"},
 	{"Dredge", "fo06_deepsea"},
+	// Masse du lot fonds par map_id (2026-08-13), ordre du plan (nombre de matchs). Le
+	// module attendu vient du fichier-lien du depot (`<carte>_<module>.mvar`) ; la sonde
+	// le corrobore par le level_id, en exigeant l'unicite sur l'installation.
+	{"The Pit", "fo09_academy"},
+	{"Snowbound", "fo13_frost"},
+	{"Empyrean", "fo11_blank"},
+	{"Origin", "fo08_wetland"},
+	{"Absolution", "fo09_academy"},
+	{"Curfew", "fo11_blank"},
+	{"Dynasty", "fo08_wetland"},
+	{"Shiro", "fo05_desert"},
+	{"Cliffside", "fo05_desert"},
+	{"Nemesis", "fo08_wetland"},
+	{"Domicile", "fo05_desert"},
+	{"Fortress", "fo09_academy"},
+	{"Goliath", "fo11_blank"},
+	{"Isolation", "fo08_wetland"},
+	{"Solitude", "fo11_blank"},
+	{"Houseki", "fo09_academy"},
+	{"High Ground", "fo08_wetland"},
+	{"Salvation", "fo11_blank"},
+	{"Takamanohara", "fo11_blank"},
+	{"Elevation", "fo11_blank"},
+	{"Kiken'na", "fo08_wetland"},
+	{"Banished Narrows", "fo05_desert"},
+	{"Kaiketsu", "fo05_desert"},
+	{"Obituary", "fo09_academy"},
+	{"Opulence", "fo11_blank"},
+	{"Command", "fo09_academy"},
+	{"Fortitude", "fo05_desert"},
+	{"Refuge", "fo08_wetland"},
+	{"Critical Dewpoint", "fo11_blank"},
+	{"Perilous", "fo08_wetland"},
+	{"Shogun", "fo11_blank"},
+	{"Sylvanus", "fo05_desert"},
+	{"Smallhalla", "fo08_wetland"},
 }
 
 // TestPreuveLevelIDCartes rejoue la preuve level_id de chaque appariement : lecture du

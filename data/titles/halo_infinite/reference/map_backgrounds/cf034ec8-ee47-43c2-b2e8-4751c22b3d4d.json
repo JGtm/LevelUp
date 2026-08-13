@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "cf034ec8-ee47-43c2-b2e8-4751c22b3d4d",
+  "mapNames": [
+    "Houseki",
+    "houseki_map"
+  ],
+  "image": "cf034ec8-ee47-43c2-b2e8-4751c22b3d4d.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:11:21.3235644Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -46.299400329589844,
+    "originY": 63.48788010406494,
+    "widthPx": 1305,
+    "heightPx": 1329,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -0.1092341497657685,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 98.60299774169921,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.36465398824302303,
+    "covered": true,
+    "cellsSubstituted": 456640,
+    "forgeObjects": 5299,
+    "forgeObjectsDrawn": 5206,
+    "forgeObjectsWithoutModel": 35,
+    "forgeDeathVolumes": 58
+  }
+}

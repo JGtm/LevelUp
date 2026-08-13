@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "2890782c-0a33-4f2c-a468-e3a7d6cd6db4",
+  "mapNames": [
+    "Shiro",
+    "shiro_map"
+  ],
+  "image": "2890782c-0a33-4f2c-a468-e3a7d6cd6db4.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T10:55:52.0636083Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -62.87501335144043,
+    "originY": 4.601174713134768,
+    "widthPx": 1475,
+    "heightPx": 1203,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 7,
+    "anchorsInFrame": 7,
+    "anchorsWithGround": 7,
+    "anchorMedianGapM": -0.012789757173706562,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 104.08054443359374,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.438608526328199,
+    "covered": true,
+    "cellsSubstituted": 466740,
+    "forgeObjects": 5513,
+    "forgeObjectsDrawn": 5466,
+    "forgeObjectsWithoutModel": 22,
+    "forgeDeathVolumes": 25
+  }
+}

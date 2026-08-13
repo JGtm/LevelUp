@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "df7dbf08-b8de-4ade-9d7f-1947128c9ae4",
+  "mapNames": [
+    "Kiken'na",
+    "kiken'na_map"
+  ],
+  "image": "df7dbf08-b8de-4ade-9d7f-1947128c9ae4.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:21:59.6205191Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -229.5875244140625,
+    "originY": 50.60600381469726,
+    "widthPx": 1269,
+    "heightPx": 1368,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -0.046913662742952056,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 174.87148376464845,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.4958803673187906,
+    "covered": true,
+    "cellsSubstituted": 402691,
+    "forgeObjects": 5570,
+    "forgeObjectsDrawn": 5505,
+    "forgeObjectsWithoutModel": 19,
+    "forgeDeathVolumes": 46
+  }
+}
