@@ -8,7 +8,7 @@
   ],
   "image": "ctf_breaker.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:30:43.6319324Z",
+  "generatedAt": "2026-08-12T23:16:03.5213202Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -30,7 +30,9 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 2014848,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.30823062096379117,
+    "covered": false
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de ctf_breaker-rtx-new.module"

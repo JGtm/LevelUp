@@ -7,7 +7,7 @@
   ],
   "image": "ctf_bazaar.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:24:04.1961564Z",
+  "generatedAt": "2026-08-12T23:07:32.8214735Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -29,7 +29,9 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 1688964,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.052650299769091816,
+    "covered": false
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de ctf_bazaar-rtx-new.module"

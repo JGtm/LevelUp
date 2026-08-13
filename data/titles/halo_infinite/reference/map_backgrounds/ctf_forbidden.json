@@ -7,7 +7,7 @@
   ],
   "image": "ctf_forbidden.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:28:50.9472597Z",
+  "generatedAt": "2026-08-12T23:14:08.9058155Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -21,7 +21,7 @@
     "anchors": 13,
     "anchorsInFrame": 13,
     "anchorsWithGround": 12,
-    "anchorMedianGapM": -0.34827948159939986,
+    "anchorMedianGapM": -0.21068797094539793,
     "instancesDrawn": 7116,
     "instancesScenery": 343,
     "playLevelZ": 1.9431724166870117,
@@ -29,6 +29,9 @@
     "boundaryPlanes": 28,
     "boundaryCellsCleared": 1528847,
     "waterVolumes": 208,
-    "waterCells": 2299
+    "waterCells": 7430,
+    "coveredShare": 0.3510351972548224,
+    "covered": true,
+    "cellsSubstituted": 390850
   }
 }

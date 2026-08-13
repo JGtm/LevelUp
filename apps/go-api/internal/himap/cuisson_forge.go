@@ -165,11 +165,17 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	b.NiveauDeJeu = zJeu
 	r.Tranche(TrancheDeJeu(zJeu))
 	r.NiveauDeJeu(zJeu)
+	// MEME regle que la chaine native : la voie de reference contre les toits
+	// (rendu_reference.go). Une carte Forge a ciel ouvert reste sous le seuil et n'est pas
+	// touchee ; la regle est universelle, pas une affaire de chaine.
+	s := NewSurfaceReference(opts.Ancres)
+	r.ArmeReference(s)
 
 	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge)
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
 	}
+	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
 	if b.VolumesDeMort == 0 {
 		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
 	}
@@ -177,6 +183,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	slog.InfoContext(ctx, "carte Forge cuite", "cle", b.Module,
 		"objets", fmt.Sprintf("%d/%d", b.ObjetsDessines, b.ObjetsForge),
 		"sansModele", b.ObjetsSansModele, "volumesDeMort", b.VolumesDeMort,
+		"couverture", fmt.Sprintf("%.1f%%", 100*b.TauxCouverture), "couverte", b.CarteCouverte,
 		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre))
 	return r, b, nil
 }

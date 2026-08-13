@@ -7,7 +7,7 @@
   ],
   "image": "ridgeline.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:25:25.9364553Z",
+  "generatedAt": "2026-08-12T23:09:46.1334028Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -29,6 +29,8 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 781739,
     "waterVolumes": 233,
-    "waterCells": 5468
+    "waterCells": 5468,
+    "coveredShare": 0.2547664736909295,
+    "covered": false
   }
 }

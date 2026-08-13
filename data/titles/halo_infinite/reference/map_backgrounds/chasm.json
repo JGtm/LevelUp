@@ -7,7 +7,7 @@
   ],
   "image": "chasm.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:33:40.0016413Z",
+  "generatedAt": "2026-08-12T23:19:00.1336781Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -21,7 +21,7 @@
     "anchors": 17,
     "anchorsInFrame": 17,
     "anchorsWithGround": 17,
-    "anchorMedianGapM": -5.01525685029398,
+    "anchorMedianGapM": -0.08866349474055824,
     "instancesDrawn": 1507,
     "instancesScenery": 97,
     "playLevelZ": -136.7340460205078,
@@ -29,7 +29,10 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 1158506,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.371662812697078,
+    "covered": true,
+    "cellsSubstituted": 121549
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de chasm-rtx-new.module"

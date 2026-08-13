@@ -96,6 +96,13 @@ type MapBackgroundStats struct {
 	// WaterVolumes / WaterCells : l'habillage d'eau.
 	WaterVolumes int `json:"waterVolumes"`
 	WaterCells   int `json:"waterCells"`
+	// CoveredShare / Covered / CellsSubstituted : la voie de référence contre les TOITS
+	// (himap/rendu_reference.go). CoveredShare est la part de matière qui cache un sol
+	// praticable ; au-delà d'un tiers la carte est couverte et ses pixels, dans la portée des
+	// ancres, montrent la surface la plus proche du sol de référence des ancres.
+	CoveredShare     float64 `json:"coveredShare"`
+	Covered          bool    `json:"covered"`
+	CellsSubstituted int     `json:"cellsSubstituted,omitempty"`
 	// Champs FORGE — absents d'une carte native. ForgeObjectsWithoutModel n'est pas du bruit :
 	// il dit quelle part de la carte manque à l'image (les objets qui passent par
 	// bloc/scen/mach vers hlmt, saut non traité).

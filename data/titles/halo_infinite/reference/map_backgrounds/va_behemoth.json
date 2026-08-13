@@ -7,7 +7,7 @@
   ],
   "image": "va_behemoth.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:35:13.8115961Z",
+  "generatedAt": "2026-08-12T23:21:10.9745483Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -29,7 +29,9 @@
     "boundaryPlanes": 116,
     "boundaryCellsCleared": 1092085,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.1919514129181084,
+    "covered": false
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de va_behemoth-rtx-new.module"

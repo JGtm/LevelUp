@@ -8,7 +8,7 @@
   ],
   "image": "va_launchsite.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:26:36.3543699Z",
+  "generatedAt": "2026-08-12T23:11:19.6456354Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -22,7 +22,7 @@
     "anchors": 13,
     "anchorsInFrame": 13,
     "anchorsWithGround": 12,
-    "anchorMedianGapM": -6.288951703310013,
+    "anchorMedianGapM": -0.3959997866574386,
     "instancesDrawn": 12861,
     "instancesScenery": 298,
     "playLevelZ": -1.0118143939971924,
@@ -30,6 +30,9 @@
     "boundaryPlanes": 24,
     "boundaryCellsCleared": 1891124,
     "waterVolumes": 6,
-    "waterCells": 52289
+    "waterCells": 52289,
+    "coveredShare": 0.3589557162715317,
+    "covered": true,
+    "cellsSubstituted": 199713
   }
 }

@@ -86,6 +86,12 @@ type Rendu struct {
 	// niveauJeu : altitude du sol JOUE, deduite des ancres. NaN = inconnu.
 	niveauJeu float64
 	n         [][3]float64
+	// ref / dRef / zRef / nRef : la voie de REFERENCE (cf. rendu_reference.go). Nil tant que
+	// `ArmeReference` n'a pas ete appelee — le z-buffer « plus haut » reste alors seul.
+	ref  []float64
+	dRef []float64
+	zRef []float64
+	nRef [][3]float64
 	// eau : cellules couvertes par un volume d'eau (PoseEau, cf. sddt.go). Un habillage —
 	// jamais consulte par le z-buffer ni par les metriques du banc.
 	eau []bool
@@ -178,6 +184,14 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 			k := j*r.NX + i
 			if z > r.z[k] {
 				r.z[k], r.n[k] = z, nrm
+			}
+			// Voie de reference (rendu_reference.go) : retenir AUSSI la surface la plus
+			// proche du sol de reference. Strictement `<` : la premiere face gagne les
+			// ex aequo, comme sur la voie haute — le determinisme au bit en depend.
+			if r.zRef != nil {
+				if d := math.Abs(z - r.ref[k]); d < r.dRef[k] {
+					r.dRef[k], r.zRef[k], r.nRef[k] = d, z, nrm
+				}
 			}
 		}
 	}

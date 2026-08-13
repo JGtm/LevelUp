@@ -9,7 +9,7 @@
   ],
   "image": "sgh_blueprint.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:20:40.9502702Z",
+  "generatedAt": "2026-08-12T23:03:52.9410423Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -31,6 +31,8 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 1722381,
     "waterVolumes": 2,
-    "waterCells": 30970
+    "waterCells": 30970,
+    "coveredShare": 0.20117662736349592,
+    "covered": false
   }
 }

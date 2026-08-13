@@ -8,7 +8,7 @@
   ],
   "image": "catalyst.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:34:04.3402391Z",
+  "generatedAt": "2026-08-12T23:19:36.6352039Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -30,7 +30,9 @@
     "boundaryPlanes": 20,
     "boundaryCellsCleared": 1695636,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.28356268449383576,
+    "covered": false
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de catalyst-rtx-new.module"
