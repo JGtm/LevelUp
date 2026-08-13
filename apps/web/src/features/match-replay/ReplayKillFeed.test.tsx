@@ -34,6 +34,7 @@ function kill(over: Partial<KillEvent>): KillEvent {
     xuid: 'me',
     ally: true,
     teamID: 0,
+    weaponKey: '',
     weaponLabel: '',
     weaponImageUrl: '',
     weaponTinted: false,

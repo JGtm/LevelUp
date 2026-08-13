@@ -28,6 +28,7 @@ function kill(tMs: number, xuid = 'x1'): KillEvent {
     xuid,
     ally: true,
     teamID: 0,
+    weaponKey: 'hinf_br75',
     weaponLabel: 'BR75',
     weaponImageUrl: '/static/weapons/br75.png',
     weaponTinted: true,

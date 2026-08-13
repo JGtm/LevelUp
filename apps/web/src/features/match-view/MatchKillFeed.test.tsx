@@ -36,6 +36,7 @@ function kill(over: Partial<MomentumKill>): MomentumKill {
     binIdx: 0,
     fracInBin: 0.5,
     teamID: 0,
+    weaponKey: '',
     weaponLabel: '',
     weaponImageUrl: '',
     weaponTinted: false,

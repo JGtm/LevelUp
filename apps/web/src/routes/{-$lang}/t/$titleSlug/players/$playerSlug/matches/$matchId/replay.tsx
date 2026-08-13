@@ -114,6 +114,8 @@ function ReplayPage() {
           <ReplayCanvas
             doc={data}
             locale={locale}
+            kills={kills}
+            t0Ms={t0Ms}
             onFrameChange={setFrame}
             background={mapBackground}
           />
