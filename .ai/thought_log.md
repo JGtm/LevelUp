@@ -178,6 +178,14 @@ integration -p 1 (dont le rouge herite). Aucun autre job CI en echec sur `242001
 job. Gates visuels utilisateur pendants : toits (12 paires) + Vagabond lot B (1 paire),
 artefacts sous Desktop/gate_cartes_v75/.
 
+**Addendum 4 (13/08 soir, demande user)** : tri de la racine `.ai/` — 21 plans/handoffs
+TRAITES de la campagne film/killfeed/rejeu deplaces vers `.ai/V7.5/` (replay2d 8, film_re 8,
+cartes 1, killweapon 1, icones 1, racine V7.5 4 dont dette-avant-merge et superviseur 03/08).
+RESTENT en racine : le chantier vivant (PLAN_MASTER piste F, PLAN_FINALISATION_REJEU_2D,
+PLAN_OBJECTIFS_TEMPS_REEL, containment, precision projectiles), les etats de l'art et les
+references (killweapon index, weapon ids, i18n, charts). AUDIT_V7.2.0 reste NON commite
+(decision user « branche dediee » en attente).
+
 **Addendum 3 (meme jour)** : CI rouge du push map_id elucidee et reparee —
 `TestCatalogueLivreEstExploitable` refusait la zone Bastion de Salvation (objet 446, entree
 cd08bc7a) : la SOURCE ne porte pas de sac de forme (mesure corpus mapvar/shape.go : 430/431,
