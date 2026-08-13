@@ -9,6 +9,7 @@ import type { ReplayBounds, ReplayGrenade, ReplayMapObject, ReplayShot } from '@
 
 import { altitudeTint, floorRun, hasEdge, type FloorGrid } from './mapFloor'
 import { drawDeathMarker, drawShotEffect, familyOf } from './shotEffects'
+import { DYNAMO_RANK, type GrenadeRestFx } from './grenadeFx'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
 
@@ -243,6 +244,108 @@ export interface ShotStyle {
    */
   effectOf: (weaponId: string | undefined) => string | undefined
   reducedMotion: boolean
+}
+
+/** Fenêtres du calque de fin de vol : la nappe électrique persiste plus que le halo. */
+export interface RestWindow {
+  frame: number
+  /** Rémanence du halo « dernière position connue », en frames. */
+  holdHalo: number
+  /** Rémanence de la nappe électrique (Shock/Dynamo), en frames. */
+  holdDynamo: number
+}
+
+/**
+ * drawGrenadeRestLayer pose l'effet de FIN DE VOL de chaque grenade liée à son projectile.
+ *
+ * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : la DERNIÈRE POSITION CONNUE du
+ * projectile (fin de vol certifiée `at-rest`), JAMAIS un impact — le film n'enregistre
+ * aucune détonation. D'où un halo qui n'explose rien ; seule la Shock/Dynamo (rang 2)
+ * laisse une nappe électrique persistante, parce que c'est l'effet que l'arme entretient
+ * dans le jeu et que l'arc brisé est déjà la signature de la famille.
+ */
+export function drawGrenadeRestLayer(
+  ctx: CanvasRenderingContext2D,
+  fx: GrenadeRestFx[],
+  view: CanvasView,
+  win: RestWindow,
+  color: string,
+  reducedMotion: boolean,
+): void {
+  ctx.strokeStyle = color
+  ctx.fillStyle = color
+  for (const e of fx) {
+    const dynamo = e.rank === DYNAMO_RANK
+    const hold = dynamo ? win.holdDynamo : win.holdHalo
+    const age = win.frame - e.frame
+    if (age < 0 || age > hold) continue
+    const fade = 1 - age / (hold + 1)
+    const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
+    if (dynamo) drawDynamoRest(ctx, c.x, c.y, fade, e.seed, reducedMotion)
+    else drawRestHalo(ctx, c.x, c.y, fade, reducedMotion)
+  }
+  ctx.globalAlpha = 1
+}
+
+/** Halo discret : un anneau qui s'éteint sur place — il ne s'ouvre pas, il n'affirme rien. */
+function drawRestHalo(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  fade: number,
+  reduced: boolean,
+): void {
+  const k = reduced ? 0.6 : fade
+  ctx.globalAlpha = 0.55 * k
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.arc(x, y, 5.5, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.globalAlpha = 0.8 * k
+  ctx.beginPath()
+  ctx.arc(x, y, 1.6, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+/**
+ * Nappe électrique de la Shock/Dynamo : des arcs BRISÉS rayonnants (géométrie de la
+ * famille `shock`), regénérés d'un germe stable — revenir en arrière redonne la même
+ * image. Sous « mouvement réduit » la nappe est statique, opacité constante.
+ */
+function drawDynamoRest(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  fade: number,
+  seed: number,
+  reduced: boolean,
+): void {
+  const k = reduced ? 0.6 : fade
+  ctx.globalAlpha = 0.35 * k
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.arc(x, y, 9, 0, Math.PI * 2)
+  ctx.stroke()
+  // Trois arcs brisés, orientés par le germe : la même grammaire que le tir `shock`.
+  let s = seed | 0
+  ctx.globalAlpha = 0.85 * k
+  ctx.lineWidth = 1.3
+  for (let ray = 0; ray < 3; ray++) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    const ang = ((s % 360) * Math.PI) / 180
+    const nx = -Math.sin(ang)
+    const ny = Math.cos(ang)
+    const reach = 8 + (s % 5)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    for (let i = 1; i <= 3; i++) {
+      s = (s * 1103515245 + 12345) & 0x7fffffff
+      const amp = i === 3 ? 0 : (1.5 + (s % 3)) * (i % 2 ? 1 : -1)
+      const u = i / 3
+      ctx.lineTo(x + Math.cos(ang) * reach * u + nx * amp, y + Math.sin(ang) * reach * u + ny * amp)
+    }
+    ctx.stroke()
+  }
 }
 
 /** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */
