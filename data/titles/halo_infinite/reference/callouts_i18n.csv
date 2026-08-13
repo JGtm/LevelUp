@@ -1,0 +1,817 @@
+﻿carte;volumeIndex;string_id;nom_conception;en;fr;source;tronque;nom_brut;a_forme;x;y;z
+academy_tutorial;53;0x79114C5C;house;House;Maison;jeu;non;named location house;oui;23.7;39.0;2.0
+academy_tutorial;54;0x79114C5C;house;House;Maison;jeu;non;named location house;non;23.6;31.8;1.5
+academy_tutorial;55;0xAA6C8944;house elbow;House Elbow;Coude de maison;jeu;non;named location house elbow;oui;22.8;27.8;1.1
+academy_tutorial;56;0xEDF5FC09;storage;Storage;Réserve;jeu;non;named location storage;oui;27.25;27.6;1.7
+academy_tutorial;57;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;15.4;26.2;0.9
+academy_tutorial;58;0xF1249B80;green bend;Green Bend;Virage vert;jeu;non;named location green bend;oui;16.6;17.5;0.3
+academy_tutorial;59;0xE3561DA4;green building;Green Building;Bâtiment vert;jeu;non;named location green building;oui;13.469;21.187;-0.1
+academy_tutorial;60;0xE3561DA4;green building;Green Building;Bâtiment vert;jeu;non;named location green building;oui;11.0;21.7;1.0
+academy_tutorial;61;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;1.5;24.9;2.009
+academy_tutorial;62;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;0.723;22.6;0.7
+academy_tutorial;63;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-5.7;30.2;1.9
+academy_tutorial;64;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-5.7;30.2;4.3
+academy_tutorial;65;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-8.9;30.2;4.3
+academy_tutorial;66;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-6.8;26.5;3.2
+academy_tutorial;67;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;non;-5.361;27.0;3.014
+academy_tutorial;68;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;non;-4.767;26.8;5.867
+academy_tutorial;69;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;non;-8.417;28.88;4.07
+academy_tutorial;70;0x113CEB4E;brutes;Brutes;Brutes;jeu;non;named location brutes;oui;-1.3;40.8;1.3
+academy_tutorial;71;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;7.0;34.6;-0.1
+academy_tutorial;72;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;7.8;32.1;2.5
+academy_tutorial;73;0x0271869D;turbine;Turbine;Turbine;jeu;non;named location turbine;oui;7.2;46.6;1.2
+academy_tutorial;74;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;oui;3.3;38.3;2.0
+academy_tutorial;75;0x979F39E1;grad board;Grad Board;Tableau grad;jeu;non;named location grad board;oui;17.2;42.3;0.5
+academy_tutorial;76;0x0A99F6A7;house window;House Window;Fenêtre de maison;jeu;non;named location house window;oui;20.5;46.1;1.7
+academy_tutorial;77;0xFA62B65D;overlook;Overlook;Promontoire;jeu;non;named location overlook;oui;15.3;38.1;2.4
+academy_tutorial;78;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;6.1;26.1;1.1
+academy_tutorial;79;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-3.6;23.2;0.1
+academy_tutorial;80;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-8.9;33.1;1.6
+academy_tutorial;81;0x79114C5C;house;House;Maison;jeu;non;named location house;oui;21.9;42.3;0.7
+academy_tutorial;82;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;15.7;32.7;0.2
+academy_tutorial;83;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;4.2;34.3;-0.2
+academy_tutorial;84;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;6.8;33.706;1.9
+academy_tutorial;85;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;oui;3.1;34.4;2.4
+academy_tutorial;86;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;non;2.95;35.999;1.8
+academy_tutorial;87;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-3.0;30.2;2.6
+academy_tutorial;88;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;2.0;18.5;2.5
+academy_tutorial;89;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;3.6;19.9;2.8
+academy_tutorial;90;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;non;2.3;20.2;3.45
+academy_tutorial;91;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;non;4.0;18.5;3.5
+academy_tutorial;92;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;6.2;17.4;1.0
+academy_tutorial;93;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;13.6;27.3;1.5
+academy_tutorial;94;0xF1249B80;green bend;Green Bend;Virage vert;jeu;non;named location green bend;oui;10.2;16.2;0.4
+academy_tutorial;95;0xDD28A839;landing pad;Landing Pad;Aire d'atterrissage;jeu;non;named location landing pad;oui;74.742;80.855;0.3
+academy_tutorial;96;0xDD28A839;landing pad;Landing Pad;Aire d'atterrissage;jeu;non;named location landing pad;oui;54.081;79.698;2.27
+academy_tutorial;97;0x95321674;lobby;Lobby;Accueil;jeu;non;named location lobby;oui;40.49;94.618;4.095
+academy_tutorial;98;0xB4CAB331;ai lab;AI Lab;Labo IA;jeu;non;named location ai lab;oui;19.669;98.079;4.02
+academy_tutorial;99;0xB4CAB331;ai lab;AI Lab;Labo IA;jeu;non;named location ai lab;oui;27.329;96.96;5.236
+academy_tutorial;100;0xDA6F0312;locker room;Locker Room;Vestiaire;jeu;non;named location locker room;oui;4.368;93.896;0.504
+academy_tutorial;101;0x898B1F86;movement course;Movement Course;Trajectoire de déplacement;jeu;non;named location movement course;oui;16.61;77.822;2.516
+academy_tutorial;102;0x898B1F86;movement course;Movement Course;Trajectoire de déplacement;jeu;non;named location movement course;oui;30.358;80.463;0.509
+academy_tutorial;103;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;33.035;72.761;2.7
+academy_tutorial;104;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;non;49.38;71.582;2.801
+academy_tutorial;105;0x24473E5A;armory;Armory;Armurerie;jeu;non;named location armory;oui;52.82;66.253;0.503
+academy_tutorial;106;0x85F88730;weapon range;Weapon Range;Polygone de tir;jeu;non;named location weapon range;oui;39.4;47.367;0.501
+academy_tutorial;107;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;33.532;42.494;0.5
+academy_tutorial;108;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-3.6;23.2;2.1
+academy_tutorial;109;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-8.9;33.1;4.8
+academy_tutorial;110;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;1.5;20.937;2.007
+academy_tutorial;111;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;2.31;22.6;0.7
+academy_tutorial;112;0x95321674;lobby;Lobby;Accueil;jeu;non;named location lobby;oui;29.314;83.851;1.506
+academy_tutorial;113;0x95321674;lobby;Lobby;Accueil;jeu;non;named location lobby;oui;29.314;85.751;1.506
+academy_tutorial;114;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-8.0;29.2;2.3
+academy_tutorial;115;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-3.6;23.2;1.1
+btb_drydock;54;0x6F5748BC;low base;Low Base;Base en contrebas;jeu;non;named location low base;oui;57.609;49.522;101.701
+btb_drydock;55;0x3D5DCDD9;low yard;Low Yard;Dépôt en contrebas;jeu;non;named location low yard;oui;39.503;62.194;101.701
+btb_drydock;56;0xDBA89F78;watchtower;Watchtower;Mirador;jeu;non;named location watchtower;oui;57.435;78.572;101.701
+btb_drydock;57;0xBABF6E7F;low cargo;Low Cargo;Cargaison en contrebas;jeu;non;named location low cargo;oui;33.893;36.216;101.701
+btb_drydock;58;0xFFD3EB55;cave pass;Cave Pass;Col de la grotte;jeu;non;named location cave pass;oui;13.657;50.379;101.701
+btb_drydock;59;0x6ED8A6F7;crash site;Crash Site;Site du crash;jeu;non;named location crash site;oui;39.083;91.416;101.701
+btb_drydock;60;0x9ADF8852;aa gun;AA Gun;Batterie antiaérienne;jeu;non;named location aa gun;oui;17.957;65.068;101.701
+btb_drydock;61;0x4F9BDABE;cave;Cave;Grotte;jeu;non;named location cave;oui;-7.109;38.671;101.701
+btb_drydock;62;0x09F5EB1A;high cargo;High Cargo;Cargaison en hauteur;jeu;non;named location high cargo;oui;12.269;104.202;101.701
+btb_drydock;63;0xBE6E2483;high yard;High Yard;Dépôt en hauteur;jeu;non;named location high yard;oui;2.366;79.764;101.701
+btb_drydock;64;0x0AD751E2;bridge;Bridge;Pont;jeu;non;named location bridge;oui;-15.943;63.894;101.701
+btb_drydock;65;0x6AFC2041;high base;High Base;Base en hauteur;jeu;non;named location high base;oui;-17.362;88.201;101.701
+btb_drydock;66;0x5E42CF85;waterfront;Waterfront;Rivage;jeu;non;named location waterfront;oui;53.589;117.603;101.701
+btb_drydock;67;0x5E710142;yep this is deat;Yep, this is death...;Oui, c'est la mort...;jeu;oui;named location yep this is deat;non;36.761;87.282;73.198
+btb_engine;5;0x11CC5221;east base;East Base;Base est;jeu;non;named location east base;oui;46.842;-1.395;3.7
+btb_engine;6;0xFF0E8195;engine processin;Processing;Traitement;jeu;oui;named location engine processin;oui;-0.106;14.494;3.7
+btb_engine;7;0xFF0E8195;engine processin;Processing;Traitement;jeu;oui;named location engine processin;oui;-0.008;29.105;1.036
+btb_engine;8;0x72BCDA69;engine west junc;West Junction;Jonction ouest;jeu;oui;named location engine west junc;oui;-0.008;29.105;1.036
+btb_engine;9;0x17521CD9;engine east junc;East Junction;Jonction est;jeu;oui;named location engine east junc;oui;-0.008;29.105;1.036
+btb_engine;10;0xA46AB294;engine mancannon;Crosspoint;Point de croisement;jeu;oui;named location engine mancannon;oui;0.142;-16.695;3.7
+btb_engine;11;0x4154FCBB;east bend;East Bend;Virage est;jeu;non;named location east bend;oui;32.342;-12.295;3.7
+btb_engine;12;0xE0E445A4;west bend;West Bend;Virage ouest;jeu;non;named location west bend;oui;-20.558;-12.295;3.7
+btb_engine;13;0x9284D280;center blastpit;Blast Pit;Fosse à explosion;jeu;non;named location center blastpit;oui;2.842;-4.495;-1.759
+btb_engine;14;0x9284D280;center blastpit;Blast Pit;Fosse à explosion;jeu;non;named location center blastpit;oui;-1.358;-1.895;-12.479
+btb_engine;15;0x208B86F0;engine center to;Power Core;Noyau de puissance;jeu;oui;named location engine center to;oui;2.842;-4.495;8.441
+btb_engine;16;0xB1995834;west deadlands;West Deadlands;Terres mortes de l’Ouest;jeu;non;named location west deadlands;oui;-12.139;-12.102;2.5
+btb_engine;17;0x83A1F635;east balcony;East Balcony;Balcon est;jeu;non;named location east balcony;oui;16.742;8.105;1.859
+btb_engine;18;0x3A4F3739;east deadlands;East Deadlands;Terres mortes de l’Est;jeu;non;named location east deadlands;oui;12.042;9.905;3.7
+btb_engine;19;0x3A4F3739;east deadlands;East Deadlands;Terres mortes de l’Est;jeu;non;named location east deadlands;oui;12.629;-8.88;3.7
+btb_engine;20;0xC02A2E13;engine teleporte;Garbage Chute;Vide-ordures;jeu;oui;named location engine teleporte;oui;-0.558;5.905;-6.9
+btb_engine;21;0x2F7ED9F7;engine east mcan;East Flight Deck;Poste de pilotage est;jeu;oui;named location engine east mcan;oui;12.042;9.905;3.7
+btb_engine;22;0x081DC1A5;west balcony;West Balcony;Balcon ouest;jeu;non;named location west balcony;oui;-10.632;6.712;1.859
+btb_engine;23;0x3DC4B9C3;engine west mcan;West Flight Deck;Poste de pilotage ouest;jeu;oui;named location engine west mcan;oui;-15.258;-9.995;3.7
+btb_engine;24;0xB1995834;west deadlands;West Deadlands;Terres mortes de l’Ouest;jeu;non;named location west deadlands;oui;-10.339;10.098;2.5
+btb_engine;25;0x338C7469;west base;West Base;Base ouest;jeu;non;named location west base;oui;-44.598;9.838;1.733
+btb_engine;26;0xD075C1D9;engine 3sand;Triple Sandwich jr;Triple Sandwich Jr;jeu;non;named location engine 3sand;oui;10.529;-46.545;-2.065
+btb_engine;27;0xD075C1D9;engine 3sand;Triple Sandwich jr;Triple Sandwich Jr;jeu;non;named location engine 3sand;non;0.005;31.905;1.342
+btb_exiled;49;0x006C9BEF;exile base wall;Wall Base;Socle mural;jeu;non;named location exile base wall;oui;-11.5;-55.6;66.3
+btb_exiled;50;0x006C9BEF;exile base wall;Wall Base;Socle mural;jeu;non;named location exile base wall;oui;-0.9;-55.6;66.3
+btb_exiled;51;0x006C9BEF;exile base wall;Wall Base;Socle mural;jeu;non;named location exile base wall;oui;24.9;-55.6;66.3
+btb_exiled;52;0xCFB43E1F;exile oasis;Oasis;Oasis;jeu;non;named location exile oasis;oui;46.9;-4.1;66.3
+btb_exiled;53;0x3622EBA0;exile sandwiches;Sandwiches;Sandwichs;jeu;non;named location exile sandwiches;oui;31.199;61.553;24.299
+btb_exiled;54;0xBEDC16EC;exile corner sou;South Point;Point sud;jeu;oui;named location exile corner sou;oui;56.9;59.3;66.3
+btb_exiled;55;0xF69A77E5;exile base tower;Tower Base;Base de la tour;jeu;non;named location exile base tower;oui;5.8;60.3;66.3
+btb_exiled;56;0xA61782C5;exile cave eleva;Cave Lift;Monte-charge de la grotte;jeu;oui;named location exile cave eleva;oui;-21.952;-0.331;24.569
+btb_exiled;57;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-31.952;-33.331;24.569
+btb_exiled;58;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-0.952;-18.331;24.569
+btb_exiled;59;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-2.204;-15.97;25.6
+btb_exiled;60;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-7.168;-15.41;25.6
+btb_exiled;61;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-14.204;-4.97;25.6
+btb_exiled;62;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-14.204;1.123;25.6
+btb_exiled;63;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-14.204;6.983;25.6
+btb_exiled;64;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-13.009;-0.302;25.875
+btb_exiled;65;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-12.516;-0.302;25.875
+btb_exiled;66;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-11.527;-0.302;25.875
+btb_exiled;67;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-10.839;-0.302;25.875
+btb_exiled;68;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-10.147;-0.302;26.309
+btb_exiled;69;0xE56092FE;exile cave;Cave;Grotte;jeu;non;named location exile cave;oui;-9.158;-0.302;26.756
+btb_exiled;70;0xA61782C5;exile cave eleva;Cave Lift;Monte-charge de la grotte;jeu;oui;named location exile cave eleva;oui;-21.952;-0.331;22.883
+btb_exiled;71;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-18.957;0.08;22.901
+btb_exiled;72;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-12.973;0.08;22.901
+btb_exiled;73;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-12.081;0.08;22.901
+btb_exiled;74;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-11.486;0.08;23.182
+btb_exiled;75;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-10.898;0.08;23.46
+btb_exiled;76;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-10.307;0.08;23.775
+btb_exiled;77;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-9.715;0.08;24.051
+btb_exiled;78;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-9.122;0.08;24.246
+btb_exiled;79;0xB9510B50;exile cave pipeh;Pipe Hall;Salle des tuyaux;jeu;oui;named location exile cave pipeh;oui;-8.535;0.08;24.444
+btb_exiled;80;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;0.37;-10.617;23.815
+btb_exiled;81;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;4.703;-18.803;23.815
+btb_exiled;82;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;-3.93;-6.617;23.815
+btb_exiled;83;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;-3.23;5.583;23.815
+btb_exiled;84;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;4.57;20.183;23.815
+btb_exiled;85;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;2.07;12.783;23.815
+btb_exiled;86;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;4.97;-1.217;23.815
+btb_exiled;87;0xA2F8ECA3;exile research b;Facility;Local;jeu;oui;named location exile research b;oui;-7.666;-0.302;26.756
+btb_exiled;88;0xF69A77E5;exile base tower;Tower Base;Base de la tour;jeu;non;named location exile base tower;oui;4.57;20.183;33.467
+btb_exiled;89;0xCFB43E1F;exile oasis;Oasis;Oasis;jeu;non;named location exile oasis;oui;2.07;12.783;33.467
+btb_exiled;90;0xCFB43E1F;exile oasis;Oasis;Oasis;jeu;non;named location exile oasis;oui;4.97;-1.217;33.467
+btb_exiled;91;0x006C9BEF;exile base wall;Wall Base;Socle mural;jeu;non;named location exile base wall;oui;4.703;-18.803;33.467
+btb_fragmentation;42;0x87F9EE0F;wreckage;Wreckage;Épave;jeu;non;named location wreckage;oui;65.577;-4.359;3.958
+btb_fragmentation;43;0x09401C2C;center passage;Center Passage;Passage central;jeu;non;named location center passage;oui;50.968;-7.461;3.913
+btb_fragmentation;44;0xBF495A81;hex archway;Hex Archway;Voûte hexagonale;jeu;non;named location hex archway;oui;32.788;10.125;1.991
+btb_fragmentation;45;0x675AE256;cliff edge;Cliff Edge;Bord de la falaise;jeu;non;named location cliff edge;oui;9.637;37.213;2.084
+btb_fragmentation;46;0xA6510037;cliff base;Cliff Base;Base de la falaise;jeu;non;named location cliff base;oui;27.991;27.08;6.504
+btb_fragmentation;47;0x5CDDCB28;center hex path;Center Hex Path;Chemin hexagonal central;jeu;non;named location center hex path;oui;56.974;0.517;4.801
+btb_fragmentation;48;0x87EAE2FF;hex forest;Hex Forest;Forêt hexagonale;jeu;non;named location hex forest;oui;30.555;57.405;3.098
+btb_fragmentation;49;0x06A8D5BE;front cliff base;Front Cliff Base;Base avant de la falaise;jeu;non;named location front cliff base;oui;33.263;19.581;1.797
+btb_fragmentation;50;0x06A8D5BE;front cliff base;Front Cliff Base;Base avant de la falaise;jeu;non;named location front cliff base;oui;37.377;26.254;-0.106
+btb_fragmentation;51;0xFEA3C1CD;hex junction;Hex Junction;Jonction hexagonale;jeu;non;named location hex junction;oui;46.527;17.085;2.013
+btb_fragmentation;52;0x4928CB0B;hex landing;Hex Landing;Aire d'atterrissage hexagonale;jeu;non;named location hex landing;oui;54.09;16.276;5.747
+btb_fragmentation;53;0x0C39A044;hex archway road;Hex Archway Road;Route de la voûte hexagonale;jeu;non;named location hex archway road;oui;23.045;15.166;0.282
+btb_fragmentation;54;0xB5279A8A;hex vault courty;Hex Vault Courtyard;Cour du coffre hexagonal;jeu;oui;named location hex vault courty;oui;24.825;-8.625;6.277
+btb_fragmentation;55;0x9C390FD3;hex vault;Hex Vault;Coffre hexagonal;jeu;non;named location hex vault;oui;13.267;-7.077;6.222
+btb_fragmentation;56;0x5A74156B;hex vault overlo;Hex Vault Overlook;Promontoire du coffre hexagonal;jeu;oui;named location hex vault overlo;oui;20.09;-18.989;9.962
+btb_fragmentation;57;0x2C126426;cliff base inter;Cliff Base Interior;Intérieur de la base de la falaise;jeu;oui;named location cliff base inter;oui;27.779;28.281;-0.159
+btb_fragmentation;58;0x05F8AE89;hex narrow passa;Hex Narrow Passage;Passage hexagonal étroit;jeu;oui;named location hex narrow passa;oui;58.443;48.47;3.286
+btb_fragmentation;59;0x57C163A2;hex overlook;Hex Overlook;Promontoire hexagonal;jeu;non;named location hex overlook;oui;67.156;12.818;7.539
+btb_fragmentation;60;0xFAA9026F;hex pocket;Hex Pocket;Poche hexagonale;jeu;non;named location hex pocket;oui;4.93;22.229;2.847
+btb_fragmentation;61;0xB163BF93;rock vault hike;Rock Vault Hike;Promenade du coffre rocheux;jeu;non;named location rock vault hike;oui;67.899;18.244;5.413
+btb_fragmentation;62;0xFAA9026F;hex pocket;Hex Pocket;Poche hexagonale;jeu;non;named location hex pocket;oui;8.412;28.697;7.074
+btb_fragmentation;63;0xBF0A4EF1;cliff roadway;Cliff Roadway;Route de la falaise;jeu;non;named location cliff roadway;oui;20.798;47.483;3.533
+btb_fragmentation;64;0x4865C8B4;hex power node;Hex Power Node;Nœud d'alimentation hexagonal;jeu;non;named location hex power node;oui;54.811;37.224;0.918
+btb_fragmentation;65;0x06A8D5BE;front cliff base;Front Cliff Base;Base avant de la falaise;jeu;non;named location front cliff base;oui;33.263;19.581;5.297
+btb_fragmentation;66;0xF3697DC7;hex switchback;Hex Switchback;Route sinueuse hexagonale;jeu;non;named location hex switchback;oui;13.559;10.231;3.749
+btb_fragmentation;67;0x06A8D5BE;front cliff base;Front Cliff Base;Base avant de la falaise;jeu;non;named location front cliff base;oui;35.866;12.801;2.17
+btb_fragmentation;68;0x43CC3D4F;rock forest;Rock Forest;Forêt de rochers;jeu;non;named location rock forest;oui;71.381;-72.328;3.098
+btb_fragmentation;69;0x2AF36E94;center rock path;Center Rock Path;Chemin rocheux central;jeu;non;named location center rock path;oui;44.962;-15.439;4.801
+btb_fragmentation;70;0x3B67FC9B;canyon base;Canyon Base;Base du canyon;jeu;non;named location canyon base;oui;73.946;-42.003;6.504
+btb_fragmentation;71;0x1DA8BA74;canyon base inte;Canyon Base;Base du canyon;jeu;oui;named location canyon base inte;oui;74.157;-43.203;-0.159
+btb_fragmentation;72;0x50C1E0FD;canyon wall;Canyon Wall;Paroi du canyon;jeu;non;named location canyon wall;oui;92.3;-52.135;2.084
+btb_fragmentation;73;0x6A14508E;canyon roadway;Canyon Roadway;Route du canyon;jeu;non;named location canyon roadway;oui;81.139;-62.405;3.533
+btb_fragmentation;74;0x3A223989;front canyon bas;Front Canyon Base;Base avant du canyon;jeu;oui;named location front canyon bas;oui;64.559;-41.177;-0.106
+btb_fragmentation;75;0x3A223989;front canyon bas;Front Canyon Base;Base avant du canyon;jeu;oui;named location front canyon bas;oui;68.674;-34.504;5.297
+btb_fragmentation;76;0x3A223989;front canyon bas;Front Canyon Base;Base avant du canyon;jeu;oui;named location front canyon bas;oui;68.674;-34.504;1.797
+btb_fragmentation;77;0x3A223989;front canyon bas;Front Canyon Base;Base avant du canyon;jeu;oui;named location front canyon bas;oui;66.07;-27.724;2.17
+btb_fragmentation;78;0xCABCABE2;rock archway;Rock Archway;Voûte rocheuse;jeu;non;named location rock archway;oui;69.148;-25.047;1.991
+btb_fragmentation;79;0xE7916508;rock archway roa;Rock Archway Road;Route de la voûte rocheuse;jeu;oui;named location rock archway roa;oui;78.892;-30.088;0.282
+btb_fragmentation;80;0xABBA2150;rock junction;Rock Junction;Jonction rocheuse;jeu;non;named location rock junction;oui;55.41;-32.007;2.013
+btb_fragmentation;81;0x69FECC90;rock vault court;Rock Vault Courtyard;Cour du coffre rocheux;jeu;oui;named location rock vault court;oui;77.111;-6.297;6.277
+btb_fragmentation;82;0x6021CEBA;rock landing;Rock Landing;Aire d'atterrissage rocheuse;jeu;non;named location rock landing;oui;47.847;-31.199;5.747
+btb_fragmentation;83;0x41E33994;rock narrow pass;Rock Narrow Passage;Passage étroit et rocheux;jeu;oui;named location rock narrow pass;oui;43.493;-63.392;3.286
+btb_fragmentation;84;0x1FD9B22A;rock overlook;Rock Overlook;Promontoire rocheux;jeu;non;named location rock overlook;oui;34.78;-27.741;7.539
+btb_fragmentation;85;0x070A6CEE;rock pocket;Rock Pocket;Poche de rochers;jeu;non;named location rock pocket;oui;93.525;-43.62;7.074
+btb_fragmentation;86;0x070A6CEE;rock pocket;Rock Pocket;Poche de rochers;jeu;non;named location rock pocket;oui;97.006;-37.152;2.847
+btb_fragmentation;87;0xF9C49F0E;rock power node;Rock Power Node;Nœud d'alimentation des rochers;jeu;non;named location rock power node;oui;47.125;-52.146;0.918
+btb_fragmentation;88;0x158CEE1B;rock switchback;Rock Switchback;Route sinueuse et rocheuse;jeu;non;named location rock switchback;oui;88.377;-25.154;3.749
+btb_fragmentation;89;0x0FA942DB;rock vault;Rock Vault;Coffre rocheux;jeu;non;named location rock vault;oui;88.669;-7.845;6.222
+btb_fragmentation;90;0xC0AFE8F9;rock vault overl;Rock Vault Overlook;Promontoire du coffre rocheux;jeu;oui;named location rock vault overl;oui;81.846;4.067;9.962
+btb_fragmentation;91;0xC942D21A;hex vault hike;Hex Vault Hike;Promenade du coffre hexagonal;jeu;non;named location hex vault hike;oui;34.037;-33.166;5.413
+btb_fragmentation;92;0x925DBB0C;broken ring;Broken Ring;Anneau brisé;jeu;non;named location broken ring;oui;36.359;-10.564;3.958
+btb_fragmentation;93;0x3B67FC9B;canyon base;Canyon Base;Base du canyon;jeu;non;named location canyon base;oui;87.754;-49.703;0.893
+btb_fragmentation;94;0xA6510037;cliff base;Cliff Base;Base de la falaise;jeu;non;named location cliff base;oui;14.578;34.758;0.904
+btb_fragmentation;95;0xD52E7B8B;cliffs thinking ;Cliff's Thinking Spot;Point de réflexion de la falaise;jeu;oui;named location cliffs thinking ;oui;4.469;55.187;4.491
+btb_highpower;49;0x8509F7DB;btbhp wizard roc;Wizard Rock;Rocher du magicien;jeu;oui;named location btbhp wizard roc;oui;-114.682;11.978;45.043
+btb_highpower;50;0x780936AD;btbhp ridgeline;Ridgeline;Arête;jeu;non;named location btbhp ridgeline;oui;-127.929;-1.112;45.043
+btb_highpower;51;0x3A39C9F3;btbhp high power;High Power;Haute tension;jeu;non;named location btbhp high power;oui;-134.421;-17.339;49.439
+btb_highpower;52;0x1421DD7B;btbhp cave pit;Cave Pit;Fosse de la grotte;jeu;non;named location btbhp cave pit;oui;-146.439;-22.792;47.468
+btb_highpower;53;0x1421DD7B;btbhp cave pit;Cave Pit;Fosse de la grotte;jeu;non;named location btbhp cave pit;oui;-142.907;-21.876;43.937
+btb_highpower;54;0x731950D4;btbhp lakeside c;Lakeside Crossroads;Croisement du bord du lac;jeu;oui;named location btbhp lakeside c;oui;-139.531;-48.927;49.439
+btb_highpower;55;0x53853465;btbhp cave;Cave;Grotte;jeu;non;named location btbhp cave;oui;-142.441;-3.607;48.318
+btb_highpower;56;0xC6C72CFF;btbhp rocky pass;Rocky Pass;Col rocheux;jeu;non;named location btbhp rocky pass;oui;-104.215;-29.304;49.439
+btb_highpower;57;0x01633487;btbhp lakeside;Lakeside;Bord du lac;jeu;non;named location btbhp lakeside;oui;-120.312;-52.775;43.468
+btb_highpower;58;0xDCFDABCA;btbhp tower base;Tower Base;Base de la tour;jeu;non;named location btbhp tower base;oui;-73.658;4.597;44.367
+btb_highpower;59;0xDF51DC5D;btbhp waterfall ;Waterfall Base;Base de la cascade;jeu;oui;named location btbhp waterfall ;oui;-137.099;-84.793;49.439
+btb_highpower;60;0x0CDE6FAE;btbhp cliffs;Cliffs;Falaises;jeu;non;named location btbhp cliffs;oui;-104.602;-73.533;49.439
+btb_highpower;61;0x7934FDD3;btbhp center pit;Center Pit;Fosse centrale;jeu;non;named location btbhp center pit;oui;-112.526;-11.321;41.378
+btb_highpower;62;0xAAB1E1A1;btbhp archway;Archway;Voûte;jeu;non;named location btbhp archway;oui;-115.81;-39.618;49.439
+btb_highpower;63;0xAB84953C;btbhp overlook;Overlook;Promontoire;jeu;non;named location btbhp overlook;oui;-139.126;-23.614;44.851
+btb_highpower;64;0x3A4981D6;btbhp low power;Low Power;Énergie basse;jeu;non;named location btbhp low power;non;-116.27;-16.417;32.1
+btb_highpower;65;0x578DB990;btbhp no power;No Power;Sans énergie;jeu;non;named location btbhp no power;non;-116.27;-16.417;22.333
+btb_highpower;66;0x578DB990;btbhp no power;No Power;Sans énergie;jeu;non;named location btbhp no power;non;-153.832;-22.168;23.726
+btb_highpower;67;0x3A4981D6;btbhp low power;Low Power;Énergie basse;jeu;non;named location btbhp low power;non;-153.832;-22.168;33.493
+btb_highpower;68;0x1044F489;btbhp sandwich;Sandwich;Sandwich;jeu;non;named location btbhp sandwich;non;-145.97;-68.817;48.956
+btb_highpower;69;0xAB84953C;btbhp overlook;Overlook;Promontoire;jeu;non;named location btbhp overlook;oui;-138.407;-17.976;43.937
+btb_highpower;70;0x7934FDD3;btbhp center pit;Center Pit;Fosse centrale;jeu;non;named location btbhp center pit;oui;-133.307;-15.976;43.937
+catalyst;9;0x3FCBA21B;grand hall;Grand Hall;Grande salle;jeu;non;named location grand hall;oui;16.779;-0.002;27.505
+catalyst;10;0xDFC6F119;overgrowth;Overgrowth;Broussailles;jeu;non;named location overgrowth;oui;-16.577;-0.002;27.805
+catalyst;11;0x2065625E;middle;Middle;Centre;jeu;non;named location middle;oui;0.223;-0.052;27.505
+catalyst;12;0x555CA63B;top mid;Top Mid;Milieu haut;jeu;non;named location top mid;non;-0.041;0.006;28.51
+catalyst;13;0x0814B63D;middle ramp;Middle Ramp;Rampe centrale;jeu;non;named location middle ramp;non;-0.041;-6.475;27.686
+catalyst;14;0x0814B63D;middle ramp;Middle Ramp;Rampe centrale;jeu;non;named location middle ramp;non;-0.041;6.393;27.686
+catalyst;15;0x0814B63D;middle ramp;Middle Ramp;Rampe centrale;jeu;non;named location middle ramp;non;-0.041;7.617;27.01
+catalyst;16;0x0814B63D;middle ramp;Middle Ramp;Rampe centrale;jeu;non;named location middle ramp;non;-0.041;-7.583;27.01
+catalyst;17;0xBA33339A;base;Base;Base;jeu;non;named location base;oui;-0.041;11.567;27.01
+catalyst;18;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;7.559;10.267;24.71
+catalyst;19;0x0225EB16;balcony;Balcony;Balcon;jeu;non;named location balcony;oui;-0.041;3.117;24.31
+catalyst;20;0x0225EB16;balcony;Balcony;Balcon;jeu;non;named location balcony;oui;0.18;-3.127;24.31
+catalyst;21;0x52AA091A;bottom mid;Bottom Mid;Milieu bas;jeu;non;named location bottom mid;oui;0.159;0.067;21.91
+catalyst;22;0xBA33339A;base;Base;Base;jeu;non;named location base;oui;-0.041;-11.601;27.01
+catalyst;23;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;7.559;-10.933;24.71
+catalyst;24;0xFA62B65D;overlook;Overlook;Promontoire;jeu;non;named location overlook;oui;9.859;0.067;26.438
+catalyst;25;0x8723743E;catwalk;Catwalk;Passerelle;jeu;non;named location catwalk;oui;-13.241;6.294;28.556
+catalyst;26;0x8723743E;catwalk;Catwalk;Passerelle;jeu;non;named location catwalk;oui;-13.241;-6.272;28.556
+catalyst;27;0xF4BDAD29;mohawk;Mohawk;Crête iroquoise;jeu;non;named location mohawk;oui;11.059;0.067;22.738
+catalyst;28;0x62247A03;spine;Spine;Squelette;jeu;non;named location spine;oui;-10.341;0.067;22.638
+catalyst;29;0x5BF429B3;plank;Plank;Planche;jeu;non;named location plank;oui;-8.241;0.067;25.31
+catalyst;30;0x62247A03;spine;Spine;Squelette;jeu;non;named location spine;oui;-9.141;0.067;25.31
+catalyst;31;0x095E2E95;window;Window;Fenêtre;jeu;non;named location window;oui;-11.243;-8.116;24.414
+catalyst;32;0x095E2E95;window;Window;Fenêtre;jeu;non;named location window;oui;-11.243;8.952;24.414
+catalyst;33;0xAF047E83;closed hall;Closed Hall;Salle fermée;jeu;non;named location closed hall;oui;6.001;-8.035;26.973
+catalyst;34;0xAF047E83;closed hall;Closed Hall;Salle fermée;jeu;non;named location closed hall;oui;6.001;8.913;26.973
+catalyst;35;0xF01AD1E5;open hall;Open Hall;Salle ouverte;jeu;non;named location open hall;oui;-6.848;8.913;26.973
+catalyst;36;0xF01AD1E5;open hall;Open Hall;Salle ouverte;jeu;non;named location open hall;oui;-6.848;-8.079;26.973
+chasm;14;0x0A16C501;cobalt base;Cobalt Base;Socle de cobalt;jeu;non;named location cobalt base;oui;-51.36;-70.227;-136.424
+chasm;15;0x1711A2F9;cobalt bridge;Cobalt Bridge;Pont de cobalt;jeu;non;named location cobalt bridge;oui;-54.4;-62.2;-138.0
+chasm;16;0x2C4E9524;gold base;Gold Base;Base d’or;jeu;non;named location gold base;oui;-82.96;-54.227;-136.424
+chasm;17;0x1B0016D9;cobalt back room;Cobalt Back Room;Arrière-salle de cobalt;jeu;non;named location cobalt back room;oui;-62.4;-80.2;-136.3
+chasm;18;0xD47CED3D;gold back room;Gold Back Room;Arrière-salle dorée;jeu;non;named location gold back room;oui;-72.0;-44.2;-136.3
+chasm;19;0x033EC3C2;gold attic;Gold Attic;Grenier d’or;jeu;non;named location gold attic;oui;-52.2;-44.8;-136.2
+chasm;20;0x352D4955;cobalt attic;Cobalt Attic;Grenier de cobalt;jeu;non;named location cobalt attic;oui;-82.2;-79.6;-136.2
+chasm;21;0x4F5B8FC2;gold bridge;Gold Bridge;Pont d’or;jeu;non;named location gold bridge;oui;-80.0;-62.2;-138.0
+chasm;22;0x827480AD;middle bridge;Middle Bridge;Pont central;jeu;non;named location middle bridge;oui;-67.2;-62.2;-138.0
+chasm;23;0x795E14FE;heaven;Heaven;Ciel;jeu;non;named location heaven;oui;-67.176;-62.182;-133.781
+chasm;24;0x6D110799;cobalt flank;Cobalt Flank;Flanc de cobalt;jeu;non;named location cobalt flank;oui;-50.8;-65.4;-138.05
+chasm;25;0x6A5D3262;gold flank;Gold Flank;Flanc d’or;jeu;non;named location gold flank;oui;-83.6;-59.0;-138.05
+chasm;26;0x763DA4AF;cobalt short cut;Cobalt Short Cut;Raccourci de cobalt;jeu;non;named location cobalt short cut;oui;-75.6;-65.4;-137.3
+chasm;27;0xDD405E09;gold short cut;Gold Short Cut;Raccourci d'or;jeu;non;named location gold short cut;oui;-58.8;-59.0;-137.3
+chasm;28;0xA264EE9F;gold jungle;Gold Jungle;Jungle d'or;jeu;non;named location gold jungle;oui;-70.4;-58.6;-136.6
+chasm;29;0xE20A6A74;cobalt jungle;Cobalt Jungle;Jungle de cobalt;jeu;non;named location cobalt jungle;oui;-64.0;-65.8;-136.6
+chasm;30;0xC5D70431;oh no;OHH NOOO;OOOH NOOON;jeu;non;named location oh no;oui;-67.194;-62.195;-152.5
+chasm;31;0x1AED6AD6;yeehaw;YEEEHAAAAAAAAAAAW;OUUUAIIIIIIIIIIIS;jeu;non;named location yeehaw;oui;-67.2;-62.2;-142.5
+chasm;32;0x1AED6AD6;yeehaw;YEEEHAAAAAAAAAAAW;OUUUAIIIIIIIIIIIS;jeu;non;named location yeehaw;oui;-54.3;-62.2;-142.5
+chasm;33;0x1AED6AD6;yeehaw;YEEEHAAAAAAAAAAAW;OUUUAIIIIIIIIIIIS;jeu;non;named location yeehaw;oui;-80.0;-62.2;-142.5
+chasm;34;0x0E3A56CF;chasm;Chasm;Précipice;jeu;non;named location chasm;oui;-67.2;-62.6;-133.9
+chasm;35;0xC56C106E;clegg;Clegg;Clegg;jeu;non;named location clegg;non;-85.339;-64.39;-132.95
+chasm;36;0x673ED747;tooth pick;Tooth Pick;Cure-dent;jeu;non;named location tooth pick;non;-49.061;-60.01;-132.95
+chasm;37;0xE4A95F42;yeet;YEET;YEET;jeu;non;named location yeet;oui;-57.565;-67.616;-136.0
+chasm;38;0xE4A95F42;yeet;YEET;YEET;jeu;non;named location yeet;oui;-76.835;-56.784;-136.0
+chasm;39;0x24221F2D;energy bridge;Energy Bridge;Pont énergétique;jeu;non;named location energy bridge;oui;-73.575;-62.154;-138.596
+chasm;40;0x24221F2D;energy bridge;Energy Bridge;Pont énergétique;jeu;non;named location energy bridge;oui;-60.775;-62.154;-138.607
+ctf_aquarius;0;0x555CA63B;top mid;Top Mid;Milieu haut;jeu;non;named location top mid;oui;0.0;0.0;4.409
+ctf_aquarius;1;0x250DD42E;pump;Pump;Pompe;jeu;non;named location pump;oui;-0.0;8.4;4.409
+ctf_aquarius;2;0x555CA63B;top mid;Top Mid;Milieu haut;jeu;non;named location top mid;oui;0.0;-8.397;4.409
+ctf_aquarius;3;0x90C3C943;hydro;Hydro;Hydro;jeu;non;named location hydro;oui;-0.036;-11.446;2.985
+ctf_aquarius;4;0x90C3C943;hydro;Hydro;Hydro;jeu;non;named location hydro;oui;0.0;-6.6;2.5
+ctf_aquarius;5;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;oui;-0.0;6.6;2.5
+ctf_aquarius;6;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;oui;4.032;10.488;1.095
+ctf_aquarius;7;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;oui;-4.014;10.319;1.095
+ctf_aquarius;8;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;oui;-0.0;6.6;2.5
+ctf_aquarius;9;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;oui;-4.014;10.319;1.095
+ctf_aquarius;10;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;non;-3.7;8.75;6.077
+ctf_aquarius;11;0x98BFD031;yellow refrigera;Yellow Refrigeration;Refroidissement jaune;jeu;oui;named location yellow refrigera;oui;-9.8;10.35;4.377
+ctf_aquarius;12;0x36E6A152;yellow base;Yellow Base;Base jaune;jeu;non;named location yellow base;oui;-12.5;0.0;5.45
+ctf_aquarius;13;0x36E6A152;yellow base;Yellow Base;Base jaune;jeu;non;named location yellow base;oui;-19.1;0.0;4.35
+ctf_aquarius;14;0x12E4BC12;yellow courtyard;Yellow Courtyard;Grande cour jaune;jeu;non;named location yellow courtyard;oui;-7.9;0.0;3.85
+ctf_aquarius;15;0x12E4BC12;yellow courtyard;Yellow Courtyard;Grande cour jaune;jeu;non;named location yellow courtyard;oui;-7.9;0.0;5.55
+ctf_aquarius;16;0x12E4BC12;yellow courtyard;Yellow Courtyard;Grande cour jaune;jeu;non;named location yellow courtyard;oui;-3.529;0.0;3.85
+ctf_aquarius;17;0x12E4BC12;yellow courtyard;Yellow Courtyard;Grande cour jaune;jeu;non;named location yellow courtyard;oui;-3.529;0.0;5.45
+ctf_aquarius;18;0x52AA091A;bottom mid;Bottom Mid;Milieu bas;jeu;non;named location bottom mid;oui;0.0;0.0;2.736
+ctf_aquarius;19;0xF836A2AB;yellow utility;Yellow Utility;Utilitaire jaune;jeu;non;named location yellow utility;oui;-10.4;-10.8;4.736
+ctf_aquarius;20;0xCD20561C;blue base;Blue Base;Base bleue;jeu;non;named location blue base;oui;12.5;0.0;5.513
+ctf_aquarius;21;0xCD20561C;blue base;Blue Base;Base bleue;jeu;non;named location blue base;oui;20.6;0.0;4.35
+ctf_aquarius;22;0x4AC048A2;blue courtyard;Blue Courtyard;Grande cour bleue;jeu;non;named location blue courtyard;oui;7.9;0.0;3.85
+ctf_aquarius;23;0x4AC048A2;blue courtyard;Blue Courtyard;Grande cour bleue;jeu;non;named location blue courtyard;oui;7.9;0.0;5.75
+ctf_aquarius;24;0x4AC048A2;blue courtyard;Blue Courtyard;Grande cour bleue;jeu;non;named location blue courtyard;oui;3.571;0.0;5.45
+ctf_aquarius;25;0x4AC048A2;blue courtyard;Blue Courtyard;Grande cour bleue;jeu;non;named location blue courtyard;oui;3.52;0.0;3.85
+ctf_aquarius;26;0x911CEFCE;blue refrigerati;Blue Refrigeration;Refroidissement bleu;jeu;oui;named location blue refrigerati;oui;10.005;10.35;4.377
+ctf_aquarius;27;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;non;3.673;8.75;6.077
+ctf_aquarius;28;0x8C6321E8;planters;Planters;Serre;jeu;non;named location planters;oui;7.4;10.319;1.095
+ctf_aquarius;29;0xDBF379E0;blue utility;Blue Utility;Utilitaire bleu;jeu;non;named location blue utility;oui;10.4;-10.8;4.736
+ctf_aquarius;30;0x5E8B13A0;sceret tunnel;Secret Tunnel;Tunnel secret;jeu;non;named location sceret tunnel;oui;0.0;0.0;-1.991
+ctf_bazaar;0;0xCC991348;market;Market;Marché;jeu;non;named location market;oui;0.0;2.2;6.5
+ctf_bazaar;1;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-0.0;-5.425;2.538
+ctf_bazaar;2;0x1421A36F;tower stairs;Tower Stairs;Escaliers de la tour;jeu;non;named location tower stairs;oui;3.537;-7.713;0.688
+ctf_bazaar;3;0x1421A36F;tower stairs;Tower Stairs;Escaliers de la tour;jeu;non;named location tower stairs;oui;-3.735;-7.713;0.688
+ctf_bazaar;4;0x07BD6222;tower basement;Tower Basement;Sous-sol de la tour;jeu;non;named location tower basement;oui;-0.063;-11.613;-1.112
+ctf_bazaar;5;0x0F4EC82B;crawl space;Crawl Space;Espace étroit;jeu;non;named location crawl space;oui;0.337;-14.313;2.088
+ctf_bazaar;6;0x5C437F4C;east alley;East Alley;Allée est;jeu;non;named location east alley;oui;8.427;-11.313;0.488
+ctf_bazaar;7;0x3F16A5B4;den;Den;Tanière;jeu;non;named location den;oui;10.29;-5.094;4.105
+ctf_bazaar;8;0x8A0E8C10;east courtyard;East Courtyard;Grande cour est;jeu;non;named location east courtyard;oui;16.19;-0.894;4.105
+ctf_bazaar;9;0x35F87BEA;antenna;Antenna;Antenne;jeu;non;named location antenna;oui;11.61;5.506;1.493
+ctf_bazaar;10;0x35F87BEA;antenna;Antenna;Antenne;jeu;non;named location antenna;oui;11.61;5.506;3.993
+ctf_bazaar;11;0x11CC5221;east base;East Base;Base est;jeu;non;named location east base;oui;20.89;0.206;4.105
+ctf_bazaar;12;0x177AB986;west courtyard;West Courtyard;Grande cour ouest;jeu;non;named location west courtyard;oui;-16.21;0.906;4.105
+ctf_bazaar;13;0x338C7469;west base;West Base;Base ouest;jeu;non;named location west base;oui;-20.91;0.206;4.105
+ctf_bazaar;14;0x54F76157;west alley;West Alley;Allée ouest;jeu;non;named location west alley;oui;-13.073;-11.313;0.488
+ctf_bazaar;15;0x936AD79A;cafe;Cafe;Café;jeu;non;named location cafe;oui;-10.31;-5.094;4.105
+ctf_bazaar;16;0x89C194ED;palm tree;Palm Tree;Palmier;jeu;non;named location palm tree;oui;-11.59;5.506;1.493
+ctf_bazaar;17;0x89C194ED;palm tree;Palm Tree;Palmier;jeu;non;named location palm tree;oui;-11.59;5.506;3.993
+ctf_bazaar;18;0xB2FE386B;west market brid;West Market Bridge;Pont du marché ouest;jeu;oui;named location west market brid;oui;-7.108;3.162;4.1
+ctf_bazaar;19;0xC977819C;east market brid;East Market Bridge;Pont du marché est;jeu;oui;named location east market brid;oui;7.092;3.162;4.1
+ctf_bazaar;20;0xE0156660;library;Library;Bibliothèque;jeu;non;named location library;oui;6.792;10.262;4.1
+ctf_bazaar;21;0x68553B32;lockers;Lockers;Casiers;jeu;non;named location lockers;oui;-6.427;10.262;4.1
+ctf_bazaar;22;0xA5D3C246;truck;Truck;Camion;jeu;non;named location truck;oui;-0.062;11.043;1.959
+ctf_bazaar;23;0x327260B6;west gate;West Gate;Porte ouest;jeu;non;named location west gate;oui;-10.225;-0.009;1.272
+ctf_bazaar;24;0xF6F70241;east gate;East Gate;Porte est;jeu;non;named location east gate;oui;10.058;-0.222;1.272
+ctf_bazaar;25;0xAD96BDA9;stalls;Stalls;Stands;jeu;non;named location stalls;oui;-0.055;2.579;3.139
+ctf_bazaar;26;0xCC991348;market;Market;Marché;jeu;non;named location market;oui;0.0;2.2;1.503
+ctf_bazaar;27;0xF6F70241;east gate;East Gate;Porte est;jeu;non;named location east gate;oui;12.229;-0.222;3.972
+ctf_bazaar;28;0x327260B6;west gate;West Gate;Porte ouest;jeu;non;named location west gate;oui;-9.085;-0.222;3.972
+ctf_breaker;19;0xB5D92C37;btbbreak lava pi;Blast Pit;Fosse à explosion;jeu;oui;named location btbbreak lava pi;oui;6.486;-0.365;9.987
+ctf_breaker;20;0xA6A5F925;btbbreak laser h;Blast House;Maison à explosion;jeu;oui;named location btbbreak laser h;oui;22.386;-0.365;17.187
+ctf_breaker;21;0xF2AD7360;btbbreak upper d;Overlook;Promontoire;jeu;oui;named location btbbreak upper d;oui;-4.614;-0.365;28.287
+ctf_breaker;22;0xF2AD7360;btbbreak upper d;Overlook;Promontoire;jeu;oui;named location btbbreak upper d;oui;-4.614;-7.665;28.287
+ctf_breaker;23;0xF2AD7360;btbbreak upper d;Overlook;Promontoire;jeu;oui;named location btbbreak upper d;oui;-4.614;11.235;28.287
+ctf_breaker;24;0x68F92EAA;btbbreak center ;Launch Ramps;Rampes de lancement;jeu;oui;named location btbbreak center ;oui;6.486;-0.365;18.287
+ctf_breaker;25;0x68F92EAA;btbbreak center ;Launch Ramps;Rampes de lancement;jeu;oui;named location btbbreak center ;oui;6.486;-0.365;23.287
+ctf_breaker;26;0x68F92EAA;btbbreak center ;Launch Ramps;Rampes de lancement;jeu;oui;named location btbbreak center ;oui;6.486;10.435;18.287
+ctf_breaker;27;0xF2AD7360;btbbreak upper d;Overlook;Promontoire;jeu;oui;named location btbbreak upper d;oui;-4.614;7.335;28.287
+ctf_breaker;28;0x68F92EAA;btbbreak center ;Launch Ramps;Rampes de lancement;jeu;oui;named location btbbreak center ;oui;6.486;6.835;18.287
+ctf_breaker;29;0x25F35196;btbbreak turbine;Turbine Blast Deck;Pont d'explosion de la turbine;jeu;oui;named location btbbreak turbine;oui;16.586;12.735;23.287
+ctf_breaker;30;0x25F35196;btbbreak turbine;Turbine Blast Deck;Pont d'explosion de la turbine;jeu;oui;named location btbbreak turbine;oui;13.086;8.835;17.687
+ctf_breaker;31;0x25F35196;btbbreak turbine;Turbine Blast Deck;Pont d'explosion de la turbine;jeu;oui;named location btbbreak turbine;oui;16.586;14.435;23.287
+ctf_breaker;32;0x25F35196;btbbreak turbine;Turbine Blast Deck;Pont d'explosion de la turbine;jeu;oui;named location btbbreak turbine;oui;10.686;12.835;17.687
+ctf_breaker;33;0xDDFDBA74;btbbreak flappy ;Flappy Flap;Envol;jeu;oui;named location btbbreak flappy ;oui;-2.514;-0.39;18.287
+ctf_breaker;34;0xFE86E32B;btbbreak turbine;Turbine Interchange;Échangeur de la turbine;jeu;oui;named location btbbreak turbine;oui;-6.114;15.635;23.287
+ctf_breaker;35;0xFE86E32B;btbbreak turbine;Turbine Interchange;Échangeur de la turbine;jeu;oui;named location btbbreak turbine;oui;-7.014;21.335;23.287
+ctf_breaker;36;0xC53D390C;btbbreak frig tu;Frigate Interchange;Échangeur de la frégate;jeu;oui;named location btbbreak frig tu;oui;-4.614;-14.365;28.287
+ctf_breaker;37;0xC53D390C;btbbreak frig tu;Frigate Interchange;Échangeur de la frégate;jeu;oui;named location btbbreak frig tu;oui;-7.814;-24.165;28.287
+ctf_breaker;38;0xF2AD7360;btbbreak upper d;Overlook;Promontoire;jeu;oui;named location btbbreak upper d;oui;-4.614;-10.765;28.287
+ctf_breaker;39;0x68F92EAA;btbbreak center ;Launch Ramps;Rampes de lancement;jeu;oui;named location btbbreak center ;oui;0.786;-7.665;28.287
+ctf_breaker;40;0x68F92EAA;btbbreak center ;Launch Ramps;Rampes de lancement;jeu;oui;named location btbbreak center ;oui;6.486;-10.765;23.287
+ctf_breaker;41;0xA5E65DAE;btbbreak frig ho;Frigate Blast Deck;Pont d'explosion de la frégate;jeu;oui;named location btbbreak frig ho;oui;16.586;-8.565;23.287
+ctf_breaker;42;0xA5E65DAE;btbbreak frig ho;Frigate Blast Deck;Pont d'explosion de la frégate;jeu;oui;named location btbbreak frig ho;oui;16.586;-13.765;23.287
+ctf_breaker;43;0xA5E65DAE;btbbreak frig ho;Frigate Blast Deck;Pont d'explosion de la frégate;jeu;oui;named location btbbreak frig ho;oui;11.686;-13.865;23.287
+ctf_breaker;44;0xA5E65DAE;btbbreak frig ho;Frigate Blast Deck;Pont d'explosion de la frégate;jeu;oui;named location btbbreak frig ho;oui;11.686;-11.465;23.287
+ctf_breaker;45;0xC0CB72A5;btbbreak tunnel;Tunnel;Tunnel;jeu;non;named location btbbreak tunnel;oui;-6.614;11.635;13.787
+ctf_breaker;46;0xC0CB72A5;btbbreak tunnel;Tunnel;Tunnel;jeu;non;named location btbbreak tunnel;oui;-6.614;-5.065;13.787
+ctf_breaker;47;0xC0CB72A5;btbbreak tunnel;Tunnel;Tunnel;jeu;non;named location btbbreak tunnel;oui;-6.614;2.135;11.787
+ctf_breaker;48;0xC0CB72A5;btbbreak tunnel;Tunnel;Tunnel;jeu;non;named location btbbreak tunnel;oui;-5.014;-0.765;14.687
+ctf_breaker;49;0x21D96A97;btbbreak garbage;Garbage Chute;Vide-ordures;jeu;oui;named location btbbreak garbage;oui;-8.314;-0.765;14.687
+ctf_breaker;50;0x2F1980FA;btbbreak turbine;Turbine Base;Base de turbine;jeu;oui;named location btbbreak turbine;oui;6.386;30.935;23.287
+ctf_breaker;51;0x2F1980FA;btbbreak turbine;Turbine Base;Base de turbine;jeu;oui;named location btbbreak turbine;oui;6.386;23.135;23.287
+ctf_breaker;52;0x2F1980FA;btbbreak turbine;Turbine Base;Base de turbine;jeu;oui;named location btbbreak turbine;oui;6.386;19.735;23.287
+ctf_breaker;53;0x2F1980FA;btbbreak turbine;Turbine Base;Base de turbine;jeu;oui;named location btbbreak turbine;oui;4.786;15.535;23.287
+ctf_breaker;54;0xF2AD7360;btbbreak upper d;Overlook;Promontoire;jeu;oui;named location btbbreak upper d;oui;-11.714;-0.365;28.287
+ctf_breaker;55;0x80406115;btbbreak frig ba;Frigate Base;Base de la frégate;jeu;oui;named location btbbreak frig ba;oui;6.386;-82.665;23.287
+ctf_breaker;56;0x80406115;btbbreak frig ba;Frigate Base;Base de la frégate;jeu;oui;named location btbbreak frig ba;oui;6.386;-24.365;23.287
+ctf_breaker;57;0x80406115;btbbreak frig ba;Frigate Base;Base de la frégate;jeu;oui;named location btbbreak frig ba;oui;18.386;-19.965;23.287
+ctf_breaker;58;0x80406115;btbbreak frig ba;Frigate Base;Base de la frégate;jeu;oui;named location btbbreak frig ba;oui;3.186;-17.165;23.287
+ctf_breaker;59;0x06A2D795;btbbreak turbine;Turbine Pit;Fosse à turbine;jeu;oui;named location btbbreak turbine;oui;6.386;30.935;10.687
+ctf_forbidden;1;0x4F41C8C3;over grown base;Overgrown Base;Base luxuriante;jeu;non;named location over grown base;oui;8.575;-11.879;2.675
+ctf_forbidden;2;0xB95027C1;over grown back ;Overgrown Back Base;Base arrière luxuriante;jeu;oui;named location over grown back ;oui;12.4;-21.0;4.9
+ctf_forbidden;3;0x7E72F918;over grown ramp;Overgrown Ramp;Rampe luxuriante;jeu;non;named location over grown ramp;oui;12.6;-8.6;2.8
+ctf_forbidden;4;0x90A108F7;over grown long ;Overgrown Long Hall;Longère luxuriante;jeu;oui;named location over grown long ;oui;7.66;-15.594;3.625
+ctf_forbidden;5;0x87BD0EC3;over grown back ;Overgrown Back Ledge;Arrière-corniche luxuriante;jeu;oui;named location over grown back ;oui;21.403;-13.852;4.099
+ctf_forbidden;6;0x305CD04A;over grown flank;Overgrown Flank;Flanc luxuriant;jeu;non;named location over grown flank;oui;17.071;-12.461;1.825
+ctf_forbidden;7;0x445A1D49;over grown court;Overgrown Courtyard;Cour luxuriante;jeu;oui;named location over grown court;oui;7.149;-5.772;1.782
+ctf_forbidden;8;0x445A1D49;over grown court;Overgrown Courtyard;Cour luxuriante;jeu;oui;named location over grown court;oui;7.149;-5.772;5.197
+ctf_forbidden;9;0xBD329923;over grown stage;Overgrown Stage;Scène luxuriante;jeu;non;named location over grown stage;oui;4.465;-16.842;3.651
+ctf_forbidden;10;0x826B70DF;over grown mohaw;Overgrown Mohawk;Mohawk luxuriant;jeu;oui;named location over grown mohaw;oui;1.093;-20.11;3.076
+ctf_forbidden;11;0xA9D02179;over grown big d;Overgrown Big Door;Grande porte luxuriante;jeu;oui;named location over grown big d;oui;2.931;-20.602;3.654
+ctf_forbidden;12;0x7AAF373E;over grown nest;Overgrown Nest;Nid luxuriant;jeu;non;named location over grown nest;oui;-2.533;-15.899;3.501
+ctf_forbidden;13;0xDDB4E2CA;over grown back ;Overgrown Nest;Nid luxuriant;jeu;oui;named location over grown back ;oui;-9.406;-19.035;3.72
+ctf_forbidden;14;0x318BBABE;over grown stree;Overgrown Street;Rue luxuriante;jeu;oui;named location over grown stree;oui;-6.092;-13.045;3.1
+ctf_forbidden;15;0x5B67F54D;over grown botto;Overgrown Bottom Street;Rue du bas luxuriante;jeu;oui;named location over grown botto;oui;-6.092;-13.045;1.4
+ctf_forbidden;16;0xFD0D1FFA;over grown bat l;Overgrown Bat Ledge;Corniche de chauve-souris luxuriante;jeu;oui;named location over grown bat l;oui;-12.799;-14.246;2.525
+ctf_forbidden;17;0x05BE479F;dried pillar;Dried Jumps;Sauts secs;jeu;non;named location dried pillar;oui;-11.19;-11.056;2.028
+ctf_forbidden;18;0x149A71B1;over grown sneak;Overgrown Sneaky;Coupe-gorge luxuriant;jeu;oui;named location over grown sneak;oui;-7.899;-14.246;3.025
+ctf_forbidden;19;0x081614A2;over grown rat t;Overgrown Rat Tunnel;Tunnel à rats luxuriant;jeu;oui;named location over grown rat t;oui;17.371;-4.597;0.9
+ctf_forbidden;20;0x3A832995;over grown platf;Overgrown Platform;Plateforme luxuriante;jeu;oui;named location over grown platf;oui;6.306;0.387;4.108
+ctf_forbidden;21;0x081614A2;over grown rat t;Overgrown Rat Tunnel;Tunnel à rats luxuriant;jeu;oui;named location over grown rat t;oui;17.171;-0.097;0.5
+ctf_forbidden;22;0x0BBED0AE;over grown rat h;Overgrown Rat Hole;Trou de rat luxuriant;jeu;oui;named location over grown rat h;oui;16.822;-0.582;4.202
+ctf_forbidden;23;0x77309927;over grown attic;Overgrown Attic;Grenier luxuriant;jeu;non;named location over grown attic;oui;11.206;0.387;4.108
+ctf_forbidden;24;0xDE13D3D5;over grown hut;Overgrown Hut;Cabane luxuriante;jeu;non;named location over grown hut;oui;6.306;5.687;4.108
+ctf_forbidden;25;0xD9FB95D3;over grown top m;Overgrown Mid;Milieu luxuriant;jeu;oui;named location over grown top m;oui;1.706;0.387;4.108
+ctf_forbidden;26;0xB15407D9;over grown pilla;Overgrown Pillars;Piliers luxuriants;jeu;oui;named location over grown pilla;oui;11.056;5.88;-0.398
+ctf_forbidden;27;0xC3F87E92;over grown divin;Overgrown Diving Board;Plongeoir luxuriant;jeu;oui;named location over grown divin;oui;2.13;-6.007;0.546
+ctf_forbidden;28;0x50DD86E1;dried landing;Dried Landing;Ponton sec;jeu;non;named location dried landing;oui;-2.87;-6.007;-0.354
+ctf_forbidden;29;0xCCBB8E07;what the;What The?!?!;Qu'est-ce que...;jeu;non;named location what the;oui;-2.464;-4.842;3.446
+ctf_forbidden;30;0xBA4D6F22;over grown patio;Overgrown Patio;Patio luxuriant;jeu;non;named location over grown patio;oui;12.265;5.02;2.905
+ctf_forbidden;31;0x610D3B49;hello there;Hello There!;Salut, tout le monde !;jeu;non;named location hello there;non;18.992;-1.516;4.798
+ctf_forbidden;32;0xB070EFCA;warthog warranty;We have been trying to reach you about your warthog's Extended Warranty;Nous cherché à vous contacter au sujet de l'extension de garantie de votre warthog;jeu;non;named location warthog warranty;non;-19.208;1.584;4.798
+ctf_forbidden;33;0xB985A6C6;sad trombone;Sad Trombone;Trombone triste;jeu;non;named location sad trombone;oui;1.1;0.2;-23.05
+ctf_forbidden;34;0xB985A6C6;sad trombone;Sad Trombone;Trombone triste;jeu;non;named location sad trombone;oui;-1.1;0.079;-23.05
+ctf_forbidden;35;0x321E1059;over grown landi;Overgrown Landing;Ponton luxuriant;jeu;oui;named location over grown landi;oui;2.87;6.007;-0.354
+ctf_forbidden;36;0xD6D6F13D;dried attic;Dried Attic;Grenier sec;jeu;non;named location dried attic;oui;-11.206;-0.387;4.108
+ctf_forbidden;37;0x7E4384A5;dried back base;Dried Back Base;Base arrière sèche;jeu;non;named location dried back base;oui;-12.4;21.0;4.9
+ctf_forbidden;38;0x975F7311;dried back ledge;Dried Back Ledge;Arrière-corniche sèche;jeu;non;named location dried back ledge;oui;-21.403;13.852;4.099
+ctf_forbidden;39;0x3A4CFF6B;dried back nest;Dried Back Nest;Nid arrière sec;jeu;non;named location dried back nest;oui;9.406;19.035;3.72
+ctf_forbidden;40;0x7A1577A5;dried base;Dried Base;Base sèche;jeu;non;named location dried base;oui;-8.575;11.879;2.675
+ctf_forbidden;41;0x14133382;dried bat ledge;Dried Bat Ledge;Corniche de chauve-souris sèche;jeu;non;named location dried bat ledge;oui;12.799;14.246;2.525
+ctf_forbidden;42;0x8AB92BF6;dried big door;Dried Big Door;Grande porte sèche;jeu;non;named location dried big door;oui;-2.931;20.602;3.654
+ctf_forbidden;43;0xD9D605DB;dried bottom str;Dried Bottom Street;Bout de rue sèche;jeu;oui;named location dried bottom str;oui;6.092;13.045;1.4
+ctf_forbidden;44;0x70A11EBA;dried courtyard;Dried Courtyard;Cour sèche;jeu;non;named location dried courtyard;oui;-7.149;5.772;5.197
+ctf_forbidden;45;0x70A11EBA;dried courtyard;Dried Courtyard;Cour sèche;jeu;non;named location dried courtyard;oui;-7.149;5.772;1.782
+ctf_forbidden;46;0x8BA7EF37;dried diving boa;Dried Diving Board;Plongeoir sec;jeu;oui;named location dried diving boa;oui;-2.13;6.007;0.546
+ctf_forbidden;47;0x9A0A5936;dried flank;Dried Flank;Flanc sec;jeu;non;named location dried flank;oui;-17.071;12.461;1.825
+ctf_forbidden;48;0x8FABCAB8;dried hut;Dried Hut;Cabane sèche;jeu;non;named location dried hut;oui;-6.306;-5.687;4.108
+ctf_forbidden;49;0xC9E13F7F;dried long hall;Dried Long Hall;Long couloir sec;jeu;non;named location dried long hall;oui;-7.66;15.594;3.625
+ctf_forbidden;50;0x9A7FA40D;dried mohawk;Dried Mohawk;Crête sèche;jeu;non;named location dried mohawk;oui;-1.093;20.11;3.076
+ctf_forbidden;51;0xFD67B788;dried nest;Dried Nest;Nid sec;jeu;non;named location dried nest;oui;2.533;15.899;3.501
+ctf_forbidden;52;0xA1F6179A;dried patio;Dried Patio;Patio sec;jeu;non;named location dried patio;oui;-12.265;-5.02;2.905
+ctf_forbidden;53;0x30839EF0;over grown pilla;Overgrown Jumps;Sauts luxuriants;jeu;oui;named location over grown pilla;oui;11.19;11.056;2.028
+ctf_forbidden;54;0xC0E59FD0;dried pillars;Dried Pillars;Piliers secs;jeu;non;named location dried pillars;oui;-11.056;-5.88;-0.398
+ctf_forbidden;55;0xC8201C79;dried platform;Dried Platform;Plateforme sèche;jeu;non;named location dried platform;oui;-6.306;-0.387;4.108
+ctf_forbidden;56;0xE0FD8D98;dried ramp;Dried Ramp;Rampe sèche;jeu;non;named location dried ramp;oui;-12.6;8.6;2.8
+ctf_forbidden;57;0x36A0EFAC;dried rat hole;Dried Rat Hole;Trou de rat sec;jeu;non;named location dried rat hole;oui;-16.822;0.582;4.202
+ctf_forbidden;58;0x6F0EE882;dried rat tunnel;Dried Rat Tunnel;Tunnel à rats sec;jeu;non;named location dried rat tunnel;oui;-17.171;0.097;0.5
+ctf_forbidden;59;0x6F0EE882;dried rat tunnel;Dried Rat Tunnel;Tunnel à rats sec;jeu;non;named location dried rat tunnel;oui;-17.371;4.597;0.9
+ctf_forbidden;60;0xA1963DE7;dried sneaky;Dried Sneaky;Coupe-gorge sec;jeu;non;named location dried sneaky;oui;7.899;14.246;3.025
+ctf_forbidden;61;0x4A108CBD;dried stage;Dried Stage;Scène sèche;jeu;non;named location dried stage;oui;-4.465;16.842;3.651
+ctf_forbidden;62;0xA29816EF;dried street;Dried Street;Rue sèche;jeu;non;named location dried street;oui;6.092;13.045;3.1
+ctf_forbidden;63;0x1596828C;dried top mid;Dried Mid;Milieu sec;jeu;non;named location dried top mid;oui;-1.706;-0.387;4.108
+ctf_forbidden;64;0xCCBB8E07;what the;What The?!?!;Qu'est-ce que...;jeu;non;named location what the;oui;2.464;4.842;3.446
+ctf_forbidden;65;0xABA81E9B;center bridge;Center Bridge;Pont central;jeu;non;named location center bridge;oui;0.009;-0.119;3.404
+ctf_illusion;1;0xF8078D17;test camber;Test Chamber;Salle de test;jeu;non;named location test camber;oui;0.0;-0.0;1.2
+ctf_illusion;2;0xF8078D17;test camber;Test Chamber;Salle de test;jeu;non;named location test camber;oui;0.0;-0.0;5.0
+ctf_illusion;3;0x6E3E6A9F;camo deck;Camo Deck;Pont camouflé;jeu;non;named location camo deck;oui;-0.346;-16.418;2.2
+ctf_illusion;4;0xB40B5870;camo attic;Camo Attic;Grenier camouflé;jeu;non;named location camo attic;oui;2.454;-21.418;4.3
+ctf_illusion;5;0x8CDF1B0E;camo closet;Camo Closet;Recoin camouflé;jeu;non;named location camo closet;oui;13.625;-13.337;2.1
+ctf_illusion;6;0x62CBB7F3;camo staging;Camo Staging;Relais camouflé;jeu;non;named location camo staging;oui;-0.346;-12.218;2.2
+ctf_illusion;7;0xEAD02120;camo long bridge;Camo Long Bridge;Long pont camouflé;jeu;non;named location camo long bridge;oui;4.091;-15.486;3.303
+ctf_illusion;8;0x238E7993;camo flank;Camo Flank;Flanc camouflé;jeu;non;named location camo flank;oui;8.672;-17.386;3.4
+ctf_illusion;9;0xFBEE4AC3;camo street;Camo Street;Rue camouflée;jeu;non;named location camo street;oui;6.435;-12.507;1.1
+ctf_illusion;10;0x6E3E6A9F;camo deck;Camo Deck;Pont camouflé;jeu;non;named location camo deck;oui;4.154;-16.418;2.2
+ctf_illusion;11;0xFBEE4AC3;camo street;Camo Street;Rue camouflée;jeu;non;named location camo street;oui;6.435;-12.507;4.5
+ctf_illusion;12;0x197747D8;camo nest;Camo Nest;Nid camouflé;jeu;non;named location camo nest;oui;10.553;-5.639;4.5
+ctf_illusion;13;0xFBEE4AC3;camo street;Camo Street;Rue camouflée;jeu;non;named location camo street;oui;6.435;-4.407;2.8
+ctf_illusion;14;0x548F1484;camo short bridg;Camo Short Bridge;Petit pont camouflé;jeu;oui;named location camo short bridg;oui;6.435;-6.407;3.4
+ctf_illusion;15;0x0E9E1B5C;camo maintence;Camo Maintenance;Maintenance camouflée;jeu;non;named location camo maintence;oui;-13.052;-8.66;4.45
+ctf_illusion;16;0xF3F303D2;camo pit;Camo Pit;Fosse camouflée;jeu;non;named location camo pit;oui;-5.278;-5.874;0.5
+ctf_illusion;17;0xF3F303D2;camo pit;Camo Pit;Fosse camouflée;jeu;non;named location camo pit;non;-9.355;-6.337;-0.115
+ctf_illusion;18;0xD06B7F94;camo pocket;Camo Pocket;Poche camouflée;jeu;non;named location camo pocket;oui;-6.081;-11.55;0.333
+ctf_illusion;19;0xC177D49A;camo vent;Camo Vent;Conduit camouflé;jeu;non;named location camo vent;oui;3.238;-3.741;0.0
+ctf_illusion;20;0x4EBBB218;camo rampart;Camo Rampart;Rempart camouflé;jeu;non;named location camo rampart;oui;4.635;-6.007;3.4
+ctf_illusion;21;0xE0F7E11C;camo window;Camo Window;Fenêtre camouflée;jeu;non;named location camo window;oui;2.035;-4.107;4.5
+ctf_illusion;22;0xE0F7E11C;camo window;Camo Window;Fenêtre camouflée;jeu;non;named location camo window;oui;-1.265;-4.107;4.5
+ctf_illusion;23;0x7C5E53F6;camo junction;Camo Junction;Jonction camouflée;jeu;non;named location camo junction;oui;6.368;-0.798;1.1
+ctf_illusion;24;0x7C5E53F6;camo junction;Camo Junction;Jonction camouflée;jeu;non;named location camo junction;oui;6.368;-0.798;5.1
+ctf_illusion;25;0x0923953C;camo platform;Camo Platform;Plateforme camouflée;jeu;non;named location camo platform;oui;-6.788;-11.029;2.2
+ctf_illusion;26;0xE5AC3DAC;camo ramp;Camo Ramp;Rampe camouflée;jeu;non;named location camo ramp;oui;-5.072;-21.361;3.802
+ctf_illusion;27;0x0923953C;camo platform;Camo Platform;Plateforme camouflée;jeu;non;named location camo platform;oui;-6.078;-16.648;3.802
+ctf_illusion;28;0xBC989C20;camo nerd;Camo Nerd;Nerd camouflé;jeu;non;named location camo nerd;oui;-6.551;-23.183;3.802
+ctf_illusion;29;0xDEFA6EF8;camo cannon;Camo Cannon;Canon camouflé;jeu;non;named location camo cannon;oui;-11.493;-3.597;2.161
+ctf_illusion;30;0xFC7C8DAD;we love you halo;We Love You Halo!;Halo, on t'aime !;jeu;non;named location we love you halo;non;11.474;-9.28;4.01
+ctf_illusion;31;0x3BB26A39;oversheild attic;Overshield Attic;Grenier blindé;jeu;non;named location oversheild attic;oui;-2.454;21.418;4.3
+ctf_illusion;32;0xFF90B02D;oversheild canno;Overshield Cannon;Canon blindé;jeu;oui;named location oversheild canno;oui;11.493;3.597;2.161
+ctf_illusion;33;0x2B60FFB0;oversheild close;Overshield Closet;Placard blindé;jeu;oui;named location oversheild close;oui;-13.625;13.337;2.1
+ctf_illusion;34;0xCE34B62B;oversheild deck;Overshield Deck;Pont blindé;jeu;non;named location oversheild deck;oui;0.346;16.418;2.2
+ctf_illusion;35;0xCE34B62B;oversheild deck;Overshield Deck;Pont blindé;jeu;non;named location oversheild deck;oui;-4.154;16.418;2.2
+ctf_illusion;36;0xD9E444D4;oversheild flank;Overshield Flank;Flanc blindé;jeu;non;named location oversheild flank;oui;-8.672;17.386;3.4
+ctf_illusion;37;0xAE6887BA;oversheild junct;Overshield Junction;Intersection blindée;jeu;oui;named location oversheild junct;oui;-6.368;0.798;1.1
+ctf_illusion;38;0xAE6887BA;oversheild junct;Overshield Junction;Intersection blindée;jeu;oui;named location oversheild junct;oui;-6.368;0.798;5.1
+ctf_illusion;39;0x80652353;oversheild long ;Overshield Long Bridge;Long pont blindé;jeu;oui;named location oversheild long ;oui;-4.091;15.486;3.303
+ctf_illusion;40;0x9A203BF3;oversheild maint;Overshield Maintenance;Maintenance blindée;jeu;oui;named location oversheild maint;oui;13.052;8.66;4.45
+ctf_illusion;41;0x6F9B20D4;oversheild nerd;Overshield Nerd;Crack blindé;jeu;non;named location oversheild nerd;oui;6.551;23.183;3.802
+ctf_illusion;42;0xDDC45B1F;oversheild nest;Overshield Nest;Nid blindé;jeu;non;named location oversheild nest;oui;-10.553;5.639;4.5
+ctf_illusion;43;0x416E3F65;oversheild pit;Overshield Pit;Fosse blindée;jeu;non;named location oversheild pit;non;9.355;6.337;-0.115
+ctf_illusion;44;0x416E3F65;oversheild pit;Overshield Pit;Fosse blindée;jeu;non;named location oversheild pit;oui;5.278;5.874;0.5
+ctf_illusion;45;0x67F1CDF4;oversheild platf;Overshield Platform;Plateforme blindée;jeu;oui;named location oversheild platf;oui;6.078;16.648;3.802
+ctf_illusion;46;0x67F1CDF4;oversheild platf;Overshield Platform;Plateforme blindée;jeu;oui;named location oversheild platf;oui;6.788;11.029;2.2
+ctf_illusion;47;0xA1CD43CB;oversheild pocke;Overshield Pocket;Poche blindée;jeu;oui;named location oversheild pocke;oui;6.081;11.55;0.333
+ctf_illusion;48;0x5C802FFE;oversheild ramp;Overshield Ramp;Rampe blindée;jeu;non;named location oversheild ramp;oui;5.072;21.361;3.802
+ctf_illusion;49;0x4B6B8B87;oversheild rampa;Overshield Rampart;Rempart blindé;jeu;oui;named location oversheild rampa;oui;-4.635;6.007;3.4
+ctf_illusion;50;0xE32DB67C;oversheild short;Overshield Short Bridge;Pont court blindé;jeu;oui;named location oversheild short;oui;-6.435;6.407;3.4
+ctf_illusion;51;0xC49B2856;oversheild stagi;Overshield Staging;Mise en scène blindée;jeu;oui;named location oversheild stagi;oui;0.346;12.218;2.2
+ctf_illusion;52;0xAF26A040;oversheild stree;Overshield Street;Rue blindée;jeu;oui;named location oversheild stree;oui;-6.435;12.507;1.1
+ctf_illusion;53;0xAF26A040;oversheild stree;Overshield Street;Rue blindée;jeu;oui;named location oversheild stree;oui;-6.435;12.507;4.5
+ctf_illusion;54;0xAF26A040;oversheild stree;Overshield Street;Rue blindée;jeu;oui;named location oversheild stree;oui;-6.435;4.407;2.8
+ctf_illusion;55;0x74153538;oversheild vent;Overshield Vent;Conduit blindé;jeu;non;named location oversheild vent;oui;-3.238;3.741;0.0
+ctf_illusion;56;0x585348DB;oversheild windo;Overshield Window;Fenêtre blindée;jeu;oui;named location oversheild windo;oui;1.265;4.107;4.5
+ctf_illusion;57;0x585348DB;oversheild windo;Overshield Window;Fenêtre blindée;jeu;oui;named location oversheild windo;oui;-2.035;4.107;4.5
+ctf_illusion;58;0x9390C4FB;incoming;Incoming;Activation;jeu;non;named location incoming;oui;6.435;-3.807;5.836
+ctf_illusion;59;0x9390C4FB;incoming;Incoming;Activation;jeu;non;named location incoming;oui;-6.435;3.807;5.836
+ctf_illusion;60;0x416E3F65;oversheild pit;Overshield Pit;Fosse blindée;jeu;non;named location oversheild pit;oui;5.278;5.874;4.0
+ctf_illusion;61;0xF3F303D2;camo pit;Camo Pit;Fosse camouflée;jeu;non;named location camo pit;oui;-5.278;-5.874;4.9
+ctf_illusion;62;0x197747D8;camo nest;Camo Nest;Nid camouflé;jeu;non;named location camo nest;non;12.643;-2.114;1.643
+ctf_illusion;63;0xDDC45B1F;oversheild nest;Overshield Nest;Nid blindé;jeu;non;named location oversheild nest;non;-12.564;1.993;1.643
+forest;1;0x5A27F79B;forest grotto;Grotto;Cavité;jeu;non;named location forest grotto;oui;-1.504;11.346;1.21
+forest;2;0x10858A8E;forest tempdn;Low Temple;Bas temple;jeu;non;named location forest tempdn;oui;-7.904;-1.654;1.21
+forest;3;0x10858A8E;forest tempdn;Low Temple;Bas temple;jeu;non;named location forest tempdn;oui;-4.627;-7.407;1.21
+forest;4;0xE95D794C;forest tempup;High Temple;Haut temple;jeu;non;named location forest tempup;oui;-7.904;-1.654;5.003
+forest;5;0xE95D794C;forest tempup;High Temple;Haut temple;jeu;non;named location forest tempup;oui;-4.627;-7.407;4.401
+forest;6;0x049DD79F;forest path;High Path;Haut chemin;jeu;non;named location forest path;oui;-1.032;-12.475;4.401
+forest;7;0xBC56AAEB;forest altar;Altar;Autel;jeu;non;named location forest altar;oui;-5.827;-12.607;4.91
+forest;8;0x8D96091B;forest stumps;Stumps;Souches;jeu;non;named location forest stumps;oui;-24.055;-14.379;5.779
+forest;9;0xA81505C8;forest shrine;Shrine;Lieu saint;jeu;non;named location forest shrine;oui;-26.749;-0.004;6.455
+forest;10;0xC209C90B;forest nest;Bird Nest;Nid d’oiseau;jeu;non;named location forest nest;non;-8.541;19.929;7.129
+forest;11;0x17A0BD92;forest sanctuary;Sanctuary;Sanctuaire;jeu;non;named location forest sanctuary;oui;-13.999;0.26;6.455
+forest;12;0x1B8148DF;forest worm;Worm Hole;Trou de ver;jeu;non;named location forest worm;oui;-19.257;-9.92;1.21
+forest;13;0x17A0BD92;forest sanctuary;Sanctuary;Sanctuaire;jeu;non;named location forest sanctuary;oui;-13.999;0.26;1.289
+forest;14;0x17A0BD92;forest sanctuary;Sanctuary;Sanctuaire;jeu;non;named location forest sanctuary;oui;-21.599;-4.04;2.03
+forest;15;0xE65F6834;forest cavern;Cavern;Caverne;jeu;non;named location forest cavern;oui;-22.129;5.368;1.36
+forest;16;0x17A0BD92;forest sanctuary;Sanctuary;Sanctuaire;jeu;non;named location forest sanctuary;oui;-21.499;3.36;2.683
+forest;17;0xE65F6834;forest cavern;Cavern;Caverne;jeu;non;named location forest cavern;oui;-21.986;4.175;1.041
+forest;18;0xE65F6834;forest cavern;Cavern;Caverne;jeu;non;named location forest cavern;oui;-21.698;3.129;0.863
+forest;19;0xE65F6834;forest cavern;Cavern;Caverne;jeu;non;named location forest cavern;oui;-19.231;-0.302;0.863
+forest;20;0xE65F6834;forest cavern;Cavern;Caverne;jeu;non;named location forest cavern;non;-16.503;-2.858;1.485
+forest;21;0x17A0BD92;forest sanctuary;Sanctuary;Sanctuaire;jeu;non;named location forest sanctuary;oui;-13.999;0.26;1.739
+forest;22;0x3DF61E10;forest holtree1;Hollow Tree;Arbre creux;jeu;non;named location forest holtree1;oui;-22.727;17.493;4.647
+forest;23;0xA8F50152;forest cliff;Cliffside;Versant de falaise;jeu;non;named location forest cliff;oui;-28.027;25.493;5.01
+forest;24;0x87C43D3D;forest bridge;Bridge Falls;Cascade du pont;jeu;non;named location forest bridge;oui;-8.371;15.619;1.21
+forest;25;0x86D21E3E;forest bigriver;Big River;Grande rivière;jeu;non;named location forest bigriver;oui;-8.391;6.216;0.588
+forest;26;0xE3007F14;forest jungle;Jungle;Jungle;jeu;non;named location forest jungle;oui;-11.061;-10.98;4.01
+forest;27;0x86D21E3E;forest bigriver;Big River;Grande rivière;jeu;non;named location forest bigriver;oui;-8.391;6.216;3.547
+pve_house;11;0x79114C5C;house;House;Maison;jeu;non;named location house;non;-0.489;-4.595;1.992
+pve_house;12;0x6DE07FDC;attic;Attic;Grenier;jeu;non;named location attic;non;-1.167;0.519;80.483
+pve_house;13;0x5A03E08D;control room 2;Control Room 2;Salle de contrôle 2;jeu;non;named location control room 2;non;0.175;32.35;80.561
+pve_house;14;0x9D161DCB;control room;Control Room;Salle de contrôle;jeu;non;named location control room;non;-0.025;-32.25;7.661
+pve_house;15;0x06E9E8FE;elevator;Elevator;Ascenseur;jeu;non;named location elevator;non;0.311;43.105;39.292
+ridgeline;10;0x3CF86E98;ridgeline horses;Horseshoe;Fer à cheval;jeu;oui;named location ridgeline horses;oui;19.0;10.0;1.0
+ridgeline;11;0x35F87BEA;antenna;Antenna;Antenne;jeu;non;named location antenna;oui;-3.6;-0.6;1.0
+ridgeline;12;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;oui;-3.6;23.9;1.0
+ridgeline;13;0xD1885AB2;ridgeline sanctu;Sanctuary;Sanctuaire;jeu;oui;named location ridgeline sanctu;oui;19.6;-18.6;1.0
+ridgeline;14;0xC55A5EB7;ridgeline hex ro;Hex Roof;Toit hexagonal;jeu;oui;named location ridgeline hex ro;oui;19.0;0.0;1.0
+ridgeline;15;0x362481A3;pipes;Pipes;Tuyaux;jeu;non;named location pipes;oui;7.0;11.1;1.0
+ridgeline;16;0x5390E36B;ridgeline creek;Creek;Crique;jeu;non;named location ridgeline creek;oui;7.0;11.1;1.0
+ridgeline;17;0x4A40553A;deck;Deck;Pont;jeu;non;named location deck;oui;9.7;-4.0;1.0
+ridgeline;18;0x1EF5EDA0;ridgeline radiat;Radiator;Radiateur;jeu;oui;named location ridgeline radiat;oui;27.8;-8.9;1.0
+ridgeline;19;0xF3DC414E;ridgeline tanks;Tanks;Chars;jeu;non;named location ridgeline tanks;oui;29.5;10.0;1.0
+ridgeline;20;0x355BA48C;ridgeline enclav;Enclave;Enclave;jeu;oui;named location ridgeline enclav;oui;47.5;18.6;1.0
+ridgeline;21;0x7210E244;ridgeline icicle;Icicles;Glaçons;jeu;oui;named location ridgeline icicle;oui;29.5;20.8;1.0
+ridgeline;22;0xC97F7071;ridgeline cliffs;Cliffside Trail;Sentier de la falaise;jeu;oui;named location ridgeline cliffs;oui;20.5;37.7;1.0
+ridgeline;23;0x4518DDBE;ridgeline hex ba;Hex Basement;Sous-sol hexagonal;jeu;oui;named location ridgeline hex ba;oui;20.1;-1.0;-2.0
+ridgeline;24;0xAD83C6C9;ridgeline red ha;Red Hallway;Couloir rouge;jeu;oui;named location ridgeline red ha;oui;20.1;10.2;-2.0
+ridgeline;25;0xDA8A30CE;ridgeline lower ;Lower Horseshoe;Fer à cheval inférieur;jeu;oui;named location ridgeline lower ;oui;20.1;13.5;-2.0
+ridgeline;26;0x362481A3;pipes;Pipes;Tuyaux;jeu;non;named location pipes;non;15.5;11.0;-1.55
+ridgeline;27;0x362481A3;pipes;Pipes;Tuyaux;jeu;non;named location pipes;non;12.425;4.15;-1.3
+ridgeline;28;0x362481A3;pipes;Pipes;Tuyaux;jeu;non;named location pipes;non;14.027;6.691;-1.3
+ridgeline;29;0x4A40553A;deck;Deck;Pont;jeu;non;named location deck;non;13.426;2.042;-1.3
+ridgeline;30;0x4A40553A;deck;Deck;Pont;jeu;non;named location deck;non;14.2;0.5;-1.3
+ridgeline;31;0x4A40553A;deck;Deck;Pont;jeu;non;named location deck;non;15.219;-2.76;-1.3
+ridgeline;32;0x4A40553A;deck;Deck;Pont;jeu;non;named location deck;non;17.35;-5.35;-4.95
+ridgeline;33;0x1EF5EDA0;ridgeline radiat;Radiator;Radiateur;jeu;oui;named location ridgeline radiat;non;21.55;-5.3;-4.9
+ridgeline;34;0x1EF5EDA0;ridgeline radiat;Radiator;Radiateur;jeu;oui;named location ridgeline radiat;non;25.067;-3.359;-1.35
+ridgeline;35;0xF3DC414E;ridgeline tanks;Tanks;Chars;jeu;non;named location ridgeline tanks;non;23.15;10.7;-1.65
+ridgeline;36;0xF3DC414E;ridgeline tanks;Tanks;Chars;jeu;non;named location ridgeline tanks;non;24.749;6.435;-1.45
+ridgeline;37;0x5390E36B;ridgeline creek;Creek;Crique;jeu;non;named location ridgeline creek;non;19.35;15.0;-1.95
+sgh_blueprint;1;0xC0064772;maintenance bay;Maintenance Bay;Baie de maintenance;jeu;non;named location maintenance bay;oui;18.882;-13.877;4.4
+sgh_blueprint;2;0x568259BC;maintenance oran;Orange Pipes;Tuyaux orange;jeu;oui;named location maintenance oran;oui;10.659;-14.431;3.309
+sgh_blueprint;3;0x133A909F;maintenance elbo;Maintenance Elbow Stairs;Coude d'escalier de maintenance;jeu;oui;named location maintenance elbo;oui;22.203;-15.561;3.469
+sgh_blueprint;4;0x77032DAB;whirlpool dam;Whirlpool Dam;Siphon de barrage;jeu;non;named location whirlpool dam;oui;8.525;-5.315;2.176
+sgh_blueprint;5;0x06E9E8FE;elevator;Elevator;Ascenseur;jeu;non;named location elevator;oui;1.532;3.046;4.405
+sgh_blueprint;6;0x9D161DCB;control room;Control Room;Salle de contrôle;jeu;non;named location control room;oui;13.682;5.605;2.2
+sgh_blueprint;7;0xF5180B04;whirlpool ledge;Whirlpool Ledge;Bord de siphon;jeu;non;named location whirlpool ledge;oui;0.495;-7.155;4.405
+sgh_blueprint;8;0xC0426E20;batteries;Batteries;Accumulateurs;jeu;non;named location batteries;oui;15.587;-9.885;2.2
+sgh_blueprint;9;0xF44EFA5D;long hall;Long Hall;Longère;jeu;non;named location long hall;oui;27.249;-2.96;2.205
+sgh_blueprint;10;0x6DE07FDC;attic;Attic;Grenier;jeu;non;named location attic;oui;26.679;-10.455;4.409
+sgh_blueprint;11;0x0783F945;sneaky;Sneaky;Coupe-gorge;jeu;non;named location sneaky;oui;23.154;-2.953;3.3
+sgh_blueprint;12;0xF59BCB5B;blue pipes;Blue Pipes;Tuyaux bleus;jeu;non;named location blue pipes;oui;17.711;8.995;0.005
+sgh_blueprint;13;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;14.745;-1.765;0.004
+sgh_blueprint;14;0x90C3C943;hydro;Hydro;Hydro;jeu;non;named location hydro;oui;21.217;9.28;2.207
+sgh_blueprint;15;0x90C3C943;hydro;Hydro;Hydro;jeu;non;named location hydro;oui;21.217;15.38;-0.093
+sgh_blueprint;16;0x0AD751E2;bridge;Bridge;Pont;jeu;non;named location bridge;oui;12.506;-1.375;2.219
+sgh_blueprint;17;0x2A574A23;over hang;Overhang;Avancée;jeu;non;named location over hang;oui;6.587;4.907;4.409
+sgh_blueprint;18;0xEDF5FC09;storage;Storage;Réserve;jeu;non;named location storage;oui;7.609;5.124;2.181
+sgh_blueprint;19;0x133A909F;maintenance elbo;Maintenance Elbow Stairs;Coude d'escalier de maintenance;jeu;oui;named location maintenance elbo;oui;21.529;-10.313;2.204
+sgh_blueprint;20;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;oui;22.395;3.828;2.201
+sgh_blueprint;21;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;12.506;-1.375;-3.081
+sgh_blueprint;22;0xEDF5FC09;storage;Storage;Réserve;jeu;non;named location storage;oui;7.609;5.124;6.481
+sgh_blueprint;23;0x9D161DCB;control room;Control Room;Salle de contrôle;jeu;non;named location control room;oui;12.912;3.072;4.394
+sgh_blueprint;24;0xF44EFA5D;long hall;Long Hall;Longère;jeu;non;named location long hall;oui;27.249;-9.66;2.205
+sgh_crystalcaves;0;0x19A9480E;cc shouse;Sandwich House;Maison à sandwich;jeu;non;named location cc shouse;non;-103.887;19.641;18.92
+sgh_crystalcaves;5;0x90B7A761;back grav lift;Back Gravity lift;Ascenseur gravitationnel arrière;jeu;non;named location back grav lift;oui;-84.784;44.973;16.94
+sgh_crystalcaves;6;0x830FFA22;grav lift;Gravity Lift;Ascenseur gravitationnel;jeu;non;named location grav lift;oui;-85.573;40.134;20.31
+sgh_crystalcaves;7;0x9CDBA8DE;cat walk;Catwalk;Passerelle;jeu;non;named location cat walk;oui;-80.32;38.434;20.261
+sgh_crystalcaves;8;0x806A5412;elevator tunnel;Elevator Tunnel;Tunnel ascenseur;jeu;non;named location elevator tunnel;oui;-71.423;38.131;20.673
+sgh_crystalcaves;9;0x806A5412;elevator tunnel;Elevator Tunnel;Tunnel ascenseur;jeu;non;named location elevator tunnel;oui;-67.445;37.913;21.732
+sgh_crystalcaves;10;0x06E9E8FE;elevator;Elevator;Ascenseur;jeu;non;named location elevator;oui;-64.459;33.123;21.132
+sgh_crystalcaves;11;0x9718DB00;generator;Generator;Générateur;jeu;non;named location generator;oui;-67.919;21.412;19.464
+sgh_crystalcaves;12;0x8DD9CDBF;gen tunnel;Generator Tunnel;Tunnel du générateur;jeu;non;named location gen tunnel;oui;-59.315;27.445;21.132
+sgh_crystalcaves;13;0x9FD14688;cart hallway;Cart Hallway;Couloir à chariot;jeu;non;named location cart hallway;oui;-73.667;12.14;17.833
+sgh_crystalcaves;14;0x6E628CF7;over look;Over Look;Belvédère;jeu;non;named location over look;oui;-70.76;25.119;21.02
+sgh_crystalcaves;15;0x32FC8386;crates;Crates;Caisses;jeu;non;named location crates;oui;-89.153;31.137;19.068
+sgh_crystalcaves;16;0x4A09D443;silos;Silos;Silos;jeu;non;named location silos;oui;-100.48;23.229;19.038
+sgh_crystalcaves;17;0x1C893F2D;low track;Low Track;Voie basse;jeu;non;named location low track;oui;-89.173;8.198;16.643
+sgh_crystalcaves;18;0x12F2E5CF;high track;High Track;Voie élevée;jeu;non;named location high track;oui;-90.141;5.421;19.367
+sgh_crystalcaves;19;0xD20A369B;blamite tunnel;Blamite Tunnel;Tunnel de blamite;jeu;non;named location blamite tunnel;oui;-97.718;32.588;21.361
+sgh_crystalcaves;20;0x23329AE1;blamite ledge;Blamite Ledge;Corniche de blamite;jeu;non;named location blamite ledge;oui;-91.379;38.176;20.957
+sgh_crystalcaves;21;0xB1CEB9D7;trench;Trench;Tranchée;jeu;non;named location trench;oui;-85.447;19.872;17.144
+sgh_crystalcaves;22;0x72FE6C83;grand blamites;Grand Blamites;Blamites sublimes;jeu;non;named location grand blamites;oui;-81.986;22.313;19.274
+sgh_crystalcaves;23;0x364C0B6D;down hill;Down Hill;Pente;jeu;non;named location down hill;oui;-84.1;11.988;17.34
+sgh_crystalcaves;24;0xB3B76089;junction;Junction;Jonction;jeu;non;named location junction;oui;-79.463;33.974;18.563
+sgh_crystalcaves;25;0x1DF08620;switch back;Switch Back;Échangeur arrière;jeu;non;named location switch back;oui;-75.202;24.349;20.549
+sgh_crystalcaves;26;0x832DBB57;back tunnel;Back Tunnel;Tunnel arrière;jeu;non;named location back tunnel;oui;-67.817;36.438;19.061
+sgh_crystalcaves;27;0x832DBB57;back tunnel;Back Tunnel;Tunnel arrière;jeu;non;named location back tunnel;oui;-72.545;42.492;17.433
+sgh_crystalcaves;28;0x1371697A;under cat walk;Under Cat Walk;Sous la passerelle;jeu;non;named location under cat walk;oui;-80.32;38.434;15.361
+sgh_crystalcaves;29;0xFC1B9C3B;blamite jump;Blamite Jump;Saut de blamite;jeu;non;named location blamite jump;oui;-91.792;1.24;18.336
+sgh_crystalcaves;30;0x94370955;back blamite;Back Blamite;Blamite sèche;jeu;non;named location back blamite;oui;-98.188;5.427;18.395
+sgh_crystalcaves;31;0x1C893F2D;low track;Low Track;Voie basse;jeu;non;named location low track;oui;-94.225;8.344;17.535
+sgh_crystalcaves;32;0x1006DAC3;mosh pit;Mosh Pit;Pogo;jeu;non;named location mosh pit;oui;-92.634;17.261;19.632
+sgh_crystalcaves;33;0x1576F2F5;silo ledge;Silo Ledge;Corniche de silo;jeu;non;named location silo ledge;oui;-90.559;20.402;20.875
+sgh_crystalcaves;34;0xAEBC9D42;track tunnel;Track Tunnel;Tunnel à voie;jeu;non;named location track tunnel;oui;-81.765;7.777;19.153
+sgh_crystalcaves;35;0x0A1EAD79;thats pretty nea;Thats Pretty Neat!;C’est plutôt chouette !;jeu;oui;named location thats pretty nea;oui;-89.173;8.198;14.243
+sgh_crystalcaves;36;0xFDDCEA3E;haha get wrecked;Ha Ha Get Wrecked!;Ha ha, dans ta tronche !;jeu;non;named location haha get wrecked;oui;-89.173;8.198;9.443
+sgh_crystalcaves;37;0x6EC30761;pocket;Pocket;Poche;jeu;non;named location pocket;oui;-98.204;13.751;19.166
+sgh_interlock;53;0x79114C5C;house;House;Maison;jeu;non;named location house;oui;23.7;39.0;2.0
+sgh_interlock;54;0x79114C5C;house;House;Maison;jeu;non;named location house;non;23.6;31.8;1.5
+sgh_interlock;55;0xAA6C8944;house elbow;House Elbow;Coude de maison;jeu;non;named location house elbow;oui;22.8;27.8;1.1
+sgh_interlock;56;0xEDF5FC09;storage;Storage;Réserve;jeu;non;named location storage;oui;27.25;27.6;1.7
+sgh_interlock;57;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;15.4;26.2;0.9
+sgh_interlock;58;0xF1249B80;green bend;Green Bend;Virage vert;jeu;non;named location green bend;oui;16.6;17.5;0.3
+sgh_interlock;59;0xE3561DA4;green building;Green Building;Bâtiment vert;jeu;non;named location green building;oui;13.469;21.187;-0.1
+sgh_interlock;60;0xE3561DA4;green building;Green Building;Bâtiment vert;jeu;non;named location green building;oui;11.0;21.7;1.0
+sgh_interlock;61;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;1.5;24.9;2.009
+sgh_interlock;62;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;0.723;22.6;0.7
+sgh_interlock;63;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-5.7;30.2;1.9
+sgh_interlock;64;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-5.7;30.2;4.3
+sgh_interlock;65;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-8.9;30.2;4.3
+sgh_interlock;66;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-6.8;26.5;3.2
+sgh_interlock;67;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;non;-5.361;27.0;3.014
+sgh_interlock;68;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;non;-4.767;26.8;5.867
+sgh_interlock;69;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;non;-8.417;28.88;4.07
+sgh_interlock;70;0x113CEB4E;brutes;Brutes;Brutes;jeu;non;named location brutes;oui;-1.3;40.8;1.3
+sgh_interlock;71;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;7.0;34.6;-0.1
+sgh_interlock;72;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;7.8;32.1;2.5
+sgh_interlock;73;0x0271869D;turbine;Turbine;Turbine;jeu;non;named location turbine;oui;7.2;46.6;1.2
+sgh_interlock;74;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;oui;3.3;38.3;2.0
+sgh_interlock;75;0x979F39E1;grad board;Grad Board;Tableau grad;jeu;non;named location grad board;oui;17.2;42.3;0.5
+sgh_interlock;76;0x0A99F6A7;house window;House Window;Fenêtre de maison;jeu;non;named location house window;oui;20.5;46.1;1.7
+sgh_interlock;77;0xFA62B65D;overlook;Overlook;Promontoire;jeu;non;named location overlook;oui;15.3;38.1;2.4
+sgh_interlock;78;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;6.1;26.1;1.1
+sgh_interlock;79;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-3.6;23.2;0.1
+sgh_interlock;80;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-8.9;33.1;1.6
+sgh_interlock;81;0x79114C5C;house;House;Maison;jeu;non;named location house;oui;21.9;42.3;0.7
+sgh_interlock;82;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;15.7;32.7;0.2
+sgh_interlock;83;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;4.2;34.3;-0.2
+sgh_interlock;84;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;6.8;33.706;1.9
+sgh_interlock;85;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;oui;3.1;34.4;2.4
+sgh_interlock;86;0xD5EC0B05;platform;Platform;Plateforme;jeu;non;named location platform;non;2.95;35.999;1.8
+sgh_interlock;87;0xEEBAD262;tower;Tower;Tour;jeu;non;named location tower;oui;-3.0;30.2;2.6
+sgh_interlock;88;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;2.0;18.5;2.5
+sgh_interlock;89;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;3.6;19.9;2.8
+sgh_interlock;90;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;non;2.3;20.2;3.45
+sgh_interlock;91;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;non;4.0;18.5;3.5
+sgh_interlock;92;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;6.2;17.4;1.0
+sgh_interlock;93;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;13.6;27.3;1.5
+sgh_interlock;94;0xF1249B80;green bend;Green Bend;Virage vert;jeu;non;named location green bend;oui;10.2;16.2;0.4
+sgh_interlock;95;0xDD28A839;landing pad;Landing Pad;Aire d'atterrissage;jeu;non;named location landing pad;oui;74.742;80.855;0.3
+sgh_interlock;96;0xDD28A839;landing pad;Landing Pad;Aire d'atterrissage;jeu;non;named location landing pad;oui;54.081;79.698;2.27
+sgh_interlock;97;0x95321674;lobby;Lobby;Accueil;jeu;non;named location lobby;oui;40.49;94.618;4.095
+sgh_interlock;98;0xB4CAB331;ai lab;AI Lab;Labo IA;jeu;non;named location ai lab;oui;19.669;98.079;4.02
+sgh_interlock;99;0xB4CAB331;ai lab;AI Lab;Labo IA;jeu;non;named location ai lab;oui;27.329;96.96;5.236
+sgh_interlock;100;0xDA6F0312;locker room;Locker Room;Vestiaire;jeu;non;named location locker room;oui;4.368;93.896;0.504
+sgh_interlock;101;0x898B1F86;movement course;Movement Course;Trajectoire de déplacement;jeu;non;named location movement course;oui;16.61;77.822;2.516
+sgh_interlock;102;0x898B1F86;movement course;Movement Course;Trajectoire de déplacement;jeu;non;named location movement course;oui;30.358;80.463;0.509
+sgh_interlock;103;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;33.035;72.761;2.7
+sgh_interlock;104;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;non;49.38;71.582;2.801
+sgh_interlock;105;0x24473E5A;armory;Armory;Armurerie;jeu;non;named location armory;oui;52.82;66.253;0.503
+sgh_interlock;106;0x85F88730;weapon range;Weapon Range;Polygone de tir;jeu;non;named location weapon range;oui;39.4;47.367;0.501
+sgh_interlock;107;0xE8963B1D;hallway;Hallway;Couloir;jeu;non;named location hallway;oui;33.532;42.494;0.5
+sgh_interlock;108;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-3.6;23.2;2.1
+sgh_interlock;109;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-8.9;33.1;4.8
+sgh_interlock;110;0xCECE31C8;nest;Nest;Nid;jeu;non;named location nest;oui;1.5;20.937;2.007
+sgh_interlock;111;0x57A9E8DD;yard;Yard;Cour;jeu;non;named location yard;oui;2.31;22.6;0.7
+sgh_interlock;112;0x95321674;lobby;Lobby;Accueil;jeu;non;named location lobby;oui;29.314;83.851;1.506
+sgh_interlock;113;0x95321674;lobby;Lobby;Accueil;jeu;non;named location lobby;oui;29.314;85.751;1.506
+sgh_interlock;114;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-8.0;29.2;2.3
+sgh_interlock;115;0x4C2A0485;canal;Canal;Canal;jeu;non;named location canal;oui;-3.6;23.2;1.1
+sgh_streets;22;0x08054638;officer georges ;Officer George's Desk;Bureau de l'officier George;jeu;oui;named location officer georges ;oui;11.7;11.2;1.7
+sgh_streets;23;0x31520A67;station inside;Station Inside;Poste de police (intérieur);jeu;non;named location station inside;oui;13.7;12.2;1.7
+sgh_streets;24;0x75149706;subway;Subway;Métro;jeu;non;named location subway;oui;0.0;-13.2;0.8
+sgh_streets;25;0x1A8F95F6;station square;Station Square;Place du poste de police;jeu;non;named location station square;oui;6.1;13.0;1.8
+sgh_streets;26;0xF5F5D03D;station tower2;Station Tower 2;Tour du poste de police 2;jeu;non;named location station tower2;oui;-0.3;12.3;3.2
+sgh_streets;27;0xF5F5D03D;station tower2;Station Tower 2;Tour du poste de police 2;jeu;non;named location station tower2;oui;0.1;14.7;3.0
+sgh_streets;28;0xF5F5D03D;station tower2;Station Tower 2;Tour du poste de police 2;jeu;non;named location station tower2;oui;-1.9;11.4;3.0
+sgh_streets;29;0xCDA9E201;station tower1;Station Tower 1;Tour du poste de police 1;jeu;non;named location station tower1;oui;1.3;11.8;1.7
+sgh_streets;30;0x62982FF2;commercial distr;Commercial District;Quartier commerçant;jeu;oui;named location commercial distr;oui;-8.8;3.2;3.0
+sgh_streets;31;0x0350A56A;commercial alley;Commercial Alley;Rue commerçante;jeu;non;named location commercial alley;oui;-4.2;15.7;3.3
+sgh_streets;32;0x62982FF2;commercial distr;Commercial District;Quartier commerçant;jeu;oui;named location commercial distr;oui;-7.1;8.7;3.0
+sgh_streets;33;0x936AD79A;cafe;Cafe;Café;jeu;non;named location cafe;oui;-10.9;9.0;3.2
+sgh_streets;34;0x5117486F;main street;Main Street;Grande rue;jeu;non;named location main street;oui;0.0;3.1;1.3
+sgh_streets;35;0x83D91929;main street alle;Main Street Alley;Allée de la grande rue;jeu;oui;named location main street alle;oui;-3.8;3.9;1.7
+sgh_streets;36;0x8348F5D6;plaza;Plaza;Plaza;jeu;non;named location plaza;oui;0.0;-4.9;1.3
+sgh_streets;37;0x640B2652;oscars house;Oscar's House;Maison d'Oscar;jeu;non;named location oscars house;oui;4.9;-10.0;0.9
+sgh_streets;38;0xF8DDAB0C;subway balcony;Subway Balcony;Balcon du métro;jeu;non;named location subway balcony;oui;-1.7;-10.4;3.0
+sgh_streets;39;0xA87C0135;subway nest;Subway Nest;Planque du métro;jeu;non;named location subway nest;oui;0.2;-7.8;3.1
+sgh_streets;40;0xB7D4604C;subway stairs;Subway Stairs;Escaliers du métro;jeu;non;named location subway stairs;oui;-5.3;-5.4;1.5
+sgh_streets;41;0xD6F189E0;subway bend;Subway Bend;Virage de métro;jeu;non;named location subway bend;oui;-5.5;-11.0;3.0
+sgh_streets;42;0x985956E8;arc street bend;Arc Street Bend;Virage rue courbée;jeu;non;named location arc street bend;oui;4.8;-15.5;3.0
+sgh_streets;43;0x985956E8;arc street bend;Arc Street Bend;Virage rue courbée;jeu;non;named location arc street bend;oui;5.2;-12.3;2.8
+sgh_streets;44;0x53650488;arc street;Arc Street;Rue courbée;jeu;non;named location arc street;oui;8.5;-11.2;2.3
+sgh_streets;45;0x7EE20AFA;arc street hallw;Arc Street Hallway;Couloir rue courbée;jeu;oui;named location arc street hallw;oui;15.0;-9.1;2.9
+sgh_streets;46;0xA8B6F96B;old town;Old Town;Vieille ville;jeu;non;named location old town;oui;11.0;-0.3;3.1
+sgh_streets;47;0x219C937A;old town bar;Old Town Bar;Bar de vieille ville;jeu;non;named location old town bar;oui;15.6;-0.2;3.3
+sgh_streets;48;0xD1C88F8D;station balcony;Station Balcony;Balcon du poste de police;jeu;non;named location station balcony;oui;8.1;10.3;4.6
+sgh_streets;49;0xAD65575C;old town stairs;Old Town Stairs;Escaliers de vieille ville;jeu;non;named location old town stairs;oui;8.3;8.7;2.4
+sgh_streets;50;0xEC3DBFA5;old town alley;Old Town Alley;Rue de vieille ville;jeu;non;named location old town alley;oui;5.3;6.1;3.1
+sgh_streets;51;0x89C47537;plaza stairs;Plaza Stairs;Escaliers de la place;jeu;non;named location plaza stairs;oui;6.1;-2.7;2.8
+sgh_streets;52;0x89C47537;plaza stairs;Plaza Stairs;Escaliers de la place;jeu;non;named location plaza stairs;oui;7.7;-2.7;1.1
+sgh_streets;53;0x54F76157;west alley;West Alley;Allée ouest;jeu;non;named location west alley;oui;-12.7;3.6;2.4
+sgh_streets;54;0x5C437F4C;east alley;East Alley;Allée est;jeu;non;named location east alley;oui;26.683;9.11;3.4
+va_behemoth;0;0xA6EF850C;east tunnel;East Tunnel;Tunnel est;jeu;non;named location east tunnel;oui;-130.394;53.207;6.144
+va_behemoth;1;0x8E5E0D31;northwest rocks;Northwest Rocks;Rochers nord-ouest;jeu;non;named location northwest rocks;oui;-108.694;38.407;10.227
+va_behemoth;2;0x555CA63B;top mid;Top Mid;Milieu haut;jeu;non;named location top mid;oui;-123.894;53.768;7.827
+va_behemoth;3;0x630F9736;east tower;East Tower;Tour est;jeu;non;named location east tower;oui;-139.994;53.664;10.827
+va_behemoth;4;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;-117.194;53.664;6.527
+va_behemoth;5;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;-130.425;53.764;6.527
+va_behemoth;6;0x52AA091A;bottom mid;Bottom Mid;Milieu bas;jeu;non;named location bottom mid;oui;-123.894;53.768;4.627
+va_behemoth;7;0x2F632C53;pit;Pit;Fosse;jeu;non;named location pit;oui;-123.894;53.768;0.127
+va_behemoth;8;0xB2775A39;west tunnel;West Tunnel;Tunnel ouest;jeu;non;named location west tunnel;oui;-117.208;53.207;6.144
+va_behemoth;9;0x317190AD;south catwalk;South Catwalk;Passerelle sud;jeu;non;named location south catwalk;oui;-123.806;73.469;9.75
+va_behemoth;10;0x5C7AF9D4;north catwalk;North Catwalk;Passerelle nord;jeu;non;named location north catwalk;oui;-123.806;33.983;9.75
+va_behemoth;11;0xFDEDC0C4;north edge;North Edge;Côté nord;jeu;non;named location north edge;oui;-123.902;15.116;10.311
+va_behemoth;12;0x3EA9803B;east edge;East Edge;Côté est;jeu;non;named location east edge;oui;-151.747;53.694;10.311
+va_behemoth;13;0x90B5BB6E;southwest rocks;Southwest Rocks;Rochers sud-ouest;jeu;non;named location southwest rocks;oui;-108.094;68.807;10.227
+va_behemoth;14;0xEF98E4B7;southeast garden;Southeast Garden;Jardin sud-est;jeu;non;named location southeast garden;oui;-138.494;68.807;10.227
+va_behemoth;15;0xFAD97A46;northeast garden;Northeast Garden;Jardin nord-est;jeu;non;named location northeast garden;oui;-137.794;42.107;10.227
+va_behemoth;16;0xA9E7B33C;south basement;South Basement;Sous-sol sud;jeu;non;named location south basement;oui;-123.594;73.307;4.229
+va_behemoth;17;0x91A9216E;north basement;North Basement;Sous-sol nord;jeu;non;named location north basement;oui;-124.03;34.407;4.076
+va_behemoth;18;0xEFF359A0;north base;North Base;Base nord;jeu;non;named location north base;oui;-123.594;34.407;10.529
+va_behemoth;19;0x3047ADB9;south lift;South Landing;Parvis sud;jeu;non;named location south lift;oui;-123.777;61.369;10.55
+va_behemoth;20;0x3C7CBAB9;north lift;North Landing;Parvis nord;jeu;non;named location north lift;oui;-123.777;45.986;10.55
+va_behemoth;21;0xEFF359A0;north base;North Base;Base nord;jeu;non;named location north base;oui;-123.806;43.177;8.524
+va_behemoth;22;0xF6EB6E82;south base;South Base;Base sud;jeu;non;named location south base;oui;-123.806;64.212;8.524
+va_behemoth;23;0xF6EB6E82;south base;South Base;Base sud;jeu;non;named location south base;oui;-123.594;73.007;10.529
+va_behemoth;24;0xEFF359A0;north base;North Base;Base nord;jeu;non;named location north base;oui;-123.83;35.383;7.004
+va_behemoth;25;0x1EFDB643;north track;North Track;Piste nord;jeu;non;named location north track;oui;-123.902;21.416;10.311
+va_behemoth;26;0x2D6AACDE;south edge;South Edge;Côté sud;jeu;non;named location south edge;oui;-123.902;92.016;10.311
+va_behemoth;27;0xD7727330;south track;South Track;Piste sud;jeu;non;named location south track;oui;-123.902;85.716;10.311
+va_behemoth;28;0x61CAC52B;east track;East Track;Piste est;jeu;non;named location east track;oui;-145.502;53.716;10.311
+va_behemoth;29;0x61CAC52B;east track;East Track;Piste est;jeu;non;named location east track;oui;-145.502;53.716;10.311
+va_behemoth;30;0xCC95163A;west tower;West Tower;Tour ouest;jeu;non;named location west tower;oui;-107.599;53.724;10.827
+va_behemoth;31;0x7C3E5FCB;west track;West Track;Piste ouest;jeu;non;named location west track;oui;-102.091;53.672;10.311
+va_behemoth;32;0x7C3E5FCB;west track;West Track;Piste ouest;jeu;non;named location west track;oui;-102.091;53.672;10.311
+va_behemoth;33;0x9C825B6D;west edge;West Edge;Côté ouest;jeu;non;named location west edge;oui;-95.847;53.694;10.311
+va_behemoth;34;0xF6EB6E82;south base;South Base;Base sud;jeu;non;named location south base;oui;-123.902;78.116;10.311
+va_behemoth;35;0xEFF359A0;north base;North Base;Base nord;jeu;non;named location north base;oui;-123.902;29.701;10.311
+va_behemoth;36;0x317190AD;south catwalk;South Catwalk;Passerelle sud;jeu;non;named location south catwalk;non;-123.802;80.628;9.683
+va_behemoth;37;0x5C7AF9D4;north catwalk;North Catwalk;Passerelle nord;jeu;non;named location north catwalk;non;-123.802;26.81;9.683
+va_behemoth;38;0xF6EB6E82;south base;South Base;Base sud;jeu;non;named location south base;oui;-123.83;76.34;7.004
+va_behemoth;39;0x91A9216E;north basement;North Basement;Sous-sol nord;jeu;non;named location north basement;oui;-124.03;34.407;7.776
+va_behemoth;40;0xF6EB6E82;south base;South Base;Base sud;jeu;non;named location south base;oui;-123.83;67.54;14.504
+va_behemoth;41;0xEFF359A0;north base;North Base;Base nord;jeu;non;named location north base;oui;-123.83;30.59;14.504
+va_behemoth;42;0x5E8B13A0;sceret tunnel;Secret Tunnel;Tunnel secret;jeu;non;named location sceret tunnel;oui;-108.794;53.768;4.627
+va_behemoth;43;0x5E8B13A0;sceret tunnel;Secret Tunnel;Tunnel secret;jeu;non;named location sceret tunnel;oui;-138.794;53.768;4.627
+va_behemoth;44;0x5E8B13A0;sceret tunnel;Secret Tunnel;Tunnel secret;jeu;non;named location sceret tunnel;oui;-147.094;53.768;6.427
+va_behemoth;45;0x5E8B13A0;sceret tunnel;Secret Tunnel;Tunnel secret;jeu;non;named location sceret tunnel;oui;-100.894;53.768;6.427
+va_launchsite;11;0x2FBFAAE3;rail;Rail;Rail;jeu;non;named location rail;oui;-3.284;3.854;-2.2
+va_launchsite;12;0x83DB7513;operations;Operations;Opérations;jeu;non;named location operations;oui;9.311;-5.944;-0.5
+va_launchsite;13;0x83DB7513;operations;Operations;Opérations;jeu;non;named location operations;oui;17.411;-4.223;-0.405
+va_launchsite;14;0xB1CEB9D7;trench;Trench;Tranchée;jeu;non;named location trench;oui;17.395;-6.093;-2.65
+va_launchsite;15;0xB1CEB9D7;trench;Trench;Tranchée;jeu;non;named location trench;oui;17.949;-3.752;-2.6
+va_launchsite;16;0xB1CEB9D7;trench;Trench;Tranchée;jeu;non;named location trench;oui;17.949;-0.652;-2.6
+va_launchsite;17;0x23855809;bunker;Bunker;Bunker;jeu;non;named location bunker;oui;9.432;22.081;-1.7
+va_launchsite;18;0x2ED63696;bunker platform;Bunker Platform;Plateforme du bunker;jeu;non;named location bunker platform;oui;7.913;15.965;-1.9
+va_launchsite;19;0x19E151C2;bunker nest;Bunker Nest;Nid du bunker;jeu;non;named location bunker nest;oui;23.192;15.599;0.5
+va_launchsite;20;0xD9FF4E5C;comms tower;Comms Tower;Tour de communication;jeu;non;named location comms tower;oui;27.395;6.573;-1.8
+va_launchsite;21;0x8EC32070;shipping;Shipping;Aire de transbordement;jeu;non;named location shipping;oui;17.039;14.386;-3.2
+va_launchsite;22;0xD3FDD332;bend;Bend;Virage;jeu;non;named location bend;oui;33.464;-2.885;-1.705
+va_launchsite;23;0x0AD751E2;bridge;Bridge;Pont;jeu;non;named location bridge;oui;27.615;-8.065;0.139
+va_launchsite;24;0x06E9E8FE;elevator;Elevator;Ascenseur;jeu;non;named location elevator;oui;-23.223;-26.981;-1.3
+va_launchsite;25;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;-11.262;-18.422;-3.405
+va_launchsite;26;0x7FCFB093;tunnel;Tunnel;Tunnel;jeu;non;named location tunnel;oui;-20.162;-18.422;-2.005
+va_launchsite;27;0x4696B518;basement;Basement;Sous-sol;jeu;non;named location basement;oui;2.957;-18.591;-3.4
+va_launchsite;28;0x0629263F;tower1;Tower 1;Tour 1;jeu;non;named location tower1;oui;4.379;-17.221;0.17
+va_launchsite;29;0xF55661D3;tower2;Tower 2;Tour 2;jeu;non;named location tower2;oui;4.379;-17.221;2.23
+va_launchsite;30;0x8723743E;catwalk;Catwalk;Passerelle;jeu;non;named location catwalk;oui;1.961;-23.56;2.5
+va_launchsite;31;0x0783F945;sneaky;Sneaky;Coupe-gorge;jeu;non;named location sneaky;oui;-11.233;-30.288;2.1
+va_launchsite;32;0xB1CEB9D7;trench;Trench;Tranchée;jeu;non;named location trench;oui;5.036;-11.667;-2.6
+va_launchsite;33;0xB1CEB9D7;trench;Trench;Tranchée;jeu;non;named location trench;oui;4.279;-13.04;-2.6
+va_launchsite;34;0x239D5F78;launch pad;Launch Pad;Rampe de lancement;jeu;non;named location launch pad;oui;-4.018;-27.289;-0.121
+va_launchsite;35;0x239D5F78;launch pad;Launch Pad;Rampe de lancement;jeu;non;named location launch pad;oui;-3.963;-31.419;0.302
+va_launchsite;36;0x0E62A3B1;street;Street;Rue;jeu;non;named location street;oui;17.011;-17.702;-1.399
+va_launchsite;37;0x09E88BC3;bottom catwalk;Bottom Catwalk;Passerelle inférieure;jeu;non;named location bottom catwalk;oui;-4.278;-18.98;-3.407
+va_launchsite;38;0xFBFC9206;launch tower;Launch Tower;Tour de lancement;jeu;non;named location launch tower;oui;-4.0;-40.5;1.2
+va_launchsite;39;0x226282C3;maintenance;Maintenance;Maintenance;jeu;non;named location maintenance;oui;11.257;-32.084;1.294
+va_launchsite;40;0x0B361E11;garage;Garage;Garage;jeu;non;named location garage;oui;26.988;-19.036;-1.401
+va_launchsite;41;0xF8EE3758;closet;Closet;Recoin;jeu;non;named location closet;oui;22.183;-3.649;0.098
+va_launchsite;42;0x77B68A81;security;Security;Salle de surveillance;jeu;non;named location security;oui;19.554;-24.29;0.3
+va_launchsite;43;0x239D5F78;launch pad;Launch Pad;Rampe de lancement;jeu;non;named location launch pad;oui;-4.018;-22.089;-0.621
+va_launchsite;44;0x239D5F78;launch pad;Launch Pad;Rampe de lancement;jeu;non;named location launch pad;oui;5.982;-23.589;-0.621
+va_launchsite;45;0x239D5F78;launch pad;Launch Pad;Rampe de lancement;jeu;non;named location launch pad;oui;2.42;-24.096;-0.899
+va_launchsite;46;0x2780B4BD;operations tower;Operations Tower;Tour des opérations;jeu;non;named location operations tower;oui;10.231;-11.261;1.801
+va_launchsite;47;0xEDF5FC09;storage;Storage;Réserve;jeu;non;named location storage;oui;31.997;-12.142;0.2
+va_launchsite;48;0x0FD8EE97;loading docks;Loading Docks;Quais de chargement;jeu;non;named location loading docks;oui;12.046;7.511;-3.912
+va_launchsite;49;0x44DF1726;under bridge;Under Bridge;Sous le pont;jeu;non;named location under bridge;oui;29.493;-3.989;-2.4
+va_launchsite;50;0x44DF1726;under bridge;Under Bridge;Sous le pont;jeu;non;named location under bridge;oui;28.758;-6.466;-2.401
+va_launchsite;51;0x83DB7513;operations;Operations;Opérations;jeu;non;named location operations;oui;10.111;1.177;-2.805
+va_launchsite;52;0x24473E5A;armory;Armory;Armurerie;jeu;non;named location armory;oui;10.206;-3.268;-2.597
+va_launchsite;53;0x80A3BCE2;last stand;Last Stand;Dernier bastion;jeu;non;named location last stand;oui;38.701;6.681;-0.005
+va_launchsite;54;0xBE1609FF;free money;Free Money;Argent gratuit;jeu;non;named location free money;oui;32.93;16.884;-0.705
+va_launchsite;55;0xE941D002;pick it up;Pick it up!;Collecte;jeu;non;named location pick it up;oui;34.846;14.553;-0.705
+va_launchsite;56;0x457FCAE6;air ventilation ;Air Ventilation Shaft;Puits de ventilation;jeu;oui;named location air ventilation ;oui;5.177;-11.005;1.801
+va_launchsite;57;0xCCF13C23;tunnel drop;Tunnel Drop;Tunnel dénivelé;jeu;non;named location tunnel drop;oui;-14.273;-19.55;-0.903
+va_launchsite;58;0xFBFC9206;launch tower;Launch Tower;Tour de lancement;jeu;non;named location launch tower;non;3.588;-27.68;0.362
+va_launchsite;59;0x2FBFAAE3;rail;Rail;Rail;jeu;non;named location rail;oui;-3.284;12.654;3.2
+va_launchsite;60;0x2780B4BD;operations tower;Operations Tower;Tour des opérations;jeu;non;named location operations tower;oui;10.231;-12.861;1.801
+va_launchsite;61;0x2780B4BD;operations tower;Operations Tower;Tour des opérations;jeu;non;named location operations tower;oui;6.531;-12.761;1.801
+va_launchsite;62;0x2780B4BD;operations tower;Operations Tower;Tour des opérations;jeu;non;named location operations tower;oui;10.231;-12.861;5.101
+va_launchsite;63;0x2ED63696;bunker platform;Bunker Platform;Plateforme du bunker;jeu;non;named location bunker platform;oui;10.113;15.965;2.6
