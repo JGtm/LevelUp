@@ -52,6 +52,9 @@ func (h *ReplayHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/matches/{match_id}/replay/background", h.handleGetBackground,
 		humacore.Op("getMatchReplayBackground",
 			"Calage du fond de carte du rejeu 2D d'un match", "match-view"))
+	huma.Get(api, "/matches/{match_id}/replay/callouts", h.handleGetCallouts,
+		humacore.Op("getMatchReplayCallouts",
+			"Zones nommées (callouts) de la carte du rejeu 2D d'un match", "match-view"))
 	r.Get("/matches/{match_id}/replay/background.png", h.handleGetBackgroundImage)
 }
 
@@ -108,6 +111,31 @@ func (h *ReplayHandler) handleGetBackground(ctx context.Context, in *replayInput
 		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
 	}
 	return &backgroundOutput{Body: *bg}, nil
+}
+
+type calloutsOutput struct{ Body replay.MapCalloutsEntry }
+
+// handleGetCallouts retourne les ZONES NOMMÉES officielles de la carte du match :
+// polygones monde, tranche verticale, libellés FR/EN. 404 quand la carte n'en a pas —
+// absence NORMALE (les 22 cartes intégrées en ont ; une carte Forge n'en aura jamais,
+// son canevas n'en porte aucune) : le client n'affiche simplement pas le calque zones.
+func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) (*calloutsOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
+	}
+	entry, err := svc.MapCallouts(ctx, in.MatchID)
+	if errors.Is(err, port.ErrMapCalloutsNotAvailable) {
+		return nil, humacore.NewError(http.StatusNotFound, "map_callouts_not_available",
+			"aucune zone nommée pour ce match")
+	}
+	if err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
+	}
+	return &calloutsOutput{Body: *entry}, nil
 }
 
 // handleGetBackgroundImage sert le PNG du fond de carte.

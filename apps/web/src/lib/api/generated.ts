@@ -2036,6 +2036,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/replay/callouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Zones nommées (callouts) de la carte du rejeu 2D d'un match */
+        get: operations["getMatchReplayCallouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media": {
         parameters: {
             query?: never;
@@ -4518,6 +4535,27 @@ export interface components {
             /** Format: int64 */
             with_placement_remaining: number;
         };
+        CalloutZone: {
+            big?: boolean;
+            en: string;
+            fr: string;
+            holes?: ((number[] | null)[] | null)[] | null;
+            name: string;
+            parts?: ((number[] | null)[] | null)[] | null;
+            polygon?: (number[] | null)[] | null;
+            /** Format: int64 */
+            volume_index: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+            /** Format: double */
+            z: number;
+            /** Format: double */
+            z_bottom: number;
+            /** Format: double */
+            z_top: number;
+        };
         CampaignHistoryItem: {
             axis: string;
             axis_kind: string;
@@ -6639,6 +6677,11 @@ export interface components {
             performance_avg?: number;
             /** Format: double */
             win_rate: number;
+        };
+        MapCalloutsEntry: {
+            module: string;
+            provenance: string;
+            zones: components["schemas"]["CalloutZone"][] | null;
         };
         MapObject: {
             /** Format: float */
@@ -14874,6 +14917,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getMatchReplayCallouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapCalloutsEntry"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };

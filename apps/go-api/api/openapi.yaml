@@ -3538,6 +3538,36 @@ paths:
       summary: Sert l'image du fond de carte du rejeu 2D
       tags:
         - match-view
+  /players/{player_slug}/matches/{match_id}/replay/callouts:
+    get:
+      operationId: getMatchReplayCallouts
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MapCalloutsEntry'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Zones nommées (callouts) de la carte du rejeu 2D d'un match
+      tags:
+        - match-view
   /players/{player_slug}/media:
     delete:
       operationId: deleteMedia
@@ -8619,6 +8649,93 @@ components:
         - total
         - with_alltime_value
         - with_placement_remaining
+      type: object
+    CalloutZone:
+      additionalProperties: false
+      properties:
+        big:
+          type: boolean
+        en:
+          type: string
+        fr:
+          type: string
+        holes:
+          items:
+            items:
+              items:
+                format: double
+                type: number
+              maxItems: 2
+              minItems: 2
+              type:
+                - array
+                - "null"
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        name:
+          type: string
+        parts:
+          items:
+            items:
+              items:
+                format: double
+                type: number
+              maxItems: 2
+              minItems: 2
+              type:
+                - array
+                - "null"
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        polygon:
+          items:
+            items:
+              format: double
+              type: number
+            maxItems: 2
+            minItems: 2
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        volume_index:
+          format: int64
+          type: integer
+        x:
+          format: double
+          type: number
+        "y":
+          format: double
+          type: number
+        z:
+          format: double
+          type: number
+        z_bottom:
+          format: double
+          type: number
+        z_top:
+          format: double
+          type: number
+      required:
+        - volume_index
+        - name
+        - en
+        - fr
+        - x
+        - "y"
+        - z
+        - z_bottom
+        - z_top
       type: object
     CampaignHistoryItem:
       additionalProperties: false
@@ -13734,6 +13851,24 @@ components:
         - map_ui
         - match_count
         - win_rate
+      type: object
+    MapCalloutsEntry:
+      additionalProperties: false
+      properties:
+        module:
+          type: string
+        provenance:
+          type: string
+        zones:
+          items:
+            $ref: '#/components/schemas/CalloutZone'
+          type:
+            - array
+            - "null"
+      required:
+        - module
+        - provenance
+        - zones
       type: object
     MapObject:
       additionalProperties: false

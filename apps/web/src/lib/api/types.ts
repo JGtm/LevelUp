@@ -2616,6 +2616,12 @@ export type ReplayDocument = components['schemas']['ReplayDocument']
 export type ReplayMapBackground = components['schemas']['MapBackground']
 export type ReplayMapBackgroundCalibration = components['schemas']['MapBackgroundCalibration']
 
+// Les ZONES NOMMÉES (« callouts ») de la carte du match : polygones monde + libellés
+// FR/EN officiels, servies à part du document (résolution par carte au service, comme le
+// fond). Absentes = la carte n'en a pas (cas Forge, par construction) — pas un dégradé.
+export type ReplayMapCallouts = components['schemas']['MapCalloutsEntry']
+export type ReplayCalloutZone = components['schemas']['CalloutZone']
+
 // La table d'appariement du film : xuid ET index de slot.
 //
 // LES DEUX CHAMPS NE SONT PAS INTERCHANGEABLES : le xuid IDENTIFIE, l'index ORDONNE et n'a de
