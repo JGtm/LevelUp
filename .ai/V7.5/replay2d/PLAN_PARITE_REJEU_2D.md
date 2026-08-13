@@ -77,7 +77,7 @@ au user (instructions dans le compte rendu du lot — la session ne juge pas l'a
 
 ## Lot 2 — Effets de mort, grenades, lancers
 
-- [ ] 2.1 EFFET DE MORT par famille d'arme (portage drawKillFx du POC, l.2884 de
+- [x] 2.1 EFFET DE MORT par famille d'arme (portage drawKillFx du POC, l.2884 de
       l'artefact) : oriente tueur→victime quand le couple est complet (regle POC 89/93),
       marqueur non oriente sinon ; extremite reelle (cible=true) ; melee = arc SANS eclair
       (seuil 8 m mesure) ; formes = shotEffects existant, duree KFX_HOLD 1,4 s. Donnees :
@@ -85,23 +85,60 @@ au user (instructions dans le compte rendu du lot — la session ne juge pas l'a
       (fenetre death, patron posOfNameAt). Manque Go : la famille fx par weapon_key sur les
       events du feed (aujourd'hui [shot_effects] n'est joignable que par id d'arme film) —
       petite modif (servir fx avec weapon_key, ou table cote client depuis weaponLabels).
-- [ ] 2.2 TIRS : l'effet par famille sur TOUS les tirs publies EXISTE (drawShotsLayer, 475
+      FAIT (2026-08-13) : cote Go, le document v3 publie `killEffects` (weapon_key →
+      famille, table [shot_effects] servie telle quelle — option « servir fx avec
+      weapon_key » retenue via l'artefact, l'API ne lit aucun TOML en requete) ;
+      [shot_effects] gagne les cles kill-only (grenades frag/plasma=explosive,
+      dynamo=shock, bandit et ma5k_avenger=ballistic ; Spike SANS weapon_key = neutre,
+      mesure killicon). Cote web : killFx.ts pur (precalcul monde, horloge du fil
+      reutilisee, positions vivant=positionAt / vie close=fenetre DEATH 1,5 s), orientation
+      SEULEMENT sur couple complet, marqueur pointille sinon (drawDeathMarker), extremite
+      reelle (`target` : explosif et aiguilles a l'extremite), melee = arcs sans eclair +
+      arc de liaison sous 8 m monde (`meleeLink`), couleur = tueur (arbitrage 3.2).
+      8 tests killFx + 1 test melee liaison. LIMITE (decouverte) : la melee GENERIQUE
+      (classe sans weapon_key) tombe sur le rendu neutre — le feed ne porte pas la classe.
+- [x] 2.2 TIRS : l'effet par famille sur TOUS les tirs publies EXISTE (drawShotsLayer, 475
       tirs) — verifier pourquoi il est invisible a l'oeil (durees/intensites vs POC :
       SHOT_HOLD 0,6 s, longueurs) et recaler sur le POC. Pas de re-conception.
-- [ ] 2.3 GRENADES : publier le lien grenade↔projectile dans l'artefact (l'appariement
+      FAIT (2026-08-13) : deux causes identifiees — remanence partagee 1,4 s (trait
+      trainant dim) et longueur 26 px. Recale : SHOT_HOLD_MS 600 ms distinct, SHOT_LENGTH
+      62 px, courbes d'extinction POC (balistique deux horloges eclat²/trait^1,5 largeur
+      2,2 ; plasma racine ; choc ^1,6 largeur 1,7 ; lumiere 6,5/2,0 ; melee 2e arc).
+      canvasRecording.test.ts mis a jour (il figeait l'ancienne geometrie).
+- [x] 2.3 GRENADES : publier le lien grenade↔projectile dans l'artefact (l'appariement
       existe deja dans grenades.go, fenetre 200 ms) + effet par TYPE au point Rest :
       Shock/Dynamo (rang 2) = effet ELECTRIQUE persistant ~2-3 s (geometrie drawShock),
       autres = halo « derniere position connue » — JAMAIS « impact » (aucun event de
       detonation dans le film, seul Rest certifie 78/79 ; frag : la replication cesse
       ~1,4 s avant la meche).
-- [ ] 2.4 LANCERS mis en evidence : type distingue sur la carte (vignette
+      FAIT (2026-08-13) : `Grenade.proj` (*int — piege omitempty, l'index 0 est valide)
+      pointe le projectile PUBLIE (buildProjectiles rend la table brut→publie, construit
+      avant les lancers) ; temoin : 65/70 lancers lies (= mesure POC). Web : SEUL un vol
+      certifie at-rest produit un effet, au dernier pas du projectile lie ; Dynamo rang 2
+      = nappe electrique 2,5 s (geometrie brisee, germe stable), autres = halo discret
+      1,4 s ; note i18n FR/EN sous le canvas « derniere position connue ». SchemaVersion
+      2→3 (cle de reprise du backfill lot 6) + openapi-gen + generate-types meme commit.
+- [x] 2.4 LANCERS mis en evidence : type distingue sur la carte (vignette
       GrenadeLabels[rank].img deja publiee, ou forme par rang) + pulse ephemere sur la
       fiche au lancer (badge .gic du POC, l.534-543).
+      FAIT (2026-08-13) : carte — vignette du type au-dessus de l'anneau (masque HUD teint
+      a l'encre du theme UNE fois par theme via source-in, cache par rang ; rang sans
+      visuel = anneau seul). Fiche — badge .gic : premiere place de la rangee d'armes,
+      token warning, pop 0,18 s (reduced-motion: none), remanence 1,4 s, HORS estompage
+      d'age (bloc separe — les opacites CSS se multiplient) ; jointure par l'index de FILM
+      du roster (l'auteur est ecrit). 3 tests grenadeThrowActive.
 
 Gate 2 : tests web verts ; si modif du contrat artefact : bump SchemaVersion + openapi-gen
 + generate-types meme commit ; re-cuisson du temoin 000d5950 + verification visuelle a
 remettre au user (liste des instants a regarder : un kill balistique, un plasma, une melee,
 un lancer Shock).
+PASSE (2026-08-13) : tsc -b OK (cache purge), eslint 0 erreur (19 warnings preexistants),
+vitest 410 fichiers / 3644 tests verts (14 skips preexistants), go test replay + mappings +
+replaylabels + handlers + service OK, go vet OK, golden assembly regenere (seule la ligne
+schema change). Temoin 000d5950 re-cuit en v3 (`--map cliffhanger` — la cle du catalogue
+est le NOM de carte, ridgeline n'est que le module) : 65/70 lancers lies, 15 vols at-rest,
+29 cles killEffects. La verification visuelle est remise au user (liste des instants dans
+le compte rendu du lot — la session ne juge pas l'aspect).
 
 ## Lot 3 — Callouts (regression POC, tout existe hors depot)
 
@@ -223,6 +260,16 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   les zones armes/inventaire : une rangee VIVANTE qui passerait sur deux lignes (colonne
   tres etroite, flex-wrap) depasserait la reserve. Cas non observe aux largeurs de la
   page ; a surveiller au gate visuel.
+- (lot 2, 2026-08-13) la MELEE GENERIQUE (coups sans arme nommee) n'a PAS de weapon_key
+  (regle killicon CLASSE MELEE, mesure) : son effet de mort tombe sur le rendu neutre, pas
+  sur l'arc de melee. Le POC la rangeait par la CLASSE (e.w.cl), que le feed ne sert pas.
+  Piste si le gate visuel le reclame : servir la classe damagetag sur l'event kill (modif
+  Go match_view) — hors perimetre du lot, note au registre si demande.
+- (lot 2, 2026-08-13) cmd/replay-build : la cle `--map` est le NOM de carte du catalogue
+  (`cliffhanger`), PAS le module (`ridgeline`) — l'instruction d'orchestration disait
+  ridgeline, l'erreur du catalogue est explicite et la correction evidente.
+- (lot 2, 2026-08-13) le badge .gic ne peut pas vivre DANS le bloc estompe par l'age de
+  lecture : les opacites CSS se multiplient. Il vit dans un bloc frere, hors estompage.
 
 ## Reprise
 

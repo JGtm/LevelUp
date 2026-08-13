@@ -64130,3 +64130,17 @@ multiplient, d'ou un bloc separe). Jointure par l'index de FILM du roster (l'aut
 ECRIT dans le film). i18n grenadeThrown FR/EN.
 **Resultats** : vitest match-replay 228 verts (3 tests grenadeThrowActive ajoutes).
 **Prochaine etape** : gate 2 complet + statuts du plan.
+
+## [2026-08-13] Parite rejeu 2D — lot 2 Effets : CLOS, gate 2 passe
+**Statut** : Complété (lot 2 : 2.1 [x] 2.2 [x] 2.3 [x] 2.4 [x])
+**Decision technique** : 5 commits — socle Go v3 (killEffects + lien lancer→projectile,
+openapi+types meme commit), effet de mort oriente (regle 89/93), recalage tirs POC
+(0,6 s / 62 px / courbes), effet de fin de vol par type (at-rest seul, Dynamo electrique
+2,5 s, « derniere position connue » a l'ecran), lancers mis en evidence (vignette type sur
+carte + badge .gic fiche).
+**Resultats** : gate 2 — tsc -b purge OK, eslint 0 erreur, vitest 410/3644 verts, go test
+cibles + vet OK, temoin 000d5950 re-cuit v3 (65/70 lancers lies, 29 killEffects). Gate
+visuel remis au user (kill balistique, plasma, melee, lancer Shock — instants listes au
+compte rendu). Decouvertes consignees au plan : melee generique sans weapon_key = rendu
+neutre ; --map = nom de carte (cliffhanger), pas module.
+**Conclusion / prochaine etape** : lot 3 callouts (3.1 matiere premiere corrigee 13/08).
