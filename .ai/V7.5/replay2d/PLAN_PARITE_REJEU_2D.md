@@ -226,25 +226,64 @@ l'aspect).
 
 ## Lot 4 — Objectifs statiques par mode
 
-- [ ] 4.1 Table mode→roles EN DONNEE (TOML mappings du titre, pas en dur) : CTF →
+- [x] 4.1 Table mode→roles EN DONNEE (TOML mappings du titre, pas en dur) : CTF →
       flag_spawn + flag_delivery ; Strongholds → strongholds_zone ; Oddball →
       oddball_spawn ; Stockpile → stockpile_socket/navpoint ; Extraction →
       extraction_zone ; Assault → assault_bomb. Le SERVEUR choisit les roles servis
       (pair_name normalise cote Go) — le front n'affiche que ce qui arrive (title-agnostic,
       degradation par absence).
-- [ ] 4.2 Service : MapKeysForMatch(matchID).MapID → LoadMapObjectives → ZonesOfRole
+      FAIT (2026-08-13) : config/titles/halo_infinite/mappings/objective_roles.toml —
+      jetons de mode (mot entier : « CTF » attrape One Flag/Fiesta/Neutral Flag CTF,
+      mesure sur les 435 pair_name du registre) + roles mapvar + drapeau `neutral` par
+      entree (cf. Decouvertes : 95/158 zones Bastion portent un camp de FICHIER, la
+      possession est dynamique et non decodee → Strongholds et Extraction s'affichent
+      neutres, le drapeau garde ses camps). Loader strict games/mappings (liste fermee
+      mapvar, tout-ou-rien) ; matching au service (analysis.ExtractKnownMode — mappings
+      ne peut pas importer analysis, cycle). Variantes bombe (Neutral/One Bomb) → assaut.
+- [x] 4.2 Service : MapKeysForMatch(matchID).MapID → LoadMapObjectives → ZonesOfRole
       (lecteur existant objectives_catalog.go, seuls appelants = CLI/tests) → champ servi
       avec le rejeu. map_id vide / carte inconnue = champ absent, jamais d'erreur. MAJ du
       commentaire perime d'objectives_catalog.go (34 cartes → 72) dans le meme commit.
-- [ ] 4.3 Web : couche zones (boites orientees + cylindres projetes, meme transform monde
+      FAIT (2026-08-13) : port.MatchMapKeys.PairName (meme ligne match_registry, servi
+      brut) ; ReplayDocument.MapObjectives (omitempty) rempli A LA REQUETE par GetReplay —
+      pair_name → NormalizeModeLabel → specs de roles → jointure map_id SEUL →
+      BuildMapObjectives (zones = volumes via Zone.Shape expose, marqueurs = nouveaux
+      PointsOfRole — flag_delivery est MIXTE : 36 volumes + 138 points). Pas de bump
+      SchemaVersion (champ jamais ecrit dans l'artefact, aucune re-cuisson) ; commentaire
+      34→72 corrige (+ la claim « Bastion toutes neutres », fausse sur le catalogue 72) ;
+      openapi-gen + generate-types meme commit. Oracle reel Catalyst : 5 marqueurs
+      (dont le drapeau central neutre) + 2 cylindres, au champ pres.
+- [x] 4.3 Web : couche zones (boites orientees + cylindres projetes, meme transform monde
       que structure/tracks) + marqueurs spawns/livraisons colores par teamIndex (les zones
       Bastion sont neutres team_index -1). INTERDIT d'inventer les lettres A/B/C
       (SpatialRank ≠ lettre du jeu, garde documentee).
-- [ ] 4.4 Bonus quasi gratuit : pulse sur zone/marqueur au moment d'une ACTION d'objectif
+      FAIT (2026-08-13) : objectivesLayer.ts — boites aux 4 coins monde par le Forward
+      servi, cylindres au rayon monde ; marqueurs en losange, anneau en plus pour une
+      livraison ; couleur par teamIndex via le referentiel d'identite du jeu (lib/halo),
+      encre neutre pour -1 (Bastion/Extraction arrivent deja neutralises du serveur).
+      AUCUN texte — garde TESTEE (ni fillText ni strokeText). Calque statique cuit hors
+      ecran (regle du sol), entre les callouts et les projectiles.
+- [x] 4.4 Bonus quasi gratuit : pulse sur zone/marqueur au moment d'une ACTION d'objectif
       (doc.objectives deja servi et normalise, rendu nulle part).
+      FAIT (2026-08-13) : buildObjectivePulses — l'action est posee sur l'element servi le
+      plus proche de son AUTEUR a l'instant T (position relue par posOfPlayerAt, fenetre
+      apres-mort du calque des morts ; action sans position ECARTEE, jamais posee au
+      hasard) ; anneau qui s'ouvre 1,4 s a la couleur de l'element, statique sous
+      mouvement reduit. 13 tests objectivesLayer.
 
 Gate 4 : tests Go service + web verts ; verification sur un match CTF (64e8adfa Catalyst,
 5 captures) et un Strongholds ; sur un Slayer : AUCUNE zone.
+PASSE (2026-08-13) : go build + go test replay/mapvar/service/mappings/handlers OK,
+integration TestReplayMapRepo (pair_name) OK, go vet ./... OK, golangci-lint 0 issue sur
+les fichiers du lot ; web tsc -b OK (cache .tmp purge), eslint 0 erreur fichiers touches,
+vitest COMPLET 412 fichiers / 3670 tests verts (14 skips preexistants). Artefact
+Strongholds construit (696a9d7c, Vagabond, 110 vies / 5 337 frames). Verification API sur
+le serveur local (match_id COMPLETS — cf. Decouvertes) : 64e8adfa CTF = 2 zones cylindre
+livraison (camps 0/1) + 5 marqueurs (3 spawns dont le central neutre + 2 livraisons) ;
+696a9d7c Strongholds = 3 boites TOUTES neutres (la regle `neutral` ecrase les camps de
+fichier 0/1/-1 de Vagabond) ; 000d5950 Slayer et 01e1f945 KOTH = champ ABSENT. La
+verification VISUELLE est remise au user (instructions au compte rendu — la session ne
+juge pas l'aspect).
 
 ## Lot 5 — Sons (SOURCE RECUE 13/08 : D:/Halo Infinite Gun Sounds.zip)
 
@@ -347,6 +386,26 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   son facteur K) ; notre contexte est transforme au devicePixelRatio et le canvas
   s'affiche a sa taille CSS — une unite de dessin EST un pixel d'ecran, 25 px se dessine
   25, sans K.
+
+- (lot 4, 2026-08-13) le catalogue d'objectifs 72 cartes CONTREDIT deux claims du
+  lecteur : 95/158 zones de Bastion portent un team_index 0/1 (Vagabond incl. — la
+  version 34 cartes n'en avait aucune), et flag_delivery est un role MIXTE (36 volumes +
+  138 points ; Catalyst porte les deux au meme endroit). La possession d'une zone etant
+  dynamique et non decodee, la regle d'affichage (neutre ou pas) est portee par la
+  DONNEE (`neutral` dans objective_roles.toml), jamais par le role.
+- (lot 4, 2026-08-13) PIEGE DE VERIFICATION API : match_registry est indexe par match_id
+  COMPLET ; seule ReplayArtifactPath normalise la forme courte (FilmShortMatchID). Une
+  verif curl a l'id COURT rend le document SANS fond/callouts/objectifs (MapKeysForMatch
+  ne trouve rien, degradation silencieuse en debug) — verifier toujours avec l'UUID
+  complet, celui des routes de l'app.
+- (lot 4, 2026-08-13) un server.exe ZOMBIE (demarre 22:17, air ne l'avait pas tue) tenait
+  metadata.duckdb : le fils reconstruit par air mourait a l'ouverture (« utilise par un
+  autre processus ») et :8000 servait un binaire d'avant le lot. Remede documente
+  (memoire metadata-fatal) applique : kill du doublon, air a relance un fils sain.
+- (lot 4, 2026-08-13) Total Control (110 matchs du registre) et Land Grab sont des modes
+  a zones NON couverts par la table : leurs roles d'objets ne sont pas etablis (aucune
+  mesure .mvar — utilisent-ils strongholds_zone ?). Le jour ou c'est mesure, l'extension
+  est UNE entree TOML, zero code. KOTH reste hors v7.5 (registre).
 
 ## Reprise
 

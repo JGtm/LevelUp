@@ -1,6 +1,7 @@
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
 
-**Statut** : En cours (4.1 + 4.2 faits, 4.3/4.4 web a suivre).
+**Statut** : Complete (gate visuel utilisateur PENDANT — CTF 64e8adfa, Strongholds
+696a9d7c, Slayer 000d5950).
 
 **Decision technique principale** : (4.1) table mode->roles EN DONNEE :
 config/titles/halo_infinite/mappings/objective_roles.toml (jetons de mode + roles mapvar
@@ -19,15 +20,30 @@ commentaire perime d objectives_catalog.go (34 cartes) corrige : 72 cartes, 158
 Bastion, 236 Extraction ; Zone.Shape expose + PointsOfRole (les roles ponctuels :
 flag_spawn 285/285 sans forme ; flag_delivery MIXTE : 36 volumes + 138 points).
 
-**Resultats observes** : oracle reel Catalyst (match gate 64e8adfa, CTF) : 5 marqueurs
-(3 spawns dont 1 neutre + 2 livraisons ponctuelles) + 2 zones cylindre livraison —
-au champ pres du catalogue. go build OK, go test replay+service+mappings+handlers OK,
-integration TestReplayMapRepo (pair_name) OK, go vet OK, golangci-lint 0 issue sur les
-fichiers du lot, openapi-gen + generate-types dans le meme lot de commit.
+(4.3) objectivesLayer.ts : boites orientees aux 4 coins monde (Forward servi), cylindres
+au rayon monde, marqueurs losange + anneau de livraison, couleur par teamIndex via le
+referentiel lib/halo, encre neutre pour -1 ; AUCUN texte (garde testee : ni fillText ni
+strokeText — la lettre A/B/C n'existe dans aucune donnee). Calque statique cuit hors
+ecran. (4.4) pulses : action de doc.objectives posee sur l'element le plus proche de son
+AUTEUR (posOfPlayerAt, action sans position ecartee), anneau 1,4 s, statique sous
+mouvement reduit.
 
-**Conclusion / prochaine etape** : 4.3 (couche web zones/marqueurs, couleurs par
-teamIndex via referentiel lib/halo, JAMAIS de lettres A/B/C) + 4.4 (pulse sur action
-d objectif, doc.objectives) puis gate 4 et artefact Strongholds (696a9d7c Vagabond).
+**Resultats observes** : oracle reel Catalyst : 5 marqueurs + 2 cylindres au champ pres.
+Gates : go build OK, go test replay+mapvar+service+mappings+handlers OK, integration
+TestReplayMapRepo OK, go vet OK, golangci-lint 0 issue fichiers du lot, tsc -b OK (cache
+purge), eslint 0 erreur, vitest COMPLET 412 fichiers / 3670 verts. Artefact Strongholds
+construit (696a9d7c Vagabond, 110 vies / 5 337 frames). Verif API locale (match_id
+COMPLETS — piege : la forme courte ne resout RIEN en base, seule ReplayArtifactPath la
+normalise) : CTF = 2 zones + 5 marqueurs ; Strongholds = 3 boites TOUTES neutres (la
+regle donnee ecrase les camps de fichier) ; Slayer et KOTH = champ absent. Incident
+resolu : server.exe zombie tenait metadata, fils air mourait — kill du doublon (memoire
+metadata-fatal), fils sain relance.
+
+**Conclusion / prochaine etape** : lot 4 clos cote code (4x [x], gate 4 passe hors verif
+visuelle). Gate visuel user : CTF 64e8adfa (2 cylindres de livraison colores + 5 losanges
+dont le drapeau central neutre + pulses aux captures), Strongholds 696a9d7c (3 boites
+neutres + pulses aux prises), Slayer 000d5950 (AUCUNE zone d'objectif). Lot 6 ensuite
+(le 5 attend les sons — source recue, rangement a faire).
 
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 3 : callouts (zones nommees officielles)
 
