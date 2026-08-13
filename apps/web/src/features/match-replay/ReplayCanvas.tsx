@@ -58,8 +58,11 @@ const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
 // n'enregistre que ceux-là), le lancer un token d'information : deux natures, deux lectures.
 const SHOT_TOKEN: SemanticToken = 'destructive'
 const GRENADE_TOKEN: SemanticToken = 'info'
-// Rémanence des événements ponctuels, en temps réel. 1,4 s est la convention déjà retenue par
-// le POC pour un lancer ; elle vaut aussi pour un tir, dont l'instant est ponctuel.
+// Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
+// un TIR est un éclat bref (0,6 s — c'est sa brièveté qui le rend lisible : à 1,4 s le trait
+// traînait dim et se fondait dans la carte, mesure du recalage 2.2), un LANCER et une MORT
+// tiennent 1,4 s parce qu'ils portent plus de sens qu'une détonation.
+const SHOT_HOLD_MS = 600
 const EVENT_HOLD_MS = 1_400
 
 const CANVAS_HEIGHT = 480
@@ -218,6 +221,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     [doc],
   )
   const eventHoldFrames = useMemo(() => msToFrames(EVENT_HOLD_MS, doc), [doc])
+  const shotHoldFrames = useMemo(() => msToFrames(SHOT_HOLD_MS, doc), [doc])
   // Les effets de mort sont PRÉCALCULÉS en monde (positions relues une fois, patron POC) :
   // pendant la lecture, seul le passage monde -> pixels reste à faire.
   const killFx = useMemo(
@@ -288,7 +292,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     // Les événements passent APRÈS les trajectoires : ils se lisent sur elles.
     const win = { frame, hold: eventHoldFrames }
     if (doc.shots?.length) {
-      drawShotsLayer(ctx, doc.shots, view, win, {
+      drawShotsLayer(ctx, doc.shots, view, { frame, hold: shotHoldFrames }, {
         colorOfSlot: (slot) => colorBySlot.get(slot) ?? null,
         fallback: shotColor,
         effectOf: (id) => (id ? doc.weaponLabels?.[id]?.fx : undefined),
@@ -328,6 +332,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     shotColor,
     grenadeColor,
     eventHoldFrames,
+    shotHoldFrames,
     killFx,
     floorStyle.edge,
     colorBySlot,

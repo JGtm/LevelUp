@@ -85,9 +85,11 @@ const FLOOR_ALPHA_SPAN = 0.46
 const FLOOR_EDGE_ALPHA = 0.32
 
 // Événements ponctuels : un tir est un éclat bref, un lancer une marque plus lisible.
-// Longueur de la forme d un tir, en pixels : assez pour lire une direction, assez court
-// pour ne pas traverser la carte.
-const SHOT_LENGTH = 26
+// Longueur de la forme d un tir, en pixels : la longueur de TRACE du POC (62 px, pas une
+// distance mesurée — `target` est faux, aucune famille ne pose d impact à l extrémité).
+// À 26 px l effet était illisible à l œil : c était une des deux causes mesurées de
+// l invisibilité du calque (l autre : la rémanence partagée de 1,4 s, cf. SHOT_HOLD_MS).
+const SHOT_LENGTH = 62
 const GRENADE_RADIUS = 4
 const GRENADE_RING = 6.5
 

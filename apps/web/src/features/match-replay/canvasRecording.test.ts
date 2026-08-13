@@ -134,8 +134,8 @@ describe('les huit formes d’effet de tir', () => {
     //
     // LA SIGNATURE PORTE AUSSI LES LARGEURS ET LES OPACITÉS, et c'est une MESURE, pas une
     // commodité : `ballistic` et `plain` émettent exactement les mêmes primitives, dans le même
-    // ordre. Ce qui les sépare est le POIDS du trait (1,6 px contre 1) et son opacité (0,9
-    // contre 0,7) — rien d'autre. Le sujet est consigné : « huit formes » est exact au sens des
+    // ordre. Ce qui les sépare est le POIDS du trait (2,2 px contre 1, recalage POC 2.2) et
+    // son opacité — rien d'autre. Le sujet est consigné : « huit formes » est exact au sens des
     // huit rendus, mais il n'y a que SEPT géométries distinctes, et le rendu neutre d'une arme
     // hors catalogue est un balistique aminci plutôt qu'une forme qui n'affirme rien.
     const signatures = new Map<string, ShotFamily[]>()
@@ -175,7 +175,9 @@ describe('les huit formes d’effet de tir', () => {
     expect(count(ops, 'stroke')).toBe(1)
     expect(count(ops, 'arc')).toBe(1) // l'éclat
     expect(count(ops, 'fill')).toBe(1)
-    expect(valuesOf(ops, 'lineWidth')).toEqual([1.6])
+    // Largeur recalée sur le POC (2.2) — lot 2 item 2.2, avec les deux horloges (éclat
+    // au carré, trait en puissance 1,5).
+    expect(valuesOf(ops, 'lineWidth')).toEqual([2.2])
   })
 
   it('plasma : une polyligne qui ondule, jamais un segment droit', () => {
@@ -193,7 +195,8 @@ describe('les huit formes d’effet de tir', () => {
     const ops = trace('light')
     expect(count(ops, 'lineTo')).toBe(1)
     expect(count(ops, 'stroke')).toBe(2)
-    expect(valuesOf(ops, 'lineWidth')).toEqual([5, 1.2])
+    // Largeurs recalées sur le POC (6,5 / 2) — lot 2 item 2.2.
+    expect(valuesOf(ops, 'lineWidth')).toEqual([6.5, 2])
     const alphas = valuesOf(ops, 'globalAlpha')
     expect(alphas[0]).toBeLessThan(alphas[1])
   })
@@ -214,14 +217,26 @@ describe('les huit formes d’effet de tir', () => {
     expect(count(vieux, 'arc')).toBe(1)
   })
 
-  it('mêlée : un arc court, et AUCUN éclair de bouche — le geste n’est pas un tir', () => {
+  it('mêlée : deux arcs courts, et AUCUN éclair de bouche — le geste n’est pas un tir', () => {
     const ops = trace('melee')
     expect(count(ops, 'lineTo')).toBe(0)
     expect(count(ops, 'fill')).toBe(0)
-    expect(count(ops, 'arc')).toBe(1)
+    // Deux arcs concentriques (recalage POC, lot 2 item 2.2) ; SANS extrémité réelle
+    // (`target` absent : un tir), l'arc de liaison ne se dessine JAMAIS.
+    expect(count(ops, 'arc')).toBe(2)
+    expect(count(ops, 'quadraticCurveTo')).toBe(0)
     const arc = ops.find((o) => o.op === 'arc')!
     const [, , , a0, a1] = arc.args as number[]
     expect(a1 - a0).toBeCloseTo(1.8) // ±0,9 rad : un arc, pas un cercle
+  })
+
+  it('mêlée à PORTÉE (mort, victime sous 8 m) : l’arc de liaison rejoint la victime', () => {
+    const ops = trace('melee', { target: true, meleeLink: true })
+    expect(count(ops, 'quadraticCurveTo')).toBe(1)
+    // Hors de portée, même sur une mort orientée : pas de liaison — relier un marteau à
+    // une victime à 20 m affirmerait un contact qui n'a pas eu lieu.
+    const loin = trace('melee', { target: true, meleeLink: false })
+    expect(count(loin, 'quadraticCurveTo')).toBe(0)
   })
 
   it('aiguilles : la signature est la GERBE — cinq brins issus du même point', () => {
