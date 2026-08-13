@@ -7,7 +7,7 @@
   ],
   "image": "ctf_illusion.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:33:13.3984718Z",
+  "generatedAt": "2026-08-12T23:18:25.4678605Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -21,7 +21,7 @@
     "anchors": 12,
     "anchorsInFrame": 12,
     "anchorsWithGround": 12,
-    "anchorMedianGapM": -9.770537234660445,
+    "anchorMedianGapM": -0.26299932784844865,
     "instancesDrawn": 8109,
     "instancesScenery": 197,
     "playLevelZ": 0.5099999523162841,
@@ -29,7 +29,10 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 0,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.38471906850394516,
+    "covered": true,
+    "cellsSubstituted": 152000
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de ctf_illusion-rtx-new.module"

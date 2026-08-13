@@ -94,6 +94,14 @@ type BilanCuisson struct {
 	// EcartMedianAncre est l'ecart median, en metres, entre l'ancre ramenee au sol et le sol
 	// dessine. NaN si aucune ancre n'a trouve de sol.
 	EcartMedianAncre float64
+	// TauxCouverture / CarteCouverte / CellulesSubstituees : la voie de reference contre les
+	// TOITS (rendu_reference.go). TauxCouverture est la part de matiere qui cache un sol
+	// praticable ; au-dela de SeuilCarteCouverte la carte est couverte et ses pixels, dans la
+	// portee des ancres, montrent la surface la plus proche de la reference. Une carte non
+	// couverte n'est pas touchee — son PNG reste identique au bit.
+	TauxCouverture      float64
+	CarteCouverte       bool
+	CellulesSubstituees int
 	// PlansFrontiere / FrontiereAppliquee / CellulesEffacees : la coquille de mort declaree
 	// par la carte.
 	PlansFrontiere     int
@@ -135,16 +143,23 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	// raison. Justification chiffree : cf. `TrancheDeJeu` (rendu.go).
 	r.Tranche(TrancheDeJeu(zJeu))
 	r.NiveauDeJeu(zJeu)
+	// La voie de reference contre les TOITS : armee avant de projeter, decidee juste apres —
+	// et AVANT la frontiere, pour que celle-ci efface sur l'image finale.
+	s := NewSurfaceReference(opts.Ancres)
+	r.ArmeReference(s)
 
 	if err := peupleDepuisModule(ctx, r, &b, opts); err != nil {
 		return nil, b, err
 	}
+	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
 	JugeParLesAncres(r, &b, opts.Ancres)
 	PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
 	slog.InfoContext(ctx, "carte cuite", "module", b.Module,
 		"instances", b.Dessinees, "decor", b.EcarteesDecor,
 		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre),
+		"couverture", fmt.Sprintf("%.1f%%", 100*b.TauxCouverture), "couverte", b.CarteCouverte,
+		"substituees", b.CellulesSubstituees,
 		"px", r.NX*r.NY, "degradations", len(b.Degradations))
 	return r, b, nil
 }

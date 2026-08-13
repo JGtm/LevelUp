@@ -9,7 +9,7 @@
   ],
   "image": "btb_highpower.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:18:49.753757Z",
+  "generatedAt": "2026-08-12T23:02:02.5065643Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -31,6 +31,8 @@
     "boundaryPlanes": 76,
     "boundaryCellsCleared": 2600578,
     "waterVolumes": 2,
-    "waterCells": 13515
+    "waterCells": 13515,
+    "coveredShare": 0.23189930395601424,
+    "covered": false
   }
 }

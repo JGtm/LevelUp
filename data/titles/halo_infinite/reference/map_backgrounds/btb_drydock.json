@@ -2,12 +2,13 @@
   "schemaVersion": 1,
   "module": "btb_drydock",
   "mapNames": [
+    "deadlock",
     "deadlock_map",
     "deadlock_heavies_map"
   ],
   "image": "btb_drydock.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:17:41.9463808Z",
+  "generatedAt": "2026-08-12T23:00:51.9204482Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -29,6 +30,8 @@
     "boundaryPlanes": 76,
     "boundaryCellsCleared": 2592061,
     "waterVolumes": 26,
-    "waterCells": 129926
+    "waterCells": 129926,
+    "coveredShare": 0.208743870916202,
+    "covered": false
   }
 }

@@ -112,8 +112,8 @@ inondation exterieure (Cliffhanger n'est pas close).
 | ~~GATE VISUEL utilisateur~~ | **TENU** — verdict complet au §3 du plan |
 | ~~TRANCHE ABSOLUE~~ | **TRANCHEE** : relative au sol joue, banc re-base |
 | ~~3 cartes « non installees » a tort~~ | **CORRIGE** : Deadlock, Oasis, Scarr + Corpo (Forge) |
-| **LES TOITS : Illusion, Prism, Aquarius rendent le plafond, pas l'arene** | defaut de rendu n°1, cf. §0 |
-| **Chasm et Forbidden toujours juges non satisfaisants** | apres la bascule ; a re-examiner avec les toits |
+| ~~LES TOITS : Illusion, Prism, Aquarius rendent le plafond~~ | **CORRIGE le 2026-08-13** (lot toits) : voie de reference branchee sur le rendu (`rendu_reference.go`) — une carte dont >1/3 de la matiere cache un sol praticable est COUVERTE et montre, dans la portee des ancres, la surface la plus proche du sol de reference. 9 cartes couvertes re-cuites (illusion, crystalcaves, aquarius, forbidden, chasm + btb_engine, va_launchsite, fo08_wetland, fo11_blank) ; ridgeline, catalyst, behemoth IDENTIQUES AU BIT ; banc inchange (64,7 % / 93,95 %). Mesures et pistes refutees : `INVESTIGATION_TOITS_2026-08-13.md`. GATE VISUEL utilisateur PENDANT (Bureau, gate_cartes_v75/toits/) |
+| ~~Chasm et Forbidden toujours juges non satisfaisants~~ | couvertes par le lot toits (37,2 % et 35,1 %) — a re-juger au meme gate |
 | **Regression visuelle sur Catalyst** (+11,5 % de matiere) | non detectee : l'oracle des ancres ne juge pas l'aspect |
 | **Regles generales contre regles par carte** | question utilisateur ouverte, cf. compte rendu |
 | **T5 : appariement sommets/indices jamais MESURE** | invariant applique, contraste jamais joue |

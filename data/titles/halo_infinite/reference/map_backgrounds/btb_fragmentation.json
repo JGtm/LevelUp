@@ -8,7 +8,7 @@
   ],
   "image": "btb_fragmentation.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:18:11.7948778Z",
+  "generatedAt": "2026-08-12T23:01:22.5890446Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -30,7 +30,9 @@
     "boundaryPlanes": 60,
     "boundaryCellsCleared": 1800929,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.2032839205116687,
+    "covered": false
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de btb_fragmentation-rtx-new.module"

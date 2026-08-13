@@ -2,11 +2,12 @@
   "schemaVersion": 1,
   "module": "btb_engine",
   "mapNames": [
+    "scarr",
     "scarr_map"
   ],
   "image": "btb_engine.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:19:25.8613413Z",
+  "generatedAt": "2026-08-12T23:02:40.0113048Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -20,7 +21,7 @@
     "anchors": 19,
     "anchorsInFrame": 19,
     "anchorsWithGround": 19,
-    "anchorMedianGapM": -11.522831420342364,
+    "anchorMedianGapM": -0.13334222246181365,
     "instancesDrawn": 6287,
     "instancesScenery": 181,
     "playLevelZ": 0.4300000286102295,
@@ -28,6 +29,9 @@
     "boundaryPlanes": 44,
     "boundaryCellsCleared": 1613315,
     "waterVolumes": 10,
-    "waterCells": 6772
+    "waterCells": 7167,
+    "coveredShare": 0.4606229530790406,
+    "covered": true,
+    "cellsSubstituted": 359228
   }
 }

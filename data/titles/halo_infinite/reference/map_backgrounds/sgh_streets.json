@@ -8,7 +8,7 @@
   ],
   "image": "sgh_streets.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-10T20:32:17.0847236Z",
+  "generatedAt": "2026-08-12T23:17:24.8866354Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -30,7 +30,9 @@
     "boundaryPlanes": 60,
     "boundaryCellsCleared": 1683327,
     "waterVolumes": 0,
-    "waterCells": 0
+    "waterCells": 0,
+    "coveredShare": 0.07084442371978733,
+    "covered": false
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de sgh_streets-rtx-new.module"

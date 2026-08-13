@@ -298,7 +298,9 @@ func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
 		BoundaryApplied: b.FrontiereAppliquee, BoundaryPlanes: b.PlansFrontiere,
 		BoundaryCellsCleared: b.CellulesEffacees,
 		WaterVolumes:         b.VolumesEau, WaterCells: b.CellulesEau,
-		ForgeObjects: b.ObjetsForge, ForgeObjectsDrawn: b.ObjetsDessines,
+		CoveredShare: b.TauxCouverture, Covered: b.CarteCouverte,
+		CellsSubstituted: b.CellulesSubstituees,
+		ForgeObjects:     b.ObjetsForge, ForgeObjectsDrawn: b.ObjetsDessines,
 		ForgeObjectsWithoutModel: b.ObjetsSansModele, ForgeDeathVolumes: b.VolumesDeMort,
 	}
 	// L'écart médian est ABSENT quand aucune ancre n'a trouvé de sol : publier un zéro le
@@ -321,15 +323,19 @@ func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error 
 	fmt.Fprintln(&sb, "dessinees pour une carte native, et les OBJETS poses pour une carte Forge — une")
 	fmt.Fprintln(&sb, "carte Forge n'a pas d'instance de bsp dessinee, sa carte EST son rack d'objets.")
 	fmt.Fprintln(&sb, "")
-	fmt.Fprintln(&sb, "| carte | noms | px | Ko | ancres avec sol | matiere | frontiere | eau | degradations |")
-	fmt.Fprintln(&sb, "|---|---|---|---:|---|---|---|---:|---|")
+	fmt.Fprintln(&sb, "`toits` est la part de matiere qui cache un sol praticable (voie de reference,")
+	fmt.Fprintln(&sb, "himap/rendu_reference.go) : au-dela d'un tiers la carte est COUVERTE et montre")
+	fmt.Fprintln(&sb, "l'etage de jeu au lieu du plafond, dans la portee des ancres.")
+	fmt.Fprintln(&sb, "")
+	fmt.Fprintln(&sb, "| carte | noms | px | Ko | ancres avec sol | matiere | frontiere | eau | toits | degradations |")
+	fmt.Fprintln(&sb, "|---|---|---|---:|---|---|---|---:|---|---|")
 	for _, b := range bilans {
 		if b.Err != nil {
 			etat := "ECHEC"
 			if b.NonCuisinable {
 				etat = "NON CUISINABLE"
 			}
-			fmt.Fprintf(&sb, "| `%s` | %s | %s | | | | | | %v |\n",
+			fmt.Fprintf(&sb, "| `%s` | %s | %s | | | | | | | %v |\n",
 				b.Cle, strings.Join(b.Noms, ", "), etat, b.Err)
 			continue
 		}
@@ -341,10 +347,14 @@ func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error 
 		if b.Bilan.ObjetsForge > 0 {
 			matiere = fmt.Sprintf("%d/%d objets Forge", b.Bilan.ObjetsDessines, b.Bilan.ObjetsForge)
 		}
-		fmt.Fprintf(&sb, "| `%s` | %s | %dx%d | %d | %d/%d | %s | %s | %d | %s |\n",
+		toits := fmt.Sprintf("%.0f %%", 100*b.Bilan.TauxCouverture)
+		if b.Bilan.CarteCouverte {
+			toits = fmt.Sprintf("COUVERTE %.0f %% (%d px)", 100*b.Bilan.TauxCouverture, b.Bilan.CellulesSubstituees)
+		}
+		fmt.Fprintf(&sb, "| `%s` | %s | %dx%d | %d | %d/%d | %s | %s | %d | %s | %s |\n",
 			b.Cle, strings.Join(b.Noms, ", "), b.LargeurPx, b.HauteurPx, b.OctetsPNG/1024,
 			b.Bilan.AncresAvecSol, b.Bilan.AncresDansLeCadre, matiere,
-			frontiere, b.Bilan.CellulesEau, strings.Join(b.Bilan.Degradations, " · "))
+			frontiere, b.Bilan.CellulesEau, toits, strings.Join(b.Bilan.Degradations, " · "))
 	}
 	if len(env.nonInstalle) > 0 {
 		fmt.Fprintf(&sb, "\n%d modules du catalogue non installes localement : %s\n",

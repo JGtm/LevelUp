@@ -1,3 +1,36 @@
+## [2026-08-13] v7.5 cartes — lot toits : la voie de reference contre les plafonds, 9 cartes re-cuites
+
+**Statut** : Complete (gate visuel utilisateur PENDANT, au registre).
+
+**Decision technique principale** : le z-buffer enregistre desormais AUSSI, par pixel, la
+surface la plus PROCHE du sol de reference interpole des ancres (`ArmeReference`,
+`internal/himap/rendu_reference.go` — la regle `CarteParReference` du handoff enfin branchee
+sur le rendu), et `AppliqueReference` la substitue a la plus haute quand la carte est
+COUVERTE : plus d'un tiers de sa matiere cache un sol praticable (denivele >= 2 m, sol a
+<= 3 m de la reference), substitution limitee a la portee des ancres (25 m), jamais de
+matiere creee ni supprimee. Une carte non couverte n'est pas touchee : PNG identique au bit.
+Trois constantes universelles, zero reglage par carte.
+
+**Ce que la sonde a refute** (`TestSondeToits`, 8 cartes jugees, detail
+`.ai/V7.5/cartes/INVESTIGATION_TOITS_2026-08-13.md`) : le seuil PAR PIXEL (Cliffhanger garde
+4,7 % de cellules plafond a 20 m — ses rochers valides) et la part d'ANCRES couvertes
+(Catalyst validee 17/24 > Aquarius defectueuse 9/22). Ce qui separe : la part de matiere
+cachant un sol praticable — validees 19,2/25,5/28,4 %, defectueuses 35,1 a 66,7 %, seuil 1/3
+dans la marge.
+
+**Resultats observes** : banc Cliffhanger INCHANGE (accord 64,7 %, positions 93,95 %) ;
+balayage coquille 25 cartes, 0 ancre perdue ; re-cuisson complete 21 cartes, 0 echec, ancres
+413/448 (identique au lot A), Catalyst 24/24, Aquarius ecart median -2,56 -> -0,05 m.
+9 PNG changent (les 5 visees + btb_engine 46,1 %, va_launchsite 35,9 %, fo08_wetland 58,5 %,
+fo11_blank 45,4 %) ; ridgeline/catalyst/va_behemoth identiques au bit (sha1 verifies) ;
+determinisme au bit rejoue apres refactor lint. 4 temoins unitaires
+(`rendu_reference_test.go`), lint 0 issue, vet 0.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur les 12 paires avant/apres de
+`Desktop/gate_cartes_v75/toits/` — en priorite fo08_wetland (Vagabond, validee au lot A,
+re-cuite par la regle). Deux lignes au registre (gate pendant ; seuil 1/3 valide sur 8 cartes
+jugees seulement). Suite : lot B Forge (1 113 objets sans modele rtgo).
+
 ## [2026-08-13] v7.5 cartes — lot 1 bornes de dequantification : 6 cartes debloquees par la preuve level_id, Live Fire documente
 
 **Statut** : Complete.
