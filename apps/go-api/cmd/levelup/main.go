@@ -119,6 +119,8 @@ func main() {
 		exitErr = runBackfillH5KillMechanics(cfg, args)
 	case "backfill-killsource":
 		exitErr = runBackfillKillSource(cfg, args)
+	case "backfill-replay":
+		exitErr = runBackfillReplay(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -174,6 +176,7 @@ Commandes:
   backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
   backfill-h5-kill-mechanics Corrige les mécaniques de kill H5 (assassination/ground_pound/shoulder_bash) écrites à 0 avant l'activation du mapper (re-fetch carnage, UPDATE ciblé, --dry-run dispo, serveur arrêté)
   backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier, reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only, --credit-only, serveur arrêté)
+  backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild (gros films en dernier, reprenable par SchemaVersion, cartes hors catalogue comptées à part) (--dry-run, --limit, --force)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu

@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"levelup/go-api/internal/analysis/filmdec"
 )
@@ -36,8 +35,9 @@ var (
 
 func errRegistry(err error) error { return fmt.Errorf("%w: %w", ErrRegistry, err) }
 
-// decodeMu : un seul decodage a la fois dans un process (globaux de `filmdec`).
-var decodeMu sync.Mutex
+// La serialisation vit dans `filmdec.LockProcessDecode` (verrou de PAQUET, 2026-08-13) :
+// le rejeu 2D decode les memes globaux dans le meme process, et deux verrous locaux ne se
+// protegent pas l'un de l'autre.
 
 // decodeCtx : l etat d une passe. Il n est jamais rendu a l appelant.
 type decodeCtx struct {
@@ -68,8 +68,8 @@ func Decode(ctx context.Context, name string, src ChunkSource, opts *Options) (*
 	}
 	o.normalize()
 
-	decodeMu.Lock()
-	defer decodeMu.Unlock()
+	release := filmdec.LockProcessDecode()
+	defer release()
 	resetGlobals()
 
 	c := &decodeCtx{name: name, opts: o}
