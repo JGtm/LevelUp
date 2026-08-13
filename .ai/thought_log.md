@@ -1,3 +1,44 @@
+## [2026-08-13] v7.5 parite rejeu 2D — lot 3 : callouts (zones nommees officielles)
+
+**Statut** : Complete (gate visuel utilisateur PENDANT — Cliffhanger/Ridgeline sur 000d5950).
+
+**Decision technique principale** : (3.2) lecteur internal/himap/callouts.go — tag levl,
+named locations root+0x91C stride 0x28, volumes root+0x3BC stride 0xD0, polygone bloc
+enfant @0x6C, navigation struct-table de sddt.go. DEUX mesures faites en portage : les
+sommets du polygone sont RELATIFS a pos (pos+rel = dump Ridgeline a 0,0000 m ; AABB @0x94
+= boite des sommets relatifs [minX maxX minY maxY minZ maxZ] sur toutes les cartes, donc
+pas de rotation) — invariant verifie a CHAQUE extraction ; les volumes sans forme propre
+portent une boite par defaut (sommets +-0,5, AABB nulle) et ne publient pas de polygone.
+(3.2) cmd/mapcallouts-build : jointure CSV versionne (carte+volumeIndex, string_id
+verifie contre le tag), classement grandes/fines par recouvrement raster 0,25 m
+(Ridgeline : 11 grandes a 0,00 recouvert, 5 fines a 0,56-1,00 — seuil de majorite 0,5,
+etalonnage rejoue par classify_test.go contre le POC). (3.3) catalogue
+map_callouts.json 22 cartes / 816 zones + loader + garde-fou
+TestCatalogueCalloutsLivreEstExploitable + PathResolver.MapCalloutsPath. (3.4) service
+MapCallouts (modele replay_map_background : noms -> module -> entree ; PAS d essai
+map_id : un canevas Forge n a AUCUNE zone, absence propre) + endpoint Huma
+/replay/callouts + openapi-gen + generate-types meme lot. (3.5) calloutsLayer.ts porte
+du POC l.1033-1094 : fines pointillees teinte neutre, grandes pair-impair (parts/holes),
+couleur de serie par grande zone (tokens), libelles 25 px MAJUSCULES blanc cerne noir
+dedoublonnes par nom sur la zone la plus haute, langue de l UI ; calque statique cuit
+hors ecran ; toggle Zones (FR/EN) ; zone courante sur la fiche par zoneAt 3D, ligne a
+hauteur reservee vivant/mort. (3.6) Ridgeline garde sa version decoupee (dump versionne
+ingere tel quel, fiabilite PAR ZONE respectee : 21 decoupees / 7 replis brut), champ
+provenance au catalogue ; decoupage universel au REGISTRE_REPORTS.
+
+**Resultats observes** : himap gamefiles — 22 cartes / 816 zones / liaison nom<->volume
+verifiee, Horseshoe au champ pres contre le dump (pos, tranche [-0,2;11,0], 12 sommets
+monde). Catalogue genere 733 Ko, ridgeline 28 zones dont 11 grandes = POC. Gates : go
+test service+handlers+replay+title+mapcallouts-build OK, himap -run TestCallouts* OK,
+go vet ./... OK, golangci-lint 0 issue sur les fichiers du lot (gocyclo corrige par
+extraction litCallout) ; web tsc -b OK (cache purge), eslint 0 erreur fichiers touches,
+vitest match-replay 15 fichiers / 241 tests verts (13 nouveaux).
+
+**Conclusion / prochaine etape** : lot 3 clos cote code (6x [x], gate 3 passe hors
+verif visuelle). Gate visuel user sur 000d5950 : calque Zones (11 aplats pair-impair +
+pointilles interieurs + libelles 25 px), toggle, zone courante sur les fiches. Lot 4
+(objectifs statiques par mode) ensuite.
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 1 : fiches joueur (hauteur constante, tooltips, pictogrammes, investigation i54)
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — fiches mort/vivant cote a cote).
