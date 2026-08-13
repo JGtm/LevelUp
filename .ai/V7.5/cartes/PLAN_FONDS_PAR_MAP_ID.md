@@ -33,19 +33,30 @@ plusieurs noms -> meme module, pas de collision) : seul le FOND collisionne.
 
 ## Phase A — Plomberie de la cle (fermee)
 
-- [ ] A1. `CartesForge` par carte (map_id, canevas, mvar, nom) ; `CuitCarteForge` sort
+- [x] A1. `CartesForge` par carte (map_id, canevas, mvar, nom) ; `CuitCarteForge` sort
       `{map_id}.png/json` ; adapter `cmd/mapfond-build` (selection `--maps` accepte map_id
-      OU dossier natif).
-- [ ] A2. Service : resolution map_id d'abord (match -> map_id -> fond), repli module pour
-      les natives. Aucun changement de contrat HTTP ni front.
-- [ ] A3. Migration Vagabond + Corpo : re-cuisson sous cle map_id, suppression des fichiers
+      OU dossier natif). Fait : `CarteForge{MapID, Nom, FichierMvar, ModuleCanevas}`,
+      `EstCarteForge` -> `EstCanevasForge` (la chaine native ecarte le CANEVAS).
+- [x] A2. Service : resolution map_id d'abord (match -> map_id -> fond), repli module pour
+      les natives. Aucun changement de contrat HTTP ni front. Fait : port
+      `MapKeysForMatch` rend `{MapID, Names}` (le map_id sans nom reste exploitable —
+      map_name NULL mesure sur un match Vagabond), service `resolveBackgroundKey`.
+- [x] A3. Migration Vagabond + Corpo : re-cuisson sous cle map_id, suppression des fichiers
       `fo08_wetland.*` / `fo11_blank.*` module-keyes, MAJ des tests/oracles qui les citent.
-- [ ] A4. Tests : unitaires himap (cle), service (`TestMapBackground*` + oracle du catalogue
-      etendu au map_id), garde-rail : un fond Forge sous cle module = refus explicite.
+      Vagabond : PNG IDENTIQUE AU BIT (sha256 b5f21976..., calage et stats identiques).
+      Corpo : calage IDENTIQUE, PNG mis a niveau — l'ancien fo11_blank.png datait d'avant
+      le saut bloc/scen/mach du lot B (objets dessines 1725 -> 1976, sansModele 260 -> 9).
+- [x] A4. Tests : unitaires himap (`TestCartesForgeDeclarations`), service
+      (`TestMapBackground_ForgeParMapID`, `_ForgeJamaisViaCanevas`, oracle
+      `TestMapBackground_TousLesFondsMapID`), garde-rail `TestFondForgeJamaisSousCleModule`
+      (3 assertions : jamais de fond sous cle canevas, declaration => fond publie, fond
+      uuid => declaration).
 
-Gate A : `go test` cibles himap + service verts ; `TestRenduForgeVagabond` vert sous la
-nouvelle cle ; endpoint local : un match Vagabond rend 200 avec le MEME calage qu'avant
-(octets du PNG identiques a la re-cuisson pres) ; un match Corpo idem. Commit.
+Gate A TENU (2026-08-13) : himap cibles + service + integration duckdb verts ;
+`TestRenduForgeVagabond` vert sous la cle map_id (4/4 ancres, ecart median -0,01 m) ;
+endpoint local `GET /api/v1/players/JGtm/matches/{id}/replay/background` : Vagabond
+7344d24f -> 200 calage identique (65.6035/112.4380, 1332x1287, 0.092 m/px), Corpo
+52fc79ef -> 200 calage identique (-50/77.068, 1088x1379). Commit.
 
 ## Phase B — Pilotes Starboard et Dredge (fermee)
 

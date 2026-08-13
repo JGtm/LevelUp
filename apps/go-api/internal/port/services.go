@@ -182,12 +182,24 @@ type ReplayService interface {
 // reconstruit. Distinct de ErrReplayNotAvailable : un rejeu peut exister sans fond.
 var ErrMapBackgroundNotAvailable = errors.New("replay: aucun fond de carte pour ce match")
 
+// MatchMapKeys sont les identités de carte d'un match. Le map_id (asset UGC) est la clé du
+// fond d'une carte FORGE — un canevas partagé par des dizaines de cartes ne peut pas keyer
+// un fond ; les noms affichés mènent au module installé des cartes NATIVES (catalogue de
+// bornes).
+type MatchMapKeys struct {
+	// MapID est l'asset UGC du match (match_registry.map_id) ; vide quand la base ne le
+	// porte pas.
+	MapID string
+	// Names sont les noms de carte candidats, du plus fiable au moins fiable.
+	Names []string
+}
+
 // ReplayMapNameRepo résout la carte d'un match. Le document de rejeu ne porte aucune
 // identité de carte (il est décodé des seuls chunks du film) : c'est la base qui la nomme.
 type ReplayMapNameRepo interface {
-	// MapNamesForMatch retourne les noms de carte candidats, du plus fiable au moins
-	// fiable. Erreur = carte inconnue, l'appelant dégrade sans fond.
-	MapNamesForMatch(ctx context.Context, matchID string) ([]string, error)
+	// MapKeysForMatch retourne les identités de carte du match (map_id + noms candidats).
+	// Erreur = carte inconnue, l'appelant dégrade sans fond.
+	MapKeysForMatch(ctx context.Context, matchID string) (MatchMapKeys, error)
 }
 
 // MatchEventsService construit la timeline canonique d'events d'un match

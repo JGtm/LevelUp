@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "module": "fo08_wetland",
+  "module": "105f5d84-8de1-4908-af3a-1c4f3bf9d642",
   "mapNames": [
     "Vagabond",
     "map"
   ],
-  "image": "fo08_wetland.png",
+  "image": "105f5d84-8de1-4908-af3a-1c4f3bf9d642.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-13T09:00:48.7962134Z",
+  "generatedAt": "2026-08-13T10:16:11.1948742Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,

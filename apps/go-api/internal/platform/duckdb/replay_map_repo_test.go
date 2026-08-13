@@ -57,12 +57,15 @@ func TestReplayMapRepo_NomDuRegistre(t *testing.T) {
 	insertRegistry(t, shared, "m1", "Cliffhanger", nil)
 
 	got, err := NewReplayMapRepo(LegacySharedReader(shared), meta).
-		MapNamesForMatch(context.Background(), "m1")
+		MapKeysForMatch(context.Background(), "m1")
 	if err != nil {
-		t.Fatalf("MapNamesForMatch: %v", err)
+		t.Fatalf("MapKeysForMatch: %v", err)
 	}
-	if len(got) != 1 || got[0] != "Cliffhanger" {
-		t.Errorf("candidats = %v, attendu [Cliffhanger]", got)
+	if len(got.Names) != 1 || got.Names[0] != "Cliffhanger" {
+		t.Errorf("candidats = %v, attendu [Cliffhanger]", got.Names)
+	}
+	if got.MapID != "" {
+		t.Errorf("map_id = %q, attendu vide (le registre n'en porte pas)", got.MapID)
 	}
 }
 
@@ -78,22 +81,25 @@ func TestReplayMapRepo_UUIDBrut(t *testing.T) {
 	insertTranslation(t, meta, uuid, "en-US", "Cliffhanger")
 
 	got, err := NewReplayMapRepo(LegacySharedReader(shared), meta).
-		MapNamesForMatch(context.Background(), "m1")
+		MapKeysForMatch(context.Background(), "m1")
 	if err != nil {
-		t.Fatalf("MapNamesForMatch: %v", err)
+		t.Fatalf("MapKeysForMatch: %v", err)
 	}
-	if len(got) == 0 || got[0] != "Cliffhanger" {
-		t.Fatalf("candidats = %v, attendu Cliffhanger en tête", got)
+	if len(got.Names) == 0 || got.Names[0] != "Cliffhanger" {
+		t.Fatalf("candidats = %v, attendu Cliffhanger en tête", got.Names)
+	}
+	if got.MapID != uuid {
+		t.Errorf("map_id = %q, attendu %s", got.MapID, uuid)
 	}
 
 	// Contre-épreuve : sans référentiel de traductions, il ne reste que l'UUID.
 	sansMeta, err := NewReplayMapRepo(LegacySharedReader(shared), nil).
-		MapNamesForMatch(context.Background(), "m1")
+		MapKeysForMatch(context.Background(), "m1")
 	if err != nil {
-		t.Fatalf("MapNamesForMatch sans metadata: %v", err)
+		t.Fatalf("MapKeysForMatch sans metadata: %v", err)
 	}
-	if len(sansMeta) != 1 || sansMeta[0] != uuid {
-		t.Errorf("sans metadata : candidats = %v, attendu [%s]", sansMeta, uuid)
+	if len(sansMeta.Names) != 1 || sansMeta.Names[0] != uuid {
+		t.Errorf("sans metadata : candidats = %v, attendu [%s]", sansMeta.Names, uuid)
 	}
 }
 
@@ -105,16 +111,37 @@ func TestReplayMapRepo_DeuxCandidatsSansDoublon(t *testing.T) {
 	insertTranslation(t, meta, "asset-catalyst", "en-US", "Catalyst")
 
 	got, err := NewReplayMapRepo(LegacySharedReader(shared), meta).
-		MapNamesForMatch(context.Background(), "m1")
+		MapKeysForMatch(context.Background(), "m1")
 	if err != nil {
-		t.Fatalf("MapNamesForMatch: %v", err)
+		t.Fatalf("MapKeysForMatch: %v", err)
 	}
-	if len(got) != 1 {
-		t.Errorf("candidats = %v, attendu un seul (dédup insensible à la casse)", got)
+	if len(got.Names) != 1 {
+		t.Errorf("candidats = %v, attendu un seul (dédup insensible à la casse)", got.Names)
 	}
 }
 
-// TestReplayMapRepo_Absences — match inconnu, et match sans carte nommée : même
+// TestReplayMapRepo_MapIDSansNom — un map_id sans aucun nom reste EXPLOITABLE : c'est la
+// clé du fond des cartes Forge, et `map_name` est NULL sur certains matchs du registre
+// (mesuré : le seul match Vagabond de la base). En faire une absence perdrait leur fond.
+func TestReplayMapRepo_MapIDSansNom(t *testing.T) {
+	shared, meta := seedReplayMapFixtures(t)
+	const uuid = "105f5d84-8de1-4908-af3a-1c4f3bf9d642"
+	insertRegistry(t, shared, "m1", nil, uuid)
+
+	got, err := NewReplayMapRepo(LegacySharedReader(shared), meta).
+		MapKeysForMatch(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("MapKeysForMatch: %v", err)
+	}
+	if got.MapID != uuid {
+		t.Errorf("map_id = %q, attendu %s", got.MapID, uuid)
+	}
+	if len(got.Names) != 0 {
+		t.Errorf("candidats = %v, attendu aucun", got.Names)
+	}
+}
+
+// TestReplayMapRepo_Absences — match inconnu, et match sans carte nommée ni map_id : même
 // sentinelle, jamais une erreur technique.
 func TestReplayMapRepo_Absences(t *testing.T) {
 	shared, meta := seedReplayMapFixtures(t)
@@ -122,7 +149,7 @@ func TestReplayMapRepo_Absences(t *testing.T) {
 	repo := NewReplayMapRepo(LegacySharedReader(shared), meta)
 
 	for _, matchID := range []string{"inconnu", "vide"} {
-		if _, err := repo.MapNamesForMatch(context.Background(), matchID); !errors.Is(err, ErrMatchMapUnknown) {
+		if _, err := repo.MapKeysForMatch(context.Background(), matchID); !errors.Is(err, ErrMatchMapUnknown) {
 			t.Errorf("%s: err = %v, attendu ErrMatchMapUnknown", matchID, err)
 		}
 	}

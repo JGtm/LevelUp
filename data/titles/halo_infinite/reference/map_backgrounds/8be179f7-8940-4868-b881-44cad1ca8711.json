@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "module": "fo11_blank",
+  "module": "8be179f7-8940-4868-b881-44cad1ca8711",
   "mapNames": [
-    "corpo",
+    "Corpo",
     "corpo_map"
   ],
-  "image": "fo11_blank.png",
+  "image": "8be179f7-8940-4868-b881-44cad1ca8711.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-12T23:25:02.3777636Z",
+  "generatedAt": "2026-08-13T10:17:49.1003115Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.092,
@@ -30,12 +30,12 @@
     "boundaryCellsCleared": 0,
     "waterVolumes": 0,
     "waterCells": 0,
-    "coveredShare": 0.45436071480946094,
+    "coveredShare": 0.4579524680073126,
     "covered": true,
-    "cellsSubstituted": 39536,
+    "cellsSubstituted": 40802,
     "forgeObjects": 1988,
-    "forgeObjectsDrawn": 1725,
-    "forgeObjectsWithoutModel": 260,
+    "forgeObjectsDrawn": 1976,
+    "forgeObjectsWithoutModel": 9,
     "forgeDeathVolumes": 3
   }
 }
