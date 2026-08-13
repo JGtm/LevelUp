@@ -13899,6 +13899,22 @@ components:
         - x
         - "y"
       type: object
+    MapObjectives:
+      additionalProperties: false
+      properties:
+        markers:
+          items:
+            $ref: '#/components/schemas/ObjectiveMarkerDTO'
+          type:
+            - array
+            - "null"
+        zones:
+          items:
+            $ref: '#/components/schemas/ObjectiveZoneDTO'
+          type:
+            - array
+            - "null"
+      type: object
     MarkResult:
       additionalProperties: false
       properties:
@@ -17050,6 +17066,30 @@ components:
         - xuid
         - role
       type: object
+    ObjectiveMarkerDTO:
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+        team:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - role
+        - team
+        - x
+        - "y"
+        - z
+      type: object
     ObjectivePoint:
       additionalProperties: false
       properties:
@@ -17088,6 +17128,50 @@ components:
         - total_score
         - avg_assists
         - has_data
+      type: object
+    ObjectiveZoneDTO:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        fwdX:
+          format: float
+          type: number
+        fwdY:
+          format: float
+          type: number
+        halfX:
+          format: float
+          type: number
+        halfY:
+          format: float
+          type: number
+        radius:
+          format: float
+          type: number
+        role:
+          type: string
+        team:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - role
+        - team
+        - x
+        - "y"
+        - z
+        - family
+        - fwdX
+        - fwdY
       type: object
     OutcomesPeriodPoint:
       additionalProperties: false
@@ -18926,6 +19010,8 @@ components:
           type:
             - array
             - "null"
+        mapObjectives:
+          $ref: '#/components/schemas/MapObjectives'
         matchId:
           type: string
         objectives:

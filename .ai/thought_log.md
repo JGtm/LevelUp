@@ -1,3 +1,34 @@
+## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
+
+**Statut** : En cours (4.1 + 4.2 faits, 4.3/4.4 web a suivre).
+
+**Decision technique principale** : (4.1) table mode->roles EN DONNEE :
+config/titles/halo_infinite/mappings/objective_roles.toml (jetons de mode + roles mapvar
++ drapeau `neutral` par entree) + loader strict games/mappings (roles contre la liste
+fermee mapvar ; le MATCHING vit au service via analysis.ExtractKnownMode — mappings ne
+peut pas importer analysis, cycle). (4.2) pair_name servi BRUT avec les cles de carte
+(port.MatchMapKeys.PairName, meme ligne match_registry) ; service : pair_name ->
+NormalizeModeLabel -> specs de roles -> LoadMapObjectives -> jointure map_id SEUL ->
+BuildMapObjectives -> champ ReplayDocument.MapObjectives (omitempty, SERVI A LA REQUETE,
+jamais ecrit dans l artefact — pas de bump SchemaVersion, pas de re-cuisson). Toute
+absence = champ absent + journal, jamais d erreur. DECOUVERTE MESUREE : 95/158 zones de
+Bastion du catalogue 72 cartes portent un team_index 0/1 (Vagabond incl.) — c est une
+affinite d emplacement, pas la possession (dynamique, non decodee) : Strongholds et
+Extraction sont `neutral = true` dans la table, le drapeau garde ses camps. Le
+commentaire perime d objectives_catalog.go (34 cartes) corrige : 72 cartes, 158
+Bastion, 236 Extraction ; Zone.Shape expose + PointsOfRole (les roles ponctuels :
+flag_spawn 285/285 sans forme ; flag_delivery MIXTE : 36 volumes + 138 points).
+
+**Resultats observes** : oracle reel Catalyst (match gate 64e8adfa, CTF) : 5 marqueurs
+(3 spawns dont 1 neutre + 2 livraisons ponctuelles) + 2 zones cylindre livraison —
+au champ pres du catalogue. go build OK, go test replay+service+mappings+handlers OK,
+integration TestReplayMapRepo (pair_name) OK, go vet OK, golangci-lint 0 issue sur les
+fichiers du lot, openapi-gen + generate-types dans le meme lot de commit.
+
+**Conclusion / prochaine etape** : 4.3 (couche web zones/marqueurs, couleurs par
+teamIndex via referentiel lib/halo, JAMAIS de lettres A/B/C) + 4.4 (pulse sur action
+d objectif, doc.objectives) puis gate 4 et artefact Strongholds (696a9d7c Vagabond).
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 3 : callouts (zones nommees officielles)
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — Cliffhanger/Ridgeline sur 000d5950).

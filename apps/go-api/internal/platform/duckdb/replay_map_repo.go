@@ -64,10 +64,10 @@ func (r *ReplayMapRepo) MapKeysForMatch(ctx context.Context, matchID string) (po
 	}
 	defer release()
 
-	var rawName, assetID sql.NullString
+	var rawName, assetID, pairName sql.NullString
 	err = db.QueryRowContext(ctx,
-		`SELECT map_name, map_id FROM match_registry WHERE match_id = ?`, matchID,
-	).Scan(&rawName, &assetID)
+		`SELECT map_name, map_id, pair_name FROM match_registry WHERE match_id = ?`, matchID,
+	).Scan(&rawName, &assetID, &pairName)
 	if errors.Is(err, sql.ErrNoRows) {
 		return port.MatchMapKeys{}, ErrMatchMapUnknown
 	}
@@ -75,7 +75,12 @@ func (r *ReplayMapRepo) MapKeysForMatch(ctx context.Context, matchID string) (po
 		return port.MatchMapKeys{}, fmt.Errorf("replay map: lecture match_registry: %w", err)
 	}
 
-	keys := port.MatchMapKeys{MapID: strings.TrimSpace(assetID.String)}
+	// pair_name voyage BRUT (il peut être un UUID) : c'est le service qui le normalise —
+	// la clé des rôles d'objectif du rejeu (lot 4), lue dans la même ligne que la carte.
+	keys := port.MatchMapKeys{
+		MapID:    strings.TrimSpace(assetID.String),
+		PairName: strings.TrimSpace(pairName.String),
+	}
 	add := func(s string) {
 		s = strings.TrimSpace(s)
 		if s == "" {

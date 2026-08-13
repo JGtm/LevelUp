@@ -17,9 +17,10 @@ import (
 // mapNamesStub joue le rôle du registre : il rend les identités de carte d'un match
 // (map_id + noms), ou échoue.
 type mapNamesStub struct {
-	mapID string
-	names []string
-	err   error
+	mapID    string
+	names    []string
+	pairName string
+	err      error
 	// vu enregistre les match_id demandés — de quoi vérifier qu'on interroge bien la base
 	// et qu'on ne devine pas la carte ailleurs.
 	vu []string
@@ -27,7 +28,7 @@ type mapNamesStub struct {
 
 func (m *mapNamesStub) MapKeysForMatch(_ context.Context, matchID string) (port.MatchMapKeys, error) {
 	m.vu = append(m.vu, matchID)
-	return port.MatchMapKeys{MapID: m.mapID, Names: m.names}, m.err
+	return port.MatchMapKeys{MapID: m.mapID, Names: m.names, PairName: m.pairName}, m.err
 }
 
 // fondDeCarte pose, sous une racine de dépôt neuve, le catalogue de bornes et les deux

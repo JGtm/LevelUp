@@ -170,6 +170,13 @@ type ReplayDocument struct {
 	// les événements (un lancer de grenade écrit son auteur par index) en identité.
 	// Absent quand le film n'a livré ni fil des morts ni table d'index.
 	Roster []RosterEntry `json:"roster,omitempty"`
+	// MapObjectives est le calque STATIQUE des objectifs du MODE JOUÉ (zones de
+	// Bastion/Extraction, apparitions et livraisons de drapeau, socles), joint par
+	// map_id au catalogue versionné — REMPLI À LA REQUÊTE par le service, jamais écrit
+	// dans l'artefact : l'artefact ne connaît ni sa carte ni son mode (cf.
+	// map_objectives.go). Absent quand le mode n'a pas d'objectifs statiques (Slayer),
+	// quand map_id est vide ou la carte hors catalogue — jamais une erreur.
+	MapObjectives *MapObjectives `json:"mapObjectives,omitempty"`
 	// Objectives est la liste des ACTIONS D'OBJECTIF nommées : ce que chaque joueur a
 	// accompli (capture de drapeau, retour, prise de zone, porteur stoppé), daté à la
 	// milliseconde et attribué à un xuid (cf. objectives.go).

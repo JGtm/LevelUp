@@ -6699,6 +6699,10 @@ export interface components {
             /** Format: float */
             z?: number;
         };
+        MapObjectives: {
+            markers?: components["schemas"]["ObjectiveMarkerDTO"][] | null;
+            zones?: components["schemas"]["ObjectiveZoneDTO"][] | null;
+        };
         MarkResult: {
             /** Format: int64 */
             updated: number;
@@ -8044,6 +8048,17 @@ export interface components {
             role: string;
             xuid: string;
         };
+        ObjectiveMarkerDTO: {
+            role: string;
+            /** Format: int64 */
+            team: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z: number;
+        };
         ObjectivePoint: {
             /** Format: int64 */
             assists: number;
@@ -8059,6 +8074,28 @@ export interface components {
             points: components["schemas"]["ObjectivePoint"][] | null;
             /** Format: int64 */
             total_score: number;
+        };
+        ObjectiveZoneDTO: {
+            family: string;
+            /** Format: float */
+            fwdX: number;
+            /** Format: float */
+            fwdY: number;
+            /** Format: float */
+            halfX?: number;
+            /** Format: float */
+            halfY?: number;
+            /** Format: float */
+            radius?: number;
+            role: string;
+            /** Format: int64 */
+            team: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z: number;
         };
         OutcomesPeriodPoint: {
             /** Format: int64 */
@@ -8781,6 +8818,7 @@ export interface components {
                 [key: string]: string;
             };
             loadouts?: components["schemas"]["Loadout"][] | null;
+            mapObjectives?: components["schemas"]["MapObjectives"];
             matchId: string;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
