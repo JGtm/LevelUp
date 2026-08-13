@@ -120,7 +120,7 @@ func (e *environnement) ciblesNatives() []cible {
 		}
 		// Une carte FORGE se resout bien vers un dossier — celui de son CANEVAS — mais ce
 		// dossier ne porte aucune geometrie : elle appartient à la passe Forge, pas à celle-ci.
-		if himap.EstCarteForge(cle) {
+		if himap.EstCanevasForge(cle) {
 			continue
 		}
 		c, deja := par[cle]
@@ -164,13 +164,15 @@ func (e *environnement) ciblesNatives() []cible {
 func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 	var out []bilanAsset
 	for _, carte := range himap.CartesForge {
-		if !e.retenue(carte.Cle) {
+		// La cle de selection ET de publication d'une carte Forge est son map_id : un
+		// canevas porte des dizaines de cartes, il ne peut keyer ni l'une ni l'autre.
+		if !e.retenue(carte.MapID) {
 			continue
 		}
 		c, objets, err := e.cibleForge(carte)
 		if err != nil {
-			slog.ErrorContext(ctx, "carte Forge", "err", err, "carte", carte.Cle)
-			out = append(out, bilanAsset{Cle: carte.Cle, Err: err})
+			slog.ErrorContext(ctx, "carte Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
+			out = append(out, bilanAsset{Cle: carte.MapID, Noms: []string{carte.Nom}, Err: err})
 			continue
 		}
 		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
@@ -178,11 +180,11 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			Objets:              objets,
 			Ancres:              c.ancres,
 			CheminModuleCanevas: himap.CheminCanevasForge(carte),
-			Cle:                 carte.Cle,
+			Cle:                 carte.MapID,
 		})
 		if err != nil {
-			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Cle)
-			out = append(out, bilanAsset{Cle: carte.Cle, Noms: c.noms, Err: err})
+			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
+			out = append(out, bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err})
 			continue
 		}
 		out = append(out, e.publie(ctx, c, rendu, bilan))
@@ -210,11 +212,12 @@ func (e *environnement) cibleForge(carte himap.CarteForge) (cible, []mapvar.Obje
 		return cible{}, nil, fmt.Errorf("jointure catalogue<->mvar cassée : %d objets au catalogue, %d dans %s",
 			entree.ObjectsN, len(v.Objects), filepath.Base(chemin))
 	}
-	c := cible{cle: carte.Cle, sources: []string{entree.Module}}
+	c := cible{cle: carte.MapID, sources: []string{entree.Module}}
 	c.ajouteNom(entree.PublicName)
-	for _, n := range e.nomsAffiches[carte.Cle] {
-		c.ajouteNom(n)
-	}
+	// Le nom vient de la DECLARATION, jamais du catalogue de bornes : ce catalogue est keye
+	// par nom -> module de CANEVAS, et un canevas porte les noms de toutes les cartes qui y
+	// sont baties — le lire ici attacherait a Vagabond les noms de Dynasty et d'Origin.
+	c.ajouteNom(carte.Nom)
 	for _, o := range entree.Objectives {
 		c.ancres = append(c.ancres, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
 	}

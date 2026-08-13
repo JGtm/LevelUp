@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -12,8 +14,10 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// mapNamesStub joue le rôle du registre : il nomme la carte d'un match, ou échoue.
+// mapNamesStub joue le rôle du registre : il rend les identités de carte d'un match
+// (map_id + noms), ou échoue.
 type mapNamesStub struct {
+	mapID string
 	names []string
 	err   error
 	// vu enregistre les match_id demandés — de quoi vérifier qu'on interroge bien la base
@@ -21,9 +25,9 @@ type mapNamesStub struct {
 	vu []string
 }
 
-func (m *mapNamesStub) MapNamesForMatch(_ context.Context, matchID string) ([]string, error) {
+func (m *mapNamesStub) MapKeysForMatch(_ context.Context, matchID string) (port.MatchMapKeys, error) {
 	m.vu = append(m.vu, matchID)
-	return m.names, m.err
+	return port.MatchMapKeys{MapID: m.mapID, Names: m.names}, m.err
 }
 
 // fondDeCarte pose, sous une racine de dépôt neuve, le catalogue de bornes et les deux
@@ -64,6 +68,20 @@ func ecrire(t *testing.T, path, body string) {
 	}
 }
 
+// fondSousCle ajoute, sous une racine existante, les deux fichiers d'un fond (image +
+// calage) sous une cle arbitraire — celle d'une carte Forge est son map_id.
+func fondSousCle(t *testing.T, root, titleSlug, cle string) {
+	t.Helper()
+	res := title.NewPathResolver(root)
+	sidecar := `{"schemaVersion":1,"module":"` + cle + `","image":"` + cle + `.png",` +
+		`"source":"test","generatedAt":"2026-08-13T10:00:00Z","style":"jeu",` +
+		`"calibration":{"metersPerPixel":0.092,"originX":65.6,"originY":112.43,` +
+		`"widthPx":1332,"heightPx":1287,"convention":"x = originX + (px+0.5)*mpp"},` +
+		`"stats":{"anchors":4,"anchorsInFrame":4,"anchorsWithGround":4}}`
+	ecrire(t, res.MapBackgroundMetaPath(titleSlug, cle), sidecar)
+	ecrire(t, res.MapBackgroundPath(titleSlug, cle), "\x89PNG\r\n\x1a\nfaux-forge")
+}
+
 // TestMapBackground_ChaineComplete — le contrat de F1 : match -> carte -> module -> calage.
 func TestMapBackground_ChaineComplete(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
@@ -90,6 +108,66 @@ func TestMapBackground_ChaineComplete(t *testing.T) {
 	}
 	if len(blob) == 0 || string(blob[:4]) != "\x89PNG" {
 		t.Errorf("les octets servis ne sont pas ceux du fichier : %q", blob)
+	}
+}
+
+// TestMapBackground_ForgeParMapID — LA CLE DES CARTES FORGE EST LE map_id DU MATCH.
+//
+// Le décor : « Vagabond » figure au catalogue de bornes (module de CANEVAS fo08_wetland,
+// nécessaire à la déquantification) mais AUCUN fond ne vit sous cette clé — un canevas est
+// partagé par des dizaines de cartes. Le fond vit sous le map_id, et il doit être servi
+// même quand la base ne porte AUCUN nom (map_name NULL, cas mesuré sur le seul match
+// Vagabond du registre).
+func TestMapBackground_ForgeParMapID(t *testing.T) {
+	const mapID = "105f5d84-8de1-4908-af3a-1c4f3bf9d642"
+	root := t.TempDir()
+	res := title.NewPathResolver(root)
+	ecrire(t, res.MapQuantBoundsPath(title.DefaultSlug),
+		`{"schemaVersion":1,"source":"test","maps":{"vagabond":{`+
+			`"module":"fo08_wetland","min":[-10,-10,-10],"max":[10,10,10],"axisWidths":[11,11,11]}}}`)
+	fondSousCle(t, root, title.DefaultSlug, mapID)
+
+	for _, c := range []struct {
+		nom  string
+		stub *mapNamesStub
+	}{
+		{"map_id + nom", &mapNamesStub{mapID: mapID, names: []string{"Vagabond"}}},
+		{"map_id sans nom (map_name NULL)", &mapNamesStub{mapID: mapID}},
+	} {
+		t.Run(c.nom, func(t *testing.T) {
+			svc := NewReplayService(title.DefaultSlug, root, c.stub)
+			bg, err := svc.MapBackground(context.Background(), "m1")
+			if err != nil {
+				t.Fatalf("MapBackground: %v", err)
+			}
+			if bg.Module != mapID {
+				t.Errorf("cle = %q, attendu le map_id %s", bg.Module, mapID)
+			}
+			if _, err := svc.MapBackgroundImage(context.Background(), "m1"); err != nil {
+				t.Errorf("MapBackgroundImage: %v", err)
+			}
+		})
+	}
+}
+
+// TestMapBackground_ForgeJamaisViaCanevas — le repli module ne sert JAMAIS un fond Forge.
+//
+// Un match d'une carte Forge SANS fond publié résout son nom vers le module du canevas
+// (catalogue de bornes) ; aucun fond ne doit vivre là, et la réponse est l'absence propre —
+// pas le fond d'une AUTRE carte bâtie sur le même canevas.
+func TestMapBackground_ForgeJamaisViaCanevas(t *testing.T) {
+	root := t.TempDir()
+	res := title.NewPathResolver(root)
+	ecrire(t, res.MapQuantBoundsPath(title.DefaultSlug),
+		`{"schemaVersion":1,"source":"test","maps":{"dynasty":{`+
+			`"module":"fo08_wetland","min":[-10,-10,-10],"max":[10,10,10],"axisWidths":[11,11,11]}}}`)
+	// Le fond de Vagabond existe sous SON map_id ; Dynasty (même canevas) n'en a pas.
+	fondSousCle(t, root, title.DefaultSlug, "105f5d84-8de1-4908-af3a-1c4f3bf9d642")
+
+	svc := NewReplayService(title.DefaultSlug, root,
+		&mapNamesStub{mapID: "cfd90b63-62fd-441a-8015-8d7804b9c3c3", names: []string{"Dynasty"}})
+	if _, err := svc.MapBackground(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		t.Errorf("le canevas ne doit servir aucun fond Forge : err = %v", err)
 	}
 }
 
@@ -315,5 +393,52 @@ func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 	}
 	if avecFond == 0 {
 		t.Error("aucune carte du catalogue n'a de fond : la chaîne ne sert rien")
+	}
+}
+
+// TestMapBackground_TousLesFondsMapID — L'ORACLE DU CATALOGUE, ÉTENDU AU map_id.
+//
+// Le pendant Forge de TestMapBackground_TousLesModulesDuCatalogue : chaque fond versionné
+// keyé par un map_id (uuid) doit être servi par la chaîne map_id-d'abord, calage lisible et
+// image comprise. Il ne se déclare pas SKIP quand rien ne matche : Vagabond et Corpo sont
+// publiés sous cette clé depuis le lot fonds par map_id — zéro fond uuid, c'est la chaîne
+// Forge débranchée.
+func TestMapBackground_TousLesFondsMapID(t *testing.T) {
+	root, err := title.FindRepoRoot()
+	if err != nil {
+		t.Skipf("racine du dépôt introuvable : %v", err)
+	}
+	res := title.NewPathResolver(root)
+	entrees, err := os.ReadDir(res.MapBackgroundDir(title.DefaultSlug))
+	if err != nil {
+		t.Fatalf("dossier des fonds versionnés : %v", err)
+	}
+	uuidRe := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	n := 0
+	for _, e := range entrees {
+		cle := strings.TrimSuffix(e.Name(), ".json")
+		if e.IsDir() || cle == e.Name() || !uuidRe.MatchString(cle) {
+			continue
+		}
+		n++
+		t.Run(cle, func(t *testing.T) {
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cle})
+			bg, err := svc.MapBackground(context.Background(), "m")
+			if err != nil {
+				t.Fatalf("fond %s : %v", cle, err)
+			}
+			if bg.Module != cle {
+				t.Errorf("cle du sidecar = %q, attendu %q", bg.Module, cle)
+			}
+			if bg.Calibration.MetersPerPixel <= 0 || bg.Calibration.WidthPx <= 0 || bg.Calibration.HeightPx <= 0 {
+				t.Errorf("calage inexploitable : %+v", bg.Calibration)
+			}
+			if _, err := svc.MapBackgroundImage(context.Background(), "m"); err != nil {
+				t.Errorf("image de %s : %v", cle, err)
+			}
+		})
+	}
+	if n == 0 {
+		t.Error("aucun fond keyé par map_id — la chaîne Forge ne sert rien (Vagabond et Corpo doivent y être)")
 	}
 }

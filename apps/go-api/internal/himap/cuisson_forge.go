@@ -59,15 +59,14 @@ var ErrSansObjetForge = errors.New("himap: aucun objet Forge a poser")
 // selection par nom de module est ambigue. On la designe par son `map_id` (asset UGC) et on
 // VERIFIE la jointure par le compte d'objets du catalogue.
 type CarteForge struct {
-	// Cle est le nom sous lequel l'asset est publie. C'est le module du CANEVAS, pour rester
-	// dans le meme espace de noms que les cartes natives.
-	//
-	// CONDITION DE VALIDITE : deux cartes Forge baties sur le meme canevas entreraient en
-	// collision. Il n'y en a qu'une aujourd'hui ; le jour ou il y en aura deux, la cle devra
-	// devenir le `map_id`. Inscrit au registre des reports.
-	Cle string
-	// MapID est l'asset UGC, cle du catalogue d'objectifs.
+	// MapID est l'asset UGC : cle du catalogue d'objectifs ET cle de publication du fond
+	// (`{map_id}.png/json`). Un canevas est partage par des dizaines de cartes Forge : une
+	// cle par module y ferait collision (documente ici meme jusqu'au 2026-08-13) — le
+	// map_id, present sur chaque match de `match_registry`, est unique par construction.
 	MapID string
+	// Nom est le nom affiche de la carte (match_registry.map_name) — lisibilite des
+	// rapports et des logs, JAMAIS une cle.
+	Nom string
 	// FichierMvar est le nom du `.mvar` dans le depot de variantes de carte.
 	FichierMvar string
 	// ModuleCanevas est le dossier du module sur lequel la carte est batie.
@@ -83,24 +82,25 @@ type CarteForge struct {
 // d'objets.
 var CartesForge = []CarteForge{
 	{
-		Cle:           "fo08_wetland",
 		MapID:         "105f5d84-8de1-4908-af3a-1c4f3bf9d642",
+		Nom:           "Vagabond",
 		FichierMvar:   "vagabond_map.mvar",
 		ModuleCanevas: "fo08_wetland",
 	},
 	{
-		Cle:           "fo11_blank",
 		MapID:         "8be179f7-8940-4868-b881-44cad1ca8711",
+		Nom:           "Corpo",
 		FichierMvar:   "corpo_map.mvar",
 		ModuleCanevas: "fo11_blank",
 	},
 }
 
-// EstCarteForge dit si une cle de publication est celle d'une carte Forge declaree — donc si la
-// chaine NATIVE doit la laisser tranquille.
-func EstCarteForge(cle string) bool {
+// EstCanevasForge dit si un dossier installe est le CANEVAS d'une carte Forge declaree — donc
+// si la chaine NATIVE doit le laisser tranquille : il ne porte aucune geometrie de carte, la
+// carte Forge est le rack d'objets de son `.mvar` et son fond se publie sous son map_id.
+func EstCanevasForge(module string) bool {
 	for _, c := range CartesForge {
-		if c.Cle == cle {
+		if c.ModuleCanevas == module {
 			return true
 		}
 	}

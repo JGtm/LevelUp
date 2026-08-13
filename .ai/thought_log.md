@@ -1,3 +1,33 @@
+## [2026-08-13] v7.5 cartes — fonds par map_id, phase A : la cle d'un fond Forge devient le map_id
+
+**Statut** : Complete (phase A du plan PLAN_FONDS_PAR_MAP_ID.md ; phases B et C a suivre).
+
+**Decision technique principale** : un canevas Forge (8 installes) est partage par des
+dizaines de cartes — la cle module ne peut pas keyer un fond Forge. La cle devient le
+`map_id` (asset UGC, present sur chaque match) : `CarteForge{MapID, Nom, FichierMvar,
+ModuleCanevas}` (plus de champ Cle), `EstCarteForge` -> `EstCanevasForge` (la chaine native
+ecarte le CANEVAS, pas une cle de publication), fond publie `{map_id}.png/json`. Cote
+service : le port `ReplayMapNameRepo.MapNamesForMatch` devient `MapKeysForMatch` ->
+`{MapID, Names}` (un map_id SANS nom reste exploitable — map_name NULL mesure sur un match
+Vagabond du registre) ; `resolveBackgroundKey` essaie la cle map_id d'abord (presence du
+sidecar), repli nom -> module (natives). Aucun changement de contrat HTTP ni front.
+
+**Resultats observes** : Vagabond re-cuit sous 105f5d84... : PNG IDENTIQUE AU BIT a
+l'ancien fo08_wetland.png (sha256 b5f21976), calage et stats identiques. Corpo sous
+8be179f7... : calage identique, PNG mis a niveau (l'ancien datait d'avant le saut
+bloc/scen/mach : objets dessines 1725 -> 1976, sansModele 260 -> 9). Anciens fichiers
+module-keyes supprimes. Tests verts : himap cibles (declarations + garde-rail
+TestFondForgeJamaisSousCleModule : jamais de fond sous cle canevas, declaration => fond,
+fond uuid => declaration), service (map_id d'abord, jamais via canevas, oracle
+TousLesFondsMapID), integration duckdb (MapKeysForMatch, dont map_id sans nom),
+TestRenduForgeVagabond 4/4 ancres. Endpoint local : Vagabond 7344d24f et Corpo 52fc79ef
+-> 200, calages identiques aux anciens. Registre : ligne « Cle d'asset Forge = canevas »
+CLOSE.
+
+**Conclusion / prochaine etape** : phase B — pilotes Starboard (fo03_space) et Dredge
+(fo06_deepsea), seules sur leur canevas : preuve level_id, bornes, ancres map_objectives,
+declaration + cuisson, artefacts gate visuel.
+
 ## [2026-08-13] v7.5 — CI de branche reparee : la fixture du reader snapshot seme match_kill_events
 
 **Statut** : Complete.

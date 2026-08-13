@@ -37,14 +37,14 @@ func TestRenduForgeVagabond(t *testing.T) {
 	if len(ancres) == 0 {
 		t.Fatal("aucune ancre pour Vagabond — l'oracle faible est vide")
 	}
-	t.Logf("%s (%s) : %d objets, %d ancres", entree.PublicName, carte.Cle, len(v.Objects), len(ancres))
+	t.Logf("%s (%s) : %d objets, %d ancres", carte.Nom, carte.MapID, len(v.Objects), len(ancres))
 
 	rendu, bilan, err := CuitCarteForge(context.Background(), OptionsCuissonForge{
 		RacineDeploy:        root,
 		Objets:              v.Objects,
 		Ancres:              ancres,
 		CheminModuleCanevas: CheminCanevasForge(carte),
-		Cle:                 carte.Cle,
+		Cle:                 carte.MapID,
 	})
 	if err != nil {
 		t.Fatal(err)

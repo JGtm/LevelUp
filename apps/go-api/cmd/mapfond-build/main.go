@@ -23,7 +23,9 @@
 //	                                         [--out-dir DIR] [--style jeu] [--rapport FILE]
 //	                                         [--natives=false] [--forge=false]
 //
-// --maps vide = toutes les cartes du catalogue d'objectifs installées localement.
+// --maps vide = toutes les cartes du catalogue d'objectifs installées localement. Une carte
+// NATIVE se désigne par son dossier installé (`ridgeline`), une carte FORGE par son map_id
+// UGC (clé de sa déclaration `himap.CartesForge` et de son fond publié).
 package main
 
 import (
@@ -44,7 +46,8 @@ import (
 
 func main() {
 	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
-	maps := flag.String("maps", "", "clés de carte séparées par des virgules ; vide = tout ce qui est installé")
+	maps := flag.String("maps", "", "clés de carte séparées par des virgules — dossier installé (native) "+
+		"ou map_id UGC (Forge) ; vide = tout ce qui est installé")
 	outDir := flag.String("out-dir", "", "répertoire de sortie (défaut : PathResolver.MapBackgroundDir)")
 	style := flag.String("style", string(himap.StyleFondParDefaut), "habillage : "+stylesConnus())
 	rapport := flag.String("rapport", "", "écrit un rapport Markdown à ce chemin")
