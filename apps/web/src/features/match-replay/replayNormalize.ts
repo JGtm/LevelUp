@@ -88,11 +88,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     grenades: raw.grenades ?? [],
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
     loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
-    // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux. Il
-    // n'est encore DESSINÉ nulle part (le rejeu 2D reste en dev, décision #5) : ce qui est
-    // fait ici, c'est le rendre typable — sans quoi il arriverait `null` au rendu le jour
-    // où on le branchera, et l'erreur tomberait à l'exécution.
+    // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;
+    // il nourrit les PULSES du canvas (objectivesLayer.buildObjectivePulses, lot 4.4).
     objectives: raw.objectives ?? [],
+    // `mapObjectives` (objectifs STATIQUES du mode, servis à la requête) passe par
+    // `...raw` : c'est un objet optionnel, pas un tableau — sa normalisation vit à
+    // l'entrée du calque (normalizeMapObjectives), comme celle des callouts.
     // `as` sur l'arité seule : le contenu est celui du contrat, seule la longueur fixe du
     // tuple que JSON Schema ne sait pas dire est réaffirmée (cf. en-tête).
     projectiles: (raw.projectiles ?? []).map((pr) => ({ ...pr, p: (pr.p ?? []) as ReplayStep[] })),
