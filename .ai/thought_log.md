@@ -63886,3 +63886,43 @@ l'affirmation « position via i0 45 bits deja portee » est marquee fausse, le c
 `filmdec/` + `replay/` verts, gofmt propre, `golangci-lint` 0 issue, instrument saute sans
 `GW_FILM`, `make gate-push`. Garde `handlers/replay_local_gate.go` INCHANGE (rejeu toujours OFF en
 prod).
+
+## [2026-08-13] Cartes Forge — investigation BOUILLIE : cause chiffree, prototype arene-par-la-reference
+
+**Statut** : Complete (investigation + prototypage ; AUCUN code ni fond committe — livrable = doc + temoins).
+
+**Contexte**. Gate visuel : la masse des 33 fonds Forge map_id est REFUSEE EN BLOC (« bouillie au
+milieu, forme patatoide gribouillee », Domicile « trop de toits », pilotes « plutot ok mais trop de
+plafonds »). L'oracle des ancres (438/441) n'avait rien vu.
+
+**Decision technique principale**. La cause n'est PAS la reference d'ancres (erreur leave-one-out
+mediane 0,0-1,9 m sur 12 cartes ; Corpo colineaire est validee) ni la boite fermee en soi (Vagabond
+validee porte une canopee a 19 m sur 4/4 ancres). Trois mecanismes mesures par `TestSondeBouillie`
+(12 cartes, 5 validees vs 7 refusees) : (1) le seuil 1/3 de la regle des toits est mesure sur le
+CADRE ENTIER — la coquille hors portee des ancres dilue le denominateur sur Forge (Domicile 16,2 %
+vs 28,6 % dans la portee, Fortress 27,4/41,3, Empyrean 26,9/41,9) -> covered=false a tort, aucun
+traitement ; (2) la substitution s'arrete a PorteeAncre 25 m quand le cadre va a 50 m — matiere
+hors portee 51-69 % sur les refusees couvertes -> couture circulaire (la « forme patatoide » EST
+l'union des disques de 25 m) + coquille rendue autour ; (3) « la plus proche de la reference »
+prend aussi les sous-sols (Dredge 30,5 % de picks <= -4 m) et laisse un residu >= 4 m au-dessus de
+la reference jusqu'a 63,6 % dans la portee. Regle prototype : ARENE PAR LA REFERENCE — sur carte
+Forge non gelee, chaque pixel montre la plus haute surface de [ref-12 ; ref+6] sur tout le cadre,
+aucun -> pixel vide ; constantes universelles (6 = EcartPlafondMin+TolSolReference+1 ; les
+couvercles mesures vivent a 7,2-18 m). Vagabond et Corpo geles en DONNEE (CarteForge.FondFige,
+raison ecrite) — mesure a l'appui : Vagabond est indiscernable des refusees sur tous les axes,
+aucune regle universelle ne peut corriger la masse ET la laisser au bit.
+
+**Resultats observes**. Cuissons brouillon (jamais les fonds publies) : 7 temoins, oracle des
+ancres INCHANGE (8/8, 14/15, 7/8, 27/27 identiques au publie), couvercles supprimes (Domicile perd
+58,9 % de matiere = ses toits), couture disparue. Re-cuisson COMPLETE des 56 fonds en brouillon :
+**21/21 fonds valides IDENTIQUES AU BIT en SHA256** (19 natives + Vagabond + Corpo), 35 modifies =
+exactement les 33 refusees + 2 pilotes, 0 echec, determinisme 7/7 sur double cuisson. Compromis
+documentes : plafonds < 6 m conserves (surplomb residuel aux ancres 2,7-6,0 m ; cran suivant
+mesurable 6 -> 4), Smallhalla (sculpt organique dans la bande) = cause distincte non couverte.
+
+**Conclusion / prochaine etape**. Doc complet + diff prototype en annexe :
+`.ai/V7.5/cartes/INVESTIGATION_BOUILLIE_FORGE_2026-08-13.md` (seul commit, docs). Temoins du gate :
+`Desktop/gate_cartes_v75/bouillie_proto/` (7 paires actuel/proto). Code du prototype REVERTE de
+l'arbre (le diff vit dans le doc) ; sonde `sonde_bouillie_gamefiles_test.go` en brouillon non
+versionne. Suite : gate visuel utilisateur, puis lot de production (appliquer le diff, re-cuire les
+35, garde-rails) ou cran PlafondArene selon verdict.
