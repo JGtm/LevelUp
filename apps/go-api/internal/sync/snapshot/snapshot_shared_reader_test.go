@@ -82,6 +82,13 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 	// Requise depuis l'ajout de match_objective_stats au snapshot (Q12 LEFT JOIN la
 	// vue _latest) — table vide : le COPY exporte un parquet vide, la vue répond vide.
 	snapExec(t, shared, `CREATE TABLE match_objective_stats (id BIGINT, match_id VARCHAR, xuid VARCHAR, flag_captures INTEGER, written_at TIMESTAMP)`)
+	// Requise depuis l'ajout de match_kill_events au snapshot (Q21b/Q21c lisent la vue
+	// _latest) — schéma canonique via la fonction de migration, même raison que
+	// match_objective_stats : sans la table, l'export saute la relation (relationExists)
+	// et OpenSnapshotShared refuse le snapshot → ce test servirait le live à tort.
+	if err := migration.EnsureMatchKillEvents(shared); err != nil {
+		t.Fatalf("mke: %v", err)
+	}
 	now := time.Now()
 	snapExec(t, shared, `INSERT INTO match_registry (match_id, start_time, start_time_utc, is_ranked, is_firefight) VALUES ('m1', ?, ?, FALSE, FALSE)`, now, now)
 	snapExec(t, shared, `INSERT INTO match_participants (match_id, xuid, gamertag, team_id, kills, deaths) VALUES ('m1', 'x1', 'GT1', 0, 7, 3)`)

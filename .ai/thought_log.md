@@ -1,3 +1,24 @@
+## [2026-08-13] v7.5 — CI de branche reparee : la fixture du reader snapshot seme match_kill_events
+
+**Statut** : Complete.
+
+**Decision technique principale** : la CI de feat/v75 etait rouge depuis `479e74062` sur
+`TestSnapshotPreferredSharedReader_ServedAndCached` (integration) : le commit a rendu
+`match_kill_events` REQUISE a la lecture du snapshot, mais la fixture `seedReaderSnapshot`
+ne cree pas la table — l'export saute la relation absente (`relationExists`), le snapshot
+produit n'a pas le parquet, la lecture le refuse et sert le live, l'assert « attendu le
+snapshot » tombe. Le CR executeur avait laisse la CI « in_progress » sans verdict (lecon
+VF-16, encore). Fix : semer la table par la fonction canonique
+`migration.EnsureMatchKillEvents(shared)` dans la fixture, meme patron que
+`match_objective_stats` (table vide -> parquet vide -> vue vide).
+
+**Resultats observes** : les 3 tests `TestSnapshotPreferredSharedReader_*` verts en
+integration -p 1 (dont le rouge herite). Aucun autre job CI en echec sur `242001ed6`.
+
+**Conclusion / prochaine etape** : push groupe (fix + 3 lots cartes) -> verdict CI au niveau
+job. Gates visuels utilisateur pendants : toits (12 paires) + Vagabond lot B (1 paire),
+artefacts sous Desktop/gate_cartes_v75/.
+
 ## [2026-08-13] v7.5 cartes — lot B Forge : le saut bloc/scen/mach -> hlmt -> mode, Vagabond passe de 75,6 % a 98,4 % d'objets rendus
 
 **Statut** : Complete (gate visuel utilisateur PENDANT, au registre).
