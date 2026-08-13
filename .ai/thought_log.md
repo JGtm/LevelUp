@@ -60,6 +60,23 @@ lint 0 issue fichiers du lot (extraction wireReplayArtifacts pour rester sous go
 
 **Prochaine etape** : item 6.4 (purge recurrente des artefacts).
 
+## [2026-08-14] v7.5 parite rejeu 2D — lot 6 item 6.4 : purge recurrente des artefacts
+
+**Statut** : Complete.
+
+**Decision technique principale** : cron quotidien replay_purge (patron
+world_leaderboard, ReportCronRun) — SUPPRIME DES ARTEFACTS, JAMAIS DES FILMS. L'age d'un
+artefact = start_time canonique de SON MATCH (jamais le mtime du fichier), un artefact
+sans ligne de registre n'est jamais detruit, fenetre relue a chaque tick (0 = illimite =
+no-op en succes). Lecture registre par OpenReadForQuery. PathResolver.ReplayArtifactsDir
+ajoute.
+
+**Resultats observes** : 2 tests verts (purge selective sur vraie DuckDB temporaire +
+dossier absent nominal) ; build complet OK ; vet OK ; lint : 1 issue gocyclo
+preexistante (auto_sync_run.go, fichier non touche).
+
+**Prochaine etape** : gate 6 (pilote 25 films backfill-replay) + pilote 6.5.
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — CTF 64e8adfa, Strongholds
