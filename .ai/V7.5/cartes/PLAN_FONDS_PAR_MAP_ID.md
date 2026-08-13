@@ -94,16 +94,20 @@ Opulence (12), Command (11), Fortitude (11), Refuge (11), Critical Dewpoint (10)
 Perilous (10), Shogun (10), Sylvanus (10), Smallhalla (9). (Le reste <9 matchs : meme
 chaine si le temps le permet, sinon liste au registre avec la commande de reprise.)
 
-- [ ] C1. Pour chaque carte, la MEME chaine que B (preuve, bornes, ancres, declaration,
-      cuisson, oracle). Une carte qui echoue N'ARRETE PAS le lot : ligne au rapport avec la
-      raison mesuree, et on continue.
-- [ ] C2. Rapport final : tableau carte / matchs / ancres / cuite ou raison d'echec —
-      `.ai/V7.5/cartes/RAPPORT_FONDS_MAP_ID_2026-08-13.md`.
-- [ ] C3. Artefacts : tous les PNG cuits copies dans `Desktop/gate_cartes_v75/mapid_masse/`
-      — GATE VISUEL UTILISATEUR EN UNE PASSE a la fin (regle : batch, pas carte par carte).
+- [x] C1. Pour chaque carte, la MEME chaine que B — **33/33 cuites, 0 echec**. Preuves
+      level_id 45/45 vertes (un level_id par canevas, unicite 1/1 par carte via son
+      fichier-lien) ; bornes : catalogue 56 cartes ; ancres : 33 entrees map_objectives
+      (catalogue 72 cartes) ; oracle des ancres 438/441 — 3 cartes a 1 ancre sans sol
+      pres (The Pit 14/15, Absolution 16/17, Goliath 7/8), detail au rapport.
+- [x] C2. Rapport final : `.ai/V7.5/cartes/RAPPORT_FONDS_MAP_ID_2026-08-13.md` (tableau
+      complet + reliquat <9 matchs avec commande de reprise).
+- [x] C3. Artefacts : 33 PNG copies dans `Desktop/gate_cartes_v75/mapid_masse/` (nommes
+      par carte) — GATE VISUEL UTILISATEUR PENDANT, en une passe avec mapid_pilotes/.
 
-Gate C : oracle ancres par carte ; `git diff --stat` = uniquement les nouveaux fichiers
-map_id + catalogues ; tests himap/service cibles verts ; lint/vet 0. Commit.
+Gate C TENU (2026-08-13) : oracle ancres par carte (rapport) ; `git status` = uniquement
+les 66 nouveaux fichiers map_id + catalogues + chaine ; tests himap/service cibles verts
+(+ suites service et port completes) ; golangci-lint 0 issue (goconst corrige par les
+constantes Canevas*) ; endpoint 200 verifie sur The Pit (match 2b8aa0b9). Commit.
 
 ## Hors perimetre (ne pas traiter, deja au registre ou en file)
 
@@ -113,7 +117,19 @@ Sentry Defense/Firefight, cartes <9 matchs non traitees en C.
 
 ## Decouvertes
 
-(a remplir en cours d'execution — rien d'autre ne se corrige dans ce lot)
+1. **Le fond publie de Corpo etait perime** (pre-saut bloc/scen/mach du lot B) : l'ancien
+   `fo11_blank.png` rendait 1725/1988 objets avec 260 sans modele ; la re-cuisson de la
+   migration A rend 1976/1988 (9 sans modele), calage identique. Corrige DE FAIT par la
+   migration — pas un fix hors perimetre.
+2. **3 cartes ont 1 ancre d'objectif sans sol dessine** (The Pit 14/15, Absolution 16/17,
+   Goliath 7/8). L'oracle faible dit « trou de reconstruction sous cette ancre », pas ou.
+   A regarder au gate visuel utilisateur ; non bloquant (438/441 = 99,3 %).
+3. **Des cartes traitees ont des assets UGC SECONDAIRES du meme nom** (Dynasty, Houseki,
+   Shiro, Shogun, Salvation, Starboard — 1 a 3 matchs chacun) : autre map_id, pas de fond.
+   Reponse actuelle : absence propre (jamais la carte d'un autre). Au registre.
+4. **map_name est NULL sur certains matchs** alors que map_id est present (1 match
+   Vagabond mesure) : la resolution map_id-d'abord les sert desormais — le repli par nom
+   seul ne l'aurait jamais fait.
 
 ## Reprise de session
 

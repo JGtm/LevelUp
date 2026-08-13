@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "a289bafe-102e-4363-98f7-80b596007338",
+  "mapNames": [
+    "Obituary",
+    "obituary_map"
+  ],
+  "image": "a289bafe-102e-4363-98f7-80b596007338.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:28:47.5562644Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -97.6768913269043,
+    "originY": 76.40942736816405,
+    "widthPx": 2124,
+    "heightPx": 1661,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 16,
+    "anchorsInFrame": 16,
+    "anchorsWithGround": 16,
+    "anchorMedianGapM": -0.0006070708020615712,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 100.6100015258789,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5477338974402409,
+    "covered": true,
+    "cellsSubstituted": 1042302,
+    "forgeObjects": 5397,
+    "forgeObjectsDrawn": 5291,
+    "forgeObjectsWithoutModel": 67,
+    "forgeDeathVolumes": 39
+  }
+}

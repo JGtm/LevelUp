@@ -1,3 +1,27 @@
+## [2026-08-13] v7.5 cartes — fonds par map_id, phase C : la masse, 33 cartes Forge cuites, 0 echec
+
+**Statut** : Complete (plan PLAN_FONDS_PAR_MAP_ID.md INTEGRALEMENT execute ; gate visuel
+utilisateur PENDANT sur mapid_pilotes/ + mapid_masse/, en une passe).
+
+**Decision technique principale** : la meme chaine que les pilotes, appliquee en 4 temps
+groupes puis cuisson par lots de 3 (jamais deux commandes Go en parallele) : sonde
+level_id etendue a 45 preuves (un level_id par CANEVAS — les cartes d'un meme canevas le
+partagent, l'unicite passe par le fichier-lien) ; `mapModule` 56 entrees ;
+`map_objectives.json` 72 cartes (33 ingestions `--from-file` sur `<carte>_map.mvar`) ;
+`CartesForge` 37 declarations, extraites dans `cartes_forge.go` (donnee, <= 500 L ;
+constantes Canevas* contre goconst). Rapport : RAPPORT_FONDS_MAP_ID_2026-08-13.md.
+
+**Resultats observes** : 33/33 cuites, oracle des ancres 438/441 (3 cartes a 1 ancre sans
+sol : The Pit 14/15, Absolution 16/17, Goliath 7/8 — au rapport et au plan §Decouvertes).
+Gate C : git status = 66 nouveaux fichiers map_id + catalogues + chaine ; tests himap et
+service cibles verts (+ suites service/port completes) ; golangci-lint 0 issue ; endpoint
+200 sur The Pit (2b8aa0b9). Registre : reliquat <9 matchs (commande de reprise) + assets
+UGC secondaires des cartes cuites.
+
+**Conclusion / prochaine etape** : lot clos cote executeur — 37 fonds Forge servis par la
+cle map_id. Restent a l'orchestrateur : push + CI de branche au niveau job, et le GATE
+VISUEL utilisateur (35 PNG : 2 pilotes + 33 masse).
+
 ## [2026-08-13] v7.5 cartes — fonds par map_id, phase B : pilotes Starboard et Dredge, chaine complete a blanc
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — mapid_pilotes/).

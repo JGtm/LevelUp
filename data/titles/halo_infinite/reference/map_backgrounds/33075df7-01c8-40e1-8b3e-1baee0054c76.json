@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "33075df7-01c8-40e1-8b3e-1baee0054c76",
+  "mapNames": [
+    "Shogun",
+    "shogun_map"
+  ],
+  "image": "33075df7-01c8-40e1-8b3e-1baee0054c76.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:42:45.6407234Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -89.65281677246094,
+    "originY": 66.2914273223877,
+    "widthPx": 1358,
+    "heightPx": 1413,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -0.031057391421271063,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 65.06136413574218,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5953371372476839,
+    "covered": true,
+    "cellsSubstituted": 545160,
+    "forgeObjects": 5397,
+    "forgeObjectsDrawn": 5351,
+    "forgeObjectsWithoutModel": 22,
+    "forgeDeathVolumes": 24
+  }
+}

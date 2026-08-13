@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "bb7b78ae-3468-46ce-b5ba-cca61c3a338a",
+  "mapNames": [
+    "High Ground",
+    "high_ground_map"
+  ],
+  "image": "bb7b78ae-3468-46ce-b5ba-cca61c3a338a.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:14:12.6906064Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -68.37497520446777,
+    "originY": 169.34765689086913,
+    "widthPx": 1661,
+    "heightPx": 1916,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 15,
+    "anchorsInFrame": 15,
+    "anchorsWithGround": 15,
+    "anchorMedianGapM": -0.006728805556114992,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 56.9149674987793,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.4427096941988448,
+    "covered": true,
+    "cellsSubstituted": 854415,
+    "forgeObjects": 5344,
+    "forgeObjectsDrawn": 5260,
+    "forgeObjectsWithoutModel": 60,
+    "forgeDeathVolumes": 24
+  }
+}

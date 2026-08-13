@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "9ad226d8-8947-4c5b-95bc-d220187698c1",
+  "mapNames": [
+    "Banished Narrows",
+    "banished_narrows_map"
+  ],
+  "image": "9ad226d8-8947-4c5b-95bc-d220187698c1.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T11:23:38.693507Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -75.48749923706055,
+    "originY": 56.80999999523162,
+    "widthPx": 1631,
+    "heightPx": 1165,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -6.0463948512904935,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 60.31703659057617,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.30904765403635165,
+    "covered": false,
+    "forgeObjects": 4897,
+    "forgeObjectsDrawn": 4807,
+    "forgeObjectsWithoutModel": 41,
+    "forgeDeathVolumes": 49
+  }
+}

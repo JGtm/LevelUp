@@ -25,6 +25,8 @@
 // CE QUE CETTE CHAINE NE FAIT PAS, et c'est assume : elle ne rend pas la TOILE du canevas sous
 // les objets (`fo08_wetland`), et n'applique ni frontiere de mort ni eau — les cartes Forge
 // declarent leurs limites dans leurs propres objets, pas dans un tag `sddt`. Au registre.
+//
+// Les DECLARATIONS des cartes (map_id, canevas, `.mvar`) vivent dans cartes_forge.go.
 package himap
 
 import (
@@ -54,96 +56,6 @@ var TypesVolumesDeMort = map[int32]string{
 // ErrSansObjetForge signale un `.mvar` sans objet exploitable.
 var ErrSansObjetForge = errors.New("himap: aucun objet Forge a poser")
 
-// CarteForge declare une carte Forge a cuire. Le catalogue d'objectifs ne suffit pas a la
-// designer : l'entree de Vagabond y porte le module GENERIQUE `map` (comme Highpower), donc la
-// selection par nom de module est ambigue. On la designe par son `map_id` (asset UGC) et on
-// VERIFIE la jointure par le compte d'objets du catalogue.
-type CarteForge struct {
-	// MapID est l'asset UGC : cle du catalogue d'objectifs ET cle de publication du fond
-	// (`{map_id}.png/json`). Un canevas est partage par des dizaines de cartes Forge : une
-	// cle par module y ferait collision (documente ici meme jusqu'au 2026-08-13) — le
-	// map_id, present sur chaque match de `match_registry`, est unique par construction.
-	MapID string
-	// Nom est le nom affiche de la carte (match_registry.map_name) — lisibilite des
-	// rapports et des logs, JAMAIS une cle.
-	Nom string
-	// FichierMvar est le nom du `.mvar` dans le depot de variantes de carte.
-	FichierMvar string
-	// ModuleCanevas est le dossier du module sur lequel la carte est batie.
-	ModuleCanevas string
-}
-
-// CartesForge : les cartes Forge dont l'asset est produit.
-//
-// COMMENT ON SAIT QU'UNE CARTE EST FORGE, et ce n'est pas un prefixe de nom : son module de
-// canevas ne porte AUCUNE instance de geometrie. La chaine native le dit d'elle-meme —
-// « aucune instance dessinee sur 0 du bsp retenu » — c'est ainsi que Corpo a ete identifiee, en
-// echouant. Un canevas vierge (`fo11_blank`) est vide par construction : la carte EST son rack
-// d'objets.
-var CartesForge = []CarteForge{
-	{
-		MapID:         "105f5d84-8de1-4908-af3a-1c4f3bf9d642",
-		Nom:           "Vagabond",
-		FichierMvar:   "vagabond_map.mvar",
-		ModuleCanevas: "fo08_wetland",
-	},
-	{
-		MapID:         "8be179f7-8940-4868-b881-44cad1ca8711",
-		Nom:           "Corpo",
-		FichierMvar:   "corpo_map.mvar",
-		ModuleCanevas: "fo11_blank",
-	},
-	// Pilotes du lot fonds par map_id (2026-08-13) : seules cartes jouees SEULES sur leur
-	// canevas. Preuve level_id : Starboard -747133697 (0xD377A4FF) -> fo03_space, Dredge
-	// 2123870979 (0x7E97B303) -> fo06_deepsea, unicite 1/1 (`TestPreuveLevelIDCartes`).
-	{
-		MapID:         "7a9265af-a880-487b-8829-68d88fcfb145",
-		Nom:           "Starboard",
-		FichierMvar:   "starboard_map.mvar",
-		ModuleCanevas: "fo03_space",
-	},
-	{
-		MapID:         "e4bb06db-065f-4902-b93b-d8dac315eac4",
-		Nom:           "Dredge",
-		FichierMvar:   "dredge_map.mvar",
-		ModuleCanevas: "fo06_deepsea",
-	},
-}
-
-// EstCanevasForge dit si un dossier installe est le CANEVAS d'une carte Forge declaree — donc
-// si la chaine NATIVE doit le laisser tranquille : il ne porte aucune geometrie de carte, la
-// carte Forge est le rack d'objets de son `.mvar` et son fond se publie sous son map_id.
-func EstCanevasForge(module string) bool {
-	for _, c := range CartesForge {
-		if c.ModuleCanevas == module {
-			return true
-		}
-	}
-	return false
-}
-
-// DepotVariantesCarte : ou sont les `.mvar`, RELATIVEMENT A LA RACINE DU DEPOT.
-//
-// Ce dossier n'est pas versionne (`.gitignore`), au meme titre que l'installation du jeu :
-// c'est une entree d'outillage hors ligne, pas une donnee de reference. Sa constitution est
-// decrite dans `.ai/V7.5/` — un `.mvar` absent fait echouer la cuisson de sa carte, jamais des
-// autres.
-const DepotVariantesCarte = ".ai/re_dump/mapvar"
-
-// CheminCanevasForge rend le chemin du `.module` du canevas d'une carte Forge, ou la chaine
-// vide s'il n'est pas installe (la cuisson s'en passe alors, cf. OptionsCuissonForge).
-func CheminCanevasForge(c CarteForge) string {
-	dir, err := LevelsDir("pc")
-	if err != nil {
-		return ""
-	}
-	p := filepath.Join(dir, c.ModuleCanevas, c.ModuleCanevas+"-rtx-new.module")
-	if !existeFichier(p) {
-		return ""
-	}
-	return p
-}
-
 // OptionsCuissonForge decrit une carte Forge a cuire.
 type OptionsCuissonForge struct {
 	// RacineDeploy est la racine `deploy` de l'installation.
@@ -155,7 +67,8 @@ type OptionsCuissonForge struct {
 	// CheminModuleCanevas est le `.module` du canevas (ex. fo08_wetland), ajoute a l'index
 	// pour que ses `rtgo` propres soient resolus. Vide = canevas inconnu, on s'en passe.
 	CheminModuleCanevas string
-	// Cle est le nom sous lequel l'asset sera publie (cf. BilanCuisson.Module).
+	// Cle est le nom sous lequel l'asset sera publie (cf. BilanCuisson.Module) : le map_id
+	// de la carte (cartes_forge.go).
 	Cle string
 }
 

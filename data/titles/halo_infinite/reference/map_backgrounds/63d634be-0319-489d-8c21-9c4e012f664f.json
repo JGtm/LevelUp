@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "63d634be-0319-489d-8c21-9c4e012f664f",
+  "mapNames": [
+    "Curfew",
+    "curfew_map"
+  ],
+  "image": "63d634be-0319-489d-8c21-9c4e012f664f.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T10:52:32.5129056Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -84.14241027832031,
+    "originY": 75.94239627838135,
+    "widthPx": 1456,
+    "heightPx": 1360,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 13,
+    "anchorMedianGapM": -0.0332065755128923,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 105.59036346435546,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.6393449356770786,
+    "covered": true,
+    "cellsSubstituted": 367462,
+    "forgeObjects": 4564,
+    "forgeObjectsDrawn": 4539,
+    "forgeObjectsWithoutModel": 24,
+    "forgeDeathVolumes": 1
+  }
+}

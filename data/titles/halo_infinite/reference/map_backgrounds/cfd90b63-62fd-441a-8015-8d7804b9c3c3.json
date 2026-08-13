@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "cfd90b63-62fd-441a-8015-8d7804b9c3c3",
+  "mapNames": [
+    "Dynasty",
+    "dynasty_map"
+  ],
+  "image": "cfd90b63-62fd-441a-8015-8d7804b9c3c3.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-13T10:53:43.6946517Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -48.58739972114563,
+    "originY": 193.40805798339844,
+    "widthPx": 1159,
+    "heightPx": 1399,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 8,
+    "anchorsInFrame": 8,
+    "anchorsWithGround": 8,
+    "anchorMedianGapM": -0.0508298045429143,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 77.04200073242187,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.7327327621618929,
+    "covered": true,
+    "cellsSubstituted": 413963,
+    "forgeObjects": 5540,
+    "forgeObjectsDrawn": 5506,
+    "forgeObjectsWithoutModel": 19,
+    "forgeDeathVolumes": 15
+  }
+}
