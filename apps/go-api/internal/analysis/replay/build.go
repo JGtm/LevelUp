@@ -247,7 +247,12 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	doc.Loadouts = keepLoadoutsOfPublishedTracks(buildLoadouts(opt.Loadouts, origin, step), doc.Tracks)
 
-	gren, grenCov := buildGrenades(sorted, opt.Grenades, origin, step, own.Owner, opt.Projectiles)
+	// Les projectiles se construisent AVANT les lancers : le lancer publie son lien vers le
+	// projectile né de lui (Grenade.Proj), qui pointe un index de la tranche PUBLIÉE.
+	var pubProjByRaw map[int]int
+	doc.Projectiles, pubProjByRaw = buildProjectiles(opt.Projectiles, origin, step)
+
+	gren, grenCov := buildGrenades(sorted, opt.Grenades, origin, step, own.Owner, opt.Projectiles, pubProjByRaw)
 	doc.Grenades = keepGrenadesOfPublishedTracks(gren, doc.Tracks)
 	grenCov.Unpublished = countUnpublished(len(gren), len(doc.Grenades))
 	grenCov.Attached = len(doc.Grenades)
@@ -260,8 +265,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	objCov.warnIfLossy("objectifs")
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own)
-	doc.Projectiles = buildProjectiles(opt.Projectiles, origin, step)
 	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots, opt.Labels)
+	// La table weapon_key -> famille d'effet voyage telle quelle : les kills du feed sont
+	// keyés par weapon_key (résolution base), pas par identifiant d'arme film — sans elle,
+	// aucun effet de mort n'est joignable côté client.
+	if len(opt.Labels.Effects) > 0 {
+		doc.KillEffects = opt.Labels.Effects
+	}
 	doc.Inventory = keepInventoryOfPublishedTracks(
 		buildInventory(opt.Inventory, origin, step), doc.Tracks)
 	// Les rangs de grenade sont publiés dès qu'un calque les référence : l'inventaire

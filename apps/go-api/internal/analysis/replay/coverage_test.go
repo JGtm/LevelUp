@@ -49,7 +49,7 @@ func TestCoverageBalancedWithNoEvents(t *testing.T) {
 	if cov.Available != 0 || !cov.Balanced() {
 		t.Errorf("couverture incoherente sur entree vide : %+v", cov)
 	}
-	_, gcov := buildGrenades(nil, nil, 0, 100_000, nil, nil)
+	_, gcov := buildGrenades(nil, nil, 0, 100_000, nil, nil, nil)
 	if gcov.Available != 0 || !gcov.Balanced() {
 		t.Errorf("couverture incoherente sur entree vide (grenades) : %+v", gcov)
 	}
@@ -170,7 +170,8 @@ func TestGrenadePlacedFromProjectileWithoutBridge(t *testing.T) {
 		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
 	}}}
 	// AUCUNE position de biped, AUCUN pont : le lancer doit quand meme etre situe.
-	gren, cov := buildGrenades(nil, throws, 1_000_000, 100_000, nil, proj)
+	// (pubProjByRaw nil : la piste d'un seul point n'est pas publiee, donc pas de lien.)
+	gren, cov := buildGrenades(nil, throws, 1_000_000, 100_000, nil, proj, nil)
 	if len(gren) != 1 {
 		t.Fatalf("le lancer doit etre situe sans pont, obtenu %d : %+v", len(gren), gren)
 	}
@@ -189,5 +190,39 @@ func TestGrenadePlacedFromProjectileWithoutBridge(t *testing.T) {
 	// Et il ne doit pas etre filtre par l'absence de trajectoire publiee.
 	if kept := keepGrenadesOfPublishedTracks(gren, nil); len(kept) != 1 {
 		t.Errorf("un lancer situe par son projectile ne depend d'aucune trajectoire : %+v", kept)
+	}
+	// La piste d'un seul point n'est pas publiee : le lancer sort SANS lien, jamais avec
+	// un index qui ne pointe rien.
+	if gren[0].Proj != nil {
+		t.Errorf("aucun projectile publie : le lien doit etre nil, obtenu %d", *gren[0].Proj)
+	}
+}
+
+func TestGrenadeLinksItsPublishedProjectile(t *testing.T) {
+	// LE LIEN EST PUBLIE (plan parite lot 2, item 2.3) : le lancer pointe l'index, dans la
+	// tranche PUBLIEE, du projectile ne de lui — c'est ce qui permet au client de poser
+	// l'effet du type au point de repos du vol. L'index 0 est un projectile valide : le
+	// champ est un pointeur precisement pour survivre a omitempty.
+	throws := []filmdec.GrenadeThrow{
+		{TimestampUS: 2_000_000, FilmIndex: 5, TypeID: filmdec.GrenadeFragmentation},
+	}
+	proj := []filmdec.ProjectileTrack{{Slot: 1024, Gen: 1, Pts: []filmdec.ProjectileSample{
+		{TimestampUS: 2_050_000, X: 12, Y: 34, Z: 5},
+		{TimestampUS: 2_150_000, X: 13, Y: 35, Z: 4},
+		{TimestampUS: 2_250_000, X: 14, Y: 36, Z: 3, AtRest: true},
+	}}}
+	published, pubByRaw := buildProjectiles(proj, 1_000_000, 100_000)
+	if len(published) != 1 || pubByRaw[0] != 0 {
+		t.Fatalf("projectile attendu publie a l'index 0 : %+v / %+v", published, pubByRaw)
+	}
+	gren, _ := buildGrenades(nil, throws, 1_000_000, 100_000, nil, proj, pubByRaw)
+	if len(gren) != 1 {
+		t.Fatalf("le lancer doit etre situe, obtenu %d", len(gren))
+	}
+	if gren[0].Proj == nil || *gren[0].Proj != 0 {
+		t.Fatalf("le lancer doit publier son lien vers le projectile publie (index 0), obtenu %+v", gren[0].Proj)
+	}
+	if !published[*gren[0].Proj].Rest {
+		t.Errorf("le projectile lie porte at-rest sur son dernier point : Rest attendu true")
 	}
 }

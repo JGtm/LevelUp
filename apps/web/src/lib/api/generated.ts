@@ -5981,6 +5981,8 @@ export interface components {
             /** Format: int64 */
             i: number;
             /** Format: int64 */
+            proj?: number;
+            /** Format: int64 */
             rank: number;
             s: string;
             /** Format: int32 */
@@ -8732,6 +8734,9 @@ export interface components {
             grenadeLabels?: components["schemas"]["Label"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
             inventory?: components["schemas"]["Inventory"][] | null;
+            killEffects?: {
+                [key: string]: string;
+            };
             loadouts?: components["schemas"]["Loadout"][] | null;
             matchId: string;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
