@@ -359,13 +359,22 @@
   from { transform: translateX(calc(-1 * var(--replay-dx, 46px))); opacity: 0.25; }
   to   { transform: none; opacity: 1; }
 }
+/* Le POP du badge de lancer (le `.gic` du POC) : une apparition, pas un mouvement — le
+   badge naît sur place quand la grenade part, et l'identité du nœud (clé = frame du
+   lancer) fait que l'animation ne repart pas à chaque image publiée. */
+@keyframes replay-gpop {
+  from { transform: scale(0.55); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
 .replay-flash-death   { animation: replay-death-flash 0.62s steps(1) 3; }
 .replay-flash-respawn { animation: replay-respawn-flash 0.55s ease-out 1; }
 .replay-wswap-l { animation: replay-wswap-left 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 .replay-wswap-r { animation: replay-wswap-right 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.replay-gpop { animation: replay-gpop 0.18s ease-out 1; }
 @media (prefers-reduced-motion: reduce) {
   .replay-flash-death,
   .replay-flash-respawn,
   .replay-wswap-l,
-  .replay-wswap-r { animation: none; }
+  .replay-wswap-r,
+  .replay-gpop { animation: none; }
 }

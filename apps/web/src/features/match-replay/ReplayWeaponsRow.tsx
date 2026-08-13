@@ -34,6 +34,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { catalogText } from './catalogLabel'
 import { drawnSwapAt, loadoutSwapAt, type EquippedReading, type SwapReading } from './equippedLogic'
+import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -45,6 +46,8 @@ const SWAP_ANIM_MS = 340
 /** Boîte d'une vignette d'arme : hauteur de la ligne, largeur bornée. */
 const ICON_H = 16
 const ICON_W = 40
+/** Hauteur de la vignette du badge de lancer (POC .gic : 15 px). */
+const GIC_H = 15
 
 export function ReplayWeaponsRow({
   doc,
@@ -52,6 +55,7 @@ export function ReplayWeaponsRow({
   read,
   frame,
   readingFull,
+  filmIndex,
   locale,
 }: {
   doc: ReplayDocumentReady
@@ -60,12 +64,28 @@ export function ReplayWeaponsRow({
   read: EquippedReading | null
   frame: number
   readingFull: number
+  /** Index de film du joueur (roster) — la clé des LANCERS ; null si le roster le tait. */
+  filmIndex: number | null
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
   if (!state.life) return null
+  // LE BADGE DE LANCER (le `.gic` du POC) : l'objet réellement actif à cet instant n'est
+  // plus une arme, c'est la grenade — elle prend la PREMIÈRE place, celle de la main.
+  // L'auteur est ÉCRIT dans le film (pas deviné) ; le badge n'est PAS estompé par l'âge
+  // de lecture : c'est un ÉVÉNEMENT daté, pas une lecture d'image-clé.
+  const throwHold = Math.max(1, msToFrames(GRENADE_THROW_HOLD_MS, doc))
+  const activeThrow = filmIndex !== null ? grenadeThrowActive(doc, filmIndex, frame, throwHold) : null
+  const gic = activeThrow ? (
+    <GrenadeThrowBadge doc={doc} rank={activeThrow.rank} throwFrame={frame - activeThrow.age} locale={locale} />
+  ) : null
   if (!read) {
-    return <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{t.loadoutUnread}</span>
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        {gic}
+        <span className="font-mono text-[9.5px] italic text-muted-foreground/70">{t.loadoutUnread}</span>
+      </span>
+    )
   }
   const swapFrames = Math.max(1, msToFrames(SWAP_ANIM_MS, doc))
   const swapAge = drawnSwapAt(doc, state.life.slot, frame, swapFrames)
@@ -81,25 +101,80 @@ export function ReplayWeaponsRow({
   // L'état « armes rangées » n'est plus dit ici : son pictogramme (et son unique
   // infobulle) vit dans la rangée d'inventaire — décision produit 4 du plan parité.
   return (
-    <div
-      className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
-      style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
-      title={ageTxt}
-    >
-      {read.weapons.map((w, k) => (
-        <WeaponChip
-          key={`${k}-${w.id}`}
-          doc={doc}
-          id={w.id}
-          inHand={w.inHand}
-          dimmed={drawnKnown && !w.inHand}
-          swap={swapAge !== null ? { cls: k === 0 ? 'replay-wswap-l' : 'replay-wswap-r', age: swapAge, span: swapFrames } : null}
-          hint={!w.inHand && drawnKnown ? t.weaponSecondaryHint : undefined}
-          locale={locale}
-        />
-      ))}
-      {swap && <SwapMark swap={swap} doc={doc} locale={locale} />}
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground">
+      {/* Le badge de lancer vit HORS du bloc estompé : les opacités CSS se MULTIPLIENT,
+          le poser dedans le ferait pâlir avec la lecture d'armes alors qu'il est un
+          événement daté, sans âge à montrer (règle du POC). */}
+      {gic}
+      <div
+        className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
+        style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
+        title={ageTxt}
+      >
+        {read.weapons.map((w, k) => (
+          <WeaponChip
+            key={`${k}-${w.id}`}
+            doc={doc}
+            id={w.id}
+            inHand={w.inHand}
+            dimmed={drawnKnown && !w.inHand}
+            swap={swapAge !== null ? { cls: k === 0 ? 'replay-wswap-l' : 'replay-wswap-r', age: swapAge, span: swapFrames } : null}
+            hint={!w.inHand && drawnKnown ? t.weaponSecondaryHint : undefined}
+            locale={locale}
+          />
+        ))}
+        {swap && <SwapMark swap={swap} doc={doc} locale={locale} />}
+      </div>
     </div>
+  )
+}
+
+/**
+ * GrenadeThrowBadge — le `.gic` du POC : la vignette du TYPE lancé, allumée à l'accent,
+ * avec un POP d'apparition (sans mouvement, une permutation d'objet actif ne se voit
+ * pas). La clé porte la frame du lancer : React garde l'identité du nœud pendant la
+ * rémanence, l'animation ne repart pas à chaque image publiée.
+ */
+function GrenadeThrowBadge({
+  doc,
+  rank,
+  throwFrame,
+  locale,
+}: {
+  doc: ReplayDocumentReady
+  rank: number
+  throwFrame: number
+  locale: ReplayLocale
+}) {
+  const t = REPLAY_TEXT[locale]
+  const lbl = doc.grenadeLabels[rank]
+  const name = catalogText(lbl, locale) ?? `${rank}`
+  const tooltip = `${t.grenadeThrown} — ${name}`
+  return (
+    <span
+      key={`gic-${throwFrame}`}
+      className="replay-gpop inline-flex items-center rounded-sm px-0.5"
+      style={{
+        outline: `1px solid ${tokenCssVar('warning')}`,
+        background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
+      }}
+      title={tooltip}
+    >
+      {lbl?.img ? (
+        <WeaponIcon
+          imageUrl={lbl.img}
+          tinted={lbl.tinted}
+          label={tooltip}
+          width={GIC_H}
+          height={GIC_H}
+          className="text-foreground"
+        />
+      ) : (
+        <span role="img" aria-label={tooltip} className="font-semibold text-foreground">
+          {name}
+        </span>
+      )}
+    </span>
   )
 }
 

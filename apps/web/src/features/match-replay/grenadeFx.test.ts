@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { buildGrenadeRestFx, DYNAMO_RANK } from './grenadeFx'
+import { buildGrenadeRestFx, DYNAMO_RANK, grenadeThrowActive } from './grenadeFx'
 import { testReplayDoc } from './test/testDoc'
 
 function docWith(over: Partial<ReplayDocument> = {}) {
@@ -46,5 +46,22 @@ describe('buildGrenadeRestFx', () => {
       grenades: [{ t: 10, slot: 0, i: 1, x: 2, y: 3, rank: 1, s: 'projectile', proj: 9 }],
     })
     expect(buildGrenadeRestFx(doc)).toHaveLength(0)
+  })
+})
+
+describe('grenadeThrowActive', () => {
+  const doc = docWith()
+
+  it('rend le lancer du joueur dans la fenêtre, par son index de FILM (auteur écrit)', () => {
+    expect(grenadeThrowActive(doc, 1, 12, 14)).toEqual({ rank: DYNAMO_RANK, age: 2 })
+  })
+
+  it('hors fenêtre ou avant le lancer : rien', () => {
+    expect(grenadeThrowActive(doc, 1, 9, 14)).toBeNull()
+    expect(grenadeThrowActive(doc, 1, 25, 14)).toBeNull()
+  })
+
+  it("l'index d'un autre joueur ne déclenche rien — l'auteur n'est pas deviné", () => {
+    expect(grenadeThrowActive(doc, 7, 12, 14)).toBeNull()
   })
 })

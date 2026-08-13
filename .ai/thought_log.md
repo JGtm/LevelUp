@@ -64116,3 +64116,17 @@ qui ne s'ouvre pas. L'ecran dit « derniere position connue », jamais « impact
 **Resultats** : grenadeFx.ts pur + grenadeFx.test.ts (3 tests), vitest match-replay
 225 verts, tsc -b OK.
 **Prochaine etape** : 2.4 lancers mis en evidence (type sur la carte + pulse fiche).
+
+## [2026-08-13] Parite rejeu 2D — lot 2 item 2.4, lancers mis en evidence
+**Statut** : En cours (lot 2)
+**Decision technique** : (a) carte — la vignette du TYPE (grenadeLabels[rank].img, masque
+HUD) se dessine au-dessus de l'anneau du lancer ; un canvas ne teint pas un masque au
+dessin, la teinte se fait UNE fois par theme via composition source-in (tintedIconCanvas),
+cache par rang ; rang sans visuel = anneau seul, jamais la vignette d'un voisin.
+(b) fiche — badge .gic du POC : au lancer, la vignette du type prend la premiere place de
+la rangee d'armes, allumee au token warning, pop 0,18 s (reduced-motion : none), remanence
+1,4 s, HORS estompage d'age (evenement date, pas une lecture — les opacites CSS se
+multiplient, d'ou un bloc separe). Jointure par l'index de FILM du roster (l'auteur est
+ECRIT dans le film). i18n grenadeThrown FR/EN.
+**Resultats** : vitest match-replay 228 verts (3 tests grenadeThrowActive ajoutes).
+**Prochaine etape** : gate 2 complet + statuts du plan.

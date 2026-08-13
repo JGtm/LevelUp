@@ -142,6 +142,8 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   const state = playerStateAt(player, frame, presence)
   const name = playerName(player) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
+  // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
+  const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null
   // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
   // leur animation ; le délai NÉGATIF la fait reprendre à son avancement réel, donc elle
   // reste juste après un saut dans le temps de lecture (cf. globals.css).
@@ -202,6 +204,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
             read={equipped}
             frame={frame}
             readingFull={readingFull}
+            filmIndex={filmIndex}
             locale={locale}
           />
         )}

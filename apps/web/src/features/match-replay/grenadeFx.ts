@@ -25,6 +25,9 @@ export const DYNAMO_RANK = 2
 export const DYNAMO_REST_HOLD_MS = 2_500
 export const GRENADE_REST_HOLD_MS = 1_400
 
+/** Rémanence du badge de lancer sur la FICHE (le `.gic` du POC) : celle des lancers. */
+export const GRENADE_THROW_HOLD_MS = 1_400
+
 /** Un effet de fin de vol, précalculé en coordonnées monde. */
 export interface GrenadeRestFx {
   /** Frame où le vol s'arrête (t0 + dernier pas du projectile lié). */
@@ -45,6 +48,35 @@ export interface GrenadeRestFx {
  * point que le film ne donne pas. Un lien hors bornes (artefact d'une autre version) est
  * ignoré — jamais un effet posé au hasard.
  */
+/** Le lancer actif d'un joueur : son rang, et l'âge du geste (en frames). */
+export interface ThrowReading {
+  rank: number
+  age: number
+}
+
+/**
+ * grenadeThrowActive — le DERNIER lancer d'un joueur dans la fenêtre de rémanence.
+ *
+ * L'AUTEUR EST ÉCRIT DANS LE FILM (Grenade.i = index de joueur du film) : il n'est pas
+ * deviné, contrairement au tireur d'un tir — c'est ce qui autorise un badge sur la FICHE.
+ * La jointure passe par l'index de film du roster, jamais par un ordre supposé.
+ */
+export function grenadeThrowActive(
+  doc: ReplayDocumentReady,
+  filmIndex: number,
+  frame: number,
+  holdFrames: number,
+): ThrowReading | null {
+  let best: ThrowReading | null = null
+  for (const g of doc.grenades) {
+    if (g.i !== filmIndex) continue
+    const age = frame - g.t
+    if (age < 0 || age > holdFrames) continue
+    if (!best || age < best.age) best = { rank: g.rank ?? 0, age }
+  }
+  return best
+}
+
 export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
   const out: GrenadeRestFx[] = []
   for (const g of doc.grenades) {
