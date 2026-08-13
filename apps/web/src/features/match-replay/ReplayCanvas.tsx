@@ -24,6 +24,11 @@ import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
 import type { KillEvent } from '@/features/match-view/_momentum'
 
 import { readInk } from './canvasInk'
+import {
+  buildGrenadeRestFx,
+  DYNAMO_REST_HOLD_MS,
+  GRENADE_REST_HOLD_MS,
+} from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
 import { backgroundRect, coversPlayedArea } from './mapBackground'
@@ -32,6 +37,7 @@ import type { ReplayDocumentReady } from './replayNormalize'
 import {
   drawFloorLayer,
   drawGeometryLayer,
+  drawGrenadeRestLayer,
   drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
@@ -228,6 +234,15 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     () => buildKillFx(doc, kills ?? [], t0Ms ?? 0),
     [doc, kills, t0Ms],
   )
+  // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
+  const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
+  const restWindow = useMemo(
+    () => ({
+      holdHalo: msToFrames(GRENADE_REST_HOLD_MS, doc),
+      holdDynamo: msToFrames(DYNAMO_REST_HOLD_MS, doc),
+    }),
+    [doc],
+  )
   const totalLabel = formatClock(doc.durationMs ?? frameToMs(doc.frameCount, doc))
 
   // Largeur responsive (ResizeObserver du conteneur).
@@ -302,6 +317,19 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     if (doc.grenades?.length) {
       drawGrenadesLayer(ctx, doc.grenades, view, win, grenadeColor)
     }
+    // La FIN DE VOL après le lancer : halo « dernière position connue » (jamais un
+    // impact — aucun événement de détonation dans le film), nappe électrique persistante
+    // pour la Shock/Dynamo.
+    if (grenadeRestFx.length > 0) {
+      drawGrenadeRestLayer(
+        ctx,
+        grenadeRestFx,
+        view,
+        { frame, holdHalo: restWindow.holdHalo, holdDynamo: restWindow.holdDynamo },
+        grenadeColor,
+        reducedMotion,
+      )
+    }
     // Les MORTS par-dessus les tirs : c'est l'événement le plus lourd de sens du calque,
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
     if (killFx.length > 0) {
@@ -334,6 +362,8 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     eventHoldFrames,
     shotHoldFrames,
     killFx,
+    grenadeRestFx,
+    restWindow,
     floorStyle.edge,
     colorBySlot,
     reducedMotion,
@@ -479,6 +509,9 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
           {/* CE QUI EST SOUS LES JOUEURS EST DIT. Une carte du jeu et un sol reconstruit ne
               se lisent pas de la même façon, et rien à l'écran ne les distingue. */}
           {` ${mapImage ? t.mapBackgroundNote : t.mapBackgroundFallback}`}
+          {/* L'ÉCRAN DIT « dernière position connue », JAMAIS « impact » : aucun événement
+              de détonation n'existe dans le film (item 2.3). */}
+          {grenadeRestFx.length > 0 ? ` ${t.grenadeRestNote}` : ''}
         </p>
       </div>
     </div>

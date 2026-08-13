@@ -64104,3 +64104,15 @@ melee 2e arc concentrique). canvasRecording.test.ts mis a jour (il figeait l'anc
 geometrie) + 1 test arc de liaison melee target/meleeLink.
 **Resultats** : vitest match-replay 13 fichiers / 222 tests verts.
 **Prochaine etape** : 2.3 effet au point de repos des grenades.
+
+## [2026-08-13] Parite rejeu 2D — lot 2 item 2.3, effet de fin de vol des grenades
+**Statut** : En cours (lot 2)
+**Decision technique** : le lien Grenade.proj (v3) permet enfin de poser un effet par TYPE
+au point de repos : SEUL un vol certifie at-rest en produit un (l'arret de replication
+n'est pas une preuve) ; Shock/Dynamo (rang 2) = nappe electrique persistante 2,5 s
+(geometrie brisee de la famille shock, germe stable) ; autres types = halo discret 1,4 s
+qui ne s'ouvre pas. L'ecran dit « derniere position connue », jamais « impact »
+(note i18n FR+EN sous le canvas, affichee des qu'un effet existe).
+**Resultats** : grenadeFx.ts pur + grenadeFx.test.ts (3 tests), vitest match-replay
+225 verts, tsc -b OK.
+**Prochaine etape** : 2.4 lancers mis en evidence (type sur la carte + pulse fiche).

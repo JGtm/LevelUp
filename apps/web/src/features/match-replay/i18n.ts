@@ -24,6 +24,11 @@ interface ReplayText {
   /** Fond de carte figé : présent, ou remplacé par le sol reconstruit. */
   mapBackgroundNote: string
   mapBackgroundFallback: string
+  /**
+   * Fin de vol d'une grenade : DERNIÈRE POSITION CONNUE, jamais « impact » — le film
+   * n'enregistre aucune détonation (règle du plan parité, item 2.3).
+   */
+  grenadeRestNote: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
   killFeedTitle: string
   killFeedEmpty: string
@@ -85,6 +90,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Fond : la carte du jeu, reconstruite hors ligne et calée au mètre sur le repère du rejeu.',
     mapBackgroundFallback:
       "Fond : sol reconstruit — cette carte n'a pas encore d'image figée.",
+    grenadeRestNote:
+      "Grenades : l'effet en fin de vol marque la dernière position connue du projectile — le film n'enregistre aucune détonation.",
     killFeedTitle: 'Éliminations',
     killFeedEmpty: 'Rien à cet instant du match.',
     killFeedUnknownWeapon: 'Arme non identifiée',
@@ -143,6 +150,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     propsSuffix: 'map props',
     mapBackgroundNote: 'Background: the in-game map, rebuilt offline and aligned to the metre with the replay frame of reference.',
     mapBackgroundFallback: 'Background: reconstructed floor — this map has no baked image yet.',
+    grenadeRestNote:
+      "Grenades: the end-of-flight effect marks the projectile's last known position — the film records no detonation.",
     killFeedTitle: 'Kills',
     killFeedEmpty: 'Nothing at this point of the match.',
     killFeedUnknownWeapon: 'Unidentified weapon',
