@@ -409,21 +409,53 @@ export function drawKillFxLayer(
   ctx.globalAlpha = 1
 }
 
+/** Côté de la vignette de type posée au-dessus de l'anneau d'un lancer (POC : 18 px). */
+const GRENADE_ICON_PX = 18
+
+/**
+ * tintedIconCanvas — un masque du HUD (blanc/gris + alpha) TEINT à une encre du thème,
+ * une fois pour toutes dans un canvas hors écran. Un canvas ne connaît pas le
+ * `mask-image` CSS de WeaponIcon : la teinte se fait par composition `source-in`, qui
+ * préserve l'alpha et suit le thème par re-teinture (l'appelant re-teint au changement).
+ */
+export function tintedIconCanvas(img: HTMLImageElement, color: string): HTMLCanvasElement {
+  const off = document.createElement('canvas')
+  off.width = Math.max(1, img.naturalWidth)
+  off.height = Math.max(1, img.naturalHeight)
+  const octx = off.getContext('2d')
+  if (!octx) return off
+  octx.drawImage(img, 0, 0)
+  octx.globalCompositeOperation = 'source-in'
+  octx.fillStyle = color
+  octx.fillRect(0, 0, off.width, off.height)
+  return off
+}
+
+/** Style du calque des lancers : la couleur des marques, et la vignette du TYPE par rang. */
+export interface GrenadeStyle {
+  color: string
+  /** Vignette teintée du rang, ou null : l'anneau seul reste juste — jamais la vignette
+   *  d'un type voisin. */
+  iconOf: (rank: number) => CanvasImageSource | null
+}
+
 /**
  * drawGrenadesLayer dessine les lancers de grenade.
  *
  * CE QUI EST DESSINÉ EST LE POINT DE DÉPART, pas une trajectoire : l'arc et le point de chute
- * ne sont pas décodés, et rien ici ne les invente. L'anneau distingue le lancer d'un tir.
+ * ne sont pas décodés, et rien ici ne les invente. L'anneau distingue le lancer d'un tir ;
+ * la VIGNETTE au-dessus dit le TYPE (item 2.4 — le rang est écrit dans le film, la table
+ * grenadeLabels le nomme).
  */
 export function drawGrenadesLayer(
   ctx: CanvasRenderingContext2D,
   grenades: ReplayGrenade[],
   view: CanvasView,
   win: EventWindow,
-  color: string,
+  style: GrenadeStyle,
 ): void {
-  ctx.strokeStyle = color
-  ctx.fillStyle = color
+  ctx.strokeStyle = style.color
+  ctx.fillStyle = style.color
   for (const g of grenades) {
     const age = win.frame - g.t
     if (age < 0 || age > win.hold) continue
@@ -437,6 +469,17 @@ export function drawGrenadesLayer(
     ctx.arc(c.x, c.y, GRENADE_RING, 0, Math.PI * 2)
     ctx.lineWidth = 1.5
     ctx.stroke()
+    const icon = style.iconOf(g.rank)
+    if (icon) {
+      ctx.globalAlpha = Math.min(1, 1.2 * fade)
+      ctx.drawImage(
+        icon,
+        c.x - GRENADE_ICON_PX / 2,
+        c.y - GRENADE_ICON_PX / 2 - 13,
+        GRENADE_ICON_PX,
+        GRENADE_ICON_PX,
+      )
+    }
   }
   ctx.globalAlpha = 1
 }

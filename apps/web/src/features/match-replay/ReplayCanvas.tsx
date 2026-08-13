@@ -41,6 +41,7 @@ import {
   drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
+  tintedIconCanvas,
 } from './replayDraw'
 import {
   fitWidth,
@@ -140,6 +141,9 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const aliveRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
   const publishedAtRef = useRef(0)
+  // Vignettes de TYPE de grenade, teintées à l'encre du thème (masques HUD blanc/gris +
+  // alpha). Rempli hors rendu, par rang — un rang sans visuel garde l'anneau seul.
+  const grenadeIconsRef = useRef<Map<number, HTMLCanvasElement>>(new Map())
 
   const [playing, setPlaying] = useState(true)
   const [multiplier, setMultiplier] = useState(1)
@@ -315,7 +319,10 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       })
     }
     if (doc.grenades?.length) {
-      drawGrenadesLayer(ctx, doc.grenades, view, win, grenadeColor)
+      drawGrenadesLayer(ctx, doc.grenades, view, win, {
+        color: grenadeColor,
+        iconOf: (rank) => grenadeIconsRef.current.get(rank) ?? null,
+      })
     }
     // La FIN DE VOL après le lancer : halo « dernière position connue » (jamais un
     // impact — aucun événement de détonation dans le film), nappe électrique persistante
@@ -371,6 +378,23 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     onFrameChange,
     mapImage,
   ])
+
+  // Les vignettes de type de grenade se chargent et se TEIGNENT une fois par document et
+  // par thème (l'encre suit floorStyle.edge) : le canvas ne sait pas teindre un masque au
+  // moment du dessin, et re-teindre 60 fois par seconde coûterait pour rien.
+  useEffect(() => {
+    const map = new Map<number, HTMLCanvasElement>()
+    grenadeIconsRef.current = map
+    doc.grenadeLabels.forEach((lbl, rank) => {
+      if (!lbl.img) return
+      const im = new Image()
+      im.onload = () => {
+        map.set(rank, tintedIconCanvas(im, floorStyle.edge))
+        draw()
+      }
+      im.src = lbl.img
+    })
+  }, [doc.grenadeLabels, floorStyle.edge, draw])
 
   // Le sol est repeint quand SA géométrie, SON cadrage ou SES encres changent — jamais à
   // l'image. C'est la condition pour que 45 000 cellules ne coûtent rien à l'animation.

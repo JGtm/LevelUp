@@ -53,6 +53,8 @@ interface ReplayText {
   weaponSecondaryHint: string
   /** Pictogramme « armes rangées » (sélecteur D=2) : tooltip simple, décision produit 4. */
   holsteredLabel: string
+  /** Badge de lancer sur la fiche (le `.gic` du POC) : l'auteur est écrit dans le film. */
+  grenadeThrown: string
   weaponSwap: string
   respawnIn: string
   respawnUnknown: string
@@ -117,6 +119,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Armes de la première image-clé de cette vie, lue dans',
     weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
     holsteredLabel: 'Armes rangées',
+    grenadeThrown: 'Grenade lancée',
     weaponSwap: 'échange',
     respawnIn: 'retour dans',
     respawnUnknown: 'retour ?',
@@ -175,6 +178,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     loadoutAhead: 'Weapons from the first keyframe of this life, read in',
     weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
     holsteredLabel: 'Weapons holstered',
+    grenadeThrown: 'Grenade thrown',
     weaponSwap: 'swap',
     respawnIn: 'back in',
     respawnUnknown: 'back ?',
