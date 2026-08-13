@@ -26,6 +26,9 @@ type mockReplayService struct {
 	bg    *replay.MapBackground
 	image []byte
 	bgErr error
+	// callouts / calloutsErr : les zones nommées, indépendantes du fond ET de l'artefact.
+	callouts    *replay.MapCalloutsEntry
+	calloutsErr error
 }
 
 func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replay.ReplayDocument, error) {
@@ -38,6 +41,10 @@ func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replay.
 
 func (m *mockReplayService) MapBackgroundImage(_ context.Context, _ string) ([]byte, error) {
 	return m.image, m.bgErr
+}
+
+func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replay.MapCalloutsEntry, error) {
+	return m.callouts, m.calloutsErr
 }
 
 // IsAvailable : le mock rend « disponible » exactement quand GetReplay rendrait un
@@ -243,6 +250,65 @@ func TestReplayBackground_RefusesRemoteCaller(t *testing.T) {
 		if strings.HasPrefix(w.Body.String(), "\x89PNG") {
 			t.Errorf("%s: l'image a été servie à un appelant distant", suffixe)
 		}
+	}
+}
+
+// calloutsMock rend un service dont les zones nommées sont celles de Cliffhanger.
+func calloutsMock() *mockReplayService {
+	return &mockReplayService{
+		callouts: &replay.MapCalloutsEntry{
+			Module:     "ridgeline",
+			Provenance: replay.CalloutsProvenanceDecoupe,
+			Zones: []replay.CalloutZone{{
+				VolumeIndex: 10, Name: "ridgeline horses", EN: "Horseshoe", FR: "Fer à cheval",
+				X: 19, Y: 10, Z: 1, ZBottom: -0.2, ZTop: 11,
+				Polygon: [][2]float64{{14.8, 7.5}, {23.8, 7.5}, {23.8, 15.3}},
+			}},
+		},
+	}
+}
+
+// TestReplayCallouts_OK — l'entrée voyage entière : polygones monde + libellés FR/EN.
+func TestReplayCallouts_OK(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return calloutsMock(), nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "127.0.0.1:5432")
+	if w.Code != http.StatusOK {
+		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var got replay.MapCalloutsEntry
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("réponse illisible: %v", err)
+	}
+	if got.Module != "ridgeline" || len(got.Zones) != 1 || got.Zones[0].FR != "Fer à cheval" ||
+		len(got.Zones[0].Polygon) != 3 {
+		t.Errorf("entrée incomplète: %+v", got)
+	}
+}
+
+// TestReplayCallouts_NotAvailable — une carte sans zones nommées (Forge) est un cas
+// NORMAL : 404 nommé, jamais un 500.
+func TestReplayCallouts_NotAvailable(t *testing.T) {
+	mock := &mockReplayService{calloutsErr: port.ErrMapCalloutsNotAvailable}
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "127.0.0.1:5432")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("attendu 404, obtenu %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "map_callouts_not_available") {
+		t.Errorf("code attendu map_callouts_not_available, body=%s", w.Body.String())
+	}
+}
+
+// TestReplayCallouts_RefusesRemoteCaller — la route hérite du même garde local que le
+// reste du rejeu.
+func TestReplayCallouts_RefusesRemoteCaller(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return calloutsMock(), nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "203.0.113.7:443")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("un appelant distant doit recevoir 404, obtenu %d", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "Horseshoe") {
+		t.Error("les zones ont été servies à un appelant distant")
 	}
 }
 

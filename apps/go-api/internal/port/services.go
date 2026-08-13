@@ -174,6 +174,11 @@ type ReplayService interface {
 	MapBackground(ctx context.Context, matchID string) (*replay.MapBackground, error)
 	// MapBackgroundImage retourne les octets PNG du fond, même sentinelle d'absence.
 	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, error)
+	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
+	// (polygones monde + libellés FR/EN, catalogue de référence versionné). Retourne
+	// ErrMapCalloutsNotAvailable quand la carte n'en a pas — cas nominal des cartes
+	// Forge : leur canevas ne porte aucune zone nommée, par construction.
+	MapCallouts(ctx context.Context, matchID string) (*replay.MapCalloutsEntry, error)
 }
 
 // ErrMapBackgroundNotAvailable est renvoyé quand aucun fond de carte figé n'existe pour la
@@ -181,6 +186,12 @@ type ReplayService interface {
 // d'image (production hors ligne, jeu installé requis), et le client dégrade sur le sol
 // reconstruit. Distinct de ErrReplayNotAvailable : un rejeu peut exister sans fond.
 var ErrMapBackgroundNotAvailable = errors.New("replay: aucun fond de carte pour ce match")
+
+// ErrMapCalloutsNotAvailable est renvoyé quand la carte du match n'a pas de zones
+// nommées au catalogue. ABSENCE NORMALE : les 22 cartes intégrées en ont, les cartes
+// Forge n'en auront jamais (leur canevas n'en porte aucune — mesuré). Le client dégrade
+// en n'affichant pas le calque zones.
+var ErrMapCalloutsNotAvailable = errors.New("replay: aucune zone nommée pour ce match")
 
 // MatchMapKeys sont les identités de carte d'un match. Le map_id (asset UGC) est la clé du
 // fond d'une carte FORGE — un canevas partagé par des dizaines de cartes ne peut pas keyer
