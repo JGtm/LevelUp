@@ -113,9 +113,12 @@ au user (instructions dans le compte rendu du lot — la session ne juge pas l'a
       ~1,4 s avant la meche).
       FAIT (2026-08-13) : `Grenade.proj` (*int — piege omitempty, l'index 0 est valide)
       pointe le projectile PUBLIE (buildProjectiles rend la table brut→publie, construit
-      avant les lancers) ; temoin : 65/70 lancers lies (= mesure POC). Web : SEUL un vol
-      certifie at-rest produit un effet, au dernier pas du projectile lie ; Dynamo rang 2
-      = nappe electrique 2,5 s (geometrie brisee, germe stable), autres = halo discret
+      avant les lancers) ; temoin : 65/70 lancers lies (= mesure POC). Web : l'effet se
+      pose au DERNIER point replique du vol lie — MESURE sur le temoin : at-rest n'existe
+      QUE sur les Spike (15/21), jamais frag/plasma/Dynamo (0/44, l'objet detone au lieu
+      de s'immobiliser) — l'exiger eteignait trois types sur quatre (premiere version
+      corrigee au gate) ; la certification reste portee (champ rest). Dynamo rang 2 =
+      nappe electrique 2,5 s (geometrie brisee, germe stable), autres = halo discret
       1,4 s ; note i18n FR/EN sous le canvas « derniere position connue ». SchemaVersion
       2→3 (cle de reprise du backfill lot 6) + openapi-gen + generate-types meme commit.
 - [x] 2.4 LANCERS mis en evidence : type distingue sur la carte (vignette
@@ -136,9 +139,9 @@ PASSE (2026-08-13) : tsc -b OK (cache purge), eslint 0 erreur (19 warnings preex
 vitest 410 fichiers / 3644 tests verts (14 skips preexistants), go test replay + mappings +
 replaylabels + handlers + service OK, go vet OK, golden assembly regenere (seule la ligne
 schema change). Temoin 000d5950 re-cuit en v3 (`--map cliffhanger` — la cle du catalogue
-est le NOM de carte, ridgeline n'est que le module) : 65/70 lancers lies, 15 vols at-rest,
-29 cles killEffects. La verification visuelle est remise au user (liste des instants dans
-le compte rendu du lot — la session ne juge pas l'aspect).
+est le NOM de carte, ridgeline n'est que le module) : 65/70 lancers lies (dont 15 vols
+at-rest, tous Spike), 29 cles killEffects. La verification visuelle est remise au user
+(liste des instants dans le compte rendu du lot — la session ne juge pas l'aspect).
 
 ## Lot 3 — Callouts (regression POC, tout existe hors depot)
 
@@ -270,6 +273,11 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   ridgeline, l'erreur du catalogue est explicite et la correction evidente.
 - (lot 2, 2026-08-13) le badge .gic ne peut pas vivre DANS le bloc estompe par l'age de
   lecture : les opacites CSS se multiplient. Il vit dans un bloc frere, hors estompage.
+- (lot 2, 2026-08-13) `projectile-at-rest-state` est PROPRE AU TYPE : sur le temoin, 15/21
+  vols Spike le portent, 0/44 frag+plasma+Dynamo — coherent avec un objet qui detone (il
+  disparait, il ne s'immobilise pas). Le « 78/79 » du POC comptait les vols TERMINES tous
+  types projectiles confondus, pas les grenades liees. Toute logique future qui exigerait
+  at-rest sur une grenade non-Spike s'eteindra en silence.
 
 ## Reprise
 
