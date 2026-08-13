@@ -1,3 +1,33 @@
+## [2026-08-14] v7.5 parite rejeu 2D — correctif kill feed : teinte tueur + desynchro fiches/fil
+
+**Statut** : Complete (gate visuel = user).
+
+**Decision technique principale** : (1) TEINTE — l'icone-masque du fil porte desormais
+la couleur d'equipe du TUEUR (style color sur WeaponIcon, currentColor — la technique de
+MatchKillFeed). (2) DESYNCHRO mesuree sur artefacts v3 + Match View locale : l'ecart
+`event_time_ms + t0Ms − fin de vie de piste` est un decalage SYSTEMATIQUE PAR MATCH
+(mediane +3 678 ms sur 000d5950 avec 87/91 paires a ±150 ms ; +10 589 ms sur 64e8adfa ;
++39 856 ms sur e94163af) — cause : l'artefact cale sa frame 0 sur le PREMIER paquet de
+position (build.go origin), pas sur le zero du film. Aucune constante ne corrige ca. Fix
+A LA SOURCE cote client : `alignFeedToTracks` (killFeedLogic.ts) pose chaque kill SUR la
+fin de vie de sa victime (appariement 2 passes : mediane par match puis plus-proche a
+±2 s, fin de vie consommee une fois) — fil et flash de fiche partent du MEME instant par
+construction ; kill inappariable = corrige de la mediane MESUREE ; sans paire (couverture
+killer_victim vide, ex. 606d9844) = horloge brute, degradation honnete. (3) MORTS
+NEUTRES (decision produit) : fin de vie close sans kill = ligne « mort » neutre cote
+client (temoin 64e8adfa : 123 morts scoreboard − 121 kills = exactement les 2 orphelines
+trouvees) ; garde anti-doublon : appariement requis + veto d'un kill sans victime a
+±4 s. (4) killFx branche sur le meme alignement : victimes relues dans la fenetre DEATH
+1/93 avant → 90/93 apres (l'orientation 89/93 etait cassee par le meme decalage).
+
+**Resultats observes** : tsc -b (cache purge) OK ; eslint 0 erreur sur les 8 fichiers ;
+vitest COMPLET 412 fichiers / 3 684 verts (14 skips preexistants, +14 nouveaux tests).
+i18n FR+EN (killFeedDeathLabel/Hint). Aucun changement de contrat API.
+
+**Conclusion / prochaine etape** : gate visuel user sur 000d5950 (teinte + simultaneite
+flash/ligne) ; la desynchro residuelle des matchs SANS killer_victim_pairs se resorbe
+avec le data run backfill-killsource (deja au registre, item 6.5).
+
 ## [2026-08-14] v7.5 parite rejeu 2D — lot 6 item 6.1 : CLI backfill-replay + verrou filmdec
 
 **Statut** : Complete (pilote 25 films au gate 6 ; run de masse = orchestrateur).

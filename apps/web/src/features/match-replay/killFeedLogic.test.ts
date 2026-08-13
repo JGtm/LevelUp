@@ -13,16 +13,18 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchHighlightEvent } from '@/lib/api/types'
 
 import {
+  alignFeedToTracks,
   buildFeedEntries,
   collectMedalEvents,
   feedAt,
   toReplayKills,
   type MedalEvent,
 } from './killFeedLogic'
+import { testReplayDoc } from './test/testDoc'
 
 const T0 = 18_465
 
-function kill(tMs: number, xuid = 'x1'): KillEvent {
+function kill(tMs: number, xuid = 'x1', victimXuid = ''): KillEvent {
   return {
     tMs,
     xuid,
@@ -37,7 +39,7 @@ function kill(tMs: number, xuid = 'x1'): KillEvent {
     assistTeamID: null,
     killerDamagePct: null,
     assistDamagePct: null,
-    victimXuid: '',
+    victimXuid,
     victimGamertag: '',
     victimTeamID: null,
   }
@@ -74,6 +76,74 @@ describe('toReplayKills', () => {
   it('trie chronologiquement — feedAt en dépend', () => {
     const out = toReplayKills([kill(30_000), kill(10_000), kill(20_000)], T0)
     expect(out.map((k) => k.tMs)).toEqual([10_000, 20_000, 30_000])
+  })
+})
+
+/**
+ * Un document 10 Hz, frameCount 200 (horizon 19 900 ms) :
+ *  - la victime V meurt deux fois (frames 20 et 80, soit 2 000 et 8 000 ms) ;
+ *  - W meurt une fois (frame 50, 5 000 ms) sans qu'aucun kill ne le revendique ;
+ *  - S survit (sa vie couvre l'horizon).
+ */
+function docWithLives() {
+  const track = (xuid: string, startFrame: number, endFrame: number) => ({
+    slot: 1,
+    team: -1,
+    xuid,
+    points: [{ t: startFrame, x: 0, y: 0 }],
+    startFrame,
+    endFrame,
+  })
+  return testReplayDoc({
+    frameIntervalMs: 100,
+    tracks: [track('V', 0, 20), track('V', 40, 80), track('W', 0, 50), track('S', 0, 199)],
+  })
+}
+
+describe('alignFeedToTracks — le fil sur le référentiel des pistes', () => {
+  // Les kills arrivent avec le décalage d'origine de l'artefact : +500 ms ici, +3 678 ms
+  // sur le témoin 000d5950 (mesure 2026-08-14, cf. en-tête du module).
+  const kills = [kill(2_500, 'k1', 'V'), kill(8_500, 'k2', 'V')]
+
+  it('mesure le décalage du document et pose chaque kill SUR la fin de vie de sa victime', () => {
+    const out = alignFeedToTracks(kills, 0, docWithLives())
+    expect(out.offsetMs).toBe(500)
+    // L'instant de la ligne est EXACTEMENT celui du flash de fiche (fin de piste).
+    expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000])
+  })
+
+  it('corrige un kill inappariable du décalage MESURÉ — jamais d\'une constante', () => {
+    const out = alignFeedToTracks([...kills, kill(12_500, 'k3')], 0, docWithLives())
+    expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000, 12_000])
+  })
+
+  it('sans aucune paire mesurable, l\'horloge brute reste — rien n\'est inventé', () => {
+    const out = alignFeedToTracks([kill(2_500, 'k1')], 0, docWithLives())
+    expect(out.offsetMs).toBeNull()
+    expect(out.kills[0].replayMs).toBe(2_500)
+  })
+
+  it('la mort sans kill fait une MORT NEUTRE à l\'instant de la piste ; jamais de doublon', () => {
+    const out = alignFeedToTracks(kills, 0, docWithLives())
+    // W (5 000 ms) n'a pas de ligne de kill -> mort neutre. Les deux fins de vie de V
+    // sont consommées par leurs kills : AUCUNE ligne neutre pour elles.
+    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W' }])
+  })
+
+  it('un survivant de fin de partie ne meurt pas dans le fil', () => {
+    const out = alignFeedToTracks(kills, 0, docWithLives())
+    expect(out.deaths.some((d) => d.xuid === 'S')).toBe(false)
+  })
+
+  it('un kill SANS victime au voisinage met son VETO sur la mort neutre (anti-doublon)', () => {
+    // Le kill non attribué à 5 400 ms peut être celui de W : pas de ligne neutre.
+    const out = alignFeedToTracks([...kills, kill(5_900, 'k3')], 0, docWithLives())
+    expect(out.deaths).toEqual([])
+  })
+
+  it('sans appariement mesuré, AUCUNE mort neutre — on ne sait pas dédoublonner', () => {
+    const out = alignFeedToTracks([kill(5_500, 'k1')], 0, docWithLives())
+    expect(out.deaths).toEqual([])
   })
 })
 
@@ -150,6 +220,26 @@ describe('buildFeedEntries — rattachement des médailles', () => {
   it('la médaille seule est recalée sur la même horloge que les kills', () => {
     const entries = buildFeedEntries([], [medal(16_841)], T0)
     expect(entries[0].replayMs).toBe(35_306)
+  })
+})
+
+describe('buildFeedEntries — avec document : pistes, morts neutres, une seule horloge', () => {
+  const kills = [kill(2_500, 'k1', 'V'), kill(8_500, 'k2', 'V')]
+
+  it('assemble kills alignés ET morts neutres, triés chronologiquement', () => {
+    const entries = buildFeedEntries(kills, [], 0, docWithLives())
+    expect(entries.map((e) => [e.replayMs, e.kill ? 'kill' : 'death'])).toEqual([
+      [2_000, 'kill'],
+      [5_000, 'death'],
+      [8_000, 'kill'],
+    ])
+    expect(entries[1].death?.xuid).toBe('W')
+  })
+
+  it('la médaille seule suit la MÊME correction de décalage que les kills', () => {
+    const entries = buildFeedEntries(kills, [medal(12_000, 'autre')], 0, docWithLives())
+    const seule = entries.find((e) => e.medal)
+    expect(seule?.replayMs).toBe(11_500)
   })
 })
 
