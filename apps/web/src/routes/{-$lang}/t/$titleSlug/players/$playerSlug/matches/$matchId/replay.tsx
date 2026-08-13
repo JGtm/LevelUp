@@ -17,6 +17,7 @@ import {
   useReplayMapBackground,
   useReplayMapImage,
 } from '@/features/match-replay/queries'
+import { collectMedalEvents } from '@/features/match-replay/killFeedLogic'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
@@ -75,6 +76,12 @@ function ReplayPage() {
     () => collectKillEvents(matchView?.combat_tab.highlight_events, xuidMeta),
     [matchView?.combat_tab.highlight_events, xuidMeta],
   )
+  // Les MÉDAILLES viennent des mêmes events (event_type `medal`), identité résolue
+  // côté backend — même lecture unique, aucun appel de plus.
+  const medalEvents = useMemo(
+    () => collectMedalEvents(matchView?.combat_tab.highlight_events),
+    [matchView?.combat_tab.highlight_events],
+  )
   // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
   const t0Ms = matchView?.header.t0_ms ?? 0
   const nowMs = data ? frameToMs(frame, data) : 0
@@ -110,12 +117,12 @@ function ReplayPage() {
             onFrameChange={setFrame}
             background={mapBackground}
           />
-          {/* LE KILL FEED SOUS LA CARTE, jamais dessus : même règle que les fiches. Il
-              n'affiche que ce qui vient de se passer à l'instant du rejeu — l'histoire
-              complète du match est déjà racontée par la carte « Dominance ». */}
+          {/* LE FIL SOUS LA CARTE, jamais dessus : même règle que les fiches. Il est
+              PERMANENT (verdict user 2026-08-13) : tout ce qui est déjà survenu reste
+              lisible, le plus récent en tête, et la liste défile. */}
           <ReplayKillFeed
             kills={kills}
-            victims={matchView?.combat_tab.killer_victim}
+            medals={medalEvents}
             t0Ms={t0Ms}
             nowMs={nowMs}
             scoreboard={scoreboard}

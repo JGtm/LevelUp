@@ -44,6 +44,9 @@ function kill(over: Partial<MomentumKill>): MomentumKill {
     assistTeamID: null,
     killerDamagePct: null,
     assistDamagePct: null,
+    victimXuid: '',
+    victimGamertag: '',
+    victimTeamID: null,
     ...over,
   }
 }

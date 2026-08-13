@@ -79,6 +79,14 @@ export interface KillEvent {
   /** Parts de dégâts en % entiers, NON bornées à 100. Null = non mesurée, jamais 0. */
   killerDamagePct: number | null
   assistDamagePct: number | null
+  /**
+   * La VICTIME du kill, jointe côté backend depuis killer_victim_pairs par la clé
+   * (tueur, instant) avec garde d'unanimité. Vides quand la paire manque ou quand
+   * deux victimes distinctes partagent la même clé : personne n'est nommé au hasard.
+   */
+  victimXuid: string
+  victimGamertag: string
+  victimTeamID: number | null
 }
 
 /** Métadonnée minimale par xuid nécessaire au calcul (appartenance équipe). */
@@ -114,6 +122,9 @@ export function collectKillEvents(
       assistTeamID: e.assist_team_id ?? null,
       killerDamagePct: e.killer_damage_pct ?? null,
       assistDamagePct: e.assist_damage_pct ?? null,
+      victimXuid: e.victim_xuid ?? '',
+      victimGamertag: e.victim_gamertag ?? '',
+      victimTeamID: e.victim_team_id ?? null,
     })
   }
   return out
