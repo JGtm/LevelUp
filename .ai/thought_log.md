@@ -77,6 +77,29 @@ preexistante (auto_sync_run.go, fichier non touche).
 
 **Prochaine etape** : gate 6 (pilote 25 films backfill-replay) + pilote 6.5.
 
+## [2026-08-14] v7.5 parite rejeu 2D — lot 6 : gate 6 + pilotes (cloture du lot)
+
+**Statut** : Complete (6.5 bloque, documente ; runs de masse = orchestrateur).
+
+**Decision technique principale** : pilote backfill-replay 25 films joue en avant-plan,
+un decodage a la fois (14 min 51 s) : 19 construits / 2 deja a jour / 6 carte hors
+catalogue (echec voulu, cartes communautaires) / 0 erreur de decodage → gate ≤ 20 %
+passe a 0 %. Verdict reconstruit SUR PIECES (fichiers dates de la passe + rapport final)
+— la sortie du process backgrounde n'est arrivee qu'a la fin. Pilote 6.5
+backfill-killsource TENTE : bloque au premier pas par le lock shared (la commande exige
+serveur arrete ; le serveur air du user tourne, interdiction de le redemarrer) — item
+[!], ligne registre avec condition de reprise (fenetre serveur arrete, orchestrateur).
+
+**Resultats observes** : couverture a la cloture : 951 films en cache, 21 artefacts a
+jour (schema 3), 2 v2 a re-cuire, 928 restants (~8 h de masse, registre). Verdicts de
+couverture du decodeur sur le pilote : ponts nominaux, quelques verdictTirs « partiel »
+sur cartes Forge (connu, garde locale en place). 3 lignes registre : run de masse
+backfill-replay, re-run killsource complet, file durable piste F.
+
+**Conclusion / prochaine etape** : lot 6 clos cote session (6.1-6.4 [x], 6.5 [!]).
+Reste orchestrateur : run de masse replay, fenetre serveur arrete pour killsource,
+gate visuel user (fiches 000d5950, cartes, admin jobs/crons/reglage retention).
+
 ## [2026-08-13] v7.5 parite rejeu 2D — lot 4 : objectifs statiques par mode
 
 **Statut** : Complete (gate visuel utilisateur PENDANT — CTF 64e8adfa, Strongholds
