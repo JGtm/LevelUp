@@ -980,6 +980,36 @@ normalisees (3 matchs, condition de reprise = preuve meme-level_id comme Heavies
 utilisateur : 6 PNG copies dans `Desktop/gate_cartes_v75/lot1_bornes/` (l'AVANT est un 404,
 pas une image). Suite du chantier cartes : lots suivants du superviseur (toits, cartes v2).
 
+## [2026-08-14] v7.5 — les pulses d'objectif s'allumaient jusqu'a 50,8 s trop tard
+
+**Statut** : Complete.
+
+**Decision technique principale** : defaut DECOUVERT PAR LE LOT CONTAINMENT (hors de son
+perimetre, signale et non traite — bonne discipline), corrige ici en PRIORITE sur demande
+utilisateur. `buildObjectivePulses` (calque des objectifs, lot 4 de la parite) consommait
+`a.t` tel quel. Or `a.t` vient du Go (`buildObjectiveActions` : `TimeMS / interval`) et
+`TimeMS` compte depuis le PREMIER PAQUET DU FILM, alors qu'une frame d'artefact compte
+depuis le PREMIER PAQUET DE POSITION : l'ecart entre ces deux zeros est exactement
+`doc.originMs` (3,6 s a 50,8 s selon le match, publie depuis le lot 7.2). Double
+consequence : le pulse s'allumait d'autant trop tard, ET l'appariement lisait la position
+de l'auteur au mauvais instant — il pouvait donc designer le MAUVAIS element.
+
+CORRECTION COTE CLIENT, comme le fil des eliminations (`killFeedLogic` :
+`replayMs = event_time_ms + t0Ms − originMs`) : ici pas de `t0Ms`, les actions ne viennent
+pas de la Match View mais du film, donc seule l'origine se retranche. Zero changement de
+contrat, aucune re-cuisson d'artefact. Une action anterieure a la premiere position connue
+est ECARTEE plutot que posee a la frame 0.
+
+**Resultats observes** : 2 verrous ajoutes (le pulse tombe a 10 et non 40 avec une origine
+de 30 frames ; une action anterieure a l'origine est ecartee). objectivesLayer 15/15 ;
+suite match-replay complete 20 fichiers / 321 tests verts ; tsc -b --force apres purge du
+cache OK ; eslint 0.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur un CTF (64e8adfa, 5 captures)
+— l'anneau doit s'ouvrir AU MOMENT de la capture. Le meme defaut d'horloge a maintenant ete
+corrige aux trois endroits qui consomment des instants (fil, effets de mort, objectifs) :
+tout nouveau consommateur d'instants doit retrancher `originMs`, c'est desormais la regle.
+
 ## [2026-08-14] v7.5 — la cle de la file de construction est classee au garde-fou des query keys
 
 **Statut** : Complete.

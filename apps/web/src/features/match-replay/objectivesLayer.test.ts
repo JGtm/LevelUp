@@ -181,6 +181,44 @@ describe('buildObjectivePulses', () => {
   it('sans éléments servis : aucun pulse (mode sans objectifs)', () => {
     expect(buildObjectivePulses(doc, [])).toHaveLength(0)
   })
+
+  // VERROU du défaut mesuré le 2026-08-14 (lot containment) : `a.t` compte depuis le
+  // premier paquet du FILM, une frame d'artefact depuis le premier paquet de POSITION.
+  // L'écart est `originMs`. Sans la soustraction, le pulse s'allumait jusqu'à 50,8 s trop
+  // tard et l'appariement lisait la position de l'auteur au mauvais instant.
+  it("retranche l'origine de l'artefact — le pulse s'allume à l'instant vu à l'écran", () => {
+    const decale = testReplayDoc({
+      frameIntervalMs: 100,
+      originMs: 3_000, // 30 frames
+      tracks: [
+        {
+          slot: 1, team: -1, xuid: 'A',
+          points: [{ t: 0, x: 1, y: 9 }, { t: 100, x: 1, y: 9 }],
+          startFrame: 0, endFrame: 100,
+        },
+      ],
+      objectives: [{ t: 40, xuid: 'A', stat: 'flag_grabs', timeMs: 4_000 }],
+    })
+    const pulses = buildObjectivePulses(decale, normalizeMapObjectives(MO))
+    expect(pulses).toHaveLength(1)
+    expect(pulses[0].frame).toBe(10) // 40 - 30, et non 40
+  })
+
+  it("une action antérieure à la première position connue est écartée, jamais posée à zéro", () => {
+    const avant = testReplayDoc({
+      frameIntervalMs: 100,
+      originMs: 3_000, // 30 frames
+      tracks: [
+        {
+          slot: 1, team: -1, xuid: 'A',
+          points: [{ t: 0, x: 1, y: 9 }, { t: 100, x: 1, y: 9 }],
+          startFrame: 0, endFrame: 100,
+        },
+      ],
+      objectives: [{ t: 5, xuid: 'A', stat: 'flag_grabs', timeMs: 500 }],
+    })
+    expect(buildObjectivePulses(avant, normalizeMapObjectives(MO))).toHaveLength(0)
+  })
 })
 
 describe('drawObjectivePulses', () => {
