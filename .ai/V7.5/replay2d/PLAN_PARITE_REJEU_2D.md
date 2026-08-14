@@ -736,7 +736,11 @@ PASSE (2026-08-14) : golden killsource INCHANGES sur les 4 films de reference (3
 `data/cache/film_chunks`) ; go test replay + replaybuild + killicon + killsource + handlers +
 service + halo_infinite verts ; `go vet ./...` OK ; `golangci-lint run
 --new-from-merge-base=origin/main` 0 issue. Web : tsc -b avec cache `.tmp` purge OK, eslint 0
-sur match-replay, vitest COMPLET 416 fichiers / 3736 tests verts (14 skips preexistants).
+sur `src/` (19 warnings preexistants, 0 erreur), vitest COMPLET 416 fichiers / 3736 tests verts
+(14 skips preexistants). HONNETETE DE GATE : sur les quatre passes completes jouees, UNE a
+rendu 1 echec — non reproduit sur les deux passes suivantes, et son fichier n'a pas ete
+capture. Aucune conclusion n'est tiree d'un echec dont on ne sait pas le nom : la CI reste le
+gate d'autorite, et si elle le revoit il faudra le nommer avant de le traiter.
 openapi-gen + generate-types dans le meme lot de commit (25 lignes de contrat, 9 lignes de
 types). RE-CUISSON `backfill-replay --only-existing` : **23/23 construits, 0 hors catalogue,
 0 erreur de decodage, 30 min 56 s** — les 23 portent `schemaVersion 5`. RECOLTE SUR LES 23 :
