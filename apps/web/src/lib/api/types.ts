@@ -2479,6 +2479,20 @@ export type FeatureHeartbeat = components['schemas']['FeatureHeartbeat']
 /** Réponse GET /admin/monitoring/crons. Miroir de domain.AdminCronsResponse. */
 export type AdminCronsResponse = components['schemas']['AdminCronsResponse']
 
+// ─── Admin — File de construction des rejeux + ouvriers ───────────────────────
+// Miroirs de domain.BuildQueueJob / BuildQueueWorker / AdminBuildQueueResponse
+// (GET /admin/monitoring/build-queue). L'état vit côté serveur : cette vue est
+// complète même quand l'ouvrier tourne sur une autre machine.
+
+/** Un job de la file durable de construction. */
+export type BuildQueueJob = components['schemas']['BuildQueueJob']
+
+/** Un ouvrier connu de la file (dernier battement, en ligne ou non). */
+export type BuildQueueWorker = components['schemas']['BuildQueueWorker']
+
+/** Réponse GET /admin/monitoring/build-queue. */
+export type AdminBuildQueueResponse = components['schemas']['AdminBuildQueueResponse']
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.

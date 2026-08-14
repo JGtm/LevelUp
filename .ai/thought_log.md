@@ -1,3 +1,81 @@
+## [2026-08-14] v7.5 lot 8 — la file de construction devient durable, et l ouvrier peut vivre ailleurs
+
+**Statut** : Complete (gate visuel user en attente sur le panneau admin).
+
+**Le constat qui commande le lot**. Le lot 6 avait donne au rejeu un JobType, une route
+admin et un runner par la librairie — mais son support, `internal/platform/jobs`
+(jobs.json), n a AUCUNE semantique de file : pas de prise, pas de priorite, pas de reprise.
+Au boot, tout job `running` devient `interrupted` et la retention le jette apres 1 h. C est
+tenable pour l auto-sync, qui se relance tout seul ; c est faux pour un travail DELEGUE a
+une machine tierce, ou la mort de l ouvrier ne doit rien perdre. La piste F du plan
+(§1/§2/§4bis, tranchee avec l utilisateur le 2026-08-02) demandait quatre pieces : file
+durable, protocole ouvrier, battement + table d ouvriers, vue admin. Ce lot les livre, et
+rien d autre.
+
+**Decision technique principale : la file vit dans la base monitoring GLOBALE**
+(`data/global/monitoring.duckdb`), pas dans une base neuve. Meme fichier, meme writer
+unique (le process serveur), meme lease `dblease.KindMonitoring`, memes invariants
+append-only (ADR 0026) : deux tables d EVENEMENTS (`build_job_events`,
+`build_worker_events`) et deux vues `_latest` qui sont LA lecture. Zero base nouvelle, zero
+lease nouveau, zero modele d ecriture nouveau — c est litteralement « le chemin d ecriture
+normal » que demandait le plan. La retention CapAndSweep est etendue aux deux tables, avec
+protection du MAX(id) par partition : sans elle, elaguer ferait DISPARAITRE un job en
+attente, pas seulement son historique.
+
+**L atomicite de la prise** tient sous deux verrous cumules : `queueMu` (les goroutines
+HTTP de ce process) et le lease dblease (le writer unique de la base). Le modele
+mono-process writer (ADR 0013/0016) garantit qu aucun autre process n ecrit cette base : la
+prise est donc atomique sans transaction distribuee. Verifie par test — deux ouvriers, un
+seul job, le second repart les mains vides.
+
+**La mort d un ouvrier ne perd aucun job**, et c est UN seul mecanisme pour trois cas.
+Chaque prise pose un BAIL (`lease_expires_at`, 5 min, prolonge par le battement a sa
+seconde moitie). Un job dont le bail a expire retourne en file avec `attempt+1` — que l
+ouvrier soit mort, debranche, ou que ce soit le serveur web qui ait redemarre. Le ramasseur
+tourne a chaque prise (le moment naturel) et sur la boucle de flush monitoring (pour que la
+reprise ait lieu meme sans ouvrier vivant pour la declencher) : aucun cron de plus. Au-dela
+de 3 tentatives le job part en `failed` plutot que de tourner en rond — un film corrompu ne
+se decodera pas mieux au quatrieme essai. Le rendu tardif de l ouvrier disparu est REFUSE
+(409, `ErrBuildJobNotClaimed`) : sans ce controle il ecraserait le travail de son
+remplacant.
+
+**La frontiere de securite est le point du lot, pas un detail**. `EnqueueReplayBuild` est
+le SEUL endroit ou les tokens Halo servent pour un travail delegue : il resout le manifeste
+du film (authentifie) et depose les URL CDN PRE-SIGNEES (non authentifiees) dans le job.
+Nouvelle methode `HaloAPIClient.GetFilmChunkURLs` — elle reutilise `fetchFilmManifest` et
+`buildChunkURL` existants et ne telecharge PAS un octet. L ouvrier n a donc aucun secret
+Halo, aucun acces base, aucun port entrant : il presente un jeton dedie
+(`LEVELUP_BUILD_WORKER_TOKEN`) qui n ouvre QUE trois routes. Le jeton est verifie par un
+MIDDLEWARE, donc AVANT que Huma ne regarde le corps : valide apres, un appelant non
+authentifie recevrait des 422 decrivant le schema attendu — une porte fermee ne decrit pas
+ce qu il y a derriere. Sans jeton configure : 503, la feature n existe pas. Le depot est
+public, une installation par defaut n herite d aucune porte ouverte.
+
+**Le ratchet des routes nues a parle, et il avait raison de parler**. Les trois routes
+`/internal/build-queue/*` sont sorties en violation. La correction N EST PAS de les
+allowlister comme publiques — elles ne le sont pas : `RequireWorkerToken` a ete EXPORTE et
+ajoute a `guardMarkers`. Les declarer publiques aurait ete faux, et le mensonge aurait
+survecu au lot.
+
+**Resultats observes** : file durable + prise atomique + reprise apres bail expire + rendu
+perime refuse + ouvrier hors ligne, 5 tests `internal/ops` (DuckDB reel) ; contrats HTTP du
+protocole (503 sans jeton, 401 jeton invalide meme avec un corps illisible, 200 file vide,
+409 perime, 400 champs vides), 6 tests handlers ; PREUVE DE BOUT EN BOUT sur vrai serveur
+HTTP + vraie base : mise en file -> prise par le protocole -> battement -> rendu, chaque
+etape constatee par GET /admin/monitoring/build-queue, plus la survie au redemarrage
+(fermeture/reouverture du store, le job en attente est toujours la et se laisse prendre).
+Cote web : 4 tests du panneau. Gates : go vet, golangci-lint `--new-from-merge-base` 0
+issue, `go test -tags=integration -p 1` sur `internal/sync/haloclient` + `internal/ops`,
+typecheck web purge, eslint, vitest admin 137/137.
+
+**Conclusion / prochaine etape**. La file, le protocole, le battement et la vue existent et
+sont prouves ; le rejeu reste OFF en prod (`replay_local_gate` INTACT — ce lot ne l active
+pas). Ce qui n est PAS fait, et qui est consigne au registre des reports : le TRANSPORT DE
+L ARTEFACT du retour ouvrier vers le web (le resultat rendu est un resume JSON ; les 2 Mo
+restent chez l ouvrier), et le branchement de la file au fil de l eau post-sync (l etape
+post-sync construit toujours EN LOCAL). Ce sont les deux pieces du lot suivant, et aucune
+n etait dans le perimetre ferme de celui-ci.
+
 ## [2026-08-14] v7.5 lot 7.1 — le fil dit DE QUOI on est mort quand personne n a tue
 
 **Statut** : Complete (gate visuel user en attente).

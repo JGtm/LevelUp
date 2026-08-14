@@ -57,6 +57,13 @@ type MonitoringStore struct {
 
 	mu         sync.Mutex       // protège lastCounts
 	lastCounts map[string]int64 // fingerprint -> count cumulatif au dernier flush (mémoire process)
+
+	// queueMu sérialise les sections critiques de la file de construction
+	// (build_queue.go) : « lire le prochain job en file → écrire sa prise » doit
+	// être atomique pour que deux ouvriers ne repartent jamais avec le même job.
+	// Distinct de mu, qui protège l'état mémoire des détections : les deux flux
+	// n'ont aucune raison de s'attendre.
+	queueMu sync.Mutex
 }
 
 // NewMonitoringStore ouvre (ou crée) la base monitoring globale et pose son

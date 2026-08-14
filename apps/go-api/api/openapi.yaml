@@ -571,6 +571,31 @@ paths:
       summary: Action admin — résout les assets UUID bruts de match_registry via metadata.asset_translations (dry_run supporté, writer shared sérialisé dblease) (auth admin requis)
       tags:
         - admin
+  /admin/actions/replay-build/enqueue:
+    post:
+      operationId: postAdminActionReplayBuildEnqueue
+      parameters:
+        - explode: false
+          in: query
+          name: title
+          schema:
+            type: string
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayBuildEnqueueResponse'
+          description: Accepted
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: 'Action admin — met la construction du rejeu 2D d''un match dans la file durable : le manifeste du film est résolu ici (tokens) et les URL CDN pré-signées partent dans le job, qu''un ouvrier distant prendra (auth admin requis)'
+      tags:
+        - admin
   /admin/actions/replay-build/run:
     post:
       operationId: postAdminActionReplayBuildRun
@@ -784,6 +809,31 @@ paths:
                 $ref: '#/components/schemas/ApiError'
           description: Error
       summary: Révoque une invitation
+      tags:
+        - admin
+  /admin/monitoring/build-queue:
+    get:
+      operationId: getAdminMonitoringBuildQueue
+      parameters:
+        - explode: false
+          in: query
+          name: limit
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBuildQueueResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Dashboard monitoring — file durable de construction des rejeux (en attente / en cours / faits / échoués, avec l'ouvrier qui traite) et état des ouvriers (dernier battement, en ligne, travail fait) (auth admin requis)
       tags:
         - admin
   /admin/monitoring/convergence:
@@ -2356,6 +2406,81 @@ paths:
       summary: Notes de release dérivées du git log
       tags:
         - health
+  /internal/build-queue/claim:
+    post:
+      operationId: postBuildQueueClaim
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildQueueClaimRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildQueueClaimResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Protocole ouvrier — prend le prochain job de construction et rend son travail résolu (URL CDN pré-signées). Jeton d'ouvrier requis.
+      tags:
+        - build-queue
+  /internal/build-queue/complete:
+    post:
+      operationId: postBuildQueueComplete
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildQueueCompleteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildQueueAckResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Protocole ouvrier — rend le résultat d'un job pris (succès ou échec). Jeton d'ouvrier requis.
+      tags:
+        - build-queue
+  /internal/build-queue/heartbeat:
+    post:
+      operationId: postBuildQueueHeartbeat
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildQueueHeartbeatRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildQueueAckResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Protocole ouvrier — signe de vie de l'ouvrier et prolongation du bail du job en cours. Jeton d'ouvrier requis.
+      tags:
+        - build-queue
   /jobs/{job_id}:
     get:
       operationId: getJob
@@ -7103,6 +7228,34 @@ components:
         - generated_at
         - actions
       type: object
+    AdminBuildQueueResponse:
+      additionalProperties: false
+      properties:
+        counts:
+          $ref: '#/components/schemas/BuildQueueCounts'
+        enabled:
+          type: boolean
+        generated_at:
+          type: string
+        jobs:
+          items:
+            $ref: '#/components/schemas/BuildQueueJob'
+          type:
+            - array
+            - "null"
+        workers:
+          items:
+            $ref: '#/components/schemas/BuildQueueWorker'
+          type:
+            - array
+            - "null"
+      required:
+        - generated_at
+        - enabled
+        - counts
+        - jobs
+        - workers
+      type: object
     AdminConvergenceReport:
       additionalProperties: false
       properties:
@@ -8589,6 +8742,221 @@ components:
       required:
         - type
         - label
+      type: object
+    BuildQueueAckResponse:
+      additionalProperties: false
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+      type: object
+    BuildQueueChunk:
+      additionalProperties: false
+      properties:
+        chunk_type:
+          format: int64
+          type: integer
+        duration_ms:
+          format: int64
+          type: integer
+        index:
+          format: int64
+          type: integer
+        start_ms:
+          format: int64
+          type: integer
+        url:
+          type: string
+      required:
+        - index
+        - chunk_type
+        - start_ms
+        - duration_ms
+        - url
+      type: object
+    BuildQueueClaimRequest:
+      additionalProperties: false
+      properties:
+        hostname:
+          type: string
+        version:
+          type: string
+        worker_id:
+          type: string
+      required:
+        - worker_id
+      type: object
+    BuildQueueClaimResponse:
+      additionalProperties: false
+      properties:
+        job:
+          $ref: '#/components/schemas/BuildQueueJob'
+        lease_seconds:
+          format: int64
+          type: integer
+      required:
+        - lease_seconds
+      type: object
+    BuildQueueCompleteRequest:
+      additionalProperties: false
+      properties:
+        error_code:
+          type: string
+        error_message:
+          type: string
+        job_id:
+          type: string
+        result_json:
+          type: string
+        succeeded:
+          type: boolean
+        worker_id:
+          type: string
+      required:
+        - job_id
+        - worker_id
+        - succeeded
+      type: object
+    BuildQueueCounts:
+      additionalProperties: false
+      properties:
+        failed:
+          format: int64
+          type: integer
+        queued:
+          format: int64
+          type: integer
+        running:
+          format: int64
+          type: integer
+        succeeded:
+          format: int64
+          type: integer
+      required:
+        - queued
+        - running
+        - succeeded
+        - failed
+      type: object
+    BuildQueueHeartbeatRequest:
+      additionalProperties: false
+      properties:
+        hostname:
+          type: string
+        job_id:
+          type: string
+        jobs_done:
+          format: int64
+          type: integer
+        jobs_failed:
+          format: int64
+          type: integer
+        note:
+          type: string
+        version:
+          type: string
+        worker_id:
+          type: string
+      required:
+        - worker_id
+      type: object
+    BuildQueueJob:
+      additionalProperties: false
+      properties:
+        attempt:
+          format: int64
+          type: integer
+        enqueued_at:
+          type: string
+        error_code:
+          type: string
+        error_message:
+          type: string
+        job_id:
+          type: string
+        job_type:
+          type: string
+        lease_expires_at:
+          type: string
+        match_id:
+          type: string
+        payload:
+          $ref: '#/components/schemas/BuildQueuePayload'
+        priority:
+          format: int64
+          type: integer
+        result_json:
+          type: string
+        status:
+          type: string
+        title_slug:
+          type: string
+        updated_at:
+          type: string
+        worker_id:
+          type: string
+      required:
+        - job_id
+        - job_type
+        - status
+        - priority
+        - attempt
+      type: object
+    BuildQueuePayload:
+      additionalProperties: false
+      properties:
+        chunks:
+          items:
+            $ref: '#/components/schemas/BuildQueueChunk'
+          type:
+            - array
+            - "null"
+        map_names:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        match_id:
+          type: string
+        short_id:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - match_id
+        - short_id
+        - title_slug
+      type: object
+    BuildQueueWorker:
+      additionalProperties: false
+      properties:
+        current_job_id:
+          type: string
+        hostname:
+          type: string
+        jobs_done:
+          format: int64
+          type: integer
+        jobs_failed:
+          format: int64
+          type: integer
+        last_beat_at:
+          type: string
+        note:
+          type: string
+        online:
+          type: boolean
+        version:
+          type: string
+        worker_id:
+          type: string
+      required:
+        - worker_id
+        - jobs_done
+        - jobs_failed
+        - online
       type: object
     CSRCoverage:
       additionalProperties: false
@@ -18997,6 +19365,17 @@ components:
       required:
         - overview
         - relations
+      type: object
+    ReplayBuildEnqueueResponse:
+      additionalProperties: false
+      properties:
+        created:
+          type: boolean
+        job:
+          $ref: '#/components/schemas/BuildQueueJob'
+      required:
+        - job
+        - created
       type: object
     ReplayDocument:
       additionalProperties: false

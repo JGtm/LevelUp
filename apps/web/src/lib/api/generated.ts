@@ -307,6 +307,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/actions/replay-build/enqueue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action admin — met la construction du rejeu 2D d'un match dans la file durable : le manifeste du film est résolu ici (tokens) et les URL CDN pré-signées partent dans le job, qu'un ouvrier distant prendra (auth admin requis) */
+        post: operations["postAdminActionReplayBuildEnqueue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/actions/replay-build/run": {
         parameters: {
             query?: never;
@@ -439,6 +456,23 @@ export interface paths {
         post?: never;
         /** Révoque une invitation */
         delete: operations["deleteAdminInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/build-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — file durable de construction des rejeux (en attente / en cours / faits / échoués, avec l'ouvrier qui traite) et état des ouvriers (dernier battement, en ligne, travail fait) (auth admin requis) */
+        get: operations["getAdminMonitoringBuildQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1395,6 +1429,57 @@ export interface paths {
         get: operations["getReleaseNotes"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — prend le prochain job de construction et rend son travail résolu (URL CDN pré-signées). Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — rend le résultat d'un job pris (succès ou échec). Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — signe de vie de l'ouvrier et prolongation du bail du job en cours. Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueHeartbeat"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3938,6 +4023,13 @@ export interface components {
             actions: components["schemas"]["AdminActionJournalEntry"][] | null;
             generated_at: string;
         };
+        AdminBuildQueueResponse: {
+            counts: components["schemas"]["BuildQueueCounts"];
+            enabled: boolean;
+            generated_at: string;
+            jobs: components["schemas"]["BuildQueueJob"][] | null;
+            workers: components["schemas"]["BuildQueueWorker"][] | null;
+        };
         AdminConvergenceReport: {
             generated_at: string;
             /** Format: int64 */
@@ -4516,6 +4608,98 @@ export interface components {
         BucketInfo: {
             label: string;
             type: string;
+        };
+        BuildQueueAckResponse: {
+            ok: boolean;
+        };
+        BuildQueueChunk: {
+            /** Format: int64 */
+            chunk_type: number;
+            /** Format: int64 */
+            duration_ms: number;
+            /** Format: int64 */
+            index: number;
+            /** Format: int64 */
+            start_ms: number;
+            url: string;
+        };
+        BuildQueueClaimRequest: {
+            hostname?: string;
+            version?: string;
+            worker_id: string;
+        };
+        BuildQueueClaimResponse: {
+            job?: components["schemas"]["BuildQueueJob"];
+            /** Format: int64 */
+            lease_seconds: number;
+        };
+        BuildQueueCompleteRequest: {
+            error_code?: string;
+            error_message?: string;
+            job_id: string;
+            result_json?: string;
+            succeeded: boolean;
+            worker_id: string;
+        };
+        BuildQueueCounts: {
+            /** Format: int64 */
+            failed: number;
+            /** Format: int64 */
+            queued: number;
+            /** Format: int64 */
+            running: number;
+            /** Format: int64 */
+            succeeded: number;
+        };
+        BuildQueueHeartbeatRequest: {
+            hostname?: string;
+            job_id?: string;
+            /** Format: int64 */
+            jobs_done?: number;
+            /** Format: int64 */
+            jobs_failed?: number;
+            note?: string;
+            version?: string;
+            worker_id: string;
+        };
+        BuildQueueJob: {
+            /** Format: int64 */
+            attempt: number;
+            enqueued_at?: string;
+            error_code?: string;
+            error_message?: string;
+            job_id: string;
+            job_type: string;
+            lease_expires_at?: string;
+            match_id?: string;
+            payload?: components["schemas"]["BuildQueuePayload"];
+            /** Format: int64 */
+            priority: number;
+            result_json?: string;
+            status: string;
+            title_slug?: string;
+            updated_at?: string;
+            worker_id?: string;
+        };
+        BuildQueuePayload: {
+            chunks?: components["schemas"]["BuildQueueChunk"][] | null;
+            map_names?: string[] | null;
+            match_id: string;
+            short_id: string;
+            title_slug: string;
+        };
+        BuildQueueWorker: {
+            current_job_id?: string;
+            hostname?: string;
+            /** Format: int64 */
+            jobs_done: number;
+            /** Format: int64 */
+            jobs_failed: number;
+            last_beat_at?: string;
+            note?: string;
+            online: boolean;
+            version?: string;
+            worker_id: string;
         };
         CSRCoverage: {
             match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
@@ -8822,6 +9006,10 @@ export interface components {
             overview: components["schemas"]["RelationsOverview"];
             relations: components["schemas"]["RelationInsight"][] | null;
         };
+        ReplayBuildEnqueueResponse: {
+            created: boolean;
+            job: components["schemas"]["BuildQueueJob"];
+        };
         ReplayDocument: {
             abilityLabels?: {
                 [key: string]: components["schemas"]["Label"];
@@ -11440,6 +11628,37 @@ export interface operations {
             };
         };
     };
+    postAdminActionReplayBuildEnqueue: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayBuildEnqueueResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postAdminActionReplayBuildRun: {
         parameters: {
             query?: {
@@ -11728,6 +11947,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringBuildQueue: {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBuildQueueResponse"];
+                };
             };
             /** @description Error */
             default: {
@@ -13592,6 +13842,105 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildQueueClaimRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueClaimResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildQueueCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueAckResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueHeartbeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildQueueHeartbeatRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueAckResponse"];
                 };
             };
             /** @description Error */

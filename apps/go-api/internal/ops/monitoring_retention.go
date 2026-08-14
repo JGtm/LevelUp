@@ -37,6 +37,14 @@ const (
 	// Croissance la plus régulière → cap le plus large : 50 000 ≈ plusieurs mois
 	// à quelques centaines de runs/jour.
 	cronRunsRetentionCap = 50_000
+	// build_job_events : 3 à 5 transitions par job de construction (mise en file,
+	// prise, renouvellement de bail, résultat). 20 000 ≈ des milliers de matchs
+	// construits — au-delà, l'historique ancien n'apprend plus rien.
+	buildJobEventsRetentionCap = 20_000
+	// build_worker_events : un battement toutes les ~30 s par ouvrier vivant, soit
+	// ~2 900/jour pour un ouvrier. 20 000 ≈ une semaine d'ouvrier permanent ; la
+	// vue ne sert QUE le dernier battement, l'historique est du confort.
+	buildWorkerEventsRetentionCap = 20_000
 )
 
 // retentionSpec décrit la purge d'une table append-only : son cap et le DELETE
@@ -85,6 +93,33 @@ var monitoringRetentionSpecs = []retentionSpec{
 			)
 			AND id NOT IN (
 				SELECT MAX(id) FROM cron_runs GROUP BY cron_name
+			)`,
+	},
+	{
+		// build_jobs_latest = dernier état par job_id : on protège MAX(id) par
+		// job_id. Sans cette protection, élaguer ferait DISPARAÎTRE un job de la
+		// file (un job en attente s'évaporerait) — pas seulement son historique.
+		table: "build_job_events",
+		cap:   buildJobEventsRetentionCap,
+		deleteSQL: `DELETE FROM build_job_events
+			WHERE id NOT IN (
+				SELECT id FROM build_job_events ORDER BY written_at DESC, id DESC LIMIT ?
+			)
+			AND id NOT IN (
+				SELECT MAX(id) FROM build_job_events GROUP BY job_id
+			)`,
+	},
+	{
+		// build_workers_latest = dernier battement par worker_id : on protège
+		// MAX(id) par worker_id (sinon un ouvrier connu disparaîtrait du tableau).
+		table: "build_worker_events",
+		cap:   buildWorkerEventsRetentionCap,
+		deleteSQL: `DELETE FROM build_worker_events
+			WHERE id NOT IN (
+				SELECT id FROM build_worker_events ORDER BY written_at DESC, id DESC LIMIT ?
+			)
+			AND id NOT IN (
+				SELECT MAX(id) FROM build_worker_events GROUP BY worker_id
 			)`,
 	},
 }

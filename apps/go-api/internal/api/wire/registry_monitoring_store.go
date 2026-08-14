@@ -101,6 +101,11 @@ func (r *ServiceRegistry) RunDetectionFlushLoop(ctx context.Context) {
 			return
 		case <-t.C:
 			r.flushDetections(ctx)
+			// Reprise des jobs de construction dont le bail a expiré : greffée ici
+			// plutôt que dans un cron dédié, parce que c'est la même base, le même
+			// writer et la même cadence — et parce que la reprise doit avoir lieu
+			// même quand plus aucun ouvrier vivant ne vient déclencher un claim.
+			r.reclaimBuildQueue(ctx)
 			r.sweepMonitoringRetention(ctx)
 		}
 	}

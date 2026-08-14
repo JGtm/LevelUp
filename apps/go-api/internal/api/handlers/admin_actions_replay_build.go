@@ -26,11 +26,17 @@ import (
 // job). Implémenté par ServiceRegistry.RunReplayBuild.
 type ReplayBuildRunner func(ctx context.Context, titleSlug, matchID string) (map[string]any, error)
 
-// AdminReplayBuildActionHandler porte l'action replay-build/run.
+// ReplayBuildEnqueuer met la construction en FILE DURABLE au lieu de la faire
+// ici : le travail part alors à un ouvrier, éventuellement sur une autre machine.
+// Implémenté par ServiceRegistry.EnqueueReplayBuild.
+type ReplayBuildEnqueuer func(ctx context.Context, titleSlug, matchID string) (domain.BuildQueueJob, bool, error)
+
+// AdminReplayBuildActionHandler porte les actions replay-build/{run,enqueue}.
 type AdminReplayBuildActionHandler struct {
-	run   ReplayBuildRunner
-	jobs  *jobs.Store
-	bgCtx context.Context
+	run     ReplayBuildRunner
+	enqueue ReplayBuildEnqueuer
+	jobs    *jobs.Store
+	bgCtx   context.Context
 }
 
 // NewAdminReplayBuildActionHandler construit le handler.
@@ -43,6 +49,13 @@ func NewAdminReplayBuildActionHandler(
 	return &AdminReplayBuildActionHandler{run: run, jobs: jobStore, bgCtx: bgCtx}
 }
 
+// WithEnqueuer branche la mise en file (route /enqueue). Nil → la route répond
+// 503 : sans store monitoring, il n'y a pas de file où mettre quoi que ce soit.
+func (h *AdminReplayBuildActionHandler) WithEnqueuer(enqueue ReplayBuildEnqueuer) *AdminReplayBuildActionHandler {
+	h.enqueue = enqueue
+	return h
+}
+
 // Mount enregistre la route via Huma sur le sous-routeur chi /admin (middleware
 // RequireAuth/RequireAdmin hérités). Body décodé maison → 400 invalid_input si JSON
 // malformé OU match_id absent (contrat convergence préservé).
@@ -53,6 +66,48 @@ func (h *AdminReplayBuildActionHandler) Mount(r chi.Router, opts ...humacore.Mou
 		"Action admin — construit l'artefact de rejeu 2D d'un match depuis le cache film local (job asynchrone, décodage hors ligne, auth admin requis)",
 		"admin"),
 		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Post(api, "/actions/replay-build/enqueue", h.handleEnqueue, humacore.Op(
+		"postAdminActionReplayBuildEnqueue",
+		"Action admin — met la construction du rejeu 2D d'un match dans la file durable : le manifeste du film est résolu ici (tokens) et les URL CDN "+
+			"pré-signées partent dans le job, qu'un ouvrier distant prendra (auth admin requis)",
+		"admin"),
+		humacore.DefaultStatus(http.StatusAccepted))
+}
+
+// replayBuildEnqueueOutput : 202 Accepted + le job de la file.
+type replayBuildEnqueueOutput struct {
+	Body ReplayBuildEnqueueResponse
+}
+
+// ReplayBuildEnqueueResponse : accusé de mise en file. Created=false signale un
+// doublon absorbé (le match était déjà en file ou en cours) — ce n'est pas une
+// erreur, c'est l'idempotence qui a fait son travail.
+type ReplayBuildEnqueueResponse struct {
+	Job     domain.BuildQueueJob `json:"job"`
+	Created bool                 `json:"created"`
+}
+
+// handleEnqueue met la construction du rejeu d'un match en file durable.
+// POST /admin/actions/replay-build/enqueue {match_id} → 202.
+func (h *AdminReplayBuildActionHandler) handleEnqueue(ctx context.Context, in *replayBuildRunInput) (*replayBuildEnqueueOutput, error) {
+	if h.enqueue == nil {
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "build_queue_unavailable",
+			"File de construction indisponible (store monitoring non ouvert).")
+	}
+	var req replayBuildRequest
+	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	}
+	titleSlug := titleOrDefaultSlug(in.Title)
+	job, created, err := h.enqueue(ctx, titleSlug, req.MatchID)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_actions: mise en file du rejeu échouée",
+			"module", "monitoring", "match_id", req.MatchID, "title", titleSlug, "err", err)
+		return nil, humacore.NewError(http.StatusBadRequest, "replay_enqueue_failed", err.Error())
+	}
+	slog.InfoContext(ctx, "admin_actions: rejeu 2D mis en file",
+		"job_id", job.JobID, "match_id", req.MatchID, "title", titleSlug, "created", created)
+	return &replayBuildEnqueueOutput{Body: ReplayBuildEnqueueResponse{Job: job, Created: created}}, nil
 }
 
 // replayBuildRunInput : ?title= optionnel + corps brut décodé maison.
