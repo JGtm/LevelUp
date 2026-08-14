@@ -133,7 +133,7 @@ describe('alignFeedToTracks — le fil sur le référentiel des pistes', () => {
     const out = alignFeedToTracks(kills, 0, docWithLives())
     // W (5 000 ms) n'a pas de ligne de kill -> mort neutre. Les deux fins de vie de V
     // sont consommées par leurs kills : AUCUNE ligne neutre pour elles.
-    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W' }])
+    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false }])
   })
 
   it('un survivant de fin de partie ne meurt pas dans le fil', () => {
@@ -179,7 +179,7 @@ describe("alignFeedByOrigin — le fil sur l'origine publiée par l'artefact", (
 
   it('la mort sans kill fait une MORT NEUTRE ; une fin de vie revendiquée n\'en fait pas', () => {
     const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
-    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W' }])
+    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false }])
   })
 
   it('un survivant de fin de partie ne meurt pas dans le fil', () => {
@@ -209,6 +209,56 @@ describe('alignFeed — origine publiée, appariement en repli', () => {
   it("une origine de ZÉRO est une mesure, pas une absence", () => {
     const doc = testReplayDoc({ ...docSpec(), originMs: 0 })
     expect(alignFeed([kill(2_500, 'k1')], 0, doc).kills[0].replayMs).toBe(2_500)
+  })
+})
+
+/**
+ * Le TYPE des morts neutres (lot 7.1). Rappel du montage : W meurt à 5 000 ms sur l'axe du
+ * rejeu, et le document date ses morts sur l'horloge du FIL — donc à 5 500 ms quand l'origine
+ * vaut 500 ms. C'est précisément ce décalage que la jointure doit absorber.
+ */
+describe('le type des morts sans revendication', () => {
+  const chute = { xuid: 'W', feedMs: 5_500, kind: 'environment', img: '/s/env.png', tinted: true }
+  const docTypé = (over: Record<string, unknown> = {}) =>
+    testReplayDoc({ ...docSpec(), originMs: 500, neutralDeaths: [chute], ...over })
+  const kills = [kill(2_500, 'k1', 'V'), kill(8_500, 'k2', 'V')]
+
+  it("pose le type sur la ligne, en absorbant le décalage du fil", () => {
+    const out = alignFeed(kills, 0, docTypé())
+    expect(out.deaths).toEqual([
+      { replayMs: 5_000, xuid: 'W', kind: 'environment', img: '/s/env.png', tinted: true },
+    ])
+  })
+
+  it('absorbe AUSSI le décalage MESURÉ quand l\'artefact ne publie pas d\'origine', () => {
+    // Repli : l'offset est mesuré à 500 ms par appariement, la table du document est datée
+    // sur la même horloge du fil. Le résultat doit être identique au chemin nominal.
+    const doc = testReplayDoc({ ...docSpec(), neutralDeaths: [chute] })
+    expect(alignFeed(kills, 0, doc).deaths[0].kind).toBe('environment')
+  })
+
+  it("ne pose RIEN quand le document ne parle pas de ce joueur — jamais le type d'une autre mort", () => {
+    const doc = docTypé({ neutralDeaths: [{ ...chute, xuid: 'V' }] })
+    expect(alignFeed(kills, 0, doc).deaths[0]).toMatchObject({ xuid: 'W', kind: '', img: '' })
+  })
+
+  it("ne pose RIEN quand l'entrée est trop loin dans le temps (autre vie du même joueur)", () => {
+    // 5 500 + 3 000 = au-delà de la tolérance d'appariement : c'est une autre mort.
+    const doc = docTypé({ neutralDeaths: [{ ...chute, feedMs: 5_500 + 3_000 }] })
+    expect(alignFeed(kills, 0, doc).deaths[0].kind).toBe('')
+  })
+
+  it("ne sert JAMAIS deux fois la même entrée", () => {
+    // Deux morts neutres du même joueur, une seule entrée typée : la seconde reste neutre.
+    const spec = docSpec()
+    const doc = testReplayDoc({
+      ...spec,
+      tracks: [...spec.tracks, { ...spec.tracks[2], startFrame: 60, endFrame: 100 }],
+      originMs: 500,
+      neutralDeaths: [chute],
+    })
+    const typés = alignFeed(kills, 0, doc).deaths.filter((d) => d.kind !== '')
+    expect(typés).toHaveLength(1)
   })
 })
 

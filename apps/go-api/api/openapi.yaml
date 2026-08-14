@@ -16801,6 +16801,25 @@ components:
         - categories
         - total_count
       type: object
+    NeutralDeath:
+      additionalProperties: false
+      properties:
+        feedMs:
+          format: int64
+          type: integer
+        img:
+          type: string
+        kind:
+          type: string
+        tinted:
+          type: boolean
+        xuid:
+          type: string
+      required:
+        - xuid
+        - feedMs
+        - kind
+      type: object
     NormalizedPlayerStats:
       additionalProperties: false
       properties:
@@ -19039,6 +19058,12 @@ components:
           $ref: '#/components/schemas/MapObjectives'
         matchId:
           type: string
+        neutralDeaths:
+          items:
+            $ref: '#/components/schemas/NeutralDeath'
+          type:
+            - array
+            - "null"
         objectives:
           items:
             $ref: '#/components/schemas/ObjectiveAction'

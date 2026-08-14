@@ -71,6 +71,16 @@ type Options struct {
 	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
 	// Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
+	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
+	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
+	//
+	// POURQUOI DÉJÀ RÉSOLUES, et pas décodées ici : la source du dégât fatal se lit dans le
+	// dead-state du film, et ce décodage a UN seul propriétaire dans le dépôt (le paquet
+	// `killsource` du titre). Le redécoder ici en ferait un second décodeur du même fait, et
+	// deux décodeurs du même fait divergent — c'est la règle qui gouverne déjà Objectives et
+	// les couples de `killpos.go`. L'appelant décode, résout le pictogramme du titre, fournit.
+	// Absente = rejeu dont les lignes de mort neutres gardent leur repère générique.
+	NeutralDeaths []NeutralDeath
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER PAQUET du film, c'est-à-dire le
 	// zéro de l'horloge sur laquelle les highlight events sont datés (cf. origin.go). Entrée
 	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne
@@ -295,6 +305,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	if len(opt.Labels.Effects) > 0 {
 		doc.KillEffects = opt.Labels.Effects
 	}
+	// Les morts sans revendication ne sont publiées que pour les joueurs dont une trajectoire
+	// l'est : le client déduit ces lignes DE SES PISTES, une entrée sans piste ne rencontrerait
+	// jamais de ligne à décorer (même règle que les tirs, lancers et actions d'objectif).
+	doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(opt.NeutralDeaths, doc.Tracks)
 	doc.Inventory = keepInventoryOfPublishedTracks(
 		buildInventory(opt.Inventory, origin, step), doc.Tracks)
 	// Les rangs de grenade sont publiés dès qu'un calque les référence : l'inventaire

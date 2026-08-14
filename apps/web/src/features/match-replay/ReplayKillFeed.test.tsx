@@ -194,13 +194,14 @@ describe('ReplayKillFeed — le fil sur le référentiel des pistes (document fo
    * arrive avec le décalage d'origine de l'artefact (+3 000 ms ici, +3 678 ms mesurés
    * sur le témoin 000d5950).
    */
-  const doc = testReplayDoc({
+  const docSpec = {
     frameIntervalMs: 100,
     tracks: [
       { slot: 2, team: -1, xuid: 'foe', points: [{ t: 0, x: 0, y: 0 }], startFrame: 0, endFrame: 20 },
       { slot: 2, team: -1, xuid: 'foe', points: [{ t: 40, x: 0, y: 0 }], startFrame: 40, endFrame: 80 },
     ],
-  })
+  }
+  const doc = testReplayDoc(docSpec)
   const kills = [kill({ tMs: 5_000, xuid: 'me', victimXuid: 'foe', victimGamertag: 'Cobra01' })]
 
   it("la ligne part au MÊME instant que le flash de fiche — la fin de vie, pas l'event brut", () => {
@@ -221,6 +222,32 @@ describe('ReplayKillFeed — le fil sur le référentiel des pistes (document fo
   it('avant la fin de vie orpheline, la ligne neutre n\'existe pas encore', () => {
     renderFeed(kills, 7_000, 0, [], doc)
     expect(screen.queryByText('mort')).toBeNull()
+  })
+
+  it('SANS type établi, la ligne neutre ne porte AUCUNE icône — jamais celle d\'une autre mort', () => {
+    renderFeed(kills, 9_000, 0, [], doc)
+    expect(screen.getByText('mort')).toBeTruthy()
+    // Aucune icône dans tout le fil : ni celle d'une arme, ni celle d'un autre type de mort.
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
+  })
+
+  it('AVEC un type établi, la ligne porte le pictogramme du TYPE de mort, à l\'encre neutre', () => {
+    // Le document date la mort sur l'horloge du FIL : la fin de vie est à 8 000 ms sur
+    // l'axe du rejeu, l'origine publiée vaut 3 000 ms, donc 11 000 ms côté fil.
+    const typé = testReplayDoc({
+      ...docSpec,
+      originMs: 3_000,
+      neutralDeaths: [
+        { xuid: 'foe', feedMs: 11_000, kind: 'suicide', img: '/s/suicide.png', tinted: true },
+      ],
+    })
+    renderFeed(kills, 9_000, 0, [], typé)
+    const icone = screen.getByRole('img', { name: 'Tué par sa propre arme' })
+    // Masque teint (technique des icônes d'arme du fil), pas une image finie.
+    const style = icone.getAttribute('style') ?? ''
+    expect(style).toContain('/s/suicide.png')
+    // ENCRE NEUTRE, pas une couleur d'équipe : personne n'a tué sur cette ligne.
+    expect(style).toContain('divergent-neutral')
   })
 })
 

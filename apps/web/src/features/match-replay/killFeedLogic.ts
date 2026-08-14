@@ -37,6 +37,12 @@
  * 121 kills, et exactement 2 fins de vie orphelines. L'appariement par victime garantit
  * qu'une mort déjà servie par une ligne de kill n'est JAMAIS doublée.
  *
+ * CE QUE LE CLIENT NE PEUT PAS DÉDUIRE DE CES MORTS, c'est DE QUOI le joueur est mort :
+ * cela se lit dans le film, hors ligne. Le document le publie (`doc.neutralDeaths`, schéma
+ * v5) et `attachDeathKinds` le pose sur la ligne, sur la MÊME horloge que le reste du fil.
+ * Une mort dont le type n'est pas établi garde son repère neutre — jamais l'icône d'une
+ * autre mort.
+ *
  * LES MÉDAILLES viennent des mêmes highlight events (event_type `medal`), identité
  * résolue côté backend (label/description locale-aware + visuel). Une médaille se
  * rattache au kill du MÊME acteur à moins de 500 ms — mesure sur le témoin : 42 des 44
@@ -170,6 +176,15 @@ export interface ReplayDeath {
   /** Instant de la fin de vie sur l'horloge du rejeu — le même que le flash de fiche. */
   replayMs: number
   xuid: string
+  /**
+   * Le TYPE de mort, quand le document l'établit : `environment` (chute, hors-limites) ou
+   * `suicide` (le joueur s'est tué avec sa propre source de dégât). Vide = NON ÉTABLI, et la
+   * ligne garde alors son repère neutre — jamais l'icône d'une autre mort.
+   */
+  kind: string
+  /** Pictogramme du type et masque à teindre. Vides en même temps que `kind`. */
+  img: string
+  tinted: boolean
 }
 
 /** Le fil recalé : kills alignés, morts neutres, décalage appliqué. */
@@ -212,9 +227,15 @@ export function alignFeed(
   doc: ReplayDocumentReady,
 ): AlignedFeed {
   const origin = doc.originMs
-  return typeof origin === 'number' && Number.isFinite(origin)
-    ? alignFeedByOrigin(kills, t0Ms, doc, origin)
-    : alignFeedToTracks(kills, t0Ms, doc)
+  const feed =
+    typeof origin === 'number' && Number.isFinite(origin)
+      ? alignFeedByOrigin(kills, t0Ms, doc, origin)
+      : alignFeedToTracks(kills, t0Ms, doc)
+  // LE TYPE DE MORT SE POSE ICI, une seule fois pour les deux recalages : il dépend du
+  // décalage, et le décalage n'est connu qu'une fois le recalage choisi. Le poser dans
+  // chacune des deux branches en ferait deux copies qui divergeraient.
+  attachDeathKinds(feed.deaths, doc, feed.offsetMs)
+  return feed
 }
 
 /**
@@ -262,10 +283,66 @@ export function alignFeedByOrigin(
   for (const e of ends) {
     if (!e.closed || e.used) continue
     if (unattributed.some((k) => Math.abs(k.replayMs - e.endMs) <= NEUTRAL_DEATH_VETO_MS)) continue
-    deaths.push({ replayMs: e.endMs, xuid: e.xuid })
+    deaths.push(neutralDeath(e.endMs, e.xuid))
   }
   deaths.sort((a, b) => a.replayMs - b.replayMs)
   return { kills: aligned, deaths, offsetMs: originMs }
+}
+
+/**
+ * neutralDeath fabrique une ligne de mort neutre SANS type. Le type est posé après coup par
+ * `attachDeathKinds`, une fois le décalage du fil connu — lui seul permet de rapprocher
+ * l'horloge du document (où le type est daté) de l'axe du rejeu (où la ligne vit).
+ */
+function neutralDeath(replayMs: number, xuid: string): ReplayDeath {
+  return { replayMs, xuid, kind: '', img: '', tinted: false }
+}
+
+/**
+ * attachDeathKinds pose sur chaque mort neutre le TYPE que le document lui donne — chute /
+ * hors-limites, ou sa propre source de dégât.
+ *
+ * CE QUE LE CLIENT NE PEUT PAS DÉDUIRE, ET POURQUOI CETTE JOINTURE EXISTE. Le fil sait déjà
+ * QUI est mort et QUAND (une fin de vie qu'aucun kill ne revendique). Ce qu'il ne peut pas
+ * savoir, c'est DE QUOI : cela se lit dans le composant dead-state du film, hors ligne. Le
+ * document publie donc ces morts avec leur type — et sur SON horloge, celle du fil.
+ *
+ * LE RECALAGE EST LE MÊME QUE POUR LE RESTE DU FIL, et il doit l'être : `feedMs − offsetMs`,
+ * exactement ce que subissent les kills et les médailles seules. Une entrée posée sur une
+ * autre horloge que la ligne qu'elle décore ne la rencontrerait jamais.
+ *
+ * L'APPARIEMENT EST CONTRAINT DES DEUX CÔTÉS : même xuid, et moins de `KILL_MATCH_TOL_MS`
+ * d'écart — la même tolérance que l'appariement d'un kill à la fin de vie de sa victime, et
+ * pour la même raison (deux vies d'un même joueur sont séparées d'au moins un délai de
+ * réapparition). Chaque entrée ne sert qu'UNE fois. Rien ne se pose sans appariement : une
+ * ligne sans type garde son repère neutre, JAMAIS l'icône d'une autre mort.
+ */
+export function attachDeathKinds(
+  deaths: ReplayDeath[],
+  doc: ReplayDocumentReady,
+  offsetMs: number | null,
+): void {
+  if (deaths.length === 0 || doc.neutralDeaths.length === 0) return
+  const shift = offsetMs ?? 0
+  const used = new Set<number>()
+  for (const d of deaths) {
+    let bestIdx = -1
+    let bestScore = KILL_MATCH_TOL_MS + 1
+    doc.neutralDeaths.forEach((n, i) => {
+      if (used.has(i) || n.xuid !== d.xuid) return
+      const score = Math.abs(d.replayMs - (n.feedMs - shift))
+      if (score < bestScore) {
+        bestScore = score
+        bestIdx = i
+      }
+    })
+    if (bestIdx < 0) continue
+    used.add(bestIdx)
+    const n = doc.neutralDeaths[bestIdx]
+    d.kind = n.kind
+    d.img = n.img ?? ''
+    d.tinted = n.tinted ?? false
+  }
 }
 
 /**
@@ -372,7 +449,7 @@ export function alignFeedToTracks(
     for (const e of ends) {
       if (!e.closed || e.used) continue
       const vetoed = unattributed.some((k) => Math.abs(k.replayMs - e.endMs) <= NEUTRAL_DEATH_VETO_MS)
-      if (!vetoed) deaths.push({ replayMs: e.endMs, xuid: e.xuid })
+      if (!vetoed) deaths.push(neutralDeath(e.endMs, e.xuid))
     }
     deaths.sort((a, b) => a.replayMs - b.replayMs)
   }

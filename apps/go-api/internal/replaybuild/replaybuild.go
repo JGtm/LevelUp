@@ -16,16 +16,20 @@
 package replaybuild
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 )
 
@@ -149,6 +153,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string) 
 		Geometry:        b.geometry,
 		Structure:       b.structureFor(entry.Module),
 		Labels:          b.labels,
+		NeutralDeaths:   b.neutralDeaths(matchID, filmDir),
 		WorldRange:      &worldRange,
 	})
 	if err != nil {
@@ -163,6 +168,72 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string) 
 		return Outcome{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
 	return Outcome{ArtifactPath: outPath, Module: entry.Module, Tracks: len(doc.Tracks), Bytes: size}, nil
+}
+
+// neutralDeaths décode les morts que PERSONNE ne revendique et rend les entrées d'artefact
+// déjà résolues (type de mort + pictogramme du titre).
+//
+// POURQUOI CE DÉCODAGE-CI VIT ICI, ET PAS DANS `analysis/replay`. La source du dégât fatal se
+// lit dans le composant dead-state du film, et ce décodage a UN seul propriétaire dans le dépôt
+// (`film/killsource`, avec ses golden et ses ancres Theater). `analysis/` est title-agnostic et
+// n'a pas à le connaître ; ce paquet, lui, est la couche d'ASSEMBLAGE — il compose déjà les
+// libellés du titre de la même façon. Deux décodeurs du même fait divergeraient.
+//
+// DEUX ACQUISITIONS DU VERROU filmdec, ET C'EST VOULU : `killsource.Decode` prend et rend le
+// verrou process, puis `replay.BuildFromFilm` le reprend. Ce sont deux décodages complets du
+// MÊME film, chacun sérialisé de bout en bout ; c'est exactement ce que fait déjà le cycle
+// post-sync (arme du kill puis artefacts). Les enchaîner sous un seul verrou exigerait un mutex
+// réentrant, que Go n'a pas — et le contrat qui compte (« jamais deux films entrelacés dans un
+// décodage ») est tenu par chacune des deux.
+//
+// TOUT ÉCHEC EST NON FATAL : un film dont la source de dégât ne se décode pas reste un rejeu
+// parfaitement valide, avec des lignes de mort neutres au repère générique. Le refus est
+// JOURNALISÉ, jamais avalé.
+func (b *Builder) neutralDeaths(matchID, filmDir string) []replay.NeutralDeath {
+	src, err := killsource.DirChunks(filmDir)
+	if err != nil {
+		slog.Debug("replaybuild: chunks illisibles pour la source de dégât — morts neutres sans type",
+			"err", err, "match_id", matchID)
+		return nil
+	}
+	res, err := killsource.Decode(context.Background(), matchID, src, nil)
+	if err != nil {
+		slog.Info("replaybuild: source de dégât non décodée — morts neutres sans type",
+			"err", err, "match_id", matchID)
+		return nil
+	}
+	// LA MÊME PORTE QUE POUR LES KILLS : ces lignes sont nommées par la bijection indice ->
+	// joueur. Sans marge (BTB) ou en alerte de santé, le décodage reste juste EN AGRÉGAT et
+	// faux ligne par ligne — et une ligne est précisément ce qu'on publierait ici.
+	if !res.LineByLinePublishable() && len(res.UnclaimedDeaths) > 0 {
+		slog.Info("replaybuild: attribution ligne par ligne refusée — morts neutres sans type",
+			"match_id", matchID, "candidates", len(res.UnclaimedDeaths))
+		return nil
+	}
+	adapter := halo.NewAssetURLAdapter()
+	out := make([]replay.NeutralDeath, 0, len(res.UnclaimedDeaths))
+	for _, d := range res.UnclaimedDeaths {
+		if d.VictimXUID == 0 {
+			// Le xuid est la SEULE clé de jointure avec les pistes. Sans lui, l'entrée ne
+			// rencontrerait aucune ligne — et un « 0 » sérialisé pourrait en rencontrer une
+			// qui ne lui appartient pas.
+			continue
+		}
+		kind, img, ok := adapter.NeutralDeathIcon(d.Source.Tag)
+		if !ok {
+			continue // nature non établie : le fil garde son repère neutre
+		}
+		out = append(out, replay.NeutralDeath{
+			XUID: strconv.FormatUint(d.VictimXUID, 10), FeedMs: d.TimeMS,
+			Kind: kind, Img: img, Tinted: true,
+		})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	slog.Info("replaybuild: morts sans revendication typées", "match_id", matchID,
+		"publiees", len(out), "orphelines", res.Stats.Unclaimed.Population)
+	return out
 }
 
 // structureFor charge (et met en cache) le fond structurel d'un module. Son absence n'est

@@ -1,3 +1,82 @@
+## [2026-08-14] v7.5 lot 7.1 — le fil dit DE QUOI on est mort quand personne n a tue
+
+**Statut** : Complete (gate visuel user en attente).
+
+**La mesure d abord, et elle contredit la crainte du guide**. La question posee etait :
+combien de morts neutres portent une nature exploitable ? Le GUIDE_KILLSOURCE prevenait
+que la population est rare (0 sur les quatre films de reference, 1 suicide sur le BTB, et
+sur le BTB « la population ne ferme pas » : 7 orphelines, 0 appariee, 0 publiee).
+Instrument versionne `killsource/neutral_death_research_test.go` (garde
+NEUTRAL_DEATH_FILMS, lecture seule, chemin PUBLIC `Decode`), quatre films :
+64e8adfa 2/2, e94163af 1/1, 606d9844 2/2, 000d5950 0/0 — soit **5 sur 5 publiees, 0
+inexpliquee**. Toutes portent un dead-state AUTO-INFLIGE (indice tueur == indice victime)
+a 0-4 ms de l evenement du feed. NATURES : 4 x `DEGAT_GLOBAL` (tag 00403594, que
+labels.tsv qualifie « chute, environnement ») et 1 x `ARME` « M41 SPNKr » (e94163af,
+JGtm a 00:55 : sa propre roquette). Le « 0 sur 4 films de reference » du guide reste vrai
+— ces quatre films-la n ont aucune mort orpheline non-bot — mais ce n etait pas un
+plafond, et il ne fallait pas le lire comme la couverture de la population.
+
+**Decision technique principale** : `killsource` PUBLIE cette population, dans une liste
+SEPAREE des kills (`Result.UnclaimedDeaths`, origine `sans-revendication`, denominateur
+`Stats.Unclaimed`). Separee et pas un `Kill` : un `Kill` porte deux verites dont l une est
+un CREDIT, et ici il n y a pas de credit a porter — l y ranger obligerait a inventer un
+tueur, ce que la doctrine du paquet interdit. Le temps 6 tourne APRES le temps 5, et l
+ordre n est pas cosmetique : une mort orpheline que le temps 5 explique par un TUEUR BOT
+a un tueur, elle sort en `Kill`. La garde de publication est la meme que partout — le
+couple contraint des deux cotes, ici les deux cotes etant le meme joueur : le dead-state
+doit nommer la victime ET porter le MEME indice en tueur, sinon rien n est publie. Un
+dead-state qui designerait un autre joueur decrirait un kill que le feed ne porte pas.
+
+**La chaine jusqu au fil**. L artefact publie `neutralDeaths` [{xuid, feedMs, kind, img,
+tinted}] (SchemaVersion 4 -> 5). Le type et son pictogramme sont resolus HORS LIGNE par la
+couche titre (`killicon.NeutralDeath` + `AssetURLAdapter.NeutralDeathIcon`) et composes
+par `replaybuild`, qui decode killsource et FOURNIT le resultat a `replay.Options` —
+`analysis/replay` ne redecode rien (deux decodeurs du meme fait divergeraient : c est deja
+la regle d Objectives et de killpos). L instant voyage sur l horloge DU FIL, pas sur l axe
+du rejeu : le client applique le MEME recalage qu au reste du fil (`feedMs − offsetMs`),
+chemin nominal par l origine publiee comme chemin de repli par appariement. Figer un
+instant deja recale dans l artefact aurait fige un decalage que le client sait mesurer
+autrement quand l origine n est pas etablie.
+
+**La table type -> icone a DEUX entrees, pas sept**, et c est la regle dure du lot :
+`DEGAT_GLOBAL` -> `environment` (killfeed-55), toute autre classe ETABLIE -> `suicide`
+(killfeed-61), classe INCONNU ou tag hors catalogue -> RIEN, la ligne garde son repere
+neutre. Les cinq autres pictogrammes extraits (splatter, fusion_coil, waterfall, ricochet,
+player_left) restent NON CABLES : aucune donnee mesuree ne descend a ce grain. Les brancher
+au jugement poserait l icone d une autre mort — meme faute que l icone d une autre arme,
+deja refusee au chantier killicon. Cote rendu, le pictogramme remplace l icone d arme sur
+la ligne, a l encre NEUTRE et non a une couleur d equipe : personne n a tue.
+
+**Resultats observes** : golden killsource rejoues sur les quatre films de reference,
+INCHANGES (398 s) — la population neuve ne deplace aucun chiffre publie. Go : replay,
+replaybuild, killicon, killsource, handlers, service, halo_infinite verts ; vet ./... OK ;
+golangci-lint `--new-from-merge-base=origin/main` 0 issue. Web : tsc -b (cache .tmp purge)
+OK, eslint 0 sur match-replay, vitest COMPLET 416 fichiers / 3736 tests verts (14 skips
+preexistants) — le garde-rail `replayContract.test.ts` a attrape le tableau nullable de
+plus, exactement ce pour quoi il existe. RE-CUISSON `backfill-replay --only-existing` :
+23/23 construits, 0 hors catalogue, 0 erreur, 30 min 56 s. Recolte sur les 23 artefacts :
+6 morts neutres typees sur 4 matchs (4 `environment`, 2 `suicide`), 0 xuid nul, 0 doublon.
+Le Strongholds `696a9d7c` en apporte une qui n etait PAS au corpus de mesure — la voie
+n est donc pas ajustee sur ses temoins.
+
+**Decouverte qui conditionne le gate** : le serveur local de :8000 servait un binaire
+ANTERIEUR au lot 7.2 (uptime 12 h 45 au controle), et un champ inconnu du binaire est
+SILENCIEUSEMENT laisse tomber a la serialisation. Verifie sur trois matchs : l artefact
+sur disque portait `originMs 39772` et une mort typee, l API rendait les deux absents tout
+en servant `schemaVersion 5` — le numero, lui, vient du JSON relu, donc il ne prouve rien
+sur le binaire. Le gate visuel du lot 7.2 n a donc pas pu se faire sur ce serveur non plus.
+Tout gate d un champ neuf doit verifier LE BINAIRE, pas seulement l artefact.
+
+**Cout assume, a connaitre avant le run de masse** : `replaybuild` fait desormais DEUX
+decodages du film (killsource puis l artefact), soit +3 a +15 s par film selon sa taille
+(~+15 % sur la passe). Deux acquisitions du verrou process filmdec, chacune serialisee de
+bout en bout — exactement ce que fait deja le cycle post-sync (arme du kill puis
+artefacts) ; les enchainer sous un seul verrou exigerait un mutex reentrant, que Go n a pas.
+
+**Conclusion / prochaine etape** : lot 7 clos cote code (7.1 et 7.2 [x]). Restent le gate
+visuel utilisateur sur les lignes de mort neutres (instructions au compte rendu) et le run
+de masse des artefacts, qui doit se faire APRES ce lot — un artefact v4 est a re-cuire.
+
 ## [2026-08-14] v7.5 lot 7.2 — le rejeu publie son origine, le fil se cale par soustraction
 
 **Statut** : Complete (gate visuel user en attente).

@@ -246,6 +246,30 @@ func (a *AssetURLAdapter) KillSourceIcon(sourceTag uint32) (canonical.KillSource
 	return out, true
 }
 
+// NeutralDeathIcon résout le pictogramme du TYPE d'une mort que PERSONNE ne revendique —
+// chute, hors-limites, ou sa propre source de dégât.
+//
+// POURQUOI PAS KillSourceIcon : celle-là répond « quelle arme », ce qui est la bonne question
+// sur une ligne de kill et la mauvaise sur une mort sans tueur. Y poser l'icône de l'arme
+// donnerait à lire un kill par roquette là où le joueur s'est tué tout seul — le jeu lui-même
+// affiche un pictogramme de suicide dans ce cas. Toute la décision vit dans `film/killicon`,
+// hors ligne et versionnée ; cet adapter ne fait que composer l'URL.
+//
+// Le premier retour est l'identifiant STABLE du type (jamais un libellé traduit) ; l'image est
+// toujours un masque à teindre, comme le reste de l'atlas kill feed. Second retour faux = la
+// nature du dégât n'est pas établie : l'appelant garde son repère neutre, JAMAIS l'icône d'une
+// autre mort.
+//
+// N'appeler QUE sur la population des morts sans revendication : sur un kill ordinaire, elle
+// rendrait « suicide » pour une mort parfaitement attribuée.
+func (a *AssetURLAdapter) NeutralDeathIcon(sourceTag uint32) (kind, imageURL string, ok bool) {
+	k, ic, ok := killicon.NeutralDeath(sourceTag)
+	if !ok || ic.Sprite == "" {
+		return "", "", false
+	}
+	return k, static.URL(static.KindWeapon, a.titleSlug, weaponIconDir+ic.Sprite, ".png"), true
+}
+
 // waypointMatchBaseURL est la base des pages de détail de match sur Waypoint.
 const waypointMatchBaseURL = "https://www.halowaypoint.com/halo-infinite"
 

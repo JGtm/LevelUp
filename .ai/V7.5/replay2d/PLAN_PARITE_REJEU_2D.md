@@ -470,7 +470,7 @@ des rejeux » (0 par defaut) ; 3) /admin/monitoring/crons : ligne replay_purge e
 > A executer APRES le lot 5, AVANT tout run de masse (le 7.2 change le contrat d'artefact :
 > generer 928 artefacts avant serait a re-cuire).
 
-- [ ] 7.1 MORTS NEUTRES : la ligne grise « mort » doit porter L'ICONE DU TYPE DE MORT, pas un
+- [x] 7.1 MORTS NEUTRES : la ligne grise « mort » doit porter L'ICONE DU TYPE DE MORT, pas un
       repere generique. Les icones EXISTENT deja, extraites et versionnees
       (`static/weapons-assets/halo_infinite/jeu/index.json`) : `suicide` (killfeed-61),
       `splatter` (60, ecrasement), `environment` (55), `fusion_coil` (27), `waterfall` (78),
@@ -482,6 +482,43 @@ des rejeux » (0 par defaut) ; 3) /admin/monitoring/crons : ligne replay_purge e
       MESURER d'abord la couverture des morts sans tueur par la nature (le guide note qu'elles
       sont RARES : 0 sur 4 films de reference, 1 suicide sur le BTB) — si la donnee manque sur
       la majorite, le dire et livrer ce qui est mesure.
+      FAIT (2026-08-14). LA MESURE D'ABORD, et elle contredit la crainte : la population est
+      RARE mais elle est COUVERTE A 100 %. Instrument versionne
+      `killsource/neutral_death_research_test.go` (garde NEUTRAL_DEATH_FILMS, lecture seule,
+      chemin PUBLIC `Decode`) sur 4 films : 64e8adfa 2/2 · e94163af 1/1 · 606d9844 2/2 ·
+      000d5950 0/0 — soit **5 morts sans revendication sur 5 publiees, 0 inexpliquee**, toutes
+      avec un dead-state AUTO-INFLIGE (indice tueur == indice victime) a 0-4 ms de l'evenement.
+      NATURES MESUREES : 4 x `DEGAT_GLOBAL` (tag 00403594, que labels.tsv qualifie « chute,
+      environnement ») et 1 x `ARME` « M41 SPNKr » (e94163af, JGtm 00:55 — sa propre roquette).
+      Le « 0 sur 4 films de reference » du guide reste vrai et n'etait pas un plafond : ces
+      quatre films-la n'ont simplement aucune mort orpheline non-bot.
+      CE QUE LE DECODEUR PUBLIE MAINTENANT : `killsource.Result.UnclaimedDeaths` — population
+      SEPAREE des kills (il n'y a pas de credit a porter, en inventer un serait un mensonge),
+      temps 6 apres le temps 5 (une orpheline expliquee par un TUEUR BOT a un tueur, elle sort
+      en Kill), garde de publication = dead-state qui nomme la victime ET porte le MEME indice
+      en tueur, plus la porte `LineByLinePublishable` commune. Origine `sans-revendication`,
+      denominateur `Stats.Unclaimed`. Golden killsource REJOUES sur les 4 films de reference :
+      inchanges (398 s).
+      LA CHAINE JUSQU'AU FIL : artefact `neutralDeaths` [{xuid, feedMs, kind, img, tinted}]
+      (SchemaVersion 4 -> 5) ; le type et son pictogramme sont resolus HORS LIGNE par la couche
+      titre (`killicon.NeutralDeath` + `AssetURLAdapter.NeutralDeathIcon`), compose par
+      `replaybuild` — qui decode killsource et fournit le resultat a `replay.Options`, jamais
+      un second decodeur du meme fait. Le client joint par (xuid, |dt| < KILL_MATCH_TOL_MS)
+      apres le MEME recalage que le reste du fil (`feedMs − offsetMs`, chemin nominal ET repli).
+      LA TABLE TYPE -> ICONE A **DEUX** ENTREES, PAS SEPT, et c'est la regle dure appliquee :
+      `DEGAT_GLOBAL` -> `environment` (killfeed-55), toute autre classe ETABLIE -> `suicide`
+      (killfeed-61), classe INCONNU ou tag hors catalogue -> RIEN (le repere neutre actuel).
+      Les cinq autres pictogrammes extraits (splatter, fusion_coil, waterfall, ricochet,
+      player_left) restent NON CABLES : aucune donnee mesuree ne descend a ce grain, les
+      brancher au jugement poserait l'icone d'une autre mort — meme faute que l'icone d'une
+      autre arme, deja refusee au chantier killicon. Garde-rails : les PNG doivent exister
+      (TestNeutralVignettesExistentSurDisque), les deux temoins reels sont cites par leur tag,
+      et les 206 entrees de classe INCONNU du catalogue sont refusees une par une.
+      COUT ASSUME, a connaitre avant le run de masse : `replaybuild` fait desormais DEUX
+      decodages du film (killsource puis l'artefact) — +3 a +15 s par film selon sa taille,
+      soit ~+15 % sur la passe. Deux acquisitions du verrou process filmdec, chacune serialisee
+      de bout en bout : exactement ce que fait deja le cycle post-sync (arme du kill puis
+      artefacts). Les enchainer sous un seul verrou exigerait un mutex reentrant, que Go n'a pas.
 > ✅ MESURE DU SUPERVISEUR, 2026-08-14 (CORRIGEE — la 1re version de ce bloc etait FAUSSE, cf.
 > l'avertissement en fin de bloc). L'utilisateur affirme que le T0 « est absolu et fourni par
 > l'API, jamais douteux ni absent ». LA MESURE LUI DONNE RAISON :
@@ -561,6 +598,36 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
 
 ## Decouvertes
 
+- (lot 7.1, 2026-08-14) **LE SERVEUR LOCAL DE :8000 SERVAIT UN BINAIRE ANTERIEUR AU LOT 7.2**
+  (uptime 12 h 45 au moment du controle, donc demarre avant le commit `0d5e9ffd5`), et un
+  champ que le binaire ne connait pas est SILENCIEUSEMENT LAISSE TOMBER a la serialisation :
+  l'artefact sur disque portait `originMs 39772` et une mort typee, l'API rendait les DEUX
+  absents en servant pourtant `schemaVersion 5` (le numero, lui, vient du JSON relu). Mesure
+  sur pieces, trois matchs. CONSEQUENCE : le gate visuel du lot 7.2 n'a PAS PU etre fait sur
+  ce serveur non plus, et tout gate visuel de champ neuf exige de VERIFIER LE BINAIRE, pas
+  seulement l'artefact. Controle en une commande :
+  `curl -s http://localhost:8000/api/v1/players/<GT>/matches/<uuid>/replay` — si
+  `neutralDeaths` et `originMs` manquent alors que le fichier
+  `data/cache/replays/halo_infinite/<short8>.json` les porte, le binaire est perime.
+- (lot 7.1, 2026-08-14) LA POPULATION DES MORTS SANS TUEUR EST RARE MAIS **COMPLETE** : 5 sur 5
+  publiees sur quatre films, 0 inexpliquee, ecart au feed de 0 a 4 ms. Le « 0 sur 4 films de
+  reference » du GUIDE_KILLSOURCE etait une mesure JUSTE sur ces quatre films-la (ils n'ont
+  aucune orpheline non-bot) et n'a jamais ete un plafond de couverture — le lire ainsi aurait
+  fait renoncer a une donnee entiere. Le guide gagne une section 6quater et un avertissement
+  sur la ligne devenue perimee (« 0 publiee »).
+- (lot 7.1, 2026-08-14) LES CINQ AUTRES PICTOGRAMMES DE MORT EXTRAITS (splatter, fusion_coil,
+  waterfall, ricochet, player_left) NE SONT ATTEIGNABLES PAR AUCUNE DONNEE mesuree aujourd'hui :
+  la nature du degat ne descend pas a ce grain (elle dit ARME / MELEE / GRENADE / VEHICULE /
+  OBJET_EXPLOSIF / DEGAT_GLOBAL, pas « ecrase par un vehicule » ni « bidon a fusion »). Ils
+  restent extraits et versionnes, non cables. Piste si le besoin revient : la classe VEHICULE
+  pourrait porter `splatter`, mais elle couvre AUSSI l'armement du chassis — il faudrait
+  d'abord distinguer collision et tir, ce que `Category` ne fait pas (CollisionDamage existe
+  mais n'a jamais ete observe sur cette population).
+- (lot 7.1, 2026-08-14) `replaybuild` fait desormais DEUX decodages complets du meme film
+  (killsource puis l'artefact), +3 a +15 s par film. Les enchainer sous UN seul verrou process
+  filmdec est impossible sans mutex reentrant (Go n'en a pas, et `BuildFromFilm` prend le verrou
+  a l'interieur) : les deux acquisitions successives sont le meme regime que le cycle post-sync,
+  et chacune serialise un film de bout en bout.
 - (lot 7.2, 2026-08-14) L'HORODATAGE DE PAQUET N'EST PAS RELATIF AU FILM : c'est une horloge
   moteur depuis le demarrage du jeu (2 259 s a 8 583 s sur les temoins). Tout raisonnement
   qui traiterait `FilmPacket.TimestampUS` comme un temps de match est faux ; le zero du film
@@ -662,8 +729,26 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   second est a 1 200 ms : il n'avait jamais tourne. Corrige (saut a 1 500 ms) et complete
   par le cas symetrique (un saut JUSTE sous le seuil reste une lecture continue).
 
+Gate 7 : go test cibles + vet + golangci-lint (commande du job CI) ; web typecheck purge +
+eslint + vitest complet ; golden killsource rejoues sur les 4 films de reference ; re-cuisson
+des artefacts existants apres le bump de schema.
+PASSE (2026-08-14) : golden killsource INCHANGES sur les 4 films de reference (398 s, fixtures
+`data/cache/film_chunks`) ; go test replay + replaybuild + killicon + killsource + handlers +
+service + halo_infinite verts ; `go vet ./...` OK ; `golangci-lint run
+--new-from-merge-base=origin/main` 0 issue. Web : tsc -b avec cache `.tmp` purge OK, eslint 0
+sur match-replay, vitest COMPLET 416 fichiers / 3736 tests verts (14 skips preexistants).
+openapi-gen + generate-types dans le meme lot de commit (25 lignes de contrat, 9 lignes de
+types). RE-CUISSON `backfill-replay --only-existing` : **23/23 construits, 0 hors catalogue,
+0 erreur de decodage, 30 min 56 s** — les 23 portent `schemaVersion 5`. RECOLTE SUR LES 23 :
+**6 morts neutres typees sur 4 matchs** (4 `environment`, 2 `suicide`), 0 xuid nul, 0 doublon.
+Le match 696a9d7c (Strongholds Vagabond) en apporte une qui n'etait PAS au corpus de mesure —
+la voie n'est donc pas ajustee sur ses temoins. La verification VISUELLE est remise au user
+(instructions au compte rendu — la session ne juge pas l'aspect).
+
 ## Reprise
 
 Avancement = statuts de ce fichier + git log feat/v75. Ordre des lots : 1 → 2 → 3 → 4 → 6,
 le 5 des reception des sons. Gates visuels/d'ecoute = utilisateur, en une passe par lot.
 Lot 5 CLOS cote code le 2026-08-14 (5.1/5.2/5.3 [x]) : il ne reste que le gate d'ecoute.
+Lot 7 CLOS cote code le 2026-08-14 (7.1/7.2 [x]) : restent le gate visuel et le RUN DE MASSE
+des artefacts, qui doit se faire APRES ce lot (le schema est monte a 5, un v4 est a re-cuire).

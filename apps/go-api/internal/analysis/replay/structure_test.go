@@ -108,8 +108,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'horloge du fil des éliminations. Champ omitempty, même raison de monter : c'est la
 	//   CLÉ DE REPRISE du backfill, et sans lui le client ne peut caler le fil que par
 	//   appariement statistique — un v3 doit se lire « à re-cuire », pas « à jour ».
-	if SchemaVersion != 4 {
-		t.Fatalf("SchemaVersion = %d, attendu 4 : incrémenter exige une raison écrite ci-dessus "+
+	//   v4 -> v5 (2026-08-14, plan parité lot 7.1) : neutralDeaths, le TYPE des morts que
+	//   personne ne revendique (chute / hors-limites, ou sa propre source de dégât). Champ
+	//   omitempty, même raison de monter : c'est la CLÉ DE REPRISE du backfill, et sans lui
+	//   le fil ne peut poser sur ces lignes qu'un repère générique — un v4 doit se lire
+	//   « à re-cuire », pas « à jour ».
+	if SchemaVersion != 5 {
+		t.Fatalf("SchemaVersion = %d, attendu 5 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
