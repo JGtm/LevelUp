@@ -117,24 +117,87 @@ fausseté. L'etape 2 statue sur la regle rang -> nom avec ces chiffres en main.
 > rang 9 ici, rang 15 ailleurs). Et : « determiner quel `sofd` s'applique a un film donne est
 > la question ouverte qui reste ». Sans cette reponse, un rang ne se traduit pas en nom.
 
-- [ ] 2.1 Recenser les `sofd` connus et leurs tables de rangs (les 12 du `glpa` sont deja
-      mesures) ; identifier la « famille A » (d91958af / 03137359 / 13c097ed), dont le §13
-      dit que le prefixe des rangs 0 a 9 est RIGOUREUSEMENT IDENTIQUE et que c'est la seule
-      famille compatible avec un jeu de capacites de joueur.
-- [ ] 2.2 Chercher dans le FILM de quoi choisir : le `sofd` employe est designe a l'execution
-      (composant a `unite+0x268` d'apres la recette). Est-ce que quelque chose de cette
-      designation est SERIALISE dans le film (un identifiant, un index, un hash) ? C'est la
-      question decisive, et elle se pose en lecture de code avant toute mesure.
-- [ ] 2.3 REPLI MESURE, si 2.2 echoue : la famille A a un prefixe identique sur les rangs
-      0 a 9. Si TOUS les films du corpus n'exposent que des rangs < 10, alors la table de la
-      famille A suffit — et ce n'est plus une hypothese mais une mesure a publier (rangs
-      observes, par film, avec leur frequence). Le rang 7 vu sur deux films BTB Fiesta le
-      14/08 devient alors un cas a instruire, pas une anomalie.
-- [ ] 2.4 Trancher et ECRIRE : soit la palette se determine (2.2), soit elle est presumee
-      famille A avec sa preuve de couverture (2.3), soit on ne nomme pas et on l'assume.
+- [~] 2.1 Recenser les `sofd` connus et leurs tables de rangs. **COUVERT PAR 2.2, ET DEPASSE** :
+      il n'a pas fallu recenser les palettes du binaire, le FILM porte le rang. Le recensement
+      utile est desormais celui des rangs REELLEMENT observes par film (ci-dessous).
+- [x] 2.2 Chercher dans le FILM de quoi choisir. **TROUVE, EN LECTURE DE CODE, ET C'ETAIT DEJA
+      DANS LE DEPOT** : `consumeBipedDesiredAbilitySet` (`components_biped_ability.go`, i48)
+      reproduit `FUN_1406d0ff0` — `R(3)` compteur de rotation, `R(1)` porte, et **si la porte
+      vaut 0, `R(6)` = le RANG DE PALETTE**. Le deserialiseur de production consomme ces
+      6 bits pour rester aligne et les JETTE ; la sonde `SetAbilitySetHook` ne publiait que le
+      R(3) et la largeur. **L'identite passait sous le nez du chantier depuis le debut.**
+      → instrument versionne `internal/analysis/filmdec/i48_rank_test.go`, garde `I48_FILM`.
+- [x] 2.3 REPLI MESURE — devenu MESURE PRINCIPALE : rangs observes par film (8 films).
+      **La famille A n'est PAS universelle et le repli aurait ete FAUX** : trois films
+      n'exposent QUE les rangs 19 a 22.
+- [x] 2.4 Trancher et ECRIRE. → **LA PALETTE SE DETERMINE PAR LE FILM** (voie 2.2). La regle
+      est ecrite au journal ci-dessous. La table de production reste celle de l'etape 1 : le
+      nommage par rang exige un lecteur `i48` de production, qui n'existe pas encore — et
+      nommer sans lui serait deviner.
 
-Gate 2 : la regle de resolution rang -> nom est ecrite et justifiee par des chiffres ; les
-capacites hors famille A (le cas 51e60c5a) sont soit exclues soit traitees, jamais devinees.
+Gate 2 : **PASSE**. La regle rang -> nom est ecrite et chiffree ; les films hors famille A
+sont IDENTIFIES par la mesure au lieu d'etre presumes ; aucune capacite n'est devinee.
+
+### Journal de l'etape 2 (2026-08-14) — le canal que personne n'avait lu
+
+**LA MESURE** (un film par processus, 3 a 57 s, pic memoire ≤ 54 Mo) :
+
+    film        records delta   masque ∋ i48   lus   rangs i48 transmis
+    000d5950       171 851        92 (0,05 %)   92   19:18 20:22 21:26 22:16
+    00502e52       182 876        82 (0,04 %)   82   19:22 20:17 21:8  22:18
+    07aa428d       165 198        56 (0,03 %)   56   19:11 20:10 21:13 22:8
+    00ba2e1c       240 645       206 (0,09 %)  206   1:31 2:25 4:34 5:20 6:36 10:21 23:35
+    06dfe6d9       336 212       230 (0,07 %)  230   1:19 2:25 4:35 5:22 6:38 8:2 9:2
+                                                     10:34 11:3 12:4 23:35
+    084a804d       330 981       143 (0,04 %)  143   1:13 4:48 5:11 6:18 8:10 9:8 10:2
+                                                     19:4 23:15 44:1
+    00162144       141 051        39 (0,03 %)   39   2:14 4:9 9:2 10:10
+    0014603f       118 054         0            —    (i48 jamais au masque)
+
+**`i48` est lu a 100 % quand le masque l'annonce** — 0 illisible sur 748 lectures cumulees.
+Ce n'est PAS le probleme de traversee d'`i56` : le composant est simplement rare (il est
+transmis a peu pres une fois par vie, ce qui est exactement ce qu'il faut pour une fiche).
+
+**CE QUE CELA ETABLIT — quatre resultats, dont deux renversent une conclusion ecrite.**
+
+1. **Le champ d'image-cle est un rang de palette TRONQUE, et le 14/08 s'est trompe en
+   classant `large6` « arithmetiquement trivial ».** Il l'etait comme calcul, il ne l'etait
+   pas comme resultat : `large6 = 16 + prod3` rend {19,20,21,22} sur 000d5950, et `i48` —
+   canal totalement independant, position derivee du decompile, lu par le deserialiseur de
+   production — rend **exactement {19,20,21,22} sur le meme film**. Deux chaines
+   independantes sur les memes valeurs : le rang est bien 19-22, pas 3-6.
+2. **Le lecteur d'image-cle est STRUCTURELLEMENT AVEUGLE a 3/4 de la palette.** Les trois
+   derniers bits du « motif 20 bits » d'ancrage ne sont pas une signature de structure : ce
+   sont les **bits de poids fort du rang**, valeur fixe `010`. L'ancre ne peut donc matcher
+   que les rangs **16 a 23**, et elle rend `rang - 16`. Trois consequences, toutes verifiees :
+   les valeurs observees ne sortent jamais de 3-7 (rangs 19-23) ; les films « qui ne rendent
+   AUCUNE lecture » (8 sur 14 le 14/08, 21 sur 40 ce jour) sont ceux dont aucun joueur ne
+   porte un rang 16-23 — **PREDICTION VERIFIEE sur `00162144`, dont les rangs `i48` sont
+   2, 4, 9, 10, tous hors plage** ; et les films « ou les 8 joueurs portent le meme
+   equipement » sont un ARTEFACT — seuls les porteurs du rang 23 y sont visibles.
+3. **La palette n'est pas la meme d'un film a l'autre, et c'est mesure, plus suppose.**
+   `00ba2e1c`, `06dfe6d9`, `00162144`, `084a804d` exposent la signature de la **famille A**
+   (1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23 — la table du §13 de la recette, au rang pres) ;
+   `000d5950`, `00502e52`, `07aa428d` n'exposent **que 19 a 22** et aucun rang < 13. Le repli
+   « on presume la famille A » de l'item 2.3 aurait donc produit des noms faux sur ces
+   trois films.
+4. **Les trois capacites que l'utilisateur veut a l'ecran EXISTENT dans le corpus, et sont
+   mesurees** : camouflage (rang 8) 10 lectures sur `084a804d` et 2 sur `06dfe6d9` ;
+   surbouclier (rang 9) 8 et 2 ; translocateur quantique (rang 11) 3 sur `06dfe6d9`. Le
+   canal d'image-cle ne les verra JAMAIS (rangs hors 16-23) — le canal `i48`, lui, les voit.
+
+**LA REGLE RANG -> NOM, ecrite comme le demande le gate 2** :
+
+> Un nom ne se pose que si DEUX conditions tiennent ensemble : (a) la palette du film est
+> identifiee — par la signature de ses rangs `i48`, pas par presomption ; (b) le rang porte
+> un nom issu d'une source a controle de groupe (relevé terrain sur au moins deux porteurs)
+> ou a double chaine (murmur3 + banque sonore, cf. §13). A defaut, le rang s'affiche comme
+> rang. La table `replay_labels.toml` reste donc a deux entrees : elle est indexee par le
+> champ d'image-cle TRONQUE, qui ne peut pas porter une palette a lui seul.
+
+**CE QUE CELA COUTE DE NE PAS ALLER PLUS LOIN MAINTENANT, et c'est chiffre** : nommer 3, 6
+et 7 demande un LECTEUR `i48` DE PRODUCTION (rang complet par vie, palette determinee par
+film), pas une ligne de TOML. Hors perimetre de cette etape ; propose au registre.
 
 ## Etape 3 — ATTEINDRE `i57` : comprendre l'echec du saut
 

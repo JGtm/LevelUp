@@ -64933,3 +64933,28 @@ seuls a porter deux confirmations independantes (triplets + palette), gardent le
 et chercher en LECTURE DE CODE si la designation du `sofd` du match est serialisee dans le
 film. Ligne au REGISTRE_REPORTS : un second releve Theater sur un film autre que `000d5950`
 restaure les deux noms d'un coup (films riches : `00502e52`, `07aa428d`, `0762ae7c`).
+
+## [2026-08-14] Equipement actif — etape 2 : le rang de palette etait dans le film, jete par le deserialiseur
+**Statut** : Complété (etape 2 du `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
+**Decision technique** : chercher la designation de palette en LECTURE DE CODE avant toute
+mesure, comme le plan l'imposait. Trouvee dans le depot meme : `consumeBipedDesiredAbilitySet`
+(i48) reproduit `FUN_1406d0ff0` et consomme `R(6)` = le rang de palette pour rester aligne,
+puis le jette. Instrument versionne `internal/analysis/filmdec/i48_rank_test.go` (garde
+`I48_FILM`) pour le publier.
+**Resultats** : 748 lectures sur 8 films, **zero illisible** (i48 n'a pas le probleme de
+traversee d'i56 ; il est seulement rare, ~une transmission par vie). QUATRE resultats, dont
+deux renversent une conclusion ecrite. (1) Sur `000d5950`, i48 rend {19,20,21,22} — exactement
+ce que `large6` rendait le 14/08 par un chemin totalement independant : le champ d'image-cle
+est un rang TRONQUE, et le verdict « large6 arithmetiquement trivial » etait vrai comme calcul,
+faux comme resultat. (2) Les trois derniers bits du « motif d'ancrage » sont les bits de poids
+FORT du rang (valeur `010`) : le lecteur d'image-cle ne peut matcher que les rangs 16-23. Cela
+explique enfin les 21 films sur 40 qui ne rendent aucune lecture (verifie sur `00162144`, rangs
+2/4/9/10 hors plage) et les films « ou les 8 joueurs portent le meme equipement » (artefact :
+seuls les porteurs du rang 23 sont visibles). (3) La palette varie par film, mesure et non plus
+presume : signature famille A sur 4 films, rangs 19-22 exclusivement sur 3 autres — le repli
+« on presume la famille A » aurait produit des noms FAUX. (4) Les trois capacites demandees a
+l'ecran sont OBSERVEES : camouflage (8) 10+2 lectures, surbouclier (9) 8+2, translocateur (11) 3.
+**Conclusion / prochaine etape** : regle rang -> nom ecrite au plan (palette identifiee ET nom
+a controle de groupe ou double chaine, sinon le rang s'affiche). La table de production reste a
+deux entrees : nommer 3, 6 et 7 exige un lecteur `i48` de PRODUCTION — ligne au
+REGISTRE_REPORTS, avec son perimetre. Etape 3 : l'echec du saut vers i56/i57.
