@@ -39,6 +39,12 @@ interface ReplayText {
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
   killFeedDeathHint: string
+  /**
+   * Le TYPE de la mort neutre, quand le film l'établit. Clés = les identifiants stables
+   * publiés par le document (`kind`) — un type inconnu n'a pas de libellé et n'affiche
+   * aucune icône, la ligne garde son repère neutre.
+   */
+  killFeedDeathKind: Record<'environment' | 'suicide', string>
   /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
   sound: string
   soundHint: string
@@ -118,6 +124,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedDeathLabel: 'mort',
     killFeedDeathHint:
       'Mort sans tueur crédité (suicide, chute ou sortie), lue dans les trajectoires du film.',
+    killFeedDeathKind: {
+      environment: 'Chute ou sortie de zone',
+      suicide: 'Tué par sa propre arme',
+    },
     sound: 'Son',
     soundHint:
       "Sons d'armes sur les éliminations et les lancers de grenade, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
@@ -192,6 +202,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedDeathLabel: 'died',
     killFeedDeathHint:
       'Death with no credited killer (suicide, fall or leaving), read from the film trails.',
+    killFeedDeathKind: {
+      environment: 'Fall or out of bounds',
+      suicide: 'Killed by their own weapon',
+    },
     sound: 'Sound',
     soundHint:
       'Weapon sounds on kills and grenade throws, cut at one second. A weapon with no recorded sound stays silent. Off by default.',

@@ -53,6 +53,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenades'
   | 'inventory'
   | 'loadouts'
+  | 'neutralDeaths'
   | 'objectives'
   | 'projectiles'
   | 'roster'
@@ -65,6 +66,7 @@ export type ReplayDocumentReady = Omit<
   grenades: NonNullable<ReplayDocument['grenades']>
   inventory: ReplayInventoryReady[]
   loadouts: ReplayLoadoutReady[]
+  neutralDeaths: NonNullable<ReplayDocument['neutralDeaths']>
   objectives: NonNullable<ReplayDocument['objectives']>
   projectiles: ReplayProjectileReady[]
   roster: NonNullable<ReplayDocument['roster']>
@@ -88,6 +90,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     grenades: raw.grenades ?? [],
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
     loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
+    // Le TYPE des morts que personne ne revendique (chute, hors-limites, sa propre arme) :
+    // le fil déduit ces lignes de ses pistes, cette table dit seulement DE QUOI le joueur
+    // est mort. Absente = aucune n'est établie, le fil garde son repère neutre.
+    neutralDeaths: raw.neutralDeaths ?? [],
     // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;
     // il nourrit les PULSES du canvas (objectivesLayer.buildObjectivePulses, lot 4.4).
     objectives: raw.objectives ?? [],

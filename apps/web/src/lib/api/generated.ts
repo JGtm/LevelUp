@@ -7934,6 +7934,14 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        NeutralDeath: {
+            /** Format: int64 */
+            feedMs: number;
+            img?: string;
+            kind: string;
+            tinted?: boolean;
+            xuid: string;
+        };
         NormalizedPlayerStats: {
             /** Format: double */
             accuracy: number;
@@ -8837,6 +8845,7 @@ export interface components {
             loadouts?: components["schemas"]["Loadout"][] | null;
             mapObjectives?: components["schemas"]["MapObjectives"];
             matchId: string;
+            neutralDeaths?: components["schemas"]["NeutralDeath"][] | null;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
             /** Format: int64 */
             originMs?: number;

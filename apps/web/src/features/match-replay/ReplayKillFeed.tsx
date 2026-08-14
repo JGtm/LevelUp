@@ -14,8 +14,11 @@
  *  - MÉDAILLE SEULE : une médaille sans kill du même acteur à ±500 ms fait sa propre
  *    ligne plutôt que d'être forcée sur un mauvais kill.
  *  - MORT NEUTRE : une fin de vie qu'aucun kill ne revendique (suicide, chute, sortie)
- *    fait une ligne SANS tueur ni arme — repère neutre, comme le jeu affiche un suicide
- *    (décision produit 2026-08-13). Elle vient des pistes déjà servies, côté client.
+ *    fait une ligne SANS tueur ni arme — comme le jeu affiche un suicide (décision produit
+ *    2026-08-13). Elle vient des pistes déjà servies, côté client ; le TYPE de la mort
+ *    (chute / sortie de zone, ou sa propre arme) vient du document quand le film l'établit,
+ *    et donne son PICTOGRAMME à la ligne. Type non établi = repère neutre, jamais l'icône
+ *    d'une autre mort.
  *
  * CE QU'IL RÉUTILISE : `collectKillEvents`/`collectMedalEvents` (lecture des highlight
  * events), `teamColorResolver` (cascade de couleur d'identité du scoreboard),
@@ -55,6 +58,13 @@ const ICON_W = 22
 const ICON_H = 9
 /** Diamètre du repère servi quand l'arme est inconnue — jamais l'icône d'une autre arme. */
 const DOT_PX = 7
+/**
+ * Côté du pictogramme de TYPE DE MORT. Il ne suit PAS le gabarit bandeau des armes : les
+ * pictogrammes du jeu sont quasi carrés (44×42 pour la chute, 32×40 pour le suicide, mesuré
+ * à l'extraction) là où une arme fait ~108×36. Les mettre dans le bandeau les réduirait à la
+ * hauteur d'une lettre — `contain` ajuste sur la plus petite dimension.
+ */
+const DEATH_ICON_PX = 12
 /** Côté d'un badge de médaille, en px (POC : 15 px pour un raster de 45 px). */
 const MEDAL_PX = 15
 /** Seuil sous lequel le lecteur est considéré « en tête de fil » (POC : 4 px). */
@@ -143,6 +153,16 @@ export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xu
   )
 }
 
+/**
+ * deathKindLabel traduit l'identifiant STABLE du type de mort publié par le document. Un
+ * identifiant que le produit ne connaît pas rend une chaîne vide — jamais l'identifiant brut
+ * ni le libellé d'un type voisin : le document peut publier demain un type que cette version
+ * du front n'a pas.
+ */
+function deathKindLabel(kind: string, t: (typeof REPLAY_TEXT)['fr']): string {
+  return kind === 'environment' || kind === 'suicide' ? t.killFeedDeathKind[kind] : ''
+}
+
 /** allyOf : le camp d'un joueur, lu du scoreboard indexé ; repli fourni par l'appelant. */
 function allyOf(xuidMeta: XuidMeta, xuid: string, fallback: boolean): boolean {
   return xuidMeta.get(xuid)?.ally ?? fallback
@@ -206,10 +226,19 @@ function FeedLine({
 }
 
 /**
- * DeathLine — une mort SANS tueur crédité (suicide, chute, sortie) : repère neutre, le
- * défunt à la couleur de SON équipe, le mot « mort », l'horodatage — ni arme ni tueur,
- * comme le jeu affiche un suicide. L'instant est la fin de vie de la piste : le MÊME que
- * le flash de la fiche.
+ * DeathLine — une mort SANS tueur crédité (suicide, chute, sortie) : le défunt à la
+ * couleur de SON équipe, le mot « mort », l'horodatage — ni arme ni tueur. L'instant est
+ * la fin de vie de la piste : le MÊME que le flash de la fiche.
+ *
+ * À LA PLACE DE L'ARME, LE PICTOGRAMME DU **TYPE** DE MORT quand le film l'établit (chute
+ * ou sortie de zone / tué par sa propre arme). Ce n'est pas l'icône d'une arme : sur une
+ * ligne sans tueur, montrer une arme donnerait à lire un kill. Le jeu fait la même
+ * distinction — son propre fil affiche un pictogramme de suicide.
+ *
+ * TEINTE : la MÊME technique que les icônes d'arme du fil (`WeaponIcon`, masque + couleur
+ * portée par le parent), à l'encre NEUTRE du repère — personne n'a tué, aucune couleur
+ * d'équipe n'a de sens ici. Un type non établi garde le repère rond, JAMAIS l'icône d'une
+ * autre mort.
  */
 function DeathLine({
   death,
@@ -227,25 +256,39 @@ function DeathLine({
   t: (typeof REPLAY_TEXT)['fr']
 }) {
   const color = colorOf(teamIDByXuid.get(death.xuid) ?? null, allyOf(xuidMeta, death.xuid, true))
+  const kindLabel = deathKindLabel(death.kind, t)
   return (
     <li
       className="flex flex-col rounded-sm py-0.5 pl-2 text-xs"
       style={{ borderLeft: `3px solid ${tokenCssVar('divergent-neutral')}` }}
-      title={t.killFeedDeathHint}
+      title={kindLabel ? `${kindLabel} — ${t.killFeedDeathHint}` : t.killFeedDeathHint}
     >
       <div className="flex items-center gap-2">
-        {/* Le repère NEUTRE à la place de l'arme : il n'y a pas de source de dégât à montrer. */}
-        <span
-          aria-hidden
-          className="rounded-full"
-          style={{
-            width: DOT_PX,
-            height: DOT_PX,
-            backgroundColor: tokenCssVar('divergent-neutral'),
-            opacity: 0.7,
-            flex: 'none',
-          }}
-        />
+        {death.img ? (
+          /* LE TYPE DE MORT, à l'encre neutre : personne n'a tué, aucune couleur d'équipe
+             n'a de sens sur cette ligne. */
+          <WeaponIcon
+            imageUrl={death.img}
+            tinted={death.tinted}
+            label={kindLabel || t.killFeedDeathLabel}
+            width={DEATH_ICON_PX}
+            height={DEATH_ICON_PX}
+            style={{ color: tokenCssVar('divergent-neutral'), flex: 'none' }}
+          />
+        ) : (
+          /* Repère NEUTRE : le type de mort n'est pas établi, on ne montre rien d'autre. */
+          <span
+            aria-hidden
+            className="rounded-full"
+            style={{
+              width: DOT_PX,
+              height: DOT_PX,
+              backgroundColor: tokenCssVar('divergent-neutral'),
+              opacity: 0.7,
+              flex: 'none',
+            }}
+          />
+        )}
         <span className="truncate font-medium" style={{ color }}>
           {displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)}
         </span>
