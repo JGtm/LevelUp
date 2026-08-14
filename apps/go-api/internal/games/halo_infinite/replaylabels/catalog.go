@@ -51,7 +51,7 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 		weaponNames(names.Names()),
 		labels.ShotEffects(),
 		toLabels(titleSlug, labels.GrenadeRanks()),
-		abilitiesByIndex(titleSlug, labels.Abilities()),
+		abilityPalettes(titleSlug, labels.AbilityPalettes()),
 	)
 	cat.Icons = weaponIcons(weapons.FilmshellWeaponKeysByFamily())
 	return cat, nil
@@ -102,13 +102,20 @@ func toLabels(slug string, in []mappings.BilingualLabel) []replay.Label {
 	return out
 }
 
-func abilitiesByIndex(slug string, in map[int]mappings.BilingualLabel) map[int]replay.Label {
+// abilityPalettes convertit les palettes du loader vers le DTO d'artefact. Les MARQUEURS
+// voyagent avec les noms : c'est l'assemblage (replay/abilities.go) qui classe le film, et
+// il ne peut pas classer sans eux.
+func abilityPalettes(slug string, in []mappings.AbilityPalette) []replay.AbilityPalette {
 	if len(in) == 0 {
 		return nil
 	}
-	out := make(map[int]replay.Label, len(in))
-	for idx, l := range in {
-		out[idx] = toLabel(slug, l)
+	out := make([]replay.AbilityPalette, 0, len(in))
+	for _, p := range in {
+		ranks := make(map[int]replay.Label, len(p.Ranks))
+		for rank, l := range p.Ranks {
+			ranks[rank] = toLabel(slug, l)
+		}
+		out = append(out, replay.AbilityPalette{ID: p.ID, Markers: p.Markers, Ranks: ranks})
 	}
 	return out
 }

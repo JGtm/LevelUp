@@ -67,60 +67,139 @@ sont VERIFIES a l'etape 2 (classement de palette), qui les mesure film par film.
 > sur `000d5950`, `00502e52`, `07aa428d`. Presumer la famille A donnerait des noms FAUX sur
 > ces trois films.
 
-- [ ] 2.1 Chercher d'abord une DESIGNATION dans le film (lecture de code, pas de calcul) : le
-      §13 dit que le `sofd` est choisi a l'execution par un composant a `unite+0x268`. Quelque
-      chose de ce choix est-il serialise ? C'est la reponse propre, et elle se cherche avant
-      toute heuristique.
-- [ ] 2.2 A defaut, IDENTIFIER LA PALETTE PAR SA SIGNATURE : l'ensemble des rangs observes
-      dans un film le classe (famille A contient 1,2,4,5,6,8-12,23 ; l'autre groupe n'expose
-      que 19-22). Regle a ECRIRE avec ses chiffres, et surtout : **une signature ambigue ou
-      inconnue ne nomme RIEN** — le rang s'affiche seul, comme aujourd'hui.
-- [ ] 2.3 Table indexee par **(palette, rang)**, en DONNEE (TOML du titre, jamais en dur), et
-      non plus par rang seul. La table actuelle (`replay_labels.toml [abilities]`) devient un
-      cas particulier : la palette famille A. Les entrees `4`/`5` conservees a l'etape 1 du
-      lot precedent doivent etre RELUES a cette lumiere — elles etaient indexees par l'index
-      TRONQUE, pas par le rang.
+- [x] 2.1 Chercher d'abord une DESIGNATION dans le film. → **NEGATIF, et mesure.** Trois
+      sondages, tous en lecture : (a) le registre du `chunk_00` est bit-a-bit identique d'un
+      film a l'autre pour les noms et flags de composants (fait deja etabli, `registry.go`) ;
+      (b) sa LONGUEUR ne suit pas les familles — 1 973 120 octets aussi bien sur `00162144`
+      (famille A) que sur les trois films de la famille B, 1 944 9xx sur les trois autres
+      films de famille A ; (c) aucun marqueur de groupe de tags (`sofd`, `sofa`, `eqip`,
+      `vcdd`, `uwfa`, `glpa`) n'apparait dans `chunk_00` ni dans `chunk_01` (seul « weap »
+      sort, 19 fois, et ce sont les etiquettes `weapon-state-type-info`). Le choix du `sofd`
+      n'est pas serialise : on passe a 2.2, et le NEGATIF est ecrit dans le TOML.
+- [x] 2.2 IDENTIFIER LA PALETTE PAR SA SIGNATURE. → Regle ecrite dans `replay/abilities.go`
+      (`classifyAbilityPalette`) avec ses chiffres : une palette est retenue quand **au moins
+      90 % des lectures portent ses marqueurs**, et jamais en dessous de **10 lectures**. Le
+      minimum est DERIVE du seuil (plus petit n tel qu'une lecture parasite ne disqualifie pas
+      un film pur : (n−1)/n >= 0,90), pas choisi a part. **Le seuil n'est pas un reglage
+      sensible** : six films sur sept sont purs a 100 %, le septieme a 96,2 % — tout seuil de
+      50 % a 96 % rend le meme verdict, et un test le verifie. Une signature melangee, trop
+      maigre ou inconnue ne nomme RIEN.
+- [x] 2.3 Table indexee par **(palette, rang)**, en DONNEE. → `replay_labels.toml` :
+      `[abilities]` devient `[[ability_palettes]]`, chaque palette portant son `id`, ses
+      `markers` et ses `ranks`. Le loader REFUSE une palette sans id, sans marqueur, dupliquee,
+      ou partageant un marqueur avec une autre (le classement serait ambigu). Les entrees
+      `4`/`5` sont RELUES : elles etaient indexees par l'index TRONQUE, elles deviennent les
+      rangs **20** et **21** de la famille B — meme capacite, meme nombre d'appuis, index
+      corrige. Aucun nom n'est ajoute ni retire par cette relecture.
 
-Gate 2 : la regle de classement est ecrite et justifiee ; sur les 8 films de l'instrument, le
-classement est publie film par film ; aucun film ambigu ne recoit de nom.
+Gate 2 : PASSE. Classement mesure film par film (7 films, 848 lectures, 775 identites) :
+
+| film | rangs observes (i48) | identites | palette | purete |
+|---|---|---|---|---|
+| `00ba2e1c` | 1:31 2:25 4:34 5:20 6:36 10:21 23:35 | 202 | famille A | 100 % |
+| `06dfe6d9` | 1:19 2:25 4:35 5:22 6:38 8:2 9:2 10:34 11:3 12:4 23:35 | 219 | famille A | 100 % |
+| `00162144` | 2:14 4:9 9:2 10:10 | 35 | famille A | 100 % |
+| `084a804d` | 1:13 4:48 5:11 6:18 8:10 9:8 10:2 19:4 23:15 44:1 | 130 | famille A | 96,2 % |
+| `000d5950` | 19:18 20:22 21:26 22:16 | 82 | famille B | 100 % |
+| `00502e52` | 19:22 20:17 21:8 22:18 | 65 | famille B | 100 % |
+| `07aa428d` | 19:11 20:10 21:13 22:8 | 42 | famille B | 100 % |
+
+Les sept signatures sont rejouees telles quelles par un test — si la regle changeait au point
+d'en reclasser une, elle nommerait des capacites differentes sur des films deja servis. Fait
+NEUF, absent du §14 : `084a804d` montre 4 lectures `19` et une `44` (hors de toute palette
+connue — un `sofd` compte ~27 entrees). C'est le bruit attendu d'un balayage bit a bit ; il est
+compte CONTRE la purete plutot qu'ignore, et le film passe quand meme a 96,2 %.
 
 ## Etape 3 — Nommer les rangs qui manquent (sans jamais deviner)
 
-- [ ] 3.1 Rangs 19 a 22 : NON CASSES par les chaines murmur3 (le §13 le dit deja de la plage
-      13-22). Mais le releve Theater du 2026-07-27 les nomme INDIRECTEMENT sur `000d5950` —
-      19 mur, 20 grappin, 21 propulseur, 22 capteur — dont **20 et 21 avec un controle de
-      groupe**. Statuer : ce qui a deux appuis independants est nomme ; ce qui n'en a qu'un
-      reste un rang. La regle du depot (§2 : « un temoignage isole ne vaut pas ») s'applique
-      telle quelle.
-- [ ] 3.2 Rang 7 (vu 297 fois sur 8 films par le canal tronque, donc rang reel 23) : le §13
-      donne 23 = champ de reparation, **confirme par DEUX chaines** (murmur3 + banque sonore
-      `sb_007_abl_repairfield`). C'est donc nommable — le verifier et le nommer.
-- [ ] 3.3 Publier la couverture APRES : combien de lectures portent un nom, contre les
-      **47,0 %** mesures apres la correction de l'etape 1 du lot precedent.
+- [x] 3.1 Rangs 19 a 22. → **20 et 21 NOMMES, 19 et 22 NON.** 20 (grappin) et 21 (propulseur)
+      ont trois appuis : le releve Theater, le CONTROLE DE GROUPE (trois lectures identiques
+      par triplet, triplets mutuellement distincts), et — nouveau — le canal i48, totalement
+      independant, qui rend 20 sur les slots 513/516 et 21 sur le slot 518. 19 (mur) et 22
+      (capteur) reposent sur UNE observation isolee chacun : ils gardent leur numero. C'est
+      exactement la regle qui leur avait deja retire leur nom le 2026-08-14 ; l'index change,
+      le verdict non.
+- [x] 3.2 Rang 23 = champ de reparation. → NOMME. Deux chaines (murmur3 + banque sonore
+      `sb_007_abl_repairfield`), et c'est le SEUL rang de la famille A dans ce cas. Observe
+      85 fois sur trois films (`00ba2e1c` 35, `06dfe6d9` 35, `084a804d` 15) et sur AUCUN film
+      de famille B — ce qui en fait aussi un marqueur fiable de la famille A.
+- [x] 3.3 Couverture APRES. → Publiee ci-dessous. **Attention a la comparaison** : les
+      47,0 % de reference etaient mesures sur le canal d'IMAGE-CLE seul, sur les films qui
+      rendaient quelque chose — 21 films sur 40 n'en rendaient AUCUN. Ce n'est donc pas la
+      meme grandeur sur le meme denominateur ; le dire vaut mieux que produire un « avant /
+      apres » flatteur et faux.
 
-Gate 3 : tableau des rangs (rang, palette, nom, nombre d'appuis, source) ; aucun nom a un
-seul appui.
+Gate 3 : PASSE.
+
+**Rangs nommes, avec leurs appuis** (aucun nom a un seul appui de meme nature) :
+
+| palette | rang | nom | appuis |
+|---|---|---|---|
+| famille A | 1, 2, 4, 5, 6, 8, 9, 11, 12 | detecteur, mur, grappin, propulseur, repulseur, camouflage, surbouclier, translocateur, traqueur | inversion murmur3 du `sofd` — la table DU JEU, lue |
+| famille A | 23 | champ de reparation | **DEUX chaines** : murmur3 + banque sonore `sb_007_abl_repairfield` |
+| famille B | 20 | grappin | **TROIS** : releve Theater + controle de groupe (3 joueurs) + i48 (canal independant) |
+| famille B | 21 | propulseur | **TROIS**, idem |
+
+**NON nommes, et pourquoi** : famille A 0/3/7 (categorie NULLE — course, melee, marquage : ce
+ne sont pas des capacites) ; famille A 10 (identifiant non inverse, mais **observe 67 fois** —
+c'est le premier trou a combler) ; famille B 19 et 22 (une observation isolee chacun).
+
+**DECISION A CONNAITRE, elle est discutable et donc ecrite** : l'inversion murmur3 du `sofd`
+est admise comme source de nommage pour la famille A, alors qu'elle n'est qu'UNE chaine. Motif :
+c'est une source d'une autre NATURE qu'une observation d'ecran — elle lit la table du jeu — et
+c'est exactement elle qui a fait RETIRER deux noms le 2026-08-14 parce qu'elle contredisait deux
+observations isolees. Une source assez sure pour retirer un nom l'est pour en donner un ;
+l'utiliser seulement en negatif serait incoherent. Si l'utilisateur veut la barre plus haute,
+seul le rang 23 survit en famille A, et l'item 4.2 tombe avec.
+
+**COUVERTURE DE NOMMAGE, canal i48, 7 films** — 775 identites, **610 nommees, 78,7 %** :
+
+| film | palette | identites | nommees | % | ce qui manque |
+|---|---|---|---|---|---|
+| `00ba2e1c` | A | 202 | 181 | 89,6 % | rang 10 (21) |
+| `06dfe6d9` | A | 219 | 185 | 84,5 % | rang 10 (34) |
+| `00162144` | A | 35 | 25 | 71,4 % | rang 10 (10) |
+| `084a804d` | A | 130 | 123 | 94,6 % | 10 (2), 19 (4), 44 (1) |
+| `000d5950` | B | 82 | 48 | 58,5 % | 19 (18), 22 (16) |
+| `00502e52` | B | 65 | 25 | 38,5 % | 19 (22), 22 (18) |
+| `07aa428d` | B | 42 | 23 | 54,8 % | 19 (11), 22 (8) |
+
+Sur l'ARTEFACT du film de reference (les deux canaux reunis, `000d5950`) : **136 lectures
+nommees sur 214, 63,6 %** — contre **0 avant ce lot**, la table etant alors keyee par l'index
+tronque. Canal d'image-cle seul sur ce film : 88/132, 66,7 %.
+
+**LE CONTROLE QUI CHANGE TOUT, et il etait ecrit avant la mesure** : la verite terrain Theater
+des huit joueurs de `000d5950` est desormais reproduite **8 sur 8** par la lecture de
+production. Elle etait a **2 sur 4** au 2026-07-28, et c'est ce « 2 sur 4 » qui avait ouvert
+trois branches d'explication et coute le chantier. Aucune n'etait la bonne : les deux lectures
+etaient justes, elles etaient comparees a la mauvaise palette.
 
 ## Etape 4 — L'effet actif plein-fiche (ce que tout ceci debloque)
 
 > Rappel de la demande utilisateur : l'effet porte sur TOUTE LA FICHE. Surbouclier = fiche
 > doree, camouflage = effet de verre, translocateur = bordure animee.
 
-- [ ] 4.1 PRE-REQUIS, a re-verifier avant de coder : l'identite est desormais connue (etapes
-      1-3) ; l'ETAT ACTIF, lui, ne l'est toujours PAS de facon exploitable — `i57` est lu sur
-      **0,82 %** des records et son association avec les episodes `i54` vaut **72,2 % contre
-      34 % de temoin**, soit une erreur sur quatre. **Cette etape ne se code donc PAS tant que
-      l'etat n'a pas une source fiable.**
-- [ ] 4.2 Ce qui devient possible SANS l'etat actif, et qui vaut d'etre propose a
-      l'utilisateur : afficher la capacite PORTEE correctement nommee sur les trois capacites
-      qui l'interessent (aujourd'hui elles ne sont jamais nommees). C'est un gain reel et
-      immediat, a ne pas confondre avec l'effet demande.
-- [ ] 4.3 Si une source d'etat fiable apparait (voies au registre : rendre `i56` lisible sur
-      les records denses ; verite Theater datee a la seconde) : l'effet se code alors sans
-      rien inventer, la palette etant resolue.
+- [!] 4.1 PRE-REQUIS re-verifie : l'identite est connue (etapes 1-3), l'ETAT ACTIF ne l'est
+      pas. `i57` est lu sur **0,82 %** des records et son association aux episodes `i54` vaut
+      **72,2 % contre 34 % de temoin** — une erreur sur quatre. **AUCUNE LIGNE DE RENDU
+      PLEIN-FICHE N'A ETE ECRITE**, et c'est le `[!]` que le plan lui-meme annonce, pas un
+      abandon : la fiche doree, l'effet de verre et la bordure animee attendent une source
+      d'etat. Une fiche doree une fois sur quatre a tort est pire qu'une fiche sobre.
+- [x] 4.2 Ce qui devient possible SANS l'etat actif. → **LIVRE.** Les trois capacites que
+      l'utilisateur veut voir sont desormais NOMMEES quand un film les porte : camouflage
+      actif (rang 8), surbouclier (9), translocateur quantique (11). Elles sont observees dans
+      le corpus — `084a804d` 8:10 9:8, `06dfe6d9` 8:2 9:2 11:3, `00162144` 9:2 — et le canal
+      d'image-cle ne les verra JAMAIS (hors 16..23). Leurs vignettes de HUD existaient deja au
+      depot (`hud/ActiveCamouflage`, `hud/Overshield`, `hud/QuantumTranslocator`) : nom et
+      vignette arrivent ensemble. C'est un gain reel et immediat, a ne pas confondre avec
+      l'effet demande.
+- [!] 4.3 Source d'etat fiable : aucune n'est apparue pendant ce lot, et en chercher une
+      etait hors perimetre. Les voies restent au registre (rendre `i56` lisible sur les
+      records denses ; verite Theater datee a la seconde). Ce qui a CHANGE en leur faveur :
+      quand l'une aboutira, l'effet se codera sans rien inventer — la palette est resolue et
+      l'identite est publiee.
 
-Gate 4 : NON FRANCHI par ce plan — l'item 4.1 est un `[!]` attendu. Ce plan livre l'IDENTITE,
-pas l'ETAT.
+Gate 4 : NON FRANCHI, comme annonce. Ce plan livre l'IDENTITE, pas l'ETAT.
 
 ## Hors perimetre
 

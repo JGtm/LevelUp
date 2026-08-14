@@ -340,9 +340,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// grandeur — le rang de palette.
 	doc.Abilities = keepAbilitiesOfPublishedTracks(
 		buildAbilityReads(opt.AbilityRanks, opt.Inventory, origin, step), doc.Tracks)
-	if len(doc.Abilities) > 0 {
-		doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, opt.Labels.Abilities)
-	}
+	// LA PALETTE SE CLASSE AVANT DE NOMMER, et un film ambigu ne recoit AUCUN nom : le
+	// meme rang designe des capacites differentes d'une palette a l'autre.
+	palette := classifyAbilityPalette(doc.Abilities, opt.Labels.Abilities)
+	doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, palette)
+	slog.Info("rejeu : palette de capacites",
+		"palette", paletteIDOrNone(palette), "lectures", len(doc.Abilities),
+		"rangsNommes", len(doc.AbilityLabels))
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
 		"tirsSansSlot", shotCov.NoSlot, "tirsAmbigus", shotCov.Ambiguous,

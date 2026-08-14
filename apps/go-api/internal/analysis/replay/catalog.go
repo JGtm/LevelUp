@@ -29,8 +29,12 @@ type LabelCatalog struct {
 	// Grenades nomme les rangs de type de grenade, DANS L'ORDRE DES RANGS. C'est la
 	// seule table qui les nomme : un lancer porte son rang, pas son nom.
 	Grenades []Label
-	// Abilities nomme les index de capacité d'armure. Table partielle par nature.
-	Abilities map[int]Label
+	// Abilities porte les PALETTES de capacité d'armure du titre. Le rang transmis par le
+	// film est un index dans un groupe de tags choisi à l'exécution : deux films peuvent
+	// donner deux capacités différentes au même rang. C'est `classifyAbilityPalette`
+	// (abilities.go) qui choisit laquelle s'applique, et qui refuse quand la signature du
+	// film est ambiguë. Tables partielles par nature.
+	Abilities []AbilityPalette
 	// Icons pointe l'icône extraite d'une famille d'arme. Posée par la COUCHE TITRE
 	// (elle seule connaît ses URLs d'assets), APRÈS NewLabelCatalog — d'où un champ et
 	// pas un sixième paramètre. Une famille absente garde son libellé sans visuel :
@@ -66,7 +70,7 @@ func NewLabelCatalog(
 	names map[string]Label,
 	effects map[string]string,
 	grenades []Label,
-	abilities map[int]Label,
+	abilities []AbilityPalette,
 ) LabelCatalog {
 	weapons := make(map[uint32]WeaponLabel, len(familyToKey))
 	for family, key := range familyToKey {

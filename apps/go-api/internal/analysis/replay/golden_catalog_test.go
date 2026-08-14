@@ -42,9 +42,13 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 	for k, v := range names.Names() {
 		byKey[k] = Label{En: v.En, Fr: v.Fr}
 	}
-	abilities := map[int]Label{}
-	for idx, v := range labels.Abilities() {
-		abilities[idx] = Label{En: v.En, Fr: v.Fr}
+	var abilities []AbilityPalette
+	for _, p := range labels.AbilityPalettes() {
+		ranks := map[int]Label{}
+		for rank, v := range p.Ranks {
+			ranks[rank] = Label{En: v.En, Fr: v.Fr}
+		}
+		abilities = append(abilities, AbilityPalette{ID: p.ID, Markers: p.Markers, Ranks: ranks})
 	}
 	grenades := make([]Label, 0, len(labels.GrenadeRanks()))
 	for _, v := range labels.GrenadeRanks() {

@@ -148,7 +148,8 @@ func TestAbilityIndexWidth(t *testing.T) {
 						}
 						s.gate = append(s.gate, g)
 					}
-					perFilmIdx[f][s.vals[0]]++
+					// La couverture se compte en RANGS, la seule grandeur que le document publie.
+					perFilmIdx[f][uint32(invAbilityRankOf(s.vals[0]))]++
 					samples = append(samples, s)
 				}
 			}
@@ -198,15 +199,23 @@ func abilityLogDistributions(t *testing.T, samples []abilitySample) {
 }
 
 // abilityGroundTruth est la vérité terrain Theater de 000d5950 (image 250), par slot :
-// le RANG ATTENDU dans la palette `sofd` famille A (recette §13).
+// le RANG ATTENDU, dans la palette de CE film.
+//
+// LA VERSION PRÉCÉDENTE DE CETTE TABLE ÉTAIT RÉFUTÉE, et la garder aurait piégé le suivant.
+// Elle attendait les rangs de la famille A (grappin 4, propulseur 5, capteur 1, mur 2), au
+// motif que c'était la seule famille où le grappin soit au rang 4. La mesure d'i48 du
+// 2026-08-14 a tranché : ce film n'expose QUE les rangs 19 à 22 — 82 identités, aucune en
+// dessous de 13 — et le canal d'image-clé rend exactement `rang − 16` sur les mêmes slots.
+// Le film n'est donc PAS de la famille A, et l'échec « 2 sur 4 » du contrôle de 2026-07-28
+// ne disait pas qu'une lecture était fausse : il comparait deux palettes différentes.
 var abilityGroundTruth = map[uint32]struct {
 	nom  string
 	rang uint32
 }{
-	512: {"grappin", 4}, 513: {"grappin", 4}, 516: {"grappin", 4},
-	514: {"propulseur", 5}, 518: {"propulseur", 5}, 519: {"propulseur", 5},
-	515: {"capteur de menace", 1},
-	517: {"mur portatif", 2},
+	512: {"grappin", 20}, 513: {"grappin", 20}, 516: {"grappin", 20},
+	514: {"propulseur", 21}, 518: {"propulseur", 21}, 519: {"propulseur", 21},
+	515: {"capteur de menace", 22},
+	517: {"mur portatif", 19},
 }
 
 // abilityLogGroundTruth confronte chaque candidat aux huit slots de la vérité terrain.
@@ -238,6 +247,11 @@ func abilityLogGroundTruth(t *testing.T, samples []abilitySample) {
 				}
 			}
 			tot++
+			// La lecture de PRODUCTION rend désormais un RANG (le motif d'ancrage porte les
+			// bits de poids fort) ; les candidats de fouille rendent, eux, leur champ brut.
+			if r.name == abilityReadings[0].name {
+				best = uint32(invAbilityRankOf(best))
+			}
 			mark := "KO"
 			if best == abilityGroundTruth[sl].rang {
 				ok++
@@ -252,8 +266,10 @@ func abilityLogGroundTruth(t *testing.T, samples []abilitySample) {
 // abilityLogCoverage publie la couverture de la table de noms : quels index sont observés,
 // et lesquels sont nommés aujourd'hui (3/4/5/6 dans replay_labels.toml).
 func abilityLogCoverage(t *testing.T, perFilm map[string]map[uint32]int) {
-	t.Log("== COUVERTURE (étape 2) — index observés par la lecture de production ==")
-	named := map[uint32]bool{3: true, 4: true, 5: true, 6: true}
+	t.Log("== COUVERTURE — RANGS observés par la lecture de production (fenêtre 16..23) ==")
+	// Les rangs NOMMÉS de la famille B, la seule que ce canal puisse voir : il est borgne
+	// hors de 16..23, et la famille A vit sous 13 (cf. replay_labels.toml).
+	named := map[uint32]bool{20: true, 21: true}
 	all := map[uint32]int{}
 	for f, h := range perFilm {
 		keys := make([]uint32, 0, len(h))
