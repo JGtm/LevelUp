@@ -802,6 +802,23 @@ normalisees (3 matchs, condition de reprise = preuve meme-level_id comme Heavies
 utilisateur : 6 PNG copies dans `Desktop/gate_cartes_v75/lot1_bornes/` (l'AVANT est un 404,
 pas une image). Suite du chantier cartes : lots suivants du superviseur (toits, cartes v2).
 
+## [2026-08-14] v7.5 — le compte de champs du contrat de rejeu passe a 27 (lot 7)
+
+**Statut** : Complete.
+
+**Decision technique principale** : `TestReplayDocumentFieldCountIsFrozen` a rougi en CI sur le
+lot 7 — c'est son travail : le lot a ajoute `originMs` (7.2) et `neutralDeaths` (7.1) sans que
+la chronique du compte les enregistre. Compte VERIFIE par le test lui-meme (27 cote Go ET 27
+cote contrat : le contrat etait deja regenere, seul le chiffre gele manquait). Constante portee
+a 27, chronique completee avec la RAISON de chaque champ. Quatrieme fois que ce garde-fou
+attrape un ecart avant le merge.
+
+**Resultats observes** : `go test ./contracttest/` vert (0,9 s). Aucun autre changement.
+
+**Conclusion / prochaine etape** : push, verdict CI au niveau job. Lecon pour les lots
+suivants : tout lot qui ajoute un champ a `ReplayDocument` joue `go test ./contracttest/` avant
+de clore — les tests du paquet `replay` seul ne voient pas ce garde-fou.
+
 ## [2026-08-13] v7.5 — kill feed sans arme ni assistant : CAUSE REELLE = appariement T0, corrige et prouve de bout en bout
 
 **Statut** : Complete.

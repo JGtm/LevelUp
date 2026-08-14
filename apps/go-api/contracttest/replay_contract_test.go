@@ -104,10 +104,19 @@ var replaySchemas = []struct {
 //	                        joue (zones, apparitions et livraisons de drapeau, socles), rempli
 //	                        A LA REQUETE par le service et jamais ecrit dans l artefact —
 //	                        l artefact ne connait ni sa carte ni son mode.
+//	25 -> 27  2026-08-14  DEUX champs, un par item du lot 7 :
+//	                      - `originMs` (7.2) : l ORIGINE de la frame 0 sur l horloge du fil.
+//	                        L horodatage de paquet du film est une horloge MOTEUR (des milliers
+//	                        de secondes depuis le demarrage du jeu) : sans cette origine publiee,
+//	                        le client n a aucun zero commun avec les events de la Match View, et
+//	                        le fil arrivait 3,6 s a 40 s apres le flash des fiches.
+//	                      - `neutralDeaths` (7.1) : les morts que personne ne revendique
+//	                        (suicide, environnement...), avec la NATURE du degat fatal — c est
+//	                        elle qui choisit l icone du type de mort au fil.
 //
-// Les trois fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+// Les quatre fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 25
+const wantReplayDocumentFields = 27
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
