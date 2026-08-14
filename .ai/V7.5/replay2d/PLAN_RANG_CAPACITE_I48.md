@@ -27,24 +27,38 @@ jamais ; celui-ci les voit, avec le rang complet.
 
 ## Etape 1 — Publier le rang (le decodeur cesse de le jeter)
 
-- [ ] 1.1 Elargir le hook de production pour qu'il porte le RANG COMPLET (`R(6)`) en plus de
+- [x] 1.1 Elargir le hook de production pour qu'il porte le RANG COMPLET (`R(6)`) en plus de
       ce qu'il publie deja. Ne pas casser ses appelants : la valeur `R(3)` et la largeur
       restent. L'instrument `i48_rank_test.go` devient le temoin de non-regression du hook.
-- [ ] 1.2 Faire remonter le rang jusqu'a l'inventaire du rejeu (`Inventory.A` ou un champ
+      → `abilitySetHook(counter, rank, width)`, `rank = AbilitySetNoRank` porte ouverte ; le
+      `consumeGate0R` est reecrit a plat, MEME parcours de bits (test pur : 4 bits porte
+      ouverte, 10 fermee). Balayage de production `filmdec.ScanFilmAbilityRanks`. L'instrument
+      lit i48 DEUX fois par record (a la main, puis par `consumeByName`) et exige l'accord :
+      **92/92 concordantes sur 000d5950**.
+- [x] 1.2 Faire remonter le rang jusqu'a l'inventaire du rejeu (`Inventory.A` ou un champ
       voisin — DECIDER et ECRIRE lequel, en regardant ce que la fiche consomme aujourd'hui).
-      **Attention** : le rang complet et l'index tronque ne sont PAS la meme grandeur —
-      publier le rang complet dans un champ qui portait l'index tronque est un changement de
-      SENS, pas seulement de valeur. Si le champ est servi par l'API : bump `SchemaVersion`,
-      `openapi-gen` + `generate-types` dans le meme commit, `go test ./contracttest/`
-      OBLIGATOIRE, et re-cuisson des artefacts existants (~23, CLI `backfill-replay
-      --only-existing`, un a la fois).
-- [ ] 1.3 Le canal d'image-cle reste-t-il ? Le trancher explicitement : soit il devient un
-      REPLI documente (il ne voit que 16-23, donc il ne sert que si `i48` manque sur une vie),
-      soit il est retire. Pas de troisieme voie, et pas de silence : deux canaux qui rendent
-      des grandeurs differentes sous le meme nom, c'est le defaut qui a coute ce chantier.
+      → DECISION : **ni l'un ni l'autre**. `Inventory.a` est RETIRE et le document publie un
+      calque neuf, `abilities` (`{t, slot, r, src}`). Motif : les lectures d'`i48` vivent dans
+      les paquets DELTA, pas aux images-cles — les loger dans `Inventory` aurait fabrique des
+      lignes d'inventaire vides qui auraient masque la derniere image-cle du slot. Le RETRAIT
+      plutot que la reinterpretation est ce qui protege du piege de sens : un client non mis a
+      jour ne lit plus rien, au lieu de lire un nombre qui a change de signification.
+      `SchemaVersion` 5 -> 6, `openapi-gen` + `generate-types` + `go test ./contracttest/`
+      (compte de champs 27 -> 28) dans le meme commit ; re-cuisson des artefacts a l'etape 3.
+- [x] 1.3 Le canal d'image-cle reste-t-il ? → **IL RESTE, converti a la MEME grandeur.** Ni
+      repli sous un autre nom, ni retrait : les 3 bits qu'il lit sont les bits de POIDS FAIBLE
+      du rang, et le motif d'ancrage porte deja les bits de poids fort (`010`). Le decodeur
+      reconstruit donc `rang = invAbilityRankHigh<<3 | bas` — la constante est DERIVEE du
+      motif, pas ecrite a cote de lui. Les deux canaux publient desormais un RANG, et chaque
+      lecture dit son canal (`src`), ce qui rend leur fenetre respective auditable dans
+      l'artefact meme. Le canal d'image-cle reste borgne (16..23) et c'est ECRIT partout ou il
+      apparait.
 
-Gate 1 : le rang complet apparait pour les 8 films de l'instrument ; les rangs 8, 9, 11 sont
-VISIBLES la ou la mesure les annonce (`084a804d`, `06dfe6d9`) ; aucun test existant ne rougit.
+Gate 1 : PASSE. Sur 000d5950 : 171 851 records delta, 92 annonces d'i48, **92 lues, 0
+illisible** ; rangs `19:18 20:22 21:26 22:16`, aucun < 13. Golden regenere : **214 lectures de
+capacite, 82 par i48 + 132 par image-cle**. Aucun test existant ne rougit (paquets `filmdec`,
+`replay`, `contracttest`, web `match-replay`). Les rangs 8/9/11 sur `084a804d` et `06dfe6d9`
+sont VERIFIES a l'etape 2 (classement de palette), qui les mesure film par film.
 
 ## Etape 2 — La palette du film (le verrou de la traduction rang -> nom)
 

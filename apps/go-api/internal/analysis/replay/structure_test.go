@@ -113,8 +113,16 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   omitempty, même raison de monter : c'est la CLÉ DE REPRISE du backfill, et sans lui
 	//   le fil ne peut poser sur ces lignes qu'un repère générique — un v4 doit se lire
 	//   « à re-cuire », pas « à jour ».
-	if SchemaVersion != 5 {
-		t.Fatalf("SchemaVersion = %d, attendu 5 : incrémenter exige une raison écrite ci-dessus "+
+	//   v5 -> v6 (2026-08-14, plan PLAN_RANG_CAPACITE_I48 étape 1.2) : la capacité d'armure
+	//   CHANGE DE GRANDEUR. `Inventory.a` portait `rang − 16` — l'ancre du canal d'image-clé
+	//   se termine par `010`, les bits de poids fort du rang, et ce canal ne voit donc que la
+	//   fenêtre 16..23. Le document publie désormais `abilities`, le RANG complet, alimenté
+	//   par deux canaux. Le champ `a` est RETIRÉ, pas réinterprété : republier une autre
+	//   grandeur sous la même clé aurait laissé tout client non mis à jour lire un nombre qui
+	//   ne veut plus dire la même chose. Ce n'est donc PAS un champ optionnel de plus — c'est
+	//   un retrait plus un changement de sens, et `abilityLabels` change de clé avec.
+	if SchemaVersion != 6 {
+		t.Fatalf("SchemaVersion = %d, attendu 6 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

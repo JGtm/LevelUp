@@ -3956,6 +3956,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AbilityRead: {
+            /** Format: int64 */
+            r: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t: number;
+        };
         AcceptResponse: {
             arc_id?: string;
             challenge_id?: string;
@@ -6469,8 +6478,6 @@ export interface components {
             severity: string;
         };
         Inventory: {
-            /** Format: int64 */
-            a?: number;
             am?: components["schemas"]["AmmoSlot"][] | null;
             /** Format: int64 */
             cand?: number;
@@ -9036,6 +9043,7 @@ export interface components {
             job: components["schemas"]["BuildQueueJob"];
         };
         ReplayDocument: {
+            abilities?: components["schemas"]["AbilityRead"][] | null;
             abilityLabels?: {
                 [key: string]: components["schemas"]["Label"];
             };

@@ -50,6 +50,11 @@ type Options struct {
 	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
 	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
 	Inventory []KeyframeInventory
+	// AbilityRanks : les identites de capacite transmises par i48 dans les paquets DELTA
+	// (cf. abilities.go). Entree de DONNEES, comme Inventory. C'est le canal qui voit TOUTE
+	// la palette ; celui des images-cles, porte par Inventory, n'en voit que la fenetre
+	// 16..23. Absente = rejeu dont les capacites se limitent a cette fenetre.
+	AbilityRanks []filmdec.AbilityRank
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -168,6 +173,19 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		inventory = nil
 	}
 	opt.Inventory = inventory
+	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare
+	// (une transmission par vie environ) mais elle porte le rang COMPLET, la ou les images-cles
+	// ne voient que 16..23. Absence non fatale — le rejeu retombe sur cette seule fenetre.
+	abilityRanks, aStats, err := filmdec.ScanFilmAbilityRanks(filmDir)
+	if err != nil {
+		slog.Warn("identites de capacite illisibles — rejeu sans rang complet", "err", err, "filmDir", filmDir)
+		abilityRanks = nil
+	} else {
+		slog.Info("capacites : lectures d i48",
+			"recordsDelta", aStats.Records, "masqueAvecI48", aStats.WithI48,
+			"lues", aStats.Read, "illisibles", aStats.Unread, "sansIdentite", aStats.Gated)
+	}
+	opt.AbilityRanks = abilityRanks
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -317,8 +335,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	if len(doc.Inventory) > 0 || len(doc.Grenades) > 0 {
 		doc.GrenadeLabels = opt.Labels.Grenades
 	}
-	if len(doc.Inventory) > 0 {
-		doc.AbilityLabels = abilityLabelsUsed(doc.Inventory, opt.Labels.Abilities)
+	// La capacite portee a son PROPRE calque : ses deux canaux ne vivent pas sur la meme
+	// horloge (i48 dans les deltas, l'ancre dans les images-cles), et ils publient la MEME
+	// grandeur — le rang de palette.
+	doc.Abilities = keepAbilitiesOfPublishedTracks(
+		buildAbilityReads(opt.AbilityRanks, opt.Inventory, origin, step), doc.Tracks)
+	if len(doc.Abilities) > 0 {
+		doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, opt.Labels.Abilities)
 	}
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,

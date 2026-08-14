@@ -77,6 +77,7 @@ var replaySchemas = []struct {
 	{"Projectile", replay.Projectile{}},
 	{"Loadout", replay.Loadout{}},
 	{"Inventory", replay.Inventory{}},
+	{"AbilityRead", replay.AbilityRead{}},
 	{"AmmoSlot", replay.AmmoSlot{}},
 	{"Surface", replay.Surface{}},
 	{"MapObject", replay.MapObject{}},
@@ -114,9 +115,19 @@ var replaySchemas = []struct {
 //	                        (suicide, environnement...), avec la NATURE du degat fatal — c est
 //	                        elle qui choisit l icone du type de mort au fil.
 //
+//	27 -> 28  2026-08-14  `abilities` (plan PLAN_RANG_CAPACITE_I48, etape 1.2) : le RANG de
+//	                      palette de la capacite d armure portee. UN CHAMP ENTRE, mais un
+//	                      autre CHANGE DE SENS en meme temps et c est le vrai evenement :
+//	                      `Inventory.a` portait `rang - 16` (l ancre du canal d image-cle se
+//	                      termine par `010`, les bits de poids fort du rang, si bien que ce
+//	                      canal ne voit que 16..23). Le champ `a` est RETIRE plutot que
+//	                      reinterprete — republier une autre grandeur sous la meme cle aurait
+//	                      laisse tout client non mis a jour lire un nombre qui ne veut plus dire
+//	                      la meme chose. `abilityLabels` change de cle avec (rang, plus index).
+//
 // Les quatre fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 27
+const wantReplayDocumentFields = 28
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

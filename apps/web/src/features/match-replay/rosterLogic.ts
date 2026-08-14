@@ -275,19 +275,68 @@ export interface LoadoutReading {
  * repli, chaque début de vie dit « armes non lues » pendant jusqu'à 20 s.
  */
 export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
-  let best: LoadoutReading | null = null
-  let ahead: LoadoutReading | null = null
-  for (const l of doc.loadouts ?? []) {
-    if (l.slot !== slot) continue
-    const age = frame - l.t
+  const read = nearestReading(doc.loadouts ?? [], slot, frame)
+  return read ? { weapons: read.value.w, age: read.age } : null
+}
+
+/**
+ * nearestReading — LE FOYER CANONIQUE du report de lecture (règle ≤2 copies, CLAUDE.md n°6).
+ *
+ * Trois calques lisent le film par ÉCHANTILLONS ESPACÉS et doivent afficher, à une image
+ * donnée, la dernière lecture connue : les armes portées, l'inventaire, et — depuis le
+ * 2026-08-14 — la capacité d'armure. La troisième copie a déclenché la centralisation ; le
+ * garde-rail `rosterLogic.guard.test.ts` interdit d'en réécrire une quatrième à la main.
+ *
+ * LA RÈGLE, IDENTIQUE POUR LES TROIS :
+ *   - la recherche porte sur le SLOT, jamais sur le joueur. Un slot est réattribué à chaque
+ *     réapparition : c'est ce qui rend le report SÛR, une lecture ne peut pas franchir une
+ *     mort puisqu'elle ne survit pas à son porteur ;
+ *   - avant la première lecture d'une vie, on rend la plus proche À VENIR du même slot, avec
+ *     un âge NÉGATIF publié tel quel. L'affichage l'estompe sur sa valeur absolue et le dit
+ *     « à venir » — jamais déguisé en lecture passée.
+ */
+export function nearestReading<T extends { slot: number; t: number }>(
+  samples: readonly T[],
+  slot: number,
+  frame: number,
+): { value: T; age: number } | null {
+  let best: { value: T; age: number } | null = null
+  let ahead: { value: T; age: number } | null = null
+  for (const s of samples) {
+    if (s.slot !== slot) continue
+    const age = frame - s.t
     if (age < 0) {
       // La plus PROCHE à venir : l'âge le moins négatif.
-      if (!ahead || age > ahead.age) ahead = { weapons: l.w, age }
+      if (!ahead || age > ahead.age) ahead = { value: s, age }
       continue
     }
-    if (!best || age < best.age) best = { weapons: l.w, age }
+    if (!best || age < best.age) best = { value: s, age }
   }
   return best ?? ahead
+}
+
+/**
+ * AbilityReading — le RANG de palette de la capacité portée, et l'âge de cette lecture.
+ *
+ * DEUX CANAUX, UNE SEULE GRANDEUR (cf. l'artefact, abilities.go) : `i48` transmet le rang
+ * complet dans les paquets delta, environ une fois par vie ; le canal d'image-clé est dense
+ * mais BORGNE — il ne voit que les rangs 16 à 23. On ne les départage pas : la lecture la
+ * plus récente gagne, quel que soit son canal, parce que les deux disent la même chose.
+ */
+export interface AbilityReading {
+  rank: number
+  age: number
+  src: string
+}
+
+/** abilityAt rend le dernier rang de capacité lu pour un SLOT, avec l'âge de la lecture. */
+export function abilityAt(
+  doc: ReplayDocumentReady,
+  slot: number,
+  frame: number,
+): AbilityReading | null {
+  const read = nearestReading(doc.abilities ?? [], slot, frame)
+  return read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
 }
 
 /** InventoryReading — l'inventaire d'un slot et l'ÂGE de cette lecture, en frames. */
@@ -316,19 +365,8 @@ export function inventoryAt(
   slot: number,
   frame: number,
 ): InventoryReading | null {
-  let best: InventoryReading | null = null
-  let ahead: InventoryReading | null = null
-  for (const inv of doc.inventory ?? []) {
-    if (inv.slot !== slot) continue
-    const age = frame - inv.t
-    if (age < 0) {
-      // La plus PROCHE à venir : l'âge le moins négatif.
-      if (!ahead || age > ahead.age) ahead = { state: inv, age }
-      continue
-    }
-    if (!best || age < best.age) best = { state: inv, age }
-  }
-  return best ?? ahead
+  const read = nearestReading(doc.inventory ?? [], slot, frame)
+  return read ? { state: read.value, age: read.age } : null
 }
 
 /**

@@ -84,6 +84,8 @@ interface ReplayText {
   grenadeSelectedRead: string
   grenadeSelUnknown: string
   abilityUnknown: string
+  abilityAge: string
+  abilityAhead: string
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string
@@ -166,6 +168,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Type équipé, LU dans le film (sélecteur de grenade de l’image-clé) : celui qui partira au prochain lancer.',
     grenadeSelUnknown: 'sél. ?',
     abilityUnknown: 'capacité inconnue',
+    abilityAge: 'Capacité lue il y a',
+    abilityAhead: 'Capacité lue dans',
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     respawnBarLabel: 'avancement depuis la mort',
@@ -242,6 +246,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Equipped type, READ from the film (keyframe grenade selector): the one the next throw will use.',
     grenadeSelUnknown: 'sel. ?',
     abilityUnknown: 'unknown ability',
+    abilityAge: 'Ability read',
+    abilityAhead: 'Ability read in',
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     respawnBarLabel: 'progress since death',

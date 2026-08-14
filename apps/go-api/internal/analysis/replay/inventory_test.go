@@ -138,10 +138,10 @@ func TestBuildInventoryProjectsAndDropsPreOrigin(t *testing.T) {
 	const origin, step = 1_000_000, 100_000
 	mag := uint32(25)
 	raw := []KeyframeInventory{
-		{TimestampUS: 500_000, Slot: 512, AbilityIndex: 3, DrawnSlot: 0}, // avant l'origine
-		{TimestampUS: 1_600_000, Slot: 513, AbilityIndex: -1, DrawnSlot: -1,
+		{TimestampUS: 500_000, Slot: 512, AbilityRank: 19, DrawnSlot: 0}, // avant l'origine
+		{TimestampUS: 1_600_000, Slot: 513, AbilityRank: -1, DrawnSlot: -1,
 			Grenades: [4]uint32{0, 2, 0, 0}, GrenadesRead: true},
-		{TimestampUS: 1_200_000, Slot: 512, AbilityIndex: 4, DrawnSlot: 2,
+		{TimestampUS: 1_200_000, Slot: 512, AbilityRank: 20, DrawnSlot: 2,
 			AmmoRead: true, Ammo: [4]SlotAmmo{{Mag: &mag}}, AmmoCandidates: 1},
 	}
 	got := buildInventory(raw, origin, step)
@@ -152,14 +152,8 @@ func TestBuildInventoryProjectsAndDropsPreOrigin(t *testing.T) {
 	if got[0].T != 2 || got[0].Slot != 512 || got[1].T != 6 {
 		t.Errorf("projection ou tri incorrects : %+v", got)
 	}
-	if got[0].A == nil || *got[0].A != 4 {
-		t.Errorf("capacite non portee : %+v", got[0])
-	}
 	if got[0].D == nil || *got[0].D != 2 {
 		t.Error("le selecteur 2 (AUCUNE arme degainee) est une VALEUR, il doit etre publie")
-	}
-	if got[1].A != nil {
-		t.Error("une capacite non lue doit rester absente, jamais valoir 0")
 	}
 	if got[1].D != nil {
 		t.Error("un selecteur non lu doit rester absent")
@@ -172,7 +166,7 @@ func TestBuildInventoryProjectsAndDropsPreOrigin(t *testing.T) {
 func TestBuildInventoryPublishesZeroCounters(t *testing.T) {
 	// Un compteur a ZERO est une MESURE (« ce type, aucune en reserve »), a distinguer d'un
 	// tableau absent (« non lu »). Le confondre effacerait l'information la plus utile.
-	raw := []KeyframeInventory{{TimestampUS: 0, Slot: 1, AbilityIndex: -1, DrawnSlot: -1,
+	raw := []KeyframeInventory{{TimestampUS: 0, Slot: 1, AbilityRank: -1, DrawnSlot: -1,
 		Grenades: [4]uint32{0, 0, 0, 0}, GrenadesRead: true}}
 	got := buildInventory(raw, 0, 100_000)
 	if len(got) != 1 || len(got[0].G) != 4 {
@@ -196,29 +190,5 @@ func TestKeepInventoryOfPublishedTracks(t *testing.T) {
 	}
 	if keepInventoryOfPublishedTracks(nil, []Track{{Slot: 512}}) != nil {
 		t.Error("sans inventaire, rien n'est invente")
-	}
-}
-
-func TestAbilityLabelsUsedNamesOnlyWhatItKnows(t *testing.T) {
-	// LA TABLE EST PARTIELLE : 4 index observes pour 11 capacites. Un index hors table garde
-	// son numero a l'ecran — le combler par le nom d'une capacite voisine se lirait comme une
-	// certitude.
-	// Le catalogue vient du TITRE (replay_labels.toml) et non plus d'une table Go : le
-	// test l'injecte, comme le fait cmd/replay-build.
-	catalogue := map[int]Label{4: {En: "Grappleshot", Fr: "grappin"}}
-	known, unknown := 4, 9
-	got := abilityLabelsUsed([]Inventory{{A: &known}, {A: &unknown}, {}}, catalogue)
-	if got["4"].Fr != "grappin" || got["4"].En != "Grappleshot" {
-		t.Errorf("index connu non nomme dans les deux langues : %+v", got)
-	}
-	if _, named := got["9"]; named {
-		t.Error("un index hors table ne doit PAS etre nomme")
-	}
-	if abilityLabelsUsed(nil, catalogue) != nil {
-		t.Error("sans inventaire, pas de table inventee")
-	}
-	// Catalogue absent (titre sans libelles) : aucun nom, et surtout aucun panic.
-	if abilityLabelsUsed([]Inventory{{A: &known}}, nil) != nil {
-		t.Error("sans catalogue, aucune capacite ne doit etre nommee")
 	}
 }

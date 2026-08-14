@@ -33,6 +33,42 @@ rang, elle ne voit donc que 16..23.
 rejeu. Le rang complet et l index tronque ne sont PAS la meme grandeur — le champ change de
 sens, donc de nom, avec bump de `SchemaVersion`.
 
+## [2026-08-14] v7.5 rang de capacite — un champ qui change de GRANDEUR change de NOM (etapes 1.2/1.3)
+
+**Statut** : En cours — etape 1 close, gate 1 passe.
+
+**Decision technique principale**. `Inventory.a` portait `rang - 16` sous le nom d index de
+capacite. Il est RETIRE, pas reinterprete : republier une autre grandeur sous la meme cle
+aurait laisse tout client non mis a jour lire un nombre qui ne veut plus dire la meme chose.
+Le document publie a la place un calque neuf, `abilities` (`{t, slot, r, src}`), parce que les
+lectures d i48 vivent dans les paquets DELTA et non aux images-cles — les loger dans
+`Inventory` aurait fabrique des lignes d inventaire vides qui auraient masque la derniere
+image-cle du slot cote client.
+
+**Le canal d image-cle RESTE, converti a la meme grandeur.** Ses 3 bits sont les bits de POIDS
+FAIBLE du rang ; le motif d ancrage porte deja les bits de poids fort (`010`). D ou
+`invAbilityRankHigh = invAbilityPattern & 0x7` — la constante est DERIVEE du motif, pas ecrite
+a cote de lui, donc elle suivrait si le motif bougeait. Les deux canaux publient un RANG, et
+chaque lecture dit son canal : la fenetre borgne du second (16..23) devient auditable dans l
+artefact lui-meme, au lieu d etre une note dans un document.
+
+**Resultats observes**. Golden `000d5950` regenere : **214 lectures de capacite, 82 par i48
+(rang complet) et 132 par image-cle**, rangs `19:42 20:66 21:70 22:36`. Couverture de nommage
+sur ce film : **0/214** — attendu et non regressif : la table `[abilities]` est encore keyee
+par l index TRONQUE (`4`, `5`), c est l objet de l etape 2.3. `SchemaVersion` 5 -> 6 ;
+`openapi-gen` + `generate-types` ; garde-fou de compte de champs 27 -> 28 (il a rougi, comme
+prevu, et c est son travail).
+
+**Cote web**, la centralisation etait due : le report de lecture (« derniere lecture connue du
+SLOT, sinon la plus proche a venir avec un age negatif ») etait ecrit deux fois ; la capacite
+en aurait fait une troisieme. Foyer canonique `nearestReading` + garde-rail
+`rosterLogic.guard.test.ts` qui interdit de reecrire le litteral du repli. La capacite affiche
+desormais son PROPRE age : sa lecture ne tombe pas sur les images-cles de l inventaire, et la
+ligne n estompe que ce qu elle decrit.
+
+**Conclusion / prochaine etape**. Etape 2 : classer la palette film par film. Une signature
+ambigue ne nomme RIEN.
+
 ## [2026-08-14] v7.5 containment — l horloge du croisement etait un DECALAGE LU, pas un retard a estimer
 
 **Statut** : Complete — **verdict NEGATIF chiffre, aucune persistance** (gate 4.1 non franchi).

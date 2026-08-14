@@ -67,7 +67,7 @@ func goldenInputsPath() string {
 
 // goldenInputsMagic identifie le format et sa version. Un fixture d une autre version est une
 // ERREUR, jamais une lecture « au mieux » : un decodage decale rendrait des chiffres plausibles.
-const goldenInputsMagic = "REPLAYINPUTS2\n"
+const goldenInputsMagic = "REPLAYINPUTS3\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -80,6 +80,8 @@ const goldenInputsMagic = "REPLAYINPUTS2\n"
 //	GrenadeThrow      TimestampUS · FilmIndex · TypeID
 //	ProjectileTrack   Slot · Gen · Pts(TimestampUS · X/Y/Z · AtRest)
 //	KeyframeInventory tout, sauf Chunk/PacketIndex (traçabilite dans le film, pas une entree)
+//	AbilityRank       Slot · TimestampUS · Rank (le compteur de rotation n entre pas dans
+//	                  l assemblage : il borne une lecture, il ne se publie pas)
 //	Death             XUID · Gamertag · TimeMS
 //	PlayerIndexTable  entier
 //	ClockOriginUS     l horodatage du premier paquet du film (l origine publiee en depend)
@@ -91,8 +93,12 @@ type goldenInputs struct {
 	Grenades    []filmdec.GrenadeThrow
 	Projectiles []filmdec.ProjectileTrack
 	Inventory   []KeyframeInventory
-	Deaths      []Death
-	Indices     PlayerIndexTable
+	// AbilityRanks : les identites de capacite lues dans les paquets delta (i48). Elles sont
+	// DANS le fixture parce que l assemblage les consomme — sans elles, le golden verrouillerait
+	// un document dont les capacites se limitent a la fenetre 16..23 des images-cles.
+	AbilityRanks []filmdec.AbilityRank
+	Deaths       []Death
+	Indices      PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
 	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
 	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
@@ -108,6 +114,7 @@ func (g *goldenInputs) options() Options {
 		Grenades:          g.Grenades,
 		Projectiles:       g.Projectiles,
 		Inventory:         g.Inventory,
+		AbilityRanks:      g.AbilityRanks,
 		Deaths:            g.Deaths,
 		PlayerIndices:     g.Indices,
 		FilmClockOriginUS: g.ClockOriginUS,
@@ -352,13 +359,22 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		for _, c := range inv.Grenades {
 			w.u(uint64(c))
 		}
-		w.i(int64(inv.AbilityIndex))
+		w.i(int64(inv.AbilityRank))
 		w.i(int64(inv.DrawnSlot))
 		w.u(uint64(inv.AmmoCandidates))
 		w.bool8(inv.AmmoRead)
 		for _, a := range inv.Ammo {
 			encodeAmmo(w, a)
 		}
+	}
+
+	w.u(uint64(len(g.AbilityRanks)))
+	lastTS = 0
+	for _, a := range g.AbilityRanks {
+		w.u(a.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
+		lastTS = a.TimestampUS
+		w.u(uint64(a.Slot))
+		w.i(int64(a.Rank))
 	}
 
 	w.u(uint64(len(g.Deaths)))
@@ -546,7 +562,7 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		for j := 0; j < invGrenadeSlots; j++ {
 			inv.Grenades[j] = uint32(r.u())
 		}
-		inv.AbilityIndex = int(r.i())
+		inv.AbilityRank = int(r.i())
 		inv.DrawnSlot = int(r.i())
 		inv.AmmoCandidates = int(r.u())
 		inv.AmmoRead = r.bool8()
@@ -554,6 +570,15 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 			inv.Ammo[j] = decodeAmmo(r)
 		}
 		g.Inventory = append(g.Inventory, inv)
+	}
+
+	n = int(r.u())
+	g.AbilityRanks = make([]filmdec.AbilityRank, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		g.AbilityRanks = append(g.AbilityRanks,
+			filmdec.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
 	}
 
 	n = int(r.u())
@@ -698,6 +723,9 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	if g.Inventory, err = ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0); err != nil {
+		return nil, err
+	}
+	if g.AbilityRanks, _, err = filmdec.ScanFilmAbilityRanks(dir); err != nil {
 		return nil, err
 	}
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
