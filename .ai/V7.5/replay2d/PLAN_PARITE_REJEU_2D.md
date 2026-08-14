@@ -15,10 +15,10 @@
    couleur = TIREUR — regle color-tokens, documente en tete de shotEffects.ts). La palette
    hsla par famille du POC n'est PAS reintroduite. Si le gate visuel du user la redemande,
    c'est un echange de palette isole, pas une refonte.
-2. **Sons** : BLOQUE sur la source audio — le zip Downloads est ABSENT, l'audio du jeu est
-   non-extractible (verdict double-mesure du pont sonore, chantier parque, « n'y revenez
-   pas sans element nouveau »). Le lot 5 ne demarre qu'a reception de fichiers sons
-   fournis par l'utilisateur.
+2. **Sons** : DEBLOQUE le 13/08 par la source fournie par l'utilisateur
+   (`D:/Halo Infinite Gun Sounds.zip`, 76 WAV) — le lot 5 est livre (2026-08-14).
+   L'extraction audio DU JEU reste parquee (« n'y revenez pas sans element nouveau ») :
+   ce lot n'y touche pas, il range et joue un pack fourni.
 3. **Equipements actifs** (effet SUR TOUTE LA FICHE — precision user 13/08 : surbouclier =
    fiche doree, camouflage = effet de verre, translocateur = bordure animee) : l'etat
    « actif » n'a aujourd'hui AUCUNE source decodable etablie (i57 refute comme interrupteur,
@@ -287,7 +287,7 @@ juge pas l'aspect).
 
 ## Lot 5 — Sons (SOURCE RECUE 13/08 : D:/Halo Infinite Gun Sounds.zip)
 
-- [ ] 5.1 Source verifiee (superviseur 13/08) : 76 WAV dans 22 dossiers d'armes + MISC —
+- [x] 5.1 Source verifiee (superviseur 13/08) : 76 WAV dans 22 dossiers d'armes + MISC —
       noms ANGLAIS propres (Assault Rifle, Battle Rifle, Bulldog, Cindershot, Commando,
       Disruptor, Energy Sword, Gravity Hammer, Heatwave, Hydra, Mangler, Needler, Plasma
       Pistol, Pulse Carbine, Ravager, S7 Sniper, Sentinel Beam, Shock Rifle, Sidekick,
@@ -295,11 +295,72 @@ juge pas l'aspect).
       Rangement dans static/ (nommage par weapon_key hinf_* via la table de noms EN —
       PAS les noms de fichiers FR des images, piege Cremator/Cindershot), variante
       « Shot » prioritaire, troncature ~1 s si besoin, inventorier MISC.
-- [ ] 5.2 Web Audio : son sur les KILLS a minima (weapon_key du feed → fichier), bouton
+      FAIT (2026-08-14) : 27 fichiers sous `static/sounds/halo_infinite/` — 22 armes +
+      `explosion` + 4 `throw_*`. RANGEMENT VERIFIE PAR EMPREINTE (SHA-256 de chaque fichier
+      contre l'entree du zip) : chacun porte bien la variante « Shot » de SON arme — les
+      tailles identiques Disruptor / Gravity Hammer, qui ressemblaient a une copie fautive,
+      sont une coincidence de duree (WAV PCM non compresse), les empreintes different.
+      MISC INVENTORIE : `Explosion` + les 4 lancers de grenade exploites ; Active Camo,
+      Drop Wall, Grapple(x2), Overshield, Repulsor, Slide, Threat Sensor, Generic ADS,
+      pas/sprint laisses de cote — AUCUN de ces gestes n'est date par le document de rejeu
+      (pas d'evenement d'equipement ni de deplacement dans le film), un son sans instant ne
+      peut pas sonner juste. TRONCATURE FAITE a 1,2 s : 16,9 Mo -> 5,9 Mo, parce que le
+      moteur ne joue que la premiere seconde (enveloppe SOUND_CUT_S) et que
+      `Dockerfile:183 COPY static /app/static` embarque tout dans l'image (~23 Mo
+      aujourd'hui). Les octets gardes sont IDENTIQUES a la source (verifie octet par octet
+      contre le zip), la marge de 0,2 s au-dela du `stop` garantit que la coupe entendue
+      reste celle de l'enveloppe et jamais une fin de fichier. Le zip source reste intact
+      sur D: (reversible). ARMES DU REFERENTIEL SANS SON, silence assume : `hinf_bandit`,
+      `hinf_ma5k_avenger`, `hinf_fuel_rod_spnkr`, `hinf_vestige_carbine` (absentes du pack).
+- [x] 5.2 Web Audio : son sur les KILLS a minima (weapon_key du feed → fichier), bouton
       mute + volume, coupe par defaut ? (decision au gate), respect prefers-reduced-motion.
-- [ ] 5.3 Sons de grenades si le pack en porte (lancer/explosion, Shock = nappe electrique).
+      FAIT (2026-08-14) : trois briques etanches, zero logique dans le composant.
+      (a) `replaySound.ts` — REGLES PURES : manifeste weapon_key -> stem, piste precalculee
+      sur l'horloge DU FIL (`alignFeedToTracks`, la meme qui date le flash des fiches : une
+      horloge brute sonnerait a cote de son image), curseur qui ne rejoue rien deux fois
+      (recalage silencieux au-dela de `SOUND_RESYNC_JUMP_MS` = 1 s, donc scrub, rebouclage
+      et retour d'onglet ne rejouent pas ce qui a ete enjambe), et `soundPlaysAtSpeed`
+      (`SOUND_MAX_SPEED` = 2 : a 4x une seconde de son couvre 4 s de match, les echanges se
+      recouvrent en continu — le son raconterait le lecteur, pas le match).
+      (b) `replayAudio.ts` — LECTURE : AudioContext ne naissant QUE dans le geste
+      d'activation (politique d'autoplay), chargement paresseux des seuls sons du match,
+      404/indecodable memorise comme ABSENT (silence propre, une seule trace, jamais de
+      re-tentative par kill, jamais un son de remplacement), enveloppe de gain (tenue puis
+      fondu 0,75 -> 1,0 s : un `stop()` sec claquerait), 8 voix simultanees max, volume
+      maitre en rampe de 20 ms (poser `gain.value` au curseur crepiterait).
+      (c) `useReplaySound.ts` — CABLAGE : COUPE PAR DEFAUT (decision tenue : rien ne sonne
+      NI ne se telecharge avant le clic), preference + volume persistes (localStorage,
+      patron du repo), battement appele DANS la boucle rAF et nulle part ailleurs (pause,
+      onglet en arriere-plan, redessin de theme = pas de battement = pas de son, par
+      construction), premier battement apres activation = recalage silencieux (sinon
+      activer a 2 100 ms deverserait tout le debut), coupure immediate au clic (maitre a
+      zero, pas d'attente d'une seconde), contexte ferme au demontage. UI :
+      `ReplaySoundControls.tsx` dans la barre des calques (patron du bouton Zones : pas de
+      commande quand la piste n'a aucun son ; bouton estompe + infobulle quand la vitesse
+      le tait), i18n FR+EN (`sound`, `soundHint`, `soundVolume`, `soundFastHint`).
+      PREFERS-REDUCED-MOTION : rien n'a ete ajoute qui bouge — les animations du calque
+      (tirs, morts, grenades, pulses) continuent de la respecter, et le son etant coupe par
+      defaut il n'y a aucune stimulation non demandee. Garde-rail d'assets
+      (`replaySoundAssets.guard.test.ts`) : manifeste et dossier sont la MEME liste.
+      Tests : 12 (moteur : declenchement, coupure a 1 s, silence si absent, voix, volume),
+      10 (regles + curseur), 9 (cablage : rien avant le clic, pas de deversement, avance
+      rapide muette, persistance) — double Web Audio partage `test/fakeAudio.ts`.
+- [x] 5.3 Sons de grenades si le pack en porte (lancer/explosion, Shock = nappe electrique).
+      FAIT (2026-08-14) : les LANCERS sonnent par TYPE (rang -> `throw_frag`/`plasma`/
+      `dynamo`/`spike`, l'auteur et l'instant sont ecrits dans le film) et un kill A LA
+      grenade sonne `explosion` (c'est elle qui a tue, pas le geste du lancer).
+      EXPLOSION EN FIN DE VOL REFUSEE, et c'est le lot 2 qui tranche : `grenadeFx.ts` dit
+      qu'AUCUN evenement de detonation n'existe dans le film et que la fin de vol est une
+      « derniere position connue » — pour une frag la replication cesse ~1,4 s AVANT la
+      meche. Un son d'explosion la-dessus affirmerait une detonation que la donnee ne porte
+      pas, au mauvais instant, en contradiction avec ce que l'ecran ecrit deja. La nappe
+      electrique Shock/Dynamo reste un effet VISUEL (pas de son de nappe dans le pack).
 
 Gate 5 : gate d'ecoute user. NE PAS rouvrir l'extraction audio du jeu.
+PASSE cote automatique (2026-08-14) : tsc -b OK (cache .tmp purge), eslint 0 sur les
+fichiers touches, vitest COMPLET 416 fichiers / 3720 tests verts (14 skips preexistants).
+Le GATE D'ECOUTE reste au user (instructions au compte rendu — la session ne juge jamais
+le rendu sonore).
 
 ## Lot 6 — Generation pour tous les matchs + jobs/monitoring local
 
@@ -403,6 +464,44 @@ e94163af CTF Bazaar ou 606d9844 Chasm) → l'onglet Rejeu 2D doit servir le nouv
 artefact ; 2) Reglages → Analyse → carte « Rejeu 2D » : champ « Fenetre de conservation
 des rejeux » (0 par defaut) ; 3) /admin/monitoring/crons : ligne replay_purge en succes.
 
+## Lot 7 — Deux directives utilisateur du 2026-08-14 (verifiees sur pieces)
+
+> Elles REMPLACENT deux choix faits en cours de route par des donnees qui existaient deja.
+> A executer APRES le lot 5, AVANT tout run de masse (le 7.2 change le contrat d'artefact :
+> generer 928 artefacts avant serait a re-cuire).
+
+- [ ] 7.1 MORTS NEUTRES : la ligne grise « mort » doit porter L'ICONE DU TYPE DE MORT, pas un
+      repere generique. Les icones EXISTENT deja, extraites et versionnees
+      (`static/weapons-assets/halo_infinite/jeu/index.json`) : `suicide` (killfeed-61),
+      `splatter` (60, ecrasement), `environment` (55), `fusion_coil` (27), `waterfall` (78),
+      `ricochet` (57), `player_left` (69). La donnee qui distingue = la NATURE du degat fatal
+      de killsource (« arme / melee / grenade / vehicule / objet explosif / environnement » —
+      GUIDE_KILLSOURCE §194 : elle vient de la structure des archives du jeu, pas d'une
+      heuristique, et « reste juste meme quand le nom sort en Autres »). Regle : nature ->
+      icone, une nature inconnue reste le repere neutre (jamais l'icone d'une autre mort).
+      MESURER d'abord la couverture des morts sans tueur par la nature (le guide note qu'elles
+      sont RARES : 0 sur 4 films de reference, 1 suicide sur le BTB) — si la donnee manque sur
+      la majorite, le dire et livrer ce qui est mesure.
+- [ ] 7.2 SYNCHRO PAR LE T0 REEL, pas par appariement statistique. Directive utilisateur :
+      « pas besoin d'algo alambique, on a le first joined time en data API qui donne le debut
+      reel du match sans la phase d'attente/chargement ». VERIFIE : ce T0 EXISTE et est deja
+      persiste — `match_registry.real_start_time` + `t0_quality`, calcule par
+      `analysis/timeline.ComputeT0` (`cmd/backfill_t0` : T0 = MIN(first_joined_time des joueurs
+      present_at_beginning, hors bots) − start_time_utc) ; MatchView s'en sert deja
+      (`meta.T0Ms` -> `correctMatchViewEventsT0`). LE DEFAUT EST DANS L'ARTEFACT : `build.go`
+      cale sa frame 0 sur le PREMIER PAQUET DE POSITION (`origin = sorted[0].TimestampUS`),
+      un referentiel qui n'existe nulle part ailleurs — d'ou l'ecart mesure de 3,7 s a 40 s
+      selon le match. CORRECTIF : l'artefact PUBLIE son origine (timestamp absolu du premier
+      paquet, ou son decalage au `start_time_utc` du match) ; le client calcule un decalage
+      EXACT (origine artefact − T0) au lieu d'apparier des morts. Bump SchemaVersion +
+      re-cuisson des ~23 artefacts existants. GAIN par rapport au contournement livre en
+      `edb0e723c` : marche aussi sur les matchs SANS couverture killer_victim_pairs (limite
+      documentee du correctif actuel), et ne depend plus d'un appariement a +-2 s.
+      PIEGE CONNU : dette TZ sur `first_joined_time` (cf. `cmd/backfill_first_joined_tz`,
+      memoire `project_data_quality_first_joined_tz`) — lire `t0_quality` et degrader
+      proprement quand il vaut autre chose que la valeur nominale, jamais servir un T0 douteux.
+      L'appariement de `edb0e723c` reste comme REPLI quand le T0 est absent/rejete.
+
 ## Hors perimetre (registre)
 
 Ouvrier distant + file durable + heartbeat (piste F, activation prod post-tag) ; decoupage
@@ -492,8 +591,18 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
   a zones NON couverts par la table : leurs roles d'objets ne sont pas etablis (aucune
   mesure .mvar — utilisent-ils strongholds_zone ?). Le jour ou c'est mesure, l'extension
   est UNE entree TOML, zero code. KOTH reste hors v7.5 (registre).
+- (lot 5, 2026-08-14) DEUX FICHIERS DU PACK ONT LA MEME TAILLE SANS ETRE LE MEME SON :
+  Disruptor Shot et Gravity Hammer Hit font 857 942 octets a l'octet pres (WAV PCM non
+  compresse, memes duree et format), de meme que MISC/Explosion et MISC/Springing on metal.
+  Un controle de rangement par taille conclut donc a une copie fautive la ou il n'y en a
+  pas — c'est l'empreinte qui tranche. A garder en tete pour tout futur pack d'assets.
+- (lot 5, 2026-08-14) le test « saut long en avant » ecrit avec le curseur sonore sautait a
+  `SOUND_RESYNC_JUMP_MS + 1` = 1 001 ms et attendait 2 evenements enjambes alors que le
+  second est a 1 200 ms : il n'avait jamais tourne. Corrige (saut a 1 500 ms) et complete
+  par le cas symetrique (un saut JUSTE sous le seuil reste une lecture continue).
 
 ## Reprise
 
 Avancement = statuts de ce fichier + git log feat/v75. Ordre des lots : 1 → 2 → 3 → 4 → 6,
 le 5 des reception des sons. Gates visuels/d'ecoute = utilisateur, en une passe par lot.
+Lot 5 CLOS cote code le 2026-08-14 (5.1/5.2/5.3 [x]) : il ne reste que le gate d'ecoute.

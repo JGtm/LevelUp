@@ -1,3 +1,47 @@
+## [2026-08-14] v7.5 lot 5 — le rejeu 2D a un son, coupe par defaut
+
+**Statut** : Complete (gate d'ecoute user en attente).
+
+**Decision technique principale** : trois briques etanches plutot qu'un composant qui
+sait faire du Web Audio. `replaySound.ts` porte les REGLES pures — quoi sonne (manifeste
+weapon_key -> stem), quand (piste posee sur l'horloge DU FIL via `alignFeedToTracks`, la
+meme qui date le flash des fiches : l'horloge brute sonnerait a cote de son image), et le
+curseur qui ne rejoue rien deux fois (recalage silencieux au-dela d'une seconde de saut :
+scrub, rebouclage et retour d'onglet n'ont pas a rejouer ce qu'ils ont enjambe).
+`replayAudio.ts` porte la LECTURE — contexte cree UNIQUEMENT dans le geste d'activation,
+chargement paresseux, absence memorisee (404 = silence propre, une seule trace, jamais un
+son de remplacement), coupe a ~1 s par enveloppe de gain (un `stop()` sec claque), 8 voix
+max, volume en rampe de 20 ms. `useReplaySound.ts` est la couture React et rien d'autre :
+le battement sonore est appele DANS la boucle rAF et nulle part ailleurs, ce qui rend
+structurel le silence d'un lecteur en pause ou d'un onglet en arriere-plan. Deux decisions
+de fond : COUPE PAR DEFAUT (rien ne sonne ni ne se telecharge avant le clic — c'est aussi
+ce qui respecte `prefers-reduced-motion` par construction), et MUET AU-DELA DE 2x (a 4x une
+seconde de son couvre 4 s de match : les echanges se recouvrent, on entendrait le lecteur
+et non le match). Cote assets, les 27 WAV ont ete TRONQUES a 1,2 s : 16,9 Mo -> 5,9 Mo,
+parce que le moteur n'en joue que la premiere seconde et que le Dockerfile embarque
+`static/` dans l'image ; octets gardes identiques a la source, marge de 0,2 s pour que la
+coupe entendue reste celle de l'enveloppe.
+
+**Resultats observes** : rangement du pack VERIFIE PAR EMPREINTE contre le zip — piege
+note au plan : Disruptor Shot et Gravity Hammer Hit font exactement la meme taille sans
+etre le meme son (PCM non compresse), un controle par taille aurait conclu a tort a une
+copie fautive. 22 armes sonnent, 4 du referentiel restent muettes faute de fichier
+(Bandit, MA5K, SPNKr a combustible, Vestige) — silence assume, jamais le son d'une
+voisine. MISC : Explosion et les 4 lancers exploites ; le reste (camo, mur, grappin,
+surbouclier, repulseur, glissade, capteur, pas) laisse de cote, aucun de ces gestes n'est
+date par le document. Explosion sur FIN DE VOL refusee : le lot 2 a etabli qu'aucun
+evenement de detonation n'existe dans le film et que pour une frag la replication cesse
+~1,4 s avant la meche — la poser affirmerait une detonation absente, au mauvais instant.
+Un test du curseur ecrit au lot precedent n'avait jamais tourne et attendait un evenement
+qui n'etait pas encore passe : corrige et complete par son cas symetrique. Gates : tsc -b
+apres purge OK, eslint 0 sur les fichiers touches, vitest COMPLET 416 fichiers / 3720
+tests verts (14 skips preexistants), dont 31 tests sonores neufs (moteur, regles, cablage)
+sur un double Web Audio partage — jsdom n'a pas d'AudioContext.
+
+**Conclusion / prochaine etape** : lot 5 clos cote code (5.1/5.2/5.3 [x]), il ne reste que
+le GATE D'ECOUTE de l'utilisateur — la session ne juge jamais un rendu sonore. Instructions
+d'ecoute remises au compte rendu (match, instant, ce qu'il faut entendre).
+
 ## [2026-08-14] v7.5 CI rouge — garde-fou 2/2 : le ratchet god-package sync/ tient sa baseline
 
 **Statut** : Complete.
