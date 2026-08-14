@@ -406,7 +406,8 @@ func renderInventory(p func(string, ...any), doc ReplayDocument) {
 		multi)
 	p("nombre de candidats est publie, pour que le departage reste visible")
 	p("rangs de grenade : %s", renderBilingualList(doc.GrenadeLabels))
-	p("capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu) : %s",
+	p("capacites nommees (TABLE PARTIELLE — 5 index OBSERVES sur le corpus, 2 nommes ;"+
+		" les contestes gardent leur numero, cf. replay_labels.toml) : %s",
 		renderBilingualMap(doc.AbilityLabels))
 	p("")
 }

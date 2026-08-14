@@ -50,7 +50,7 @@ par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=22
 51 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
-capacites nommees (TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu) : 3=en:"Drop Wall"/fr:"mur portatif", 4=en:"Grappleshot"/fr:"grappin", 5=en:"Thruster"/fr:"propulseur", 6=en:"Threat Sensor"/fr:"capteur de menace"
+capacites nommees (TABLE PARTIELLE — 5 index OBSERVES sur le corpus, 2 nommes ; les contestes gardent leur numero, cf. replay_labels.toml) : 4=en:"Grappleshot"/fr:"grappin", 5=en:"Thruster"/fr:"propulseur"
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)

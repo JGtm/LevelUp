@@ -64912,3 +64912,24 @@ rien et n'entre dans aucune table.
 **Conclusion / prochaine etape** : cibles Theater par ordre de recence au registre. Caveat
 consigne : si ces films sont trop anciens pour Theater, jouer un BTB Fiesta et relancer
 l'instrument dessus.
+
+## [2026-08-14] Equipement actif — etape 1 : la table des capacites cesse d'affirmer ce qu'elle ne sait pas
+**Statut** : Complété (etape 1 du `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
+**Decision technique** : mesurer d'abord l'impact du nommage conteste, puis RETIRER les noms
+des index 3 et 6 de `config/titles/halo_infinite/mappings/replay_labels.toml` au lieu de les
+renumeroter selon la palette `sofd`. Motif : la palette ne s'applique PAS a ce champ, et le
+retrait du contradicteur ne fournit pas pour autant une preuve de rechange.
+**Resultats** : balayage de 40 films du cache, un processus par film (4 a 58 s, pic memoire
+<= 54 Mo). 19 films rendent des lectures, 1702 lectures au total : 3 -> 270, 4 -> 452,
+5 -> 348, 6 -> 335, 7 -> 297. Les lectures au nom conteste sont 605 sur 1702 (35,5 %), sur
+12 films. QUATRE MESURES CONVERGENTES etablissent que le champ de 3 bits des images-cles
+n'est pas le rang de palette `sofd` : (1) 3 bits bornent a 7 alors que la famille A place le
+camouflage a 8, le surbouclier a 9, le translocateur a 11 ; (2) les valeurs 0, 1 et 2 ne
+sortent JAMAIS sur 1702 lectures, alors que 1 = detecteur et 2 = mur y seraient courants ;
+(3) le rang 3, « pas une capacite » selon la famille A, est lu 270 fois sur 12 films ;
+(4) l'elargissement a 6 bits etait deja refute le 14/08 (0/8 contre 6/8). Les index 4 et 5,
+seuls a porter deux confirmations independantes (triplets + palette), gardent leur nom.
+**Conclusion / prochaine etape** : etape 2 — statuer la regle rang -> nom avec ces chiffres,
+et chercher en LECTURE DE CODE si la designation du `sofd` du match est serialisee dans le
+film. Ligne au REGISTRE_REPORTS : un second releve Theater sur un film autre que `000d5950`
+restaure les deux noms d'un coup (films riches : `00502e52`, `07aa428d`, `0762ae7c`).

@@ -41,7 +41,7 @@ var phrasesGolden = []string{
 	"lu aux images-cles, jamais interpole entre deux",
 	"a PLUSIEURS candidats : la plus longue a ete retenue",
 	"nombre de candidats est publie, pour que le departage reste visible",
-	"TABLE PARTIELLE — 4 index observes pour 11 capacites dans le jeu",
+	"TABLE PARTIELLE — 5 index OBSERVES sur le corpus, 2 nommes",
 	"l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee",
 	"deux sources nommees : la LECTURE, puis la FERMETURE",
 	"signalerait une TROISIEME SOURCE",

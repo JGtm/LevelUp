@@ -49,20 +49,66 @@ traversee complete.
 | `4 = grappin` ✔ | rang 4 = grappin |
 | `5 = propulseur` ✔ | rang 5 = propulseur |
 
-- [ ] 1.1 MESURER l'impact avant de corriger : sur le corpus de films, combien de lectures
-      portent 3 et 6 ? (chiffre du 14/08 : les index observes sont 3,4,5,6 et un 7 sur deux
-      films). C'est le nombre de fiches qui affichent aujourd'hui un nom FAUX.
-- [ ] 1.2 Corriger la table selon le §13, en citant la recette dans le commentaire.
-      **Attention** : ne pas se contenter de renumeroter — si l'observation dit 3 et que la
-      palette dit « 3 n'est pas une capacite », alors soit le champ lu n'est pas le rang de
-      palette, soit la palette du match n'est pas la famille A. C'est l'etape 2 qui tranche ;
-      tant qu'elle n'a pas parle, une lecture douteuse s'affiche SANS NOM plutot qu'avec un
-      faux.
-- [ ] 1.3 Verifier a l'ecran sur un match temoin : la capacite affichee correspond-elle a ce
-      que la verite terrain Theater du 2026-07-27 a releve (8/8 sur `000d5950`) ?
+- [x] 1.1 MESURER l'impact avant de corriger : sur le corpus de films, combien de lectures
+      portent 3 et 6 ? → **605 lectures sur 1702, soit 35,5 %**, sur **12 films** des 19 qui
+      rendent des lectures (balayage de **40 films** du cache, un processus par film,
+      instrument versionne `i48_ability_width_test.go`, garde `ABILITY_FILM_ROOT`).
+- [x] 1.2 Corriger la table selon le §13, en citant la recette dans le commentaire.
+      → **3 et 6 RETIRES** (pas renumerotes : la clause de prudence de cet item s'applique,
+      voir le journal) ; **4 et 5 conserves** — seuls a porter DEUX confirmations
+      independantes (controle de groupe des triplets + palette `sofd`). Le commentaire du
+      TOML porte la mesure, la regle qui tranche, et la condition de restauration.
+- [x] 1.3 Verifier sur un match temoin : sur `000d5950`, **6 des 8 slots** de la verite
+      terrain gardent un nom, et **ces 6 sont exactement ceux que le releve Theater
+      confirme** (3 grappins, 3 propulseurs) ; les 2 slots contestes affichent desormais
+      leur numero (« capacite inconnue (3) » / « (6) »). Verifie sur pieces via le golden
+      d'assemblage du film de reference. Le controle A L'ECRAN reste la main de
+      l'utilisateur (gate visuel).
 
-Gate 1 : le nombre de lectures corrigees est publie ; aucune fiche ne montre un nom que la
-recette contredit ; tests Go + web verts.
+Gate 1 : **PASSE**. Nombre de lectures corrigees publie (605/1702) ; aucune fiche ne montre
+un nom que la recette contredit ; `go test ./internal/analysis/replay/ ./internal/games/...`
+verts, `go vet` propre, `golangci-lint --new-from-merge-base=origin/main` 0 issue. Cote web :
+aucun fichier touche (le rendu d'un index non nomme existait deja,
+`ReplayInventoryRow.abilityText`).
+
+### Journal de l'etape 1 (2026-08-14)
+
+**Balayage** : 40 films, 4 s a 58 s par film, pic memoire **≤ 54 Mo** (un processus a la
+fois, borne d'arret a 2 Go jamais approchee). **19 films rendent des lectures, 21 aucune**
+(l'ancrage R1 n'y est jamais unique — decouverte deja notee le 14/08, non traitee).
+
+    index      lectures   films
+      3            270      12
+      4            452      11
+      5            348      11
+      6            335      11
+      7            297       8      jamais nomme
+    TOTAL         1702      19      nommes apres correction : 800 (47,0 %)
+
+**POURQUOI LA CLAUSE DE PRUDENCE A JOUE.** L'item 1.2 prevoyait deux issues ; la mesure en
+designe une troisieme, plus forte, et elle est publiee ici parce qu'elle deplace l'etape 2 :
+**le champ de 3 bits ne peut pas etre le rang de palette `sofd`**, pour quatre raisons
+convergentes et toutes mesurees :
+
+1. **Largeur** : 3 bits bornent a 7. Or la famille A place le camouflage au rang 8, le
+   surbouclier au 9, le translocateur au 11, le champ de reparation au 23. Un champ qui ne
+   sait pas ecrire ces rangs n'est pas ce rang.
+2. **Rangs jamais vus** : sur 1702 lectures et 19 films, les valeurs **0, 1 et 2
+   n'apparaissent JAMAIS**. Si le champ etait le rang famille A, le detecteur (1) et le mur
+   (2) — deux equipements courants — seraient absents de tout le corpus.
+3. **Valeur impossible** : la famille A dit que le rang 3 « n'est pas une capacite ». Le
+   corpus le lit **270 fois sur 12 films**, porte par des joueurs. Une categorie nulle ne se
+   porte pas.
+4. **Elargissement deja refute** : le 14/08, `large6` / `suite6` / `aval6` rendent 0/8 contre
+   la verite terrain la ou `prod3` rend 6/8, et `large6 = 16 + prod3` par construction du
+   motif d'ancrage. Il n'y a ni porte ni champ de 6 bits a cette position.
+
+**CE QUE CELA NE FAIT PAS.** Cela retire la CONTRADICTION, cela ne fournit pas la PREUVE.
+Retirer le contradicteur de « 3 = mur » laisse ce nom adosse a **une seule observation**, et
+la regle du depot dit qu'un temoignage isole ne vaut pas (RECETTE_LOADOUT §2). Le nom est
+donc retire jusqu'a un second releve. **Le cout de l'erreur est asymetrique et c'est ce qui
+tranche** : un numero prive d'un nom juste coute une information ; un nom faux affirme une
+fausseté. L'etape 2 statue sur la regle rang -> nom avec ces chiffres en main.
 
 ## Etape 2 — QUELLE PALETTE POUR CE FILM ? (le vrai verrou de l'identite)
 
