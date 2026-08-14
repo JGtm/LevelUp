@@ -1,6 +1,6 @@
 ## [2026-08-14] v7.5 containment — l horloge du croisement etait un DECALAGE LU, pas un retard a estimer
 
-**Statut** : En cours (etapes 1 a 3 du plan mesurees ; etape 4 a statuer).
+**Statut** : Complete — **verdict NEGATIF chiffre, aucune persistance** (gate 4.1 non franchi).
 
 **Le constat qui commande l etape 1**. Le rapport du 2026-08-08 avait refuse de persister
 sur trois criteres, dont « la correction d horloge n est pas etablie » : le retard existait
@@ -60,11 +60,43 @@ Vagabond : **35 groupes concordants sur 36 (97,2 %)**, contre 33 % attendus au h
 trois zones. Le temoin (memes groupes decales de 30 s) est publie avec son denominateur —
 sans lui, un « 100 % » sur un seul groupe se lirait comme une mesure.
 
-**Conclusion / prochaine etape** : la mesure du corpus elargi est en cours (32 films sur 48
-au moment de cette entree, deux redemarrages machine ayant interrompu la passe). Le critere
-de persistance de l etape 4 — justesse >= 95 % sur l oracle ET taux >= 80 % sur le corpus
-elargi — a ete ecrit AVANT toute mesure et ne sera pas ajuste. Rien n est persiste ni
-affiche a ce stade.
+**Le corpus elargi separe DEUX populations, et c est le resultat le plus utile du lot.**
+Mesure sur 32 des 48 films (31 corriges ; `aaaf6c76` exclu parce que l artefact REFUSE de
+publier son origine — controle du fil des morts a -200 695 ms, le garde-fou d `origin.go` a
+joue) : **179/1811 = 9,9 % AVANT, 760/1860 = 40,9 % APRES**. Mais ce 40,9 % est un melange :
+20 films tiennent entre 35 et 81 %, et **11 films rendent EXACTEMENT 0,0 %** sur 53 a
+97 actions. Ces onze-la ont un **ecart vertical median de +1 240 a +1 300 m** entre positions
+et zones — les joueurs sont 1,3 km au-dessus des formes. Ce n est pas un fait de jeu ni un
+defaut du croisement (les films qui marchent ont un ecart vertical de ~0,0 m, p25 -0,6 /
+p75 +0,1, exactement la mesure du 08/08) : c est un defaut de REPERE par carte. Restreint aux
+films dont les deux reperes coincident : **760/1185 = 64,1 %**.
+
+**Verdict, critere applique tel qu ecrit AVANT mesure** : justesse >= 95 % ET taux >= 80 %.
+Le taux est a 40,9 % (64,1 % au mieux) — echec net, pas marginal. La justesse n a PAS
+d oracle. **On ne persiste pas, on classe.** Aucune table, aucune migration, aucun champ
+ajoute a un document publie, aucun affichage branche. Le lot du 08/08 avait raison de
+refuser ; ce lot leve la DEUXIEME de ses trois objections (la correction d horloge est
+etablie et LUE, plus estimee) et laisse les deux autres debout.
+
+**Les 16 films restants ne sont pas mesures, et c est demontre plutot que suppose** : a 760
+attributions sur 1 860 actions, atteindre 80 % exigerait 3 640 actions supplementaires TOUTES
+attribuees, soit 227 actions/film quand le maximum observe est 110. Borne haute realiste
+(16 films a 100 %) : **61,0 %**. Le complement ne peut pas renverser le gate. Cout mesure
+pour la suite : **105 s et 216 Mo de pic par film**, un process a la fois — l outil n est donc
+pas la bombe RAM du balayage corpus, il decode un film par process.
+
+**Decouverte NON TRAITEE, portee au registre, et c est la plus couteuse a ignorer** : le
+calque d objectifs du rejeu EN PRODUCTION porte le meme decalage. `buildObjectiveActions`
+pose `t = TimeMS / interval` sans retrancher l origine, et le client consomme `a.t` tel quel
+(`objectivesLayer.ts`, `buildObjectivePulses`) — seul le kill feed applique `originMs`. Les
+pulses d action d objectif sont donc dessines 3,6 a 50,8 s trop tard, et poses sur l element
+le plus proche du joueur au MAUVAIS instant. Non corrige ici : hors perimetre du plan, et la
+correction touche un document servi (contracttest + types web).
+
+**Prochaine etape si le containment est repris**, dans cet ordre : (1) le defaut de repere
+~1 270 m (11 films, 36 % du corpus mesure) ; (2) le complement des 16 films, qui n a d interet
+qu apres (1) ; (3) un oracle de JUSTESSE, dont la seule voie connue est un releve Theater sur
+un match recent et date.
 
 ## [2026-08-14] v7.5 lot 8 — la file de construction devient durable, et l ouvrier peut vivre ailleurs
 
