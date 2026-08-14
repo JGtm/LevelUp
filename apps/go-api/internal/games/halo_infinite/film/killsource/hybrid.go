@@ -59,6 +59,11 @@ type pass struct {
 	botStats PathStats
 	// botKillerStats : les morts INFLIGEES PAR un bot (temps 5).
 	botKillerStats PathStats
+	// unclaimedStats : les morts que PERSONNE ne revendique (temps 6). `Population` = morts
+	// orphelines du feed ; `Published` = celles dont un dead-state auto-inflige a ete lu.
+	unclaimedStats PathStats
+	// unclaimed : ces memes morts, avec leur source. Elles ne sont JAMAIS des [Kill].
+	unclaimed []UnclaimedDeath
 	// botUsed : les positions de candidat consommees par les DEUX temps de bot. Elle sert au
 	// seul comptage des inexpliques : un candidat a indice de bot qui a servi n en est pas un.
 	botUsed   map[[3]int]bool
@@ -238,6 +243,77 @@ func (p *pass) runBotKillers() {
 	}
 }
 
+// runUnclaimed : temps 6 — LES MORTS QUE PERSONNE NE REVENDIQUE.
+//
+// IL DOIT TOURNER APRES LE TEMPS 5, et l ordre n est pas cosmetique : une mort orpheline que le
+// temps 5 explique par un TUEUR BOT a un tueur, elle sort en [Kill]. La sauter ici est donc une
+// SOUSTRACTION de population, pas un doublon evite — et elle se fait par le seul temoin qui
+// vaille, la presence d une ligne publiee au meme instant.
+//
+// LA GARDE DE PUBLICATION, ET C EST TOUT L INTERET DE CE TEMPS : le dead-state retenu doit
+// nommer la victime ET porter LE MEME INDICE en tueur. Un dead-state qui designerait un autre
+// joueur decrirait un kill que le kill-feed ne porte pas ; le publier comme une mort de soi
+// serait affirmatif et faux. Le couple reste donc contraint des deux cotes, exactement comme
+// aux temps 1 a 5 — ici les deux cotes sont le meme joueur.
+//
+// LE CANDIDAT RETENU EST LE PLUS PROCHE EN TEMPS. Zero arbitrage : sur la mesure du 2026-08-14
+// (cinq morts sur quatre films) chaque mort n en a qu UN, a 0 et 4 ms.
+//
+// ET IL N EST SERVI QU UNE FOIS — c est la meme garde que les temps 4 et 5, et pour la leçon
+// qui les a produits : deux morts orphelines voisines convoiteraient le MEME dead-state et
+// publieraient deux fois la meme source. `Matched` compte ce qui a trouve un dead-state,
+// `Published` ce qui a effectivement ete publie : l ecart entre les deux EST cette garde, et il
+// vaut zero sur le corpus mesure.
+func (p *pass) runUnclaimed() {
+	used := map[[3]int]bool{}
+	for _, e := range p.ctx.feed.orphD {
+		p.unclaimedStats.Population++
+		if _, deja := p.byTime[e.timeMS]; deja {
+			continue // le temps 5 lui a trouve un tueur bot : elle a un tueur, elle n est pas orpheline
+		}
+		var best sourcedCandidate
+		bestDT := tolMS + 1
+		for _, cd := range p.all {
+			dt := e.timeMS - cd.ms
+			if dt < -tolMS || dt > tolMS {
+				continue
+			}
+			if cd.victim != cd.killer || p.ctx.roster.nameOf(cd.victim) != e.victim {
+				continue
+			}
+			if d := absMS(dt); d < bestDT {
+				bestDT, best = d, cd
+			}
+		}
+		if bestDT > tolMS {
+			continue
+		}
+		p.unclaimedStats.Matched++
+		k := [3]int{best.chunk, best.pidx, best.bit}
+		if used[k] {
+			continue
+		}
+		used[k] = true
+		p.unclaimedStats.Published++
+		p.unclaimed = append(p.unclaimed, UnclaimedDeath{
+			TimeMS:     e.timeMS,
+			Victim:     e.victim,
+			VictimXUID: e.victimXUID,
+			Source:     sourceTruthOf(best.tag, best.cat),
+			Read: Provenance{Path: best.path, Origin: OriginUnclaimed,
+				Multiplicity: multOf(p.ctx.mult, best.candidate)},
+		})
+	}
+	sort.Slice(p.unclaimed, func(i, j int) bool { return p.unclaimed[i].TimeMS < p.unclaimed[j].TimeMS })
+}
+
+func absMS(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 // countUnexplainedBot : les candidats a indice de BOT que NI le temps 4 NI le temps 5 n ont
 // servis. Il se compte APRES les deux, sinon il compterait comme inexplique ce que le temps
 // suivant explique — exactement le genre de compteur qui reste vrai en apparence tout en
@@ -321,6 +397,7 @@ func (p *pass) stats(w *walkResult) Stats {
 		SelfWalk: p.selfWalk, SelfScan: p.selfScan,
 		Bot:               p.botStats,
 		BotKiller:         p.botKillerStats,
+		Unclaimed:         p.unclaimedStats,
 		Redundant:         p.redundant,
 		NoBit:             p.noBit,
 		Agree:             p.agree,
@@ -351,6 +428,7 @@ func (c *decodeCtx) run() *pass {
 	p.runSelfSource()
 	p.runBots()
 	p.runBotKillers()
+	p.runUnclaimed()
 	p.countUnexplainedBot()
 	p.concordance(walkCands)
 	return p

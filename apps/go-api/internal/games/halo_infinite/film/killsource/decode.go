@@ -139,6 +139,7 @@ func (c *decodeCtx) finish() *Result {
 	stats.Assist = c.attachAssists(kills, scanKillEvents(c.film))
 	res := &Result{
 		Kills:           kills,
+		UnclaimedDeaths: p.unclaimed,
 		Coverage:        cov,
 		Stats:           stats,
 		Roster:          c.roster.public(),

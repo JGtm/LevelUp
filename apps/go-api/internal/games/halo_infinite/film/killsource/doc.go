@@ -55,6 +55,16 @@
 //	    // k.KillerDamage      : part de degats du tueur     ; .Known = false => NON MESURE
 //	    // k.AssistDamage      : part de degats de l assistant ; .Known = false => NON MESURE
 //	}
+//	for _, d := range res.UnclaimedDeaths {
+//	    // LES MORTS QUE PERSONNE NE REVENDIQUE — liste SEPAREE, jamais melangee aux kills :
+//	    // il n y a pas de credit a porter, et en inventer un serait un mensonge.
+//	    // d.Victim / d.VictimXUID : la victime (le xuid est la seule cle de jointure fiable)
+//	    // d.Source.Class          : DEGAT_GLOBAL (chute, environnement, hors-limites) ou la
+//	    //                          classe de sa PROPRE source — c est ce qui distingue une
+//	    //                          chute d une roquette tiree trop pres d un mur
+//	    // Population RARE et mesuree : 0 sur les quatre films de reference, 1 a 2 par match
+//	    // ailleurs (mesure du 2026-08-14).
+//	}
 //	for _, p := range res.Health.ExpvarPairs() {
 //	    observability.AddInt(p.Name, p.Value)            // ADR 0009, compteurs entiers
 //	}
