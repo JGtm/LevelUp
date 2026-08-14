@@ -64749,3 +64749,16 @@ de capacite + couverture) et `filmdec/i56_energy_test.go` (correlation `i54` x `
 **Conclusion / prochaine etape** : 4 lignes au REGISTRE_REPORTS avec leurs conditions de
 reprise. La plus courte et la moins chere : ouvrir `00ba2e1c` en Theater et lire l'equipement
 d'un joueur — une observation nomme l'index 7.
+
+## [2026-08-14] Capacites d'armure — second temoin de l'index 7 (BTB Fiesta)
+**Statut** : Complété (precise la condition de reprise de l'item 2.3)
+**Decision technique** : chercher exprès un SECOND porteur de l'index 7 avant de rendre la
+main, pour que la demande de releve Theater ne repose pas sur un film unique. Deux films BTB
+tires du registre de matchs, mesures avec le meme instrument.
+**Resultats** : `9fe88ec4` (BTB:Fiesta CTF sur Insolence, 13/11/2025) rend 7 sur ses
+63 lectures et lui seul ; `4f77afc1` (BTB:CTF sur Flood Gulch, 24/07/2026, recent) rend {3,4}.
+Les deux porteurs connus de l'index 7 sont donc des **BTB Fiesta** — motif note, il ne nomme
+rien et n'entre dans aucune table.
+**Conclusion / prochaine etape** : cibles Theater par ordre de recence au registre. Caveat
+consigne : si ces films sont trop anciens pour Theater, jouer un BTB Fiesta et relancer
+l'instrument dessus.

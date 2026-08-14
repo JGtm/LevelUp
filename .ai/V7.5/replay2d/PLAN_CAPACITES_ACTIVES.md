@@ -287,6 +287,17 @@ des lectures**, 8 n'en rendent aucune (l'ancre R1 n'y est jamais unique dans un 
     02d39fa0  3:30 4:50 5:30 6:30   (140)      00ba2e1c  7:85                  (85)
     9e8fb31b  3:20 4:27 5:25 6:32   (104, film de référence, hors échantillon)
 
+**SECOND TÉMOIN DE L'INDEX 7, cherché exprès** (deux films BTB tirés du registre de matchs,
+hors échantillon) :
+
+    4f77afc1  3:48 4:40   (88)   BTB:CTF sur Flood Gulch, 2026-07-24     -> pas de 7
+    9fe88ec4  7:63        (63)   BTB:Fiesta CTF sur Insolence, 2025-11-13 -> QUE du 7
+
+L'index 7 sort donc sur **deux films indépendants**, tous deux **BTB Fiesta**
+(`00ba2e1c` BTB:Fiesta Slayer sur Obituary, 2025-07-25 ; `9fe88ec4` BTB:Fiesta CTF sur
+Insolence, 2025-11-13), et sur **eux seuls** — un BTB non-Fiesta récent rend {3,4}. Le motif
+est noté ; **il ne nomme rien** et n'entre dans aucune table.
+
 ### État actif (étape 3) — film 000d5950
 
     records delta biped        171 851
