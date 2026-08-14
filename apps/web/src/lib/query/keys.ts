@@ -300,6 +300,7 @@ export const queryKeys = {
   adminMonitoringFreshness: ['admin', 'monitoring', 'freshness'] as const,
   adminMonitoringResources: ['admin', 'monitoring', 'resources'] as const,
   adminMonitoringCrons: ['admin', 'monitoring', 'crons'] as const,
+  adminMonitoringBuildQueue: ['admin', 'monitoring', 'build-queue'] as const,
   adminActionJournal: ['admin', 'actions', 'journal'] as const,
   adminWeaponCoverage: (slug: string) => ['admin', 'monitoring', 'weapon-coverage', slug] as const,
   adminLusrGaps: (slug: string) => ['admin', 'monitoring', 'lusr-gaps', slug] as const,

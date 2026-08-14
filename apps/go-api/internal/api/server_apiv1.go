@@ -410,6 +410,15 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		appearanceDiagHandler.Mount(r.With(middleware.NoStore), adminOpt)
 	})
 
+	// Protocole ouvrier de la file de construction (piste F). HORS du groupe
+	// /admin : un ouvrier n'a ni session ni compte, il présente un jeton dédié qui
+	// n'ouvre QUE ces trois routes. Sans jeton configuré, elles répondent 503.
+	// Cf. server_build_worker.go.
+	r.Route("/internal", func(r chi.Router) {
+		wire.MountBuildWorkerRoutes(r, reg,
+			humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/internal"))
+	})
+
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
 	// défense en profondeur). /probe résout des tokens (sensibles) → n'est plus
 	// accessible au seul fait d'être sur la loopback. Permet de comprendre pourquoi

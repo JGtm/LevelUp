@@ -2127,3 +2127,101 @@ en = "Failed"
 [admin.appearance.fetch_status.none]
 fr = "Jamais tenté"
 en = "Never attempted"
+
+# ─── File de construction des rejeux + ouvriers (piste F) ───────────────────
+
+[admin.buildqueue.section]
+fr = "File de construction des rejeux"
+en = "Replay build queue"
+
+[admin.buildqueue.workers_section]
+fr = "Ouvriers"
+en = "Workers"
+
+[admin.buildqueue.unavailable]
+fr = "File de construction indisponible."
+en = "Build queue unavailable."
+
+[admin.buildqueue.disabled_notice]
+fr = "Aucun jeton d'ouvrier configuré : la file peut se remplir, mais personne ne viendra la vider."
+en = "No worker token configured: the queue can fill up, but nobody will drain it."
+
+[admin.buildqueue.empty_title]
+fr = "File vide"
+en = "Empty queue"
+
+[admin.buildqueue.empty_desc]
+fr = "Les constructions de rejeu mises en file apparaîtront ici, avec l'ouvrier qui les traite."
+en = "Queued replay builds will show up here, along with the worker handling them."
+
+[admin.buildqueue.workers_empty_title]
+fr = "Aucun ouvrier connu"
+en = "No known worker"
+
+[admin.buildqueue.workers_empty_desc]
+fr = "Un ouvrier apparaît dès son premier appel : il tire le travail, rien ne l'appelle."
+en = "A worker shows up on its first call: it pulls work, nothing calls it."
+
+[admin.buildqueue.counts_queued]
+fr = "En attente"
+en = "Queued"
+
+[admin.buildqueue.counts_running]
+fr = "En cours"
+en = "Running"
+
+[admin.buildqueue.counts_succeeded]
+fr = "Faits"
+en = "Done"
+
+[admin.buildqueue.counts_failed]
+fr = "Échoués"
+en = "Failed"
+
+[admin.buildqueue.col_match]
+fr = "Match"
+en = "Match"
+
+[admin.buildqueue.col_status]
+fr = "Statut"
+en = "Status"
+
+[admin.buildqueue.col_worker]
+fr = "Ouvrier"
+en = "Worker"
+
+[admin.buildqueue.col_attempt]
+fr = "Tentative"
+en = "Attempt"
+
+[admin.buildqueue.col_updated]
+fr = "Mis à jour"
+en = "Updated"
+
+[admin.buildqueue.col_hostname]
+fr = "Machine"
+en = "Machine"
+
+[admin.buildqueue.col_current_job]
+fr = "Travail en cours"
+en = "Current job"
+
+[admin.buildqueue.col_done]
+fr = "Faits"
+en = "Done"
+
+[admin.buildqueue.col_last_beat]
+fr = "Dernier signe de vie"
+en = "Last heartbeat"
+
+[admin.buildqueue.worker_online]
+fr = "En ligne"
+en = "Online"
+
+[admin.buildqueue.worker_offline]
+fr = "Hors ligne"
+en = "Offline"
+
+[admin.buildqueue.idle]
+fr = "Au repos"
+en = "Idle"

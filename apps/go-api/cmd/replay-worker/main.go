@@ -1,0 +1,138 @@
+// cmd/replay-worker — l'OUVRIER de la file de construction, dans sa forme minimale.
+//
+// CE BINAIRE EXISTE POUR PROUVER LE PROTOCOLE, pas pour être déployé tel quel.
+// Le plan (piste F §1) est explicite : l'ouvrier est un RÔLE, pas une machine —
+// il peut être tenu par un second VPS, par le poste de développement, ou par
+// personne. Ce qu'il fait tient en une boucle :
+//
+//	prendre un job → télécharger les morceaux (URL pré-signées) → décoder →
+//	rendre le résultat, en battant pendant tout le trajet.
+//
+// CE QU'IL N'A PAS, ET C'EST TOUT L'INTÉRÊT : aucun token Halo, aucun accès à la
+// base, aucun port entrant. Il présente un jeton d'ouvrier, il tire son travail
+// déjà résolu. On peut le faire tourner n'importe où sans lui confier un secret.
+//
+// CE QU'IL LUI FAUT QUAND MÊME : le dépôt (le catalogue de bornes de carte
+// data/titles/{slug}/reference/ et les libellés vivent en fichiers versionnés) et
+// de quoi écrire un dossier de travail. Pas de DuckDB.
+//
+// Usage :
+//
+//	replay-worker --url http://127.0.0.1:8000/api/v1/internal --token <jeton> \
+//	              [--id ouvrier-1] [--once] [--poll 5s] [--work <dir>]
+//
+// --once prend UN job, le traite, et sort : c'est le mode de la preuve de bout en
+// bout (et celui d'un test manuel). Sans --once, il boucle jusqu'à Ctrl-C.
+package main
+
+import (
+	"context"
+	"flag"
+	"log/slog"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
+)
+
+// defaultPollInterval : cadence d'interrogation de la file quand elle est vide.
+// Un ouvrier au repos doit être discret ; le travail n'est jamais urgent à la
+// seconde près (un rejeu se consulte des heures après le match).
+const defaultPollInterval = 5 * time.Second
+
+// workerVersion identifie la version de protocole que cet ouvrier parle. Affiché
+// dans le tableau des ouvriers du dashboard admin.
+const workerVersion = "replay-worker/1"
+
+// workerIdentity : ce que l'ouvrier dit de lui-même à chaque appel.
+type workerIdentity struct {
+	workerID string
+	hostname string
+	version  string
+}
+
+func main() {
+	url := flag.String("url", "http://127.0.0.1:8000/api/v1/internal", "racine des routes internes du serveur web")
+	token := flag.String("token", os.Getenv("LEVELUP_BUILD_WORKER_TOKEN"), "jeton d'ouvrier (défaut : LEVELUP_BUILD_WORKER_TOKEN)")
+	id := flag.String("id", "", "identifiant de cet ouvrier (défaut : nom de la machine)")
+	repoRoot := flag.String("repo", os.Getenv("LEVELUP_REPO_ROOT"), "racine du dépôt (catalogue de cartes ; défaut : LEVELUP_REPO_ROOT)")
+	work := flag.String("work", "", "dossier de travail pour les morceaux téléchargés (défaut : <repo>/data/cache)")
+	poll := flag.Duration("poll", defaultPollInterval, "cadence d'interrogation quand la file est vide")
+	once := flag.Bool("once", false, "prendre un seul job puis sortir")
+	flag.Parse()
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	if *token == "" {
+		slog.Error("replay-worker: jeton d'ouvrier absent — passer --token ou LEVELUP_BUILD_WORKER_TOKEN")
+		os.Exit(2)
+	}
+	if *repoRoot == "" {
+		slog.Error("replay-worker: racine du dépôt absente — passer --repo ou LEVELUP_REPO_ROOT")
+		os.Exit(2)
+	}
+	host, _ := os.Hostname()
+	identity := workerIdentity{workerID: *id, hostname: host, version: workerVersion}
+	if identity.workerID == "" {
+		identity.workerID = host
+	}
+	if identity.workerID == "" {
+		identity.workerID = "replay-worker"
+	}
+	workDir := *work
+	if workDir == "" {
+		workDir = filepath.Join(*repoRoot, "data", "cache")
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	w := &worker{
+		identity: identity,
+		client:   newProtocolClient(*url, *token),
+		repoRoot: *repoRoot,
+		workDir:  workDir,
+	}
+	slog.InfoContext(ctx, "replay-worker: démarré",
+		"worker_id", identity.workerID, "url", *url, "work_dir", workDir, "once", *once)
+
+	if err := w.run(ctx, *poll, *once); err != nil {
+		slog.ErrorContext(ctx, "replay-worker: arrêt sur erreur", "err", err)
+		os.Exit(1)
+	}
+	slog.InfoContext(ctx, "replay-worker: arrêté",
+		"jobs_done", w.jobsDone, "jobs_failed", w.jobsFailed)
+}
+
+// run : la boucle. Une erreur de PROTOCOLE (serveur injoignable, jeton refusé)
+// arrête l'ouvrier ; une erreur de TRAVAIL (film illisible, carte hors
+// catalogue) est rendue au serveur comme un échec de job, et la boucle continue —
+// un ouvrier ne se suicide pas parce qu'un match est mauvais.
+func (w *worker) run(ctx context.Context, poll time.Duration, once bool) error {
+	for {
+		if ctx.Err() != nil {
+			return nil
+		}
+		claimed, err := w.client.claim(ctx, w.identity)
+		if err != nil {
+			return err
+		}
+		if claimed.Job == nil {
+			if once {
+				slog.InfoContext(ctx, "replay-worker: file vide, rien à faire")
+				return nil
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(poll):
+			}
+			continue
+		}
+		w.processJob(ctx, claimed.Job)
+		if once {
+			return nil
+		}
+	}
+}

@@ -168,6 +168,14 @@ type AppConfig struct {
 	// Lit LEVELUP_EVENTS_CONVERGENCE_MAX (valeur <= 0 ignorée). Défaut :
 	// DefaultEventsConvergenceMax.
 	EventsConvergenceMax int
+	// BuildWorkerToken authentifie les OUVRIERS de la file de construction sur les
+	// routes /internal/build-queue/* (piste F §1/§2). Lit
+	// LEVELUP_BUILD_WORKER_TOKEN. VIDE PAR DÉFAUT, et c'est le comportement voulu :
+	// sans jeton, le protocole ouvrier répond 503 et la feature n'existe pas — le
+	// dépôt est PUBLIC, personne ne doit hériter d'une porte ouverte en installant
+	// LevelUp. Ce jeton n'ouvre AUCUN accès Halo ni base : il ne donne que le droit
+	// de prendre un travail déjà résolu et d'en rendre le résultat.
+	BuildWorkerToken string
 }
 
 // DefaultEventsConvergenceMax est le plafond par défaut de matchs traités par la
@@ -246,6 +254,7 @@ func Load() (*AppConfig, error) {
 	if cfg.EventsConvergenceMax <= 0 {
 		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
 	}
+	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
 	return cfg, nil
 }
 

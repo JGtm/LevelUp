@@ -273,6 +273,53 @@ func (c *HaloAPIClient) fetchFilmChunks(
 	return out, true, nil
 }
 
+// FilmChunkRef : un chunk du film et son URL CDN PRÉ-SIGNÉE, SANS ses octets.
+type FilmChunkRef struct {
+	Index      int
+	ChunkType  int
+	StartMS    int
+	DurationMS int
+	URL        string
+}
+
+// GetFilmChunkURLs résout le manifeste d'un match et rend les RÉFÉRENCES de ses
+// chunks — sans télécharger un seul octet.
+//
+// POURQUOI CETTE MÉTHODE EXISTE. C'est la pièce de sécurité du travail délégué
+// (piste F §1) : le manifeste exige les tokens Halo, les blobs non (CDN Azure
+// pré-signé, sans authentification). Le VPS web résout donc ICI, met les URL
+// dans le job, et l'ouvrier distant décode SANS le moindre secret Halo ni le
+// moindre accès à la base. Déléguer la résolution du manifeste à l'ouvrier
+// l'obligerait à porter un token — c'est exactement ce qu'on refuse.
+//
+// Retourne (nil, false, nil) si le film est absent (404/410) — cas NORMAL :
+// ~29 % des matchs n'ont plus de film côté serveur.
+func (c *HaloAPIClient) GetFilmChunkURLs(ctx context.Context, matchID string) ([]FilmChunkRef, bool, error) {
+	manifest, found, err := c.fetchFilmManifest(ctx, matchID)
+	if err != nil || !found {
+		return nil, found, err
+	}
+	out := make([]FilmChunkRef, 0, len(manifest.CustomData.Chunks))
+	for _, chunk := range manifest.CustomData.Chunks {
+		url := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
+		if url == "" {
+			continue // manifeste sans préfixe de blob (cache écrit localement) : rien à servir
+		}
+		out = append(out, FilmChunkRef{
+			Index:      chunk.Index,
+			ChunkType:  chunk.ChunkType,
+			StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
+			DurationMS: chunk.DurationMilliseconds,
+			URL:        url,
+		})
+	}
+	if len(out) == 0 {
+		return nil, false, nil
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Index < out[j].Index })
+	return out, true, nil
+}
+
 // GetHighlightEventsChunk télécharge le chunk highlight events (ChunkType=3) du film.
 // Retourne (data, filmMajorVersion, true, nil) si disponible.
 // Retourne (nil, 0, false, nil) si le film est absent ou sans chunk highlight events.
