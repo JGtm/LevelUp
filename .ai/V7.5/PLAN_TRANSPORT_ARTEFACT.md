@@ -1,0 +1,108 @@
+# Plan — Transport de l'artefact et choix du LIEU de construction
+
+> Ecrit le 2026-08-14. Ferme le dernier maillon de la piste F : aujourd'hui l'ouvrier prend
+> un travail, le decode et rend un COMPTE RENDU, mais l'ARTEFACT (~2 Mo) reste chez lui.
+> Ajoute le reglage « ou se construit un rejeu » : LOCAL en dev, OUVRIER DISTANT en prod
+> (decision utilisateur du 2026-08-14 : « pour le dev c'est en local mais pour la prod j'ai
+> decide que ce sera sur un autre VPS »).
+> Execution sous `plan-execution`, branche `feat/v75`, commits par etape, PAS de push.
+
+## Le sens du transport — leve d'ambiguite (question utilisateur)
+
+« C'est l'app qui va le recuperer, non ? » — OUI, et c'est compatible avec le schema du
+master plan (§1), qui dit « renvoie l'artefact ». Les deux disent la meme chose vue des deux
+bouts, et le point qui compte est celui-ci :
+
+**L'OUVRIER N'A AUCUN PORT ENTRANT.** C'est lui qui initie TOUTES les connexions (il tire le
+travail, il pousse le resultat) ; l'app expose les routes et RANGE le fichier. Donc :
+l'app « recupere » au sens ou elle est le seul point d'entree et le seul lieu de stockage —
+mais le paquet part de l'ouvrier. Aucune des deux machines n'a besoin de joindre l'autre a
+l'improviste, et l'ouvrier reste installable derriere n'importe quelle box.
+
+## Etape 1 — Le transport lui-meme
+
+- [ ] 1.1 `POST /api/v1/internal/build-queue/artifact` (meme jeton d'ouvrier, meme
+      middleware que `claim`/`complete`/`heartbeat`) : corps = l'artefact. **Verifications
+      NON NEGOCIABLES avant d'ecrire quoi que ce soit sur le disque** :
+      - le job existe, est `running`, et est bien CLAIME PAR CET OUVRIER (sinon 409, comme
+        `complete` le fait deja) ;
+      - **taille bornee** (un plafond explicite ; ~2 Mo mesures, prevoir large mais fini) —
+        un corps non borne est une porte ouverte sur le disque du VPS, dont le plan rappelle
+        qu'il est « sous tension » ;
+      - **le contenu est un artefact VALIDE** : il se deserialise en `replay.ReplayDocument`,
+        son `matchId` est celui du job, son `schemaVersion` est celui qu'on attend. Un
+        fichier qui echoue = 400, rien n'est ecrit.
+- [ ] 1.2 Ecriture ATOMIQUE a la place canonique (`PathResolver.ReplayArtifactPath`) :
+      fichier temporaire puis renommage — jamais d'ecriture en place (un artefact a moitie
+      ecrit serait servi tel quel par le service de lecture).
+- [ ] 1.3 Le `complete` actuel devient le POINT FINAL : un job n'est `succeeded` que si son
+      artefact est arrive ET valide. Ordre a trancher et a ECRIRE : artefact d'abord, puis
+      `complete` (recommande — le compte rendu ne ment jamais sur la presence du fichier).
+- [ ] 1.4 `cmd/replay-worker` : envoie l'artefact puis appelle `complete` ; en cas d'echec
+      d'envoi, ne marque RIEN et laisse le bail expirer (le job repart en file, mecanique
+      deja livree). Supprime ses morceaux de film locaux apres coup (le master plan §1 le
+      demande : l'ouvrier ne conserve rien).
+
+Gate 1 : test de bout en bout etendu (mise en file -> claim -> ARTEFACT -> complete ->
+l'artefact est lisible par le service de lecture, a l'octet identique a celui envoye) ;
+tests de refus : job d'un autre ouvrier, artefact trop gros, JSON invalide, mauvais matchId.
+
+## Etape 2 — Le reglage « OU se construit un rejeu »
+
+- [ ] 2.1 UN reglage, trois valeurs, dans `AppSettings` (patron du scheduler : relu a chaque
+      cycle, editable depuis l'admin sans redemarrage) :
+      - `local` — le serveur construit lui-meme, en processus (ce qui existe deja : etape
+        post-sync + job admin). DEFAUT EN DEV.
+      - `worker` — le serveur MET EN FILE et ne decode jamais. DEFAUT EN PROD (decision
+        utilisateur ; le master plan l'exige : « le VPS web ne decode JAMAIS »).
+      - `off` — ni l'un ni l'autre (aucune construction ; le rejeu se contente de ce qui
+        existe deja).
+- [ ] 2.2 UN SEUL POINT DE DECISION dans le code (pas un `if` recopie a trois endroits) :
+      une fonction qui, pour un match donne, dit « je construis / je mets en file / je ne
+      fais rien ». Les trois appelants actuels (etape post-sync, job admin, CLI) passent par
+      elle. Le CLI de backfill garde son comportement direct — c'est un outil d'operateur,
+      pas un chemin de service : le dire en commentaire.
+- [ ] 2.3 Le garde EXISTANT reste : en production, l'etape post-sync locale ne s'installe
+      pas (`replay_local_gate` / wiring non-production). Le reglage `local` en prod doit
+      donc etre REFUSE explicitement, avec un message clair a l'admin, plutot que silencieux.
+- [ ] 2.4 UI admin : le reglage visible et modifiable a cote de la fenetre de retention,
+      i18n FR+EN, avec l'etat de la file et des ouvriers deja livre juste a cote.
+
+Gate 2 : tests des trois valeurs (le bon chemin est pris, et un seul) ; test du refus
+`local` en production ; typecheck purge + eslint + vitest ; `vitest run src/lib/query/` si
+une query key est ajoutee (garde-fou de classement, il a deja rougi).
+
+## Etape 3 — Boucler la boucle (ce qui rend la chaine utile)
+
+- [ ] 3.1 Brancher la MISE EN FILE au fil de l'eau : en mode `worker`, l'etape post-sync
+      n'appelle plus le constructeur mais `EnqueueReplayBuild` (deja ecrit, deja porteur des
+      URL pre-signees). C'etait le report explicite du lot precedent, il devient faisable
+      maintenant que le transport existe.
+- [ ] 3.2 Fenetre de retention respectee des la mise en file (ne pas enfiler ce que la purge
+      effacera).
+- [ ] 3.3 Journal et compteurs : artefacts recus, refuses (par motif), octets transportes —
+      visibles dans le monitoring existant, sans nouvelle page.
+
+Gate 3 : une preuve locale complete — un cycle qui enfile, un ouvrier lance a la main qui
+construit, et l'artefact qui apparait dans le rejeu de l'app sans intervention.
+
+## Hors perimetre (a dire maintenant)
+
+- Deploiement du 2e VPS, provisioning, service systemd, secrets d'infra : ce plan livre le
+  BINAIRE et le PROTOCOLE, pas l'installation. Elle viendra avec l'activation prod, et elle
+  a sa propre place au runbook.
+- Activation du rejeu en production (le garde local n'est PAS touche par ce plan).
+- Plusieurs ouvriers en parallele : la mecanique le permet (bail + claim atomique) mais rien
+  n'est mesure a plusieurs — ne pas le promettre, le noter au registre.
+- Chiffrement/compression du transport : l'artefact est du JSON de 2 Mo sur HTTPS ; si le
+  volume devient un sujet, la compression HTTP standard suffit. Ne pas inventer de format.
+
+## Ce qui peut faire echouer ce plan
+
+1. Le VPS web n'a pas la place pour recevoir : le plan rappelle un disque « sous tension »
+   (plafond de cache 5 Go, zero swap). La fenetre de retention et la purge existent — les
+   VERIFIER avant d'ouvrir le robinet, pas apres.
+2. Un artefact valide au sens JSON mais construit avec un decodeur plus ancien : c'est le
+   role de `schemaVersion` (deja la cle de reprise du backfill). Le refuser, pas le ranger.
+3. Deux ouvriers qui rendent le meme match : le claim atomique l'empeche deja ; le test doit
+   le montrer, pas le supposer.

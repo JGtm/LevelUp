@@ -15,6 +15,20 @@
 | Parite du rejeu (lots 1-7) | `.ai/V7.5/replay2d/PLAN_PARITE_REJEU_2D.md` | Livre, sauf 1.4 (=A1) et 6.5 (=C1) |
 | Piste F fonds + kill feed (F1/F2/F3) | `.ai/V7.5/PLAN_PISTE_F_REJEU2D.md` | CLOS, tous items `[x]` |
 
+## A0-bis — DECOUVERTE DU 2026-08-14 a corriger (mesure du superviseur)
+
+- [ ] **Les zones Bastion ne sont PAS toutes neutres** — le lot 4 de la parite a ecrit la
+      regle « `team_index` = -1 (neutre) pour TOUTES les zones Bastion » et le calque web
+      les dessine donc toutes en encre neutre. MESURE sur les 158 zones du catalogue :
+      **team 1 = 47, team 0 = 48, neutre = 63**. Soit **95 zones sur 158 (60 %) qui PORTENT
+      une equipe** et sont rendues neutres a l'ecran. A verifier semantiquement (equipe
+      proprietaire au depart ? camp de rattachement ?) AVANT de colorer — mais la regle
+      ecrite est fausse, et le commentaire qui la porte aussi.
+      Autres identifiants disponibles et non exploites sur ces zones : `object_index`
+      (present partout, index stable), `instance_id` (non nul sur 30/158), `shape`
+      (59 cylindres, 98 boites, 1 sans forme = Salvation, deja traitee), `labels`.
+      Il n'existe toujours AUCUN nom ni lettre A/B/C (confirme).
+
 ## A — Ce qui attend l'utilisateur (aucun code)
 
 - [ ] A0. **GATES EN ATTENTE**, en une passe : rejeu sur `606d9844` (synchro + morts
