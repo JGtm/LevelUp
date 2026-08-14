@@ -10,7 +10,7 @@
  *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les KILLS du fil (weapon_key présent ET dans le manifeste) — l'horloge est celle du
- *    fil (`alignFeedToTracks`), la même qui date le flash des fiches et l'effet de mort :
+ *    fil (`alignFeed`), la même qui date le flash des fiches et l'effet de mort :
  *    un son qui partirait sur l'horloge brute sonnerait à côté de son image ;
  *  - les LANCERS de grenade (doc.grenades, l'auteur est écrit dans le film), par TYPE —
  *    le pack porte les quatre lancers (frag/plasma/dynamo/spike, item 5.3) ;
@@ -26,7 +26,7 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
-import { alignFeedToTracks } from './killFeedLogic'
+import { alignFeed } from './killFeedLogic'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
@@ -85,8 +85,8 @@ export interface ReplaySoundEvent {
 }
 
 /**
- * buildSoundTimeline précalcule la piste sonore du document : kills recalés sur les
- * pistes (même règle que le fil et l'effet de mort — une seule horloge) + lancers de
+ * buildSoundTimeline précalcule la piste sonore du document : kills recalés par `alignFeed`
+ * (même règle que le fil et l'effet de mort — une seule horloge) + lancers de
  * grenade datés par leur frame de film. Triée chronologiquement, construite une fois.
  */
 export function buildSoundTimeline(
@@ -96,7 +96,7 @@ export function buildSoundTimeline(
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   if (kills.length > 0 && doc.tracks.length > 0) {
-    for (const k of alignFeedToTracks(kills, t0Ms, doc).kills) {
+    for (const k of alignFeed(kills, t0Ms, doc).kills) {
       const stem = k.weaponKey ? KILL_SOUND_STEMS[k.weaponKey] : undefined
       if (stem) out.push({ ms: k.replayMs, stem })
     }

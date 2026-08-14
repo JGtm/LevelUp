@@ -13,6 +13,8 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchHighlightEvent } from '@/lib/api/types'
 
 import {
+  alignFeed,
+  alignFeedByOrigin,
   alignFeedToTracks,
   buildFeedEntries,
   collectMedalEvents,
@@ -85,7 +87,7 @@ describe('toReplayKills', () => {
  *  - W meurt une fois (frame 50, 5 000 ms) sans qu'aucun kill ne le revendique ;
  *  - S survit (sa vie couvre l'horizon).
  */
-function docWithLives() {
+function docSpec() {
   const track = (xuid: string, startFrame: number, endFrame: number) => ({
     slot: 1,
     team: -1,
@@ -94,10 +96,14 @@ function docWithLives() {
     startFrame,
     endFrame,
   })
-  return testReplayDoc({
+  return {
     frameIntervalMs: 100,
     tracks: [track('V', 0, 20), track('V', 40, 80), track('W', 0, 50), track('S', 0, 199)],
-  })
+  }
+}
+
+function docWithLives() {
+  return testReplayDoc(docSpec())
 }
 
 describe('alignFeedToTracks — le fil sur le référentiel des pistes', () => {
@@ -144,6 +150,65 @@ describe('alignFeedToTracks — le fil sur le référentiel des pistes', () => {
   it('sans appariement mesuré, AUCUNE mort neutre — on ne sait pas dédoublonner', () => {
     const out = alignFeedToTracks([kill(5_500, 'k1')], 0, docWithLives())
     expect(out.deaths).toEqual([])
+  })
+})
+
+describe("alignFeedByOrigin — le fil sur l'origine publiée par l'artefact", () => {
+  // Même montage que le repli : l'artefact publie 500 ms d'origine au lieu de la faire
+  // mesurer au navigateur.
+  const docAvecOrigine = () => testReplayDoc({ ...docSpec(), originMs: 500 })
+  const kills = [kill(2_500, 'k1', 'V'), kill(8_500, 'k2', 'V')]
+
+  it("retranche l'origine à TOUS les kills — une soustraction, pas un appariement", () => {
+    const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
+    expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000])
+    expect(out.offsetMs).toBe(500)
+  })
+
+  it('recale AUSSI les kills sans victime nommée — ce que le repli ne savait pas faire', () => {
+    // Le cas du témoin 606d9844 : 35 kills, 0 victime nommée. L'appariement laissait
+    // l'horloge brute ; l'origine les corrige comme les autres.
+    const out = alignFeedByOrigin([kill(2_500, 'k1'), kill(8_500, 'k2')], 0, docAvecOrigine(), 500)
+    expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000])
+  })
+
+  it('remet le countdown retranché par la Match View avant de retrancher l\'origine', () => {
+    const out = alignFeedByOrigin([kill(16_841)], T0, docAvecOrigine(), 500)
+    expect(out.kills[0].replayMs).toBe(34_806) // 16 841 + 18 465 − 500
+  })
+
+  it('la mort sans kill fait une MORT NEUTRE ; une fin de vie revendiquée n\'en fait pas', () => {
+    const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
+    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W' }])
+  })
+
+  it('un survivant de fin de partie ne meurt pas dans le fil', () => {
+    const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
+    expect(out.deaths.some((d) => d.xuid === 'S')).toBe(false)
+  })
+
+  it('un kill SANS victime au voisinage met son VETO sur la mort neutre (anti-doublon)', () => {
+    const out = alignFeedByOrigin([...kills, kill(5_900, 'k3')], 0, docAvecOrigine(), 500)
+    expect(out.deaths).toEqual([])
+  })
+})
+
+describe('alignFeed — origine publiée, appariement en repli', () => {
+  it("emploie l'origine dès que l'artefact la porte", () => {
+    // Origine 500 ms ET aucune victime nommée : seul le chemin par origine sait recaler.
+    const doc = testReplayDoc({ ...docSpec(), originMs: 500 })
+    expect(alignFeed([kill(2_500, 'k1')], 0, doc).kills[0].replayMs).toBe(2_000)
+  })
+
+  it("retombe sur l'appariement quand l'artefact n'a pas d'origine (schéma antérieur)", () => {
+    const out = alignFeed([kill(2_500, 'k1', 'V'), kill(8_500, 'k2', 'V')], 0, docWithLives())
+    expect(out.offsetMs).toBe(500)
+    expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000])
+  })
+
+  it("une origine de ZÉRO est une mesure, pas une absence", () => {
+    const doc = testReplayDoc({ ...docSpec(), originMs: 0 })
+    expect(alignFeed([kill(2_500, 'k1')], 0, doc).kills[0].replayMs).toBe(2_500)
   })
 })
 

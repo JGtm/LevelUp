@@ -1,3 +1,62 @@
+## [2026-08-14] v7.5 lot 7.2 — le rejeu publie son origine, le fil se cale par soustraction
+
+**Statut** : Complete (gate visuel user en attente).
+
+**Decision technique principale** : l'artefact de rejeu publie desormais `originMs`
+(schema v4) — l'instant de sa frame 0 SUR L'HORLOGE DU FIL des eliminations. Le defaut
+etait entier dans l'artefact : `build.go` cale sa frame 0 sur le premier paquet de
+POSITION du film, un referentiel qui n'existe nulle part ailleurs, alors que le fil vit
+sur l'horloge des highlight events que le client reconstruit par `event_time_ms + t0_ms`.
+FORME RETENUE, et c'est la decision : PAS le timestamp brut du paquet. Mesure faite avant
+de choisir — cet horodatage n'est pas relatif au debut du film, c'est une horloge MOTEUR
+(4 521 s, 3 896 s, 2 259 s, 8 583 s sur les quatre temoins : un temps depuis le demarrage
+du jeu). Publie tel quel il n'aurait donne au client aucun zero commun. Et le calage sur
+`start_time_utc` aurait fait entrer une horloge murale — donc la dette TZ connue — dans un
+artefact qui n'ouvre aucune base. Ce qui est publie est la DIFFERENCE de deux lectures du
+meme film : premier paquet de position moins premier paquet du chunk 1 (le zero du film,
+`start_ms = 0` au manifeste). Deux en-tetes, une soustraction, zero estimation. Cote
+client, `alignFeedByOrigin` retranche : `replayMs = event_time_ms + t0_ms − originMs`. Le
+T0 REEL de l'utilisateur y est — c'est le terme `t0_ms`, celui de `real_start_time`, deja
+servi par MatchView. L'appariement statistique de `edb0e723c` (`alignFeedToTracks`) n'est
+pas supprime : il devient le REPLI, employe seulement quand l'artefact ne publie pas
+d'origine (schema anterieur, ou refus du producteur), et le dit en commentaire.
+
+**Piege T0 douteux, traite** : verifie sur pieces que `t0_quality` ne peut PAS empoisonner
+la synchro, et pourquoi c'est structurel — `match_view_data_loaders.go` prend `t0Ms =
+*meta.T0Ms` pour corriger les events ET pour alimenter `header.T0Ms` : le client rajoute
+exactement ce que le serveur avait retranche, les deux s'annulent quelle que soit la
+valeur. Une etiquette de rejet laisse `real_start_time` NULL, donc `t0_ms = 0` des deux
+cotes, et les events ne sont pas corriges non plus. La garde qui compte vit donc dans
+l'ARTEFACT : chunk 1 illisible, ou temoin independant (le calage du fil des morts,
+`bestDeathOffset`) qui contredit la lecture de plus d'une seconde => AUCUNE origine
+publiee, repli cote client. Jamais une origine douteuse servie en silence.
+
+**Resultats observes** : deux mesures INDEPENDANTES de la meme grandeur, ecart 16-81 ms —
+la lecture des en-tetes de paquet, et l'appariement de 34 a 122 morts aux fins de vie
+(`bestDeathOffset`, deja en production pour nommer les vies). Elles retrouvent aussi les
+valeurs que le navigateur mesurait par appariement (+3 678 / +10 589 / +39 856 ms) a 20-70
+ms pres. ECART FIL / FICHE median, sur les morts appariees : 000d5950 3 626 -> 22 ms,
+64e8adfa 10 539 -> 23 ms, e94163af 39 795 -> 23 ms, et surtout 606d9844 6 914 -> 24 ms
+(35 kills, 0 victime nommee : le cas que l'appariement ne savait pas traiter, il laissait
+l'horloge brute). Residu uniforme, sous le pas de grille de 100 ms. Re-cuisson : drapeau
+`--only-existing` ajoute a `backfill-replay` (apres un bump de schema, une passe ordinaire
+repartirait sur les 951 films du cache) — 23/23 construits, 0 erreur, 0 hors catalogue,
+21 min 36 s ; les 23 portent `schemaVersion 4` + `originMs`, aucun refus. Origines de
+3,6 s a 50,8 s selon le match : aucune constante n'aurait pu les corriger. Le golden
+d'assemblage verrouille desormais l'origine (3 604 ms) et le fixture d'entrees porte
+l'horodatage d'horloge (magie `REPLAYINPUTS2`). Gates : `go test` cible vert (replay,
+replaybuild, cmd/levelup, handlers, timeline, domain), `go vet` OK, golangci-lint
+`--new-from-merge-base=origin/main` 0 issue, `openapi-gen` + `generate-types` dans le meme
+commit, tsc -b apres purge OK, eslint 0, vitest COMPLET 416/416 fichiers et 3 729 tests
+verts (un echec isole sur `PalmaresRelationsPage`, fichier non touche, non reproduit au
+rejeu — flake).
+
+**Conclusion / prochaine etape** : le gate visuel appartient au user (flash de fiche vs
+ligne du fil, sur 000d5950 et sur 606d9844 qui n'avait aucun recalage). Reste du lot 7 :
+7.1 (icone du type de mort sur les lignes neutres). Decouvertes consignees au plan :
+l'horodatage de paquet est une horloge moteur, et deux artefacts portaient un `matchId`
+court (corriges au passage par la re-cuisson, qui passe l'UUID du registre).
+
 ## [2026-08-14] v7.5 lot 5 — le rejeu 2D a un son, coupe par defaut
 
 **Statut** : Complete (gate d'ecoute user en attente).

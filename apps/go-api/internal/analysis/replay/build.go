@@ -71,6 +71,11 @@ type Options struct {
 	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
 	// Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
+	// FilmClockOriginUS est l'horodatage moteur du PREMIER PAQUET du film, c'est-à-dire le
+	// zéro de l'horloge sur laquelle les highlight events sont datés (cf. origin.go). Entrée
+	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne
+	// publie alors aucune origine, et le client retombe sur son appariement.
+	FilmClockOriginUS uint64
 	// Scan : réglages du décodage offline ; zéro -> filmdec.DefaultScanFilmOptions().
 	Scan *filmdec.ScanFilmOptions
 	// Labels : le catalogue de libellés DU TITRE (armes, grenades, capacités), chargé
@@ -193,6 +198,15 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		}
 		opt.PlayerIndices = table
 	}
+	// L'origine d'horloge du film : deux en-têtes de paquet, aucune estimation (cf.
+	// origin.go). Son absence n'est pas fatale — le document sort sans origine, et le
+	// client retombe sur l'appariement.
+	clockUS, err := ScanFilmClockOrigin(filmDir)
+	if err != nil {
+		slog.Warn("origine d'horloge illisible — rejeu sans origine publiee", "err", err, "filmDir", filmDir)
+		clockUS = 0
+	}
+	opt.FilmClockOriginUS = clockUS
 	return BuildFromPositions(matchID, titleSlug, positions, shots, opt), nil
 }
 
@@ -239,6 +253,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe.
 	nameTracks(doc.Tracks, own.SlotXUID)
 	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths))
+	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
+	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)
 	slog.Info("pont slot->joueur",
 		"slots", len(own.Owner), "viesNommees", own.DeathsNamed, "viesTotal", own.LivesTotal,
 		"lecturesIndex", own.IndexReadings, "desaccordsIndex", own.IndexDisagreements,
