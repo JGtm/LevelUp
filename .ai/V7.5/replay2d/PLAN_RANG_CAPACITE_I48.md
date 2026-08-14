@@ -201,6 +201,30 @@ etaient justes, elles etaient comparees a la mauvaise palette.
 
 Gate 4 : NON FRANCHI, comme annonce. Ce plan livre l'IDENTITE, pas l'ETAT.
 
+## Re-cuisson des artefacts (obligation du bump de schema)
+
+**FAITE** : `levelup backfill-replay --only-existing`, en QUATRE passes bornees (`--limit 8`,
+`6`, `5`, `4`) plutot qu'une longue — machine instable, un decodage a la fois. Resultat :
+**23 artefacts construits, 0 erreur de decodage, 0 carte hors catalogue**, 26 min cumulees.
+Verification sur piece (`000d5950.json`) : `schemaVersion` 6, `abilities` 214 lectures dont 82
+`i48` et 132 `kf`, `abilityLabels` keye par RANG (20 grappin, 21 propulseur, vignettes
+comprises), et `inventory[0].a` a bien DISPARU.
+
+Ce que la passe a montre en prime — **le refus fonctionne en production** : sur les 23 films,
+**7 sortent en palette « non classee »** (1 a 8 lectures, sous le plancher de 10) et recoivent
+**zero nom** au lieu d'un nom faux. Les 16 autres se classent (15 famille A, 1 famille B) et
+nomment 2 a 9 rangs chacun.
+
+## Decouvertes (notees, NON traitees — hors perimetre)
+
+1. **Le rang 10 est le premier trou a combler** : 67 lectures sur quatre films, identifiant de
+   chaine non inverse. A lui seul il fait l'essentiel des 21,3 % de lectures sans nom.
+2. **`084a804d` porte 4 lectures `19` et une `44`** que le §14 n'avait pas relevees ; `44` est
+   hors de toute palette connue. Bruit de balayage, compte contre la purete.
+3. Le serveur de dev local tenait `metadata.duckdb` pendant la re-cuisson : la resolution des
+   noms EN est tombee en mode degrade (`map_name` brut). Sans consequence ici — les 23 cartes
+   se sont resolues — mais c'est le piege mono-process documente, et il se representera.
+
 ## Hors perimetre
 
 - L'etat actif lui-meme (voies au registre) ; le lecteur `i56` sur records denses.

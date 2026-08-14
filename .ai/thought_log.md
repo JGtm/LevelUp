@@ -114,6 +114,13 @@ nature qu une observation d ecran — c est elle qui a fait RETIRER deux noms le
 source assez sure pour retirer un nom l est pour en donner un. Si la barre monte, seul le rang
 23 survit en famille A. Ligne au REGISTRE_REPORTS.
 
+**Re-cuisson des artefacts** (obligation du bump de schema) : `backfill-replay --only-existing`
+en QUATRE passes bornees plutot qu une longue — **23 artefacts construits, 0 erreur, 26 min**.
+Verifie sur piece : `schemaVersion` 6, `abilities` 214 lectures (82 i48 + 132 kf),
+`abilityLabels` keye par rang avec ses vignettes, `inventory[0].a` disparu. La passe a montre
+en prime que **le refus fonctionne en production** : 7 films sur 23 sortent en palette « non
+classee » (1 a 8 lectures, sous le plancher de 10) et recoivent ZERO nom au lieu d un nom faux.
+
 **Conclusion / prochaine etape**. Reste au registre : le rang 10 (67 lectures, premier trou a
 combler), les rangs 19 et 22 (une observation isolee chacun), le balayage des 40 films (~15 min,
 decision utilisateur), et l etat actif.
