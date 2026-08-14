@@ -158,3 +158,19 @@ DECISIONS PRISES EN COURS D'ETAPE, hors lettre du plan :
    unique `replayartifacts.NewHook(cfg, settings, enqueue)` : le hook s'installe toujours, c'est
    LUI qui decide. C'etait la seule facon de tenir « un seul point de decision » sans laisser
    trois copies de la regle dans le cablage.
+
+### Gate final — passe le 2026-08-14 (commit « preuve ouvrier »)
+
+`go test -tags=integration -p 1 -run TestOuvrierReel ./internal/api/wire/` — PASS en 93,8 s.
+Le BINAIRE `cmd/replay-worker` est compile puis lance en `--once` contre les vraies routes :
+job enfile, pris par HTTP, 28 morceaux tires d'un faux CDN (morceaux du cache film servis en
+zlib, comme Azure), film decode (module `ridgeline`), artefact de **2 195 683 octets /
+99 trajectoires / 4 985 frames** pousse, range cote serveur **a l'octet identique**, lu par le
+service de rejeu, job `succeeded`, morceaux de film supprimes par l'ouvrier.
+
+Isolation : l'ouvrier travaille sur un depot A LUI (copie des references, 1,5 Mo) et un dossier
+temporaire ; le depot de l'utilisateur est seulement LU (son cache film est une archive
+irremplacable, ses artefacts ne sont pas touches). Le test SAUTE la ou le film temoin n'est pas
+en cache (CI, poste neuf).
+
+Ressources mesurees : pic memoire de l'ouvrier **121 Mo**, un seul decodage a la fois.

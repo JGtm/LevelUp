@@ -174,7 +174,13 @@ type AppConfig struct {
 	// sans jeton, le protocole ouvrier répond 503 et la feature n'existe pas — le
 	// dépôt est PUBLIC, personne ne doit hériter d'une porte ouverte en installant
 	// LevelUp. Ce jeton n'ouvre AUCUN accès Halo ni base : il ne donne que le droit
-	// de prendre un travail déjà résolu et d'en rendre le résultat.
+	// de prendre un travail déjà résolu, d'y DÉPOSER l'artefact construit, et d'en
+	// rendre le résultat.
+	//
+	// IL COMMANDE AUSSI LE FIL DE L'EAU : sans jeton, le placement « ouvrier »
+	// (replay_build_location) dégrade en « aucune construction » — enfiler quand
+	// personne ne viendra vider la file résoudrait un manifeste Halo par match, à
+	// chaque cycle, pour rien (cf. replaybuild.DecidePlacement).
 	BuildWorkerToken string
 }
 
