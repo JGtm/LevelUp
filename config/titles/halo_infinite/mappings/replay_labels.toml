@@ -53,17 +53,36 @@ icon = "hud/Spike"
 
 # Capacites d'armure, par index lu dans le record de biped.
 #
-# TABLE PARTIELLE, ET C'EST PUBLIE COMME TEL : 4 index observes, 11 capacites existent
-# dans le jeu. Un index absent de cette table s'affiche avec son NUMERO — jamais devine,
-# jamais approche par le nom d'une capacite voisine.
-# L'icone suit LE MEME index que le libelle : si la table est un jour corrigee (la
-# lecture binaire `sofd` CONTREDIT les index 3 et 6, cf. RECETTE_LOADOUT §13), nom et
-# vignette bougent ensemble. Les 11 vignettes HUD sont au depot sous hud/.
+# TABLE PARTIELLE, ET C'EST PUBLIE COMME TEL : 5 index sont OBSERVES (3, 4, 5, 6, 7),
+# DEUX SEULEMENT SONT NOMMES. Un index absent de cette table s'affiche avec son NUMERO
+# (« capacite inconnue (3) ») — jamais devine, jamais approche par le nom d'une capacite
+# voisine. L'icone suit LE MEME index que le libelle : nom et vignette bougent ensemble.
+# Les 11 vignettes HUD restent au depot sous hud/, pretes pour un index qui se resoudra.
+#
+# POURQUOI 3 ET 6 ONT PERDU LEUR NOM le 2026-08-14 (etape 1 de
+# `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`). Deux sources se contredisent sur eux :
+#
+#   - le releve Theater du 2026-07-27 joint par slot (VERITE_TERRAIN_INVENTAIRE) donne
+#     3 = mur portatif et 6 = capteur de menace — mais sur UNE observation isolee chacun ;
+#   - la palette `sofd` du binaire (RECETTE_LOADOUT §13, « fait foi ») donne mur = rang 2,
+#     detecteur = rang 1, repulseur = rang 6, et dit que le rang 3 N'EST PAS une capacite.
+#
+# Les index 4 et 5 sont, eux, confirmes DEUX FOIS : par un controle de groupe (trois
+# grappins et trois propulseurs, valeur identique a l'interieur de chaque triplet) ET par
+# la palette. Ils restent nommes.
+#
+# La regle du depot tranche le reste : « un controle de groupe vaut, un temoignage isole
+# ne vaut pas » (RECETTE_LOADOUT §2). Une lecture contestee s'affiche donc SANS NOM plutot
+# qu'avec un faux. Cout mesure de ce choix, publie : 605 lectures sur 1702 (35,5 %),
+# 12 films sur les 19 qui rendent des lectures (balayage de 40 films du cache, instrument
+# `internal/analysis/replay/i48_ability_width_test.go`).
+#
+# CE QUI LES RESTAURERAIT, et c'est bon marche : un SECOND releve Theater nommant
+# l'equipement d'un joueur dont la lecture vaut 3 ou 6, sur un autre film que 000d5950.
+# Deux observations concordantes font un controle de groupe. Ligne au REGISTRE_REPORTS.
 [abilities]
-"3" = { en = "Drop Wall", fr = "mur portatif", icon = "hud/DropWall" }
 "4" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
 "5" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
-"6" = { en = "Threat Sensor", fr = "capteur de menace", icon = "hud/ThreatSensor" }
 
 # Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
 #
