@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // NewSyncEngine crée un moteur de sync pour un joueur sur le titre par défaut.
@@ -164,6 +165,14 @@ func (e *SyncEngine) SetCustomClient(client HaloClient) {
 // À construire via service.BuildMediaScanHook (injecté depuis scheduler + SyncHandler).
 func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngine {
 	e.mediaHook = hook
+	return e
+}
+
+// WithReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (étape 1.58,
+// implémentée par internal/sync/replayartifacts). À N'APPELER QU'EN LOCAL
+// (cfg.IsProduction() == false) : le VPS web ne décode jamais.
+func (e *SyncEngine) WithReplayArtifacts(h *replayartifacts.Hook) *SyncEngine {
+	e.replayArtifacts = h
 	return e
 }
 

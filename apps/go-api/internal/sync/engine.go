@@ -34,6 +34,7 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/replayartifacts"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -110,7 +111,7 @@ type SyncEngine struct {
 	// film persisté au cache disque (filmcache.Write) puis leur artefact construit
 	// (replaybuild). Nil = étape absente — le wiring ne l'installe qu'en LOCAL : « le
 	// VPS web ne décode JAMAIS » (cf. WithReplayArtifacts).
-	replayArtifacts *ReplayArtifactsHook
+	replayArtifacts *replayartifacts.Hook
 	// metaDB (optionnel) — connexion ouverte par run() au démarrage de la sync
 	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
 	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs

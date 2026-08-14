@@ -1,3 +1,38 @@
+## [2026-08-14] v7.5 CI rouge — garde-fou 2/2 : le ratchet god-package sync/ tient sa baseline
+
+**Statut** : Complete.
+
+**Decision technique principale** : le lot 6 avait pose `engine_postsync_replay.go` A LA
+RACINE de `internal/sync/` — 81 fichiers .go non-test contre la baseline GELEE a 80, CI
+rouge sur `archlint.TestSyncRootPackageFrozen`. La baseline N EST PAS RELEVEE (K3c / ADR
+0027 : elle ne fait que decroitre) : c est le fichier qui sort. Nouveau sous-package
+`internal/sync/replayartifacts` qui porte TOUTE l etape 1.58 (selection du travail sous
+fenetre de retention, resolution du nom EN de la carte via asset_translations, pont disque
+filmcache, boucle de construction replaybuild) derriere une API publique prenant ses
+dependances A PLAT (`Deps{Fetcher, WithRead, MetaDB, RepoRoot, TitleSlug, Gamertag,
+CacheRoot, RetentionMonths}` + `Run`) : le sous-package ne voit aucun type prive du paquet
+sync, il emprunte le segment de lecture shared par une closure au lieu de connaitre
+SyncEngine. `ReplayArtifactsHook` devient `replayartifacts.Hook` (+ `NewHook`, + `Months()`
+nil-safe) et les 3 sites de wiring (BuildEngine scheduler, factory V2, handler HTTP)
+pointent la fabrique directement — aucun wrapper de compatibilite laisse derriere. Cote
+paquet sync, rien de neuf a la racine : `WithReplayArtifacts` rejoint les autres setters
+dans `engine_options.go`, et l appel d etape est une delegation de ~25 lignes en fin de
+`convergence.go`, la ou vivent deja les orchestrateurs `postSyncFilmSteps`. Comportement
+INCHANGE (logs, compteurs expvar, bornes, degradations best-effort identiques).
+
+**Resultats observes** : 80 fichiers racine, ratchet vert. `go build ./...` OK ;
+`go test ./contracttest/... ./internal/archlint/... ./internal/sync/...
+./internal/replaybuild/... ./internal/analysis/replay/...` tous verts ; `go vet` sur les 6
+paquets touches OK ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issue (et 0
+issue sur le nouveau paquet en lint complet).
+
+**Conclusion / prochaine etape** : les deux garde-fous de la CI sont verts. Consigne : le
+fichier deplace n avait AUCUN test avant le deplacement — il n y avait donc rien a
+deplacer, et `replayartifacts` nait sans test propre (couvert par la compilation, le
+wiring et les tests de `internal/sync`). Une couverture ciblee de `selectBuildWork`
+(fenetre de retention, ordre des candidats de carte) reste a ouvrir si le lot rejeu
+revient dessus.
+
 ## [2026-08-14] v7.5 CI rouge — garde-fou 1/2 : le compte de champs du document de rejeu
 
 **Statut** : Complete.

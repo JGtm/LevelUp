@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	"levelup/go-api/internal/sync/snapshot"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
@@ -297,7 +298,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 		// (« le VPS web ne décode JAMAIS »), fenêtre relue à chaque cycle. Parité
 		// avec scheduler.BuildEngine.
 		if !deps.Cfg.IsProduction() && deps.Settings != nil {
-			engine.WithReplayArtifacts(syncpkg.NewReplayArtifactsHook(deps.Cfg.RepoRoot, func() int {
+			engine.WithReplayArtifacts(replayartifacts.NewHook(deps.Cfg.RepoRoot, func() int {
 				if cfg, _ := deps.Settings.Load(); cfg != nil {
 					return cfg.ReplayRetentionMonths
 				}
