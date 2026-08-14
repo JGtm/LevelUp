@@ -235,6 +235,20 @@ export interface ObjectivePulse {
  * dans positionAt), et les objectifs d'un même mode ne se superposent pas en plan sur
  * les cartes mesurées. Une action sans position relue est ÉCARTÉE — un pulse posé au
  * hasard désignerait la mauvaise zone.
+ *
+ * L'ORIGINE DE L'ARTEFACT SE RETRANCHE ICI — défaut mesuré le 2026-08-14 par le lot
+ * containment. `a.t` vient du Go (`buildObjectiveActions` : `TimeMS / interval`) et
+ * `TimeMS` compte depuis le PREMIER PAQUET DU FILM, alors qu'une frame de l'artefact
+ * compte depuis le PREMIER PAQUET DE POSITION. L'écart entre ces deux zéros est
+ * exactement `doc.originMs` (schéma v4) — mesuré de 3,6 s à 50,8 s selon le match. Sans
+ * cette soustraction, le pulse s'allumait d'autant TROP TARD, et l'appariement lisait la
+ * position de l'auteur au mauvais instant : il pouvait donc désigner le mauvais élément.
+ * Le fil des éliminations applique la même correction (`killFeedLogic`, `replayMs =
+ * event_time_ms + t0Ms − originMs`) ; ici il n'y a pas de `t0Ms` — les actions ne
+ * viennent pas de la Match View mais du film, donc seule l'origine se retranche.
+ *
+ * La correction est faite CÔTÉ CLIENT, comme pour le fil : elle ne change pas le contrat
+ * de l'artefact et n'oblige à recuire aucun document déjà produit.
  */
 export function buildObjectivePulses(
   doc: ReplayDocumentReady,
@@ -249,9 +263,14 @@ export function buildObjectivePulses(
     if (list) list.push(t)
     else livesByXuid.set(t.xuid, [t])
   }
+  // Frames à retrancher : l'origine de l'artefact, en frames (cf. en-tête). Un document
+  // sans `originMs` (schéma antérieur à v4) donne 0 — l'ancien comportement, à l'identique.
+  const originFrames = Math.round(msToFrames(doc.originMs ?? 0, doc))
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
-    const pos = posOfPlayerAt(livesByXuid.get(a.xuid), a.t, deathFrames)
+    const frame = a.t - originFrames
+    if (frame < 0) continue // action antérieure à la première position connue : rien à montrer
+    const pos = posOfPlayerAt(livesByXuid.get(a.xuid), frame, deathFrames)
     if (!pos) continue
     let best: ObjectiveElementReady | null = null
     let bd = Infinity
@@ -265,7 +284,7 @@ export function buildObjectivePulses(
       }
     }
     if (!best) continue
-    out.push({ frame: a.t, x: best.x, y: best.y, team: best.team })
+    out.push({ frame, x: best.x, y: best.y, team: best.team })
   }
   return out
 }
