@@ -59,6 +59,12 @@ type NullableArrayKeys<T> = {
  * `tsc -b` refuse de compiler — avec, en clair, le nom du champ manquant.
  */
 const NULLABLE_ARRAYS = [
+  // `abilities` : le calque des lectures de capacité (schéma 6, 2026-08-14). Il remplace le
+  // champ `Inventory.a` RETIRÉ le même jour — celui-ci portait `rang − 16` (canal d'image-clé
+  // borgne), le calque porte le RANG. Deux grandeurs différentes : le champ a été retiré
+  // plutôt que réinterprété, et ce garde-fou a fait son travail en refusant le nouveau
+  // tableau tant qu'il n'était pas déclaré ici.
+  'abilities',
   'geometry',
   'grenadeLabels',
   'grenades',

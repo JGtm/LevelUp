@@ -48,6 +48,7 @@ export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplaySte
  */
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
+  | 'abilities'
   | 'geometry'
   | 'grenadeLabels'
   | 'grenades'
@@ -61,6 +62,7 @@ export type ReplayDocumentReady = Omit<
   | 'structure'
   | 'tracks'
 > & {
+  abilities: NonNullable<ReplayDocument['abilities']>
   geometry: NonNullable<ReplayDocument['geometry']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
   grenades: NonNullable<ReplayDocument['grenades']>
@@ -85,6 +87,11 @@ export type ReplayDocumentReady = Omit<
 export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentReady {
   return {
     ...raw,
+    // Le calque des lectures de CAPACITÉ (schéma 6). Il remplace `Inventory.a`, retiré le
+    // même jour : celui-ci portait `rang − 16` (le canal d'image-clé ne voit que 16..23),
+    // ce calque porte le RANG complet, et chaque lecture dit par quel canal elle est venue.
+    // Absent = aucune lecture, la fiche montre l'inventaire sans capacité nommée.
+    abilities: raw.abilities ?? [],
     geometry: raw.geometry ?? [],
     grenadeLabels: raw.grenadeLabels ?? [],
     grenades: raw.grenades ?? [],

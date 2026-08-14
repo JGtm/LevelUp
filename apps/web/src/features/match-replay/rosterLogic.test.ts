@@ -273,21 +273,25 @@ describe('loadoutAt', () => {
 describe('inventoryAt', () => {
   const d = doc({
     inventory: [
-      { t: 10, slot: 512, g: [0, 2, 0, 0], a: 4, d: 0 },
+      // Marqueur de lecture : `gs` (type de grenade sélectionné). Il portait `a` (index de
+      // capacité) jusqu'au schéma 6, qui a RETIRÉ ce champ de l'inventaire — la capacité vit
+      // désormais dans son propre calque `abilities`, avec le RANG et non un index tronqué.
+      // Ces cas ne testent pas la capacité : ils vérifient QUELLE lecture `inventoryAt` rend.
+      { t: 10, slot: 512, g: [0, 2, 0, 0], gs: 4, d: 0 },
       { t: 200, slot: 512, g: [1, 0, 0, 0] },
-      { t: 10, slot: 513, a: 9 },
+      { t: 10, slot: 513, gs: 9 },
     ],
   })
 
   it('rend la dernière lecture du SLOT, avec son âge', () => {
     const r = inventoryAt(d, 512, 60)
     expect(r?.age).toBe(50)
-    expect(r?.state.a).toBe(4)
+    expect(r?.state.gs).toBe(4)
   })
 
   it('ne lit jamais l’inventaire d’un autre slot', () => {
-    expect(inventoryAt(d, 513, 60)?.state.a).toBe(9)
-    const solo = doc({ inventory: [{ t: 10, slot: 513, a: 9 }] })
+    expect(inventoryAt(d, 513, 60)?.state.gs).toBe(9)
+    const solo = doc({ inventory: [{ t: 10, slot: 513, gs: 9 }] })
     expect(inventoryAt(solo, 512, 5)).toBeNull()
   })
 
@@ -297,7 +301,7 @@ describe('inventoryAt', () => {
     // que vingt secondes de vide. Un slot est une vie : aucun repli ne franchit une mort.
     const r = inventoryAt(d, 512, 5)
     expect(r?.age).toBe(-5)
-    expect(r?.state.a).toBe(4)
+    expect(r?.state.gs).toBe(4)
   })
 
   it('sans inventaire, rend null', () => {

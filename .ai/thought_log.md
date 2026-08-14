@@ -1107,6 +1107,34 @@ normalisees (3 matchs, condition de reprise = preuve meme-level_id comme Heavies
 utilisateur : 6 PNG copies dans `Desktop/gate_cartes_v75/lot1_bornes/` (l'AVANT est un 404,
 pas une image). Suite du chantier cartes : lots suivants du superviseur (toits, cartes v2).
 
+## [2026-08-15] v7.5 — la frontiere web rattrape le schema 6 (deux garde-fous, deux defauts)
+
+**Statut** : Complete.
+
+**Decision technique principale** : le lot i48 a livre le schema 6 (champ `Inventory.a`
+RETIRE, calque `abilities` AJOUTE) mais n'a pas joue le typecheck WEB — la CI a rougi sur le
+job Frontend. DEUX defauts distincts, chacun attrape par un garde-fou different, et aucun
+n'etait un faux positif :
+1. `replayContract.test.ts` — `abilities` est un TABLEAU NULLABLE du contrat et ne figurait
+   pas dans `NULLABLE_ARRAYS` : l'egalite de types a refuse de compiler, en nommant le champ
+   manquant. C'est exactement ce que ce test existe pour faire.
+2. `replayNormalize.ts` — la frontiere ne COMBLAIT pas `abilities` : le document « pret au
+   rendu » portait donc encore un tableau nullable, ce que l'assertion `_FrontiereComplete`
+   interdit. Ajoute avec les autres (`?? []`), jamais une valeur inventee.
+Et les tests de `rosterLogic` employaient `a` comme MARQUEUR de lecture (ils ne testent pas
+la capacite, ils verifient QUELLE lecture `inventoryAt` rend) : marqueur bascule sur `gs`,
+avec la raison ecrite a cote.
+
+**Resultats observes** : `tsc -b --force` apres purge du cache OK ; eslint 0 sur tout
+`features/match-replay/` ; vitest 24 fichiers / 332 tests verts (match-replay + lib/query).
+
+**Conclusion / prochaine etape** : LECON DE PILOTAGE — un lot qui touche le contrat d'artefact
+doit jouer le typecheck WEB, pas seulement les tests Go ; les trois garde-fous du contrat
+(contracttest Go, NULLABLE_ARRAYS, frontiere) vivent dans deux langages. Piege d'outillage
+rencontre au passage : un `Set-Content` PowerShell a re-encode le fichier de test et casse
+les accents (11 erreurs `no-irregular-whitespace`) — fichier restaure par git, edits refaits
+par l'outil d'edition. Ne jamais reecrire un fichier accentue par script PowerShell.
+
 ## [2026-08-14] v7.5 — les pulses d'objectif s'allumaient jusqu'a 50,8 s trop tard
 
 **Statut** : Complete.
