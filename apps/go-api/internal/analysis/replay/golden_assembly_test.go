@@ -284,6 +284,11 @@ func renderAssembly(doc ReplayDocument) string {
 	p("## AXE DE TEMPS")
 	p("%d frames · intervalle %d ms · duree %d ms", doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS)
 	p("schema %d · titre %s", doc.SchemaVersion, doc.TitleSlug)
+	if doc.OriginMs != nil {
+		p("origine de la frame 0 sur l horloge du fil : %d ms", *doc.OriginMs)
+	} else {
+		p("origine de la frame 0 : NON ETABLIE (le client retombe sur l appariement)")
+	}
 	p("")
 
 	renderTracks(p, doc)

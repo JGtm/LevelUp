@@ -38,7 +38,13 @@ package replay
 // monte quand même : les effets de repos de grenade côté client N'EXISTENT que si
 // l'artefact porte le lien, et la reprise du backfill (lot 6) se fait par
 // SchemaVersion — un artefact v2 doit se voir comme « à re-cuire », pas comme à jour.
-const SchemaVersion = 3
+//
+// v4 (2026-08-14, plan parité lot 7.2) : le document publie son ORIGINE (`originMs`) —
+// l'instant de sa frame 0 sur l'horloge du fil des éliminations (cf. origin.go). Le champ
+// est optionnel, mais la version monte : sans lui le client ne peut PAS caler le fil
+// autrement que par appariement statistique, et un artefact v3 doit donc se voir comme
+// « à re-cuire », pas comme à jour.
+const SchemaVersion = 4
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -95,6 +101,26 @@ type ReplayDocument struct {
 	FrameIntervalMS int `json:"frameIntervalMs,omitempty"`
 	// DurationMS est la durée réelle couverte par le rejeu, en millisecondes.
 	DurationMS int `json:"durationMs,omitempty"`
+	// OriginMs est l'instant de la FRAME 0 sur l'horloge du fil des éliminations, en
+	// millisecondes — c'est-à-dire sur l'horloge que le client reconstruit par
+	// `event_time_ms + t0_ms` (le T0 réel du match, déjà servi par la Match View).
+	//
+	// CE QU'IL FERME. La frame 0 est calée sur le premier paquet de POSITION du film, un
+	// instant qui varie de 3,6 s à 39,8 s après le début du film selon le match (chargement
+	// et mise en place). Sans ce champ, poser le fil sur l'axe du rejeu exigeait de mesurer
+	// ce décalage par appariement statistique côté navigateur — ce qui suppose des victimes
+	// nommées, et échoue quand `killer_victim_pairs` ne couvre pas le match. Avec lui, le
+	// recalage est une soustraction : `replayMs = event_time_ms + t0_ms − originMs`.
+	//
+	// D'OÙ IL VIENT : la différence de deux en-têtes de paquet du MÊME film (premier paquet
+	// de position − premier paquet du chunk 1, qui est le zéro du film). Aucune base, aucune
+	// horloge murale, aucune estimation. Détail, mesures et témoin indépendant : origin.go.
+	//
+	// POINTEUR, PAS int : c'est le PIÈGE omitempty. Une origine de zéro (film dont le
+	// premier paquet porte déjà une position) serait omise et relue comme « pas d'origine »,
+	// donc traitée en repli alors qu'elle est mesurée. ABSENT veut dire, et seulement :
+	// l'origine n'est pas établie — le client retombe alors sur son appariement.
+	OriginMs *int64 `json:"originMs,omitempty"`
 	// Geometry est le fond de carte : props Forge orientés (repères contextuels, pas les
 	// sols). Absent si la géométrie n'a pas été fournie au build.
 	Geometry []MapObject `json:"geometry,omitempty"`

@@ -71,6 +71,17 @@ type OwnerReport struct {
 	// IndexDisagreements compte les identités que deux chunks ont lues différemment. Non nul,
 	// la lecture est fausse et rien n'est publié pour ces joueurs.
 	IndexDisagreements int
+	// DeathOffsetMS / DeathOffsetMatches portent le calage du fil des morts sur l'horloge du
+	// film (`bestDeathOffset` : horlogeFilm = horlogeFil + DeathOffsetMS) et le nombre de
+	// morts qu'il apparie.
+	//
+	// POURQUOI ILS SORTENT D'ICI. Ce calage est calculé pour NOMMER les vies ; il se trouve
+	// être une SECONDE expression de l'origine du document (cf. origin.go), indépendante de
+	// la lecture des en-têtes de paquet. Le republier coûte deux entiers et donne au témoin
+	// une pièce qu'il ne partage pas avec ce qu'il contrôle. Zéro quand le pont n'a pas été
+	// construit : il n'y a alors aucun témoin, ce qui n'est pas un désaccord.
+	DeathOffsetMS      int64
+	DeathOffsetMatches int
 	// SlotCollisions compte les slots dont les vies nommées désignent des joueurs différents.
 	// Mesuré à 0 sur 000d5950 ; un film non nul invaliderait la table slot -> joueur.
 	SlotCollisions int
@@ -94,7 +105,8 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	}
 	lives := buildLifeSpans(tracks)
 	rep.LivesTotal = len(lives)
-	off, _ := bestDeathOffset(lives, deaths)
+	off, matched := bestDeathOffset(lives, deaths)
+	rep.DeathOffsetMS, rep.DeathOffsetMatches = off, matched
 	rep.DeathsNamed = nameLivesByDeaths(lives, deaths, off)
 	if rep.DeathsNamed == 0 {
 		return rep

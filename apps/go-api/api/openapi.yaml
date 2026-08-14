@@ -19045,6 +19045,9 @@ components:
           type:
             - array
             - "null"
+        originMs:
+          format: int64
+          type: integer
         projectiles:
           items:
             $ref: '#/components/schemas/Projectile'

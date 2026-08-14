@@ -8838,6 +8838,8 @@ export interface components {
             mapObjectives?: components["schemas"]["MapObjectives"];
             matchId: string;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
+            /** Format: int64 */
+            originMs?: number;
             projectiles?: components["schemas"]["Projectile"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */

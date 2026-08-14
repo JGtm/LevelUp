@@ -482,7 +482,29 @@ des rejeux » (0 par defaut) ; 3) /admin/monitoring/crons : ligne replay_purge e
       MESURER d'abord la couverture des morts sans tueur par la nature (le guide note qu'elles
       sont RARES : 0 sur 4 films de reference, 1 suicide sur le BTB) — si la donnee manque sur
       la majorite, le dire et livrer ce qui est mesure.
-- [ ] 7.2 SYNCHRO PAR LE T0 REEL, pas par appariement statistique. Directive utilisateur :
+> ✅ MESURE DU SUPERVISEUR, 2026-08-14 (CORRIGEE — la 1re version de ce bloc etait FAUSSE, cf.
+> l'avertissement en fin de bloc). L'utilisateur affirme que le T0 « est absolu et fourni par
+> l'API, jamais douteux ni absent ». LA MESURE LUI DONNE RAISON :
+>   - `match_participants.first_joined_time` : **28 118 / 28 118 present (100 %)**.
+>   - `match_registry.real_start_time` : **1 940 / 1 940 present**, valeurs SAINES. T0 median
+>     par `t0_quality` : `ok` (1 712) = **+27,4 s** (min 0, max 118,5), `(NULL)` (216) =
+>     **+26,5 s** (min 0, max 91,7). Temoin `000d5950` : **+18,465 s**, valeur IDENTIQUE au
+>     `meta.T0Ms` que MatchView sert deja. C'est bien un countdown de quelques dizaines de
+>     secondes, exactement ce que decrit l'utilisateur.
+>   - Seuls 12 matchs sur 1 940 (0,6 %) portent une etiquette de rejet : `suspicious_high`
+>     (11, T0 de 2 h a 4 h) et `negative` (1, T0 = 3 630 s). Ces valeurs-la sont aberrantes ;
+>     l'etiquette existe precisement pour les ecarter. Une garde qui LIT `t0_quality` reste
+>     donc justifiee — mais elle protege 0,6 % des matchs, elle n'est pas le cas nominal.
+> ⚠️ PIEGE QUI M'A FAIT ECRIRE UN FAUX DIAGNOSTIC — a ne pas reproduire : `start_time_utc` est
+> un TIMESTAMPTZ et `real_start_time` un TIMESTAMP naif (UTC). Les comparer par un `date_diff`
+> direct rend −3 600 s / −7 200 s (le decalage local), ce que j'ai pris pour la dette TZ. La
+> comparaison JUSTE passe par `start_time_utc AT TIME ZONE 'UTC'` — c'est exactement la regle 8
+> de CLAUDE.md (timezone canonique), et elle vaut aussi pour les requetes de diagnostic.
+> CONSEQUENCE POUR LE 7.2 : lire `real_start_time` est LA bonne voie (aucun recalcul a la
+> volee, aucune garde ad hoc a inventer) ; ecarter les 12 matchs etiquetes ; le repli par
+> appariement ne sert plus que ces cas-la et les matchs sans T0 exploitable.
+
+- [x] 7.2 SYNCHRO PAR LE T0 REEL, pas par appariement statistique. Directive utilisateur :
       « pas besoin d'algo alambique, on a le first joined time en data API qui donne le debut
       reel du match sans la phase d'attente/chargement ». VERIFIE : ce T0 EXISTE et est deja
       persiste — `match_registry.real_start_time` + `t0_quality`, calcule par
@@ -501,6 +523,34 @@ des rejeux » (0 par defaut) ; 3) /admin/monitoring/crons : ligne replay_purge e
       memoire `project_data_quality_first_joined_tz`) — lire `t0_quality` et degrader
       proprement quand il vaut autre chose que la valeur nominale, jamais servir un T0 douteux.
       L'appariement de `edb0e723c` reste comme REPLI quand le T0 est absent/rejete.
+> LIVRE 2026-08-14. FORME RETENUE, et pourquoi PAS le timestamp brut : l'horodatage de
+> paquet n'est PAS relatif au debut du film, c'est une horloge MOTEUR — 4 521 s / 3 896 s /
+> 2 259 s / 8 583 s sur les quatre films temoins (temps depuis le demarrage du jeu). Publie
+> tel quel il n'aurait donne au client aucun zero commun. L'artefact publie donc
+> `originMs` = (premier paquet de position − premier paquet du chunk 1) / 1000, c'est-a-dire
+> l'origine de sa frame 0 SUR L'HORLOGE DU FIL : deux en-tetes lus, une soustraction, aucune
+> base, aucune horloge murale (donc aucune exposition a la dette TZ). Le client retranche :
+> `replayMs = event_time_ms + t0_ms − originMs` — le T0 REEL y est, c'est le terme `t0_ms`
+> que MatchView sert deja.
+> LE T0 DOUTEUX NE PEUT PAS EMPOISONNER LA SYNCHRO, et c'est structurel (verifie sur pieces,
+> `match_view_data_loaders.go` : `t0Ms = *meta.T0Ms` sert A LA FOIS a corriger les events et
+> a alimenter `header.T0Ms`) : le client RAJOUTE exactement le T0 que le serveur avait
+> retranche. Les deux s'annulent, quelle que soit la valeur — un `t0_quality` de rejet donne
+> `real_start_time` NULL, donc `t0_ms = 0` des deux cotes, et les events ne sont pas corriges
+> non plus. La garde qui compte est donc cote ARTEFACT : origine non etablie (chunk 1
+> illisible) ou contredite par le temoin independant du fil des morts (> 1 s) => AUCUNE
+> origine publiee, et le client retombe sur l'appariement. Jamais une origine douteuse servie
+> en silence.
+> DEUX MESURES INDEPENDANTES, ecart 16-81 ms (`origin_research_test.go`, gate de la mesure) :
+> la lecture des en-tetes, et le calage du fil des morts (`bestDeathOffset`, deja en
+> production pour nommer les vies). ECART FIL / FICHE median, mesure sur les morts appariees :
+> 000d5950 3 626 -> 22 ms · 64e8adfa 10 539 -> 23 ms · e94163af 39 795 -> 23 ms ·
+> **606d9844 6 914 -> 24 ms** (35 kills, 0 victime nommee : le cas que l'appariement ne
+> savait pas traiter). Residu uniforme sous le pas de grille de 100 ms.
+> RE-CUISSON : `levelup backfill-replay --only-existing` (drapeau ajoute — apres un bump de
+> schema, une passe ordinaire repartirait sur les 951 films du cache). 23/23 construits,
+> 0 erreur, 0 hors catalogue, 21 min 36 s. Les 23 portent `schemaVersion 4` + `originMs`,
+> aucun refus. Origines de 3,6 s a 50,8 s selon le match — aucune constante n'aurait pu.
 
 ## Hors perimetre (registre)
 
@@ -511,6 +561,17 @@ etat VIVANT des objectifs (qui porte le drapeau — ti=11, reverse supplementair
 
 ## Decouvertes
 
+- (lot 7.2, 2026-08-14) L'HORODATAGE DE PAQUET N'EST PAS RELATIF AU FILM : c'est une horloge
+  moteur depuis le demarrage du jeu (2 259 s a 8 583 s sur les temoins). Tout raisonnement
+  qui traiterait `FilmPacket.TimestampUS` comme un temps de match est faux ; le zero du film
+  est le PREMIER PAQUET DU CHUNK 1 (le manifeste lui donne `start_ms = 0`), et c'est lui qui
+  fait le pont avec les `event_time_ms` des highlight events.
+- (lot 7.2, 2026-08-14) DEUX ARTEFACTS PORTAIENT UN `matchId` COURT (`000d5950`, `64e8adfa`)
+  la ou les autres portent l'UUID complet — sequelle des premiers builds unitaires
+  `replay-build <short8>`. Sans effet sur le service (le chemin se resout par
+  `FilmShortMatchID`), mais un consommateur qui joindrait par `matchId` trouverait deux
+  formes. Non traite (hors perimetre du lot) ; la re-cuisson par `backfill-replay` a corrige
+  les deux au passage, elle passe l'UUID du registre.
 - (lot 1, 2026-08-13) `weaponInHand` (i18n match-replay) etait deja orphelin AVANT le
   lot — aucune reference hors i18n.ts. Retire avec les 8 cles de l'item 1.2 (0 code mort).
 - (lot 1, 2026-08-13) i54 « biped-mobility-action » est un SIGNAL D'EVENEMENT date

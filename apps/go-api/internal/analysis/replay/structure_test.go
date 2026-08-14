@@ -104,8 +104,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   et killEffects. Champs omitempty, mais la version monte parce qu'elle est la CLÉ DE
 	//   REPRISE du backfill (lot 6) : les effets de repos de grenade n'existent que sur un
 	//   artefact qui porte le lien, un v2 doit se lire « à re-cuire », pas « à jour ».
-	if SchemaVersion != 3 {
-		t.Fatalf("SchemaVersion = %d, attendu 3 : incrémenter exige une raison écrite ci-dessus "+
+	//   v3 -> v4 (2026-08-14, plan parité lot 7.2) : originMs, l'instant de la frame 0 sur
+	//   l'horloge du fil des éliminations. Champ omitempty, même raison de monter : c'est la
+	//   CLÉ DE REPRISE du backfill, et sans lui le client ne peut caler le fil que par
+	//   appariement statistique — un v3 doit se lire « à re-cuire », pas « à jour ».
+	if SchemaVersion != 4 {
+		t.Fatalf("SchemaVersion = %d, attendu 4 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

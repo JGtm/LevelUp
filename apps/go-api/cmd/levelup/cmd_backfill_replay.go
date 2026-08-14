@@ -37,6 +37,14 @@ package main
 //	levelup backfill-replay --limit 25             # pilote : les 25 films les moins chers
 //	levelup backfill-replay                        # tout (~8 h, artefacts ~2 Go)
 //	levelup backfill-replay --force                # re-cuit même les artefacts à jour
+//	levelup backfill-replay --only-existing         # re-cuit UNIQUEMENT les artefacts déjà là
+//
+// # `--only-existing` EST LA PASSE D'APRÈS UN BUMP DE SCHÉMA
+//
+// Une montée de `replay.SchemaVersion` périme d'un coup TOUS les artefacts : une passe
+// ordinaire repartirait alors sur les 951 films du cache (des heures) là où l'on veut
+// seulement remettre à niveau ce qui est déjà servi. Ce drapeau borne la passe aux matchs
+// qui ont DÉJÀ un artefact sur disque, quelle que soit sa version.
 //
 // Le cache de films se résout par `--cache`, sinon `LEVELUP_LEGACY_FILM_CACHE_DIR`,
 // sinon `<repo>/data/cache` (même règle que backfill-killsource).
@@ -47,6 +55,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -72,6 +81,8 @@ type replayBackfillOptions struct {
 	limit     int
 	force     bool
 	dryRun    bool
+	// onlyExisting borne la passe aux matchs qui portent DÉJÀ un artefact sur disque.
+	onlyExisting bool
 }
 
 // replayBackfillReport : le rapport par catégories exigé par le gate du lot 6.
@@ -80,6 +91,7 @@ type replayBackfillReport struct {
 	dejaAJour     int
 	horsCatalogue int // échec VOULU (cartes Forge sans bornes), compté À PART
 	horsRegistre  int // film en cache sans ligne match_registry
+	sansArtefact  int // écarté par --only-existing : aucun artefact sur disque
 	erreurs       int
 }
 
@@ -91,6 +103,8 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	fs.IntVar(&o.limit, "limit", 0, "borne le nombre de films construits (0 = tous) — les moins chers d abord")
 	fs.BoolVar(&o.force, "force", false, "re-cuire meme les artefacts deja a la version de schema courante")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "afficher le plan de passe sans rien construire")
+	fs.BoolVar(&o.onlyExisting, "only-existing", false,
+		"ne traiter que les matchs qui ont deja un artefact sur disque (passe d apres un bump de schema)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -109,7 +123,14 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	// livrer 25 constructions réelles, pas 25 skips.
 	aFaire := make([]replayCandidat, 0, len(candidats))
 	for _, c := range candidats {
-		if !o.force && replaybuild.ArtifactUpToDate(pr.ReplayArtifactPath(o.titleSlug, c.matchID)) {
+		path := pr.ReplayArtifactPath(o.titleSlug, c.matchID)
+		if o.onlyExisting {
+			if _, err := os.Stat(path); err != nil {
+				report.sansArtefact++
+				continue
+			}
+		}
+		if !o.force && replaybuild.ArtifactUpToDate(path) {
 			report.dejaAJour++
 			continue
 		}
@@ -127,8 +148,8 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 		aFaire = aFaire[:o.limit]
 	}
 
-	fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre)\n",
-		len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre)
+	fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d sans artefact)\n",
+		len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.sansArtefact)
 	if o.dryRun {
 		afficherPlanReplay(aFaire)
 		return nil
@@ -306,5 +327,6 @@ func afficherRapportReplay(r replayBackfillReport) {
 	fmt.Printf("  deja a jour          %d\n", r.dejaAJour)
 	fmt.Printf("  carte hors catalogue %d (echec voulu : cartes sans bornes, Forge en tete)\n", r.horsCatalogue)
 	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)
+	fmt.Printf("  sans artefact        %d (ecartes par --only-existing)\n", r.sansArtefact)
 	fmt.Printf("  erreurs de decodage  %d\n", r.erreurs)
 }

@@ -21,7 +21,7 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
-import { alignFeedToTracks } from './killFeedLogic'
+import { alignFeed } from './killFeedLogic'
 import { familyOf, type ShotFamily } from './shotEffects'
 import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
@@ -114,10 +114,10 @@ function slotOfPlayerAt(
  * buildKillFx précalcule les effets de mort d'un document : positions monde résolues une
  * fois au chargement (patron du POC — 93 morts, aucune recherche pendant la lecture).
  *
- * L'horloge est celle du fil (`alignFeedToTracks` : kill posé SUR la fin de vie de sa
- * victime, cf. la mesure en tête de killFeedLogic.ts) : une seule règle de recalage pour
- * le feed et la carte. C'est aussi ce qui rend la fenêtre DEATH efficace — mesure témoin
- * 000d5950 : 1/93 victimes relues avec le recalage brut `+t0`, 90/93 une fois aligné.
+ * L'horloge est celle du fil (`alignFeed` : l'origine publiée par l'artefact, cf. l'en-tête
+ * de killFeedLogic.ts) : une seule règle de recalage pour le feed et la carte. C'est aussi
+ * ce qui rend la fenêtre DEATH efficace — mesure témoin 000d5950 : 1/93 victimes relues
+ * avec le recalage brut `+t0`, 90/93 une fois aligné.
  */
 export function buildKillFx(
   doc: ReplayDocumentReady,
@@ -134,7 +134,7 @@ export function buildKillFx(
     else livesByXuid.set(t.xuid, [t])
   }
   const out: KillFxEntry[] = []
-  for (const k of alignFeedToTracks(kills, t0Ms, doc).kills) {
+  for (const k of alignFeed(kills, t0Ms, doc).kills) {
     const frame = Math.round(msToFrames(k.replayMs, doc))
     const killer = posOfPlayerAt(livesByXuid.get(k.xuid), frame, deathFrames)
     const victim = k.victimXuid

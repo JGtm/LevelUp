@@ -67,7 +67,7 @@ func goldenInputsPath() string {
 
 // goldenInputsMagic identifie le format et sa version. Un fixture d une autre version est une
 // ERREUR, jamais une lecture « au mieux » : un decodage decale rendrait des chiffres plausibles.
-const goldenInputsMagic = "REPLAYINPUTS1\n"
+const goldenInputsMagic = "REPLAYINPUTS2\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -82,6 +82,7 @@ const goldenInputsMagic = "REPLAYINPUTS1\n"
 //	KeyframeInventory tout, sauf Chunk/PacketIndex (traçabilite dans le film, pas une entree)
 //	Death             XUID · Gamertag · TimeMS
 //	PlayerIndexTable  entier
+//	ClockOriginUS     l horodatage du premier paquet du film (l origine publiee en depend)
 type goldenInputs struct {
 	Film        string
 	Positions   []filmdec.BipedPosition
@@ -92,18 +93,24 @@ type goldenInputs struct {
 	Inventory   []KeyframeInventory
 	Deaths      []Death
 	Indices     PlayerIndexTable
+	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
+	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
+	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
+	// verrouillerait un document sans origine, donc pas celui que la production sert.
+	ClockOriginUS uint64
 }
 
 // options rend les Options d assemblage portees par le fixture. La geometrie et la structure
 // sont volontairement absentes (cf. l en-tete).
 func (g *goldenInputs) options() Options {
 	return Options{
-		Loadouts:      g.Loadouts,
-		Grenades:      g.Grenades,
-		Projectiles:   g.Projectiles,
-		Inventory:     g.Inventory,
-		Deaths:        g.Deaths,
-		PlayerIndices: g.Indices,
+		Loadouts:          g.Loadouts,
+		Grenades:          g.Grenades,
+		Projectiles:       g.Projectiles,
+		Inventory:         g.Inventory,
+		Deaths:            g.Deaths,
+		PlayerIndices:     g.Indices,
+		FilmClockOriginUS: g.ClockOriginUS,
 	}
 }
 
@@ -229,6 +236,7 @@ const (
 func encodeGoldenInputs(g *goldenInputs) []byte {
 	w := &gwriter{b: []byte(goldenInputsMagic)}
 	w.str(g.Film)
+	w.u(g.ClockOriginUS)
 
 	// Table des slots : un slot tient sur 13 bits, mais un film n en emploie qu une centaine.
 	// L indirection ramene 2 octets a 1 sur chaque position.
@@ -425,6 +433,7 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	}
 	r := &greader{b: blob, off: len(goldenInputsMagic)}
 	g := &goldenInputs{Film: r.str()}
+	g.ClockOriginUS = r.u()
 
 	nSlots := int(r.u())
 	slots := make([]uint32, 0, nSlots)
@@ -709,6 +718,11 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, fmt.Errorf("index de joueur non injectif (%d collisions) — fixture refuse", collisions)
 	}
 	g.Indices = table
+	// L origine d horloge est lue par la MEME fonction que BuildFromFilm : le fixture porte
+	// l entree, pas une valeur recopiee a la main.
+	if g.ClockOriginUS, err = ScanFilmClockOrigin(dir); err != nil {
+		return nil, err
+	}
 	return g, nil
 }
 
