@@ -29,6 +29,11 @@ type feedEvent struct {
 	timeMS int
 	killer string
 	victim string
+	// victimXUID : le XUID que le kill-feed porte pour la victime. Il ne sert a AUCUN
+	// appariement — ceux-ci se font par nom, comme partout ailleurs dans ce paquet — mais a la
+	// PUBLICATION : un consommateur qui joint des pistes de film joint par xuid, jamais par
+	// pseudo (le pseudo change, le xuid non). Zero quand l instant ne porte pas de mort.
+	victimXUID uint64
 }
 
 // killFeed : la decomposition HONNETE du kill-feed. Chaque champ est un denominateur potentiel,
@@ -117,7 +122,9 @@ func buildFeed(evs []analysis.HighlightEvent) *killFeed {
 			at(e.TimeMS).killer = name
 		case analysis.EventTypeDeath:
 			kf.nDeaths++
-			at(e.TimeMS).victim = name
+			ev := at(e.TimeMS)
+			ev.victim = name
+			ev.victimXUID = e.XUID
 		}
 	}
 	for _, v := range byTime {
@@ -147,7 +154,8 @@ func reconstructPairs(feed []feedEvent) []feedEvent {
 		for d := 1; d <= 2 && i+d < len(feed); d++ {
 			o := feed[i+d]
 			if o.victim != "" && o.killer == "" {
-				out = append(out, feedEvent{feed[i].timeMS, feed[i].killer, o.victim})
+				out = append(out, feedEvent{timeMS: feed[i].timeMS, killer: feed[i].killer,
+					victim: o.victim, victimXUID: o.victimXUID})
 				break
 			}
 		}
@@ -187,7 +195,8 @@ func (kf *killFeed) split() {
 		for d := 1; d <= 2 && i+d < len(feed); d++ {
 			o := feed[i+d]
 			if o.victim != "" && o.killer == "" {
-				kf.fab = append(kf.fab, feedEvent{feed[i].timeMS, feed[i].killer, o.victim})
+				kf.fab = append(kf.fab, feedEvent{timeMS: feed[i].timeMS, killer: feed[i].killer,
+					victim: o.victim, victimXUID: o.victimXUID})
 				pris[i+d] = true
 				matched = true
 				break

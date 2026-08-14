@@ -202,7 +202,7 @@ les trois autres taux, numerateurs compris, sont inchanges.
 |---|---|
 | **`Autres`** | 206 des 468 identifiants du catalogue ne remontent a aucune source nommee. Un encodage existe quelque part ; **ce n est pas la priorite**. Ne pas lire `Autres` comme << inconnu >> : la nature, elle, est connue. |
 | **les 4 morts INFLIGEES PAR un bot** | **elles n ont AUCUNE ancre Theater, et elles n en auront jamais** : le kill-feed du jeu ne les attribue a aucun gamertag, donc on ne peut pas designer la ligne a verifier. Ce qui les tient : la voie MARCHE (98.2 %), la coherence tag/categorie (`0000d57f` Needler + `AttachedDamage` = supercombinaison), et le fait que leur nombre vaut EXACTEMENT les kills que l API donne au bot. Une seule d entre elles porte un tag sous `0x10000` (`0000d57f`), regime ou le test `jpt!` est 100 fois moins discriminant. |
-| **la population des morts sans tueur** | elle est designee par le FEED : une mort qu aucun kill ne consomme. Un **suicide** ou un degat de monde y tomberait aussi. Sur les quatre films de reference il n y en a aucune ; **sur le BTB il y en a une, et c est precisement la que la population ne ferme pas** (7 orphelines pour 5 kills de bot + 1 suicide, 0 appariee, 0 publiee). |
+| **la population des morts sans tueur** | elle est designee par le FEED : une mort qu aucun kill ne consomme. Un **suicide** ou un degat de monde y tomberait aussi. Sur les quatre films de reference il n y en a aucune ; **sur le BTB il y en a une, et c est precisement la que la population ne ferme pas** (7 orphelines pour 5 kills de bot + 1 suicide, 0 appariee, 0 publiee). ⚠ **CE « 0 PUBLIEE » N EST PLUS LE COMPORTEMENT DU PAQUET DEPUIS LE 2026-08-14** — voir 6quater. |
 | **un nom marque `nom sous reserve`** | la CLASSE est sure, le NOM PROPRE ne l est pas. Cas mesure : un marteau de campagne publie a la place du marteau multijoueur. Si le nom vous surprend, **citez le tag**. |
 | **un nom marque `nom ambigu`** | l outil refuse de publier le nom et sort `Autres`. C est volontaire : le nom serait affirmatif et faux. |
 | **la colonne `lecture`** | deux voies lisent le MEME champ, au meme bit quand elles repondent toutes les deux. La voie **sequentielle** apparie 98.2 % de ses candidats au couple exact du kill-feed, le **balayage** 78.4 %. **C est une ventilation du cout, pas deux precisions comparables** : la bijection indice → joueur est ajustee sur l union des deux, dont la sequentielle fournit ~91 % des candidats. |
@@ -491,6 +491,48 @@ chassis.
 8/8** sur les deux films d arene (une permutation au hasard le reproduit avec probabilite
 `2/8!`). En BTB : **4 egalites exactes sur 8, et le decode n est JAMAIS au-dessus de l API**.
 Il valide `Feed.Killer`, pas la bijection indice -> joueur.
+
+---
+
+## 6quater. LES MORTS QUE PERSONNE NE REVENDIQUE — publiees depuis le 2026-08-14
+
+> Ajoute par le lot 7.1 du rejeu 2D. Ce que la ligne « population des morts sans tueur » de la
+> section 6 decrivait comme **0 publiee** ne l est plus : le paquet en fait une population a part
+> entiere, `Result.UnclaimedDeaths`.
+
+**CE QUE C EST.** Le kill-feed porte la MORT et **aucun kill en face**, aucun bot ne l explique
+(le temps 5 passe avant), et le dead-state de la victime **porte le meme indice en tueur qu en
+victime**. Le joueur s est tue : chute, sortie de zone, ou sa propre source de degat.
+
+**POURQUOI CE N EST PAS UN `Kill`, ET POURQUOI CA N EN SERA JAMAIS UN.** Un `Kill` porte deux
+verites dont l une est un CREDIT. Ici il n y a pas de credit a porter. Ranger ces lignes parmi
+les kills obligerait a inventer un tueur — ce que la doctrine de la section 1 interdit. Liste
+separee, origine `sans-revendication`, denominateur `Stats.Unclaimed`.
+
+**LA GARDE.** Le couple reste contraint des deux cotes, comme partout ailleurs — ici les deux
+cotes sont le meme joueur. Un dead-state de la fenetre qui designerait un AUTRE joueur decrirait
+un kill que le feed ne porte pas : rien n est publie. La porte `LineByLinePublishable` vaut aussi
+ici (ces lignes sont nommees par la MEME bijection indice -> joueur), donc **le BTB reste
+refuse**.
+
+**LA MESURE, avec sa portee.** Quatre films, 2026-08-14 : `64e8adfa` 2/2, `e94163af` 1/1,
+`606d9844` 2/2, `000d5950` 0/0 — **5 publiees sur 5 orphelines, 0 inexpliquee**, ecart au feed
+de 0 a 4 ms. Natures : **4 x `DEGAT_GLOBAL`** (tag `00403594`, « chute, environnement ») et
+**1 x `ARME` « M41 SPNKr »** (sa propre roquette). Le « 0 sur les quatre films de reference » de
+la section 6 **reste vrai** : ces quatre films-la n ont aucune mort orpheline non-bot. Ce n etait
+pas un plafond de couverture, et le lire ainsi aurait fait renoncer a une donnee complete.
+
+**INSTRUMENT DE MESURE, versionne et rejouable** (lecture seule, chemin public `Decode`) :
+
+```
+NEUTRAL_DEATH_FILMS="<dir1>,<dir2>" go test ./internal/games/halo_infinite/film/killsource/ \
+    -run TestNeutralDeathNatureCoverage -timeout 30m -v
+```
+
+**LE CONSOMMATEUR.** Le rejeu 2D : ses lignes de mort grises y prennent le pictogramme du TYPE
+de mort. La table type -> icone a **deux** entrees (`DEGAT_GLOBAL` -> environnement, toute autre
+classe etablie -> suicide) et une classe INCONNU n en obtient **aucune** — jamais l icone d une
+autre mort. Elle vit dans `film/killicon/neutral.go`, pas ici.
 
 ---
 

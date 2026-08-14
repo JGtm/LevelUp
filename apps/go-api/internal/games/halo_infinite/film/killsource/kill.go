@@ -133,8 +133,9 @@ const (
 // dit ce que la ligne AFFIRME, la voie dit avec quelle precision.
 type Origin string
 
-// Les QUATRE origines d appariement. Les deux dernieres sont les deux populations de bot, et
-// elles sont SYMETRIQUES : le feed porte le kill sans la mort, ou la mort sans le kill.
+// Les CINQ origines d appariement. Les troisieme et quatrieme sont les deux populations de bot,
+// et elles sont SYMETRIQUES : le feed porte le kill sans la mort, ou la mort sans le kill. La
+// cinquieme ne qualifie PAS un [Kill] : c est celle des morts que personne ne revendique.
 const (
 	// OriginCredit : le couple (tueur, victime) du dead-state est EXACTEMENT celui du
 	// kill-feed dans la fenetre. Les deux verites concordent.
@@ -156,6 +157,11 @@ const (
 	// qu il qualifie la MORT, et la mort est bien au feed. C est exactement l inverse d
 	// [OriginBot], ou c est la victime qui vient de la replication.
 	OriginBotKiller Origin = "tueur-bot"
+	// OriginUnclaimed : PERSONNE ne revendique cette mort. Le kill-feed la porte sans aucun
+	// kill en face, aucun bot ne l explique, et le dead-state designe la VICTIME elle-meme en
+	// tueur. C est la provenance des lignes de [Result.UnclaimedDeaths] — elles ne sont JAMAIS
+	// des [Kill] (il n y a pas de credit a porter, et en inventer un serait un mensonge).
+	OriginUnclaimed Origin = "sans-revendication"
 )
 
 // Provenance : d ou vient techniquement une ligne publiee.
@@ -249,10 +255,57 @@ type Coverage struct {
 	BotKillerDeaths int
 }
 
+// UnclaimedDeath : UNE MORT QUE PERSONNE NE REVENDIQUE, et la source qui l a causee.
+//
+// # POURQUOI CE N EST PAS UN [Kill], ET POURQUOI CE N EN SERA JAMAIS UN
+//
+// Un [Kill] porte DEUX verites dont l une est un CREDIT ; ici il n y a pas de credit a porter.
+// Le kill-feed porte la MORT et AUCUN kill en face, et le dead-state de la victime designe la
+// VICTIME ELLE-MEME comme source du degat. Ranger ces lignes parmi les kills obligerait a
+// inventer un tueur — exactement ce que la doctrine du paquet interdit.
+//
+// # LA POPULATION, ET SA GARDE
+//
+// Elle part de `feed.orphD` (les morts que la reconstruction de couples n a jamais consommees,
+// cf. [killFeed.split]) MOINS celles que le temps 5 explique par un TUEUR BOT : celles-la ont un
+// tueur, elles sortent en [Kill] avec [OriginBotKiller].
+//
+// Ce qui reste n est publie QUE si un dead-state de la fenetre nomme la victime ET porte le MEME
+// indice en tueur. Sans cette egalite on ne publie rien : un dead-state qui designerait un autre
+// joueur decrirait un kill que le feed ne porte pas, et le presenter comme une mort de soi serait
+// affirmatif et faux. C est la meme regle que partout : un couple contraint des deux cotes.
+//
+// # CE QUE LE CONSOMMATEUR EN FAIT
+//
+// [SourceTruth.Class] est la NATURE du degat (`DEGAT_GLOBAL` = chute / environnement /
+// hors-limites, `ARME` = sa propre arme, ...). Elle est etablie meme quand le nom sort en
+// [LabelOther] — c est elle qui distingue une chute d un tir de roquette trop pres d un mur.
+// La porte [Result.LineByLinePublishable] vaut ici comme pour le reste : ces lignes sont nommees
+// par la MEME bijection indice -> joueur.
+type UnclaimedDeath struct {
+	// TimeMS : instant de la mort, tel que le kill-feed le date.
+	TimeMS int
+	// Victim : la victime, telle que le kill-feed la nomme.
+	Victim string
+	// VictimXUID : le xuid de la victime. C est la SEULE cle de jointure fiable pour un
+	// consommateur qui rapproche ces morts d une autre source (pistes de film, scoreboard).
+	VictimXUID uint64
+	// Source : d ou vient le degat fatal, lu dans le dead-state de la victime.
+	Source SourceTruth
+	// Read : la provenance technique de la ligne (voie de lecture, multiplicite).
+	Read Provenance
+}
+
 // Result : tout ce qu une passe rend.
 type Result struct {
 	// Kills : les morts publiees, triees par instant.
 	Kills []Kill
+	// UnclaimedDeaths : les morts que le kill-feed porte SANS aucun tueur, et dont le
+	// dead-state designe la victime elle-meme (suicides, chutes, hors-limites). Triees par
+	// instant. Population RARE mais COMPLETE, mesure du 2026-08-14 : 5 publiees sur 5
+	// orphelines (64e8adfa 2, e94163af 1, 606d9844 2, 000d5950 0), 0 inexpliquee, ecart au
+	// feed de 0 a 4 ms. Instrument rejouable : `neutral_death_research_test.go`.
+	UnclaimedDeaths []UnclaimedDeath
 	// Coverage : les denominateurs.
 	Coverage Coverage
 	// Health : la metrique de sante, prete pour `expvar` via `Health.ExpvarPairs()`.
@@ -306,6 +359,11 @@ type Stats struct {
 	// BotKiller : les morts INFLIGEES PAR un bot. `Population` = morts du feed que la
 	// reconstruction de couples n a jamais consommees, donc sans tueur humain en face.
 	BotKiller PathStats
+	// Unclaimed : les morts que PERSONNE ne revendique (cf. [UnclaimedDeath]). `Population` est
+	// la MEME que celle de `BotKiller` — les deux temps se partagent les morts orphelines du
+	// feed, l un les explique par un tueur bot, l autre par la victime elle-meme. Un ecart
+	// entre la somme des deux `Published` et la population dit ce qui reste inexplique.
+	Unclaimed PathStats
 	// Redundant : candidats du scan portant la MEME position qu un enregistrement de la marche.
 	// Ce sont les memes objets lus deux fois : 346 sur la serie de reference.
 	Redundant int
