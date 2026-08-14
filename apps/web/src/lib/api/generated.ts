@@ -1435,6 +1435,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/build-queue/artifact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — dépose l'artefact de rejeu construit pour un job pris (corps = l'artefact, taille bornée). Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueArtifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/build-queue/claim": {
         parameters: {
             query?: never;
@@ -4608,6 +4625,14 @@ export interface components {
         BucketInfo: {
             label: string;
             type: string;
+        };
+        BuildArtifactReceipt: {
+            /** Format: int64 */
+            bytes: number;
+            job_id: string;
+            match_id: string;
+            /** Format: int64 */
+            schema_version: number;
         };
         BuildQueueAckResponse: {
             ok: boolean;
@@ -13842,6 +13867,38 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueArtifact: {
+        parameters: {
+            query?: {
+                job_id?: string;
+                worker_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildArtifactReceipt"];
                 };
             };
             /** @description Error */

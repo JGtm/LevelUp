@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -273,15 +272,14 @@ func ArtifactUpToDate(path string) bool {
 	return head.SchemaVersion == replay.SchemaVersion
 }
 
-// writeArtifact sérialise le document et l'écrit (crée les répertoires parents) ; renvoie
-// la taille en octets.
+// writeArtifact sérialise le document et l'écrit ATOMIQUEMENT (cf.
+// writeArtifactBytes, artifact_store.go) ; renvoie la taille en octets. Même
+// écriture que le dépôt d'un ouvrier : le service de lecture sert le fichier tel
+// quel, il ne doit jamais tomber sur un artefact à moitié écrit.
 func writeArtifact(outPath string, doc replay.ReplayDocument) (int, error) {
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return 0, err
-	}
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return 0, err
 	}
-	return len(blob), os.WriteFile(outPath, blob, 0o644)
+	return len(blob), writeArtifactBytes(outPath, blob)
 }

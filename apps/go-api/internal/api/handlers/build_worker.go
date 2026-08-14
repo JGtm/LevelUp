@@ -1,11 +1,16 @@
 // Package handlers — build_worker.go : LE PROTOCOLE OUVRIER de la file durable de
 // construction (piste F §1/§2 du plan film/killfeed/rejeu).
 //
-// Trois routes, sous /api/v1/internal/build-queue/ :
+// Quatre routes, sous /api/v1/internal/build-queue/ :
 //
 //	POST /claim     — prendre le prochain job (rend le travail RÉSOLU, ou rien)
+//	POST /artifact  — DÉPOSER l'artefact construit (build_worker_artifact.go)
 //	POST /complete  — rendre le résultat d'un job pris
 //	POST /heartbeat — signe de vie + prolongation du bail du job en cours
+//
+// L'ORDRE COMPTE : l'artefact d'abord, le compte rendu ensuite. Un job n'est
+// `succeeded` que si son artefact est arrivé et valide — le rendu de résultat ne
+// ment donc jamais sur la présence du fichier.
 //
 // L'OUVRIER TIRE, IL N'EST JAMAIS APPELÉ. Aucun port entrant chez lui, aucun
 // système de fichiers partagé, aucun Redis : trois POST HTTPS suffisent. C'est le
@@ -56,15 +61,25 @@ type BuildWorkerHandler struct {
 	claim    BuildQueueClaimer
 	complete BuildQueueCompleter
 	beat     BuildQueueBeater
+	// storeArtifact range l'artefact rendu (build_worker_artifact.go). Nil → la
+	// route de dépôt répond 503 : sans elle, l'ouvrier construirait sans jamais
+	// livrer, et le protocole ne servirait à rien.
+	storeArtifact BuildQueueArtifactStorer
 }
 
-// NewBuildWorkerHandler construit le handler. token vide → les trois routes
-// répondent 503 (protocole non ouvert).
+// NewBuildWorkerHandler construit le handler. token vide → les routes du
+// protocole répondent 503 (protocole non ouvert).
 func NewBuildWorkerHandler(token string, claim BuildQueueClaimer, complete BuildQueueCompleter, beat BuildQueueBeater) *BuildWorkerHandler {
 	return &BuildWorkerHandler{token: strings.TrimSpace(token), claim: claim, complete: complete, beat: beat}
 }
 
-// Mount enregistre les trois routes du protocole sur le sous-routeur donné.
+// WithArtifactStore branche le dépôt d'artefact (route /artifact). Chaînable.
+func (h *BuildWorkerHandler) WithArtifactStore(store BuildQueueArtifactStorer) *BuildWorkerHandler {
+	h.storeArtifact = store
+	return h
+}
+
+// Mount enregistre les routes du protocole sur le sous-routeur donné.
 //
 // Le jeton est vérifié par un MIDDLEWARE, donc AVANT que Huma ne regarde le
 // corps de la requête. Ce n'est pas un détail de style : validé après, un appelant
@@ -84,6 +99,7 @@ func (h *BuildWorkerHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		"postBuildQueueHeartbeat",
 		"Protocole ouvrier — signe de vie de l'ouvrier et prolongation du bail du job en cours. Jeton d'ouvrier requis.",
 		"build-queue"))
+	h.mountArtifactRoute(api)
 }
 
 // ─── Contrats d'entrée/sortie ────────────────────────────────────────────────

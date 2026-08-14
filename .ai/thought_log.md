@@ -64981,3 +64981,28 @@ ecrit : l'identite des trois capacites n'existe pas en production (elle est dans
 lecteur), et aucune valeur d'i57 n'est nommee « actif ». Aucune ligne de rendu ecrite. Deux
 lignes au REGISTRE_REPORTS : le lecteur i48 de production, et le releve Theater date qui
 nommerait la valeur active d'i57.
+
+## [2026-08-14] Transport de l'artefact — etape 1 : l'ouvrier livre enfin ce qu'il construit
+**Statut** : Complété (etape 1 du `.ai/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
+**Decision technique** : `POST /api/v1/internal/build-queue/artifact?job_id=&worker_id=`, corps =
+l'artefact BRUT (pas d'enveloppe : ré-encoder 2 Mo de JSON dans une chaine JSON couterait le
+double des deux cotes). Trois refus avant la moindre ecriture — 413 (plafond `MaxBuildArtifactBytes`
+= 16 Mio, pose par `humacore.MaxBody` donc les octets excedentaires ne sont jamais lus ; le defaut
+Huma de 1 Mio aurait refuse TOUS les artefacts), 409 (job inconnu / termine / detenu par un autre
+ouvrier, via le nouveau `MonitoringStore.ClaimedBuildJob`), 400 (contenu qui n'est pas l'artefact
+attendu : JSON illisible, `schemaVersion` != 5, mauvais `matchId`, aucune trajectoire). Ecriture
+ATOMIQUE par `platform/atomicfile` (existant reutilise) — et `replaybuild.writeArtifact` bascule
+sur le meme helper : deux facons d'ecrire le meme fichier auraient fini par diverger sur
+l'atomicite. Le compte rendu devient le POINT FINAL : `CompleteBuildJob(succeeded=true)` d'un job
+`replay_build` est refuse (409) tant que l'artefact n'est pas la et a jour — le job reste `running`,
+son bail expire, il repart en file. Cote ouvrier : artefact d'abord, compte rendu ensuite, et en cas
+d'echec d'envoi il ne marque RIEN.
+**Resultats** : preuve de bout en bout sur les VRAIES routes montees (`MountBuildWorkerRoutes` +
+registre reel + DuckDB reel) — mise en file, prise, refus du succes anticipe, depot, artefact
+**a l'octet identique** sur disque, lu par `service.NewReplayService`, puis compte rendu accepte.
+Six refus testes, chacun verifiant qu'AUCUN fichier n'a ete ecrit. PIEGE EVITE : l'ouvrier
+supprimait ses morceaux de film « apres coup » — or son dossier de travail par defaut EST le cache
+film du depot (archive irremplacable, 29,3 % du corpus deja perdu cote serveur). Il ne supprime
+donc que si `--work` designe un dossier a lui.
+**Conclusion / prochaine etape** : etape 2 — le reglage « ou se construit un rejeu » (local /
+worker / off), un seul point de decision, refus explicite de `local` en production.
