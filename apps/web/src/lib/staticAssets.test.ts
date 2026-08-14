@@ -24,6 +24,12 @@ describe('staticAssetURL (default title-scoped)', () => {
     expect(staticAssetURL('weapon', 'br75', '.png')).toBe('/static/weapons-assets/halo_infinite/br75.png')
   })
 
+  it('compose URL pour sound (wav du rejeu 2D)', () => {
+    expect(staticAssetURL('sound', 'hinf_br75', '.wav')).toBe(
+      '/static/sounds/halo_infinite/hinf_br75.wav',
+    )
+  })
+
   it('compose URL pour commendation (titleSlug explicite)', () => {
     expect(staticAssetURL('commendation', 'achilles', '.png', 'halo_5_guardians')).toBe(
       '/static/commendations/halo_5_guardians/achilles.png',

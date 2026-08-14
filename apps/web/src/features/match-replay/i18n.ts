@@ -39,6 +39,12 @@ interface ReplayText {
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
   killFeedDeathHint: string
+  /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
+  sound: string
+  soundHint: string
+  soundVolume: string
+  /** Le son est activé mais tu par la vitesse de lecture — le dire, pas le cacher. */
+  soundFastHint: string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -112,6 +118,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedDeathLabel: 'mort',
     killFeedDeathHint:
       'Mort sans tueur crédité (suicide, chute ou sortie), lue dans les trajectoires du film.',
+    sound: 'Son',
+    soundHint:
+      "Sons d'armes sur les éliminations et les lancers de grenade, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
+    soundVolume: 'Volume des sons',
+    soundFastHint:
+      'À cette vitesse de lecture les sons se chevaucheraient : ils reviennent à 2× ou moins.',
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
@@ -180,6 +192,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedDeathLabel: 'died',
     killFeedDeathHint:
       'Death with no credited killer (suicide, fall or leaving), read from the film trails.',
+    sound: 'Sound',
+    soundHint:
+      'Weapon sounds on kills and grenade throws, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
+    soundVolume: 'Sound volume',
+    soundFastHint:
+      'At this playback speed the sounds would overlap: they come back at 2× or below.',
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:

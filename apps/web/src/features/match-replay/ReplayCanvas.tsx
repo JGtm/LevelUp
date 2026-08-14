@@ -40,6 +40,8 @@ import {
 } from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
+import { ReplaySoundControls } from './ReplaySoundControls'
+import { useReplaySound } from './useReplaySound'
 import { backgroundRect, coversPlayedArea } from './mapBackground'
 import { buildFloorGrid } from './mapFloor'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -174,6 +176,9 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   // Le calque zones s'allume par défaut, comme dans le POC : c'est le vocabulaire de la
   // carte, pas un ornement.
   const [showZones, setShowZones] = useState(true)
+  // SON : coupé par défaut, préférence et volume persistés, tout le câblage dans le hook
+  // (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
+  const sound = useReplaySound(doc, kills, t0Ms, multiplier)
 
   const paletteVersion = useColorPaletteVersion()
   const colors = useMemo(() => {
@@ -544,6 +549,11 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   }, [draw])
 
   // Boucle de lecture (requestAnimationFrame) uniquement quand `playing`.
+  //
+  // LE SON BAT AVEC ELLE, et nulle part ailleurs : hors lecture (pause, onglet en
+  // arrière-plan, redessin au changement de thème) il n'y a pas de battement, donc pas un
+  // son. C'est ce qui rend le silence d'un lecteur à l'arrêt structurel, pas conditionnel.
+  const soundTick = sound.tick
   useEffect(() => {
     if (!playing || renderWidth === 0) return
     const fps = baseFps * multiplier
@@ -557,12 +567,13 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       if (next >= doc.frameCount - 1) next = 0
       frameRef.current = next
       if (sliderRef.current) sliderRef.current.value = String(Math.round(next))
+      soundTick(frameToMs(next, doc))
       draw()
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [playing, baseFps, multiplier, doc.frameCount, renderWidth, draw])
+  }, [playing, baseFps, multiplier, doc, renderWidth, draw, soundTick])
 
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)
@@ -610,6 +621,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
               {t.layerZones}
             </Button>
           )}
+          <ReplaySoundControls sound={sound} locale={locale} />
           <span aria-hidden className="mx-2 h-4 w-px bg-border" />
           <span className="mr-1 text-xs text-muted-foreground">{t.speed}</span>
           {SPEED_MULTIPLIERS.map((m) => (
