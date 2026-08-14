@@ -36,8 +36,10 @@ import (
 // chose.
 //
 //	R1 capacité  : ancre 28 bits 0x8CAC57A, puis dans les 60 bits suivants le motif 20 bits
-//	               0b00000000000000010010 ; les 3 bits qui suivent sont l'index. Retenue
-//	               seulement si l'ancre est UNIQUE dans le record.
+//	               0b00000000000000010010 ; les 3 bits qui suivent sont les BITS DE POIDS
+//	               FAIBLE du rang de palette, dont le motif porte déjà les bits de poids fort
+//	               (cf. invAbilityRankHigh). Retenue seulement si l'ancre est UNIQUE dans le
+//	               record.
 //	R2 grenades  : PREMIER motif i22 (R(3)=4 puis quatre R(8) bornés, somme > 0) situé APRÈS
 //	               l'ancre capacité. La position de l'ancre vient de R1, donc sans aucune
 //	               information de grenade.
@@ -57,8 +59,10 @@ import (
 // CE QUI RESTE INCONNU, ET S'AFFICHE COMME TEL :
 //   - le COMPTEUR D'UTILISATIONS de la capacité n'est pas localisé (36 006 positions testées
 //     sur 6 ancres, aucune ne reproduit le relevé) ;
-//   - la table des capacités est PARTIELLE : 4 index observés pour 11 capacités dans le jeu.
-//     Un index hors table doit s'afficher « inconnu », jamais être deviné ;
+//   - la table des capacités est PARTIELLE, et propre à la PALETTE du match : un rang hors
+//     table doit s'afficher « inconnu », jamais être deviné ;
+//   - ce canal est BORGNE — il ne voit que les rangs 16 à 23 (invAbilityRankHigh). Le rang
+//     complet vient d'i48, dans les paquets delta (filmdec.ScanFilmAbilityRanks) ;
 //   - 51 records sur 150 admettent plusieurs parses du bloc de munitions. Le plus long est
 //     retenu et le NOMBRE DE CANDIDATS est publié, pour que le départage reste visible.
 
@@ -75,6 +79,26 @@ const invAbilityAnchor uint32 = 0x8CAC57A
 
 // invAbilityPattern est le motif 20 bits cherché dans les 60 bits qui suivent l'ancre.
 const invAbilityPattern uint32 = 0x00012
+
+// invAbilityRankHigh est ce que le motif d'ancrage DIT DÉJÀ du rang de capacité, et c'est la
+// découverte du 2026-08-14 (RECETTE_LOADOUT §14).
+//
+// Les trois derniers bits d'`invAbilityPattern` valent `010` : ce ne sont pas une signature
+// de structure, ce sont les BITS DE POIDS FORT du rang de palette. Les 3 bits lus juste
+// après en sont les bits de poids faible. Le champ « index » que ce décodeur publiait depuis
+// le début était donc `rang − 16`, et l'ancre elle-même ne peut matcher QUE les rangs 16 à
+// 23 — d'où les 21 films sur 40 qui ne rendaient aucune lecture, et les parties « où les
+// huit joueurs portent le même équipement », qui n'en montraient que les porteurs du rang 23.
+//
+// LA VALEUR EST DÉRIVÉE DU MOTIF, pas écrite à côté de lui : si le motif changeait, la
+// reconstruction suivrait au lieu de mentir. Contrôle sur pièces (film 000d5950, le film de
+// vérité terrain) : le canal i48, totalement indépendant, rend le rang 20 sur les slots que
+// le relevé Theater nomme grappin (index 4), 21 sur le propulseur (index 5) et 19 sur le mur
+// (index 3) — soit `rang = index + 16` sur trois valeurs.
+const invAbilityRankHigh = invAbilityPattern & 0x7
+
+// invAbilityRankOf reconstruit le RANG complet à partir des 3 bits de poids faible lus.
+func invAbilityRankOf(low uint32) int { return int(invAbilityRankHigh<<3 | (low & 0x7)) }
 
 // invGrenadeSlots est le nombre de types de grenade décrits par i22, et aussi le nombre
 // d'emplacements d'arme décrits par la carte mémoire (0x7F0 + s*0x90, quatre entrées).
@@ -125,9 +149,16 @@ type KeyframeInventory struct {
 	// exactement les compteurs i22 et si la sélection est unanime dans la fenêtre (cf.
 	// invGrenadeSelLo) : à défaut, -1 — une sélection ne se devine pas.
 	SelectedGrenadeRank int
-	// AbilityIndex est l'index de capacité lu, ou -1. Le NOM ne se décide pas ici : la table
-	// est partielle, et la nommer est le travail de la couche qui possède le catalogue.
-	AbilityIndex int
+	// AbilityRank est le RANG de palette de la capacité portée, ou -1 non lu.
+	//
+	// C'EST UN RANG, PAS UN INDEX — il l'est depuis le 2026-08-14 (cf. invAbilityRankHigh), et
+	// le champ a changé de nom parce qu'il a changé de grandeur. Ce canal ne voit QUE la
+	// fenêtre 16..23 de la palette : hors d'elle, l'ancre ne matche pas et la lecture n'existe
+	// pas. Le rang complet, sur toute la palette, vient d'i48 (filmdec.ScanFilmAbilityRanks).
+	//
+	// Le NOM ne se décide pas ici : la table est partielle ET propre à la palette du match,
+	// et la nommer est le travail de la couche qui possède le catalogue.
+	AbilityRank int
 	// Ammo est l'état des quatre emplacements décrits par la carte mémoire. Seuls les deux
 	// premiers portent une arme ; les deux autres sont vides, et cette vacuité fait partie du
 	// critère de parse (44 bits nuls).
@@ -193,12 +224,12 @@ func keyframeInventories(pay []byte, known map[uint32]bool, grenMax uint32) []Ke
 			continue
 		}
 		inv := KeyframeInventory{
-			Slot: uint32(sp.slot), AbilityIndex: -1, DrawnSlot: -1, SelectedGrenadeRank: -1,
+			Slot: uint32(sp.slot), AbilityRank: -1, DrawnSlot: -1, SelectedGrenadeRank: -1,
 		}
 		// R1 : l'ancre doit être UNIQUE dans le record. Deux ancres, c'est une lecture qu'on
 		// ne sait pas départager — et on ne départage pas au hasard.
 		if hits := invAbilityIn(pay, sp.from, sp.to); len(hits) == 1 {
-			inv.AbilityIndex = int(hits[0].index)
+			inv.AbilityRank = invAbilityRankOf(hits[0].low)
 			// R2 : les grenades se cherchent APRÈS l'ancre de capacité, dont la position a été
 			// établie sans aucune information de grenade.
 			if g, ok := invGrenadesAfter(pay, hits[0].anchorBit, sp.to, grenMax); ok {
@@ -269,10 +300,11 @@ func invRecordSpans(pay []byte) []invRecordSpan {
 // invAbilityHit est une occurrence de l'ancre de capacité.
 type invAbilityHit struct {
 	anchorBit int
-	index     uint32
+	// low est le champ de 3 bits qui suit le motif : les bits de POIDS FAIBLE du rang.
+	low uint32
 }
 
-// invAbilityIn cherche l'ancre puis le motif, et lit l'index sur les 3 bits qui suivent.
+// invAbilityIn cherche l ancre puis le motif, et lit les 3 bits de poids faible du rang.
 func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 	var out []invAbilityHit
 	var w uint32
@@ -290,7 +322,7 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 			if invBits(pay, p, 20) != invAbilityPattern {
 				continue
 			}
-			out = append(out, invAbilityHit{anchorBit: b - 27, index: invBits(pay, p+20, 3)})
+			out = append(out, invAbilityHit{anchorBit: b - 27, low: invBits(pay, p+20, 3)})
 			break
 		}
 	}

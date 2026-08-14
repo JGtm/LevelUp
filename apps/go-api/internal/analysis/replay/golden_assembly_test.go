@@ -300,6 +300,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderGrenades(p, doc)
 	renderProjectiles(p, doc)
 	renderInventory(p, doc)
+	renderAbilities(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderLabels(p, doc)
@@ -384,13 +385,10 @@ func renderProjectiles(p func(string, ...any), doc ReplayDocument) {
 }
 
 func renderInventory(p func(string, ...any), doc ReplayDocument) {
-	var gren, abil, ammo, multi int
+	var gren, ammo, multi int
 	for _, inv := range doc.Inventory {
 		if len(inv.G) > 0 {
 			gren++
-		}
-		if inv.A != nil {
-			abil++
 		}
 		if len(inv.Am) > 0 {
 			ammo++
@@ -400,15 +398,46 @@ func renderInventory(p func(string, ...any), doc ReplayDocument) {
 		}
 	}
 	p("## INVENTAIRE — lu aux images-cles, jamais interpole entre deux")
-	p("%d etat(s) publie(s) · %d avec grenades lues · %d avec capacite lue · %d avec munitions lues",
-		len(doc.Inventory), gren, abil, ammo)
+	p("%d etat(s) publie(s) · %d avec grenades lues · %d avec munitions lues",
+		len(doc.Inventory), gren, ammo)
 	p("%d lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le",
 		multi)
 	p("nombre de candidats est publie, pour que le departage reste visible")
 	p("rangs de grenade : %s", renderBilingualList(doc.GrenadeLabels))
-	p("capacites nommees (TABLE PARTIELLE — 5 index OBSERVES sur le corpus, 2 nommes ;"+
-		" les contestes gardent leur numero, cf. replay_labels.toml) : %s",
-		renderBilingualMap(doc.AbilityLabels))
+	p("")
+}
+
+// renderAbilities publie le calque des CAPACITES PORTEES — le rang de palette, et par quel
+// canal chaque lecture est arrivee. Les deux canaux ne voient pas la meme chose : `kf` ne peut
+// rendre que 16..23, `i48` rend toute la palette. Separer leurs comptes est ce qui rend la
+// couverture jugeable.
+func renderAbilities(p func(string, ...any), doc ReplayDocument) {
+	bySrc := map[string]int{}
+	byRank := map[int]int{}
+	for _, a := range doc.Abilities {
+		bySrc[a.Src]++
+		byRank[a.R]++
+	}
+	ranks := make([]int, 0, len(byRank))
+	for r := range byRank {
+		ranks = append(ranks, r)
+	}
+	sort.Ints(ranks)
+	parts := make([]string, 0, len(ranks))
+	named := 0
+	for _, r := range ranks {
+		parts = append(parts, fmt.Sprintf("%d:%d", r, byRank[r]))
+		if _, ok := doc.AbilityLabels[strconv.Itoa(r)]; ok {
+			named += byRank[r]
+		}
+	}
+	p("## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur")
+	p("%d lecture(s) · %d par i48 (rang complet, paquets delta) · %d par image-cle (fenetre 16..23)",
+		len(doc.Abilities), bySrc[AbilitySrcI48], bySrc[AbilitySrcKeyframe])
+	p("rangs observes : %s", strings.Join(parts, " "))
+	p("lectures NOMMEES %d/%d — un rang hors table garde son numero, et la table est propre a"+
+		" la palette du film", named, len(doc.Abilities))
+	p("capacites nommees : %s", renderBilingualMap(doc.AbilityLabels))
 	p("")
 }
 

@@ -49,7 +49,18 @@ package replay
 // dans le dead-state du film par le décodeur de source de dégât. Le champ est optionnel, mais
 // la version monte : sans lui le fil ne peut poser sur ces lignes qu'un repère générique, et
 // un artefact v4 doit se voir comme « à re-cuire », pas comme à jour.
-const SchemaVersion = 5
+//
+// v6 (2026-08-14, plan PLAN_RANG_CAPACITE_I48 étape 1.2) : la capacité d'armure CHANGE DE
+// GRANDEUR, et c'est pourquoi elle change aussi de nom. `Inventory.a` portait un INDEX
+// TRONQUÉ — le motif d'ancrage du canal d'image-clé se termine par `010`, les bits de POIDS
+// FORT du rang, si bien que ce canal ne voit que les rangs 16 à 23 et rendait `rang − 16`.
+// Le document publie désormais `abilities` : le RANG de palette complet, sur une seule
+// grandeur, alimenté par DEUX canaux (i48 pour toute la palette, l'image-clé pour sa fenêtre
+// 16-23). `Inventory.a` est RETIRÉ plutôt que réinterprété : republier une autre grandeur
+// sous la même clé aurait laissé tout client non mis à jour lire un nombre qui ne veut plus
+// dire la même chose — c'est le défaut qui a coûté ce chantier. `abilityLabels` est donc
+// keyé par RANG, et un artefact v5 doit se voir comme « à re-cuire », pas comme à jour.
+const SchemaVersion = 6
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -158,11 +169,16 @@ type ReplayDocument struct {
 	// l'ordre (35 lancers appariés aux décréments, et la table du binaire) : la question
 	// est close. Source : replay_labels.toml du titre.
 	GrenadeLabels []Label `json:"grenadeLabels,omitempty"`
-	// AbilityLabels nomme les index de capacité que le document emploie.
+	// Abilities est le RANG DE PALETTE de la capacité d'armure portée, lu au fil du film
+	// (cf. abilities.go). Absent si aucun canal n'a rien rendu.
+	Abilities []AbilityRead `json:"abilities,omitempty"`
+	// AbilityLabels nomme les RANGS de capacité que le document emploie.
 	//
-	// LA TABLE EST PARTIELLE — 4 index observés pour 11 capacités dans le jeu — et un index
-	// absent GARDE SON NUMÉRO à l'écran, marqué non interprétable. Combler par le nom d'une
-	// capacité voisine se lirait comme une certitude.
+	// LA TABLE EST PARTIELLE, et un rang absent GARDE SON NUMÉRO à l'écran, marqué non
+	// interprétable. Combler par le nom d'une capacité voisine se lirait comme une certitude.
+	// La table est de surcroît PROPRE À LA PALETTE du match (cf. abilities.go) : deux films
+	// peuvent donner deux noms différents au même rang, et un film dont la palette n'est pas
+	// classée ne reçoit AUCUN nom.
 	AbilityLabels map[string]Label `json:"abilityLabels,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas

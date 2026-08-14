@@ -2,7 +2,6 @@ package replay
 
 import (
 	"sort"
-	"strconv"
 )
 
 // inventory.go — L'INVENTAIRE porté à la grille du rejeu.
@@ -69,9 +68,12 @@ type Inventory struct {
 	// une sélection ne se devine pas, un client peut toutefois la DÉDUIRE quand un seul
 	// type est porté.
 	Gs *int `json:"gs,omitempty"`
-	// A est l'index de capacité lu. POINTEUR : l'index 0 est une valeur, et omitempty
-	// l'effacerait. Nil = non lu.
-	A *int `json:"a,omitempty"`
+	// LA CAPACITÉ D'ARMURE N'EST PLUS ICI (2026-08-14, SchemaVersion 6). Elle vivait sous `a`
+	// et portait un INDEX TRONQUÉ — `rang − 16`, une grandeur différente du rang, sous un nom
+	// qui ne le disait pas. Elle est publiée par `ReplayDocument.Abilities`, en RANG de
+	// palette et sur son propre axe de temps : le canal i48 la transmet dans les paquets
+	// delta, pas aux images-clés (cf. abilities.go).
+	//
 	// D est le sélecteur d'emplacement : 0 ou 1 = cet emplacement est dégainé, 2 = AUCUNE arme
 	// dégainée. Pointeur pour la même raison, et le 2 compte : à la première image-clé le match
 	// n'a pas commencé et les huit joueurs ont leurs armes rangées.
@@ -107,10 +109,6 @@ func buildInventory(raw []KeyframeInventory, origin, step uint64) []Inventory {
 		if r.SelectedGrenadeRank >= 0 {
 			gs := r.SelectedGrenadeRank
 			inv.Gs = &gs
-		}
-		if r.AbilityIndex >= 0 {
-			a := r.AbilityIndex
-			inv.A = &a
 		}
 		if r.DrawnSlot >= 0 {
 			d := r.DrawnSlot
@@ -156,24 +154,4 @@ func ammoSlotsOf(r KeyframeInventory) []AmmoSlot {
 func keepInventoryOfPublishedTracks(inv []Inventory, tracks []Track) []Inventory {
 	return keepOfPublishedTracks(inv, tracks,
 		func(i Inventory, published map[uint32]bool) bool { return published[i.Slot] })
-}
-
-// abilityLabelsUsed nomme les index de capacité que le document emploie RÉELLEMENT.
-//
-// Un index hors table n'entre pas : il gardera son numéro à l'écran, marqué comme non
-// interprétable. La table est partielle et le dire vaut mieux que combler.
-func abilityLabelsUsed(inv []Inventory, catalog map[int]Label) map[string]Label {
-	out := map[string]Label{}
-	for _, i := range inv {
-		if i.A == nil {
-			continue
-		}
-		if name, ok := catalog[*i.A]; ok {
-			out[strconv.Itoa(*i.A)] = name
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
 }

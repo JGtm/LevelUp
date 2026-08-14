@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 5 · titre halo_infinite
+schema 6 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
@@ -46,11 +46,16 @@ par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=22
 75 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-184 etat(s) publie(s) · 120 avec grenades lues · 132 avec capacite lue · 150 avec munitions lues
+184 etat(s) publie(s) · 120 avec grenades lues · 150 avec munitions lues
 51 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
-capacites nommees (TABLE PARTIELLE — 5 index OBSERVES sur le corpus, 2 nommes ; les contestes gardent leur numero, cf. replay_labels.toml) : 4=en:"Grappleshot"/fr:"grappin", 5=en:"Thruster"/fr:"propulseur"
+
+## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
+214 lecture(s) · 82 par i48 (rang complet, paquets delta) · 132 par image-cle (fenetre 16..23)
+rangs observes : 19:42 20:66 21:70 22:36
+lectures NOMMEES 0/214 — un rang hors table garde son numero, et la table est propre a la palette du film
+capacites nommees : 
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)

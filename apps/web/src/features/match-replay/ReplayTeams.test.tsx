@@ -37,18 +37,18 @@ function renderTeams(over: Partial<ReplayDocument>, frame = 10) {
 describe('ReplayTeams — capacité équipée', () => {
   it('nomme la capacité quand la table la connaît', () => {
     renderTeams({
-      abilityLabels: { '4': { fr: 'Grappin', en: 'Grappleshot' } },
-      inventory: [{ t: 0, slot: 512, a: 4 }],
+      abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
+      abilities: [{ t: 0, slot: 512, r: 20, src: 'i48' }],
     })
     expect(screen.getByText('Grappin')).toBeTruthy()
   })
 
-  it('garde le NUMÉRO d’un index hors table, marqué non interprétable', () => {
-    // La table est partielle (4 index observés pour 11 capacités) : combler par un nom
+  it('garde le NUMÉRO d’un rang hors table, marqué non interprétable', () => {
+    // La table est partielle ET propre à la palette du film : combler par un nom
     // voisin se lirait comme une certitude qu'on n'a pas.
     renderTeams({
-      abilityLabels: { '4': { fr: 'Grappin', en: 'Grappleshot' } },
-      inventory: [{ t: 0, slot: 512, a: 9 }],
+      abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
+      abilities: [{ t: 0, slot: 512, r: 9, src: 'i48' }],
     })
     expect(screen.getByText('capacité inconnue (9)')).toBeTruthy()
     expect(screen.queryByText('Grappin')).toBeNull()
@@ -56,7 +56,7 @@ describe('ReplayTeams — capacité équipée', () => {
 
   it('sans lecture de capacité, n’affiche RIEN — l’absence n’est pas une capacité', () => {
     renderTeams({
-      abilityLabels: { '4': { fr: 'Grappin', en: 'Grappleshot' } },
+      abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
       inventory: [{ t: 0, slot: 512, g: [2, 0, 0, 0] }],
     })
     expect(screen.queryByText(/capacité inconnue/)).toBeNull()
@@ -95,9 +95,9 @@ describe('ReplayTeams — grenades portées', () => {
     // Le décodeur n'écrit `g` que quand le bloc a été lu : absent = lacune. L'inventaire
     // reste affiché pour ce qu'il porte d'autre (ici la capacité).
     renderTeams({
-      abilityLabels: { '4': { fr: 'Grappin', en: 'Grappleshot' } },
+      abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
       grenadeLabels: LABELS,
-      inventory: [{ t: 0, slot: 512, a: 4 }],
+      abilities: [{ t: 0, slot: 512, r: 20, src: 'i48' }],
     })
     expect(screen.getByText('Grappin')).toBeTruthy()
     expect(screen.queryByText(/Fragmentation|Plasma|×/)).toBeNull()

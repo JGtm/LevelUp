@@ -25,7 +25,7 @@ import type { EquippedReading } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { grenadesCarried, inventoryAt, selectedGrenade } from './rosterLogic'
+import { abilityAt, grenadesCarried, inventoryAt, selectedGrenade } from './rosterLogic'
 
 /** Boîte d'une vignette de HUD (grenade, capacité) : la hauteur de la ligne. */
 const HUD_ICON_PX = 16
@@ -47,12 +47,17 @@ export function ReplayInventoryRow({
 }) {
   const t = REPLAY_TEXT[locale]
   const read = inventoryAt(doc, slot, frame)
-  if (!read) return null
-  const { state } = read
-  const grenades = grenadesCarried(state, doc.grenadeLabels, locale)
-  const selected = selectedGrenade(state)
-  const ability = abilityText(doc, state.a, t.abilityUnknown, locale)
-  const ammo = state.am ?? []
+  // LA CAPACITÉ A SA PROPRE LECTURE, et donc son propre âge : elle arrive surtout par le
+  // canal i48 des paquets delta, qui ne tombe pas sur les images-clés de l'inventaire. Elle
+  // peut donc exister SANS inventaire lu — d'où la sortie anticipée qui les regarde tous
+  // les deux, et non le seul inventaire.
+  const abilityRead = abilityAt(doc, slot, frame)
+  const ability = abilityText(doc, abilityRead?.rank, t.abilityUnknown, locale)
+  if (!read && !ability) return null
+  const state = read?.state
+  const grenades = state ? grenadesCarried(state, doc.grenadeLabels, locale) : []
+  const selected = state ? selectedGrenade(state) : null
+  const ammo = state?.am ?? []
   if (grenades.length === 0 && !ability && ammo.length === 0) return null
 
   // LA LIGNE DES MUNITIONS SUIT L'ORDRE DES ARMES AU-DESSUS (l'arme dégainée d'abord) : les
@@ -60,14 +65,19 @@ export function ReplayInventoryRow({
   // mauvaise arme. Le numéro d'emplacement lève l'ambiguïté quand l'ordre bascule.
   const ammoOrder = (equipped?.order ?? ammo.map((_, i) => i)).filter((i) => i < ammo.length)
   // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. inventoryAt) :
-  // l'infobulle le dit — l'estompage porte déjà sur la valeur absolue.
-  const ageMs = formatSeconds(frameToMs(Math.abs(read.age), doc))
-  const ageTitle = read.age < 0 ? `${t.inventoryAhead} ${ageMs}` : `${t.inventoryAge} ${ageMs}`
+  // l'infobulle le dit — l'estompage porte déjà sur la valeur absolue. La capacité, elle,
+  // porte le sien (elle vient d'un autre canal) : la ligne n'estompe que ce qu'elle décrit.
+  const ageMs = read ? formatSeconds(frameToMs(Math.abs(read.age), doc)) : ''
+  const ageTitle = !read
+    ? undefined
+    : read.age < 0
+      ? `${t.inventoryAhead} ${ageMs}`
+      : `${t.inventoryAge} ${ageMs}`
 
   return (
     <div
       className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] text-muted-foreground"
-      style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
+      style={{ opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
       title={ageTitle}
     >
       {grenades.map((g) => {
@@ -114,14 +124,17 @@ export function ReplayInventoryRow({
           {t.grenadeSelUnknown}
         </span>
       )}
-      {ability && (
+      {ability && abilityRead && (
         <span
           className={
             ability.known
               ? 'inline-flex items-center'
               : 'border-b border-dashed border-border'
           }
-          title={ability.known ? `${t.abilityLabel} — ${ability.text}` : undefined}
+          // ÂGE PROPRE À LA CAPACITÉ : sa lecture ne tombe pas sur les images-clés de
+          // l'inventaire, l'estompage de la ligne ne la décrit donc pas.
+          style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
+          title={abilityAgeTitle(t, abilityRead.age, doc, ability.known ? ability.text : null)}
         >
           {ability.img ? (
             <WeaponIcon
@@ -217,15 +230,30 @@ function AmmoFullMark({ label }: { label: string }) {
  */
 function abilityText(
   doc: ReplayDocumentReady,
-  index: number | undefined,
+  rank: number | undefined,
   unknownLabel: string,
   locale: ReplayLocale,
 ): { text: string; known: boolean; img?: string; tinted?: boolean } | null {
-  if (index === undefined) return null
-  const lbl: CatalogLabel | undefined = doc.abilityLabels?.[String(index)]
+  if (rank === undefined) return null
+  const lbl: CatalogLabel | undefined = doc.abilityLabels?.[String(rank)]
   const name = catalogText(lbl, locale)
   if (name) return { text: name, known: true, img: lbl?.img, tinted: lbl?.tinted }
-  return { text: `${unknownLabel} (${index})`, known: false }
+  return { text: `${unknownLabel} (${rank})`, known: false }
+}
+
+/**
+ * abilityAgeTitle — l'infobulle de la capacité : son nom quand il est connu, et TOUJOURS
+ * l'âge de sa lecture. Un âge négatif est une lecture À VENIR (début de vie), dit comme tel.
+ */
+function abilityAgeTitle(
+  t: (typeof REPLAY_TEXT)[ReplayLocale],
+  age: number,
+  doc: ReplayDocumentReady,
+  name: string | null,
+): string {
+  const ms = formatSeconds(frameToMs(Math.abs(age), doc))
+  const when = age < 0 ? `${t.abilityAhead} ${ms}` : `${t.abilityAge} ${ms}`
+  return name ? `${t.abilityLabel} — ${name} · ${when}` : when
 }
 
 /**

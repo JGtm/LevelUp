@@ -62,9 +62,13 @@ func TestR1AbilityAnchorThenPattern(t *testing.T) {
 	if len(hits) != 1 {
 		t.Fatalf("%d occurrence(s) de l ancre, attendu 1 : %+v", len(hits), hits)
 	}
-	if hits[0].index != 5 {
-		t.Errorf("index de capacite %d, attendu 5 — les 3 bits lus ne suivent plus le motif",
-			hits[0].index)
+	if hits[0].low != 5 {
+		t.Errorf("bits bas du rang %d, attendu 5 — les 3 bits lus ne suivent plus le motif",
+			hits[0].low)
+	}
+	if got := invAbilityRankOf(hits[0].low); got != 21 {
+		t.Errorf("rang reconstruit %d, attendu 21 — le motif porte deja les bits de poids fort",
+			got)
 	}
 	if hits[0].anchorBit != 0 {
 		t.Errorf("l ancre est rapportee au bit %d, attendu 0 — R2 cherche les grenades APRES "+
@@ -224,7 +228,7 @@ func TestR3FirstKnownFamilyInBitOrder(t *testing.T) {
 // dans le critere : sans quoi on choisirait la lecture qui donne le resultat attendu.
 func TestR4AmmoBlockLandsOnTheGateBitOfTheFirstFamily(t *testing.T) {
 	pay, firstFamilyBit, mag, res := buildRecordWithAmmoThenFamily(25, 75, 1)
-	inv := KeyframeInventory{AbilityIndex: -1, DrawnSlot: -1}
+	inv := KeyframeInventory{AbilityRank: -1, DrawnSlot: -1}
 	readAmmo(pay, &inv, 0, firstFamilyBit)
 	if !inv.AmmoRead {
 		t.Fatal("aucun bloc de munitions resolu : aucun debut n atterrit sur la porte d i43")
@@ -254,7 +258,7 @@ func TestR4WithoutAFamilyNothingIsRead(t *testing.T) {
 		t.Fatal("le banc d essai porte une famille du catalogue de controle : le test ne " +
 			"mesure pas ce qu il croit")
 	}
-	inv := KeyframeInventory{AbilityIndex: -1, DrawnSlot: -1}
+	inv := KeyframeInventory{AbilityRank: -1, DrawnSlot: -1}
 	if inv.AmmoRead {
 		t.Fatal("etat initial incoherent")
 	}
@@ -372,7 +376,7 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 	}
 	var ability, grenades, ammo, multi, drawn, grenSel int
 	for _, i := range inv {
-		if i.AbilityIndex >= 0 {
+		if i.AbilityRank >= 0 {
 			ability++
 		}
 		if i.GrenadesRead {

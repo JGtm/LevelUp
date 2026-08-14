@@ -7033,6 +7033,27 @@ components:
             $ref: '#/components/schemas/ApiError'
       description: Authentification requise
   schemas:
+    AbilityRead:
+      additionalProperties: false
+      properties:
+        r:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        src:
+          type: string
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+        - r
+        - src
+      type: object
     AcceptResponse:
       additionalProperties: false
       properties:
@@ -13292,9 +13313,6 @@ components:
     Inventory:
       additionalProperties: false
       properties:
-        a:
-          format: int64
-          type: integer
         am:
           items:
             $ref: '#/components/schemas/AmmoSlot'
@@ -19429,6 +19447,12 @@ components:
     ReplayDocument:
       additionalProperties: false
       properties:
+        abilities:
+          items:
+            $ref: '#/components/schemas/AbilityRead'
+          type:
+            - array
+            - "null"
         abilityLabels:
           additionalProperties:
             $ref: '#/components/schemas/Label'
