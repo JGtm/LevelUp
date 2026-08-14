@@ -1,3 +1,27 @@
+## [2026-08-14] v7.5 CI rouge — garde-fou 1/2 : le compte de champs du document de rejeu
+
+**Statut** : Complete.
+
+**Decision technique principale** : `contracttest` gelait le document de rejeu a 23 champs
+alors qu il en publie 25 depuis les lots 2 et 4 (`killEffects` = famille de RENDU des effets
+de MORT, keyee par weapon_key ; `mapObjectives` = calque statique des objectifs du mode,
+rempli A LA REQUETE par le service). Compte re-mesure des DEUX cotes avant d ecrire le
+chiffre : 25 champs JSON sur `replay.ReplayDocument`, 25 proprietes sous
+`components.schemas.ReplayDocument` de `api/openapi.yaml` — le contrat decrivait deja les
+deux nouveaux champs, aucune regeneration n a ete necessaire. La constante passe a 25 avec
+une CHRONIQUE du compte (22 -> 23 -> 25, la raison de chaque entree) : c est la seule ligne
+par laquelle un champ entre au document. Le test a ete RENOMME
+`TestReplayDocumentFieldCountIsFrozen` : son ancien nom disait « TwentyTwo » pour un compte
+qui valait 25 — un chiffre qui bouge se lit dans la constante et son historique, pas dans un
+identifiant que personne ne pense a renommer.
+
+**Resultats observes** : `go test ./contracttest/...` vert (etait rouge sur
+TestReplayDocumentPublishesTwentyTwoFields). `go vet` + `golangci-lint run
+--new-from-merge-base=origin/main` : 0 issue.
+
+**Conclusion / prochaine etape** : garde-fou 2/2 = ratchet archlint du god-package sync/
+(81 fichiers racine contre baseline gelee a 80).
+
 ## [2026-08-14] v7.5 parite rejeu 2D — correctif kill feed : teinte tueur + desynchro fiches/fil
 
 **Statut** : Complete (gate visuel = user).

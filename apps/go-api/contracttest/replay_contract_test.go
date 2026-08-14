@@ -1,6 +1,7 @@
 // replay_contract_test.go — LE CONTRAT DU DOCUMENT DE REJEU, CHAMP PAR CHAMP.
 //
-// CE QUE CE FICHIER FERME. L artefact de rejeu publie 22 champs. Le contrat OpenAPI n en a
+// CE QUE CE FICHIER FERME. L artefact de rejeu publie des dizaines de champs (le compte du
+// jour et son historique : wantReplayDocumentFields). Le contrat OpenAPI n en a
 // longtemps decrit que 6, et les types TypeScript etaient ECRITS A LA MAIN hors du fichier
 // genere : trois verites parallelles, dont deux se corrigeaient a la main. Le cout de cette
 // divergence a ete paye — l interface manuelle nommait `weapon` le champ que le contrat nomme
@@ -88,14 +89,25 @@ var replaySchemas = []struct {
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
-// chiffre du chantier — « 22 champs publies », 23 depuis le 2026-08-05 — soit verifiable et
-// pas seulement affirme.
+// chiffre du chantier soit verifiable et pas seulement affirme.
 //
-// Le 23e est `objectives`, le calque d actions d objectif entre a l integration de
-// `feat/re-mode-score`. Ce test l a ATTRAPE : la branche publiait le champ sans que le
-// contrat le decrive, exactement le defaut qu il existe pour empecher. Contrat regenere
-// (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 23
+// CHRONIQUE DU COMPTE (un champ n entre au document que par cette ligne) :
+//
+//	22 -> 23  2026-08-05  `objectives`, le calque d actions d objectif, entre a l integration
+//	                      de `feat/re-mode-score`.
+//	23 -> 25  2026-08-13/14  DEUX champs, un par lot de la v7.5 :
+//	                      - `killEffects` (lot 2) : la table qui donne leur famille de RENDU
+//	                        aux effets de MORT. Les kills du feed portent un weapon_key resolu
+//	                        cote base, jamais un identifiant d arme film — sans cette table le
+//	                        client ne peut joindre aucun effet a un kill.
+//	                      - `mapObjectives` (lot 4) : le calque STATIQUE des objectifs du mode
+//	                        joue (zones, apparitions et livraisons de drapeau, socles), rempli
+//	                        A LA REQUETE par le service et jamais ecrit dans l artefact —
+//	                        l artefact ne connait ni sa carte ni son mode.
+//
+// Les trois fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+// chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
+const wantReplayDocumentFields = 25
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
@@ -132,8 +144,12 @@ func TestReplayContractDescribesEveryPublishedField(t *testing.T) {
 	}
 }
 
-// TestReplayDocumentPublishesTwentyTwoFields : le chiffre du chantier, verifie des deux cotes.
-func TestReplayDocumentPublishesTwentyTwoFields(t *testing.T) {
+// TestReplayDocumentFieldCountIsFrozen : le chiffre du chantier, verifie des deux cotes.
+//
+// LE NOM NE PORTE PLUS LE CHIFFRE (il a dit « TwentyTwo » jusqu au 2026-08-14 alors que le
+// document en publiait 25) : un compte qui bouge se lit dans wantReplayDocumentFields et sa
+// chronique, pas dans un identifiant que personne ne pense a renommer.
+func TestReplayDocumentFieldCountIsFrozen(t *testing.T) {
 	got := jsonFieldsOf(reflect.TypeOf(replay.ReplayDocument{}))
 	if len(got) != wantReplayDocumentFields {
 		t.Errorf("%d champ(s) publie(s) par l artefact, attendu %d : %v",
