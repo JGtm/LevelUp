@@ -64958,3 +64958,26 @@ l'ecran sont OBSERVEES : camouflage (8) 10+2 lectures, surbouclier (9) 8+2, tran
 a controle de groupe ou double chaine, sinon le rang s'affiche). La table de production reste a
 deux entrees : nommer 3, 6 et 7 exige un lecteur `i48` de PRODUCTION — ligne au
 REGISTRE_REPORTS, avec son perimetre. Etape 3 : l'echec du saut vers i56/i57.
+
+## [2026-08-14] Equipement actif — etape 3 : le saut n'echouait pas, il n'avait pas lieu d'etre
+**Statut** : Complété (etapes 3 et 4 du `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
+**Decision technique** : instrumenter avant de conclure, en SEPARANT les trois causes
+possibles de la rarete d'i56/i57 (record non reconnu / marche cassee / composant non annonce)
+au lieu d'en presumer une. Instrument versionne `internal/analysis/filmdec/i57_reach_test.go`
+(garde `I57_FILM`), qui reconnait aussi les records a masque DENSE (porte a 1 puis R(64)),
+valides par marche complete.
+**Resultats** : sur 171 980 records du film temoin, **ZERO composant ne casse la marche** —
+`repairUnportedComponent` n'est jamais sollicite sur ce chemin, et la premisse de l'etape
+(« le saut echoue ») est refutee. Les records a masque dense existent mais sont marginaux :
+204 sur 171 980 (0,1 %), apportant 141 des 1 535 records porteurs. `i57` est lu sur
+1 414 records (0,82 %) avec 1 257 changements de valeur (0:693 1:75 2:613 3:33) : le « 0,10 % »
+du plan etait celui d'i56, pas d'i57. CONTROLE DE FOND : les transitions d'i57 coincident avec
+les 79 episodes i54 a 72,2 % contre des temoins decales a 34,2 % et 32,9 % — soit 2,1x, bien
+au-dessus du hasard mais pas un verrou. PIEGE EVITE EN COURS DE ROUTE : capturer i54 seulement
+sur les records portant i57 rendait la mesure CIRCULAIRE (66,7 % contre 0,0 %, artefact de
+co-transmission) ; corrige avant publication.
+**Conclusion / prochaine etape** : etape 4 NON EXECUTEE et statuee `[!]` — double blocage
+ecrit : l'identite des trois capacites n'existe pas en production (elle est dans i48, sans
+lecteur), et aucune valeur d'i57 n'est nommee « actif ». Aucune ligne de rendu ecrite. Deux
+lignes au REGISTRE_REPORTS : le lecteur i48 de production, et le releve Theater date qui
+nommerait la valeur active d'i57.

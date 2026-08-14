@@ -205,39 +205,91 @@ film), pas une ligne de TOML. Hors perimetre de cette etape ; propose au registr
 > mecanisme de saut existe pourtant. La question n'est pas « comment sauter » mais « pourquoi
 > le saut echoue ici ».
 
-- [ ] 3.1 INSTRUMENTER, ne pas supposer : sur un film temoin, pour les records dont le masque
-      contient `i56`/`i57`, journaliser la CHAINE de composants decodee jusqu'a l'echec —
-      quel composant fait desynchroniser, est-il porte, `repairUnportedComponent` est-il
-      appele, et si oui pourquoi ne conclut-il pas (aucune largeur propre ? plusieurs
-      largeurs candidates, donc alignement non unique ?).
-- [ ] 3.2 Selon le verdict de 3.1, UNE de ces voies (pas les trois) :
-      (a) le composant fautif est identifiable et sa largeur est FIXE -> la declarer
-          (`SetUnportedStubWidth`) et mesurer le gain ;
-      (b) plusieurs largeurs passent -> le depart est ambigu : elargir la confirmation aval
-          (`resolveAlignment`) plutot que choisir au hasard ;
-      (c) le composant a une largeur VARIABLE dependant du contenu -> alors il faut le porter
-          vraiment, et la table des deserialiseurs ECS existante dit ou chercher.
-- [ ] 3.3 MESURE DE SORTIE, la seule qui compte : le taux de records ou `i57` est lu, AVANT
-      (0,10 %) et APRES. Un gain qui ne depasse pas quelques pourcents ne suffira pas a
-      dater un usage — le dire alors, et s'arreter la.
+- [x] 3.1 INSTRUMENTER, ne pas supposer. → instrument versionne
+      `internal/analysis/filmdec/i57_reach_test.go` (garde `I57_FILM`), qui SEPARE les trois
+      causes possibles au lieu d'en presumer une. **VERDICT : la traversee n'est PAS en
+      cause. ZERO composant casse la marche** — sur 1 535 records dont le masque annonce
+      `i56`/`i57`, aucun ne rend `ported=false`. `repairUnportedComponent` n'est jamais
+      sollicite sur ce chemin. La premisse de l'etape (« le saut echoue ») est REFUTEE.
+- [!] 3.2 Les trois voies (a) (b) (c). **AUCUNE NE S'APPLIQUE, et c'est une conclusion, pas
+      un abandon** : les trois presupposent un composant fautif dont il faudrait deviner la
+      largeur. Il n'y en a aucun. Traiter l'une d'elles aurait ete corriger un probleme qui
+      n'existe pas. Justification portee au journal ci-dessous.
+- [x] 3.3 MESURE DE SORTIE. → **`i57` est lu sur 1 414 records sur 171 980, soit 0,82 %**,
+      avec **1 257 CHANGEMENTS DE VALEUR**. Le « 0,10 % » du plan n'etait pas celui d'`i57` :
+      c'etait celui d'`i56` (l'energie). La comparaison AVANT/APRES telle qu'ecrite comparait
+      deux composants differents.
 
-Gate 3 : le taux publie ; l'instrument versionne et rejouable (garde par variable
-d'environnement, saute en CI, patron des instruments `i54`/`i56` deja livres).
+Gate 3 : **PASSE sur la forme** (taux publie, instrument versionne, garde par variable
+d'environnement, saute en CI) ; **le verdict de fond est NUANCE et ne suffit pas a l'ecran** —
+voir le journal.
+
+### Journal de l'etape 3 (2026-08-14) — le saut n'echouait pas, il n'avait pas lieu d'etre
+
+**Les trois causes, separees et chiffrees** (film temoin `000d5950`, 6,8 s, pic 19 Mo) :
+
+    records biped reconnus      171 980   dont masque CREUX 171 776 (99,9 %) · DENSE 204 (0,1 %)
+    masque ∋ i56 ou i57           1 535   (creux 1 394 · dense 141)
+    marche ABOUTIE                1 414
+    marche CASSEE par un composant    0   <- LE RESULTAT
+    lectures i57 (R(2))           1 414   valeurs 0:693 1:75 2:613 3:33
+    transitions de valeur i57     1 257
+
+1. **Le masque DENSE existe mais il est marginal.** Le detecteur offline
+   (`matchBipedHeaderRaw`) exige la porte a 0, donc il ignorait les records a masque dense.
+   L'instrument les reconnait (porte a 1 puis `R(64)`, validation par marche complete) :
+   ils sont **204 sur 171 980, soit 0,1 %**. Ils apportent 141 records porteurs d'`i56`/`i57`
+   sur 1 535 — un appoint reel, pas l'explication qu'on cherchait.
+2. **La marche ne casse jamais.** C'est le renseignement que l'item 3.1 demandait et qui
+   n'existait nulle part. La rarete d'`i56` n'est donc pas un probleme de decodage : c'est
+   une **frequence de transmission**. Le 14/08 avait raison sur le chiffre (`i56` 176 lectures)
+   et tort sur la cause presumee.
+3. **`i57` est bien plus disponible qu'ecrit** : 1 414 lectures, ~14 par vie, et ses 2 bits
+   BOUGENT (quatre valeurs, 1 257 changements). La refutation de 2026-08-13 (« bit 0 = 1 sur
+   386/386 ») portait sur la lecture du POC, pas sur ce champ-ci.
+
+**LE CONTROLE DE FOND, enonce avant et joue** : les 1 257 transitions d'`i57` coincident-elles
+avec les episodes `i54` (l'action de mobilite datee) plus que le hasard ? Protocole identique
+a celui du 2026-08-13 (fenetre ±1 s, temoins decales de ±5 s), et **piege evite en cours de
+route** : capturer `i54` seulement sur les records portant `i57` rendait la coincidence
+CIRCULAIRE (elle donnait 66,7 % contre 0,0 % — un artefact de co-transmission). Mesure
+corrigee, sur la population complete de 79 episodes :
+
+    TRANSITION i57   reel 57/79 (72,2 %)   temoin +5 s 27 (34,2 %)   temoin -5 s 26 (32,9 %)
+    i57 == 0         reel 52/79 (65,8 %)   temoin +5 s 24 (30,4 %)   temoin -5 s 18 (22,8 %)
+    i57 == 2         reel 44/79 (55,7 %)   temoin +5 s 17 (21,5 %)   temoin -5 s 22 (27,8 %)
+
+**Lecture honnete : il y a une ASSOCIATION, il n'y a pas de VERROU.** Le reel vaut 2,1 fois
+les temoins — c'est bien au-dessus du hasard, et c'est tres au-dessus de ce qu'`i56` avait
+rendu (4,5 % contre 0,0 % et 3,0 %, sur une population trop maigre). Mais un temoin decale
+a 33 % dit que l'etat d'`i57` change souvent : a n'importe quel instant, une transition est
+proche une fois sur trois. **Afficher « la capacite est active MAINTENANT » sur cette base
+reviendrait a se tromper une fois sur quatre**, et la regle du chantier l'interdit. Il manque
+la seule chose qui trancherait : savoir QUELLE valeur signifie actif. Le decompile dit
+`etat[3] = v - 1`, donc -1, 0, 1, 2 ; rien dans le flux ne nomme ces etats.
 
 ## Etape 4 — L'EFFET PLEIN FICHE (ne se code QUE si 2 et 3 passent)
 
 > Demande utilisateur, precisee le 14/08 : l'effet porte sur TOUTE LA FICHE, pas un lisere.
 
-- [ ] 4.1 Surbouclier (rang 9) -> fiche encadree DOREE. Camouflage actif (rang 8) -> effet de
-      VERRE sur la fiche. Translocateur quantique (rang 11) -> BORDURE ANIMEE (bleu
-      electrique vers jaune orange). Les autres capacites : aucun effet dedie (elles sont
-      actives trop peu de temps — cahier des charges Notion).
-- [ ] 4.2 Duree : celle que la donnee dit, jamais une duree inventee. Si l'etat actif n'est
-      qu'un instant, l'effet dure une remanence FIXE et courte, ecrite en constante commentee.
-- [ ] 4.3 Tokens semantiques uniquement, respect de `prefers-reduced-motion`, i18n FR+EN.
+- [!] 4.1 Les trois rendus pleine fiche. **NON EXECUTE — BLOQUE, et doublement.**
+      (i) L'IDENTITE manque en production : le surbouclier, le camouflage et le translocateur
+      ne portent leur rang (9, 8, 11) que dans `i48`, dont AUCUN lecteur de production
+      n'existe ; le canal qui alimente la fiche aujourd'hui (champ d'image-cle) est
+      structurellement aveugle a ces rangs (etape 2). Sans identite, rien ne choisit entre
+      les trois rendus. (ii) L'ETAT ACTIF n'est pas etabli : `i57` est associe aux episodes
+      d'action (2,1x les temoins) mais aucune de ses quatre valeurs n'est nommee « actif »
+      (etape 3).
+- [!] 4.2 Duree. **BLOQUE par 4.1** — une remanence se compte a partir d'un instant d'usage
+      qu'on ne sait pas dater.
+- [!] 4.3 Tokens, `prefers-reduced-motion`, i18n. **BLOQUE par 4.1** : rien a traduire ni a
+      colorer tant qu'aucun effet n'a de source.
 
-Gate 4 : verification a l'ecran par l'utilisateur, sur un match ou la verite terrain Theater
-dit qu'une de ces trois capacites a ete utilisee.
+Gate 4 : **NON ATTEIGNABLE en l'etat**, et la premiere ligne de l'etape l'avait ecrit : elle
+« ne se code QUE si 2 et 3 passent ». L'etape 2 passe et designe le travail manquant (un
+lecteur `i48` de production) ; l'etape 3 passe sur la forme mais ne rend pas un etat actif
+nommable. **Aucune ligne de rendu n'a ete ecrite** — ecrire un effet alimente par une source
+non mesuree est precisement l'interdit de ce chantier.
 
 ## Regles dures (rappel, elles ont deja tranche ce chantier)
 
