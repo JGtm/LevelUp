@@ -35,6 +35,7 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // syncJobTimeout borne la durée d'un job de sync HTTP (D3-04, revue 2026-06-01).
@@ -193,7 +194,7 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) — LOCAL SEULEMENT (« le VPS
 	// web ne décode JAMAIS »), fenêtre relue à chaque cycle. Parité scheduler/BuildEngine.
 	if !h.cfg.IsProduction() && h.settingsStore != nil {
-		engine = engine.WithReplayArtifacts(go_sync.NewReplayArtifactsHook(h.cfg.RepoRoot, func() int {
+		engine = engine.WithReplayArtifacts(replayartifacts.NewHook(h.cfg.RepoRoot, func() int {
 			if s, _ := h.settingsStore.Load(); s != nil {
 				return s.ReplayRetentionMonths
 			}

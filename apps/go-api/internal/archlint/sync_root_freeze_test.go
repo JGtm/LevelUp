@@ -22,6 +22,11 @@ import (
 //   - 112 → 106 : cluster snapshot (6 fichiers) extrait vers internal/sync/snapshot.
 //   - 106 → 88  : cluster skill/rating extrait (skill).
 //   - 88  → 80  : cluster client HTTP extrait vers internal/sync/haloclient (K3e).
+//
+// 2026-08-14 : le lot 6 v7.5 avait posé engine_postsync_replay.go À LA RACINE (81 > 80, CI
+// rouge). La baseline N'A PAS BOUGÉ — c'est le fichier qui est parti : l'étape vit dans
+// internal/sync/replayartifacts, le paquet sync ne garde que la délégation, dans
+// convergence.go (fichier existant). Le ratchet a fait exactement son travail.
 const syncRootFileBaseline = 80
 
 func TestSyncRootPackageFrozen(t *testing.T) {

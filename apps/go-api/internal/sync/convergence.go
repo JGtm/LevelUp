@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // convergenceHorizon borne le nombre de matchs incomplets repris par cycle
@@ -601,4 +602,33 @@ func (s postSyncFilmSteps) runWeaponKills(ctx context.Context, insertedIDs []str
 		slog.InfoContext(ctx, "post-sync: weapon kills",
 			"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
 	}
+}
+
+// runReplayArtifacts — étape 1.58 : pont disque film + artefacts de rejeu 2D des matchs
+// insérés. TOUTE la logique vit dans internal/sync/replayartifacts (ratchet K3c : le neuf
+// n'entre pas à la racine du god-package) ; ici on ne fait que câbler les dépendances du
+// moteur sur son API. Étape absente si le wiring n'a pas installé le hook (production).
+func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs []string) {
+	e := s.engine
+	if e.replayArtifacts == nil || len(insertedIDs) == 0 {
+		return
+	}
+	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
+	// HaloClient — les mocks des autres étapes n'ont pas à la porter).
+	fetcher, ok := s.client.(replayartifacts.ChunksFetcher)
+	if !ok {
+		slog.DebugContext(ctx, "post-sync: rejeu 2D — client sans GetFilmChunks, étape ignorée",
+			"gamertag", e.gamertag)
+		return
+	}
+	replayartifacts.Run(ctx, replayartifacts.Deps{
+		Fetcher:         fetcher,
+		WithRead:        s.withRead,
+		MetaDB:          e.metaDB,
+		RepoRoot:        e.repoRoot,
+		TitleSlug:       e.titleSlug,
+		Gamertag:        e.gamertag,
+		CacheRoot:       e.replayArtifacts.CacheRoot,
+		RetentionMonths: e.replayArtifacts.Months(),
+	}, insertedIDs)
 }

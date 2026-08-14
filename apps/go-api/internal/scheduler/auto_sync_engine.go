@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // BuildEngine construit un *sync.SyncEngine fully-configured pour un
@@ -144,7 +145,7 @@ func (s *AutoSyncScheduler) wireReplayArtifacts(engine *sync.SyncEngine) {
 	if s.cfg.IsProduction() || s.settings == nil {
 		return
 	}
-	engine.WithReplayArtifacts(sync.NewReplayArtifactsHook(s.cfg.RepoRoot, func() int {
+	engine.WithReplayArtifacts(replayartifacts.NewHook(s.cfg.RepoRoot, func() int {
 		if cfg, _ := s.settings.Load(); cfg != nil {
 			return cfg.ReplayRetentionMonths
 		}
