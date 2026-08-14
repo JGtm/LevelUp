@@ -2406,6 +2406,36 @@ paths:
       summary: Notes de release dérivées du git log
       tags:
         - health
+  /internal/build-queue/artifact:
+    post:
+      operationId: postBuildQueueArtifact
+      parameters:
+        - explode: false
+          in: query
+          name: job_id
+          schema:
+            type: string
+        - explode: false
+          in: query
+          name: worker_id
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildArtifactReceipt'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Protocole ouvrier — dépose l'artefact de rejeu construit pour un job pris (corps = l'artefact, taille bornée). Jeton d'ouvrier requis.
+      tags:
+        - build-queue
   /internal/build-queue/claim:
     post:
       operationId: postBuildQueueClaim
@@ -8742,6 +8772,25 @@ components:
       required:
         - type
         - label
+      type: object
+    BuildArtifactReceipt:
+      additionalProperties: false
+      properties:
+        bytes:
+          format: int64
+          type: integer
+        job_id:
+          type: string
+        match_id:
+          type: string
+        schema_version:
+          format: int64
+          type: integer
+      required:
+        - job_id
+        - match_id
+        - bytes
+        - schema_version
       type: object
     BuildQueueAckResponse:
       additionalProperties: false

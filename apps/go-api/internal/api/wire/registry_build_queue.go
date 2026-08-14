@@ -15,6 +15,7 @@ package wire
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/replaybuild"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -107,6 +109,46 @@ func (r *ServiceRegistry) resolveFilmChunkURLs(ctx context.Context, titleSlug, m
 	return out, nil
 }
 
+// StoreBuildArtifact valide l'artefact rendu par un ouvrier et le range à la
+// place canonique du match. C'est le dernier maillon du transport : l'ouvrier
+// pousse, le web valide et RANGE (piste F §1).
+//
+// L'IDENTITÉ DU MATCH VIENT DU JOB, JAMAIS DU FICHIER. Le job dit quel match cet
+// ouvrier a le droit d'écrire ; l'artefact doit s'y conformer (sinon refus).
+// C'est ce qui empêche un dépôt d'atterrir sous le nom d'un autre match.
+func (r *ServiceRegistry) StoreBuildArtifact(ctx context.Context, jobID, workerID string, blob []byte) (domain.BuildArtifactReceipt, error) {
+	if r.monitoringStore == nil {
+		return domain.BuildArtifactReceipt{}, fmt.Errorf("file de construction indisponible (store monitoring non ouvert)")
+	}
+	job, err := r.monitoringStore.ClaimedBuildJob(ctx, jobID, workerID)
+	if err != nil {
+		observability.IncCounter("build_queue_artifacts_rejected_not_claimed_total")
+		return domain.BuildArtifactReceipt{}, err
+	}
+	slug := job.TitleSlug
+	if slug == "" {
+		slug = titlePkg.DefaultSlug
+	}
+	stored, err := replaybuild.StoreArtifact(r.cfg.RepoRoot, slug, job.MatchID, blob)
+	if err != nil {
+		if errors.Is(err, domain.ErrBuildArtifactInvalid) {
+			observability.IncCounter("build_queue_artifacts_rejected_invalid_total")
+		} else {
+			observability.IncCounter("build_queue_artifacts_rejected_write_total")
+		}
+		return domain.BuildArtifactReceipt{}, err
+	}
+	observability.IncCounter("build_queue_artifacts_received_total")
+	observability.AddInt("build_queue_artifact_bytes_total", int64(stored.Bytes))
+	monitoringLog.InfoContext(ctx, "build queue: artefact reçu et rangé",
+		"job_id", jobID, "worker_id", workerID, "match_id", job.MatchID, "title", slug,
+		"bytes", stored.Bytes, "tracks", stored.Tracks, "path", stored.Path)
+	return domain.BuildArtifactReceipt{
+		JobID: jobID, MatchID: job.MatchID,
+		Bytes: stored.Bytes, SchemaVersion: stored.SchemaVersion,
+	}, nil
+}
+
 // ClaimBuildJob prend le prochain job pour un ouvrier (protocole ouvrier).
 func (r *ServiceRegistry) ClaimBuildJob(ctx context.Context, workerID, hostname, version string) (*domain.BuildQueueJob, error) {
 	if r.monitoringStore == nil {
@@ -116,9 +158,19 @@ func (r *ServiceRegistry) ClaimBuildJob(ctx context.Context, workerID, hostname,
 }
 
 // CompleteBuildJob enregistre le résultat d'un job (protocole ouvrier).
+//
+// LE COMPTE RENDU EST LE POINT FINAL, PAS LE POINT DE PASSAGE. Un job de
+// construction de rejeu ne peut être déclaré RÉUSSI que si son artefact est
+// arrivé et porte la version de schéma courante : c'est le fichier qui fait foi,
+// pas la parole de l'ouvrier. Un succès annoncé sans artefact est REFUSÉ (409) ;
+// le job reste `running`, son bail expire, et il repart en file — mécanique déjà
+// livrée, rien à ajouter pour que le travail ne se perde pas.
 func (r *ServiceRegistry) CompleteBuildJob(ctx context.Context, req ops.CompleteBuildJobRequest) error {
 	if r.monitoringStore == nil {
 		return fmt.Errorf("file de construction indisponible (store monitoring non ouvert)")
+	}
+	if err := r.requireArtifactBeforeSuccess(ctx, req); err != nil {
+		return err
 	}
 	if err := r.monitoringStore.CompleteBuildJob(ctx, req); err != nil {
 		return err
@@ -129,6 +181,38 @@ func (r *ServiceRegistry) CompleteBuildJob(ctx context.Context, req ops.Complete
 		observability.IncCounter("build_queue_jobs_failed_total")
 	}
 	return nil
+}
+
+// requireArtifactBeforeSuccess refuse un compte rendu de SUCCÈS dont l'artefact
+// n'est pas là. Ne concerne que les jobs de construction de rejeu — les autres
+// types de travail n'ont pas de fichier à produire.
+//
+// La preuve est le FICHIER à la place canonique, avec la bonne version de schéma
+// (replaybuild.ArtifactUpToDate) : un artefact d'une version antérieure ne vaut
+// pas mieux qu'une absence, il faut le reconstruire.
+func (r *ServiceRegistry) requireArtifactBeforeSuccess(ctx context.Context, req ops.CompleteBuildJobRequest) error {
+	if !req.Succeeded {
+		return nil
+	}
+	job, err := r.monitoringStore.ClaimedBuildJob(ctx, req.JobID, req.WorkerID)
+	if err != nil {
+		return err // ErrBuildJobNotClaimed → 409, même refus que le rendu périmé
+	}
+	if job.JobType != string(domain.JobTypeReplayBuild) {
+		return nil
+	}
+	slug := job.TitleSlug
+	if slug == "" {
+		slug = titlePkg.DefaultSlug
+	}
+	path := titlePkg.NewPathResolver(r.cfg.RepoRoot).ReplayArtifactPath(slug, job.MatchID)
+	if replaybuild.ArtifactUpToDate(path) {
+		return nil
+	}
+	observability.IncCounter("build_queue_complete_without_artifact_total")
+	monitoringLog.WarnContext(ctx, "build queue: succès annoncé sans artefact — refusé",
+		"job_id", req.JobID, "worker_id", req.WorkerID, "match_id", job.MatchID, "path", path)
+	return fmt.Errorf("%w (aucun artefact à jour reçu pour %s)", ops.ErrBuildJobNotClaimed, job.MatchID)
 }
 
 // HeartbeatBuildWorker enregistre un battement d'ouvrier (protocole ouvrier).

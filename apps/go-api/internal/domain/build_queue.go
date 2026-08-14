@@ -12,7 +12,10 @@
 // propriété, et elle seule, qui rend sûr de le faire tourner n'importe où.
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // BuildQueueChunk : un morceau de film à télécharger, tel que le web l'a résolu.
 // URL est PRÉ-SIGNÉE (CDN Azure, sans authentification) — c'est tout ce que
@@ -108,3 +111,33 @@ const BuildJobLeaseDuration = 5 * time.Minute
 // BuildJobMaxAttempts : au-delà, un job repris trop de fois part en `failed`
 // plutôt que de tourner en boucle (un film corrompu ne se décodera jamais).
 const BuildJobMaxAttempts = 3
+
+// MaxBuildArtifactBytes borne le corps du dépôt d'artefact
+// (POST /internal/build-queue/artifact).
+//
+// POURQUOI UN PLAFOND, ET POURQUOI CELUI-CI. Le VPS web a un disque SOUS TENSION
+// (plafond de cache 5 Go, zéro swap, incidents de gel documentés) : un corps non
+// borné est une porte ouverte dessus, quel que soit le jeton présenté. Les
+// artefacts mesurés pèsent ~2 Mo (2,19 · 1,64 · 2,62) ; 16 Mio laisse huit fois
+// la marge du plus gros connu tout en restant FINI — assez large pour qu'un match
+// hors norme passe, assez court pour qu'un ouvrier fou ne remplisse rien.
+const MaxBuildArtifactBytes = 16 << 20
+
+// ErrBuildArtifactInvalid : l'artefact déposé n'est pas celui qu'on attendait
+// (illisible, mauvaise version de schéma, mauvais match, sans trajectoire). RIEN
+// n'est écrit sur le disque dans ce cas — l'appelant HTTP en fait un 400.
+//
+// C'est un refus, pas une panne : un artefact construit par un décodeur d'une
+// version antérieure DOIT être refusé, pas rangé (piste F, « ce qui peut faire
+// échouer ce plan » §2).
+var ErrBuildArtifactInvalid = errors.New("build queue: artefact refusé")
+
+// BuildArtifactReceipt : accusé de dépôt d'un artefact. Rendu à l'ouvrier pour
+// qu'il sache ce que le web a effectivement rangé — c'est sur cette réponse, et
+// elle seule, qu'il s'autorise à rendre son compte rendu de succès.
+type BuildArtifactReceipt struct {
+	JobID         string `json:"job_id"`
+	MatchID       string `json:"match_id"`
+	Bytes         int    `json:"bytes"`
+	SchemaVersion int    `json:"schema_version"`
+}

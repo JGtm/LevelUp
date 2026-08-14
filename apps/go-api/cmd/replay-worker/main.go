@@ -6,7 +6,10 @@
 // personne. Ce qu'il fait tient en une boucle :
 //
 //	prendre un job → télécharger les morceaux (URL pré-signées) → décoder →
-//	rendre le résultat, en battant pendant tout le trajet.
+//	POUSSER l'artefact → rendre le résultat, en battant pendant tout le trajet.
+//
+// L'artefact part AVANT le compte rendu, et le compte rendu n'est envoyé que si
+// l'artefact est arrivé : sans fichier chez le web, le travail n'a pas eu lieu.
 //
 // CE QU'IL N'A PAS, ET C'EST TOUT L'INTÉRÊT : aucun token Halo, aucun accès à la
 // base, aucun port entrant. Il présente un jeton d'ouvrier, il tire son travail
@@ -32,8 +35,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // defaultPollInterval : cadence d'interrogation de la file quand elle est vide.
@@ -57,7 +63,7 @@ func main() {
 	token := flag.String("token", os.Getenv("LEVELUP_BUILD_WORKER_TOKEN"), "jeton d'ouvrier (défaut : LEVELUP_BUILD_WORKER_TOKEN)")
 	id := flag.String("id", "", "identifiant de cet ouvrier (défaut : nom de la machine)")
 	repoRoot := flag.String("repo", os.Getenv("LEVELUP_REPO_ROOT"), "racine du dépôt (catalogue de cartes ; défaut : LEVELUP_REPO_ROOT)")
-	work := flag.String("work", "", "dossier de travail pour les morceaux téléchargés (défaut : <repo>/data/cache)")
+	work := flag.String("work", "", "dossier de travail pour les morceaux téléchargés, effacés après chaque job (défaut : <repo>/data/cache, cache film du dépôt — jamais effacé)")
 	poll := flag.Duration("poll", defaultPollInterval, "cadence d'interrogation quand la file est vide")
 	once := flag.Bool("once", false, "prendre un seul job puis sortir")
 	flag.Parse()
@@ -80,22 +86,30 @@ func main() {
 	if identity.workerID == "" {
 		identity.workerID = "replay-worker"
 	}
+	// Dossier de travail par défaut : le cache film du dépôt. C'est le bon défaut
+	// sur un poste de développement (les films y sont déjà, rien à re-télécharger)
+	// et c'est précisément pour ça que l'ouvrier n'y supprime RIEN — ce cache est
+	// une archive irremplaçable (cf. cleanupFilm). Un ouvrier distant passe --work.
 	workDir := *work
+	repoCache := titlePkg.NewPathResolver(*repoRoot).CacheRootDir()
 	if workDir == "" {
-		workDir = filepath.Join(*repoRoot, "data", "cache")
+		workDir = repoCache
 	}
+	keepsFilms := sameDir(workDir, repoCache)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	w := &worker{
-		identity: identity,
-		client:   newProtocolClient(*url, *token),
-		repoRoot: *repoRoot,
-		workDir:  workDir,
+		identity:   identity,
+		client:     newProtocolClient(*url, *token),
+		repoRoot:   *repoRoot,
+		workDir:    workDir,
+		keepsFilms: keepsFilms,
 	}
 	slog.InfoContext(ctx, "replay-worker: démarré",
-		"worker_id", identity.workerID, "url", *url, "work_dir", workDir, "once", *once)
+		"worker_id", identity.workerID, "url", *url, "work_dir", workDir,
+		"films_conserves", keepsFilms, "once", *once)
 
 	if err := w.run(ctx, *poll, *once); err != nil {
 		slog.ErrorContext(ctx, "replay-worker: arrêt sur erreur", "err", err)
@@ -103,6 +117,22 @@ func main() {
 	}
 	slog.InfoContext(ctx, "replay-worker: arrêté",
 		"jobs_done", w.jobsDone, "jobs_failed", w.jobsFailed)
+}
+
+// sameDir dit si deux chemins désignent le même répertoire, à la casse et aux
+// séparateurs près (Windows comme Linux). Sert l'unique décision « ai-je le droit
+// d'effacer les morceaux de film ? » — mieux vaut conclure « c'est l'archive » à
+// tort que l'inverse.
+func sameDir(a, b string) bool {
+	ca, err := filepath.Abs(filepath.Clean(a))
+	if err != nil {
+		return true
+	}
+	cb, err := filepath.Abs(filepath.Clean(b))
+	if err != nil {
+		return true
+	}
+	return strings.EqualFold(ca, cb)
 }
 
 // run : la boucle. Une erreur de PROTOCOLE (serveur injoignable, jeton refusé)

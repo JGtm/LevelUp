@@ -14,8 +14,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -89,6 +91,37 @@ func (j scannedJob) DecodePayload(ctx context.Context) *domain.BuildQueuePayload
 		return nil
 	}
 	return &p
+}
+
+// ClaimedBuildJob rend le job SI et SEULEMENT SI il est en cours et détenu par
+// cet ouvrier ; sinon ErrBuildJobNotClaimed. C'est le contrôle que doit passer
+// tout dépôt d'artefact AVANT qu'un octet ne touche le disque : sans lui,
+// quiconque détient le jeton d'ouvrier écrirait à la place de n'importe quel
+// match, y compris pendant qu'un autre ouvrier travaille dessus.
+//
+// Lecture sans lease, comme le reste du chemin de lecture (le prendre pour ce
+// contrôle bloquerait la prise d'un job) et TOUJOURS sur build_jobs_latest —
+// lire la table d'événements servirait l'avant-dernière transition (règle ART n°2).
+func (s *MonitoringStore) ClaimedBuildJob(ctx context.Context, jobID, workerID string) (domain.BuildQueueJob, error) {
+	if s == nil || s.db == nil {
+		return domain.BuildQueueJob{}, fmt.Errorf("build queue: store non ouvert")
+	}
+	if strings.TrimSpace(jobID) == "" || strings.TrimSpace(workerID) == "" {
+		return domain.BuildQueueJob{}, fmt.Errorf("%w (job_id et worker_id requis)", ErrBuildJobNotClaimed)
+	}
+	row := s.db.QueryRow(ctx, `SELECT `+buildJobColumns+` FROM build_jobs_latest WHERE job_id = ?`, jobID)
+	job, err := scanBuildJob(row.Scan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.BuildQueueJob{}, fmt.Errorf("%w (job inconnu %s)", ErrBuildJobNotClaimed, jobID)
+	}
+	if err != nil {
+		return domain.BuildQueueJob{}, err
+	}
+	if job.Status != domain.JobStatusRunning || job.WorkerID != workerID {
+		return domain.BuildQueueJob{}, fmt.Errorf("%w (job %s: statut %s, ouvrier %q)",
+			ErrBuildJobNotClaimed, jobID, job.Status, job.WorkerID)
+	}
+	return job.BuildQueueJob, nil
 }
 
 // BuildQueueReport agrège l'état de bout en bout : les jobs récents, les

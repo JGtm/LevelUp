@@ -21,7 +21,7 @@ l'improviste, et l'ouvrier reste installable derriere n'importe quelle box.
 
 ## Etape 1 — Le transport lui-meme
 
-- [ ] 1.1 `POST /api/v1/internal/build-queue/artifact` (meme jeton d'ouvrier, meme
+- [x] 1.1 `POST /api/v1/internal/build-queue/artifact` (meme jeton d'ouvrier, meme
       middleware que `claim`/`complete`/`heartbeat`) : corps = l'artefact. **Verifications
       NON NEGOCIABLES avant d'ecrire quoi que ce soit sur le disque** :
       - le job existe, est `running`, et est bien CLAIME PAR CET OUVRIER (sinon 409, comme
@@ -32,13 +32,13 @@ l'improviste, et l'ouvrier reste installable derriere n'importe quelle box.
       - **le contenu est un artefact VALIDE** : il se deserialise en `replay.ReplayDocument`,
         son `matchId` est celui du job, son `schemaVersion` est celui qu'on attend. Un
         fichier qui echoue = 400, rien n'est ecrit.
-- [ ] 1.2 Ecriture ATOMIQUE a la place canonique (`PathResolver.ReplayArtifactPath`) :
+- [x] 1.2 Ecriture ATOMIQUE a la place canonique (`PathResolver.ReplayArtifactPath`) :
       fichier temporaire puis renommage — jamais d'ecriture en place (un artefact a moitie
       ecrit serait servi tel quel par le service de lecture).
-- [ ] 1.3 Le `complete` actuel devient le POINT FINAL : un job n'est `succeeded` que si son
+- [x] 1.3 Le `complete` actuel devient le POINT FINAL : un job n'est `succeeded` que si son
       artefact est arrive ET valide. Ordre a trancher et a ECRIRE : artefact d'abord, puis
       `complete` (recommande — le compte rendu ne ment jamais sur la presence du fichier).
-- [ ] 1.4 `cmd/replay-worker` : envoie l'artefact puis appelle `complete` ; en cas d'echec
+- [x] 1.4 `cmd/replay-worker` : envoie l'artefact puis appelle `complete` ; en cas d'echec
       d'envoi, ne marque RIEN et laisse le bail expirer (le job repart en file, mecanique
       deja livree). Supprime ses morceaux de film locaux apres coup (le master plan §1 le
       demande : l'ouvrier ne conserve rien).
@@ -106,3 +106,29 @@ construit, et l'artefact qui apparait dans le rejeu de l'app sans intervention.
    role de `schemaVersion` (deja la cle de reprise du backfill). Le refuser, pas le ranger.
 3. Deux ouvriers qui rendent le meme match : le claim atomique l'empeche deja ; le test doit
    le montrer, pas le supposer.
+
+## Journal d'execution
+
+### Etape 1 — close le 2026-08-14 (commit « transport »)
+
+Gate 1 PASSE. Preuve de bout en bout sur les VRAIES routes montees
+(`internal/api/wire/build_queue_transport_e2e_cgo_test.go`) : file -> prise -> refus du
+succes anticipe -> depot -> **artefact a l'octet identique** sur disque -> lu par
+`service.NewReplayService` -> compte rendu accepte. Refus testes (chacun verifiant qu'aucun
+fichier n'est ecrit) : job d'un autre ouvrier, job inconnu, identite absente, artefact trop
+gros (413), JSON invalide, mauvais matchId, schema perime, artefact sans trajectoire.
+Contrats HTTP : `internal/api/handlers/build_worker_artifact_test.go`.
+
+DECISIONS PRISES EN COURS D'ETAPE, hors lettre du plan :
+
+1. **Le plafond de corps devait etre pose explicitement**, pas seulement « prevu large » :
+   Huma applique un defaut de 1 Mio et aurait refuse TOUS les artefacts (~2 Mo). D'ou
+   `humacore.MaxBody` + `domain.MaxBuildArtifactBytes` (16 Mio) — et un second controle dans
+   le handler, assume redondant : un plafond ne doit pas dependre d'un seul point de cablage.
+2. **`replaybuild.writeArtifact` bascule sur la meme ecriture atomique** que le depot. Le
+   plan ne demandait l'atomicite que pour la route, mais le constructeur local ecrit LE MEME
+   fichier a la MEME place : deux facons d'ecrire auraient fini par diverger.
+3. **L'ouvrier ne supprime ses morceaux de film que si `--work` designe un dossier a lui.**
+   Son defaut est le cache film du depot — archive IRREMPLACABLE (les films expirent cote
+   serveur, 29,3 % du corpus deja perdu). Un ouvrier ne detruit jamais l'archive de la
+   machine qui l'heberge. Item 1.4 tenu, mais garde.

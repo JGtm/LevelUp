@@ -51,7 +51,7 @@ var guardMarkers = []string{
 	// RequireWorkerToken (2026-08-14, piste F) — garde des routes /internal/
 	// build-queue/*. Ce n'est pas une garde de SESSION : un ouvrier n'a ni compte
 	// ni cookie, il présente un jeton dédié (LEVELUP_BUILD_WORKER_TOKEN) qui
-	// n'ouvre QUE ces trois routes. Sans jeton configuré, elles répondent 503.
+	// n'ouvre QUE ces quatre routes. Sans jeton configuré, elles répondent 503.
 	// Reconnue comme garde plutôt qu'allowlistée : ces routes ne sont PAS
 	// publiques, et les déclarer telles serait faux.
 	"RequireWorkerToken",

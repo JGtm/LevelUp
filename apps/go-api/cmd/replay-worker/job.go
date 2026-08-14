@@ -12,10 +12,12 @@ import (
 	"compress/zlib"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"levelup/go-api/internal/api/handlers"
@@ -34,10 +36,13 @@ const chunkDownloadTimeout = 60 * time.Second
 // worker : l'état LOCAL de l'ouvrier. Rien d'autre que des compteurs — l'état de
 // la file vit côté web, et c'est ce qui rend le travail distant observable.
 type worker struct {
-	identity   workerIdentity
-	client     *protocolClient
-	repoRoot   string
-	workDir    string
+	identity workerIdentity
+	client   *protocolClient
+	repoRoot string
+	workDir  string
+	// keepsFilms : le dossier de travail EST le cache film du dépôt (archive
+	// perpétuelle) — les morceaux ne sont alors jamais supprimés. Cf. cleanupFilm.
+	keepsFilms bool
 	jobsDone   int64
 	jobsFailed int64
 }
@@ -45,6 +50,12 @@ type worker struct {
 // processJob traite un job pris de bout en bout et en rend le résultat. Ne
 // retourne jamais d'erreur : un travail raté est un job `failed` rendu au
 // serveur, pas un ouvrier qui tombe.
+//
+// L'ORDRE EST L'ARTEFACT PUIS LE COMPTE RENDU, et c'est le cœur du transport :
+// tant que le fichier n'est pas arrivé chez le web, il n'y a rien à annoncer. Si
+// l'envoi échoue, l'ouvrier ne marque RIEN — le job reste `running`, son bail
+// expire, et il repart en file. Un compte rendu de succès sans artefact serait un
+// mensonge que le serveur refuserait de toute façon.
 func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	slog.InfoContext(ctx, "replay-worker: job pris",
 		"job_id", job.JobID, "match_id", job.MatchID, "attempt", job.Attempt)
@@ -52,8 +63,17 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	beatCtx, stopBeat := context.WithCancel(ctx)
 	go w.beatUntil(beatCtx, job.JobID)
 
-	result, err := w.buildReplay(ctx, job)
+	result, err := w.buildAndSend(ctx, job)
 	stopBeat()
+	w.cleanupFilm(ctx, job)
+
+	if errors.Is(err, errArtifactNotDelivered) {
+		// Rien à rendre : le serveur n'a pas le fichier, le bail tranchera.
+		slog.ErrorContext(ctx, "replay-worker: artefact non transmis — job laissé au bail",
+			"job_id", job.JobID, "match_id", job.MatchID, "err", err)
+		w.jobsFailed++
+		return
+	}
 
 	req := handlers.BuildQueueCompleteRequest{JobID: job.JobID, WorkerID: w.identity.workerID}
 	if err != nil {
@@ -81,9 +101,16 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	}
 }
 
-// buildReplay télécharge les morceaux puis construit l'artefact. Rend le résumé
-// JSON du travail (ce que l'admin verra dans la colonne résultat).
-func (w *worker) buildReplay(ctx context.Context, job *domain.BuildQueueJob) (string, error) {
+// errArtifactNotDelivered : l'artefact a été construit mais n'est pas arrivé chez
+// le web. Distinct d'un échec de travail : il ne se rend PAS au serveur (rien à
+// annoncer), il laisse le bail expirer.
+var errArtifactNotDelivered = errors.New("artefact non transmis")
+
+// buildAndSend construit l'artefact PUIS le pousse au web. Rend le résumé JSON du
+// travail (ce que l'admin verra dans la colonne résultat) — l'accusé du serveur y
+// figure, parce que c'est lui, et pas la construction locale, qui prouve la
+// livraison.
+func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (string, error) {
 	p := job.Payload
 	if p == nil || len(p.Chunks) == 0 {
 		return "", fmt.Errorf("job sans travail résolu (aucune URL de morceau)")
@@ -104,11 +131,27 @@ func (w *worker) buildReplay(ctx context.Context, job *domain.BuildQueueJob) (st
 	if err != nil {
 		return "", err
 	}
+	blob, err := os.ReadFile(out.ArtifactPath)
+	if err != nil {
+		return "", fmt.Errorf("relecture de l'artefact construit : %w", err)
+	}
+	// Contexte frais : un Ctrl-C pendant le décodage ne doit pas jeter un artefact
+	// qui a coûté 50 s de CPU alors qu'il ne reste qu'à l'envoyer.
+	sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), artifactUploadTimeout)
+	defer cancel()
+	receipt, err := w.client.sendArtifact(sctx, job.JobID, w.identity.workerID, blob)
+	if err != nil {
+		return "", fmt.Errorf("%w : %v", errArtifactNotDelivered, err)
+	}
+	slog.InfoContext(ctx, "replay-worker: artefact transmis",
+		"job_id", job.JobID, "match_id", p.MatchID, "bytes", receipt.Bytes,
+		"schema", receipt.SchemaVersion)
+
 	summary, err := json.Marshal(map[string]any{
 		"match_id":      p.MatchID,
 		"module":        out.Module,
 		"tracks":        out.Tracks,
-		"bytes":         out.Bytes,
+		"bytes":         receipt.Bytes,
 		"artifact_path": out.ArtifactPath,
 		"chunks":        len(chunks),
 	})
@@ -116,6 +159,35 @@ func (w *worker) buildReplay(ctx context.Context, job *domain.BuildQueueJob) (st
 		return "", fmt.Errorf("sérialisation du résultat : %w", err)
 	}
 	return string(summary), nil
+}
+
+// cleanupFilm supprime les morceaux de film que CET ouvrier a téléchargés : il ne
+// conserve rien (piste F §1), et 24 Mo par match rempliraient vite une machine de
+// calcul.
+//
+// SAUF SI SON DOSSIER DE TRAVAIL EST LE CACHE FILM DU DÉPÔT. C'est le cas par
+// défaut quand l'ouvrier tourne sur le poste de développement, et ce cache est une
+// ARCHIVE IRREMPLAÇABLE : les films expirent côté serveur Halo (29,3 % du corpus
+// déjà perdus), un film effacé ne se re-télécharge pas. Un ouvrier ne détruit
+// jamais l'archive de la machine qui l'héberge ; pour un ouvrier distant qui doit
+// nettoyer, --work désigne un dossier de travail à lui.
+func (w *worker) cleanupFilm(ctx context.Context, job *domain.BuildQueueJob) {
+	if job.Payload == nil || job.Payload.ShortID == "" {
+		return
+	}
+	if w.keepsFilms {
+		slog.DebugContext(ctx, "replay-worker: morceaux conservés (cache film du dépôt, archive perpétuelle)",
+			"match_id", job.MatchID)
+		return
+	}
+	dir := filmcache.ChunkDir(w.workDir, job.Payload.ShortID)
+	if err := os.RemoveAll(dir); err != nil {
+		// Non fatal : un morceau qui traîne coûte du disque, pas de la justesse.
+		slog.WarnContext(ctx, "replay-worker: morceaux de film non supprimés",
+			"dir", dir, "err", err)
+		return
+	}
+	slog.InfoContext(ctx, "replay-worker: morceaux de film supprimés", "dir", dir)
 }
 
 // fetchChunks télécharge les morceaux depuis les URL PRÉ-SIGNÉES du job et les

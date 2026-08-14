@@ -18,11 +18,13 @@ import (
 	"levelup/go-api/internal/api/middleware"
 )
 
-// MountBuildWorkerRoutes monte /internal/build-queue/{claim,complete,heartbeat}.
+// MountBuildWorkerRoutes monte
+// /internal/build-queue/{claim,artifact,complete,heartbeat}.
 // NoStore : ce sont des transitions d'état, jamais du contenu cacheable.
 func MountBuildWorkerRoutes(r chi.Router, reg *ServiceRegistry, apiOpt humacore.MountOption) {
 	h := handlers.NewBuildWorkerHandler(
 		reg.cfg.BuildWorkerToken,
-		reg.ClaimBuildJob, reg.CompleteBuildJob, reg.HeartbeatBuildWorker)
+		reg.ClaimBuildJob, reg.CompleteBuildJob, reg.HeartbeatBuildWorker).
+		WithArtifactStore(reg.StoreBuildArtifact)
 	h.Mount(r.With(middleware.NoStore), apiOpt)
 }
