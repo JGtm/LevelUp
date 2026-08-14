@@ -1,5 +1,36 @@
 # PLAN — les capacités d'armure : les nommer toutes, puis les montrer actives
 
+> ⚠️ RELECTURE DU SUPERVISEUR, 2026-08-14 — CE PLAN ET LE LOT DU 14/08 ONT CHERCHÉ CE QUI
+> ÉTAIT DÉJÀ TROUVÉ. `RECETTE_LOADOUT_2026-07-27.md` §13 (« qui fait foi ») porte la
+> PALETTE COMPLÈTE, obtenue par croisement de chaînes murmur3 avec l'énumération
+> d'équipement de l'exécutable : rang 1 détecteur de menaces, 2 mur de protection,
+> 4 grappin, 5 propulseur, 6 répulseur, **8 camouflage actif, 9 surbouclier,
+> 11 translocateur quantique**, 12 traqueur, 23 champ de réparation. Les TROIS capacités
+> que l'utilisateur veut rendre actives À L'ÉCRAN sont donc IDENTIFIÉES. Et l'état actif
+> est LOCALISÉ : `i57` à `0x12E4` R(2), compteur d'utilisations à `0x140FC1410`
+> (masque R(3) puis 7 bits par emplacement armé, `0x7F` = plein). Le travail de
+> rétro-ingénierie est FAIT ; il ne reste que du câblage. TROIS OBSTACLES RÉELS, tous
+> écrits, aucun ne demande de nouveau reverse :
+>
+> 1. **LA TABLE DE PRODUCTION EST À MOITIÉ FAUSSE — bug à l'écran, aujourd'hui.**
+>    `config/titles/halo_infinite/mappings/replay_labels.toml` déclare `3 = Drop Wall` et
+>    `6 = Threat Sensor` ; le §13 dit `2 = mur de protection`, `1 = détecteur de menaces`
+>    et `6 = répulseur`. Le §2 de la recette le signale lui-même : « cette table est à
+>    moitié fausse, le `sofd` confirme 4 et 5, il CONTREDIT 3 et 6 ». Les fiches joueur
+>    affichent donc probablement un mauvais nom de capacité dans deux cas sur quatre.
+> 2. **LA PALETTE N'EST PAS GLOBALE** : sur 46 équipements présents dans au moins deux
+>    palettes, **20 changent de rang** (grappin rang 4 ici, rang 8 ailleurs ; surbouclier
+>    rang 9 ici, rang 15 ailleurs). La table doit être INDEXÉE PAR LE `sofd` DU MATCH, et
+>    « déterminer quel `sofd` s'applique à un film donné est la question ouverte qui
+>    reste ». C'est LE verrou, et il est de décodage, pas de RE.
+> 3. **Le décodeur n'atteint `i56`/`i57` que sur 0,10 % des enregistrements** (mesure du
+>    14/08) : les records à masque dense (> 7 composants) ne sont pas traversés. Position
+>    connue, traversée manquante.
+>
+> ORDRE UTILE : (1) corriger la table fausse — gain immédiat, aucune dépendance ;
+> (2) résoudre le choix du `sofd` par match ; (3) traverser les masques denses. L'effet
+> plein-fiche (doré / verre / bordure animée) se code ensuite, sans rien inventer.
+
 > Écrit le 2026-07-31. **ACTUALISÉ le 2026-08-14** (voir « CE QUI A CHANGÉ DEPUIS LE
 > 2026-07-31 » ci-dessous : `i57` réfuté, `i54` mesuré, l'hypothèse de travail déplacée).
 > Contrat d'exécution : skill `plan-execution`.
