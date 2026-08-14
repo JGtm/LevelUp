@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/pkg/duckdbbackup"
@@ -245,6 +246,9 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_replay_retention",
 			"replay_retention_months doit être ≥ 0 (0 = illimité).")
 	}
+	if err := h.validateReplayBuildLocation(ctx, req.ReplayBuildLocation); err != nil {
+		return nil, err
+	}
 	if req.SessionTeamChangeMode != nil {
 		switch *req.SessionTeamChangeMode {
 		case "ignore", "group", "friends":
@@ -353,6 +357,32 @@ func newFriendsAdded(prev, next []string) []string {
 		}
 	}
 	return added
+}
+
+// validateReplayBuildLocation contrôle le réglage « où se construit un rejeu ».
+//
+// LE REFUS DE « local » EN PRODUCTION EST EXPLICITE, ET C'EST LE POINT. Le VPS
+// web ne décode jamais un film : posé silencieusement, ce réglage n'aurait aucun
+// effet (le placement retomberait sur « off ») et l'admin croirait avoir activé
+// quelque chose. Mieux vaut un 400 qui dit pourquoi.
+func (h *SettingsHandler) validateReplayBuildLocation(ctx context.Context, loc *string) error {
+	if loc == nil {
+		return nil
+	}
+	value := strings.TrimSpace(*loc)
+	if !replaybuild.ValidPlacementSetting(value) {
+		return humacore.NewError(http.StatusBadRequest, "invalid_replay_build_location",
+			"replay_build_location doit être \"local\", \"worker\" ou \"off\" (vide = défaut de l'instance).")
+	}
+	if _, err := replaybuild.DecidePlacement(value, replaybuild.PlacementEnv{
+		Production:       h.cfg.IsProduction(),
+		WorkerConfigured: true, // l'absence d'ouvrier dégrade à l'exécution, elle n'interdit pas le réglage
+	}); err != nil {
+		slog.WarnContext(ctx, "settings: lieu de construction des rejeux refusé",
+			"valeur", value, "raison", err.Error())
+		return humacore.NewError(http.StatusBadRequest, "invalid_replay_build_location", err.Error())
+	}
+	return nil
 }
 
 // emitFriendsAdded émet 1 notification friend_added (in-app) par nouveau

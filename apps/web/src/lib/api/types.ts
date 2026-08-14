@@ -422,6 +422,9 @@ export interface SettingsResponse {
   session_team_change_mode: 'ignore' | 'group' | 'friends'
   // --- Rejeu 2D : fenêtre de rétention des artefacts (0 = illimité) ---
   replay_retention_months: number
+  // --- Rejeu 2D : où se construit un rejeu. '' = défaut de l'instance
+  // (ouvrier en production, ce serveur en développement). ---
+  replay_build_location: '' | 'local' | 'worker' | 'off'
   // --- Règles de badges narratifs ---
   outcome_exclude_bot_matches_from_badges: boolean
   outcome_exclude_bot_matches_from_records: boolean

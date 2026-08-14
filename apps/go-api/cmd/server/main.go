@@ -1224,6 +1224,12 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
+	// Fil de l'eau des rejeux, chemin « ouvrier » (piste F) : la mise en file vit
+	// dans le registre (elle seule a les tokens pour résoudre le manifeste et y
+	// déposer les URL pré-signées). Injectée ici, comme le runner post-sync, parce
+	// que le scheduler est construit avant le registre.
+	autoScheduler.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
+
 	// VF-1 / DC-4 — câblage du hook Prestige post-sync sur le chemin V1
 	// (auto-sync + HTTP delta + watcher, tous via BuildEngine). Avant ce fix,
 	// prestige.RunPostSyncHook ne tournait sur AUCUN chemin (stub qui jetait le
@@ -1268,6 +1274,7 @@ func main() {
 			Settings:       settingsStore,
 			PostSyncRunner: v2PostSyncRunner,
 			PrestigeHook:   prestigePostSyncHook,
+			ReplayEnqueue:  reg.EnqueueReplayBuildJob,
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)

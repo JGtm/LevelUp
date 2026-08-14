@@ -53,6 +53,12 @@ type SettingsResponse struct {
 	// 0 = illimité (tout construire, ne rien purger).
 	ReplayRetentionMonths int `json:"replay_retention_months" doc:"Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité."`
 
+	// ReplayBuildLocation : OÙ se construit un rejeu. "local" (ce serveur décode
+	// lui-même) | "worker" (il met en file, un ouvrier distant décode) | "off"
+	// (aucune construction). Vide = défaut de l'instance : worker en production
+	// (le VPS web ne décode jamais), local en développement.
+	ReplayBuildLocation string `json:"replay_build_location" doc:"Lieu de construction des rejeux 2D : local | worker | off. Vide = défaut de l'instance."`
+
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
@@ -128,6 +134,9 @@ type UpdateSettingsRequest struct {
 
 	// ReplayRetentionMonths : fenêtre des artefacts de rejeu 2D. 0 = illimité.
 	ReplayRetentionMonths *int `json:"replay_retention_months,omitempty"`
+
+	// ReplayBuildLocation : lieu de construction des rejeux ("local"|"worker"|"off").
+	ReplayBuildLocation *string `json:"replay_build_location,omitempty"`
 
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  *bool   `json:"outcome_exclude_bot_matches_from_badges,omitempty"`

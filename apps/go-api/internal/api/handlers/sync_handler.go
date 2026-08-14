@@ -103,6 +103,9 @@ type SyncHandler struct {
 	cooldown     time.Duration
 	cooldownMu   gosync.Mutex
 	lastManualAt map[string]time.Time
+	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
+	// « ouvrier »). Injecté par server_apiv1.go depuis le ServiceRegistry.
+	replayEnqueue replayartifacts.EnqueueFunc
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -122,6 +125,14 @@ func NewSyncHandler(
 		cooldown:      defaultManualSyncCooldown,
 		lastManualAt:  make(map[string]time.Time),
 	}
+}
+
+// WithReplayEnqueuer branche la mise en file des rejeux (= ServiceRegistry.
+// EnqueueReplayBuild) sur le moteur LEGACY construit par ce handler. Nil → le
+// placement « worker » dégrade en « aucune construction », journalisé.
+func (h *SyncHandler) WithReplayEnqueuer(enqueue replayartifacts.EnqueueFunc) *SyncHandler {
+	h.replayEnqueue = enqueue
+	return h
 }
 
 // WithSyncGate branche le gate de déduplication cross-source (le Coordinator
@@ -191,15 +202,12 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	if h.cfg.SharedProvider != nil {
 		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
 	}
-	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) — LOCAL SEULEMENT (« le VPS
-	// web ne décode JAMAIS »), fenêtre relue à chaque cycle. Parité scheduler/BuildEngine.
-	if !h.cfg.IsProduction() && h.settingsStore != nil {
-		engine = engine.WithReplayArtifacts(replayartifacts.NewHook(h.cfg.RepoRoot, func() int {
-			if s, _ := h.settingsStore.Load(); s != nil {
-				return s.ReplayRetentionMonths
-			}
-			return 0
-		}))
+	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe toujours ;
+	// c'est lui qui décide (replay_build_location, relu à chaque cycle). Parité
+	// scheduler/BuildEngine — chemin LEGACY, emprunté seulement quand engineBuilder
+	// n'est pas câblé.
+	if h.settingsStore != nil {
+		engine = engine.WithReplayArtifacts(replayartifacts.NewHook(h.cfg, h.settingsStore, h.replayEnqueue))
 	}
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
 	// timezone REQUISE pour parseCaptureTimeFromFilename (cf. media_index_service).

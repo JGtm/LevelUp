@@ -84,6 +84,35 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 	return job, created, nil
 }
 
+// ReplayPlacement rend la décision courante « où se construit un rejeu », lue au
+// moment de l'appel (le réglage vit dans app_settings, éditable sans redémarrage).
+//
+// UN SEUL POINT DE DÉCISION, TROIS APPELANTS : le fil de l'eau post-sync
+// (replayartifacts.Hook.Placement), l'action admin (ce runner), et — délibérément
+// PAS — le CLI de backfill, outil d'opérateur qui garde son chemin direct.
+func (r *ServiceRegistry) ReplayPlacement() replaybuild.Placement {
+	setting := ""
+	if r.settingsStore != nil {
+		if s, _ := r.settingsStore.Load(); s != nil {
+			setting = strings.TrimSpace(s.ReplayBuildLocation)
+		}
+	}
+	p, err := replaybuild.DecidePlacement(setting, replaybuild.PlacementEnv{
+		Production:       r.cfg.IsProduction(),
+		WorkerConfigured: strings.TrimSpace(r.cfg.BuildWorkerToken) != "",
+	})
+	replaybuild.LogPlacement("admin", p, err)
+	return p
+}
+
+// EnqueueReplayBuildJob est la forme attendue par le fil de l'eau post-sync
+// (replayartifacts.EnqueueFunc) : le job et l'idempotence ne l'intéressent pas,
+// seulement le fait que la mise en file ait abouti. Adaptateur, pas duplication.
+func (r *ServiceRegistry) EnqueueReplayBuildJob(ctx context.Context, titleSlug, matchID string) error {
+	_, _, err := r.EnqueueReplayBuild(ctx, titleSlug, matchID)
+	return err
+}
+
 // resolveFilmChunkURLs résout le manifeste du film et rend les URL pré-signées de
 // ses morceaux. C'est LE geste qui exige les tokens — et le seul.
 func (r *ServiceRegistry) resolveFilmChunkURLs(ctx context.Context, titleSlug, matchID string) ([]domain.BuildQueueChunk, error) {

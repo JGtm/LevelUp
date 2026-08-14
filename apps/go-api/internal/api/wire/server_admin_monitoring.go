@@ -89,7 +89,8 @@ func MountAdminMonitoringRoutes(
 	// Construction du rejeu 2D d'un match (job asynchrone — décodage hors ligne du film
 	// en cache via la librairie replaybuild, sérialisé par le verrou process filmdec).
 	replayBuildH := handlers.NewAdminReplayBuildActionHandler(reg.RunReplayBuild, jobStore, serverCtx).
-		WithEnqueuer(reg.EnqueueReplayBuild)
+		WithEnqueuer(reg.EnqueueReplayBuild).
+		WithPlacement(reg.ReplayPlacement)
 	replayBuildH.Mount(r, apiOpt) // POST /actions/replay-build/{run,enqueue}
 
 	// Viewer de logs : modules + tail filtré (lecture par la fin chunkée).

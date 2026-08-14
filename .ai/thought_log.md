@@ -65006,3 +65006,28 @@ film du depot (archive irremplacable, 29,3 % du corpus deja perdu cote serveur).
 donc que si `--work` designe un dossier a lui.
 **Conclusion / prochaine etape** : etape 2 — le reglage « ou se construit un rejeu » (local /
 worker / off), un seul point de decision, refus explicite de `local` en production.
+
+## [2026-08-14] Transport de l'artefact — etapes 2 et 3 : ou se construit un rejeu, et la file au fil de l'eau
+**Statut** : Complété (etapes 2 et 3 du `.ai/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
+**Decision technique** : reglage `replay_build_location` a trois valeurs (local / worker / off,
+vide = defaut de l'instance) et UN SEUL point de decision, `replaybuild.DecidePlacement`. Les
+trois appelants de service le CONSULTENT : le fil de l'eau post-sync (`Hook.Placement()`,
+relu a chaque cycle), l'action admin `/replay-build/run` (refus 409 nomme si ce serveur n'a pas
+le droit de decoder), et le PATCH /settings (refus 400 avec motif si `local` en production). Le
+CLI de backfill garde son chemin direct — outil d'operateur, dit en commentaire au fichier.
+DEUX GARDES AJOUTES au-dela de la lettre du plan : (a) `worker` sans `LEVELUP_BUILD_WORKER_TOKEN`
+degrade en `off` — enfiler quand personne ne viendra vider la file resoudrait des manifestes
+Halo pour rien a chaque cycle ; (b) un chemin de sync sans file cablee degrade en `off`, jamais
+en construction locale (sinon le VPS web decoderait par repli silencieux). Consequence voulue :
+la prod, qui n'a pas de jeton d'ouvrier, reste EXACTEMENT dans son etat actuel — ce lot n'active
+rien. Les trois sites de wiring perdent leur `if !IsProduction()` recopie au profit d'une
+fabrique unique `NewHook(cfg, settings, enqueue)`.
+**Resultats** : `go test` vert sur sync/scheduler/api/settings, gate integration `-tags=integration
+-p 1 ./internal/sync/...` vert (133 s), lint `--new-from-merge-base` 0 issue, typecheck purge +
+eslint + vitest settings (69 tests) verts. Tests neufs : table des 11 combinaisons du point de
+decision, branchement du fil de l'eau (off ne lit meme pas la base ; worker selectionne donc
+applique la fenetre de retention AVANT d'enfiler ; un artefact deja a jour n'est pas enfile),
+et les trois refus du PATCH.
+**Conclusion / prochaine etape** : la chaine est complete de bout en bout en local. Reste hors
+perimetre et note au registre : deploiement du 2e VPS, purge locale de l'ouvrier distant,
+plusieurs ouvriers en parallele.

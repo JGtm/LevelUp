@@ -502,6 +502,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 	// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
 	syncH = syncH.WithPostSyncDeltaHook(wire.BuildPostSyncDeltaHook(reg))
+	// Branche la mise en file des rejeux (placement « worker ») sur le moteur legacy
+	// du handler : sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien
+	// alors que l'auto-sync le fait — un trou que rien ne signalerait.
+	syncH = syncH.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
 	// Dédup cross-source (unification 2026-06-02) : le gate provient du
 	// Coordinator partagé du watcher, exposé via le scheduler (main.go a injecté
 	// autoScheduler.SyncGate). Si le watcher est désactivé, Gate() renvoie le

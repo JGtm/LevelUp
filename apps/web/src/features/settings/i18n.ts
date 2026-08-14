@@ -215,6 +215,12 @@ export interface SettingsText {
   replayRetentionLabel: string
   replayRetentionUnit: string
   replayRetentionHint: string
+  replayLocationLabel: string
+  replayLocationAuto: string
+  replayLocationLocal: string
+  replayLocationWorker: string
+  replayLocationOff: string
+  replayLocationHint: string
 
   // Onglet Analyse — Badges de performance
   badgesTitle: string
@@ -500,6 +506,16 @@ const FR_TEXT: SettingsText = {
     'Les rejeux 2D des matchs plus anciens que cette fenêtre sont purgés, et les nouveaux ' +
     'matchs hors fenêtre ne sont pas construits. 0 = illimité (tout conserver). ' +
     'Les films téléchargés ne sont jamais supprimés.',
+  replayLocationLabel: 'Lieu de construction',
+  replayLocationAuto: 'Automatique',
+  replayLocationLocal: 'Ce serveur',
+  replayLocationWorker: 'Ouvrier distant',
+  replayLocationOff: 'Aucune construction',
+  replayLocationHint:
+    'Décoder un film coûte environ une minute de processeur. « Ce serveur » construit sur ' +
+    'place (développement uniquement) ; « Ouvrier distant » met le travail en file, une autre ' +
+    'machine le prend et renvoie le rejeu ; « Aucune construction » se contente des rejeux ' +
+    'déjà présents. Automatique choisit l\'ouvrier distant en production.',
 
   // Onglet Analyse — Badges de performance
   badgesTitle: 'Badges de performance',
@@ -809,6 +825,16 @@ const EN_TEXT: SettingsText = {
     '2D replays of matches older than this window are purged, and new matches outside the ' +
     'window are not built. 0 = unlimited (keep everything). ' +
     'Downloaded films are never deleted.',
+  replayLocationLabel: 'Build location',
+  replayLocationAuto: 'Automatic',
+  replayLocationLocal: 'This server',
+  replayLocationWorker: 'Remote worker',
+  replayLocationOff: 'No building',
+  replayLocationHint:
+    'Decoding a film costs about a minute of CPU. "This server" builds in place (development ' +
+    'only); "Remote worker" queues the work, another machine picks it up and sends the replay ' +
+    'back; "No building" uses only the replays already there. Automatic picks the remote ' +
+    'worker in production.',
 
   // Analyse tab — Performance badges
   badgesTitle: 'Performance badges',

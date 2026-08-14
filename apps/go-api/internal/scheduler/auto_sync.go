@@ -35,6 +35,7 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -241,6 +242,10 @@ type AutoSyncScheduler struct {
 	// actionJournal enregistre la dernière exécution du cycle de sync (C2 —
 	// action « sync_cycle », déclencheur tick/manual). Nil → non journalisé.
 	actionJournal *adminstate.ActionJournal
+	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
+	// « ouvrier »). Injecté par main.go après le ServiceRegistry ; nil → le
+	// placement « worker » dégrade en « aucune construction ».
+	replayEnqueue replayartifacts.EnqueueFunc
 }
 
 // New crée un AutoSyncScheduler. tokenPool peut être nil (cas où Discovery

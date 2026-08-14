@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // ReplayBuildRunner exécute la construction (bloquant — appelé dans la goroutine du
@@ -31,12 +32,18 @@ type ReplayBuildRunner func(ctx context.Context, titleSlug, matchID string) (map
 // Implémenté par ServiceRegistry.EnqueueReplayBuild.
 type ReplayBuildEnqueuer func(ctx context.Context, titleSlug, matchID string) (domain.BuildQueueJob, bool, error)
 
+// ReplayPlacementReader rend la décision courante « où se construit un rejeu »
+// (replaybuild.DecidePlacement appliqué au réglage vivant). Le handler ne la
+// calcule pas : le point de décision est unique, il le CONSULTE.
+type ReplayPlacementReader func() replaybuild.Placement
+
 // AdminReplayBuildActionHandler porte les actions replay-build/{run,enqueue}.
 type AdminReplayBuildActionHandler struct {
-	run     ReplayBuildRunner
-	enqueue ReplayBuildEnqueuer
-	jobs    *jobs.Store
-	bgCtx   context.Context
+	run       ReplayBuildRunner
+	enqueue   ReplayBuildEnqueuer
+	placement ReplayPlacementReader
+	jobs      *jobs.Store
+	bgCtx     context.Context
 }
 
 // NewAdminReplayBuildActionHandler construit le handler.
@@ -54,6 +61,36 @@ func NewAdminReplayBuildActionHandler(
 func (h *AdminReplayBuildActionHandler) WithEnqueuer(enqueue ReplayBuildEnqueuer) *AdminReplayBuildActionHandler {
 	h.enqueue = enqueue
 	return h
+}
+
+// WithPlacement branche la lecture du lieu de construction réglé. Nil → l'action
+// /run garde son comportement historique (construction locale inconditionnelle).
+func (h *AdminReplayBuildActionHandler) WithPlacement(p ReplayPlacementReader) *AdminReplayBuildActionHandler {
+	h.placement = p
+	return h
+}
+
+// refusedByPlacement rend l'erreur à servir quand le réglage interdit à CE
+// serveur de décoder lui-même — nil s'il a le droit.
+//
+// L'ADMIN DOIT L'APPRENDRE, PAS LE DEVINER. Une action /run qui décoderait quand
+// même trahirait le réglage ; une action qui ne ferait rien en répondant 202
+// laisserait croire à un travail lancé. D'où un refus nommé, avec le chemin à
+// prendre à la place.
+func (h *AdminReplayBuildActionHandler) refusedByPlacement() error {
+	if h.placement == nil {
+		return nil
+	}
+	switch h.placement() {
+	case replaybuild.PlacementLocal:
+		return nil
+	case replaybuild.PlacementWorker:
+		return humacore.NewError(http.StatusConflict, "replay_build_delegated",
+			"Ce serveur ne décode pas les films : la construction est déléguée à un ouvrier. Utiliser la mise en file.")
+	default:
+		return humacore.NewError(http.StatusConflict, "replay_build_disabled",
+			"La construction des rejeux est désactivée sur cette instance (réglage « lieu de construction »).")
+	}
 }
 
 // Mount enregistre la route via Huma sur le sous-routeur chi /admin (middleware
@@ -136,6 +173,11 @@ func (h *AdminReplayBuildActionHandler) handleRun(ctx context.Context, in *repla
 	var req replayBuildRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	}
+	if err := h.refusedByPlacement(); err != nil {
+		slog.WarnContext(ctx, "admin_actions: construction locale refusée par le réglage",
+			"match_id", req.MatchID, "err", err)
+		return nil, err
 	}
 	titleSlug := titleOrDefaultSlug(in.Title)
 

@@ -614,13 +614,10 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		return
 	}
 	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
-	// HaloClient — les mocks des autres étapes n'ont pas à la porter).
-	fetcher, ok := s.client.(replayartifacts.ChunksFetcher)
-	if !ok {
-		slog.DebugContext(ctx, "post-sync: rejeu 2D — client sans GetFilmChunks, étape ignorée",
-			"gamertag", e.gamertag)
-		return
-	}
+	// HaloClient — les mocks des autres étapes n'ont pas à la porter). Son absence
+	// n'interdit QUE la construction locale : mettre en file ne télécharge aucun film
+	// (c'est l'ouvrier qui le fera), donc ce chemin-là reste ouvert.
+	fetcher, _ := s.client.(replayartifacts.ChunksFetcher)
 	replayartifacts.Run(ctx, replayartifacts.Deps{
 		Fetcher:         fetcher,
 		WithRead:        s.withRead,
@@ -630,5 +627,7 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		Gamertag:        e.gamertag,
 		CacheRoot:       e.replayArtifacts.CacheRoot,
 		RetentionMonths: e.replayArtifacts.Months(),
+		Placement:       e.replayArtifacts.Placement(),
+		Enqueue:         e.replayArtifacts.Enqueue,
 	}, insertedIDs)
 }
