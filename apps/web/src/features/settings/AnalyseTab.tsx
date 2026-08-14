@@ -151,6 +151,32 @@ export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
             </div>
             <p className="text-xs text-muted-foreground">{t.replayRetentionHint}</p>
           </div>
+          {/* Où se construit un rejeu — à côté de la fenêtre, parce que les deux
+              réglages commandent le même travail : ce qu'on construit, et où.
+              « Ce serveur » est refusé par l'API en production (le VPS web ne
+              décode jamais un film) : le refus vient du serveur, pas d'un choix
+              masqué ici — l'admin doit lire le motif. */}
+          <div className="flex flex-col gap-1 border-t border-border/50 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">{t.replayLocationLabel}</span>
+              <Select
+                value={merged.replay_build_location ?? ''}
+                onChange={(e) =>
+                  handleChange(
+                    'replay_build_location',
+                    e.target.value as '' | 'local' | 'worker' | 'off',
+                  )
+                }
+                className="w-auto"
+              >
+                <option value="">{t.replayLocationAuto}</option>
+                <option value="local">{t.replayLocationLocal}</option>
+                <option value="worker">{t.replayLocationWorker}</option>
+                <option value="off">{t.replayLocationOff}</option>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.replayLocationHint}</p>
+          </div>
         </CardContent>
       </Card>
 

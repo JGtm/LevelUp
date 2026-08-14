@@ -36,10 +36,12 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
+	settingsPkg "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -50,23 +52,72 @@ import (
 // idempotent et repris par SchemaVersion.
 const maxPerCycle = 5
 
-// Hook : réglage du fil de l'eau replay, injecté au wiring (cf.
-// sync.SyncEngine.WithReplayArtifacts pour le contrat LOCAL).
+// EnqueueFunc met la construction du rejeu d'un match dans la FILE DURABLE (le
+// travail part alors à un ouvrier, éventuellement sur une autre machine).
+// Implémentée par wire.ServiceRegistry.EnqueueReplayBuild.
+type EnqueueFunc func(ctx context.Context, titleSlug, matchID string) error
+
+// Hook : réglage du fil de l'eau replay, injecté au wiring.
+//
+// LE HOOK S'INSTALLE TOUJOURS ; C'EST LUI QUI DÉCIDE. Avant, chaque site de
+// wiring portait un `if !IsProduction()` — trois copies d'une règle qui a
+// désormais trois valeurs. Le lieu de construction se relit à CHAQUE cycle
+// (patron scheduler : un PATCH /settings prend effet sans redémarrage), et la
+// décision elle-même vit à UN seul endroit : replaybuild.DecidePlacement.
 type Hook struct {
-	// RetentionMonths relit la fenêtre à CHAQUE cycle (patron scheduler : un PATCH
-	// /settings prend effet sans redémarrage). 0 = illimité.
+	// RetentionMonths relit la fenêtre à CHAQUE cycle. 0 = illimité.
 	RetentionMonths func() int
+	// Location relit le réglage brut « où se construit un rejeu » à chaque cycle.
+	Location func() string
+	// Env : ce que l'instance sait d'elle-même (production, ouvrier ouvert).
+	Env replaybuild.PlacementEnv
+	// Enqueue : la mise en file, pour le placement « worker ». Nil = pas de file
+	// câblée sur ce chemin (le placement dégrade alors en « off », journalisé).
+	Enqueue EnqueueFunc
 	// CacheRoot : racine du cache film (PathResolver.CacheRootDir).
 	CacheRoot string
 }
 
-// NewHook construit le hook du fil de l'eau replay — LA fabrique unique des trois sites de
-// wiring (BuildEngine scheduler, factory V2, handler HTTP), pour que le cache root ne se
-// résolve qu'à un endroit. retention est relu à chaque cycle.
-func NewHook(repoRoot string, retention func() int) *Hook {
+// SettingsReader : la lecture des réglages vivants dont le hook a besoin.
+// Satisfaite par *settings.Store — interface plutôt que type concret pour que ce
+// sous-package reste testable sans fichier de configuration.
+type SettingsReader interface {
+	Load() (*settingsPkg.AppSettings, error)
+}
+
+// NewHook construit le hook du fil de l'eau replay — LA fabrique unique des sites de
+// wiring (BuildEngine scheduler, factory V2, handler HTTP legacy), pour que ni le cache
+// root, ni la lecture des réglages, ni l'environnement ne se résolvent à trois endroits.
+//
+// enqueue peut être nil : un chemin de sync qui n'a pas accès à la file dégrade en
+// « aucune construction » plutôt qu'en construction locale silencieuse.
+func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *Hook {
+	load := func() *settingsPkg.AppSettings {
+		if store == nil {
+			return nil
+		}
+		s, _ := store.Load()
+		return s
+	}
 	return &Hook{
-		RetentionMonths: retention,
-		CacheRoot:       titlePkg.NewPathResolver(repoRoot).CacheRootDir(),
+		RetentionMonths: func() int {
+			if s := load(); s != nil {
+				return s.ReplayRetentionMonths
+			}
+			return 0
+		},
+		Location: func() string {
+			if s := load(); s != nil {
+				return s.ReplayBuildLocation
+			}
+			return ""
+		},
+		Env: replaybuild.PlacementEnv{
+			Production:       cfg.IsProduction(),
+			WorkerConfigured: strings.TrimSpace(cfg.BuildWorkerToken) != "",
+		},
+		Enqueue:   enqueue,
+		CacheRoot: titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
 	}
 }
 
@@ -77,6 +128,26 @@ func (h *Hook) Months() int {
 		return 0
 	}
 	return h.RetentionMonths()
+}
+
+// Placement rend la décision du cycle courant. Un hook sans mise en file câblée ne
+// peut pas tenir « worker » : il dégrade en « off », jamais en construction locale
+// (le VPS web ne décode jamais, et un repli silencieux le lui ferait faire).
+func (h *Hook) Placement() replaybuild.Placement {
+	if h == nil {
+		return replaybuild.PlacementOff
+	}
+	setting := ""
+	if h.Location != nil {
+		setting = strings.TrimSpace(h.Location())
+	}
+	p, err := replaybuild.DecidePlacement(setting, h.Env)
+	replaybuild.LogPlacement("post-sync", p, err)
+	if p == replaybuild.PlacementWorker && h.Enqueue == nil {
+		slog.Warn("rejeu 2D : mise en file demandée mais aucune file câblée sur ce chemin de sync — aucune construction")
+		return replaybuild.PlacementOff
+	}
+	return p
 }
 
 // ChunksFetcher : capacité OPTIONNELLE du client de sync (assertion côté appelant, pas
@@ -104,6 +175,10 @@ type Deps struct {
 	CacheRoot string
 	// RetentionMonths : fenêtre de sélection, <= 0 = illimitée (Hook.Months()).
 	RetentionMonths int
+	// Placement : la décision du cycle (Hook.Placement()).
+	Placement replaybuild.Placement
+	// Enqueue : la mise en file, utilisée seulement si Placement == worker.
+	Enqueue EnqueueFunc
 }
 
 // buildWork : un match à construire, avec ses identités de carte candidates.
@@ -112,17 +187,29 @@ type buildWork struct {
 	mapNames []string
 }
 
-// Run — étape post-sync 1.58 : pont disque + artefacts de rejeu des matchs insérés.
+// Run — étape post-sync 1.58 : selon le lieu de construction réglé, ou bien pont
+// disque + construction locale des artefacts, ou bien MISE EN FILE des matchs
+// insérés (l'ouvrier fera les deux chez lui), ou bien rien.
+//
+// LA FENÊTRE DE RÉTENTION S'APPLIQUE AVANT LES DEUX : on n'enfile pas ce que la
+// purge effacera, et un travail hors fenêtre coûterait un décodage pour rien.
 // Best-effort de bout en bout : aucun retour, aucune erreur ne remonte au cycle.
 func Run(ctx context.Context, d Deps, insertedIDs []string) {
-	if d.Fetcher == nil || d.WithRead == nil || len(insertedIDs) == 0 {
+	if d.Placement == replaybuild.PlacementOff || d.WithRead == nil || len(insertedIDs) == 0 {
 		return
+	}
+	if d.Placement == replaybuild.PlacementLocal && d.Fetcher == nil {
+		return // sans client film, rien à télécharger ni à décoder ici
 	}
 	var work []buildWork
 	d.WithRead(ctx, "replay_select", func(sharedDB *sql.DB) {
 		work = selectBuildWork(ctx, sharedDB, d.MetaDB, insertedIDs, d.RetentionMonths)
 	})
 	if len(work) == 0 {
+		return
+	}
+	if d.Placement == replaybuild.PlacementWorker {
+		enqueueAll(ctx, d, work)
 		return
 	}
 	if len(work) > maxPerCycle {
@@ -144,6 +231,49 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	if built > 0 || filmsSaved > 0 {
 		slog.InfoContext(ctx, "post-sync: rejeu 2D",
 			"gamertag", d.Gamertag, "built", built, "films_persisted", filmsSaved, "selected", len(work))
+	}
+}
+
+// enqueueAll met les matchs du lot dans la file durable — le chemin du VPS web,
+// qui ne décode JAMAIS.
+//
+// AUCUN PONT DISQUE ICI, et c'est la différence de fond avec le chemin local :
+// c'est la MISE EN FILE qui résout le manifeste et dépose les URL pré-signées
+// (wire.EnqueueReplayBuild), et c'est l'ouvrier qui téléchargera les morceaux. Le
+// web ne fait donc transiter aucun film.
+//
+// Le lot n'est pas borné comme le local (maxPerCycle) : enfiler coûte une
+// résolution de manifeste, pas 50 s de CPU. La file, elle, est faite pour
+// s'allonger — un ouvrier absent ne casse rien.
+func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
+	if d.Enqueue == nil {
+		return
+	}
+	paths := titlePkg.NewPathResolver(d.RepoRoot)
+	queued, skipped := 0, 0
+	for _, w := range work {
+		if ctx.Err() != nil {
+			break
+		}
+		// Idempotence : un artefact déjà à jour ne se reconstruit pas (même règle
+		// que le chemin local ; la mise en file absorbe de son côté les doublons).
+		if replaybuild.ArtifactUpToDate(paths.ReplayArtifactPath(d.TitleSlug, w.matchID)) {
+			skipped++
+			continue
+		}
+		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID); err != nil {
+			// Cas nominal du refus : film absent ou expiré côté serveur (~29 % du
+			// corpus). Journalisé en debug, jamais avalé.
+			slog.DebugContext(ctx, "post-sync: rejeu 2D non mis en file",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "err", err)
+			continue
+		}
+		queued++
+	}
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_jobs_enqueued_total", int64(queued))
+	if queued > 0 || skipped > 0 {
+		slog.InfoContext(ctx, "post-sync: rejeu 2D mis en file (construction déléguée à un ouvrier)",
+			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped, "selected", len(work))
 	}
 }
 

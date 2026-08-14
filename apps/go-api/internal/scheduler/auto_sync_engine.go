@@ -137,20 +137,28 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	return engine
 }
 
-// wireReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) —
-// LOCAL SEULEMENT : « le VPS web ne décode JAMAIS » (gate CPU, distinct du garde de
-// lecture replay_local_gate). La fenêtre replay_retention_months est relue à chaque
-// cycle (patron settings live).
+// wireReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5).
+//
+// LE HOOK S'INSTALLE TOUJOURS, C'EST LUI QUI DÉCIDE (réglage replay_build_location,
+// relu à chaque cycle) : construire ici, mettre en file pour un ouvrier, ou ne rien
+// faire. La règle « le VPS web ne décode JAMAIS » est tenue par le point de décision
+// (replaybuild.DecidePlacement refuse « local » en production), plus par un `if`
+// recopié à chaque site de wiring.
 func (s *AutoSyncScheduler) wireReplayArtifacts(engine *sync.SyncEngine) {
-	if s.cfg.IsProduction() || s.settings == nil {
+	if s.settings == nil {
 		return
 	}
-	engine.WithReplayArtifacts(replayartifacts.NewHook(s.cfg.RepoRoot, func() int {
-		if cfg, _ := s.settings.Load(); cfg != nil {
-			return cfg.ReplayRetentionMonths
-		}
-		return 0
-	}))
+	engine.WithReplayArtifacts(replayartifacts.NewHook(s.cfg, s.settings, s.replayEnqueue))
+}
+
+// WithReplayEnqueuer branche la mise en file des rejeux (wire.ServiceRegistry.
+// EnqueueReplayBuild) sur les moteurs construits par ce scheduler. À appeler depuis
+// cmd/server/main.go APRÈS création du ServiceRegistry (même patron que
+// WithPostSyncRunner). Nil → le placement « worker » dégrade en « aucune
+// construction », journalisé.
+func (s *AutoSyncScheduler) WithReplayEnqueuer(enqueue replayartifacts.EnqueueFunc) *AutoSyncScheduler {
+	s.replayEnqueue = enqueue
+	return s
 }
 
 // defaultRunnerFactory adapte BuildEngine vers l'interface DeltaRunner

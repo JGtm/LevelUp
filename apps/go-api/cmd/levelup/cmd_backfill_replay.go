@@ -7,6 +7,16 @@ package main
 // jamais en exécutant un CLI (règle admin_actions : pas de spawn, conflit DuckDB
 // mono-process ; et un exec perdrait le verrou process filmdec).
 //
+// # ELLE NE PASSE PAS PAR LE RÉGLAGE « OÙ SE CONSTRUIT UN REJEU », ET C'EST VOULU
+//
+// Le réglage `replay_build_location` (local / worker / off) arbitre les chemins de
+// SERVICE : le fil de l'eau post-sync et l'action admin. Cette commande est un outil
+// d'OPÉRATEUR — celui qui la tape a déjà décidé où il construit, sur SA machine, avec
+// SES films en cache. La soumettre au réglage lui ferait mettre en file un rattrapage de
+// 951 matchs dont aucun ouvrier n'a les films (le master plan §1 est explicite : « un
+// ouvrier neuf ne doit pas retélécharger 23 Go pour rattraper l'historique »), ou refuser
+// de tourner sur un poste réglé en « worker ». Comportement direct, donc, et inchangé.
+//
 // # ELLE EST 100 % HORS LIGNE — NI RÉSEAU, NI TOKENS, NI CDN
 //
 // La source est le cache film sur disque (filmcache) ; la seule base touchée est le

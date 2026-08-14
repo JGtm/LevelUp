@@ -70,6 +70,13 @@ type AppSettings struct {
 	// changement prend effet sans redémarrage (patron scheduler).
 	ReplayRetentionMonths int `json:"replay_retention_months"`
 
+	// ReplayBuildLocation dit OÙ se construit un rejeu : "local" (ce serveur décode
+	// lui-même), "worker" (il met en file, un ouvrier distant décode), "off" (aucune
+	// construction). Vide = défaut de l'instance (worker en production, local en
+	// développement) ; la résolution vit dans replaybuild.DecidePlacement, point de
+	// décision unique. Relu à CHAQUE cycle — un changement prend effet sans redémarrage.
+	ReplayBuildLocation string `json:"replay_build_location"`
+
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
@@ -410,6 +417,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.ReplayRetentionMonths != nil {
 		cfg.ReplayRetentionMonths = *req.ReplayRetentionMonths
 	}
+	if req.ReplayBuildLocation != nil {
+		cfg.ReplayBuildLocation = *req.ReplayBuildLocation
+	}
 	if req.OutcomeExcludeBotMatchesFromBadges != nil {
 		cfg.OutcomeExcludeBotMatchesFromBadges = *req.OutcomeExcludeBotMatchesFromBadges
 	}
@@ -484,6 +494,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SessionSplitOnRankedChange:          cfg.SessionSplitOnRankedChange,
 		SessionTeamChangeMode:               cfg.SessionTeamChangeMode,
 		ReplayRetentionMonths:               cfg.ReplayRetentionMonths,
+		ReplayBuildLocation:                 cfg.ReplayBuildLocation,
 		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,

@@ -56,6 +56,10 @@ type SyncV2WiringDeps struct {
 	// PrestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
 	// de chaque joueur (Phase 6). = PrestigeBundle.RunPostSync. Nil → no-op.
 	PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+	// ReplayEnqueue (optionnel) met la construction d'un rejeu dans la file durable
+	// (= ServiceRegistry.EnqueueReplayBuild). Nil → le placement « worker » dégrade
+	// en « aucune construction », journalisé.
+	ReplayEnqueue replayartifacts.EnqueueFunc
 }
 
 // buildSyncV2Orchestrator construit l'orchestrator V2 avec ses 6
@@ -294,16 +298,12 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 			})
 		}
 
-		// 2b. Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5) — LOCAL SEULEMENT
-		// (« le VPS web ne décode JAMAIS »), fenêtre relue à chaque cycle. Parité
-		// avec scheduler.BuildEngine.
-		if !deps.Cfg.IsProduction() && deps.Settings != nil {
-			engine.WithReplayArtifacts(replayartifacts.NewHook(deps.Cfg.RepoRoot, func() int {
-				if cfg, _ := deps.Settings.Load(); cfg != nil {
-					return cfg.ReplayRetentionMonths
-				}
-				return 0
-			}))
+		// 2b. Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe
+		// toujours ; c'est LUI qui décide (construire ici / mettre en file / rien),
+		// d'après replay_build_location relu à chaque cycle. Parité avec
+		// scheduler.BuildEngine.
+		if deps.Settings != nil {
+			engine.WithReplayArtifacts(replayartifacts.NewHook(deps.Cfg, deps.Settings, deps.ReplayEnqueue))
 		}
 
 		// 3. Custom client pinned via pool
