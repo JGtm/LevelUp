@@ -49,9 +49,16 @@ func TestLoad_CatalogueReelDuTitre(t *testing.T) {
 			t.Errorf("rang de grenade %d incomplet : %+v", i, g)
 		}
 	}
-	for idx, a := range cat.Abilities {
-		if a.En == "" || a.Fr == "" {
-			t.Errorf("capacité %d incomplète : %+v", idx, a)
+	// Les palettes portent leurs MARQUEURS avec leurs noms : sans marqueur, l'assemblage ne
+	// pourrait classer aucun film, et la palette serait de la donnée morte.
+	for _, p := range cat.Abilities {
+		if p.ID == "" || len(p.Markers) == 0 {
+			t.Errorf("palette de capacités sans identifiant ou sans marqueur : %+v", p)
+		}
+		for rank, a := range p.Ranks {
+			if a.En == "" || a.Fr == "" {
+				t.Errorf("capacité %d de %q incomplète : %+v", rank, p.ID, a)
+			}
 		}
 	}
 	for fam, w := range cat.Weapons {

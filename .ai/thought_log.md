@@ -69,6 +69,55 @@ ligne n estompe que ce qu elle decrit.
 **Conclusion / prochaine etape**. Etape 2 : classer la palette film par film. Une signature
 ambigue ne nomme RIEN.
 
+## [2026-08-14] v7.5 rang de capacite — la verite terrain passe de 2 sur 4 a 8 sur 8 (etapes 2 a 4)
+
+**Statut** : Complete pour l identite ; gate 4 NON franchi et c est ce que le plan annoncait.
+
+**Le resultat qui ferme le chantier.** Le controle Theater des huit joueurs de `000d5950` est
+reproduit **8/8** par la lecture de production, contre 2/4 au 2026-07-28. Les trois branches d
+explication ouvertes par le §13 de la recette tombent d un coup, et AUCUNE n etait la bonne :
+les deux lectures contestees etaient JUSTES, elles etaient comparees a la palette d un autre
+film. Le « 2 sur 4 » n a jamais ete une erreur de decodage, c etait une erreur de referentiel.
+
+**Item 2.1, negatif MESURE et non suppose** : rien dans le film ne designe la palette. Le
+registre du chunk_00 est bit-a-bit identique d un film a l autre pour les noms et flags ; sa
+longueur ne suit pas les familles (1 973 120 octets aussi bien sur `00162144`, famille A, que
+sur les trois films de famille B) ; aucun marqueur de groupe de tags (`sofd`, `sofa`, `eqip`,
+`vcdd`, `uwfa`, `glpa`) n apparait dans chunk_00 ni chunk_01. La palette se DEDUIT donc.
+
+**Decision technique principale : une regle de majorite dont le seuil ne decide de rien.** Une
+palette est retenue quand 90 % des lectures portent ses marqueurs, jamais sous 10 lectures — le
+minimum est DERIVE du seuil ((n-1)/n >= 0,90), pas choisi a part. Six films sur sept sont purs a
+100 % et le septieme a 96,2 % : tout seuil de 50 a 96 % rend le meme verdict, et un test le
+verifie. C est ce qui distingue une regle d un reglage choisi apres coup. Les sept signatures
+mesurees sont rejouees telles quelles par un test.
+
+**Fait NEUF, absent du §14** : `084a804d` montre aussi 4 lectures au rang 19 et une au rang 44,
+hors de toute palette connue. Bruit de balayage bit a bit, compte CONTRE la purete plutot
+qu ignore — le film passe quand meme.
+
+**Resultats observes.** 7 films, 848 lectures, 775 identites, temoin du hook 100 % partout,
+zero illisible. Couverture de nommage sur le canal i48 : **610/775, 78,7 %**. Sur l artefact du
+film de reference (deux canaux) : **136/214, 63,6 % contre 0 avant ce lot**. La comparaison aux
+47,0 % de reference n est PAS a periculum egal et c est ecrit : ils portaient sur le canal
+d image-cle seul, sur les films qui rendaient quelque chose — 21 sur 40 n en rendaient aucun.
+
+**Ce qui est livre a l ecran** : camouflage actif, surbouclier et translocateur quantique sont
+NOMMES pour la premiere fois (rangs 8, 9, 11 ; observes sur `084a804d`, `06dfe6d9`, `00162144`).
+Le canal d image-cle ne les verra jamais. **Ce qui ne l est pas, et c est le `[!]` attendu** :
+l effet plein-fiche. `i57` est lu sur 0,82 % des records et vaut 72,2 % contre 34 % de temoin —
+une fiche doree fausse une fois sur quatre est pire qu une fiche sobre.
+
+**Decision a connaitre, ecrite parce qu elle est discutable** : le nommage de la famille A
+s appuie sur UNE chaine (inversion murmur3 du `sofd`), admise parce qu elle est d une autre
+nature qu une observation d ecran — c est elle qui a fait RETIRER deux noms le matin meme. Une
+source assez sure pour retirer un nom l est pour en donner un. Si la barre monte, seul le rang
+23 survit en famille A. Ligne au REGISTRE_REPORTS.
+
+**Conclusion / prochaine etape**. Reste au registre : le rang 10 (67 lectures, premier trou a
+combler), les rangs 19 et 22 (une observation isolee chacun), le balayage des 40 films (~15 min,
+decision utilisateur), et l etat actif.
+
 ## [2026-08-14] v7.5 containment — l horloge du croisement etait un DECALAGE LU, pas un retard a estimer
 
 **Statut** : Complete — **verdict NEGATIF chiffre, aucune persistance** (gate 4.1 non franchi).

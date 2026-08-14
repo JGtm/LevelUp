@@ -35,21 +35,45 @@ type BilingualLabel struct {
 	Icon string
 }
 
+// AbilityPalette est UNE palette de capacites : les rangs qui la SIGNENT, et les noms
+// qu'elle donne a ceux d'entre eux qui sont etablis.
+//
+// POURQUOI UNE PALETTE ET PAS UNE TABLE UNIQUE : le rang transmis par le film est un index
+// dans un groupe de tags choisi A L'EXECUTION. Sur les 46 equipements presents dans au
+// moins deux des 12 groupes mesures, 20 CHANGENT de rang — une table unique nommerait faux
+// un film sur deux (RECETTE_LOADOUT §13).
+type AbilityPalette struct {
+	// ID nomme la palette dans les journaux et les rapports. Il ne sort jamais a l'ecran.
+	ID string
+	// Markers sont les rangs dont l'observation signe cette palette. Ils doivent etre
+	// DISJOINTS de ceux des autres palettes du titre — sans quoi rien ne se classe.
+	Markers []int
+	// Ranks nomme les rangs ETABLIS. Table partielle par nature : un rang absent garde son
+	// numero a l'ecran.
+	Ranks map[int]BilingualLabel
+}
+
 // ReplayLabelSet porte les libelles de rejeu d'un titre.
 type ReplayLabelSet struct {
 	titleSlug     string
 	schemaVersion int
 	grenades      []BilingualLabel // index = rang lu dans le film
-	abilities     map[int]BilingualLabel
+	palettes      []AbilityPalette
 	shotEffects   map[string]string // weapon_key -> famille de rendu
 }
 
 // replayLabelsTOML — projection brute du fichier.
 type replayLabelsTOML struct {
-	Meta        metaSection               `toml:"meta"`
-	Grenades    []bilingualEntry          `toml:"grenades"`
-	Abilities   map[string]bilingualEntry `toml:"abilities"`
-	ShotEffects map[string]string         `toml:"shot_effects"`
+	Meta        metaSection           `toml:"meta"`
+	Grenades    []bilingualEntry      `toml:"grenades"`
+	Palettes    []abilityPaletteEntry `toml:"ability_palettes"`
+	ShotEffects map[string]string     `toml:"shot_effects"`
+}
+
+type abilityPaletteEntry struct {
+	ID      string                    `toml:"id"`
+	Markers []int                     `toml:"markers"`
+	Ranks   map[string]bilingualEntry `toml:"ranks"`
 }
 
 type bilingualEntry struct {
@@ -76,14 +100,22 @@ func (s *ReplayLabelSet) GrenadeRanks() []BilingualLabel {
 	return out
 }
 
-// Abilities retourne la table index -> libelle (copie). nil-safe (map vide).
-func (s *ReplayLabelSet) Abilities() map[int]BilingualLabel {
-	out := make(map[int]BilingualLabel)
+// AbilityPalettes retourne les palettes de capacites (copie profonde). nil-safe.
+func (s *ReplayLabelSet) AbilityPalettes() []AbilityPalette {
 	if s == nil {
-		return out
+		return nil
 	}
-	for k, v := range s.abilities {
-		out[k] = v
+	out := make([]AbilityPalette, 0, len(s.palettes))
+	for _, p := range s.palettes {
+		cp := AbilityPalette{
+			ID:      p.ID,
+			Markers: append([]int(nil), p.Markers...),
+			Ranks:   make(map[int]BilingualLabel, len(p.Ranks)),
+		}
+		for k, v := range p.Ranks {
+			cp.Ranks[k] = v
+		}
+		out = append(out, cp)
 	}
 	return out
 }
@@ -145,7 +177,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
-	abilities, err := parseAbilities(path, doc.Abilities)
+	palettes, err := parseAbilityPalettes(path, doc.Palettes)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +189,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
 		grenades:      grenades,
-		abilities:     abilities,
+		palettes:      palettes,
 		shotEffects:   effects,
 	}, nil
 }
@@ -175,20 +207,59 @@ func parseGrenadeRanks(path string, rows []bilingualEntry) ([]BilingualLabel, er
 	return out, nil
 }
 
-// parseAbilities valide la table des capacites. Les cles sont des index NUMERIQUES lus
-// dans le film : une cle non numerique ne designerait aucune capacite.
-func parseAbilities(path string, rows map[string]bilingualEntry) (map[int]BilingualLabel, error) {
-	out := make(map[int]BilingualLabel, len(rows))
-	for rawKey, e := range rows {
-		idx, err := strconv.Atoi(strings.TrimSpace(rawKey))
-		if err != nil {
-			return nil, fmt.Errorf("%s: index de capacité %q non numérique", path, rawKey)
+// parseAbilityPalettes valide les palettes de capacites.
+//
+// TROIS INVARIANTS, tous FATAUX — un titre dont les palettes sont incoherentes ne doit pas
+// produire un rejeu a moitie nomme : un identifiant vide ou duplique rendrait le journal
+// illisible, une palette sans marqueur ne pourrait JAMAIS etre reconnue (elle serait du
+// code mort en donnee), et deux palettes partageant un marqueur rendraient le classement
+// ambigu sur tout film qui le montre — c'est-a-dire faux.
+func parseAbilityPalettes(path string, rows []abilityPaletteEntry) ([]AbilityPalette, error) {
+	out := make([]AbilityPalette, 0, len(rows))
+	seenID := map[string]bool{}
+	markerOwner := map[int]string{}
+	for _, e := range rows {
+		id := strings.TrimSpace(e.ID)
+		if id == "" {
+			return nil, fmt.Errorf("%s: palette de capacités sans id", path)
 		}
-		lbl, err := bilingual(path, fmt.Sprintf("capacité %d", idx), e)
+		if seenID[id] {
+			return nil, fmt.Errorf("%s: palette de capacités %q déclarée deux fois", path, id)
+		}
+		seenID[id] = true
+		if len(e.Markers) == 0 {
+			return nil, fmt.Errorf("%s: palette %q sans marqueur : aucun film ne pourrait la reconnaître", path, id)
+		}
+		for _, m := range e.Markers {
+			if owner, taken := markerOwner[m]; taken {
+				return nil, fmt.Errorf("%s: le rang %d marque à la fois %q et %q — le classement serait ambigu",
+					path, m, owner, id)
+			}
+			markerOwner[m] = id
+		}
+		ranks, err := parseAbilityRanks(path, id, e.Ranks)
 		if err != nil {
 			return nil, err
 		}
-		out[idx] = lbl
+		out = append(out, AbilityPalette{ID: id, Markers: e.Markers, Ranks: ranks})
+	}
+	return out, nil
+}
+
+// parseAbilityRanks valide les noms d'une palette. Les cles sont des rangs NUMERIQUES lus
+// dans le film : une cle non numerique ne designerait aucune capacite.
+func parseAbilityRanks(path, palette string, rows map[string]bilingualEntry) (map[int]BilingualLabel, error) {
+	out := make(map[int]BilingualLabel, len(rows))
+	for rawKey, e := range rows {
+		rank, err := strconv.Atoi(strings.TrimSpace(rawKey))
+		if err != nil {
+			return nil, fmt.Errorf("%s: rang de capacité %q non numérique (palette %q)", path, rawKey, palette)
+		}
+		lbl, err := bilingual(path, fmt.Sprintf("capacité %d de la palette %q", rank, palette), e)
+		if err != nil {
+			return nil, err
+		}
+		out[rank] = lbl
 	}
 	return out, nil
 }

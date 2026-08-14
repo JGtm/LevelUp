@@ -117,15 +117,113 @@ func keepAbilitiesOfPublishedTracks(reads []AbilityRead, tracks []Track) []Abili
 		func(a AbilityRead, published map[uint32]bool) bool { return published[a.Slot] })
 }
 
+// AbilityPalette est une palette de capacités du titre : les rangs qui la SIGNENT, et les
+// noms qu'elle donne à ceux d'entre eux qui sont établis. Elle vient du catalogue du titre
+// (`config/titles/{slug}/mappings/replay_labels.toml`), jamais du code.
+type AbilityPalette struct {
+	// ID nomme la palette dans les journaux. Il ne sort jamais à l'écran.
+	ID string
+	// Markers sont les rangs dont l'observation signe cette palette.
+	Markers []int
+	// Ranks nomme les rangs établis. Partielle par nature.
+	Ranks map[int]Label
+}
+
+// LE CLASSEMENT DE PALETTE — la règle, et les chiffres qui la fondent.
+//
+// POURQUOI UNE RÈGLE STATISTIQUE ET NON UNE LECTURE. On a d'abord cherché une DÉSIGNATION
+// dans le film, et elle n'y est pas : le registre du chunk_00 est bit-à-bit identique d'un
+// film à l'autre pour les noms et flags de composants, sa longueur ne suit pas les familles
+// (1 973 120 octets aussi bien sur `00162144`, famille A, que sur les trois films de la
+// famille B), et aucun marqueur de groupe de tags (`sofd`, `eqip`, `vcdd`, `uwfa`, `glpa`)
+// n'apparaît dans aucun chunk. La palette se déduit donc de ce que le film MONTRE.
+//
+// CE QUE LA MESURE DONNE (7 films, i48, 748 lectures, zéro illisible) :
+//
+//	00ba2e1c   1:31 2:25 4:34 5:20 6:36 10:21 23:35                       -> 202/202 famille A
+//	06dfe6d9   1:19 2:25 4:35 5:22 6:38 8:2 9:2 10:34 11:3 12:4 23:35     -> 219/219 famille A
+//	00162144   2:14 4:9 9:2 10:10                                          ->   35/35  famille A
+//	084a804d   1:13 4:48 5:11 6:18 8:10 9:8 10:2 19:4 23:15 44:1           ->  125/130 famille A
+//	000d5950   19:18 20:22 21:26 22:16                                     ->   82/82  famille B
+//	00502e52   19:22 20:17 21:8 22:18                                      ->   65/65  famille B
+//	07aa428d   19:11 20:10 21:13 22:8                                      ->   42/42  famille B
+//
+// SIX FILMS SUR SEPT SONT PURS À 100 %, le septième à 96,2 %. La règle est donc une règle de
+// MAJORITÉ, et le seuil n'est pas un réglage sensible : n'importe quelle valeur entre 50 % et
+// 96 % donne le MÊME classement sur ce corpus. On prend 90 %.
+//
+// LES QUATRE LECTURES `19` ET L'UNIQUE `44` DE `084a804d` sont le bruit attendu d'un balayage
+// bit à bit : le motif d'en-tête de record peut coïncider avec autre chose, et 44 est même
+// hors de toute palette connue (un `sofd` compte ~27 entrées). Les compter contre la pureté
+// plutôt que les ignorer est délibéré — c'est ce qui fait que la règle REFUSERAIT un film
+// réellement mélangé.
+const (
+	// abilityPalettePurity : part minimale des lectures portant les marqueurs d'UNE palette.
+	abilityPalettePurity = 0.90
+	// abilityPaletteMinReads : en deçà, on ne classe pas. Le chiffre est DÉRIVÉ du seuil et
+	// non choisi à part — c'est le plus petit n tel qu'UNE lecture parasite ne suffise pas à
+	// disqualifier un film pur : (n−1)/n ≥ 0,90, donc n ≥ 10. En deçà, le test de pureté ne
+	// mesurerait plus la palette mais le hasard du balayage. Le corpus est loin au-dessus :
+	// le film le plus pauvre en transmet 35.
+	abilityPaletteMinReads = 10
+)
+
+// classifyAbilityPalette choisit la palette du film d'après ce qu'il MONTRE, ou rend nil.
+//
+// UNE SIGNATURE AMBIGUË NE NOMME RIEN, et c'est le point de toute l'étape : un film dont les
+// lectures se partagent entre deux palettes, ou qui en montre trop peu, sort AVEC SES RANGS
+// et sans un seul nom. Nommer au jugé mettrait « grappin » sur un propulseur.
+func classifyAbilityPalette(reads []AbilityRead, palettes []AbilityPalette) *AbilityPalette {
+	if len(reads) < abilityPaletteMinReads || len(palettes) == 0 {
+		return nil
+	}
+	counts := make([]int, len(palettes))
+	for _, r := range reads {
+		for i, p := range palettes {
+			if containsRank(p.Markers, r.R) {
+				counts[i]++
+				break
+			}
+		}
+	}
+	for i := range palettes {
+		if float64(counts[i])/float64(len(reads)) >= abilityPalettePurity {
+			return &palettes[i]
+		}
+	}
+	return nil
+}
+
+// paletteIDOrNone rend l'identifiant de la palette retenue, ou une mention explicite quand
+// AUCUNE ne l'a ete — un journal muet se lirait comme « pas de capacite lue ».
+func paletteIDOrNone(p *AbilityPalette) string {
+	if p == nil {
+		return "non classee"
+	}
+	return p.ID
+}
+
+func containsRank(marks []int, r int) bool {
+	for _, m := range marks {
+		if m == r {
+			return true
+		}
+	}
+	return false
+}
+
 // abilityLabelsUsed nomme les rangs de capacité que le document emploie RÉELLEMENT.
 //
 // Un rang hors table n'entre pas : il gardera son numéro à l'écran, marqué comme non
 // interprétable. La table est partielle ET propre à une palette — le dire vaut mieux que
 // combler.
-func abilityLabelsUsed(reads []AbilityRead, catalog map[int]Label) map[string]Label {
+func abilityLabelsUsed(reads []AbilityRead, palette *AbilityPalette) map[string]Label {
+	if palette == nil {
+		return nil
+	}
 	out := map[string]Label{}
 	for _, r := range reads {
-		if name, ok := catalog[r.R]; ok {
+		if name, ok := palette.Ranks[r.R]; ok {
 			out[strconv.Itoa(r.R)] = name
 		}
 	}

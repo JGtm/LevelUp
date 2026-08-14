@@ -54,8 +54,8 @@ rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 214 lecture(s) · 82 par i48 (rang complet, paquets delta) · 132 par image-cle (fenetre 16..23)
 rangs observes : 19:42 20:66 21:70 22:36
-lectures NOMMEES 0/214 — un rang hors table garde son numero, et la table est propre a la palette du film
-capacites nommees : 
+lectures NOMMEES 136/214 — un rang hors table garde son numero, et la table est propre a la palette du film
+capacites nommees : 20=en:"Grappleshot"/fr:"grappin", 21=en:"Thruster"/fr:"propulseur"
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)

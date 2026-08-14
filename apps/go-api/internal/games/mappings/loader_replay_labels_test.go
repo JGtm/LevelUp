@@ -18,8 +18,17 @@ fr = "Fragmentation"
 en = "Plasma"
 fr = "Plasma"
 
-[abilities]
-"3" = { en = "Drop Wall", fr = "mur portatif" }
+[[ability_palettes]]
+id = "famille_a"
+markers = [2, 4]
+[ability_palettes.ranks]
+"2" = { en = "Drop Wall", fr = "mur portatif" }
+
+[[ability_palettes]]
+id = "famille_b"
+markers = [19, 20]
+[ability_palettes.ranks]
+"20" = { en = "Grappleshot", fr = "grappin" }
 
 [shot_effects]
 hinf_ma40_ar = "ballistic"
@@ -38,8 +47,16 @@ func TestLoadReplayLabels_Valide(t *testing.T) {
 	if len(ranks) != 2 || ranks[0].En != "Frag" || ranks[1].En != "Plasma" {
 		t.Errorf("ordre des rangs perdu: %+v", ranks)
 	}
-	if got := set.Abilities()[3]; got.En != "Drop Wall" || got.Fr != "mur portatif" {
-		t.Errorf("capacité 3 mal lue: %+v", got)
+	pal := set.AbilityPalettes()
+	if len(pal) != 2 || pal[0].ID != "famille_a" || pal[1].ID != "famille_b" {
+		t.Fatalf("palettes mal lues: %+v", pal)
+	}
+	if got := pal[0].Ranks[2]; got.En != "Drop Wall" || got.Fr != "mur portatif" {
+		t.Errorf("capacité 2 de famille_a mal lue: %+v", got)
+	}
+	// Les MARQUEURS voyagent avec les noms : sans eux, aucun film ne se classe.
+	if len(pal[1].Markers) != 2 || pal[1].Markers[0] != 19 {
+		t.Errorf("marqueurs de famille_b perdus: %+v", pal[1].Markers)
 	}
 	if got := set.ShotEffects()["hinf_ma40_ar"]; got != "ballistic" {
 		t.Errorf("effet de tir mal lu: %q", got)
@@ -54,8 +71,14 @@ func TestLoadReplayLabels_Refus(t *testing.T) {
 		{"version nulle", "[meta]\ntitle_slug=\"x\"\nschema_version=0\n"},
 		{"grenade sans fr", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[grenades]]\nen=\"Frag\"\n"},
 		{"grenade sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[grenades]]\nfr=\"Frag\"\n"},
-		{"capacité non numérique", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[abilities]\n\"abc\"={en=\"A\",fr=\"A\"}\n"},
-		{"capacité sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[abilities]\n\"3\"={fr=\"A\"}\n"},
+		{"rang non numérique", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[1]\n[ability_palettes.ranks]\n\"abc\"={en=\"A\",fr=\"A\"}\n"},
+		{"capacité sans en", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[3]\n[ability_palettes.ranks]\n\"3\"={fr=\"A\"}\n"},
+		{"palette sans id", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nmarkers=[1]\n"},
+		// Une palette sans marqueur ne pourrait JAMAIS etre reconnue : de la donnée morte.
+		{"palette sans marqueur", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\n"},
+		{"palette dupliquée", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"p\"\nmarkers=[1]\n[[ability_palettes]]\nid=\"p\"\nmarkers=[2]\n"},
+		// Un marqueur partagé rendrait le classement ambigu sur tout film qui le montre.
+		{"marqueur partagé", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[[ability_palettes]]\nid=\"a\"\nmarkers=[4]\n[[ability_palettes]]\nid=\"b\"\nmarkers=[4]\n"},
 		{"effet inconnu", "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[shot_effects]\nk=\"laser\"\n"},
 	}
 	for _, c := range cas {

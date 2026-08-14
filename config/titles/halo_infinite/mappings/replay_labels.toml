@@ -51,38 +51,93 @@ en = "Spike"
 fr = "Spike"
 icon = "hud/Spike"
 
-# Capacites d'armure, par index lu dans le record de biped.
+# Capacites d'armure, par PALETTE puis par RANG lu dans le film.
 #
-# TABLE PARTIELLE, ET C'EST PUBLIE COMME TEL : 5 index sont OBSERVES (3, 4, 5, 6, 7),
-# DEUX SEULEMENT SONT NOMMES. Un index absent de cette table s'affiche avec son NUMERO
-# (« capacite inconnue (3) ») — jamais devine, jamais approche par le nom d'une capacite
-# voisine. L'icone suit LE MEME index que le libelle : nom et vignette bougent ensemble.
-# Les 11 vignettes HUD restent au depot sous hud/, pretes pour un index qui se resoudra.
+# POURQUOI UNE PALETTE, ET PAS UNE TABLE UNIQUE (2026-08-14, plan PLAN_RANG_CAPACITE_I48).
+# Le rang que le film transmet est un index dans le groupe de tags `sofd` du match, et ce
+# groupe est CHOISI A L'EXECUTION (RECETTE_LOADOUT §13, composant a `unite+0x268`). Mesure :
+# sur les 46 equipements presents dans au moins deux des 12 `sofd`, 26 gardent leur rang et
+# 20 en changent — le grappin est au rang 4 dans une famille et au rang 20 dans une autre.
+# Une table unique nommerait donc FAUX un film sur deux.
 #
-# POURQUOI 3 ET 6 ONT PERDU LEUR NOM le 2026-08-14 (etape 1 de
-# `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`). Deux sources se contredisent sur eux :
+# RIEN DANS LE FILM NE DESIGNE LA PALETTE — verifie, pas suppose (item 2.1 du plan) : le
+# registre du chunk_00 est bit-a-bit identique d'un film a l'autre pour les noms et les
+# flags de composants, sa longueur ne suit pas les familles (1 973 120 octets aussi bien
+# sur `00162144`, famille A, que sur les trois films de la famille B), et aucun marqueur de
+# groupe de tags (`sofd`, `eqip`, `vcdd`, `uwfa`, `glpa`) n'apparait dans aucun chunk. La
+# palette se DEDUIT donc de la signature du film — cf. `replay/abilities.go`, qui porte la
+# regle et ses chiffres, et qui REFUSE de nommer quand la signature est ambigue.
 #
-#   - le releve Theater du 2026-07-27 joint par slot (VERITE_TERRAIN_INVENTAIRE) donne
-#     3 = mur portatif et 6 = capteur de menace — mais sur UNE observation isolee chacun ;
-#   - la palette `sofd` du binaire (RECETTE_LOADOUT §13, « fait foi ») donne mur = rang 2,
-#     detecteur = rang 1, repulseur = rang 6, et dit que le rang 3 N'EST PAS une capacite.
+# TABLES PARTIELLES, ET C'EST PUBLIE COMME TEL : un rang absent de la palette retenue
+# s'affiche avec son NUMERO (« capacite inconnue (10) ») — jamais devine, jamais approche
+# par le nom d'une capacite voisine. L'icone suit LE MEME rang que le libelle : nom et
+# vignette bougent ensemble.
+
+# --- FAMILLE A ---------------------------------------------------------------------
+# Les trois `sofd` de cette famille (d91958af 27 entrees, 03137359 19, 13c097ed 17) ont un
+# prefixe rigoureusement identique sur les rangs 0 a 9, et c'est la seule famille
+# compatible avec un jeu de capacites de joueur (RECETTE_LOADOUT §13).
 #
-# Les index 4 et 5 sont, eux, confirmes DEUX FOIS : par un controle de groupe (trois
-# grappins et trois propulseurs, valeur identique a l'interieur de chaque triplet) ET par
-# la palette. Ils restent nommes.
+# SOURCE DES NOMS : l'inversion murmur3 des identifiants de chaine du `sofd`, recoupee avec
+# l'enumeration d'equipement de l'executable. C'est la table DU JEU, lue — d'une autre
+# nature qu'une observation d'ecran, et c'est la source qui a fait RETIRER deux noms le
+# 2026-08-14 (elle contredisait deux observations isolees). Une source assez sure pour
+# retirer un nom l'est pour en donner un ; l'inverse serait incoherent.
 #
-# La regle du depot tranche le reste : « un controle de groupe vaut, un temoignage isole
-# ne vaut pas » (RECETTE_LOADOUT §2). Une lecture contestee s'affiche donc SANS NOM plutot
-# qu'avec un faux. Cout mesure de ce choix, publie : 605 lectures sur 1702 (35,5 %),
-# 12 films sur les 19 qui rendent des lectures (balayage de 40 films du cache, instrument
-# `internal/analysis/replay/i48_ability_width_test.go`).
+# NE SONT PAS NOMMES, et le rang s'affiche seul :
+#   - 0 (`mobility_sprint`, la course) et 7 (`melee_default`) : categorie NULLE, ce ne sont
+#     pas des capacites — les nommer mettrait « course » sur une fiche d'equipement ;
+#   - 3 : categorie nulle egalement, son `eqip` ne reference qu'un systeme de marquage ;
+#   - 10, et les rangs 13 a 22, 24 a 26 : identifiants de chaine NON inverses. Le rang 10
+#     est pourtant OBSERVE 67 fois sur le corpus — c'est le premier trou a combler.
+[[ability_palettes]]
+id = "famille_a"
+# markers : les rangs dont l'observation SIGNE cette palette. Ils sont disjoints de ceux de
+# la famille B, et c'est ce qui rend le classement possible. Le rang 23 en fait partie : il
+# est observe sur les trois films de famille A qui le montrent (35, 35, 15 lectures) et sur
+# AUCUN film de famille B.
+markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
+
+[ability_palettes.ranks]
+"1"  = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor" }
+"2"  = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall" }
+"4"  = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
+"5"  = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
+"6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor" }
+"8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage" }
+"9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield" }
+"11" = { en = "Quantum Translocator", fr = "translocateur quantique", icon = "hud/QuantumTranslocator" }
+"12" = { en = "Threat Seeker", fr = "traqueur de menaces", icon = "hud/ThreatSeeker" }
+# 23 est le SEUL rang confirme par DEUX chaines : l'inversion murmur3 ET la banque sonore
+# `sb_007_abl_repairfield`, atteinte depuis ce rang a la distance la plus courte.
+"23" = { en = "Repair Field", fr = "champ de reparation", icon = "hud/RepairField" }
+
+# --- FAMILLE B ---------------------------------------------------------------------
+# Cette famille n'expose que les rangs 19 a 22, et AUCUN rang inferieur a 13 : mesure sur
+# `000d5950` (82 identites), `00502e52` (65) et `07aa428d` (42), toutes dans cette bande.
+# Ses identifiants de chaine ne sont PAS inverses — les deux noms ci-dessous ne viennent
+# donc pas du binaire mais du terrain.
 #
+# SOURCE DES NOMS, et pourquoi DEUX SEULEMENT. Le releve Theater du 2026-07-27 sur
+# `000d5950` nomme l'equipement des huit joueurs. Trois portaient un grappin et trois un
+# propulseur : ces deux-la ont un CONTROLE DE GROUPE (trois lectures identiques a
+# l'interieur de chaque triplet, et les deux triplets mutuellement distincts), plus un
+# SECOND canal independant — i48 rend 20 sur les slots 513 et 516 (grappins) et 21 sur le
+# slot 518 (propulseur), sans qu'aucune information du releve n'entre dans cette lecture.
+#
+# LE MUR (19) ET LE CAPTEUR (22) NE SONT PAS NOMMES : une seule observation chacun, sur un
+# seul joueur. « Un controle de groupe vaut, un temoignage isole ne vaut pas »
+# (RECETTE_LOADOUT §2) — et c'est exactement cette regle qui avait deja tort de les nommer.
 # CE QUI LES RESTAURERAIT, et c'est bon marche : un SECOND releve Theater nommant
-# l'equipement d'un joueur dont la lecture vaut 3 ou 6, sur un autre film que 000d5950.
-# Deux observations concordantes font un controle de groupe. Ligne au REGISTRE_REPORTS.
-[abilities]
-"4" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
-"5" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
+# l'equipement d'un joueur dont la lecture vaut 19 ou 22, sur un autre film que `000d5950`.
+# Ligne au REGISTRE_REPORTS.
+[[ability_palettes]]
+id = "famille_b"
+markers = [19, 20, 21, 22]
+
+[ability_palettes.ranks]
+"20" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
+"21" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
 
 # Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
 #
