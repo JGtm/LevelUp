@@ -48,24 +48,27 @@ import (
 
 const i48FilmEnv = "I48_FILM"
 
-// i48Index est l'index d'itérateur du composant biped-desired-ability-set-component dans
-// l'archétype biped (cf. components_biped_ability.go, section i48).
-const i48Index = 48
-
-// i48CounterBits / i48RankBits : la grammaire de FUN_1406d0ff0, dans l'ordre du flux.
-// La porte est INVERSÉE (consumeGate0R) : le rang n'est présent que si son bit vaut 0.
-const (
-	i48CounterBits = 3
-	i48RankBits    = 6
-)
-
-// i48Sample est une lecture d'i48 localisée dans le film. `rank` vaut -1 quand la porte
-// vaut 1 : le film ne transmet alors PAS d'identité, et c'est une valeur, pas un trou.
+// i48Sample est une lecture d'i48 localisée dans le film. `rank` vaut AbilitySetNoRank
+// quand la porte vaut 1 : le film ne transmet alors PAS d'identité, et c'est une valeur,
+// pas un trou.
 type i48Sample struct {
 	slot    uint32
 	tsUS    uint64
 	counter uint32
 	rank    int
+}
+
+// i48HookCapture retient la DERNIÈRE publication d'`abilitySetHook`. L'instrument lit i48
+// deux fois par record — une fois À LA MAIN (readBitsAt sur la grammaire écrite ici), une
+// fois PAR LE DÉSERIALISEUR DE PRODUCTION (consumeByName, qui déclenche le hook) — et exige
+// que les deux disent la même chose. C'est en cela qu'il est le témoin de non-régression du
+// hook : si le déser cessait de publier le rang, ou le publiait décalé, le désaccord
+// sortirait sur chaque lecture au lieu de passer inaperçu.
+type i48HookCapture struct {
+	counter uint32
+	rank    int
+	width   int
+	got     bool
 }
 
 func TestI48PaletteRank(t *testing.T) {
@@ -92,12 +95,27 @@ func TestI48PaletteRank(t *testing.T) {
 	arch := i48Archetype(t, dir)
 	t.Logf("composant %d du registre biped : %q", i48Index, arch.component(i48Index))
 
-	samples, st := i48Scan(dir, chunks, slots, lay, arch)
+	// Le hook de production publie pendant la marche ; la lecture à la main le contrôle.
+	cap := &i48HookCapture{}
+	prev := abilitySetHook
+	SetAbilitySetHook(func(counter uint64, rank, width int) {
+		cap.counter, cap.rank, cap.width, cap.got = uint32(counter), rank, width, true
+	})
+	defer SetAbilitySetHook(prev)
+
+	samples, st := i48Scan(dir, chunks, slots, i48Walk{lay: lay, arch: arch, hook: cap})
 	if st.records == 0 {
 		t.Fatal("aucun record delta biped reconnu : rien à mesurer")
 	}
 	t.Logf("RECORDS delta biped %d · masque∋i48 %d (%.2f %%) · i48 LU %d · i48 illisible %d",
 		st.records, st.withI48, 100*float64(st.withI48)/float64(st.records), st.read, st.unread)
+	if st.hookMissing > 0 || st.hookMismatch > 0 {
+		t.Errorf("TÉMOIN DU HOOK EN DÉFAUT : %d lectures sans publication, %d en désaccord "+
+			"avec la lecture à la main (sur %d) — le déserialiseur ne publie plus ce qu'il lit",
+			st.hookMissing, st.hookMismatch, st.read)
+	} else {
+		t.Logf("témoin du hook : %d/%d lectures publiées et CONCORDANTES", st.read, st.read)
+	}
 	if len(samples) == 0 {
 		t.Log("VERDICT : aucune lecture d'i48 exploitable — la marche n'atteint pas le composant")
 		return
@@ -110,6 +128,17 @@ func TestI48PaletteRank(t *testing.T) {
 // rangs ne se juge pas.
 type i48Stats struct {
 	records, withI48, read, unread int
+	// hookMissing / hookMismatch : contrôle du déserialiseur de production contre la lecture
+	// à la main. Tous deux doivent rester à zéro.
+	hookMissing, hookMismatch int
+}
+
+// i48Walk porte ce que la marche d'un record doit connaître. Regroupé en structure pour
+// tenir la règle des cinq paramètres.
+type i48Walk struct {
+	lay  I0Layout
+	arch Archetype
+	hook *i48HookCapture
 }
 
 // i48Archetype charge l'archétype biped du registre du film (chunk_00).
@@ -131,13 +160,12 @@ func i48Archetype(t *testing.T, dir string) Archetype {
 }
 
 // i48Scan parcourt les paquets delta et lit i48 partout où le masque l'annonce.
-func i48Scan(
-	dir string, chunks []int, slots map[uint32]bool, lay I0Layout, arch Archetype,
-) ([]i48Sample, i48Stats) {
+func i48Scan(dir string, chunks []int, slots map[uint32]bool, w i48Walk) ([]i48Sample, i48Stats) {
 	var (
 		out []i48Sample
 		st  i48Stats
 	)
+	lay := w.lay
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
 		data, err := ReadFilmChunk(dir, c)
@@ -157,10 +185,11 @@ func i48Scan(
 					continue
 				}
 				st.records++
-				if i48InMask(idx) {
+				if maskHasI48(idx) {
 					st.withI48++
-					if s, got := i48WalkRecord(pay, i0, total, idx, lay, arch); got {
+					if s, got := w.record(pay, i0, total, idx); got {
 						st.read++
+						w.checkHook(s, &st)
 						s.slot, s.tsUS = slot, pk.TimestampUS
 						out = append(out, s)
 					} else {
@@ -174,24 +203,33 @@ func i48Scan(
 	return out, st
 }
 
-// i48InMask dit si le masque du record annonce le composant i48.
-func i48InMask(idx []int) bool {
-	for _, id := range idx {
-		if id == i48Index {
-			return true
-		}
+// checkHook confronte la lecture à la main à ce que le déserialiseur de production a publié
+// pour le MÊME champ. C'est le contrôle de non-régression du hook.
+func (w i48Walk) checkHook(s i48Sample, st *i48Stats) {
+	if !w.hook.got {
+		st.hookMissing++
+		return
 	}
-	return false
+	if w.hook.counter != s.counter || w.hook.rank != s.rank {
+		st.hookMismatch++
+	}
 }
 
-// i48WalkRecord marche les composants du masque avec les désers de PRODUCTION et lit i48 en
-// clair : R(3) compteur, R(1) porte, puis R(6) rang si la porte vaut 0. Rend got=false dès
-// qu'un composant intermédiaire n'est pas porté ou que la marche déborde du payload — la
-// position du curseur ne serait plus digne de confiance.
-func i48WalkRecord(
-	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype,
-) (s i48Sample, got bool) {
-	s.rank = -1
+// arch48Name est l'étiquette de registre d'i48 — celle par laquelle consumeByName route vers
+// consumeBipedDesiredAbilitySet (cf. components_biped_ability.go).
+const arch48Name = "biped-desired-ability-set-component"
+
+// record marche les composants du masque avec les désers de PRODUCTION et lit i48 en clair :
+// R(3) compteur, R(1) porte, puis R(6) rang si la porte vaut 0. Rend got=false dès qu'un
+// composant intermédiaire n'est pas porté ou que la marche déborde du payload — la position
+// du curseur ne serait plus digne de confiance.
+//
+// i48 EST LU DEUX FOIS : à la main ci-dessous, puis par consumeByName — qui déclenche le
+// hook de production. Les deux lectures partent du même bit et doivent rendre le même couple
+// (compteur, rang) ; c'est ce qui fait de cet instrument le témoin du hook.
+func (w i48Walk) record(pay []byte, i0, total int, idx []int) (s i48Sample, got bool) {
+	lay, arch := w.lay, w.arch
+	s.rank = AbilitySetNoRank
 	at := i0 + lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		if at > total {
@@ -208,6 +246,11 @@ func i48WalkRecord(
 				}
 				s.rank = int(readBitsAt(pay, at+i48CounterBits+1, i48RankBits))
 			}
+			// Seconde lecture, par le déserialiseur de production : elle publie via le hook.
+			w.hook.got = false
+			br := NewBitReader(pay)
+			br.SetBitPos(at)
+			consumeByName(br, arch48Name, uint32(BipedTypeIndex), arch.Level(id))
 			return s, true
 		}
 		name := arch.component(id)

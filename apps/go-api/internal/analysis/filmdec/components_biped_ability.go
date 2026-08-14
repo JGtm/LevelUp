@@ -26,6 +26,19 @@ func consumeBipedDesiredGrenadeSet(br *BitReader) {
 //   Sibling of i42 biped-desired-weapon-set (FUN_1406d01fc); same descriptor layout.
 // ---------------------------------------------------------------------------
 
+// AbilitySetNoRank est la valeur de rang publiée quand la porte d'i48 vaut 1 : le film ne
+// transmet PAS d'identité sur cette lecture. C'est une valeur, pas un trou — la distinguer
+// d'un rang réel est le seul moyen de ne pas inventer une capacité portée.
+const AbilitySetNoRank = -1
+
+// i48CounterBits / i48RankBits : les deux largeurs de la grammaire de FUN_1406d0ff0, dans
+// l'ordre du flux. Nommées parce qu'elles servent AUSSI au balayage (ability_rank.go) et à
+// son instrument : trois copies du littéral 6 auraient re-divergé.
+const (
+	i48CounterBits = 3
+	i48RankBits    = 6
+)
+
 // consumeBipedDesiredAbilitySet mirrors FUN_1406d0ff0:
 //
 //	FUN_1406d0f20 = R(3)                      (unconditional)
@@ -35,21 +48,32 @@ func consumeBipedDesiredGrenadeSet(br *BitReader) {
 // the decompile (FUN_1406d0f20 advances the bit counter by 3; FUN_1406d1024 by 6
 // only on the gate==0 branch — see consumeGate0R). Do NOT use consumeGateR here:
 // that inverts the gate and desyncs by 6 bits whenever the gate is 0.
+//
+// LE R(6) N'EST PLUS JETÉ (2026-08-14, plan PLAN_RANG_CAPACITE_I48 étape 1.1). Le déser
+// consommait ces six bits pour rester aligné et les abandonnait ; ils portent l'IDENTITÉ de
+// la capacité — le rang dans la palette `sofd` du match (RECETTE_LOADOUT §9 : octet 0xA34 =
+// compteur, octet 0xA35 = identité). La lecture ci-dessous est le MÊME parcours de bits que
+// `consumeGate0R(br, 6)`, écrit à plat pour pouvoir publier ce qu'il lit : la porte est
+// INVERSÉE (le rang n'est présent que si son bit vaut 0), et le coût reste 4 ou 10 bits.
 func consumeBipedDesiredAbilitySet(br *BitReader) {
-	v := br.ReadBits(3) // FUN_1406d0f20 = R(3)
+	counter := br.ReadBits(i48CounterBits) // FUN_1406d0f20 = R(3) compteur de rotation
 	start := br.BitPos()
-	consumeGate0R(br, 6) // FUN_1406d1024 = R(1) gate; if bit==0 R(6)
+	rank := AbilitySetNoRank
+	if !br.ReadBit() { // FUN_1406d1024 = R(1) porte, polarité INVERSÉE
+		rank = int(br.ReadBits(i48RankBits)) // R(6) = identité (rang de palette)
+	}
 	if abilitySetHook != nil {
-		abilitySetHook(v, br.BitPos()-start+3)
+		abilitySetHook(counter, rank, br.BitPos()-start+i48CounterBits)
 	}
 }
 
-// abilitySetHook, si non nil, reçoit la valeur R(3) d'i48 et la largeur totale consommée.
-// Sonde de mesure uniquement (témoin Slayer, cmd/tmp_i22check) : le déser est inchangé.
-var abilitySetHook func(value uint64, width int)
+// abilitySetHook, si non nil, reçoit d'i48 : la valeur R(3) (compteur de rotation), le RANG
+// de palette R(6) — ou AbilitySetNoRank quand la porte est fermée — et la largeur totale
+// consommée. Le déser reste inchangé bit pour bit : le hook ne fait que publier.
+var abilitySetHook func(counter uint64, rank int, width int)
 
 // SetAbilitySetHook installe (ou retire, avec nil) la sonde de lecture d'i48.
-func SetAbilitySetHook(h func(value uint64, width int)) { abilitySetHook = h }
+func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySetHook = h }
 
 // ---------------------------------------------------------------------------
 // i49 biped-control-context-component  (deser FUN_14107166c)
