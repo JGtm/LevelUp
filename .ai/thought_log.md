@@ -880,6 +880,26 @@ normalisees (3 matchs, condition de reprise = preuve meme-level_id comme Heavies
 utilisateur : 6 PNG copies dans `Desktop/gate_cartes_v75/lot1_bornes/` (l'AVANT est un 404,
 pas une image). Suite du chantier cartes : lots suivants du superviseur (toits, cartes v2).
 
+## [2026-08-14] v7.5 — la cle de la file de construction est classee au garde-fou des query keys
+
+**Statut** : Complete.
+
+**Decision technique principale** : le lot monitoring/ouvrier a ajoute la query key
+`adminMonitoringBuildQueue` sans la classer, et le garde-fou `keys.title-slug.guard`
+a rougi en CI (job Frontend) — c'est son role : toute cle doit etre declaree
+title-scopee OU agnostique AVEC justification. Classee AGNOSTIQUE, meme famille que
+les autres `adminMonitoring*` : la console admin lit la file ENTIERE, tous titres
+confondus, et un job porte son titre en DONNEE — ce n'est pas une vue de joueur
+susceptible de fuir d'un titre a l'autre au switch. Justification ecrite a cote de
+l'entree, comme l'exige le fichier.
+
+**Resultats observes** : `keys.title-slug.guard.test.ts` vert (2/2).
+
+**Conclusion / prochaine etape** : push, verdict CI au niveau job. Lecon pour les lots
+suivants : un lot qui ajoute une query key joue AUSSI ce garde-fou (il vit dans
+`src/lib/query/`, pas dans le dossier de la feature — un `vitest run src/features/...`
+ne le voit pas).
+
 ## [2026-08-14] v7.5 — le compte de champs du contrat de rejeu passe a 27 (lot 7)
 
 **Statut** : Complete.

@@ -170,6 +170,11 @@ const agnosticKeys = new Set<string>([
   'adminMonitoringFreshness',
   'adminMonitoringResources',
   'adminMonitoringCrons',
+  // File de construction des rejeux (piste F, 2026-08-14) : la console admin la lit
+  // ENTIERE, tous titres confondus — un job y porte son propre titre en donnée, ce
+  // n'est pas une vue de joueur qui pourrait fuir d'un titre à l'autre. Même famille
+  // que les autres clés adminMonitoring* ci-dessus.
+  'adminMonitoringBuildQueue',
   'adminActionJournal',
   'adminWeaponCoverage',
   'adminLusrGaps',
