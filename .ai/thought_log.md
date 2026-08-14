@@ -1,3 +1,38 @@
+## [2026-08-14] v7.5 rang de capacite — le deserialiseur cesse de JETER l identite (etape 1.1)
+
+**Statut** : En cours — etape 1.1 du plan `.ai/V7.5/replay2d/PLAN_RANG_CAPACITE_I48.md`.
+
+**Decision technique principale**. `consumeBipedDesiredAbilitySet` (i48) reproduisait
+`FUN_1406d0ff0` bit pour bit — R(3) compteur, R(1) porte, R(6) identite — mais consommait
+les six bits de l identite pour rester aligne et les ABANDONNAIT ; le hook ne publiait que
+le R(3) et la largeur. Le `consumeGate0R(br, 6)` est reecrit a plat, MEME parcours de bits,
+pour publier ce qu il lit : `abilitySetHook(counter, rank, width)`, `rank` valant
+`AbilitySetNoRank` (-1) quand la porte est ouverte. Nouveau balayage de production
+`filmdec.ScanFilmAbilityRanks` : il installe le hook, marche les composants du masque avec
+les desers de production jusqu a consommer i48, et n emet QUE les lectures porteuses d une
+identite. Un seul lecteur du champ : c est le deserialiseur qui publie, on ne relit pas les
+bits a cote de lui.
+
+**Resultats observes**. Test pur (sans film, donc valable en CI) :
+`ability_rank_test.go` verrouille le cout en bits — 4 porte ouverte, 10 porte fermee — et la
+valeur publiee sur cinq cas. Instrument sur film reel (`I48_FILM=000d5950`, 21 Mo, 5,5 s,
+memoire negligeable) : **171 851 records delta biped, 92 annonces d i48, 92 LUES, 0
+illisible** ; le nouveau temoin du hook — i48 lu DEUX fois par record, a la main puis par
+`consumeByName` — donne **92/92 concordantes**. Rangs transmis : `19:18 20:22 21:26 22:16`,
+plus 10 lectures a porte ouverte (10,9 %). Aucun rang < 13 : la signature du film est bien
+celle que la RECETTE §14 annonce, et non la famille A.
+
+**Corroboration du facteur 16, sur pieces**. Le releve Theater du 2026-07-27 nomme les slots
+de ce film via le canal d image-cle (index 3 mur, 4 grappin, 5 propulseur, 6 capteur). i48
+rend sur les memes slots : 513 et 516 (grappins) -> rang **20**, 518 (propulseur) -> **21**,
+517 (mur, premiere lecture) -> **19**. Soit `rang = index + 16` sur trois valeurs
+independantes — l ancre du canal d image-cle se termine par `010`, les bits de POIDS FORT du
+rang, elle ne voit donc que 16..23.
+
+**Conclusion / prochaine etape**. Etape 1.2 : faire remonter le rang jusqu au document de
+rejeu. Le rang complet et l index tronque ne sont PAS la meme grandeur — le champ change de
+sens, donc de nom, avec bump de `SchemaVersion`.
+
 ## [2026-08-14] v7.5 containment — l horloge du croisement etait un DECALAGE LU, pas un retard a estimer
 
 **Statut** : Complete — **verdict NEGATIF chiffre, aucune persistance** (gate 4.1 non franchi).
