@@ -36,10 +36,18 @@ type result struct {
 	identified int
 	actions    []replay.ObjectiveAction
 	nullAction []replay.ObjectiveAction
-	tracks     []replay.Track
-	zones      []replay.Zone
-	frameCount int
-	err        error
+	// corrected / correctedNull : les MEMES evenements reposes sur l'axe du rejeu apres
+	// retrait de l'origine publiee par l'artefact (cf. correctedActions). Vides quand le
+	// film ne publie pas d'origine — on ne devine jamais une correction.
+	corrected     []replay.ObjectiveAction
+	correctedNull []replay.ObjectiveAction
+	originMS      int64
+	hasOrigin     bool
+	tracks        []replay.Track
+	zones         []replay.Zone
+	roster        []replay.RosterEntry
+	frameCount    int
+	err           error
 }
 
 // zoneStats : les statistiques d'objectif du mode a zones. Les frags et assistances sont
@@ -85,9 +93,75 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 		return res
 	}
 	res.actions, res.tracks, res.zones = doc.Objectives, doc.Tracks, m.zones.Zones
+	res.roster = doc.Roster
 	res.frameCount = doc.FrameCount
 	res.nullAction = shiftBy(doc.Objectives, doc.FrameCount, nullShiftFrames)
+	if doc.OriginMs != nil {
+		res.originMS, res.hasOrigin = *doc.OriginMs, true
+		res.corrected = correctedActions(identified, *doc.OriginMs,
+			doc.FrameIntervalMS, doc.FrameCount, doc.Tracks)
+		res.correctedNull = shiftBy(res.corrected, doc.FrameCount, nullShiftFrames)
+	}
 	return res
+}
+
+// correctedActions repose les evenements identifies sur l'axe de temps du rejeu en
+// retranchant l'ORIGINE PUBLIEE PAR L'ARTEFACT.
+//
+// # Pourquoi cette fonction existe
+//
+// Les deux entrees du croisement ne vivent pas sur la meme horloge, et le decalage est
+// LU, pas estime :
+//
+//	les actions   TimeMS = ms depuis le PREMIER PAQUET DU FILM (horloge du manifeste,
+//	              `objectiveevents.StatRecords` : `meta.StartMS + (f.us - base)/1000`) ;
+//	les positions Point.T = frame depuis le PREMIER PAQUET DE POSITION
+//	              (`build.go` : `origin = sorted[0].TimestampUS`).
+//
+// L'ecart entre ces deux zeros est exactement ce que l'artefact publie sous `originMs`
+// (origin.go), mesure de 3,6 s a 50,8 s selon le match. `buildObjectiveActions` divise
+// TimeMS par le pas de grille SANS le retrancher : les actions sont donc posees
+// `originMs` TROP TARD sur l'axe du rejeu. C'est ce que le balayage d'horloge du lot 4
+// voyait comme un « retard » de signe negatif, et pourquoi trois films sur huit piquaient
+// sur la borne de -10 s : leur origine la depassait.
+//
+// La reconstruction repart des evenements IDENTIFIES plutot que des actions deja posees :
+// celles-ci ont perdu, dans `buildObjectiveActions`, tout ce qui tombait au-dela de la
+// derniere frame — c'est-a-dire precisement les actions de fin de match que la correction
+// ramene dans la fenetre. Post-decaler la sortie les laisserait dehors.
+//
+// Le filtre par track publiee reproduit `dropUnpublishedActions` : sans lui, la comparaison
+// AVANT/APRES ne porterait pas sur le meme denominateur.
+func correctedActions(evs []objectiveevents.IdentifiedEvent, originMS int64,
+	intervalMS, frameCount int, tracks []replay.Track) []replay.ObjectiveAction {
+	if intervalMS <= 0 || frameCount <= 0 {
+		return nil
+	}
+	published := map[string]bool{}
+	for _, t := range tracks {
+		if t.XUID != "" {
+			published[t.XUID] = true
+		}
+	}
+	out := make([]replay.ObjectiveAction, 0, len(evs))
+	for _, e := range evs {
+		if e.XUID == "" || !published[e.XUID] {
+			continue
+		}
+		// Une action ANTERIEURE au premier paquet de position n'a pas de frame : la division
+		// entiere de Go tronquant vers zero, la tester avant division evite de la poser sur
+		// la frame 0 comme si elle y avait eu lieu.
+		rel := int64(e.TimeMS) - originMS
+		if rel < 0 {
+			continue
+		}
+		t := int(rel / int64(intervalMS))
+		if t >= frameCount {
+			continue
+		}
+		out = append(out, replay.ObjectiveAction{T: t, XUID: e.XUID, Stat: e.Stat, TimeMS: e.TimeMS})
+	}
+	return out
 }
 
 // shiftBy rend les MEMES actions posees `delta` frames plus loin, en enroulant sur la

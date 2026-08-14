@@ -29,10 +29,66 @@ type sweepRow struct {
 
 func printResults(res []result, tune runTuning) {
 	printPerMatch(res, tune)
+	printOriginCorrection(res, tune)
 	rows := sweep(res, tune)
 	printSweep(rows)
 	printClockSweep(res, tune)
+	printAgreement(res, tune)
 	printDiagnostics(res)
+	if tune.dump {
+		printActionDump(res, tune)
+	}
+}
+
+// printOriginCorrection publie le AVANT/APRES de la correction d'horloge LUE.
+//
+// Ce n'est PAS un balayage : aucun decalage n'est cherche, celui du film est applique
+// (cf. correctedActions). La colonne « temoin » reste la garde — une correction qui
+// remonterait AUSSI le temoin temporel ne mesurerait qu'un relachement, pas un recalage.
+func printOriginCorrection(res []result, tune runTuning) {
+	fmt.Println("CORRECTION D'HORLOGE — origine LUE de l'artefact appliquee aux instants (aucun balayage)")
+	fmt.Printf("%-9s %-14s %9s %6s %6s %6s %6s %7s %7s %7s %7s\n",
+		"film", "carte", "originMs", "posAV", "dansAV", "posAP", "dansAP",
+		"dehorsAP", "sansPosAP", "tauxAV", "tauxAP")
+	var totAV, totAP, totNull replay.ZoneCoverage
+	sansOrigine := 0
+	for _, r := range res {
+		if r.err != nil {
+			continue
+		}
+		if !r.hasOrigin {
+			sansOrigine++
+			fmt.Printf("%-9s %-14s %9s (origine non publiee — non corrigeable)\n",
+				r.m.short, r.m.mapName, "-")
+			continue
+		}
+		_, av := r.attribute(r.actions, r.zones, tune.maxGap, 0)
+		_, ap := r.attribute(r.corrected, r.zones, tune.maxGap, 0)
+		_, nu := r.attribute(r.correctedNull, r.zones, tune.maxGap, 0)
+		totAV, totAP, totNull = addCoverage(totAV, av), addCoverage(totAP, ap), addCoverage(totNull, nu)
+		fmt.Printf("%-9s %-14s %9d %6d %6d %6d %6d %7d %7d %6.1f%% %6.1f%%\n",
+			r.m.short, r.m.mapName, r.originMS,
+			av.Actions, av.Attributed, ap.Actions, ap.Attributed, ap.Outside, ap.NoPosition,
+			pct(av), pct(ap))
+	}
+	fmt.Printf("%-9s %-14s %9s %6d %6d %6d %6d %7d %7d %6.1f%% %6.1f%%\n",
+		"TOTAL", "", "", totAV.Actions, totAV.Attributed, totAP.Actions, totAP.Attributed,
+		totAP.Outside, totAP.NoPosition, pct(totAV), pct(totAP))
+	fmt.Printf("  temoin temporel APRES correction : %.1f%%  (rapport reel/temoin %s)\n",
+		pct(totNull), ratioOf(pct(totAP), pct(totNull)))
+	if sansOrigine > 0 {
+		fmt.Printf("  %d film(s) sans origine publiee : exclus du APRES, comptes nulle part ailleurs\n",
+			sansOrigine)
+	}
+	fmt.Println()
+}
+
+// ratioOf rend le rapport signal/temoin, ou « inf » quand le temoin est nul.
+func ratioOf(real, witness float64) string {
+	if witness <= 0 {
+		return "inf"
+	}
+	return fmt.Sprintf("%.1f", real/witness)
 }
 
 // clockOffsets : decalages appliques a l'INSTANT des actions, en frames de 100 ms.
