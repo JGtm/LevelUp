@@ -53,7 +53,10 @@ replaybuild, killicon, killsource, handlers, service, halo_infinite verts ; vet 
 golangci-lint `--new-from-merge-base=origin/main` 0 issue. Web : tsc -b (cache .tmp purge)
 OK, eslint 0 sur match-replay, vitest COMPLET 416 fichiers / 3736 tests verts (14 skips
 preexistants) — le garde-rail `replayContract.test.ts` a attrape le tableau nullable de
-plus, exactement ce pour quoi il existe. RE-CUISSON `backfill-replay --only-existing` :
+plus, exactement ce pour quoi il existe. HONNETETE DE GATE : sur quatre passes completes,
+UNE a rendu 1 echec, non reproduit sur les deux suivantes et dont le fichier n a pas ete
+capture — aucune conclusion n est tiree d un echec sans nom, la CI reste le gate d autorite.
+RE-CUISSON `backfill-replay --only-existing` :
 23/23 construits, 0 hors catalogue, 0 erreur, 30 min 56 s. Recolte sur les 23 artefacts :
 6 morts neutres typees sur 4 matchs (4 `environment`, 2 `suicide`), 0 xuid nul, 0 doublon.
 Le Strongholds `696a9d7c` en apporte une qui n etait PAS au corpus de mesure — la voie
