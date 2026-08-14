@@ -65031,3 +65031,24 @@ et les trois refus du PATCH.
 **Conclusion / prochaine etape** : la chaine est complete de bout en bout en local. Reste hors
 perimetre et note au registre : deploiement du 2e VPS, purge locale de l'ouvrier distant,
 plusieurs ouvriers en parallele.
+
+## [2026-08-14] Transport de l'artefact — gate final : un VRAI ouvrier, un VRAI film, l'artefact qui arrive
+**Statut** : Complété (gate final du `.ai/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
+**Decision technique** : la preuve du protocole (artefact fabrique a la main) ne suffisait pas —
+le gate demandait « un ouvrier lance a la main qui construit ». Test `integration && cgo` qui
+COMPILE `cmd/replay-worker`, le LANCE en `--once` contre les vraies routes montees, avec un faux
+CDN qui sert les morceaux du cache film COMPRESSES en zlib (comme Azure). Isolation stricte : le
+binaire recoit un depot A LUI (copie des seules references — bornes, libelles, geometrie,
+structures : 1,5 Mo) et un dossier de travail temporaire ; le depot de l'utilisateur n'est que
+LU, jamais ecrit — son cache film est une archive irremplacable et ses artefacts ne sont pas
+touches. Saut automatique si le film temoin n'est pas en cache (CI, poste neuf).
+**Resultats** : PASS en 93,8 s. Job enfile, pris par HTTP, 28 morceaux telecharges et
+decompresses, film decode (`ridgeline`), artefact de **2 195 683 octets / 99 trajectoires /
+4 985 frames** pousse, range cote serveur, **a l'octet identique a celui construit**, lu par
+`service.NewReplayService`, job `succeeded` (donc le compte rendu a bien trouve le fichier), et
+morceaux de film supprimes par l'ouvrier. Verdicts de couverture du film temoin inchanges
+(tirs nominal, grenades nominal, pont nominal — 483/519 tirs). PIC MEMOIRE MESURE : **121 Mo**
+pour l'ouvrier (surveillance demandee : plafond 2 Go), un seul processus de decodage a la fois.
+**Conclusion / prochaine etape** : la chaine est complete et prouvee de bout en bout en local.
+Quatre lignes au REGISTRE_REPORTS (2e VPS, jeton d'ouvrier en prod, purge locale de l'ouvrier
+distant, plusieurs ouvriers en parallele jamais mesures).
