@@ -64717,3 +64717,35 @@ reste portee (GrenadeRestFx.rest) sans conditionner le rendu.
 Decouverte consignee au plan (le « 78/79 » du POC comptait tous projectiles, pas les
 grenades liees).
 **Conclusion** : lot 2 reste CLOS ; gate visuel user inchange.
+
+## [2026-08-14] Capacites d'armure — plan actualise, etapes 1 et 2 CLOSES, gate 3 ECHOUE
+**Statut** : Complété (1.1-1.4 [x] · 2.1 [x] 2.2 [x] 2.3 [!] · 3.1 [~] 3.2 [~] 3.3 [!] 3.4 [!] ·
+4.1-4.3 [!] 4.4 [x])
+**Decision technique** : actualiser `PLAN_CAPACITES_ACTIVES.md` (date du 31/07) AVANT de
+l'executer — `i57` y etait « absent du switch » alors qu'il est porte depuis, et refute comme
+interrupteur ; l'etape 3 a ete reecrite sur l'hypothese contestee au registre (l'identite n'a
+pas besoin de voyager avec l'evenement `i54`, elle est deja lue a l'image-cle ; reste a prouver
+que l'episode est un usage, temoin = l'energie `i56`). Deux instruments versionnes, gardes par
+variable d'environnement, sautes en CI : `replay/i48_ability_width_test.go` (largeur du champ
+de capacite + couverture) et `filmdec/i56_energy_test.go` (correlation `i54` x `i56`).
+**Resultats** :
+- ETAPE 1 — l'hypothese des 6 bits est REFUTEE. 236 lectures a ancre unique sur 2 films :
+  `prod3` 100 % des valeurs dans [0,11) et 6/8 contre la verite terrain ; les trois
+  elargissements 0 % et 0/8. Et la prediction de RECETTE_LOADOUT §9 etait en partie
+  INFALSIFIABLE : le « bit de porte a 0 partout » (236/236) est un bit INTERIEUR au motif
+  d'ancrage, constant par construction ; les 3 bits ajoutes valent `010` pour la meme raison,
+  d'ou `large6 = 16 + prod3` — elargissement arithmetiquement trivial.
+- ETAPE 2 — la table reste a 4 entrees, volontairement. Balayage de 14 films (un `go test` par
+  film) : 6 rendent des lectures, 742 au total, et le film `00ba2e1c` sort un index **7**
+  jamais vu, sur ses 85 lectures et lui seul. Couverture 657/742 = 88,5 %. Rien n'est ajoute :
+  observe n'est pas identifie. Item 2.2 verifie deja fait le 02/08 (table en TOML de titre).
+- ETAPE 3 — GATE ECHOUE, aucun effet simule. Coincidence reelle 3/67 = 4,5 % contre temoins
+  decales 0,0 % et 3,0 % : le reel n'ecrase rien. Cause mesuree : `i56` n'est transmis que
+  176 fois sur 171 851 records delta (0,10 %), d'ou 28 chutes lisibles pour 67 episodes — une
+  relation parfaite plafonnerait a 41,8 %. ACQUIS malgre l'echec : les 176 valeurs sont toutes
+  multiples de 16 et les 28 chutes portent toutes sur le quartet de poids fort — l'encodage
+  discret de RECETTE_LOADOUT §9 est confirme par une voie independante du decompile.
+- ETAPE 4 — non executee, le gate 3 l'interdit ; aucun code d'affichage ecrit.
+**Conclusion / prochaine etape** : 4 lignes au REGISTRE_REPORTS avec leurs conditions de
+reprise. La plus courte et la moins chere : ouvrir `00ba2e1c` en Theater et lire l'equipement
+d'un joueur — une observation nomme l'index 7.
