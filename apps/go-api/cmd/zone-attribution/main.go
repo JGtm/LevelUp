@@ -53,9 +53,15 @@ func main() {
 	matchArg := flag.String("match", "", "restreindre a un match (forme courte ou complete)")
 	witness := flag.Float64("witness", defaultWitnessOffsetM, "decalage du temoin negatif, en metres")
 	maxGap := flag.Int("max-gap", replay.DefaultMaxGapFrames, "tolerance position/action, en frames")
+	selectOnly := flag.Bool("select-only", false,
+		"dimensionner le corpus et s'arreter (aucun film decode)")
+	dump := flag.Bool("dump", false,
+		"detailler chaque action (confrontation a un releve terrain)")
 	flag.Parse()
 
-	if err := run(*slug, *cacheDir, *matchArg, runTuning{witness: *witness, maxGap: *maxGap}); err != nil {
+	if err := run(*slug, *cacheDir, *matchArg, runTuning{
+		witness: *witness, maxGap: *maxGap, selectOnly: *selectOnly, dump: *dump,
+	}); err != nil {
 		slog.Error("mesure d'attribution de zone", "err", err)
 		os.Exit(1)
 	}
@@ -66,6 +72,12 @@ func main() {
 type runTuning struct {
 	witness float64
 	maxGap  int
+	// selectOnly arrete apres le dimensionnement du corpus. Le decodage d'un film coute
+	// des dizaines de secondes ; savoir COMBIEN de matchs sont mesurables ne doit pas
+	// exiger de tous les decoder.
+	selectOnly bool
+	// dump detaille chaque action au lieu des seuls agregats (cf. dump.go).
+	dump bool
 }
 
 func run(slug, cacheDir, matchArg string, tune runTuning) error {
@@ -109,6 +121,9 @@ func run(slug, cacheDir, matchArg string, tune runTuning) error {
 	}
 	eligible := r.selectEligible(candidates)
 	printSelection(candidates, eligible, r.rejects)
+	if tune.selectOnly {
+		return nil
+	}
 	for _, m := range eligible {
 		r.results = append(r.results, r.measure(ctx, m))
 	}

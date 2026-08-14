@@ -1,3 +1,71 @@
+## [2026-08-14] v7.5 containment — l horloge du croisement etait un DECALAGE LU, pas un retard a estimer
+
+**Statut** : En cours (etapes 1 a 3 du plan mesurees ; etape 4 a statuer).
+
+**Le constat qui commande l etape 1**. Le rapport du 2026-08-08 avait refuse de persister
+sur trois criteres, dont « la correction d horloge n est pas etablie » : le retard existait
+(8 films sur 8 piquaient a un decalage NEGATIF), mais sa valeur non, et TROIS films sur huit
+piquaient sur la BORNE du balayage (-10 s), donc tronques. Le plan demandait de tester
+d abord, EN LECTURE DE CODE, l hypothese que ce retard soit le decalage d horloge MOTEUR
+resolu au lot 7.2 (`originMs`, mesure de 3,6 s a 50,8 s). Elle est **confirmee sur pieces,
+sans aucun calcul** — les deux entrees d `AttributeZones` ne vivent pas sur la meme horloge :
+
+	les ACTIONS    `objectiveevents.StatRecords` : `TimeMS = meta.StartMS + (f.us - base)/1000`
+	               -> ms depuis le PREMIER PAQUET DU FILM (horloge du manifeste, chunk 1 = 0) ;
+	les POSITIONS  `replay/build.go` : `frame = (p.TimestampUS - origin) / step` avec
+	               `origin = sorted[0].TimestampUS` -> le PREMIER PAQUET DE POSITION.
+
+L ecart entre ces deux zeros est exactement ce que l artefact publie sous `originMs`
+(`replay/origin.go`). Or `buildObjectiveActions` divise `TimeMS` par le pas de grille SANS
+le retrancher : **les actions sont posees `originMs` trop TARD sur l axe du rejeu**. Le
+balayage du lot 4 ne voyait pas un retard du statborg — il voyait ce decalage de referentiel,
+et les trois films « sur la borne » sont precisement ceux dont l origine depasse 10 s
+(mesures : Forbidden 19,8 s · Illusion 38,3 s · Illusion 30,9 s).
+
+**Decision technique principale : appliquer la correction LUE, jamais un decalage balaye.**
+`cmd/zone-attribution` repose les evenements identifies a `(TimeMS - originMs) / interval`
+(`correctedActions`). La reconstruction repart des evenements IDENTIFIES et non des actions
+deja posees : celles-ci ont perdu, dans `buildObjectiveActions`, tout ce qui tombait au-dela
+de la derniere frame — c est-a-dire justement les actions de fin de match que la correction
+ramene dans la fenetre (posees : 525 -> 536 sur le corpus d origine). Un film sans origine
+publiee n est PAS corrige : on ne devine pas une correction.
+
+**Resultats observes — corpus d origine (8 films), AVANT / APRES** : 13,7 % -> 58,6 %
+d appartenance STRICTE, temoin temporel plat (13 a 21 %), rapport signal/temoin de 3,0 a 6,2.
+Par film : Forbidden 5,6 -> 55,4 · Illusion 13,8 -> 40,7 · Forest 22,4 -> 76,5 · Forest
+17,2 -> 81,2 · Illusion 12,8 -> 40,5 · Illusion 7,7 -> 44,4 · Streets 8,8 -> 67,5 ·
+Cliffhanger 18,5 -> 51,9. La correction exacte fait MIEUX que le meilleur decalage du
+balayage sur chaque film — signature d une correction par film, pas d une constante ajustee.
+**L etape 2 du plan (elargir le balayage) est donc ANNULEE** : il n y a rien a balayer.
+
+**Le corpus s est elargi tout seul** (catalogue 34 -> 72 cartes, bornes 15 -> 56) :
+**8 -> 48 matchs mesurables** sur 208 en mode a zones (ecartes : 151 sans film en cache,
+4 sans bornes, 5 sans formes). Vagabond y entre — donc l oracle terrain du 2026-08-02
+redevient rejouable.
+
+**Ce que l oracle Vagabond peut, et ce qu il ne peut PAS.** Le releve
+(`RELEVE_TERRAIN_CAPTURES_2026-07-31.md`) porte quatre ancres, dont **une seule** nomme une
+base : « 0:48 flyguy8773 capture la base B ». Elle la nomme par une LETTRE, qu aucune donnee
+decodee ne porte (etat de l art Forge/zones) et que le plan classe hors perimetre. **Le
+releve ne peut donc pas arbitrer une egalite de zone** : annoncer une matrice bonne/mauvaise
+zone sur cette base serait la fabriquer. Ce qu il valide reellement est verifie et tombe
+juste : l action de FlyGuy8773 est datee 48,9 s et attribuee DEDANS, et les trois rangs de
+zone sont tous captures a 90,0 s au plus tard — ce que le releve dit a 1:30 (« une equipe
+controle les trois bases »).
+
+**L oracle d identite qui, lui, existe : la CONCORDANCE INTER-JOUEURS.** Une prise de
+Bastion est un evenement DE ZONE : les coequipiers qui la portent au meme instant sont sur
+la meme base, alors que leurs positions sont decodees independamment. Sur les 3 matchs
+Vagabond : **35 groupes concordants sur 36 (97,2 %)**, contre 33 % attendus au hasard sur
+trois zones. Le temoin (memes groupes decales de 30 s) est publie avec son denominateur —
+sans lui, un « 100 % » sur un seul groupe se lirait comme une mesure.
+
+**Conclusion / prochaine etape** : la mesure du corpus elargi est en cours (32 films sur 48
+au moment de cette entree, deux redemarrages machine ayant interrompu la passe). Le critere
+de persistance de l etape 4 — justesse >= 95 % sur l oracle ET taux >= 80 % sur le corpus
+elargi — a ete ecrit AVANT toute mesure et ne sera pas ajuste. Rien n est persiste ni
+affiche a ce stade.
+
 ## [2026-08-14] v7.5 lot 8 — la file de construction devient durable, et l ouvrier peut vivre ailleurs
 
 **Statut** : Complete (gate visuel user en attente sur le panneau admin).
