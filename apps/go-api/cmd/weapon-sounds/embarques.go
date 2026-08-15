@@ -19,23 +19,42 @@ import (
 	"levelup/go-api/internal/himodule"
 )
 
-// extraireEmbarques ecrit les medias embarques de la bank d'une arme dans un dossier.
-func extraireEmbarques(cheminModule, cheminPck, dossierSortie string) error {
+// extraireEmbarques ecrit les medias embarques d'une bank dans un dossier.
+//
+// La bank est designee soit par le `.pck` de l'arme (intersection des IDs), soit
+// DIRECTEMENT par son identifiant. Le second cas existe pour les armes dont aucun pack ne
+// correspond — la Carabine Vestige a un `weap` et une `sbnk`, mais pas de `.pck` parmi les
+// 55 traites : sans acces par identifiant, ses sons resteraient hors de portee.
+func extraireEmbarques(cheminModule, cheminPck, dossierSortie string, gidBank uint32) error {
 	if dossierSortie == "" {
 		return fmt.Errorf("le mode embarques exige -out (dossier de sortie)")
 	}
-	ids, err := idsPck(cheminPck)
-	if err != nil {
-		return err
+	var ids map[uint32]bool
+	if cheminPck != "" {
+		var err error
+		if ids, err = idsPck(cheminPck); err != nil {
+			return err
+		}
+	} else if gidBank == 0 {
+		return fmt.Errorf("le mode embarques exige -pck ou -sbnk")
 	}
 	m, err := himodule.Open(cheminModule)
 	if err != nil {
 		return err
 	}
 	rapporterMemoire("module charge")
-	f, brut, score, err := trouverSbnk(m, ids)
-	if err != nil {
-		return err
+
+	var f himodule.File
+	var brut []byte
+	score := 0
+	if cheminPck != "" {
+		if f, brut, score, err = trouverSbnk(m, ids); err != nil {
+			return err
+		}
+	} else {
+		if f, brut, err = bankParIdentifiant(m, gidBank); err != nil {
+			return err
+		}
 	}
 	ch := chunks(brut)
 	index := mediasEmbarques(ch)
@@ -58,6 +77,25 @@ func extraireEmbarques(cheminModule, cheminPck, dossierSortie string) error {
 	}
 	fmt.Printf("ecrits   : %d fichiers .wem dans %s\n", n, dossierSortie)
 	return nil
+}
+
+// bankParIdentifiant rend une bank par son global tag id, sans passer par un `.pck`.
+func bankParIdentifiant(m *himodule.Module, gid uint32) (himodule.File, []byte, error) {
+	for _, f := range m.Files("sbnk") {
+		if f.GlobalID != gid {
+			continue
+		}
+		data, err := m.Extract(f)
+		if err != nil {
+			return f, nil, err
+		}
+		debut := indexBKHD(data)
+		if debut < 0 {
+			return f, nil, fmt.Errorf("sbnk %08x sans chunk BKHD", gid)
+		}
+		return f, data[debut:], nil
+	}
+	return himodule.File{}, nil, fmt.Errorf("sbnk %08x absente de ce module", gid)
 }
 
 // ecrireEmbarques decoupe le chunk `DATA` selon l'index `DIDX` et ecrit un `.wem` par media.

@@ -96,6 +96,10 @@ func livrerTirLot(cheminModule, entree, sortie string) error {
 	rapporterMemoire("relais analyses")
 
 	rap := assembler(passe1, sonParWeap, eventsDirect, eventsRelais, armeDeEvent, cadences)
+	// Le nommage ne doit PAS dependre du tir : epee, marteau, tourelles et variantes PNJ
+	// sont de vraies armes avec une icone. On complete par le lien `weap -> ... -> sbnk`.
+	rap = completerRattachements(m, passe1, rap)
+	rapporterMemoire("rattachements completes")
 	sortieBlob, err := json.MarshalIndent(rap, "", " ")
 	if err != nil {
 		return err
