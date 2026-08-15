@@ -51,11 +51,11 @@ DECISION DE BIFURCATION : sans objet, `HIRC` est present. L'etape 2 est nominale
 ### Etape 2 — Parser la hierarchie et produire evenement -> liste de `.wem`
 
 Gate : dump JSON pour `sb_010_wea_un_assaultrifle`, non vide, dont les IDs appartiennent
-tous au `.pck` de cette arme (controle croise).
+tous au `.pck` de cette arme (controle croise). PASSE.
 
-- [ ] Parser des objets HIRC utiles (Event, Action, Random/Sequence Container, Sound)
-- [ ] Resolution transitive Event -> ensemble de `.wem`
-- [ ] Controle croise : intersection non vide avec les IDs du `.pck` de l'arme
+- [x] Parser des objets HIRC utiles (Event, Action, Random/Sequence Container, Sound)
+- [x] Resolution transitive Event -> ensemble de `.wem`
+- [x] Controle croise : 0 `.wem` hors du `.pck`, couverture 359/359
 
 ### Etape 3 — Retrouver les noms d'evenements (FNV-1 32 bits)
 
@@ -101,6 +101,26 @@ fusil d'assaut fait 1,5 Mo et etait absente des 60 plus petites, d'ou un premier
 
 Consequence pour l'etape 2 : `STID` n'est present que sur 2 banks. La table des noms
 d'evenements est donc quasi absente — l'etape 3 (hachage FNV-1) reste bien necessaire.
+
+### 2026-08-15 — Etape 2 CLOSE : hierarchie resolue, 359/359 couverts
+
+Commande : `go run ./cmd/weapon-sounds -mode map -pck <...>sb_010_wea_un_assaultrifle.pck`.
+
+Mesure : `sbnk` gid `384b727f` designe par intersection des IDs (aucun nom en jeu),
+642 objets HIRC, 391 Sound resolus, 22 Events, 35 Actions. **Couverture 359/359** `.wem`
+du `.pck` atteints depuis un evenement, **0 `.wem` hors du `.pck`**.
+
+DECISION DE CONCEPTION : le parseur ne postule aucun offset. Les trois lectures ambigues
+du format HIRC (dependant de la version de Wwise, non exposee) sont ESSAYEES PUIS VALIDEES
+contre un ensemble connu : `sourceID` de Sound valide par l'appartenance aux IDs du `.pck` ;
+liste d'enfants d'un conteneur retenue seulement si TOUS ses elements sont des objets de la
+bank (on garde la plus longue) ; liste d'Actions d'un Event retenue seulement si tous ses
+elements sont des objets de type Action. Le controle croise a 0 hors-pck valide l'approche :
+une lecture au mauvais offset n'aurait pas survecu.
+
+Profil des 22 evenements : 8 gros (64 a 103 `.wem`) puis une queue a 4 `.wem`. Les gros sont
+les candidats tir (round-robin), les petits la mecanique. **Les departager exige les noms**
+— c'est l'objet de l'etape 3, elle n'est pas contournable.
 
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 

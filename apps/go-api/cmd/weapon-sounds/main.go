@@ -35,7 +35,9 @@ var wemTemoins = []uint32{14649067, 1002108249, 1004646855, 1009888121, 66568145
 func main() {
 	deploy := flag.String("deploy", "", "racine `deploy` des archives du jeu (auto-detectee si vide)")
 	module := flag.String("module", moduleParDefaut, "module a sonder, relatif a la racine deploy")
-	mode := flag.String("mode", "probe", "probe")
+	mode := flag.String("mode", "probe", "probe | map")
+	pck := flag.String("pck", "", "chemin d'un .pck d'arme (mode map)")
+	sortie := flag.String("json", "", "fichier JSON de sortie (mode map, facultatif)")
 	// Defaut = tous : l'heuristique « une bank d'arme est petite » est FAUSSE (mesure :
 	// la bank du fusil d'assaut fait 1,5 Mo, absente des 60 plus petites).
 	limite := flag.Int("limite", 0, "nombre de tags sbnk decompresses par la sonde (0 = tous)")
@@ -58,6 +60,12 @@ func main() {
 	switch *mode {
 	case "probe":
 		err = sonder(chemin, temoins, *limite)
+	case "map":
+		if *pck == "" {
+			err = fmt.Errorf("le mode map exige -pck")
+			break
+		}
+		err = cartographier(chemin, *pck, *sortie)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
