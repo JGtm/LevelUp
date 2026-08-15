@@ -114,7 +114,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     mapBackgroundFallback:
       "Fond : sol reconstruit — cette carte n'a pas encore d'image figée.",
     grenadeRestNote:
-      "Grenades : l'effet en fin de vol marque la dernière position connue du projectile — le film n'enregistre aucune détonation.",
+      "Grenades : l'explosion se joue à la dernière position connue du projectile — le film n'enregistre aucune détonation, la mise en scène est assumée à cet endroit.",
     killFeedTitle: 'Éliminations',
     killFeedEmpty: 'Rien à cet instant du match.',
     killFeedUnknownWeapon: 'Arme non identifiée',
@@ -194,7 +194,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     mapBackgroundNote: 'Background: the in-game map, rebuilt offline and aligned to the metre with the replay frame of reference.',
     mapBackgroundFallback: 'Background: reconstructed floor — this map has no baked image yet.',
     grenadeRestNote:
-      "Grenades: the end-of-flight effect marks the projectile's last known position — the film records no detonation.",
+      "Grenades: the explosion plays at the projectile's last known position — the film records no detonation, the staging is deliberate.",
     killFeedTitle: 'Kills',
     killFeedEmpty: 'Nothing at this point of the match.',
     killFeedUnknownWeapon: 'Unidentified weapon',

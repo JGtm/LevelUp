@@ -196,23 +196,52 @@ l'utilisateur** — en particulier le REGLAGE DE DUREE (item 2.4).
 
 ## Etape 3 — LES EXPLOSIONS DE GRENADE (des particules, pas un symbole)
 
-- [ ] 3.1 Porter une explosion PARTICULAIRE sur le modele de `ExplosionFx.tsx` : flash radial,
+- [x] 3.1 Porter une explosion PARTICULAIRE sur le modele de `ExplosionFx.tsx` : flash radial,
       boule de feu en composition additive, onde de choc, eclats, poussiere residuelle. Le
       port est un PORTAGE, pas une reinvention — lire le fichier avant d'ecrire.
-- [ ] 3.2 OU elle se pose : au dernier point replique du vol de la grenade (le lien
+      FAIT (`explosionFx.ts`) : le fichier de reference a ete lu avant d'ecrire ; timeline de
+      1,4 s, memes coefficients de traînee (0,86 braises / 0,9 eclats / 0,95 poussiere), meme
+      flash de 70 ms et meme onde de 380 ms en easeOutCubic. UNE DIFFERENCE ASSUMEE : la
+      reference anime A ETAT, image par image. Ici la lecture recule et saute au curseur —
+      chaque particule est donc REJOUEE depuis son germe a chaque image (fonction du temps),
+      ce qu'un test verrouille. Les quatre couleurs de feu ecrites en dur dans la reference
+      deviennent DEUX encres du theme (coeur incandescent -> teinte du type).
+- [x] 3.2 OU elle se pose : au dernier point replique du vol de la grenade (le lien
       grenade<->projectile est publie depuis le lot 2.3). **RAPPEL MESURE** : le film ne porte
       AUCUN evenement de detonation — l'ecran dit « derniere position connue », jamais
       « impact ». L'explosion est une MISE EN SCENE assumee a cet endroit, et ce point reste
       ecrit dans le code.
-- [ ] 3.3 PAR TYPE : Frag et Plasma explosent ; **Dynamo (rang 2) ne « explose » pas** — elle
+      FAIT : la position vient de `buildGrenadeRestFx` (inchange). Le point est ecrit en tete
+      de `explosionFx.ts` ET dans `drawGrenadeRestLayer`. La note d'ecran a ete RENFORCEE
+      (FR et EN) : « l'explosion se joue a la derniere position connue du projectile — le film
+      n'enregistre aucune detonation, la mise en scene est assumee a cet endroit ».
+      Mesure : 1 117 lancers dans le corpus, 862 lies a un projectile, 801 explosions posees.
+- [x] 3.3 PAR TYPE : Frag et Plasma explosent ; **Dynamo (rang 2) ne « explose » pas** — elle
       pose une nappe electrique persistante (~2,5 s), regle deja livree au lot 2.3 et
       confirmee par l'utilisateur (« les grenades lightning/dynamo n'explosent pas mais ont un
       effet electrique qui dure quelques secondes »). Spike : a trancher a l'oeil.
-- [ ] 3.4 Cout : une explosion particulaire par grenade, sur un canevas deja charge. Mesurer
+      FAIT (`restKindOf`, teste) : Frag `blast`, Plasma `plasma_cool`, Dynamo NAPPE inchangee,
+      rang inconnu = halo discret. **SPIKE : TRANCHEE EN EXPLOSION `needle`** — elle se plante
+      puis projette ses pointes, et c'est le seul type dont la fin de vol est certifiee
+      `at-rest` (15 vols lies sur 21) : l'objet s'immobilise AVANT de se declencher. Repartition
+      des 862 vols lies : frag 684, plasma 68, dynamo 61, spike 49. **A CONFIRMER A L'OEIL** —
+      la ramener au halo tient en une ligne de `restKindOf`.
+- [x] 3.4 Cout : une explosion particulaire par grenade, sur un canevas deja charge. Mesurer
       le cout d'image et BORNER le nombre de particules ; une explosion ne doit jamais faire
       tomber la lecture sous la fluidite.
+      BORNE POSEE ET MESUREE : 28 particules par explosion (12 braises + 10 eclats + 6
+      bouffees), au plus 84 pas de simulation. Cout releve sur toute la timeline et FIGE par
+      test : **19 degrades radiaux et 227 primitives** au pire instant d'UNE explosion. Le
+      corpus ne montre jamais plus de **5 explosions simultanees** dans la fenetre de 1,4 s,
+      soit un pire cas reel de 95 degrades et ~1 135 primitives par image — sur un canevas
+      dont le fond, la structure, les zones et les objectifs sont deja cuits hors ecran.
+      Une explosion terminee ne coute pas une seule operation (verifie par test).
 
 Gate 3 : verification a l'oeil sur un match a grenades ; mesure du cout d'image avant/apres.
+GATE 3 : cout d'image publie (3.4). Gates techniques passes (tsc purge, eslint 0, vitest 25
+fichiers / 368 tests dont 10 sur l'explosion, plus `lib` 909 tests et `match-view` 186 tests
+pour la note d'ecran bilingue). **RESTE : l'oeil de l'utilisateur sur un match a grenades**,
+et la confirmation du choix Spike (item 3.3).
 
 ## Hors perimetre
 
