@@ -157,9 +157,39 @@ Gate 12b : le rendu d'un coup n'utilise plus un tirage dans tout le lot d'un `Sw
 l'etat designe. Controle sur pieces : le sniper (couche `Switch` a 71 % du melange) et le
 Needler (couche `Switch` de la supercombinaison).
 
-- [ ] Rendu par etat, avec l'etat par defaut quand aucun n'est impose
-- [ ] Regeneration et mesure de l'ecart avec les rendus actuels, arme par arme
-- [ ] Prevenir l'utilisateur des 18 votes de 1re personne a rejouer
+- [x] Rendu par etat, avec l'etat par defaut quand aucun n'est impose
+      (`bank.go` -> `resoudreSwitch`, trois issues COMPTEES : etat porteur, etat vide,
+      table non decodee)
+- [x] Regeneration et mesure de l'ecart avec les rendus actuels, arme par arme
+- [x] Prevenir l'utilisateur des votes de 1re personne a rejouer
+
+VERDICT 12b — 28 coups de 1re personne changent, tous dans le meme sens : le lot de
+candidats se reduit d'un facteur 3 a 5, celui d'UN etat au lieu de tous.
+
+	sniper    couche Switch  30 -> 6 candidats     evenement : 32 -> 8 wem
+	shotgun   couche Switch  30 -> 6               skewer    : 32 -> 8 wem
+	needler   couche Switch  40 -> 8               MA40      : 133 -> 45 wem
+	tourelle gatlingmortar   122 -> 36 wem         MA5K      : 133 -> 45 wem
+
+Le compte annonce a l'inventaire se verifie : 30 enfants pour ~6 etats, et l'etat par
+defaut en porte 6.
+
+RESULTAT NON PREVU, et c'est la meilleure preuve du correctif : **le Needler RETROUVE sa
+1re personne**. Son evenement `7474d8d8` etait refuse par le garde-fou de duree (rapport
+26) parce que sa couche `Switch` de 40 sons melangeait tous les etats, dont la
+supercombinaison a 1,5-3,9 s. Elaguee a l'etat par defaut, la mediane redescend et
+l'appariement passe. **Le defaut de perspective et le defaut `Switch` n'en faisaient
+qu'un** — le garde-fou de l'etape 10 ne soignait bien que le symptome. Les refus tombent
+de 11 a 10, et le Needler n'en fait plus partie.
+
+Aucun vote orphelin : 44/44 se rattachent toujours.
+
+FAUSSE ALERTE consignee pour memoire : la premiere regeneration rendait 53 armes au lieu de
+55. Ce n'etait pas une regression du correctif mais un oubli du drapeau `-banks` a la ligne
+de commande — les deux banks orphelines (Mutilator `8827aa7e`, Carabine Vestige `09089e7e`)
+ne sont recoltees que si on les nomme. La commande complete :
+
+	go run ./cmd/weapon-sounds -mode lot -module pc/globals/globals-rtx-new.module 	  -pck "<...>/Sound/win/SFX" -banks "8827aa7e,09089e7e" -json <...>/lot1.json
 
 ### Etape 4 — Generalisation aux 55 packs
 
