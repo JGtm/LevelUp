@@ -243,6 +243,16 @@ fichiers / 368 tests dont 10 sur l'explosion, plus `lib` 909 tests et `match-vie
 pour la note d'ecran bilingue). **RESTE : l'oeil de l'utilisateur sur un match a grenades**,
 et la confirmation du choix Spike (item 3.3).
 
+## Decouvertes (consignees, NON traitees — regle 7 du contrat d'execution)
+
+- `internal/analysis/weaponv3` depasse le `-timeout 60s` de la cible locale `make go-api-test`
+  (il met ~63 s et passe sans la borne). Le paquet ne depend que de `internal/analysis`,
+  qu'aucun commit de ce lot ne touche. Ligne au REGISTRE_REPORTS ; la CI reste le juge.
+- Le POC de rejeu teintait ses familles par sept couleurs `hsla` en dur ; l'en-tete de
+  `shotEffects.ts` explique encore pourquoi la teinte avait ete ABANDONNEE au lot 3.2. Ce
+  texte reste vrai POUR LES EFFETS DE MORT (hors perimetre de ce plan, non touches), mais il
+  sera a relire le jour ou la teinte de famille descendra aussi sur eux.
+
 ## Hors perimetre
 
 - La direction du tir VERS LA VICTIME : elle n'existe pas dans le film (mesure : les
