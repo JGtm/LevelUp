@@ -22,6 +22,7 @@ var magicBKHD = []byte("BKHD")
 
 type evenementRendu struct {
 	IDEvent uint32   `json:"id_event"`
+	Nom     string   `json:"nom,omitempty"` // retrouve par hachage FNV-1, vide si inconnu
 	Nombre  int      `json:"nombre_wem"`
 	Wems    []uint32 `json:"wems"`
 }
@@ -55,6 +56,8 @@ func cartographier(cheminModule, cheminPck, sortieJSON string) error {
 	}
 	fmt.Printf("sbnk     : gid %08x (%d .wem du pck retrouves dans ses octets)\n", f.GlobalID, score)
 
+	calibrerNommage(brut, cheminPck)
+
 	b, err := parserBank(brut, func(id uint32) bool { return ids[id] })
 	if err != nil {
 		return err
@@ -72,6 +75,14 @@ func cartographier(cheminModule, cheminPck, sortieJSON string) error {
 			continue
 		}
 		rap.Evenements = append(rap.Evenements, evenementRendu{IDEvent: id, Nombre: len(w), Wems: w})
+	}
+	idsEvents := make([]uint32, 0, len(rap.Evenements))
+	for _, e := range rap.Evenements {
+		idsEvents = append(idsEvents, e.IDEvent)
+	}
+	noms := resoudreNoms(arme, idsEvents)
+	for i := range rap.Evenements {
+		rap.Evenements[i].Nom = noms[rap.Evenements[i].IDEvent]
 	}
 	sort.Slice(rap.Evenements, func(i, j int) bool {
 		return rap.Evenements[i].Nombre > rap.Evenements[j].Nombre
@@ -114,6 +125,31 @@ func trouverSbnk(m *himodule.Module, ids map[uint32]bool) (himodule.File, []byte
 	return meilleur, brutMeilleur[debut:], meilleurScore, nil
 }
 
+// calibrerNommage confronte l'ID de la bank (chunk BKHD) au hachage de son nom de fichier.
+//
+// C'EST LE POINT D'ETALONNAGE de l'etape 3 : la bank est le SEUL objet dont on connaisse
+// a la fois l'identifiant Wwise et un nom candidat solide (le nom du `.pck`). S'ils
+// coincident, la convention de nommage est etablie et l'echec sur les evenements ne vient
+// que de la liste de verbes. S'ils divergent, c'est la forme des noms qu'il faut revoir.
+func calibrerNommage(brut []byte, cheminPck string) {
+	ch := chunks(brut)
+	tete, ok := ch["BKHD"]
+	if !ok || len(tete) < 8 {
+		fmt.Println("calibrage : chunk BKHD illisible")
+		return
+	}
+	idBank := binary.LittleEndian.Uint32(tete[4:])
+	base := nomFichierSansExt(cheminPck)
+	fmt.Printf("calibrage: id de bank %08x", idBank)
+	for _, cand := range []string{base, "wea_" + nomArme(cheminPck), nomArme(cheminPck)} {
+		if fnv1(cand) == idBank {
+			fmt.Printf(" == fnv1(%q) -- convention CONFIRMEE\n", cand)
+			return
+		}
+	}
+	fmt.Printf(" ; fnv1(%q) = %08x -- NE CORRESPOND PAS\n", base, fnv1(base))
+}
+
 // echantillon prend au plus n IDs, tries pour etre reproductibles d'un run a l'autre.
 func echantillon(ids map[uint32]bool, n int) []uint32 {
 	out := make([]uint32, 0, len(ids))
@@ -145,9 +181,17 @@ func afficherEvenements(rap rapportArme, ids map[uint32]bool) {
 	fmt.Println("--- evenements, du plus fourni au plus rare ---")
 	total := map[uint32]bool{}
 	horsPck := 0
+	nommes := 0
 	for i, e := range rap.Evenements {
+		if e.Nom != "" {
+			nommes++
+		}
 		if i < 15 {
-			fmt.Printf("  event %08x : %3d .wem\n", e.IDEvent, e.Nombre)
+			nom := e.Nom
+			if nom == "" {
+				nom = "(nom non retrouve)"
+			}
+			fmt.Printf("  event %08x : %3d .wem  %s\n", e.IDEvent, e.Nombre, nom)
 		}
 		for _, w := range e.Wems {
 			total[w] = true
@@ -162,4 +206,5 @@ func afficherEvenements(rap rapportArme, ids map[uint32]bool) {
 	fmt.Printf("\ncouverture : %d .wem distincts atteints sur %d dans le pck\n",
 		len(total), rap.WemsDuPck)
 	fmt.Printf("controle croise : %d .wem hors du pck (attendu 0)\n", horsPck)
+	fmt.Printf("noms retrouves  : %d / %d evenements\n", nommes, len(rap.Evenements))
 }

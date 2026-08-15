@@ -119,10 +119,15 @@ func idsPck(chemin string) (map[uint32]bool, error) {
 	return set, nil
 }
 
+// nomFichierSansExt rend le nom de fichier prive de son extension.
+func nomFichierSansExt(chemin string) string {
+	return strings.TrimSuffix(filepath.Base(chemin), filepath.Ext(chemin))
+}
+
 // nomArme rend le nom d'arme lisible depuis le nom de fichier d'un `.pck`.
 // Exemple : sb_010_wea_un_assaultrifle.pck -> un_assaultrifle
 func nomArme(chemin string) string {
-	base := strings.TrimSuffix(filepath.Base(chemin), filepath.Ext(chemin))
+	base := nomFichierSansExt(chemin)
 	for _, p := range []string{"sb_010_wea_", "sb_010_tur_", "sb_010_whizby_"} {
 		if strings.HasPrefix(base, p) {
 			return strings.TrimPrefix(base, p)
