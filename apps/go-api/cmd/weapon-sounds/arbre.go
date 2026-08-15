@@ -63,46 +63,94 @@ type rapportCouches struct {
 	Events []eventCouches `json:"events"`
 }
 
-// couchesDeEvent rend une entree par ACTION, avec les `.wem` atteignables depuis elle.
+// couchesDeEvent rend un POINT DE CHOIX par couche : un ensemble de `.wem` dont le moteur
+// joue EXACTEMENT UN.
+//
+// LA DISTINCTION QUI MANQUAIT. Aplatir tout le sous-arbre d'une action dans un seul
+// ensemble perd la nature des noeuds traverses, et les deux natures ne se jouent pas pareil :
+//
+//	RandomSequence -> joue UN enfant tire au sort  : ses `.wem` sont des VARIANTES
+//	Blend, ActorMixer, Switch resolu -> jouent TOUS leurs enfants : ce sont des COUCHES
+//
+// Symptome mesure, signale par l'utilisateur sur le MA40 : « un tir est bien et le suivant
+// etouffe ». Son evenement de 3e personne est un unique `Blend` de 64 `.wem` ; le rendu en
+// tirait UN seul par coup, donc une piece du melange au lieu du melange. En descendant
+// jusqu'aux points de choix, ce `Blend` rend une couche par enfant, et chaque coup les
+// empile toutes — ce que fait le moteur.
+//
+// SIMPLIFICATION ASSUMEE : un `RandomSequence` en mode SEQUENCE joue ses enfants dans
+// l'ordre plutot qu'un seul. Le mode n'est pas lu ; les pools observes sur les armes sont
+// des variantes (22, 14, 8 sons pour un meme tir), donc « un seul » est le cas courant.
 func (b *bank) couchesDeEvent(id uint32) []brancheRendue {
 	var out []brancheRendue
 	for _, idAction := range b.Events[id] {
-		cible, ok := b.Actions[idAction]
-		if !ok {
-			continue
+		if cible, ok := b.Actions[idAction]; ok {
+			out = append(out, b.pointsDeChoix(cible, map[uint32]bool{})...)
 		}
-		vus := map[uint32]bool{}
-		set := map[uint32]bool{}
-		var descendre func(uint32)
-		descendre = func(n uint32) {
-			if vus[n] {
-				return
-			}
-			vus[n] = true
-			if w, estSon := b.Sons[n]; estSon {
-				set[w] = true
-			}
-			for _, e := range b.Enfants[n] {
-				descendre(e)
-			}
-		}
-		descendre(cible)
-		t := "inconnu"
-		if o, ok := b.Objets[cible]; ok {
-			t = nomType(o.Type)
-		}
-		wems := trier(set)
-		gains := map[string]float32{}
-		for _, w := range wems {
-			if g, ok := b.Gains[w]; ok {
-				gains[fmt.Sprintf("%d", w)] = g
-			}
-		}
-		out = append(out, brancheRendue{
-			Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gains,
-		})
 	}
 	return out
+}
+
+// pointsDeChoix descend jusqu'aux noeuds ou le moteur TRANCHE, et rend un ensemble par
+// tranchage. Un noeud « tous ses enfants » se subdivise ; un noeud « un seul enfant » forme
+// un ensemble avec tout ce qu'il porte.
+func (b *bank) pointsDeChoix(n uint32, vus map[uint32]bool) []brancheRendue {
+	if vus[n] {
+		return nil
+	}
+	vus[n] = true
+	if w, estSon := b.Sons[n]; estSon {
+		return []brancheRendue{b.brancheDe(n, []uint32{w})}
+	}
+	o, connu := b.Objets[n]
+	enfants := b.Enfants[n]
+	if !connu || len(enfants) == 0 {
+		return nil
+	}
+	if o.Type == typeRandomSeq {
+		return []brancheRendue{b.brancheDe(n, b.wemsSous(n, map[uint32]bool{}))}
+	}
+	var out []brancheRendue
+	for _, e := range enfants {
+		out = append(out, b.pointsDeChoix(e, vus)...)
+	}
+	return out
+}
+
+// wemsSous rend tous les `.wem` d'un sous-arbre : c'est le contenu d'un point de choix.
+func (b *bank) wemsSous(n uint32, vus map[uint32]bool) []uint32 {
+	set := map[uint32]bool{}
+	var descendre func(uint32)
+	descendre = func(x uint32) {
+		if vus[x] {
+			return
+		}
+		vus[x] = true
+		if w, ok := b.Sons[x]; ok {
+			set[w] = true
+		}
+		for _, e := range b.Enfants[x] {
+			descendre(e)
+		}
+	}
+	descendre(n)
+	return trier(set)
+}
+
+func (b *bank) brancheDe(cible uint32, wems []uint32) brancheRendue {
+	t := "inconnu"
+	if o, ok := b.Objets[cible]; ok {
+		t = nomType(o.Type)
+	}
+	gains := map[string]float32{}
+	for _, w := range wems {
+		if g, ok := b.Gains[w]; ok {
+			gains[fmt.Sprintf("%d", w)] = g
+		}
+	}
+	return brancheRendue{
+		Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gains,
+	}
 }
 
 // arborescence affiche, pour chaque evenement d'une arme, la structure de sa hierarchie.

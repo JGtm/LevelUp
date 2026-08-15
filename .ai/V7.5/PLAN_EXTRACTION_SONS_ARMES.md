@@ -844,6 +844,48 @@ premier de la liste, et l'ordre a bouge avec la regeneration de `lot1.json`. **L
 degenere gouverne toujours tout ce qui n'est pas epingle, et il est visiblement instable.**
 La parade est la meme et elle est peu couteuse : epingler aussi la 1re personne de ces armes.
 
+### 2026-08-15 — Etape 15 : le tir etouffe un coup sur deux, ou la nature des noeuds
+
+SIGNALEMENT UTILISATEUR, sur le MA40 : « on a une rafale, un tir est bien et le suivant
+etouffe ». Diagnostic immediat ecarte — les gains de tous ses candidats valent 0 dB.
+
+CAUSE REELLE. `couchesDeEvent` aplatissait TOUT le sous-arbre d'une action dans un seul
+ensemble, et le rendu en tirait un `.wem` au hasard. Or les noeuds traverses n'ont pas la
+meme nature :
+
+	RandomSequence            joue UN enfant tire au sort  -> VARIANTES
+	Blend, ActorMixer, Switch jouent TOUS leurs enfants    -> COUCHES
+
+L'evenement de 3e personne du MA40 est un unique `Blend` de 64 `.wem`. Le rendu en jouait
+UN : une piece du melange au lieu du melange, et une piece differente a chaque coup — d'ou
+un tir plein puis un tir etouffe. **C'est le meme oubli que les conteneurs `Switch`, un
+cran plus bas : la nature du noeud n'etait pas lue.**
+
+CORRECTIF. `couchesDeEvent` descend desormais jusqu'aux POINTS DE CHOIX : un noeud « tous
+ses enfants » se subdivise, un `RandomSequence` forme un ensemble avec tout ce qu'il porte.
+La forme du JSON ne change pas — chaque point de choix EST une couche — donc le rendu, qui
+tire deja un `.wem` par couche, devient correct sans modification.
+
+	MA40 3P        1 couche (Blend, 64 wem)  ->  3 couches de 19, 22 et 23 wem
+	Needler 3P     1 couche (Blend)          ->  3 couches de 27, 28 et 20 wem
+	Mutilator 3P   1 couche                  ->  3 couches de 5 wem
+
+SIMPLIFICATION ASSUMEE ET ECRITE : un `RandomSequence` en mode SEQUENCE joue ses enfants
+dans l'ordre. Le mode n'est pas lu ; les ensembles observes sur les armes sont bien des
+variantes (22, 14, 8 sons pour un meme tir), donc « un seul » est le cas courant.
+
+AUTRE BLOCAGE LEVE, signale par l'utilisateur : « tu n'as toujours pas mis le mode rafale
+sur les sons isoles donc impossible de choisir un son isole non plus ». Le bouton existait
+mais etait masque par un verrou `duree_max <= 0.6`, qui l'otait de tous les sons isoles un
+peu longs. Verrou supprime, et la rafale REPETE desormais l'exemple affiche au lieu de faire
+defiler les variantes — on n'entendait jamais deux fois le meme son a la cadence de l'arme,
+ce qui interdisait precisement de juger un son isole.
+
+RESTE OUVERT : le Needler reste juge « n'importe quoi » par l'utilisateur, et le Mutilator
+« pas bon » — mais il note que le son retenu sur `Banished_bank8827aa7e` en est TRES proche,
+ce qui conforte le lien direct de la section 3 du handoff. Les deux sont a rejuger apres ce
+correctif, qui change toutes les 3e personnes portees par un `Blend`.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
