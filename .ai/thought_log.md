@@ -1,3 +1,36 @@
+## [2026-08-15] Sons d'armes — etape 4 : 33 armes prouvees, cadence lue dans le tag
+
+**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE sauf l'export
+audio (non demarre). Branche `feat/extraction-sons-armes`.
+
+**Decision technique principale** : generaliser sans multiplier les lectures du module de
+7,24 Go. Passe 1 (`lot`) traite les 55 packs en UNE ouverture, en deux sous-passes concues
+pour que jamais deux banks ne coexistent en memoire : la premiere ne retient qu'un index par
+pack (l'appariement pack <-> bank se fait par intersection des IDs `.wem`, aucun nom), la
+seconde re-extrait les 55 banks retenues une a la fois. Passe 2 (`lot-tir`) ouvre l'autre
+module (0,62 Go) et croise par le JSON — les deux ne se rencontrent jamais dans un meme
+processus. La cadence de tir vient du champ `barrels` -> `firing` -> `rounds per second`,
+valide sur deux armes connues AVANT generalisation.
+
+**Resultats observes** : passe 1, 53 armes sur 55 (4 rates consignes au plan), pic memoire
+**8,8 Go** — plafond de l'approche. Passe 2, **33 armes avec sons de tir prouves**, de 8 % a
+94 % du pack ; 0,7 Go. Les 20 sans tir sont des armes de melee, des projectiles ou des
+sifflements : pas de champ « Weapon Fire Sound » parce qu'il n'y a pas de tir. Cadences :
+MA40 AR 720 coups/min, MA5K 1200, BR75 900, Commando 400, Sidekick 396, Bulldog 100,
+S7 Sniper 67 — conformes au jeu. Le tableau `barrels` est a +3284 quand le plugin annonce
++3220 : **meme derive de +64** que « Weapon Fire Sounds », donc systematique. DEUX DEFAUTS
+CORRIGES : (1) `sort.Slice` non stable rendait le `weap` retenu — et donc la cadence —
+different d'un run a l'autre (405 puis 1800 coups/min pour le pistolet a plasma) ; depart au
+second critere, determinisme verifie par double run a hachage identique. (2) Seuil de
+plausibilite trop large : 30 coups/s pile est la valeur NON BRIDEE du moteur sur les armes a
+un coup, pas une cadence ; seuil pose a 25, dans l'ecart mesure entre les deux paquets de
+valeurs (reelles <= 20, sentinelle ~30). 22 cadences retenues, 11 ecartees.
+
+**Conclusion / prochaine etape** : reste l'export audio des seuls `.wem` de tir. Outil de
+tri publie pour l'utilisateur (hors depot) avec noms en jeu et icones tires de
+`static/weapons-assets/.../index.json` + `config/titles/halo_infinite/mappings/weapon_names.toml`,
+joints par le global tag id du `weap` — la cle etablie par `weapon-icons-build/weaptags.go`.
+
 ## [2026-08-15] Sons d'armes — la chaine arme -> son de tir est fermee (etapes 1 a 3)
 
 **Statut** : Etapes 1, 2 et 3 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` CLOSES.
