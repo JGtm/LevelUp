@@ -74,8 +74,16 @@ describe('l’éclair de bouche', () => {
     }
   })
 
-  it('compose en ADDITIF : deux éclairs qui se recouvrent s’ajoutent, ils ne se masquent pas', () => {
-    expect(valuesOf(trace('ballistic'), 'globalCompositeOperation')).toContain('lighter')
+  it('ne compose PAS en additif — l’additif est invisible sur un fond clair (mesuré)', () => {
+    // RÉGRESSION VERROUILLÉE. L'éclair composait en `lighter` (référence Csstat, carte
+    // noire). Rastérisation Chromium du 2026-08-15, thème clair, sol `--card` : écart
+    // maximal de 3 valeurs sur 255 et ZÉRO pixel modifié d'au moins 8 — l'éclair y était
+    // invisible par construction, à toute taille. La preuve chiffrée, elle, vit dans le
+    // garde-rail de rastérisation (e2e/replay-muzzle-raster.spec.ts) : un contexte
+    // enregistreur ne peut pas voir une couleur qui sature.
+    for (const f of DRAWN) {
+      expect(valuesOf(trace(f), 'globalCompositeOperation'), f).not.toContain('lighter')
+    }
   })
 
   it('ne peint QUE la teinte de l’arme et le cœur — aucune couleur de joueur n’y entre', () => {

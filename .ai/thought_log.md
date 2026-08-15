@@ -1,3 +1,59 @@
+## [2026-08-15] v7.5 rejeu 2D — l eclair de bouche etait INVISIBLE, et aucun test ne pouvait le voir
+
+**Statut** : Complete (correctif + garde-rail de rasterisation). Retour utilisateur : « j ai pas
+vu d effet pour les armes cinetiques, sinon le son ca va » — la teinte `kinetic` couvre 91,5 %
+des tirs du corpus, donc c etait le defaut dominant, pas une finition.
+
+**Ce que la mesure a etabli, et ce qu elle a REFUTE.** Trois pistes ecartees par la mesure avant
+tout code : (a) la donnee arrive — l API locale sert bien `tint` sur 37 des 39 libelles d armes
+et sur 483 tirs sur 483 du film temoin (les 2 sans teinte sont les deux armes de MELEE, qui n ont
+pas d eclair) ; (b) la rasterisation ne casse pas — Chromium reel accepte `oklch(...)` dans
+`addColorStop` comme dans `fillStyle`, zero exception, 224 combinaisons famille x teinte x theme
+peignent des pixels ; (c) le pas de temps n est pas en cause — les 23 artefacts locaux portent
+tous `frameIntervalMs = 100`, donc 600 ms de remanence valent 6 images, pas une.
+
+**LA CAUSE, en deux defauts qui se cumulent.** Mesure de rasterisation dans une scene reelle
+(sol du theme, marqueur, cone de visee) en comptant les pixels dont une composante bouge d au
+moins 24/255 :
+  1. **THEME CLAIR : ZERO pixel.** La composition additive (`lighter`, heritee de la reference
+     Csstat et de sa carte noire) sature instantanement sur un sol quasi blanc — ecart maximal
+     de 3 valeurs sur 255, sur les 6 images de la remanence, pour TOUTES les familles et TOUTES
+     les teintes. L eclair y etait invisible par construction, a n importe quelle taille.
+  2. **THEME SOMBRE : 64 pixels.** La lentille cinetique faisait 30 x 8 px — plus PETITE que le
+     halo du marqueur qui la porte (rayon 9 px) et douze fois moins etendue que le cone de visee
+     (46 px) sur lequel elle se pose. Avec une intensite au CARRE du temps restant, elle ne
+     tenait que 3 images sur 6.
+
+**Ce qui a change (rendu seulement, aucune donnee).** Composition normale au lieu d additive
+(les tokens `--replay-fx-*` ont deja une valeur assombrie en theme clair : la teinte se pose
+telle quelle sur les deux fonds) ; rayon 9 -> 13 px et decalage a la bouche 5 -> 12 px (l eclair
+sort du halo au lieu de s y noyer) ; plateau de 35 % sur le degrade radial (il avait un centre,
+il a maintenant un corps) ; extinction en puissance 3/2 au lieu du carre. AUCUNE couleur de
+joueur n entre dans l effet (correction utilisateur verrouillee par test), le cone de visee n est
+pas touche, les effets de MORT non plus.
+
+**Resultats.** Cinetique/balistique, pixels changes a l instant du tir : theme sombre 64 -> 212,
+theme clair 0 -> 346. Images lisibles sur les 6 de la remanence : sombre 3 -> 5, clair 0 -> 5.
+Sur les 224 combinaisons famille x teinte x theme x fond, le pire cas passe de 0 a 121 pixels,
+la mediane de 78 a 270.
+
+**LE GARDE-RAIL QUI MANQUAIT.** Le calque etait teste par un contexte ENREGISTREUR : il verifie
+les primitives emises, il ne rasterise rien — il ne pouvait donc pas voir une couleur qui sature.
+Nouveau `apps/web/e2e/replay-muzzle-raster.spec.ts` : Chromium reel, aucun serveur requis (un
+canevas dans une page vide), il exige pour CHAQUE famille et CHAQUE teinte servies par le titre,
+dans les DEUX themes et sur DEUX fonds, au moins 60 pixels reellement changes. Verifie a
+l envers : sur la version d avant le correctif, il rougit sur 118 des 224 combinaisons.
+
+**Sons de melee (question utilisateur).** Mesure sur les 23 artefacts via l API locale : 1 025
+kills, dont 37 au marteau et 11 a l epee — les deux cles sont au manifeste, les deux WAV existent,
+**ces 48 kills sonnent deja**. Rien a reparer. En revanche 442 kills (43,1 %) n ont AUCUNE cle
+d arme (residu connu de la source de degat) et restent muets ; la melee A MAINS NUES est dans ce
+lot et n a de toute facon aucun fichier dans le pack. Au passage : l affirmation « `hinf_bandit`
+et `hinf_ma5k_avenger` absents de `[shot_effects]` » est FAUSSE — les deux y sont, en
+`ballistic`, et portent la teinte `kinetic`.
+
+**Conclusion / prochaine etape** : gate a l oeil de l utilisateur, dans les deux themes.
+
 ## [2026-08-15] v7.5 rejeu 2D — l explosion de grenade en particules (etape 3, plan cloture)
 
 **Statut** : Complete. Les trois etapes du plan
