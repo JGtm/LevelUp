@@ -1,3 +1,43 @@
+## [2026-08-15] v7.5 rejeu 2D — le son sur TOUS les tirs (etape 1, plan effets de tirs)
+
+**Statut** : Complete pour l etape 1 du plan `.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`
+(etapes 2 et 3 a suivre sur la meme branche `feat/v75`).
+
+**Decision technique principale**. Un tir du film porte un identifiant d arme 64 bits ; la
+banque de sons du client est keyee par `weapon_key`. La jointure MANQUAIT : le document ne
+publiait ni l une ni l autre. `WeaponLabel.Key` est donc publie — et resolu **A LA REQUETE**
+par le service (`internal/service/replay_weapon_keys.go`), jamais ecrit dans l artefact. Le
+patron est celui de `mapObjectives` (deja resolu au service depuis le lot 4) et la raison est
+mesuree : figer la cle au build aurait laisse muets les 23 artefacts locaux et toute la
+production jusqu a une re-cuisson complete. Le decodage `identifiant -> famille` est extrait
+en `replay.FamilyOfWeaponID` — deux lecteurs, donc un seul endroit.
+
+**Aucun filtrage editorial**, decision utilisateur du jour (« tu me les mets TOUS autant que
+possible, je verrai si c est trop ensuite ») : tout tir dont l arme a un fichier le joue. Le
+seul plafond est celui du lecteur Web Audio (`SOUND_MAX_VOICES` = 8), laisse tel quel.
+
+**Resultats observes** (simulation a 1x, une voix tenue 1 s, chaine reelle famille ->
+weapon_key -> .wav livre) :
+- film temoin `000d5950` : **483 sons pour 483 tirs**, **46 voix refusees** ;
+- 23 artefacts locaux : **17 068 sons pour 17 904 tirs (95,3 %)**, **4 897 voix refusees
+  (28,7 % des sources)** ;
+- les 836 tirs muets sont EXACTEMENT les 4 armes sans fichier du pack (Vestige 231,
+  Bandit 225, MA5K 171, SPNKr a combustible 59) — aucune arme n emprunte le son d une autre ;
+- verification de bout en bout sur l API locale (schema 6) : **39 libelles d arme sur 39
+  portent leur cle**.
+
+Le plafond MORD (28,7 % de refus sur le corpus). Il n est pas releve ici : c est une decision
+d oreille de l utilisateur, et le chiffre est publie pour qu il la prenne.
+
+**Gate**. `tsc -b` purge, eslint 0, vitest `match-replay` 21 fichiers / 327 tests, `go vet`,
+`go test` service + analysis/replay + replaylabels + **contracttest** (contrat regenere par
+`make openapi-gen` + `make generate-types` dans le meme commit), ratchet golangci-lint
+`--new-from-merge-base=origin/main` : 0 issue.
+
+**Prochaine etape** : etape 2 du plan — le muzzle flash oriente par le REGARD du tireur
+(mesure faite : la couverture passe de 18,6 % a 100 % sur le temoin, 99,1 % sur le corpus) et
+la couleur par famille d arme, en tokens dedies.
+
 ## [2026-08-14] v7.5 rang de capacite — le deserialiseur cesse de JETER l identite (etape 1.1)
 
 **Statut** : En cours — etape 1.1 du plan `.ai/V7.5/replay2d/PLAN_RANG_CAPACITE_I48.md`.

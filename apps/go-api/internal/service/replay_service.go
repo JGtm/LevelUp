@@ -59,9 +59,13 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
 // si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.
 //
-// Le calque d'objectifs statiques (MapObjectives) est joint ICI, à la requête : il
-// dépend de la carte et du mode, que l'artefact ne connaît pas (décodé des seuls chunks
-// du film). Son absence n'est jamais une erreur — le rejeu se sert entier sans lui.
+// DEUX RÉSOLUTIONS SE POSENT ICI, à la requête, et pour la même raison : elles viennent
+// d'un catalogue du TITRE, que l'artefact (décodé des seuls chunks du film) ne connaît pas.
+//   - le calque d'objectifs statiques (MapObjectives), qui dépend de la carte et du mode ;
+//   - la CLÉ CANONIQUE de chaque arme (WeaponLabel.Key), qui ouvre la banque de sons du
+//     client (cf. replay_weapon_keys.go).
+//
+// L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
 func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error) {
 	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	raw, err := os.ReadFile(path)
@@ -76,5 +80,8 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.R
 		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
 	doc.MapObjectives = s.mapObjectivesForMatch(ctx, matchID)
+	// La CLÉ CANONIQUE de chaque arme, même règle et même raison : elle se résout d'un
+	// catalogue du titre, donc ici et pas dans l'artefact (cf. replay_weapon_keys.go).
+	s.resolveWeaponKeys(ctx, &doc)
 	return doc, nil
 }

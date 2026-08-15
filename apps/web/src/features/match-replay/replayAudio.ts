@@ -28,6 +28,13 @@ export const SOUND_FADE_S = 0.25
 /**
  * Voix simultanées maximum : au-delà, les sons supplémentaires sont sautés. Sur un échange
  * nourri, empiler vingt sources ne raconte rien de plus qu'un mur de bruit.
+ *
+ * C'EST LE SEUL PLAFOND DE TOUTE LA CHAÎNE SONORE depuis que TOUS les tirs sonnent
+ * (décision utilisateur du 2026-08-15 : aucun filtrage éditorial). Ce qu'il coûte, mesuré
+ * le même jour par simulation à 1× (une voix tenue `SOUND_CUT_S`) : sur le film témoin
+ * 000d5950, 46 sources refusées pour 483 tirs sonores ; sur les 23 artefacts locaux,
+ * 4 897 refus pour 17 068 sources, soit 28,7 %. Le relever est un changement d'UN chiffre —
+ * à faire si l'écoute le demande, pas avant : c'est une décision d'oreille, pas de code.
  */
 export const SOUND_MAX_VOICES = 8
 

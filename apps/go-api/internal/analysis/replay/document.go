@@ -91,6 +91,22 @@ type WeaponLabel struct {
 	// melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
 	// jamais l'effet d'une arme voisine.
 	Fx string `json:"fx,omitempty"`
+	// Key est le weapon_key du titre (clé canonique du registre d'armes).
+	//
+	// POURQUOI IL EST PUBLIÉ : c'est le SEUL vocabulaire commun entre un tir du film
+	// (qui porte un identifiant d'arme 64 bits) et les tables que le client tient par
+	// weapon_key — la banque de sons du rejeu au premier chef. Sans lui, un tir ne peut
+	// pas sonner l'arme qui l'a produit, et lui faire emprunter le son d'une voisine
+	// serait un mensonge sonore. `killEffects` publie déjà ce même vocabulaire pour les
+	// morts : la clé n'est pas un identifiant interne qui fuite, c'est la jointure.
+	//
+	// IL N'EST PAS ÉCRIT DANS L'ARTEFACT : il est rempli À LA REQUÊTE par le service
+	// (replay_weapon_keys.go), comme `mapObjectives`. La raison est mesurée — figer la
+	// clé au build laisserait muets les artefacts déjà cuits (23 en local, tous ceux de
+	// la production) jusqu'à une re-cuisson complète, et une résolution qui peut
+	// s'améliorer ne se stocke pas. Vide = le titre n'a pas de catalogue lisible, ou
+	// l'arme n'est pas au registre : silence propre, jamais un son approchant.
+	Key string `json:"key,omitempty"`
 	// Img est l'URL de l'icône EXTRAITE DU JEU (fiches joueur du rejeu). Vide = pas de
 	// visuel : le client affiche le libellé, jamais l'icône d'une arme voisine. Tinted
 	// dit si le visuel est un masque à teindre (même contrat que le kill feed).

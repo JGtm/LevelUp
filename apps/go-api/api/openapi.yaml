@@ -24217,6 +24217,8 @@ components:
           type: string
         img:
           type: string
+        key:
+          type: string
         tinted:
           type: boolean
       required:
