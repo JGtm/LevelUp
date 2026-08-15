@@ -94,8 +94,7 @@ func (r *runner) selectEligible(all []candidate) []eligible {
 			r.rejects.sansFormes++
 			continue
 		}
-		rng := entry.Range()
-		out = append(out, eligible{candidate: c, world: &rng, zones: set})
+		out = append(out, eligible{candidate: c, quant: &entry, zones: set})
 	}
 	return out
 }
@@ -103,7 +102,9 @@ func (r *runner) selectEligible(all []candidate) []eligible {
 // eligible est un match dont les quatre maillons sont reunis.
 type eligible struct {
 	candidate
-	world *filmdec.Vec3Range
+	// quant porte l'entree de catalogue ENTIERE : bornes ET largeurs d'axe. Les dissocier
+	// laisserait armer les unes sans les autres (cf. replay.Options.MapQuant).
+	quant *filmdec.MapQuantEntry
 	zones replay.ZoneSet
 }
 

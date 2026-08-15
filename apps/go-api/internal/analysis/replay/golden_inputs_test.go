@@ -704,12 +704,20 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 // garantit que le fixture porte les memes entrees que la production. Les bornes de carte sont
 // celles de Cliffhanger, lues dans le catalogue versionne du titre.
 func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
-	wr, err := goldenWorldRange()
+	entry, err := goldenMapQuant()
 	if err != nil {
 		return nil, err
 	}
+	// MEME GESTE QUE LA PRODUCTION (cf. installWorldObjectPrecision) : les largeurs d'axe du
+	// chemin world-object viennent de l'entree de catalogue, pas du defaut de paquet. Sur
+	// Cliffhanger les deux coincident — c'est precisement pourquoi l'oubli avait survecu des
+	// mois : le film de reference est le SEUL sur lequel il ne se voit pas.
+	prev := filmdec.WorldObjectPrecision
+	defer func() { filmdec.WorldObjectPrecision = prev }()
+	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: entry.AxisWidths})
+	wr := entry.Range()
 	scan := filmdec.DefaultScanFilmOptions()
-	scan.WorldRange = wr
+	scan.WorldRange = &wr
 	scan.CaptureDirs = true
 	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
@@ -731,7 +739,7 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
 		return nil, err
 	}
-	if g.Projectiles, err = filmdec.ScanFilmProjectiles(dir, wr); err != nil {
+	if g.Projectiles, err = filmdec.ScanFilmProjectiles(dir, &wr); err != nil {
 		return nil, err
 	}
 	if g.Deaths, err = ScanFilmDeaths(dir); err != nil {
@@ -754,22 +762,21 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	return g, nil
 }
 
-// goldenWorldRange rend les bornes de dequantification de Cliffhanger.
+// goldenMapQuant rend l'ENTREE DE CATALOGUE de Cliffhanger : bornes ET largeurs d'axe, comme
+// `replay.Options.MapQuant` les recoit en production. Les dissocier laisserait la regeneration
+// armer les bornes en oubliant les largeurs — l'erreur meme que le lot du 2026-08-15 corrige.
 //
-// ELLES SONT ECRITES ICI, PAS LUES DU CATALOGUE : la regeneration ne doit dependre que du film
-// et de ce fichier. Valeurs du catalogue versionne `map_quant_bounds.json` au 2026-07-31 ; si le
-// catalogue change, [TestGoldenAssembly] tombe et le diff dit exactement ce qui a bouge.
-func goldenWorldRange() (*filmdec.Vec3Range, error) {
+// Si le catalogue change, [TestGoldenAssembly] tombe et le diff dit exactement ce qui a bouge.
+func goldenMapQuant() (filmdec.MapQuantEntry, error) {
 	path := filepath.Join("..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")
 	cat, err := filmdec.LoadMapQuantCatalog(path)
 	if err != nil {
-		return nil, fmt.Errorf("catalogue de bornes %s : %w", path, err)
+		return filmdec.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
 	}
 	entry, err := cat.Lookup("Cliffhanger")
 	if err != nil {
-		return nil, err
+		return filmdec.MapQuantEntry{}, err
 	}
-	r := entry.Range()
-	return &r, nil
+	return entry, nil
 }

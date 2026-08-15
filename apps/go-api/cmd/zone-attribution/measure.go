@@ -87,7 +87,7 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 	res.identified = len(identified)
 
 	doc, err := replay.BuildFromFilm(m.short, r.slug, filmcache.ChunkDir(r.cacheDir, m.short),
-		replay.Options{WorldRange: m.world, Objectives: identified})
+		replay.Options{MapQuant: m.quant, Objectives: identified})
 	if err != nil {
 		res.err = err
 		return res

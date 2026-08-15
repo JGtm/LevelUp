@@ -98,12 +98,18 @@ type Options struct {
 	// Absent = document sans table de libellés : le client affiche les identifiants
 	// bruts, ce qui reste vrai — contrairement à un nom approché.
 	Labels LabelCatalog
-	// WorldRange : bornes de déquantification DE LA CARTE du match (AABB du BSP, cf.
-	// filmdec.MapQuantCatalog). OBLIGATOIRE : sans elles le décodeur ne produit que des
-	// quanta, et BuildFromFilm refuse d'émettre un document plutôt que des coordonnées
-	// fausses (elles l'étaient jusqu'ici : les bornes de Cliffhanger étaient appliquées à
-	// toutes les cartes, et le filtre de téléportation en m/s décalibré d'autant).
-	WorldRange *filmdec.Vec3Range
+	// MapQuant : l'ENTRÉE DE CATALOGUE de la carte du match (cf. filmdec.MapQuantCatalog).
+	// OBLIGATOIRE : sans elle le décodeur ne produit que des quanta, et BuildFromFilm refuse
+	// d'émettre un document plutôt que des coordonnées fausses (elles l'étaient jusqu'ici :
+	// les bornes de Cliffhanger étaient appliquées à toutes les cartes, et le filtre de
+	// téléportation en m/s décalibré d'autant).
+	//
+	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*filmdec.Vec3Range` (correctif du 2026-08-15) : les
+	// BORNES et les LARGEURS D'AXE sont deux faces de la même entrée de catalogue, et jusqu'ici
+	// seules les bornes descendaient. Les largeurs restaient au défaut de paquet — celles de
+	// Cliffhanger — sur toutes les autres cartes. Les porter dans un second champ aurait laissé
+	// armer l'une sans l'autre : un seul champ, donc, et l'oubli devient impossible.
+	MapQuant *filmdec.MapQuantEntry
 }
 
 func (o Options) frameIntervalMS() int {
@@ -126,8 +132,8 @@ func (o Options) minPoints() int {
 // HORS LIGNE par construction (I/O disque sur tout le film) — ne jamais appeler depuis un
 // chemin de requête ; l'API sert l'artefact pré-construit.
 func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocument, error) {
-	if opt.WorldRange == nil {
-		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige les bornes de la carte",
+	if opt.MapQuant == nil {
+		return ReplayDocument{}, fmt.Errorf("%w (match %s) : le document de rejeu exige l'entrée de catalogue de la carte",
 			filmdec.ErrUnknownMapBounds, matchID)
 	}
 	// UN SEUL decodage filmdec a la fois par process (verrou de paquet partage avec
@@ -137,11 +143,15 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// entrelacement entre deux sous-balayages du MEME film.
 	release := filmdec.LockProcessDecode()
 	defer release()
+	// Les largeurs d'axe du chemin WORLD-OBJECT sont un global de paquet : installées ici,
+	// sous le verrou, pour TOUT le decodage du film, et restaurees au retour.
+	defer installWorldObjectPrecision(*opt.MapQuant, filmDir)()
+	worldRange := opt.MapQuant.Range()
 	scan := filmdec.DefaultScanFilmOptions()
 	if opt.Scan != nil {
 		scan = *opt.Scan
 	}
-	scan.WorldRange = opt.WorldRange
+	scan.WorldRange = &worldRange
 	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
@@ -195,7 +205,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	}
 	opt.Grenades = grenades
 	// Trajectoires de projectile : memes chunks, meme horloge. Absence non fatale.
-	proj, err := filmdec.ScanFilmProjectiles(filmDir, opt.WorldRange)
+	proj, err := filmdec.ScanFilmProjectiles(filmDir, &worldRange)
 	if err != nil {
 		slog.Warn("projectiles illisibles — rejeu sans trajectoires", "err", err, "filmDir", filmDir)
 		proj = nil

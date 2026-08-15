@@ -146,14 +146,13 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string) 
 	if err != nil {
 		return Outcome{}, err
 	}
-	worldRange := entry.Range()
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
 		Structure:       b.structureFor(entry.Module),
 		Labels:          b.labels,
 		NeutralDeaths:   b.neutralDeaths(matchID, filmDir),
-		WorldRange:      &worldRange,
+		MapQuant:        &entry,
 	})
 	if err != nil {
 		return Outcome{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
