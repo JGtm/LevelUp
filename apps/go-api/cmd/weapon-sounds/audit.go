@@ -78,6 +78,7 @@ func auditFormat(cheminModule string, limite int) error {
 	sommeVol := 0.0
 	minVol := 0.0
 	var sansHIRC, sansBKHD int
+	conteneurs := nouvellesStatsConteneurs()
 
 	for i, f := range banks[:limite] {
 		data, err := m.Extract(f)
@@ -102,6 +103,13 @@ func auditFormat(cheminModule string, limite int) error {
 		if err != nil {
 			continue
 		}
+		// `connu` doit porter sur LA bank courante : un identifiant d'enfant ne se valide
+		// que contre les objets de sa propre bank.
+		presents := make(map[uint32]bool, len(objs))
+		for _, o := range objs {
+			presents[o.ID] = true
+		}
+		connu := func(id uint32) bool { return presents[id] }
 		for _, o := range objs {
 			types[o.Type]++
 			switch o.Type {
@@ -111,12 +119,6 @@ func auditFormat(cheminModule string, limite int) error {
 				if len(o.Data) > maxSound {
 					maxSound = len(o.Data)
 				}
-			case typeAction:
-				if len(o.Data) >= 2 {
-					actions[binary.LittleEndian.Uint16(o.Data)]++
-				}
-			}
-			if o.Type == typeSound {
 				if p := lireProprietes(o.Data); p.Lu {
 					propsLues++
 					if p.VolumeDB != 0 {
@@ -133,6 +135,13 @@ func auditFormat(cheminModule string, limite int) error {
 						avecPitch++
 					}
 				}
+			case typeAction:
+				if len(o.Data) >= 2 {
+					actions[binary.LittleEndian.Uint16(o.Data)]++
+				}
+			case typeEvent:
+			default:
+				conteneurs.ajouter(o, connu)
 			}
 		}
 		if i%300 == 0 && i > 0 {
@@ -141,6 +150,7 @@ func auditFormat(cheminModule string, limite int) error {
 	}
 
 	afficherInventaire(chunks_, types, actions, nSound, sommeSound, maxSound, sansBKHD, sansHIRC)
+	conteneurs.afficher()
 	fmt.Printf("\n=== PROPRIETES DES OBJETS Sound (nouveau lecteur) ===\n")
 	fmt.Printf("  paquet lu de facon plausible : %d / %d (%.0f %%)\n",
 		propsLues, nSound, 100*float64(propsLues)/float64(max(nSound, 1)))

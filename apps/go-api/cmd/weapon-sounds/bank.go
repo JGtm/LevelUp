@@ -25,6 +25,11 @@ const (
 	typeAction    = 3
 	typeEvent     = 4
 	typeRandomSeq = 5
+	// typeSwitch : conteneur pilote par un ETAT DE JEU. Ses enfants ne sont pas des
+	// variantes interchangeables — les confondre avec ceux d'un `RandomSequence` fausse
+	// 31 coups reconstitues sur 107. Cf. `conteneurs.go`.
+	typeSwitch = 6
+	typeBlend  = 9
 )
 
 // objetHIRC est une entree brute de la hierarchie.
