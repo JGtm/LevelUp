@@ -80,13 +80,17 @@ Voie B — le graphe de tags (MOYEN PRINCIPAL) :
 - [x] Lire le champ NOMME « Weapon Fire Sound » de `weap.xml` : 3 `lsnd` sur 8 designes
       (`3fd85fcd`, `5a2b4a0e`, `625034f9`). Preuve fermee, sans aucun nom Wwise.
 
-### Etape 4 — Livrable
+### Etape 4 — Generalisation aux 55 packs
 
-Gate : un fichier par arme listant les `.wem` de tir, et un export `.wav` de ceux-ci.
+Gate : un rapport par arme listant les `.wem` de tir, produit en UNE ouverture de chaque
+module. PASSE.
 
-- [ ] Table arme -> evenement de tir -> `.wem`
-- [ ] Croisement avec le `weap` global tag id (cle deja etablie par `weaptags.go`)
-- [ ] Export audio des seuls sons de tir
+- [x] Passe 1 (`lot`) : 55 packs en une ouverture du module de 7,24 Go — 53 armes resolues
+- [x] Passe 2 (`lot-tir`) : 33 armes avec sons de tir prouves, de 8 % a 94 % du pack
+- [x] Croisement avec le `weap` global tag id (cle deja etablie par `weaptags.go`) :
+      23 armes rattachees a leur nom en jeu et a leur icone
+- [x] Cadence de tir lue dans le tag (`barrels` -> `rounds per second`) : 22 armes
+- [ ] Export audio des seuls sons de tir (non demarre)
 
 ## Journal
 
@@ -222,6 +226,41 @@ RESERVE A LEVER : `evenementsDesTags` relie un `lsnd` a ses evenements par reche
 l'identifiant en clair (`bytes.Contains`), pas par un champ structure. Sur 18 candidats et
 des tags courts, un faux positif est peu probable mais PAS exclu. Le recoupement 22 = 22
 ci-dessus est l'argument qui rend le resultat credible, pas la methode de recherche.
+
+### 2026-08-15 — Etape 4 : 33 armes prouvees, cadence lue dans le tag
+
+Passe 1 (`lot`) : 55 packs en UNE ouverture du module de 7,24 Go, deux sous-passes ou une
+bank n'est jamais retenue en memoire (on ne garde qu'un index par pack, puis on re-extrait
+les 55 retenues une a la fois). **Pic mesure 8,8 Go** — c'est le plafond de l'approche, il
+tient dans les 16 Go libres de la machine mais ne laisse pas de marge. Passe 2 : 0,7 Go.
+
+53 armes resolues sur 55. Quatre ratés consignes : `cv_shadeturret` (bank mal appariee,
+score 1), `cv_provoker_megatron` (meme bank que `cv_provoker`), `cv_plasmapistol_overcharged`
+et `un_shared_rocket` (aucune bank).
+
+Passe 2 : **33 armes avec sons de tir prouves**, de 8 % a 94 % du pack. Les 20 sans tir sont
+coherentes : melee (epee, marteau), projectiles, sifflements — pas de champ « Weapon Fire
+Sound » parce qu'il n'y a pas de tir.
+
+CADENCE. Champ `barrels` -> struct inline `firing` -> `_25 « rounds per second »` (8 octets,
+deux flottants). Validee sur deux armes connues avant generalisation : MA40 AR 720 coups/min,
+S7 Sniper 67 — les valeurs du jeu. Le tableau `barrels` est a +3284 alors que le plugin
+annonce +3220 : **exactement la meme derive de +64** que « Weapon Fire Sounds » (+4288 ->
++4352). Deux champs independants, meme decalage — la derive est systematique, pas un hasard.
+
+DEUX DEFAUTS TROUVES ET CORRIGES pendant cette etape :
+
+1. `sort.Slice` n'est pas stable et plusieurs `weap` couvrent souvent le meme nombre
+   d'evenements : le tag retenu CHANGEAIT d'un run a l'autre, donc la cadence affichee aussi
+   (le pistolet a plasma passait de 405 a 1800 coups/min entre deux executions identiques).
+   Depart au second critere sur l'identifiant. Determinisme verifie : deux runs, hachages
+   identiques.
+2. Le seuil de plausibilite de la cadence etait trop large. Les valeurs se repartissent en
+   deux paquets separes par un vide mesure : cadences reelles de 1,11 a 20,00 coups/s, puis
+   ~30,00 pile porte par des armes A UN COUP (Empaleur, canon Gauss, tourelle a rayon).
+   30 est la valeur non bridee du moteur, pas un rythme. Seuil pose a 25, dans le vide entre
+   les deux paquets — et non a « == 30 », la valeur float32 s'en ecartant parfois assez pour
+   arrondir a 1800 sans y etre egale. Resultat : 22 cadences retenues, 11 ecartees.
 
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 

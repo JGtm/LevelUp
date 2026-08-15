@@ -20,6 +20,9 @@ import (
 // magicBKHD marque le debut de la bank Wwise dans les octets du tag `sbnk`.
 var magicBKHD = []byte("BKHD")
 
+// indexBKHD rend l'offset du debut de la bank dans les octets d'un tag `sbnk`.
+func indexBKHD(b []byte) int { return bytes.Index(b, magicBKHD) }
+
 type evenementRendu struct {
 	IDEvent uint32   `json:"id_event"`
 	Nom     string   `json:"nom,omitempty"` // retrouve par hachage FNV-1, vide si inconnu
@@ -118,7 +121,7 @@ func trouverSbnk(m *himodule.Module, ids map[uint32]bool) (himodule.File, []byte
 	if meilleurScore == 0 {
 		return meilleur, nil, 0, fmt.Errorf("aucun sbnk ne porte les .wem de ce pck")
 	}
-	debut := bytes.Index(brutMeilleur, magicBKHD)
+	debut := indexBKHD(brutMeilleur)
 	if debut < 0 {
 		return meilleur, nil, 0, fmt.Errorf("sbnk %08x sans chunk BKHD", meilleur.GlobalID)
 	}

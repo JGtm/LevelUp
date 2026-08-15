@@ -98,6 +98,20 @@ func main() {
 		err = remonter(chemin, temoins[0], *limite)
 	case "tir":
 		err = sonsDeTir(chemin, temoins[0])
+	case "cadence":
+		err = sonderCadence(chemin, temoins[0])
+	case "lot":
+		if *pck == "" || *sortie == "" {
+			err = fmt.Errorf("le mode lot exige -pck (dossier SFX) et -json (sortie)")
+			break
+		}
+		err = cartographierLot(chemin, *pck, *sortie)
+	case "lot-tir":
+		if *sortie == "" || *sortieTir == "" {
+			err = fmt.Errorf("le mode lot-tir exige -json (sortie du mode lot) et -out")
+			break
+		}
+		err = livrerTirLot(chemin, *sortie, *sortieTir)
 	case "final":
 		if *sortie == "" {
 			err = fmt.Errorf("le mode final exige -json (le rapport produit par -mode map)")
