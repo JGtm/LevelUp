@@ -36,10 +36,13 @@ La couverture cesse d'etre 18,6 % et devient celle du regard, bien plus large.
 - [ ] 1.1 Declencher un son a CHAQUE tir publie (`doc.shots`, 483 sur le film temoin), avec le
       son de l'arme du tir (`s.w` -> `weaponLabels` -> cle d'arme -> fichier). Aucune direction
       requise.
-- [ ] 1.2 GARDE-FOU DE DENSITE, obligatoire : 483 tirs sur un match, dont des rafales — sans
-      borne, le rendu sonore devient un bruit blanc et sature les voix. Poser une regle
-      MESUREE (par ex. une voix par tireur par intervalle court, et un plafond global de voix
-      simultanees) et publier le nombre de sons effectivement joues contre le nombre de tirs.
+- [ ] 1.2 DENSITE — DECISION UTILISATEUR DU 2026-08-15 : « tu me les mets TOUS autant que
+      possible pour le moment, je verrai si c'est trop ensuite ». Donc **aucun filtrage
+      editorial** : tout tir dont l'arme a un son le joue. Le SEUL plafond admis est
+      TECHNIQUE — le nombre de voix simultanees que le moteur audio tient sans saturer
+      (mecanique deja livree au lot 5). Publier le nombre de sons joues contre le nombre de
+      tirs, et le nombre de voix refusees par le plafond technique : c'est ce chiffre qui
+      permettra a l'utilisateur de dire « c'est trop » en connaissance de cause.
 - [ ] 1.3 Les armes MUETTES restent muettes (4 mesurees : Bandit EVO, MA5K Avenger, canon a
       combustible, carabine Vestige) — jamais le son d'une autre arme.
 - [ ] 1.4 Le reglage existant (bouton Son, coupe par defaut, volume persiste) commande aussi
@@ -64,9 +67,38 @@ Gate 1 : nombre de sons joues / tirs publies, publie ; ecoute utilisateur sur un
       un tir — la reference Csstat l'exclut aussi explicitement).
 - [ ] 2.4 Duree courte, de l'ordre de la reference (6 frames ~ 0,6 s a 100 ms/frame — a REGLER
       A L'OEIL avec l'utilisateur, c'est un choix de rendu, pas une mesure).
-- [ ] 2.5 Respect de `prefers-reduced-motion` (variante statique), tokens semantiques pour la
-      couleur du tireur ; la FAMILLE se dit par la forme, la couleur reste celle du joueur
-      (arbitrage acte du lot 3.2, non rouvert ici).
+- [ ] 2.5 Respect de `prefers-reduced-motion` (variante statique).
+
+### 2.6 — LA COULEUR REVIENT PAR FAMILLE : arbitrage du lot 3.2 ROUVERT par l'utilisateur
+
+> Precision utilisateur du 2026-08-15, qui TRANCHE et remplace la decision precedente :
+> « le muzzle flash c'est bien pour les armes CINETIQUES ; pour les autres faut des effets de
+> type PLASMA BLEUTE OU ROUGEATRE pour les armes Banished a energie, voire d'ENERGIE VIOLETTE
+> pour les armes Forerunner. »
+
+- [ ] 2.6a Le lot 3.2 avait acte « famille = FORME, couleur = TIREUR » (regle color-tokens) et
+      abandonne la palette du POC. **Cet arbitrage est ROUVERT sur decision utilisateur** :
+      la NATURE de la decharge se dit aussi par la COULEUR. Ce n'est pas un retour en arriere
+      par oubli — l'ecrire comme tel dans le code, avec la date et la raison.
+- [ ] 2.6b Trois familles de rendu, telles que l'utilisateur les nomme :
+      - **CINETIQUE** (UNSC balistique) -> muzzle flash de flamme, bref et chaud ;
+      - **BANISHED A ENERGIE** -> plasma **bleute OU rougeatre** — les deux teintes existent
+        dans le jeu (plasma Covenant bleu, armes Brute rouge/orange). MESURER la repartition
+        des armes du corpus entre ces deux teintes AVANT de choisir, et publier la table ;
+      - **FORERUNNER** -> **energie violette**. (Le POC disait « cyan-or » : l'utilisateur
+        tranche autrement, sa version fait foi.)
+      Les autres familles deja resolues (choc, explosif, aiguilles) gardent leur forme ; leur
+      teinte suit la meme logique de NATURE, a proposer avec la table.
+- [ ] 2.6c **COMMENT sans violer la regle du depot** : la regle interdit les valeurs hex et les
+      classes Tailwind couleur dans `features/`. Les teintes de famille passent donc par des
+      TOKENS SEMANTIQUES dedies (un token par famille d'effet), resolus au dessin — jamais une
+      couleur ecrite en dur dans le composant. Precedent a suivre : `canvasInk.ts`, qui gere
+      deja de l'encre de canevas dans ce cadre. **Ne pas contourner la regle : l'etendre
+      proprement.**
+- [ ] 2.6d La couleur du TIREUR ne disparait pas pour autant : elle reste ce qui permet de
+      suivre un joueur des yeux. Decider et ECRIRE ou elle subsiste (le coeur de l'effet ? le
+      marqueur ? le cone ?) pour que la teinte de famille ne rende pas les joueurs
+      indistinguables.
 
 Gate 2 : couverture d'orientation publiee ; verification a l'oeil par l'utilisateur sur un
 echange nourri, avec au moins un tir balistique, un plasma et une melee (qui ne doit RIEN
