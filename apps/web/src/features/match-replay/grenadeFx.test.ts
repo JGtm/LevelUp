@@ -8,7 +8,13 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { buildGrenadeRestFx, DYNAMO_RANK, grenadeThrowActive } from './grenadeFx'
+import {
+  buildGrenadeRestFx,
+  DYNAMO_RANK,
+  explosionTintOf,
+  grenadeThrowActive,
+  restKindOf,
+} from './grenadeFx'
 import { testReplayDoc } from './test/testDoc'
 
 function docWith(over: Partial<ReplayDocument> = {}) {
@@ -65,5 +71,28 @@ describe('grenadeThrowActive', () => {
 
   it("l'index d'un autre joueur ne déclenche rien — l'auteur n'est pas deviné", () => {
     expect(grenadeThrowActive(doc, 7, 12, 14)).toBeNull()
+  })
+})
+
+describe('ce que fait une grenade au bout de son vol', () => {
+  it('la Dynamo n EXPLOSE PAS : elle pose sa nappe électrique (règle du lot 2.3)', () => {
+    expect(restKindOf(DYNAMO_RANK)).toBe('nappe')
+  })
+
+  it('Frag, Plasma et Spike détonent', () => {
+    expect(restKindOf(0)).toBe('explosion')
+    expect(restKindOf(1)).toBe('explosion')
+    expect(restKindOf(3)).toBe('explosion')
+  })
+
+  it('un rang inconnu garde le halo discret — jamais l effet d un type voisin', () => {
+    expect(restKindOf(9)).toBe('halo')
+    expect(restKindOf(-1)).toBe('halo')
+  })
+
+  it('la teinte dit CE QUI explose : chimique, plasma, cristal', () => {
+    expect(explosionTintOf(0)).toBe('blast')
+    expect(explosionTintOf(1)).toBe('plasma_cool')
+    expect(explosionTintOf(3)).toBe('needle')
   })
 })

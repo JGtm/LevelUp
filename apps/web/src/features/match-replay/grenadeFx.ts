@@ -14,11 +14,50 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (grenadeFx.test.ts).
  */
+import type { FxTint } from './fxInk'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Rang du type Shock/Dynamo dans GrenadeLabels — l'ordre des rangs est LA donnée
  *  (établi par deux chaînes indépendantes, cf. replay_labels.toml). */
 export const DYNAMO_RANK = 2
+
+/**
+ * restKindOf — CE QUE FAIT UNE GRENADE AU BOUT DE SON VOL, par type.
+ *
+ * L'ORDRE DES RANGS EST LA DONNÉE (0 Frag, 1 Plasma, 2 Dynamo, 3 Spike), établi par deux
+ * chaînes indépendantes et publié par le titre ; ce qui est CHOISI ici, c'est la mise en
+ * scène, et elle suit ce que l'arme fait dans le jeu :
+ *  - Frag et Plasma DÉTONENT : explosion particulaire (item 3.3) ;
+ *  - Dynamo N'EXPLOSE PAS — elle pose une nappe électrique persistante (~2,5 s). Règle
+ *    livrée au lot 2.3 et confirmée par l'utilisateur, inchangée ici ;
+ *  - Spike : elle se PLANTE puis projette ses pointes. C'est aussi le seul type dont la fin
+ *    de vol est certifiée `at-rest` (mesure : 15 vols liés sur 21, 0 pour les trois autres)
+ *    — l'objet s'immobilise AVANT de se déclencher. Elle reçoit donc une explosion, teintée
+ *    « cristal » plutôt que feu. **C'est le point que le plan laisse À TRANCHER À L'ŒIL**
+ *    (item 3.3) : si l'utilisateur la préfère sans détonation, une ligne suffit à la rendre
+ *    au halo.
+ *
+ * Un rang inconnu (type qu'un titre publierait sans qu'on le connaisse) garde le HALO
+ * discret : jamais l'effet d'un type voisin.
+ */
+export type GrenadeRestKind = 'explosion' | 'nappe' | 'halo'
+
+export function restKindOf(rank: number): GrenadeRestKind {
+  if (rank === DYNAMO_RANK) return 'nappe'
+  return rank === 0 || rank === 1 || rank === 3 ? 'explosion' : 'halo'
+}
+
+/**
+ * explosionTintOf — la NATURE de la déflagration d'un type, dans le vocabulaire des teintes
+ * (fxInk.ts) : une grenade à fragmentation est une déflagration chimique, une grenade plasma
+ * une décharge d'énergie froide, une Spike une gerbe de cristal. Même logique que les tirs :
+ * la couleur dit ce qui explose, jamais qui l'a lancée.
+ */
+export function explosionTintOf(rank: number): FxTint {
+  if (rank === 1) return 'plasma_cool'
+  if (rank === 3) return 'needle'
+  return 'blast'
+}
 
 /** Rémanences au point de repos, en temps réel : la nappe électrique persiste (~2,5 s,
  *  décision produit « ~2-3 s »), le halo suit la convention des lancers (1,4 s). */

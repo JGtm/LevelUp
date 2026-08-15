@@ -7,12 +7,13 @@
  */
 import type { ReplayBounds, ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
 
+import { drawExplosion } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { altitudeTint, floorRun, hasEdge, type FloorGrid } from './mapFloor'
 import { drawMuzzleFlash } from './muzzleFlash'
 import type { ShotFxEntry } from './shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
-import { DYNAMO_RANK, type GrenadeRestFx } from './grenadeFx'
+import { explosionTintOf, restKindOf, type GrenadeRestFx } from './grenadeFx'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
 
@@ -248,38 +249,75 @@ export interface RestWindow {
   holdHalo: number
   /** Rémanence de la nappe électrique (Shock/Dynamo), en frames. */
   holdDynamo: number
+  /** Durée réelle d'une frame, en ms : l'explosion a une timeline en TEMPS, pas en frames
+   *  (la cadence d'échantillonnage est choisie au build et peut changer). */
+  frameMs: number
 }
 
 /**
  * drawGrenadeRestLayer pose l'effet de FIN DE VOL de chaque grenade liée à son projectile.
  *
- * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : la DERNIÈRE POSITION CONNUE du
- * projectile (fin de vol certifiée `at-rest`), JAMAIS un impact — le film n'enregistre
- * aucune détonation. D'où un halo qui n'explose rien ; seule la Shock/Dynamo (rang 2)
- * laisse une nappe électrique persistante, parce que c'est l'effet que l'arme entretient
- * dans le jeu et que l'arc brisé est déjà la signature de la famille.
+ * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : la DERNIÈRE POSITION RÉPLIQUÉE
+ * du projectile, JAMAIS un impact — le film n'enregistre aucune détonation. L'EXPLOSION
+ * POSÉE LÀ EST DONC UNE MISE EN SCÈNE ASSUMÉE (item 3.2), et c'est pourquoi l'écran continue
+ * de dire « dernière position connue ».
+ *
+ * PAR TYPE (`restKindOf`) : la Frag, la Plasma et la Spike détonent ; la Shock/Dynamo, elle,
+ * n'explose PAS — elle laisse la nappe électrique persistante livrée au lot 2.3, parce que
+ * c'est l'effet que l'arme entretient dans le jeu.
  */
 export function drawGrenadeRestLayer(
   ctx: CanvasRenderingContext2D,
   fx: GrenadeRestFx[],
   view: CanvasView,
   win: RestWindow,
-  color: string,
-  reducedMotion: boolean,
+  style: GrenadeRestStyle,
 ): void {
-  ctx.strokeStyle = color
-  ctx.fillStyle = color
   for (const e of fx) {
-    const dynamo = e.rank === DYNAMO_RANK
-    const hold = dynamo ? win.holdDynamo : win.holdHalo
+    const kind = restKindOf(e.rank)
+    const hold = kind === 'nappe' ? win.holdDynamo : win.holdHalo
     const age = win.frame - e.frame
     if (age < 0 || age > hold) continue
-    const fade = 1 - age / (hold + 1)
     const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
-    if (dynamo) drawDynamoRest(ctx, c.x, c.y, fade, e.seed, reducedMotion)
-    else drawRestHalo(ctx, c.x, c.y, fade, reducedMotion)
+    if (kind === 'explosion') {
+      drawExplosion(
+        ctx,
+        {
+          x: c.x,
+          y: c.y,
+          ageMs: age * win.frameMs,
+          seed: e.seed,
+          k: style.k,
+          reduced: style.reducedMotion,
+        },
+        {
+          fire: style.ink.tint[explosionTintOf(e.rank)] || style.ink.tint.neutral,
+          core: style.ink.core,
+          smoke: style.smoke,
+        },
+      )
+      continue
+    }
+    ctx.strokeStyle = style.halo
+    ctx.fillStyle = style.halo
+    const fade = 1 - age / (hold + 1)
+    if (kind === 'nappe') drawDynamoRest(ctx, c.x, c.y, fade, e.seed, style.reducedMotion)
+    else drawRestHalo(ctx, c.x, c.y, fade, style.reducedMotion)
   }
   ctx.globalAlpha = 1
+}
+
+/** Style du calque de fin de vol : les encres de l'explosion, et celle du halo discret. */
+export interface GrenadeRestStyle {
+  /** Teintes de nature (fxInk.ts) : la déflagration suit le TYPE, jamais le lanceur. */
+  ink: FxInk
+  /** Poussière résiduelle : encre de mise en page du thème, pas une couleur de donnée. */
+  smoke: string
+  /** Couleur du halo « dernière position connue » et de la nappe électrique (inchangée). */
+  halo: string
+  /** Densité du canevas. */
+  k: number
+  reducedMotion: boolean
 }
 
 /** Halo discret : un anneau qui s'éteint sur place — il ne s'ouvre pas, il n'affirme rien. */

@@ -1,3 +1,43 @@
+## [2026-08-15] v7.5 rejeu 2D — l explosion de grenade en particules (etape 3, plan cloture)
+
+**Statut** : Complete. Les trois etapes du plan
+`.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md` sont livrees et statuees ; il ne reste que
+les gates A L OEIL de l utilisateur.
+
+**Decision technique principale**. `ExplosionFx.tsx` de Csstat a ete lu avant d etre porte :
+timeline de 1,4 s, memes coefficients de traînee (0,86 / 0,9 / 0,95), flash de 70 ms, onde de
+380 ms en easeOutCubic, trois familles de particules. UNE DIFFERENCE ASSUMEE : la reference
+anime A ETAT, image par image ; ici la lecture recule et saute au curseur, donc chaque
+particule est REJOUEE depuis son germe a chaque image — l explosion est une FONCTION DU TEMPS,
+verrouillee par test (deux lectures du meme age rendent la meme image). Les quatre couleurs de
+feu ecrites en dur dans la reference deviennent DEUX encres du theme : coeur incandescent tant
+que la braise est jeune, teinte du TYPE ensuite.
+
+**Par type** : Frag `blast`, Plasma `plasma_cool`, **Dynamo NE DETONE PAS** (nappe electrique
+du lot 2.3, inchangee), Spike TRANCHEE en explosion `needle` — elle se plante puis projette ses
+pointes, et c est le seul type dont la fin de vol est certifiee `at-rest` (15 vols lies sur
+21). Rang inconnu = halo discret. Le choix Spike est a confirmer a l oeil : une ligne le
+ramene au halo.
+
+**Ou elle se pose, et ce que l ecran en dit**. Derniere position REPLIQUEE du projectile,
+jamais un impact — le film ne porte aucun evenement de detonation. La note d ecran a ete
+RENFORCEE (FR et EN) : « l explosion se joue a la derniere position connue du projectile — le
+film n enregistre aucune detonation, la mise en scene est assumee a cet endroit ».
+
+**Cout, mesure et borne (item 3.4)**. 28 particules par explosion (12 braises, 10 eclats, 6
+bouffees), 84 pas de simulation au plus. Releve sur toute la timeline et FIGE par test :
+**19 degrades radiaux et 227 primitives** au pire instant d une explosion. Corpus : 1 117
+lancers, 862 lies a un projectile, **801 explosions posees**, et **jamais plus de 5
+simultanees** dans la fenetre de 1,4 s — soit 95 degrades et ~1 135 primitives dans le pire
+cas reel, sur un canevas dont le fond, la structure, les zones et les objectifs sont deja
+cuits hors ecran. Une explosion terminee ne coute pas une operation.
+
+**Gate**. tsc purge, eslint 0, vitest `match-replay` 25 fichiers / 368 tests, plus `lib`
+(909) et `match-view` (186) pour la note bilingue. Go non touche a cette etape.
+
+**Prochaine etape** : les trois gates A L OEIL de l utilisateur — densite sonore (etape 1),
+duree et lisibilite de l eclair (item 2.4), et le rendu des explosions dont le cas Spike.
+
 ## [2026-08-15] v7.5 rejeu 2D — l eclair de bouche, oriente par le REGARD et teinte par l ARME (etape 2)
 
 **Statut** : Complete pour l etape 2 du plan `.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`

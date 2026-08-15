@@ -410,9 +410,22 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
         ctx,
         grenadeRestFx,
         view,
-        { frame, holdHalo: restWindow.holdHalo, holdDynamo: restWindow.holdDynamo },
-        grenadeColor,
-        reducedMotion,
+        {
+          frame,
+          holdHalo: restWindow.holdHalo,
+          holdDynamo: restWindow.holdDynamo,
+          // Durée réelle d'UNE frame : `frameToMs` porte déjà le repli des artefacts sans
+          // échelle temporelle. La lire ici plutôt que le champ brut évite qu'une explosion
+          // reste figée à l'âge zéro sur un artefact ancien.
+          frameMs: frameToMs(1, doc),
+        },
+        {
+          ink: fxInk,
+          smoke: floorStyle.edge,
+          halo: grenadeColor,
+          k: dpr,
+          reducedMotion,
+        },
       )
     }
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
