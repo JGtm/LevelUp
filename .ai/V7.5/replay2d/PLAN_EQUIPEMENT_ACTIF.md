@@ -291,6 +291,165 @@ lecteur `i48` de production) ; l'etape 3 passe sur la forme mais ne rend pas un 
 nommable. **Aucune ligne de rendu n'a ete ecrite** — ecrire un effet alimente par une source
 non mesuree est precisement l'interdit de ce chantier.
 
+## Etape 5 — L'ENTITE DU MONDE ti=37 et l'energie i56 : MESURE, pas rendu (2026-08-15)
+
+> Les etapes 3 et 4 butent sur le canal BIPEDE. Le film porte pourtant une ENTITE dediee a
+> l'equipement (ti=37), dont les composants sont nommes en clair au registre et dont les
+> quatre deserialiseurs JETAIENT leurs valeurs — le defaut d'i48 corrige le 14/08. Cette
+> etape les fait publier et les compte. Aucun rendu, aucun effet, aucun son : le livrable est
+> un instrument versionne et des chiffres.
+
+- [x] 5.1 ENTITE ti=37 — existence et volume, avec denominateur. Instrument versionne
+      `internal/analysis/filmdec/equipment_state_test.go` (garde `EQUIP_FILM`) + balayage de
+      production `equipment_state.go`. **12 films, 1 097 619 records delta ti=37, 19 260
+      slots, 6 904 vies d'objet.** L'archetype est verifie SUR PIECES : 31 composants, et les
+      index cites par le plan sont exacts (i18 item-at-rest ... i24 equipment-energy).
+      **Il en porte SIX de plus, jamais cites nulle part** : i25 being-hacked, i26
+      energy-delay-ticks-left, i27 charges-remaining, i28 tracked-object-handles-stack,
+      i29 command-tick, i30 has-infinite-uses.
+- [x] 5.2 Publier les quatre champs prescrits. Hooks poses sur les desers de PRODUCTION (le
+      deser publie, on ne relit jamais les bits a cote de lui). **13 187 records annoncent au
+      moins un des quatre (1,20 %) ; la marche aboutit 13 099 fois, casse 88 fois (0,67 %).**
+- [x] 5.3 Positions : `ScanFilmWorldObjects(dir, wr, EquipmentTypeIndex)`. **9 043
+      trajectoires, 628 368 echantillons.**
+- [x] 5.4 Controle non circulaire du champ `creator`. **C1 ECHOUE, 0 valeur sur 1 328.**
+- [x] 5.5 MESURE B — i56 elargi a 12 films. Instrument versionne `i56_drops_test.go`
+      (garde `I56_DROPS_FILM`), lecture par le deser de production (`SetAbilityEnergyHook`).
+      **2 519 042 records delta biped, 2 088 lectures d'i56, 282 chutes.**
+
+Gate 5 : **PASSE**. Chiffres publies avec leurs denominateurs, controles joues et publies y
+compris quand ils echouent, instruments gardes par variable d'environnement (sautes en CI),
+`go build` / `go vet` / `go test ./internal/analysis/filmdec/` verts, `golangci-lint
+--new-from-merge-base=origin/main` 0 issue. **Aucune ligne de rendu ecrite.**
+
+### Journal de l'etape 5 (2026-08-15) — trois questions, deux NON et un OUI
+
+**LES CHIFFRES DE L'ENTITE ti=37** (12 films, denominateur 1 097 619 records delta) :
+
+    champ                            masque    LU   porte fermee   transitions / paires
+    i20 equipment-deployed   R(1)      3839  3820         0            389 /  956
+    i21 equipment-activated  R(3)      2126  2121       894             81 /  208
+    i23 equipment-creator    R(5)      2209  2194       866            121 /  233
+    i24 equipment-energy    R(14)      5268  5217         0           1010 / 2563
+
+    valeurs transmises : deployed 0:2346 1:1474 (3820)
+                         activated LES HUIT valeurs 0..7 (1227) — 0:364 1:183 2:163 3:80
+                                   4:161 5:107 6:99 7:70
+                         creator   LES TRENTE-DEUX valeurs 0..31 (1328), queue PLATE
+                         energy    plus de 64 valeurs distinctes par film
+
+**QUESTION 1 — SAIT-ON DATER L'ACTIVATION ? NON, et c'est la RARETE qui l'interdit.** Le
+champ existe, il se lit a 99,3 %, il bouge. Mais il n'est transmis que **2 121 fois sur
+1 097 619 records (0,19 %)**, et surtout : sur 6 904 vies d'objet, seules **949 recoivent une
+valeur d'`activated`, et 227 la recoivent APRES le premier record de la vie**. Une valeur
+transmise au premier record de la vie date la REPLICATION, pas le geste : elle dit l'etat
+dans lequel l'objet apparait. Il ne reste que **208 paires consecutives** sur tout le corpus
+pour observer un changement, et **81 transitions**. Dater un evenement sur 81 observations
+reparties sur 12 matchs, sans savoir laquelle des huit valeurs signifie « actif », serait
+deviner. **La forme du signal l'interdit aussi** : les huit valeurs de R(3) sont toutes
+peuplees et aucune ne domine — ce n'est pas un interrupteur.
+
+**QUESTION 2 — SAIT-ON QUI L'ACTIVE ? NON, et le controle prescrit ECHOUE.**
+
+    C1 (prescrit) : 0 valeur de creator sur 1 328 tombe dans la bande des slots de bipede
+                    du meme film.  ECHEC TOTAL, sur les 12 films.
+    C2 (plus faible, dit tel quel) : « passe » sur les 12 films, mais le controle est
+                    VACUEUX — le champ fait 5 bits (plafond 31) et tous les films ont plus
+                    de 31 slots de bipede (99 a 256). Il ne pouvait pas echouer.
+
+Le seul controle qui tranche vient de la verite terrain : sur `000d5950`, **8 joueurs**, le
+champ prend **15 valeurs distinctes et monte jusqu'a 28**. Sur le corpus entier il couvre
+**les 32 valeurs de sa plage, avec une queue plate** (24:28 25:29 26:16 27:23 28:20 29:29
+30:22 31:25). **Ce n'est ni un slot de bipede, ni un index de joueur.** Le nom
+`equipment-creator` reste celui du registre ; ce que le champ contient n'est pas identifie,
+et l'appeler « l'auteur » a l'ecran serait une invention.
+
+**QUESTION 3 — SAIT-ON OU L'OBJET EST POSE ? OUI, et c'est le seul OUI du lot.**
+
+    9 043 trajectoires · 628 368 echantillons sur 12 films
+    C3 : 610 693 echantillons sur 628 368 (97,2 %) tombent dans l'emprise du nuage des
+         BIPEDES du meme film, marge de 5 % par axe.  PASSE sur les 12 films (92,3 a 99,7 %)
+
+Le controle est non circulaire et ne demande AUCUNE base : les deux nuages sont exprimes en
+coordonnees normalisees [0,1] de l'AABB de la carte, lue dans le film. Il est severe la ou on
+l'attendait le moins : sur `00502e52` le nuage des joueurs n'occupe que **4 % x 2 % x 1,5 %**
+de l'AABB du BSP, et **98,0 %** des positions d'equipement tombent dans cette meme boite. Un
+decodage faux aurait donne un amas a l'origine ou un nuage uniforme.
+
+**CE QUE CETTE MESURE NE DIT PAS, et il faut le dire aussi fort :**
+
+1. **ti=37 n'est pas « les sept equipements ».** L'archetype porte `item-at-rest` et
+   `item-ignore-player` : c'est l'archetype des OBJETS POSES en general. 9 043 trajectoires
+   sur 12 matchs, c'est bien plus que des equipements de joueur. Rien dans les quatre champs
+   ne dit DE QUEL objet il s'agit. La question du plan (« couvre-t-il les sept ? ») reste
+   donc ouverte, et la mesure ne permet pas de la trancher : elle compte des entites, pas des
+   equipements.
+2. **Les 2,8 % d'echantillons hors de l'emprise** sont attendus d'un balayage bit a bit
+   (faux positifs de motif), mais ils ne sont pas identifies un par un.
+3. **La marche vers les composants est courte** (i0 puis quelques composants) : un taux
+   d'echec de 0,67 % est un indice de records reels, pas une preuve.
+
+**LES CHIFFRES D'i56** (MESURE B, 12 films, denominateur 2 519 042 records delta biped) :
+
+    masque ∋ i56   2 088 (0,083 %)   ·   LU 2 088 (100 %)   ·   illisible 0
+    2 088 lectures sur 1 275 slots   ·   279 series (slot, emplacement de charge)
+    519 paires consecutives  ->  282 CHUTES · 26 REMONTEES · 211 inchangees
+    146 slots porteurs de chute  ->  1,93 chute par slot porteur ; 0,22 par vie LUE
+    masque ∋ i54  21 188   ·   epis0des i54  687
+
+1. **Les deux encodages sont separes, et le resultat est net : 282 chutes sur 282 franchissent
+   un multiple de 16 ; AUCUNE ne reste a l'interieur d'un quartet.** Le corpus ne montre donc
+   que des chutes de l'ordre d'une charge entiere. Cela ne prouve pas que l'encodage continu
+   n'existe pas — cela mesure qu'une jauge continue finement echantillonnee ne se voit PAS
+   ici, ce qui est coherent avec un champ retransmis 0,08 % du temps.
+2. **LA COINCIDENCE AVEC `i54` EST REFUTEE PAR L'ELARGISSEMENT.** C'etait le but de la
+   mesure, et le resultat renverse le chiffre publie le 14/08 :
+
+       reel 7/601 (1,2 %)   temoin +5 s 9 (1,5 %)   temoin -5 s 5 (0,8 %)
+
+   Le taux reel est ENTRE les deux temoins. Sur `000d5950` seul, l'instrument reproduit le
+   14/08 au chiffre pres (176 lectures, 4,5 % contre 0,0 % et 3,0 %) — **le 4,5 % etait donc
+   3 episodes sur 67, et il ne survit pas a onze films de plus.**
+3. **Une chute d'i56 n'est pas non plus un evenement datable en elle-meme** : 282 chutes pour
+   1 275 vies lues, soit une chute pour cinq vies, et seulement 146 vies en portent une. Le
+   signal existe et il est propre (100 % de lecture, 0 illisible) ; il est simplement trop
+   rare pour dater quoi que ce soit a l'ecran.
+
+**CONSEQUENCE POUR L'ETAPE 4.** Elle reste bloquee, et pour une raison de plus qu'hier :
+l'etat actif n'est nomme ni sur le bipede (`i57`, quatre valeurs anonymes) ni sur l'objet
+(`i21`, huit valeurs anonymes). Le seul acquis exploitable de ce lot est GEOMETRIQUE — on
+sait ou les objets sont poses — et il ne suffit pas a l'effet demande.
+
+**LA PISTE QUI RESTE, chiffree et non exploree** (portee au registre des reports). Le
+recensement au masque des 31 composants de ti=37, cumule sur les 12 films, designe deux
+composants que le plan ne citait pas et qui ecrasent les quatre mesures :
+
+    equipment-charges-remaining-component        16 125   <- 3,1x l'energie, 7,6x l'active
+    equipment-energy-delay-ticks-left-component  10 608   <- un compte a rebours en ticks
+    equipment-energy-component                    5 268
+    equipment-deployed-component                  3 839
+    equipment-creator-component                   2 209
+    equipment-activated-component                 2 126
+
+Les deux sont DEJA PORTES par `consumeByName` : il ne manque qu'un hook, comme pour les
+quatre d'aujourd'hui. Un compteur de charges qui decroit date une utilisation par
+construction, et un compte a rebours en ticks porte une duree. Ce lot ne les traite pas
+(hors de la liste prescrite) ; le suivant devrait commencer par la.
+
+### Decouvertes de l'etape 5 (notees, NON traitees)
+
+1. **`SetWorldObjectPrecisionFromLayout` n'est appelee par AUCUN chemin de production.** Le
+   defaut du paquet `{13,13,14}` (largeurs de Cliffhanger) sert donc partout, alors que
+   `DetectI0Layout` mesure d'autres largeurs sur 11 des 12 films du corpus : `[15 15 17]`
+   (6 films), `[17 17 16]`, `[18 18 17]`, `[15 15 15]`, `[15 15 14]`, `[13 12 11]`. Les
+   positions d'objets du monde (projectiles, armes au sol, equipement) sont donc lues avec
+   les mauvaises largeurs hors Cliffhanger. L'instrument de ce lot pose les bonnes largeurs
+   et les restaure ; la production, non.
+2. **Le renderer d'histogramme de l'instrument tronquait a 24 valeurs sans le dire** —
+   defaut introduit puis corrige dans ce meme lot (`equipHistCap = 64`, et le message dit
+   desormais « TRONQUE, N valeurs distinctes »). Le premier balayage avait publie une
+   distribution de `creator` amputee de sa queue ; la mesure a ete REJOUEE en entier.
+
 ## Regles dures (rappel, elles ont deja tranche ce chantier)
 
 - **Aucun effet sans donnee mesuree.** Le lot du 14/08 a eu raison de ne rien afficher.

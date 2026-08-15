@@ -226,44 +226,83 @@ type projSample struct {
 func scanProjectileRecords(pay []byte, band map[uint32]bool, wr *Vec3Range) []projSample {
 	var out []projSample
 	posBits := projPosBits()
-	limit := len(pay)*8 - (21 + 6 + posBits)
+	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits + posBits)
 	for p := 0; p <= limit; p++ {
-		if PeekBits(pay, p, 1) != 1 { // préfixe de record DELTA
+		rec, ok := matchWorldObjectRecord(pay, p, band)
+		if !ok || rec.Idx[0] != 0 { // i0 doit être présent : c'est la position
 			continue
 		}
-		slot := uint32(PeekBits(pay, p+1, 13))
-		if !band[slot] {
-			continue
-		}
-		gen := uint32(PeekBits(pay, p+14, 2))
-		if PeekBits(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche éparse
-			continue
-		}
-		mc := int(PeekBits(pay, p+18, 3))
-		if mc < 1 || mc > 7 {
-			continue
-		}
-		idx, ok := ascendingComponents(pay, p+21, mc)
-		if !ok || idx[0] != 0 { // i0 doit être présent : c'est la position
-			continue
-		}
-		v, ok := decodeWorldObjectPos(pay, p+21+6*mc, wr)
+		v, ok := decodeWorldObjectPos(pay, rec.After, wr)
 		if !ok {
 			continue
 		}
 		rest := false
-		for _, i := range idx {
+		for _, i := range rec.Idx {
 			if i == projectileRestComponent {
 				rest = true
 			}
 		}
 		out = append(out, projSample{
 			ProjectileSample: ProjectileSample{X: v[0], Y: v[1], Z: v[2], AtRest: rest},
-			slot:             slot, gen: gen,
+			slot:             rec.Slot, gen: rec.Gen,
 		})
 		p += posBits // un record accepté n'est pas re-balayé
 	}
 	return out
+}
+
+// Découpage de l'en-tête d'un record delta d'OBJET DU MONDE (ti=37/38/41/42) :
+// préfixe(1) + slot(13) + génération(2) + porte de masque(2) + nombre de composants(3),
+// puis un index de composant par entrée. Nommé parce que deux balayages s'en servent
+// (projectiles et équipement) : trois copies du littéral 21 auraient re-divergé.
+const (
+	worldObjectHeaderBits = 21
+	worldObjectIndexBits  = 6
+	worldObjectMaxMaskCnt = 7
+)
+
+// WorldObjectRecord est l'en-tête reconnu d'un record delta d'objet du monde.
+type WorldObjectRecord struct {
+	// Slot et Gen identifient la vie de l'objet — LA PAIRE : le pool de slots reboucle.
+	Slot, Gen uint32
+	// Idx est la liste des index de composant du masque, strictement croissante.
+	Idx []int
+	// After est la position du premier bit APRÈS le masque, c'est-à-dire le début d'i0.
+	After int
+}
+
+// matchWorldObjectRecord reconnaît un en-tête de record delta d'objet du monde à la position
+// de bit p. PUR (aucune I/O).
+//
+// DEUX ÉCARTS AVEC LE BALAYAGE DU BIPÈDE, tous deux nécessaires et mesurés :
+//   - AUCUN filtre sur le tag. Le tag de 2 bits est la GÉNÉRATION du handle, et ses quatre
+//     valeurs sont légitimes. Le bipède est à tag=1 dans 99,9 % des cas, d'où le filtre
+//     historique ; le projectile utilise les quatre, et 16 des 70 trajectoires de grenade sont
+//     INTÉGRALEMENT en tag=0. Filtrer les perdrait toutes.
+//   - maskCount minimal à 1 (et non 2) : les records d'objet du monde sont courts.
+func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjectRecord, bool) {
+	var rec WorldObjectRecord
+	if PeekBits(pay, p, 1) != 1 { // préfixe de record DELTA
+		return rec, false
+	}
+	slot := uint32(PeekBits(pay, p+1, 13))
+	if !band[slot] {
+		return rec, false
+	}
+	if PeekBits(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche éparse
+		return rec, false
+	}
+	mc := int(PeekBits(pay, p+18, 3))
+	if mc < 1 || mc > worldObjectMaxMaskCnt {
+		return rec, false
+	}
+	idx, ok := ascendingComponents(pay, p+worldObjectHeaderBits, mc)
+	if !ok {
+		return rec, false
+	}
+	rec.Slot, rec.Gen = slot, uint32(PeekBits(pay, p+14, 2))
+	rec.Idx, rec.After = idx, p+worldObjectHeaderBits+worldObjectIndexBits*mc
+	return rec, true
 }
 
 // ascendingComponents lit les mc index de composant de 6 bits et exige qu'ils soient
