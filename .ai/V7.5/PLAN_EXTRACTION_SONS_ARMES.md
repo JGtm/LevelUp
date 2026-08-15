@@ -914,6 +914,57 @@ RESTE, et c'est peu : les trois armes nommees sans vote ci-dessus, et la general
 lien direct `weap -> bank` (section 3 du handoff) — que le cas du Mutilator conforte, son
 vote portant sur la bank atteinte DIRECTEMENT et non sur celle atteinte par relais.
 
+### 2026-08-16 — Etape 17 : le `Blend` est une DISTANCE, pas un empilement
+
+RETRACTATION D'ABORD. L'etape 16 justifiait « la rafale est l'objet livre » par une analyse
+du fichier de reference de l'utilisateur : j'y comptais trois attaques et en concluais « deux
+ou trois aiguilles ». **C'est faux, il s'agit d'une seule aiguille** — mon detecteur prenait
+les transitoires internes d'un son unique pour des coups distincts. La DECISION reste valide,
+l'utilisateur l'ayant posee independamment ; c'est ma justification qui etait fausse.
+Consequence utile : une aiguille dure 2,5 s avec sa queue, pas 80 ms.
+
+LE `Blend` N'EMPILE PAS. L'etape 15 le decomposait en couches simultanees. Mesure qui refute :
+ses enfants ont des durees IDENTIQUES entre eux (fusil electrique 0,67/0,67/0,67 ; MA40
+0,08/0,08/0,08). Des couches d'un coup de feu differeraient — attaque breve, corps, queue.
+Trois elements de meme duree sont des ALTERNATIVES, et l'inventaire de l'etape 12 dit
+lesquelles : 42 `Blend` sur 303 portent une automation par parametre de jeu, soit un fondu
+de DISTANCE. Les deux comportements precedents etaient faux tous les deux :
+
+	tirer au hasard dans tous les enfants  -> la distance change a chaque coup
+	les empiler tous                       -> melange trop epais
+
+CORRECTIF : on fige UNE distance, toujours la meme (le plus petit identifiant d'enfant, pour
+etre stable d'une regeneration a l'autre). La decision de perimetre de l'utilisateur
+l'autorise — le rejeu 2D n'a pas besoin de gerer la distance.
+
+	fusil electrique 3P   6 couches -> 2 couches de 3 wem
+	MA40 3P               3 couches -> 1 couche de 19 wem (au lieu de 64 melangees)
+	SPNKr a combustible   9 couches -> 1 couche de 4 wem
+
+LE NEEDLER, ENFIN INSTRUIT. Sa reference exterieure a servi de SONDE : on a classe tous ses
+`.wem` par ecart d'enveloppe d'energie avec elle. Les cinq premiers sont bien du Needler
+(0,0676 a 0,0872) et durent 0,67 a 0,99 s — pas 0,08 s. Ils vivent dans `7474d8d8` et surtout
+dans **`f1fa7e3f`**, un evenement de 32 sons qui n'est PAS dans « Weapon Fire Sounds » et
+n'etait donc jamais rendu ni meme ecoutable : il tombait dans le fourre-tout « hors chaine de
+tir ». TEMOIN : 7 sons d'autres armes figurent dans les 25 premiers, la mesure est donc
+FAIBLE — elle oriente, elle ne prouve pas. C'est l'oreille qui tranchera.
+
+Deux consequences outillees :
+- Le manifeste expose desormais CHAQUE evenement individuellement au lieu d'un fourre-tout.
+  797 groupes au lieu de 417 — plus a parcourir, mais plus rien d'invisible.
+- Une designation peut AJOUTER un evenement absent de la chaine de tir, a condition qu'aucun
+  mode ne le revendique (le garde-fou du tir charge du Ravageur tient toujours).
+
+MARQUAGE « A REVOTER ». Le manifeste compare le rendu courant a celui de la generation
+precedente (`coups_precedent.json`) : un coup dont l'evenement ou le nombre de couches a
+change ET qui porte un vote est marque, dans la barre laterale comme sur le groupe.
+Etat : **12 coups a revoter sur 12 armes**, tous en 3e personne. Les 23 autres votes sur un
+coup et tous les votes de 1re personne sont intacts.
+
+A NOTER : le SPNKr a combustible n'a jamais manque — il est expose sous son nom de jeu
+(`UNSC_fuelrodlauncher`, « SPNKr a combustible », avec icone). `Covenant_fuelrod_hunter` est
+l'arme de PNJ, sans entree produit, d'ou l'absence de nom.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs

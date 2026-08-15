@@ -110,11 +110,41 @@ func (b *bank) pointsDeChoix(n uint32, vus map[uint32]bool) []brancheRendue {
 	if o.Type == typeRandomSeq {
 		return []brancheRendue{b.brancheDe(n, b.wemsSous(n, map[uint32]bool{}))}
 	}
+	if o.Type == typeBlend {
+		// UN `Blend` N'EMPILE PAS TROIS FOIS LE MEME SON. Mesure : ses enfants ont des
+		// durees IDENTIQUES entre eux (fusil electrique 0,67/0,67/0,67 ; MA40
+		// 0,08/0,08/0,08). Des couches d'un coup de feu differeraient — une attaque breve,
+		// un corps, une queue longue. Trois elements de meme duree sont des ALTERNATIVES,
+		// et l'inventaire dit lesquelles : 42 `Blend` sur 303 portent une automation par
+		// parametre de jeu, soit un fondu de DISTANCE (proche / moyen / lointain).
+		//
+		// Les deux comportements precedents etaient donc faux tous les deux : tirer au
+		// hasard dans l'ensemble des enfants changeait de distance a chaque coup (« un tir
+		// est bien et le suivant etouffe »), et les empiler tous donnait un melange trop
+		// epais (« aucun des reconstitues ne convient plus » sur le fusil electrique).
+		// On fige UNE distance, toujours la meme — ce que la decision de l'utilisateur
+		// autorise : le rejeu 2D n'a pas besoin de gerer la distance.
+		return b.pointsDeChoix(distanceRetenue(enfants), vus)
+	}
 	var out []brancheRendue
 	for _, e := range enfants {
 		out = append(out, b.pointsDeChoix(e, vus)...)
 	}
 	return out
+}
+
+// distanceRetenue choisit l'enfant de `Blend` a rendre. Le choix doit etre STABLE d'une
+// regeneration a l'autre — sinon les votes deja poses porteraient sur un son qui bouge —
+// donc on prend le plus petit identifiant, et non le premier de la liste declaree, dont
+// l'ordre depend de la lecture.
+func distanceRetenue(enfants []uint32) uint32 {
+	meilleur := enfants[0]
+	for _, e := range enfants[1:] {
+		if e < meilleur {
+			meilleur = e
+		}
+	}
+	return meilleur
 }
 
 // wemsSous rend tous les `.wem` d'un sous-arbre : c'est le contenu d'un point de choix.
