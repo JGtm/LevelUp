@@ -20,13 +20,50 @@
  * explosion à état afficherait n'importe quoi après un retour en arrière. Chaque particule
  * est donc REJOUÉE depuis son germe à chaque image — même germe, même âge, même image.
  *
+ * LA COMPOSITION EST UNE PROPRIÉTÉ DU FOND, PAS DE L'EFFET (correction du 2026-08-15).
+ * La référence compose ses quatre calques chauds en ADDITIF (`lighter`) : sur sa carte noire,
+ * l'explosion brûle. Mesuré ici en Chromium réel, phase par phase, sur les deux fonds de
+ * chaque thème (`--background` et `--card`) et pour les trois types qui détonent — pixels
+ * réellement changés d'au moins 24/255, au pire des deux fonds et des trois types :
+ *
+ *   phase                | thème sombre  | thème clair
+ *   flash        (40 ms) | 648 -> 820    |   0 -> 1484
+ *   boule de feu (180)   | 235 -> 194    |   0 ->  379
+ *   onde de choc (180)   | 326 -> 318    |   0 ->  313
+ *   éclats       (180)   |  47 ->  46    |   0 ->   43
+ *   poussière    (900)   |  40 ->  40    | 314 ->  314   <- seule déjà en `source-over`
+ *
+ * Zéro n'est pas « peu » : `lighter` calcule `dst + src·α` puis écrête à 255. Sur un fond
+ * déjà à 250-254, AUCUNE couleur, AUCUNE taille, AUCUNE opacité ne peut changer un pixel.
+ * L'explosion n'était pas absente sur le thème clair : elle était AMPUTÉE de tout ce qui
+ * claque, et il n'en restait que la poussière. Aucun test de primitives ne pouvait le voir —
+ * d'où le garde-rail de rastérisation `e2e/replay-explosion-raster.spec.ts`.
+ *
+ * CE QUI A ÉTÉ JUGÉ SITE PAR SITE, et non remplacé en bloc. L'additif reste le bon opérateur
+ * quand DEUX SOURCES LUMINEUSES SE RECOUVRENT SUR UN FOND SOMBRE GARANTI. Deux conditions,
+ * donc, et chaque site a été confronté aux deux :
+ *  - le FLASH et l'ONDE DE CHOC ne dessinent qu'UNE primitive chacun : ils n'ont rien à
+ *    accumuler, même sur fond noir. L'additif ne leur apportait rien et les exposait à la
+ *    panne — ils n'y perdent donc RIEN ;
+ *  - les BRAISES (12 disques) et les ÉCLATS (10 traînées) se recouvrent réellement : là,
+ *    l'additif apportait quelque chose, et ils y PERDENT le sur-éclat blanc de leurs
+ *    recouvrements. Ce qui reste : des disques semi-transparents dont les opacités se
+ *    composent quand même (1-(1-a₁)(1-a₂)), donc un cœur qui se densifie — et le cœur
+ *    incandescent reste porté par l'encre `core` des jeunes braises et par le flash.
+ * Le fond, lui, n'est jamais garanti sombre : c'est celui du thème. Aucun des quatre sites ne
+ * remplit donc la seconde condition, et les quatre passent en `source-over` — quatre fois le
+ * même test, quatre réponses mesurées, pas un remplacement mécanique.
+ *
  * BORNÉE, ET LA BORNE EST MESURÉE (item 3.4) : 12 braises + 10 éclats + 6 bouffées = 28
  * particules par explosion, au plus 84 pas de simulation (1,4 s à 60 Hz). Le coût d'UNE
- * explosion, relevé sur toute sa timeline et figé par test : **19 dégradés radiaux et 227
- * primitives** au pire instant. Le corpus des 23 artefacts locaux (801 explosions posées)
- * ne montre jamais plus de **5 explosions simultanées** dans la fenêtre de 1,4 s : le pire
- * cas réel coûte donc 95 dégradés et ~1 135 primitives sur une image, sur un canevas dont
- * le fond, la structure, les zones et les objectifs sont déjà cuits hors écran.
+ * explosion, relevé sur toute sa timeline et figé par test : **19 dégradés radiaux et 228
+ * primitives** au pire instant (227 avant le 2026-08-15 : le plateau du flash ajoute UNE
+ * borne de couleur à un dégradé qui existait déjà — la correction de composition, elle, ne
+ * coûte rien, `source-over` est le mode par défaut du canevas). Le corpus des 23 artefacts
+ * locaux (801 explosions posées) ne montre jamais plus de **5 explosions simultanées** dans
+ * la fenêtre de 1,4 s : le pire cas réel coûte donc 95 dégradés et ~1 140 primitives sur une
+ * image, sur un canevas dont le fond, la structure, les zones et les objectifs sont déjà
+ * cuits hors écran.
  */
 
 /** Durée totale de la timeline, en millisecondes (celle de la référence). */
@@ -138,7 +175,11 @@ function drawEmbers(
   ink: ExplosionInk,
   steps: number,
 ): void {
-  ctx.globalCompositeOperation = 'lighter'
+  // SITE 1/4 — le seul, avec les éclats, où l'additif apportait quelque chose : douze disques
+  // qui se recouvrent, et dont les recouvrements brûlaient. Mais 0 px changé sur fond clair
+  // (mesuré) : la boule de feu n'existait pas la moitié du temps. En composition normale les
+  // opacités se composent encore (le cœur se densifie), et elle existe sur les deux fonds.
+  ctx.globalCompositeOperation = 'source-over'
   const rand = rng(s.seed)
   for (let i = 0; i < EMBERS; i++) {
     const ang = rand() * Math.PI * 2
@@ -174,7 +215,12 @@ function drawSparks(
   ink: ExplosionInk,
   steps: number,
 ): void {
-  ctx.globalCompositeOperation = 'lighter'
+  // SITE 2/4 — les éclats se recouvrent entre eux au départ (ils naissent tous au même
+  // point), donc l'additif y avait un sens ; il leur coûtait leur existence sur fond clair
+  // (0 px) et, sur fond sombre, il les DILUAIT dans la boule de feu qu'ils traversent — une
+  // traînée additive posée sur un cœur déjà saturé ne se distingue plus. En composition
+  // normale, ils gardent leur contour sur les deux fonds.
+  ctx.globalCompositeOperation = 'source-over'
   ctx.lineCap = 'round'
   ctx.strokeStyle = ink.fire
   const rand = rng(s.seed ^ 0x5f5f)
@@ -247,7 +293,9 @@ function drawWave(ctx: CanvasRenderingContext2D, s: ExplosionShape, ink: Explosi
   if (s.ageMs >= WAVE_MS) return
   const pr = s.ageMs / WAVE_MS
   const ease = 1 - Math.pow(1 - pr, 3)
-  ctx.globalCompositeOperation = 'lighter'
+  // SITE 3/4 — UN SEUL anneau : il n'a rien à accumuler, l'additif ne lui apportait donc
+  // rien même sur fond noir, et lui coûtait tout sur fond clair (0 px). Zéro perte ici.
+  ctx.globalCompositeOperation = 'source-over'
   ctx.strokeStyle = ink.fire
   ctx.globalAlpha = (1 - pr) * 0.8
   ctx.lineWidth = (1 - pr) * 2.4 * s.k + 0.4
@@ -261,9 +309,22 @@ function drawFlash(ctx: CanvasRenderingContext2D, s: ExplosionShape, ink: Explos
   const fl =
     s.ageMs < FLASH_MS ? 1 : s.ageMs < FLASH_MS * 4 ? 1 - (s.ageMs - FLASH_MS) / (FLASH_MS * 3) : 0
   if (fl <= 0) return
-  ctx.globalCompositeOperation = 'lighter'
-  paintRadial(ctx, s.x, s.y, BLAST_R * 1.8 * s.k, ink.core || ink.fire, fl * 0.9)
+  // SITE 4/4 — UN SEUL disque, par-dessus tout le reste : rien à accumuler non plus, et
+  // c'est LUI que l'utilisateur ne voyait pas (648 px sur fond sombre, 0 sur fond clair).
+  // Le plateau lui donne un corps : sans lui, un dégradé radial a déjà perdu la moitié de
+  // son opacité au tiers du rayon, et le coup de flash se réduisait à son centre.
+  ctx.globalCompositeOperation = 'source-over'
+  paintRadial(ctx, s.x, s.y, BLAST_R * 1.8 * s.k, ink.core || ink.fire, fl * 0.9, FLASH_PLATEAU)
 }
+
+/**
+ * PLATEAU du dégradé du FLASH : part du rayon qui reste à PLEINE teinte avant la retombée.
+ *
+ * Il ne sert QU'AU FLASH, et c'est délibéré : les braises et la poussière sont des BOUFFÉES,
+ * un plateau en ferait des disques nets ; le flash, lui, est un COUP — il lui faut un corps.
+ * Même remède qu'à l'éclair de bouche (`muzzleFlash.ts`, GRADIENT_PLATEAU), même raison.
+ */
+const FLASH_PLATEAU = 0.3
 
 /** paintRadial — un disque dégradé, de la couleur donnée vers la transparence. */
 function paintRadial(
@@ -273,10 +334,12 @@ function paintRadial(
   radius: number,
   color: string,
   alpha: number,
+  plateau = 0,
 ): void {
   if (!color || radius <= 0 || alpha <= 0) return
   const g = ctx.createRadialGradient(x, y, 0, x, y, radius)
   g.addColorStop(0, color)
+  if (plateau > 0) g.addColorStop(plateau, color)
   // « transparent » plutôt qu'une couleur à alpha zéro : le canevas accepte n'importe quel
   // format du thème (oklch compris) sans qu'on ait à le désassembler.
   g.addColorStop(1, 'transparent')
