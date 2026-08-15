@@ -300,10 +300,19 @@ NOMMAGE — DEUX POINTS A TRANCHER AVEC L'UTILISATEUR :
   mais AUCUNE des 33 armes resolues ne porte ce tag. L'arme n'est pas rattachee.
 - `bt_enforcer` n'a pas de son de tir prouve, donc pas de nom. Ce n'est PAS le Déchiqueteur :
   `hinf_mangler` porte le tag `80977ba5`, deja attribue a `bt_spikerevolver`.
-- `static/weapons-assets/halo_infinite/jeu/index.json` contient au moins une incoherence
-  interne : l'entree `hinf_cindershot` porte `nom_jeu = heatwave`. Les noms affiches en
-  heritent — ils ne peuvent pas etre presentes comme surs tant que ce fichier n'est pas
-  audite.
+- CORRECTION (meme jour). J'avais qualifie `jeu/index.json` d'incoherent parce que l'entree
+  `hinf_cindershot` porte `nom_jeu = heatwave`. **C'est FAUX et l'accusation est retiree.**
+  L'utilisateur a indique que le nom interne « heatwave » a designe une arme en debut de
+  developpement et une autre en fin ; verification faite, le fichier est FIDELE :
+
+		pack audio `fr_heatwave` -> weap 230447b1 -> hinf_cindershot (Cremateur)
+		pack audio `fr_hotrod`   -> weap 2ac9c2ff -> hinf_heatwave   (Calcineur)
+
+  Le croisement est reel dans les donnees du jeu : le pack audio a garde le sens du debut,
+  le tag porte celui de la fin. Le pipeline n'a pas ete trompe parce qu'il joint par TAG
+  `weap` et jamais par nom — c'est exactement le cas que cette regle protege. A retenir :
+  ne jamais deduire l'identite d'une arme du nom de son pack audio.
+  Au passage : `cv_provoker` = `hinf_ravager` (Ravageur).
 
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
