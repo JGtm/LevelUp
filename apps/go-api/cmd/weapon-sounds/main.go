@@ -131,6 +131,12 @@ func main() {
 			g = temoins[0]
 		}
 		err = sonsDeMelee(chemin, g)
+	case "meleefx":
+		var g uint32
+		if len(temoins) > 0 && temoins[0] != wemTemoins[0] {
+			g = temoins[0]
+		}
+		err = effetsDeMelee(chemin, g)
 	case "cadence":
 		err = sonderCadence(chemin, temoins[0])
 	case "arbre":

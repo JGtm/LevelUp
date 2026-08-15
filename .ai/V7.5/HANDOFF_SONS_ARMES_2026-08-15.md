@@ -118,8 +118,10 @@ mal servies. Le nombre est inconnu — c'est la premiere chose a etablir.
    personne** : son evenement etait refuse par le garde-fou de duree UNIQUEMENT parce que la
    couche `Switch` melangeait tous les etats, dont la supercombinaison. Le defaut 5 et le
    defaut 9 n'en faisaient qu'un.
-   RESTE : le `Blend` a automation (42 conteneurs sur 303) n'est pas traite, et l'etat rendu
-   est toujours celui par defaut — le jeu, lui, impose un etat selon la distance.
+   HORS PERIMETRE, decision utilisateur du 2026-08-15 : **l'etat par defaut suffit**. Le
+   rejeu 2D n'a besoin ni de la hauteur, ni de la distance, ni de l'environnement. Le
+   `Blend` a automation (42 conteneurs sur 303) et les etats non par defaut sont donc
+   CLOS, pas en attente — ne pas les rouvrir sans une demande explicite.
 
 9bis. **[HISTORIQUE, pour comprendre le correctif ci-dessus]** C'est le
    defaut le plus lourd du chantier, trouve en instruisant les votes de l'utilisateur sur
