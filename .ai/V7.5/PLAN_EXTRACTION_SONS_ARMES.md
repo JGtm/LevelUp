@@ -544,6 +544,105 @@ RESTE OUVERT : les 989 banks a chunks non imprimables (decoupeur qui derape) et
 l'exploitation du paquet RANGED (aleas de volume et de hauteur par lecture, qui expliquent
 qu'un meme son ne sonne jamais deux fois pareil en jeu).
 
+### 2026-08-15 — Etape 10 : le garde-fou de duree, et ce qu'il a fait remonter
+
+Objet : defaut 5 du handoff (appariement de perspective sans garde-fou), signale a
+l'oreille sur le Needler. Trois resultats, dont deux non prevus.
+
+**1. Le seuil de 3 annonce au handoff etait FAUX, et destructeur.** Pose tel quel, il
+refusait 26 appariements sur 12 armes. Or l'utilisateur avait deja valide a l'oreille des
+appariements bien au-dela : skewer 0,79 s -> 4,99 s (rapport 6,3), spiker 6,2, sniper 5,9,
+disrupteur 4,5, fusil a pompe 4,3. En 1re personne on entend la mecanique et la queue : la
+duree DOIT etre plus grande. Le seuil est donc CALIBRE SUR LES 44 VOTES et porte a **10** :
+tous les appariements valides survivent, et le Needler (rapport 26) est le SEUL refus sur
+les armes votees. Lecon : un seuil annonce dans un handoff sans jeu de validation est une
+hypothese, pas une mesure — ici c'est le vote de l'utilisateur qui a servi de jeu d'essai.
+
+**2. La mesure acoustique montee pour trancher etait DEGENEREE, et son temoin l'a dit.**
+Question : la couche longue et stereo est-elle le tir en 1re personne, ou autre chose ?
+Instrument : energie dans 8 bandes (Goertzel) sur les 120 ms d'attaque, similarite cosinus.
+Resultat : 0,994 a 1,000 entre les deux perspectives d'une meme arme... mais AUSSI 0,991 a
+1,000 entre deux armes DIFFERENTES. L'instrument ne separe rien ; aucune conclusion n'en a
+ete tiree. Le temoin « armes differentes » n'etait pas decoratif, c'est lui qui a evite de
+publier un faux resultat. **Toute mesure de similarite doit embarquer son temoin negatif.**
+
+**3. DECOUVERTE — les elements de « Weapon Fire Sounds » ne sont pas tous des modes.**
+Constat de l'utilisateur (« pour le MA40 et le MA5K je n'ai pu me decider ») explique par
+la mesure : les trois elements du MA40 partagent le MEME evenement de 1re personne
+(`1046dc38`) et ne different que par la 3e. L'artefact proposait donc trois fois le meme
+fichier a juger. Idem MA5K (`f622d8f9`) et magnum (`26ef9698`).
+
+	MA40   element 1 -> 3p 47044cbf | 1p 1046dc38
+	       element 2 -> 3p 70173c35 | 1p 1046dc38
+	       element 3 -> 3p ca9f5ec8 | 1p 1046dc38
+
+CRITERE QUI EN DECOULE : **un vrai mode de tir a son propre son de 1re personne** ; un
+element qui partage celui d'un autre est une variante de 3e personne (distance). Le critere
+se valide seul sur deux cas etablis a l'oreille : le pistolet plasma rend 2 modes (le tir
+charge, element 3, a bien son propre 1P) et le Mutilator `8827aa7e` en rend 2. Applique
+avant le rendu, il fait passer le MA40 de 6 groupes a 4 sans orpheliner aucun vote (le plus
+petit numero de mode est conserve) — verifie : 44/44 votes toujours rattaches.
+
+Livre aussi : une rafale PRE-RENDUE par groupe (une variante par couche a chaque coup,
+gains Wwise appliques) ; les evenements refuses restent ecoutables sous un nom qui dit leur
+statut, avec leur rafale, pour qu'un refus calcule puisse etre dementi a l'oreille ;
+l'artefact marque « choisi » ce qui est deja tranche et se reamorce sur le dernier export
+si le stockage du navigateur est vide.
+
+RESTE : l'epee infectee choisit comme reference de 3e personne un evenement de 25,71 s de
+mediane (`dabf5bc3`, retenu parce qu'il a 2 couches quand les autres en ont 1). Ses 10
+refus sont donc mesures contre une reference absurde. C'est le critere de choix degenere
+`max(couches, wem)`, pas le garde-fou — a traiter avec lui.
+
+### 2026-08-15 — Etape 11 : instruire les votes sur des sons isoles, et tomber sur `Switch`
+
+Question posee par l'utilisateur : pourquoi a-t-il vote, pour 12 groupes, un son ISOLE
+plutot que le coup reconstitue de la meme arme ?
+
+D'ABORD UNE CORRECTION DE MON PROPRE CHIFFRE. « 12 votes sur un isole plutot que sur le
+coup » etait imprecis : **7 des 12 accompagnent un vote sur le coup** de la meme arme, donc
+l'isole y est un complement. Seuls **5 vont a l'isole SEUL** — les quatre armes de melee et
+le Needler.
+
+METHODE. Pour chaque vote sur un isole : ou vit ce `.wem` dans la structure, et QUI DOMINE
+le coup correspondant. Poids d'une couche = RMS moyen de ses candidats x facteur de gain
+Wwise — c'est ce qui arrive au premier plan, pas le nombre de couches.
+
+DEUX CAUSES, toutes deux structurelles.
+
+**1. Les conteneurs `Switch` sont traites comme des conteneurs aleatoires.** Les couches
+portent un type de noeud, et `arbre.go:27` n'en lit que le NOM. Un `RandomSequence` tire
+une variante au hasard, ses candidats sont interchangeables ; un `Switch` choisit selon un
+ETAT DE JEU et les siens ne le sont pas. Le parseur resout les enfants d'un `Switch` par
+l'heuristique generique : tous les etats finissent dans un seul lot ou le rendu pioche.
+
+	Types de noeud des couches des coups : RandomSequence 36 %, Blend 26 %,
+	Sound 22 %, Switch 16 % (mediane 30 candidats, max 40)
+
+	31 coups sur 107 portent une couche Switch, dont 28 en 1re personne
+	UNSC_sniperrifle  M1 1p  c0 Switch 30 wem  -> 71 % du melange
+	UNSC_shotgun      M1 1p  c1 Switch 30 wem  -> 38 %
+	Covenant_needler  M1 1p  c2 Switch 40 wem  -> la supercombinaison
+
+Ce defaut explique EN CASCADE trois choses deja rencontrees : les evenements 1P « trop
+longs » (le garde-fou de l'etape 10 n'en soigne que le symptome), le motif « 18 wem en 3P
+contre 30 en 1P » observe sur cinq armes sans lien, et la preference pour l'isole.
+CONSEQUENCE IMMEDIATE : 18 des 44 votes portent sur un `_coup_m*_1p` d'une arme concernee.
+Ces rendus changeront — **ne pas relancer de campagne de vote sur la 1re personne avant.**
+
+**2. Un son unique partage par 20 armes de 4 factions entre dans les coups a -2 dB.** Le
+`.wem` `195277626` (0,92 s) forme a lui seul une couche `Sound` dans 21 coups de 20 armes,
+Banished, Covenant, UNSC et Forerunner confondus, ou il pese 11 a 36 % du melange. Un son
+unique partage par des armes sans rapport n'est le tir d'aucune. Deux autres du meme genre :
+`87187708` (0,03 s, 5 armes), `5270936` (0,06 s, 4 armes, -8 dB).
+
+Pour les quatre armes de melee, la cause est autre et deja identifiee : le critere de choix
+degenere (defaut 8) leur donne des couches de 9,70 s et 25,71 s.
+
+LECON. La question « pourquoi ca ne sonne pas juste ? » avait une reponse dans le FORMAT,
+pas dans le gout. Elle n'a ete trouvee qu'en partant des votes de l'utilisateur et en
+remontant jusqu'a la structure — c'est la troisieme fois que son oreille precede l'outil.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs

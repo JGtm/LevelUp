@@ -1,3 +1,77 @@
+## [2026-08-15] Sons d'armes — les conteneurs `Switch` lus comme de l'aleatoire
+
+**Statut** : Etape 11 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete (enquete,
+pas de correctif). Defauts 9 et 10 ouverts au handoff, le 9 passe en tete de l'ordre suggere.
+Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : instruire une question de l'utilisateur — pourquoi
+avoir vote un son ISOLE plutot que le coup reconstitue de la meme arme ? — a mene a un
+defaut de format, pas a une affaire de gout. Les couches portent un type de noeud dont
+`arbre.go:27` ne lit que le nom. Un `RandomSequence` tire une variante au hasard, ses
+candidats sont interchangeables ; un `Switch` choisit selon un ETAT DE JEU (distance,
+materiau, nombre d'aiguilles plantees) et les siens ne le sont pas. Le parseur resout ses
+enfants par l'heuristique generique : tous les etats atterrissent dans un seul lot ou le
+rendu pioche au hasard, a plein gain.
+
+**Resultats observes** : 31 coups reconstitues sur 107 portent une couche `Switch`, dont 28
+en 1re personne, mediane 30 candidats et jusqu'a 40 ; elle y pese 38 a 71 % du melange
+(sniper 71 %). Le defaut explique en cascade les evenements 1P « trop longs » de l'etape 10,
+le motif « 18 wem en 3P contre 30 en 1P » vu sur cinq armes sans lien, et la preference pour
+l'isole. Second constat : le `.wem` `195277626` (0,92 s) forme a lui seul une couche dans 21
+coups de 20 armes de 4 factions, a -2 dB, pour 11 a 36 % du melange — un son unique partage
+par des armes sans rapport n'est le tir d'aucune.
+
+Correction d'un chiffre que j'avais avance : « 12 votes sur un isole plutot que sur le
+coup » etait imprecis. 7 des 12 accompagnent un vote sur le coup ; seuls 5 vont a l'isole
+seul, et ce sont les quatre armes de melee plus le Needler.
+
+**Conclusion / prochaine etape** : lire `AkSwitchPackage` (groupe de commutation, etat par
+defaut, enfants par etat) et rendre l'etat par defaut au lieu d'un tirage dans tout le lot.
+A faire AVANT toute nouvelle campagne de vote sur la 1re personne : 18 des 44 votes portent
+sur un coup de 1re personne d'une arme concernee, et ces rendus changeront. C'est la
+troisieme fois que l'oreille de l'utilisateur precede les controles automatiques.
+
+## [2026-08-15] Sons d'armes — un seuil recalibre sur les votes, et les faux modes de tir
+
+**Statut** : Etape 10 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete. Handoff mis
+a jour (defaut 5 corrige, defaut 8 ouvert). Branche `feat/extraction-sons-armes`, rien n'est
+merge.
+
+**Decision technique principale** : le handoff annoncait un garde-fou de duree « de l'ordre
+de 3 » sur l'appariement de perspective. Pose tel quel, il refusait 26 appariements sur 12
+armes — dont des appariements que l'utilisateur avait DEJA valides a l'oreille (skewer 6,3 ;
+spiker 6,2 ; sniper 5,9). En 1re personne la duree est legitimement plus grande : on entend
+la mecanique et la queue. Le seuil a donc ete calibre sur ses 44 votes et porte a 10. Un
+seuil annonce dans un handoff sans jeu de validation est une hypothese, pas une mesure ; ici
+le jeu de validation existait deja, c'etaient les votes.
+
+**Deux resultats non prevus** :
+
+1. La mesure acoustique montee pour trancher (8 bandes Goertzel sur 120 ms d'attaque,
+   similarite cosinus) est DEGENEREE : 0,994-1,000 entre deux perspectives d'une meme arme,
+   mais aussi 0,991-1,000 entre deux armes differentes. Rien n'en a ete conclu. C'est le
+   temoin negatif « armes differentes » qui l'a revele — **toute mesure de similarite doit
+   embarquer son temoin**.
+2. Les elements du tableau « Weapon Fire Sounds » ne sont pas tous des modes de tir. Le
+   MA40, le MA5K et le magnum ont trois elements qui partagent le MEME evenement de 1re
+   personne et ne different que par la 3e : l'artefact proposait trois fois le meme fichier
+   a juger, d'ou le « je n'ai pu me decider » de l'utilisateur. Critere qui en decoule :
+   **un vrai mode de tir a son propre son de 1re personne**. Il se valide seul sur deux cas
+   etablis a l'oreille (les 2 modes du pistolet plasma, les 2 du Mutilator).
+
+**Resultats observes** : 11 refus de perspective au lieu de 26 ; une seule arme perd une
+perspective, le Needler, exactement le cas signale. MA40 de 6 groupes a 4. 44/44 votes
+toujours rattaches apres redecoupage. Artefact : marquage « choisi », « variante de
+distance », « garde-fou de duree » ; rafale pre-rendue par groupe ; reamorcage sur le
+dernier export si le stockage du navigateur est vide.
+
+**Conclusion / prochaine etape** : le critere de choix `max(couches, wem)` devient le
+defaut le plus nuisible — il retient pour l'epee infectee une reference de 25,71 s de
+mediane, contre laquelle 10 refus sont mesures sans valeur. C'est le point 2 de l'ordre
+suggere. A instruire aussi : 12 des 44 votes portent sur un son ISOLE plutot que sur le coup
+reconstitue de la meme arme, ce qui dit que la reconstitution ressemble parfois MOINS au jeu
+que sa matiere premiere.
+
 ## [2026-08-15] Sons d'armes — audit du format, gains appliques, et un handoff
 
 **Statut** : Etapes 8 et 9 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` completes.

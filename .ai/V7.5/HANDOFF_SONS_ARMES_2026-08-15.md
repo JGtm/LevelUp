@@ -89,25 +89,59 @@ mal servies. Le nombre est inconnu — c'est la premiere chose a etablir.
    « impact » a attaque <= 0,11 s et 5-6 kHz, nettement distincts des « balayage »), elles
    n'ont simplement jamais ete separees. **Ce ne sont pas des pistes manquantes, c'est une
    distinction manquante** — donc corrigeable sans nouvelle extraction.
-5. **La detection de perspective n'a pas de garde-fou de duree.** Elle repose UNIQUEMENT
-   sur mono/stereo. Elle peut donc apparier deux evenements qui n'ont rien a voir, du
-   moment que l'un est mono et l'autre stereo. Cas mesure, signale a l'oreille par
-   l'utilisateur sur le Needler :
-
-		081fe06b   75 wem   0,08-0,46 s   mediane 0,08 s   75 mono    -> etiquete 3P
-		7474d8d8   62 wem   0,03-3,88 s   mediane 2,08 s   61 stereo  -> etiquete 1P
-
-   A 720 coups/min une aiguille dure 83 ms : un son de 2 s ne peut pas etre le tir. La
-   couche `Switch` de `7474d8d8` (40 sons, 1,54-3,88 s) designe la SUPERCOMBINAISON — les
-   aiguilles plantees qui explosent, le branchement dependant du nombre plante. Le critere
-   mono/stereo est valide pour departager deux versions DU MEME son (il a bien marche sur
-   l'epee, ou les durees s'appariaient) ; il ne dit RIEN sur le fait que deux evenements
-   soient la meme chose. GARDE-FOU A POSER : deux perspectives d'un meme son ont des durees
-   comparables — refuser l'appariement au-dela d'un rapport de l'ordre de 3. Ici le rapport
-   est de 26.
+5. ~~**La detection de perspective n'a pas de garde-fou de duree.**~~ **CORRIGE** (etape 10).
+   Le garde-fou est pose dans `scratchpad/coups_lot.py` (`RAPPORT_MAX`), avec un seuil qui
+   n'est PAS celui annonce ici. Le seuil de 3 estime plus haut refusait 26 appariements sur
+   12 armes, dont des appariements DEJA VALIDES a l'oreille (skewer 6,3 ; spiker 6,2 ;
+   sniper 5,9). En 1re personne la duree est legitimement plus grande — on entend la
+   mecanique et la queue. Seuil recalibre sur les 44 votes : **10**. Le Needler (rapport 26)
+   reste le seul refus sur les armes votees ; son evenement `7474d8d8` porte une couche
+   `Switch` de 40 sons a 1,54-3,88 s, c'est la SUPERCOMBINAISON, pas le tir.
+   Les evenements refuses restent ecoutables (`_ECARTE_*.wav` + rafale) : un refus calcule
+   doit pouvoir etre dementi a l'oreille.
 6. **Le marteau d'Escharum** n'a ni nom ni icone (arme de boss, aucune entree produit).
 7. **`weapon_names.toml` ignore le Mutilator** ; `jeu/index.json` lui met `arme: None`.
    Rattachement pose a la main dans le generateur de manifeste, avec sa provenance.
+
+8. **Le critere de choix `max(couches, wem)` est degenere et fait des degats visibles.**
+   Il choisit pour l'epee infectee une reference de 3e personne a 25,71 s de mediane
+   (`dabf5bc3`, retenu parce qu'il a 2 couches quand tous les autres en ont 1) : ses 10
+   refus de perspective sont mesures contre une reference absurde. Le defaut etait connu
+   comme lecon de methode ; il est desormais un defaut ACTIF, a corriger avec le garde-fou.
+
+9. **LES CONTENEURS `Switch` SONT TRAITES COMME DES CONTENEURS ALEATOIRES.** C'est le
+   defaut le plus lourd du chantier, trouve en instruisant les votes de l'utilisateur sur
+   des sons ISOLES. Un `RandomSequence` tire une variante au hasard : ses candidats sont
+   interchangeables. Un `Switch` choisit selon un ETAT DE JEU (distance, materiau, nombre
+   d'aiguilles plantees) : ses candidats ne le sont PAS, et il peut ne rien jouer du tout.
+   Le parseur ne lit que le NOM du type (`arbre.go:27`) ; il ne lit jamais le groupe de
+   commutation ni la table etat -> enfants, et resout les enfants par l'heuristique
+   generique. Les etats sont donc melanges dans un seul lot ou le rendu pioche au hasard.
+
+   Mesure : **31 coups reconstitues sur 107 portent une couche `Switch`, dont 28 en 1re
+   personne.** Elle y est presque toujours la couche DOMINANTE — mediane de 30 candidats,
+   jusqu'a 40 — et pese 38 a 71 % du melange (sniper 71 %, shotgun 38 %, skewer 40 %).
+
+	  UNSC_sniperrifle  M1 1p  ev 78c09986  c0 Switch 30 wem 2,2-4,7 s  -> 71 % du melange
+	  Covenant_needler  M1 1p  ev 7474d8d8  c2 Switch 40 wem 1,5-3,9 s  -> la supercombinaison
+
+   Ce defaut explique en cascade : les evenements 1P « trop longs » (defaut 5, dont le
+   garde-fou ne soigne que le symptome), le motif « 18 wem en 3P contre 30 en 1P » vu sur
+   cinq armes sans lien, et le fait que 12 votes portent sur un son isole. **A CORRIGER
+   AVANT TOUT NOUVEAU VOTE SUR LES COUPS DE 1re PERSONNE** : 18 des 44 votes portent sur un
+   `_coup_m*_1p` d'une arme concernee, et ces rendus changeront.
+   Travail : lire `AkSwitchPackage` (groupe de commutation, etat par defaut, enfants par
+   etat), exposer l'etat, et rendre l'etat par defaut au lieu d'un tirage dans tout le lot.
+
+10. **Un son unique partage par 20 armes de 4 factions entre dans les coups a -2 dB.**
+   Le `.wem` `195277626` (0,92 s) forme a lui seul une couche `Sound` dans **21 coups de 20
+   armes** — Banished, Covenant, UNSC, Forerunner confondus. Il y pese 11 a 36 % du melange
+   (pistolet plasma 36 %, sniper 27 %, fusil a pompe 26 %). Un son unique partage par des
+   armes sans rapport n'est le tir d'aucune d'elles. Deux autres cas du meme genre :
+   `87187708` (0,03 s, 5 armes), `5270936` (0,06 s, 4 armes, -8 dB). A identifier avant de
+   decider s'il faut les rendre : ce sont peut-etre des envois de bus ou une foley generique
+   que le moteur attenue autrement.
+
 
 ## 5. LECONS DE METHODE (les plus couteuses)
 
@@ -128,17 +162,43 @@ mal servies. Le nombre est inconnu — c'est la premiere chose a etablir.
 
 ## 6. ORDRE SUGGERE POUR LA SUITE
 
-1. Poser le garde-fou de duree sur l'appariement de perspective (defaut 5) — c'est le moins
-   couteux et il produit aujourd'hui des faux AUDIBLES.
-2. Generaliser le lien direct (section 3) et MESURER l'ampleur du probleme.
-3. Integrer la melee comme un mode a part entiere (defaut 3).
-4. Separer coup touche / coup manque (defaut 4) — sans nouvelle extraction.
-5. Exploiter le paquet `RANGED` pour que deux rendus d'un meme coup different (defaut 2).
-6. Instruire les 989 banks a chunks illisibles (defaut 1).
+0. **LIRE LES CONTENEURS `Switch` (defaut 9).** Passe devant tout le reste : il touche
+   28 coups de 1re personne, y pese jusqu'a 71 % du melange, et il est la cause commune de
+   plusieurs symptomes deja traites en surface. Tant qu'il tient, voter sur un coup de 1re
+   personne revient a juger un tirage au sort entre des etats de jeu differents.
+1. ~~Garde-fou de duree~~ FAIT (etape 10, seuil calibre sur les votes).
+2. Remplacer le critere de choix degenere `max(couches, wem)` (defaut 8) — il produit
+   aujourd'hui une reference a 25 s sur l'epee infectee, donc des refus non interpretables.
+3. Generaliser le lien direct (section 3) et MESURER l'ampleur du probleme. Le critere
+   « un vrai mode a son propre son de 1re personne » (etape 10) est un acquis a reutiliser :
+   il a retrouve seul les 2 modes du pistolet plasma et les 2 du Mutilator.
+4. Integrer la melee comme un mode a part entiere (defaut 3).
+5. Separer coup touche / coup manque (defaut 4) — sans nouvelle extraction.
+6. Exploiter le paquet `RANGED` pour que deux rendus d'un meme coup different (defaut 2).
+7. Instruire les 989 banks a chunks illisibles (defaut 1).
 
 ## 7. VOTES DE L'UTILISATEUR
 
-28 votes dans `Downloads/votes-sons-armes.json` (2026-08-15T17:59Z), tous « garder ».
-Les cles `ev_*` restent valides. Les cles `_coup` et `_mode_*` sont ORPHELINES depuis le
-passage aux rendus par (mode, perspective) : 18 votes sur 28 ne se rattachent plus, l'objet
-vote ayant ete scinde. Aucune migration automatique n'est honnete ici.
+**44 votes** dans `Downloads/votes-sons-armes(1).json` (2026-08-15T19:28Z), tous
+« garder ». **44/44 se rattachent** au manifeste courant (verifie apres le dedoublonnage des
+modes) : 32 portent sur des coups reconstitues, 12 sur des sons isoles `ev_*`.
+
+Ils sont EMBARQUES dans le manifeste (`votes_precedents`) : l'artefact marque « choisi » ce
+qui est deja tranche et se reamorce dessus si le stockage du navigateur est vide. Le
+fichier de l'utilisateur reste la source ; l'export ne prime jamais sur un vote plus recent.
+
+CE QU'ILS APPRENNENT, au-dela du tri — INSTRUIT, cf. defauts 9 et 10. Sur les 12 votes
+portant sur un son ISOLE, **7 accompagnent un vote sur le coup** de la meme arme (l'isole
+est un complement, pas un desaveu) et **5 vont a l'isole SEUL** : les quatre armes de melee
+et le Needler. Pour les quatre armes de melee la cause est le critere degenere (defaut 8) —
+l'epee infectee melange des couches de 9,70 s et 25,71 s. Pour tout le reste, la cause est
+le conteneur `Switch` non lu (defaut 9). **La question « pourquoi l'isole convainc-t-il
+plus ? » a donc une reponse structurelle, pas une reponse de gout.**
+
+## 8. ETAT DE L'ARTEFACT
+
+`scratchpad/tri.html`, publie ; copie dans `Desktop/Halo Infinite - Sons armes/TRIER.html`.
+Le compteur de la liste porte sur les COUPS (32/115 tranches), pas sur tous les groupes.
+Groupes marques : « choisi » (deja vote), « variante de distance » (element de tir sans son
+de 1re personne propre), « garde-fou de duree » (appariement refuse, ecoutable quand meme).
+Chaque coup porte SA rafale pre-rendue, a la cadence lue dans le tag.
