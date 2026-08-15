@@ -144,13 +144,36 @@ var TraversalPrecision = PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}}
 // Mesuré sur 000d5950 : le triplet de porte vaut (0,0,0) dans 6 922 des 6 924 records des
 // 70 trajectoires de grenade.
 //
-// PROPRE À LA CARTE : sur une autre carte, installer les largeurs via
-// SetWorldObjectPrecisionFromLayout à partir de DetectI0Layout, qui les mesure DANS le film.
+// PROPRE À LA CARTE, et CE DÉFAUT EST L'ENTRÉE `cliffhanger` DU CATALOGUE : `{13,13,14}` est
+// exactement `map_quant_bounds.json` -> `cliffhanger`.`axisWidths` (module `ridgeline`), ce que
+// `map_bounds_test.go` vérifie. Le défaut n'est donc pas un repli neutre : c'est UNE carte.
+//
+// QUI L'INSTALLE, ET DEPUIS QUAND (2026-08-15). `replay.BuildFromFilm` installe les largeurs de
+// la carte du match pour toute la durée du décodage, sous `LockProcessDecode`, et les restaure
+// au retour (`replay.installWorldObjectPrecision`). Elles viennent de `MapQuantEntry.AxisWidths`
+// — la MÊME entrée de catalogue qui fournit les bornes, jamais un second réglage à armer à part.
+//
+// AVANT cette date, AUCUN chemin de production ne l'écrasait : toutes les cartes autres que
+// Cliffhanger déquantifiaient leurs objets du monde aux largeurs de Cliffhanger. Mesuré sur
+// 7 films / 6 cartes (part d'échantillons de projectile dans l'emprise du nuage des bipèdes du
+// même film, coordonnées normalisées de l'AABB) : 0,09 · 0,51 · 28,46 · 31,31 · 65,21 % avec le
+// défaut, 98,96 à 99,79 % avec les largeurs du catalogue — et 92,11 % des DEUX côtés sur
+// Cliffhanger, où le correctif ne change rien par construction.
+//
+// `DetectI0Layout` n'est PAS la source de ces largeurs : c'est le CONTRÔLE que réclame le
+// commentaire d'`AxisWidths`. Accord catalogue <-> découpage lu dans le film : 7 films sur 7.
 var WorldObjectPrecision = PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}}
 
-// SetWorldObjectPrecisionFromLayout installe les largeurs d'axe mesurées dans le film pour
-// le chemin world-object. Les axes sont partagés avec l'absolu du bipède : c'est le même AABB
-// de BSP qui les fixe.
+// SetWorldObjectPrecisionFromLayout installe les largeurs d'axe de la CARTE pour le chemin
+// world-object. Les axes sont partagés avec l'absolu du bipède : c'est le même AABB de BSP qui
+// les fixe — hypothèse enfin vérifiée par ses conséquences le 2026-08-15 (cf. ci-dessus).
+//
+// SOURCE ATTENDUE : `MapQuantEntry.AxisWidths`, déduit des bornes par la loi du moteur. Le
+// découpage lu dans le film (`DetectI0Layout`) sert de contrôle : s'il contredit le catalogue,
+// ce sont les BORNES qui sont fausses.
+//
+// L'APPELANT DOIT DÉTENIR `LockProcessDecode` et restaurer la valeur précédente : c'est un
+// global de paquet. Le seul appelant de production est `replay.installWorldObjectPrecision`.
 func SetWorldObjectPrecisionFromLayout(l I0Layout) {
 	if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {
 		return // layout non détecté : garder le défaut plutôt qu'installer des zéros

@@ -1,3 +1,57 @@
+## [2026-08-15] v7.5 rejeu 2D — les objets du monde etaient dequantifies aux largeurs de Cliffhanger sur TOUTES les autres cartes
+**Statut** : Complete (`.ai/V7.5/replay2d/PLAN_PRECISION_OBJETS_MONDE.md`, 3 phases, 3 gates).
+**Decision technique** : `filmdec.WorldObjectPrecision` est un GLOBAL de paquet dont le defaut
+`{13,13,14}` EST l'entree `cliffhanger`/`ridgeline` du catalogue `map_quant_bounds.json` — pas un
+repli neutre, UNE carte. Aucun chemin de production ne l'ecrasait : projectiles ti=41, equipement
+ti=37, armes au sol ti=42 et corps rigides ti=38 etaient donc dequantifies aux largeurs de
+Cliffhanger partout ailleurs. La source du correctif n'est PAS `DetectI0Layout` (qui lit le
+decoupage dans le bitstream) mais **l'entree de catalogue elle-meme** : `MapQuantEntry.AxisWidths`,
+deduit des bornes par la loi du moteur, deja porte par l'objet qui fournissait `opt.WorldRange`.
+`DetectI0Layout` reste ce que le commentaire d'`AxisWidths` en dit : un CONTROLE. Mise en oeuvre :
+`replay.Options.WorldRange *filmdec.Vec3Range` devient **`Options.MapQuant *filmdec.MapQuantEntry`**
+— un seul champ, donc pas d'etat « bornes armees, largeurs oubliees » — et `BuildFromFilm` installe
+les largeurs juste apres `LockProcessDecode`, pour tout le decodage, avec restauration differee
+(`installWorldObjectPrecision`). Entree sans largeurs : defaut CONSERVE et `slog.Warn`, jamais
+silencieux.
+**Resultats** — MESURE AVANT CORRECTION, 7 films / 6 cartes / 6 valeurs de largeurs, un film par
+processus, instrument versionne garde par variable d'environnement (`filmdec/world_object_precision_test.go`).
+Critere repris TEL QUEL du lot `d4be4ab95` : part d'echantillons tombant dans l'emprise du nuage des
+BIPEDES du meme film, en coordonnees NORMALISEES de l'AABB — non circulaire, sans base.
+**ti=41, le chemin de production** : Bazaar `[17 17 16]` **0,09 % -> 99,41 %** (12 694 echantillons),
+Illusion `[18 18 17]` **0,51 -> 99,61 %** (16 956/16 964), Catalyst `[15 15 15]` **28,46 -> 99,60 %**
+(14 124), Oasis `[15 15 14]` **31,31 -> 98,96 %** (9 128), Smallhalla `[15 15 17]` **65,21 -> 99,79 %**
+(11 725). **TEMOIN Cliffhanger `[13 13 14]` : 92,11 % des DEUX cotes, 580 trajectoires identiques,
+ecart +0,00 point** — le correctif n'y change rien, par construction. ti=37, meme corpus : +64,84 a
++98,25 points, sauf Cliffhanger +0,00. Aquarius `[13 12 11]`, la carte la plus eloignee du defaut,
+n'a AUCUN slot ti=41 dans ses images-cles : elle ne vaut que par ti=37 (**2,14 -> 99,71 %**).
+**CONTROLE catalogue <-> `DetectI0Layout` : ACCORD 7 films sur 7** — les bornes ne sont pas suspectes.
+Cartes resolues SANS ouvrir de base (le serveur de l'utilisateur tient les DuckDB) :
+`match_registry.parquet` du snapshot 081 lu par `read_parquet` en base memoire.
+**Le golden d'assemblage NE BOUGE PAS, et la mesure le predisait** : le film de reference `000d5950`
+EST Cliffhanger. Preuve que ce n'est pas un correctif non branche — le fixture a ete REGENERE depuis
+le vrai film (83 s, 580 projectiles) et ressort **identique octet pour octet**, et les garde-rails
+ont ete VUS ROUGES : branchement retire -> `TestBuildFromFilmWiresWorldObjectPrecision` tombe ;
+mecanisme neutralise -> `TestInstallWorldObjectPrecision` tombe (« largeurs NON INSTALLEES :
+[13 13 14], attendu [17 17 16] ») ; lecteur de production hors allowlist et entree d'allowlist morte
+-> `TestWorldObjectPrecisionReadersAreAllowlisted` tombe dans les deux sens. Gates :
+`go build ./...`, `go vet ./...`, `go test ./internal/analysis/...`,
+`./internal/replaybuild/... ./internal/api/wire/...` verts ;
+`golangci-lint --new-from-merge-base=origin/main` **0 issue**.
+**Ce que la mesure NE dit PAS**, ecrit avant de conclure : l'emprise est une BOITE — elle discrimine
+la ou le nuage est etroit (Bazaar) et peu la ou il est large (Smallhalla garde 65 % avec le mauvais
+decoupage) ; le rang des films entre eux ne mesure donc pas la qualite du decodage. Ni 92,11 % ni
+99,79 % ne sont un taux de justesse : un objet pose sur une corniche sort legitimement du nuage des
+pas. Rien n'est verifie en coordonnees MONDE. Une seule direction testee (defaut contre catalogue),
+pas de recherche d'un troisieme jeu de largeurs. ti=42 et ti=38 non mesures.
+**Conclusion / prochaine etape** : le defaut de paquet reste, mais il n'est plus oubliable — trois
+garde-rails, dont une allowlist datee des cinq points de lecture. Decouverte portee au registre et
+NON traitee : `traverseComponentLoop` (traverse.go:1169) lit le meme global pour AVANCER LE CURSEUR
+sur `object-position-component` ; les balayages qui passent par lui HORS `BuildFromFilm` — dont le
+decodeur de trames de `killsource` — gardent Cliffhanger, et une largeur fausse **desaligne la suite
+du record**, pas seulement la position. Chaine d'appel distincte : elle demande de faire descendre
+`MapQuantEntry` jusqu'a `killsource.Decode`, puis de mesurer l'effet sur l'attribution d'arme hors
+Cliffhanger.
+
 ## [2026-08-15] v7.5 rejeu 2D — quatre explosions de grenade et le coup de melee fatal : la VIGNETTE devient la cle de jointure
 
 **Statut** : Complete. Lot court : remplacer l explosion PARTAGEE des grenades par quatre sons
