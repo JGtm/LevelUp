@@ -1,3 +1,38 @@
+## [2026-08-15] Sons d'armes — cartographier les conteneurs AVANT de les corriger
+
+**Statut** : Etape 12, gate 12a CLOS (inventaire complet et statue). Gate 12b non entame
+(rendu par etat). Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : demande explicite de l'utilisateur apres le quatrieme
+oubli de format — « ce sont des erreurs qu'on aurait pu eviter si tu avais cherche a mieux
+comprendre tous les elements ». L'ordre habituel est donc inverse : aucun correctif tant que
+l'inventaire des conteneurs n'est pas complet et statue. Le mode `audit` couvrait deja les
+chunks, les types d'objets, les types d'action et la charge utile des `Sound` ; il ne disait
+RIEN des conteneurs, et c'est exactement la que se cachait le defaut `Switch`. Nouveau volet
+`audit_conteneurs.go` : pour chaque type, combien d'octets de charge utile le parseur laisse
+derriere lui, avant et apres la liste d'enfants.
+
+**Resultats observes** : `Switch` — 440 tables etat -> enfants sur 445 decodees et validees
+(99 %), 433 avec un etat par defaut qui se recoupe, 6,1 etats en moyenne et jusqu'a 37, et
+200 etats declares SANS aucun enfant (un `Switch` peut ne rien jouer). Le compte tombe juste
+sur le sniper : 30 enfants pour ~6 etats, soit 5 variantes par etat — le rendu piochait dans
+les six etats a la fois. `RandomSequence` — 6976 tables de poids sur 6976 sont UNIFORMES,
+donc tirer sans poids est exact et le rester devient un choix justifie. `Blend` — 303 sur
+303 lues, dont 42 (14 %) declarent une automation par parametre de jeu : pour celles-la,
+empiler les couches a plein niveau est faux. `ActorMixer` — 0 octet non lu en aval.
+Musique et `Settings`/`Attenuation` : hors chaine, ignores avec raison. `Bus` — non instruit,
+piste ouverte si le `.wem` partage par 20 armes s'avere etre un envoi.
+
+**Point de methode** : le lecteur `Blend` a echoue sur 303 conteneurs sur 303 parce qu'il
+validait `ulLayerID` contre la liste d'enfants, alors que c'est l'identifiant propre de la
+couche. Deux hypotheses successives ont echoue avant qu'un simple vidage hexadecimal ne
+tranche en une lecture. Montrer les octets aurait du etre le premier reflexe, pas le
+troisieme — l'audit garde desormais un echantillon des octets qu'il n'arrive pas a decoder.
+
+**Conclusion / prochaine etape** : gate 12b — rendre l'etat designe d'un `Switch` au lieu
+d'un tirage dans tout le lot, controler sur le sniper (couche `Switch` a 71 % du melange) et
+le Needler, puis mesurer l'ecart arme par arme. Les 18 votes de 1re personne seront a rejouer.
+
 ## [2026-08-15] Sons d'armes — les conteneurs `Switch` lus comme de l'aleatoire
 
 **Statut** : Etape 11 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete (enquete,

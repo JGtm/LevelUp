@@ -80,6 +80,87 @@ Voie B — le graphe de tags (MOYEN PRINCIPAL) :
 - [x] Lire le champ NOMME « Weapon Fire Sound » de `weap.xml` : 3 `lsnd` sur 8 designes
       (`3fd85fcd`, `5a2b4a0e`, `625034f9`). Preuve fermee, sans aucun nom Wwise.
 
+### Etape 12 — CARTOGRAPHIER LA HIERARCHIE AVANT DE LA CORRIGER
+
+Demande explicite de l'utilisateur apres le quatrieme oubli de format : « ce sont des
+erreurs qu'on aurait pu eviter si tu avais cherche a mieux comprendre tous les elements ».
+Cette etape inverse donc l'ordre habituel : **aucun correctif tant que l'inventaire des
+conteneurs n'est pas complet et statue**.
+
+Ce qui a ete manque jusqu'ici, toujours de la meme facon — implementer le strict necessaire
+a l'objectif du moment : medias embarques `DIDX`, tableau des modes de tir, type d'Action,
+conteneurs `Switch`. Le mode `audit` couvrait deja les chunks, les types d'objets, les types
+d'action et la charge utile des `Sound`. Il ne dit RIEN des CONTENEURS, et c'est precisement
+la que se cachait le quatrieme oubli.
+
+Gate 12a : `-mode audit` publie, pour CHAQUE type de conteneur, la taille de charge utile,
+la position de la liste d'enfants trouvee, et **le nombre d'octets restants non lus apres
+elle**. Un conteneur dont on ignore la moitie de la charge utile doit se voir.
+
+- [x] Inventaire des conteneurs : effectif, taille de charge utile, octets non lus
+      (`audit_conteneurs.go`, section « CONTENEURS » du mode `audit`)
+- [x] Decodage de `AkSwitchPackage` (groupe, etat par defaut, enfants par etat), valide
+      contre la liste d'enfants deja resolue — jamais postule (`conteneurs.go`)
+- [x] Meme traitement pour `RandomSequence` et `Blend` (`conteneurs_autres.go`)
+- [x] Verdict ecrit (ci-dessous)
+
+VERDICT 12a — inventaire des conteneurs sur les 1305 banks. Les colonnes « avant » et
+« apres » sont les octets de charge utile que le parseur ne lit pas, autour de la liste
+d'enfants qu'il localise :
+
+	type                   n   taille  avec enf.     avant     apres  (max apres)
+	Settings           55831        8         0%         0         0
+	ActorMixer          9037      189        99%       167         0
+	RandomSequence      7069      141        98%        79        40  (546)
+	Attenuation         4207      156         0%         0         0
+	MusicTrack          4059      166         0%         0         0
+	MusicSegment        3970      137        99%        33        96  (3879)
+	MusicRanSeq          510      437       100%        37       365  (2529)
+	Switch               445      223       100%        69       135  (970)
+	Blend                303      125       100%        55        56  (373)
+	Bus                  241      387         4%        52       239  (399)
+	MusicSwitch           85     2030       100%        45      1953  (18928)
+
+STATUT DE CHAQUE CONTENEUR, dans l'ordre demande par le gate :
+
+- `Switch` — **A LIRE, et desormais LU.** 440 tables etat -> enfants sur 445 decodees ET
+  validees (99 %), dont 433 ou l'etat par defaut se recoupe avec la table. Moyenne 6,1
+  etats par conteneur, maximum 37. **200 etats sont declares SANS aucun enfant** : un
+  `Switch` peut donc ne rien jouer, ce qu'un tirage aleatoire ne reproduit jamais.
+  Le compte tombe juste sur le cas du sniper : 30 enfants pour ~6 etats, soit 5 variantes
+  par etat. Le rendu piochait dans les six etats a la fois.
+- `RandomSequence` — **IGNORE AVEC RAISON, mesure a l'appui.** La table de poids est lue et
+  validee sur 6991 conteneurs : **6976 sur 6976 ont des poids tous egaux**. Tirer
+  uniformement est donc exact, et le rester est un choix, plus un oubli.
+- `Blend` — **A LIRE, portee bornee.** 303 tables sur 303 decodees. La majorite ne declare
+  AUCUNE couche : « le Blend joue ses enfants tels quels » y est exact. Mais **42 (14 %)
+  declarent une automation par parametre de jeu** : pour ceux-la, les couches sont fondues
+  selon un etat (typiquement la distance) et les empiler a plein niveau est faux. Effet
+  sur le NIVEAU relatif, pas sur la presence — donc moins grave que le `Switch`.
+- `ActorMixer` — 167 octets avant la liste d'enfants, **0 apres**. Rien ne manque en aval ;
+  l'amont est le bloc de parametres de noeud, dont le volume est deja lu par ailleurs.
+- `Settings`, `Attenuation`, `MotionBus`, `MotionFX`, `Effect`, `Envelope` — aucun enfant,
+  hors chaine de lecture des sons d'arme. **IGNORE AVEC RAISON.**
+- `MusicTrack`, `MusicSegment`, `MusicRanSeq`, `MusicSwitch` — hierarchie MUSIQUE. Gros
+  restes non lus (jusqu'a 18 928 octets), sans objet pour les armes. **IGNORE AVEC RAISON.**
+- `Bus` — 4 % seulement portent une liste d'enfants ; 239 octets non lus en moyenne. Les bus
+  portent les effets et les attenuations globales. **NON INSTRUIT** : c'est la piste a
+  ouvrir si le `.wem` `195277626` partage par 20 armes (defaut 10) s'avere etre un envoi.
+
+Un point de methode a garder : le lecteur `Blend` a echoue sur 303 conteneurs sur 303 avant
+qu'on regarde les octets. Il validait `ulLayerID` contre la liste d'enfants, alors que c'est
+l'identifiant PROPRE de la couche. Deux hypotheses successives ont echoue avant qu'un simple
+vidage hexadecimal ne tranche en une lecture — **montrer les octets aurait du etre le
+premier reflexe, pas le troisieme.**
+
+Gate 12b : le rendu d'un coup n'utilise plus un tirage dans tout le lot d'un `Switch` mais
+l'etat designe. Controle sur pieces : le sniper (couche `Switch` a 71 % du melange) et le
+Needler (couche `Switch` de la supercombinaison).
+
+- [ ] Rendu par etat, avec l'etat par defaut quand aucun n'est impose
+- [ ] Regeneration et mesure de l'ecart avec les rendus actuels, arme par arme
+- [ ] Prevenir l'utilisateur des 18 votes de 1re personne a rejouer
+
 ### Etape 4 — Generalisation aux 55 packs
 
 Gate : un rapport par arme listant les `.wem` de tir, produit en UNE ouverture de chaque
