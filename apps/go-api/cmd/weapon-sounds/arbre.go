@@ -95,26 +95,48 @@ func (b *bank) couchesDeEvent(id uint32) []brancheRendue {
 }
 
 // arborescence affiche, pour chaque evenement d'une arme, la structure de sa hierarchie.
-func arborescence(cheminModule, cheminPck string, profondeurMax int) error {
-	ids, err := idsPck(cheminPck)
-	if err != nil {
-		return err
+//
+// La bank est designee par le `.pck` de l'arme, ou DIRECTEMENT par son identifiant quand
+// aucun pack ne lui correspond — cas de la Carabine Vestige, dont tous les sons sont
+// embarques dans la bank. Sans pack, la validation des `sourceID` repose sur l'index large
+// et sur les medias embarques (que `parserBank` accepte d'office).
+func arborescence(cheminModule, cheminPck string, profondeurMax int, gidBank uint32) error {
+	var ids map[uint32]bool
+	if cheminPck != "" {
+		var err error
+		if ids, err = idsPck(cheminPck); err != nil {
+			return err
+		}
+	} else if gidBank == 0 {
+		return fmt.Errorf("le mode arbre exige -pck ou -sbnk")
 	}
 	m, err := himodule.Open(cheminModule)
 	if err != nil {
 		return err
 	}
 	rapporterMemoire("module charge")
-	f, brut, score, err := trouverSbnk(m, ids)
-	if err != nil {
+
+	var f himodule.File
+	var brut []byte
+	score := 0
+	if cheminPck != "" {
+		if f, brut, score, err = trouverSbnk(m, ids); err != nil {
+			return err
+		}
+	} else if f, brut, err = bankParIdentifiant(m, gidBank); err != nil {
 		return err
 	}
 	b, err := parserBank(brut, validateurWem(ids))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("arme     : %s\n", nomArme(cheminPck))
-	fmt.Printf("sbnk     : %08x (score %d)\n", f.GlobalID, score)
+	nom := nomArme(cheminPck)
+	if cheminPck == "" {
+		nom = fmt.Sprintf("sbnk_%08x", gidBank)
+	}
+	fmt.Printf("arme     : %s\n", nom)
+	fmt.Printf("sbnk     : %08x (score %d, %d media(s) embarque(s))\n",
+		f.GlobalID, score, len(b.Embarques))
 	fmt.Printf("hierarchie: %d objets, %d Events\n\n", len(b.Objets), len(b.Events))
 
 	evs := make([]uint32, 0, len(b.Events))
@@ -124,7 +146,7 @@ func arborescence(cheminModule, cheminPck string, profondeurMax int) error {
 	sort.Slice(evs, func(i, j int) bool {
 		return len(b.wemsDeEvent(evs[i])) > len(b.wemsDeEvent(evs[j]))
 	})
-	rap := rapportCouches{Arme: nomArme(cheminPck)}
+	rap := rapportCouches{Arme: nom}
 	for _, id := range evs {
 		w := b.wemsDeEvent(id)
 		if len(w) == 0 {

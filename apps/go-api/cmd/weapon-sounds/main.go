@@ -131,16 +131,12 @@ func main() {
 	case "cadence":
 		err = sonderCadence(chemin, temoins[0])
 	case "arbre":
-		if *pck == "" {
-			err = fmt.Errorf("le mode arbre exige -pck")
-			break
-		}
 		profondeur := *limite
 		if profondeur <= 0 {
 			profondeur = 4
 		}
 		sortieCouches = *sortieTir
-		err = arborescence(chemin, *pck, profondeur)
+		err = arborescence(chemin, *pck, profondeur, uint32(*sbnkGid))
 	case "embarques":
 		err = extraireEmbarques(chemin, *pck, *sortieTir, uint32(*sbnkGid))
 	case "lot":
