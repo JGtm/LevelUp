@@ -43,15 +43,26 @@ export interface MuzzleShape {
   k: number
 }
 
-/** Rayon de référence de l'éclair, en pixels d'écran (réglé à l'œil, item 2.4). */
-const FLASH_R = 9
+/**
+ * Rayon de référence de l'éclair, en pixels d'écran.
+ *
+ * MESURÉ, PAS RÉGLÉ À L'ŒIL (2026-08-15, rastérisation Chromium réelle) : à 9 px, la
+ * lentille cinétique faisait 30 × 8 px et ne changeait que 64 pixels de la scène — moins
+ * que le HALO du marqueur qui la porte (rayon 9 px, 254 px²) et douze fois moins que le
+ * cône de visée (46 px de long, ~635 px²) sur lequel elle se pose. À 13 px elle fait
+ * 44 × 12 et change 5,6 fois plus de pixels, sans dépasser la longueur du cône.
+ */
+const FLASH_R = 13
 /** Rayon du cœur incandescent, plus petit et plus vif que le halo. */
-const CORE_R = 3.6
+const CORE_R = 4.6
 /** Étirement dans l'axe de tir : la référence Csstat étire 1,7 en long, 0,45 en large. */
 const STRETCH_LONG = 1.7
 const STRETCH_WIDE = 0.45
-/** L'éclair naît un peu DEVANT le marqueur : au bout du canon, pas dans le torse. */
-const MUZZLE_OFFSET = 5
+/**
+ * L'éclair naît DEVANT le marqueur : au bout du canon, pas dans le torse. Porté de 5 à 12
+ * px pour qu'il sorte du halo du marqueur (rayon 9 px) au lieu de s'y noyer.
+ */
+const MUZZLE_OFFSET = 12
 
 /**
  * drawMuzzleFlash dessine l'éclair d'un tir selon la FAMILLE de son arme (la forme) et la
@@ -68,16 +79,25 @@ export function drawMuzzleFlash(
   const color = ink.tint[tint] || ink.tint.neutral
   if (!color) return
   ctx.save()
-  // ADDITIF : deux éclairs qui se recouvrent s'ajoutent au lieu de se masquer, et un éclair
-  // sur une carte sombre brûle au lieu de la teinter. C'est la composition de la référence.
-  ctx.globalCompositeOperation = 'lighter'
+  // COMPOSITION NORMALE, ET C'EST UNE CORRECTION DE PANNE. La référence Csstat compose en
+  // ADDITIF (`lighter`) : sur sa carte noire, l'éclair brûle. Mesuré ici en Chromium réel
+  // (2026-08-15) : sur le thème CLAIR, l'additif d'une teinte ambrée sur un sol quasi blanc
+  // sature immédiatement — écart maximal de 3 valeurs sur 255, **ZÉRO pixel** modifié d'au
+  // moins 8. L'éclair y était mathématiquement invisible, quelle que soit sa taille. En
+  // composition normale, la teinte du thème (les tokens `--replay-fx-*` ont déjà une valeur
+  // assombrie en clair) se pose telle quelle sur les deux fonds. Ce qu'on perd : deux
+  // éclairs qui se recouvrent ne s'additionnent plus. Ce qu'on gagne : ils existent.
+  ctx.globalCompositeOperation = 'source-over'
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.strokeStyle = color
   ctx.fillStyle = color
-  // L'ÉCLAT TOMBE VITE (carré du temps restant) : une détonation ne s'éteint pas
-  // linéairement. Sous mouvement réduit, l'intensité ne varie plus du tout.
-  const heat = shape.reduced ? 0.6 : shape.fade * shape.fade
+  // L'ÉCLAT TOMBE VITE, mais plus au CARRÉ : le pas de temps réel des documents est de
+  // 100 ms (mesuré sur les 23 artefacts locaux, valeur unique), donc 600 ms de rémanence
+  // valent 6 images. Au carré, l'éclair avait déjà perdu 75 % de son intensité à la
+  // troisième et ne se lisait plus que sur deux. En puissance 3/2, il en tient quatre.
+  // Sous mouvement réduit, l'intensité ne varie plus du tout.
+  const heat = shape.reduced ? 0.6 : shape.fade * Math.sqrt(shape.fade)
   const grow = shape.reduced ? 0.5 : 1 - shape.fade
   if (shape.angle === null) {
     drawPuff(ctx, shape, heat, color, ink.core)
@@ -140,10 +160,19 @@ function glow(
   ctx.translate(at.x, at.y)
   ctx.rotate(s.angle)
   ctx.scale(long, wide)
-  paintRadial(ctx, radius * s.k, s.color, 0.75 * s.heat)
+  paintRadial(ctx, radius * s.k, s.color, 0.9 * s.heat)
   paintRadial(ctx, CORE_R * s.k * (radius / FLASH_R), s.core, s.heat)
   ctx.restore()
 }
+
+/**
+ * PLATEAU du dégradé : part du rayon qui reste à PLEINE teinte avant la retombée.
+ *
+ * Sans lui, un dégradé radial perd la moitié de son opacité au tiers du rayon : l'éclair
+ * n'avait de couleur franche qu'en son centre, et ce centre fait quelques pixels. Le
+ * plateau lui donne un CORPS — c'est ce qui distingue une bouffée d'un point flou.
+ */
+const GRADIENT_PLATEAU = 0.35
 
 /** paintRadial peint un disque dégradé centré sur l'origine du repère courant. */
 function paintRadial(
@@ -155,6 +184,7 @@ function paintRadial(
   if (!color || radius <= 0) return
   const g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius)
   g.addColorStop(0, color)
+  g.addColorStop(GRADIENT_PLATEAU, color)
   // « transparent » plutôt qu'une couleur à alpha zéro : le canevas accepte n'importe quel
   // format de couleur du thème (oklch compris) sans qu'on ait à le désassembler.
   g.addColorStop(1, 'transparent')
