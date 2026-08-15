@@ -30,9 +30,14 @@ reconstitue — l'outil de tri a ete refait autour de lui. TROIS POINTS DE NOMMA
 AVEC L'UTILISATEUR, consignes au plan : `hinf_vestige_carbine` existe au registre (tag
 `3e070217`) mais aucune des 33 armes ne le porte ; `bt_enforcer` n'a pas de son de tir donc
 pas de nom, et ce n'est PAS le Déchiqueteur (`hinf_mangler` = `80977ba5`, deja attribue a
-`bt_spikerevolver`) ; enfin `static/weapons-assets/halo_infinite/jeu/index.json` porte au
-moins une incoherence interne (`hinf_cindershot` avec `nom_jeu = heatwave`), donc les noms
-affiches en heritent et ne sont pas surs tant que ce fichier n'est pas audite.
+`bt_spikerevolver`). CORRECTION LE MEME JOUR : j'avais aussi qualifie `jeu/index.json`
+d'incoherent (`hinf_cindershot` avec `nom_jeu = heatwave`) — c'est FAUX, l'accusation est
+retiree. Le nom interne « heatwave » a designe une arme en debut de developpement et une
+autre en fin ; le fichier est fidele. Verifie : le pack audio `fr_heatwave` mene au weap
+`230447b1` = `hinf_cindershot` (Cremateur), et `fr_hotrod` au weap `2ac9c2ff` =
+`hinf_heatwave` (Calcineur). Le croisement est reel dans les donnees du jeu. Le pipeline n'a
+pas ete trompe parce qu'il joint par TAG `weap` et jamais par nom — regle a conserver :
+l'identite d'une arme ne se deduit JAMAIS du nom de son pack audio.
 
 ## [2026-08-15] Sons d'armes — etape 4 : 33 armes prouvees, cadence lue dans le tag
 
