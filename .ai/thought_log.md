@@ -1,3 +1,43 @@
+## [2026-08-15] Sons d'armes — la chaine arme -> son de tir est fermee (etapes 1 a 3)
+
+**Statut** : Etapes 1, 2 et 3 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` CLOSES.
+Branche `feat/extraction-sons-armes`, 4 commits pousses. Etape 4 (export audio) ouverte.
+
+**Decision technique principale** : la preuve ne repose sur AUCUN nom (le jeu n'en livre
+aucun : `stringsSize` = 0 sur 132 modules, 0 chunk `STID` sur 1305 banks) ni sur aucune
+heuristique acoustique. Elle vient du champ NOMME « Weapon Fire Sound » de `weap.xml`.
+Chaine : `.pck` d'arme -> `sbnk` (par intersection des IDs `.wem`) -> HIRC -> evenements ;
+et en parallele `weap` -> champ nomme -> `lsnd` -> evenements. L'intersection donne les
+`.wem` de tir. Trois hypotheses ont ete refutees par la mesure avant la bonne (les `snd!`
+ne portent ni les evenements ni la bank ; `sbnk` et `snd!` ne cohabitent pas). Le
+declencheur a ete de poser la question A L'ENVERS — « qui depend de cette bank ? » — au
+lieu de supposer le chemin : reponse, des `lsnd`, pas des `snd!`. Deux pieges de version
+traites par IDENTIFICATION PAR CONTENU plutot que par offset calcule : le parseur HIRC
+(layout dependant de la version de Wwise) valide chaque lecture ambigue contre les IDs du
+`.pck` ; le champ « Weapon Fire Sounds » est introuvable a l'offset +4288 annonce par le
+plugin et se trouve a +4352, donc il est identifie par sa signature structurelle (meme
+parade que `weapon-icons-build/weapui.go`).
+
+**Resultats observes** : etape 1 — 1305 `sbnk` decompresses, 0 echec, `BKHD` 1299,
+`HIRC` 1296 ; la bank du fusil d'assaut est le SEUL tag portant ses 6 `.wem` temoins.
+Etape 2 — 642 objets HIRC, couverture **359/359** `.wem` du `.pck`, **0** hors `.pck`.
+Etape 3 — un seul tableau sur 59 satisfait la signature du tir, rendant 3 `lsnd` sur 8.
+RECOUPEMENT INDEPENDANT : ces 3 `lsnd` portent 4 evenements chacun et les 5 autres 2
+chacun, soit 3x4+5x2 = **22**, exactement le nombre d'evenements trouve a l'etape 2 par le
+parsing HIRC — deux chemins disjoints qui concordent sans ajustement. Livrable :
+**339 `.wem` de tir sur 359 (94 %)** pour `un_assaultrifle`. Taux eleve mais coherent avec
+la mesure acoustique prealable (296 echantillons de 0,08 s sur 359 : ce pack est presque
+entierement du coup de feu). Memoire : pic 1,3 Go, garde-fou `rapporterMemoire` a chaque
+palier, jamais deux modules dans le meme processus.
+
+**Conclusion / prochaine etape** : etape 4 — generaliser aux 55 `.pck` et exporter l'audio
+des seuls `.wem` de tir. Reserve consignee au plan : le lien `lsnd` -> evenements se fait
+par recherche de l'identifiant en clair, pas par un champ structure ; c'est le recoupement
+22 = 22 qui rend le resultat credible, pas la methode de recherche. Dette notee aux
+Decouvertes : `weap.xml` existe maintenant en DEUX exemplaires au depot (84 Ko chacun) —
+un fichier de donnees duplique derive a chaque mise a jour du jeu, a promouvoir en
+`internal/hiweap`.
+
 ## [2026-08-15] Sons d'armes — les banks Wwise sont des tags `sbnk` (etape 1 close)
 
 **Statut** : Etape 1 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE (gate passe).
