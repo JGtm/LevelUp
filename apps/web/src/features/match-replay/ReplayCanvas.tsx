@@ -103,7 +103,6 @@ const EMPTY_ZONES: CalloutZoneReady[] = []
 const TIMING_MS = {
   trail: 7_000,
   aimHold: 5_000,
-  shieldHold: 2_000,
   death: 1_500,
   spawn: 800,
 } as const
@@ -289,7 +288,6 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     () => ({
       trail: msToFrames(TIMING_MS.trail, doc),
       aimHold: msToFrames(TIMING_MS.aimHold, doc),
-      shieldHold: msToFrames(TIMING_MS.shieldHold, doc),
       death: msToFrames(TIMING_MS.death, doc),
       spawn: msToFrames(TIMING_MS.spawn, doc),
     }),
