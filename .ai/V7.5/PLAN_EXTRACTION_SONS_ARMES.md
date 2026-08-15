@@ -810,6 +810,40 @@ qu'un affichage de la structure ne tranche en une lecture. Le mode `meleefx` gar
 diagnostic — quand un appariement echoue, il montre ce que le plugin ANNONCE en regard de ce
 que le tag CONTIENT, au lieu de laisser essayer un offset de plus.
 
+### 2026-08-15 — Etape 14 : la designation manuelle prime, decision utilisateur
+
+DECISION : « je vais decider manuellement, c'est si peu, ca coute moins d'energie comme ca ».
+Le critere acoustique general (voie 2 de l'etape 13) est donc ABANDONNE ; les votes de
+l'utilisateur font foi. A ne pas rouvrir.
+
+MISE EN OEUVRE, dans `scratchpad/coups_lot.py` : **tout vote sur un evenement (`ev_*`) est
+une designation**. Le rendu relit le dernier export de votes et prefere l'evenement designe
+au critere `max(couches, wem)`. Aucune table a maintenir a la main : la prochaine decision
+prise dans l'artefact est prise en compte a la regeneration suivante.
+
+GARDE-FOU : une designation ne s'applique QUE si l'evenement est deja candidat de ce (mode,
+perspective). Sans lui, le vote de l'utilisateur sur `be684013` — le tir CHARGE du Ravageur
+— serait venu ecraser son tir normal. Verifie : le Ravageur garde `bb31841b` en M1.
+
+RESULTATS : 12 armes servies par une designation, et **0 appariement de perspective refuse
+contre 10 avant**. L'epee infectee n'a plus sa reference absurde de 25,71 s : l'evenement
+designe (`a3935076`, 2,29 s) l'a remplacee, et les 10 refus qu'elle provoquait tombent
+d'eux-memes. Le defaut 8 est donc neutralise LA OU L'UTILISATEUR A TRANCHE.
+
+	epee                 3P  dabf5bc3 -> 44760a76   (25,71 s -> 2,29 s)
+	epee infectee        3P  dabf5bc3 -> a3935076
+	marteau              3P  30d226ee -> d0e09f85
+	marteau legendaire   1P  6893f79c -> f5c854f4
+	Needler              1P  (aucun)  -> 7474d8d8
+
+EFFET DE BORD A SIGNALER. Changer la reference deplace le partenaire retenu dans l'autre
+perspective, qui reste choisi par le critere degenere. Sur l'epee, la 1P passe de `110deea3`
+a `920e4964` — or `110deea3` etait l'evenement recommande par une analyse acoustique
+independante. Les deux ont 5 `.wem` et 1 couche : egalite parfaite, donc `max()` rend le
+premier de la liste, et l'ordre a bouge avec la regeneration de `lot1.json`. **Le critere
+degenere gouverne toujours tout ce qui n'est pas epingle, et il est visiblement instable.**
+La parade est la meme et elle est peu couteuse : epingler aussi la 1re personne de ces armes.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
