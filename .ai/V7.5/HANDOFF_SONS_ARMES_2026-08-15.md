@@ -209,6 +209,17 @@ l'epee infectee melange des couches de 9,70 s et 25,71 s. Pour tout le reste, la
 le conteneur `Switch` non lu (defaut 9). **La question « pourquoi l'isole convainc-t-il
 plus ? » a donc une reponse structurelle, pas une reponse de gout.**
 
+## 8bis. CE QUI EST LIVRE, ET SOUS QUELLE FORME
+
+**L'objet livre pour une arme automatique est la RAFALE, pas le coup isole** (decision
+produit, mesuree — cf. etape 16 du plan). Le rejeu 2D etant a la 3e personne, ce sont les
+rendus `_RAFALE_M<n>_3p.wav` de `Desktop/Halo Infinite - Sons armes/`. Le coup unitaire
+(`_M<n>_3p_<k>.wav`) reste utile pour construire et pour juger, pas pour jouer.
+
+Votes finaux : `Downloads/votes-sons-armes(3).json`, 47 votes, 28 des 31 armes nommees
+couvertes. Le rendu relit automatiquement le dernier export : toute nouvelle decision est
+prise en compte a la regeneration suivante, sans table a maintenir.
+
 ## 8. ETAT DE L'ARTEFACT
 
 `scratchpad/tri.html`, publie ; copie dans `Desktop/Halo Infinite - Sons armes/TRIER.html`.
