@@ -754,6 +754,62 @@ LECON. La question « pourquoi ca ne sonne pas juste ? » avait une reponse dans
 pas dans le gout. Elle n'a ete trouvee qu'en partant des votes de l'utilisateur et en
 remontant jusqu'a la structure — c'est la troisieme fois que son oreille precede l'outil.
 
+### 2026-08-15 — Etape 13 : la piste du champ nomme de melee, RESULTAT NEGATIF
+
+Question : puisque le critere `max(couches, wem)` ne departage rien pour les armes de melee,
+un champ NOMME du tag designe-t-il le coup, comme « Weapon Fire Sound » le fait pour le tir ?
+
+`weap.xml` repond oui sur le papier. Le tableau « melee damage parameters » porte, par
+element, treize references de tag dont deux visent exactement ce qu'on cherche :
+
+	_40 "melee damage parameters"
+	    _41 "melee attack effect"        <- le coup porte
+	    _41 "biped melee hit effect"     <- l'impact sur un biped
+
+LECTURE DU TABLEAU (mode `meleefx`). Deux corrections ont ete necessaires, et toutes deux
+ont ete trouvees en AFFICHANT la structure, pas en essayant un offset de plus :
+
+1. La derive du plugin sur ce champ est de **+56**, pas +64 (annonce 2456, reel 2512).
+2. L'element fait **396 octets** la ou le plugin en annonce 392 : la suite des 13 references
+   de 28 octets commence a +32 et non a +28 — `32 + 13 x 28 = 396`, le compte tombe juste.
+   L'en-tete d'element a grossi de 4 octets entre le plugin et le build. Les references sont
+   donc adressees par leur RANG depuis la fin du bloc, ou les deux s'accordent, et plus par
+   l'offset annonce.
+
+RESULTAT, sur les 47 tags `weap` dont le tableau est lisible :
+
+	melee attack effect  -> un tag `effe`  :  2 elements
+	melee attack effect  -> vide           : 45 elements
+	biped melee hit effect                 :  0 element, TOUJOURS vide
+
+Les deux seuls porteurs sont `00007ee6` (marteau antigravite) et `841ac5e5`, et ils pointent
+vers **le meme** effet `249b3cc8`. Cet `effe` a **0 dependance** : il ne mene a aucun tag de
+son. L'epee a energie (`0000ae3c`) n'a ni l'un ni l'autre.
+
+VERDICT : **le tag ne designe PAS le coup de melee.** Le champ existe, il est desormais
+lisible, et le jeu ne le remplit pas. Contrairement au tir, il n'y a donc pas de designation
+a exploiter — et la distinction coup touche / coup manque ne viendra pas de la non plus
+(defaut 4 : elle reste a chercher du cote de `sound material effects`).
+
+CE QUE CA CHANGE POUR LE DEFAUT 8. Le critere degenere ne peut pas etre remplace par une
+designation ; il faut trancher autrement pour les cinq armes concernees (epee, epee
+infectee, marteau, marteau legendaire, Needler). Deux voies, a arbitrer avec l'utilisateur :
+
+- **Ses votes font foi.** Il a deja vote un evenement precis pour chacune (epee `44760a76`,
+  epee infectee `a3935076`, marteau `d0e09f85`, marteau legendaire `f5c854f4`, Needler
+  `7474d8d8`). Les epingler avec leur provenance, comme les rattachements manuels du
+  generateur de manifeste. C'est de la donnee, pas une heuristique.
+- **Un critere defendable pour le cas general**, a defaut de designation : preferer
+  l'evenement dont la duree mediane est la plus proche de celle de l'autre perspective
+  (coherence mutuelle), et refuser les durees invraisemblables — ce qui aurait ecarte
+  d'office la reference de 25,71 s de l'epee infectee. A minima, un depart deterministe
+  au lieu de « le premier du JSON ».
+
+LECON DE METHODE, la meme que pour le `Blend` : deux hypotheses d'offset ont echoue avant
+qu'un affichage de la structure ne tranche en une lecture. Le mode `meleefx` garde donc son
+diagnostic — quand un appariement echoue, il montre ce que le plugin ANNONCE en regard de ce
+que le tag CONTIENT, au lieu de laisser essayer un offset de plus.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
