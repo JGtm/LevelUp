@@ -58,6 +58,7 @@ func main() {
 	wem := flag.String("wem", "", "IDs recherches, separes par des virgules (defaut : fusil d'assaut)")
 	sfx := flag.String("sfx", "", "dossier des .pck (deduit de -deploy si vide) ; construit l'index large")
 	emb := flag.String("emb", "", "dossier ou ecrire les .wem embarques des banks (mode lot)")
+	sbnkGid := flag.Uint("sbnk", 0, "identifiant d'une bank (mode embarques, alternative a -pck)")
 	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
 	flag.Parse()
 
@@ -121,6 +122,12 @@ func main() {
 		err = remonter(chemin, temoins[0], *limite)
 	case "tir":
 		err = sonsDeTir(chemin, temoins[0])
+	case "melee":
+		var g uint32
+		if len(temoins) > 0 && temoins[0] != wemTemoins[0] {
+			g = temoins[0]
+		}
+		err = sonsDeMelee(chemin, g)
 	case "cadence":
 		err = sonderCadence(chemin, temoins[0])
 	case "arbre":
@@ -135,11 +142,7 @@ func main() {
 		sortieCouches = *sortieTir
 		err = arborescence(chemin, *pck, profondeur)
 	case "embarques":
-		if *pck == "" {
-			err = fmt.Errorf("le mode embarques exige -pck")
-			break
-		}
-		err = extraireEmbarques(chemin, *pck, *sortieTir)
+		err = extraireEmbarques(chemin, *pck, *sortieTir, uint32(*sbnkGid))
 	case "lot":
 		if *pck == "" || *sortie == "" {
 			err = fmt.Errorf("le mode lot exige -pck (dossier SFX) et -json (sortie)")
