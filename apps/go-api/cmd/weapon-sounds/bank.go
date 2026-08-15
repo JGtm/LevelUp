@@ -148,7 +148,9 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 				b.Sons[o.ID] = wem
 			}
 		case typeAction:
-			if cible, ok := lireCibleAction(o.Data, connu); ok {
+			// Seules les actions « jouer » contribuent au son. Retenir les autres revenait
+			// a empiler dans le mixage la cible d'un `Stop` ou d'un `Break`.
+			if cible, estPlay, ok := lireCibleAction(o.Data, connu); ok && estPlay {
 				b.Actions[o.ID] = cible
 			}
 		case typeEvent:
@@ -181,20 +183,36 @@ func lireSourceID(d []byte, estWem func(uint32) bool) (uint32, bool) {
 	return 0, false
 }
 
-// lireCibleAction lit l'objet vise par une Event Action.
+// actionPlay : octet de poids fort du type d'action correspondant a « jouer ».
+//
+// UNE ACTION N'EST PAS FORCEMENT UN SON A JOUER. L'audit du format le montre : sur 41 464
+// actions, 38 089 sont des `Play` mais 1 976 sont des `Stop`, 912 des `Break`, et le reste
+// des `Mute`, `SetLPF`, `SetState`... Le parseur ne lisait que la CIBLE, jamais le TYPE :
+// la cible d'un `Stop` etait donc empilee comme une couche a jouer, ajoutant au mixage un
+// son que le moteur, lui, arrete. C'est une cause directe de coups reconstitues qui
+// sonnent moins juste qu'un `.wem` isole.
+const actionPlay = 0x04
+
+// lireCibleAction lit le TYPE et l'objet vise par une Event Action.
 //
 //	u16 typeAction | u32 idCible   (layout courant ; le repli u8 couvre les variantes)
-func lireCibleAction(d []byte, connu func(uint32) bool) (uint32, bool) {
+//
+// Rend aussi si l'action est de type « jouer » : seules celles-la contribuent au son.
+func lireCibleAction(d []byte, connu func(uint32) bool) (uint32, bool, bool) {
+	if len(d) < 2 {
+		return 0, false, false
+	}
+	estPlay := byte(binary.LittleEndian.Uint16(d)>>8) == actionPlay
 	for _, off := range []int{2, 1} {
 		if off+4 > len(d) {
 			continue
 		}
 		id := binary.LittleEndian.Uint32(d[off:])
 		if id != 0 && connu(id) {
-			return id, true
+			return id, estPlay, true
 		}
 	}
-	return 0, false
+	return 0, estPlay, false
 }
 
 // lireActionsEvent lit la liste d'Actions d'un Event (compteur u8 ou u32 selon la version).

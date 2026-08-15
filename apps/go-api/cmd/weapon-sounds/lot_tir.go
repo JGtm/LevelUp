@@ -153,29 +153,11 @@ func tirDansTag(data []byte, o offsetsTir, groupes map[uint32]string) []uint32 {
 	if err != nil {
 		return nil
 	}
-	racine, err := t.blocRacine()
-	if err != nil {
-		return nil
-	}
-	// « Weapon Fire Sounds » est un TABLEAU : une entree par MODE DE TIR. Ne lire que le
-	// sous-bloc a l'offset du plugin ne rendait donc que le PREMIER mode — d'ou des coups
-	// reconstitues qui sonnaient a cote sur les armes a tir alternatif (Ravageur charge,
-	// Sentinel Beam continu, deux modes du Mutilator). On balaie tous les sous-blocs, la
-	// validation « toutes les references pointent vers un tag de son » faisant le tri.
 	var tous []uint32
-	for _, bloc := range t.enfantsDe(racine) {
-		for _, blocVar := range t.enfantsDe(bloc) {
-			absV, tailleV := t.blocAbs(blocVar)
-			if absV < 0 || tailleV < tailleRef {
-				continue
-			}
-			if gids, tousSons := refsDeSons(data, absV, tailleV, groupes); tousSons {
-				tous = append(tous, gids...)
-			}
-		}
+	for _, mode := range modesDansTag(t, data, groupes) {
+		tous = append(tous, mode...)
 	}
 	sort.Slice(tous, func(i, j int) bool { return tous[i] < tous[j] })
-	// Dedoublonnage : un meme tag de son peut servir a plusieurs modes.
 	uniq := tous[:0]
 	for i, g := range tous {
 		if i == 0 || g != tous[i-1] {
@@ -183,6 +165,51 @@ func tirDansTag(data []byte, o offsetsTir, groupes map[uint32]string) []uint32 {
 		}
 	}
 	return uniq
+}
+
+// tailleElementTir : taille d'un element du tableau « Weapon Fire Sounds », en octets.
+//
+// MESUREE, pas postulee. Contre-epreuve sur deux armes : le pistolet a plasma porte un bloc
+// de 192 octets dont le second sous-tableau « Variations » est au champ +108 = 12 + 96 ;
+// le fusil d'assaut porte un bloc de 96 octets, donc UN element — dont les « Variations »
+// comptent 3 references. C'est la distinction que je confondais : le fusil d'assaut a UN
+// MODE A TROIS VARIANTES, et non trois modes. Compter les tags de son au lieu des elements
+// du tableau annoncait des modes qui n'existent pas.
+const tailleElementTir = 96
+
+// modesDansTag rend, PAR MODE DE TIR, les tags de son designes par « Weapon Fire Sound ».
+//
+// Un mode = un ELEMENT du tableau « Weapon Fire Sounds ». Ses variantes sont les references
+// de son sous-tableau « Variations », situe au champ 12 de l'element — donc a
+// 12 + k*96 dans le bloc, pour le k-ieme mode.
+func modesDansTag(t tagWeap, data []byte, groupes map[uint32]string) [][]uint32 {
+	racine, err := t.blocRacine()
+	if err != nil {
+		return nil
+	}
+	var modes [][]uint32
+	for _, bloc := range t.enfantsDe(racine) {
+		_, taille := t.blocAbs(bloc)
+		nb := taille / tailleElementTir
+		if nb <= 0 {
+			nb = 1
+		}
+		sous := t.enfantsDe(bloc)
+		for k := 0; k < nb; k++ {
+			blocVar, ok := sous[12+k*tailleElementTir]
+			if !ok {
+				continue
+			}
+			absV, tailleV := t.blocAbs(blocVar)
+			if absV < 0 || tailleV < tailleRef {
+				continue
+			}
+			if gids, tousSons := refsDeSons(data, absV, tailleV, groupes); tousSons && len(gids) > 0 {
+				modes = append(modes, gids)
+			}
+		}
+	}
+	return modes
 }
 
 // groupesSonores : les classes de tags par lesquelles une chaine de son peut transiter.

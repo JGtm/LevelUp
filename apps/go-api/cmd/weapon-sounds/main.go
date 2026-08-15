@@ -102,6 +102,8 @@ func main() {
 			break
 		}
 		err = cartographier(chemin, *pck, *sortie)
+	case "audit":
+		err = auditFormat(chemin, *limite)
 	case "noms":
 		err = listerNoms(chemin)
 	case "lien":
