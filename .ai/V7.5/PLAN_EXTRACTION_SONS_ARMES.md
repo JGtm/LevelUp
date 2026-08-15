@@ -886,6 +886,34 @@ RESTE OUVERT : le Needler reste juge « n'importe quoi » par l'utilisateur, et 
 ce qui conforte le lien direct de la section 3 du handoff. Les deux sont a rejuger apres ce
 correctif, qui change toutes les 3e personnes portees par un `Blend`.
 
+### 2026-08-15 — Etape 16 : cloture du tri, et la rafale comme objet livre
+
+VOTES FINAUX : `Downloads/votes-sons-armes(3).json`, **47 votes**. Couverture : 28 des 31
+armes NOMMEES du jeu ont au moins un vote. Les trois manquantes sont le Mutilator
+(`Banished_enforcer` — l'utilisateur a vote sur `Banished_bank8827aa7e`, l'autre entree du
+meme `weap`), la Carabine Vestige et le Ravageur legendaire. Le reste des 55 entrees sans
+vote est constitue de tourelles, de `whizby` et de projectiles, hors perimetre du rejeu.
+
+**DECISION PRODUIT — LA RAFALE EST L'OBJET LIVRE.** Pour une arme automatique, le rejeu 2D
+doit jouer une COURTE RAFALE, pas un coup isole. Le coup unitaire ne sert qu'a la construire.
+
+Justification mesuree. L'utilisateur prefere, pour le Needler, le fichier « Needler - Shot »
+d'une bibliotheque tierce. Mesure de ce fichier : 2,49 s, **trois attaques** a 0, 65 et
+385 ms puis une longue queue — ce n'est donc PAS une aiguille, ce sont deux ou trois
+aiguilles suivies de leur queue. A 720 coups/min une aiguille dure 80 ms : seule, elle ne
+s'entend pas. Nos rendus `_RAFALE*.wav` sont exactement cet objet (mesure sur le Needler :
+1,61 s, 12 attaques a la cadence du tag).
+
+SUR LA BIBLIOTHEQUE TIERCE. L'utilisateur note que ses resultats sont « etonnamment proches »
+des notres, ce qui est un recoupement encourageant, mais elle n'est PAS une extraction brute
+comparable : ses fichiers sont en 44,1 kHz flottant quand les `.wem` du jeu sont en 48 kHz
+entier — donc reechantillonnes et retravailles. Elle est aussi incomplete : 23 armes, sans le
+Mutilator. Utile comme point de comparaison a l'oreille, pas comme reference de verite.
+
+RESTE, et c'est peu : les trois armes nommees sans vote ci-dessus, et la generalisation du
+lien direct `weap -> bank` (section 3 du handoff) — que le cas du Mutilator conforte, son
+vote portant sur la bank atteinte DIRECTEMENT et non sur celle atteinte par relais.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs

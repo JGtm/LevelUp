@@ -1,3 +1,35 @@
+## [2026-08-15] Sons d'armes — le Blend, la rafale comme objet livre, cloture du tri
+
+**Statut** : Etapes 15 et 16 completes. Branche `feat/extraction-sons-armes`, 22 commits,
+rien n'est merge. Le tri est clos cote utilisateur : 47 votes, 28 des 31 armes nommees.
+
+**Decision technique principale** : signalement utilisateur sur le MA40 — « un tir est bien
+et le suivant etouffe ». Les gains valaient 0 dB partout, ce n'etait donc pas eux. La cause
+etait que `couchesDeEvent` aplatissait tout le sous-arbre d'une action dans un seul ensemble
+ou le rendu tirait un `.wem` au hasard, alors qu'un `RandomSequence` joue UN enfant
+(variantes) quand un `Blend`/`ActorMixer`/`Switch` les joue TOUS (couches). L'evenement de
+3e personne du MA40 est un unique `Blend` de 64 sons : le rendu en jouait une piece,
+differente a chaque coup. Meme oubli que les conteneurs `Switch`, un cran plus bas. Le
+parseur descend desormais jusqu'aux POINTS DE CHOIX, et la forme du JSON ne changeant pas,
+le rendu devient correct sans modification.
+
+**Decision produit** : pour une arme automatique, le rejeu 2D joue une COURTE RAFALE, pas un
+coup isole. Mesure a l'appui — le fichier de reference que l'utilisateur prefere pour le
+Needler (bibliotheque tierce) dure 2,49 s et porte TROIS attaques a 0, 65 et 385 ms : ce sont
+deux ou trois aiguilles plus la queue, pas une aiguille. A 720 coups/min une aiguille dure
+80 ms et ne s'entend pas seule.
+
+**Resultats observes** : MA40 3P passe d'une couche de 64 `.wem` a trois couches de 19, 22 et
+23 ; Needler 3P a trois couches de 27, 28 et 20 ; Mutilator 3P a trois couches de 5. Blocage
+leve cote artefact : le bouton de rafale existait mais un verrou `duree <= 0,6 s` le masquait
+sur tous les sons isoles un peu longs — supprime, et la rafale repete desormais l'exemple
+affiche au lieu de faire defiler les variantes, ce qui interdisait de juger un son isole.
+
+**Conclusion / prochaine etape** : il reste trois armes nommees sans vote (Mutilator via
+`Banished_enforcer`, Carabine Vestige, Ravageur legendaire) et la generalisation du lien
+direct `weap -> bank`, que le cas du Mutilator conforte — le vote de l'utilisateur porte sur
+la bank atteinte DIRECTEMENT, pas sur celle atteinte par relais.
+
 ## [2026-08-15] Sons d'armes — le `Switch` rendu par etat, et le Needler qui revient
 
 **Statut** : Etape 12 COMPLETE (gates 12a et 12b). Defaut 9 du handoff corrige, defaut 5
