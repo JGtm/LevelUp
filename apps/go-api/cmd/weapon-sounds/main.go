@@ -35,7 +35,7 @@ var wemTemoins = []uint32{14649067, 1002108249, 1004646855, 1009888121, 66568145
 func main() {
 	deploy := flag.String("deploy", "", "racine `deploy` des archives du jeu (auto-detectee si vide)")
 	module := flag.String("module", moduleParDefaut, "module a sonder, relatif a la racine deploy")
-	mode := flag.String("mode", "probe", "probe | map")
+	mode := flag.String("mode", "probe", "probe | map | noms")
 	pck := flag.String("pck", "", "chemin d'un .pck d'arme (mode map)")
 	sortie := flag.String("json", "", "fichier JSON de sortie (mode map, facultatif)")
 	// Defaut = tous : l'heuristique « une bank d'arme est petite » est FAUSSE (mesure :
@@ -66,6 +66,8 @@ func main() {
 			break
 		}
 		err = cartographier(chemin, *pck, *sortie)
+	case "noms":
+		err = listerNoms(chemin)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}

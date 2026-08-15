@@ -57,13 +57,26 @@ tous au `.pck` de cette arme (controle croise). PASSE.
 - [x] Resolution transitive Event -> ensemble de `.wem`
 - [x] Controle croise : 0 `.wem` hors du `.pck`, couverture 359/359
 
-### Etape 3 — Retrouver les noms d'evenements (FNV-1 32 bits)
+### Etape 3 — Designer l'evenement de TIR parmi les 22
 
-Gate : au moins le fusil d'assaut, le sniper et le needler ont un evenement de tir nomme.
+Gate : au moins le fusil d'assaut, le sniper et le needler ont leur evenement de tir
+designe, par une preuve qui ne repose pas sur la duree des sons.
 
-- [ ] Generateur de candidats : noms de `.pck` x verbes x prefixes usuels Wwise
-- [ ] Hachage FNV-1 32 bits minuscule, appariement sur les IDs d'evenements
-- [ ] Statuer : couverture obtenue, armes non resolues
+Voie A — hachage FNV-1 (TENTEE, INSUFFISANTE SEULE) :
+
+- [x] Generateur de candidats : noms de `.pck` x verbes x prefixes usuels Wwise
+- [x] Hachage FNV-1 32 bits minuscule, appariement sur les IDs d'evenements
+- [!] Resultat : **0 nom retrouve sur 18 evenements**. La fonction de hachage est
+  PROUVEE correcte (vecteurs de reference + calibrage sur l'ID de bank, cf. journal) :
+  c'est la forme des noms d'evenements qui n'est pas devinable. Voie conservee comme
+  complement opportuniste, abandonnee comme moyen principal.
+
+Voie B — le graphe de tags (NOUVEAU MOYEN PRINCIPAL) :
+
+- [ ] Localiser les tags `snd!` qui referencent les identifiants d'evenements d'une bank
+- [ ] Remonter au tag `weap` qui depend de ces `snd!`
+- [ ] Lire l'offset du champ de tir dans `weap.xml` (champs NOMMES) pour designer lequel
+      des `snd!` est le tir — c'est la preuve recherchee, sans aucun nom Wwise
 
 ### Etape 4 — Livrable
 
@@ -121,6 +134,31 @@ une lecture au mauvais offset n'aurait pas survecu.
 Profil des 22 evenements : 8 gros (64 a 103 `.wem`) puis une queue a 4 `.wem`. Les gros sont
 les candidats tir (round-robin), les petits la mecanique. **Les departager exige les noms**
 — c'est l'objet de l'etape 3, elle n'est pas contournable.
+
+### 2026-08-15 — Etape 3 : la voie du hachage echoue, changement de moyen
+
+CORRECTION D'UNE AFFIRMATION DE L'ETAPE 1 : le journal annoncait « STID 2, STMG 3 ». C'est
+FAUX — la sonde cherchait ces quatre lettres N'IMPORTE OU dans les octets (`bytes.Contains`),
+pas un vrai chunk. Le mode `noms`, qui decode reellement les chunks, ne trouve **aucun**
+`STID` sur les 1305 banks. Il n'y a donc aucun nom en clair nulle part dans le jeu, ce qui
+est coherent avec `stringsSize` = 0 sur les modules.
+
+Voie A (hachage) : **0 nom retrouve sur 18 evenements**. Deux garde-fous prouvent que
+l'echec ne vient ni de la fonction ni d'un bug :
+
+1. `noms_test.go` verifie FNV-1 sur les vecteurs standards ("" -> 811c9dc5, "a" -> 050c5d7e,
+   "foobar" -> 31f0b262) et l'insensibilite a la casse ;
+2. calibrage sur une donnee dont le nom EST connu — l'identifiant de bank du chunk `BKHD`
+   vaut `4f8f2090`, et `fnv1("sb_010_wea_un_assaultrifle")` vaut exactement `4f8f2090`.
+
+La convention est donc bien « FNV-1 32 bits du nom complet en minuscules ». Ce qui manque,
+c'est la FORME des noms d'evenements, et elle n'est pas devinable a partir du nom de bank.
+
+DECISION : la voie principale devient le graphe de tags. Le raisonnement : le tag `weap`
+porte des champs NOMMES (`weap.xml`, 84 Ko de definitions deja au depot) ; un de ces champs
+designe le son de tir ; il pointe vers un `snd!` ; le `snd!` porte un identifiant d'evenement
+Wwise. La preuve ne repose alors sur aucun nom Wwise ni sur aucune heuristique acoustique —
+elle vient du champ nomme de la definition de tag.
 
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
