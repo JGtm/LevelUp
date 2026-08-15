@@ -28,8 +28,13 @@ Surface : le global est lu en **cinq points de production** — `traverse.go:251
 ## Objectif et critere de succes
 
 Que les positions d'objets du monde (projectiles ti=41, armes au sol ti=42, equipement
-ti=37, corps rigides ti=38) soient dequantifiees aux largeurs DU FILM, et qu'un appel
-oublie ne puisse plus jamais redonner Cliffhanger en silence.
+ti=37, corps rigides ti=38) soient dequantifiees aux largeurs DE LA CARTE DU MATCH, et qu'un
+appel oublie ne puisse plus jamais redonner Cliffhanger en silence.
+
+> Cette phrase disait « aux largeurs DU FILM » a la premiere ecriture. **Corrigee avec la
+> decision n°1** : les largeurs viennent de l'entree de CATALOGUE de la carte, pas du
+> decoupage lu dans le film — celui-ci est le CONTROLE. Les deux se sont averes d'accord
+> 7 fois sur 7, mais la source reste le catalogue.
 
 **Le correctif doit etre MESURE comme une amelioration, pas suppose.** Que les largeurs
 different ne prouve pas que les nouvelles soient les bonnes : `DetectI0Layout` mesure le
@@ -94,7 +99,8 @@ le defaut fait mieux, on l'ecrit et on ne corrige pas.
       `d4be4ab95` — `equipBipedBox` + `equipBox.contains`, part d'echantillons dans
       l'emprise du nuage des BIPEDES du meme film, coordonnees NORMALISEES de l'AABB.
       Non circulaire, sans base.
-- [x] 1.3 **7 films, 6 cartes, 6 valeurs de largeurs distinctes**, dont le temoin
+- [x] 1.3 **7 films, 7 cartes, 7 decoupages distincts** (donc 6 cartes ou le correctif change
+      quelque chose, plus le temoin), dont le temoin
       `000d5950`/Cliffhanger `[13 13 14]` (le correctif n'y change RIEN : mesure) et
       `0014603f`/Aquarius `[13 12 11]`. Cartes resolues hors DuckDB (le serveur de
       l'utilisateur tient les bases) : `match_registry.parquet` du snapshot 081, lu en
@@ -103,7 +109,7 @@ le defaut fait mieux, on l'ecrit et on ne corrige pas.
       echantillons entrant et sortant de l'emprise) — cf. tableau du journal ci-dessous.
 - [x] 1.5 **CONTROLE DE COHERENCE catalogue <-> `DetectI0Layout`** (ajout de la decision
       n°1 corrigee) : **ACCORD 7 films sur 7**. Le decoupage lu dans le bitstream egale les
-      largeurs deduites des bornes, sur les six cartes. Les bornes ne sont donc pas
+      largeurs deduites des bornes, sur les sept cartes. Les bornes ne sont donc pas
       suspectes.
 
 **Gate 1 : PASSE — les largeurs du catalogue font MASSIVEMENT mieux.** Tableau au journal.
@@ -227,6 +233,23 @@ film, coordonnees NORMALISEES de l'AABB.
 Exemple d'ecart en echantillons (`00502e52`, ti=37) : **32 dans l'emprise -> 33 527**,
 soit 34 166 hors emprise -> 673.
 
+**POURQUOI CE DEFAUT A SURVECU DES MOIS — la marche ne bouge PRESQUE PAS.** Le champ change
+pourtant de longueur (i0 passe de 45 a 58 bits sur Illusion), mais la reconnaissance d'en-tete
+est independante des largeurs, et le nombre de records trouves reste le meme a quelques
+unites pres :
+
+    07aa428d ti=41   defaut     19 937 candidats · porte fermee 2 564 · saturE 67 · acceptes 17 306
+                     catalogue  19 931 candidats · porte fermee 2 559 · saturE 23 · acceptes 17 349
+    00502e52 ti=41   defaut     15 255 candidats · porte fermee 2 050 · saturE 57 · acceptes 13 148
+                     catalogue  15 251 candidats · porte fermee 2 047 · saturE 40 · acceptes 13 164
+
+**Aucun compte, aucun taux d'echec de marche, aucun test de longueur ne pouvait voir ce
+defaut** : le decodeur rendait le meme NOMBRE de trajectoires, avec les memes durees, aux
+mauvaises POSITIONS. Seule une mesure de CONTENU le revele — meme lecon que le decoupage
+13/13/13 -> 13/13/14 du 2026-07-26, ou le total de 45 bits etait inchange. Le seul indice
+chiffre etait le quantum saturE, qui baisse (67 -> 23) parce qu'un axe mal aligne tombe plus
+souvent sur une valeur de garde ; trop faible pour alerter qui que ce soit.
+
 **CE QUE LA MESURE NE DIT PAS, ecrit avant de conclure :**
 
 1. **L'emprise est une BOITE.** Un film dont les bipedes couvrent presque tout `[0,1]` sur un
@@ -253,7 +276,7 @@ soit 34 166 hors emprise -> 673.
 
 - L'hypothese « les axes du world-object sont ceux de l'absolu du bipede » est ecrite dans
   `traverse.go:137-148` et n'a jamais ete verifiee independamment. **Elle est VERIFIEE par ses
-  consequences le 2026-08-15** : sur 6 cartes, poser les largeurs de la carte fait passer les
+  consequences le 2026-08-15** : sur les 6 cartes autres que Cliffhanger, poser les largeurs fait passer les
   objets du monde de 0,09-65 % a 96,5-99,8 % dans l'emprise des bipedes.
 - `TraversalPrecision` (le chemin delta, `{6,6,6}`) porte le meme genre d'avertissement
   (« banc de calibration propre a Cliffhanger, pas un decodeur »). Hors perimetre.

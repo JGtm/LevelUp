@@ -32,9 +32,11 @@ package filmdec
 // UNE CARTE HORS CATALOGUE NE SE MESURE PAS COMME SI ELLE Y ÉTAIT : l'instrument le dit et
 // s'arrête sur ce film, il ne se rabat pas sur le découpage lu dans le film.
 //
-// APRÈS LE CORRECTIF DE LA PHASE 2, LES DEUX COLONNES DEVIENNENT IDENTIQUES : le chemin de
-// production installe alors lui-même les largeurs de l'entrée de catalogue, et la colonne
-// « défaut » n'existe plus. C'est la signature du branchement, pas une panne de l'instrument.
+// L'INSTRUMENT RESTE VALABLE APRÈS LE CORRECTIF DU 2026-08-15, et c'est voulu : l'installation
+// de production vit chez l'APPELANT (`replay.BuildFromFilm` -> `installWorldObjectPrecision`),
+// pas dans `ScanFilmWorldObjects`. Ce test pose donc lui-même les largeurs qu'il veut comparer
+// avant chaque balayage, et les deux colonnes restent distinctes — la mesure est rejouable à
+// l'identique sur n'importe quel film du cache.
 //
 // LECTURE SEULE, gardé par WORLDPREC_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process (globaux de paquet) : le verrou est pris pour tout le test.
