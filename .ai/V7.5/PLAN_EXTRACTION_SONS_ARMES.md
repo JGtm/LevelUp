@@ -326,6 +326,42 @@ NOMMAGE — DEUX POINTS A TRANCHER AVEC L'UTILISATEUR :
   ne jamais deduire l'identite d'une arme du nom de son pack audio.
   Au passage : `cv_provoker` = `hinf_ravager` (Ravageur).
 
+### 2026-08-15 — Etape 6 : relais suivis, et deux regressions attrapees en chemin
+
+La passe en lot suivait `weap -> tag de son` sur UN niveau ; les armes a relais (`stai`)
+lui echappaient. Generalisation par expansion transitive dans les classes sonores
+(`snd!`, `lsnd`, `stai`), profondeur 4. Resultat : **34 armes au lieu de 33**, la nouvelle
+etant `bt_enforcer` (le Mutilator) — exactement le cas qui avait ete resolu a la main.
+
+DEUX REGRESSIONS INTRODUITES PAR CETTE GENERALISATION, mesurees puis corrigees :
+
+1. L'expansion ECRASAIT l'association (`out[gid] = armes`, avec saut du deja-vu) : un tag
+   atteint depuis deux armes revenait au premier arrive. Symptome : `bt_arczapper` rattache
+   au S7 Sniper, et le Disrupteur disparu du rattachement. Corrige en ACCUMULANT les
+   associations, plus rejet des tags atteints depuis plus de 3 armes (points de passage
+   communs : les compter preterait a chaque arme les evenements des autres).
+2. L'accumulation seule n'a PAS suffi — `bt_arczapper` restait faux. Cause reelle : les
+   relais etaient traites AU MEME RANG que les liens directs, si bien qu'une chaine longue
+   du sniper atteignait les evenements de l'arczapper. Corrige en faisant du relais un
+   REPLI : le lien direct (le tag designe par le champ de tir) est la preuve forte, le
+   suivi des relais ne sert QUE pour les armes qu'aucun lien direct ne couvre.
+
+Controle apres correctif : Disrupteur revenu, Mutilator conserve, aucun pack ne partage
+plus une cle produit avec un autre. Sur les 26 armes du registre hors grenades, seules 3
+restent non rattachees : l'epee et le marteau (pas de tir, normal) et la Carabine Vestige.
+
+VARIANTES, mesure :
+
+	cv_provoker_megatron            weap 05b2c46c -> hinf_ravager (Ravageur)
+	cv_provoker (base)              AUCUN son de tir prouve
+	*_sentinelminiboss (x3), _berserk   tags distincts, ABSENTS de l'index d'icones
+
+Lecture : les `_sentinelminiboss` et `_berserk` sont des variantes PNJ, sans entree produit
+joueur — coherent. Pour `cv_provoker_megatron`, le tag est distinct mais pointe vers le
+produit Ravageur de base, et c'est la variante qui porte le son de tir, pas le pack de base.
+L'hypothese « variante legendaire » de l'utilisateur est COMPATIBLE avec la mesure mais
+n'est pas prouvee par elle : rien dans le tag ne dit « legendaire ».
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
