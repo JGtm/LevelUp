@@ -46,6 +46,10 @@ type brancheRendue struct {
 	Cible     string   `json:"cible"`
 	TypeNoeud string   `json:"type_noeud"`
 	Wems      []uint32 `json:"wems_candidats"`
+	// Gains : volume en dB declare par l'objet Sound de chaque `.wem`. Le moteur applique
+	// ces gains ; les ignorer faisait arriver au meme niveau une couche de renfort censee
+	// rester 10 ou 20 dB en arriere-plan.
+	Gains map[string]float32 `json:"gains_db,omitempty"`
 }
 
 type eventCouches struct {
@@ -87,8 +91,15 @@ func (b *bank) couchesDeEvent(id uint32) []brancheRendue {
 		if o, ok := b.Objets[cible]; ok {
 			t = nomType(o.Type)
 		}
+		wems := trier(set)
+		gains := map[string]float32{}
+		for _, w := range wems {
+			if g, ok := b.Gains[w]; ok {
+				gains[fmt.Sprintf("%d", w)] = g
+			}
+		}
 		out = append(out, brancheRendue{
-			Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: trier(set),
+			Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gains,
 		})
 	}
 	return out

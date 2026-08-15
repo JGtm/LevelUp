@@ -74,6 +74,9 @@ func auditFormat(cheminModule string, limite int) error {
 	// Taille de charge utile d'un Sound : si elle depasse largement les 13 octets lus,
 	// c'est qu'il reste des donnees non exploitees (proprietes, effets, positionnement).
 	var sommeSound, nSound, maxSound int
+	var propsLues, avecVolume, avecDelai, avecPitch int
+	sommeVol := 0.0
+	minVol := 0.0
 	var sansHIRC, sansBKHD int
 
 	for i, f := range banks[:limite] {
@@ -113,6 +116,24 @@ func auditFormat(cheminModule string, limite int) error {
 					actions[binary.LittleEndian.Uint16(o.Data)]++
 				}
 			}
+			if o.Type == typeSound {
+				if p := lireProprietes(o.Data); p.Lu {
+					propsLues++
+					if p.VolumeDB != 0 {
+						avecVolume++
+						sommeVol += float64(p.VolumeDB)
+						if float64(p.VolumeDB) < minVol {
+							minVol = float64(p.VolumeDB)
+						}
+					}
+					if p.DelaiS != 0 {
+						avecDelai++
+					}
+					if p.PitchCts != 0 {
+						avecPitch++
+					}
+				}
+			}
 		}
 		if i%300 == 0 && i > 0 {
 			rapporterMemoire(fmt.Sprintf("banks %d/%d", i, limite))
@@ -120,6 +141,13 @@ func auditFormat(cheminModule string, limite int) error {
 	}
 
 	afficherInventaire(chunks_, types, actions, nSound, sommeSound, maxSound, sansBKHD, sansHIRC)
+	fmt.Printf("\n=== PROPRIETES DES OBJETS Sound (nouveau lecteur) ===\n")
+	fmt.Printf("  paquet lu de facon plausible : %d / %d (%.0f %%)\n",
+		propsLues, nSound, 100*float64(propsLues)/float64(max(nSound, 1)))
+	fmt.Printf("  avec un volume non nul     : %d (moyenne %.1f dB, minimum %.1f dB)\n",
+		avecVolume, sommeVol/float64(max(avecVolume, 1)), minVol)
+	fmt.Printf("  avec un delai non nul      : %d\n", avecDelai)
+	fmt.Printf("  avec une hauteur non nulle : %d\n", avecPitch)
 	return nil
 }
 
