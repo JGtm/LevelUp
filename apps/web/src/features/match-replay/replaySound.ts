@@ -9,6 +9,7 @@
  * sans fichier ou un fichier sans stem casse le test, jamais l'écoute.
  *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
+ *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
  *  - les KILLS du fil (weapon_key présent ET dans le manifeste) — l'horloge est celle du
  *    fil (`alignFeed`), la même qui date le flash des fiches et l'effet de mort :
  *    un son qui partirait sur l'horloge brute sonnerait à côté de son image ;
@@ -16,6 +17,22 @@
  *    le pack porte les quatre lancers (frag/plasma/dynamo/spike, item 5.3) ;
  *  - un kill À LA grenade sonne l'explosion (c'est elle qui a tué, pas le geste du
  *    lancer) — la Spike n'a pas de weapon_key (mesure killicon) : son kill reste muet.
+ *
+ * LA DENSITÉ N'EST PAS FILTRÉE — DÉCISION UTILISATEUR DU 2026-08-15, mot pour mot : « tu me
+ * les mets TOUS autant que possible pour le moment, je verrai si c'est trop ensuite ». Il n'y
+ * a donc ICI aucune règle éditoriale : ni cadence minimale entre deux tirs d'un même joueur,
+ * ni priorité, ni quota. Le SEUL plafond est TECHNIQUE et il vit à la lecture
+ * (`SOUND_MAX_VOICES`, replayAudio.ts) : au-delà de huit voix simultanées, les sources
+ * supplémentaires sont refusées plutôt que d'empiler un mur de bruit. Mesures du 2026-08-15
+ * (simulation à 1×, une voix tenue 1 s) : film témoin 000d5950 — 483 sons pour 483 tirs,
+ * 46 voix refusées ; corpus des 23 artefacts locaux — 17 068 sons pour 17 904 tirs (95,3 %),
+ * 4 897 voix refusées (28,7 % des sources). Le plafond MORD, et c'est lui seul qui borne.
+ *
+ * UN TIR SONNE L'ARME QUI L'A PRODUIT, JAMAIS UNE AUTRE. La jointure passe par la clé
+ * canonique publiée avec le libellé (`weaponLabels[id].key`, posée à la requête par le
+ * service) : sans clé, ou sans fichier pour cette clé, le tir est MUET. Les quatre armes
+ * sans son du pack (Bandit EVO, MA5K Avenger, SPNKr à combustible, carabine Vestige) le
+ * restent donc par construction — c'est la même règle que les libellés et les effets.
  *
  * UN KILL SANS weapon_key (mêlée générique, objets) OU UNE ARME SANS FICHIER (Bandit,
  * MA5K, SPNKr à combustible, Vestige — absentes du pack) = SILENCE PROPRE : jamais le son
@@ -31,13 +48,17 @@ import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /**
- * Son de KILL par weapon_key -> stem de fichier sous static/sounds/{slug}/.
+ * Son d'ARME par weapon_key -> stem de fichier sous static/sounds/{slug}/.
+ *
+ * UNE SEULE TABLE POUR LES TIRS ET LES KILLS : c'est la même arme, donc le même son. La
+ * séparer en deux ferait deux vérités à tenir à jour, et le jour où elles divergeraient un
+ * tir et le kill qu'il produit ne sonneraient plus pareil.
  *
  * Les armes portent leur propre stem (fichier nommé par la clé) ; les trois grenades à
  * weapon_key pointent l'explosion PARTAGÉE — un seul fichier, pas trois copies (règle
  * « ≤ 2 copies »). Une clé absente de cette table = silence propre.
  */
-export const KILL_SOUND_STEMS: Readonly<Record<string, string>> = {
+export const WEAPON_SOUND_STEMS: Readonly<Record<string, string>> = {
   hinf_ma40_ar: 'hinf_ma40_ar',
   hinf_br75: 'hinf_br75',
   hinf_cqs48_bulldog: 'hinf_cqs48_bulldog',
@@ -85,9 +106,27 @@ export interface ReplaySoundEvent {
 }
 
 /**
- * buildSoundTimeline précalcule la piste sonore du document : kills recalés par `alignFeed`
- * (même règle que le fil et l'effet de mort — une seule horloge) + lancers de
- * grenade datés par leur frame de film. Triée chronologiquement, construite une fois.
+ * shotSoundStem — le fichier d'un TIR, ou undefined pour le silence.
+ *
+ * Le film date le tir et nomme son arme par un identifiant ; la clé canonique arrive avec
+ * le libellé (`weaponLabels[id].key`). Aucune direction n'est requise — c'est tout l'intérêt
+ * du son : il n'a besoin QUE de l'instant (demande utilisateur du 2026-08-15).
+ */
+export function shotSoundStem(doc: ReplayDocumentReady, weaponID: string | undefined): string | undefined {
+  if (!weaponID) return undefined
+  const key = doc.weaponLabels?.[weaponID]?.key
+  return key ? WEAPON_SOUND_STEMS[key] : undefined
+}
+
+/**
+ * buildSoundTimeline précalcule la piste sonore du document : TIRS datés par leur frame de
+ * film + kills recalés par `alignFeed` (même règle que le fil et l'effet de mort — une seule
+ * horloge) + lancers de grenade datés par leur frame. Triée chronologiquement, construite
+ * une fois.
+ *
+ * LES TIRS ET LES KILLS COEXISTENT SANS DÉDUPLICATION, et c'est voulu : le tir qui tue est
+ * un événement du film, la mort qu'il cause en est un autre, daté par le fil. Les fondre
+ * ferait disparaître l'un des deux sur une horloge où ils ne tombent pas au même instant.
  */
 export function buildSoundTimeline(
   doc: ReplayDocumentReady,
@@ -95,9 +134,13 @@ export function buildSoundTimeline(
   t0Ms: number,
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
+  for (const s of doc.shots) {
+    const stem = shotSoundStem(doc, s.w)
+    if (stem) out.push({ ms: frameToMs(s.t, doc), stem })
+  }
   if (kills.length > 0 && doc.tracks.length > 0) {
     for (const k of alignFeed(kills, t0Ms, doc).kills) {
-      const stem = k.weaponKey ? KILL_SOUND_STEMS[k.weaponKey] : undefined
+      const stem = k.weaponKey ? WEAPON_SOUND_STEMS[k.weaponKey] : undefined
       if (stem) out.push({ ms: k.replayMs, stem })
     }
   }

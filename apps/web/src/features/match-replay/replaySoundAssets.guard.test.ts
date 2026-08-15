@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { KILL_SOUND_STEMS, THROW_SOUND_STEMS } from './replaySound'
+import { WEAPON_SOUND_STEMS, THROW_SOUND_STEMS } from './replaySound'
 
 const SOUNDS_DIR = resolve(__dirname, '..', '..', '..', '..', '..', 'static', 'sounds', 'halo_infinite')
 
@@ -23,7 +23,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
       .filter((f) => f.endsWith('.wav'))
       .map((f) => f.slice(0, -'.wav'.length)),
   )
-  const referenced = new Set([...Object.values(KILL_SOUND_STEMS), ...THROW_SOUND_STEMS])
+  const referenced = new Set([...Object.values(WEAPON_SOUND_STEMS), ...THROW_SOUND_STEMS])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
     const missing = [...referenced].filter((s) => !shipped.has(s))

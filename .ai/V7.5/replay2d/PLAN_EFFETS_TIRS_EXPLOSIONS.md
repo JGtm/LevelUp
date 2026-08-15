@@ -33,22 +33,41 @@ La couverture cesse d'etre 18,6 % et devient celle du regard, bien plus large.
 
 > Aujourd'hui le son ne part que sur les KILLS. Or un son n'a besoin QUE de l'instant.
 
-- [ ] 1.1 Declencher un son a CHAQUE tir publie (`doc.shots`, 483 sur le film temoin), avec le
+- [x] 1.1 Declencher un son a CHAQUE tir publie (`doc.shots`, 483 sur le film temoin), avec le
       son de l'arme du tir (`s.w` -> `weaponLabels` -> cle d'arme -> fichier). Aucune direction
       requise.
-- [ ] 1.2 DENSITE — DECISION UTILISATEUR DU 2026-08-15 : « tu me les mets TOUS autant que
+      FAIT — la cle d'arme MANQUAIT au document : `WeaponLabel.Key` est publie, resolu **a la
+      requete** par le service (`internal/service/replay_weapon_keys.go`), comme `mapObjectives`.
+      Raison ecrite dans le code : figer la cle au build aurait laisse muets les 23 artefacts
+      locaux et toute la production jusqu'a une re-cuisson complete. Verifie sur l'API locale :
+      39 libelles d'arme sur 39 portent leur cle.
+- [x] 1.2 DENSITE — DECISION UTILISATEUR DU 2026-08-15 : « tu me les mets TOUS autant que
       possible pour le moment, je verrai si c'est trop ensuite ». Donc **aucun filtrage
       editorial** : tout tir dont l'arme a un son le joue. Le SEUL plafond admis est
       TECHNIQUE — le nombre de voix simultanees que le moteur audio tient sans saturer
       (mecanique deja livree au lot 5). Publier le nombre de sons joues contre le nombre de
       tirs, et le nombre de voix refusees par le plafond technique : c'est ce chiffre qui
       permettra a l'utilisateur de dire « c'est trop » en connaissance de cause.
-- [ ] 1.3 Les armes MUETTES restent muettes (4 mesurees : Bandit EVO, MA5K Avenger, canon a
+      MESURE (simulation a 1x, une voix tenue 1 s, `SOUND_MAX_VOICES` = 8) :
+      | perimetre | tirs | sons publies | voix refusees |
+      |---|---|---|---|
+      | film temoin 000d5950 | 483 | 483 (100 %) | 46 |
+      | 23 artefacts locaux | 17 904 | 17 068 (95,3 %) | 4 897 (28,7 % des sources) |
+      Le plafond MORD. Il est laisse a 8 : le relever est un changement d'un chiffre, et c'est
+      une decision d'oreille de l'utilisateur, pas du code.
+- [x] 1.3 Les armes MUETTES restent muettes (4 mesurees : Bandit EVO, MA5K Avenger, canon a
       combustible, carabine Vestige) — jamais le son d'une autre arme.
-- [ ] 1.4 Le reglage existant (bouton Son, coupe par defaut, volume persiste) commande aussi
+      MESURE : ce sont exactement les 4 armes des 836 tirs muets du corpus (Vestige 231,
+      Bandit 225, MA5K 171, SPNKr a combustible 59). Aucune autre arme n'est muette.
+- [x] 1.4 Le reglage existant (bouton Son, coupe par defaut, volume persiste) commande aussi
       ces sons. Un seul interrupteur, pas deux.
+      FAIT par construction : les tirs entrent dans la MEME piste (`buildSoundTimeline`), donc
+      le meme curseur, le meme hook, le meme bouton — aucun second reglage n'a ete ajoute.
 
 Gate 1 : nombre de sons joues / tirs publies, publie ; ecoute utilisateur sur un echange nourri.
+GATE 1 : chiffres publies ci-dessus. Gates techniques passes (tsc purge, eslint, vitest 21
+fichiers / 327 tests, `go test` service + analysis/replay + contracttest, `go vet`, ratchet
+golangci-lint 0 issue). **RESTE : l'ecoute par l'utilisateur.**
 
 ## Etape 2 — LE MUZZLE FLASH (remplace le rendu actuel des tirs)
 

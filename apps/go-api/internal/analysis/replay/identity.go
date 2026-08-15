@@ -72,15 +72,9 @@ func buildWeaponLabels(loadouts []Loadout, shots []Shot, cat LabelCatalog) map[s
 		if _, seen := out[id]; seen {
 			return
 		}
-		// L'identifiant est soit une FAMILLE (high-32, 8 chiffres après "0x"), soit un
-		// identifiant GLOBAL 64 bits (16 chiffres) dont la famille est la moitié haute.
-		var v uint64
-		if _, err := fmt.Sscanf(strings.TrimPrefix(id, "0x"), "%X", &v); err != nil {
+		high, ok := FamilyOfWeaponID(id)
+		if !ok {
 			return
-		}
-		high := uint32(v)
-		if len(id) > 10 {
-			high = uint32(v >> 32)
 		}
 		if lbl, ok := cat.Weapons[high]; ok {
 			// L'icône suit le libellé quand la couche titre en pointe une pour la famille ;
@@ -103,6 +97,26 @@ func buildWeaponLabels(loadouts []Loadout, shots []Shot, cat LabelCatalog) map[s
 		return nil
 	}
 	return out
+}
+
+// FamilyOfWeaponID rend la FAMILLE (high-32) d'un identifiant d'arme tel que le document
+// les écrit : soit une famille seule (8 chiffres hexadécimaux après « 0x »), soit un
+// identifiant GLOBAL 64 bits (16 chiffres) dont la famille est la moitié haute.
+//
+// Exporté parce que DEUX lecteurs en ont besoin — la table de libellés construite ici, et
+// la résolution du weapon_key à la requête (service/replay_weapon_keys.go). La règle des
+// deux copies vaut aussi pour trois lignes de décodage : la troisième dérive.
+//
+// `ok` faux = l'identifiant n'est pas lisible ; l'appelant ne nomme alors rien.
+func FamilyOfWeaponID(id string) (uint32, bool) {
+	var v uint64
+	if _, err := fmt.Sscanf(strings.TrimPrefix(id, "0x"), "%X", &v); err != nil {
+		return 0, false
+	}
+	if len(id) > 10 {
+		return uint32(v >> 32), true
+	}
+	return uint32(v), true
 }
 
 // buildRoster publie les joueurs du film, triés par index pour que l'artefact soit

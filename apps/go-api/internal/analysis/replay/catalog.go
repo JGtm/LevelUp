@@ -40,6 +40,14 @@ type LabelCatalog struct {
 	// pas un sixième paramètre. Une famille absente garde son libellé sans visuel :
 	// le client affiche alors le texte, jamais l'icône d'une arme voisine.
 	Icons map[uint32]WeaponIconRef
+	// Keys est la table FAMILLE d'arme -> weapon_key, telle que le registre du titre la
+	// donne. C'est la jointure que le service pose sur le document à la requête
+	// (WeaponLabel.Key) : un tir du film porte un identifiant d'arme, les tables du
+	// client (banque de sons) sont keyées par weapon_key.
+	//
+	// Weapons n'en garde que la PROJECTION nommée : une famille dont le weapon_key n'a
+	// pas de nom n'y entre pas, alors qu'elle a bel et bien une clé — et un son.
+	Keys map[uint32]string
 	// Effects est la table weapon_key -> famille de rendu TELLE QUE LUE du titre
 	// ([shot_effects]). Weapons n'en garde que la projection par famille d'arme FILM ;
 	// or les kills du feed sont keyés par weapon_key — cette table est publiée telle
@@ -89,5 +97,20 @@ func NewLabelCatalog(
 			eff[k] = v
 		}
 	}
-	return LabelCatalog{Weapons: weapons, Grenades: grenades, Abilities: abilities, Effects: eff}
+	// La table des CLÉS est copiée pour la même raison que celle des effets : le
+	// catalogue survit à son appelant et ne doit pas partager une map mutable.
+	var keys map[uint32]string
+	if len(familyToKey) > 0 {
+		keys = make(map[uint32]string, len(familyToKey))
+		for f, k := range familyToKey {
+			keys[f] = k
+		}
+	}
+	return LabelCatalog{
+		Weapons:   weapons,
+		Grenades:  grenades,
+		Abilities: abilities,
+		Keys:      keys,
+		Effects:   eff,
+	}
 }

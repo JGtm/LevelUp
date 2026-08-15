@@ -10904,6 +10904,7 @@ export interface components {
             fr: string;
             fx?: string;
             img?: string;
+            key?: string;
             tinted?: boolean;
         };
         WinLossPoint: {

@@ -78,6 +78,15 @@ function docWithCouple(over: Partial<ReplayDocument> = {}) {
   })
 }
 
+/** Document 10 Hz portant `n` tirs consécutifs d'une arme du pack sonore (BR75). */
+function docAvecTirs(n: number) {
+  return testReplayDoc({
+    frameIntervalMs: 100,
+    shots: Array.from({ length: n }, (_, i) => ({ slot: 1, t: i, x: 0, y: 0, w: '0x2B1824D5' })),
+    weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', fx: 'ballistic', key: 'hinf_br75' } },
+  })
+}
+
 describe('buildSoundTimeline', () => {
   it("pose le kill sur l'horloge du FIL (fin de vie de la victime), pas l'horloge brute", () => {
     // Kill servi 3 s après la fin de vie (décalage d'origine, même mesure que killFx) :
@@ -129,6 +138,51 @@ describe('buildSoundTimeline', () => {
       0,
     )
     expect(tl.map((e) => e.ms)).toEqual([2_000, 5_000])
+  })
+
+  it('CHAQUE tir sonne son arme — aucun filtrage de densité (décision du 2026-08-15)', () => {
+    // Six tirs de la même arme en 600 ms : les six sonnent. Le seul plafond est technique
+    // (voix simultanées, replayAudio.ts), et il ne vit pas dans cette table.
+    const tl = buildSoundTimeline(docAvecTirs(6), [], 0)
+    expect(tl.map((e) => e.stem)).toEqual(Array(6).fill('hinf_br75'))
+    expect(tl.map((e) => e.ms)).toEqual([0, 100, 200, 300, 400, 500])
+  })
+
+  it('un tir dont l arme n a ni clé ni fichier reste MUET, jamais le son d une voisine', () => {
+    // Trois cas de silence : arme sans identifiant, identifiant hors table de libellés,
+    // et arme du registre absente du pack sonore (Bandit — mesure du lot 5).
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      shots: [
+        { slot: 1, t: 0, x: 0, y: 0 },
+        { slot: 1, t: 10, x: 0, y: 0, w: '0xINCONNU' },
+        { slot: 1, t: 20, x: 0, y: 0, w: '0xB4ND1T' },
+      ],
+      weaponLabels: { '0xB4ND1T': { en: 'M392 Bandit', fr: 'Bandit EVO', key: 'hinf_bandit' } },
+    })
+    expect(buildSoundTimeline(doc, [], 0)).toEqual([])
+  })
+
+  it('un libellé SANS clé ne sonne pas : la clé est posée à la requête, jamais devinée', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      shots: [{ slot: 1, t: 0, x: 0, y: 0, w: '0x2B1824D5' }],
+      weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', fx: 'ballistic' } },
+    })
+    expect(buildSoundTimeline(doc, [], 0)).toEqual([])
+  })
+
+  it('tirs, kills et lancers cohabitent sur UNE piste triée', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        shots: [{ slot: 1, t: 5, x: 0, y: 0, w: '0x2B1824D5' }],
+        weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', key: 'hinf_br75' } },
+        grenades: [grenade({ t: 50, rank: 0 })],
+      }),
+      [kill()],
+      0,
+    )
+    expect(tl.map((e) => e.ms)).toEqual([500, 2_000, 5_000])
   })
 })
 
