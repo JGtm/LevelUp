@@ -1,3 +1,32 @@
+## [2026-08-16] Sons d'armes — le Blend est une distance, et une retractation
+
+**Statut** : Etape 17. Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Retractation** : l'etape 16 justifiait « la rafale est l'objet livre » en affirmant que le
+fichier de reference du Needler contenait deux ou trois aiguilles. C'est faux — une seule,
+et mon detecteur d'attaques prenait ses transitoires internes pour des coups. La decision
+produit reste valide (l'utilisateur l'a posee independamment), la justification non.
+
+**Decision technique principale** : le `Blend` n'empile pas ses enfants, il choisit entre
+eux. Preuve : durees IDENTIQUES entre enfants d'un meme `Blend` (0,67/0,67/0,67 sur le fusil
+electrique, 0,08/0,08/0,08 sur le MA40) — des couches d'un coup de feu differeraient. Croise
+avec l'inventaire de l'etape 12 (42 `Blend` sur 303 portent une automation), ce sont des
+variantes de DISTANCE. Les deux comportements precedents etaient faux : tirer au hasard parmi
+tous les enfants faisait changer la distance a chaque coup, les empiler tous donnait un
+melange trop epais. On fige une distance, stable d'une regeneration a l'autre.
+
+**Resultats observes** : fusil electrique 3P 6 -> 2 couches, MA40 3P 3 -> 1 couche de 19 wem
+au lieu de 64 melangees, SPNKr a combustible 9 -> 1 couche. Needler : sa reference exterieure
+utilisee comme SONDE classe ses `.wem` par ecart d'enveloppe ; les meilleurs durent 0,67 a
+0,99 s et vivent dans `f1fa7e3f`, un evenement absent de « Weapon Fire Sounds » donc jamais
+rendu ni ecoutable. Temoin : 7 sons d'autres armes dans les 25 premiers — mesure faible, elle
+oriente sans prouver.
+
+**Conclusion / prochaine etape** : 12 coups a revoter sur 12 armes, tous en 3e personne,
+marques dans la barre laterale de l'artefact ; les 23 autres votes sur un coup et tous les
+votes de 1re personne sont intacts. Le manifeste expose desormais chaque evenement
+individuellement (797 groupes au lieu de 417) : plus rien n'est invisible.
+
 ## [2026-08-15] Sons d'armes — le Blend, la rafale comme objet livre, cloture du tri
 
 **Statut** : Etapes 15 et 16 completes. Branche `feat/extraction-sons-armes`, 22 commits,
