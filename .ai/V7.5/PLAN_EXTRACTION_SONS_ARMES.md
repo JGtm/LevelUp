@@ -71,12 +71,14 @@ Voie A — hachage FNV-1 (TENTEE, INSUFFISANTE SEULE) :
   c'est la forme des noms d'evenements qui n'est pas devinable. Voie conservee comme
   complement opportuniste, abandonnee comme moyen principal.
 
-Voie B — le graphe de tags (NOUVEAU MOYEN PRINCIPAL) :
+Voie B — le graphe de tags (MOYEN PRINCIPAL) :
 
-- [ ] Localiser les tags `snd!` qui referencent les identifiants d'evenements d'une bank
-- [ ] Remonter au tag `weap` qui depend de ces `snd!`
+- [~] Localiser les tags `snd!` qui referencent les evenements — REFUTE : ce ne sont pas
+      des `snd!` mais des `lsnd`. Couvert par la remontee ci-dessous.
+- [x] Remonter au tag `weap` : chaine etablie et mesuree
+      `sbnk 384b727f` <- 8 `lsnd` <- 2 `weap` (`00008595`, `48c19d2d`)
 - [ ] Lire l'offset du champ de tir dans `weap.xml` (champs NOMMES) pour designer lequel
-      des `snd!` est le tir — c'est la preuve recherchee, sans aucun nom Wwise
+      des 8 `lsnd` est le tir — c'est la preuve recherchee, sans aucun nom Wwise
 
 ### Etape 4 — Livrable
 
@@ -159,6 +161,37 @@ porte des champs NOMMES (`weap.xml`, 84 Ko de definitions deja au depot) ; un de
 designe le son de tir ; il pointe vers un `snd!` ; le `snd!` porte un identifiant d'evenement
 Wwise. La preuve ne repose alors sur aucun nom Wwise ni sur aucune heuristique acoustique —
 elle vient du champ nomme de la definition de tag.
+
+### 2026-08-15 — Etape 3 voie B : la chaine arme -> bank est etablie
+
+Trois hypotheses REFUTEES avant la bonne, chacune par la mesure :
+
+1. « les `snd!` portent les identifiants d'evenements » — FAUX : 0 porteur sur 14 228 ;
+2. « les `snd!` portent l'identifiant de la bank » — FAUX : 764 banks distinctes
+   referencees par les `snd!`, et `384b727f` n'en fait PAS partie ;
+3. « les `sbnk` et les `snd!` cohabitent dans un module » — FAUX : `pc/globals` ne contient
+   que des assets plateforme (17 803 `bitm`, 1875 `mode`, 1305 `sbnk`, 791 `shdv`), les
+   `snd!`/`weap` vivent dans `any/globals`.
+
+La question posee A L'ENVERS a tranche : « qui depend de `384b727f` ? » rend **8 tags
+`lsnd`** (sons en boucle), pas des `snd!`. Un niveau plus haut : **2 tags `weap`**
+(`00008595` et `48c19d2d`) et 1 `stai`. La chaine est donc :
+
+	sbnk 384b727f  <-  8 lsnd  <-  2 weap
+
+Correspondance notable : 8 `lsnd` pour 8 evenements « gros » (64 a 103 `.wem`) mesures a
+l'etape 2. Elle est encourageante mais N'EST PAS une preuve — l'appariement reste a faire.
+
+Deux `weap` et non un : attendu, le fusil d'assaut a des variantes (le `.pck` du MA5K a la
+meme structure et le meme compte de sons). Le global tag id d'un `weap` est deja la cle
+etablie par `cmd/weapon-icons-build/weaptags.go` (32 bits hauts d'un identifiant filmshell),
+donc ces deux identifiants se raccordent au referentiel d'armes du projet — c'est ce qui
+donnera le NOM EN JEU, que le nom interne du `.pck` ne donne pas.
+
+MEMOIRE (garde-fou demande) : instrumentation `rapporterMemoire` a chaque palier. Pic
+mesure 1,3 Go systeme sur le module `any` (0,62 Go) en balayant les 78 174 entrees. Les
+modes ne chargent JAMAIS deux modules dans le meme processus : `map` ouvre celui de 7,24 Go,
+`lien`/`qui`/`remonter` celui de 0,62 Go, et l'echange se fait par le fichier JSON.
 
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
