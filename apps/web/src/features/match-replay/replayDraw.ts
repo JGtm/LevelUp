@@ -5,10 +5,13 @@
  * (replayLogic.ts). Les couleurs arrivent DÉJÀ RÉSOLUES depuis les tokens sémantiques
  * (getSeriesColors / resolveToken) — aucun littéral de couleur ici (règle color-tokens).
  */
-import type { ReplayBounds, ReplayGrenade, ReplayMapObject, ReplayShot } from '@/lib/api/types'
+import type { ReplayBounds, ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
 
+import type { FxInk } from './fxInk'
 import { altitudeTint, floorRun, hasEdge, type FloorGrid } from './mapFloor'
-import { drawDeathMarker, drawShotEffect, familyOf } from './shotEffects'
+import { drawMuzzleFlash } from './muzzleFlash'
+import type { ShotFxEntry } from './shotFx'
+import { drawDeathMarker, drawShotEffect } from './shotEffects'
 import { DYNAMO_RANK, type GrenadeRestFx } from './grenadeFx'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
@@ -85,12 +88,8 @@ const FLOOR_ALPHA_LOW = 0.1
 const FLOOR_ALPHA_SPAN = 0.46
 const FLOOR_EDGE_ALPHA = 0.32
 
-// Événements ponctuels : un tir est un éclat bref, un lancer une marque plus lisible.
-// Longueur de la forme d un tir, en pixels : la longueur de TRACE du POC (62 px, pas une
-// distance mesurée — `target` est faux, aucune famille ne pose d impact à l extrémité).
-// À 26 px l effet était illisible à l œil : c était une des deux causes mesurées de
-// l invisibilité du calque (l autre : la rémanence partagée de 1,4 s, cf. SHOT_HOLD_MS).
-const SHOT_LENGTH = 62
+// Événements ponctuels : un tir est un éclair de bouche (sa géométrie vit dans
+// muzzleFlash.ts), un lancer une marque plus lisible.
 const GRENADE_RADIUS = 4
 const GRENADE_RING = 6.5
 
@@ -192,57 +191,53 @@ export interface EventWindow {
 }
 
 /**
- * drawShotsLayer dessine les tirs de la fenêtre courante.
+ * drawShotsLayer dessine les ÉCLAIRS DE BOUCHE de la fenêtre courante.
  *
  * CE QUE LE POINT SIGNIFIE, et il faut que le rendu le respecte : le film n'enregistre que les
- * tirs qui INFLIGENT un dégât. Un tir dessiné a donc touché. Sa DIRECTION n'est tracée que
- * lorsqu'elle est lisible — sinon on ne dessine que l'éclat, jamais une direction inventée.
+ * tirs qui INFLIGENT un dégât. Un tir dessiné a donc touché. Sa DIRECTION est celle du REGARD
+ * du tireur à cet instant (relu dans sa trajectoire, cf. shotFx.ts) — sans lecture, une
+ * bouffée ronde, jamais une direction inventée.
+ *
+ * CE CALQUE A CHANGÉ DE NATURE le 2026-08-15 (étape 2 du plan des effets de tirs) : il
+ * dessinait une TRACE de 62 px dans la couleur du TIREUR ; il dessine désormais un éclair
+ * court à la bouche de l'arme, teinté par la NATURE DE LA DÉCHARGE et par elle seule
+ * (décision utilisateur). Le cône de visée, lui, n'a pas bougé — le flash s'y ajoute.
  */
 export function drawShotsLayer(
   ctx: CanvasRenderingContext2D,
-  shots: ReplayShot[],
+  shots: ShotFxEntry[],
   view: CanvasView,
   win: EventWindow,
   style: ShotStyle,
 ): void {
   for (const s of shots) {
-    const age = win.frame - s.t
+    const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
     const c = worldToCanvas(s, view.bounds, view.width, view.height, view.pad)
-    // LA COULEUR EST CELLE DU TIREUR quand on la connaît : c'est elle qui permet de suivre un
-    // joueur des yeux. La FAMILLE d'arme, elle, se lit dans la FORME de l'effet.
-    const color = style.colorOfSlot(s.slot) ?? style.fallback
-    // `w` est le nom du champ AU CONTRAT (identifiant d'arme 64 bits en hexadécimal).
-    // L'interface écrite à la main disait `weapon` : le champ était donc toujours
-    // indéfini et toutes les familles d'arme retombaient sur la forme par défaut.
-    drawShotEffect(ctx, familyOf(style.effectOf(s.w)), {
+    drawMuzzleFlash(ctx, s.fam, s.tint, {
       x: c.x,
       y: c.y,
-      // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi. Absent = pas de
-      // visée lisible, et alors aucune direction n'est dessinée.
-      angle: s.h === undefined ? null : (-s.h * Math.PI) / 180,
-      length: SHOT_LENGTH,
+      // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
+      angle: s.h === null ? null : (-s.h * Math.PI) / 180,
       fade: 1 - age / Math.max(win.hold, 1),
       reduced: style.reducedMotion,
-      seed: s.t + s.slot,
-    }, color)
+      seed: s.seed,
+      k: style.k,
+    }, style.ink)
   }
   ctx.globalAlpha = 1
 }
 
-/** Style du calque des tirs : de quoi retrouver la couleur du tireur et le nom de son arme. */
+/** Style du calque des tirs : les encres du thème et la densité de l'écran. */
 export interface ShotStyle {
-  /** Couleur résolue du slot tireur ; null quand la trace n'est pas identifiée. */
-  colorOfSlot: (slot: number) => string | null
-  /** Couleur employée quand le tireur n'a pas de trace connue. */
-  fallback: string
   /**
-   * Famille de RENDU du tir, telle que le document la publie (`weaponLabels[id].fx`), ou
-   * undefined si l'identifiant n'est pas au catalogue du titre. Ce n'est PAS le nom de
-   * l'arme : le rendu n'a jamais eu besoin de le connaître, et le lui faire deviner
-   * imposait un catalogue Halo dans du code web (lot 3.2).
+   * Teintes de décharge résolues depuis le thème (fxInk.ts). AUCUNE couleur de joueur
+   * n'entre ici : correction utilisateur du 2026-08-15 — « les couleurs des effets de tirs
+   * [...] prennent seulement l'ARME en compte ».
    */
-  effectOf: (weaponId: string | undefined) => string | undefined
+  ink: FxInk
+  /** Densité du canevas : l'éclair s'adresse à l'œil, sa taille est en pixels d'écran. */
+  k: number
   reducedMotion: boolean
 }
 

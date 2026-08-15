@@ -60,6 +60,27 @@ func artefactArmes(t *testing.T, root, titleSlug, matchID string) {
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(titleSlug, matchID), doc)
 }
 
+// TestWeaponLabels_PoseLaTeinteDeLaDecharge : la teinte suit la clé, et elle vient de la
+// table du TITRE — jamais d'une couleur écrite côté serveur.
+func TestWeaponLabels_PoseLaTeinteDeLaDecharge(t *testing.T) {
+	root := t.TempDir()
+	mappingsReels(t, root, title.DefaultSlug)
+	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+
+	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+		GetReplay(context.Background(), "match-armes")
+	if err != nil {
+		t.Fatalf("lecture du rejeu : %v", err)
+	}
+	if got := doc.WeaponLabels["0x48C19D2D42C9679F"].Tint; got != "kinetic" {
+		t.Errorf("teinte du MA40 = %q, attendu kinetic", got)
+	}
+	if got := doc.WeaponLabels["0xDEADBEEF"].Tint; got != "" {
+		t.Errorf("teinte %q posée sur une famille hors registre — la teinte neutre est la "+
+			"seule réponse juste", got)
+	}
+}
+
 // TestWeaponKeys_PoseLaCleDuRegistre : la clé canonique arrive sur les DEUX formes
 // d'identifiant, parce que le document emploie les deux (famille pour un loadout,
 // identifiant global pour un tir) et que la banque de sons du client n'en connaît qu'une.

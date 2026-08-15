@@ -1,3 +1,52 @@
+## [2026-08-15] v7.5 rejeu 2D — l eclair de bouche, oriente par le REGARD et teinte par l ARME (etape 2)
+
+**Statut** : Complete pour l etape 2 du plan `.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`
+(etape 3, les explosions de grenade, a suivre sur la meme branche).
+
+**Decision technique principale — l orientation.** Le calque des tirs orientait par le champ
+`h` de l EVENEMENT : present sur 90 tirs sur 483 du film temoin (18,6 %). Le cap de REGARD vit
+aussi dans les TRAJECTOIRES, et c est lui qui alimente deja le cone de visee. En le relisant a
+l instant du tir (meme `heldReading`, meme fenetre de maintien de 5 s, sur la vie QUI COUVRE
+l instant), la couverture passe a **482/483 (99,8 %) sur le temoin** et **17 687/17 904
+(98,8 %) sur les 23 artefacts locaux**. Age de la lecture : median 0 ms, 94,4 % sous 200 ms.
+Le `h` de l evenement n est PAS utilise meme quand il est la : sur les 2 866 tirs qui portent
+les deux, l ecart median est de **0,3 deg** et 84,4 % sont sous 5 deg — ils disent la meme
+chose, une seule regle vaut mieux que deux.
+
+**Le rendu est un PORTAGE** de `Csstat/apps/web/src/components/replay/ReplayCanvas.tsx` :
+bouffee etiree dans l axe (translate/rotate/scale 1,7 / 0,45), halo sous coeur incandescent,
+composition additive, extinction au carre du temps restant. Sept formes de famille
+(`muzzleFlash.ts`), la melee ECARTEE en amont — un coup de marteau n est pas un tir.
+
+**La couleur revient par famille — arbitrage du lot 3.2 ROUVERT.** Decision utilisateur du
+jour, puis correction : la teinte dit la NATURE DE LA DECHARGE et **ne prend que l ARME en
+compte** (aucune couleur de tireur, ni en coeur ni en lisere — la signature de
+`drawShotsLayer` rend la faute impossible). Trois maillons : le SERVEUR publie une nature
+(`[shot_tints]` du titre, liste fermee, resolue a la requete), le THEME porte les valeurs
+(`--replay-fx-*`, deux themes), la FEATURE lit les variables (`fxInk.ts`, patron
+`canvasInk.ts`). Ce ne sont volontairement PAS des tokens `--ac-*` : ils sont remappes par les
+palettes d accessibilite, et un plasma bleu devenu orange sous Okabe-Ito detruirait
+l information que la teinte porte.
+
+**Repartition MESUREE avant de choisir** (17 904 tirs) : kinetic 16 380 (91,5 %), plasma_cool
+443 (2,5 %), needle 409 (2,3 %), plasma_hot 234 (1,3 %), electric 186 (1,0 %), blast 102
+(0,6 %), forerunner **0**, sans teinte 150 (0,8 %). **Banished a energie : 677 tirs — 443
+bleutes (65,4 %) contre 234 rougeatres (34,6 %)**, donc les DEUX teintes sont gardees. Le
+violet Forerunner est declare mais aucun Rayon de Sentinelle ne tire dans ces 23 films : c est
+dit, pas masque.
+
+**Garde-rail** `fxInk.guard.test.ts` : le vocabulaire du valideur Go, celui de la table du
+titre et celui du client sont la MEME liste, chaque teinte a sa variable dans les deux themes,
+et aucun hex ni oklch n entre dans `features/`.
+
+**Gate**. tsc purge, eslint 0, vitest `match-replay` 24 fichiers / 354 tests, `go test`
+service + mappings + replaylabels + **contracttest** (contrat regenere dans le meme commit),
+ratchet golangci-lint 0 issue. Chaine verifiee sur l API locale : les 39 libelles d arme du
+temoin portent cle ET teinte.
+
+**Prochaine etape** : etape 3 — l explosion particulaire de grenade, portee de
+`Csstat/ExplosionFx.tsx`, posee a la derniere position REPLIQUEE (jamais un impact).
+
 ## [2026-08-15] v7.5 rejeu 2D — le son sur TOUS les tirs (etape 1, plan effets de tirs)
 
 **Statut** : Complete pour l etape 1 du plan `.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`

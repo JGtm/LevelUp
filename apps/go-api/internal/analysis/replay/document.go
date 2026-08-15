@@ -107,6 +107,16 @@ type WeaponLabel struct {
 	// s'améliorer ne se stocke pas. Vide = le titre n'a pas de catalogue lisible, ou
 	// l'arme n'est pas au registre : silence propre, jamais un son approchant.
 	Key string `json:"key,omitempty"`
+	// Tint est la NATURE DE LA DÉCHARGE (kinetic, plasma_cool, plasma_hot, forerunner,
+	// electric, needle, blast) : ce qui sort du canon, jamais une couleur ni un camp.
+	// C'est elle qui teinte l'éclair de bouche côté client — la COULEUR, elle, est un
+	// token du thème, et c'est ce qui lui permet de valoir deux valeurs selon le thème.
+	//
+	// DISTINCTE DE Fx, et les deux ne se recouvrent pas : la forme suit la mécanique du
+	// projectile, la teinte sa nature énergétique. Source : `[shot_tints]` du titre,
+	// posée à la requête comme Key. Vide = arme non teintée (mêlée, hors table) : teinte
+	// neutre du thème, jamais celle d'une voisine.
+	Tint string `json:"tint,omitempty"`
 	// Img est l'URL de l'icône EXTRAITE DU JEU (fiches joueur du rejeu). Vide = pas de
 	// visuel : le client affiche le libellé, jamais l'icône d'une arme voisine. Tinted
 	// dit si le visuel est un masque à teindre (même contrat que le kill feed).

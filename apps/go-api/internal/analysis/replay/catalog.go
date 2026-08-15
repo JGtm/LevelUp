@@ -48,6 +48,16 @@ type LabelCatalog struct {
 	// Weapons n'en garde que la PROJECTION nommée : une famille dont le weapon_key n'a
 	// pas de nom n'y entre pas, alors qu'elle a bel et bien une clé — et un son.
 	Keys map[uint32]string
+	// Tints est la table weapon_key -> NATURE DE LA DECHARGE (kinetic, plasma_cool,
+	// plasma_hot, forerunner, electric, needle, blast). Posée par la COUCHE TITRE après
+	// NewLabelCatalog, comme Icons — un sixième paramètre ferait sauter le seuil du
+	// dépôt, et cette table n'entre dans aucune jointure de construction.
+	//
+	// ELLE EST DISTINCTE DE Effects, et les deux ne se recouvrent pas : la FORME suit la
+	// mécanique du projectile, la TEINTE sa nature énergétique. Deux armes `plasma`
+	// n'ont pas la même couleur dans le jeu ; deux armes de même couleur n'ont pas la
+	// même forme. Détail et raison dans replay_labels.toml.
+	Tints map[string]string
 	// Effects est la table weapon_key -> famille de rendu TELLE QUE LUE du titre
 	// ([shot_effects]). Weapons n'en garde que la projection par famille d'arme FILM ;
 	// or les kills du feed sont keyés par weapon_key — cette table est publiée telle

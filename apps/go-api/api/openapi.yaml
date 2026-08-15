@@ -24219,6 +24219,8 @@ components:
           type: string
         key:
           type: string
+        tint:
+          type: string
         tinted:
           type: boolean
       required:

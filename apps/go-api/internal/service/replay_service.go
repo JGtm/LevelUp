@@ -62,8 +62,9 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 // DEUX RÉSOLUTIONS SE POSENT ICI, à la requête, et pour la même raison : elles viennent
 // d'un catalogue du TITRE, que l'artefact (décodé des seuls chunks du film) ne connaît pas.
 //   - le calque d'objectifs statiques (MapObjectives), qui dépend de la carte et du mode ;
-//   - la CLÉ CANONIQUE de chaque arme (WeaponLabel.Key), qui ouvre la banque de sons du
-//     client (cf. replay_weapon_keys.go).
+//   - ce que le TITRE sait de chaque arme (WeaponLabel.Key et .Tint) : la clé qui ouvre la
+//     banque de sons du client, et la nature de la décharge qui teinte son éclair de
+//     bouche (cf. replay_weapon_labels.go).
 //
 // L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
 func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error) {
@@ -80,8 +81,9 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.R
 		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
 	doc.MapObjectives = s.mapObjectivesForMatch(ctx, matchID)
-	// La CLÉ CANONIQUE de chaque arme, même règle et même raison : elle se résout d'un
-	// catalogue du titre, donc ici et pas dans l'artefact (cf. replay_weapon_keys.go).
-	s.resolveWeaponKeys(ctx, &doc)
+	// La CLÉ CANONIQUE et la TEINTE de chaque arme, même règle et même raison : elles se
+	// résolvent d'un catalogue du titre, donc ici et pas dans l'artefact (cf.
+	// replay_weapon_labels.go).
+	s.resolveWeaponLabels(ctx, &doc)
 	return doc, nil
 }

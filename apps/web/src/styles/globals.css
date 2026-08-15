@@ -259,6 +259,49 @@
   --ac-heatmap-freq-high:      #60A5FA;
 }
 
+/* ─── Teintes d'EFFET DE TIR du rejeu 2D (--replay-fx-*) ────────────────────── */
+/*
+   POURQUOI CES TOKENS EXISTENT, ET POURQUOI CE NE SONT PAS DES `--ac-*`.
+   Décision utilisateur du 2026-08-15 : l'éclair de bouche dit la NATURE de la décharge
+   (poudre, plasma froid ou chaud, énergie Forerunner, arc, cristal, déflagration) — et
+   « les couleurs des effets de tirs [...] prennent seulement l'ARME en compte ». C'est une
+   couleur DIÉGÉTIQUE : elle nomme ce que le jeu montre, pas un rôle de donnée. Les tokens
+   `--ac-*` sont, eux, remappés par les palettes d'accessibilité (Okabe-Ito) : y ranger ces
+   teintes ferait qu'un plasma bleu deviendrait orange au changement de palette, ce qui
+   détruirait précisément l'information qu'elles portent.
+
+   CE QU'ELLES NE PORTENT PAS : aucune identité de joueur ni d'équipe. La distinction des
+   joueurs reste au marqueur et au cône de visée, qui gardent leurs couleurs de série.
+
+   La règle du dépôt est ÉTENDUE, pas contournée : aucune valeur n'est écrite dans
+   `features/` — le composant lit ces variables du thème (cf. fxInk.ts, patron canvasInk.ts).
+*/
+:root,
+:root[data-theme='dark'] {
+  --replay-fx-core:        oklch(0.98 0.03 90);
+  --replay-fx-kinetic:     oklch(0.85 0.16 75);
+  --replay-fx-plasma-cool: oklch(0.75 0.15 245);
+  --replay-fx-plasma-hot:  oklch(0.70 0.20 30);
+  --replay-fx-forerunner:  oklch(0.72 0.20 300);
+  --replay-fx-electric:    oklch(0.88 0.16 200);
+  --replay-fx-needle:      oklch(0.75 0.22 330);
+  --replay-fx-blast:       oklch(0.80 0.18 55);
+  --replay-fx-neutral:     oklch(0.80 0.02 255);
+}
+
+:root[data-theme='light'] {
+  /* Mêmes teintes, assombries : un éclair clair sur un fond clair ne se voit pas. */
+  --replay-fx-core:        oklch(0.78 0.11 85);
+  --replay-fx-kinetic:     oklch(0.66 0.17 62);
+  --replay-fx-plasma-cool: oklch(0.56 0.16 245);
+  --replay-fx-plasma-hot:  oklch(0.56 0.20 28);
+  --replay-fx-forerunner:  oklch(0.53 0.20 300);
+  --replay-fx-electric:    oklch(0.62 0.14 200);
+  --replay-fx-needle:      oklch(0.58 0.22 330);
+  --replay-fx-blast:       oklch(0.62 0.18 55);
+  --replay-fx-neutral:     oklch(0.50 0.02 255);
+}
+
 /* ─── Base styles ───────────────────────────────────────────────────────────── */
 @layer base {
   * {
