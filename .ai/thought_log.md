@@ -1,3 +1,73 @@
+## [2026-08-15] v7.5 rejeu 2D — l explosion etait AMPUTEE de son coup de flash sur le theme clair
+
+**Statut** : Complete (correctif + garde-rail de rasterisation phase par phase). Suite directe
+du lot precedent : le meme defaut additif avait ete MESURE dans `explosionFx.ts` et consigne au
+registre sans etre traite (`lighter` en quatre endroits).
+
+**LA MESURE, PHASE PAR PHASE.** Chromium reel, pixels dont une composante bouge d au moins
+24/255, pire cas sur 2 fonds x 3 types de grenade qui detonent :
+
+| phase (age) | theme sombre | theme clair |
+|---|---|---|
+| flash (40 ms) | 648 -> 820 | **0 -> 1484** |
+| boule de feu (180 ms) | 235 -> 194 | **0 -> 379** |
+| onde de choc (180 ms) | 326 -> 318 | **0 -> 313** |
+| eclats (180 ms) | 47 -> 46 | **0 -> 43** |
+| poussiere (900 ms) | 40 -> 40 | 314 -> 314 |
+
+Zero n est pas « peu » : `lighter` calcule `dst + src.alpha` puis ecrete a 255 ; sur un fond a
+250-254, aucune couleur, aucune taille, aucune opacite ne peut changer un pixel. L explosion n
+etait donc pas absente du theme clair — il n en restait que la POUSSIERE, seule phase deja
+composee normalement.
+
+**LE PIEGE QUE LA MESURE A REVELE, et qui a decide de la forme du garde-rail.** Mesuree
+GLOBALEMENT, l explosion changeait 209 pixels a 320 ms sur fond clair : un chiffre sain. Ces 209
+pixels venaient TOUS de la poussiere. Un garde-rail qui n observe que le resultat d ensemble
+laisse repasser une explosion amputee de son coup de flash. Chaque phase est donc mesuree SEULE,
+a l age ou elle a un sens.
+
+**QUATRE SITES, QUATRE JUGEMENTS (pas un remplacement mecanique).** L additif reste le bon
+operateur quand deux sources lumineuses se recouvrent SUR UN FOND SOMBRE GARANTI — deux
+conditions. Le flash et l onde de choc ne dessinent qu UNE primitive chacun : rien a accumuler,
+meme sur fond noir, donc l additif ne leur apportait rien et ils n y perdent RIEN. Les braises
+(12 disques) et les eclats (10 trainees) se recouvrent reellement : la, l additif apportait
+quelque chose, et ils y perdent le sur-eclat blanc de leurs recouvrements (cout mesure : 235 ->
+194 px et 47 -> 46 sur fond sombre) — porte au registre avec sa condition de reprise. Mais le
+fond n est jamais garanti sombre : c est celui du theme. Aucun des quatre ne remplit la seconde
+condition. Ajout d un plateau de 30 % au degrade du flash seul (les braises et la poussiere sont
+des bouffees, un plateau en ferait des disques nets ; le flash est un coup, il lui faut un corps).
+
+**COUT D IMAGE.** 19 degrades radiaux inchanges, 227 -> **228 primitives** au pire instant : le
+plateau ajoute UNE borne de couleur a un degrade qui existait deja, et `source-over` est le mode
+par defaut du canevas (il ne coute rien). Pire cas reel inchange dans son ordre de grandeur :
+5 explosions simultanees = 95 degrades et ~1 140 primitives.
+
+**LE GARDE-RAIL, ET SA PREUVE A L ENVERS.** Nouveau `apps/web/e2e/replay-explosion-raster.spec.ts`
+(Chromium reel, aucun serveur, un canevas dans une page vide) : 5 phases x 3 types x 2 fonds x 2
+themes pour l explosion, plus la nappe electrique de la Dynamo par son VRAI chemin de rendu
+(`drawGrenadeRestLayer`, dependances injectees module par module — chaque module garde sa portee,
+aucune fonction privee homonyme n en ecrase une autre). Sur la version d avant le correctif :
+**24 combinaisons sur 60 rougissent, toutes a exactement 0 pixel**. Verrou complementaire en
+vitest : `lighter` interdit dans les operations emises, a sept ages de la timeline.
+
+**UN GARDE-RAIL QUI NE GARDAIT RIEN, corrige en cours de route.** La premiere version lisait les
+variables de theme en supposant « premier bloc = sombre, second = clair » ; la seconde recherche
+tombait sur `--color-muted-foreground`, si bien que les DEUX themes se mesuraient sur des fonds
+sombres — le test passait sur la version en panne. Les blocs `:root` de `globals.css` sont
+desormais fusionnes comme le navigateur le fait, et une assertion refuse deux themes aux fonds
+identiques. C est la lecon du lot : un garde-rail se verifie a l envers, sinon il documente une
+panne au lieu de l interdire.
+
+**LA DYNAMO N EXPLOSE PAS** (regle utilisateur) : sa nappe electrique persistante est mesuree,
+pas modifiee — 153 px au depot, 122 a mi-remanence, identique dans les deux themes (elle porte le
+token `info` de la palette, insensible au theme, et n a jamais ete composee en additif).
+
+**Non touche** : l eclair de bouche, les effets de mort, le cone de visee, les marqueurs, les
+sons, le Go, les tables du titre. Aucune couleur de joueur n entre dans un effet.
+
+**Conclusion / prochaine etape** : gate a l oeil de l utilisateur, dans les DEUX themes, sur une
+frag et une plasma.
+
 ## [2026-08-15] v7.5 rejeu 2D — l eclair de bouche etait INVISIBLE, et aucun test ne pouvait le voir
 
 **Statut** : Complete (correctif + garde-rail de rasterisation). Retour utilisateur : « j ai pas

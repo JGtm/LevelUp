@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { drawExplosion, EXPLOSION_MS, type ExplosionInk, type ExplosionShape } from './explosionFx'
-import { count, recordingContext } from './test/recordingContext'
+import { count, recordingContext, valuesOf } from './test/recordingContext'
 
 const INK: ExplosionInk = { fire: 'FIRE', core: 'CORE', smoke: 'SMOKE' }
 
@@ -68,7 +68,7 @@ describe('l’explosion de grenade', () => {
     }
   })
 
-  it('BORNE le coût d’image : 19 dégradés et 227 primitives au pire (item 3.4)', () => {
+  it('BORNE le coût d’image : 19 dégradés et 228 primitives au pire (item 3.4)', () => {
     // MESURE, pas estimation. Les « opérations lourdes » sont les dégradés radiaux : ce sont
     // elles qui coûtent, pas les traits. Le maximum est cherché sur toute la timeline, et
     // il est FIGÉ ici — c'est ce qui empêche une explosion enrichie de passer sans qu'on
@@ -81,7 +81,23 @@ describe('l’explosion de grenade', () => {
       pireTotal = Math.max(pireTotal, ops.length)
     }
     expect(pireGradients).toBe(19)
-    expect(pireTotal).toBe(227)
+    // 227 avant le 2026-08-15 : le plateau du flash ajoute UNE borne de couleur à son unique
+    // dégradé, et rien d'autre. Le nombre de dégradés, lui, n'a pas bougé.
+    expect(pireTotal).toBe(228)
+  })
+
+  it('ne compose JAMAIS en additif : c’est ce qui la rendait invisible sur le thème clair', () => {
+    // RÉGRESSION VERROUILLÉE (même verrou que l'éclair de bouche). Les quatre phases chaudes
+    // composaient en `lighter` : sur un fond quasi blanc, `dst + src·α` écrête à 255 et ne
+    // change AUCUN pixel — flash, boule de feu, onde de choc et éclats étaient absents du
+    // thème clair, poussière comprise dans le décompte, il ne restait qu'elle. Le comptage
+    // de pixels vit en Chromium réel (e2e/replay-explosion-raster.spec.ts) ; ici on interdit
+    // simplement le retour de l'opérateur.
+    for (const age of [0, 40, 180, 320, 700, 900, 1_300]) {
+      expect(valuesOf(trace({ ageMs: age }), 'globalCompositeOperation'), `âge ${age}`).not.toContain(
+        'lighter',
+      )
+    }
   })
 
   it('s’éteint : il reste moins d’opérations à la fin qu’au début', () => {
