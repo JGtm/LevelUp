@@ -75,18 +75,40 @@ golangci-lint 0 issue). **RESTE : l'ecoute par l'utilisateur.**
       du joueur (patron `posOfPlayerAt` du calque des morts, meme interpolation). Publier la
       couverture obtenue contre les 18,6 % actuels. Si le regard manque a cet instant : flash
       NON oriente (une bouffee ronde), jamais une direction inventee.
-- [ ] 2.2 Dessin A LA BASE du cone de visee et SANS le remplacer (demande explicite) : le cone
+      MESURE (regle finale : `heldReading` du champ `h`, fenetre de maintien du cone = 5 s,
+      sur la vie QUI COUVRE l'instant du tir) :
+      | perimetre | tirs dessines | par l'EVENEMENT | par le REGARD |
+      |---|---|---|---|
+      | film temoin 000d5950 | 483 | 90 (18,6 %) | **482 (99,8 %)** |
+      | 23 artefacts locaux | 17 904 | 2 891 (16,1 %) | **17 687 (98,8 %)** |
+      Age de la lecture : median 0 ms, p90 100 ms, 94,4 % sous 200 ms. Le `h` de l'evenement
+      n'est PAS utilise, meme quand il est la : sur les 2 866 tirs qui portent les deux,
+      l'ecart median est de 0,3 deg et 84,4 % sont sous 5 deg — les deux disent la meme chose,
+      et une seule regle vaut mieux que deux.
+- [x] 2.2 Dessin A LA BASE du cone de visee et SANS le remplacer (demande explicite) : le cone
       reste ce qu'il est (`AIM_LENGTH 46`, `AIM_HALF_ANGLE 0.3`), le flash se pose au marqueur
       du joueur, court et vif.
-- [ ] 2.3 UNE FORME PAR FAMILLE D'ARME, en reprenant les familles DEJA resolues
+      FAIT : `drawAimCone` n'est pas touche ; l'eclair naît 5 px devant le marqueur, dans
+      l'axe du regard (« au bout du canon, pas dans le torse »). La TRACE de 62 px du lot 3.2
+      disparaît avec — c'est elle que l'eclair remplace, pas le cone.
+- [x] 2.3 UNE FORME PAR FAMILLE D'ARME, en reprenant les familles DEJA resolues
       (`killEffects` / `[shot_effects]` : ballistic, plasma, light, shock, explosive, melee,
       needles) : la poudre claque bref et blanc, le plasma s'etale et decroit mollement, le
       dur-lumiere est un rai continu, l'arc electrique est brise, les aiguilles sont une
       gerbe. **La MELEE n'a PAS de flash** (regle deja etablie : un coup de marteau n'est pas
       un tir — la reference Csstat l'exclut aussi explicitement).
-- [ ] 2.4 Duree courte, de l'ordre de la reference (6 frames ~ 0,6 s a 100 ms/frame — a REGLER
+      FAIT (`muzzleFlash.ts`, 7 formes) ; la melee est ECARTEE en amont (`buildShotFx`), et
+      un test verifie que les 7 signatures emises sont distinctes. Mesure : 0 evenement de tir
+      de famille `melee` sur les 17 904 du corpus — la regle ne coûte rien et ferme le cas.
+- [x] 2.4 Duree courte, de l'ordre de la reference (6 frames ~ 0,6 s a 100 ms/frame — a REGLER
       A L'OEIL avec l'utilisateur, c'est un choix de rendu, pas une mesure).
-- [ ] 2.5 Respect de `prefers-reduced-motion` (variante statique).
+      La fenetre reste `SHOT_HOLD_MS` = 600 ms (l'ordre de la reference), mais l'INTENSITE
+      tombe au CARRE du temps restant : l'eclair claque et s'eteint bien avant la fin de la
+      fenetre, tout en restant lisible a 2x. **A REGLER A L'OEIL** au gate 2.
+- [x] 2.5 Respect de `prefers-reduced-motion` (variante statique).
+      FAIT : sous mouvement reduit l'eclair ne progresse plus et son intensite ne depend plus
+      de l'age (test dedie). Le canevas etant dessine en JS, la preference se lit en code —
+      la feuille de style ne peut rien pour lui.
 
 ### 2.6 — LA COULEUR REVIENT PAR FAMILLE : arbitrage du lot 3.2 ROUVERT par l'utilisateur
 
@@ -95,11 +117,13 @@ golangci-lint 0 issue). **RESTE : l'ecoute par l'utilisateur.**
 > type PLASMA BLEUTE OU ROUGEATRE pour les armes Banished a energie, voire d'ENERGIE VIOLETTE
 > pour les armes Forerunner. »
 
-- [ ] 2.6a Le lot 3.2 avait acte « famille = FORME, couleur = TIREUR » (regle color-tokens) et
+- [x] 2.6a Le lot 3.2 avait acte « famille = FORME, couleur = TIREUR » (regle color-tokens) et
       abandonne la palette du POC. **Cet arbitrage est ROUVERT sur decision utilisateur** :
       la NATURE de la decharge se dit aussi par la COULEUR. Ce n'est pas un retour en arriere
       par oubli — l'ecrire comme tel dans le code, avec la date et la raison.
-- [ ] 2.6b Trois familles de rendu, telles que l'utilisateur les nomme :
+      FAIT : la reouverture est ecrite, datee et citee mot pour mot en tete de `fxInk.ts`, du
+      bloc `--replay-fx-*` de globals.css et de la table `[shot_tints]` du titre.
+- [x] 2.6b Trois familles de rendu, telles que l'utilisateur les nomme :
       - **CINETIQUE** (UNSC balistique) -> muzzle flash de flamme, bref et chaud ;
       - **BANISHED A ENERGIE** -> plasma **bleute OU rougeatre** — les deux teintes existent
         dans le jeu (plasma Covenant bleu, armes Brute rouge/orange). MESURER la repartition
@@ -108,13 +132,44 @@ golangci-lint 0 issue). **RESTE : l'ecoute par l'utilisateur.**
         tranche autrement, sa version fait foi.)
       Les autres familles deja resolues (choc, explosif, aiguilles) gardent leur forme ; leur
       teinte suit la meme logique de NATURE, a proposer avec la table.
-- [ ] 2.6c **COMMENT sans violer la regle du depot** : la regle interdit les valeurs hex et les
+      TABLE MESUREE AVANT DE CHOISIR (17 904 tirs des 23 artefacts locaux, teinte resolue par
+      la chaîne reelle famille -> weapon_key -> `[shot_tints]`) :
+      | teinte | tirs | part | armes |
+      |---|---|---|---|
+      | kinetic | 16 380 | 91,5 % | MA40 10 393, Sidekick 4 645, BR75 606, Bandit 225, MA5K 171, S7 123, Dechiqueteur 77, VK78 75, Bulldog 52, Empaleur 13 |
+      | plasma_cool | 443 | 2,5 % | Vestige 231, Carabine a impulsion 82, Crematier 67, SPNKr a combustible 59, Pistolet a plasma 4 |
+      | needle | 409 | 2,3 % | Needler 409 |
+      | plasma_hot | 234 | 1,3 % | Ravageur 135, Fusil traqueur 76, Calcineur 23 |
+      | electric | 186 | 1,0 % | Disrupteur 130, Fusil electrique 56 |
+      | blast | 102 | 0,6 % | M41 SPNKr 87, Hydra 15 |
+      | forerunner | **0** | 0 % | Rayon de Sentinelle — AUCUN tir dans le corpus |
+      | (sans teinte) | 150 | 0,8 % | armes hors registre, teinte neutre |
+      **BANISHED A ENERGIE : 677 tirs — 443 bleutes (65,4 %) contre 234 rougeatres (34,6 %).**
+      Les deux teintes sont donc GARDEES : une seule effacerait un tiers de la population.
+      Le VIOLET Forerunner est declare mais n'a AUCUN tir a l'appui dans ces 23 films — dit
+      plutot que masque ; il ne se verra que le jour ou un film portera un Rayon de Sentinelle.
+      Les 3 familles cinetiques Banished (Dechiqueteur, Empaleur, plus le Fusil traqueur cote
+      chaud) sont rangees a la main : les deux premieres crachent du METAL, la troisieme une
+      decharge chaude — le classement suit la nature du projectile, pas le camp.
+- [x] 2.6c **COMMENT sans violer la regle du depot** : la regle interdit les valeurs hex et les
       classes Tailwind couleur dans `features/`. Les teintes de famille passent donc par des
       TOKENS SEMANTIQUES dedies (un token par famille d'effet), resolus au dessin — jamais une
       couleur ecrite en dur dans le composant. Precedent a suivre : `canvasInk.ts`, qui gere
       deja de l'encre de canevas dans ce cadre. **Ne pas contourner la regle : l'etendre
       proprement.**
-- [ ] 2.6d **L'EFFET DE TIR NE PORTE QUE L'ARME.** Correction utilisateur du 2026-08-15, mot
+      FAIT, en TROIS maillons et un garde-rail :
+      - le SERVEUR ne publie jamais une couleur, seulement une NATURE (`[shot_tints]` du
+        titre, liste fermee validee, publiee dans `weaponLabels[id].tint` a la requete) ;
+      - le THEME porte les valeurs (`--replay-fx-*`, une par nature, dans les deux themes) ;
+        ce ne sont PAS des tokens `--ac-*` a dessein : ceux-la sont remappes par les palettes
+        d'accessibilite, et un plasma bleu devenu orange sous Okabe-Ito detruirait
+        l'information meme que la teinte porte. La raison est ecrite dans globals.css ;
+      - la FEATURE lit ces variables (`fxInk.ts`, patron `canvasInk.ts`) — 0 hex, 0 oklch, 0
+        classe couleur dans `features/`, verifie par test.
+      Garde-rail `fxInk.guard.test.ts` : le vocabulaire du valideur Go, celui de la table du
+      titre et celui du client sont la MEME liste, et chaque teinte a sa variable dans les
+      deux themes. Sans lui, une teinte ajoutee cote serveur retomberait en neutre en silence.
+- [x] 2.6d **L'EFFET DE TIR NE PORTE QUE L'ARME.** Correction utilisateur du 2026-08-15, mot
       pour mot : « les couleurs des effets de tirs ne prennent pas la couleur du tireur, tu as
       confondu, elle prend seulement l'ARME en compte ». La couleur d'un effet de tir est donc
       determinee UNIQUEMENT par la famille de l'arme — ni coeur, ni lisere, ni repli aux
@@ -123,10 +178,21 @@ golangci-lint 0 issue). **RESTE : l'ecoute par l'utilisateur.**
       DE LA DECHARGE et rien d'autre.
       (Une version anterieure de cet item demandait l'inverse ; c'etait une erreur de
       transmission du superviseur, corrigee ici avant execution.)
+      FAIT : `drawShotsLayer` ne reçoit plus AUCUNE couleur de joueur (ni `colorOfSlot`, ni
+      repli) — la signature de la fonction rend la faute impossible, et un test verifie que
+      les seules couleurs peintes sont la teinte de l'arme et le coeur incandescent. Les
+      effets de MORT, eux, gardent la couleur du tueur : ils sont hors perimetre de ce plan.
 
 Gate 2 : couverture d'orientation publiee ; verification a l'oeil par l'utilisateur sur un
 echange nourri, avec au moins un tir balistique, un plasma et une melee (qui ne doit RIEN
 afficher).
+GATE 2 : couverture publiee (2.1). Gates techniques passes (tsc purge, eslint, vitest 24
+fichiers / 354 tests dont 15 sur l'eclair, 8 sur la resolution du regard et 4 de garde-rail
+de teintes ; `go test` service + mappings + replaylabels + contracttest ; ratchet
+golangci-lint 0 issue). Chaine verifiee de bout en bout sur l'API locale : les 39 libelles
+d'arme du temoin portent leur cle ET leur teinte (15 kinetic, 6 plasma_hot, 5 plasma_cool,
+4 blast, 4 electric, 2 needle, 1 forerunner, 2 sans teinte). **RESTE : l'oeil de
+l'utilisateur** — en particulier le REGLAGE DE DUREE (item 2.4).
 
 ## Etape 3 — LES EXPLOSIONS DE GRENADE (des particules, pas un symbole)
 

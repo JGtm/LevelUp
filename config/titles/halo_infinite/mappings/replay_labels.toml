@@ -194,3 +194,71 @@ hinf_plasma_grenade = "explosive"
 hinf_dynamo_grenade = "shock"
 hinf_bandit         = "ballistic"
 hinf_ma5k_avenger   = "ballistic"
+
+# TEINTE d'un tir, par weapon_key — LA NATURE DE LA DECHARGE, pas le camp du tireur.
+#
+# POURQUOI CETTE TABLE EXISTE (2026-08-15, arbitrage ROUVERT par l'utilisateur). Le lot 3.2
+# avait acte « famille = FORME, couleur = TIREUR » et abandonne la palette du POC.
+# L'utilisateur tranche autrement, mot pour mot : « le muzzle flash c'est bien pour les armes
+# CINETIQUES ; pour les autres faut des effets de type PLASMA BLEUTE OU ROUGEATRE pour les
+# armes Banished a energie, voire d'ENERGIE VIOLETTE pour les armes Forerunner », puis
+# « les couleurs des effets de tirs ne prennent pas la couleur du tireur [...] elle prend
+# seulement l'ARME en compte ». La teinte dit donc CE QUI SORT DU CANON, et rien d'autre :
+# l'identite du joueur reste portee par son marqueur et son cone de visee.
+#
+# POURQUOI UNE TABLE SEPAREE DE [shot_effects], ET PAS UNE COLONNE DE PLUS. Les deux ne se
+# recoupent pas : la FORME suit la mecanique du projectile, la TEINTE suit sa nature
+# energetique. Deux armes de la meme forme peuvent diverger (le Ravageur et la carabine a
+# impulsion sont toutes deux `plasma` et n'ont pas la meme couleur dans le jeu), et deux
+# armes de teinte identique peuvent avoir des formes opposees (le Crematier explose, la
+# carabine Vestige file droit). Les fondre obligerait a inventer une famille par croisement.
+#
+# Valeurs admises (elles nomment une NATURE, jamais une couleur — la couleur est un token du
+# theme, cote client) :
+#   kinetic      poudre : la detonation d'une charge, chaude et breve
+#   plasma_cool  decharge d'energie a spectre FROID (plasma Covenant bleu-vert)
+#   plasma_hot   decharge d'energie a spectre CHAUD (armes Brute rouge-orange)
+#   forerunner   energie Forerunner (l'utilisateur la veut VIOLETTE ; le POC disait cyan-or)
+#   electric     arc electrique
+#   needle       cristal des aiguilles
+#   blast        deflagration chimique
+#
+# NE SONT PAS DANS CETTE TABLE, et c'est voulu : les armes de MELEE (elles n'emettent aucun
+# tir — 0 evenement mesure sur les 17 904 tirs du corpus, et la regle du chantier veut qu'un
+# coup de marteau n'ait pas d'eclair de bouche) et les GRENADES (un lancer n'est pas un tir).
+# Une arme absente de cette table garde la teinte neutre du theme — jamais celle d'une voisine.
+[shot_tints]
+# UNSC : toutes cinetiques.
+hinf_ma40_ar        = "kinetic"
+hinf_br75           = "kinetic"
+hinf_bandit         = "kinetic"
+hinf_ma5k_avenger   = "kinetic"
+hinf_vk78_commando  = "kinetic"
+hinf_s7_sniper      = "kinetic"
+hinf_cqs48_bulldog  = "kinetic"
+hinf_sidekick       = "kinetic"
+hinf_hydra          = "blast"
+hinf_m41_spnkr      = "blast"
+# Banished CINETIQUES : le Dechiqueteur crache des pointes, l'Empaleur un harpon. Ni l'un ni
+# l'autre n'est une arme a energie — les ranger avec les plasmas dirait le contraire.
+hinf_mangler        = "kinetic"
+hinf_skewer         = "kinetic"
+# Banished A ENERGIE, spectre FROID.
+hinf_plasma_pistol  = "plasma_cool"
+hinf_pulse_carbine  = "plasma_cool"
+hinf_vestige_carbine = "plasma_cool"
+hinf_cindershot     = "plasma_cool"
+hinf_fuel_rod_spnkr = "plasma_cool"
+# Banished A ENERGIE, spectre CHAUD.
+hinf_ravager        = "plasma_hot"
+hinf_stalker_rifle  = "plasma_hot"
+hinf_heatwave       = "plasma_hot"
+# FORERUNNER : le Rayon de Sentinelle est la seule arme Forerunner du jeu — et le corpus des
+# 23 artefacts locaux n'en porte AUCUN tir. La teinte est declaree quand meme : elle existera
+# le jour ou un film en portera un, et l'absence de mesure est dite plutot que masquee.
+hinf_sentinel_beam  = "forerunner"
+# ELECTRIQUE.
+hinf_disruptor      = "electric"
+hinf_shock_rifle    = "electric"
+# AIGUILLES.
+hinf_needler        = "needle"

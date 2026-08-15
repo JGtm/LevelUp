@@ -27,6 +27,8 @@ import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
 import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
 import { readInk } from './canvasInk'
+import { readFxInk } from './fxInk'
+import { buildShotFx } from './shotFx'
 import {
   buildObjectivePulses,
   drawObjectivePulses,
@@ -72,8 +74,10 @@ const TRACK_TOKENS: SemanticToken[] = [
 ]
 // Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs).
 const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
-// Événements ponctuels. Le tir emprunte le token d'alerte (il a INFLIGÉ un dégât — le film
-// n'enregistre que ceux-là), le lancer un token d'information : deux natures, deux lectures.
+// Événements ponctuels. Le LANCER emprunte un token d'information ; le TIR, lui, ne prend
+// plus aucun token de données : sa couleur dit la NATURE DE LA DÉCHARGE et vient des teintes
+// diégétiques du thème (fxInk.ts, décision utilisateur du 2026-08-15). Le token d'alerte
+// reste employé par les effets de MORT, qui n'ont pas changé.
 const SHOT_TOKEN: SemanticToken = 'destructive'
 const GRENADE_TOKEN: SemanticToken = 'info'
 // Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
@@ -202,6 +206,12 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     void paletteVersion
     return { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') }
   }, [paletteVersion])
+  // Teintes des ÉCLAIRS DE BOUCHE : lues UNE fois par thème, jamais par image — un
+  // getComputedStyle par effet et par frame coûterait plus que le dessin lui-même.
+  const fxInk = useMemo(() => {
+    void paletteVersion
+    return readFxInk()
+  }, [paletteVersion])
 
   // Couleur PAR SLOT : un tir se dessine dans la teinte de son tireur, et c'est elle qui permet
   // de suivre un joueur des yeux. Le slot d'une trace est unique dans le document.
@@ -287,6 +297,10 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   )
   const eventHoldFrames = useMemo(() => msToFrames(EVENT_HOLD_MS, doc), [doc])
   const shotHoldFrames = useMemo(() => msToFrames(SHOT_HOLD_MS, doc), [doc])
+  // Les tirs sont PRÉCALCULÉS comme les morts : famille, teinte et REGARD du tireur résolus
+  // une fois au chargement (mesure : la couverture d'orientation passe de 18,6 % à 100 % sur
+  // le film témoin en relisant le regard plutôt que le champ de l'événement).
+  const shotFx = useMemo(() => buildShotFx(doc, timing.aimHold), [doc, timing.aimHold])
   // Les effets de mort sont PRÉCALCULÉS en monde (positions relues une fois, patron POC) :
   // pendant la lecture, seul le passage monde -> pixels reste à faire.
   const killFx = useMemo(
@@ -375,11 +389,10 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
 
     // Les événements passent APRÈS les trajectoires : ils se lisent sur elles.
     const win = { frame, hold: eventHoldFrames }
-    if (doc.shots?.length) {
-      drawShotsLayer(ctx, doc.shots, view, { frame, hold: shotHoldFrames }, {
-        colorOfSlot: (slot) => colorBySlot.get(slot) ?? null,
-        fallback: shotColor,
-        effectOf: (id) => (id ? doc.weaponLabels?.[id]?.fx : undefined),
+    if (shotFx.length > 0) {
+      drawShotsLayer(ctx, shotFx, view, { frame, hold: shotHoldFrames }, {
+        ink: fxInk,
+        k: dpr,
         reducedMotion,
       })
     }
@@ -439,6 +452,8 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     grenadeColor,
     eventHoldFrames,
     shotHoldFrames,
+    shotFx,
+    fxInk,
     killFx,
     grenadeRestFx,
     restWindow,

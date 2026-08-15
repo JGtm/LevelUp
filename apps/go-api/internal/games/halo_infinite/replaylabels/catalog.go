@@ -54,6 +54,10 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 		abilityPalettes(titleSlug, labels.AbilityPalettes()),
 	)
 	cat.Icons = weaponIcons(weapons.FilmshellWeaponKeysByFamily())
+	// La TEINTE d'un tir (nature de la décharge) est posée après construction, comme les
+	// icônes : elle n'entre dans aucune jointure du catalogue, elle voyage jusqu'au
+	// document telle quelle (cf. replay_labels.toml, [shot_tints]).
+	cat.Tints = labels.ShotTints()
 	return cat, nil
 }
 

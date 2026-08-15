@@ -23,59 +23,14 @@ import { describe, expect, it } from 'vitest'
 import { buildFloorGrid } from './mapFloor'
 import { drawFloorLayer } from './replayDraw'
 import { drawShotEffect, familyOf, type ShotFamily, type ShotShape } from './shotEffects'
+import { count, recordingContext, valuesOf, type CanvasOp } from './test/recordingContext'
 
 import type { ReplayBounds } from '@/lib/api/types'
 import type { ReplaySurfaceReady } from './replayNormalize'
 
-/** Une opération enregistrée : le nom de la méthode (ou `set <propriété>`) et ses arguments. */
-interface CanvasOp {
-  op: string
-  args: unknown[]
-}
-
-/**
- * recordingContext rend un faux contexte 2D qui n'exécute rien et note tout.
- *
- * LA SEULE LECTURE À TRAITER est `createRadialGradient` : le rendu attend un objet portant
- * `addColorStop`. On rend donc un jeton inerte, et l'appel reste dans la trace — c'est le
- * comportement qu'on veut, pas une émulation.
- */
-function recordingContext(): { ops: CanvasOp[]; ctx: CanvasRenderingContext2D } {
-  const ops: CanvasOp[] = []
-  const state: Record<string, unknown> = {}
-  const proxy = new Proxy(
-    {},
-    {
-      get(_t, prop) {
-        if (typeof prop !== 'string') return undefined
-        if (prop === 'createRadialGradient') {
-          return (...args: unknown[]) => {
-            ops.push({ op: prop, args })
-            return { addColorStop: (...a: unknown[]) => ops.push({ op: 'addColorStop', args: a }) }
-          }
-        }
-        if (prop in state) return state[prop]
-        return (...args: unknown[]) => {
-          ops.push({ op: prop, args })
-        }
-      },
-      set(_t, prop, value) {
-        if (typeof prop === 'string') {
-          state[prop] = value
-          ops.push({ op: `set ${prop}`, args: [value] })
-        }
-        return true
-      },
-    },
-  )
-  return { ops, ctx: proxy as unknown as CanvasRenderingContext2D }
-}
-
-const count = (ops: CanvasOp[], op: string): number => ops.filter((o) => o.op === op).length
-
-/** valuesOf rend les valeurs successives affectées à une propriété (lineWidth, globalAlpha…). */
-const valuesOf = (ops: CanvasOp[], prop: string): number[] =>
-  ops.filter((o) => o.op === `set ${prop}`).map((o) => o.args[0] as number)
+// Le contexte enregistreur vit dans `test/recordingContext.ts` depuis le 2026-08-15 :
+// l'éclair de bouche (muzzleFlash.test.ts) en a besoin du même, et une deuxième copie
+// aurait appelé la troisième.
 
 const shape = (over: Partial<ShotShape> = {}): ShotShape => ({
   x: 100,

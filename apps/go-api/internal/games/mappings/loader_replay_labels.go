@@ -60,6 +60,7 @@ type ReplayLabelSet struct {
 	grenades      []BilingualLabel // index = rang lu dans le film
 	palettes      []AbilityPalette
 	shotEffects   map[string]string // weapon_key -> famille de rendu
+	shotTints     map[string]string // weapon_key -> nature de la decharge
 }
 
 // replayLabelsTOML — projection brute du fichier.
@@ -68,6 +69,7 @@ type replayLabelsTOML struct {
 	Grenades    []bilingualEntry      `toml:"grenades"`
 	Palettes    []abilityPaletteEntry `toml:"ability_palettes"`
 	ShotEffects map[string]string     `toml:"shot_effects"`
+	ShotTints   map[string]string     `toml:"shot_tints"`
 }
 
 type abilityPaletteEntry struct {
@@ -88,6 +90,17 @@ type bilingualEntry struct {
 var shotEffectFamilies = map[string]bool{
 	"ballistic": true, "plasma": true, "light": true, "shock": true,
 	"explosive": true, "melee": true, "needles": true,
+}
+
+// shotTintKinds — les NATURES DE DECHARGE admises. Liste fermee pour la meme raison que
+// les familles de rendu : une valeur libre ferait tomber l'arme sur la teinte neutre en
+// silence, indistinguable d'une arme volontairement non teintee.
+//
+// Elles nomment une NATURE, jamais une couleur : la couleur vit dans le theme du client
+// (tokens dedies), et c'est ce qui permet aux deux themes d'en donner deux valeurs.
+var shotTintKinds = map[string]bool{
+	"kinetic": true, "plasma_cool": true, "plasma_hot": true, "forerunner": true,
+	"electric": true, "needle": true, "blast": true,
 }
 
 // GrenadeRanks retourne les libelles de grenade DANS L'ORDRE DES RANGS (copie).
@@ -127,6 +140,18 @@ func (s *ReplayLabelSet) ShotEffects() map[string]string {
 		return out
 	}
 	for k, v := range s.shotEffects {
+		out[k] = v
+	}
+	return out
+}
+
+// ShotTints retourne la table weapon_key -> nature de la decharge (copie).
+func (s *ReplayLabelSet) ShotTints() map[string]string {
+	out := make(map[string]string)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.shotTints {
 		out[k] = v
 	}
 	return out
@@ -185,12 +210,17 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	tints, err := parseShotTints(path, doc.ShotTints)
+	if err != nil {
+		return nil, err
+	}
 	return &ReplayLabelSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
 		grenades:      grenades,
 		palettes:      palettes,
 		shotEffects:   effects,
+		shotTints:     tints,
 	}, nil
 }
 
@@ -278,6 +308,25 @@ func parseShotEffects(path string, rows map[string]string) (map[string]string, e
 				path, fam, key)
 		}
 		out[key] = fam
+	}
+	return out, nil
+}
+
+// parseShotTints valide les natures de decharge contre la liste fermee. Table OPTIONNELLE :
+// un titre sans [shot_tints] rend des tirs a la teinte neutre, ce qui est un rendu entier.
+func parseShotTints(path string, rows map[string]string) (map[string]string, error) {
+	out := make(map[string]string, len(rows))
+	for rawKey, rawKind := range rows {
+		key := strings.TrimSpace(rawKey)
+		kind := strings.TrimSpace(rawKind)
+		if key == "" {
+			return nil, fmt.Errorf("%s: weapon_key vide dans [shot_tints]", path)
+		}
+		if !shotTintKinds[kind] {
+			return nil, fmt.Errorf("%s: teinte %q inconnue pour %q (admises : kinetic, plasma_cool, plasma_hot, forerunner, electric, needle, blast)",
+				path, kind, key)
+		}
+		out[key] = kind
 	}
 	return out, nil
 }
