@@ -95,10 +95,15 @@ Gate 1 : nombre de sons joues / tirs publies, publie ; ecoute utilisateur sur un
       couleur ecrite en dur dans le composant. Precedent a suivre : `canvasInk.ts`, qui gere
       deja de l'encre de canevas dans ce cadre. **Ne pas contourner la regle : l'etendre
       proprement.**
-- [ ] 2.6d La couleur du TIREUR ne disparait pas pour autant : elle reste ce qui permet de
-      suivre un joueur des yeux. Decider et ECRIRE ou elle subsiste (le coeur de l'effet ? le
-      marqueur ? le cone ?) pour que la teinte de famille ne rende pas les joueurs
-      indistinguables.
+- [ ] 2.6d **L'EFFET DE TIR NE PORTE QUE L'ARME.** Correction utilisateur du 2026-08-15, mot
+      pour mot : « les couleurs des effets de tirs ne prennent pas la couleur du tireur, tu as
+      confondu, elle prend seulement l'ARME en compte ». La couleur d'un effet de tir est donc
+      determinee UNIQUEMENT par la famille de l'arme — ni coeur, ni lisere, ni repli aux
+      couleurs d'equipe. Ne PAS inventer de compromis « pour distinguer les joueurs » : le
+      marqueur du joueur et son cone de visee portent deja son identite, l'effet dit la NATURE
+      DE LA DECHARGE et rien d'autre.
+      (Une version anterieure de cet item demandait l'inverse ; c'etait une erreur de
+      transmission du superviseur, corrigee ici avant execution.)
 
 Gate 2 : couverture d'orientation publiee ; verification a l'oeil par l'utilisateur sur un
 echange nourri, avec au moins un tir balistique, un plasma et une melee (qui ne doit RIEN
