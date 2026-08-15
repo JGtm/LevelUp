@@ -1,3 +1,39 @@
+## [2026-08-15] v7.5 rejeu 2D — la jauge de bouclier quitte la carte, la mesure reste
+
+**Statut** : Complete. Demande utilisateur, mot pour mot : « Je veux pas ces barres
+horizontales au dessus des points de joueurs ».
+
+**CE QUI EST RETIRE, ET CE QUI NE L EST PAS.** `drawShieldBar` dessinait une jauge de bouclier
+au-dessus de chaque marqueur vivant. Elle est supprimee, avec ses sept constantes de rendu,
+son entree `shieldHold` dans `MarkerTiming` et le reglage `TIMING_MS.shieldHold` (2 s) — zero
+code mort, regle 7 du CLAUDE.md. Le champ `sh` du document, lui, RESTE : ce sont les FICHES de
+joueurs qui le lisent (`rosterLogic.ts`, deux appels), et l utilisateur n a jamais demande de
+retirer la vitalite des fiches. Ce qui est refuse, c est le DESSIN SUR LA CARTE, pas la mesure.
+Verifie avant de couper : un grep des consommateurs de `sh` / `SHIELD_` / `shieldHold` sur tout
+`apps/web/src` donne exactement deux familles d appelants, le calque des marqueurs et les
+fiches. Seule la premiere tombe.
+
+**CETTE DEMANDE REMPLACE UNE DECISION ANTERIEURE, et il faut que ce soit ecrit.** Le
+2026-08-13, le bouclier avait ete rendu PERMANENT sur la carte (alignement POC, suppression de
+son interrupteur de calque). Le commentaire qui portait cette decision disait « pas de
+toggle » ; le laisser aurait fait croire a un oubli. L en-tete de `replayMarkers.ts` porte
+desormais la nouvelle decision, sa date et sa citation — pour que personne ne « repare » dans
+six mois en remettant la jauge.
+
+**CE QUI EST PERDU, dit franchement.** La jauge affichait un cas que rien d autre ne montre sur
+la carte : le bouclier a ZERO, dessine comme une piste vide soulignee d un trait, soit un joueur
+a decouvert. Cette lecture disparait de la carte. Elle n etait de toute facon servie que 17,5 %
+du temps de jeu (couverture mesuree a 2 s de maintien, saturant a 25,5 % meme a 12 s) : le film
+n echantillonne le bouclier que par intermittence, et la jauge clignotait donc plus qu elle n
+informait — ce qui est vraisemblablement ce qui a motive la demande.
+
+**Gates** : `make check-types` vert, eslint 0 sur `features/match-replay`, vitest 25 fichiers /
+369 tests verts. Aucun test ne portait sur la jauge (les tests « Bouclier » de
+`ReplayTeams.test.tsx` visent les FICHES et sont intacts), aucun libelle i18n a retirer —
+`shieldLabel` sert aux fiches.
+
+**Prochaine etape** : gate a l oeil de l utilisateur.
+
 ## [2026-08-15] v7.5 rejeu 2D — l explosion etait AMPUTEE de son coup de flash sur le theme clair
 
 **Statut** : Complete (correctif + garde-rail de rasterisation phase par phase). Suite directe

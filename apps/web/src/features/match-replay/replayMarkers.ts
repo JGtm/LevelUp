@@ -1,6 +1,13 @@
 /**
  * replayMarkers.ts — LE JOUEUR SUR LA CARTE : traînée, marqueur d'étage, cône de visée,
- * bouclier, apparition et mort.
+ * apparition et mort.
+ *
+ * CE QUE CE CALQUE NE DESSINE PLUS. Une jauge de BOUCLIER surmontait chaque marqueur ; elle a
+ * été retirée le 2026-08-15 à la demande de l'utilisateur — « je veux pas ces barres
+ * horizontales au dessus des points de joueurs » — et cette demande remplace la décision du
+ * 2026-08-13 qui l'avait rendue permanente. Le champ `sh` continue de voyager : ce sont les
+ * FICHES de joueurs qui le lisent (rosterLogic.ts). C'est le dessin sur la carte qui est
+ * refusé, pas la mesure.
  *
  * Une trace = UNE VIE, jamais un joueur : le slot de biped est réattribué à chaque
  * réapparition. Les trois instants d'une vie se lisent donc séparément — elle S'OUVRE (anneau),
@@ -45,14 +52,11 @@ export interface CanvasView {
  * Réglages temporels du calque, tous exprimés en frames de la grille du rejeu.
  * Les valeurs de référence viennent du POC, où elles ont été réglées à l'écran :
  * traînée 7 s, cône maintenu 5 s (la couverture de la visée passe de 43,6 % à 93,5 % du temps
- * de jeu), bouclier maintenu 2 s (au-delà la couverture SATURE : 17,5 % à 2 s, 18,6 % à 3 s,
- * 20,5 % à 5 s, 25,5 % à 12 s — maintenir plus longtemps n'apporte presque rien et vieillit
- * la mesure), mort marquée 1,5 s, apparition 0,8 s.
+ * de jeu), mort marquée 1,5 s, apparition 0,8 s.
  */
 export interface MarkerTiming {
   trail: number
   aimHold: number
-  shieldHold: number
   death: number
   spawn: number
 }
@@ -86,14 +90,6 @@ const AIM_UNDERLINE_ALPHA = 0.34
 const AIM_UNDERLINE_WIDTH = 3.6
 /** Une visée de 5 s ne vaut pas une visée de l'instant : elle perd 62 % de son opacité. */
 const AIM_FADE = 0.62
-
-const SHIELD_WIDTH = 20
-const SHIELD_HEIGHT = 3
-const SHIELD_OFFSET = 15
-const SHIELD_OFFSET_PER_FLOOR = 2.2
-const SHIELD_TRACK_ALPHA = 0.3
-const SHIELD_FILL_ALPHA = 0.92
-const SHIELD_FADE = 0.65
 
 const DEATH_RADIUS = 5
 const DEATH_GROWTH = 7
@@ -174,7 +170,7 @@ function drawDeathMark(
   ctx.globalAlpha = 1
 }
 
-/** drawLivingTrack : traînée, cône, apparition, marqueur d'étage, bouclier. */
+/** drawLivingTrack : traînée, cône, apparition, marqueur d'étage. */
 function drawLivingTrack(
   ctx: CanvasRenderingContext2D,
   track: ReplayTrackReady,
@@ -191,8 +187,6 @@ function drawLivingTrack(
   if (style.showAim) drawAimCone(ctx, track, c, style, color)
   drawSpawnRing(ctx, track, c, style, color)
   drawMarker(ctx, c, style, color, fl)
-  // Le bouclier est PERMANENT (décision user 2026-08-13, alignée POC) : pas de toggle.
-  drawShieldBar(ctx, track, c, style, color, fl)
 }
 
 function drawTrail(
@@ -338,51 +332,6 @@ function drawMarker(
   ctx.beginPath()
   ctx.arc(c.x, c.y, core, 0, Math.PI * 2)
   ctx.fill()
-}
-
-/**
- * drawShieldBar dessine le bouclier, décodé du MÊME enregistrement que la position — donc au
- * même instant, sur le même joueur, sans aucune base de données.
- *
- * UN BOUCLIER NUL SE DESSINE, et c'est le cas qui compte : la piste reste vide et un trait la
- * souligne. Le confondre avec « pas de mesure » effacerait l'information la plus utile du
- * champ. C'est aussi pourquoi la valeur voyage en optionnel côté données et jamais en zéro par
- * défaut.
- */
-function drawShieldBar(
-  ctx: CanvasRenderingContext2D,
-  track: ReplayTrackReady,
-  c: XY,
-  style: MarkerStyle,
-  color: string,
-  fl: number,
-): void {
-  const read = heldReading(track.points, style.frame, (p) => p.sh, style.timing.shieldHold)
-  if (!read) return // aucune mesure dans la fenêtre : on n'invente rien
-  const fresh = freshness(read.age, style.timing.shieldHold, SHIELD_FADE)
-  const w = SHIELD_WIDTH * style.k
-  const h = SHIELD_HEIGHT * style.k
-  const x0 = c.x - w / 2
-  const y0 = c.y - (SHIELD_OFFSET + SHIELD_OFFSET_PER_FLOOR * fl) * style.k
-
-  ctx.fillStyle = style.ink
-  ctx.globalAlpha = SHIELD_TRACK_ALPHA * fresh
-  ctx.fillRect(x0, y0, w, h)
-
-  const filled = w * Math.max(0, Math.min(1, read.value))
-  ctx.globalAlpha = SHIELD_FILL_ALPHA * fresh
-  if (filled > 0) {
-    ctx.fillStyle = color
-    ctx.fillRect(x0, y0, filled, h)
-  } else {
-    ctx.strokeStyle = color
-    ctx.lineWidth = 1 * style.k
-    ctx.beginPath()
-    ctx.moveTo(x0, y0 + h + 1.5 * style.k)
-    ctx.lineTo(x0 + w, y0 + h + 1.5 * style.k)
-    ctx.stroke()
-  }
-  ctx.globalAlpha = 1
 }
 
 /**
