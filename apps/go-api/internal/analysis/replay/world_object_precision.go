@@ -16,7 +16,7 @@ import (
 // (projectiles ti=41, équipement ti=37, armes au sol ti=42, corps rigides ti=38) aux largeurs
 // d'une carte qui n'était pas la leur, et rien ne le signalait.
 //
-// CE QUE ÇA COÛTAIT, MESURÉ AVANT DE CORRIGER (7 films, 6 cartes, critère : part
+// CE QUE ÇA COÛTAIT, MESURÉ AVANT DE CORRIGER (7 films, 7 cartes, critère : part
 // d'échantillons tombant dans l'emprise du nuage des BIPÈDES du même film, en coordonnées
 // normalisées de l'AABB — sans base, non circulaire) :
 //

@@ -13,8 +13,8 @@ deduit des bornes par la loi du moteur, deja porte par l'objet qui fournissait `
 les largeurs juste apres `LockProcessDecode`, pour tout le decodage, avec restauration differee
 (`installWorldObjectPrecision`). Entree sans largeurs : defaut CONSERVE et `slog.Warn`, jamais
 silencieux.
-**Resultats** — MESURE AVANT CORRECTION, 7 films / 6 cartes / 6 valeurs de largeurs, un film par
-processus, instrument versionne garde par variable d'environnement (`filmdec/world_object_precision_test.go`).
+**Resultats** — MESURE AVANT CORRECTION, 7 films / 7 cartes / 7 decoupages distincts
+(dont 6 autres que Cliffhanger), un film par processus, instrument versionne garde par variable d'environnement (`filmdec/world_object_precision_test.go`).
 Critere repris TEL QUEL du lot `d4be4ab95` : part d'echantillons tombant dans l'emprise du nuage des
 BIPEDES du meme film, en coordonnees NORMALISEES de l'AABB — non circulaire, sans base.
 **ti=41, le chemin de production** : Bazaar `[17 17 16]` **0,09 % -> 99,41 %** (12 694 echantillons),

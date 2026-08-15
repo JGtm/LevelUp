@@ -155,7 +155,7 @@ var TraversalPrecision = PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{6, 6, 6}}
 //
 // AVANT cette date, AUCUN chemin de production ne l'écrasait : toutes les cartes autres que
 // Cliffhanger déquantifiaient leurs objets du monde aux largeurs de Cliffhanger. Mesuré sur
-// 7 films / 6 cartes (part d'échantillons de projectile dans l'emprise du nuage des bipèdes du
+// 7 films / 7 cartes, dont 6 autres que Cliffhanger (part d'échantillons de projectile dans l'emprise du nuage des bipèdes du
 // même film, coordonnées normalisées de l'AABB) : 0,09 · 0,51 · 28,46 · 31,31 · 65,21 % avec le
 // défaut, 98,96 à 99,79 % avec les largeurs du catalogue — et 92,11 % des DEUX côtés sur
 // Cliffhanger, où le correctif ne change rien par construction.
