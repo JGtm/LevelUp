@@ -362,6 +362,35 @@ produit Ravageur de base, et c'est la variante qui porte le son de tir, pas le p
 L'hypothese « variante legendaire » de l'utilisateur est COMPATIBLE avec la mesure mais
 n'est pas prouvee par elle : rien dans le tag ne dit « legendaire ».
 
+### 2026-08-15 — Etape 7 : melee, Carabine Vestige, et le nommage delie du tir
+
+CARABINE VESTIGE, RESOLUE. Sa bank `09089e7e` porte **83 medias embarques** et AUCUN `.pck`
+ne lui correspond : ses sons vivent entierement dans la bank. C'est pour cela qu'elle etait
+absente de bout en bout. Le mode `embarques` accepte desormais `-sbnk` pour cibler une bank
+par identifiant, sans passer par un pack.
+
+NOMMAGE DELIE DU TIR. Une arme sans champ « Weapon Fire Sound » n'avait ni nom ni icone —
+contrainte que je m'etais imposee sans raison. `rattachement.go` relie desormais une arme a
+son `weap` par le seul lien `weap -> ... -> sbnk`. Gain automatique : `cv_provoker`, qui se
+retrouve apparie a `cv_provoker_megatron` sur `hinf_ravager` — la variante portait le son de
+tir, pas le pack de base.
+
+MELEE : POURQUOI ON NE PASSE PAS PAR `jmad`. Mesure sur la bank de l'epee a energie :
+`bank <- 21 snd!/lsnd <- 100 jmad <- 8 weap`. Les sons de melee remontent par les graphes
+d'ANIMATION. Traverser `jmad` est exclu — c'est un carrefour (98 `Rani` au niveau suivant),
+tout s'y rattacherait a tout. Le champ nomme « melee sound » du tag a ete implemente
+(mode `melee`) et se lit sans derive sur 10 armes, MAIS il pointe vers une bank de melee
+GENERIQUE (`cbce234a`), pas vers celle de l'arme : il dit « le bruit quand on frappe avec
+cette arme », pas « les sons de cette arme ». Les sons propres restent dans la bank de
+l'arme, et ils etaient DEJA extraits — seul le rattachement manquait. Il est donc pose a
+partir des tags que `jeu/index.json` associe deja a ces armes.
+
+GARDE-FOU DESSERRE : le plafond de `weap` candidats par bank passe de 6 a 24. A 6, l'epee
+etait ecartee alors que sa bank est atteinte par 8 `weap` (3 sont bien l'epee, 2 un « skull »
+de Forge, 3 inconnus). Trancher dans le Go reviendrait a deviner ; on rend tous les
+candidats et la couche de nommage, qui dispose de l'index d'icones, retient celui qui resout
+vers une vraie entree produit.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
