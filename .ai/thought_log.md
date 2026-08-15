@@ -1,3 +1,65 @@
+## [2026-08-15] v7.5 rejeu 2D — tir CONTINU et tir CHARGE : deux refus mesures, un instrument
+
+**Statut** : Complete. Demande utilisateur du jour (« il est possible qu a terme j aie un son
+pour tir normal et un son pour tir charge/continu, voire un effet visuel different », puis
+« ok fait le »). **Aucun rendu n a ete ecrit** : la mesure refuse les deux moities, et le
+livrable est l instrument plus les chiffres.
+
+**Decision technique principale**. Le chantier tranchait « continu = propriete de l ARME, donc
+realisable sans donnee nouvelle ». La mesure dit le contraire, et c est la seule chose qui
+tranche : un instrument garde (`REPLAY_CORPUS`) relit les 23 artefacts locaux — aucun decodage
+de film — et publie deux tables, la cadence par arme et l encadrement des tirs par la jauge.
+Il vit avec le manifeste qu il justifie (`internal/games/halo_infinite/replaylabels/`), il saute
+en CI (le corpus n est pas versionne), et sa question de reprise se rejoue en une commande.
+
+**Resultats observes — CADENCE (23 films, 17 904 tirs, ecarts entre tirs consecutifs du meme
+tireur)** :
+
+| arme | tirs | ecart median | median <= 1 s | <= 1 frame |
+|---|---|---|---|---|
+| MA40 AR | 10 393 | 100 ms | 100 ms | 82,9 % |
+| MK50 Sidekick | 4 645 | 200 ms | 200 ms | 9,9 % |
+| BR75 | 606 | 100 ms | 100 ms | 61,8 % |
+| Needler | 409 | 100 ms | 100 ms | 82,6 % |
+| Ravageur | 135 | 300 ms | 200 ms | 30,4 % |
+| Carabine a impulsion | 82 | 100 ms | 100 ms | 84,2 % |
+| **Cremateur (Cindershot)** | **67** | **1 400 ms** | 900 ms | **0,0 %** |
+| Calcineur (Heatwave) | 23 | 800 ms | 800 ms | 0,0 % |
+| **Rayon de Sentinelle** | **0** | — | — | — |
+
+Le Rayon de Sentinelle est **PORTE 49 fois** et ne tire **jamais**, la ou ses voisines de meme
+frequence de port produisent 13 a 77 tirs (Empaleur 57/13, Cremateur 58/67, Bulldog 53/52,
+Dechiqueteur 52/77). Il se comporte comme les armes de melee (marteau 72/0, epee 54/0). Les
+deux candidats nommes par l utilisateur sont refutes par la mesure, et le plancher de mesure
+est la frame de 100 ms — que le MA40 occupe deja : meme avec des tirs, la cadence a ce quantum
+ne separerait pas un faisceau tenu d une automatique rapide. Une table `[shot_modes]` n aurait
+donc AUCUN membre observable : du code mort par construction (regle 7). Effet sur la saturation
+des voix (`SOUND_MAX_VOICES` = 8, 28,7 % de refus) : **exactement 0,0 point**, puisque la
+population visee est vide. Piste ecartee au passage : la famille `light` n est pas un substitut
+de « continu » — son seul membre jamais vu (Calcineur) n est pas continu.
+
+**Resultats observes — JAUGE DE CHARGE (14 238 tirs d armes ayant porte une jauge, 307 lectures
+de jauge)** : ecart median au releve le plus proche **8 900 ms**, p90 **42 300 ms**, **3,03 %**
+sous 500 ms. **73 tirs (0,51 %)** sont encadres par deux lectures, **8 (0,06 %)** montrent une
+jauge qui bouge — 0,04 % des tirs du corpus. Second refus, independant du premier :
+l appariement `Inventory.Am[k]` <-> `Loadout.W[k]` place **98 des 307 lectures sur le MA40 AR**
+et 38 sur le marteau antigravite, deux armes sans charge : on ignore de quelle arme parle une
+jauge. Et le pistolet a plasma ne totalise que 4 tirs dans tout le corpus.
+
+**Decouverte hors perimetre** : 150 tirs portent une famille absente du registre d armes, dont
+118 pour la seule `0x1833A5A8` — cadence 100 ms, 77,4 % d ecarts d une frame, soit la signature
+d une automatique et non d un faisceau. Elles n ont ni nom, ni son, ni effet. Ligne au registre.
+
+**Gate**. `gofmt`, `go vet`, `go test ./internal/games/halo_infinite/replaylabels/` (vert, tests
+de corpus SAUTES sans la variable), ratchet `golangci-lint --new-from-merge-base=origin/main`.
+Aucun fichier de rendu, aucun type servi, aucun contrat touche.
+
+**Conclusion / prochaine etape**. Trois lignes au `.ai/V7.5/REGISTRE_REPORTS.md` avec leurs
+conditions de reprise. La reprise du tir continu tient a un fait verifiable en une commande :
+un film ou `hinf_sentinel_beam` compte plus de zero tir. Celle du tir charge exige d abord de
+fiabiliser l appariement emplacement -> arme, puis une source lue aux instants de tir
+(`i32`/`i35` `weapon-state-overheated`, jamais instruite).
+
 ## [2026-08-15] v7.5 rejeu 2D — la jauge de bouclier quitte la carte, la mesure reste
 
 **Statut** : Complete. Demande utilisateur, mot pour mot : « Je veux pas ces barres
