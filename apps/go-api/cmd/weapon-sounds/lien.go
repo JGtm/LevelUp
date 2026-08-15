@@ -41,9 +41,11 @@ func relier(cheminModule, cheminJSON string) error {
 	}
 	rapporterMemoire("module charge")
 
-	sonds := m.Files("snd!")
+	// Les deux groupes de son : `snd!` (ponctuels) ET `lsnd` (boucles). Ne scanner que les
+	// `snd!` a fait manquer le lien — les sons d'arme sont des `lsnd`.
+	sonds := append(m.Files("snd!"), m.Files("lsnd")...)
 	armes := m.Files("weap")
-	fmt.Printf("module   : %d tags snd!, %d tags weap\n\n", len(sonds), len(armes))
+	fmt.Printf("module   : %d tags snd!+lsnd, %d tags weap\n\n", len(sonds), len(armes))
 
 	porteurs := chercherPorteurs(m, sonds, cible)
 	fmt.Printf("tags snd! portant un de nos evenements : %d\n", len(porteurs))

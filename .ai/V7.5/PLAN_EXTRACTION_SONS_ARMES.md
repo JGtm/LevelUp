@@ -77,8 +77,8 @@ Voie B — le graphe de tags (MOYEN PRINCIPAL) :
       des `snd!` mais des `lsnd`. Couvert par la remontee ci-dessous.
 - [x] Remonter au tag `weap` : chaine etablie et mesuree
       `sbnk 384b727f` <- 8 `lsnd` <- 2 `weap` (`00008595`, `48c19d2d`)
-- [ ] Lire l'offset du champ de tir dans `weap.xml` (champs NOMMES) pour designer lequel
-      des 8 `lsnd` est le tir — c'est la preuve recherchee, sans aucun nom Wwise
+- [x] Lire le champ NOMME « Weapon Fire Sound » de `weap.xml` : 3 `lsnd` sur 8 designes
+      (`3fd85fcd`, `5a2b4a0e`, `625034f9`). Preuve fermee, sans aucun nom Wwise.
 
 ### Etape 4 — Livrable
 
@@ -193,8 +193,46 @@ mesure 1,3 Go systeme sur le module `any` (0,62 Go) en balayant les 78 174 entre
 modes ne chargent JAMAIS deux modules dans le meme processus : `map` ouvre celui de 7,24 Go,
 `lien`/`qui`/`remonter` celui de 0,62 Go, et l'echange se fait par le fichier JSON.
 
+### 2026-08-15 — Etape 3 CLOSE : le champ nomme designe le tir, la chaine se recoupe
+
+Le plugin place « Weapon Fire Sounds » a +4288 ; AUCUN tableau du tag reel n'occupe cet
+offset (59 tableaux dans le bloc racine, le plus proche est a +4352). Meme derive de version
+que celle documentee dans `weapon-icons-build/weapui.go`. Parade identique : identification
+PAR CONTENU, avec une signature verifiable — un element de « Weapon Fire Sounds » porte, a
+l'offset du sous-tableau « Variations », des entrees de 28 octets dont CHAQUE reference
+pointe vers un tag de son. **Un seul tableau sur 59 la satisfait** (celui a +4352).
+
+Resultat : 3 `lsnd` sur les 8 (`3fd85fcd`, `5a2b4a0e`, `625034f9`).
+
+RECOUPEMENT INDEPENDANT (ce qui donne confiance) : en scannant les tags de son pour les
+identifiants d'evenements du rapport `map`, les 3 `lsnd` de tir portent 4 evenements chacun
+et les 5 autres 2 chacun. 3x4 + 5x2 = 22, soit EXACTEMENT le nombre d'evenements mesure a
+l'etape 2 par un chemin totalement different (parsing HIRC de la bank). Les 8 evenements des
+`lsnd` de tir sont precisement les 8 « gros » (64 a 103 `.wem`), les 14 autres sont les
+petits (4 `.wem`). Les deux moities de la preuve concordent sans avoir ete ajustees.
+
+Livrable mesure (mode `final`) pour `un_assaultrifle` / weap `00008595` :
+**339 `.wem` de tir sur 359 (94 %)**, repartis en 8 evenements.
+
+Ce taux est ELEVE mais coherent : le pack du fusil d'assaut est presque entierement du
+coup de feu (mesure acoustique prealable : 296 echantillons de 0,08 s sur 359). Les 20
+`.wem` restants sont les evenements a 4 sons — la mecanique.
+
+RESERVE A LEVER : `evenementsDesTags` relie un `lsnd` a ses evenements par recherche de
+l'identifiant en clair (`bytes.Contains`), pas par un champ structure. Sur 18 candidats et
+des tags courts, un faux positif est peu probable mais PAS exclu. Le recoupement 22 = 22
+ci-dessus est l'argument qui rend le resultat credible, pas la methode de recherche.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
-  48 bits). Si `cmd/weapon-sounds` en devient un 3e consommateur, la regle des 2 copies
-  impose de promouvoir le lecteur corrige en package partage.
+  48 bits). Le commentaire qui justifie cette copie est PERIME : himodule lit bien 48 bits
+  + drapeaux (`module.go:265`). `cmd/weapon-sounds` utilise himodule directement, donc la
+  copie de `hmod.go` n'a plus de raison d'etre — a supprimer dans un chantier dedie.
+- `cmd/weapon-sounds/weapfire.go` est la 2e copie de la lecture de plugin + tables de tag
+  (1re : `weapon-icons-build/weapui.go`), et `weap.xml` est donc present DEUX FOIS au depot
+  (84 Ko chacun). La regle du depot tolere 2 copies, mais un fichier de DONNEES duplique
+  derive silencieusement a chaque mise a jour du jeu. Promouvoir plugin + tables + `weap.xml`
+  en `internal/hiweap`, et migrer les deux commandes.
+- `himodule.Open` fait un `os.ReadFile` du module entier (7,24 Go pour `pc/globals`). Tient
+  ici, mais un `mmap`/`ReadAt` supprimerait la contrainte.

@@ -50,7 +50,8 @@ func main() {
 	module := flag.String("module", moduleParDefaut, "module a sonder, relatif a la racine deploy")
 	mode := flag.String("mode", "probe", "probe | map | noms | lien | banks | sndscan")
 	pck := flag.String("pck", "", "chemin d'un .pck d'arme (mode map)")
-	sortie := flag.String("json", "", "fichier JSON (sortie du mode map, entree du mode lien)")
+	sortie := flag.String("json", "", "fichier JSON (sortie du mode map, entree des modes lien/final)")
+	sortieTir := flag.String("out", "", "fichier JSON de sortie du mode final")
 	// Defaut = tous : l'heuristique « une bank d'arme est petite » est FAUSSE (mesure :
 	// la bank du fusil d'assaut fait 1,5 Mo, absente des 60 plus petites).
 	limite := flag.Int("limite", 0, "nombre de tags sbnk decompresses par la sonde (0 = tous)")
@@ -95,6 +96,14 @@ func main() {
 		err = quiRefere(chemin, temoins[0])
 	case "remonter":
 		err = remonter(chemin, temoins[0], *limite)
+	case "tir":
+		err = sonsDeTir(chemin, temoins[0])
+	case "final":
+		if *sortie == "" {
+			err = fmt.Errorf("le mode final exige -json (le rapport produit par -mode map)")
+			break
+		}
+		err = livrerTir(chemin, *sortie, temoins[0], *sortieTir)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
