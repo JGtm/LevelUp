@@ -296,10 +296,22 @@ du tag.
 
 NOMMAGE — DEUX POINTS A TRANCHER AVEC L'UTILISATEUR :
 
-- `hinf_vestige_carbine` (« Carabine Vestige ») existe au registre avec le tag `3e070217`,
-  mais AUCUNE des 33 armes resolues ne porte ce tag. L'arme n'est pas rattachee.
-- `bt_enforcer` n'a pas de son de tir prouve, donc pas de nom. Ce n'est PAS le Déchiqueteur :
-  `hinf_mangler` porte le tag `80977ba5`, deja attribue a `bt_spikerevolver`.
+- `hinf_vestige_carbine` (« Carabine Vestige ») : le `weap 3e070217` EXISTE et son champ
+  « Weapon Fire Sound » mene au `snd! 6eced10d`, qui depend de la **`sbnk 09089e7e`**. Ce
+  qui manque est le PACK AUDIO : aucun des 55 `.pck` traites ne correspond a cette bank.
+  Prochaine etape : extraire les medias embarques de `09089e7e` (elle en porte peut-etre
+  la totalite) ou chercher son pack sous un autre prefixe que `sb_010_wea_`.
+  Note : sur les 26 armes du registre hors grenades, seules 3 restent non rattachees —
+  l'epee et le marteau (normal : pas de tir) et celle-ci.
+- `bt_enforcer` = le **Mutilator**, RESOLU. L'utilisateur l'avait suppose ; verifie en
+  remontant le graphe : `sbnk ff09acbd` <- 5 `snd!` <- `stai` <- `snd!` <- `weap d7915565`,
+  et `jeu/index.json` designe ce tag comme `nom_jeu = mutilator` (icone `contour-37.png`).
+  L'en-tete de `weapon-icons-build/weaptags.go` le documentait deja.
+  POURQUOI LA CHAINE AUTOMATIQUE L'A MANQUE : `lot-tir` suit `weap -> lsnd`, or cette arme
+  passe par des `snd!` avec un relais `stai`, soit quatre niveaux au lieu de deux. La
+  remontee generique (`remonter`) la trouve ; la passe en lot, non. A generaliser.
+  LACUNE DU REGISTRE, hors perimetre : `weapon_names.toml` n'a AUCUNE entree pour cette
+  arme, et `index.json` lui met `arme = None` — d'ou l'absence de nom francais.
 - CORRECTION (meme jour). J'avais qualifie `jeu/index.json` d'incoherent parce que l'entree
   `hinf_cindershot` porte `nom_jeu = heatwave`. **C'est FAUX et l'accusation est retiree.**
   L'utilisateur a indique que le nom interne « heatwave » a designe une arme en debut de

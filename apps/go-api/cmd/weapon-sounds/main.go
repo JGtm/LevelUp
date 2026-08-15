@@ -115,6 +115,8 @@ func main() {
 		err = sonderSnd(chemin, temoins)
 	case "qui":
 		err = quiRefere(chemin, temoins[0])
+	case "deps":
+		err = dependancesDe(chemin, temoins[0])
 	case "remonter":
 		err = remonter(chemin, temoins[0], *limite)
 	case "tir":
