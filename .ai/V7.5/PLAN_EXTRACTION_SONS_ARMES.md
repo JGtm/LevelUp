@@ -391,6 +391,121 @@ de Forge, 3 inconnus). Trancher dans le Go reviendrait a deviner ; on rend tous 
 candidats et la couche de nommage, qui dispose de l'index d'icones, retient celui qui resout
 vers une vraie entree produit.
 
+### 2026-08-15 — Etape 8 : AUDIT DU FORMAT, apres deux oublis de suite
+
+L'utilisateur a releve, a juste titre, que deux specificites du format Wwise avaient ete
+manquees coup sur coup : les medias embarques (`DIDX`/`DATA`) puis le tableau des modes de
+tir. Le point commun n'est pas l'inattention, c'est la METHODE : le parseur n'implementait
+que le strict necessaire a l'objectif du moment, et rendait un resultat plausible en
+ignorant le reste — donc silencieusement faux.
+
+Correctif de methode : nouveau mode `audit`, qui ENUMERE ce que les banks contiennent et
+l'affiche en regard de ce que le parseur consomme. Un trou devient visible sans qu'il
+faille le soupconner d'abord. Resultats sur les 1305 banks :
+
+	CHUNKS      BKHD 1183 (lu) | HIRC 1180 (lu) | DIDX/DATA 578 (lus)
+	            *** 989 banks portent des chunks au nom NON IMPRIMABLE — IGNORES ***
+	            STID 2, PLAT 1, STMG 1, ENVS 1, INIT 1 — tous ignores
+	OBJETS      Sound 62753 | Settings 55831 | Action 41464 | Event 36355 | ActorMixer 9037
+	            RandomSequence 7069 | Switch 445 | Blend 303 | ... (proprietes jamais lues)
+	ACTIONS     Play 38089 | Stop 1976 | Break 912 | SetLPF 122 | SetState 69 | Mute 40 ...
+
+TROIS DEFAUTS ETABLIS PAR CET AUDIT :
+
+1. **Le type d'Action n'etait jamais lu.** Le parseur prenait la CIBLE de toute action, y
+   compris des `Stop` et des `Break` : la cible d'un `Stop` etait donc empilee comme une
+   couche a jouer. CORRIGE — seules les actions de type `Play` (octet haut 0x04) alimentent
+   desormais la hierarchie. C'est une cause directe de coups reconstitues moins justes
+   qu'un `.wem` isole, ce que l'utilisateur avait signale a l'oreille.
+2. **989 banks portent des chunks dont le nom n'est pas imprimable.** Le decoupeur en
+   chunks derape quelque part. NON RESOLU, a instruire.
+3. **La charge utile des objets `Sound` n'est lue qu'a hauteur de 13 octets** (pluginID,
+   streamType, sourceID) alors qu'elle est bien plus longue. Volume, hauteur, filtrage,
+   positionnement, effets et aleas par lecture sont ignores — donc le mixage additionne des
+   couches a gain unitaire, la ou le moteur applique des gains distincts. NON RESOLU.
+
+QUATRIEME DEFAUT, trouve par un agent : **`modes` comptait des TAGS DE SON, pas des
+ELEMENTS du tableau**. Contre-epreuve : le pistolet a plasma porte un bloc de 192 octets
+(2 elements, second « Variations » au champ +108 = 12 + 96) ; le fusil d'assaut un bloc de
+96 octets, donc UN element, dont les « Variations » comptent 3 references. Le fusil
+d'assaut a donc UN MODE A TROIS VARIANTES, et non trois modes. CORRIGE : un mode est
+desormais un element de 96 octets, ses variantes sont les references de son sous-tableau.
+
+### 2026-08-15 — Etape 8 bis : ce que les agents ont etabli
+
+SPNKr A COMBUSTIBLE vs M41 SPNKr — le melange entendu par l'utilisateur est REEL et n'est
+PAS un defaut de rattachement. La chaine `weap -> snd! -> sbnk -> event` est distincte et
+correcte pour les deux armes (`9d6aaed2`/`hinf_fuel_rod_spnkr` contre `71ab0a2c`/
+`hinf_m41_spnkr`, jamais croises). Mais **33 identifiants `.wem` sont communs aux deux
+`.pck`, octet pour octet, soit 57 % de chaque pack**, et l'evenement `0x49b19764` du SPNKr
+(noeud Blend, 15 wem) est partage a 100 % avec le fuel rod. Le jeu livre les memes fichiers
+dans les deux packs : ce que l'utilisateur entend est authentique.
+
+MUTILATOR — deux defauts cumules. (a) Ses deux modes pointent vers `sbnk 8827aa7e`, alors
+que la passe 1 a apparie son `.pck` a `sbnk ff09acbd`. **`8827aa7e` n'est dans AUCUNE des
+54 entrees de lot1 : ses `.wem` n'ont jamais ete moissonnes.** (b) `Modes` est construit
+depuis le lien DIRECT seulement ; les armes qui entrent par le repli relais perdent leur
+detail par mode. Trois armes concernees : `bt_enforcer` (2 tags -> 0 mode), `bt_voltaction`
+(2 -> 1), `cv_fuelrod_hunter` (2 -> 1).
+
+SHOCK RIFLE — toute la reconstitution repose sur un tag de son BOUCLE (`lsnd 7da2a96a`) ;
+le mode `snd!` (`013968cb`) rend zero evenement car son relais `stai 3347c586` est vide
+dans ce module. Les evenements retenus sont des conteneurs continus (`Blend`, `Switch`),
+pas des coups discrets — coherent avec l'absence de cadence exploitable.
+
+JUMEAUX 1P/3P — constat transverse : de nombreux evenements vont par PAIRES portant les
+memes couches (perspective premiere et troisieme personne). La selection en retient un et
+jette l'autre, arbitrairement. 15 des 19 evenements du Shock Rifle et 9 des 14 du Mutilator
+restent non attribues.
+
+CARABINE VESTIGE — son tag de tir designe **DEUX** evenements (`0cfa31bf` et `f5050f4e`,
+ensembles disjoints, union 52 `.wem`), la ou le rendu n'en prenait qu'un. Un seul mode,
+cadence reelle **285 coups/min**. Le rapport `lot2` contenait deja les deux evenements :
+la perte est en aval, au moment de choisir UN evenement pour le rendu.
+
+ERREUR DE CONVERSION DE MA PART, relevee par un agent : j'avais donne `0xd7915565` =
+3616724325, ce qui vaut en realite `0xd792d565`. La bonne valeur est **3616626021**.
+
+### 2026-08-15 — Etape 8 ter : deux defauts de plus, dont un structurel
+
+CINQUIEME DEFAUT — **le critere de choix de l'evenement est DEGENERE**. Le rendu retient
+`max(nombre de couches, nombre de wem)`. Sur l'epee a energie, les 34 evenements ont TOUS
+exactement une couche : la cle se reduit au nombre de wem, et SIX evenements sont a egalite
+a 5. `max()` rend alors le premier dans l'ordre du JSON. Le son presente a l'utilisateur
+etait donc choisi par HASARD, pas par preuve — et `_COUP.wav` de l'epee se reduit a un seul
+`.wem` mono de 0,83 s suivi de silence. Le doute de l'utilisateur etait fonde.
+
+SIXIEME DEFAUT, et il porte sur TOUTES les armes — **la partition 1P/3P n'est pas exploitee**.
+Mesure sur l'epee : 16 evenements 100 % mono, 18 evenements 100 % stereo, apparies par
+durees quasi identiques. C'est la signature TROISIEME PERSONNE (mono, positionne en 3D) et
+PREMIERE PERSONNE (stereo, joueur). L'epee n'a donc pas 34 sons mais ~18, chacun en deux
+versions. Le meme phenomene explique les « jumeaux » releves independamment sur le Shock
+Rifle (15 evenements sur 19 non attribues) et le Mutilator (9 sur 14). La selection en
+retient un au hasard : elle presente donc souvent la version 3P alors que l'utilisateur
+compare a ce qu'il entend EN JEU, c'est-a-dire la 1P.
+
+REGLE A APPLIQUER : a famille egale, preferer l'evenement STEREO (1P). Sur l'epee, le bon
+candidat est `110deea3` (stereo, 5 variantes, 0,83-1,14 s, -0,3 dBFS) et non `a4cdc09a`
+(son jumeau mono, retenu par hasard).
+
+L'epee illustre aussi ce que le mixage devrait faire : superposer le balayage `110deea3`,
+la trainee grave `68be8dae` a -10 dB (53 % de son energie sous 200 Hz, seul evenement 1P
+sans jumeau mono — donc une COUCHE de renfort, pas un son complet), l'impact `bc2b3e76`
+decale d'environ 0,25 s, et par-dessus les deux boucles continues `a63d1691` (9,7 s, grave)
+et `9d9ca315` (12,9 s, gresillement, -25 dB).
+
+CONTROLE DE COMPLETUDE sur l'epee, rassurant : 34 evenements -> 94 `.wem` distincts, et
+`wems_embarques` = 94. Zero orphelin dans un sens comme dans l'autre. Les 10 sons presents
+uniquement en embarque appartiennent a 4 evenements — vraisemblablement non streames pour
+partir sans latence.
+
+RESERVE : cette comptabilite prouve qu'aucun SON n'echappe, pas qu'aucun EVENEMENT
+n'echappe. Un `Stop`, un changement d'etat ou un evenement de switch pur ne reference aucun
+wem et reste invisible dans `lot1.json`.
+
+A NOTER pour la rafale : l'epee n'a pas de cadence, le script retombe donc sur son defaut de
+400 coups/min et empile 10 coups en 2,84 s. Une arme de melee ne doit PAS avoir de rafale.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
