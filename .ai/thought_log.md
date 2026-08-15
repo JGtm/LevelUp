@@ -1,3 +1,40 @@
+## [2026-08-15] Sons d'armes — les banks Wwise sont des tags `sbnk` (etape 1 close)
+
+**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE (gate passe).
+Branche `feat/extraction-sons-armes`. Etapes 2 a 4 non demarrees.
+
+**Decision technique principale** : besoin initial hors LevelUp (extraire les sons de tir
+par arme du jeu installe), mais il tombe exactement sur l'outillage module deja construit
+ici. Trois impasses ecartees SUR MESURE avant d'ouvrir le chantier : (1) aucune bank Wwise
+sur disque — 0 bank sur les 1645 `.pck`, 90 170 `.wem` anonymes ; (2) aucun nom de tag dans
+le jeu — `stringsSize` = 0 sur les 132 modules et 0 chemin ASCII sur 665 Mo scannes, donc
+les outils tiers qui « dumpent les noms » s'appuient sur des listes communautaires de
+hachages inverses, pas sur les fichiers ; (3) Ghidra ecarte — la donnee cherchee est dans
+les tags, pas dans le binaire, et le hook runtime de `AK::SoundEngine::PostEvent` est
+interdit par EasyAntiCheat (risque de ban). La mesure qui debloque : les banks ont ete
+CONVERTIES EN TAGS `sbnk`. Nouveau `cmd/weapon-sounds` construit sur `internal/himodule` +
+`internal/ooz` — pas de 3e copie du lecteur de module : le commentaire de
+`cmd/weapon-icons-build/hmod.go` qui affirme que `himodule` lit `data_offset` en u32 est
+PERIME, himodule lit bien 48 bits + drapeaux (module.go:265). `himodule.Open` fait un
+`os.ReadFile` de 7,24 Go : tient dans les 16 Go libres, non corrige (hors perimetre, note
+aux Decouvertes du plan).
+
+**Resultats observes** : `go run ./cmd/weapon-sounds -mode probe -limite 1305` sur
+`pc/globals/globals-rtx-new.module` — 1305 `sbnk` decompresses, 0 echec, en-tete `ucsh`
+1305/1305. Signatures : `BKHD` 1299, `HIRC` 1296, `DIDX` 694, `DATA` 694, `STMG` 3,
+`STID` 2. La charge utile EST une bank Wwise verbatim, dans les octets du tag (blob de
+ressources vide sur le temoin). Le `sbnk` du fusil d'assaut est designe sans ambiguite :
+`gid 384b727f` (1 536 586 o), SEUL des 1305 a porter les 6 `.wem` temoins du pack
+`sb_010_wea_un_assaultrifle`. Piege consigne : un premier passage sur les 60 plus PETITES
+banks avait conclu « HIRC absent » — artefact d'echantillonnage, la bank d'arme fait 1,5 Mo.
+Defaut de `-limite` corrige a 0 (= tous).
+
+**Conclusion / prochaine etape** : etape 2 — parser HIRC (Event, Action, Random/Sequence
+Container, Sound) et produire evenement -> liste de `.wem`, avec controle croise sur les IDs
+du `.pck` de l'arme. `STID` n'etant present que sur 2 banks sur 1305, la table des noms est
+quasi absente : l'etape 3 (hachage FNV-1 32 bits sur candidats generes) reste necessaire
+pour nommer les evenements. Rien n'est commite a ce stade (accord utilisateur requis).
+
 ## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D, Phase 1 : le cablage web est livre
 
 **Statut** : Complete (code + gates). Gate visuel utilisateur EN ATTENTE (temoins a choisir
