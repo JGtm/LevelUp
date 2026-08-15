@@ -42,14 +42,8 @@ func consumeObjectiveFormattedText(br *BitReader) {
 	}
 }
 
-// equipment-activated-component.
-func consumeEquipmentActivated(br *BitReader) {
-	if !br.ReadBit() {
-		br.ReadBits(3)
-	} else {
-		consume1408f0ac4(br)
-	}
-}
+// (consumeEquipmentActivated a rejoint equipment_state.go le 2026-08-15 : il y publie
+// désormais la valeur qu'il consommait sans la rendre — même grammaire, mêmes bits.)
 
 // equipment-command-tick-component: R(1) flag; if 0: 2x optU8; else: 1x optU8.
 func consumeEquipmentCommandTick(br *BitReader) {

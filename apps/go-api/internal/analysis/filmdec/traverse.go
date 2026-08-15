@@ -297,8 +297,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "item-at-rest-component": // ti=37/42 i18 (FUN_140ff91e4) — R(1) flag
 		br.ReadBit()
 		return variant, nil, true
-	case "equipment-deployed-component": // ti=37 i20 (FUN_142ed4618) — R(1) flag
-		br.ReadBit()
+	case compEquipmentDeployed: // ti=37 i20 (FUN_142ed4618) — R(1) flag
+		consumeEquipmentDeployed(br)
 		return variant, nil, true
 	case "tacmap-iconlodthresholds": // ti=34 i2 (FUN_142ed4848) — R(5)=N + N×R(12)
 		for n := br.ReadBits(5); n > 0; n-- {
@@ -311,7 +311,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "tacmap-settingstag": // ti=34 i1 (FUN_142ed6d0c) — R(32)
 		br.ReadBits(32)
 		return variant, nil, true
-	case "equipment-activated-component": // ti=37 i21 (FUN_*)
+	case compEquipmentActivated: // ti=37 i21 (FUN_*)
 		consumeEquipmentActivated(br)
 		return variant, nil, true
 	case "statborg-finalized-rounds-values-stat-component": // ti=6 i28
@@ -332,13 +332,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 			br.readQuantStat(1, quantStatDefaultWidth)
 		}
 		return variant, nil, true
-	case "equipment-creator-component": // ti=37 i23 (FUN_142ed45f4) — R(1)[si0:R(5)]
-		if !br.ReadBit() {
-			br.ReadBits(5)
-		}
+	case compEquipmentCreator: // ti=37 i23 (FUN_142ed45f4) — R(1)[si0:R(5)]
+		consumeEquipmentCreator(br)
 		return variant, nil, true
-	case "equipment-energy-component": // ti=37 i24 (FUN_141087bec) — R(14)
-		br.ReadBits(14)
+	case compEquipmentEnergy: // ti=37 i24 (FUN_141087bec) — R(14)
+		consumeEquipmentEnergy(br)
 		return variant, nil, true
 	case "tacmap-missionmarkerstate": // ti=34 i8 (FUN_142ed5e90) — R(32)+R(32)
 		br.ReadBits(32)

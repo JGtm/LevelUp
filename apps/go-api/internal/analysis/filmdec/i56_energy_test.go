@@ -46,8 +46,10 @@ const i56FilmEnv = "I56_FILM"
 // l'archétype biped (cf. components_biped_ability.go, section i56).
 const i56Index = 56
 
-// i56Charges est le nombre d'emplacements de charge décrits par le masque R(3).
-const i56Charges = 3
+// i56Charges est le nombre d'emplacements de charge décrits par le masque R(3). Alias de la
+// constante de production depuis le 2026-08-15 : deux littéraux pour la même largeur, c'est
+// une divergence en attente.
+const i56Charges = AbilityEnergyCharges
 
 // i56CoincidenceWindowUS est la demi-fenêtre de coïncidence épisode <-> chute d'énergie.
 // 1 s : un épisode i54 dure ~0,6 s, et l'énergie n'est retransmise qu'aux records qui

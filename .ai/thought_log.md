@@ -65646,3 +65646,52 @@ pour l'ouvrier (surveillance demandee : plafond 2 Go), un seul processus de deco
 **Conclusion / prochaine etape** : la chaine est complete et prouvee de bout en bout en local.
 Quatre lignes au REGISTRE_REPORTS (2e VPS, jeton d'ouvrier en prod, purge locale de l'ouvrier
 distant, plusieurs ouvriers en parallele jamais mesures).
+
+## [2026-08-15] Equipement : l'entite ti=37 et l'energie i56 mesurees — on sait OU, pas QUAND ni QUI
+**Statut** : Complété (etape 5 de `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`) — MESURE seule,
+aucun rendu, aucun effet, aucun son branche.
+**Decision technique** : appliquer aux quatre composants de l'archetype ti=37
+(`equipment-deployed` i20, `-activated` i21, `-creator` i23, `-energy` i24) et a i56
+(`biped-spartan-ability-energy`) le correctif d'i48 du 14/08 : les deserialiseurs de production
+CONSOMMAIENT leurs bits pour rester alignes et JETAIENT les valeurs. Ils publient desormais par
+hook (`SetEquipmentStateHook`, `SetAbilityEnergyHook`), parcours de bits inchange bit pour bit —
+c'est le deser qui publie, jamais un second lecteur pose a cote de lui. Nouveau balayage de
+production `internal/analysis/filmdec/equipment_state.go` + en-tete de record d'objet du monde
+factorise (`matchWorldObjectRecord`, partage avec le balayage des projectiles). Deux instruments
+versionnes, gardes par variable d'environnement et sautes en CI : `equipment_state_test.go`
+(`EQUIP_FILM`) et `i56_drops_test.go` (`I56_DROPS_FILM`). Corpus raisonne de 12 films, UN FILM
+PAR PROCESSUS : les 8 dont la palette `i48` etait deja mesuree le 14/08 (dont `000d5950`, verite
+terrain Theater, et `00162144`, famille de palette differente) plus 4 tires du corpus de 951 a
+pas regulier, pour ne pas mesurer seulement les films qui marchaient deja.
+**Resultats** — MESURE A, 12 films, **1 097 619 records delta ti=37**, 6 904 vies d'objet :
+13 187 records annoncent un des quatre champs (1,20 %), marche aboutie 13 099, cassee 88.
+Par champ (masque / lu / porte fermee) : deployed 3839/3820/0 · activated 2126/2121/894 ·
+creator 2209/2194/866 · energy 5268/5217/0. Transitions de valeur : 81/208 paires pour
+`activated`, 1601/3960 tous champs confondus. **DATER : NON** — 949 vies sur 6 904 recoivent une
+valeur d'`activated`, dont 227 seulement apres le premier record de la vie ; les huit valeurs de
+R(3) sont toutes peuplees et aucune n'est nommee. **QUI : NON, controle prescrit ECHOUE** — 0
+valeur de `creator` sur 1 328 ne tombe dans la bande des slots de bipede ; le champ couvre ses
+32 valeurs avec une queue plate, et monte a 28 sur un film a 8 joueurs : ni slot, ni index de
+joueur. Le controle de repli C2 « passe » mais est VACUEUX (5 bits, plafond 31, tous les films
+ont plus de 31 slots) — publie comme tel. **OU : OUI** — 9 043 trajectoires, 628 368
+echantillons, **610 693 (97,2 %) dans l'emprise du nuage des bipedes du meme film**, en
+coordonnees normalisees de l'AABB, sans aucune base ; 12 films sur 12, de 92,3 a 99,7 %.
+MESURE B, 12 films, **2 519 042 records delta biped** : i56 au masque 2 088 (0,083 %), **lu
+2 088, illisible 0**, sur 1 275 slots ; 519 paires consecutives, **282 chutes, 26 remontees** ;
+**282 chutes sur 282 franchissent un multiple de 16, aucune ne reste dans un quartet**.
+**La coincidence chute i56 <-> episode i54 est REFUTEE par l'elargissement : reel 7/601 (1,2 %)
+contre temoins 9 (1,5 %) et 5 (0,8 %)** — le 4,5 % publie le 14/08 etait 3 episodes sur 67 d'un
+seul film, et l'instrument le reproduit au chiffre pres sur ce film-la avant de s'effondrer sur
+les onze autres. Gates : `go build ./internal/analysis/...`, `go vet`, `go test
+./internal/analysis/filmdec/ ./internal/analysis/replay/ ./internal/games/halo_infinite/film/...`
+verts, `golangci-lint --new-from-merge-base=origin/main` 0 issue. Duree 11 a 256 s par film.
+**Conclusion / prochaine etape** : l'etape 4 (effet plein fiche) reste bloquee — l'etat actif
+n'est nomme ni sur le bipede (`i57`) ni sur l'objet (`i21`). Le seul acquis exploitable est
+geometrique. La piste suivante est designee par le recensement au masque des 31 composants de
+ti=37, publie dans le meme lot : **`equipment-charges-remaining` (i27) est annonce 16 125 fois,
+3,1 fois plus que l'energie et 7,6 fois plus que `activated`**, et `equipment-energy-delay-ticks-left`
+(i26) 10 608 fois ; les deux sont deja portes par `consumeByName` et n'attendent qu'un hook. Un
+compteur de charges qui decroit date une utilisation par construction. Hors liste prescrite de
+ce lot : porte au registre des reports avec sa condition de reprise, ainsi que la decouverte que
+`SetWorldObjectPrecisionFromLayout` n'est appelee par AUCUN chemin de production (11 films sur 12
+ont des largeurs d'axe autres que le defaut `{13,13,14}`).
