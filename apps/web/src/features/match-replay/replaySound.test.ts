@@ -13,11 +13,18 @@ import { SOUND_CUT_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
 import {
   advanceSoundCursor,
   buildSoundTimeline,
+  killSoundStem,
+  killSourceSpriteStem,
   resyncSoundCursor,
   SOUND_RESYNC_JUMP_MS,
   type ReplaySoundEvent,
 } from './replaySound'
 import { testReplayDoc } from './test/testDoc'
+
+/** URL de vignette telle que le backend la compose (adapter_asset_urls.go + static.URL). */
+function vignette(sprite: string): string {
+  return `/static/weapons-assets/halo_infinite/jeu/${sprite}.png`
+}
 
 /** Un kill minimal (même patron que killFx.test.ts) ; tMs est sur l'horloge gameplay. */
 function kill(over: Partial<KillEvent> = {}): KillEvent {
@@ -104,9 +111,24 @@ describe('buildSoundTimeline', () => {
     expect(tl).toEqual([])
   })
 
-  it("un kill À LA grenade sonne l'explosion (c'est elle qui a tué, pas le lancer)", () => {
-    const tl = buildSoundTimeline(docWithCouple(), [kill({ weaponKey: 'hinf_frag_grenade' })], 0)
-    expect(tl.map((e) => e.stem)).toEqual(['explosion'])
+  it("un kill À LA grenade sonne l'explosion DE SON TYPE (pas le geste du lancer)", () => {
+    // La grenade à pointes n'a PAS de weapon_key (killicon GGGL 3) : sa vignette est la
+    // seule donnée qui la nomme, et elle suffit — c'est tout l'objet de la jointure.
+    const tl = buildSoundTimeline(
+      docWithCouple(),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
+      0,
+    )
+    expect(tl.map((e) => e.stem)).toEqual(['explosion_spike'])
+  })
+
+  it('un kill À LA MÊLÉE sonne le coup qui a tué (classe MELEE, sans arme nommée)', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple(),
+      [kill({ weaponKey: '', weaponLabel: '', weaponImageUrl: vignette('killfeed-65') })],
+      0,
+    )
+    expect(tl.map((e) => e.stem)).toEqual(['melee_kill'])
   })
 
   it('les lancers sonnent par TYPE (rang -> stem), un rang hors table reste muet', () => {
@@ -183,6 +205,52 @@ describe('buildSoundTimeline', () => {
       0,
     )
     expect(tl.map((e) => e.ms)).toEqual([500, 2_000, 5_000])
+  })
+})
+
+describe('killSourceSpriteStem', () => {
+  it("rend le stem de la vignette, et rien quand il n'y a rien à lire", () => {
+    expect(killSourceSpriteStem(vignette('killfeed-46'))).toBe('killfeed-46')
+    expect(killSourceSpriteStem('killfeed-65.png')).toBe('killfeed-65')
+    expect(killSourceSpriteStem(vignette('killfeed-46') + '?v=2')).toBe('killfeed-46')
+    expect(killSourceSpriteStem('')).toBe('')
+    expect(killSourceSpriteStem(undefined)).toBe('')
+    expect(killSourceSpriteStem('/static/sounds/halo_infinite/melee_kill.wav')).toBe('')
+  })
+})
+
+describe('killSoundStem', () => {
+  it('les QUATRE grenades sonnent chacune la sienne (ordre du dépôt : frag/plasma/dynamo/spike)', () => {
+    const stems = ['killfeed-46', 'killfeed-47', 'killfeed-48', 'killfeed-49'].map((s) =>
+      killSoundStem({ weaponKey: '', weaponImageUrl: vignette(s) }),
+    )
+    expect(stems).toEqual([
+      'explosion_frag',
+      'explosion_plasma',
+      'explosion_dynamo',
+      'explosion_spike',
+    ])
+  })
+
+  it('la VIGNETTE prime sur la clé : une grenade qui a les deux ne sonne pas deux vérités', () => {
+    expect(
+      killSoundStem({
+        weaponKey: 'hinf_frag_grenade',
+        weaponImageUrl: vignette('killfeed-46'),
+      }),
+    ).toBe('explosion_frag')
+    // Et la clé de grenade, seule, ne sonne plus rien : le pack n'a pas d'explosion partagée.
+    expect(killSoundStem({ weaponKey: 'hinf_frag_grenade', weaponImageUrl: '' })).toBeUndefined()
+  })
+
+  it("une ARME garde son son : sa vignette n'est pas dans la table, la clé répond", () => {
+    expect(
+      killSoundStem({ weaponKey: 'hinf_br75', weaponImageUrl: vignette('killfeed-00') }),
+    ).toBe('hinf_br75')
+  })
+
+  it('source sans vignette ET sans clé (étiquette AMBIGU) : silence, jamais une voisine', () => {
+    expect(killSoundStem({ weaponKey: '', weaponImageUrl: '' })).toBeUndefined()
   })
 })
 

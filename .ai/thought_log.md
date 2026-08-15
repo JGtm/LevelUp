@@ -1,3 +1,89 @@
+## [2026-08-15] v7.5 rejeu 2D — quatre explosions de grenade et le coup de melee fatal : la VIGNETTE devient la cle de jointure
+
+**Statut** : Complete. Lot court : remplacer l explosion PARTAGEE des grenades par quatre sons
+distincts, et brancher les sons de melee du pack fourni.
+
+**Decision technique principale — le son d un kill se joint par la VIGNETTE, plus par le
+weapon_key.** Le chantier butait sur un fait mesure : la grenade a pointes et la melee generique
+n ont PAS de weapon_key. Verification sur pieces dans la table d autorite
+`killicon/data/rules.tsv` : la ligne `GGGL 3` (grenade a pointes, vignette `killfeed-49`) et la
+ligne `CLASSE MELEE` (vignette `killfeed-65`) ont toutes deux une colonne weapon_key VIDE — par
+construction, pas par oubli (« absente du registre d armes », « la classe EST la reponse »). La
+seule quantite que le backend publie pour ces sources est donc la VIGNETTE du kill feed, qui
+voyage dans `weaponImageUrl`, et l adapter le dit deja lui-meme : « une melee ou une grenade n a
+pas de nom propre : l icone se sert quand meme, c est elle qui porte le sens »
+(`adapter_asset_urls.go`). Une table `KILL_SPRITE_SOUND_STEMS` (5 entrees) est donc posee AVANT
+la table par cle : les quatre grenades et la melee y repondent, tout le reste retombe sur la cle
+canonique. Aucun type n est devine.
+
+**Ce qui a ete verifie AVANT de retirer les grenades de `WEAPON_SOUND_STEMS`** (cette table sert
+aussi aux TIRS) : mesure sur les 23 artefacts locaux — **0 des 17 904 tirs** porte une cle de
+grenade. Le retrait ne rend donc muet aucun evenement existant. Les 1 117 LANCERS du corpus
+(892 frag / 80 plasma / 87 dynamo / 58 spike) gardent leur table et leurs 4 fichiers, inchanges.
+
+**Resultats observes — la table de pont, relue ligne a ligne** :
+
+| entree killicon | vignette | weapon_key | son branche |
+|---|---|---|---|
+| `GGGL 0` (cinetique UNSC) | killfeed-46 | hinf_frag_grenade | `explosion_frag` |
+| `GGGL 1` (plasma Covenant) | killfeed-47 | hinf_plasma_grenade | `explosion_plasma` |
+| `GGGL 2` (lightning) | killfeed-48 | hinf_dynamo_grenade | `explosion_dynamo` |
+| `GGGL 3` (cinetique Banished) | killfeed-49 | **aucun** | `explosion_spike` |
+| `CLASSE MELEE` | killfeed-65 | **aucun** | `melee_kill` |
+
+Chacune de ces 5 vignettes est portee par **exactement une** des 50 regles du fichier (les deux
+seuls doublons de sprite, killfeed-12 et killfeed-18, sont ailleurs). L epee et le marteau ne
+sont PAS concernes : classe ARME, vignettes 18 et 13, ils gardent leur son par cle.
+
+**Ce qui reste MUET, et pourquoi (mesure, pas supposition)** :
+- `Melee - Hit` (coup non fatal) : **non branche, fichier deliberement non verse**. Le document
+  de rejeu ne porte aucun flux de degats ni d impact — ses seuls evenements dates sont les tirs,
+  les lancers, les trajectoires et le fil des MORTS (`replay/document.go`). La seule trace d un
+  coup non fatal serait une baisse de `Point.sh`, qui vaut pour n importe quelle source : le
+  brancher la reviendrait a INVENTER un coup de melee. Verser le WAV sans le jouer casserait le
+  garde-rail « 0 asset mort ». Ligne au registre des reports avec sa condition de reprise
+  (flux de degats par coup, piste per-hit 0xD2 deja instruite) ;
+- 2 etiquettes de grenade sur 17 (`damagetag/data/labels.tsv`, statut AMBIGU : effet generique
+  traversant plusieurs entrees `gggl`) : non publiables, donc sans vignette, donc sans son. Les
+  14 lignes MELEE sont toutes VALIDE — la melee, elle, sonne toujours.
+
+**Assets** : 5 WAV ajoutes, `explosion.wav` (partage) supprime — le dossier passe de 27 a 31
+fichiers, 6 221 988 -> 7 143 764 octets (+921 776 o net ; 1 152 220 o ajoutes, 230 444 retires).
+Format aligne sur les 27 fichiers deja livres : PCM s16le, 48 kHz, stereo, tronque a 1,200 s
+(230 444 o chacun, taille identique au bit pres). La recette a ete VALIDEE avant usage en
+reconstruisant `throw_frag.wav` depuis sa source : meme taille exacte, une fois `-map_metadata -1`
+et `+bitexact` ajoutes (sans eux ffmpeg ecrit 60 octets de LIST en trop). Aucune normalisation :
+les niveaux sources (mean -27,6 a -39,8 dB) tombent dans la plage du pack existant (-18,7 a
+-43,6 dB), et ne pas normaliser preserve la dynamique native, comme pour les 27 autres.
+
+**Garde-rail neuf, et il traverse la frontiere Go/TS.** `replaySoundAssets.guard.test.ts` rejoue
+desormais les 5 vignettes contre `killicon/data/rules.tsv` : genre et cle attendus, unicite de
+la regle, et couverture des 4 entrees `gggl`. Motif : cette table GRANDIT a chaque saison ; un
+index d atlas qui bougerait rendrait la jointure fausse EN SILENCE, c est-a-dire qu on entendrait
+l explosion d une AUTRE grenade. Le test la rend rouge au lieu de la rendre inaudible.
+
+**Doc inversee corrigee dans le meme commit** (anti-pattern n° 9) : trois affirmations de
+l en-tete de `replaySound.ts` etaient devenues fausses — « nomme par weapon_key » (il y a deux
+familles de noms), « les KILLS du fil (weapon_key present) », et « UN KILL SANS weapon_key
+(melee generique) = SILENCE PROPRE », qui decrivait exactement ce que ce lot supprime.
+
+**Gate**. `node_modules/.tmp` purge, puis : `npm run typecheck` **exit 0** ; `npm run lint`
+**exit 0** (0 erreur, 19 avertissements preexistants `react-hooks/incompatible-library`) ;
+`npm run test` **exit 0** — **422 fichiers passes, 3 799 tests passes, 14 ignores** (216 s).
+
+Le PREMIER run complet avait un rouge, `PalmaresRelationsPage > rend les badges solid`,
+**depassement de delai a 5 000 ms sous contention** (12,1 s pour ce fichier). Caracterise avant
+de conclure, pas suppose : le fichier passe SEUL 14/14 en 3,47 s, il n a AUCUN lien d import avec
+le diff (verifie au grep), et ce journal documente deja DEUX FOIS ce meme echec isole non
+reproduit. Le second run complet est vert de bout en bout — c est un aleas de contention connu,
+pas une regression. Aucune couleur en dur, aucune string UI nouvelle (le lot ne touche que des
+sons).
+
+**Conclusion / prochaine etape**. Gate d ECOUTE = utilisateur : quatre explosions doivent
+s entendre differentes, et le coup de melee doit tomber sur la mort qu il cause. Deux lignes au
+`.ai/V7.5/REGISTRE_REPORTS.md` (melee non fatale, grenades AMBIGU) avec leurs conditions de
+reprise.
+
 ## [2026-08-15] v7.5 rejeu 2D — tir CONTINU et tir CHARGE : deux refus mesures, un instrument
 
 **Statut** : Complete. Demande utilisateur du jour (« il est possible qu a terme j aie un son

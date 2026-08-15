@@ -1,22 +1,47 @@
 /**
  * replaySound.ts — CE QUI SONNE, QUAND, ET COMMENT LE CURSEUR NE REJOUE RIEN DEUX FOIS.
  *
- * LA SOURCE (lot 5, plan parité) : un pack de WAV fourni par l'utilisateur (2026-08-13),
- * rangé sous `static/sounds/halo_infinite/` et nommé par weapon_key — la clé canonique du
- * registre d'armes (weapon_names.toml), PAS le nom de fichier FR des images (piège
- * Crémateur/Cindershot). Le manifeste ci-dessous est la liste EXACTE des fichiers livrés ;
- * le garde-rail `replaySoundAssets.guard.test.ts` le rejoue contre le dossier : un stem
- * sans fichier ou un fichier sans stem casse le test, jamais l'écoute.
+ * LA SOURCE (lot 5, plan parité) : un pack de WAV fourni par l'utilisateur (2026-08-13,
+ * complété le 2026-08-15 par les quatre explosions de grenade et le coup de mêlée fatal),
+ * rangé sous `static/sounds/halo_infinite/`. DEUX FAMILLES DE NOMS, parce qu'il y a deux
+ * natures : une ARME porte le nom de sa clé canonique (weapon_names.toml, PAS le nom de
+ * fichier FR des images — piège Crémateur/Cindershot) ; un ÉVÉNEMENT que le registre
+ * d'armes ne nomme pas porte le nom de l'événement (`throw_*`, `explosion_*`,
+ * `melee_kill`). Le manifeste ci-dessous est la liste EXACTE des fichiers livrés ; le
+ * garde-rail `replaySoundAssets.guard.test.ts` le rejoue contre le dossier : un stem sans
+ * fichier ou un fichier sans stem casse le test, jamais l'écoute.
  *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
- *  - les KILLS du fil (weapon_key présent ET dans le manifeste) — l'horloge est celle du
- *    fil (`alignFeed`), la même qui date le flash des fiches et l'effet de mort :
- *    un son qui partirait sur l'horloge brute sonnerait à côté de son image ;
+ *  - les KILLS du fil (source résolue : vignette OU weapon_key, cf. `killSoundStem`) —
+ *    l'horloge est celle du fil (`alignFeed`), la même qui date le flash des fiches et
+ *    l'effet de mort : un son qui partirait sur l'horloge brute sonnerait à côté de son
+ *    image ;
  *  - les LANCERS de grenade (doc.grenades, l'auteur est écrit dans le film), par TYPE —
  *    le pack porte les quatre lancers (frag/plasma/dynamo/spike, item 5.3) ;
- *  - un kill À LA grenade sonne l'explosion (c'est elle qui a tué, pas le geste du
- *    lancer) — la Spike n'a pas de weapon_key (mesure killicon) : son kill reste muet.
+ *  - un kill À LA grenade sonne l'explosion DE SON TYPE (c'est elle qui a tué, pas le
+ *    geste du lancer), et un kill À LA MÊLÉE sonne le coup qui a tué — les deux passent
+ *    par la VIGNETTE de la source de dégât, pas par le weapon_key (cf. ci-dessous).
+ *
+ * POURQUOI LA VIGNETTE, ET PAS LE weapon_key, POUR LES GRENADES ET LA MÊLÉE. Le registre
+ * d'armes ne porte NI la grenade à pointes NI la mêlée générique : la table de pont
+ * `killicon/data/rules.tsv` leur donne une ligne SANS weapon_key (GGGL 3 et CLASSE MELEE).
+ * Ce qui les distingue est donc la seule quantité que le backend publie pour elles — la
+ * vignette du kill feed, qui voyage dans `weaponImageUrl`, et dont l'adapter dit lui-même
+ * qu'elle « porte le sens » là où le nom propre n'existe pas (adapter_asset_urls.go). Les
+ * quatre grenades ont chacune la leur (GGGL 0..3 -> killfeed-46..49) et la mêlée la
+ * sienne (killfeed-65) : quatre explosions distinctes et un son de mêlée, sans jamais
+ * DEVINER un type. Le garde-rail rejoue cette table contre `rules.tsv`.
+ *
+ * CE QUI RESTE MUET ICI, ET POURQUOI (mesuré, pas supposé) :
+ *  - le COUP DE MÊLÉE NON FATAL (`Melee - Hit` du pack) : le document de rejeu ne porte
+ *    aucun flux de dégâts ni d'impact — ses seuls événements datés sont les tirs, les
+ *    lancers, les trajectoires et le fil des MORTS (replay/document.go). Le brancher
+ *    demanderait de déduire un impact d'une baisse de bouclier, c'est-à-dire de l'inventer.
+ *    Le fichier n'est donc pas livré : un asset que rien ne joue casserait le garde-rail ;
+ *  - les 2 étiquettes de grenade AMBIGU sur 17 (`damagetag/data/labels.tsv` : effet
+ *    générique traversant plusieurs entrées `gggl`) : non publiables, donc sans vignette,
+ *    donc sans son. Le type n'est pas établi : silence, jamais l'explosion d'une voisine.
  *
  * LA DENSITÉ N'EST PAS FILTRÉE — DÉCISION UTILISATEUR DU 2026-08-15, mot pour mot : « tu me
  * les mets TOUS autant que possible pour le moment, je verrai si c'est trop ensuite ». Il n'y
@@ -34,9 +59,11 @@
  * sans son du pack (Bandit EVO, MA5K Avenger, SPNKr à combustible, carabine Vestige) le
  * restent donc par construction — c'est la même règle que les libellés et les effets.
  *
- * UN KILL SANS weapon_key (mêlée générique, objets) OU UNE ARME SANS FICHIER (Bandit,
- * MA5K, SPNKr à combustible, Vestige — absentes du pack) = SILENCE PROPRE : jamais le son
- * d'une arme voisine, même règle que les effets de rendu (replay_labels.toml).
+ * UN KILL DONT NI LA VIGNETTE NI LA CLÉ NE RÉPONDENT (véhicules, objets explosifs, dégât
+ * global, et les armes sans fichier — Bandit, MA5K, SPNKr à combustible, Vestige) = SILENCE
+ * PROPRE : jamais le son d'une arme voisine, même règle que les effets de rendu
+ * (replay_labels.toml). La mêlée générique, elle, n'est PLUS de ceux-là : elle n'a pas de
+ * clé mais elle a une vignette, et c'est par là qu'elle sonne.
  *
  * Pas de React, pas de Web Audio ici : logique pure, testée (replaySound.test.ts).
  * La lecture (AudioContext, enveloppe de gain) vit dans replayAudio.ts.
@@ -50,13 +77,16 @@ import type { ReplayDocumentReady } from './replayNormalize'
 /**
  * Son d'ARME par weapon_key -> stem de fichier sous static/sounds/{slug}/.
  *
- * UNE SEULE TABLE POUR LES TIRS ET LES KILLS : c'est la même arme, donc le même son. La
- * séparer en deux ferait deux vérités à tenir à jour, et le jour où elles divergeraient un
- * tir et le kill qu'il produit ne sonneraient plus pareil.
+ * UNE SEULE TABLE POUR LES TIRS ET LES KILLS D'ARME : c'est la même arme, donc le même
+ * son. La séparer en deux ferait deux vérités à tenir à jour, et le jour où elles
+ * divergeraient un tir et le kill qu'il produit ne sonneraient plus pareil.
  *
- * Les armes portent leur propre stem (fichier nommé par la clé) ; les trois grenades à
- * weapon_key pointent l'explosion PARTAGÉE — un seul fichier, pas trois copies (règle
- * « ≤ 2 copies »). Une clé absente de cette table = silence propre.
+ * LES GRENADES N'Y SONT PAS, et ce n'est pas un oubli : leur son est celui de l'EXPLOSION,
+ * qui n'appartient qu'aux kills — le film ne publie aucun tir de grenade (mesure du
+ * 2026-08-15 sur les 23 artefacts locaux : 0 des 17 904 tirs porte une clé de grenade). Le
+ * lancer, lui, a sa propre table (THROW_SOUND_STEMS) et sa propre horloge.
+ *
+ * Une clé absente de cette table = silence propre.
  */
 export const WEAPON_SOUND_STEMS: Readonly<Record<string, string>> = {
   hinf_ma40_ar: 'hinf_ma40_ar',
@@ -81,9 +111,6 @@ export const WEAPON_SOUND_STEMS: Readonly<Record<string, string>> = {
   hinf_skewer: 'hinf_skewer',
   hinf_m41_spnkr: 'hinf_m41_spnkr',
   hinf_stalker_rifle: 'hinf_stalker_rifle',
-  hinf_frag_grenade: 'explosion',
-  hinf_plasma_grenade: 'explosion',
-  hinf_dynamo_grenade: 'explosion',
 }
 
 /**
@@ -96,6 +123,33 @@ export const THROW_SOUND_STEMS: readonly string[] = [
   'throw_dynamo',
   'throw_spike',
 ]
+
+/**
+ * Son d'un KILL dont la SOURCE DE DÉGÂT n'a pas de nom propre — grenades et mêlée : la
+ * vignette du kill feed -> stem de fichier.
+ *
+ * LA CLÉ EST LE STEM DE LA VIGNETTE (`killfeed-NN`), parce que c'est la seule quantité que
+ * le backend publie pour ces sources : `killicon/data/rules.tsv` leur donne une ligne sans
+ * weapon_key (GGGL 3 = grenade à pointes, CLASSE MELEE = geste partagé par tout l'arsenal).
+ * L'ordre des grenades est celui du dépôt, établi par deux chaînes indépendantes :
+ * 0 Fragmentation, 1 Plasma, 2 Dynamo, 3 Spike (RECETTE_LOADOUT §8, replay_labels.toml),
+ * et `rules.tsv` le reporte tel quel sur les vignettes 46 à 49.
+ *
+ * CETTE TABLE PASSE AVANT WEAPON_SOUND_STEMS sur un kill : les trois grenades qui ONT une
+ * clé (frag, plasma, dynamo) sonneraient sinon deux vérités concurrentes. Une vignette
+ * absente de cette table (toutes les armes, les véhicules, les objets) retombe sur la clé
+ * canonique, et une source sans vignette du tout reste muette.
+ *
+ * Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces cinq clés contre `rules.tsv` :
+ * un index d'atlas qui bougerait, ou une cinquième grenade, casse le test — jamais l'écoute.
+ */
+export const KILL_SPRITE_SOUND_STEMS: Readonly<Record<string, string>> = {
+  'killfeed-46': 'explosion_frag',
+  'killfeed-47': 'explosion_plasma',
+  'killfeed-48': 'explosion_dynamo',
+  'killfeed-49': 'explosion_spike',
+  'killfeed-65': 'melee_kill',
+}
 
 /** Un événement sonore posé sur l'horloge du rejeu. */
 export interface ReplaySoundEvent {
@@ -116,6 +170,33 @@ export function shotSoundStem(doc: ReplayDocumentReady, weaponID: string | undef
   if (!weaponID) return undefined
   const key = doc.weaponLabels?.[weaponID]?.key
   return key ? WEAPON_SOUND_STEMS[key] : undefined
+}
+
+/**
+ * killSourceSpriteStem — le stem de la vignette d'une source de dégât, lu dans son URL.
+ *
+ * Le backend compose `/static/weapons-assets/{slug}/jeu/killfeed-NN.png` (adapter_asset_urls.go,
+ * `static.URL` : ni empreinte ni paramètre de version). Le stem est donc le nom de fichier
+ * sans son extension. Rien à extraire = chaîne vide, jamais une supposition.
+ */
+export function killSourceSpriteStem(imageURL: string | undefined): string {
+  const path = (imageURL ?? '').split('?')[0]
+  const file = path.slice(path.lastIndexOf('/') + 1)
+  return file.endsWith('.png') ? file.slice(0, -'.png'.length) : ''
+}
+
+/**
+ * killSoundStem — le fichier d'un KILL, ou undefined pour le silence.
+ *
+ * DEUX JOINTURES, DANS CET ORDRE : la vignette de la source d'abord (c'est elle qui sait
+ * distinguer les quatre grenades et la mêlée, que le registre d'armes ne nomme pas), la clé
+ * canonique ensuite (toutes les armes). Aucune des deux ne répond = silence propre.
+ */
+export function killSoundStem(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): string | undefined {
+  const sprite = killSourceSpriteStem(kill.weaponImageUrl)
+  const bySprite = sprite ? KILL_SPRITE_SOUND_STEMS[sprite] : undefined
+  if (bySprite) return bySprite
+  return kill.weaponKey ? WEAPON_SOUND_STEMS[kill.weaponKey] : undefined
 }
 
 /**
@@ -140,7 +221,7 @@ export function buildSoundTimeline(
   }
   if (kills.length > 0 && doc.tracks.length > 0) {
     for (const k of alignFeed(kills, t0Ms, doc).kills) {
-      const stem = k.weaponKey ? WEAPON_SOUND_STEMS[k.weaponKey] : undefined
+      const stem = killSoundStem(k)
       if (stem) out.push({ ms: k.replayMs, stem })
     }
   }
