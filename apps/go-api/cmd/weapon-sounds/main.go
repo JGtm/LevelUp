@@ -9,8 +9,18 @@
 //
 // Plan de rattachement : `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md`.
 //
-// Mode `probe` (etape 1) : decompresse des `sbnk` et statue sur le format reel de leur
-// charge utile — bank Wwise verbatim (`BKHD`/`HIRC`) ou variante maison.
+// MODES :
+//
+//	probe    (etape 1) statue sur le format des `sbnk` (bank Wwise verbatim ?)
+//	map      (etape 2) d'un `.pck` d'arme vers ses evenements Wwise et leurs `.wem`
+//	noms     (etape 3) dumpe les chunks `STID`, seule source de noms en clair
+//	lien     (etape 3) relie les evenements aux tags `snd!` puis aux tags `weap`
+//	banks    (etape 3) histogramme des `sbnk` references par les `snd!`
+//	sndscan  (etape 3) cherche des identifiants arbitraires dans les `snd!`
+//
+// ATTENTION MEMOIRE : `himodule.Open` lit le module ENTIER en memoire. Le module qui porte
+// les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
+// deux dans le meme processus : les modes s'echangent leurs resultats par le fichier JSON.
 package main
 
 import (
@@ -28,6 +38,9 @@ import (
 // d'assaut y sont tous localises).
 const moduleParDefaut = "pc/globals/globals-rtx-new.module"
 
+// moduleTags : le module qui porte les `snd!` et les `weap` (14 228 et 111).
+const moduleTags = "any/globals/globals-rtx-new.module"
+
 // wemTemoins : IDs `.wem` reellement presents dans `sb_010_wea_un_assaultrifle.pck`.
 // Ils servent de temoins pour reconnaitre le `sbnk` du fusil d'assaut sans nom de tag.
 var wemTemoins = []uint32{14649067, 1002108249, 1004646855, 1009888121, 665681453, 253891388}
@@ -35,13 +48,13 @@ var wemTemoins = []uint32{14649067, 1002108249, 1004646855, 1009888121, 66568145
 func main() {
 	deploy := flag.String("deploy", "", "racine `deploy` des archives du jeu (auto-detectee si vide)")
 	module := flag.String("module", moduleParDefaut, "module a sonder, relatif a la racine deploy")
-	mode := flag.String("mode", "probe", "probe | map | noms")
+	mode := flag.String("mode", "probe", "probe | map | noms | lien | banks | sndscan")
 	pck := flag.String("pck", "", "chemin d'un .pck d'arme (mode map)")
-	sortie := flag.String("json", "", "fichier JSON de sortie (mode map, facultatif)")
+	sortie := flag.String("json", "", "fichier JSON (sortie du mode map, entree du mode lien)")
 	// Defaut = tous : l'heuristique « une bank d'arme est petite » est FAUSSE (mesure :
 	// la bank du fusil d'assaut fait 1,5 Mo, absente des 60 plus petites).
 	limite := flag.Int("limite", 0, "nombre de tags sbnk decompresses par la sonde (0 = tous)")
-	wem := flag.String("wem", "", "IDs .wem temoins, separes par des virgules (defaut : fusil d'assaut)")
+	wem := flag.String("wem", "", "IDs recherches, separes par des virgules (defaut : fusil d'assaut)")
 	flag.Parse()
 
 	racine, err := resoudreDeploy(*deploy)
@@ -68,6 +81,20 @@ func main() {
 		err = cartographier(chemin, *pck, *sortie)
 	case "noms":
 		err = listerNoms(chemin)
+	case "lien":
+		if *sortie == "" {
+			err = fmt.Errorf("le mode lien exige -json (le rapport produit par -mode map)")
+			break
+		}
+		err = relier(chemin, *sortie)
+	case "banks":
+		err = histogrammeBanks(chemin, temoins[0])
+	case "sndscan":
+		err = sonderSnd(chemin, temoins)
+	case "qui":
+		err = quiRefere(chemin, temoins[0])
+	case "remonter":
+		err = remonter(chemin, temoins[0], *limite)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
@@ -85,7 +112,7 @@ func resoudreDeploy(explicite string) (string, error) {
 	return himap.DeployRoot()
 }
 
-// parserWem lit la liste d'IDs temoins ; vide rend les temoins du fusil d'assaut.
+// parserWem lit la liste d'identifiants recherches ; vide rend les temoins du fusil d'assaut.
 func parserWem(s string) ([]uint32, error) {
 	if strings.TrimSpace(s) == "" {
 		return wemTemoins, nil
