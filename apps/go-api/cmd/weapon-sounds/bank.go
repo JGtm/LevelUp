@@ -52,6 +52,12 @@ type bank struct {
 	Events  map[uint32][]uint32 // idEvent -> ids d'Action
 	Actions map[uint32]uint32   // idAction -> id de la cible
 	Enfants map[uint32][]uint32 // idConteneur -> ids enfants
+	// Switchs : conteneurs pilotes par un etat de jeu, decodes. `Enfants` n'en retient que
+	// l'etat par defaut ; cette table garde la vue complete pour l'inspection.
+	Switchs map[uint32]conteneurSwitch
+	// Compteurs de resolution des `Switch`, pour que le rendu puisse dire ce qu'il a fait
+	// plutot que de le taire.
+	SwParDefaut, SwVides, SwNonLus int
 }
 
 // chunks decoupe une bank en chunks {magic, charge utile}.
@@ -145,6 +151,7 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		Events:    map[uint32][]uint32{},
 		Actions:   map[uint32]uint32{},
 		Enfants:   map[uint32][]uint32{},
+		Switchs:   map[uint32]conteneurSwitch{},
 	}
 	for _, o := range objs {
 		b.Objets[o.ID] = o
@@ -170,6 +177,13 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 			if acts, ok := lireActionsEvent(o.Data, b.Objets); ok {
 				b.Events[o.ID] = acts
 			}
+		case typeSwitch:
+			// UN `Switch` N'EST PAS UN LOT DE VARIANTES. Il choisit ses enfants selon un
+			// etat de jeu (distance, materiau...). Retenir tous ses enfants revenait a
+			// melanger des etats qui ne coexistent jamais : mesure a l'origine de ce
+			// correctif, 31 coups reconstitues sur 107 en portaient un, jusqu'a 71 % du
+			// melange. On ne retient donc que l'etat par defaut.
+			b.resoudreSwitch(o, connu)
 		default:
 			if enf := lireEnfants(o.Data, connu); len(enf) > 0 {
 				b.Enfants[o.ID] = enf
@@ -177,6 +191,34 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		}
 	}
 	return b, nil
+}
+
+// resoudreSwitch retient, pour un conteneur `Switch`, les enfants de son etat par defaut.
+//
+// Trois issues, et chacune est COMPTEE plutot que silencieuse :
+//
+//   - etat par defaut porteur d'enfants : c'est lui qu'on retient ;
+//   - etat par defaut vide : le conteneur ne joue RIEN tant que le jeu n'impose pas d'etat.
+//     On n'invente aucun repli — 200 etats sur l'ensemble des banks sont declares sans
+//     aucun enfant, c'est une situation normale du format, pas un echec de lecture ;
+//   - table non decodee : on retombe sur l'heuristique generique, faute de mieux.
+func (b *bank) resoudreSwitch(o objetHIRC, connu func(uint32) bool) {
+	c := lireSwitch(o.Data, connu)
+	if !c.Lu {
+		b.SwNonLus++
+		if enf := lireEnfants(o.Data, connu); len(enf) > 0 {
+			b.Enfants[o.ID] = enf
+		}
+		return
+	}
+	b.Switchs[o.ID] = c
+	enf := c.EnfantsParDefaut()
+	if len(enf) == 0 {
+		b.SwVides++
+		return
+	}
+	b.SwParDefaut++
+	b.Enfants[o.ID] = enf
 }
 
 // lireSourceID tente les deux layouts connus de `AkBankSourceData` et valide le resultat.

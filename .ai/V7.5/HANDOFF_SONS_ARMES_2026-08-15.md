@@ -109,7 +109,19 @@ mal servies. Le nombre est inconnu — c'est la premiere chose a etablir.
    refus de perspective sont mesures contre une reference absurde. Le defaut etait connu
    comme lecon de methode ; il est desormais un defaut ACTIF, a corriger avec le garde-fou.
 
-9. **LES CONTENEURS `Switch` SONT TRAITES COMME DES CONTENEURS ALEATOIRES.** C'est le
+9. ~~**LES CONTENEURS `Switch` SONT TRAITES COMME DES CONTENEURS ALEATOIRES.**~~ **CORRIGE**
+   (etape 12). Le decodeur est dans `conteneurs.go`, branche par `bank.go` -> `resoudreSwitch` :
+   seuls les enfants de l'ETAT PAR DEFAUT sont retenus, et les trois issues sont comptees
+   (etat porteur / etat vide / table non decodee). Mesure : 440 tables sur 445 decodees et
+   validees. 28 coups de 1re personne changent, le lot de candidats se reduisant d'un facteur
+   3 a 5 (sniper 30 -> 6, Needler 40 -> 8, MA40 133 -> 45 wem). **Le Needler retrouve sa 1re
+   personne** : son evenement etait refuse par le garde-fou de duree UNIQUEMENT parce que la
+   couche `Switch` melangeait tous les etats, dont la supercombinaison. Le defaut 5 et le
+   defaut 9 n'en faisaient qu'un.
+   RESTE : le `Blend` a automation (42 conteneurs sur 303) n'est pas traite, et l'etat rendu
+   est toujours celui par defaut — le jeu, lui, impose un etat selon la distance.
+
+9bis. **[HISTORIQUE, pour comprendre le correctif ci-dessus]** C'est le
    defaut le plus lourd du chantier, trouve en instruisant les votes de l'utilisateur sur
    des sons ISOLES. Un `RandomSequence` tire une variante au hasard : ses candidats sont
    interchangeables. Un `Switch` choisit selon un ETAT DE JEU (distance, materiau, nombre

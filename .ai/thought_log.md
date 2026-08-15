@@ -1,3 +1,35 @@
+## [2026-08-15] Sons d'armes — le `Switch` rendu par etat, et le Needler qui revient
+
+**Statut** : Etape 12 COMPLETE (gates 12a et 12b). Defaut 9 du handoff corrige, defaut 5
+explique retrospectivement. Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : `bank.go` ne retient plus, pour un conteneur `Switch`,
+que les enfants de son ETAT PAR DEFAUT (`resoudreSwitch`). Trois issues, toutes COMPTEES
+plutot que silencieuses : etat par defaut porteur d'enfants, etat par defaut vide — le
+conteneur ne joue alors rien, et on n'invente aucun repli puisque 200 etats sont declares
+sans enfant dans le format —, table non decodee, ou l'on retombe sur l'heuristique generique.
+
+**Resultats observes** : 28 coups de 1re personne changent, tous dans le meme sens, le lot
+de candidats se reduisant d'un facteur 3 a 5 : sniper 30 -> 6 candidats sur sa couche Switch
+(32 -> 8 wem sur l'evenement), shotgun et skewer idem, Needler 40 -> 8, MA40 et MA5K
+133 -> 45 wem. Le compte annonce par l'inventaire se verifie exactement.
+
+RESULTAT NON PREVU, et meilleure preuve du correctif : **le Needler retrouve sa 1re
+personne**. Son evenement `7474d8d8` etait refuse par le garde-fou de duree (rapport 26)
+uniquement parce que sa couche `Switch` melangeait tous les etats, dont la supercombinaison
+a 1,5-3,9 s. Elaguee, la mediane redescend et l'appariement passe. Le defaut de perspective
+et le defaut `Switch` n'en faisaient qu'un : le garde-fou de l'etape 10 soignait le symptome.
+Aucun vote orphelin, 44/44 se rattachent.
+
+Fausse alerte a retenir : la premiere regeneration rendait 53 armes au lieu de 55. Pas une
+regression, un oubli du drapeau `-banks` — les banks orphelines (Mutilator `8827aa7e`,
+Carabine Vestige `09089e7e`) ne sont recoltees que si on les nomme.
+
+**Conclusion / prochaine etape** : reste ouvert le `Blend` a automation (42 conteneurs sur
+303) et le fait que l'etat rendu est celui par defaut, alors que le jeu impose un etat selon
+la distance. Ensuite : le critere de choix degenere (defaut 8), qui donne encore a l'epee
+infectee une reference de 25,71 s.
+
 ## [2026-08-15] Sons d'armes — cartographier les conteneurs AVANT de les corriger
 
 **Statut** : Etape 12, gate 12a CLOS (inventaire complet et statue). Gate 12b non entame
