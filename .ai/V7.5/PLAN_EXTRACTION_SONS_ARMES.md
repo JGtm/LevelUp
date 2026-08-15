@@ -506,6 +506,44 @@ wem et reste invisible dans `lot1.json`.
 A NOTER pour la rafale : l'epee n'a pas de cadence, le script retombe donc sur son defaut de
 400 coups/min et empile 10 coups en 2,84 s. Une arme de melee ne doit PAS avoir de rafale.
 
+### 2026-08-15 — Etape 9 : gains appliques, perspectives separees, banks orphelines
+
+TROIS CORRECTIFS, dans l'ordre convenu avec l'utilisateur.
+
+**1. Les gains.** Nouveau lecteur `proprietes.go` : layout `AkPropBundle` decode depuis
+l'offset 14 de la charge utile d'un `Sound`, apres `NodeInitialFxParams`. Validation par
+plausibilite (nombre de proprietes borne, identifiants connus, valeurs finies dans des
+plages realistes) — un layout qui aurait derive echoue au controle au lieu de rendre des
+gains fantaisistes. **62 572 objets sur 62 753 se decodent, soit 100 %.** Mesures :
+5 312 sons portent un volume non nul, jusqu'a **-96 dB** ; **aucun delai** (le `t=0` du
+mixage etait donc correct) ; 60 sons a hauteur modifiee. Le gain est desormais applique au
+mixage — additionner a gain unitaire faisait arriver au premier plan des couches de renfort
+censees rester en arriere.
+
+**2. Les perspectives.** Les evenements vont par paires mono/stereo : troisieme et premiere
+personne. L'ancien critere `max(couches, wem)` en choisissait une au hasard — et etait
+carrement degenere sur l'epee (34 evenements a une couche, six a egalite). On rend desormais
+UN COUP PAR (MODE, PERSPECTIVE), etiquete. DECISION PRODUIT de l'utilisateur : pour le rejeu
+2D, la camera n'est pas a la premiere personne, donc **la 3P est la perspective pertinente**
+— la rafale la suit par defaut.
+
+DEUX VALIDATIONS INDEPENDANTES de ce correctif, obtenues sans les viser :
+- pour l'epee, la 1P retenue est `110deea3`, exactement l'evenement qu'un agent avait
+  recommande par analyse acoustique separee ;
+- pour le Ravageur, le mode 2 en 1P est `be684013`, exactement l'evenement que
+  l'utilisateur avait vote a l'oreille.
+
+**3. Les banks orphelines.** Une arme peut avoir PLUSIEURS banks, et celles dont tous les
+sons sont embarques n'ont aucun `.pck` : l'appariement par intersection ne peut pas les
+trouver. Nouveau drapeau `-banks` pour les demander explicitement. Recolte : `8827aa7e`
+(16 evenements, 129 sons — la bank de tir du Mutilator, jamais moissonnee) et `09089e7e`
+(8 evenements, 83 sons — la Carabine Vestige, qui n'avait plus besoin d'etre greffee a la
+main). Total : **10 754 `.wav` embarques**, 55 armes en passe 1, 37 avec sons de tir.
+
+RESTE OUVERT : les 989 banks a chunks non imprimables (decoupeur qui derape) et
+l'exploitation du paquet RANGED (aleas de volume et de hauteur par lecture, qui expliquent
+qu'un meme son ne sonne jamais deux fois pareil en jeu).
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs

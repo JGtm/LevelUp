@@ -104,6 +104,30 @@ func cartographierLot(cheminModule, dossierPck, sortie string) error {
 			runtime.GC()
 		}
 	}
+	// BANKS SUPPLEMENTAIRES. Une arme peut avoir PLUSIEURS banks, et celles dont tous les
+	// sons sont embarques n'ont aucun `.pck` pour les designer : l'appariement par
+	// intersection ne peut donc pas les trouver. Mesure : la bank `8827aa7e`, vers laquelle
+	// pointent les deux modes de tir du Mutilator, n'etait dans aucune des 54 entrees — ses
+	// sons n'avaient jamais ete moissonnes. On les traite ici sur demande explicite.
+	for _, gid := range banksSupplementaires {
+		f, ok := trouverBankParGid(banks, gid)
+		if !ok {
+			fmt.Printf("  bank %08x : ABSENTE de ce module\n", gid)
+			continue
+		}
+		// Nom de pack FICTIF, avec une faction valide pour que la derivation du dossier
+		// fonctionne. Ces banks n'ont pas de pack : c'est justement pourquoi il faut les
+		// demander explicitement.
+		entree, err := analyserPourPck(m, f, map[uint32]bool{},
+			filepath.Join(dossierPck, fmt.Sprintf("sb_010_wea_bt_bank%08x.pck", gid)))
+		if err != nil {
+			fmt.Printf("  bank %08x : echec %v\n", gid, err)
+			continue
+		}
+		fmt.Printf("  bank %08x : %2d events, %3d wem embarques (supplementaire)\n",
+			gid, len(entree.Evenements), entree.WemsEmbarques)
+		rap.Armes = append(rap.Armes, entree)
+	}
 	rapporterMemoire("sous-passe B terminee")
 
 	blob, err := json.MarshalIndent(rap, "", " ")
@@ -171,6 +195,21 @@ func associerBanks(m *himodule.Module, banks []himodule.File, proprio map[uint32
 // dossierEmbarques : si renseigne, la passe 1 y ecrit aussi les `.wem` embarques de chaque
 // bank, dans un sous-dossier par arme. Renseigne par le drapeau -emb.
 var dossierEmbarques string
+
+// banksSupplementaires : banks a analyser EN PLUS de celles appariees a un `.pck`.
+// Renseigne par le drapeau -banks. Sert aux banks entierement embarquees, qu'aucune
+// intersection d'identifiants ne peut designer.
+var banksSupplementaires []uint32
+
+// trouverBankParGid retrouve une entree de bank par son global tag id.
+func trouverBankParGid(banks []himodule.File, gid uint32) (himodule.File, bool) {
+	for _, f := range banks {
+		if f.GlobalID == gid {
+			return f, true
+		}
+	}
+	return himodule.File{}, false
+}
 
 // analyserPourPck : SOUS-PASSE B. Decompresse UNE bank et n'en garde que l'analyse.
 func analyserPourPck(m *himodule.Module, f himodule.File, ids map[uint32]bool, cheminPck string) (armeLot, error) {

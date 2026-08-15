@@ -39,10 +39,14 @@ type bank struct {
 	// Embarques : `.wem` stockes dans la bank (chunk DIDX) -> offset et taille dans DATA.
 	Embarques map[uint32][2]uint32
 	Objets    map[uint32]objetHIRC
-	Sons      map[uint32]uint32   // idObjet Sound -> id .wem
-	Events    map[uint32][]uint32 // idEvent -> ids d'Action
-	Actions   map[uint32]uint32   // idAction -> id de la cible
-	Enfants   map[uint32][]uint32 // idConteneur -> ids enfants
+	Sons      map[uint32]uint32 // idObjet Sound -> id .wem
+	// Gains : id .wem -> volume en dB declare par son objet Sound. Mesure : 5 312 sons sur
+	// 62 753 portent un volume non nul, jusqu'a -96 dB. Additionner les couches a gain
+	// unitaire ecrasait donc des renforts censes rester en arriere-plan.
+	Gains   map[uint32]float32
+	Events  map[uint32][]uint32 // idEvent -> ids d'Action
+	Actions map[uint32]uint32   // idAction -> id de la cible
+	Enfants map[uint32][]uint32 // idConteneur -> ids enfants
 }
 
 // chunks decoupe une bank en chunks {magic, charge utile}.
@@ -132,6 +136,7 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		Embarques: embarques,
 		Objets:    make(map[uint32]objetHIRC, len(objs)),
 		Sons:      map[uint32]uint32{},
+		Gains:     map[uint32]float32{},
 		Events:    map[uint32][]uint32{},
 		Actions:   map[uint32]uint32{},
 		Enfants:   map[uint32][]uint32{},
@@ -146,6 +151,9 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		case typeSound:
 			if wem, ok := lireSourceID(o.Data, estWem); ok {
 				b.Sons[o.ID] = wem
+				if p := lireProprietes(o.Data); p.Lu && p.VolumeDB != 0 {
+					b.Gains[wem] = p.VolumeDB
+				}
 			}
 		case typeAction:
 			// Seules les actions « jouer » contribuent au son. Retenir les autres revenait

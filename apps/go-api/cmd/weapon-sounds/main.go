@@ -59,6 +59,7 @@ func main() {
 	sfx := flag.String("sfx", "", "dossier des .pck (deduit de -deploy si vide) ; construit l'index large")
 	emb := flag.String("emb", "", "dossier ou ecrire les .wem embarques des banks (mode lot)")
 	sbnkGid := flag.Uint("sbnk", 0, "identifiant d'une bank (mode embarques, alternative a -pck)")
+	banksSup := flag.String("banks", "", "identifiants de banks a analyser en plus (mode lot), separes par des virgules, en hexa")
 	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
 	flag.Parse()
 
@@ -147,6 +148,13 @@ func main() {
 			break
 		}
 		dossierEmbarques = *emb
+		for _, s := range strings.Split(*banksSup, ",") {
+			if s = strings.TrimSpace(s); s != "" {
+				if v, e := strconv.ParseUint(s, 16, 32); e == nil {
+					banksSupplementaires = append(banksSupplementaires, uint32(v))
+				}
+			}
+		}
 		err = cartographierLot(chemin, *pck, *sortie)
 	case "lot-tir":
 		if *sortie == "" || *sortieTir == "" {
