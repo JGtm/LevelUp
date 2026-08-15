@@ -56,6 +56,9 @@ func main() {
 	// la bank du fusil d'assaut fait 1,5 Mo, absente des 60 plus petites).
 	limite := flag.Int("limite", 0, "nombre de tags sbnk decompresses par la sonde (0 = tous)")
 	wem := flag.String("wem", "", "IDs recherches, separes par des virgules (defaut : fusil d'assaut)")
+	sfx := flag.String("sfx", "", "dossier des .pck (deduit de -deploy si vide) ; construit l'index large")
+	emb := flag.String("emb", "", "dossier ou ecrire les .wem embarques des banks (mode lot)")
+	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
 	flag.Parse()
 
 	racine, err := resoudreDeploy(*deploy)
@@ -69,6 +72,24 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "option -wem invalide:", err)
 		os.Exit(1)
+	}
+
+	// INDEX LARGE. Sans lui, un `sourceID` n'est accepte que s'il appartient au pack de
+	// l'arme — ce qui faisait disparaitre les couches partagees entre armes, precisement
+	// celles qui manquaient a l'oreille. Les garde-fous STRUCTURELS (listes d'enfants et
+	// d'actions validees contre les objets de la bank) restent inchanges.
+	if !*etroit {
+		dossier := *sfx
+		if dossier == "" {
+			dossier = dossierSFXParDefaut(racine)
+		}
+		idx, errIdx := indexTousPcks(dossier)
+		if errIdx != nil {
+			fmt.Fprintln(os.Stderr, "index large indisponible, validation etroite:", errIdx)
+		} else {
+			indexLarge = idx
+			fmt.Printf("index large : %d identifiants .wem sur tous les packs\n", len(indexLarge))
+		}
 	}
 
 	switch *mode {
@@ -100,11 +121,29 @@ func main() {
 		err = sonsDeTir(chemin, temoins[0])
 	case "cadence":
 		err = sonderCadence(chemin, temoins[0])
+	case "arbre":
+		if *pck == "" {
+			err = fmt.Errorf("le mode arbre exige -pck")
+			break
+		}
+		profondeur := *limite
+		if profondeur <= 0 {
+			profondeur = 4
+		}
+		sortieCouches = *sortieTir
+		err = arborescence(chemin, *pck, profondeur)
+	case "embarques":
+		if *pck == "" {
+			err = fmt.Errorf("le mode embarques exige -pck")
+			break
+		}
+		err = extraireEmbarques(chemin, *pck, *sortieTir)
 	case "lot":
 		if *pck == "" || *sortie == "" {
 			err = fmt.Errorf("le mode lot exige -pck (dossier SFX) et -json (sortie)")
 			break
 		}
+		dossierEmbarques = *emb
 		err = cartographierLot(chemin, *pck, *sortie)
 	case "lot-tir":
 		if *sortie == "" || *sortieTir == "" {

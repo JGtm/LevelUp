@@ -32,11 +32,15 @@ import (
 )
 
 type armeLot struct {
-	Pck        string           `json:"pck"`
-	Arme       string           `json:"arme"`
-	SbnkGlobal uint32           `json:"sbnk_global_id"`
-	WemsDuPck  int              `json:"wems_du_pck"`
-	Evenements []evenementRendu `json:"evenements"`
+	Pck        string `json:"pck"`
+	Arme       string `json:"arme"`
+	SbnkGlobal uint32 `json:"sbnk_global_id"`
+	WemsDuPck  int    `json:"wems_du_pck"`
+	// WemsEmbarques : sons portes par la bank elle-meme (chunk DIDX), absents du `.pck`.
+	// Ils representent souvent PLUS de contenu que le pack — 398 contre 359 sur le MA40.
+	WemsEmbarques   int              `json:"wems_embarques"`
+	EmbarquesEcrits int              `json:"embarques_ecrits"`
+	Evenements      []evenementRendu `json:"evenements"`
 }
 
 type rapportLot struct {
@@ -164,6 +168,10 @@ func associerBanks(m *himodule.Module, banks []himodule.File, proprio map[uint32
 	return meilleur, score
 }
 
+// dossierEmbarques : si renseigne, la passe 1 y ecrit aussi les `.wem` embarques de chaque
+// bank, dans un sous-dossier par arme. Renseigne par le drapeau -emb.
+var dossierEmbarques string
+
 // analyserPourPck : SOUS-PASSE B. Decompresse UNE bank et n'en garde que l'analyse.
 func analyserPourPck(m *himodule.Module, f himodule.File, ids map[uint32]bool, cheminPck string) (armeLot, error) {
 	var out armeLot
@@ -175,20 +183,30 @@ func analyserPourPck(m *himodule.Module, f himodule.File, ids map[uint32]bool, c
 	if debut < 0 {
 		return out, fmt.Errorf("chunk BKHD absent")
 	}
-	b, err := parserBank(data[debut:], func(id uint32) bool { return ids[id] })
+	b, err := parserBank(data[debut:], validateurWem(ids))
 	if err != nil {
 		return out, err
 	}
 	out = armeLot{
 		Pck: cheminPck, Arme: nomArme(cheminPck),
 		SbnkGlobal: f.GlobalID, WemsDuPck: len(ids),
+		WemsEmbarques: len(b.Embarques),
+	}
+	if dossierEmbarques != "" && len(b.Embarques) > 0 {
+		n, err := ecrireEmbarques(chunks(data[debut:]), b.Embarques,
+			filepath.Join(dossierEmbarques, nomArme(cheminPck)))
+		if err == nil {
+			out.EmbarquesEcrits = n
+		}
 	}
 	for id := range b.Events {
 		w := b.wemsDeEvent(id)
 		if len(w) == 0 {
 			continue
 		}
-		out.Evenements = append(out.Evenements, evenementRendu{IDEvent: id, Nombre: len(w), Wems: w})
+		out.Evenements = append(out.Evenements, evenementRendu{
+			IDEvent: id, Nombre: len(w), Wems: w, Couches: b.couchesDeEvent(id),
+		})
 	}
 	sort.Slice(out.Evenements, func(i, j int) bool {
 		return out.Evenements[i].Nombre > out.Evenements[j].Nombre
