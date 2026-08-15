@@ -119,6 +119,45 @@ func idsPck(chemin string) (map[uint32]bool, error) {
 	return set, nil
 }
 
+// indexTousPcks rend, pour TOUS les `.pck` du dossier, l'identifiant `.wem` -> son pack.
+//
+// POURQUOI CET INDEX EXISTE. Le parseur de bank validait chaque `sourceID` contre le seul
+// pack de l'arme. C'etait un garde-fou efficace contre les mauvais offsets, mais il
+// REJETAIT SILENCIEUSEMENT toute couche dont le son vit dans un autre pack — mecanique
+// commune, queues d'environnement. Mesure : 2 des 4 couches du fusil d'assaut et 1 des 3
+// du Skewer disparaissaient ainsi. Ce sont precisement les couches qui manquaient a
+// l'oreille. L'index large (environ 90 000 identifiants sur 2^32) reste un filtre tres
+// selectif, tout en laissant passer les couches partagees.
+func indexTousPcks(dossier string) (map[uint32]string, error) {
+	chemins, err := filepath.Glob(filepath.Join(dossier, "*.pck"))
+	if err != nil {
+		return nil, err
+	}
+	if len(chemins) == 0 {
+		return nil, fmt.Errorf("aucun .pck dans %s", dossier)
+	}
+	out := make(map[uint32]uint32, 1<<17)
+	source := make(map[uint32]string, 1<<17)
+	for _, c := range chemins {
+		ents, err := lirePck(c)
+		if err != nil {
+			continue
+		}
+		for _, e := range ents {
+			if _, vu := out[e.ID]; !vu {
+				out[e.ID] = 1
+				source[e.ID] = c
+			}
+		}
+	}
+	return source, nil
+}
+
+// dossierSFXParDefaut deduit le dossier des `.pck` de la racine `deploy` du jeu.
+func dossierSFXParDefaut(racineDeploy string) string {
+	return filepath.Join(filepath.Dir(racineDeploy), "Sound", "win", "SFX")
+}
+
 // nomFichierSansExt rend le nom de fichier prive de son extension.
 func nomFichierSansExt(chemin string) string {
 	return strings.TrimSuffix(filepath.Base(chemin), filepath.Ext(chemin))

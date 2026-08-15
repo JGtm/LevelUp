@@ -1,3 +1,39 @@
+## [2026-08-15] Sons d'armes — un tir est un empilement, et la moitie des sons manquait
+
+**Statut** : Etape 5 ajoutee au plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` et complete.
+Branche `feat/extraction-sons-armes`.
+
+**Decision technique principale** : deux defauts de conception corriges, tous deux revelés
+par une question de l'utilisateur et confirmes sur pieces, pas par intuition. (1) LE SAC
+PLAT : `wemsDeEvent` rendait tous les `.wem` atteignables sans distinguer « choisis-en un »
+(RandomSequence aleatoire) de « joue-les tous » (Blend), alors qu'un evenement porte
+plusieurs ACTIONS declenchees EN PARALLELE. Le tir du Skewer a 3 couches, celui du MA40 en a
+4, et l'evenement 546d8a24 du Skewer est un Blend de 18 enfants. Un coup est la SOMME d'une
+variante par couche : aucun `.wem` isole ne peut sonner juste. (2) LES MEDIAS EMBARQUES :
+une bank porte ses propres `.wem` dans ses chunks `DIDX`/`DATA`, absents de tout `.pck`. Le
+validateur du parseur n'acceptait que les identifiants du `.pck` de l'arme et les rejetait
+en silence. FAUSSE PISTE consignee : on a d'abord soupconne des sons PARTAGES entre armes et
+construit un index large de tous les packs (15 798 identifiants, verifie independamment) —
+sans aucun effet. C'est `DIDX` qui expliquait tout ; l'index large est conserve car il ne
+nuit pas.
+
+**Resultats observes** : MA40 — 359 sons dans le pack, **398 embarques dans la bank**, et
+2 des 4 couches du tir ne resolvaient AUCUN son avant correctif (l'evenement passe de 103 a
+133 `.wem`). Sur les 53 armes : **4642 sons dans les packs contre 5271 embarques**, soit
+plus de la moitie du contenu invisible pour toute la chaine, extraction et tri compris.
+Passe 1 relancee avec extraction des embarques (pic memoire 9,2 Go), 5669 `.wav` convertis,
+passe 2 relancee. Coup reconstitue rendu pour les **33 armes** (la plupart avec toutes leurs
+couches ; le Commando en joue 4 sur 5), plus sa rafale a la cadence du tag.
+
+**Conclusion / prochaine etape** : l'objet a juger n'est plus le `.wem` mais le coup
+reconstitue — l'outil de tri a ete refait autour de lui. TROIS POINTS DE NOMMAGE A TRANCHER
+AVEC L'UTILISATEUR, consignes au plan : `hinf_vestige_carbine` existe au registre (tag
+`3e070217`) mais aucune des 33 armes ne le porte ; `bt_enforcer` n'a pas de son de tir donc
+pas de nom, et ce n'est PAS le Déchiqueteur (`hinf_mangler` = `80977ba5`, deja attribue a
+`bt_spikerevolver`) ; enfin `static/weapons-assets/halo_infinite/jeu/index.json` porte au
+moins une incoherence interne (`hinf_cindershot` avec `nom_jeu = heatwave`), donc les noms
+affiches en heritent et ne sont pas surs tant que ce fichier n'est pas audite.
+
 ## [2026-08-15] Sons d'armes — etape 4 : 33 armes prouvees, cadence lue dans le tag
 
 **Statut** : Etape 4 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE sauf l'export

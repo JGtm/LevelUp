@@ -262,6 +262,49 @@ DEUX DEFAUTS TROUVES ET CORRIGES pendant cette etape :
    les deux paquets — et non a « == 30 », la valeur float32 s'en ecartant parfois assez pour
    arrondir a 1800 sans y etre egale. Resultat : 22 cadences retenues, 11 ecartees.
 
+### 2026-08-15 — Etape 5 : un tir est un EMPILEMENT, et la moitie des sons manquait
+
+Deux defauts de conception, tous deux revelés par une question de l'utilisateur (« un tir,
+ce serait pas la combinaison de plusieurs sons ? »), tous deux confirmés sur pieces.
+
+**1. Le sac plat.** `wemsDeEvent` rendait l'ENSEMBLE des `.wem` atteignables depuis un
+evenement, sans distinguer les deux natures de conteneur Wwise : un `RandomSequence` en mode
+aleatoire joue UN enfant, un `Blend` les joue TOUS. Or un evenement porte plusieurs ACTIONS
+qui se declenchent EN PARALLELE. Mesures : le tir du Skewer a 3 couches (un `Switch` de 5
+branches + 2 `Sound` fixes), celui du MA40 en a 4, et l'evenement `546d8a24` du Skewer est un
+`Blend` de 18 enfants. Un coup entendu est donc la SOMME d'une variante par couche — aucun
+`.wem` isole ne peut sonner juste. Ajout de `couchesDeEvent` (une entree par action) et du
+mode `arbre` qui affiche la hierarchie typee.
+
+**2. Les medias embarques, ignores.** Une bank Wwise peut porter ses propres `.wem` dans ses
+chunks `DIDX`/`DATA`, absents de tout `.pck`. Le validateur du parseur n'acceptait un
+`sourceID` que s'il appartenait au `.pck` de l'arme : ces sons etaient donc rejetes en
+silence. Mesure sur le MA40 : **359 sons dans le pack, 398 embarques dans la bank**, et deux
+des quatre couches du tir ne resolvaient AUCUN son avant correctif. Sur les 53 armes :
+**4642 sons dans les packs contre 5271 embarques** — plus de la moitie du contenu etait
+invisible pour toute la chaine, extraction et tri compris.
+
+FAUSSE PISTE ECARTEE EN CHEMIN, consignee parce qu'elle a coute un cycle : on a d'abord cru
+que les couches vides venaient de sons PARTAGES entre armes. Un index large de tous les
+packs a ete construit (15 798 identifiants, chiffre verifie independamment) — il n'a rien
+change. C'est `DIDX` qui expliquait tout. L'index large est conserve : il ne nuit pas et
+couvre le cas des sons partages s'il se presente.
+
+Consequence sur le livrable : l'objet a juger n'est plus le `.wem` mais le COUP RECONSTITUE
+(une variante tiree par couche, sommee). Rendu pour les 33 armes, avec sa rafale a la cadence
+du tag.
+
+NOMMAGE — DEUX POINTS A TRANCHER AVEC L'UTILISATEUR :
+
+- `hinf_vestige_carbine` (« Carabine Vestige ») existe au registre avec le tag `3e070217`,
+  mais AUCUNE des 33 armes resolues ne porte ce tag. L'arme n'est pas rattachee.
+- `bt_enforcer` n'a pas de son de tir prouve, donc pas de nom. Ce n'est PAS le Déchiqueteur :
+  `hinf_mangler` porte le tag `80977ba5`, deja attribue a `bt_spikerevolver`.
+- `static/weapons-assets/halo_infinite/jeu/index.json` contient au moins une incoherence
+  interne : l'entree `hinf_cindershot` porte `nom_jeu = heatwave`. Les noms affiches en
+  heritent — ils ne peuvent pas etre presentes comme surs tant que ce fichier n'est pas
+  audite.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs

@@ -36,11 +36,13 @@ type objetHIRC struct {
 
 // bank est une bank Wwise decodee.
 type bank struct {
-	Objets  map[uint32]objetHIRC
-	Sons    map[uint32]uint32   // idObjet Sound -> id .wem
-	Events  map[uint32][]uint32 // idEvent -> ids d'Action
-	Actions map[uint32]uint32   // idAction -> id de la cible
-	Enfants map[uint32][]uint32 // idConteneur -> ids enfants
+	// Embarques : `.wem` stockes dans la bank (chunk DIDX) -> offset et taille dans DATA.
+	Embarques map[uint32][2]uint32
+	Objets    map[uint32]objetHIRC
+	Sons      map[uint32]uint32   // idObjet Sound -> id .wem
+	Events    map[uint32][]uint32 // idEvent -> ids d'Action
+	Actions   map[uint32]uint32   // idAction -> id de la cible
+	Enfants   map[uint32][]uint32 // idConteneur -> ids enfants
 }
 
 // chunks decoupe une bank en chunks {magic, charge utile}.
@@ -81,10 +83,43 @@ func objetsHIRC(h []byte) ([]objetHIRC, error) {
 	return out, nil
 }
 
+// mediasEmbarques lit le chunk `DIDX` : les `.wem` stockes DANS la bank.
+//
+// Un `.wem` n'est pas forcement dans un `.pck`. Le chunk `DIDX` indexe des medias embarques
+// directement dans la bank (chunk `DATA`), et 694 des 1305 banks en portent. Ignorer cet
+// index revenait a rejeter les sons correspondants : c'est ce qui vidait certaines couches
+// d'un tir, l'elargissement aux autres packs n'y changeant rien.
+// Format : suite d'entrees de 12 octets {id u32, offset u32, taille u32}.
+func mediasEmbarques(ch map[string][]byte) map[uint32][2]uint32 {
+	out := map[uint32][2]uint32{}
+	d, ok := ch["DIDX"]
+	if !ok {
+		return out
+	}
+	for o := 0; o+12 <= len(d); o += 12 {
+		id := binary.LittleEndian.Uint32(d[o:])
+		off := binary.LittleEndian.Uint32(d[o+4:])
+		taille := binary.LittleEndian.Uint32(d[o+8:])
+		out[id] = [2]uint32{off, taille}
+	}
+	return out
+}
+
 // parserBank decode une bank et resout sa hierarchie.
-// estWem valide un candidat `sourceID` (typiquement : appartenance au `.pck` de l'arme).
+// estWem valide un candidat `sourceID` (typiquement : appartenance aux `.pck` connus).
+// Les medias EMBARQUES de la bank sont acceptes en plus, sans condition.
 func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 	ch := chunks(brut)
+	embarques := mediasEmbarques(ch)
+	if len(embarques) > 0 {
+		base := estWem
+		estWem = func(id uint32) bool {
+			if _, ok := embarques[id]; ok {
+				return true
+			}
+			return base(id)
+		}
+	}
 	h, ok := ch["HIRC"]
 	if !ok {
 		return nil, fmt.Errorf("bank: chunk HIRC absent")
@@ -94,11 +129,12 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		return nil, err
 	}
 	b := &bank{
-		Objets:  make(map[uint32]objetHIRC, len(objs)),
-		Sons:    map[uint32]uint32{},
-		Events:  map[uint32][]uint32{},
-		Actions: map[uint32]uint32{},
-		Enfants: map[uint32][]uint32{},
+		Embarques: embarques,
+		Objets:    make(map[uint32]objetHIRC, len(objs)),
+		Sons:      map[uint32]uint32{},
+		Events:    map[uint32][]uint32{},
+		Actions:   map[uint32]uint32{},
+		Enfants:   map[uint32][]uint32{},
 	}
 	for _, o := range objs {
 		b.Objets[o.ID] = o

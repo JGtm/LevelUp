@@ -28,6 +28,9 @@ type evenementRendu struct {
 	Nom     string   `json:"nom,omitempty"` // retrouve par hachage FNV-1, vide si inconnu
 	Nombre  int      `json:"nombre_wem"`
 	Wems    []uint32 `json:"wems"`
+	// Couches : une entree par ACTION de l'evenement, donc par couche jouee EN PARALLELE.
+	// Un coup entendu est la somme d'une variante tiree dans chaque couche — pas un `.wem`.
+	Couches []brancheRendue `json:"couches,omitempty"`
 }
 
 type rapportArme struct {
@@ -61,7 +64,7 @@ func cartographier(cheminModule, cheminPck, sortieJSON string) error {
 
 	calibrerNommage(brut, cheminPck)
 
-	b, err := parserBank(brut, func(id uint32) bool { return ids[id] })
+	b, err := parserBank(brut, validateurWem(ids))
 	if err != nil {
 		return err
 	}
