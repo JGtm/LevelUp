@@ -1,3 +1,40 @@
+## [2026-08-15] Sons d'armes — audit du format, gains appliques, et un handoff
+
+**Statut** : Etapes 8 et 9 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` completes.
+Handoff ecrit : `.ai/V7.5/HANDOFF_SONS_ARMES_2026-08-15.md`. Branche
+`feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : l'utilisateur a releve que deux specificites du format
+Wwise avaient ete manquees coup sur coup. Le defaut n'etait pas l'inattention mais la
+METHODE — le parseur n'implementait que le necessaire a l'objectif du moment et rendait un
+resultat plausible en ignorant le reste. Correctif de methode : mode `audit`, qui ENUMERE ce
+que les banks contiennent en regard de ce que le parseur lit. Il a immediatement sorti trois
+defauts invisibles autrement, dont le type d'Action jamais lu (1 976 `Stop` et 912 `Break`
+empiles comme des couches a jouer). Ensuite : lecture des proprietes `AkPropBundle` (62 572
+objets sur 62 753 decodes, soit 100 %, valides par plausibilite et non postules), separation
+des perspectives mono/stereo = 3P/1P, et recolte des banks orphelines par le drapeau
+`-banks`. Decision produit de l'utilisateur : pour le rejeu 2D la camera n'est pas a la
+premiere personne, donc **la 3P est la perspective pertinente**.
+
+**Resultats observes** : 58 armes, 422 groupes, 55 a structure prouvee, 37 avec sons de tir,
+31 nommees, 10 754 `.wav` embarques. Gains : 5 312 sons a volume non nul jusqu'a -96 dB,
+AUCUN delai (le `t=0` du mixage etait donc correct). Banks orphelines recoltees : `8827aa7e`
+(bank de tir du Mutilator, 129 sons, jamais moissonnee) et `09089e7e` (Carabine Vestige, 83
+sons). DEUX VALIDATIONS obtenues sans les viser : l'epee en 1P donne `110deea3`, l'evenement
+recommande par une analyse acoustique independante ; le Ravageur mode 2 en 1P donne
+`be684013`, celui vote a l'oreille par l'utilisateur. Quatre agents ont instruit en parallele
+le melange SPNKr (REEL dans les donnees du jeu : 33 `.wem` identiques octet pour octet entre
+deux packs, un evenement partage a 100 %), les modes du Mutilator, le Shock Rifle et la
+Vestige.
+
+**Conclusion / prochaine etape** : six defauts connus restent ouverts, listes au handoff. Le
+plus urgent est le garde-fou de DUREE sur l'appariement de perspective : il repose
+uniquement sur mono/stereo et peut donc apparier deux evenements sans rapport. Cas mesure
+signale a l'oreille sur le Needler — 0,08 s de mediane en 3P contre 2,08 s en 1P, soit un
+rapport de 26, le second etant en fait la supercombinaison. **L'oreille de l'utilisateur a
+trouve quatre defauts avant les controles automatiques** (modes de tir, melange SPNKr, bank
+du Mutilator, perspective du Needler) : ses retours valent une mesure.
+
 ## [2026-08-15] Sons d'armes — un tir est un empilement, et la moitie des sons manquait
 
 **Statut** : Etape 5 ajoutee au plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` et complete.
