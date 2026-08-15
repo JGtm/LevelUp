@@ -1,0 +1,165 @@
+package main
+
+// mapping.go — ETAPE 2 : d'un `.pck` d'arme vers ses evenements Wwise et leurs `.wem`.
+//
+// Le `.pck` est le point d'entree parce qu'il porte le nom de l'arme ET l'ensemble de ses
+// `.wem`. Cet ensemble sert deux fois : il DESIGNE le `sbnk` de l'arme parmi 1305 (celui
+// qui contient le plus de ses IDs), et il VALIDE les lectures ambigues du parseur de bank.
+
+import (
+	"bytes"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"os"
+	"sort"
+
+	"levelup/go-api/internal/himodule"
+)
+
+// magicBKHD marque le debut de la bank Wwise dans les octets du tag `sbnk`.
+var magicBKHD = []byte("BKHD")
+
+type evenementRendu struct {
+	IDEvent uint32   `json:"id_event"`
+	Nombre  int      `json:"nombre_wem"`
+	Wems    []uint32 `json:"wems"`
+}
+
+type rapportArme struct {
+	Arme        string           `json:"arme"`
+	Pck         string           `json:"pck"`
+	SbnkGlobal  uint32           `json:"sbnk_global_id"`
+	WemsDuPck   int              `json:"wems_du_pck"`
+	Evenements  []evenementRendu `json:"evenements"`
+	SonsResolus int              `json:"sons_resolus"`
+}
+
+// cartographier resout une arme : `.pck` -> `sbnk` -> evenements -> `.wem`.
+func cartographier(cheminModule, cheminPck, sortieJSON string) error {
+	ids, err := idsPck(cheminPck)
+	if err != nil {
+		return err
+	}
+	arme := nomArme(cheminPck)
+	fmt.Printf("arme     : %s\n", arme)
+	fmt.Printf("pck      : %d .wem\n", len(ids))
+
+	m, err := himodule.Open(cheminModule)
+	if err != nil {
+		return err
+	}
+	f, brut, score, err := trouverSbnk(m, ids)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("sbnk     : gid %08x (%d .wem du pck retrouves dans ses octets)\n", f.GlobalID, score)
+
+	b, err := parserBank(brut, func(id uint32) bool { return ids[id] })
+	if err != nil {
+		return err
+	}
+	fmt.Printf("hierarchie: %d objets, %d Sound resolus, %d Events, %d Actions\n\n",
+		len(b.Objets), len(b.Sons), len(b.Events), len(b.Actions))
+
+	rap := rapportArme{
+		Arme: arme, Pck: cheminPck, SbnkGlobal: f.GlobalID,
+		WemsDuPck: len(ids), SonsResolus: len(b.Sons),
+	}
+	for id := range b.Events {
+		w := b.wemsDeEvent(id)
+		if len(w) == 0 {
+			continue
+		}
+		rap.Evenements = append(rap.Evenements, evenementRendu{IDEvent: id, Nombre: len(w), Wems: w})
+	}
+	sort.Slice(rap.Evenements, func(i, j int) bool {
+		return rap.Evenements[i].Nombre > rap.Evenements[j].Nombre
+	})
+	afficherEvenements(rap, ids)
+	if sortieJSON == "" {
+		return nil
+	}
+	blob, err := json.MarshalIndent(rap, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(sortieJSON, blob, 0o644)
+}
+
+// trouverSbnk designe le `sbnk` de l'arme : celui dont les octets portent le plus d'IDs
+// du `.pck`. Aucun nom n'intervient — c'est l'intersection des donnees qui tranche.
+func trouverSbnk(m *himodule.Module, ids map[uint32]bool) (himodule.File, []byte, int, error) {
+	temoins := echantillon(ids, 24)
+	var meilleur himodule.File
+	var brutMeilleur []byte
+	meilleurScore := 0
+	for _, f := range m.Files("sbnk") {
+		data, err := m.Extract(f)
+		if err != nil {
+			continue
+		}
+		score := compterTemoins(data, temoins)
+		if score > meilleurScore {
+			meilleurScore, meilleur, brutMeilleur = score, f, data
+		}
+	}
+	if meilleurScore == 0 {
+		return meilleur, nil, 0, fmt.Errorf("aucun sbnk ne porte les .wem de ce pck")
+	}
+	debut := bytes.Index(brutMeilleur, magicBKHD)
+	if debut < 0 {
+		return meilleur, nil, 0, fmt.Errorf("sbnk %08x sans chunk BKHD", meilleur.GlobalID)
+	}
+	return meilleur, brutMeilleur[debut:], meilleurScore, nil
+}
+
+// echantillon prend au plus n IDs, tries pour etre reproductibles d'un run a l'autre.
+func echantillon(ids map[uint32]bool, n int) []uint32 {
+	out := make([]uint32, 0, len(ids))
+	for k := range ids {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	if len(out) > n {
+		out = out[:n]
+	}
+	return out
+}
+
+// compterTemoins compte les IDs presents en clair dans les octets d'un tag.
+func compterTemoins(data []byte, temoins []uint32) int {
+	var aiguille [4]byte
+	n := 0
+	for _, t := range temoins {
+		binary.LittleEndian.PutUint32(aiguille[:], t)
+		if bytes.Contains(data, aiguille[:]) {
+			n++
+		}
+	}
+	return n
+}
+
+// afficherEvenements rend compte, et controle que tout `.wem` rendu vient bien du `.pck`.
+func afficherEvenements(rap rapportArme, ids map[uint32]bool) {
+	fmt.Println("--- evenements, du plus fourni au plus rare ---")
+	total := map[uint32]bool{}
+	horsPck := 0
+	for i, e := range rap.Evenements {
+		if i < 15 {
+			fmt.Printf("  event %08x : %3d .wem\n", e.IDEvent, e.Nombre)
+		}
+		for _, w := range e.Wems {
+			total[w] = true
+			if !ids[w] {
+				horsPck++
+			}
+		}
+	}
+	if len(rap.Evenements) > 15 {
+		fmt.Printf("  ... et %d autres evenements\n", len(rap.Evenements)-15)
+	}
+	fmt.Printf("\ncouverture : %d .wem distincts atteints sur %d dans le pck\n",
+		len(total), rap.WemsDuPck)
+	fmt.Printf("controle croise : %d .wem hors du pck (attendu 0)\n", horsPck)
+}
