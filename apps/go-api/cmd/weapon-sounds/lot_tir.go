@@ -40,6 +40,15 @@ type tirArme struct {
 	// Zero quand le tag n'en declare pas — on ne devine pas.
 	CadenceMin int `json:"cadence_min_cpm"`
 	CadenceMax int `json:"cadence_max_cpm"`
+	// Modes : UN MODE DE TIR = UN TAG DE SON designe par « Weapon Fire Sound ». Le Ravageur
+	// en a deux (tir normal et tir charge), le Sentinel Beam aussi (bref et continu). Les
+	// fondre en un seul ensemble d'evenements rendait un coup qui sonnait a cote.
+	Modes []modeDeTir `json:"modes"`
+}
+
+type modeDeTir struct {
+	TagSon string   `json:"tag_son"`
+	Events []string `json:"events"`
 }
 
 // livrerTirLot resout les sons de tir de toutes les armes du rapport de passe 1.
@@ -87,7 +96,7 @@ func livrerTirLot(cheminModule, entree, sortie string) error {
 	// est la preuve forte ; le suivi des relais est un REPLI pour les armes qu'il ne couvre
 	// pas. Les mettre au meme rang a produit un faux : `bt_arczapper` se retrouvait rattache
 	// au S7 Sniper parce qu'une chaine longue du sniper atteignait ses evenements.
-	eventsDirect := eventsDesSons(m, weapDuSon, armeDeEvent)
+	eventsDirect, eventsParTag := eventsDesSonsDetaille(m, weapDuSon, armeDeEvent)
 	rapporterMemoire("liens directs analyses")
 
 	elargi := etendreParDependances(m, weapDuSon, 4)
@@ -95,7 +104,7 @@ func livrerTirLot(cheminModule, entree, sortie string) error {
 	eventsRelais := eventsDesSons(m, elargi, armeDeEvent)
 	rapporterMemoire("relais analyses")
 
-	rap := assembler(passe1, sonParWeap, eventsDirect, eventsRelais, armeDeEvent, cadences)
+	rap := assembler(passe1, sonParWeap, eventsDirect, eventsRelais, armeDeEvent, cadences, eventsParTag)
 	// Le nommage ne doit PAS dependre du tir : epee, marteau, tourelles et variantes PNJ
 	// sont de vraies armes avec une icone. On complete par le lien `weap -> ... -> sbnk`.
 	rap = completerRattachements(m, passe1, rap)
@@ -148,22 +157,32 @@ func tirDansTag(data []byte, o offsetsTir, groupes map[uint32]string) []uint32 {
 	if err != nil {
 		return nil
 	}
+	// « Weapon Fire Sounds » est un TABLEAU : une entree par MODE DE TIR. Ne lire que le
+	// sous-bloc a l'offset du plugin ne rendait donc que le PREMIER mode — d'ou des coups
+	// reconstitues qui sonnaient a cote sur les armes a tir alternatif (Ravageur charge,
+	// Sentinel Beam continu, deux modes du Mutilator). On balaie tous les sous-blocs, la
+	// validation « toutes les references pointent vers un tag de son » faisant le tri.
 	var tous []uint32
 	for _, bloc := range t.enfantsDe(racine) {
-		blocVar, ok := t.enfantsDe(bloc)[o.variations]
-		if !ok {
-			continue
-		}
-		absV, tailleV := t.blocAbs(blocVar)
-		if absV < 0 || tailleV < tailleRef {
-			continue
-		}
-		if gids, tousSons := refsDeSons(data, absV, tailleV, groupes); tousSons {
-			tous = append(tous, gids...)
+		for _, blocVar := range t.enfantsDe(bloc) {
+			absV, tailleV := t.blocAbs(blocVar)
+			if absV < 0 || tailleV < tailleRef {
+				continue
+			}
+			if gids, tousSons := refsDeSons(data, absV, tailleV, groupes); tousSons {
+				tous = append(tous, gids...)
+			}
 		}
 	}
 	sort.Slice(tous, func(i, j int) bool { return tous[i] < tous[j] })
-	return tous
+	// Dedoublonnage : un meme tag de son peut servir a plusieurs modes.
+	uniq := tous[:0]
+	for i, g := range tous {
+		if i == 0 || g != tous[i-1] {
+			uniq = append(uniq, g)
+		}
+	}
+	return uniq
 }
 
 // groupesSonores : les classes de tags par lesquelles une chaine de son peut transiter.
@@ -259,7 +278,16 @@ func etendreParDependances(m *himodule.Module, depart map[uint32][]uint32, maxNi
 // par evenement : sur ~1200 evenements candidats, chercher chacun separement serait mille
 // fois plus lent que lire chaque position une fois.
 func eventsDesSons(m *himodule.Module, weapDuSon map[uint32][]uint32, armeDeEvent map[uint32]int) map[uint32]map[uint32]bool {
+	out, _ := eventsDesSonsDetaille(m, weapDuSon, armeDeEvent)
+	return out
+}
+
+// eventsDesSonsDetaille rend aussi le detail PAR TAG DE SON — c'est ce qui permet de
+// distinguer les modes de tir d'une meme arme.
+func eventsDesSonsDetaille(m *himodule.Module, weapDuSon map[uint32][]uint32,
+	armeDeEvent map[uint32]int) (map[uint32]map[uint32]bool, map[uint32]map[uint32]bool) {
 	out := map[uint32]map[uint32]bool{}
+	parTag := map[uint32]map[uint32]bool{}
 	n := 0
 	for _, f := range append(m.Files("lsnd"), m.Files("snd!")...) {
 		armes, voulu := weapDuSon[f.GlobalID]
@@ -275,6 +303,10 @@ func eventsDesSons(m *himodule.Module, weapDuSon map[uint32][]uint32, armeDeEven
 			if _, ok := armeDeEvent[id]; !ok {
 				continue
 			}
+			if parTag[f.GlobalID] == nil {
+				parTag[f.GlobalID] = map[uint32]bool{}
+			}
+			parTag[f.GlobalID][id] = true
 			for _, w := range armes {
 				if out[w] == nil {
 					out[w] = map[uint32]bool{}
@@ -287,13 +319,13 @@ func eventsDesSons(m *himodule.Module, weapDuSon map[uint32][]uint32, armeDeEven
 			runtime.GC()
 		}
 	}
-	return out
+	return out, parTag
 }
 
 // assembler croise les deux moities et rend le livrable par arme.
 func assembler(p1 rapportLot, sonParWeap map[uint32][]uint32,
 	eventsDirect, eventsRelais map[uint32]map[uint32]bool, armeDeEvent map[uint32]int,
-	cadences map[uint32]cadenceArme) []tirArme {
+	cadences map[uint32]cadenceArme, eventsParTag map[uint32]map[uint32]bool) []tirArme {
 	// Un `weap` peut couvrir une arme ; plusieurs `weap` peuvent viser la meme (variantes).
 	// On retient CELUI QUI COUVRE LE PLUS d'evenements de cette arme — decision assumee.
 	indexer := func(src map[uint32]map[uint32]bool) map[int][]uint32 {
@@ -374,6 +406,21 @@ func assembler(p1 rapportLot, sonParWeap map[uint32][]uint32,
 		}
 		for _, e := range events {
 			t.EventsDeTir = append(t.EventsDeTir, fmt.Sprintf("%08x", e))
+		}
+		// UN MODE = UN TAG DE SON. Sans ce detail, les evenements des deux modes d'une
+		// meme arme se melangent et le coup reconstitue peut venir du mauvais mode.
+		for _, tag := range sonParWeap[retenu] {
+			var evs []string
+			for e := range eventsParTag[tag] {
+				if armeDeEvent[e] == i {
+					evs = append(evs, fmt.Sprintf("%08x", e))
+				}
+			}
+			if len(evs) == 0 {
+				continue
+			}
+			sort.Strings(evs)
+			t.Modes = append(t.Modes, modeDeTir{TagSon: fmt.Sprintf("%08x", tag), Events: evs})
 		}
 		out = append(out, t)
 	}

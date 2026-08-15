@@ -132,18 +132,15 @@ func decrireTir(data []byte, gidWeap uint32, o offsetsTir, groupes map[uint32]st
 	}
 	var trouves []trouvaille
 	for offChamp, bloc := range enfants {
-		sous := t.enfantsDe(bloc)
-		blocVar, ok := sous[o.variations]
-		if !ok {
-			continue
-		}
-		absV, tailleV := t.blocAbs(blocVar)
-		if absV < 0 || tailleV < tailleRef {
-			continue
-		}
-		gids, tousSons := refsDeSons(data, absV, tailleV, groupes)
-		if tousSons && len(gids) > 0 {
-			trouves = append(trouves, trouvaille{offChamp, gids})
+		for _, blocVar := range t.enfantsDe(bloc) {
+			absV, tailleV := t.blocAbs(blocVar)
+			if absV < 0 || tailleV < tailleRef {
+				continue
+			}
+			gids, tousSons := refsDeSons(data, absV, tailleV, groupes)
+			if tousSons && len(gids) > 0 {
+				trouves = append(trouves, trouvaille{offChamp, gids})
+			}
 		}
 	}
 	sort.Slice(trouves, func(i, j int) bool { return trouves[i].offChamp < trouves[j].offChamp })
