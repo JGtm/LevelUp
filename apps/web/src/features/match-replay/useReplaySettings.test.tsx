@@ -21,6 +21,15 @@ describe('useReplaySettings — valeurs par défaut', () => {
     expect(result.current.showHeatmap).toBe(false)
     expect(result.current.heatmapMode).toBe('presence')
   })
+
+  it('effets de tirs ALLUMÉS, effets de mort ÉTEINTS — les deux défauts du 16/08', () => {
+    // Ce ne sont pas deux réglages symétriques : l'éclair de bouche dit où le match se joue
+    // et il a été validé sans réserve ; le trait tueur -> victime, lui, est « optionnel,
+    // désactivé par défaut » — c'est la décision produit, elle se teste.
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showShotFx).toBe(true)
+    expect(result.current.showKillFx).toBe(false)
+  })
 })
 
 describe('useReplaySettings — bascules', () => {
@@ -77,5 +86,16 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     localStorage.setItem('replay-heatmap-mode', 'temperature')
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.heatmapMode).toBe('presence')
+  })
+
+  it('les deux effets survivent au remontage, chacun sur SA clé', () => {
+    const first = renderHook(() => useReplaySettings())
+    act(() => first.result.current.toggleShotFx())
+    act(() => first.result.current.toggleKillFx())
+    first.unmount()
+
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showShotFx).toBe(false)
+    expect(result.current.showKillFx).toBe(true)
   })
 })

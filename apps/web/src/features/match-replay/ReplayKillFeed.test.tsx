@@ -312,7 +312,11 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
       20_000,
     )
     expect(screen.getByText('Aidant77')).toBeTruthy()
-    expect(screen.getByText('37 %')).toBeTruthy()
+    // La part de l'assistant s'écrit « - 37 % » depuis la planche du 16/08, et la ligne
+    // n'écrit PLUS « assisté par » : une MARQUE le dit, en pictogramme.
+    expect(screen.getByText('- 37 %')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Assistance' })).toBeTruthy()
+    expect(container.textContent).not.toMatch(/assist[ée]/i)
     expect(screen.getByText(/tueur 63 %/)).toBeTruthy()
     expect(container.querySelector('li')?.getAttribute('style')).toContain('color-mix')
   })

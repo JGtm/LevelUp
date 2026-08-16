@@ -14,6 +14,7 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (grenadeFx.test.ts).
  */
+import { EXPLOSION_MS } from './explosionFx'
 import type { FxTint } from './fxInk'
 import type { ReplayDocumentReady } from './replayNormalize'
 
@@ -59,10 +60,19 @@ export function explosionTintOf(rank: number): FxTint {
   return 'blast'
 }
 
-/** Rémanences au point de repos, en temps réel : la nappe électrique persiste (~2,5 s,
- *  décision produit « ~2-3 s »), le halo suit la convention des lancers (1,4 s). */
+/**
+ * Rémanences au point de repos, en temps réel : la nappe électrique persiste (~2,5 s,
+ * décision produit « ~2-3 s »), et la fenêtre des trois types qui détonent vaut EXACTEMENT
+ * la timeline de leur explosion.
+ *
+ * ELLE EST ALIGNÉE SUR `EXPLOSION_MS`, ET C'EST UN INVARIANT, pas une coïncidence : cette
+ * fenêtre BORNE le dessin (`drawGrenadeRestLayer` sort dès `age > hold`). Restée à 1,4 s
+ * pendant que la timeline passait à 2,4 s, elle aurait coupé chaque explosion à 58 % de sa
+ * course — exactement le défaut que la planche du 16/08 signalait (« trop bref »), déplacé
+ * d'un cran. Le test de `grenadeFx` rejoue l'égalité.
+ */
 export const DYNAMO_REST_HOLD_MS = 2_500
-export const GRENADE_REST_HOLD_MS = 1_400
+export const GRENADE_REST_HOLD_MS = EXPLOSION_MS
 
 /** Rémanence du badge de lancer sur la FICHE (le `.gic` du POC) : celle des lancers. */
 export const GRENADE_THROW_HOLD_MS = 1_400

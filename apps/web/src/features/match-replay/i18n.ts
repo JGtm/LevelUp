@@ -36,6 +36,14 @@ interface ReplayText {
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
+  /**
+   * L'ASSISTANCE EST UN PICTOGRAMME, PAS UN MOT (décision utilisateur du 16/08) : le fil
+   * n'écrit plus « assisté par », il pose une marque puis le nom. Ce libellé est ce que la
+   * marque DIT (infobulle + lecteur d'écran) — elle ne se lit pas toute seule.
+   */
+  killFeedAssistMark: string
+  /** Part de participation de l'assistant, telle que la ligne l'écrit : « - 37 % ». */
+  killFeedAssistShare: (pct: number) => string
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
   killFeedDeathHint: string
@@ -66,6 +74,18 @@ interface ReplayText {
   layerZones: string
   layerZonesHint: string
   zoneLabel: string
+  /**
+   * EFFETS D'ÉVÉNEMENT, réglables séparément (décision utilisateur du 16/08) : les éclairs
+   * de bouche de TOUS les tirs, et le trait tueur -> victime des éliminations. Le premier
+   * porte une RÉSERVE DE MESURE affichée en clair (le film n'enregistre un tir que
+   * lorsqu'un dégât est appliqué) : elle ne vit pas dans un commentaire, elle est à l'écran.
+   */
+  effects: string
+  layerShotFx: string
+  layerShotFxHint: string
+  layerShotFxCoverage: string
+  layerKillFx: string
+  layerKillFxHint: string
   /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
@@ -103,7 +123,12 @@ interface ReplayText {
   grenadeSelected: string
   grenadeSelectedRead: string
   grenadeSelUnknown: string
-  abilityUnknown: string
+  /**
+   * Capacité absente de la table du titre : la fiche pose un GLYPHE NEUTRE (pas un
+   * caractère, décision utilisateur du 16/08) et dit en infobulle ce qu'on ne sait pas —
+   * le RANG lu reste écrit, parce qu'il est la seule chose de vraie à cet endroit.
+   */
+  abilityUnidentified: (rank: number) => string
   abilityAge: string
   abilityAhead: string
   /**
@@ -151,6 +176,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedAssistHint:
       'Assistant lu dans le film, avec sa part de dégâts quand elle est mesurée. Les parts ne sont pas bornées à 100 %.',
     killFeedKillerShare: (pct) => `tueur ${pct} %`,
+    killFeedAssistMark: 'Assistance',
+    killFeedAssistShare: (pct) => `- ${pct} %`,
     killFeedDeathLabel: 'mort',
     killFeedDeathHint:
       'Mort sans tueur crédité (suicide, chute ou sortie), lue dans les trajectoires du film.',
@@ -181,6 +208,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerZonesHint:
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
     zoneLabel: 'Zone de la carte',
+    effects: 'Effets',
+    layerShotFx: 'Effets de tirs',
+    layerShotFxHint:
+      'Éclair de bouche sur chaque tir décodé, dans la teinte de la décharge (cinétique, plasma, énergie).',
+    layerShotFxCoverage:
+      "La couverture des tirs peut ne pas être totale : le film n'enregistre un tir que lorsqu'un dégât est appliqué.",
+    layerKillFx: 'Effets de mort',
+    layerKillFxHint:
+      "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Éteint par défaut.",
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -212,15 +248,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     holsteredLabel: 'Armes rangées',
     grenadeThrown: 'Grenade lancée',
     weaponSwap: 'échange',
-    respawnIn: 'retour dans',
-    respawnUnknown: 'retour ?',
+    respawnIn: 'Réapparition dans',
+    respawnUnknown: 'Réapparition ?',
     inventoryAge: 'Inventaire lu il y a',
     inventoryAhead: 'Inventaire de la première image-clé de cette vie, lue dans',
     grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
     grenadeSelectedRead:
       'Type équipé, LU dans le film (sélecteur de grenade de l’image-clé) : celui qui partira au prochain lancer.',
     grenadeSelUnknown: 'sél. ?',
-    abilityUnknown: 'capacité inconnue',
+    abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
     equipmentActive: {
@@ -260,6 +296,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedAssistHint:
       'Assist read from the film, with its damage share when measured. Shares are not capped at 100%.',
     killFeedKillerShare: (pct) => `killer ${pct}%`,
+    killFeedAssistMark: 'Assist',
+    killFeedAssistShare: (pct) => `- ${pct}%`,
     killFeedDeathLabel: 'died',
     killFeedDeathHint:
       'Death with no credited killer (suicide, fall or leaving), read from the film trails.',
@@ -290,6 +328,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerZonesHint:
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
     zoneLabel: 'Map zone',
+    effects: 'Effects',
+    layerShotFx: 'Shot effects',
+    layerShotFxHint:
+      'Muzzle flash on every decoded shot, in the tint of the discharge (kinetic, plasma, energy).',
+    layerShotFxCoverage:
+      'Shot coverage may not be complete: the film only records a shot when damage is applied.',
+    layerKillFx: 'Kill effects',
+    layerKillFxHint:
+      'Line drawn from killer to victim at the moment of the kill. Off by default.',
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',
@@ -319,15 +366,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     holsteredLabel: 'Weapons holstered',
     grenadeThrown: 'Grenade thrown',
     weaponSwap: 'swap',
-    respawnIn: 'back in',
-    respawnUnknown: 'back ?',
+    respawnIn: 'Respawn in',
+    respawnUnknown: 'Respawn ?',
     inventoryAge: 'Inventory read',
     inventoryAhead: 'Inventory from the first keyframe of this life, read in',
     grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
     grenadeSelectedRead:
       'Equipped type, READ from the film (keyframe grenade selector): the one the next throw will use.',
     grenadeSelUnknown: 'sel. ?',
-    abilityUnknown: 'unknown ability',
+    abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',
     equipmentActive: {

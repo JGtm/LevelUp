@@ -5,9 +5,10 @@
  * du projet Csstat : une timeline de 1,4 s — flash radial très bref, boule de feu en
  * composition additive, onde de choc en anneau, éclats en traînées, poussière résiduelle —
  * et trois familles de particules typées (braises, éclats, bouffées). La mécanique, les
- * temps et les coefficients de traînée en sont repris ; ce qui change tient à deux
- * contraintes de CE canevas, écrites plus bas : le rendu doit être une FONCTION DU TEMPS, et
- * il doit être BORNÉ.
+ * coefficients de traînée et les PROPORTIONS de temps en sont repris ; ce qui change tient à
+ * trois contraintes de CE canevas, écrites plus bas : le rendu doit être une FONCTION DU
+ * TEMPS, il doit être BORNÉ, et sa DURÉE est celle qu'a demandée la planche du 16/08 (2,4 s,
+ * cf. EXPLOSION_MS — les phases suivent, à l'échelle).
  *
  * CE QUE L'EXPLOSION AFFIRME, ET CE QU'ELLE N'AFFIRME PAS. Le film ne porte AUCUN événement
  * de détonation : ce qui est connu, c'est la DERNIÈRE POSITION RÉPLIQUÉE du vol (pour une
@@ -33,6 +34,9 @@
  *   éclats       (180)   |  47 ->  46    |   0 ->   43
  *   poussière    (900)   |  40 ->  40    | 314 ->  314   <- seule déjà en `source-over`
  *
+ * (Ces chiffres datent de la timeline de 1,4 s ; l'étirement du 17/08 ne touche ni les
+ * encres ni la composition, et le garde-rail les remesure à chaque exécution.)
+ *
  * Zéro n'est pas « peu » : `lighter` calcule `dst + src·α` puis écrête à 255. Sur un fond
  * déjà à 250-254, AUCUNE couleur, AUCUNE taille, AUCUNE opacité ne peut changer un pixel.
  * L'explosion n'était pas absente sur le thème clair : elle était AMPUTÉE de tout ce qui
@@ -55,19 +59,35 @@
  * même test, quatre réponses mesurées, pas un remplacement mécanique.
  *
  * BORNÉE, ET LA BORNE EST MESURÉE (item 3.4) : 12 braises + 10 éclats + 6 bouffées = 28
- * particules par explosion, au plus 84 pas de simulation (1,4 s à 60 Hz). Le coût d'UNE
- * explosion, relevé sur toute sa timeline et figé par test : **19 dégradés radiaux et 228
- * primitives** au pire instant (227 avant le 2026-08-15 : le plateau du flash ajoute UNE
- * borne de couleur à un dégradé qui existait déjà — la correction de composition, elle, ne
- * coûte rien, `source-over` est le mode par défaut du canevas). Le corpus des 23 artefacts
- * locaux (801 explosions posées) ne montre jamais plus de **5 explosions simultanées** dans
- * la fenêtre de 1,4 s : le pire cas réel coûte donc 95 dégradés et ~1 140 primitives sur une
- * image, sur un canevas dont le fond, la structure, les zones et les objectifs sont déjà
- * cuits hors écran.
+ * particules par explosion, au plus 144 pas de simulation (2,4 s à 60 Hz). Le NOMBRE de
+ * particules ne dépend pas de la durée — c'est le même essaim, qui vit plus longtemps — donc
+ * le coût par image ne bouge pas : **19 dégradés radiaux et 228 primitives** au pire instant,
+ * figés par test. Ce qui change avec l'étirement du 17/08, c'est la FENÊTRE de recouvrement :
+ * le corpus des 23 artefacts locaux (801 explosions posées) montrait au plus 5 explosions
+ * simultanées sur 1,4 s ; sur 2,4 s ce nombre ne peut que croître, et le pire cas reste
+ * modeste (~10 explosions = 190 dégradés) sur un canevas dont le fond, la structure, les
+ * zones et les objectifs sont déjà cuits hors écran.
  */
 
-/** Durée totale de la timeline, en millisecondes (celle de la référence). */
-export const EXPLOSION_MS = 1_400
+/**
+ * Durée totale de la timeline, en millisecondes.
+ *
+ * 2 400 ms DEPUIS LE 2026-08-17, contre 1 400 dans la référence Csstat : à la planche de
+ * validation, les trois explosions ont été jugées « trop brèves » — le geste se lisait comme
+ * un clignotement plutôt que comme une détonation. C'est un réglage de RYTHME, pas de
+ * mesure : le film ne dit toujours rien de la détonation (cf. l'en-tête), seule la durée de
+ * la mise en scène change.
+ *
+ * ELLE EST LE SEUL BOUTON : toutes les phases en dérivent par `TIME_SCALE`, y compris les
+ * durées de vie des particules. Rallonger la timeline sans rallonger les braises aurait
+ * donné une explosion qui s'éteint au tiers puis laisse un vide de 1,6 s.
+ */
+export const EXPLOSION_MS = 2_400
+
+/** La timeline de la référence, dont tous les réglages ci-dessous sont issus. */
+const REFERENCE_MS = 1_400
+/** Facteur d'étirement de TOUTES les phases (1,714 aujourd'hui). */
+const TIME_SCALE = EXPLOSION_MS / REFERENCE_MS
 
 /** Pas de simulation, en millisecondes : les coefficients de la référence sont par image 60 Hz. */
 const STEP_MS = 1000 / 60
@@ -81,9 +101,9 @@ const MAX_STEPS = Math.ceil(EXPLOSION_MS / STEP_MS)
 /** Rayon de référence de la boule de feu, en pixels d'ÉCRAN. */
 const BLAST_R = 13
 /** Durée du flash radial (référence : ~70 ms, puis extinction sur trois fois autant). */
-const FLASH_MS = 70
+const FLASH_MS = 70 * TIME_SCALE
 /** Durée de l'onde de choc. */
-const WAVE_MS = 380
+const WAVE_MS = 380 * TIME_SCALE
 
 /** Les encres d'une explosion, résolues depuis le thème (aucune couleur écrite ici). */
 export interface ExplosionInk {
@@ -184,7 +204,9 @@ function drawEmbers(
   for (let i = 0; i < EMBERS; i++) {
     const ang = rand() * Math.PI * 2
     const sp = (0.35 + rand() * 1.1) * s.k
-    const life = 16 + rand() * 16
+    // La VIE suit la timeline (TIME_SCALE) : `el` reste donc la même fraction au même
+    // instant relatif — même taille, même opacité qu'avant à mi-parcours, mais sur 2,4 s.
+    const life = (16 + rand() * 16) * TIME_SCALE
     const r0 = (2.4 + rand() * 2.6) * s.k
     const el = steps / life
     if (el >= 1) continue
@@ -227,7 +249,7 @@ function drawSparks(
   for (let i = 0; i < SPARKS; i++) {
     const ang = rand() * Math.PI * 2
     const sp = (1.1 + rand() * 1.6) * s.k
-    const life = 22 + rand() * 18
+    const life = (22 + rand() * 18) * TIME_SCALE
     const sl = steps / life
     if (sl >= 1) continue
     let x = s.x
@@ -266,9 +288,12 @@ function drawDust(
   for (let i = 0; i < DUST; i++) {
     const ang = rand() * Math.PI * 2
     const sp = (0.1 + rand() * 0.4) * s.k
-    const life = 60 + rand() * 50
+    const life = (60 + rand() * 50) * TIME_SCALE
     const r0 = (3.5 + rand() * 3) * s.k
-    const grow = (0.05 + rand() * 0.09) * s.k
+    // L'ÉTALEMENT EST PAR VIE, PAS PAR PAS : il se divise par le même facteur que la vie se
+    // multiplie, sinon une bouffée d'une timeline 1,7 fois plus longue finirait 1,7 fois plus
+    // large — la poussière mangerait la carte au lieu de s'attarder dessus.
+    const grow = ((0.05 + rand() * 0.09) * s.k) / TIME_SCALE
     const lf = steps / life
     if (lf >= 1) continue
     let x = s.x
