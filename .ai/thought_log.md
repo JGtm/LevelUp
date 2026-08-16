@@ -1,3 +1,18 @@
+## [2026-08-16] Sons d'armes — selection finale validee par l'utilisateur
+
+**Statut** : le tri est CLOS. 46 votes (`votes-sons-armes(4).json`), tout reecoute et
+valide sur la generation « semantique prouvee ». 0 orphelin, 0 coup a revoter. Artefact
+republie avec les marqueurs soldes.
+
+**Decisions consignees** : le vote prime sur la convention de perspective — la reecoute
+finale a deplace la plupart des choix vers la 1re personne, on livre ce qui est vote.
+Roles multiples apparies par mesure (a confirmer) : Ravageur bb31841b = tir 3 coups (rejeu),
+be684013 = coup unique, c15c9e77 = rechargement ; Sentinelle 770988828 = rejeu (plus court),
+503433748 = tir continu.
+
+**Prochaine etape** : livraison vers l'app (plan `PLAN_SONS_REJEU_INAPP.md`, en cours par
+agent) ; a la livraison, encoder ces roles dans le manifeste app.
+
 ## [2026-08-16] Sons d'armes — reprise a zero de l'assemblage : semantique prouvee
 
 **Statut** : Etapes 18-20 du plan COMPLETES, en une passe et une seule regeneration, sous

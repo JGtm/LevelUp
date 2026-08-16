@@ -191,23 +191,29 @@ mal servies. Le nombre est inconnu — c'est la premiere chose a etablir.
 6. Exploiter le paquet `RANGED` pour que deux rendus d'un meme coup different (defaut 2).
 7. Instruire les 989 banks a chunks illisibles (defaut 1).
 
-## 7. VOTES DE L'UTILISATEUR
+## 7. VOTES DE L'UTILISATEUR — SELECTION FINALE VALIDEE
 
-**44 votes** dans `Downloads/votes-sons-armes(1).json` (2026-08-15T19:28Z), tous
-« garder ». **44/44 se rattachent** au manifeste courant (verifie apres le dedoublonnage des
-modes) : 32 portent sur des coups reconstitues, 12 sur des sons isoles `ev_*`.
+**46 votes dans `Downloads/votes-sons-armes(4).json` (2026-08-16), TOUT VALIDE par
+l'utilisateur** apres reecoute complete de la generation « semantique prouvee » : « certains
+votes n'ont pas bouges mais j'ai tout reecoute donc pour moi c'est tout valide ». 46/46 se
+rattachent au manifeste, 0 orphelin, 0 coup a revoter.
 
-Ils sont EMBARQUES dans le manifeste (`votes_precedents`) : l'artefact marque « choisi » ce
-qui est deja tranche et se reamorce dessus si le stockage du navigateur est vide. Le
-fichier de l'utilisateur reste la source ; l'export ne prime jamais sur un vote plus recent.
+FAIT MARQUANT : la reecoute finale a largement deplace les choix des coups de 3e personne
+vers ceux de PREMIERE personne (8 votes `_coup_m1_3p` retires, autant de `_coup_m1_1p`
+ajoutes). **La convention « la 3P est la perspective du rejeu » ne gouverne plus la
+livraison : LE VOTE PRIME.** On livre ce qui est vote, quelle que soit la perspective.
 
-CE QU'ILS APPRENNENT, au-dela du tri — INSTRUIT, cf. defauts 9 et 10. Sur les 12 votes
-portant sur un son ISOLE, **7 accompagnent un vote sur le coup** de la meme arme (l'isole
-est un complement, pas un desaveu) et **5 vont a l'isole SEUL** : les quatre armes de melee
-et le Needler. Pour les quatre armes de melee la cause est le critere degenere (defaut 8) —
-l'epee infectee melange des couches de 9,70 s et 25,71 s. Pour tout le reste, la cause est
-le conteneur `Switch` non lu (defaut 9). **La question « pourquoi l'isole convainc-t-il
-plus ? » a donc une reponse structurelle, pas une reponse de gout.**
+ROLES MULTIPLES, donnes par l'utilisateur et apparies PAR MESURE (a confirmer par lui) :
+
+	Ravageur (Covenant_provoker) — 3 sons conserves :
+	  bb31841b  10 wem, elements des 0,06 s  -> TIR 3 COUPS      = LE SON DU REJEU
+	  be684013  mediane 4,76 s (retenu 1048056459) -> COUP UNIQUE (charge), conserver
+	  c15c9e77  2,65-4,00 s                  -> RECHARGEMENT, conserver, PAS pour le rejeu
+
+	Rayon de sentinelle (Forerunner_sentinelbeam), ev a220122d, 2 wem retenus :
+	  770988828  1,95 s  -> le plus court    = LE SON DU REJEU
+	  503433748  1,98 s  -> tir continu (vidage de chargeur), conserver
+	  (ecart de 30 ms seulement : appariement fragile, a confirmer)
 
 ## 8bis. CE QUI EST LIVRE, ET SOUS QUELLE FORME
 
