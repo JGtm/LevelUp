@@ -60,7 +60,15 @@ package replay
 // sous la même clé aurait laissé tout client non mis à jour lire un nombre qui ne veut plus
 // dire la même chose — c'est le défaut qui a coûté ce chantier. `abilityLabels` est donc
 // keyé par RANG, et un artefact v5 doit se voir comme « à re-cuire », pas comme à jour.
-const SchemaVersion = 6
+//
+// v7 (2026-08-16, plan PLAN_EQUIPEMENT_TI37 phase 1) : le document publie
+// `equipmentEpisodes` — l'état ACTIF du camouflage et du surbouclier, en épisodes datés
+// par vie (cf. equipment_episodes.go). Le champ est optionnel, mais la version monte :
+// l'effet plein-fiche et les sons d'équipement côté client N'EXISTENT que si l'artefact
+// porte les épisodes, et la reprise du backfill se fait par SchemaVersion — un artefact
+// v6 doit se voir comme « à re-cuire », pas comme à jour (le re-build de masse pendant au
+// registre portera ce champ avec le correctif de précision des objets du monde).
+const SchemaVersion = 7
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -206,6 +214,12 @@ type ReplayDocument struct {
 	// peuvent donner deux noms différents au même rang, et un film dont la palette n'est pas
 	// classée ne reçoit AUCUN nom.
 	AbilityLabels map[string]Label `json:"abilityLabels,omitempty"`
+	// EquipmentEpisodes est l'état ACTIF d'un équipement, en épisodes datés par vie
+	// (cf. equipment_episodes.go) : camouflage (i28 queue[1], interrupteur mesuré) et
+	// surbouclier (i5 non clampé, règle q > 64). Deux familles SEULEMENT, parce que deux
+	// seulement sont mesurées — les autres équipements restent sans état plutôt que
+	// devinés. Absent si aucune vie publiée ne porte d'épisode.
+	EquipmentEpisodes []EquipmentEpisode `json:"equipmentEpisodes,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas
 	// deviné. Ce n'est pas l'inventaire de grenades (c'est i22, non résolu) : c'est

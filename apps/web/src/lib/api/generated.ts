@@ -5366,6 +5366,7 @@ export interface components {
         };
         Coverage: {
             bridge: components["schemas"]["BridgeHealth"];
+            equipment?: components["schemas"]["EquipmentCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             shots: components["schemas"]["LayerCoverage"];
@@ -5658,6 +5659,28 @@ export interface components {
             total_matches: number;
             /** Format: int64 */
             truncated_to_recent?: number;
+        };
+        EquipmentCoverage: {
+            /** Format: int64 */
+            camoEpisodes: number;
+            /** Format: int64 */
+            camoLives: number;
+            /** Format: int64 */
+            overshieldEpisodes: number;
+            /** Format: int64 */
+            overshieldLives: number;
+            /** Format: int64 */
+            tracksTotal: number;
+        };
+        EquipmentEpisode: {
+            endRead?: boolean;
+            fam: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
         };
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
@@ -9051,6 +9074,7 @@ export interface components {
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
+            equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
             /** Format: int64 */
             frameCount: number;
             /** Format: int64 */

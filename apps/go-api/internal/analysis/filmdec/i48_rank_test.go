@@ -185,7 +185,7 @@ func i48Scan(dir string, chunks []int, slots map[uint32]bool, w i48Walk) ([]i48S
 					continue
 				}
 				st.records++
-				if maskHasI48(idx) {
+				if maskHas(idx, i48Index) {
 					st.withI48++
 					if s, got := w.record(pay, i0, total, idx); got {
 						st.read++

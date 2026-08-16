@@ -124,10 +124,10 @@ func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 					continue
 				}
 				st.Records++
-				if maskHasI48(idx) {
+				if maskHas(idx, i48Index) {
 					st.WithI48++
 					last.got = false
-					if walkRecordToI48(pay, i0, total, idx, lay, arch) && last.got {
+					if walkRecordTo(pay, i0, total, idx, lay, arch, i48Index) && last.got {
 						st.Read++
 						if last.rank == AbilitySetNoRank {
 							st.Gated++
@@ -166,22 +166,26 @@ func bipedArchetype(dir string) (Archetype, error) {
 	return arch, nil
 }
 
-// maskHasI48 dit si le masque du record annonce le composant i48.
-func maskHasI48(idx []int) bool {
+// maskHas dit si le masque du record annonce le composant d'index target.
+func maskHas(idx []int, target int) bool {
 	for _, id := range idx {
-		if id == i48Index {
+		if id == target {
 			return true
 		}
 	}
 	return false
 }
 
-// walkRecordToI48 marche les composants du masque avec les désers de PRODUCTION jusqu'à
-// consommer i48 — c'est cette consommation qui déclenche le hook. Rend false dès qu'un
-// composant intermédiaire n'est pas porté ou que la marche déborde du payload : au-delà, la
-// position du curseur ne serait plus digne de confiance, et lire du bruit vaut moins que ne
-// rien lire.
-func walkRecordToI48(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype) bool {
+// walkRecordTo marche les composants du masque avec les désers de PRODUCTION jusqu'à
+// consommer celui d'index target — c'est cette consommation qui déclenche le hook. Rend
+// false dès qu'un composant intermédiaire n'est pas porté ou que la marche déborde du
+// payload : au-delà, la position du curseur ne serait plus digne de confiance, et lire du
+// bruit vaut moins que ne rien lire.
+//
+// LE SEUL EXEMPLAIRE de la marche biped de production (règle des <= 2 copies) : i48
+// (ScanFilmAbilityRanks) et i28 (ScanFilmCamoStates) la partagent. La marche ti=37 vit à
+// part (equipmentWalk.walk) : autre archétype, autre en-tête.
+func walkRecordTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, target int) bool {
 	at := i0 + lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		name := arch.component(id)
@@ -195,7 +199,7 @@ func walkRecordToI48(pay []byte, i0, total int, idx []int, lay I0Layout, arch Ar
 			return false
 		}
 		at = br.BitPos()
-		if id == i48Index {
+		if id == target {
 			return true
 		}
 	}

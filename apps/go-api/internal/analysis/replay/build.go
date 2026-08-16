@@ -55,6 +55,10 @@ type Options struct {
 	// la palette ; celui des images-cles, porte par Inventory, n'en voit que la fenetre
 	// 16..23. Absente = rejeu dont les capacites se limitent a cette fenetre.
 	AbilityRanks []filmdec.AbilityRank
+	// CamoStates : les transmissions de la voie d'etat du camouflage (i28 queue[1], cf.
+	// filmdec/camo_state.go). Entree de DONNEES, comme AbilityRanks. Absente = rejeu sans
+	// episodes de camouflage — le surbouclier, lui, voyage dans les positions (Shield.Q).
+	CamoStates []filmdec.CamoRead
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -196,6 +200,19 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"lues", aStats.Read, "illisibles", aStats.Unread, "sansIdentite", aStats.Gated)
 	}
 	opt.AbilityRanks = abilityRanks
+	// Etat du camouflage : la voie i28 queue[1], lue dans les paquets DELTA, sur la MEME
+	// horloge (cf. filmdec/camo_state.go). Absence non fatale — le rejeu sort sans episodes
+	// de camouflage, jamais avec des episodes devines.
+	camoStates, cStats, err := filmdec.ScanFilmCamoStates(filmDir)
+	if err != nil {
+		slog.Warn("etat de camouflage illisible — rejeu sans episodes de camo", "err", err, "filmDir", filmDir)
+		camoStates = nil
+	} else {
+		slog.Info("camouflage : lectures d i28 queue[1]",
+			"recordsDelta", cStats.Records, "masqueAvecI28", cStats.WithI28,
+			"lues", cStats.Read, "illisibles", cStats.Unread, "sansVoie", cStats.NoChannel)
+	}
+	opt.CamoStates = camoStates
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -325,7 +342,28 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.Objectives, objCov = dropUnpublishedActions(objActions, doc.Tracks, objCov)
 	objCov.warnIfLossy("objectifs")
 
+	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
+	// vie, fermes a la mort quand rien n'a mesure la fin (cf. equipment_episodes.go).
+	// Le surbouclier se lit dans les positions NON decimees : la decimation garde un
+	// echantillon par frame et perdrait des transitions. Construit AVANT la couverture,
+	// qui publie son compte.
+	var camoNonBinary int
+	doc.EquipmentEpisodes, camoNonBinary = buildEquipmentEpisodes(sorted, opt.CamoStates, origin, step, doc.Tracks)
+	if camoNonBinary > 0 {
+		slog.Warn("rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
+			"lectures", camoNonBinary)
+	}
+
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own)
+	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
+	// « sur M vies » se lirait comme une exhaustivite.
+	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
+	slog.Info("rejeu : episodes d'equipement actif",
+		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
+		"viesCamo", doc.Coverage.Equipment.CamoLives,
+		"episodesCamo", doc.Coverage.Equipment.CamoEpisodes,
+		"viesSurbouclier", doc.Coverage.Equipment.OvershieldLives,
+		"episodesSurbouclier", doc.Coverage.Equipment.OvershieldEpisodes)
 	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots, opt.Labels)
 	// La table weapon_key -> famille d'effet voyage telle quelle : les kills du feed sont
 	// keyés par weapon_key (résolution base), pas par identifiant d'arme film — sans elle,

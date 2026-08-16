@@ -10690,6 +10690,8 @@ components:
       properties:
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
+        equipment:
+          $ref: '#/components/schemas/EquipmentCoverage'
         grenades:
           $ref: '#/components/schemas/LayerCoverage'
         objectives:
@@ -11361,6 +11363,54 @@ components:
         - granularity
         - points
         - total_matches
+      type: object
+    EquipmentCoverage:
+      additionalProperties: false
+      properties:
+        camoEpisodes:
+          format: int64
+          type: integer
+        camoLives:
+          format: int64
+          type: integer
+        overshieldEpisodes:
+          format: int64
+          type: integer
+        overshieldLives:
+          format: int64
+          type: integer
+        tracksTotal:
+          format: int64
+          type: integer
+      required:
+        - tracksTotal
+        - camoLives
+        - camoEpisodes
+        - overshieldLives
+        - overshieldEpisodes
+      type: object
+    EquipmentEpisode:
+      additionalProperties: false
+      properties:
+        endRead:
+          type: boolean
+        fam:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - slot
+        - fam
+        - t0
+        - t1
       type: object
     ExplorerBriefing:
       additionalProperties: false
@@ -19464,6 +19514,12 @@ components:
         durationMs:
           format: int64
           type: integer
+        equipmentEpisodes:
+          items:
+            $ref: '#/components/schemas/EquipmentEpisode'
+          type:
+            - array
+            - "null"
         frameCount:
           format: int64
           type: integer

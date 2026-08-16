@@ -67,14 +67,19 @@ func goldenInputsPath() string {
 
 // goldenInputsMagic identifie le format et sa version. Un fixture d une autre version est une
 // ERREUR, jamais une lecture « au mieux » : un decodage decale rendrait des chiffres plausibles.
-const goldenInputsMagic = "REPLAYINPUTS3\n"
+//
+// v4 (2026-08-16, PLAN_EQUIPEMENT_TI37 phase 1) : la position serialise AUSSI le QUANTUM
+// brut du bouclier (Shield.Q — la regle du surbouclier est `q > 64`, et le clamp de
+// ShieldFraction efface l information), et le fixture porte les lectures CamoStates (i28
+// queue[1]) que BuildFromFilm decode desormais.
+const goldenInputsMagic = "REPLAYINPUTS4\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :
 //
 //	BipedPosition     Slot · TimestampUS · X/Y/Z · HasWorld · HasYaw+YawRaw ·
-//	                  HasBody+Body.Health · HasShield+Shield.Shield
+//	                  HasBody+Body.Health · HasShield+Shield.Shield+Shield.Q
 //	FireEvent         TimestampUS · FilmIndex · WeaponID · HasAim+Aim
 //	KeyframeLoadout   TimestampUS · Slot · Families
 //	GrenadeThrow      TimestampUS · FilmIndex · TypeID
@@ -82,6 +87,7 @@ const goldenInputsMagic = "REPLAYINPUTS3\n"
 //	KeyframeInventory tout, sauf Chunk/PacketIndex (traçabilite dans le film, pas une entree)
 //	AbilityRank       Slot · TimestampUS · Rank (le compteur de rotation n entre pas dans
 //	                  l assemblage : il borne une lecture, il ne se publie pas)
+//	CamoRead          Slot · TimestampUS · Q (la voie queue[1] d i28 — l interrupteur)
 //	Death             XUID · Gamertag · TimeMS
 //	PlayerIndexTable  entier
 //	ClockOriginUS     l horodatage du premier paquet du film (l origine publiee en depend)
@@ -97,8 +103,15 @@ type goldenInputs struct {
 	// DANS le fixture parce que l assemblage les consomme — sans elles, le golden verrouillerait
 	// un document dont les capacites se limitent a la fenetre 16..23 des images-cles.
 	AbilityRanks []filmdec.AbilityRank
-	Deaths       []Death
-	Indices      PlayerIndexTable
+	// CamoStates : les transmissions de la voie d etat du camouflage (i28 queue[1]). MEME
+	// raison : l assemblage en fait les episodes d equipement — sans elles le golden
+	// verrouillerait un document sans camo, donc pas celui que la production sert. Le film
+	// de reference (Fiesta) en porte 698, strictement binaires (0:617 · 4095:81) : le
+	// POWER-UP de camouflage allume le canal — i28 est l etat de l unite, pas celui du
+	// seul equipement rang 8 (controle du 2026-08-16, cf. renderEquipment).
+	CamoStates []filmdec.CamoRead
+	Deaths     []Death
+	Indices    PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
 	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
 	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
@@ -115,6 +128,7 @@ func (g *goldenInputs) options() Options {
 		Projectiles:       g.Projectiles,
 		Inventory:         g.Inventory,
 		AbilityRanks:      g.AbilityRanks,
+		CamoStates:        g.CamoStates,
 		Deaths:            g.Deaths,
 		PlayerIndices:     g.Indices,
 		FilmClockOriginUS: g.ClockOriginUS,
@@ -297,6 +311,7 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		}
 		if p.HasShield {
 			w.f32(p.Shield.Shield)
+			w.byte8(p.Shield.Q) // le QUANTUM : la regle du surbouclier (q > 64) le lit, pas la valeur clampee
 		}
 	}
 
@@ -375,6 +390,15 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		lastTS = a.TimestampUS
 		w.u(uint64(a.Slot))
 		w.i(int64(a.Rank))
+	}
+
+	w.u(uint64(len(g.CamoStates)))
+	lastTS = 0
+	for _, cr := range g.CamoStates {
+		w.u(cr.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
+		lastTS = cr.TimestampUS
+		w.u(uint64(cr.Slot))
+		w.u(uint64(cr.Q))
 	}
 
 	w.u(uint64(len(g.Deaths)))
@@ -492,6 +516,7 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		if fl&gpHasShield != 0 {
 			p.HasShield = true
 			p.Shield.Shield = r.f32()
+			p.Shield.Q = r.byte8()
 		}
 		g.Positions = append(g.Positions, p)
 	}
@@ -579,6 +604,15 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		lastTS += r.u()
 		g.AbilityRanks = append(g.AbilityRanks,
 			filmdec.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
+	}
+
+	n = int(r.u())
+	g.CamoStates = make([]filmdec.CamoRead, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		g.CamoStates = append(g.CamoStates,
+			filmdec.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
 	}
 
 	n = int(r.u())
@@ -734,6 +768,9 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	if g.AbilityRanks, _, err = filmdec.ScanFilmAbilityRanks(dir); err != nil {
+		return nil, err
+	}
+	if g.CamoStates, _, err = filmdec.ScanFilmCamoStates(dir); err != nil {
 		return nil, err
 	}
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {

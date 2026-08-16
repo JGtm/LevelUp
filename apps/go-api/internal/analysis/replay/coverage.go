@@ -112,6 +112,12 @@ type Coverage struct {
 	// Son dénominateur est le nombre d'événements identifiés fournis au build : publier
 	// 40 actions sans dire que 55 existaient laisserait croire à l'exhaustivité.
 	Objectives LayerCoverage `json:"objectives"`
+	// Equipment est la couverture des épisodes d'état actif d'équipement (schéma 7, cf.
+	// equipment_episodes.go) : combien de vies publiées portent des épisodes, par famille.
+	// Sa forme diffère des LayerCoverage : un épisode n'est pas un événement à rattacher
+	// (le slot est DANS la lecture), le dénominateur est le nombre de vies publiées.
+	// Absente des artefacts antérieurs au schéma 7.
+	Equipment *EquipmentCoverage `json:"equipment,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`
