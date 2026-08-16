@@ -1,3 +1,34 @@
+## [2026-08-16] Sons du rejeu in-app — etape 3 : le lecteur, et le noeud qu'on n'ajoute pas
+
+**Statut** : Etape 3 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `make check-types` vert, `make test-web` 411
+fichiers / 3633 tests passes / 0 echec, `eslint` vert sur les fichiers neufs.
+
+**Decision technique principale** : separer ce qui decide de ce qui branche. Tout le calcul
+(tirage de variation, conversions dB -> gain et centiemes -> `playbackRate`, mapping du
+curseur de distance) vit dans `weaponSoundLogic.ts`, pur, sans WebAudio — la convention
+`*Logic.ts` deja etablie par la feature. `weaponSoundPlayer.ts` n'assemble que des noeuds.
+C'est ce qui rend verifiable l'exigence « a 0 % de distance, AUCUN noeud dans le chemin du
+signal » : le test utilise un AudioContext ENREGISTREUR (meme principe que
+`canvasRecording.test.ts`) et assert sur la liste des noeuds CREES, pas sur leurs valeurs.
+Un GainNode a 1 de trop est inaudible ; il ne se decouvrirait qu'en comparant le rendu de
+l'app au fichier extrait, des heures plus tard.
+
+**Resultats observes** : 33 tests neufs. Deux choix de mapping ont ete tranches et ecrits
+dans le code — le reglage de variation reduit les BORNES et non le resultat (sinon tout
+reglage intermediaire tirerait le son vers le grave), et la coupure du passe-bas decroit
+geometriquement de 20 kHz a 500 Hz (une octave est un rapport, un mapping lineaire rendrait
+la moitie du curseur inaudible). Piege d'environnement consigne : une premiere execution de
+`make test-web` a rendu 10 echecs, tous des `Test timed out in 5000ms` sur des garde-rails
+qui balaient l'arborescence ; machine au repos, la suite passe entierement. Aucun
+`testTimeout` n'est configure — c'est de la contention, pas une regression.
+
+**Conclusion / prochaine etape** : le lecteur n'est PAS branche dans `ReplayCanvas`, et
+c'est delibere — aucun `.wav` ni `index.json` n'existe encore (la livraison attend la fin
+du re-vote, ecrit en tete du plan). Le brancher ajouterait a chaque ouverture du rejeu un
+chargement qui ne peut rien trouver. Dependance explicite du plan, donc report valide au
+sens de la regle 3. Etape 4 : les deux curseurs sur la page d'admin.
+
 ## [2026-08-16] Sons du rejeu in-app — etape 2 : la fourchette RANGED enfin exportee
 
 **Statut** : Etape 2 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
