@@ -68,10 +68,22 @@ func plausibleProp(id byte, v float32) bool {
 	return f >= -1e6 && f <= 1e6
 }
 
-// lireProprietes decode les proprietes d'un objet `Sound`.
+// lireProprietes decode les proprietes d'un objet `Sound` (NodeBaseParams a +14,
+// apres la source audio).
 func lireProprietes(d []byte) proprietesSon {
+	return lireProprietesA(d, 14)
+}
+
+// lireProprietesConteneur decode les proprietes d'un CONTENEUR : sa charge utile COMMENCE
+// par NodeBaseParams, il n'y a pas de source audio devant.
+func lireProprietesConteneur(d []byte) proprietesSon {
+	return lireProprietesA(d, 0)
+}
+
+// lireProprietesA decode un NodeBaseParams a l'offset donne. Meme validation par
+// plausibilite dans les deux cas : un layout qui a derive echoue au lieu de mentir.
+func lireProprietesA(d []byte, off int) proprietesSon {
 	var out proprietesSon
-	off := 14
 	if off+2 > len(d) {
 		return out
 	}

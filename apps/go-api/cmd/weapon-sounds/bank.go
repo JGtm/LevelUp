@@ -55,6 +55,15 @@ type bank struct {
 	// Switchs : conteneurs pilotes par un etat de jeu, decodes. `Enfants` n'en retient que
 	// l'etat par defaut ; cette table garde la vue complete pour l'inspection.
 	Switchs map[uint32]conteneurSwitch
+	// VolNoeud : volume propre de CHAQUE noeud (Sound comme conteneur). Mesure de l'etape
+	// 18 : 5 063 ActorMixer, 5 180 RandomSequence, 181 Blend et 128 Switch portent un
+	// volume non nul, jusqu'a -96 dB. Le gain d'un `.wem` est donc la SOMME du chemin
+	// evenement -> ... -> Sound, pas le volume du Sound seul.
+	VolNoeud map[uint32]float32
+	// GainsFondu : gain additionnel (dB) impose par la courbe de fondu d'un `Blend` a l'un
+	// de ses enfants, au point de reference. Mesure : 0 gain partiel sur les 1305 banks —
+	// la table reste correcte si une future version du jeu en introduit.
+	GainsFondu map[uint32]map[uint32]float64
 	// Compteurs de resolution des `Switch`, pour que le rendu puisse dire ce qu'il a fait
 	// plutot que de le taire.
 	SwParDefaut, SwVides, SwNonLus int
@@ -144,14 +153,16 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		return nil, err
 	}
 	b := &bank{
-		Embarques: embarques,
-		Objets:    make(map[uint32]objetHIRC, len(objs)),
-		Sons:      map[uint32]uint32{},
-		Gains:     map[uint32]float32{},
-		Events:    map[uint32][]uint32{},
-		Actions:   map[uint32]uint32{},
-		Enfants:   map[uint32][]uint32{},
-		Switchs:   map[uint32]conteneurSwitch{},
+		Embarques:  embarques,
+		Objets:     make(map[uint32]objetHIRC, len(objs)),
+		Sons:       map[uint32]uint32{},
+		Gains:      map[uint32]float32{},
+		Events:     map[uint32][]uint32{},
+		Actions:    map[uint32]uint32{},
+		Enfants:    map[uint32][]uint32{},
+		Switchs:    map[uint32]conteneurSwitch{},
+		VolNoeud:   map[uint32]float32{},
+		GainsFondu: map[uint32]map[uint32]float64{},
 	}
 	for _, o := range objs {
 		b.Objets[o.ID] = o
@@ -165,6 +176,7 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 				b.Sons[o.ID] = wem
 				if p := lireProprietes(o.Data); p.Lu && p.VolumeDB != 0 {
 					b.Gains[wem] = p.VolumeDB
+					b.VolNoeud[o.ID] = p.VolumeDB
 				}
 			}
 		case typeAction:
@@ -177,7 +189,17 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 			if acts, ok := lireActionsEvent(o.Data, b.Objets); ok {
 				b.Events[o.ID] = acts
 			}
+		case typeBlend:
+			// Le volume propre du conteneur, puis ses courbes de fondu : les enfants
+			// inaudibles au point de reference ne sont pas retenus (etape 18.2).
+			if pr := lireProprietesConteneur(o.Data); pr.Lu && pr.VolumeDB != 0 {
+				b.VolNoeud[o.ID] = pr.VolumeDB
+			}
+			b.resoudreBlend(o, connu)
 		case typeSwitch:
+			if pr := lireProprietesConteneur(o.Data); pr.Lu && pr.VolumeDB != 0 {
+				b.VolNoeud[o.ID] = pr.VolumeDB
+			}
 			// UN `Switch` N'EST PAS UN LOT DE VARIANTES. Il choisit ses enfants selon un
 			// etat de jeu (distance, materiau...). Retenir tous ses enfants revenait a
 			// melanger des etats qui ne coexistent jamais : mesure a l'origine de ce
@@ -185,6 +207,9 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 			// melange. On ne retient donc que l'etat par defaut.
 			b.resoudreSwitch(o, connu)
 		default:
+			if pr := lireProprietesConteneur(o.Data); pr.Lu && pr.VolumeDB != 0 {
+				b.VolNoeud[o.ID] = pr.VolumeDB
+			}
 			if enf := lireEnfants(o.Data, connu); len(enf) > 0 {
 				b.Enfants[o.ID] = enf
 			}
@@ -219,6 +244,37 @@ func (b *bank) resoudreSwitch(o objetHIRC, connu func(uint32) bool) {
 	}
 	b.SwParDefaut++
 	b.Enfants[o.ID] = enf
+}
+
+// resoudreBlend retient les enfants d'un `Blend` AUDIBLES au point de reference — la
+// courbe de fondu tranche, pas un choix a nous (etape 18.2 : 91 Blend a courbes, chacun
+// garde ~1 enfant sur 2,4, zero gain partiel). Sans courbe, tous les enfants jouent.
+func (b *bank) resoudreBlend(o objetHIRC, connu func(uint32) bool) {
+	enf := lireEnfants(o.Data, connu)
+	if len(enf) == 0 {
+		return
+	}
+	c := lireBlend(o.Data, connu)
+	if !c.Lu || !c.PiloteParRTPC() {
+		b.Enfants[o.ID] = enf
+		return
+	}
+	aud := c.Audibles(enf)
+	garde := make([]uint32, 0, len(aud))
+	for _, e := range enf {
+		g, ok := aud[e]
+		if !ok {
+			continue
+		}
+		garde = append(garde, e)
+		if g != 0 {
+			if b.GainsFondu[o.ID] == nil {
+				b.GainsFondu[o.ID] = map[uint32]float64{}
+			}
+			b.GainsFondu[o.ID][e] = g
+		}
+	}
+	b.Enfants[o.ID] = garde
 }
 
 // lireSourceID tente les deux layouts connus de `AkBankSourceData` et valide le resultat.

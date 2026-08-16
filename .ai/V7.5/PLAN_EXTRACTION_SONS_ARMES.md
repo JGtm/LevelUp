@@ -965,6 +965,98 @@ A NOTER : le SPNKr a combustible n'a jamais manque — il est expose sous son no
 (`UNSC_fuelrodlauncher`, « SPNKr a combustible », avec icone). `Covenant_fuelrod_hunter` est
 l'arme de PNJ, sans entree produit, d'ou l'absence de nom.
 
+### 2026-08-16 — Etapes 18-20 : REPRISE A ZERO DE L'ASSEMBLAGE (plan)
+
+Demande de l'utilisateur apres six corrections en pieces detachees sur le meme sujet — ce
+que joue chaque type de noeud : « reprendre le sujet de 0 [...] je veux des sons finis et
+qui collent au jeu. Pas de supposition acoustique ni rien. »
+
+CONTRAT SPECIFIQUE A CES ETAPES, en plus du contrat plan-execution :
+- ZERO heuristique acoustique. Toute regle d'assemblage vient du FORMAT, prouvee par une
+  mesure sur les 1305 banks, ou est marquee NON PROUVEE et n'entre pas dans le rendu.
+- UNE SEULE regeneration, a l'etape 20, quand tout est statue. Aucun rendu intermediaire.
+- L'extraction et la chaine weap -> bank -> evenement -> wem sont ACQUISES (etapes 1-9) et
+  ne sont pas rouvertes. Ce qui est repris, c'est l'ASSEMBLAGE : qui joue quoi, a quel
+  gain, a quel instant.
+
+### Etape 18 — Semantique des noeuds, prouvee sur pieces
+
+Gate 18 : `-mode audit` imprime, pour chaque regle d'assemblage, la mesure qui la prouve.
+Aucun postulat non valide.
+
+- [x] 18.1 Proprietes des CONTENEURS (volume, hauteur, filtre, delai — NodeBaseParams a
+      l'offset 0) mesurees sur les 1305 banks. Statuer : l'heritage de gain parent -> enfant
+      compte-t-il ? Les delais initiaux existent-ils ?
+- [x] 18.2 Table COMPLETE des couches d'un `Blend` : RTPC de couche + courbes d'association
+      par enfant, decodees et VALIDEES (identifiants d'enfants connus, x monotones, valeurs
+      bornees). Regle d'evaluation ecrite AVANT le code : point de reference = x minimal des
+      courbes (la distance la plus proche), decision utilisateur « pas de gestion de
+      distance » a l'appui.
+- [x] 18.3 Verdict par type de noeud : ce qu'il JOUE, la preuve, ce qui reste ignore avec
+      raison.
+
+### Etape 19 — La recette d'assemblage, unique et conforme a 18
+
+Gate 19 : build vert, audit relance (regle du plan : apres toute evolution du parseur),
+et structure des temoins imprimee coherente avec la semantique (MA40 3P, fusil electrique
+3P, sniper 1P, Needler).
+
+- [x] 19.1 `couchesDeEvent` reecrit selon la semantique prouvee — une seule fonction, un
+      seul endroit, plus de cas particuliers disperses
+- [x] 19.2 Gains par `.wem` = ce que 18.1 justifie (somme du chemin si l'heritage compte,
+      gain du Sound seul sinon) ; delais idem
+- [x] 19.3 Controle croise sur les temoins, sans rendu audio
+
+### Etape 20 — LA regeneration, une fois
+
+Gate 20 : 0 vote orphelin, liste des coups a revoter imprimee, artefact republie.
+
+- [x] 20.1 lot1 (avec -banks 8827aa7e,09089e7e) puis coups + manifeste + artefact
+- [x] 20.2 Marquage « a revoter » recalcule contre la generation precedente
+- [x] 20.3 Plan + thought_log + commit + push
+
+### 2026-08-16 — Etapes 18-20 CLOSES : la semantique prouvee, et LA regeneration
+
+GATE 18 PASSE (`-mode audit`, 1305 banks). Les mesures, et ce qu'elles imposent :
+
+	ActorMixer      5 063 volumes non nuls (jusqu'a -96 dB)     props lues 9 012/9 037
+	RandomSequence  5 180 volumes non nuls (jusqu'a -97 dB)     6 991/7 069
+	Blend             181 volumes non nuls                        303/303
+	Switch            128 volumes non nuls (min -22 dB)           445/445
+	Delais : 0 partout (Sound, conteneurs). Actions Play : paquet illisible a l'offset
+	essaye -> statue NON PROUVE, risque borne par le zero partout ailleurs.
+	Blend a courbes de fondu : 91 ; evaluation au x minimal : 202 enfants -> 85 audibles,
+	0 gain partiel. RandomSequence : 6 976/6 976 poids uniformes.
+
+LE MORCEAU QUI MANQUAIT DEPUIS LE DEBUT : **l'heritage de gain**. Plus de 10 000 conteneurs
+portent un volume que le rendu n'a jamais applique — seuls les 5 312 volumes de `Sound`
+l'etaient. Le gain d'un `.wem` est la SOMME du chemin evenement -> Sound.
+
+Correction au passage de l'etape 17 : « le Blend est une distance, on fige le plus petit
+identifiant » etait une supposition. Le format dit : un Blend A COURBES garde les enfants
+audibles au point de reference (la courbe tranche, seule) ; un Blend SANS courbe joue tous
+ses enfants — a leurs gains de chemin, ce qui change tout. Le Blend du MA40 (sans courbe)
+joue ses 3 pools a -1/+9/+7 dB : un mixage, pas un empilement uniforme ni un choix.
+
+GATE 19 PASSE. `couchesDeEvent` reecrit en UNE fonction (`descendre`), semantique en tete
+de fichier avec la preuve de chaque regle. Temoins :
+
+	MA40 3P (47044cbf)      3 pools  gains -1..+2 / +9 / +7
+	MA40 1P (1046dc38)      4 pools  gains -10,5..+4,5 / +3 / -7 / -18
+	fusil elec 3P (a8fd5fed) 6 pools  gains -6 / -28 / -16 / +3 / +3 / +6
+	fusil elec 1P (f34a854a) 6 couches dont UNE A -96 dB — jouee a plein niveau jusqu'ici
+
+Ce -96 dB est le cas d'ecole : le jeu ETEINT cette couche, le rendu la mettait au premier
+plan. C'est la cause structurelle du constat recurrent « le coup reconstitue ressemble
+moins au jeu que ses morceaux ».
+
+GATE 20 PASSE. Une seule regeneration : lot1 (55 armes, -banks 8827aa7e,09089e7e), rendus,
+manifeste, artefact republie. 47/47 votes rattaches, 0 orphelin. Marquage « a revoter »
+recale sur une EMPREINTE complete (evenement + couches + gains) comparee a la generation
+effectivement votee (`lot1_avant4.json`) : comparer seulement (evenement, nombre de
+couches) n'aurait signale qu'1 coup quand les gains ont change partout.
+**33 coups a revoter, sur 29 armes** — marques dans la barre laterale et sur les groupes.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs

@@ -63,44 +63,48 @@ type rapportCouches struct {
 	Events []eventCouches `json:"events"`
 }
 
+// LA RECETTE D'ASSEMBLAGE — une seule fonction, conforme a la semantique PROUVEE a
+// l'etape 18 du plan. Ce que joue chaque type de noeud, et la preuve :
+//
+//	Sound           joue sa source                     (definition du format)
+//	RandomSequence  joue UNE variante, tiree uniformement
+//	                (6 976 tables de poids sur 6 976 lisibles sont uniformes)
+//	Switch          joue les enfants de l'ETAT PAR DEFAUT
+//	                (440/445 tables decodees et validees ; resolu au parse)
+//	Blend           joue ses enfants AUDIBLES au point de reference des courbes de fondu
+//	                (91 a courbes ; 202 enfants declares -> 85 audibles, 0 gain partiel ;
+//	                 resolu au parse) ; sans courbe, tous ses enfants
+//	ActorMixer &c.  jouent tous leurs enfants
+//
+// GAIN D'UN `.wem` = SOMME DU CHEMIN evenement -> ... -> Sound. Mesure qui l'impose :
+// 5 063 ActorMixer, 5 180 RandomSequence, 181 Blend et 128 Switch portent un volume non
+// nul (jusqu'a -96 dB) — ne lire que celui du Sound laissait au premier plan des branches
+// que le moteur eteint.
+//
+// DELAIS : zero delai mesure sur les 62 753 Sound et les conteneurs ; l'empilement a t=0
+// est donc conforme aux donnees, pas une simplification.
+//
 // couchesDeEvent rend un POINT DE CHOIX par couche : un ensemble de `.wem` dont le moteur
-// joue EXACTEMENT UN.
-//
-// LA DISTINCTION QUI MANQUAIT. Aplatir tout le sous-arbre d'une action dans un seul
-// ensemble perd la nature des noeuds traverses, et les deux natures ne se jouent pas pareil :
-//
-//	RandomSequence -> joue UN enfant tire au sort  : ses `.wem` sont des VARIANTES
-//	Blend, ActorMixer, Switch resolu -> jouent TOUS leurs enfants : ce sont des COUCHES
-//
-// Symptome mesure, signale par l'utilisateur sur le MA40 : « un tir est bien et le suivant
-// etouffe ». Son evenement de 3e personne est un unique `Blend` de 64 `.wem` ; le rendu en
-// tirait UN seul par coup, donc une piece du melange au lieu du melange. En descendant
-// jusqu'aux points de choix, ce `Blend` rend une couche par enfant, et chaque coup les
-// empile toutes — ce que fait le moteur.
-//
-// SIMPLIFICATION ASSUMEE : un `RandomSequence` en mode SEQUENCE joue ses enfants dans
-// l'ordre plutot qu'un seul. Le mode n'est pas lu ; les pools observes sur les armes sont
-// des variantes (22, 14, 8 sons pour un meme tir), donc « un seul » est le cas courant.
+// joue EXACTEMENT UN, chacun avec son gain de chemin.
 func (b *bank) couchesDeEvent(id uint32) []brancheRendue {
 	var out []brancheRendue
 	for _, idAction := range b.Events[id] {
 		if cible, ok := b.Actions[idAction]; ok {
-			out = append(out, b.pointsDeChoix(cible, map[uint32]bool{})...)
+			out = append(out, b.descendre(cible, 0, map[uint32]bool{})...)
 		}
 	}
 	return out
 }
 
-// pointsDeChoix descend jusqu'aux noeuds ou le moteur TRANCHE, et rend un ensemble par
-// tranchage. Un noeud « tous ses enfants » se subdivise ; un noeud « un seul enfant » forme
-// un ensemble avec tout ce qu'il porte.
-func (b *bank) pointsDeChoix(n uint32, vus map[uint32]bool) []brancheRendue {
+// descendre applique la recette ci-dessus en accumulant le gain du chemin.
+func (b *bank) descendre(n uint32, gain float64, vus map[uint32]bool) []brancheRendue {
 	if vus[n] {
 		return nil
 	}
 	vus[n] = true
+	gain += float64(b.VolNoeud[n])
 	if w, estSon := b.Sons[n]; estSon {
-		return []brancheRendue{b.brancheDe(n, []uint32{w})}
+		return []brancheRendue{b.brancheDe(n, map[uint32]float64{w: gain})}
 	}
 	o, connu := b.Objets[n]
 	enfants := b.Enfants[n]
@@ -108,78 +112,62 @@ func (b *bank) pointsDeChoix(n uint32, vus map[uint32]bool) []brancheRendue {
 		return nil
 	}
 	if o.Type == typeRandomSeq {
-		return []brancheRendue{b.brancheDe(n, b.wemsSous(n, map[uint32]bool{}))}
-	}
-	if o.Type == typeBlend {
-		// UN `Blend` N'EMPILE PAS TROIS FOIS LE MEME SON. Mesure : ses enfants ont des
-		// durees IDENTIQUES entre eux (fusil electrique 0,67/0,67/0,67 ; MA40
-		// 0,08/0,08/0,08). Des couches d'un coup de feu differeraient — une attaque breve,
-		// un corps, une queue longue. Trois elements de meme duree sont des ALTERNATIVES,
-		// et l'inventaire dit lesquelles : 42 `Blend` sur 303 portent une automation par
-		// parametre de jeu, soit un fondu de DISTANCE (proche / moyen / lointain).
-		//
-		// Les deux comportements precedents etaient donc faux tous les deux : tirer au
-		// hasard dans l'ensemble des enfants changeait de distance a chaque coup (« un tir
-		// est bien et le suivant etouffe »), et les empiler tous donnait un melange trop
-		// epais (« aucun des reconstitues ne convient plus » sur le fusil electrique).
-		// On fige UNE distance, toujours la meme — ce que la decision de l'utilisateur
-		// autorise : le rejeu 2D n'a pas besoin de gerer la distance.
-		return b.pointsDeChoix(distanceRetenue(enfants), vus)
+		gains := map[uint32]float64{}
+		b.collecterPool(n, gain, map[uint32]bool{n: true}, gains)
+		if len(gains) == 0 {
+			return nil
+		}
+		return []brancheRendue{b.brancheDe(n, gains)}
 	}
 	var out []brancheRendue
 	for _, e := range enfants {
-		out = append(out, b.pointsDeChoix(e, vus)...)
+		g := gain
+		if fondu, ok := b.GainsFondu[n]; ok {
+			g += fondu[e]
+		}
+		out = append(out, b.descendre(e, g, vus)...)
 	}
 	return out
 }
 
-// distanceRetenue choisit l'enfant de `Blend` a rendre. Le choix doit etre STABLE d'une
-// regeneration a l'autre — sinon les votes deja poses porteraient sur un son qui bouge —
-// donc on prend le plus petit identifiant, et non le premier de la liste declaree, dont
-// l'ordre depend de la lecture.
-func distanceRetenue(enfants []uint32) uint32 {
-	meilleur := enfants[0]
-	for _, e := range enfants[1:] {
-		if e < meilleur {
-			meilleur = e
+// collecterPool rassemble les variantes d'un point de choix, chacune avec le gain de SON
+// chemin — un sous-conteneur du pool peut porter son propre volume.
+func (b *bank) collecterPool(n uint32, gain float64, vus map[uint32]bool, out map[uint32]float64) {
+	for _, e := range b.Enfants[n] {
+		if vus[e] {
+			continue
 		}
+		vus[e] = true
+		g := gain + float64(b.VolNoeud[e])
+		if fondu, ok := b.GainsFondu[n]; ok {
+			g += fondu[e]
+		}
+		if w, estSon := b.Sons[e]; estSon {
+			if _, deja := out[w]; !deja {
+				out[w] = g
+			}
+			continue
+		}
+		b.collecterPool(e, g, vus, out)
 	}
-	return meilleur
 }
 
-// wemsSous rend tous les `.wem` d'un sous-arbre : c'est le contenu d'un point de choix.
-func (b *bank) wemsSous(n uint32, vus map[uint32]bool) []uint32 {
-	set := map[uint32]bool{}
-	var descendre func(uint32)
-	descendre = func(x uint32) {
-		if vus[x] {
-			return
-		}
-		vus[x] = true
-		if w, ok := b.Sons[x]; ok {
-			set[w] = true
-		}
-		for _, e := range b.Enfants[x] {
-			descendre(e)
-		}
-	}
-	descendre(n)
-	return trier(set)
-}
-
-func (b *bank) brancheDe(cible uint32, wems []uint32) brancheRendue {
+func (b *bank) brancheDe(cible uint32, gains map[uint32]float64) brancheRendue {
 	t := "inconnu"
 	if o, ok := b.Objets[cible]; ok {
 		t = nomType(o.Type)
 	}
-	gains := map[string]float32{}
-	for _, w := range wems {
-		if g, ok := b.Gains[w]; ok {
-			gains[fmt.Sprintf("%d", w)] = g
+	wems := make([]uint32, 0, len(gains))
+	gs := map[string]float32{}
+	for w, g := range gains {
+		wems = append(wems, w)
+		if g != 0 {
+			gs[fmt.Sprintf("%d", w)] = float32(g)
 		}
 	}
+	sort.Slice(wems, func(i, j int) bool { return wems[i] < wems[j] })
 	return brancheRendue{
-		Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gains,
+		Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gs,
 	}
 }
 
