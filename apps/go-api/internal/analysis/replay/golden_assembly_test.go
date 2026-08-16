@@ -81,6 +81,14 @@ func buildGolden(t *testing.T) ReplayDocument {
 	// Le catalogue vient des VRAIS mappings du titre (cf. golden_catalog_test.go) : le
 	// golden fige donc aussi les libellés servis, dans les deux langues.
 	opt.Labels = goldenCatalog(t)
+	// L entree de catalogue de la carte (schema 8) : les tractions de grappin deQuantifient
+	// leur ancre avec elle — meme source versionnee que la regeneration des entrees
+	// (goldenMapQuant), donc le golden fige aussi ce calque.
+	entry, err := goldenMapQuant()
+	if err != nil {
+		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
+	}
+	opt.MapQuant = &entry
 	return BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
 }
 
@@ -302,6 +310,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderInventory(p, doc)
 	renderAbilities(p, doc)
 	renderEquipment(p, doc)
+	renderGrapple(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderLabels(p, doc)
@@ -467,6 +476,23 @@ func renderEquipment(p func(string, ...any), doc ReplayDocument) {
 	if c := doc.Coverage.Equipment; c != nil {
 		p("couverture : %d vie(s) publiee(s) · camo %d vie(s) / %d episode(s) · surbouclier %d vie(s) / %d episode(s)",
 			c.TracksTotal, c.CamoLives, c.CamoEpisodes, c.OvershieldLives, c.OvershieldEpisodes)
+	}
+	p("")
+}
+
+// renderGrapple publie le calque des TRACTIONS DE GRAPPIN (schema 8) et sa couverture :
+// la fenetre est MESUREE (du tir a l arrivee sur la trajectoire), l ancre est un point
+// monde fixe prouve au gate 0 du plan grappin. Les ratés et corps non decodables sont
+// figes AVEC les tractions — un compte sans ses rejets se lirait comme une exhaustivite.
+func renderGrapple(p func(string, ...any), doc ReplayDocument) {
+	p("## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)")
+	if c := doc.Coverage.Grapple; c != nil {
+		p("%d traction(s) sur %d vie(s) · lectures : %d tir(s) + %d accroche(s) · %d rate(s) · "+
+			"%d corps non decodable(s)",
+			c.Pulls, c.PullLives, c.LightReads, c.HeavyReads, c.UnpairedFires, c.BrokenBodies)
+	}
+	for _, l := range doc.GrappleLines {
+		p("  slot=%d t=[%d, %d] ancre=(%.2f, %.2f, %.2f)", l.Slot, l.T0, l.T1, l.AX, l.AY, l.AZ)
 	}
 	p("")
 }

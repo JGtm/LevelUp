@@ -38,6 +38,10 @@ var worldObjectPrecisionReaders = map[string]string{
 		"grappin, 2026-08-16) lit sa position absolue aux largeurs d'axe de la CARTE — mêmes " +
 		"chemins d'installation que le reste : production via BuildFromFilm/" +
 		"installWorldObjectPrecision, instruments via i59aSetup (installation + restauration)",
+	"internal/analysis/filmdec/grapple_state.go": "CITATION en commentaire : le balayage de " +
+		"production des événements de grappin documente que ses quanta de position sont aux " +
+		"largeurs installées par l'appelant (le corps d'i59 les lit, cf. " +
+		"components_biped_anchor.go) — aucune lecture de la valeur ici",
 	"internal/analysis/replay/world_object_precision.go": "l'INSTALLATEUR de production : " +
 		"pose les largeurs de la carte du match et rend la restauration",
 	"internal/analysis/replay/build.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +

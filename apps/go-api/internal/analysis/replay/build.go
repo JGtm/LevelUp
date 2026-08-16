@@ -59,6 +59,10 @@ type Options struct {
 	// filmdec/camo_state.go). Entree de DONNEES, comme AbilityRanks. Absente = rejeu sans
 	// episodes de camouflage — le surbouclier, lui, voyage dans les positions (Shield.Q).
 	CamoStates []filmdec.CamoRead
+	// GrappleReads : les evenements de grappin lus dans le corps tag==3 d'i59 (cf.
+	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
+	// tractions de grappin — jamais des tractions devinees.
+	GrappleReads []filmdec.GrappleRead
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -213,6 +217,20 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"lues", cStats.Read, "illisibles", cStats.Unread, "sansVoie", cStats.NoChannel)
 	}
 	opt.CamoStates = camoStates
+	// Evenements de grappin : le corps tag==3 d'i59, lu dans les paquets DELTA, sur la
+	// MEME horloge (cf. filmdec/grapple_state.go). Absence non fatale — le rejeu sort sans
+	// tractions de grappin, jamais avec des tractions devinees.
+	grappleReads, gStats, err := filmdec.ScanFilmGrappleReads(filmDir)
+	if err != nil {
+		slog.Warn("evenements de grappin illisibles — rejeu sans tractions", "err", err, "filmDir", filmDir)
+		grappleReads = nil
+	} else {
+		slog.Info("grappin : lectures d i59 tag==3",
+			"recordsDelta", gStats.Records, "masqueAvecI59", gStats.WithI59,
+			"lues", gStats.Read, "illisibles", gStats.Unread,
+			"tag3", gStats.Tag3, "corpsCasses", gStats.BodyBroken)
+	}
+	opt.GrappleReads = grappleReads
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -358,6 +376,22 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
+	// Les TRACTIONS de grappin : fenetre mesuree par vie + ancre en coordonnees monde
+	// (cf. grapple_lines.go). L'ancre exige les bornes de la carte : sans MapQuant,
+	// aucune traction (regle map_bounds.go — pas de bornes, pas de coordonnee monde).
+	switch {
+	case opt.MapQuant != nil:
+		var grapCov *GrappleCoverage
+		doc.GrappleLines, grapCov = buildGrappleLines(opt.GrappleReads, *opt.MapQuant, origin, step, doc.Tracks)
+		doc.Coverage.Grapple = grapCov
+		slog.Info("rejeu : tractions de grappin",
+			"tirs", grapCov.LightReads, "accroches", grapCov.HeavyReads,
+			"tractions", grapCov.Pulls, "vies", grapCov.PullLives,
+			"rates", grapCov.UnpairedFires, "corpsCasses", grapCov.BrokenBodies)
+	case len(opt.GrappleReads) > 0:
+		slog.Warn("rejeu : lectures de grappin sans bornes de carte — aucune traction publiee",
+			"lectures", len(opt.GrappleReads))
+	}
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,
