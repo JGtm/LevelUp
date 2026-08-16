@@ -2,9 +2,9 @@
 // partir des .module du jeu installé, et l'écrit dans
 // data/titles/{slug}/reference/map_quant_bounds.json (PathResolver).
 //
-// Le film ne porte que des indices de quantum ; les bornes (AABB du BSP principal,
-// `world bounds x/y/z` du tag sbsp) ne vivent que dans le module de la carte. Sans elles,
-// aucune coordonnée monde n'est produite (refus explicite côté décodeur).
+// Le film ne porte que des indices de quantum ; les bornes (`world bounds x/y/z` du tag sbsp
+// de la RÉGION 0 de la carte, cf. `himap.BSPQuantification`) ne vivent que dans le module de
+// la carte. Sans elles, aucune coordonnée monde n'est produite (refus explicite côté décodeur).
 //
 // Le lien nom de carte affiché -> dossier de module est déclaré ici, EXPLICITEMENT, et
 // n'est retenu que lorsqu'il est établi hors de toute mesure (identité du nom, ou preuve
@@ -96,101 +96,147 @@ const deployVariant = "ds"
 // LE RELIQUAT DU REGISTRE, INSTRUIT LE 2026-08-16 (PLAN_ALERTES_REPLAY_PARTOUT phase 3). Le
 // lot du 2026-08-13 n'avait catalogue que les cartes Forge de 9 matchs et plus ; 22 cartes de
 // 1 a 8 matchs restaient dehors. Leur module a ete PROUVE par la meme methode level_id (les
-// 22 sont dans `preuvesLevelID`, unicite 1/1 chacune), MAIS SEULES HUIT ENTRENT ICI.
+// 22 sont dans `preuvesLevelID`, unicite 1/1 chacune). Huit sont entrees le 2026-08-16 ; les
+// QUATORZE AUTRES ont ete refusees par le controle `DetectI0Layout`, qui confronte les
+// largeurs DEDUITES des bornes du module au decoupage LU dans le film. Verdict par CANEVAS
+// (19 films) : ACCORD sur `fo08_wetland` 4/4 et `fo09_academy` 3/3 ; DESACCORD systematique
+// sur `fo05_desert` 3/3, `fo11_blank` 7/7 et `fo13_frost` 2/2 — bornes -> [18 18 18], films
+// -> [15 15 17].
 //
-// CE QUI A REFUSE LES QUATORZE AUTRES : LE CONTROLE `DetectI0Layout`, et il faut lire ce qu'il
-// a trouve, parce que la decouverte deborde tres largement ces 14 cartes. Le controle confronte
-// les largeurs DEDUITES des bornes du module au decoupage LU dans un film de la carte. Verdict
-// par CANEVAS (19 films, un par carte disponible) :
+// LA CAUSE, TROUVEE ET CORRIGEE LE 2026-08-16 (PLAN_BORNES_CANEVAS_FORGE) : ce binaire
+// retenait `ReadModuleBSPBounds(...)[0]`, c'est-a-dire LE PLUS GROS TAG sbsp du module. La
+// taille d'un tag mesure sa geometrie compilee, pas son role. Six modules de l'installation
+// portent un DECOR LOINTAIN plus lourd que leur arene — les six canevas Forge `fo03_space`,
+// `fo05_desert`, `fo06_deepsea`, `fo10_deadland`, `fo11_blank`, `fo13_frost` — et sur ceux-la
+// le catalogue portait les bornes du decor (3 867 x 3 662 x 2 664 unites) quand le jeu
+// quantifie dans l'arene (463 x 453 x 1 189). `fo08_wetland` et `fo09_academy` portent LES
+// MEMES DEUX AABB : ils tombaient juste parce que leur arene pese plus d'octets, pas parce que
+// le critere disait quelque chose de vrai.
 //
-//	fo08_wetland  bornes -> [15 15 17]   films [15 15 17]   ACCORD    4/4
-//	fo09_academy  bornes -> [15 15 17]   films [15 15 17]   ACCORD    3/3
-//	fo05_desert   bornes -> [18 18 18]   films [15 15 17]   DESACCORD 3/3
-//	fo11_blank    bornes -> [18 18 18]   films [15 15 17]   DESACCORD 7/7
-//	fo13_frost    bornes -> [18 18 18]   films [15 15 17]   DESACCORD 2/2
+// LE CRITERE EST DESORMAIS CELUI DU MOTEUR : `himap.BSPQuantification` lit l'ordre des REGIONS
+// de compression dans le bloc structure-BSP du tag de niveau (`levl`) et retient la region 0 —
+// celle que le composant i0 designe par defaut. Lisible sur les 29 modules porteurs de sbsp de
+// l'installation, confirme par un controle croise independant (le plus petit AABB) sur les 29,
+// et verrouille par `himap.TestBSPQuantificationTousModules`.
 //
-// Le desaccord est SYSTEMATIQUE et PAR CANEVAS, jamais par carte : le tag sbsp le plus gros de
-// ces trois modules n'est pas celui contre lequel le jeu quantifie. Ses bornes couvrent ~3 870
-// unites la ou le film en quantifie ~550. Le commentaire d'`AxisWidths` le dit deja : un
-// desaccord signale que ce sont les BORNES qui sont fausses, pas le decoupage.
+// PORTEE DE LA CORRECTION, mesuree sur le registre (snapshot v77+) : 21 entrees vivaient sur
+// ces six canevas avec de fausses bornes — 11 sur `fo11_blank`, 7 sur `fo05_desert`, 1 sur
+// `fo13_frost`, plus Starboard (`fo03_space`) et Dredge (`fo06_deepsea`) que le controle du
+// 2026-08-16 n'avait jamais joues — soit 316 matchs. Les 14 cartes refusees entrent en meme
+// temps (41 matchs). Cette correction ferme aussi le report « ecart vertical de ~1 270 m » du
+// 2026-08-14 : ses cartes touchees sont sur ces canevas.
 //
-// CE DEFAUT PREEXISTE ET IL EST PLUS GROS QUE LE RELIQUAT : 18 entrees DEJA CATALOGUEES vivent
-// sur ces trois canevas (11 sur fo11_blank, 7 sur fo05_desert, 1 sur fo13_frost), soit 276
-// matchs du registre — plus que les 215 matchs sans bornes du tout. Il n'est PAS corrige ici
-// (regle « zero fix hors perimetre ») : il est au registre des reports avec sa mesure, et il
-// explique le report « ecart vertical de ~1 270 m » du 2026-08-14, dont TOUTES les cartes
-// touchees sauf une sont sur ces trois canevas.
-//
-// Les huit qui entrent, toutes controlees ACCORD (Cole Protocol n'a aucun film : elle entre
-// sur le controle de son CANEVAS, 3/3 — les bornes sont celles du module, pas de la carte) :
+// Les huit entrees du 2026-08-16, toutes controlees ACCORD (Cole Protocol n'a aucun film : elle
+// entre sur le controle de son CANEVAS, 3/3 — les bornes sont celles du module, pas de la
+// carte) :
 //
 //	fo08_wetland  Thunderhead, Ronin, Rat's Nest, Scarlett's Landing
 //	fo09_academy  Insolence, Merchant's Square, Urban Raid, Cole Protocol
+//
+// Les quatorze entrees du 2026-08-16 (PLAN_BORNES_CANEVAS_FORGE phase 2), debloquees par le
+// changement de critere et controlees film par film :
+//
+//	fo11_blank   Ecotone, Threshold, Pharaoh, Credence, Disciple, Nadair, Warehouse
+//	fo05_desert  Solution, Flood Gulch, Dawnbreaker, Vallaheim Firefight
+//	fo13_frost   Outlook, Lattice - Ranked, 944396dd-5661-4a16-b1d8-a6053f762c55
 var mapModule = map[string]string{
-	"Absolution":         "fo09_academy",
-	"Aquarius":           "ctf_aquarius",
-	"Banished Narrows":   "fo05_desert",
-	"Bazaar":             "ctf_bazaar",
-	"Behemoth":           "va_behemoth",
-	"Breaker":            "ctf_breaker",
-	"Catalyst":           "catalyst",
-	"Chasm":              "chasm",
-	"Cliffhanger":        "ridgeline",
-	"Cliffside":          "fo05_desert",
-	"Cole Protocol":      "fo09_academy",
-	"Command":            "fo09_academy",
-	"Corpo":              "fo11_blank",
-	"Critical Dewpoint":  "fo11_blank",
-	"Curfew":             "fo11_blank",
-	"Deadlock":           "btb_drydock",
-	"Domicile":           "fo05_desert",
-	"Dredge":             "fo06_deepsea",
-	"Dynasty":            "fo08_wetland",
-	"Elevation":          "fo11_blank",
-	"Empyrean":           "fo11_blank",
-	"Forbidden":          "ctf_forbidden",
-	"Forest":             "forest",
-	"Fortitude":          "fo05_desert",
-	"Fortress":           "fo09_academy",
-	"Fragmentation":      "btb_fragmentation",
-	"Goliath":            "fo11_blank",
-	"High Ground":        "fo08_wetland",
-	"Highpower":          "btb_highpower",
-	"Houseki":            "fo09_academy",
-	"Illusion":           "ctf_illusion",
-	"Insolence":          "fo09_academy",
-	"Isolation":          "fo08_wetland",
-	"Kaiketsu":           "fo05_desert",
-	"Kiken'na":           "fo08_wetland",
-	"Launch Site":        "va_launchsite",
-	"Merchant's Square":  "fo09_academy",
-	"Nemesis":            "fo08_wetland",
-	"Oasis":              "btb_exiled",
-	"Obituary":           "fo09_academy",
-	"Opulence":           "fo11_blank",
-	"Origin":             "fo08_wetland",
-	"Perilous":           "fo08_wetland",
-	"Prism":              "sgh_crystalcaves",
-	"Rat's Nest":         "fo08_wetland",
-	"Recharge":           "sgh_blueprint",
-	"Refuge":             "fo08_wetland",
-	"Ronin":              "fo08_wetland",
-	"Salvation":          "fo11_blank",
-	"Scarlett's Landing": "fo08_wetland",
-	"Scarr":              "btb_engine",
-	"Shiro":              "fo05_desert",
-	"Shogun":             "fo11_blank",
-	"Smallhalla":         "fo08_wetland",
-	"Snowbound":          "fo13_frost",
-	"Solitude":           "fo11_blank",
-	"Starboard":          "fo03_space",
-	"Streets":            "sgh_streets",
-	"Sylvanus":           "fo05_desert",
-	"Takamanohara":       "fo11_blank",
-	"The Pit":            "fo09_academy",
-	"Thunderhead":        "fo08_wetland",
-	"Urban Raid":         "fo09_academy",
-	"Vagabond":           "fo08_wetland",
+	"Absolution":          "fo09_academy",
+	"Aquarius":            "ctf_aquarius",
+	"Banished Narrows":    "fo05_desert",
+	"Bazaar":              "ctf_bazaar",
+	"Behemoth":            "va_behemoth",
+	"Breaker":             "ctf_breaker",
+	"Catalyst":            "catalyst",
+	"Chasm":               "chasm",
+	"Cliffhanger":         "ridgeline",
+	"Cliffside":           "fo05_desert",
+	"Cole Protocol":       "fo09_academy",
+	"Command":             "fo09_academy",
+	"Corpo":               "fo11_blank",
+	"Credence":            "fo11_blank",
+	"Critical Dewpoint":   "fo11_blank",
+	"Curfew":              "fo11_blank",
+	"Dawnbreaker":         "fo05_desert",
+	"Deadlock":            "btb_drydock",
+	"Disciple":            "fo11_blank",
+	"Domicile":            "fo05_desert",
+	"Dredge":              "fo06_deepsea",
+	"Dynasty":             "fo08_wetland",
+	"Ecotone":             "fo11_blank",
+	"Elevation":           "fo11_blank",
+	"Empyrean":            "fo11_blank",
+	"Flood Gulch":         "fo05_desert",
+	"Forbidden":           "ctf_forbidden",
+	"Forest":              "forest",
+	"Fortitude":           "fo05_desert",
+	"Fortress":            "fo09_academy",
+	"Fragmentation":       "btb_fragmentation",
+	"Goliath":             "fo11_blank",
+	"High Ground":         "fo08_wetland",
+	"Highpower":           "btb_highpower",
+	"Houseki":             "fo09_academy",
+	"Illusion":            "ctf_illusion",
+	"Insolence":           "fo09_academy",
+	"Isolation":           "fo08_wetland",
+	"Kaiketsu":            "fo05_desert",
+	"Kiken'na":            "fo08_wetland",
+	"Lattice - Ranked":    "fo13_frost",
+	"Launch Site":         "va_launchsite",
+	"Merchant's Square":   "fo09_academy",
+	"Nadair":              "fo11_blank",
+	"Nemesis":             "fo08_wetland",
+	"Oasis":               "btb_exiled",
+	"Obituary":            "fo09_academy",
+	"Opulence":            "fo11_blank",
+	"Origin":              "fo08_wetland",
+	"Outlook":             "fo13_frost",
+	"Perilous":            "fo08_wetland",
+	"Pharaoh":             "fo11_blank",
+	"Prism":               "sgh_crystalcaves",
+	"Rat's Nest":          "fo08_wetland",
+	"Recharge":            "sgh_blueprint",
+	"Refuge":              "fo08_wetland",
+	"Ronin":               "fo08_wetland",
+	"Salvation":           "fo11_blank",
+	"Scarlett's Landing":  "fo08_wetland",
+	"Scarr":               "btb_engine",
+	"Shiro":               "fo05_desert",
+	"Shogun":              "fo11_blank",
+	"Smallhalla":          "fo08_wetland",
+	"Snowbound":           "fo13_frost",
+	"Solitude":            "fo11_blank",
+	"Solution":            "fo05_desert",
+	"Starboard":           "fo03_space",
+	"Streets":             "sgh_streets",
+	"Sylvanus":            "fo05_desert",
+	"Takamanohara":        "fo11_blank",
+	"The Pit":             "fo09_academy",
+	"Threshold":           "fo11_blank",
+	"Thunderhead":         "fo08_wetland",
+	"Urban Raid":          "fo09_academy",
+	"Vagabond":            "fo08_wetland",
+	"Vallaheim Firefight": "fo05_desert",
+	"Warehouse":           "fo11_blank",
+	// Carte dont l'API n'a jamais resolu le nom d'affichage : `map_name` vaut l'identifiant
+	// d'asset. Sa preuve level_id est jouee comme les autres par `TestPreuveLevelIDCartes`.
+	"944396dd-5661-4a16-b1d8-a6053f762c55": "fo13_frost",
+}
+
+// avertitSiEcarte publie, en AVERTISSEMENT, les cas où le critère de région a écarté le plus
+// gros tag sbsp. C'est la trace qui rend le catalogue relisible : sur les six canevas Forge de
+// l'installation, cet avertissement est la ligne qui dit que les bornes ont changé de BSP.
+func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
+	if len(candidats) < 2 || q.GlobalID == candidats[0].GlobalID {
+		return
+	}
+	w, wPlusGros := q.Bounds.AxisWidths(), candidats[0].Bounds.AxisWidths()
+	slog.Warn("le plus gros tag sbsp n'est PAS la région 0 — bornes prises sur la région 0",
+		"carte", name, "module", mod, "candidats", len(candidats),
+		"region0", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
+			q.GlobalID, w[0], w[1], w[2], q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)),
+		"plusGrosTag", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
+			candidats[0].GlobalID, wPlusGros[0], wPlusGros[1], wPlusGros[2],
+			candidats[0].Bounds.Extent(0), candidats[0].Bounds.Extent(1), candidats[0].Bounds.Extent(2)))
 }
 
 func main() {
@@ -221,8 +267,9 @@ func main() {
 
 	cat := filmdec.MapQuantCatalog{
 		SchemaVersion: filmdec.MapQuantSchemaVersion,
-		Source:        "world bounds x/y/z du tag sbsp principal, lus dans " + *levels,
-		Maps:          map[string]filmdec.MapQuantEntry{},
+		Source: "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP " +
+			"du tag de niveau), lus dans " + *levels,
+		Maps: map[string]filmdec.MapQuantEntry{},
 	}
 	names := make([]string, 0, len(mapModule))
 	for n := range mapModule {
@@ -238,29 +285,32 @@ func main() {
 			missing++
 			continue
 		}
-		bsps, err := himap.ReadModuleBSPBounds(mods[0])
+		// LE BSP DE DÉQUANTIFICATION EST LA RÉGION 0 DU TAG DE NIVEAU, jamais le plus gros
+		// tag : `BSPQuantification` refuse plutôt que de deviner quand l'ordre des régions
+		// est illisible, et ce refus doit rester une erreur qui arrête le catalogue.
+		q, candidats, err := himap.BSPQuantification(mods[0])
 		if err != nil {
-			slog.Error("lecture des bornes", "err", err, "carte", name, "module", mod)
+			slog.Error("choix du BSP de déquantification", "err", err, "carte", name, "module", mod)
 			missing++
 			continue
 		}
-		main := bsps[0] // BSP principal = le plus gros tag sbsp
-		if !main.Bounds.Valid() {
+		if !q.Bounds.Valid() {
 			slog.Error("AABB dégénérée", "carte", name, "module", mod)
 			missing++
 			continue
 		}
+		avertitSiEcarte(name, mod, q, candidats)
 		e := filmdec.MapQuantEntry{Module: mod}
-		w := main.Bounds.AxisWidths()
+		w := q.Bounds.AxisWidths()
 		for ax := 0; ax < 3; ax++ {
-			e.Min[ax] = float32(main.Bounds.Min[ax])
-			e.Max[ax] = float32(main.Bounds.Max[ax])
+			e.Min[ax] = float32(q.Bounds.Min[ax])
+			e.Max[ax] = float32(q.Bounds.Max[ax])
 			e.AxisWidths[ax] = uint(w[ax])
 		}
 		cat.Maps[filmdec.NormalizeMapName(name)] = e
 		slog.Info("bornes lues", "carte", name, "module", mod,
 			"W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
-			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", main.Bounds.Extent(0), main.Bounds.Extent(1), main.Bounds.Extent(2)))
+			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)))
 	}
 	if missing > 0 {
 		slog.Error("catalogue incomplet — rien écrit", "manquantes", missing)
