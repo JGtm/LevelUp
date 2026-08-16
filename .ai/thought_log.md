@@ -1,3 +1,44 @@
+## [2026-08-16] v7.5 rejeu 2D — camo et surbouclier PUBLIES, MONTRES et SONNES (phases 1-4, restreintes)
+**Statut** : Complete — phases 1 a 4 du `PLAN_EQUIPEMENT_TI37.md`, RESTREINTES aux deux
+familles gagnees par la mesure du 16/08 (decision utilisateur : « pour active camo et
+surbouclier oui ca me va »). Restent les gates VISUEL et ECOUTE utilisateur (film temoin :
+`084a804d`).
+**Decision technique** : le document publie `equipmentEpisodes` (schema 6 -> 7, cle de
+reprise du backfill) — episodes dates PAR VIE, `[t0, t1]` sur la grille des tracks,
+`endRead` distinguant la fin MESUREE (camo : retour a 0 de i28 queue[1] ; surbouclier :
+retour a q <= 64) de la fermeture a la mort (fin de piste). Production : nouveau lecteur
+`filmdec/camo_state.go` (`ScanFilmCamoStates`, hook du deser, marche partagee
+`walkRecordTo` — un seul exemplaire pour i48 et i28) ; le surbouclier n'exige AUCUN
+balayage neuf (quantum `Shield.Q` deja capture par `ScanFilmBipedPositions`, regle figee
+`filmdec.OvershieldFullQ` = 64, jamais la valeur clampee — `Point.sh` inchange).
+Couverture par famille publiee dans `Coverage.equipment`. Fixture golden v4
+(`REPLAYINPUTS4` : + CamoStates, + Shield.Q), contrat OpenAPI regenere (28 -> 29 champs),
+frontiere web (`replayNormalize`, `NULLABLE_ARRAYS`). Rendu : camo ESTOMPE la fiche
+entiere (opacite 0.4, statique — reduced-motion par construction), surbouclier la
+SURLIGNE (anneau + halo + fond au token `info`, celui de la jauge de bouclier) ; duree =
+l'episode, zero remanence inventee. Sons : 4 WAV convertis par la recette du lot grenades
+(temoin RECONSTRUIT identique a l'octet a `explosion_frag.wav`, 230 444 o chacun) ;
+Activate au debut, Deactivate sur fin MESUREE seulement (mort = pas de son de
+desactivation, rien ne l'a mesuree — choix documentes pour le gate d'ecoute).
+**Resultats** :
+- Couverture corpus (4 films) : `084a804d` 256 vies — camo 9 vies / 15 episodes (10 fins
+  mesurees), surbouclier 5 / 6 (6 mesurees, max 61,6 s = LE chiffre du gate B retrouve) ;
+  `00ba2e1c` (temoin negatif) 208 vies — 0 partout, reproduit AU ZERO PRES ; `000d5950`
+  (golden) 99 vies — camo 22 / 36, surbouclier 0 (temoin de forme [0,64] respecte) ;
+  `06dfe6d9` NON constructible (carte `Threshold` hors catalogue de bornes, echec voulu).
+- DECOUVERTE au golden, CONTROLEE a l'instrument avant acceptation : sur `000d5950`
+  (Fiesta, famille B, 0 porteur rang 8), 698 lectures queue[1] STRICTEMENT binaires
+  (0:617 · 4095:81), transitions sur vies rangs 19-22 — le POWER-UP de camouflage allume
+  i28. Le canal est l'etat d'invisibilite de l'UNITE ; l'exclusivite rang 8 de la phase A
+  etait la VALIDATION du canal sur des films sans power-up. L'etat est l'etat : on publie.
+- Gates : go build/vet ./... 0 · go test analysis+replaybuild 0 · go test internal/games
+  ok · golangci-lint new-from-merge-base 0 issue · web typecheck/lint 0 · vitest complet
+  exit 0 (3 807 tests ; passe 1 : le flaky CONNU PalmaresRelationsPage, 2e observation
+  consignee au registre, vert seul).
+**Conclusion / suite** : plan mis a jour (statuts + journal de cloture), registre : ligne
+camo/surbouclier SORTIE, ligne effet plein-fiche LIVREE pour 2 familles, ligne NOUVELLE
+« filtre des sons par categorie » (decision user au gate d'ecoute). Le re-build de masse
+des artefacts (pendant au registre) portera le schema 7 partout.
 ## [2026-08-16] v7.5 rejeu 2D — l'etat ACTIF d'un equipement : 5 verdicts par famille, 2 canaux gagnants
 **Statut** : Complete — plan `.ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md` CLOS,
 5 gates passes (A camo, B surbouclier, C deployables, D mobilite, E i59). Lot de MESURE :
