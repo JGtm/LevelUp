@@ -60,6 +60,10 @@ type bank struct {
 	// volume non nul, jusqu'a -96 dB. Le gain d'un `.wem` est donc la SOMME du chemin
 	// evenement -> ... -> Sound, pas le volume du Sound seul.
 	VolNoeud map[uint32]float32
+	// VarNoeud : fourchette de variation par lecture (paquet RANGED) portee par le noeud.
+	// Meme raisonnement que VolNoeud : un conteneur peut faire varier ce que ses enfants
+	// jouent, la variation d'un `.wem` est donc celle de tout son chemin.
+	VarNoeud map[uint32]fourchetteSon
 	// GainsFondu : gain additionnel (dB) impose par la courbe de fondu d'un `Blend` a l'un
 	// de ses enfants, au point de reference. Mesure : 0 gain partiel sur les 1305 banks —
 	// la table reste correcte si une future version du jeu en introduit.
@@ -162,6 +166,7 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		Enfants:    map[uint32][]uint32{},
 		Switchs:    map[uint32]conteneurSwitch{},
 		VolNoeud:   map[uint32]float32{},
+		VarNoeud:   map[uint32]fourchetteSon{},
 		GainsFondu: map[uint32]map[uint32]float64{},
 	}
 	for _, o := range objs {
@@ -174,10 +179,11 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		case typeSound:
 			if wem, ok := lireSourceID(o.Data, estWem); ok {
 				b.Sons[o.ID] = wem
-				if p := lireProprietes(o.Data); p.Lu && p.VolumeDB != 0 {
+				p := lireProprietes(o.Data)
+				if p.Lu && p.VolumeDB != 0 {
 					b.Gains[wem] = p.VolumeDB
-					b.VolNoeud[o.ID] = p.VolumeDB
 				}
+				b.noterProps(o.ID, p)
 			}
 		case typeAction:
 			// Seules les actions « jouer » contribuent au son. Retenir les autres revenait
@@ -192,14 +198,10 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		case typeBlend:
 			// Le volume propre du conteneur, puis ses courbes de fondu : les enfants
 			// inaudibles au point de reference ne sont pas retenus (etape 18.2).
-			if pr := lireProprietesConteneur(o.Data); pr.Lu && pr.VolumeDB != 0 {
-				b.VolNoeud[o.ID] = pr.VolumeDB
-			}
+			b.noterProps(o.ID, lireProprietesConteneur(o.Data))
 			b.resoudreBlend(o, connu)
 		case typeSwitch:
-			if pr := lireProprietesConteneur(o.Data); pr.Lu && pr.VolumeDB != 0 {
-				b.VolNoeud[o.ID] = pr.VolumeDB
-			}
+			b.noterProps(o.ID, lireProprietesConteneur(o.Data))
 			// UN `Switch` N'EST PAS UN LOT DE VARIANTES. Il choisit ses enfants selon un
 			// etat de jeu (distance, materiau...). Retenir tous ses enfants revenait a
 			// melanger des etats qui ne coexistent jamais : mesure a l'origine de ce
@@ -207,15 +209,28 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 			// melange. On ne retient donc que l'etat par defaut.
 			b.resoudreSwitch(o, connu)
 		default:
-			if pr := lireProprietesConteneur(o.Data); pr.Lu && pr.VolumeDB != 0 {
-				b.VolNoeud[o.ID] = pr.VolumeDB
-			}
+			b.noterProps(o.ID, lireProprietesConteneur(o.Data))
 			if enf := lireEnfants(o.Data, connu); len(enf) > 0 {
 				b.Enfants[o.ID] = enf
 			}
 		}
 	}
 	return b, nil
+}
+
+// noterProps enregistre ce qu'un noeud impose a ce qui passe par lui : son volume propre et
+// sa fourchette de variation par lecture. Une seule ecriture pour les deux tables — elles
+// se remplissent aux memes endroits, les separer les faisait deja diverger.
+func (b *bank) noterProps(id uint32, p proprietesSon) {
+	if !p.Lu {
+		return
+	}
+	if p.VolumeDB != 0 {
+		b.VolNoeud[id] = p.VolumeDB
+	}
+	if p.Variation.Lu && !p.Variation.Nulle() {
+		b.VarNoeud[id] = p.Variation
+	}
 }
 
 // resoudreSwitch retient, pour un conteneur `Switch`, les enfants de son etat par defaut.

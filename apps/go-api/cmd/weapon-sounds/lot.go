@@ -129,6 +129,7 @@ func cartographierLot(cheminModule, dossierPck, sortie string) error {
 		rap.Armes = append(rap.Armes, entree)
 	}
 	rapporterMemoire("sous-passe B terminee")
+	afficherSignesVariation()
 
 	blob, err := json.MarshalIndent(rap, "", " ")
 	if err != nil {
@@ -243,8 +244,10 @@ func analyserPourPck(m *himodule.Module, f himodule.File, ids map[uint32]bool, c
 		if len(w) == 0 {
 			continue
 		}
+		couches := b.couchesDeEvent(id)
 		out.Evenements = append(out.Evenements, evenementRendu{
-			IDEvent: id, Nombre: len(w), Wems: w, Couches: b.couchesDeEvent(id),
+			IDEvent: id, Nombre: len(w), Wems: w, Couches: couches,
+			Variation: variationDeCouches(couches),
 		})
 	}
 	sort.Slice(out.Evenements, func(i, j int) bool {

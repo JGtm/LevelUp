@@ -48,10 +48,17 @@ Gate : `go build ./...` + `go vet` verts ; nouvelle sortie JSON documentee dans 
 de main.go. NE PAS lancer le module de 7,24 Go : laisser la commande ecrite au journal,
 le pilote l'executera (contrainte memoire du chantier sons).
 
-- [ ] Lire les valeurs du paquet RANGED (le lecteur existe, exporter min/max par propriete)
-- [ ] Les faire remonter dans le rapport par arme : fourchette volume (dB) et hauteur
-      (centiemes) par (mode, perspective) — agregation : fourchette de la couche dominante
-- [ ] Champ `variation` dans le manifeste destine a l'app (schema ecrit, valeurs a venir)
+- [x] Lire les valeurs du paquet RANGED (le lecteur existe, exporter min/max par propriete)
+      — le lecteur n'existait PAS : `lirePaquetProps` jetait la seconde composante. Ecrit :
+      `lirePaquetLarge` + `lireVariation` (`proprietes.go`).
+- [x] Les faire remonter dans le rapport par arme : fourchette volume (dB) et hauteur
+      (centiemes) par (mode, perspective) — agregation : fourchette de la couche dominante.
+      MODE : fait (`modes[].variation` du mode `lot-tir`). PERSPECTIVE : non modelisable,
+      voir journal — la granularite livree est l'EVENEMENT, qui est ce qui porte la
+      distinction 1p/3p dans les faits.
+- [x] Champ `variation` dans le manifeste destine a l'app (schema ecrit, valeurs a venir)
+      — schema fige en tete de `variation.go` ; pas de struct Go (aucun producteur dans ce
+      depot, ce serait du code mort), le type vivant est celui du lecteur web (etape 3).
 
 ### Etape 3 — Lecteur cote web (WebAudio)
 
@@ -187,3 +194,64 @@ propriete (`d[debutVals+i*4*largeur]`) : appelee avec largeur 2, elle lit le `mi
 IGNORE le `max`. Le seul appel RANGED (l.120) jette meme son resultat et sa branche `if`
 est inerte (`out.Lu = out.Lu && true` est un no-op). L'etape 2 doit donc ajouter un
 lecteur qui rend les DEUX composantes, pas seulement brancher l'existant.
+
+### 2026-08-16 — Etape 2 CLOSE : la fourchette RANGED traverse tout le rapport
+
+**Gate.** `gofmt -l ./cmd/weapon-sounds/` : vide. `go build ./...` : rc=0. `go vet ./...` :
+rc=0. `go test ./cmd/weapon-sounds/` : ok (7 tests neufs). Aucun fichier > 500 L
+(`lot_tir.go` revenu a 488 apres deplacement de deux helpers vers `variation.go`).
+Le module de 7,24 Go n'a PAS ete ouvert — contrainte memoire respectee.
+
+**Ce qui a ete ecrit.** `lirePaquetLarge` rend toutes les composantes d'un AkPropBundle et
+valide chacune (l'ancien lecteur ne validait que la premiere) ; `lirePaquetProps` devient
+son enveloppe pour la largeur 1, comportement inchange, verifie par test. `lireVariation`
+decode le paquet RANGED en `fourchetteSon` (volume dB, hauteur en centiemes).
+`bank.noterProps` enregistre volume propre ET fourchette du noeud en une seule ecriture —
+les quatre copies du bloc `if pr.Lu && pr.VolumeDB != 0` sont ramenees a un appel.
+
+**Propagation.** La fourchette suit exactement le chemin du gain, deja prouve a l'etape 18
+du chantier sons : `etatChemin` porte les deux, la fourchette s'ADDITIONNE le long du
+chemin (chaque noeud traverse tire le sien) et s'ENVELOPPE entre variantes d'un point de
+choix (le moteur n'en joue qu'une). Elle ressort en `variation` a quatre niveaux : couche
+(`branches[].variation`, mode `arbre`), evenement (`armes[].evenements[].variation`, mode
+`lot`), mode de tir (`modes[].variation`) et arme (mode `lot-tir`). Toujours OPTIONNELLE :
+absente, le son se joue pur.
+
+**Agregation.** Couche dominante = plus fort gain de chemin (`variationDeCouches`), puis
+mode dominant pour l'arme (`variationDominante`). Une couche de renfort 20 dB en arriere ne
+dicte donc pas la variation du coup.
+
+**LA PERSPECTIVE N'EST PAS EXPORTABLE, et c'est mesure, pas suppose.** Aucune structure du
+pipeline Go ne porte 1p/3p : le seul « 1p/3p » du package est la liste de verbes candidats
+de `noms.go`, qui sert au hachage FNV-1 des noms, et le seul autre endroit du chantier qui
+en parle est un commentaire de `conteneurs.go`. La distinction vit dans les EVENEMENTS
+(une arme a typiquement un evenement de tir par perspective) et dans les noms de fichiers
+rendus hors depot (`_RAFALE_M<n>_3p.wav`). La fourchette est donc exportee A LA
+GRANULARITE DE L'EVENEMENT, ce qui permet au manifeste de retenir celle de l'evenement 3e
+personne — le rejeu 2D etant une vue exterieure (decision deja actee au handoff sons).
+
+**QUESTION LAISSEE OUVERTE, A TRANCHER PAR LA PREMIERE EXECUTION REELLE.** Le format donne
+deux composantes par propriete sans dire laquelle est le minimum. Deux lectures restent
+possibles : des OFFSETS SIGNES autour du nominal (une negative, une positive) ou deux
+MAGNITUDES positives a retrancher/ajouter. Rien n'est postule : les bornes sont rendues
+ORDONNEES, et l'outil imprime en fin d'execution le releve des signes observes
+(`variation RANGED : N couples lus | composantes negatives …, positives …, nulles …`).
+Une majorite de couples (negatif, positif) confirme les offsets signes ; que des positives
+imposerait l'autre lecture et un correctif d'une ligne dans `lireVariation`.
+
+**COMMANDES POUR LE PILOTE — a lancer hors de cette session (memoire).**
+Depuis `apps/go-api`, passe 1, module de 7,24 Go, une seule ouverture :
+
+	go run ./cmd/weapon-sounds -mode lot -module pc/globals/globals-rtx-new.module \
+	  -pck "<...>/Sound/win/SFX" -banks "8827aa7e,09089e7e" -json <...>/lot1.json
+
+Le drapeau `-banks` n'est pas optionnel : sans lui, les deux banks entierement embarquees
+(Mutilator `8827aa7e`, Carabine Vestige `09089e7e`) manquent — fausse alerte deja consignee
+au plan d'extraction. Puis la passe 2, sur l'autre module (0,62 Go), jamais dans le meme
+processus :
+
+	go run ./cmd/weapon-sounds -mode lot-tir -module any/globals/globals-rtx-new.module \
+	  -json <...>/lot1.json -out <...>/lot_tir.json
+
+A LIRE DANS LA SORTIE : la ligne `variation RANGED : …` de la passe 1 (elle tranche la
+question ci-dessus), et le champ `variation` dans `lot_tir.json`.
