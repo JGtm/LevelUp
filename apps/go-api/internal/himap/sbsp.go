@@ -99,20 +99,35 @@ func ceilLog2(v uint64) int {
 type BSP struct {
 	// FileIndex est l'index de l'entrée dans le .module.
 	FileIndex int
-	// UncompSize est la taille décompressée du tag (sert à désigner le BSP principal).
+	// UncompSize est la taille décompressée du tag. ATTENTION : elle mesure la géométrie
+	// compilée, PAS le rôle du BSP — ne jamais s'en servir pour désigner le BSP contre
+	// lequel le moteur quantifie (cf. sbsp_region.go, `BSPQuantification`).
 	UncompSize int
+	// GlobalID est l'identifiant global du tag : la clé par laquelle le tag de niveau
+	// (`levl`) le référence, donc celle qui permet de lire l'ordre des régions.
+	GlobalID uint32
 	// FieldOffset est l'offset RÉEL de `world bounds x` dans le root block (déduit).
 	FieldOffset int
 	Bounds      Bounds
 }
 
 // ReadModuleBSPBounds ouvre un .module et renvoie les bornes monde de tous ses tags
-// sbsp, triés par taille décroissante (le BSP principal en premier).
+// sbsp, triés par taille décroissante.
+//
+// L'ORDRE N'EST PAS UN CRITÈRE DE CHOIX : pour obtenir le BSP de déquantification d'une
+// carte, appeler `BSPQuantification` (sbsp_region.go), qui lit l'ordre des régions dans le
+// tag de niveau. Retenir `[0]` a servi de fausses bornes à 20 entrées de catalogue.
 func ReadModuleBSPBounds(modulePath string) ([]BSP, error) {
 	m, err := himodule.Open(modulePath)
 	if err != nil {
 		return nil, err
 	}
+	return bspBoundsFrom(m, modulePath)
+}
+
+// bspBoundsFrom lit les bornes des tags sbsp d'un module DÉJÀ ouvert (les gros modules
+// pèsent plusieurs centaines de Mo : on ne les ouvre pas deux fois).
+func bspBoundsFrom(m *himodule.Module, modulePath string) ([]BSP, error) {
 	files := m.Files("sbsp")
 	sort.Slice(files, func(i, j int) bool { return files[i].UncompSize > files[j].UncompSize })
 	out := make([]BSP, 0, len(files))
@@ -132,7 +147,8 @@ func ReadModuleBSPBounds(modulePath string) ([]BSP, error) {
 			}
 			continue
 		}
-		out = append(out, BSP{FileIndex: f.Index, UncompSize: f.UncompSize, FieldOffset: off, Bounds: b})
+		out = append(out, BSP{FileIndex: f.Index, UncompSize: f.UncompSize, GlobalID: f.GlobalID,
+			FieldOffset: off, Bounds: b})
 	}
 	if len(out) == 0 {
 		if firstErr != nil {
