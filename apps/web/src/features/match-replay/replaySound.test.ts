@@ -18,6 +18,7 @@ import {
   resyncSoundCursor,
   SOUND_RESYNC_JUMP_MS,
   type ReplaySoundEvent,
+  type SoundCategoryFilter,
 } from './replaySound'
 import { testReplayDoc } from './test/testDoc'
 
@@ -244,6 +245,75 @@ describe('buildSoundTimeline', () => {
       }),
       [],
       0,
+    )
+    expect(tl).toEqual([])
+  })
+})
+
+describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, phase 2)', () => {
+  const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true }
+
+  it('sans 4e paramètre, comportement INCHANGÉ : les quatre catégories sonnent', () => {
+    const tl = buildSoundTimeline(docAvecTirs(2), [], 0)
+    expect(tl.map((e) => e.stem)).toEqual(['hinf_br75', 'hinf_br75'])
+  })
+
+  it('catégorie ARMES coupée : ni le tir ni le kill d arme ne sonnent, la grenade reste', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        shots: [{ slot: 1, t: 5, x: 0, y: 0, w: '0x2B1824D5' }],
+        weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', key: 'hinf_br75' } },
+        grenades: [grenade({ t: 50, rank: 0 })],
+      }),
+      [kill()], // kill à l'arme (hinf_br75)
+      0,
+      { ...ALL_ON, weapon: false },
+    )
+    expect(tl.map((e) => e.stem)).toEqual(['throw_frag'])
+  })
+
+  it('catégorie GRENADES coupée : ni le lancer ni l explosion ne sonnent, l arme reste', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        shots: [{ slot: 1, t: 5, x: 0, y: 0, w: '0x2B1824D5' }],
+        weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', key: 'hinf_br75' } },
+        grenades: [grenade({ t: 50, rank: 0 })],
+      }),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], // kill à la grenade à pointes
+      0,
+      { ...ALL_ON, grenade: false },
+    )
+    expect(tl.map((e) => e.stem)).toEqual(['hinf_br75'])
+  })
+
+  it('catégorie MÊLÉE coupée : le coup fatal ne sonne plus', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple(),
+      [kill({ weaponKey: '', weaponLabel: '', weaponImageUrl: vignette('killfeed-65') })],
+      0,
+      { ...ALL_ON, melee: false },
+    )
+    expect(tl).toEqual([])
+  })
+
+  it('catégorie ÉQUIPEMENTS coupée : ni activation ni désactivation ne sonnent', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentEpisodes: [{ slot: 1, fam: 'camo', t0: 10, t1: 30, endRead: true }],
+      }),
+      [],
+      0,
+      { ...ALL_ON, equipment: false },
+    )
+    expect(tl).toEqual([])
+  })
+
+  it('toutes catégories coupées : silence total, jamais une erreur', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({ grenades: [grenade({ t: 50, rank: 0 })] }),
+      [kill()],
+      0,
+      { weapon: false, grenade: false, melee: false, equipment: false },
     )
     expect(tl).toEqual([])
   })
