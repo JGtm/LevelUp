@@ -163,7 +163,14 @@ func consumeDefaultStateTI37(br *BitReader) {
 	consumeVersionPrefix(br)
 	consumeDefaultStateTI36(br)
 	consumeGate0R(br, 5) // ECS_ReadEntityRefIndex5
-	consumeGateR(br, 32) // FUN_14080dec4 "ability-enabled-id"
+	// « ability-enabled-id » est PUBLIÉ (equipment_identity.go) : le désérialiseur le lisait
+	// déjà et le jetait. Porte de consumeGateR : charge utile présente quand le bit vaut 1.
+	// La largeur ne change pas — seule la valeur sort désormais.
+	if br.ReadBit() {
+		publishEquipID(EquipIDAbilityEnabled, br.ReadBits(32), true) // FUN_14080dec4
+	} else {
+		publishEquipID(EquipIDAbilityEnabled, 0, false)
+	}
 }
 
 // consumeDefaultStateTI38 porte FUN_1408f0b48 (archetypes 38 ET 39, « object-position ») :

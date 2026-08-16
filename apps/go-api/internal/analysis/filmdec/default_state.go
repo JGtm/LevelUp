@@ -327,11 +327,15 @@ func consumeBipedDefaultStateMediaFrame(br *BitReader) {
 // FUN_140cc5128 per-axis position block du chemin i0 movement (hors de ce bloc) garde sa
 // dépendance runtime (DAT_1445cc9e0 axis widths) non sourçable statiquement.
 func consumeMultiplayerPropertiesBlock(br *BitReader) {
-	br.ReadBits(9)  // FUN_141fd72c0 R(9)
-	br.ReadBits(32) // FUN_14080d6f0 R(32)
+	br.ReadBits(9) // FUN_141fd72c0 R(9)
+	// Les trois R(32) de ce bloc sont PUBLIÉS (equipment_identity.go) : le désérialiseur les
+	// lisait déjà et les jetait. Aucune largeur ne change.
+	publishEquipID(EquipIDMppDefinition, br.ReadBits(32), true) // FUN_14080d6f0 R(32)
 	if !br.ReadBit() {
-		br.ReadBits(32) // FUN_14080dec4 "variant-name" R(32)
-	} // else FUN_14080d7cc: DST lookup, 0 bits
+		publishEquipID(EquipIDVariantName, br.ReadBits(32), true) // FUN_14080dec4 "variant-name"
+	} else {
+		publishEquipID(EquipIDVariantName, 0, false) // FUN_14080d7cc: DST lookup, 0 bits
+	}
 	if br.ReadBit() { // FUN_1406cf008 gate; if set -> R(18)
 		br.ReadBits(18)
 	}
@@ -352,9 +356,11 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 	// `mov dword[RSP+0x20],0xe` @0x14080d2fc juste avant l'appel unique @0x14080d312 —
 	// donc bit-exact ici (précédemment modélisé à 0 bit à tort).
 	if br.ReadBit() { // FUN_1406cf008 tail gate G3 (DST+0x1c)
-		br.ReadBits(32)  // FUN_14080dec4 R(32) -> obj+0x24
-		consumeOpt32(br) // FUN_14080d69c [R(1)+opt R(32)] -> obj+0x20
-		br.ReadBits(14)  // FUN_1406d84b4 R(0xe) -> obj+0x28 (float), largeur figée @0x14080d2fc
+		publishEquipID(EquipIDMppTail, br.ReadBits(32), true) // FUN_14080dec4 R(32) -> obj+0x24
+		consumeOpt32(br)                                      // FUN_14080d69c [R(1)+opt R(32)] -> obj+0x20
+		br.ReadBits(14)                                       // FUN_1406d84b4 R(0xe) -> obj+0x28 (float), largeur figée @0x14080d2fc
+	} else {
+		publishEquipID(EquipIDMppTail, 0, false)
 	}
 }
 
