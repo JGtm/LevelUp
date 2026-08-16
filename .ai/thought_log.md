@@ -25,6 +25,182 @@ be684013 = coup unique, c15c9e77 = rechargement ; Sentinelle 770988828 = rejeu (
 
 **Prochaine etape** : livraison vers l'app (plan `PLAN_SONS_REJEU_INAPP.md`, en cours par
 agent) ; a la livraison, encoder ces roles dans le manifeste app.
+## [2026-08-16] Sons du rejeu — livraison unique et branchement du lecteur
+
+**Statut** : COMPLET. 31 fichiers / 108 entrees gid / 22,3 Mo livres en miroir dans
+`static/weapons-assets/halo_infinite/sons/`, lecteur branche dans ReplayCanvas (amorcage
+au premier geste, tirs joues au fil de la boucle, garde-fous testes). Gates verts
+(typecheck, 3650 tests web, eslint).
+
+**Decision technique principale** : le manifeste des sons est indexe par FAMILLE d'arme
+(gid du tag weap) car `Shot.w` est un identifiant de film dont la famille est la moitie
+haute — normalisation client en miroir exact de `buildWeaponLabels`. Les variantes
+partagent la famille de leur arme de base et sont servies par elle.
+
+**Conclusion** : le chantier sons est livre de bout en bout. Reste la revue humaine de la
+branche `feat/sons-rejeu-inapp` avant merge.
+
+## [2026-08-16] Sons du rejeu in-app — cloture du plan (etapes 1 a 5)
+
+**Statut** : Plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE. Branche
+`feat/sons-rejeu-inapp` (4 commits, depuis `feat/extraction-sons-armes`), poussee sur
+origin. Jamais de travail ni de push sur main.
+
+**Decision technique principale** : les `.wav` restent purs de bout en bout. Le Go exporte
+ce que le jeu declare (fourchettes RANGED de volume et de hauteur, agregees sur la couche
+dominante), l'app applique ces ecarts a chaque lecture, et l'admin regle l'intensite des
+deux effets. Aucun maillon ne cuit d'effet dans un fichier, et le chemin par defaut est
+strictement neutre — verifie par un test qui compte les noeuds WebAudio crees.
+
+**Resultats observes** : 4 commits, 29 fichiers, +2319/-80. Gates de cloture rejoues :
+`go build` et `go vet` rc=0, `npm run typecheck` (cache purge) vert, `npm run lint`
+0 erreur (19 avertissements preexistants), `make test-web` 412 fichiers / 3640 tests /
+0 echec. `go test ./...` : 138 paquets verts et UN echec, `internal/himap`
+(`TestBalayageCoquille`), par depassement du timeout de 10 minutes — ce test balaie les 27
+cartes depuis les fichiers du jeu installes et ne s'execute que sur cette machine ; aucun
+fichier de `himap`/`himodule` n'est touche par le diff. Echec d'environnement, consigne au
+plan.
+
+**Conclusion / prochaine etape** : deux choses attendent le pilote. (1) Lancer l'export
+RANGED — les deux commandes exactes sont au journal du plan, la passe 1 sur le module de
+7,24 Go avec `-banks` obligatoire, la passe 2 sur celui de 0,62 Go, jamais dans le meme
+processus — puis lire la ligne `variation RANGED : …` qui tranche l'interpretation des deux
+composantes du paquet. (2) Verifier la CI de la branche. Reste ensuite, a la livraison des
+`.wav` : brancher le lecteur dans `ReplayCanvas` (instanciation au premier geste, appel sur
+les tirs via `Shot.w`, traitement du scrub et du `restart()`).
+
+## [2026-08-16] Sons du rejeu in-app — etape 4 : deux curseurs sur la page d'admin
+
+**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `go build ./...` et `go vet ./...` rc=0, `go test`
+vert sur les cinq paquets touches (dont `internal/api`, qui porte le contrat OpenAPI),
+`make check-types` vert, `eslint` vert, `make test-web` 412 fichiers / 3640 tests / 0 echec.
+
+**Decision technique principale** : ne rien inventer. La chaine relevee a l'etape 1 a ete
+suivie a la lettre — `store.go` (champs, defauts, Apply, ToResponse) -> `domain/settings.go`
+(valeur + pointeur optionnel) -> validation handler -> `types.ts` (ecrit a la main, PAS
+genere) -> `i18n.ts` (parite FR/EN par typage) -> section admin autonome sur le modele
+d'`AdminSyncSettingsSection`. Deux cles : `replay_sound_variation_percent` (100) et
+`replay_sound_distance_percent` (0), montees dans l'onglet Systeme.
+
+**Le piege du defaut, traite et teste** : la variation vaut 100 par defaut alors que le
+zero-value d'un `int` vaut 0 — et 0 est un reglage LEGITIME (variation coupee). Sans
+reapplication « cle absente -> 100 » dans `applyAbsentDefaults`, tout `app_settings.json`
+anterieur serait lu comme « variation coupee », soit l'inverse de l'intention. Trois tests
+fixent les trois cas.
+
+**Resultats observes** : deux choix d'interface tranches et testes. Une valeur hors [0, 100]
+est REFUSEE en 400 plutot que ramenee en silence (un curseur qui affiche 150 quand le
+serveur retient 100 ment a l'operateur), et le curseur enregistre au RELACHEMENT et non a
+chaque pixel — l'auto-save du depot enverrait sinon des dizaines de PATCH par geste ; le
+test verifie qu'un deplacement en cours n'appelle pas la mutation. Aucun composant Slider
+n'existant, les curseurs sont des `<input type="range">` comme dans
+`NotificationsSettingsTab`. Pas de regeneration OpenAPI : la sortie du handler est
+`Body any` et le schema vient du fragment manuel — verifie, `internal/api` passe.
+
+**Piege d'environnement, deuxieme occurrence** : la suite web a de nouveau rendu un echec
+unique sur un garde-rail qui balaie l'arborescence (`lab-removal.guard`). Rejoue seul :
+917 ms, vert ; grep : zero occurrence interdite. Contention machine contre un `testTimeout`
+de 5 s, pas une regression. A relire avant de corriger, la prochaine fois.
+
+**Conclusion / prochaine etape** : etape 5, cloture — delivery-checklist et push de la
+branche. Reste hors perimetre jusqu'a la livraison des `.wav` : brancher le lecteur dans
+`ReplayCanvas`.
+
+## [2026-08-16] Sons du rejeu in-app — etape 3 : le lecteur, et le noeud qu'on n'ajoute pas
+
+**Statut** : Etape 3 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `make check-types` vert, `make test-web` 411
+fichiers / 3633 tests passes / 0 echec, `eslint` vert sur les fichiers neufs.
+
+**Decision technique principale** : separer ce qui decide de ce qui branche. Tout le calcul
+(tirage de variation, conversions dB -> gain et centiemes -> `playbackRate`, mapping du
+curseur de distance) vit dans `weaponSoundLogic.ts`, pur, sans WebAudio — la convention
+`*Logic.ts` deja etablie par la feature. `weaponSoundPlayer.ts` n'assemble que des noeuds.
+C'est ce qui rend verifiable l'exigence « a 0 % de distance, AUCUN noeud dans le chemin du
+signal » : le test utilise un AudioContext ENREGISTREUR (meme principe que
+`canvasRecording.test.ts`) et assert sur la liste des noeuds CREES, pas sur leurs valeurs.
+Un GainNode a 1 de trop est inaudible ; il ne se decouvrirait qu'en comparant le rendu de
+l'app au fichier extrait, des heures plus tard.
+
+**Resultats observes** : 33 tests neufs. Deux choix de mapping ont ete tranches et ecrits
+dans le code — le reglage de variation reduit les BORNES et non le resultat (sinon tout
+reglage intermediaire tirerait le son vers le grave), et la coupure du passe-bas decroit
+geometriquement de 20 kHz a 500 Hz (une octave est un rapport, un mapping lineaire rendrait
+la moitie du curseur inaudible). Piege d'environnement consigne : une premiere execution de
+`make test-web` a rendu 10 echecs, tous des `Test timed out in 5000ms` sur des garde-rails
+qui balaient l'arborescence ; machine au repos, la suite passe entierement. Aucun
+`testTimeout` n'est configure — c'est de la contention, pas une regression.
+
+**Conclusion / prochaine etape** : le lecteur n'est PAS branche dans `ReplayCanvas`, et
+c'est delibere — aucun `.wav` ni `index.json` n'existe encore (la livraison attend la fin
+du re-vote, ecrit en tete du plan). Le brancher ajouterait a chaque ouverture du rejeu un
+chargement qui ne peut rien trouver. Dependance explicite du plan, donc report valide au
+sens de la regle 3. Etape 4 : les deux curseurs sur la page d'admin.
+
+## [2026-08-16] Sons du rejeu in-app — etape 2 : la fourchette RANGED enfin exportee
+
+**Statut** : Etape 2 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `gofmt -l` vide, `go build ./...` rc=0,
+`go vet ./...` rc=0, `go test ./cmd/weapon-sounds/` ok. Module de 7,24 Go jamais ouvert.
+
+**Decision technique principale** : la variation suit exactement le chemin du gain. Un seul
+type (`etatChemin`) porte les deux, la fourchette s'ADDITIONNE le long du chemin (chaque
+noeud traverse tire son propre ecart) et s'ENVELOPPE entre variantes d'un point de choix
+(le moteur n'en joue qu'une). Aucune regle nouvelle n'est inventee : c'est la semantique
+deja prouvee a l'etape 18 du chantier sons, appliquee a une seconde grandeur. L'agregation
+demandee par le plan — couche dominante, celle de plus fort gain — evite qu'une couche de
+renfort 20 dB en arriere dicte la variation du coup.
+
+**Resultats observes** : le lecteur de fourchette n'existait pas (constat de l'etape 1) ;
+`lirePaquetLarge` le fournit et valide TOUTES les composantes, la la ou l'ancien lecteur ne
+validait que la premiere. Quatre copies du bloc « lire les proprietes d'un noeud » sont
+ramenees a un appel (`bank.noterProps`). La fourchette ressort en `variation` a quatre
+niveaux (couche, evenement, mode de tir, arme), toujours optionnelle : absente, le son se
+joue pur. Deux limites statuees plutot que contournees. (1) La PERSPECTIVE 1p/3p n'est
+portee par AUCUNE structure du pipeline Go — verifie par grep : seule la liste de verbes de
+`noms.go` en parle. La fourchette est donc exportee a la granularite de l'EVENEMENT, qui
+est ce qui porte la distinction dans les faits. (2) Le format ne dit pas laquelle des deux
+composantes est le minimum : les bornes sont rendues ORDONNEES et l'outil imprime le releve
+des signes observes, qui tranchera l'interpretation a la premiere execution reelle.
+
+**Conclusion / prochaine etape** : les deux commandes d'export sont ecrites au journal du
+plan pour le pilote (passe 1 sur le module de 7,24 Go avec `-banks` obligatoire, passe 2
+sur celui de 0,62 Go, jamais dans le meme processus). Etape 3 : le lecteur WebAudio du
+rejeu 2D, dont le calcul de variation et le mapping de distance sont des fonctions pures
+testables sans navigateur.
+
+## [2026-08-16] Sons du rejeu in-app — etape 1 : decouverte avant tout code
+
+**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`, creee depuis `feat/extraction-sons-armes`.
+
+**Decision technique principale** : ne rien inventer, se conformer a trois patterns
+existants identifies sur pieces. (1) Le rejeu 2D vit dans
+`apps/web/src/features/match-replay/` et n'a AUCUN code audio — grep exhaustif de
+`AudioContext`, `GainNode`, `BiquadFilter`, `playbackRate`, `.wav` sur `apps/web` : zero.
+Le lecteur part de zero, mais la feature impose ses conventions (logique pure en
+`camelCaseLogic.ts` testee sans DOM, fixture obligatoire `testReplayDoc()` avec
+garde-rail). (2) Les reglages d'instance passent tous par la meme chaine
+`platform/settings/store.go` -> `domain/settings.go` -> `PATCH /settings` (admin) ->
+`lib/api/types.ts` (type ecrit A LA MAIN, pas genere) -> `features/settings/i18n.ts` ->
+section admin autonome facon `AdminSyncSettingsSection`. (3) Les assets vivent en
+`static/{folder}/{titleSlug}/`, leur manifeste s'appelle toujours `index.json`.
+
+**Resultats observes** : le point qui change le travail de l'etape 2 —
+`lirePaquetProps` (`cmd/weapon-sounds/proprietes.go:128`) prend deja une `largeur`, mais
+elle ne renvoie que la PREMIERE composante par propriete. Appelee en largeur 2 sur le
+paquet RANGED, elle lit le min et jette le max ; son unique appel (l.120) jette meme tout
+le resultat et sa branche `if` est un no-op (`out.Lu = out.Lu && true`). Le paquet est
+donc localise et valide, mais aucun lecteur de fourchette n'existe : il faut l'ecrire.
+Autre constat : `ReplayCanvas.tsx` fait deja ~500 L (seuil CLAUDE.md), le moteur audio ne
+peut pas y etre ajoute en vrac.
+
+**Conclusion / prochaine etape** : trois decisions posees et consignees au journal du plan
+— section admin dans l'onglet Systeme (`AdminSystemPage`), sons ranges dans
+`static/weapons-assets/halo_infinite/sons/` + `index.json` (miroir du sous-dossier `jeu/`),
+curseurs en `<input type="range">` (aucun composant Slider n'existe). Etape 2 : lecteur de
+fourchettes RANGED en Go.
 
 ## [2026-08-16] Sons d'armes — reprise a zero de l'assemblage : semantique prouvee
 
