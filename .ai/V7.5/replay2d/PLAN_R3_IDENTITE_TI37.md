@@ -245,24 +245,81 @@ L'instrument, sur les TROIS films principaux :
    ancrage independant ne les valide pas. La phase 2 s'ouvre donc sur l'ancrage, pas sur
    l'histogramme.
 
-### Phase 2 — MESURER la partition (C1, C2, C3)
+### Phase 2 — MESURER la partition (C1, C2, C3) — CLOSE le 2026-08-17
 
-- [ ] 2.1 Sur les 5 films : par champ, histogramme des valeurs, cardinalite, nombre de vies
-      d'objet couvertes, nombre de vies sans lecture. Denominateurs publies.
-- [ ] 2.2 C2 — stabilite par vie `(slot, gen)` : part des vies a valeur unique, par champ.
-- [ ] 2.3 C3 — globalite : intersection des ensembles de valeurs entre les 3 films
-      principaux, et part des vies couvertes par les valeurs communes. **Temoin negatif
-      obligatoire** : la meme intersection calculee sur un champ CONNU pour etre un handle
-      local (le slot lui-meme) doit s'effondrer.
-- [ ] 2.4 Statuer C1/C2/C3 par champ, en toutes lettres. Un champ qui echoue est ECRIT
-      comme refute, avec ses chiffres.
-- [ ] 2.5 SI aucun champ ne passe C1-C3 en H1 : ouvrir H2 (detecteur de record NEW `ti=37`
-      dans les paquets delta, sur le patron `grenade_events.go`), avec son temoin fantome
-      (bande de slots jamais vue porter `ti=37`, comme `WorldObjectPositionsForBand`).
-      SI un champ passe : H2 n'est PAS ouverte (perimetre ferme).
+> AMENDEE AVANT EXECUTION par la conclusion 4 de la phase 1 : les valeurs de la voie H1 ne
+> sont pas des mesures (aucun record bit-exact), donc la phase 2 s'ouvre sur l'ANCRAGE (H3)
+> et non sur l'histogramme des champs d'H1. C'est le report prevu par l'item 2.5, joue
+> d'emblee — et il rend H2 SANS OBJET (perimetre ferme, H2 n'est pas ouverte).
 
-**Gate 2** : mesure rejouee sur les 5 films, un tableau par champ avec cardinalite /
-stabilite / recouvrement inter-films / denominateurs. Verdict ecrit C1, C2, C3.
+- [~] 2.1 SANS OBJET sur les champs d'H1 (aucun n'est une mesure, verdict phase 1). REMPLACE
+      par l'ancrage : le catalogue de tags de l'installation locale
+      (`any/globals/*.module`, 66 703 GlobalID, 297 groupes) est confronte aux records
+      d'image-cle par le balayage DEJA EPROUVE du paquet (`familiesByRecord`, celui des
+      armes portees et des armes au sol) — aucun second balayeur ecrit a cote.
+- [x] 2.2 C2 — stabilite par vie `(slot, gen)` : **99,6 a 100 % sur les 5 films** (tableau
+      ci-dessous). Seuil C2 (>= 99 %) FRANCHI partout.
+- [x] 2.3 C3 — globalite : **les 12 memes classes sur les 3 films principaux**, couvrant la
+      totalite des vies identifiees sauf une valeur singleton. Le temoin negatif exige par
+      l'item est mieux que fourni : le film `0014603f` (aucune identite `i48`) rend **UNE
+      SEULE classe sur 100 % de ses 152 records** — un handle local ne ferait jamais cela.
+- [x] 2.4 C1, C2, C3 statues en toutes lettres ci-dessous. Les quatre champs d'H1 sont
+      ECRITS comme refutes (ils ne sont pas a leur place, ils ne sont donc pas des champs).
+- [~] 2.5 H2 n'est PAS ouverte : l'ancrage passe C1-C3, le perimetre se ferme ici.
+
+**GATE 2 : PASSE le 2026-08-17.**
+
+**(a) L'ANCRAGE, et c'est la mesure du lot** (film `000d5950`, ~30 M bits balayes) — nombre
+d'occurrences d'un GlobalID de tag du groupe, PAR ARCHETYPE du record porteur :
+
+    groupe (tags)     ti=35 bipede   ti=37 equip   ti=38   ti=41 proj   ti=42 arme sol
+    eqip  (116)             0            428          0         0             0
+    weap  (192)           310              2          0         0           267
+    proj  (283)            23              0          0        20             0
+    sofd  (207)           485              0          0         0           267
+
+    Hasard attendu pour `eqip` : 116 tags sur 2^32, ~30 M bits -> ~0,8 occurrence sur TOUTE
+    la charge utile. Mesure : 428, et TOUTES dans `ti=37`. Environ 500x le hasard, et une
+    exclusivite parfaite.
+
+    LES TROIS AUTRES LIGNES SONT LE CONTROLE, et il n'est impose par rien dans la methode :
+    `weap` tombe sur le bipede (armes portees) et sur l'arme au sol — c'est exactement le
+    resultat de `keyframe_loadout.go`, retrouve par une chaine independante ; `proj` tombe
+    sur le projectile ; `sofd` (palette de capacites) tombe sur le bipede. Chaque groupe de
+    tags atterrit sur l'archetype qui le porte semantiquement. Un balayage qui compte des
+    motifs de 32 bits ne peut pas fabriquer cela.
+
+**(b) LA PARTITION** — un tag `eqip` par entite, sur les 5 films du corpus :
+
+    film       records ti=37   porteurs d'un tag   vies identifiees   classes   C2 vies uniques
+    000d5950        431          427 (99,1 %)            275             13        274 (99,6 %)
+    00502e52        428          421 (98,4 %)            249             12        249 (100 %)
+    07aa428d        421          418 (99,3 %)            265             13        264 (99,6 %)
+    00ba2e1c       1340         1320 (98,5 %)            646             19        645 (99,8 %)
+    0014603f        152          152 (100 %)              83              1         83 (100 %)
+    TOTAL          2772         2738 (98,8 %)           1318              -              -
+
+**(c) VERDICTS.**
+
+- **C1 PASSE.** Cardinalite / vies : 13/275 (4,7 %), 12/249 (4,8 %), 13/265 (4,9 %) sur les
+  trois films principaux — sous le seuil de 5 %. Sur le BTB `00ba2e1c` : 19/646 (2,9 %).
+- **C2 PASSE.** 99,6 % · 100 % · 99,6 % · 99,8 % · 100 %. Une entite `ti=37` porte UNE
+  classe et la garde toute sa vie.
+- **C3 PASSE.** Les 12 classes des films d'arene sont LES MEMES d'un film a l'autre — un
+  handle local ne se repete pas d'un match a l'autre. Le BTB en ajoute 7 (une carte BTB
+  porte plus de types d'objets), sans en perdre aucune.
+- **Les 4 champs de la voie H1 sont REFUTES** : `mpp-r32`, `mpp-variant-name`, `mpp-tail-g3`
+  et `ability-enabled-id` ne sont pas lus a leur place (0 record bit-exact sur 1 226), et le
+  decalage de 8 bits entre les deux populations de portes de version fabriquait a lui seul
+  la moitie de la « cardinalite 14 » de `variant-name`. Ils ne sont pas publies.
+
+**(d) CE QUE LE TEMOIN NEGATIF DONNE EN PRIME, et qui oriente la phase 3.** Sur `0014603f`,
+film SANS aucune identite de capacite, la classe `0xa53cd143` couvre **100 % des entites**.
+Elle domine aussi les quatre autres films (191, 212, 197, 568 occurrences). Une classe
+presente partout, majoritaire partout, et SEULE dans un film sans equipement de joueur,
+n'est pas un equipement de joueur : c'est l'objet de monde ordinaire que l'archetype
+`item-*` melange aux equipements (verdict 0.6 du 15/08, qui l'avait suppose sans pouvoir le
+montrer). La phase 3 nomme donc PAR DIFFERENCE, pas par frequence.
 
 ### Phase 3 — NOMMER sans circularite (C4)
 
@@ -396,6 +453,11 @@ wt/ti37-identite`, point d'etape.
   identiques d'un film a l'autre** (557 / 707 / 773 / 881 / 950 / 1 104 bits d'ecart
   residuel dominants sur les 3 films). Si cette longueur depend du TYPE de l'objet, c'est un
   signal de partition GRATUIT, lisible sans decoder un seul champ. A mesurer en phase 2.
+- **`weap` et `sofd` rendent le MEME compte (267) sur `ti=42`**, et `weap` decale rend 267 sur
+  `ti=35` : trois coincidences a la meme valeur, sur un balayage ou rien ne l impose. Piste :
+  les deux catalogues partagent peut-etre des GlobalID (une entree indexee sous deux groupes),
+  ou un meme motif de 32 bits appartient aux deux jeux. Sans effet sur le resultat `eqip`, qui
+  est exclusif. NE PAS traiter ici.
 - Les deux populations de portes de version de `ti=37` sur `000d5950` — (1,1) 236 records et
   (1,0) 195 records — expliquent EXACTEMENT le decalage de 8 bits observe entre les deux
   valeurs dominantes de `variant-name` (`0x00006808` et `0x00680814` = la meme suite d'octets
@@ -410,6 +472,15 @@ de production (4 points de publication : 3 dans `consumeMultiplayerPropertiesBlo
 `consumeDefaultStateTI37`), oracle bit-exact construit et matrice des 8 grammaires probee.
 Verdict : H1 refutee dans sa forme naive, 2 marches justes sur 1 226. Aucune valeur publiee.
 Gate 1 passe (chiffres ci-dessus). Commit `feat(v7.5-rejeu-ti37)` sur `wt/ti37-identite`.
+
+**2026-08-17 — Phase 2 CLOSE.** Ancrage par catalogue de tags : le groupe `eqip`
+(116 tags) se concentre a 428 occurrences sur 428 dans les records `ti=37`, zero ailleurs,
+contre ~0,8 attendue par hasard. Les trois groupes temoins (`weap`, `proj`, `sofd`)
+atterrissent chacun sur leur archetype semantique — controle non impose par la methode.
+Partition mesuree sur 5 films : 2 738 records porteurs sur 2 772 (98,8 %), 1 318 vies
+identifiees, 12 classes communes aux 3 films d arene, stabilite par vie 99,6 a 100 %.
+C1, C2, C3 PASSES. Les 4 champs de la voie H1 sont refutes et non publies.
+Commit `mesure(v7.5-rejeu-ti37)` sur `wt/ti37-identite`.
 
 ## 11. Protocole de reprise de session
 
