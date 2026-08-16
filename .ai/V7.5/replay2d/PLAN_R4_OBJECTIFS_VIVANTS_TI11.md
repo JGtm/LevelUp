@@ -11,6 +11,15 @@
 
 ## 1. Objectif et critere de succes
 
+> **AVERTISSEMENT DE LECTURE, ajoute le 2026-08-17 a la cloture.** Cette section a ete ecrite
+> AVANT la mesure et sa premisse est FAUSSE : `ti=11` ne porte aucun composant de position, donc
+> ni « la position monde par image » ni les controles C1/C3 n'ont d'objet sur cet archetype.
+> Elle est conservee telle quelle, sans retouche, parce qu'un plan qui reecrit ses hypotheses
+> apres coup ne s'audite plus — et parce que la comparer a la phase 1 montre exactement ce que
+> la mesure a corrige. **Pour l'etat reel : §4 phase 1 (« le resultat de fond ») et §3 revise.**
+> Ce qui SURVIT de cette section : la regle de non-publication (appliquee : rien n'a ete publie)
+> et le controle fantome (applique : c'est lui qui a refute la voie delta).
+
 **Objectif.** Publier dans l'artefact de rejeu, pour un match a objectif portable, **l'OBJET**
 (drapeau, crane, noyau) — son type et sa position monde par image — et **son PORTEUR** (xuid,
 avec la fenetre de portage). L'UI est HORS PERIMETRE : ce lot publie la donnee, il ne dessine
@@ -296,105 +305,126 @@ Trois consequences immediates, toutes structurelles :
 - La suite du lot bascule sur la **phase 4**, qui devient la voie unique : franchir le mur est
   desormais le prealable des deux temps, et non plus du seul temps 2.
 
-**Gate 1** (commandes exactes, sorties collees au journal du plan) :
+### Phase 2 — TEMPS 1 : l'OBJET (position par image) — **`[!]` NON EXECUTEE, ENTREE REFUTEE**
+
+Justification du `[!]`, deux motifs independants et chacun suffisant, tous deux etablis par le
+gate 1 : (a) le chemin technique de la phase (`WorldObjectPositionsForBand` ->
+`scanProjectileRecords` -> `matchWorldObjectRecord`) **ne reconnait pas les records `ti=11`**
+(rapport reel/fantome 0,73x et 0,37x ; 45,9 % et 36,4 % d'indices hors grammaire) ; (b) son
+OBJET n'existe pas — **`ti=11` ne porte aucun composant de position** (0 sur 34). Executer la
+phase reviendrait a mesurer la dispersion du bruit pour un champ absent.
+
+- [!] 2.1 Positions de la bande / de la bande fantome — non executee (motifs a et b).
+- [!] 2.2 Controle C1 (emprise) — sans objet : pas de positions a encadrer.
+- [!] 2.3 Controle C3 (mobilite) — sans objet.
+- [!] 2.4 Verdict de phase — **rendu par anticipation au gate 1**, avec ses chiffres.
+
+**Gate 2 : SANS OBJET.** La phase n'a pas ete ouverte.
+
+### Phase 3 — TEMPS 1 : le PORTEUR par coincidence — **`[!]` NON EXECUTEE, DEPENDANCE MORTE**
+
+Le plan la declarait ouvrable « seulement si le gate 2 est favorable ». Il ne l'est pas.
+
+- [!] 3.1 Jointure objet <-> Tracks — sans entree (aucune position d'objet).
+- [!] 3.2 Controle C2 contre l'oracle statborg — non executee. **L'oracle, lui, reste
+      disponible et intact** (`objectiveevents.IdentifiedEvent`) : c'est l'objet a confronter
+      qui manque, pas le temoin. C'est ce qui rendra la reprise peu couteuse.
+- [!] 3.3 Fenetres de portage — sans entree.
+- [!] 3.4 Verdict de phase — celui du gate 1.
+
+**Gate 3 : SANS OBJET.**
+
+### Phase 4 — TEMPS 2 : le mur de chainage — **CLOSE le 2026-08-17, NEGATIF MESURE**
+
+Voie choisie apres la refutation de la voie delta : les records d'IMAGE-CLE sont **localises
+exactement** par `WalkKeyframeWorld` (qui rend le bit de debut de chacun), donc sans aucune
+reconnaissance de motif et sans faux positif possible — 201 records `ti=11` sur `64e8adfa`.
+L'alignement teste est structurel et non devine : l'en-tete d'un record d'image-cle est
+`[id:32][field:26][ti:6]` (`keyframe_world.go:19-22`) et `TraverseEntity` commence par lire
+`R(6) typeIndex` (`traverse.go:1010`) — le champ `ti` de l'en-tete EST ce typeIndex, donc le
+lecteur se pose a `Bit + 58`.
+
+- [x] 4.1 Tentative de traversee des composants `ti=11` **REFUTEE PAR SON PROPRE TEMOIN**.
+      Instrument `filmdec/sonde_ti11_mur_test.go`, temoin obligatoire = `ti=37` (equipement,
+      **30/31 composants portes**, archetype deja decode en production) passe par le MEME code :
+
+      | grandeur | TEMOIN `ti=37` (deja decode) | CIBLE `ti=11` |
+      |---|---|---|
+      | records d'image-cle | 797 | 201 |
+      | `ti` relu != attendu | 0,0 % | 0,0 % |
+      | **masque VIDE** | **65,7 %** | **73,6 %** |
+      | **masque HORS GRAMMAIRE** | **33,2 %** | 1,5 % |
+      | traversees ABOUTIES | 34,3 % | 1,5 % |
+
+      **Le temoin echoue autant que la cible.** Sur un archetype dont 30 composants sur 31 sont
+      portes, la traversee n'aboutit que dans 34,3 % des cas et un tiers des masques porte un
+      index impossible. **Ce n'est donc PAS `ti=11` qui resiste : c'est la METHODE qui est
+      fausse.** Conclusion refusee a l'intuition mais imposee par le temoin : le corps d'un
+      record d'IMAGE-CLE ne se lit pas comme un record NEW pose a `Bit + 58`.
+      Signature confirmant la mauvaise lecture cote `ti=11` : les seuls index « presents »
+      trouves sont i0, i16, i32, i48 — des multiples de 16, et i48 est hors des 34 composants.
+      C'est un motif d'alignement, pas de la donnee.
+- [x] 4.2 **Preuve de marche : NON ATTEIGNABLE**, et pour une raison etablie sur pieces — la
+      grammaire du CORPS d'un record d'image-cle **n'est resolue nulle part dans le depot**.
+      Verification : les 6 appelants de `TraverseEntity` (`frame_records.go` x3,
+      `frame_chain_infer.go` x2, `frame_debug.go`) sont **tous** sur le chemin FRAME/DELTA,
+      **aucun** sur un payload d'image-cle. Et les deux lecteurs d'image-cle existants
+      (`keyframe_loadout.go`, `keyframe_ground_weapons.go`) **evitent deliberement la grammaire**
+      : ils balaient des identifiants de famille de 32 bits a l'interieur de l'emprise d'un
+      record. C'est une confirmation independante — si la grammaire etait connue, ils
+      l'utiliseraient.
+- [~] 4.3 Confrontation porteur lu / porteur infere — **couvert par 4.1** : aucun porteur n'est
+      lu, et la phase 3 n'en a infere aucun. Rien a confronter.
+- [x] 4.4 **NEGATIF MESURE, ecrit.** Le mur de `ti=11` n'est pas un composant : c'est **deux
+      murs superposes**, et aucun des deux n'est celui que le brief annoncait.
+
+      1. **Aucune voie d'ACCES aux records `ti=11` n'est fiable aujourd'hui.** En DELTA,
+         l'en-tete des objets du monde ne les reconnait pas (gate 1). En IMAGE-CLE, ils sont
+         parfaitement localises mais la grammaire de leur corps est inconnue (4.1-4.2).
+      2. **Meme l'acces resolu, les 34 composants restent a porter** (0/34), a commencer par le
+         premier PRESENT — que cette mesure ne peut pas encore nommer avec certitude, puisque
+         les masques lus sont faux.
+
+      **Ce qui manque, nomme** : le deserialiseur du corps d'un record d'image-cle (la fonction
+      qui suit l'en-tete 64 bits). C'est un travail de reverse (Ghidra), du meme ordre que celui
+      qui a resolu `FUN_142f25e90` pour l'ancre du grappin — et il **beneficierait a tous les
+      archetypes**, pas seulement aux objectifs : il debloquerait du meme coup la position des
+      armes au sol (`ti=42`), reportee au registre le 2026-08-12 pour une cause voisine.
+
+**Gate 4 : PASSE PAR LE NEGATIF** (le plan prevoyait explicitement les deux issues). Commandes :
 ```
-GOCACHE=C:\Users\Guillaume\Projects\LevelUp-wt-ti11\.gocache CGO_ENABLED=0 \
-  go build ./internal/analysis/filmdec/
-GOCACHE=... CGO_ENABLED=0 TI11_FILM=64e8adfa \
-  go test ./internal/analysis/filmdec/ -run TI11 -v
-GOCACHE=... CGO_ENABLED=0 go test ./internal/analysis/filmdec/ -run TI11 -v   # doit SAUTER
+CGO_ENABLED=0 go vet ./internal/analysis/filmdec/                     -> exit 0
+CGO_ENABLED=0 TI11_FILM=<...>/64e8adfa go test ./internal/analysis/filmdec/ \
+  -run TI11Mur -v                                                     -> PASS
+CGO_ENABLED=0 go test ./internal/analysis/filmdec/ -run TI11 -v       -> 4 SKIP (garde OK)
 ```
-Reussite : les 4 grandeurs de 1.1-1.4 sont chiffrees, le film Slayer rend 0 entite `ti=11`
-(temoin negatif natif), et le test saute sans la variable d'environnement.
+Le negatif est chiffre, son temoin de controle est publie, et sa cause est nommee.
 
-### Phase 2 — TEMPS 1 : l'OBJET (position par image), avec son temoin fantome
+### Phase 5 — PUBLIER dans l'artefact — **`[!]` RIEN A PUBLIER**
 
-- [ ] 2.1 Positions de la bande `ti=11` par `WorldObjectPositionsForBand` ; **et** positions de
-      la bande FANTOME par le MEME appel. Publier les deux : slots peuples, echantillons.
-- [ ] 2.2 **Controle C1 (emprise)** : part des positions dans l'AABB du nuage biped du meme
-      film, vraie bande contre fantome. Denominateurs publies.
-- [ ] 2.3 **Controle C3 (mobilite)** : dispersion par slot (etendue des positions des slots a
-      >= 3 echantillons), vraie bande contre fantome. Un objectif porte doit se distinguer d'un
-      objectif au repos ET du bruit.
-- [ ] 2.4 **Verdict de phase, ecrit** : le signal est-il au-dessus du fantome ? Si NON :
-      arret propre, negatif au registre, la phase 3 ne s'ouvre pas et le lot passe directement
-      a la phase 4 (temps 2) comme seule voie restante.
+La regle de non-publication du plan (§1) est appliquee telle qu'elle a ete ecrite : aucun champ
+n'entre dans l'artefact tant que ses controles ne sont pas passes. Aucun ne l'est.
 
-**Gate 2** : `TI11_FILM=64e8adfa go test ./internal/analysis/filmdec/ -run TI11 -v` vert, avec
-C1 et C3 chiffres sur >= 2 films, vraie bande ET fantome. Verdict ecrit dans ce plan.
+- [!] 5.1 `replay/objective_object_carriers.go` — **non cree**. Un fichier vide de sens serait
+      du code mort (anti-pattern n°1 du depot).
+- [!] 5.2 Champ optionnel sur `ReplayDocument` — **non ajoute**. `SchemaVersion` reste a **8**,
+      conformement au contrat R3/R4 ; et ce lot **ne demande donc AUCUNE bosse** au superviseur
+      a la fusion (information utile pour R3, qui peut en demander une pour son compte).
+- [!] 5.3 `LayerCoverage` — sans objet.
+- [!] 5.4 `go test ./contracttest/` — **non requis** : le compte gele des champs de
+      `ReplayDocument` est INCHANGE, donc rien a mettre a jour. Verifie : aucun fichier de
+      `internal/analysis/replay/` n'est touche par ce lot.
+- [!] 5.5 Tests unitaires du nouvel assemblage — sans objet.
 
-### Phase 3 — TEMPS 1 : le PORTEUR par coincidence, prouve contre l'oracle statborg
+**Gate 5 : SANS OBJET.** Aucune modification de l'artefact ni du document.
 
-Ne s'ouvre que si le gate 2 est favorable.
+### Phase 6 — Cloture — **CLOSE le 2026-08-17**
 
-- [ ] 3.1 Joindre objet et Tracks : pour chaque echantillon de l'objet, le xuid de la Track la
-      plus proche et la distance. Origine appliquee EXPLICITEMENT (cf. 2.3 : ne pas passer par
-      `doc.Objectives[].T`).
-- [ ] 3.2 **Controle C2** : aux instants des `flag_grabs`/`flag_steals` de
-      `objectiveevents.IdentifiedEvent`, distance objet <-> Track de l'auteur declare, contre un
-      temoin (joueur tire au hasard, et/ou meme joueur a un instant tire au hasard). Publier les
-      medianes et le facteur d'ecart. Seuil : facteur >= 3.
-- [ ] 3.3 **Fenetres de portage** : deduire les intervalles [prise, perte] et les confronter aux
-      couples `flag_grabs` -> `flag_captures`/`flag_returns`/`flag_carriers_killed` de l'oracle.
-      Publier : fenetres decodees, fenetres attestees, concordance.
-- [ ] 3.4 Verdict de phase ecrit. C2 en echec = le porteur n'est PAS publie (l'objet peut
-      l'etre seul si C1/C3 sont passes).
-
-**Gate 3** : C2 chiffre sur >= 2 films avec son temoin, facteur d'ecart publie.
-
-### Phase 4 — TEMPS 2 : le mur de chainage
-
-- [ ] 4.1 A partir de la mesure 1.3, tenter de porter les composants `ti=11` **du premier
-      PRESENT jusqu'a `object-reference`**. Brancher `consumeObjectiveFormattedText`
-      (`components_batch3.go`) si et seulement si son indice est atteint — c'est sa condition de
-      retrait ecrite.
-- [ ] 4.2 **Preuve de marche** : ecart en bits entre la fin de marche et le record suivant
-      (patron du gate 0 de `PLAN_GRAPPIN_LIGNE.md` : l'ecart doit tomber a 0). Publier min /
-      p10 / p50 / p90 et le taux de marche aboutie.
-- [ ] 4.3 Si le porteur declare est lu : le **confronter** au porteur infere de la phase 3.
-      Concordance publiee. Si divergence : la mesurer et la dire, ne pas choisir en silence.
-- [ ] 4.4 Si le mur tient : **negatif MESURE** — composant bloquant nomme, indice, taux de
-      presence, et ce qui manque (decompile ? Ghidra ?). Ligne de registre redigee.
-
-**Gate 4** : soit l'ecart de marche est a 0 avec 4.3 chiffre, soit le negatif de 4.4 est ecrit
-avec ses chiffres. Les deux sont des cloture valides.
-
-### Phase 5 — PUBLIER dans l'artefact (uniquement ce que les gates ont prouve)
-
-Ne publie QUE ce qui a passe ses controles. Rien de « plausible ».
-
-- [ ] 5.1 Type de sortie dans `internal/analysis/replay/` (fichier neuf
-      `objective_object_carriers.go`), assemblage pur, aucun acces DB/HTTP (skill `arch-rules`).
-- [ ] 5.2 Champ OPTIONNEL (`omitempty`) sur `ReplayDocument`, avec commentaire portant : la
-      source, la methode (lecture ou inference), et l'ecart mesure. **AUCUNE bosse de
-      `SchemaVersion`** dans ce lot (cf. contrat R3/R4, section 6).
-- [ ] 5.3 Couverture : le calque rend sa `LayerCoverage` comme les autres (`replay/coverage.go`),
-      avec le denominateur et la cause de chaque rejet.
-- [ ] 5.4 `go test ./contracttest/` — le compte des champs de `ReplayDocument` y est GELE
-      (avertissement `REGISTRE_REPORTS.md:123`) : l'ajout d'un champ le fera echouer, il faut
-      mettre a jour le compte dans le meme commit.
-- [ ] 5.5 Tests unitaires purs du nouvel assemblage (sans film), patron `objectives_test.go`.
-
-**Gate 5** :
-```
-GOCACHE=... CGO_ENABLED=0 go build ./...
-GOCACHE=... CGO_ENABLED=0 go test ./internal/analysis/replay/ ./internal/analysis/filmdec/
-GOCACHE=... go test ./contracttest/
-GOCACHE=... CGO_ENABLED=0 go vet ./internal/analysis/replay/ ./internal/analysis/filmdec/
-```
-
-### Phase 6 — Cloture
-
-- [ ] 6.1 Toutes les cases des phases 1-5 statuees (`[x]` / `[~]` / `[!]`), aucune vide.
-- [ ] 6.2 Lignes de registre (`.ai/V7.5/REGISTRE_REPORTS.md`) — ecrites EN UNE SEULE FOIS, a la
-      fin, pour ne pas entrer en conflit avec le lot jumeau R3.
-- [ ] 6.3 Entree `thought_log.md` **redigee et remise au superviseur** — ce lot n'ecrit PAS dans
-      `thought_log.md` (fichier du superviseur).
-- [ ] 6.4 Rapport final : mesures reelles avec denominateurs, gates executes, verdict temps 1 /
-      temps 2, et ce qui reste sans euphemisme.
-
----
-
+- [x] 6.1 Toutes les cases des phases 1-5 sont statuees, aucune vide.
+- [x] 6.2 Lignes de registre redigees (§10), a verser en une seule fois.
+- [x] 6.3 Entree `thought_log.md` redigee et remise au superviseur — ce lot n'ecrit PAS dans
+      `thought_log.md`.
+- [x] 6.4 Rapport final rendu, avec denominateurs, gates executes et ce qui reste.
 ## 5. Decisions produit — TRANCHEES avant execution (aucune a prendre en cours de route)
 
 1. **L'UI n'est pas dans ce lot.** On publie la donnee. `objectivesLayer.ts` sera etendu par un
@@ -545,3 +575,38 @@ Phases 1, 2 et 4 sont livrables independamment ; 3 et 5 portent leur dependance.
 ## 9. Journal d'execution
 
 _(rempli a la cloture de chaque phase : date, gate execute, sorties, commit)_
+
+### 2026-08-17 — Phase 1 CLOSE (commit `af1acb125`)
+
+Instrument `filmdec/sonde_ti11_objectifs_test.go` (3 tests, garde `TI11_FILM`). Gate 1 passe :
+build exit 0, 3 films mesures, temoin negatif Slayer a 0 entite, 3 SKIP sans la variable, suite
+`filmdec` complete verte. Deux resultats : la voie « objet du monde » en DELTA est REFUTEE
+(rapport reel/fantome 0,73x et 0,37x, 45,9 % et 36,4 % d'indices hors grammaire), et surtout
+**`ti=11` ne porte aucune position sur ses 34 composants** — c'est le descripteur d'objectif du
+HUD, pas le drapeau. Phases 2 et 3 statuees `[!]`, decoupage en deux temps reecrit (§3).
+Point d'etape rendu.
+
+### 2026-08-17 — Phase 4 CLOSE par le NEGATIF (commit `<phase 4>`)
+
+Instrument `filmdec/sonde_ti11_mur_test.go` (1 test, meme garde). Voie image-cle : les records
+sont localises exactement, l'alignement `Bit + 58` est structurel. **Le temoin de controle
+`ti=37` (30/31 composants portes) echoue autant que la cible** — 33,2 % de masques hors
+grammaire et 34,3 % de traversees abouties seulement. Le temoin a donc fait son travail : ce
+n'est pas `ti=11` qui resiste, c'est la grammaire du CORPS d'un record d'image-cle qui n'est
+resolue nulle part dans le depot (verifie : les 6 appelants de `TraverseEntity` sont tous sur le
+chemin delta ; les deux lecteurs d'image-cle existants evitent la grammaire et balaient des
+motifs). Phase 5 statuee `[!]` — rien a publier, `SchemaVersion` reste a 8, aucune bosse
+demandee au superviseur. Phase 6 close.
+
+---
+
+## 10. Lignes de registre proposees (a verser en une seule fois — §4 item 6.2)
+
+A ajouter a `.ai/V7.5/REGISTRE_REPORTS.md`. Redigees ici pour eviter tout conflit d'edition avec
+le lot jumeau R3, qui ecrit dans le meme fichier.
+
+| sujet | lot / date | ce qui a ete mesure | condition de reprise |
+|---|---|---|---|
+| **[POST-v7.5] Objectifs vivants du rejeu 2D (`ti=11`) : objet porte, porteur, progression** | lot R4, phase 1 et 4, 2026-08-17 | **`ti=11` N'EST PAS L'OBJET, c'est le DESCRIPTEUR d'objectif du HUD** : ses 34 composants (lus au registre) sont tous `managed-objective-*` et **AUCUN ne porte de position** (0 occurrence de position/transform/origin/location/coord). Le drapeau/crane/noyau est une entite AUTRE, designee par `i3 managed-objective-object-reference-component`. La demande « position de l'objet par image » ne peut donc pas etre satisfaite par `ti=11`, quel que soit l'effort de reverse. Corpus mesure : `64e8adfa` 201 records / 10 slots, `530820e5` 115 / 5, `000d5950` (Slayer) 0 / 0 — temoin negatif natif OK. **Voie DELTA refutee** : `matchWorldObjectRecord` ne reconnait pas ces records — bande observee 4 680 contre 6 421 pour un fantome de meme taille ET de meme voisinage numerique (0,73x ; 0,37x sur le second film), 45,9 % et 36,4 % des « records » portant un index hors grammaire (> i33). Ce n'est pas une limite de largeur : les slots valent 1 383 a 3 092, tous representables sur 13 bits. **Voie IMAGE-CLE refutee PAR SON TEMOIN** : les records sont localises exactement (`WalkKeyframeWorld`) et l'alignement `Bit + 58` est structurel, mais le temoin `ti=37` — archetype couvert 30/31 — rend 33,2 % de masques hors grammaire et 34,3 % de traversees abouties. La methode est fautive, pas la cible. Couverture de dispatch `ti=11` confirmee **0/34** en interrogeant `consumeByName`. Rien n'a ete publie ; `SchemaVersion` reste a 8 | condition de reprise : **la grammaire du CORPS d'un record d'IMAGE-CLE** (le deserialiseur qui suit l'en-tete 64 bits `[id:32][field:26][ti:6]`), aujourd'hui resolue NULLE PART — les 6 appelants de `TraverseEntity` sont tous sur le chemin delta, et les deux lecteurs d'image-cle existants (`keyframe_loadout.go`, `keyframe_ground_weapons.go`) balaient des motifs plutot que de parser. **Ce meme deblocage sert `ti=42`** (position des armes au sol, reportee le 2026-08-12 pour une cause voisine) : un seul reverse, deux reports leves. ENSUITE seulement : porter les 34 composants a partir du premier PRESENT, en visant `i5 type`, `i12/i13 progress`, `i14 state` (l'objectif lui-meme) puis `i3 object-reference` (le chemin vers l'objet physique). Refutations reproductibles : `TI11_FILM=<film> go test ./internal/analysis/filmdec/ -run TI11 -v` |
+| **Ce que `ti=11` PROMET une fois le mur tombe (a ne pas re-decouvrir)** | lot R4, phase 1, 2026-08-17 | Les 34 composants sont NOMMES et indexes dans `sonde_ti11_objectifs_test.go` / le plan R4. Les porteurs d'enjeu : `i5 type` (quel objectif), `i12 progress` + `i13 required-progress` (**la fraction de capture**, exactement « ou en est une capture » de Notion 15.2), `i14 state`, `i1 color` (camp), `i3 object-reference` (**le pont vers l'objet physique**), `i2`/`i9` textes formates — dont le lecteur `consumeObjectiveFormattedText` **est deja ecrit** (`components_batch3.go:19`, `//nolint:unused`, condition de retrait « quand ti=11 sera decode »). La progression d'objectif est donc atteignable SANS aucune position, et c'est la moitie de la demande utilisateur | meme condition que la ligne ci-dessus (grammaire du corps d'image-cle). Noter que `consumeObjectiveFormattedText` garde sa justification `//nolint` intacte : ce lot n'a PAS rempli sa condition de retrait |
+| **Les slots des entites `ti=11` sont STABLES d'un film a l'autre** | lot R4, decouverte phase 1, 2026-08-17 | `[1383 1399 1400 1415 1416]` sur les DEUX films CTF mesures ; `64e8adfa` en porte cinq de plus, `[3059 3075 3076 3091 3092]`, exactement +1 676. NON EXPLOITE | verifier sur un troisieme mode (Oddball / Stockpile) et une AUTRE carte avant d'en faire un ancrage d'identite : une stabilite vue sur deux films de la meme carte peut n'etre qu'une propriete de la carte |
