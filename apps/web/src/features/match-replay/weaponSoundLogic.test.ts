@@ -14,7 +14,6 @@ import {
   drawRange,
   drawVariation,
   gainFromDb,
-  indexManifest,
   normalizeRange,
   playbackRateFromCents,
 } from './weaponSoundLogic'
@@ -138,28 +137,3 @@ describe('distanceChain', () => {
   })
 })
 
-describe('indexManifest', () => {
-  it('indexe par arme et garde la PREMIÈRE entrée d’une arme à plusieurs modes', () => {
-    const index = indexManifest({
-      sons: [
-        { arme: 'un_assaultrifle', fichier: 'a.wav', mode: 'normal' },
-        { arme: 'un_assaultrifle', fichier: 'b.wav', mode: 'charge' },
-      ],
-    })
-    expect(index.size).toBe(1)
-    expect(index.get('un_assaultrifle')?.fichier).toBe('a.wav')
-  })
-
-  it('ignore les entrées inexploitables, et un manifeste absent rend un index vide', () => {
-    const index = indexManifest({
-      sons: [
-        { arme: '', fichier: 'a.wav' },
-        { arme: 'x', fichier: '' },
-        { arme: 'ok', fichier: 'ok.wav' },
-      ],
-    })
-    expect([...index.keys()]).toEqual(['ok'])
-    expect(indexManifest(null).size).toBe(0)
-    expect(indexManifest(undefined).size).toBe(0)
-  })
-})

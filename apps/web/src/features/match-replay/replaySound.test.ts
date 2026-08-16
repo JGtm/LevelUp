@@ -106,7 +106,7 @@ describe('buildSoundTimeline', () => {
   it('sans weapon_key ou clé hors manifeste : silence — jamais le son d une voisine', () => {
     const tl = buildSoundTimeline(
       docWithCouple(),
-      [kill({ weaponKey: '' }), kill({ weaponKey: 'hinf_bandit' })],
+      [kill({ weaponKey: '' }), kill({ weaponKey: 'hinf_mutilator' })],
       0,
     )
     expect(tl).toEqual([])
@@ -179,9 +179,9 @@ describe('buildSoundTimeline', () => {
       shots: [
         { slot: 1, t: 0, x: 0, y: 0 },
         { slot: 1, t: 10, x: 0, y: 0, w: '0xINCONNU' },
-        { slot: 1, t: 20, x: 0, y: 0, w: '0xB4ND1T' },
+        { slot: 1, t: 20, x: 0, y: 0, w: '0xMUT1L4' },
       ],
-      weaponLabels: { '0xB4ND1T': { en: 'M392 Bandit', fr: 'Bandit EVO', key: 'hinf_bandit' } },
+      weaponLabels: { '0xMUT1L4': { en: 'Mutilator', fr: 'Mutilator', key: 'hinf_mutilator' } },
     })
     expect(buildSoundTimeline(doc, [], 0)).toEqual([])
   })
