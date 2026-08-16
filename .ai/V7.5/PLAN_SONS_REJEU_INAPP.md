@@ -414,3 +414,32 @@ en 917 ms, et un grep confirme zero occurrence interdite dans `src/`. Meme cause
 l'etape 3 : `testTimeout` a 5 s, contention machine. Constat a garder pour la prochaine
 session — un echec isole sur un garde-rail qui balaie l'arborescence se relit avant de se
 corriger.
+
+### 2026-08-16 — LIVRAISON UNIQUE effectuee, lecteur branche (pilote)
+
+La derniere marche, executee par le pilote sur cette branche apres verification du rendu
+de l'agent (CI verte, export RANGED additif a 0 divergence).
+
+DECOUVERTE QUI FIXE LE CONTRAT : `Shot.w` n'est PAS une cle produit, c'est un identifiant
+d'arme du film — famille 8 hex, ou identifiant global 64 bits dont la famille est la
+moitie haute (`buildWeaponLabels`, identity.go). Le manifeste des sons est donc indexe par
+FAMILLE (gid du tag `weap`), et le client normalise en MIROIR EXACT du serveur
+(`weaponFamilyKey`, seuil de longueur prefixe compris, teste).
+
+LIVRAISON (`_outils/livraison.py`, archive Desktop) : remplacement en miroir de
+`static/weapons-assets/halo_infinite/sons/` — **31 fichiers, 108 entrees gid, 22,3 Mo**,
+`index.json` au schema de `weaponSoundLogic`. Le son par arme = le vote final, roles
+confirmes appliques (Ravageur = rendu du tir 3 coups `bb31841b`, graine fixe ;
+Sentinelle = wem 503433748). Les variantes (epee infectee, marteau legendaire, tourelles
+partageant leurs gids) sont servies par l'arme de base — premier gagnant, contrat de
+`indexManifest`. Fourchettes de variation par entree : couche dominante de l'evenement
+livre (lot1), repli arme entiere (lot2).
+
+BRANCHEMENT (`useWeaponSounds.ts` + `weaponSoundTrigger.ts` + 3 points dans
+`ReplayCanvas`) : amorcage au premier geste (`onPointerDownCapture`), lecture des tirs
+franchis dans la boucle rAF — fenetre (avant, next], retour de boucle muet, garde-fous
+MAX_AVANCE (1 s de film) et MAX_SONS_PAR_PAS (8) —, reglages d'admin suivis via
+`useSettings`. Deux fonctions pures testees (11 tests), le hook n'assemble que des refs.
+
+GATES : `make check-types` vert, `make test-web` 413 fichiers / 3650 tests / 0 echec,
+eslint vert sur les fichiers touches.

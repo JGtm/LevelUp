@@ -32,6 +32,7 @@ import {
   drawGrenadesLayer,
   drawShotsLayer,
 } from './replayDraw'
+import { useWeaponSounds } from './useWeaponSounds'
 import {
   fitWidth,
   FLOOR_BANDS,
@@ -124,6 +125,8 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
   const frameRef = useRef(0)
   const publishedAtRef = useRef(0)
 
+  // Sons d'armes : amorces au premier geste (exigence navigateur), joues au fil des tirs.
+  const sons = useWeaponSounds(doc)
   const [playing, setPlaying] = useState(true)
   const [multiplier, setMultiplier] = useState(1)
   const [floor, setFloor] = useState<number | null>(null)
@@ -358,16 +361,20 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
       if (last === 0) last = ts
       const dtSec = (ts - last) / 1000
       last = ts
-      let next = frameRef.current + dtSec * fps
+      const avant = frameRef.current
+      let next = avant + dtSec * fps
       if (next >= doc.frameCount - 1) next = 0
       frameRef.current = next
+      // Fenetre (avant, next] : le retour de boucle (next < avant) ne joue rien, et un bond
+      // de plus d'une seconde de film (fps frames) non plus — garde-fous du declencheur.
+      sons.avancer(avant, next, fps)
       if (sliderRef.current) sliderRef.current.value = String(Math.round(next))
       draw()
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [playing, baseFps, multiplier, doc.frameCount, renderWidth, draw])
+  }, [playing, baseFps, multiplier, doc.frameCount, renderWidth, draw, sons])
 
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)
@@ -383,7 +390,7 @@ export function ReplayCanvas({ doc, locale, onFrameChange, background }: ReplayC
   const floorLabels = [t.floorLow, t.floorMid, t.floorHigh].slice(0, FLOOR_BANDS)
 
   return (
-    <div ref={containerRef} className="rounded-lg border border-border bg-card">
+    <div ref={containerRef} className="rounded-lg border border-border bg-card" onPointerDownCapture={sons.amorcer}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-baseline gap-2 text-sm">
           <span className="font-medium">
