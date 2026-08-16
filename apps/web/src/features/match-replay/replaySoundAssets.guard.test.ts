@@ -177,3 +177,48 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
     }
   })
 })
+
+/**
+ * LE SON DU RÉPULSEUR : DEMANDÉ, MESURÉ IMPOSSIBLE AUJOURD'HUI, ET CE TEST EST LE FIL QUI
+ * PRÉVIENDRA LE JOUR OÙ IL DEVIENDRA POSSIBLE (lot R2.4, 2026-08-16).
+ *
+ * CE QUI EXISTE : la vignette. L'atlas kill feed du jeu porte bien un pictogramme de
+ * répulseur — `killfeed-56`, `nom_jeu: repulsor`, `tags_weap: ["692390e9"]` dans
+ * `static/weapons-assets/halo_infinite/jeu/index.json`. Le JEU sait donc afficher un kill au
+ * répulseur dans son propre fil.
+ *
+ * CE QUI MANQUE : la SOURCE. Le son d'un kill se joint par la vignette, et la vignette se
+ * résout depuis le `jpt!` de la mort via `damagetag/data/labels.tsv` — les seules clés que
+ * `rules.tsv` sait écrire (NOM, GGGL, BANQUE, CLASSE) sortent toutes de cette table. Or,
+ * mesuré ligne à ligne le 2026-08-16 : aucune des 473 lignes de `labels.tsv` ne nomme le
+ * répulseur (0 occurrence), les 114 lignes qui portent un nom propre sont TOUTES de classe
+ * ARME, et les 6 lignes dont l'effet est un `eqip` sont toutes de statut INCONNU et sans nom
+ * (trois d'entre elles — bcabbe43, caaadcb0, a875923f — sont d'ailleurs identifiées par la
+ * rétro-ingénierie comme des entrées de la liste `gggl`, c'est-à-dire des GRENADES).
+ *
+ * POURQUOI ON N'ÉCRIT PAS LA RÈGLE QUAND MÊME : la seule clé qui « attraperait » ces lignes
+ * serait `CLASSE INCONNU`, qui poserait le pictogramme ET le son du répulseur sur 206 sources
+ * sans rapport. C'est la faute que la table refuse explicitement (« une icône absente est un
+ * repli, une icône fausse est un mensonge », en-tête de rules.tsv) et que `neutral.go` refuse
+ * déjà pour cinq autres pictogrammes de l'atlas qu'aucune donnée mesurée n'atteint.
+ * Conséquence : pas de fichier `.wav` de répulseur livré non plus — un asset que rien ne
+ * joue casserait le garde-rail « 0 asset mort » ci-dessus.
+ *
+ * CE QUE CE TEST FAIT : il devient ROUGE le jour où une règle mène à `killfeed-56`. Ce
+ * jour-là, il ne reste que deux gestes — livrer `EQUIPMENT/Repulser - Activate (On Object)`
+ * (1,85 s, la variante d'impact SUR UNE CIBLE, seule cohérente avec un kill) coupé par la
+ * recette du lot, et ajouter la ligne à `KILL_SPRITE_SOUND_STEMS`.
+ */
+describe('garde-rail : le son du répulseur attend son identification (R2.4)', () => {
+  const REPULSEUR = 'killfeed-56'
+
+  it('aucune règle killicon ne mène encore au répulseur — sinon, brancher son son', () => {
+    const versRepulseur = killiconRules()
+      .filter((r) => r.sprite === REPULSEUR)
+      .map((r) => `${r.genre} ${r.key}`)
+    expect(
+      versRepulseur,
+      'killicon resout desormais le repulseur : livrer le wav et l ajouter a KILL_SPRITE_SOUND_STEMS',
+    ).toEqual([])
+  })
+})
