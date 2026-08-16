@@ -34,6 +34,10 @@ var worldObjectPrecisionReaders = map[string]string{
 		"écrivain (killsource/calibrate.go) balaie 6..26",
 	"internal/analysis/filmdec/keyframe_ground_weapons.go": "CITATION en commentaire " +
 		"(parenté des archétypes d'objet du monde) — aucune lecture de la valeur",
+	"internal/analysis/filmdec/components_biped_anchor.go": "le corps tag==3 d'i59 (ancre du " +
+		"grappin, 2026-08-16) lit sa position absolue aux largeurs d'axe de la CARTE — mêmes " +
+		"chemins d'installation que le reste : production via BuildFromFilm/" +
+		"installWorldObjectPrecision, instruments via i59aSetup (installation + restauration)",
 	"internal/analysis/replay/world_object_precision.go": "l'INSTALLATEUR de production : " +
 		"pose les largeurs de la carte du match et rend la restauration",
 	"internal/analysis/replay/build.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +

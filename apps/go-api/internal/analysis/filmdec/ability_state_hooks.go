@@ -59,10 +59,12 @@ var spartanAbilityHook func(tag, sub, ref uint64, hasRef bool)
 // SetSpartanAbilityHook installe (ou retire, avec nil) la sonde d'i57.
 func SetSpartanAbilityHook(h func(tag, sub, ref uint64, hasRef bool)) { spartanAbilityHook = h }
 
-// abilityNonPredictedHook, si non nil, reçoit le tag R(2) de CHAQUE lecture d'i59. Le corps
-// de la branche tag==3 (FUN_142f25e90) n'est PAS porté : le tag est publié, la suite du
-// record reste ce qu'elle était (cf. le CAVEAT du déser).
-var abilityNonPredictedHook func(tag uint64)
+// abilityNonPredictedHook, si non nil, reçoit CHAQUE lecture d'i59 : le tag externe R(2)
+// et — depuis le port du corps tag==3 (2026-08-16, plan PLAN_GRAPPIN_LIGNE) — la lecture
+// complète du bloc FUN_142f25e90 (tag interne, ids, les trois vecteurs quantifiés, queue).
+// Cf. AbilityNonPredictedState (components_biped_anchor.go) : BodyWalked/BodyOK disent si
+// le corps a été parcouru et s'il est allé au bout.
+var abilityNonPredictedHook func(st AbilityNonPredictedState)
 
 // SetAbilityNonPredictedHook installe (ou retire, avec nil) la sonde d'i59.
-func SetAbilityNonPredictedHook(h func(tag uint64)) { abilityNonPredictedHook = h }
+func SetAbilityNonPredictedHook(h func(st AbilityNonPredictedState)) { abilityNonPredictedHook = h }

@@ -4,12 +4,12 @@ package filmdec
 // .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : compter et DATER les occurrences
 // tag==3 d'i59 `biped-spartan-ability-non-predicted-state` — SANS décoder le corps.
 //
-// LE CORPS N'EST PAS PORTÉ, ET CE N'EST PAS UN OUBLI : la branche tag==3 appelle
-// FUN_142f25e90 (vecteur position + quaternions + déquantifications) — candidat à la POSE
-// d'un mur ou à l'ancre d'un grappin (découverte du 15/08, PLAN_EQUIPEMENT_TI37 §
-// Découvertes). Ce que cet instrument établit, c'est si ce portage VAUDRAIT un lot : le
-// tag R(2) est lu par le déser de production (abilityNonPredictedHook) et la marche du
-// record S'ARRÊTE LÀ pour ce record — on ne lit pas au-delà d'un curseur non fiable.
+// AU MOMENT DE CETTE MESURE (16/08, phase E), LE CORPS N'ÉTAIT PAS PORTÉ : la branche
+// tag==3 appelle FUN_142f25e90 — ce que cet instrument a établi, c'est que ce portage
+// VALAIT un lot (115/117 lectures tag==3 à porteur identifié = rang 20, grappin). Le
+// corps est PORTÉ depuis (plan PLAN_GRAPPIN_LIGNE phase 0, components_biped_anchor.go) ;
+// cet instrument reste la mesure de compte/co-datation de la phase E — sa marche s'arrête
+// toujours à i59 (cible), le tag externe lui suffit.
 //
 // E.2 — CROISEMENT avec les signaux de la phase C : si les instants tag==3 co-datent avec
 // les naissances d'entités ti=37 ou les transitions d'`equipment-activated`, le portage du
@@ -115,7 +115,9 @@ func i59Scan(s eaFilmSetup, idx59 int) (samples []i59Sample, records, with59, re
 		got bool
 	}
 	prev := abilityNonPredictedHook
-	SetAbilityNonPredictedHook(func(tag uint64) { capt.tag, capt.got = tag, true })
+	SetAbilityNonPredictedHook(func(st AbilityNonPredictedState) {
+		capt.tag, capt.got = uint64(st.Tag), true
+	})
 	defer SetAbilityNonPredictedHook(prev)
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()

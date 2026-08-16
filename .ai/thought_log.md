@@ -1,3 +1,34 @@
+## [2026-08-16] v7.5 rejeu 2D — l'ancre du grappin LUE dans le film (plan grappin, phase 0)
+**Statut** : Complété — phase 0 de `PLAN_GRAPPIN_LIGNE.md` (porter, prouver, contrôler).
+**Décision technique** : le corps tag==3 d'i59 (`FUN_142f25e90`) est porté sur une
+grammaire MESURÉE, pas décompilée : les hypothèses d'enrobage des notes (tag interne
+R(2)/R(3), deux ac4 de tête) sont REFUTÉES par la marche (2-4 bits expliqués sur ~62-162),
+et la grammaire est lue dans les films (dump bit à bit + consensus par position par classe
+de longueur, `TestI59AnchorBodyDump`/`Template`). Résultat (`components_biped_anchor.go`) :
+`[R(3) interne 1=tir|2=accroche][R(3) drapeaux][X][Y][Z][R(7)][gate8]` + corps lourd
+`3x[porte; dir24+mag12] + R(24) + R(9)` — la POSITION est quantifiée aux LARGEURS D'AXE DE
+LA CARTE (`WorldObjectPrecision`, +10 bits exactement entre Cliffhanger 40 et Bazaar 50 sur
+les deux classes : c'est ce différentiel qui a identifié le champ). Les largeurs de
+feuilles du décompilé (0x18/0xc, 0x18, +9, gate8) sont confirmées. Drapeaux != 000 (8/210)
+et interne 4 : ported=false, désync propre. Deux corrections transverses : la queue R(3)
+d'i59 (param_4=2, vérité CE) n'était JAMAIS lue offline — `paramByComponent` n'avait que
+les clés d'i57, le « pied de 3 bits » mesuré entre chaque record i59 et le suivant était
+exactement elle ; et l'allowlist `WorldObjectPrecision` reçoit l'entrée datée du nouveau
+lecteur. Le hook i59 publie désormais l'état complet (`AbilityNonPredictedState`).
+**Résultats** :
+- Preuve de marche (cohérence aval stricte) : APRÈS le port, l'écart entre la fin de
+  marche et le record biped suivant vaut ZÉRO (min=p10=p50=p90) sur les 3 films famille B
+  — 48/48, 72/72, 33/33 — comme les témoins tag!=3 (988/713/761). AVANT : 62-175 bits.
+- Contrôles d'ancre : (a) emprise AABB 57/57, 100/100, 46/46 ; (b) portée [2,40] u
+  196/203, décroissance d(t+1s)<0,8·d(t) côté accroche 21/23, 47/47, 17/20 contre témoins
+  mélangés 8/23, 14/47, 4/20, d médiane remonte à t+2s (le joueur ATTEINT l'ancre) ;
+  fixité inter-membres |P1-P2| = 0,05-0,07 u quand le joueur bouge de 0,42 u.
+- (c) paires tir→accroche à 0,150 s CONSTANT (3 films) ; 25/48/22 paires ; fenêtre de
+  rendu mesurée : du tir à l'arrivée (minimum de distance, ~1 s après l'accroche).
+**Conclusion / prochaine étape** : gate 0 PASSÉ, l'ancre est un point monde fixe prouvé.
+Phase 1 : publier les événements par vie dans le document (schéma 7 -> 8), re-cuire
+`000d5950` ; phase 2 : la ligne blanche joueur -> ancre (token, pas de son).
+
 ## [2026-08-16] v7.5 rejeu 2D — camo et surbouclier PUBLIES, MONTRES et SONNES (phases 1-4, restreintes)
 **Statut** : Complete — phases 1 a 4 du `PLAN_EQUIPEMENT_TI37.md`, RESTREINTES aux deux
 familles gagnees par la mesure du 16/08 (decision utilisateur : « pour active camo et
