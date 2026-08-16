@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { ReplayDocument, ReplayGrenade } from '@/lib/api/types'
 
-import { SOUND_CUT_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
+import { SOUND_CUT_MAX_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
 import {
   advanceSoundCursor,
   buildSoundTimeline,
@@ -367,6 +367,14 @@ describe('killSound', () => {
   it('source sans vignette ET sans clé (étiquette AMBIGU) : silence, jamais une voisine', () => {
     expect(killSound({ weaponKey: '', weaponImageUrl: '' })).toBeUndefined()
   })
+
+  it('vignette hors table sonore et sans clé (le répulseur) : SILENCE, pas une voisine', () => {
+    // Le cas du lot R2.4 : l'atlas du jeu porte bien `killfeed-56` (repulsor), mais aucune
+    // source de dégât mesurée n'y mène et aucun son ne lui est associé. Si une vignette
+    // arrivait un jour sans entrée dans la table, elle doit se taire — jamais retomber sur
+    // l'explosion ou la mêlée d'à côté.
+    expect(killSound({ weaponKey: '', weaponImageUrl: vignette('killfeed-56') })).toBeUndefined()
+  })
 })
 
 const TL: ReplaySoundEvent[] = [
@@ -415,8 +423,16 @@ describe('curseur sonore', () => {
 })
 
 describe('soundEnvelope', () => {
-  it('un son long est coupé à ~1 s, fondu entamé un quart de seconde avant', () => {
-    expect(soundEnvelope(3)).toEqual({ fadeStartS: SOUND_CUT_S - SOUND_FADE_S, stopS: SOUND_CUT_S })
+  it('un son joue jusqu au bout de son fichier, fondu sur le dernier quart de seconde', () => {
+    // 3,33 s : la durée de l explosion de fragmentation livrée (lot R2.3).
+    expect(soundEnvelope(3.33)).toEqual({ fadeStartS: 3.33 - SOUND_FADE_S, stopS: 3.33 })
+  })
+
+  it('au-delà du plafond de sûreté, la coupe reprend la main', () => {
+    expect(soundEnvelope(30)).toEqual({
+      fadeStartS: SOUND_CUT_MAX_S - SOUND_FADE_S,
+      stopS: SOUND_CUT_MAX_S,
+    })
   })
 
   it('un son court joue entier, le fondu est borné à sa moitié (pas de claquement)', () => {

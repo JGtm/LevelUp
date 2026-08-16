@@ -1,12 +1,18 @@
 /**
  * replayAudio.ts — LA LECTURE Web Audio des sons du rejeu, et rien d'autre.
  *
- * LA COUPE SE FAIT À LA LECTURE, par une enveloppe de gain : tenue pleine, puis fondu de
- * sortie, arrêt à ~1 s. Un `stop()` sec au milieu d'une onde claquerait (discontinuité) —
- * le fondu est la coupe propre. Les fichiers livrés sont eux-mêmes tronqués à 1,2 s (item
- * 5.1 : 16,9 Mo de rafales et de queues de réverbération pour une seconde jouée), ce qui
- * laisse 0,2 s de marge au-delà du `stop` : la coupe reste celle de l'enveloppe, jamais
- * une fin de fichier.
+ * LA DURÉE JOUÉE EST CELLE DU FICHIER, et c'est le fichier qui porte la règle de durée
+ * par catégorie (décision utilisateur du 2026-08-16, lot R2.1) : une arme, un lancer et
+ * la mêlée sont livrés à 1,2 s ; une explosion de grenade et un équipement vont jusqu'à
+ * 4 s, parce que leur source dure 1,8 à 4,8 s et que les couper à la seconde les rendait
+ * « écourtés » à l'oreille. Le lecteur n'impose donc plus SA seconde à tout le monde : il
+ * joue ce qu'on lui livre, et `SOUND_CUT_MAX_S` n'est plus qu'un PLAFOND DE SÛRETÉ contre
+ * un fichier livré trop long.
+ *
+ * LA COUPE RESTE UNE ENVELOPPE DE GAIN : tenue pleine, puis fondu de sortie sur les
+ * dernières 0,25 s. Un `stop()` sec au milieu d'une onde claquerait (discontinuité) — le
+ * fondu est la coupe propre, y compris à la fin exacte d'un fichier dont la source a été
+ * tronquée au plafond (c'est le cas de l'explosion plasma, source 4,07 s).
  *
  * L'AudioContext ne naît QUE dans le geste utilisateur qui active le son (politique
  * d'autoplay des navigateurs : un contexte créé hors geste démarre suspendu). Le son du
@@ -25,8 +31,17 @@ import {
   type SoundDraw,
 } from './weaponSoundLogic'
 
-/** Durée maximale jouée d'un son, en secondes (coupe du lot 5 : « ~1 s »). */
-export const SOUND_CUT_S = 1.0
+/**
+ * PLAFOND de durée jouée, en secondes — pas la coupe : la durée d'un son est celle de son
+ * FICHIER (règle par catégorie, appliquée à la livraison des assets : armes/lancers/mêlée
+ * 1,2 s, explosions et équipements jusqu'à 4 s). Ce plafond ne mord donc sur AUCUN fichier
+ * livré aujourd'hui — il existe pour qu'un asset livré par erreur en pleine longueur (une
+ * source de 30 s) ne tienne pas une voix pendant tout un échange.
+ *
+ * Il vaut exactement la borne de la recette de coupe (4 s) : deux nombres qui divergeraient
+ * feraient un son tronqué SANS que rien ne le dise.
+ */
+export const SOUND_CUT_MAX_S = 4.0
 
 /** Durée du fondu de sortie, en secondes (borné à la moitié du son pour les très courts). */
 export const SOUND_FADE_S = 0.25
@@ -37,10 +52,17 @@ export const SOUND_FADE_S = 0.25
  *
  * C'EST LE SEUL PLAFOND DE TOUTE LA CHAÎNE SONORE depuis que TOUS les tirs sonnent
  * (décision utilisateur du 2026-08-15 : aucun filtrage éditorial). Ce qu'il coûte, mesuré
- * le même jour par simulation à 1× (une voix tenue `SOUND_CUT_S`) : sur le film témoin
- * 000d5950, 46 sources refusées pour 483 tirs sonores ; sur les 23 artefacts locaux,
- * 4 897 refus pour 17 068 sources, soit 28,7 %. Le relever est un changement d'UN chiffre —
- * à faire si l'écoute le demande, pas avant : c'est une décision d'oreille, pas de code.
+ * le même jour par simulation à 1× (une voix tenue 1 s, la durée jouée d'alors) : sur le
+ * film témoin 000d5950, 46 sources refusées pour 483 tirs sonores ; sur les 23 artefacts
+ * locaux, 4 897 refus pour 17 068 sources, soit 28,7 %. Le relever est un changement d'UN
+ * chiffre — à faire si l'écoute le demande, pas avant : c'est une décision d'oreille, pas
+ * de code.
+ *
+ * CE QUE L'ALLONGEMENT DU 2026-08-16 CHANGE POUR CE PLAFOND : rien sur ce qui le fait
+ * mordre. Ce qui le sature est le TIR (17 904 tirs au corpus mesuré), et un tir tient
+ * toujours 1,2 s. Seules les explosions et les équipements tiennent désormais jusqu'à 4 s,
+ * et ce sont les événements les plus rares de la piste — un kill à la grenade, un épisode
+ * de camouflage. Le plafond reste inchangé (décision du lot R2.1).
  */
 export const SOUND_MAX_VOICES = 8
 
@@ -54,9 +76,13 @@ export const VOLUME_RAMP_S = 0.02
 /**
  * soundEnvelope calcule l'enveloppe d'une source de `durationS` secondes : l'instant où
  * le fondu commence et celui où tout s'arrête. Pure, testée (replaySound.test.ts).
+ *
+ * Le son joue jusqu'au BOUT DE SON FICHIER (c'est la livraison qui règle la durée par
+ * catégorie), sauf au-delà du plafond de sûreté. Le fondu est borné à la moitié du son
+ * pour les très courts : sans cela, un son de 0,1 s serait un fondu et rien d'autre.
  */
 export function soundEnvelope(durationS: number): { fadeStartS: number; stopS: number } {
-  const stopS = Math.min(Math.max(durationS, 0), SOUND_CUT_S)
+  const stopS = Math.min(Math.max(durationS, 0), SOUND_CUT_MAX_S)
   const fade = Math.min(SOUND_FADE_S, stopS / 2)
   return { fadeStartS: stopS - fade, stopS }
 }
