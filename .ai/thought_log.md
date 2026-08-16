@@ -1,3 +1,65 @@
+## [2026-08-16] v7.5 rejeu — killsource aux largeurs de carte : le NÉGATIF est mesuré (plan alertes, phases 0-2)
+**Statut** : Complété — phases 0, 1 et 2 de `.ai/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
+Phase 2 NON OUVERTE, ses 4 items statués `[!]` par décision du gate 1. Phase 3 (catalogue de
+bornes) en cours dans la même session.
+**Décision technique** : ne PAS câbler l'entrée de catalogue jusqu'à `killsource.Decode`.
+La question posée par le registre (ligne 156, ouverte le 2026-08-15) était : « le
+désalignement se constate-t-il ? ». Réponse : il se constate DANS LA MARCHE, et il ne se
+constate PAS DANS LA SORTIE. Instrument versionné, gardé par variable d'environnement, deux
+tests :
+`internal/games/halo_infinite/film/killsource/world_precision_test.go`
+(`TestKillSourceWorldPrecisionImpact` A/B sur la sortie publiée, `TestKillSourceWalkArchetypes`
+histogramme de la marche). Un film par process, `CGO_ENABLED=0`.
+**Résultats — PHASE 0, ce que « partout » vaut aujourd'hui.** Registre lu sans ouvrir aucune
+base : `match_registry.parquet` du snapshot 081 par `read_parquet`, catalogue par `read_text` +
+`json_keys`, normalisation rejouée en SQL à l'identique de `filmdec.NormalizeMapName`.
+**1 822 matchs · 92 clés de carte · 56 cartes au catalogue → 1 607 matchs couverts (88,20 %),
+215 NON constructibles faute de bornes (11,80 %)**, en 36 clés. Tête de liste : Live Fire 61
+(module prouvé, sans tag sbsp — blocage connu), `map_name` NULL 34, Detachment 25, Argyle 21,
+puis 18 cartes Forge à 1-8 matchs. Aucune carte du catalogue n'est inutilisée (56/56 jouées).
+**Résultats — PHASE 1, l'écart est NUL sur la sortie.** Trois films, trois découpages :
+`00502e52` Bazaar `[17 17 16]`, `07aa428d` Illusion `[18 18 17]`, témoin `000d5950`
+Cliffhanger `[13 13 14]`. Défaut contre catalogue : **0 ligne changée sur 95 / 91 / 93**,
+couverture 100 % des couples réels des deux côtés, marche appariée 89/90 · 83/84 · 84/86
+inchangée, scan inchangé, divergences inchangées (0 · 1 · 1), marge de bijection 27 · 31 · 36,
+alertes vides. **SONDE D'ABSURDE `[6 6 6]`** — 26 bits de moins par record d'objet du monde,
+hors de toute entrée de catalogue — ne déplace rien non plus : sans elle un « zéro » ne
+vaudrait rien, un instrument mal branché rend toujours zéro.
+**Le désalignement EXISTE pourtant, et il est chiffré** (`TestKillSourceWalkArchetypes`, qui
+rejoue exactement le parcours de `runWalk` et compte au lieu de filtrer) :
+`object-position-component` — le seul déser qui lise `WorldObjectPrecision` — est atteint 7 360
+fois sur Bazaar (2,81 % des records). Aux largeurs de la CARTE la marche lit PLUS de records
+(262 010 -> 269 192) et MOINS de dead-states (228 -> 149), et surtout **les dead-states lus
+derrière un objet du monde s'effondrent : 85 -> 6 sur Bazaar, 65 -> 14 sur Illusion**. Ce sont
+des dead-states FABRIQUÉS par le désalignement. Témoin Cliffhanger : colonnes défaut et
+catalogue identiques à l'unité près, seule la sonde d'absurde les déplace (8 -> 52).
+**Conclusion du gate 1** : la sortie est insensible parce que le filtre de crédibilité (plage
+de slots de bipède + indices dans le roster + catégorie dans l'énum), l'appariement par couple
+EXACT au kill-feed et le rattrapage du scan absorbent l'écart AVANT publication. Câbler
+l'entrée de catalogue ajouterait un paramètre, trois appelants et un garde-rail pour un effet
+nul : c'est de la complexité sans contrepartie. Ligne 156 du registre CLOSE avec sa condition
+de RÉOUVERTURE (si le filtre de crédibilité est relâché, la marge disparaît).
+**Ce que la mesure NE dit PAS**, écrit avant de conclure : trois films seulement, tous en Arena
+à 8 joueurs et à couverture 100 % — un film BTB, où la marche est plus fragile et la marge de
+bijection nulle, n'a pas été mesuré. Rien n'a été vérifié sur `UnclaimedDeaths` ni sur les
+morts de bot (populations vides ou quasi vides ici). Une seule direction testée (défaut contre
+catalogue, plus l'absurde).
+**DÉCOUVERTE NON TRAITÉE, portée au registre** : le golden `minibobine` est ROUGE sur
+`feat/v75` depuis `020b95eab` (lot grappin) — les clés i59 ajoutées à `paramByComponent` font
+passer `recordStateParam` de 0 à 3 sans que le golden ait été re-congelé. Le garde a fait
+exactement son travail : sa doc dit que son canal de détection EST la ligne de calibration.
+Portée mesurée sans rien casser (`-update` puis `git checkout`) : **UNE seule ligne diffère sur
+77**, les 10 lignes publiées et les 3 ancres Theater ne bougent pas. NON traité ici (règle zéro
+fix hors périmètre) : re-congeler un golden, c'est ratifier un changement de comportement, et
+c'est au lot qui l'a produit de le faire.
+**Gates** : `go build ./...` OK · `go vet ./...` OK · `go test ./internal/analysis/filmdec/`
+et `./internal/analysis/replay/` verts · `golangci-lint --new-from-merge-base=origin/main`
+**0 issue**. `go test ./internal/games/halo_infinite/film/killsource/` ROUGE — au seul titre du
+golden `minibobine` ci-dessus, vérifié PRÉEXISTANT (le paquet est rouge à l'identique avec le
+nouveau fichier retiré de l'arbre).
+**Conclusion / prochaine étape** : phase 3 du plan — étendre le catalogue de bornes aux cartes
+Forge manquantes dont le module est prouvable par `level_id`.
+
 ## [2026-08-16] v7.5 rejeu 2D — la ligne du grappin PUBLIÉE et TRACÉE (plan grappin, phases 1-2)
 **Statut** : Complété — phases 1 (publier) et 2 (tracer) de `PLAN_GRAPPIN_LIGNE.md`.
 Reste le gate VISUEL utilisateur (film témoin `000d5950`, artefact re-cuit).
