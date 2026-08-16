@@ -1070,6 +1070,13 @@ possible ». Consequences :
 
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
+- PISTE delai d'action (2026-08-16) : l'utilisateur se souvient d'un « pan... clic » deja
+  entendu sur la CARABINE VESTIGE — or c'est l'arme dont tous les sons sont embarques dans
+  la bank `09089e7e`. Si le symptome se reproduit sur les rendus regeneres, instruire le
+  paquet de proprietes des actions Play en commencant par cette bank.
+- Le reglage distance/variation in-app fait l'objet d'un plan dedie :
+  `PLAN_SONS_REJEU_INAPP.md` (decision utilisateur du 2026-08-16).
+
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
   48 bits). Le commentaire qui justifie cette copie est PERIME : himodule lit bien 48 bits
   + drapeaux (`module.go:265`). `cmd/weapon-sounds` utilise himodule directement, donc la
