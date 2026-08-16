@@ -1,3 +1,50 @@
+## [2026-08-16] v7.5 rejeu 2D — l'etat ACTIF d'un equipement : 5 verdicts par famille, 2 canaux gagnants
+**Statut** : Complete — plan `.ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md` CLOS,
+5 gates passes (A camo, B surbouclier, C deployables, D mobilite, E i59). Lot de MESURE :
+zero rendu, zero son, zero champ de document. Les hooks `i27 charges-remaining` et le corps
+d'`i59` n'ont PAS ete executes (decisions n°1 et E du plan).
+**Decision technique** : publication par hook sur les desers de PRODUCTION (patron
+`ability_rank.go`) — quatre desers qui jetaient leurs valeurs publient desormais
+(`ability_state_hooks.go` : i28 camo, i54 mobilite, i57 v==1 R2+R24, i59 tag), AUCUNE
+largeur ne change. Cinq instruments gardes par variable d'environnement
+(`I28_FILM`/`I5_FILM`/`I57H_FILM`/`I54X_FILM`/`I59_FILM`), skip verifie, un film par
+processus, aides partagees dans `etat_actif_shared_test.go` (une seule marche, regle des
+<= 2 copies). Coincidences ±1 s avec i56 : AUCUNE (decision n°2 — jointure PAR VIE ou
+temoins decales, jamais une fenetre seule sur un canal clairseme).
+**Resultats** :
+- **A — camo SE LIT** : la « fraction principale » d'i28 n'est JAMAIS transmise
+  (0/13 902 lectures, 3 films) ; le canal est **queue[1]** (2e des six champs de queue),
+  binaire 0/4095. Transitions EXCLUSIVES aux vies rang 8 : 25/225 et 14/33 paires
+  (groupes rang 8) contre 0/3179 et 0/2431 (tous les autres) ; les 23 lectures 4095
+  tombent TOUTES sur des vies rang 8 ; temoin inter-films `00ba2e1c` (0 vie rang 8) = 0
+  partout. Courbe 0->4095->0 publiee (plateau 16,2 s) : activation ET desactivation datables.
+  queue[2] oscille (2048/615) dans TOUS les groupes — pas un etat d'equipement.
+- **B — surbouclier SE LIT cote film, PAS dans l'artefact** : `Point.sh` est CLAMPE
+  (ShieldFraction, verifie sur pieces offline_biped.go:99). Cote film (`i5` non clampe) :
+  regle **q > 64** (64 <-> 1.000 exact) — porteurs rang 9 a 86,7 %/92,3 % au-dela
+  (q max 223 = 3,498), **0 faux positif sur ~113 000 mesures hors porteurs** (une vie [23]
+  a 362/362 = trou de couverture i48, profil de porteur). Episodes dates 6,2-61,6 s.
+- **C — la pose d'un deployable NE SE DATE PAS** : `activated` = 1 transition sur 3 films ;
+  hypothese « R(24) d'i57 v==1 = handle ti=37 » TOMBEE (valeurs quasi toutes uniques —
+  0/0/3 repetitions sur 75/37/193 — vies vivantes ±2 s = 1-3 %) ; naissances ti=37 trop
+  denses (4,7-5,3/s) : fenetres larges saturees TEMOINS COMPRIS, fenetres fines (0,02-0,10 s)
+  reel SOUS les temoins sur 2 films sur 3. C.1 reproduit les comptes du 14/08 au chiffre
+  pres (75 v==1 sur 000d5950, 0 marche cassee). C.4 : fin de vie datable (disparition du
+  masque) mais cause lisible pour 1-2 % des vies seulement (at-rest/dead-state).
+- **D — i54 N'EST PAS l'usage d'equipement** (prediction refutee sur 12 films) :
+  0,55 episode/vie (vies a rang de mobilite) contre 0,45 (autres rangs), ratio 1,2,
+  autres > mobilite sur 4 films ; temoin `0014603f` (i48 jamais au masque) porte 631
+  flag1==1. Action de mobilite generique (durees mediane 0,62 s).
+- **E — DECOUVERTE : i59 tag==3 = evenement du GRAPPIN** : 210 occurrences (3 films),
+  **115/117 lectures a porteur identifie = vies rang 20**, 0 autre rang identifie, paires
+  a ~0,15 s. Pas de co-datation avec les signaux deployables. Recommandation ecrite au
+  registre : porter `FUN_142f25e90` (position+quaternions) comme ANCRE du grappin.
+**Conclusion / suite** : verdicts reportes dans `PLAN_EQUIPEMENT_TI37.md` (les canaux
+gagnants de la phase 1 sont i28 queue[1], i5 non clampe et i59 tag==3 — pas les quatre
+champs ti=37) ; registre mis a jour (ligne i54 tranchee, effet plein-fiche debloque pour
+2 familles, 2 nouvelles reprises : portage ancre grappin, publication camo/surbouclier au
+document). Gates techniques verts : go build/vet ./..., go test filmdec+replay (instruments
+SKIP sans variables), golangci-lint new-from-merge-base 0 issue.
 ## [2026-08-16] v7.5 rejeu 2D — le type d'une grenade par le LANCER : NEGATIF MESURE, les deux gates tombent
 **Statut** : Complete — plan CLOS sur un negatif
 (`.ai/V7.5/replay2d/PLAN_TYPE_GRENADE_PAR_LANCER.md`). **Aucune ligne de production ecrite**,

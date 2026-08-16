@@ -27,6 +27,22 @@ jamais devinee. C'est la regle qui a fait echouer le lot du 14/08 et elle avait 
 
 Le dernier est le seul qui nomme la chose en clair, et le seul qui porte une POSITION.
 
+### Verdicts du 2026-08-16 — l'ETAT ACTIF par famille (PLAN_ETAT_ACTIF_EQUIPEMENT, 5 gates passes)
+
+Le lot de mesure « etat actif/inactif » a interroge les canaux que ce tableau ne couvrait
+pas. Ce qu'il change a la vision globale :
+
+| famille | etat actif | verdict chiffre |
+|---|---|---|
+| **Camouflage (rang 8)** | **SE LIT — `i28` queue[1]**, binaire 0/4095 | transitions EXCLUSIVES aux vies rang 8 (39 contre 0 sur 574 autres vies, 2 films + temoin negatif a 0) ; courbes 0->4095->0 publiees (plateau 16,2 s) — activation ET desactivation datables |
+| **Surbouclier (rang 9)** | **SE LIT — `i5` NON clampe**, regle `q > 64` | 86,7-92,3 % des mesures des porteurs au-dela du plein (q max 223 = 3,498), **0 faux positif** sur ~113 000 mesures hors porteurs (3 films) ; `Point.sh` est CLAMPE — publier exigera un champ non clampe |
+| **Deployables (mur 19, capteur 22)** | **NE SE DATE PAS** par les canaux mesures | `activated` : 1 transition sur 3 films ; R(24) d'i57 : PAS un handle (valeurs quasi toutes uniques, vies vivantes ±2 s = 1-3 %) ; naissances ti=37 : densite 4,7-5,3/s, temoins au niveau du reel. Reste la voie `charges-remaining` (EN RESERVE, decision user 16/08) |
+| **Mobilite (grappin 20, propulseur 21...)** | `i54` REFUTE ; **grappin : `i59` tag==3** | i54 : 0,55 episode/vie (mobilite) contre 0,45 (autres) sur 12 films — action generique, pas un usage. MAIS 115/117 lectures tag==3 identifiees = vies rang 20 : l'evenement du GRAPPIN existe, et le corps non porte (`FUN_142f25e90`, position+quaternions) est le candidat ANCRE — lot justifie au registre |
+
+Consequence sur la phase 1 ci-dessous : les canaux gagnants sont `i28` queue[1] (camo),
+`i5` non clampe (surbouclier) et `i59` tag==3 (usage grappin, apres portage du corps) —
+PAS les quatre champs ti=37, qui restent sans identite ni datation exploitables.
+
 ## Ce qui est ACQUIS — ne pas re-chercher
 
 | acquis | ou | consequence |
