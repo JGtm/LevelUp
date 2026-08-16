@@ -1,3 +1,85 @@
+## [2026-08-16] v7.5 callouts — decouper les zones sur le decor reel : le masque publie suffisait, mais il fallait mesurer ce qui lui manque
+
+**Statut** : Complete — phase A du plan `.ai/V7.5/replay2d/PLAN_CALLOUTS_HEATMAP.md`, cinq
+items statues, gate A passe. Phase B (heatmap) menee en parallele par un autre agent sur un
+worktree frere, non touchee ici.
+
+**Decision technique principale** : le decoupage n'avait pas besoin de la chaine cartes, qui
+etait la condition de reprise inscrite au registre depuis le 13/08. Le sol praticable est DEJA
+publie — le canal alpha des `map_backgrounds/{cle}.png` avec son sidecar de calage. Le nouveau
+paquet `internal/mapdecoupe` rasterise chaque pave de callout sur la grille EXACTE du fond (pas
+de re-echantillonnage, donc pas de decalage), croise avec le masque, re-vectorise en contours et
+trous par chainage d'aretes interieur-a-droite, et simplifie a 0,08 m (0,87 cellule). Hors ligne
+pur, sans le jeu, sans CGO. `cmd/mapcallouts-build` l'applique a toute carte qui a un fond
+publie ; Ridgeline garde le dump du POC, ce qui en fait un ORACLE independant et pas un miroir.
+
+**Deux choses n'etaient pas au plan et sont devenues le coeur du travail.**
+
+1. L'ALTITUDE N'EST PAS PUBLIEE. Verifie sur pieces : le PNG est un RGBA d'habillage
+   (`TeinteNiveauDeJeu(dz, eclairement)` mele deux inconnues sur 8 bits, l'arete et l'eau
+   ecrasent le reste) et le sidecar ne porte qu'UNE altitude par carte. Le test d'etage prevu
+   par la decision n°3 du plan est donc impossible. La degradation va dans le bon sens — on ne
+   retire que le vide a TOUTE altitude — mais elle a un cout visible : `Enclave` sur Ridgeline,
+   IoU 0,501, ou la chaine garde 97,6 % quand le POC en gardait 49,1 %.
+
+2. LE PREMIER VERDICT ETAIT UN ECHEC, ET IL A DESIGNE LA VRAIE CAUSE. A tolerance nulle :
+   IoU median 0,809 et jusqu'a -40,47 points de positions jouees sur `btb_highpower`. La colonne
+   de diagnostic ajoutee a l'instrument — part des positions posees sur du decor publie — valait
+   60,11 % quand le decoupe en gardait 59,55 %. Le decoupage ne rognait pas trop : LE FOND N'A
+   PAS DE MATIERE sous 40 % des positions jouees de cette carte. Cause en amont, deja documentee
+   ailleurs : la cuisson ecarte les instances au maillage grossier, et ce qui manque manque par
+   INSTANCE ENTIERE (une rampe, une dalle), donc par trous de plusieurs metres.
+
+D'ou les deux correctifs, tous deux mesures et non devines : une fermeture morphologique du
+masque, et surtout une regle sans reglage — `reprendLesEnclaves` ne retire que le vide qui
+COMMUNIQUE avec le dehors de la zone. Un vide entoure de decor est un trou de reconstruction,
+pas le debordement dont l'utilisateur se plaint (item 9.2) ; il revient a la zone. Gain mesure :
++10 points de positions gardees sur btb_highpower.
+
+**Resultats observes.** Gate A passe, seuils inchanges (fixes avant la mesure).
+- IoU median contre le decoupe POC de Ridgeline : **0,872** sur les 11 grandes zones, seuil 0,85.
+- Positions jouees, brut -> decoupe : pire ecart **-1,10 point** (ctf_breaker), seuil 2 points,
+  sur 7 films de 7 cartes (btb_highpower, catalyst, chasm, ctf_bazaar, ctf_breaker, ridgeline,
+  sgh_blueprint).
+- Zones degenerees : **3 sur 628**, listees, chacune garde son pave brut. Une seule disparait
+  vraiment (`Triple Sandwich jr`, entierement au-dessus du vide) ; les deux autres sont des
+  paves deja plus petits que le plancher de 1 m2.
+- Production : **19 cartes `decoupe`**, 3 restent `brut` faute de fond publie
+  (`academy_tutorial`, `pve_house`, `sgh_interlock`). 625 zones decoupees, 29 055 sommets.
+- La tolerance de fermeture (4,00 m) est ETALONNEE, pas choisie : c'est le premier rayon qui
+  passe les DEUX oracles sur tout l'echantillon. Le tableau du balayage vit dans le commentaire
+  de la constante — le changer sans le refaire, c'est perdre ce qui justifie ce nombre.
+
+**Trois choix de conception qui expliquent le reste du diff.**
+- Le brut est conserve au niveau CATALOGUE (`MapCalloutsCatalog.Brut`, 625 zones), pas dans la
+  zone servie : `MapCalloutsEntry` est la charge utile OpenAPI, y mettre le brut l'enverrait sur
+  le reseau a chaque match. Consequence voulue : **contrat inchange**, `make openapi-check` vert,
+  aucune regeneration web — la phase B ne voit rien passer.
+- Le golden du catalogue fige desormais la REGLE et non une liste : une carte est `decoupe` SI ET
+  SEULEMENT SI son fond est publie, verifie sur l'arbre. Une liste ecrite a la main se serait
+  desynchronisee a la premiere carte ajoutee.
+- Sortie arrondie au centimetre — un neuvieme de cellule, tres au-dela de ce que la mesure sait
+  dire. Catalogue 2,78 Mo -> 2,06 Mo.
+
+**Reconnaissance de carte des films** : geometrique et hors ligne (le document de rejeu ne nomme
+pas sa carte, et un instrument n'ouvre pas de base DuckDB). Sol joue publie par le fond, tranche
+verticale des prismes, puis COUVERTURE MUTUELLE — la carte contient-elle le match ET le match
+a-t-il visite ses grandes zones. C'est cette derniere qui a debloque l'echantillon (3 films -> 7) :
+sans elle, une grande carte contient une petite arene tout entiere et marque 100 %. Une erreur
+d'attribution ne peut faire ECHOUER le gate, jamais le faire passer.
+
+**Gates** : `go test` vert sur `internal/mapdecoupe`, `internal/analysis/replay`,
+`internal/service`, `internal/api/handlers`, `cmd/mapcallouts-build` ; `make go-api-lint`
+0 issue ; `make openapi-check` a jour (contrat ET types web).
+
+**Conclusion / prochaine etape** : la ligne « Decoupage universel des callouts sur sol
+praticable » SORT du registre ; quatre entrees y prennent sa place (altitude non publiee,
+quatre fonds qui perdent des ancres, `btb_drydock` a 75,3 %, `MondeVersPixel` qui tronque).
+Reste le GATE VISUEL utilisateur — films temoins conseilles : `000d5950` (Ridgeline, la carte
+de l'oracle), `04023f8a` (btb_highpower, la carte que la tolerance a sauvee) et `145908d1`
+(ctf_breaker, le pire ecart restant). Le web n'a pas bouge : le format `parts`/`holes` que le
+rendu remplit en pair-impair existait deja.
+
 ## [2026-08-16] Sons du rejeu — fusion : le moteur v75 garde la scene, nos armes montent dessus
 
 **Statut** : COMPLET sur `feat/v75-sons-fusion` (worktree LevelUp-wt-sons-fusion). Gates :
