@@ -1,3 +1,18 @@
+## [2026-08-16] Sons du rejeu — livraison unique et branchement du lecteur
+
+**Statut** : COMPLET. 31 fichiers / 108 entrees gid / 22,3 Mo livres en miroir dans
+`static/weapons-assets/halo_infinite/sons/`, lecteur branche dans ReplayCanvas (amorcage
+au premier geste, tirs joues au fil de la boucle, garde-fous testes). Gates verts
+(typecheck, 3650 tests web, eslint).
+
+**Decision technique principale** : le manifeste des sons est indexe par FAMILLE d'arme
+(gid du tag weap) car `Shot.w` est un identifiant de film dont la famille est la moitie
+haute — normalisation client en miroir exact de `buildWeaponLabels`. Les variantes
+partagent la famille de leur arme de base et sont servies par elle.
+
+**Conclusion** : le chantier sons est livre de bout en bout. Reste la revue humaine de la
+branche `feat/sons-rejeu-inapp` avant merge.
+
 ## [2026-08-16] Sons du rejeu in-app — cloture du plan (etapes 1 a 5)
 
 **Statut** : Plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE. Branche
