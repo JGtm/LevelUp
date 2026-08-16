@@ -16,11 +16,19 @@
  * jointure du son deviendrait fausse EN SILENCE — c'est-à-dire qu'on entendrait l'explosion
  * d'une autre grenade. Rejouer les cinq clés contre le fichier source rend cette dérive
  * rouge au lieu de la rendre inaudible.
+ *
+ * LE TROISIÈME GARDE-RAIL tient la RÈGLE DE DURÉE PAR CATÉGORIE (lot R2, 2026-08-16), qui
+ * ne vit plus dans le lecteur mais dans les FICHIERS : armes, lancers et mêlée à 1,2 s ;
+ * explosions et équipements jusqu'à 4 s. Cette règle-là s'efface toute seule — il suffit
+ * qu'une re-livraison retronque tout à 1,2 s (c'est exactement ce que fait le script de
+ * livraison des armes) pour que les explosions redeviennent « écourtées » sans qu'aucun
+ * test ne bouge. Ici, elle devient rouge.
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { SOUND_CUT_MAX_S } from './replayAudio'
 import {
   EQUIPMENT_SOUND_STEMS,
   KILL_SPRITE_SOUND_STEMS,
@@ -35,12 +43,14 @@ const KILLICON_RULES = resolve(
   'apps/go-api/internal/games/halo_infinite/film/killicon/data/rules.tsv',
 )
 
+/** Les stems EFFECTIVEMENT présents dans le dossier d'assets. */
+const shipped = new Set(
+  readdirSync(SOUNDS_DIR)
+    .filter((f) => f.endsWith('.wav'))
+    .map((f) => f.slice(0, -'.wav'.length)),
+)
+
 describe('garde-rail : manifeste sonore = dossier d assets', () => {
-  const shipped = new Set(
-    readdirSync(SOUNDS_DIR)
-      .filter((f) => f.endsWith('.wav'))
-      .map((f) => f.slice(0, -'.wav'.length)),
-  )
   const referenced = new Set([
     ...Object.values(WEAPON_SOUND_STEMS),
     ...THROW_SOUND_STEMS,
@@ -57,6 +67,67 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
   it('chaque fichier .wav livré est joué par un stem (0 asset mort)', () => {
     const orphans = [...shipped].filter((s) => !referenced.has(s))
     expect(orphans).toEqual([])
+  })
+})
+
+/**
+ * Durée d'un WAV, lue dans ses en-têtes RIFF (aucune dépendance : les fichiers livrés sont
+ * du PCM produit par une recette fixe — `.ai/V7.5/RECETTE_SONS_ARMES.md` §7 et le lot R2 —
+ * et un fichier qui ne serait plus du PCM canonique doit faire ÉCHOUER ce test, pas être
+ * deviné). `data` / `byteRate` : les deux seules quantités nécessaires.
+ */
+function wavDurationS(file: string): number {
+  const buf = readFileSync(file)
+  expect(buf.toString('latin1', 0, 4), file).toBe('RIFF')
+  expect(buf.toString('latin1', 8, 12), file).toBe('WAVE')
+  let byteRate = 0
+  let dataSize = 0
+  for (let at = 12; at + 8 <= buf.length; ) {
+    const id = buf.toString('latin1', at, at + 4)
+    const size = buf.readUInt32LE(at + 4)
+    if (id === 'fmt ') byteRate = buf.readUInt32LE(at + 16)
+    if (id === 'data') dataSize = size
+    at += 8 + size + (size % 2)
+  }
+  expect(byteRate, `${file} : en-tete fmt illisible`).toBeGreaterThan(0)
+  return dataSize / byteRate
+}
+
+describe('garde-rail : durée livrée par catégorie', () => {
+  /** La coupe historique du lot 5, celle que gardent les sons COURTS par décision produit. */
+  const COURT_S = 1.2
+  const dureeDe = (stem: string) => wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
+
+  // Les catégories, reconstruites depuis le manifeste lui-même : la mêlée partage la table
+  // des vignettes avec les explosions, et c'est son STEM qui l'en distingue (une seule
+  // ligne CLASSE MELEE dans rules.tsv, cf. garde-rail ci-dessus).
+  const courts = [
+    ...Object.values(WEAPON_SOUND_STEMS),
+    ...THROW_SOUND_STEMS,
+    ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s === 'melee_kill'),
+  ]
+  const longs = [
+    ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s !== 'melee_kill'),
+    ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
+  ]
+
+  it('aucun son ne dépasse le plafond de sûreté du lecteur', () => {
+    const trop = [...shipped]
+      .map((s) => ({ stem: s, s: dureeDe(s) }))
+      .filter((d) => d.s > SOUND_CUT_MAX_S + 0.001)
+    expect(trop).toEqual([])
+  })
+
+  it('armes, lancers et mêlée restent tronqués à 1,2 s (la coupe validée du lot 5)', () => {
+    // 1,2 s est un PLAFOND, pas une longueur : deux sons d'arme sont plus courts parce
+    // que leur source l'est (MA40 AR 1,055 s, MA5K Avenger 1,051 s — mesure du 16/08).
+    const hors = courts.map((s) => ({ stem: s, s: dureeDe(s) })).filter((d) => d.s > COURT_S + 0.001)
+    expect(hors).toEqual([])
+  })
+
+  it('explosions et équipements gardent la durée de leur source, jamais retronquée à 1,2 s', () => {
+    const retronques = longs.map((s) => ({ stem: s, s: dureeDe(s) })).filter((d) => d.s <= COURT_S)
+    expect(retronques).toEqual([])
   })
 })
 
@@ -104,5 +175,50 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
     for (const r of rules.filter((x) => x.genre === 'GGGL')) {
       expect(KILL_SPRITE_SOUND_STEMS[r.sprite], `gggl ${r.key}`).toBeTruthy()
     }
+  })
+})
+
+/**
+ * LE SON DU RÉPULSEUR : DEMANDÉ, MESURÉ IMPOSSIBLE AUJOURD'HUI, ET CE TEST EST LE FIL QUI
+ * PRÉVIENDRA LE JOUR OÙ IL DEVIENDRA POSSIBLE (lot R2.4, 2026-08-16).
+ *
+ * CE QUI EXISTE : la vignette. L'atlas kill feed du jeu porte bien un pictogramme de
+ * répulseur — `killfeed-56`, `nom_jeu: repulsor`, `tags_weap: ["692390e9"]` dans
+ * `static/weapons-assets/halo_infinite/jeu/index.json`. Le JEU sait donc afficher un kill au
+ * répulseur dans son propre fil.
+ *
+ * CE QUI MANQUE : la SOURCE. Le son d'un kill se joint par la vignette, et la vignette se
+ * résout depuis le `jpt!` de la mort via `damagetag/data/labels.tsv` — les seules clés que
+ * `rules.tsv` sait écrire (NOM, GGGL, BANQUE, CLASSE) sortent toutes de cette table. Or,
+ * mesuré ligne à ligne le 2026-08-16 : aucune des 473 lignes de `labels.tsv` ne nomme le
+ * répulseur (0 occurrence), les 114 lignes qui portent un nom propre sont TOUTES de classe
+ * ARME, et les 6 lignes dont l'effet est un `eqip` sont toutes de statut INCONNU et sans nom
+ * (trois d'entre elles — bcabbe43, caaadcb0, a875923f — sont d'ailleurs identifiées par la
+ * rétro-ingénierie comme des entrées de la liste `gggl`, c'est-à-dire des GRENADES).
+ *
+ * POURQUOI ON N'ÉCRIT PAS LA RÈGLE QUAND MÊME : la seule clé qui « attraperait » ces lignes
+ * serait `CLASSE INCONNU`, qui poserait le pictogramme ET le son du répulseur sur 206 sources
+ * sans rapport. C'est la faute que la table refuse explicitement (« une icône absente est un
+ * repli, une icône fausse est un mensonge », en-tête de rules.tsv) et que `neutral.go` refuse
+ * déjà pour cinq autres pictogrammes de l'atlas qu'aucune donnée mesurée n'atteint.
+ * Conséquence : pas de fichier `.wav` de répulseur livré non plus — un asset que rien ne
+ * joue casserait le garde-rail « 0 asset mort » ci-dessus.
+ *
+ * CE QUE CE TEST FAIT : il devient ROUGE le jour où une règle mène à `killfeed-56`. Ce
+ * jour-là, il ne reste que deux gestes — livrer `EQUIPMENT/Repulser - Activate (On Object)`
+ * (1,85 s, la variante d'impact SUR UNE CIBLE, seule cohérente avec un kill) coupé par la
+ * recette du lot, et ajouter la ligne à `KILL_SPRITE_SOUND_STEMS`.
+ */
+describe('garde-rail : le son du répulseur attend son identification (R2.4)', () => {
+  const REPULSEUR = 'killfeed-56'
+
+  it('aucune règle killicon ne mène encore au répulseur — sinon, brancher son son', () => {
+    const versRepulseur = killiconRules()
+      .filter((r) => r.sprite === REPULSEUR)
+      .map((r) => `${r.genre} ${r.key}`)
+    expect(
+      versRepulseur,
+      'killicon resout desormais le repulseur : livrer le wav et l ajouter a KILL_SPRITE_SOUND_STEMS',
+    ).toEqual([])
   })
 })

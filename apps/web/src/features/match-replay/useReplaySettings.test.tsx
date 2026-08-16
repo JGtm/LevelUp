@@ -16,6 +16,12 @@ describe('useReplaySettings — valeurs par défaut', () => {
     expect(result.current.showNames).toBe(true)
     expect(result.current.speed).toBe(1)
   })
+
+  it('carte de chaleur ÉTEINTE, en lecture présence — le rejeu s ouvre sur ce qui bouge', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showHeatmap).toBe(false)
+    expect(result.current.heatmapMode).toBe('presence')
+  })
 })
 
 describe('useReplaySettings — bascules', () => {
@@ -57,5 +63,22 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     localStorage.setItem('replay-speed', '3')
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.speed).toBe(1)
+  })
+
+  it('la carte de chaleur et sa lecture survivent au remontage', () => {
+    const first = renderHook(() => useReplaySettings())
+    act(() => first.result.current.toggleHeatmap())
+    act(() => first.result.current.setHeatmapMode('kills'))
+    first.unmount()
+
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showHeatmap).toBe(true)
+    expect(result.current.heatmapMode).toBe('kills')
+  })
+
+  it('une lecture inconnue stockée par un autre moyen retombe sur la présence', () => {
+    localStorage.setItem('replay-heatmap-mode', 'temperature')
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.heatmapMode).toBe('presence')
   })
 })

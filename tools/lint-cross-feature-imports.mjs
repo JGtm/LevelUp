@@ -54,6 +54,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Le dashboard monitoring (WatcherSection) réutilise le hook useWatcherStatus
   // de settings/watcher-queries plutôt que de le dupliquer — dépendance durable.
   'admin=>settings',
+  // Le rejeu 2D lit les réglages d'instance des sons d'armes (variation, distance)
+  // via useSettings — même source que la section d'admin qui les édite, zéro
+  // duplication de query. Dépendance durable (2026-08-16, chantier sons-rejeu).
+  'match-replay=>settings',
   // L'onglet Admin « Lab » (AdminLabPage + WaypointExplorerPanel) et la section
   // Diagnostics de « Qualité données » réutilisent les panneaux / queries / i18n
   // de la feature lab (ResourcesPanel, DiagnosticsPanel, useLab*) — réutilisation

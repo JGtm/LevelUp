@@ -51,6 +51,16 @@ export interface KillFxEntry {
   /** Position de la victime, SEULEMENT quand le couple est complet. */
   vx: number | null
   vy: number | null
+  /**
+   * Le LIEU DE LA MORT : la position de la victime dès qu'elle est relue, que le tueur
+   * l'ait été ou non. Distinct de `vx`/`vy`, qui n'existent QUE pour ORIENTER l'effet et
+   * exigent donc le couple complet (règle 89/93) — la carte de chaleur des éliminations,
+   * elle, n'a pas besoin du tueur pour savoir où l'on est mort. Mesure du POC : sur 93
+   * morts, le couple complet en couvre 89 et les « victime seule » 3 de plus, que ce champ
+   * récupère. null = victime non localisée : aucune position devinée.
+   */
+  deathX: number | null
+  deathY: number | null
   /** Distance tueur-victime en mètres monde (null sans couple complet). */
   dist: number | null
   fam: ShotFamily
@@ -149,6 +159,8 @@ export function buildKillFx(
       y: origin.y,
       vx: complete ? victim.x : null,
       vy: complete ? victim.y : null,
+      deathX: victim ? victim.x : null,
+      deathY: victim ? victim.y : null,
       dist: complete ? Math.hypot(victim.x - killer.x, victim.y - killer.y) : null,
       fam: familyOf(k.weaponKey ? doc.killEffects?.[k.weaponKey] : undefined),
       slot: slotOfPlayerAt(livesByXuid.get(k.xuid), frame, deathFrames),

@@ -1,15 +1,25 @@
 /**
  * replaySound.ts — CE QUI SONNE, QUAND, ET COMMENT LE CURSEUR NE REJOUE RIEN DEUX FOIS.
  *
- * LA SOURCE (lot 5, plan parité) : un pack de WAV fourni par l'utilisateur (2026-08-13,
- * complété le 2026-08-15 par les quatre explosions de grenade et le coup de mêlée fatal),
- * rangé sous `static/sounds/halo_infinite/`. DEUX FAMILLES DE NOMS, parce qu'il y a deux
+ * LES SOURCES (deux, par nature — fusion du 2026-08-16) : les sons d'ARMES sont EXTRAITS
+ * DU JEU (chantier sons-armes : banks Wwise decodees, coups reconstitues selon la
+ * semantique prouvee, selection VOTEE par l'utilisateur — recette et provenance :
+ * `.ai/V7.5/RECETTE_SONS_ARMES.md`) ; les sons d'EVENEMENTS (lancers, explosions, melee
+ * fatale, equipements) viennent du pack fourni par l'utilisateur (2026-08-13/15). Tout vit
+ * sous `static/sounds/halo_infinite/`, livre par `_outils/livraison.py` (armes seulement,
+ * les evenements ne sont jamais touches). DEUX FAMILLES DE NOMS, parce qu'il y a deux
  * natures : une ARME porte le nom de sa clé canonique (weapon_names.toml, PAS le nom de
  * fichier FR des images — piège Crémateur/Cindershot) ; un ÉVÉNEMENT que le registre
  * d'armes ne nomme pas porte le nom de l'événement (`throw_*`, `explosion_*`,
  * `melee_kill`). Le manifeste ci-dessous est la liste EXACTE des fichiers livrés ; le
  * garde-rail `replaySoundAssets.guard.test.ts` le rejoue contre le dossier : un stem sans
  * fichier ou un fichier sans stem casse le test, jamais l'écoute.
+ *
+ * LA DURÉE EST UNE PROPRIÉTÉ DE LA CATÉGORIE, et elle est portée par le FICHIER, pas par
+ * le lecteur (décision utilisateur du 2026-08-16) : armes, lancers et mêlée à 1,2 s ;
+ * explosions de grenade et équipements jusqu'à 4 s, parce qu'à la seconde ils s'entendaient
+ * « écourtés ». Le lecteur joue le fichier jusqu'à sa fin (replayAudio.ts) — allonger un
+ * son, c'est donc re-couper son asset, jamais toucher au moteur.
  *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
@@ -62,12 +72,13 @@
  *
  * UN TIR SONNE L'ARME QUI L'A PRODUIT, JAMAIS UNE AUTRE. La jointure passe par la clé
  * canonique publiée avec le libellé (`weaponLabels[id].key`, posée à la requête par le
- * service) : sans clé, ou sans fichier pour cette clé, le tir est MUET. Les quatre armes
- * sans son du pack (Bandit EVO, MA5K Avenger, SPNKr à combustible, carabine Vestige) le
- * restent donc par construction — c'est la même règle que les libellés et les effets.
+ * service) : sans clé, ou sans fichier pour cette clé, le tir est MUET. Les armes que le
+ * REGISTRE ne nomme pas (Mutilator, tourelles, armes de PNJ) le restent par construction —
+ * même règle que les libellés et les effets ; leurs sons extraits existent dans l'archive
+ * du chantier, prêts si le registre les nomme un jour.
  *
  * UN KILL DONT NI LA VIGNETTE NI LA CLÉ NE RÉPONDENT (véhicules, objets explosifs, dégât
- * global, et les armes sans fichier — Bandit, MA5K, SPNKr à combustible, Vestige) = SILENCE
+ * global, armes hors registre) = SILENCE
  * PROPRE : jamais le son d'une arme voisine, même règle que les effets de rendu
  * (replay_labels.toml). La mêlée générique, elle, n'est PLUS de ceux-là : elle n'a pas de
  * clé mais elle a une vignette, et c'est par là qu'elle sonne.
@@ -126,6 +137,11 @@ export const WEAPON_SOUND_STEMS: Readonly<Record<string, string>> = {
   hinf_skewer: 'hinf_skewer',
   hinf_m41_spnkr: 'hinf_m41_spnkr',
   hinf_stalker_rifle: 'hinf_stalker_rifle',
+  // Les quatre que le pack initial n'avait pas — l'extraction du jeu les fournit.
+  hinf_bandit: 'hinf_bandit',
+  hinf_ma5k_avenger: 'hinf_ma5k_avenger',
+  hinf_fuel_rod_spnkr: 'hinf_fuel_rod_spnkr',
+  hinf_vestige_carbine: 'hinf_vestige_carbine',
 }
 
 /**
