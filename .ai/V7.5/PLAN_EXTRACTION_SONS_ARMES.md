@@ -1057,6 +1057,17 @@ effectivement votee (`lot1_avant4.json`) : comparer seulement (evenement, nombre
 couches) n'aurait signale qu'1 coup quand les gains ont change partout.
 **33 coups a revoter, sur 29 armes** — marques dans la barre laterale et sur les groupes.
 
+### 2026-08-16 — Decision produit : la distance sera un REGLAGE DE L'APP
+
+Decision utilisateur : l'idee d'une distance pour le rejeu 2D est retenue, mais comme
+reglage in-app, pas dans les sons extraits — « comme ca on garde les sons les plus purs
+possible ». Consequences :
+
+- Les sons livres restent evalues au point de reference (le plus proche), sans modulation.
+- Le jour venu, l'app fera varier le mixage elle-meme : les courbes de fondu des `Blend`
+  sont deja decodees (`conteneurs_autres.go`), il suffira de les evaluer a un x choisi par
+  le reglage au lieu du x minimal. AUCUNE re-extraction ne sera necessaire.
+
 ## Decouvertes (hors perimetre — ne pas traiter ici)
 
 - `cmd/weapon-icons-build/hmod.go` duplique volontairement `internal/himodule` (u32 vs
