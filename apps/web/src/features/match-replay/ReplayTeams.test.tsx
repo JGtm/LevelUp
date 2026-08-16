@@ -9,11 +9,40 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import type { ReplayDocument } from '@/lib/api/types'
+import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
+import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
 import { normalizeCallouts } from './calloutsLayer'
+import { buildPlayerMarks } from './playerMarks'
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from './test/testDoc'
+
+/** Une ligne de scoreboard minimale : seuls le camp et l'identité comptent pour ces tests. */
+function sbRow(xuid: string, gamertag: string, side: string | null): MatchScoreboardRow {
+  return {
+    xuid,
+    gamertag,
+    team_side: side,
+    is_me: false,
+    rank: 1,
+    score: 0,
+    kills: 1,
+    deaths: 1,
+    assists: 0,
+    shots_fired: null,
+    shots_hit: null,
+    accuracy: null,
+    damage_dealt: null,
+    damage_taken: null,
+    average_life: null,
+    headshot_kills: null,
+    max_killing_spree: null,
+    perfect_kills: null,
+    power_weapon_kills: null,
+    melee_kills: null,
+    outcome_label: 'Victoire',
+  }
+}
 
 /** Une vie vivante sur [0,100] pour le slot 512, rattachée au joueur A. */
 const TRACK = {
@@ -449,5 +478,90 @@ describe('ReplayTeams — état actif équipement (camo/surbouclier), cahier des
     }, 140)
     const card = cardOf(view)
     expect(card.style.backdropFilter).toBe('')
+  })
+})
+
+/**
+ * L'EN-TÊTE DE COLONNE (décision D8, 2026-08-16) : il affichait `t0` / `t1`, c'est-à-dire
+ * l'identifiant de transport du backend. Il porte maintenant le libellé résolu — la cascade
+ * du scoreboard, pas une troisième copie — et la couleur d'équipe du reste de la page.
+ */
+describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
+  const twoTeams = () =>
+    testReplayDoc({
+      roster: [
+        { xuid: 'A', filmIndex: 0, name: 'Alpha' },
+        { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+      ],
+      tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }],
+    })
+
+  it('résout `t0` en « Équipe Eagle » (FR) et `t1` en « Team Cobra » (EN)', () => {
+    const doc = twoTeams()
+    const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't1')]
+    const fr = render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
+    expect(fr.getByText('Équipe Eagle')).toBeTruthy()
+    expect(fr.queryByText('t0')).toBeNull()
+    fr.unmount()
+    render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="en" />)
+    expect(screen.getByText('Team Cobra')).toBeTruthy()
+  })
+
+  it('numérote une équipe hors référentiel plutôt que d’inventer un nom', () => {
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [TRACK],
+    })
+    render(<ReplayTeams doc={doc} scoreboard={[sbRow('A', 'Alpha', 't12')]} frame={10} locale="fr" />)
+    expect(screen.getByText('Équipe 12')).toBeTruthy()
+  })
+
+  it('sans camp connu : « Sans équipe », encre neutre — aucune couleur d’équipe empruntée', () => {
+    const view = renderTeams({})
+    const header = view.getByText('Sans équipe').parentElement as HTMLElement
+    expect(header.style.borderLeft).toBe('')
+    expect(header.className).toContain('text-muted-foreground')
+  })
+
+  it('teinte la colonne du camp du joueur de la page (allié) et l’autre en adverse', () => {
+    const doc = twoTeams()
+    const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't1')]
+    const meta = resolveXuidMeta(board, 'A')
+    const view = render(
+      <ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" xuidMeta={meta} />,
+    )
+    const headerOf = (label: string) => view.getByText(label).parentElement as HTMLElement
+    expect(headerOf('Équipe Eagle').style.borderLeft).toContain('var(--ac-team-ally)')
+    expect(headerOf('Équipe Cobra').style.borderLeft).toContain('var(--ac-team-enemy)')
+  })
+})
+
+describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
+  it('marque « Moi » le joueur de la page et « Ami » un ami, rien pour les autres', () => {
+    const doc = testReplayDoc({
+      roster: [
+        { xuid: 'A', filmIndex: 0, name: 'Alpha' },
+        { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+        { xuid: 'C', filmIndex: 2, name: 'Charlie' },
+      ],
+      tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }, { ...TRACK, slot: 514, xuid: 'C' }],
+    })
+    const board = [
+      { ...sbRow('A', 'Alpha', 't0'), is_me: true },
+      sbRow('B', 'Bravo', 't0'),
+      sbRow('C', 'Charlie', 't1'),
+    ]
+    const marks = buildPlayerMarks(board, ['  bRaVo '])
+    render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" marks={marks} />)
+    expect(screen.getByRole('img', { name: 'Moi' })).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
+    // Charlie n'est ni l'un ni l'autre : deux glyphes en tout sur la page, pas trois.
+    expect(screen.getAllByRole('img').length).toBe(2)
+  })
+
+  it('sans marques : aucune fiche n’en porte', () => {
+    renderTeams({})
+    expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
+    expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
   })
 })

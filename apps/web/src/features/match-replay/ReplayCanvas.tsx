@@ -11,6 +11,13 @@
  *
  * Couleurs = tokens sémantiques résolus en valeurs concrètes (getSeriesColors/resolveToken),
  * re-résolus au changement de thème/palette via useColorPaletteVersion (règle color-tokens).
+ *
+ * LES JOUEURS PORTENT LA COULEUR DE LEUR ÉQUIPE, celle que l'utilisateur a choisie dans les
+ * réglages d'accessibilité (`team-ally` / `team-enemy`) — décision D1 du plan d'habillage,
+ * amendée par l'utilisateur le 2026-08-16. Elle est attribuée AU JOUEUR : jusque-là, une
+ * couleur de série était indexée sur la TRACE, c'est-à-dire sur la VIE (99 traces pour 8
+ * joueurs sur le film témoin), et un joueur changeait donc de teinte à chaque réapparition.
+ * Les tokens de série ne servent plus qu'aux ZONES NOMMÉES, qui sont des lieux, pas des gens.
  */
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -19,9 +26,10 @@ import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
+import type { MatchScoreboardRow, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
+import type { XuidMeta } from '@/features/match-view/xuidMeta'
 
 import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
@@ -43,6 +51,8 @@ import {
 } from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
+import type { PlayerMarkKind } from './playerMarks'
+import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
@@ -69,8 +79,10 @@ import {
 } from './replayLogic'
 import { drawProjectilesLayer, drawTracksLayer, type MarkerTiming } from './replayMarkers'
 
-// 8 tokens de série = un par entité (cyclés au-delà de 8 via getSeriesColors).
-const TRACK_TOKENS: SemanticToken[] = [
+// 8 tokens de série = une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
+// getSeriesColors). Ils ne colorent plus les joueurs depuis le 2026-08-16 : un joueur porte
+// la couleur de son ÉQUIPE (D1), et une zone n'a pas d'équipe.
+const ZONE_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
@@ -152,9 +164,21 @@ interface ReplayCanvasProps {
    * Forge, par construction) : pas de calque, pas de bouton.
    */
   callouts?: CalloutZoneReady[]
+  /**
+   * Le scoreboard du match : il donne aux vies du film le NOM et l'ÉQUIPE de leur
+   * propriétaire (jointure par xuid, cf. rosterLogic). Absent = aucune identité connue,
+   * la carte reste lisible (points à l'encre neutre, sans étiquette) — jamais une erreur.
+   */
+  scoreboard?: MatchScoreboardRow[]
+  /** Camp de chaque xuid, du point de vue du joueur de la page (allié / adversaire). */
+  xuidMeta?: XuidMeta
+  /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
+  marks?: ReadonlyMap<string, PlayerMarkKind>
 }
 
-export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, background, callouts }: ReplayCanvasProps) {
+export function ReplayCanvas({
+  doc, locale, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+}: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Fond de carte peint UNE fois puis recopié : il ne dépend ni de la frame ni de la lecture.
@@ -180,17 +204,23 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   // mécanisme (replayPreferences.ts), trois réglages distincts.
   const [settingsOpen, setSettingsOpen] = useState(false)
   const {
-    showAim, toggleAim, showZones, toggleZones, speed: multiplier, setSpeed: setMultiplier,
+    showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
+    speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
   // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
   const sound = useReplaySound(doc, kills, t0Ms, multiplier)
 
   const paletteVersion = useColorPaletteVersion()
-  const colors = useMemo(() => {
-    void paletteVersion // re-résoudre au changement de thème (getSeriesColors lit le DOM)
-    return getSeriesColors(doc.tracks.length, TRACK_TOKENS)
-  }, [doc.tracks.length, paletteVersion])
+  // LES DEUX COULEURS D'ÉQUIPE, telles que l'utilisateur les a réglées (D1). Résolues une
+  // fois par palette : l'observateur de style de useColorPaletteVersion voit changer les
+  // réglages d'accessibilité comme il voit changer le thème.
+  const teamColorOf = useMemo(() => {
+    void paletteVersion
+    const ally = resolveToken('team-ally')
+    const enemy = resolveToken('team-enemy')
+    return (isAlly: boolean) => (isAlly ? ally : enemy)
+  }, [paletteVersion])
   const geometryColor = useMemo(() => {
     void paletteVersion
     return resolveToken(GEOMETRY_TOKEN)
@@ -221,19 +251,26 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     void paletteVersion
     return readInk('--foreground')
   }, [paletteVersion])
+  // L'encre du CONTOUR des noms : sombre dans les DEUX thèmes (cf. globals.css), lue une
+  // fois par thème comme les autres encres — jamais un getComputedStyle par image.
+  const labelStroke = useMemo(() => {
+    void paletteVersion
+    return readInk('--replay-label-stroke')
+  }, [paletteVersion])
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
 
-  // Couleur PAR SLOT : un tir se dessine dans la teinte de son tireur, et c'est elle qui permet
-  // de suivre un joueur des yeux. Le slot d'une trace est unique dans le document.
-  const colorBySlot = useMemo(() => {
-    const m = new Map<number, string>()
-    doc.tracks.forEach((tr, i) => {
-      const c = colors[i] ?? colors[0]
-      if (c) m.set(tr.slot, c)
-    })
-    return m
-  }, [doc.tracks, colors])
+  // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
+  // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
+  // scoreboard + descente sur les vies) vit dans useSlotIdentity.
+  const { colorOfSlot, slotColors, markOfSlot, nameOfSlot } = useSlotIdentity({
+    doc,
+    scoreboard,
+    xuidMeta,
+    marks,
+    teamColorOf,
+    neutral: floorStyle.edge,
+  })
 
   // PRÉFÉRENCE DE MOUVEMENT RÉDUIT. La feuille de style la respecte pour le DOM ; un canvas
   // dessiné en JS n'est atteint par aucune règle CSS, la préférence se lit donc ici.
@@ -261,7 +298,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const zoneColors = useMemo(() => {
     void paletteVersion
     const nBig = calloutZones.reduce((n, z) => n + (z.big ? 1 : 0), 0)
-    return nBig > 0 ? getSeriesColors(nBig, TRACK_TOKENS) : []
+    return nBig > 0 ? getSeriesColors(nBig, ZONE_TOKENS) : []
   }, [calloutZones, paletteVersion])
 
   // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
@@ -388,13 +425,17 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
     }
     drawTracksLayer(ctx, doc.tracks, view, {
-      colors,
+      colorOfSlot,
       ink: floorStyle.edge,
       frame,
       timing,
       z: zRange,
       k: dpr,
       showAim,
+      markOfSlot,
+      nameOfSlot,
+      showNames,
+      labelStroke,
     })
 
     // La LIGNE DE GRAPPIN juste au-dessus des trajectoires et SOUS les effets de tir :
@@ -456,7 +497,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
     if (killFx.length > 0) {
       drawKillFxLayer(ctx, killFx, view, win, {
-        colorOfSlot: (slot) => colorBySlot.get(slot) ?? null,
+        colorOfSlot: (slot) => slotColors.get(slot) ?? null,
         fallback: shotColor,
         reducedMotion,
       })
@@ -477,7 +518,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       }
     }
   }, [
-    doc, colors, geometryColor, bounds, zRange, timing, totalLabel,
+    doc, geometryColor, bounds, zRange, timing, totalLabel,
     t.aliveSuffix, renderWidth,
     shotColor,
     grenadeColor,
@@ -493,7 +534,12 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     objectivePulses,
     objectiveColorOfTeam,
     floorStyle.edge,
-    colorBySlot,
+    slotColors,
+    colorOfSlot,
+    markOfSlot,
+    nameOfSlot,
+    showNames,
+    labelStroke,
     reducedMotion,
     showAim,
     showZones,
@@ -719,6 +765,8 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
             onToggleAim={toggleAim}
             showZones={showZones}
             onToggleZones={toggleZones}
+            showNames={showNames}
+            onToggleNames={toggleNames}
             zonesAvailable={calloutZones.length > 0}
             sound={sound}
             speed={multiplier}

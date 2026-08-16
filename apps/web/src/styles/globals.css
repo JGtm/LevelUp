@@ -304,6 +304,22 @@
   --replay-fx-neutral:     oklch(0.50 0.02 255);
 }
 
+/* ─── Contour des NOMS sur la carte du rejeu 2D (--replay-label-stroke) ──────── */
+/*
+   Le nom du joueur s'écrit SOUS son marqueur, à la couleur du marqueur, sur un fond de
+   carte qui va du gris clair (aire jouable) au presque noir (pourtour). Un contour
+   SOMBRE dans les deux thèmes le rend lisible partout : c'est la technique du POC,
+   validée à l'usage — un contour qui suivrait le thème (blanc en clair) ne détourerait
+   plus rien sur l'aire claire de la carte, qui ne change pas avec le thème.
+   Encre de mise en page, pas un rôle de donnée : lue par canvasInk.ts, jamais écrite
+   dans `features/`.
+*/
+:root,
+:root[data-theme='dark'],
+:root[data-theme='light'] {
+  --replay-label-stroke: rgb(8 12 18 / 0.92);
+}
+
 /* ─── Base styles ───────────────────────────────────────────────────────────── */
 @layer base {
   * {

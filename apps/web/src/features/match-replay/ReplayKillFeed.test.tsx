@@ -337,3 +337,95 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
     expect(container.querySelector('li')?.getAttribute('title')).toBeNull()
   })
 })
+
+/**
+ * LES MARQUES D'IDENTITÉ (décision D5, 2026-08-16) : le même glyphe que les fiches et que la
+ * forme du marqueur sur la carte, devant CHAQUE nom du fil. Elles s'ajoutent à la couleur du
+ * nom, qui continue de dire l'équipe.
+ */
+describe('ReplayKillFeed — marques « moi » et « ami »', () => {
+  function sbRow(xuid: string, gamertag: string, isMe = false): MatchScoreboardRow {
+    return {
+      xuid,
+      gamertag,
+      team_side: 't0',
+      is_me: isMe,
+      rank: 1,
+      score: 0,
+      kills: 1,
+      deaths: 1,
+      assists: 0,
+      shots_fired: null,
+      shots_hit: null,
+      accuracy: null,
+      damage_dealt: null,
+      damage_taken: null,
+      average_life: null,
+      headshot_kills: null,
+      max_killing_spree: null,
+      perfect_kills: null,
+      power_weapon_kills: null,
+      melee_kills: null,
+      outcome_label: 'Victoire',
+    }
+  }
+  const BOARD = [sbRow('me', 'JGtm', true), sbRow('foe', 'Cobra01')]
+
+  function renderMarked(kills: KillEvent[], marks: ReadonlyMap<string, 'me' | 'friend'>) {
+    return render(
+      <ReplayKillFeed
+        kills={kills}
+        medals={[]}
+        t0Ms={0}
+        nowMs={20_000}
+        doc={null}
+        scoreboard={BOARD}
+        xuidMeta={META}
+        locale="fr"
+        marks={marks}
+      />,
+    )
+  }
+
+  it('marque le tueur AMI et la victime MOI, sur la même ligne', () => {
+    renderMarked(
+      [kill({ tMs: 1_000, xuid: 'foe', victimXuid: 'me', victimGamertag: 'JGtm' })],
+      new Map([
+        ['foe', 'friend'],
+        ['me', 'me'],
+      ]),
+    )
+    expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Moi' })).toBeTruthy()
+  })
+
+  it('ne marque personne quand aucune marque n’est fournie', () => {
+    renderFeed([kill({ tMs: 1_000, xuid: 'foe' })], 20_000, 0)
+    expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
+    expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
+  })
+
+  it('marque aussi l’ASSISTANT, qui n’est nommé que par son gamertag', () => {
+    // L'événement du film ne porte pas le xuid de l'assistant : la marque passe par le
+    // scoreboard, seule table qui joint gamertag et xuid. Sans cela, il serait le seul nom
+    // du fil sans glyphe.
+    renderMarked(
+      [kill({ tMs: 1_000, xuid: 'me', assistState: 'named', assistGamertag: 'Cobra01' })],
+      new Map([['foe', 'friend']]),
+    )
+    expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
+  })
+})
+
+describe('ReplayKillFeed — hauteur de colonne (mise en page du 2026-08-16)', () => {
+  it('la liste défile À L’INTÉRIEUR de la carte et ne borne plus sa propre hauteur', () => {
+    const { container } = renderFeed([kill({ tMs: 1_000 })], 20_000, 0)
+    const list = container.querySelector('ul') as HTMLElement
+    expect(list.className).toContain('overflow-y-auto')
+    expect(list.className).toContain('flex-1')
+    // `max-h-64` figeait le fil à 16 rem : c'est la RANGÉE qui donne la hauteur désormais.
+    expect(list.className).not.toContain('max-h-64')
+    const card = list.parentElement as HTMLElement
+    expect(card.className).toContain('min-h-0')
+  })
+})

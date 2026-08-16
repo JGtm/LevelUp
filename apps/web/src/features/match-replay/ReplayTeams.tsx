@@ -14,9 +14,13 @@
 import { useMemo, type CSSProperties } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { calloutLabel, zoneAt, type CalloutZoneReady } from './calloutsLayer'
+import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
+import { PlayerMark } from './PlayerMark'
+import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
 import { equippedWeapons } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -106,9 +110,18 @@ interface ReplayTeamsProps {
    * la place reste réservée (hauteur constante).
    */
   callouts?: CalloutZoneReady[]
+  /**
+   * Marques d'identité par xuid (« moi », « ami ») — LA MÊME grammaire que la carte et le
+   * fil (décision D5). Absentes = aucune fiche marquée, jamais une marque devinée.
+   */
+  marks?: ReadonlyMap<string, PlayerMarkKind>
+  /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
+  xuidMeta?: XuidMeta
 }
 
-export function ReplayTeams({ doc, scoreboard, frame, locale, callouts }: ReplayTeamsProps) {
+export function ReplayTeams({
+  doc, scoreboard, frame, locale, callouts, marks, xuidMeta,
+}: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const groups = useMemo(
     () => groupByTeam(buildPlayers(doc, scoreboard)),
@@ -128,19 +141,26 @@ export function ReplayTeams({ doc, scoreboard, frame, locale, callouts }: Replay
   }
 
   return (
-    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}>
+    // LA HAUTEUR VIENT DE LA RANGÉE, JAMAIS DES FICHES (technique du POC) : `h-full min-h-0`
+    // laisse la colonne se rétrécir, et le défilement vit À L'INTÉRIEUR de chaque carte. Hors
+    // rangée (repli étroit), aucune hauteur n'est imposée : rien ne défile, comportement
+    // d'origine.
+    <div
+      className="grid h-full min-h-0 gap-2"
+      style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}
+    >
       {groups.map((group, gi) => (
-        <div key={group.side ?? `sans-equipe-${gi}`} className="rounded-lg border border-border bg-card p-2">
-          <h3
-            className="mb-2 flex items-baseline justify-between border-b border-border pb-1 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: teamColor(gi) }}
-          >
-            <span>{group.side ?? t.teamUnknown}</span>
-            <span className="font-mono text-[10px] font-normal tabular-nums text-muted-foreground">
-              {group.players.length}
-            </span>
-          </h3>
-          <div className="flex flex-col">
+        <div
+          key={group.side ?? `sans-equipe-${gi}`}
+          className="flex h-full min-h-0 flex-col rounded-lg border border-border bg-card p-2"
+        >
+          <ReplayTeamHeader
+            players={group.players}
+            side={group.side}
+            xuidMeta={xuidMeta}
+            locale={locale}
+          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {group.players.map((p) => (
               <PlayerCard
                 key={p.xuid}
@@ -153,6 +173,7 @@ export function ReplayTeams({ doc, scoreboard, frame, locale, callouts }: Replay
                 flashFrames={flashFrames}
                 locale={locale}
                 callouts={callouts}
+                mark={(marks ?? NO_MARKS).get(p.xuid)}
               />
             ))}
           </div>
@@ -160,16 +181,6 @@ export function ReplayTeams({ doc, scoreboard, frame, locale, callouts }: Replay
       ))}
     </div>
   )
-}
-
-/**
- * teamColor distingue les camps sans rien affirmer sur eux. Les tokens de COMPARAISON disent
- * « ceci n'est pas cela » et rien de plus ; `team-ally` / `team-enemy` diraient de quel côté on
- * est, ce que ce rejeu ignore — il se regarde de l'extérieur, pas depuis un joueur.
- */
-function teamColor(index: number): string {
-  const tokens = ['compare-a', 'compare-b', 'compare-c'] as const
-  return tokenCssVar(tokens[index % tokens.length])
 }
 
 interface PlayerCardProps {
@@ -182,9 +193,11 @@ interface PlayerCardProps {
   flashFrames: number
   locale: ReplayLocale
   callouts?: CalloutZoneReady[]
+  /** Marque d'identité du joueur (« moi », « ami »), ou rien. */
+  mark?: PlayerMarkKind
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   const state = playerStateAt(player, frame, presence)
   const name = playerName(player) ?? t.unknownPlayer
@@ -254,9 +267,14 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
       style={style}
       title={equipTitle || undefined}
     >
-      <div className="flex items-baseline justify-between gap-1.5">
+      <div className="flex items-baseline gap-1.5">
+        {/* LA MARQUE AVANT LE NOM, et elle n'en change pas la couleur : le nom dit déjà
+            l'équipe ou la mort, la marque dit l'identité (décision D5). Le glyphe fait 10 px
+            dans une ligne de 11,5 px : la hauteur de la fiche ne bouge pas. Il reste FRÈRE du
+            nom, jamais son parent — la fiche compte ses rangées par la structure. */}
+        <PlayerMark kind={mark} locale={locale} />
         <span
-          className="truncate text-[11.5px] font-medium"
+          className="min-w-0 flex-1 truncate text-[11.5px] font-medium"
           style={state.alive ? undefined : { color: tokenCssVar('destructive') }}
           title={name}
         >
