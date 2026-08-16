@@ -41,6 +41,27 @@ export function readStoredNumber(
   }
 }
 
+/**
+ * Lit un CHOIX persisté parmi un ensemble fermé (ex. la lecture de la carte de chaleur :
+ * présence ou éliminations) ; absent, hors liste ou storage indisponible -> `fallback`.
+ *
+ * MÊME EXIGENCE QUE `readStoredNumber` : une valeur écrite par une AUTRE version de l'app —
+ * ou par n'importe qui, `localStorage` est ouvert — ne doit jamais entrer dans l'état. Ce
+ * qui n'est pas dans la liste n'existe pas.
+ */
+export function readStoredChoice<T extends string>(
+  key: string,
+  fallback: T,
+  allowed: readonly T[],
+): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw !== null && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 /** Persiste une préférence (booléen ou nombre déjà tourné en chaîne, JSON pour une liste). */
 export function persistPreference(key: string, value: string): void {
   try {
