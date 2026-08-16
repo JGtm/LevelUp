@@ -82,6 +82,21 @@ Gate : page admin affiche la section, valeurs persistees et relues ; typecheck +
 - RTPC de couche, delais d'action (statues au plan sons-armes)
 - Tout reglage expose aux utilisateurs finaux
 
+## Livraison des sons (regle utilisateur du 2026-08-16)
+
+**La livraison est un REMPLACEMENT EN MIROIR, jamais un ajout.** A chaque livraison :
+le dossier cible des sons du rejeu est VIDE puis reecrit avec exactement les fichiers
+votes + le manifeste — « pour pas avoir de redondance ou d'elements obsoletes ». Un
+fichier absent du manifeste n'a pas le droit d'exister dans le dossier cible. Etat au
+2026-08-16 : aucun audio n'est encore versionne dans le depot, la regle s'applique des
+la premiere livraison et a toutes les suivantes.
+
+Contenu de la premiere livraison (fige, cf. handoff sons-armes section 7) : les 46 votes
+de `votes-sons-armes(4).json`, avec les roles multiples confirmes — Ravageur (bb31841b =
+tir 3 coups pour le rejeu, reconstitue be684013 = coup unique, c15c9e77 = montee en
+charge) et Rayon de sentinelle (503433748 = rejeu, reconstitue = tir continu). Le
+manifeste app encode ces roles : `rejeu` / `conserve`.
+
 ## Journal
 
 ### 2026-08-16 — Ouverture
