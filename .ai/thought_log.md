@@ -1,3 +1,64 @@
+## [2026-08-17] v7.5 rejeu 2D — l'identite des objets d'equipement (ti=37) est un tag `eqip`
+
+**Statut** : Phases 0, 1 et 3 du plan `.ai/V7.5/replay2d/PLAN_IDENTITE_TI37.md` COMPLETES ;
+phase 2 (publication schema 9) `[!]` avec son blocage mesure. Branche `feat/v75`.
+
+**Decision technique principale** : le plan pariait sur `ability-enabled-id`, le champ 32 bits
+de queue du default-state de ti=37. Le pari est PERDU et la perte est nette — sur 503 records de
+creation lus bit-exact (274 sur `000d5950`, 229 sur `00162144`), la porte de ce champ est fermee
+503 fois sur 503, et celle d'`entity-ref-index5` aussi : le film ne transmet AUCUNE reference de
+createur a la naissance. Ce n'est pas un echec de decodage. Un instrument a oracle
+(`equipment_creation_offset_test.go`) localise le corps du record par la POSITION — la position
+i0 du record doit retomber sur le premier point de la vie deja decodee en delta — puis cherche
+l'en-tete en amont : la distance en-tete -> masque vaut 85 bits = 24 (en-tete NEW) + 60
+(default-state) + 1 (porte has-components), exactement ce que `consumeDefaultStateTI37` predit,
+et le profil de bits concorde champ par champ avec la grammaire portee.
+
+L'identite est dans le MEME record, un cran plus haut : le mot de 32 bits INCONDITIONNEL du bloc
+`object-multiplayer-properties` (`FUN_14080d6f0`). Il prend 8 valeurs distinctes sur 274 records
+et 6 sur 229, dont 3 communes aux deux films — et **11 valeurs observees sur 11 se resolvent en
+tags du groupe `eqip`** du jeu (105 tags `eqip` sur 148 097 parcourus,
+`himap/sonde_ti37_gamefiles_test.go`). Ce n'est donc pas une enumeration a interpreter : c'est
+une REFERENCE DE DEFINITION, que le jeu nomme.
+
+**Resultats observes** — le nommage tient par les deux chaines exigees par le plan.
+(a) Stabilite : 3 identifiants communs aux deux films, et les memes identifiants PLATS (objets
+du monde sans poseur) reviennent d'un film a l'autre. (b) Croisement avec le rang `i48` du
+bipede le plus proche a la pose (fenetre 250 ms), diagonale sur les rangs CONNUS :
+
+    000d5950 (famille B)  0x008e2dc574  19:9  20:1        90 %   MUR DE PROTECTION
+                          0x0072199cba  22:12 21:1        92 %   CAPTEUR DE MENACES
+                          0x008c77ffe7  20:20 19:1        95 %   grappin
+                          0x00eef5d48d  21:19 +3          86 %   propulseur
+                          4 identifiants PLATS            27-45 %  objets du monde
+    00162144 (famille A)  0x00686b40c9  2:9              100 %   MUR DE PROTECTION
+                          0x002974c233  2:10  9:1         91 %   mur (2e identifiant)
+
+Geometrie, en metres (bornes `cliffhanger`, emprise 113,2 x 113,8 x 137,6 m) : porteur le plus
+proche **mediane 0,575 m, p90 1,341 m** contre temoin (autre bipede vivant au meme instant)
+**14,127 m / 31,969 m**. Le seuil du plan (mediane < 3 m, p90 < 6 m) est tenu a 4x de marge et
+le temoin est 25 fois plus loin. Verite terrain `000d5950` (releve Theater du 27/07 : 1 mur,
+1 capteur) : 2/2. Le mur porte DEUX identifiants sur chaque film — vraisemblablement l'appareil
+lance et les panneaux deployes.
+
+**Conclusion / prochaine etape** : la publication (schema 9) est REPORTEE, et le blocage est
+mesure. La largeur du PREMIER champ du bloc MPP (`FUN_141fd72c0`, `R(9)` au decompile) est une
+largeur de configuration de replication qui VARIE par film : le default-state de ti=37 fait
+60 bits sur les films d'arene et 57 sur `06dfe6d9`/`00ba2e1c` (l'oracle de position mesure la
+distance en-tete -> masque a 82 au lieu de 85, sur 150 records). `mppLeadBits` et
+`DetectMPPLeadBits` sont en place et la detection retient bien 6 quand on la force, mais
+l'automatique echoue sur les gros films. Publier maintenant livrerait `equipmentPlacements`
+plein sur deux films et vide sur dix. Condition de reprise au `REGISTRE_REPORTS.md`.
+Phase 3 : la note UI est ecrite dans le plan — l'ORIENTATION du mur manque (le record de
+creation ne porte pas de cap ; piste mesuree, non faite : le cap de visee du poseur au meme
+instant, deja decode par `CaptureDirs`). Decision de rendu = l'utilisateur.
+
+**Gates** : `go build ./...`, `go vet ./internal/...`, `go test ./internal/analysis/filmdec/
+./internal/analysis/replay/` verts ; `golangci-lint --new-from-merge-base=origin/main` **0 issue**.
+Les quatre instruments sont gardes par `EQUIP_CREATION_FILM` (ou l'installation du jeu) et sautes
+en CI. Aucun changement de comportement en production : les hooks sont nils par defaut et
+`mppLeadBits` vaut 9, la valeur du decompile validee en live sur le chemin bipede.
+
 ## [2026-08-17] v7.5 rejeu 2D — marque d'assistance : l'icone du jeu remplace le glyphe SVG (correctif R1)
 
 **Statut** : Complete (branche `feat/v75`, lot cible).
