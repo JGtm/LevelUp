@@ -35,8 +35,10 @@ var ErrCalloutsUnknownMap = errors.New("replay: carte absente du catalogue de ca
 const (
 	// CalloutsProvenanceBrut : le pavé du designer, lu tel quel dans le tag levl.
 	CalloutsProvenanceBrut = "brut"
-	// CalloutsProvenanceDecoupe : découpé sur le sol praticable (Ridgeline seule — le
-	// découpage universel dépend du chantier cartes, au registre des reports).
+	// CalloutsProvenanceDecoupe : découpé sur le décor praticable. Ridgeline vient du dump
+	// du POC (découpage par ÉTAGE, sur les emprises de map_structure) ; les autres cartes à
+	// fond publié viennent de la chaîne universelle (internal/mapdecoupe, masque alpha du
+	// fond). Une carte sans fond publié reste `brut` — jamais un découpage deviné.
 	CalloutsProvenanceDecoupe = "decoupe"
 )
 
@@ -46,6 +48,20 @@ type MapCalloutsCatalog struct {
 	TitleSlug     string                      `json:"title_slug"`
 	Source        string                      `json:"source"`
 	Maps          map[string]MapCalloutsEntry `json:"maps"` // clé = module installé
+	// Brut conserve, par module découpé, le PAVÉ DU DESIGNER de chaque zone dont le
+	// polygone servi a été rogné sur le décor. Le découpage n'est pas une perte de donnée :
+	// `Maps` dit ce qu'on sert, `Brut` garde ce que le jeu déclare.
+	//
+	// POURQUOI ICI ET PAS DANS LA ZONE. `MapCalloutsEntry` est la charge utile SERVIE au
+	// rejeu (contrat OpenAPI) : y ajouter le brut le mettrait sur le réseau à chaque match
+	// pour un besoin de traçabilité hors ligne. Le catalogue, lui, n'est jamais servi.
+	Brut map[string][]CalloutBrutZone `json:"brut,omitempty"`
+}
+
+// CalloutBrutZone est le polygone d'origine d'une zone, conservé après découpage.
+type CalloutBrutZone struct {
+	VolumeIndex int          `json:"volume_index"`
+	Polygon     [][2]float64 `json:"polygon"`
 }
 
 // MapCalloutsEntry est l'entrée d'une carte — c'est aussi la charge utile servie au

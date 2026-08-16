@@ -94,8 +94,10 @@ func main() {
 		SchemaVersion: replay.MapCalloutsSchemaVersion,
 		TitleSlug:     *titleSlug,
 		Source: "tag levl de " + *levels + " + callouts_i18n.csv (libellés uslg figés)" +
-			" ; Ridgeline : polygones du dump découpé versionné",
+			" ; Ridgeline : polygones du dump découpé versionné" +
+			" ; autres cartes à fond publié : découpe sur le masque praticable (internal/mapdecoupe)",
 		Maps: map[string]replay.MapCalloutsEntry{},
+		Brut: map[string][]replay.CalloutBrutZone{},
 	}
 	entries, err := os.ReadDir(*levels)
 	if err != nil {
@@ -131,6 +133,9 @@ func main() {
 				slog.Error("dump découpé", "err", err, "module", module)
 				os.Exit(1)
 			}
+		} else if err := decoupeCarte(&entry, res, *titleSlug, cat.Brut); err != nil {
+			slog.Error("découpage sur le fond publié", "err", err, "module", module)
+			os.Exit(1)
 		}
 		cat.Maps[module] = entry
 		totalZones += len(entry.Zones)
