@@ -306,6 +306,8 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `backup_keep_monthly` | int | `12` | Monthly backups retained. |
 | `prestige_enabled` | bool | `true` | Enable Prestige module (overridable via `PRESTIGE_ENABLED`). |
 | `instance_locked` | bool | `false` | Lock the instance to existing users (also via `LEVELUP_INSTANCE_LOCKED`). |
+| `replay_sound_variation_percent` | int | `100` | 2D replay weapon sounds: per-shot variation of volume and pitch, within the ranges declared by the game. `100` = game ranges as they are, `0` = always the same file. Instance setting, edited from Admin · System. |
+| `replay_sound_distance_percent` | int | `0` | 2D replay weapon sounds: distance effect (attenuation + low-pass). `0` = untouched sound, no node in the signal path. Instance setting, edited from Admin · System. |
 
 ---
 
