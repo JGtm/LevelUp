@@ -1,3 +1,72 @@
+## [2026-08-16] v7.5 rejeu 2D — le type d'une grenade par le LANCER : NEGATIF MESURE, les deux gates tombent
+**Statut** : Complete — plan CLOS sur un negatif
+(`.ai/V7.5/replay2d/PLAN_TYPE_GRENADE_PAR_LANCER.md`). **Aucune ligne de production ecrite**,
+aucun fichier web touche, aucune base ouverte.
+**La question** : `damagetag/data/labels.tsv` marque AMBIGU deux effets de grenade generiques
+(`31e8d17e` entrees `gggl` 0+1, `88f1034c` 0+1+3). Une etiquette non publiable n'obtient jamais
+de vignette (`killicon.go`, `resolve` : `if !l.Publishable() { continue }`), et depuis `f0d712103`
+le son de l'explosion se joint PAR la vignette — donc pas de nom, pas d'icone, pas de son.
+L'idee du plan : recuperer le type ailleurs, dans `doc.grenades`, qui publie les LANCERS avec
+leur rang et leur auteur. Inference — mais TESTABLE, parce que les 15 tags VALIDE forment un
+oracle (leur `detail` cite l'entree `gggl`, qui est le MEME index que le rang du lancer :
+verifie sur `killicon/data/rules.tsv`, genre GGGL, 0 frag / 1 plasma / 2 dynamo / 3 spike).
+**Decision technique** : les deux faits ne vivent pas au meme endroit — le TAG se lit dans le
+film (`film/killsource`, dead-state de la victime), le LANCER dans l'artefact de rejeu
+(`analysis/replay`). L'instrument vit donc dans **`internal/replaybuild`**, la seule couche qui
+compose deja les deux (meme raison qui y a mis le typage des morts neutres). **Le raccord des
+horloges n'est PAS un appariement** : `Kill.TimeMS` date la mort sur l'horloge du fil, et
+`doc.originMs` EST l'instant de la frame 0 sur cette meme horloge — une soustraction. Un film
+sans origine publiee est ECARTE plutot que recale a l'estime.
+**GATE 0 — ECHOUE, la cible est QUASI VIDE.** Corpus des 23 artefacts, **868 morts decodees** :
+63 morts de classe GRENADE (7,26 %), reparties sur **8 tags, tous VALIDE** — `da3b5ba4` 41,
+`59255106` 8, `0000d627` 6, `c8681ecf` 2, `ee2d686d` 2, `00404748` 2, `000162eb` 1, `fca02b3c` 1.
+**Les deux tags AMBIGU : 0 / 63.** 0 mort de classe GRENADE sans tag resolu, 0 tag absent du
+catalogue, 1 mort de statut INCONNU (classe non etablie).
+**UN NUMERATEUR NUL NE SE LIT PAS SEUL, et c'est ce qui a decide d'un second instrument** :
+sur 63, la borne haute a 95 % (Wilson) vaut **5,75 %** — ce corpus ne tranche PAS un seuil de
+1 %, et s'arreter la aurait ete conclure au-dela de la mesure. Or le compte de la phase 0 n'a
+besoin QUE du film (le tag se lit dans le dead-state ; l'artefact ne sert qu'a la jointure),
+donc le denominateur s'elargit sans rien construire : `TestPhase0Bis`, garde `FILM_SWEEP`.
+**BALAYAGE ELARGI — 150 films du cache, 11 583 morts, 0 echec, 45 min** : 696 morts de classe
+GRENADE (6,01 %) sur **13 tags distincts**, et **1 SEULE mort ambigue — `88f1034c`, film
+`13b00e35`** ; `31e8d17e` jamais observe. Soit **1 / 696 = 0,14 %, borne haute 95 % 0,81 %**,
+**sous le seuil de 1 %**. Hors classe : 1 tag absent du catalogue, 66 morts de statut INCONNU.
+**Ce resultat est plus fort que le zero du corpus** : il ne dit pas « on n'a rien vu » — ce que
+`.ai/ETAT_DE_L_ART_KILLWEAPON.md` 8.3 affirmait deja sans denominateur — il dit COMBIEN. Une
+mort muette tous les ~700 morts par grenade, soit environ un match sur 150. La borne de Wilson
+est calculee par l'instrument lui-meme et verifiee par un test unitaire qui tourne en CI
+(`TestBorneHauteWilson`) : un taux qui decide d'un gate doit porter sa precision.
+**GATE 1 — ECHOUE SUR LE TEMOIN, pas sur l'accord.** 23 films, 1 117 lancers publies sur 1 170 ;
+63 morts d'oracle dont 5 sans pont (le proprietaire de la source n'est pas au roster) -> 58
+mesurees, 1 sans aucun lancer anterieur, 0 non revendiquee et 5 divergentes (la jointure y
+cherche le lancer de la VICTIME). Accord x fenetre (couverture / accord / confondus) :
+0,5 s 8,6 % / 100,00 % / 0 · 1 s 20,7 % / 91,67 % / 0 · **2 s 86,2 % / 96,00 % / 1** ·
+3 s 94,8 % / 96,36 % / 2 · **5 s 96,6 % / 96,43 % / 5** · 10 s 96,6 % / 96,43 % / 5.
+Il existe donc bien une fenetre naturelle (la couverture saute de 20,7 a 86,2 % entre 1 et 2 s,
+plafonne a 5 s) et l'accord passe le seuil de 95 %. **Mais le temoin (a) — un AUTRE joueur tire
+au hasard — ne s'effondre pas : 60 a 80 %.** La cause est publiee a cote : **66,7 % des morts
+par grenade sont des frags**, donc un predicteur constant « toujours frag » scorerait 66,67 %
+sans rien lire. Le temoin est de surcroit sous-dimensionne (4 a 19 morts trouvees sur 58) : il
+ne POURRAIT pas demontrer un effondrement. Le temoin (b) — mort decalee de +10 s — s'effondre,
+lui : 0,00 % jusqu'a 5 s. La decision n°2 du plan exigeait les DEUX ; la n°4 interdit de
+rebaisser le seuil apres coup. Verdict : NO-GO, phases 2 et 3 non ouvertes.
+**Ce que la mesure NE dit PAS** : (1) que les deux tags n'existent pas — le balayage en a trouve
+un, et `31e8d17e` reste seulement non observe (borne haute 0,55 % sur 696) ; (2) que la jointure
+est fausse — 96,4 % est un vrai signal (erreur 3,6 % contre ~25 % pour un lanceur quelconque, et
+la PRESENCE d'un lancer est 10x plus specifique : 86,2 % contre 8,6 %), mais la marge exigee
+avant mesure n'y est pas ; (3) rien sur les 66 morts de statut INCONNU du balayage (classe non
+etablie, une grenade pourrait s'y cacher), ni sur les 5 morts sans pont de la phase 1 (trou du
+pont d'identite, pas de la jointure).
+**Livrable** : trois instruments versionnes, gardes, verifies SAUTANTS sans leur variable —
+`internal/replaybuild/grenade_corpus_test.go` (plomberie), `grenade_join_corpus_test.go`
+(phases 0 et 1), `grenade_ambigu_sweep_test.go` (denominateur elargi). Ils nomment aussi les
+desaccords un par un, pour qu'un controle Theater ait une liste et non un taux.
+Gates : `go build ./...`, `go vet ./...`, `go test ./internal/analysis/replay/`
+`./internal/games/halo_infinite/film/...` `./internal/replaybuild/` verts ;
+`golangci-lint --new-from-merge-base=origin/main` 0 issue. Registre mis a jour (2 lignes).
+**Conclusion** : un negatif chiffre, qui ferme une piste ET requalifie la ligne du registre du
+2026-08-15 — le silence des deux tags AMBIGU ne coute rien d'observable.
+
 ## [2026-08-15] v7.5 rejeu 2D — les objets du monde etaient dequantifies aux largeurs de Cliffhanger sur TOUTES les autres cartes
 **Statut** : Complete (`.ai/V7.5/replay2d/PLAN_PRECISION_OBJETS_MONDE.md`, 3 phases, 3 gates).
 **Decision technique** : `filmdec.WorldObjectPrecision` est un GLOBAL de paquet dont le defaut
