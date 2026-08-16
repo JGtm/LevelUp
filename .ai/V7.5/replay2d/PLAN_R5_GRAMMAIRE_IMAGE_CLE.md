@@ -170,34 +170,54 @@ sorties collees au journal §10), tous les items statues, plan mis a jour, commi
 | 5 PUBLIER | rapide | non (depend de 3 et 4) |
 | 6 CLORE | rapide | non |
 
-### Phase 1 — LIRE : la grammaire du corps de record d'image-cle, dans Ghidra
+### Phase 1 — LIRE : la grammaire du corps de record d'image-cle, dans Ghidra — CLOSE le 2026-08-17
 
-- [ ] 1.1 Decompiler et ECRIRE la grammaire des deux deserialiseurs de record NEW
-      (`FUN_141f86704`, `FUN_1408f1aa4`), de la boucle de composants (`FUN_14076cb60`), du
-      masque (`FUN_1406d7610`) et du dispatch (`FUN_1406cbaa0`) : ordre des lectures, slots
-      de vtable appeles, lesquels touchent le bitreader et lesquels non.
-- [ ] 1.2 Etablir CE QUI DIFFERE entre le chemin IMAGE-CLE et le chemin DELTA : le prologue
-      de mode film (`R(1)[+R(8)]`), le `R(32)` de tete de record, le tail terminal, le
-      routage de l'etat par defaut. Chaque difference citee par son adresse.
-- [ ] 1.3 Trancher l'hypothese n°1 du brief PAR LECTURE : le corps NEW d'image-cle
-      appelle-t-il, pour chaque composant present, le deser feuille `+0x28` (etat complet) la
-      ou le delta appelle un wrapper ? Reponse ECRITE, avec l'adresse du site d'appel.
-- [ ] 1.4 Resoudre l'etat par defaut de **`ti=42`** (chaine `default_state_arch.go:5-18`) :
-      descripteur, vtable, `*(vtable+0x60)`, grammaire bit-exacte ou verdict « non resolue
-      statiquement » ecrit.
-- [ ] 1.5 Consigner TOUT le decompile porte dans une section neuve « image-cle » de
-      `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` (adresses + grammaire), c'est le journal RE du
-      depot. Aucune adresse en dur dans le code Go.
+- [x] 1.1 Grammaire des deux deserialiseurs de record NEW ecrite ligne a ligne : ils sont
+      IDENTIQUES (`FUN_141f86704` bufferise, `FUN_1408f1aa4` direct), meme ordre, memes slots
+      de vtable, un SEUL appel qui lit le flux avant la boucle (`vtable[0x60]`). Boucle de
+      composants (`FUN_14076cb60`) et masque (`FUN_1406d7610`) portes au journal RE avec la
+      liste des appels a 0 bit (`vtable[0x10]/0x20/0x30/0x48/0x88`).
+- [x] 1.2 Les differences sont ECRITES et elles appartiennent toutes au CADRE, pas au CORPS :
+      `R(32)` de tete d'iteration en mode film (`FUN_1406cd128`), prologue `R(1)[+R(8)]`
+      avant NEW et DEL (`FUN_1406cd128` et `FUN_1406cbaa0:146-149`), et la porte d'image-cle
+      `*(param_1+0x12)` qui DESACTIVE la boucle de records. Le corps, lui, est le meme.
+- [x] 1.3 **Hypothese n°1 du brief REFUTEE PAR LECTURE.** Le chemin DELTA
+      (`FUN_141f86b58`) appelle **la meme `FUN_14076cb60`** que les deux lecteurs NEW, avec un
+      contexte de meme forme, et il n'existe **aucun second site d'appel de composant** :
+      chaque composant present passe par `vtable[0x28]` dans les trois chemins. Il n'y a pas
+      de « deser feuille etat-complet » distinct d'un « wrapper delta ».
+- [x] 1.4 **Etat par defaut de `ti=42` RESOLU, bit-exact.** Chaine rejouee : `FUN_140e453b4`
+      -> `FUN_140e45fc4(world, 0x2a, &PTR_PTR_144701780)` @`0x140e4578f` ; xref [WRITE]
+      `0x144701780` -> `FUN_1403721d0` : vtable = `0x1436fd790` ; `*(vtable+0x60)` =
+      `FUN_1407f0c68` = `V ; FUN_1407f2224 (== consumeDefaultStateTI36) ; R(12) ; R(7) ;
+      FUN_1407f2494 ; ECS_ReadEntityRefIndex5`. Largeur 7 figee par
+      `MOV dword [RSP+0x20],7` @`0x1407f0d30`. Sous-bloc `FUN_1407f2494` ecrit au journal.
+- [x] 1.5 Section « IMAGE-CLE » ecrite dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md`
+      (5 sous-sections, dont une §5 « ce qui reste NON resolu »). Aucune adresse en dur cote Go.
 
-**Gate 1** :
+**Gate 1 : PASSE le 2026-08-17.** Commandes et sorties exactes :
 
 ```
-grep -c "image-cle" .ai/V7.5/killweapon/WALK_PORT_NOTES.md        # section presente
-grep -c "FUN_14076cb60\|FUN_1406d7610\|FUN_1408f1aa4" .ai/V7.5/killweapon/WALK_PORT_NOTES.md
+grep -ci "image-cle" .ai/V7.5/killweapon/WALK_PORT_NOTES.md                              -> 7
+grep -c "FUN_14076cb60\|FUN_1406d7610\|FUN_1408f1aa4" .ai/V7.5/killweapon/WALK_PORT_NOTES.md -> 7
+grep -o "FUN_1[0-9a-f]*\|0x14[0-9a-f]*" .ai/V7.5/killweapon/WALK_PORT_NOTES.md | sort -u | wc -l -> 62
 ```
 
-Critere : la section existe, cite au moins 6 adresses, et repond en toutes lettres a 1.2,
-1.3 et 1.4 (y compris par un « non resolu » motive).
+Critere (section presente, >= 6 adresses, reponses ecrites a 1.2/1.3/1.4) : REMPLI —
+62 adresses distinctes citees.
+
+**CE QUE LA PHASE 1 ETABLIT, et ce n'est pas ce que les deux lots precedents supposaient.**
+
+1. **La grammaire portee par `TraverseEntity` est CELLE DU JEU.** Les deux lecteurs de record
+   NEW et le lecteur DELTA sont d'accord ; il n'y a pas de variante « image-cle » du corps.
+   Le verdict de R3 (« la grammaire du record d'image-cle n'est celle d'aucun archetype »)
+   ne peut donc pas s'expliquer par une grammaire de corps differente.
+2. **Le suspect designe devient l'ORACLE.** `WalkKeyframeWorld` n'accepte une ancre que si
+   les 26 bits de `field` sont nuls (`keyframe_world.go:70`). Tout record dont le `field`
+   n'est pas nul est SAUTE, et le « record suivant » rendu a R3 n'est alors pas le voisin.
+   C'est l'hypothese H1 du §3, et la phase 2 la mesure.
+3. **`ti=42` n'est plus un blocage de reverse** : son etat par defaut est resolu et se porte
+   avec des primitives DEJA presentes dans le depot.
 
 ### Phase 2 — PORTER et PROUVER : le walker DETERMINISTE d'image-cle
 
@@ -387,7 +407,15 @@ _(rempli en cours d'execution)_
 
 ## 10. Journal d'execution
 
-_(rempli a la cloture de chaque phase : date, gate execute, sorties, commit)_
+**2026-08-17 — Phase 1 CLOSE.** Lecture Ghidra read-only (7 fonctions decompilees, une vtable
+lue octet a octet, un immediat verifie au desassemblage, un site d'appel verifie par
+`get_assembly_context`). Trois resultats : (a) les deux lecteurs de record NEW du jeu portent
+la MEME grammaire, celle que `TraverseEntity` porte deja ; (b) l'hypothese « deser feuille
+`+0x28` en image-cle contre wrapper en delta » est REFUTEE par lecture — le chemin delta
+appelle la meme `FUN_14076cb60` et il n'existe pas de second site d'appel de composant ;
+(c) l'etat par defaut de `ti=42` est RESOLU bit-exact (`FUN_1407f0c68`). Gate 1 passe
+(3 greps, sorties ci-dessus). Journal RE : section « IMAGE-CLE » de `WALK_PORT_NOTES.md`.
+Commit `docs(v7.5-rejeu-kf)` sur `wt/kf-grammaire`.
 
 ## 11. Lignes de registre proposees
 
