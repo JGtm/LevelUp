@@ -321,56 +321,130 @@ n'est pas un equipement de joueur : c'est l'objet de monde ordinaire que l'arche
 `item-*` melange aux equipements (verdict 0.6 du 15/08, qui l'avait suppose sans pouvoir le
 montrer). La phase 3 nomme donc PAR DIFFERENCE, pas par frequence.
 
-### Phase 3 — NOMMER sans circularite (C4)
+### Phase 3 — NOMMER sans circularite (C4) — CLOSE le 2026-08-17, PARTIELLEMENT
 
-Ouverte SEULEMENT si la phase 2 rend une partition. Sinon : `[~]` avec renvoi au negatif.
+- [~] 3.1 Temoin A (croisement `i48`) — COUVERT, et par mieux que prevu, par le temoin
+      negatif de la phase 2 : `0014603f`, film ou `i48` ne transmet JAMAIS d'identite, rend
+      **une seule classe sur 100 % de ses 152 records**, tandis que les films a capacites en
+      rendent 12 a 19. Le croisement rang-par-rang n'apporterait rien de plus que ce
+      contraste, qui est deja total. Le sens de la classe majoritaire en decoule (voir 3.4).
+- [x] 3.2 Temoin B (signature comportementale) — MESURE, et **REFUTE COMME DISCRIMINANT**.
+      Instrument `TestEquipmentIdentityTagBehaviour` : la classe (lue aux images-cles) est
+      jointe a la vie d'objet (lue dans les paquets delta, meme detecteur que la production).
+      Resultat : les durees de vie NE SE REPRODUISENT PAS d'un film a l'autre — `0xeef5d48d`
+      donne 2,8 s de mediane sur `000d5950` et 118,0 s sur `00502e52` ; `0x37c87a13` donne
+      109,8 s puis 0,0 s. **Cause mesuree, et elle est structurelle** : la jointure ne couvre
+      que **228 vies sur 2 659 (8,6 %)** et **207 sur 2 625 (7,9 %)**, parce qu'une image-cle
+      tombe toutes les ~20 s et ne voit donc que les entites vivantes a cet instant — les
+      objets ephemeres, c'est-a-dire precisement les equipements deployes, sont ceux qui
+      manquent. Le biais va CONTRE la question posee : ce temoin ne peut pas trancher, et le
+      dire est le resultat.
+- [x] 3.3 Temoin C (catalogue de tags) — **C'EST LUI QUI A NOMME**, et il a nomme QUATRE
+      classes sans qu'aucune mesure neuve soit necessaire. Les modules du jeu sont presents
+      sur le poste, et la liste `gggl` etablie par une chaine ENTIEREMENT INDEPENDANTE le
+      2026-07-26 (`.ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md` §7ter.45, alternance `botg` 4/4
+      et ensembles `jpt!` par couple) donne les quatre `eqip` multijoueur des grenades. Ils
+      figurent TELS QUELS parmi nos 12 classes :
 
-- [ ] 3.1 Temoin A — **croisement avec la palette `i48`** : pour chaque classe, la
-      distribution des rangs `i48` des vies de biped du meme film. Sur `00ba2e1c` (dotation
-      unique) la partition des objets deployables doit etre DEGENEREE ; sur `0014603f`
-      (aucune identite `i48`) le croisement doit etre VIDE, pas invente.
-- [ ] 3.2 Temoin B — **signature comportementale** (H4), independante du champ : par classe,
-      duree de vie mediane, multiplicite a la naissance (entites nees a moins de 0,5 s ET
-      moins de 3 u l'une de l'autre — un mur segmente en porte plusieurs, un capteur une
-      seule), immobilite (etendue des positions sur la vie). Temoin negatif : les memes
-      statistiques sur les classes NON deployables.
-- [ ] 3.3 Temoin C — **catalogue de tags** (H3), si et seulement si les valeurs ont l'allure
-      d'un tag global : taux d'appartenance au catalogue `.module` (avec et sans decalage
-      d'un bit), contre le taux attendu par hasard. Si les modules du jeu ne sont pas
-      accessibles sur le poste (`himap.DeployRoot`), statuer `[!]` avec la raison — c'est
-      une ressource externe, report VALIDE au sens du contrat.
-- [ ] 3.4 Verdict C4 : quelles classes sont nommees, par quels temoins, avec quels chiffres.
-      Les classes non nommees gardent leur NUMERO (regle du depot : un nom approchant se lit
-      comme une certitude).
+          eqip bcabbe43  -> grenade type 0 (fragmentation)   proj 580b8831
+          eqip caaadcb0  -> grenade type 1 (plasma)           proj 6071a622
+          eqip aada07f3  -> grenade type 2 (dynamo)           proj 1d92b3ea
+          eqip 0f5716ff  -> grenade type 3 (spike)            proj 49097214
 
-**Gate 3** : deux classes nommees avec deux temoins independants chiffres et leur temoin
-negatif, OU verdict negatif ecrit. Aucun nom sans provenance.
+      Deux de ces identifiants etaient DEJA dans le code du depot
+      (`films/damagetag/data/labels.tsv`, lignes 31 et 43 : « effet eqip bcabbe43 »,
+      « effet eqip caaadcb0 »). Quatre classes sur douze se nomment donc par recoupement
+      avec un travail anterieur qui ignorait tout de `ti=37`.
+- [!] 3.4 **VERDICT C4 : PASSE SUR LA LETTRE, ECHOUE SUR LA DEMANDE.** Quatre classes sont
+      nommees par un temoin independant et chiffre (C4 exigeait deux) — mais ce sont les
+      QUATRE GRENADES, pas le mur de protection ni le capteur de menaces, qui sont ce que
+      l'utilisateur a demande. Les huit autres classes gardent leur NUMERO.
+      **Pourquoi le nommage du mur et du capteur n'est pas atteignable dans ce lot, et ce
+      n'est pas une hypothese** : le nommage par les fichiers du jeu a ete MESURE COMME MORT
+      le 2026-07-26 (RE_LOG §7ter.45, hypotheses H1 a H4) — la table de chaines de l'archive
+      est vide (`stringsSize = 0`), le `strtab` d'un tag ne porte aucun nom lisible, les
+      banques sonores ne sont referencees par aucun nom, et les chemins d'asset residuels
+      couvrent **3 tags sur 671**. Un `eqip` n'a pas de nom dans les donnees. Il ne peut etre
+      nomme que par une chaine de GRAPHE (comme `gggl` l'a fait pour les grenades) ou par une
+      observation externe.
 
-### Phase 4 — PUBLIER la donnee au document de rejeu
+**Commandes du gate 3**, et une CONTRAINTE DE COMPILATION qui compte : l instrument
+d ancrage importe `himap`/`himodule`, donc `internal/ooz` (decodeur C++, CGO obligatoire).
+Il porte pour cela l etiquette `gamefiles`, SANS laquelle le paquet `filmdec` entier
+deviendrait incompilable a `CGO_ENABLED=0` — ce que trois jobs de CI exigent, et ce dont
+dependent les autres instruments du paquet.
+
+```
+CGO_ENABLED=0 go test ../internal/analysis/filmdec/ ../internal/analysis/replay/   exit 0
+CGO_ENABLED=1 go vet -tags=gamefiles ./internal/analysis/filmdec/                  exit 0
+CGO_ENABLED=1 EQUIP_ID_FILM=<film> go test -tags=gamefiles ./internal/analysis/filmdec/ \n  -run '^TestEquipmentIdentityTag' -timeout 30m -v
+```
+
+**GATE 3 : PASSE avec verdict partiel ECRIT.** Quatre classes nommees, provenance citee,
+huit numerotees, un temoin refute et chiffre. Aucun nom sans provenance.
+
+**LES DEUX REPRISES POUR NOMMER LE MUR ET LE CAPTEUR, par ordre de cout :**
+
+1. **La chaine de graphe `sofd -> eqip` (offline-pur, aucune donnee utilisateur).** Le rang
+   `i48` est un index dans la palette `sofd` du match, et `sofd` est deja connu du RE comme un
+   noeud de graphe (`vcdd -> sofd -> sofa -> uwfa -> weap`, RE_LOG §7ter.45 R-VEHICULE). Si
+   une entree de `sofd` reference l'`eqip` qu'elle deploie, alors rang 19 et rang 22 nomment
+   directement deux de nos huit classes restantes. Cout : un parcours de references de tags
+   (les octets s'extraient deja par `ModuleIndex.ExtractWithResources`).
+2. **UNE observation Theater (donnee que seul l'utilisateur possede).** Elle est desormais
+   BON MARCHE et ciblee, ce qu'elle n'etait pas avant ce lot : ouvrir `000d5950` ou
+   `00502e52`, reperer l'instant et l'endroit ou un joueur pose un mur, et l'instrument rend
+   la classe de l'entite `ti=37` presente a cet instant a cet endroit. Une observation = une
+   ligne de `replay_labels.toml`.
+
+### Phase 4 — PUBLIER la donnee au document de rejeu — NON OUVERTE, `[!]` ASSUME
+
+**DECISION D'ARRET PROPRE, prise le 2026-08-17, et le superviseur peut la renverser.** La
+condition d'ouverture est remplie sur la lettre (la phase 3 nomme quatre classes), et le
+canal est prouve. La phase n'est pourtant PAS ouverte, pour trois raisons ecrites :
+
+1. **Ce qui serait publie n'est pas ce qui a ete demande.** Les quatre classes nommees sont
+   les grenades AU SOL — un objet a ramasser, pas un equipement pose. Le mur et le capteur,
+   qui sont la demande utilisateur (bilan F1), sont parmi les huit classes NUMEROTEES. Un
+   champ d'artefact publie avec huit types anonymes sur douze appelle une seconde passe.
+2. **Le champ coute une porte a sens unique.** `EquipmentObjects` exige une bosse
+   `SchemaVersion` 8 -> 9 (meme raison que les schemas 7 et 8 : la reprise du backfill se
+   fait par la version), donc une RE-CUISSON DE MASSE de tous les artefacts. La fenetre
+   d'operations de re-cuisson est une ressource rare, deja reservee aux schemas 7/8 et aux
+   bornes corrigees (`PLAN_RETOURS_PLANCHE`, section « ordre d'execution »). La bruler pour
+   un champ a moitie nomme, alors que la reprise n°1 de la phase 3 est offline-pure et bon
+   marche, serait une mauvaise dette.
+3. **Le perimetre restant depasse ce que cette session peut CLORE et VERIFIER** (lecteur de
+   production, `Options`, assemblage, document, couverture, contrat OpenAPI regenere,
+   `generated.ts`, normalisation web, gates web). Contrat `plan-execution` regle 9 : un arret
+   propre et ecrit vaut mieux qu'une etape a moitie faite.
+
+Les items ci-dessous restent donc non traites, et leur contenu reste valable tel quel pour la
+session qui les reprendra APRES le nommage du mur et du capteur.
 
 Ouverte SEULEMENT si la phase 3 nomme au moins une classe. Sinon `[~]` + registre.
 
-- [ ] 4.1 Lecteur de PRODUCTION dans `filmdec` (le meme fichier `equipment_identity.go`),
+- [!] 4.1 Lecteur de PRODUCTION dans `filmdec` (le meme fichier `equipment_identity.go`),
       sur le patron de `camo_state.go` / `grapple_state.go` : hook du deser de production,
       lectures localisees slot/gen/chunk/packet/`TimestampUS`, structure de statistiques
       avec denominateurs.
-- [ ] 4.2 `replay.Options.EquipmentIdentities` (patron `CamoStates` / `GrappleReads`,
+- [!] 4.2 `replay.Options.EquipmentIdentities` (patron `CamoStates` / `GrappleReads`,
       `replay/build.go:58-65`), peuplee par `BuildFromFilm`, **absence NON FATALE et
       loggee** (`slog.Warn`, convention du fichier).
-- [ ] 4.3 Assemblage `replay/equipment_objects.go` (fichier NEUF) : par vie d'objet, le
+- [!] 4.3 Assemblage `replay/equipment_objects.go` (fichier NEUF) : par vie d'objet, le
       TYPE (identifiant stable, jamais un libelle), la position publiee et la fenetre de vie
       [t0, t1] bornee a la fenetre du document. Reutilise `ScanFilmWorldObjects(dir, wr, 37)`
       — aucun nouveau decodage de position. **Test unitaire PUR** `replay/
       equipment_objects_test.go` (entrees synthetiques, aucune I/O, patron
       `equipment_episodes_test.go`) : bornage a la fenetre, vie sans identite NON publiee,
       vie a identites contradictoires NON publiee.
-- [ ] 4.4 Champ `ReplayDocument.EquipmentObjects []EquipmentObject`
+- [!] 4.4 Champ `ReplayDocument.EquipmentObjects []EquipmentObject`
       (`json:"equipmentObjects,omitempty"`) + `Coverage.EquipmentObjects`. **`SchemaVersion`
       NON TOUCHE** (contrat R4, §6) — la bosse 8 -> 9 revient au superviseur a la fusion.
-- [ ] 4.5 Contrat OpenAPI regenere + `generated.ts` + normalisation web
+- [!] 4.5 Contrat OpenAPI regenere + `generated.ts` + normalisation web
       (`replayNormalize.ts`) : le champ TRAVERSE, il ne se DESSINE pas. Aucun composant de
       rendu touche, aucune string i18n ajoutee.
-- [ ] 4.6 Libelles : aucune chaine FR/EN en dur cote Go. Si des noms sont poses, ils entrent
+- [!] 4.6 Libelles : aucune chaine FR/EN en dur cote Go. Si des noms sont poses, ils entrent
       dans `config/titles/halo_infinite/mappings/replay_labels.toml` — une ligne par classe
       NOMMEE en phase 3, aucune pour les classes numerotees.
 
@@ -386,12 +460,12 @@ golangci-lint run --new-from-merge-base=origin/main
 
 ### Phase 5 — CLORE : registre, journal, statuts
 
-- [ ] 5.1 Toutes les cases de ce plan statuees `[x]` / `[~]` / `[!]`.
-- [ ] 5.2 Lignes proposees pour `.ai/V7.5/REGISTRE_REPORTS.md` (ecrites EN UNE SEULE FOIS,
+- [x] 5.1 Toutes les cases de ce plan statuees `[x]` / `[~]` / `[!]`.
+- [x] 5.2 Lignes proposees pour `.ai/V7.5/REGISTRE_REPORTS.md` (ecrites EN UNE SEULE FOIS,
       a la fin — contrat R4) : la ligne « Identite de l'objet ti=37 » du 2026-08-15 est
       SORTIE (si succes) ou AMENDEE de ce qui a ete refute (si negatif), plus une ligne par
       report neuf.
-- [ ] 5.3 Entree `.ai/thought_log.md` REDIGEE et remise au superviseur (ce lot n'ecrit PAS
+- [x] 5.3 Entree `.ai/thought_log.md` REDIGEE et remise au superviseur (ce lot n'ecrit PAS
       dans le journal : il appartient au superviseur).
 
 ## 6. Contrat d'interface avec le lot jumeau R4 (`ti=11`, worktree `LevelUp-wt-ti11`)
@@ -453,6 +527,14 @@ wt/ti37-identite`, point d'etape.
   identiques d'un film a l'autre** (557 / 707 / 773 / 881 / 950 / 1 104 bits d'ecart
   residuel dominants sur les 3 films). Si cette longueur depend du TYPE de l'objet, c'est un
   signal de partition GRATUIT, lisible sans decoder un seul champ. A mesurer en phase 2.
+- **Quatre `eqip` du film etaient DEJA dans le depot sans que personne le sache** :
+  `damagetag/data/labels.tsv` lignes 31 et 43 portent « effet eqip bcabbe43 » et « effet eqip
+  caaadcb0 » comme simples annotations d effets partages. Ce sont deux de nos douze classes.
+  Un recoupement systematique des annotations `eqip` du depot avec les classes mesurees
+  pourrait en nommer d autres. NE PAS traiter ici.
+- **Le nommage d un `eqip` par la chaine `sofd -> eqip` n a jamais ete tente** et c est la
+  reprise n°1 de la phase 3 : offline-pure, elle nommerait le mur et le capteur sans rien
+  demander a l utilisateur.
 - **`weap` et `sofd` rendent le MEME compte (267) sur `ti=42`**, et `weap` decale rend 267 sur
   `ti=35` : trois coincidences a la meme valeur, sur un balayage ou rien ne l impose. Piste :
   les deux catalogues partagent peut-etre des GlobalID (une entree indexee sous deux groupes),
@@ -481,6 +563,16 @@ Partition mesuree sur 5 films : 2 738 records porteurs sur 2 772 (98,8 %), 1 318
 identifiees, 12 classes communes aux 3 films d arene, stabilite par vie 99,6 a 100 %.
 C1, C2, C3 PASSES. Les 4 champs de la voie H1 sont refutes et non publies.
 Commit `mesure(v7.5-rejeu-ti37)` sur `wt/ti37-identite`.
+
+**2026-08-17 — Phase 3 CLOSE (partielle), phase 4 NON OUVERTE.** Le temoin comportemental
+est mesure et REFUTE comme discriminant (durees de vie non reproductibles d un film a
+l autre, cause structurelle : la jointure image-cle ne couvre que 8 % des vies). Le temoin
+par catalogue NOMME QUATRE classes sur douze — les quatre grenades multijoueur, par
+recoupement avec la liste `gggl` etablie le 2026-07-26 par une chaine independante ; deux de
+ces identifiants etaient deja dans `damagetag/data/labels.tsv`. Le mur et le capteur restent
+NUMEROTES : le nommage par les fichiers du jeu est mort (mesure 2026-07-26, H1-H4), il faut
+la chaine `sofd -> eqip` ou une observation Theater. Phase 4 non ouverte, decision d arret
+propre ecrite et argumentee (regle 9 du contrat).
 
 ## 11. Protocole de reprise de session
 
