@@ -1,3 +1,16 @@
+//go:build gamefiles
+
+// L'ETIQUETTE DE COMPILATION `gamefiles` EST OBLIGATOIRE ICI, et ce n'est pas un confort.
+// Ce fichier importe `himap`/`himodule`, qui dependent de `internal/ooz` — un decodeur C++
+// (Oodle clean-room) qui exige CGO. Sans etiquette, le paquet `filmdec` TOUT ENTIER
+// deviendrait incompilable a `CGO_ENABLED=0` : les trois jobs de CI qui tournent ainsi
+// casseraient, et l'usage documente des autres instruments du paquet
+// (`CGO_ENABLED=0 EQUIP_FILM=... go test ./internal/analysis/filmdec/`) disparaitrait.
+// L'etiquette isole ce cout a ceux qui demandent explicitement les fichiers du jeu.
+//
+//	CGO_ENABLED=1 EQUIP_ID_FILM=<film> go test -tags=gamefiles ./internal/analysis/filmdec/ \
+//	  -run '^TestEquipmentIdentityTag' -timeout 30m -v
+
 package filmdec
 
 // equipment_identity_anchor_test.go — L'ANCRAGE PAR CATALOGUE DE TAGS (lot R3, phase 2).
@@ -31,8 +44,8 @@ package filmdec
 //
 // USAGE (depuis apps/go-api) :
 //
-//	CGO_ENABLED=0 EQUIP_ID_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/analysis/filmdec/ -run '^TestEquipmentIdentityTag' -timeout 30m -v
+//	CGO_ENABLED=1 EQUIP_ID_FILM=<repo>/data/cache/film_chunks/000d5950 \
+//	  go test -tags=gamefiles ./internal/analysis/filmdec/ -run '^TestEquipmentIdentityTag' -timeout 30m -v
 
 import (
 	"os"
@@ -260,6 +273,121 @@ func TestEquipmentIdentityTagClasses(t *testing.T) {
 	for _, line := range eqidTopValues(eqidWiden(hist), len(hist)) {
 		t.Logf("      %s", line)
 	}
+}
+
+// TestEquipmentIdentityTagBehaviour est le TÉMOIN INDÉPENDANT du nommage (phase 3) : il
+// mesure, par classe `eqip`, comment ses entités se comportent dans le film. Il ne regarde
+// AUCUNE valeur de tag pour décider — il joint la classe (lue aux images-clés) à la vie
+// d'objet (lue dans les paquets delta, même détecteur que la production), et compte.
+//
+// CE QU'IL SÉPARE, et c'est la question ouverte depuis le verdict 0.6 du 2026-08-15 : un
+// OBJET DE CARTE est là dès le début du film et y reste ; un ÉQUIPEMENT DÉPLOYÉ PAR UN
+// JOUEUR naît en cours de match et meurt vite. Aucune des deux populations n'a besoin d'être
+// nommée pour être distinguée.
+func TestEquipmentIdentityTagBehaviour(t *testing.T) {
+	dir := os.Getenv(equipIDFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : instrument de mesure sauté", equipIDFilmEnv)
+	}
+	cat := eqidLoadTagCatalog(t)
+	eqip := cat.byGroup["eqip"]
+	if len(eqip) == 0 {
+		t.Skip("groupe `eqip` absent du catalogue local")
+	}
+	release := LockProcessDecode()
+	defer release()
+
+	classOf := eqidClassByLife(dir, eqip)
+	lives := eaScanTi37Lives(t, dir)
+	if len(lives) == 0 {
+		t.Skip("aucune vie ti=37 dans les paquets delta")
+	}
+	// L'origine du film est le premier instant vu sur l'horloge des paquets delta : une
+	// entité « née » à moins d'une seconde de là était là AVANT que le film ne commence.
+	var t0 = ^uint64(0)
+	for _, l := range lives {
+		if l.firstUS < t0 {
+			t0 = l.firstUS
+		}
+	}
+
+	type stat struct {
+		lives, atStart int
+		durations      []float64
+	}
+	per := map[uint32]*stat{}
+	joined := 0
+	for k, l := range lives {
+		cls, ok := classOf[eqidLifeKey{k.slot, k.gen}]
+		if !ok {
+			continue
+		}
+		joined++
+		s := per[cls]
+		if s == nil {
+			s = &stat{}
+			per[cls] = s
+		}
+		s.lives++
+		if l.firstUS-t0 < 1_000_000 {
+			s.atStart++
+		}
+		s.durations = append(s.durations, float64(l.lastUS-l.firstUS)/1e6)
+	}
+
+	t.Logf("== COMPORTEMENT PAR CLASSE (phase 3) — %s ==", dir)
+	t.Logf("  vies ti=37 vues en delta %d · jointes a une classe %d (%.1f %%)",
+		len(lives), joined, 100*float64(joined)/float64(maxInt(len(lives), 1)))
+	classes := make([]uint32, 0, len(per))
+	for c := range per {
+		classes = append(classes, c)
+	}
+	sort.Slice(classes, func(i, j int) bool { return per[classes[i]].lives > per[classes[j]].lives })
+	for _, c := range classes {
+		s := per[c]
+		sort.Float64s(s.durations)
+		med := s.durations[len(s.durations)/2]
+		t.Logf("    eqip 0x%08x · vies %4d · PRESENTES AU DEPART %4d (%5.1f %%) · duree mediane %7.1f s",
+			c, s.lives, s.atStart, 100*float64(s.atStart)/float64(s.lives), med)
+	}
+}
+
+// eqidClassByLife rend, par vie d'objet, la classe `eqip` lue aux images-clés. Une vie dont
+// les images-clés donnent DEUX classes est écartée : elle n'a pas d'identité stable, et en
+// choisir une serait inventer.
+func eqidClassByLife(dir string, eqip map[uint32]bool) map[eqidLifeKey]uint32 {
+	seen := map[eqidLifeKey]map[uint32]bool{}
+	n := CountFilmChunks(dir)
+	for c := 1; c <= n; c++ {
+		chunk, err := ReadFilmChunk(dir, c)
+		if err != nil {
+			continue
+		}
+		for _, p := range WalkPackets(chunk) {
+			if p.Type != PacketTypeKeyframe {
+				continue
+			}
+			for _, rf := range familiesByRecord(p.Payload(chunk), eqip, EquipmentTypeIndex) {
+				k := eqidLifeKey{uint32(rf.Rec.Slot), uint32(rf.Rec.Gen)}
+				if seen[k] == nil {
+					seen[k] = map[uint32]bool{}
+				}
+				for _, f := range rf.Families {
+					seen[k][f] = true
+				}
+			}
+		}
+	}
+	out := make(map[eqidLifeKey]uint32, len(seen))
+	for k, vs := range seen {
+		if len(vs) != 1 {
+			continue
+		}
+		for v := range vs {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 // eqidWiden élargit un histogramme 32 bits vers la forme attendue par eqidTopValues.
