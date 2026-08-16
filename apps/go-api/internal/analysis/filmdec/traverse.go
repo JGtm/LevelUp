@@ -89,6 +89,13 @@ var paramByComponent = map[string]uint32{
 	"biped-malleable-property-component":   2,
 	"biped-spartan-ability":                2,
 	"biped-spartan-ability-component":      2,
+	// i59 manquait à la table (2026-08-16, plan PLAN_GRAPPIN_LIGNE) : le commentaire
+	// ci-dessus disait « i57/i59 -> 2 » mais seules les clés d'i57 existaient, donc la
+	// queue R(3) d'i59 (FUN_140fc147c, param_4>1) n'était JAMAIS lue offline. Mesure :
+	// chaque record i59 finissait à 3 bits exactement du record suivant (écarts
+	// p10=p50=p90=3, n=988, TestI59AnchorWalkProof) ; avec la clé, l'écart tombe à 0.
+	"biped-spartan-ability-non-predicted-state":           2,
+	"biped-spartan-ability-non-predicted-state-component": 2,
 }
 
 // paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur
@@ -846,8 +853,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// desalignement silencieux.
 		return variant, nil, consumeBipedSpartanAbility(br)
 	case "biped-spartan-ability-non-predicted-state", "biped-spartan-ability-non-predicted-state-component": // i59 (FUN_142f02994)
-		consumeBipedSpartanAbilityNonPredictedState(br)
-		return variant, nil, true
+		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
+		// ported=false sur les seules valeurs internes jamais observées — désync propre,
+		// même contrat qu'i57 ci-dessus. param_4 vient de paramForComponent (i59 -> 2,
+		// la queue R(3) est lue — l'ancien global brut valait 0 et la sautait).
+		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, paramForComponent(name))
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
 		// Décode la structure CONNUE (flag + 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8 magnitude,
 		// tout disasm-vérifié). Le handle-tail conditionnel reste runtime/predicate-dépendant

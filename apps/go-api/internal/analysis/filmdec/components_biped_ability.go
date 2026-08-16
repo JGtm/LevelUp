@@ -314,29 +314,39 @@ var MobilityActionExtraBits int
 // consumeBipedSpartanAbilityNonPredictedState mirrors FUN_142f02994:
 //
 //	FUN_142f2679c(ctx+0x1324, br, ctx+0x38)   -> R(2) tag + value-gated body
-//	if (recordStateParam > 1): FUN_140fc147c  -> R(3)
+//	if (param_4 > 1): FUN_140fc147c           -> R(3)
 //
 // FUN_142f2679c reads iVar4 = FUN_1406d310c(4) = bit_length-ish(4) = 2 bits (flat),
 // stores `value-1`, then ONLY if `value-1 == 2` (raw tag == 3) does it call the
-// heavy FUN_142f25e90 (position vec + quaternions + dequants, a switch on a state
-// byte — dozens of bits). For tag != 3 the body reads nothing. We model the common
-// case (tag != 3 -> 0 extra bits); if tag == 3 we mark a hard stop via panic-free
-// path: the caller's traversal will desync downstream, flagging the rare branch.
+// heavy FUN_142f25e90 (the grapple-anchor block). For tag != 3 the body reads nothing.
 //
-// param_4 == recordStateParam. With recordStateParam==2 (>1) the trailing
-// FUN_140fc147c R(3) IS taken. Common-case total: 2 + 3 = 5 bits.
+// rsp est param_4 : le VRAI, celui du composant (paramForComponent — la capture CE donne
+// i59 -> 2, la queue R(3) EST lue). L'ancien code lisait le global recordStateParam brut,
+// qui vaut 0 hors harnais : la queue R(3) manquait dans toutes les marches offline — le
+// « pied de 3 bits » mesuré entre chaque record i59 et le suivant (TestI59AnchorWalkProof,
+// écarts p10=p50=p90=3 sur 988 témoins) est exactement cette queue. Corrigé le 2026-08-16.
 //
-// CAVEAT (value-gated heavy body): the tag==3 branch (FUN_142f25e90) is NOT ported.
-// Validated empirically on the Hydra biped record (tag != 3 -> advances cleanly).
-func consumeBipedSpartanAbilityNonPredictedState(br *BitReader) {
-	tag := br.ReadBits(2) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
-	if abilityNonPredictedHook != nil {
-		abilityNonPredictedHook(tag) // publication seule, aucune largeur ne change
+// LE CORPS tag==3 EST PORTÉ (2026-08-16, plan PLAN_GRAPPIN_LIGNE phase 0) : voir
+// consumeAbilityAnchorBody (components_biped_anchor.go). Il rend false sur ses valeurs
+// internes jamais observées — même contrat de désync propre que consumeBipedSpartanAbility
+// (i57). Le hook publie la lecture complète, tag externe compris, pour TOUTES les
+// lectures (le corps désactivé ou cassé se voit : BodyWalked/BodyOK).
+func consumeBipedSpartanAbilityNonPredictedState(br *BitReader, rsp uint32) bool {
+	st := AbilityNonPredictedState{Inner: -1}
+	st.Tag = uint32(br.ReadBits(2)) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
+	ok := true
+	if st.Tag == 3 && abilityAnchorBodyPorted {
+		st.BodyWalked = true
+		ok = consumeAbilityAnchorBody(br, &st) // FUN_142f25e90
+		st.BodyOK = ok
 	}
-	// tag==3 -> FUN_142f25e90 heavy body (unported); 0 bits for tag!=3 (common case).
-	if recordStateParam > 1 {
+	if ok && rsp > 1 {
 		br.ReadBits(3) // FUN_140fc147c flat R(3), gated on param_4>1.
 	}
+	if abilityNonPredictedHook != nil {
+		abilityNonPredictedHook(st) // publication seule, aucune largeur ne change
+	}
+	return ok
 }
 
 // ---------------------------------------------------------------------------
