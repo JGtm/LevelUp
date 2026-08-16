@@ -41,6 +41,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onClose = vi.fn()
   const onToggleAim = vi.fn()
   const onToggleZones = vi.fn()
+  const onToggleNames = vi.fn()
   const onSetSpeed = vi.fn()
   const onToggleShotFx = vi.fn()
   const onToggleKillFx = vi.fn()
@@ -52,6 +53,8 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleAim={onToggleAim}
       showZones
       onToggleZones={onToggleZones}
+      showNames
+      onToggleNames={onToggleNames}
       zonesAvailable
       heatmap={makeHeatmap()}
       showShotFx
@@ -64,7 +67,10 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       {...over}
     />,
   )
-  return { ...utils, onClose, onToggleAim, onToggleZones, onSetSpeed, onToggleShotFx, onToggleKillFx }
+  return {
+    ...utils, onClose, onToggleAim, onToggleZones, onToggleNames, onSetSpeed,
+    onToggleShotFx, onToggleKillFx,
+  }
 }
 
 describe('ReplaySettingsDrawer — calques', () => {
@@ -75,6 +81,17 @@ describe('ReplaySettingsDrawer — calques', () => {
     fireEvent.click(btn)
     expect(onToggleAim).toHaveBeenCalledTimes(1)
     expect(onToggleZones).not.toHaveBeenCalled()
+  })
+
+  // Le calque des NOMS n'a PAS de condition de disponibilité, contrairement aux zones : un
+  // rejeu a toujours des joueurs, donc toujours des noms à écrire ou à taire.
+  it('bascule Noms : toujours proposée, reflète showNames, appelle onToggleNames au clic', () => {
+    const { onToggleNames, onToggleAim } = renderDrawer({ showNames: false, zonesAvailable: false })
+    const btn = screen.getByRole('button', { name: 'Noms' })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(onToggleNames).toHaveBeenCalledTimes(1)
+    expect(onToggleAim).not.toHaveBeenCalled()
   })
 
   it('bouton Zones absent quand la carte n a pas de zones nommées', () => {

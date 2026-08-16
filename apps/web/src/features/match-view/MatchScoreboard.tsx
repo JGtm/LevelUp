@@ -19,6 +19,7 @@ import {
 } from '@tanstack/react-table'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
+import { teamColorResolver } from './teamColor'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -31,20 +32,14 @@ import type {
   MatchViewRank,
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters'
-import { tokenCssVar } from '@/lib/accessibility'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { MatchViewText } from './i18n'
 import { MatchObjectivesSection } from './MatchObjectivesSection'
 import { displayTierLabel } from './MatchHeader.utils'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
-import {
-  labelHasTeamWord,
-  parseTeamSideID,
-  resolveTeamColorFromID,
-  resolveTeamName,
-  teamLogoPath,
-} from '@/lib/halo/teamNames'
+import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { parseTeamSideID, teamLogoPath } from '@/lib/halo/teamNames'
 import {
   cellState,
   cellStyle,
@@ -514,34 +509,15 @@ function TeamScoreboard({
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Résolution du nom d'équipe. Priorité au libellé fourni par le backend (Halo 5 :
-  // « Rouge/Bleu » depuis team_colors, déjà localisé côté serveur via team_name) ; à
-  // défaut, résolution front des noms officiels Halo Infinite (Eagle / Cobra / ...).
-  // Fallback : "Équipe N" si team_id connu mais hors map, "Équipe inconnue" si
-  // team_side malformé.
-  const backendTeamName = rows.find((r) => r.team_name)?.team_name ?? null
-  const officialName = backendTeamName ?? resolveTeamName(teamSide)
+  // Libellé d'équipe : cascade UNIQUE du dépôt (`lib/halo/teamLabel.ts` — backend, puis
+  // nom officiel préfixé, puis « Équipe N », puis inconnue).
+  const teamLabel = resolveTeamLabel(rows, teamSide, t)
   const teamID = parseTeamSideID(teamSide)
-  // Un libellé backend déjà complet (Halo 5 : « Équipe Cobra » depuis team_colors
-  // localisé) ne doit PAS être re-préfixé par teamLabelFmt, sinon on double le mot
-  // (« Équipe Équipe Cobra »). Les noms officiels résolus côté front (Eagle/Cobra)
-  // sont nus et attendent le préfixe. Décision sur la DONNÉE, pas sur le slug.
-  const teamLabel = officialName
-    ? labelHasTeamWord(officialName)
-      ? officialName
-      : t.teamLabelFmt(officialName)
-    : teamID != null
-      ? t.teamNumberedFmt(teamID)
-      : t.teamUnknown
-  // Couleur d'IDENTITÉ de l'équipe, data-driven (jamais slug==) : couleur fournie par
-  // le backend (row.team_color, Halo 5 depuis team_colors) en priorité, sinon la map de
-  // couleurs officielles par team_id (Halo Infinite : Eagle bleu, Cobra rouge, ...),
-  // sinon repli sur le token sémantique ally/enemy existant (overridable par les réglages
-  // d'accessibilité). Chaque équipe obtient ainsi sa couleur distincte (> 2 équipes =
-  // > 2 couleurs), là où l'ancien schéma ally/enemy n'en offrait que deux.
-  const backendTeamColor = rows.find((r) => r.team_color)?.team_color ?? null
-  const identityColor = backendTeamColor ?? resolveTeamColorFromID(teamID)
-  const teamColorVar = identityColor ?? (isMyTeam ? tokenCssVar('team-ally') : tokenCssVar('team-enemy'))
+  // Couleur d'IDENTITÉ de l'équipe, data-driven (jamais slug==) : cascade UNIQUE du dépôt
+  // (`teamColor.ts` — backend `team_color`, puis couleur officielle par team_id, puis token
+  // allié/ennemi surchargeable par les réglages d'accessibilité). Chaque équipe obtient
+  // ainsi sa couleur distincte (> 2 équipes = > 2 couleurs).
+  const teamColorVar = teamColorResolver(rows)(teamID, isMyTeam)
   // Accent lisible : fond subtil + soulignement + bordure gauche marquée. Le TEXTE reste
   // en `var(--foreground)` (jamais teinté par une couleur d'identité potentiellement vive
   // comme le jaune Valor) pour garantir le contraste.

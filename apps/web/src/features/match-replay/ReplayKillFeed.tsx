@@ -25,9 +25,19 @@
  * `WeaponIcon` (masque teint par CSS). L'alignement des deux horloges est traité dans
  * `killFeedLogic.ts`, avec sa mesure.
  *
+ * SA HAUTEUR EST CELLE DE LA RANGÉE, JAMAIS LA SIENNE (mise en page du 2026-08-16) : le fil
+ * vit dans une colonne à côté de la carte, et c'est la CARTE qui impose la hauteur. Le
+ * composant ne borne donc plus sa liste (`max-h-64` supprimé) ; il occupe ce qu'on lui donne
+ * et fait défiler à l'intérieur. Le sens de lecture ne change pas : le plus récent en tête,
+ * descendre va chercher les événements anciens.
+ *
+ * LES MARQUES D'IDENTITÉ (« moi », « ami ») précèdent chaque nom, comme dans les fiches et
+ * sur la carte — une seule grammaire sur les trois panneaux (décision D5).
+ *
  * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : marque
- * d'assistance, Nom, « - part % », puis la part du tueur ; fond BLEUTÉ sur la ligne — le
- * fond affirme une contribution. « Aucun » (mesuré) garde sa précision en infobulle ;
+ * d'assistance, marque d'identité de l'assistant, Nom, « - part % », puis la part du
+ * tueur ; fond BLEUTÉ sur la ligne — le fond affirme une contribution. « Aucun »
+ * (mesuré) garde sa précision en infobulle ;
  * « inconnu » n'écrit RIEN. Les trois états restent distincts dans la DONNÉE (assist_state).
  *
  * AUCUN MOT « ASSISTÉ PAR » (planche du 16/08) : la marque le dit, et elle le dit en
@@ -42,11 +52,14 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
-import { displayPlayerName } from '@/lib/players/displayName'
+import { displayPlayerName, normalizeGamertagKey } from '@/lib/players/displayName'
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { MedalBadges } from './MedalBadges'
+import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
+import { PlayerMark } from './PlayerMark'
 import {
   buildFeedEntries,
   feedAt,
@@ -71,8 +84,6 @@ const DOT_PX = 7
  * `contain` ajuste sur la plus petite dimension.
  */
 const PICTOGRAM_PX = 12
-/** Côté d'un badge de médaille, en px (POC : 15 px pour un raster de 45 px). */
-const MEDAL_PX = 15
 /** Seuil sous lequel le lecteur est considéré « en tête de fil » (POC : 4 px). */
 const AT_TOP_PX = 4
 
@@ -94,9 +105,23 @@ interface Props {
   scoreboard: MatchScoreboardRow[] | null | undefined
   xuidMeta: XuidMeta
   locale: ReplayLocale
+  /**
+   * Marques d'identité par xuid (« moi », « ami ») — la même grammaire que les fiches et la
+   * carte. Absentes = aucun glyphe, jamais une marque devinée.
+   */
+  marks?: ReadonlyMap<string, PlayerMarkKind>
+  /**
+   * Résolveur de couleur d'équipe. Par défaut celui du scoreboard (cascade d'identité :
+   * couleur backend, puis couleur officielle du jeu) — la Match View ne change pas. La page
+   * de rejeu, elle, passe le résolveur des tokens d'accessibilité (D1) pour que le fil, les
+   * fiches et les points parlent d'une seule voix.
+   */
+  colorOf?: TeamColorResolver
 }
 
-export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xuidMeta, locale }: Props) {
+export function ReplayKillFeed({
+  kills, medals, t0Ms, nowMs, doc, scoreboard, xuidMeta, locale, marks, colorOf,
+}: Props) {
   const t = REPLAY_TEXT[locale]
   // L'assemblage ne dépend PAS de l'image courante : le refaire soixante fois par
   // seconde coûterait le budget d'animation pour un résultat identique.
@@ -104,7 +129,8 @@ export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xu
     () => buildFeedEntries(kills, medals, t0Ms, doc),
     [kills, medals, t0Ms, doc],
   )
-  const colorOf = useMemo(() => teamColorResolver(scoreboard), [scoreboard])
+  const fallbackColorOf = useMemo(() => teamColorResolver(scoreboard), [scoreboard])
+  const colorOfTeam = colorOf ?? fallbackColorOf
   // team_id par xuid, pour colorer le défunt d'une mort neutre — la piste ne porte pas
   // l'équipe de la base, le scoreboard si.
   const teamIDByXuid = useMemo(() => {
@@ -112,6 +138,18 @@ export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xu
     for (const r of scoreboard ?? []) m.set(r.xuid, parseTeamSideID(r.team_side))
     return m
   }, [scoreboard])
+  // L'ASSISTANT N'A PAS DE XUID dans l'événement du film : il n'est nommé que par son
+  // gamertag (cf. `KillEvent`). Pour qu'il porte la MÊME marque que les autres, les marques
+  // sont réindexées par gamertag normalisé — via le scoreboard, la seule table qui porte les
+  // deux clés à la fois. Sans lui, l'assistant serait le seul nom du fil sans glyphe.
+  const marksByGamertag = useMemo(() => {
+    const byName = new Map<string, PlayerMarkKind>()
+    for (const r of scoreboard ?? []) {
+      const kind = (marks ?? NO_MARKS).get(r.xuid)
+      if (kind) byName.set(normalizeGamertagKey(r.gamertag), kind)
+    }
+    return byName
+  }, [scoreboard, marks])
   const visibles = feedAt(entries, nowMs)
 
   // POSITION DE LECTURE (règle du POC) : on ne colle en tête que si le lecteur y était.
@@ -124,8 +162,8 @@ export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xu
   }, [count])
 
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2">
-      <div className="flex items-baseline justify-between">
+    <div className="flex h-full min-h-0 flex-col rounded-lg border border-border bg-card px-3 py-2">
+      <div className="flex shrink-0 items-baseline justify-between">
         <span className="text-3xs uppercase tracking-wider text-muted-foreground">
           {t.killFeedTitle}
         </span>
@@ -140,7 +178,7 @@ export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xu
         onScroll={(e) => {
           atTopRef.current = e.currentTarget.scrollTop <= AT_TOP_PX
         }}
-        className="mt-1 flex max-h-64 min-h-[4.5rem] flex-col gap-0.5 overflow-y-auto"
+        className="mt-1 flex min-h-[4.5rem] flex-1 flex-col gap-0.5 overflow-y-auto"
         aria-live="off"
       >
         {count === 0 && <li className="text-xs text-muted-foreground">{t.killFeedEmpty}</li>}
@@ -148,9 +186,11 @@ export function ReplayKillFeed({ kills, medals, t0Ms, nowMs, doc, scoreboard, xu
           <FeedLine
             key={entry.key}
             entry={entry}
-            colorOf={colorOf}
+            colorOf={colorOfTeam}
             xuidMeta={xuidMeta}
             teamIDByXuid={teamIDByXuid}
+            marks={marks ?? NO_MARKS}
+            marksByGamertag={marksByGamertag}
             locale={locale}
           />
         ))}
@@ -184,15 +224,18 @@ function FeedLine({
   colorOf,
   xuidMeta,
   teamIDByXuid,
+  marks,
+  marksByGamertag,
   locale,
 }: {
   entry: ReplayFeedEntry
   colorOf: TeamColorResolver
   xuidMeta: XuidMeta
   teamIDByXuid: ReadonlyMap<string, number | null>
+  marks: ReadonlyMap<string, PlayerMarkKind>
+  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
-  const t = REPLAY_TEXT[locale]
   if (entry.death) {
     return (
       <DeathLine
@@ -201,7 +244,8 @@ function FeedLine({
         colorOf={colorOf}
         xuidMeta={xuidMeta}
         teamIDByXuid={teamIDByXuid}
-        t={t}
+        marks={marks}
+        locale={locale}
       />
     )
   }
@@ -217,6 +261,7 @@ function FeedLine({
         style={{ borderLeft: `3px solid ${color}` }}
       >
         <div className="flex items-center gap-2">
+          <PlayerMark kind={marks.get(m.xuid)} locale={locale} />
           <span className="truncate font-medium" style={{ color }}>
             {displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)}
           </span>
@@ -228,7 +273,17 @@ function FeedLine({
       </li>
     )
   }
-  return <KillLine kill={k} replayMs={entry.replayMs} colorOf={colorOf} xuidMeta={xuidMeta} t={t} />
+  return (
+    <KillLine
+      kill={k}
+      replayMs={entry.replayMs}
+      colorOf={colorOf}
+      xuidMeta={xuidMeta}
+      marks={marks}
+      marksByGamertag={marksByGamertag}
+      locale={locale}
+    />
+  )
 }
 
 /**
@@ -252,15 +307,18 @@ function DeathLine({
   colorOf,
   xuidMeta,
   teamIDByXuid,
-  t,
+  marks,
+  locale,
 }: {
   death: ReplayDeath
   replayMs: number
   colorOf: TeamColorResolver
   xuidMeta: XuidMeta
   teamIDByXuid: ReadonlyMap<string, number | null>
-  t: (typeof REPLAY_TEXT)['fr']
+  marks: ReadonlyMap<string, PlayerMarkKind>
+  locale: ReplayLocale
 }) {
+  const t = REPLAY_TEXT[locale]
   const color = colorOf(teamIDByXuid.get(death.xuid) ?? null, allyOf(xuidMeta, death.xuid, true))
   const kindLabel = deathKindLabel(death.kind, t)
   return (
@@ -295,6 +353,7 @@ function DeathLine({
             }}
           />
         )}
+        <PlayerMark kind={marks.get(death.xuid)} locale={locale} />
         <span className="truncate font-medium" style={{ color }}>
           {displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)}
         </span>
@@ -313,14 +372,19 @@ function KillLine({
   replayMs,
   colorOf,
   xuidMeta,
-  t,
+  marks,
+  marksByGamertag,
+  locale,
 }: {
   kill: ReplayKill
   replayMs: number
   colorOf: TeamColorResolver
   xuidMeta: XuidMeta
-  t: (typeof REPLAY_TEXT)['fr']
+  marks: ReadonlyMap<string, PlayerMarkKind>
+  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
+  locale: ReplayLocale
 }) {
+  const t = REPLAY_TEXT[locale]
   const assisted = k.assistState === 'named'
   const killerColor = colorOf(k.teamID, k.ally)
   const lineHint =
@@ -339,6 +403,7 @@ function KillLine({
       title={lineHint}
     >
       <div className="flex items-center gap-2">
+        <PlayerMark kind={marks.get(k.xuid)} locale={locale} />
         <span className="truncate font-medium" style={{ color: killerColor }}>
           {displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)}
         </span>
@@ -370,12 +435,15 @@ function KillLine({
           />
         )}
         {k.victimGamertag && (
-          <span
-            className="truncate"
-            style={{ color: colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally)) }}
-          >
-            {k.victimGamertag}
-          </span>
+          <>
+            <PlayerMark kind={marks.get(k.victimXuid)} locale={locale} />
+            <span
+              className="truncate"
+              style={{ color: colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally)) }}
+            >
+              {k.victimGamertag}
+            </span>
+          </>
         )}
         <span className="ml-auto font-mono tabular-nums text-muted-foreground">
           {formatClock(replayMs)}
@@ -389,6 +457,7 @@ function KillLine({
       {assisted && (
         <div className="flex items-center gap-1 pl-7 text-3xs text-muted-foreground" title={t.killFeedAssistHint}>
           <AssistMark label={t.killFeedAssistMark} color={colorOf(k.assistTeamID, k.ally)} />
+          <PlayerMark kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} locale={locale} />
           <span className="truncate">{k.assistGamertag}</span>
           {k.assistDamagePct != null && (
             <span className="font-mono tabular-nums">{t.killFeedAssistShare(k.assistDamagePct)}</span>
@@ -445,42 +514,5 @@ function AssistMark({ label, color }: { label: string; color: string }) {
         style={{ color }}
       />
     </span>
-  )
-}
-
-/**
- * MedalBadges — les badges de médaille EN IMAGES (POC) : le badge du jeu se reconnaît
- * d'un coup d'œil, le libellé et la description vivent dans l'infobulle où ils ne
- * coûtent rien. PAS d'inversion ni de teinte : une médaille est une pièce EN COULEUR.
- * REPLI : une médaille sans visuel garde son TEXTE — jamais le badge d'une autre.
- */
-function MedalBadges({ medals }: { medals: MedalEvent[] }) {
-  return (
-    <>
-      {medals.map((m, i) => {
-        const label = m.label || m.name
-        const tooltip = m.description ? `${label} — ${m.description}` : label
-        return m.imageUrl ? (
-          <img
-            key={`${m.name}-${m.tMs}-${i}`}
-            src={m.imageUrl}
-            alt={label}
-            title={tooltip}
-            width={MEDAL_PX}
-            height={MEDAL_PX}
-            className="inline-block object-contain"
-            loading="lazy"
-          />
-        ) : (
-          <span
-            key={`${m.name}-${m.tMs}-${i}`}
-            title={tooltip}
-            className="rounded-sm border border-border px-1 text-3xs text-muted-foreground"
-          >
-            {label}
-          </span>
-        )
-      })}
-    </>
   )
 }

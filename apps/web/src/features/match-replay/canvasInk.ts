@@ -17,7 +17,13 @@
 import { log } from '@/lib/accessibility/_logger'
 
 /** Variables de mise en page du système de design employées par le canvas. */
-export type InkVar = '--muted-foreground' | '--border' | '--foreground' | '--card'
+export type InkVar =
+  | '--muted-foreground'
+  | '--border'
+  | '--foreground'
+  | '--card'
+  /** Contour des noms sous les marqueurs (sombre dans les deux thèmes, cf. globals.css). */
+  | '--replay-label-stroke'
 
 /**
  * readInk lit une variable de mise en page sur :root. Rend une chaîne vide côté serveur ou si

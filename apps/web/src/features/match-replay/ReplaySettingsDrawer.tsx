@@ -45,6 +45,8 @@ interface ReplaySettingsDrawerProps {
   onToggleAim: () => void
   showZones: boolean
   onToggleZones: () => void
+  showNames: boolean
+  onToggleNames: () => void
   /** Le calque zones n'existe que si la carte a des zones nommées (même règle que le
    *  bouton d'origine : un interrupteur qui ne commande rien tromperait plus qu'il n'informe). */
   zonesAvailable: boolean
@@ -143,11 +145,13 @@ interface LayersSectionProps {
   onToggleAim: () => void
   showZones: boolean
   onToggleZones: () => void
+  showNames: boolean
+  onToggleNames: () => void
   zonesAvailable: boolean
 }
 
 function LayersSection({
-  locale, showAim, onToggleAim, showZones, onToggleZones, zonesAvailable,
+  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames, zonesAvailable,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -155,6 +159,12 @@ function LayersSection({
       <h3 className="text-xs font-medium text-muted-foreground">{t.layers}</h3>
       <div className="flex flex-col gap-1">
         <SettingsToggle label={t.layerAim} pressed={showAim} onToggle={onToggleAim} hint={t.layerAimHint} />
+        <SettingsToggle
+          label={t.layerNames}
+          pressed={showNames}
+          onToggle={onToggleNames}
+          hint={t.layerNamesHint}
+        />
         {zonesAvailable && (
           <SettingsToggle
             label={t.layerZones}
@@ -357,6 +367,8 @@ export function ReplaySettingsDrawer({
   onToggleAim,
   showZones,
   onToggleZones,
+  showNames,
+  onToggleNames,
   zonesAvailable,
   heatmap,
   showShotFx,
@@ -399,6 +411,8 @@ export function ReplaySettingsDrawer({
         onToggleAim={onToggleAim}
         showZones={showZones}
         onToggleZones={onToggleZones}
+        showNames={showNames}
+        onToggleNames={onToggleNames}
         zonesAvailable={zonesAvailable}
       />
       <EffectsSection
