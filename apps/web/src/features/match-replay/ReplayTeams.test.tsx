@@ -392,3 +392,62 @@ describe('ReplayTeams — vitalité : plein d’apparition', () => {
     expect(alphaHealth.style.width).toBe('100%')
   })
 })
+
+describe('ReplayTeams — état actif équipement (camo/surbouclier), cahier des charges 21.1', () => {
+  const cardOf = (view: ReturnType<typeof render>) =>
+    view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+
+  it('camouflage actif : effet de VERRE (flou + fond translucide), JAMAIS une opacité réduite', () => {
+    // Règle n°1.1 du fichier : un état se dit par un effet dédié, jamais en faisant
+    // fondre la fiche entière (l'ancien défaut que ce lot corrige).
+    const view = renderTeams({
+      equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 0, t1: 50, endRead: true }],
+    })
+    const card = cardOf(view)
+    expect(card.style.backdropFilter).toContain('blur')
+    expect(card.style.background).toContain('var(--card)')
+    expect(card.style.opacity).toBe('')
+  })
+
+  it('surbouclier actif : ENCADRÉ au token `legendary`, jamais `info` (réservé à la jauge de bouclier)', () => {
+    const view = renderTeams({
+      equipmentEpisodes: [{ slot: 512, fam: 'overshield', t0: 0, t1: 50, endRead: true }],
+    })
+    const card = cardOf(view)
+    expect(card.style.boxShadow).toContain('var(--ac-legendary)')
+    expect(card.style.boxShadow).not.toContain('var(--ac-info)')
+    // Le cadre n'a pas de fond propre : cf. la composition avec le verre ci-dessous.
+    expect(card.style.background).toBe('')
+  })
+
+  it('les deux effets se COMPOSENT : les ombres s’accumulent, le fond reste celui du verre', () => {
+    const view = renderTeams({
+      equipmentEpisodes: [
+        { slot: 512, fam: 'camo', t0: 0, t1: 50, endRead: true },
+        { slot: 512, fam: 'overshield', t0: 0, t1: 50, endRead: true },
+      ],
+    })
+    const card = cardOf(view)
+    expect(card.style.backdropFilter).toContain('blur')
+    expect(card.style.background).toContain('var(--card)')
+    expect(card.style.boxShadow).toContain('var(--ac-legendary)')
+    expect(card.style.boxShadow).toContain('var(--border)')
+  })
+
+  it('hors de la fenêtre [t0,t1] mesurée : aucun des deux effets — la fiche reste normale', () => {
+    const view = renderTeams({
+      equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 60, t1: 90, endRead: true }],
+    }, 10)
+    const card = cardOf(view)
+    expect(card.style.backdropFilter).toBe('')
+    expect(card.style.boxShadow).toBe('')
+  })
+
+  it('une fiche MORTE ne porte jamais un effet d’équipement (un épisode se ferme à la mort au plus tard)', () => {
+    const view = renderTeams({
+      equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 0, t1: 99, endRead: false }],
+    }, 140)
+    const card = cardOf(view)
+    expect(card.style.backdropFilter).toBe('')
+  })
+})

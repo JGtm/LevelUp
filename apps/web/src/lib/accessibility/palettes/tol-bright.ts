@@ -115,6 +115,12 @@ export const tolBrightPalette: Palette = {
   //     distinct des joueurs squad (bleu/vert/bleu-clair).
   'bonus': TOL_PURPLE, // #AA3377
 
+  // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
+  // Le plus proche d'un "or" dans le set catégoriel à 7 teintes — déjà réutilisé
+  // (outcome-draw, chart-series-4, warning) : même pattern de partage que le
+  // reste de cette palette (TOL_BLUE seul sert déjà 7 rôles).
+  'legendary': TOL_YELLOW, // #CCBB44
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
   'narrative-dominant':              TOL_GREEN,  // vert UI — statut positif
