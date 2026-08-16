@@ -229,6 +229,8 @@
   --ac-chart-series-8: #EC4899;
   /* Bonus (assistances) — violet, distinct des couleurs joueurs squad */
   --ac-bonus: #A855F7;
+  /* Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) */
+  --ac-legendary: #FBBF24;
   /* Badges narratifs */
   --ac-narrative-dominant:               #00DC82;
   --ac-narrative-dominant-text:          #052E16;

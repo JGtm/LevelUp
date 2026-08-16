@@ -113,8 +113,11 @@ type goldenInputs struct {
 	// raison : l assemblage en fait les episodes d equipement — sans elles le golden
 	// verrouillerait un document sans camo, donc pas celui que la production sert. Le film
 	// de reference (Fiesta) en porte 698, strictement binaires (0:617 · 4095:81) : le
-	// POWER-UP de camouflage allume le canal — i28 est l etat de l unite, pas celui du
-	// seul equipement rang 8 (controle du 2026-08-16, cf. renderEquipment).
+	// DASH du mode Fiesta allume le canal, PAS un power-up ramasse — ce mode ne pose
+	// aucun equipement au sol (enseignement utilisateur du 2026-08-16, cf. la
+	// distribution des durees verrouillee par camo_duration_distribution_test.go). i28
+	// est l etat de l unite, pas celui du seul equipement rang 8 (controle du
+	// 2026-08-16, cf. renderEquipment).
 	CamoStates []filmdec.CamoRead
 	// GrappleReads : les evenements de grappin (corps tag==3 d i59, tir et accroche avec
 	// leurs quanta d ancre). MEME raison : l assemblage en fait les tractions du schema 8 —

@@ -97,6 +97,13 @@ export const cividisPalette: Palette = {
   //     séquentielle bleu→jaune : pas de pourpre possible (limite CVD assumée).
   'bonus': CIVIDIS_T75, // #B6A855 (ocre)
 
+  // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
+  // Extrémité chaude de la rampe (t=1.00) : la seule teinte "or" disponible dans
+  // une palette séquentielle bleu→jaune. Déjà réutilisée par plusieurs tokens
+  // (outcome-draw, narrative-dominant...) — même pattern de partage que le reste
+  // de cette palette à 9 échantillons pour N rôles sémantiques.
+  'legendary': CIVIDIS_LIGHTEST, // #FEE838, t=1.00
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
   'narrative-dominant':              CIVIDIS_LIGHTEST, // jaune clair
