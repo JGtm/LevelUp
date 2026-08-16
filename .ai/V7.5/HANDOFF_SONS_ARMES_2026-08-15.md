@@ -205,10 +205,11 @@ livraison : LE VOTE PRIME.** On livre ce qui est vote, quelle que soit la perspe
 
 ROLES MULTIPLES, donnes par l'utilisateur et apparies PAR MESURE (a confirmer par lui) :
 
-	Ravageur (Covenant_provoker) — 3 sons conserves :
-	  bb31841b  10 wem, elements des 0,06 s  -> TIR 3 COUPS      = LE SON DU REJEU
-	  be684013  mediane 4,76 s (retenu 1048056459) -> COUP UNIQUE (charge), conserver
-	  c15c9e77  2,65-4,00 s                  -> RECHARGEMENT, conserver, PAS pour le rejeu
+	Ravageur (Covenant_provoker) — 3 sons conserves, roles CONFIRMES par l'utilisateur :
+	  bb31841b  10 wem, elements des 0,06 s        -> TIR 3 COUPS   = LE SON DU REJEU
+	  coup reconstitue (_coup_m1_1p, ev be684013)  -> COUP UNIQUE, conserver
+	  c15c9e77  2,65-4,00 s  -> CHARGEMENT (montee en charge de l'arme, PAS un
+	                            rechargement), conserver, pas pour le rejeu
 
 	Rayon de sentinelle (Forerunner_sentinelbeam) — CONFIRME par l'utilisateur :
 	  coup reconstitue (_coup_m1_1p, ev a220122d) -> TIR CONTINU (vidage de chargeur),
