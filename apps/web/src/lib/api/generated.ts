@@ -5367,6 +5367,7 @@ export interface components {
         Coverage: {
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
+            grapple?: components["schemas"]["GrappleCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             shots: components["schemas"]["LayerCoverage"];
@@ -6272,6 +6273,34 @@ export interface components {
             inflight_watcher: number;
             /** Format: int64 */
             stale_count: number;
+        };
+        GrappleCoverage: {
+            /** Format: int64 */
+            brokenBodies: number;
+            /** Format: int64 */
+            heavyReads: number;
+            /** Format: int64 */
+            lightReads: number;
+            /** Format: int64 */
+            pullLives: number;
+            /** Format: int64 */
+            pulls: number;
+            /** Format: int64 */
+            unpairedFires: number;
+        };
+        GrappleLine: {
+            /** Format: float */
+            ax: number;
+            /** Format: float */
+            ay: number;
+            /** Format: float */
+            az?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
         };
         Grenade: {
             /** Format: int64 */
@@ -9081,6 +9110,7 @@ export interface components {
             frameIntervalMs?: number;
             geometry?: components["schemas"]["MapObject"][] | null;
             geometryBounds?: components["schemas"]["Bounds"];
+            grappleLines?: components["schemas"]["GrappleLine"][] | null;
             grenadeLabels?: components["schemas"]["Label"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
             inventory?: components["schemas"]["Inventory"][] | null;

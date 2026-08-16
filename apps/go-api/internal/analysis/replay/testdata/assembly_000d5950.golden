@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 7 · titre halo_infinite
+schema 8 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
@@ -60,6 +60,34 @@ capacites nommees : 20=en:"Grappleshot"/fr:"grappin", 21=en:"Thruster"/fr:"propu
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 36 episode(s) publie(s) · par famille : camo=36 · 24 fin(s) MESUREE(s) (le reste ferme a la mort)
 couverture : 99 vie(s) publiee(s) · camo 22 vie(s) / 36 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+
+## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
+25 traction(s) sur 15 vie(s) · lectures : 32 tir(s) + 25 accroche(s) · 7 rate(s) · 0 corps non decodable(s)
+  slot=516 t=[272, 282] ancre=(10.77, 10.05, -1.09)
+  slot=516 t=[432, 446] ancre=(28.82, -3.76, 0.03)
+  slot=516 t=[902, 915] ancre=(1.36, 21.55, -2.25)
+  slot=530 t=[1204, 1213] ancre=(30.81, 9.13, 0.53)
+  slot=537 t=[1399, 1411] ancre=(16.78, 7.38, 1.72)
+  slot=539 t=[1606, 1616] ancre=(23.95, 7.16, 0.16)
+  slot=544 t=[1807, 1822] ancre=(24.67, -4.62, -0.03)
+  slot=551 t=[2038, 2053] ancre=(10.18, 10.66, -1.29)
+  slot=561 t=[2485, 2498] ancre=(24.30, 6.76, 0.39)
+  slot=561 t=[2610, 2621] ancre=(12.32, -2.79, -1.89)
+  slot=561 t=[2689, 2701] ancre=(1.34, 3.94, -0.85)
+  slot=562 t=[2729, 2744] ancre=(0.42, 4.14, 1.52)
+  slot=561 t=[2742, 2749] ancre=(-2.19, -3.02, -0.79)
+  slot=561 t=[2776, 2791] ancre=(-0.94, 0.34, -0.24)
+  slot=563 t=[2822, 2836] ancre=(26.61, -7.26, -1.28)
+  slot=561 t=[3012, 3032] ancre=(21.02, 6.66, -2.01)
+  slot=566 t=[3017, 3022] ancre=(15.61, 0.23, -2.07)
+  slot=561 t=[3087, 3095] ancre=(24.80, -13.45, -1.04)
+  slot=569 t=[3229, 3255] ancre=(25.72, 5.17, -0.89)
+  slot=580 t=[3506, 3517] ancre=(26.91, 4.63, 0.19)
+  slot=580 t=[3721, 3734] ancre=(22.70, -2.96, -2.29)
+  slot=588 t=[3944, 3958] ancre=(-1.12, 4.64, 0.88)
+  slot=588 t=[4116, 4129] ancre=(18.73, 7.21, -1.71)
+  slot=592 t=[4575, 4589] ancre=(22.81, -5.28, -0.73)
+  slot=605 t=[4802, 4814] ancre=(26.62, -7.32, -1.56)
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)

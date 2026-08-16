@@ -80,6 +80,8 @@ var replaySchemas = []struct {
 	{"AbilityRead", replay.AbilityRead{}},
 	{"EquipmentEpisode", replay.EquipmentEpisode{}},
 	{"EquipmentCoverage", replay.EquipmentCoverage{}},
+	{"GrappleLine", replay.GrappleLine{}},
+	{"GrappleCoverage", replay.GrappleCoverage{}},
 	{"AmmoSlot", replay.AmmoSlot{}},
 	{"Surface", replay.Surface{}},
 	{"MapObject", replay.MapObject{}},
@@ -138,9 +140,20 @@ var replaySchemas = []struct {
 //	                      porteuses / vies publiees, par famille) : N episodes sans
 //	                      denominateur se lirait comme une exhaustivite.
 //
-// Les cinq fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	29 -> 30  2026-08-16  `grappleLines` (plan PLAN_GRAPPIN_LIGNE, phase 1) : les TRACTIONS
+//	                      de grappin — fenetre datee par vie [t0, t1], du tir a l ARRIVEE
+//	                      mesuree sur la trajectoire, et point d accroche en coordonnees
+//	                      monde. Source : le corps tag==3 d i59, porte sur grammaire MESUREE
+//	                      et prouve au gate 0 du plan (marche a l ecart zero sur 3 films,
+//	                      ancre fixe a 0,05-0,07 u pres, distance joueur->ancre decroissante
+//	                      contre temoins melanges effondres). `Coverage` gagne son bloc
+//	                      `grapple` (tirs, accroches, tractions, rates, corps non
+//	                      decodables) : N tractions sans ses rejets se lirait comme une
+//	                      exhaustivite.
+//
+// Les six fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 29
+const wantReplayDocumentFields = 30
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

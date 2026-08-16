@@ -51,6 +51,7 @@ export type ReplayDocumentReady = Omit<
   | 'abilities'
   | 'equipmentEpisodes'
   | 'geometry'
+  | 'grappleLines'
   | 'grenadeLabels'
   | 'grenades'
   | 'inventory'
@@ -66,6 +67,7 @@ export type ReplayDocumentReady = Omit<
   abilities: NonNullable<ReplayDocument['abilities']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   geometry: NonNullable<ReplayDocument['geometry']>
+  grappleLines: NonNullable<ReplayDocument['grappleLines']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
   grenades: NonNullable<ReplayDocument['grenades']>
   inventory: ReplayInventoryReady[]
@@ -99,6 +101,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // vie publiée n'en porte : les fiches restent sobres, jamais un effet deviné.
     equipmentEpisodes: raw.equipmentEpisodes ?? [],
     geometry: raw.geometry ?? [],
+    // Les TRACTIONS de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
+    // d'accroche en coordonnées monde. Absent = aucune traction lue sur ce film : rien
+    // ne se trace, jamais une ligne devinée.
+    grappleLines: raw.grappleLines ?? [],
     grenadeLabels: raw.grenadeLabels ?? [],
     grenades: raw.grenades ?? [],
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),

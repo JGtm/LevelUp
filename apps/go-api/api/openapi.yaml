@@ -10692,6 +10692,8 @@ components:
           $ref: '#/components/schemas/BridgeHealth'
         equipment:
           $ref: '#/components/schemas/EquipmentCoverage'
+        grapple:
+          $ref: '#/components/schemas/GrappleCoverage'
         grenades:
           $ref: '#/components/schemas/LayerCoverage'
         objectives:
@@ -12817,6 +12819,64 @@ components:
         - granted_total
         - coalesced_total
         - stale_count
+      type: object
+    GrappleCoverage:
+      additionalProperties: false
+      properties:
+        brokenBodies:
+          format: int64
+          type: integer
+        heavyReads:
+          format: int64
+          type: integer
+        lightReads:
+          format: int64
+          type: integer
+        pullLives:
+          format: int64
+          type: integer
+        pulls:
+          format: int64
+          type: integer
+        unpairedFires:
+          format: int64
+          type: integer
+      required:
+        - lightReads
+        - heavyReads
+        - pulls
+        - pullLives
+        - unpairedFires
+        - brokenBodies
+      type: object
+    GrappleLine:
+      additionalProperties: false
+      properties:
+        ax:
+          format: float
+          type: number
+        ay:
+          format: float
+          type: number
+        az:
+          format: float
+          type: number
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - slot
+        - t0
+        - t1
+        - ax
+        - ay
       type: object
     Grenade:
       additionalProperties: false
@@ -19534,6 +19594,12 @@ components:
             - "null"
         geometryBounds:
           $ref: '#/components/schemas/Bounds'
+        grappleLines:
+          items:
+            $ref: '#/components/schemas/GrappleLine'
+          type:
+            - array
+            - "null"
         grenadeLabels:
           items:
             $ref: '#/components/schemas/Label'

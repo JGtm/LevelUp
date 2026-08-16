@@ -68,7 +68,14 @@ package replay
 // porte les épisodes, et la reprise du backfill se fait par SchemaVersion — un artefact
 // v6 doit se voir comme « à re-cuire », pas comme à jour (le re-build de masse pendant au
 // registre portera ce champ avec le correctif de précision des objets du monde).
-const SchemaVersion = 7
+//
+// v8 (2026-08-16, plan PLAN_GRAPPIN_LIGNE phase 1) : le document publie `grappleLines` —
+// les TRACTIONS de grappin datées par vie avec leur point d'accroche en coordonnées monde
+// (cf. grapple_lines.go ; source : le corps tag==3 d'i59, porté et prouvé au gate 0 du
+// même plan). Le champ est optionnel, mais la version monte : la ligne joueur -> ancre
+// côté client N'EXISTE que si l'artefact la porte, et la reprise du backfill se fait par
+// SchemaVersion — un artefact v7 doit se voir comme « à re-cuire », pas comme à jour.
+const SchemaVersion = 8
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -220,6 +227,12 @@ type ReplayDocument struct {
 	// seulement sont mesurées — les autres équipements restent sans état plutôt que
 	// devinés. Absent si aucune vie publiée ne porte d'épisode.
 	EquipmentEpisodes []EquipmentEpisode `json:"equipmentEpisodes,omitempty"`
+	// GrappleLines est la liste des TRACTIONS de grappin (cf. grapple_lines.go) : la
+	// fenêtre datée [t0, t1] — du tir à l'ARRIVÉE mesurée sur la trajectoire — et le point
+	// d'accroche en coordonnées monde. La position du joueur pendant la fenêtre est celle
+	// de sa Track : la ligne se trace de la position courante vers l'ancre. Absent si
+	// aucune traction n'a été lue (film sans grappin, ou vies non publiées).
+	GrappleLines []GrappleLine `json:"grappleLines,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas
 	// deviné. Ce n'est pas l'inventaire de grenades (c'est i22, non résolu) : c'est

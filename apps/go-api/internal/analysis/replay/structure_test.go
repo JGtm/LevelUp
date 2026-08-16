@@ -126,8 +126,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   même raison de monter que v3/v4/v5 : c'est la CLÉ DE REPRISE du backfill — l'effet
 	//   plein-fiche et les sons d'équipement n'existent que sur un artefact qui porte les
 	//   épisodes, un v6 doit se lire « à re-cuire », pas « à jour ».
-	if SchemaVersion != 7 {
-		t.Fatalf("SchemaVersion = %d, attendu 7 : incrémenter exige une raison écrite ci-dessus "+
+	//   v7 -> v8 (2026-08-16, plan PLAN_GRAPPIN_LIGNE phase 1) : grappleLines, les tractions
+	//   de grappin datées par vie avec leur point d'accroche en coordonnées monde. Champ
+	//   omitempty, même raison de monter que v3/v4/v5/v7 : c'est la CLÉ DE REPRISE du
+	//   backfill — la ligne joueur -> ancre n'existe que sur un artefact qui porte les
+	//   tractions, un v7 doit se lire « à re-cuire », pas « à jour ».
+	if SchemaVersion != 8 {
+		t.Fatalf("SchemaVersion = %d, attendu 8 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

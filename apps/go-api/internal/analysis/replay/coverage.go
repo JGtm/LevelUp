@@ -118,6 +118,11 @@ type Coverage struct {
 	// (le slot est DANS la lecture), le dénominateur est le nombre de vies publiées.
 	// Absente des artefacts antérieurs au schéma 7.
 	Equipment *EquipmentCoverage `json:"equipment,omitempty"`
+	// Grapple est la couverture des tractions de grappin (schéma 8, cf. grapple_lines.go) :
+	// lectures tir/accroche, tractions publiées, ratés et corps non décodables. Même
+	// logique qu'Equipment : le slot est DANS la lecture, pas à rattacher. Absente des
+	// artefacts antérieurs au schéma 8.
+	Grapple *GrappleCoverage `json:"grapple,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`

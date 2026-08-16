@@ -69,6 +69,9 @@ const NULLABLE_ARRAYS = [
   // 2026-08-16), en épisodes datés par vie. Deux familles seulement — les deux mesurées.
   'equipmentEpisodes',
   'geometry',
+  // `grappleLines` : les tractions de grappin (schéma 8, 2026-08-16) — fenêtre mesurée
+  // [t0, t1] par vie + point d'accroche en coordonnées monde.
+  'grappleLines',
   'grenadeLabels',
   'grenades',
   'inventory',

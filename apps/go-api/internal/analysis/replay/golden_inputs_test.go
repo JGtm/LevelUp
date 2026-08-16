@@ -72,7 +72,11 @@ func goldenInputsPath() string {
 // brut du bouclier (Shield.Q — la regle du surbouclier est `q > 64`, et le clamp de
 // ShieldFraction efface l information), et le fixture porte les lectures CamoStates (i28
 // queue[1]) que BuildFromFilm decode desormais.
-const goldenInputsMagic = "REPLAYINPUTS4\n"
+//
+// v5 (2026-08-16, PLAN_GRAPPIN_LIGNE phase 1) : le fixture porte les lectures GrappleReads
+// (corps tag==3 d i59 — tir et accroche de grappin, quanta de position aux largeurs de la
+// carte) que BuildFromFilm decode desormais.
+const goldenInputsMagic = "REPLAYINPUTS5\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -88,6 +92,8 @@ const goldenInputsMagic = "REPLAYINPUTS4\n"
 //	AbilityRank       Slot · TimestampUS · Rank (le compteur de rotation n entre pas dans
 //	                  l assemblage : il borne une lecture, il ne se publie pas)
 //	CamoRead          Slot · TimestampUS · Q (la voie queue[1] d i28 — l interrupteur)
+//	GrappleRead       Slot · TimestampUS · Heavy · PosQ (les quanta de l ancre, aux
+//	                  largeurs d axe de la carte)
 //	Death             XUID · Gamertag · TimeMS
 //	PlayerIndexTable  entier
 //	ClockOriginUS     l horodatage du premier paquet du film (l origine publiee en depend)
@@ -110,8 +116,13 @@ type goldenInputs struct {
 	// POWER-UP de camouflage allume le canal — i28 est l etat de l unite, pas celui du
 	// seul equipement rang 8 (controle du 2026-08-16, cf. renderEquipment).
 	CamoStates []filmdec.CamoRead
-	Deaths     []Death
-	Indices    PlayerIndexTable
+	// GrappleReads : les evenements de grappin (corps tag==3 d i59, tir et accroche avec
+	// leurs quanta d ancre). MEME raison : l assemblage en fait les tractions du schema 8 —
+	// sans elles le golden verrouillerait un document sans grappin, donc pas celui que la
+	// production sert.
+	GrappleReads []filmdec.GrappleRead
+	Deaths       []Death
+	Indices      PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
 	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
 	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
@@ -129,6 +140,7 @@ func (g *goldenInputs) options() Options {
 		Inventory:         g.Inventory,
 		AbilityRanks:      g.AbilityRanks,
 		CamoStates:        g.CamoStates,
+		GrappleReads:      g.GrappleReads,
 		Deaths:            g.Deaths,
 		PlayerIndices:     g.Indices,
 		FilmClockOriginUS: g.ClockOriginUS,
@@ -401,6 +413,18 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		w.u(uint64(cr.Q))
 	}
 
+	w.u(uint64(len(g.GrappleReads)))
+	lastTS = 0
+	for _, gr := range g.GrappleReads {
+		w.u(gr.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
+		lastTS = gr.TimestampUS
+		w.u(uint64(gr.Slot))
+		w.bool8(gr.Heavy)
+		for a := 0; a < 3; a++ {
+			w.u(uint64(gr.PosQ[a]))
+		}
+	}
+
 	w.u(uint64(len(g.Deaths)))
 	for _, d := range g.Deaths {
 		w.u(d.XUID)
@@ -616,6 +640,18 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	}
 
 	n = int(r.u())
+	g.GrappleReads = make([]filmdec.GrappleRead, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		gr := filmdec.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
+		for a := 0; a < 3; a++ {
+			gr.PosQ[a] = uint32(r.u())
+		}
+		g.GrappleReads = append(g.GrappleReads, gr)
+	}
+
+	n = int(r.u())
 	g.Deaths = make([]Death, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		g.Deaths = append(g.Deaths, Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
@@ -729,9 +765,11 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 		t.Fatalf("ecriture du fixture : %v", err)
 	}
 	t.Logf("fixture reecrit : %s (%d octets brut, %d compresse) — %d positions, %d tirs, "+
-		"%d loadouts, %d lancers, %d projectiles, %d inventaires, %d morts, %d index",
+		"%d loadouts, %d lancers, %d projectiles, %d inventaires, %d lectures grappin, "+
+		"%d morts, %d index",
 		goldenInputsPath(), len(blob), buf.Len(), len(g.Positions), len(g.Fire), len(g.Loadouts),
-		len(g.Grenades), len(g.Projectiles), len(g.Inventory), len(g.Deaths), len(g.Indices.ByXUID))
+		len(g.Grenades), len(g.Projectiles), len(g.Inventory), len(g.GrappleReads),
+		len(g.Deaths), len(g.Indices.ByXUID))
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
@@ -771,6 +809,9 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	if g.CamoStates, _, err = filmdec.ScanFilmCamoStates(dir); err != nil {
+		return nil, err
+	}
+	if g.GrappleReads, _, err = filmdec.ScanFilmGrappleReads(dir); err != nil {
 		return nil, err
 	}
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
