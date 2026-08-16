@@ -109,7 +109,14 @@ generation effectivement votee — comparer moins que ca rate les changements de
 ## 7. Livraison (UNIQUE et FINALE)
 
 Une seule livraison est prevue. Elle est un REMPLACEMENT EN MIROIR : le dossier cible
-est vide puis reecrit avec exactement les fichiers votes + le manifeste app. Contenu
+est vide puis reecrit avec exactement les fichiers votes + le manifeste app.
+
+	python _outils/livraison.py <racine du depot>
+	# -> static/weapons-assets/halo_infinite/sons/ (31 fichiers, index.json par gid weap)
+
+EXECUTEE le 2026-08-16 sur la branche `feat/sons-rejeu-inapp` (108 entrees gid, 22,3 Mo),
+lecteur branche dans ReplayCanvas. La cle du manifeste est la FAMILLE d'arme — le gid du
+tag `weap`, moitie haute de l'identifiant d'arme du film (`buildWeaponLabels`). Contenu
 fige : les 46 votes de `_donnees/votes-final.json`, roles multiples confirmes :
 
 	Ravageur      bb31841b = tir 3 coups (LE son du rejeu) ; reconstitue be684013 =
