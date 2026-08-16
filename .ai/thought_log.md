@@ -1,3 +1,16 @@
+## [2026-08-16] Sons d'armes — la RECETTE documentee, le travail declare final
+
+**Statut** : decision utilisateur — les sons sont definitifs, une seule livraison prevue,
+toute reprise future rejoue la recette. `RECETTE_SONS_ARMES.md` ecrit : le COMMENT refaire
+de bout en bout (extraction, passes 1/2, semantique d'assemblage avec preuves, rendu,
+vote, livraison miroir, lecons). Les outils du pipeline (scripts Python + vgmstream +
+tri.html) et les donnees finales (lot1/lot2/coups/manifeste/votes-final) sont copies du
+scratchpad de session vers `Desktop/Halo Infinite - Sons armes/_outils` et `_donnees` —
+ils ne vivaient que dans un dossier temporaire.
+
+**Conclusion** : reste la livraison unique (fichiers votes -> assets app, manifeste avec
+roles), suspendue au rendu de l'agent sons-rejeu-inapp pour l'emplacement et le schema.
+
 ## [2026-08-16] Sons d'armes — selection finale validee par l'utilisateur
 
 **Statut** : le tri est CLOS. 46 votes (`votes-sons-armes(4).json`), tout reecoute et

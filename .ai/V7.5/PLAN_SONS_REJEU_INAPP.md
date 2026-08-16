@@ -84,12 +84,14 @@ Gate : page admin affiche la section, valeurs persistees et relues ; typecheck +
 
 ## Livraison des sons (regle utilisateur du 2026-08-16)
 
-**La livraison est un REMPLACEMENT EN MIROIR, jamais un ajout.** A chaque livraison :
-le dossier cible des sons du rejeu est VIDE puis reecrit avec exactement les fichiers
-votes + le manifeste — « pour pas avoir de redondance ou d'elements obsoletes ». Un
-fichier absent du manifeste n'a pas le droit d'exister dans le dossier cible. Etat au
-2026-08-16 : aucun audio n'est encore versionne dans le depot, la regle s'applique des
-la premiere livraison et a toutes les suivantes.
+**La livraison est UNIQUE, FINALE, et c'est un REMPLACEMENT EN MIROIR** : le dossier
+cible est vide puis reecrit avec exactement les fichiers votes + le manifeste — « pour
+pas avoir de redondance ou d'elements obsoletes ». Un fichier absent du manifeste n'a pas
+le droit d'exister dans le dossier cible. Decision utilisateur : « les sons sont
+definitifs a ce stade [...] il n'y aura pas plusieurs livraisons de prevues. Il faut
+considerer notre travail ici comme final. » Toute reprise future (arme nouvelle, erreur)
+REJOUE la recette documentee — `RECETTE_SONS_ARMES.md` — et se conclut par une nouvelle
+livraison miroir ; on n'amende jamais le dossier livre a la main.
 
 Contenu de la premiere livraison (fige, cf. handoff sons-armes section 7) : les 46 votes
 de `votes-sons-armes(4).json`, avec les roles multiples confirmes — Ravageur (bb31841b =
