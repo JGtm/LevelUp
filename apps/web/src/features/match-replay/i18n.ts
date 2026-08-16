@@ -65,11 +65,20 @@ interface ReplayText {
   /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
   layerZones: string
   layerZonesHint: string
+  /** Noms des joueurs sous leur marqueur (calque éteignable — un BTB à 24 joueurs). */
+  layerNames: string
+  layerNamesHint: string
   zoneLabel: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
   teamUnknown: string
+  /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
+  teamLabelFmt: (name: string) => string
+  teamNumberedFmt: (n: number) => string
   unknownPlayer: string
+  /** Marques d'identité devant un nom (fiches, fil) : le joueur de la page, un ami. */
+  markMe: string
+  markFriend: string
   healthLabel: string
   shieldLabel: string
   abilityLabel: string
@@ -163,15 +172,21 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
-      "Direction du regard, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
+      "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
     layerZones: 'Zones',
     layerZonesHint:
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
+    layerNames: 'Noms',
+    layerNamesHint: 'Le nom de chaque joueur sous son marqueur.',
     zoneLabel: 'Zone de la carte',
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
     teamUnknown: 'Sans équipe',
+    teamLabelFmt: (name) => `Équipe ${name}`,
+    teamNumberedFmt: (n) => `Équipe ${n}`,
     unknownPlayer: 'Joueur inconnu',
+    markMe: 'Moi',
+    markFriend: 'Ami',
     healthLabel: 'Santé',
     shieldLabel: 'Bouclier',
     abilityLabel: "Capacité d'armure équipée",
@@ -256,14 +271,20 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:
-      'Look direction, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
+      'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
     layerZones: 'Zones',
     layerZonesHint:
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
+    layerNames: 'Names',
+    layerNamesHint: "Each player's name under their marker.",
     zoneLabel: 'Map zone',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
     teamUnknown: 'No team',
+    teamLabelFmt: (name) => `Team ${name}`,
+    teamNumberedFmt: (n) => `Team ${n}`,
     unknownPlayer: 'Unknown player',
+    markMe: 'Me',
+    markFriend: 'Friend',
     healthLabel: 'Health',
     shieldLabel: 'Shield',
     abilityLabel: 'Equipped armor ability',

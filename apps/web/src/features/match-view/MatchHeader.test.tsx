@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 
 import { MatchHeaderCard, MatchNavigationBar } from './MatchHeader'
 import type { MatchViewHeader, MatchViewRank } from '@/lib/api/types'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 // Mocks shared
 vi.mock('@/lib/accessibility', () => ({
@@ -393,6 +394,32 @@ describe('MatchHeaderCard — lien vers le rejeu 2D', () => {
     renderHeader({ ...baseHeader, replay_available: true }, 'en')
     expect(screen.getByText('2D replay')).toBeInTheDocument()
     expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+  })
+
+  // LE LOGO EST UN RASTER À DEUX VARIANTES (plan d'habillage 4.2) : un PNG ne se teinte pas
+  // en `currentColor` comme le SVG qu'il remplace, c'est donc le thème qui choisit le fichier.
+  function replayLogoSrc(container: HTMLElement): string | undefined {
+    const logo = Array.from(container.querySelectorAll('img')).find((img) =>
+      img.getAttribute('src')?.includes('/icons/replay-'),
+    )
+    return logo?.getAttribute('src') ?? undefined
+  }
+
+  it('porte le logo BLANC en thème sombre', () => {
+    useSettingsDraftStore.getState().setTheme('dark')
+    const { container } = renderHeader({ ...baseHeader, replay_available: true }, 'fr')
+    expect(replayLogoSrc(container)).toBe('/icons/replay-white.png')
+  })
+
+  it('porte le logo NOIR en thème clair', () => {
+    useSettingsDraftStore.getState().setTheme('light')
+    const { container } = renderHeader({ ...baseHeader, replay_available: true }, 'fr')
+    expect(replayLogoSrc(container)).toBe('/icons/replay-black.png')
+  })
+
+  it('ne porte aucun logo quand le match n’a pas d’artefact', () => {
+    const { container } = renderHeader({ ...baseHeader, replay_available: false }, 'fr')
+    expect(replayLogoSrc(container)).toBeUndefined()
   })
 })
 

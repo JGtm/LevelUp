@@ -6,7 +6,9 @@
  */
 import { Link } from '@tanstack/react-router'
 
+import { themedIconSrc } from '@/lib/themedIcon'
 import { useTitleSlug } from '@/lib/title-routing'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 
@@ -28,6 +30,9 @@ interface ReplayLinkProps {
 export function ReplayLink({ available, matchId, playerSlug, locale }: ReplayLinkProps) {
   const t = MATCH_VIEW_TEXT[locale]
   const titleSlug = useTitleSlug()
+  // Le thème LOCAL, celui que le store a déjà tranché (`dark` | `light`) : l'icône est un
+  // raster à deux variantes, elle ne peut pas se teinter comme un SVG en `currentColor`.
+  const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
   if (!available) return null
   return (
     <Link
@@ -37,9 +42,7 @@ export function ReplayLink({ available, matchId, playerSlug, locale }: ReplayLin
       aria-label={t.replayTooltip}
       className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
-      </svg>
+      <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-4 w-auto" />
       {t.replayShort}
     </Link>
   )
