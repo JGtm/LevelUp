@@ -1,3 +1,87 @@
+## [2026-08-16] v7.5 rejeu — bornes : 8 cartes entrent, 14 sont REFUSEES, et 276 matchs deja servis sont faux (plan alertes, phase 3)
+**Statut** : Complété — phase 3 de `.ai/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
+Item 3.4 statué `[!]` : `06dfe6d9` (Threshold) N'EST PAS débloquée, témoin de remplacement
+`11de8353` (Thunderhead).
+**Décision technique** : n'ajouter au catalogue que les cartes dont le contrôle
+`DetectI0Layout` ACCORDE. 22 cartes Forge du reliquat ont vu leur module PROUVÉ par level_id
+(unicité 1/1 chacune, `TestPreuveLevelIDCartes` passe de 44 à **66 sous-tests verts**), mais
+le contrôle en a refusé 14. Elles restent dans `preuvesLevelID` (le module est établi) et
+hors de `mapModule` (les bornes sont réfutées) — exactement le régime de Live Fire.
+**Résultats — le contrôle, et ce qu'il a trouvé.** 19 films, un par carte disposant d'un film
+en cache. Le verdict est SYSTÉMATIQUE PAR CANEVAS, jamais par carte — attendu, puisque les
+bornes sont celles du MODULE :
+
+    fo08_wetland   bornes [15 15 17]   films [15 15 17]   ACCORD    4/4
+    fo09_academy   bornes [15 15 17]   films [15 15 17]   ACCORD    3/3
+    fo05_desert    bornes [18 18 18]   films [15 15 17]   DESACCORD 3/3
+    fo11_blank     bornes [18 18 18]   films [15 15 17]   DESACCORD 7/7
+    fo13_frost     bornes [18 18 18]   films [15 15 17]   DESACCORD 2/2
+
+**LA DÉCOUVERTE DÉBORDE LE LOT** : le désaccord porte sur le MODULE, et 18 cartes DÉJÀ
+cataloguées vivent sur ces trois canevas — `fo11_blank` 11 cartes / 155 matchs, `fo05_desert`
+7 / 98, `fo13_frost` 1 / 23, soit **276 matchs (15,1 % du registre) servis avec de fausses
+bornes**. C'est plus gros que le problème que ce plan devait résoudre (192 matchs sans bornes
+du tout). Cause : le tag sbsp le plus GROS de ces modules couvre ~3 870 unités là où le film
+quantifie ~550, et `mapquant-build` retient `bsps[0]`, le plus gros.
+**CECI EXPLIQUE LE REPORT « écart vertical de ~1 270 m » du 2026-08-14** : ses cartes touchées
+(Solitude, Cliffside, Snowbound x2, Opulence, Shogun, Curfew, Domicile, Kaiketsu) sont TOUTES
+sur ces trois canevas, et ses cartes saines Forge (Vagabond, Fortress, Houseki) sur les deux
+canevas ACCORD. La corrélation est complète et le diagnostic descend d'un cran : ce sont les
+BORNES, et leur signature est la LARGEUR D'AXE — mesurable en 6 chunks par film, sans oracle.
+**Résultats — la couverture.** Catalogue **56 -> 64 entrées** ; matchs couverts **1 607
+(88,20 %) -> 1 630 (89,46 %)** ; sans bornes **215 (11,80 %) -> 192 (10,54 %)**. Gain
++23 matchs. Diff du catalogue vérifié entrée par entrée : **8 ajouts, 0 suppression, 0 entrée
+préexistante modifiée** (144 lignes insérées, 0 supprimée). Les 8 : Thunderhead, Ronin,
+Rat's Nest, Scarlett's Landing (`fo08_wetland`) · Insolence, Merchant's Square, Urban Raid,
+Cole Protocol (`fo09_academy`). Cole Protocol n'a aucun film : elle entre sur le contrôle de
+son CANEVAS (3/3), les bornes étant celles du module.
+**Témoin, et son refus vérifié.** `replay-build --map Threshold 06dfe6d9-...` sort en erreur
+`replaybuild: carte hors catalogue de bornes (candidats: [Threshold])` — comportement voulu,
+pas de coordonnée devinée. Témoin de remplacement cuit en commande bloquante :
+`11de8353` (Thunderhead) -> `data/cache/replays/halo_infinite/11de8353.json`, **181 pistes,
+module `fo08_wetland`, 4 164 669 octets**, 31 tractions de grappin sur 38 tirs / 14 vies.
+Couverture du pont armes publiée par l'outil : 179 tirs rattachés sur 1 968, verdict
+« partiel : moins des deux tiers rattachés », pont « non publiable : un slot change de
+porteur » — inchangé par ce lot, c'est le régime connu de l'attribution fine.
+**Ce que la phase 3 NE dit PAS** : aucun contrôle n'a été rejoué sur les 42 cartes NON Forge
+déjà au catalogue (seuls les 5 canevas Forge du reliquat ont été instruits) — d'autres bornes
+peuvent être fausses sans que rien ne le dise. Le contrôle est une égalité de LARGEURS : deux
+AABB différentes de moins d'un facteur 2 rendraient les mêmes largeurs et passeraient. Rien
+n'est vérifié en coordonnées monde.
+**Gates** : `gofmt -l` vide · `go build ./...` OK · `go vet ./...` OK ·
+`go test ./internal/analysis/filmdec/ ./internal/analysis/replay/ ./internal/replaybuild/
+./internal/api/wire/` verts · `go test ./internal/himap/ -run TestPreuveLevelIDCartes` vert
+(66 sous-tests) · `golangci-lint --new-from-merge-base=origin/main` **0 issue**. La suite
+himap COMPLÈTE n'a pas été jouée : > 30 min en local (gamefiles), la CI en est l'autorité.
+Le golden `minibobine` reste ROUGE — préexistant (`020b95eab`), au registre, non traité.
+**Conclusion / prochaine étape** : corriger le choix du sbsp pour les canevas Forge
+(`bsps[0]` = le plus gros n'est pas toujours le bon) AVANT tout re-build de masse — sinon la
+masse re-cuit 276 artefacts faux. Trois lignes ajoutées au registre des reports.
+
+## [2026-08-16] v7.5 rejeu 2D — PLAN d'habillage écrit (marqueurs, noms, amis, logo, rangée fil | carte | fiches)
+**Statut** : En cours — plan `.ai/V7.5/replay2d/PLAN_HABILLAGE_REJEU_2D.md` écrit, AUCUN
+code touché ; exécution après validation des décisions D1-D8 par le user.
+**Décision technique** : porter la RANGÉE du POC (`carte | fil | équipes`, colonnes latérales
+`absolute inset-0` pour que la carte impose la hauteur) plutôt qu'un `items-stretch` naïf ;
+étiquette de nom = technique du POC (`strokeText` + `fillText`, contour sombre dans les deux
+thèmes via une variable de thème `--replay-label-stroke`, patron `fxInk`), portée SOUS le
+marqueur (demande) et non à droite (POC). Trois centralisations avant la 3e copie (règle 6) :
+suffixe d'icône par thème (`waypointUrl.ts` + `MatchNemesisCards.tsx`), libellé d'équipe
+(`MatchScoreboard.tsx` + `MatchObjectivesSection.tsx`), `normalizeGamertag` (privé dans
+`match-view/colors.ts`) — chacune avec garde-rail grep.
+**Résultats observés (sur pièces)** : (1) le « bâton » = l'AXE du cône de visée
+(`strokeAxis`, replayMarkers.ts), pas le cône ; (2) **défaut réel trouvé** : la couleur des
+marqueurs est indexée par TRACE (= par vie, `getSeriesColors(doc.tracks.length)`), donc un
+joueur change de couleur à chaque réapparition, à rebours de la doctrine écrite dans
+`rosterLogic.ts` (`colorIndex` n'est lu nulle part) ; (3) l'en-tête des fiches affiche `t0`/`t1`
+brut ; (4) le fil a déjà le bon sens de lecture (récent en tête, descendre = ancien), seule sa
+hauteur est figée (`max-h-64`) ; (5) le fond de carte cuit est clair au centre et sombre au
+pourtour — le contour de lettres est nécessaire, pas cosmétique.
+**Conclusion / prochaine étape** : le user valide ou amende D1 (couleur = identité d'équipe
+par joueur, noms pour distinguer), D3 (cône conservé, axe supprimé), D5 (losange ami / anneau
+moi sur la carte, glyphe dans fiches et fil), D6 (paire PNG noir/blanc dérivée du logo, pas de
+SVG redessiné) ; puis exécution phases 0→6 sous `plan-execution`, gate visuel user en phase 5.
+
 ## [2026-08-16] v7.5 rejeu — killsource aux largeurs de carte : le NÉGATIF est mesuré (plan alertes, phases 0-2)
 **Statut** : Complété — phases 0, 1 et 2 de `.ai/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
 Phase 2 NON OUVERTE, ses 4 items statués `[!]` par décision du gate 1. Phase 3 (catalogue de

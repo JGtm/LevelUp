@@ -91,6 +91,44 @@ var preuvesLevelID = []struct {
 	{"Shogun", "fo11_blank"},
 	{"Sylvanus", "fo05_desert"},
 	{"Smallhalla", "fo08_wetland"},
+	// Reliquat du registre, instruit le 2026-08-16 (PLAN_ALERTES_REPLAY_PARTOUT phase 3) :
+	// les cartes Forge jouees 1 a 8 fois, restees hors catalogue au lot du 2026-08-13 faute
+	// d'avoir ete demandees. MEME methode, MEME sonde, MEME exigence d'unicite.
+	//
+	// ATTENTION — QUATORZE DE CES VINGT-DEUX NE SONT PAS AU CATALOGUE, et c'est voulu : leur
+	// module est PROUVE (c'est ce que cette table atteste) mais ses BORNES sont fausses. Le
+	// controle `DetectI0Layout` du meme lot rend un desaccord SYSTEMATIQUE sur les canevas
+	// `fo05_desert`, `fo11_blank` et `fo13_frost` — bornes -> [18 18 18], films -> [15 15 17],
+	// 12 films sur 12. Le meme cas de figure que `Live Fire` ci-dessus : module etabli,
+	// bornes indisponibles. Voir le commentaire de `mapModule` (cmd/mapquant-build) et le
+	// registre des reports.
+	{"Ecotone", "fo11_blank"},
+	{"Threshold", "fo11_blank"},
+	{"Pharaoh", "fo11_blank"},
+	{"Credence", "fo11_blank"},
+	{"Disciple", "fo11_blank"},
+	{"Nadair", "fo11_blank"},
+	{"Warehouse", "fo11_blank"},
+	{"Insolence", "fo09_academy"},
+	{"Merchant's Square", "fo09_academy"},
+	{"Urban Raid", "fo09_academy"},
+	{"Cole Protocol", "fo09_academy"},
+	{"Solution", "fo05_desert"},
+	{"Flood Gulch", "fo05_desert"},
+	{"Dawnbreaker", "fo05_desert"},
+	{"Vallaheim Firefight", "fo05_desert"},
+	{"Thunderhead", "fo08_wetland"},
+	{"Ronin", "fo08_wetland"},
+	{"Rat's Nest", "fo08_wetland"},
+	{"Scarlett's Landing", "fo08_wetland"},
+	{"Outlook", "fo13_frost"},
+	// `Lattice - Ranked` garde son suffixe ICI : le depot ne porte aucun `lattice_map.mvar`,
+	// et la preuve doit nommer un fichier qui existe. Au catalogue la cle se normalise en
+	// `lattice` (`NormalizeMapName` retire ` - ranked`), ce que le registre attend.
+	{"Lattice - Ranked", "fo13_frost"},
+	// Carte dont l'API n'a JAMAIS resolu le nom d'affichage : `map_name` vaut l'identifiant
+	// d'asset. Elle se prouve comme les autres — son `.mvar` est au depot sous ce nom.
+	{"944396dd-5661-4a16-b1d8-a6053f762c55", "fo13_frost"},
 }
 
 // TestPreuveLevelIDCartes rejoue la preuve level_id de chaque appariement : lecture du
