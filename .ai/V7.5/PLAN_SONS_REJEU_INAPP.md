@@ -106,3 +106,24 @@ manifeste app encode ces roles : `rejeu` / `conserve`.
 Piste consignee au passage (chantier sons-armes, pas ici) : l'utilisateur se souvient d'un
 « pan... clic » sur la Carabine Vestige — symptome possible du delai d'action non prouve.
 A verifier a l'oreille sur les rendus regeneres avant d'instruire.
+
+### 2026-08-16 — Export RANGED execute par le pilote, VERIFIE
+
+Les deux passes ont tourne avec le code de la branche `feat/sons-rejeu-inapp` (worktree de
+l'agent), modules ouverts un a un (contrainte memoire respectee).
+
+- Passe 1 (pc/globals) : `variation RANGED : 177 couples lus | composantes negatives 169,
+  positives 144, nulles 41` — l'interpretation « bornes ordonnees » est la bonne, les
+  couples sont bien (ecart bas, ecart haut). 55 armes.
+- CONTROLE D'ADDITIVITE : 644 evenements compares a la generation finale votee
+  (`_donnees/lot1.json` d'avant export) — **0 divergence** de structure ou de gains.
+  L'export n'a rien change d'autre qu'ajouter les fourchettes. Idem passe 2 : 37 armes,
+  0 divergence hors champ `variation`.
+- Resultat : 128 couches avec fourchette (ex. hauteur -85..+80 centiemes, volume -3..0 dB),
+  15 armes avec fourchette agregee au niveau du tir.
+- `_donnees/lot1.json` et `lot2.json` rafraichis (surensemble strict des precedents).
+
+Verification du rendu de l'agent par le pilote : branche reelle (6 commits), CI verte sur
+les 4 workflows, `variation.go` conforme a la semantique de l'etape 18 (sommation de
+chemin, agregation par couche dominante). RESTE : brancher le lecteur dans `ReplayCanvas`
+et livrer les assets (suspendu a dessein — aucun `.wav` livre encore).
