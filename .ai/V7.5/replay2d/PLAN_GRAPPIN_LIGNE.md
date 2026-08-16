@@ -70,34 +70,50 @@ semantique des vecteurs dir/mag du corps lourd (jamais presents sur les deux mem
 paire -> fixite non calculable ; candidats : velocite/cable), celle du R(24)/R(9) de queue,
 et la grammaire des 8 records a drapeaux != 000.
 
-### Phase 1 — PUBLIER
+### Phase 1 — PUBLIER — CLOSE le 2026-08-16
 
-- [ ] 1.1 Evenements de grappin PAR VIE dans le document : `{tMs, ax, ay}` (l'altitude ne
-      sert pas au rendu 2D ; la publier si elle est gratuite, sinon non). Fenetre de rendu
-      derivee de 0.3(c) — MESUREE, pas choisie.
-- [ ] 1.2 Convention `SchemaVersion` respectee (chronique dans `document.go` — bump 7 -> 8) ;
-      contrat (`contracttest`, `replayContract.test.ts`), OpenAPI + `generated.ts`,
-      normalisation web, golden rejoue et explique. Couverture publiee (vies avec
-      evenements, par film).
-- [ ] 1.3 Entree de DONNEES dans `replay.Options`, absence NON FATALE et loggee. Les
-      artefacts TEMOINS locaux sont re-cuits (`000d5950` au moins — 3 porteurs de grappin
-      en verite terrain).
+- [x] 1.1 Publie : `grappleLines` = `{slot, t0, t1, ax, ay, az}` PAR VIE
+      (`replay/grapple_lines.go`). ECART assume vs la lettre du plan (`tMs`) : t0/t1 sur
+      L'AXE DES FRAMES (le meme que `Point.T` et `equipmentEpisodes` — la convention du
+      document, aucun recalage cote client). L'altitude est GRATUITE (le meme champ la
+      porte) : publiee (`az`). FENETRE MESUREE, pas choisie : t0 = le TIR (corps leger
+      apparie a <= 0,5 s ; l'accroche seule si le tir n'a pas ete lu — on ne recule pas un
+      debut non lu), t1 = l'ARRIVEE — l'argmin PAR TRACTION de la distance
+      trajectoire->ancre dans les 2,5 s suivant l'accroche (la mesure 0.3 : minimum ~1 s
+      puis remontee). Un tir sans accroche est un RATE : compte, jamais trace.
+- [x] 1.2 Schema 7 -> 8 (chronique `document.go` + ratchet `structure_test.go`) ; contrat
+      29 -> 30 champs (chronique `contracttest/replay_contract_test.go`, GrappleLine +
+      GrappleCoverage decrits) ; OpenAPI regenere (`make openapi-gen`) ; `generated.ts`
+      regenere ; frontiere web (`replayNormalize` + `NULLABLE_ARRAYS` + type expose) ;
+      golden : fixture d'entrees v5 (`REPLAYINPUTS5`, + GrappleReads — 57 lectures sur
+      000d5950) et assemblage refige EXPLIQUE (`renderGrapple` : 25 tractions / 15 vies ·
+      32 tirs + 25 accroches · 7 rates · 0 corps casse). Couverture publiee dans le
+      document (`Coverage.grapple`).
+- [x] 1.3 `Options.GrappleReads` (entree de DONNEES) ; `ScanFilmGrappleReads` dans
+      `BuildFromFilm`, absence NON FATALE avec warn + stats logguees. Artefact temoin
+      re-cuit : `000d5950.json` au schema 8 (25 tractions ; 00502e52 et 07aa428d n'ont
+      pas d'artefact local — rien a re-cuire pour eux, le re-build de masse reste
+      l'affaire du registre).
 
-### Phase 2 — TRACER
+### Phase 2 — TRACER — CLOSE le 2026-08-16 (reste le gate VISUEL utilisateur)
 
-- [ ] 2.1 Ligne joueur -> ancre sur le canvas pendant la fenetre mesuree, meme chaine de
-      projection que les tracks (`MondeVersPixel` / calage du fond). La position du joueur
-      est CELLE DE LA TRACK a l'instant courant (elle bouge, la ligne suit).
-- [ ] 2.2 « Blanche » = TOKEN, jamais un hex : prendre le token neutre le plus clair du
-      systeme (voir `canvasInk.ts` et le garde-rail `fxInk.guard.test.ts` — les couleurs du
-      canvas passent par les tokens resolus). Epaisseur discrete, sous la densite des
-      effets de tir.
-- [ ] 2.3 `prefers-reduced-motion` : une ligne statique par frame ne l'enfreint pas par
-      construction ; pas d'animation propre.
-- [ ] 2.4 Toute string UI eventuelle en FR ET EN (`i18n.ts`).
+- [x] 2.1 `grappleLayer.ts` : ligne position-COURANTE du joueur (`positionAt`, la meme
+      interpolation que le marqueur) -> ancre, projetee par `worldToCanvas` (la chaine des
+      tracks). Dessinee entre les trajectoires et les effets de tir (elle se lit sur la
+      trajectoire sans couvrir les evenements). Teste (`grappleLayer.test.ts` : jointure,
+      fenetre stricte, geometrie interpolee, encre de l'appelant).
+- [x] 2.2 « Blanche » = `readInk('--foreground')` — l'encre la plus claire du theme sombre,
+      re-resolue au changement de theme, ZERO hex (le lint et le garde-rail des couleurs
+      ne voient aucune valeur). Epaisseur 1,25 px, alpha 0,85, aucun halo — sous la densite
+      des effets de tir (2-3 px + halo) ; petit disque (r=2) au point d'accroche.
+- [x] 2.3 Statique par frame, aucune animation propre : reduced-motion respectee par
+      construction.
+- [~] 2.4 AUCUNE string UI nouvelle (pas de bouton, pas de legende) : rien a traduire —
+      couvert par l'absence.
 
-**Gate 2** : gates web complets (purge `.tmp`, typecheck, lint, vitest — exit 0), zero hex,
-gate VISUEL utilisateur (film temoin : `000d5950`).
+**Gate 2** : gates web PASSES (purge `.tmp`, typecheck exit 0, lint 0 erreur, vitest
+424/424 fichiers — 3813 tests), zero hex. RESTE LE GATE VISUEL UTILISATEUR : film temoin
+`000d5950` (artefact re-cuit, 25 tractions jouables — slots 516/530/561... des 15 vies).
 
 ## Regles dures
 
@@ -111,3 +127,26 @@ gate VISUEL utilisateur (film temoin : `000d5950`).
 
 `[x]` / `[~]` / `[!]` avec justification ; aucune case vide. Entree `thought_log.md`,
 registre, commits sur `feat/v75` (pas de push).
+
+## Decouvertes (notees, non traitees — regle 7 du contrat)
+
+- Drapeaux i59 != 000 (8/210) et valeur interne 4 : grammaire non etablie, desync propre
+  comptee — AU REGISTRE avec condition de reprise.
+- Semantique des deux vecteurs dir24+mag12 du corps lourd (et du R(24)+R(9) de queue) :
+  non identifiee, non necessaire a l'ancre — AU REGISTRE (piste : DAT_143cd839c, ou
+  correlation direction cubemap / deplacement du porteur).
+- La queue R(3) d'i59 n'etait JAMAIS lue offline (paramByComponent sans cle i59) —
+  CORRIGE dans ce lot (transverse, bloquait la preuve de marche).
+- Flake vitest hors perimetre (`PalmaresRelationsPage`, 1 echec isole, 2 passes vertes) —
+  AU REGISTRE.
+
+## Journal
+
+- 2026-08-16 : phase 0 executee et commitee (`020b95eab`). Le decompile s'est revele
+  faux sur l'enrobage (tag interne, deux ac4) : grammaire LUE dans le flux (dump +
+  consensus par classe de longueur, 2 cartes aux largeurs d'axe differentes — c'est le
+  differentiel +10 bits Cliffhanger->Bazaar qui a identifie la position a largeurs de
+  carte). Preuve de marche renforcee : ecart au record suivant = 0 partout.
+- 2026-08-16 : phases 1 et 2 executees. Schema 8, golden v5, artefact temoin re-cuit,
+  ligne au canvas (`--foreground`, 1,25 px). Gates Go et web passes. Reste le gate
+  VISUEL utilisateur sur `000d5950`.

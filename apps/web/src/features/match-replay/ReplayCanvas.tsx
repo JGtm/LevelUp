@@ -35,6 +35,7 @@ import {
   drawObjectivesLayer,
   normalizeMapObjectives,
 } from './objectivesLayer'
+import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
 import {
   buildGrenadeRestFx,
   DYNAMO_REST_HOLD_MS,
@@ -211,6 +212,15 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     void paletteVersion
     return readFxInk()
   }, [paletteVersion])
+  // La LIGNE DE GRAPPIN : « blanche » = l'encre la plus claire du thème sombre
+  // (`--foreground`), jamais un hex — décision du plan grappin (phase 2.2). Elle suit le
+  // thème, comme les encres de mise en page.
+  const grappleInk = useMemo(() => {
+    void paletteVersion
+    return readInk('--foreground')
+  }, [paletteVersion])
+  // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
+  const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
 
   // Couleur PAR SLOT : un tir se dessine dans la teinte de son tireur, et c'est elle qui permet
   // de suivre un joueur des yeux. Le slot d'une trace est unique dans le document.
@@ -385,6 +395,14 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       showAim,
     })
 
+    // La LIGNE DE GRAPPIN juste au-dessus des trajectoires et SOUS les effets de tir :
+    // c'est un lien joueur -> point d'accroche, il se lit sur la trajectoire sans couvrir
+    // les événements. Fenêtre MESURÉE [t0, t1] : la ligne suit le joueur qui se déplace
+    // vers l'ancre, puis disparaît à l'arrivée. Statique par frame (reduced-motion par
+    // construction).
+    if (grappleFx.length > 0) {
+      drawGrappleLayer(ctx, grappleFx, view, frame, grappleInk)
+    }
     // Les événements passent APRÈS les trajectoires : ils se lisent sur elles.
     const win = { frame, hold: eventHoldFrames }
     if (shotFx.length > 0) {
@@ -465,6 +483,8 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     shotHoldFrames,
     shotFx,
     fxInk,
+    grappleFx,
+    grappleInk,
     killFx,
     grenadeRestFx,
     restWindow,
