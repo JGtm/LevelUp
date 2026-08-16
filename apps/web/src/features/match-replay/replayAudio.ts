@@ -19,6 +19,12 @@
  * le garde-rail d'assets le rend visible en CI.
  */
 
+import {
+  gainFromDb,
+  type DistanceChain,
+  type SoundDraw,
+} from './weaponSoundLogic'
+
 /** Durée maximale jouée d'un son, en secondes (coupe du lot 5 : « ~1 s »). */
 export const SOUND_CUT_S = 1.0
 
@@ -67,6 +73,10 @@ export class ReplayAudioPlayer {
   private buffers = new Map<string, AudioBuffer | null>()
   private pending = new Set<string>()
   private voices = 0
+  /** Chaîne de distance (réglage d'instance, page admin). Nulle = AUCUN nœud ajouté :
+   *  le chemin du signal reste celui d'origine, source -> enveloppe -> maître. */
+  private distGain: GainNode | null = null
+  private distFilter: BiquadFilterNode | null = null
 
   /** `volume` est posé À LA CONSTRUCTION : un gain par défaut à 1 ferait passer le premier
    *  son à plein régime avant que la préférence de l'utilisateur ne soit appliquée. */
@@ -88,6 +98,30 @@ export class ReplayAudioPlayer {
     g.cancelScheduledValues(t0)
     g.setValueAtTime(g.value, t0)
     g.linearRampToValueAtTime(Math.min(Math.max(v, 0), 1), t0 + VOLUME_RAMP_S)
+  }
+
+  /**
+   * setDistance pose ou retire la chaîne de distance (atténuation + passe-bas) ENTRE le
+   * maître et la sortie. Réglage d'instance (admin) : à 0 %, `chain` est nul et les deux
+   * nœuds sont déconnectés — le fichier extrait se joue tel quel, exigence « sons purs ».
+   */
+  setDistance(chain: DistanceChain | null): void {
+    this.master.disconnect()
+    if (!chain) {
+      this.master.connect(this.ctx.destination)
+      return
+    }
+    if (!this.distGain || !this.distFilter) {
+      this.distGain = this.ctx.createGain()
+      this.distFilter = this.ctx.createBiquadFilter()
+      this.distFilter.type = 'lowpass'
+      this.distGain.connect(this.distFilter)
+    }
+    this.distGain.gain.value = gainFromDb(chain.gainDb)
+    this.distFilter.frequency.value = chain.cutoffHz
+    this.distFilter.disconnect()
+    this.distFilter.connect(this.ctx.destination)
+    this.master.connect(this.distGain)
   }
 
   /** resume relance le contexte (à appeler dans le geste d'activation). */
@@ -133,7 +167,7 @@ export class ReplayAudioPlayer {
    * chargée (scrub avant la fin du preload) ou absente : silence, jamais d'attente — un
    * son en retard sur son image est pire qu'un son manqué.
    */
-  play(url: string): void {
+  play(url: string, draw?: SoundDraw): void {
     const buf = this.buffers.get(url)
     if (!buf || this.voices >= SOUND_MAX_VOICES) {
       if (buf === undefined) this.preload([url])
@@ -141,12 +175,16 @@ export class ReplayAudioPlayer {
     }
     const t0 = this.ctx.currentTime
     const { fadeStartS, stopS } = soundEnvelope(buf.duration)
+    // La VARIATION de cette lecture (fourchettes RANGED du jeu, tirées en amont) : un gain
+    // de départ et une vitesse de lecture. Sans tirage, la tenue est à 1 — inchangé.
+    const tenue = draw ? gainFromDb(draw.gainDb) : 1
     const gain = this.ctx.createGain()
-    gain.gain.setValueAtTime(1, t0)
-    gain.gain.setValueAtTime(1, t0 + fadeStartS)
+    gain.gain.setValueAtTime(tenue, t0)
+    gain.gain.setValueAtTime(tenue, t0 + fadeStartS)
     gain.gain.linearRampToValueAtTime(0, t0 + stopS)
     const src = this.ctx.createBufferSource()
     src.buffer = buf
+    if (draw && draw.playbackRate !== 1) src.playbackRate.value = draw.playbackRate
     src.connect(gain)
     gain.connect(this.master)
     this.voices++

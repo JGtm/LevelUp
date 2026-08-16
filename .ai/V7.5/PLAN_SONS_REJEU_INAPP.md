@@ -490,3 +490,30 @@ contexte demarre directement dans ce cas — et `amorcer()` (premier pointeur su
 ne sert plus qu'a REPRENDRE un contexte suspendu, cas du lien direct ou du rafraichissement
 sans aucun geste, ou aucun navigateur n'autorisera le son de toute facon.
 Gates : check-types vert, 227 tests match-replay verts, eslint vert.
+
+### 2026-08-16 — FUSION avec le moteur sonore de feat/v75 (branche feat/v75-sons-fusion)
+
+DECOUVERTE au moment de merger : feat/v75 possede deja un moteur sonore complet du rejeu
+(tirs, kills sur l'horloge du fil, grenades, melee, equipements, filtres par categorie,
+plafond de 8 voix), source = le pack WAV fourni par l'utilisateur. Decision utilisateur :
+« les sons pour les armes sur ce worktree ne sont pas bons, les notres sont les bons.
+Mais uniquement les armes. » Donc :
+
+- GARDE : le moteur v75 tel quel (regles, horloges, filtres, enveloppe, voix).
+- REMPLACE : les 22 fichiers d'armes du pack par les sons extraits et votes, tronques a
+  1,2 s ; AJOUTE les 4 armes que le pack n'avait pas (bandit, ma5k_avenger,
+  fuel_rod_spnkr, vestige_carbine — cles verifiees dans weapon_names.toml). 26 armes,
+  5,8 Mo, les 13 fichiers d'evenements du pack INTACTS.
+- PORTE : la variation RANGED (weaponSoundVariations.ts genere + tirage par lecture dans
+  useReplaySound/replayAudio) et la distance (setDistance sur le maitre — 0 % = aucun
+  noeud). Reglages servis par useSettings (page admin, inchangee).
+- SUPPRIME : le lecteur parallele de cette branche (weaponSoundPlayer, useWeaponSounds,
+  weaponSoundTrigger + tests, static/weapons-assets/.../sons/) — redondant ;
+  weaponSoundLogic reduit au calcul pur reutilise par le moteur.
+- Fixtures de tests mises a jour : hinf_bandit ayant desormais un son, l'exemple d'arme
+  hors manifeste devient hinf_mutilator (reellement hors registre).
+
+GATES : make check-types vert ; suite web complete 430 fichiers / 3876 tests / 0 echec
+(garde-rail d'assets inclus : manifeste <-> dossier livre) ; eslint vert.
+LIMITE DOCUMENTEE : Mutilator, tourelles et armes de PNJ ne sont pas joignables par le
+moteur (hors registre weapon_names) — sons votes conserves dans l'archive Desktop.

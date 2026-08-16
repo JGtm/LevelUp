@@ -10,8 +10,9 @@
  * - DISTANCE : un tir lointain est plus faible ET plus sourd. Deux réglages, pas un.
  *
  * Tout ce qui est calculable sans navigateur vit ici, en fonctions pures testées : le
- * tirage, la conversion des unités et le mapping du curseur de distance. `weaponSoundPlayer`
- * ne fait qu'assembler les nœuds WebAudio à partir de ces valeurs.
+ * tirage, la conversion des unités et le mapping du curseur de distance. La lecture WebAudio
+ * (replayAudio.ts) ne fait qu'assembler des nœuds à partir de ces valeurs ; les fourchettes
+ * par arme vivent dans `weaponSoundVariations.ts` (généré avec les sons, même livraison).
  *
  * UNITÉS. Les fourchettes du manifeste sont des OFFSETS autour de la valeur nominale du
  * fichier : décibels pour le volume, centièmes de demi-ton pour la hauteur. Un gain en dB
@@ -30,23 +31,6 @@ export interface SoundRange {
 export interface SoundVariation {
   volume_db?: SoundRange
   pitch_cents?: SoundRange
-}
-
-/** Une entrée du manifeste : un son jouable, et ce qui le fait varier. */
-export interface WeaponSoundEntry {
-  arme: string
-  fichier: string
-  mode?: string
-  variation?: SoundVariation
-}
-
-/**
- * Le manifeste `static/weapons-assets/halo_infinite/sons/index.json`.
- * Contrat écrit en tête de `apps/go-api/cmd/weapon-sounds/variation.go`.
- */
-export interface WeaponSoundManifest {
-  source?: string
-  sons: WeaponSoundEntry[]
 }
 
 /** Ce qu'une lecture applique au fichier pur. Neutre = `{ gainDb: 0, playbackRate: 1 }`. */
@@ -163,20 +147,4 @@ export function distanceChain(distancePercent: number): DistanceChain | null {
     gainDb: DISTANCE_MAX_ATTENUATION_DB * d,
     cutoffHz: DISTANCE_MAX_CUTOFF_HZ * Math.pow(rapport, d),
   }
-}
-
-/**
- * indexManifest indexe les entrées par clé d'arme, première entrée gagnante.
- *
- * Une arme à plusieurs modes de tir a plusieurs entrées ; le rejeu 2D ne distingue pas les
- * modes, il joue la première — décision assumée plutôt qu'un tirage entre des sons de sens
- * différents (tir normal contre tir chargé).
- */
-export function indexManifest(manifest: WeaponSoundManifest | null | undefined): Map<string, WeaponSoundEntry> {
-  const out = new Map<string, WeaponSoundEntry>()
-  for (const son of manifest?.sons ?? []) {
-    if (!son?.arme || !son.fichier) continue
-    if (!out.has(son.arme)) out.set(son.arme, son)
-  }
-  return out
 }

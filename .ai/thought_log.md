@@ -1,3 +1,17 @@
+## [2026-08-16] Sons du rejeu — fusion : le moteur v75 garde la scene, nos armes montent dessus
+
+**Statut** : COMPLET sur `feat/v75-sons-fusion` (worktree LevelUp-wt-sons-fusion). Gates :
+typecheck vert, 3876 tests web / 0 echec, eslint vert. PAS POUSSE — la branche contient
+les 29 commits locaux non pousses de feat/v75, publication = decision utilisateur.
+
+**Decision** : feat/v75 avait deja un moteur sonore complet (pack WAV utilisateur).
+Fusion et non cohabitation : moteur v75 conserve ; fichiers d'ARMES remplaces par les
+sons extraits/votes (26, dont 4 nouveaux, tronques 1,2 s, evenements intacts) ; variation
+RANGED et distance portees dans le moteur (reglages admin) ; lecteur parallele supprime.
+
+**Conclusion** : reste la validation d'ecoute par l'utilisateur puis le merge
+feat/v75-sons-fusion -> feat/v75 (rapide, meme base), publication a sa main.
+
 ## [2026-08-16] v7.5 rejeu 2D — les bornes des canevas Forge : le BSP de déquantification est la région 0, pas le plus gros tag
 **Statut** : Complété — plan `.ai/V7.5/replay2d/PLAN_BORNES_CANEVAS_FORGE.md`, quatre phases, quatre gates passés.
 **Décision technique principale** : `cmd/mapquant-build` retenait `himap.ReadModuleBSPBounds(...)[0]`,

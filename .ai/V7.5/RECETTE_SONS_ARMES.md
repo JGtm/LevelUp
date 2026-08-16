@@ -106,27 +106,31 @@ non valide — seul trou de preuve ; symptome possible : « pan... clic », pist
 Le marquage « a revoter » compare l'EMPREINTE (evenement + couches + gains) a la
 generation effectivement votee — comparer moins que ca rate les changements de mixage.
 
-## 7. Livraison (UNIQUE et FINALE)
+## 7. Livraison — FUSION avec le moteur sonore du rejeu (etat final, 2026-08-16)
 
-Une seule livraison est prevue. Elle est un REMPLACEMENT EN MIROIR : le dossier cible
-est vide puis reecrit avec exactement les fichiers votes + le manifeste app.
+Le rejeu 2D possede son moteur sonore (branche v75 : `replaySound.ts` regles pures,
+`replayAudio.ts` lecture, `useReplaySound.ts` couture React — tirs, kills, grenades,
+melee, equipements, filtres par categorie, plafond de voix). La livraison s'y FOND :
 
 	python _outils/livraison.py <racine du depot>
-	# -> static/weapons-assets/halo_infinite/sons/ (31 fichiers, index.json par gid weap)
 
-EXECUTEE le 2026-08-16 sur la branche `feat/sons-rejeu-inapp` (108 entrees gid, 22,3 Mo),
-lecteur branche dans ReplayCanvas. La cle du manifeste est la FAMILLE d'arme — le gid du
-tag `weap`, moitie haute de l'identifiant d'arme du film (`buildWeaponLabels`). Contenu
-fige : les 46 votes de `_donnees/votes-final.json`, roles multiples confirmes :
+- REMPLACE les fichiers d'ARMES (`hinf_*.wav`) de `static/sounds/halo_infinite/` par les
+  sons extraits et votes, tronques a 1,2 s (discipline de poids du moteur, coupe
+  d'enveloppe a ~1 s) — 26 armes, dont les 4 que le pack initial n'avait pas (Bandit,
+  MA5K Avenger, SPNKr a combustible, Carabine Vestige). Les sons d'EVENEMENTS du pack
+  utilisateur (lancers, explosions, melee, equipements) ne sont JAMAIS touches.
+- GENERE `weaponSoundVariations.ts` : fourchettes RANGED par stem, tirees a chaque
+  lecture par le moteur (reglage admin « variation », 100 % = le jeu).
+- La DISTANCE est une chaine gain + passe-bas posee sur le maitre par reglage admin
+  (`ReplayAudioPlayer.setDistance`) — a 0 %, aucun noeud ajoute, sons purs.
 
-	Ravageur      bb31841b = tir 3 coups (LE son du rejeu) ; reconstitue be684013 =
-	              coup unique ; c15c9e77 = montee en charge (pas un rechargement)
-	Sentinelle    503433748 = le court (LE son du rejeu) ; reconstitue = tir continu
+Jointure : `weaponLabels[id].key` (cle canonique du registre). Les armes HORS registre
+(Mutilator, tourelles, PNJ) ne sont pas livrables — leurs sons votes restent dans
+l'archive Desktop, prets si le registre les nomme un jour.
 
-Regles produit fermes : sons livres PURS (variation RANGED et distance appliquees
-IN-APP, reglages page admin — plan `PLAN_SONS_REJEU_INAPP.md`) ; pour une arme
-automatique, l'objet joue en rejeu est une COURTE RAFALE, pas un coup isole ; le rejeu
-n'a besoin ni de la hauteur, ni de la distance, ni de l'environnement.
+Roles confirmes livres : Ravageur = rendu du tir 3 coups `bb31841b` ; Sentinelle = wem
+503433748. Regles produit fermes : sons livres PURS, variation et distance IN-APP
+(reglages page admin), rejeu sans gestion de hauteur/distance/environnement.
 
 ## 8. Les lecons qui ont coute le plus cher (a relire avant toute reprise)
 
