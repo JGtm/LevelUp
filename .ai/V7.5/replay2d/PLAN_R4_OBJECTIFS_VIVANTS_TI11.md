@@ -586,7 +586,7 @@ build exit 0, 3 films mesures, temoin negatif Slayer a 0 entite, 3 SKIP sans la 
 HUD, pas le drapeau. Phases 2 et 3 statuees `[!]`, decoupage en deux temps reecrit (§3).
 Point d'etape rendu.
 
-### 2026-08-17 — Phase 4 CLOSE par le NEGATIF (commit `<phase 4>`)
+### 2026-08-17 — Phase 4 CLOSE par le NEGATIF (commit `6300e24e1`)
 
 Instrument `filmdec/sonde_ti11_mur_test.go` (1 test, meme garde). Voie image-cle : les records
 sont localises exactement, l'alignement `Bit + 58` est structurel. **Le temoin de controle
