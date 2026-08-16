@@ -51,6 +51,13 @@ interface ReplayText {
   soundVolume: string
   /** Le son est activé mais tu par la vitesse de lecture — le dire, pas le cacher. */
   soundFastHint: string
+  /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
+  soundCategoriesTitle: string
+  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
+  /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
+   *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
+  settingsButton: string
+  settingsClose: string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -143,6 +150,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     soundVolume: 'Volume des sons',
     soundFastHint:
       'À cette vitesse de lecture les sons se chevaucheraient : ils reviennent à 2× ou moins.',
+    soundCategoriesTitle: 'Sons par catégorie',
+    soundCategory: {
+      weapon: 'Armes',
+      grenade: 'Grenades',
+      melee: 'Mêlée',
+      equipment: 'Équipements',
+    },
+    settingsButton: 'Réglages',
+    settingsClose: 'Fermer les réglages',
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
@@ -227,6 +243,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     soundVolume: 'Sound volume',
     soundFastHint:
       'At this playback speed the sounds would overlap: they come back at 2× or below.',
+    soundCategoriesTitle: 'Sounds by category',
+    soundCategory: {
+      weapon: 'Weapons',
+      grenade: 'Grenades',
+      melee: 'Melee',
+      equipment: 'Equipment',
+    },
+    settingsButton: 'Settings',
+    settingsClose: 'Close settings',
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:
