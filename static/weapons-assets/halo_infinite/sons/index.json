@@ -1,0 +1,813 @@
+{
+ "source": "extraction Halo Infinite (chantier sons-armes) — livraison unique du 2026-08-16, cle = gid du tag weap (moitie haute de l'identifiant d'arme du film)",
+ "sons": [
+  {
+   "arme": "05b2c46c",
+   "fichier": "hinf_ravager.wav",
+   "mode": "hinf_ravager role:tir_3_coups"
+  },
+  {
+   "arme": "c30d87c7",
+   "fichier": "hinf_ravager.wav",
+   "mode": "hinf_ravager role:tir_3_coups"
+  },
+  {
+   "arme": "40cfc9f3",
+   "fichier": "hinf_ravager.wav",
+   "mode": "hinf_ravager role:tir_3_coups"
+  },
+  {
+   "arme": "bd12dfc0",
+   "fichier": "hinf_ravager.wav",
+   "mode": "hinf_ravager role:tir_3_coups"
+  },
+  {
+   "arme": "a0955e9e",
+   "fichier": "hinf_sentinel_beam.wav",
+   "mode": "hinf_sentinel_beam role:tir_court"
+  },
+  {
+   "arme": "cc614892",
+   "fichier": "hinf_sentinel_beam.wav",
+   "mode": "hinf_sentinel_beam role:tir_court"
+  },
+  {
+   "arme": "4f2bf43f",
+   "fichier": "hinf_sentinel_beam.wav",
+   "mode": "hinf_sentinel_beam role:tir_court"
+  },
+  {
+   "arme": "3d30b955",
+   "fichier": "banished_tourelle_gatlingmortar.wav",
+   "mode": "banished_tourelle_gatlingmortar _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "fc572ee7",
+   "fichier": "banished_tourelle_gatlingmortar.wav",
+   "mode": "banished_tourelle_gatlingmortar _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "10ffb3d4",
+   "fichier": "banished_tourelle_gatlingmortar.wav",
+   "mode": "banished_tourelle_gatlingmortar _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "9f7aa5a5",
+   "fichier": "banished_tourelle_gatlingmortar.wav",
+   "mode": "banished_tourelle_gatlingmortar _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "84bd29ed",
+   "fichier": "hinf_disruptor.wav",
+   "mode": "hinf_disruptor _coup_m1_1p"
+  },
+  {
+   "arme": "e5ffa609",
+   "fichier": "hinf_disruptor.wav",
+   "mode": "hinf_disruptor _coup_m1_1p"
+  },
+  {
+   "arme": "fb35040f",
+   "fichier": "hinf_disruptor.wav",
+   "mode": "hinf_disruptor _coup_m1_1p"
+  },
+  {
+   "arme": "3e070217",
+   "fichier": "hinf_vestige_carbine.wav",
+   "mode": "hinf_vestige_carbine _coup_m1_1p"
+  },
+  {
+   "arme": "d7915565",
+   "fichier": "banished_bank8827aa7e.wav",
+   "mode": "banished_bank8827aa7e _coup_m2_1p"
+  },
+  {
+   "arme": "0d20c469",
+   "fichier": "hinf_skewer.wav",
+   "mode": "hinf_skewer _coup_m1_1p"
+  },
+  {
+   "arme": "611bbae4",
+   "fichier": "hinf_skewer.wav",
+   "mode": "hinf_skewer _coup_m1_1p"
+  },
+  {
+   "arme": "f245fa85",
+   "fichier": "hinf_skewer.wav",
+   "mode": "hinf_skewer _coup_m1_1p"
+  },
+  {
+   "arme": "f160933d",
+   "fichier": "hinf_skewer.wav",
+   "mode": "hinf_skewer _coup_m1_1p"
+  },
+  {
+   "arme": "80977ba5",
+   "fichier": "hinf_mangler.wav",
+   "mode": "hinf_mangler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "822a1a11",
+   "fichier": "hinf_mangler.wav",
+   "mode": "hinf_mangler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "2cc78447",
+   "fichier": "hinf_mangler.wav",
+   "mode": "hinf_mangler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "620ed157",
+   "fichier": "hinf_mangler.wav",
+   "mode": "hinf_mangler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "9387a8b9",
+   "fichier": "hinf_shock_rifle.wav",
+   "mode": "hinf_shock_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "9ee5ff15",
+   "fichier": "hinf_shock_rifle.wav",
+   "mode": "hinf_shock_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "1a22fee6",
+   "fichier": "hinf_shock_rifle.wav",
+   "mode": "hinf_shock_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "95bbbfd4",
+   "fichier": "hinf_shock_rifle.wav",
+   "mode": "hinf_shock_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "001b33e8",
+   "fichier": "covenant_tourelle_plasmacannon.wav",
+   "mode": "covenant_tourelle_plasmacannon _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -100,
+     "haut": 100
+    }
+   }
+  },
+  {
+   "arme": "ba1db18f",
+   "fichier": "covenant_tourelle_plasmacannon.wav",
+   "mode": "covenant_tourelle_plasmacannon _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -100,
+     "haut": 100
+    }
+   }
+  },
+  {
+   "arme": "0000ae3c",
+   "fichier": "hinf_energy_sword.wav",
+   "mode": "hinf_energy_sword _coup_m1_1p"
+  },
+  {
+   "arme": "0c55765f",
+   "fichier": "hinf_energy_sword.wav",
+   "mode": "hinf_energy_sword _coup_m1_1p"
+  },
+  {
+   "arme": "4ff3937e",
+   "fichier": "hinf_energy_sword.wav",
+   "mode": "hinf_energy_sword _coup_m1_1p"
+  },
+  {
+   "arme": "6bfee779",
+   "fichier": "hinf_energy_sword.wav",
+   "mode": "hinf_energy_sword _coup_m1_1p"
+  },
+  {
+   "arme": "d6bee587",
+   "fichier": "hinf_energy_sword.wav",
+   "mode": "hinf_energy_sword _coup_m1_1p"
+  },
+  {
+   "arme": "d94fa3a8",
+   "fichier": "hinf_energy_sword.wav",
+   "mode": "hinf_energy_sword _coup_m1_1p"
+  },
+  {
+   "arme": "00007ee6",
+   "fichier": "hinf_gravity_hammer.wav",
+   "mode": "hinf_gravity_hammer ev_d0e09f85"
+  },
+  {
+   "arme": "44f0d8b7",
+   "fichier": "hinf_gravity_hammer.wav",
+   "mode": "hinf_gravity_hammer ev_d0e09f85"
+  },
+  {
+   "arme": "841ac5e5",
+   "fichier": "hinf_gravity_hammer.wav",
+   "mode": "hinf_gravity_hammer ev_d0e09f85"
+  },
+  {
+   "arme": "bd0ae804",
+   "fichier": "hinf_gravity_hammer.wav",
+   "mode": "hinf_gravity_hammer ev_d0e09f85"
+  },
+  {
+   "arme": "f1409bb1",
+   "fichier": "hinf_gravity_hammer.wav",
+   "mode": "hinf_gravity_hammer ev_d0e09f85"
+  },
+  {
+   "arme": "00007ee8",
+   "fichier": "hinf_needler.wav",
+   "mode": "hinf_needler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "b533957e",
+   "fichier": "hinf_needler.wav",
+   "mode": "hinf_needler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "9fab6916",
+   "fichier": "hinf_needler.wav",
+   "mode": "hinf_needler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "a1fce95a",
+   "fichier": "hinf_needler.wav",
+   "mode": "hinf_needler _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "2cf2bfd1",
+   "fichier": "hinf_stalker_rifle.wav",
+   "mode": "hinf_stalker_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "daf193c7",
+   "fichier": "hinf_stalker_rifle.wav",
+   "mode": "hinf_stalker_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "adb78225",
+   "fichier": "hinf_stalker_rifle.wav",
+   "mode": "hinf_stalker_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "d98bd4fd",
+   "fichier": "hinf_stalker_rifle.wav",
+   "mode": "hinf_stalker_rifle _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "000041b7",
+   "fichier": "hinf_plasma_pistol.wav",
+   "mode": "hinf_plasma_pistol _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -55,
+     "haut": 76
+    }
+   }
+  },
+  {
+   "arme": "c3542946",
+   "fichier": "hinf_plasma_pistol.wav",
+   "mode": "hinf_plasma_pistol _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -55,
+     "haut": 76
+    }
+   }
+  },
+  {
+   "arme": "d674d3e1",
+   "fichier": "hinf_plasma_pistol.wav",
+   "mode": "hinf_plasma_pistol _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -55,
+     "haut": 76
+    }
+   }
+  },
+  {
+   "arme": "e4033ead",
+   "fichier": "hinf_plasma_pistol.wav",
+   "mode": "hinf_plasma_pistol _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -55,
+     "haut": 76
+    }
+   }
+  },
+  {
+   "arme": "204879bf",
+   "fichier": "hinf_pulse_carbine.wav",
+   "mode": "hinf_pulse_carbine _coup_m1_1p"
+  },
+  {
+   "arme": "30484ea6",
+   "fichier": "hinf_pulse_carbine.wav",
+   "mode": "hinf_pulse_carbine _coup_m1_1p"
+  },
+  {
+   "arme": "45826582",
+   "fichier": "hinf_pulse_carbine.wav",
+   "mode": "hinf_pulse_carbine _coup_m1_1p"
+  },
+  {
+   "arme": "9500f05a",
+   "fichier": "hinf_pulse_carbine.wav",
+   "mode": "hinf_pulse_carbine _coup_m1_1p"
+  },
+  {
+   "arme": "230447b1",
+   "fichier": "hinf_cindershot.wav",
+   "mode": "hinf_cindershot _coup_m1_1p"
+  },
+  {
+   "arme": "f8db7366",
+   "fichier": "hinf_cindershot.wav",
+   "mode": "hinf_cindershot _coup_m1_1p"
+  },
+  {
+   "arme": "5b580dc2",
+   "fichier": "hinf_cindershot.wav",
+   "mode": "hinf_cindershot _coup_m1_1p"
+  },
+  {
+   "arme": "6f5470fb",
+   "fichier": "hinf_cindershot.wav",
+   "mode": "hinf_cindershot _coup_m1_1p"
+  },
+  {
+   "arme": "2ac9c2ff",
+   "fichier": "hinf_heatwave.wav",
+   "mode": "hinf_heatwave _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "5417e234",
+   "fichier": "hinf_heatwave.wav",
+   "mode": "hinf_heatwave _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "5ac6cfb2",
+   "fichier": "hinf_heatwave.wav",
+   "mode": "hinf_heatwave _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "74c317fd",
+   "fichier": "hinf_heatwave.wav",
+   "mode": "hinf_heatwave _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "b4d2d5c7",
+   "fichier": "hinf_heatwave.wav",
+   "mode": "hinf_heatwave _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "f5a45508",
+   "fichier": "hinf_heatwave.wav",
+   "mode": "hinf_heatwave _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -48,
+     "haut": 43
+    }
+   }
+  },
+  {
+   "arme": "8647925a",
+   "fichier": "unsc_tourelle_gausscannon.wav",
+   "mode": "unsc_tourelle_gausscannon _coup_m1_1p"
+  },
+  {
+   "arme": "00015cd3",
+   "fichier": "unsc_tourelle_machinegun.wav",
+   "mode": "unsc_tourelle_machinegun _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "003f5824",
+   "fichier": "unsc_tourelle_machinegun.wav",
+   "mode": "unsc_tourelle_machinegun _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "0c6fd911",
+   "fichier": "unsc_tourelle_machinegun.wav",
+   "mode": "unsc_tourelle_machinegun _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": -50,
+     "haut": 50
+    }
+   }
+  },
+  {
+   "arme": "00008595",
+   "fichier": "hinf_ma40_ar.wav",
+   "mode": "hinf_ma40_ar _coup_m1_1p",
+   "variation": {
+    "volume_db": {
+     "bas": -3,
+     "haut": 0
+    },
+    "pitch_cents": {
+     "bas": -85,
+     "haut": 80
+    }
+   }
+  },
+  {
+   "arme": "48c19d2d",
+   "fichier": "hinf_ma40_ar.wav",
+   "mode": "hinf_ma40_ar _coup_m1_1p",
+   "variation": {
+    "volume_db": {
+     "bas": -3,
+     "haut": 0
+    },
+    "pitch_cents": {
+     "bas": -85,
+     "haut": 80
+    }
+   }
+  },
+  {
+   "arme": "08a46a7c",
+   "fichier": "hinf_ma40_ar.wav",
+   "mode": "hinf_ma40_ar _coup_m1_1p",
+   "variation": {
+    "volume_db": {
+     "bas": -3,
+     "haut": 0
+    },
+    "pitch_cents": {
+     "bas": -85,
+     "haut": 80
+    }
+   }
+  },
+  {
+   "arme": "2fb21c87",
+   "fichier": "hinf_bandit.wav",
+   "mode": "hinf_bandit _coup_m1_1p"
+  },
+  {
+   "arme": "6acdc44d",
+   "fichier": "hinf_bandit.wav",
+   "mode": "hinf_bandit _coup_m1_1p"
+  },
+  {
+   "arme": "f8a0dfe4",
+   "fichier": "hinf_bandit.wav",
+   "mode": "hinf_bandit _coup_m1_1p"
+  },
+  {
+   "arme": "00008593",
+   "fichier": "hinf_br75.wav",
+   "mode": "hinf_br75 _coup_m1_1p"
+  },
+  {
+   "arme": "2b1824d5",
+   "fichier": "hinf_br75.wav",
+   "mode": "hinf_br75 _coup_m1_1p"
+  },
+  {
+   "arme": "146e4a42",
+   "fichier": "hinf_br75.wav",
+   "mode": "hinf_br75 _coup_m1_1p"
+  },
+  {
+   "arme": "6ea1b051",
+   "fichier": "hinf_vk78_commando.wav",
+   "mode": "hinf_vk78_commando _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "fd98554c",
+   "fichier": "hinf_vk78_commando.wav",
+   "mode": "hinf_vk78_commando _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "a0ff8025",
+   "fichier": "hinf_vk78_commando.wav",
+   "mode": "hinf_vk78_commando _coup_m1_1p",
+   "variation": {
+    "pitch_cents": {
+     "bas": 0,
+     "haut": 800
+    }
+   }
+  },
+  {
+   "arme": "9d6aaed2",
+   "fichier": "hinf_fuel_rod_spnkr.wav",
+   "mode": "hinf_fuel_rod_spnkr _coup_m1_1p"
+  },
+  {
+   "arme": "f5c335df",
+   "fichier": "hinf_ma5k_avenger.wav",
+   "mode": "hinf_ma5k_avenger _coup_m1_1p",
+   "variation": {
+    "volume_db": {
+     "bas": -3,
+     "haut": 0
+    },
+    "pitch_cents": {
+     "bas": -85,
+     "haut": 80
+    }
+   }
+  },
+  {
+   "arme": "e6e773a8",
+   "fichier": "hinf_sidekick.wav",
+   "mode": "hinf_sidekick _coup_m1_1p"
+  },
+  {
+   "arme": "f408190f",
+   "fichier": "hinf_sidekick.wav",
+   "mode": "hinf_sidekick _coup_m1_1p"
+  },
+  {
+   "arme": "2d9b38f8",
+   "fichier": "hinf_sidekick.wav",
+   "mode": "hinf_sidekick _coup_m1_1p"
+  },
+  {
+   "arme": "f97627be",
+   "fichier": "hinf_sidekick.wav",
+   "mode": "hinf_sidekick _coup_m1_1p"
+  },
+  {
+   "arme": "003cdd02",
+   "fichier": "hinf_hydra.wav",
+   "mode": "hinf_hydra _coup_m1_1p"
+  },
+  {
+   "arme": "767db96d",
+   "fichier": "hinf_hydra.wav",
+   "mode": "hinf_hydra _coup_m1_1p"
+  },
+  {
+   "arme": "00008597",
+   "fichier": "hinf_hydra.wav",
+   "mode": "hinf_hydra _coup_m1_1p"
+  },
+  {
+   "arme": "ac89e956",
+   "fichier": "hinf_hydra.wav",
+   "mode": "hinf_hydra _coup_m1_1p"
+  },
+  {
+   "arme": "9ee81b6e",
+   "fichier": "hinf_cqs48_bulldog.wav",
+   "mode": "hinf_cqs48_bulldog _coup_m1_1p"
+  },
+  {
+   "arme": "b619d84a",
+   "fichier": "hinf_cqs48_bulldog.wav",
+   "mode": "hinf_cqs48_bulldog _coup_m1_1p"
+  },
+  {
+   "arme": "217a41a5",
+   "fichier": "hinf_cqs48_bulldog.wav",
+   "mode": "hinf_cqs48_bulldog _coup_m1_1p"
+  },
+  {
+   "arme": "cc7fe33f",
+   "fichier": "hinf_cqs48_bulldog.wav",
+   "mode": "hinf_cqs48_bulldog _coup_m1_1p"
+  },
+  {
+   "arme": "00008594",
+   "fichier": "hinf_s7_sniper.wav",
+   "mode": "hinf_s7_sniper _coup_m1_1p"
+  },
+  {
+   "arme": "0a1992bc",
+   "fichier": "hinf_s7_sniper.wav",
+   "mode": "hinf_s7_sniper _coup_m1_1p"
+  },
+  {
+   "arme": "15c60350",
+   "fichier": "hinf_s7_sniper.wav",
+   "mode": "hinf_s7_sniper _coup_m1_1p"
+  },
+  {
+   "arme": "6a9c28a2",
+   "fichier": "hinf_s7_sniper.wav",
+   "mode": "hinf_s7_sniper _coup_m1_1p"
+  },
+  {
+   "arme": "7ef26779",
+   "fichier": "hinf_s7_sniper.wav",
+   "mode": "hinf_s7_sniper _coup_m1_1p"
+  },
+  {
+   "arme": "c9360795",
+   "fichier": "hinf_s7_sniper.wav",
+   "mode": "hinf_s7_sniper _coup_m1_1p"
+  },
+  {
+   "arme": "71ab0a2c",
+   "fichier": "hinf_m41_spnkr.wav",
+   "mode": "hinf_m41_spnkr _coup_m1_1p"
+  },
+  {
+   "arme": "a2d0b910",
+   "fichier": "hinf_m41_spnkr.wav",
+   "mode": "hinf_m41_spnkr _coup_m1_1p"
+  },
+  {
+   "arme": "7a07954b",
+   "fichier": "hinf_m41_spnkr.wav",
+   "mode": "hinf_m41_spnkr _coup_m1_1p"
+  },
+  {
+   "arme": "a0623d35",
+   "fichier": "hinf_m41_spnkr.wav",
+   "mode": "hinf_m41_spnkr _coup_m1_1p"
+  },
+  {
+   "arme": "a5658131",
+   "fichier": "hinf_m41_spnkr.wav",
+   "mode": "hinf_m41_spnkr _coup_m1_1p"
+  }
+ ]
+}

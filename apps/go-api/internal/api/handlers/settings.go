@@ -250,6 +250,12 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 				"session_team_change_mode doit être \"ignore\", \"group\" ou \"friends\".")
 		}
 	}
+	// Sons du rejeu : deux pourcentages. Une valeur hors bornes n'est pas « clampée
+	// en silence » — un curseur qui affiche 100 alors que le serveur a retenu autre
+	// chose est un mensonge d'interface.
+	if err := validerPourcentagesSonsRejeu(&req); err != nil {
+		return nil, err
+	}
 	if req.OutcomeBadgeSensitivity != nil {
 		switch *req.OutcomeBadgeSensitivity {
 		case "relaxed", "standard", "strict":

@@ -309,6 +309,8 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `backup_keep_monthly` | int | `12` | Backups mensuels conservés. |
 | `prestige_enabled` | bool | `true` | Active le module Prestige (surchargeable via `PRESTIGE_ENABLED`). |
 | `instance_locked` | bool | `false` | Verrouille l'instance aux utilisateurs existants (aussi via `LEVELUP_INSTANCE_LOCKED`). |
+| `replay_sound_variation_percent` | int | `100` | Sons d'armes du rejeu 2D : variation du volume et de la hauteur à chaque tir, dans les fourchettes déclarées par le jeu. `100` = fourchettes du jeu telles quelles, `0` = toujours le même fichier. Réglage d'instance, modifié depuis Admin · Système. |
+| `replay_sound_distance_percent` | int | `0` | Sons d'armes du rejeu 2D : effet de distance (atténuation + passe-bas). `0` = son pur, aucun nœud dans le chemin du signal. Réglage d'instance, modifié depuis Admin · Système. |
 
 ---
 

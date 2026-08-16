@@ -44,11 +44,18 @@ type tirArme struct {
 	// en a deux (tir normal et tir charge), le Sentinel Beam aussi (bref et continu). Les
 	// fondre en un seul ensemble d'evenements rendait un coup qui sonnait a cote.
 	Modes []modeDeTir `json:"modes"`
+	// Variation : la fourchette du mode dominant. C'est le repli quand l'app ne sait pas de
+	// quel mode vient le son qu'elle joue — le cas courant aujourd'hui, le rejeu 2D ne
+	// distinguant pas les modes de tir.
+	Variation *variationRendue `json:"variation,omitempty"`
 }
 
 type modeDeTir struct {
 	TagSon string   `json:"tag_son"`
 	Events []string `json:"events"`
+	// Variation : fourchette de la couche dominante de ce mode, tous evenements confondus.
+	// Absente quand aucun noeud du mode ne declare d'ecart : lecture pure.
+	Variation *variationRendue `json:"variation,omitempty"`
 }
 
 // livrerTirLot resout les sons de tir de toutes les armes du rapport de passe 1.
@@ -436,19 +443,12 @@ func assembler(p1 rapportLot, sonParWeap map[uint32][]uint32,
 		}
 		// UN MODE = UN TAG DE SON. Sans ce detail, les evenements des deux modes d'une
 		// meme arme se melangent et le coup reconstitue peut venir du mauvais mode.
-		for _, tag := range sonParWeap[retenu] {
-			var evs []string
-			for e := range eventsParTag[tag] {
-				if armeDeEvent[e] == i {
-					evs = append(evs, fmt.Sprintf("%08x", e))
-				}
-			}
-			if len(evs) == 0 {
-				continue
-			}
-			sort.Strings(evs)
-			t.Modes = append(t.Modes, modeDeTir{TagSon: fmt.Sprintf("%08x", tag), Events: evs})
+		t.Modes = modesDeArme(sonParWeap[retenu], eventsParTag, armeDeEvent, i, variationsDeArme(a))
+		vars := make([]*variationRendue, 0, len(t.Modes))
+		for _, m := range t.Modes {
+			vars = append(vars, m.Variation)
 		}
+		t.Variation = variationDominante(vars)
 		out = append(out, t)
 	}
 	sort.Slice(out, func(x, y int) bool { return out[x].Arme < out[y].Arme })

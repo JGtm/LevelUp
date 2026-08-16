@@ -50,12 +50,18 @@ type brancheRendue struct {
 	// ces gains ; les ignorer faisait arriver au meme niveau une couche de renfort censee
 	// rester 10 ou 20 dB en arriere-plan.
 	Gains map[string]float32 `json:"gains_db,omitempty"`
+	// Variation : de combien le moteur deplace volume et hauteur A CHAQUE LECTURE de cette
+	// couche (paquet RANGED, accumule le long du chemin, enveloppe sur les variantes).
+	// Absente quand aucun noeud du chemin n'en declare : la couche se joue alors telle
+	// quelle, ce qui est le cas le plus frequent.
+	Variation *variationRendue `json:"variation,omitempty"`
 }
 
 type eventCouches struct {
-	IDEvent  string          `json:"id_event"`
-	Branches []brancheRendue `json:"branches"`
-	Total    int             `json:"wems_total"`
+	IDEvent   string           `json:"id_event"`
+	Branches  []brancheRendue  `json:"branches"`
+	Total     int              `json:"wems_total"`
+	Variation *variationRendue `json:"variation,omitempty"`
 }
 
 type rapportCouches struct {
@@ -90,21 +96,22 @@ func (b *bank) couchesDeEvent(id uint32) []brancheRendue {
 	var out []brancheRendue
 	for _, idAction := range b.Events[id] {
 		if cible, ok := b.Actions[idAction]; ok {
-			out = append(out, b.descendre(cible, 0, map[uint32]bool{})...)
+			out = append(out, b.descendre(cible, etatChemin{}, map[uint32]bool{})...)
 		}
 	}
 	return out
 }
 
-// descendre applique la recette ci-dessus en accumulant le gain du chemin.
-func (b *bank) descendre(n uint32, gain float64, vus map[uint32]bool) []brancheRendue {
+// descendre applique la recette ci-dessus en accumulant l'etat du chemin : son gain, et
+// la fourchette de variation que chaque noeud traverse ajoute.
+func (b *bank) descendre(n uint32, etat etatChemin, vus map[uint32]bool) []brancheRendue {
 	if vus[n] {
 		return nil
 	}
 	vus[n] = true
-	gain += float64(b.VolNoeud[n])
+	etat = etat.avec(float64(b.VolNoeud[n]), b.VarNoeud[n])
 	if w, estSon := b.Sons[n]; estSon {
-		return []brancheRendue{b.brancheDe(n, map[uint32]float64{w: gain})}
+		return []brancheRendue{b.brancheDe(n, map[uint32]etatChemin{w: etat})}
 	}
 	o, connu := b.Objets[n]
 	enfants := b.Enfants[n]
@@ -112,63 +119,79 @@ func (b *bank) descendre(n uint32, gain float64, vus map[uint32]bool) []brancheR
 		return nil
 	}
 	if o.Type == typeRandomSeq {
-		gains := map[uint32]float64{}
-		b.collecterPool(n, gain, map[uint32]bool{n: true}, gains)
-		if len(gains) == 0 {
+		etats := map[uint32]etatChemin{}
+		b.collecterPool(n, etat, map[uint32]bool{n: true}, etats)
+		if len(etats) == 0 {
 			return nil
 		}
-		return []brancheRendue{b.brancheDe(n, gains)}
+		return []brancheRendue{b.brancheDe(n, etats)}
 	}
 	var out []brancheRendue
 	for _, e := range enfants {
-		g := gain
+		suivant := etat
 		if fondu, ok := b.GainsFondu[n]; ok {
-			g += fondu[e]
+			suivant = suivant.plusGain(fondu[e])
 		}
-		out = append(out, b.descendre(e, g, vus)...)
+		out = append(out, b.descendre(e, suivant, vus)...)
 	}
 	return out
 }
 
-// collecterPool rassemble les variantes d'un point de choix, chacune avec le gain de SON
-// chemin — un sous-conteneur du pool peut porter son propre volume.
-func (b *bank) collecterPool(n uint32, gain float64, vus map[uint32]bool, out map[uint32]float64) {
+// collecterPool rassemble les variantes d'un point de choix, chacune avec l'etat de SON
+// chemin — un sous-conteneur du pool peut porter son propre volume et sa propre variation.
+func (b *bank) collecterPool(n uint32, etat etatChemin, vus map[uint32]bool, out map[uint32]etatChemin) {
 	for _, e := range b.Enfants[n] {
 		if vus[e] {
 			continue
 		}
 		vus[e] = true
-		g := gain + float64(b.VolNoeud[e])
+		suivant := etat.avec(float64(b.VolNoeud[e]), b.VarNoeud[e])
 		if fondu, ok := b.GainsFondu[n]; ok {
-			g += fondu[e]
+			suivant = suivant.plusGain(fondu[e])
 		}
 		if w, estSon := b.Sons[e]; estSon {
 			if _, deja := out[w]; !deja {
-				out[w] = g
+				out[w] = suivant
 			}
 			continue
 		}
-		b.collecterPool(e, g, vus, out)
+		b.collecterPool(e, suivant, vus, out)
 	}
 }
 
-func (b *bank) brancheDe(cible uint32, gains map[uint32]float64) brancheRendue {
+func (b *bank) brancheDe(cible uint32, etats map[uint32]etatChemin) brancheRendue {
 	t := "inconnu"
 	if o, ok := b.Objets[cible]; ok {
 		t = nomType(o.Type)
 	}
-	wems := make([]uint32, 0, len(gains))
+	wems := make([]uint32, 0, len(etats))
 	gs := map[string]float32{}
-	for w, g := range gains {
+	// Un point de choix joue UNE variante : sa fourchette est l'enveloppe de celles de ses
+	// variantes, et son gain le plus fort d'entre elles (c'est ce niveau-la qui decide si
+	// la couche domine le melange).
+	var variation fourchetteSon
+	gainMax, premier := 0.0, true
+	for w, e := range etats {
 		wems = append(wems, w)
-		if g != 0 {
-			gs[fmt.Sprintf("%d", w)] = float32(g)
+		if e.Gain != 0 {
+			gs[fmt.Sprintf("%d", w)] = float32(e.Gain)
+		}
+		variation = enveloppeFourchettes(variation, e.Var)
+		if premier || e.Gain > gainMax {
+			gainMax, premier = e.Gain, false
 		}
 	}
 	sort.Slice(wems, func(i, j int) bool { return wems[i] < wems[j] })
-	return brancheRendue{
+	br := brancheRendue{
 		Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gs,
 	}
+	if variation.Lu && !variation.Nulle() {
+		br.Variation = &variationRendue{
+			VolumeDB: variation.VolumeDB, PitchCts: variation.PitchCts,
+			Couche: br.Cible, GainDB: float32(gainMax),
+		}
+	}
+	return br
 }
 
 // arborescence affiche, pour chaque evenement d'une arme, la structure de sa hierarchie.
@@ -244,8 +267,10 @@ func arborescence(cheminModule, cheminPck string, profondeurMax int, gidBank uin
 		fmt.Println()
 		rap.Events = append(rap.Events, eventCouches{
 			IDEvent: fmt.Sprintf("%08x", id), Branches: couches, Total: len(w),
+			Variation: variationDeCouches(couches),
 		})
 	}
+	afficherSignesVariation()
 	if sortieCouches != "" {
 		blob, err := json.MarshalIndent(rap, "", " ")
 		if err != nil {
