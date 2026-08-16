@@ -1,3 +1,36 @@
+## [2026-08-17] v7.5 rejeu 2D — marque d'assistance : l'icone du jeu remplace le glyphe SVG (correctif R1)
+
+**Statut** : Complete (branche `feat/v75`, lot cible).
+
+**Decision technique principale** : `AssistMark` (ReplayKillFeed.tsx) rend desormais
+`jeu/killfeed-62.png` en masque teint (`WeaponIcon` tinted, meme technique que l'icone
+d'arme du fil) a la place du glyphe SVG livre par le lot R1 (`da7baf122`). R1 avait conclu
+a tort qu'aucune icone d'assistance n'existait : l'entree 62 de `jeu/index.json` EXISTE
+(style killfeed, source_tag de l'atlas) — elle n'a simplement jamais recu de `nom_jeu` (ni
+tag `weap`, ni hachage `bitd` rejoue depuis que "assist" a rejoint le vocabulaire curate de
+`cmd/weapon-icons-build/killfeed.go`). URL composee cote client (`staticAssetURL('weapon',
+'jeu/killfeed-62', '.png', titleSlug)` via `useTitleSlug()`, meme mecanisme que
+`GrenadeThrowBadge`), format identique a celui du back (`static.URL(KindWeapon, slug,
+weaponIconDir+sprite, ".png")`). Taille : `DEATH_ICON_PX` renomme `PICTOGRAM_PX` (12 px) et
+generalise aux pictogrammes quasi carres de l'atlas kill feed (TYPE DE MORT + ASSISTANCE,
+40x40 mesure) plutot que d'ajouter un second magic number identique.
+
+`jeu/index.json` NON MODIFIE (item `[!]`, justifie) : nommer l'entree 62 exigerait de
+rejouer `weapon-icons-build` contre le binaire du jeu installe pour confirmer par hachage
+que "assist" cracke bien cet index — aucune machine ainsi equipee ici. Un `nom_jeu` ecrit a
+la main romprait la garantie du fichier genere (« rien n'y est devine ») et divergerait de
+la prochaine regeneration.
+
+**Resultats observes** : garde-rail neuf `assistMarkIcon.guard.test.ts` (fichier livre +
+entree `jeu/index.json` verifies, meme patron que `grenadeIcon.guard.test.ts`) ; tests
+`ReplayKillFeed.test.tsx` mis a jour (assertion mask-image + title, plus de DOM svg) ;
+gates : typecheck 0, lint 0 (19 warnings preexistants hors perimetre, TanStack Table),
+vitest 435 fichiers / 3938 tests verts + 14 skip preexistants.
+
+**Conclusion / prochaine etape** : reste le gate VISUEL utilisateur (vignette teintee a la
+couleur de l'assistant, lisible en petit dans le fil). Aucun report technique restant sur
+ce lot.
+
 ## [2026-08-17] Lot R1 — retours web de la planche du 16/08
 
 **Statut** : Complete (branche `wt/retours-planche`, `da7baf122`, fusionnee dans `feat/v75`
