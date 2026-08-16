@@ -1,3 +1,34 @@
+## [2026-08-16] Sons d'armes — reprise a zero de l'assemblage : semantique prouvee
+
+**Statut** : Etapes 18-20 du plan COMPLETES, en une passe et une seule regeneration, sous
+contrat renforce (zero heuristique acoustique). Branche `feat/extraction-sons-armes`.
+
+**Decision technique principale** : apres six corrections en pieces detachees sur « ce que
+joue chaque noeud », l'utilisateur a exige la reprise a zero. La semantique complete a ete
+MESUREE avant d'ecrire le code : proprietes des conteneurs sur 1305 banks, table complete
+des couches de Blend avec courbes de fondu, poids des RandomSequence, delais partout.
+
+**La piece manquante depuis le debut : l'heritage de gain.** Plus de 10 000 conteneurs
+(5 063 ActorMixer, 5 180 RandomSequence, 181 Blend, 128 Switch) portent un volume jamais
+applique — le rendu ne lisait que celui des Sound. Le gain d'un wem est la somme du chemin.
+Cas d'ecole : la 1P du fusil electrique porte une couche a -96 dB que le jeu ETEINT et que
+le rendu jouait a plein niveau. C'est la cause structurelle du « coup reconstitue moins
+ressemblant que ses morceaux ».
+
+**Le Blend, statue par le format et non plus par supposition** : avec courbes de fondu
+(91/303), les enfants audibles au point de reference jouent (202 -> 85, zero gain partiel) ;
+sans courbe, TOUS les enfants jouent, a leurs gains de chemin. L'hypothese « distance, on
+fige le plus petit identifiant » de l'etape 17 est retiree.
+
+**Resultats** : recette unique dans `arbre.go` (`descendre`), preuve de chaque regle en tete
+de fichier. Une regeneration. 47/47 votes rattaches. Marquage « a revoter » sur empreinte
+complete (evenement+couches+gains) contre la generation votee : 33 coups sur 29 armes —
+le critere naif n'en signalait qu'un.
+
+**Conclusion** : l'assemblage repose desormais entierement sur le format. Restent hors
+rendu, statues : RTPC de couche (valeur neutre absente des banks), paquet RANGED, delais
+d'actions (offset non valide, zero partout ailleurs).
+
 ## [2026-08-16] Sons d'armes — le Blend est une distance, et une retractation
 
 **Statut** : Etape 17. Branche `feat/extraction-sons-armes`, rien n'est merge.

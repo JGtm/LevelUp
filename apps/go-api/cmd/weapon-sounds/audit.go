@@ -78,6 +78,7 @@ func auditFormat(cheminModule string, limite int) error {
 	sommeVol := 0.0
 	minVol := 0.0
 	var sansHIRC, sansBKHD int
+	var nActionsProps, nActionsDelai int
 	conteneurs := nouvellesStatsConteneurs()
 
 	for i, f := range banks[:limite] {
@@ -151,6 +152,9 @@ func auditFormat(cheminModule string, limite int) error {
 
 	afficherInventaire(chunks_, types, actions, nSound, sommeSound, maxSound, sansBKHD, sansHIRC)
 	conteneurs.afficher()
+	fmt.Printf("\n=== ACTIONS Play : proprietes ===\n")
+	fmt.Printf("  paquet de proprietes lisible : %d | avec un delai non nul : %d\n",
+		nActionsProps, nActionsDelai)
 	fmt.Printf("\n=== PROPRIETES DES OBJETS Sound (nouveau lecteur) ===\n")
 	fmt.Printf("  paquet lu de facon plausible : %d / %d (%.0f %%)\n",
 		propsLues, nSound, 100*float64(propsLues)/float64(max(nSound, 1)))

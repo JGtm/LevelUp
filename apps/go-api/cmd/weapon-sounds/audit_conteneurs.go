@@ -11,6 +11,7 @@ package main
 // chiffre le rend visible AVANT qu'un rendu faux ne le revele.
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sort"
 )
@@ -23,6 +24,11 @@ type statConteneur struct {
 	SommeRestant int // octets apres la liste d'enfants, donc jamais lus
 	MaxRestant   int
 	SommeAvant   int // octets avant la liste d'enfants, donc jamais lus non plus
+	// Proprietes du conteneur lui-meme (NodeBaseParams en tete de charge utile) :
+	// c'est ce qui decide si l'HERITAGE de gain parent -> enfant compte.
+	PropsLues            int
+	AvecVolume, AvecDela int
+	MinVolume            float64
 }
 
 // statsConteneurs accumule l'inventaire par type d'objet conteneur.
@@ -37,6 +43,9 @@ type statsConteneurs struct {
 	rsLus, rsUniformes int
 	blLus, blAvecRTPC  int
 	blEchantillons     []string
+	// Evaluation des fondus au point de reference (etape 18.2) : sur les Blend a courbes,
+	// combien d'enfants restent audibles ?
+	blEnfantsTot, blEnfantsGardes, blAvecGainPartiel int
 }
 
 func nouvellesStatsConteneurs() *statsConteneurs {
@@ -59,6 +68,18 @@ func (s *statsConteneurs) ajouter(o objetHIRC, connu func(uint32) bool) {
 	if off < 0 {
 		return
 	}
+	if pr := lireProprietesConteneur(o.Data); pr.Lu {
+		st.PropsLues++
+		if pr.VolumeDB != 0 {
+			st.AvecVolume++
+			if float64(pr.VolumeDB) < st.MinVolume {
+				st.MinVolume = float64(pr.VolumeDB)
+			}
+		}
+		if pr.DelaiS != 0 {
+			st.AvecDela++
+		}
+	}
 	st.AvecEnfants++
 	st.SommeAvant += off
 	restant := len(o.Data) - (off + 4 + 4*n)
@@ -80,6 +101,21 @@ func (s *statsConteneurs) ajouter(o objetHIRC, connu func(uint32) bool) {
 			s.blLus++
 			if c.PiloteParRTPC() {
 				s.blAvecRTPC++
+				offE, nE := positionEnfants(o.Data, connu)
+				if offE >= 0 {
+					enfants := make([]uint32, 0, nE)
+					for i := 0; i < nE; i++ {
+						enfants = append(enfants, binary.LittleEndian.Uint32(o.Data[offE+4+4*i:]))
+					}
+					aud := c.Audibles(enfants)
+					s.blEnfantsTot += len(enfants)
+					s.blEnfantsGardes += len(aud)
+					for _, g := range aud {
+						if g != 0 {
+							s.blAvecGainPartiel++
+						}
+					}
+				}
 			}
 		} else if len(s.blEchantillons) < 3 {
 			// Un decodeur qui echoue doit montrer ce sur quoi il echoue, sinon on corrige
@@ -157,10 +193,22 @@ func (s *statsConteneurs) afficher() {
 
 	fmt.Printf("\n=== Blend : automation des couches ===\n")
 	fmt.Printf("  table des couches lue et validee : %d\n", s.blLus)
-	fmt.Printf("  dont au moins une couche pilotee par un parametre de jeu : %d\n", s.blAvecRTPC)
-	fmt.Printf("  => si ce nombre est non nul, « le Blend joue toutes ses couches » est FAUX\n")
+	fmt.Printf("  dont au moins une courbe de fondu : %d\n", s.blAvecRTPC)
+	fmt.Printf("  evaluation au point de reference (x minimal de chaque courbe) :\n")
+	fmt.Printf("    enfants declares %d -> audibles %d, dont %d a gain partiel (0 < y < 1)\n",
+		s.blEnfantsTot, s.blEnfantsGardes, s.blAvecGainPartiel)
 	for _, e := range s.blEchantillons {
 		fmt.Printf("  non decode : %s\n", e)
+	}
+
+	fmt.Printf("\n=== PROPRIETES DES CONTENEURS (heritage de gain, delais) ===\n")
+	for _, t := range tps {
+		st := s.parType[t]
+		if st.PropsLues == 0 {
+			continue
+		}
+		fmt.Printf("  %-16s props lues %5d / %5d | volume non nul %4d (min %.1f dB) | delai non nul %d\n",
+			nomType(t), st.PropsLues, st.N, st.AvecVolume, st.MinVolume, st.AvecDela)
 	}
 }
 
