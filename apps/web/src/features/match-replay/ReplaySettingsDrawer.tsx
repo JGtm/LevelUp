@@ -117,6 +117,10 @@ function SpeedSection({
             size="sm"
             onClick={() => onSetSpeed(m)}
             className="h-7 px-2 text-xs"
+            // La vitesse en cours est dite, pas seulement peinte : sans `aria-pressed` les
+            // quatre boutons s'annoncent identiques a un lecteur d'ecran, alors que les
+            // bascules voisines (SettingsToggle) le portent toutes.
+            aria-pressed={speed === m}
           >
             {m < 1 ? `${m.toFixed(1)}×` : `${m.toFixed(0)}×`}
           </Button>

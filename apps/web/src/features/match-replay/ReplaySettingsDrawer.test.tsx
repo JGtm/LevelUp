@@ -73,12 +73,17 @@ describe('ReplaySettingsDrawer — calques', () => {
 })
 
 describe('ReplaySettingsDrawer — vitesse', () => {
+  // Le titre de ce test annonce `aria-pressed` : il l'ASSERTE. Sans la ligne du bas,
+  // inverser la condition de selection (`speed !== m`) ou la supprimer ne casserait rien.
   it('propose les quatre multiplicateurs, aria-pressed sur celui en cours', () => {
     renderDrawer({ speed: 2 })
-    expect(screen.getByRole('button', { name: '0.5×' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '1×' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '2×' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '4×' })).toBeTruthy()
+    for (const label of ['0.5×', '1×', '2×', '4×']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
+    const pressed = ['0.5×', '1×', '2×', '4×'].filter(
+      (label) => screen.getByRole('button', { name: label }).getAttribute('aria-pressed') === 'true',
+    )
+    expect(pressed).toEqual(['2×'])
   })
 
   it('cliquer un multiplicateur appelle onSetSpeed avec cette valeur', () => {
