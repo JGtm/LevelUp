@@ -88,7 +88,8 @@ interface ReplayText {
   abilityAhead: string
   /**
    * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
-   * camouflage estompe la fiche, le surbouclier la surligne. La clé est l'identifiant
+   * camouflage rend la fiche vitreuse, le surbouclier l'encadre d'or (cahier des
+   * charges Notion 21.1, rendu par `ReplayTeams.tsx`). La clé est l'identifiant
    * stable publié par le document (`fam`) — une famille inconnue n'a pas de libellé et
    * ne reçoit aucun effet.
    */

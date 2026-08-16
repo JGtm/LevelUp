@@ -70,6 +70,13 @@ export const defaultPalette: Palette = {
   // (joueurs + opposés). N'utilise PAS chart-series-7 (== perf-tier-3 ambre = joueur 3).
   'bonus': '#A855F7', // violet-500 (teinte 271°)
 
+  // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
+  // Aligné sur le "Légendaire" du Battlepass (rarity.ts : bg/glow amber-400,
+  // rgba(251,191,36)) pour que "légendaire" désigne la MÊME teinte partout dans
+  // l'app. Distinct de `warning` (#F59E0B, amber-500) : un ton plus clair/doré,
+  // moins orangé — les deux ne se confondent pas côte à côte.
+  'legendary': '#FBBF24', // amber-400
+
   // ── Badges narratifs (source : match-card-presentation.ts) ─────────────────
   // Couleurs ajustées pour atteindre WCAG AA (≥ 4.5:1) — cf. wcagContrast.test.ts
   'narrative-dominant':             '#00DC82',

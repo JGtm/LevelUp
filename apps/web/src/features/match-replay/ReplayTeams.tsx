@@ -67,22 +67,33 @@ const FLASH_MS = 1_400
 const DEATH_FLASH_TOTAL_S = 1.86
 const RESPAWN_FLASH_S = 0.55
 /**
- * Opacité de la fiche pendant un épisode de CAMOUFLAGE actif : le joueur disparaît à
- * l'écran de jeu, sa fiche fait pareil — c'est l'effet qui dit la chose, pas un badge.
- * 0.4 garde la fiche déchiffrable de près (l'infobulle dit pourquoi elle s'estompe).
- * STATIQUE, sans animation : la durée de l'effet EST l'épisode mesuré, et un état sans
- * mouvement respecte `prefers-reduced-motion` par construction.
+ * Effet de VERRE de la fiche pendant un épisode de CAMOUFLAGE actif (cahier des charges
+ * Notion, item 21.1) : translucidité + flou léger, PAS une opacité réduite sur toute la
+ * fiche — le texte et les icônes restent lisibles, seul le FOND se dépolit.
+ * `BLUR_PX` est le flou du verre (`backdrop-filter`, sans effet visible tant que rien de
+ * texturé ne passe dessous — la colonne des fiches n'est jamais posée sur la carte, cf.
+ * l'en-tête du fichier — mais la technique canonique d'un "verre" CSS reste correcte et
+ * bon marché si ce contexte change). `VEIL_PCT` mélange `--foreground` (PAS `--card`) au
+ * fond ambiant : teinter le fond avec SA PROPRE couleur serait invisible (0 contraste),
+ * `--foreground` est justement le token conçu pour contraster sur `--card` dans les DEUX
+ * thèmes — le voile s'éclaircit en sombre, s'assombrit en clair, toujours visible. Le
+ * liseré reprend `--border` À PLEINE FORCE (déjà le ton subtil-mais-visible du système,
+ * cf. le même token sur le panneau d'équipe) plutôt que de le diluer encore.
  */
-const CAMO_CARD_OPACITY = 0.4
+const CAMO_GLASS_BLUR_PX = 6
+const CAMO_GLASS_VEIL_PCT = 12
 /**
- * Sur-brillance de la fiche pendant un épisode de SURBOUCLIER : anneau plein + halo +
- * fond teintés du token `info` — LE MÊME que la jauge de bouclier, parce qu'un
- * surbouclier est un sur-BOUCLIER : la fiche brille de la couleur de sa jauge. Parts du
- * mélange : 16 % de fond (au-dessus des 12 % du fond de mort, sous une teinte pleine
- * qui écraserait le texte) et 55 % de halo (visible sans éblouir la colonne).
+ * ENCADRÉ DORÉ de la fiche pendant un épisode de SURBOUCLIER (cahier des charges Notion,
+ * item 21.1) : un CADRE, pas un fond teinté — `FRAME_PX` (2 px) est le plus fin qui se
+ * lise comme un encadrement plutôt qu'un simple contour de sélection ; `GLOW_PCT` un halo
+ * externe discret. Token `legendary` (skill color-tokens) : un surbouclier est un état de
+ * jeu rare et précieux, la même famille sémantique que le "légendaire" du Battlepass —
+ * PAS le token `info` de la jauge de bouclier (qui, lui, reste bleu : cf. VitalityBar).
+ * Aucun fond propre : composé avec le verre du camouflage, le cadre doré ne doit pas
+ * écraser la translucidité de l'autre effet (cf. leur composition ci-dessous).
  */
-const OVERSHIELD_BG_PCT = 16
-const OVERSHIELD_GLOW_PCT = 55
+const OVERSHIELD_FRAME_PX = 2
+const OVERSHIELD_GLOW_PCT = 60
 
 interface ReplayTeamsProps {
   doc: ReplayDocumentReady
@@ -213,15 +224,24 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
       flashClass = 'replay-flash-respawn'
       style.animationDelay = `${(-(lifeAge / flashFrames) * RESPAWN_FLASH_S).toFixed(3)}s`
     }
-    // Le camouflage ESTOMPE la fiche entière ; le surbouclier la SURLIGNE. Les deux
-    // peuvent se composer (états indépendants) : une fiche estompée ET cerclée dit
-    // exactement ce que l'écran de jeu montre.
+    // Le camouflage rend la fiche VITREUSE (translucidité + flou) ; le surbouclier
+    // l'ENCADRE d'or. Les deux peuvent se composer (états indépendants) : les ombres
+    // s'ACCUMULENT (box-shadow accepte plusieurs couches) plutôt que de s'écraser, et
+    // seul le camouflage pose un fond — le cadre doré n'en a pas de propre — pour
+    // qu'une fiche vitreuse ET encadrée dise exactement ce que l'écran de jeu montre.
+    const shadows: string[] = []
     if (equipment?.camo) {
-      style.opacity = CAMO_CARD_OPACITY
+      style.backdropFilter = `blur(${CAMO_GLASS_BLUR_PX}px)`
+      style.WebkitBackdropFilter = style.backdropFilter
+      style.background = `color-mix(in srgb, var(--foreground) ${CAMO_GLASS_VEIL_PCT}%, var(--card))`
+      shadows.push('inset 0 0 0 1px var(--border)')
     }
     if (equipment?.overshield) {
-      style.boxShadow = `inset 0 0 0 1px ${tokenCssVar('info')}, 0 0 10px color-mix(in srgb, ${tokenCssVar('info')} ${OVERSHIELD_GLOW_PCT}%, transparent)`
-      style.background = `color-mix(in srgb, ${tokenCssVar('info')} ${OVERSHIELD_BG_PCT}%, transparent)`
+      shadows.push(`inset 0 0 0 ${OVERSHIELD_FRAME_PX}px ${tokenCssVar('legendary')}`)
+      shadows.push(`0 0 10px color-mix(in srgb, ${tokenCssVar('legendary')} ${OVERSHIELD_GLOW_PCT}%, transparent)`)
+    }
+    if (shadows.length > 0) {
+      style.boxShadow = shadows.join(', ')
     }
   }
   const equipTitle = [
