@@ -82,6 +82,14 @@ import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /**
+ * Catégorie d'un son, pour le filtre du tiroir de réglages (phase 2, décision utilisateur
+ * du 16/08) : ARMES (tirs et kills d'arme, même table — cf. WEAPON_SOUND_STEMS), GRENADES
+ * (lancers ET explosions : c'est le même objet, sous deux formes), MÊLÉE (le seul coup
+ * fatal sonné, `melee_kill`), ÉQUIPEMENTS (camouflage, surbouclier).
+ */
+export type SoundCategory = 'weapon' | 'grenade' | 'melee' | 'equipment'
+
+/**
  * Son d'ARME par weapon_key -> stem de fichier sous static/sounds/{slug}/.
  *
  * UNE SEULE TABLE POUR LES TIRS ET LES KILLS D'ARME : c'est la même arme, donc le même
@@ -179,6 +187,20 @@ export interface ReplaySoundEvent {
   stem: string
 }
 
+/** Les quatre catégories filtrables du tiroir de réglages (phase 2, décision du 16/08). */
+export const SOUND_CATEGORIES: readonly SoundCategory[] = ['weapon', 'grenade', 'melee', 'equipment']
+
+/** Filtre par catégorie : une entrée par catégorie, `true` = catégorie audible. */
+export type SoundCategoryFilter = Readonly<Record<SoundCategory, boolean>>
+
+/** Le comportement D'AUJOURD'HUI, inchangé par défaut : les quatre catégories sonnent. */
+export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
+  weapon: true,
+  grenade: true,
+  melee: true,
+  equipment: true,
+}
+
 /**
  * shotSoundStem — le fichier d'un TIR, ou undefined pour le silence.
  *
@@ -205,18 +227,35 @@ export function killSourceSpriteStem(imageURL: string | undefined): string {
   return file.endsWith('.png') ? file.slice(0, -'.png'.length) : ''
 }
 
+/** Un son de kill résolu, avec la catégorie qui a répondu — sert le filtre par catégorie. */
+interface KillSound {
+  stem: string
+  category: Extract<SoundCategory, 'weapon' | 'grenade' | 'melee'>
+}
+
 /**
- * killSoundStem — le fichier d'un KILL, ou undefined pour le silence.
- *
- * DEUX JOINTURES, DANS CET ORDRE : la vignette de la source d'abord (c'est elle qui sait
- * distinguer les quatre grenades et la mêlée, que le registre d'armes ne nomme pas), la clé
- * canonique ensuite (toutes les armes). Aucune des deux ne répond = silence propre.
+ * killSound — DEUX JOINTURES, DANS CET ORDRE : la vignette de la source d'abord (c'est elle
+ * qui sait distinguer les quatre grenades et la mêlée, que le registre d'armes ne nomme
+ * pas), la clé canonique ensuite (toutes les armes). Aucune des deux ne répond = silence
+ * propre. Interne : `killSoundStem` (ci-dessous) en expose le stem seul — API historique,
+ * testée telle quelle ; `buildSoundTimeline` lit aussi la catégorie, pour le filtre.
  */
-export function killSoundStem(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): string | undefined {
+function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): KillSound | undefined {
   const sprite = killSourceSpriteStem(kill.weaponImageUrl)
   const bySprite = sprite ? KILL_SPRITE_SOUND_STEMS[sprite] : undefined
-  if (bySprite) return bySprite
-  return kill.weaponKey ? WEAPON_SOUND_STEMS[kill.weaponKey] : undefined
+  if (bySprite) {
+    return { stem: bySprite, category: bySprite === 'melee_kill' ? 'melee' : 'grenade' }
+  }
+  const byKey = kill.weaponKey ? WEAPON_SOUND_STEMS[kill.weaponKey] : undefined
+  return byKey ? { stem: byKey, category: 'weapon' } : undefined
+}
+
+/**
+ * killSoundStem — le fichier d'un KILL, ou undefined pour le silence. Façade de `killSound`
+ * qui n'expose que le stem (API historique, testée).
+ */
+export function killSoundStem(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): string | undefined {
+  return killSound(kill)?.stem
 }
 
 /**
@@ -228,35 +267,48 @@ export function killSoundStem(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUr
  * LES TIRS ET LES KILLS COEXISTENT SANS DÉDUPLICATION, et c'est voulu : le tir qui tue est
  * un événement du film, la mort qu'il cause en est un autre, daté par le fil. Les fondre
  * ferait disparaître l'un des deux sur une horloge où ils ne tombent pas au même instant.
+ *
+ * `categories` (tiroir de réglages, phase 2) RETIRE À LA CONSTRUCTION les catégories
+ * coupées par l'utilisateur — jamais en aval, dans le lecteur : une catégorie coupée ne
+ * précharge même pas ses fichiers. Par défaut, tout sonne (SOUND_CATEGORIES_DEFAULT) :
+ * un appelant qui ne passe pas ce 4e paramètre garde le comportement d'aujourd'hui, à
+ * l'identique — c'est le cas de tous les appels existants avant cette table.
  */
 export function buildSoundTimeline(
   doc: ReplayDocumentReady,
   kills: KillEvent[],
   t0Ms: number,
+  categories: SoundCategoryFilter = SOUND_CATEGORIES_DEFAULT,
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
-  for (const s of doc.shots) {
-    const stem = shotSoundStem(doc, s.w)
-    if (stem) out.push({ ms: frameToMs(s.t, doc), stem })
+  if (categories.weapon) {
+    for (const s of doc.shots) {
+      const stem = shotSoundStem(doc, s.w)
+      if (stem) out.push({ ms: frameToMs(s.t, doc), stem })
+    }
   }
   if (kills.length > 0 && doc.tracks.length > 0) {
     for (const k of alignFeed(kills, t0Ms, doc).kills) {
-      const stem = killSoundStem(k)
-      if (stem) out.push({ ms: k.replayMs, stem })
+      const snd = killSound(k)
+      if (snd && categories[snd.category]) out.push({ ms: k.replayMs, stem: snd.stem })
     }
   }
-  for (const g of doc.grenades) {
-    const stem = THROW_SOUND_STEMS[g.rank ?? -1]
-    if (stem) out.push({ ms: frameToMs(g.t, doc), stem })
+  if (categories.grenade) {
+    for (const g of doc.grenades) {
+      const stem = THROW_SOUND_STEMS[g.rank ?? -1]
+      if (stem) out.push({ ms: frameToMs(g.t, doc), stem })
+    }
   }
   // Les épisodes d'équipement actif : l'activation au début, la désactivation SEULEMENT
   // sur une fin MESURÉE (`endRead`) — un épisode fermé par la mort ne sonne rien de plus,
   // le kill sonne déjà là et rien n'a mesuré une désactivation.
-  for (const e of doc.equipmentEpisodes) {
-    const stems = EQUIPMENT_SOUND_STEMS[e.fam]
-    if (!stems) continue
-    out.push({ ms: frameToMs(e.t0, doc), stem: stems.activate })
-    if (e.endRead) out.push({ ms: frameToMs(e.t1, doc), stem: stems.deactivate })
+  if (categories.equipment) {
+    for (const e of doc.equipmentEpisodes) {
+      const stems = EQUIPMENT_SOUND_STEMS[e.fam]
+      if (!stems) continue
+      out.push({ ms: frameToMs(e.t0, doc), stem: stems.activate })
+      if (e.endRead) out.push({ ms: frameToMs(e.t1, doc), stem: stems.deactivate })
+    }
   }
   return out.sort((a, b) => a.ms - b.ms)
 }

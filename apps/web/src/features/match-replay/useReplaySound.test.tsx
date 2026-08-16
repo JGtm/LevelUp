@@ -139,6 +139,57 @@ describe('useReplaySound — silences voulus', () => {
   })
 })
 
+describe('useReplaySound — catégories (tiroir de réglages, phase 2)', () => {
+  it('les quatre catégories sont actives par défaut', () => {
+    const { result } = mount()
+    expect(result.current.categories).toEqual({
+      weapon: true, grenade: true, melee: true, equipment: true,
+    })
+  })
+
+  it('couper ARMES retire le kill d arme de la piste jouée sans faire disparaître le panneau', async () => {
+    const { result } = mount()
+    act(() => result.current.toggleCategory('weapon'))
+    expect(result.current.categories.weapon).toBe(false)
+    expect(result.current.available).toBe(true) // le match A du son, même toute catégorie coupée
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050)) // le kill (arme) passerait ici
+    expect(ctx.sources).toHaveLength(0)
+  })
+
+  it('couper une catégorie retire SES sons, les autres restent inchangés', async () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: [
+        { slot: 1, team: -1, xuid: 'K', points: [{ t: 0, x: 0, y: 0 }, { t: 100, x: 10, y: 0 }], startFrame: 0, endFrame: 100 },
+        { slot: 2, team: -1, xuid: 'V', points: [{ t: 0, x: 5, y: 5 }, { t: 20, x: 5, y: 4 }], startFrame: 0, endFrame: 20 },
+      ],
+      grenades: [{ i: 0, rank: 0, s: '', slot: 1, t: 5, x: 0, y: 0 }], // throw_frag à 500 ms
+    })
+    const { result } = renderHook(() => useReplaySound(doc, [kill()], 0, 1))
+    act(() => result.current.toggleCategory('weapon'))
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.tick(100)) // recalage silencieux, AVANT le lancer
+    act(() => result.current.tick(600)) // le lancer (grenade, catégorie active) est passé
+    expect(ctx.sources).toHaveLength(1)
+    act(() => result.current.tick(2_100)) // le kill (arme, catégorie coupée) est passé
+    expect(ctx.sources).toHaveLength(1) // toujours un seul son : l'arme reste muette
+  })
+
+  it('la préférence de catégorie survit au remontage (localStorage, comme le son)', () => {
+    const first = mount()
+    act(() => first.result.current.toggleCategory('equipment'))
+    first.unmount()
+
+    const { result } = mount()
+    expect(result.current.categories.equipment).toBe(false)
+    expect(result.current.categories.weapon).toBe(true)
+  })
+})
+
 describe('useReplaySound — préférences', () => {
   it('l état du son et le volume survivent au remontage (localStorage)', async () => {
     const first = mount()
