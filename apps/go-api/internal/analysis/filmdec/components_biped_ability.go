@@ -212,7 +212,10 @@ func consumeBipedMalleableProperty(br *BitReader) {
 // entierement determine par le flux : present si et seulement si flag1 == 1.
 func consumeBipedMobilityAction(br *BitReader) {
 	flag1 := br.ReadBit() // FUN_1406cf008 -> [0x1295] = le gate `+0x9d` de FUN_1408f02c8
-	br.ReadBit()          // FUN_1406cf008 -> [0x1296] (flag2)
+	flag2 := br.ReadBit() // FUN_1406cf008 -> [0x1296] (flag2)
+	if mobilityActionHook != nil {
+		mobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
+	}
 	if flag1 {
 		consume1408f0ac4(br) // FUN_1408f0ac4(...,0)
 		if MobilityActionBodyPorted {
@@ -326,7 +329,10 @@ var MobilityActionExtraBits int
 // CAVEAT (value-gated heavy body): the tag==3 branch (FUN_142f25e90) is NOT ported.
 // Validated empirically on the Hydra biped record (tag != 3 -> advances cleanly).
 func consumeBipedSpartanAbilityNonPredictedState(br *BitReader) {
-	br.ReadBits(2) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
+	tag := br.ReadBits(2) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
+	if abilityNonPredictedHook != nil {
+		abilityNonPredictedHook(tag) // publication seule, aucune largeur ne change
+	}
 	// tag==3 -> FUN_142f25e90 heavy body (unported); 0 bits for tag!=3 (common case).
 	if recordStateParam > 1 {
 		br.ReadBits(3) // FUN_140fc147c flat R(3), gated on param_4>1.
@@ -607,14 +613,28 @@ func consumeBipedAction(br *BitReader) (ported bool) {
 //	    (p[2] & 1, p[2] & 0x10) : largeur NON determinable depuis le flux seul.
 //
 // Largeurs : v=0 -> 2 | v=1 -> 28 | v=2 -> 2 | v=3 -> inconnue (desync propre).
+//
+// LA BRANCHE v==1 N'EST PLUS JETÉE (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase C) :
+// le R(2) interne et le R(24) partent vers spartanAbilityHook, le parcours de bits est
+// INCHANGÉ (cf. ability_state_hooks.go).
 func consumeBipedSpartanAbility(br *BitReader) bool {
-	switch br.ReadBits(2) {
+	tag := br.ReadBits(2)
+	switch tag {
 	case 1:
-		br.ReadBits(2)  // FUN_142f25d78 : FUN_1406d310c(4) = 2 bits
-		br.ReadBits(24) // FUN_14076dc04(..., 0x18)
+		sub := br.ReadBits(2)  // FUN_142f25d78 : FUN_1406d310c(4) = 2 bits
+		ref := br.ReadBits(24) // FUN_14076dc04(..., 0x18)
+		if spartanAbilityHook != nil {
+			spartanAbilityHook(tag, sub, ref, true)
+		}
 		return true
 	case 3:
+		if spartanAbilityHook != nil {
+			spartanAbilityHook(tag, 0, 0, false)
+		}
 		return false // FUN_142f262d4 : gates runtime, largeur inconnue
+	}
+	if spartanAbilityHook != nil {
+		spartanAbilityHook(tag, 0, 0, false)
 	}
 	return true
 }
