@@ -1,3 +1,37 @@
+## [2026-08-16] v7.5 rejeu 2D — la ligne du grappin PUBLIÉE et TRACÉE (plan grappin, phases 1-2)
+**Statut** : Complété — phases 1 (publier) et 2 (tracer) de `PLAN_GRAPPIN_LIGNE.md`.
+Reste le gate VISUEL utilisateur (film témoin `000d5950`, artefact re-cuit).
+**Décision technique** : le document publie `grappleLines` (schéma 7 -> 8, clé de reprise
+du backfill) — `{slot, t0, t1, ax, ay, az}` par vie, t0/t1 sur l'axe des frames (la
+convention du document, écart assumé vs le « tMs » du plan). FENÊTRE MESURÉE par traction :
+t0 = le tir (corps léger apparié <= 0,5 s ; l'accroche seule sinon — on ne recule pas un
+début non lu), t1 = l'ARRIVÉE (argmin de la distance trajectoire->ancre dans les 2,5 s
+suivant l'accroche — la mesure du gate 0 : minimum ~1 s puis remontée). Un tir sans
+accroche est un RATÉ compté, jamais tracé. Production : `filmdec.ScanFilmGrappleReads`
+(hook du déser, marche `walkRecordTo` partagée, quanta aux largeurs de carte installées),
+`replay/grapple_lines.go` (appariement + déquantification aux bornes `MapQuantEntry` +
+arrivée), `Options.GrappleReads` non fatal + stats logguées, `Coverage.grapple` publié
+(tirs/accroches/tractions/ratés/corps cassés). Contrat : 29 -> 30 champs (chronique),
+OpenAPI + generated.ts régénérés, frontière web (`replayNormalize` + `NULLABLE_ARRAYS`),
+golden : fixture v5 (`REPLAYINPUTS5`, +GrappleReads) + assemblage refigé expliqué
+(`renderGrapple`). Rendu : `grappleLayer.ts` — ligne position-COURANTE du joueur
+(`positionAt`) -> ancre, `worldToCanvas`, entre trajectoires et effets de tir ; « blanche »
+= `readInk('--foreground')` (l'encre la plus claire du thème sombre, zéro hex), 1,25 px,
+alpha 0,85, disque r=2 à l'ancre ; statique par frame (reduced-motion par construction) ;
+AUCUNE string UI nouvelle. Pas de son (décision utilisateur).
+**Résultats** :
+- Golden 000d5950 : 25 tractions / 15 vies · 32 tirs + 25 accroches · 7 ratés · 0 corps
+  cassé ; fenêtres mesurées 5-26 frames (0,5-2,6 s) ; artefact témoin re-cuit au schéma 8
+  (2,2 Mo, vérifié : `grappleLines=25`, couverture présente).
+- Gates : go build/vet OK · tests analysis+replaybuild+contracttest OK · golangci
+  `--new-from-merge-base` 0 issue · typecheck exit 0 · lint web 0 erreur (0 avertissement
+  dans le lot) · vitest 424/424 fichiers, 3813 tests (1 flake hors périmètre
+  PalmaresRelationsPage, 2 passes complètes vertes — au registre).
+**Conclusion / prochaine étape** : la ligne du grappin est prête à voir. Gate visuel
+utilisateur sur `000d5950` (slots 516/530/561..., 25 tractions). Registre : l'item i59 de
+la phase E est SORTI ; entrent les drapeaux != 000, la sémantique des vecteurs du corps
+lourd, et le flake vitest.
+
 ## [2026-08-16] v7.5 rejeu 2D — l'ancre du grappin LUE dans le film (plan grappin, phase 0)
 **Statut** : Complété — phase 0 de `PLAN_GRAPPIN_LIGNE.md` (porter, prouver, contrôler).
 **Décision technique** : le corps tag==3 d'i59 (`FUN_142f25e90`) est porté sur une
