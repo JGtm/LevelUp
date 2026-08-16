@@ -94,6 +94,12 @@ export const okabePalette: Palette = {
   //     des joueurs squad (bleu/vert). Pas de collision en Okabe-Ito.
   'bonus': '#CC79A7', // Reddish Purple
 
+  // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
+  // Yellow : le plus "or" du set CVD-safe, et DISTINCT de `warning` (Orange) —
+  // contrairement au défaut (où warning et perf-tier-3 partagent déjà l'ambre),
+  // Okabe-Ito n'a que 8 teintes fixes : on évite ici une collision évitable.
+  'legendary': '#F0E442', // Yellow
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA sur le fond correspondant
   'narrative-dominant':              '#009E73', // Bluish Green

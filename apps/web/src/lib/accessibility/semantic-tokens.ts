@@ -66,6 +66,15 @@ export type SemanticToken =
   // (4 joueurs + leurs opposés colorimétriques) — cf. squadPerformanceLineCharts.
   | 'bonus'
 
+  // ── Rareté (1) — accent "légendaire", réutilisable hors Battlepass ─────────
+  // PAS un doublon de `rarity.ts` (qui reste la SEULE source des 5 teintes de
+  // rareté GameCMS, exception tolérée règle couleurs) : `legendary` est un accent
+  // générique pour tout état "rare/précieux" qui n'est PAS une rareté de reward
+  // (ex. encadré du surbouclier au rejeu 2D — un sur-bouclier est un état de jeu
+  // rare et précieux, pas un item du Battlepass). Un seul token, pas cinq : les
+  // autres paliers de rareté n'ont pas d'usage hors Battlepass à ce jour.
+  | 'legendary'
+
   // ── Badges narratifs — fond (5) ────────────────────────────────────────────
   | 'narrative-dominant'
   | 'narrative-humiliation'
@@ -133,6 +142,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
   'bonus',
+  'legendary',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',
   'narrative-debacle', 'narrative-contre-remontada',
   'narrative-dominant-text', 'narrative-humiliation-text', 'narrative-remontada-text',
