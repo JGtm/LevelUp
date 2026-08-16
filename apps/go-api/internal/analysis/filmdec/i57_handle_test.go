@@ -4,11 +4,9 @@ package filmdec
 // .ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md : les DÉPLOYABLES (mur rang 19,
 // capteur rang 22 — relevé Theater du 27/07) — trois signaux datés à croiser.
 //
-// C.1 — publier la branche v==1 d'i57 par hook (spartanAbilityHook, cf.
-// ability_state_hooks.go) : le tag R(2), le R(2) interne et le R(24), par slot et
-// horodatage. C'est la SEULE branche d'i57 qui paie 24 bits de charge utile — jamais
-// publiée. 75 occurrences attendues sur 000d5950 (mesure du 14/08, valeurs brutes
-// 0:693 · 1:75 · 2:613 · 3:33).
+// C.1 — publier la branche v==1 d'i57 par hook (spartanAbilityHook) : tag R(2), R(2)
+// interne et R(24), par slot et horodatage — la SEULE branche qui paie 24 bits, jamais
+// publiée. 75 occurrences attendues sur 000d5950 (14/08 : 0:693 · 1:75 · 2:613 · 3:33).
 //
 // C.2 — HYPOTHÈSE FALSIFIABLE, ÉNONCÉE AVANT LA MESURE : le R(24) RÉFÉRENCE quelque
 // chose — candidat : l'entité ti=37 posée (handle slot 13 bits + génération 2 bits,
@@ -18,14 +16,11 @@ package filmdec
 //
 // C.3 — croiser TROIS horloges : naissances d'entités ti=37 (premier record delta d'une
 // vie), transitions d'`equipment-activated` (balayage de production
-// ScanFilmEquipmentState), lectures v==1 d'i57 des porteurs de rangs 19/22. Pour un canal
-// CLAIRSEMÉ, l'ordre et l'écart au plus proche voisin priment sur une fenêtre serrée
-// (décision n°2 du plan) : les écarts sont publiés en distribution, les fenêtres larges
-// (1/2/5 s) avec témoins décalés ±5 s ne viennent qu'en second.
-//
-// C.4 — la FIN d'une vie ti=37 est-elle lisible ? Compter : durées de vie, composants du
-// DERNIER record de chaque vie (at-rest / dead-state résolus PAR NOM dans l'archétype),
-// vies finissant avant la fin du film.
+// ScanFilmEquipmentState), lectures v==1 d'i57 des porteurs de rangs 19/22. Canal
+// CLAIRSEMÉ : l'écart au plus proche voisin prime, les fenêtres (fines puis larges) sont
+// jugées par témoins décalés ±5 s (décision n°2 du plan).
+// C.4 — la FIN d'une vie ti=37 est-elle lisible ? Compter : durées, composants du DERNIER
+// record (at-rest / dead-state résolus PAR NOM), vies finissant avant la fin du film.
 //
 // LECTURE SEULE, gardé par I57H_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process : le verrou est pris pour tout le test.

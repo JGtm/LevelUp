@@ -141,30 +141,51 @@ compteur/horodatage), et la co-datation v==1 <-> naissances est un artefact de d
 (candidat : compteur/tick — non etabli), et si un sous-ensemble des naissances ti=37
 correspond aux deployables (aucun champ d'identite — resultat 0.6 de la phase 0 confirme).
 
-### Phase D — MOBILITE : le croisement jamais fait, `i54` x `i48`
+### Phase D — MOBILITE : le croisement jamais fait, `i54` x `i48` — CLOSE le 2026-08-16
 
-- [ ] D.1 Sur chaque film : episodes `i54` par vie, joints a l'identite `i48` de la MEME
-      vie (meme slot). PREDICTION FALSIFIABLE : les episodes se concentrent sur les vies a
-      rang de mobilite (4/5/6 fam. A, 20/21 fam. B) ; les vies a rang 1/2/12/23 n'en ont
-      pratiquement aucun.
-- [ ] D.2 Si la prediction tient : `i54` EST l'evenement d'usage date des equipements de
-      mobilite, l'identite venant d'`i48` — publier episodes/vie par rang, et la
-      distribution des durees.
-- [ ] D.3 Si elle ne tient pas : `i54` est autre chose (glissade, escalade) — l'ecrire, et
-      la mobilite reste sans instant d'usage par ce canal.
+- [x] D.1 Fait sur LES 12 FILMS (instrument `i54_rank_cross_test.go`, garde `I54X_FILM`,
+      hook `mobilityActionHook`, jointure PAR VIE — aucune fenetre, decision n°2
+      respectee). Denominateurs : 2 519 242 records delta biped, 21 188 masque∋i54,
+      21 187 lus, 1 illisible, 20 595 flag1==1. LA PREDICTION TOMBE : episodes/vie
+      MOBILITE **0,55** (445 vies, 244 episodes) contre AUTRES RANGS **0,45** (392 vies,
+      177 episodes) — ratio 1,2, et AUTRES > MOBILITE sur 4 films sur 12. Rien de
+      comparable a l'exclusivite du camo (39 transitions rang 8 contre 0). Temoin
+      `0014603f` (i48 jamais au masque) : 631 lectures flag1==1 quand meme — le canal vit
+      sans aucun equipement identifie.
+- [~] D.2 Sans objet : la prediction D.1 est tombee (couvert par D.3).
+- [x] D.3 ECRIT : `i54` est une action de mobilite GENERIQUE (glissade/escalade — durees
+      mediane 0,62 s, p90 1,7 s, coherentes avec la mesure du 13/08), pas l'evenement
+      d'usage d'un equipement. La mobilite reste sans instant d'usage par ce canal — MAIS
+      le grappin recoit le sien par la phase E (i59 tag==3). Biais publie : le groupe
+      « sans identite i48 » est construit sur l'union (vies identifiees ∪ vies a episodes)
+      — il ne contient que des vies a episodes, son taux « avec episode » de 100 % ne se
+      compare pas aux deux autres groupes.
 
-Gate D : le tableau episodes x rang, et le verdict.
+Gate D : PASSE — tableau episodes x rang publie par film (12 logs), verdict : **`i54`
+n'est PAS l'usage d'equipement**, prediction refutee chiffree.
 
-### Phase E — `i59` tag==3 : compter sans decoder
+### Phase E — `i59` tag==3 : compter sans decoder — CLOSE le 2026-08-16
 
-- [ ] E.1 Compter et DATER les occurrences tag==3 d'`i59` (le corps `FUN_142f25e90` —
-      position + quaternions — n'est PAS porte : on s'arrete au tag, on ne decode pas le
-      corps, la marche du record s'arrete la pour ce record).
-- [ ] E.2 Croiser ces instants avec les signaux de la phase C. S'ils co-datent avec les
-      poses de deployables, le portage du corps (pose exacte du mur/de l'ancre) devient un
-      lot justifie — a inscrire au registre comme reprise, PAS a executer ici.
+- [x] E.1 Compte et date (instrument `i59_tag3_test.go`, garde `I59_FILM`, hook
+      `abilityNonPredictedHook`, marche arretee A i59 — le corps n'est jamais parcouru).
+      3 films famille B : `000d5950` 57 tag==3 (masque∋i59 1342, lus 1309, illisibles 33
+      — les 33 sont les records ou i57 tag==3 casse la marche AVANT i59) · `00502e52` 103
+      (1131/1077/54) · `07aa428d` 50 (1065/1038/27). Tous dates et attribues a leur slot.
+- [x] E.2 CROISE — et la DECOUVERTE n'est pas celle attendue : les instants tag==3 ne
+      co-datent PAS avec les signaux de la phase C (naissances ti=37 : reel ≈ temoins
+      decales aux fenetres fines, 1,2-2x au mieux a ±0,02 s sans reproductibilite ;
+      transitions `activated` : 0 co-datation, 1 seule transition sur 3 films). MAIS le
+      croisement avec `i48` — le meme que la phase D — donne la semantique : **115 des 117
+      lectures tag==3 a porteur identifie tombent sur des vies rang 20 = GRAPPIN** (46+2x0
+      sur 000d5950, 45+2 [19] sur 00502e52, 24 sur 07aa428d ; les 93 lectures restantes
+      sont sur des vies SANS identite i48 — le trou de couverture connu). Motif en PAIRES
+      a ~0,15 s d'ecart (debut/fin d'un tir de grappin, vraisemblance non prouvee).
+      `i59 tag==3` est l'evenement du GRAPPIN, pas une pose de deployable.
 
-Gate E : le compte, la co-datation, et la recommandation ecrite.
+Gate E : PASSE — compte publie, co-datation C refutee, RECOMMANDATION : le portage du
+corps `FUN_142f25e90` (position + quaternions) est un lot JUSTIFIE comme **ancre du
+grappin** (candidat : point d'accroche + orientation), PAS comme pose de deployable —
+inscrit au REGISTRE_REPORTS comme reprise, non execute ici (interdit du plan).
 
 ## Ce que ce plan ne fait PAS
 
