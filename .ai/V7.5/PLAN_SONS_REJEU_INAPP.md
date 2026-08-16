@@ -64,12 +64,15 @@ le pilote l'executera (contrainte memoire du chantier sons).
 
 Gate : `make check-types` + `make test-web` verts ; test unitaire du calcul de variation.
 
-- [ ] Module de lecture des sons d'armes du rejeu 2D (ou extension du lecteur existant) :
+- [x] Module de lecture des sons d'armes du rejeu 2D (ou extension du lecteur existant) :
       par lecture, tirage uniforme dans [min, max] x (variation/100) applique en gain
-      (GainNode) et hauteur (playbackRate = 2^(cents/1200))
-- [ ] Distance : chaine GainNode + BiquadFilter passe-bas, mappee sur le curseur
-      (0 % = neutre absolu — AUCUN noeud dans le chemin du signal a 0)
-- [ ] Fallback sans manifeste de variation : lecture pure (aucune erreur, aucun silence)
+      (GainNode) et hauteur (playbackRate = 2^(cents/1200)) — `weaponSoundLogic.ts` (pur)
+      + `weaponSoundPlayer.ts` (assemblage WebAudio). Aucun lecteur existant a etendre :
+      la feature n'avait aucun code audio (etape 1).
+- [x] Distance : chaine GainNode + BiquadFilter passe-bas, mappee sur le curseur
+      (0 % = neutre absolu — AUCUN noeud dans le chemin du signal a 0) — verifie par un
+      test qui compte les noeuds crees, pas seulement leurs valeurs.
+- [x] Fallback sans manifeste de variation : lecture pure (aucune erreur, aucun silence)
 
 ### Etape 4 — Reglages admin
 
@@ -255,3 +258,49 @@ processus :
 
 A LIRE DANS LA SORTIE : la ligne `variation RANGED : …` de la passe 1 (elle tranche la
 question ci-dessus), et le champ `variation` dans `lot_tir.json`.
+
+### 2026-08-16 — Etape 3 CLOSE : le lecteur, et un chemin de signal qui reste vide
+
+**Gate.** `make check-types` : vert. `make test-web` : 411 fichiers, 3633 tests passes,
+0 echec. `npx eslint` sur les quatre fichiers neufs : vert. Les 33 tests neufs passent.
+
+PIEGE D'ENVIRONNEMENT, consigne pour la prochaine session : une PREMIERE execution de
+`make test-web` a rendu 10 echecs sur 3647, tous des `Test timed out in 5000ms` sur des
+garde-rails qui balaient l'arborescence (`fragClass.colorSource.guard`, `admin-ui.guard`,
+etc.). Relancee machine au repos, la suite passe entierement. Ce sont des timeouts de
+contention (aucun `testTimeout` n'est configure dans `vite.config.ts`, donc 5 s par
+defaut), pas des regressions — aucun ne touche la feature du rejeu.
+
+**Deux fichiers, une frontiere nette.** `weaponSoundLogic.ts` ne connait pas WebAudio :
+tirage, conversions d'unites et mapping du curseur y sont des fonctions pures. Le module
+suit la convention de la feature (`*Logic.ts` teste sans DOM, deja appliquee par
+`replayLogic`, `killFeedLogic`, `rosterLogic`). `weaponSoundPlayer.ts` n'assemble que des
+noeuds. C'est ce qui rend l'exigence du plan verifiable.
+
+**LE POINT DUR EST TESTE, PAS SEULEMENT ECRIT.** « A 0 %, aucun noeud dans le chemin du
+signal » ne se verifie pas a l'oreille : un GainNode a 1 de trop est inaudible jusqu'au
+jour ou l'on compare le rendu de l'app au fichier extrait. Le test utilise donc un
+AudioContext ENREGISTREUR — meme principe que `canvasRecording.test.ts`, qui teste le
+rendu canvas sans navigateur — et assert sur la LISTE DES NOEUDS CREES : reglages par
+defaut et son sans fourchette donnent exactement `['source']` et `['source->destination']`.
+Les deux gains (variation et distance) sont additionnes en decibels avant conversion : un
+seul GainNode, jamais deux en serie.
+
+**Deux choix de mapping, expliques dans le code.** (1) Le reglage de variation reduit les
+BORNES de la fourchette, pas le resultat du tirage : appliquer le ratio au resultat aurait
+tire tout le son vers le grave a chaque reglage intermediaire. (2) Le gain de distance
+decroit lineairement en decibels et la coupure du passe-bas GEOMETRIQUEMENT (20 kHz ->
+500 Hz) : une octave est un rapport, pas une difference, et un mapping lineaire aurait
+rendu la premiere moitie du curseur inaudible et la seconde brutale.
+
+**CE QUI N'EST PAS FAIT, ET POURQUOI.** Le lecteur n'est PAS branche dans `ReplayCanvas` :
+aucun `.wav` ni `index.json` n'existe encore, la livraison attendant la fin du re-vote
+(33 coups) — c'est ecrit noir sur blanc en tete de ce plan (« le plan prepare le chemin et
+le format, pas le contenu final »). Le brancher aujourd'hui ajouterait, a chaque ouverture
+du rejeu, un chargement qui ne peut rien trouver. C'est une dependance explicite du plan,
+donc un report VALIDE au sens de la regle 3 du contrat d'execution — et non un « je le
+ferai plus tard ». Ce qu'il restera a faire le jour de la livraison : instancier le lecteur
+au premier geste de l'utilisateur (un navigateur refuse un `AudioContext` avant), appeler
+`play(arme)` depuis la boucle de `ReplayCanvas` sur les tirs (`Shot.w` est la seule cle
+arme deja resolue cote client), et traiter les deux ruptures d'horloge — le scrub et le
+`restart()` — pour ne pas rejouer en masse des tirs passes.
