@@ -37,9 +37,9 @@ admin existant — DECOUVRIR le pattern en place et s'y conformer, ne pas en inv
 
 Gate : compte rendu ecrit au journal de CE fichier.
 
-- [ ] Ou vit le rejeu 2D cote web (composants, lecteur audio existant ou absent)
-- [ ] Pattern exact des reglages admin existants (stockage, endpoint, page, i18n FR/EN)
-- [ ] Ou ranger sons + manifeste pour l'app (convention assets existante,
+- [x] Ou vit le rejeu 2D cote web (composants, lecteur audio existant ou absent)
+- [x] Pattern exact des reglages admin existants (stockage, endpoint, page, i18n FR/EN)
+- [x] Ou ranger sons + manifeste pour l'app (convention assets existante,
       `static/weapons-assets/...` ou autre — suivre l'existant)
 
 ### Etape 2 — Export des fourchettes RANGED (Go, cmd/weapon-sounds)
@@ -89,3 +89,101 @@ Gate : page admin affiche la section, valeurs persistees et relues ; typecheck +
 Piste consignee au passage (chantier sons-armes, pas ici) : l'utilisateur se souvient d'un
 « pan... clic » sur la Carabine Vestige — symptome possible du delai d'action non prouve.
 A verifier a l'oreille sur les rendus regeneres avant d'instruire.
+
+### 2026-08-16 — Etape 1 : compte rendu de decouverte
+
+Branche `feat/sons-rejeu-inapp` creee depuis `feat/extraction-sons-armes` (86c2ed4c8).
+
+**1. Le rejeu 2D cote web.** Feature unique et plate :
+`apps/web/src/features/match-replay/` (33 fichiers). Route :
+`apps/web/src/routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay.tsx`.
+Le coeur est `ReplayCanvas.tsx` (canvas 2D, ~500 L, deja a la limite des 500 L du
+CLAUDE.md) : la boucle de lecture y vit directement, l'horloge est un `useRef`
+(`frameRef.current`, fractionnaire, en FRAMES) et non un state — aucun re-render par
+image. Etats React de lecture : `playing`, `multiplier` (0.5/1/2/4, analogue exact d'un
+`playbackRate`), scrub par `<input type="range">` non controle + `restart()`.
+Publication vers React a cadence reduite (`FRAME_PUBLISH_MS = 150`).
+
+AUDIT AUDIO : **aucun WebAudio dans `apps/web`**. Grep exhaustif de `AudioContext`,
+`new Audio(`, `.wav`, `playbackRate`, `GainNode`, `BiquadFilter`, `decodeAudioData`,
+`howler` sur `src/`, `public/`, `e2e/` : zero resultat pertinent. Aucune dependance audio
+dans `package.json`. Le seul « audio » existant est la feature `media`
+(`CoverFlowModal.tsx`, `<video>` + hls.js, pistes audio HLS) — aucune brique reutilisable.
+Le lecteur de sons du rejeu part donc de zero.
+
+Evenements sonorisables : `Shot` (`ReplayShot`, `apps/web/src/lib/api/types.ts:2568`),
+champ **`w`** = identifiant d'arme (hex 64 bits) — c'est le seul chemin arme -> categorie
+deja resolu cote client, via `doc.weaponLabels[w].fx` puis `familyOf()`
+(`shotEffects.ts`, 8 familles `ShotFamily`). Piege documente `replayDraw.ts:211-213` :
+l'ancienne interface manuscrite nommait ce champ `weapon`. `KillEvent.weaponLabel`
+(nom propre) n'est PAS relie a `weaponLabels`. Les tirs/grenades sont deja dans l'horloge
+du film ; les kills subissent le decalage `t0Ms`.
+
+Conventions de test de la feature : Vitest, tests colocalises, `xxx.test.ts` pour la
+logique pure / `Xxx.test.tsx` pour les composants, logique pure extraite en
+`camelCaseLogic.ts` (`replayLogic.ts`, `killFeedLogic.ts`, `rosterLogic.ts`,
+`equippedLogic.ts`, `coverageLogic.ts`). Fixture obligatoire `test/testDoc.ts`
+(`testReplayDoc()`), avec garde-rail `testDoc.guard.test.ts` qui interdit d'appeler
+`normalizeReplayDocument(` a la main. Precedent transposable pour tester un moteur audio
+sans navigateur : `canvasRecording.test.ts` (Proxy qui empile les appels).
+
+**2. Pattern des reglages admin (a copier a l'identique).** Chaine complete verifiee :
+- Stockage : `apps/go-api/internal/platform/settings/store.go` (514 L) — struct
+  `AppSettings` (tags JSON snake_case), `defaultSettings()`, `applyAbsentDefaults()`
+  (indispensable seulement pour un defaut non-zero quand la cle est absente), `Apply()`,
+  `ToResponse()`. Persistance = fichier `app_settings.json` ecrit par
+  `internal/platform/atomicfile.WriteFile` (garde-rail
+  `internal/archlint/no_bare_settings_write_test.go`), jamais DuckDB.
+- DTO : `apps/go-api/internal/domain/settings.go` — `SettingsResponse` (valeurs) et
+  `UpdateSettingsRequest` (tout en pointeur `,omitempty`, semantique PATCH partiel).
+- Endpoint : `apps/go-api/internal/api/handlers/settings.go` — `GET /settings` +
+  `PATCH /settings` (Huma), montes sous `RequireAuth` + `RequireAdmin`
+  (`server_apiv1.go:446-460`). Validations : `if req.X != nil` +
+  `humacore.NewError(400, "invalid_xxx", "message FR")`.
+- OpenAPI : la sortie est `Body any`, donc `SettingsResponse` ne vient PAS de Huma mais du
+  fragment manuel `api/openapi_manual_fragment.yaml` — fragment volontairement INCOMPLET
+  (plusieurs reglages existants n'y figurent pas). On ne l'etend donc pas : pas de
+  `make openapi-gen` / `make generate-types` a declencher.
+- Web : le type `SettingsResponse` est ECRIT A LA MAIN dans
+  `apps/web/src/lib/api/types.ts:393` (pas un re-export de `generated.ts`). Hooks
+  `useSettings` / `useUpdateSettings` (`features/settings/queries.ts`), query key
+  `queryKeys.settings` (`lib/query/keys.ts:43`). Auto-save : chaque `handleChange`
+  declenche immediatement le PATCH, pas de bouton Enregistrer.
+- Page : modeles `features/admin/sync/AdminSyncSettingsSection.tsx` et
+  `features/admin/system/AdminBackupSection.tsx` — section admin autonome qui cable son
+  propre `useSettings/useUpdateSettings`, son i18n via `getSettingsText`, et un
+  `<SectionHeader title=... />`. DECISION : la section « Sons du rejeu » va dans
+  `AdminSystemPage` (onglet Systeme), qui heberge deja les reglages d'instance non-sync.
+- i18n : `apps/web/src/features/settings/i18n.ts` — interface `SettingsText` + `FR_TEXT` +
+  `EN_TEXT`, parite garantie par le typage (`Record<Locale, SettingsText>`). C'est ce
+  fichier que consomment les sections admin de reglages, pas les manifests TOML.
+- Curseur : **il n'existe aucun composant `Slider`** dans `components/ui`. Le pattern
+  existant est un `<input type="range" className="w-full accent-primary">` —
+  `features/notifications/NotificationsSettingsTab.tsx:199-212` est le modele exact.
+- Tests : `internal/platform/settings/store_test.go` (quatuor Defaults/Apply/ToResponse/
+  RoundTrip par champ), `internal/api/handlers/settings_test.go`,
+  `features/settings/AnalyseTab.test.tsx`.
+
+**3. Rangement des sons + manifeste.** Convention constatee :
+`static/{folder}/{titleSlug}/...`, servi par un `http.FileServer` nu
+(`server_apiv1.go:1305-1309`, pas de `go:embed`), URL composee par
+`internal/assets/static/urls.go` cote Go et `apps/web/src/lib/staticAssets.ts` cote web.
+Les manifestes existants s'appellent tous **`index.json`** (jamais `manifest.json`) et
+vivent dans le dossier du titre : `static/weapons-assets/halo_infinite/jeu/index.json`
+(le seul consomme, ecrit par `cmd/weapon-icons-build`, relu par `cmd/weapon-icons-table`
+avec garde-rail de regeneration `TestTableGenereeEstAJour`), plus
+`abilities-assets/.../index.json` et `grenades-assets/.../index.json`.
+DECISION : les `.wav` et leur manifeste iront dans
+**`static/weapons-assets/halo_infinite/sons/`** avec un **`index.json`** — miroir exact du
+sous-dossier `jeu/` (« ce qui vient du jeu », convention deja documentee par
+`weaponIconDir = "jeu/"` dans `games/halo_infinite/adapter_asset_urls.go`). Aucun code de
+service a ecrire (le FileServer sert n'importe quelle extension). A ne pas oublier a la
+livraison des fichiers : `.gitattributes` liste les binaires par extension et ne mentionne
+pas `*.wav`.
+
+**4. Etat reel de `lirePaquetProps` (verifie sur pieces, `proprietes.go:128-152`).**
+La fonction accepte bien une `largeur`, mais elle ne rend que la PREMIERE composante par
+propriete (`d[debutVals+i*4*largeur]`) : appelee avec largeur 2, elle lit le `min` et
+IGNORE le `max`. Le seul appel RANGED (l.120) jette meme son resultat et sa branche `if`
+est inerte (`out.Lu = out.Lu && true` est un no-op). L'etape 2 doit donc ajouter un
+lecteur qui rend les DEUX composantes, pas seulement brancher l'existant.

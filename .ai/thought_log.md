@@ -1,3 +1,35 @@
+## [2026-08-16] Sons du rejeu in-app — etape 1 : decouverte avant tout code
+
+**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`, creee depuis `feat/extraction-sons-armes`.
+
+**Decision technique principale** : ne rien inventer, se conformer a trois patterns
+existants identifies sur pieces. (1) Le rejeu 2D vit dans
+`apps/web/src/features/match-replay/` et n'a AUCUN code audio — grep exhaustif de
+`AudioContext`, `GainNode`, `BiquadFilter`, `playbackRate`, `.wav` sur `apps/web` : zero.
+Le lecteur part de zero, mais la feature impose ses conventions (logique pure en
+`camelCaseLogic.ts` testee sans DOM, fixture obligatoire `testReplayDoc()` avec
+garde-rail). (2) Les reglages d'instance passent tous par la meme chaine
+`platform/settings/store.go` -> `domain/settings.go` -> `PATCH /settings` (admin) ->
+`lib/api/types.ts` (type ecrit A LA MAIN, pas genere) -> `features/settings/i18n.ts` ->
+section admin autonome facon `AdminSyncSettingsSection`. (3) Les assets vivent en
+`static/{folder}/{titleSlug}/`, leur manifeste s'appelle toujours `index.json`.
+
+**Resultats observes** : le point qui change le travail de l'etape 2 —
+`lirePaquetProps` (`cmd/weapon-sounds/proprietes.go:128`) prend deja une `largeur`, mais
+elle ne renvoie que la PREMIERE composante par propriete. Appelee en largeur 2 sur le
+paquet RANGED, elle lit le min et jette le max ; son unique appel (l.120) jette meme tout
+le resultat et sa branche `if` est un no-op (`out.Lu = out.Lu && true`). Le paquet est
+donc localise et valide, mais aucun lecteur de fourchette n'existe : il faut l'ecrire.
+Autre constat : `ReplayCanvas.tsx` fait deja ~500 L (seuil CLAUDE.md), le moteur audio ne
+peut pas y etre ajoute en vrac.
+
+**Conclusion / prochaine etape** : trois decisions posees et consignees au journal du plan
+— section admin dans l'onglet Systeme (`AdminSystemPage`), sons ranges dans
+`static/weapons-assets/halo_infinite/sons/` + `index.json` (miroir du sous-dossier `jeu/`),
+curseurs en `<input type="range">` (aucun composant Slider n'existe). Etape 2 : lecteur de
+fourchettes RANGED en Go.
+
 ## [2026-08-16] Sons d'armes — reprise a zero de l'assemblage : semantique prouvee
 
 **Statut** : Etapes 18-20 du plan COMPLETES, en une passe et une seule regeneration, sous
