@@ -210,10 +210,11 @@ ROLES MULTIPLES, donnes par l'utilisateur et apparies PAR MESURE (a confirmer pa
 	  be684013  mediane 4,76 s (retenu 1048056459) -> COUP UNIQUE (charge), conserver
 	  c15c9e77  2,65-4,00 s                  -> RECHARGEMENT, conserver, PAS pour le rejeu
 
-	Rayon de sentinelle (Forerunner_sentinelbeam), ev a220122d, 2 wem retenus :
-	  770988828  1,95 s  -> le plus court    = LE SON DU REJEU
-	  503433748  1,98 s  -> tir continu (vidage de chargeur), conserver
-	  (ecart de 30 ms seulement : appariement fragile, a confirmer)
+	Rayon de sentinelle (Forerunner_sentinelbeam) — CONFIRME par l'utilisateur :
+	  coup reconstitue (_coup_m1_1p, ev a220122d) -> TIR CONTINU (vidage de chargeur),
+	                                                 conserver, PAS pour le rejeu
+	  503433748  1,98 s  -> le court            = LE SON DU REJEU
+	  770988828  1,95 s  -> retenu aussi, sans role rejeu declare
 
 ## 8bis. CE QUI EST LIVRE, ET SOUS QUELLE FORME
 
