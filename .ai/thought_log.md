@@ -1,3 +1,35 @@
+## [2026-08-16] Sons du rejeu in-app — etape 2 : la fourchette RANGED enfin exportee
+
+**Statut** : Etape 2 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `gofmt -l` vide, `go build ./...` rc=0,
+`go vet ./...` rc=0, `go test ./cmd/weapon-sounds/` ok. Module de 7,24 Go jamais ouvert.
+
+**Decision technique principale** : la variation suit exactement le chemin du gain. Un seul
+type (`etatChemin`) porte les deux, la fourchette s'ADDITIONNE le long du chemin (chaque
+noeud traverse tire son propre ecart) et s'ENVELOPPE entre variantes d'un point de choix
+(le moteur n'en joue qu'une). Aucune regle nouvelle n'est inventee : c'est la semantique
+deja prouvee a l'etape 18 du chantier sons, appliquee a une seconde grandeur. L'agregation
+demandee par le plan — couche dominante, celle de plus fort gain — evite qu'une couche de
+renfort 20 dB en arriere dicte la variation du coup.
+
+**Resultats observes** : le lecteur de fourchette n'existait pas (constat de l'etape 1) ;
+`lirePaquetLarge` le fournit et valide TOUTES les composantes, la la ou l'ancien lecteur ne
+validait que la premiere. Quatre copies du bloc « lire les proprietes d'un noeud » sont
+ramenees a un appel (`bank.noterProps`). La fourchette ressort en `variation` a quatre
+niveaux (couche, evenement, mode de tir, arme), toujours optionnelle : absente, le son se
+joue pur. Deux limites statuees plutot que contournees. (1) La PERSPECTIVE 1p/3p n'est
+portee par AUCUNE structure du pipeline Go — verifie par grep : seule la liste de verbes de
+`noms.go` en parle. La fourchette est donc exportee a la granularite de l'EVENEMENT, qui
+est ce qui porte la distinction dans les faits. (2) Le format ne dit pas laquelle des deux
+composantes est le minimum : les bornes sont rendues ORDONNEES et l'outil imprime le releve
+des signes observes, qui tranchera l'interpretation a la premiere execution reelle.
+
+**Conclusion / prochaine etape** : les deux commandes d'export sont ecrites au journal du
+plan pour le pilote (passe 1 sur le module de 7,24 Go avec `-banks` obligatoire, passe 2
+sur celui de 0,62 Go, jamais dans le meme processus). Etape 3 : le lecteur WebAudio du
+rejeu 2D, dont le calcul de variation et le mapping de distance sont des fonctions pures
+testables sans navigateur.
+
 ## [2026-08-16] Sons du rejeu in-app — etape 1 : decouverte avant tout code
 
 **Statut** : Etape 1 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.

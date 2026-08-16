@@ -31,6 +31,9 @@ type evenementRendu struct {
 	// Couches : une entree par ACTION de l'evenement, donc par couche jouee EN PARALLELE.
 	// Un coup entendu est la somme d'une variante tiree dans chaque couche — pas un `.wem`.
 	Couches []brancheRendue `json:"couches,omitempty"`
+	// Variation : la fourchette de la COUCHE DOMINANTE, c'est-a-dire celle qui porte le
+	// coup. C'est cette valeur que l'app applique a chaque lecture.
+	Variation *variationRendue `json:"variation,omitempty"`
 }
 
 type rapportArme struct {

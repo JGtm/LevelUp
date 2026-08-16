@@ -47,7 +47,37 @@ type proprietesSon struct {
 	LPF      float32
 	DelaiS   float32
 	Lu       bool // faux si le paquet n'a pas pu etre lu de facon plausible
+	// Variation : le paquet RANGED du meme noeud, c'est-a-dire de combien le moteur
+	// deplace ces valeurs A CHAQUE LECTURE. C'est ce qui fait que deux coups consecutifs
+	// ne sont pas le meme fichier joue deux fois.
+	Variation fourchetteSon
 }
+
+// fourchette : l'ecart autorise autour de la valeur nominale, en OFFSETS SIGNES
+// (unite de la propriete : dB pour le volume, centiemes de demi-ton pour la hauteur).
+//
+// Les deux composantes du paquet RANGED sont rendues ORDONNEES (`Bas <= Haut`) et non
+// retranchees du nominal : le format ne dit pas lequel des deux champs est le minimum, et
+// le chantier ne postule rien. `statsSignesVariation` compte les signes observes a
+// l'execution pour que la premiere sortie reelle tranche l'interpretation sur pieces.
+type fourchette struct {
+	Bas  float32 `json:"bas"`
+	Haut float32 `json:"haut"`
+}
+
+// Nulle dit si la fourchette n'autorise aucun ecart — le cas le plus frequent.
+func (f fourchette) Nulle() bool { return f.Bas == 0 && f.Haut == 0 }
+
+// fourchetteSon : les fourchettes RANGED retenues pour le rejeu (volume et hauteur).
+// Le plan n'en demande pas d'autres : filtrage et delai ne sont pas rejoues in-app.
+type fourchetteSon struct {
+	VolumeDB fourchette `json:"volume_db"`
+	PitchCts fourchette `json:"pitch_cents"`
+	Lu       bool       `json:"-"`
+}
+
+// Nulle dit si le noeud ne fait varier ni le volume ni la hauteur.
+func (f fourchetteSon) Nulle() bool { return f.VolumeDB.Nulle() && f.PitchCts.Nulle() }
 
 // plausibleProp dit si un couple (identifiant, valeur) est credible.
 func plausibleProp(id byte, v float32) bool {
@@ -115,18 +145,70 @@ func lireProprietesA(d []byte, off int) proprietesSon {
 			out.DelaiS = v
 		}
 	}
-	// Le paquet RANGED suit ; on ne l'exploite pas encore mais sa lecture confirme
-	// l'alignement — s'il est illisible, c'est que le layout a derive.
-	if _, _, ok := lirePaquetProps(d, suite, 2); !ok {
-		out.Lu = out.Lu && true // on garde la lecture simple, sans pretendre plus
+	// Le paquet RANGED suit : c'est lui qui porte l'ecart applique a chaque lecture.
+	// Illisible, il signale que le layout a derive — on garde alors la lecture simple
+	// sans pretendre connaitre la variation.
+	out.Variation = lireVariation(d, suite)
+	return out
+}
+
+// lireVariation decode le paquet RANGED a l'offset donne.
+//
+// Chaque propriete y occupe DEUX float32 (contre un seul dans le paquet simple). Le
+// lecteur historique ne prenait que la premiere composante : appele en largeur 2, il
+// lisait donc une borne et jetait l'autre.
+func lireVariation(d []byte, off int) fourchetteSon {
+	var out fourchetteSon
+	vals, _, ok := lirePaquetLarge(d, off, 2)
+	if !ok {
+		return out
+	}
+	out.Lu = true
+	for id, v := range vals {
+		f := fourchette{Bas: min32(v[0], v[1]), Haut: max32(v[0], v[1])}
+		noterSignesVariation(v[0], v[1])
+		switch id {
+		case propVolume:
+			out.VolumeDB = f
+		case propPitch:
+			out.PitchCts = f
+		}
 	}
 	return out
+}
+
+func min32(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max32(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // lirePaquetProps lit un AkPropBundle de `largeur` float32 par propriete.
 // Rend les valeurs (premiere composante), l'offset suivant, et la plausibilite.
 func lirePaquetProps(d []byte, off, largeur int) (map[byte]float32, int, bool) {
-	if off < 0 || off >= len(d) {
+	larges, fin, ok := lirePaquetLarge(d, off, largeur)
+	if !ok {
+		return nil, off, false
+	}
+	out := make(map[byte]float32, len(larges))
+	for id, v := range larges {
+		out[id] = v[0]
+	}
+	return out, fin, true
+}
+
+// lirePaquetLarge lit un AkPropBundle et rend TOUTES les composantes de chaque propriete.
+// Rend les valeurs, l'offset suivant, et la plausibilite.
+func lirePaquetLarge(d []byte, off, largeur int) (map[byte][]float32, int, bool) {
+	if off < 0 || off >= len(d) || largeur < 1 {
 		return nil, off, false
 	}
 	n := int(d[off])
@@ -139,14 +221,18 @@ func lirePaquetProps(d []byte, off, largeur int) (map[byte]float32, int, bool) {
 	if fin > len(d) {
 		return nil, off, false
 	}
-	out := make(map[byte]float32, n)
+	out := make(map[byte][]float32, n)
 	for i := 0; i < n; i++ {
 		id := d[debutIDs+i]
-		v := math.Float32frombits(binary.LittleEndian.Uint32(d[debutVals+i*4*largeur:]))
-		if !plausibleProp(id, v) {
-			return nil, off, false
+		composantes := make([]float32, largeur)
+		for c := 0; c < largeur; c++ {
+			v := math.Float32frombits(binary.LittleEndian.Uint32(d[debutVals+(i*largeur+c)*4:]))
+			if !plausibleProp(id, v) {
+				return nil, off, false
+			}
+			composantes[c] = v
 		}
-		out[id] = v
+		out[id] = composantes
 	}
 	return out, fin, true
 }

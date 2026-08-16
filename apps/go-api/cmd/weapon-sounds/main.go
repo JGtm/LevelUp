@@ -21,6 +21,25 @@
 // ATTENTION MEMOIRE : `himodule.Open` lit le module ENTIER en memoire. Le module qui porte
 // les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
 // deux dans le meme processus : les modes s'echangent leurs resultats par le fichier JSON.
+//
+// SORTIE JSON — CHAMP `variation` (plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md`, etape 2).
+//
+// Les `.wav` extraits sont purs ; le jeu, lui, deplace volume et hauteur A CHAQUE LECTURE
+// dans une fourchette declaree par le paquet RANGED. Cette fourchette est desormais lue et
+// remontee dans les rapports, pour que l'app la rejoue (elle n'est jamais cuite dans les
+// fichiers). Elle apparait a trois niveaux, toujours sous la meme forme
+// (`{"volume_db": {"bas": …, "haut": …}, "pitch_cents": {…}, "couche": …,
+// "gain_db_couche": …}`), et TOUJOURS EN OPTION — absente, le son se joue tel quel :
+//
+//	mode `arbre`   : par couche (`branches[].variation`) et par evenement
+//	mode `lot`     : par evenement (`armes[].evenements[].variation`)
+//	mode `lot-tir` : par mode de tir (`modes[].variation`) et par arme (`variation`)
+//
+// Unites : decibels pour le volume, centiemes de demi-ton pour la hauteur (l'app en tire un
+// `playbackRate` par 2^(cents/1200)). Agregation : fourchette de la COUCHE DOMINANTE, celle
+// de plus fort gain de chemin. Les modes qui parcourent des banks impriment en fin
+// d'execution le releve des signes observes dans le paquet RANGED — c'est lui qui tranche
+// l'interpretation des deux composantes (offsets signes ou magnitudes) sur donnees reelles.
 package main
 
 import (
