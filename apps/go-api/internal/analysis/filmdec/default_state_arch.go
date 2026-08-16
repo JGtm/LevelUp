@@ -159,11 +159,24 @@ func consumeDefaultStateTI36(br *BitReader) {
 //
 // La sortie anticipee de FUN_1407f105c depend de la valeur de retour de FUN_1407f2224,
 // qui ne vaut 0 qu'en depassement de buffer : le chemin nominal lit toujours la suite.
+//
+// LES DEUX DERNIERES FEUILLES PUBLIENT leur valeur (equipment_creation.go) au lieu de la
+// jeter — meme correction qu'i48 le 2026-08-14 et que les quatre champs d'equipment_state.go
+// le 2026-08-16. Les largeurs sont INCHANGEES : `consumeGate0R(br, 5)` et
+// `consumeGateR(br, 32)` sont deroules a l'identique, porte comprise.
 func consumeDefaultStateTI37(br *BitReader) {
 	consumeVersionPrefix(br)
 	consumeDefaultStateTI36(br)
-	consumeGate0R(br, 5) // ECS_ReadEntityRefIndex5
-	consumeGateR(br, 32) // FUN_14080dec4 "ability-enabled-id"
+	if !br.ReadBit() { // ECS_ReadEntityRefIndex5 = consumeGate0R(br, 5) : porte INVERSEE
+		publishEquipmentCreation(EquipCreationRef, br.ReadBits(5), true)
+	} else {
+		publishEquipmentCreation(EquipCreationRef, 0, false)
+	}
+	if br.ReadBit() { // FUN_14080dec4 "ability-enabled-id" = consumeGateR(br, 32)
+		publishEquipmentCreation(EquipCreationAbilityID, br.ReadBits(32), true)
+	} else {
+		publishEquipmentCreation(EquipCreationAbilityID, 0, false)
+	}
 }
 
 // consumeDefaultStateTI38 porte FUN_1408f0b48 (archetypes 38 ET 39, « object-position ») :

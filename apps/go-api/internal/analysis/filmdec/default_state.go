@@ -327,11 +327,13 @@ func consumeBipedDefaultStateMediaFrame(br *BitReader) {
 // FUN_140cc5128 per-axis position block du chemin i0 movement (hors de ce bloc) garde sa
 // dépendance runtime (DAT_1445cc9e0 axis widths) non sourçable statiquement.
 func consumeMultiplayerPropertiesBlock(br *BitReader) {
-	br.ReadBits(9)  // FUN_141fd72c0 R(9)
-	br.ReadBits(32) // FUN_14080d6f0 R(32)
+	publishMPP(MPPWord9, br.ReadBits(uint(mppLeadBits)), true) // FUN_141fd72c0 R(9)
+	publishMPP(MPPWord32, br.ReadBits(32), true)               // FUN_14080d6f0 R(32)
 	if !br.ReadBit() {
-		br.ReadBits(32) // FUN_14080dec4 "variant-name" R(32)
-	} // else FUN_14080d7cc: DST lookup, 0 bits
+		publishMPP(MPPVariantName, br.ReadBits(32), true) // FUN_14080dec4 "variant-name" R(32)
+	} else { // FUN_14080d7cc: DST lookup, 0 bits
+		publishMPP(MPPVariantName, 0, false)
+	}
 	if br.ReadBit() { // FUN_1406cf008 gate; if set -> R(18)
 		br.ReadBits(18)
 	}
@@ -352,9 +354,81 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 	// `mov dword[RSP+0x20],0xe` @0x14080d2fc juste avant l'appel unique @0x14080d312 —
 	// donc bit-exact ici (précédemment modélisé à 0 bit à tort).
 	if br.ReadBit() { // FUN_1406cf008 tail gate G3 (DST+0x1c)
-		br.ReadBits(32)  // FUN_14080dec4 R(32) -> obj+0x24
-		consumeOpt32(br) // FUN_14080d69c [R(1)+opt R(32)] -> obj+0x20
-		br.ReadBits(14)  // FUN_1406d84b4 R(0xe) -> obj+0x28 (float), largeur figée @0x14080d2fc
+		publishMPP(MPPTailName, br.ReadBits(32), true) // FUN_14080dec4 R(32) -> obj+0x24
+		consumeOpt32(br)                               // FUN_14080d69c [R(1)+opt R(32)] -> obj+0x20
+		br.ReadBits(14)                                // FUN_1406d84b4 R(0xe) -> obj+0x28 (float), largeur figée @0x14080d2fc
+	} else {
+		publishMPP(MPPTailName, 0, false)
+	}
+}
+
+// mppLeadBits est la largeur du PREMIER champ du bloc MPP (FUN_141fd72c0). Le décompile la
+// donne à 9, et 9 est bit-exact sur les films d'arène — mais elle VARIE d'un film à l'autre :
+// mesuré le 2026-08-17, le default-state de ti=37 fait 60 bits sur `000d5950` et `00162144`
+// (largeur 9) contre 57 sur `06dfe6d9` et `00ba2e1c`. C'est le même genre de largeur de
+// configuration de réplication que les largeurs d'axe du chemin world-object ou que
+// `defaultReplRange` : posée au chargement de la carte, absente de l'exécutable, et donc
+// DÉTECTÉE dans le film (cf. DetectMPPLeadBits) plutôt que devinée.
+//
+// Le défaut 9 est celui du chemin bipède, validé en live (rep = 166 ou 198 bits) : il ne bouge
+// pas tant qu'un appelant ne l'a pas mesuré. L'appelant doit détenir LockProcessDecode et
+// restaurer la valeur précédente — c'est un global de paquet.
+var mppLeadBits = 9
+
+// SetMPPLeadBits fixe la largeur du premier champ du bloc MPP.
+func SetMPPLeadBits(n int) { mppLeadBits = n }
+
+// MPPLeadBits rend la largeur courante du premier champ du bloc MPP.
+func MPPLeadBits() int { return mppLeadBits }
+
+// MPPField désigne l'un des champs du bloc `object-multiplayer-properties` (FUN_14080cfe8)
+// dont ce port consommait la valeur pour rester aligné, et qui la PUBLIENT désormais — même
+// correction qu'i48, qu'`equipment_state.go` et que le default-state de ti=37.
+//
+// LE BLOC EST PARTAGÉ par le default-state du bipède (ti=35) et par ceux des archétypes
+// d'objet du monde (ti=36, 37, 38, 39, 43). La sonde n'est donc PAS spécifique à
+// l'équipement : c'est l'appelant qui l'installe et qui sait de quel record il lit le bloc.
+type MPPField int
+
+// Les quatre champs publiés, et MPPFieldCount qui les compte.
+const (
+	// MPPWord9 est le premier champ du bloc (FUN_141fd72c0, R(9)).
+	MPPWord9 MPPField = iota
+	// MPPWord32 est le mot de 32 bits INCONDITIONNEL du bloc (FUN_14080d6f0). C'est le seul
+	// champ de 32 bits présent sur TOUS les records.
+	MPPWord32
+	// MPPVariantName est le « variant-name » de 32 bits, derrière une porte (FUN_14080dec4).
+	MPPVariantName
+	// MPPTailName est le champ de 32 bits de la queue G3, derrière une porte (FUN_14080dec4).
+	MPPTailName
+	MPPFieldCount = 4
+)
+
+// String rend l'étiquette du champ — celle du déserialiseur.
+func (f MPPField) String() string {
+	switch f {
+	case MPPWord9:
+		return "mpp-word9"
+	case MPPWord32:
+		return "mpp-word32"
+	case MPPVariantName:
+		return "mpp-variant-name"
+	case MPPTailName:
+		return "mpp-tail-name"
+	}
+	return "mpp-champ-inconnu"
+}
+
+// mppHook, si non nil, reçoit chaque lecture d'un champ du bloc. `present` est faux quand la
+// porte s'est fermée sans transmettre de valeur — une porte fermée n'est pas une valeur nulle.
+var mppHook func(f MPPField, value uint64, present bool)
+
+// SetMultiplayerPropertiesHook installe (ou retire, avec nil) la sonde du bloc MPP.
+func SetMultiplayerPropertiesHook(h func(f MPPField, value uint64, present bool)) { mppHook = h }
+
+func publishMPP(f MPPField, value uint64, present bool) {
+	if mppHook != nil {
+		mppHook(f, value, present)
 	}
 }
 
