@@ -1,3 +1,32 @@
+## [2026-08-16] Sons du rejeu in-app — cloture du plan (etapes 1 a 5)
+
+**Statut** : Plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE. Branche
+`feat/sons-rejeu-inapp` (4 commits, depuis `feat/extraction-sons-armes`), poussee sur
+origin. Jamais de travail ni de push sur main.
+
+**Decision technique principale** : les `.wav` restent purs de bout en bout. Le Go exporte
+ce que le jeu declare (fourchettes RANGED de volume et de hauteur, agregees sur la couche
+dominante), l'app applique ces ecarts a chaque lecture, et l'admin regle l'intensite des
+deux effets. Aucun maillon ne cuit d'effet dans un fichier, et le chemin par defaut est
+strictement neutre — verifie par un test qui compte les noeuds WebAudio crees.
+
+**Resultats observes** : 4 commits, 29 fichiers, +2319/-80. Gates de cloture rejoues :
+`go build` et `go vet` rc=0, `npm run typecheck` (cache purge) vert, `npm run lint`
+0 erreur (19 avertissements preexistants), `make test-web` 412 fichiers / 3640 tests /
+0 echec. `go test ./...` : 138 paquets verts et UN echec, `internal/himap`
+(`TestBalayageCoquille`), par depassement du timeout de 10 minutes — ce test balaie les 27
+cartes depuis les fichiers du jeu installes et ne s'execute que sur cette machine ; aucun
+fichier de `himap`/`himodule` n'est touche par le diff. Echec d'environnement, consigne au
+plan.
+
+**Conclusion / prochaine etape** : deux choses attendent le pilote. (1) Lancer l'export
+RANGED — les deux commandes exactes sont au journal du plan, la passe 1 sur le module de
+7,24 Go avec `-banks` obligatoire, la passe 2 sur celui de 0,62 Go, jamais dans le meme
+processus — puis lire la ligne `variation RANGED : …` qui tranche l'interpretation des deux
+composantes du paquet. (2) Verifier la CI de la branche. Reste ensuite, a la livraison des
+`.wav` : brancher le lecteur dans `ReplayCanvas` (instanciation au premier geste, appel sur
+les tirs via `Shot.w`, traitement du scrub et du `restart()`).
+
 ## [2026-08-16] Sons du rejeu in-app — etape 4 : deux curseurs sur la page d'admin
 
 **Statut** : Etape 4 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
