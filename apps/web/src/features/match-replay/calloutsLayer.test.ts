@@ -139,6 +139,22 @@ describe('drawCalloutsLayer', () => {
     expect(calls.filter((c) => c.method === 'strokeText')).toHaveLength(labels.length)
   })
 
+  it('le libellé reste PETIT : au plus la taille du nom de joueur + 1 px d écran', () => {
+    // Planche du 16/08 : « police trop grande, limiter le débordement au maximum ». La
+    // borne n'est pas un goût — un nom de zone ne doit pas peser plus lourd qu'un joueur sur
+    // la carte (8,7 px d'écran). Une unité de dessin EST un pixel d'écran ici (le contexte
+    // est déjà transformé au devicePixelRatio) : la valeur écrite dans `font` est la bonne.
+    const { ctx } = mockCtx()
+    drawCalloutsLayer(ctx, normalizeCallouts(ENTRY), VIEW, {
+      bigColors: ['#111111'],
+      fineInk: '#222222',
+      locale: 'fr',
+    })
+    const px = Number(/(\d+(?:\.\d+)?)px/.exec(ctx.font)?.[1])
+    expect(px).toBeGreaterThan(0)
+    expect(px).toBeLessThanOrEqual(9.7)
+  })
+
   it('remplit les grandes zones en règle PAIR-IMPAIR (parties et trous du découpage)', () => {
     const { ctx, calls } = mockCtx()
     drawCalloutsLayer(ctx, normalizeCallouts(ENTRY), VIEW, {

@@ -25,10 +25,13 @@
  * `WeaponIcon` (masque teint par CSS). L'alignement des deux horloges est traité dans
  * `killFeedLogic.ts`, avec sa mesure.
  *
- * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : « + Nom
- * (part %) · tueur part % », fond BLEUTÉ sur la ligne — le fond affirme une contribution.
- * « Aucun » (mesuré) garde sa précision en infobulle ; « inconnu » n'écrit RIEN. Les
- * trois états restent distincts dans la DONNÉE (assist_state).
+ * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : marque
+ * d'assistance, Nom, « - part % », puis la part du tueur ; fond BLEUTÉ sur la ligne — le
+ * fond affirme une contribution. « Aucun » (mesuré) garde sa précision en infobulle ;
+ * « inconnu » n'écrit RIEN. Les trois états restent distincts dans la DONNÉE (assist_state).
+ *
+ * AUCUN MOT « ASSISTÉ PAR » (planche du 16/08) : la marque le dit, et elle le dit en
+ * pictogramme — le mot coûtait une demi-ligne à chaque élimination assistée.
  */
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -381,13 +384,11 @@ function KillLine({
         </div>
       )}
       {assisted && (
-        <div className="flex items-baseline gap-1 pl-7 text-3xs text-muted-foreground" title={t.killFeedAssistHint}>
-          <span className="font-semibold" style={{ color: colorOf(k.assistTeamID, k.ally) }}>
-            +
-          </span>
+        <div className="flex items-center gap-1 pl-7 text-3xs text-muted-foreground" title={t.killFeedAssistHint}>
+          <AssistMark label={t.killFeedAssistMark} color={colorOf(k.assistTeamID, k.ally)} />
           <span className="truncate">{k.assistGamertag}</span>
           {k.assistDamagePct != null && (
-            <span className="font-mono tabular-nums">{k.assistDamagePct} %</span>
+            <span className="font-mono tabular-nums">{t.killFeedAssistShare(k.assistDamagePct)}</span>
           )}
           {k.killerDamagePct != null && (
             <span className="font-mono tabular-nums opacity-70">
@@ -397,6 +398,42 @@ function KillLine({
         </div>
       )}
     </li>
+  )
+}
+
+/**
+ * AssistMark — LA MARQUE D'ASSISTANCE, en SVG : une flèche qui entre dans un point.
+ *
+ * POURQUOI PAS L'ICÔNE DU JEU. Elle a été cherchée avant d'être dessinée : ni l'atlas du
+ * kill feed (`weapons-assets/{slug}/jeu/index.json`, 168 vignettes — aucune entrée
+ * d'assistance), ni les vignettes de HUD (capacités et grenades seulement), ni le jeu de
+ * médailles (Halo Infinite n'a pas de médaille d'assistance) ne la portent. Le plan prévoit
+ * ce cas : à défaut, un glyphe neutre — et JAMAIS un caractère, qui dépendrait de la police
+ * de la machine (c'est le « + » qu'il remplace).
+ *
+ * CE QU'ELLE DESSINE : une contribution qui aboutit sur la cible. La couleur d'équipe de
+ * l'assistant la porte, comme le « + » avant elle — l'assistant reste identifiable à sa
+ * couleur avant même qu'on lise son nom.
+ */
+function AssistMark({ label, color }: { label: string; color: string }) {
+  return (
+    <span role="img" aria-label={label} title={label} className="inline-flex shrink-0 items-center">
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M1.2 6h4.2" />
+        <path d="M4 4.3 5.8 6 4 7.7" />
+        <circle cx="9.4" cy="6" r="1.7" fill={color} stroke="none" />
+      </svg>
+    </span>
   )
 }
 

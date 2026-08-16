@@ -7,6 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
+import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplaySettingsDrawer, type ReplayHeatmapControls } from './ReplaySettingsDrawer'
 import type { ReplaySound } from './useReplaySound'
 
@@ -41,6 +42,8 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onToggleAim = vi.fn()
   const onToggleZones = vi.fn()
   const onSetSpeed = vi.fn()
+  const onToggleShotFx = vi.fn()
+  const onToggleKillFx = vi.fn()
   const utils = render(
     <ReplaySettingsDrawer
       locale="fr"
@@ -51,13 +54,17 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleZones={onToggleZones}
       zonesAvailable
       heatmap={makeHeatmap()}
+      showShotFx
+      onToggleShotFx={onToggleShotFx}
+      showKillFx={false}
+      onToggleKillFx={onToggleKillFx}
       sound={makeSound()}
       speed={1}
       onSetSpeed={onSetSpeed}
       {...over}
     />,
   )
-  return { ...utils, onClose, onToggleAim, onToggleZones, onSetSpeed }
+  return { ...utils, onClose, onToggleAim, onToggleZones, onSetSpeed, onToggleShotFx, onToggleKillFx }
 }
 
 describe('ReplaySettingsDrawer — calques', () => {
@@ -183,7 +190,54 @@ describe('ReplaySettingsDrawer — son', () => {
   })
 })
 
-describe('ReplaySettingsDrawer — fermeture', () => {
+describe('ReplaySettingsDrawer — effets d événement', () => {
+  it('les deux effets ont leur bascule, chacune avec son état', () => {
+    renderDrawer({ showShotFx: true, showKillFx: false })
+    expect(screen.getByRole('button', { name: 'Effets de tirs' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Effets de mort' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('chaque bascule appelle SON callback, jamais celui de l autre effet', () => {
+    const { onToggleShotFx, onToggleKillFx } = renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: 'Effets de mort' }))
+    expect(onToggleKillFx).toHaveBeenCalledTimes(1)
+    expect(onToggleShotFx).not.toHaveBeenCalled()
+  })
+
+  it('la RÉSERVE de couverture des tirs est à l écran, pas dans un commentaire', () => {
+    // Elle est la raison d'être du (i) demandé le 16/08 : le film n'enregistre un tir que
+    // lorsqu'un dégât est appliqué, donc l'absence d'éclair ne veut pas dire l'absence de tir.
+    renderDrawer()
+    const mark = screen.getByRole('img', {
+      name: /couverture des tirs peut ne pas être totale/i,
+    })
+    expect(mark).toHaveAttribute('title', expect.stringContaining("dégât est appliqué"))
+  })
+})
+
+describe('ReplaySettingsDrawer — cohabitation avec la légende de la carte de chaleur', () => {
+  it('le panneau tient le bord DROIT, la légende le coin bas-GAUCHE : deux coins opposés', () => {
+    // Depuis que le panneau se pose SUR la carte (16/08), il pourrait masquer ce qui vit
+    // dans le cadre du canvas. La légende est le seul élément dans ce cas — elle est ancrée
+    // à l'opposé, et le panneau reste AU-DESSUS si un écran étroit les rapproche : c'est
+    // l'ordre correct (un panneau ouvert prime une légende), pas une collision.
+    const panel = renderDrawer().getByRole('region', { name: 'Réglages' })
+    expect(panel.className).toContain('right-0')
+    expect(panel.className).toContain('z-20')
+    const legend = render(<ReplayHeatmapLegend locale="fr" mode="presence" />)
+    const box = legend.container.firstElementChild as HTMLElement
+    expect(box.className).toContain('left-2')
+    expect(box.className).toContain('bottom-2')
+  })
+})
+
+describe('ReplaySettingsDrawer — fermeture et focus', () => {
   it('le bouton de fermeture appelle onClose', () => {
     const { onClose } = renderDrawer()
     fireEvent.click(screen.getByRole('button', { name: 'Fermer les réglages' }))
@@ -194,5 +248,31 @@ describe('ReplaySettingsDrawer — fermeture', () => {
     const { onClose } = renderDrawer()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('un clic DEHORS ferme le panneau (il recouvre la carte : on doit pouvoir en sortir)', () => {
+    const { onClose } = renderDrawer()
+    fireEvent.pointerDown(document.body)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('un clic DEDANS ne ferme rien — sinon régler quoi que ce soit refermerait le panneau', () => {
+    const { onClose } = renderDrawer()
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Visée' }))
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('le DÉCLENCHEUR est exclu du clic dehors : sinon il fermerait puis rouvrirait', () => {
+    const trigger = document.createElement('button')
+    document.body.appendChild(trigger)
+    const { onClose } = renderDrawer({ triggerRef: { current: trigger } })
+    fireEvent.pointerDown(trigger)
+    expect(onClose).not.toHaveBeenCalled()
+    trigger.remove()
+  })
+
+  it('le focus entre au panneau à l ouverture (il recouvre les commandes de la carte)', () => {
+    renderDrawer()
+    expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Réglages' }))
   })
 })
