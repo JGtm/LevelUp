@@ -48,6 +48,12 @@ import (
 // typique (plusieurs dizaines de secondes, cf. le surbouclier a 61,6 s cite plus haut).
 const singleActivationMaxMS = 15_000
 
+// singleActivationFloor : nombre MINIMAL d'episodes a activation unique attendu sur ce
+// golden. Il en porte 15 aujourd'hui ; le plancher est bas (10) pour ne pas re-figer une
+// mesure a la ligne pres, mais il n'est PAS zero — c'est lui qui empeche la prediction
+// ci-dessous de passer sur une population vide.
+const singleActivationFloor = 10
+
 // TestCamoEpisodeDurationDistributionDuGolden construit le document du film de reference
 // et publie la distribution des durees de ses episodes de camouflage actif.
 func TestCamoEpisodeDurationDistributionDuGolden(t *testing.T) {
@@ -156,6 +162,18 @@ func TestCamoEpisodeDurationDistributionDuGolden(t *testing.T) {
 	t.Logf("  %d/%d episode(s) CHAINE(s) (>1 lecture active dans la fenetre, aucune fin mesuree entre) — "+
 		"max d'un episode a ACTIVATION UNIQUE : %dms sur %d episode(s) de ce type",
 		chained, len(eps), singleMax, len(eps)-chained)
+
+	// LA POPULATION D'ABORD, LA PREDICTION ENSUITE. `singleMax` part de 0 et n'est releve
+	// que par des episodes A ACTIVATION UNIQUE : si un changement de decodage faisait
+	// tomber cette population a zero (par exemple des reaffirmations d'etat comptees comme
+	// des reactivations), `0 > 15000` resterait faux et ce test PASSERAIT SANS RIEN
+	// ASSERTER — un gate qui ne peut plus echouer ne garde rien. Le plancher est donc
+	// verifie AVANT la prediction, et il echoue bruyamment.
+	if single := len(eps) - chained; single < singleActivationFloor {
+		t.Fatalf("%d episode(s) camo a ACTIVATION UNIQUE, plancher %d : la prediction ci-dessous "+
+			"n'aurait plus de population a verifier — le decodage du canal i28 a change, "+
+			"mesurer avant de toucher a ce test", single, singleActivationFloor)
+	}
 
 	// PREDICTION FALSIFIABLE : un episode A ACTIVATION UNIQUE (rien ne l'a reactive) est
 	// la lecture la plus proche d'un dash isole. S'il s'agissait d'un power-up ramasse,

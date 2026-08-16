@@ -13,7 +13,7 @@ import { SOUND_CUT_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
 import {
   advanceSoundCursor,
   buildSoundTimeline,
-  killSoundStem,
+  killSound,
   killSourceSpriteStem,
   resyncSoundCursor,
   SOUND_RESYNC_JUMP_MS,
@@ -330,38 +330,42 @@ describe('killSourceSpriteStem', () => {
   })
 })
 
-describe('killSoundStem', () => {
+// killSound remplace la façade `killSoundStem` (supprimée le 2026-08-16, elle n'avait plus
+// d'appelant de production) : MÊMES quatre cas, plus la CATÉGORIE, qui est ce que le filtre
+// du tiroir coupe. Sans elle, une grenade rangée en « weapon » se tairait avec les armes.
+describe('killSound', () => {
   it('les QUATRE grenades sonnent chacune la sienne (ordre du dépôt : frag/plasma/dynamo/spike)', () => {
-    const stems = ['killfeed-46', 'killfeed-47', 'killfeed-48', 'killfeed-49'].map((s) =>
-      killSoundStem({ weaponKey: '', weaponImageUrl: vignette(s) }),
+    const sounds = ['killfeed-46', 'killfeed-47', 'killfeed-48', 'killfeed-49'].map((s) =>
+      killSound({ weaponKey: '', weaponImageUrl: vignette(s) }),
     )
-    expect(stems).toEqual([
-      'explosion_frag',
-      'explosion_plasma',
-      'explosion_dynamo',
-      'explosion_spike',
+    expect(sounds).toEqual([
+      { stem: 'explosion_frag', category: 'grenade' },
+      { stem: 'explosion_plasma', category: 'grenade' },
+      { stem: 'explosion_dynamo', category: 'grenade' },
+      { stem: 'explosion_spike', category: 'grenade' },
     ])
   })
 
   it('la VIGNETTE prime sur la clé : une grenade qui a les deux ne sonne pas deux vérités', () => {
     expect(
-      killSoundStem({
+      killSound({
         weaponKey: 'hinf_frag_grenade',
         weaponImageUrl: vignette('killfeed-46'),
       }),
-    ).toBe('explosion_frag')
+    ).toEqual({ stem: 'explosion_frag', category: 'grenade' })
     // Et la clé de grenade, seule, ne sonne plus rien : le pack n'a pas d'explosion partagée.
-    expect(killSoundStem({ weaponKey: 'hinf_frag_grenade', weaponImageUrl: '' })).toBeUndefined()
+    expect(killSound({ weaponKey: 'hinf_frag_grenade', weaponImageUrl: '' })).toBeUndefined()
   })
 
   it("une ARME garde son son : sa vignette n'est pas dans la table, la clé répond", () => {
-    expect(
-      killSoundStem({ weaponKey: 'hinf_br75', weaponImageUrl: vignette('killfeed-00') }),
-    ).toBe('hinf_br75')
+    expect(killSound({ weaponKey: 'hinf_br75', weaponImageUrl: vignette('killfeed-00') })).toEqual({
+      stem: 'hinf_br75',
+      category: 'weapon',
+    })
   })
 
   it('source sans vignette ET sans clé (étiquette AMBIGU) : silence, jamais une voisine', () => {
-    expect(killSoundStem({ weaponKey: '', weaponImageUrl: '' })).toBeUndefined()
+    expect(killSound({ weaponKey: '', weaponImageUrl: '' })).toBeUndefined()
   })
 })
 

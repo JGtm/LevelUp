@@ -48,15 +48,30 @@ describe('garde-rail couleur des classes de frags (source unique fragClassColor)
         const txt = readFileSync(file, 'utf8')
         // (a) import/référence du mapping brut → doit passer par fragClassColor & co.
         const usesRawMap = /FRAG_CLASS_TOKENS|fragClassToken/.test(txt)
-        // (b) littéral objet mappant ≥3 clés de classe vers une valeur (couleur/token) locale.
-        // SEUIL 3, PAS 2 (2026-08-16) : « melee » et « grenade » sont du vocabulaire Halo
-        // ordinaire, pas exclusif aux classes de frags — un filtre de sons par catégorie
-        // (match-replay/replaySound.ts, SoundCategoryFilter) les emploie tous les deux comme
-        // clés booléennes, sans rapport avec une couleur. À 2, ce mapping-là déclenchait un
-        // faux positif ; une VRAIE réimplémentation du mapping classe→couleur vise à couvrir
-        // le référentiel, pas 2 clés au hasard — 3 garde le signal, perd le bruit.
-        const classKeyLiterals = CLASS_KEYS.filter((k) => new RegExp(`['"\`]?${k}['"\`]?\\s*:`).test(txt))
-        const reimplementedMap = classKeyLiterals.length >= 3
+        // (b) littéral objet mappant ≥2 clés de classe vers une COULEUR/TOKEN locale.
+        //
+        // SEUIL 2, RÉTABLI LE 2026-08-16 (il était passé à 3 le matin même). La régression
+        // que ce garde-rail existe pour attraper — la collision mêlée=grenade de l'ancien
+        // donut, cf. l'en-tête de ce fichier — EST un mapping à DEUX clés. Pire : mesuré le
+        // 2026-08-16, `shoulder`, `sidearm`, `heavy` et `spartan_ability` n'apparaissent
+        // dans AUCUN fichier de features/ ni components/ ; seules `melee` et `grenade` y
+        // vivent. À 3, cette branche ne pouvait donc plus se déclencher du tout.
+        //
+        // LE FAUX POSITIF DU 16/08 NE VENAIT PAS DU SEUIL mais de l'absence de test sur la
+        // VALEUR : « melee » et « grenade » sont du vocabulaire Halo ordinaire — filtre de
+        // sons par catégorie (match-replay/replaySound.ts) et libellés i18n FR/EN — et
+        // `melee: true` comme `melee: 'Mêlée'` ne sont pas des couleurs. La docstring de ce
+        // test disait déjà « vers une valeur (couleur/token) » ; le prédicat, lui, ne
+        // regardait que la clé. On exige désormais que la valeur SOIT une couleur : hex,
+        // `var(--…)`, `resolveToken(…)`/`tokenCssVar(…)`, ou un identifiant kebab-case (la
+        // forme d'un SemanticToken : chart-series-8, perf-tier-2). Même technique de
+        // discrimination que perf-tier.guard.test.ts, qui sépare une échelle d'une simple
+        // liste de tokens par la présence d'une comparaison numérique.
+        const COLOR_VALUE = String.raw`(?:['"\`](?:#[0-9a-fA-F]{3,8}|var\(--|[a-z]+(?:-[a-z0-9]+)+)|#[0-9a-fA-F]{3,8}|var\(--|resolveToken\(|tokenCssVar\()`
+        const classKeyLiterals = CLASS_KEYS.filter((k) =>
+          new RegExp(`['"\`]?${k}['"\`]?\\s*:\\s*${COLOR_VALUE}`).test(txt),
+        )
+        const reimplementedMap = classKeyLiterals.length >= 2
         if (usesRawMap || reimplementedMap) offenders.push(file.replace(srcRoot, 'src'))
       }
     }

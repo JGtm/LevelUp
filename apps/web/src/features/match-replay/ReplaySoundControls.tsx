@@ -1,8 +1,10 @@
 /**
- * ReplaySoundControls — l'interrupteur du son et son volume, dans la barre des calques.
+ * ReplaySoundControls — l'interrupteur du son et son volume, dans la section SON du tiroir
+ * de réglages (`ReplaySettingsDrawer`). Il vivait dans la barre des calques du canvas
+ * jusqu'au 2026-08-16, où le tiroir a remplacé cette barre : ce composant a suivi, inchangé.
  *
  * Rien ici que de l'affichage : l'état, la persistance et le déclenchement vivent dans
- * useReplaySound. Deux règles de la barre s'appliquent, celles du bouton des zones :
+ * useReplaySound. Deux règles s'appliquent, les mêmes que pour le bouton des zones :
  * pas de commande quand il n'y a rien à commander (une piste sans un seul son ne montre
  * pas d'interrupteur), et un interrupteur qui n'agit pas en ce moment le DIT (à vitesse
  * rapide le son se tait — le bouton s'estompe et l'infobulle explique) plutôt que de

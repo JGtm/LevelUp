@@ -13,7 +13,7 @@
  *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
- *  - les KILLS du fil (source résolue : vignette OU weapon_key, cf. `killSoundStem`) —
+ *  - les KILLS du fil (source résolue : vignette OU weapon_key, cf. `killSound`) —
  *    l'horloge est celle du fil (`alignFeed`), la même qui date le flash des fiches et
  *    l'effet de mort : un son qui partirait sur l'horloge brute sonnerait à côté de son
  *    image ;
@@ -237,10 +237,17 @@ interface KillSound {
  * killSound — DEUX JOINTURES, DANS CET ORDRE : la vignette de la source d'abord (c'est elle
  * qui sait distinguer les quatre grenades et la mêlée, que le registre d'armes ne nomme
  * pas), la clé canonique ensuite (toutes les armes). Aucune des deux ne répond = silence
- * propre. Interne : `killSoundStem` (ci-dessous) en expose le stem seul — API historique,
- * testée telle quelle ; `buildSoundTimeline` lit aussi la catégorie, pour le filtre.
+ * propre. Elle rend le stem ET la catégorie, parce que `buildSoundTimeline` a besoin des
+ * deux : le fichier à jouer, et la catégorie que le filtre du tiroir peut couper.
+ *
+ * EXPORTÉE POUR ÊTRE TESTÉE À L'UNITÉ, et c'est son seul appelant de production
+ * (`buildSoundTimeline`) qui lui donne son sens. La façade `killSoundStem`, qui n'en
+ * exposait que le stem, a été SUPPRIMÉE le 2026-08-16 : le filtre par catégorie lui a pris
+ * son dernier appelant de production, et un export qui ne survit que par ses tests est le
+ * code mort que la règle 7 de CLAUDE.md interdit. Ses quatre cas sont ici, augmentés de la
+ * catégorie — l'information neuve du filtre.
  */
-function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): KillSound | undefined {
+export function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): KillSound | undefined {
   const sprite = killSourceSpriteStem(kill.weaponImageUrl)
   const bySprite = sprite ? KILL_SPRITE_SOUND_STEMS[sprite] : undefined
   if (bySprite) {
@@ -248,14 +255,6 @@ function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): KillS
   }
   const byKey = kill.weaponKey ? WEAPON_SOUND_STEMS[kill.weaponKey] : undefined
   return byKey ? { stem: byKey, category: 'weapon' } : undefined
-}
-
-/**
- * killSoundStem — le fichier d'un KILL, ou undefined pour le silence. Façade de `killSound`
- * qui n'expose que le stem (API historique, testée).
- */
-export function killSoundStem(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): string | undefined {
-  return killSound(kill)?.stem
 }
 
 /**
