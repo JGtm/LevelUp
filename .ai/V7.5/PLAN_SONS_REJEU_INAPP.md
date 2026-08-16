@@ -78,8 +78,8 @@ Gate : `make check-types` + `make test-web` verts ; test unitaire du calcul de v
 
 Gate : page admin affiche la section, valeurs persistees et relues ; typecheck + lint verts.
 
-- [ ] Deux curseurs, strings FR/EN via i18n.ts (parite typee), tokens de couleur semantiques
-- [ ] Endpoint conforme au pattern decouvert a l'etape 1
+- [x] Deux curseurs, strings FR/EN via i18n.ts (parite typee), tokens de couleur semantiques
+- [x] Endpoint conforme au pattern decouvert a l'etape 1
 
 ### Etape 5 — Cloture
 
@@ -304,3 +304,55 @@ au premier geste de l'utilisateur (un navigateur refuse un `AudioContext` avant)
 `play(arme)` depuis la boucle de `ReplayCanvas` sur les tirs (`Shot.w` est la seule cle
 arme deja resolue cote client), et traiter les deux ruptures d'horloge — le scrub et le
 `restart()` — pour ne pas rejouer en masse des tirs passes.
+
+### 2026-08-16 — Etape 4 CLOSE : deux curseurs, et rien d'autre
+
+**Gate.** `go build ./...` rc=0 ; `go vet ./...` rc=0 (seuls messages : contraintes de build
+qui excluent des `cmd` sans rapport, comportement normal du depot) ; `go test` vert sur
+`internal/platform/settings`, `internal/api/handlers`, `internal/domain`, `internal/api`
+(contrat OpenAPI) et `cmd/weapon-sounds` ; `make check-types` vert ; `eslint` vert sur les
+fichiers touches ; `make test-web` vert.
+
+**Le pattern de l'etape 1 a ete suivi a la lettre**, sans rien inventer :
+`store.go` (champs + `defaultSettings` + `applyAbsentDefaults` + `Apply` + `ToResponse`)
+-> `domain/settings.go` (valeur dans la reponse, pointeur `,omitempty` dans la requete)
+-> validation dans le handler -> `lib/api/types.ts` (type ECRIT A LA MAIN, pas genere)
+-> `features/settings/i18n.ts` (interface + FR + EN, parite garantie par le typage)
+-> section admin autonome facon `AdminSyncSettingsSection` / `AdminBackupSection`.
+Cles : `replay_sound_variation_percent` (defaut 100) et `replay_sound_distance_percent`
+(defaut 0). Section montee dans `AdminSystemPage` (onglet Systeme), decision prise et
+consignee a l'etape 1.
+
+**Le piege du defaut, traite explicitement.** La variation vaut 100 par defaut alors que le
+zero-value d'un `int` est 0 — et 0 est un reglage LEGITIME (variation coupee). Sans
+reapplication « cle absente -> 100 » dans `applyAbsentDefaults`, un `app_settings.json`
+ecrit avant ce lot serait lu comme « variation coupee », soit l'inverse de l'intention.
+Trois tests fixent les trois cas : cle absente, 0 explicite respecte, aller-retour
+save/load.
+
+**Deux choix d'interface, testes.** (1) Une valeur hors de [0, 100] est REFUSEE (400), pas
+ramenee en silence : un curseur qui affiche 150 alors que le serveur a retenu 100 ment a
+l'operateur. (2) Le curseur enregistre au RELACHEMENT (`mouseUp` / `touchEnd` / `keyUp`),
+pas a chaque pixel : l'auto-save du depot enverrait sinon des dizaines de PATCH pour un
+seul geste. L'affichage, lui, suit le doigt. Le test verifie qu'un deplacement en cours
+n'appelle PAS la mutation.
+
+**Aucun composant `Slider` n'existe** dans `components/ui` (verifie a l'etape 1) : les deux
+curseurs sont des `<input type="range" className="w-full accent-primary">`, le pattern
+existant de `NotificationsSettingsTab`. Aucune couleur en dur, uniquement des tokens.
+
+**Regeneration OpenAPI : non requise, et c'est verifie.** La sortie du handler est
+`Body any` et le schema `SettingsResponse` vient du fragment manuel, deja incomplet pour
+plusieurs reglages existants. `internal/api` (dont `TestOpenAPIYAMLIsUpToDate`) passe sans
+regenerer, et le garde-rail web des types generes aussi.
+
+**Documentation** : les deux cles sont decrites dans `docs/CONFIGURATION.md` ET
+`docs/FR/CONFIGURATION.md` (politique bilingue, regle 15), et ajoutees a
+`app_settings.example.json`.
+
+**PIEGE D'ENVIRONNEMENT, deuxieme occurrence.** La suite web complete a de nouveau rendu un
+echec unique (`lab-removal.guard.test.ts`) au premier passage. Rejoue seul, ce test passe
+en 917 ms, et un grep confirme zero occurrence interdite dans `src/`. Meme cause qu'a
+l'etape 3 : `testTimeout` a 5 s, contention machine. Constat a garder pour la prochaine
+session — un echec isole sur un garde-rail qui balaie l'arborescence se relit avant de se
+corriger.

@@ -432,6 +432,12 @@ export interface SettingsResponse {
   coach_proactive_mode: boolean
   // --- Fournisseur d'authentification (admin uniquement) ---
   auth_provider: string
+  // --- Sons d'armes du rejeu 2D (réglages d'instance, page admin) ---
+  // Les .wav extraits du jeu sont purs : ces deux pourcentages rejouent côté app ce que
+  // le moteur fait à chaque coup. Variation 100 = fourchettes du jeu telles quelles ;
+  // distance 0 = son pur, aucun traitement dans le chemin du signal.
+  replay_sound_variation_percent: number
+  replay_sound_distance_percent: number
 }
 
 export type UpdateSettingsRequest = Partial<

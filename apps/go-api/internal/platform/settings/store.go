@@ -82,6 +82,15 @@ type AppSettings struct {
 	// pour ceux-là).
 	CoachProactiveMode bool `json:"coach_proactive_mode"`
 
+	// ReplaySoundVariationPercent / ReplaySoundDistancePercent — sons d'armes du
+	// rejeu 2D, réglages d'INSTANCE (page admin), pas des préférences utilisateur.
+	// Les .wav extraits du jeu sont purs : ces deux réglages rejouent côté app ce
+	// que le moteur fait à chaque coup. Variation 0-100 % (défaut 100 = fourchettes
+	// du jeu telles quelles, réappliqué par applyAbsentDefaults car 0 est une valeur
+	// légitime) ; distance 0-100 % (défaut 0 = son pur, aucun traitement).
+	ReplaySoundVariationPercent int `json:"replay_sound_variation_percent"`
+	ReplaySoundDistancePercent  int `json:"replay_sound_distance_percent"`
+
 	// Capabilities (défaut : true)
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
@@ -155,6 +164,12 @@ func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage) {
 	}
 	if _, ok := raw["coach_proactive_mode"]; !ok {
 		cfg.CoachProactiveMode = true // DEC-2 : défaut ON (bascule 2026-07-22)
+	}
+	if _, ok := raw["replay_sound_variation_percent"]; !ok {
+		// 100 = les fourchettes du jeu telles quelles. 0 est un réglage LÉGITIME
+		// (variation coupée) : sans ce ré-application, un fichier sans la clé serait
+		// indiscernable d'un opérateur ayant délibérément mis 0.
+		cfg.ReplaySoundVariationPercent = 100
 	}
 }
 
@@ -424,6 +439,12 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.InstanceLocked != nil {
 		cfg.InstanceLocked = *req.InstanceLocked
 	}
+	if req.ReplaySoundVariationPercent != nil {
+		cfg.ReplaySoundVariationPercent = *req.ReplaySoundVariationPercent
+	}
+	if req.ReplaySoundDistancePercent != nil {
+		cfg.ReplaySoundDistancePercent = *req.ReplaySoundDistancePercent
+	}
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
@@ -481,6 +502,8 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		CoachProactiveMode:                  cfg.CoachProactiveMode,
 		AuthProvider:                        cfg.AuthProvider,
 		InstanceLocked:                      cfg.InstanceLocked,
+		ReplaySoundVariationPercent:         cfg.ReplaySoundVariationPercent,
+		ReplaySoundDistancePercent:          cfg.ReplaySoundDistancePercent,
 	}
 }
 
@@ -509,5 +532,8 @@ func defaultSettings() *AppSettings {
 		ShowProgression: true,
 		// Coach proactif activé par défaut (DEC-2, bascule 2026-07-22).
 		CoachProactiveMode: true,
+		// Sons du rejeu 2D : variation du jeu telle quelle, aucune distance.
+		ReplaySoundVariationPercent: 100,
+		ReplaySoundDistancePercent:  0,
 	}
 }

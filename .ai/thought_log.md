@@ -1,3 +1,41 @@
+## [2026-08-16] Sons du rejeu in-app — etape 4 : deux curseurs sur la page d'admin
+
+**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `go build ./...` et `go vet ./...` rc=0, `go test`
+vert sur les cinq paquets touches (dont `internal/api`, qui porte le contrat OpenAPI),
+`make check-types` vert, `eslint` vert, `make test-web` 412 fichiers / 3640 tests / 0 echec.
+
+**Decision technique principale** : ne rien inventer. La chaine relevee a l'etape 1 a ete
+suivie a la lettre — `store.go` (champs, defauts, Apply, ToResponse) -> `domain/settings.go`
+(valeur + pointeur optionnel) -> validation handler -> `types.ts` (ecrit a la main, PAS
+genere) -> `i18n.ts` (parite FR/EN par typage) -> section admin autonome sur le modele
+d'`AdminSyncSettingsSection`. Deux cles : `replay_sound_variation_percent` (100) et
+`replay_sound_distance_percent` (0), montees dans l'onglet Systeme.
+
+**Le piege du defaut, traite et teste** : la variation vaut 100 par defaut alors que le
+zero-value d'un `int` vaut 0 — et 0 est un reglage LEGITIME (variation coupee). Sans
+reapplication « cle absente -> 100 » dans `applyAbsentDefaults`, tout `app_settings.json`
+anterieur serait lu comme « variation coupee », soit l'inverse de l'intention. Trois tests
+fixent les trois cas.
+
+**Resultats observes** : deux choix d'interface tranches et testes. Une valeur hors [0, 100]
+est REFUSEE en 400 plutot que ramenee en silence (un curseur qui affiche 150 quand le
+serveur retient 100 ment a l'operateur), et le curseur enregistre au RELACHEMENT et non a
+chaque pixel — l'auto-save du depot enverrait sinon des dizaines de PATCH par geste ; le
+test verifie qu'un deplacement en cours n'appelle pas la mutation. Aucun composant Slider
+n'existant, les curseurs sont des `<input type="range">` comme dans
+`NotificationsSettingsTab`. Pas de regeneration OpenAPI : la sortie du handler est
+`Body any` et le schema vient du fragment manuel — verifie, `internal/api` passe.
+
+**Piege d'environnement, deuxieme occurrence** : la suite web a de nouveau rendu un echec
+unique sur un garde-rail qui balaie l'arborescence (`lab-removal.guard`). Rejoue seul :
+917 ms, vert ; grep : zero occurrence interdite. Contention machine contre un `testTimeout`
+de 5 s, pas une regression. A relire avant de corriger, la prochaine fois.
+
+**Conclusion / prochaine etape** : etape 5, cloture — delivery-checklist et push de la
+branche. Reste hors perimetre jusqu'a la livraison des `.wav` : brancher le lecteur dans
+`ReplayCanvas`.
+
 ## [2026-08-16] Sons du rejeu in-app — etape 3 : le lecteur, et le noeud qu'on n'ajoute pas
 
 **Statut** : Etape 3 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.

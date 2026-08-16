@@ -260,6 +260,16 @@ export interface SettingsText {
   enemyColorLabel: string
   teamColorDefault: string
 
+  // Admin · Système — Sons du rejeu 2D (réglages d'instance)
+  replaySoundTitle: string
+  replaySoundDescription: string
+  replaySoundVariationLabel: string
+  replaySoundVariationHint: string
+  replaySoundDistanceLabel: string
+  replaySoundDistanceHint: string
+  replaySoundOff: string
+  replaySoundFull: string
+
   // Onglet Backup
   tabBackup: string
   backupStatusEnabled: string
@@ -560,6 +570,18 @@ const FR_TEXT: SettingsText = {
   enemyColorLabel: 'Couleur ennemis',
   teamColorDefault: 'Défaut palette',
 
+  replaySoundTitle: 'Sons du rejeu',
+  replaySoundDescription:
+    "Les sons d'armes sont extraits du jeu tels quels. Ces deux réglages rejouent ce que le moteur du jeu applique à chaque coup ; ils valent pour toute l'instance.",
+  replaySoundVariationLabel: 'Variation',
+  replaySoundVariationHint:
+    "À chaque tir, le jeu déplace légèrement le volume et la hauteur du son. 100 % applique les écarts du jeu tels quels, 0 % joue toujours le fichier à l'identique.",
+  replaySoundDistanceLabel: 'Distance',
+  replaySoundDistanceHint:
+    'Un tir lointain est plus faible et plus sourd. À 0 %, le son traverse la lecture sans aucun traitement.',
+  replaySoundOff: 'Aucune',
+  replaySoundFull: 'Maximum',
+
   tabBackup: 'Sauvegarde',
   backupStatusEnabled: 'Activée',
   backupStatusNotConfigured: 'Non configurées',
@@ -859,6 +881,18 @@ const EN_TEXT: SettingsText = {
   allyColorLabel: 'Ally colour',
   enemyColorLabel: 'Enemy colour',
   teamColorDefault: 'Palette default',
+
+  replaySoundTitle: 'Replay sounds',
+  replaySoundDescription:
+    'Weapon sounds are extracted from the game as they are. These two settings replay what the game engine applies on every shot; they apply to the whole instance.',
+  replaySoundVariationLabel: 'Variation',
+  replaySoundVariationHint:
+    'On every shot the game shifts the volume and pitch slightly. 100 % applies the game ranges as they are, 0 % always plays the file identically.',
+  replaySoundDistanceLabel: 'Distance',
+  replaySoundDistanceHint:
+    'A distant shot is quieter and duller. At 0 % the sound goes through playback untouched.',
+  replaySoundOff: 'None',
+  replaySoundFull: 'Maximum',
 
   tabBackup: 'Backup',
   backupStatusEnabled: 'Enabled',
