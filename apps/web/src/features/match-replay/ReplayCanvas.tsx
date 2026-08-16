@@ -43,7 +43,8 @@ import {
 } from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
-import { ReplaySoundControls } from './ReplaySoundControls'
+import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
+import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
 import { backgroundRect, coversPlayedArea } from './mapBackground'
 import { buildFloorGrid } from './mapFloor'
@@ -90,7 +91,6 @@ const EVENT_HOLD_MS = 1_400
 
 const CANVAS_HEIGHT = 480
 const CANVAS_PAD = 24
-const SPEED_MULTIPLIERS = [0.5, 1, 2, 4]
 
 /** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
 const EMPTY_ZONES: CalloutZoneReady[] = []
@@ -174,14 +174,16 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const grenadeIconsRef = useRef<Map<number, HTMLCanvasElement>>(new Map())
 
   const [playing, setPlaying] = useState(true)
-  const [multiplier, setMultiplier] = useState(1)
   const [width, setWidth] = useState(0)
-  const [showAim, setShowAim] = useState(true)
-  // Le calque zones s'allume par défaut, comme dans le POC : c'est le vocabulaire de la
-  // carte, pas un ornement.
-  const [showZones, setShowZones] = useState(true)
-  // SON : coupé par défaut, préférence et volume persistés, tout le câblage dans le hook
-  // (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
+  // TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : fermé par défaut, ouvert par un
+  // bouton unique dans la barre. Calques et vitesse persistés comme le son — même
+  // mécanisme (replayPreferences.ts), trois réglages distincts.
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const {
+    showAim, toggleAim, showZones, toggleZones, speed: multiplier, setSpeed: setMultiplier,
+  } = useReplaySettings()
+  // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
+  // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
   const sound = useReplaySound(doc, kills, t0Ms, multiplier)
 
   const paletteVersion = useColorPaletteVersion()
@@ -633,100 +635,96 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   }
 
   return (
-    <div ref={containerRef} className="rounded-lg border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <div className="flex items-baseline gap-2 text-sm">
-          <span className="font-medium">
-            {doc.tracks.length} {t.livesSuffix}
-          </span>
-          <span ref={aliveRef} className="text-xs text-muted-foreground" />
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-xs text-muted-foreground">{t.layers}</span>
-          <Button
-            variant={showAim ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setShowAim((v) => !v)}
-            className="h-7 px-2 text-xs"
-            title={t.layerAimHint}
-            aria-pressed={showAim}
-          >
-            {t.layerAim}
-          </Button>
-          {/* Le bouton n'existe que si la carte a des zones : un interrupteur qui ne
-              commande rien tromperait plus qu'il n'informe. */}
-          {calloutZones.length > 0 && (
+    // OVERFLOW-HIDDEN sur la carte : le tiroir (frère du canvas, ci-dessous) partage le
+    // même fond que ce cadre — sans lui, ses coins carrés dépasseraient du rayon arrondi.
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex">
+        {/* Colonne canvas : c'est ELLE que le ResizeObserver mesure, pas le cadre entier —
+            sans quoi ouvrir le tiroir ne rétrécirait jamais le rendu (il resterait sous le
+            panneau plutôt que de lui céder la place). */}
+        <div ref={containerRef} className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+            <div className="flex items-baseline gap-2 text-sm">
+              <span className="font-medium">
+                {doc.tracks.length} {t.livesSuffix}
+              </span>
+              <span ref={aliveRef} className="text-xs text-muted-foreground" />
+            </div>
+            {/* TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : un bouton unique, plutôt
+                que la rangée de calques/son/vitesse qui vivait ici — ils sont tous dans le
+                panneau maintenant, avec les nouveaux filtres de son par catégorie. */}
             <Button
-              variant={showZones ? 'default' : 'ghost'}
+              variant={settingsOpen ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setShowZones((v) => !v)}
+              onClick={() => setSettingsOpen((v) => !v)}
               className="h-7 px-2 text-xs"
-              title={t.layerZonesHint}
-              aria-pressed={showZones}
+              aria-expanded={settingsOpen}
             >
-              {t.layerZones}
+              {t.settingsButton}
             </Button>
-          )}
-          <ReplaySoundControls sound={sound} locale={locale} />
-          <span aria-hidden className="mx-2 h-4 w-px bg-border" />
-          <span className="mr-1 text-xs text-muted-foreground">{t.speed}</span>
-          {SPEED_MULTIPLIERS.map((m) => (
-            <Button
-              key={m}
-              variant={multiplier === m ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setMultiplier(m)}
-              className="h-7 px-2 text-xs"
-            >
-              {m < 1 ? `${m.toFixed(1)}×` : `${m.toFixed(0)}×`}
-            </Button>
-          ))}
+          </div>
+          <div className="p-3">
+            <canvas
+              ref={canvasRef}
+              className="mx-auto block"
+              style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
+            />
+            <div className="mt-2 flex items-center gap-3">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setPlaying((p) => !p)}
+                className="h-8 w-24"
+              >
+                {playing ? t.pause : t.play}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={restart} className="h-8">
+                {t.restart}
+              </Button>
+              <span
+                ref={clockRef}
+                className="min-w-[5.5rem] font-mono text-xs tabular-nums text-muted-foreground"
+                aria-label={t.time}
+              />
+              <input
+                ref={sliderRef}
+                type="range"
+                min={0}
+                max={Math.max(doc.frameCount - 1, 0)}
+                defaultValue={0}
+                onChange={onScrub}
+                className="flex-1"
+                aria-label={t.time}
+              />
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t.note}
+              {doc.geometry?.length ? ` ${doc.geometry.length} ${t.propsSuffix}.` : ''}
+              {/* CE QUI EST SOUS LES JOUEURS EST DIT. Une carte du jeu et un sol reconstruit ne
+                  se lisent pas de la même façon, et rien à l'écran ne les distingue. */}
+              {` ${mapImage ? t.mapBackgroundNote : t.mapBackgroundFallback}`}
+              {/* L'ÉCRAN DIT « dernière position connue », JAMAIS « impact » : aucun événement
+                  de détonation n'existe dans le film (item 2.3). */}
+              {grenadeRestFx.length > 0 ? ` ${t.grenadeRestNote}` : ''}
+            </p>
+          </div>
         </div>
-      </div>
-      <div className="p-3">
-        <canvas
-          ref={canvasRef}
-          className="mx-auto block"
-          style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
-        />
-        <div className="mt-2 flex items-center gap-3">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setPlaying((p) => !p)}
-            className="h-8 w-24"
-          >
-            {playing ? t.pause : t.play}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={restart} className="h-8">
-            {t.restart}
-          </Button>
-          <span
-            ref={clockRef}
-            className="min-w-[5.5rem] font-mono text-xs tabular-nums text-muted-foreground"
-            aria-label={t.time}
+        {/* Le panneau POUSSE le canvas (rangée flex), il ne le recouvre jamais : exigence
+            explicite du 16/08, « n'obstrue pas la carte pendant la lecture ». */}
+        {settingsOpen && (
+          <ReplaySettingsDrawer
+            locale={locale}
+            onClose={() => setSettingsOpen(false)}
+            showAim={showAim}
+            onToggleAim={toggleAim}
+            showZones={showZones}
+            onToggleZones={toggleZones}
+            zonesAvailable={calloutZones.length > 0}
+            sound={sound}
+            speed={multiplier}
+            onSetSpeed={setMultiplier}
           />
-          <input
-            ref={sliderRef}
-            type="range"
-            min={0}
-            max={Math.max(doc.frameCount - 1, 0)}
-            defaultValue={0}
-            onChange={onScrub}
-            className="flex-1"
-            aria-label={t.time}
-          />
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t.note}
-          {doc.geometry?.length ? ` ${doc.geometry.length} ${t.propsSuffix}.` : ''}
-          {/* CE QUI EST SOUS LES JOUEURS EST DIT. Une carte du jeu et un sol reconstruit ne
-              se lisent pas de la même façon, et rien à l'écran ne les distingue. */}
-          {` ${mapImage ? t.mapBackgroundNote : t.mapBackgroundFallback}`}
-          {/* L'ÉCRAN DIT « dernière position connue », JAMAIS « impact » : aucun événement
-              de détonation n'existe dans le film (item 2.3). */}
-          {grenadeRestFx.length > 0 ? ` ${t.grenadeRestNote}` : ''}
-        </p>
+        )}
       </div>
     </div>
   )

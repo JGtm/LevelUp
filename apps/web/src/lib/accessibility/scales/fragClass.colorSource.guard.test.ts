@@ -48,9 +48,15 @@ describe('garde-rail couleur des classes de frags (source unique fragClassColor)
         const txt = readFileSync(file, 'utf8')
         // (a) import/référence du mapping brut → doit passer par fragClassColor & co.
         const usesRawMap = /FRAG_CLASS_TOKENS|fragClassToken/.test(txt)
-        // (b) littéral objet mappant ≥2 clés de classe vers une valeur (couleur/token) locale.
+        // (b) littéral objet mappant ≥3 clés de classe vers une valeur (couleur/token) locale.
+        // SEUIL 3, PAS 2 (2026-08-16) : « melee » et « grenade » sont du vocabulaire Halo
+        // ordinaire, pas exclusif aux classes de frags — un filtre de sons par catégorie
+        // (match-replay/replaySound.ts, SoundCategoryFilter) les emploie tous les deux comme
+        // clés booléennes, sans rapport avec une couleur. À 2, ce mapping-là déclenchait un
+        // faux positif ; une VRAIE réimplémentation du mapping classe→couleur vise à couvrir
+        // le référentiel, pas 2 clés au hasard — 3 garde le signal, perd le bruit.
         const classKeyLiterals = CLASS_KEYS.filter((k) => new RegExp(`['"\`]?${k}['"\`]?\\s*:`).test(txt))
-        const reimplementedMap = classKeyLiterals.length >= 2
+        const reimplementedMap = classKeyLiterals.length >= 3
         if (usesRawMap || reimplementedMap) offenders.push(file.replace(srcRoot, 'src'))
       }
     }
