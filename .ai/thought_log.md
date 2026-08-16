@@ -1,3 +1,71 @@
+## [2026-08-17] v7.5 rejeu 2D — marque d'assistance : l'icone du jeu remplace le glyphe SVG (correctif R1)
+
+**Statut** : Complete (branche `feat/v75`, lot cible).
+
+**Decision technique principale** : `AssistMark` (ReplayKillFeed.tsx) rend desormais
+`jeu/killfeed-62.png` en masque teint (`WeaponIcon` tinted, meme technique que l'icone
+d'arme du fil) a la place du glyphe SVG livre par le lot R1 (`da7baf122`). R1 avait conclu
+a tort qu'aucune icone d'assistance n'existait : l'entree 62 de `jeu/index.json` EXISTE
+(style killfeed, source_tag de l'atlas) — elle n'a simplement jamais recu de `nom_jeu` (ni
+tag `weap`, ni hachage `bitd` rejoue depuis que "assist" a rejoint le vocabulaire curate de
+`cmd/weapon-icons-build/killfeed.go`). URL composee cote client (`staticAssetURL('weapon',
+'jeu/killfeed-62', '.png', titleSlug)` via `useTitleSlug()`, meme mecanisme que
+`GrenadeThrowBadge`), format identique a celui du back (`static.URL(KindWeapon, slug,
+weaponIconDir+sprite, ".png")`). Taille : `DEATH_ICON_PX` renomme `PICTOGRAM_PX` (12 px) et
+generalise aux pictogrammes quasi carres de l'atlas kill feed (TYPE DE MORT + ASSISTANCE,
+40x40 mesure) plutot que d'ajouter un second magic number identique.
+
+`jeu/index.json` NON MODIFIE (item `[!]`, justifie) : nommer l'entree 62 exigerait de
+rejouer `weapon-icons-build` contre le binaire du jeu installe pour confirmer par hachage
+que "assist" cracke bien cet index — aucune machine ainsi equipee ici. Un `nom_jeu` ecrit a
+la main romprait la garantie du fichier genere (« rien n'y est devine ») et divergerait de
+la prochaine regeneration.
+
+**Resultats observes** : garde-rail neuf `assistMarkIcon.guard.test.ts` (fichier livre +
+entree `jeu/index.json` verifies, meme patron que `grenadeIcon.guard.test.ts`) ; tests
+`ReplayKillFeed.test.tsx` mis a jour (assertion mask-image + title, plus de DOM svg) ;
+gates : typecheck 0, lint 0 (19 warnings preexistants hors perimetre, TanStack Table),
+vitest 435 fichiers / 3938 tests verts + 14 skip preexistants.
+
+**Conclusion / prochaine etape** : reste le gate VISUEL utilisateur (vignette teintee a la
+couleur de l'assistant, lisible en petit dans le fil). Aucun report technique restant sur
+ce lot.
+
+## [2026-08-17] Lot R1 — retours web de la planche du 16/08
+
+**Statut** : Complete (branche `wt/retours-planche`, `da7baf122`, fusionnee dans `feat/v75`
+le 2026-08-17, `1eb25d5fd`). Huit items `[x]`, aucun report.
+
+**Decision technique principale** : les vignettes de grenade se resolvent COTE CLIENT
+(`grenadeIcon.ts`, stem = nom EN du rang, encre par theme, garde-rail stems <-> dossier <->
+`index.json`) et non cote Go — les libelles sont figes dans l'artefact au build, un changement
+Go n'aurait atteint aucun rejeu deja servi avant le re-build de masse. Corollaire :
+`GRENADE_REST_HOLD_MS` devient `EXPLOSION_MS` (invariant teste), la fenetre de remanence
+bornant le dessin de l'explosion. Tiroir en OVERLAY (Echap, clic dehors sans voile — un voile
+aurait avale le premier clic et couvert la barre de lecture —, focus rendu au bouton) ; les
+bascules « Effets de tirs » (ON) / « Effets de mort » (OFF) eteignent le DESSIN, `killFx`
+continue d'alimenter la carte de chaleur « eliminations ». Cinq bascules passent par un
+`usePersistedFlag` centralise (4e et 5e copies du meme corps).
+
+**Resultats observes** : explosions 1,4 -> 2,4 s avec phases proportionnelles (flash 120,
+onde 651) ; garde-rails raster explosion + eclair de bouche verts SANS toucher un plancher de
+pixels ; libelle de zone 25 -> 9,5 px ecran (les 25 px etaient une erreur d'unite heritee du
+POC, canevas 1 600 px affiche a ~840) ; « assiste par » n'existait nulle part dans le code
+(texte de la planche) — le « + » devient une marque SVG d'assistance a la couleur de
+l'assistant + « - N % » ; aucune icone d'assistance n'existe dans les assets extraits (168
+vignettes de l'atlas, HUD, 166 medailles) ; reapparition 0,55 -> 1,2 s + « Reapparition dans
+X s ». Gates du lot : typecheck 0, lint 0, vitest 434 fichiers / 3 929 tests, e2e raster 3/3,
+lint couleurs 0 ; apres fusion : 3 936 tests verts.
+
+**Conclusion / prochaine etape** : gate VISUEL utilisateur (rythme des explosions a 2,4 s,
+eclat de reapparition, libelles a 9,5 px, vignettes de grenade dans les deux themes, marque
+d'assistance, panneau en surimpression sur carte etroite). Decouvertes non traitees :
+`ReplayCanvas.tsx` 813 lignes ; `ReplayInventoryRow` 123 lignes ; bouton de fermeture du
+tiroir en caractere « x » (l'`AssetDrawer` a un `CloseIcon` SVG) ; `formatSeconds` rend
+« 3.2 s » avec un point (sa doc annonce la virgule) ; la grenade equipee ne teinte plus son
+icone en ambre (image finie, plus un masque) — la selection reste portee par l'anneau, le fond
+et le compteur.
+
 ## [2026-08-17] v7.5 rejeu 2D — habillage : noms sous les points, style de la planche, amis, logo, rangée fil | carte | fiches (phases 0-5 closes, réaligné)
 
 **Statut** : Complété côté code, sur `wt/habillage-rejeu` (`35ebc6232` lot + `2c956ac9a`

@@ -206,12 +206,21 @@ export function ReplayCanvas({
   const [playing, setPlaying] = useState(true)
   const [width, setWidth] = useState(0)
   // TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : fermé par défaut, ouvert par un
-  // bouton unique dans la barre. Calques et vitesse persistés comme le son — même
-  // mécanisme (replayPreferences.ts), trois réglages distincts.
+  // bouton unique dans la barre. Calques, effets et vitesse persistés comme le son — même
+  // mécanisme (replayPreferences.ts), des réglages distincts.
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Le bouton du tiroir : il est exclu du « clic dehors » et REPREND le focus à la
+  // fermeture — sans quoi le focus retomberait au document et la navigation au clavier
+  // repartirait du haut de la page.
+  const settingsButtonRef = useRef<HTMLButtonElement>(null)
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false)
+    settingsButtonRef.current?.focus({ preventScroll: true })
+  }, [])
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
     showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode,
+    showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
@@ -462,9 +471,12 @@ export function ReplayCanvas({
     if (grappleFx.length > 0) {
       drawGrappleLayer(ctx, grappleFx, view, frame, grappleInk)
     }
-    // Les événements passent APRÈS les trajectoires : ils se lisent sur elles.
+    // Les événements passent APRÈS les trajectoires : ils se lisent sur elles. Les DEUX
+    // effets d'événement sont ÉTEIGNABLES depuis le tiroir (décision du 16/08) : c'est le
+    // DESSIN qui s'éteint, jamais la mesure — `killFx` continue d'alimenter la lecture
+    // « éliminations » de la carte de chaleur, qui n'est pas un effet.
     const win = { frame, hold: eventHoldFrames }
-    if (shotFx.length > 0) {
+    if (showShotFx && shotFx.length > 0) {
       drawShotsLayer(ctx, shotFx, view, { frame, hold: shotHoldFrames }, {
         ink: fxInk,
         k: dpr,
@@ -511,7 +523,7 @@ export function ReplayCanvas({
     }
     // Les MORTS par-dessus les tirs : c'est l'événement le plus lourd de sens du calque,
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
-    if (killFx.length > 0) {
+    if (showKillFx && killFx.length > 0) {
       drawKillFxLayer(ctx, killFx, view, win, {
         colorOfSlot: (slot) => slotColors.get(slot) ?? null,
         fallback: shotColor,
@@ -559,6 +571,8 @@ export function ReplayCanvas({
     reducedMotion,
     showAim,
     showZones,
+    showShotFx,
+    showKillFx,
     onFrameChange,
     mapImage,
   ])
@@ -727,13 +741,15 @@ export function ReplayCanvas({
   }
 
   return (
-    // OVERFLOW-HIDDEN sur la carte : le tiroir (frère du canvas, ci-dessous) partage le
-    // même fond que ce cadre — sans lui, ses coins carrés dépasseraient du rayon arrondi.
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour
+    // de planche du 16/08). `relative` lui donne son repère, `overflow-hidden` retient ses
+    // coins carrés dans le rayon arrondi de la carte.
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex">
-        {/* Colonne canvas : c'est ELLE que le ResizeObserver mesure, pas le cadre entier —
-            sans quoi ouvrir le tiroir ne rétrécirait jamais le rendu (il resterait sous le
-            panneau plutôt que de lui céder la place). */}
+        {/* Colonne canvas : c'est ELLE que le ResizeObserver mesure. Elle occupe DÉSORMAIS
+            toute la largeur du cadre, ouvert ou fermé — le panneau la recouvre au lieu de
+            lui prendre sa place, donc le canvas ne se retaille plus et le rendu ne saute
+            plus à l'ouverture. */}
         <div ref={containerRef} className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
             <div className="flex items-baseline gap-2 text-sm">
@@ -746,6 +762,7 @@ export function ReplayCanvas({
                 que la rangée de calques/son/vitesse qui vivait ici — ils sont tous dans le
                 panneau maintenant, avec les nouveaux filtres de son par catégorie. */}
             <Button
+              ref={settingsButtonRef}
               variant={settingsOpen ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setSettingsOpen((v) => !v)}
@@ -807,12 +824,13 @@ export function ReplayCanvas({
             </p>
           </div>
         </div>
-        {/* Le panneau POUSSE le canvas (rangée flex), il ne le recouvre jamais : exigence
-            explicite du 16/08, « n'obstrue pas la carte pendant la lecture ». */}
+        {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
+            plus un panneau par dessus »). Il ne mange donc plus la largeur du canvas — et il
+            laisse libre le coin BAS-GAUCHE, où vit la légende de la carte de chaleur. */}
         {settingsOpen && (
           <ReplaySettingsDrawer
             locale={locale}
-            onClose={() => setSettingsOpen(false)}
+            onClose={closeSettings}
             showAim={showAim}
             onToggleAim={toggleAim}
             showZones={showZones}
@@ -827,9 +845,14 @@ export function ReplayCanvas({
               onSetMode: setHeatmapMode,
               killsAvailable: heat.killsAvailable,
             }}
+            showShotFx={showShotFx}
+            onToggleShotFx={toggleShotFx}
+            showKillFx={showKillFx}
+            onToggleKillFx={toggleKillFx}
             sound={sound}
             speed={multiplier}
             onSetSpeed={setMultiplier}
+            triggerRef={settingsButtonRef}
           />
         )}
       </div>

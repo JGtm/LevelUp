@@ -72,14 +72,17 @@ describe('ReplayTeams — capacité équipée', () => {
     expect(screen.getByText('Grappin')).toBeTruthy()
   })
 
-  it('garde le NUMÉRO d’un rang hors table, marqué non interprétable', () => {
+  it('rang hors table : un GLYPHE, et le numéro dans son infobulle', () => {
     // La table est partielle ET propre à la palette du film : combler par un nom
-    // voisin se lirait comme une certitude qu'on n'a pas.
+    // voisin se lirait comme une certitude qu'on n'a pas. Depuis le 2026-08-17 la fiche
+    // pose un glyphe (« pas un caractère », planche du 16/08) et garde le rang en
+    // infobulle — la seule chose vraie à cet endroit.
     renderTeams({
       abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
       abilities: [{ t: 0, slot: 512, r: 9, src: 'i48' }],
     })
-    expect(screen.getByText('capacité inconnue (9)')).toBeTruthy()
+    const mark = screen.getByRole('img', { name: 'capacité non identifiée (rang 9)' })
+    expect(mark.querySelector('svg')).toBeTruthy()
     expect(screen.queryByText('Grappin')).toBeNull()
   })
 
@@ -247,7 +250,7 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     const aliveRows = cardRows(alive)
     alive.unmount()
     const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
-    expect(dead.getByText('retour ?')).toBeTruthy()
+    expect(dead.getByText('Réapparition ?')).toBeTruthy()
     expect(cardRows(dead)).toBe(aliveRows)
   })
 })
@@ -316,13 +319,13 @@ describe('ReplayTeams — mort et réapparition', () => {
       ],
     })
     render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
-    expect(screen.getByText('retour dans')).toBeTruthy()
+    expect(screen.getByText('Réapparition dans')).toBeTruthy()
     expect(screen.getByRole('progressbar')).toBeTruthy()
   })
 
-  it('mort sans vie suivante : « retour ? », jamais un délai deviné, et pas de barre', () => {
+  it('mort sans vie suivante : « Réapparition ? », jamais un délai deviné, et pas de barre', () => {
     renderTeams({}, 140)
-    expect(screen.getByText('retour ?')).toBeTruthy()
+    expect(screen.getByText('Réapparition ?')).toBeTruthy()
     expect(screen.queryByRole('progressbar')).toBeNull()
   })
 })
