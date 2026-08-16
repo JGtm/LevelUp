@@ -49,6 +49,7 @@ export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplaySte
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'equipmentEpisodes'
   | 'geometry'
   | 'grenadeLabels'
   | 'grenades'
@@ -63,6 +64,7 @@ export type ReplayDocumentReady = Omit<
   | 'tracks'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   geometry: NonNullable<ReplayDocument['geometry']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
   grenades: NonNullable<ReplayDocument['grenades']>
@@ -92,6 +94,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // ce calque porte le RANG complet, et chaque lecture dit par quel canal elle est venue.
     // Absent = aucune lecture, la fiche montre l'inventaire sans capacité nommée.
     abilities: raw.abilities ?? [],
+    // Les épisodes d'ÉTAT ACTIF d'équipement (schéma 7) : camouflage et surbouclier,
+    // datés par vie — les deux seules familles dont l'état est MESURÉ. Absent = aucune
+    // vie publiée n'en porte : les fiches restent sobres, jamais un effet deviné.
+    equipmentEpisodes: raw.equipmentEpisodes ?? [],
     geometry: raw.geometry ?? [],
     grenadeLabels: raw.grenadeLabels ?? [],
     grenades: raw.grenades ?? [],

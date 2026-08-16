@@ -65,6 +65,9 @@ const NULLABLE_ARRAYS = [
   // plutôt que réinterprété, et ce garde-fou a fait son travail en refusant le nouveau
   // tableau tant qu'il n'était pas déclaré ici.
   'abilities',
+  // `equipmentEpisodes` : l'état ACTIF du camouflage et du surbouclier (schéma 7,
+  // 2026-08-16), en épisodes datés par vie. Deux familles seulement — les deux mesurées.
+  'equipmentEpisodes',
   'geometry',
   'grenadeLabels',
   'grenades',

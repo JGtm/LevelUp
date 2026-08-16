@@ -121,8 +121,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   grandeur sous la même clé aurait laissé tout client non mis à jour lire un nombre qui
 	//   ne veut plus dire la même chose. Ce n'est donc PAS un champ optionnel de plus — c'est
 	//   un retrait plus un changement de sens, et `abilityLabels` change de clé avec.
-	if SchemaVersion != 6 {
-		t.Fatalf("SchemaVersion = %d, attendu 6 : incrémenter exige une raison écrite ci-dessus "+
+	//   v6 -> v7 (2026-08-16, plan PLAN_EQUIPEMENT_TI37 phase 1) : equipmentEpisodes, l'état
+	//   ACTIF du camouflage et du surbouclier en épisodes datés par vie. Champ omitempty,
+	//   même raison de monter que v3/v4/v5 : c'est la CLÉ DE REPRISE du backfill — l'effet
+	//   plein-fiche et les sons d'équipement n'existent que sur un artefact qui porte les
+	//   épisodes, un v6 doit se lire « à re-cuire », pas « à jour ».
+	if SchemaVersion != 7 {
+		t.Fatalf("SchemaVersion = %d, attendu 7 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

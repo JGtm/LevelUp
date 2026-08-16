@@ -64,6 +64,15 @@ func HealthFraction(v float32) float32 {
 	return v
 }
 
+// OvershieldFullQ est le quantum i5 du bouclier plein NORMAL : la déquantification
+// endpointExact [0, 4] sur 8 bits met 1.000 exactement à q = 64, et le témoin de forme du
+// rejeu donne [0, 64] pour 27 404 quanta d'un film sans surbouclier. La RÈGLE MESURÉE du
+// surbouclier (2026-08-16, phase B de PLAN_ETAT_ACTIF_EQUIPEMENT) est `Q > OvershieldFullQ` :
+// 86,7-92,3 % des mesures des porteurs rang 9 au-delà (q max 223 = 3,498), 0 faux positif
+// sur ~150 000 mesures hors porteurs (3 films). La règle s'applique au QUANTUM BRUT
+// (ShieldVitality.Q), jamais à ShieldFraction — qui CLAMPE à 1.0 et efface l'information.
+const OvershieldFullQ = 64
+
 // ShieldFraction convertit la valeur i5 en fraction de bouclier standard [0, 1] ;
 // ShieldOverfill rend ce qui dépasse (le « surbouclier » éventuel), également en fractions
 // de bouclier standard. SUPPOSÉ, et dit comme tel : que 1.0 soit le bouclier plein. La

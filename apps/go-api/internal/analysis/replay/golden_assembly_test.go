@@ -301,6 +301,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderProjectiles(p, doc)
 	renderInventory(p, doc)
 	renderAbilities(p, doc)
+	renderEquipment(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderLabels(p, doc)
@@ -438,6 +439,35 @@ func renderAbilities(p func(string, ...any), doc ReplayDocument) {
 	p("lectures NOMMEES %d/%d — un rang hors table garde son numero, et la table est propre a"+
 		" la palette du film", named, len(doc.Abilities))
 	p("capacites nommees : %s", renderBilingualMap(doc.AbilityLabels))
+	p("")
+}
+
+// renderEquipment publie le calque des EPISODES D ETAT ACTIF (camo, surbouclier) et sa
+// couverture. Le film de reference est un FIESTA : aucun porteur d equipement rang 8/9
+// (palette famille B, rangs 19-22), mais des POWER-UPS de camouflage — et i28 queue[1]
+// est l etat d invisibilite de l UNITE, quelle qu en soit la source. Controle du
+// 2026-08-16 sur ce film : 698 lectures de queue[1], STRICTEMENT binaires (0:617 ·
+// 4095:81), transitions reparties sur des vies de rangs 19-22 et sans identite — le
+// camo de power-up allume le canal, l exclusivite rang 8 de la phase A etait la
+// VALIDATION du canal sur des films ou l equipement etait la seule source. Le
+// surbouclier, lui, reste a ZERO ici (temoin de forme du 2026-08-05 : 27 404/27 404
+// quanta dans [0, 64]) — un zero fige avec son denominateur.
+func renderEquipment(p func(string, ...any), doc ReplayDocument) {
+	p("## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre")
+	byFam := map[string]int{}
+	endRead := 0
+	for _, e := range doc.EquipmentEpisodes {
+		byFam[e.Fam]++
+		if e.EndRead {
+			endRead++
+		}
+	}
+	p("%d episode(s) publie(s) · par famille : %s · %d fin(s) MESUREE(s) (le reste ferme a la mort)",
+		len(doc.EquipmentEpisodes), renderCounts(byFam), endRead)
+	if c := doc.Coverage.Equipment; c != nil {
+		p("couverture : %d vie(s) publiee(s) · camo %d vie(s) / %d episode(s) · surbouclier %d vie(s) / %d episode(s)",
+			c.TracksTotal, c.CamoLives, c.CamoEpisodes, c.OvershieldLives, c.OvershieldEpisodes)
+	}
 	p("")
 }
 

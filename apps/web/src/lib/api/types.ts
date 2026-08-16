@@ -2626,6 +2626,9 @@ export type ReplayProjectile = components['schemas']['Projectile']
 export type ReplayLoadout = components['schemas']['Loadout']
 export type ReplayAmmoSlot = components['schemas']['AmmoSlot']
 export type ReplayInventory = components['schemas']['Inventory']
+// L'état ACTIF d'un équipement (schéma 7) : épisodes datés par vie, deux familles
+// mesurées (`camo`, `overshield`) — cf. equipmentFx.ts pour la lecture côté rendu.
+export type ReplayEquipmentEpisode = components['schemas']['EquipmentEpisode']
 export type ReplayDocument = components['schemas']['ReplayDocument']
 
 // Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le

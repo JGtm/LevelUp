@@ -78,6 +78,8 @@ var replaySchemas = []struct {
 	{"Loadout", replay.Loadout{}},
 	{"Inventory", replay.Inventory{}},
 	{"AbilityRead", replay.AbilityRead{}},
+	{"EquipmentEpisode", replay.EquipmentEpisode{}},
+	{"EquipmentCoverage", replay.EquipmentCoverage{}},
 	{"AmmoSlot", replay.AmmoSlot{}},
 	{"Surface", replay.Surface{}},
 	{"MapObject", replay.MapObject{}},
@@ -125,9 +127,20 @@ var replaySchemas = []struct {
 //	                      laisse tout client non mis a jour lire un nombre qui ne veut plus dire
 //	                      la meme chose. `abilityLabels` change de cle avec (rang, plus index).
 //
-// Les quatre fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	28 -> 29  2026-08-16  `equipmentEpisodes` (plan PLAN_EQUIPEMENT_TI37, phase 1) : l etat
+//	                      ACTIF du camouflage et du surbouclier, en episodes dates par vie
+//	                      — les DEUX familles dont l etat est MESURE (i28 queue[1] binaire
+//	                      0/4095 exclusif aux vies rang 8 ; i5 non clampe, regle q > 64, 0
+//	                      faux positif sur ~150 000 mesures hors porteurs). Les autres
+//	                      familles restent SANS etat : les deployables ne se datent pas par
+//	                      les canaux mesures, la mobilite n a pas d instant d usage par i54.
+//	                      `Coverage` gagne en meme temps son bloc `equipment` (vies
+//	                      porteuses / vies publiees, par famille) : N episodes sans
+//	                      denominateur se lirait comme une exhaustivite.
+//
+// Les cinq fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 28
+const wantReplayDocumentFields = 29
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

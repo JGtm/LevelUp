@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 6 · titre halo_infinite
+schema 7 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
@@ -56,6 +56,10 @@ rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:
 rangs observes : 19:42 20:66 21:70 22:36
 lectures NOMMEES 136/214 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 20=en:"Grappleshot"/fr:"grappin", 21=en:"Thruster"/fr:"propulseur"
+
+## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
+36 episode(s) publie(s) · par famille : camo=36 · 24 fin(s) MESUREE(s) (le reste ferme a la mort)
+couverture : 99 vie(s) publiee(s) · camo 22 vie(s) / 36 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)
