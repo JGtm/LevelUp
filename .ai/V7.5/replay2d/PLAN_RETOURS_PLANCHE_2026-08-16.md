@@ -48,32 +48,32 @@
 
 ## Lots
 
-### R1 — Retours web (worktree `wt/retours-planche`, apres fusion de `wt/heatmap`)
+### R1 — Retours web (worktree `wt/retours-planche`, apres fusion de `wt/heatmap`) — CLOS le 2026-08-17 (da7baf122, fusionne 1eb25d5fd)
 
 Perimetre FERME (chaque item = une case) :
-- [ ] R1.1 Tiroir en **overlay** (panneau par-dessus la carte, patron `AssetDrawer`/`FeedbackDrawer`
+- [x] R1.1 Tiroir en **overlay** (panneau par-dessus la carte, patron `AssetDrawer`/`FeedbackDrawer`
       du depot), plus « qui pousse ». Le canvas ne se retaille plus a l'ouverture.
-- [ ] R1.2 Bascules « Effets de tirs » (eclairs de bouche, tous les tirs — ON par defaut) et
+- [x] R1.2 Bascules « Effets de tirs » (eclairs de bouche, tous les tirs — ON par defaut) et
       « Effets de mort » (tueur -> victime — **OFF par defaut**), persistees ; **(i) tooltip** :
       « La couverture des tirs peut ne pas etre totale : le film n'enregistre un tir que
       lorsqu'un degat est applique. » FR/EN.
-- [ ] R1.3 Explosions **plus longues** : `EXPLOSION_MS` 1 400 -> **2 400** (phases mises a
+- [x] R1.3 Explosions **plus longues** : `EXPLOSION_MS` 1 400 -> **2 400** (phases mises a
       l'echelle : flash 120, onde 650, braises/eclats/poussiere), et duree de retention alignee
       (`GRENADE_REST_HOLD_MS`). Rejouer le garde-rail e2e raster de l'explosion.
-- [ ] R1.4 Eclat de reapparition **plus lent** : 0,55 s -> **1,2 s** ; texte de la fiche morte
+- [x] R1.4 Eclat de reapparition **plus lent** : 0,55 s -> **1,2 s** ; texte de la fiche morte
       « **Reapparition dans X s** » (FR) / « Respawn in X s » (EN), « Reapparition ? » si
       inconnu.
-- [ ] R1.5 Grenades en **images** sur la fiche (`static/grenades-assets/halo_infinite/{frag,
+- [x] R1.5 Grenades en **images** sur la fiche (`static/grenades-assets/halo_infinite/{frag,
       plasma,dynamo,spike}_{dark,light}.png`, deja versionnes) : icone + compteur, type equipe
       souligne comme aujourd'hui, aucun texte de type. Capacite absente ou rang non resolu :
       un **glyphe SVG neutre** (pas un caractere), tooltip « capacite non identifiee (rang N) ».
-- [ ] R1.6 Fil des morts : supprimer « assiste par » ; afficher **l'icone d'assistance** (a
+- [x] R1.6 Fil des morts : supprimer « assiste par » ; afficher **l'icone d'assistance** (a
       trouver dans les assets du jeu — atlas kill feed / HUD ; a defaut un glyphe SVG neutre,
       jamais un caractere) + **nom de l'assistant** + « - N % » de participation quand la
       part est connue.
-- [ ] R1.7 Callouts : **taille de police reduite** (label des zones : au plus la taille du nom
+- [x] R1.7 Callouts : **taille de police reduite** (label des zones : au plus la taille du nom
       de joueur + 1 px ecran ; aujourd'hui « trop grande »).
-- [ ] R1.8 Legende de la carte de chaleur : inchangee (lot heatmap) — juste verifier qu'elle
+- [x] R1.8 Legende de la carte de chaleur : inchangee (lot heatmap) — juste verifier qu'elle
       tient dans le panneau overlay.
 
 Gates R1 : purge `.tmp`, typecheck, lint, vitest — exit 0 ; zero hex ; FR/EN ; e2e raster
