@@ -1,3 +1,38 @@
+## [2026-08-17] Lot R1 — retours web de la planche du 16/08
+
+**Statut** : Complete (branche `wt/retours-planche`, `da7baf122`, fusionnee dans `feat/v75`
+le 2026-08-17, `1eb25d5fd`). Huit items `[x]`, aucun report.
+
+**Decision technique principale** : les vignettes de grenade se resolvent COTE CLIENT
+(`grenadeIcon.ts`, stem = nom EN du rang, encre par theme, garde-rail stems <-> dossier <->
+`index.json`) et non cote Go — les libelles sont figes dans l'artefact au build, un changement
+Go n'aurait atteint aucun rejeu deja servi avant le re-build de masse. Corollaire :
+`GRENADE_REST_HOLD_MS` devient `EXPLOSION_MS` (invariant teste), la fenetre de remanence
+bornant le dessin de l'explosion. Tiroir en OVERLAY (Echap, clic dehors sans voile — un voile
+aurait avale le premier clic et couvert la barre de lecture —, focus rendu au bouton) ; les
+bascules « Effets de tirs » (ON) / « Effets de mort » (OFF) eteignent le DESSIN, `killFx`
+continue d'alimenter la carte de chaleur « eliminations ». Cinq bascules passent par un
+`usePersistedFlag` centralise (4e et 5e copies du meme corps).
+
+**Resultats observes** : explosions 1,4 -> 2,4 s avec phases proportionnelles (flash 120,
+onde 651) ; garde-rails raster explosion + eclair de bouche verts SANS toucher un plancher de
+pixels ; libelle de zone 25 -> 9,5 px ecran (les 25 px etaient une erreur d'unite heritee du
+POC, canevas 1 600 px affiche a ~840) ; « assiste par » n'existait nulle part dans le code
+(texte de la planche) — le « + » devient une marque SVG d'assistance a la couleur de
+l'assistant + « - N % » ; aucune icone d'assistance n'existe dans les assets extraits (168
+vignettes de l'atlas, HUD, 166 medailles) ; reapparition 0,55 -> 1,2 s + « Reapparition dans
+X s ». Gates du lot : typecheck 0, lint 0, vitest 434 fichiers / 3 929 tests, e2e raster 3/3,
+lint couleurs 0 ; apres fusion : 3 936 tests verts.
+
+**Conclusion / prochaine etape** : gate VISUEL utilisateur (rythme des explosions a 2,4 s,
+eclat de reapparition, libelles a 9,5 px, vignettes de grenade dans les deux themes, marque
+d'assistance, panneau en surimpression sur carte etroite). Decouvertes non traitees :
+`ReplayCanvas.tsx` 813 lignes ; `ReplayInventoryRow` 123 lignes ; bouton de fermeture du
+tiroir en caractere « x » (l'`AssetDrawer` a un `CloseIcon` SVG) ; `formatSeconds` rend
+« 3.2 s » avec un point (sa doc annonce la virgule) ; la grenade equipee ne teinte plus son
+icone en ambre (image finie, plus un masque) — la selection reste portee par l'anneau, le fond
+et le compteur.
+
 ## [2026-08-16] v7.5 rejeu 2D — lot R2 : la duree d'un son devient une propriete de sa categorie
 
 **Statut** : Complete (R2.1 a R2.3), R2.4 REFUS MESURE. Branche `wt/sons-duree` (3 commits
