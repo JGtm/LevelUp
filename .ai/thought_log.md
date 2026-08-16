@@ -1,3 +1,69 @@
+## [2026-08-16] v7.5 rejeu 2D — lot R2 : la duree d'un son devient une propriete de sa categorie
+
+**Statut** : Complete (R2.1 a R2.3), R2.4 REFUS MESURE. Branche `wt/sons-duree` (3 commits
+`c7c18a102`, `fcf1ae325`, `6dadf49ca`), fusionnee dans `feat/v75` le 2026-08-16 (`022a7dbbd`).
+
+**Decision technique principale**. Le lecteur cessait tout a 1 s ; le bilan utilisateur du
+16/08 dit « ecourte » pour les explosions et les equipements. Plutot qu'un cas particulier
+dans le moteur, la duree passe DANS LE FICHIER : `SOUND_CUT_S` (coupe unique) devient
+`SOUND_CUT_MAX_S` (plafond de surete, 4 s), et l'enveloppe fond sur la fin de SA propre duree.
+Consequence : allonger un son = re-couper son asset, jamais toucher au moteur. La regle par
+categorie (armes/lancers/melee 1,2 s ; explosions et equipements jusqu'a 4 s) est rejouee par
+un garde-rail qui lit les en-tetes RIFF — sans lui, une re-livraison qui retronque a 1,2 s la
+ferait disparaitre sans qu'un test bouge.
+
+**Resultats observes**. Recette reproduite A L'OCTET avant usage (SHA256 identique sur
+`explosion_frag` re-converti a 1,2 s). Dynamo : attaque de l'explosion MESUREE (RMS par
+fenetre de 50 ms), trois sauts > 10 dB dans le fichier — +42,77 dB a 0,050 s (le lancer),
++13,60 dB a 2,100 s (le rebond, -43,8 dB), +33,63 dB a 3,350 s (l'explosion, 150 ms avant le
+pic global) ; coupe [3,310 ; fin] = 1,527 s. Mesure secondaire : ce segment du « Full » est le
+MEME son que « Explode » — ce que le Full ajoute est la nappe qui le precede, non embarquee
+parce que le son part a l'instant du kill et que l'attaque doit rester en tete de fichier.
+Frag re-coupee aussi (1,2 -> 3,335 s) : sa source est plus longue et la borne le permet.
+Dossier `static/sounds/halo_infinite` : 8 815 684 -> 11 634 676 o (+2,82 Mo), 39 fichiers.
+
+REPULSEUR : refus mesure. La vignette existe (`killfeed-56`, `tags_weap 692390e9`) mais aucune
+source de degat ne la designe — 0 des 473 lignes de `labels.tsv` ne nomme le repulseur, les 114
+lignes nommees sont toutes de classe ARME, les 6 lignes `eqip` sont INCONNU (trois sont des
+entrees `gggl`, donc des grenades). La seule cle qui les attraperait, CLASSE INCONNU, poserait
+le son sur 206 sources sans rapport. Livre a la place : un fil qui devient rouge si une regle
+mene un jour a `killfeed-56`, plus le test de silence propre sur cette vignette.
+
+**Gate**. `node_modules/.tmp` purge : typecheck exit 0 ; lint exit 0 ; test exit 0 — 430
+fichiers, 3 883 tests, 14 ignores. Aucun fichier Go touche. Apres fusion : typecheck 0, suite
+`match-replay` 35 fichiers / 489 tests verte.
+
+**Conclusion / prochaine etape**. Gate d'ECOUTE utilisateur : les quatre explosions et les
+quatre sons d'equipement ont change de duree ; la frag aussi (a confirmer ou annuler) ; la
+dynamo part maintenant du « Full ». Le son du repulseur attend l'identification de son `jpt!`.
+
+## [2026-08-16] Carte de chaleur du rejeu 2D (phase B, PLAN_CALLOUTS_HEATMAP)
+
+**Statut** : Complete (branche `wt/heatmap`, `6639816b6`, fusionnee dans `feat/v75` le
+2026-08-16, `e3411d8c7`).
+
+**Decision technique principale** : le calque n'utilise PAS la grille du raster de fond comme
+le plan l'envisageait — mesure sur pieces, ce raster vaut 0,092 m/px (~2 M de cellules par
+carte, 100x plus fin que le lissage) et n'existe que pour 21 cartes ; la grille suit le patron
+de `mapFloor.ts` (0,5 m sur les bornes de scene, meme `worldToCanvas`). Seconde decision :
+rampe `'frequency'` et non `'sequential'` — dans ce depot la rampe sequentielle va du rouge au
+vert (bon/mauvais) et dirait « bon » du couloir le plus meurtrier ; `'frequency'` est
+mono-teinte et CVD-safe dans toutes les palettes. `killFx` gagne `deathX`/`deathY` (le LIEU de
+la mort, distinct de l'axe d'orientation).
+
+**Resultats observes** : cuisson mediane 6,8 ms (arene 64 m, grille 145x145) et 19,1 ms (BTB
+250 m, 465x465) pour 72 000 positions ; echelle quantile p50/p95 verifiee robuste (un lieu 10x
+plus chaud ne fait pas tomber l'ordinaire sous 0,5, la ou un etalonnage sur le max le mettrait
+sous 0,1). Gates web : typecheck 0, lint 0, vitest 0 (431 fichiers, 3 887 tests) ; apres
+fusion 3 909 tests verts (flake connu `PalmaresRelationsPage` seul, 14/14 isole).
+
+**Conclusion / prochaine etape** : gate VISUEL utilisateur sur `000d5950` (arene dense) et
+`64e8adfa` (Catalyst CTF). Mode « jusqu'au curseur » NON livre (cout mesure 40 a 115 % du
+budget d'une image) : au registre. Decouvertes non traitees : 4 copies du patron « cuire un
+calque hors ecran » dans `ReplayCanvas.tsx` (candidat `useOffscreenLayer` + garde-rail) ;
+`ReplayCanvas.tsx` a 790 lignes ; `features/match-view/MatchPositionsHeatmap.tsx` existe deja
+(heatmap ECharts 20x20 de la page match) — deux vues de chaleur coexistent, arbitrage produit.
+
 ## [2026-08-16] v7.5 callouts — decouper les zones sur le decor reel : le masque publie suffisait, mais il fallait mesurer ce qui lui manque
 
 **Statut** : Complete — phase A du plan `.ai/V7.5/replay2d/PLAN_CALLOUTS_HEATMAP.md`, cinq
