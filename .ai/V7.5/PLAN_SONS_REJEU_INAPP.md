@@ -124,9 +124,25 @@ ajoute. Deux fichiers restent au-dessus de 500 lignes — `internal/api/handlers
 des fonctions existantes, non extractibles sans artifice). Dette signalee, pas aggravee la
 ou elle pouvait etre evitee.
 
-**CI** : la branche est poussee sur origin sans PR ; l'etat des jobs CI reste a verifier
-par le pilote (`gh run list --branch feat/sons-rejeu-inapp`) — un gate local ne couvre pas
-la baseline Go Linux ni le build Vite.
+**CI DE LA BRANCHE — verifiee, pas supposee.** `feat/sons-rejeu-inapp` poussee sur origin
+(sans PR). Trois workflows declenches :
+
+	Secrets (gitleaks)   success
+	Deploy Pre-Check     success
+	CI                   7 jobs sur 8 verts, le 8e encore en cours a la remise
+
+Detail du workflow CI : `Go Build + Test (windows-latest)`, `Go Build + Test
+(ubuntu-latest)`, `Frontend (TypeScript + Vite build)`, `Go Lint (golangci-lint)`,
+`Go Lease Enforcement (ADR 0013)`, `Go Contract Test (OpenAPI YAML)` et `OpenAPI Lint` sont
+TOUS verts — le contrat OpenAPI confirme au passage qu'aucune regeneration n'etait
+necessaire. `E2E React (Playwright)` est saute (0 s, condition de declenchement).
+SEUL RESTANT : `Go Coverage + Baseline non-regression (CGO_ENABLED=1 — ./... complet)`,
+toujours en cours apres 19 minutes — c'est le job long du depot, il rejoue toute la suite
+Go avec CGO. A relire par le pilote :
+
+	gh run view 31953129280
+
+Aucun signal rouge a ce stade.
 
 ## Hors perimetre (ne pas toucher)
 
