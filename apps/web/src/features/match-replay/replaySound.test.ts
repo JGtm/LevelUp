@@ -367,6 +367,14 @@ describe('killSound', () => {
   it('source sans vignette ET sans clé (étiquette AMBIGU) : silence, jamais une voisine', () => {
     expect(killSound({ weaponKey: '', weaponImageUrl: '' })).toBeUndefined()
   })
+
+  it('vignette hors table sonore et sans clé (le répulseur) : SILENCE, pas une voisine', () => {
+    // Le cas du lot R2.4 : l'atlas du jeu porte bien `killfeed-56` (repulsor), mais aucune
+    // source de dégât mesurée n'y mène et aucun son ne lui est associé. Si une vignette
+    // arrivait un jour sans entrée dans la table, elle doit se taire — jamais retomber sur
+    // l'explosion ou la mêlée d'à côté.
+    expect(killSound({ weaponKey: '', weaponImageUrl: vignette('killfeed-56') })).toBeUndefined()
+  })
 })
 
 const TL: ReplaySoundEvent[] = [
