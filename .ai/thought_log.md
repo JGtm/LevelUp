@@ -2436,6 +2436,630 @@ Phase A donnees (i47 grenade selectionnee + assistant/% par kill), Phase B fiche
 feed. Assets : inventaire = icones extraites (WeaponIcon), kill feed = killicon, PAS les images
 dessinees a la main du POC. Lecon consignee en memoire (project-v75-poc-replay-reference) : regarder
 le POC EN PREMIER, porter, ne pas reinventer.
+## [2026-08-16] Sons d'armes — la RECETTE documentee, le travail declare final
+
+**Statut** : decision utilisateur — les sons sont definitifs, une seule livraison prevue,
+toute reprise future rejoue la recette. `RECETTE_SONS_ARMES.md` ecrit : le COMMENT refaire
+de bout en bout (extraction, passes 1/2, semantique d'assemblage avec preuves, rendu,
+vote, livraison miroir, lecons). Les outils du pipeline (scripts Python + vgmstream +
+tri.html) et les donnees finales (lot1/lot2/coups/manifeste/votes-final) sont copies du
+scratchpad de session vers `Desktop/Halo Infinite - Sons armes/_outils` et `_donnees` —
+ils ne vivaient que dans un dossier temporaire.
+
+**Conclusion** : reste la livraison unique (fichiers votes -> assets app, manifeste avec
+roles), suspendue au rendu de l'agent sons-rejeu-inapp pour l'emplacement et le schema.
+
+## [2026-08-16] Sons d'armes — selection finale validee par l'utilisateur
+
+**Statut** : le tri est CLOS. 46 votes (`votes-sons-armes(4).json`), tout reecoute et
+valide sur la generation « semantique prouvee ». 0 orphelin, 0 coup a revoter. Artefact
+republie avec les marqueurs soldes.
+
+**Decisions consignees** : le vote prime sur la convention de perspective — la reecoute
+finale a deplace la plupart des choix vers la 1re personne, on livre ce qui est vote.
+Roles multiples apparies par mesure (a confirmer) : Ravageur bb31841b = tir 3 coups (rejeu),
+be684013 = coup unique, c15c9e77 = rechargement ; Sentinelle 770988828 = rejeu (plus court),
+503433748 = tir continu.
+
+**Prochaine etape** : livraison vers l'app (plan `PLAN_SONS_REJEU_INAPP.md`, en cours par
+agent) ; a la livraison, encoder ces roles dans le manifeste app.
+## [2026-08-16] Sons du rejeu — livraison unique et branchement du lecteur
+
+**Statut** : COMPLET. 31 fichiers / 108 entrees gid / 22,3 Mo livres en miroir dans
+`static/weapons-assets/halo_infinite/sons/`, lecteur branche dans ReplayCanvas (amorcage
+au premier geste, tirs joues au fil de la boucle, garde-fous testes). Gates verts
+(typecheck, 3650 tests web, eslint).
+
+**Decision technique principale** : le manifeste des sons est indexe par FAMILLE d'arme
+(gid du tag weap) car `Shot.w` est un identifiant de film dont la famille est la moitie
+haute — normalisation client en miroir exact de `buildWeaponLabels`. Les variantes
+partagent la famille de leur arme de base et sont servies par elle.
+
+**Conclusion** : le chantier sons est livre de bout en bout. Reste la revue humaine de la
+branche `feat/sons-rejeu-inapp` avant merge.
+
+## [2026-08-16] Sons du rejeu in-app — cloture du plan (etapes 1 a 5)
+
+**Statut** : Plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE. Branche
+`feat/sons-rejeu-inapp` (4 commits, depuis `feat/extraction-sons-armes`), poussee sur
+origin. Jamais de travail ni de push sur main.
+
+**Decision technique principale** : les `.wav` restent purs de bout en bout. Le Go exporte
+ce que le jeu declare (fourchettes RANGED de volume et de hauteur, agregees sur la couche
+dominante), l'app applique ces ecarts a chaque lecture, et l'admin regle l'intensite des
+deux effets. Aucun maillon ne cuit d'effet dans un fichier, et le chemin par defaut est
+strictement neutre — verifie par un test qui compte les noeuds WebAudio crees.
+
+**Resultats observes** : 4 commits, 29 fichiers, +2319/-80. Gates de cloture rejoues :
+`go build` et `go vet` rc=0, `npm run typecheck` (cache purge) vert, `npm run lint`
+0 erreur (19 avertissements preexistants), `make test-web` 412 fichiers / 3640 tests /
+0 echec. `go test ./...` : 138 paquets verts et UN echec, `internal/himap`
+(`TestBalayageCoquille`), par depassement du timeout de 10 minutes — ce test balaie les 27
+cartes depuis les fichiers du jeu installes et ne s'execute que sur cette machine ; aucun
+fichier de `himap`/`himodule` n'est touche par le diff. Echec d'environnement, consigne au
+plan.
+
+**Conclusion / prochaine etape** : deux choses attendent le pilote. (1) Lancer l'export
+RANGED — les deux commandes exactes sont au journal du plan, la passe 1 sur le module de
+7,24 Go avec `-banks` obligatoire, la passe 2 sur celui de 0,62 Go, jamais dans le meme
+processus — puis lire la ligne `variation RANGED : …` qui tranche l'interpretation des deux
+composantes du paquet. (2) Verifier la CI de la branche. Reste ensuite, a la livraison des
+`.wav` : brancher le lecteur dans `ReplayCanvas` (instanciation au premier geste, appel sur
+les tirs via `Shot.w`, traitement du scrub et du `restart()`).
+
+## [2026-08-16] Sons du rejeu in-app — etape 4 : deux curseurs sur la page d'admin
+
+**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `go build ./...` et `go vet ./...` rc=0, `go test`
+vert sur les cinq paquets touches (dont `internal/api`, qui porte le contrat OpenAPI),
+`make check-types` vert, `eslint` vert, `make test-web` 412 fichiers / 3640 tests / 0 echec.
+
+**Decision technique principale** : ne rien inventer. La chaine relevee a l'etape 1 a ete
+suivie a la lettre — `store.go` (champs, defauts, Apply, ToResponse) -> `domain/settings.go`
+(valeur + pointeur optionnel) -> validation handler -> `types.ts` (ecrit a la main, PAS
+genere) -> `i18n.ts` (parite FR/EN par typage) -> section admin autonome sur le modele
+d'`AdminSyncSettingsSection`. Deux cles : `replay_sound_variation_percent` (100) et
+`replay_sound_distance_percent` (0), montees dans l'onglet Systeme.
+
+**Le piege du defaut, traite et teste** : la variation vaut 100 par defaut alors que le
+zero-value d'un `int` vaut 0 — et 0 est un reglage LEGITIME (variation coupee). Sans
+reapplication « cle absente -> 100 » dans `applyAbsentDefaults`, tout `app_settings.json`
+anterieur serait lu comme « variation coupee », soit l'inverse de l'intention. Trois tests
+fixent les trois cas.
+
+**Resultats observes** : deux choix d'interface tranches et testes. Une valeur hors [0, 100]
+est REFUSEE en 400 plutot que ramenee en silence (un curseur qui affiche 150 quand le
+serveur retient 100 ment a l'operateur), et le curseur enregistre au RELACHEMENT et non a
+chaque pixel — l'auto-save du depot enverrait sinon des dizaines de PATCH par geste ; le
+test verifie qu'un deplacement en cours n'appelle pas la mutation. Aucun composant Slider
+n'existant, les curseurs sont des `<input type="range">` comme dans
+`NotificationsSettingsTab`. Pas de regeneration OpenAPI : la sortie du handler est
+`Body any` et le schema vient du fragment manuel — verifie, `internal/api` passe.
+
+**Piege d'environnement, deuxieme occurrence** : la suite web a de nouveau rendu un echec
+unique sur un garde-rail qui balaie l'arborescence (`lab-removal.guard`). Rejoue seul :
+917 ms, vert ; grep : zero occurrence interdite. Contention machine contre un `testTimeout`
+de 5 s, pas une regression. A relire avant de corriger, la prochaine fois.
+
+**Conclusion / prochaine etape** : etape 5, cloture — delivery-checklist et push de la
+branche. Reste hors perimetre jusqu'a la livraison des `.wav` : brancher le lecteur dans
+`ReplayCanvas`.
+
+## [2026-08-16] Sons du rejeu in-app — etape 3 : le lecteur, et le noeud qu'on n'ajoute pas
+
+**Statut** : Etape 3 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `make check-types` vert, `make test-web` 411
+fichiers / 3633 tests passes / 0 echec, `eslint` vert sur les fichiers neufs.
+
+**Decision technique principale** : separer ce qui decide de ce qui branche. Tout le calcul
+(tirage de variation, conversions dB -> gain et centiemes -> `playbackRate`, mapping du
+curseur de distance) vit dans `weaponSoundLogic.ts`, pur, sans WebAudio — la convention
+`*Logic.ts` deja etablie par la feature. `weaponSoundPlayer.ts` n'assemble que des noeuds.
+C'est ce qui rend verifiable l'exigence « a 0 % de distance, AUCUN noeud dans le chemin du
+signal » : le test utilise un AudioContext ENREGISTREUR (meme principe que
+`canvasRecording.test.ts`) et assert sur la liste des noeuds CREES, pas sur leurs valeurs.
+Un GainNode a 1 de trop est inaudible ; il ne se decouvrirait qu'en comparant le rendu de
+l'app au fichier extrait, des heures plus tard.
+
+**Resultats observes** : 33 tests neufs. Deux choix de mapping ont ete tranches et ecrits
+dans le code — le reglage de variation reduit les BORNES et non le resultat (sinon tout
+reglage intermediaire tirerait le son vers le grave), et la coupure du passe-bas decroit
+geometriquement de 20 kHz a 500 Hz (une octave est un rapport, un mapping lineaire rendrait
+la moitie du curseur inaudible). Piege d'environnement consigne : une premiere execution de
+`make test-web` a rendu 10 echecs, tous des `Test timed out in 5000ms` sur des garde-rails
+qui balaient l'arborescence ; machine au repos, la suite passe entierement. Aucun
+`testTimeout` n'est configure — c'est de la contention, pas une regression.
+
+**Conclusion / prochaine etape** : le lecteur n'est PAS branche dans `ReplayCanvas`, et
+c'est delibere — aucun `.wav` ni `index.json` n'existe encore (la livraison attend la fin
+du re-vote, ecrit en tete du plan). Le brancher ajouterait a chaque ouverture du rejeu un
+chargement qui ne peut rien trouver. Dependance explicite du plan, donc report valide au
+sens de la regle 3. Etape 4 : les deux curseurs sur la page d'admin.
+
+## [2026-08-16] Sons du rejeu in-app — etape 2 : la fourchette RANGED enfin exportee
+
+**Statut** : Etape 2 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`. Gates : `gofmt -l` vide, `go build ./...` rc=0,
+`go vet ./...` rc=0, `go test ./cmd/weapon-sounds/` ok. Module de 7,24 Go jamais ouvert.
+
+**Decision technique principale** : la variation suit exactement le chemin du gain. Un seul
+type (`etatChemin`) porte les deux, la fourchette s'ADDITIONNE le long du chemin (chaque
+noeud traverse tire son propre ecart) et s'ENVELOPPE entre variantes d'un point de choix
+(le moteur n'en joue qu'une). Aucune regle nouvelle n'est inventee : c'est la semantique
+deja prouvee a l'etape 18 du chantier sons, appliquee a une seconde grandeur. L'agregation
+demandee par le plan — couche dominante, celle de plus fort gain — evite qu'une couche de
+renfort 20 dB en arriere dicte la variation du coup.
+
+**Resultats observes** : le lecteur de fourchette n'existait pas (constat de l'etape 1) ;
+`lirePaquetLarge` le fournit et valide TOUTES les composantes, la la ou l'ancien lecteur ne
+validait que la premiere. Quatre copies du bloc « lire les proprietes d'un noeud » sont
+ramenees a un appel (`bank.noterProps`). La fourchette ressort en `variation` a quatre
+niveaux (couche, evenement, mode de tir, arme), toujours optionnelle : absente, le son se
+joue pur. Deux limites statuees plutot que contournees. (1) La PERSPECTIVE 1p/3p n'est
+portee par AUCUNE structure du pipeline Go — verifie par grep : seule la liste de verbes de
+`noms.go` en parle. La fourchette est donc exportee a la granularite de l'EVENEMENT, qui
+est ce qui porte la distinction dans les faits. (2) Le format ne dit pas laquelle des deux
+composantes est le minimum : les bornes sont rendues ORDONNEES et l'outil imprime le releve
+des signes observes, qui tranchera l'interpretation a la premiere execution reelle.
+
+**Conclusion / prochaine etape** : les deux commandes d'export sont ecrites au journal du
+plan pour le pilote (passe 1 sur le module de 7,24 Go avec `-banks` obligatoire, passe 2
+sur celui de 0,62 Go, jamais dans le meme processus). Etape 3 : le lecteur WebAudio du
+rejeu 2D, dont le calcul de variation et le mapping de distance sont des fonctions pures
+testables sans navigateur.
+
+## [2026-08-16] Sons du rejeu in-app — etape 1 : decouverte avant tout code
+
+**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+Branche `feat/sons-rejeu-inapp`, creee depuis `feat/extraction-sons-armes`.
+
+**Decision technique principale** : ne rien inventer, se conformer a trois patterns
+existants identifies sur pieces. (1) Le rejeu 2D vit dans
+`apps/web/src/features/match-replay/` et n'a AUCUN code audio — grep exhaustif de
+`AudioContext`, `GainNode`, `BiquadFilter`, `playbackRate`, `.wav` sur `apps/web` : zero.
+Le lecteur part de zero, mais la feature impose ses conventions (logique pure en
+`camelCaseLogic.ts` testee sans DOM, fixture obligatoire `testReplayDoc()` avec
+garde-rail). (2) Les reglages d'instance passent tous par la meme chaine
+`platform/settings/store.go` -> `domain/settings.go` -> `PATCH /settings` (admin) ->
+`lib/api/types.ts` (type ecrit A LA MAIN, pas genere) -> `features/settings/i18n.ts` ->
+section admin autonome facon `AdminSyncSettingsSection`. (3) Les assets vivent en
+`static/{folder}/{titleSlug}/`, leur manifeste s'appelle toujours `index.json`.
+
+**Resultats observes** : le point qui change le travail de l'etape 2 —
+`lirePaquetProps` (`cmd/weapon-sounds/proprietes.go:128`) prend deja une `largeur`, mais
+elle ne renvoie que la PREMIERE composante par propriete. Appelee en largeur 2 sur le
+paquet RANGED, elle lit le min et jette le max ; son unique appel (l.120) jette meme tout
+le resultat et sa branche `if` est un no-op (`out.Lu = out.Lu && true`). Le paquet est
+donc localise et valide, mais aucun lecteur de fourchette n'existe : il faut l'ecrire.
+Autre constat : `ReplayCanvas.tsx` fait deja ~500 L (seuil CLAUDE.md), le moteur audio ne
+peut pas y etre ajoute en vrac.
+
+**Conclusion / prochaine etape** : trois decisions posees et consignees au journal du plan
+— section admin dans l'onglet Systeme (`AdminSystemPage`), sons ranges dans
+`static/weapons-assets/halo_infinite/sons/` + `index.json` (miroir du sous-dossier `jeu/`),
+curseurs en `<input type="range">` (aucun composant Slider n'existe). Etape 2 : lecteur de
+fourchettes RANGED en Go.
+
+## [2026-08-16] Sons d'armes — reprise a zero de l'assemblage : semantique prouvee
+
+**Statut** : Etapes 18-20 du plan COMPLETES, en une passe et une seule regeneration, sous
+contrat renforce (zero heuristique acoustique). Branche `feat/extraction-sons-armes`.
+
+**Decision technique principale** : apres six corrections en pieces detachees sur « ce que
+joue chaque noeud », l'utilisateur a exige la reprise a zero. La semantique complete a ete
+MESUREE avant d'ecrire le code : proprietes des conteneurs sur 1305 banks, table complete
+des couches de Blend avec courbes de fondu, poids des RandomSequence, delais partout.
+
+**La piece manquante depuis le debut : l'heritage de gain.** Plus de 10 000 conteneurs
+(5 063 ActorMixer, 5 180 RandomSequence, 181 Blend, 128 Switch) portent un volume jamais
+applique — le rendu ne lisait que celui des Sound. Le gain d'un wem est la somme du chemin.
+Cas d'ecole : la 1P du fusil electrique porte une couche a -96 dB que le jeu ETEINT et que
+le rendu jouait a plein niveau. C'est la cause structurelle du « coup reconstitue moins
+ressemblant que ses morceaux ».
+
+**Le Blend, statue par le format et non plus par supposition** : avec courbes de fondu
+(91/303), les enfants audibles au point de reference jouent (202 -> 85, zero gain partiel) ;
+sans courbe, TOUS les enfants jouent, a leurs gains de chemin. L'hypothese « distance, on
+fige le plus petit identifiant » de l'etape 17 est retiree.
+
+**Resultats** : recette unique dans `arbre.go` (`descendre`), preuve de chaque regle en tete
+de fichier. Une regeneration. 47/47 votes rattaches. Marquage « a revoter » sur empreinte
+complete (evenement+couches+gains) contre la generation votee : 33 coups sur 29 armes —
+le critere naif n'en signalait qu'un.
+
+**Conclusion** : l'assemblage repose desormais entierement sur le format. Restent hors
+rendu, statues : RTPC de couche (valeur neutre absente des banks), paquet RANGED, delais
+d'actions (offset non valide, zero partout ailleurs).
+
+## [2026-08-16] Sons d'armes — le Blend est une distance, et une retractation
+
+**Statut** : Etape 17. Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Retractation** : l'etape 16 justifiait « la rafale est l'objet livre » en affirmant que le
+fichier de reference du Needler contenait deux ou trois aiguilles. C'est faux — une seule,
+et mon detecteur d'attaques prenait ses transitoires internes pour des coups. La decision
+produit reste valide (l'utilisateur l'a posee independamment), la justification non.
+
+**Decision technique principale** : le `Blend` n'empile pas ses enfants, il choisit entre
+eux. Preuve : durees IDENTIQUES entre enfants d'un meme `Blend` (0,67/0,67/0,67 sur le fusil
+electrique, 0,08/0,08/0,08 sur le MA40) — des couches d'un coup de feu differeraient. Croise
+avec l'inventaire de l'etape 12 (42 `Blend` sur 303 portent une automation), ce sont des
+variantes de DISTANCE. Les deux comportements precedents etaient faux : tirer au hasard parmi
+tous les enfants faisait changer la distance a chaque coup, les empiler tous donnait un
+melange trop epais. On fige une distance, stable d'une regeneration a l'autre.
+
+**Resultats observes** : fusil electrique 3P 6 -> 2 couches, MA40 3P 3 -> 1 couche de 19 wem
+au lieu de 64 melangees, SPNKr a combustible 9 -> 1 couche. Needler : sa reference exterieure
+utilisee comme SONDE classe ses `.wem` par ecart d'enveloppe ; les meilleurs durent 0,67 a
+0,99 s et vivent dans `f1fa7e3f`, un evenement absent de « Weapon Fire Sounds » donc jamais
+rendu ni ecoutable. Temoin : 7 sons d'autres armes dans les 25 premiers — mesure faible, elle
+oriente sans prouver.
+
+**Conclusion / prochaine etape** : 12 coups a revoter sur 12 armes, tous en 3e personne,
+marques dans la barre laterale de l'artefact ; les 23 autres votes sur un coup et tous les
+votes de 1re personne sont intacts. Le manifeste expose desormais chaque evenement
+individuellement (797 groupes au lieu de 417) : plus rien n'est invisible.
+
+## [2026-08-15] Sons d'armes — le Blend, la rafale comme objet livre, cloture du tri
+
+**Statut** : Etapes 15 et 16 completes. Branche `feat/extraction-sons-armes`, 22 commits,
+rien n'est merge. Le tri est clos cote utilisateur : 47 votes, 28 des 31 armes nommees.
+
+**Decision technique principale** : signalement utilisateur sur le MA40 — « un tir est bien
+et le suivant etouffe ». Les gains valaient 0 dB partout, ce n'etait donc pas eux. La cause
+etait que `couchesDeEvent` aplatissait tout le sous-arbre d'une action dans un seul ensemble
+ou le rendu tirait un `.wem` au hasard, alors qu'un `RandomSequence` joue UN enfant
+(variantes) quand un `Blend`/`ActorMixer`/`Switch` les joue TOUS (couches). L'evenement de
+3e personne du MA40 est un unique `Blend` de 64 sons : le rendu en jouait une piece,
+differente a chaque coup. Meme oubli que les conteneurs `Switch`, un cran plus bas. Le
+parseur descend desormais jusqu'aux POINTS DE CHOIX, et la forme du JSON ne changeant pas,
+le rendu devient correct sans modification.
+
+**Decision produit** : pour une arme automatique, le rejeu 2D joue une COURTE RAFALE, pas un
+coup isole. Mesure a l'appui — le fichier de reference que l'utilisateur prefere pour le
+Needler (bibliotheque tierce) dure 2,49 s et porte TROIS attaques a 0, 65 et 385 ms : ce sont
+deux ou trois aiguilles plus la queue, pas une aiguille. A 720 coups/min une aiguille dure
+80 ms et ne s'entend pas seule.
+
+**Resultats observes** : MA40 3P passe d'une couche de 64 `.wem` a trois couches de 19, 22 et
+23 ; Needler 3P a trois couches de 27, 28 et 20 ; Mutilator 3P a trois couches de 5. Blocage
+leve cote artefact : le bouton de rafale existait mais un verrou `duree <= 0,6 s` le masquait
+sur tous les sons isoles un peu longs — supprime, et la rafale repete desormais l'exemple
+affiche au lieu de faire defiler les variantes, ce qui interdisait de juger un son isole.
+
+**Conclusion / prochaine etape** : il reste trois armes nommees sans vote (Mutilator via
+`Banished_enforcer`, Carabine Vestige, Ravageur legendaire) et la generalisation du lien
+direct `weap -> bank`, que le cas du Mutilator conforte — le vote de l'utilisateur porte sur
+la bank atteinte DIRECTEMENT, pas sur celle atteinte par relais.
+
+## [2026-08-15] Sons d'armes — le `Switch` rendu par etat, et le Needler qui revient
+
+**Statut** : Etape 12 COMPLETE (gates 12a et 12b). Defaut 9 du handoff corrige, defaut 5
+explique retrospectivement. Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : `bank.go` ne retient plus, pour un conteneur `Switch`,
+que les enfants de son ETAT PAR DEFAUT (`resoudreSwitch`). Trois issues, toutes COMPTEES
+plutot que silencieuses : etat par defaut porteur d'enfants, etat par defaut vide — le
+conteneur ne joue alors rien, et on n'invente aucun repli puisque 200 etats sont declares
+sans enfant dans le format —, table non decodee, ou l'on retombe sur l'heuristique generique.
+
+**Resultats observes** : 28 coups de 1re personne changent, tous dans le meme sens, le lot
+de candidats se reduisant d'un facteur 3 a 5 : sniper 30 -> 6 candidats sur sa couche Switch
+(32 -> 8 wem sur l'evenement), shotgun et skewer idem, Needler 40 -> 8, MA40 et MA5K
+133 -> 45 wem. Le compte annonce par l'inventaire se verifie exactement.
+
+RESULTAT NON PREVU, et meilleure preuve du correctif : **le Needler retrouve sa 1re
+personne**. Son evenement `7474d8d8` etait refuse par le garde-fou de duree (rapport 26)
+uniquement parce que sa couche `Switch` melangeait tous les etats, dont la supercombinaison
+a 1,5-3,9 s. Elaguee, la mediane redescend et l'appariement passe. Le defaut de perspective
+et le defaut `Switch` n'en faisaient qu'un : le garde-fou de l'etape 10 soignait le symptome.
+Aucun vote orphelin, 44/44 se rattachent.
+
+Fausse alerte a retenir : la premiere regeneration rendait 53 armes au lieu de 55. Pas une
+regression, un oubli du drapeau `-banks` — les banks orphelines (Mutilator `8827aa7e`,
+Carabine Vestige `09089e7e`) ne sont recoltees que si on les nomme.
+
+**Conclusion / prochaine etape** : reste ouvert le `Blend` a automation (42 conteneurs sur
+303) et le fait que l'etat rendu est celui par defaut, alors que le jeu impose un etat selon
+la distance. Ensuite : le critere de choix degenere (defaut 8), qui donne encore a l'epee
+infectee une reference de 25,71 s.
+
+## [2026-08-15] Sons d'armes — cartographier les conteneurs AVANT de les corriger
+
+**Statut** : Etape 12, gate 12a CLOS (inventaire complet et statue). Gate 12b non entame
+(rendu par etat). Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : demande explicite de l'utilisateur apres le quatrieme
+oubli de format — « ce sont des erreurs qu'on aurait pu eviter si tu avais cherche a mieux
+comprendre tous les elements ». L'ordre habituel est donc inverse : aucun correctif tant que
+l'inventaire des conteneurs n'est pas complet et statue. Le mode `audit` couvrait deja les
+chunks, les types d'objets, les types d'action et la charge utile des `Sound` ; il ne disait
+RIEN des conteneurs, et c'est exactement la que se cachait le defaut `Switch`. Nouveau volet
+`audit_conteneurs.go` : pour chaque type, combien d'octets de charge utile le parseur laisse
+derriere lui, avant et apres la liste d'enfants.
+
+**Resultats observes** : `Switch` — 440 tables etat -> enfants sur 445 decodees et validees
+(99 %), 433 avec un etat par defaut qui se recoupe, 6,1 etats en moyenne et jusqu'a 37, et
+200 etats declares SANS aucun enfant (un `Switch` peut ne rien jouer). Le compte tombe juste
+sur le sniper : 30 enfants pour ~6 etats, soit 5 variantes par etat — le rendu piochait dans
+les six etats a la fois. `RandomSequence` — 6976 tables de poids sur 6976 sont UNIFORMES,
+donc tirer sans poids est exact et le rester devient un choix justifie. `Blend` — 303 sur
+303 lues, dont 42 (14 %) declarent une automation par parametre de jeu : pour celles-la,
+empiler les couches a plein niveau est faux. `ActorMixer` — 0 octet non lu en aval.
+Musique et `Settings`/`Attenuation` : hors chaine, ignores avec raison. `Bus` — non instruit,
+piste ouverte si le `.wem` partage par 20 armes s'avere etre un envoi.
+
+**Point de methode** : le lecteur `Blend` a echoue sur 303 conteneurs sur 303 parce qu'il
+validait `ulLayerID` contre la liste d'enfants, alors que c'est l'identifiant propre de la
+couche. Deux hypotheses successives ont echoue avant qu'un simple vidage hexadecimal ne
+tranche en une lecture. Montrer les octets aurait du etre le premier reflexe, pas le
+troisieme — l'audit garde desormais un echantillon des octets qu'il n'arrive pas a decoder.
+
+**Conclusion / prochaine etape** : gate 12b — rendre l'etat designe d'un `Switch` au lieu
+d'un tirage dans tout le lot, controler sur le sniper (couche `Switch` a 71 % du melange) et
+le Needler, puis mesurer l'ecart arme par arme. Les 18 votes de 1re personne seront a rejouer.
+
+## [2026-08-15] Sons d'armes — les conteneurs `Switch` lus comme de l'aleatoire
+
+**Statut** : Etape 11 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete (enquete,
+pas de correctif). Defauts 9 et 10 ouverts au handoff, le 9 passe en tete de l'ordre suggere.
+Branche `feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : instruire une question de l'utilisateur — pourquoi
+avoir vote un son ISOLE plutot que le coup reconstitue de la meme arme ? — a mene a un
+defaut de format, pas a une affaire de gout. Les couches portent un type de noeud dont
+`arbre.go:27` ne lit que le nom. Un `RandomSequence` tire une variante au hasard, ses
+candidats sont interchangeables ; un `Switch` choisit selon un ETAT DE JEU (distance,
+materiau, nombre d'aiguilles plantees) et les siens ne le sont pas. Le parseur resout ses
+enfants par l'heuristique generique : tous les etats atterrissent dans un seul lot ou le
+rendu pioche au hasard, a plein gain.
+
+**Resultats observes** : 31 coups reconstitues sur 107 portent une couche `Switch`, dont 28
+en 1re personne, mediane 30 candidats et jusqu'a 40 ; elle y pese 38 a 71 % du melange
+(sniper 71 %). Le defaut explique en cascade les evenements 1P « trop longs » de l'etape 10,
+le motif « 18 wem en 3P contre 30 en 1P » vu sur cinq armes sans lien, et la preference pour
+l'isole. Second constat : le `.wem` `195277626` (0,92 s) forme a lui seul une couche dans 21
+coups de 20 armes de 4 factions, a -2 dB, pour 11 a 36 % du melange — un son unique partage
+par des armes sans rapport n'est le tir d'aucune.
+
+Correction d'un chiffre que j'avais avance : « 12 votes sur un isole plutot que sur le
+coup » etait imprecis. 7 des 12 accompagnent un vote sur le coup ; seuls 5 vont a l'isole
+seul, et ce sont les quatre armes de melee plus le Needler.
+
+**Conclusion / prochaine etape** : lire `AkSwitchPackage` (groupe de commutation, etat par
+defaut, enfants par etat) et rendre l'etat par defaut au lieu d'un tirage dans tout le lot.
+A faire AVANT toute nouvelle campagne de vote sur la 1re personne : 18 des 44 votes portent
+sur un coup de 1re personne d'une arme concernee, et ces rendus changeront. C'est la
+troisieme fois que l'oreille de l'utilisateur precede les controles automatiques.
+
+## [2026-08-15] Sons d'armes — un seuil recalibre sur les votes, et les faux modes de tir
+
+**Statut** : Etape 10 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete. Handoff mis
+a jour (defaut 5 corrige, defaut 8 ouvert). Branche `feat/extraction-sons-armes`, rien n'est
+merge.
+
+**Decision technique principale** : le handoff annoncait un garde-fou de duree « de l'ordre
+de 3 » sur l'appariement de perspective. Pose tel quel, il refusait 26 appariements sur 12
+armes — dont des appariements que l'utilisateur avait DEJA valides a l'oreille (skewer 6,3 ;
+spiker 6,2 ; sniper 5,9). En 1re personne la duree est legitimement plus grande : on entend
+la mecanique et la queue. Le seuil a donc ete calibre sur ses 44 votes et porte a 10. Un
+seuil annonce dans un handoff sans jeu de validation est une hypothese, pas une mesure ; ici
+le jeu de validation existait deja, c'etaient les votes.
+
+**Deux resultats non prevus** :
+
+1. La mesure acoustique montee pour trancher (8 bandes Goertzel sur 120 ms d'attaque,
+   similarite cosinus) est DEGENEREE : 0,994-1,000 entre deux perspectives d'une meme arme,
+   mais aussi 0,991-1,000 entre deux armes differentes. Rien n'en a ete conclu. C'est le
+   temoin negatif « armes differentes » qui l'a revele — **toute mesure de similarite doit
+   embarquer son temoin**.
+2. Les elements du tableau « Weapon Fire Sounds » ne sont pas tous des modes de tir. Le
+   MA40, le MA5K et le magnum ont trois elements qui partagent le MEME evenement de 1re
+   personne et ne different que par la 3e : l'artefact proposait trois fois le meme fichier
+   a juger, d'ou le « je n'ai pu me decider » de l'utilisateur. Critere qui en decoule :
+   **un vrai mode de tir a son propre son de 1re personne**. Il se valide seul sur deux cas
+   etablis a l'oreille (les 2 modes du pistolet plasma, les 2 du Mutilator).
+
+**Resultats observes** : 11 refus de perspective au lieu de 26 ; une seule arme perd une
+perspective, le Needler, exactement le cas signale. MA40 de 6 groupes a 4. 44/44 votes
+toujours rattaches apres redecoupage. Artefact : marquage « choisi », « variante de
+distance », « garde-fou de duree » ; rafale pre-rendue par groupe ; reamorcage sur le
+dernier export si le stockage du navigateur est vide.
+
+**Conclusion / prochaine etape** : le critere de choix `max(couches, wem)` devient le
+defaut le plus nuisible — il retient pour l'epee infectee une reference de 25,71 s de
+mediane, contre laquelle 10 refus sont mesures sans valeur. C'est le point 2 de l'ordre
+suggere. A instruire aussi : 12 des 44 votes portent sur un son ISOLE plutot que sur le coup
+reconstitue de la meme arme, ce qui dit que la reconstitution ressemble parfois MOINS au jeu
+que sa matiere premiere.
+
+## [2026-08-15] Sons d'armes — audit du format, gains appliques, et un handoff
+
+**Statut** : Etapes 8 et 9 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` completes.
+Handoff ecrit : `.ai/V7.5/HANDOFF_SONS_ARMES_2026-08-15.md`. Branche
+`feat/extraction-sons-armes`, rien n'est merge.
+
+**Decision technique principale** : l'utilisateur a releve que deux specificites du format
+Wwise avaient ete manquees coup sur coup. Le defaut n'etait pas l'inattention mais la
+METHODE — le parseur n'implementait que le necessaire a l'objectif du moment et rendait un
+resultat plausible en ignorant le reste. Correctif de methode : mode `audit`, qui ENUMERE ce
+que les banks contiennent en regard de ce que le parseur lit. Il a immediatement sorti trois
+defauts invisibles autrement, dont le type d'Action jamais lu (1 976 `Stop` et 912 `Break`
+empiles comme des couches a jouer). Ensuite : lecture des proprietes `AkPropBundle` (62 572
+objets sur 62 753 decodes, soit 100 %, valides par plausibilite et non postules), separation
+des perspectives mono/stereo = 3P/1P, et recolte des banks orphelines par le drapeau
+`-banks`. Decision produit de l'utilisateur : pour le rejeu 2D la camera n'est pas a la
+premiere personne, donc **la 3P est la perspective pertinente**.
+
+**Resultats observes** : 58 armes, 422 groupes, 55 a structure prouvee, 37 avec sons de tir,
+31 nommees, 10 754 `.wav` embarques. Gains : 5 312 sons a volume non nul jusqu'a -96 dB,
+AUCUN delai (le `t=0` du mixage etait donc correct). Banks orphelines recoltees : `8827aa7e`
+(bank de tir du Mutilator, 129 sons, jamais moissonnee) et `09089e7e` (Carabine Vestige, 83
+sons). DEUX VALIDATIONS obtenues sans les viser : l'epee en 1P donne `110deea3`, l'evenement
+recommande par une analyse acoustique independante ; le Ravageur mode 2 en 1P donne
+`be684013`, celui vote a l'oreille par l'utilisateur. Quatre agents ont instruit en parallele
+le melange SPNKr (REEL dans les donnees du jeu : 33 `.wem` identiques octet pour octet entre
+deux packs, un evenement partage a 100 %), les modes du Mutilator, le Shock Rifle et la
+Vestige.
+
+**Conclusion / prochaine etape** : six defauts connus restent ouverts, listes au handoff. Le
+plus urgent est le garde-fou de DUREE sur l'appariement de perspective : il repose
+uniquement sur mono/stereo et peut donc apparier deux evenements sans rapport. Cas mesure
+signale a l'oreille sur le Needler — 0,08 s de mediane en 3P contre 2,08 s en 1P, soit un
+rapport de 26, le second etant en fait la supercombinaison. **L'oreille de l'utilisateur a
+trouve quatre defauts avant les controles automatiques** (modes de tir, melange SPNKr, bank
+du Mutilator, perspective du Needler) : ses retours valent une mesure.
+
+## [2026-08-15] Sons d'armes — un tir est un empilement, et la moitie des sons manquait
+
+**Statut** : Etape 5 ajoutee au plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` et complete.
+Branche `feat/extraction-sons-armes`.
+
+**Decision technique principale** : deux defauts de conception corriges, tous deux revelés
+par une question de l'utilisateur et confirmes sur pieces, pas par intuition. (1) LE SAC
+PLAT : `wemsDeEvent` rendait tous les `.wem` atteignables sans distinguer « choisis-en un »
+(RandomSequence aleatoire) de « joue-les tous » (Blend), alors qu'un evenement porte
+plusieurs ACTIONS declenchees EN PARALLELE. Le tir du Skewer a 3 couches, celui du MA40 en a
+4, et l'evenement 546d8a24 du Skewer est un Blend de 18 enfants. Un coup est la SOMME d'une
+variante par couche : aucun `.wem` isole ne peut sonner juste. (2) LES MEDIAS EMBARQUES :
+une bank porte ses propres `.wem` dans ses chunks `DIDX`/`DATA`, absents de tout `.pck`. Le
+validateur du parseur n'acceptait que les identifiants du `.pck` de l'arme et les rejetait
+en silence. FAUSSE PISTE consignee : on a d'abord soupconne des sons PARTAGES entre armes et
+construit un index large de tous les packs (15 798 identifiants, verifie independamment) —
+sans aucun effet. C'est `DIDX` qui expliquait tout ; l'index large est conserve car il ne
+nuit pas.
+
+**Resultats observes** : MA40 — 359 sons dans le pack, **398 embarques dans la bank**, et
+2 des 4 couches du tir ne resolvaient AUCUN son avant correctif (l'evenement passe de 103 a
+133 `.wem`). Sur les 53 armes : **4642 sons dans les packs contre 5271 embarques**, soit
+plus de la moitie du contenu invisible pour toute la chaine, extraction et tri compris.
+Passe 1 relancee avec extraction des embarques (pic memoire 9,2 Go), 5669 `.wav` convertis,
+passe 2 relancee. Coup reconstitue rendu pour les **33 armes** (la plupart avec toutes leurs
+couches ; le Commando en joue 4 sur 5), plus sa rafale a la cadence du tag.
+
+**Conclusion / prochaine etape** : l'objet a juger n'est plus le `.wem` mais le coup
+reconstitue — l'outil de tri a ete refait autour de lui. TROIS POINTS DE NOMMAGE A TRANCHER
+AVEC L'UTILISATEUR, consignes au plan : `hinf_vestige_carbine` existe au registre (tag
+`3e070217`) mais aucune des 33 armes ne le porte ; `bt_enforcer` n'a pas de son de tir donc
+pas de nom, et ce n'est PAS le Déchiqueteur (`hinf_mangler` = `80977ba5`, deja attribue a
+`bt_spikerevolver`). CORRECTION LE MEME JOUR : j'avais aussi qualifie `jeu/index.json`
+d'incoherent (`hinf_cindershot` avec `nom_jeu = heatwave`) — c'est FAUX, l'accusation est
+retiree. Le nom interne « heatwave » a designe une arme en debut de developpement et une
+autre en fin ; le fichier est fidele. Verifie : le pack audio `fr_heatwave` mene au weap
+`230447b1` = `hinf_cindershot` (Cremateur), et `fr_hotrod` au weap `2ac9c2ff` =
+`hinf_heatwave` (Calcineur). Le croisement est reel dans les donnees du jeu. Le pipeline n'a
+pas ete trompe parce qu'il joint par TAG `weap` et jamais par nom — regle a conserver :
+l'identite d'une arme ne se deduit JAMAIS du nom de son pack audio.
+
+## [2026-08-15] Sons d'armes — etape 4 : 33 armes prouvees, cadence lue dans le tag
+
+**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE sauf l'export
+audio (non demarre). Branche `feat/extraction-sons-armes`.
+
+**Decision technique principale** : generaliser sans multiplier les lectures du module de
+7,24 Go. Passe 1 (`lot`) traite les 55 packs en UNE ouverture, en deux sous-passes concues
+pour que jamais deux banks ne coexistent en memoire : la premiere ne retient qu'un index par
+pack (l'appariement pack <-> bank se fait par intersection des IDs `.wem`, aucun nom), la
+seconde re-extrait les 55 banks retenues une a la fois. Passe 2 (`lot-tir`) ouvre l'autre
+module (0,62 Go) et croise par le JSON — les deux ne se rencontrent jamais dans un meme
+processus. La cadence de tir vient du champ `barrels` -> `firing` -> `rounds per second`,
+valide sur deux armes connues AVANT generalisation.
+
+**Resultats observes** : passe 1, 53 armes sur 55 (4 rates consignes au plan), pic memoire
+**8,8 Go** — plafond de l'approche. Passe 2, **33 armes avec sons de tir prouves**, de 8 % a
+94 % du pack ; 0,7 Go. Les 20 sans tir sont des armes de melee, des projectiles ou des
+sifflements : pas de champ « Weapon Fire Sound » parce qu'il n'y a pas de tir. Cadences :
+MA40 AR 720 coups/min, MA5K 1200, BR75 900, Commando 400, Sidekick 396, Bulldog 100,
+S7 Sniper 67 — conformes au jeu. Le tableau `barrels` est a +3284 quand le plugin annonce
++3220 : **meme derive de +64** que « Weapon Fire Sounds », donc systematique. DEUX DEFAUTS
+CORRIGES : (1) `sort.Slice` non stable rendait le `weap` retenu — et donc la cadence —
+different d'un run a l'autre (405 puis 1800 coups/min pour le pistolet a plasma) ; depart au
+second critere, determinisme verifie par double run a hachage identique. (2) Seuil de
+plausibilite trop large : 30 coups/s pile est la valeur NON BRIDEE du moteur sur les armes a
+un coup, pas une cadence ; seuil pose a 25, dans l'ecart mesure entre les deux paquets de
+valeurs (reelles <= 20, sentinelle ~30). 22 cadences retenues, 11 ecartees.
+
+**Conclusion / prochaine etape** : reste l'export audio des seuls `.wem` de tir. Outil de
+tri publie pour l'utilisateur (hors depot) avec noms en jeu et icones tires de
+`static/weapons-assets/.../index.json` + `config/titles/halo_infinite/mappings/weapon_names.toml`,
+joints par le global tag id du `weap` — la cle etablie par `weapon-icons-build/weaptags.go`.
+
+## [2026-08-15] Sons d'armes — la chaine arme -> son de tir est fermee (etapes 1 a 3)
+
+**Statut** : Etapes 1, 2 et 3 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` CLOSES.
+Branche `feat/extraction-sons-armes`, 4 commits pousses. Etape 4 (export audio) ouverte.
+
+**Decision technique principale** : la preuve ne repose sur AUCUN nom (le jeu n'en livre
+aucun : `stringsSize` = 0 sur 132 modules, 0 chunk `STID` sur 1305 banks) ni sur aucune
+heuristique acoustique. Elle vient du champ NOMME « Weapon Fire Sound » de `weap.xml`.
+Chaine : `.pck` d'arme -> `sbnk` (par intersection des IDs `.wem`) -> HIRC -> evenements ;
+et en parallele `weap` -> champ nomme -> `lsnd` -> evenements. L'intersection donne les
+`.wem` de tir. Trois hypotheses ont ete refutees par la mesure avant la bonne (les `snd!`
+ne portent ni les evenements ni la bank ; `sbnk` et `snd!` ne cohabitent pas). Le
+declencheur a ete de poser la question A L'ENVERS — « qui depend de cette bank ? » — au
+lieu de supposer le chemin : reponse, des `lsnd`, pas des `snd!`. Deux pieges de version
+traites par IDENTIFICATION PAR CONTENU plutot que par offset calcule : le parseur HIRC
+(layout dependant de la version de Wwise) valide chaque lecture ambigue contre les IDs du
+`.pck` ; le champ « Weapon Fire Sounds » est introuvable a l'offset +4288 annonce par le
+plugin et se trouve a +4352, donc il est identifie par sa signature structurelle (meme
+parade que `weapon-icons-build/weapui.go`).
+
+**Resultats observes** : etape 1 — 1305 `sbnk` decompresses, 0 echec, `BKHD` 1299,
+`HIRC` 1296 ; la bank du fusil d'assaut est le SEUL tag portant ses 6 `.wem` temoins.
+Etape 2 — 642 objets HIRC, couverture **359/359** `.wem` du `.pck`, **0** hors `.pck`.
+Etape 3 — un seul tableau sur 59 satisfait la signature du tir, rendant 3 `lsnd` sur 8.
+RECOUPEMENT INDEPENDANT : ces 3 `lsnd` portent 4 evenements chacun et les 5 autres 2
+chacun, soit 3x4+5x2 = **22**, exactement le nombre d'evenements trouve a l'etape 2 par le
+parsing HIRC — deux chemins disjoints qui concordent sans ajustement. Livrable :
+**339 `.wem` de tir sur 359 (94 %)** pour `un_assaultrifle`. Taux eleve mais coherent avec
+la mesure acoustique prealable (296 echantillons de 0,08 s sur 359 : ce pack est presque
+entierement du coup de feu). Memoire : pic 1,3 Go, garde-fou `rapporterMemoire` a chaque
+palier, jamais deux modules dans le meme processus.
+
+**Conclusion / prochaine etape** : etape 4 — generaliser aux 55 `.pck` et exporter l'audio
+des seuls `.wem` de tir. Reserve consignee au plan : le lien `lsnd` -> evenements se fait
+par recherche de l'identifiant en clair, pas par un champ structure ; c'est le recoupement
+22 = 22 qui rend le resultat credible, pas la methode de recherche. Dette notee aux
+Decouvertes : `weap.xml` existe maintenant en DEUX exemplaires au depot (84 Ko chacun) —
+un fichier de donnees duplique derive a chaque mise a jour du jeu, a promouvoir en
+`internal/hiweap`.
+
+## [2026-08-15] Sons d'armes — les banks Wwise sont des tags `sbnk` (etape 1 close)
+
+**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE (gate passe).
+Branche `feat/extraction-sons-armes`. Etapes 2 a 4 non demarrees.
+
+**Decision technique principale** : besoin initial hors LevelUp (extraire les sons de tir
+par arme du jeu installe), mais il tombe exactement sur l'outillage module deja construit
+ici. Trois impasses ecartees SUR MESURE avant d'ouvrir le chantier : (1) aucune bank Wwise
+sur disque — 0 bank sur les 1645 `.pck`, 90 170 `.wem` anonymes ; (2) aucun nom de tag dans
+le jeu — `stringsSize` = 0 sur les 132 modules et 0 chemin ASCII sur 665 Mo scannes, donc
+les outils tiers qui « dumpent les noms » s'appuient sur des listes communautaires de
+hachages inverses, pas sur les fichiers ; (3) Ghidra ecarte — la donnee cherchee est dans
+les tags, pas dans le binaire, et le hook runtime de `AK::SoundEngine::PostEvent` est
+interdit par EasyAntiCheat (risque de ban). La mesure qui debloque : les banks ont ete
+CONVERTIES EN TAGS `sbnk`. Nouveau `cmd/weapon-sounds` construit sur `internal/himodule` +
+`internal/ooz` — pas de 3e copie du lecteur de module : le commentaire de
+`cmd/weapon-icons-build/hmod.go` qui affirme que `himodule` lit `data_offset` en u32 est
+PERIME, himodule lit bien 48 bits + drapeaux (module.go:265). `himodule.Open` fait un
+`os.ReadFile` de 7,24 Go : tient dans les 16 Go libres, non corrige (hors perimetre, note
+aux Decouvertes du plan).
+
+**Resultats observes** : `go run ./cmd/weapon-sounds -mode probe -limite 1305` sur
+`pc/globals/globals-rtx-new.module` — 1305 `sbnk` decompresses, 0 echec, en-tete `ucsh`
+1305/1305. Signatures : `BKHD` 1299, `HIRC` 1296, `DIDX` 694, `DATA` 694, `STMG` 3,
+`STID` 2. La charge utile EST une bank Wwise verbatim, dans les octets du tag (blob de
+ressources vide sur le temoin). Le `sbnk` du fusil d'assaut est designe sans ambiguite :
+`gid 384b727f` (1 536 586 o), SEUL des 1305 a porter les 6 `.wem` temoins du pack
+`sb_010_wea_un_assaultrifle`. Piege consigne : un premier passage sur les 60 plus PETITES
+banks avait conclu « HIRC absent » — artefact d'echantillonnage, la bank d'arme fait 1,5 Mo.
+Defaut de `-limite` corrige a 0 (= tous).
+
+**Conclusion / prochaine etape** : etape 2 — parser HIRC (Event, Action, Random/Sequence
+Container, Sound) et produire evenement -> liste de `.wem`, avec controle croise sur les IDs
+du `.pck` de l'arme. `STID` n'etant present que sur 2 banks sur 1305, la table des noms est
+quasi absente : l'etape 3 (hachage FNV-1 32 bits sur candidats generes) reste necessaire
+pour nommer les evenements. Rien n'est commite a ce stade (accord utilisateur requis).
 
 ## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D, Phase 1 : le cablage web est livre
 
