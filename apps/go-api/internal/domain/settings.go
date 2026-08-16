@@ -86,6 +86,15 @@ type SettingsResponse struct {
 	// app_settings.json:instance_locked (pas le verrou env forcé, exposé séparément
 	// au /bootstrap). Défaut : false.
 	InstanceLocked bool `json:"instance_locked"`
+
+	// ReplaySoundVariationPercent : variation appliquée aux sons d'armes du rejeu 2D
+	// à chaque lecture (volume et hauteur, dans les fourchettes déclarées par le jeu).
+	// 0 = aucune variation, 100 = fourchettes du jeu telles quelles. Défaut : 100.
+	ReplaySoundVariationPercent int `json:"replay_sound_variation_percent" doc:"Variation des sons d'armes du rejeu 2D (0-100 %). 100 = fourchettes du jeu telles quelles."`
+
+	// ReplaySoundDistancePercent : effet de distance (atténuation + filtre passe-bas)
+	// appliqué aux sons d'armes du rejeu 2D. 0 = son pur, aucun traitement. Défaut : 0.
+	ReplaySoundDistancePercent int `json:"replay_sound_distance_percent" doc:"Effet de distance des sons d'armes du rejeu 2D (0-100 %). 0 = son pur."`
 }
 
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
@@ -157,6 +166,10 @@ type UpdateSettingsRequest struct {
 
 	// InstanceLocked : verrou « instance fermée » activable à chaud (admin).
 	InstanceLocked *bool `json:"instance_locked,omitempty"`
+
+	// Sons du rejeu 2D (réglages d'instance, page admin). Bornés 0-100 par le handler.
+	ReplaySoundVariationPercent *int `json:"replay_sound_variation_percent,omitempty"`
+	ReplaySoundDistancePercent  *int `json:"replay_sound_distance_percent,omitempty"`
 }
 
 // MediaResetRequest est le corps de POST /settings/media/reset-index.

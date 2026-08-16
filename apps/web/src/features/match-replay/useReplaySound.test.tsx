@@ -8,6 +8,10 @@
  * le fil, et que la préférence survive à la page.
  */
 import { act, renderHook } from '@testing-library/react'
+
+// Les reglages d'instance (variation RANGED, distance) viennent de useSettings ; ici on
+// les neutralise — leurs effets ont leurs propres tests (weaponSoundLogic, replayAudio).
+vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'

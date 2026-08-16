@@ -52,9 +52,14 @@ func TestCalloutsLookupCarteInconnueEstUnCasNominal(t *testing.T) {
 //
 // Invariants gardés (mesure du corpus, 2026-08) : 22 cartes, 816 zones, libellés FR et EN
 // résolus 816/816, toute zone dessinée porte un polygone d'au moins 3 sommets en
-// coordonnées monde plausibles, la tranche verticale est ordonnée. Ridgeline est la seule
-// carte DÉCOUPÉE (dump versionné) et garde ses 28 zones dont 11 grandes — le classement
-// du POC, rejoué aussi par cmd/mapcallouts-build/classify_test.go.
+// coordonnées monde plausibles, la tranche verticale est ordonnée. Ridgeline garde ses
+// 28 zones dont 11 grandes — le classement du POC, rejoué aussi par
+// cmd/mapcallouts-build/classify_test.go.
+//
+// LA RÈGLE DU DÉCOUPAGE EST FIGÉE ICI, et elle se vérifie sur l'arbre, pas sur une liste
+// écrite à la main : une carte est `decoupe` SI ET SEULEMENT SI son fond est publié. C'est
+// la règle « aucun découpage deviné » — une liste de cartes se serait désynchronisée à la
+// première carte ajoutée.
 func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
 	path := ""
 	for _, up := range []string{"../../../..", "../../../../.."} {
@@ -74,17 +79,19 @@ func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
 	if len(cat.Maps) != 22 {
 		t.Errorf("cartes = %d, attendu 22", len(cat.Maps))
 	}
+	fonds := filepath.Join(filepath.Dir(path), "map_backgrounds")
 	total := 0
 	for module, e := range cat.Maps {
 		if e.Module != module {
 			t.Errorf("%s : champ module = %q", module, e.Module)
 		}
 		attendu := CalloutsProvenanceBrut
-		if module == "ridgeline" {
+		if _, err := os.Stat(filepath.Join(fonds, module+".png")); err == nil {
 			attendu = CalloutsProvenanceDecoupe
 		}
 		if e.Provenance != attendu {
-			t.Errorf("%s : provenance = %q, attendu %q", module, e.Provenance, attendu)
+			t.Errorf("%s : provenance = %q, attendu %q (fond publié : %t)",
+				module, e.Provenance, attendu, attendu == CalloutsProvenanceDecoupe)
 		}
 		total += len(e.Zones)
 		for _, z := range e.Zones {
@@ -125,5 +132,40 @@ func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
 		t.Errorf("ridgeline : %d zones / %d grandes, attendu 28 / 11 (classement du POC)",
 			len(ridge.Zones), grandes)
 	}
+	verifieBrutConserve(t, cat)
 	t.Logf("catalogue livré : %d cartes, %d zones, ridgeline %d grandes", len(cat.Maps), total, grandes)
+}
+
+// verifieBrutConserve : le découpage ne PERD rien. Toute zone rognée doit retrouver son pavé
+// du designer dans `cat.Brut`, sous une carte effectivement découpée.
+func verifieBrutConserve(t *testing.T, cat *MapCalloutsCatalog) {
+	t.Helper()
+	garde := 0
+	for module, zones := range cat.Brut {
+		e, err := cat.Lookup(module)
+		if err != nil {
+			t.Errorf("brut conservé pour %q, carte absente du catalogue", module)
+			continue
+		}
+		if e.Provenance != CalloutsProvenanceDecoupe {
+			t.Errorf("%s : brut conservé alors que la provenance est %q", module, e.Provenance)
+		}
+		connues := map[int]bool{}
+		for _, z := range e.Zones {
+			connues[z.VolumeIndex] = true
+		}
+		for _, b := range zones {
+			garde++
+			if !connues[b.VolumeIndex] {
+				t.Errorf("%s : brut du volume %d sans zone correspondante", module, b.VolumeIndex)
+			}
+			if len(b.Polygon) < 3 {
+				t.Errorf("%s vi=%d : pavé brut conservé à %d sommet(s)", module, b.VolumeIndex, len(b.Polygon))
+			}
+		}
+	}
+	if garde == 0 {
+		t.Error("aucun pavé brut conservé : le découpage perdrait la donnée d'origine")
+	}
+	t.Logf("pavés bruts conservés : %d zones sur %d cartes", garde, len(cat.Brut))
 }

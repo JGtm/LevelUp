@@ -131,6 +131,27 @@ describe('buildKillFx', () => {
     expect(fx[0].slot).toBeNull()
   })
 
+  it('le LIEU DE LA MORT survit à un tueur introuvable — ce que vx/vy, eux, ne font pas', () => {
+    // Couple complet : les deux champs disent la même chose.
+    const complet = buildKillFx(docWithCouple(), [kill({ tMs: 2_000 })], 0)
+    expect(complet[0].deathX).toBe(5)
+    expect(complet[0].deathY).toBe(4)
+    // Tueur introuvable : l'effet n'est plus orienté (vx null) MAIS on sait toujours où la
+    // victime est morte — c'est cette position que la carte de chaleur compte.
+    const sansTueur = buildKillFx(docWithCouple(), [kill({ tMs: 2_000, xuid: 'fantome' })], 0)
+    expect(sansTueur[0].vx).toBeNull()
+    expect(sansTueur[0].deathX).toBe(5)
+    expect(sansTueur[0].deathY).toBe(4)
+    // Victime introuvable : aucune position devinée, ni pour l'axe ni pour la chaleur.
+    const sansVictime = buildKillFx(
+      docWithCouple(),
+      [kill({ tMs: 2_000, victimXuid: 'inconnu' })],
+      0,
+    )
+    expect(sansVictime[0].deathX).toBeNull()
+    expect(sansVictime[0].deathY).toBeNull()
+  })
+
   it('ni tueur ni victime localisable : rien — on ne dessine pas', () => {
     const fx = buildKillFx(
       docWithCouple(),

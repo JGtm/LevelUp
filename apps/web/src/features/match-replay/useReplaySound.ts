@@ -19,11 +19,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
+import { useSettings } from '@/features/settings/queries'
 import { staticAssetURL } from '@/lib/staticAssets'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { distanceChain, drawVariation } from './weaponSoundLogic'
+import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import {
   advanceSoundCursor,
   buildSoundTimeline,
@@ -128,6 +131,32 @@ function soundURLsFor(timeline: readonly { stem: string }[]): Map<string, string
   return urls
 }
 
+/**
+ * Sous-hook : les REGLAGES D'INSTANCE des sons d'armes (page admin — variation RANGED et
+ * distance), extrait pour la meme raison que le filtre par categorie : garder le hook
+ * principal sous le seuil de lisibilite. La variation se lit au TIRAGE (ref, pas une
+ * dependance du battement) ; la distance se POSE sur le lecteur des qu'elle change — et
+ * `apply` la pose aussi a la creation du lecteur, qui nait apres le premier reglage.
+ */
+function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }): {
+  variationPercentRef: { current: number }
+  apply: (player: ReplayAudioPlayer) => void
+} {
+  const { data: settings } = useSettings()
+  const variationPercent = settings?.replay_sound_variation_percent ?? 100
+  const distancePercent = settings?.replay_sound_distance_percent ?? 0
+  const variationPercentRef = useRef(variationPercent)
+  const apply = useCallback(
+    (player: ReplayAudioPlayer) => player.setDistance(distanceChain(distancePercent)),
+    [distancePercent],
+  )
+  useEffect(() => {
+    variationPercentRef.current = variationPercent
+    if (playerRef.current) apply(playerRef.current)
+  }, [variationPercent, apply, playerRef])
+  return { variationPercentRef, apply }
+}
+
 export function useReplaySound(
   doc: ReplayDocumentReady,
   kills: KillEvent[] | undefined,
@@ -139,6 +168,8 @@ export function useReplaySound(
     readStoredNumber(SOUND_VOLUME_KEY, SOUND_VOLUME_DEFAULT, (v) => v > 0 && v <= 1),
   )
   const { categories, toggleCategory } = useSoundCategoryFilter()
+  const playerRef = useRef<ReplayAudioPlayer | null>(null)
+  const tuning = useInstanceSoundTuning(playerRef)
 
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
@@ -152,7 +183,6 @@ export function useReplaySound(
   )
   const urls = useMemo(() => soundURLsFor(timeline), [timeline])
 
-  const playerRef = useRef<ReplayAudioPlayer | null>(null)
   const cursorRef = useRef<SoundCursor>({ ms: 0, idx: 0 })
   // Le prochain battement POSE le curseur sans rien jouer. Vrai à l'activation et à tout
   // changement de piste : sans cela, activer le son à 500 ms ferait partir d'un coup tout
@@ -188,7 +218,10 @@ export function useReplaySound(
       persistPreference(SOUND_ON_KEY, String(next))
       if (next) {
         // DANS LE GESTE : c'est la seule fenêtre où un AudioContext démarre en marche.
-        if (!playerRef.current) playerRef.current = new ReplayAudioPlayer(volume)
+        if (!playerRef.current) {
+          playerRef.current = new ReplayAudioPlayer(volume)
+          tuning.apply(playerRef.current)
+        }
         playerRef.current.resume()
         playerRef.current.setVolume(volume)
         playerRef.current.preload(urlsRef.current.values())
@@ -201,7 +234,7 @@ export function useReplaySound(
       onRef.current = next
       return next
     })
-  }, [volume])
+  }, [volume, tuning])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(Math.max(v, 0), 1)
@@ -228,9 +261,12 @@ export function useReplaySound(
     cursorRef.current = cursor
     for (const e of fire) {
       const url = urlsRef.current.get(e.stem)
-      if (url) player.play(url)
+      if (!url) continue
+      // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
+      // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact).
+      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[e.stem], tuning.variationPercentRef.current))
     }
-  }, [])
+  }, [tuning])
 
   return {
     available: hasAnySound,

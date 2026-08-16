@@ -69,6 +69,19 @@ interface ReplayText {
   layerNames: string
   layerNamesHint: string
   zoneLabel: string
+  /**
+   * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
+   * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
+   */
+  layerHeatmap: string
+  layerHeatmapHint: string
+  heatmapReading: string
+  heatmapMode: Record<'presence' | 'kills', string>
+  heatmapModeHint: Record<'presence' | 'kills', string>
+  /** Extrémités de la légende : elles nomment la QUANTITÉ, le titre dit de quoi il s'agit. */
+  heatLegendLow: string
+  heatLegendHigh: string
+  heatLegendHint: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
   teamUnknown: string
@@ -179,6 +192,22 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerNames: 'Noms',
     layerNamesHint: 'Le nom de chaque joueur sous son marqueur.',
     zoneLabel: 'Zone de la carte',
+    layerHeatmap: 'Carte de chaleur',
+    layerHeatmapHint:
+      "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
+    heatmapReading: 'Ce que la chaleur mesure',
+    heatmapMode: {
+      presence: 'Présence',
+      kills: 'Éliminations',
+    },
+    heatmapModeHint: {
+      presence: 'Temps passé par les joueurs, lu dans les trajectoires du film.',
+      kills: "Morts comptées à l'endroit où la victime est tombée, pas d'où le tir partait.",
+    },
+    heatLegendLow: 'rare',
+    heatLegendHigh: 'fréquent',
+    heatLegendHint:
+      "Échelle étalonnée sur les lieux fréquentés (médiane au bas, 95e centile en haut) : au-delà, la couleur sature. Un seul point extrême ne peut donc pas écraser le reste de la carte.",
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
     teamUnknown: 'Sans équipe',
@@ -278,6 +307,22 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerNames: 'Names',
     layerNamesHint: "Each player's name under their marker.",
     zoneLabel: 'Map zone',
+    layerHeatmap: 'Heat map',
+    layerHeatmapHint:
+      'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',
+    heatmapReading: 'What the heat measures',
+    heatmapMode: {
+      presence: 'Presence',
+      kills: 'Kills',
+    },
+    heatmapModeHint: {
+      presence: 'Time spent by players, read from the film trails.',
+      kills: 'Deaths counted where the victim fell, not where the shot came from.',
+    },
+    heatLegendLow: 'rare',
+    heatLegendHigh: 'frequent',
+    heatLegendHint:
+      'Scale calibrated on the visited places (median at the bottom, 95th percentile at the top): beyond that, the colour saturates. A single extreme spot therefore cannot flatten the rest of the map.',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
     teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
