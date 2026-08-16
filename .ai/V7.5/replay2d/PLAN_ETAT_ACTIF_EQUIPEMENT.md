@@ -108,24 +108,38 @@ par paliers depuis q max 223 (3,498). Ce que la mesure ne dit pas : la datation 
 RAMASSAGE (les episodes commencent a la premiere mesure de bouclier de la vie), et la
 couverture i48 laisse des porteurs non etiquetes (vie [23] ci-dessus).
 
-### Phase C — DEPLOYABLES : trois signaux dates a croiser
+### Phase C — DEPLOYABLES : trois signaux dates a croiser — CLOSE le 2026-08-16
 
-- [ ] C.1 Publier la branche v==1 d'`i57` par hook : le R(2) et le **R(24)**, par slot et
-      horodatage. 75 occurrences attendues sur `000d5950`.
-- [ ] C.2 HYPOTHESE FALSIFIABLE, enoncee avant : le R(24) REFERENCE quelque chose —
-      candidat : l'entite `ti=37` posee (handle slot+generation). Controle : croiser ses
-      valeurs avec les slots `ti=37` VIVANTS au meme instant (bande de slots du film).
-      S'il n'en croise aucun, l'hypothese tombe et on le dit.
-- [ ] C.3 Croiser TROIS horloges sur les films famille B : naissances d'entites `ti=37`
-      (premier record d'une vie d'objet), transitions `equipment-activated` (81 connues sur
-      12 films), lectures v==1 d'`i57` des porteurs de rangs 19/22. Publier les
-      co-datations par paires (fenetre large, l'ordre plutot que la fenetre quand un canal
-      est clairseme).
-- [ ] C.4 Les vies `ti=37` ont-elles une FIN lisible (dead-state, at-rest, disparition du
-      masque) qui daterait la desactivation/expiration ? Compter, ne pas presumer.
+- [x] C.1 Publie (hook `spartanAbilityHook`, instrument `i57_handle_test.go`, garde
+      `I57H_FILM`, masques creux ET denses via `i57MatchDense` reutilise). `000d5950` :
+      tags 0:693 · **1:75** · 2:613 · 3:33 — le compte attendu AU CHIFFRE PRES, 1 414
+      marches sur 1 414, 0 cassee. `00502e52` : v==1 x37 · `07aa428d` : v==1 x193.
+- [x] C.2 HYPOTHESE TOMBEE, et proprement : le R(24) n'est PAS un handle `ti=37`.
+      (a) Ses valeurs sont quasi TOUTES UNIQUES (0, 0 et 3 valeurs repetees sur 75/37/193
+      lectures — un handle re-reference se repete ; un compteur/horodatage non) ;
+      (b) decompositions slot13+gen2 et gen2+slot13 : « vie vivante a ±2 s » = 1/75, 2/37
+      et 6/193 (~1-3 %, niveau du hasard) ; (c) pas davantage un slot de bipede (1-3/n).
+- [x] C.3 REFUTE par les temoins, aux DEUX echelles. Les naissances `ti=37` sont DENSES
+      (4,7-5,3/s — melange bonus/equipements, le 0.6 non tranche de la phase 0) : toute
+      fenetre >= 0,5 s sature, temoins decales ±5 s compris (100 % partout). Aux fenetres
+      fines (±0,02-0,10 s, echelle du paquet), le reel ne bat PAS ses temoins de facon
+      reproductible : `000d5950` ±0,10 s donne 73,7 % contre 52,6/31,6 (1,4-2,3x) mais
+      `00502e52` donne 66,7 % contre 80,0/53,3 et `07aa428d` 35,7 % contre 64,3/57,1 —
+      le reel passe SOUS le temoin sur 2 films sur 3. Les transitions `activated` sont
+      introuvables a l'echelle d'un film (1 · 0 · 0 sur les trois films) et ne co-datent
+      avec rien (0/19 a toutes les fenetres).
+- [x] C.4 Compte : 2 659 / 2 625 / 2 678 vies par film ; duree mediane 67,8-145,9 s ;
+      96-99 % finissent > 5 s avant la fin du film. La FIN est DATABLE par la disparition
+      du masque, mais la CAUSE n'est lisible que pour ~1-2 % des vies (dernier record
+      porteur d'`item-at-rest` : 21/46/21 vies ; d'`object-dead-state` : 16/5/7).
 
-Gate C : verdict « la pose d'un deployable se date / ne se date pas », et si oui par quel
-signal, avec taux de co-datation.
+Gate C : PASSE — verdict : **la pose d'un deployable NE SE DATE PAS par ces canaux**.
+`equipment-activated` est trop rare (1 transition sur 3 films), le R(24) d'i57 ne
+reference ni les entites ti=37 ni les bipedes (valeurs uniques, semantique de type
+compteur/horodatage), et la co-datation v==1 <-> naissances est un artefact de densite
+(temoins au niveau du reel). Ce que la mesure ne dit pas : ce que le R(24) encode
+(candidat : compteur/tick — non etabli), et si un sous-ensemble des naissances ti=37
+correspond aux deployables (aucun champ d'identite — resultat 0.6 de la phase 0 confirme).
 
 ### Phase D — MOBILITE : le croisement jamais fait, `i54` x `i48`
 
