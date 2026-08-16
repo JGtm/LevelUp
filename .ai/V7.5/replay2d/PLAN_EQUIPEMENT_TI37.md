@@ -151,56 +151,148 @@ Les deux sont **DEJA PORTES** par `consumeByName` : il ne manque qu'un hook, com
 quatre d'aujourd'hui. Un compteur de charges qui decroit date une utilisation par
 construction. Hors du perimetre FERME de la phase 0 — c'est le premier geste de la suite.
 
-### Phase 1 — PUBLIER le canal gagnant (branche sur le verdict 0)
+### Phase 1 — PUBLIER le canal gagnant (branche sur le verdict 0) — CLOSE le 2026-08-16
 
-- [ ] 1.1 `filmdec/equipment_state.go` sur le patron d'`ability_rank.go` : hook sur le
-      deser, marche des composants du masque avec les desers de PRODUCTION, enregistrement
-      localise (slot, chunk, packet, `TimestampUS`), et un type `Stats` avec ses
-      denominateurs (`Records` / `WithComponent` / `Read` / `Unread`).
-- [ ] 1.2 Entree de DONNEES dans `replay.BuildOptions` (comme `AbilityRanks`), peuplee par
-      `BuildFromFilm`, absence NON FATALE et loggee (`slog.WarnContext`).
-- [ ] 1.3 Champ du `ReplayDocument` + contrat (`replayContract.test.ts`) + normalisation web.
-- [ ] 1.4 Golden d'assemblage mis a jour (`golden_inputs_test.go`).
+> EXECUTION RESTREINTE (decision utilisateur du 16/08 : « pour active camo et surbouclier
+> oui ca me va ») aux DEUX familles gagnees par PLAN_ETAT_ACTIF_EQUIPEMENT (gates A et B).
+> Les canaux publies sont donc `i28` queue[1] (camo) et `i5` non clampe (surbouclier) —
+> PAS les champs ti=37 (sans identite ni datation exploitables, verdict 0).
 
-**Gate 1** : le document porte la donnee sur le corpus local, avec sa COUVERTURE publiee
-(combien de vies ont un instant d'activation, combien n'en ont aucun). Une couverture
-partielle est un resultat, pas un echec — elle s'ecrit.
+- [x] 1.1 AMENDE par la restriction : le lecteur de production est `filmdec/camo_state.go`
+      (`ScanFilmCamoStates`, patron d'`ability_rank.go` : hook `camoStateHook` du deser de
+      production, marche partagee `walkRecordTo` — un seul exemplaire pour i48 et i28 —,
+      lectures localisees slot/chunk/packet/`TimestampUS`, `CamoStateStats` avec
+      denominateurs Records/WithI28/Read/Unread/NoChannel). Le surbouclier n'exige AUCUN
+      balayage neuf : le quantum brut `Shield.Q` voyage deja dans `ScanFilmBipedPositions`
+      (CaptureDirs) ; la regle mesuree est figee en production (`filmdec.OvershieldFullQ`,
+      q > 64, jamais la valeur clampee).
+- [x] 1.2 `replay.Options.CamoStates` (patron `AbilityRanks`), peuplee par `BuildFromFilm`,
+      absence NON FATALE et loggee (slog.Warn, la convention du fichier — BuildFromFilm ne
+      recoit pas de contexte). L'assemblage (`equipment_episodes.go`) date les episodes PAR
+      VIE : ouverture au passage actif (4095 / q>64), fermeture a la transition MESUREE
+      (`endRead=true`) ou a la fin de la vie (`endRead=false` — le fil des morts date la
+      fin de piste), clamp a la fenetre de la trajectoire publiee.
+- [x] 1.3 `ReplayDocument.EquipmentEpisodes` (schema 6 -> 7, chronique ecrite) +
+      `Coverage.Equipment` (vies porteuses / vies publiees, par famille) + contrat OpenAPI
+      regenere (`make openapi-gen`, contracttest 28 -> 29 champs) + `generated.ts` +
+      normalisation web (`replayNormalize.ts`, `replayContract.test.ts`).
+- [x] 1.4 Fixture d'entrees v4 (`REPLAYINPUTS4` : + `CamoStates`, + `Shield.Q`) regenere
+      depuis le film de reference ; golden d'assemblage regenere. SON EVOLUTION, et elle
+      enseigne : `000d5950` (Fiesta) publie 36 episodes camo sur 22 vies alors qu'AUCUNE
+      vie n'y porte l'equipement rang 8 — controle a l'instrument (`I28_FILM`) : 698
+      lectures queue[1] STRICTEMENT binaires (0:617 · 4095:81), transitions sur des vies
+      rangs 19-22. C'est le POWER-UP de camouflage qui allume le canal : i28 est l'etat
+      d'invisibilite de l'UNITE, l'exclusivite rang 8 de la phase A etait la VALIDATION du
+      canal sur des films sans power-up. L'etat est l'etat — on publie. Surbouclier : 0
+      episode sur ce film (temoin de forme [0, 64] du 2026-08-05, reproduit au zero pres).
 
-Interdits de cette phase : aucun rendu, aucun son, aucune valeur par defaut inventee.
+**Gate 1 : PASSE.** Couverture publiee dans le document (`coverage.equipment`) et mesuree
+sur 4 films du corpus local (artefacts schema 7 construits par `backfill-replay` sur cache
+restreint) — chiffres au journal de cloture ci-dessous. Une couverture partielle est un
+resultat : la plupart des vies ne portent ni camo ni surbouclier, zero est une valeur.
 
-### Phase 2 — NOMMER (manifeste, jamais de litteral en dur)
+Interdits de cette phase : aucun rendu, aucun son, aucune valeur par defaut inventee —
+tenus (le rendu et le son sont arrives aux phases 3 et 4).
 
-- [ ] 2.1 Les noms d'equipement vivent dans `config/titles/halo_infinite/mappings/replay_labels.toml`,
-      section `[[ability_palettes]]` / `[ability_palettes.ranks]` qui existe deja. Aucun
-      libelle FR/EN en dur cote Go (regle transverse multi-titre).
-- [ ] 2.2 Un rang non resolu s'affiche COMME RANG, jamais comme capacite.
-- [ ] 2.3 Si un nom s'ajoute, il porte sa PROVENANCE en commentaire (releve terrain sur au
-      moins deux porteurs, ou double chaine murmur3 + banque sonore — regle RECETTE §14).
+### Phase 2 — NOMMER (manifeste, jamais de litteral en dur) — CLOSE le 2026-08-16
 
-**Gate 2** : `go test ./internal/games/...` vert ; aucun nom ajoute sans provenance ecrite.
+- [~] 2.1 SANS OBJET sous la restriction : l'effet est type par la FAMILLE (`camo` /
+      `overshield`), identifiants STABLES du document (meme regle que `NeutralDeath.Kind`),
+      pas par un libelle de rang. Aucun libelle FR/EN en dur cote Go ; les libelles UI
+      vivent dans `i18n.ts` web (`equipmentActive`, FR **et** EN, parite par typage
+      `Record<'camo' | 'overshield', string>`). `replay_labels.toml` inchange.
+- [~] 2.2 Couvert par l'existant : le comportement des rangs non resolus (affiches comme
+      rang) n'est pas touche par ce lot.
+- [x] 2.3 AUCUN nom ajoute — rien a prouver.
 
-### Phase 3 — MONTRER
+**Gate 2 : PASSE** — `go test ./internal/games/...` vert (aucun fichier du perimetre n'y
+vit, le gate confirme l'absence de regression) ; aucun nom ajoute sans provenance.
 
-- [ ] 3.1 L'effet PLEINE FICHE a l'activation (demande utilisateur du 14/08 : toute la
-      fiche, pas un lisere). Duree de remanence derivee de l'instant mesure, pas choisie.
-- [ ] 3.2 L'objet pose sur la CARTE, si la phase 0 rend des positions : meme chaine de
-      projection que les trajectoires (`MondeVersPixel`, calage du fond de carte).
-- [ ] 3.3 Tokens semantiques uniquement (skill `color-tokens`), `prefers-reduced-motion`
-      respecte, strings en FR **et** EN dans `i18n.ts` avec parite par typage.
+### Phase 3 — MONTRER — CLOSE le 2026-08-16 (gate visuel utilisateur RESTANT)
 
-**Gate 3** : `npm run typecheck` apres purge de `node_modules/.tmp`, `npm run lint`,
-`npm run test` — les trois a exit 0. Aucun hex ni classe Tailwind couleur dans
-`features/`. **Gate visuel utilisateur** : la session ne juge pas son propre rendu.
+- [x] 3.1 Effet PLEINE FICHE, deux effets distincts et semantiquement evidents
+      (`ReplayTeams.tsx`, chaine slot -> fiche du flash de mort) : le CAMOUFLAGE ESTOMPE
+      la fiche entiere (opacite 0.4 — le joueur disparait a l'ecran de jeu, sa fiche fait
+      pareil ; l'infobulle dit pourquoi), le SURBOUCLIER la SURLIGNE (anneau plein + halo
+      + fond au token `info` — le MEME que la jauge de bouclier : un surbouclier est un
+      sur-BOUCLIER). AUCUNE remanence inventee : l'effet est actif exactement sur
+      [t0, t1] de l'episode mesure (`equipmentFx.ts`, bornes incluses, teste). Les deux
+      effets se composent quand les episodes se recouvrent.
+- [~] 3.2 SANS OBJET sous la restriction : ni le camouflage ni le surbouclier ne POSENT
+      d'objet sur la carte, et les positions ti=37 restent sans identite (verdict 0.6) —
+      rien a projeter sans nommer.
+- [x] 3.3 Tokens semantiques uniquement (`tokenCssVar('info')`, zero hex, zero classe
+      Tailwind couleur) ; effets STATIQUES, sans animation — `prefers-reduced-motion`
+      respecte par construction ; strings FR **et** EN dans `i18n.ts`, parite par typage.
 
-### Phase 4 — FAIRE SONNER
+**Gate 3 : gates techniques PASSES** (typecheck apres purge de `node_modules/.tmp`, lint,
+test — exit 0, chiffres au journal). **Gate visuel utilisateur : RESTANT** — la session ne
+juge pas son propre rendu ; films temoins conseilles : `084a804d` (10 lectures rang 8,
+8 rang 9) ou `06dfe6d9`.
 
-- [ ] 4.1 Les 7 `Activate` de la bibliotheque, joints a l'instant mesure en phase 1.
-- [ ] 4.2 Les 5 `Recharge`, joints a la remontee d'energie si la phase 0 l'etablit.
-- [ ] 4.3 Meme regle que le lot du 15/08 : une source sans donnee reste MUETTE, jamais le
-      son d'un equipement voisin. Aucun asset verse qui ne soit joue (garde-rail
-      `replaySoundAssets.guard.test.ts`).
+### Phase 4 — FAIRE SONNER — CLOSE le 2026-08-16 (gate d'ecoute utilisateur RESTANT)
 
-**Gate 4** : garde-rail vert, gates web verts, **gate d'ECOUTE utilisateur**.
+- [x] 4.1 RESTREINT aux deux familles gagnees : `Active Camo - Activate/Deactivate` et
+      `Overshield - Activate/Deactivate` convertis par la recette VALIDEE du lot grenades
+      (PCM s16le, 48 kHz, stereo, tronque a 1,200 s, `-map_metadata -1` + `-bitexact`) —
+      temoin RECONSTRUIT : `M9 Frag Grenade - Explode.wav` re-converti rend un fichier
+      IDENTIQUE A L'OCTET (SHA256) a `explosion_frag.wav` livre, et les 4 fichiers font
+      exactement 230 444 o. Declenchement : debut d'episode = Activate ; fin MESUREE
+      (`endRead`) = Deactivate. DEUX CHOIX DOCUMENTES pour le gate d'ecoute : (a) la fin
+      mesuree du surbouclier est l'EPUISEMENT (retour sous 100 %) — y jouer Deactivate est
+      une mise en scene ; (b) un episode ferme par la MORT ne sonne PAS de desactivation
+      (rien ne l'a mesuree, et le kill sonne deja la).
+- [!] 4.2 Les `Recharge` ne sont PAS joints : ni la phase 0 ni les phases A/B n'etablissent
+      une remontee d'energie DATEE (la recharge n'a pas d'instant mesure — et un asset que
+      rien ne joue casserait le garde-rail). Les WAV restent dans la bibliotheque
+      utilisateur, non verses.
+- [x] 4.3 Une famille hors table (`EQUIPMENT_SOUND_STEMS`) reste MUETTE, jamais le son
+      d'une voisine (teste) ; garde-rail `replaySoundAssets.guard.test.ts` etendu aux 4
+      stems (manifeste = dossier, 0 asset mort).
+
+**Gate 4 : garde-rail et gates web VERTS** (journal). **Gate d'ECOUTE utilisateur :
+RESTANT** — memes films temoins que le gate visuel. Le FILTRE PAR CATEGORIE de sons
+(crainte de surcharge sonore) n'est PAS implemente : idee portee au REGISTRE_REPORTS avec
+sa condition de reprise (decision user au gate d'ecoute).
+
+## Journal de cloture des phases 1-4 (2026-08-16, execution restreinte camo + surbouclier)
+
+**COUVERTURE PUBLIEE (`coverage.equipment`), mesuree sur 4 films du corpus local** — les
+artefacts schema 7 sont sur disque (`data/cache/replays/halo_infinite/`) :
+
+    film      contexte                        vies   camo (vies/episodes)  surbouclier (vies/episodes)
+    000d5950  Fiesta arene (golden, fam. B)     99   22 / 36 (24 fins mesurees)   0 / 0
+    00ba2e1c  BTB Fiesta Slayer (temoin neg.)  208    0 / 0                        0 / 0
+    084a804d  BTB Heavies CTF (fam. A)         256    9 / 15 (10 fins mesurees)    5 / 6 (6 fins mesurees)
+    06dfe6d9  NON CONSTRUCTIBLE : carte `Threshold` hors catalogue de bornes — echec VOULU
+              du pipeline (une carte sans bornes ne produit pas d'artefact), pas un defaut du lot
+
+**TROIS CONTROLES QUE CES CHIFFRES PORTENT.** (1) Le temoin negatif de la mesure
+(`00ba2e1c` : 0 transition, 0 valeur 4095, 0 q>64 sur tout le film) est reproduit par la
+production AU ZERO PRES. (2) Sur `084a804d`, l'episode de surbouclier le plus long publie
+dure 61,6 s — LE chiffre du gate B (« episodes dates de 6,2 a 61,6 s ») retrouve par une
+chaine independante de l'instrument. (3) Sur `000d5950` (jamais mesure en phase A), les
+36 episodes camo sans porteur rang 8 ont ete CONTROLES a l'instrument (`I28_FILM`) avant
+d'etre acceptes : 698 lectures queue[1] strictement binaires (0:617 · 4095:81) — c'est le
+POWER-UP de camouflage de Fiesta ; i28 est l'etat d'invisibilite de l'UNITE, quelle qu'en
+soit la source. L'etat est l'etat.
+
+**GATES TECHNIQUES, resultats exacts du 2026-08-16 :**
+
+    go build ./...                                          exit 0
+    go vet ./...                                            exit 0
+    go test ./internal/analysis/... ./internal/replaybuild/...   exit 0
+    go test ./internal/games/...                            tous paquets ok (gate 2)
+    golangci-lint run --new-from-merge-base=origin/main     0 issues
+    web (purge node_modules/.tmp puis) : typecheck exit 0 · lint exit 0 (0 erreur ;
+      19 warnings preexistants, aucun dans les fichiers du lot) · vitest complet
+      exit 0 (423 fichiers, 3 807 tests ; passe 1 : 1 flaky CONNU hors perimetre,
+      PalmaresRelationsPage, vert seul — 2e observation consignee au registre)
+
+**GATES RESTANTS, et ils appartiennent a l'utilisateur** : le gate VISUEL (phase 3) et le
+gate d'ECOUTE (phase 4). Film temoin conseille : `084a804d` (9 vies camo, 5 vies
+surbouclier, artefact schema 7 sur disque). `06dfe6d9` n'est pas constructible (carte
+hors bornes) ; `000d5950` montre le camo de power-up sans surbouclier.
 
 ## Regles dures (elles ont deja tranche ce chantier)
 
