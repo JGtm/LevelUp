@@ -28,6 +28,8 @@ import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
 import { readInk } from './canvasInk'
 import { readFxInk } from './fxInk'
+import { drawHeatmapLayer } from './heatmapLayer'
+import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { buildShotFx } from './shotFx'
 import {
   buildObjectivePulses,
@@ -44,6 +46,7 @@ import {
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
+import { useReplayHeatmap } from './useReplayHeatmap'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
 import { backgroundRect, coversPlayedArea } from './mapBackground'
@@ -161,6 +164,9 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const floorRef = useRef<HTMLCanvasElement | null>(null)
   // Zones nommées : même règle que le sol — calque statique cuit hors écran, recopié.
   const zonesRef = useRef<HTMLCanvasElement | null>(null)
+  // Carte de chaleur : elle porte TOUT le match, elle ne dépend donc pas de l'image
+  // courante — même règle que le sol et les zones.
+  const heatRef = useRef<HTMLCanvasElement | null>(null)
   // Objectifs statiques du mode (lot 4) : même règle — le calque ne bouge jamais.
   const objectivesRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -181,6 +187,7 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
   const [settingsOpen, setSettingsOpen] = useState(false)
   const {
     showAim, toggleAim, showZones, toggleZones, speed: multiplier, setSpeed: setMultiplier,
+    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
   // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
@@ -317,6 +324,9 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     () => buildKillFx(doc, kills ?? [], t0Ms ?? 0),
     [doc, kills, t0Ms],
   )
+  // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
+  // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
+  const heat = useReplayHeatmap(doc, bounds, killFx, { show: showHeatmap, mode: heatmapMode })
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
   const restWindow = useMemo(
@@ -372,6 +382,12 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
       // reconstruit et les props Forge redeviennent le seul repère disponible. Ils couvrent
       // 3,4 % du terrain — c'est peu, et c'est mieux qu'un fond vide.
       drawGeometryLayer(ctx, doc.geometry, view, { color: geometryColor, z: zRange })
+    }
+    // La CARTE DE CHALEUR juste au-dessus du fond : c'est une lecture du terrain, elle se
+    // pose SUR la carte et SOUS tout ce qui la nomme ou s'y déplace. Elle ne masque rien —
+    // son opacité est bornée, et elle laisse le décor transparaître (heatmapLayer.ts).
+    if (heatRef.current) {
+      ctx.drawImage(heatRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
     }
     // Les ZONES NOMMÉES par-dessus le fond, sous tout ce qui bouge : c'est le vocabulaire
     // du terrain, pas un événement. Calque statique recopié (cuit hors écran).
@@ -567,6 +583,36 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
     draw()
   }, [calloutZones, zoneColors, renderWidth, bounds, floorStyle.edge, locale, draw])
 
+  // La carte de chaleur se cuit quand SA grille, SON cadrage ou SA rampe changent — jamais
+  // à l'image. C'est ce qui rend son coût indolore : le calcul lourd (accumulation,
+  // lissage, étalonnage) a déjà eu lieu dans le useMemo, et le dessin ne se refait que si
+  // l'un de ses ingrédients bouge.
+  useEffect(() => {
+    if (!heat.grid || renderWidth === 0 || heat.ramp.length === 0) {
+      heatRef.current = null
+      // REPEINDRE APRÈS AVOIR ÉTEINT : à l'arrêt, rien d'autre ne déclenche de redessin
+      // (contrairement au calque des zones, dont la bascule figure dans les dépendances de
+      // `draw`) — sans cette ligne, la carte de chaleur resterait à l'écran après extinction.
+      draw()
+      return
+    }
+    const dpr = window.devicePixelRatio || 1
+    const off = document.createElement('canvas')
+    off.width = Math.round(renderWidth * dpr)
+    off.height = Math.round(CANVAS_HEIGHT * dpr)
+    const octx = off.getContext('2d')
+    if (!octx) return
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawHeatmapLayer(
+      octx,
+      heat.grid,
+      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
+      { ramp: heat.ramp, k: dpr },
+    )
+    heatRef.current = off
+    draw()
+  }, [heat.grid, heat.ramp, renderWidth, bounds, draw])
+
   // Les objectifs statiques se cuisent quand LEURS données, LEUR cadrage ou LEURS encres
   // changent — jamais à l'image (même règle que le sol et les zones nommées).
   useEffect(() => {
@@ -664,11 +710,17 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
             </Button>
           </div>
           <div className="p-3">
-            <canvas
-              ref={canvasRef}
-              className="mx-auto block"
-              style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
-            />
+            {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
+                de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
+                relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
+            <div className="relative mx-auto" style={{ width: renderWidth || '100%' }}>
+              <canvas
+                ref={canvasRef}
+                className="block"
+                style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
+              />
+              {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
+            </div>
             <div className="mt-2 flex items-center gap-3">
               <Button
                 variant="default"
@@ -720,6 +772,13 @@ export function ReplayCanvas({ doc, locale, kills, t0Ms, onFrameChange, backgrou
             showZones={showZones}
             onToggleZones={toggleZones}
             zonesAvailable={calloutZones.length > 0}
+            heatmap={{
+              show: showHeatmap,
+              onToggle: toggleHeatmap,
+              mode: heat.mode,
+              onSetMode: setHeatmapMode,
+              killsAvailable: heat.killsAvailable,
+            }}
             sound={sound}
             speed={multiplier}
             onSetSpeed={setMultiplier}
