@@ -665,15 +665,30 @@ func consumeUnitStun(br *BitReader) {
 //	R(3).
 //	R(1) flag0; if flag0==0: R(1) flag1; if flag1==0: dequant R(12).
 //	FUN_1431fc0cc = 6x FUN_1411b1ac0 (each R1+optR12).
+//
+// LES VALEURS NE SONT PLUS JETÉES (2026-08-16, plan PLAN_ETAT_ACTIF_EQUIPEMENT phase A) :
+// le parcours de bits est INCHANGÉ (la boucle 6 x consume1411b1ac0 est écrite à plat pour
+// pouvoir publier — consume1411b1ac0 EST consumeGateR(12), même porte, même largeur), et
+// chaque lecture part vers camoStateHook (cf. ability_state_hooks.go).
 func consumeUnitActiveCamoState(br *BitReader) {
-	br.ReadBits(3)     // comp+0x7d7
-	if !br.ReadBit() { // flag0
-		if !br.ReadBit() { // flag1
-			br.ReadBits(12) // FUN_1406d84b4 dequant (0xc)
+	var st CamoState
+	st.C3 = uint8(br.ReadBits(3)) // comp+0x7d7
+	st.Flag0 = br.ReadBit()
+	if !st.Flag0 { // flag0
+		st.Flag1, st.Flag1Read = br.ReadBit(), true
+		if !st.Flag1 { // flag1
+			st.HasFrac = true
+			st.FracQ = uint16(br.ReadBits(12)) // FUN_1406d84b4 dequant (0xc)
 		}
 	}
-	for i := 0; i < 6; i++ { // FUN_1431fc0cc
-		consume1411b1ac0(br)
+	for i := 0; i < 6; i++ { // FUN_1431fc0cc = 6 x FUN_1411b1ac0 (R1 + opt R12)
+		if br.ReadBit() {
+			st.SubPresent[i] = true
+			st.SubQ[i] = uint16(br.ReadBits(12))
+		}
+	}
+	if camoStateHook != nil {
+		camoStateHook(st)
 	}
 }
 
