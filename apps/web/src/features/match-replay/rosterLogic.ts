@@ -15,9 +15,11 @@
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { displayPlayerName } from '@/lib/players/displayName'
 
 import { catalogText, type CatalogLabel } from './catalogLabel'
 import type { ReplayLocale } from './i18n'
+import type { PlayerMarkKind } from './playerMarks'
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
 import type {
   ReplayDocumentReady,
@@ -40,8 +42,6 @@ export interface ReplayPlayer {
   filmName?: string
   /** Toutes les vies de ce joueur, dans l'ordre du temps. */
   lives: ReplayTrackReady[]
-  /** Index de la couleur de série attribuée à ce joueur (stable sur tout le rejeu). */
-  colorIndex: number
 }
 
 /**
@@ -72,9 +72,10 @@ export interface ReplayTeamGroup {
  * aucun joueur. Elle continue d'être dessinée sur la carte — elle existe — mais elle n'ajoute
  * ni une fiche ni une ligne à personne.
  *
- * LA COULEUR EST STABLE SUR TOUT LE REJEU : elle est attribuée AU JOUEUR, pas à la vie. Sans
- * cela, un joueur changerait de couleur à chaque réapparition (99 traces pour 8 joueurs) et
- * suivre quelqu'un des yeux deviendrait impossible.
+ * CE QUI EST STABLE SUR TOUT LE REJEU (couleur, marque d'identité, nom) est attribué AU
+ * JOUEUR, jamais à la vie : c'est `indexBySlot` ci-dessous qui redescend l'attribut sur
+ * chacune de ses vies. Sans cela, un joueur changerait de couleur à chaque réapparition
+ * (99 traces pour 8 joueurs) et suivre quelqu'un des yeux deviendrait impossible.
  */
 export function buildPlayers(
   doc: ReplayDocumentReady,
@@ -88,14 +89,13 @@ export function buildPlayers(
       xuid: entry.xuid,
       filmName: entry.name,
       lives: [],
-      colorIndex: byXUID.size,
     })
   }
   for (const track of doc.tracks) {
     if (!track.xuid) continue
     let p = byXUID.get(track.xuid)
     if (!p) {
-      p = { xuid: track.xuid, lives: [], colorIndex: byXUID.size }
+      p = { xuid: track.xuid, lives: [] }
       byXUID.set(track.xuid, p)
     }
     p.lives.push(track)
@@ -127,6 +127,65 @@ export function groupByTeam(players: ReplayPlayer[]): ReplayTeamGroup[] {
     g.players.push(p)
   }
   return [...groups.values()].sort((a, b) => (a.side ?? '￿').localeCompare(b.side ?? '￿'))
+}
+
+/**
+ * indexBySlot — LE PASSAGE « ce qui appartient au JOUEUR redescend sur chacune de ses VIES ».
+ *
+ * Le calque de la carte ne connaît que des SLOTS (une vie = un slot de biped, réattribué à
+ * chaque réapparition) ; tout ce qui identifie durablement quelqu'un — sa couleur d'équipe,
+ * sa marque « moi / ami », son nom — appartient au JOUEUR. Trois attributs, une seule
+ * descente : sans ce foyer, la même boucle serait recopiée trois fois (CLAUDE.md n°6).
+ *
+ * Une vie SANS propriétaire (trace sans xuid) n'apparaît dans aucune table : l'appelant sert
+ * alors son propre repli — encre neutre pour la couleur, aucune marque, aucun nom.
+ */
+export function indexBySlot<T>(
+  players: readonly ReplayPlayer[],
+  valueOf: (player: ReplayPlayer) => T,
+): Map<number, T> {
+  const bySlot = new Map<number, T>()
+  for (const p of players) {
+    const value = valueOf(p)
+    for (const life of p.lives) bySlot.set(life.slot, value)
+  }
+  return bySlot
+}
+
+/**
+ * colorBySlot — LA COULEUR D'UNE VIE EST CELLE DE SON PROPRIÉTAIRE, et c'est sa couleur
+ * d'ÉQUIPE (décision D1 du plan d'habillage, 2026-08-16, amendée par l'utilisateur) : les
+ * tokens `team-ally` / `team-enemy` que les réglages d'accessibilité peuvent surcharger,
+ * jamais une couleur de série indexée sur la trace. Un joueur gardait jusque-là une teinte
+ * par VIE : il changeait de couleur à chaque réapparition.
+ *
+ * `colorOf` rend la couleur d'un camp (l'appelant résout les tokens), `isAlly` dit le camp
+ * d'un xuid (côté du joueur de la page), `neutral` sert quand on ne sait rien de l'identité.
+ */
+export function colorBySlot(
+  players: readonly ReplayPlayer[],
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): Map<number, string> {
+  return indexBySlot(players, (p) => (p.xuid ? colorOf(isAlly(p.xuid)) : neutral))
+}
+
+/** markBySlot redescend la marque d'identité (« moi », « ami ») du joueur sur ses vies. */
+export function markBySlot(
+  players: readonly ReplayPlayer[],
+  marks: ReadonlyMap<string, PlayerMarkKind>,
+): Map<number, PlayerMarkKind | undefined> {
+  return indexBySlot(players, (p) => marks.get(p.xuid))
+}
+
+/**
+ * nameBySlot redescend le NOM D'AFFICHAGE du joueur sur ses vies — celui des fiches et du
+ * fil (`displayPlayerName`), jamais un xuid brut. Une vie sans propriétaire n'y figure pas :
+ * l'étiquette de la carte reste alors vide plutôt que d'écrire « Joueur #### ».
+ */
+export function nameBySlot(players: readonly ReplayPlayer[]): Map<number, string> {
+  return indexBySlot(players, (p) => displayPlayerName(playerName(p), p.xuid))
 }
 
 /**

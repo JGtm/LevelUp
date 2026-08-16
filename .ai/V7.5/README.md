@@ -19,6 +19,9 @@ réfuté. Ce qui reste à faire ou à terminer n'est pas ici mais à la racine d
 | `icones/` | Icônes d'armes et du **kill feed** extraites des `.module` : chaîne, tables de correspondance, page de nommage, planches-contact | 5 |
 | `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 69 Mo, lus par du code | 40 entrées |
 
+Plan actif d'habillage du rejeu 2D (marqueurs, noms, amis, logo, rangee `fil | carte | fiches`) :
+`replay2d/PLAN_HABILLAGE_REJEU_2D.md` (ecrit le 2026-08-16, decisions D1-D8 a valider par le user).
+
 À la racine de `V7.5/` : `RECHERCHE_CTF_TIRS_PERDUS.md` — le verdict de la **décision #2** du
 master plan (pourquoi le rejeu perd des tirs, et si le rejeu public est livrable). Ses sorties
 brutes sont sous `replay2d/mesures_ctf_2026-08-08/`.

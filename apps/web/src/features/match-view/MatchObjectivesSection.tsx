@@ -20,19 +20,15 @@
  */
 import { useMemo } from 'react'
 
-import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatDurationMMSS } from '@/lib/formatters/duration'
-import {
-  labelHasTeamWord,
-  parseTeamSideID,
-  resolveTeamColorFromID,
-  resolveTeamName,
-} from '@/lib/halo/teamNames'
+import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { parseTeamSideID } from '@/lib/halo/teamNames'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import type { MatchViewText } from './i18n'
+import { teamColorResolver } from './teamColor'
 import {
   detectObjectiveMode,
   objectiveColsFor,
@@ -63,20 +59,9 @@ function teamVisual(
   t: MatchViewText,
 ): { label: string; colorVar: string } {
   const teamID = parseTeamSideID(teamSide)
-  const backendName = teamRows.find((r) => r.team_name)?.team_name ?? null
-  const officialName = backendName ?? resolveTeamName(teamSide)
-  const label = officialName
-    ? labelHasTeamWord(officialName)
-      ? officialName
-      : t.teamLabelFmt(officialName)
-    : teamID != null
-      ? t.teamNumberedFmt(teamID)
-      : t.teamUnknown
-  const backendColor = teamRows.find((r) => r.team_color)?.team_color ?? null
-  const colorVar =
-    backendColor ??
-    resolveTeamColorFromID(teamID) ??
-    (isMyTeam ? tokenCssVar('team-ally') : tokenCssVar('team-enemy'))
+  const label = resolveTeamLabel(teamRows, teamSide, t)
+  // Couleur d'identité : cascade UNIQUE (`teamColor.ts`), la même que le fil et le scoreboard.
+  const colorVar = teamColorResolver(teamRows)(teamID, isMyTeam)
   return { label, colorVar }
 }
 

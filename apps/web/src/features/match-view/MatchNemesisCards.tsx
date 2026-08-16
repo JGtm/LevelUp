@@ -12,6 +12,7 @@
  */
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { MatchNemesisRow, MatchScoreboardRow } from '@/lib/api/types'
+import { themedIconSrc } from '@/lib/themedIcon'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import type { MatchViewText } from './i18n'
 
@@ -24,7 +25,6 @@ interface Props {
 
 export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
   const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
-  const logoSuffix = theme === 'light' ? 'black' : 'white'
   const sb = scoreboard ?? []
   const nem = nemesis ?? []
   const sbMe = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
@@ -51,7 +51,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         accentToken="outcome-loss"
         row={nemesisRow}
         statLine={nemesisRow ? t.combatKilledMeFmt(nemesisRow.killed_me) : null}
-        logoSrc={`/icons/nemesis-${logoSuffix}.png`}
+        logoSrc={themedIconSrc('nemesis', theme)}
         t={t}
       />
       <NemesisCard
@@ -59,7 +59,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         accentToken="outcome-win"
         row={bullyRow}
         statLine={bullyRow ? t.combatIKilledFmt(bullyRow.i_killed) : null}
-        logoSrc={`/icons/victim-${logoSuffix}.png`}
+        logoSrc={themedIconSrc('victim', theme)}
         t={t}
       />
     </div>

@@ -6,10 +6,13 @@ import type { ReplayInventoryReady, ReplayTrackReady } from './replayNormalize'
 import { testReplayDoc as doc } from './test/testDoc'
 import {
   buildPlayers,
+  colorBySlot,
   grenadesCarried,
   groupByTeam,
   inventoryAt,
   loadoutAt,
+  markBySlot,
+  nameBySlot,
   playerName,
   playerStateAt,
   selectedGrenade,
@@ -106,18 +109,6 @@ describe('buildPlayers', () => {
     expect(buildPlayers(d, [])[0].filmName).toBe('Zulu')
   })
 
-  it('donne une couleur STABLE par joueur, pas par vie', () => {
-    const d = doc({
-      roster: [
-        { xuid: 'A', filmIndex: 0 },
-        { xuid: 'B', filmIndex: 1 },
-      ],
-      tracks: [track(512, 'A', 0, 50), track(514, 'A', 70, 120), track(513, 'B', 0, 60)],
-    })
-    const players = buildPlayers(d, [])
-    expect(players.map((p) => p.colorIndex)).toEqual([0, 1])
-  })
-
   it('ordonne les vies dans le temps', () => {
     const d = doc({ tracks: [track(514, 'A', 70, 120), track(512, 'A', 0, 50)] })
     const [a] = buildPlayers(d, [])
@@ -149,6 +140,55 @@ describe('groupByTeam', () => {
     const groups = groupByTeam(buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')]))
     expect(groups.map((g) => g.side)).toEqual(['Cobra', 'Eagle', null])
     expect(groups[2].players[0].xuid).toBe('C')
+  })
+})
+
+describe('colorBySlot — la couleur appartient au JOUEUR, pas à la vie (D1)', () => {
+  const teamColor = (ally: boolean) => (ally ? 'allie' : 'adverse')
+
+  it('donne la MÊME couleur aux deux vies d’un même joueur', () => {
+    const d = doc({ tracks: [track(512, 'A', 0, 50), track(514, 'A', 70, 120)] })
+    const colors = colorBySlot(buildPlayers(d, [row('A', 'Alpha', 'Eagle')]), teamColor,
+      () => true, 'neutre')
+    expect(colors.get(512)).toBe('allie')
+    expect(colors.get(514)).toBe('allie')
+  })
+
+  it('sépare les camps : allié et adversaire n’ont pas la même teinte', () => {
+    const d = doc({ tracks: [track(512, 'A', 0, 50), track(513, 'B', 0, 60)] })
+    const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')])
+    const colors = colorBySlot(players, teamColor, (xuid) => xuid === 'A', 'neutre')
+    expect(colors.get(512)).toBe('allie')
+    expect(colors.get(513)).toBe('adverse')
+  })
+
+  it('laisse une vie SANS propriétaire hors de la table — l’appelant y sert son encre neutre', () => {
+    const d = doc({ tracks: [track(512, undefined, 0, 50)] })
+    const colors = colorBySlot(buildPlayers(d, []), teamColor, () => true, 'neutre')
+    expect(colors.has(512)).toBe(false)
+    expect(colors.get(512) ?? 'neutre').toBe('neutre')
+  })
+})
+
+describe('markBySlot / nameBySlot — l’identité redescend sur chaque vie', () => {
+  it('porte la marque du propriétaire sur toutes ses vies, rien pour les autres', () => {
+    const d = doc({ tracks: [track(512, 'A', 0, 50), track(514, 'A', 70, 120), track(513, 'B', 0, 60)] })
+    const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')])
+    const marks = markBySlot(players, new Map([['A', 'me' as const]]))
+    expect(marks.get(512)).toBe('me')
+    expect(marks.get(514)).toBe('me')
+    expect(marks.get(513)).toBeUndefined()
+  })
+
+  it('écrit le nom d’affichage du joueur, jamais un xuid brut', () => {
+    const d = doc({ tracks: [track(512, '2533274800000000', 0, 50)] })
+    const names = nameBySlot(buildPlayers(d, []))
+    expect(names.get(512)).toBe('Joueur 0000')
+  })
+
+  it('ne nomme pas une vie anonyme', () => {
+    const d = doc({ tracks: [track(512, undefined, 0, 50)] })
+    expect(nameBySlot(buildPlayers(d, [])).has(512)).toBe(false)
   })
 })
 

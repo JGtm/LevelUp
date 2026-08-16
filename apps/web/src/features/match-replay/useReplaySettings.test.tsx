@@ -9,10 +9,11 @@ import { describe, expect, it } from 'vitest'
 import { SPEED_MULTIPLIERS, useReplaySettings } from './useReplaySettings'
 
 describe('useReplaySettings — valeurs par défaut', () => {
-  it('visée et zones allumées, vitesse à 1x — comportement inchangé sans préférence stockée', () => {
+  it("visée, zones et noms allumés, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showAim).toBe(true)
     expect(result.current.showZones).toBe(true)
+    expect(result.current.showNames).toBe(true)
     expect(result.current.speed).toBe(1)
   })
 
@@ -56,12 +57,14 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     const first = renderHook(() => useReplaySettings())
     act(() => first.result.current.toggleAim())
     act(() => first.result.current.toggleZones())
+    act(() => first.result.current.toggleNames())
     act(() => first.result.current.setSpeed(2))
     first.unmount()
 
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showAim).toBe(false)
     expect(result.current.showZones).toBe(false)
+    expect(result.current.showNames).toBe(false)
     expect(result.current.speed).toBe(2)
   })
 

@@ -1,7 +1,7 @@
 /**
- * useReplaySettings — préférences d'AFFICHAGE du rejeu : calques (visée, zones, carte de
- * chaleur), effets d'événement (tirs, morts) et vitesse de lecture. Persistées comme le son
- * (replayPreferences.ts, patron né dans useReplaySound), depuis le tiroir de réglages
+ * useReplaySettings — préférences d'AFFICHAGE du rejeu : calques (visée, zones, noms, carte
+ * de chaleur), effets d'événement (tirs, morts) et vitesse de lecture. Persistées comme le
+ * son (replayPreferences.ts, patron né dans useReplaySound), depuis le tiroir de réglages
  * (décision utilisateur du 16/08).
  *
  * DÉLIBÉRÉMENT SÉPARÉ DE useReplaySound : ce hook ne connaît RIEN au son (ni la piste, ni
@@ -21,6 +21,7 @@ import {
 
 const SHOW_AIM_KEY = 'replay-show-aim'
 const SHOW_ZONES_KEY = 'replay-show-zones'
+const SHOW_NAMES_KEY = 'replay-show-names'
 const SPEED_KEY = 'replay-speed'
 const SHOW_HEATMAP_KEY = 'replay-show-heatmap'
 const HEATMAP_MODE_KEY = 'replay-heatmap-mode'
@@ -66,6 +67,13 @@ export interface ReplaySettings {
    *  présence de zones sur la carte (même règle que le bouton d'origine). */
   showZones: boolean
   toggleZones: () => void
+  /**
+   * Calque des NOMS sous les marqueurs (décision D4, 2026-08-16). Allumé par défaut : le nom
+   * est ce qui distingue un coéquipier d'un autre, la couleur ne dit que le camp. Un BTB à
+   * 24 joueurs doit néanmoins pouvoir l'éteindre.
+   */
+  showNames: boolean
+  toggleNames: () => void
   /** Calque de la carte de chaleur. ÉTEINT par défaut (cf. SHOW_HEATMAP_DEFAULT). */
   showHeatmap: boolean
   toggleHeatmap: () => void
@@ -87,8 +95,8 @@ export interface ReplaySettings {
  * usePersistedFlag — UN interrupteur persisté : son état, et la bascule qui l'écrit.
  *
  * CENTRALISÉ ICI (CLAUDE.md n°6, « à la 3e copie, centraliser ») : les calques de visée, de
- * zones, de carte de chaleur, d'effets de tirs et d'effets de mort partagent EXACTEMENT le
- * même corps — état initial lu du stockage, bascule qui persiste la nouvelle valeur. Cinq
+ * zones, de noms, de carte de chaleur, d'effets de tirs et d'effets de mort partagent EXACTEMENT
+ * le même corps — état initial lu du stockage, bascule qui persiste la nouvelle valeur. Six
  * copies de six lignes se seraient mises à diverger (l'une oubliant la persistance, l'autre
  * la forme fonctionnelle du setState).
  */
@@ -107,6 +115,7 @@ function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void]
 export function useReplaySettings(): ReplaySettings {
   const [showAim, toggleAim] = usePersistedFlag(SHOW_AIM_KEY, true)
   const [showZones, toggleZones] = usePersistedFlag(SHOW_ZONES_KEY, true)
+  const [showNames, toggleNames] = usePersistedFlag(SHOW_NAMES_KEY, true)
   const [showHeatmap, toggleHeatmap] = usePersistedFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT)
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
   const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
@@ -132,6 +141,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleAim,
     showZones,
     toggleZones,
+    showNames,
+    toggleNames,
     showHeatmap,
     toggleHeatmap,
     heatmapMode,
