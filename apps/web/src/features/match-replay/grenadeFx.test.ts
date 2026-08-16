@@ -8,10 +8,12 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
+import { EXPLOSION_MS } from './explosionFx'
 import {
   buildGrenadeRestFx,
   DYNAMO_RANK,
   explosionTintOf,
+  GRENADE_REST_HOLD_MS,
   grenadeThrowActive,
   restKindOf,
 } from './grenadeFx'
@@ -94,5 +96,12 @@ describe('ce que fait une grenade au bout de son vol', () => {
     expect(explosionTintOf(0)).toBe('blast')
     expect(explosionTintOf(1)).toBe('plasma_cool')
     expect(explosionTintOf(3)).toBe('needle')
+  })
+
+  it('la fenêtre de rémanence VAUT la timeline de l explosion — sinon elle la coupe', () => {
+    // INVARIANT, pas coïncidence : `drawGrenadeRestLayer` sort dès `age > hold`. Une fenêtre
+    // plus courte que `EXPLOSION_MS` amputerait chaque détonation de sa fin — exactement le
+    // défaut signalé à la planche du 16/08 (« trop bref »), déplacé d'un cran.
+    expect(GRENADE_REST_HOLD_MS).toBe(EXPLOSION_MS)
   })
 })

@@ -32,9 +32,13 @@ import type { CSSProperties } from 'react'
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
+import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+
 import { catalogText } from './catalogLabel'
 import { drawnSwapAt, loadoutSwapAt, type EquippedReading, type SwapReading } from './equippedLogic'
 import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from './grenadeFx'
+import { grenadeIconOf } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -147,9 +151,15 @@ function GrenadeThrowBadge({
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
+  const titleSlug = useTitleSlug()
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const lbl = doc.grenadeLabels[rank]
   const name = catalogText(lbl, locale) ?? `${rank}`
   const tooltip = `${t.grenadeThrown} — ${name}`
+  // MÊME VIGNETTE QUE LA LIGNE D'INVENTAIRE (grenadeIcon.ts) : le type qui part est le même
+  // objet que celui qu'on compte deux lignes plus bas — deux dessins différents pour la même
+  // grenade se liraient comme deux grenades.
+  const icon = grenadeIconOf(lbl, titleSlug, theme)
   return (
     <span
       key={`gic-${throwFrame}`}
@@ -160,10 +170,10 @@ function GrenadeThrowBadge({
       }}
       title={tooltip}
     >
-      {lbl?.img ? (
+      {icon ? (
         <WeaponIcon
-          imageUrl={lbl.img}
-          tinted={lbl.tinted}
+          imageUrl={icon.url}
+          tinted={icon.tinted}
           label={tooltip}
           width={GIC_H}
           height={GIC_H}

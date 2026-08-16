@@ -105,15 +105,21 @@ function moduleSource(fichier: string, importsDeValeurAutorises = 0): string {
  * atteignable que par `drawGrenadeRestLayer` (elle est privée à `replayDraw.ts`), qui reçoit
  * ici les VRAIES `worldToCanvas` et `restKindOf` — c'est ce qui fait de ce test une preuve et
  * pas une reconstitution.
+ *
+ * L'ORDRE DES PORTÉES SUIT LES DÉPENDANCES : `grenadeFx.ts` importe `EXPLOSION_MS` depuis
+ * `explosionFx.ts` (sa fenêtre de rémanence EST la timeline de l'explosion, invariant du
+ * 17/08), donc EXPLO se construit avant GREN et lui injecte la constante.
  */
 function harnais(): string {
   return `
     const LOGIC = (function(){ ${moduleSource('replayLogic.ts')}
       return { worldToCanvas } })()
-    const GREN = (function(){ ${moduleSource('grenadeFx.ts')}
-      return { restKindOf, explosionTintOf } })()
     const EXPLO = (function(){ ${moduleSource('explosionFx.ts')}
-      return { drawExplosion, drawFlash, drawEmbers, drawWave, drawSparks, drawDust } })()
+      return { EXPLOSION_MS, drawExplosion, drawFlash, drawEmbers, drawWave, drawSparks, drawDust } })()
+    const GREN = (function(){
+      const EXPLOSION_MS = EXPLO.EXPLOSION_MS
+      ${moduleSource('grenadeFx.ts', 1)}
+      return { restKindOf, explosionTintOf } })()
     const DRAW = (function(){
       const worldToCanvas = LOGIC.worldToCanvas
       const restKindOf = GREN.restKindOf
