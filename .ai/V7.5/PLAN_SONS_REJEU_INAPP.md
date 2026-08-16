@@ -443,3 +443,13 @@ MAX_AVANCE (1 s de film) et MAX_SONS_PAR_PAS (8) —, reglages d'admin suivis vi
 
 GATES : `make check-types` vert, `make test-web` 413 fichiers / 3650 tests / 0 echec,
 eslint vert sur les fichiers touches.
+
+### 2026-08-16 — UX : le son demarre sans geste supplementaire dans le cas nominal
+
+Question utilisateur : « pourquoi faut-il cliquer une fois sur le canvas ? » La politique
+anti-autoplay compte l'activation AU NIVEAU DE LA PAGE : dans une appli monopage, le clic
+de navigation qui a mene au rejeu suffit deja. Le hook s'initialise donc AU MONTAGE — le
+contexte demarre directement dans ce cas — et `amorcer()` (premier pointeur sur le canvas)
+ne sert plus qu'a REPRENDRE un contexte suspendu, cas du lien direct ou du rafraichissement
+sans aucun geste, ou aucun navigateur n'autorisera le son de toute facon.
+Gates : check-types vert, 227 tests match-replay verts, eslint vert.

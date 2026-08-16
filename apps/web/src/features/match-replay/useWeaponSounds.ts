@@ -3,10 +3,14 @@
  *
  * TROIS RESPONSABILITÉS, pas une de plus :
  *
- * 1. AMORCER au premier geste. Un navigateur n'autorise l'audio qu'après une interaction ;
- *    le canvas appelle `amorcer()` sur le premier pointeur reçu. L'amorçage construit le
- *    contexte, charge le manifeste et précharge les seules armes que CE document utilise —
- *    tout est idempotent, un second geste ne refait rien.
+ * 1. S'INITIALISER AU MONTAGE, S'AMORCER AU GESTE SI BESOIN. La politique anti-autoplay
+ *    des navigateurs compte l'activation AU NIVEAU DE LA PAGE : dans une appli monopage,
+ *    le clic de navigation qui a mené au rejeu suffit déjà, et le contexte créé au montage
+ *    démarre directement. Il ne reste suspendu que si la page n'a JAMAIS reçu de geste
+ *    (lien direct, rafraîchissement) — cas où aucun navigateur n'autorisera le son de
+ *    toute façon ; `amorcer()`, appelé par le canvas au premier pointeur, le reprend
+ *    alors. Chargement du manifeste et préchargement se font au montage, pour les seules
+ *    armes que CE document utilise — tout est idempotent.
  * 2. AVANCER avec la lecture. `avancer(avant, courant, maxAvance)` joue les tirs franchis,
  *    bornés par les garde-fous de `weaponSoundTrigger` — un document sans manifeste livré
  *    reste simplement muet (contrat du lecteur : jamais une erreur).
@@ -73,7 +77,7 @@ export function useWeaponSounds(doc: DocumentSonore): SonsDuRejeu {
     famillesRef.current = familles
   }, [familles])
 
-  const amorcer = useCallback(() => {
+  const initialiser = useCallback(() => {
     if (amorceRef.current) return
     amorceRef.current = true
     const Contexte = window.AudioContext
@@ -87,6 +91,18 @@ export function useWeaponSounds(doc: DocumentSonore): SonsDuRejeu {
       await player.preload(famillesRef.current, fetch, doc.titleSlug)
     })()
   }, [doc.titleSlug])
+
+  // Au montage : dans le cas nominal (navigation dans l'app), le contexte démarre tout de
+  // suite et le rejeu a du son SANS geste supplémentaire.
+  useEffect(() => {
+    initialiser()
+  }, [initialiser])
+
+  const amorcer = useCallback(() => {
+    initialiser()
+    const ctx = ctxRef.current
+    if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => {})
+  }, [initialiser])
 
   const avancer = useCallback(
     (avant: number, courant: number, maxAvance: number) => {
