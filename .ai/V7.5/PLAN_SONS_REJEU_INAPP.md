@@ -83,8 +83,50 @@ Gate : page admin affiche la section, valeurs persistees et relues ; typecheck +
 
 ### Etape 5 — Cloture
 
-- [ ] Journal de ce plan + thought_log + delivery-checklist
-- [ ] Commit(s) prefixes `feat(sons-rejeu):`, PAS de push sur main
+- [x] Journal de ce plan + thought_log + delivery-checklist
+- [x] Commit(s) prefixes `feat(sons-rejeu):`, PAS de push sur main
+
+### 2026-08-16 — Etape 5 : cloture, et l'echec local qui n'en est pas un
+
+**delivery-checklist passee.** Completude : les 12 items des etapes 1 a 5 sont statues,
+aucun `[!]`. Un seul report, ecrit et justifie (branchement dans `ReplayCanvas`, dependance
+de la livraison des `.wav`). Aucun TODO/FIXME introduit. Aucun garde-rail affaibli, aucune
+allowlist agrandie, aucun test skippe.
+
+Gates de cloture, tous rejoues :
+
+	go build ./...                      rc=0
+	go vet ./...                        rc=0 (hors exclusions de build habituelles)
+	go test ./...                       138 paquets ok — voir la reserve ci-dessous
+	npm run typecheck (cache purge)     vert
+	npm run lint                        0 erreur, 19 avertissements PREEXISTANTS
+	                                    (`react-hooks/incompatible-library` sur TanStack Table)
+	make test-web                       412 fichiers, 3640 tests, 0 echec
+
+`-tags=integration` NON lance : le diff ne touche ni `persist/`, ni `sync/`, ni
+`migration/` (verifie sur la liste des 29 fichiers du diff).
+
+**RESERVE SUR `go test ./...` — a lire avant de s'inquieter.** Un paquet echoue :
+`internal/himap`, sur `TestBalayageCoquille` (`balayage_coquille_gamefiles_test.go`), par
+DEPASSEMENT DU TIMEOUT de 10 minutes. Ce test balaie les 27 cartes du jeu depuis les
+fichiers installes ; il fait `t.Skip` quand `DeployRoot()` echoue, donc il ne s'execute que
+sur une machine ou le jeu est present — celle du chantier. Aucun fichier de `himap` ni de
+`himodule` n'est touche par les quatre commits (verifie par `git diff --name-only`), et le
+chantier n'a rien change au rendu des cartes. Echec d'environnement, pas de regression.
+
+**Autres controles de la checklist** : aucun `fmt.Println`/`log.Printf` ajoute dans
+`internal/` ; aucune couleur en dur ni classe Tailwind couleur dans les fichiers neufs ;
+strings UI en FR ET EN par typage ; aucune query key inline (la section admin reutilise
+`queryKeys.settings`) ; `routeTree.gen.ts` non touche ; aucun `filepath.Join(..., "data")`
+ajoute. Deux fichiers restent au-dessus de 500 lignes — `internal/api/handlers/settings.go`
+(675, INCHANGE : la validation neuve est allee dans `settings_replay_sound.go`) et
+`internal/platform/settings/store.go` (514 -> 539, +25 lignes de champs et de mappings dans
+des fonctions existantes, non extractibles sans artifice). Dette signalee, pas aggravee la
+ou elle pouvait etre evitee.
+
+**CI** : la branche est poussee sur origin sans PR ; l'etat des jobs CI reste a verifier
+par le pilote (`gh run list --branch feat/sons-rejeu-inapp`) — un gate local ne couvre pas
+la baseline Go Linux ni le build Vite.
 
 ## Hors perimetre (ne pas toucher)
 
