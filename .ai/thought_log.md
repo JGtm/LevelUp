@@ -1,3 +1,114 @@
+## [2026-08-16] v7.5 rejeu 2D — fusion des deux worktrees dans feat/v75, revue de fusion, ratification du golden minibobine
+**Statut** : Complété — procédure `.ai/V7.5/replay2d/FUSION_WT_2026-08-16.md`, cinq étapes.
+**Décision technique principale** : les deux lots ont été fusionnés en `--no-ff` dans l'ordre
+prescrit (recouvrement le plus faible d'abord). Les trois recouvrements annoncés ont fusionné
+sans conflit textuel, mais chacun a été VÉRIFIÉ SUR PIÈCES plutôt que cru sur parole — c'est là
+qu'un auto-merge vert ment le plus facilement. Goldens Go : la structure du principal (magic
+`REPLAYINPUTS5`, champ `GrappleReads`, `opt.MapQuant`, `renderGrapple`) coexiste bien avec les
+commentaires corrigés du lot effets (« DASH du mode Fiesta »). `ReplayCanvas.tsx` : la rangée
+flex du tiroir englobe le calque grappin — `drawGrappleLayer` toujours appelé avec
+`grappleFx`/`grappleInk` dans ses dépendances, et le `ResizeObserver` observe la COLONNE canvas
+(et non le cadre entier), sans quoi ouvrir le tiroir ne rétrécirait pas le rendu. `i18n.ts` :
+union des clés, parité FR/EN tenue par le typage. Contrôle de complétude : les seules lignes
+d'une branche absentes de HEAD sont les lignes SUPPLANTÉES (magic v4, alignement pré-gofmt,
+commentaire i18n périmé) — rien n'a été perdu.
+**Résultats observés — la revue adversariale, deux relecteurs aveugles l'un à l'autre.** Cinq
+constats recevables corrigés (commit `1cd57dd98`), 42 conditions vérifiées qui tiennent.
+LE POINT TRANCHÉ : le seuil du garde-rail `fragClass.colorSource.guard.test.ts`, relevé de 2 à 3
+par `59cc6eb94`, est ANNULÉ. Les deux relecteurs y sont arrivés séparément et la mesure tranche :
+sous `features/` et `components/`, `shoulder`/`sidearm`/`heavy`/`spartan_ability` n'apparaissent
+dans AUCUN fichier — seules `melee` et `grenade` y vivent. Le maximum atteignable est donc 2 : à
+3, la branche (b) du garde ne pouvait PLUS se déclencher, et ce qu'elle laissait passer est
+exactement le défaut que son en-tête nomme (« la collision mêlée=grenade de l'ancien donut », un
+mapping à DEUX clés). L'allowlist ciblée a été évaluée et écartée : le mécanisme du dépôt exclut
+par BASENAME, or il faudrait allowlister `i18n.ts` — basename partagé par 14 fichiers sous
+`features/`. La vraie cause n'était ni le seuil ni le fichier : le prédicat comptait des CLÉS
+sans jamais regarder la VALEUR, alors que sa docstring disait déjà « vers une valeur
+(couleur/token) ». Il exige désormais une couleur (hex, `var(--…)`, `resolveToken`/`tokenCssVar`,
+identifiant kebab-case) — vérifié DANS LES DEUX SENS : vert sur l'arbre, ROUGE sur le témoin
+`{ melee: 'chart-series-8', grenade: 'chart-series-7' }` déposé puis retiré. Autres corrections :
+`killSoundStem` supprimé (le filtre par catégorie lui avait pris son dernier appelant de
+production — il ne survivait que par ses tests, avec « API historique » écrit dans le diff, le
+« au cas où » que la règle 7 interdit ; `killSound` est exportée à sa place et les 4 cas y
+gagnent la CATÉGORIE) ; `camo_duration_distribution_test.go` vérifie sa POPULATION avant sa
+prédiction (`singleMax` partant de 0, une population vide l'aurait fait passer sans rien
+asserter) ; `aria-pressed` sur les boutons de vitesse, que leur test revendiquait sans l'asserter ;
+en-tête périmé de `ReplaySoundControls`.
+RATIFICATION du golden `minibobine` (commit `0a416cdfb`) : les clés i59 ajoutées à
+`paramByComponent` par le lot grappin déplacent la calibration de killsource (`recordStateParam`
+0 -> 3, croissance 1.000 -> 1.002). Portée re-mesurée à la fusion : UNE ligne sur 77, les 10
+lignes publiées et les 3 ancres Theater identiques à l'octet. Le canal de détection du garde EST
+cette ligne de calibration : re-congeler ne le désarme pas, une prochaine dérive la déplacera
+comme celle-ci l'a déplacée.
+**Gates** : Go — `go build ./...` 0, `go vet ./...` 0, `go test` sur analysis + replaybuild +
+contracttest + film 0 (22 paquets ok), `golangci-lint run --new-from-merge-base=origin/main`
+0 issue. Web — typecheck 0, lint 0 (19 warnings, 0 erreur), `vitest run` 0 : 428 fichiers,
+3853 tests passés, 14 skippés.
+**Conclusion / prochaine étape** : restent les gates que la session ne peut pas jouer — GATE
+VISUEL (fiches verre/or, tiroir qui pousse) et GATE D'ÉCOUTE (filtres de sons). Deux constats de
+revue sont CONSIGNÉS AU REGISTRE sans être traités, parce qu'ils demandent une décision de rendu
+qui appartient à ce gate visuel : (1) la vitesse est désormais PERSISTÉE et la barre ne l'affiche
+plus — un rejeu rouvert à 4× démarre à 4× muet (SOUND_MAX_SPEED = 2) sans que rien à l'écran ne
+le dise, tiroir fermé ; (2) le voile de camouflage `color-mix` est opaque et se peint par-dessus
+le `backdrop-filter: blur(6px)`, qui est donc un no-op mesuré — l'effet « verre » visible est le
+voile, pas le flou. Aucun push : la branche reste locale.
+
+## [2026-08-16] Tiroir de reglages du rejeu 2D + filtres de sons par categorie
+**Statut** : Complete (branche `wt/drawer-replay`, commits `59cc6eb94` puis `5dd36609a`, base
+`020b95eab` ; fusionnes dans feat/v75 le 2026-08-16).
+**Decision technique principale** : le tiroir POUSSE le canvas (rangee flex : colonne canvas
++ panneau, ResizeObserver deplace de la carte entiere vers la seule colonne canvas) plutot
+que de le recouvrir en overlay (pattern AssetDrawer/FeedbackDrawer, ecarte) - seule facon de
+garantir "n'obstrue jamais la carte" quelle que soit la largeur d'ecran. Regroupe
+l'inventaire phase 0 complet (visee, zones, vitesse - tous useState locaux NON persistes
+avant ce lot - + son on/volume, deja persiste) et ajoute 4 filtres de categorie de son
+NOUVEAUX (armes/grenades/melee/equipements). Persistance unifiee sous replayPreferences.ts
+(patron localStorage try/catch centralise, migre depuis useReplaySound qui le portait seul ;
+garde-rail replayPreferences.guard.test.ts). Le filtre de categorie s'applique A LA
+CONSTRUCTION de buildSoundTimeline (4e parametre optionnel, defaut = tout actif =
+comportement inchange pour tout appelant existant), jamais en aval dans le lecteur.
+`available` (visibilite du panneau son) reste calcule sur la piste SANS filtre pour ne
+jamais faire disparaitre le seul bouton qui permet de tout rallumer.
+**Resultats observes** : typecheck/lint/test verts (427 fichiers de test, 3842 tests, 0
+echec). Decouverte hors perimetre mais bloquant le gate : le garde-rail
+fragClass.colorSource.guard.test.ts (feature frags) faisait un faux positif sur
+SoundCategoryFilter (heuristique >=2 cles parmi shoulder/sidearm/heavy/melee/grenade/
+spartan_ability). Corrige en relevant le seuil a 3 (commit separe 59cc6eb94) — A REJUGER A
+LA FUSION (allowlist ciblee vs seuil global).
+**Conclusion / prochaine etape** : reste le GATE VISUEL UTILISATEUR — panneau qui pousse
+(plutot qu'un overlay), et vitesse/calques desormais persistes entre sessions (comportement
+NOUVEAU). Item registre "Filtre des sons du rejeu par CATEGORIE" marque TRAITE.
+[REJUGÉ À LA FUSION, 2026-08-16] Le relèvement du seuil à 3 est ANNULÉ : à 3 le garde-rail ne
+pouvait plus se déclencher du tout. Seuil rétabli à 2 avec discrimination sur la VALEUR — voir
+l'entrée de fusion ci-dessus et le commit `1cd57dd98`.
+
+## [2026-08-16] v7.5 rejeu 2D — effets d'etat actif conformes au cahier des charges (verre + encadre dore)
+**Statut** : Complete (camouflage + surbouclier) — translocateur `[!]` non traite, faute de canal
+d'etat mesure pour le rang 11.
+**Decision technique principale** : le lot d257ba02f rendait le camouflage par une opacite reduite
+(0,4, toute la fiche estompee) et le surbouclier par un anneau au token `info` (celui de la jauge
+de bouclier) — non conforme au cahier des charges Notion 21.1. Remplace (ReplayTeams.tsx) :
+camouflage -> backdrop-filter: blur(6px) + voile color-mix(var(--foreground) 12%, var(--card))
+(teinter avec --card lui-meme aurait ete invisible, 0 contraste) ; surbouclier -> cadre inset 2px
+au nouveau token semantique `legendary` (ajoute a semantic-tokens.ts, 4 palettes, fallback CSS).
+Les deux effets composent (box-shadow accumule, un seul fond). Statiques, prefers-reduced-motion
+respecte par construction. 5 tests ajoutes.
+**Resultats observes** : distribution des durees des 36 episodes camo du golden 000d5950 (nouveau
+test camo_duration_distribution_test.go) : min 700ms, mediane 2700ms, moyenne 5438ms, max 34500ms.
+La prediction « l'essentiel tient en 1-2s » est REFUTEE au niveau de l'episode fusionne (21/36
+chaines) ; ce qui reste vrai et verrouille : le max d'un episode A ACTIVATION UNIQUE (15/36) est
+9600ms, tres sous une duree de power-up Halo (surbouclier du meme lot a 61,6s). Corrige les
+commentaires « POWER-UP de camouflage » dans golden_inputs_test.go et golden_assembly_test.go
+et i18n.ts (estompe/surligne, perime). Gates Go et web verts.
+**Conclusion / prochaine etape** : reste le gate VISUEL utilisateur (temoins 084a804d equipement,
+000d5950 dash-camo). Translocateur non code : aucun canal d'etat mesure (3 lectures i48 d'IDENTITE
+seulement dans le corpus, sur 06dfe6d9). Commits dd946f604 (mesure Go), 46f99475a (rendu web),
+base 020b95eab ; fusionnes dans feat/v75 le 2026-08-16.
+[NOTE DE FUSION, 2026-08-16] Constat de revue consigné au registre, NON traité ici : le voile
+`color-mix(var(--foreground) 12%, var(--card))` est opaque (les deux tokens le sont) et se peint
+par-dessus le `backdrop-filter: blur(6px)` — le flou est un no-op mesuré, l'effet « verre »
+visible est le voile seul. Décision de rendu : elle appartient au gate visuel utilisateur.
+
 ## [2026-08-16] v7.5 rejeu — bornes : 8 cartes entrent, 14 sont REFUSEES, et 276 matchs deja servis sont faux (plan alertes, phase 3)
 **Statut** : Complété — phase 3 de `.ai/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
 Item 3.4 statué `[!]` : `06dfe6d9` (Threshold) N'EST PAS débloquée, témoin de remplacement

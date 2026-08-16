@@ -211,19 +211,26 @@ vit, le gate confirme l'absence de regression) ; aucun nom ajoute sans provenanc
 ### Phase 3 — MONTRER — CLOSE le 2026-08-16 (gate visuel utilisateur RESTANT)
 
 - [x] 3.1 Effet PLEINE FICHE, deux effets distincts et semantiquement evidents
-      (`ReplayTeams.tsx`, chaine slot -> fiche du flash de mort) : le CAMOUFLAGE ESTOMPE
-      la fiche entiere (opacite 0.4 — le joueur disparait a l'ecran de jeu, sa fiche fait
-      pareil ; l'infobulle dit pourquoi), le SURBOUCLIER la SURLIGNE (anneau plein + halo
-      + fond au token `info` — le MEME que la jauge de bouclier : un surbouclier est un
-      sur-BOUCLIER). AUCUNE remanence inventee : l'effet est actif exactement sur
-      [t0, t1] de l'episode mesure (`equipmentFx.ts`, bornes incluses, teste). Les deux
-      effets se composent quand les episodes se recouvrent.
+      (`ReplayTeams.tsx`, chaine slot -> fiche du flash de mort) : le CAMOUFLAGE rend la
+      fiche VITREUSE (`backdrop-filter: blur(6px)` + voile
+      `color-mix(var(--foreground) 12%, var(--card))` — le joueur disparait a l'ecran de
+      jeu, sa fiche se trouble ; l'infobulle dit pourquoi), le SURBOUCLIER l'ENCADRE D'OR
+      (cadre inset 2px au token semantique `legendary`). AUCUNE remanence inventee :
+      l'effet est actif exactement sur [t0, t1] de l'episode mesure (`equipmentFx.ts`,
+      bornes incluses, teste). Les deux effets se composent quand les episodes se
+      recouvrent.
+      **MIS A JOUR le 2026-08-16 (lot effets-fiches, `wt/effets-fiches` 46f99475a)** : la
+      description precedente — « le camouflage ESTOMPE la fiche (opacite 0.4) », « le
+      surbouclier la SURLIGNE (anneau + halo + fond au token `info`) » — est PERIMEE. Ce
+      premier rendu n'etait pas conforme au cahier des charges Notion 21.1, et l'anneau
+      empruntait le token de la jauge de bouclier.
 - [~] 3.2 SANS OBJET sous la restriction : ni le camouflage ni le surbouclier ne POSENT
       d'objet sur la carte, et les positions ti=37 restent sans identite (verdict 0.6) —
       rien a projeter sans nommer.
-- [x] 3.3 Tokens semantiques uniquement (`tokenCssVar('info')`, zero hex, zero classe
-      Tailwind couleur) ; effets STATIQUES, sans animation — `prefers-reduced-motion`
-      respecte par construction ; strings FR **et** EN dans `i18n.ts`, parite par typage.
+- [x] 3.3 Tokens semantiques uniquement (`tokenCssVar('legendary')` depuis le 2026-08-16,
+      `tokenCssVar('info')` avant ; zero hex, zero classe Tailwind couleur) ; effets
+      STATIQUES, sans animation — `prefers-reduced-motion` respecte par construction ;
+      strings FR **et** EN dans `i18n.ts`, parite par typage.
 
 **Gate 3 : gates techniques PASSES** (typecheck apres purge de `node_modules/.tmp`, lint,
 test — exit 0, chiffres au journal). **Gate visuel utilisateur : RESTANT** — la session ne
