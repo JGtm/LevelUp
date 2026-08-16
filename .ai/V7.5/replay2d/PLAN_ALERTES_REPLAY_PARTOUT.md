@@ -149,14 +149,119 @@ contrainte — cette marge disparaitrait. C'est une condition de reprise, pas un
 
 ## Phase 3 — ETENDRE le catalogue de bornes
 
-- [ ] 3.1 Pour chaque carte manquante INSTALLEE localement : produire l'entree via
+- [x] 3.1 Pour chaque carte manquante INSTALLEE localement : produire l'entree via
       `cmd/mapquant-build` (offline-pur, fichiers du jeu). Threshold en premier.
-- [ ] 3.2 Controle par carte ajoutee : `DetectI0Layout` d'un film de cette carte EGALE les
+- [x] 3.2 Controle par carte ajoutee : `DetectI0Layout` d'un film de cette carte EGALE les
       largeurs deduites (le controle 7/7 du lot precedent, etendu).
-- [ ] 3.3 Les cartes NON installees restent hors catalogue : les compter, les nommer au
+- [x] 3.3 Les cartes NON installees restent hors catalogue : les compter, les nommer au
       registre (condition de reprise : installation du contenu).
-- [ ] 3.4 Re-cuire les artefacts temoins des cartes debloquees (`06dfe6d9` en premier) en
-      commande bloquante.
+- [!] 3.4 Re-cuire les artefacts temoins des cartes debloquees (`06dfe6d9` en premier) en
+      commande bloquante. **`06dfe6d9` N'EST PAS DEBLOQUEE** — Threshold est sur le canevas
+      `fo11_blank`, dont le controle 3.2 REFUSE les bornes. Temoin de remplacement :
+      `11de8353` (Thunderhead, `fo08_wetland`, controle ACCORD).
+
+**Gate 3 : PASSE, mais BIEN PLUS SEVERE que prevu — 8 cartes ajoutees sur 22 prouvees, et le
+controle a decouvert un defaut PREEXISTANT de 276 matchs.**
+
+### 3.1 — la preuve du module : 22 cartes, unicite 1/1 chacune
+
+Methode doctrinale de `cmd/mapquant-build` : `level_id` lu dans `<carte>_map.mvar` (variante
+par defaut), corrobore par le fichier-lien `<carte>_<module>.mvar`, unicite exigee sur les 64
+modules de `any/levels` + `ds/levels`. Rejouee en continu par
+`internal/himap/sonde_levelid_gamefiles_test.go` (`TestPreuveLevelIDCartes`), qui passe de 44 a
+**66 sous-tests, tous verts**, sur 32 level_id distincts.
+
+| canevas | level_id | cartes prouvees |
+|---|---|---|
+| `fo11_blank` | 426470249 (0x196B6B69) | Ecotone, Threshold, Pharaoh, Credence, Disciple, Nadair, Warehouse |
+| `fo09_academy` | 1437677928 (0x55B13968) | Insolence, Merchant's Square, Urban Raid, Cole Protocol |
+| `fo05_desert` | 1804860316 (0x6B93FB9C) | Solution, Flood Gulch, Dawnbreaker, Vallaheim Firefight |
+| `fo08_wetland` | 88891201 (0x054C5F41) | Thunderhead, Ronin, Rat's Nest, Scarlett's Landing |
+| `fo13_frost` | -992358985 (0xC4D9CDB7) | Outlook, Lattice - Ranked, 944396dd-5661-4a16-b1d8-a6053f762c55 |
+
+### 3.2 — le controle `DetectI0Layout` : il REFUSE 14 cartes sur 22
+
+19 films (un par carte disposant d'un film en cache), instrument existant
+`filmdec.TestWorldObjectPrecisionLayout`. Le verdict est SYSTEMATIQUE PAR CANEVAS, jamais par
+carte — ce qui est attendu, puisque les bornes sont celles du MODULE :
+
+| canevas | largeurs deduites des bornes | decoupage lu dans les films | verdict |
+|---|---|---|---|
+| `fo08_wetland` | `[15 15 17]` | `[15 15 17]` | **ACCORD 4/4** |
+| `fo09_academy` | `[15 15 17]` | `[15 15 17]` | **ACCORD 3/3** |
+| `fo05_desert` | `[18 18 18]` | `[15 15 17]` | **DESACCORD 3/3** |
+| `fo11_blank` | `[18 18 18]` | `[15 15 17]` | **DESACCORD 7/7** |
+| `fo13_frost` | `[18 18 18]` | `[15 15 17]` | **DESACCORD 2/2** |
+
+**Les 8 qui entrent** (toutes ACCORD ; Cole Protocol n'a aucun film et entre sur le controle
+de son CANEVAS, 3/3 — les bornes sont celles du module, pas de la carte) : Thunderhead, Ronin,
+Rat's Nest, Scarlett's Landing (`fo08_wetland`) · Insolence, Merchant's Square, Urban Raid,
+Cole Protocol (`fo09_academy`).
+
+**Les 14 qui n'entrent pas** : les 7 de `fo11_blank` (dont **Threshold**), les 4 de
+`fo05_desert`, les 3 de `fo13_frost`. Leur module est PROUVE, leurs bornes sont FAUSSES —
+exactement le cas de figure de Live Fire, deja au registre. Elles restent dans
+`preuvesLevelID` (la preuve du module vaut) et hors de `mapModule` (le catalogue n'accepte pas
+de bornes refutees).
+
+### LA DECOUVERTE QUI DEBORDE LE LOT : 18 entrees DEJA CATALOGUEES ont ces memes bornes
+
+Le desaccord n'est pas propre aux 14 nouvelles : il porte sur le MODULE. Or 18 cartes deja au
+catalogue vivent sur ces trois canevas, et pesent **276 matchs — plus que les 215 sans bornes
+du tout** :
+
+| canevas | cartes deja cataloguees | matchs |
+|---|---|---:|
+| `fo11_blank` | Corpo, Critical Dewpoint, Curfew, Elevation, Empyrean, Goliath, Opulence, Salvation, Shogun, Solitude, Takamanohara | 155 |
+| `fo05_desert` | Banished Narrows, Cliffside, Domicile, Fortitude, Kaiketsu, Shiro, Sylvanus | 98 |
+| `fo13_frost` | Snowbound | 23 |
+
+Le tag sbsp le plus gros de ces modules couvre ~3 870 unites la ou le film quantifie ~550 :
+ce n'est pas le BSP contre lequel le jeu quantifie. **Ceci EXPLIQUE le report « ecart vertical
+de ~1 270 m » du 2026-08-14** (registre l.120) : ses cartes touchees sont Solitude, Cliffside,
+Snowbound (x2), Opulence, Shogun, Curfew, Domicile, Kaiketsu — **toutes sur ces trois
+canevas** — et ses cartes saines sont Forest, Fortress, Houseki, Prism, Vagabond, Streets,
+Recharge, dont les trois Forge sont sur `fo08_wetland` / `fo09_academy`, les deux canevas
+ACCORD. La correlation est complete, et le diagnostic descend d'un cran : ce sont bien les
+BORNES, et leur signature est la LARGEUR D'AXE.
+
+**NON CORRIGE ICI** (regle « zero fix hors perimetre ») : porte au registre avec sa mesure et
+sa condition de reprise. Retirer ces 18 entrees ferait perdre 276 rejeux aujourd'hui servis
+(faux, mais servis) — c'est une decision produit, pas un correctif de lot.
+
+### 3.3 — la couverture, avant et apres
+
+| | avant | apres |
+|---|---:|---:|
+| cartes au catalogue | 56 | **64** |
+| matchs couverts | 1 607 (88,20 %) | **1 630 (89,46 %)** |
+| matchs sans bornes | 215 (11,80 %) | **192 (10,54 %)** |
+| cles de carte hors catalogue | 36 | 28 |
+
+Gain : **+23 matchs**. Diff du catalogue : **8 ajouts, 0 suppression, 0 entree preexistante
+modifiee** (verifie par comparaison JSON entree par entree).
+
+Ce qui reste hors catalogue, par motif :
+
+| motif | cles | matchs |
+|---|---:|---:|
+| bornes REFUTEES par le controle 3.2 (`fo11_blank`, `fo05_desert`, `fo13_frost`) | 14 | 55 |
+| Live Fire — module prouve, aucun tag sbsp dans le module ds (registre l.101) | 1 | 61 |
+| `map_name` NULL au registre — rien a resoudre | 1 | 34 |
+| Detachment, Argyle — module INCONNU (ni installe, ni au depot `.mvar`) | 2 | 46 |
+| noms d'asset jamais resolus (5 UUID + « TFF \| Night Of The Undead ») | 6 | 6 |
+| suffixes de variante (Oasis Sentry Defense / Firefight, Highpower Sentry Defense) | 3 | 3 |
+| Insolence Heavies — normalise en `insolence`, desormais COUVERTE | — | — |
+
+### 3.4 — l'artefact temoin
+
+**`06dfe6d9` n'est pas debloquee** et le refus est VERIFIE, pas suppose :
+`replay-build --map Threshold 06dfe6d9-...` sort en erreur
+`replaybuild: carte hors catalogue de bornes (candidats: [Threshold])`. C'est le comportement
+voulu — pas de coordonnee devinee.
+
+Temoin de remplacement : `11de8353` (Thunderhead, `fo08_wetland`, controle ACCORD), cuit en
+commande bloquante. Resultat au journal du thought_log.
 
 ## Gates
 
@@ -181,10 +286,20 @@ JAMAIS de pause d'attente passive ; zero fix hors perimetre.
    filtre de credibilite. Marge invisible tant que le filtre reste ce qu'il est.
 3. **34 matchs du registre n'ont AUCUN `map_name`** — hors du perimetre des bornes, mais
    c'est le deuxieme poste de non-constructibilite apres Live Fire.
+4. **Les bornes de `fo05_desert`, `fo11_blank` et `fo13_frost` sont FAUSSES au catalogue** —
+   18 entrees, 276 matchs, servis aujourd'hui avec une echelle et une origine erronees. Plus
+   gros que le probleme que ce plan devait resoudre. Diagnostic et correlation avec le report
+   « ecart vertical ~1 270 m » au registre ; NON traite ici.
 
 ## Journal d'execution
 
 - **2026-08-16, phases 0 a 2** — gate 0 passe (215 matchs / 11,80 % non constructibles) ;
   gate 1 passe avec un NEGATIF chiffre (ecart nul sur 3 films, sonde d'absurde comprise) ;
   phase 2 NON OUVERTE par decision du gate 1, ses 4 items statues `[!]`. Aucune ligne de
-  production modifiee : le lot n'ajoute que l'instrument de mesure.
+  production modifiee : le lot n'ajoute que l'instrument de mesure. Commit `efec87d71`.
+- **2026-08-16, phase 3** — gate 3 passe, mais le controle 3.2 a REFUSE 14 des 22 cartes
+  prouvees et decouvert un defaut PREEXISTANT de 276 matchs (bornes des canevas
+  `fo05_desert` / `fo11_blank` / `fo13_frost`). Catalogue 56 -> 64 entrees, couverture
+  88,20 % -> 89,46 %, diff en AJOUT PUR. Item 3.4 statue `[!]` : `06dfe6d9` n'est pas
+  debloquee (Threshold est sur `fo11_blank`), temoin de remplacement `11de8353`
+  (Thunderhead). Trois lignes ajoutees au registre des reports.
