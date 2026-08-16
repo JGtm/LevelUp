@@ -83,17 +83,30 @@ autres vies), temoin interne ET temoin inter-films. Ce que la mesure ne dit pas 
 semantique des bornes de dequantification (le quantum brut suffit, 0 contre 4095), et la
 nature de queue[2] (oscillation universelle, non correlee au rang).
 
-### Phase B — SURBOUCLIER : le bouclier des fiches suffit-il ?
+### Phase B — SURBOUCLIER : le bouclier des fiches suffit-il ? — CLOSE le 2026-08-16
 
-- [ ] B.1 VERIFIER LA SEMANTIQUE de `Point.sh` sur pieces (normalise 0..1 ? clampe au max
-      normal ?) — lire `replayNormalize`/le builder AVANT de mesurer, ne rien supposer.
-- [ ] B.2 Sur les porteurs `i48` rang 9 : le bouclier depasse-t-il / sature-t-il d'une
-      maniere DISCRIMINABLE d'un bouclier plein normal ? Temoin : vies aux autres rangs.
-- [ ] B.3 Si `Point.sh` est clampe : mesurer cote film (`i5 object-shield-vitality`,
-      deja decode) au lieu de l'artefact.
+- [x] B.1 SEMANTIQUE VERIFIEE SUR PIECES : `Point.sh` est CLAMPE. La chaine est
+      `decodeObjectShieldVitality` (dequant [0, 4], `vitality.go`) ->
+      `BipedPosition.ShieldAt()` (`offline_biped.go:99`) -> `ShieldFraction` (clamp a 1.0)
+      -> `Point.Sh` (`replay/build.go`, decimateTracks). Tout depassement est ecrase AVANT
+      la serialisation : l'artefact ne peut PAS discriminer un surbouclier.
+- [x] B.2 OUI, DISCRIMINABLE cote film — regle : **quantum i5 > 64** (64 <-> 1.000 exact,
+      dequant endpointExact [0,4] sur 8 bits ; le temoin de forme du rejeu donnait deja
+      [0, 64] pour un film sans surbouclier). `084a804d` : groupe rang 9 = 4 187/4 828
+      mesures au-dela (86,7 %, q max 223 = 3,498) contre **0**/50 180 dans les deux autres
+      groupes. `06dfe6d9` : 902/977 (92,3 %) ; une vie etiquetee [23] depasse a 362/362 —
+      TROU DE COUVERTURE d'i48 (une transmission ~unique par vie : l'identite lue a un
+      autre instant de la vie), pas un contre-exemple : son profil est celui d'un porteur.
+      Temoin inter-films : `00ba2e1c` (0 porteur rang 9) = **0**/36 322 mesures > 64.
+- [x] B.3 FAIT — c'est la mesure ci-dessus : `i5` non clampe (champ `Shield` + quantum
+      brut `Q`), capture par le MEME balayage de production (`ScanFilmBipedPositions`,
+      CaptureDirs), instrument `i5_overshield_test.go` (garde `I5_FILM`).
 
-Gate B : verdict + la regle de detection si elle existe (« sh > X pendant Y »), sinon le
-negatif chiffre.
+Gate B : PASSE — **le surbouclier SE LIT cote film, PAS dans l'artefact**. Regle de
+detection : `q_i5 > 64` (soit valeur > 1.0) ; episodes dates de 6,2 a 61,6 s, decroissance
+par paliers depuis q max 223 (3,498). Ce que la mesure ne dit pas : la datation fine du
+RAMASSAGE (les episodes commencent a la premiere mesure de bouclier de la vie), et la
+couverture i48 laisse des porteurs non etiquetes (vie [23] ci-dessus).
 
 ### Phase C — DEPLOYABLES : trois signaux dates a croiser
 
