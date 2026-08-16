@@ -21,7 +21,12 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { KILL_SPRITE_SOUND_STEMS, WEAPON_SOUND_STEMS, THROW_SOUND_STEMS } from './replaySound'
+import {
+  EQUIPMENT_SOUND_STEMS,
+  KILL_SPRITE_SOUND_STEMS,
+  WEAPON_SOUND_STEMS,
+  THROW_SOUND_STEMS,
+} from './replaySound'
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
@@ -40,6 +45,8 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(WEAPON_SOUND_STEMS),
     ...THROW_SOUND_STEMS,
     ...Object.values(KILL_SPRITE_SOUND_STEMS),
+    // Les équipements (lot du 2026-08-16) : deux stems par famille mesurée.
+    ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {

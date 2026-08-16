@@ -86,6 +86,13 @@ interface ReplayText {
   abilityUnknown: string
   abilityAge: string
   abilityAhead: string
+  /**
+   * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
+   * camouflage estompe la fiche, le surbouclier la surligne. La clé est l'identifiant
+   * stable publié par le document (`fam`) — une famille inconnue n'a pas de libellé et
+   * ne reçoit aucun effet.
+   */
+  equipmentActive: Record<'camo' | 'overshield', string>
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string
@@ -132,7 +139,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     sound: 'Son',
     soundHint:
-      "Sons d'armes sur les éliminations et les lancers de grenade, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
+      "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
     soundVolume: 'Volume des sons',
     soundFastHint:
       'À cette vitesse de lecture les sons se chevaucheraient : ils reviennent à 2× ou moins.',
@@ -170,6 +177,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnknown: 'capacité inconnue',
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
+    equipmentActive: {
+      camo: 'Camouflage actif — le joueur est invisible à l’écran de jeu',
+      overshield: 'Surbouclier actif',
+    },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     respawnBarLabel: 'avancement depuis la mort',
@@ -212,7 +223,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     sound: 'Sound',
     soundHint:
-      'Weapon sounds on kills and grenade throws, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
+      'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
     soundVolume: 'Sound volume',
     soundFastHint:
       'At this playback speed the sounds would overlap: they come back at 2× or below.',
@@ -248,6 +259,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnknown: 'unknown ability',
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',
+    equipmentActive: {
+      camo: 'Active camo — the player is invisible on the game screen',
+      overshield: 'Overshield active',
+    },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     respawnBarLabel: 'progress since death',

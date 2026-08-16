@@ -206,6 +206,47 @@ describe('buildSoundTimeline', () => {
     )
     expect(tl.map((e) => e.ms)).toEqual([500, 2_000, 5_000])
   })
+
+  it("un épisode d'équipement sonne l'activation au début et la désactivation à sa fin MESURÉE", () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentEpisodes: [
+          { slot: 1, fam: 'camo', t0: 10, t1: 30, endRead: true },
+          { slot: 1, fam: 'overshield', t0: 40, t1: 60, endRead: true },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([
+      { ms: 1_000, stem: 'camo_activate' },
+      { ms: 3_000, stem: 'camo_deactivate' },
+      { ms: 4_000, stem: 'overshield_activate' },
+      { ms: 6_000, stem: 'overshield_deactivate' },
+    ])
+  })
+
+  it('un épisode fermé par la MORT ne sonne PAS de désactivation : rien ne l’a mesurée', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentEpisodes: [{ slot: 2, fam: 'camo', t0: 5, t1: 20 }], // endRead absent = mort
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([{ ms: 500, stem: 'camo_activate' }])
+  })
+
+  it("une famille d'équipement hors table reste muette — jamais le son d'une voisine", () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentEpisodes: [{ slot: 1, fam: 'grapple', t0: 10, t1: 30, endRead: true }],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([])
+  })
 })
 
 describe('killSourceSpriteStem', () => {
