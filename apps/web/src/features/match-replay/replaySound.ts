@@ -21,7 +21,14 @@
  *    le pack porte les quatre lancers (frag/plasma/dynamo/spike, item 5.3) ;
  *  - un kill À LA grenade sonne l'explosion DE SON TYPE (c'est elle qui a tué, pas le
  *    geste du lancer), et un kill À LA MÊLÉE sonne le coup qui a tué — les deux passent
- *    par la VIGNETTE de la source de dégât, pas par le weapon_key (cf. ci-dessous).
+ *    par la VIGNETTE de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
+ *  - les ÉPISODES D'ÉQUIPEMENT ACTIF (doc.equipmentEpisodes, schéma 7 — camo et
+ *    surbouclier, les deux familles MESURÉES) : le début d'épisode sonne l'activation,
+ *    la fin sonne la désactivation SEULEMENT quand elle est MESURÉE (`endRead`) — un
+ *    épisode fermé par la mort du porteur ne sonne pas de désactivation, rien ne l'a
+ *    mesurée et le kill sonne déjà là. CHOIX DOCUMENTÉ pour le surbouclier : sa fin
+ *    mesurée est l'ÉPUISEMENT (retour sous 100 %), et y jouer la désactivation est un
+ *    choix de mise en scène — le gate d'écoute utilisateur tranchera.
  *
  * POURQUOI LA VIGNETTE, ET PAS LE weapon_key, POUR LES GRENADES ET LA MÊLÉE. Le registre
  * d'armes ne porte NI la grenade à pointes NI la mêlée générique : la table de pont
@@ -151,6 +158,19 @@ export const KILL_SPRITE_SOUND_STEMS: Readonly<Record<string, string>> = {
   'killfeed-65': 'melee_kill',
 }
 
+/**
+ * Sons d'ÉQUIPEMENT par famille d'épisode (`fam` du document) -> stems d'activation et de
+ * désactivation. La clé est l'identifiant STABLE publié par l'artefact — une famille hors
+ * table (un futur équipement non mesuré) reste muette, jamais le son d'une voisine.
+ * Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces stems contre le dossier.
+ */
+export const EQUIPMENT_SOUND_STEMS: Readonly<
+  Record<string, { activate: string; deactivate: string }>
+> = {
+  camo: { activate: 'camo_activate', deactivate: 'camo_deactivate' },
+  overshield: { activate: 'overshield_activate', deactivate: 'overshield_deactivate' },
+}
+
 /** Un événement sonore posé sur l'horloge du rejeu. */
 export interface ReplaySoundEvent {
   /** Instant en ms sur l'horloge du rejeu (celle du fil et des fiches). */
@@ -228,6 +248,15 @@ export function buildSoundTimeline(
   for (const g of doc.grenades) {
     const stem = THROW_SOUND_STEMS[g.rank ?? -1]
     if (stem) out.push({ ms: frameToMs(g.t, doc), stem })
+  }
+  // Les épisodes d'équipement actif : l'activation au début, la désactivation SEULEMENT
+  // sur une fin MESURÉE (`endRead`) — un épisode fermé par la mort ne sonne rien de plus,
+  // le kill sonne déjà là et rien n'a mesuré une désactivation.
+  for (const e of doc.equipmentEpisodes) {
+    const stems = EQUIPMENT_SOUND_STEMS[e.fam]
+    if (!stems) continue
+    out.push({ ms: frameToMs(e.t0, doc), stem: stems.activate })
+    if (e.endRead) out.push({ ms: frameToMs(e.t1, doc), stem: stems.deactivate })
   }
   return out.sort((a, b) => a.ms - b.ms)
 }
