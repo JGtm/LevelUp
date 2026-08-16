@@ -23,9 +23,21 @@ const FOLDER: Record<StaticKind, string> = {
   // (le backend Go n'émet aucune URL de son dans ses payloads — pas de miroir
   // dans internal/assets/static/layout.go tant que c'est vrai).
   sound: 'sounds',
+  // Vignettes de TYPE de grenade, en deux variantes d'encre (claire / sombre) —
+  // cf. static/grenades-assets/{slug}/index.json. Composé côté front comme les
+  // sons : le backend n'en émet aucune URL (les libellés du rejeu pointent, eux,
+  // les masques de HUD sous weapons-assets, qui restent le repli).
+  grenade: 'grenades-assets',
 }
 
-export type StaticKind = 'map' | 'medal' | 'csr-rank' | 'weapon' | 'commendation' | 'sound'
+export type StaticKind =
+  | 'map'
+  | 'medal'
+  | 'csr-rank'
+  | 'weapon'
+  | 'commendation'
+  | 'sound'
+  | 'grenade'
 
 export const DEFAULT_TITLE_SLUG = 'halo_infinite'
 

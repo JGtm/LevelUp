@@ -412,7 +412,9 @@
   to   { transform: none; opacity: 1; }
 }
 .replay-flash-death   { animation: replay-death-flash 0.62s steps(1) 3; }
-.replay-flash-respawn { animation: replay-respawn-flash 0.55s ease-out 1; }
+/* 1,2 s depuis le 2026-08-17 (planche du 16/08 : « plus lent l'éclat ») — miroir de
+   RESPAWN_FLASH_S dans ReplayTeams.tsx, qui en dérive le délai négatif de reprise. */
+.replay-flash-respawn { animation: replay-respawn-flash 1.2s ease-out 1; }
 .replay-wswap-l { animation: replay-wswap-left 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 .replay-wswap-r { animation: replay-wswap-right 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 .replay-gpop { animation: replay-gpop 0.18s ease-out 1; }

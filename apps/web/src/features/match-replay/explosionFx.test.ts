@@ -101,7 +101,9 @@ describe('l’explosion de grenade', () => {
   })
 
   it('s’éteint : il reste moins d’opérations à la fin qu’au début', () => {
-    expect(trace({ ageMs: 1_350 }).length).toBeLessThan(trace({ ageMs: 100 }).length)
+    // Les deux âges sont RELATIFS à la timeline : la durée a déjà changé une fois
+    // (1,4 -> 2,4 s le 2026-08-17), un âge en dur aurait cessé d'être « la fin ».
+    expect(trace({ ageMs: EXPLOSION_MS - 50 }).length).toBeLessThan(trace({ ageMs: 100 }).length)
   })
 
   it('sous mouvement réduit : une empreinte fixe, aucune particule', () => {
@@ -121,8 +123,17 @@ describe('l’explosion de grenade', () => {
   })
 
   it('le flash ne dure qu’un instant : il n’est plus là au tiers de la timeline', () => {
-    const tot = (age: number) => count(trace({ ageMs: age }), 'createRadialGradient')
-    expect(tot(0)).toBeGreaterThan(tot(500))
+    // LE FLASH SE COMPTE, IL NE SE DEVINE PAS. Comparer le NOMBRE TOTAL de dégradés à deux
+    // instants ne mesurait pas le flash mais l'essaim entier — et l'étirement de la timeline
+    // (2026-08-17) l'a montré : à 500 ms il reste désormais PLUS de braises vivantes qu'au
+    // départ de dégradés, alors que le flash, lui, est bien éteint. Sa signature est le
+    // PLATEAU : il est le seul dégradé à trois bornes de couleur, les autres en ont deux.
+    const flashes = (age: number) => {
+      const ops = trace({ ageMs: age })
+      return count(ops, 'addColorStop') - 2 * count(ops, 'createRadialGradient')
+    }
+    expect(flashes(0)).toBe(1)
+    expect(flashes(EXPLOSION_MS / 3)).toBe(0)
   })
 })
 

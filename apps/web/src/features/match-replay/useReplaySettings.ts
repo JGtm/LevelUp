@@ -1,7 +1,8 @@
 /**
- * useReplaySettings — préférences d'AFFICHAGE du rejeu : calques (visée, zones) et vitesse
- * de lecture. Persistées comme le son (replayPreferences.ts, patron né dans
- * useReplaySound), depuis le tiroir de réglages (décision utilisateur du 16/08).
+ * useReplaySettings — préférences d'AFFICHAGE du rejeu : calques (visée, zones, carte de
+ * chaleur), effets d'événement (tirs, morts) et vitesse de lecture. Persistées comme le son
+ * (replayPreferences.ts, patron né dans useReplaySound), depuis le tiroir de réglages
+ * (décision utilisateur du 16/08).
  *
  * DÉLIBÉRÉMENT SÉPARÉ DE useReplaySound : ce hook ne connaît RIEN au son (ni la piste, ni
  * Web Audio) — même séparation des responsabilités que les modules voisins. Il ne fait que
@@ -23,6 +24,8 @@ const SHOW_ZONES_KEY = 'replay-show-zones'
 const SPEED_KEY = 'replay-speed'
 const SHOW_HEATMAP_KEY = 'replay-show-heatmap'
 const HEATMAP_MODE_KEY = 'replay-heatmap-mode'
+const SHOW_SHOT_FX_KEY = 'replay-show-shot-fx'
+const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
@@ -40,6 +43,21 @@ export const HEATMAP_MODES: readonly HeatmapMode[] = ['presence', 'kills']
 const SHOW_HEATMAP_DEFAULT = false
 const HEATMAP_MODE_DEFAULT: HeatmapMode = 'presence'
 
+/**
+ * LES DEUX EFFETS D'ÉVÉNEMENT, et leurs défauts OPPOSÉS (décision utilisateur du 16/08) :
+ *
+ *  - les ÉCLAIRS DE BOUCHE sont ALLUMÉS : ils disent où le match se joue, image après image,
+ *    et c'est le calque que l'utilisateur a validé sans réserve ;
+ *  - les EFFETS DE MORT sont ÉTEINTS : « optionnel, désactivé par défaut ». Le trait tueur ->
+ *    victime affirme un couple complet ; il ne s'allume que si on le demande.
+ *
+ * Ce n'est PAS un demi-livrable au sens de CLAUDE.md n°11 (« pas de flag qui laisse une
+ * feature OFF pour plus tard ») : les deux effets sont livrés, complets, et l'interrupteur
+ * est un RÉGLAGE D'AFFICHAGE offert au lecteur — pas un interrupteur de chantier.
+ */
+const SHOW_SHOT_FX_DEFAULT = true
+const SHOW_KILL_FX_DEFAULT = false
+
 export interface ReplaySettings {
   /** Calque de visée (direction du regard). Allumé par défaut, comme aujourd'hui. */
   showAim: boolean
@@ -54,47 +72,50 @@ export interface ReplaySettings {
   /** Ce que la carte de chaleur mesure — toujours une valeur de HEATMAP_MODES. */
   heatmapMode: HeatmapMode
   setHeatmapMode: (mode: HeatmapMode) => void
+  /** Éclairs de bouche sur TOUS les tirs décodés. Allumés par défaut. */
+  showShotFx: boolean
+  toggleShotFx: () => void
+  /** Trait orienté tueur -> victime sur les éliminations. ÉTEINT par défaut. */
+  showKillFx: boolean
+  toggleKillFx: () => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
 }
 
+/**
+ * usePersistedFlag — UN interrupteur persisté : son état, et la bascule qui l'écrit.
+ *
+ * CENTRALISÉ ICI (CLAUDE.md n°6, « à la 3e copie, centraliser ») : les calques de visée, de
+ * zones, de carte de chaleur, d'effets de tirs et d'effets de mort partagent EXACTEMENT le
+ * même corps — état initial lu du stockage, bascule qui persiste la nouvelle valeur. Cinq
+ * copies de six lignes se seraient mises à diverger (l'une oubliant la persistance, l'autre
+ * la forme fonctionnelle du setState).
+ */
+function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
+  const [value, setValue] = useState(() => readStoredFlag(key, fallback))
+  const toggle = useCallback(() => {
+    setValue((prev) => {
+      const next = !prev
+      persistPreference(key, String(next))
+      return next
+    })
+  }, [key])
+  return [value, toggle]
+}
+
 export function useReplaySettings(): ReplaySettings {
-  const [showAim, setShowAim] = useState(() => readStoredFlag(SHOW_AIM_KEY, true))
-  const [showZones, setShowZones] = useState(() => readStoredFlag(SHOW_ZONES_KEY, true))
-  const [showHeatmap, setShowHeatmap] = useState(() =>
-    readStoredFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT),
-  )
+  const [showAim, toggleAim] = usePersistedFlag(SHOW_AIM_KEY, true)
+  const [showZones, toggleZones] = usePersistedFlag(SHOW_ZONES_KEY, true)
+  const [showHeatmap, toggleHeatmap] = usePersistedFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT)
+  const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
+  const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
   const [speed, setSpeedState] = useState(() =>
     readStoredNumber(SPEED_KEY, SPEED_DEFAULT, (v) => SPEED_MULTIPLIERS.includes(v)),
   )
-
-  const toggleAim = useCallback(() => {
-    setShowAim((prev) => {
-      const next = !prev
-      persistPreference(SHOW_AIM_KEY, String(next))
-      return next
-    })
-  }, [])
-
-  const toggleZones = useCallback(() => {
-    setShowZones((prev) => {
-      const next = !prev
-      persistPreference(SHOW_ZONES_KEY, String(next))
-      return next
-    })
-  }, [])
-
-  const toggleHeatmap = useCallback(() => {
-    setShowHeatmap((prev) => {
-      const next = !prev
-      persistPreference(SHOW_HEATMAP_KEY, String(next))
-      return next
-    })
-  }, [])
 
   const setHeatmapMode = useCallback((next: HeatmapMode) => {
     setHeatmapModeState(next)
@@ -115,6 +136,10 @@ export function useReplaySettings(): ReplaySettings {
     toggleHeatmap,
     heatmapMode,
     setHeatmapMode,
+    showShotFx,
+    toggleShotFx,
+    showKillFx,
+    toggleKillFx,
     speed,
     setSpeed,
   }

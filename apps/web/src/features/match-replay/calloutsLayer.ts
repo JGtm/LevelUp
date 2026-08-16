@@ -147,14 +147,22 @@ const FINE_DASH = [3, 2]
 const BIG_FILL_ALPHA = 0.055
 const BIG_STROKE_ALPHA = 0.28
 /**
- * Libellé : 25 px d'ÉCRAN (POC : « +150 % (10 -> 25 px), demande utilisateur »). Le POC
- * devait multiplier par un facteur K parce que son canevas de 1600 px s'affichait à
- * ~840 px — c'est le piège documenté. ICI le contexte est déjà transformé au
- * devicePixelRatio et le canvas s'affiche à sa taille CSS : une unité de dessin EST un
- * pixel d'écran, 25 suffit et aucun K ne doit s'y multiplier.
+ * Libellé : 9,5 px d'ÉCRAN.
+ *
+ * IL ÉTAIT À 25 px, ET C'ÉTAIT UNE ERREUR D'UNITÉ. Le POC affichait « 25 » parce que son
+ * canevas de 1 600 px était rendu à ~840 px : ses 25 px de dessin valaient ~13 px à l'écran.
+ * ICI le contexte est déjà transformé au devicePixelRatio et le canvas s'affiche à sa taille
+ * CSS — une unité de dessin EST un pixel d'écran, et 25 donnait donc un libellé DEUX FOIS
+ * trop grand, qui débordait de sa zone et couvrait les joueurs (planche du 16/08 : « police
+ * trop grande, limiter le débordement au maximum »).
+ *
+ * LA BORNE EST LE NOM DE JOUEUR, PAS UN GOÛT : un nom de zone ne doit jamais peser plus lourd
+ * qu'un joueur sur la carte — au plus sa taille + 1 px d'écran (8,7 + 1 = 9,7). 9,5 s'y tient.
+ * Le cerne suit la même proportion qu'avant (1/5 de la police), sans quoi un contour de 5 px
+ * autour d'un texte de 9,5 px mangerait les lettres.
  */
-const LABEL_FONT = '600 25px ui-sans-serif, system-ui, sans-serif'
-const LABEL_OUTLINE_WIDTH = 5
+const LABEL_FONT = '600 9.5px ui-sans-serif, system-ui, sans-serif'
+const LABEL_OUTLINE_WIDTH = 1.9
 
 /**
  * drawCalloutsLayer peint les zones nommées : fines d'abord (dessous), grandes ensuite,

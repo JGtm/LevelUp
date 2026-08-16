@@ -4,8 +4,9 @@
  * la ligne d'inventaire et ses cellules de munitions forment une unité.
  *
  * TOUT CE QUI N'EST PAS LU S'AFFICHE COMME LACUNE, jamais comme une valeur par défaut :
- * - une capacité hors table garde son NUMÉRO, marquée non interprétable — la table est
- *   partielle (4 index observés pour 11 capacités), et la combler se lirait comme une certitude ;
+ * - une capacité hors table reçoit un GLYPHE NEUTRE (vignette vide en pointillés) et garde
+ *   son NUMÉRO en infobulle — la table est partielle (4 index observés pour 11 capacités),
+ *   et la combler se lirait comme une certitude ;
  * - un compteur d'utilisations n'est jamais affiché : il n'est pas localisé dans le film
  *   (36 006 positions testées, aucune ne reproduit le relevé) ;
  * - un emplacement dont le film n'écrit RIEN est PLEIN (flux différentiel : le plein est la
@@ -19,9 +20,12 @@ import type { ReactNode } from 'react'
 
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import { catalogText, type CatalogLabel } from './catalogLabel'
 import type { EquippedReading } from './equippedLogic'
+import { grenadeIconOf, type GrenadeIconRef } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -46,13 +50,19 @@ export function ReplayInventoryRow({
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
+  // La vignette de grenade est une IMAGE VERSIONNÉE, choisie à l'encre du thème (planche du
+  // 16/08) : le titre dit OÙ chercher, le thème dit LAQUELLE des deux encres. Les deux se
+  // lisent ici plutôt que de descendre en props depuis la page — ce sont des préférences
+  // d'application, pas des données du match.
+  const titleSlug = useTitleSlug()
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const read = inventoryAt(doc, slot, frame)
   // LA CAPACITÉ A SA PROPRE LECTURE, et donc son propre âge : elle arrive surtout par le
   // canal i48 des paquets delta, qui ne tombe pas sur les images-clés de l'inventaire. Elle
   // peut donc exister SANS inventaire lu — d'où la sortie anticipée qui les regarde tous
   // les deux, et non le seul inventaire.
   const abilityRead = abilityAt(doc, slot, frame)
-  const ability = abilityText(doc, abilityRead?.rank, t.abilityUnknown, locale)
+  const ability = abilityText(doc, abilityRead?.rank, t, locale)
   if (!read && !ability) return null
   const state = read?.state
   const grenades = state ? grenadesCarried(state, doc.grenadeLabels, locale) : []
@@ -80,45 +90,19 @@ export function ReplayInventoryRow({
       style={{ opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
       title={ageTitle}
     >
-      {grenades.map((g) => {
-        const isSel = typeof selected === 'object' && selected !== null && g.rank === selected.rank
-        // La vignette du HUD porte l'identité, le nom passe en infobulle : à cette taille
-        // le dessin est plus lisible que le mot (POC). Sans vignette, le libellé reste.
-        const lbl: CatalogLabel | undefined = doc.grenadeLabels?.[g.rank]
-        return (
-          <span
-            key={g.rank}
-            className={`inline-flex items-center gap-0.5 ${isSel ? 'rounded-sm px-0.5 font-semibold' : ''}`}
-            style={
-              isSel
-                ? {
-                    color: tokenCssVar('warning'),
-                    boxShadow: `0 0 0 1px ${tokenCssVar('warning')}`,
-                    background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
-                  }
-                : undefined
-            }
-            title={
-              isSel
-                ? `${g.name} — ${selected.read ? t.grenadeSelectedRead : t.grenadeSelected}`
-                : g.name
-            }
-          >
-            {lbl?.img ? (
-              <WeaponIcon
-                imageUrl={lbl.img}
-                tinted={lbl.tinted}
-                label={g.name}
-                width={HUD_ICON_PX}
-                height={HUD_ICON_PX}
-              />
-            ) : (
-              g.name
-            )}
-            <span className="tabular-nums">×{g.count}</span>
-          </span>
-        )
-      })}
+      {grenades.map((g) => (
+        <GrenadeChip
+          key={g.rank}
+          carried={g}
+          icon={grenadeIconOf(doc.grenadeLabels?.[g.rank], titleSlug, theme)}
+          selected={
+            typeof selected === 'object' && selected !== null && g.rank === selected.rank
+              ? selected
+              : null
+          }
+          t={t}
+        />
+      ))}
       {selected === 'indeterminate' && (
         <span className="border-b border-dashed border-border opacity-80">
           {t.grenadeSelUnknown}
@@ -126,15 +110,11 @@ export function ReplayInventoryRow({
       )}
       {ability && abilityRead && (
         <span
-          className={
-            ability.known
-              ? 'inline-flex items-center'
-              : 'border-b border-dashed border-border'
-          }
+          className="inline-flex items-center"
           // ÂGE PROPRE À LA CAPACITÉ : sa lecture ne tombe pas sur les images-clés de
           // l'inventaire, l'estompage de la ligne ne la décrit donc pas.
           style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
-          title={abilityAgeTitle(t, abilityRead.age, doc, ability.known ? ability.text : null)}
+          title={abilityAgeTitle(t, abilityRead.age, doc, ability.text)}
         >
           {ability.img ? (
             <WeaponIcon
@@ -144,8 +124,13 @@ export function ReplayInventoryRow({
               width={HUD_ICON_PX}
               height={HUD_ICON_PX}
             />
-          ) : (
+          ) : ability.known ? (
             ability.text
+          ) : (
+            /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
+               La table des capacités est partielle PAR NATURE — elle est propre à la palette
+               du match — et le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
+            <AbilityUnknownMark label={ability.text} />
           )}
         </span>
       )}
@@ -170,6 +155,64 @@ export function ReplayInventoryRow({
         )
       )}
     </div>
+  )
+}
+
+/**
+ * GrenadeChip — UN type de grenade porté : sa vignette, son compteur, et la marque du type
+ * ÉQUIPÉ quand c'est lui qui partira au prochain lancer.
+ *
+ * LA VIGNETTE PORTE L'IDENTITÉ, LE NOM PASSE EN INFOBULLE : à cette taille le dessin est
+ * plus lisible que le mot (POC), et la planche du 16/08 l'a tranché — « pas de texte sauf
+ * pour le compteur ». Seul le compteur reste écrit. Sans AUCUNE image (type hors catalogue
+ * ET artefact sans vignette), le libellé revient : mieux vaut un mot qu'un trou.
+ *
+ * LA MARQUE DU TYPE ÉQUIPÉ dit aussi D'OÙ ON LE SAIT (lu dans le film, ou déduit du fait
+ * qu'un seul type est porté) : deux certitudes différentes, deux infobulles différentes.
+ */
+function GrenadeChip({
+  carried,
+  icon,
+  selected,
+  t,
+}: {
+  carried: { rank: number; name: string; count: number }
+  icon: GrenadeIconRef | null
+  /** Non nul = c'est CE type qui est équipé ; `read` dit si la lecture ou la déduction l'établit. */
+  selected: { rank: number; read: boolean } | null
+  t: (typeof REPLAY_TEXT)[ReplayLocale]
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 ${selected ? 'rounded-sm px-0.5 font-semibold' : ''}`}
+      style={
+        selected
+          ? {
+              color: tokenCssVar('warning'),
+              boxShadow: `0 0 0 1px ${tokenCssVar('warning')}`,
+              background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
+            }
+          : undefined
+      }
+      title={
+        selected
+          ? `${carried.name} — ${selected.read ? t.grenadeSelectedRead : t.grenadeSelected}`
+          : carried.name
+      }
+    >
+      {icon ? (
+        <WeaponIcon
+          imageUrl={icon.url}
+          tinted={icon.tinted}
+          label={carried.name}
+          width={HUD_ICON_PX}
+          height={HUD_ICON_PX}
+        />
+      ) : (
+        carried.name
+      )}
+      <span className="tabular-nums">×{carried.count}</span>
+    </span>
   )
 }
 
@@ -223,22 +266,48 @@ function AmmoFullMark({ label }: { label: string }) {
 }
 
 /**
+ * AbilityUnknownMark — capacité LUE mais NON IDENTIFIÉE : l'emplacement de la vignette,
+ * vide, en pointillés. Le dessin dit exactement ce qu'on sait — « il y avait quelque chose
+ * ici, on ne sait pas quoi » — là où un « ? » aurait été un caractère (refusé le 16/08) et
+ * où l'icône d'une capacité voisine aurait été un mensonge. Même gabarit que les vignettes
+ * de la ligne (16 px), pour que la rangée ne se déforme pas quand un rang manque à la table.
+ */
+function AbilityUnknownMark({ label }: { label: string }) {
+  return (
+    <StateMark label={label}>
+      <svg
+        width={HUD_ICON_PX}
+        height={HUD_ICON_PX}
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeDasharray="2.4 1.8"
+        aria-hidden="true"
+      >
+        <rect x="2.4" y="2.4" width="11.2" height="11.2" rx="2.4" />
+      </svg>
+    </StateMark>
+  )
+}
+
+/**
  * abilityText nomme la capacité — et porte sa vignette de HUD quand le document en sert
- * une. Un index hors table garde son numéro : ni nom ni vignette empruntés à un voisin.
- * Renvoie null quand rien n'a été lu — l'absence de capacité et une capacité inconnue sont
- * deux états différents.
+ * une. Un index hors table garde son NUMÉRO dans le texte servi (« capacité non identifiée
+ * (rang 3) ») : ni nom ni vignette empruntés à un voisin. Renvoie null quand rien n'a été lu
+ * — l'absence de capacité et une capacité non identifiée sont deux états différents.
  */
 function abilityText(
   doc: ReplayDocumentReady,
   rank: number | undefined,
-  unknownLabel: string,
+  t: (typeof REPLAY_TEXT)[ReplayLocale],
   locale: ReplayLocale,
 ): { text: string; known: boolean; img?: string; tinted?: boolean } | null {
   if (rank === undefined) return null
   const lbl: CatalogLabel | undefined = doc.abilityLabels?.[String(rank)]
   const name = catalogText(lbl, locale)
   if (name) return { text: name, known: true, img: lbl?.img, tinted: lbl?.tinted }
-  return { text: `${unknownLabel} (${rank})`, known: false }
+  return { text: t.abilityUnidentified(rank), known: false }
 }
 
 /**
