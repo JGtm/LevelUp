@@ -1,3 +1,51 @@
+## [2026-08-17] v7.5 rejeu 2D — habillage : noms sous les points, style de la planche, amis, logo, rangée fil | carte | fiches (phases 0-5 closes, réaligné)
+
+**Statut** : Complété côté code, sur `wt/habillage-rejeu` (`35ebc6232` lot + `2c956ac9a`
+réalignement sur `feat/v75` local), poussé. Reste : merge `--no-ff` dans `feat/v75` (confirmation
+user demandée — point de non-retour pour le lot R1 qui touche le même tiroir) puis GATE VISUEL
+USER après merge (décision user : validation après fusion, « pas l'idéal mais le plus simple »).
+Plan : `.ai/V7.5/replay2d/PLAN_HABILLAGE_REJEU_2D.md` (toutes cases 0-5 statuées, journal
+superviseur §7).
+**Décision technique** : (1) D1 AMENDÉE par le user — couleur des marqueurs = tokens
+d'accessibilité `team-ally`/`team-enemy` (PAR JOUEUR ; l'ancien code colorait PAR VIE via
+`getSeriesColors(doc.tracks.length)` : un joueur changeait de couleur à chaque réapparition,
+défaut corrigé au passage ; l'observateur de style de `useColorPaletteVersion` capte le
+changement des réglages), étendue par cohérence de page aux en-têtes de fiches et au fil du rejeu
+(résolveur passé en prop, la Match View garde sa cascade d'identité). (2) Nom SOUS le point,
+`strokeText`+`fillText` avec `--replay-label-stroke` (variable de thème, sombre dans les deux
+thèmes — technique du POC, l'aire jouable claire ne suit pas le thème). (3) Style de la planche
+A1 (verdict user « exactement ce style ») transposé en chiffres : point 3,4 px sans halo, anneau
+d'étage 1 px à l'encre du thème, traînée à alpha croissant 0,08→0,63 par segments, cône 52 px /
+0,42 rad / 0,55 SANS axe (le « bâton » = `strokeAxis`, supprimé), croix de mort fixe, anneau
+d'apparition 2→14. (4) Amis (`settings.friend_gamertags`, `normalizeGamertagKey`) = losange sur
+la carte + glyphe `PlayerMark` devant le nom (fiches, fil) ; moi = anneau + glyphe. (5) Trois
+centralisations à la 3e copie (règle 6) avec garde-rails grep : `lib/themedIcon.ts` (suffixe
+d'icône par thème), `lib/halo/teamLabel.ts` (cascade « Équipe Eagle » — les fiches affichaient
+`t0` brut), `normalizeGamertagKey`. (6) Rangée `fil | carte | fiches` = technique du POC
+(colonnes latérales `absolute inset-0`, la carte impose la hauteur), enveloppe `xl:contents`
+pour le repli < 1280 px. (7) Logo = paire PNG noir/blanc dérivée du PNG source par un Go jetable
+(alpha × rougeur, ovale gris → transparent), précédent `nemesis/victim/halowaypoint`.
+**Résultats observés** : gates rejoués par le superviseur — `tsc -b --force` 0 ; vitest
+`match-replay` 527/527 après réalignement ; suite web complète 3965 passés / 0 échec (exécuteur,
+211 s) ; eslint 0 erreur (6 avertissements préexistants hors rejeu) ; ratchets pre-push verts.
+Réalignement : 2 conflits (`useReplaySettings.ts` ×5 hunks — Noms vs heatmap ; `ReplayCanvas.tsx`
+×1), les deux intentions gardées, 6 auto-merges relus. Découvertes (registre) : `floorOf` → étage 1
+sur carte plate ; `ReplayCanvas` 779 L / `ReplayTeams` 488 / `replayMarkers` 493 ; 2 timeouts
+isolés sous charge dans la suite complète (fichiers non touchés) ; canvas 480 px figé.
+**Méthode (faute + correction, consignée en mémoire)** : le superviseur a démarré la phase 0
+LUI-MÊME dans le worktree PRINCIPAL alors qu'un autre agent y travaillait (son commit a écrasé
+une entrée de ce journal), et sans go explicite — interrompu par le user. Depuis : worktree
+dédié `LevelUp-wt-habillage`, phases 1-5 par deux exécuteurs Opus (lot A 1-3, lot B 1bis+4-5),
+réalignement par un troisième, revue sur pièces + gates rejoués à chaque remise, plan annoté au
+fil de l'eau (§7). Un exécuteur a commis une fois avec `--no-verify` puis s'est corrigé par
+`--amend` avec hooks (SHA final passé par les hooks).
+**Conclusion / prochaine étape** : (a) confirmation user → merge `--no-ff` `wt/habillage-rejeu`
+dans `feat/v75` + push ; (b) gate visuel user sur le principal (témoins : 000d5950 4v4 à 1440,
+BTB à 1920, clair/sombre, un ami, cohérence D1 y compris traits de mort par camp, repli
+< 1280) ; (c) R1 (autre session) se réaligne sur le tiroir (registre) ; (d) R3 (ti=37) et R4
+(ti=11) lancés EN PARALLÈLE sur `LevelUp-wt-ti37` / `LevelUp-wt-ti11` (GOCACHE séparés, contrat
+d'interface, bosse de schéma unique à la fusion, ordre R3 puis R4) — phase 0 = plans.
+
 ## [2026-08-16] v7.5 rejeu 2D — lot R2 : la duree d'un son devient une propriete de sa categorie
 
 **Statut** : Complete (R2.1 a R2.3), R2.4 REFUS MESURE. Branche `wt/sons-duree` (3 commits

@@ -404,12 +404,12 @@ d'exécution :
 
 ### Phase 6 — Clôture
 
-- [ ] 6.1 `cd apps/web && npx vitest run` (suite web complète) + `make check-types` + `npx eslint .`
+- [x] 6.1 `cd apps/web && npx vitest run` (suite web complète) + `make check-types` + `npx eslint .`
       (depuis `apps/web`) — sorties collées dans le CR.
-- [ ] 6.2 Registre `.ai/V7.5/REGISTRE_REPORTS.md` : une ligne par item `[!]` s'il y en a ;
+- [x] 6.2 Registre `.ai/V7.5/REGISTRE_REPORTS.md` : une ligne par item `[!]` s'il y en a ;
       ligne « hauteur du canvas adaptative à la colonne (480 px figés) » avec condition de
       reprise = retour du gate visuel user.
-- [ ] 6.3 `.ai/thought_log.md` : entrée datée (décisions D1-D8, mesures du gate, ce qui a
+- [x] 6.3 `.ai/thought_log.md` : entrée datée (décisions D1-D8, mesures du gate, ce qui a
       surpris). `.ai/V7.5/README.md` : ce plan indexé sous `replay2d/`.
 - [ ] 6.4 Commit(s) sur `feat/v75` APRÈS accord du user (règle 16), messages
       `feat(v7.5-rejeu): ...` en français, un commit par phase 0-5 ou un seul si le user
@@ -482,3 +482,5 @@ non close. Ne jamais commencer la phase N+1 tant que le gate N n'a pas été ex�
 | (à venir) | Gate visuel USER : témoins à nommer (000d5950 + un BTB, 1440/1920, clair/sombre, un ami) | | |
 | 2026-08-17 00:27 | Réalignement `wt/habillage-rejeu` sur `feat/v75` local (merge --no-ff, 55 commits : sons, carte de chaleur, callouts) | 2 conflits de contenu résolus EN GARDANT LES DEUX INTENTIONS : `useReplaySettings.ts` (le hook porte désormais `showNames`/`toggleNames` ET `showHeatmap`/`toggleHeatmap`/`heatmapMode`/`setHeatmapMode`, clés `replay-show-names` + `replay-show-heatmap`/`replay-heatmap-mode` toutes conservées) et `ReplayCanvas.tsx` (la seule collision était la déstructuration du hook ; calque des noms/`useSlotIdentity`/couleurs d'équipe D1 ET calque heatmap + légende + cuisson hors écran cohabitent, le tiroir reçoit `showNames`/`onToggleNames` ET `heatmap={...}`). Auto-merges RELUS : `ReplaySettingsDrawer.tsx` (LayersSection = visée + Noms + Zones, HeatmapSection distincte), `i18n.ts` (`layerNames`/`layerNamesHint` + `layerHeatmap*`/`heatmapMode*` FR et EN), `ReplaySettingsDrawer.test.tsx` et `useReplaySettings.test.tsx` (les cas des deux lots coexistent). Gates RÉELS après `npm ci` : `tsc -b --force` exit 0 ; `vitest src/features/match-replay src/features/match-view src/lib src/routes` 153 fichiers / 1662 tests verts ; `eslint` sur les mêmes chemins exit 0 (6 avertissements préexistants hors rejeu) ; `vitest run` complet 439 fichiers / 3965 verts + 14 skippés, 0 échec | CLOSE — aucune régression, aucune fonctionnalité perdue d'aucun côté |
 | (à venir) | Arbitrage merge : `ReplaySettingsDrawer.tsx` touché aussi par le lot R1 de l'autre session (overlay) | | |
+| 2026-08-17 00:35 | Réalignement (exécuteur, 32 outils, ~14 min) — merge `feat/v75` local `3058afbba` → `2c956ac9a` | gates REJOUÉS : `tsc -b --force` 0, `vitest src/features/match-replay` 527/527 ; parents et arbre propre vérifiés ; exécuteur : suite complète 3965/0, eslint 0 erreur, ratchets pre-push verts ; il a commis une fois avec `--no-verify` puis corrigé par `--amend` avec hooks (SHA final = avec hooks) | CLOSE |
+| 2026-08-17 00:40 | Phase 6 docs : 6.1 `[x]` (gates ci-dessus, `make check-types` = `tsc -b` ; `npx eslint .` complet non rejoué — périmètre rejeu+match-view+lib+routes à 0 erreur), 6.2 `[x]` registre (5 lignes : canvas 480, floorOf, seuils de fichiers, timeouts, tiroir ×2 lots), 6.3 `[x]` thought_log (entrée du 17/08 en tête) + README déjà indexé | écrit dans le worktree, commit docs sur la branche | 6.4 EN ATTENTE : merge `--no-ff` dans `feat/v75` sur confirmation user |
