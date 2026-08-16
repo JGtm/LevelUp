@@ -67,9 +67,18 @@ const READING_FULL_MS = 20_000
  * porté en continu par le fond de la fiche.
  */
 const FLASH_MS = 1_400
-/** Durées CSS des deux animations d'éclat (cf. globals.css) — le délai négatif s'y rapporte. */
+/**
+ * Durées CSS des deux animations d'éclat (cf. globals.css) — le délai négatif s'y rapporte.
+ * CES DEUX NOMBRES SONT LE MIROIR DE LA FEUILLE DE STYLE : les changer ici sans les changer
+ * là-bas désaligne le délai négatif, et l'éclat reprend au mauvais endroit.
+ *
+ * L'ÉCLAT DE RÉAPPARITION EST PASSÉ DE 0,55 s À 1,2 s le 2026-08-17 (« plus lent l'éclat »,
+ * planche du 16/08) : à 0,55 s le vert avait disparu avant qu'on ait fini de lire le nom de
+ * la fiche. La mesure ne change pas — c'est toujours l'image de départ de la vie suivante qui
+ * date le retour ; seule la durée du repère à l'écran change.
+ */
 const DEATH_FLASH_TOTAL_S = 1.86
-const RESPAWN_FLASH_S = 0.55
+const RESPAWN_FLASH_S = 1.2
 /**
  * Effet de VERRE de la fiche pendant un épisode de CAMOUFLAGE actif (cahier des charges
  * Notion, item 21.1) : translucidité + flou léger, PAS une opacité réduite sur toute la

@@ -312,7 +312,19 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
       20_000,
     )
     expect(screen.getByText('Aidant77')).toBeTruthy()
-    expect(screen.getByText('37 %')).toBeTruthy()
+    // La part de l'assistant s'écrit « - 37 % » depuis la planche du 16/08, et la ligne
+    // n'écrit PLUS « assisté par » : une MARQUE le dit, en pictogramme.
+    expect(screen.getByText('- 37 %')).toBeTruthy()
+    // LA MARQUE EST LA VIGNETTE DU JEU (killfeed-62), pas le glyphe SVG du lot R1 : un
+    // masque teint, comme l'icône d'arme du fil — même technique, même composant.
+    const mark = screen.getByRole('img', { name: 'Assistance' })
+    expect(mark).toHaveStyle({
+      maskImage: 'url(/static/weapons-assets/halo_infinite/jeu/killfeed-62.png)',
+    })
+    // L'infobulle vit sur le conteneur (WeaponIcon lui-même n'en porte pas) : le survol
+    // continue de dire « Assistance », inchangé depuis le glyphe SVG qu'elle remplace.
+    expect(mark.closest('[title="Assistance"]')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/assist[ée]/i)
     expect(screen.getByText(/tueur 63 %/)).toBeTruthy()
     expect(container.querySelector('li')?.getAttribute('style')).toContain('color-mix')
   })
