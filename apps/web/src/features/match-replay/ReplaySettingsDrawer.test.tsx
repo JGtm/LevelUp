@@ -7,8 +7,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
-import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
+import { ReplaySettingsDrawer, type ReplayHeatmapControls } from './ReplaySettingsDrawer'
 import type { ReplaySound } from './useReplaySound'
+
+function makeHeatmap(over: Partial<ReplayHeatmapControls> = {}): ReplayHeatmapControls {
+  return {
+    show: false,
+    onToggle: vi.fn(),
+    mode: 'presence',
+    onSetMode: vi.fn(),
+    killsAvailable: true,
+    ...over,
+  }
+}
 
 function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
   return {
@@ -39,6 +50,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       showZones
       onToggleZones={onToggleZones}
       zonesAvailable
+      heatmap={makeHeatmap()}
       sound={makeSound()}
       speed={1}
       onSetSpeed={onSetSpeed}
@@ -69,6 +81,55 @@ describe('ReplaySettingsDrawer — calques', () => {
     expect(btn).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(btn)
     expect(onToggleZones).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ReplaySettingsDrawer — carte de chaleur', () => {
+  it('calque éteint : la bascule est là, le choix de lecture ne l est pas', () => {
+    renderDrawer({ heatmap: makeHeatmap({ show: false }) })
+    expect(screen.getByRole('button', { name: 'Carte de chaleur' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(screen.queryByRole('button', { name: 'Présence' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Éliminations' })).toBeNull()
+  })
+
+  it('calque allumé : les deux lectures, aria-pressed sur celle en cours', () => {
+    renderDrawer({ heatmap: makeHeatmap({ show: true, mode: 'kills' }) })
+    expect(screen.getByRole('button', { name: 'Présence' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: 'Éliminations' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('cliquer une lecture appelle onSetMode avec SA clé, jamais la bascule du calque', () => {
+    const onSetMode = vi.fn()
+    const onToggle = vi.fn()
+    renderDrawer({ heatmap: makeHeatmap({ show: true, onSetMode, onToggle }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Éliminations' }))
+    expect(onSetMode).toHaveBeenCalledTimes(1)
+    expect(onSetMode).toHaveBeenCalledWith('kills')
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('aucune mort localisée : la lecture éliminations n est pas proposée', () => {
+    renderDrawer({ heatmap: makeHeatmap({ show: true, killsAvailable: false }) })
+    expect(screen.queryByRole('button', { name: 'Éliminations' })).toBeNull()
+    // Et le choix disparaît entièrement : une seule lecture ne se choisit pas.
+    expect(screen.queryByRole('button', { name: 'Présence' })).toBeNull()
+  })
+
+  it('la bascule appelle onToggle, jamais un calque voisin', () => {
+    const onToggle = vi.fn()
+    const { onToggleZones } = renderDrawer({ heatmap: makeHeatmap({ onToggle }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Carte de chaleur' }))
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onToggleZones).not.toHaveBeenCalled()
   })
 })
 

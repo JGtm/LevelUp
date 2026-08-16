@@ -17,11 +17,23 @@ import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 
+import type { HeatmapMode } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { SOUND_CATEGORIES } from './replaySound'
-import { SPEED_MULTIPLIERS } from './useReplaySettings'
+import { HEATMAP_MODES, SPEED_MULTIPLIERS } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
+
+/** Ce que le tiroir sait de la carte de chaleur : son état, et ce qu'elle peut mesurer. */
+export interface ReplayHeatmapControls {
+  show: boolean
+  onToggle: () => void
+  mode: HeatmapMode
+  onSetMode: (mode: HeatmapMode) => void
+  /** Faux quand aucune mort du match n'a pu être localisée : la lecture « éliminations »
+   *  ne commande alors rien et n'est pas proposée (même règle que le bouton Zones). */
+  killsAvailable: boolean
+}
 
 interface ReplaySettingsDrawerProps {
   locale: ReplayLocale
@@ -33,6 +45,7 @@ interface ReplaySettingsDrawerProps {
   /** Le calque zones n'existe que si la carte a des zones nommées (même règle que le
    *  bouton d'origine : un interrupteur qui ne commande rien tromperait plus qu'il n'informe). */
   zonesAvailable: boolean
+  heatmap: ReplayHeatmapControls
   sound: ReplaySound
   speed: number
   onSetSpeed: (speed: number) => void
@@ -91,6 +104,49 @@ function LayersSection({
             onToggle={onToggleZones}
             hint={t.layerZonesHint}
           />
+        )}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * La CARTE DE CHALEUR a sa propre section : c'est un calque, mais qui porte un CHOIX de
+ * lecture (ce qu'on mesure). Le noyer dans la liste des calques mettrait ce choix au même
+ * rang qu'une bascule, alors qu'il change la grandeur affichée. Le choix ne s'affiche que
+ * lorsque le calque est allumé — sinon il commanderait quelque chose d'invisible.
+ */
+function HeatmapSection({
+  locale, heatmap,
+}: {
+  locale: ReplayLocale
+  heatmap: ReplayHeatmapControls
+}) {
+  const t = REPLAY_TEXT[locale]
+  const modes = heatmap.killsAvailable ? HEATMAP_MODES : HEATMAP_MODES.filter((m) => m !== 'kills')
+  return (
+    <section className="space-y-1">
+      <h3 className="text-xs font-medium text-muted-foreground">{t.layerHeatmap}</h3>
+      <div className="flex flex-col gap-1">
+        <SettingsToggle
+          label={t.layerHeatmap}
+          pressed={heatmap.show}
+          onToggle={heatmap.onToggle}
+          hint={t.layerHeatmapHint}
+        />
+        {heatmap.show && modes.length > 1 && (
+          <>
+            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapReading}</p>
+            {modes.map((m) => (
+              <SettingsToggle
+                key={m}
+                label={t.heatmapMode[m]}
+                pressed={heatmap.mode === m}
+                onToggle={() => heatmap.onSetMode(m)}
+                hint={t.heatmapModeHint[m]}
+              />
+            ))}
+          </>
         )}
       </div>
     </section>
@@ -164,6 +220,7 @@ export function ReplaySettingsDrawer({
   showZones,
   onToggleZones,
   zonesAvailable,
+  heatmap,
   sound,
   speed,
   onSetSpeed,
@@ -204,6 +261,7 @@ export function ReplaySettingsDrawer({
         onToggleZones={onToggleZones}
         zonesAvailable={zonesAvailable}
       />
+      <HeatmapSection locale={locale} heatmap={heatmap} />
       <SpeedSection locale={locale} speed={speed} onSetSpeed={onSetSpeed} />
       <SoundSection locale={locale} sound={sound} />
     </div>
