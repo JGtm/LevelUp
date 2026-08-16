@@ -15,6 +15,12 @@
  * garde-rail `replaySoundAssets.guard.test.ts` le rejoue contre le dossier : un stem sans
  * fichier ou un fichier sans stem casse le test, jamais l'écoute.
  *
+ * LA DURÉE EST UNE PROPRIÉTÉ DE LA CATÉGORIE, et elle est portée par le FICHIER, pas par
+ * le lecteur (décision utilisateur du 2026-08-16) : armes, lancers et mêlée à 1,2 s ;
+ * explosions de grenade et équipements jusqu'à 4 s, parce qu'à la seconde ils s'entendaient
+ * « écourtés ». Le lecteur joue le fichier jusqu'à sa fin (replayAudio.ts) — allonger un
+ * son, c'est donc re-couper son asset, jamais toucher au moteur.
+ *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
  *  - les KILLS du fil (source résolue : vignette OU weapon_key, cf. `killSound`) —

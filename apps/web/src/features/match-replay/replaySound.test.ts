@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { ReplayDocument, ReplayGrenade } from '@/lib/api/types'
 
-import { SOUND_CUT_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
+import { SOUND_CUT_MAX_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
 import {
   advanceSoundCursor,
   buildSoundTimeline,
@@ -415,8 +415,16 @@ describe('curseur sonore', () => {
 })
 
 describe('soundEnvelope', () => {
-  it('un son long est coupé à ~1 s, fondu entamé un quart de seconde avant', () => {
-    expect(soundEnvelope(3)).toEqual({ fadeStartS: SOUND_CUT_S - SOUND_FADE_S, stopS: SOUND_CUT_S })
+  it('un son joue jusqu au bout de son fichier, fondu sur le dernier quart de seconde', () => {
+    // 3,33 s : la durée de l explosion de fragmentation livrée (lot R2.3).
+    expect(soundEnvelope(3.33)).toEqual({ fadeStartS: 3.33 - SOUND_FADE_S, stopS: 3.33 })
+  })
+
+  it('au-delà du plafond de sûreté, la coupe reprend la main', () => {
+    expect(soundEnvelope(30)).toEqual({
+      fadeStartS: SOUND_CUT_MAX_S - SOUND_FADE_S,
+      stopS: SOUND_CUT_MAX_S,
+    })
   })
 
   it('un son court joue entier, le fondu est borné à sa moitié (pas de claquement)', () => {

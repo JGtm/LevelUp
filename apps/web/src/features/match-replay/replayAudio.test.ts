@@ -2,10 +2,11 @@
  * replayAudio.test.ts — LE MOTEUR, sur un AudioContext de laboratoire.
  *
  * Ce qui se vérifie ici ne s'entend pas à l'oreille et casse en silence : qu'un son parte
- * bien (déclenchement), qu'il soit COUPÉ à la seconde par l'enveloppe (et non laissé courir
- * jusqu'au bout du fichier), qu'un fichier absent reste un SILENCE mémorisé (jamais une
- * re-tentative par kill, jamais un son de remplacement), et qu'un échange nourri ne fasse
- * pas un mur de voix.
+ * bien (déclenchement), qu'il joue jusqu'au bout de SON fichier avec un fondu de sortie
+ * (la durée par catégorie est portée par l'asset depuis le 2026-08-16 ; le lecteur ne
+ * garde qu'un plafond de sûreté), qu'un fichier absent reste un SILENCE mémorisé (jamais
+ * une re-tentative par kill, jamais un son de remplacement), et qu'un échange nourri ne
+ * fasse pas un mur de voix.
  *
  * jsdom n'a pas de Web Audio : le contexte est un double instrumenté qui note ce qu'on lui
  * demande. Il ne juge pas le rendu sonore — c'est le gate d'écoute qui le fait.
@@ -14,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ReplayAudioPlayer,
-  SOUND_CUT_S,
+  SOUND_CUT_MAX_S,
   SOUND_FADE_S,
   SOUND_MAX_VOICES,
   soundEnvelope,
@@ -78,23 +79,39 @@ describe('ReplayAudioPlayer — déclenchement', () => {
 })
 
 describe('ReplayAudioPlayer — coupure', () => {
-  it('coupe un son long à ~1 s : fondu programmé puis arrêt, jamais la fin du fichier', async () => {
+  it('joue un son jusqu au bout de son fichier : fondu sur la fin, pas à la seconde', async () => {
     const p = new ReplayAudioPlayer(1)
-    p.preload(['/long.wav']) // 3 s de source
+    p.preload(['/explosion.wav']) // 3 s de source (une explosion de grenade livrée)
     await flush()
-    p.play('/long.wav')
+    p.play('/explosion.wav')
     const t0 = ctx.currentTime
     // Le gain de voix est le dernier créé (le maître naît avec le lecteur).
     const voice = ctx.gains[ctx.gains.length - 1]
     expect(voice.gain.calls).toEqual([
       ['set', 1, t0],
-      ['set', 1, t0 + SOUND_CUT_S - SOUND_FADE_S],
-      ['ramp', 0, t0 + SOUND_CUT_S],
+      ['set', 1, t0 + 3 - SOUND_FADE_S],
+      ['ramp', 0, t0 + 3],
     ])
-    expect(ctx.sources[0].stopped).toBe(t0 + SOUND_CUT_S)
+    expect(ctx.sources[0].stopped).toBe(t0 + 3)
   })
 
-  it('un son plus court que la coupe joue entier, fondu borné à sa moitié', async () => {
+  it('un son plus long que le plafond de sûreté y est coupé (asset livré trop long)', async () => {
+    const p = new ReplayAudioPlayer(1)
+    fetchMock.mockResolvedValueOnce(okResponse(30))
+    p.preload(['/entier.wav'])
+    await flush()
+    p.play('/entier.wav')
+    const t0 = ctx.currentTime
+    const voice = ctx.gains[ctx.gains.length - 1]
+    expect(voice.gain.calls).toEqual([
+      ['set', 1, t0],
+      ['set', 1, t0 + SOUND_CUT_MAX_S - SOUND_FADE_S],
+      ['ramp', 0, t0 + SOUND_CUT_MAX_S],
+    ])
+    expect(ctx.sources[0].stopped).toBe(t0 + SOUND_CUT_MAX_S)
+  })
+
+  it('un son très court joue entier, fondu borné à sa moitié', async () => {
     const p = new ReplayAudioPlayer(1)
     fetchMock.mockResolvedValueOnce(okResponse(0.4))
     p.preload(['/court.wav'])
