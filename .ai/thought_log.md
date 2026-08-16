@@ -1,3 +1,56 @@
+## [2026-08-16] v7.5 rejeu 2D — les bornes des canevas Forge : le BSP de déquantification est la région 0, pas le plus gros tag
+**Statut** : Complété — plan `.ai/V7.5/replay2d/PLAN_BORNES_CANEVAS_FORGE.md`, quatre phases, quatre gates passés.
+**Décision technique principale** : `cmd/mapquant-build` retenait `himap.ReadModuleBSPBounds(...)[0]`,
+c'est-à-dire le tag sbsp le plus GROS du module. La taille d'un tag mesure sa géométrie compilée,
+pas son rôle — et sur les canevas Forge le tag le plus lourd est le DÉCOR LOINTAIN (3 867 x 3 662
+x 2 664 unités), pas l'ARÈNE (463 x 453 x 1 189) contre laquelle le jeu quantifie. Le critère
+retenu est celui du MOTEUR : `FUN_140be9a14` précalcule `W[r][L][axe]` en parcourant le bloc
+structure-BSP du tag de niveau (`levl`) dans l'ordre, et le composant i0 désigne la région 0 par
+défaut. `himap.BSPQuantification` (nouveau, `internal/himap/sbsp_region.go`) lit donc cet ordre
+sans plugin `levl` : le bloc se reconnaît à sa FORME — un bloc de données dont les GlobalID sbsp
+distincts couvrent exactement les tags sbsp du module. Deux blocs le satisfont par canevas (440 o
+et 136 o) et ils doivent donner le MÊME ordre ; l'indécidabilité est une ERREUR
+(`ErrRegionBSPIndecidable`) qui fait échouer le catalogue entier, jamais un repli sur la taille —
+un repli silencieux est précisément ce qui a produit le défaut. Le repli « choisi par contrôle
+film » prévu par le plan n'a pas eu à servir : le critère structurel tient.
+**Résultats observés.** Le périmètre annoncé était TROP ÉTROIT, et c'est la première leçon. Le
+registre parlait de trois canevas et 18 entrées ; le balayage des 29 modules porteurs de sbsp de
+l'installation en rend SIX — `fo03_space` (Starboard, 24 matchs) et `fo06_deepsea` (Dredge, 16)
+portaient la même faute et n'avaient jamais été contrôlés, `fo10_deadland` est le sixième sans
+carte cataloguée. Portée réelle : 21 entrées, 316 matchs. `fo08_wetland` et `fo09_academy`, les
+deux « témoins sains », portent LES MÊMES DEUX AABB que les canevas fautifs, au millième près :
+ils tombaient juste parce que leur arène pèse plus d'octets que leur décor. Le critère de taille
+n'a jamais rien dit de vrai, il a eu raison deux fois sur sept par hasard. L'ordre des régions est
+lisible sur les 29 modules, jamais indécidable, et il coïncide sur les 29 avec un contrôle croisé
+INDÉPENDANT — le plus petit AABB, lu sur les bornes et non sur le tag de niveau. Catalogue
+régénéré : 21 modifiées ([18 18 18] -> [15 15 17]), 14 ajoutées (les refusées du reliquat,
+module déjà prouvé par level_id), 0 retirée, 43 inchangées, 64 -> 78 entrées. Le CONTRÔLE film
+devient un instrument (`filmdec.TestControleBornesFilms`) dont la liste des couples (film, carte)
+est une DONNÉE tirée du registre par `read_parquet` en DuckDB en mémoire — c'est la lacune du
+contrôle joué à la main, un film à la fois, qui avait laissé Starboard et Dredge dehors. Verdict :
+342 couples, 66 cartes, 342 accords, 0 désaccord, 0 illisible. Le contrôle CROISÉ tranche sur le
+film même du report containment (`zone-attribution -match 1b1e380f`, Solitude) : écart vertical
+médian +1 240 à +1 300 m -> **+0,1 m**, distance médiane au volume 1 279-1 438 m -> **1,0 m**,
+appartenance 0,0 % -> 39,0 % à 0 m et 59,3 % à 2 m, concordance inter-joueurs 19/19 à 100,0 %
+contre 66,7 % pour le témoin décalé. Les volumes viennent du `.mvar`, source indépendante des
+bornes : le contrôle n'est pas circulaire. Deux témoins re-cuits le montrent en clair — Cliffside
+passe d'une emprise de 257 x 277 m à Z +1 345 m à une emprise de 31 x 34 m à Z +76 m, le rapport
+8,36 étant exactement celui des deux AABB ; Corpo de 91 x 252 m à 11 x 31 m. Couverture INCHANGÉE
+des deux côtés (43 pistes / tirs 505 sur 581 ; 21 pistes / tirs 265 sur 300) : le correctif change
+le REPÈRE et rien d'autre. Threshold (`06dfe6d9`), témoin manquant du lot équipement, est
+construit : 254 pistes, camouflage 2 vies / 7 épisodes, surbouclier 3/3, grappin 100 tirs / 71
+tractions — mais sa couverture de calques est partielle (245 tirs rattachés sur 2 223) pour une
+cause INDÉPENDANTE des bornes, le pont slot -> joueur sur un match à 254 vies ; consigné au
+registre comme item propre plutôt que fondu dans celui-ci.
+**Conclusion / prochaine étape.** Trois lignes du registre sortent (bornes réfutées, 14 cartes non
+cataloguées, écart vertical ~1 270 m) et deux y entrent (re-build de masse, couverture Threshold).
+Le containment redevient exploitable sur ses 11 films, soit 675 actions et 36 % du corpus mesuré.
+Ce qui reste : le re-build de MASSE des artefacts déjà cuits — un artefact garde les bornes avec
+lesquelles il a été cuit, et sur les 28 du cache local six vivent sur les canevas corrigés dont
+trois restent faux (`83ee3f9f`, `084a804d`, `0f9550e5`). C'est un lot ops à fenêtre utilisateur,
+déclaré hors de ce plan et NON lancé ; son préalable est levé. Recette de contrôle : un Z
+au-dessus de 1 000 m dans l'emprise d'un artefact signe un artefact périmé.
+
 ## [2026-08-16] v7.5 rejeu 2D — fusion des deux worktrees dans feat/v75, revue de fusion, ratification du golden minibobine
 **Statut** : Complété — procédure `.ai/V7.5/replay2d/FUSION_WT_2026-08-16.md`, cinq étapes.
 **Décision technique principale** : les deux lots ont été fusionnés en `--no-ff` dans l'ordre
