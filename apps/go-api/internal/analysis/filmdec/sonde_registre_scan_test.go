@@ -103,8 +103,11 @@ type probeCensus struct {
 }
 
 // probeEmission est UNE valeur rendue par le hook, situee dans le temps.
+//
+// Le `ti` que le hook rend n'est PAS conserve : la marche appelle `consumeByName` avec l'index
+// de l'archetype qu'elle vient de reconnaitre, donc le hook le lui rend tel quel. Le garder
+// serait un champ tautologique, qui aurait l'air d'un controle sans en etre un.
 type probeEmission struct {
-	ti    uint32
 	comp  ProbeComponent
 	vals  []uint64
 	chunk int
@@ -290,9 +293,9 @@ func probeBalaye(dir string, n int, archs [probeRoleCount]*probeArch, hor probeH
 	}
 	var cur probeEmission
 	prev := probeHookCourant()
-	SetProbeHook(func(ti uint32, comp ProbeComponent, values []uint64) {
+	SetProbeHook(func(_ uint32, comp ProbeComponent, values []uint64) {
 		e := cur
-		e.ti, e.comp = ti, comp
+		e.comp = comp
 		e.vals = append([]uint64(nil), values...)
 		m.emissions = append(m.emissions, e)
 	})
