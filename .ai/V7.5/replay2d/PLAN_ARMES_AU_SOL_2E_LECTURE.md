@@ -42,10 +42,17 @@ La position des armes au sol (`ti=42`) a ete REFUTEE le 12/08 : 62,4 % des slots
 au-dela de 20 u, 3,3 % seulement tenaient dans 0,5 u (une arme posee ne bouge pas). Deux
 causes etaient invoquees : (1) default-state `ti=42` non resolu au keyframe (offset d'i0
 inconnu) ; (2) en delta, bande de slots contaminee par les archetypes voisins. **Depuis** :
-le correctif des largeurs (16/08) a transforme les positions d'objets du monde de 0,09 % a
-99 % de justesse sur Bazaar — la refutation du 12/08 a ete faite AVEC les largeurs de
-Cliffhanger sur les autres cartes ; et la cause (1) est exactement le probleme que la
-calibration par oracle a resolu pour `ti=37`. La refutation est donc a REJOUER, pas a croire.
+la cause (1) est exactement le probleme que la calibration par oracle a resolu pour `ti=37`, et
+la grammaire `ti=42` est decompilee (R5). La refutation est donc a REJOUER, pas a croire.
+
+> **Correction du 2026-08-17 (verifiee sur pieces, `CLE_USB_REJEU_2D.md` l. 70)** : `000d5950` est
+> **Cliffhanger** (Super Fiesta Slayer), pas Bazaar (Bazaar Super Fiesta = `00502e52`). La
+> refutation du 12/08 (`GW_MAP=Cliffhanger` sur `000d5950`) a donc ete faite avec les BONNES
+> largeurs pour ce film : le correctif des largeurs du 16/08 (0,09 % -> 99 % sur Bazaar) ne la
+> change PAS sur `000d5950`. Ce qui rouvre la porte, c'est la cause (1) — le default-state
+> `ti=42`, aujourd'hui decompile et calibrable par oracle — et le fait que le verdict n'existe
+> que sur UN film. La phase 0.1 est donc une LIGNE DE BASE multi-cartes (le « AVANT »), pas un
+> levier ; le levier est la phase 0.2 ; le gate 0 se juge sur l'APRES.
 
 
 ## Apport du worktree concurrent `wt/fusion-lots-go` (lots R3-R6, 17/08 — verifie sur pieces le 18/08)
