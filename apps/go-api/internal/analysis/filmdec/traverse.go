@@ -855,6 +855,15 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compManagedObjectBoundaryVisibility: // ti=10 i0 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1), publie
 		consumeManagedObjectBoundaryVisibility(br)
 		return variant, nil, true
+	case compManagedObjectBoundaryColor: // ti=10 i1 (FUN_142ed52b4) — 4xR(8) RGBA, publie
+		consumeManagedObjectBoundaryColor(br)
+		return variant, nil, true
+	case compManagedObjectRTPC: // ti=10 i26..i29 (FUN_140796d38) — R(32) id [+R(22)], publie
+		consumeManagedObjectRTPC(br)
+		return variant, nil, true
+	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
+		consumeNavpointRadialProgress(br)
+		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
 		consumeDevicePosition(br)
 		return variant, nil, true

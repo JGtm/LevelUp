@@ -46,6 +46,11 @@ var worldObjectPrecisionReaders = map[string]string{
 		"pose les largeurs de la carte du match et rend la restauration",
 	"internal/analysis/replay/build.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +
 		"`installWorldObjectPrecision` depuis `Options.MapQuant`, sous le verrou de décodage",
+	"internal/analysis/replay/build_ground_weapons.go": "2026-08-17 (correctif de revue du " +
+		"lot des socles) : le décodage `ti=42` est SOUS les largeurs que `BuildFromFilm` a " +
+		"installées juste avant — il ne les pose pas, il en dépend, et son commentaire le dit " +
+		"en citant l'installateur. Il pose en revanche les largeurs du bloc MPP " +
+		"(`gwInstallMPPWidths`), qui sont un AUTRE global et qu'il restaure lui-même",
 }
 
 // TestWorldObjectPrecisionReadersAreAllowlisted balaie les sources de production d'apps/go-api.
