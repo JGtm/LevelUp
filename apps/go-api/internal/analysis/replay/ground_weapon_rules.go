@@ -154,7 +154,7 @@ func gwPadsClusterAssign(app []gwPadApparition) ([]gwPadCluster, []int) {
 			if out[i].Kind != a.Kind || out[i].Family != a.Family {
 				continue
 			}
-			d := gwPadsDist(out[i].X, out[i].Y, out[i].Z, a.X, a.Y, a.Z)
+			d := dist3([3]float32{out[i].X, out[i].Y, out[i].Z}, [3]float32{a.X, a.Y, a.Z})
 			if d <= gwPadRadiusM && d < bestD {
 				best, bestD = i, d
 			}
@@ -329,7 +329,7 @@ func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) string {
 			if equipTimeGap(a.TUS, v.to) > originDropWindowUS {
 				continue
 			}
-			if gwPadsDist(a.X, a.Y, a.Z, v.x, v.y, v.z) < originDropMaxDist {
+			if dist3([3]float32{a.X, a.Y, a.Z}, [3]float32{v.x, v.y, v.z}) < originDropMaxDist {
 				return gwClassDropped
 			}
 		}
@@ -358,9 +358,4 @@ func gwPadsWeaponFamily(w uint32) string {
 		return n
 	}
 	return fmt.Sprintf("0x%08x", w)
-}
-
-func gwPadsDist(ax, ay, az, bx, by, bz float32) float64 {
-	dx, dy, dz := float64(ax-bx), float64(ay-by), float64(az-bz)
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }

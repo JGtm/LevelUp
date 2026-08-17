@@ -225,9 +225,10 @@ func origineVieDe(vs []origineVie, at uint64) (origineVie, bool) {
 	return best, true
 }
 
+// origineDist : un ADAPTATEUR de types vers la distance canonique du paquet, jamais une seconde
+// ecriture de la formule (garde-rail `TestUneSeuleFormuleDeDistance3D`).
 func origineDist(p filmdec.EquipmentPlacement, x, y, z float32) float64 {
-	dx, dy, dz := float64(p.X-x), float64(p.Y-y), float64(p.Z-z)
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{x, y, z})
 }
 
 // origineDistribution publie la distribution par famille, avec ses denominateurs, et une
