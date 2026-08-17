@@ -8494,6 +8494,8 @@ export interface components {
             gaps: number;
             /** Format: float */
             medianS: number;
+            /** Format: int64 */
+            missing: number;
             /** Format: float */
             p10S: number;
             /** Format: float */

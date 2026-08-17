@@ -598,8 +598,11 @@ func renderGroundWeapons(p func(string, ...any), doc ReplayDocument) {
 	for i, pad := range doc.WeaponPads {
 		cycle := "non etabli"
 		if pad.Cycle != nil {
-			cycle = fmt.Sprintf("%.1f s (p10 %.1f · p90 %.1f · %d ecarts)",
-				pad.Cycle.MedianS, pad.Cycle.P10S, pad.Cycle.P90S, pad.Cycle.Gaps)
+			// LES DEUX MOITIES DU DENOMINATEUR SONT FIGEES : les ecarts MESURES et ceux que le
+			// socle offrait sans qu on puisse les prendre (disparition precedente non datee).
+			cycle = fmt.Sprintf("%.1f s (p10 %.1f · p90 %.1f · %d ecarts mesures, %d manques)",
+				pad.Cycle.MedianS, pad.Cycle.P10S, pad.Cycle.P90S, pad.Cycle.Gaps,
+				pad.Cycle.Missing)
 		}
 		p("  socle %d %s pos=(%.2f, %.2f, %.2f) apparitions=%v cycle=%s",
 			i, pad.Weapon, pad.X, pad.Y, pad.Z, pad.Spawns, cycle)

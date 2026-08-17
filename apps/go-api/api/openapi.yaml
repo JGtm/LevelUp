@@ -17976,6 +17976,9 @@ components:
         medianS:
           format: float
           type: number
+        missing:
+          format: int64
+          type: integer
         p10S:
           format: float
           type: number
@@ -17987,6 +17990,7 @@ components:
         - p10S
         - p90S
         - gaps
+        - missing
       type: object
     PadPickup:
       additionalProperties: false

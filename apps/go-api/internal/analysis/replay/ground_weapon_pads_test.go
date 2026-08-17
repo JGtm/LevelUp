@@ -158,6 +158,33 @@ func TestBuildWeaponPadsPublieLeCycleQuandIlEstEtabli(t *testing.T) {
 	if cov.Cycles != 1 {
 		t.Fatalf("1 cycle etabli attendu a la couverture, %d", cov.Cycles)
 	}
+	// Les quatre occupations sont datees sauf la derniere (encore recensee) : les trois ecarts
+	// se mesurent tous, aucune occasion n'est perdue.
+	if c.Missing != 0 {
+		t.Fatalf("aucun ecart manquant attendu, %d : %+v", c.Missing, c)
+	}
+}
+
+// TestBuildWeaponPadsPublieLesEcartsQU_ILN_APASPUPRENDRE : LE DENOMINATEUR DU CYCLE, EN ENTIER.
+//
+// Un socle occupe quatre fois offre TROIS ecarts. Si l'une des disparitions n'est pas datee
+// (personne n'est passe a moins de 1,5 m dans l'intervalle borne), la reapparition qui suit ne
+// donne pas d'ecart. Publier « 2 ecarts » sans dire qu'un troisieme a ete perdu fait lire une
+// confiance que la mesure n'a pas — c'est le correctif de revue du 2026-08-17.
+func TestBuildWeaponPadsPublieLesEcartsQuIlNAPasPuPrendre(t *testing.T) {
+	scan, _ := gwTestPadScan(t)
+	// Le joueur ne passe plus pres du socle apres la DEUXIEME occupation : sa disparition
+	// reste bornee sans etre datee, et l'ecart qui la suivait est perdu.
+	pos := gwTestPositions([]uint64{25_000_000, 65_000_000}, 10, 10)
+	pads, _, _ := buildWeaponPads(scan, pos, gwTestClock())
+	if len(pads) != 1 || pads[0].Cycle == nil {
+		t.Fatalf("1 socle a cycle etabli attendu : %+v", pads)
+	}
+	c := pads[0].Cycle
+	if c.Gaps != 2 || c.Missing != 1 {
+		t.Fatalf("2 ecarts mesures et 1 manque attendus, obtenu %+v — sans `missing`, un cycle"+
+			" sur 2 ecarts pour 4 occupations se lit comme 2 sur 2", c)
+	}
 }
 
 // TestBuildWeaponPadsTaitUnCycleInstable : le seuil de la decision 3 ne se contourne pas au
