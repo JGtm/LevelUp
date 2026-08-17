@@ -12,7 +12,7 @@ réfuté. Ce qui reste à faire ou à terminer n'est pas ici mais à la racine d
 
 | Dossier | Contenu | Fichiers |
 |---|---|---|
-| `film_re/` | Format du film Theater : grammaire, chunks, décodeur ECS, keyframes, RE Ghidra, handoffs externes | 15 |
+| `film_re/` | Format du film Theater : grammaire, chunks, décodeur ECS, keyframes, RE Ghidra, handoffs externes | 25 |
 | `killweapon/` | Arme / source de dégât par kill : kill feed, dead-state, same-clock, walk biped, journal RE | 22 |
 | `replay2d/` | POC du rejeu 2D puis ses chantiers : trajectoires, inventaire/loadout, vérité terrain, plans de lots | 42 |
 | `cartes/` | Géométrie 2D des maps depuis les `.module`, triangles, noms de zones | 3 |
@@ -88,6 +88,11 @@ sept grandeurs de non-régression des trois films, encore citées comme gate par
 
 - **Arme par kill** : `../README_KILLWEAPON_INDEX.md` (index maître, à greper en premier),
   puis `killweapon/RE_LOG_KILLWEAPON.md` (journal, ne jamais le lire par le haut).
+- **Grammaire ECS (archétype × composant)** : la table de référence est
+  `apps/go-api/internal/analysis/filmdec/testdata/ecs_table.tsv` (1 067 couples du registre du
+  film + 14 alias ; statut de portage, niveau, source `fichier:ligne`, deser, champ du document),
+  tenue par les garde-rails G1-G3 de `filmdec/ecs_table_guard_test.go`. Le plan qui l’a produite
+  et la vérification de l’inventaire qui l’a précédée : `film_re/PLAN_TABLE_ECS.md`.
 - **Format du film** : `film_re/GRAMMAIRE_RECORD_FILM.md` puis
   `film_re/RECETTE_DECODAGE_FILM_CHUNKS.md`.
 - **Reverse externe / handoff** : `film_re/HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md`,
