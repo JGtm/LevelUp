@@ -210,6 +210,14 @@ sorties collees au journal §10), tous les items statues, plan mis a jour, commi
 - [x] 1.6 Sous-section « IMAGE-CLE — file par entite » ecrite dans
       `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` (>= 10 adresses distinctes citees).
       Aucune adresse en dur cote Go.
+- [x] 1.7 **AJOUT du superviseur (2026-08-17, apres la cloture)** : puisque le JEU ne relit
+      jamais le payload type-2, la question devient « qui l'ECRIT ». Recherche BORNEE a
+      trois sondes chaines/xrefs — toutes negatives, consignees au journal RE §5 : une
+      seule chaine `saved_games` dans tout le binaire (le site d'allocation du LECTEUR,
+      `0x143ddb470`, xref unique) ; une seule chaine `FilmBlock*` (`FilmBlockReadError`,
+      cote lecture) ; l'encodeur de snapshot `FUN_142f2e174` n'a aucun appel direct (case
+      de vtable `0x1436a87f0` seulement). **Le chemin d'ECRITURE des chunks n'est pas dans
+      ce binaire par la voie chaines/xrefs.** Fil borne et ferme, comme demande.
 
 **Gate 1** (a executer et coller au journal) :
 
@@ -222,30 +230,76 @@ grep -c "FUN_142f29538\|FUN_142f2913c\|FUN_1432fe23c\|FUN_142f25334" .ai/V7.5/ki
 Critere : les 4 adresses du couple producteur/consommateur citees, la question 1.3 tranchee
 par ecrit, le compte d'adresses distinctes en hausse.
 
-### Phase 2 — PORTER et PROUVER : reconciliation (C0) puis marche (C1, C2)
+### Phase 2 — PORTER et PROUVER : reconciliation (C0) puis marche (C1, C2) — CLOSE le 2026-08-17, **C1 NEGATIF MESURE**
 
-- [ ] 2.1 `filmdec/keyframe_entity_queue.go` ECRIT : le modele d'item de la file (struct
-      documentee, portee depuis la decompile) et **`FindPacketByPayload`** — la
-      reconciliation d'un tampon capture avec un paquet de film, par `WalkPackets`. Il
-      REUTILISE `WalkPackets` / `ReadFilmChunk` ; aucun deser recopie ; aucune adresse en
-      dur.
-- [ ] 2.2 **C0 mesure** : `keyframe_buffer_live.bin` et `kf_slot0_live.bin` reconcilies —
-      type de paquet, rang, taille, et film si le cache le contient. Le negatif « film
-      absent du cache » est un resultat acceptable ET publiable, a condition de publier la
-      preuve structurelle (prefixe commun + rang du paquet) et le denominateur du balayage.
-- [ ] 2.3 **C1 mesure** : `DecodeFrameRecords` sur le PREMIER paquet type-0 de chaque film
-      oracle. Publier PAR FILM : nombre de records, NEW / DEL / DELTA, bits consommes /
-      bits du paquet, cause d'arret nommee.
-- [ ] 2.4 **C2 mesure** : liste des `typeIndex` lies par des NEW PROPRES, avec le compte
-      par archetype et la presence ou l'absence de `ti=37`, `ti=42`, `ti=11`. Contre-liste :
-      les `ti` que `WalkKeyframeWorld` rend sur le payload type-2 du meme film.
-- [ ] 2.5 **H2 mesure (gratuite, tant qu'on y est)** : distribution des mots de 32 bits a
-      `+32` sur les ancres du payload type-2 et distribution des ecarts entre ancres
-      modulo 8. Conclusion ecrite : bitstream ou table d'octets.
-- [ ] 2.6 Instrument versionne `filmdec/keyframe_entity_queue_test.go`, garde
-      `KFQ_FILM` (SKIP verifie sans la variable), lecture seule, aucune ecriture disque.
-- [ ] 2.7 Les deux outils de reconnaissance jetables du §2.2 sont SUPPRIMES ou remplaces par
-      l'instrument versionne (regle 7 : zero code mort, zero sonde jetable qui survit).
+- [x] 2.1 `filmdec/keyframe_entity_queue.go` ECRIT (fichier NEUF, a moi) :
+      `FindPacketByPayload` / `FindPacketByPrefix` (reconciliation par `WalkPackets`),
+      `FirstPacketOfType` / `AllPacketsOfType`, `KFQVariant` + `KFQWalk` +
+      `WalkPacketRecords(WithWorld)` + `BestVariant` (marche mesuree), et
+      `MeasureKeyframeAnchors` (forme des ancres type-2). Il REUTILISE
+      `DecodeFrameRecords`, `WalkKeyframeWorld`, `WorldFromKeyframe`, `WalkPackets`,
+      `ReadFilmChunk` — **aucun deserialiseur recopie, aucune adresse de binaire cablee**.
+      La structure d'item de la file est documentee dans le journal RE, PAS en Go : une
+      struct sans lecteur serait du code mort (anti-patron n°1).
+- [x] 2.2 **C0 mesure — negatif sur l'identification, POSITIF sur la structure.**
+      Coincidence EXACTE de `keyframe_buffer_live.bin` (11 485 o) sur les **951 films** du
+      cache : **0 paquet** — le film de la capture live de juillet n'est pas cache. La
+      reconciliation STRUCTURELLE, elle, est nette : coincidence de PREFIXE (16 octets) =
+      **949 paquets sur 951 films, `par type map[0:949]`, `par rang map[8:949]`**. Autrement
+      dit : le tampon capture est le PREMIER PAQUET DELTA d'une session, et cette forme est
+      universelle. Sortie exacte au journal §10.
+- [x] 2.3 **C1 mesure — ECHOUE, largement.** `DecodeFrameRecords` sur le PREMIER paquet
+      type-0, **30 combinaisons de cadre** probees par film (largeur d'id 10..14 x amorce
+      0/1/2 x prologue de mode film present/absent), **6 films** :
+
+      | film | paquet type-0 #8 | meilleure couverture | combinaison retenue | NEW propres |
+      |---|---|---|---|---|
+      | `000d5950` | 9 297 o (74 376 bits) | **0,33 %** (243 bits) | idLow 12, amorce 2, extra=non | 1 (`ti=43`) |
+      | `00502e52` | 11 312 o (90 496 bits) | **2,75 %** (2 487 bits) | idLow 12, amorce 2, extra=non | 0 |
+      | `07aa428d` | 11 066 o (88 528 bits) | **2,84 %** (2 511 bits) | idLow 12, amorce 2, extra=non | 0 |
+      | `64e8adfa` | 7 286 o (58 288 bits) | **3,22 %** (1 877 bits) | idLow 12, amorce 2, extra=non | 0 |
+      | `530820e5` | 7 286 o (58 288 bits) | **3,22 %** (1 877 bits) | idLow 12, amorce 2, extra=non | 0 |
+      | `0014603f` | 8 514 o (68 112 bits) | **0,34 %** (233 bits) | idLow 11, amorce 2, extra=non | 1 (`ti=21`) |
+
+      Seuil C1 = 95 % ; plafond mesure **3,22 %**. Le prologue de mode film
+      (`HasExtraFields` : `R(32)` par iteration + `R(1)[+R(8)]` avant NEW/DEL, lu dans
+      `FUN_1406cd128` sous `FUN_14076cea8()`) n'ameliore RIEN : il etait deja porte par
+      `frame_records.go` derriere ce drapeau, et il est probe ici dans les deux positions.
+      **Correction d'instrument faite en cours de mesure** : une combinaison peut lire
+      AU-DELA de la fin du tampon (le `BitReader` rend des zeros passe la fin) et remporter
+      le balayage avec une « couverture » absurde — mesure du 2026-08-17 sur `0014603f` :
+      **12 317 %**. Le drapeau `KFQWalk.Overrun` disqualifie ces marches ; les six chiffres
+      ci-dessus sont post-correction.
+- [x] 2.4 **C2 mesure.** Cote marche : 1 seul `ti` lie proprement par film au mieux
+      (`ti=43` sur `000d5950`, `ti=21` sur `0014603f`), donc `ti=37` / `ti=42` / `ti=11`
+      **ABSENTS** — consequence directe de C1, pas une information sur le contenu du paquet.
+      **Contre-liste INDEPENDANTE** (balayeur de la table type-2, chaine disjointe), et elle
+      est instructive : **chaque chunk porte SA table type-2** (26 sur `000d5950`, une par
+      chunk), et son contenu CROIT avec le match — `000d5950` chunk_01 : 123 records /
+      13 archetypes, `ti=37` x0, `ti=42` x0 ; chunk_02 : 294 / 25, `ti=37` x10, `ti=42` x4 ;
+      chunk_13 : 323 / 25, `ti=37` x29, `ti=42` x17. `ti=11` : **x0 partout sur `000d5950`**
+      (film sans objectif, temoin negatif attendu) ; **x5 sur CHAQUE table des deux films
+      CTF** (`64e8adfa`, `530820e5`) — les 5 slots que R4 avait mesures. `ti=42` : x4 a x21
+      sur `000d5950`, **x0 sur `00502e52` et `07aa428d`**.
+- [x] 2.5 **H2 mesure — REFUTEE dans sa lecture « table d'octets ».** Ecarts entre ancres
+      consecutives de la table type-2, modulo 8 : `000d5950` chunk_01 — **1 ecart sur 122**
+      est un multiple de 8, et 9 ancres sur 123 sont alignees sur l'octet ; `07aa428d`
+      chunk_01 — 28 sur 291, et 45 ancres sur 292. Une table d'octets donnerait 100 %.
+      **C'est donc bien un bitstream.** La quantification de R5 est confirmee sur une
+      seconde chaine : **12 valeurs d'ecart distinctes sur 122** (`000d5950`), 39 sur 291
+      (`07aa428d`).
+- [x] 2.6 Instrument versionne `filmdec/keyframe_entity_queue_test.go` (3 tests), gardes
+      `KFQ_FILM` / `KFQ_ROOT` + `KFQ_DUMP`, **3 SKIP verifies sans les variables**, lecture
+      seule, aucune ecriture disque.
+- [x] 2.7 Les trois outils de reconnaissance jetables n'ont JAMAIS ete versionnes : ils ont
+      vecu dans le repertoire de brouillon de session (hors depot) et sont remplaces, un
+      pour un, par les fonctions de `keyframe_entity_queue.go`. `git status` du worktree ne
+      montre aucun fichier de sonde.
+
+**H4 TESTEE ET REFUTEE, gratuitement** : rejouer les 30 combinaisons avec le World
+PRE-PEUPLE par `WorldFromKeyframe` (table type-2 du meme film) donne **exactement la meme
+couverture** (0,33 % / 2,75 % / 2,84 %). Le premier paquet type-0 ne bute pas sur un World
+vide.
 
 **Gate 2** :
 
@@ -262,62 +316,87 @@ Critere de passage : C0 tranche (identification OU negatif publie) ET C1/C2 mesu
 leurs denominateurs PAR FILM. **Le gate passe aussi par le negatif** : si C1 echoue, la
 phase publie le taux reel et la cause, et les phases 3-5 sont statuees `[!]`.
 
-### Phase 3 — `ti=37` : le corps complet de l'equipement
+### Phase 3 — `ti=37` : le corps complet de l'equipement — `[!]` NON OUVERTE, CONDITION NON REMPLIE
 
-Condition d'ouverture : C1 passe ET `ti=37` present dans C2.
+Condition d'ouverture ecrite : « C1 passe ET `ti=37` present dans C2 ». C1 plafonne a 2,84 %
+pour un seuil de 95 % (phase 2, item 2.3), et aucun `ti=37` n'est lie proprement. La phase
+lirait le corps de records dont la marche ne tient pas : elle produirait des valeurs
+inverifiables — exactement l'erreur payee le 2026-08-12 sur les armes au sol.
 
-- [ ] 3.1 Les records NEW `ti=37` du premier paquet type-0 releves : compte par film, slots,
-      et longueur de traversee.
-- [ ] 3.2 Les 4 `R(32)` publies par R3 relus sur ces records, avec leur stabilite par slot.
-- [ ] 3.3 Preuve independante : les slots `ti=37` trouves ici recoupent ceux que
-      `WalkKeyframeWorld` rend sur le payload type-2 du meme film. Denominateur publie.
-- [ ] 3.4 Verdict ecrit (positif ou negatif mesure).
+- [!] 3.1 Records NEW `ti=37` du premier paquet type-0 — **non releves** : la marche ne
+      depasse pas 3 records. Ce que le lot mesure a la place, et qui est publie : la
+      contre-liste type-2 (item 2.4) donne `ti=37` x10 a x29 selon le chunk sur `000d5950`,
+      x11 sur `00502e52` chunk_02, x13 sur `07aa428d` chunk_02.
+- [!] 3.2 Les 4 `R(32)` de R3 relus — sans objet, aucun record `ti=37` atteint.
+- [~] 3.3 Recoupement des slots avec `WalkKeyframeWorld` — **couvert par l'item 2.4**, qui
+      publie la contre-liste par chunk. Le recoupement lui-meme est sans objet (rien a
+      recouper cote marche).
+- [x] 3.4 **Verdict ecrit** : `ti=37` reste lisible UNIQUEMENT par la voie R3 (ancres de la
+      table type-2 + marche partielle du corps), inchangee par ce lot. Le premier paquet
+      type-0 n'offre PAS d'entree alternative tant que la marche sequentielle bute.
 
-**Gate 3** : les 4 commandes de build/vet/gofmt/test du gate 2, plus la commande d'instrument
-`KFQ_FILM=<film> go test ./internal/analysis/filmdec/ -run '^TestKFQTi37' -v`.
+**Gate 3 : SANS OBJET.** La phase n'a pas ete ouverte ; aucun fichier `*_ti37*` cree.
 
-### Phase 4 — `ti=42` : la position des armes au sol
+### Phase 4 — `ti=42` : la position des armes au sol — `[!]` NON OUVERTE, CONDITION NON REMPLIE
 
-Condition d'ouverture : C1 passe ET `ti=42` present dans C2.
+Meme cause que la phase 3.
 
-- [ ] 4.1 `filmdec/keyframe_entity_queue_ti42.go` — lecture des positions sur les records NEW
-      `ti=42` propres du premier paquet type-0. Reutilise `consumeDefaultStateTI42` (R5).
-- [ ] 4.2 C3 mesure : emprise + bande fantome de meme cardinalite par le MEME code.
-- [ ] 4.3 Verdict ecrit sur les 55 % de positions fantomes du 2026-08-12.
+- [!] 4.1 `filmdec/keyframe_entity_queue_ti42.go` — **non cree** (code mort, anti-patron n°1).
+- [!] 4.2 C3 (emprise + bande fantome) — sans objet : aucune position a encadrer.
+- [x] 4.3 **Verdict ecrit sur les 55 % de positions fantomes du 2026-08-12** : inchange, et
+      la condition de reprise du registre doit etre amendee une SECONDE fois. R5 l'avait
+      deja jugee insuffisante (« default-state de `ti=42` resolu » l'est, depuis le
+      2026-08-17, sans rien debloquer). R6 ajoute que la voie de contournement esperee — lire
+      `ti=42` dans le premier paquet type-0 — est **fermee par mesure** (2,84 % de
+      couverture au mieux). La contre-liste montre pourtant que la matiere existe :
+      `ti=42` x4 a x21 par chunk sur `000d5950`, mais **x0 sur `00502e52` et `07aa428d`** —
+      l'archetype n'est meme pas present dans la table type-2 de deux des trois films
+      oracles, ce qui est une information neuve pour qui reprendra le sujet.
 
-**Gate 4** : gate 2 + `KFQ_FILM=<film> go test ./internal/analysis/filmdec/ -run '^TestKFQTi42' -v`.
+**Gate 4 : SANS OBJET.**
 
-### Phase 5 — `ti=11` : l'objectif vivant
+### Phase 5 — `ti=11` : l'objectif vivant — `[!]` NON OUVERTE, avec sa mesure de contexte
 
-Condition d'ouverture : C1 passe ET `ti=11` present dans C2 (films `64e8adfa`, `530820e5`).
+Meme cause. La phase a neanmoins produit sa mesure de contexte, qui ne depend pas de C1.
 
-- [ ] 5.1 Portage MINIMAL des composants `ti=11` necessaires a `i5`, `i12`, `i13`, `i14` ;
-      les autres composants statues explicitement.
-- [ ] 5.2 `filmdec/keyframe_entity_queue_ti11.go` — lecture des 4 champs.
-- [ ] 5.3 C4 mesure contre `objectiveevents.IdentifiedEvent` + le temoin negatif `0014603f`.
-- [ ] 5.4 Verdict ecrit.
+- [!] 5.1 Portage des composants `ti=11` — **non fait** : aucun point d'entree fiable.
+- [!] 5.2 `filmdec/keyframe_entity_queue_ti11.go` — **non cree** (code mort).
+- [x] 5.3 **Mesure de contexte EXECUTEE** (elle ne depend pas de C1) : contre-liste type-2
+      sur les deux films CTF et sur le temoin negatif. `64e8adfa` et `530820e5` portent
+      **`ti=11` x5 dans CHACUNE de leurs tables type-2** (les 5 slots de R4), `000d5950` et
+      `0014603f` x0 — le temoin negatif se comporte comme prevu. Les deux films CTF ont en
+      outre un premier paquet type-0 de **taille identique, 7 286 octets**, exactement la
+      taille de `kf_slot0_live.bin`. L'oracle `objectiveevents.IdentifiedEvent` reste intact
+      et disponible : c'est l'objet a confronter qui manque, pas le temoin.
+- [x] 5.4 **Verdict ecrit** : la condition de reprise de R4 (« la grammaire du corps d'un
+      record d'image-cle ») est desormais **REMPLACEE**, pas precisee : le jeu ne relit
+      jamais ce corps (phase 1), donc il n'y a pas de grammaire a retrouver par lecture du
+      lecteur. Ce qui reste est nomme en §11.
 
-**Gate 5** : gate 2 + `KFQ_FILM=<film> go test ./internal/analysis/filmdec/ -run '^TestKFQTi11' -v`.
+**Gate 5** : execute sur son perimetre reel (mesure de contexte), commandes au journal §10.
 
-### Phase 6 — PUBLIER dans l'artefact, et noter la bosse
+### Phase 6 — PUBLIER dans l'artefact, et noter la bosse — `[!]` RIEN A PUBLIER
 
-- [ ] 6.1 Assemblage `replay/` — SEULEMENT si au moins un controle C3/C4 est passe.
-- [ ] 6.2 Champ optionnel sur `ReplayDocument` — **AUCUNE bosse de `SchemaVersion` dans ce
-      lot**. Le champ ajoute (le cas echeant) et la raison pour laquelle il EXIGERA une
-      bosse a la fusion sont ECRITS ici, pour le superviseur.
-- [ ] 6.3 Contrat OpenAPI / `generated.ts` / normalisation web : sans objet si aucun champ ne
-      traverse ; a verifier explicitement et a statuer.
+La regle de non-publication du §1.1 s'applique telle qu'elle a ete ecrite : aucun controle de
+donnee (C3, C4) n'est passe.
 
-**Gate 6** : gate 2 + `grep -n "SchemaVersion" internal/analysis/replay/document.go` (doit
-toujours rendre 8) + `git diff --stat` sur `apps/web/` (doit etre vide).
+- [!] 6.1 Assemblage `replay/` — **non cree**.
+- [x] 6.2 **Note de bosse : ce lot ne demande AUCUNE bosse de `SchemaVersion`.** Il n'ajoute
+      aucun champ au document ; `SchemaVersion` reste a 8. Information utile au superviseur
+      a la fusion : R3 peut en demander une pour son compte, R4, R5 et R6 non.
+- [x] 6.3 Contrat OpenAPI / `generated.ts` / normalisation web : **sans objet, verifie** —
+      aucun fichier de `internal/analysis/replay/` ni de `apps/web/` n'est touche par ce lot
+      (`git diff --stat` au journal §10).
 
-### Phase 7 — CLORE
+**Gate 6** : execute, sorties au journal §10.
 
-- [ ] 7.1 Toutes les cases des phases 1 a 6 statuees, aucune vide.
-- [ ] 7.2 Lignes de registre redigees en une seule fois (§11), neuves ET a amender.
-- [ ] 7.3 Entree `thought_log.md` redigee (§12) et remise au superviseur — ce lot n'ecrit PAS
+### Phase 7 — CLORE — CLOSE le 2026-08-17
+
+- [x] 7.1 Toutes les cases des phases 1 a 6 sont statuees, aucune vide.
+- [x] 7.2 Lignes de registre redigees en une seule fois (§11), neuves ET a amender.
+- [x] 7.3 Entree `thought_log.md` redigee (§12) et remise au superviseur — ce lot n'ecrit PAS
       dans le journal.
-- [ ] 7.4 Rapport final rendu, avec denominateurs, gates executes et ce qui reste.
+- [x] 7.4 Rapport final rendu, avec denominateurs, gates executes et ce qui reste.
 
 ---
 
@@ -388,6 +467,32 @@ gate passe + items statues + plan a jour + commit + push + point d'etape.
 - (reconnaissance) Le pont `mcp__ghidra__*` ne se connecte plus : l'instance UDS se declare
   `unknown` et `connect_instance` refuse tout repli TCP. Contournement en place (HTTP direct,
   lecture seule). A traiter hors lot.
+- **(phase 2) LE LEVIER NON CONSOMME, et c'est le meilleur du dossier.**
+  `.ai/V7.5/dumps/kf_capture_sample.txt` porte **400 frontieres de records EXACTES**
+  (266 NEW + 134 DELTA) avec leur BIT DE DEPART, sur un vrai paquet, dont le tampon est
+  `kf_slot0_live.bin` (7 286 o). C'est un **oracle de LARGEUR par archetype** : pour chaque
+  record on connait le bit de debut ET le bit de fin, donc la longueur exacte que l'etat par
+  defaut + les composants doivent consommer. Aucun lot ne l'a jamais utilise pour CALIBRER
+  les etats par defaut, alors que c'est precisement ce qui manque depuis juillet. Largeurs
+  lisibles directement dans la capture : 275 bits (le mode), 321, 60, 32, 25.
+  NE PAS traiter ici — c'est le lot suivant, et il a son oracle.
+- **(phase 2) Les deux films CTF ont un premier paquet type-0 de taille IDENTIQUE**
+  (7 286 octets, `64e8adfa` et `530820e5`), qui est exactement la taille de
+  `kf_slot0_live.bin`. La taille du premier paquet delta semble donc dictee par la CARTE et
+  le MODE, pas par le match. NE PAS traiter ici.
+- **(phase 2) Chaque chunk d'un film porte SA table type-2**, et son contenu croit avec le
+  match (123 records au chunk_01, ~320 en milieu de match). Le depot parlait d'« une
+  image-cle par film » ; c'est faux, il y en a une par chunk (26 sur `000d5950`).
+  NE PAS traiter ici, mais toute mesure future doit publier DE QUEL chunk elle parle.
+- **(phase 2) `ti=42` est absent des tables type-2 de deux des trois films oracles**
+  (`00502e52` et `07aa428d` : x0 ; `000d5950` : x4 a x21 selon le chunk). Un lot qui
+  reprend les armes au sol doit choisir son corpus en consequence. NE PAS traiter ici.
+- **(phase 2) Bug d'instrument generique, a connaitre** : `DecodeFrameRecords` ne s'arrete
+  PAS a la fin du tampon — le `BitReader` rend des zeros passe la fin et la boucle continue.
+  Tout balayage de combinaisons qui classe par « bits consommes » doit disqualifier les
+  marches qui debordent, sinon une combinaison absurde gagne (mesure : 12 317 % de
+  couverture sur `0014603f`). Corrige DANS MON fichier (`KFQWalk.Overrun`) ; le fichier
+  partage `frame_records.go` n'est PAS touche (hors perimetre).
 
 ## 10. Journal d'execution
 
@@ -424,15 +529,120 @@ grep -c "FUN_142f29538\|FUN_142f2913c\|FUN_1432fe23c\|FUN_142f25334" .ai/V7.5/ki
 ```
 
 Critere (section presente, > 62 adresses distinctes, les 4 adresses du couple citees,
-question 1.3 tranchee par ecrit) : REMPLI — 90 adresses distinctes, 62 avant ce lot.
+question 1.3 tranchee par ecrit) : REMPLI — 90 adresses distinctes, 62 avant ce lot
+(98 apres l'ajout 1.7).
+
+**2026-08-17 — Phase 2 CLOSE PAR LE NEGATIF sur C1 (le plan prevoyait les deux issues).**
+
+C0 — reconciliation, sortie exacte de l'instrument :
+
+```
+CGO_ENABLED=0 KFQ_ROOT=<repo>/data/cache/film_chunks \
+  KFQ_DUMP=.ai/V7.5/dumps/keyframe_buffer_live.bin \
+  go test ./internal/analysis/filmdec/ -run '^TestKFQReconcile$' -timeout 60m -v
+
+  dump keyframe_buffer_live.bin : 11485 octets ; denominateur : 951 entrees
+  coincidence EXACTE : 0 paquet(s)
+  coincidence de PREFIXE (16 octets) : 949 paquet(s) ; par type map[0:949] ; par rang map[8:949]
+  --- PASS: TestKFQReconcile (550.00s)
+```
+
+C1 / C2 / H4 — six films, 30 combinaisons de cadre chacun (tableau a l'item 2.3).
+Plafond de couverture **3,22 %** pour un seuil de 95 %. Le World pre-peuple par
+`WorldFromKeyframe` ne change RIEN sur aucun des six films (H4 refutee).
+
+H2 — forme des ancres de la table type-2 :
+
+```
+CGO_ENABLED=0 KFQ_FILM=<film> go test ./internal/analysis/filmdec/ -run '^TestKFQAnchorShape$' -v
+  000d5950 chunk_01 : 123 ancres, 9 alignees octet, ecarts mod 8 = map[0:1 1:33 2:4 3:32 4:51 5:1],
+                      12 valeurs d'ecart distinctes sur 122
+  07aa428d chunk_01 : 292 ancres, 45 alignees octet, ecarts mod 8 = map[0:28 1:34 2:3 3:43 4:103 5:16 6:32 7:32],
+                      39 valeurs distinctes sur 291
+```
+
+**GATE 2 : PASSE PAR LE NEGATIF.** Commandes et sorties :
+
+```
+gofmt -l internal/analysis/filmdec/                             (vide)
+CGO_ENABLED=0 go build ./internal/analysis/...                  BUILD_EXIT=0
+CGO_ENABLED=0 go vet   ./internal/analysis/filmdec/             VET_EXIT=0
+CGO_ENABLED=0 go test  ./internal/analysis/filmdec/ ./internal/analysis/replay/
+    ok levelup/go-api/internal/analysis/filmdec  37.704s
+    ok levelup/go-api/internal/analysis/replay   34.532s        TEST_EXIT=0
+CGO_ENABLED=0 go test  ./internal/analysis/filmdec/ -run '^TestKFQ' -v
+    --- SKIP: TestKFQReconcile / TestKFQFirstDelta / TestKFQAnchorShape   (3 SKIP, garde OK)
+```
+
+**GATE 6 (perimetre) : PASSE.**
+
+```
+git diff --stat ffc465336 -- apps/web/                          (vide)
+git diff --stat ffc465336 -- apps/go-api/internal/analysis/replay/   (vide)
+grep -n "SchemaVersion = " internal/analysis/replay/document.go -> 78: const SchemaVersion = 8
+```
 
 ## 11. Lignes de registre proposees
 
-(redigees en phase 7)
+A verser en une seule fois dans `.ai/V7.5/REGISTRE_REPORTS.md`. **Deux lignes NEUVES**, et
+**trois lignes a AMENDER** (dont une que R5 avait deja proposee d'amender : l'amendement
+change de nature).
+
+| sujet | lot / date | ce qui a ete mesure | condition de reprise |
+|---|---|---|---|
+| **[NEUF — il ferme le verrou de R5] Le jeu ne relit JAMAIS le payload type-2 d'un film : il le SAUTE** | lot R6, phase 1, 2026-08-17 | Etabli par LECTURE, et verifie au DESASSEMBLAGE. (1) `FUN_1428e22c0` est l'aiguillage par type de paquet du lecteur de film (`MOVSX EDX,word ptr [R8]` @`0x1428e22ca`, chaine `CMP 8 / TEST / SUB 1 / SUB 1 / SUB 4 / CMP 1`) : handlers pour les types 0, 1, 6, 7, 8, 9, 10, 11, 12 ; **le type 2 n'en a AUCUN** — il saute a `0x1428e2412` = `XOR SIL,SIL` (retour 0) + telemetrie `FilmBlockReadError`, comme les types 3, 4 et 5. (2) Et pourtant la lecture ne casse pas : `FUN_142989418` (handler du type 1) avance le curseur de la taille du type-1, **relit l'en-tete suivant (16 o) et avance encore le curseur de SA taille** — il saute donc le bloc type-2 avec lui. (3) La FILE PAR ENTITE n'est pas une transformation : l'item de 56 octets porte un handle vers une COPIE octet pour octet du tampon du paquet (`FUN_142f25334` = `memcpy` integral, chemin source `replication_entity_manager_view.cpp`), la longueur du tampon, l'id, **le BIT DE DEPART du record** (`item+0x2c`, pose dans le reader par `FUN_1432fe23c`) et le type ; le drain `FUN_142f2913c` rejoue le MEME `FUN_1406cbaa0`. Unique xref CODE du push : `0x1422f44fb`, dans `FUN_1406cd128`. **Consequence : la condition de reprise que R5 avait ecrite (« decompiler le consommateur du payload type-2 ») est SANS OBJET — il n'y a pas de consommateur** | condition de reprise : la grammaire du bloc type-2 ne s'obtiendra PAS par lecture d'un lecteur. Les deux voies restantes, dans l'ordre de cout : (a) par le CONTENU — la table est deja balayee a 249/250 entites contre un oracle Cheat Engine, et ses ecarts d'ancres sont fortement quantifies (12 valeurs distinctes sur 122 ecarts, `000d5950` chunk_01) ; (b) par l'ECRIVAIN, qui **n'est pas dans `HaloInfinite.exe`** : recherche bornee et negative (une seule chaine `saved_games` dans tout le binaire, celle du LECTEUR ; une seule chaine `FilmBlock*`, `FilmBlockReadError`, cote lecture ; l'encodeur `FUN_142f2e174` sans appel direct). **Et la vraie question a poser avant de reprendre : a quoi sert une table que le jeu n'ouvre jamais ?** |
+| **[NEUF] Le premier paquet type-0 ne se traverse pas non plus — et c'est LE MEME mur que partout** | lot R6, phase 2, 2026-08-17 | La capture live de juillet (`.ai/V7.5/dumps/keyframe_buffer_live.bin`, 11 485 o, deterministe entre deux lancements), etiquetee « keyframe » depuis, portait en realite sur le **PREMIER PAQUET DELTA** : ses 16 premiers octets (`88 00 15 84 00 2c 54 0c 61 c9 00 0b ff ff ff fc`) sont ceux du premier paquet de type 0 de chaque film, toujours au rang #8 d'un chunk. Coincidence EXACTE sur les **951 films** du cache : **0** — le film de la capture n'est pas cache. Mesure de la marche : `DecodeFrameRecords` sur ce premier paquet type-0, **30 combinaisons de cadre** (largeur d'id 10..14 x amorce 0/1/2 x prologue de mode film present/absent), **6 films** : 0,33 / 2,75 / 2,84 / 3,22 / 3,22 / 0,34 % des bits consommes (seuil 95 %, plafond mesure **3,22 %**), au mieux 1 seul `ti` lie proprement par film. H4 refutee : le World pre-peuple par `WorldFromKeyframe` donne EXACTEMENT la meme couverture. Le prologue de mode film (`R(32)` par iteration + `R(1)[+R(8)]` avant NEW/DEL, lu dans `FUN_1406cd128` sous `FUN_14076cea8()`) etait deja porte derriere `FrameConfig.HasExtraFields` et n'ameliore rien. H2 refutee dans sa lecture « table d'octets » : 1 ecart d'ancres sur 122 est multiple de 8 (`000d5950`), 28 sur 291 (`07aa428d`) — c'est bien un bitstream | condition de reprise : **le deserialiseur d'etat par defaut par archetype, bit-exact**. C'est le mur documente depuis juillet, et R6 etablit qu'il est LE MEME sur le premier paquet delta que partout ailleurs — il n'y a pas de porte derobee par l'image-cle. Levier disponible et non consomme : `.ai/V7.5/dumps/kf_capture_sample.txt` donne **400 frontieres de records EXACTES** (266 NEW + 134 DELTA, avec leur bit de depart) sur un vrai paquet, avec son tampon `kf_slot0_live.bin` — c'est un oracle de LARGEUR par archetype, jamais exploite pour calibrer les etats par defaut. Reproductible : `KFQ_FILM=<film> go test ./internal/analysis/filmdec/ -run '^TestKFQ' -v` |
+| **[A AMENDER — ligne « Calque drops / armes au sol du rejeu 2D », 2026-08-12]** | amendement lot R6, 2026-08-17 | R5 avait deja signale que la condition ecrite (« default-state de `ti=42` resolu ») etait REMPLIE et INSUFFISANTE. R6 ferme la voie de contournement esperee : lire `ti=42` dans le premier paquet type-0 est impossible aujourd'hui (2,84 % de couverture au mieux, mesure sur 30 combinaisons x 3 films). Information neuve utile : `ti=42` est present dans la table type-2 de `000d5950` (x4 a x21 selon le chunk) mais **x0 sur `00502e52` et `07aa428d`** — deux des trois films oracles n'en portent aucun | remplacer la condition par : « etat par defaut par archetype bit-exact (mur commun), OU evenements de cycle de vie d'entite decodes offline ». Retirer toute mention d'une voie « image-cle » : elle est fermee |
+| **[A AMENDER — ligne « objectifs vivants `ti=11` », lot R4]** | amendement lot R6, 2026-08-17 | La condition de reprise de R4 puis R5 (« la grammaire du CORPS d'un record d'IMAGE-CLE ») n'est pas « precisee », elle est **SANS OBJET** : le jeu ne relit jamais ce corps, il n'existe aucun lecteur a decompiler. Le verrou reel est le meme que pour tous les autres sujets : l'etat par defaut par archetype, bit-exact | remplacer par : « etat par defaut par archetype bit-exact ». L'oracle `objectiveevents.IdentifiedEvent` reste intact et disponible |
+| **[A AMENDER — ligne R5 « la grammaire du CORPS d'un record d'IMAGE-CLE »]** | amendement lot R6, 2026-08-17 | La condition de reprise ecrite par R5 (« decompiler le CONSOMMATEUR du payload type-2 ; la transformation payload -> file par-entite n'est identifiee nulle part ») est **executee et negative sur les deux termes** : il n'y a pas de consommateur (le lecteur saute le bloc), et la file n'est pas une transformation (copie du tampon + bit de depart). Le negatif de R5 (« le corps d'un record d'image-cle n'est pas un record NEW », 128 decalages x 16 lectures x 3 films) recoit ainsi son EXPLICATION : ces records ne sont relus par aucun deserialiseur du jeu | remplacer par la ligne NEUVE ci-dessus (« le jeu ne relit jamais le payload type-2 ») |
 
 ## 12. Entree `thought_log.md` proposee
 
-(redigee en phase 7)
+```
+## [2026-08-17] Lot R6 — la file par entite n'existe pas comme transformation, et le jeu
+ne relit jamais son image-cle
+
+Statut : Complete (negatif mesure sur les deux fronts, livrable).
+Branche : wt/kf-file-entite (worktree LevelUp-wt-kfqueue), 3 commits, pousses.
+
+DECISION TECHNIQUE. R5 avait laisse une condition de reprise precise : « decompiler le
+consommateur du payload type-2, qui alimenterait une file par-entite ». R6 l'a executee
+par LECTURE d'abord (Ghidra read-only, API HTTP du plugin, le pont MCP etant hors
+service), mesure ensuite. Les deux termes de la condition sont faux.
+
+RESULTATS OBSERVES.
+1. La file par-entite n'est PAS une transformation. Son item de 56 octets porte un handle
+   vers une COPIE octet pour octet du tampon du paquet (FUN_142f25334 = memcpy integral)
+   et le BIT DE DEPART du record (item+0x2c, pose dans le reader par FUN_1432fe23c). Le
+   drain FUN_142f2913c rejoue le MEME FUN_1406cbaa0 avec la MEME grammaire. Elle DIFFERE
+   des records, elle ne les reecrit pas.
+2. Le jeu ne relit JAMAIS le payload type-2. Verifie au desassemblage : FUN_1428e22c0 est
+   l'aiguillage par type de paquet, et le type 2 n'a aucun handler (XOR SIL,SIL +
+   telemetrie FilmBlockReadError). Il ne casse rien parce que FUN_142989418, le handler
+   du type 1, saute le payload type-1 PUIS relit l'en-tete suivant et saute son payload
+   avec — c'est-a-dire le bloc type-2. Cela EXPLIQUE le negatif de R5.
+3. La capture live de juillet, etiquetee « keyframe » depuis, portait sur le PREMIER
+   PAQUET DELTA : ses 16 premiers octets sont ceux du premier paquet type-0 de chaque
+   film (rang #8). Coincidence exacte sur les 951 films du cache : 0 (le film de la
+   capture n'est pas cache) ; mais la coincidence de PREFIXE (16 octets) rend 949 paquets
+   sur 951 films, TOUS de type 0 et TOUS au rang #8 — la reconciliation structurelle est
+   donc universelle.
+4. Ce premier paquet type-0 ne se traverse pas davantage : 30 combinaisons de cadre x
+   6 films, de 0,33 % a 3,22 % des bits consommes pour un seuil de 95 %. Le World
+   pre-peuple par la table type-2 ne change RIEN (H4 refutee). Le mur est donc le meme
+   partout : l'etat par defaut par archetype, bit-exact.
+5. L'ecrivain du bloc type-2 n'est pas dans HaloInfinite.exe : une seule chaine
+   saved_games dans tout le binaire (celle du LECTEUR), une seule chaine FilmBlock*
+   (FilmBlockReadError), l'encodeur FUN_142f2e174 sans appel direct. Fil borne, ferme.
+
+CONCLUSION / PROCHAINE ETAPE. Trois lots (R4, R5, R6) ont converge sur le meme verrou et
+R6 lui donne enfin son vrai nom : ce n'est pas « la grammaire de l'image-cle », c'est
+l'ETAT PAR DEFAUT PAR ARCHETYPE, bit-exact — le mur documente depuis juillet. Le levier
+disponible et jamais consomme est kf_capture_sample.txt : 400 frontieres de records
+EXACTES (266 NEW + 134 DELTA, avec leur bit de depart) sur un vrai paquet, avec son
+tampon kf_slot0_live.bin. C'est un oracle de LARGEUR par archetype. Rien n'est publie,
+SchemaVersion reste a 8.
+```
 
 ## 13. Protocole de reprise de session
 
