@@ -83,11 +83,21 @@ const NULLABLE_ARRAYS = [
   'loadouts',
   'neutralDeaths',
   'objectives',
+  // `padPickups` : les occupations de socle ACHEVÉES (schéma 11, 2026-08-17) — le socle s'est
+  // vidé quelque part dans [tLow, tHigh]. Un INTERVALLE, pas un instant : le film ne porte aucun
+  // événement de ramassage, et la seule preuve de disparition est le recensement des
+  // images-clés, espacé de ~20 s. `xuid` vaut TOUJOURS `null` (oracle à 79,7 %, seuil 90 %).
+  'padPickups',
   'projectiles',
   'roster',
   'shots',
   'structure',
   'tracks',
+  // `weaponPads` : les SOCLES D'ARME du match (schéma 11, 2026-08-17) — position, famille,
+  // apparitions, intervalles de présence bornés par les images-clés, et cycle de réapparition
+  // SEULEMENT s'il est établi. Par MATCH et non par carte : sur deux films de la même carte les
+  // socles tombent aux mêmes coordonnées au centimètre, mais l'arme qui y apparaît change.
+  'weaponPads',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */

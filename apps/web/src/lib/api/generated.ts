@@ -5369,6 +5369,7 @@ export interface components {
             equipment?: components["schemas"]["EquipmentCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
+            groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             shots: components["schemas"]["LayerCoverage"];
@@ -6371,6 +6372,39 @@ export interface components {
             x: number;
             /** Format: float */
             y: number;
+        };
+        GroundWeaponCoverage: {
+            /** Format: int64 */
+            accepted: number;
+            /** Format: int64 */
+            anchors: number;
+            /** Format: int64 */
+            atRest: number;
+            /** Format: int64 */
+            clusters: number;
+            /** Format: int64 */
+            cycles: number;
+            /** Format: int64 */
+            dated: number;
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            never: number;
+            /** Format: int64 */
+            occupancies: number;
+            /** Format: int64 */
+            pads: number;
+            /** Format: int64 */
+            rejected: number;
+            scanned: boolean;
+            /** Format: int64 */
+            slots: number;
+            /** Format: int64 */
+            spawned: number;
+            /** Format: int64 */
+            unknown: number;
         };
         Group: {
             created_at: string;
@@ -8455,6 +8489,33 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
+        PadCycle: {
+            /** Format: int64 */
+            gaps: number;
+            /** Format: float */
+            medianS: number;
+            /** Format: float */
+            p10S: number;
+            /** Format: float */
+            p90S: number;
+        };
+        PadPickup: {
+            /** Format: int64 */
+            pad: number;
+            /** Format: int64 */
+            tHigh: number;
+            /** Format: int64 */
+            tLow: number;
+            xuid: string | null;
+        };
+        PadPresence: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            tHigh: number;
+            /** Format: int64 */
+            tLow: number;
+        };
         PaginatedMatchHistoryResponse: {
             freshness?: components["schemas"]["FreshnessInfo"] | null;
             items: components["schemas"]["MatchHistoryRow"][];
@@ -9178,6 +9239,7 @@ export interface components {
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
             /** Format: int64 */
             originMs?: number;
+            padPickups?: components["schemas"]["PadPickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */
@@ -9190,6 +9252,7 @@ export interface components {
             weaponLabels?: {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
+            weaponPads?: components["schemas"]["WeaponPad"][] | null;
         };
         ResolveResult: {
             action: string;
@@ -11015,6 +11078,18 @@ export interface components {
             key?: string;
             tint?: string;
             tinted?: boolean;
+        };
+        WeaponPad: {
+            cycle?: components["schemas"]["PadCycle"];
+            presence: components["schemas"]["PadPresence"][] | null;
+            spawns: number[] | null;
+            weapon: string;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
         };
         WinLossPoint: {
             /** Format: int64 */

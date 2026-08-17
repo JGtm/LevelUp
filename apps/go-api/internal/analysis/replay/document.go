@@ -102,7 +102,25 @@ package replay
 // où début et fin se confondent — le mode n'existe pas. Le témoin interne est dans la même
 // mesure : distance médiane de la pose à la position de DÉBUT de vie 27,03 m, à celle de FIN
 // 0,57 m, soit un facteur 47,5 sur les mêmes poses.
-const SchemaVersion = 10
+//
+// v11 (2026-08-17, plan PLAN_ARMES_AU_SOL_2E_LECTURE phase 3) : le document publie
+// `weaponPads` — les SOCLES D'ARME du match, avec leurs apparitions, leurs intervalles de
+// présence bornés par le recensement des images-clés et leur cycle de réapparition quand il est
+// établi — et `padPickups`, les occupations qui se sont achevées. Les deux champs sont
+// optionnels, mais la version monte : le calque des socles côté client N'EXISTE que si
+// l'artefact les porte, et la reprise du backfill se fait par SchemaVersion — un artefact v10
+// doit se voir comme « à re-cuire », pas comme à jour.
+//
+// CE QUE LA MESURE A REFUSÉ DE PUBLIER, ET C'EST LA MOITIÉ DU RÉSULTAT. Le RAMASSEUR n'est pas
+// publié (`PadPickup.XUID` vaut `null` partout) : l'oracle indépendant — le loadout d'image-clé
+// du ramasseur présumé — donne 88,1 % en suivant le slot de vie et 79,7 % en suivant le joueur,
+// contre >= 90 % exigé, et le seuil n'a pas été rebaissé. Les « ramassages » d'armes LÂCHÉES à
+// une mort ne sont pas publiés non plus : l'accord y passe SOUS son propre témoin (32,1 % contre
+// 65,0 %), signature d'un critère qui ne mesure rien — une arme lâchée disparaît le plus souvent
+// toute seule. Et AUCUN catalogue de carte n'est écrit : sur deux films de Catalyst les dix
+// socles sont aux dix mêmes coordonnées au centimètre, mais trois portent une arme différente —
+// le socle appartient à la carte, l'arme qui y apparaît appartient au match.
+const SchemaVersion = 11
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -275,6 +293,30 @@ type ReplayDocument struct {
 	// Absent si le film n'a pas tranché la largeur de son bloc de réplication (la couverture
 	// le dit alors : `calibrated: false`) ou s'il ne porte aucune pose.
 	EquipmentPlacements []EquipmentPlacement `json:"equipmentPlacements,omitempty"`
+	// WeaponPads est la liste des SOCLES D'ARME du match (cf. ground_weapon_pads.go) :
+	// position monde, famille d'arme, instants d'apparition, intervalles de présence bornés par
+	// le recensement des images-clés, et cycle de réapparition quand il est ÉTABLI.
+	//
+	// PAR MATCH, PAS PAR CARTE, et c'est une mesure : sur deux films de Catalyst les dix socles
+	// tombent aux dix mêmes coordonnées au centimètre, mais trois portent une arme différente
+	// (Energy Sword <-> Gravity Hammer, VK78 Commando <-> BR75). Le critère tranché du plan
+	// exigeait position ET famille pour écrire un catalogue versionné : il n'est atteint par
+	// aucune paire de films, et aucun catalogue n'est écrit.
+	//
+	// UN SOCLE EST UNE RÉCURRENCE MESURÉE, pas une lecture de fichier de carte : des armes de
+	// même famille apparaissent au moins deux fois à moins d'un mètre, sans qu'aucune vie de
+	// joueur ne s'achève à proximité (le négatif de la règle du lâcher) et sans que l'objet
+	// n'ait jamais bougé. Absent quand le film n'en porte aucun — c'est le cas d'un Super Fiesta
+	// sur variante Forge, qui n'a aucun rack de carte et 82,3 % de lâchers.
+	WeaponPads []WeaponPad `json:"weaponPads,omitempty"`
+	// PadPickups est la liste des occupations de socle qui SE SONT ACHEVÉES : le socle s'est
+	// vidé quelque part dans [tLow, tHigh]. C'est un INTERVALLE et non un instant — le film ne
+	// porte aucun événement de ramassage, et la seule preuve de disparition est le recensement
+	// des images-clés, espacé de ~20 s.
+	//
+	// LE RAMASSEUR N'EST PAS PUBLIÉ (`xuid` vaut `null`) : cf. PadPickup.XUID pour la mesure qui
+	// l'a refusé et la condition qui le rouvrirait. Absent quand aucun socle ne s'est vidé.
+	PadPickups []PadPickup `json:"padPickups,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas
 	// deviné. Ce n'est pas l'inventaire de grenades (c'est i22, non résolu) : c'est

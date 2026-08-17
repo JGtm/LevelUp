@@ -59,11 +59,13 @@ export type ReplayDocumentReady = Omit<
   | 'loadouts'
   | 'neutralDeaths'
   | 'objectives'
+  | 'padPickups'
   | 'projectiles'
   | 'roster'
   | 'shots'
   | 'structure'
   | 'tracks'
+  | 'weaponPads'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
@@ -76,11 +78,13 @@ export type ReplayDocumentReady = Omit<
   loadouts: ReplayLoadoutReady[]
   neutralDeaths: NonNullable<ReplayDocument['neutralDeaths']>
   objectives: NonNullable<ReplayDocument['objectives']>
+  padPickups: NonNullable<ReplayDocument['padPickups']>
   projectiles: ReplayProjectileReady[]
   roster: NonNullable<ReplayDocument['roster']>
   shots: NonNullable<ReplayDocument['shots']>
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
+  weaponPads: NonNullable<ReplayDocument['weaponPads']>
 }
 
 /**
@@ -124,6 +128,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;
     // il nourrit les PULSES du canvas (objectivesLayer.buildObjectivePulses, lot 4.4).
     objectives: raw.objectives ?? [],
+    // Les occupations de SOCLE achevées (schéma 11) : le socle s'est vidé quelque part dans
+    // [tLow, tHigh]. Absent = aucun socle ne s'est vidé sur ce film — ou le film n'en porte
+    // aucun (`coverage.groundWeapons` distingue les deux, et c'est pour cela qu'il est publié).
+    padPickups: raw.padPickups ?? [],
     // `mapObjectives` (objectifs STATIQUES du mode, servis à la requête) passe par
     // `...raw` : c'est un objet optionnel, pas un tableau — sa normalisation vit à
     // l'entrée du calque (normalizeMapObjectives), comme celle des callouts.
@@ -134,5 +142,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     shots: raw.shots ?? [],
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
     tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
+    // Les SOCLES D'ARME du match (schéma 11). Absent = le film n'en porte aucun : rien ne se
+    // dessine, jamais un socle deviné. Une donnée de MATCH, pas de carte — l'arme qui apparaît
+    // sur un socle change d'un match à l'autre, la position non.
+    weaponPads: raw.weaponPads ?? [],
   }
 }
