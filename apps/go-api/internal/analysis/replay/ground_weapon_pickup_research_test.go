@@ -195,7 +195,7 @@ func gwPickupObjects(
 	scan := GroundWeaponScan{
 		Scanned: true, Creations: cre, Stats: st, Keyframes: f.keyframes, Tracks: f.tracks,
 	}
-	out := groundWeaponObjects(scan, f.lives, f.positions)
+	out, _ := groundWeaponObjects(scan, f.lives, f.positions)
 	if end := gwFilmEndUS(scan, f.positions); end > f.filmEndUS {
 		f.filmEndUS = end
 	}

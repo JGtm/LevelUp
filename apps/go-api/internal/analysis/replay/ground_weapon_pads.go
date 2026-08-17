@@ -58,7 +58,9 @@ type GroundWeaponCoverage struct {
 	Anchors  int `json:"anchors"`
 	Accepted int `json:"accepted"`
 	// Kept / Rejected : les créations acceptées dont l'identité SE RÉSOUT dans le catalogue
-	// d'armes, et les autres. L'invariant `Kept + Rejected == Accepted` est testé.
+	// d'armes, et les autres. L'invariant `Kept + Rejected == Accepted` est testé, et les deux
+	// termes sont COMPTÉS chacun sur son chemin — `Rejected` ne se déduit pas d'`Accepted`,
+	// sans quoi la somme se vérifierait elle-même (correctif de revue du 2026-08-17).
 	//
 	// CE FILTRE EST LE GARDE-FOU DU CALQUE : l'acceptation seule ne discrimine pas (une bande
 	// FANTÔME de même cardinalité rendait 398 créations acceptées contre 366 pour la vraie
@@ -94,6 +96,12 @@ type GroundWeaponCoverage struct {
 // Balanced vérifie les deux invariants du calque : toute création acceptée est retenue ou
 // écartée, et toute occupation de socle a l'une des trois issues. Une somme fausse signale une
 // fuite — un chemin de rejet non compté.
+//
+// IL PEUT ÉCHOUER, ET C'EST LE POINT (correctif de revue du 2026-08-17). Les deux sommes étaient
+// des tautologies : `Rejected` était posé par différence, et les trois statuts d'occupation
+// étaient incrémentés dans le même `switch` que le compteur d'occupations. Aucune des deux ne
+// pouvait tomber, donc aucune ne contrôlait rien. `Rejected` se compte désormais sur le chemin
+// de rejet, et la première somme tombe dès qu'une création acceptée n'atteint pas l'assemblage.
 func (c GroundWeaponCoverage) Balanced() bool {
 	return c.Kept+c.Rejected == c.Accepted &&
 		c.Dated+c.Unknown+c.Never == c.Occupancies
@@ -113,8 +121,10 @@ func buildWeaponPads(
 	if !scan.Scanned || clock.step == 0 {
 		return nil, nil, cov
 	}
-	objs := groundWeaponObjects(scan, equipmentLives(positions), positions)
-	cov.Kept, cov.Rejected = len(objs), scan.Stats.Accepted-len(objs)
+	// `rejected` est COMPTÉ sur le chemin de rejet, jamais déduit d'`Accepted` : c'est ce qui
+	// fait de l'invariant `Kept + Rejected == Accepted` un contrôle et non une tautologie.
+	objs, rejected := groundWeaponObjects(scan, equipmentLives(positions), positions)
+	cov.Kept, cov.Rejected = len(objs), rejected
 	atRest, src := gwAtRestOf(objs, cov)
 	pads, assign := gwPadsClusterAssign(atRest)
 	cov.Clusters = len(pads)
@@ -173,21 +183,26 @@ func gwBuildPad(
 ) (WeaponPad, []PadPickup) {
 	out := WeaponPad{X: pad.X, Y: pad.Y, Z: pad.Z, Weapon: gwPadWeaponID(objs, members)}
 	picks := make([]PadPickup, 0, len(members))
-	for _, i := range gwMembersByTime(objs, members) {
+	ms := gwMembersByTime(objs, members)
+	// LE DÉNOMINATEUR SE COMPTE À PART DES TERMES, et le `switch` qui suit n'a PAS de branche
+	// attrape-tout : sans ces deux précautions, `Dated + Unknown + Never == Occupancies` était
+	// vrai par construction et ne contrôlait rien. Un statut inattendu déséquilibre désormais la
+	// couverture au lieu d'être silencieusement compté comme « sans passage ».
+	cov.Occupancies += len(ms)
+	for _, i := range ms {
 		o := objs[i]
 		low, high := gwFrameOf(o.Bounds.LowUS, clock), gwFrameOf(o.Bounds.HighUS, clock)
 		out.Spawns = append(out.Spawns, gwFrameOf(o.Appar.TUS, clock))
 		out.Presence = append(out.Presence, PadPresence{
 			T0: gwFrameOf(o.Appar.TUS, clock), TLow: low, THigh: high,
 		})
-		cov.Occupancies++
 		switch o.Status {
 		case gwPickupStatusNever:
 			cov.Never++
 			continue // le socle ne s'est jamais vidé : aucune occupation achevée
 		case gwPickupStatusDated:
 			cov.Dated++
-		default:
+		case gwPickupStatusUnknown:
 			cov.Unknown++
 		}
 		picks = append(picks, PadPickup{TLow: low, THigh: high})

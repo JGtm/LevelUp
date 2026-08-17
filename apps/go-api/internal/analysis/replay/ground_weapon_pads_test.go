@@ -247,7 +247,7 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 		},
 		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	objs := groundWeaponObjects(scan, nil, nil)
+	objs, _ := groundWeaponObjects(scan, nil, nil)
 	if len(objs) != 1 {
 		t.Fatalf("1 creation retenue attendue, %d : %+v", len(objs), objs)
 	}
@@ -280,7 +280,7 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	// Le nuage deborde la derniere image-cle : sans cela la fin du film tomberait dessus et
 	// l'exclurait du recensement (la vie est restreinte a [creation, fin)).
 	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 45_000_000, X: 100, Y: 100, HasWorld: true}}
-	objs := groundWeaponObjects(scan, nil, pos)
+	objs, _ := groundWeaponObjects(scan, nil, pos)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
 	}
@@ -294,6 +294,36 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	}
 	if objs[1].Status != gwPickupStatusNever {
 		t.Fatalf("le second objet est recense a la derniere image-cle du film : %+v", objs[1])
+	}
+}
+
+// TestCouvertureDesequilibreeQuandUneCreationSePerd : L'INVARIANT EST UN CONTROLE, ET IL TOMBE.
+//
+// Avant le correctif de revue du 2026-08-17, `Rejected` etait pose par DIFFERENCE
+// (`Accepted - len(objs)`) : la somme `Kept + Rejected == Accepted` se verifiait elle-meme, et
+// `Balanced()` ne pouvait pas etre faux sur ce terme. Ici, le balayage annonce CINQ creations
+// acceptees et n'en transmet que trois — la fuite exacte que l'invariant existe pour attraper.
+func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
+	fam := gwTestFamily(t, 0)
+	fuite := GroundWeaponScan{
+		Scanned: true,
+		// CINQ acceptees annoncees par le balayage...
+		Stats: filmdec.EquipmentCreationStats{Accepted: 5},
+		// ... et TROIS transmises a l'assemblage.
+		Creations: []filmdec.EquipmentCreation{
+			gwTestCreation(80, 0, 1_000_000, fam, 1, 1),
+			gwTestCreation(81, 0, 2_000_000, fam, 2, 2),
+			gwTestCreation(82, 0, 3_000_000, 0xDEADBEEF, 3, 3),
+		},
+		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+	}
+	_, _, cov := buildWeaponPads(fuite, nil, gwTestClock())
+	if cov.Kept != 2 || cov.Rejected != 1 {
+		t.Fatalf("2 retenues et 1 ecartee COMPTEES attendues : %+v", cov)
+	}
+	if cov.Balanced() {
+		t.Fatalf("la couverture se declare equilibree alors que 2 creations acceptees n'ont"+
+			" atteint NI la retenue NI le rejet : %+v — l'invariant ne controle plus rien", cov)
 	}
 }
 
@@ -318,7 +348,7 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 		{Slot: 2, TimestampUS: 47_000_000, X: 12, Y: 12, HasWorld: true},
 		{Slot: 1, TimestampUS: 60_000_000, X: 200, Y: 200, HasWorld: true},
 	}
-	objs := groundWeaponObjects(scan, nil, pos)
+	objs, _ := groundWeaponObjects(scan, nil, pos)
 	if len(objs) != 1 {
 		t.Fatalf("1 objet attendu, %d", len(objs))
 	}
@@ -355,7 +385,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 		}}},
 	}
 	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 65_000_000, X: 100, Y: 100, HasWorld: true}}
-	objs := groundWeaponObjects(scan, nil, pos)
+	objs, _ := groundWeaponObjects(scan, nil, pos)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
 	}
