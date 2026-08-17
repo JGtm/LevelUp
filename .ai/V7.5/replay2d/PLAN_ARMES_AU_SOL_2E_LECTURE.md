@@ -133,23 +133,49 @@ sous gardes `TI11_FILM` / `KF_GRAM_FILM` / `KFQ_FILM` ; conflits attendus limite
 
 ### Phase 0 — REJOUER la refutation des positions `ti=42` aux largeurs de la carte
 
-- [ ] 0.1 Reprendre l'instrument du 12/08 (`replay/ground_weapon_research_test.go`, garde
+- [x] 0.1 Reprendre l'instrument du 12/08 (`replay/ground_weapon_research_test.go`, garde
       `GW_FILM`) avec `MapQuantEntry` de la carte installee (patron `installWorldObjectPrecision`)
       : temoin fantome, part des slots reels tenant dans 0,5 u a >= 3 echantillons, part
       au-dela de 20 u. Sur >= 4 films de >= 3 cartes (dont Cliffhanger, ou le defaut etait
       juste — temoin de non-regression).
-- [ ] 0.2 REBRANCHER la grammaire DECOMPILEE de l'etat par defaut `ti=42` (WALK_PORT_NOTES §4,
+      **FAIT** : 6 films / 5 cartes, tableau AVANT au journal ci-dessous. Le verdict du 12/08 se
+      reproduit AU CHIFFRE PRES sur `000d5950` (458 slots, 3,3 %, 62,4 %) et tient partout
+      ailleurs (1,7 % a 4,8 %). Films choisis SUR PREUVE (recensement `ti=42` de 18 films,
+      `replay/ground_weapon_corpus_test.go`, garde `GW_CORPUS`).
+- [x] 0.2 REBRANCHER la grammaire DECOMPILEE de l'etat par defaut `ti=42` (WALK_PORT_NOTES §4,
       `FUN_1407f0c68`, retiree a la fusion R5 faute d'oracle) et la VALIDER par l'oracle de
       position (le corps du record de creation retombe sur le premier point de la vie delta —
       transposition de `equipment_creation_offset_test.go`), avec la calibration MPP existante
       (9/5 QP, 8/3 BTB). Publier avant/apres et l'IDENTITE (mot 32 bits -> tag `weap`) croisee
       avec la famille high-32 des images-cles. Si l'oracle ne valide pas : la grammaire reste
       ecrite et NON branchee, comme la fusion R5 l'a decide — c'est la cause (1) du 12/08.
-- [ ] 0.3 Publier AVANT/APRES avec denominateurs.
+      **FAIT, ET L'ORACLE VALIDE** : `filmdec/default_state_ti42.go` + entree `42:` de
+      `defaultStateDeserByTI`. 282 atterrissages exacts sur 289 (97,6 %) contre 0/289 pour trois
+      deserialiseurs faux ; identite 937/947 (98,9 %). Detail au journal.
+- [x] 0.3 Publier AVANT/APRES avec denominateurs. **FAIT** — journal du plan, `.ai/thought_log.md`,
+      `REGISTRE_REPORTS.md` (3 lignes amendees), `WALK_PORT_NOTES.md` §4.
 
 **Gate 0** : si la part des slots stables (0,5 u) passe d'un ordre de grandeur et que le
 temoin fantome reste ce qu'il est, la position est REHABILITEE ; sinon le negatif s'ecrit et
 la partie « armes » se rabat sur les images-cles (decision 1).
+
+> **GATE 0 — NON ATTEINT SUR SON CRITERE, ET LE VERROU EST POURTANT LEVE.** Les deux enonces
+> sont vrais en meme temps, et le seuil n'a pas ete rebaisse :
+>
+> - le critere ecrit (part des vies stables a 0,5 u : 3,3 % -> >= 33 %) **N'EST PAS ATTEINT** :
+>   3,2 % -> 6,2 % (62/1 965 -> 71/1 140). Il double, il ne change pas d'ordre de grandeur ;
+> - la cause (1) du 12/08 — le default-state `ti=42` — **EST LEVEE**, mesuree par deux oracles
+>   independants (atterrissage 97,6 %, identite 98,9 %) ;
+> - et la mesure explique POURQUOI le critere ne pouvait pas etre atteint : un objet pose cesse
+>   d'emettre sa position (acquis `ti=37`, `EquipmentLifeSpan`), donc les echantillons delta
+>   d'une arme au sol sont sa phase MOBILE. Mesurer leur immobilite est une contradiction dans
+>   les termes. La position publiable est celle du record de CREATION, pas la dispersion des
+>   deltas — et ce record est desormais lisible.
+>
+> **Arbitrage utilisateur requis avant la phase 1** (l'agent s'arrete ici, conformement au
+> brief) : appliquer la decision 1 telle quelle (repli sur les images-cles), ou amender la
+> phase 1 pour qu'elle parte des records de CREATION (`ScanFilmGroundWeaponCreations`) plutot
+> que de la dispersion des deltas. Le second chemin est celui que la mesure designe.
 
 ### Phase 1 — SOCLES par recurrence spatiale, et CYCLE
 
@@ -216,7 +242,27 @@ de push. Lancement valide le 2026-08-17.
 
 ## Decouvertes (hors perimetre — notees, NON traitees)
 
-_(vide au lancement)_
+1. **La contre-liste type-2 de R6 (« `ti=42` x0 sur `00502e52` et `07aa428d` ») ne dit PAS ce
+   qu'on lui faisait dire.** Recensement direct des images-cles (`GW_CORPUS`, 18 films) :
+   `00502e52` porte **157** records `ti=42` (150 slots) et `07aa428d` **181** (150 slots). Le
+   « x0 » de R6 portait sur le paquet RECONCILIE de son propre instrument, pas sur le walker
+   d'images-cles. **`ti=42` est present sur les 18 films testes, sans exception** — la selection
+   de films n'a donc pas a se soucier du mode de jeu. Aucune correction faite au document R6.
+2. **Le temoin FANTOME du balayage de creations n'est pas discriminant a lui seul**, et il faut
+   le dire avant que quelqu'un s'appuie dessus : sur `00162144`, la bande fantome rend **398**
+   creations acceptees contre **366** pour la bande reelle (elle porte 27 563 ancres contre
+   6 485). Sur les cinq autres films le reel devance le fantome d'un facteur 1,9 a 3,7. Ce qui
+   rend les creations credibles n'est donc PAS le taux d'acceptation, c'est le croisement
+   d'identite avec les images-cles (98,9 %). **La phase 1 doit filtrer les creations par ce
+   croisement (ou par la bande d'images-cles), jamais par l'acceptation seule.**
+3. **`gwWorldRange` (instrument du 12/08) ecrivait `filmdec.WorldObjectPrecision` sans verrou ni
+   restauration** — un global de paquet. Corrige DANS le perimetre (le meme instrument est
+   rejoue ici) : `LockProcessDecode` + `t.Cleanup`. A verifier sur les autres instruments sous
+   garde qui installent des largeurs, non audites ici.
+4. **`.ai/V7.5/dumps/kf_capture_sample.txt` : 195 frontieres sur 400 ne se reconcilient pas**
+   avec un en-tete de 18 ou 16 bits portant l'identifiant releve, et des `ti` >= 50 apparaissent
+   (53, 61, 63) alors que le jeu les cappe a 50. Le releve est donc partiellement desaligne ou
+   partiel. Non traite : l'oracle etait de toute facon epuise par le manque de records `ti=42`.
 
 ## Branches utilisateur fusionnees AVANT le lancement (`66e867b80`, 2026-08-17)
 
@@ -238,3 +284,131 @@ _(vide au lancement)_
 - 2026-08-17 — plan valide par l'utilisateur ; fusion de `wt/fusion-lots-go` (`d2e46eb5d`) puis
   fusion utilisateur de `wt/fusion-finale` + `wt/poses-revue-fix` (`66e867b80`) ; **phase 0
   LANCEE** sur le worktree principal (agent Opus, brief du superviseur).
+- 2026-08-17 — **phase 0 CLOSE. Gate 0 non atteint sur son critere ; le verrou du 12/08 est leve.**
+  Tout ci-dessous a tourne dans la session, aux largeurs de chaque carte, `CGO_ENABLED=0`,
+  un film par process.
+
+### Selection des films — SUR PREUVE (recensement `ti=42`, 18 films)
+
+Instrument : `replay/ground_weapon_corpus_test.go` (garde `GW_CORPUS`). `ti=42` est PRESENT sur
+les 18 films testes (62 a 650 records d'image-cle). Cartes lues sans ouvrir aucune base : instantane
+parquet `data/backups/staging/halo_infinite/shared_matches_v2/match_registry_20260711_090652.parquet`
+(un fichier, pas une base — le serveur local tenait les DuckDB en ecriture).
+
+Six films retenus, cinq cartes, cinq decoupages d'axe DIFFERENTS :
+
+| film | carte | mode | largeurs | records `ti=42` |
+|---|---|---|---|---:|
+| `000d5950` | Cliffhanger | Slayer Super Fiesta | `[13 13 14]` (= defaut, TEMOIN) | 269 |
+| `bcb6d393` | Cliffhanger | CTF:Arena | `[13 13 14]` | 441 |
+| `01e1f945` | Catalyst | KOTH:Arena | `[15 15 15]` | 420 |
+| `7f1bbf06` | Streets | KOTH:Arena | `[12 12 12]` | 275 |
+| `b8d1fe0c` | Recharge | CTF Neutral Flag | `[18 18 15]` | 163 |
+| `00162144` | Smallhalla | Slayer:Arena | `[15 15 17]` | 493 |
+
+### 0.1 AVANT — la refutation du 12/08, rejouee aux largeurs de la carte
+
+`GW_FILM` / `GW_BOUNDS` / `GW_MAP`, `TestGroundWeaponCoverage`. Dispersion par SLOT, slots a
+>= 3 echantillons.
+
+| film | eligibles | <= 0,5 u | > 20 u | fantome eligibles | fantome <= 0,5 u | fantome > 20 u |
+|---|---:|---:|---:|---:|---:|---:|
+| `000d5950` | 458 | 15 (3,3 %) | 286 (62,4 %) | 188 | 1 (0,5 %) | 155 (82,4 %) |
+| `bcb6d393` | 255 | 9 (3,5 %) | 118 (46,3 %) | 37 | 1 (2,7 %) | 36 (97,3 %) |
+| `01e1f945` | 467 | 10 (2,1 %) | 341 (73,0 %) | 240 | 6 (2,5 %) | 197 (82,1 %) |
+| `7f1bbf06` | 225 | 5 (2,2 %) | 127 (56,4 %) | 45 | 2 (4,4 %) | 43 (95,6 %) |
+| `b8d1fe0c` | 119 | 2 (1,7 %) | 48 (40,3 %) | 24 | 0 (0,0 %) | 23 (95,8 %) |
+| `00162144` | 441 | 21 (4,8 %) | 241 (54,6 %) | 210 | 0 (0,0 %) | 173 (82,4 %) |
+| **TOTAL** | **1 965** | **62 (3,2 %)** | **1 161 (59,1 %)** | 744 | 10 (1,3 %) | 627 (84,3 %) |
+
+`000d5950` reproduit le verdict du 12/08 AU CHIFFRE PRES (458 / 15 / 3,3 % / 286 / 62,4 % ;
+fantome 188 / 1 / 155). **La refutation n'etait pas un artefact de largeurs** — elle tient sur
+cinq cartes dont quatre ont un decoupage different du defaut.
+
+### 0.2 — la grammaire `ti=42`, branchee parce que l'oracle la valide
+
+**Ecrit** : `filmdec/default_state_ti42.go` (`consumeDefaultStateTI42` = `V` ; `consumeDefault
+StateTI36` ; `R(12)` ; `R(7)` ; `consumeWeaponMagazineList` ; `consumeGate0R(5)`), entree `42:`
+dans `defaultStateDeserByTI`. **Doublon `FUN_1407f2494` tranche par REUTILISATION** : la
+grammaire decompilee est celle de `consumeWeaponMagazineList` feuille pour feuille (le fichier a
+bouge depuis le 26/07 : `components_object.go`, plus `unit_weaponstate.go`).
+
+**Oracle de LARGEUR live : EPUISE (negatif publie).** `default_state_ti42_oracle_test.go`
+(`TI42_CAPTURE` / `TI42_BUFFER`) : 400 frontieres, 205 en-tetes reconcilies, **un seul** record
+NEW `ti=42` (corps 971 bits, porte OUVERTE) et **aucun** `ti=37`. Cet oracle ne pouvait pas
+valider quoi que ce soit ; le negatif est garde rejouable.
+
+**Oracle de POSITION : VALIDE.** `ground_weapon_creation_offset_test.go` (`GW_CREATION_FILM`),
+transposition de `equipment_creation_offset_test.go` avec `ti=37` en CONTROLE POSITIF par le
+MEME code. On localise le corps par la position, puis on DEROULE le deserialiseur depuis
+l'en-tete NEW et on exige l'atterrissage AU BIT PRES sur le masque.
+
+| film | records `ti=42` ancres | ti42 porte | temoin ti37 | temoin ti36 | temoin ti38 |
+|---|---:|---:|---:|---:|---:|
+| `000d5950` | 119 | **118 (99,2 %)** | 0 | 0 | 0 |
+| `01e1f945` | 99 | **97 (98,0 %)** | 0 | 0 | 0 |
+| `00162144` | 71 | **67 (94,4 %)** | 0 | 0 | 0 |
+| **TOTAL** | **289** | **282 (97,6 %)** | **0** | **0** | **0** |
+
+Controle croise sur les records `ti=37` des memes films : le deser `ti=42` atterrit **0 / 265**,
+le deser `ti=37` **176 / 265**. **PIEGE DE LECTURE ecarte** : la distance en-tete -> masque ne
+vaut PAS le chemin minimal (105 bits) ; les pics mesures sont a 118, 150 ou 182 selon le film et
+se decomposent exactement en portes de la grammaire (+5 reference d'entite, +8 prefixe de
+version, +13 champ optionnel MPP, +32 identifiant). Seul l'atterrissage tranche.
+
+**IDENTITE — deuxieme oracle, independant du premier.** Le mot de 32 bits du bloc MPP du record
+de creation, croise avec la famille high-32 lue aux IMAGES-CLES pour la meme vie (slot, gen) :
+
+| film | paires croisees | accord | mots distincts | dont au catalogue d'armes |
+|---|---:|---:|---:|---:|
+| `000d5950` | 173 | 169 (97,7 %) | 105 | 220 / 317 |
+| `bcb6d393` | 118 | 118 (100 %) | 45 | 159 / 219 |
+| `01e1f945` | 215 | 213 (99,1 %) | 97 | 291 / 405 |
+| `7f1bbf06` | 142 | 140 (98,6 %) | 55 | 166 / 210 |
+| `b8d1fe0c` | 72 | 70 (97,2 %) | 21 | 86 / 118 |
+| `00162144` | 227 | 227 (100 %) | 82 | 278 / 366 |
+| **TOTAL** | **947** | **937 (98,9 %)** | | |
+
+Les mots resolvent en armes reelles (Gravity Hammer, Sentinel Beam, Energy Sword, M41 SPNKr,
+MA40 AR, Mk51 Sidekick, S7 Sniper...). **Le mot de 32 bits du bloc MPP EST l'identite de l'arme
+au sol**, comme il est le GlobalID du tag `eqip` pour `ti=37`.
+
+### 0.3 APRES — ce que la bande CONFIRMEE change, et ce qu'elle ne change pas
+
+`ground_weapon_after_test.go` (`GW_FILM` / `GW_BOUNDS` / `GW_MAP`). Un slot n'est plus PRESUME
+`ti=42` par la bande d'images-cles : il est PROUVE par un record de creation qui porte son
+`R(6) typeIndex`. Dispersion a la granularite d'une VIE (slot, generation) — la cle de tout le
+decodeur d'objets du monde, que l'AVANT ne pouvait pas prendre faute de savoir quelles
+generations etaient des armes.
+
+| film | creations acceptees (fantome) | vies eligibles | <= 0,5 u | <= 2 u cumule | > 20 u |
+|---|---|---:|---:|---:|---:|
+| `000d5950` | 317 (164) | 237 | 15 (6,3 %) | 119 (50,2 %) | 41 (17,3 %) |
+| `bcb6d393` | 219 (125) | 150 | 9 (6,0 %) | 97 (64,7 %) | 19 (12,7 %) |
+| `01e1f945` | 405 (147) | 273 | 16 (5,9 %) | 108 (39,6 %) | 86 (31,5 %) |
+| `7f1bbf06` | 210 (57) | 142 | 6 (4,2 %) | 84 (59,2 %) | 13 (9,2 %) |
+| `b8d1fe0c` | 118 (35) | 90 | 3 (3,3 %) | 58 (64,4 %) | 9 (10,0 %) |
+| `00162144` | 366 (398) | 248 | 22 (8,9 %) | 142 (57,3 %) | 49 (19,8 %) |
+| **TOTAL** | **1 635 (926)** | **1 140** | **71 (6,2 %)** | **608 (53,3 %)** | **217 (19,0 %)** |
+
+**AVANT -> APRES, memes films, memes largeurs, meme chaine de decodage** :
+
+| grandeur | AVANT (par slot presume) | APRES (par vie confirmee) |
+|---|---:|---:|
+| eligibles (>= 3 echantillons) | 1 965 | 1 140 |
+| **stables <= 0,5 u** | **62 (3,2 %)** | **71 (6,2 %)** |
+| sous 2 u (cumule) | 501 (25,5 %) | 608 (53,3 %) |
+| **etales > 20 u** | **1 161 (59,1 %)** | **217 (19,0 %)** |
+
+Le bruit s'effondre (59,1 % -> 19,0 %) et la concentration double (25,5 % -> 53,3 %), mais la
+part STRICTEMENT stable ne fait que doubler : **3,2 % -> 6,2 %**, contre >= 33 % exige. Le seuil
+n'est pas rebaisse : **le gate 0 n'est pas atteint.**
+
+**LE TEMOIN DIT POURQUOI, et il faut le lire.** Les vies NON confirmees des memes slots (memes
+films, meme code) : 139 eligibles, **9 sous 0,5 u (6,5 %)** et 105 au-dela de 20 u (75,5 %). Sur
+le critere > 20 u la confirmation separe nettement (19,0 % contre 75,5 %) ; **sur le critere
+0,5 u elle ne separe RIEN** (6,2 % contre 6,5 %). Le discriminant « une arme posee ne bouge pas »
+ne discrimine pas parce qu'il ne peut pas : un objet qui se pose CESSE d'emettre sa position
+(acquis `ti=37`, cf. `EquipmentLifeSpan` et `splitLives`), donc tout echantillon delta d'une arme
+au sol appartient a sa phase MOBILE. Le critere du 12/08 mesurait l'immobilite sur le seul
+sous-ensemble de records qui n'existe que parce qu'il y a eu mouvement.

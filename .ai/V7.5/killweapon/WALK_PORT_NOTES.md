@@ -256,16 +256,39 @@ pointent le stub `0x1408d8220` (`return 1`, 0 bit) ; `+0x60` = `0x1407f0c68` (ci
 `+0x88` = `0x140ea3ef4` (masque par defaut, 0 bit).
 
 
-**ETAT DU PORT (2026-08-17, fusion `wt/fusion-lots-go`)** : cette grammaire n'est PAS branchee
-dans le decodeur Go. Le port `default_state_ti42.go` + son entree `42:` dans
-`defaultStateDeserByTI` ont ete ECRITS par le lot R5 puis RETIRES a la fusion, sur decision
-superviseur : aucun oracle ne les valide, et une entree fausse decalerait le decodage de TOUS
-les records `ti=42` sans qu'aucune mesure ne le dise. **C'est ce paragraphe qui fait foi** —
-la reprise repart d'ici. Conditions pour rebrancher, au registre : un oracle de position d'arme
-au sol (ramassage), ou une calibration a la maniere des poses `ti=37` (`CalibrateMPPWidths`).
-Point d'attention : `FUN_1407f2494` avait deja ete porte puis supprime le 2026-07-26 comme
-doublon de `consumeWeaponMagazineList` (cf. `unit_weaponstate.go`) — le rebrancher demande de
-trancher ce doublon.
+**ETAT DU PORT — BRANCHE ET VALIDE (2026-08-17, phase 0 de `PLAN_ARMES_AU_SOL_2E_LECTURE.md`)**.
+Cette grammaire EST desormais dans le decodeur Go : `apps/go-api/internal/analysis/filmdec/
+default_state_ti42.go` (`consumeDefaultStateTI42`) + l'entree `42:` de `defaultStateDeserByTI`.
+Le lot R5 l'avait ecrite puis retiree faute d'oracle ; l'oracle a ete trouve et joue.
+
+- **ORACLE DE POSITION** (`ground_weapon_creation_offset_test.go`, garde `GW_CREATION_FILM`,
+  transpose de `equipment_creation_offset_test.go`) : on localise le corps du record de creation
+  par la POSITION (le premier point de la vie delta, deja decodee par `ScanFilmWorldObjects`),
+  puis on DEROULE le deserialiseur depuis l'en-tete NEW et on exige qu'il tombe AU BIT PRES sur
+  le masque. **282 atterrissages exacts sur 289** records (`000d5950` 118/119, `01e1f945` 97/99,
+  `00162144` 67/71 — 97,6 %), contre **0 sur 289** pour trois deserialiseurs FAUX (ti=37, ti=36,
+  ti=38) passes par le meme code. Controle croise : sur les records `ti=37`, le deser `ti=42`
+  atterrit 0 fois sur 265, le deser `ti=37` 176 fois.
+- **PIEGE DE LECTURE, a ne pas repeter** : la distance en-tete -> masque NE VAUT PAS la largeur
+  du chemin minimal (24 + 80 + 1 = 105). Les records reels ouvrent des portes ; les pics mesures
+  sont a 118, 150 ou 182 selon le film, et ces valeurs se decomposent exactement en portes de la
+  grammaire (+5 reference d'entite, +8 prefixe de version, +13 champ optionnel du bloc MPP,
+  +32 identifiant). Seul l'atterrissage tranche.
+- **CONTRE-EPREUVE INDEPENDANTE — l'identite** : le mot de 32 bits du bloc MPP du record de
+  creation est la meme valeur que la famille high-32 lue aux IMAGES-CLES pour la meme vie
+  (slot, generation) — **937 accords sur 947 paires (98,9 %)** sur 6 films / 5 cartes, deux
+  chaines de decodage sans rien de commun. Le mot de 32 bits de `ti=42` est donc l'identite de
+  l'arme, comme celui de `ti=37` est le GlobalID du tag `eqip`.
+- **DOUBLON `FUN_1407f2494` : TRANCHE PAR REUTILISATION.** La grammaire decompilee est celle de
+  `consumeWeaponMagazineList`, feuille pour feuille et porte pour porte (le fichier a bouge
+  depuis 2026-07-26 : il est aujourd'hui dans `components_object.go`, plus dans
+  `unit_weaponstate.go`). On appelle l'existant ; aucune seconde copie n'est ecrite.
+- **ORACLE DE LARGEUR LIVE : EPUISE, et c'est un negatif publie.** `kf_capture_sample.txt` +
+  `kf_slot0_live.bin` ne portent qu'**UN SEUL** record NEW `ti=42` (largeur de corps 971 bits,
+  porte OUVERTE donc masque + composants aux largeurs d'une carte inconnue) et **AUCUN** `ti=37`.
+  205 des 400 frontieres se reconcilient avec leur en-tete. Cet oracle ne pouvait pas valider la
+  grammaire, et il faut cesser de l'attendre : `default_state_ti42_oracle_test.go` le mesure et
+  garde le negatif rejouable.
 
 ## 5. Ce qui reste NON resolu apres cette passe, et il faut le dire
 
