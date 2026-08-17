@@ -230,8 +230,8 @@ func gwPadsClusterLess(a, b gwPadCluster) bool {
 	return a.Z < b.Z
 }
 
-// gwPadsKeep ne garde que les grappes d'au moins `min` apparitions — les SOCLES — et rend, pour
-// chacune, son index D'ORIGINE dans `in`.
+// gwPadsKeep ne garde que les grappes qui RÉCURRENT — les SOCLES — et rend, pour chacune, son
+// index D'ORIGINE dans `in`.
 //
 // L'INDEX D'ORIGINE EXISTE POUR QUE LA PRODUCTION PUISSE APPELER CETTE RÈGLE (correctif de revue
 // du 2026-08-17). `buildWeaponPads` la ré-exprimait en ligne (`len(pads[p].TS) < gwPadMinHits`)
@@ -239,10 +239,14 @@ func gwPadsClusterLess(a, b gwPadCluster) bool {
 // sur les grappes d'avant filtre. Deux écritures d'un même seuil, dont l'une hors de son
 // propriétaire : le filtre rend donc la correspondance, comme `gwPadsClusterAssign` rend la
 // sienne, et il n'y a plus qu'une écriture.
-func gwPadsKeep(in []gwPadCluster, min int) ([]gwPadCluster, []int) {
+//
+// LE SEUIL N'EST PAS UN PARAMÈTRE, même raison que le rayon de grappe : `gwPadMinHits` est la
+// décision 2 du plan (« un socle est une RÉCURRENCE »), écrite avant la mesure. Il l'a été
+// jusqu'au 2026-08-17, et les trois appelants passaient déjà la même constante.
+func gwPadsKeep(in []gwPadCluster) ([]gwPadCluster, []int) {
 	out, src := make([]gwPadCluster, 0, len(in)), make([]int, 0, len(in))
 	for i, c := range in {
-		if len(c.TS) >= min {
+		if len(c.TS) >= gwPadMinHits {
 			out, src = append(out, c), append(src, i)
 		}
 	}
