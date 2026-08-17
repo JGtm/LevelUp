@@ -139,6 +139,31 @@ var DeltaQuantum float32 = 0.01383
 // SetDeltaQuantum règle le pas du chemin delta d'i0 (dérivé de l'oracle par l'outil de validation).
 func SetDeltaQuantum(q float32) { DeltaQuantum = q }
 
+// keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
+// complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE
+// le port (lot R7-d, `WALK_PORT_NOTES.md` section « i0 — LE LECTEUR DU JEU DIT LA MÊME CHOSE
+// QUE L'ÉCRIVAIN ») :
+//
+//	écrivain FUN_14320678c -> FUN_14320696c -> FUN_142e2d86c ; lecteur FUN_14076e29c ->
+//	FUN_14076e420 : le 3e bit ne SUPPRIME pas la charge utile (il choisit la table de plage
+//	DAT_143b8c6d0 = ±100) et il est la PORTE DE LA QUEUE DE HANDLE ; le champ de 2 bits est
+//	INCONDITIONNEL et vient EN DERNIER, après la queue.
+//
+// Le port actuel fait `if precHigh { return }` (0 bit de charge) et force la queue à false :
+// une sous-lecture de `1 + [idxW] + 3 x axisW` bits dès que ce bit vaut 1.
+//
+// KILL-SWITCH — défaut OFF posé le 2026-08-17 (lot R7-e) : la correction n'est pas encore
+// prouvée bit-exacte sur l'oracle de frontière, et le chemin absolu d'i0 sert la trajectoire
+// de PRODUCTION du rejeu 2D. Critère de bascule du défaut : atterrissage bit-exact en hausse
+// sur les 591 records `ti=35` bornés ET non-régression delta verte. Retrait de la bascule (une
+// seule grammaire, celle du jeu) visé à la clôture du chantier image-clé, au plus tard le
+// 2026-10-31 — si le critère n'est pas tenu d'ici là, c'est le port qu'il faut rouvrir, pas la
+// bascule qu'il faut prolonger.
+var keyframeWriterI0Grammar = false
+
+// SetKeyframeWriterI0Grammar (dé)active la grammaire d'écrivain du chemin absolu d'i0.
+func SetKeyframeWriterI0Grammar(v bool) { keyframeWriterI0Grammar = v }
+
 // consumeObjectPositionDynamicPrecisionD (i0) mirrors FUN_1406cfe44, bit-exactly.
 //
 //	bUsePred = R(1) ; bDelta = R(1)  (header)
@@ -178,6 +203,15 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 
 	// bUsePred==0, bDelta==0: ABSOLUTE -> FUN_14076e524, then tail (no fresh handle bit).
 	if !bDelta {
+		if keyframeWriterI0Grammar {
+			// Grammaire de l'ÉCRIVAIN d'état complet (FUN_14320696c / FUN_14076e420) : le
+			// bit h ne supprime rien, il garde la QUEUE, et le champ de 2 bits vient APRÈS.
+			h := br.ReadBit()
+			consumeAbsolutePayload(br, pd)
+			consumePositionHandleTail(br, h, pd)
+			br.ReadBits(2) // FUN_14076e304, EN DERNIER
+			return
+		}
 		consumeAbsoluteWithGate(br, pd)
 		consumePositionHandleTail(br, false, pd)
 		return
@@ -327,6 +361,27 @@ func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 	if precHigh {
 		return // default vector (FUN_141f85880), 0 payload bits
 	}
+	consumeAbsolutePayload(br, pd)
+	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
+	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
+	//
+	// AJOUTÉ le 2026-07-27. Le chemin world-object le lisait déjà (traverse.go, `[2 finite]`
+	// de son total de 45 bits) ; le chemin dynamic-precision du bipède ne l'a jamais lu. Les
+	// deux portent pourtant le MÊME lecteur absolu — c'est la double implémentation qui les
+	// a laissés diverger. Sans ces 2 bits le compte tombait à 45 au lieu des 47 mesurés par
+	// la capture CE (100 % de 154 158 dispatches, aucune variance).
+	//
+	// PLACE DU CHAMP : ici il est lu AVANT la queue de handle, qui est de toute façon éteinte
+	// sur ce chemin (`consumePositionHandleTail(br, false, ...)`). L'écrivain du jeu le pose
+	// APRÈS la queue — l'ordre n'est donc observable que sous `keyframeWriterI0Grammar`.
+	br.ReadBits(2)
+}
+
+// consumeAbsolutePayload lit la CHARGE UTILE du lecteur absolu (FUN_14076e494) : le sélecteur
+// d'index de plage, son mot éventuel, puis les trois axes quantisés. Il ne lit NI le bit de
+// tête, NI le champ de 2 bits de queue — les deux appelants ne les posent pas au même endroit
+// (cf. `keyframeWriterI0Grammar`).
+func consumeAbsolutePayload(br *BitReader, pd PrecisionDescriptor) {
 	// The index selects the dequant RANGE (DAT_14462cbe0): index 0 = the map replication
 	// bounds (real in-map position) ; index 1 / no-index = ±20000 (off-map, non-player).
 	idx := -1 // no index (index-select bit set) -> fallback ±20000
@@ -343,15 +398,6 @@ func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 		w := absAxisWFor(idx, i)                      // par index (7ter.54), sinon région 13/13/14
 		v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
-	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
-	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
-	//
-	// AJOUTÉ le 2026-07-27. Le chemin world-object le lisait déjà (traverse.go, `[2 finite]`
-	// de son total de 45 bits) ; le chemin dynamic-precision du bipède ne l'a jamais lu. Les
-	// deux portent pourtant le MÊME lecteur absolu — c'est la double implémentation qui les
-	// a laissés diverger. Sans ces 2 bits le compte tombait à 45 au lieu des 47 mesurés par
-	// la capture CE (100 % de 154 158 dispatches, aucune variance).
-	br.ReadBits(2)
 	// Only index-0 positions are in the map bounds (real player positions). index!=0
 	// dequantizes against ±20000 (off-map) and is noise for a trajectory -> don't emit.
 	if idx != 0 {
