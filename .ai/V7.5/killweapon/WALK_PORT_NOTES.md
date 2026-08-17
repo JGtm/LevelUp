@@ -1,5 +1,12 @@
 # WALK PORT NOTES — Voie A, finir le walk biped (branches i54/i59/i63) — 2026-06-07
 
+> **LA TABLE DE REFERENCE EST `apps/go-api/internal/analysis/filmdec/testdata/ecs_table.tsv`.**
+> Elle dit, pour chacun des 1 067 couples (archetype, composant) declares par le registre du
+> film : le statut de portage, la source `fichier:ligne`, l’adresse du deser, le niveau, et le
+> champ du document alimente. Ces notes-ci portent les DECOMPILES — elles ne dupliquent pas la
+> table, et un statut lu ici sans etre lu la-bas est perime. Garde-rails G1-G3 :
+> `apps/go-api/internal/analysis/filmdec/ecs_table_guard_test.go`.
+
 > Notes de port bit-exact pour `internal/analysis/filmdec`. Objectif : atteindre 8 bipeds/frame clean
 > (slot 519 ~29% → ~90%+) pour lire l'arme équipée du tueur par kill. Cf `HANDOFF_KILLFEED_VOIE_A.md` §3.
 > **Ghidra MCP : OPÉRATIONNEL** (après redémarrage Ghidra+plugin ; le bug AF_UNIX de reconnexion mid-session

@@ -72,7 +72,7 @@ la lecture du JEU (`Flags[k+1]`, lot R7-e) differe, `notes` porte `niveau_jeu=N`
       seulement s'il sert aux garde-rails.
 - [x] **Phase 3** — `ecs_table_guard_test.go` : G1, G2, G3. Les trois verts, G2 joue sur les
       3 films temoins.
-- [ ] **Phase 4** — docs : note de tete dans `WALK_PORT_NOTES.md` et
+- [x] **Phase 4** — docs : note de tete dans `WALK_PORT_NOTES.md` et
       `RECETTE_DECODAGE_FILM_CHUNKS.md`, index `.ai/V7.5/README.md`, ligne au registre des
       reports, suppression du JSON brut (la table le remplace), entree thought_log.
 
@@ -228,3 +228,33 @@ production. La table n'a aucun lecteur applicatif ; un lecteur hors test serait 
 `gofmt -l internal/analysis/filmdec/` vide · `go vet ./internal/analysis/filmdec/` propre ·
 `go test ./internal/analysis/filmdec/ -count=1` **ok** (1,37 s, `CGO_ENABLED=0`). Aucun test
 existant touche.
+
+---
+
+# PHASE 4 — DOCUMENTATION
+
+- [x] Note de tete dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` et
+      `.ai/V7.5/film_re/RECETTE_DECODAGE_FILM_CHUNKS.md` : la table `.tsv` fait foi sur les
+      statuts, ces documents portent les decompiles et la methode. Aucun contenu duplique.
+- [x] `.ai/V7.5/README.md` : entree « Grammaire ECS (archetype x composant) » dans les points
+      d'entree par sujet, compte de `film_re/` remis a 25.
+- [x] Ligne au `REGISTRE_REPORTS.md` : « table ECS = source unique, garde-rails G1-G3 »,
+      avec ce qui reste ouvert (16 archetypes sans nom etabli, 532 lignes `non_porte`).
+- [x] `ecs_inventaire_2026-08-18.json` SUPPRIME (il n'avait jamais ete versionne : la table le
+      remplace ligne pour ligne, avec 318 lignes de plus et 73 corrections). Zero doublon.
+- [x] Entree `.ai/thought_log.md` : redigee au rapport final du lot.
+
+## Decouvertes (non traitees — regle 7)
+
+1. **`registry.go` sert `Flags[k]`, le jeu lit `Flags[k+1]`** (lot R7-e). 178 des 1 067 lignes
+   ont un niveau different sous les deux lectures. Deja au registre des reports, NON TRAITE :
+   la table le consigne en `notes` (`niveau_jeu=N`) au lieu de trancher.
+2. **`traverse.go` fait 1 282 lignes** — trois fois le seuil de 500. Dette gelee, hors
+   perimetre ; la table ne l'aggrave pas (elle n'ajoute aucune ligne au fichier).
+3. **16 archetypes du registre n'ont pas de nom etabli** (`ti` 1, 3, 7, 19, 24, 25, 26, 27, 28,
+   31, 36, 39, 45, 46, 48, 49). La table leur donne un nom PRUDENT tire du prefixe commun de
+   leurs composants (`supply-lines-*`, `state-broker-state-*`, ...) et `meaning_fr = inconnu`.
+4. **`ti=43 i=0` est `object-position-component`**, pas `device-position-component` (qui est a
+   `i18`) : le commentaire de `traverse.go:876` (`device-position-component // ti43`) est juste
+   sur l'archetype et muet sur l'index — il ne dit rien de faux, mais l'inventaire en avait
+   deduit un index faux.
