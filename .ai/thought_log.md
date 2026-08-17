@@ -1,3 +1,36 @@
+## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 1 close (lot 0, A.0, C.0/C.1a), vague 2 lancee
+
+**Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, branche
+d'integration `wt/registre-film`).
+**Decision technique principale** : deux gates 0 NON ATTEINTS tels qu'ecrits (lot A : 7/12 accords
+de score final ; lot C : concentration 2,37x pour 3x) et AUCUN seuil rebaisse — mais dans les deux
+cas la lecture des ecarts requalifie le critere, pas le decodeur, et un arbitrage ecrit ouvre la
+suite : lot A phase 0-bis (Oddball : les emissions du statborg s'arretent a 290 s sur 519 s — la
+manche 2 est invisible a la grammaire d'ancrage, ce n'est pas un negatif de mode ; oracle KOTH non
+homogene ; film tronque ; corpus n >= 3 par mode) ; lot C : la clause de concentration etait un
+critere d'EVENEMENT applique a un ETAT continu (`radial-progress` emet pendant tout le
+remplissage, avant l'instant de capture) — phase 1a de RE en lecture seule ouverte et CLOSE le
+meme soir (`radial-progress` = R(8) sur [-1,+1], `boundary-color` = 4xR(8) RGBA, `rtpc` =
+R(32)+[R(22)], ti=13 STOP), gate d'etat G-C1 ecrit avant le port.
+**Resultats observes** : (1) ti=23 est ABSENT des 11 films et 5 modes (image-cle et delta) —
+l'artefact « Registre du film Theater » extrapolait d'un deser jamais mesure ; les zones parlent en
+delta par ti=10 (barriere) et ti=12 (navpoint), absents du temoin Slayer ; (2) le registre `chunk_00`
+CHANGE AVEC LE BUILD (`06dfe6d9` juillet 2025 : 116 blocs / 1 031 slots vs 118 / 1 067 en 2026) —
+G2 n'est pas applicable aux films d'un autre build, les hooks du lot 0 s'appuient sur des
+enumerations nommees, jamais un index ; (3) la chaine `consumeByName` desynchronise 61-68 % des
+paquets delta — un hook n'y voit qu'un tiers des paquets, les scanners par bande restent la voie,
+et `ti=4` (1 slot) est un temoin d'ancrage a 98,7-99,8 % de purete ; (4) le lot 0 sort 23 `case`
+de `traverse.go` (1 321 -> 1 297 L) vers quatre fichiers a hooks sans qu'un bit ne bouge, ajoute le
+test de polarite d'i9, l'empreinte du registre, 8 lignes de registre ; l'item 0.2 est STOPPE `[!]`
+(`SetAbsoluteAxisW` est le levier d'une calibration VIVANTE de killsource, goldens 13/15/16/16 ;
+reprise en 3 etapes au registre :221) ; (5) couts mesures : 0,4-15 s et 15-75 Mo par film pour
+les instruments par ancrage — D17 amende a 4 executeurs simultanes, la regle un film par processus
+demeure. Corrections du plan : `06dfe6d9` = BTB Fiesta CTF (26 joueurs), pas un Slayer.
+**Conclusion / prochaine etape** : vague 2 depuis `wt/registre-film` : lot C phase 1b (port Go de
+radial-progress/boundary-color/rtpc + C.0.2 + mesure G-C1, `wt/zones-film`), lots B+P
+(`wt/joueur-moteur`), lot D (`wt/usages-film`), E.0.1 + sondes F (`wt/visee-sondes`) ; A.0-bis en
+cours. Publications (phases 1) toujours SERIALISEES et apres l'item 6 phase 3.
+
 ## [2026-08-17] v7.5 rejeu 2D — exploitation du « Registre du film Theater » : plan ecrit, artefact re-verifie sur pieces, worktree dedie
 
 **Statut** : En cours — plan VALIDE par l utilisateur le 17/08 (soir) : D1/D2/D3/D6/D12 confirmes apres explications, lot P (ti=5, inventaire du joueur) ajoute, item 0.6 (plomberie des hooks, D15) et D16/D17 (publications serialisees, machine bornee) ajoutes ; GO donne (« piloter ca avec des agents et workflow sur des worktrees dedies, paralleliser ») ; vague 1 lancee : lot 0 (`wt/registre-film`), A.0 (`wt/score-film`), C.0.1/0.3 (`wt/zones-film`) — un executeur Opus par worktree, films lus par chemin absolu, un film par processus, avant-plan, plafond RAM.
