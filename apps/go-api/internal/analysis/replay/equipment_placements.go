@@ -16,8 +16,16 @@ import (
 // PLAN_POSES_EQUIPEMENT_PUBLICATION) : le record de CRÉATION d'une entité `ti=37` porte, dans
 // son bloc `object-multiplayer-properties`, le GlobalID du tag `eqip` de l'objet — les
 // 21 valeurs du corpus se résolvent toutes dans le groupe `eqip` du jeu. Le MÊME record porte
-// la position i0, c'est-à-dire le lieu exact de la pose. La fin de vie vient de la trajectoire
-// décodée des paquets delta. `filmdec.ScanFilmEquipmentPlacements` rend le tout.
+// la position i0, c'est-à-dire le lieu exact de la pose. `t1` vient de la trajectoire décodée
+// des paquets delta. `filmdec.ScanFilmEquipmentPlacements` rend le tout.
+//
+// `t1` N'EST PAS LA DISPARITION, et c'est mesuré (2026-08-18, `filmdec/equipment_life_end_test
+// .go`) : le décodage ne suit que les records qui portent une position, donc `t1` date l'instant
+// où l'objet S'IMMOBILISE. Le recensement des keyframes prouve que l'entité survit à ce moment
+// (101 poses sur 295 du film 000d5950, 228 sur 537 de 00ba2e1c, encore recensées plus d'une
+// seconde après), et aucune fin explicite n'est isolable — ni record de suppression, ni queue
+// de records sans position (les deux sont du bruit au témoin). Le film porte donc une BORNE
+// INFÉRIEURE ; ce qu'un rendu en fait est une décision de rendu, jamais une lecture de `t1`.
 //
 // CE QUE CETTE COUCHE AJOUTE, et pourquoi c'est ici : le POSEUR et son CAP. Ni l'un ni l'autre
 // n'est écrit dans le record — le champ de référence d'entité du default-state est une porte
@@ -48,8 +56,12 @@ const equipHeadingWindowUS = 200_000
 
 // EquipmentPlacement est UNE pose d'équipement, datée et située.
 type EquipmentPlacement struct {
-	// T0 est l'instant de CRÉATION de l'objet. T1 est le DERNIER POINT DE POSITION de sa vie
-	// décodée — c'est-à-dire la fin de son MOUVEMENT RÉPLIQUÉ, PAS sa disparition.
+	// T0 est l'instant de CRÉATION de l'objet — le geste de pose — sur le même axe que
+	// Point.T. T1 est le DERNIER POINT DE POSITION de sa vie décodée : la fin de son
+	// MOUVEMENT RÉPLIQUÉ, c'est-à-dire une BORNE INFÉRIEURE de sa durée de vie, PAS sa
+	// disparition. Le film ne date la disparition d'AUCUN objet d'équipement (mesure du
+	// 2026-08-18) ; un client qui efface la pose à T1 affirme une disparition que rien ne
+	// mesure.
 	//
 	// LE COMMENTAIRE A DIT « la disparition » JUSQU'AU 2026-08-18, ET C'ÉTAIT FAUX. Un
 	// encodage delta ne transmet que ce qui CHANGE : un objet posé qui s'immobilise cesse
@@ -59,7 +71,7 @@ type EquipmentPlacement struct {
 	// idem l'appareil du mur 0,7-0,9 s (son vol) contre ses panneaux 0,5 s (déployés sur
 	// place). Conséquence pour le rendu : dessiner une pose sur le seul [T0, T1] affiche un
 	// détecteur ~2 s là où le jeu le garde 15 s. La durée RÉELLE demanderait le record de
-	// suppression de l'entité, qui n'a jamais été cherché (registre des reports).
+	// suppression de l'entité, cherché le 2026-08-18 et NON isolable (registre des reports).
 	T0 int `json:"t0"`
 	T1 int `json:"t1"`
 	// X / Y : la position de la pose, en coordonnées monde (mêmes axes que Point.X/Y).
@@ -120,6 +132,12 @@ type EquipmentPlacement struct {
 // properties` varie d'un film à l'autre et se MESURE dans le film. Publier les poses sans
 // publier la mesure qui les rend lisibles laisserait croire qu'elles tombent d'une constante.
 type EquipmentPlacementCoverage struct {
+	// Scanned dit que le film a été BALAYÉ jusqu'au bout. Faux : il n'a pas pu l'être du tout
+	// (chunks illisibles, bornes de carte absentes, archétype absent des keyframes) — ou il
+	// n'y a pas eu de film (assemblage sur positions figées). Sans lui, `calibrated: false`
+	// couvrait DEUX pannes distinctes qui se lisaient pareil : un film illisible et un film
+	// dont la calibration refuse de trancher rendent tous deux zéro pose.
+	Scanned bool `json:"scanned"`
 	// Widths est le découpage retenu (« lead/index »), vide si la calibration a échoué.
 	Widths string `json:"widths,omitempty"`
 	// Calibrated dit si le film a tranché. Faux : aucune pose n'est publiée, et c'est
@@ -301,7 +319,7 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 		return
 	}
 	slog.Info("rejeu : poses d'equipement",
-		"calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
+		"balaye", c.Scanned, "calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
 		"nommees", c.Named, "autres", c.Other,
 		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading,
 		"deployees", c.Deployed, "lachees", c.Dropped, "origineInconnue", c.Unknown)
@@ -317,6 +335,7 @@ func buildEquipmentPlacements(
 	positions []filmdec.BipedPosition, clock replayClock,
 ) ([]EquipmentPlacement, *EquipmentPlacementCoverage) {
 	cov := &EquipmentPlacementCoverage{
+		Scanned:        st.Scanned,
 		Calibrated:     st.Calibration.Widths.Valid(),
 		Lives:          st.Lives,
 		Anchors:        st.Anchors,

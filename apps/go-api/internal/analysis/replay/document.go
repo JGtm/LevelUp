@@ -261,9 +261,14 @@ type ReplayDocument struct {
 	// aucune traction n'a été lue (film sans grappin, ou vies non publiées).
 	GrappleLines []GrappleLine `json:"grappleLines,omitempty"`
 	// EquipmentPlacements est la liste des POSES d'objets d'équipement sur la carte
-	// (cf. equipment_placements.go) : position monde, fenêtre [t0, t1] de la création à la
-	// disparition, famille (`wall` / `sensor` / `other`), identifiant `eqip` du jeu, poseur
-	// mesuré (-1 quand aucun) et cap de visée du poseur quand il a été lu.
+	// (cf. equipment_placements.go) : position monde, fenêtre [t0, t1], famille
+	// (`wall` / `sensor` / `other`), identifiant `eqip` du jeu, poseur mesuré (-1 quand aucun)
+	// et cap de visée du poseur quand il a été lu.
+	//
+	// `t1` EST UNE MISE AU REPOS, PAS UNE DISPARITION : le film ne date la disparition d'aucun
+	// objet d'équipement (mesure du 2026-08-18). La fenêtre publiée est donc une BORNE
+	// INFÉRIEURE de la présence de l'objet ; effacer la pose à `t1` affirmerait une disparition
+	// que rien ne mesure.
 	//
 	// UNE POSE N'EST PAS RATTACHÉE À UNE Track : c'est un objet du monde, pas un joueur.
 	// `owner` désigne la VIE qui l'a posé quand la proximité l'atteste, et rien d'autre.

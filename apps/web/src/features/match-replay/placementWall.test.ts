@@ -116,10 +116,12 @@ describe('drawWall — l’arc, son halo, et le cercle des poses sans cap', () =
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'equipe')).toBe(false)
   })
 
-  it('hors de la fenêtre mesurée, rien n’est tracé : la durée EST la pose', () => {
-    for (const frame of [9, 101]) {
-      expect(painted([pose({ h: 45 })], { ...TIME, frame })).toBe(0)
-    }
+  it('avant `t0` rien n’est tracé, et après `t1` le mur RESTE : il ne disparaît pas', () => {
+    // `t1` date la mise au repos de l'objet, pas sa disparition — que le film ne porte pas
+    // (mesure du 2026-08-18, cf. placementEndFrame). Seule la fin du rejeu referme la fenêtre.
+    expect(painted([pose({ h: 45 })], { ...TIME, frame: 9 })).toBe(0)
+    expect(painted([pose({ h: 45 })], { ...TIME, frame: 101 })).toBeGreaterThan(0)
+    expect(painted([pose({ h: 45 })], { ...TIME, frame: 600 })).toBe(0)
   })
 })
 

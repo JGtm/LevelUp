@@ -16,7 +16,11 @@ import { useCallback, useState, type PointerEvent, type RefObject } from 'react'
 
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { placementAt, type PlacementView } from './equipmentPlacementsLayer'
+import {
+  placementAt,
+  type PlacementView,
+  type PlacementWindowTime,
+} from './equipmentPlacementsLayer'
 import type { XY } from './replayLogic'
 
 /** Ce qui est survolé : la pose, et l'endroit du canvas où poser son infobulle. */
@@ -31,11 +35,12 @@ export interface PlacementHoverInput {
   /** L'image courante, telle que la boucle de lecture la tient. */
   frameRef: RefObject<number>
   /**
-   * Durée RÉELLE d'une frame, en ms (`frameToMs(1, doc)`). Le survol en a besoin parce qu'une
-   * famille — le traqueur — ne montre son impulsion que pendant quelques centaines de
-   * millisecondes, et qu'on ne survole pas ce qui n'est plus dessiné (cf. `placementShows`).
+   * L'axe de temps du rejeu (`frameMs` = durée RÉELLE d'une image, `frames` = leur nombre) :
+   * il borne la fenêtre d'affichage d'une pose (cf. `placementEndFrame`), et il sert aussi au
+   * traqueur, qui ne montre son impulsion que quelques centaines de millisecondes — on ne
+   * survole pas ce qui n'est plus dessiné (cf. `placementShows`).
    */
-  frameMs: number
+  time: PlacementWindowTime
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
   showUnnamed: boolean
@@ -50,8 +55,8 @@ export interface PlacementHoverHandlers {
 export function usePlacementHover({
   placements,
   view,
+  time,
   frameRef,
-  frameMs,
   enabled,
   showUnnamed,
 }: PlacementHoverInput): PlacementHoverHandlers {
@@ -73,7 +78,7 @@ export function usePlacementHover({
       const found = placementAt(
         placements,
         view,
-        { frame: frameRef.current, frameMs, showUnnamed },
+        { frame: frameRef.current, showUnnamed, frameMs: time.frameMs, frames: time.frames },
         at,
       )
       setHover((prev) => {
@@ -82,7 +87,7 @@ export function usePlacementHover({
         return { placement: found, at }
       })
     },
-    [enabled, placements, view, frameRef, frameMs, showUnnamed],
+    [enabled, placements, view, frameRef, showUnnamed, time.frameMs, time.frames],
   )
 
   const onPointerLeave = useCallback(() => {

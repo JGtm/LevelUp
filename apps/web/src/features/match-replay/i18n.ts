@@ -100,6 +100,10 @@ interface ReplayText {
    * (`replay_labels.toml`, `[ability_palettes.ranks]`), la même source que le fil et les
    * fiches : « traqueur de menaces » (rang 12), « champ de réparation » (rang 23),
    * « translocateur quantique » (rang 11) dont la BALISE est l'objet posé.
+   *
+   * LA RÈGLE `unnamed` N'Y FIGURE PAS : c'est le défaut du serveur, dessiné en point neutre et
+   * nommé par `placementUnnamedLabel`. Le garde-rail `placementFamily.guard.test.ts` tient
+   * cette liste alignée sur `PLACEMENT_RENDER` (calque) et sur `equipmentFamilies` (Go).
    */
   layerPlacements: string
   layerPlacementsHint: string
@@ -253,7 +257,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Éteint par défaut.",
     layerPlacements: 'Équipements posés',
     layerPlacementsHint:
-      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur, champ de réparation. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
+      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur, champ de réparation. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. Le film ne dit pas quand un équipement disparaît : le capteur se tient donc à sa durée officielle de 15 s, les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
     layerPlacementsUnnamed: 'Objets non identifiés',
     layerPlacementsUnnamedHint:
       "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée aux familles nommées. Ceux-là s'affichent quelle que soit leur origine — on cherche justement à voir ce qu'on ne sait pas nommer. Éteint par défaut.",
@@ -395,7 +399,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Line drawn from killer to victim at the moment of the kill. Off by default.',
     layerPlacements: 'Deployed equipment',
     layerPlacementsHint:
-      'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, translocator beacon, repair field. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
+      'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, translocator beacon, repair field. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The film never says when a piece of equipment disappears: the sensor therefore keeps to its official 15 s duration, and the other placements stay on screen until the end of the replay. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
     layerPlacementsUnnamed: 'Unidentified objects',
     layerPlacementsUnnamedHint:
       'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the named families. These show whatever their origin — the point is precisely to see what cannot be named. Off by default.',

@@ -9,7 +9,8 @@
  *  - LE FILTRE D'ORIGINE (schéma 10) : seul `deployed` se dessine ; `dropped`, `unknown` et
  *    l'origine ABSENTE (artefact antérieur) ne dessinent rien — sauf l'objet non identifié,
  *    qui reste gouverné par sa seule bascule ;
- *  - LA FENÊTRE [t0, t1], exacte, sans rémanence (même contrat que la ligne de grappin) ;
+ *  - LA FENÊTRE D'AFFICHAGE : `t1` date la mise au repos de l'objet et ne referme rien — le
+ *    capteur se tient à sa durée officielle, les autres poses vont jusqu'à la fin du rejeu ;
  *  - LE TRACÉ DU CAPTEUR : sa zone est FIXE au rayon officiel, seule l'onde du ping bouge —
  *    et elle ne part pas sous mouvement réduit (l'arithmétique du ping, elle, est verrouillée
  *    dans threatSensor.test.ts) ;
@@ -23,6 +24,7 @@ import {
   isPlacementActive,
   PLACEMENT_RENDER,
   placementAt,
+  placementEndFrame,
   placementIsDeployedObject,
   placementKind,
   placementOrigin,
@@ -42,7 +44,7 @@ import {
   TIME,
   VIEW,
 } from './test/placementFixtures'
-import { REVEAL_RADIUS_PX, SENSOR_RADIUS_M } from './threatSensor'
+import { REVEAL_RADIUS_PX, SENSOR_DURATION_MS, SENSOR_RADIUS_M } from './threatSensor'
 
 describe('PLACEMENT_RENDER — la table, famille par famille', () => {
   it('les cinq familles DÉPLOYABLES ont chacune leur règle de rendu', () => {
@@ -131,10 +133,28 @@ describe('placementOrigin / placementIsDeployedObject — le filtre du schéma 1
   })
 })
 
-describe('isPlacementActive — la fenêtre mesurée, bornes comprises', () => {
-  it('vraie sur [t0, t1], fausse d’un cran de part et d’autre', () => {
+describe('placementEndFrame — `t1` n’est PAS la disparition', () => {
+  it('rien avant t0, et t1 ne referme RIEN : le film ne date aucune disparition', () => {
     const p = pose({ t0: 10, t1: 20 })
-    expect([9, 10, 20, 21].map((f) => isPlacementActive(p, f))).toEqual([false, true, true, false])
+    expect([9, 10, 20, 21, 599].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([
+      false, true, true, true, true,
+    ])
+    expect(isPlacementActive(p, 'wall', 600, TIME)).toBe(false)
+  })
+
+  it('le capteur se tient à sa durée OFFICIELLE : 15 s, soit 150 images de 100 ms', () => {
+    const p = pose({ t0: 10, t1: 20, family: 'sensor' })
+    expect(placementEndFrame(p, 'sensor', TIME)).toBe(10 + SENSOR_DURATION_MS / TIME.frameMs)
+    expect(isPlacementActive(p, 'sensor', 161, TIME)).toBe(false)
+  })
+
+  it('la borne MESURÉE l’emporte quand elle dépasse la durée officielle', () => {
+    const p = pose({ t0: 10, t1: 400, family: 'sensor' })
+    expect(placementEndFrame(p, 'sensor', TIME)).toBe(400)
+  })
+
+  it('une pose sans famille à durée publiée va jusqu’à la dernière image du rejeu', () => {
+    expect(placementEndFrame(pose({ t0: 10, t1: 20 }), 'unnamed', TIME)).toBe(599)
   })
 })
 
@@ -177,6 +197,12 @@ describe('drawSensor — la zone officielle et son onde', () => {
   it('mouvement réduit : la zone reste, l’onde ne part jamais', () => {
     const time = { ...TIME, frame: 52, reducedMotion: true }
     expect(draw([sensor()], time).filter((o) => o.op === 'arc')).toHaveLength(2)
+  })
+
+  it('les objets non identifiés sont muets par défaut, et un point neutre une fois demandés', () => {
+    expect(draw([pose({ family: 'other' })]).filter((o) => o.op === 'fill')).toHaveLength(0)
+    const on = draw([pose({ family: 'other' })], { ...TIME, showUnnamed: true })
+    expect(on.filter((o) => o.op === 'fill')).toHaveLength(1)
   })
 })
 
@@ -238,7 +264,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
 })
 
 describe('placementAt — le survol', () => {
-  const hover = { frame: 50, frameMs: 100, showUnnamed: false }
+  const hover = { frame: 50, frameMs: TIME.frameMs, frames: TIME.frames, showUnnamed: false }
   const center = projected(5, 5)
 
   it('la PLUS PETITE zone gagne : un mur posé dans un capteur reste atteignable', () => {
