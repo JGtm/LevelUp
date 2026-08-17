@@ -2638,6 +2638,12 @@ export type ReplayEquipmentEpisode = components['schemas']['EquipmentEpisode']
 // La TRACTION de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
 // d'accroche en coordonnées monde — cf. grappleLayer.ts pour le tracé.
 export type ReplayGrappleLine = components['schemas']['GrappleLine']
+// Une POSE d'équipement (schéma 9) : mur, capteur, ou objet dont la nature n'est pas
+// établie (`family: other`). `owner` est le SLOT du poseur (-1 si aucun bipède
+// contemporain à moins de 3 m) et `h` son cap de VISÉE à l'instant de la pose, en degrés
+// [0,360[ — la même convention que `Point.h`, et JAMAIS l'orientation de l'objet, que le
+// film ne porte pas. Cf. equipmentPlacementsLayer.ts pour le rendu.
+export type ReplayEquipmentPlacement = components['schemas']['EquipmentPlacement']
 export type ReplayDocument = components['schemas']['ReplayDocument']
 
 // Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le

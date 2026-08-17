@@ -32,6 +32,10 @@
  *  - un kill À LA grenade sonne l'explosion DE SON TYPE (c'est elle qui a tué, pas le
  *    geste du lancer), et un kill À LA MÊLÉE sonne le coup qui a tué — les deux passent
  *    par la VIGNETTE de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
+ *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 9 — mur, capteur) : le GESTE de
+ *    pose sonne, à `t0`. Rien ne sonne à la fin : la disparition d'un mur n'est pas un acte,
+ *    c'est la fin d'une durée. Une famille sans fichier (les objets non identifiés, et toutes
+ *    celles que le nommage ajoutera) reste muette ;
  *  - les ÉPISODES D'ÉQUIPEMENT ACTIF (doc.equipmentEpisodes, schéma 7 — camo et
  *    surbouclier, les deux familles MESURÉES) : le début d'épisode sonne l'activation,
  *    la fin sonne la désactivation SEULEMENT quand elle est MESURÉE (`endRead`) — un
@@ -195,6 +199,27 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
   overshield: { activate: 'overshield_activate', deactivate: 'overshield_deactivate' },
 }
 
+/**
+ * Son d'une POSE d'équipement par FAMILLE (`family` du document, schéma 9) -> stem du fichier
+ * joué à `t0`, l'instant du geste.
+ *
+ * UNE TABLE DISTINCTE DE `EQUIPMENT_SOUND_STEMS`, et ce n'est pas une duplication : les deux
+ * parlent d'équipement, mais pas du même OBJET. L'une porte des ÉPISODES D'ÉTAT sur le
+ * porteur (camouflage, surbouclier : un début ET une fin mesurés) ; celle-ci porte des OBJETS
+ * POSÉS sur le terrain, dont seul le geste de pose est un événement — la disparition d'un mur
+ * n'est pas un acte, c'est la fin d'une durée, et rien ne la sonne. Les fondre obligerait
+ * chaque famille à déclarer une désactivation qu'elle n'a pas.
+ *
+ * Une famille absente de cette table est MUETTE (les objets non identifiés, `other`, et toutes
+ * les familles que le lot de nommage ajoutera sans son) — jamais le son d'une voisine, même
+ * règle que partout ailleurs ici. Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces
+ * stems contre le dossier d'assets.
+ */
+export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
+  wall: 'wall_activate',
+  sensor: 'sensor_activate',
+}
+
 /** Un événement sonore posé sur l'horloge du rejeu. */
 export interface ReplaySoundEvent {
   /** Instant en ms sur l'horloge du rejeu (celle du fil et des fiches). */
@@ -323,6 +348,12 @@ export function buildSoundTimeline(
       if (!stems) continue
       out.push({ ms: frameToMs(e.t0, doc), stem: stems.activate })
       if (e.endRead) out.push({ ms: frameToMs(e.t1, doc), stem: stems.deactivate })
+    }
+    // Les POSES d'équipement (schéma 9) : le GESTE sonne, à `t0`, et lui seul. La fin de vie
+    // d'un mur n'est pas un acte — c'est la fin d'une durée mesurée, et rien ne la sonne.
+    for (const p of doc.equipmentPlacements) {
+      const stem = EQUIPMENT_PLACEMENT_SOUND_STEMS[p.family]
+      if (stem) out.push({ ms: frameToMs(p.t0, doc), stem })
     }
   }
   return out.sort((a, b) => a.ms - b.ms)
