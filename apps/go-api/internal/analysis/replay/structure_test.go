@@ -152,8 +152,20 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   version il continuerait : la reprise du backfill se fait par SchemaVersion.
 	//   L'hypothèse inverse — une DOTATION AU SPAWN, écrite avant mesure — est RÉFUTÉE : 4 poses
 	//   sur 3 661 (0,1 %), et les 4 sont des vies de 0,13 à 1,49 s où début et fin se confondent.
-	if SchemaVersion != 10 {
-		t.Fatalf("SchemaVersion = %d, attendu 10 : incrémenter exige une raison écrite ci-dessus "+
+	//   v10 -> v11 (2026-08-17, plan PLAN_ARMES_AU_SOL_2E_LECTURE phase 3) : `weaponPads` et
+	//   `padPickups`, les SOCLES D'ARME du match — position, famille, apparitions, intervalles de
+	//   présence bornés par le recensement des images-clés, cycle de réapparition quand il est
+	//   ÉTABLI, et les occupations qui se sont achevées. Champs omitempty, même raison de monter
+	//   que v3/v4/v5/v7/v8/v9 : c'est la CLÉ DE REPRISE du backfill — le calque des socles
+	//   n'existe que sur un artefact qui les porte, un v10 doit se lire « à re-cuire », pas
+	//   « à jour ». La couverture monte avec les champs (`coverage.groundWeapons`) : un film sans
+	//   socle, un film dont toutes les armes sont des lâchers (Super Fiesta : 82,3 % de lâchers,
+	//   zéro socle) et un film qu'on n'a pas su balayer rendent tous trois zéro socle, et seuls
+	//   ces compteurs les distinguent. Le RAMASSEUR n'est PAS publié (`padPickups[].xuid` vaut
+	//   `null`) : l'oracle des loadouts donne 88,1 % par slot de vie et 79,7 % par joueur, contre
+	//   >= 90 % exigé, et le seuil n'a pas été rebaissé.
+	if SchemaVersion != 11 {
+		t.Fatalf("SchemaVersion = %d, attendu 11 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

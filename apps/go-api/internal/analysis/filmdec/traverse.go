@@ -399,8 +399,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBits(6)
 		br.ReadBits(32)
 		return variant, nil, true
-	case "high-frequency": // ti=4 i0 — variante FRAME (FUN_14076d034) = R(8) (keyframe = 26b, distinct)
-		br.ReadBits(8)
+	case compHighFrequency: // ti=4 i0 — variante FRAME (FUN_14076d034) = R(8), sonde
+		publishProbe(typeIndex, ProbeHighFrequency, br.ReadBits(8))
 		return variant, nil, true
 	case "animated-mesh-dynamic-state-component": // ti=38 i19 (FUN_142f0258c) — R(8)+R(1)+R(16)
 		br.ReadBits(8)
@@ -417,11 +417,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "equipment-being-hacked-component": // ti=37 i25 (FUN_142ed441c) — R(8)
 		br.ReadBits(8)
 		return variant, nil, true
-	case "equipment-energy-delay-ticks-left-component": // ti=37 i26 (FUN_140dda128) — R(10)
-		br.ReadBits(10)
+	case compEquipmentEnergyDelay: // ti=37 i26 (FUN_140dda128) — R(10), publie
+		consumeEquipmentEnergyDelay(br)
 		return variant, nil, true
-	case "equipment-charges-remaining-component": // ti=37 i27 (FUN_142ed4518) — R(8)
-		br.ReadBits(8)
+	case compEquipmentCharges: // ti=37 i27 (FUN_142ed4518) — R(8), publie
+		consumeEquipmentCharges(br)
 		return variant, nil, true
 	case "player-waypoint-component": // ti=5 i0 (FUN_1410665dc) — R(3)
 		br.ReadBits(3)
@@ -430,14 +430,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// Grammaire dans decodePlayerRespawnTimer (vitality.go) — copie unique.
 		_ = decodePlayerRespawnTimer(br)
 		return variant, nil, true
-	case "player-soft-kill-timer-component": // ti=5 i2 (FUN_140d580a8->FUN_140d580d0) — R(5)+R(5)+R(5)
-		br.ReadBits(5)
-		br.ReadBits(5)
-		br.ReadBits(5)
+	case compPlayerSoftKillTimer: // ti=5 i2 (FUN_140d580a8->FUN_140d580d0) — publie
+		consumePlayerSoftKillTimer(br)
 		return variant, nil, true
-	case "player-target-tracking-detection-component": // ti=5 i3 (FUN_142f044f0) — R(1)+R(1)
-		br.ReadBit()
-		br.ReadBit()
+	case compPlayerTargetTracking: // ti=5 i3 (FUN_142f044f0) — publie
+		consumePlayerTargetTracking(br)
 		return variant, nil, true
 	case "player-unsafe-respawn-timer-component": // ti=5 i4 (FUN_142f0452c) — R(10)
 		br.ReadBits(10)
@@ -445,8 +442,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "player-respawn-safety-component": // ti=5 i5 (FUN_1410e3f30->FUN_140ebf854) — R(5)
 		br.ReadBits(5)
 		return variant, nil, true
-	case "player-desired-respawn-player-component": // ti=5 i6 (FUN_1410f7330) — R(16)
-		br.ReadBits(16)
+	case compPlayerDesiredRespawnPlayer: // ti=5 i6 (FUN_1410f7330) — publie
+		consumePlayerDesiredRespawnPlayer(br)
 		return variant, nil, true
 	// --- lot workflow filmdec-port-component-desers (2026-06-30, RE Ghidra parallele) ---
 	// HIGH-confidence : largeurs fixes verifiees bit-exact.
@@ -478,14 +475,14 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "managed-player-team-designator-component": // ti=9 i0 (FUN_140f581e8) — R(4)
 		br.ReadBits(4)
 		return variant, nil, true
-	case "game-engine-current-state-component": // ti=0 i2 (FUN_14116d1d0) — R(3)
-		br.ReadBits(3)
+	case compGameEngineCurrentState: // ti=0 i2 (FUN_14116d1d0) — publie
+		consumeGameEngineCurrentState(br)
 		return variant, nil, true
 	case "game-engine-game-finished-component": // ti=2 i3 (FUN_142f035e0) — R(1)
 		br.ReadBit()
 		return variant, nil, true
-	case "managed-object-property-name-component": // ti=13 i0 (FUN_142ed69d8) — R(32)
-		br.ReadBits(32)
+	case compManagedObjectPropName: // ti=13 i0 (FUN_142ed69d8) — R(32), sonde
+		publishProbe(typeIndex, ProbeManagedObjectPropertyName, br.ReadBits(32))
 		return variant, nil, true
 	case "managed-navpoint-sub-type-component": // ti=12 i0 (FUN_1410e0cac) — R(32)
 		br.ReadBits(32)
@@ -499,8 +496,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "biped-emp-timer-component": // ti=35 i51 (FUN_142f02830) — R(8) (timer quant 0..10s)
 		br.ReadBits(8)
 		return variant, nil, true
-	case "managed-object-networked-splash-message-dynamic-component": // ti=47 i1 (FUN_140daebd0) — R(24)
-		br.ReadBits(24)
+	case compSplashMessageDynamic: // ti=47 i1 (FUN_140daebd0) — R(24), sonde
+		publishProbe(typeIndex, ProbeSplashDynamic, br.ReadBits(24))
 		return variant, nil, true
 	// LOW-confidence : largeur quantifiee runtime data-dependent sur la branche gate==1.
 	// On porte le cas commun (gate==0) et on desync PROPREMENT sur la branche data-dependent
@@ -572,18 +569,16 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBit()
 		br.ReadBit()
 		return variant, nil, true
-	case "player-engine-loadout-component": // ti=5 i11 (FUN_141044428) — 8xR(8)=64
-		for i := 0; i < 8; i++ {
-			br.ReadBits(8)
-		}
+	case compPlayerEngineLoadout: // ti=5 i11 (FUN_141044428) — 8xR(8)=64, publie
+		consumePlayerEngineLoadout(br)
 		return variant, nil, true
 	case "player-fade-properties-component": // ti=5 i13 (FUN_141020bac) — 6xR(12)=72
 		for i := 0; i < 6; i++ {
 			br.ReadBits(12)
 		}
 		return variant, nil, true
-	case "player-lives-remaining-component": // ti=5 i14 (FUN_141055734) — R(7)
-		br.ReadBits(7)
+	case compPlayerLivesRemaining: // ti=5 i14 (FUN_141055734) — R(7), publie
+		consumePlayerLivesRemaining(br)
 		return variant, nil, true
 	case "managed-player-color-override-component": // ti=9 i1 (FUN_142ed5b54) — 8xR(8)=64 (2 couleurs RGBA quant)
 		for i := 0; i < 8; i++ {
@@ -630,10 +625,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// Grammaire dans decodeGameEngineRoundTimer (vitality.go) — copie unique.
 		_ = decodeGameEngineRoundTimer(br)
 		return variant, nil, true
-	case "game-engine-sudden-death-time-left-component": // ti=0 i6 (FUN_14116d3a4) — R(16)+R(16)+R(5)
-		br.ReadBits(16)
-		br.ReadBits(16)
-		br.ReadBits(5)
+	case compGameEngineSuddenDeath: // ti=0 i6 (FUN_14116d3a4) — R(16)+R(16)+R(5), publie
+		consumeGameEngineSuddenDeath(br)
 		return variant, nil, true
 	case "game-engine-screen-sequence-component": // ti=0 i9 (FUN_14101d118) — R(4)+R(8)
 		br.ReadBits(4)
@@ -645,40 +638,27 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 			return variant, nil, false
 		}
 		return variant, nil, true
-	case "player-desired-respawn-location-component": // ti=5 i12 — R(1)[si1: vec3 quant(6+level) + R(19)]
-		if br.ReadBit() { // has_location
-			consumeQuantVec3(br, quantAxisWidth(uint(level))) // PISTE 1 : largeur = 6+flags
-			br.ReadBits(19)                                   // FUN_14076dc04 handle/respawn-id
-		}
+	case compPlayerDesiredRespawnLoc: // ti=5 i12 — R(1)[si1: vec3 quant(6+level) + R(19)], publie
+		consumePlayerDesiredRespawnLocation(br, level)
 		return variant, nil, true
 	// --- lot 3 workflow filmdec-port-component-desers (2026-06-30) ---
-	case "player-last-betrayer-component": // ti=5 i15 (FUN_142f04158) — R(6)
-		br.ReadBits(6)
+	case compPlayerLastBetrayer: // ti=5 i15 (FUN_142f04158) — R(6), publie
+		consumePlayerLastBetrayer(br)
 		return variant, nil, true
 	case "player-vehicle-entrance-ban-component": // ti=5 i16 (FUN_142f04610) — R(1)
 		br.ReadBit()
 		return variant, nil, true
-	case "player-control-aiming-component": // ti=5 i17 (FUN_142f03ea4) — R(19) (aim dir octahedral)
-		br.ReadBits(19)
+	case compPlayerControlAiming: // ti=5 i17 (FUN_142f03ea4) — R(19) direction cubemap, publie
+		consumePlayerControlAiming(br)
 		return variant, nil, true
-	case "player-active-in-game-component": // ti=5 i18 (FUN_1411615d8) — R(1)
-		br.ReadBit()
+	case compPlayerActiveInGame: // ti=5 i18 (FUN_1411615d8) — R(1), publie
+		consumePlayerActiveInGame(br)
 		return variant, nil, true
-	case "player-pending-join-in-progress-spawn-component": // ti=5 i19 (FUN_1411615b8) — R(1)
-		br.ReadBit()
+	case compPlayerPendingJoinInProgress: // ti=5 i19 (FUN_1411615b8) — R(1), publie
+		consumePlayerPendingJoinInProgress(br)
 		return variant, nil, true
-	case "player-malleable-properties-simulation-component": // ti=5 i20 (FUN_1407f0518) — 3xR(1)+6x[R(1);si1:R(12)]+9xR(1)
-		br.ReadBit()
-		br.ReadBit()
-		br.ReadBit()
-		for i := 0; i < 6; i++ {
-			if br.ReadBit() {
-				br.ReadBits(12)
-			}
-		}
-		for i := 0; i < 9; i++ {
-			br.ReadBit()
-		}
+	case compPlayerMalleableProperties: // ti=5 i20 (FUN_1407f0518) — publie, bits de porte compris
+		consumePlayerMalleableProperties(br)
 		return variant, nil, true
 	case "player-representation-component": // ti=5 i21 (FUN_14111ec64) — R(32)
 		br.ReadBits(32)
@@ -719,13 +699,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 			return variant, nil, false
 		}
 		return variant, nil, true
-	case "game-engine-grace-period-time-left-component": // ti=0 i7 (FUN_141165d24) — R(16)+R(16)+R(5)
-		br.ReadBits(16)
-		br.ReadBits(16)
-		br.ReadBits(5)
+	case compGameEngineGracePeriod: // ti=0 i7 (FUN_141165d24) — R(16)+R(16)+R(5), publie
+		consumeGameEngineGracePeriod(br)
 		return variant, nil, true
-	case "game-engine-round-condition-flags-component": // ti=0 i8 (FUN_141132dc0) — R(10)
-		br.ReadBits(10)
+	case compGameEngineRoundConditionFlags: // ti=0 i8 (FUN_141132dc0) — R(10), publie
+		consumeGameEngineRoundConditionFlags(br)
 		return variant, nil, true
 	case "game-engine-alliance-component": // ti=0 i10 (FUN_140a24968) — R(32) mask + popcount*(R(32)+R(32))
 		mask := uint32(br.ReadBits(32))
@@ -736,10 +714,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 			}
 		}
 		return variant, nil, true
-	case "game-engine-current-round-component": // ti=0 i4 (FUN_14116fc70) — R(1)[si0:R(5)]
-		if !br.ReadBit() {
-			br.ReadBits(5)
-		}
+	case compGameEngineCurrentRound: // ti=0 i4 (FUN_14116fc70) — R(1)[si0:R(5)], publie
+		consumeGameEngineCurrentRound(br)
 		return variant, nil, true
 	case "tacmap-backmenu-openoverride": // ti=34 i13 (FUN_142ed3d64)
 		consumeTacmapBackmenuOpenoverride(br)
@@ -768,8 +744,8 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "statborg-round-outcomes-component": // ti=6 i56 (FUN_142ed71a4) — 32×R(2)
 		consumeStatborgRoundOutcomes(br)
 		return variant, nil, true
-	case "managed-object-networked-splash-message-static-component": // ti=47 i0 (FUN_141085d50)
-		consumeManagedSplashMessage(br)
+	case compSplashMessageStatic: // ti=47 i0 (FUN_141085d50) — sonde sur le R(24) inconditionnel
+		publishProbe(typeIndex, ProbeSplashStatic, consumeManagedSplashMessage(br))
 		return variant, nil, true
 	case "object-multiplayer-properties-component": // i9 = the 'obje' (FUN_1407d4c94 TLV blob)
 		consumeObjectMultiplayerProperties(br)
@@ -876,7 +852,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// Returns ported=false on the value-gated loop1 dispatch (count>0) so the
 		// traversal desyncs cleanly instead of mis-aligning. Common case: 196 bits.
 		return variant, nil, consumeBipedAction(br)
-	case "managed-object-boundary-visibility-component": // ti10 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1)
+	case compManagedObjectBoundaryVisibility: // ti=10 i0 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1), publie
 		consumeManagedObjectBoundaryVisibility(br)
 		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)

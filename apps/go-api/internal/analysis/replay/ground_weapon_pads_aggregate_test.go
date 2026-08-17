@@ -72,7 +72,8 @@ func TestGroundWeaponPadsAggregate(t *testing.T) {
 		socles := map[string][]gwPadCluster{}
 		for _, f := range films {
 			sel := gwPadsSelect(byFilm[f], set)
-			socles[f] = gwPadsKeep(gwPadsCluster(sel, gwPadRadiusM), gwPadMinHits)
+			clusters, _ := gwPadsClusterAssign(sel)
+			socles[f], _ = gwPadsKeep(clusters, gwPadMinHits)
 			t.Logf("JEU %s · film %s · carte %s · apparitions %d · candidates %d · SOCLES %d",
 				set, f, mapOf[f], len(byFilm[f]), len(sel), len(socles[f]))
 		}
@@ -149,7 +150,7 @@ func gwPadsOverlap(a, b []gwPadCluster, byFamily bool) (hit, total int) {
 			if p.Kind != q.Kind || (byFamily && p.Family != q.Family) {
 				continue
 			}
-			if gwPadsDist(p.X, p.Y, p.Z, q.X, q.Y, q.Z) <= gwPadsMatchRadiusM {
+			if dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{q.X, q.Y, q.Z}) <= gwPadsMatchRadiusM {
 				hit++
 				break
 			}
@@ -166,7 +167,7 @@ func gwPadsLogUnmatched(t *testing.T, set, m, a, b string, pa, pb []gwPadCluster
 		found := false
 		for _, q := range pb {
 			if p.Kind == q.Kind && p.Family == q.Family &&
-				gwPadsDist(p.X, p.Y, p.Z, q.X, q.Y, q.Z) <= gwPadsMatchRadiusM {
+				dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{q.X, q.Y, q.Z}) <= gwPadsMatchRadiusM {
 				found = true
 				break
 			}

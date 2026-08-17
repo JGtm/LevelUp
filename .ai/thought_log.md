@@ -1,3 +1,36 @@
+## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 1 close (lot 0, A.0, C.0/C.1a), vague 2 lancee
+
+**Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, branche
+d'integration `wt/registre-film`).
+**Decision technique principale** : deux gates 0 NON ATTEINTS tels qu'ecrits (lot A : 7/12 accords
+de score final ; lot C : concentration 2,37x pour 3x) et AUCUN seuil rebaisse — mais dans les deux
+cas la lecture des ecarts requalifie le critere, pas le decodeur, et un arbitrage ecrit ouvre la
+suite : lot A phase 0-bis (Oddball : les emissions du statborg s'arretent a 290 s sur 519 s — la
+manche 2 est invisible a la grammaire d'ancrage, ce n'est pas un negatif de mode ; oracle KOTH non
+homogene ; film tronque ; corpus n >= 3 par mode) ; lot C : la clause de concentration etait un
+critere d'EVENEMENT applique a un ETAT continu (`radial-progress` emet pendant tout le
+remplissage, avant l'instant de capture) — phase 1a de RE en lecture seule ouverte et CLOSE le
+meme soir (`radial-progress` = R(8) sur [-1,+1], `boundary-color` = 4xR(8) RGBA, `rtpc` =
+R(32)+[R(22)], ti=13 STOP), gate d'etat G-C1 ecrit avant le port.
+**Resultats observes** : (1) ti=23 est ABSENT des 11 films et 5 modes (image-cle et delta) —
+l'artefact « Registre du film Theater » extrapolait d'un deser jamais mesure ; les zones parlent en
+delta par ti=10 (barriere) et ti=12 (navpoint), absents du temoin Slayer ; (2) le registre `chunk_00`
+CHANGE AVEC LE BUILD (`06dfe6d9` juillet 2025 : 116 blocs / 1 031 slots vs 118 / 1 067 en 2026) —
+G2 n'est pas applicable aux films d'un autre build, les hooks du lot 0 s'appuient sur des
+enumerations nommees, jamais un index ; (3) la chaine `consumeByName` desynchronise 61-68 % des
+paquets delta — un hook n'y voit qu'un tiers des paquets, les scanners par bande restent la voie,
+et `ti=4` (1 slot) est un temoin d'ancrage a 98,7-99,8 % de purete ; (4) le lot 0 sort 23 `case`
+de `traverse.go` (1 321 -> 1 297 L) vers quatre fichiers a hooks sans qu'un bit ne bouge, ajoute le
+test de polarite d'i9, l'empreinte du registre, 8 lignes de registre ; l'item 0.2 est STOPPE `[!]`
+(`SetAbsoluteAxisW` est le levier d'une calibration VIVANTE de killsource, goldens 13/15/16/16 ;
+reprise en 3 etapes au registre :221) ; (5) couts mesures : 0,4-15 s et 15-75 Mo par film pour
+les instruments par ancrage — D17 amende a 4 executeurs simultanes, la regle un film par processus
+demeure. Corrections du plan : `06dfe6d9` = BTB Fiesta CTF (26 joueurs), pas un Slayer.
+**Conclusion / prochaine etape** : vague 2 depuis `wt/registre-film` : lot C phase 1b (port Go de
+radial-progress/boundary-color/rtpc + C.0.2 + mesure G-C1, `wt/zones-film`), lots B+P
+(`wt/joueur-moteur`), lot D (`wt/usages-film`), E.0.1 + sondes F (`wt/visee-sondes`) ; A.0-bis en
+cours. Publications (phases 1) toujours SERIALISEES et apres l'item 6 phase 3.
+
 ## [2026-08-17] v7.5 rejeu 2D — exploitation du « Registre du film Theater » : plan ecrit, artefact re-verifie sur pieces, worktree dedie
 
 **Statut** : En cours — plan VALIDE par l utilisateur le 17/08 (soir) : D1/D2/D3/D6/D12 confirmes apres explications, lot P (ti=5, inventaire du joueur) ajoute, item 0.6 (plomberie des hooks, D15) et D16/D17 (publications serialisees, machine bornee) ajoutes ; GO donne (« piloter ca avec des agents et workflow sur des worktrees dedies, paralleliser ») ; vague 1 lancee : lot 0 (`wt/registre-film`), A.0 (`wt/score-film`), C.0.1/0.3 (`wt/zones-film`) — un executeur Opus par worktree, films lus par chemin absolu, un film par processus, avant-plan, plafond RAM.
@@ -37,6 +70,96 @@ F sondes (ti=5 i11, ti=47, ti=4, tacmap, ti=13) -> G mouvement (optionnel) -> H 
 donne le go du lot 0 ; l'executeur travaille dans `wt/registre-film` (jamais le principal, occupe
 par l'item 6 phase 3) ; le lot C phase 0 peut partir en parallele du lot A dans `wt/zones-film`.
 Films lus par chemin absolu depuis le cache du principal ; aucune ecriture en base.
+## [2026-08-17] v7.5 rejeu 2D — pilotage : item 6 clos en 5 lots, planche rafraichie apres la fusion utilisateur, sujets de commit repares
+
+**Statut** : Complete (pilotage) — item 6 CLOS (phases 0, 1, 2, 2.5, 3), revue adversariale du lot de publication a suivre.
+**Decision technique principale** : trois arbitrages superviseur ecrits dans le plan (phase 1 sur les
+records de creation, socles par match sans catalogue, oracle du ramassage par joueur) — aucun seuil
+rebaisse, deux gates negatifs ecrits (2.2, 2.5 : le ramasseur n'est PAS publie). Les 7 commits de la
+phase 3 portaient une premiere ligne « @ » parasite (artefact de shell de l'executeur) : messages
+reecrits par `git filter-branch --msg-filter` AVANT tout push (rien n'etait pousse), SHA remplaces
+dans le plan (`ac70abd48`..`b5e312581`). La planche de validation a ete RE-BUNDLEE sur le HEAD apres
+la fusion utilisateur `66e867b80` (signature d'`isPlacementActive`, `placementEndFrame`,
+`SENSOR_DURATION_MS`) et republiee sur le meme artefact ; `GATES_PLANCHE_2026-08-17.md` passe a 7
+gates en app (capteur 15 s / poses jusqu'a la fin, deux murs a 0,13 m sur `000d5950` ~3:55, fil des
+morts a deux pictogrammes).
+**Resultats observes** : schema 11 publie (`weaponPads`, `padPickups` xuid null), contrat 31 -> 33,
+4 temoins re-cuits identiques aux mesures (10 socles Catalyst au centimetre), cout de cuisson sous le
+bruit ; gates Go + web verts (log `item6_phase3_gates.log`) ; planche 27 items, fumee 0 erreur.
+`document.go` 631 -> 673 L et `build.go` 621 -> 640 L (dette de taille pre-existante ACCRUE par le lot :
+a reprendre dans le lot de revue). Verifie que le refactor `ReplayCanvas.tsx` est couvert par le
+correctif de revue des poses (853 L + cliquet) : rien lance.
+**Conclusion / prochaine etape** : revue adversariale du diff `253226852..b5e312581` (contexte frais),
+lot correctif si constats (dont l'extraction des types du document hors `document.go`/`build.go`),
+puis item 4 (plan ecrit), fenetre ops (schemas 7 -> 11) a caler avec l'utilisateur.
+
+## [2026-08-17] v7.5 rejeu 2D — item 6 phase 3 : les socles d arme entrent au document (schema 11), sans ramasseur
+
+**Statut** : Complete (phase 3 CLOSE, **GATE 3 PASSE**). Items 3.1 et 3.2 `[x]`. Le PLAN entier
+est clos : phases 0, 1, 2 et 3 statuees, items 2.2 et 2.5 `[!]` avec leur mesure.
+
+**Decision technique principale** : PORTER la chaine des phases 1-2 en production plutot que de
+la recopier dans le constructeur. Les regles (grappe, classement `dropped`/`spawned`, bornage par
+le recensement des images-cles, verdict de stabilite du cycle, position de reference) vivaient
+dans des instruments `_test.go` ; elles deviennent `replay/ground_weapon_{rules,bounds,objects,
+pads}.go` et `filmdec/ground_weapon_census.go`, et les instruments sous garde les APPELLENT. Une
+seconde copie aurait diverge au premier correctif — et surtout, le controle d ancrage du plan
+n aurait plus rien prouve : ce que la mesure publie et ce que l artefact publie sont desormais le
+MEME code. Un doublon supprime au passage (`gwPickupTimeGap` faisait ce que `equipTimeGap` fait
+deja), une regle de bande extraite pour n exister qu une fois (`slotBandExcluding`), et UNE seule
+marche des images-cles la ou le chemin naif en demandait trois (bande, recensement, puis celle de
+`ScanFilmWorldObjects`).
+
+**Ce que le document publie, et ce qu il REFUSE de publier** — le refus est la moitie du
+resultat : `weaponPads` (socles PAR MATCH : position, famille, apparitions, intervalles de
+presence bornes par les images-cles, cycle depuis la disparition SEULEMENT s il est etabli) et
+`padPickups` (occupations achevees, publiees comme un INTERVALLE et non comme un instant). Le
+RAMASSEUR n est pas publie : `padPickups[].xuid` existe, vaut `null` partout, et le commentaire
+du champ porte la mesure (88,1 % par slot de vie, 79,7 % par joueur, contre >= 90 % exige) avec
+sa condition de reprise. Aucun ramassage d arme LACHEE a une mort (despawn : l accord y passe
+SOUS son propre temoin, 32,1 % contre 65,0 %). Aucun catalogue de carte (le socle appartient a la
+carte, l arme qui y apparait appartient au match).
+
+**Resultats observes (denominateurs publies)** :
+
+- **Controle d ancrage, 4 films re-cuits par la chaine de PRODUCTION** — `000d5950` 6 487 ancres
+  / 317 acceptees / 220 retenues / 97 ecartees / 181 lachees / 39 apparues / 0 au repos / **0
+  socle** ; `01e1f945` 7 953 / 405 / 291 / 114 / 203 / 88 / 38 / **10 socles** / 5 cycles ;
+  `00162144` 6 485 / 366 / 278 / 88 / 180 / 98 / 49 / **10 socles** / 3 cycles ; `bcb6d393`
+  2 377 / 219 / 159 / 60 / 99 / 60 / 34 / **10 socles** / 3 cycles. Tous ces chiffres sont ceux
+  des items 1.0, 1.1, 1.2 et 2.4 du plan, a une unite pres sur deux films (**decouverte 15** :
+  c est la table de l item 1.1 qui publiait 292 et 279 la ou l item 1.0 et la phase 2 publiaient
+  291 et 278 — la production reproduit 291 et 278).
+- **L ancrage tient SOCLE PAR SOCLE** : les dix socles de Catalyst publies pour `01e1f945` sont
+  aux dix memes coordonnees au centimetre que la table de l item 1.4, avec les memes familles et
+  les memes comptes d apparitions, **10 libelles resolus sur 10** ; les cinq cycles publies
+  retrouvent ceux de l item 2.4 (Bulldog 40,1 s · Epee 194,6 · Sniper 120,2 et 114,6 ·
+  Commando 30,5).
+- **Cout de cuisson : SOUS LE BRUIT DE LA MACHINE.** Meme film, binaire pre-compile, deux passes
+  chacun : AVANT 151,3 et 168,0 s, APRES 150,0 et 155,7 s. Le garde-fou du brief (arret si > 2x)
+  n est pas approche — la mutualisation des marches d images-cles paie exactement ce que les
+  trois lectures ajoutees coutent.
+- **Contrat** : `wantReplayDocumentFields` 31 -> 33 avec sa chronique, `SchemaVersion` 10 -> 11
+  avec la sienne, OpenAPI REGENEREE (+178 lignes, 5 schemas), `generated.ts` regenere (+75),
+  frontiere de nullabilite completee des deux cotes (la completude est verifiee PAR LE
+  COMPILATEUR : `tsc -b` refuse de compiler si un tableau nullable manque a `NULLABLE_ARRAYS`).
+- **Gate 3** : `EXIT_go_build_cgo1=0` · `EXIT_go_vet_cgo1=0` · `EXIT_go_test=0` ·
+  `EXIT_golangci_lint=0` (0 issue apres correction de 3 issues : deux `unparam` qui disaient
+  quelque chose de juste — le rayon de grappe et la distance de passage sont des SEUILS, pas des
+  parametres) · `EXIT_web_typecheck=0` · `EXIT_web_lint=0` · `EXIT_web_test=0` (447 fichiers,
+  4 093 tests ; un echec au premier passage sur `PalmaresRelationsPage.test.tsx` — timeout de 5 s
+  sous charge, le fichier passe seul en 3,2 s et le second passage complet est vert).
+
+**Conclusion / prochaine etape** : le plan `replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md` est CLOS.
+Ce qui reste ouvert est ecrit au registre avec sa condition de reprise : (1) le RAMASSEUR, qui
+demande un oracle plus rapproche que les 20 s des images-cles (inventaire lu dans le flux delta) ;
+(2) les POWER-UPS de socle, negatif de corpus qui demande un film ou il en existe (le cache local
+n a aucun film classe sur 951) ; (3) un catalogue de POSITIONS seules, qui est une decision de
+perimetre et non une mesure a refaire ; (4) la minuterie NOMINALE, qui demande les racks des
+fichiers de jeu. Le **schema 11 s ajoute a la fenetre ops du re-build de masse**. La suite
+naturelle cote produit est un LOT WEB : la note UI (section « Note UI » du plan) en donne le
+cahier des charges et ses temoins de gate visuel (`01e1f945`, `00162144`, `bcb6d393`, plus
+`000d5950` pour le calque VIDE) — quatre artefacts deja cuits en schema 11.
 
 ## [2026-08-17] v7.5 rejeu 2D — item 6 item 2.5 : l oracle du ramassage suit le joueur, et le plafond ne se leve pas
 

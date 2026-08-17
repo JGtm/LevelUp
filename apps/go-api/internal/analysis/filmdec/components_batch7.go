@@ -141,7 +141,13 @@ func consumeTrackFrameComponent(br *BitReader) {
 
 // managed-object-networked-splash-message-static-component (FUN_141085d50): managed-object
 // ref-set + R(24) + gated body (nested loops bounded by stream counts R(3)/R(2)/tag R(3)).
-func consumeManagedSplashMessage(br *BitReader) {
+//
+// IL REND SON R(24), ET SEULEMENT LUI (lot 0 item 0.6). C'est le seul champ INCONDITIONNEL du
+// composant : tout le reste vit sous une porte ou dans une boucle de longueur variable, et
+// rendre un agregat de tout cela obligerait a inventer une structure pour une donnee dont le
+// sens est inconnu. La sonde du lot F recoit donc un scalaire honnete plutot qu'un objet
+// arbitraire. Le nombre de bits consommes est INCHANGE.
+func consumeManagedSplashMessage(br *BitReader) (r24 uint64) {
 	refElem := func() {
 		switch br.ReadBits(3) {
 		case 1:
@@ -169,7 +175,7 @@ func consumeManagedSplashMessage(br *BitReader) {
 			refElem()
 		}
 	}
-	br.ReadBits(24)
+	r24 = br.ReadBits(24)
 	if br.ReadBit() { // full body
 		c1 := br.ReadBits(3)
 		for i := uint64(0); i < c1; i++ {
@@ -202,4 +208,5 @@ func consumeManagedSplashMessage(br *BitReader) {
 			br.ReadBits(32)
 		}
 	}
+	return r24
 }

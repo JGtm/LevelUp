@@ -83,11 +83,21 @@ const NULLABLE_ARRAYS = [
   'loadouts',
   'neutralDeaths',
   'objectives',
+  // `padPickups` : les occupations de socle ACHEVÉES (schéma 11, 2026-08-17) — le socle s'est
+  // vidé quelque part dans [tLow, tHigh]. Un INTERVALLE, pas un instant : le film ne porte aucun
+  // événement de ramassage, et la seule preuve de disparition est le recensement des
+  // images-clés, espacé de ~20 s. `xuid` vaut TOUJOURS `null` (oracle à 79,7 %, seuil 90 %).
+  'padPickups',
   'projectiles',
   'roster',
   'shots',
   'structure',
   'tracks',
+  // `weaponPads` : les SOCLES D'ARME du match (schéma 11, 2026-08-17) — position, famille,
+  // apparitions, intervalles de présence bornés par les images-clés, et cycle de réapparition
+  // SEULEMENT s'il est établi. Par MATCH et non par carte : sur deux films de la même carte les
+  // socles tombent aux mêmes coordonnées au centimètre, mais l'arme qui y apparaît change.
+  'weaponPads',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -138,6 +148,52 @@ describe('la frontière du document de rejeu', () => {
     for (const k of NULLABLE_ARRAYS) {
       expect(ready[k], `champ ${k}`).toHaveLength(0)
     }
+  })
+
+  it('comble aussi les tableaux IMBRIQUÉS, que la liste de tête ne voit pas', () => {
+    // CE QUE `_ListeExhaustive` NE PEUT PAS DIRE. L'assertion de type n'énumère que les tableaux
+    // nullables de la RACINE : elle exige bien `weaponPads`, `tracks`, `inventory`… mais elle est
+    // aveugle à ceux qui vivent DANS leurs éléments. Un socle sans apparition répliquée arrivait
+    // ainsi au rendu avec `spawns: null`, et `pad.spawns.map` tombait à l'exécution — c'est le
+    // correctif de revue du 2026-08-17, et ce test est ce qui le retient.
+    const raw = {
+      weaponPads: [{ x: 1, y: 2, weapon: '0x0000ffff' }],
+      tracks: [{ slot: 1, team: -1 }],
+      inventory: [{ t: 0, slot: 1 }],
+      loadouts: [{ t: 0, slot: 1 }],
+    } as unknown as ReplayDocument
+    const ready = normalizeReplayDocument(raw)
+    expect(ready.weaponPads[0].spawns, 'weaponPads[].spawns').toEqual([])
+    expect(ready.weaponPads[0].presence, 'weaponPads[].presence').toEqual([])
+    expect(ready.tracks[0].points, 'tracks[].points').toEqual([])
+    expect(ready.inventory[0].am, 'inventory[].am').toEqual([])
+    expect(ready.inventory[0].g, 'inventory[].g').toEqual([])
+    expect(ready.loadouts[0].w, 'loadouts[].w').toEqual([])
+    // `cycle` N'EST PAS un tableau : une mesure absente reste absente, jamais un objet vide qui
+    // se lirait comme un cycle de zéro seconde.
+    expect(ready.weaponPads[0].cycle ?? null).toBeNull()
+  })
+
+  it('conserve ce que le socle porte quand il le porte', () => {
+    const raw = {
+      weaponPads: [
+        {
+          x: 1,
+          y: 2,
+          weapon: '0x0000ffff',
+          spawns: [10, 200],
+          presence: [{ t0: 10, tLow: 200, tHigh: 400 }],
+          cycle: { medianS: 30.5, p10S: 30.2, p90S: 30.8, gaps: 2, missing: 1 },
+        },
+      ],
+    } as unknown as ReplayDocument
+    const ready = normalizeReplayDocument(raw)
+    expect(ready.weaponPads[0].spawns).toEqual([10, 200])
+    expect(ready.weaponPads[0].presence).toHaveLength(1)
+    // `missing` dit combien d'écarts le socle offrait sans qu'on ait pu les mesurer : sans lui,
+    // « 2 écarts » se lit comme « 2 sur 2 » alors que la mesure en a perdu un.
+    expect(ready.weaponPads[0].cycle?.gaps).toBe(2)
+    expect(ready.weaponPads[0].cycle?.missing).toBe(1)
   })
 
   it('recopie EN SURFACE : les points de trajectoire ne sont jamais dupliqués', () => {
