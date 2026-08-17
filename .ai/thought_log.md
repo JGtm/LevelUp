@@ -67345,3 +67345,85 @@ compteur de charges qui decroit date une utilisation par construction. Hors list
 ce lot : porte au registre des reports avec sa condition de reprise, ainsi que la decouverte que
 `SetWorldObjectPrecisionFromLayout` n'est appelee par AUCUN chemin de production (11 films sur 12
 ont des largeurs d'axe autres que le defaut `{13,13,14}`).
+
+### [2026-08-18] Nommer les objets d'equipement `ti=37` par la structure du jeu, et le translocateur — Complete
+
+**Statut** : Complete (plan `.ai/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md`, gates 0, 1 et
+2 passes ; gate 2 en NEGATIF chiffre). Branche `feat/v75`, worktree principal.
+
+**Decision technique principale** : le nom d'un objet d'equipement ne vient plus d'une
+DIAGONALE statistique (identifiant `eqip` x rang de capacite `i48` du poseur, seuil 85 %) mais de
+la CHAINE DE TAGS que le jeu emploie lui-meme. Et cette chaine n'est pas celle que le plan
+annoncait : le bloc de palette d'un `sofd` ne reference AUCUN `eqip`, il reference un `sofa` par
+rang, et c'est le `sofa` qui porte a la fois l'identifiant de chaine (bloc racine `+0x10`) et les
+references `eqip` (table de dependances). Chaine reelle : `sofd -> sofa -> {string_id, eqip}` — le
+meme maillon `sofa` que le chantier voisin traverse pour l'armement de vehicule
+(`vcdd -> sofd -> sofa -> uwfa -> weap`). Le §9 de RECETTE_LOADOUT avait ete lu comme si
+`entree+0x18` pointait la definition finale ; il pointe le maillon suivant.
+
+**Resultats observes** :
+- **20 identifiants sur 21 nommes par la structure**, contre 2 par la diagonale. Quatre chemins :
+  `sofa_string_id` (12, murmur3 casse), `sofa_modele` (4, meme `hlmt` qu'un `eqip` nomme),
+  `sofa_parent` (2, engendre par l'`eqip` d'un `sofa` nomme), `gggl_entree` (4). Reste 1 `other`
+  (`0x4396db42`, rang 10 famille A), avec son negatif chiffre.
+- La palette de la famille A est desormais LUE : elle reproduit les DIX rangs que la RECETTE §13
+  nommait, sans en contredire un, et rend `quantum_translocator` au rang 11. Offset du
+  `string_id` etabli par cinq egalites exactes avec des noms obtenus par un autre chemin.
+- **Les quatre identifiants « plats » sont les quatre grenades** : ce sont les quatre premieres
+  references `eqip` du bloc de 832 o du `gggl` (offsets 0x4c, 0x11c, 0x1ec, 0x2bc — periode 0xd0,
+  celle que le chantier kill feed avait mesuree de son cote), dans l'ordre canonique des types du
+  depot, confirme entree par entree par les banques sonores de `damagetag/data/labels.tsv`.
+  L'affirmation du lot precedent « les 4 plats = objets du monde SANS POSEUR » est REFUTEE : 96 a
+  100 % de leurs poses ont un poseur a moins de 3 m dans les artefacts.
+- **La diagonale, devenue controle, passe 9 sur 9** (films `000d5950` et `06dfe6d9`) : le rang
+  dominant de chaque identifiant est celui que la structure lui donne, de 55,6 a 100 %, temoins
+  plats. Les quatre identifiants qui echouaient le seuil de 85 % avaient RAISON — le frein etait
+  le denominateur `i48`, pas leur nature.
+- **Le translocateur** : balise acquise et nommee (`0x730dc70f`), 4 poses sur 2 films (contre 1
+  sur 1 avant le lot) ; recherche des porteurs faite SANS decodage, par requete sur les 29
+  artefacts. **Le RETOUR est un negatif mesure** : 0 saut de position > 4 m en <= 150 ms sur les
+  fenetres qui contiennent les 4 balises (56 150 transitions contemporaines), filtre de vitesse
+  desactive. Rien de plus n'est publie.
+- **Decouverte la plus lourde, sortie du golden re-genere** : `equipmentPlacements` mele deux
+  classes d'objet. Deux grenades identiques a 2 cm l'une de l'autre au meme instant plus une
+  capacite, meme poseur, repete sur six poseurs : c'est une creation de DOTATION, pas une pose sur
+  la carte. La mesure separe totalement — 0/31 et 0/15 pour les deux identifiants de panneaux de
+  mur, 52 a 100 % pour tous les autres — et elle designe le meme couple que la chaine des tags.
+- **Controle par la duree de vie** (source officielle Halo Waypoint, capteur = 15 s depuis la
+  saison 4) : il NE PEUT PAS tourner, et la raison est dans la mesure. `T1US` est le dernier point
+  de POSITION de la vie decodee ; un encodage delta ne transmet que ce qui change, donc un objet
+  immobile cesse d'etre transmis. `t1 - t0` mesure la duree du MOUVEMENT. La preuve est dans les
+  grenades et elle corrobore leur identification : spike 1,2 s (elle colle) < dynamo 1,9 <
+  plasma 3,5 < frag 4,1 (elle rebondit et roule).
+
+**Gates** : `go build ./...` et `go vet ./...` exit 0 ; `go test ./internal/games/...
+./internal/analysis/... ./internal/replaybuild/... ./contracttest/...` verts ;
+`golangci-lint run --new-from-merge-base=origin/main` 0 issue ; golden `assembly_000d5950`
+re-genere (295 poses nommees contre 32) ; `himap` : palettes lues, 21 identifiants croises,
+dictionnaire murmur3 controle par `TestDicoStringIDConnus` (tourne partout, hors fichiers du jeu).
+
+**Conclusion / prochaine etape** : le nommage est clos. Deux choses attendent quelqu'un d'autre.
+(1) Le lot UI : `PLACEMENT_RENDER` ne connait que 3 familles sur 15 et `placementKind` rend `null`
+hors table — 839 des 892 poses de `06dfe6d9` cesseraient d'etre dessinees (dont 552 grenades,
+vraisemblablement souhaitable). (2) La separation dotation / deploiement, qui decide de ce qu'il
+est honnete de dessiner : elle n'est PAS etablie, et le lot n'a rien retranche. Cinq lignes
+nouvelles au registre des reports, cinq mises a jour.
+
+**COMPLEMENT du meme jour — trois controles demandes en cours d'execution, trois refutations.**
+Contexte fourni par l'utilisateur : `000d5950` est un SUPER FIESTA (equipements ameliores, une
+nouvelle pose remplace la precedente) et un equipement pose SURVIT a la mort de son poseur.
+Aucune des trois explications de la vie mediane de 2,1 s du capteur ne tient. (a) REMPLACEMENT :
+0 pose de capteur sur 19 a un successeur du meme poseur sur le film Fiesta (1/32 et 1/31 sur les
+deux autres) — il n'y a rien qui remplace. (b) MODE : 2,1 / 2,2 / 2,3 s de mediane sur trois
+films de modes differents, soit la meme valeur a 0,2 s pres, quand une duree amelioree se
+verrait. (c) MORT DU POSEUR : verification sur pieces demandee comme une chasse au bug — **il
+n'y a pas de bug**, l'objet cesse de bouger APRES la fin de la vie de son poseur dans 86 a 88 %
+des cas (mediane +1,4 a +2,55 s), la coincidence exacte reste au niveau du hasard (0,6-0,8 %), et
+aucun clamp n'existe dans le code (`T1US` vient de la trajectoire de l'OBJET ; la couche qui
+attache le poseur ne touche ni `T0` ni `T1`). L'explication structurelle est la seule debout :
+`t1` est la fin du MOUVEMENT REPLIQUE. Enfin, l'hypothese « rangs 19-22 = variantes Fiesta » a un
+CONTRE-EXEMPLE documente (`00ba2e1c`, BTB:Fiesta Slayer, montre les rangs bas) et leur nom ne
+derive pas du nom de base (2 970 candidats « base + marque de variante », esperance de collision
+4e-6, zero resultat — `TestDicoVariantesSuffixes`, versionne). Le mode des films n'a pas pu etre
+etabli : le registre est tenu en ecriture par le serveur local, et l'ouvrir depuis un second
+processus viole les ADR 0013/0016.

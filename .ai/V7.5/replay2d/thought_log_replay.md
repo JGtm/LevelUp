@@ -4602,3 +4602,108 @@ s'arrete cinq rangs plus tot.
 **Sept decisions tranchees d'avance** pour empecher la derive en cours d'execution, dont la
 premiere qui resume tout : on lit avant d'inferer, et une inference n'est acceptable qu'apres avoir
 montre que la lecture est impossible — auquel cas elle se marque a l'ecran comme telle.
+
+## 2026-08-18 — La chaine `sofd -> sofa -> eqip` nomme 20 objets sur 21, et le retour du translocateur n'existe pas dans le canal des positions
+
+Plan `PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md`, trois gates passes. Ce qui suit est ce qu'un successeur
+doit savoir et qui ne se re-deduit pas.
+
+**LA CORRECTION QUI DEBLOQUE TOUT : `sofd` NE REFERENCE PAS D'`eqip`.** Le 17/08, un balayage des
+119 tags `sofd` de `globals` avait conclu « les GlobalID `eqip` ne sont pas lisibles en clair dans
+les palettes » et cherche la cause du cote de la table de dependances. La cause etait ailleurs :
+ils n'y sont pas parce qu'ils N'Y SONT PAS. Chaque entree de palette (pas 32 octets, celui du
+decompile) porte une reference de tag dont le fourCC a `+0x14` vaut **`sofa`** — sur 100 % des
+entrees des neuf palettes. Le `sofa` porte l'identifiant de chaine a `+0x10` de son bloc racine, et
+les `eqip` dans SA table de dependances. Le §9 de RECETTE_LOADOUT dit `entree+0x18` = « handle de
+definition » ; c'est le maillon SUIVANT, pas la definition finale.
+
+**COMMENT ON SAIT QUE `+0x10` EST LE BON OFFSET, sans plugin ni table de chaines.** Les modules
+n'ont plus de table de chaines (`stringsSize` = 0 sur les neuf indexes) : un nom ne se lit pas, il
+se casse. Cinq egalites exactes, a la meme position, avec cinq noms que la RECETTE §13 avait
+obtenus par un tout autre chemin (`mobility_sprint`, `ability_location_sensor`,
+`ability_deployable_wall`, `ability_grapple_hook`, `ability_evade`) le fixent. Controle gratuit en
+prime : l'octet `+0x1d` de l'entree de palette vaut 0 pour les TROIS rangs exacts que le §13 appelle
+« categorie nulle » et 1 pour les capacites.
+
+**LE DICTIONNAIRE MURMUR3 S'ARRETE A DEUX JETONS, ET C'EST UN CALCUL, PAS UNE PRUDENCE.**
+L'esperance de collision fortuite vaut `candidats x cibles / 2^32`. A trois jetons : 25 millions de
+candidats contre 200 cibles = 1,2 collision attendue — elle en a rendu exactement une, et elle
+etait grotesque (`ability_punch_detector_thruster`). A deux jetons : 340 000 candidats, esperance
+0,02, et TOUS les noms connus sortent quand meme, parce qu'aucun nom reel du domaine ne depasse
+deux jetons apres son prefixe. La profondeur 3 reste legitime sur une cible ETROITE : elle a servi
+a etablir le negatif du rang 10 (6 cibles, esperance 0,07). C'est le PRODUIT qui decide, jamais la
+taille du dictionnaire seule.
+
+**QUATRE PROVENANCES, ET IL FAUT LES DISTINGUER** parce qu'elles n'etablissent pas la meme chose.
+`sofa_string_id` : le nom du jeu. `sofa_modele` : le `string_id` resiste mais l'`eqip` partage son
+`hlmt` avec un `eqip` nomme — c'est ce qui a nomme les rangs 19 a 22 en tombant EXACTEMENT sur le
+releve Theater du 27/07 (mur, grappin, propulseur, capteur) sans le consulter. `sofa_parent` :
+engendre par l'`eqip` d'un `sofa` nomme (les panneaux d'un mur). `gggl_entree` : entree de la liste
+des grenades. Le manifeste porte la provenance ET un invariant FATAL qui la rend load-bearing —
+une famille nommee exige une provenance de structure, `sofa_anonyme` exige `other`, dans les deux
+sens.
+
+**LES QUATRE « PLATS » ETAIENT LES QUATRE GRENADES, et le lot precedent les avait dites « sans
+poseur ».** Elles ont un poseur (96 a 100 % des poses), et « plat » ne voulait dire que « le rang de
+capacite du poseur ne dit rien » — ce qui est attendu d'une grenade. Le `gggl` les enumere aux
+offsets 0x4c / 0x11c / 0x1ec / 0x2bc, periode 0xd0 : la MEME periode que le chantier kill feed avait
+mesuree de son cote pour decouper ses 8 rangs en 4 entrees. Deux chantiers, deux voies, un chiffre.
+
+**LA DECOUVERTE QU'ON NE CHERCHAIT PAS, ET LA PLUS LOURDE.** Le golden re-genere a montre, repete
+sur six poseurs, deux grenades IDENTIQUES a 2 cm l'une de l'autre au MEME instant plus une capacite,
+meme poseur. Personne ne lance deux grenades dans la meme image : c'est la DOTATION du joueur,
+creee a sa position. La mesure separe alors totalement deux classes — 0/31 et 0/15 de co-occurrence
+avec une grenade pour les deux identifiants de panneaux de mur, 52 a 100 % pour tous les autres —
+et elle designe le meme couple que la chaine des tags (`sofa_parent`). Donc `equipmentPlacements`
+n'est pas, en majorite, « des objets poses sur la carte ». Ce qui n'est PAS etabli : que les poses
+isolees soient les deploiements reels (l'ordre de grandeur y invite, le facteur vaut 1,3 puis 0,9
+puis 5). Rien n'a ete retranche : le lot NOMME.
+
+**`T1US` N'EST PAS LA DUREE DE VIE, et son commentaire dit le contraire.** C'est le dernier point de
+POSITION de la vie decodee ; un encodage delta ne transmet que ce qui change. La preuve est dans les
+grenades, et elle vaut corroboration de leur identification : spike 1,2 s (elle colle a l'impact) <
+dynamo 1,9 < plasma 3,5 < frag 4,1 (elle rebondit ET roule) ; appareil du mur 0,7-0,9 s (son vol)
+contre ses panneaux 0,5 s (deployes sur place). Consequence : la duree officielle du capteur (15 s
+depuis la saison 4, Halo Waypoint) n'est ni confirmee ni contredite, et dessiner une pose sur
+`[t0, t1]` affiche un capteur ~2 s la ou le jeu le garde 15 s.
+
+**LE TRANSLOCATEUR : la balise oui, le retour non, et le plan s'etait ferme la porte.** Balise
+`0x730dc70f` nommee par la chaine, 4 poses sur 2 films — trouvees SANS decodage, par requete des
+lectures `i48` rang 11 dans les 29 artefacts sur disque (`83ee3f9f` 3 balises, `06dfe6d9` 1,
+`64e8adfa` 4 porteurs et ZERO balise : porter n'est pas employer). Le retour : 0 saut > 4 m en
+<= 150 ms sur les fenetres qui portent les 4 balises, filtre de vitesse desactive. Deux
+explications restent, et la mesure ne les separe pas : les porteurs n'ont pas utilise le retour, ou
+la replication DETRUIT l'entite et en cree une autre — donc une NOUVELLE vie, qu'un saut « dans une
+vie » ne peut par construction pas voir. Le critere « vie continue, pas un spawn », ecrit avant la
+mesure, interdisait de voir la seconde. C'est une limite du plan.
+
+**DEUX PIEGES D'OUTILLAGE a connaitre.** (1) `DefaultScanFilmOptions` porte `MaxSpeedMPS = 100` :
+le decodeur de production JETTE les teleportations comme aberrations. Un retour de translocateur
+fait 200 a 400 m/s — invisible dans les trajectoires publiees ; le grappin long et les ascenseurs
+gravitationnels tombent sous le meme couperet. (2) Desactiver ce filtre fait exploser le nuage et
+le processus est TUE sur les gros films (45 chunks) sans sortie ni panique — d'ou `TRANSLOC_CHUNKS`.
+Et le prealable qu'on decouvre a ses depens : restreindre les chunks casse `bipedSlotBand`, qui lit
+la bande de slots dans les keyframes des chunks DEMANDES.
+
+**AJOUT DU MEME JOUR — trois explications de la « vie courte » testees, trois refutees.** Le
+contexte fourni en cours d'execution (`000d5950` est un SUPER FIESTA ; en Fiesta les equipements
+sont ameliores et une nouvelle pose remplace la precedente ; un equipement pose SURVIT a la mort
+de son poseur) donnait trois causes possibles a la vie mediane de 2,1 s du capteur. Aucune ne
+tient. **Le remplacement** : 0 pose de capteur sur 19 a un successeur du meme poseur sur le film
+Fiesta (1/32 et 1/31 ailleurs) — il n'y a rien qui remplace. **Le mode** : 2,1 / 2,2 / 2,3 s sur
+trois films de modes differents, la meme valeur a 0,2 s pres, quand une duree amelioree se
+verrait. **La mort du poseur** : l'objet cesse de bouger APRES la fin de la vie de son poseur
+dans 86 a 88 % des cas (mediane +1,4 a +2,55 s), la coincidence exacte est au niveau du hasard
+(0,6-0,8 %), et aucun clamp n'existe dans le code — `T1US` vient de la trajectoire de l'OBJET, et
+la couche qui attache le poseur ne touche ni `T0` ni `T1`. Ce dernier point etait demande comme
+une chasse au bug : il n'y a pas de bug, l'objet a bien sa propre vie. Reste l'explication
+structurelle, et elle est la seule debout : `t1` est la fin du MOUVEMENT REPLIQUE.
+
+**ET UNE HYPOTHESE SEDUISANTE QUI NE TIENT PAS NON PLUS.** Les rangs 19-22 partagent leur MODELE
+avec le capteur, le mur, le grappin et le propulseur : ce sont des VARIANTES, avec leur propre
+`sofa` et leur propre `eqip` — le patron exact de ce qu'un mode ameliore servirait. Mais
+`00ba2e1c` est un BTB:Fiesta Slayer d'apres le registre du depot, et il montre les rangs BAS.
+Et leur nom ne derive pas du nom de base : 2 970 candidats « base + marque de variante »,
+esperance de collision 4e-6, zero resultat. Le lien palette <-> mode reste a etablir, et il se
+fera par une REQUETE au registre le jour ou il sera accessible — ici le serveur local le tenait
+en ecriture, et l'ouvrir depuis un second processus viole les ADR 0013/0016.
