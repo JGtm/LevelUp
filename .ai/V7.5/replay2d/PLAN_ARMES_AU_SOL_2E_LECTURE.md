@@ -263,6 +263,22 @@ la partie « armes » se rabat sur les images-cles (decision 1).
 > ce lot ne le decide pas.
 >
 > **Consequence contractuelle** : la phase 2 n'est PAS ouverte par ce lot (gate d'arret reel).
+>
+> **ARBITRAGE SUPERVISEUR (2026-08-17, CR verifie sur pieces : `668b2dc78`, `5161da69c`, items
+> 1.0-1.4 `[x]`, gates `EXIT_*=0`)** : la clause « >= 80 % de recouvrement » est le CRITERE DE
+> L'ITEM 1.4 (catalogue ou par match), pas une clause du gate de phase tel que ce plan l'ecrit
+> (« grappes petites et stables sur >= 3 cartes, temoin negatif tenu, cycles publies » — les trois
+> sont TENUES). Le critere 1.4 a rendu son verdict, et le plan avait tranche la suite : « sinon ils
+> restent PAR MATCH et le registre le dit ». C'est le cas : **les socles sont publies PAR MATCH**
+> (position, famille observee dans le match, presence dans le temps), **aucun catalogue** ; l'idee
+> d'un catalogue de POSITIONS seules (le socle appartient a la carte, l'arme au match) va aux
+> Decouvertes/registre comme option ulterieure, hors de ce plan. **La phase 2 est OUVERTE.** Deux
+> precisions pour la phase 2, tirees de la mesure : (a) l'horloge d'un socle repart au RAMASSAGE —
+> le cycle se re-mesure donc du ramassage a la reapparition suivante (item 2.4 ajoute, memes
+> regles de stabilite que 1.3) ; (b) la regle `dropped` ne voit pas les ECHANGES d'arme (280/1 790
+> `spawned` avec vie delta, presque tous MA40/Sidekick) — la phase 2 les traite comme des
+> apparitions ordinaires, sans les nommer autrement (decouverte 7, vocabulaire a trancher en
+> phase 3).
 
 ### Phase 2 — RAMASSAGE par disparition + proximite
 
@@ -277,8 +293,13 @@ la partie « armes » se rabat sur les images-cles (decision 1).
 - [ ] 2.2 CONTROLE INDEPENDANT : le loadout d'images-cles du ramasseur doit porter la famille
       ramassee a l'image-cle suivante (`keyframe_loadout.go`, 98,3 % de temoin croise) — c'est
       l'oracle du ramassage. Publier le taux d'accord et un temoin (joueur au hasard).
-- [ ] 2.3 Publier : `weaponPickups` {t, x, y, family, slot ramasseur | -1} et l'etat des
-      socles dans le temps.
+- [ ] 2.3 Publier (au journal du plan et au registre — le document de rejeu est la phase 3) :
+      `weaponPickups` {t, x, y, family, slot ramasseur | -1} et l'etat des socles dans le temps
+      (present / vide, par socle de la phase 1).
+- [ ] 2.4 Cycle RE-MESURE depuis le ramassage : ecart entre le ramassage sur un socle et la
+      reapparition suivante sur ce socle (mediane, p10, p90 par socle et par famille) ; « non
+      etabli » si ecart-type > 20 % de la mediane ; comparer au 1.3 (horloge d'apparition) et
+      publier combien de socles passent de « non etabli » a « etabli ».
 
 **Gate 2** : accord avec l'oracle des loadouts >= 90 % sur les ramassages a ramasseur
 identifie ; sinon `[!]` avec la mesure.
@@ -689,3 +710,7 @@ delta**. Zero `powerup_camo`. Zero grappe, zero socle. Les 5 cartes NATIVES d'ar
 (Catalyst x2, Streets x2, Recharge, Smallhalla, Cliffhanger) n'en portent aucun au repos. Le corpus
 des films locaux ne contient AUCUN film classe (0 sur 951) : la voie « Arena ranked » n'a pas pu
 etre essayee faute de matiere, et c'est le negatif qu'il faut ecrire — pas un echec de mesure.
+- 2026-08-17 — **arbitrage superviseur apres la phase 1** : le recouvrement etait le critere de
+  l'item 1.4 (verdict : PAR MATCH, aucun catalogue), pas une clause du gate de phase ; les trois
+  clauses du gate 1 sont tenues => **phase 2 OUVERTE** (item 2.4 « cycle depuis le ramassage »
+  ajoute). Agent Opus lance sur le principal.
