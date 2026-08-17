@@ -55,6 +55,10 @@ func TestLotAPhase0bisManches(t *testing.T) {
 	writeExtSegments(w, recs, modeScoreComp)
 	writeExtSegments(w, recs, coreKillsComp)
 	writeExtSerie(w, recs)
+	writeExtHeaders(w, recs, modeScoreComp)
+	writeExtHeaders(w, recs, coreKillsComp)
+	writeExtHeaderVerdict(w, recs, or)
+	writeExtSerieH(w, recs)
 
 	out := filepath.Join(filepath.Dir(oraclePath), "lotA", short+"_manches.tsv")
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {

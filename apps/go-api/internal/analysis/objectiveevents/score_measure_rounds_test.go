@@ -57,14 +57,41 @@ type finalizedValue struct {
 	Value                     int64
 }
 
+// curValue est la valeur d'un compteur de manche en cours, AVEC ses deux en-tetes de 5 bits.
+//
+// # L'hypothese « en-tete = numero de manche »
+//
+// La production les EXIGE nuls (`decodeComponents`, statborg.go) et les jette. Or le getter natif
+// du composant est indexe par MANCHE :
+//
+//	value = *(int32*)(world + slot*0x88 + equipe*0x1DF0 + 0x38 + manche*4)
+//
+// Si l'un des deux en-tetes porte ce numero de manche, l'assertion « == 0 » de la production
+// REJETTE mecaniquement les enregistrements des manches suivantes — ce qui expliquerait d'un seul
+// coup les trois observations de la phase 0-bis sur Oddball : les entites d'equipe emettent bien
+// apres la fin de la manche 1, aucun segment de score n'y est trouve, et les frags des joueurs
+// valent la moitie de l'oracle.
+//
+// L'instrument relache donc l'assertion a [statHdrMaxRelaxed] et PUBLIE les en-tetes : c'est la
+// mesure qui doit dire s'ils sont un index de manche.
+type curValue struct {
+	A, B   int64
+	H1, H2 int
+}
+
+// statHdrMaxRelaxed borne les en-tetes acceptes par l'instrument. Huit valeurs suffisent (un match
+// ne se joue pas en plus de huit manches) et la borne garde 2 bits de contrainte sur chacun des
+// deux en-tetes, soit 4 des 10 bits de filtre anti-faux-positifs d'origine.
+const statHdrMaxRelaxed = 7
+
 // statRecordExt est un enregistrement lu par la grammaire etendue.
 type statRecordExt struct {
 	TimeMS int
 	Slot   int
 	// Form porte la forme d en-tete lue : generation, selecteur de base, forme de la liste.
 	Form headerForm
-	// Cur porte les compteurs de la manche en cours (i0..i27).
-	Cur map[int]StatValue
+	// Cur porte les compteurs de la manche en cours (i0..i27), en-tetes compris.
+	Cur map[int]curValue
 	// Fin porte les valeurs figees rencontrees dans cet enregistrement.
 	Fin []finalizedValue
 }
@@ -233,24 +260,26 @@ func denseList(pay []byte, p int) ([]int, int, bool) {
 // decodeCompsExt lit les composants annonces, chacun avec la grammaire de SA famille. Une
 // famille inconnue ou une lecture hors bornes arrete la chaine : la largeur d'un composant
 // commande la position du suivant, donc on ne devine jamais.
-func decodeCompsExt(pay []byte, at int, idx []int, tMS, slot int) (map[int]StatValue, []finalizedValue, bool) {
-	cur := map[int]StatValue{}
+func decodeCompsExt(pay []byte, at int, idx []int, tMS, slot int) (map[int]curValue, []finalizedValue, bool) {
+	cur := map[int]curValue{}
 	var fin []finalizedValue
 	q := at
 	for i, id := range idx {
 		switch {
 		case id < statCurRoundMax:
-			// La contrainte historique des deux en-tetes a 0 ne s'applique qu'au PREMIER
-			// composant, et seulement en forme creuse ou elle a ete calibree.
-			if i == 0 && (readBitsBE(pay, q, statHdrBits) != 0 ||
-				readBitsBE(pay, q+statHdrBits, statHdrBits) != 0) {
+			// L'assertion de production (les deux en-tetes valent 0) est RELACHEE au premier
+			// composant : si l'en-tete est un numero de manche, exiger 0 rejette toutes les
+			// manches suivantes. Les en-tetes sont conserves et publies.
+			h1 := int(readBitsBE(pay, q, statHdrBits))
+			h2 := int(readBitsBE(pay, q+statHdrBits, statHdrBits))
+			if i == 0 && (h1 > statHdrMaxRelaxed || h2 > statHdrMaxRelaxed) {
 				return nil, nil, false
 			}
 			v, w, ok := decodeStatComponent(pay, q)
 			if !ok {
 				return cur, fin, len(cur) > 0 || len(fin) > 0
 			}
-			cur[id] = v
+			cur[id] = curValue{A: v.A, B: v.B, H1: h1, H2: h2}
 			q += w
 		case id < statFinalizedMax:
 			vals, w, ok := decodeFinalizedComponent(pay, q)
