@@ -1,3 +1,37 @@
+## [2026-08-18] Rejeu 2D — le capteur de menaces passe aux chiffres officiels et pinge — Complete
+
+**Statut** : Complete (branche `wt/capteur-officiel`, `c0ff4ae39`, fusionnee dans `feat/v75`
+le 2026-08-18, `0ae609b2c`). Gate VISUEL utilisateur restant.
+
+**Decision technique.** Le capteur « respirait » (rayon ±6 % autour d'une portee DECLAREE a
+8 m, faute de mesure film). Les ajustements saison 4 publies par l'editeur (Halo Waypoint,
+« Sandbox Overview Season 4 », fournis par l'utilisateur) donnent les quatre valeurs : portee
+4,25 wu, ping 1,8 s, revelation 0,75 s, duree 15 s. Adoptees telles quelles dans un module
+dedie `threatSensor.ts` (logique pure + constantes sourcees ; supposition 1 wu = 1 m ecrite),
+le trace restant dans `equipmentPlacementsLayer.ts`. La respiration est remplacee par une ONDE
+DE PING (fonction du temps, easeOutCubic, 400 ms de course, eteinte sous mouvement reduit) et
+par une MARQUE DE REVELATION de 0,75 s sur les adversaires du poseur presents dans le rayon a
+l'instant du ping (« location-based marking » de la source), marque qui suit sa cible et ne lui
+survit pas. Le camp vient de `team_side` (`rosterLogic.sideBySlot`) et non du drapeau
+« allie », relatif au joueur de la page et faux des trois camps. Le garde-rail I19
+(`halowaypoint.com` interdit hors `waypointUrl.ts`) a ete respecte en citant l'article par son
+chemin. Zero code mort : `sensorPulse` et ses constantes supprimes avec leurs tests.
+
+**Resultats observes.** Corpus local de 27 artefacts : un seul porte des capteurs
+(`000d5950`, 19 poses, poseur mesure 19/19), au plus 2 actifs simultanement -> cout de
+revelation negligeable (2 x 99 tests O(1) + 2 x 8 dichotomies par image). Vie mesuree d'un
+capteur : mediane 2,1 s, max 12 s — jamais 15 ; `[t0, t1]` est la fenetre de REPLICATION, pas
+la regle de jeu, donc aucune coupure ni prolongation. Gates : typecheck 0, lint 0, vitest
+match-replay 607/607, suite complete 4 042 verts (3 garde-rails disque expires sous charge,
+verts isoles) ; apres fusion typecheck 0, 43 fichiers / 607 tests verts.
+
+**Prochaine etape.** Gate visuel utilisateur sur `000d5950` (19 capteurs nommes) : lisibilite
+de l'onde, du halo « revele » (12 px, teinte d'equipe — les anneaux d'etage sont a 6,5/9,3 px
+en encre du theme), et visibilite du disque de 4,25 m sur carte BTB (pas de plancher de
+lisibilite, contrairement au mur). Reports au registre : portee = supposition d'unite non
+mesuree ; vie du capteur tronquee par la replication (verifier si `t1` est premature quand la
+largeur de bloc sera tranchee — sans jamais prolonger une pose).
+
 ## [2026-08-18] Rendu des poses d'equipement dans le rejeu 2D — Complete
 
 **Statut** : Complete (branche `wt/ui-poses`, `e9df5a8f6`, fusionnee dans `feat/v75` le
