@@ -253,8 +253,10 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
 	// ARMES AU SOL : records de CREATION de l'archetype 42, recensement des images-cles et
 	// pistes de position, sur la MEME horloge (cf. ground_weapon_objects.go — decodage, journal
-	// et refus y vivent ensemble).
-	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange)
+	// et refus y vivent ensemble). Les largeurs du bloc MPP sont celles que la calibration des
+	// POSES vient de mesurer sur CE film : elle les restaure en sortant, il faut les reposer.
+	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange,
+		opt.PlacementStats.Calibration.Widths)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
