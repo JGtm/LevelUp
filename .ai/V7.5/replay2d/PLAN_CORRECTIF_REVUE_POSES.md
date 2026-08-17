@@ -65,7 +65,7 @@ Sources : `internal/games/mappings/loader_replay_labels.go` (`equipmentFamilies`
 `apps/web/.../equipmentPlacementsLayer.ts` (`PLACEMENT_RENDER`),
 `apps/web/.../i18n.ts` (`placementFamily`).
 
-- [ ] F2 test web a la maniere de `fxInk.guard.test.ts` (lecture du fichier Go par regex) :
+- [x] F2 `placementFamily.guard.test.ts` (4 assertions, lit `loader_replay_labels.go` et le TOML) :
       les trois enumerations coincident. Gate : `npx vitest run src/features/match-replay`
 
 ## F3 — `ReplayCanvas.tsx` 942 L > 861 L d'avant le lot
