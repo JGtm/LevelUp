@@ -163,27 +163,47 @@ func gwPickupNearestPass(
 	return out
 }
 
-// gwPickupRefPos rend la position où l'objet SE TROUVE quand on le ramasse : le dernier point de
-// sa piste delta s'il a bougé dans sa vie, sa position de création sinon.
-func gwPickupRefPos(
-	c filmdec.EquipmentCreation, lifeEnd uint64, tracks []filmdec.ProjectileTrack,
-) ([3]float32, bool) {
+// gwPickupLifeTrack rend la piste delta de LA VIE que le record de création annonce : celle dont
+// le PREMIER point tombe dans [t0 − gwPickupTrackTolUS, lifeEnd), la plus proche en temps de t0.
+//
+// UNE SEULE RÈGLE POUR DEUX QUESTIONS, et c'est le correctif de la revue du 2026-08-17.
+// « L'objet a-t-il bougé ? » (`HasDelta`, qui décide si l'apparition peut être un socle) et
+// « où est-il quand on le prend ? » (`Moved`, `Pos`) sont la MÊME question. Elles étaient
+// répondues par DEUX règles : celle-ci pour la seconde, et la seule présence d'une piste sur la
+// CLÉ (slot, gen) pour la première. Or une clé porte plusieurs objets successifs — la génération
+// ne fait que 2 bits — si bien qu'un objet apparu AU REPOS héritait de la piste de son
+// prédécesseur, sortait du jeu `at_rest` et amputait la grappe de son socle. Les deux questions
+// passent désormais par ici, et la fenêtre est celle du recensement.
+func gwPickupLifeTrack(
+	tracks []filmdec.ProjectileTrack, t0, lifeEnd uint64,
+) (filmdec.ProjectileTrack, bool) {
 	best, bestGap := -1, uint64(math.MaxUint64)
 	for i, tr := range tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		t0 := tr.Pts[0].TimestampUS
-		if t0 >= lifeEnd || t0+gwPickupTrackTolUS < c.TimestampUS {
+		start := tr.Pts[0].TimestampUS
+		if start >= lifeEnd || start+gwPickupTrackTolUS < t0 {
 			continue
 		}
-		if g := equipTimeGap(t0, c.TimestampUS); g < bestGap {
+		if g := equipTimeGap(start, t0); g < bestGap {
 			best, bestGap = i, g
 		}
 	}
 	if best < 0 {
+		return filmdec.ProjectileTrack{}, false
+	}
+	return tracks[best], true
+}
+
+// gwPickupRefPos rend la position où l'objet SE TROUVE quand on le ramasse : le dernier point de
+// la piste de sa vie s'il a bougé (cf. gwPickupLifeTrack), sa position de création sinon.
+func gwPickupRefPos(
+	c filmdec.EquipmentCreation, life filmdec.ProjectileTrack, moved bool,
+) ([3]float32, bool) {
+	if !moved {
 		return [3]float32{c.X, c.Y, c.Z}, false
 	}
-	p := tracks[best].Pts[len(tracks[best].Pts)-1]
+	p := life.Pts[len(life.Pts)-1]
 	return [3]float32{p.X, p.Y, p.Z}, true
 }

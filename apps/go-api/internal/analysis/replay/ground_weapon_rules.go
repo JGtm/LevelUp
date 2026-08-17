@@ -90,9 +90,14 @@ type gwPadApparition struct {
 	X, Y, Z      float32
 	TUS          uint64
 	Class        string
-	// HasDelta dit que la vie de l'objet a laissé des échantillons de position dans les
-	// paquets delta. Son absence est le candidat « apparu au repos » : un objet qui naît
-	// immobile à son socle n'émet jamais de position.
+	// HasDelta dit que CETTE VIE-CI a laissé des échantillons de position dans les paquets
+	// delta. Son absence est le candidat « apparu au repos » : un objet qui naît immobile à son
+	// socle n'émet jamais de position.
+	//
+	// PAR VIE, JAMAIS PAR CLÉ (correctif de la revue du 2026-08-17) : la génération ne fait que
+	// 2 bits, donc un couple (slot, gen) porte plusieurs objets successifs. Lire « la clé a une
+	// piste » faisait passer pour mobile un objet posé qui succédait à un objet mobile. La règle
+	// est celle de `gwPickupLifeTrack`, partagée avec la position de référence.
 	HasDelta bool
 }
 
