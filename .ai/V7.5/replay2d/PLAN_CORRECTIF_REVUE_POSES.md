@@ -80,14 +80,27 @@ Sources : `internal/games/mappings/loader_replay_labels.go` (`equipmentFamilies`
 
 ## Mineurs
 
-- [ ] F7 `coverage.placements.calibrated=false` couvre 2 causes (calibration refusee /
-      film illisible) — publier la distinction si < 15 L et sans bosse de schema, sinon registre
-- [ ] F10 ligne de registre : re-cuisson de MASSE impliquee par le schema 9 (3 temoins
-      seulement re-cuits). Ecrire la ligne, NE PAS lancer de run de masse
-- [ ] F6/F8/F9/F11 : une ligne de registre chacun (fichier:ligne)
-- [ ] Note TOML « nommage par diagonale FRAGILE + 4 plats = les 4 grenades `gggl` » :
-      commentaire au TOML + ligne de registre. Le seuil et le critere NE CHANGENT PAS
+- [x] F7 la distinction est PUBLIEE : `EquipmentPlacementStats.Scanned` (filmdec) ->
+      `coverage.placements.scanned` (replay). `calibrated: false` couvrait deux pannes ;
+      `scanned: false` = film illisible (ou assemblage sans film), `scanned: true` +
+      `calibrated: false` = calibration qui refuse de trancher. Aucune bosse de SchemaVersion
+      (champ additif). `make openapi-gen` + `make generate-types` joues dans le meme commit
+- [x] F10 ligne de registre ecrite (re-cuisson de MASSE du schema 9, 3 temoins seulement).
+      AUCUN run de masse lance
+- [!] F6/F8/F9/F11 : **contenu non transmis**. Le brief les designe par leur seul numero, et
+      le rapport de revue du 2026-08-17 n'existe nulle part dans le depot (grep sur `.ai/` du
+      worktree, du principal et de `LevelUp-wt-review`). Ecrire une ligne de registre
+      « avec fichier:ligne » exigerait d'inventer le constat. A REPRENDRE : le superviseur
+      transmet les quatre enonces, les lignes s'ecrivent alors en une passe
+- [x] Note TOML « diagonale FRAGILE + les 4 plats = les grenades `gggl` » : NOTE DE REVUE
+      ajoutee a `replay_labels.toml` + ligne de registre. Seuil et critere INCHANGES
 
 ## Journal d'execution
 
-(rempli au fil de l'eau)
+| # | commit | ce qui est fait |
+|---|---|---|
+| F1 | `7b5e36d18` | mesure (3 films) : la disparition n'est PAS dans le film. `t1` redocumente partout, le calque cesse d'effacer a `t1` |
+| F4/F5 | `e95235886` | `SetMPPLeadBits`/`MPPLeadBits()` supprimes, commentaire vers `CalibrateMPPWidths` |
+| F2 | `883a9edd7` | `placementFamily.guard.test.ts` — les 4 enumerations de familles tenues ensemble |
+| F3 | `370fb0ffb` | `useReplayStaticLayers.ts` : 952 -> 860 L, cliquet a 861 |
+| mineurs | (ce commit) | F7 publie (`coverage.placements.scanned`), F10 + note TOML au registre, F6/F8/F9/F11 `[!]` faute d'enonce |

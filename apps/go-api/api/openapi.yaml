@@ -11481,6 +11481,8 @@ components:
         placements:
           format: int64
           type: integer
+        scanned:
+          type: boolean
         widths:
           type: string
         withHeading:
@@ -11490,6 +11492,7 @@ components:
           format: int64
           type: integer
       required:
+        - scanned
         - calibrated
         - lives
         - anchors
