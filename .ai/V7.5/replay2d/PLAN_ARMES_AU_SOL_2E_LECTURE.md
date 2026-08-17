@@ -1266,6 +1266,14 @@ du bornage ni du verdict de stabilite :
 | `replay/ground_weapon_objects.go` | 244 | film -> objets bornes et dates ; le decodage et ses trois refus |
 | `replay/ground_weapon_pads.go` | 349 | types du document, couverture, assemblage |
 | `replay/ground_weapon_pads_test.go` | 310 | 7 tests sans garde (filtre d'identite, reprise de cle, socle publie, refus des lachers et des objets mobiles, refus d'un cycle instable, film non balaye) |
+| `replay/ground_weapon_guard_test.go` | 117 | LE GARDE-RAIL : un seuil ne se declare qu'une fois, une regle ne se definit qu'une fois — `_test.go` compris |
+
+**LE GARDE-RAIL EST LA MOITIE DU PORT** (regle n°6 du depot : une factorisation sans garde-rail
+re-diverge). Deux tests grep, sans garde d'environnement, couvrant AUSSI les instruments : sept
+seuils (rayon, socle minimum, ecarts minimum, ecart-type maximum, tolerance de piste, et les deux
+constantes de la regle du lacher) et douze regles n'ont qu'un seul proprietaire de fichier. Le
+garde echoue AUSSI si le motif disparait de son proprietaire — un garde qui ne peut plus echouer
+ne garde rien.
 
 **TROIS LECTURES DE FILM ET PAS UNE DE PLUS** : le chemin naif en coutait cinq (bande, creations,
 recensement, bande a nouveau dans `ScanFilmWorldObjects`, pistes). La marche d'images-cles
