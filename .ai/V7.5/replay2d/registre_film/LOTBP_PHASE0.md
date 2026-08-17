@@ -24,11 +24,23 @@ chargement de depart, la visee de controle ou le choix de reapparition.
 
 | Piece | Fichier | Role |
 |---|---|---|
-| Scanner par bande | `internal/analysis/filmdec/game_entities_scan.go` | ancrage sur bande de slots (ti=0, ti=5, temoin ti=4, deux bandes de controle) |
-| Chasse au slot | `internal/analysis/filmdec/game_entities_hunt.go` | `HuntArchetypeSlots` (par grammaire), `HuntGameEngineClock` (par signature d'horloge) |
-| Voie sequentielle | `internal/analysis/filmdec/game_entities_chain.go` | `ScanFilmGameEntitiesChain` : records CERTAINS via `DecodeFrameRecords` + confirmation par image-cle |
-| Instrument B/P cote film | `internal/analysis/filmdec/game_state_measure_test.go` (garde `GAME_FILM`) | B.0.1/B.0.2/B.0.3/B.0.5, P.0.1, P.0.2, P.0.5 |
-| Instrument B/P cote rejeu | `internal/analysis/replay/player_state_measure_test.go` (garde `PLAYER_FILM`) | B.0.4, P.0.3, P.0.4 (le pont vies/morts/tirs n'existe que la) |
+| Scanner par bande | `filmdec/game_entities_scan_test.go` + `_bands_test.go` + `_walk_test.go` | ancrage sur bande de slots (ti=0, ti=5, temoin ti=4, deux bandes de controle) |
+| Chasse au slot | `filmdec/game_entities_hunt_test.go` | `HuntArchetypeSlots` (par grammaire), `HuntGameEngineClock` (par signature d horloge) |
+| Voie sequentielle | `filmdec/game_entities_chain_test.go` | `ScanFilmGameEntitiesChain` : records CERTAINS via `DecodeFrameRecords` + confirmation par image-cle |
+| Instrument ti=0 / ti=5 | `filmdec/game_state_measure_test.go` + `_bands` + `_players` + `_dump` (garde `GAME_FILM`) | B.0.1/B.0.2/B.0.3/B.0.5, P.0.1, P.0.2, P.0.5 |
+| Instrument des canaux joueur | `filmdec/player_bridge_measure_test.go` + `player_bridge_channels_test.go` (garde `BRIDGE_FILM`) | P.0.3, P.0.4, fenetres actives de B.0.4 |
+| Instrument du fil des morts | `replay/player_state_measure_test.go` (garde `PLAYER_FILM`) | B.0.4 : delai mort -> reapparition, temps mort cumule |
+
+> **Tout est INSTRUMENT, rien n est PRODUCTION** (regle « 0 code mort », arbitrage du superviseur
+> le 2026-08-18) : aucune de ces pieces n a de consommateur de production puisque la phase 0 ne
+> publie rien, donc toutes vivent dans des fichiers `_test.go`. Consequence assumee : un fichier
+> de test n est pas visible depuis un autre paquet, donc les mesures qui consomment la chaine ont
+> SUIVI la chaine dans `filmdec`, et seules celles qui consomment le fil des morts sont restees
+> dans `replay`. Le partage est fait par DEPENDANCE, et aucun decodage n est en double. Le seul
+> prix : P.0.3 compare desormais l arme du tir a une lecture trouvee sur n importe quel slot au
+> lieu du seul slot du tireur — une BORNE SUPERIEURE de la couverture, donc un negatif plus
+> difficile a atteindre, qui tient quand meme (0 tir couvert sur 5 219).
+
 | Pilotes machine | `.ai/V7.5/replay2d/registre_film/lotBP/run_one.ps1`, `run_corpus.ps1` | UN film par processus, avant-plan, plafond 3 Go surveille (D17) |
 
 ### 1.1 Les deux voies de lecture, et pourquoi il en a fallu deux
@@ -74,7 +86,7 @@ resultat sur ti=5 est une propriete du CANAL, pas un defaut de la methode.
 
 ### B.0.1 — le scanner : `[x]` fait
 
-`ScanFilmGameEntities` (`game_entities_scan.go:355`) : bandes ti=0 et ti=5 etablies par
+`ScanFilmGameEntities` (`game_entities_scan_test.go`) : bandes ti=0 et ti=5 etablies par
 `WalkKeyframeWorld`, ancrage par en-tete delta, marche `consumeByNameCapturing` composant par
 composant (le round-timer i5 et le respawn i1 restent sur la couche de CAPTURE, jamais
 dupliques). Temoins publies ci-dessus.

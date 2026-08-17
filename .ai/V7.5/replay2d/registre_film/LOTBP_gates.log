@@ -55,3 +55,33 @@ EXIT_VET=0
 ok  	levelup/go-api/internal/analysis/filmdec	4.257s
 ok  	levelup/go-api/internal/analysis/replay	45.758s
 EXIT_TEST=0
+=== refactor instruments 2026-08-18 01:48 ===
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/filmdec	1.423s
+ok  	levelup/go-api/internal/analysis/replay	28.182s
+EXIT_TEST=0
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:1 : 574
++ ... gates.log"; golangci-lint run --new-from-merge-base=origin/main ./... ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+0 issues.
+EXIT_LINT=0
+=== refactor instruments - gates finaux 2026-08-18 01:52 ===
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/filmdec	1.392s
+ok  	levelup/go-api/internal/analysis/replay	28.241s
+EXIT_TEST=0
+0 issues.
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:1 : 574
++ ... gates.log"; golangci-lint run --new-from-merge-base=origin/main ./... ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+EXIT_LINT=0
