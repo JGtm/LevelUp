@@ -714,3 +714,36 @@ etre essayee faute de matiere, et c'est le negatif qu'il faut ecrire — pas un 
   l'item 1.4 (verdict : PAR MATCH, aucun catalogue), pas une clause du gate de phase ; les trois
   clauses du gate 1 sont tenues => **phase 2 OUVERTE** (item 2.4 « cycle depuis le ramassage »
   ajoute). Agent Opus lance sur le principal.
+- 2026-08-17 — **phase 2 LANCEE.** Instruments et seuils ci-dessous, ECRITS ET COMMITES AVANT LA
+  MESURE (le commit d'instrument precede le commit de mesure — l'ordre est verifiable dans
+  l'historique).
+
+### Phase 2 — instruments et seuils (ecrits AVANT la mesure)
+
+`replay/ground_weapon_pickup_research_test.go` (garde `GW_PICKUP` / `GW_PICKUP_MAP`) : un film,
+toute la chaine 2.1 -> 2.4, cinq balayages du film et pas un de plus.
+`replay/ground_weapon_pickup_report_test.go` : les quatre publications, qui ne decodent rien.
+`replay/ground_weapon_pickup_rule_test.go` : la regle de bornage, la regle de datation et le
+temoin d'instant, ISOLES et TESTES sans garde (4 tests dans le gate ordinaire).
+`replay/ground_weapon_pads_cluster_test.go` gagne `gwPadsClusterAssign` (l'assignation
+apparition -> socle) et `gwPadsCycleFromGaps` (le verdict de stabilite sur des ecarts deja
+calcules) : la phase 2 en a besoin, et une SECONDE regle de grappe ou de stabilite aurait
+diverge de la premiere au premier correctif. Les deux nouvelles fonctions sont testees.
+
+| seuil | valeur | source |
+|---|---|---|
+| identite retenue | mot MPP 32 bits dans `weaponv3.KnownWeaponHigh32` | phase 1, decouverte 2 |
+| bornage de la disparition | recensement `ti=42` du walker durci d'images-cles (249/250), restreint a la vie `[creation, reprise de la cle (slot,gen))` | phase 2.1 amendee, correctif de revue des poses |
+| « jamais ramasse » | encore recense a la DERNIERE image-cle du film | phase 2.1 amendee |
+| datation | passage d'un bipede a < 1,5 m (`originDropMaxDist`) de la position de reference, LE PREMIER en temps ; aucun -> `unknown`, date = borne haute | decision 4 + 2.1 amendee |
+| position de reference | dernier point de la piste delta si l'objet a bouge, position de creation sinon | brief phase 2 |
+| temoin d'instant | joueur le plus proche a un instant tire au sort dans `[creation, date du ramassage)`, tolerance +-100 ms, graine 20260817 | ecrit ici |
+| temoin de fenetre | fenetre de MEME largeur que l'intervalle, placee au hasard dans `[creation, derniere image-cle recensante]` : contient-elle aussi un passage < 1,5 m ? | ecrit ici |
+| oracle des loadouts | famille (NOM canonique, alias replies) portee par le ramasseur a la PREMIERE image-cle suivant la date | item 2.2 |
+| **GATE 2** | **accord >= 90 %**, denominateur = ramassages a ramasseur identifie ayant une image-cle suivante avant la fin du film | plan |
+| cycle depuis le ramassage | >= 2 ecarts ET ecart-type <= 20 % de la mediane (memes regles que 1.3) | decision 3, item 2.4 |
+
+**REGLE DE LECTURE DU TEMOIN DE FENETRE, ecrite avant de la connaitre** : si une fenetre
+quelconque de meme largeur contient un passage < 1,5 m aussi souvent que le vrai intervalle,
+alors le critere ne DATE pas le ramassage — il designe le premier passant, et cela s'ecrit comme
+un negatif au lieu d'etre presente comme une datation.
