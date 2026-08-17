@@ -382,3 +382,23 @@ porte d'image-cle `*(param_1+0x12)` est mise.
 - `DAT_144731d20` (`FUN_1428e27c0` @`0x1428e2980`) est un MASQUE DE TYPES « a traiter
   immediatement dans le meme tick » ; les autres types sont reportes au tick suivant. Non
   exploite ici.
+
+## 5. L'ECRIVAIN du bloc type-2 — recherche BORNEE, negatif
+
+Puisque le LECTEUR saute le bloc type-2 (§2), la question devient « qui l'ECRIT, et selon
+quelle grammaire ». Recherche bornee a trois sondes de chaines/xrefs, toutes negatives :
+
+| sonde | resultat |
+|---|---|
+| xrefs de la chaine d'allocation `...\saved_games\SavedFilmChunks.cpp` (`0x143ddb470`) | **UNE seule** : `0x1429881b6` dans `FUN_14298816c` — le LECTEUR |
+| `search_strings` sur `saved_games` (min 10, tout le binaire) | **1 seule chaine**, celle ci-dessus |
+| `search_strings` sur `FilmBlock` / `RecordFilm` / `film_block` | **1 seule chaine** : `FilmBlockReadError` (`0x143dcb3b0`), cote LECTURE |
+| xrefs de l'encodeur de snapshot `FUN_142f2e174` (vtable `0x1436a87e0` + 0x10) | **aucun appel direct** : uniquement la case de vtable `0x1436a87f0` et une DATA. Ses appels passent par `vtable[0x10]`, non resolus statiquement |
+| cvar `SavedFilmValidateEntityState` (`0x143732020` -> `FUN_141129458`, valeur `DAT_1450fb320`) | aucune lecture directe de la valeur : elle passe par l'objet cvar `DAT_1450fb2f0` |
+
+**Conclusion bornee** : le chemin d'ECRITURE des chunks de film ne laisse dans
+`HaloInfinite.exe` **ni site d'allocation nomme, ni chaine d'erreur**, la ou le chemin de
+LECTURE laisse les deux. La grammaire du bloc type-2 n'est donc pas atteignable par la voie
+chaines/xrefs dans ce binaire. La piste restante, non ouverte ici : le format se deduit du
+CONTENU (la table est deja balayee a 249/250 entites contre un oracle Cheat Engine) ou d'un
+autre binaire (serveur dedie), hors perimetre offline-pur.
