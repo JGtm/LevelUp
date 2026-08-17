@@ -1,3 +1,43 @@
+## [2026-08-17] v7.5 rejeu 2D — exploitation du « Registre du film Theater » : plan ecrit, artefact re-verifie sur pieces, worktree dedie
+
+**Statut** : En cours — plan VALIDE par l utilisateur le 17/08 (soir) : D1/D2/D3/D6/D12 confirmes apres explications, lot P (ti=5, inventaire du joueur) ajoute, item 0.6 (plomberie des hooks, D15) et D16/D17 (publications serialisees, machine bornee) ajoutes ; GO donne (« piloter ca avec des agents et workflow sur des worktrees dedies, paralleliser ») ; vague 1 lancee : lot 0 (`wt/registre-film`), A.0 (`wt/score-film`), C.0.1/0.3 (`wt/zones-film`) — un executeur Opus par worktree, films lus par chemin absolu, un film par processus, avant-plan, plafond RAM.
+**Decision technique principale** : ne pas prendre l'artefact au mot. Trois lectures independantes du
+depot ont confronte chaque piste au code du 17/08 (fusion `66e867b80` posee) ; le plan
+`.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (worktree `../LevelUp-wt-registre-film`,
+branche `wt/registre-film`, base `253226852`) est ecrit sur l'etat VERIFIE, pas sur l'inventaire.
+Deux decisions structurantes : (D1) le score dans le temps est un lot de BRANCHEMENT — le decodeur
+statborg complet et mesure existe (`objectiveevents/statborg.go`, `ScoreCurve` 283/284 vs Cheat
+Engine, `SlotIdentity`, table des 28 compteurs) et n'a aucun appelant ; `filmdec/statborg.go`
+(0 appelant, 1 test) sera supprime ; (D2) aucune table DuckDB : tout est publie dans l'artefact de
+rejeu, la match view LIT l'artefact (le paquet `objectivescore` a ete supprime le 08/08 pour son
+motif ART, on ne le recree pas).
+**Resultats observes (ecarts avec l'artefact)** : (1) ti=23 « zones » est ABSENT des deux captures
+live (0/1 205 704 Strongholds, 0/988 752 CTF — `RELEVE_TERRAIN_CAPTURES_2026-07-31.md`) et son
+deser (`components_world.go:108`) ne rend RIEN (bits consommes, largeurs figees 6/6/6) ; les
+porteurs vivants des zones en delta sont ti=10 managed-object (26 006 records Strongholds, « barriere
+de zone », seul i0 porte par `Skip(32)`, i1 boundary-color non porte) et ti=12 managed-navpoint
+(18 903 records, progress/timers non portes) -> le lot zones part de la, recensement offline
+d'abord, RE bornee ensuite ; (2) tacmap ti=34/30 = campagne (4 records en CTF, 0 en Strongholds) ;
+(3) dette i9 CORRIGEE en prod (`components_batch7.go:38-41`), il manque un test ; dette
+absoluteAxisW INTACTE (`position_capture.go:205`, `killsource/decode.go:87` rearme 14), i60 a sa
+grammaire complete, seul `ported` est verrouille ; (4) les 4 champs d'equipement « publies par
+hook » n'ont aucun consommateur de production (tests seuls) ; i26/i27 hors hook ; (5) round-timer
+et respawn-timer sortent DEJA par `CompResult.Payload` (`capture.go`) sans consommateur ; mort
+subite/grace/etat/manche/conditions lus-jetes inline ; le badge « Prolongation » est un badge
+d'en-tete (`overtime.go`, DB x `regulation.toml`, marge 40 s), pas de dominance, et le film n'y
+entre pas ; (6) elevation de visee deja capturee (`componentDirs.PitchRaw`) sans accesseur ni
+champ ; `Point` = t,x,y,z,h,sh,hp ; cone web = secteur plan a rayon fixe ; ti=5 i17 jamais atteint
+(aucun scanner ti=5) ; (7) `objectives[]` de l'artefact est VIDE en production (`Options.Objectives`
+n'a d'appelant que `cmd/zone-attribution`) ; (8) huit sujets de l'artefact n'ont aucune ligne au
+registre. Lots proposes : 0 hygiene/dettes -> A score (statborg + peuplement live des evenements +
+originMs) -> B horloge/etats/temps morts (+ mesure de la mort subite vs badge Prolongation) -> C
+zones ti=10/12 (recherche) -> D usages d'equipement (i27/i26, oracle grappin) -> E elevation ->
+F sondes (ti=5 i11, ti=47, ti=4, tacmap, ti=13) -> G mouvement (optionnel) -> H melees.
+**Conclusion / prochaine etape** : l'utilisateur valide le plan et l'ordre (ou re-ordonne), puis
+donne le go du lot 0 ; l'executeur travaille dans `wt/registre-film` (jamais le principal, occupe
+par l'item 6 phase 3) ; le lot C phase 0 peut partir en parallele du lot A dans `wt/zones-film`.
+Films lus par chemin absolu depuis le cache du principal ; aucune ecriture en base.
+
 ## [2026-08-17] v7.5 rejeu 2D — item 6 item 2.5 : l oracle du ramassage suit le joueur, et le plafond ne se leve pas
 
 **Statut** : Complete (item 2.5 clos ; **GATE 2.5 NON ATTEINT**, ramasseur `null` en phase 3).
