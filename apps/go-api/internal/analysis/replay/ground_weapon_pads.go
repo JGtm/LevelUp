@@ -346,4 +346,12 @@ func logGroundWeaponCoverage(c *GroundWeaponCoverage) {
 		"grappes", c.Clusters, "socles", c.Pads, "occupations", c.Occupancies,
 		"datees", c.Dated, "sansPassage", c.Unknown, "jamaisVidees", c.Never,
 		"cyclesEtablis", c.Cycles)
+	// LE SILENCE QU'IL FAUT ROMPRE : des créations acceptées dont AUCUNE ne résout d'arme n'est
+	// pas « un film sans socle », c'est une lecture qui a échoué en bloc — largeurs du bloc MPP
+	// non réinstallées, ou grammaire de l'état par défaut qui a bougé. Sans ce warn, un film BTB
+	// entier sortait avec zéro socle sans que rien ne le signale.
+	if c.Kept == 0 && c.Accepted > 0 {
+		slog.Warn("rejeu : identite ti=42 non resolue sur AUCUNE creation — largeurs MPP ?",
+			"acceptees", c.Accepted, "retenues", c.Kept, "ancres", c.Anchors)
+	}
 }

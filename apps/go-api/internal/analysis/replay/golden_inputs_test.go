@@ -1006,8 +1006,8 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	// Les armes au sol passent par LA MEME fonction que BuildFromFilm : le fixture porte ce que
-	// la production decode, pas une variante de lecture.
-	g.GroundWeapons = decodeFilmGroundWeapons(dir, &wr)
+	// la production decode, pas une variante de lecture — largeurs MPP calibrees comprises.
+	g.GroundWeapons = decodeFilmGroundWeapons(dir, &wr, g.PlacementStats.Calibration.Widths)
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
 		return nil, err
 	}

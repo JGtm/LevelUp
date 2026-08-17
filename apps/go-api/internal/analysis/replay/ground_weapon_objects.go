@@ -89,8 +89,20 @@ func (o gwPickupObject) gwPickupDateUS() uint64 {
 // `spawned` pour un objet apparu au repos. Le calque se tait donc entièrement plutôt que de
 // publier des socles fabriqués par une lecture manquante.
 //
+// LES LARGEURS DU BLOC MPP SONT CELLES DE CE FILM, ET C'EST UN CORRECTIF DE REVUE (2026-08-17).
+// Le mot d'identité de 32 bits se lit derrière deux champs de largeur VARIABLE, mesurés par la
+// calibration des poses `ti=37` sur le MÊME film (9/5 en Quick Play, 8/3 sur les films BTB
+// mesurés) — et `ScanFilmEquipmentPlacements` les RESTAURE en sortant. Sans les réinstaller ici,
+// le balayage `ti=42` lisait l'identité aux largeurs PAR DÉFAUT : sur un film calibré autrement,
+// aucune création n'aurait résolu d'arme, le calque aurait publié zéro socle, et rien ne l'aurait
+// dit (découverte 8 du plan). Largeurs non mesurées (calibration refusée) : on garde le défaut,
+// et le compteur `kept` de la couverture reste le témoin.
+//
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
-func decodeFilmGroundWeapons(filmDir string, wr *filmdec.Vec3Range) GroundWeaponScan {
+func decodeFilmGroundWeapons(
+	filmDir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+) GroundWeaponScan {
+	defer gwInstallMPPWidths(mpp)()
 	kf := filmdec.ScanFilmGroundWeaponKeyframes(filmDir)
 	if len(kf.Band) == 0 {
 		slog.Warn("armes au sol : aucun slot d'archetype ti=42 aux images-cles — rejeu sans socles",
@@ -114,6 +126,20 @@ func decodeFilmGroundWeapons(filmDir string, wr *filmdec.Vec3Range) GroundWeapon
 		"slots", st.Slots, "ancres", st.Anchors, "acceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS), "pistesDelta", len(tracks))
 	return GroundWeaponScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
+}
+
+// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film et rend leur
+// restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé — le défaut
+// de paquet vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
+//
+// L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet (même contrat que
+// `installWorldObjectPrecision`).
+func gwInstallMPPWidths(w filmdec.MPPWidths) func() {
+	if !w.Valid() {
+		return func() {}
+	}
+	prev := filmdec.SetMPPWidths(w)
+	return func() { filmdec.SetMPPWidths(prev) }
 }
 
 // groundWeaponObjects retient les créations dont l'identité se résout dans le catalogue d'armes,
