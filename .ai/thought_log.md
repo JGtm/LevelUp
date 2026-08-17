@@ -41,10 +41,22 @@ est celle du trace), 853 lignes. Note de revue du TOML ecartee : ses deux points
 la mesure du 2026-08-18 (la diagonale est devenue le CONTROLE, les quatre « plats » sont nommes
 `grenade_*`).
 
-**Gates** : `gofmt -l` vide, `go build ./...` (CGO) 0, `go vet ./internal/analysis/...` 0,
-`go test filmdec + replay + halo_infinite/film/... + contracttest` verts, `NoART` vert,
-`tsc -b --force` 0, `vitest match-replay` 47 fichiers / 655 tests verts, `eslint` 0 erreur.
-`SchemaVersion` inchangee (9).
+**Gates** (rejoues APRES le realignement) : `gofmt -l` vide, `go build ./...` (CGO) 0,
+`go vet ./internal/analysis/...` 0, `go test filmdec + replay + halo_infinite/film/... +
+contracttest + games/mappings` verts, `NoART` vert, instruments sous garde en SKIP propre,
+`openapi-gen -check` et `check-generated-types-fresh` a jour, `tsc -b --force` 0,
+`vitest` 161 fichiers / 1 790 tests verts, `eslint` 0 erreur (6 avertissements preexistants).
+`SchemaVersion` INCHANGEE par cette fusion : elle vaut 10 depuis `wt/familles-poses` sur
+`feat/v75` (le brief de la fusion disait 9 — chiffre perime).
+
+**Realignement, decouvert en fin de course** : `feat/v75` local avait AVANCE pendant la fusion
+(six commits de la session superviseur, dont le merge `d2e46eb5d` de `wt/fusion-lots-go` — le
+meme lot que la voie 1 — et le correctif de lint `829e2a20d` sur `BestVariant`). Un cinquieme
+merge, `feat/v75` VERS `wt/fusion-finale`, remet les deux cotes d'aplomb : le correctif de lint
+est pris, la ligne de registre du cadrage de `ReplayCanvas.tsx` garde la version qui CONSTATE
+l'extraction plutot que celle qui la demande, et les deux entrees de journal de la session
+superviseur cohabitent avec les six de ce lot. `feat/v75` est desormais un ANCETRE de la
+branche : le merge final du superviseur est propre.
 
 **Prochaine etape** : revue puis `merge --no-ff` de `wt/fusion-finale` dans `feat/v75` par le
 superviseur (le present lot ne fusionne pas), CI verte au niveau job, puis gate visuel utilisateur
