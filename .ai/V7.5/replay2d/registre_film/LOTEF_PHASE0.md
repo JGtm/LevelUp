@@ -14,10 +14,13 @@
 
 | fichier | ce qu'il porte | garde |
 |---|---|---|
-| `apps/go-api/internal/analysis/replay/visee_elevation_test.go` | E.0.1 : distribution de `PitchRaw`, oracle de signe, oracle angulaire, ajustement du quantum, controle de l'accesseur | `AIM_FILM` + `AIM_MAP` + `AIM_BOUNDS` |
+| `apps/go-api/internal/analysis/replay/visee_elevation_test.go` | E.0.1 : l'instrument et la distribution brute de `PitchRaw` | `AIM_FILM` + `AIM_MAP` + `AIM_BOUNDS` |
+| `apps/go-api/internal/analysis/replay/visee_elevation_oracle_test.go` | E.0.1 : l'oracle du kill — couples du fil, geometrie, signe, angle, controle de l'accesseur | (meme test) |
+| `apps/go-api/internal/analysis/replay/visee_elevation_ajustement_test.go` | E.0.1 : la statistique pure — ajustement du quantum, regression (elle ne connait ni le film ni les kills) | (meme test) |
 | `apps/go-api/internal/analysis/filmdec/offline_aim.go` | l'accesseur `AimPitchDeg()` (seul code de production du lot) | — |
 | `apps/go-api/internal/analysis/filmdec/sonde_registre_scan_test.go` | F2-F5 : le moteur — resolution des archetypes PAR NOM, bandes et fantomes, UNE passe delta, marche des composants sous `SetProbeHook` | `PROBE_FILM` |
 | `apps/go-api/internal/analysis/filmdec/sonde_registre_verdicts_test.go` | F2-F5 : les quatre verdicts, densites, treillis, periodicites | `PROBE_CACHE` + `PROBE_SHORT` + `PROBE_OBJTYPE` (facultatifs) |
+| `apps/go-api/internal/analysis/filmdec/sonde_registre_outils_test.go` | F2-F5 : l'outillage partage (comptage de valeurs, densite, TSV) | (meme test) |
 
 Sorties : `lotEF/<short8>_E01_pitch_hist.tsv` (histogramme complet, valeur par valeur),
 `lotEF/<short8>_E01_oracle.tsv` (la population de l'oracle, kill par kill) et
@@ -362,6 +365,14 @@ poser ; condition de reprise : un lot qui touche a `originMs` (report `:123` du 
   seul slot ne capte presque que la contamination des archetypes voisins, et le vrai ti=34 est
   quasi muet. Les quelques annonces restantes sont du meme ordre de grandeur que le bruit.
 
+**Le recensement des masques acheve la demonstration.** Sur `7344d24f`, les CINQ index les plus
+annonces par la bande ti=34 sont `i27` (2 208), `i26` (1 524), `i59` (1 470), `i58` (715) et
+`i60` (616) : **tous les cinq sont HORS de la grammaire de ti=34**, qui n'a que 17 composants.
+La bande ne capte donc pas un ti=34 discret, elle capte les records d'autres archetypes. A titre
+de comparaison, le meme recensement sur ti=4 rend `i0 high-frequency` a 36 051 en tete, et sur
+ti=47 `i2 personal-ai-data-component` a 14 315 — les archetypes qui parlent vraiment mettent
+leur propre composant en tete.
+
 Le negatif de l'artefact « marqueurs a position tacmap » est donc confirme et ELARGI : le lot C
 l'avait mesure sur deux films par le compte d'annonces ; il l'est ici sur six films, cinq modes
 et deux builds, avec le controle de purete de bande en plus. **`tacmap-waypointstate` (ti=34 i7)
@@ -397,6 +408,13 @@ Quatre faits, et ils vont tous dans le meme sens :
    467, 35 pour 37. Un « nom de propriete » resolu en identifiant de chaine aurait un petit
    vocabulaire repete ; ici presque chaque emission a sa valeur. Une seule ressort
    (`1789061888`, 19,3 % des emissions de `7344d24f`), le reste est disperse.
+
+Le recensement des masques de la bande ti=13 sur `7344d24f` le dit d'un coup : `i38` (22 831
+annonces) est HORS grammaire — c'est la contamination — puis viennent `i1
+managed-object-property-component` (3 769) et trois occurrences de
+`managed-object-player-masked-property-component` (`i21` 3 350, `i13` 3 347, `i17` 2 040), tous
+NON portes. Le composant porte `i0` arrive loin derriere avec 187. **La ou ti=13 parle, le
+depot ne lit pas ; la ou le depot lit, ti=13 se tait.**
 
 **Lien avec ti=10 : NON ETABLI, et le test ne peut pas conclure.** La part des instants de
 ti=13 qui portent aussi un record ti=10 vaut 44,8 a 92,1 % — mais le temoin (part des paquets
