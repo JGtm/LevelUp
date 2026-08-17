@@ -388,3 +388,264 @@ elements suivants — tous mesures :
 Ce qui n'est PAS fait, et ne devait pas l'etre en phase 0 : aucune publication (A.1.x), aucune
 suppression de `filmdec/statborg.go`, aucun champ de document, aucun changement de
 `traverse.go`, aucune ecriture en base.
+
+---
+
+# Phase 0-bis — oracle et corpus rendus comparables (2026-08-18)
+
+> Arbitrage du superviseur : `LOTA_ARBITRAGE_PHASE0.md`. Memes seuils, aucun rebaissement.
+> Corpus porte de 12 a 22 films, oracle KOTH remplace par le VAINQUEUR, et la cause de
+> l'invisibilite de la 2e manche instruite jusqu'a son terme.
+>
+> **RE-VERDICT GATE 0 : NON ATTEINT.** A.0.1 = 70,6 % sur le corpus comparable (seuil 90 %),
+> 2 modes tenus sur 5 (seuil 4). Mais A.0.2 passe a 94,1 % (TENU) et A.0.3 a 98,5 % avec
+> 4 modes sur 5 (TENU) : ce qui reste hors seuil est CONCENTRE sur le score d'equipe de deux
+> modes, et la cause de chacun est nommee.
+
+## 0b.1 Oddball : la 2e manche, cause instruite (seuil NON atteint)
+
+Seuil ecrit : 200/121 exact ET frags 88 exacts sur `24dbb67d`. **Non atteint** : la mesure rend
+100/78 et 48 frags. Voici ce qui a ete etabli, et ce qui bloque.
+
+### Ce qui est PROUVE
+
+1. **La grammaire de production ignore une des deux formes de liste de composants.** La chaine
+   (`filmdec.consumeMask`, FUN_1406d7610) en a deux : `gate=0` liste creuse (R(3) compte +
+   compte x R(6)), `gate=1` **masque DENSE R(64)**. `objectiveevents.matchRecordHeader` n'accepte
+   que la premiere. Mesure sur `24dbb67d` : **33 enregistrements en forme dense** que la
+   production ne voit pas.
+2. **L'en-tete de production etait mal DECRIT, et sa contrainte cachait deux hypotheses.** La
+   grammaire exacte est : `R(1)` type (1 = DELTA), `R(13)` identifiant, `R(2)` tag de generation,
+   `R(1)` selecteur d'etat de base [si 1 : `R(7)`], puis la liste. Les « 14 bits de slot » de la
+   production sont donc 13 bits d'identifiant + le premier bit du tag, et son « 0b10 » constant
+   est le second bit du tag + le selecteur de base. Elle presuppose **generation = 1 ET selecteur
+   de base = 0** — d'ou son slot toujours pair (2 x identifiant). Ce n'etait ecrit nulle part.
+3. **Les valeurs de manche FIGEES sont lisibles et exactes.** La grammaire
+   `statborg-finalized-rounds-values-stat-component` (i28..i55 : `R(32)` masque de manches, puis
+   par bit `2 x {R(1)[si 0 : varW]}`) rend sur `24dbb67d` : **manche 0 = 100 (slot 6) et 78
+   (slot 8)** — exactement la manche 1. La voie « manches figees » fonctionne.
+4. **Les entites d'equipe emettent bien apres la fin de la manche 1** : la chaine y voit
+   1 627 records statborg propres apres 290 683 ms contre 1 104 avant, **memes slots (3 et 4),
+   meme generation (1)**. L'hypothese (a) « entite recreee » est REFUTEE, l'hypothese (c) « elles
+   se taisent » aussi.
+5. **Le motif est systematique sur les 4 films Oddball** : le film rend a peu pres la MOITIE de
+   l'oracle, et dans 3 cas sur 4 le score du vainqueur x 2 = l'oracle exactement.
+
+   | film | film 6/8 | oracle | lecture |
+   |---|---|---|---|
+   | `24dbb67d` | 100 / 78 | 200 / 121 | 100 x 2 = 200 |
+   | `51ebbc0f` | 80 / 43 | 160 / 95 | 80 x 2 = 160 |
+   | `92f18088` | 63 / 100 | 113 / 200 | 100 x 2 = 200 |
+   | `c88ec007` | 80 / 32 | 192 / 155 | pas de facteur exact |
+
+   L'Oddball se joue en DEUX manches, l'equipe gagnante atteignant le plafond de manche a
+   chacune. L'oracle est le CUMUL, le film ne rend qu'une manche. Le mecanisme est compris.
+
+### Ce qui BLOQUE, et c'est mesure
+
+Le score de la manche 2 n'a ete trouve NULLE PART :
+
+- ni dans les compteurs de manche en cours : aucun segment croissant vers ~100 ou ~43 apres
+  290 s, **y compris avec la borne d'identifiant ouverte de 12 a 8191** (14 351 enregistrements
+  lus, aucun segment candidat) ;
+- ni dans les valeurs figees : une seule manche finalisee (index 0) ;
+- ni par la chaine, et c'est le point dur : sur les 841 composants i0 que la chaine positionne
+  sur ce film, **841 ont des en-tetes de 5 bits NON NULS** a la position qu'elle annonce, alors
+  que la contrainte mesuree (99,1 % des lectures reelles, capture Cheat Engine) veut qu'ils
+  soient nuls. La chaine et l'ancrage **ne cadrent pas le composant au meme bit**. Comme
+  l'ancrage est celui qui est valide 283/284 contre la capture, ce sont les positions de la
+  chaine qui sont fausses — les « false-cleans » que `frame_records.go` documente deja.
+
+**Condition de reprise** : la seule voie fiable restante est de lire la valeur DANS le
+deserialiseur (hook ti=6 de l'item 0.6 du lot 0, non fusionne). Toute lecture par cadrage externe
+de la chaine est du bruit, c'est desormais quantifie.
+
+Relacher la generation et le selecteur de base a ete essaye et **REJETE sur mesure** : le total de
+frags passait a 12 677 437 729 et des manches figees d'index 14, 24, 31 apparaissaient. Les 2 bits
+valaient bien leur prix en faux positifs ; l'instrument les re-contraint.
+
+## 0b.2 KOTH : l'oracle comparable est le VAINQUEUR — 6/6
+
+`CoreStats.Score` de l'API n'est pas homogene en KOTH : il vaut des MANCHES sur `01e1f945` (3-2),
+`0a247154` (4-2), `0c009149` (3-1), `1b370ce1` (1-3), et des SECONDES DE COLLINE sur `606d9844`
+(105-8) et `8076f97f` (78-105). Le film, lui, compte des manches partout.
+
+Oracle comparable : le vainqueur, lu dans `outcome` des participants (2 = victoire, 3 = defaite,
+4 = abandon).
+
+| film | film 6/8 | slot vainqueur | equipe (etiquetage) | vainqueur oracle | accord |
+|---|---|---|---|---|---|
+| `01e1f945` | 3 / 2 | 6 | team 0 (a) | team 0 | oui |
+| `0a247154` | 4 / 2 | 6 | team 0 (a) | team 0 | oui |
+| `0c009149` | 1 / 3 | 8 | team 0 (a) | team 0 | oui |
+| `1b370ce1` | 3 / 1 | 6 | team 1 (a) | team 1 | oui |
+| `606d9844` | 0 / 3 | 8 | team 0 **(b)** | team 0 | oui |
+| `8076f97f` | 3 / 0 | 6 | team 1 **(b)** | team 1 | oui |
+
+**6/6.** Les deux derniers ne sont pas circulaires : leur etiquetage vient des sommes de frags
+(methode b), pas du score — le film designe donc le bon vainqueur par une voie independante de
+l'oracle qu'on lui compare. Sur les 22 films, le vainqueur est correct **20/22** ; les 2 echecs
+sont les films dont l'identite d'equipe n'est pas resolue.
+
+## 0b.3 `7344d24f` : les deux hypotheses proposees sont REFUTEES
+
+- « API figee a la sortie du dernier joueur suivi » : **faux**, les 8 joueurs ont
+  `present_at_completion = true`, `left_in_progress = false`, `outcome` 2 ou 3, aucun abandon.
+- « API figee a `time_played` » : **faux**. `time_played = 564 s` pour `duration = 596 s` ; a
+  564 s le film dit **179 / 126** quand l'oracle dit 193 / 112. Le slot 6 est en dessous, le
+  slot 8 au-dessus : aucun instant ne reconcilie les deux.
+
+En revanche le corpus etendu montre que ce n'est pas un accident isole mais un **motif de mode** :
+
+| film | film 6/8 | oracle | accord |
+|---|---|---|---|
+| `696a9d7c` | 200 / 94 | 200 / 94 | exact |
+| `7344d24f` | **200** / 126 | 193 / 112 | ecart |
+| `10ed320d` | **200** / 170 | 174 / 169 | ecart |
+| `1e26f641` | 73 / **200** | 132 / 73 | ecart |
+
+Trois films sur quatre portent la valeur **200** — le plafond de score du mode — sur un slot, la
+ou l'oracle porte moins. Piste a instruire (hors perimetre de cette phase) : le compteur i0 est
+aussi emis avec la valeur CIBLE du mode, et le filtre de monotonie retient ce 200 parce qu'il
+prolonge legitimement la suite croissante. `1e26f641` est le cas le plus net : le film attribue
+200 au slot 8 quand l'oracle donne 73 a cette equipe.
+
+## 0b.4 Corpus etendu : 22 films, couverture publiee
+
+10 films ajoutes (+3 Slayer Arena hors Fiesta, +3 Oddball, +2 Strongholds, +2 KOTH). La couverture
+est le dernier instant d'un enregistrement statborg divise par la duree du match : un film qui
+s'arrete avant la fin ne peut pas etre confronte a un score FINAL.
+
+| film | mode | film 6/8 | oracle | accord | couv. | identite | joueurs justes |
+|---|---|---|---|---|---|---|---|
+| `000d5950` | Slayer (Super Fiesta) | 43 / 50 | 43 / 50 | exact | 1,00 | a | 7/8 |
+| `00162144` | Slayer:Arena | 42 / 50 | 50 / 42 | exact | 1,00 | a | 8/8 |
+| `02784ce1` | Slayer:Arena | 42 / 50 | 42 / 50 | exact | 1,00 | a | 8/8 |
+| `0215fe6b` | Team Slayer:Arena | 50 / 47 | 47 / 50 | exact | 1,00 | a | 8/8 |
+| `530820e5` | CTF:Arena | 0 / 3 | 3 / 0 | exact | 1,00 | a | 8/8 |
+| `53ce4390` | CTF:Arena | 1 / 2 | 1 / 2 | exact | 0,99 | a | 8/8 |
+| `06dfe6d9` | BTB:Fiesta CTF | 3 / 1 | 1 / 3 | exact | 0,99 | a | 8/8 |
+| `64e8adfa` | CTF:Arena | 2 / 2 | 2 / 3 | ecart | **0,97** | c | 0/8 |
+| `01e1f945` | KOTH:Arena | 3 / 2 | 3 / 2 | exact | 1,00 | a | 8/8 |
+| `0a247154` | Ranked:KOTH | 4 / 2 | 4 / 2 | exact | 1,00 | a | 8/8 |
+| `0c009149` | KOTH:Arena | 1 / 3 | 3 / 1 | exact | 1,00 | a | 8/8 |
+| `1b370ce1` | KOTH:Arena | 3 / 1 | 1 / 3 | exact | 1,00 | a | 7/8 |
+| `606d9844` | KOTH:Arena | 0 / 3 | 105 / 8 | ecart (unite) | 0,99 | b | 8/8 |
+| `8076f97f` | KOTH:Arena | 3 / 0 | 78 / 105 | ecart (unite) | 1,01 | b | 8/8 |
+| `696a9d7c` | Strongholds:Arena | 200 / 94 | 200 / 94 | exact | 1,00 | a | 8/8 |
+| `7344d24f` | Strongholds:Arena | 200 / 126 | 193 / 112 | ecart | 1,00 | b | 8/8 |
+| `10ed320d` | Strongholds:Arena | 200 / 170 | 174 / 169 | ecart | 1,00 | b | 8/8 |
+| `1e26f641` | Strongholds:Arena | 73 / 200 | 132 / 73 | ecart | 1,00 | c | 8/8 |
+| `24dbb67d` | Ranked:Oddball | 100 / 78 | 200 / 121 | ecart (manche) | **0,98** | c | 0/8 |
+| `92f18088` | Ranked:Oddball | 63 / 100 | 113 / 200 | ecart (manche) | **0,97** | c | 0/8 |
+| `51ebbc0f` | Oddball:Arena | 80 / 43 | 160 / 95 | ecart (manche) | **0,85** | c | 0/8 |
+| `c88ec007` | Oddball:Arena | 80 / 32 | 192 / 155 | ecart (manche) | **0,66** | c | 0/8 |
+| `1b1e380f` | Strongholds:Arena | — | 189 / 61 | **non mesurable** | — | — | — |
+
+`1b1e380f` a ete **TUE au plafond de 3 Go** (pic 3 304 Mo) par la surveillance : premier film du
+corpus a declencher le garde-fou de D17. Il reste hors de toute mesure, et c'est la preuve que le
+plafond n'est pas theorique — sans lui, la machine de l'utilisateur payait une troisieme fois.
+
+**Avertissement de lecture sur la couverture en Oddball** : les quatre films Oddball ont une
+couverture de 0,66 a 0,98, et ce n'est PAS une propriete des films. La couverture est calculee sur
+le dernier enregistrement statborg LU : en Oddball, la lecture s'arrete a la fin de la manche 1
+(0b.1). La faible couverture y est donc le SYMPTOME du probleme, pas un critere independant. Elle
+est publiee telle quelle, mais elle exclut mecaniquement tout le mode du denominateur du score
+final — ce qui doit etre dit, pas exploite comme un artifice.
+
+## 0b.5 D1 : les 42 records de plus sont du bruit de cadrage
+
+Sur `000d5950`, la chaine positionne 437 composants i0 dans les paquets propres. Relecture de la
+valeur a la position qu'elle annonce (`CompResult.StartBit`, sans toucher au deserialiseur) :
+
+| controle | resultat |
+|---|---|
+| en-tetes de 5 bits nuls (contrainte mesuree a 99,1 %) | **2 sur 437** |
+| en-tetes non nuls | **435 sur 437** |
+| slots dominants | 599 (167 lectures), 601 (159), 529 (24) — hors de la plage statborg 3..12 |
+
+Les records « supplementaires » de la chaine ne sont donc pas du score que l'ancrage laisserait
+passer : ce sont des positions ou la chaine croit voir une entite statborg (liaison de slot dans
+le World) sans que le contenu satisfasse la grammaire du compteur. **D1 est CONFIRME** :
+l'ancrage reste la source unique du score dans le temps. Le +7,3 % signale en phase 0 est
+requalifie en bruit, avec son chiffre.
+
+## 0b.6 RE-VERDICT du GATE 0 (memes seuils)
+
+Corpus comparable pour le score FINAL = les 17 films de couverture >= 0,99 (5 exclus : `64e8adfa`
+0,97 et les 4 Oddball ; `1b1e380f` non mesurable).
+
+| condition | seuil | phase 0 | phase 0-bis | verdict |
+|---|---|---|---|---|
+| A.0.1 accord global | >= 90 % | 58,3 % (7/12) | **70,6 % (12/17)** | NON TENU |
+| A.0.1 modes tenus | >= 4 sur 5 | 1 sur 5 | **2 sur 5** | NON TENU |
+| A.0.2 identite resolue | >= 90 % | 83,3 % | **94,1 % (16/17)** | **TENU** |
+| A.0.3 joueurs justes | >= 90 % par mode | 82,3 %, 2 modes | **98,5 % (134/136), 4 modes sur 5** | **TENU** (sauf Oddball) |
+| A.0.4 volume median | <= 60 Ko | 8,9 Ko | inchange | TENU |
+
+A.0.1 par mode, sur le corpus comparable :
+
+| mode | denominateur | exacts | taux | verdict |
+|---|---|---|---|---|
+| Slayer | 4 | 4 | **100 %** | tenu |
+| CTF | 3 (`64e8adfa` exclu) | 3 | **100 %** | tenu |
+| KOTH | 6 | 4 | 66,7 % | non tenu — les 2 ecarts sont des UNITES d'oracle ; 6/6 sur le vainqueur |
+| Strongholds | 4 | 1 | 25 % | non tenu — motif « 200 = plafond » sur 3 films |
+| Oddball | 0 | — | non evaluable | negatif de mode : 2e manche invisible (0b.1) |
+
+A.0.3 par mode (slots dont le triplet existe dans l'oracle) : Slayer 31/32 (96,9 %), CTF 24/24
+(100 %), KOTH 47/48 (97,9 %), Strongholds 32/32 (100 %), Oddball 0/32 (0 %).
+
+**GATE 0 : NON ATTEINT.** Ce qui a change depuis la phase 0 : deux des trois conditions sont
+maintenant TENUES (A.0.2, A.0.3), et le residu est circonscrit a deux modes pour le seul score
+d'equipe — Strongholds (motif « 200 ») et Oddball (2e manche). Aucun seuil n'a ete deplace.
+
+## Cout machine (phase 0-bis)
+
+| mesure | films | temps par film | pic memoire |
+|---|---|---|---|
+| instrument phase 0 (corpus etendu) | 11 | 1,2 - 9,2 s | 18,3 - 21,7 Mo (1 tue a 3 304 Mo) |
+| instrument etendu (manches) | 5 | 1,3 - 9,2 s | 15,4 - 25,4 Mo |
+| diagnostic des manches (chaine) | 1 | 9,3 s | 16,1 Mo |
+| suivi des valeurs par la chaine | 2 | 8,3 - 9,8 s | 15,4 - 16,3 Mo |
+
+Un film par processus, avant-plan, plafond 3 Go surveille : **1 processus tue** (`1b1e380f`),
+aucun autre au-dela de 26 Mo.
+
+## Statut des items (phase 0-bis)
+
+- [x] **A.0b.1** — cause instruite : forme dense ignoree (33 records) et en-tete mal decrit
+  (generation + selecteur de base presupposes) PROUVES ; manches figees lues et exactes ; mais le
+  seuil (200/121, frags 88) **n'est pas atteint** — la 2e manche reste introuvable et la voie
+  chaine est disqualifiee (841/841 cadrages faux). Condition de reprise : hook ti=6 du lot 0.
+- [x] **A.0b.2** — oracle vainqueur : **6/6 en KOTH**, 20/22 sur le corpus ; `CoreStats.Score`
+  ecrit comme non homogene (manches vs secondes de colline).
+- [x] **A.0b.3** — les deux hypotheses REFUTEES sur pieces (aucun abandon ; a `time_played` le
+  film dit 179/126 contre 193/112). Motif de mode « 200 = plafond » identifie sur 3 films sur 4.
+- [x] **A.0b.4** — corpus 12 -> 22 films, couverture publiee par film ; 1 film non mesurable
+  (plafond RAM).
+- [x] **A.0b.5** — les records de plus de la chaine caracterises : 435/437 mal cadres, slots hors
+  plage. D1 confirme.
+- [x] **A.0b.6** — re-verdict ecrit : GATE 0 non atteint, A.0.2 et A.0.3 desormais tenus.
+
+Ce qui n'est PAS fait : aucune publication, aucun portage de la grammaire etendue dans
+`statborg.go` (c'est une decision de phase 1), `filmdec/statborg.go` toujours en place, aucune
+modification de `traverse.go`, aucune ecriture en base.
+
+## Decouvertes de la phase 0-bis (notees, NON traitees)
+
+1. **La grammaire d'en-tete de `statborg.go` est mal documentee et sous-contrainte** : ses
+   « 14 bits de slot » et son « 0b10 » sont en realite 13 bits d'identifiant + tag de generation
+   + selecteur d'etat de base. Elle fonctionne, mais son commentaire decrit une structure qui
+   n'existe pas — a corriger dans le commit qui portera la forme dense (phase 1).
+2. **La forme dense de liste de composants (`gate=1`, R(64)) est ignoree par tout l'ancrage** —
+   pas seulement pour le score : tout consommateur de `StatRecords` perd ces enregistrements.
+3. **`CoreStats.Score` n'est pas homogene en KOTH** (manches vs secondes de colline) : tout
+   lecteur de `team_0_score`/`team_1_score` en KOTH herite de l'ambiguite.
+4. **Le motif « 200 » en Strongholds** : 3 films sur 4 donnent 200 au film contre moins a
+   l'oracle. Hypothese a instruire : le compteur i0 porte aussi la valeur CIBLE du mode.
+5. **`1b1e380f` fait exploser `StatRecords`** (> 3 Go) : premier film identifie du corpus. Un
+   portage en production de ce balayage devra borner sa memoire, pas seulement ses appels.
+6. **La chaine `filmdec` cadre faux le composant statborg** meme dans ses paquets « propres »
+   (435/437 sur `000d5950`, 841/841 sur `24dbb67d`) : les lots qui poseront des hooks dans
+   `consumeByName` doivent savoir que la position annoncee n'est pas fiable pour ti=6.
