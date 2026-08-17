@@ -28,22 +28,36 @@ import "fmt"
 // servent DEUX fois chacune (le routage de consumeByName et la résolution d'index par nom
 // ci-dessous) : les nommer évite qu'une correction de l'un oublie l'autre.
 const (
-	compEquipmentDeployed  = "equipment-deployed-component"
-	compEquipmentActivated = "equipment-activated-component"
-	compEquipmentCreator   = "equipment-creator-component"
-	compEquipmentEnergy    = "equipment-energy-component"
+	compEquipmentDeployed    = "equipment-deployed-component"
+	compEquipmentActivated   = "equipment-activated-component"
+	compEquipmentCreator     = "equipment-creator-component"
+	compEquipmentEnergy      = "equipment-energy-component"
+	compEquipmentEnergyDelay = "equipment-energy-delay-ticks-left-component"
+	compEquipmentCharges     = "equipment-charges-remaining-component"
 )
 
-// EquipmentField désigne l'un des quatre champs publiés. L'ordre est celui du flux.
+// EquipmentField désigne l'un des six champs publiés. L'ordre est celui du flux.
 type EquipmentField int
 
-// Les quatre champs, et EquipmentFieldCount qui les compte (dimension des tableaux publiés).
+// Les six champs, et EquipmentFieldCount qui les compte (dimension des tableaux publiés).
+//
+// LES DEUX DERNIERS SONT ARRIVÉS AU LOT 0 ITEM 0.6 (2026-08-17) — i26 `energy-delay-ticks-left`
+// (10 608 annonces sur 12 films) et i27 `charges-remaining` (16 125), les deux canaux les plus
+// bavards de l'archétype, jusque-là lus-jetés en ligne dans `traverse.go`. Ils sont placés
+// APRÈS `EquipEnergy` parce que l'ordre de cette énumération est celui du FLUX (i20, i21, i23,
+// i24, puis i26, i27) — le plan les citait dans l'autre sens, la règle du fichier tranche.
+//
+// CONSÉQUENCE MESURABLE sur `ScanFilmEquipmentState` : la marche d'un record va désormais
+// jusqu'à i27 au lieu de i24 quand le masque les annonce, donc `Walked`/`Broken` et le nombre
+// d'échantillons bougent. C'est voulu — l'instrument n'a aucun consommateur de production.
 const (
 	EquipDeployed EquipmentField = iota
 	EquipActivated
 	EquipCreator
 	EquipEnergy
-	EquipmentFieldCount = 4
+	EquipEnergyDelay
+	EquipCharges
+	EquipmentFieldCount = 6
 )
 
 // String rend l'étiquette de registre du champ — la seule façon honnête de le nommer.
@@ -57,6 +71,10 @@ func (f EquipmentField) String() string {
 		return compEquipmentCreator
 	case EquipEnergy:
 		return compEquipmentEnergy
+	case EquipEnergyDelay:
+		return compEquipmentEnergyDelay
+	case EquipCharges:
+		return compEquipmentCharges
 	}
 	return fmt.Sprintf("champ inconnu (%d)", int(f))
 }
@@ -107,6 +125,18 @@ func consumeEquipmentCreator(br *BitReader) {
 // consumeEquipmentEnergy mirroite FUN_141087bec (ti=37 i24) : R(14), sans porte.
 func consumeEquipmentEnergy(br *BitReader) {
 	publishEquipment(EquipEnergy, br.ReadBits(14), true)
+}
+
+// consumeEquipmentEnergyDelay mirroite FUN_140dda128 (ti=37 i26) : R(10), sans porte — le délai
+// de tics avant que l'énergie ne reparte. Lu-jeté en ligne dans `traverse.go` jusqu'au lot 0.
+func consumeEquipmentEnergyDelay(br *BitReader) {
+	publishEquipment(EquipEnergyDelay, br.ReadBits(10), true)
+}
+
+// consumeEquipmentCharges mirroite FUN_142ed4518 (ti=37 i27) : R(8), sans porte — les charges
+// restantes. C'est le canal que le lot D veut : une charge qui décroît DATE un usage.
+func consumeEquipmentCharges(br *BitReader) {
+	publishEquipment(EquipCharges, br.ReadBits(8), true)
 }
 
 // EquipmentStateSample est UN record delta de ti=37 dont la marche des composants a abouti
