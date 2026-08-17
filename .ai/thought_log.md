@@ -162,6 +162,188 @@ lisibilite, contrairement au mur). Reports au registre : portee = supposition d'
 mesuree ; vie du capteur tronquee par la replication (verifier si `t1` est premature quand la
 largeur de bloc sera tranchee — sans jamais prolonger une pose).
 
+## [2026-08-17] Fusion triee des quatre lots de recherche R3/R4/R5/R6 — synthese superviseur
+
+**Statut** : Complete (branche d'integration `wt/fusion-lots-go`, base `feat/v75` `085cda41b`).
+Les quatre lots ont ete menes en parallele dans quatre worktrees, sur la meme base `3058afbba`.
+La fusion est TRIEE : tous les documents entrent, le code n'entre que s'il ne double rien.
+
+**Decision technique** : la production fait foi. Pendant que R3 mesurait l'identite de l'objet
+`ti=37`, une autre session livrait le meme resultat sur `feat/v75` (`equipment_creation*.go`,
+poses publiees au schema 9, `CalibrateMPPWidths`, `ScanFilmEquipmentPlacements`, mur et capteur
+nommes par le manifeste, rendu web). Les deux lectures sortent du MEME deserialiseur : garder
+les deux aurait pose un second lecteur du meme flux, c'est-a-dire exactement ce que la regle des
+copies interdit. Le code de R3 (`equipment_identity*.go`, hooks `publishEquipID` dans
+`default_state*.go`) est donc ECARTE et son plan conserve comme confirmation independante.
+Entrent : R4 en entier (deux sondes sous garde `TI11_FILM`), les instruments de R5 et R6 sous
+gardes `KF_GRAM_FILM` / `KFQ_FILM`. N'entre PAS le port de l'etat par defaut de `ti=42`
+(`default_state_ti42.go` et son entree dans `defaultStateDeserByTI`) : sa grammaire est
+decompilee et juste, mais AUCUN oracle ne la valide, et la brancher a l'aveugle decalerait le
+decodage de tous les records `ti=42` sans qu'aucune mesure ne le dise — decision superviseur du
+17/08, appliquee ici. La grammaire reste ecrite dans `WALK_PORT_NOTES.md` § IMAGE-CLE §4 et dans
+le plan R5 §11, avec sa condition de reprise au registre. Deux adaptations rendues necessaires
+par le retrait de R3 :
+`keyframeRecordTIBit` (58) devient la definition unique du paquet, posee dans `keyframe_world.go`
+a cote de la documentation de l'en-tete et reutilisee par les trois marcheurs ; la matrice des
+huit combinaisons de grammaire redescend dans le fichier de test qui l'utilise (`kfGramLayouts`),
+puisque aucun chemin de production ne la balaye.
+
+**Resultats** : R3 = confirmation INDEPENDANTE de l'identite par le tag `eqip`, 428 occurrences
+sur 428 et zero ailleurs, contre ~0,8 attendue par hasard ; le R3 bis de la production a resolu
+ce que R3 n'a pas ouvert (poses + nommage, par le chemin minimal et l'oracle-filtre) et c'est lui
+qui est deploye. R4, R5 et R6 sont des NEGATIFS, et ce sont eux qui corrigent la doctrine :
+le corps d'un record d'image-cle n'est PAS un record NEW (128 decalages x 16 lectures x 3 films,
+jamais plus de 1,8 % de marches exactes) ; le lecteur de film du jeu SAUTE le payload type-2, il
+n'existe donc aucun consommateur a decompiler ; et le tampon « keyframe » capture en live en
+juillet portait en realite sur le PREMIER PAQUET DELTA. Les trois lots convergent sur un seul
+verrou, qui reprend son vrai nom : **l'etat par defaut par archetype, bit-exact**. Levier
+disponible et jamais consomme : les **400 frontieres de records EXACTES** de
+`.ai/V7.5/dumps/kf_capture_sample.txt` (266 NEW + 134 DELTA, avec leur bit de depart) et son
+tampon `kf_slot0_live.bin` — un oracle de LARGEUR par archetype.
+
+**Prochaine etape** : la fusion dans `feat/v75` revient au superviseur. `SchemaVersion` reste a
+**9** (celle de la production) : aucun des quatre lots ne publie quoi que ce soit. Registre et
+README de `.ai/V7.5/` a jour. Le seul code de production que la fusion aurait ajoute — l'entree
+`ti=42` de `defaultStateDeserByTI` — a ete RETIRE sur decision superviseur : sans oracle, il
+change le decodage sans le prouver. Ce que la reprise devra fournir pour le rebrancher (un
+oracle de position d'arme au sol, ou une calibration a la maniere des poses `ti=37`) est au
+registre.
+
+## [2026-08-17] Lot R6 — la file par entite n'existe pas comme transformation, et le jeu ne relit jamais son image-cle
+
+**Statut** : Complete (negatif mesure sur les deux fronts, livrable). Branche
+`wt/kf-file-entite`, 3 commits, fusionnee dans `wt/fusion-lots-go`.
+Plan : `.ai/V7.5/replay2d/PLAN_R6_FILE_PAR_ENTITE.md`.
+
+**Decision technique** : R5 avait laisse une condition de reprise precise — « decompiler le
+consommateur du payload type-2, qui alimenterait une file par-entite ». R6 l'a executee par
+LECTURE d'abord (Ghidra en lecture seule, API HTTP du plugin, le pont MCP etant hors service),
+mesure ensuite. Les deux termes de la condition sont faux.
+
+**Resultats** : (1) la file par-entite n'est PAS une transformation — son item de 56 octets porte
+un handle vers une COPIE octet pour octet du tampon du paquet (`FUN_142f25334` = memcpy integral)
+et le BIT DE DEPART du record (`item+0x2c`, pose dans le reader par `FUN_1432fe23c`) ; le drain
+`FUN_142f2913c` rejoue le MEME `FUN_1406cbaa0`. Elle DIFFERE les records, elle ne les reecrit
+pas. (2) Le jeu ne relit JAMAIS le payload type-2, verifie au desassemblage : `FUN_1428e22c0`
+est l'aiguillage par type de paquet et le type 2 n'a aucun handler (`XOR SIL,SIL` + telemetrie
+`FilmBlockReadError`) ; rien ne casse parce que `FUN_142989418`, handler du type 1, relit
+l'en-tete suivant et saute son payload avec. Cela EXPLIQUE le negatif de R5. (3) La capture live
+de juillet, etiquetee « keyframe » depuis, portait sur le PREMIER PAQUET DELTA : ses 16 premiers
+octets sont ceux du premier paquet type-0 de chaque film (toujours rang #8) — coincidence de
+prefixe sur 949 paquets de 951 films, coincidence exacte 0 (le film de la capture n'est pas
+cache) ; le SECOND dump (`kf_slot0_live.bin`, 7 286 o) rend les memes chiffres, et sa taille est
+exactement celle du premier paquet type-0 des deux films CTF sans coincider au contenu — cette
+taille est dictee par la carte et le mode, pas par le match. C0 a ete re-execute avec
+l'instrument refactore : memes deux chiffres, cout 550 s -> 219 s.
+(4) Ce premier paquet type-0 ne se traverse pas davantage : 30 combinaisons de cadre x
+6 films, de 0,33 % a 3,22 % des bits consommes pour un seuil de 95 % ; le World pre-peuple par
+la table type-2 ne change RIEN (H4 refutee). (5) L'ecrivain du bloc type-2 n'est pas dans
+`HaloInfinite.exe` : une seule chaine `saved_games` (celle du LECTEUR), une seule chaine
+`FilmBlock*`, encodeur `FUN_142f2e174` sans appel direct — fil borne, ferme.
+
+**Prochaine etape** : trois lots (R4, R5, R6) ont converge sur le meme verrou et R6 lui donne son
+vrai nom — l'ETAT PAR DEFAUT PAR ARCHETYPE, bit-exact, le mur documente depuis juillet. Levier
+jamais consomme : `kf_capture_sample.txt`, 400 frontieres de records EXACTES avec leur bit de
+depart, sur un vrai paquet et avec son tampon. Rien n'est publie.
+
+## [2026-08-17] Lot R5 — la grammaire du corps d'un record d'image-cle : negatif mesure, et le verrou change de nom
+
+**Statut** : Complete (negatif mesure, livrable). Branche `wt/kf-grammaire`, 4 commits,
+fusionnee dans `wt/fusion-lots-go`.
+Plan : `.ai/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md`.
+
+**Decision technique** : deux lots du meme jour (R3 sur `ti=37`, R4 sur `ti=11`) avaient conclu
+que « la grammaire du corps d'un record d'image-cle n'est resolue nulle part ». R5 l'a attaquee
+d'abord par LECTURE du jeu, ensuite seulement par mesure — l'ordre inverse de ce qui avait ete
+fait jusque-la, et c'est ce qui a paye.
+
+**Resultats** : (1) lecture — les deux lecteurs de record NEW (`FUN_141f86704`, `FUN_1408f1aa4`)
+portent la MEME grammaire, et le chemin DELTA (`FUN_141f86b58`) appelle la MEME boucle de
+composants `FUN_14076cb60` ; il n'existe aucun second site d'appel de composant, donc
+l'hypothese « deser feuille `+0x28` en image-cle contre wrapper en delta » tombe sans une seule
+mesure. (2) Mesure — sur 1 226 records `ti=37` bornes (le denominateur exact de R3, retrouve a
+l'unite pres) et 9 460 records `ti=38`, 128 decalages de corps x 16 lectures x 3 films ne rendent
+JAMAIS plus de 1,8 % de marches bit-exactes ; le walker deterministe parse un seul record par
+image-cle puis s'arrete (26 records de l'oracle sur 7 825, soit 0,3 %). (3) L'en-tete de 64 bits
+`[id:32][field:26][ti:6]` est CONFIRME par une chaine independante : le decalage 58 est le seul
+ou le `typeIndex` relu est correct, 415/415 et 2 008/2 008. (4) L'oracle de R3 est disculpe :
+zero record intercale traverse, 382 marches sur 415 n'atterrissent meme pas sur un en-tete — le
+filtre `field26 == 0` du balayeur n'y est pour rien. (5) Acquis positif : l'etat par defaut de
+`ti=42` est RESOLU bit-exact (vtable `0x1436fd790`, `*(vtable+0x60)` = `FUN_1407f0c68`) — la
+grammaire est ecrite (`WALK_PORT_NOTES.md` § IMAGE-CLE §4, plan R5 §11) mais NON BRANCHEE dans
+`defaultStateDeserByTI` : aucun oracle ne la valide (decision superviseur du 17/08). Elle remplit
+la condition de reprise ecrite le 12/08 pour les armes au sol — qui s'avere insuffisante.
+
+**Prochaine etape** : R5 avait nomme le verrou suivant « decompiler le consommateur du payload
+type-2 » ; R6, le meme jour, a execute cette condition et l'a rendue SANS OBJET. La suite est
+donc celle de R6. Indice gratuit conserve : la longueur reelle des records est fortement
+quantifiee (`ti=38` : 39 valeurs distinctes sur 2 008 records) et le lecteur de record NEW n'en
+consomme qu'environ 40 %. Rien n'est publie.
+
+## [2026-08-17] Lot R4 — `ti=11` est le descripteur d'objectif du HUD, pas l'objet
+
+**Statut** : Complete (negatif mesure, livrable). Branche `wt/ti11-objectifs`, 3 commits,
+fusionnee dans `wt/fusion-lots-go`.
+Plan : `.ai/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`.
+
+**Decision technique** : la demande produit (« la position du drapeau par image, son porteur, ou
+en est une capture ») supposait que `ti=11` etait l'objet d'objectif. La sonde a commence par
+LIRE les 34 composants de l'archetype au registre avant de tenter le moindre decodage — et c'est
+cette lecture qui a tranche : ils sont tous `managed-objective-*` et AUCUN ne porte de position.
+Le drapeau est une entite AUTRE, designee par `i3 managed-objective-object-reference-component`.
+
+**Resultats** : corpus mesure `64e8adfa` 201 records / 10 slots, `530820e5` 115 / 5, `000d5950`
+(Slayer) 0 / 0 — le temoin negatif natif tient. **Voie DELTA refutee** : `matchWorldObjectRecord`
+ne reconnait pas ces records — bande observee 4 680 contre 6 421 pour un fantome de meme taille
+et de meme voisinage numerique (0,73x, puis 0,37x sur le second film), 45,9 % et 36,4 % des
+« records » portant un index hors grammaire ; ce n'est pas une limite de largeur, les slots
+valent 1 383 a 3 092 et tiennent tous sur 13 bits. **Voie IMAGE-CLE refutee PAR SON TEMOIN** :
+les records sont localises exactement et l'alignement `Bit + 58` est structurel, mais le temoin
+de controle `ti=37` — archetype couvert 30/31 — echoue autant que la cible (33,2 % de masques
+hors grammaire, 34,3 % de traversees abouties). Le temoin a fait son travail : ce n'est pas
+`ti=11` qui resiste, c'est la grammaire du corps d'un record d'image-cle. Couverture de dispatch
+`ti=11` confirmee 0/34 en interrogeant `consumeByName`. Phases 2, 3 et 5 statuees `[!]` avec
+justification ; rien n'a ete publie.
+
+**Prochaine etape** : le verrou designe par R4 a ete precise par R5 puis renomme par R6 le meme
+jour — c'est l'etat par defaut par archetype, bit-exact. Ce qui attend derriere est deja
+inventorie et n'est PAS a re-decouvrir : `i5 type`, `i12`/`i13 progress`, `i14 state`,
+`i1 color`, `i3 object-reference`, et le lecteur `consumeObjectiveFormattedText` deja ecrit sous
+`//nolint:unused`. La progression d'objectif est atteignable SANS aucune position — c'est la
+moitie de la demande utilisateur.
+
+## [2026-08-17] Lot R3 — l'identite de l'objet `ti=37` est le GlobalID d'un tag `eqip` (confirmation independante)
+
+**Statut** : Complete pour les phases 1 a 3 ; phase 4 (publication) NON OUVERTE et statuee `[!]`
+avec decision d'arret argumentee. Branche `wt/ti37-identite`, 3 commits.
+Plan : `.ai/V7.5/replay2d/PLAN_R3_IDENTITE_TI37.md`. **Le code de ce lot n'a PAS ete fusionne** :
+la production porte deja le meme lecteur (`filmdec/equipment_creation*.go`, lot R3 bis d'une
+autre session), et deux lecteurs du meme deserialiseur sont interdits.
+
+**Decision technique** : au lieu de chercher un champ « type d'equipement » dans le
+default-state, le lot a pose un ANCRAGE EXTERNE — le catalogue de tags du jeu. Si les entiers de
+32 bits lus dans les records `ti=37` sont des GlobalID, ils doivent tomber dans un groupe de tags
+precis et nulle part ailleurs ; et des groupes temoins doivent tomber sur leurs propres
+archetypes. C'est un test qui peut echouer, et c'est pour ca qu'il vaut.
+
+**Resultats** : le groupe `eqip` (116 tags) se concentre a **428 occurrences sur 428** dans les
+records `ti=37`, zero ailleurs, contre environ 0,8 attendue par hasard. Les trois groupes temoins
+(`weap`, `proj`, `sofd`) atterrissent chacun sur leur archetype semantique — un controle que la
+methode n'imposait pas. Partition mesuree sur 5 films : 2 738 records porteurs sur 2 772
+(98,8 %), 1 318 vies identifiees, 12 classes communes aux 3 films d'arene, stabilite par vie
+99,6 a 100 %. La voie initiale H1 (lire l'identite par la marche bit-exacte au record
+d'image-cle) est REFUTEE : 2 marches justes sur 1 226 — c'est ce negatif qui a ouvert R5. Phase 3
+NOMME quatre classes sur douze (les quatre grenades multijoueur, par recoupement avec la liste
+`gggl` du 2026-07-26, deux deja presentes dans `damagetag/data/labels.tsv`) ; le mur et le
+capteur restent NUMEROTES, le nommage par les fichiers du jeu ayant ete mesure mort le 26/07.
+
+**Prochaine etape** : aucune de ce lot — la production a livre ce que R3 n'avait pas ouvert
+(poses d'equipement publiees au schema 9, mur et capteur nommes par le manifeste). Ce plan reste
+comme CONFIRMATION INDEPENDANTE de l'identite, obtenue par une chaine differente (ancrage par
+catalogue de tags contre chemin minimal + oracle-filtre), et pour ses decouvertes non traitees :
+la chaine `sofd -> eqip` jamais tentee pour nommer, et le recoupement systematique des
+annotations `eqip` deja presentes dans le depot.
+
 ## [2026-08-18] Rendu des poses d'equipement dans le rejeu 2D — Complete
 
 **Statut** : Complete (branche `wt/ui-poses`, `e9df5a8f6`, fusionnee dans `feat/v75` le
