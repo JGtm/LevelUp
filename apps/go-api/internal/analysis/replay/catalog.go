@@ -63,6 +63,17 @@ type LabelCatalog struct {
 	// or les kills du feed sont keyés par weapon_key — cette table est publiée telle
 	// quelle (ReplayDocument.KillEffects) pour que le client puisse les joindre.
 	Effects map[string]string
+	// EquipmentFamilies est la table GlobalID de tag `eqip` -> FAMILLE de pose (wall,
+	// sensor, other). Posée par la COUCHE TITRE après NewLabelCatalog, comme Icons et
+	// Tints : elle n'entre dans aucune jointure de construction, et un sixième paramètre
+	// ferait sauter le seuil du dépôt.
+	//
+	// TABLE PARTIELLE PAR NATURE : l'archétype d'équipement porte aussi des objets du
+	// monde (bonus au sol, socles). Un identifiant absent vaut `other` — l'objet se
+	// publie avec sa pose et son identifiant, sans nom. Le seuil qui accorde un nom
+	// (diagonale 85 % contre le rang de capacité du poseur) vit dans le TOML, avec ses
+	// chiffres : c'est là qu'on juge, pas ici.
+	EquipmentFamilies map[uint32]string
 }
 
 // Empty dit si le catalogue ne nomme rien. Utile aux appelants qui veulent journaliser

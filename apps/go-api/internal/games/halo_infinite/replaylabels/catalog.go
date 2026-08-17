@@ -58,6 +58,10 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// icônes : elle n'entre dans aucune jointure du catalogue, elle voyage jusqu'au
 	// document telle quelle (cf. replay_labels.toml, [shot_tints]).
 	cat.Tints = labels.ShotTints()
+	// La FAMILLE d'un objet d'équipement posé se pose après construction, comme les icônes
+	// et les teintes : elle est keyée par GlobalID de tag `eqip` (lu dans le film), et
+	// n'entre dans aucune jointure du catalogue.
+	cat.EquipmentFamilies = labels.EquipmentObjects()
 	return cat, nil
 }
 
