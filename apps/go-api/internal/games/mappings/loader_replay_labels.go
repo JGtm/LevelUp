@@ -74,21 +74,6 @@ type replayLabelsTOML struct {
 	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
 }
 
-// equipmentObjectEntry — une ligne de [[equipment_objects]] : l'identifiant du tag et la
-// famille de pose qu'il designe.
-type equipmentObjectEntry struct {
-	ID     string `toml:"id"`
-	Family string `toml:"family"`
-}
-
-// equipmentFamilies — les FAMILLES DE POSE admises. Liste FERMEE, et courte a dessein : une
-// famille ne s'ajoute qu'apres une mesure qui la separe des autres (diagonale identifiant x
-// rang de capacite du poseur >= 85 %, temoin plat). `other` est le defaut de tout identifiant
-// hors table — un objet non prouve se publie sans nom, jamais sous le nom d'un voisin.
-var equipmentFamilies = map[string]bool{
-	"wall": true, "sensor": true, "other": true,
-}
-
 type abilityPaletteEntry struct {
 	ID      string                    `toml:"id"`
 	Markers []int                     `toml:"markers"`
@@ -261,39 +246,6 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		shotTints:     tints,
 		equipObjects:  equip,
 	}, nil
-}
-
-// parseEquipmentObjects valide la table des objets d'equipement poses.
-//
-// TROIS INVARIANTS, tous FATAUX. L'identifiant doit etre un entier 32 bits (c'est un GlobalID
-// de tag, lu tel quel dans le film) ; la famille doit appartenir a la liste fermee, sans quoi
-// une faute de frappe ferait tomber un mur dans le rendu neutre en silence — indistinguable
-// d'un objet volontairement non nomme ; et un identifiant declare deux fois rendrait la table
-// dependante de l'ordre de lecture, donc son resultat arbitraire.
-func parseEquipmentObjects(path string, rows []equipmentObjectEntry) (map[uint32]string, error) {
-	out := make(map[uint32]string, len(rows))
-	for _, e := range rows {
-		raw := strings.TrimSpace(e.ID)
-		if raw == "" {
-			return nil, fmt.Errorf("%s: objet d'équipement sans id", path)
-		}
-		id, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimPrefix(raw, "0x"), "0X"), 16, 32)
-		if err != nil {
-			return nil, fmt.Errorf("%s: identifiant d'objet d'équipement %q illisible (attendu : GlobalID hexadécimal 32 bits, ex. \"0x8e2dc574\")",
-				path, raw)
-		}
-		fam := strings.TrimSpace(e.Family)
-		if !equipmentFamilies[fam] {
-			return nil, fmt.Errorf("%s: famille %q inconnue pour %q (admises : wall, sensor, other)",
-				path, fam, raw)
-		}
-		if prev, dup := out[uint32(id)]; dup {
-			return nil, fmt.Errorf("%s: objet d'équipement %q déclaré deux fois (%q puis %q)",
-				path, raw, prev, fam)
-		}
-		out[uint32(id)] = fam
-	}
-	return out, nil
 }
 
 // parseGrenadeRanks valide les rangs : l'ORDRE est la donnee, un trou la detruirait.

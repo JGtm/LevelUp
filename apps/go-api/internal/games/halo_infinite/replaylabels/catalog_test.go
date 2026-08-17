@@ -1,6 +1,7 @@
 package replaylabels
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -93,6 +94,74 @@ func TestLoad_TitreSansMappings(t *testing.T) {
 	}
 	if _, err := Load(t.TempDir(), "halo_infinite"); err == nil {
 		t.Error("une racine sans config/titles doit faire échouer le chargement")
+	}
+}
+
+// corpusObjetsEquipement — LES IDENTIFIANTS `eqip` OBSERVÉS DANS LES POSES DU CORPUS de films,
+// avec l'effectif qui les a fait entrer. Recopiés de la mesure amont
+// (`himap/sonde_ti37_gamefiles_test.go`, `ti37Observes` — la sonde qui les résout contre les
+// modules du jeu) : c'est la SECONDE et dernière copie de cette liste, et elle existe pour que
+// le manifeste ne puisse pas prendre du retard sur la mesure en silence.
+//
+// LE GARDE-RAIL EST BILATÉRAL. Un identifiant mesuré mais absent du manifeste se publierait
+// `other` sans que personne le sache — c'est exactement l'état d'avant le 2026-08-18, où 19 des
+// 21 tombaient dans `other`. Et un identifiant du manifeste qui n'est plus au corpus est une
+// ligne morte : le corpus a bougé, la table doit suivre.
+var corpusObjetsEquipement = map[uint32]string{
+	0xbcabbe43: "9 films · 933 poses",
+	0x0f5716ff: "8 films · 306",
+	0xcaaadcb0: "9 films · 293",
+	0xaada07f3: "6 films · 177",
+	0x273fe0eb: "5 films · 105",
+	0x8c77ffe7: "3 films · 83",
+	0x7ca85adc: "4 films · 77",
+	0xeef5d48d: "3 films · 70",
+	0x72199cba: "3 films · 60",
+	0x4396db42: "5 films · 51",
+	0x32d97758: "2 films · 48",
+	0x528fce46: "3 films · 45",
+	0x72b63d69: "2 films · 43",
+	0x8e2dc574: "3 films · 42",
+	0x2974c233: "3 films · 41",
+	0x430dda48: "2 films · 33",
+	0x686b40c9: "3 films · 25",
+	0x4744d742: "1 film · 4",
+	0xb781197a: "1 film · 1",
+	0x730dc70f: "1 film · 1",
+	0xe7be9f5c: "1 film · 1",
+}
+
+func TestPariteObjetsEquipementDuCorpus(t *testing.T) {
+	cat, err := Load(repoRoot(t), "halo_infinite")
+	if err != nil {
+		t.Fatalf("chargement du catalogue : %v", err)
+	}
+	var manquants, morts []string
+	for id, effectif := range corpusObjetsEquipement {
+		if _, ok := cat.EquipmentFamilies[id]; !ok {
+			manquants = append(manquants, fmt.Sprintf("0x%08x (%s)", id, effectif))
+		}
+	}
+	for id := range cat.EquipmentFamilies {
+		if _, ok := corpusObjetsEquipement[id]; !ok {
+			morts = append(morts, fmt.Sprintf("0x%08x", id))
+		}
+	}
+	sort.Strings(manquants)
+	sort.Strings(morts)
+	if len(manquants) > 0 {
+		t.Errorf("identifiant(s) `eqip` mesuré(s) au corpus mais ABSENT(S) de "+
+			"[[equipment_objects]] : %v — ils se publieraient `other` sans que rien ne le dise. "+
+			"Ajouter une ligne, même avec la famille `other` et la provenance `aucune`", manquants)
+	}
+	if len(morts) > 0 {
+		t.Errorf("ligne(s) [[equipment_objects]] dont l'identifiant n'est plus au corpus : %v — "+
+			"mettre à jour corpusObjetsEquipement, ou retirer la ligne", morts)
+	}
+	// Le garde-rail doit pouvoir échouer : une table vide passerait les deux boucles ci-dessus
+	// si le corpus l'était aussi.
+	if len(cat.EquipmentFamilies) == 0 {
+		t.Fatal("aucun objet d'équipement au catalogue : la section [[equipment_objects]] n'est plus lue")
 	}
 }
 

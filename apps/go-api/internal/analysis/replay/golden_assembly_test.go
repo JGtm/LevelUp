@@ -514,7 +514,13 @@ func renderGrapple(p func(string, ...any), doc ReplayDocument) {
 // objets du monde noierait le diff que ce golden existe pour rendre lisible. Leur compte, lui,
 // est fige par la ligne de couverture.
 func renderPlacements(p func(string, ...any), doc ReplayDocument) {
-	p("## EQUIPEMENT POSE — mur et capteur sur la carte, le reste publie SANS NOM (`other`)")
+	// Le titre de cette section a dit « mur et capteur sur la carte, le reste publie SANS NOM »
+	// jusqu au 2026-08-18. Il etait juste tant que le nommage venait d une diagonale (2 familles
+	// sur 21 identifiants) ; la chaine `sofd -> sofa -> eqip` du jeu en nomme 20 sur 21, et le
+	// golden ci-dessous montre autre chose : les objets d equipement naissent tres souvent PAR
+	// GROUPES — deux grenades identiques et une capacite, au meme instant et a la meme position,
+	// pour un meme poseur. C est une creation de DOTATION, pas une pose sur la carte.
+	p("## OBJETS D EQUIPEMENT — dotation au spawn ET objets deployes, par famille du manifeste")
 	c := doc.Coverage.Placements
 	if c == nil {
 		p("aucune couverture de poses (calque absent)")

@@ -269,45 +269,198 @@ hinf_needler        = "needle"
 # CE QUE LA CLE EST. Le record de CREATION d'une entite d'archetype 37 (`equipment`) porte,
 # dans son bloc `object-multiplayer-properties`, un mot de 32 bits qui est le GlobalID du tag
 # `eqip` de l'objet — sa DEFINITION dans les modules du jeu. Ce n'est ni une enumeration ni
-# un index de palette : c'est la reference que le jeu utilise lui-meme. Controle du
-# 2026-08-18 (`himap/sonde_ti37_gamefiles_test.go`) : les 21 valeurs observees sur le corpus
-# de 11 films se resolvent TOUTES dans le groupe `eqip`, sur 148 097 tags parcourus.
+# un index de palette : c'est la reference que le jeu utilise lui-meme. Les 21 valeurs
+# observees sur le corpus de 11 films se resolvent TOUTES dans le groupe `eqip`
+# (`himap/sonde_ti37_gamefiles_test.go`, 148 097 tags parcourus).
 #
-# TABLE PARTIELLE, ET DELIBEREMENT COURTE. L'archetype 37 ne porte pas que des equipements de
-# joueur : bonus au sol, socles et objets de decor le partagent (`item-at-rest`,
-# `item-ignore-player`). Un identifiant n'entre ici que si la mesure a etabli sa nature. Un
-# identifiant ABSENT vaut `other` : il se publie avec sa pose et son identifiant, sans nom —
-# jamais sous le nom d'un voisin.
+# LE NOM VIENT DE LA STRUCTURE DU JEU, PAS D'UNE STATISTIQUE — reecriture du 2026-08-18
+# (PLAN_NOMMAGE_EQIP_TRANSLOCATEUR, gate 0). La version precedente de cette table nommait par
+# une DIAGONALE (identifiant x rang de capacite du poseur, seuil 85 %) et n'y parvenait que
+# deux fois sur vingt et une. La chaine que le jeu emploie lui-meme se lit hors ligne :
 #
-# COMMENT UN NOM S'OBTIENT (gate 1 du plan PLAN_POSES_EQUIPEMENT_PUBLICATION, seuil ecrit
-# AVANT la mesure) : la DIAGONALE identifiant x rang de capacite du poseur doit atteindre
-# 85 % sur les rangs CONNUS du corpus, avec un temoin plat. Le poseur est le bipede le plus
-# proche a 250 ms — mesure du corpus : mediane 0,52 a 0,60 m sur les 11 films, contre 11 a
-# 36 m pour le temoin (un autre bipede vivant au meme instant), soit un facteur 20 a 45.
+#   sofd (palette de capacites du match)  --rang-->  sofa  --+--> string_id (murmur3 du nom)
+#                                                            +--> eqip (l'objet dans le monde)
 #
-# CE QUI PASSE LE SEUIL, ET CE QUI NE LE PASSE PAS (corpus du 2026-08-18, 11 films) :
+# `sofd` est le bloc que `FUN_1407E7648` parcourt pour resoudre un rang de capacite
+# (RECETTE_LOADOUT §9) ; `sofa` est le maillon que le chantier voisin traverse pour l'armement
+# de vehicule (`vcdd -> sofd -> sofa -> uwfa -> weap`). Les modules n'ont plus de table de
+# chaines (`stringsSize` = 0) : un `string_id` se CASSE par dictionnaire murmur3, et un
+# identifiant non casse ne se nomme pas. Instruments : `himap/sonde_sofd_gamefiles_test.go`,
+# `himap/sonde_eqip_gamefiles_test.go`, `himap/sonde_stringid_dico_test.go`.
 #
-#   0x8e2dc574  rang 19 (famille B)  22/25 = 88,0 %  temoin 30 %  -> wall
-#   0x72199cba  rang 22 (famille B)  28/32 = 87,5 %  temoin 22 %  -> sensor
-#   0x528fce46  rang 19 (famille B)  22/27 = 81,5 %               -> other (2e identifiant du
-#               mur, vraisemblablement les panneaux deployes : meme rang, seuil non atteint)
-#   0x2974c233  rang  2 (famille A)  42/54 = 77,8 %               -> other
-#   0x686b40c9  rang  2 (famille A)  21/28 = 75,0 %               -> other
-#   0x72b63d69  rang  1 (famille A)  41/50 = 82,0 %               -> other
+# LES QUATRE PROVENANCES, et ce que chacune etablit :
 #
-# CONSEQUENCE ASSUMEE : sur les films dont la palette de capacites est de la famille A, le mur
-# et le capteur se publient `other`. Leurs identifiants sont mesures et stables, mais la
-# diagonale n'atteint pas le seuil sur le corpus disponible — et le seuil ne se rebaisse pas.
+#   sofa_string_id  le `string_id` du `sofa` est casse — le nom est celui du jeu. Douze noms
+#                   sortent ainsi, dont les CINQ que la RECETTE §13 avait obtenus par un autre
+#                   chemin (`mobility_sprint`, `ability_location_sensor`,
+#                   `ability_deployable_wall`, `ability_grapple_hook`, `ability_evade`) : cinq
+#                   egalites exactes a la meme position de structure.
+#   sofa_modele     le `string_id` resiste, mais l'`eqip` partage son MODELE (`hlmt`) avec un
+#                   `eqip` dont le `sofa` est nomme. Quatre cas, et ils tombent EXACTEMENT sur
+#                   les quatre rangs 19-22 que la verite terrain Theater du 2026-07-27 nommait
+#                   mur / grappin / propulseur / capteur — sans que la structure la consulte.
+#   sofa_parent     l'`eqip` est ENGENDRE par un autre `eqip` (dependance `eqip -> eqip`) qui
+#                   appartient a un `sofa` nomme : ce sont les panneaux deployes d'un mur.
+#   gggl_entree     l'`eqip` est une entree de la liste des grenades du jeu (`gggl` 0x00000057,
+#                   bloc de 832 o = 4 x 0xd0). Les quatre identifiants « plats » du corpus —
+#                   ceux qu'aucun poseur n'accompagne — sont exactement les quatre premieres
+#                   references `eqip` de ce bloc, aux offsets 0x4c, 0x11c, 0x1ec, 0x2bc : la
+#                   PERIODE 0xd0 est celle que le chantier kill feed avait mesuree de son cote
+#                   (ETAT_DE_L_ART_KILLWEAPON 7ter.48). L'ordre des entrees EST le rang de type
+#                   de grenade du depot (`filmdec.GrenadeTypeIDsByRank`), et les banques sonores
+#                   de `damagetag/data/labels.tsv` le confirment entree par entree :
+#                   0 `kineticunsc` = fragmentation, 1 `plasma`, 2 `shock`/`lightning` = dynamo,
+#                   3 `kineticbanished` = a pointes.
 #
-# Les autres identifiants du corpus (0x0f5716ff, 0xbcabbe43, 0xcaaadcb0, 0xaada07f3 — les
-# quatre PLATS, objets du monde sans poseur —, 0x8c77ffe7 grappin, 0xeef5d48d propulseur,
-# 0x273fe0eb, 0x4396db42, 0x7ca85adc, 0x32d97758, 0x430dda48, 0x4744d742, 0xb781197a,
-# 0x730dc70f, 0xe7be9f5c) restent hors table : ils ne sont pas des poses de mur ni de capteur.
+# LA DIAGONALE EST DEVENUE LE CONTROLE, et elle passe 6 sur 6. Les six identifiants dont le
+# corpus mesure un rang de poseur retombent tous sur le rang que la structure leur donne :
+#
+#   0x8e2dc574  structure rang 19  ·  diagonale rang 19  22/25 = 88,0 %  temoin 30 %   ACCORD
+#   0x72199cba  structure rang 22  ·  diagonale rang 22  28/32 = 87,5 %  temoin 22 %   ACCORD
+#   0x528fce46  structure rang 19  ·  diagonale rang 19  22/27 = 81,5 %                ACCORD
+#   0x72b63d69  structure rang  1  ·  diagonale rang  1  41/50 = 82,0 %                ACCORD
+#   0x2974c233  structure rang  2  ·  diagonale rang  2  42/54 = 77,8 %                ACCORD
+#   0x686b40c9  structure rang  2  ·  diagonale rang  2  21/28 = 75,0 %                ACCORD
+#
+# Les quatre qui echouaient le seuil de 85 % avaient donc RAISON : ce n'etait pas leur nature
+# qui manquait, c'etait le denominateur `i48` sur les films Big Team Battle. Les quinze autres
+# identifiants n'ont pas de diagonale mesurable (aucun poseur a rang lu, ou aucun poseur du
+# tout pour les grenades) : c'est « non mesurable », jamais « contredit ».
+#
+# CE QUI RESTE `other` : 0x4396db42 (51 poses sur 5 films). Il est rattache au `sofa`
+# 0xeb500815 — le rang 10 de la palette famille A, le trou non casse le plus frequent du corpus
+# (67 lectures `i48`) — mais son `string_id` 0xb328c9fa resiste au dictionnaire, y compris a
+# trois jetons (51 millions de candidats, esperance de collision 0,07), et son modele
+# `hlmt:eea39cf4` n'est partage avec aucun `eqip` nomme. Ses dependances `gldf` + `lens` le
+# rangent parmi les objets LUMINEUX, comme le surbouclier, le camouflage et le translocateur —
+# ce qui est une piste, pas un nom.
+#
+# PARITE : tout identifiant observe au corpus a une ligne ici, nommee ou `other` explicite.
+# Garde-rail : `replaylabels/catalog_test.go`, TestPariteObjetsEquipementDuCorpus.
 
 [[equipment_objects]]
-id     = "0x8e2dc574"
-family = "wall"
+id         = "0x0f5716ff"
+family     = "grenade_spike"
+provenance = "gggl_entree"
 
 [[equipment_objects]]
-id     = "0x72199cba"
-family = "sensor"
+id         = "0x273fe0eb"
+family     = "grapple"
+name_id    = "0x87b1d7a4"
+provenance = "sofa_string_id"
+
+[[equipment_objects]]
+id         = "0x2974c233"
+family     = "wall"
+name_id    = "0xedebd7b7"
+provenance = "sofa_string_id"
+
+[[equipment_objects]]
+id         = "0x32d97758"
+family     = "repair_field"
+name_id    = "0x00bef187"
+provenance = "sofa_string_id"
+
+[[equipment_objects]]
+id         = "0x430dda48"
+family     = "thruster"
+name_id    = "0xed76a664"
+provenance = "sofa_string_id"
+
+# Rang 10 de la palette famille A : rattache, non nomme. Cf. la note ci-dessus.
+[[equipment_objects]]
+id         = "0x4396db42"
+family     = "other"
+name_id    = "0xb328c9fa"
+provenance = "sofa_anonyme"
+
+[[equipment_objects]]
+id         = "0x4744d742"
+family     = "threat_seeker"
+name_id    = "0xc5bb0ba7"
+provenance = "sofa_string_id"
+
+# Panneaux deployes du mur de la palette rang 19 : engendres par l'`eqip` 0x37c87a13.
+[[equipment_objects]]
+id         = "0x528fce46"
+family     = "wall"
+provenance = "sofa_parent"
+
+# Panneaux deployes du mur `ability_deployable_wall` : engendres par l'`eqip` 0xc12e5469.
+[[equipment_objects]]
+id         = "0x686b40c9"
+family     = "wall"
+provenance = "sofa_parent"
+
+# Meme modele `hlmt:c62d74c3` que 0x72b63d69 (`ability_location_sensor`).
+[[equipment_objects]]
+id         = "0x72199cba"
+family     = "sensor"
+name_id    = "0x9bc48d0f"
+provenance = "sofa_modele"
+
+[[equipment_objects]]
+id         = "0x72b63d69"
+family     = "sensor"
+name_id    = "0x566bb170"
+provenance = "sofa_string_id"
+
+[[equipment_objects]]
+id         = "0x730dc70f"
+family     = "translocator_beacon"
+name_id    = "0x1f7c6a15"
+provenance = "sofa_string_id"
+
+[[equipment_objects]]
+id         = "0x7ca85adc"
+family     = "repulsor"
+name_id    = "0x2b5d5eac"
+provenance = "sofa_string_id"
+
+# Meme modele `hlmt:75070361` que 0x273fe0eb (`ability_grapple_hook`).
+[[equipment_objects]]
+id         = "0x8c77ffe7"
+family     = "grapple"
+name_id    = "0x828e2a93"
+provenance = "sofa_modele"
+
+# Meme modele `hlmt:2e76f0a9` que 0x2974c233 (`ability_deployable_wall`).
+[[equipment_objects]]
+id         = "0x8e2dc574"
+family     = "wall"
+name_id    = "0xcb9f3095"
+provenance = "sofa_modele"
+
+[[equipment_objects]]
+id         = "0xaada07f3"
+family     = "grenade_dynamo"
+provenance = "gggl_entree"
+
+[[equipment_objects]]
+id         = "0xb781197a"
+family     = "powerup_overshield"
+name_id    = "0x3ed01bf0"
+provenance = "sofa_string_id"
+
+[[equipment_objects]]
+id         = "0xbcabbe43"
+family     = "grenade_frag"
+provenance = "gggl_entree"
+
+[[equipment_objects]]
+id         = "0xcaaadcb0"
+family     = "grenade_plasma"
+provenance = "gggl_entree"
+
+[[equipment_objects]]
+id         = "0xe7be9f5c"
+family     = "powerup_camo"
+name_id    = "0x2edcb6ef"
+provenance = "sofa_string_id"
+
+# Meme modele `hlmt:99953db8` que 0x430dda48 (`ability_evade`).
+[[equipment_objects]]
+id         = "0xeef5d48d"
+family     = "thruster"
+name_id    = "0x9de62e2f"
+provenance = "sofa_modele"
