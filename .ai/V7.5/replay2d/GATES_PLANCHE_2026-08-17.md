@@ -92,7 +92,7 @@ d'une vraie carte, elles n'existent pas dans un fichier HTML autonome.
 **Correction par rapport au brief** : `000d5950` est Cliffhanger, pas Bazaar (Bazaar Super Fiesta,
 c'est `00502e52`) ; et `084a804d` **ne peut pas** servir le gate des poses ni celui du grappin.
 
-### Les cinq gates
+### Les sept gates
 
 1. **Tiroir en overlay** (E1) — ouvrir « Réglages » sur `000d5950` : le panneau passe-t-il bien
    PAR-DESSUS la carte, sans que le canvas se retaille ? Vérifier les deux bascules d'effets
@@ -113,6 +113,30 @@ c'est `00502e52`) ; et `084a804d` **ne peut pas** servir le gate des poses ni ce
    Pour **W3**, `06dfe6d9` — mais **seulement le champ de réparation (9) et le traqueur (1)** :
    **la balise n'a AUCUN témoin dans tout le cache local** (une seule pose, et elle est lâchée à
    la mort, donc jamais dessinée). Son losange ne se juge que sur la planche.
+   **Ajout post-fusion du 18/08** : le capteur reste désormais affiché sur toute sa **durée
+   OFFICIELLE de 15 s** (`SENSOR_DURATION_MS`) même quand le film mesure une fenêtre plus courte,
+   et les AUTRES poses (mur compris) ne s'effacent plus à `t1` — elles restent visibles **jusqu'à
+   la fin du rejeu**. `t1` ne date que l'instant où l'objet cesse de bouger, jamais sa disparition
+   (correctif de la revue des poses du 18/08, F1). Vérifiable sur `000d5950` : un mur ou un
+   capteur posé tôt dans le match doit encore être visible en toute fin de partie, pas seulement
+   pendant sa fenêtre mesurée d'origine.
+6. **Deux murs quasi confondus** (F11, revue adversariale des poses du 18/08) — `000d5950` **vers
+   3:55** (image 2352, intervalle 100 ms) : deux poses de mur `0x8e2dc574`, à 0,13 m et 100 ms
+   l'une de l'autre, mais avec deux SLOTS de poseur distincts (553 et 556) et des caps quasi
+   OPPOSÉS (354,4° / 182,2°, écart 172,2°) — `replay/testdata/assembly_000d5950.golden:109-110`.
+   Deux coéquipiers posant dans la même embrasure à 100 ms près est plausible en arène ; une vie
+   DÉDOUBLÉE l'est aussi, et rien dans le document ne tranche entre les deux. **GATE VISUEL** :
+   regarder cet instant dans l'app — un seul mur visible ou deux arcs quasi superposés ? Si
+   c'est un dédoublement, la clé de déduplication de `confirmPlacements`
+   (`filmdec/equipment_placements.go` — triplet slot/génération/T0 de la vie) est insuffisante et
+   devra être complétée par la position.
+7. **Fil des morts — la marque d'assistance en DEUX pictogrammes** — la vignette du jeu
+   `killfeed-62` (déjà sur la planche, item C1) est désormais suivie d'un second pictogramme, le
+   glyphe ami/moi du tueur assistant (`PlayerMark`, le même losange/disque cerclé que sur la
+   carte) — habillage déjà en place au moment de la construction de cette planche, mais que le
+   mockup HTML de C1 ne reproduit pas (React uniquement). À vérifier dans l'app sur `000d5950` :
+   la ligne d'assistance du fil doit porter les deux pictogrammes l'un derrière l'autre, avant le
+   nom de l'assistant.
 
 **Témoin de non-régression** : `000d5950` (Cliffhanger). Si quelque chose s'y est cassé — tirs,
 grenades, pont slot→joueur — le journal de cuisson le dit : les trois verdicts doivent rester

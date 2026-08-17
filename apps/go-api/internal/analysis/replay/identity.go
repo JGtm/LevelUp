@@ -63,7 +63,13 @@ func gamertagsOf(deaths []Death) map[uint64]string {
 //
 // LE CATALOGUE VIENT DU TITRE (cf. catalog.go), plus de l'enum d'armes du décodeur : le
 // nom affiché a une source unique, `weapon_names.toml`, et il est bilingue.
-func buildWeaponLabels(loadouts []Loadout, shots []Shot, cat LabelCatalog) map[string]WeaponLabel {
+//
+// LES SOCLES Y ENTRENT AU MÊME TITRE QUE LES ARMES PORTÉES (schéma 11) : la famille d'un socle
+// s'écrit comme celle d'un loadout, et sans cette table le calque afficherait un hexadécimal là
+// où le reste du rejeu nomme l'arme. Une famille vue SEULEMENT au sol se nomme donc aussi.
+func buildWeaponLabels(
+	loadouts []Loadout, shots []Shot, pads []WeaponPad, cat LabelCatalog,
+) map[string]WeaponLabel {
 	out := map[string]WeaponLabel{}
 	add := func(id string) {
 		if id == "" {
@@ -92,6 +98,9 @@ func buildWeaponLabels(loadouts []Loadout, shots []Shot, cat LabelCatalog) map[s
 	}
 	for _, s := range shots {
 		add(s.Weapon)
+	}
+	for _, p := range pads {
+		add(p.Weapon)
 	}
 	if len(out) == 0 {
 		return nil
