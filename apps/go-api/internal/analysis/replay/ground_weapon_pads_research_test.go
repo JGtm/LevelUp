@@ -45,7 +45,6 @@ package replay
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,7 +52,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/weaponv3"
 	"levelup/go-api/internal/domain/title"
 )
 
@@ -63,51 +61,11 @@ const (
 	gwPadsBoundsEnv = "GW_PADS_BOUNDS" // catalogue map_quant_bounds.json (defaut : PathResolver)
 )
 
-// LES SEUILS, ECRITS AVANT LA MESURE (plan, items 1.2-1.4 et decision 3).
-
-// gwPadRadiusM est le rayon d'agglomeration d'une grappe, en metres : deux apparitions de MEME
-// famille a moins d'un metre sont au MEME socle. Un metre est la tolerance du plan ; c'est
-// aussi l'ordre de grandeur du quantum de position sur les cartes d'arene.
-const gwPadRadiusM = 1.0
-
-// gwPadMinHits est le nombre d'apparitions en deca duquel une grappe n'est PAS un socle. Deux,
-// parce qu'un socle est une RECURRENCE (decision 2) : une apparition unique ne recurre pas.
-const gwPadMinHits = 2
-
-// gwPadCycleMinGaps est le nombre d'ecarts en deca duquel un cycle ne se juge pas. Deux ecarts
-// (donc trois apparitions) : un ecart unique n'a pas d'ecart-type, et le publier stable serait
-// une affirmation sans mesure.
-const gwPadCycleMinGaps = 2
-
-// gwPadCycleMaxCV est l'ecart-type maximal, en fraction de la mediane, pour qu'un cycle soit
-// ETABLI (decision 3 : « ecart-type > 20 % de la mediane » -> cycle non etabli).
-const gwPadCycleMaxCV = 0.20
-
-// gwPadKindWeapon / gwPadKindPowerup : les deux natures d'apparition mesurees. Vocabulaire
-// STABLE des lignes de sortie — l'agregateur inter-films les compare telles quelles.
-const (
-	gwPadKindWeapon  = "weapon"
-	gwPadKindPowerup = "powerup"
-)
-
-// gwClassDropped / gwClassSpawned : les deux classes de l'item 1.1.
-const (
-	gwClassDropped = "dropped"
-	gwClassSpawned = "spawned"
-)
-
-// gwPadApparition est UNE apparition d'objet au sol : ou, quand, quelle famille, et comment
-// elle est nee.
-type gwPadApparition struct {
-	Kind, Family string
-	X, Y, Z      float32
-	TUS          uint64
-	Class        string
-	// HasDelta dit que la vie de l'objet a laisse des echantillons de position dans les
-	// paquets delta. Son absence est le candidat « apparu au repos » : un objet qui nait
-	// immobile a son socle n'emet jamais de position.
-	HasDelta bool
-}
+// LES SEUILS, LES CLASSES ET LA REGLE DE GRAPPE SONT EN PRODUCTION (`ground_weapon_rules.go`)
+// depuis la phase 3 : `gwPadRadiusM`, `gwPadMinHits`, `gwPadCycleMinGaps`, `gwPadCycleMaxCV`,
+// `gwPadApparition`, `gwPadsClass`, `gwPadsIdentity`, `gwPadsWeaponFamily`. Ils ont ete ECRITS
+// AVANT la mesure (plan, items 1.2-1.4 et decision 3) et n'ont pas bouge ; cet instrument les
+// APPELLE, il n'en garde aucune copie.
 
 func TestGroundWeaponPads(t *testing.T) {
 	dir := os.Getenv(gwPadsEnv)
@@ -254,45 +212,6 @@ func gwPadsPowerups(
 	return out
 }
 
-// gwPadsClass classe une apparition : `dropped` si une vie de bipede S'ACHEVE a moins de
-// `originDropWindowUS` (2 frames) et `originDropMaxDist` (1,5 m) d'elle, `spawned` sinon.
-//
-// LES DEUX CONSTANTES SONT CELLES DE LA PRODUCTION (equipment_placements.go), et pas des
-// jumelles : la regle du 2026-08-18 est la MEME regle, appliquee ici a toutes les vies au lieu
-// du seul poseur mesure — un objet apparu a son socle n'a pas de poseur a moins de 3 m, donc le
-// chemin `equipmentOwner` le classerait `unknown` au lieu de `spawned`.
-func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) string {
-	for _, vs := range lives {
-		for _, v := range vs {
-			if equipTimeGap(a.TUS, v.to) > originDropWindowUS {
-				continue
-			}
-			if gwPadsDist(a.X, a.Y, a.Z, v.x, v.y, v.z) < originDropMaxDist {
-				return gwClassDropped
-			}
-		}
-	}
-	return gwClassSpawned
-}
-
-// gwPadsIdentity rend le mot MPP de 32 bits du record de creation — l'identite de l'arme.
-func gwPadsIdentity(c filmdec.EquipmentCreation) (uint32, bool) {
-	if !c.MPPPresent[filmdec.MPPWord32] {
-		return 0, false
-	}
-	return uint32(c.MPPVal[filmdec.MPPWord32]), true
-}
-
-// gwPadsWeaponFamily rend le nom CANONIQUE de l'arme — le repli des alias, sans quoi un meme
-// socle rendrait deux familles pour un seul canon (piege documente par keyframe_loadout.go).
-// A defaut de nom, l'identifiant brut : une famille sans nom reste une famille.
-func gwPadsWeaponFamily(w uint32) string {
-	if n := weaponv3.WeaponName(w); n != "" {
-		return n
-	}
-	return fmt.Sprintf("0x%08x", w)
-}
-
 // gwPadsKeyframeFamilies indexe la famille high-32 lue aux IMAGES-CLES par vie (slot, gen) —
 // la chaine independante qui CONTROLE le filtre d'identite.
 func gwPadsKeyframeFamilies(
@@ -409,11 +328,6 @@ func gwPadsPart(k, n int) string {
 		return "-"
 	}
 	return fmt.Sprintf("%d/%d=%.1f%%", k, n, 100*float64(k)/float64(n))
-}
-
-func gwPadsDist(ax, ay, az, bx, by, bz float32) float64 {
-	dx, dy, dz := float64(ax-bx), float64(ay-by), float64(az-bz)
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
 // mapQuantEntryFromEnv charge l'entree de catalogue de bornes de la carte nommee par `mapEnv`.
