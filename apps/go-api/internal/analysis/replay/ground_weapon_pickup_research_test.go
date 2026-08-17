@@ -22,7 +22,12 @@ package replay
 //	     joueur tire au sort a la meme image-cle ;
 //	2.3  lignes `PICKUP` et `PADSTATE` — la proposition de format pour la phase 3 ;
 //	2.4  cycle RE-MESURE depuis le ramassage, socle par socle, contre le cycle d'apparition
-//	     de l'item 1.3.
+//	     de l'item 1.3 ;
+//	2.5  LE MEME ORACLE, MAIS PAR JOUEUR : le ramasseur passe par le pont slot -> xuid du
+//	     CONSTRUCTEUR (`buildOwners`, `SlotXUID`) et l'on lit le loadout de sa VIE COURANTE a
+//	     l'image-cle suivante — regles, seuil et temoin dans `ground_weapon_pickup_owner_test.go`.
+//	     Il ajoute au film TROIS lectures (fil des morts, index de joueur, events de tir), qui
+//	     sont exactement celles que `BuildFromFilm` fait pour construire ce pont.
 //
 // LECTURE SEULE, aucune base. UN SEUL decodage filmdec par process (`LockProcessDecode`),
 // largeurs d'axe restaurees (`installWorldObjectPrecision`).
@@ -111,6 +116,11 @@ func TestGroundWeaponPickups(t *testing.T) {
 	gwPickupReport22(t, f, objs)
 	gwPickupReport23(t, f, objs)
 	gwPickupReport24(t, f, objs)
+	// L'ITEM 2.5 VIENT EN DERNIER, ET CE N'EST PAS UN DETAIL D'ORDRE : les items 2.1 et 2.2
+	// consomment `f.rng`, et un rapport insere AVANT eux deplacerait leurs tirages, donc leurs
+	// temoins. Le controle d'ancrage de ce lot (177 ramassages de socle, 62,7 % d'accord par
+	// SLOT) doit rester reproductible au chiffre pres apres l'ajout de 2.5.
+	gwPickupReport25(t, dir, f, objs)
 }
 
 // gwPickupRead lit le film : nuage des bipedes, recensement et instants des images-cles,
