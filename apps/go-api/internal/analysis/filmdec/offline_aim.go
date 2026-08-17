@@ -77,6 +77,39 @@ func (p BipedPosition) AimHeadingDeg() (float32, bool) {
 	return float32(360 * (float64(p.YawRaw) + 0.5) / (1 << aimYawBits)), true
 }
 
+// AimPitchDeg renvoie l'ÉLÉVATION DE VISÉE en degrés (positif = vers le haut, 0 = à plat), et
+// sa validité. Elle vient du second scalaire d'i21, le R(11) qui suit le cap.
+//
+// CONVENTION MESURÉE, pas supposée (item E.0.1 du plan d'exploitation du registre, mesure du
+// 2026-08-18 sur `000d5950` Cliffhanger, `530820e5` Catalyst et `7344d24f` Vagabond) :
+//
+//	ENCODAGE      binaire décalé, centré sur 1024 : le mode de la distribution tombe à 1024
+//	              (Catalyst), 1013 (Vagabond) et 1006 (Cliffhanger) — un joueur vise à plat, ou
+//	              quelques degrés sous l'horizontale (il vise des corps, pas des yeux).
+//	QUANTUM       360/2048 = 0,17578 deg par pas, soit DEUX FOIS celui du cap. Établi par
+//	              l'oracle du kill : au moment du tir le réticule est sur la victime, donc
+//	              l'angle visé est atan2(dz, distance horizontale) entre les deux bipèdes.
+//	              L'ajustement dz = dxy·tan(c·pas) − h rend c = 0,1706 / 0,1385 / 0,1685 deg/pas
+//	              sur les trois films (R² 0,90 / 0,72 / 0,92), et le candidat 360/2048 est à
+//	              1,01 / 1,26 / 1,03 fois la meilleure somme des carrés, quand le quantum du cap
+//	              (180/2048) est à 3,34 / 1,38 / 4,06 — REFUTÉ.
+//	SIGNE         au-dessus de 1024 = vers le HAUT : 56 accords de signe sur 58 kills à
+//	              |dz| >= 1 m (100 % / 91,7 % / 100 %), témoin par permutation 86,7 / 58,3 /
+//	              47,4 %, plancher du prédicteur constant 93,3 / 66,7 / 63,2 %.
+//
+// RÉSERVE HONNÊTE. Les valeurs observées tiennent dans [537, 1490] sur les trois films, donc
+// dans la MOITIÉ centrale du champ ([512, 1536] = ±90°). Cette mesure ne peut donc pas
+// distinguer « le champ couvre ±180° et le jeu borne le tangage à ±90° » de « le champ ne code
+// que ±90° sur la moitié de ses valeurs » : les deux donnent EXACTEMENT les mêmes degrés sur
+// tout ce que le film transmet. Le jour où une valeur sortirait de cette moitié, c'est cette
+// formule-ci (±180° sur tout le champ) qui la rendrait, et il faudra la revérifier.
+func (p BipedPosition) AimPitchDeg() (float32, bool) {
+	if !p.HasYaw {
+		return 0, false
+	}
+	return float32(360*(float64(p.PitchRaw)+0.5)/(1<<aimPitchBits) - 180), true
+}
+
 // AimVector renvoie le cap unitaire décodé (cubemap 19 bits) et sa validité.
 func (p BipedPosition) AimVector() ([3]float32, bool) {
 	if !p.HasAim {
