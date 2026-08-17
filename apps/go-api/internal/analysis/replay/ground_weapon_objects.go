@@ -79,15 +79,22 @@ func (o gwPickupObject) gwPickupDateUS() uint64 {
 //
 // LES CRÉATIONS SONT GROUPÉES PAR CLÉ AVANT TOUT : la REPRISE d'une clé (slot, gen) borne la vie
 // de la précédente, sans quoi le recensement du suivant prouverait la survie du précédent.
+//
+// LE SECOND RETOUR EST LE COMPTE DES ÉCARTÉES, MESURÉ SUR LE CHEMIN DE REJET LUI-MÊME (correctif
+// de revue du 2026-08-17). Il valait auparavant `Accepted − len(objs)`, une différence : elle
+// équilibrait l'invariant `Kept + Rejected == Accepted` par construction, donc le test qui le
+// vérifiait ne pouvait pas échouer. Compté ici, l'invariant redevient un CONTRÔLE — un futur
+// `continue` qui écarterait une création sans la compter le ferait tomber.
 func groundWeaponObjects(
 	scan GroundWeaponScan, lives map[uint32][]equipLife, positions []filmdec.BipedPosition,
-) []gwPickupObject {
+) ([]gwPickupObject, int) {
 	known := loadoutFamilies()
 	byKey := map[filmdec.EquipmentLifeKey][]filmdec.EquipmentCreation{}
-	kept := 0
+	kept, rejected := 0, 0
 	for _, c := range scan.Creations {
 		w, ok := gwPadsIdentity(c)
 		if !ok || !known[w] {
+			rejected++
 			continue
 		}
 		kept++
@@ -118,7 +125,7 @@ func groundWeaponObjects(
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return gwPadsLess(out[i].Appar, out[j].Appar) })
-	return out
+	return out, rejected
 }
 
 // gwResolveInputs porte ce que le bornage et la datation d'UN objet consomment (règle des
