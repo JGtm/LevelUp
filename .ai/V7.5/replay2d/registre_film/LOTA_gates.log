@@ -65,3 +65,7 @@ EXIT_manches_ter_1e26f641=0
 # KILLED_OVER_3GB=False sur les 12 executions (pic max 20,8 Mo)
 EXIT_test_ter=0
 EXIT_lint_ter=0
+# phase 1 item A.1.0 (2026-08-18)
+EXIT_test_a10=0
+EXIT_test_replay_filmdec=1
+EXIT_lint_a10=0

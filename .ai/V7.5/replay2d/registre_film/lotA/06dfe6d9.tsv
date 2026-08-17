@@ -1,4 +1,4 @@
-meta	06dfe6d9	BTB:Fiesta CTF	flag	Threshold	1	3	859	26	1183	814	369	52522	854352	25408	1759
+meta	06dfe6d9	BTB:Fiesta CTF	flag	Threshold	1	3	859	26	1206	820	386	0	854352	25408	2743
 team	6	3	3	3	253399	854352	oui
 team	8	1	2	2	165134	208021	oui
 a01	exact	3/1	1/3	2
@@ -13,5 +13,5 @@ player	24	2535455709958376	-	12	-	10	-	4	-	non	oui	1
 a03	7	7	8	8	8	26	8
 a02	a	1	0	scores finaux distincts
 a01b	ecart	3/0	1/3	1	0
-volume	5	182	142	88	30	144	9537	9681
-cost	1759	1792	21	3	114	1183
+volume	5	186	143	88	30	144	9638	9782
+cost	2743	2826	17	5	114	1206

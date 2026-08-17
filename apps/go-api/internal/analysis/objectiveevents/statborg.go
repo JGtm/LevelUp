@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"context"
+	"log/slog"
+	"sort"
+)
 
 // statborg.go — le decodage des ENREGISTREMENTS D'ENTITE des paquets FRAME, d'ou sortent
 // le score de mode, le score personnel et les compteurs de combat, horodates a la ms.
@@ -15,18 +19,46 @@ import "sort"
 //
 // # La grammaire, MESUREE (jamais derivee du binaire seul)
 //
-//	[1 bit = 1][14 bits slot][2 bits = 10][1 bit forme = 0][3 bits N][N x 6 bits index]
-//	puis, par index : [5 bits = 0][5 bits = 0][valeur A][valeur B][2 drapeaux][conditionnelles]
+//	[1 bit = 1 : record DELTA][13 bits identifiant][2 bits generation][1 bit selecteur d'etat
+//	de base ; si 1 : 7 bits][liste de composants]
+//
+//	liste, gate = 0 (creuse) : [1 bit = 0][3 bits N][N x 6 bits index]
+//	liste, gate = 1 (DENSE)  : [1 bit = 1][64 bits masque]
+//
+//	puis, par index : [5 bits MANCHE][5 bits MANCHE][valeur A][valeur B][2 drapeaux][conditionnelles]
 //
 // Chaque constante a ete lue sur 1 078 en-tetes et 2 708 lectures de composant issus d'une
 // capture Cheat Engine, pas supposee (.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15) :
-//   - le bit qui precede le slot vaut 1 dans 1 077/1 078 ;
+//   - le bit qui precede l'identifiant vaut 1 dans 1 077/1 078 (c'est le code de record DELTA) ;
 //   - les slots valent 6 et 8 (equipes) et 10..24 pairs (les 8 joueurs), soit
 //     2 x (identifiant runtime - 0x40000000) ;
-//   - les 2 bits qui suivent le slot valent 10 dans 1 077/1 078 ;
-//   - les deux en-tetes de 5 bits du composant valent 0 sur **2 683 / 2 708 lectures
-//     reelles (99,1 %)**, tous composants confondus, contre une poignee chez les faux
-//     positifs — sans cette contrainte, 151 faux positifs par film.
+//   - la generation vaut 1 et le selecteur d'etat de base vaut 0 dans 1 077/1 078.
+//
+// # Ce que la description precedente disait de FAUX, et ce que cela coutait (2026-08-18)
+//
+// Elle decrivait « 14 bits de slot » puis « 2 bits constants a 10 » : ce sont en realite
+// 13 bits d'identifiant, 2 bits de GENERATION et 1 bit de SELECTEUR D'ETAT DE BASE. La
+// contrainte cachait donc deux hypotheses (generation = 1, selecteur = 0) — d'ou le slot
+// toujours pair, qui vaut 2 x identifiant.
+//
+// Elle exigeait surtout les deux en-tetes de 5 bits du composant NULS. Or ces en-tetes portent
+// le NUMERO DE MANCHE (0 = premiere manche), comme le getter natif le dit deja :
+//
+//	value = *(int32*)(world + slot*0x88 + equipe*0x1DF0 + 0x38 + manche*4)
+//
+// L'assertion « == 0 » etait donc un FILTRE DE MANCHE : tout match a plusieurs manches n'etait
+// lu que jusqu'a la fin de la premiere. Mesure du 2026-08-18 (phase 0-ter du lot A) : en Oddball,
+// le score d'equipe passe de 100/78 (une manche) a 200/121 (somme des manches) = l'oracle, sur
+// 4 films sur 4 ; les frags passent de 48/88 a 385/391 (98,5 %). Un match peut avoir TROIS
+// manches (`c88ec007`) : ne jamais cabler un nombre de manches.
+//
+// La forme DENSE de liste (gate = 1, masque de 64 bits) etait ignoree de meme : 33 records
+// perdus sur `24dbb67d`. Le moteur y bascule quand un enregistrement change plus de sept
+// composants — typiquement a la fin d'une manche.
+//
+// Controle de non-regression de ce relachement : sur 9 films sans manches multiples, les
+// en-tetes non nuls representent 22 emissions sur 869 (2,5 %), toujours isolees et jamais
+// groupees ; `530820e5` n'en a aucune.
 //
 // Piege consigne : les 2 bits qui PRECEDENT le bit de presence ne sont pas un champ de
 // type. Ils sont statistiquement independants (22 co-occurrences pour 21,6 attendues sous
@@ -43,11 +75,22 @@ import "sort"
 const (
 	// statIDBits est la largeur du champ de slot d'entite dans l'en-tete d'enregistrement.
 	statIDBits = 14
-	// statGenBits / statGenValue : les 2 bits qui suivent le slot, constants.
+	// statGenBits / statGenValue : les 2 bits qui suivent le slot, constants. Ils valent en
+	// realite le second bit de la GENERATION et le SELECTEUR D'ETAT DE BASE (cf. en-tete) ;
+	// la forme conservee ici est celle qui a ete calibree, et elle equivaut a exiger
+	// generation = 1 et selecteur = 0.
 	statGenBits  = 2
 	statGenValue = 0b10
-	// statHdrBits est la largeur de chacun des deux en-tetes d'un composant.
+	// statHdrBits est la largeur de chacun des deux en-tetes d'un composant. Ils portent le
+	// NUMERO DE MANCHE (0-based).
 	statHdrBits = 5
+	// statMaxRound borne le numero de manche accepte. Huit manches est au-dela de tout format
+	// observe (le maximum mesure est 3, sur `c88ec007`) et la borne conserve 2 bits de
+	// contrainte sur chacun des deux en-tetes, soit 4 des 10 bits de filtre anti-faux-positifs
+	// de la forme d'origine. Sans borne, l'ancrage laisserait passer 151 faux positifs par film.
+	statMaxRound = 7
+	// statDenseMaskBits est la largeur du masque de la forme dense (gate = 1).
+	statDenseMaskBits = 64
 	// statMaxComp borne les index de composant de l'archetype (58 composants).
 	statMaxComp = 58
 	// statCompIndexBits est la largeur d'un index de composant dans la liste creuse.
@@ -62,6 +105,25 @@ const (
 	statTeamSlotMax = 8
 	// statTailBits : marge de fin de paquet sous laquelle on n'ancre plus.
 	statTailBits = 64
+	// statMaxRecordsPerFilm plafonne ce qu'un film peut rendre.
+	//
+	// POURQUOI CE PLAFOND EXISTE : ce balayage a rendu la machine de l'utilisateur inutilisable
+	// deux fois en aout 2026, et un film du corpus (`1b1e380f`, Strongholds) a atteint 3,3 Go
+	// avant d'etre tue par une surveillance externe le 2026-08-18. Un decodeur qui vit dans un
+	// service ne peut pas dependre d'une surveillance externe.
+	//
+	// La valeur est QUATRE FOIS le maximum mesure sur le corpus de 22 films de la phase 0
+	// (8 269 enregistrements sur `c88ec007`, un Oddball a trois manches — le film le plus
+	// bavard). Un film qui la depasse est anormal : on rend ce qui a ete lu, on le journalise
+	// et on marque le resultat TRONQUE plutot que de gonfler jusqu'au plafond memoire.
+	statMaxRecordsPerFilm = 4 * 8269
+	// statMaxModeScore borne le score de MODE d une manche. Ce n est pas un reglage mais une
+	// contrainte de DOMAINE : aucun mode Halo Infinite ne fait marquer plus de 250 points dans
+	// une manche (Strongholds et Oddball plafonnent a 200, Slayer a 50, KOTH compte des manches).
+	// Une valeur au-dela est un ancrage fortuit, et il faut l ecarter AVANT de qualifier les
+	// manches : sur le CTF `53ce4390`, un point isole a 2 104 suffisait a faire passer une manche
+	// fantome pour reelle et portait le score d equipe de 1 a 2 104.
+	statMaxModeScore = 250
 )
 
 // StatValue est la paire de valeurs d'un composant. Le sens de A et de B depend du
@@ -75,6 +137,10 @@ type StatRecord struct {
 	TimeMS int
 	// Slot identifie l'entite : 6 et 8 sont les deux equipes, 10..24 les huit joueurs.
 	Slot int
+	// Round est la MANCHE que decrit cet enregistrement, 0-based (0 = premiere manche). Elle
+	// est lue dans les en-tetes de 5 bits du premier composant. Un compteur repart de zero a
+	// chaque manche : le total d'un match est la SOMME des manches, jamais la derniere valeur.
+	Round int
 	// Comps porte les composants effectivement transportes par cet enregistrement.
 	Comps map[int]StatValue
 }
@@ -85,7 +151,22 @@ func IsTeamSlot(slot int) bool { return slot <= statTeamSlotMax }
 // StatRecords decode tous les enregistrements d'entite d'un film, tries par temps puis
 // par slot. L'ancrage est DIRECT : les contraintes de l'en-tete suffisent a localiser un
 // enregistrement, aucune traversee de la chaine n'est necessaire.
+//
+// Variante sans contexte, conservee pour les appelants existants : elle delegue a
+// [StatRecordsCtx] et JETTE le drapeau de troncature. Tout appelant qui publie ce qu'il lit
+// doit utiliser [StatRecordsCtx] et propager `truncated` — publier un score tronque sans le
+// dire serait un mensonge silencieux.
 func StatRecords(src FilmSource) []StatRecord {
+	recs, _ := StatRecordsCtx(context.Background(), src, "")
+	return recs
+}
+
+// StatRecordsCtx decode les enregistrements d'entite sous PLAFOND (cf. statMaxRecordsPerFilm).
+// Il rend les enregistrements lus et `truncated` = true si le plafond a ete atteint : dans ce
+// cas la lecture s'arrete la, elle est journalisee, et l'appelant doit le publier.
+//
+// matchID n'est utilise que pour le journal ; il peut etre vide.
+func StatRecordsCtx(ctx context.Context, src FilmSource, matchID string) (recs []StatRecord, truncated bool) {
 	var out []StatRecord
 	for _, meta := range src.Chunks() {
 		raw, ok := src.ChunkData(meta.Index)
@@ -101,13 +182,28 @@ func StatRecords(src FilmSource) []StatRecord {
 		for _, f := range frames {
 			tMS := meta.StartMS + int((f.us-base)/1000)
 			out = append(out, scanFrameForRecords(data[f.off:f.off+f.size], tMS)...)
+			if len(out) >= statMaxRecordsPerFilm {
+				slog.WarnContext(ctx,
+					"statborg: plafond d'enregistrements atteint, lecture tronquee",
+					"match_id", matchID, "records", len(out),
+					"limite", statMaxRecordsPerFilm, "chunk", meta.Index)
+				return sortRecords(out), true
+			}
 		}
 	}
+	return sortRecords(out), false
+}
+
+// sortRecords ordonne les enregistrements par temps puis par slot.
+func sortRecords(out []StatRecord) []StatRecord {
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].TimeMS != out[j].TimeMS {
 			return out[i].TimeMS < out[j].TimeMS
 		}
-		return out[i].Slot < out[j].Slot
+		if out[i].Slot != out[j].Slot {
+			return out[i].Slot < out[j].Slot
+		}
+		return out[i].Round < out[j].Round
 	})
 	return out
 }
@@ -121,11 +217,11 @@ func scanFrameForRecords(pay []byte, tMS int) []StatRecord {
 		if !ok {
 			continue
 		}
-		comps := decodeComponents(pay, at, idx)
+		comps, round := decodeComponents(pay, at, idx)
 		if len(comps) == 0 {
 			continue
 		}
-		out = append(out, StatRecord{TimeMS: tMS, Slot: slot, Comps: comps})
+		out = append(out, StatRecord{TimeMS: tMS, Slot: slot, Round: round, Comps: comps})
 	}
 	return out
 }
@@ -144,8 +240,12 @@ func matchRecordHeader(pay []byte, b int) (slot int, idx []int, compAt int, ok b
 		return 0, nil, 0, false
 	}
 	m := b + statIDBits + statGenBits
+	// Le moteur a DEUX formes de liste de composants (FUN_1406d7610) : creuse quand un
+	// enregistrement change au plus sept composants, DENSE au-dela — typiquement a la fin
+	// d'une manche, quand les 28 compteurs se figent et que les 28 suivants repartent.
 	if readBitsBE(pay, m, 1) != 0 {
-		return 0, nil, 0, false
+		idx, ok = denseComponentList(pay, m+1)
+		return slot, idx, m + 1 + statDenseMaskBits, ok
 	}
 	n := int(readBitsBE(pay, m+1, 3))
 	if n < 1 || n > statMaxCompPerRecord {
@@ -165,13 +265,43 @@ func matchRecordHeader(pay []byte, b int) (slot int, idx []int, compAt int, ok b
 	return slot, idx, m + 4 + statCompIndexBits*n, true
 }
 
-// decodeComponents lit les composants listes, dans l'ordre. Le PREMIER doit satisfaire la
-// contrainte mesuree « les deux en-tetes de 5 bits valent 0 » : c'est elle qui separe un
-// vrai enregistrement d'un ancrage fortuit. Les suivants ne sont pas re-contraints — leurs
-// largeurs sont chainees, une lecture qui derape s'arrete d'elle-meme.
-func decodeComponents(pay []byte, at int, idx []int) map[int]StatValue {
-	if readBitsBE(pay, at, statHdrBits) != 0 || readBitsBE(pay, at+statHdrBits, statHdrBits) != 0 {
-		return nil
+// denseComponentList lit la forme DENSE : un masque de 64 bits dont le bit i designe le
+// composant i. L'archetype n'ayant que [statMaxComp] composants, les bits de poids fort
+// doivent etre nuls — c'est ce qui remplace ici la contrainte de la liste croissante.
+func denseComponentList(pay []byte, p int) ([]int, bool) {
+	if p+statDenseMaskBits > len(pay)*8 {
+		return nil, false
+	}
+	mask := readBitsBE(pay, p, statDenseMaskBits)
+	if mask == 0 || mask>>statMaxComp != 0 {
+		return nil, false
+	}
+	idx := make([]int, 0, statMaxComp)
+	for i := 0; i < statMaxComp; i++ {
+		if mask>>uint(i)&1 == 1 {
+			idx = append(idx, i)
+		}
+	}
+	return idx, true
+}
+
+// decodeComponents lit les composants listes, dans l'ordre, et rend la MANCHE que porte
+// l'enregistrement.
+//
+// Le PREMIER composant porte la contrainte qui separe un vrai enregistrement d'un ancrage
+// fortuit : ses deux en-tetes de 5 bits doivent designer la MEME manche, bornee par
+// [statMaxRound]. Exiger la manche ZERO — ce que faisait la version d'avant le 2026-08-18 —
+// revenait a jeter tout ce qui suit la premiere manche. Exiger l'egalite des deux en-tetes est
+// ce qui recupere la contrainte perdue : sur les emissions reelles ils portent toujours la meme
+// valeur, un couple depareille est un faux positif.
+//
+// Les composants suivants ne sont pas re-contraints — leurs largeurs sont chainees, une lecture
+// qui derape s'arrete d'elle-meme.
+func decodeComponents(pay []byte, at int, idx []int) (map[int]StatValue, int) {
+	h1 := int(readBitsBE(pay, at, statHdrBits))
+	h2 := int(readBitsBE(pay, at+statHdrBits, statHdrBits))
+	if h1 != h2 || h1 > statMaxRound {
+		return nil, 0
 	}
 	out := make(map[int]StatValue, len(idx))
 	q := at
@@ -183,7 +313,7 @@ func decodeComponents(pay []byte, at int, idx []int) map[int]StatValue {
 		out[i] = v
 		q += w
 	}
-	return out
+	return out, h1
 }
 
 // decodeStatComponent lit un composant et rend sa largeur consommee. Reproduit
@@ -234,4 +364,69 @@ func readStatVarWidth(pay []byte, p int) (int64, int, bool) {
 		iv = int64(v) - (1 << uint(w))
 	}
 	return iv, 2 + w, true
+}
+
+// statMinRoundRun separe une MANCHE REELLE d une manche fantome.
+//
+// Le relachement de l'assertion d'en-tete (cf. en-tete de fichier) laisse passer un residu de
+// faux positifs : ils portent un numero de manche quelconque et arrivent ISOLES. Les cumuler
+// comme s'il s'agissait de manches ferait exploser les compteurs — mesure du 2026-08-18 :
+// `flag_capture_assists` passait de 1 a 1 569 sur `1bc77d2e` avant l'introduction de ce seuil.
+//
+// La valeur separe deux populations mesurees sur le corpus de 22 films : un ancrage fortuit
+// arrive ISOLE, et la plus petite manche REELLE observee tire 33 emissions coherentes
+// (`c88ec007`, slot 6, manche 1). Trois est le plus petit seuil qui ecarte les paires fortuites
+// sans jeter une manche courte — c est celui qui a ete valide en mesure (phase 0-ter).
+const statMinRoundRun = 3
+
+// RealRounds rend les manches d'un film qui sont vraiment des manches.
+//
+// Deux conditions, et il faut les DEUX — la premiere seule ne suffisait pas (mesure du
+// 2026-08-18 : sur le CTF `53ce4390`, une manche fantome franchissait le seuil de comptage et le
+// cumul portait le score d'equipe de 1 a 2 104) :
+//
+//	coherence   la manche tire, pour au moins un slot, une suite croissante d au moins
+//	            [statMinRoundRun] emissions du score de mode ;
+//	contiguite  les manches se jouent dans l'ordre, donc seules 0, 1, 2 ... sans trou sont
+//	            retenues. Une « manche 5 » sans manche 1 a 4 est un ancrage fortuit, quel que
+//	            soit son comptage.
+//
+// Le comptage porte sur une SUITE COHERENTE, pas sur des enregistrements bruts : pour chaque
+// couple (slot, manche), la suite du score de mode est filtree par la meme plus longue
+// sous-suite croissante que la production, et la manche doit en tirer au moins
+// [statMinRoundRun] emissions pour au moins un slot. C'est le critere qui a ete valide en
+// mesure : 4 films Oddball sur 4 exacts, et aucun faux positif sur les 9 films a une manche.
+// Compter les enregistrements bruts ne suffisait pas — sur le CTF `53ce4390`, une manche
+// fantome franchissait ce comptage et portait le score d'equipe de 1 a 2 104.
+func RealRounds(recs []StatRecord) map[int]bool {
+	type key struct{ slot, round int }
+	series := map[key][]ScorePoint{}
+	for _, r := range recs {
+		v, ok := r.Comps[modeScoreComp]
+		if !ok || v.A < 0 || v.A > statMaxModeScore {
+			continue
+		}
+		k := key{r.Slot, r.Round}
+		series[k] = append(series[k], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: v.A})
+	}
+	runs := map[int]int{}
+	for k, pts := range series {
+		sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+		if n := len(longestRun(pts, true)); n > runs[k.round] {
+			runs[k.round] = n
+		}
+	}
+	out := map[int]bool{}
+	for round := 0; round <= statMaxRound; round++ {
+		if runs[round] < statMinRoundRun {
+			break // trou : tout ce qui suit est du bruit
+		}
+		out[round] = true
+	}
+	// La premiere manche existe toujours : un film tres court, ou tronque par le plafond,
+	// reste lisible.
+	if len(out) == 0 {
+		out[0] = true
+	}
+	return out
 }
