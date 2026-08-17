@@ -31,6 +31,7 @@ package filmdec
 
 import (
 	"os"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -261,4 +262,77 @@ func kf35bIndexOf(f kf35Film, name string) int {
 		}
 	}
 	return -1
+}
+
+// ---------------------------------------------------------------------------
+// DISPERSION — la piece qui tranche « bloc manquant » contre « derive dispersee »
+// ---------------------------------------------------------------------------
+
+// kf35bQuantile rend le quantile q (0..1) d'un echantillon. Il TRIE la tranche recue.
+func kf35bQuantile(xs []int, q float64) int {
+	if len(xs) == 0 {
+		return 0
+	}
+	sort.Ints(xs)
+	i := int(q * float64(len(xs)-1))
+	return xs[i]
+}
+
+// TestKF35BDispersion publie la DISTRIBUTION CUMULEE de l'ecart, pas sa seule mediane.
+//
+// LA QUESTION QU'IL TRANCHE. Une mediane de 500 bits se lit de deux facons opposees : soit
+// tous les records ratent d'environ 500 bits (un BLOC MANQUANT de largeur stable, qu'on va
+// alors chercher dans le binaire), soit une part des records tombe a quelques bits pendant
+// qu'une autre part part tres loin (une DERIVE, qu'aucun bloc ne corrigera). Les parts a
+// 8 / 16 / 64 / 256 bits le disent ; la mediane, non.
+//
+// UNE SEULE configuration, la meilleure mesuree : largeurs d'axe de la CARTE installees,
+// corruption-check du mode film ETEINT (allume est desormais pire, cf. plan R7-b).
+func TestKF35BDispersion(t *testing.T) {
+	films := kf35Films(t)
+	release := LockProcessDecode()
+	defer release()
+
+	prevSim := simStateComplete
+	SetSimStateComplete(true)
+	defer SetSimStateComplete(prevSim)
+	prevCorr := filmComponentCorruptionCheck
+	SetFilmComponentCorruptionCheck(false)
+	defer SetFilmComponentCorruptionCheck(prevCorr)
+
+	for _, f := range films {
+		_, restore := kf35bInstallPrecision(t, f.Name)
+		for _, v := range kf35bVariants {
+			kf35bDispersionOne(t, f, v)
+		}
+		restore()
+	}
+}
+
+// kf35bDispersionOne joue une variante sur un film et publie les parts cumulees de |ecart|.
+func kf35bDispersionOne(t *testing.T, f kf35Film, v kf35Variant) {
+	t.Helper()
+	if v.Stub {
+		_, unstub := kf35ApplyStubs(f, v)
+		defer unstub()
+	}
+	tal := kf35Pass(f, v)
+	n := tal.bounded
+	if n == 0 {
+		return
+	}
+	abs := append([]int(nil), tal.absGaps...)
+	t.Logf("  [%s] %s", f.Name, v.Label)
+	t.Logf("      |ecart| p10 %d · p25 %d · p50 %d · p75 %d · p90 %d bits",
+		kf35bQuantile(abs, 0.10), kf35bQuantile(abs, 0.25), kf35bQuantile(abs, 0.50),
+		kf35bQuantile(abs, 0.75), kf35bQuantile(abs, 0.90))
+	for _, s := range []int{0, 8, 16, 64, 256} {
+		c := tal.exact
+		for _, g := range tal.absGaps {
+			if g <= s && g > 0 {
+				c++
+			}
+		}
+		t.Logf("      |ecart| <= %3d bits : %4d / %4d = %5.1f %%", s, c, n, 100*float64(c)/float64(n))
+	}
 }

@@ -324,3 +324,42 @@ PROPOSEES, 0 publiee des deux cotes. |
    n'exposer que son `tail` fait perdre la mesure si la session est interrompue : le fichier de
    tache ne contient que la queue. Ecrire le log dans un chemin PERSISTANT du worktree
    (`.gocache/`), jamais dans `/tmp`. NE PAS traiter ici.
+
+**2026-08-17 — Phase 4bis. « BLOC MANQUANT » ou « DERIVE » ? La distribution repond : DERIVE.**
+
+Une mediane de 500 bits se lit de deux facons opposees, et la mediane seule ne les separe pas :
+soit tous les records ratent d'environ 500 bits (un BLOC de largeur stable, qu'on va alors
+chercher dans le binaire — c'etait la consigne), soit une part tombe a quelques bits pendant
+qu'une autre part s'envole. `TestKF35BDispersion` (largeurs de CARTE, corruption OFF, la
+meilleure configuration mesuree) publie les parts cumulees.
+
+| |ecart| (v4 etat complet) | `000d5950` | `00502e52` | `07aa428d` |
+|---|---|---|---|
+| p10 | 48 | 105 | 46 |
+| p25 | 149 | 285 | 146 |
+| p50 | 507 | 636 | 424 |
+| p75 | 929 | 1 069 | 944 |
+| p90 | 69 341 | 68 131 | 20 065 |
+| **<= 8 bits** | 1,1 % | 0,5 % | 1,0 % |
+| **<= 16 bits** | 1,6 % | 1,4 % | 2,5 % |
+| **<= 64 bits** | 10,3 % | 6,7 % | 13,1 % |
+| **<= 256 bits** | 31,0 % | 23,9 % | 35,4 % |
+| temoin v0b « record NEW », <= 256 bits | 1,6 % | 0,5 % | 1,5 % |
+
+**VERDICT DE FORME : il n'y a AUCUN bloc manquant de largeur stable.** De p10 = 46 bits a
+p90 = 20 000-70 000, l'ecart couvre quatre ordres de grandeur sans aucun palier. La consigne
+« si le bloc est stable en largeur, cherche-le dans le code plutot qu'en balayant » a donc sa
+reponse : **la condition n'est pas remplie, et il n'y a rien a chercher dans Ghidra sous cette
+forme.** R7-a avait raison sur ce point precis (« la derive est per-composant »), meme si sa
+mesure etait faussee par ailleurs ; la sous-lecture mediane de ~300-400 bits observee apres
+correction n'est PAS un bloc, c'est le centre d'une distribution tres etalee.
+
+**CE QUI EST TOUT DE MEME ACQUIS, ET IL EST GRAND.** L'etat complet fait **15 a 70 fois mieux
+que le temoin** sur la part des records a moins de 256 bits (24-35 % contre 0,5-1,6 %), et un
+record sur dix tombe deja a moins de 64 bits. La forme de la lecture est la bonne ; c'est
+l'accumulation de petites erreurs de largeur, sur 64 composants, qui interdit le bit.
+
+**LA QUEUE LOURDE EST UN ARTEFACT D'INSTRUMENT, PAS UNE DONNEE** (p90 a 20 000-70 000 bits) :
+c'est le piege deja consigne en R7-a §7.5 — une marche mal alignee lit au-dela du tampon, le
+`BitReader` rend des zeros et certains desers a boucle explosent. Les percentiles bas (p10-p75)
+sont les seuls a interpreter.
