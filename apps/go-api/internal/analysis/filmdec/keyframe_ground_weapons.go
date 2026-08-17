@@ -129,13 +129,16 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 // BRUIT. Ne pas la brancher sur un artefact ni sur une réponse d'API.
 //
 // DEUX CAUSES STRUCTURELLES, toutes deux hors de portée offline-pur aujourd'hui :
-//   - au KEYFRAME, la position suit le default-state de l'archétype (vtable[0x60]), dont la
-//     largeur n'est PAS résolue pour ti=42 (defaultStateDeserByTI n'a pas d'entrée 42) : l'offset
-//     d'i0 y est inconnu, et le lire « à peu près » produirait des coordonnées inventées ;
+//   - au KEYFRAME, la position suit le default-state de l'archétype (vtable[0x60]). Sa grammaire
+//     est PORTÉE depuis le 2026-08-17 (lot R5, default_state_ti42.go, entrée 42 de
+//     defaultStateDeserByTI), mais AUCUN oracle ne la valide et cela ne débloque rien : le lot R5
+//     a mesuré que le corps d'un record d'image-clé n'est pas un record NEW (jamais plus de 1,8 %
+//     de marches bit-exactes), et le lot R6 que le jeu SAUTE le payload type-2. Lire une position
+//     ici « à peu près » produirait des coordonnées inventées ;
 //   - en DELTA, le record ne porte aucun typeIndex (il résout son archétype par le World) et la
 //     bande de slots comblée est contaminée par les archétypes voisins.
 //
-// Report et condition de reprise : .ai/V7.5/REGISTRE_REPORTS.md (2026-08-12).
+// Report et condition de reprise : .ai/V7.5/REGISTRE_REPORTS.md (2026-08-12, amendé le 2026-08-17).
 //
 // HORS LIGNE (I/O disque sur tout le film).
 func GroundWeaponPositions(dir string, wr *Vec3Range) map[uint32][]WorldObjectSample {

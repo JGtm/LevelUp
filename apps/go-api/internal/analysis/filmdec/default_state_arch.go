@@ -58,6 +58,7 @@ var defaultStateDeserByTI = map[uint32]func(*BitReader){
 	37: consumeDefaultStateTI37,
 	38: consumeDefaultStateTI38,
 	39: consumeDefaultStateTI38, // meme deser FUN_1408f0b48 que ti38
+	42: consumeDefaultStateTI42, // FUN_1407f0c68 (lot R5, cf. default_state_ti42.go)
 	43: consumeDefaultStateTI36, // FUN_140fe7630 : meme forme V + MPP que ti36
 	48: consumeDefaultStateTI48,
 	49: consumeVersionPrefix, // FUN_141fd39c0 : V seul
