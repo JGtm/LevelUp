@@ -1,3 +1,26 @@
+## [2026-08-17] v7.5 rejeu 2D — pilotage : item 6 clos en 5 lots, planche rafraichie apres la fusion utilisateur, sujets de commit repares
+
+**Statut** : Complete (pilotage) — item 6 CLOS (phases 0, 1, 2, 2.5, 3), revue adversariale du lot de publication a suivre.
+**Decision technique principale** : trois arbitrages superviseur ecrits dans le plan (phase 1 sur les
+records de creation, socles par match sans catalogue, oracle du ramassage par joueur) — aucun seuil
+rebaisse, deux gates negatifs ecrits (2.2, 2.5 : le ramasseur n'est PAS publie). Les 7 commits de la
+phase 3 portaient une premiere ligne « @ » parasite (artefact de shell de l'executeur) : messages
+reecrits par `git filter-branch --msg-filter` AVANT tout push (rien n'etait pousse), SHA remplaces
+dans le plan (`ac70abd48`..`b5e312581`). La planche de validation a ete RE-BUNDLEE sur le HEAD apres
+la fusion utilisateur `66e867b80` (signature d'`isPlacementActive`, `placementEndFrame`,
+`SENSOR_DURATION_MS`) et republiee sur le meme artefact ; `GATES_PLANCHE_2026-08-17.md` passe a 7
+gates en app (capteur 15 s / poses jusqu'a la fin, deux murs a 0,13 m sur `000d5950` ~3:55, fil des
+morts a deux pictogrammes).
+**Resultats observes** : schema 11 publie (`weaponPads`, `padPickups` xuid null), contrat 31 -> 33,
+4 temoins re-cuits identiques aux mesures (10 socles Catalyst au centimetre), cout de cuisson sous le
+bruit ; gates Go + web verts (log `item6_phase3_gates.log`) ; planche 27 items, fumee 0 erreur.
+`document.go` 631 -> 673 L et `build.go` 621 -> 640 L (dette de taille pre-existante ACCRUE par le lot :
+a reprendre dans le lot de revue). Verifie que le refactor `ReplayCanvas.tsx` est couvert par le
+correctif de revue des poses (853 L + cliquet) : rien lance.
+**Conclusion / prochaine etape** : revue adversariale du diff `253226852..b5e312581` (contexte frais),
+lot correctif si constats (dont l'extraction des types du document hors `document.go`/`build.go`),
+puis item 4 (plan ecrit), fenetre ops (schemas 7 -> 11) a caler avec l'utilisateur.
+
 ## [2026-08-17] v7.5 rejeu 2D — item 6 phase 3 : les socles d arme entrent au document (schema 11), sans ramasseur
 
 **Statut** : Complete (phase 3 CLOSE, **GATE 3 PASSE**). Items 3.1 et 3.2 `[x]`. Le PLAN entier
