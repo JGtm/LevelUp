@@ -1,0 +1,28 @@
+# LOTC_gates.log — verdicts des gates du lot C (phase 0). Une ligne EXIT_<nom>=<code> par
+# commande jouee, dans l'ordre. Un pipe masque l'exit : le code est celui de $LASTEXITCODE
+# releve immediatement apres la commande.
+
+## 2026-08-17 — phase 0, items C.0.1 et C.0.3 (worktree LevelUp-wt-zones-film, wt/zones-film)
+EXIT_VET_FILMDEC=0   # go vet ./internal/analysis/filmdec/ (CGO_ENABLED=0, apres ajout des 3 fichiers _test.go)
+EXIT_TESTC_FILMDEC=0 # go test -c -o <scratch>/filmdec_lotc.test.exe ./internal/analysis/filmdec/ (compilation de l instrument, une seule fois pour les 11 films)
+EXIT_TEST_SKIP=0     # go test -count=1 -run TestZoneCensus ./internal/analysis/filmdec/ SANS ZONE_FILM -> SKIP propre
+EXIT_TEST_FILMDEC_FULL=0 # go test -count=1 ./internal/analysis/filmdec/ (suite complete du paquet, aucune regression)
+EXIT_LINT=0          # golangci-lint run --new-from-merge-base=origin/main ./internal/analysis/filmdec/... -> 0 issues
+
+## Recensement par film (un film par processus, avant-plan, plafond memoire 3072 Mo surveille
+## par Start-Process -PassThru + PeakWorkingSet64 ; aucun film n a approche le plafond).
+## Cout mesure sur 3 films (7344d24f, 530820e5, 0a247154) AVANT les 8 autres, conformement a D17(d).
+EXIT_FILM_7344d24f=0 # zone · 10,4 s · pic 17 Mo · PASS
+EXIT_FILM_530820e5=0 # flag · 7,4 s · pic 16 Mo · PASS
+EXIT_FILM_0a247154=0 # none · 11,8 s · pic 16 Mo · PASS
+EXIT_FILM_696a9d7c=0 # zone · 11,8 s · pic 15 Mo · PASS
+EXIT_FILM_01e1f945=0 # none · 10,2 s · pic 16 Mo · PASS
+EXIT_FILM_606d9844=0 # none ·  3,7 s · pic 16 Mo · PASS
+EXIT_FILM_8076f97f=0 # none ·  7,4 s · pic 16 Mo · PASS
+EXIT_FILM_64e8adfa=0 # flag · 13,1 s · pic 18 Mo · PASS
+EXIT_FILM_53ce4390=0 # flag · 15,0 s · pic 17 Mo · PASS
+EXIT_FILM_24dbb67d=0 # none ·  5,8 s · pic 16 Mo · PASS
+EXIT_FILM_000d5950=0 # none ·  5,4 s · pic 16 Mo · PASS
+# Total : 11 films, 112 s cumulees, pic memoire maximal 18 Mo (plafond 3072 Mo jamais approche,
+# aucun processus tue). VERDICT lu sur la queue du log de chaque processus (PASS), l ExitCode de
+# Start-Process -PassThru n etant pas peuple de facon fiable sous PowerShell 5.1.
