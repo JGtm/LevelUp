@@ -272,7 +272,7 @@ func gwPadsReport(t *testing.T, film, mapName string, app []gwPadApparition) {
 	atRestPads := gwPadsLogSet(t, film, mapName, gwPadsSetAtRest, atRest)
 
 	ghost, _ := gwPadsClusterAssign(byClass[gwClassDropped])
-	ghostPads, _ := gwPadsKeep(ghost, gwPadMinHits)
+	ghostPads, _ := gwPadsKeep(ghost)
 	t.Logf("1.2 TEMOIN NEGATIF (grappes des MORTS, memes rayon et regle) — %d grappes,"+
 		" dont %d a >= %d apparitions · %s", len(ghost), len(ghostPads),
 		gwPadMinHits, gwPadsSpread(ghost))
@@ -286,7 +286,7 @@ func gwPadsLogSet(
 ) []gwPadCluster {
 	t.Helper()
 	pads, _ := gwPadsClusterAssign(app)
-	socles, _ := gwPadsKeep(pads, gwPadMinHits)
+	socles, _ := gwPadsKeep(pads)
 	t.Logf("1.2 GRAPPES %s — apparitions %d · %d grappes, dont %d SOCLES (>= %d apparitions)"+
 		" · %s", set, len(app), len(pads), len(socles), gwPadMinHits, gwPadsSpread(pads))
 	for _, p := range socles {
