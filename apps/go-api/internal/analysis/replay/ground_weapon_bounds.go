@@ -42,8 +42,16 @@ type gwPickupBounds struct {
 	// NeverPicked : l'objet est encore recensé à la DERNIÈRE image-clé du film. Il n'a pas été
 	// ramassé — ou il l'a été après la dernière image-clé, ce que rien ne dit.
 	NeverPicked bool
-	// NoLaterKF : aucune image-clé ne suit l'instant de référence. La borne haute est alors la
-	// fin du film, et l'intervalle n'est pas une mesure de recensement.
+	// NoLaterKF : aucune image-clé ne suit l'instant de référence — l'objet est né à la
+	// dernière image-clé du film, ou après. La borne haute est alors la fin du film, et
+	// l'intervalle n'est PAS une mesure de recensement.
+	//
+	// IL VAUT `never` AU MÊME TITRE QUE `NeverPicked` (correctif de revue du 2026-08-17), et
+	// pour la même raison : ce qui fait une occupation ACHEVÉE, c'est une image-clé qui ne
+	// recense plus l'objet. Sans image-clé postérieure, aucune ne peut le faire — la
+	// disparition n'est pas tardive, elle est INOBSERVABLE. Publier ces occupations en
+	// `dated` / `unknown` avec `tHigh` = fin du film les faisait passer pour achevées sur une
+	// borne qui n'est le fruit d'aucune mesure.
 	NoLaterKF bool
 	// SeenKF : nombre d'images-clés qui recensent l'objet. Zéro = ne PAS conclure qu'il n'a
 	// jamais existé : il a pu naître et disparaître entre deux images-clés (24,0 % des

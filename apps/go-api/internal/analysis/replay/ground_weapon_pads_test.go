@@ -297,6 +297,40 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	}
 }
 
+// TestGroundWeaponObjectsSansImageCleSuivanteEstNever : LE SECOND CORRECTIF DE LA REVUE.
+//
+// Un objet ne dans les dernieres secondes du film n'a AUCUNE image-cle apres lui : rien ne peut
+// prouver sa disparition. Il sortait pourtant `dated` ou `unknown`, avec la fin du film pour
+// borne haute — donc publie comme une occupation ACHEVEE, sur une borne qu'aucun recensement ne
+// fonde. Il vaut desormais `never`, comme un objet encore recense a la derniere image-cle.
+func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
+	fam := gwTestFamily(t, 0)
+	scan := GroundWeaponScan{
+		Scanned:   true,
+		Stats:     filmdec.EquipmentCreationStats{Accepted: 1},
+		Creations: []filmdec.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
+		// La derniere image-cle est a 40 s : l'objet nait APRES elle.
+		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
+	}
+	// Un joueur passe PILE sur l'objet apres sa naissance : sans le correctif, ce passage
+	// datait une disparition que rien ne prouve.
+	pos := []filmdec.BipedPosition{
+		{Slot: 2, TimestampUS: 47_000_000, X: 12, Y: 12, HasWorld: true},
+		{Slot: 1, TimestampUS: 60_000_000, X: 200, Y: 200, HasWorld: true},
+	}
+	objs := groundWeaponObjects(scan, nil, pos)
+	if len(objs) != 1 {
+		t.Fatalf("1 objet attendu, %d", len(objs))
+	}
+	if !objs[0].Bounds.NoLaterKF {
+		t.Fatalf("le cas temoin exige qu'aucune image-cle ne suive : %+v", objs[0].Bounds)
+	}
+	if objs[0].Status != gwPickupStatusNever {
+		t.Fatalf("statut %q, attendu %q : aucune image-cle ne peut prouver la disparition",
+			objs[0].Status, gwPickupStatusNever)
+	}
+}
+
 // TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle : LE CORRECTIF DE LA REVUE DU 2026-08-17.
 //
 // Une cle (slot, gen) REPRISE porte deux objets successifs ; seul le PREMIER a une piste delta.
