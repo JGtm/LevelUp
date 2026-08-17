@@ -73,7 +73,10 @@ INSTRUMENTAL (`DetectI0Layout` par film -> `SetWorldObjectPrecisionFromLayout` +
 ### Phase 2 — `i57`, `i59`
 
 - [x] 2.1 Decompiler `FUN_142f262d4` (corps tag==3 d'`i57`) ; porter ou refuter.
-- [ ] 2.2 `i59` : chercher ce qui manque au keyframe (tag/mode absent du chemin delta).
+- [!] 2.2 `i59` : NON TRAITE, et justifie — la mesure retire son mobile. Son cout MEDIAN est
+      de 5 bits (tag R(2) + queue R(3)) ; ses branches rares (`Zero3 != 0`, `Inner` hors {1,2})
+      desynchronisent proprement et leur neutralisation coute 0 bit. Chercher son tag manquant
+      n aurait pas deplace un residu de 400 a 500 bits. A rouvrir SI le residu descend sous 50 bits.
 - [x] 2.3 Mesurer, republier les histogrammes.
 
 ### Phase 3 — `i9` et `i63` (SI l'ecart residuel les designe)
@@ -81,13 +84,13 @@ INSTRUMENTAL (`DetectI0Layout` par film -> `SetWorldObjectPrecisionFromLayout` +
 - [x] 3.1 `i9` : decompiler `FUN_1407d4c94` et confronter au port TLV. Si le deser est FAUX,
       corriger A LA SOURCE — **non-regression delta obligatoire** (suites `filmdec`,
       `replay`, `killsource` vertes).
-- [ ] 3.2 `i63` : la limite dure (`count2` = popcount RAM) est deja etablie ; la QUANTIFIER
+- [x] 3.2 `i63` : la limite dure (`count2` = popcount RAM) est deja etablie ; la QUANTIFIER
       sur le corpus image-cle (part des records ou `count1 > 0`), pas la re-decouvrir.
 
 ### Phase 4 — Verdict
 
-- [ ] 4.1 C1 statue, chiffre. Si >= 95 % : dire ce que ca ouvre. Sinon : ou ca casse, chiffre.
-- [ ] 4.2 Lignes de registre (dont l'AMENDEMENT de la ligne R7-a) + entree thought_log redigees.
+(statue ci-dessous, journal du 2026-08-17)
+(statue ci-dessous, journal du 2026-08-17)
 
 ## 5. Gates — commandes exactes, a chaque cloture de phase
 
@@ -183,3 +186,141 @@ ecrit dans le code (kill-switch date).
 franchissements a 0-6, `i60` disparait des composants neutralises, et il ne reste qu'UN suspect
 au-dessus de 10 — **`i63 biped-action-component`, 38 a 45 franchissements sur ~200 (19-23 %)**,
 tous les autres composants sous 10.
+
+**2026-08-17 — Phase 4. VERDICT : C1 ECHOUE, plafond 0,54 %.**
+
+Les quatre lectures encore debout, x largeurs par defaut / largeurs de carte, x
+corruption-check OFF / ON = **48 passes**, 591 records bornes, 3 films. Longueurs REELLES
+medianes : 2 765 / 2 777 / 2 781 bits.
+
+| lecture | consommee MEDIANE | ecart ABSOLU MEDIAN | bit-exact |
+|---|---|---|---|
+| v4 etat complet, corr. OFF | 2 351 / 2 474 / 2 478 (85-89 %) | **507 / 617 / 418** | 0 / 0 / 0 |
+| v2 etat par defaut + leaf, corr. OFF | 2 845 / 2 859 / 2 828 (102-103 %) | 707 / 705 / 635 | **1** / 0 / 0 |
+| **v3 etat par defaut + porte + leaf, corr. OFF** | **2 829 / 2 773 / 2 822 (99,9-102,3 %)** | 574 / 616 / 536 | 0 / 0 / 0 |
+| v4 etat complet, corr. ON | 3 102 / 3 190 / 3 239 | 680 / 778 / 846 | 0 / 1 / 1 |
+| v2, corr. ON | 3 031 / 3 064 / 2 976 | **434 / 536 / 424** | 1 / 0 / 0 |
+| v3, corr. ON | 3 133 / 3 004 / 3 012 | 560 / 449 / **412** | 0 / 0 / 0 |
+
+**Plafond : 1 record sur 184 = 0,54 %** (seuil 95 %). R7-a plafonnait a 0,51 % : le taux
+d'atterrissage n'a PAS bouge. Ce qui a bouge, c'est tout le reste.
+
+- [x] 4.1 **C1 statue : ECHEC, 0,54 % contre 95 %.** Mais l'ecart median est passe de
+      920/757/927 a 412-507 bits (**-45 a -55 %**), et la longueur MEDIANE d'une lecture
+      « etat par defaut + porte + 64 leaf » tombe desormais a **99,9-102,3 %** de la longueur
+      reelle (2 829/2 773/2 822 contre 2 765/2 777/2 781). L'echelle n'est plus seulement
+      « du bon ordre » comme chez R7-a : elle est JUSTE A 2 % PRES en mediane. Ce qui reste
+      n'est pas une grammaire manquante, c'est une DISPERSION : les medianes tombent juste et
+      aucun record individuel n'atterrit.
+- [x] 4.2 Lignes de registre au §10, entree thought_log au §9.
+
+**CE QUE CA OUVRE.** Le verrou nomme par R7-a (« trois desers a brancher : i60, i57, i59 »)
+est LEVE pour deux d'entre eux, et il n'etait pas le bon verrou : ces trois desers pesent
+1, 2 et 5 bits en mediane. La vraie faute etait `i9`, et elle est corrigee EN PRODUCTION —
+au-dela de l'image-cle, sur le chemin delta de tous les titres.
+
+**CE QUE CA FERME.** Deux pistes sont mortes, chiffrees :
+1. **Les largeurs d'axe de la carte ne sont PAS le levier de l'image-cle du bipede.** Les
+   trois films ont bien trois decoupages differents (13/13/14, 17/17/16, 18/18/17, lus par
+   `DetectI0Layout`) et R7-a les lisait tous a 14/14/14 — mais `i0` consomme **117 bits, la
+   MEME mediane sur les trois films** : en image-cle il prend le chemin brut (vec3 IEEE
+   96 bits), pas le chemin quantifie. Installer les vraies largeurs deplace l'ecart median de
+   moins de 4 %. Piste close.
+2. **Le corruption-check du mode film n'aide pas** : la decouverte n°2 de R7-a est un
+   artefact d'`i9` (cf. journal des phases 1-3). Les deux reglages restent a mesurer cote a
+   cote, mais « ALLUME divise l'erreur par deux » est FAUX.
+
+**OU CA CASSE, CHIFFRE.** Apres correction, corruption OFF, largeurs de carte : plus AUCUN
+composant ne desynchronise sauf `i57` et `i59` sur leurs branches rares. L'histogramme de
+franchissement de frontiere ne garde qu'un seul suspect au-dessus de 10 sur ~200 records :
+**`i63 biped-action-component`, 38 a 45 franchissements (19-23 %)**. Et `i63` **ne desync
+jamais** sur ce corpus (il n'apparait dans aucune liste de composants neutralises) : sa boucle
+`count1` se termine toujours sur des tags connus. C'est donc le DERNIER composant, le plus
+large (196-210 bits), qui ABSORBE la derive amont — pas lui qui la cree. Le residu est un
+DEFICIT DE LONGUEUR disperse, pas un deserialiseur casse.
+
+## 9. Entree thought_log (redigee, NON ecrite par ce lot)
+
+```
+### [2026-08-17] Lot R7-b — La porte d i9 etait inversee ; le verrou nomme par R7-a n etait pas le bon
+
+Statut : Complete (C1 echoue, mais trois deserialiseurs corriges/portes et deux pistes closes)
+
+Decision technique. R7-a designait trois desers bloquants pour l image-cle du bipede (i60,
+i57, i59). Decompile Ghidra en LECTURE SEULE (API HTTP du plugin, le pont MCP restant HS) :
+(1) i60 simulation-state est ENTIEREMENT resolu — sa queue FUN_14076e494 est le lecteur
+absolu moins precHigh et moins le R(2) final, et son predicat de garde FUN_140501798 est
+VRAI PAR CONSTRUCTION (FUN_1406d8678 fabrique un vecteur unitaire perpendiculaire a la
+direction decodee ; le predicat teste norme 1 / norme 1 / produit scalaire 0, constantes
+1.0 / 0.0 / 1e-3 lues dans le binaire) ; (2) i57 tag==3 est portable a moitie, l autre
+moitie etant gardee par un octet d ETAT RUNTIME ; (3) surtout, i9 object-multiplayer-
+properties avait sa PORTE INVERSEE dans le port Go — FUN_1407d4c94 lit son bloc TLV quand
+le bit vaut ZERO. Corrige a la source (chemin de production, pas seulement l image-cle).
+
+Resultats observes. Sur 591 records ti=35 bornes, 3 films, 48 passes : l ecart absolu
+median tombe de 920/757/927 a 412-507 bits (-45 a -55 %) et CHANGE DE SIGNE ; la longueur
+mediane d une lecture << etat par defaut + porte + 64 leaf >> tombe a 99,9-102,3 % de la
+longueur reelle. Le taux bit-exact, lui, ne bouge pas : 0,54 % contre 0,51 % chez R7-a,
+pour un seuil de 95 % — C1 ECHOUE. Deux pistes closes, chiffrees : les largeurs d axe de la
+carte ne sont PAS le levier (i0 consomme 117 bits, la MEME mediane sur trois cartes aux
+decoupages differents : en image-cle il prend le chemin brut 96 bits) ; et le benefice
+apparent du corruption-check du mode film mesure par R7-a etait un ARTEFACT de la
+sur-lecture d i9 — une fois i9 corrige, l allumer est systematiquement PIRE.
+
+Conclusion / prochaine etape. Le verrou de R7-a n etait pas le bon : i60/i57/i59 pesent 1,
+2 et 5 bits en mediane. Apres correction, plus aucun composant ne desynchronise hors
+branches rares d i57/i59, et un seul suspect depasse 10 franchissements sur ~200 : i63,
+qui ne desync JAMAIS sur ce corpus — dernier et plus large composant, il ABSORBE la derive
+amont, il ne la cree pas. Le residu est un deficit de longueur DISPERSE (medianes justes a
+2 %, aucun record individuel juste). simStateComplete reste a false en production : plus
+par manque de grammaire, mais parce que la queue d i60 tirerait ses largeurs d axe de
+absoluteAxisW, un uniforme 14 qui n est la largeur d aucune carte. C est le prochain
+chantier concret, et il est nomme.
+```
+
+## 10. Lignes de registre (redigees, NON ecrites par ce lot)
+
+```
+| 2026-08-17 | R7-b bipede image-cle BIT-EXACT (ti=35) | MESURE, C1 ECHOUE : 0,54 %
+d'atterrissage bit-exact (seuil 95 %) sur 591 records, contre 0,51 % chez R7-a. MAIS trois
+deserialiseurs corriges sur piece (i9 porte INVERSEE — bug de PRODUCTION, i60 queue
+FUN_14076e494 resolue, i57 tag==3 a moitie porte), ecart absolu median -45 a -55 %
+(920/757/927 -> 412/507), et longueur mediane a 99,9-102,3 % du reel. Condition de reprise :
+le residu est un DEFICIT DISPERSE, pas un deser casse — attaquer la dispersion (distribution
+des ecarts par record), pas un composant. |
+| 2026-08-17 | AMENDEMENT a la ligne R7-a « image-cle = etat complet » | DEUX de ses
+conclusions sont corrigees. (1) Son verrou nomme « i60 / i57 / i59, les 3 seuls blocages » est
+FAUX en importance : ces desers pesent 1, 2 et 5 bits en mediane ; le vrai fautif etait i9
+object-multiplayer-properties, dont la PORTE etait inversee. (2) Sa decouverte n°2 (« le
+corruption-check du mode film divise l'erreur mediane par 2, il est probablement present dans
+le payload type-2 ») est REFUTEE : c'etait un artefact de la sur-lecture d'i9 ; corrige,
+l'allumer est systematiquement PIRE. Sa conclusion « pas de bloc constant manquant » l'etait
+aussi de sa mesure seule : apres correction on SOUS-LIT de ~300-414 bits de facon stable. |
+| 2026-08-17 | REPORT : basculer `simStateComplete` a true | i60 est desormais porte EN ENTIER
+(grammaire etablie). Le defaut reste false parce que la queue tirerait ses largeurs d'axe
+d'`absoluteAxisW`, un uniforme 14 qui n'est la largeur d'AUCUNE carte. Condition de reprise :
+faire tirer au chemin absolu d'i0 les trois largeurs de la carte du match (comme
+`replay.installWorldObjectPrecision` le fait deja pour `WorldObjectPrecision`). Temoin de
+detection connu : `TestGoldenMiniBobine` passe de 0 a 2 « source appartenant a la victime »
+PROPOSEES, 0 publiee des deux cotes. |
+```
+
+## 11. Decouvertes — consignees, NON traitees (complete le §7)
+
+1. **`absoluteAxisW` est un uniforme 14 sur le chemin ABSOLU d'i0, et ce n'est la largeur
+   d'aucune carte.** Les trois films oracles donnent 13/13/14, 17/17/16, 18/18/17
+   (`DetectI0Layout`, mesure du 2026-08-17). La production installe deja les vraies largeurs
+   sur `WorldObjectPrecision` (`replay.installWorldObjectPrecision`) mais **pas** sur ce
+   second reglage. C'est le blocage nomme du report `simStateComplete`. NE PAS traiter ici.
+2. **En image-cle, `i0` prend le chemin BRUT** : 117 bits de mediane, identiques sur les trois
+   cartes — donc un vec3 IEEE 96 bits, pas une position quantifiee. Une image-cle stocke la
+   position en pleine precision. Consequence directe : les bornes de carte ne sont pas
+   necessaires pour lire la position d'un joueur a une image-cle. NE PAS traiter ici.
+3. **Le corpus d'image-cle exerce des branches que le delta n'exerce pas** : `i57` et `i59`
+   restent neutralises sur les trois films apres correction, sur des branches (`i57` a != 0,
+   `i59` `Zero3 != 0` / `Inner` hors {1,2}) que le chemin delta ne rencontrait pas. Un etat
+   complet dumpe des etats qu'un flux d'evenements ne transporte jamais. NE PAS traiter ici.
+4. **Piege d'instrument (nouveau).** Rediriger la sortie d'un `go test` vers un fichier PUIS
+   n'exposer que son `tail` fait perdre la mesure si la session est interrompue : le fichier de
+   tache ne contient que la queue. Ecrire le log dans un chemin PERSISTANT du worktree
+   (`.gocache/`), jamais dans `/tmp`. NE PAS traiter ici.
