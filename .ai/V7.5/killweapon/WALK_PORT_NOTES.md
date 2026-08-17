@@ -903,3 +903,126 @@ QUANTIFIEE aux largeurs de carte (102/57/62 bits selon la carte) : si cette mesu
 payload du FILM est ecrit HORS de la portee `DAT_144e61ea0`, contrairement au snapshot reseau.
 **C est la contradiction a trancher au lot suivant**, et elle est nommee : une seule variable,
 `DAT_144e61ea0`, decide entre 96 bits bruts et 3 x axisW quantifies.
+
+# LA BOUCLE D ETAT COMPLET, PORTEE — et le decalage de niveau du registre (lot R7-e, 2026-08-17)
+
+R7-d avait TROUVE `FUN_142e2c690` sans la PORTER. Ce lot la porte, avec son en-tete, et mesure.
+Relectures Ghidra (LECTURE SEULE, PID 10104, `GET /decompile_function`) qui CORRIGENT R7-d :
+
+## 1. `FUN_142e2c690` — la recherche par NOM est un RATTRAPAGE, pas le chemin normal
+
+```
+FUN_142e2c690(comps, reader, ctx, table) :
+  DAT_144e61ea0 = 1
+  corrOn = FUN_14076cea8()
+  pour k de 0 a 63 :
+      entree = table + k * 0x104
+      si *entree != 0 :                       <- entree[0] = le premier octet du NOM
+          n    = *(uint32*)(entree + 0x100)
+          desc = comps[k]                     <- D ABORD LE MEME INDEX k
+          si nom(desc->vtable[0x08]) != entree :
+              recherche LINEAIRE sur 0..0x3f  <- RATTRAPAGE seulement
+          desc->vtable[0x28](desc, reader, ctx, &local, n)
+          si corrOn et R(1) : R(32)
+  DAT_144e61ea0 = 0
+```
+
+R7-d ecrivait « le descripteur est retrouve PAR NOM, l ordre suit la TABLE et rien ne garantit
+que ce soit celui de `arch.Components` ». C est vrai en droit, mais le chemin RAPIDE est
+`comps[k]` au MEME index : la table et le tableau de descripteurs sont censes coincider, et la
+recherche par nom n existe que pour absorber une derive de version. **L ordre n est donc PAS une
+variable libre.** Ce qui l est, c est le champ `n` — voir section 3.
+
+## 2. L en-tete PAR ENTITE de `FUN_142e2bfd0` — 108 bits, et l oracle ne le refute pas
+
+```
+R(32) -> e[0]    id
+R(32) -> e[1]    typeIndex   (0xffffffff = entree vide)
+R(32) -> e[3]
+R(4)             FUN_142e29cf8 (UN seul quartet — R7-d lisait « 2 x 4 bits », c est faux)
+R(8)  -> e+9
+si e[1] != 0xffffffff :
+   R(32) n1 ; si n1 > 0 : DAT_144e61ea0 = 1 ; vtable[0x60] etat par defaut
+                          si corrOn : R(32)   <- INCONDITIONNEL ici (pas de R(1) de garde)
+                          DAT_144e61ea0 = 0
+   R(32) n2 ; si n2 > 0 : vtable[0x88] (0 bit) puis FUN_1428e2b68 -> la boucle
+entree suivante : + 0x32 dwords (200 octets)
+```
+
+Soit **108 bits** d en-tete, puis deux `R(32)` de taille encadrant l etat par defaut.
+
+**LA PIECE QUI OUVRAIT LE LOT.** `kfValidAnchor` (`keyframe_world.go:70`) n accepte une ancre que
+si le mot de 32 bits a `q+32` vaut moins de 50. Sous `[id:32][field:26][ti:6]` cela veut dire
+`field26 == 0` ; sous l en-tete RESEAU ci-dessus cela veut dire `typeIndex < 50`. **Les deux
+lectures sont INDISCERNABLES sur les ancres acceptees**, et les 6 bits de `typeIndex` lus en `+58`
+valent la meme chose dans les deux cas. L oracle valide par R3/R5 sur 249/250 entites ne REFUTE
+donc pas un en-tete de 108 bits — contrairement a ce que R5 supposait. C etait une variable, elle
+est desormais MESUREE (section 5).
+
+## 3. LE DECALAGE DE NIVEAU DU REGISTRE — mesure sur les octets, identique sur 3 films
+
+L entree que la boucle lit fait `0x104` octets : `param_4` EST le nom (`*param_4 != 0`, `strcmp`
+sur `param_4`), et le niveau passe au deser est `*(uint32*)(param_4 + 0x100)`. Le bloc vaut
+`ti * 0x4100 + 8 + base`, soit 64 entrees de `0x104` — **exactement le bloc d archetype de
+`chunk_00`** (`registry.go` : `registrySlotSize = 260`, `archetypeBlockSlots = 64`,
+`archetypeBlockSize = 0x4100`).
+
+Les deux lectures placent les NOMS au MEME octet (le `+8` du jeu est le `+8` de `registry.go`) et
+le NIVEAU a des octets DIFFERENTS :
+
+| champ | `registry.go` | le JEU |
+|---|---|---|
+| nom du composant k | `bloc + k*260 + 8` | `bloc + 8 + k*0x104` — **identique** |
+| niveau du composant k | `bloc + k*260 + 4` (`Flags[k]`) | `bloc + 8 + k*0x104 + 0x100` = `bloc + (k+1)*260 + 4` = **`Flags[k+1]`** |
+
+`TestKF7ETableLayout` sur `000d5950` tranche sur les octets : **les 64 slots ont `kind == 0`** —
+le premier `u32` que `registry.go` lit est TOUJOURS nul, ce qui est la queue de bourrage du nom
+precedent, pas un champ. Et `TestKF7ELevelShift` : **25 des 64 composants du bipede changent de
+niveau**, exactement les memes 25 sur les TROIS films (le registre est bit-a-bit identique d un
+film a l autre). Exemples : `i0` L=0 -> L=1, `i10 object-parent-state` L=1 -> L=3,
+`i20 unit-actor-state` L=2 -> L=4, `i63 biped-action` L=1 -> L=0.
+
+Un niveau de 0 pour le composant de POSITION est implausible ; 1 l est. La lecture du jeu est
+donc la plus vraisemblable — mais elle est **INERTE A LA MESURE** (section 5) : aucun deser du
+bipede porte ne dimensionne quoi que ce soit sur ce parametre. C est un fait de FORME, pas un
+levier.
+
+## 4. `i0` — la grammaire d ECRIVAIN portee, et pourquoi elle ne bouge pas
+
+Portee derriere `keyframeWriterI0Grammar` (defaut OFF, kill-switch date) sur le chemin ABSOLU :
+`h = R(1)` ne supprime plus la charge utile, il garde la QUEUE DE HANDLE, et le champ de 2 bits
+vient EN DERNIER. Mesure : **strictement identique a la reference** sur les trois films (memes
+medianes, memes ecarts). Explication : sur ce corpus `h` vaut 0 dans le cas dominant, et
+`1 + charge + queue(0 bit) + 2` est alors la MEME suite de bits que
+`1 + charge + 2 + queue(0 bit)`. La correction est donc JUSTE et sans effet ici — elle ne
+protegera que les records ou `h` vaut 1.
+
+## 5. LA MESURE — 591 records `ti=35` bornes, 3 films, une variable a la fois
+
+Instrument `keyframe_fullstate_loop{,_test}.go`, `WalkKeyframeFullState`, corpus ferme,
+largeurs de la carte installees, trous neutralises, `simStateComplete` allume.
+
+| lecture | `000d5950` (184) | `00502e52` (209) | `07aa428d` (198) |
+|---|---|---|---|
+| longueur REELLE mediane | 2 765 | 2 777 | 2 781 |
+| REF (en-tete 64, rien) | 0 exact · med 2 350 · ecart 511 | 0 · 2 420 · 636 | 0 · 2 456 · 448 |
+| (a) niveaux decales | 0 · 2 350 · 511 | 0 · 2 420 · 636 | 0 · 2 456 · 448 |
+| (b1) en-tete 108 | 0 · **2 770** · 526 | 0 · 2 456 · 721 | 0 · 2 651 · 575 |
+| (b2) 108 + 2 x R(32) | 0 · 3 096 · 697 | 0 · 2 901 · 695 | **1** · 2 952 · 817 |
+| (b3) 108 + tailles + etat par defaut | 0 · 2 786 · 539 | 0 · 2 804 · 704 | 1 · 2 807 · 648 |
+| (c) controle par composant | 0 · 3 114 · 669 | **1** · 3 196 · 778 | 0 · 3 239 · 811 |
+| (e) i0 ecrivain | 0 · 2 350 · 511 | 0 · 2 420 · 636 | 0 · 2 456 · 448 |
+| (b3+c+e) tout | 0 · 3 491 · 1 007 | 0 · 2 969 · **424** | 0 · 3 175 · 536 |
+
+**2 atterrissages bit-exact sur 591 (0,34 %)**, contre 5/591 pour R7-d et 3/591 pour R7-c.
+
+Ce que les chiffres disent quand meme :
+1. **(b1) est le seul mouvement de FORME qui vise juste sur un film** : la longueur mediane de
+   `000d5950` passe de 2 350 a **2 770** pour une longueur REELLE de 2 765 — cinq bits. Les deux
+   autres films ne suivent pas (2 456 et 2 651 pour 2 777 et 2 781).
+2. **(a) et (e) sont inertes** : medianes et ecarts identiques au bit pres.
+3. **(b2) et (c) SUR-corrigent** : les sous-lectures de `000d5950` tombent de 125/184 a 48/184,
+   mais les depassements au dernier composant (`i63`) montent de 45 a 51 et l ecart median monte.
+4. Le point de decrochage dominant reste le meme partout : **sous-lecture**, puis
+   `i63 biped-action-component` — le DERNIER composant. La derive ne se concentre pas, elle
+   s accumule.

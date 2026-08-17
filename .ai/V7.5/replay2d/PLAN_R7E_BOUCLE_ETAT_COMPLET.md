@@ -67,16 +67,16 @@ Deficit a combler (R7-b/R7-d) : longueur REELLE mediane 2 765 / 2 777 / 2 781 bi
 - [x] 0.1 Hypothese, critere + palier, etat des lieux sur pieces, ordre d'attaque, gates, contrat.
 
 ### Phase 1 — LIRE
-- [ ] 1.1 (a) La table : structure du bloc `chunk_00` contre l'entree de 0x104, ordre reel.
-- [ ] 1.2 (b) L'en-tete par entite : `FUN_142e2bfd0` champ par champ, bornes de bits.
-- [ ] 1.3 (c) Le controle : `FUN_14076cea8`, `FUN_1404f2b4c`, portee du drapeau film.
-- [ ] 1.4 (e) `i0` : `FUN_14320678c` (ecrivain) et `FUN_14076e29c` (lecteur) face au port Go.
-- [ ] 1.5 Consigner dans `WALK_PORT_NOTES.md`, section « la boucle d'etat complet, portee ».
+- [x] 1.1 (a) La table : structure du bloc `chunk_00` contre l'entree de 0x104, ordre reel.
+- [x] 1.2 (b) L'en-tete par entite : `FUN_142e2bfd0` champ par champ, bornes de bits.
+- [x] 1.3 (c) Le controle : `FUN_14076cea8`, `FUN_1404f2b4c`, portee du drapeau film.
+- [x] 1.4 (e) `i0` : `FUN_14320678c` (ecrivain) et `FUN_14076e29c` (lecteur) face au port Go.
+- [x] 1.5 Consigner dans `WALK_PORT_NOTES.md`, section « la boucle d'etat complet, portee ».
 
 ### Phase 2 — PORTER et MESURER
-- [ ] 2.1 `filmdec/keyframe_fullstate_loop.go` (+ son test) : la marche du jeu, chaque variable
+- [x] 2.1 `filmdec/keyframe_fullstate_loop.go` (+ son test) : la marche du jeu, chaque variable
       derriere une bascule. Reutiliser les deser existants et l'instrument R7-b/R7-d.
-- [ ] 2.2 A/B a une seule variable, (a)..(e), 591 records, 3 films : % bit-exact, dispersion,
+- [x] 2.2 A/B a une seule variable, (a)..(e), 591 records, 3 films : % bit-exact, dispersion,
       histogramme des decrochages.
 - [ ] 2.3 Non-regression si un fichier PARTAGE est touche.
 
