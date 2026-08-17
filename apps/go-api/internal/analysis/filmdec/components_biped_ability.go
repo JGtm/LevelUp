@@ -638,13 +638,40 @@ func consumeBipedSpartanAbility(br *BitReader) bool {
 		}
 		return true
 	case 3:
+		ok := consumeSpartanAbilityTag3(br)
 		if spartanAbilityHook != nil {
 			spartanAbilityHook(tag, 0, 0, false)
 		}
-		return false // FUN_142f262d4 : gates runtime, largeur inconnue
+		return ok
 	}
 	if spartanAbilityHook != nil {
 		spartanAbilityHook(tag, 0, 0, false)
+	}
+	return true
+}
+
+// consumeSpartanAbilityTag3 porte la branche `tag == 3` d'i57 (FUN_142f262d4), PARTIELLEMENT
+// et en le disant : le corps a une porte sur un OCTET D'ETAT RUNTIME, invisible du flux.
+//
+//	FUN_140f03dfc()                        0 bit (init)
+//	a = R(1) (FUN_1406cf008)  -> dst[0]
+//	si a != 0 :
+//	    FUN_14297ea84(br) = R(6)
+//	    si (dst[2] & 1) != 0 : b = R(1) ; branche gardee par (dst[2] & 0x10) ;
+//	                           FUN_142f04664(dst+4, br, b, param_3)
+//	    -> dst[2] est un octet d'ETAT RUNTIME : NON derivable du flux. Desync propre.
+//	t = R(1)  -> dst[1]
+//	si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la MEME queue qu'i60
+//
+// La branche `a == 0` est donc ENTIEREMENT portable, et c'est elle qu'on porte : R(1) nul,
+// puis la porte de queue et, si elle est ouverte, le lecteur absolu de `consumeSimStateHandleTail`.
+// La branche `a != 0` rend false — desync propre plutot qu'une largeur devinee.
+func consumeSpartanAbilityTag3(br *BitReader) bool {
+	if br.ReadBit() { // a != 0 : FUN_14297ea84 + porte sur octet d'etat runtime
+		return false
+	}
+	if br.ReadBit() { // t : porte de la queue handle
+		consumeSimStateHandleTail(br) // FUN_14076e494, meme lecteur qu'i60
 	}
 	return true
 }
