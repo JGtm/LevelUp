@@ -1,3 +1,73 @@
+## [2026-08-17] v7.5 rejeu 2D — item 6 phase 0 : la grammaire `ti=42` est branchee et validee, le gate 0 tombe sur son critere
+
+**Statut** : Complete (phase 0 close ; phase 1 NON lancee, arbitrage utilisateur requis).
+
+**Decision technique principale** : rebrancher l'etat par defaut de l'archetype ARME AU SOL
+(`ti=42`, `FUN_1407f0c68`) que le lot R5 avait ecrit puis retire faute d'oracle, apres l'avoir
+valide par un ORACLE DE POSITION transpose de `equipment_creation_offset_test.go`. La methode :
+on localise le corps du record de creation par la POSITION (le premier point de la vie delta,
+deja decodee par `ScanFilmWorldObjects`), puis on DEROULE le deserialiseur candidat depuis
+l'en-tete NEW et on exige qu'il tombe AU BIT PRES sur le masque. Piege ecarte au passage : la
+distance en-tete -> masque ne vaut PAS le chemin minimal (105 bits) — les records reels ouvrent
+des portes, les pics sont a 118/150/182 selon le film et se decomposent en portes de la
+grammaire (+5, +8, +13, +32). Seul l'atterrissage tranche ; le pic seul aurait fait conclure a
+une refutation.
+
+**Resultats observes** (6 films / 5 cartes / 5 decoupages d'axe, aux largeurs de CHAQUE carte,
+`CGO_ENABLED=0`, un film par process ; films choisis SUR PREUVE par un recensement `ti=42` de
+18 films) :
+
+- **Oracle d'atterrissage** : `282 / 289` exacts (97,6 %) pour le deser porte, contre `0 / 289`
+  pour trois deserialiseurs FAUX (ti=37, ti=36, ti=38) passes par le meme code. Controle croise
+  sur les records `ti=37` : deser `ti=42` `0 / 265`, deser `ti=37` `176 / 265`.
+- **Oracle d'identite, independant du premier** : le mot de 32 bits du bloc MPP du record de
+  creation egale la famille high-32 lue aux IMAGES-CLES pour la meme vie (slot, gen) —
+  `937 / 947` (98,9 %). Les mots resolvent en armes reelles (Gravity Hammer, Sentinel Beam,
+  Energy Sword, M41 SPNKr, MA40 AR, Mk51 Sidekick, S7 Sniper...). Le mot MPP EST l'identite de
+  l'arme au sol, comme il est le GlobalID du tag `eqip` pour `ti=37`.
+- **0.1 AVANT** (refutation du 12/08 rejouee) : elle N'ETAIT PAS un artefact de largeurs. Elle se
+  reproduit AU CHIFFRE PRES sur `000d5950` (458 slots eligibles, 15 sous 0,5 u = 3,3 %, 286
+  au-dela de 20 u = 62,4 % ; fantome 188 / 1 / 155) et tient sur cinq cartes : `62 / 1 965`
+  stables (3,2 %), `1 161 / 1 965` etales (59,1 %).
+- **0.3 APRES** (vies confirmees par un record de creation) : etales > 20 u `59,1 % -> 19,0 %`,
+  concentration sous 2 u `25,5 % -> 53,3 %` (n = 1 965 -> 1 140). Mais stables a 0,5 u
+  `3,2 % -> 6,2 %` seulement.
+- **Oracle de LARGEUR live : EPUISE, negatif publie.** `kf_capture_sample.txt` +
+  `kf_slot0_live.bin` : 400 frontieres, 205 en-tetes reconcilies, **un seul** record NEW `ti=42`
+  (corps 971 bits, porte ouverte) et **aucun** `ti=37`. Il ne pouvait rien valider ; le negatif
+  est garde rejouable au lieu d'etre re-espere.
+
+**GATE 0 : NON ATTEINT sur son critere** (stables 0,5 u : 3,2 % -> 6,2 %, exige >= 33 %), seuil
+NON rebaisse. Et le temoin dit pourquoi : les vies NON confirmees donnent `9 / 139` = 6,5 % au
+meme critere — **le critere 0,5 u ne discrimine rien**. Un objet qui se pose CESSE d'emettre sa
+position (acquis `ti=37`, `EquipmentLifeSpan` / `splitLives`), donc tout echantillon delta d'une
+arme au sol appartient a sa phase MOBILE : le discriminant « une arme posee ne bouge pas »
+mesurait l'immobilite sur le seul sous-ensemble de records qui n'existe que parce qu'il y a eu
+mouvement. Le verrou du 12/08 est pourtant LEVE, et la position publiable d'une arme au sol est
+celle de son record de CREATION, pas la dispersion de ses deltas.
+
+**Decouvertes notees, NON traitees** (section du plan) : la contre-liste R6 « `ti=42` x0 sur
+`00502e52` / `07aa428d` » est un artefact de son propre instrument — le walker d'images-cles y
+lit 157 et 181 records, et `ti=42` est present sur les 18 films testes ; le temoin FANTOME du
+balayage de creations n'est PAS discriminant seul (sur `00162144` il rend 398 creations acceptees
+contre 366 pour la bande reelle) ; 195 des 400 frontieres de `kf_capture_sample.txt` ne se
+reconcilient pas avec leur en-tete.
+
+**Livre** : `filmdec/default_state_ti42.go` + entree `42:` de `defaultStateDeserByTI` ;
+`filmdec/ground_weapon_creation.go` (`ScanFilmGroundWeaponCreations`, qui REUTILISE la marche de
+`ti=37` parametree par archetype au lieu d'en recopier une seconde) ; trois instruments sous
+garde (`GW_CORPUS`, `GW_CREATION_FILM`, `TI42_CAPTURE`) et l'APRES (`GW_FILM`). Doublon
+`FUN_1407f2494` tranche par REUTILISATION de `consumeWeaponMagazineList`. Doc inversee corrigee
+dans `keyframe_ground_weapons.go` et `WALK_PORT_NOTES.md` §4.
+
+**Conclusion / prochaine etape** : phase 1 NON lancee — le brief arrete l'agent apres la phase 0
+dans les deux cas. **Arbitrage utilisateur** : appliquer la decision 1 du plan (gate 0 negatif =
+repli de la partie « armes » sur les images-cles) ou amender la phase 1 pour qu'elle parte des
+records de CREATION (position + identite, deux oracles) plutot que de la dispersion des deltas.
+La mesure designe le second chemin. Gates verts : `go build ./...`, `go vet ./...`,
+`go test ./internal/analysis/... ./internal/archlint/...`,
+`golangci-lint run --new-from-merge-base=origin/main` = 0 issue.
+
 ## [2026-08-17] v7.5 rejeu 2D — pilotage : go utilisateur sur le handoff, planche republiee, plans item 4 et item 6 a jour
 
 **Statut** : Complete (lot de pilotage) — item 6 EN ATTENTE de la fusion utilisateur.
