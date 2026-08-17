@@ -1,3 +1,82 @@
+## [2026-08-17] v7.5 rejeu 2D — item 6 phase 1 : les socles sont mesures, le catalogue est refuse par son propre critere
+
+**Statut** : Complete (phase 1 close ; **gate 1 NON ATTEINT sur la clause de recouvrement**, phase 2
+NON ouverte, aucun catalogue cree).
+
+**Decision technique principale** : partir des records de CREATION `ti=42` (arbitrage superviseur
+du gate 0) et poser DEUX jeux de candidats au lieu d'un — le critere ecrit de l'item 1.1
+(`spawned` = aucune mort de joueur a <= 2 frames et < 1,5 m) ET celui que l'item 1.0 designe
+lui-meme (`at_rest` = creation SANS vie delta, « apparue au repos »). Les deux sont publies a
+chaque etape, parce qu'ils ne disent pas la meme chose et que trancher en douce aurait ete
+rabaisser un seuil. Le filtre d'identite est le garde-fou herite de la decouverte 2 : une creation
+n'est retenue que si son mot MPP de 32 bits se resout dans `weaponv3.KnownWeaponHigh32`. Verifie
+sur pieces au passage : la seconde formulation de l'arbitrage (« egale a la famille high-32 de
+l'image-cle ») est un SOUS-ENSEMBLE de la premiere, puisque le balayage d'images-cles ne rend que
+des familles deja au catalogue — elle n'ajoute donc pas au filtre, elle le CONTROLE.
+
+**Resultats observes** (8 films / 6 cartes, dont 2 secondes vues ajoutees pour le critere 1.4 ;
+cartes lues dans l'instantane parquet du registre, AUCUNE base ouverte ; `CGO_ENABLED=0`, un film
+par processus, largeurs de chaque carte) :
+
+- **1.0** — 45 440 ancres, **2 399 creations acceptees, 1 785 retenues (croisees), 614 ecartees**.
+  **Le temoin fantome devient discriminant** : 1 291 acceptees pour **13 croisees** (facteur 137).
+  Sur `00162144`, la ou la decouverte 2 mesurait 398 fantomes contre 366 reelles, le filtre rend
+  **0 contre 278**. Controle par la chaine independante des images-cles : **1 360 / 1 360 = 100 %**
+  (non comparable au 98,9 % de la phase 0 : le filtre est en amont).
+- **1.1** — **1 275 `dropped` / 515 `spawned`** sur 1 790. Temoin du plan TENU : part `dropped`
+  maximale sur le Super Fiesta `000d5950` (**82,3 %**), minimale sur les arenes classiques
+  (`bcb6d393` CTF 62,3 %, `00162144` 64,9 %). **Deux criteres independants emboites sans une seule
+  exception : `dropped` implique une vie delta 1 275 fois sur 1 275.** Les 280 `spawned` AVEC vie
+  delta sont presque tous `MA40 AR` / `Mk51 Sidekick` — l'arme de depart lachee lors d'un ECHANGE,
+  que la regle du 18/08 ne peut pas voir puisqu'elle mesure une mort.
+- **1.2** — le temoin de Notion 11 se lit sur `at_rest` et pas sur `spawned` : **6 a 10 socles sur
+  4 cartes** (Cliffhanger 10, Catalyst 10 et 10, Streets 6 et 7, Smallhalla 10) contre 1 a 21 pour
+  le critere litteral. Les deux valeurs hors bande s'expliquent par un denominateur, pas par un
+  ajustement : `b8d1fe0c` (4 socles) est le film le plus court (226 s), `000d5950` (0 socle) est un
+  Super Fiesta sur variante Forge. **Temoin negatif TENU** : les morts rendent 60 a 204 grappes
+  dont **82 a 97 % a une seule apparition**, contre 0 a 4 singletons pour les socles.
+- **1.3** — **4 cycles ETABLIS sur 57 socles** ; les 53 autres publient « non etabli », jamais un
+  chiffre. La mesure dit pourquoi : l'horloge d'un socle repart au RAMASSAGE, pas a l'apparition,
+  donc l'ecart mesure vaut « temps passe au sol + delai de reapparition ». Aucune comparaison a une
+  source officielle : il n'y en avait aucune hors ligne, et le brief interdit de comparer sans.
+- **1.4 — CRITERE NON ATTEINT, 0 paire sur 3**, meilleure mesure 7/10 = 70,0 % dans les deux sens
+  sur Catalyst. **Et la MEME mesure, famille ignoree, donne 10/10 = 100 % dans les deux sens** :
+  les 10 socles de Catalyst sont aux memes coordonnees AU CENTIMETRE dans les deux films (meme
+  carte, meme mode KOTH), mais trois portent une arme differente — Energy Sword <-> Gravity Hammer,
+  et deux socles VK78 Commando <-> BR75. Meme signature sur Streets (Shock Rifle <-> Stalker Rifle,
+  Cindershot <-> M41 SPNKr). **Le SOCLE appartient a la carte, l'ARME qui y apparait appartient au
+  MATCH.** Le catalogue specifie (position + famille) est donc refuse par son propre critere, et
+  **aucun `map_weapon_pads.json` n'est cree**.
+- **Power-ups de socle : NEGATIF DE CORPUS, etendu.** 5 apparitions sur 8 films, toutes
+  `powerup_overshield`, toutes `dropped`, toutes avec vie delta ; zero `powerup_camo`, zero socle,
+  sur 5 cartes NATIVES d'arene. La voie « Arena ranked » n'a pas pu etre essayee : **le cache local
+  ne porte AUCUN film classe** (951 films joints au registre, `is_ranked` faux partout).
+
+**GATE 1 : NON ATTEINT sur la clause de recouvrement** (>= 80 % entre deux films de la meme carte :
+0 paire sur 3), seuil NON rebaisse. Les trois autres clauses sont TENUES (grappes 6-12 sur 4 cartes,
+temoin negatif, cycles publies). **Phase 2 NON ouverte** — le gate d'arret est reel.
+
+**Decouvertes notees, NON traitees** (section du plan, n. 5 a 8) : l'arme d'un socle n'est pas une
+propriete de la carte, donc un futur catalogue devrait etre keye sur la POSITION ; le corpus local
+ne contient aucun match classe ; la regle `dropped` ne voit pas les echanges d'arme (280 cas sur
+1 790) et le vocabulaire publie `deployed`/`dropped`/`unknown` ne les nomme pas ;
+`ScanFilmGroundWeaponCreationsForBand` ne calibre pas la largeur MPP (sans consequence ici — les
+8 films tranchent tous a `9/5` — mais un film BTB a `8/3` lirait l'identite faussee sans alerte).
+
+**Livre** : `replay/ground_weapon_pads_research_test.go` (garde `GW_PADS` / `GW_PADS_MAP`, un film),
+`replay/ground_weapon_pads_cluster_test.go` (regle de grappe et regle de cycle, isolees et TESTEES
+sans garde — 3 tests dans le gate ordinaire), `replay/ground_weapon_pads_aggregate_test.go` (garde
+`GW_PADS_AGG`, le critere 1.4, aucun decodage). Le chargement de l'entree de bornes de carte est
+FACTORISE (`mapQuantEntryFromEnv`) et `origineMapEntry` y a ete migre — pas de troisieme copie.
+
+**Conclusion / prochaine etape** : arbitrage utilisateur. Le catalogue de socles est refuse par le
+critere tel qu'il etait ecrit ; un catalogue keye sur la seule POSITION est mesurable des maintenant
+(10/10 Catalyst) mais c'est une decision de PERIMETRE, pas une mesure a refaire. La phase 2
+(ramassage par disparition + proximite) reste fermee tant que le gate 1 n'est pas leve ou amende.
+Gates verts : `go build ./...`, `go vet ./...`,
+`go test ./internal/analysis/... ./internal/archlint/...`,
+`golangci-lint run --new-from-merge-base=origin/main` = 0 issue.
+
 ## [2026-08-17] v7.5 rejeu 2D — item 6 phase 0 : la grammaire `ti=42` est branchee et validee, le gate 0 tombe sur son critere
 
 **Statut** : Complete (phase 0 close ; phase 1 NON lancee, arbitrage utilisateur requis).
