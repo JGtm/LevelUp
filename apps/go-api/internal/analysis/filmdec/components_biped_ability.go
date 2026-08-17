@@ -86,8 +86,10 @@ func SetAbilitySetHook(h func(counter uint64, rank int, width int)) { abilitySet
 //	R(w) ; w = 4 if DAT_145121140 == 1 else 2   (-> ctx+0xa33)
 //	R(1) flag                                   (-> ctx+0xa36)
 //
-// DAT_145121140 is the SAME runtime high-precision gate as PositionFullPrecision
-// (read by FUN_14076f91c). Retail offline films keep it false -> w=2, total 3 bits.
+// DAT_145121140 is the process-wide high-precision setting — PositionFullPrecision, and
+// it ALONE (this reader does NOT consult the baseline scope DAT_144e61ea0 : verifie sur
+// piece le 2026-08-17, `iVar10 = (DAT_145121140 == '\x01') * 2 + 2`). Retail offline films
+// keep it false -> w=2, total 3 bits.
 // CONFIRMED bit-exact from the decompile (iVar10 = (DAT_145121140=='\x01')*2+2; the
 // trailing block reads exactly one more bit).
 func consumeBipedControlContext(br *BitReader) {
@@ -285,9 +287,13 @@ func consume140c1e9d4(br *BitReader, w uint) {
 
 // consumeE494Position mirroite FUN_14076e494 : gate RUNTIME de pleine precision
 // (FUN_14076f91c) ; si faux -> FUN_14076e524 = position absolue quantifiee ; si vrai ->
-// FUN_1411b259c = remplissage NaN, ZERO bit.
+// FUN_1411b259c = FUN_1406d676c(br, br, dst, 0x60) = R(96) BRUT.
+//
+// CORRIGE le 2026-08-17 (lot R7-c) : ce site rendait ZERO bit. Le vecteur ecrit est bien un
+// NaN de conservation, mais le CURSEUR avance de 96 bits.
 func consumeE494Position(br *BitReader) {
-	if PositionFullPrecision {
+	if fullPrecisionGate() {
+		br.ReadBits(rawVec3Bits)
 		return
 	}
 	consumeE524PositionBody(br)
@@ -638,13 +644,40 @@ func consumeBipedSpartanAbility(br *BitReader) bool {
 		}
 		return true
 	case 3:
+		ok := consumeSpartanAbilityTag3(br)
 		if spartanAbilityHook != nil {
 			spartanAbilityHook(tag, 0, 0, false)
 		}
-		return false // FUN_142f262d4 : gates runtime, largeur inconnue
+		return ok
 	}
 	if spartanAbilityHook != nil {
 		spartanAbilityHook(tag, 0, 0, false)
+	}
+	return true
+}
+
+// consumeSpartanAbilityTag3 porte la branche `tag == 3` d'i57 (FUN_142f262d4), PARTIELLEMENT
+// et en le disant : le corps a une porte sur un OCTET D'ETAT RUNTIME, invisible du flux.
+//
+//	FUN_140f03dfc()                        0 bit (init)
+//	a = R(1) (FUN_1406cf008)  -> dst[0]
+//	si a != 0 :
+//	    FUN_14297ea84(br) = R(6)
+//	    si (dst[2] & 1) != 0 : b = R(1) ; branche gardee par (dst[2] & 0x10) ;
+//	                           FUN_142f04664(dst+4, br, b, param_3)
+//	    -> dst[2] est un octet d'ETAT RUNTIME : NON derivable du flux. Desync propre.
+//	t = R(1)  -> dst[1]
+//	si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la MEME queue qu'i60
+//
+// La branche `a == 0` est donc ENTIEREMENT portable, et c'est elle qu'on porte : R(1) nul,
+// puis la porte de queue et, si elle est ouverte, le lecteur absolu de `consumeSimStateHandleTail`.
+// La branche `a != 0` rend false — desync propre plutot qu'une largeur devinee.
+func consumeSpartanAbilityTag3(br *BitReader) bool {
+	if br.ReadBit() { // a != 0 : FUN_14297ea84 + porte sur octet d'etat runtime
+		return false
+	}
+	if br.ReadBit() { // t : porte de la queue handle
+		consumeSimStateHandleTail(br) // FUN_14076e494, meme lecteur qu'i60
 	}
 	return true
 }
