@@ -5719,6 +5719,7 @@ export interface components {
             other: number;
             /** Format: int64 */
             placements: number;
+            scanned: boolean;
             widths?: string;
             /** Format: int64 */
             withHeading: number;

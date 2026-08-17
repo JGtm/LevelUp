@@ -76,6 +76,12 @@ type EquipmentPlacement struct {
 // poses » ne se juge pas : c'est l'écart entre les ancres, les records acceptés et les records
 // CONFIRMÉS par l'oracle qui dit à quel point l'en-tête seul est peu sélectif.
 type EquipmentPlacementStats struct {
+	// Scanned dit que le balayage a ABOUTI — que le film a été lu jusqu'au bout, quel qu'ait
+	// été le verdict de la calibration. Faux : le film n'a pas pu être balayé du tout (chunks
+	// illisibles, bornes absentes, archétype absent des keyframes). Sans ce drapeau, un film
+	// illisible et un film dont la calibration refuse de trancher rendent tous deux zéro pose
+	// et se lisent pareil, alors que ce sont deux pannes différentes.
+	Scanned bool
 	// Calibration est la mesure de la largeur du bloc MPP sur ce film — la pièce justificative
 	// de tout le reste. Bits == 0 : le film n'a pas tranché, et rien n'est publié.
 	Calibration MPPCalibration
@@ -132,7 +138,7 @@ func ScanFilmEquipmentPlacements(
 
 	defer SetMPPWidths(CurrentMPPWidths())
 	cal, ok := CalibrateMPPWidths(dir, wr, band, spans)
-	st.Calibration = cal
+	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s'il a tranché
 	if !ok {
 		return nil, st, nil // le film n'a pas tranché : aucune pose, et les stats le disent
 	}

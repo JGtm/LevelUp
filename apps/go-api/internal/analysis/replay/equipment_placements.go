@@ -96,6 +96,12 @@ type EquipmentPlacement struct {
 // properties` varie d'un film à l'autre et se MESURE dans le film. Publier les poses sans
 // publier la mesure qui les rend lisibles laisserait croire qu'elles tombent d'une constante.
 type EquipmentPlacementCoverage struct {
+	// Scanned dit que le film a été BALAYÉ jusqu'au bout. Faux : il n'a pas pu l'être du tout
+	// (chunks illisibles, bornes de carte absentes, archétype absent des keyframes) — ou il
+	// n'y a pas eu de film (assemblage sur positions figées). Sans lui, `calibrated: false`
+	// couvrait DEUX pannes distinctes qui se lisaient pareil : un film illisible et un film
+	// dont la calibration refuse de trancher rendent tous deux zéro pose.
+	Scanned bool `json:"scanned"`
 	// Widths est le découpage retenu (« lead/index »), vide si la calibration a échoué.
 	Widths string `json:"widths,omitempty"`
 	// Calibrated dit si le film a tranché. Faux : aucune pose n'est publiée, et c'est
@@ -161,7 +167,7 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 		return
 	}
 	slog.Info("rejeu : poses d'equipement",
-		"calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
+		"balaye", c.Scanned, "calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
 		"nommees", c.Named, "autres", c.Other,
 		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading)
 }
@@ -176,6 +182,7 @@ func buildEquipmentPlacements(
 	positions []filmdec.BipedPosition, clock replayClock,
 ) ([]EquipmentPlacement, *EquipmentPlacementCoverage) {
 	cov := &EquipmentPlacementCoverage{
+		Scanned:    st.Scanned,
 		Calibrated: st.Calibration.Widths.Valid(),
 		Lives:      st.Lives,
 		Anchors:    st.Anchors,

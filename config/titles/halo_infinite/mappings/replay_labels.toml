@@ -299,6 +299,21 @@ hinf_needler        = "needle"
 # et le capteur se publient `other`. Leurs identifiants sont mesures et stables, mais la
 # diagonale n'atteint pas le seuil sur le corpus disponible — et le seuil ne se rebaisse pas.
 #
+# NOTE DE REVUE (2026-08-17, aucun seuil ni critere n'est modifie par cette note). Deux
+# fragilites du nommage par diagonale sont a connaitre avant d'ajouter une famille :
+#
+#   (a) LA DIAGONALE EST UN CRITERE FRAGILE. Elle croise l'identifiant `eqip` avec le RANG DE
+#       CAPACITE du poseur, or le poseur est lui-meme une MESURE (le bipede le plus proche a
+#       250 ms) et le rang manque a 46-70 % des poseurs sur les films BTB. Deux maillons
+#       mesures en serie : un identifiant peut echouer au seuil pour un defaut de
+#       DENOMINATEUR et non de signal — c'est precisement le cas des quatre identifiants a
+#       75-82 % ci-dessus.
+#   (b) LES QUATRE « PLATS » NE SONT PAS DES EQUIPEMENTS POSES : ce sont, selon toute
+#       vraisemblance, les quatre GRENADES du jeu (groupe de tags `gggl`) ramassables au sol.
+#       Un objet du monde sans poseur EST plat par construction — la diagonale ne peut rien
+#       en dire, et son echec au seuil ne mesure rien. Les classer `other` est donc juste,
+#       mais pour une raison qui n'est pas celle des identifiants (a).
+#
 # Les autres identifiants du corpus (0x0f5716ff, 0xbcabbe43, 0xcaaadcb0, 0xaada07f3 — les
 # quatre PLATS, objets du monde sans poseur —, 0x8c77ffe7 grappin, 0xeef5d48d propulseur,
 # 0x273fe0eb, 0x4396db42, 0x7ca85adc, 0x32d97758, 0x430dda48, 0x4744d742, 0xb781197a,
