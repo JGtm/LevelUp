@@ -109,10 +109,41 @@ func consumeObjectAngularVelocity(br *BitReader) {
 	consumeDynPrecVec3(br, angularMagBits, angularScaleBits)
 }
 
-// PositionFullPrecision mirrors FUN_14076f91c: a RUNTIME gate (DAT_144e61ea0 /
-// DAT_145121140), NOT a bitstream bit. When true the engine NaN/keep-fills the
-// position with ZERO payload bits. Default false (retail high-prec path inactive).
+// PositionFullPrecision mirroite le SEUL global `DAT_145121140` : la configuration
+// « réplication haute précision » du process. NOT a bitstream bit. Default false
+// (retail high-prec path inactive).
+//
+// CORRECTION DE MODÈLE, lot R7-c (2026-08-17). Ce champ portait auparavant les DEUX
+// globaux de `FUN_14076f91c` à la fois, ce qui était faux : `DAT_144e61ea0` est une
+// PORTÉE (cf. keyframeBaselineScope) et `DAT_145121140` un réglage de process, et ils
+// ne gardent PAS les mêmes lecteurs. Sous la seule portée baseline, `i49`
+// (`FUN_14107166c`), `i2 forward-and-up` (`FUN_140c5f938`) et le bloc MPP
+// (`FUN_14080cfe8`) — qui lisent `DAT_145121140` SEUL — ne bougent pas.
 var PositionFullPrecision = false
+
+// keyframeBaselineScope mirroite `DAT_144e61ea0` : une PORTÉE, pas un réglage. Les huit
+// lecteurs d'état complet du groupe `142e2*`/`142e3*` (dont `FUN_142e2bfd0`) le lèvent à 1
+// juste AVANT l'appel `vtable[0x60]` (état par défaut) et le remettent à 0 juste APRÈS.
+// Pendant cette portée, `FUN_14076f91c()` est vrai et tous les lecteurs de position du
+// moteur passent du quantifié au BRUT 96 bits.
+//
+// KILL-SWITCH — défaut `false` depuis le 2026-08-17. La bascule du défaut est conditionnée
+// à UN critère mesurable : que la lecture d'un corps d'image-clé sous cette portée fasse
+// remonter l'atterrissage bit-exact des 591 records `ti=35` bornés au-dessus de 50 %
+// (mesure `TestKF35CBaselineScope`). Retrait cible du drapeau : à la bascule.
+var keyframeBaselineScope = false
+
+// SetKeyframeBaselineScope (dé)active la portée baseline et rend l'ancienne valeur
+// (instruments de mesure ; défaut off, restauration en `defer`).
+func SetKeyframeBaselineScope(v bool) bool {
+	prev := keyframeBaselineScope
+	keyframeBaselineScope = v
+	return prev
+}
+
+// fullPrecisionGate porte `FUN_14076f91c` : `DAT_144e61ea0 != 0 || DAT_145121140 == 1`.
+// Zéro bit consommé — c'est un prédicat de CONTEXTE, jamais un bit du flux.
+func fullPrecisionGate() bool { return keyframeBaselineScope || PositionFullPrecision }
 
 // PositionDeltaHasHandleTail mirrors the runtime field bVar16 = (precIndex != -1)
 // that gates the i0 predicted-delta handle tail in FUN_1406cfe44. It is NOT a
@@ -138,6 +169,31 @@ var DeltaQuantum float32 = 0.01383
 
 // SetDeltaQuantum règle le pas du chemin delta d'i0 (dérivé de l'oracle par l'outil de validation).
 func SetDeltaQuantum(q float32) { DeltaQuantum = q }
+
+// keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
+// complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE
+// le port (lot R7-d, `WALK_PORT_NOTES.md` section « i0 — LE LECTEUR DU JEU DIT LA MÊME CHOSE
+// QUE L'ÉCRIVAIN ») :
+//
+//	écrivain FUN_14320678c -> FUN_14320696c -> FUN_142e2d86c ; lecteur FUN_14076e29c ->
+//	FUN_14076e420 : le 3e bit ne SUPPRIME pas la charge utile (il choisit la table de plage
+//	DAT_143b8c6d0 = ±100) et il est la PORTE DE LA QUEUE DE HANDLE ; le champ de 2 bits est
+//	INCONDITIONNEL et vient EN DERNIER, après la queue.
+//
+// Le port actuel fait `if precHigh { return }` (0 bit de charge) et force la queue à false :
+// une sous-lecture de `1 + [idxW] + 3 x axisW` bits dès que ce bit vaut 1.
+//
+// KILL-SWITCH — défaut OFF posé le 2026-08-17 (lot R7-e) : la correction n'est pas encore
+// prouvée bit-exacte sur l'oracle de frontière, et le chemin absolu d'i0 sert la trajectoire
+// de PRODUCTION du rejeu 2D. Critère de bascule du défaut : atterrissage bit-exact en hausse
+// sur les 591 records `ti=35` bornés ET non-régression delta verte. Retrait de la bascule (une
+// seule grammaire, celle du jeu) visé à la clôture du chantier image-clé, au plus tard le
+// 2026-10-31 — si le critère n'est pas tenu d'ici là, c'est le port qu'il faut rouvrir, pas la
+// bascule qu'il faut prolonger.
+var keyframeWriterI0Grammar = false
+
+// SetKeyframeWriterI0Grammar (dé)active la grammaire d'écrivain du chemin absolu d'i0.
+func SetKeyframeWriterI0Grammar(v bool) { keyframeWriterI0Grammar = v }
 
 // consumeObjectPositionDynamicPrecisionD (i0) mirrors FUN_1406cfe44, bit-exactly.
 //
@@ -178,6 +234,19 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 
 	// bUsePred==0, bDelta==0: ABSOLUTE -> FUN_14076e524, then tail (no fresh handle bit).
 	if !bDelta {
+		if keyframeWriterI0Grammar {
+			// Grammaire de l'ÉCRIVAIN d'état complet (FUN_14320696c / FUN_14076e420) : le
+			// bit h ne supprime rien, il garde la QUEUE, et le champ de 2 bits vient APRÈS.
+			h := br.ReadBit()
+			if fullPrecisionGate() {
+				br.ReadBits(rawVec3Bits) // FUN_1407eb61c sous DAT_144e61ea0 : vec3 BRUT
+			} else {
+				consumeAbsolutePayload(br, pd)
+			}
+			consumePositionHandleTail(br, h, pd)
+			br.ReadBits(2) // FUN_14076e304, EN DERNIER
+			return
+		}
 		consumeAbsoluteWithGate(br, pd)
 		consumePositionHandleTail(br, false, pd)
 		return
@@ -192,13 +261,19 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 	// The handle tail is gated by the RUNTIME descriptor field bVar16 = (precIndex !=
 	// -1), NOT a bitstream bit (PositionDeltaHasHandleTail; default false = the
 	// dominant precIndex==-1 case). FUN_14076f91c full-precision gate =
-	// PositionFullPrecision. Both runtime gates are confirmed via the CE delta capture.
+	// `fullPrecisionGate` (DAT_144e61ea0 OU DAT_145121140). Both runtime gates are confirmed
+	// via the CE delta capture.
 	predFlag := br.ReadBit() // FUN_1406cfe44 inline R(1)
-	if PositionFullPrecision {
-		readRawVec3(br) // FUN_1406d676c(...,0x60) = R(96) : AVANCE le curseur (keep, pas une coord)
-		keepBaseline()
-	} else if !predFlag {
-		consumePredictedDelta(br, pd) // FUN_14076f3ec (predFlag==0)
+	if !predFlag {
+		// LAB_1406cff18 : la garde de contexte est ICI, sur ce seul chemin (relu le
+		// 2026-08-17, lot R7-c — elle ne couvre PAS la branche predFlag==1, qui porte la
+		// sienne dans FUN_14076e4ec).
+		if fullPrecisionGate() {
+			readRawVec3(br) // FUN_1406d676c(...,0x60) = R(96) : AVANCE le curseur (keep, pas une coord)
+			keepBaseline()
+		} else {
+			consumePredictedDelta(br, pd) // FUN_14076f3ec
+		}
 	} else {
 		// predFlag==1: FUN_140f7ea14 -> FUN_14076e4ec -> FUN_14076e524 = lecteur de POSITION
 		// ABSOLUE quantisée. Ancien port : "width unmodeled" (0 bit) = LE bug i0 delta (lisait 3
@@ -206,7 +281,15 @@ func consumeObjectPositionDynamicPrecisionD(br *BitReader, pd PrecisionDescripto
 		//   R(1) cVar1 ; si cVar1==0 -> R(1) index-sel [si 0 -> R(IndexW)] + 3×R(AxisW).
 		// CE delta capture (Cliffhanger) : total i0 = 47 => 3(en-tête) +1(cVar1) +1(index-sel)
 		// +3×14(axes) = 47, index absent. Même pd.AxisW que le chemin absolu keyframe (Hydra OK).
-		if !br.ReadBit() { // FUN_140f7ea14 cVar1 (FUN_1406cf008) ; 0 -> lit la position absolue
+		//
+		// La GARDE DE CONTEXTE vit dans FUN_14076e4ec, pas dans FUN_140f7ea14 : le R(1) cVar1
+		// est lu D'ABORD dans tous les cas, puis `FUN_14076e4ec(dst, br, 0x10, cVar1 ? &DAT_143b8c6d0 : 0)`
+		// choisit R(96) brut (pleine précision), le vecteur par défaut (cVar1 != 0, 0 bit) ou le
+		// lecteur quantifié. Ajouté le 2026-08-17 (lot R7-c) : ce site ignorait la garde.
+		cVar1 := br.ReadBit() // FUN_140f7ea14 cVar1 (FUN_1406cf008)
+		if fullPrecisionGate() {
+			br.ReadBits(rawVec3Bits) // FUN_14076e4ec -> FUN_1411b259c
+		} else if !cVar1 { // 0 -> lit la position absolue quantifiée
 			pidx := -1
 			if !br.ReadBit() { // FUN_14076e524 index-sel ; 0 -> lit l'index
 				pidx = int(br.ReadBits(pd.IndexW))
@@ -321,12 +404,38 @@ func deltaAxisW(pd PrecisionDescriptor, i int) uint {
 // FUN_14076f91c runtime gate, then FUN_14076e524 index+vec3).
 func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 	precHigh := br.ReadBit() // FUN_1406cf008
-	if PositionFullPrecision {
-		return // NaN/keep fill (FUN_1411b259c), 0 payload bits
+	if fullPrecisionGate() {
+		// FUN_1411b259c = FUN_1406d676c(br, br, dst, 0x60) : R(96) BRUT, pas 0 bit.
+		// L'ancien commentaire (« NaN/keep fill, 0 payload bits ») lisait le RÉSULTAT
+		// (le vecteur écrit est un NaN de conservation) et non le CURSEUR — corrigé
+		// sur pièce le 2026-08-17 (lot R7-c).
+		br.ReadBits(rawVec3Bits)
+		return
 	}
 	if precHigh {
 		return // default vector (FUN_141f85880), 0 payload bits
 	}
+	consumeAbsolutePayload(br, pd)
+	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
+	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
+	//
+	// AJOUTÉ le 2026-07-27. Le chemin world-object le lisait déjà (traverse.go, `[2 finite]`
+	// de son total de 45 bits) ; le chemin dynamic-precision du bipède ne l'a jamais lu. Les
+	// deux portent pourtant le MÊME lecteur absolu — c'est la double implémentation qui les
+	// a laissés diverger. Sans ces 2 bits le compte tombait à 45 au lieu des 47 mesurés par
+	// la capture CE (100 % de 154 158 dispatches, aucune variance).
+	//
+	// PLACE DU CHAMP : ici il est lu AVANT la queue de handle, qui est de toute façon éteinte
+	// sur ce chemin (`consumePositionHandleTail(br, false, ...)`). L'écrivain du jeu le pose
+	// APRÈS la queue — l'ordre n'est donc observable que sous `keyframeWriterI0Grammar`.
+	br.ReadBits(2)
+}
+
+// consumeAbsolutePayload lit la CHARGE UTILE du lecteur absolu (FUN_14076e494) : le sélecteur
+// d'index de plage, son mot éventuel, puis les trois axes quantisés. Il ne lit NI le bit de
+// tête, NI le champ de 2 bits de queue — les deux appelants ne les posent pas au même endroit
+// (cf. `keyframeWriterI0Grammar`).
+func consumeAbsolutePayload(br *BitReader, pd PrecisionDescriptor) {
 	// The index selects the dequant RANGE (DAT_14462cbe0): index 0 = the map replication
 	// bounds (real in-map position) ; index 1 / no-index = ±20000 (off-map, non-player).
 	idx := -1 // no index (index-select bit set) -> fallback ±20000
@@ -343,15 +452,6 @@ func consumeAbsoluteWithGate(br *BitReader, pd PrecisionDescriptor) {
 		w := absAxisWFor(idx, i)                      // par index (7ter.54), sinon région 13/13/14
 		v[i] = dequantWorldAxis(br.ReadBits(w), w, i) // FUN_140cc5128 axis i
 	}
-	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
-	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
-	//
-	// AJOUTÉ le 2026-07-27. Le chemin world-object le lisait déjà (traverse.go, `[2 finite]`
-	// de son total de 45 bits) ; le chemin dynamic-precision du bipède ne l'a jamais lu. Les
-	// deux portent pourtant le MÊME lecteur absolu — c'est la double implémentation qui les
-	// a laissés diverger. Sans ces 2 bits le compte tombait à 45 au lieu des 47 mesurés par
-	// la capture CE (100 % de 154 158 dispatches, aucune variance).
-	br.ReadBits(2)
 	// Only index-0 positions are in the map bounds (real player positions). index!=0
 	// dequantizes against ±20000 (off-map) and is noise for a trajectory -> don't emit.
 	if idx != 0 {

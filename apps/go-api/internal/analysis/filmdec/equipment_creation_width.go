@@ -42,7 +42,13 @@ type EquipmentLifeKey struct{ Slot, Gen uint32 }
 
 // EquipmentLifeSpan est UNE vie d'objet telle que les paquets delta l'ont décodée : ses bornes
 // temporelles et son premier point. C'est à la fois l'ORACLE de la calibration et la matière de
-// la pose publiée (le `t1` d'une pose est la disparition de l'objet, donc la fin de sa vie).
+// la pose publiée.
+//
+// T1US EST UNE MISE AU REPOS, PAS UNE DISPARITION (mesuré le 2026-08-18, cf. splitLives) : le
+// décodage ne suit que les records qui portent une position, et un objet posé cesse d'en
+// émettre dès qu'il s'immobilise. Le film ne date PAS la disparition d'un objet d'équipement —
+// ni par un record de suppression isolable, ni par une queue de records sans position (les deux
+// témoins sont du bruit, `equipment_life_end_test.go`).
 type EquipmentLifeSpan struct {
 	T0US, T1US uint64
 	First      [3]float32

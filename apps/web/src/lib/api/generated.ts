@@ -5727,6 +5727,7 @@ export interface components {
             other: number;
             /** Format: int64 */
             placements: number;
+            scanned: boolean;
             /** Format: int64 */
             unknown: number;
             widths?: string;
