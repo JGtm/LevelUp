@@ -1,3 +1,34 @@
+## [2026-08-17] archlint J4R-3 : faux positif du dictionnaire murmur3 leve sans toucher au ratchet — Complete
+
+**Statut** : Complete (branche `feat/v75`, micro-lot dedie sur la ligne registre "Garde-rail
+J4R-3 en FAUX POSITIF").
+
+**Decision technique.** `go test ./internal/archlint/` etait ROUGE : `TestNoRawKillScopeLiteral`
+(ratchet J4R-3) interdit le litteral brut `"scan"` (valeur de portee `match_kill_events`) hors de
+`internal/domain/killscope`, et le dictionnaire de jetons murmur3 pour casser des `string_id`
+Halo Infinite (`internal/himap/sonde_stringid_dico_test.go:51`) contenait le MOT ANGLAIS `scan`
+comme jeton candidat — sans aucun rapport avec une portee de kill feed. Le registre proposait
+deux voies (allowlister le fichier, ou resserrer `killScopeRE`), toutes deux au prix de toucher
+`archlint` et donc d'affaiblir ou complexifier le ratchet. Troisieme voie retenue, qui ne touche
+PAS `archlint` : retirer le jeton `scan` du dictionnaire `dicoJetons`, `scanner` et tous les
+autres jetons inchanges. Verifie AVANT de conclure : aucun des 12 noms de definition etablis de
+`TestDicoStringIDConnus` (garde-rail du dictionnaire, tourne partout, aucun fichier de jeu) ni
+des 18 bases de `TestDicoVariantesSuffixes` ne s'appuie sur le jeton `scan` seul — le retrait
+etait donc sans risque de regression sur les noms deja casses.
+
+**Resultats observes.** Apres retrait, `TestDicoStringIDConnus` reste VERT : 335 264 candidats
+enumeres (contre ~340 000 avant), esperance de collision fortuite inchangee a 0,0009 sur les 12
+cibles. `TestNoRawKillScopeLiteral` passe. `killScopeRE` et `killScopeAllowlist` non touches,
+l'allowlist du ratchet reste VIDE comme le fichier l'exige. Gate : `go test
+./internal/archlint/ ./internal/himap/ -run 'TestDicoStringIDConnus|NoRawKillScope'` vert,
+`go vet ./internal/himap/ ./internal/archlint/` propre, `golangci-lint run
+--new-from-merge-base=origin/main` 0 issue (un seul warning preexistant sur des directives
+`//nolint` d'un autre fichier, non introduit par ce lot).
+
+**Conclusion / prochaine etape.** Ligne registre passee en TRAITE avec la voie retenue
+(`.ai/V7.5/REGISTRE_REPORTS.md`). Rien a reprendre : la voie mecanique (retrait du jeton) a
+suffi, la voie de repli (`"sc" + "an"` litteral compose) n'a pas ete necessaire.
+
 ## [2026-08-18] Rejeu 2D — l'origine d'une pose se lit a la FIN de la vie du poseur : `equipmentPlacements` est, a 88,6 %, ce qu'un mort laisse tomber — Complete
 
 **Statut** : Complete (branche `feat/v75`, phase G du plan
