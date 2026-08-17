@@ -337,35 +337,94 @@ hinf_needler        = "needle"
 #
 # PARITE : tout identifiant observe au corpus a une ligne ici, nommee ou `other` explicite.
 # Garde-rail : `replaylabels/catalog_test.go`, TestPariteObjetsEquipementDuCorpus.
+#
+# ------------------------------------------------------------------------------------------
+# `kind` — LA NATURE MESUREE (ajoute le 2026-08-18, PLAN_ORIGINE_POSES_ET_FAMILLES G.3)
+#
+#   carried    PORTE par le joueur : ses poses sont majoritairement des LACHERS. Quand la vie
+#              du porteur s'acheve, ce qu'il portait tombe a ses pieds, et le film cree
+#              l'objet la. 19 des 21 identifiants.
+#   deployed   N'EXISTE QU'UNE FOIS DEPLOYE : la piece qu'un equipement ENGENDRE. Les deux
+#              seuls du corpus sont les panneaux du mur, et ce sont exactement les deux que la
+#              chaine des tags rattachait par `sofa_parent`.
+#
+# CE QUE LA MESURE A TROUVE, ET QUI RENVERSE LA LECTURE DE `equipmentPlacements`. Sur les
+# 11 films calibres (4 250 poses, 3 661 a poseur mesure), la part des poses creees dans les
+# 2 frames ET les 1,5 m du DERNIER POINT de leur poseur vaut 88,6 %. La part creee au DEBUT de
+# sa vie — l'hypothese « dotation au spawn », ecrite avant la mesure — vaut 0,1 % (4 poses, et
+# les 4 sont des vies de 0,13 a 1,49 s ou debut et fin se confondent). L'ecart n'est pas un
+# reglage de seuil : les lachers sont a 20-40 ms de la fin de vie, les deploiements a 14-42 s.
+#
+# LA DIAGONALE DE LA NATURE, par identifiant (part de poses DEPLOYEES) :
+#
+#   0x528fce46  panneaux du mur (rang 19)   47/48 = 97,9 %   0 lacher sur 48   DEPLOYED
+#   0x686b40c9  panneaux du mur (rang  2)   42/43 = 97,7 %   1 lacher sur 43   DEPLOYED
+#   ----------------------------------------------------------------------------------------
+#   0x2974c233  APPAREIL du mur (rang  2)   25/85 = 29,4 %                     carried
+#   0x72b63d69  capteur (rang 1)            27/95 = 28,4 %                     carried
+#   0x32d97758  champ de reparation        26/105 = 24,8 %                     carried
+#   0x7ca85adc  repulseur                  33/163 = 20,2 %                     carried
+#   0x72199cba  capteur (rang 22)            9/60 = 15,0 %                     carried
+#   0x8e2dc574  APPAREIL du mur (rang 19)    6/46 = 13,0 %                     carried
+#   0x273fe0eb  grappin                    22/223 =  9,9 %                     carried
+#   les 4 grenades                                 2,6 a 5,1 %                 carried
+#
+# UN SEUIL A 50 % SEPARERAIT LES DEUX GROUPES SANS AMBIGUITE : 97,7 % d'un cote, 29,4 % de
+# l'autre, et rien entre les deux. C'est le controle INTERNE de la mesure — si les 88,6 % de
+# lachers etaient un artefact de la methode, les panneaux les porteraient aussi ; ils en ont
+# zero et un.
+#
+# CE QUE CELA TRANCHE POUR LE RENDU : l'arc du mur se dessine sur les PANNEAUX
+# (`0x528fce46`, `0x686b40c9`), jamais sur l'appareil — un appareil de mur a la position d'un
+# joueur est, 87 fois sur 100, l'objet qu'il portait en mourant. Meme verdict pour le capteur :
+# `0x72199cba` est PORTE, ses 60 poses sont 50 lachers pour 9 deploiements.
+#
+# CE QUE `kind` NE DIT PAS, et il ne faut pas le lui demander : ce qu'une pose PARTICULIERE
+# est. Cela, c'est `origin` (`deployed` / `dropped` / `unknown`), mesure pose par pose et
+# publie au document (schema 10). Un identifiant `carried` porte quand meme des deploiements
+# reels — 25 murs et 9 capteurs dans ce corpus — et c'est `origin` qui les distingue.
+#
+# TROIS IDENTIFIANTS ONT UN EFFECTIF TROP FAIBLE POUR QUE LA MESURE TRANCHE SEULE, et leur
+# `kind` repose alors sur la structure (aucun n'est `sofa_parent`, donc aucun n'est une piece
+# engendree) : 0x730dc70f balise du translocateur (2 poses, 2 lachers), 0xb781197a surbouclier
+# et 0xe7be9f5c camouflage (1 pose chacun, 1 lacher). Les quatre poses vont dans le meme sens
+# que les 19 autres identifiants (23 a 40 ms, 0,44 a 0,67 m de la fin de vie), mais n = 1 ou 2
+# ne prouve rien : c'est ecrit ici pour que personne ne le lise comme une mesure.
+# ------------------------------------------------------------------------------------------
 
 [[equipment_objects]]
 id         = "0x0f5716ff"
 family     = "grenade_spike"
 provenance = "gggl_entree"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x273fe0eb"
 family     = "grapple"
 name_id    = "0x87b1d7a4"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x2974c233"
 family     = "wall"
 name_id    = "0xedebd7b7"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x32d97758"
 family     = "repair_field"
 name_id    = "0x00bef187"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x430dda48"
 family     = "thruster"
 name_id    = "0xed76a664"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 # Rang 10 de la palette famille A : rattache, non nomme. Cf. la note ci-dessus.
 [[equipment_objects]]
@@ -373,24 +432,28 @@ id         = "0x4396db42"
 family     = "other"
 name_id    = "0xb328c9fa"
 provenance = "sofa_anonyme"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x4744d742"
 family     = "threat_seeker"
 name_id    = "0xc5bb0ba7"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 # Panneaux deployes du mur de la palette rang 19 : engendres par l'`eqip` 0x37c87a13.
 [[equipment_objects]]
 id         = "0x528fce46"
 family     = "wall"
 provenance = "sofa_parent"
+kind       = "deployed"
 
 # Panneaux deployes du mur `ability_deployable_wall` : engendres par l'`eqip` 0xc12e5469.
 [[equipment_objects]]
 id         = "0x686b40c9"
 family     = "wall"
 provenance = "sofa_parent"
+kind       = "deployed"
 
 # Meme modele `hlmt:c62d74c3` que 0x72b63d69 (`ability_location_sensor`).
 [[equipment_objects]]
@@ -398,24 +461,28 @@ id         = "0x72199cba"
 family     = "sensor"
 name_id    = "0x9bc48d0f"
 provenance = "sofa_modele"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x72b63d69"
 family     = "sensor"
 name_id    = "0x566bb170"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x730dc70f"
 family     = "translocator_beacon"
 name_id    = "0x1f7c6a15"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0x7ca85adc"
 family     = "repulsor"
 name_id    = "0x2b5d5eac"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 # Meme modele `hlmt:75070361` que 0x273fe0eb (`ability_grapple_hook`).
 [[equipment_objects]]
@@ -423,6 +490,7 @@ id         = "0x8c77ffe7"
 family     = "grapple"
 name_id    = "0x828e2a93"
 provenance = "sofa_modele"
+kind       = "carried"
 
 # Meme modele `hlmt:2e76f0a9` que 0x2974c233 (`ability_deployable_wall`).
 [[equipment_objects]]
@@ -430,33 +498,39 @@ id         = "0x8e2dc574"
 family     = "wall"
 name_id    = "0xcb9f3095"
 provenance = "sofa_modele"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0xaada07f3"
 family     = "grenade_dynamo"
 provenance = "gggl_entree"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0xb781197a"
 family     = "powerup_overshield"
 name_id    = "0x3ed01bf0"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0xbcabbe43"
 family     = "grenade_frag"
 provenance = "gggl_entree"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0xcaaadcb0"
 family     = "grenade_plasma"
 provenance = "gggl_entree"
+kind       = "carried"
 
 [[equipment_objects]]
 id         = "0xe7be9f5c"
 family     = "powerup_camo"
 name_id    = "0x2edcb6ef"
 provenance = "sofa_string_id"
+kind       = "carried"
 
 # Meme modele `hlmt:99953db8` que 0x430dda48 (`ability_evade`).
 [[equipment_objects]]
@@ -464,3 +538,4 @@ id         = "0xeef5d48d"
 family     = "thruster"
 name_id    = "0x9de62e2f"
 provenance = "sofa_modele"
+kind       = "carried"

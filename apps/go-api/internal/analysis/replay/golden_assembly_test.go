@@ -514,13 +514,24 @@ func renderGrapple(p func(string, ...any), doc ReplayDocument) {
 // objets du monde noierait le diff que ce golden existe pour rendre lisible. Leur compte, lui,
 // est fige par la ligne de couverture.
 func renderPlacements(p func(string, ...any), doc ReplayDocument) {
-	// Le titre de cette section a dit « mur et capteur sur la carte, le reste publie SANS NOM »
-	// jusqu au 2026-08-18. Il etait juste tant que le nommage venait d une diagonale (2 familles
-	// sur 21 identifiants) ; la chaine `sofd -> sofa -> eqip` du jeu en nomme 20 sur 21, et le
-	// golden ci-dessous montre autre chose : les objets d equipement naissent tres souvent PAR
-	// GROUPES — deux grenades identiques et une capacite, au meme instant et a la meme position,
-	// pour un meme poseur. C est une creation de DOTATION, pas une pose sur la carte.
-	p("## OBJETS D EQUIPEMENT — dotation au spawn ET objets deployes, par famille du manifeste")
+	// LE TITRE DE CETTE SECTION A ETE FAUX DEUX FOIS, ET LA SECONDE FOIS EST INSTRUCTIVE.
+	//
+	// Il a dit « mur et capteur sur la carte, le reste publie SANS NOM » jusqu au 2026-08-18 :
+	// juste tant que le nommage venait d une diagonale (2 familles sur 21 identifiants), perime
+	// des que la chaine `sofd -> sofa -> eqip` du jeu en a nomme 20 sur 21.
+	//
+	// Il a ensuite dit « dotation au spawn ET objets deployes », parce que le golden re-genere
+	// montrait des GROUPES — deux grenades identiques a 2 cm et une capacite, meme instant, meme
+	// poseur — et qu une dotation recue au spawn expliquait le groupe. **C ETAIT LE MAUVAIS BOUT
+	// DE LA VIE.** La mesure du 2026-08-18 (PLAN_ORIGINE_POSES_ET_FAMILLES G.1) : ces groupes
+	// naissent a 20-40 ms et 0,63 m du DERNIER POINT de leur poseur, pas de son premier. Ce n est
+	// pas une dotation recue, c est un LACHER : le joueur meurt, et ce qu il portait tombe. Au
+	// spawn, la mesure compte 4 poses sur 3 661 — 0,1 %, et les 4 sont des vies si courtes que
+	// debut et fin se confondent.
+	//
+	// LA LECON QUE CE COMMENTAIRE GARDE : un groupe de creations simultanees au meme endroit ne
+	// dit pas QUAND dans la vie du poseur il arrive. Il fallait mesurer les deux bouts.
+	p("## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine")
 	c := doc.Coverage.Placements
 	if c == nil {
 		p("aucune couverture de poses (calque absent)")
@@ -533,13 +544,15 @@ func renderPlacements(p func(string, ...any), doc ReplayDocument) {
 	p("%d nommee(s) · %d `other` (nature non etablie : le manifeste ne les revendique pas) · "+
 		"%d avec poseur mesure · %d avec cap de visee", c.Named, c.Other, c.WithOwner,
 		c.WithHeading)
-	fams := make([]string, 0, len(c.ByFamily))
-	for f := range c.ByFamily {
-		fams = append(fams, f)
-	}
-	sort.Strings(fams)
-	for _, f := range fams {
+	// L ORIGINE EST LA LIGNE QUI DECIDE DU RENDU : seuls les DEPLOYES decrivent un geste. Les
+	// trois comptes sont figes ensemble, et leur somme doit valoir le total (invariant teste).
+	p("origine mesuree : %d deployee(s) · %d lachee(s) a la fin de la vie du poseur · "+
+		"%d sans poseur", c.Deployed, c.Dropped, c.Unknown)
+	for _, f := range clesTrieesDeCarte(c.ByFamily) {
 		p("  famille %-8s %d", f, c.ByFamily[f])
+	}
+	for _, k := range clesTrieesDeCarte(c.ByFamilyOrigin) {
+		p("  famille x origine %-28s %d", k, c.ByFamilyOrigin[k])
 	}
 	for _, pl := range doc.EquipmentPlacements {
 		if pl.Family == equipmentFamilyOther {
@@ -549,10 +562,21 @@ func renderPlacements(p func(string, ...any), doc ReplayDocument) {
 		if pl.H != nil {
 			cap = fmt.Sprintf("%.1f deg", *pl.H)
 		}
-		p("  %s %s t=[%d, %d] pos=(%.2f, %.2f, %.2f) poseur=%d cap=%s",
-			pl.Family, pl.ID, pl.T0, pl.T1, pl.X, pl.Y, pl.Z, pl.Owner, cap)
+		p("  %s %s %s t=[%d, %d] pos=(%.2f, %.2f, %.2f) poseur=%d cap=%s",
+			pl.Family, pl.Origin, pl.ID, pl.T0, pl.T1, pl.X, pl.Y, pl.Z, pl.Owner, cap)
 	}
 	p("")
+}
+
+// clesTrieesDeCarte rend les cles d une carte de comptes, triees — un golden dont l ordre
+// depend de l iteration d une map n est pas un golden.
+func clesTrieesDeCarte(m map[string]int) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func renderLoadouts(p func(string, ...any), doc ReplayDocument) {

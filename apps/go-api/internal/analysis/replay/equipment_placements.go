@@ -48,8 +48,18 @@ const equipHeadingWindowUS = 200_000
 
 // EquipmentPlacement est UNE pose d'équipement, datée et située.
 type EquipmentPlacement struct {
-	// T0 / T1 bornent la présence de l'objet sur le même axe que Point.T : de la création
-	// (le geste) à la disparition (le dernier point de la vie décodée).
+	// T0 est l'instant de CRÉATION de l'objet. T1 est le DERNIER POINT DE POSITION de sa vie
+	// décodée — c'est-à-dire la fin de son MOUVEMENT RÉPLIQUÉ, PAS sa disparition.
+	//
+	// LE COMMENTAIRE A DIT « la disparition » JUSQU'AU 2026-08-18, ET C'ÉTAIT FAUX. Un
+	// encodage delta ne transmet que ce qui CHANGE : un objet posé qui s'immobilise cesse
+	// d'être transmis, et sa dernière position transmise n'a rien à voir avec sa fin de vie.
+	// La preuve est dans les grenades, et elle corrobore leur identification — spike 1,2 s
+	// (elle colle à l'impact) < dynamo 1,9 < plasma 3,5 < frag 4,1 (elle rebondit ET roule) ;
+	// idem l'appareil du mur 0,7-0,9 s (son vol) contre ses panneaux 0,5 s (déployés sur
+	// place). Conséquence pour le rendu : dessiner une pose sur le seul [T0, T1] affiche un
+	// détecteur ~2 s là où le jeu le garde 15 s. La durée RÉELLE demanderait le record de
+	// suppression de l'entité, qui n'a jamais été cherché (registre des reports).
 	T0 int `json:"t0"`
 	T1 int `json:"t1"`
 	// X / Y : la position de la pose, en coordonnées monde (mêmes axes que Point.X/Y).
@@ -76,6 +86,32 @@ type EquipmentPlacement struct {
 	// quand la pose n'a pas de poseur. POINTEUR, PAS float32 : un cap de zéro est une
 	// valeur, et omitempty l'effacerait (même piège qu'OriginMs).
 	H *float32 `json:"h,omitempty"`
+	// Origin est l'ORIGINE MESURÉE de la pose. Identifiant STABLE du document (même règle
+	// que Family et NeutralDeath.Kind) :
+	//
+	//	deployed  l'objet a été créé EN COURS DE VIE du poseur : il l'a déployé. C'est la
+	//	          seule origine qui décrit un geste, donc la seule que le rendu dessine.
+	//	dropped   l'objet a été créé à l'instant ET à l'endroit où la vie du poseur
+	//	          S'ACHÈVE : ce sont les objets qu'il PORTAIT, relâchés. Une mort en Halo
+	//	          libère les grenades et l'équipement du joueur, et c'est ce que la mesure
+	//	          voit — pas une pose sur la carte.
+	//	unknown   aucun poseur mesuré (aucun bipède contemporain à moins de 3 m). L'origine
+	//	          n'est pas établie, et elle ne se devine pas.
+	//
+	// CE CHAMP EXISTE PARCE QUE `equipmentPlacements` N'EST PAS CE QUE SON NOM DIT : sur les
+	// 11 films calibrés, 3 242 des 3 661 poses à poseur mesuré (88,6 %) naissent dans les
+	// 2 frames qui suivent le dernier point de leur poseur. Dessiner un arc de mur à ces
+	// positions dessinerait un mur là où personne n'en a déployé.
+	//
+	// OPTIONNEL, ET CE N'EST PAS UNE FAIBLESSE DU CONTRAT — C'EST LA VÉRITÉ SUR LE PARC.
+	// Les artefacts antérieurs au schéma 10 portent des poses SANS origine (ils sont encore sur
+	// disque et en production jusqu'à la re-cuisson complète). Déclarer le champ REQUIS aurait
+	// fait promettre au contrat une clé que ces artefacts n'ont pas. Le builder, lui, le
+	// renseigne TOUJOURS — jamais la chaîne vide — donc un artefact de schéma 10 le porte
+	// systématiquement. **Absent = origine non mesurée : le client lit `unknown`, JAMAIS
+	// `deployed`.** Un repli sur `deployed` ferait dessiner, sur tout le parc non re-cuit,
+	// exactement le mur fantôme que ce champ existe pour supprimer.
+	Origin string `json:"origin,omitempty"`
 }
 
 // EquipmentPlacementCoverage dit ce que le calque a lu et ce qu'il en a publié.
@@ -105,10 +141,126 @@ type EquipmentPlacementCoverage struct {
 	WithHeading int `json:"withHeading"`
 	// ByFamily compte les poses par famille — le détail que `Named` résume.
 	ByFamily map[string]int `json:"byFamily,omitempty"`
+	// Deployed / Dropped / Unknown : les poses par ORIGINE MESURÉE (schéma 10, cf.
+	// EquipmentPlacement.Origin). Les trois sont publiés, et l'invariant qui les rend
+	// vérifiables est testé : `Deployed + Dropped + Unknown == Placements`, exactement.
+	//
+	// POURQUOI LES TROIS ET PAS SEULEMENT `Deployed` : c'est le seul endroit qui dit ce que
+	// le rendu ÉCARTE. Publier « 120 poses déployées » sans les 91 lâchers et les 11 sans
+	// poseur laisserait lire 120 comme un total, alors que le mur en porte 222.
+	Deployed int `json:"deployed"`
+	Dropped  int `json:"dropped"`
+	Unknown  int `json:"unknown"`
+	// ByFamilyOrigin est le CROISEMENT famille x origine, clé `"<famille>/<origine>"` — la
+	// table que le lot de rendu doit voir avant de dessiner. Une clé composée plutôt qu'une
+	// carte de cartes : le contrat reste `additionalProperties: integer`, et la lecture reste
+	// une seule indirection côté client.
+	ByFamilyOrigin map[string]int `json:"byFamilyOrigin,omitempty"`
 }
 
 // equipmentFamilyOther est la famille par défaut : un objet dont la nature n'est pas établie.
 const equipmentFamilyOther = "other"
+
+// Les trois ORIGINES publiées. Liste fermée, vocabulaire du document (cf.
+// EquipmentPlacement.Origin) : un client qui lit une quatrième valeur doit la traiter comme
+// inconnue, jamais la rapprocher d'une voisine.
+const (
+	// OriginDeployed : créé en cours de vie du poseur — le geste.
+	OriginDeployed = "deployed"
+	// OriginDropped : créé à la fin de la vie du poseur — les objets qu'il portait.
+	OriginDropped = "dropped"
+	// OriginUnknown : aucun poseur mesuré.
+	OriginUnknown = "unknown"
+)
+
+// originDropWindowUS est l'écart MAXIMAL entre la création de l'objet et le dernier point de
+// position de son poseur pour que la pose soit un LÂCHER. 200 ms, c'est-à-dire deux frames de
+// la grille du document — le seuil du plan, écrit avant la mesure.
+//
+// LA MESURE LE VALIDE PAR SES DEUX CÔTÉS, et c'est ce qui le rend autre chose qu'un réglage.
+// Les lâchers tombent à 20-40 ms du dernier point (médiane par identifiant : 20,5 à 38,3 ms) ;
+// les déploiements, eux, sont à 14 à 42 SECONDES de la fin de vie. Trois ordres de grandeur
+// séparent les deux populations : n'importe quel seuil entre 1 s et 10 s rendrait le même
+// classement, donc celui-ci ne se règle pas, il se constate.
+const originDropWindowUS = 200_000
+
+// originDropMaxDist est la distance MAXIMALE, en mètres, entre la pose et la dernière position
+// du poseur pour que la pose soit un LÂCHER. 1,5 m — le seuil du plan, écrit avant la mesure,
+// et là encore validé des deux côtés : les lâchers sont à 0,63 m de médiane, les déploiements
+// à 5,6 à 21,3 m. Un objet lâché tombe aux pieds de celui qui le portait.
+const originDropMaxDist = 1.5
+
+// equipLife est une vie de bipède : les positions d'un même slot sans trou majeur, réduites à
+// ce dont l'origine a besoin — quand elle finit, et où.
+type equipLife struct {
+	from, to uint64
+	// x, y, z est la DERNIÈRE position répliquée de la vie : là où le poseur s'arrête.
+	x, y, z float32
+}
+
+// equipmentLives découpe le nuage des bipèdes en vies par slot.
+//
+// LE SEUIL N'EST PAS INVENTÉ ICI : `lifeGapUS` (5 s) est celui de lives.go, très au-dessus du
+// pas de réplication (~16 ms) et bien en deçà du temps de réapparition mesuré (médiane 8,0 s).
+// Le découpage reproduit d'ailleurs le compte de lives.go sur le film de référence (105 vies
+// pour 99 slots) — un contrôle gratuit qu'un second découpage du même fait ne divergeait pas.
+//
+// `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromFilm).
+func equipmentLives(positions []filmdec.BipedPosition) map[uint32][]equipLife {
+	out := make(map[uint32][]equipLife)
+	for _, p := range positions {
+		if !p.HasWorld {
+			continue // sans bornes de carte, ce n'est pas une position
+		}
+		v := out[p.Slot]
+		if n := len(v); n > 0 && p.TimestampUS-v[n-1].to <= lifeGapUS {
+			v[n-1].to = p.TimestampUS
+			v[n-1].x, v[n-1].y, v[n-1].z = p.X, p.Y, p.Z
+			out[p.Slot] = v
+			continue
+		}
+		out[p.Slot] = append(v, equipLife{
+			from: p.TimestampUS, to: p.TimestampUS, x: p.X, y: p.Y, z: p.Z,
+		})
+	}
+	return out
+}
+
+// equipmentOrigin classe une pose : lâchée à la fin de la vie du poseur, ou déployée.
+//
+// LA VIE RETENUE EST CELLE QUI CONTIENT L'INSTANT DE LA POSE, à défaut la plus proche en
+// temps : écarter silencieusement une pose dont la vie ne couvre pas l'instant biaiserait la
+// mesure vers les cas faciles.
+func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
+	if len(lives) == 0 {
+		return OriginUnknown
+	}
+	best, bestGap := equipLife{}, ^uint64(0)
+	for _, v := range lives {
+		gap := uint64(0)
+		switch {
+		case p.T0US < v.from:
+			gap = v.from - p.T0US
+		case p.T0US > v.to:
+			gap = p.T0US - v.to
+		}
+		if gap == 0 { // la vie CONTIENT l'instant : aucune autre ne fera mieux
+			best = v
+			break
+		}
+		if gap < bestGap {
+			best, bestGap = v, gap
+		}
+	}
+	if equipTimeGap(p.T0US, best.to) > originDropWindowUS {
+		return OriginDeployed
+	}
+	dx, dy, dz := p.X-best.x, p.Y-best.y, p.Z-best.z
+	if math.Sqrt(float64(dx*dx+dy*dy+dz*dz)) >= originDropMaxDist {
+		return OriginDeployed
+	}
+	return OriginDropped
+}
 
 // decodeFilmPlacements décode les poses du film et JOURNALISE ce qu'il en est.
 //
@@ -151,7 +303,8 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 	slog.Info("rejeu : poses d'equipement",
 		"calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
 		"nommees", c.Named, "autres", c.Other,
-		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading)
+		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading,
+		"deployees", c.Deployed, "lachees", c.Dropped, "origineInconnue", c.Unknown)
 }
 
 // buildEquipmentPlacements assemble les poses : famille par le manifeste, poseur par
@@ -164,11 +317,12 @@ func buildEquipmentPlacements(
 	positions []filmdec.BipedPosition, clock replayClock,
 ) ([]EquipmentPlacement, *EquipmentPlacementCoverage) {
 	cov := &EquipmentPlacementCoverage{
-		Calibrated: st.Calibration.Widths.Valid(),
-		Lives:      st.Lives,
-		Anchors:    st.Anchors,
-		Confirmed:  st.Confirmed,
-		ByFamily:   map[string]int{},
+		Calibrated:     st.Calibration.Widths.Valid(),
+		Lives:          st.Lives,
+		Anchors:        st.Anchors,
+		Confirmed:      st.Confirmed,
+		ByFamily:       map[string]int{},
+		ByFamilyOrigin: map[string]int{},
 	}
 	if cov.Calibrated {
 		cov.Widths = st.Calibration.Widths.String()
@@ -176,6 +330,7 @@ func buildEquipmentPlacements(
 	if len(raw) == 0 || clock.step == 0 {
 		return nil, cov
 	}
+	lives := equipmentLives(positions)
 	out := make([]EquipmentPlacement, 0, len(raw))
 	for _, p := range raw {
 		t0 := frameOf(p.T0US, clock.origin, clock.step)
@@ -189,12 +344,14 @@ func buildEquipmentPlacements(
 			Family: clock.families[p.GlobalID],
 			ID:     fmt.Sprintf("0x%08x", p.GlobalID),
 			Owner:  -1,
+			Origin: OriginUnknown,
 		}
 		if pl.Family == "" {
 			pl.Family = equipmentFamilyOther
 		}
 		if slot, h, ok := equipmentOwner(positions, p); ok {
 			pl.Owner, pl.H = int(slot), h
+			pl.Origin = equipmentOrigin(lives[slot], p)
 		}
 		out = append(out, pl)
 	}
@@ -230,6 +387,7 @@ func tallyEquipmentPlacements(out []EquipmentPlacement, cov *EquipmentPlacementC
 	cov.Placements = len(out)
 	for _, p := range out {
 		cov.ByFamily[p.Family]++
+		cov.ByFamilyOrigin[p.Family+"/"+p.Origin]++
 		if p.Family == equipmentFamilyOther {
 			cov.Other++
 		} else {
@@ -240,6 +398,14 @@ func tallyEquipmentPlacements(out []EquipmentPlacement, cov *EquipmentPlacementC
 		}
 		if p.H != nil {
 			cov.WithHeading++
+		}
+		switch p.Origin {
+		case OriginDeployed:
+			cov.Deployed++
+		case OriginDropped:
+			cov.Dropped++
+		default:
+			cov.Unknown++
 		}
 	}
 }

@@ -11426,6 +11426,8 @@ components:
           type: number
         id:
           type: string
+        origin:
+          type: string
         owner:
           format: int64
           type: integer
@@ -11464,9 +11466,20 @@ components:
             format: int64
             type: integer
           type: object
+        byFamilyOrigin:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
         calibrated:
           type: boolean
         confirmed:
+          format: int64
+          type: integer
+        deployed:
+          format: int64
+          type: integer
+        dropped:
           format: int64
           type: integer
         lives:
@@ -11479,6 +11492,9 @@ components:
           format: int64
           type: integer
         placements:
+          format: int64
+          type: integer
+        unknown:
           format: int64
           type: integer
         widths:
@@ -11499,6 +11515,9 @@ components:
         - other
         - withOwner
         - withHeading
+        - deployed
+        - dropped
+        - unknown
       type: object
     ExplorerBriefing:
       additionalProperties: false

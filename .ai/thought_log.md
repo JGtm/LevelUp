@@ -1,3 +1,54 @@
+## [2026-08-18] Rejeu 2D — l'origine d'une pose se lit a la FIN de la vie du poseur : `equipmentPlacements` est, a 88,6 %, ce qu'un mort laisse tomber — Complete
+
+**Statut** : Complete (branche `feat/v75`, phase G du plan
+`.ai/V7.5/replay2d/PLAN_ORIGINE_POSES_ET_FAMILLES.md`). Phase W (web) = lot separe.
+
+**Decision technique.** Le plan cherchait a separer, par mesure, la DOTATION AU SPAWN des
+objets DEPLOYES dans `equipmentPlacements` — critere ecrit avant mesure : creation dans les
+2 frames et les 1,5 m du DEBUT de la vie du poseur. **Le critere est REFUTE et la mesure donne
+l'autre bout de la vie.** Sur les 11 films calibres (4 250 poses, 3 661 a poseur mesure), la
+part de poses nees pres du DEBUT de vie vaut 0,1 % (4 poses) ; pres de la FIN, 88,6 %
+(3 242). Les entrees de `equipmentPlacements` sont, en majorite, les objets que le joueur
+PORTAIT, relaches quand il MEURT — pas des objets recus au spawn, et pas des poses sur la
+carte. Le groupe simultane que le lot precedent avait vu au golden (deux grenades identiques a
+2 cm plus une capacite, meme poseur) etait donc bien reel et mal interprete. Vocabulaire
+publie en consequence : `origin` = `deployed` / `dropped` / `unknown` — `spawn` n'est pas
+publie, il est vide. Les DEUX seuils du plan (2 frames, 1,5 m) sont conserves tels quels ; seul
+l'AXE a change, et il a change parce que la mesure l'a dit.
+
+**Resultats observes.** Temoin interne, memes poses et meme methode : distance a la position de
+DEBUT de vie 27,03 m, a celle de FIN 0,57 m (facteur 47,5). Controle qui valide la mesure — la
+methode SAIT rendre zero : les PANNEAUX du mur rendent 0 lacher sur 48 (`0x528fce46`) et 1 sur
+43 (`0x686b40c9`), soit 97,9 % et 97,7 % de deploiements, la ou les APPAREILS du meme mur sont
+a 13,0 % (`0x8e2dc574`) et 29,4 % (`0x2974c233`). 97,7 % d'un cote, 29,4 % de l'autre, rien
+entre les deux. Reponse aux deux questions du lot : l'appareil du mur et le capteur
+`0x72199cba` (50 lachers sur 60) sont PORTES, donc **l'arc du mur se dessine sur les
+panneaux**. Troisieme lecture independante du meme couple, apres la chaine des tags
+(`sofa_parent`) et la co-occurrence (0/46). Les seuils ne se reglent pas : lachers a 20-40 ms
+et 0,63 m, deploiements a 14-42 s et 5,6-21,3 m. Predictions du plan : 1 refutee (grenades et
+capacites ~100 % spawn — elles sont a 95 % `dropped`), 1 tenue pour les seuls panneaux (la
+prediction confondait la FAMILLE avec l'IDENTIFIANT), 1 refutee sur n = 2 (les power-ups ont un
+poseur et sont `dropped` ; le corpus n'en porte qu'une pose chacun). Publie en schema 10 :
+`origin` par pose plus `coverage.placements.{deployed,dropped,unknown,byFamilyOrigin}`,
+invariant `deployed + dropped + unknown == placements` teste. Manifeste : `kind`
+(`carried` / `deployed`) sur les 21 lignes, invariant fatal BILATERAL avec `sofa_parent`.
+Gates : `go build`/`vet` 0, paquets `replay` + `mappings` + `replaylabels` + `contracttest`
+verts, golangci-lint 0 issue, contrat regenere (`make openapi-gen` + `make generate-types`),
+golden re-genere et EXPLIQUE, 3 temoins re-cuits.
+
+**Effet de bord acquis, et il leve deux lignes du registre.** Les noms de carte des 11 films
+(necessaires aux METRES) viennent du SNAPSHOT PARQUET du registre (`read_parquet` en memoire),
+donc sans seconde ouverture de la DB que le serveur tient RW : aucune violation des ADR
+0013/0016. Les 11 films sont desormais classes par mode, **six ne sont pas Fiesta**, et le mode
+de `06dfe6d9` — « non documente » depuis le lot precedent — est BTB:Fiesta CTF. Les predicats
+declares injouables faute de registre le sont a nouveau ; ils n'ont PAS ete joues (hors
+perimetre), et le registre le consigne avec sa voie d'acces.
+
+**Prochaine etape.** Phase W (worktree frere) : `PLACEMENT_RENDER` etendue aux familles
+nommees et filtre `origin === 'deployed'` — il retire 88,6 % des poses. Piege a lui transmettre :
+un mur deploye produit DEUX poses `deployed` (l'appareil qui vole ET ses panneaux), donc l'arc
+va sur les panneaux seuls, sinon deux arcs pour un mur.
+
 ## [2026-08-18] Rejeu 2D — le capteur de menaces passe aux chiffres officiels et pinge — Complete
 
 **Statut** : Complete (branche `wt/capteur-officiel`, `c0ff4ae39`, fusionnee dans `feat/v75`

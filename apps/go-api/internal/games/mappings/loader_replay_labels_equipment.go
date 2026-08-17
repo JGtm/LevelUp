@@ -17,13 +17,58 @@ import (
 )
 
 // equipmentObjectEntry — une ligne de [[equipment_objects]] : l'identifiant du tag, la famille
-// de pose qu'il designe, l'identifiant de chaine du jeu et la PROVENANCE du nom.
+// de pose qu'il designe, l'identifiant de chaine du jeu, la PROVENANCE du nom et la NATURE
+// mesuree de l'objet.
 type equipmentObjectEntry struct {
 	ID         string `toml:"id"`
 	Family     string `toml:"family"`
 	NameID     string `toml:"name_id"`
 	Provenance string `toml:"provenance"`
+	Kind       string `toml:"kind"`
 }
+
+// equipmentKinds — LA NATURE MESUREE de l'objet. Liste FERMEE, ajoutee le 2026-08-18
+// (PLAN_ORIGINE_POSES_ET_FAMILLES, G.3).
+//
+// POURQUOI ELLE EXISTE A COTE DE LA FAMILLE, alors que chaque pose porte deja son `origin`
+// mesure. La famille dit CE QUE l'objet est (un mur, un capteur) ; l'origine dit ce qu'une
+// POSE PARTICULIERE est (un lacher, un deploiement). Ni l'une ni l'autre ne dit si un
+// identifiant vaut la peine d'etre dessine — et c'est la question que le rendu pose. La
+// mesure y repond identifiant par identifiant, et l'ecart est franc : les PANNEAUX du mur
+// sont deployes dans 97,7 et 97,9 % de leurs poses (0 lacher sur 48 pour `0x528fce46`),
+// quand l'APPAREIL du meme mur ne l'est que dans 13,0 a 29,4 % — il est porte, donc lache.
+//
+// LA NATURE N'EST PAS UNE OPINION : `verifieProvenanceEquipement` exige que `deployed` soit
+// justifie par la provenance `sofa_parent`, la seule que la structure du jeu rattache a une
+// piece ENGENDREE par un equipement. Les deux lectures — la chaine des tags et la mesure des
+// poses — designent le meme couple, et l'invariant les tient ensemble.
+var equipmentKinds = map[string]bool{
+	// PORTE par le joueur : ses poses sont majoritairement des LACHERS a la mort. Les
+	// appareils d'equipement, les grenades, les bonus, la balise.
+	equipKindCarried: true,
+	// N'EXISTE QU'UNE FOIS DEPLOYE : la piece qu'un equipement engendre (panneaux du mur).
+	equipKindDeployed: true,
+}
+
+// Les valeurs sur lesquelles le CODE branche — famille, provenance, nature. Constantes parce
+// qu'elles vivent a la fois dans la liste fermee, dans l'invariant et dans ses tests : trois
+// copies d'un meme litteral, c'est la limite que le depot fixe (regle des <= 2 copies).
+const (
+	// equipFamilyOther : la famille des objets dont la nature n'est pas etablie.
+	equipFamilyOther = "other"
+	// equipProvSofaStringID : l'identifiant de chaine du `sofa` a ete casse.
+	equipProvSofaStringID = "sofa_string_id"
+	// equipProvSofaAnonyme : rattache a un `sofa` dont le `string_id` resiste au dictionnaire.
+	equipProvSofaAnonyme = "sofa_anonyme"
+	// equipProvAucune : aucun rattachement structurel trouve.
+	equipProvAucune = "aucune"
+	// equipProvSofaParent : engendre par l'`eqip` d'un `sofa` nomme — LA provenance qui
+	// autorise `kind = deployed`, et la seule.
+	equipProvSofaParent = "sofa_parent"
+	// equipKindCarried / equipKindDeployed : cf. equipmentKinds.
+	equipKindCarried  = "carried"
+	equipKindDeployed = "deployed"
+)
 
 // equipmentFamilies — les FAMILLES DE POSE admises. Liste FERMEE : une famille ne s'ajoute
 // qu'avec au moins un identifiant que la STRUCTURE DU JEU y rattache (cf. equipmentProvenances).
@@ -45,7 +90,7 @@ var equipmentFamilies = map[string]bool{
 	"grenade_frag": true, "grenade_plasma": true, "grenade_dynamo": true,
 	"grenade_spike": true,
 	// Pose mesuree, nature non etablie.
-	"other": true,
+	equipFamilyOther: true,
 }
 
 // equipmentProvenances — COMMENT le nom a ete obtenu. Liste FERMEE, et l'invariant qui la rend
@@ -53,21 +98,21 @@ var equipmentFamilies = map[string]bool{
 // / `aucune` EXIGENT la famille `other`. Sans cela, la table redeviendrait une liste d'opinions.
 var equipmentProvenances = map[string]bool{
 	// L'identifiant de chaine du `sofa` a ete casse : le nom est celui du jeu.
-	"sofa_string_id": true,
+	equipProvSofaStringID: true,
 	// L'identifiant de chaine du `sofa` n'est pas casse, mais l'`eqip` partage son MODELE
 	// (`hlmt`) avec un `eqip` dont le `sofa` est nomme : c'est le meme objet, autre reglage.
 	"sofa_modele": true,
 	// L'`eqip` est ENGENDRE par un autre `eqip` (dependance `eqip -> eqip`) qui appartient a un
 	// `sofa` nomme : c'est une piece deployee par l'equipement (les panneaux d'un mur).
-	"sofa_parent": true,
+	equipProvSofaParent: true,
 	// L'`eqip` est une entree de la liste des grenades du jeu (`gggl`), dont l'ordre EST le rang
 	// de type de grenade.
 	"gggl_entree": true,
 	// Rattache a un `sofa` dont l'identifiant de chaine resiste au dictionnaire, sans modele
 	// commun avec un `sofa` nomme. La pose est mesuree, la nature ne l'est pas.
-	"sofa_anonyme": true,
+	equipProvSofaAnonyme: true,
 	// Aucun rattachement structurel trouve.
-	"aucune": true,
+	equipProvAucune: true,
 }
 
 // parseEquipmentObjects valide la table des objets d'equipement poses.
@@ -119,12 +164,12 @@ func verifieProvenanceEquipement(path, raw, fam string, e equipmentObjectEntry) 
 		return fmt.Errorf("%s: provenance %q inconnue pour %q (admises : %s)",
 			path, prov, raw, clesTriees(equipmentProvenances))
 	}
-	echec := prov == "sofa_anonyme" || prov == "aucune"
-	if echec && fam != "other" {
+	echec := prov == equipProvSofaAnonyme || prov == equipProvAucune
+	if echec && fam != equipFamilyOther {
 		return fmt.Errorf("%s: %q porte la famille %q avec la provenance %q — une nature non"+
 			" etablie se publie `other`", path, raw, fam, prov)
 	}
-	if !echec && fam == "other" {
+	if !echec && fam == equipFamilyOther {
 		return fmt.Errorf("%s: %q porte la famille `other` avec la provenance %q — une chaine"+
 			" structurelle etablie doit nommer une famille", path, raw, prov)
 	}
@@ -133,9 +178,33 @@ func verifieProvenanceEquipement(path, raw, fam string, e equipmentObjectEntry) 
 			return fmt.Errorf("%s: name_id %q illisible pour %q (attendu : identifiant de chaine"+
 				" hexadecimal 32 bits, ex. \"0xedebd7b7\")", path, nid, raw)
 		}
-	} else if prov == "sofa_string_id" {
+	} else if prov == equipProvSofaStringID {
 		return fmt.Errorf("%s: %q declare la provenance `sofa_string_id` sans name_id —"+
 			" l'identifiant de chaine casse EST la piece", path, raw)
+	}
+	return verifieNatureEquipement(path, raw, prov, e)
+}
+
+// verifieNatureEquipement fait tenir ensemble la NATURE et la PROVENANCE.
+//
+// L'INVARIANT, ET CE QU'IL EMPECHE. `kind = deployed` dit « cet objet n'existe qu'une fois
+// deploye », et c'est ce qui autorise le rendu a le dessiner. Le declarer sur un identifiant
+// que la structure du jeu ne rattache pas comme une piece ENGENDREE (`sofa_parent`) ferait
+// dessiner un mur a l'endroit ou un joueur est mort en portant son appareil — exactement le
+// defaut que ce lot a mesure. La reciproque est verifiee aussi : un `sofa_parent` est deploye
+// par construction, et le declarer `carried` contredirait les deux lectures a la fois.
+func verifieNatureEquipement(path, raw, prov string, e equipmentObjectEntry) error {
+	kind := strings.TrimSpace(e.Kind)
+	if !equipmentKinds[kind] {
+		return fmt.Errorf("%s: nature %q inconnue pour %q (admises : %s) — chaque objet declare"+
+			" sa nature MESUREE, sans quoi le rendu ne sait pas s'il doit le dessiner",
+			path, kind, raw, clesTriees(equipmentKinds))
+	}
+	if (kind == equipKindDeployed) != (prov == equipProvSofaParent) {
+		return fmt.Errorf("%s: %q croise la nature %q avec la provenance %q — `deployed` exige"+
+			" `sofa_parent` (une piece ENGENDREE par un equipement) et reciproquement ;"+
+			" les deux lectures designent le meme couple, l'invariant les tient ensemble",
+			path, raw, kind, prov)
 	}
 	return nil
 }

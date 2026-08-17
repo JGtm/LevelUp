@@ -107,3 +107,46 @@ func TestLoadReplayLabels_EffetInconnuRefuse(t *testing.T) {
 		}
 	}
 }
+
+// objetEquipementTOML fabrique une section [[equipment_objects]] d'une seule ligne.
+func objetEquipementTOML(famille, provenance, kind string) string {
+	return fmt.Sprintf("[meta]\ntitle_slug=\"x\"\nschema_version=1\n"+
+		"[[equipment_objects]]\nid=\"0x528fce46\"\nfamily=%q\nname_id=\"0xedebd7b7\"\n"+
+		"provenance=%q\nkind=%q\n", famille, provenance, kind)
+}
+
+// TestLoadReplayLabels_NatureEquipement — L'INVARIANT `kind` x `provenance`, DANS LES DEUX
+// SENS, ET IL DOIT POUVOIR ETRE VU ROUGE.
+//
+// CE QU'IL PROTEGE, mesure a l'appui (PLAN_ORIGINE_POSES_ET_FAMILLES G.3) : `kind = deployed`
+// autorise le rendu a dessiner l'objet. Le declarer sur un identifiant que la structure du jeu
+// ne rattache pas comme une piece ENGENDREE (`sofa_parent`) ferait dessiner un mur a l'endroit
+// ou un joueur est mort en portant son appareil — l'appareil du mur n'est deploye que dans
+// 13,0 a 29,4 % de ses poses, quand les panneaux le sont dans 97,7 et 97,9 %.
+func TestLoadReplayLabels_NatureEquipement(t *testing.T) {
+	const famMur = "wall"
+	ok := []struct{ nom, famille, prov, kind string }{
+		{"panneaux deployes", famMur, equipProvSofaParent, equipKindDeployed},
+		{"appareil porte", famMur, equipProvSofaStringID, equipKindCarried},
+		{"grenade portee", "grenade_frag", "gggl_entree", equipKindCarried},
+	}
+	for _, c := range ok {
+		if _, err := LoadReplayLabelsFromBytes("t.toml",
+			[]byte(objetEquipementTOML(c.famille, c.prov, c.kind))); err != nil {
+			t.Errorf("%s : refuse alors qu'il est coherent : %v", c.nom, err)
+		}
+	}
+	ko := []struct{ nom, famille, prov, kind string }{
+		{"nature absente", famMur, equipProvSofaStringID, ""},
+		{"nature inconnue", famMur, equipProvSofaStringID, "dotation"},
+		// LES DEUX SENS : sans eux `kind` serait un commentaire.
+		{"deployed sans sofa_parent", famMur, equipProvSofaStringID, equipKindDeployed},
+		{"sofa_parent declare carried", famMur, equipProvSofaParent, equipKindCarried},
+	}
+	for _, c := range ko {
+		if _, err := LoadReplayLabelsFromBytes("t.toml",
+			[]byte(objetEquipementTOML(c.famille, c.prov, c.kind))); err == nil {
+			t.Errorf("%s : accepte alors qu'il doit etre refuse", c.nom)
+		}
+	}
+}
