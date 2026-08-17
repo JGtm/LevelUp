@@ -94,6 +94,10 @@ interface ReplayText {
    * NOMS des deux familles que le manifeste établit. Les clés de `placementFamily` sont les
    * identifiants STABLES publiés par le document (`family`) — une famille inconnue n'a pas
    * de libellé, et le calque ne dessine rien pour elle.
+   *
+   * `other` N'Y FIGURE PAS : c'est le défaut du serveur, dessiné en point neutre et nommé par
+   * `placementUnnamedLabel`. Le garde-rail `placementFamily.guard.test.ts` tient cette liste
+   * alignée sur `equipmentFamilies` (Go) et `PLACEMENT_RENDER` (calque).
    */
   layerPlacements: string
   layerPlacementsHint: string

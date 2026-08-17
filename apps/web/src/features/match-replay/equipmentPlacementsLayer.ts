@@ -69,6 +69,10 @@ export type PlacementKind = 'wall' | 'sensor' | 'unnamed'
  * LA TABLE PAR FAMILLE — l'unique porte d'entrée du rendu. Les clés sont les identifiants
  * STABLES publiés par le document (`family`, posés par le manifeste du titre), jamais des
  * libellés. Une famille hors table = aucun dessin, jamais celui d'une voisine.
+ *
+ * ELLE EST ÉNUMÉRÉE AILLEURS, et un garde-rail le vérifie : `equipmentFamilies` du valideur Go
+ * (`internal/games/mappings/loader_replay_labels.go`) et `placementFamily` de l'i18n doivent
+ * coïncider avec elle — cf. `placementFamily.guard.test.ts`, qui LIT le fichier Go.
  */
 export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind>> = {
   wall: 'wall',

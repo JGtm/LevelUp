@@ -85,6 +85,11 @@ type equipmentObjectEntry struct {
 // famille ne s'ajoute qu'apres une mesure qui la separe des autres (diagonale identifiant x
 // rang de capacite du poseur >= 85 %, temoin plat). `other` est le defaut de tout identifiant
 // hors table — un objet non prouve se publie sans nom, jamais sous le nom d'un voisin.
+//
+// CETTE LISTE EST ENUMEREE AILLEURS, et un garde-rail le verifie : `PLACEMENT_RENDER`
+// (apps/web/src/features/match-replay/equipmentPlacementsLayer.ts) et `placementFamily`
+// (i18n.ts) doivent coincider avec elle — cf. placementFamily.guard.test.ts, qui LIT ce
+// fichier. Ajouter une famille ici sans l'ajouter la-bas ne dessine RIEN, en silence.
 var equipmentFamilies = map[string]bool{
 	"wall": true, "sensor": true, "other": true,
 }
