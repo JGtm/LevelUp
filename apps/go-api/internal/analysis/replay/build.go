@@ -72,6 +72,14 @@ type Options struct {
 	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
+	// GroundWeapons : ce que le film rend sur les ARMES AU SOL — records de creation `ti=42`,
+	// recensement des images-cles, pistes de position (cf. ground_weapon_objects.go). Entree de
+	// DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
+	//
+	// LES TROIS LECTURES VOYAGENT ENSEMBLE, et il le faut : un recensement sans pistes ferait
+	// passer TOUTE apparition pour un objet apparu au repos, donc fabriquerait des socles a
+	// partir d'une lecture manquante. `Scanned` dit que les trois ont abouti.
+	GroundWeapons GroundWeaponScan
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -243,6 +251,10 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
+	// ARMES AU SOL : records de CREATION de l'archetype 42, recensement des images-cles et
+	// pistes de position, sur la MEME horloge (cf. ground_weapon_objects.go — decodage, journal
+	// et refus y vivent ensemble).
+	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -412,13 +424,20 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies})
 	logPlacementCoverage(doc.Coverage.Placements)
+	// Les SOCLES d'arme au sol : grappes d'apparitions mesurees sur le nuage NON decime (la
+	// datation d'une disparition se joue a la frame, la decimation perdrait le passage qui la
+	// borne). Le calque publie les socles du MATCH — aucun catalogue de carte, aucun ramasseur.
+	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons = buildWeaponPads(
+		opt.GroundWeapons, sorted,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	logGroundWeaponCoverage(doc.Coverage.GroundWeapons)
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,
 		"episodesCamo", doc.Coverage.Equipment.CamoEpisodes,
 		"viesSurbouclier", doc.Coverage.Equipment.OvershieldLives,
 		"episodesSurbouclier", doc.Coverage.Equipment.OvershieldEpisodes)
-	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots, opt.Labels)
+	doc.WeaponLabels = buildWeaponLabels(doc.Loadouts, doc.Shots, doc.WeaponPads, opt.Labels)
 	// La table weapon_key -> famille d'effet voyage telle quelle : les kills du feed sont
 	// keyés par weapon_key (résolution base), pas par identifiant d'arme film — sans elle,
 	// aucun effet de mort n'est joignable côté client.

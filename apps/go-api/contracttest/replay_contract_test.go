@@ -84,6 +84,11 @@ var replaySchemas = []struct {
 	{"GrappleCoverage", replay.GrappleCoverage{}},
 	{"EquipmentPlacement", replay.EquipmentPlacement{}},
 	{"EquipmentPlacementCoverage", replay.EquipmentPlacementCoverage{}},
+	{"WeaponPad", replay.WeaponPad{}},
+	{"PadPresence", replay.PadPresence{}},
+	{"PadCycle", replay.PadCycle{}},
+	{"PadPickup", replay.PadPickup{}},
+	{"GroundWeaponCoverage", replay.GroundWeaponCoverage{}},
 	{"AmmoSlot", replay.AmmoSlot{}},
 	{"Surface", replay.Surface{}},
 	{"MapObject", replay.MapObject{}},
@@ -167,9 +172,29 @@ var replaySchemas = []struct {
 //	                      absence d equipement et zero pose par calibration refusee seraient
 //	                      indistinguables.
 //
-// Les sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	31 -> 33  2026-08-17  DEUX champs, un seul calque (plan PLAN_ARMES_AU_SOL_2E_LECTURE,
+//	                      phase 3) : les SOCLES D ARME du match.
+//	                      - `weaponPads` : position monde du socle, famille d arme (meme
+//	                        ecriture que `Loadout.W`, donc meme cle dans `weaponLabels`),
+//	                        instants d apparition, intervalles de presence BORNES par le
+//	                        recensement des images-cles, et cycle de reapparition SEULEMENT s il
+//	                        est etabli. Source : le record de CREATION de l archetype 42, dont
+//	                        le mot MPP de 32 bits est l identite de l arme — 282 atterrissages
+//	                        exacts sur 289 pour l oracle de position, 937 accords sur 947 pour
+//	                        l identite croisee avec les images-cles.
+//	                      - `padPickups` : les occupations qui se sont ACHEVEES, publiees comme
+//	                        un INTERVALLE et non un instant (le film ne porte aucun evenement de
+//	                        ramassage, le recensement est espace de ~20 s). Le champ `xuid`
+//	                        existe et vaut `null` PARTOUT : l oracle des loadouts donne 88,1 %
+//	                        par slot de vie et 79,7 % par joueur, contre >= 90 % exige.
+//	                      `Coverage` gagne son bloc `groundWeapons` : un film sans socle, un film
+//	                      dont toutes les armes sont des lachers et un film qu on n a pas su
+//	                      balayer rendent tous trois zero socle, et seuls ces compteurs les
+//	                      distinguent.
+//
+// Les huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 31
+const wantReplayDocumentFields = 33
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

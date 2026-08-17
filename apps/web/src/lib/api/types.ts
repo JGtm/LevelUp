@@ -2644,6 +2644,17 @@ export type ReplayGrappleLine = components['schemas']['GrappleLine']
 // [0,360[ — la même convention que `Point.h`, et JAMAIS l'orientation de l'objet, que le
 // film ne porte pas. Cf. equipmentPlacementsLayer.ts pour le rendu.
 export type ReplayEquipmentPlacement = components['schemas']['EquipmentPlacement']
+// Un SOCLE D'ARME (schéma 11) : la position où une arme de la même famille réapparaît, ses
+// apparitions, ses intervalles de présence et son cycle de réapparition QUAND IL EST ÉTABLI
+// (`cycle` vaut `null` sinon — jamais un chiffre instable). Donnée de MATCH et non de carte :
+// le socle appartient à la carte, l'arme qui y apparaît appartient au match.
+export type ReplayWeaponPad = components['schemas']['WeaponPad']
+export type ReplayPadPresence = components['schemas']['PadPresence']
+export type ReplayPadCycle = components['schemas']['PadCycle']
+// Une occupation de socle ACHEVÉE (schéma 11) : le socle s'est vidé quelque part dans
+// [tLow, tHigh]. C'est un INTERVALLE et non un instant, et `xuid` vaut TOUJOURS `null` — le
+// ramasseur n'est pas publié (oracle mesuré à 79,7 %, contre 90 % exigé).
+export type ReplayPadPickup = components['schemas']['PadPickup']
 export type ReplayDocument = components['schemas']['ReplayDocument']
 
 // Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le

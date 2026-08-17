@@ -10696,6 +10696,8 @@ components:
           $ref: '#/components/schemas/GrappleCoverage'
         grenades:
           $ref: '#/components/schemas/LayerCoverage'
+        groundWeapons:
+          $ref: '#/components/schemas/GroundWeaponCoverage'
         objectives:
           $ref: '#/components/schemas/LayerCoverage'
         placements:
@@ -13021,6 +13023,74 @@ components:
         - "y"
         - rank
         - s
+      type: object
+    GroundWeaponCoverage:
+      additionalProperties: false
+      properties:
+        accepted:
+          format: int64
+          type: integer
+        anchors:
+          format: int64
+          type: integer
+        atRest:
+          format: int64
+          type: integer
+        clusters:
+          format: int64
+          type: integer
+        cycles:
+          format: int64
+          type: integer
+        dated:
+          format: int64
+          type: integer
+        dropped:
+          format: int64
+          type: integer
+        kept:
+          format: int64
+          type: integer
+        never:
+          format: int64
+          type: integer
+        occupancies:
+          format: int64
+          type: integer
+        pads:
+          format: int64
+          type: integer
+        rejected:
+          format: int64
+          type: integer
+        scanned:
+          type: boolean
+        slots:
+          format: int64
+          type: integer
+        spawned:
+          format: int64
+          type: integer
+        unknown:
+          format: int64
+          type: integer
+      required:
+        - scanned
+        - slots
+        - anchors
+        - accepted
+        - kept
+        - rejected
+        - dropped
+        - spawned
+        - atRest
+        - clusters
+        - pads
+        - occupancies
+        - dated
+        - unknown
+        - never
+        - cycles
       type: object
     Group:
       additionalProperties: false
@@ -17897,6 +17967,66 @@ components:
         - ties
         - dnf
       type: object
+    PadCycle:
+      additionalProperties: false
+      properties:
+        gaps:
+          format: int64
+          type: integer
+        medianS:
+          format: float
+          type: number
+        p10S:
+          format: float
+          type: number
+        p90S:
+          format: float
+          type: number
+      required:
+        - medianS
+        - p10S
+        - p90S
+        - gaps
+      type: object
+    PadPickup:
+      additionalProperties: false
+      properties:
+        pad:
+          format: int64
+          type: integer
+        tHigh:
+          format: int64
+          type: integer
+        tLow:
+          format: int64
+          type: integer
+        xuid:
+          type:
+            - string
+            - "null"
+      required:
+        - pad
+        - tLow
+        - tHigh
+        - xuid
+      type: object
+    PadPresence:
+      additionalProperties: false
+      properties:
+        t0:
+          format: int64
+          type: integer
+        tHigh:
+          format: int64
+          type: integer
+        tLow:
+          format: int64
+          type: integer
+      required:
+        - t0
+        - tLow
+        - tHigh
+      type: object
     PaginatedMatchHistoryResponse:
       properties:
         freshness:
@@ -19761,6 +19891,12 @@ components:
         originMs:
           format: int64
           type: integer
+        padPickups:
+          items:
+            $ref: '#/components/schemas/PadPickup'
+          type:
+            - array
+            - "null"
         projectiles:
           items:
             $ref: '#/components/schemas/Projectile'
@@ -19802,6 +19938,12 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/WeaponLabel'
           type: object
+        weaponPads:
+          items:
+            $ref: '#/components/schemas/WeaponPad'
+          type:
+            - array
+            - "null"
       required:
         - schemaVersion
         - matchId
@@ -24462,6 +24604,42 @@ components:
       required:
         - en
         - fr
+      type: object
+    WeaponPad:
+      additionalProperties: false
+      properties:
+        cycle:
+          $ref: '#/components/schemas/PadCycle'
+        presence:
+          items:
+            $ref: '#/components/schemas/PadPresence'
+          type:
+            - array
+            - "null"
+        spawns:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        weapon:
+          type: string
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - x
+        - "y"
+        - weapon
+        - spawns
+        - presence
       type: object
     WinLossPoint:
       additionalProperties: false
