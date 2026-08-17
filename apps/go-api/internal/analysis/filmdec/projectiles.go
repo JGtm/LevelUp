@@ -108,9 +108,6 @@ func ScanFilmProjectiles(dir string, wr *Vec3Range) ([]ProjectileTrack, error) {
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
-	if wr == nil {
-		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
-	}
 	n := CountFilmChunks(dir)
 	if n == 0 {
 		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
@@ -119,6 +116,26 @@ func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]Projectil
 	if len(band) == 0 {
 		return nil, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
 			typeIndex, dir)
+	}
+	return ScanFilmWorldObjectsForBand(dir, wr, band)
+}
+
+// ScanFilmWorldObjectsForBand décode les trajectoires d'une BANDE DE SLOTS déjà relevée.
+//
+// LA BANDE EST UN PARAMÈTRE parce qu'elle se lit dans les images-clés, et qu'un appelant qui a
+// déjà marché ces images-clés (cf. `ScanFilmGroundWeaponKeyframes`) n'a pas à les remarcher pour
+// la même donnée. Le chemin par défaut reste `ScanFilmWorldObjects`, qui la relève lui-même.
+//
+// HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+func ScanFilmWorldObjectsForBand(
+	dir string, wr *Vec3Range, band map[uint32]bool,
+) ([]ProjectileTrack, error) {
+	if wr == nil {
+		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
+	}
+	n := CountFilmChunks(dir)
+	if n == 0 {
+		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
 	type key struct{ slot, gen uint32 }
 	lives := map[key][]ProjectileSample{}
@@ -400,6 +417,16 @@ func worldObjectSlotBand(dir string, n int, typeIndex int) map[uint32]bool {
 			}
 		}
 	}
+	return slotBandExcluding(seen, others)
+}
+
+// slotBandExcluding applique la règle ci-dessus à des ensembles DÉJÀ RELEVÉS : combler la plage
+// de l'archétype, puis retirer tout slot vu porter un autre archétype.
+//
+// ELLE EST EXTRAITE PARCE QU'UN SECOND APPELANT LA LIT (`ScanFilmGroundWeaponKeyframes`, qui
+// relève bande et recensement dans la MÊME marche d'images-clés). Deux copies d'une règle de
+// bande divergeraient au premier correctif — et celle-ci a déjà été corrigée une fois.
+func slotBandExcluding(seen, others map[uint32]bool) map[uint32]bool {
 	band := fillSlotBand(seen)
 	for s := range others {
 		delete(band, s)

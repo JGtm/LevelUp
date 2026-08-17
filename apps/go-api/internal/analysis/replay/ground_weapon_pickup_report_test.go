@@ -258,7 +258,7 @@ func gwPickupReport22Coverage(t *testing.T, f *gwPickupFilm) {
 func gwPickupAliveAt(pts []filmdec.BipedPosition, atUS uint64) bool {
 	i := sort.Search(len(pts), func(i int) bool { return pts[i].TimestampUS >= atUS })
 	for _, j := range []int{i - 1, i} {
-		if j >= 0 && j < len(pts) && gwPickupTimeGap(pts[j].TimestampUS, atUS) <= gwPickupWitnessTolUS {
+		if j >= 0 && j < len(pts) && equipTimeGap(pts[j].TimestampUS, atUS) <= gwPickupWitnessTolUS {
 			return true
 		}
 	}
@@ -384,25 +384,6 @@ func gwPickupPoolCycle(t *testing.T, f *gwPickupFilm, pool []float64, byFamily m
 			f.film, f.mapName, k, len(byFamily[k]), g.MedianS, g.P10S, g.P90S, g.SDS,
 			g.Established)
 	}
-}
-
-// gwPickupPadGaps rend les ecarts RAMASSAGE -> reapparition suivante d'un socle, et le nombre
-// de reapparitions dont le ramassage precedent n'est pas date (elles ne mesurent rien et ne
-// sont PAS remplacees par l'ecart d'apparition — ce serait mesurer l'item 1.3 sous un autre nom).
-func gwPickupPadGaps(objs []gwPickupObject, members []int) ([]float64, int) {
-	ms := append([]int(nil), members...)
-	sort.Slice(ms, func(i, j int) bool { return objs[ms[i]].Appar.TUS < objs[ms[j]].Appar.TUS })
-	var gaps []float64
-	manques := 0
-	for i := 0; i+1 < len(ms); i++ {
-		prev, next := objs[ms[i]], objs[ms[i+1]]
-		if prev.Status != gwPickupStatusDated || prev.Picker.TUS > next.Appar.TUS {
-			manques++
-			continue
-		}
-		gaps = append(gaps, float64(next.Appar.TUS-prev.Picker.TUS)/1e6)
-	}
-	return gaps, manques
 }
 
 // gwPickupPadState publie l'etat d'un socle DANS LE TEMPS : une ligne par occupation, de

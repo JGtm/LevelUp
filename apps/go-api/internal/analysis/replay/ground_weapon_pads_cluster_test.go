@@ -1,228 +1,23 @@
 package replay
 
-// ground_weapon_pads_cluster_test.go — LA REGLE DE GRAPPE ET LA REGLE DE CYCLE, isolees de
-// tout film pour qu'elles soient TESTEES et non seulement executees.
+// ground_weapon_pads_cluster_test.go — LES TESTS DE LA REGLE DE GRAPPE ET DE LA REGLE DE CYCLE,
+// isoles de tout film pour qu'elles soient TESTEES et non seulement executees.
 //
-// POURQUOI ELLES SONT ICI ET PAS DANS L'INSTRUMENT. Les deux instruments de la phase 1 s'en
-// servent — celui qui lit UN film (`ground_weapon_pads_research_test.go`) et celui qui compare
-// DEUX films de la meme carte (`ground_weapon_pads_aggregate_test.go`). Deux copies d'une regle
-// de seuil re-divergent au premier correctif ; une seule, testee sans garde d'environnement,
-// tombe sous le gate ordinaire du depot.
+// LA REGLE ELLE-MEME EST EN PRODUCTION depuis la phase 3 du plan (`ground_weapon_rules.go`) :
+// c'est elle que l'artefact de rejeu publie, et c'est elle que ces tests et les instruments sous
+// garde appellent. Une seconde copie de la regle de grappe ou du verdict de stabilite aurait
+// diverge au premier correctif — le critere de catalogue du plan (item 1.4) a tranche entretemps
+// (PAR MATCH, aucun catalogue versionne), et c'est ce que le document publie.
 //
-// CE N'EST PAS DU CODE DE PRODUCTION, et ca ne doit pas le devenir tant que le critere de
-// catalogue du plan (item 1.4) n'a pas tranche : un socle publie dans le contrat de rejeu est
-// une donnee de REFERENCE, et une donnee de reference qui n'est pas reproductible d'un film a
-// l'autre n'a rien a faire dans un catalogue versionne.
+// CE QUI RESTE ICI : les tests sans garde (ils tombent sous le gate ordinaire du depot) et les
+// deux RESUMES de mesure (`gwPadsSpread`, `gwPadsCycleSummary`), qui n'ecrivent que des lignes
+// de journal et n'ont rien a faire en production.
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"testing"
 )
-
-// gwPadCluster est une GRAPPE : des apparitions de meme nature et de meme famille, a moins de
-// `gwPadRadiusM` les unes des autres. Sa position est le CENTROIDE de ses apparitions.
-type gwPadCluster struct {
-	Kind, Family string
-	X, Y, Z      float32
-	// TS porte les instants des apparitions, TRIES. C'est la matiere du cycle.
-	TS []uint64
-}
-
-// gwPadCycle est le cycle mesure d'une grappe. `Established` est faux quand la mesure refuse de
-// conclure — jamais un chiffre instable publie comme s'il etait stable (decision 3 du plan).
-type gwPadCycle struct {
-	MedianS, P10S, P90S, SDS float64
-	Gaps                     int
-	Established              bool
-}
-
-// gwPadsCluster agglomere les apparitions par (nature, famille) et proximite.
-//
-// LA REGLE EST « LE PLUS PROCHE DANS LE RAYON », pas « le premier trouve » : sur une carte
-// d'arene deux socles voisins peuvent etre a deux metres l'un de l'autre, et le premier trouve
-// les fusionnerait selon l'ordre d'arrivee. L'ordre d'entree est rendu TOTAL avant la marche
-// (instant, puis position) pour que deux executions rendent les memes grappes.
-func gwPadsCluster(app []gwPadApparition, radiusM float64) []gwPadCluster {
-	out, _ := gwPadsClusterAssign(app, radiusM)
-	return out
-}
-
-// gwPadsClusterAssign agglomere ET rend, pour chaque apparition D'ENTREE (meme index), la
-// grappe qui la porte — ou -1 si l'entree n'a pas ete agglomeree.
-//
-// POURQUOI L'ASSIGNATION EXISTE. La phase 2 mesure le cycle DEPUIS LE RAMASSAGE : il lui faut,
-// socle par socle, quel objet est apparu et quand il a ete ramasse. Retrouver la grappe d'une
-// apparition apres coup en comparant sa position au centroide serait une SECONDE regle de
-// grappe, qui divergerait de celle-ci au premier correctif. `gwPadsCluster` reste le cas
-// d'usage sans assignation, et il n'y a toujours qu'une seule regle.
-func gwPadsClusterAssign(app []gwPadApparition, radiusM float64) ([]gwPadCluster, []int) {
-	ord := make([]int, len(app))
-	for i := range ord {
-		ord[i] = i
-	}
-	sort.Slice(ord, func(i, j int) bool { return gwPadsLess(app[ord[i]], app[ord[j]]) })
-	assign := make([]int, len(app))
-	var out []gwPadCluster
-	for _, src := range ord {
-		a := app[src]
-		best, bestD := -1, math.Inf(1)
-		for i := range out {
-			if out[i].Kind != a.Kind || out[i].Family != a.Family {
-				continue
-			}
-			d := gwPadsDist(out[i].X, out[i].Y, out[i].Z, a.X, a.Y, a.Z)
-			if d <= radiusM && d < bestD {
-				best, bestD = i, d
-			}
-		}
-		if best < 0 {
-			out = append(out, gwPadCluster{
-				Kind: a.Kind, Family: a.Family, X: a.X, Y: a.Y, Z: a.Z, TS: []uint64{a.TUS},
-			})
-			assign[src] = len(out) - 1
-			continue
-		}
-		n := float32(len(out[best].TS))
-		out[best].X = (out[best].X*n + a.X) / (n + 1)
-		out[best].Y = (out[best].Y*n + a.Y) / (n + 1)
-		out[best].Z = (out[best].Z*n + a.Z) / (n + 1)
-		out[best].TS = append(out[best].TS, a.TUS)
-		assign[src] = best
-	}
-	for i := range out {
-		sort.Slice(out[i].TS, func(a, b int) bool { return out[i].TS[a] < out[i].TS[b] })
-	}
-	// Les grappes sont rendues dans un ordre TOTAL (et non celui de leur decouverte) : les
-	// index d'assignation deja distribues doivent suivre la permutation, sans quoi ils
-	// designeraient une grappe voisine.
-	perm := make([]int, len(out))
-	for i := range perm {
-		perm[i] = i
-	}
-	sort.Slice(perm, func(i, j int) bool { return gwPadsClusterLess(out[perm[i]], out[perm[j]]) })
-	inv := make([]int, len(out))
-	sorted := make([]gwPadCluster, len(out))
-	for newIdx, oldIdx := range perm {
-		inv[oldIdx] = newIdx
-		sorted[newIdx] = out[oldIdx]
-	}
-	for i := range assign {
-		assign[i] = inv[assign[i]]
-	}
-	return sorted, assign
-}
-
-// gwPadsLess est l'ordre TOTAL des apparitions : instant, puis nature, famille et position.
-func gwPadsLess(a, b gwPadApparition) bool {
-	switch {
-	case a.TUS != b.TUS:
-		return a.TUS < b.TUS
-	case a.Kind != b.Kind:
-		return a.Kind < b.Kind
-	case a.Family != b.Family:
-		return a.Family < b.Family
-	case a.X != b.X:
-		return a.X < b.X
-	case a.Y != b.Y:
-		return a.Y < b.Y
-	}
-	return a.Z < b.Z
-}
-
-// gwPadsClusterLess est l'ordre TOTAL des grappes rendues.
-func gwPadsClusterLess(a, b gwPadCluster) bool {
-	switch {
-	case a.Kind != b.Kind:
-		return a.Kind < b.Kind
-	case a.Family != b.Family:
-		return a.Family < b.Family
-	case a.X != b.X:
-		return a.X < b.X
-	case a.Y != b.Y:
-		return a.Y < b.Y
-	}
-	return a.Z < b.Z
-}
-
-// gwPadsKeep ne garde que les grappes d'au moins `min` apparitions — les SOCLES.
-func gwPadsKeep(in []gwPadCluster, min int) []gwPadCluster {
-	out := make([]gwPadCluster, 0, len(in))
-	for _, c := range in {
-		if len(c.TS) >= min {
-			out = append(out, c)
-		}
-	}
-	return out
-}
-
-// gwPadsCycle mesure le cycle d'une grappe : les ecarts entre apparitions successives.
-//
-// L'ECART EST PUBLIE DES QU'IL EST MESURE, MAIS « ETABLI » EXIGE DEUX ECARTS. Un socle vu deux
-// fois donne UN intervalle : c'est une mesure, et la taire rendrait un `0,0 s` qui se lirait
-// comme un cycle nul. Ce n'est pourtant pas un cycle — un intervalle unique n'a pas
-// d'ecart-type, donc rien ne dit qu'il se repete. Les deux faits se publient separement :
-// `MedianS` porte la mesure, `Established` porte le verdict (decision 3 du plan).
-func gwPadsCycle(ts []uint64) gwPadCycle {
-	if len(ts) < 2 {
-		return gwPadCycle{}
-	}
-	gaps := make([]float64, 0, len(ts)-1)
-	for i := 1; i < len(ts); i++ {
-		gaps = append(gaps, float64(ts[i]-ts[i-1])/1e6)
-	}
-	return gwPadsCycleFromGaps(gaps)
-}
-
-// gwPadsCycleFromGaps juge un cycle a partir des ECARTS deja calcules. La phase 2 mesure des
-// ecarts qui ne sont PAS des differences d'instants successifs (ramassage -> reapparition
-// suivante) : elle passe donc par ici, et le verdict de stabilite reste ecrit une seule fois.
-func gwPadsCycleFromGaps(gaps []float64) gwPadCycle {
-	if len(gaps) == 0 {
-		return gwPadCycle{}
-	}
-	c := gwPadCycle{
-		Gaps:    len(gaps),
-		MedianS: gwPadsQuantile(gaps, 0.5),
-		P10S:    gwPadsQuantile(gaps, 0.10),
-		P90S:    gwPadsQuantile(gaps, 0.90),
-		SDS:     gwPadsStdDev(gaps),
-	}
-	c.Established = c.Gaps >= gwPadCycleMinGaps && c.MedianS > 0 &&
-		c.SDS <= gwPadCycleMaxCV*c.MedianS
-	return c
-}
-
-// gwPadsQuantile rend le quantile d'ordre q, par la MEME convention d'index que les autres
-// instruments du paquet (`origineQ`) : deux mesures du depot qui disent « p90 » doivent dire
-// la meme chose.
-func gwPadsQuantile(v []float64, q float64) float64 {
-	if len(v) == 0 {
-		return 0
-	}
-	s := append([]float64(nil), v...)
-	sort.Float64s(s)
-	return s[int(q*float64(len(s)-1))]
-}
-
-// gwPadsStdDev rend l'ecart-type de POPULATION — les ecarts mesures sont la population entiere
-// du cycle de ce socle, pas un echantillon tire d'une population plus large.
-func gwPadsStdDev(v []float64) float64 {
-	if len(v) == 0 {
-		return 0
-	}
-	var sum float64
-	for _, x := range v {
-		sum += x
-	}
-	m := sum / float64(len(v))
-	var acc float64
-	for _, x := range v {
-		acc += (x - m) * (x - m)
-	}
-	return math.Sqrt(acc / float64(len(v)))
-}
 
 // gwPadsSpread resume la taille des grappes — le temoin de Notion 11 se lit la : un socle
 // recurre, une grappe d'une seule apparition est un lacher isole.
