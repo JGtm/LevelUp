@@ -18,7 +18,7 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
-import { buildPlayers, colorBySlot, markBySlot, nameBySlot } from './rosterLogic'
+import { buildPlayers, colorBySlot, markBySlot, nameBySlot, sideBySlot } from './rosterLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 export interface SlotIdentity {
@@ -28,6 +28,12 @@ export interface SlotIdentity {
   slotColors: ReadonlyMap<number, string>
   markOfSlot: (slot: number) => PlayerMarkKind | undefined
   nameOfSlot: (slot: number) => string | null
+  /**
+   * CAMP d'une vie (`team_side`), null quand il est inconnu. Distinct de la couleur : celle-ci
+   * ne connaît que « allié / adverse » vu du joueur de la page, alors qu'opposer deux vies
+   * demande leur camp réel (cf. rosterLogic.sideBySlot). Le capteur de menaces en a besoin.
+   */
+  sideOfSlot: (slot: number) => string | null
 }
 
 export interface SlotIdentityInput {
@@ -58,6 +64,8 @@ export function useSlotIdentity({
   const markOfSlot = useCallback((slot: number) => slotMarks.get(slot), [slotMarks])
   const slotNames = useMemo(() => nameBySlot(players), [players])
   const nameOfSlot = useCallback((slot: number) => slotNames.get(slot) ?? null, [slotNames])
+  const slotSides = useMemo(() => sideBySlot(players), [players])
+  const sideOfSlot = useCallback((slot: number) => slotSides.get(slot) ?? null, [slotSides])
 
-  return { colorOfSlot, slotColors, markOfSlot, nameOfSlot }
+  return { colorOfSlot, slotColors, markOfSlot, nameOfSlot, sideOfSlot }
 }

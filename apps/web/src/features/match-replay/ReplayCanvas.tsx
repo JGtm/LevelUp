@@ -298,7 +298,7 @@ export function ReplayCanvas({
   // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
   // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
   // scoreboard + descente sur les vies) vit dans useSlotIdentity.
-  const { colorOfSlot, slotColors, markOfSlot, nameOfSlot } = useSlotIdentity({
+  const { colorOfSlot, slotColors, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
     xuidMeta,
@@ -481,11 +481,14 @@ export function ReplayCanvas({
     if (showPlacements && placementCounts.drawable > 0) {
       drawEquipmentPlacementsLayer(
         ctx,
-        doc.equipmentPlacements,
+        // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur révèle les
+        // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le camp
+        // est celui de la base (`team_side`), jamais le drapeau « allié » vu de la page.
+        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot },
         view,
         {
           frame,
-          // Durée RÉELLE d'une frame : la pulsation du capteur bat en temps de match, pas en
+          // Durée RÉELLE d'une frame : le ping du capteur bat en temps de match, pas en
           // nombre d'images (même règle que la fin de vol des grenades).
           frameMs: frameToMs(1, doc),
           k: dpr,
@@ -613,6 +616,7 @@ export function ReplayCanvas({
     floorStyle.edge,
     slotColors,
     colorOfSlot,
+    sideOfSlot,
     markOfSlot,
     nameOfSlot,
     showNames,

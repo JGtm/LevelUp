@@ -8,22 +8,23 @@
  *    cap du poseur — donc la concavité regarde le poseur ; sans cap, un cercle pointillé et
  *    aucune orientation inventée ;
  *  - LA FENÊTRE [t0, t1], exacte, sans rémanence (même contrat que la ligne de grappin) ;
- *  - LA PULSATION du capteur comme FONCTION DU TEMPS, figée sous mouvement réduit ;
+ *  - LE TRACÉ DU CAPTEUR : sa zone est FIXE au rayon officiel, seule l'onde du ping bouge —
+ *    et elle ne part pas sous mouvement réduit (l'arithmétique du ping, elle, est verrouillée
+ *    dans threatSensor.test.ts) ;
+ *  - LA MARQUE « RÉVÉLÉ », tracée dans ce calque, à la teinte de l'équipe du POSEUR ;
  *  - LE SURVOL : la plus petite zone gagne, sinon un mur posé dans un capteur serait
  *    inatteignable au pointeur.
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayEquipmentPlacement } from '@/lib/api/types'
+import type { ReplayEquipmentPlacement, ReplayPoint } from '@/lib/api/types'
 
 import {
   drawEquipmentPlacementsLayer,
   isPlacementActive,
+  type PlacementScene,
   placementAt,
   placementKind,
-  SENSOR_PULSE_MS,
-  SENSOR_RADIUS_M,
-  sensorPulse,
   wallArcWorld,
   wallRadiusM,
   wallRingWorld,
@@ -31,7 +32,9 @@ import {
   WALL_RADIUS_M,
 } from './equipmentPlacementsLayer'
 import { worldToCanvas } from './replayLogic'
+import type { ReplayTrackReady } from './replayNormalize'
 import { recordingContext } from './test/recordingContext'
+import { REVEAL_RADIUS_PX, SENSOR_RADIUS_M } from './threatSensor'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le plancher de lisibilité ne mord pas. */
 const VIEW = {
@@ -45,6 +48,26 @@ const TIME = { frame: 50, frameMs: 100, k: 1, reducedMotion: false, showUnnamed:
 
 function pose(over: Partial<ReplayEquipmentPlacement> = {}): ReplayEquipmentPlacement {
   return { t0: 10, t1: 100, x: 5, y: 5, family: 'wall', id: '0x008e2dc5', owner: 3, ...over }
+}
+
+/**
+ * La SCÈNE du calque. Par défaut aucune vie : la révélation n'a alors personne à marquer, et
+ * chaque test qui la vise fournit ses propres vies et ses propres camps.
+ */
+function scene(
+  placements: ReplayEquipmentPlacement[],
+  over: Partial<PlacementScene> = {},
+): PlacementScene {
+  return { placements, lives: [], sideOfSlot: () => null, ...over }
+}
+
+/** Une vie IMMOBILE, pour la révélation : deux échantillons à la même position. */
+function life(slot: number, x: number, y: number): ReplayTrackReady {
+  const points: ReplayPoint[] = [
+    { t: 0, x, y },
+    { t: 200, x, y },
+  ]
+  return { slot, team: -1, startFrame: 0, endFrame: 200, points }
 }
 
 const INK = { colorOfSlot: () => 'equipe', neutral: 'neutre' }
@@ -124,27 +147,10 @@ describe('wallRadiusM — le plancher de lisibilité', () => {
   })
 })
 
-describe('sensorPulse — fonction du temps, jamais un état', () => {
-  it('le même âge rend toujours la même valeur (un retour en arrière rejoue l’image)', () => {
-    expect(sensorPulse(400, false)).toBeCloseTo(sensorPulse(400 + SENSOR_PULSE_MS, false), 10)
-  })
-
-  it('reste borné autour du rayon déclaré', () => {
-    for (let ms = 0; ms < SENSOR_PULSE_MS; ms += 37) {
-      expect(sensorPulse(ms, false)).toBeGreaterThan(0.9)
-      expect(sensorPulse(ms, false)).toBeLessThan(1.1)
-    }
-  })
-
-  it('mouvement réduit : la phase est figée, le disque reste', () => {
-    for (const ms of [0, 400, 900, 1_500]) expect(sensorPulse(ms, true)).toBe(1)
-  })
-})
-
 describe('drawEquipmentPlacementsLayer — ce qui est tracé, et ce qui ne l’est pas', () => {
   it('le mur orienté : une polyligne dont un sommet tombe sur le milieu monde de l’arc', () => {
     const { ops, ctx } = recordingContext()
-    drawEquipmentPlacementsLayer(ctx, [pose({ h: 90 })], VIEW, TIME, INK)
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ h: 90 })]), VIEW, TIME, INK)
     const mid = worldToCanvas(
       { x: 5, y: 5 + wallRadiusM(VIEW) },
       VIEW.bounds,
@@ -167,46 +173,78 @@ describe('drawEquipmentPlacementsLayer — ce qui est tracé, et ce qui ne l’e
 
   it('le mur sans cap : un cercle FERMÉ et POINTILLÉ, aucune direction affirmée', () => {
     const { ops, ctx } = recordingContext()
-    drawEquipmentPlacementsLayer(ctx, [pose()], VIEW, TIME, INK)
+    drawEquipmentPlacementsLayer(ctx, scene([pose()]), VIEW, TIME, INK)
     expect(ops.some((o) => o.op === 'setLineDash')).toBe(true)
     expect(ops.filter((o) => o.op === 'closePath').length).toBeGreaterThan(0)
   })
 
-  it('le capteur : un disque rempli et son anneau, au rayon déclaré', () => {
+  it('le capteur : un disque rempli et son anneau, au rayon OFFICIEL', () => {
     const { ops, ctx } = recordingContext()
-    drawEquipmentPlacementsLayer(ctx, [pose({ family: 'sensor', t0: 50 })], VIEW, TIME, INK)
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ family: 'sensor', t0: 50 })]), VIEW, TIME, INK)
     const c = worldToCanvas({ x: 5, y: 5 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
     const arcs = ops.filter((o) => o.op === 'arc')
+    // Âge nul à t0 : l'onde du ping part du centre (rayon nul, rien à tracer), il ne reste
+    // que la ZONE — son remplissage et son anneau.
     expect(arcs).toHaveLength(2)
     expect(arcs[0].args.slice(0, 2)).toEqual([c.x, c.y])
-    // Âge nul à t0 : le rayon vaut exactement le rayon déclaré, à l'échelle (10 px/m).
     expect(arcs[0].args[2]).toBeCloseTo(SENSOR_RADIUS_M * 10, 6)
+    expect(arcs[1].args[2]).toBeCloseTo(SENSOR_RADIUS_M * 10, 6)
     expect(ops.some((o) => o.op === 'fill')).toBe(true)
     expect(ops.some((o) => o.op === 'stroke')).toBe(true)
   })
 
+  it('LE PING : une onde en plus, entre le centre et le rayon — la zone ne bouge pas', () => {
+    const { ops, ctx } = recordingContext()
+    // 2 images après t0, soit 200 ms : l'onde est à mi-course de ses 400 ms.
+    const time = { ...TIME, frame: 52 }
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ family: 'sensor', t0: 50 })]), VIEW, time, INK)
+    const radii = ops.filter((o) => o.op === 'arc').map((o) => o.args[2] as number)
+    expect(radii).toHaveLength(3)
+    const zone = SENSOR_RADIUS_M * 10
+    // La ZONE est servie deux fois au rayon officiel, l'onde une fois en deçà.
+    expect(radii[0]).toBeCloseTo(zone, 6)
+    expect(radii[1]).toBeCloseTo(zone, 6)
+    expect(radii[2]).toBeGreaterThan(0)
+    expect(radii[2]).toBeLessThan(zone)
+  })
+
+  it('entre deux pings, plus d’onde : la zone seule, au rayon officiel', () => {
+    const { ops, ctx } = recordingContext()
+    // 10 images après t0 = 1 000 ms : l'onde des 400 ms a fini sa course.
+    const time = { ...TIME, frame: 60 }
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ family: 'sensor', t0: 50 })]), VIEW, time, INK)
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(2)
+  })
+
+  it('mouvement réduit : la zone reste, l’onde ne part jamais', () => {
+    const { ops, ctx } = recordingContext()
+    const time = { ...TIME, frame: 52, reducedMotion: true }
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ family: 'sensor', t0: 50 })]), VIEW, time, INK)
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(2)
+  })
+
   it('une pose sans poseur porte l’encre neutre, jamais une couleur d’équipe inventée', () => {
     const { ops, ctx } = recordingContext()
-    drawEquipmentPlacementsLayer(ctx, [pose({ h: 0, owner: -1 })], VIEW, TIME, INK)
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ h: 0, owner: -1 })]), VIEW, TIME, INK)
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'neutre')).toBe(true)
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'equipe')).toBe(false)
   })
 
   it('une famille inconnue ne trace rien du tout', () => {
     const { ops, ctx } = recordingContext()
-    drawEquipmentPlacementsLayer(ctx, [pose({ family: 'propulseur', h: 12 })], VIEW, TIME, INK)
+    drawEquipmentPlacementsLayer(ctx, scene([pose({ family: 'propulseur', h: 12 })]), VIEW, TIME, INK)
     expect(ops.filter((o) => o.op === 'stroke' || o.op === 'fill')).toHaveLength(0)
   })
 
   it('les objets non identifiés sont muets par défaut, et un point neutre une fois demandés', () => {
     const off = recordingContext()
-    drawEquipmentPlacementsLayer(off.ctx, [pose({ family: 'other' })], VIEW, TIME, INK)
+    drawEquipmentPlacementsLayer(off.ctx, scene([pose({ family: 'other' })]), VIEW, TIME, INK)
     expect(off.ops.filter((o) => o.op === 'fill')).toHaveLength(0)
 
     const on = recordingContext()
     drawEquipmentPlacementsLayer(
       on.ctx,
-      [pose({ family: 'other' })],
+      scene([pose({ family: 'other' })]),
       VIEW,
       { ...TIME, showUnnamed: true },
       INK,
@@ -217,9 +255,96 @@ describe('drawEquipmentPlacementsLayer — ce qui est tracé, et ce qui ne l’e
   it('hors de la fenêtre mesurée, rien n’est tracé : la durée EST la pose', () => {
     for (const frame of [9, 101]) {
       const { ops, ctx } = recordingContext()
-      drawEquipmentPlacementsLayer(ctx, [pose({ h: 45 })], VIEW, { ...TIME, frame }, INK)
+      drawEquipmentPlacementsLayer(ctx, scene([pose({ h: 45 })]), VIEW, { ...TIME, frame }, INK)
       expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
     }
+  })
+})
+
+describe('la marque « révélé », tracée dans ce calque', () => {
+  /** Le capteur pinge à l'image 50 ; le poseur (slot 3) est du camp « t0 ». */
+  const sensorPose = pose({ family: 'sensor', t0: 50, x: 5, y: 5 })
+  const sides: Record<number, string | null> = { 3: 't0', 4: 't0', 7: 't1' }
+  const sideOfSlot = (slot: number) => sides[slot] ?? null
+
+  it('un adversaire dans le rayon reçoit un halo, à la position du JOUEUR', () => {
+    const { ops, ctx } = recordingContext()
+    const foe = life(7, 6, 5) // 1 m du capteur, camp adverse
+    drawEquipmentPlacementsLayer(
+      ctx,
+      scene([sensorPose], { lives: [foe], sideOfSlot }),
+      VIEW,
+      TIME,
+      INK,
+    )
+    const c = worldToCanvas({ x: 6, y: 5 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    const marks = ops.filter(
+      (o) =>
+        o.op === 'arc' &&
+        Math.abs((o.args[0] as number) - c.x) < 1e-6 &&
+        Math.abs((o.args[1] as number) - c.y) < 1e-6,
+    )
+    // Halo + liseré, tous deux au rayon d'écran de la marque.
+    expect(marks).toHaveLength(2)
+    for (const m of marks) expect(m.args[2]).toBeCloseTo(REVEAL_RADIUS_PX, 6)
+  })
+
+  it('la marque porte la teinte de l’équipe du POSEUR — c’est son camp qui voit', () => {
+    const { ops, ctx } = recordingContext()
+    const foe = life(7, 6, 5)
+    drawEquipmentPlacementsLayer(
+      ctx,
+      scene([sensorPose], { lives: [foe], sideOfSlot }),
+      VIEW,
+      TIME,
+      // Une encre par slot : le poseur est le slot 3, la cible le slot 7.
+      { colorOfSlot: (slot) => `slot${slot}`, neutral: 'neutre' },
+    )
+    expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot3')).toBe(true)
+    expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot7')).toBe(false)
+  })
+
+  it('un coéquipier du poseur n’est pas marqué : rien de plus que la zone', () => {
+    const { ops, ctx } = recordingContext()
+    const mate = life(4, 6, 5)
+    drawEquipmentPlacementsLayer(
+      ctx,
+      scene([sensorPose], { lives: [mate], sideOfSlot }),
+      VIEW,
+      TIME,
+      INK,
+    )
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(2)
+  })
+
+  it('sans camp connu, aucune marque — le ping se dessine quand même', () => {
+    const { ops, ctx } = recordingContext()
+    const foe = life(7, 6, 5)
+    // Poseur non mesuré : le capteur existe et pinge, mais il ne révèle personne.
+    drawEquipmentPlacementsLayer(
+      ctx,
+      scene([pose({ family: 'sensor', t0: 50, x: 5, y: 5, owner: -1 })], {
+        lives: [foe],
+        sideOfSlot,
+      }),
+      VIEW,
+      TIME,
+      INK,
+    )
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(2)
+  })
+
+  it('un mur seul ne révèle rien : la révélation appartient au capteur', () => {
+    const { ops, ctx } = recordingContext()
+    const foe = life(7, 6, 5)
+    drawEquipmentPlacementsLayer(
+      ctx,
+      scene([pose({ h: 90 })], { lives: [foe], sideOfSlot }),
+      VIEW,
+      TIME,
+      INK,
+    )
+    expect(ops.filter((o) => o.op === 'arc')).toHaveLength(0)
   })
 })
 
@@ -233,8 +358,9 @@ describe('placementAt — le survol', () => {
     // Dans les DEUX ordres : c'est la taille qui tranche, jamais le rang dans la liste.
     expect(placementAt([sensor, wall], VIEW, hover, c)?.id).toBe('0xmur')
     expect(placementAt([wall, sensor], VIEW, hover, c)?.id).toBe('0xmur')
-    // Et le capteur reste atteignable partout ailleurs dans sa zone.
-    expect(placementAt([sensor, wall], VIEW, hover, { x: c.x + 40, y: c.y })?.id).toBe('0xcapteur')
+    // Et le capteur reste atteignable partout ailleurs dans sa zone (30 px = 3 m, à
+    // l'intérieur des 4,25 m officiels).
+    expect(placementAt([sensor, wall], VIEW, hover, { x: c.x + 30, y: c.y })?.id).toBe('0xcapteur')
   })
 
   it('rien sous le curseur = null, jamais la pose la plus proche par défaut', () => {
