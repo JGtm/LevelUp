@@ -253,8 +253,8 @@ describe('buildSoundTimeline', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentPlacements: [
-          { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x008e2dc5', owner: 1 },
-          { t0: 40, t1: 95, x: 1, y: 1, family: 'sensor', id: '0x0072199c', owner: 1 },
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1, origin: 'deployed' },
+          { t0: 40, t1: 95, x: 1, y: 1, family: 'sensor', id: '0x72199cba', owner: 1, origin: 'deployed' },
         ],
       }),
       [],
@@ -270,14 +270,58 @@ describe('buildSoundTimeline', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentPlacements: [
-          { t0: 10, t1: 90, x: 0, y: 0, family: 'other', id: '0x0072b63d', owner: -1 },
-          { t0: 20, t1: 90, x: 0, y: 0, family: 'translocateur', id: '0x00528fce', owner: 2 },
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'other', id: '0x4396db42', owner: -1, origin: 'deployed' },
+          { t0: 20, t1: 90, x: 0, y: 0, family: 'famille_future', id: '0x00528fce', owner: 2, origin: 'deployed' },
         ],
       }),
       [],
       0,
     )
     expect(tl).toEqual([])
+  })
+
+  it('un objet LÂCHÉ À LA MORT ne sonne pas : ce n est pas un geste de pose', () => {
+    // 88,6 % des poses du corpus sont des lâchers. Les sonner ferait partir un « mur déployé »
+    // à chaque mort tenant un mur — la même règle que le calque, et elle est PARTAGÉE.
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentPlacements: [
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1, origin: 'dropped' },
+          { t0: 20, t1: 90, x: 0, y: 0, family: 'sensor', id: '0x72199cba', owner: 1, origin: 'unknown' },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([])
+  })
+
+  it("une pose SANS origine (artefact antérieur au schéma 10) ne sonne pas non plus", () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentPlacements: [
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1 },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([])
+  })
+
+  it('un mur déployé sonne UNE fois : l appareil se tait, les panneaux sonnent', () => {
+    // L'appareil qui vole et ses panneaux sont DEUX poses `deployed` du même mur.
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentPlacements: [
+          { t0: 10, t1: 40, x: 0, y: 0, family: 'wall', id: '0x8e2dc574', owner: 1, origin: 'deployed' },
+          { t0: 14, t1: 60, x: 2, y: 0, family: 'wall', id: '0x686b40c9', owner: 1, origin: 'deployed' },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([{ ms: 1_400, stem: 'wall_activate' }])
   })
 })
 
@@ -332,7 +376,7 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
       docWithCouple({
         equipmentEpisodes: [{ slot: 1, fam: 'camo', t0: 10, t1: 30, endRead: true }],
         equipmentPlacements: [
-          { t0: 12, t1: 90, x: 0, y: 0, family: 'wall', id: '0x008e2dc5', owner: 1 },
+          { t0: 12, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1, origin: 'deployed' },
         ],
       }),
       [],

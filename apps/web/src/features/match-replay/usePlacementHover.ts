@@ -30,6 +30,12 @@ export interface PlacementHoverInput {
   view: PlacementView
   /** L'image courante, telle que la boucle de lecture la tient. */
   frameRef: RefObject<number>
+  /**
+   * Durée RÉELLE d'une frame, en ms (`frameToMs(1, doc)`). Le survol en a besoin parce qu'une
+   * famille — le traqueur — ne montre son impulsion que pendant quelques centaines de
+   * millisecondes, et qu'on ne survole pas ce qui n'est plus dessiné (cf. `placementShows`).
+   */
+  frameMs: number
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
   showUnnamed: boolean
@@ -45,6 +51,7 @@ export function usePlacementHover({
   placements,
   view,
   frameRef,
+  frameMs,
   enabled,
   showUnnamed,
 }: PlacementHoverInput): PlacementHoverHandlers {
@@ -63,14 +70,19 @@ export function usePlacementHover({
       const kx = rect.width > 0 ? view.width / rect.width : 1
       const ky = rect.height > 0 ? view.height / rect.height : 1
       const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
-      const found = placementAt(placements, view, { frame: frameRef.current, showUnnamed }, at)
+      const found = placementAt(
+        placements,
+        view,
+        { frame: frameRef.current, frameMs, showUnnamed },
+        at,
+      )
       setHover((prev) => {
         if (!found) return prev === null ? prev : null
         if (prev && prev.placement === found && prev.at.x === at.x && prev.at.y === at.y) return prev
         return { placement: found, at }
       })
     },
-    [enabled, placements, view, frameRef, showUnnamed],
+    [enabled, placements, view, frameRef, frameMs, showUnnamed],
   )
 
   const onPointerLeave = useCallback(() => {
