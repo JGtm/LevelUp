@@ -46,6 +46,9 @@ import {
   normalizeMapObjectives,
 } from './objectivesLayer'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
+import { drawEquipmentPlacementsLayer, PLACEMENT_RENDER } from './equipmentPlacementsLayer'
+import { ReplayPlacementTip } from './ReplayPlacementTip'
+import { usePlacementHover } from './usePlacementHover'
 import {
   buildGrenadeRestFx,
   DYNAMO_REST_HOLD_MS,
@@ -221,6 +224,8 @@ export function ReplayCanvas({
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
     showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
+    showPlacements, togglePlacements,
+    showUnnamedPlacements, toggleUnnamedPlacements,
     speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
@@ -275,6 +280,20 @@ export function ReplayCanvas({
   }, [paletteVersion])
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
+  // LES POSES D'ÉQUIPEMENT (schéma 9), comptées par ce que le rendu SAIT en faire : une
+  // famille absente de la table ne se dessine pas, elle ne doit donc pas allumer de bascule
+  // (même règle que le bouton Zones — pas de commande qui ne commande rien).
+  const placementCounts = useMemo(() => {
+    let drawable = 0
+    let unnamed = 0
+    for (const p of doc.equipmentPlacements) {
+      const kind = PLACEMENT_RENDER[p.family]
+      if (!kind) continue
+      drawable++
+      if (kind === 'unnamed') unnamed++
+    }
+    return { drawable, unnamed }
+  }, [doc.equipmentPlacements])
 
   // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
   // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
@@ -348,6 +367,12 @@ export function ReplayCanvas({
     () => ({ min: doc.bounds.minZ ?? 0, max: doc.bounds.maxZ ?? 0 }),
     [doc.bounds.minZ, doc.bounds.maxZ],
   )
+  // LE CADRAGE, une fois : le dessin ET le survol doivent lire la MÊME projection — un
+  // pointeur qui viserait un autre cadre que celui peint ne toucherait rien.
+  const canvasView = useMemo(
+    () => ({ bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD }),
+    [bounds, renderWidth],
+  )
   const baseFps = useMemo(() => framesPerSecond(doc), [doc])
   const timing = useMemo<MarkerTiming>(
     () => ({
@@ -410,7 +435,7 @@ export function ReplayCanvas({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, renderWidth, CANVAS_HEIGHT)
 
-    const view = { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD }
+    const view = canvasView
     const frame = frameRef.current
     // ORDRE DES CALQUES, du fond vers le sujet : le sol porte les trajectoires, qui portent les
     // événements. Inverser noierait les joueurs.
@@ -448,6 +473,27 @@ export function ReplayCanvas({
     // Les projectiles passent SOUS les joueurs : ce sont des objets du terrain, pas le sujet.
     if (doc.projectiles?.length) {
       drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
+    }
+    // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
+    // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
+    // décor du moment, pas au sujet. Sa fenêtre [t0, t1] est celle du document, sans
+    // rémanence, comme la ligne de grappin.
+    if (showPlacements && placementCounts.drawable > 0) {
+      drawEquipmentPlacementsLayer(
+        ctx,
+        doc.equipmentPlacements,
+        view,
+        {
+          frame,
+          // Durée RÉELLE d'une frame : la pulsation du capteur bat en temps de match, pas en
+          // nombre d'images (même règle que la fin de vol des grenades).
+          frameMs: frameToMs(1, doc),
+          k: dpr,
+          reducedMotion,
+          showUnnamed: showUnnamedPlacements,
+        },
+        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge },
+      )
     }
     drawTracksLayer(ctx, doc.tracks, view, {
       colorOfSlot,
@@ -547,7 +593,10 @@ export function ReplayCanvas({
     }
   }, [
     doc, geometryColor, bounds, zRange, timing, totalLabel,
-    t.aliveSuffix, renderWidth,
+    t.aliveSuffix, renderWidth, canvasView,
+    placementCounts.drawable,
+    showPlacements,
+    showUnnamedPlacements,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -729,6 +778,15 @@ export function ReplayCanvas({
     return () => cancelAnimationFrame(raf)
   }, [playing, baseFps, multiplier, doc, renderWidth, draw, soundTick])
 
+  // LE SURVOL D'UNE POSE : rejoué sur la donnée, jamais sur les pixels (usePlacementHover).
+  const placementHover = usePlacementHover({
+    placements: doc.equipmentPlacements,
+    view: canvasView,
+    frameRef,
+    enabled: showPlacements && placementCounts.drawable > 0,
+    showUnnamed: showUnnamedPlacements,
+  })
+
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)
     if (!playing) draw()
@@ -781,7 +839,18 @@ export function ReplayCanvas({
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
+                onPointerMove={placementHover.onPointerMove}
+                onPointerLeave={placementHover.onPointerLeave}
               />
+              {/* L'infobulle d'une POSE survolée : ce que l'objet est, et qui l'a posé. */}
+              {placementHover.hover && (
+                <ReplayPlacementTip
+                  locale={locale}
+                  hover={placementHover.hover}
+                  ownerName={nameOfSlot(placementHover.hover.placement.owner)}
+                  width={renderWidth}
+                />
+              )}
               {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
             </div>
             <div className="mt-2 flex items-center gap-3">
@@ -838,6 +907,14 @@ export function ReplayCanvas({
             showNames={showNames}
             onToggleNames={toggleNames}
             zonesAvailable={calloutZones.length > 0}
+            placements={{
+              available: placementCounts.drawable > 0,
+              show: showPlacements,
+              onToggle: togglePlacements,
+              unnamedAvailable: placementCounts.unnamed > 0,
+              showUnnamed: showUnnamedPlacements,
+              onToggleUnnamed: toggleUnnamedPlacements,
+            }}
             heatmap={{
               show: showHeatmap,
               onToggle: toggleHeatmap,

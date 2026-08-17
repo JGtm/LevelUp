@@ -8,8 +8,24 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
-import { ReplaySettingsDrawer, type ReplayHeatmapControls } from './ReplaySettingsDrawer'
+import {
+  ReplaySettingsDrawer,
+  type ReplayHeatmapControls,
+  type ReplayPlacementControls,
+} from './ReplaySettingsDrawer'
 import type { ReplaySound } from './useReplaySound'
+
+function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlacementControls {
+  return {
+    available: true,
+    show: true,
+    onToggle: vi.fn(),
+    unnamedAvailable: true,
+    showUnnamed: false,
+    onToggleUnnamed: vi.fn(),
+    ...over,
+  }
+}
 
 function makeHeatmap(over: Partial<ReplayHeatmapControls> = {}): ReplayHeatmapControls {
   return {
@@ -56,6 +72,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       showNames
       onToggleNames={onToggleNames}
       zonesAvailable
+      placements={makePlacements()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}
@@ -105,6 +122,46 @@ describe('ReplaySettingsDrawer — calques', () => {
     expect(btn).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(btn)
     expect(onToggleZones).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ReplaySettingsDrawer — poses d équipement', () => {
+  it('film sans pose dessinable : ni le calque ni les objets non identifiés', () => {
+    renderDrawer({ placements: makePlacements({ available: false }) })
+    expect(screen.queryByRole('button', { name: 'Équipements posés' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Objets non identifiés' })).toBeNull()
+  })
+
+  it('bascule Équipements posés : reflète son état et appelle SON callback', () => {
+    const onToggle = vi.fn()
+    const { onToggleAim } = renderDrawer({ placements: makePlacements({ show: false, onToggle }) })
+    const btn = screen.getByRole('button', { name: 'Équipements posés' })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onToggleAim).not.toHaveBeenCalled()
+  })
+
+  it('calque éteint : la bascule des objets non identifiés ne commanderait rien, elle est absente', () => {
+    renderDrawer({ placements: makePlacements({ show: false }) })
+    expect(screen.queryByRole('button', { name: 'Objets non identifiés' })).toBeNull()
+  })
+
+  it('toutes les poses nommées : rien à révéler, la bascule n est pas proposée', () => {
+    renderDrawer({ placements: makePlacements({ unnamedAvailable: false }) })
+    expect(screen.getByRole('button', { name: 'Équipements posés' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Objets non identifiés' })).toBeNull()
+  })
+
+  it('bascule Objets non identifiés : éteinte par défaut, appelle SON callback', () => {
+    const onToggleUnnamed = vi.fn()
+    const onToggle = vi.fn()
+    renderDrawer({ placements: makePlacements({ onToggle, onToggleUnnamed }) })
+    const btn = screen.getByRole('button', { name: 'Objets non identifiés' })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(onToggleUnnamed).toHaveBeenCalledTimes(1)
+    expect(onToggle).not.toHaveBeenCalled()
   })
 })
 
