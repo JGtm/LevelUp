@@ -1,4 +1,4 @@
-# LOT 0 — journal des gates (verdict = code de sortie)
+﻿# LOT 0 â€” journal des gates (verdict = code de sortie)
 # worktree wt/registre-film, 2026-08-17
 EXIT_baseline_test_filmdec_replay_objectiveevents=0
 EXIT_baseline_minibobine=0
@@ -7,3 +7,5 @@ EXIT_0.1_witness_3films=0
 EXIT_0.3_test_filmdec_replay=0
 EXIT_0.4_G1_G3=0
 EXIT_0.4_test_filmdec=0
+EXIT_0.6_desync_3films=0  # comptes IDENTIQUES avant/apres 0.6 sur les 3 films
+EXIT_0.6_test_filmdec_replay_objectiveevents=0
