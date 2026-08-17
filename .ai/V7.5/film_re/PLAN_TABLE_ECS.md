@@ -63,8 +63,8 @@ la lecture du JEU (`Flags[k+1]`, lot R7-e) differe, `notes` porte `niveau_jeu=N`
 
 ## Phases
 
-- [ ] **Phase 0** — ce plan.
-- [ ] **Phase 1** — verifier l'inventaire `ecs_inventaire_2026-08-18.json` contre le code de la
+- [x] **Phase 0** — ce plan.
+- [x] **Phase 1** — verifier l'inventaire `ecs_inventaire_2026-08-18.json` contre le code de la
       base : statut et source de chacune des 216 lignes, corrections consignees (avant -> apres),
       completion par les composants traites par le code mais absents, et par les archetypes du
       registre absents.
@@ -83,3 +83,107 @@ la lecture du JEU (`Flags[k+1]`, lot R7-e) differe, `notes` porte `niveau_jeu=N`
 
 ## Decouvertes (non traitees — regle 7)
 
+
+---
+
+# PHASE 1 — VERIFICATION DE L'INVENTAIRE CONTRE LE CODE DE LA BASE
+
+Methode : le REGISTRE DU FILM fait foi pour `(ti, i, nom, niveau)` ; l'AST de `consumeByName`
+fait foi pour le STATUT et la SOURCE. Statut derive mecaniquement : `porte` = tous les retours
+du cas rendent le litteral `true` ; `partiel` = au moins un retour non-`true` ; `non_porte` =
+aucun `case` (branche `default`, 0 bit consomme) ; `deser_non_cable` = grammaire ecrite sans
+appelant.
+
+Bilan : **73 corrections** et **318 ajouts** sur les 216 lignes de l'inventaire.
+
+## Corrections de STATUT (2) — le fond
+
+| ligne | avant | apres | piece |
+|---|---|---|---|
+| `ti=35 i=60 simulation-state-component` | `non porte` | **`partiel`** | `traverse.go:861-868` — la grammaire est COMPLETE depuis R7-b ; ce qui reste est le drapeau `simStateComplete` (`traverse.go:1130`, defaut `false`), pas la grammaire |
+| `ti=23 i=0..31 selectable-zone-data-component` (x32) | `non porte` | **`deser_non_cable`** | `components_world.go:106` — le deser EXISTE (`consumeSelectableZoneData`, `FUN_142ed6cec`, `//nolint:unused`), il n'a pas d'appelant. Ce n'est pas la meme chose que « pas de grammaire » |
+
+## Corrections d'AVERTISSEMENT GLOBAL (3) — l'entete du JSON etait perime
+
+L'entete de l'inventaire annoncait trois defauts « vivant seulement dans `LevelUp-wt-kfloop` ».
+Verification sur pieces dans la base `90bc83c12` : **les trois sont dans le code**.
+
+| affirmation de l'inventaire | realite de la base |
+|---|---|
+| « `components_batch7.go:27` lit encore le bloc TLV quand le bit vaut 1 » | FAUX. `components_batch7.go:42` : `if br.ReadBit() { return }` — la polarite est CORRIGEE, commentaire date du 2026-08-17 |
+| « `traverse.go:644` rend `ported=false` sur i57 `tag==3` » | Le cas i57 est en `traverse.go:850` ; il rend la valeur de `consumeBipedSpartanAbility` — statut `partiel`, inchange sur le fond mais la ligne citee est perimee |
+| « la queue d'i60 vit dans un autre worktree » | FAUX. `traverse.go:861-868` porte la grammaire complete ; `simStateComplete` est la seule porte restante |
+
+## Corrections de NOM (5 de fond + 35 cosmetiques)
+
+De fond — l'inventaire nommait un composant qui n'est PAS a cet index dans le registre :
+
+| ligne | inventaire | registre du film |
+|---|---|---|
+| `ti=2 i=0` | `game-engine-campaign-timer-component` | **`game-engine-team-mapping-component`** (le campaign-timer est a `i12` de ti 0, 1 ET 2) |
+| `ti=43 i=0` | `device-position-component` | **`object-position-component`** (device-position est a `ti=43 i=18`) |
+| `ti=35 i=59` | `biped-spartan-ability-non-predicted-state-component` | **`biped-spartan-ability-non-predicted-state`** (sans suffixe ; l'autre orthographe est un ALIAS du dispatch) |
+| `ti=5 i=22` | `(non identifie)` | **`player-aim-assist-component`** |
+| `ti=5 i=24` | `(non identifie)` | **`player-desired-frame-configuration-component`** |
+
+Cosmetiques (35) : l'inventaire agregait des repetitions dans le nom
+(`weapon-state-ammo (emplacement 1)`, `selectable-zone-data-component (x32, i0..i31)`,
+`(bloc objet partage) ... (presume)`). La table les developpe, une ligne par index reel.
+
+## Corrections de SOURCE `fichier:ligne` (30)
+
+Toutes les references `traverse.go:NNN` de l'inventaire ont derive (fusion R7-a..e + lot poses).
+Exemples : `game-engine-sudden-death` 733 -> **633** · `object-position-component` (ti=43 i0)
+880 -> **259** · `unit-desired-aiming-vector` 916 -> **918** · `asset-transform` « 919-930 » ->
+**921** · `spawn-filter-weight` « 931-940 » -> **933**. La table porte desormais la ligne
+recalculee par l'AST, et G1 la recalcule a chaque execution : elle ne peut plus deriver en
+silence.
+
+## Correction de PERIMETRE (1)
+
+`ti=11 i=-1` : l'inventaire portait une ligne fourre-tout (« 8 composants restants, ordre non
+releve »). Le registre donne les 34 composants de `ti=11` nommes et indexes : la ligne
+fourre-tout disparait, remplacee par les vrais index.
+
+## AJOUTS (318)
+
+**16 archetypes** du registre etaient absents de l'inventaire (33 documentes sur 49 porteurs) :
+
+| ti | nom prudent (prefixe commun) | composants |
+|---|---|---|
+| 1 | inconnu (game-engine-*) | 15 |
+| 3 | inconnu | 2 |
+| 7 | `forge-sim-generic-*` | 64 |
+| 19 | `sound-placement-state-*` | 32 |
+| 24 | inconnu | 27 |
+| 25 | `powerframe-player-selection-*` | 1 |
+| 26 | `supply-lines-*` | 33 |
+| 27 | `supply-lines-item-*` | 64 |
+| 28 | `narrative-moment-beat-*` | 1 |
+| 31 | `tacmap-*` | 11 |
+| 36 | inconnu | 20 |
+| 39 | inconnu | 20 |
+| 45 | `matchflow-*` | 2 |
+| 46 | `state-broker-state-*` | 64 |
+| 48 | `forge-player-data-*` | 2 |
+| 49 | `managed-radialmenu-*` | 35 |
+
+**302 composants** traites par le code (`porte` ou `partiel`) mais absents de l'inventaire.
+L'essentiel vient de la reutilisation d'un meme composant par plusieurs archetypes, que
+l'inventaire ne comptait qu'une fois : `game-engine-*` sur ti 0/1/2, `effect-state-data` sur
+les 32 index de ti=18, `nav-cutscene-flag` sur ti=15, `branch-script-results` sur ti=16, le
+bloc objet partage (`object-*` i0..i17) sur ti 36/37/38/39/40/41/42/43.
+
+**14 alias d'ecriture** acceptes par `consumeByName` et absents du registre des films temoins :
+`biped-action`, `biped-control-context`, `biped-desired-ability-set`, `biped-desired-grenade-set`,
+`biped-low-frequency-data`, `biped-malleable-property`, `biped-map-editor-flag`,
+`biped-mobility-action`, `biped-slide`, `biped-spartan-ability-energy`,
+`biped-spartan-ability-non-predicted-state-component`, `game-engine-team-mapping`,
+`simulation-state`, `simulation-state-playback`. Ils entrent a la table en `ti = -1`,
+statut `alias`.
+
+## Ce que la verification NE change pas
+
+`i57`, `i59`, `i63` restent `partiel` (retour data-dependant), conforme a l'inventaire.
+Les 191 `porte` de l'inventaire sont tous confirmes `porte` par l'AST : aucun statut de
+portage n'a ete infirme a la baisse.
