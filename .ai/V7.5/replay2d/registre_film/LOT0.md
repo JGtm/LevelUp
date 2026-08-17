@@ -234,3 +234,44 @@ l'item 0.5.
 
 **Gates.** `EXIT_0.4_G1_G3=0` (G1 et G3 verts ; G2 saute, sans film) ·
 `EXIT_0.4_test_filmdec=0` · `gofmt -l` vide.
+
+---
+
+## 0.5 — Registre des reports `[x]`
+
+**Huit lignes ajoutees** (`.ai/V7.5/REGISTRE_REPORTS.md:233-240`), origine commune « artefact
+*Registre du film Theater* + `replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, 2026-08-17 », chacune
+avec sa condition de reprise nommant le lot qui la porte :
+
+| Sujet | Etat ecrit | Lot de reprise |
+|---|---|---|
+| Score dans le temps (statborg ti=6) | decodeur COMPLET et mesure (283/284 vs Cheat Engine), **0 appelant** ; `objectivescore` supprime, pas parke | **A** |
+| Elevation de visee | DEJA lue et DEJA stockee (`PitchRaw`), bloquee sur toute la chaine aval (accesseur, golden, JSON, cone plan) | **E** |
+| ti=23 `selectable-zone-data` | NEGATIF mesure : 0 record sur 1 205 704 et 0 sur 988 752 ; les porteurs vivants sont ti=10 et ti=12 | **C** (recensement seul) |
+| tacmap ti=34 / ti=30 | NEGATIF mesure : 4 records sur 988 752, et 0 pour ti=30 — c'est de la campagne | **C** (ti=12) + **F4** (ecrire le negatif) |
+| ti=5 i11 `player-engine-loadout` | 8 x R(8) jetes, alors que `loadouts[]` vient d'un balayage d'images-cles espace de 20 s — le meme plafond que le ramassage | **P** |
+| ti=10 `managed-object` | i0 porte en `Skip(32)` : les 32 drapeaux sont consommes sans etre lus ; i1 `boundary-color` (le CAMP) non porte | **C** |
+| Medailles (`medal_type`) | AUCUNE ACTION — enonce utilisateur ; la ligne existe pour qu'aucun lot ne rouvre le sujet | **aucun** |
+| Empreinte du registre `chunk_00` | **TRAITEE** par 0.3, avec sa decouverte (registre non identique entre builds) et son cout chiffre | **0** (fait) |
+
+**Trois lignes existantes mises a jour.**
+
+- `:220` (R7-b, polarite d'i9) — la dette « aucun test ne fige la polarite » est declaree
+  TRAITEE, avec les deux instruments, le temoin joue et les chiffres du deplacement.
+- `:221` (REPORT `simStateComplete`) — **PAS declaree traitee**, et re-instruite : la condition
+  de reprise ecrite par R7-b (« faire tirer au chemin absolu d'i0 les largeurs de la carte »)
+  etait sous-estimee d'un ordre de grandeur. Les trois obstacles de l'item 0.2 y sont ecrits
+  avec leurs pieces (les quatre valeurs `axisW` retenues par le balayage, l'appelant de sync
+  qui passe des chunks en memoire, la difference de forme des deux leviers), le perimetre du
+  lot futur est enumere en trois etapes, et une reserve est posee sur le temoin lui-meme : il
+  a ete mesure a 14 bits par axe et devra etre re-etabli sous des largeurs de carte avant de
+  servir de gate.
+- `:230` (Table ECS) — comptes de statuts corriges (`non_porte` 532 -> **530**,
+  `deser_non_cable` 32 -> **34**) et amendement en deux points : le passage de ti=11 i2/i9 avec
+  la raison du `deser_addr` vide, et l'avertissement que **G2 ne peut pas etre vert sur tous les
+  films** — jouer G2 exige un film d'empreinte `0x61e492dd4de7fd4e`.
+
+**Verification de forme.** Les 8 lignes ajoutees et les 3 amendees ont toutes exactement 6
+champs de tableau (un `kind|flags|nom` litteral, qui cassait la ligne 240 en 8 champs, a ete
+reecrit `kind + flags + nom`). Trois lignes ANTERIEURES du registre (`:177`, `:182`, `:201`)
+portent le meme defaut ; hors perimetre, non corrigees, notees en Decouvertes.
