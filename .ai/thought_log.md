@@ -1,3 +1,70 @@
+## [2026-08-17] v7.5 rejeu 2D — fusion de wt/fusion-lots-go (lots R3-R6) dans feat/v75
+
+**Contexte** : les entrees datees [2026-08-18] situees plus bas dans ce journal ont ete ecrites
+le 17/08 (horloge de session) — ne pas s'etonner de l'ordre apparent.
+
+**Statut** : Fusion COMPLETE et committee. Gates PARTIELS — `golangci-lint` ROUGE (1 issue),
+le reste (build/vet/test) VERT. Non traite par cette session : contrat de la tache = gate rouge
+-> rapporter la sortie exacte et s'arreter, ne pas reparer.
+
+**Decision technique principale** : `git merge --no-ff wt/fusion-lots-go` (base commune
+`085cda41b`, HEAD branche `69d193e3e`) dans le worktree principal, depuis `feat/v75` `5e6a42dd1`.
+Deux conflits, tous deux de la MEME forme (les deux cotes ajoutent a la meme position depuis la
+base, sans toucher au meme contenu) : `.ai/thought_log.md` (nouvelles entrees prependees en tete
+des deux cotes) et `.ai/V7.5/REGISTRE_REPORTS.md` (nouvelles lignes ajoutees en fin de tableau
+des deux cotes). Resolution par UNION explicite, HEAD puis branche, sans arbitrage de contenu —
+verifie AVANT resolution (diff separe HEAD-vs-base et branche-vs-base) qu'aucune ligne n'etait
+modifiee des deux cotes a la fois dans ces deux hunks precis (6 lignes modifiees existent bien,
+mais chacune d'un seul cote et hors des hunks de conflit ; auto-fusionnees par git). Aucun code
+de production touche : les fichiers Go de la branche (`internal/analysis/filmdec/`) sont des
+instruments de recherche sous garde d'environnement (`TI11_FILM` / `KF_GRAM_FILM` / `KFQ_FILM`),
+plus deux retouches mineures qui exposent `keyframeRecordTIBit` comme definition unique du
+paquet, reutilisee par les marcheurs. Rien de branche dans un chemin de production
+(`defaultStateDeserByTI` inchange — decision superviseur du 17/08 deja actee par la branche
+elle-meme avant fusion).
+
+**Resultats observes** : commit de fusion `d2e46eb5d`. Fichiers venus de la branche : 4 plans
+(`PLAN_R3_IDENTITE_TI37.md`, `PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`, `PLAN_R5_GRAMMAIRE_IMAGE_CLE.md`,
+`PLAN_R6_FILE_PAR_ENTITE.md`), `WALK_PORT_NOTES.md` (+276 L), `README.md` (23 L changees), 4
+fichiers Go neufs (`keyframe_entity_queue.go` + test, `keyframe_record_walk.go` + test,
+`sonde_ti11_mur_test.go`, `sonde_ti11_objectifs_test.go`) et 2 retouches
+(`keyframe_ground_weapons.go` 13 L, `keyframe_world.go` 7 L). Comptes d'union verifies par grep
+avant ET apres resolution : `thought_log.md` **1885** en-tetes `## [` (HEAD) / **1885** (branche)
+/ **1890** (resultat) = base `085cda41b` 1880 + 5 (HEAD) + 5 (branche), zero titre commun aux deux
+cotes. `REGISTRE_REPORTS.md` **195** lignes `| ` (HEAD) / **190** (branche) / **203** (resultat) =
+base 182 + 13 (HEAD) + 8 (branche). Les 6 lignes modifiees hors des deux hunks de conflit (5 cote
+HEAD : rang 10 famille A, rangs 19/22 famille B, identite objet ti=37, mur+capteur nommes,
+GlobalID `eqip` dans les palettes `sofd` ; 1 cote branche : calque armes au sol amende le 17/08)
+verifiees presentes et intactes apres resolution. Gates (`apps/go-api`, log complet
+`fusion_r3r6_gates.log` du scratchpad de session) : `go build ./...` **EXIT 0** ; `go vet ./...`
+**EXIT 0** ; `go test` sur les paquets prescrits (23 paquets executes : analysis + sous-paquets,
+replaybuild, contracttest, film/{damagetag,filmcache,killicon,killsource}, archlint) **EXIT 0**,
+zero ligne `--- FAIL:` ; `golangci-lint run --new-from-merge-base=origin/main` **EXIT 1** — une
+issue, `internal/analysis/filmdec/keyframe_entity_queue.go:240:6`, regle `prealloc`
+(`var all []KFQWalk` suivi d'un append en boucle sur `vs`, sans capacite reservee). Fichier
+entierement neuf de la branche (310 L), donc entierement « new » pour ce gate avec ce
+merge-base — la regle n'avait jamais ete jouee par la session R6 avec cette base de comparaison.
+Pas une anomalie de fusion : le fichier n'a subi AUCUNE resolution manuelle, confirme par lecture
+(hors des deux hunks de conflit des fichiers `.ai/`, tout le reste vient d'un auto-merge git).
+`apps/web/` absent du diff `feat/v75...wt/fusion-lots-go` : gates web non applicables, non joues.
+
+**Anomalie hors perimetre, non traitee** : `.ai/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`
+porte une modification de 14 lignes NON INDEXEE, apparue en cours de session (absente du
+`git status` de depart de cette fusion), mentionnant les branches `wt/fusion-finale` et
+`wt/poses-revue-fix` — signe qu'une autre session travaille en parallele dans ce meme worktree
+principal. Fichier explicitement laisse INTACT (jamais `git add`), confirme absent des deux
+commits de cette fusion (`git diff --cached` avant chaque commit ne le listait pas). Aucune
+action prise : ni un des deux fichiers non suivis annonces au depart, ni dans le perimetre de
+cette fusion.
+
+**Conclusion / prochaine etape** : l'item 6 phase 0 lit desormais `WALK_PORT_NOTES.md` §
+IMAGE-CLE dans son propre arbre. Reste a traiter avant de considerer la fusion close : l'issue
+`prealloc` de `keyframe_entity_queue.go:240` (correctif mecanique d'une ligne, ou `//nolint`
+justifie si le style est voulu — decision hors perimetre de cette session) ; le gate VISUEL
+utilisateur, jamais joue par cette session (documents et instruments seulement, rien a
+l'ecran) ; signaler a l'utilisateur/superviseur l'activite concurrente detectee sur
+`PLAN_ARMES_AU_SOL_2E_LECTURE.md` avant tout prochain geste sur ce worktree.
+
 ## [2026-08-18] Handoff superviseur — fin de contexte de la session de pilotage
 
 **Statut** : Complete (handoff ecrit). `.ai/V7.5/HANDOFF_SUPERVISEUR_v75_2026-08-18.md`.
