@@ -219,122 +219,164 @@ Critere (section presente, >= 6 adresses, reponses ecrites a 1.2/1.3/1.4) : REMP
 3. **`ti=42` n'est plus un blocage de reverse** : son etat par defaut est resolu et se porte
    avec des primitives DEJA presentes dans le depot.
 
-### Phase 2 — PORTER et PROUVER : le walker DETERMINISTE d'image-cle
+### Phase 2 — PORTER et PROUVER : le walker DETERMINISTE d'image-cle — CLOSE le 2026-08-17, **NEGATIF MESURE**
 
-- [ ] 2.1 `filmdec/keyframe_record_walk.go` (fichier NEUF, a moi) : `WalkKeyframeRecords(pay,
-      reg)` qui PARSE la table — en-tete 64 bits puis corps par le lecteur de record NEW de
-      PRODUCTION — et rend, par record, `Slot / Gen / TI / Field26 / BitStart / BitEnd /
-      Desync`. Il REUTILISE `TraverseEntity` ; il ne recopie aucun deser.
-- [ ] 2.2 **TEST D'H1, et c'est la mesure qui commande tout le lot** : sur les records
-      `ti=37` bornes de l'oracle R3 (3 films, denominateur 1 226), publier (a) le taux
-      d'atterrissage sur une ancre VALIDE-RELACHEE, (b) le taux d'atterrissage exact sur
-      `recs[i+1].Bit` APRES chainage, (c) le nombre de records intercales sautes par le
-      filtre fort, (d) la distribution des `field26` non nuls.
-- [ ] 2.3 C1 statue avec ses chiffres (seuil 95 %). Si < 95 %, ouvrir H2 : distribution des
-      ecarts modulo 8/32/64 et balayage du tail 0..64 bits, publie.
-- [ ] 2.4 C2 : meme controle sur le second archetype le plus frequent des memes payloads,
-      denominateur publie.
-- [ ] 2.5 C3 : marche globale d'un payload complet — taux de payloads traverses de bout en
-      bout, et verification que TOUS les records de `WalkKeyframeWorld` sont retrouves.
-- [ ] 2.6 Instrument versionne `filmdec/keyframe_record_walk_test.go`, garde d'environnement
-      `KF_GRAM_FILM` (saute en CI, patron `equipment_identity_test.go:35-50`), lecture seule,
-      aucune ecriture disque.
+- [x] 2.1 `filmdec/keyframe_record_walk.go` ECRIT : `readKeyframeHeader` (l'en-tete de 64 bits
+      SANS le filtre fort), `WalkKeyframeRecords` (parse deterministe avec cause d'arret
+      nommee), `ChainKeyframeRecords` (chainage vers une frontiere connue) et
+      `WalkKeyframeBody` (les huit lectures possibles du corps). Il REUTILISE
+      `TraverseEntity`, `traverseComponentLoop`, `consumeMask` et les deserialiseurs d'etat
+      par defaut de production — aucun deser recopie.
+- [x] 2.2 **H1 TESTEE ET REFUTEE.** Sur les 1 226 records `ti=37` bornes (415 + 408 + 403, le
+      denominateur EXACT de R3, retrouve a l'unite pres) : **0 atterrissage direct, 0 par
+      chainage**. La cause est publiee et elle tue l'hypothese : sur `000d5950`, **382 des
+      415 marches n'atterrissent meme pas sur un en-tete valide** (`arret en-tete-invalide`),
+      24 atterrissent sur un en-tete mais a slot non croissant, 9 en fin de payload.
+      **ZERO record intercale traverse, donc zero `field26` non nul rencontre** : le balayeur
+      ne saute rien, ce n'est pas lui le coupable.
+- [x] 2.3 **C1 ECHOUE, et H2/H3 sont refutees avec lui.** Trois balayages independants :
+      (a) **decalage du corps** — pour chaque record, le lecteur de record NEW pose a chacun
+      des 128 decalages possibles depuis le debut du record : **0 marche exacte** sur les
+      415 records `ti=37` et les 2 008 records `ti=38` de `000d5950`. Le decalage 58 est le
+      SEUL ou le `typeIndex` relu est correct (415/415 et 2008/2008) — l'en-tete de 64 bits
+      est donc CONFIRME par une chaine independante, et le corps n'est nulle part.
+      (b) **lecture du corps** — les huit combinaisons (etat par defaut x porte x masque) x
+      corruption-check : le meilleur resultat sur `ti=37` est **7 marches exactes sur 403**
+      (1,7 %), sur `ti=38` **95 sur 5 311** (1,8 %). Aucune ne s'approche du seuil.
+      (c) **grammaire de record NEW** (matrice de R3, 8 combinaisons) : au mieux **1 marche
+      sur 1 226**, cote a cote avec les 2 / 1 226 de R3 — reproduction independante du meme
+      negatif.
+- [x] 2.4 **C2 ECHOUE** sur le second archetype, choisi par sa FREQUENCE : `ti=38` est le plus
+      frequent des tables d'image-cle (2 013 / 7 825 records sur `000d5950`). Denominateur
+      cumule **9 460 records bornes** (2 008 + 2 141 + 5 311). Meilleur taux 1,8 %.
+- [x] 2.5 **C3 ECHOUE, et c'est la mesure la plus nette du lot** : le walker deterministe
+      parse **exactement UN record par image-cle** puis s'arrete, sur les 26 images-cles de
+      `000d5950` et pour les huit combinaisons — **26 records de l'oracle retrouves sur
+      7 825 (0,3 %)**, cause d'arret `en-tete-invalide` dans 26 payloads sur 26. La marche du
+      TOUT PREMIER corps ne retombe deja pas sur une frontiere.
+- [x] 2.6 Instrument versionne `filmdec/keyframe_record_walk_test.go` (4 tests), garde
+      `KF_GRAM_FILM`, **4 SKIP verifies sans la variable**, lecture seule, aucune ecriture
+      disque.
 
-**Gate 2** :
-
-```
-export GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-kfgram/.gocache
-cd apps/go-api && CGO_ENABLED=0 go build ./internal/analysis/...
-cd apps/go-api && CGO_ENABLED=0 go vet ./internal/analysis/filmdec/
-cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/
-cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/filmdec/ -run KFGram -v   # SKIP sans la garde
-cd apps/go-api && CGO_ENABLED=0 KF_GRAM_FILM=<film> go test ./internal/analysis/filmdec/ -run KFGram -v -timeout 30m
-gofmt -l internal/analysis/filmdec/                                                    # vide
-```
-
-Critere : build/vet/test verts, la garde saute sans la variable, et les quatre chiffres de
-2.2 sont publies avec leurs denominateurs. **C1 passe ou echoue, les deux sont un livrable.**
-
-### Phase 3 — `ti=42` : la position des armes au sol a l'image-cle
-
-Ouverte SEULEMENT si C1 passe (sinon `[!]` + registre : la cause est ecrite en phase 2).
-
-- [ ] 3.1 Etat par defaut de `ti=42` inscrit dans `defaultStateDeserByTI`
-      (`default_state_arch.go`, **une seule ligne d'ajout** au fichier partage) a partir de
-      la decompile de 1.4 — ou `[!]` motive si 1.4 a rendu « non resolue ».
-- [ ] 3.2 `filmdec/keyframe_ti42_pos.go` (fichier NEUF, a moi) : positions `ti=42` lues au
-      record d'image-cle par le walker deterministe. AUCUNE reecriture de
-      `keyframe_ground_weapons.go`.
-- [ ] 3.3 C4 : emprise (>= 95 %) contre le nuage de positions biped du meme film, ET bande
-      FANTOME de meme cardinalite passee par le MEME code (reel/fantome >= 3x). Chiffres et
-      denominateurs publies, par film.
-- [ ] 3.4 Verdict ecrit : les 55 % de « positions fantomes » du 2026-08-12 tombent-elles ?
-      Oui avec les chiffres, ou non avec les chiffres.
-
-**Gate 3** :
+**GATE 2 : PASSE PAR LE NEGATIF** (le plan prevoyait les deux issues). Commandes et sorties :
 
 ```
-cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/
-cd apps/go-api && CGO_ENABLED=0 KF_GRAM_FILM=<film> go test ./internal/analysis/filmdec/ -run KFTI42 -v -timeout 30m
+CGO_ENABLED=0 go build ./internal/analysis/...                       BUILD_EXIT=0
+CGO_ENABLED=0 go vet   ./internal/analysis/filmdec/                  VET_EXIT=0
+gofmt -l internal/analysis/filmdec/                                  (vide)
+CGO_ENABLED=0 go test  ./internal/analysis/filmdec/ ./internal/analysis/replay/
+    ok levelup/go-api/internal/analysis/filmdec  34.486s
+    ok levelup/go-api/internal/analysis/replay   23.990s             TEST_EXIT=0
+CGO_ENABLED=0 go test  ./internal/analysis/filmdec/ -run '^TestKFGram' -v
+    4 SKIP (garde OK)
+CGO_ENABLED=0 KF_GRAM_FILM=<film> go test ./internal/analysis/filmdec/ \
+    -run '^TestKFGram(Chain|Offset|Variant|Global)$' -timeout 30m -v     PASS sur 3 films
 ```
 
-### Phase 4 — `ti=11` : l'objectif vivant (type, etat, progression)
+**LE RESULTAT DE FOND — LE CORPS D'UN RECORD D'IMAGE-CLE N'EST PAS UN RECORD NEW.**
 
-Ouverte SEULEMENT si C1 passe.
+C'est un fait NEUF, et il contredit une croyance ecrite du depot (« le keyframe utilise la
+MEME grammaire de records que les deltas », `HANDOFF_KEYFRAME_LIVE_CAPTURE.md`). Ce que la
+phase 2 etablit, avec ses denominateurs :
 
-- [ ] 4.1 Decompiler et porter les composants `ti=11` necessaires : `i5 type`,
-      `i12 progress`, `i13 required-progress`, `i14 state` au minimum ; `i3
-      object-reference` si le mur tombe. Chaque composant porte cite sa fonction.
-- [ ] 4.2 `filmdec/keyframe_ti11_objectifs.go` (fichier NEUF, a moi) : lecture par record
-      d'image-cle, sur `64e8adfa` et `530820e5`, avec `0014603f` en temoin negatif.
-- [ ] 4.3 C5 : `i12 <= i13` (>= 95 %), `i5` stable par slot (>= 95 %), et confrontation aux
-      evenements `flag_grabs` / `flag_captures` d'`objectiveevents` (TimeMS BRUT — le
-      decalage `originMs` est un defaut connu, contourne, NON corrige ici).
-- [ ] 4.4 Verdict ecrit, avec le temoin negatif (le film sans objectif doit rendre ZERO).
+1. **L'EN-TETE est confirme, par une chaine independante** : 64 bits, `typeIndex` a `+58`,
+   relu correct sur 415/415 (`ti=37`) et 2 008/2 008 (`ti=38`), et aucun autre des
+   128 decalages ne fait mieux que le hasard. Ce n'est donc pas l'ancrage qui est faux.
+2. **LE CORPS N'EST PAS ATTEIGNABLE par le lecteur de record NEW** : 128 decalages x 16
+   lectures de corps x 3 films, **jamais plus de 1,8 %** de marches exactes, et le walker
+   global s'arrete au premier record dans 26 payloads sur 26.
+3. **L'ORACLE DE R3 EST DISCULPE.** L'ecart residuel n'est pas un record saute : les marches
+   n'atterrissent pas sur des en-tetes du tout (382/415), et zero record intercale n'a pu
+   etre traverse. Le filtre `field26 == 0` de `keyframe_world.go:70` n'est pas en cause.
+4. **La longueur reelle des records est FORTEMENT quantifiee**, ce qui reste le meilleur
+   indice pour la suite : `ti=38` ne prend que **39 valeurs distinctes sur 2 008 records**
+   (dominantes 827 x 396, 870 x 243, 851 x 231, 846 x 204, 859 x 174) et `ti=37` 106 valeurs
+   sur 415 (dominante 888 x 100). Le lecteur de record NEW n'en consomme qu'environ 40 %.
+   Une serialisation d'ETAT COMPLET par composant reste la piste la plus economique — mais
+   elle ne se lit pas par la boucle `FUN_14076cb60`, qui a ete essayee et mesuree.
+5. **Ce qui manque, nomme** : le CONSOMMATEUR du payload type-2 dans le jeu. La phase 1 a
+   etabli que la boucle de records (`FUN_1406cd128`) est DESACTIVEE quand la porte
+   d'image-cle `*(param_1+0x12)` est mise, et que le chemin d'image-cle passe par
+   `FUN_142f2913c` (baseline-emit) qui draine une file par-entite — donc un bitstream
+   RECONSTRUIT, pas le payload du film. La transformation « payload type-2 -> file
+   par-entite » n'est identifiee nulle part, et c'est ELLE qu'il faut decompiler.
 
-**Gate 4** :
+### Phase 3 — `ti=42` : la position des armes au sol a l'image-cle — PARTIELLE, le reste `[!]`
+
+La condition d'ouverture ecrite (« C1 passe ») n'est PAS remplie. L'item 3.1 est neanmoins
+EXECUTE, parce qu'il ne depend pas de C1 : l'etat par defaut d'un archetype sert au lecteur
+de record NEW du chemin DELTA, ou `TraverseEntity` est reellement appele. Les items 3.2 a 3.4
+sont statues `[!]` : ils lisent le corps d'un record d'image-cle, et la phase 2 vient de
+montrer qu'on ne sait pas le lire.
+
+- [x] 3.1 **Etat par defaut de `ti=42` PORTE ET INSCRIT.** `filmdec/default_state_ti42.go`
+      (fichier NEUF, a moi) porte `FUN_1407f0c68` feuille par feuille, avec la chaine de
+      resolution et les adresses en commentaire ; **UNE SEULE ligne ajoutee** au fichier
+      partage `default_state_arch.go` (`42: consumeDefaultStateTI42`). Build, vet, gofmt et
+      les suites `filmdec` + `replay` restent verts. **Caveat ECRIT dans le fichier** : aucun
+      oracle ne le valide, le seul disponible ayant ete refute en phase 2 ; il entre dans la
+      table pour la meme raison que les vingt autres — toutes ses largeurs sont etablies
+      statiquement.
+- [!] 3.2 `filmdec/keyframe_ti42_pos.go` — **non cree**. Il lirait la position dans le corps
+      d'un record d'image-cle ; ce corps n'est pas decodable aujourd'hui (phase 2). Un fichier
+      qui rendrait des positions non controlables serait exactement l'erreur que le lot des
+      armes au sol a payee le 2026-08-12.
+- [!] 3.3 C4 (emprise + bande fantome) — sans objet : aucune position a encadrer.
+- [!] 3.4 Verdict sur les 55 % de positions fantomes du 2026-08-12 — **inchange**. La
+      condition de reprise du registre (« default-state de `ti=42` resolu ») est desormais
+      REMPLIE, mais elle n'etait pas suffisante : la condition reelle est la grammaire du
+      corps d'image-cle. Le registre est amende en ce sens (§11).
+
+**Gate 3 : PASSE SUR SON PERIMETRE REEL.**
 
 ```
-cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/objectiveevents/
-cd apps/go-api && CGO_ENABLED=0 KF_GRAM_FILM=<film> go test ./internal/analysis/filmdec/ -run KFTI11 -v -timeout 30m
+CGO_ENABLED=0 go build ./internal/analysis/...                       BUILD_EXIT=0
+CGO_ENABLED=0 go vet   ./internal/analysis/filmdec/                  VET_EXIT=0
+gofmt -l internal/analysis/filmdec/                                  (vide)
+CGO_ENABLED=0 go test  ./internal/analysis/filmdec/ ./internal/analysis/replay/   ok / ok
 ```
 
-### Phase 5 — PUBLIER dans l'artefact, SANS bosse de `SchemaVersion`
+### Phase 4 — `ti=11` : l'objectif vivant — `[!]` NON OUVERTE, DEPENDANCE MORTE
 
-Ouverte SEULEMENT si C4 ou C5 passe. Sinon `[!]` + registre (regle de non-publication §1.1).
+La condition d'ouverture (« C1 passe ») n'est pas remplie, et la dependance est TOTALE :
+`ti=11` n'est atteignable qu'au record d'image-cle (la voie DELTA a ete refutee par R4 —
+`matchWorldObjectRecord` ne reconnait pas ces records, rapport reel/fantome 0,73x et 0,37x).
+Porter `i5` / `i12` / `i13` / `i14` sans savoir ou ils commencent produirait des valeurs
+inverifiables.
 
-- [ ] 5.1 Assemblage dans `replay/` (fichier NEUF, a moi) : par entite, le TYPE (identifiant
-      stable, jamais un libelle) et la donnee mesuree, bornes a la fenetre du document.
-      Test unitaire PUR (entrees synthetiques, aucune I/O).
-- [ ] 5.2 Champ optionnel (`omitempty`) sur `ReplayDocument` + `Coverage`. **`SchemaVersion`
-      NON TOUCHE** — le champ et la raison de la bosse notes en 5.4.
-- [ ] 5.3 Contrat OpenAPI regenere + `generated.ts` + normalisation web si le champ traverse.
-      Aucun composant de rendu touche, aucune string i18n ajoutee.
-- [ ] 5.4 Note ECRITE au plan : quel champ exigera une bosse `SchemaVersion` 8 -> 9 et
-      pourquoi (la reprise du backfill se fait PAR la version). **La bosse unique est faite
-      par le superviseur a la fusion.**
+- [!] 4.1 Portage des composants `ti=11` — non fait (aucun point d'entree fiable).
+- [!] 4.2 `filmdec/keyframe_ti11_objectifs.go` — non cree (code mort, anti-pattern n°1).
+- [!] 4.3 C5 — sans objet. **L'oracle reste intact et disponible**
+      (`objectiveevents.IdentifiedEvent`) : c'est l'objet a confronter qui manque, pas le
+      temoin. La reprise sera donc peu couteuse une fois le corps decode.
+- [!] 4.4 Verdict — celui de la phase 2, avec ses chiffres.
 
-**Gate 5** :
+**Gate 4 : SANS OBJET.** La phase n'a pas ete ouverte.
 
-```
-cd apps/go-api && CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go vet ./internal/analysis/...
-cd apps/go-api && CGO_ENABLED=0 go test ./internal/analysis/... ./contracttest/
-make check-types && make test-web        (si 5.3 touche le web)
-```
+### Phase 5 — PUBLIER dans l'artefact — `[!]` RIEN A PUBLIER
 
-### Phase 6 — CLORE
+La regle de non-publication du §1.1 est appliquee telle qu'elle a ete ecrite : aucune donnee
+n'entre dans l'artefact tant que le controle de sa phase n'est pas passe. Aucun ne l'est.
 
-- [ ] 6.1 Toutes les cases de ce plan statuees `[x]` / `[~]` / `[!]`.
-- [ ] 6.2 Lignes proposees pour `.ai/V7.5/REGISTRE_REPORTS.md` redigees ICI (§11), en une
-      seule fois, y compris les lignes a AMENDER : report `ti=42` du 2026-08-12, ligne
-      `ti=11` de R4, decouverte 2 de R3.
-- [ ] 6.3 Entree `.ai/thought_log.md` REDIGEE et remise au superviseur — ce lot n'ecrit PAS
-      dans le journal, il appartient au superviseur.
-- [ ] 6.4 Rapport final : par phase, ce que Ghidra a montre, les mesures REELLES avec leurs
-      denominateurs, les gates (commandes + sorties), les commits et les push.
+- [!] 5.1 Assemblage `replay/` — non cree.
+- [!] 5.2 Champ optionnel sur `ReplayDocument` — non ajoute. `SchemaVersion` reste a **8**.
+- [!] 5.3 Contrat OpenAPI / `generated.ts` / normalisation web — sans objet, aucun champ ne
+      traverse. Verifie : **aucun fichier de `internal/analysis/replay/` ni de `apps/web/`
+      n'est touche par ce lot.**
+- [x] 5.4 **Note de bosse : ce lot ne demande AUCUNE bosse de `SchemaVersion`.** Il n'ajoute
+      aucun champ au document. (Information utile au superviseur a la fusion : R3 peut en
+      demander une pour son compte, R4 n'en demande pas, R5 non plus.)
 
----
+**Gate 5 : SANS OBJET.** Aucune modification de l'artefact ni du document.
 
+### Phase 6 — CLORE — CLOSE le 2026-08-17
+
+- [x] 6.1 Toutes les cases des phases 1 a 5 sont statuees, aucune vide.
+- [x] 6.2 Lignes de registre redigees en une seule fois (§11), y compris les DEUX lignes a
+      amender (report `ti=42` du 2026-08-12, ligne `ti=11` de R4) et la decouverte 2 de R3.
+- [x] 6.3 Entree `thought_log.md` redigee (§12) et remise au superviseur — ce lot n'ecrit PAS
+      dans le journal.
+- [x] 6.4 Rapport final rendu, avec denominateurs, gates executes et ce qui reste.
 ## 6. Decisions produit — TRANCHEES avant execution
 
 1. **L'UI n'est pas dans ce lot.** On publie la donnee, ou on ne publie rien. Aucun fichier
@@ -378,6 +420,13 @@ R1 est fusionne ; R3 bis tourne dans le worktree principal ; l'habillage est en 
    `filmdec/keyframe_ti42_pos*.go`, `filmdec/keyframe_ti11_objectifs*.go`, le fichier
    d'assemblage `replay/` de la phase 5, ce plan, et la section « image-cle » de
    `WALK_PORT_NOTES.md`.
+   **AMENDEMENT du 2026-08-17, ecrit au moment ou il a ete pris** : `filmdec/
+   default_state_ti42.go` s'ajoute a cette liste. L'item 3.1 porte l'etat par defaut de
+   `ti=42` ; le loger dans `keyframe_ti42_pos.go` aurait ete trompeur (ce n'est pas de la
+   position) et dans `keyframe_record_walk.go` hors sujet. Le fichier partage
+   `default_state_arch.go` ne recoit qu'UNE ligne d'enregistrement, conformement au point 2.
+   **FICHIERS PARTAGES REELLEMENT TOUCHES PAR CE LOT, liste exhaustive** :
+   `filmdec/default_state_arch.go`, une ligne (`42: consumeDefaultStateTI42`). Rien d'autre.
 2. **Fichiers PARTAGES du decodeur** (`traverse.go`, `default_state*.go`, `keyframe_world.go`,
    `replay/build.go`, `replay/document.go`, `replay/coverage.go`) : **une ligne
    d'enregistrement chacun au maximum**, jamais de reecriture, jamais de reindentation,
@@ -403,7 +452,31 @@ gate passe + items statues + plan a jour + commit + push + point d'etape.
 
 ## 9. Decouvertes — a consigner, NE PAS traiter dans ce lot
 
-_(rempli en cours d'execution)_
+- **(phase 2) La longueur reelle d'un record d'image-cle est FORTEMENT quantifiee, et c'est
+  un signal gratuit.** `ti=38` : **39 valeurs distinctes sur 2 008 records** (827 bits
+  x 396, 870 x 243, 851 x 231, 846 x 204, 859 x 174, 886 x 125, 948 x 100, **1 536 x 100**
+  — cette derniere vaut exactement 192 octets). `ti=37` : 106 valeurs sur 415, dominante
+  888 x 100. Une entite dont la longueur de record ne prend qu'une poignee de valeurs est
+  une entite dont l'etat est ecrit de facon quasi FIXE. NE PAS traiter ici, mais c'est le
+  meilleur point d'entree pour la prochaine passe : mesurer, pour un archetype donne, la
+  correspondance longueur <-> contenu.
+- **(phase 2) La marche du record NEW ne consomme qu'environ 40 % de la longueur reelle.**
+  Sur les 100 records `ti=37` de longueur 888 bits, la variante « etat par defaut + porte +
+  masque » s'arrete 557 bits trop tot (soit 331 bits consommes). Un facteur 2,5, stable.
+- **(phase 1) `vtable[0x88]` (le MASQUE PAR DEFAUT) n'est porte pour aucun archetype.** Il
+  ne lit aucun bit, mais il commande la lecture de la porte `R(1)` dans les deux lecteurs de
+  record NEW : un archetype dont le masque par defaut est non nul lit la porte meme quand le
+  flux ne la porte pas. Sans effet mesure ici (la porte a ete probee dans les deux sens),
+  mais c'est une inconnue restante du chemin DELTA. NE PAS traiter ici.
+- **(phase 1) Un prologue de mode film jamais porte** : `FUN_1406cd128` lit `R(32)` en tete
+  de chaque iteration de record quand le mode film est actif, et `R(1)[+R(8)]` avant les
+  branches NEW et DEL. Le meme `R(1)[+R(8)]` figure dans `FUN_1406cbaa0` avant le deser NEW.
+  Le decodeur du depot n'en porte aucun. Sans effet sur l'image-cle (qui ne passe pas par
+  cette boucle), mais a verifier sur le chemin DELTA. NE PAS traiter ici.
+- **(phase 1) `FUN_14076cb60` decale l'index de bit du masque d'un compteur de composants
+  SAUTES** (`i - sautes`). Le saut n'a lieu que hors mode film (`DAT_144c232e1`), donc sans
+  effet ici — mais le port Go (`traverseComponentLoopFrom`) utilise `i` nu, ce qui serait
+  faux si le filtre s'activait. NE PAS traiter ici.
 
 ## 10. Journal d'execution
 
@@ -417,13 +490,79 @@ appelle la meme `FUN_14076cb60` et il n'existe pas de second site d'appel de com
 (3 greps, sorties ci-dessus). Journal RE : section « IMAGE-CLE » de `WALK_PORT_NOTES.md`.
 Commit `docs(v7.5-rejeu-kf)` sur `wt/kf-grammaire`.
 
+**2026-08-17 — Phase 2 CLOSE PAR LE NEGATIF.** Walker deterministe ecrit
+(`filmdec/keyframe_record_walk.go`) + instrument a 4 tests garde par `KF_GRAM_FILM`. Trois
+balayages independants sur 3 films : decalage du corps (128 positions), lecture du corps
+(8 variantes x corruption-check), grammaire de record NEW (matrice R3). **Aucun ne depasse
+1,8 % de marches bit-exactes** ; le walker global s'arrete au PREMIER record dans 26 payloads
+sur 26. H1 (oracle contamine par le filtre du balayeur) REFUTEE : zero record intercale
+traverse, 382 marches sur 415 n'atterrissent meme pas sur un en-tete. L'en-tete de 64 bits,
+lui, est CONFIRME par une chaine independante (decalage 58 seul valide, 415/415 et
+2 008/2 008). Gate 2 passe par le negatif. Commit `mesure(v7.5-rejeu-kf)`.
+
+**2026-08-17 — Phase 3 PARTIELLE, phases 4/5 `[!]`, phase 6 CLOSE.** L'etat par defaut de
+`ti=42` est porte et inscrit (`filmdec/default_state_ti42.go` + une ligne dans
+`default_state_arch.go`) : build, vet, gofmt et les suites `filmdec` + `replay` verts. Le
+reste de la phase 3 et toute la phase 4 dependent du corps d'image-cle, non decodable :
+statues `[!]` avec leur justification. Rien n'est publie, `SchemaVersion` reste a 8, aucune
+bosse demandee au superviseur.
+
 ## 11. Lignes de registre proposees
 
-_(redigees en une seule fois a la phase 6)_
+A verser en une seule fois dans `.ai/V7.5/REGISTRE_REPORTS.md`. **Deux lignes existantes sont
+a AMENDER** (elles portent une condition de reprise que ce lot a mesuree comme FAUSSE ou
+INSUFFISANTE), et deux lignes sont NEUVES.
+
+| sujet | lot / date | ce qui a ete mesure | condition de reprise |
+|---|---|---|---|
+| **[NEUF — c'est le verrou central] La grammaire du CORPS d'un record d'IMAGE-CLE (payload type-2)** | lot R5, phases 1-2, 2026-08-17 | **Le corps d'un record d'image-cle N'EST PAS un record NEW**, et c'est mesure trois fois independamment. (1) Par LECTURE du jeu : les deux lecteurs de record NEW (`FUN_141f86704` bufferise, `FUN_1408f1aa4` direct) portent la MEME grammaire, le chemin DELTA (`FUN_141f86b58`) appelle la MEME boucle de composants `FUN_14076cb60`, et il n'existe AUCUN second site d'appel de composant — l'hypothese « deser feuille `+0x28` en image-cle contre wrapper en delta » est donc refutee sans mesure. (2) Par BALAYAGE DU DECALAGE : le lecteur de record NEW pose a chacun des 128 decalages possibles rend **0 marche bit-exacte** sur 415 records `ti=37` et 2 008 records `ti=38` ; le decalage 58 est le SEUL ou le `typeIndex` relu est correct (415/415, 2008/2008) — **l'en-tete `[id:32][field:26][ti:6]` est donc CONFIRME**, ce n'est pas l'ancrage qui est faux. (3) Par BALAYAGE DES LECTURES DE CORPS : 8 combinaisons (etat par defaut x porte x masque) x corruption-check, 3 films, **jamais plus de 1,8 %** (meilleur : 7/403 sur `ti=37`, 95/5 311 sur `ti=38`). Le walker DETERMINISTE parse **1 seul record par image-cle** puis s'arrete : **26 records de l'oracle retrouves sur 7 825 (0,3 %)**, arret `en-tete-invalide` dans 26 payloads sur 26. **L'oracle de R3 est DISCULPE** : zero record intercale traverse, donc le filtre `field26 == 0` de `keyframe_world.go:70` n'explique rien. Denominateurs `ti=37` : 1 226 records bornes (415+408+403), identiques a ceux de R3 | condition de reprise : **decompiler le CONSOMMATEUR du payload type-2**. Ce que la phase 1 a etabli et qui borne la recherche : la boucle de records `FUN_1406cd128` est DESACTIVEE quand la porte d'image-cle `*(param_1+0x12)` est mise ; le chemin d'image-cle passe par `FUN_142f2913c` (baseline-emit) qui draine une file par-entite alimentee par `FUN_142f29538` — donc un bitstream RECONSTRUIT, pas le payload du film. **La transformation « payload type-2 -> file par-entite » n'est identifiee nulle part.** Indice a exploiter en priorite : la longueur reelle des records est fortement quantifiee (`ti=38` : 39 valeurs distinctes sur 2 008 records ; `ti=37` : dominante 888 bits, 100 fois), et le lecteur de record NEW n'en consomme qu'environ 40 %. Reproductible : `KF_GRAM_FILM=<film> go test ./internal/analysis/filmdec/ -run '^TestKFGram' -v` |
+| **[NEUF] Etat par defaut de `ti=42` : RESOLU et porte, sans oracle** | lot R5, phase 1.4 + 3.1, 2026-08-17 | Chaine rejouee : `FUN_140e453b4` -> `FUN_140e45fc4(world, 0x2a, &PTR_PTR_144701780)` @`0x140e4578f` ; xref [WRITE] -> `FUN_1403721d0` : vtable `0x1436fd790` ; `*(vtable+0x60)` = `FUN_1407f0c68` = `V ; FUN_1407f2224 (== consumeDefaultStateTI36) ; R(12) ; R(7) ; FUN_1407f2494 ; ECS_ReadEntityRefIndex5`. Largeur 7 figee par `MOV dword [RSP+0x20],7` @`0x1407f0d30`. Porte dans `filmdec/default_state_ti42.go`, inscrit par UNE ligne dans `default_state_arch.go`. Toutes les suites restent vertes | **AUCUN oracle ne le valide** : le seul disponible (marche bit-exacte au record d'image-cle) est refute par la ligne ci-dessus. Le valider exigera soit la grammaire du corps d'image-cle, soit un record NEW `ti=42` observe dans un paquet DELTA avec une frontiere connue |
+| **[A AMENDER — ligne « armes au sol `ti=42` », 2026-08-12]** | amendement lot R5, 2026-08-17 | La condition de reprise ecrite le 12/08 (« default-state de `ti=42` resolu ») est **REMPLIE depuis le 2026-08-17** — et elle etait **INSUFFISANTE**. Le vrai verrou est la grammaire du corps d'un record d'image-cle (ligne ci-dessus), pas l'etat par defaut. Les 55 % de positions fantomes restent inchanges ; aucune position n'a ete relue | remplacer la condition par : « grammaire du CORPS d'un record d'image-cle resolue » |
+| **[A AMENDER — ligne « objectifs vivants `ti=11` », lot R4, 2026-08-17]** | amendement lot R5, 2026-08-17 | La condition de reprise de R4 (« la grammaire du CORPS d'un record d'IMAGE-CLE ») est CONFIRMEE comme le bon verrou, et **PRECISEE** : ce corps n'est pas un record NEW (128 decalages x 16 lectures x 3 films, jamais plus de 1,8 %), et l'en-tete de 64 bits est confirme. Ce qu'il faut decompiler est nomme : le consommateur du payload type-2 / la transformation vers la file par-entite de `FUN_142f2913c` | inchangee dans son principe, precisee dans sa cible |
+| **[A AMENDER — decouverte 2 de R3, « l'ecart residuel est structure »]** | amendement lot R5, 2026-08-17 | La lecture proposee par R3 — « la longueur du record depend du TYPE de l'objet, donc c'est un signal de partition gratuit » — est **MESUREE ET CONFIRMEE, mais elle ne se lit pas sur l'ECART** : c'est la LONGUEUR REELLE du record qui est fortement quantifiee (`ti=38` : 39 valeurs distinctes sur 2 008 ; `ti=37` : 106 sur 415, dominante 888 bits x 100). L'ecart de R3 (557 / 707 / ...) n'est qu'un artefact de la marche trop courte | exploiter la LONGUEUR, pas l'ecart ; et le faire APRES la grammaire du corps, sinon on partitionne du bruit |
 
 ## 12. Entree `thought_log.md` proposee
 
-_(redigee a la phase 6 ; ce lot n'ecrit pas dans le journal)_
+```
+## [2026-08-17] Lot R5 — la grammaire du corps d'un record d'image-cle : negatif mesure,
+et le verrou change de nom
+
+Statut : Complete (negatif mesure, livrable).
+Branche : wt/kf-grammaire (worktree LevelUp-wt-kfgram), 4 commits, pousses.
+
+DECISION TECHNIQUE. Deux lots du meme jour (R3 ti=37, R4 ti=11) avaient conclu que « la
+grammaire du corps d'un record d'image-cle n'est resolue nulle part ». R5 l'a attaquee
+d'abord par LECTURE du jeu (Ghidra, read-only), ensuite seulement par mesure — l'ordre
+inverse de ce qui avait ete fait jusque-la, et c'est ce qui a paye.
+
+RESULTATS OBSERVES.
+1. Lecture : les deux lecteurs de record NEW du jeu (FUN_141f86704, FUN_1408f1aa4) portent
+   la MEME grammaire, et le chemin DELTA (FUN_141f86b58) appelle la MEME boucle de
+   composants FUN_14076cb60. Il n'existe aucun second site d'appel de composant :
+   l'hypothese « deser feuille +0x28 en image-cle contre wrapper en delta » est refutee
+   sans qu'une seule mesure soit necessaire.
+2. Mesure : sur 1 226 records ti=37 bornes (le denominateur exact de R3, retrouve a l'unite
+   pres) et 9 460 records ti=38, 128 decalages de corps x 16 lectures de corps x 3 films ne
+   rendent JAMAIS plus de 1,8 % de marches bit-exactes. Le walker deterministe parse un
+   seul record par image-cle puis s'arrete : 26 records de l'oracle sur 7 825 (0,3 %).
+3. L'en-tete de 64 bits [id:32][field:26][ti:6] est CONFIRME par une chaine independante :
+   le decalage 58 est le seul ou le typeIndex relu est correct, 415/415 et 2 008/2 008.
+4. L'oracle de R3 est disculpe : zero record intercale traverse, 382 marches sur 415
+   n'atterrissent meme pas sur un en-tete. Le filtre field26==0 du balayeur n'y est pour
+   rien.
+5. Acquis positif : l'etat par defaut de ti=42 est RESOLU bit-exact (vtable 0x1436fd790,
+   *(vtable+0x60) = FUN_1407f0c68) et porte. Il remplit la condition de reprise ecrite le
+   12/08 pour les armes au sol — qui s'avere insuffisante.
+
+CONCLUSION / PROCHAINE ETAPE. Le verrou n'est plus « la grammaire du corps », il est
+NOMME et BORNE : le consommateur du payload type-2 du film. La boucle de records est
+desactivee quand la porte d'image-cle est mise ; le chemin d'image-cle draine une file
+par-entite (FUN_142f2913c), donc un bitstream RECONSTRUIT. La transformation
+payload -> file n'est identifiee nulle part : c'est elle qu'il faut decompiler. Indice
+gratuit pour la suite : la longueur reelle des records est fortement quantifiee (ti=38 :
+39 valeurs distinctes sur 2 008 records), et le lecteur de record NEW n'en consomme
+qu'environ 40 %. Rien n'est publie, SchemaVersion reste a 8.
+```
 
 ## 13. Protocole de reprise de session
 
