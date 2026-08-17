@@ -33,10 +33,23 @@ function goTintKinds(): string[] {
   return [...body.matchAll(/"(\w+)":\s*true/g)].map((m) => m[1]).sort()
 }
 
-/** Les natures effectivement employées par la table du titre. */
+/**
+ * Les natures effectivement employées par la table du titre.
+ *
+ * LA SECTION EST BORNÉE À LA SUIVANTE, et il l'a fallu : cette lecture prenait tout ce qui
+ * suivait `[shot_tints]` jusqu'à la fin du fichier — ce qui n'était juste que tant que la
+ * table était la dernière. Le jour où `[[equipment_objects]]` est arrivée derrière elle
+ * (2026-08-18), ses `id = "0x8e2dc574"` et `family = "wall"` sont entrés dans la liste des
+ * teintes et le garde-rail a échoué sur des valeurs qui ne sont pas des teintes. Il avait
+ * raison de refuser ce qu'il lisait ; c'est sa DÉLIMITATION qui était fausse.
+ */
 function tomlTints(): string[] {
   const src = readFileSync(TOML, 'utf8')
-  const block = src.slice(src.indexOf('[shot_tints]'))
+  const start = src.indexOf('[shot_tints]')
+  expect(start, '[shot_tints] introuvable dans le manifeste du titre').toBeGreaterThan(-1)
+  const rest = src.slice(start + '[shot_tints]'.length)
+  const next = rest.search(/^\[/m)
+  const block = next === -1 ? rest : rest.slice(0, next)
   return [...new Set([...block.matchAll(/^\w+\s*=\s*"(\w+)"/gm)].map((m) => m[1]))].sort()
 }
 
