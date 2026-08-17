@@ -282,7 +282,7 @@ la partie « armes » se rabat sur les images-cles (decision 1).
 
 ### Phase 2 — RAMASSAGE par disparition + proximite
 
-- [ ] 2.1 Pour chaque apparition (creation `ti=42` identifiee, phase 1.0) : la disparition se
+- [x] 2.1 Pour chaque apparition (creation `ti=42` identifiee, phase 1.0) : la disparition se
       BORNE par le recensement des images-cles du slot (derniere image-cle ou l'objet est
       recense, premiere ou il ne l'est plus — acquis du correctif de revue : `t1` = mise au
       repos, DEL non isolable, pas de fin explicite) et se DATE dans cet intervalle par le
@@ -290,19 +290,57 @@ la partie « armes » se rabat sur les images-cles (decision 1).
       plusieurs : le premier ; si aucun : `unknown`, date = borne haute). Distribution des
       distances (mediane, p90), largeur des intervalles, et temoin (distance au joueur le plus
       proche a un instant tire au hasard PENDANT la presence de l'objet).
-- [ ] 2.2 CONTROLE INDEPENDANT : le loadout d'images-cles du ramasseur doit porter la famille
+      **FAIT** : 1 785 apparitions, 1 111 datees / 554 `unknown` / 120 « jamais ramassees ».
+      Intervalles : mediane 20,00 s (= l'espacement des images-cles). **La distribution des
+      distances est vide de sens PAR CONSTRUCTION** (decouverte 9) ; les temoins tranchent :
+      le critere discrimine d'un facteur 4 sur les socles et de 1,4 seulement sur l'ensemble.
+- [!] 2.2 CONTROLE INDEPENDANT : le loadout d'images-cles du ramasseur doit porter la famille
       ramassee a l'image-cle suivante (`keyframe_loadout.go`, 98,3 % de temoin croise) — c'est
       l'oracle du ramassage. Publier le taux d'accord et un temoin (joueur au hasard).
-- [ ] 2.3 Publier (au journal du plan et au registre — le document de rejeu est la phase 3) :
+      **MESURE FAITE ET PUBLIEE ; LE GATE 2 QU'ELLE DEVAIT PASSER EST NON ATTEINT** — 393 / 1 111
+      = **35,4 %** contre >= 90 % exige, seuil NON rebaisse. Le detail est au journal : sur les
+      SOCLES l'accord ecrase son temoin (62,7 % contre 3,5 %), sur les armes `dropped` il passe
+      SOUS son temoin (32,1 % contre 65,0 %) — et ces dernieres font 84,1 % du denominateur.
+- [x] 2.3 Publier (au journal du plan et au registre — le document de rejeu est la phase 3) :
       `weaponPickups` {t, x, y, family, slot ramasseur | -1} et l'etat des socles dans le temps
       (present / vide, par socle de la phase 1).
-- [ ] 2.4 Cycle RE-MESURE depuis le ramassage : ecart entre le ramassage sur un socle et la
+      **FAIT** : lignes `PICKUP` et `PADSTATE` (format au journal), publiees comme PROPOSITION
+      pour la phase 3. Rien n'est ecrit au document de rejeu.
+- [x] 2.4 Cycle RE-MESURE depuis le ramassage : ecart entre le ramassage sur un socle et la
       reapparition suivante sur ce socle (mediane, p10, p90 par socle et par famille) ; « non
       etabli » si ecart-type > 20 % de la mediane ; comparer au 1.3 (horloge d'apparition) et
       publier combien de socles passent de « non etabli » a « etabli ».
+      **FAIT, ET C'EST LE RESULTAT DU LOT** : **24 socles sur 57 ont un cycle etabli contre 4
+      sur 57 a l'item 1.3 — 20 socles gagnes**, aux memes regles de stabilite. Mode mesure a
+      **30,5 s** (55 ecarts sur 142 dans 30-35 s, tenant dans 0,34 s), armes de puissance a
+      100-195 s. Aucune comparaison a une source officielle (aucune hors ligne).
 
 **Gate 2** : accord avec l'oracle des loadouts >= 90 % sur les ramassages a ramasseur
 identifie ; sinon `[!]` avec la mesure.
+
+> **GATE 2 — NON ATTEINT. 35,4 % contre >= 90 % exige (393 / 1 111), seuil NON rebaisse.** Le
+> denominateur est celui que le plan ecrit : ramassages a ramasseur identifie ayant une image-cle
+> suivante avant la fin du film. Le gate tombe aussi sur le sous-ensemble le plus favorable
+> (socles : 62,7 %), donc aucun decoupage ne le sauve, et aucun n'a ete essaye pour le sauver.
+>
+> **CE QUE LA MESURE ETABLIT MALGRE LE GATE, et il faut les deux enonces** :
+>
+> - **le RAMASSAGE SUR UN SOCLE est etabli par deux mesures independantes** : l'accord de
+>   l'oracle ecrase son temoin d'un facteur 17,8 (62,7 % contre 3,5 %), et le critere de
+>   proximite d'un facteur 4 (89,6 % contre 22,4 %). Les armes concernees ne sont pas portees
+>   avant (2,3 %) : ce sont des ramassages NOUVEAUX ;
+> - **la « disparition » d'une arme `dropped` n'est PAS un ramassage** — c'est une despawn. Son
+>   accord passe SOUS son propre temoin (32,1 % contre 65,0 %), ce qui est la signature d'un
+>   critere qui ne mesure rien sur cette population. Elle pese 84,1 % du denominateur du gate :
+>   le gate a ete ecrit sur une population que la mesure vient de scinder ;
+> - **l'oracle a un plafond structurel de 55,3 %** (le slot du bipede migre au respawn, et 20 s
+>   suffisent a mourir) : meme un ramasseur toujours juste ne pourrait pas atteindre 90 % sur ce
+>   denominateur. Le seuil de 90 % etait donc inatteignable par construction — constat ECRIT
+>   APRES coup, qui n'excuse rien et ne rebaisse rien, mais que la phase 3 doit connaitre.
+>
+> **Consequence contractuelle** : la phase 3 n'est PAS ouverte par ce lot. Ce qu'un arbitrage
+> aurait a trancher : publier les ramassages des SEULS socles (`at_rest`), ou refuser la
+> publication tant qu'un oracle sans plafond n'existe pas. Ce lot ne le decide pas.
 
 ### Phase 3 — PUBLICATION (schema 11) et note UI
 
@@ -375,6 +413,28 @@ de push. Lancement valide le 2026-08-17.
    `9/5`, la valeur par defaut, et l'accord d'identite est de 100 %), mais un film BTB calibre a
    `8/3` lirait l'identite `ti=42` a la mauvaise largeur sans que rien ne le signale. Non traite :
    aucun film BTB dans le jeu mesure.
+9. **La distance publiee du ramasseur est un ARTEFACT DE LA REGLE, pas une mesure**, et quelqu'un
+   la lira comme une mesure si on ne l'ecrit pas. La regle retient « le PREMIER passage sous
+   1,5 m » : la distance rendue est donc celle a laquelle le seuil est franchi, et elle vaut
+   mediane 1,46-1,49 m / p90 1,48-1,50 m / max 1,50 m sur les HUIT films et sur TOUS les
+   sous-ensembles — indistinctement. Une mesure de distance qui aurait un sens serait le MINIMUM
+   sur l'intervalle, ou la distance a l'instant de la derniere image-cle recensante. Non traite :
+   le plan demande la distribution des distances du ramasseur, elle est publiee telle quelle avec
+   cet avertissement.
+10. **L'oracle des loadouts a un PLAFOND STRUCTUREL de 55,3 %, et sa cause est le slot de bipede
+    qui MIGRE au respawn** (`offline_biped.go` : « un slot correspond a UNE VIE, pas a un
+    joueur »). 497 ramasseurs sur 1 111 n'ont aucun loadout a l'image-cle suivante — sur les
+    socles, 51 sur 177. Vingt secondes d'ecart entre images-cles suffisent a mourir. **Ce qui
+    leverait le plafond est l'attribution slot -> JOUEUR a travers les respawns**, qui n'existe
+    pas dans ce decodeur et qui debloquerait aussi la publication du ramasseur au document
+    (aujourd'hui `PICKUP.slot` designe une vie, pas un joueur). Non traite : hors du perimetre de
+    la phase 2, et c'est un chantier a soi seul.
+11. **La regle `dropped` designe une DESPAWN, pas un ramassage — et le vocabulaire publie ne le
+    dit pas.** Prolonge la decouverte 7. L'accord de l'oracle sur les armes `dropped` (32,1 %)
+    passe SOUS son propre temoin (65,0 %) : le critere de proximite n'y mesure rien, parce
+    qu'une arme lachee a une mort disparait le plus souvent toute seule. Consequence pour QUI
+    VOUDRA PUBLIER LES RAMASSAGES : le seul sous-ensemble ou la mesure tient est `at_rest` (les
+    socles). Non traite : la phase 3 est fermee par le gate 2.
 
 ## Branches utilisateur fusionnees AVANT le lancement (`66e867b80`, 2026-08-17)
 
@@ -747,3 +807,142 @@ diverge de la premiere au premier correctif. Les deux nouvelles fonctions sont t
 quelconque de meme largeur contient un passage < 1,5 m aussi souvent que le vrai intervalle,
 alors le critere ne DATE pas le ramassage — il designe le premier passant, et cela s'ecrit comme
 un negatif au lieu d'etre presente comme une datation.
+
+- 2026-08-17 — **phase 2 CLOSE. GATE 2 NON ATTEINT (35,4 % contre >= 90 % exige), et la mesure
+  separe deux populations que le gate confondait.** Tout ci-dessous a tourne dans la session, aux
+  largeurs de chaque carte, `CGO_ENABLED=0`, UN FILM PAR PROCESSUS, memes 8 films que la phase 1.
+
+### Controle d'ancrage : la phase 2 reproduit la phase 1 au chiffre pres
+
+Avant toute mesure nouvelle, les quantites PARTAGEES avec la phase 1 se retrouvent a l'identique
+par une chaine reecrite : **1 785 apparitions retenues** (identiques film par film : 220 / 159 /
+291 / 213 / 166 / 372 / 86 / 278), **235 `at_rest`**, **57 socles**, **4 cycles d'APPARITION
+etablis sur 57**. Rien n'a derive entre les deux lots. Les 5 power-ups de la phase 1 sont des
+objets `ti=37` : le brief de la phase 2 porte sur `ti=42`, ils sont hors perimetre — et la
+phase 1 avait deja etabli qu'ils sont tous `dropped` avec vie delta, donc sans socle.
+
+### 2.1 — le bornage tient, la datation ne discrimine QUE sur les socles
+
+| film | retenues | DATEES | unknown | jamais ramassees | jamais recensees a une image-cle |
+|---|---:|---:|---:|---:|---:|
+| `000d5950` | 220 | 128 (58,2 %) | 74 (33,6 %) | 18 (8,2 %) | 49 |
+| `bcb6d393` | 159 | 85 (53,5 %) | 74 (46,5 %) | 0 (0,0 %) | 52 |
+| `01e1f945` | 291 | 176 (60,5 %) | 94 (32,3 %) | 21 (7,2 %) | 76 |
+| `75f1188f` | 213 | 112 (52,6 %) | 80 (37,6 %) | 21 (9,9 %) | 53 |
+| `7f1bbf06` | 166 | 109 (65,7 %) | 34 (20,5 %) | 23 (13,9 %) | 26 |
+| `b974a390` | 372 | 255 (68,5 %) | 106 (28,5 %) | 11 (3,0 %) | 107 |
+| `b8d1fe0c` | 86 | 55 (64,0 %) | 20 (23,3 %) | 11 (12,8 %) | 14 |
+| `00162144` | 278 | 191 (68,7 %) | 72 (25,9 %) | 15 (5,4 %) | 51 |
+| **TOTAL** | **1 785** | **1 111 (62,2 %)** | **554 (31,0 %)** | **120 (6,7 %)** | **428 (24,0 %)** |
+
+**LARGEUR DES INTERVALLES : mediane 20,00 s, p90 20,00 a 20,02 s, max 20,02 s** sur les huit
+films — c'est l'espacement des images-cles, et rien d'autre. Le bornage ne peut pas etre plus
+fin que le recensement ; il ne pretend pas l'etre. **428 apparitions sur 1 785 (24,0 %) ne sont
+recensees a AUCUNE image-cle** : nees et disparues entre deux, elles sont bornees par leur
+creation et l'image-cle suivante.
+
+**LA DISTRIBUTION DES DISTANCES DU RAMASSEUR NE DIT RIEN, ET IL FAUT LE DIRE AVANT DE LA LIRE** :
+mediane 1,46 a 1,49 m, p90 1,48 a 1,50 m, max 1,50 m — sur les huit films, sur tous les
+sous-ensembles. C'est une consequence de la regle, pas une mesure : « le PREMIER passage sous
+1,5 m » rend par construction la distance a laquelle le seuil est franchi. Seuls les TEMOINS
+sont informatifs (decouverte 9).
+
+**LES DEUX TEMOINS, ET CE QU'ILS SEPARENT** (denominateurs publies ; le temoin de fenetre est
+compare a la MESURE sur le MEME denominateur) :
+
+| jeu | temoin d'instant : joueur < 1,5 m | mediane du temoin d'instant | MESURE (le vrai intervalle date) | TEMOIN de fenetre |
+|---|---:|---:|---:|---:|
+| tous | 143 / 1 562 = **9,2 %** | 4,4 a 6,2 m | 221 / 292 = **75,7 %** | 158 / 292 = **54,1 %** |
+| `at_rest` (socles) | 5 / 189 = **2,6 %** | 5,3 a 12,2 m | 120 / 134 = **89,6 %** | 30 / 134 = **22,4 %** |
+
+**Sur les socles, le critere discrimine d'un facteur 4** (89,6 % contre 22,4 %) ; **sur
+l'ensemble, il ne discrimine que d'un facteur 1,4** (75,7 % contre 54,1 %), et sur le seul film
+Super Fiesta il s'inverse (`000d5950` : mesure 12/18 = 66,7 %, temoin 15/18 = 83,3 %). Le temoin
+de fenetre n'est eligible que pour 292 apparitions sur 1 665 : il faut que la presence PROUVEE
+soit plus large que l'intervalle a placer, ce qui exclut tout objet vu a une seule image-cle.
+
+### 2.2 — l'oracle des loadouts : GATE 2 NON ATTEINT, et le detail dit ou
+
+| jeu | denominateur | ACCORD | TEMOIN (autre joueur, meme image-cle) | rapport |
+|---|---:|---:|---:|---:|
+| **tous (le gate)** | **1 111** | **393 = 35,4 %** | 587 / 1 076 = **54,6 %** | **0,65** |
+| `at_rest` (socles) | 177 | 111 = **62,7 %** | 6 / 170 = **3,5 %** | **17,8** |
+| `dropped` | 770 | 247 = 32,1 % | 486 / 748 = 65,0 % | 0,49 |
+| `echange` | 164 | 35 = 21,3 % | 95 / 158 = 60,1 % | 0,35 |
+
+**LE SEUIL N'EST PAS REBAISSE : 35,4 % contre >= 90 % exige, le gate 2 tombe.** Et il tombe aussi
+sur le sous-ensemble le plus favorable (62,7 % sur les socles). Mais la mesure separe nettement
+deux populations que le gate traitait ensemble, et c'est le resultat :
+
+- **sur les SOCLES, l'accord ECRASE son temoin — 62,7 % contre 3,5 %, un facteur 17,8.** Le
+  ramasseur identifie porte l'arme du socle a l'image-cle suivante ; un autre joueur tire au sort
+  ne la porte presque jamais. Et il ne la portait pas avant : « portait DEJA la famille » = 4 /
+  177 = 2,3 %, donc l'accord est un accord sur des cas NOUVEAUX (107 / 173 = 61,8 %) ;
+- **sur les armes `dropped` et les `echange`, l'accord est INFERIEUR a son temoin** (32,1 % contre
+  65,0 % ; 21,3 % contre 60,1 %). Ce n'est pas un ramassage mal date : c'est que la disparition
+  d'un `MA40 AR` lache a une mort est une DESPAWN, pas un ramassage, et que sa famille est portee
+  par tout le monde — le temoin le mesure. Ces deux populations font 934 des 1 111 ramassages du
+  denominateur du gate (84,1 %) : elles le gouvernent.
+
+**PLAFOND STRUCTUREL, mesure** : 497 / 1 111 (44,7 %) des ramasseurs n'ont AUCUN loadout a
+l'image-cle suivante — sur les socles, 51 / 177 (28,8 %). Cause : le slot d'un bipede MIGRE au
+respawn (`offline_biped.go`), et 20 s suffisent a mourir. L'oracle ne peut donc pas depasser
+55,3 % globalement ni 71,2 % sur les socles. Rapporte aux seuls cas ou il peut parler, l'accord
+vaut **393 / 614 = 64,0 %** (tous) et **111 / 126 = 88,1 %** (socles) — chiffres publies pour ce
+qu'ils sont, PAS substitues au denominateur du gate (decouverte 10).
+
+**CONTROLE D'ESPACE DE SLOTS** (sans lui, un accord bas ne se distinguerait pas d'un decalage
+d'index) : 931 / 962 = **96,8 %** des slots de bipede repliques a +-100 ms d'une image-cle y
+portent aussi un loadout. Les deux chaines parlent bien du meme espace de slots.
+
+### 2.3 — format PROPOSE pour la phase 3 (proposition, pas contrat)
+
+Deux lignes, publiees telles quelles par l'instrument, une par objet et une par occupation de
+socle. Le document de rejeu n'est PAS touche par ce lot.
+
+```
+PICKUP    film · carte · t (us) · x · y · z · famille · slot ramasseur|-1 · borne basse ·
+          borne haute · statut(dated|unknown|never) · a bouge(bool)
+PADSTATE  film · carte · famille · x · y · z (socle) · t apparition · t ou le socle redevient
+          vide (-1 = jamais) · statut
+```
+
+`t` vaut l'instant du passage quand il existe, la borne haute sinon (regle du plan). `PADSTATE`
+n'est emis que pour les SOCLES (>= 2 apparitions) du jeu `at_rest` : c'est l'etat present/vide
+dans le temps que l'item 2.3 demande. **Reserve pour la phase 3** : `slot ramasseur` est le slot
+du BIPEDE, qui migre au respawn — il ne designe pas un joueur, et le publier tel quel au document
+demanderait d'abord l'attribution slot -> joueur (decouverte 10).
+
+### 2.4 — LE CYCLE SE LIT DEPUIS LE RAMASSAGE, ET IL VAUT 30,5 s
+
+| film | socles `at_rest` | cycle d'APPARITION etabli (1.3) | cycle depuis le RAMASSAGE etabli | GAGNES |
+|---|---:|---:|---:|---:|
+| `000d5950` | 0 | — | — | 0 |
+| `bcb6d393` | 10 | 0 | **3 (30,0 %)** | 3 |
+| `01e1f945` | 10 | 1 | **5 (50,0 %)** | 4 |
+| `75f1188f` | 10 | 1 | **4 (40,0 %)** | 3 |
+| `7f1bbf06` | 6 | 1 | **5 (83,3 %)** | 4 |
+| `b974a390` | 7 | 1 | **4 (57,1 %)** | 3 |
+| `b8d1fe0c` | 4 | 0 | 0 | 0 |
+| `00162144` | 10 | 0 | **3 (30,0 %)** | 3 |
+| **TOTAL** | **57** | **4 (7,0 %)** | **24 (42,1 %)** | **20** |
+
+**20 socles passent de « non etabli » a « etabli »**, aux MEMES regles de stabilite que
+l'item 1.3 (>= 2 ecarts, ecart-type <= 20 % de la mediane) — le seuil n'a pas bouge, c'est
+l'horloge qui a change d'origine.
+
+**LE MODE, MESURE SUR 142 ECARTS MIS EN COMMUN** : mediane 33,9 s, p10 19,8, p25 30,5, p75 77,5,
+p90 120,2 — mais l'histogramme n'est pas une loi etalee, c'est **un pic** : **55 ecarts sur 142
+(38,7 %) tombent dans la tranche 30-35 s**, et a l'interieur de cette tranche ils tiennent dans
+**0,34 s** (min 30,30 · p25 30,43 · mediane 30,50 · p75 30,77 · max 33,87). Aucune autre tranche
+de 5 s n'en porte plus de 8. Le pic est present sur les **7 films qui ont des socles** (23 % a
+75 % de leurs ecarts). Les MEMES socles mesures d'APPARITION a apparition (item 1.3) donnent
+mediane 99,1 s et seulement 20,0 % dans la tranche 30-35 s : **l'horloge repart bien du
+ramassage, et non de l'apparition.**
+
+**ET LES ARMES DE PUISSANCE SORTENT DU LOT, SANS QU'ON LE LEUR AIT DEMANDE.** Parmi les 24 socles
+au cycle etabli : BR75, Bandit Evo, Mangler, Disruptor, Pulse Carbine, VK78 Commando -> 30,3 a
+31,3 s ; **S7 Sniper 114,6 · 120,2 · 134,3 s ; Energy Sword 194,5 s ; Needler 100,9 s ; CQS48
+Bulldog 40,1 et 80,0 s.** L'ordre de grandeur « 2-3 min pour une arme de puissance » que le plan
+citait sans source se retrouve ici par la mesure seule. **Aucune comparaison a une source
+officielle n'est faite** : il n'y en a pas hors ligne, et le plan interdit de comparer sans.
