@@ -41,6 +41,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -131,8 +132,8 @@ func origineMapEntry(t *testing.T) filmdec.MapQuantEntry {
 	}
 	chemin := os.Getenv(origineBoundsEnv)
 	if chemin == "" {
-		chemin = filepath.Join(repoRootForTest(t), "data", "titles", "halo_infinite",
-			"reference", "map_quant_bounds.json")
+		// PathResolver, jamais un `filepath.Join(..., "data", ...)` a la main (regle du depot).
+		chemin = title.NewPathResolver(repoRootForTest(t)).MapQuantBoundsPath(title.DefaultSlug)
 	}
 	cat, err := filmdec.LoadMapQuantCatalog(chemin)
 	if err != nil {
