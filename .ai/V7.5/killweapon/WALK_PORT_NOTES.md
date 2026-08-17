@@ -1026,3 +1026,33 @@ Ce que les chiffres disent quand meme :
 4. Le point de decrochage dominant reste le meme partout : **sous-lecture**, puis
    `i63 biped-action-component` — le DERNIER composant. La derive ne se concentre pas, elle
    s accumule.
+
+## 6. `DAT_144e61ea0` sur le payload type-2 — TRANCHE, et dans le meme sens que R7-c
+
+Le port de la portee de R7-c (`keyframeBaselineScope`, `fullPrecisionGate`) a ete repris dans ce
+lot et branche AUSSI sur le chemin d'ecrivain d `i0`. Mesure sur les memes 591 records :
+
+| film | portee ETEINTE, ecart median | portee ALLUMEE, ecart median |
+|---|---|---|
+| `000d5950` | **511** | 543 |
+| `00502e52` | **636** | 660 |
+| `07aa428d` | **448** | 526 |
+
+Ces trois valeurs allumees (543 / 660 / 526) sont **exactement celles que R7-c publie** : deux
+instruments independants, deux marches differentes, meme chiffre — la fidelite du temoin est
+verifiee. Et la conclusion ne bouge pas : **le payload type-2 est ecrit HORS de la portee**,
+la position d'image-cle est QUANTIFIEE aux largeurs de la carte. La contradiction que R7-d
+laissait ouverte est fermee, du cote de R7-c.
+
+## 7. Ou la derive se trouve — l'histogramme, sur la lecture de reference
+
+| film | sous-lecture | depassement a `i63` (DERNIER composant) | autres |
+|---|---|---|---|
+| `000d5950` (184) | **125** (68 %) | 45 (24 %) | 14 |
+| `00502e52` (209) | **140** (67 %) | 38 (18 %) | 31 |
+| `07aa428d` (198) | **139** (70 %) | 41 (21 %) | 18 |
+
+Deux tiers des marches finissent TROP TOT, un cinquieme franchit la frontiere pendant le DERNIER
+composant. Aucun composant intermediaire ne concentre le decrochage. C'est le meme diagnostic que
+R7-b phase 4bis — une derive DISPERSEE qui s'accumule — et aucune des cinq variables de cadre
+de ce lot ne l'ecrase : elles deplacent la mediane, elles ne resserrent pas la distribution.

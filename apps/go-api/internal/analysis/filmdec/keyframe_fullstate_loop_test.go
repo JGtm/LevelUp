@@ -162,6 +162,7 @@ type kf7eCase struct {
 	Opt   KeyframeFullStateOpt
 	Corr  bool // (c) le controle par composant du mode film
 	I0    bool // (e) la grammaire d'ECRIVAIN d'`i0`
+	Scope bool // (d) la portee `DAT_144e61ea0` (vec3 brut 96 bits au lieu du quantifie)
 }
 
 // kf7eTally compte ce qu'une configuration a rencontre sur un film. Memes denominateurs et
@@ -234,11 +235,13 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound, c kf7eCase) bool {
 // kf7ePass mesure UNE configuration sur UN film, bascules globales installees et restaurees.
 func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
 	prevCorr, prevI0 := filmComponentCorruptionCheck, keyframeWriterI0Grammar
+	prevScope := SetKeyframeBaselineScope(c.Scope)
 	SetFilmComponentCorruptionCheck(c.Corr)
 	SetKeyframeWriterI0Grammar(c.I0)
 	defer func() {
 		SetFilmComponentCorruptionCheck(prevCorr)
 		SetKeyframeWriterI0Grammar(prevI0)
+		SetKeyframeBaselineScope(prevScope)
 	}()
 	tal := newKF7ETally()
 	for _, pay := range f.Pays {
@@ -272,6 +275,9 @@ func kf7eCases() []kf7eCase {
 		{Label: "(b2+e) en-tete 108 + tailles + i0 ecrivain", Opt: hdrSz, I0: true},
 		{Label: "(a+b2+e) niveaux + en-tete 108 + tailles + i0", Opt: all, I0: true},
 		{Label: "(a+b2+c+e) TOUT sauf l'etat par defaut", Opt: all, Corr: true, I0: true},
+		{Label: "(d)    REF + portee DAT_144e61ea0 (brut 96)", Opt: ref, Scope: true},
+		{Label: "(d+e)  REF + portee + i0 ecrivain", Opt: ref, I0: true, Scope: true},
+		{Label: "(b2+d+e) en-tete 108 + tailles + portee + i0", Opt: hdrSz, I0: true, Scope: true},
 		{Label: "(b3+c+e) TOUT (etat par defaut compris)", Opt: hdrSzDs, Corr: true, I0: true},
 	}
 }
