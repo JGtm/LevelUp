@@ -1,3 +1,23 @@
+## [2026-08-18] Handoff superviseur — fin de contexte de la session de pilotage
+
+**Statut** : Complete (handoff ecrit). `.ai/V7.5/HANDOFF_SUPERVISEUR_v75_2026-08-18.md`.
+
+**Decision** : ecrire l'etat exact (HEAD `5ab07d67b`, rien pousse, aucun agent actif, worktrees de
+la session tous supprimes), la table des lots livres depuis le 15/08 avec leurs SHA, ce qui est
+EN ATTENTE de l'utilisateur (gates visuels/ecoute, validation du plan item 6, go pour la fusion de
+`wt/fusion-lots-go`, fenetre ops), les regles de pilotage fixees et payees (plan avant lot, un
+agent par worktree, jamais `git add -A`, jamais d'attente passive, verifier l'ID avant
+SendMessage, verifier le CR sur pieces), et l'ordre de reprise.
+
+**Resultats** : le plan de l'item 6 (`PLAN_ARMES_AU_SOL_2E_LECTURE.md`, non commite a cet
+instant — a committer avec le prochain lot de docs) integre les quatre apports du worktree
+concurrent `wt/fusion-lots-go` (grammaire `ti=42` decompilee non branchee ; corps d'image-cle
+non decodable et jamais relu par le jeu ; corpus ou `ti=42` est present ; oracle des 400
+frontieres exactes).
+
+**Prochaine etape** : la session qui reprend lit le handoff, demande a l'utilisateur ses trois
+decisions (fusion R3-R6, plan item 6, fenetre ops), remet la planche a jour.
+
 ## [2026-08-18] Phase W — le rendu web des familles nommees de poses — Complete
 
 **Statut** : Complete (branche `wt/familles-poses`, `f23c1bcc4`, fusionnee dans `feat/v75` le
