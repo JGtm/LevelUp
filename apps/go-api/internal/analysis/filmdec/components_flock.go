@@ -48,9 +48,14 @@ func consumeFlockFleeing(br *BitReader) {
 //	                          (R(1) gate ; si 0 -> R(1) index ; puis 3 x R(6+L))
 //
 // C'est exactement le meme lecteur que le chemin ABSOLU de object-position : on reutilise
-// donc `consumeQuantVec3WithGate` et le meme drapeau global `PositionFullPrecision`.
+// donc `consumeQuantVec3WithGate` et le meme predicat de contexte `fullPrecisionGate`.
+//
+// CORRIGE le 2026-08-17 (lot R7-c) : `FUN_1411b259c` n'est PAS un remplissage a zero bit,
+// c'est `FUN_1406d676c(br, br, dst, 0x60)` = R(96). L'ancien commentaire lisait le RESULTAT
+// (un NaN de conservation) et non le CURSEUR.
 func consumeFlockPosition(br *BitReader, level uint) {
-	if PositionFullPrecision {
+	if fullPrecisionGate() {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
 		return
 	}
 	consumeQuantVec3WithGate(br, quantAxisWidth(level))

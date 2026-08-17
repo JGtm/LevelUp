@@ -88,19 +88,19 @@ completer) : `PositionDeltaHasHandleTail` (descripteur runtime `precIndex != -1`
 
 ### Phase 2 — PORTER et MESURER
 
-- [ ] 2.1 Ajouter au contexte Go un mode « baseline » (variable de paquet + setter, comme
+- [x] 2.1 Ajouter au contexte Go un mode « baseline » (variable de paquet + setter, comme
       `SetFilmComponentCorruptionCheck`), **sans dupliquer les 64 deser** : le drapeau se lit
       la ou le jeu le lit.
-- [ ] 2.2 Rejouer l'instrument R7-b en A/B baseline OFF/ON : pourcentage bit-exact, dispersion
+- [x] 2.2 Rejouer l'instrument R7-b en A/B baseline OFF/ON : pourcentage bit-exact, dispersion
       (parts a 8 / 16 / 64 / 256 bits), profil de decrochage par composant.
-- [ ] 2.3 **Non-regression delta OBLIGATOIRE** : baseline OFF par defaut = comportement
+- [x] 2.3 **Non-regression delta OBLIGATOIRE** : baseline OFF par defaut = comportement
       IDENTIQUE. Suites `filmdec`, `replay`, `killsource` vertes ; gradient
       `cmd/tmp_cleanframe` si le binaire existe dans cette branche.
 
 ### Phase 3 — Verdict
 
-- [ ] 3.1 POSITIF (chiffres) : ce que ca ouvre. NEGATIF : ou l'hypothese casse, chiffre.
-- [ ] 3.2 Entree thought_log redigee (NON ecrite) + lignes de registre, dont l'amendement a
+- [x] 3.1 POSITIF (chiffres) : ce que ca ouvre. NEGATIF : ou l'hypothese casse, chiffre.
+- [x] 3.2 Entree thought_log redigee (NON ecrite) + lignes de registre, dont l'amendement a
       R7-b.
 
 ## 5. Gates — commandes exactes, a chaque cloture de phase
@@ -171,3 +171,152 @@ sa branche delta. La phase 1 part de la.
 4. **Un ECART DE PORT etabli** : `FUN_1411b259c` = `FUN_1406d676c(...,0x60)` = **R(96)**, et
    TROIS sites Go le traitent comme 0 bit (`consumeAbsoluteWithGate`, `consumeFlockPosition`,
    `consumeE494Position`). Seule la queue d'`i60` portee en R7-b lit les 96 bits.
+
+**2026-08-17 — Phase 2. Le port, et la fidelite du temoin.**
+
+Le modele Go portait les DEUX globaux sous une seule variable. Corrige : `PositionFullPrecision`
+ne porte plus que `DAT_145121140` ; `keyframeBaselineScope` porte `DAT_144e61ea0` ; et
+`fullPrecisionGate()` porte `FUN_14076f91c` = leur OU. Cinq sites de lecture branchent
+desormais sur le predicat, et **quatre d'entre eux lisaient ZERO bit la ou l'EXE lit 96** —
+`consumeAbsoluteWithGate`, `consumeFlockPosition`, `consumeE494Position`, et la branche
+`predFlag == 1` d'`i0`, qui ignorait la garde tout court. `i49` reste sur `PositionFullPrecision`
+SEUL, conformement a sa decompile.
+
+**FIDELITE DU TEMOIN, verifiee.** `TestKF35CDispersion` portee ETEINTE reproduit la table de
+dispersion de R7-b **chiffre pour chiffre** (p10 48/105/46, p25 149/285/146, p50 507/636/424,
+p75 929/1069/944, p90 69 341/68 131/20 065 ; parts <= 256 bits 31,0/23,9/35,4 %). Le temoin
+n'est donc pas une approximation de R7-b : c'est R7-b.
+
+**Non-regression delta : VERTE.** `go test ./internal/analysis/... ./internal/games/halo_infinite/film/... ./cmd/killsource/... -count=1`
+-> `EXIT_NONREG=0`, 20 paquets `ok`, 0 `FAIL`. Le defaut reste OFF : aucun bit ne change en
+production. `cmd/tmp_cleanframe` n'existe pas dans cette branche — item de gradient sans objet.
+
+## 9. VERDICT — NEGATIF, ET IL EST NET
+
+**C1 ECHOUE, et pas de peu : la portee baseline ne fait pas monter l'atterrissage, elle
+l'ANNULE.** 591 records `ti=35` bornes, 3 films, 4 lectures, largeurs de carte installees,
+corruption-check eteint, `simStateComplete` allume — une seule variable change entre les deux
+colonnes.
+
+| lecture | atterrissage, portee ETEINTE | atterrissage, portee ALLUMEE |
+|---|---|---|
+| v0b temoin « record NEW » | 0 / 0 / 0 | 0 / 0 / 0 |
+| v4 etat complet (64 leaf nus) | 0 / 0 / 0 | 0 / 0 / 0 |
+| **v2 etat par defaut + leaf** | **1 / 0 / 1** | 0 / 0 / 0 |
+| v3 etat par defaut + porte + leaf | 0 / 0 / 1 | 0 / 0 / 0 |
+| **TOTAL sur 591** | **3 = 0,51 %** | **0 = 0,00 %** |
+
+Ecart absolu MEDIAN de la meilleure lecture (v4), en bits :
+
+| film | ETEINTE | ALLUMEE | ecart |
+|---|---|---|---|
+| `000d5950` | **511** | 543 | +6 % |
+| `00502e52` | **636** | 660 | +4 % |
+| `07aa428d` | **448** | 526 | +17 % |
+
+Part des records a moins de 256 bits (v4) : 31,0 / 23,9 / 35,4 % eteinte contre
+29,9 / 25,4 / 32,8 % allumee — a l'iso, voire en retrait.
+
+**OU L'HYPOTHESE CASSE, ET LA PIECE QUI LE DIT.** Le profil par composant donne la largeur
+MEDIANE consommee par `i0` :
+
+| film (decoupage lu dans le film) | `i0`, portee ETEINTE | `i0`, portee ALLUMEE |
+|---|---|---|
+| `000d5950` (13/13/14, i0 = 45 bits) | 102 | 102 (inchange) |
+| `00502e52` (17/17/16, i0 = 55 bits) | **57** | 99 |
+| `07aa428d` (18/18/17, i0 = 58 bits) | **62** | 99 |
+
+Eteinte, `i0` mesure **trois largeurs DIFFERENTES**, et chacune suit le decoupage de SA carte
+(57 pour un i0 de 55 bits, 62 pour un i0 de 58). Allumee, les trois convergent vers 99 = le
+chemin brut 96 bits plus son en-tete — et la mesure se degrade. **Donc le corps d'image-cle
+porte une position QUANTIFIEE aux largeurs de la carte, pas un float32 brut : la portee
+baseline n'est PAS levee sur le payload que le film stocke.** Le drapeau existe, il est
+correctement identifie et desormais correctement porte ; il ne s'applique simplement pas ici.
+
+**CE QUE CA FERME.** L'hypothese « l'image-cle, c'est les memes deser sous un autre encodage »
+est REFUTEE pour le seul encodage alternatif que le binaire propose. Les primitives
+(`FUN_1406cf008`, `FUN_140c18a1c`) n'ont AUCUN drapeau : le selecteur 2 bits est
+inconditionnel, et le « varint a continuation » du RE externe n'a pas de trace dans le
+deserialiseur de valeurs. Il n'y a pas de troisieme encodage a chercher sous cette forme.
+
+**CE QUE CA OUVRE, MALGRE TOUT.** Trois acquis qui survivent au negatif :
+
+1. Un ecart de port de PRODUCTION corrige : `FUN_1411b259c` lit 96 bits, quatre sites Go
+   lisaient zero. Inerte tant que le drapeau est bas, mais faux des qu'il se leve.
+2. Le modele des deux globaux est separe, avec sa preuve — `i49` ne suit pas le meme drapeau
+   que la position, ce que le port confondait.
+3. **Le lecteur d'etat complet du jeu est NOMME** : `FUN_1428e2a04` -> `FUN_1428e2a9c` ->
+   `FUN_142e2bfd0`, qui construit son BitReader (`FUN_1424c7b4c`) sur un paquet lu par
+   `FUN_142988338(..., 0x10, 0)` puis, pour chaque entite, leve `DAT_144e61ea0` et appelle
+   `vtable[0x60]`. R5 ecrivait « le CONSOMMATEUR du payload type-2 n'est identifie nulle
+   part » : une chaine candidate l'est maintenant, et c'est elle qu'il faut confronter au
+   demultiplexeur de paquets du film (lot R7-d, l'ecrivain par les vtables).
+
+## 10. Entree thought_log (redigee, NON ecrite par ce lot)
+
+```
+### [2026-08-17] Lot R7-c — Le drapeau d encodage de l image-cle existe, et il n est pas leve
+
+Statut : Complete (C1 echoue, negatif chiffre ; un bug de port corrige, un modele separe)
+
+Decision technique. R7-b laissait un residu DISPERSE (0,54 % bit-exact, p10 46 bits, p90 a
+quatre ordres de grandeur) : ni bloc manquant ni deser casse. Hypothese testee : les memes
+deserialiseurs lus sous un AUTRE encodage, commande par un drapeau de CONTEXTE du lecteur.
+407 fonctions du paquet filmdec decompilees (Ghidra LECTURE SEULE, API HTTP du plugin, le
+pont MCP restant HS). Le drapeau EXISTE, et il y en a deux : DAT_144e61ea0 est une PORTEE
+que les huit lecteurs d etat complet du groupe 142e2*/142e3* levent juste avant l appel
+vtable[0x60] et abaissent juste apres ; DAT_145121140 est un reglage de process. Leur OU est
+FUN_14076f91c, et il fait passer six lecteurs de position du quantifie au BRUT 96 bits. Le
+port Go confondait les deux sous PositionFullPrecision et traitait FUN_1411b259c comme zero
+bit alors qu il lit 96 : quatre sites corriges.
+
+Resultats observes. A/B a une seule variable, 591 records ti=35 bornes, 3 films, 4 lectures,
+largeurs de carte installees. Portee ETEINTE (temoin, qui reproduit la table de dispersion de
+R7-b chiffre pour chiffre) : 3 atterrissages bit-exact sur 591. Portee ALLUMEE : ZERO, et l
+ecart absolu median monte de 511/636/448 a 543/660/526. La piece qui tranche est le profil d
+i0 : eteinte, sa largeur mediane vaut 102/57/62 bits sur les trois films et suit le decoupage
+de CHAQUE carte ; allumee, les trois convergent vers 99 (le brut 96 plus en-tete) et la
+mesure se degrade. Le corps d image-cle porte donc une position QUANTIFIEE aux largeurs de
+la carte.
+
+Conclusion / prochaine etape. L hypothese est REFUTEE pour le seul encodage alternatif que le
+binaire propose, et les primitives n ont aucun drapeau (le selecteur 2 bits est
+inconditionnel) : il n y a pas de troisieme encodage a chercher sous cette forme. Ce qui
+reste, et qui est neuf : le lecteur d etat complet du jeu est NOMME (FUN_1428e2a04 ->
+FUN_1428e2a9c -> FUN_142e2bfd0), la ou R5 ecrivait que le consommateur du payload type-2 n
+etait identifie nulle part. C est cette chaine qu il faut confronter au demultiplexeur de
+paquets du film. Et une conclusion de R7-b est amendee : i0 ne prend PAS le chemin brut en
+image-cle, sa largeur suit la carte.
+```
+
+## 11. Lignes de registre (redigees, NON ecrites par ce lot)
+
+```
+| 2026-08-17 | R7-c drapeau d'encodage de l'image-cle | MESURE, C1 ECHOUE et le negatif est
+NET : la portee baseline `DAT_144e61ea0` existe bien (huit ecrivains, levee autour de
+`vtable[0x60]`, lue par `FUN_14076f91c`, six lecteurs de position basculent en brut 96 bits),
+mais l'allumer fait tomber l'atterrissage de 3/591 a 0/591 et monter l'ecart median de
+511/636/448 a 543/660/526. Piece decisive : la largeur mediane d'`i0` vaut 102/57/62 bits
+eteinte — trois valeurs qui suivent les trois decoupages de carte — contre 99/99/99 allumee.
+Le corps d'image-cle porte une position QUANTIFIEE. Condition de reprise : AUCUNE sous cette
+forme (les primitives n'ont pas de drapeau, le selecteur 2 bits est inconditionnel) ; la piste
+vivante est la chaine d'etat complet nommee ci-dessous. |
+| 2026-08-17 | AMENDEMENT a R7-b, decouverte n. 2 de sa section « CE QUE CA FERME » | « En
+image-cle, `i0` prend le chemin BRUT : 117 bits de mediane, identiques sur les trois cartes »
+est FAUX. Re-mesure avec les largeurs de carte installees (meme instrument, meme corpus, et un
+temoin qui reproduit la dispersion de R7-b chiffre pour chiffre) : la largeur mediane d'`i0`
+vaut **102 / 57 / 62 bits**, trois valeurs distinctes qui suivent les decoupages 13/13/14,
+17/17/16 et 18/18/17. La conclusion pratique de R7-b (« les bornes de carte ne sont pas
+necessaires pour lire la position a une image-cle ») tombe avec elle : elles le SONT sur deux
+films sur trois. |
+| 2026-08-17 | REPORT : confronter la chaine d'etat complet `FUN_1428e2a04` -> `FUN_1428e2a9c`
+-> `FUN_142e2bfd0` au demultiplexeur de paquets du film | R5 a clos sa phase 2 sur « le
+CONSOMMATEUR du payload type-2 n'est identifie nulle part, et c'est ELLE qu'il faut
+decompiler ». Ce lot en a trouve une CANDIDATE en cherchant autre chose : `FUN_142e2bfd0` lit
+une suite de couples (id 32 bits, type 32 bits) puis, par entite, leve `DAT_144e61ea0` et
+appelle `vtable[0x60]` (etat par defaut) — c'est la forme meme d'un payload d'etat complet.
+Son BitReader est construit par `FUN_1424c7b4c` sur un paquet obtenu par
+`FUN_142988338(..., 0x10, 0)`. Condition de reprise : identifier ce `0x10` dans le
+demultiplexeur du film (`.ai/V7.5/killweapon/WALK_PORT_NOTES.md`, section « le demultiplexeur
+de paquets du film — et le sort du type-2 ») et verifier si le film emprunte cette chaine. |
+```
