@@ -70,10 +70,13 @@ Sources : `internal/games/mappings/loader_replay_labels.go` (`equipmentFamilies`
 
 ## F3 — `ReplayCanvas.tsx` 942 L > 861 L d'avant le lot
 
-- [ ] F3 extraction (cablage poses/survol/infobulle, ou `drawProjectilesLayer` de
-      `replayMarkers.ts`) pour repasser <= 861 L sans changer le rendu.
-      Gate : `npx tsc -b --force`, `npx vitest run src/features/match-replay`,
-      `npx eslint src/features/match-replay`, `wc -l` < 861
+- [x] F3 les QUATRE cuissons hors ecran (sol, zones, chaleur, objectifs) sortent dans
+      `useReplayStaticLayers.ts` (142 L) : une seule amorce `cookLayer`, le cadrage partage
+      `canvasView` au lieu de 4 recopies. **952 -> 860 L**, sous le niveau d'avant le lot.
+      Le redessin passe par `drawRef` (les calques se declarent avant `draw`).
+      Cliquet pose : `placementFamily.guard.test.ts` refuse au-dela de 861 L.
+      Gates : `npx tsc -b --force` vert, `npx eslint src/features/match-replay` 0 probleme,
+      `npx vitest run src/features/match-replay` 44 fichiers / 615 tests verts
 
 ## Mineurs
 

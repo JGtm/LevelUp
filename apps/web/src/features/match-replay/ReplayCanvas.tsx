@@ -33,16 +33,15 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 
 import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
-import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
+import type { CalloutZoneReady } from './calloutsLayer'
 import { readInk } from './canvasInk'
 import { readFxInk } from './fxInk'
-import { drawHeatmapLayer } from './heatmapLayer'
+
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { buildShotFx } from './shotFx'
 import {
   buildObjectivePulses,
   drawObjectivePulses,
-  drawObjectivesLayer,
   normalizeMapObjectives,
 } from './objectivesLayer'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
@@ -60,13 +59,13 @@ import type { PlayerMarkKind } from './playerMarks'
 import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
+import { useReplayStaticLayers } from './useReplayStaticLayers'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
 import { backgroundRect, coversPlayedArea } from './mapBackground'
 import { buildFloorGrid } from './mapFloor'
 import type { ReplayDocumentReady } from './replayNormalize'
 import {
-  drawFloorLayer,
   drawGeometryLayer,
   drawGrenadeRestLayer,
   drawGrenadesLayer,
@@ -187,15 +186,6 @@ export function ReplayCanvas({
 }: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  // Fond de carte peint UNE fois puis recopié : il ne dépend ni de la frame ni de la lecture.
-  const floorRef = useRef<HTMLCanvasElement | null>(null)
-  // Zones nommées : même règle que le sol — calque statique cuit hors écran, recopié.
-  const zonesRef = useRef<HTMLCanvasElement | null>(null)
-  // Carte de chaleur : elle porte TOUT le match, elle ne dépend donc pas de l'image
-  // courante — même règle que le sol et les zones.
-  const heatRef = useRef<HTMLCanvasElement | null>(null)
-  // Objectifs statiques du mode (lot 4) : même règle — le calque ne bouge jamais.
-  const objectivesRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
@@ -427,6 +417,23 @@ export function ReplayCanvas({
     return () => ro.disconnect()
   }, [])
 
+  // LE REDESSIN, PAR RÉFÉRENCE : les calques statiques doivent pouvoir repeindre la scène
+  // apres cuisson, mais ils se declarent AVANT `draw` — ils lisent donc la version courante
+  // au moment de l'appel, jamais une capture figee (l'assignation vit avec le redraw plus bas).
+  const drawRef = useRef<() => void>(() => {})
+  const redraw = useCallback(() => drawRef.current(), [])
+  // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
+  // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
+  // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
+  const { floorRef, zonesRef, heatRef, objectivesRef } = useReplayStaticLayers({
+    view: canvasView,
+    redraw,
+    floor: { grid: floorGrid, style: floorStyle },
+    zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
+    heat: { grid: heat.grid, ramp: heat.ramp },
+    objectives: { elements: mapObjectives, colorOfTeam: objectiveColorOfTeam },
+  })
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || renderWidth === 0) return
@@ -604,6 +611,8 @@ export function ReplayCanvas({
     }
   }, [
     doc, geometryColor, bounds, zRange, timing, totalLabel,
+    // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
+    floorRef, zonesRef, heatRef, objectivesRef,
     t.aliveSuffix, renderWidth, canvasView,
     placementCounts.drawable,
     placementWindowTime,
@@ -656,111 +665,10 @@ export function ReplayCanvas({
     })
   }, [doc.grenadeLabels, floorStyle.edge, draw])
 
-  // Le sol est repeint quand SA géométrie, SON cadrage ou SES encres changent — jamais à
-  // l'image. C'est la condition pour que 45 000 cellules ne coûtent rien à l'animation.
+  // Redraw hors animation (thème, resize, données, pause), et publication de la version
+  // courante de `draw` aux calques statiques (cf. drawRef plus haut).
   useEffect(() => {
-    if (!floorGrid || renderWidth === 0) {
-      floorRef.current = null
-      return
-    }
-    const dpr = window.devicePixelRatio || 1
-    const off = document.createElement('canvas')
-    off.width = Math.round(renderWidth * dpr)
-    off.height = Math.round(CANVAS_HEIGHT * dpr)
-    const octx = off.getContext('2d')
-    if (!octx) return
-    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawFloorLayer(
-      octx,
-      floorGrid,
-      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
-      floorStyle,
-    )
-    floorRef.current = off
-    draw()
-  }, [floorGrid, renderWidth, bounds, floorStyle, draw])
-
-  // Les zones nommées se cuisent quand LEURS données, LEUR cadrage ou LEURS encres
-  // changent — jamais à l'image (28 polygones + libellés cernés repeints 60 fois par
-  // seconde coûteraient pour rien, même règle que le sol).
-  useEffect(() => {
-    if (calloutZones.length === 0 || renderWidth === 0) {
-      zonesRef.current = null
-      return
-    }
-    const dpr = window.devicePixelRatio || 1
-    const off = document.createElement('canvas')
-    off.width = Math.round(renderWidth * dpr)
-    off.height = Math.round(CANVAS_HEIGHT * dpr)
-    const octx = off.getContext('2d')
-    if (!octx) return
-    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawCalloutsLayer(
-      octx,
-      calloutZones,
-      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
-      { bigColors: zoneColors, fineInk: floorStyle.edge, locale },
-    )
-    zonesRef.current = off
-    draw()
-  }, [calloutZones, zoneColors, renderWidth, bounds, floorStyle.edge, locale, draw])
-
-  // La carte de chaleur se cuit quand SA grille, SON cadrage ou SA rampe changent — jamais
-  // à l'image. C'est ce qui rend son coût indolore : le calcul lourd (accumulation,
-  // lissage, étalonnage) a déjà eu lieu dans le useMemo, et le dessin ne se refait que si
-  // l'un de ses ingrédients bouge.
-  useEffect(() => {
-    if (!heat.grid || renderWidth === 0 || heat.ramp.length === 0) {
-      heatRef.current = null
-      // REPEINDRE APRÈS AVOIR ÉTEINT : à l'arrêt, rien d'autre ne déclenche de redessin
-      // (contrairement au calque des zones, dont la bascule figure dans les dépendances de
-      // `draw`) — sans cette ligne, la carte de chaleur resterait à l'écran après extinction.
-      draw()
-      return
-    }
-    const dpr = window.devicePixelRatio || 1
-    const off = document.createElement('canvas')
-    off.width = Math.round(renderWidth * dpr)
-    off.height = Math.round(CANVAS_HEIGHT * dpr)
-    const octx = off.getContext('2d')
-    if (!octx) return
-    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawHeatmapLayer(
-      octx,
-      heat.grid,
-      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
-      { ramp: heat.ramp, k: dpr },
-    )
-    heatRef.current = off
-    draw()
-  }, [heat.grid, heat.ramp, renderWidth, bounds, draw])
-
-  // Les objectifs statiques se cuisent quand LEURS données, LEUR cadrage ou LEURS encres
-  // changent — jamais à l'image (même règle que le sol et les zones nommées).
-  useEffect(() => {
-    if (mapObjectives.length === 0 || renderWidth === 0) {
-      objectivesRef.current = null
-      return
-    }
-    const dpr = window.devicePixelRatio || 1
-    const off = document.createElement('canvas')
-    off.width = Math.round(renderWidth * dpr)
-    off.height = Math.round(CANVAS_HEIGHT * dpr)
-    const octx = off.getContext('2d')
-    if (!octx) return
-    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawObjectivesLayer(
-      octx,
-      mapObjectives,
-      { bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD },
-      { colorOfTeam: objectiveColorOfTeam },
-    )
-    objectivesRef.current = off
-    draw()
-  }, [mapObjectives, objectiveColorOfTeam, renderWidth, bounds, draw])
-
-  // Redraw hors animation (thème, resize, données, pause).
-  useEffect(() => {
+    drawRef.current = draw
     draw()
   }, [draw])
 

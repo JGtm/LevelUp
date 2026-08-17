@@ -79,3 +79,17 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
     expect(Object.keys(REPLAY_TEXT.fr.placementFamily)).not.toContain(DEFAULT_FAMILY)
   })
 })
+
+/**
+ * Garde-rail de TAILLE — le cliquet du registre des reports (2026-08-16 : « prochaine addition
+ * sur l'un d'eux : extraire d'abord »). Le canvas du rejeu porte une dette de taille gelée ;
+ * le lot des poses l'avait fait passer de 861 à 942 lignes sans extraction préalable, et c'est
+ * ce que la revue a relevé. Le plafond n'est pas un idéal, c'est un CLIQUET : il ne remonte
+ * jamais. Le franchir se corrige en extrayant, pas en relevant le nombre.
+ */
+describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
+  it('ReplayCanvas.tsx reste sous son plafond', () => {
+    const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(861)
+  })
+})
