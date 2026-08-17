@@ -32,9 +32,12 @@ package filmdec
 //	CGO_ENABLED=0 EQUIP_CREATION_FILM=<repo>/data/cache/film_chunks/000d5950 \
 //	  go test ./internal/analysis/filmdec/ -run '^TestEquipmentCreationRecord$' -timeout 60m -v
 //
-// `EQUIP_MPP_LEAD=<n>` force la largeur du premier champ du bloc MPP au lieu de la détecter —
-// la détection automatique échoue sur les gros films (cf. REGISTRE_REPORTS du 2026-08-17), et
-// forcer 6 est ce qui a montré que la largeur, et non la grammaire, est en cause.
+// `EQUIP_MPP_LEAD=<n>` force la largeur du PREMIER champ du bloc MPP au lieu de calibrer les
+// deux. Il ne sert plus qu'à rejouer une hypothèse à la main : depuis le 2026-08-18 la
+// calibration par oracle de position tranche le DÉCOUPAGE COMPLET (premier champ / champ
+// inline) sur 11 films du corpus sur 12, et c'est elle que la production emploie. Forcer une
+// largeur seule reproduit le défaut que la calibration a corrigé — un total juste avec un
+// identifiant lu trois bits trop tôt.
 
 import (
 	"fmt"
@@ -70,20 +73,28 @@ func TestEquipmentCreationRecord(t *testing.T) {
 	t.Logf("FILM %s · largeurs d'axe lues dans le film %v", dir, lay.AxisW)
 
 	real, phantom := equipCreationBands(t, dir)
-	prevLead := MPPLeadBits()
-	t.Cleanup(func() { SetMPPLeadBits(prevLead) })
+	prevW := CurrentMPPWidths()
+	t.Cleanup(func() { SetMPPWidths(prevW) })
 	if forced := os.Getenv("EQUIP_MPP_LEAD"); forced != "" {
 		w, err := strconv.Atoi(forced)
 		if err != nil {
 			t.Fatalf("EQUIP_MPP_LEAD=%q illisible : %v", forced, err)
 		}
-		SetMPPLeadBits(w)
+		SetMPPWidths(MPPWidths{Lead: w, Index: prevW.Index})
 		t.Logf("largeur du premier champ MPP FORCÉE par l'environnement : %d bits", w)
-	} else if w, ok := DetectMPPLeadBits(dir, &equipCreationUnitRange, real); ok {
-		SetMPPLeadBits(w)
-		t.Logf("largeur du premier champ MPP DÉTECTÉE dans le film : %d bits (défaut %d)", w, prevLead)
 	} else {
-		t.Logf("largeur du premier champ MPP NON détectée : défaut %d bits conservé", prevLead)
+		tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
+		if err != nil {
+			t.Fatalf("trajectoires ti=%d illisibles (oracle de calibration) : %v",
+				EquipmentTypeIndex, err)
+		}
+		cal, ok := CalibrateMPPWidths(dir, &equipCreationUnitRange, real, EquipmentLifeSpans(tracks))
+		t.Logf("découpage du bloc MPP — calibration : %s", cal)
+		if !ok {
+			t.Logf("calibration NON concluante : défaut %s conservé", prevW)
+		} else {
+			SetMPPWidths(cal.Widths)
+		}
 	}
 	cre, st, err := ScanFilmEquipmentCreationsForBand(dir, &equipCreationUnitRange, real)
 	if err != nil {

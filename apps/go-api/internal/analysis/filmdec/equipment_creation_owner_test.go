@@ -58,21 +58,27 @@ func TestEquipmentCreationOwner(t *testing.T) {
 	SetWorldObjectPrecisionFromLayout(lay)
 
 	wr, unite := equipOwnerRange(t)
-	band := worldObjectSlotBand(dir, CountFilmChunks(dir), EquipmentTypeIndex)
-	cre, _, err := ScanFilmEquipmentCreationsForBand(dir, &wr, band)
+	prevW := CurrentMPPWidths()
+	t.Cleanup(func() { SetMPPWidths(prevW) })
+	// LA COHORTE EST CELLE DE LA PRODUCTION, pas le balayage brut. L'ancre NEW n'est pas
+	// sélective (des dizaines de milliers de faux positifs sur les films BTB) : croiser le
+	// brut avec les rangs mesurerait le bruit autant que la pose. ScanFilmEquipmentPlacements
+	// applique l'oracle de position, calibre le découpage du bloc MPP, et rend UNE pose par vie.
+	pl, st, err := ScanFilmEquipmentPlacements(dir, &wr)
 	if err != nil {
-		t.Fatalf("balayage des créations impossible : %v", err)
+		t.Fatalf("balayage des poses impossible : %v", err)
 	}
-	cre = equipCreationFilter(cre, func(c EquipmentCreation) bool { return c.MaskHasI0 })
-	if len(cre) == 0 {
-		t.Skip("aucun record de création exploitable sur ce film")
+	t.Logf("calibration du bloc MPP : %s", st.Calibration)
+	if len(pl) == 0 {
+		t.Skip("aucune pose confirmée sur ce film")
 	}
 	t.Logf("unité de distance : %s", unite)
 	pos := equipOwnerBipeds(t, dir, lay, wr)
 	ranks := equipOwnerRanks(t, dir)
-	t.Logf("FILM %s · largeurs %v · %d créations (i0 au masque) · %d positions de bipède"+
-		" · %d slots à rang connu", dir, lay.AxisW, len(cre), len(pos), len(ranks))
-	equipOwnerCross(t, cre, pos, ranks)
+	t.Logf("FILM %s · largeurs %v · %d ancres · %d acceptés · %d confirmés · %d POSES"+
+		" · %d positions de bipède · %d slots à rang connu", dir, lay.AxisW, st.Anchors,
+		st.Accepted, st.Confirmed, len(pl), len(pos), len(ranks))
+	equipOwnerCross(t, pl, pos, ranks)
 }
 
 // equipOwnerSample est une position de bipède, normalisée par l'AABB comme les objets.
@@ -166,26 +172,25 @@ func equipOwnerRanks(t *testing.T, dir string) map[uint32]int {
 // equipOwnerCross croise l'identifiant `eqip` de chaque création avec le rang du bipède le
 // plus proche à l'instant de la pose, et publie le TÉMOIN en regard.
 func equipOwnerCross(
-	t *testing.T, cre []EquipmentCreation, pos []equipOwnerSample, ranks map[uint32]int,
+	t *testing.T, pl []EquipmentPlacement, pos []equipOwnerSample, ranks map[uint32]int,
 ) {
 	table := map[uint32]map[int]int{}
 	temoin := map[uint32]map[int]int{}
 	var dReal, dTemoin []float64
 	sans := 0
-	for i, c := range cre {
+	for i, c := range pl {
 		near, other, ok := equipOwnerNearest(pos, c, i)
 		if !ok {
 			sans++
 			continue
 		}
-		id := uint32(c.MPPVal[MPPWord32])
 		dReal = append(dReal, equipOwnerDist(c, near))
 		dTemoin = append(dTemoin, equipOwnerDist(c, other))
-		equipOwnerPut(table, id, ranks, near.slot)
-		equipOwnerPut(temoin, id, ranks, other.slot)
+		equipOwnerPut(table, c.GlobalID, ranks, near.slot)
+		equipOwnerPut(temoin, c.GlobalID, ranks, other.slot)
 	}
-	t.Logf("== CROISEMENT `eqip` x RANG i48 — %d créations · %d sans bipède contemporain ==",
-		len(cre), sans)
+	t.Logf("== CROISEMENT `eqip` x RANG i48 — %d poses · %d sans bipède contemporain ==",
+		len(pl), sans)
 	equipOwnerLogDist(t, "porteur le plus proche", dReal)
 	equipOwnerLogDist(t, "TÉMOIN (autre bipède vivant)", dTemoin)
 	equipOwnerLogTable(t, "MESURE", table)
@@ -207,15 +212,15 @@ func equipOwnerPut(dst map[uint32]map[int]int, id uint32, ranks map[uint32]int, 
 // un AUTRE bipède vivant au même instant, choisi de façon déterministe (le i-ème de la liste
 // des vivants) pour que la mesure soit rejouable à l'identique.
 func equipOwnerNearest(
-	pos []equipOwnerSample, c EquipmentCreation, i int,
+	pos []equipOwnerSample, c EquipmentPlacement, i int,
 ) (near, other equipOwnerSample, ok bool) {
 	lo := sort.Search(len(pos), func(k int) bool {
-		return pos[k].ts+equipOwnerWindowUS >= c.TimestampUS
+		return pos[k].ts+equipOwnerWindowUS >= c.T0US
 	})
 	best := map[uint32]equipOwnerSample{} // un échantillon par slot : le plus proche en temps
-	for k := lo; k < len(pos) && pos[k].ts <= c.TimestampUS+equipOwnerWindowUS; k++ {
+	for k := lo; k < len(pos) && pos[k].ts <= c.T0US+equipOwnerWindowUS; k++ {
 		s := pos[k]
-		if b, seen := best[s.slot]; !seen || equipOwnerGap(s.ts, c.TimestampUS) < equipOwnerGap(b.ts, c.TimestampUS) {
+		if b, seen := best[s.slot]; !seen || equipOwnerGap(s.ts, c.T0US) < equipOwnerGap(b.ts, c.T0US) {
 			best[s.slot] = s
 		}
 	}
@@ -249,7 +254,7 @@ func equipOwnerGap(a, b uint64) uint64 {
 	return b - a
 }
 
-func equipOwnerDist(c EquipmentCreation, s equipOwnerSample) float64 {
+func equipOwnerDist(c EquipmentPlacement, s equipOwnerSample) float64 {
 	dx, dy, dz := float64(c.X-s.p[0]), float64(c.Y-s.p[1]), float64(c.Z-s.p[2])
 	return dx*dx + dy*dy + dz*dz
 }
