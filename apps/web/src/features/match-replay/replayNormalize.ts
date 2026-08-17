@@ -50,6 +50,7 @@ export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
   | 'equipmentEpisodes'
+  | 'equipmentPlacements'
   | 'geometry'
   | 'grappleLines'
   | 'grenadeLabels'
@@ -66,6 +67,7 @@ export type ReplayDocumentReady = Omit<
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
+  equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
   geometry: NonNullable<ReplayDocument['geometry']>
   grappleLines: NonNullable<ReplayDocument['grappleLines']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
@@ -100,6 +102,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // datés par vie — les deux seules familles dont l'état est MESURÉ. Absent = aucune
     // vie publiée n'en porte : les fiches restent sobres, jamais un effet deviné.
     equipmentEpisodes: raw.equipmentEpisodes ?? [],
+    // Les POSES d'équipement (schéma 9) : mur, capteur, et les objets du monde qui
+    // partagent l'archétype — ces derniers publiés en famille `other`, avec leur
+    // identifiant de tag et sans nom. Absent = le film n'en porte aucune, OU sa largeur
+    // de bloc de réplication n'a pas été tranchée : `coverage.placements.calibrated`
+    // distingue les deux, et c'est pour cela qu'il est publié.
+    equipmentPlacements: raw.equipmentPlacements ?? [],
     geometry: raw.geometry ?? [],
     // Les TRACTIONS de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
     // d'accroche en coordonnées monde. Absent = aucune traction lue sur ce film : rien

@@ -54,8 +54,14 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 	for _, v := range labels.GrenadeRanks() {
 		grenades = append(grenades, Label{En: v.En, Fr: v.Fr})
 	}
-	return NewLabelCatalog(
+	cat := NewLabelCatalog(
 		weapons.FilmshellWeaponKeysByFamily(), byKey, labels.ShotEffects(), grenades, abilities)
+	// Les familles d'objets d'équipement se posent APRÈS construction, comme en production
+	// (cf. replaylabels.Load) : elles n'entrent dans aucune jointure du catalogue. Les oublier
+	// ici ferait publier au golden un document dont TOUTES les poses sont `other`, alors que
+	// le manifeste en nomme — c'est-à-dire un document que la production ne sert pas.
+	cat.EquipmentFamilies = labels.EquipmentObjects()
+	return cat
 }
 
 // repoRootForTest remonte jusqu'au répertoire qui porte `config/titles` — le test tourne

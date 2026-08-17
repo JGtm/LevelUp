@@ -311,6 +311,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderAbilities(p, doc)
 	renderEquipment(p, doc)
 	renderGrapple(p, doc)
+	renderPlacements(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderLabels(p, doc)
@@ -496,6 +497,54 @@ func renderGrapple(p func(string, ...any), doc ReplayDocument) {
 	}
 	for _, l := range doc.GrappleLines {
 		p("  slot=%d t=[%d, %d] ancre=(%.2f, %.2f, %.2f)", l.Slot, l.T0, l.T1, l.AX, l.AY, l.AZ)
+	}
+	p("")
+}
+
+// renderPlacements publie le calque des POSES D EQUIPEMENT (schema 9) et sa couverture.
+//
+// CE QUE CETTE SECTION FIGE, ET POURQUOI CHAQUE CHIFFRE Y EST. Le DECOUPAGE (« 9/5 ») est
+// mesure DANS le film et conditionne tout le reste : s il bouge, ce sont des poses entierement
+// differentes qui sortent. Les ANCRES contre les CONFIRMEES disent la selectivite reelle de
+// l en-tete de creation (elle est faible, et c est l oracle de position qui fait le tri).
+// NOMMEES contre AUTRES dit ce que le manifeste couvre — un `other` est un resultat, pas un
+// echec. AVEC POSEUR et AVEC CAP disent ce que la mesure de proximite a rendu.
+//
+// LE DETAIL EST BORNE aux poses NOMMEES : elles seules seront dessinees, et lister trois cents
+// objets du monde noierait le diff que ce golden existe pour rendre lisible. Leur compte, lui,
+// est fige par la ligne de couverture.
+func renderPlacements(p func(string, ...any), doc ReplayDocument) {
+	p("## EQUIPEMENT POSE — mur et capteur sur la carte, le reste publie SANS NOM (`other`)")
+	c := doc.Coverage.Placements
+	if c == nil {
+		p("aucune couverture de poses (calque absent)")
+		p("")
+		return
+	}
+	p("calibre=%t decoupage=%q · %d vie(s) d objet · %d ancre(s) -> %d confirmee(s) par l oracle "+
+		"de position -> %d pose(s)", c.Calibrated, c.Widths, c.Lives, c.Anchors, c.Confirmed,
+		c.Placements)
+	p("%d nommee(s) · %d `other` (nature non etablie : le manifeste ne les revendique pas) · "+
+		"%d avec poseur mesure · %d avec cap de visee", c.Named, c.Other, c.WithOwner,
+		c.WithHeading)
+	fams := make([]string, 0, len(c.ByFamily))
+	for f := range c.ByFamily {
+		fams = append(fams, f)
+	}
+	sort.Strings(fams)
+	for _, f := range fams {
+		p("  famille %-8s %d", f, c.ByFamily[f])
+	}
+	for _, pl := range doc.EquipmentPlacements {
+		if pl.Family == equipmentFamilyOther {
+			continue
+		}
+		cap := "aucun"
+		if pl.H != nil {
+			cap = fmt.Sprintf("%.1f deg", *pl.H)
+		}
+		p("  %s %s t=[%d, %d] pos=(%.2f, %.2f, %.2f) poseur=%d cap=%s",
+			pl.Family, pl.ID, pl.T0, pl.T1, pl.X, pl.Y, pl.Z, pl.Owner, cap)
 	}
 	p("")
 }

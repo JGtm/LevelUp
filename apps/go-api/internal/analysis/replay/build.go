@@ -63,6 +63,15 @@ type Options struct {
 	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
 	// tractions de grappin — jamais des tractions devinees.
 	GrappleReads []filmdec.GrappleRead
+	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
+	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
+	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le decoupage de
+	// bloc CALIBRE sur ce film. Une liste vide sans elles serait indistinguable d'un film
+	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
+	Placements     []filmdec.EquipmentPlacement
+	PlacementStats filmdec.EquipmentPlacementStats
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -231,6 +240,9 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"tag3", gStats.Tag3, "corpsCasses", gStats.BodyBroken)
 	}
 	opt.GrappleReads = grappleReads
+	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
+	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
+	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -392,6 +404,14 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		slog.Warn("rejeu : lectures de grappin sans bornes de carte — aucune traction publiee",
 			"lectures", len(opt.GrappleReads))
 	}
+	// Les POSES d'equipement : famille par le manifeste du titre, poseur et cap MESURES sur le
+	// nuage NON decime (une pose dure quelques dizaines de millisecondes ; la decimation
+	// perdrait le record contemporain qui designe le poseur).
+	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
+		opt.Placements, opt.PlacementStats, sorted,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount,
+			families: opt.Labels.EquipmentFamilies})
+	logPlacementCoverage(doc.Coverage.Placements)
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,

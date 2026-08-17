@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 8 · titre halo_infinite
+schema 9 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
@@ -88,6 +88,45 @@ couverture : 99 vie(s) publiee(s) · camo 22 vie(s) / 36 episode(s) · surboucli
   slot=588 t=[4116, 4129] ancre=(18.73, 7.21, -1.71)
   slot=592 t=[4575, 4589] ancre=(22.81, -5.28, -0.73)
   slot=605 t=[4802, 4814] ancre=(26.62, -7.32, -1.56)
+
+## EQUIPEMENT POSE — mur et capteur sur la carte, le reste publie SANS NOM (`other`)
+calibre=true decoupage="9/5" · 397 vie(s) d objet · 6651 ancre(s) -> 295 confirmee(s) par l oracle de position -> 295 pose(s)
+32 nommee(s) · 263 `other` (nature non etablie : le manifeste ne les revendique pas) · 289 avec poseur mesure · 254 avec cap de visee
+  famille other    263
+  famille sensor   19
+  famille wall     13
+  sensor 0x72199cba t=[317, 333] pos=(24.31, 10.35, -1.76) poseur=515 cap=195.7 deg
+  sensor 0x72199cba t=[516, 537] pos=(22.81, 9.73, -1.86) poseur=520 cap=202.5 deg
+  sensor 0x72199cba t=[593, 613] pos=(5.24, 4.49, -1.28) poseur=522 cap=18.2 deg
+  sensor 0x72199cba t=[656, 681] pos=(17.79, 2.85, -1.86) poseur=521 cap=23.9 deg
+  wall 0x8e2dc574 t=[1119, 1127] pos=(18.88, 8.67, -1.85) poseur=526 cap=291.5 deg
+  sensor 0x72199cba t=[1233, 1256] pos=(18.29, 8.74, -1.86) poseur=527 cap=aucun
+  wall 0x8e2dc574 t=[1382, 1390] pos=(25.70, -10.24, -1.05) poseur=535 cap=268.1 deg
+  wall 0x8e2dc574 t=[1445, 1455] pos=(33.25, 8.98, -0.98) poseur=536 cap=aucun
+  sensor 0x72199cba t=[1846, 1859] pos=(23.25, 2.64, 0.99) poseur=543 cap=280.9 deg
+  sensor 0x72199cba t=[1889, 1911] pos=(25.94, -3.34, 0.79) poseur=541 cap=286.3 deg
+  wall 0x8e2dc574 t=[2300, 2325] pos=(17.10, 8.73, -1.86) poseur=555 cap=221.6 deg
+  wall 0x8e2dc574 t=[2352, 2358] pos=(19.55, 4.13, -1.66) poseur=553 cap=354.4 deg
+  wall 0x8e2dc574 t=[2352, 2359] pos=(19.66, 4.07, -1.69) poseur=556 cap=182.2 deg
+  sensor 0x72199cba t=[2541, 2557] pos=(17.49, 9.51, -1.86) poseur=557 cap=aucun
+  sensor 0x72199cba t=[2629, 2657] pos=(24.52, -1.30, 0.80) poseur=552 cap=121.3 deg
+  wall 0x8e2dc574 t=[2888, 2899] pos=(20.25, 7.58, -1.44) poseur=565 cap=263.6 deg
+  wall 0x8e2dc574 t=[2961, 2967] pos=(19.48, 5.56, -1.93) poseur=566 cap=257.4 deg
+  wall 0x8e2dc574 t=[3340, 3346] pos=(20.22, 4.48, -1.92) poseur=572 cap=100.9 deg
+  wall 0x8e2dc574 t=[3396, 3402] pos=(22.99, 2.98, -2.07) poseur=554 cap=290.1 deg
+  sensor 0x72199cba t=[3520, 3536] pos=(2.59, -7.44, -1.69) poseur=579 cap=10.6 deg
+  wall 0x8e2dc574 t=[3671, 3678] pos=(14.69, 4.27, 1.43) poseur=571 cap=0.5 deg
+  sensor 0x72199cba t=[3908, 4028] pos=(16.30, 13.45, 0.22) poseur=583 cap=aucun
+  sensor 0x72199cba t=[3943, 3981] pos=(9.15, 11.38, -0.30) poseur=585 cap=233.7 deg
+  sensor 0x72199cba t=[4143, 4167] pos=(24.30, 6.80, -1.39) poseur=587 cap=246.4 deg
+  sensor 0x72199cba t=[4287, 4308] pos=(18.74, 3.16, -1.93) poseur=590 cap=aucun
+  sensor 0x72199cba t=[4408, 4430] pos=(18.52, -2.29, -1.85) poseur=595 cap=aucun
+  wall 0x8e2dc574 t=[4626, 4633] pos=(22.79, 1.48, -2.12) poseur=578 cap=230.6 deg
+  sensor 0x72199cba t=[4735, 4757] pos=(23.66, 8.97, -1.89) poseur=599 cap=0.8 deg
+  wall 0x8e2dc574 t=[4796, 4803] pos=(27.74, -2.98, -1.41) poseur=600 cap=327.9 deg
+  sensor 0x72199cba t=[4886, 4906] pos=(22.10, 2.48, -1.92) poseur=604 cap=91.2 deg
+  sensor 0x72199cba t=[4927, 4933] pos=(21.98, 2.78, -1.89) poseur=607 cap=129.6 deg
+  sensor 0x72199cba t=[4932, 4953] pos=(21.25, 3.80, -1.92) poseur=608 cap=300.4 deg
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)

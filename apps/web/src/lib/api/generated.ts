@@ -5370,6 +5370,7 @@ export interface components {
             grapple?: components["schemas"]["GrappleCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
+            placements?: components["schemas"]["EquipmentPlacementCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             verdict?: {
                 [key: string]: string;
@@ -5682,6 +5683,47 @@ export interface components {
             t0: number;
             /** Format: int64 */
             t1: number;
+        };
+        EquipmentPlacement: {
+            family: string;
+            /** Format: float */
+            h?: number;
+            id: string;
+            /** Format: int64 */
+            owner: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        EquipmentPlacementCoverage: {
+            /** Format: int64 */
+            anchors: number;
+            byFamily?: {
+                [key: string]: number;
+            };
+            calibrated: boolean;
+            /** Format: int64 */
+            confirmed: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            other: number;
+            /** Format: int64 */
+            placements: number;
+            widths?: string;
+            /** Format: int64 */
+            withHeading: number;
+            /** Format: int64 */
+            withOwner: number;
         };
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
@@ -9104,6 +9146,7 @@ export interface components {
             /** Format: int64 */
             durationMs?: number;
             equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
+            equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
             /** Format: int64 */
             frameCount: number;
             /** Format: int64 */

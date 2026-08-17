@@ -75,7 +75,17 @@ package replay
 // même plan). Le champ est optionnel, mais la version monte : la ligne joueur -> ancre
 // côté client N'EXISTE que si l'artefact la porte, et la reprise du backfill se fait par
 // SchemaVersion — un artefact v7 doit se voir comme « à re-cuire », pas comme à jour.
-const SchemaVersion = 8
+//
+// v9 (2026-08-18, plan PLAN_POSES_EQUIPEMENT_PUBLICATION phase 2) : le document publie
+// `equipmentPlacements` — les POSES d'objets d'équipement (mur de protection, capteur de
+// menaces, et les objets du monde qui partagent l'archétype), avec leur position monde, leur
+// fenêtre [t0, t1], l'identifiant `eqip` que le jeu leur donne, le poseur mesuré et son cap de
+// visée (cf. equipment_placements.go ; identité prouvée au gate 1 de PLAN_IDENTITE_TI37, largeur
+// du bloc MPP calibrée par oracle de position au gate 0 du présent plan). Le champ est
+// optionnel, mais la version monte : les marqueurs d'équipement posé côté client N'EXISTENT que
+// si l'artefact les porte, et la reprise du backfill se fait par SchemaVersion — un artefact v8
+// doit se voir comme « à re-cuire », pas comme à jour.
+const SchemaVersion = 9
 
 // Label est un libellé affichable dans les deux langues du produit.
 //
@@ -233,6 +243,16 @@ type ReplayDocument struct {
 	// de sa Track : la ligne se trace de la position courante vers l'ancre. Absent si
 	// aucune traction n'a été lue (film sans grappin, ou vies non publiées).
 	GrappleLines []GrappleLine `json:"grappleLines,omitempty"`
+	// EquipmentPlacements est la liste des POSES d'objets d'équipement sur la carte
+	// (cf. equipment_placements.go) : position monde, fenêtre [t0, t1] de la création à la
+	// disparition, famille (`wall` / `sensor` / `other`), identifiant `eqip` du jeu, poseur
+	// mesuré (-1 quand aucun) et cap de visée du poseur quand il a été lu.
+	//
+	// UNE POSE N'EST PAS RATTACHÉE À UNE Track : c'est un objet du monde, pas un joueur.
+	// `owner` désigne la VIE qui l'a posé quand la proximité l'atteste, et rien d'autre.
+	// Absent si le film n'a pas tranché la largeur de son bloc de réplication (la couverture
+	// le dit alors : `calibrated: false`) ou s'il ne porte aucune pose.
+	EquipmentPlacements []EquipmentPlacement `json:"equipmentPlacements,omitempty"`
 	// Grenades est la liste des LANCERS de grenade rattachés à un slot (cf. grenades.go).
 	// Contrairement aux tirs, chaque lancer porte son auteur DANS le film — il n'est pas
 	// deviné. Ce n'est pas l'inventaire de grenades (c'est i22, non résolu) : c'est
