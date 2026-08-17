@@ -26,3 +26,29 @@ EXIT_FILM_000d5950=0 # none ·  5,4 s · pic 16 Mo · PASS
 # Total : 11 films, 112 s cumulees, pic memoire maximal 18 Mo (plafond 3072 Mo jamais approche,
 # aucun processus tue). VERDICT lu sur la queue du log de chaque processus (PASS), l ExitCode de
 # Start-Process -PassThru n etant pas peuple de facon fiable sous PowerShell 5.1.
+
+## 2026-08-17 (suite) — phase 1a, item C.1a.0 (largeur du champ de slot de l ancrage)
+EXIT_VET_C1A0=0      # go vet ./internal/analysis/filmdec/ apres ajout de zone_census_width_test.go
+EXIT_TESTC_C1A0=0    # go test -c (recompilation de l instrument)
+EXIT_W_7344d24f=0    # zone · 15,8 s · pic 73 Mo · PASS · 5 largeurs balayees en une passe
+EXIT_W_530820e5=0    # flag ·  9,4 s · pic 48 Mo · PASS
+EXIT_W_000d5950=0    # none ·  9,3 s · pic 46 Mo · PASS
+# VERDICT C.1a.0 : les DEUX juges independants designent w=13 sur les TROIS films, y compris
+# 000d5950 (celui que frame_records.go:39-44 donne a idLow=11). Couverture moyenne du balayage de
+# cadre : 0,380 / 0,270 / 0,701 pour w=13 contre 0,003 a 0,152 ailleurs. Purete ti=4 (un slot, un
+# composant declare) : 0,68 % / 0,21 % / 1,33 % hors grammaire a w=13 contre 90 a 100 % aux quatre
+# autres largeurs. L hypothese qui ouvrait l item est donc REFUTEE : la largeur cablee est la
+# bonne, et le residu hors grammaire de 22-39 % de la phase 0 a une AUTRE cause.
+
+## 2026-08-17 (suite) — phase 1a, item C.1a.1 (RE lecture seule) + C.1a.2 (journal)
+EXIT_VET_VEC=0             # go vet apres ajout de zone_vectors_test.go
+EXIT_TESTC_VEC=0           # go test -c (recompilation de l instrument)
+EXIT_VEC_7344d24f=0        # zone · 18,0 s · pic 15 Mo · PASS · vecteurs des 4 cibles
+EXIT_VEC_696a9d7c=0        # zone · 24,0 s · pic 15 Mo · PASS
+EXIT_TEST_FILMDEC_FULL_1A=0 # go test -count=1 ./internal/analysis/filmdec/ (99,5 s, aucune regression)
+EXIT_LINT_1A=0             # golangci-lint run --new-from-merge-base=origin/main ./internal/analysis/filmdec/... -> 0 issues
+# Note : les deux premieres tentatives de golangci-lint ont rendu 3 (« parallel golangci-lint is
+# running » — un autre worktree tenait le verrou), pas un echec de lint. Relance seule -> 0 issues,
+# conformement a la regle « un go test non-zero dans un chainage se relance SEUL avant de conclure ».
+# Ghidra : LECTURE SEULE, 21 appels MCP (search_strings, get_xrefs_to, read_memory,
+# decompile_function, disassemble_function). Aucun rename, commentaire, script, analyse, sauvegarde.
