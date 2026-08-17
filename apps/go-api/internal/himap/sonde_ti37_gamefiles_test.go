@@ -26,21 +26,38 @@ import (
 	"levelup/go-api/internal/himodule"
 )
 
-// ti37Observes : les valeurs de `mpp-word32` relevees dans les records de creation, avec le
-// film et le compte qui les ont produites. Recopiees de la mesure amont — c'est la PIECE.
+// ti37Observes : les valeurs de `mpp-word32` relevees dans les POSES confirmees des records de
+// creation, avec le nombre de films du corpus et l'effectif total. Recopiees de la mesure amont
+// — c'est la PIECE.
+//
+// MISE A JOUR DU 2026-08-18 (plan PLAN_POSES_EQUIPEMENT_PUBLICATION, phase 1) : le corpus passe
+// de 2 films a 11 (le douzieme, `0014603f`, ne porte aucune pose mesurable et se refuse), et la
+// cohorte n'est plus le balayage BRUT mais les poses CONFIRMEES par l'oracle de position
+// (filmdec.ScanFilmEquipmentPlacements). Les effectifs changent donc de definition autant que
+// de valeur : les anciens comptaient des records dont une bonne part etait du bruit d'ancre.
 func ti37Observes() map[uint32]string {
 	return map[uint32]string{
-		0xbcabbe43: "000d5950:49 · 00162144:128",
-		0xcaaadcb0: "000d5950:53 · 00162144:63",
-		0x0f5716ff: "000d5950:60 · 00162144:19",
-		0xaada07f3: "000d5950:31",
-		0x8c77ffe7: "000d5950:30",
-		0xeef5d48d: "000d5950:25",
-		0x528fce46: "000d5950:15",
-		0x72199cba: "000d5950:11",
-		0x686b40c9: "00162144:10",
-		0x273fe0eb: "00162144:8",
-		0x4396db42: "00162144:1",
+		0xbcabbe43: "9 films · 933 poses",
+		0x0f5716ff: "8 films · 306",
+		0xcaaadcb0: "9 films · 293",
+		0xaada07f3: "6 films · 177",
+		0x273fe0eb: "5 films · 105",
+		0x8c77ffe7: "3 films · 83",
+		0x7ca85adc: "4 films · 77",
+		0xeef5d48d: "3 films · 70",
+		0x72199cba: "3 films · 60  (CAPTEUR, rang 22 famille B)",
+		0x4396db42: "5 films · 51",
+		0x32d97758: "2 films · 48",
+		0x528fce46: "3 films · 45  (rang 19 famille B — 2e identifiant du mur)",
+		0x72b63d69: "2 films · 43  (rang 1 famille A)",
+		0x8e2dc574: "3 films · 42  (MUR, rang 19 famille B)",
+		0x2974c233: "3 films · 41  (rang 2 famille A)",
+		0x430dda48: "2 films · 33",
+		0x686b40c9: "3 films · 25  (rang 2 famille A)",
+		0x4744d742: "1 film · 4",
+		0xb781197a: "1 film · 1",
+		0x730dc70f: "1 film · 1",
+		0xe7be9f5c: "1 film · 1",
 	}
 }
 

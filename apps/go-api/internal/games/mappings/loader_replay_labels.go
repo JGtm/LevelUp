@@ -61,15 +61,32 @@ type ReplayLabelSet struct {
 	palettes      []AbilityPalette
 	shotEffects   map[string]string // weapon_key -> famille de rendu
 	shotTints     map[string]string // weapon_key -> nature de la decharge
+	equipObjects  map[uint32]string // GlobalID de tag `eqip` -> famille de pose
 }
 
 // replayLabelsTOML — projection brute du fichier.
 type replayLabelsTOML struct {
-	Meta        metaSection           `toml:"meta"`
-	Grenades    []bilingualEntry      `toml:"grenades"`
-	Palettes    []abilityPaletteEntry `toml:"ability_palettes"`
-	ShotEffects map[string]string     `toml:"shot_effects"`
-	ShotTints   map[string]string     `toml:"shot_tints"`
+	Meta         metaSection            `toml:"meta"`
+	Grenades     []bilingualEntry       `toml:"grenades"`
+	Palettes     []abilityPaletteEntry  `toml:"ability_palettes"`
+	ShotEffects  map[string]string      `toml:"shot_effects"`
+	ShotTints    map[string]string      `toml:"shot_tints"`
+	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
+}
+
+// equipmentObjectEntry — une ligne de [[equipment_objects]] : l'identifiant du tag et la
+// famille de pose qu'il designe.
+type equipmentObjectEntry struct {
+	ID     string `toml:"id"`
+	Family string `toml:"family"`
+}
+
+// equipmentFamilies — les FAMILLES DE POSE admises. Liste FERMEE, et courte a dessein : une
+// famille ne s'ajoute qu'apres une mesure qui la separe des autres (diagonale identifiant x
+// rang de capacite du poseur >= 85 %, temoin plat). `other` est le defaut de tout identifiant
+// hors table — un objet non prouve se publie sans nom, jamais sous le nom d'un voisin.
+var equipmentFamilies = map[string]bool{
+	"wall": true, "sensor": true, "other": true,
 }
 
 type abilityPaletteEntry struct {
@@ -157,6 +174,23 @@ func (s *ReplayLabelSet) ShotTints() map[string]string {
 	return out
 }
 
+// EquipmentObjects retourne la table GlobalID de tag `eqip` -> famille de pose (copie).
+//
+// Table PARTIELLE par nature : le film porte des dizaines d'identifiants (bonus au sol,
+// socles, objets de decor) qui partagent l'archetype d'equipement, et seuls ceux dont la
+// mesure a etabli la nature y figurent. Un identifiant absent vaut `other`, ce qui se lit a
+// l'ecran comme un objet pose non nomme — jamais comme un mur.
+func (s *ReplayLabelSet) EquipmentObjects() map[uint32]string {
+	out := make(map[uint32]string)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.equipObjects {
+		out[k] = v
+	}
+	return out
+}
+
 // TitleSlug retourne le slug declare.
 func (s *ReplayLabelSet) TitleSlug() string {
 	if s == nil {
@@ -214,6 +248,10 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	equip, err := parseEquipmentObjects(path, doc.EquipObjects)
+	if err != nil {
+		return nil, err
+	}
 	return &ReplayLabelSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
@@ -221,7 +259,41 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		palettes:      palettes,
 		shotEffects:   effects,
 		shotTints:     tints,
+		equipObjects:  equip,
 	}, nil
+}
+
+// parseEquipmentObjects valide la table des objets d'equipement poses.
+//
+// TROIS INVARIANTS, tous FATAUX. L'identifiant doit etre un entier 32 bits (c'est un GlobalID
+// de tag, lu tel quel dans le film) ; la famille doit appartenir a la liste fermee, sans quoi
+// une faute de frappe ferait tomber un mur dans le rendu neutre en silence — indistinguable
+// d'un objet volontairement non nomme ; et un identifiant declare deux fois rendrait la table
+// dependante de l'ordre de lecture, donc son resultat arbitraire.
+func parseEquipmentObjects(path string, rows []equipmentObjectEntry) (map[uint32]string, error) {
+	out := make(map[uint32]string, len(rows))
+	for _, e := range rows {
+		raw := strings.TrimSpace(e.ID)
+		if raw == "" {
+			return nil, fmt.Errorf("%s: objet d'équipement sans id", path)
+		}
+		id, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimPrefix(raw, "0x"), "0X"), 16, 32)
+		if err != nil {
+			return nil, fmt.Errorf("%s: identifiant d'objet d'équipement %q illisible (attendu : GlobalID hexadécimal 32 bits, ex. \"0x8e2dc574\")",
+				path, raw)
+		}
+		fam := strings.TrimSpace(e.Family)
+		if !equipmentFamilies[fam] {
+			return nil, fmt.Errorf("%s: famille %q inconnue pour %q (admises : wall, sensor, other)",
+				path, fam, raw)
+		}
+		if prev, dup := out[uint32(id)]; dup {
+			return nil, fmt.Errorf("%s: objet d'équipement %q déclaré deux fois (%q puis %q)",
+				path, raw, prev, fam)
+		}
+		out[uint32(id)] = fam
+	}
+	return out, nil
 }
 
 // parseGrenadeRanks valide les rangs : l'ORDRE est la donnee, un trou la detruirait.
