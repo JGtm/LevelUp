@@ -143,7 +143,12 @@ func gwPickupResolve(
 	o.Pos, o.Moved = gwPickupRefPos(c, life, moved)
 	o.Bounds = gwPickupBoundsFrom(c.TimestampUS, lifeEnd, filmEnd, in.kfTimes,
 		gwPickupSeenWithin(in.seen, c.TimestampUS, lifeEnd))
-	if o.Bounds.NeverPicked {
+	// DEUX CHEMINS VERS `never`, ET UNE SEULE RAISON : aucune image-clé ne prouve la
+	// disparition. `NeverPicked` — l'objet est encore recensé à la dernière ; `NoLaterKF` —
+	// il n'y a plus d'image-clé du tout après lui. Le second était ignoré jusqu'au correctif
+	// de revue du 2026-08-17 : ces occupations sortaient `dated` ou `unknown` avec la fin du
+	// film pour borne haute, donc publiées comme achevées sans qu'aucun recensement le dise.
+	if o.Bounds.NeverPicked || o.Bounds.NoLaterKF {
 		o.Status = gwPickupStatusNever
 		return
 	}
