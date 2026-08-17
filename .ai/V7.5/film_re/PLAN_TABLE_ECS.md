@@ -68,9 +68,9 @@ la lecture du JEU (`Flags[k+1]`, lot R7-e) differe, `notes` porte `niveau_jeu=N`
       base : statut et source de chacune des 216 lignes, corrections consignees (avant -> apres),
       completion par les composants traites par le code mais absents, et par les archetypes du
       registre absents.
-- [ ] **Phase 2** — la table `ecs_table.tsv` + son `README` (20 L). Lecteur Go minuscule
+- [x] **Phase 2** — la table `ecs_table.tsv` + son `README` (20 L). Lecteur Go minuscule
       seulement s'il sert aux garde-rails.
-- [ ] **Phase 3** — `ecs_table_guard_test.go` : G1, G2, G3. Les trois verts, G2 joue sur les
+- [x] **Phase 3** — `ecs_table_guard_test.go` : G1, G2, G3. Les trois verts, G2 joue sur les
       3 films temoins.
 - [ ] **Phase 4** — docs : note de tete dans `WALK_PORT_NOTES.md` et
       `RECETTE_DECODAGE_FILM_CHUNKS.md`, index `.ai/V7.5/README.md`, ligne au registre des
@@ -187,3 +187,44 @@ statut `alias`.
 `i57`, `i59`, `i63` restent `partiel` (retour data-dependant), conforme a l'inventaire.
 Les 191 `porte` de l'inventaire sont tous confirmes `porte` par l'AST : aucun statut de
 portage n'a ete infirme a la baisse.
+
+---
+
+# PHASES 2-3 — LA TABLE ET SES GARDE-RAILS
+
+## La table
+
+`apps/go-api/internal/analysis/filmdec/testdata/ecs_table.tsv` — **1 081 lignes** (en-tete
+exclue) : 1 067 couples (archetype, composant) du registre + 14 alias d'ecriture. 16 colonnes,
+UTF-8, tri par `ti` puis `i`, aucun doublon de `(ti, i)`. Couverture : **49 archetypes porteurs
+sur 49**, soit 118 blocs de registre dont 69 vides. `testdata/ecs_table.README.md` a cote.
+
+Repartition des statuts : `porte` 458 · `non_porte` 532 · `partiel` 45 ·
+`deser_non_cable` 32 (les 32 index de `ti=23`) · `alias` 14.
+
+DECISION : le lecteur du TSV vit dans le fichier de test, pas dans un `ecs_table.go` de
+production. La table n'a aucun lecteur applicatif ; un lecteur hors test serait du code mort
+(anti-patron n°1 de la grille de revue).
+
+## Les garde-rails — `ecs_table_guard_test.go`
+
+| garde | ce qu'il verifie | sortie reelle |
+|---|---|---|
+| **G1** `TestG1TableSuitLeCode` | AST de `consumeByName` <-> table, DANS LES DEUX SENS : tout `case` a une ligne au bon statut ; tout `porte`/`partiel`/`alias` est un `case` ; tout `non_porte`/`deser_non_cable` n'en est pas un. Plus la forme du TSV (16 colonnes, tri, unicite), l'existence de chaque source `fichier:ligne`, et la cible de chaque alias | PASS (0,05 s) |
+| **G2** `TestG2TableSuitLeRegistreDuFilm` | archetypes, composants ET niveaux de la table = ceux du `chunk_00`. Garde `ECS_TABLE_FILM` (liste `;`), SKIP propre sans film | PASS sur `000d5950`, `00502e52`, `07aa428d` : `118 blocs, 49 porteurs, 1067 lignes de registre confrontees a 1067 lignes de table (+14 alias)` — identique sur les trois |
+| **G3** `TestG3TableSuitLeDocument` | chaque champ cite en `doc_field` existe dans `replay/document.go` | PASS : `26 references de champ verifiees contre 93 champs` |
+
+**Les trois ROUGISSENT sur derive — verifie en session, pas suppose :**
+
+- G1, statut baisse a la main (`ti=37 i=24 equipment-energy` -> `non_porte`) :
+  `ligne 797 ... statut "non_porte", le code dit "porte" (traverse.go:368)`.
+- G1, statut monte a la main (les 32 `selectable-zone-data` -> `porte`) : 32 erreurs
+  `porte le statut "porte" mais consumeByName ne la traite PAS`.
+- G2, niveau fausse (`35|0` -> 9) : `niveau 9 dans la table, 0 dans le film`.
+- G3, champ fantome (`Point.H` -> `Point.Cap`) : `cite "Point.Cap", absent de document.go`.
+
+## Gates
+
+`gofmt -l internal/analysis/filmdec/` vide · `go vet ./internal/analysis/filmdec/` propre ·
+`go test ./internal/analysis/filmdec/ -count=1` **ok** (1,37 s, `CGO_ENABLED=0`). Aucun test
+existant touche.
