@@ -1,0 +1,27 @@
+metaext	606d9844	KOTH:Arena	105	8	235	1017	1	1016	0	10	29181	233520	1056
+forme_gen	1	1017
+manches	6	0	[]
+manches	8	0	[]
+total_score	ecart	0/3	105/8
+frags	10	2
+frags	12	11
+frags	14	1
+frags	16	2
+frags	18	2
+frags	20	9
+frags	22	3
+frags	24	5
+total_frags	exact	35	35	9
+segment	0	8	0	3	105041	233520	3
+segment	0	24	0	3	105041	233520	3
+segment	2	6	0	8	43863	222929	8
+segment	2	8	0	28	44681	222929	27
+segment	2	12	0	11	57409	222929	11
+segment	2	16	0	3	84720	206062	2
+segment	2	18	0	3	53089	213603	2
+segment	2	20	0	9	50820	195534	9
+segment	2	22	0	3	139445	217507	3
+segment	2	24	0	6	76862	199471	5
+serie	8	105041	1
+serie	8	155808	2
+serie	8	233520	3

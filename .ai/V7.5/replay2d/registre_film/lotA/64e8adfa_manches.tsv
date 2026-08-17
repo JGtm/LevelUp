@@ -1,0 +1,33 @@
+metaext	64e8adfa	CTF:Arena	2	3	839	1012	12	1000	0	260	31608	837397	2184
+forme_gen	1	1012
+manches	6	1	[0]
+manches	8	1	[0]
+figee	6	0	2	837397
+figee	8	0	2	837397
+figee	14	0	2	837397
+figee	22	0	2	837397
+total_score	ecart	2/2	2/3
+frags	10	17
+frags	12	11
+frags	14	22
+frags	16	7
+frags	18	9
+frags	20	14
+frags	22	19
+frags	24	10
+total_frags	ecart	109	121	8
+segment	2	6	0	44	45972	522691	1411382921
+segment	2	6	1	22	524378	742020	64
+segment	2	8	0	45	58586	742020	45
+segment	2	10	0	17	144420	701047	17
+segment	2	12	0	11	58586	721143	11
+segment	2	14	0	9	137197	696708	9
+segment	2	16	0	14	86229	742020	14
+segment	2	18	0	7	129739	721143	7
+segment	2	20	0	23	45972	665577	22
+segment	2	22	0	19	84661	742020	19
+segment	2	24	0	11	87697	701047	10
+serie	6	529075	1
+serie	6	710957	2
+serie	8	159001	1
+serie	8	472578	2
