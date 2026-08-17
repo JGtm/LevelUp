@@ -90,6 +90,23 @@ interface ReplayText {
   layerKillFx: string
   layerKillFxHint: string
   /**
+   * POSES D'ÉQUIPEMENT (schéma 9) : le calque, sa bascule d'objets non identifiés, et les
+   * NOMS des deux familles que le manifeste établit. Les clés de `placementFamily` sont les
+   * identifiants STABLES publiés par le document (`family`) — une famille inconnue n'a pas
+   * de libellé, et le calque ne dessine rien pour elle.
+   */
+  layerPlacements: string
+  layerPlacementsHint: string
+  layerPlacementsUnnamed: string
+  layerPlacementsUnnamedHint: string
+  placementFamily: Record<'wall' | 'sensor', string>
+  /** Ce que dit le point neutre d'un objet dont la nature n'est pas établie. */
+  placementUnnamedLabel: string
+  /** Ligne « posé par <joueur> » de l'infobulle ; le poseur est une MESURE (proximité). */
+  placementOwnerFmt: (name: string) => string
+  /** Poseur non mesuré (aucun bipède contemporain à moins de 3 m) : le dire, pas le taire. */
+  placementOwnerUnknown: string
+  /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
    */
@@ -228,6 +245,19 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerKillFx: 'Effets de mort',
     layerKillFxHint:
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Éteint par défaut.",
+    layerPlacements: 'Équipements posés',
+    layerPlacementsHint:
+      "Mur de protection et capteur de menaces, du moment où ils sont posés jusqu'à leur disparition. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé.",
+    layerPlacementsUnnamed: 'Objets non identifiés',
+    layerPlacementsUnnamedHint:
+      "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée au mur ni au capteur. Éteint par défaut.",
+    placementFamily: {
+      wall: 'Mur de protection',
+      sensor: 'Capteur de menaces',
+    },
+    placementUnnamedLabel: "Objet d'équipement non identifié",
+    placementOwnerFmt: (name) => `Posé par ${name}`,
+    placementOwnerUnknown: 'Poseur non mesuré',
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -354,6 +384,19 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerKillFx: 'Kill effects',
     layerKillFxHint:
       'Line drawn from killer to victim at the moment of the kill. Off by default.',
+    layerPlacements: 'Deployed equipment',
+    layerPlacementsHint:
+      'Drop wall and threat sensor, from the moment they are deployed until they disappear. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle.',
+    layerPlacementsUnnamed: 'Unidentified objects',
+    layerPlacementsUnnamedHint:
+      'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the wall or the sensor. Off by default.',
+    placementFamily: {
+      wall: 'Drop wall',
+      sensor: 'Threat sensor',
+    },
+    placementUnnamedLabel: 'Unidentified equipment object',
+    placementOwnerFmt: (name) => `Deployed by ${name}`,
+    placementOwnerUnknown: 'Deployer not measured',
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',

@@ -50,6 +50,8 @@ interface ReplaySettingsDrawerProps {
   /** Le calque zones n'existe que si la carte a des zones nommées (même règle que le
    *  bouton d'origine : un interrupteur qui ne commande rien tromperait plus qu'il n'informe). */
   zonesAvailable: boolean
+  /** Les POSES d'équipement (schéma 9) : calque + objets non identifiés. */
+  placements: ReplayPlacementControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -139,6 +141,23 @@ function SettingsToggle({
   )
 }
 
+/**
+ * Ce que le tiroir sait des POSES d'équipement : les deux bascules, et ce que le film porte.
+ *
+ * `available` et `unnamedAvailable` suivent la même règle que le bouton Zones — pas de
+ * commande qui ne commande rien. Un film sans pose publiée (largeur de bloc non tranchée,
+ * ou match sans équipement posé) ne montre pas le calque ; un film dont TOUTES les poses
+ * sont nommées ne montre pas la bascule des objets non identifiés.
+ */
+export interface ReplayPlacementControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+  unnamedAvailable: boolean
+  showUnnamed: boolean
+  onToggleUnnamed: () => void
+}
+
 interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -148,10 +167,12 @@ interface LayersSectionProps {
   showNames: boolean
   onToggleNames: () => void
   zonesAvailable: boolean
+  placements: ReplayPlacementControls
 }
 
 function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames, zonesAvailable,
+  placements,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -172,6 +193,27 @@ function LayersSection({
             onToggle={onToggleZones}
             hint={t.layerZonesHint}
           />
+        )}
+        {/* Les POSES sont un calque, pas un effet : elles montrent un ÉTAT du terrain (un mur
+            EST là de t0 à t1), là où un éclair de bouche montre un instant. La bascule des
+            objets non identifiés n'apparaît qu'avec elles — elle ne commanderait rien sinon. */}
+        {placements.available && (
+          <>
+            <SettingsToggle
+              label={t.layerPlacements}
+              pressed={placements.show}
+              onToggle={placements.onToggle}
+              hint={t.layerPlacementsHint}
+            />
+            {placements.show && placements.unnamedAvailable && (
+              <SettingsToggle
+                label={t.layerPlacementsUnnamed}
+                pressed={placements.showUnnamed}
+                onToggle={placements.onToggleUnnamed}
+                hint={t.layerPlacementsUnnamedHint}
+              />
+            )}
+          </>
         )}
       </div>
     </section>
@@ -370,6 +412,7 @@ export function ReplaySettingsDrawer({
   showNames,
   onToggleNames,
   zonesAvailable,
+  placements,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -414,6 +457,7 @@ export function ReplaySettingsDrawer({
         showNames={showNames}
         onToggleNames={onToggleNames}
         zonesAvailable={zonesAvailable}
+        placements={placements}
       />
       <EffectsSection
         locale={locale}

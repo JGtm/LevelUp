@@ -27,6 +27,8 @@ const SHOW_HEATMAP_KEY = 'replay-show-heatmap'
 const HEATMAP_MODE_KEY = 'replay-heatmap-mode'
 const SHOW_SHOT_FX_KEY = 'replay-show-shot-fx'
 const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
+const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
+const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
@@ -59,6 +61,24 @@ const HEATMAP_MODE_DEFAULT: HeatmapMode = 'presence'
 const SHOW_SHOT_FX_DEFAULT = true
 const SHOW_KILL_FX_DEFAULT = false
 
+/**
+ * LES DEUX BASCULES DES POSES D'ÉQUIPEMENT, et leurs défauts OPPOSÉS eux aussi (décision
+ * utilisateur du 18/08) :
+ *
+ *  - les POSES sont ALLUMÉES : le mur et le capteur sont des objets du terrain qui changent
+ *    la lecture d'un échange, au même titre qu'une zone de capture ;
+ *  - les OBJETS NON IDENTIFIÉS sont ÉTEINTS, et ce n'est pas de la pudeur : sur un film de
+ *    Big Team Battle, AUCUNE pose n'est nommée aujourd'hui (le seuil de nommage du 18/08
+ *    laisse la palette « famille A » sans nom) — les allumer y poserait des centaines de
+ *    points neutres. La bascule sert exactement à cela : voir ce que la mesure a trouvé sans
+ *    savoir le nommer, quand on le demande.
+ *
+ * Ni l'une ni l'autre n'est un demi-livrable (CLAUDE.md n°11) : les deux rendus sont livrés
+ * et complets, l'interrupteur est un RÉGLAGE D'AFFICHAGE offert au lecteur.
+ */
+const SHOW_PLACEMENTS_DEFAULT = true
+const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
+
 export interface ReplaySettings {
   /** Calque de visée (direction du regard). Allumé par défaut, comme aujourd'hui. */
   showAim: boolean
@@ -86,6 +106,12 @@ export interface ReplaySettings {
   /** Trait orienté tueur -> victime sur les éliminations. ÉTEINT par défaut. */
   showKillFx: boolean
   toggleKillFx: () => void
+  /** Calque des POSES d'équipement (mur, capteur). Allumé par défaut. */
+  showPlacements: boolean
+  togglePlacements: () => void
+  /** Poses dont la nature n'est pas établie (famille `other`). ÉTEINT par défaut. */
+  showUnnamedPlacements: boolean
+  toggleUnnamedPlacements: () => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
@@ -119,6 +145,14 @@ export function useReplaySettings(): ReplaySettings {
   const [showHeatmap, toggleHeatmap] = usePersistedFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT)
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
   const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
+  const [showPlacements, togglePlacements] = usePersistedFlag(
+    SHOW_PLACEMENTS_KEY,
+    SHOW_PLACEMENTS_DEFAULT,
+  )
+  const [showUnnamedPlacements, toggleUnnamedPlacements] = usePersistedFlag(
+    SHOW_UNNAMED_PLACEMENTS_KEY,
+    SHOW_UNNAMED_PLACEMENTS_DEFAULT,
+  )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
@@ -151,6 +185,10 @@ export function useReplaySettings(): ReplaySettings {
     toggleShotFx,
     showKillFx,
     toggleKillFx,
+    showPlacements,
+    togglePlacements,
+    showUnnamedPlacements,
+    toggleUnnamedPlacements,
     speed,
     setSpeed,
   }

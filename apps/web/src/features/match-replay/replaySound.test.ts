@@ -248,6 +248,37 @@ describe('buildSoundTimeline', () => {
     )
     expect(tl).toEqual([])
   })
+
+  it('une POSE sonne SA famille au geste (t0), et rien à la disparition de l objet', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentPlacements: [
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x008e2dc5', owner: 1 },
+          { t0: 40, t1: 95, x: 1, y: 1, family: 'sensor', id: '0x0072199c', owner: 1 },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([
+      { ms: 1_000, stem: 'wall_activate' },
+      { ms: 4_000, stem: 'sensor_activate' },
+    ])
+  })
+
+  it('une pose de famille sans fichier (objet non identifié) reste MUETTE', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentPlacements: [
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'other', id: '0x0072b63d', owner: -1 },
+          { t0: 20, t1: 90, x: 0, y: 0, family: 'translocateur', id: '0x00528fce', owner: 2 },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([])
+  })
 })
 
 describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, phase 2)', () => {
@@ -296,10 +327,13 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
     expect(tl).toEqual([])
   })
 
-  it('catégorie ÉQUIPEMENTS coupée : ni activation ni désactivation ne sonnent', () => {
+  it('catégorie ÉQUIPEMENTS coupée : ni activation, ni désactivation, ni POSE ne sonnent', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentEpisodes: [{ slot: 1, fam: 'camo', t0: 10, t1: 30, endRead: true }],
+        equipmentPlacements: [
+          { t0: 12, t1: 90, x: 0, y: 0, family: 'wall', id: '0x008e2dc5', owner: 1 },
+        ],
       }),
       [],
       0,
