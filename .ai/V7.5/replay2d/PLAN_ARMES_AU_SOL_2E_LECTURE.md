@@ -3,11 +3,26 @@
 > Ecrit le 2026-08-18. Sujet utilisateur (item 6 de la file) : « emplacements de spawn de
 > power-ups et d'armes speciales sur les cartes, avec leur compteur de reapparition ; et quand
 > l'arme est recuperee par un joueur (evenement pick-up, ou disparition de l'emplacement) ».
-> **Ce plan est a VALIDER par l'utilisateur avant tout lancement** (decision du 18/08). Il
-> couvre les items 11 (« objets au sol : n'afficher que ceux apparus par le mode/la carte,
-> discriminant = recurrence spatiale, temoin = nombre de grappes petit et stable ») et 12
-> (dispositifs de carte) du cahier des charges Notion. Branche `feat/v75`, principal (films),
-> contrat `plan-execution`.
+> **VALIDE par l'utilisateur le 2026-08-17** (« go pour l'implem pilotee » sur le handoff
+> superviseur qui le portait). Il couvre les items 11 (« objets au sol : n'afficher que ceux
+> apparus par le mode/la carte, discriminant = recurrence spatiale, temoin = nombre de grappes
+> petit et stable ») et 12 (dispositifs de carte) du cahier des charges Notion. Branche
+> `feat/v75`, worktree PRINCIPAL (films), contrat `plan-execution`. Chemins verifies le
+> 2026-08-17 : instruments sous `apps/go-api/internal/analysis/filmdec/` (`keyframe_ground_weapons.go`,
+> `keyframe_loadout.go`, `equipment_creation*.go`, `default_state*.go`, `projectiles.go` pour
+> `ScanFilmWorldObjects`) et `apps/go-api/internal/analysis/replay/` (`ground_weapon_research_test.go`
+> garde `GW_FILM`, `world_object_precision.go` pour `installWorldObjectPrecision`) ; grammaire
+> decompilee dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` § IMAGE-CLE (present dans `feat/v75`
+> apres la fusion de `wt/fusion-lots-go`).
+>
+> **Selection des films — tranchee** : l'agent choisit lui-meme, sur preuve, des films ou
+> `ti=42` est PRESENT (contre-liste type-2 par chunk de R6, ou un balayage `ScanFilmWorldObjects(dir,
+> wr, 42)` sur les films du corpus) et, pour les power-ups, des films de modes Arena/ranked
+> (registre des matchs : mode, playlist, carte). Les deux questions posees a l'utilisateur
+> (films a power-ups a designer, source officielle des cycles) sont FACULTATIVES : sans reponse,
+> les power-ups de socle se cherchent dans le corpus et, s'il n'en porte aucun, l'item 1.1
+> l'ecrit comme negatif de corpus (pas comme echec) ; les cycles se MESURENT sans reference
+> officielle (decision 3).
 
 ## Ce qui est FAIT (sur pieces, ne pas refaire)
 
@@ -141,9 +156,12 @@ la partie « armes » se rabat sur les images-cles (decision 1).
       « cycle non etabli » si instable. Comparer aux cycles connus du jeu quand ils existent
       (armes de puissance ~2-3 min en Arena — source Waypoint si l'utilisateur en a une).
 - [ ] 1.4 Publier au registre les socles par carte (position, famille, cycle) comme
-      donnee de REFERENCE derivee des films (versionnee ? — a decider apres mesure : si les
-      socles sont stables entre films d'une meme carte, un catalogue `map_weapon_pads.json`
-      se justifie ; sinon ils restent par match).
+      donnee de REFERENCE derivee des films. **Critere tranche** : si, sur une carte vue dans
+      >= 2 films, >= 80 % des grappes d'un film retrouvent une grappe de MEME famille a < 1 m
+      dans l'autre, les socles sont une propriete de la carte -> catalogue versionne
+      `map_weapon_pads.json` (au meme endroit et au meme format d'ecriture que
+      `map_objectives.json`), alimente par les films ; sinon ils restent PAR MATCH (publies
+      dans le document de rejeu seulement) et le registre le dit.
 
 **Gate 1** : grappes petites et stables sur >= 3 cartes, temoin negatif tenu, cycles publies.
 
@@ -173,4 +191,27 @@ identifie ; sinon `[!]` avec la mesure.
 
 Refutation rejouee AVANT tout socle ; socle = recurrence mesuree ; cycle publie seulement
 s'il est stable ; ramassage seulement avec oracle ; aucun rendu ; commits sur `feat/v75`, pas
-de push. **Lancement : sur validation utilisateur de ce plan.**
+de push. Lancement valide le 2026-08-17.
+
+## Contrat d'execution (rappel, `plan-execution` fait foi)
+
+- Une phase a la fois, dans l'ordre ; une phase est CLOSE quand son gate a tourne dans la
+  session (sortie collee au journal du plan ci-dessous), tous ses items sont statues
+  (`[x]` / `[~]` ref / `[!]` justifie), le fichier plan est mis a jour et commite avec le lot,
+  et l'entree `.ai/thought_log.md` existe.
+- Les gates d'arret sont REELS : un gate 0 negatif ARRETE la partie « armes » (decision 1) et
+  la phase 1 ne s'ouvre que sur les images-cles ; un gate 2 negatif publie `[!]` avec la mesure.
+- Seuils ecrits ci-dessus, jamais rebaisses apres mesure. Denominateurs toujours publies.
+- Aucun `git add -A` (fichiers d'autres sessions dans l'arbre) ; aucune attente passive ;
+  aucun fix hors perimetre — les decouvertes vont dans la section ci-dessous.
+- Un seul decodage filmdec par process ; `installWorldObjectPrecision` restaure toujours ;
+  aucune base en ecriture.
+
+## Decouvertes (hors perimetre — notees, NON traitees)
+
+_(vide au lancement)_
+
+## Journal du plan (avancement, source de verite pour la reprise)
+
+- 2026-08-17 — plan valide par l'utilisateur ; lancement de la phase 0 sur le worktree
+  principal apres la fusion de `wt/fusion-lots-go` dans `feat/v75`.
