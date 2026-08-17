@@ -63,11 +63,11 @@ production corrigee par R7-b). `i60` est deja lu (pre-plan) et sert de temoin de
 - [x] 0.1 Hypothese, critere + palier, etat des lieux sur pieces, ordre d'attaque, gates, contrat.
 
 ### Phase 1 — LIRE l'ecrivain
-- [ ] 1.1 `i0` : vtable ENTIERE (toutes les cases), decompile de chaque case non triviale,
+- [x] 1.1 `i0` : vtable ENTIERE (toutes les cases), decompile de chaque case non triviale,
       grammaire d'ECRITURE face a la grammaire de LECTURE, champ par champ.
-- [ ] 1.2 `i63` : idem.
-- [ ] 1.3 `i9` : idem.
-- [ ] 1.4 Consigner dans `WALK_PORT_NOTES.md`, section « ecrivain par vtable ».
+- [x] 1.2 `i63` : idem.
+- [x] 1.3 `i9` : idem.
+- [x] 1.4 Consigner dans `WALK_PORT_NOTES.md`, section « ecrivain par vtable ».
 
 ### Phase 2 — MESURER
 - [ ] 2.1 Porter les divergences comme LECTURE ALTERNATIVE, gardee, dans un fichier a moi
@@ -131,3 +131,26 @@ et `i63` : la case `+0x18` existe et ecrit des bits.)
 FORME que le lot devait poser : la vtable de composant a bien une case d ECRITURE, `+0x18`,
 et elle est le MIROIR de la case de LECTURE `+0x30`. La borne d arret du §8 est donc levee
 avant la phase 1 ; ce que la phase 1 doit produire, c est la grammaire champ par champ.
+
+**2026-08-17 — Phase 1 CLOSE. L hypothese est VRAIE, et elle se referme sur UNE case.**
+
+La vtable d un descripteur de composant compte 10 cases et **exactement deux touchent le flux
+de bits** : `+0x18` ECRIT, `+0x30` LIT (via le thunk `+0x28`). Les huit autres sont un getter de
+nom, trois stubs constants, un `int3`, un accesseur et un zeroteur de 16 octets. Meme paire au
+niveau ARCHETYPE : vtable du bipede `0x143737178`, `+0x58` ecrit l etat par defaut, `+0x60` le lit.
+Methode et layout complets dans `WALK_PORT_NOTES.md`, section « L ECRIVAIN PAR VTABLE ».
+
+Trois des quatre composants lus **confirment le lecteur porte, largeur pour largeur** :
+`i60` (`FUN_142edd10c`), `i63` (`FUN_142f27a68` — et son `count2` sort du MEME popcount RAM
+`FUN_1409fe718(state,0x49)` cote ecriture : la limite dure de R7-b est dans le FORMAT, pas dans
+la lecture), `i9` (`FUN_1420ab570` — la polarite corrigee par R7-b et son `R(5)` de tag sont
+confirmes independamment). Ces trois-la ne creent aucune derive.
+
+`i0` DIVERGE, et son ecrivain est celui de l ETAT COMPLET (reference de base NULLE, drapeau brut
+a 0) — donc exactement celui de l image-cle. Trois ecarts, tous dans le meme sens :
+le 3e bit n est pas un `precHigh` qui supprime la charge utile mais la porte de la QUEUE DE
+HANDLE, la charge utile est ecrite QUOI QU IL ARRIVE, et le champ de 2 bits est INCONDITIONNEL et
+vient EN DERNIER. Consequence de forme : en image-cle `i0` prend le chemin QUANTIFIE, de largeur
+`2 + 1 + 1 + [idxW] + 3 x axisW + [queue] + 2` — **dependante de la carte, ~46 bits sur un
+decoupage 13/13/14** — la ou le lecteur porte en consomme 117 en mediane. La decouverte n2 de
+R7-b (« i0 brut, 96 bits, identique sur trois cartes ») decrivait le LECTEUR, pas l ECRIVAIN.
