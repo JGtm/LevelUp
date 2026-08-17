@@ -118,7 +118,8 @@ type gwPadCycle struct {
 	Established              bool
 }
 
-// gwPadsCluster agglomère les apparitions par (nature, famille) et proximité.
+// gwPadsClusterAssign agglomère les apparitions par (nature, famille) et proximité, ET rend,
+// pour chaque apparition D'ENTRÉE (même index), la grappe qui la porte.
 //
 // LA RÈGLE EST « LE PLUS PROCHE DANS LE RAYON », pas « le premier trouvé » : sur une carte
 // d'arène deux socles voisins peuvent être à deux mètres l'un de l'autre, et le premier trouvé
@@ -127,18 +128,14 @@ type gwPadCycle struct {
 //
 // LE RAYON N'EST PAS UN PARAMÈTRE : c'est le seuil du plan (`gwPadRadiusM`), écrit avant la
 // mesure et jamais varié. Le passer d'appelant en appelant laissait croire qu'il se règle.
-func gwPadsCluster(app []gwPadApparition) []gwPadCluster {
-	out, _ := gwPadsClusterAssign(app)
-	return out
-}
-
-// gwPadsClusterAssign agglomère ET rend, pour chaque apparition D'ENTRÉE (même index), la
-// grappe qui la porte.
 //
-// POURQUOI L'ASSIGNATION EXISTE. Le cycle se mesure DEPUIS LE RAMASSAGE : il faut, socle par
-// socle, quel objet est apparu et quand il a disparu. Retrouver la grappe d'une apparition après
-// coup en comparant sa position au centroïde serait une SECONDE règle de grappe, qui divergerait
-// de celle-ci au premier correctif.
+// POURQUOI L'ASSIGNATION EST DANS LA MÊME FONCTION. Le cycle se mesure DEPUIS LE RAMASSAGE : il
+// faut, socle par socle, quel objet est apparu et quand il a disparu. Retrouver la grappe d'une
+// apparition après coup en comparant sa position au centroïde serait une SECONDE règle de
+// grappe, qui divergerait de celle-ci au premier correctif. Un enrobage `gwPadsCluster` qui
+// jetait l'assignation a existé jusqu'au correctif de revue du 2026-08-17 : deux noms pour une
+// règle, dont un que la production n'appelait pas — il a été retiré, ses appelants prennent le
+// second retour et l'ignorent.
 func gwPadsClusterAssign(app []gwPadApparition) ([]gwPadCluster, []int) {
 	ord := make([]int, len(app))
 	for i := range ord {
@@ -233,18 +230,34 @@ func gwPadsClusterLess(a, b gwPadCluster) bool {
 	return a.Z < b.Z
 }
 
-// gwPadsKeep ne garde que les grappes d'au moins `min` apparitions — les SOCLES.
-func gwPadsKeep(in []gwPadCluster, min int) []gwPadCluster {
-	out := make([]gwPadCluster, 0, len(in))
-	for _, c := range in {
+// gwPadsKeep ne garde que les grappes d'au moins `min` apparitions — les SOCLES — et rend, pour
+// chacune, son index D'ORIGINE dans `in`.
+//
+// L'INDEX D'ORIGINE EXISTE POUR QUE LA PRODUCTION PUISSE APPELER CETTE RÈGLE (correctif de revue
+// du 2026-08-17). `buildWeaponPads` la ré-exprimait en ligne (`len(pads[p].TS) < gwPadMinHits`)
+// parce qu'il lui faut, après le filtre, les MEMBRES de chaque grappe retenue — qui sont indexés
+// sur les grappes d'avant filtre. Deux écritures d'un même seuil, dont l'une hors de son
+// propriétaire : le filtre rend donc la correspondance, comme `gwPadsClusterAssign` rend la
+// sienne, et il n'y a plus qu'une écriture.
+func gwPadsKeep(in []gwPadCluster, min int) ([]gwPadCluster, []int) {
+	out, src := make([]gwPadCluster, 0, len(in)), make([]int, 0, len(in))
+	for i, c := range in {
 		if len(c.TS) >= min {
-			out = append(out, c)
+			out, src = append(out, c), append(src, i)
 		}
 	}
-	return out
+	return out, src
 }
 
 // gwPadsCycle mesure le cycle d'une grappe : les écarts entre apparitions successives.
+//
+// LA PRODUCTION NE L'APPELLE PAS, ET ELLE NE DOIT PAS (tranché à la revue du 2026-08-17). C'est
+// l'horloge d'APPARITION — celle de l'item 1.3 du plan, qui n'établit que 4 cycles sur 57 — et
+// l'artefact publie l'horloge du RAMASSAGE (`gwPadsCycleFromGaps`, 24 sur 57). Ce n'est donc pas
+// un enrobage sans appelant : c'est la SECONDE grandeur, celle que l'instrument de comparaison
+// mesure en face de la première (`ground_weapon_pickup_report_test.go`). La supprimer
+// renverrait le calcul des écarts dans l'instrument, c'est-à-dire une seconde écriture de la
+// règle — exactement ce que le garde-rail du chantier interdit.
 //
 // L'ÉCART EST PUBLIÉ DÈS QU'IL EST MESURÉ, MAIS « ÉTABLI » EXIGE DEUX ÉCARTS. Un socle vu deux
 // fois donne UN intervalle : c'est une mesure, et la taire rendrait un `0,0 s` qui se lirait
