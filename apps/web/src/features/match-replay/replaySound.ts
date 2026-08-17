@@ -32,10 +32,11 @@
  *  - un kill À LA grenade sonne l'explosion DE SON TYPE (c'est elle qui a tué, pas le
  *    geste du lancer), et un kill À LA MÊLÉE sonne le coup qui a tué — les deux passent
  *    par la VIGNETTE de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
- *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 9 — mur, capteur) : le GESTE de
- *    pose sonne, à `t0`. Rien ne sonne à la fin : la disparition d'un mur n'est pas un acte,
- *    c'est la fin d'une durée. Une famille sans fichier (les objets non identifiés, et toutes
- *    celles que le nommage ajoutera) reste muette ;
+ *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 10 — mur, capteur) : le GESTE de
+ *    pose sonne, à `t0`, ET SEULEMENT SI LA POSE EST UN DÉPLOIEMENT MESURÉ
+ *    (`placementIsDeployedObject`, la MÊME règle que le calque). Rien ne sonne à la fin : la
+ *    disparition d'un mur n'est pas un acte, c'est la fin d'une durée. Une famille sans fichier
+ *    (les objets non identifiés, et toutes celles que le nommage ajoutera) reste muette ;
  *  - les ÉPISODES D'ÉQUIPEMENT ACTIF (doc.equipmentEpisodes, schéma 7 — camo et
  *    surbouclier, les deux familles MESURÉES) : le début d'épisode sonne l'activation,
  *    la fin sonne la désactivation SEULEMENT quand elle est MESURÉE (`endRead`) — un
@@ -92,6 +93,7 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { alignFeed } from './killFeedLogic'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -200,7 +202,7 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
 }
 
 /**
- * Son d'une POSE d'équipement par FAMILLE (`family` du document, schéma 9) -> stem du fichier
+ * Son d'une POSE d'équipement par FAMILLE (`family` du document, schéma 10) -> stem du fichier
  * joué à `t0`, l'instant du geste.
  *
  * UNE TABLE DISTINCTE DE `EQUIPMENT_SOUND_STEMS`, et ce n'est pas une duplication : les deux
@@ -214,6 +216,15 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * les familles que le lot de nommage ajoutera sans son) — jamais le son d'une voisine, même
  * règle que partout ailleurs ici. Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces
  * stems contre le dossier d'assets.
+ *
+ * TROIS FAMILLES NOMMÉES RESTENT MUETTES, ET LEUR SILENCE EST UNE MESURE (relevé du
+ * 2026-08-18 sur la bibliothèque sonore de l'utilisateur) : elle contient sept dossiers
+ * d'équipement — Active Camo, Drop Wall, Grappleshot, Overshield, Repulser, Threat Sensor,
+ * Thruster — et AUCUN fichier pour le traqueur de menaces, la balise du translocateur ni le
+ * champ de réparation (0 correspondance sur `*seeker*`, `*transloc*`, `*repair*`, `*quantum*`
+ * dans toute la bibliothèque). Livrer le son d'une voisine serait le mensonge que ce fichier
+ * refuse partout ailleurs ; livrer un `.wav` que rien ne joue casserait le garde-rail
+ * « 0 asset mort ». Le jour où ces sources existent, il reste UNE ligne à écrire ici.
  */
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
@@ -349,9 +360,16 @@ export function buildSoundTimeline(
       out.push({ ms: frameToMs(e.t0, doc), stem: stems.activate })
       if (e.endRead) out.push({ ms: frameToMs(e.t1, doc), stem: stems.deactivate })
     }
-    // Les POSES d'équipement (schéma 9) : le GESTE sonne, à `t0`, et lui seul. La fin de vie
+    // Les POSES d'équipement (schéma 10) : le GESTE sonne, à `t0`, et lui seul. La fin de vie
     // d'un mur n'est pas un acte — c'est la fin d'une durée mesurée, et rien ne la sonne.
+    //
+    // LE FILTRE EST CELUI DU CALQUE, ET IL EST PARTAGÉ EXPRÈS. Sur les 11 films calibrés,
+    // 88,6 % des poses sont des objets LÂCHÉS À LA MORT du porteur : les sonner ferait partir
+    // un « mur déployé » à chaque mort tenant un mur — 91 fois sur 222 poses de mur, 106 fois
+    // sur 155 poses de capteur. Et un mur réellement déployé produit DEUX poses (l'appareil et
+    // ses panneaux) : sans la règle des panneaux, il sonnerait deux fois.
     for (const p of doc.equipmentPlacements) {
+      if (!placementIsDeployedObject(p)) continue
       const stem = EQUIPMENT_PLACEMENT_SOUND_STEMS[p.family]
       if (stem) out.push({ ms: frameToMs(p.t0, doc), stem })
     }

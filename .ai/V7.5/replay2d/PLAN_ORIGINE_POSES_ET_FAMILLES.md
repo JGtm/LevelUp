@@ -250,19 +250,99 @@ lint verts, contrat regenere, temoins re-cuits.
 >    coder un filtre qui n'a aucun membre (regle 7) — soit on trouve d'abord un film qui porte
 >    de vrais power-ups de socle, soit la famille reste hors table.
 
-- [ ] W.1 `PLACEMENT_RENDER` etendue : `translocator_beacon`, `threat_seeker`, `repair_field`,
-      `powerup_overshield`, `powerup_camo` ; les familles portees -> `null` explicite
-      (commente) ; filtre `origin === 'deployed'` (cf. correction 3 pour les power-ups).
-- [ ] W.2 Rendus : balise (marqueur), seeker (un ping puis rien), champ de reparation
-      (disque, rayon declare `REPAIR_FIELD_RADIUS_M`), power-ups (icone `abilities-assets`
-      Overshield / ActiveCamouflage, clair/sombre) ; infobulles FR/EN ; bascules existantes
-      (« Equipements poses » les couvre ; « Objets non identifies » inchangee).
-- [ ] W.3 Sons : `Threat Sensor` existe ; le seeker n'a pas de fichier dans la bibliotheque
-      (verifier) -> silence propre ; balise/champ : verifier `EQUIPMENT/*` — silence si absent.
-- [ ] W.4 Tests (table par famille, filtre d'origine, power-up sans poseur), gates web.
+- [x] W.1 **TABLE ETENDUE ET FILTRE POSE.** `PLACEMENT_RENDER` passe de 3 a 13 entrees et de
+      `Record<string, PlacementKind>` a `Record<string, PlacementKind | null>` : cinq familles
+      DEPLOYABLES (`wall`, `sensor`, `translocator_beacon` -> `beacon`, `threat_seeker` ->
+      `seeker`, `repair_field` -> `field`), `other` -> `unnamed`, et SEPT familles portees a
+      `null` explicite et commente (4 grenades, `grapple`, `thruster`, `repulsor`).
 
-**Gate W** : typecheck/lint/vitest exit 0, zero hex, gate VISUEL utilisateur (`000d5950`,
-`06dfe6d9`, et un film a power-ups de carte).
+      **LES POWER-UPS RESTENT HORS TABLE, PAS MEME A `null`** (correction 3) : n = 1 par
+      power-up sur les 11 films, les deux avec poseur et `dropped`. Un commentaire de la table
+      porte la mesure ET la condition de reprise ; un test verrouille l'absence
+      (`'powerup_overshield' in PLACEMENT_RENDER === false`).
+
+      Filtre : `placementIsDeployedObject` = `origin === 'deployed'` ET — pour le mur seul —
+      identifiant de PANNEAU. `placementOrigin` lit l'origine ABSENTE comme `unknown`, jamais
+      `deployed` (le champ est optionnel au contrat : le parc anterieur au schema 10 est encore
+      en production). L'objet non identifie ECHAPPE au filtre : sa bascule est un diagnostic
+      (« voir ce qu'on ne sait pas nommer, d'ou qu'il vienne »), comportement inchange.
+
+      **DECOUPE IMPOSEE PAR LE SEUIL DE TAILLE** (CLAUDE.md n°5) : le calque serait passe a
+      593 L. Deux fichiers neufs, sur une frontiere qui se dit en une phrase —
+      `placementShapes.ts` (346 L : le socle du cadrage + les formes qui tiennent dans un
+      CENTRE PROJETE) et `placementWall.ts` (179 L : le mur, geometrie MONDE +
+      `WALL_PANEL_IDS`). Le calque retombe a 427 L, decide, et n'aiguille plus que le capteur.
+      Les tests suivent la meme decoupe (277 / 197 / 150 L) avec un decor partage
+      `test/placementFixtures.ts` (121 L) — trois copies du meme cadrage auraient diverge au
+      premier reglage d'echelle (CLAUDE.md n°6).
+
+- [x] W.2 **RENDUS.** Balise = losange ferme + coeur, en pixels d'ecran, A DEMEURE sur [t0, t1]
+      et SANS pulsation (rien de mesure ne bat) ; le losange est symetrique par ses deux axes,
+      donc il ne pointe nulle part — la seule chose que la mesure autorise a dire. Traqueur =
+      UNE onde, `SEEKER_IMPULSE_MS = SENSOR_SWEEP_MS` (meme rythme, ecrit et teste), rayon en
+      PIXELS (`SEEKER_IMPULSE_RADIUS_PX = 14`) parce que la source officielle ne chiffre AUCUNE
+      portee pour lui — puis plus rien, ni zone ni anneau ni point. Champ de reparation =
+      disque a l'encre d'equipe, `REPAIR_FIELD_RADIUS_M = 3` DECLARE (les trois sources sont
+      vides : film muet, source officielle muette, corpus non mesure) et sa borne est
+      POINTILLEE — la meme grammaire que le mur sans cap : ce qui n'est pas affirme est en
+      pointille, ce qui vient d'une source publiee est plein (l'anneau du capteur).
+
+      Mouvement reduit : le traqueur garde un anneau IMMOBILE au rayon plein pendant la meme
+      fenetre — supprimer l'onde sans rien mettre a sa place aurait rendu la famille invisible
+      a qui demande moins de mouvement.
+
+      Infobulles FR/EN par REGLE DE RENDU (`placementFamily` passe de 2 a 5 cles, parite par
+      typage) ; noms FR pris au manifeste (`[ability_palettes.ranks]`) : « Traqueur de
+      menaces », « Champ de reparation », « Balise du translocateur ». Bascules inchangees,
+      mais `placementCounts` passe desormais par `placementKind` — un film dont toutes les
+      poses sont des lachers n'allume plus une commande qui n'afficherait rien.
+
+- [x] W.3 **SONS : AUCUN AJOUT, ET LE SILENCE EST UNE MESURE.** Releve de la bibliotheque de
+      l'utilisateur : sept dossiers d'equipement (Active Camo, Drop Wall, Grappleshot,
+      Overshield, Repulser, Threat Sensor, Thruster) et **zero fichier** pour le traqueur, la
+      balise ou le champ (0 correspondance sur `*seeker*`, `*transloc*`, `*repair*`,
+      `*quantum*` dans TOUTE la bibliotheque, EQUIPMENT/GRENADE/WEAPONS comprises).
+      `EQUIPMENT_PLACEMENT_SOUND_STEMS` reste a deux entrees ; le releve et la condition de
+      reprise (« il reste UNE ligne a ecrire ») sont ecrits au-dessus de la table.
+
+      **CORRECTION DE COHERENCE PORTEE AU PASSAGE, ET ELLE SORT DE LA MESURE DE LA PHASE G** :
+      `buildSoundTimeline` sonnait TOUTE pose de famille `wall` / `sensor`, lachers compris —
+      91 poses de mur sur 222 et 106 de capteur sur 155 sonnaient un « deploiement » qui etait
+      une mort. Et un mur reellement deploye sonnait DEUX fois (appareil + panneaux). Le son
+      partage desormais `placementIsDeployedObject` avec le calque : un seul predicat, donc
+      pas de derive entre ce qu'on voit et ce qu'on entend.
+
+- [x] W.4 **TESTS ET GATES.** 102 tests sur les cinq fichiers du perimetre : table famille par
+      famille (les 5 deployables, les 7 portees a `null`, les 2 power-ups hors table, une
+      famille inconnue), filtre d'origine (`dropped` / `unknown` / ABSENTE), panneaux contre
+      appareil (dont « un mur deploye ne rend QU UN arc »), balise sans pulsation et
+      symetrique, traqueur a UNE impulsion qui ne se rejoue jamais (verifie a l'age d'un second
+      ping de capteur), champ sans onde a aucun age, capteur lache qui ne revele personne,
+      survol qui suit le dessin. Garde-rail neuf `placementPanels.guard.test.ts` : les deux
+      identifiants du web rejoues contre les 21 lignes du TOML, dans les DEUX sens
+      (`kind = deployed` <-> table web), plus la cardinalite du manifeste pour qu'une decoupe
+      cassee echoue au lieu de rendre des tests vides et verts.
+
+      Gates (cache `node_modules/.tmp` purge avant) : `npm run typecheck` exit 0,
+      `npm run lint` exit 0 — **0 erreur**, 19 avertissements pre-existants dont aucun dans
+      `match-replay` —, `npm run test` exit 0 : **446 fichiers, 4 083 tests verts, 14 skips**.
+      Zero hex, zero classe Tailwind de couleur, parite FR/EN par typage.
+
+**Gate W** : typecheck/lint/vitest exit 0 — PASSE. Reste le gate VISUEL utilisateur.
+Ce que la mesure predit sur `000d5950` (golden en depot, 295 poses, 39 `deployed`) : **19
+formes** — 15 arcs de mur (panneaux `0x528fce46`) et 4 capteurs ; les 2 appareils de mur
+`deployed` et les 18 poses de familles portees ne dessinent plus rien, et 28 formes fantomes
+disparaissent par rapport a aujourd'hui (11 murs laches, 15 capteurs laches, 2 appareils).
+`06dfe6d9` : 123 `deployed` sur 892, repartition par identifiant non mesuree ici (artefact
+absent du worktree).
+
+**CE QUE LE GATE VISUEL NE POURRA PAS VOIR, ET IL FAUT LE DIRE AVANT** : la BALISE a **zero
+pose `deployed` sur tout le corpus** (2 poses, 2 lachers) — son rendu n'a AUCUN temoin, nulle
+part. Le TRAQUEUR en a **une seule** (sur 4), le CHAMP en a 26 (sur 105) mais aucun des trois
+n'apparait dans `000d5950`, dont le golden ne porte que `wall`, `sensor`, `grapple`,
+`thruster` et les grenades. Un gate sur `000d5950` et `06dfe6d9` valide donc le FILTRE, les
+PANNEAUX et le capteur ; il ne peut rien dire des trois formes neuves. Le film a power-ups de
+carte, lui, n'a plus d'objet : la famille est restee hors table (correction 3).
 
 ## Regles dures
 

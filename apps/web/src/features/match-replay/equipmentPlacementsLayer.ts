@@ -1,44 +1,58 @@
 /**
- * equipmentPlacementsLayer.ts — LES POSES D'ÉQUIPEMENT sur la carte : le mur de protection,
- * le capteur de menaces, et les objets que l'archétype d'équipement porte sans qu'on les nomme.
+ * equipmentPlacementsLayer.ts — LES POSES D'ÉQUIPEMENT sur la carte : ce qui se dessine, et
+ * surtout ce qui ne se dessine PAS.
  *
- * LA SOURCE est le document (schéma 9) : `equipmentPlacements`, une pose par vie d'objet, avec
+ * LA SOURCE est le document (schéma 10) : `equipmentPlacements`, une pose par vie d'objet, avec
  * sa fenêtre [t0, t1] sur l'axe des frames, sa position monde, la FAMILLE que le manifeste du
- * titre lui donne (`replay_labels.toml`), le SLOT de son poseur (`owner`, -1 si aucun bipède
- * contemporain à moins de 3 m) et le CAP de visée de ce poseur (`h`, absent une fois sur sept).
+ * titre lui donne (`replay_labels.toml`), l'IDENTIFIANT du tag `eqip`, le SLOT de son poseur
+ * (`owner`, -1 si aucun bipède contemporain à moins de 3 m), le CAP de visée de ce poseur (`h`,
+ * absent une fois sur sept) et — depuis le schéma 10 — l'ORIGINE MESURÉE de la pose.
+ *
+ * `equipmentPlacements` N'EST PAS CE QUE SON NOM DIT, ET C'EST LA MESURE QUI L'A ÉTABLI (phase G
+ * du 2026-08-18, 11 films calibrés, 3 661 poses à poseur mesuré). 88,6 % de ces poses naissent
+ * dans les 2 frames et les 1,5 m qui suivent le DERNIER point de leur poseur : ce ne sont pas
+ * des objets posés sur la carte, ce sont les objets que le joueur PORTAIT, relâchés quand il
+ * MEURT. D'où le filtre `origin === 'deployed'` : la seule origine qui décrive un geste.
+ * Le témoin qui valide la méthode est interne — si les 88,6 % étaient un artefact de fenêtre,
+ * les PANNEAUX du mur les porteraient aussi ; ils en ont zéro sur 48 et un sur 43.
  *
  * LE RENDU EST UNE TABLE PAR FAMILLE (`PLACEMENT_RENDER`), et c'est la règle qui compte : une
- * famille absente de la table ne dessine RIEN. Le lot de nommage structurel en ajoutera
- * (translocateur, répulseur, propulseur…) ; chacune recevra SA règle de rendu ou restera muette
- * — jamais le dessin d'une voisine, même principe que les libellés et les sons.
+ * famille absente de la table ne dessine RIEN, une famille à `null` ne dessine rien NON PLUS
+ * mais l'a décidé. Jamais le dessin d'une voisine, même principe que les libellés et les sons.
  *
- * CE QUE LE MUR AFFIRME, ET CE QU'IL N'AFFIRME PAS. Le record de création ne porte AUCUNE
- * orientation d'objet (mesure du 18/08). `h` est le cap où le POSEUR REGARDAIT au moment de la
- * pose, et c'est tout ce dont on dispose ; l'arc est donc orienté par le geste, pas par l'objet.
- * Sans cap, aucune orientation n'est inventée : la pose devient un cercle pointillé du même
- * rayon, qui dit « ici, un mur » sans dire « dans ce sens ».
- *
- * POURQUOI UN ARC ET PAS UN RECTANGLE (décision utilisateur du 18/08) : « cet équipement laisse
- * passer les dégâts dans un sens et pas dans l'autre ». La concavité regarde le poseur — ses
- * tirs sortent par l'intérieur, ceux d'en face butent sur la face convexe. Le milieu de l'arc
- * est donc DEVANT la position, dans la direction du cap (on pose le mur devant soi), et l'arc
- * s'ouvre vers l'arrière.
+ * CE FICHIER DÉCIDE, IL NE TRACE PRESQUE PLUS. Le MUR (géométrie monde + identifiants des
+ * panneaux) vit dans `placementWall.ts` ; les formes qui tiennent dans un centre projeté
+ * (balise, impulsion du traqueur, disque du champ, point neutre, marque de révélation) vivent
+ * dans `placementShapes.ts` avec le socle du cadrage. Reste ici le CAPTEUR — sa portée est en
+ * mètres et il est le seul à révéler — et l'aiguillage.
  *
  * LE CAPTEUR PINGE, et tout ce qu'il affirme — portée, cadence, durée de révélation, camp
  * révélé — vit dans `threatSensor.ts` : les chiffres y sont OFFICIELS et sourcés, la logique y
- * est pure et testée. Ce fichier n'en garde que le TRACÉ (disque, anneau, onde, marques).
+ * est pure et testée. Ce fichier n'en garde que le TRACÉ (disque, anneau, onde).
  *
  * Pas de React : géométrie pure + un CanvasRenderingContext2D (même règle que replayDraw).
  */
-import type { ReplayBounds, ReplayEquipmentPlacement } from '@/lib/api/types'
+import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import {
+  BEACON_RADIUS_PX,
+  drawBeacon,
+  drawRepairField,
+  drawRevealMark,
+  drawSeekerImpulse,
+  drawUnnamedDot,
+  type PlacementView,
+  project,
+  REPAIR_FIELD_RADIUS_M,
+  SEEKER_IMPULSE_RADIUS_PX,
+  seekerImpulseActive,
+  UNNAMED_DOT_RADIUS_PX,
+  viewScale,
+} from './placementShapes'
+import { drawWall, WALL_PANEL_IDS, wallRadiusM } from './placementWall'
+import type { XY } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
 import {
-  REVEAL_FILL_ALPHA,
-  REVEAL_RADIUS_PX,
-  REVEAL_WIDTH,
-  revealAlpha,
   SENSOR_FILL_ALPHA,
   SENSOR_PING_WIDTH,
   SENSOR_RADIUS_M,
@@ -46,76 +60,116 @@ import {
   SENSOR_RING_WIDTH,
   sensorPing,
   sensorReveals,
-  type SensorReveal,
 } from './threatSensor'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-export interface PlacementView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
+/**
+ * Le cadrage est réexporté ici : il est un ARGUMENT de ce calque (`drawEquipmentPlacementsLayer`,
+ * `placementAt`), donc il appartient à sa surface publique — ses appelants n'ont pas à connaître
+ * le fichier où la découpe interne l'a rangé.
+ */
+export type { PlacementView } from './placementShapes'
 
 /**
- * Les trois façons de dessiner une pose, aujourd'hui. Ce ne sont PAS les familles : le jour
- * où deux familles partageront un rendu (deux murs de palettes différentes, par exemple), la
- * table les enverra toutes deux sur la même valeur sans qu'on duplique un tracé.
+ * Les façons de dessiner une pose. Ce ne sont PAS les familles : le jour où deux familles
+ * partageront un rendu (deux murs de palettes différentes, par exemple), la table les enverra
+ * toutes deux sur la même valeur sans qu'on duplique un tracé.
  */
-export type PlacementKind = 'wall' | 'sensor' | 'unnamed'
+export type PlacementKind = 'wall' | 'sensor' | 'beacon' | 'seeker' | 'field' | 'unnamed'
+
+/** Famille du MUR — nommée parce que la règle des panneaux la vise explicitement. */
+const PLACEMENT_FAMILY_WALL = 'wall'
 
 /**
  * LA TABLE PAR FAMILLE — l'unique porte d'entrée du rendu. Les clés sont les identifiants
  * STABLES publiés par le document (`family`, posés par le manifeste du titre), jamais des
- * libellés. Une famille hors table = aucun dessin, jamais celui d'une voisine.
+ * libellés.
+ *
+ * TROIS ÉTATS, ET LEUR DIFFÉRENCE EST DU SENS, pas du code :
+ *  - une RÈGLE DE RENDU : la famille se dessine, chacune avec sa forme ;
+ *  - `null` : la famille est CONNUE et la décision est de ne rien dessiner — voir les objets
+ *    portés ci-dessous ;
+ *  - ABSENTE : on n'a rien décidé, et le calque se tait. C'est le cas des familles qu'un futur
+ *    manifeste ajouterait, et celui — assumé — des power-ups (voir la note en fin de table).
  */
-export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind>> = {
+export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = {
+  // Les objets que la mesure voit DÉPLOYÉS, chacun avec sa forme propre.
   wall: 'wall',
   sensor: 'sensor',
+  translocator_beacon: 'beacon',
+  threat_seeker: 'seeker',
+  repair_field: 'field',
+  // L'objet posé dont la nature n'est pas établie : un point neutre, et seulement sur bascule.
   other: 'unnamed',
+  // LES OBJETS QUE LE JOUEUR PORTE — `null` EXPLICITE, ET C'EST UNE DÉCISION MESURÉE.
+  //
+  // Les quatre grenades font 59 à 63 % des poses du corpus, et 95 % d'entre elles sont des
+  // LÂCHERS À LA MORT (`dropped`). Les quelques `deployed` qui restent sont des grenades
+  // lancées — or les lancers ont déjà leur calque, avec leur trajectoire et leur type. Le
+  // grappin, le propulseur et le répulseur sont des capacités qui agissent SUR LEUR PORTEUR :
+  // ce que le film en publie ici est l'appareil lui-même, pas un objet posé sur le terrain (le
+  // grappin a d'ailleurs son propre calque de traction). Les dessiner noierait le mur et le
+  // capteur sous des points qui ne disent rien du terrain.
+  grenade_frag: null,
+  grenade_plasma: null,
+  grenade_dynamo: null,
+  grenade_spike: null,
+  grapple: null,
+  thruster: null,
+  repulsor: null,
+  // POWER-UPS (`powerup_overshield`, `powerup_camo`) : DÉLIBÉRÉMENT ABSENTS, PAS MÊME À `null`.
+  //
+  // Le plan prévoyait de les dessiner comme des objets de la CARTE, sans poseur, à leur socle.
+  // LA MESURE A RÉFUTÉ L'HYPOTHÈSE SUR LE PEU QU'ON A : le corpus entier (11 films) porte UNE
+  // pose de surbouclier et UNE de camouflage, et les DEUX ont un poseur et sont `dropped` (23 et
+  // 38 ms, 0,53 et 0,67 m de la fin de vie de leur poseur). Aucune position récurrente n'a pu
+  // être cherchée. Coder une règle dont aucun membre mesuré ne relève serait du vocabulaire
+  // mort (CLAUDE.md n°7) : la famille entrera dans cette table le jour où un film portera de
+  // vrais power-ups de socle, et pas avant.
 }
 
 /**
- * Rayon du MUR, en mètres monde. 1,6 m avec une ouverture de 110° donne une corde de 2,6 m —
- * l'ordre de grandeur du mur du jeu. C'est un choix d'ÉCRAN calibré sur la carte, pas une
- * mesure : le film ne porte ni les dimensions de l'objet ni son orientation.
+ * L'ORIGINE QUI SE DESSINE. Identifiant STABLE du document, jamais un libellé.
+ *
+ * Le vocabulaire publié est `deployed` / `dropped` / `unknown` — `spawn` n'existe pas : le
+ * critère « dotation reçue au spawn » que le plan avait écrit avant la mesure compte 4 poses sur
+ * 3 661 (0,1 %), et les quatre sont des vies de 0,13 s et 1,49 s où début et fin se confondent.
  */
-export const WALL_RADIUS_M = 1.6
+export const PLACEMENT_ORIGIN_DEPLOYED = 'deployed'
 
-/** Ouverture de l'arc, en radians (110°). */
-export const WALL_OPENING_RAD = (110 * Math.PI) / 180
+/** Origine non établie : aucun poseur mesuré, ou artefact antérieur au schéma 10. */
+export const PLACEMENT_ORIGIN_UNKNOWN = 'unknown'
 
 /**
- * PLANCHER DE LISIBILITÉ, en pixels d'écran. Un mur de 1,6 m sur une carte de Big Team Battle
- * (150 à 200 m de large pour 432 px utiles, soit ~2,5 px/m) tomberait à 4 px de rayon : une
- * éraflure. Le rayon monde effectif est donc relevé jusqu'à ce que l'arc atteigne ce plancher —
- * la pose reste à sa place exacte, seule sa TAILLE cesse de suivre l'échelle sous ce seuil.
+ * placementOrigin — l'origine d'une pose, telle qu'on a le droit de la lire.
+ *
+ * LE CHAMP EST OPTIONNEL AU CONTRAT, ET SON ABSENCE SE LIT `unknown` — JAMAIS `deployed`. Les
+ * artefacts antérieurs au schéma 10 sont encore sur disque et en production jusqu'à la
+ * re-cuisson complète : un repli sur `deployed` ferait dessiner, sur tout ce parc, exactement le
+ * mur fantôme que ce filtre existe pour supprimer.
  */
-export const WALL_MIN_RADIUS_PX = 6
+export function placementOrigin(p: ReplayEquipmentPlacement): string {
+  return p.origin ?? PLACEMENT_ORIGIN_UNKNOWN
+}
 
-/** Rayon du point neutre des objets non identifiés, en pixels d'écran. */
-const UNNAMED_DOT_RADIUS_PX = 2.5
+/**
+ * placementIsDeployedObject — cette pose est-elle l'objet DÉPLOYÉ qu'on a le droit de montrer ?
+ *
+ * DEUX CONDITIONS, TOUTES DEUX MESURÉES : l'origine est un déploiement, et — pour le mur
+ * seulement — l'identifiant est celui des PANNEAUX (cf. WALL_PANEL_IDS : un mur déployé produit
+ * deux poses, l'appareil qui vole et ses panneaux, et les dessiner toutes deux ferait deux arcs
+ * pour un seul mur).
+ *
+ * EXPORTÉE PARCE QUE LE SON LIT LA MÊME RÈGLE (`replaySound.ts`) : le geste de pose qui sonne
+ * est le même que celui qui se dessine. Deux prédicats divergeraient au premier changement.
+ */
+export function placementIsDeployedObject(p: ReplayEquipmentPlacement): boolean {
+  if (placementOrigin(p) !== PLACEMENT_ORIGIN_DEPLOYED) return false
+  if (p.family !== PLACEMENT_FAMILY_WALL) return true
+  return WALL_PANEL_IDS.includes(p.id)
+}
 
 /** Rayon minimal de la zone sensible au survol, en pixels : un point de 2,5 px ne se vise pas. */
 const HOVER_MIN_RADIUS_PX = 9
-
-/** Nombre de segments du polygone qui approche l'arc du mur (110° -> ~7° par segment). */
-const WALL_ARC_SEGMENTS = 16
-
-/** Nombre de segments du cercle pointillé (pose sans cap) — un tour complet. */
-const WALL_RING_SEGMENTS = 48
-
-/** Épaisseur du trait du mur, en pixels d'écran (décision du plan : 2 px). */
-const WALL_LINE_WIDTH = 2
-/** Le halo : le même trait, plus large et transparent, posé sous le trait franc. */
-const WALL_HALO_WIDTH = 5
-const WALL_HALO_ALPHA = 0.22
-const WALL_ALPHA = 0.9
-
-const UNNAMED_ALPHA = 0.5
-
-/** Motif du cercle pointillé — une pose sans cap ne montre aucune direction. */
-const RING_DASH: readonly number[] = [3, 3]
 
 /**
  * Ce que le calque a besoin de savoir de l'instant courant. `frameMs` est la durée RÉELLE
@@ -131,6 +185,9 @@ export interface PlacementTime {
   /** Les objets non identifiés se dessinent-ils ? Bascule du tiroir, ÉTEINTE par défaut. */
   showUnnamed: boolean
 }
+
+/** Ce que le SURVOL a besoin de savoir de l'instant : l'image, sa durée, et la bascule. */
+export type PlacementHoverTime = Pick<PlacementTime, 'frame' | 'frameMs' | 'showUnnamed'>
 
 /**
  * Ce que le calque a besoin de LIRE : les poses, et — pour le seul capteur de menaces — les
@@ -163,8 +220,16 @@ export function isPlacementActive(p: ReplayEquipmentPlacement, frame: number): b
 }
 
 /**
- * placementKind rend la règle de rendu d'une pose, ou null quand il n'y en a pas : famille
- * inconnue du manifeste, ou objet non identifié alors que la bascule est éteinte.
+ * placementKind rend la règle de rendu d'une pose, ou null quand il n'y en a pas.
+ *
+ * QUATRE RAISONS DE NE RIEN RENDRE, et elles se lisent dans cet ordre : famille hors table,
+ * famille à `null` (objet porté), objet non identifié alors que la bascule est éteinte, et
+ * enfin pose qui n'est pas un DÉPLOIEMENT.
+ *
+ * L'OBJET NON IDENTIFIÉ EST LE SEUL À ÉCHAPPER AU FILTRE D'ORIGINE, et c'est délibéré : sa
+ * bascule est un outil de diagnostic (« un objet d'équipement est ici, sa nature n'est pas
+ * établie »), et pour ce service-là l'origine n'apporte rien — on cherche à voir ce qu'on ne
+ * sait pas nommer, d'où qu'il vienne. Elle reste éteinte par défaut, comportement inchangé.
  */
 export function placementKind(
   p: ReplayEquipmentPlacement,
@@ -172,123 +237,30 @@ export function placementKind(
 ): PlacementKind | null {
   const kind = PLACEMENT_RENDER[p.family]
   if (!kind) return null
-  return kind === 'unnamed' && !showUnnamed ? null : kind
+  if (kind === 'unnamed') return showUnnamed ? kind : null
+  return placementIsDeployedObject(p) ? kind : null
 }
 
 /**
- * arcWorld — les points MONDE d'un arc de cercle centré sur `center`, de `fromRad` à `toRad`.
+ * placementShows — la pose a-t-elle quelque chose À L'ÉCRAN à cette image ?
  *
- * En MONDE et non en pixels : c'est là que l'orientation a un sens (l'axe Y du canvas est
- * inversé, celui du monde ne l'est pas), et c'est donc là que le test peut dire « le milieu de
- * l'arc est bien devant le poseur ». La projection vient après, point par point.
+ * Toutes les familles montrent quelque chose sur toute leur fenêtre [t0, t1], SAUF le traqueur :
+ * son impulsion est unique et brève, et après elle il ne reste rien. Le survol suit le dessin —
+ * on n'inspecte pas ce qui n'est pas là, même règle que la bascule des objets non identifiés.
  */
-function arcWorld(
-  center: XY,
-  fromRad: number,
-  toRad: number,
-  radiusM: number,
-  segments: number,
-): XY[] {
-  const out: XY[] = []
-  for (let i = 0; i <= segments; i++) {
-    const a = fromRad + ((toRad - fromRad) * i) / segments
-    out.push({ x: center.x + radiusM * Math.cos(a), y: center.y + radiusM * Math.sin(a) })
-  }
-  return out
-}
-
-/**
- * wallArcWorld — l'arc du mur, en coordonnées monde.
- *
- * `headingDeg` est le cap de VISÉE du poseur, dans la convention de `Point.h` : 0° pointe vers
- * les X croissants, l'angle tourne dans le sens direct du repère monde (+Y vers le haut). Le
- * MILIEU de l'arc est posé à ce cap, à `radiusM` de la position — donc devant le poseur — et
- * l'arc s'ouvre de part et d'autre : sa concavité regarde la position, c'est-à-dire le poseur.
- */
-export function wallArcWorld(
-  center: XY,
-  headingDeg: number,
-  radiusM: number,
-  segments: number = WALL_ARC_SEGMENTS,
-): XY[] {
-  const mid = (headingDeg * Math.PI) / 180
-  return arcWorld(center, mid - WALL_OPENING_RAD / 2, mid + WALL_OPENING_RAD / 2, radiusM, segments)
-}
-
-/**
- * wallRingWorld — le cercle complet servi à une pose SANS cap. Aucune orientation n'est
- * inventée : le tracé est fermé et pointillé, il dit le lieu et le rayon, rien d'autre.
- */
-export function wallRingWorld(center: XY, radiusM: number, segments: number = WALL_RING_SEGMENTS): XY[] {
-  return arcWorld(center, 0, Math.PI * 2, radiusM, segments)
-}
-
-/**
- * wallRadiusM — le rayon monde effectivement tracé : celui du plan, relevé au plancher de
- * lisibilité quand l'échelle de la carte le réduirait à une éraflure (cf. WALL_MIN_RADIUS_PX).
- */
-export function wallRadiusM(view: PlacementView): number {
-  const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
-  if (!(scale > 0)) return WALL_RADIUS_M
-  return Math.max(WALL_RADIUS_M, WALL_MIN_RADIUS_PX / scale)
+export function placementShows(
+  p: ReplayEquipmentPlacement,
+  kind: PlacementKind,
+  time: PlacementHoverTime,
+): boolean {
+  if (kind !== 'seeker') return true
+  return seekerImpulseActive((time.frame - p.t0) * time.frameMs)
 }
 
 /** inkOf — la couleur d'équipe du poseur, ou le neutre quand la pose n'a pas de poseur connu. */
 function inkOf(p: ReplayEquipmentPlacement, ink: PlacementInk): string {
   if (p.owner < 0) return ink.neutral
   return ink.colorOfSlot(p.owner) ?? ink.neutral
-}
-
-/** project — un point monde vers les pixels du canvas (la chaîne des tracks). */
-function project(p: XY, view: PlacementView): XY {
-  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
-}
-
-/** strokePolyline trace une suite de points déjà projetés (le mur : arc ouvert ou cercle). */
-function strokePolyline(ctx: CanvasRenderingContext2D, pts: XY[], closed: boolean): void {
-  if (pts.length === 0) return
-  ctx.beginPath()
-  ctx.moveTo(pts[0].x, pts[0].y)
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
-  if (closed) ctx.closePath()
-  ctx.stroke()
-}
-
-/**
- * drawWall — l'arc du mur (ou son cercle pointillé sans cap), halo puis trait franc.
- *
- * Le HALO est le même tracé, plus large et très transparent : sur un fond de carte chargé, un
- * trait de 2 px se perd dans le décor ; sur un fond clair, il se perd dans le blanc. Le halo
- * lui donne son assise sans rien ajouter à ce qu'il affirme.
- */
-function drawWall(
-  ctx: CanvasRenderingContext2D,
-  p: ReplayEquipmentPlacement,
-  view: PlacementView,
-  time: PlacementTime,
-  color: string,
-): void {
-  const center = { x: p.x, y: p.y }
-  const radiusM = wallRadiusM(view)
-  // `h` est un cap MESURÉ : nul est une valeur (un poseur peut regarder vers 0°), seule son
-  // absence rend la pose non orientée — d'où le test sur `undefined`/`null` et non sur la
-  // véracité. Le cercle est FERMÉ et pointillé, l'arc est ouvert et franc.
-  const heading = p.h === undefined || p.h === null ? null : p.h
-  const world =
-    heading === null ? wallRingWorld(center, radiusM) : wallArcWorld(center, heading, radiusM)
-  const closed = heading === null
-  const pts = world.map((w) => project(w, view))
-  ctx.save()
-  ctx.strokeStyle = color
-  ctx.lineCap = 'round'
-  if (closed) ctx.setLineDash(RING_DASH.map((d) => d * time.k))
-  ctx.globalAlpha = WALL_HALO_ALPHA
-  ctx.lineWidth = WALL_HALO_WIDTH * time.k
-  strokePolyline(ctx, pts, closed)
-  ctx.globalAlpha = WALL_ALPHA
-  ctx.lineWidth = WALL_LINE_WIDTH * time.k
-  strokePolyline(ctx, pts, closed)
-  ctx.restore()
 }
 
 /**
@@ -311,8 +283,7 @@ function drawSensor(
   color: string,
 ): void {
   const c = project({ x: p.x, y: p.y }, view)
-  const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
-  const r = SENSOR_RADIUS_M * scale
+  const r = SENSOR_RADIUS_M * viewScale(view)
   if (!(r > 0)) return
   ctx.save()
   ctx.fillStyle = color
@@ -338,59 +309,37 @@ function drawSensor(
 }
 
 /**
- * drawReveal — la marque « révélé » d'UNE vie : un halo bas et son liseré, à la teinte de
- * l'équipe du POSEUR (c'est son camp qui voit, pas celui de la cible).
+ * drawPlacement — la forme d'UNE pose, aiguillée par sa règle de rendu ; rend la règle appliquée
+ * (ou null quand rien n'a été dessiné), pour que l'appelant sache quels capteurs collecter.
  *
- * Elle est peinte SOUS le marqueur du joueur — le calque des poses passe avant celui des
- * vies — donc elle l'entoure sans jamais le couvrir. Rayon en PIXELS et non en mètres : ce
- * n'est pas une portée, c'est un signe posé sur un point.
+ * Le mur et le capteur reçoivent la pose et le cadrage : ils travaillent en MONDE. Les autres
+ * reçoivent un centre déjà projeté — c'est la frontière de `placementShapes.ts`.
  */
-function drawReveal(
-  ctx: CanvasRenderingContext2D,
-  reveal: SensorReveal,
-  view: PlacementView,
-  time: PlacementTime,
-  color: string,
-): void {
-  const alpha = revealAlpha(reveal.sinceMs, time.reducedMotion)
-  if (!(alpha > 0)) return
-  const c = project({ x: reveal.x, y: reveal.y }, view)
-  const r = REVEAL_RADIUS_PX * time.k
-  ctx.save()
-  ctx.fillStyle = color
-  ctx.strokeStyle = color
-  ctx.globalAlpha = alpha * REVEAL_FILL_ALPHA
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.globalAlpha = alpha
-  ctx.lineWidth = REVEAL_WIDTH * time.k
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.restore()
-}
-
-/**
- * drawUnnamed — le point neutre d'un objet dont la nature n'est pas établie. Aucune forme
- * empruntée au mur ni au capteur : ce marqueur dit « un objet d'équipement est ici », et il
- * n'a pas le droit d'en dire plus.
- */
-function drawUnnamed(
+function drawPlacement(
   ctx: CanvasRenderingContext2D,
   p: ReplayEquipmentPlacement,
   view: PlacementView,
   time: PlacementTime,
-  color: string,
-): void {
+  ink: PlacementInk,
+): PlacementKind | null {
+  const kind = placementKind(p, time.showUnnamed)
+  if (!kind) return null
+  const color = inkOf(p, ink)
+  if (kind === 'wall') {
+    drawWall(ctx, p, view, time, color)
+    return kind
+  }
+  if (kind === 'sensor') {
+    drawSensor(ctx, p, view, time, color)
+    return kind
+  }
   const c = project({ x: p.x, y: p.y }, view)
-  ctx.save()
-  ctx.globalAlpha = UNNAMED_ALPHA
-  ctx.fillStyle = color
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, UNNAMED_DOT_RADIUS_PX * time.k, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
+  const ageMs = (time.frame - p.t0) * time.frameMs
+  if (kind === 'beacon') drawBeacon(ctx, c, time, color)
+  else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
+  else if (kind === 'field') drawRepairField(ctx, c, REPAIR_FIELD_RADIUS_M * viewScale(view), time, color)
+  else drawUnnamedDot(ctx, c, time, color)
+  return kind
 }
 
 /**
@@ -415,27 +364,31 @@ export function drawEquipmentPlacementsLayer(
   const sensors: ReplayEquipmentPlacement[] = []
   for (const p of scene.placements) {
     if (!isPlacementActive(p, time.frame)) continue
-    const kind = placementKind(p, time.showUnnamed)
-    if (!kind) continue
-    const color = inkOf(p, ink)
-    if (kind === 'wall') drawWall(ctx, p, view, time, color)
-    else if (kind === 'sensor') {
-      drawSensor(ctx, p, view, time, color)
-      sensors.push(p)
-    } else drawUnnamed(ctx, p, view, time, color)
+    if (drawPlacement(ctx, p, view, time, ink) === 'sensor') sensors.push(p)
   }
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {
-    drawReveal(ctx, reveal, view, time, ink.colorOfSlot(reveal.owner) ?? ink.neutral)
+    const color = ink.colorOfSlot(reveal.owner) ?? ink.neutral
+    drawRevealMark(ctx, project({ x: reveal.x, y: reveal.y }, view), reveal.sinceMs, time, color)
   }
 }
 
-/** Rayon de la zone sensible au survol d'une pose, en pixels d'écran. */
+/**
+ * Rayon de la zone sensible au survol d'une pose, en pixels d'écran.
+ *
+ * Les familles dont la forme est déjà en PIXELS (balise, impulsion du traqueur, point neutre)
+ * gardent leur taille, relevée au plancher de visée ; celles dont la forme est en MÈTRES
+ * (capteur, champ de réparation, mur) suivent l'échelle de la carte — leur zone sensible est
+ * celle qu'on voit.
+ */
 function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number {
-  const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
+  const scale = viewScale(view)
   if (kind === 'sensor') return SENSOR_RADIUS_M * scale
-  const r = kind === 'wall' ? wallRadiusM(view) * scale : UNNAMED_DOT_RADIUS_PX
-  return Math.max(r, HOVER_MIN_RADIUS_PX)
+  if (kind === 'field') return REPAIR_FIELD_RADIUS_M * scale
+  if (kind === 'wall') return Math.max(wallRadiusM(view) * scale, HOVER_MIN_RADIUS_PX)
+  if (kind === 'seeker') return Math.max(SEEKER_IMPULSE_RADIUS_PX, HOVER_MIN_RADIUS_PX)
+  if (kind === 'beacon') return Math.max(BEACON_RADIUS_PX, HOVER_MIN_RADIUS_PX)
+  return Math.max(UNNAMED_DOT_RADIUS_PX, HOVER_MIN_RADIUS_PX)
 }
 
 /**
@@ -451,7 +404,7 @@ function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number {
 export function placementAt(
   placements: readonly ReplayEquipmentPlacement[],
   view: PlacementView,
-  time: Pick<PlacementTime, 'frame' | 'showUnnamed'>,
+  time: PlacementHoverTime,
   point: XY,
 ): ReplayEquipmentPlacement | null {
   let best: ReplayEquipmentPlacement | null = null
@@ -460,6 +413,7 @@ export function placementAt(
     if (!isPlacementActive(p, time.frame)) continue
     const kind = placementKind(p, time.showUnnamed)
     if (!kind) continue
+    if (!placementShows(p, kind, time)) continue
     const r = hoverRadiusPx(kind, view)
     if (r >= bestR) continue
     const c = project({ x: p.x, y: p.y }, view)

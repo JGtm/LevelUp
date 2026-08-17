@@ -46,7 +46,7 @@ import {
   normalizeMapObjectives,
 } from './objectivesLayer'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
-import { drawEquipmentPlacementsLayer, PLACEMENT_RENDER } from './equipmentPlacementsLayer'
+import { drawEquipmentPlacementsLayer, placementKind } from './equipmentPlacementsLayer'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { usePlacementHover } from './usePlacementHover'
 import {
@@ -280,14 +280,19 @@ export function ReplayCanvas({
   }, [paletteVersion])
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
-  // LES POSES D'ÉQUIPEMENT (schéma 9), comptées par ce que le rendu SAIT en faire : une
+  // LES POSES D'ÉQUIPEMENT (schéma 10), comptées par ce que le rendu SAIT en faire : une
   // famille absente de la table ne se dessine pas, elle ne doit donc pas allumer de bascule
   // (même règle que le bouton Zones — pas de commande qui ne commande rien).
+  //
+  // LE COMPTE PASSE PAR `placementKind`, LA MÊME PORTE QUE LE TRACÉ, et c'est ce qui garde la
+  // bascule honnête : un film dont toutes les poses sont des LÂCHERS (88,6 % du corpus le sont)
+  // n'allume rien, au lieu d'offrir une commande qui n'afficherait aucune forme. `showUnnamed`
+  // vaut `true` ici parce qu'on compte ce qui SERAIT dessiné, les deux bascules allumées.
   const placementCounts = useMemo(() => {
     let drawable = 0
     let unnamed = 0
     for (const p of doc.equipmentPlacements) {
-      const kind = PLACEMENT_RENDER[p.family]
+      const kind = placementKind(p, true)
       if (!kind) continue
       drawable++
       if (kind === 'unnamed') unnamed++
@@ -787,6 +792,8 @@ export function ReplayCanvas({
     placements: doc.equipmentPlacements,
     view: canvasView,
     frameRef,
+    // La même durée de frame que le tracé : le survol du traqueur suit sa brève impulsion.
+    frameMs: frameToMs(1, doc),
     enabled: showPlacements && placementCounts.drawable > 0,
     showUnnamed: showUnnamedPlacements,
   })

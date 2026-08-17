@@ -90,16 +90,22 @@ interface ReplayText {
   layerKillFx: string
   layerKillFxHint: string
   /**
-   * POSES D'ÉQUIPEMENT (schéma 9) : le calque, sa bascule d'objets non identifiés, et les
-   * NOMS des deux familles que le manifeste établit. Les clés de `placementFamily` sont les
-   * identifiants STABLES publiés par le document (`family`) — une famille inconnue n'a pas
-   * de libellé, et le calque ne dessine rien pour elle.
+   * POSES D'ÉQUIPEMENT (schéma 10) : le calque, sa bascule d'objets non identifiés, et les
+   * NOMS des familles que le calque sait dessiner. Les clés de `placementFamily` sont les
+   * RÈGLES DE RENDU (`PlacementKind`), pas les familles du document : deux familles qui
+   * partageraient un tracé partageraient son libellé, et une famille que le calque ne dessine
+   * pas n'a besoin d'aucun nom — elle n'a pas d'infobulle.
+   *
+   * Les noms français des trois familles ajoutées le 2026-08-18 viennent du manifeste du titre
+   * (`replay_labels.toml`, `[ability_palettes.ranks]`), la même source que le fil et les
+   * fiches : « traqueur de menaces » (rang 12), « champ de réparation » (rang 23),
+   * « translocateur quantique » (rang 11) dont la BALISE est l'objet posé.
    */
   layerPlacements: string
   layerPlacementsHint: string
   layerPlacementsUnnamed: string
   layerPlacementsUnnamedHint: string
-  placementFamily: Record<'wall' | 'sensor', string>
+  placementFamily: Record<'wall' | 'sensor' | 'beacon' | 'seeker' | 'field', string>
   /** Ce que dit le point neutre d'un objet dont la nature n'est pas établie. */
   placementUnnamedLabel: string
   /** Ligne « posé par <joueur> » de l'infobulle ; le poseur est une MESURE (proximité). */
@@ -247,13 +253,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Éteint par défaut.",
     layerPlacements: 'Équipements posés',
     layerPlacementsHint:
-      "Mur de protection et capteur de menaces, du moment où ils sont posés jusqu'à leur disparition. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde.",
+      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur, champ de réparation. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
     layerPlacementsUnnamed: 'Objets non identifiés',
     layerPlacementsUnnamedHint:
-      "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée au mur ni au capteur. Éteint par défaut.",
+      "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée aux familles nommées. Ceux-là s'affichent quelle que soit leur origine — on cherche justement à voir ce qu'on ne sait pas nommer. Éteint par défaut.",
     placementFamily: {
       wall: 'Mur de protection',
       sensor: 'Capteur de menaces',
+      beacon: 'Balise du translocateur',
+      seeker: 'Traqueur de menaces',
+      field: 'Champ de réparation',
     },
     placementUnnamedLabel: "Objet d'équipement non identifié",
     placementOwnerFmt: (name) => `Posé par ${name}`,
@@ -386,13 +395,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Line drawn from killer to victim at the moment of the kill. Off by default.',
     layerPlacements: 'Deployed equipment',
     layerPlacementsHint:
-      'Drop wall and threat sensor, from the moment they are deployed until they disappear. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave.',
+      'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, translocator beacon, repair field. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
     layerPlacementsUnnamed: 'Unidentified objects',
     layerPlacementsUnnamedHint:
-      'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the wall or the sensor. Off by default.',
+      'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the named families. These show whatever their origin — the point is precisely to see what cannot be named. Off by default.',
     placementFamily: {
       wall: 'Drop wall',
       sensor: 'Threat sensor',
+      beacon: 'Translocator beacon',
+      seeker: 'Threat seeker',
+      field: 'Repair field',
     },
     placementUnnamedLabel: 'Unidentified equipment object',
     placementOwnerFmt: (name) => `Deployed by ${name}`,
