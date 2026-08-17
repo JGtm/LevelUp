@@ -116,7 +116,7 @@ func TestGwPadsClusterAssignRendLaGrappeDeChaqueEntree(t *testing.T) {
 		if p.Family != a.Family {
 			t.Fatalf("apparition %d (%s) assignee a la grappe %q", i, a.Family, p.Family)
 		}
-		if gwPadsDist(p.X, p.Y, p.Z, a.X, a.Y, a.Z) > gwPadRadiusM {
+		if dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{a.X, a.Y, a.Z}) > gwPadRadiusM {
 			t.Fatalf("apparition %d assignee a une grappe hors du rayon : %+v", i, p)
 		}
 	}

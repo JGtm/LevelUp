@@ -63,7 +63,7 @@ func gwPickupNearestAt(
 			if equipTimeGap(pts[j].TimestampUS, atUS) > gwPickupWitnessTolUS {
 				continue
 			}
-			if d := gwPadsDist(pos[0], pos[1], pos[2], pts[j].X, pts[j].Y, pts[j].Z); d < best {
+			if d := dist3(pos, [3]float32{pts[j].X, pts[j].Y, pts[j].Z}); d < best {
 				best, found = d, true
 			}
 		}

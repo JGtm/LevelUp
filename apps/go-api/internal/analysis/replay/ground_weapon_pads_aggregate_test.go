@@ -149,7 +149,7 @@ func gwPadsOverlap(a, b []gwPadCluster, byFamily bool) (hit, total int) {
 			if p.Kind != q.Kind || (byFamily && p.Family != q.Family) {
 				continue
 			}
-			if gwPadsDist(p.X, p.Y, p.Z, q.X, q.Y, q.Z) <= gwPadsMatchRadiusM {
+			if dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{q.X, q.Y, q.Z}) <= gwPadsMatchRadiusM {
 				hit++
 				break
 			}
@@ -166,7 +166,7 @@ func gwPadsLogUnmatched(t *testing.T, set, m, a, b string, pa, pb []gwPadCluster
 		found := false
 		for _, q := range pb {
 			if p.Kind == q.Kind && p.Family == q.Family &&
-				gwPadsDist(p.X, p.Y, p.Z, q.X, q.Y, q.Z) <= gwPadsMatchRadiusM {
+				dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{q.X, q.Y, q.Z}) <= gwPadsMatchRadiusM {
 				found = true
 				break
 			}

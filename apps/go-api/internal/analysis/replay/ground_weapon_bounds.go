@@ -148,7 +148,7 @@ func gwPickupNearestPass(
 		if !p.HasWorld {
 			continue
 		}
-		d := gwPadsDist(pos[0], pos[1], pos[2], p.X, p.Y, p.Z)
+		d := dist3(pos, [3]float32{p.X, p.Y, p.Z})
 		if d >= originDropMaxDist {
 			continue
 		}

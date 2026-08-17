@@ -4,10 +4,26 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 )
+
+// dist3 est LA distance euclidienne 3D du paquet, en mètres — un seul endroit où la formule est
+// écrite (correctif de revue du 2026-08-17 : elle en avait quatre, dont deux à six paramètres).
+//
+// DEUX TRIPLETS ET PAS SIX FLOTTANTS : à six paramètres, une inversion d'argument entre les deux
+// points ne se voit ni à la lecture ni au compilateur — et la règle des cinq paramètres du dépôt
+// interdisait déjà la signature. Le triplet est la forme que le décodeur rend (`Vec3`, masques de
+// position, `[3]float32` des pistes).
+//
+// UN GARDE-RAIL INTERDIT LA CINQUIÈME COPIE (`TestUneSeuleFormuleDeDistance3D`) : une
+// factorisation sans garde-rail re-diverge, et c'est la règle n°6 du dépôt.
+func dist3(a, b [3]float32) float64 {
+	dx, dy, dz := float64(a[0]-b[0]), float64(a[1]-b[1]), float64(a[2]-b[2])
+	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+}
 
 // Fichiers du fond de carte, produits par le RE de la variante Forge (.mvar) et par la
 // résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent sous
