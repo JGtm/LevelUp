@@ -47,10 +47,12 @@ var gwRuleOwners = map[string]string{
 	"gwPickupNearestPass":     "ground_weapon_bounds.go",
 	"gwPickupSeenWithin":      "ground_weapon_bounds.go",
 	"gwPickupRefPos":          "ground_weapon_bounds.go",
+	"gwPickupLifeTrack":       "ground_weapon_bounds.go",
 	"groundWeaponObjects":     "ground_weapon_objects.go",
 	"gwPickupPadGaps":         "ground_weapon_objects.go",
 	"equipmentLives":          "equipment_placements.go",
-	"decodeFilmGroundWeapons": "ground_weapon_objects.go",
+	"decodeFilmGroundWeapons": "build_ground_weapons.go",
+	"gwInstallMPPWidths":      "build_ground_weapons.go",
 }
 
 // TestUneSeuleDeclarationParSeuilDArmeAuSol : un seuil du plan ne se declare qu une fois.
