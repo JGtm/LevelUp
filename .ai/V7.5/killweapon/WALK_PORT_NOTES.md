@@ -666,7 +666,110 @@ Face a `decodeObjectShieldVitality` (`R(8)` ; `R(1)` regen puis 2 x [`R(1)` + `R
 4 x `R(1)`) : identique, largeur pour largeur, y compris les QUATRE bits de queue. Aucune
 divergence.
 
-## 5. Bilan de lecture — 5 composants, UNE divergence
+
+
+### `i0` — LE LECTEUR DU JEU DIT LA MEME CHOSE QUE L ECRIVAIN : c est le PORT Go qui est faux
+
+La divergence ci-dessus n est pas « l ecrivain contre le lecteur » : c est **l ecrivain ET le
+lecteur du jeu contre le port Go**. La case `+0x30` d `i0` (`FUN_14076e29c`, le lecteur de la
+paire) se lit en trois lignes :
+
+```
+FUN_14076e29c(., reader, desc) :
+  sub = *(desc + 0x10)
+  h = FUN_14076e420(reader, sub+4, 0x10)    <- R(1) puis la CHARGE UTILE, toujours
+  FUN_14076e3e4(reader, sub, ., h)          <- la queue de handle, GARDEE PAR h
+  si FUN_140492128(sub+4) : FUN_14076e304(reader, sub+0x10)   <- R(2), en DERNIER
+
+FUN_14076e420(reader, dst, w, f) :
+  cVar1 = FUN_1406cf008()                   R(1)
+  table = (cVar1 != 0) ? &DAT_143b8c6d0 : NULL      <- il CHOISIT UNE TABLE DE PLAGE
+  FUN_14076e494(reader, dst, w, f, 0, table)        <- la charge utile, INCONDITIONNELLE
+  return cVar1
+```
+
+**Le bit que le port Go appelle `precHigh` ne supprime rien : il selectionne la table de
+dequantification** (`DAT_143b8c6d0` ou aucune), et il est **la porte de la queue de handle**.
+Le port Go (`consumeAbsoluteWithGate`) en fait un `if precHigh { return }` a zero bit de charge,
+et force la queue a `false`. Les deux lectures du jeu — celle qui ecrit et celle qui lit — sont
+d accord contre lui.
+
+Grammaire d `i0` en ETAT COMPLET, etablie des DEUX cotes :
+
+```
+R(1) flagRaw   (0)          en-tete FUN_1406cfe44 / FUN_14320696c
+R(1) hasRef    (0)
+R(1) h                      selecteur de plage ET porte de queue
+R(1) idxSel ; si 0 : R(idxW)
+3 x R(axisW)                les axes de la CARTE
+si h : queue de handle      FUN_14076e3e4 / FUN_143206854
+R(2)                        FUN_14076e304 / FUN_142f1f71c, EN DERNIER
+```
+
+Soit **`6 + axisW[0] + axisW[1] + axisW[2]`** bits dans le cas dominant : 46 sur 13/13/14,
+56 sur 17/17/16, 59 sur 18/18/17.
+### La QUEUE DE HANDLE d `i0`, cote ecriture
+
+`FUN_143206854(w, sub, desc)` — appelee seulement quand `h != -1` :
+
+```
+FUN_1409a5ff0(sub + 0x2a4, w, 0, *(byte*)(desc + 0x8c), ...)   ecriture du handle (largeur variable)
+h2 = *FUN_1404d4f04(sub + 0x2a4)                               0 bit
+W(1) (h2 != -1)
+si h2 != -1 : W(11)                                            le mot de region
+```
+
+Meme forme que la queue du lecteur (`consumePositionHandleTail` : selecteur, mot d index, puis
+`R(1)` presence de region et `R(11)`) — mais **gardee par un bit du FLUX** (`h`), pas par le
+booleen runtime `PositionDeltaHasHandleTail` que le lecteur porte force a `false`.
+
+### L ETAT PAR DEFAUT du bipede — l ecrivain `FUN_142f14a68` CONFIRME le lecteur
+
+Case `+0x58` de la vtable d archetype (`0x143737178`), face au lecteur `FUN_140f44c38`
+(case `+0x60`, porte dans `default_state.go`) :
+
+```
+FUN_1406d49c4(w, ., 1)                          W(1) = 1        <- la porte g0, toujours VRAIE
+W(8) = 0x0d                                     le selecteur (13), donc toujours ecrit
+FUN_1406d49c4(w, ., (rep != 1 && rep != -1))    W(1) gRep
+si gRep : FUN_1407edaf4(w, "player-representation-name", *(sub+100))   W(32)
+FUN_142b549c0(w, *(sub+0x68), "customization-source-participant")
+FUN_142f1bc2c(sub, w)
+FUN_1406d49c4(w, ...)                           W(1)
+si *(sub+0x6c) != -1 : W(6)
+W(1) *(char*)(sub+0x61)
+FUN_1407edb6c(w, sub+0x70)
+si *(sub+0x74) != -1 : FUN_1407eb600(w, sub+0x78, 0x10) ; FUN_14299813c(w)
+FUN_1407eb9bc(w) ; FUN_1406d49c4(w) ; FUN_1407edb6c()
+```
+
+Le lecteur porte lit `g0 = R(1)` puis, si `g0`, `R(8)` de selecteur, puis `gRep = R(1)` et
+`R(32)` de nom : **meme ordre, memes largeurs**. L ecrivain ajoute la seule chose que la lecture
+ne pouvait pas savoir — `g0` vaut TOUJOURS 1 et le selecteur vaut TOUJOURS 13 sur ce chemin.
+Les NOMS de champs (`"player-representation-name"`, `"customization-source-participant"`) sont
+des parametres MORTS des primitives d ecriture, conserves en retail : ils nomment les champs
+sans rien couter au flux.
+
+### Les cases vont par PAIRES : etat complet / delta
+
+`i0` a un DEUXIEME ecrivain, en `vtable[0x20]` : `FUN_143206a88`. Il appelle le meme corps
+`FUN_14320696c` mais avec une reference de base REELLE (`param_4`) et un drapeau brut calcule sur
+un octet d etat runtime, puis le meme `FUN_142f1f71c` = `W(2)` de queue. La lecture des deux
+cases se lit donc ainsi :
+
+```
++0x18  ECRIRE l ETAT COMPLET   (ref NULLE, drapeau 0)        <-> +0x28  LIRE l etat complet
++0x20  ECRIRE le DELTA         (ref reelle)                  <-> +0x30  LIRE le delta
+```
+
+Pour les composants a une seule forme (la grande majorite), `+0x20` est `int3` — pas d ecrivain
+de delta distinct — et `+0x28` est le thunk `FUN_14076ce9c` qui renvoie sur `+0x30` : une seule
+lecture, une seule ecriture. C est ce qui donne le layout apparent de la section 2.
+
+**Consequence directe pour l image-cle** : le format a bien un serialiseur d ETAT COMPLET par
+composant, et pour `i0` c est nommement `FUN_14320678c`. Ce n est plus une inference, c est la
+fonction qui ecrit la position d un record d image-cle.
+## 5. Bilan de lecture — 5 composants + l etat par defaut, UNE seule divergence
 
 | composant | ecrivain `vtable[0x18]` | verdict |
 |---|---|---|
@@ -675,3 +778,8 @@ divergence.
 | `i9 object-multiplayer-properties` | `FUN_142f075d8` puis `FUN_1420ab570` | conforme (confirme la correction R7-b) |
 | `i60 simulation-state` | `FUN_142f04e2c` puis `FUN_142edd10c` | conforme |
 | `i63 biped-action` | `FUN_142f05144` puis `FUN_142f27a68` | conforme (et confirme la limite dure `count2`) |
+
+Sur les 52 composants du bipede balayes, **seuls TROIS ont un `vtable[0x20]` autre que `int3`**,
+donc seuls trois ont une forme DELTA distincte de leur forme ETAT COMPLET : `i0`
+(`FUN_143206a88`), `i1 object-translational-velocity` (`FUN_14320ca60`) et `i25 unit-command-tick`
+(`FUN_142ee007c`). Les 49 autres ecrivent la meme chose dans les deux cas.
