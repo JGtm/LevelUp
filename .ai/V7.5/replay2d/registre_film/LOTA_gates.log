@@ -1,0 +1,24 @@
+﻿EXIT_oracle_export=0
+# gates de cloture du lot A phase 0 (2026-08-17)
+EXIT_vet=0
+EXIT_test_objectiveevents=0
+EXIT_test_filmdec=0
+EXIT_lint=0
+# mesures par film (script scratchpad run_film.ps1, un processus par film, plafond 3 Go surveille)
+EXIT_measure_64e8adfa=0
+EXIT_measure_530820e5=0
+EXIT_measure_53ce4390=0
+EXIT_measure_06dfe6d9=0
+EXIT_measure_0a247154=0
+EXIT_measure_01e1f945=0
+EXIT_measure_606d9844=0
+EXIT_measure_8076f97f=0
+EXIT_measure_7344d24f=0
+EXIT_measure_696a9d7c=0
+EXIT_measure_24dbb67d=0
+EXIT_measure_000d5950=0
+# controle D1 (run_d1.ps1)
+EXIT_d1_530820e5=0
+EXIT_d1_696a9d7c=0
+EXIT_d1_000d5950=0
+# aucun processus tue : KILLED_OVER_3GB=False sur les 15 executions
