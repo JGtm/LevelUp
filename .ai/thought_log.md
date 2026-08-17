@@ -1,3 +1,38 @@
+## [2026-08-18] Rendu des poses d'equipement dans le rejeu 2D — Complete
+
+**Statut** : Complete (branche `wt/ui-poses`, `e9df5a8f6`, fusionnee dans `feat/v75` le
+2026-08-18, `54bc47ca3`). Gate VISUEL utilisateur restant.
+
+**Decision technique** : le mur est un ARC de 110 degres (rayon 1,6 m monde) dont le milieu est
+pose a `h` de la position — donc devant le poseur, concavite vers lui, ce qui dit visuellement
+que l'equipement laisse passer les degats dans un sens et pas dans l'autre (decision utilisateur
+du 18/08). Sans cap, cercle pointille : aucune orientation inventee. Le rendu passe par une
+TABLE PAR FAMILLE — une famille hors table ne dessine rien, c'est ce qui rend l'arrivee des
+familles du lot de nommage sans risque. Capteur : disque de 8 m DECLARE (le film ne porte
+aucune portee), respiration ±6 % de periode 1,6 s fonction du temps, figee sous mouvement
+reduit. `other` : eteint par defaut, bascule « Objets non identifies » (point neutre
+`--muted-foreground` — `--muted` est une surface, invisible). Plancher de lisibilite
+`WALL_MIN_RADIUS_PX` = 6 sur les cartes BTB (choix d'ecran, ecrit). Sons `wall_activate` /
+`sensor_activate` a t0, table separee par famille (un objet pose n'a qu'un geste). Le contrat
+ne nomme pas ses champs comme le plan (`owner`/`h` et non `ownerSlot`/`poseHeading`) :
+verifie dans `generated.ts` AVANT de coder.
+
+**Resultats** : 611 tests verts sur match-replay + lib/api (24 neufs sur la geometrie, 5 sur le
+tiroir, 2 sur les sons) ; typecheck et lint exit 0 ; suite complete 4 014 verts (3 timeouts de
+garde-rails disque, verts isoles). Sons produits par la recette REPRODUITE A L'OCTET sur
+`camo_activate.wav` avant toute production (meme md5). Apres fusion : typecheck 0, 47 fichiers /
+611 tests verts.
+
+**Prochaine etape** : gate VISUEL utilisateur sur `000d5950` (murs et capteurs nommes) et
+`06dfe6d9` (892 poses, 0 nommee — le film qui montre l'effet de la bascule « objets non
+identifies »). Trois reglages d'ecran attendent ce verdict : rayon du capteur (8 m, declare),
+plancher de lisibilite du mur (6 px), amplitude de la respiration (±6 %). Reports au registre :
+infobulle au pointeur seul (canvas sans sous-element focusable) ; pose expirant sous un pointeur
+immobile garde son infobulle jusqu'au prochain mouvement (frame lue dans une reference) ;
+cadrage `{bounds,width,height,pad}` recopie 6 fois dans `ReplayCanvas.tsx`, un memoise
+(`canvasView`), cinq copies restantes — refactor de `ReplayCanvas.tsx` (938 lignes) a
+planifier.
+
 ## [2026-08-18] v7.5 rejeu 2D — les POSES d'equipement sont publiees (schema 9), et la largeur qui bloquait etait un DOUBLE champ
 
 **Statut** : Plan `.ai/V7.5/replay2d/PLAN_POSES_EQUIPEMENT_PUBLICATION.md` COMPLET (phases 0, 1,
