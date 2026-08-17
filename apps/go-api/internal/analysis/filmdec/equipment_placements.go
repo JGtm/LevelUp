@@ -9,7 +9,24 @@ package filmdec
 //	          record de CRÉATION (cf. equipment_creation.go ; identité prouvée le 2026-08-17)
 //	où        la position i0 du MÊME record — le lieu exact de la pose
 //	quand     t0 = l'instant du record de création ; t1 = le dernier point de la vie d'objet
-//	          décodée des paquets delta (ScanFilmWorldObjects), donc la disparition
+//	          décodée des paquets delta (ScanFilmWorldObjects), c'est-à-dire l'instant où
+//	          l'objet S'IMMOBILISE — surtout PAS sa disparition (mesure du 2026-08-18)
+//
+// LA DISPARITION N'EST PAS DANS LE FILM, et c'est mesuré, pas supposé. Le décodage ne suit que
+// les records qui portent une position ; un objet posé cesse d'en émettre dès qu'il ne bouge
+// plus. Trois pistes de fin explicite ont été instrumentées (`equipment_life_end_test.go`,
+// films 000d5950 et 00ba2e1c) et les trois échouent :
+//
+//	record de SUPPRESSION (recDel) balayé bit à bit  78 090 et 158 098 candidats sur quelques
+//	                                                 milliers de payloads, pour 477 et 993 vies
+//	queue de records de la même clé sans position    98,0 % et 99,4 % des clés SANS aucune vie
+//	                                                 en portent : le balayage est du bruit
+//	recensement des keyframes                        PROUVE la survie (101/295 et 228/537 encore
+//	                                                 recensées après la fin du flux de position)
+//	                                                 mais les keyframes sont espacés de 20 s
+//
+// Ce que le film porte donc, c'est une BORNE INFÉRIEURE de la durée de vie. Le client ne doit
+// jamais lire `t1` comme une disparition ; le calque de rendu en tire les conséquences.
 //
 // LE FILTRE QUI FAIT LA MESURE, et sans lui rien n'est publiable. L'en-tête NEW
 // (`[0][01][slot:13][gen:2][ti:6=37]`) n'est PAS sélectif : sur un film BTB, la bande compte
@@ -41,8 +58,10 @@ type EquipmentPlacement struct {
 	// Life identifie la vie d'objet (slot, génération) — la clé qui relie le record de création
 	// à la trajectoire décodée des paquets delta.
 	Life EquipmentLifeKey
-	// T0US est l'instant du record de création : la pose. T1US est le dernier point de la vie :
-	// la disparition. Les deux sur l'horloge des paquets, celle des positions de bipède.
+	// T0US est l'instant du record de création : la pose. T1US est le dernier point de la vie
+	// décodée, c'est-à-dire l'instant où l'objet cesse de bouger — une BORNE INFÉRIEURE de sa
+	// durée de vie, jamais sa disparition (cf. l'en-tête de ce fichier). Les deux sur l'horloge
+	// des paquets, celle des positions de bipède.
 	T0US, T1US uint64
 	// X, Y, Z est la position du record de création, en coordonnées MONDE (bornes de la carte).
 	X, Y, Z float32
@@ -57,6 +76,12 @@ type EquipmentPlacement struct {
 // poses » ne se juge pas : c'est l'écart entre les ancres, les records acceptés et les records
 // CONFIRMÉS par l'oracle qui dit à quel point l'en-tête seul est peu sélectif.
 type EquipmentPlacementStats struct {
+	// Scanned dit que le balayage a ABOUTI — que le film a été lu jusqu'au bout, quel qu'ait
+	// été le verdict de la calibration. Faux : le film n'a pas pu être balayé du tout (chunks
+	// illisibles, bornes absentes, archétype absent des keyframes). Sans ce drapeau, un film
+	// illisible et un film dont la calibration refuse de trancher rendent tous deux zéro pose
+	// et se lisent pareil, alors que ce sont deux pannes différentes.
+	Scanned bool
 	// Calibration est la mesure de la largeur du bloc MPP sur ce film — la pièce justificative
 	// de tout le reste. Bits == 0 : le film n'a pas tranché, et rien n'est publié.
 	Calibration MPPCalibration
@@ -113,7 +138,7 @@ func ScanFilmEquipmentPlacements(
 
 	defer SetMPPWidths(CurrentMPPWidths())
 	cal, ok := CalibrateMPPWidths(dir, wr, band, spans)
-	st.Calibration = cal
+	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s'il a tranché
 	if !ok {
 		return nil, st, nil // le film n'a pas tranché : aucune pose, et les stats le disent
 	}

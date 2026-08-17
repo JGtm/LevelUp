@@ -49,6 +49,14 @@ const ProjectileTypeIndex = 41
 
 // projectileRestComponent est l'index du composant `projectile-at-rest-state` : sa présence
 // dans le masque certifie que le record est le dernier de la vie du projectile.
+//
+// LE MÊME INDEX PORTE UN COMPOSANT DE MÊME SENS DANS L'ARCHÉTYPE D'ÉQUIPEMENT, et ce n'est pas
+// une supposition : le registre de ti=37 nomme i18 `item-at-rest-component` (mesuré sur
+// 000d5950 et 00ba2e1c le 2026-08-18, `equipment_life_end_test.go`). La coupure ci-dessous a
+// donc un sens pour les deux archétypes que `ScanFilmWorldObjects` sert. Elle n'est pourtant
+// PAS ce qui borne une vie d'équipement : sur les deux films, la distribution des durées est
+// IDENTIQUE avec et sans elle, parce que le flux de position s'arrête de lui-même quand
+// l'objet s'immobilise (cf. splitLives).
 const projectileRestComponent = 18
 
 // projPosBits est la longueur d'`object-position-component` sur le chemin dominant :
@@ -188,6 +196,15 @@ const projectileGapUS = 250_000
 
 // splitLives découpe une suite d'échantillons triés en vies séparées, et écarte celles de
 // moins de trois points — deux points ne dessinent pas une trajectoire.
+//
+// CE QUE LA VIE AINSI DÉCOUPÉE EST, ET CE QU'ELLE N'EST PAS (mesuré le 2026-08-18 sur
+// 000d5950 et 00ba2e1c, `equipment_life_end_test.go`). Ce balayage ne retient que les records
+// qui portent `object-position-component` : la vie décodée est donc la vie MOBILE de l'entité.
+// Un objet d'équipement qui se pose cesse de bouger, donc cesse d'émettre sa position, et sa
+// vie décodée se ferme sur le trou de 250 ms — alors que l'entité, elle, reste répliquée. Le
+// recensement des keyframes le PROUVE : 101 poses sur 295 (000d5950) et 228 sur 537
+// (00ba2e1c) y figurent encore plus d'une seconde après la fin de leur flux de position.
+// La dernière borne d'une vie est donc une MISE AU REPOS, jamais une disparition.
 func splitLives(pts []ProjectileSample) [][]ProjectileSample {
 	var out [][]ProjectileSample
 	start := 0
