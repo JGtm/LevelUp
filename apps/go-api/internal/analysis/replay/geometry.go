@@ -133,3 +133,56 @@ func parseF32(s string) float32 {
 	}
 	return float32(v)
 }
+
+// ---------------------------------------------------------------------------
+// LES ETENDUES du document — deplacees de `build.go` au correctif de revue du 2026-08-17,
+// pour la meme raison que `document_labels.go` : le lot des socles avait pousse `build.go`
+// de 621 a 640 lignes, au-dessus d un seuil deja gele par la baseline. C est un
+// deplacement, aucune ligne de calcul n a change (le golden d assemblage fige les bornes).
+// ---------------------------------------------------------------------------
+
+// boundsOf calcule l'étendue XY (et Z) de tous les points publiés.
+func boundsOf(tracks []Track) Bounds {
+	var b Bounds
+	first := true
+	for _, tr := range tracks {
+		for _, p := range tr.Points {
+			if first {
+				b = Bounds{MinX: p.X, MinY: p.Y, MaxX: p.X, MaxY: p.Y, MinZ: p.Z, MaxZ: p.Z}
+				first = false
+				continue
+			}
+			b.MinX, b.MaxX = minf(b.MinX, p.X), maxf(b.MaxX, p.X)
+			b.MinY, b.MaxY = minf(b.MinY, p.Y), maxf(b.MaxY, p.Y)
+			b.MinZ, b.MaxZ = minf(b.MinZ, p.Z), maxf(b.MaxZ, p.Z)
+		}
+	}
+	return b
+}
+
+// geometryBounds calcule l'étendue XY des props (nil si pas de géométrie).
+func geometryBounds(objs []MapObject) *Bounds {
+	if len(objs) == 0 {
+		return nil
+	}
+	b := Bounds{MinX: objs[0].X, MinY: objs[0].Y, MaxX: objs[0].X, MaxY: objs[0].Y}
+	for _, o := range objs[1:] {
+		b.MinX, b.MaxX = minf(b.MinX, o.X), maxf(b.MaxX, o.X)
+		b.MinY, b.MaxY = minf(b.MinY, o.Y), maxf(b.MaxY, o.Y)
+	}
+	return &b
+}
+
+func minf(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxf(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}

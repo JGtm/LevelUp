@@ -72,13 +72,9 @@ type Options struct {
 	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
-	// GroundWeapons : ce que le film rend sur les ARMES AU SOL — records de creation `ti=42`,
-	// recensement des images-cles, pistes de position (cf. ground_weapon_objects.go). Entree de
+	// GroundWeapons : ce que le film rend sur les ARMES AU SOL — les TROIS lectures voyagent
+	// ensemble et `Scanned` dit qu'elles ont abouti (cf. build_ground_weapons.go). Entree de
 	// DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
-	//
-	// LES TROIS LECTURES VOYAGENT ENSEMBLE, et il le faut : un recensement sans pistes ferait
-	// passer TOUTE apparition pour un objet apparu au repos, donc fabriquerait des socles a
-	// partir d'une lecture manquante. `Scanned` dit que les trois ont abouti.
 	GroundWeapons GroundWeaponScan
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
@@ -251,12 +247,9 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
-	// ARMES AU SOL : records de CREATION de l'archetype 42, recensement des images-cles et
-	// pistes de position, sur la MEME horloge (cf. ground_weapon_objects.go — decodage, journal
-	// et refus y vivent ensemble). Les largeurs du bloc MPP sont celles que la calibration des
-	// POSES vient de mesurer sur CE film : elle les restaure en sortant, il faut les reposer.
-	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange,
-		opt.PlacementStats.Calibration.Widths)
+	// ARMES AU SOL : archetype 42, sur la MEME horloge, AUX LARGEURS MPP que la calibration des
+	// POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
+	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -426,13 +419,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies})
 	logPlacementCoverage(doc.Coverage.Placements)
-	// Les SOCLES d'arme au sol : grappes d'apparitions mesurees sur le nuage NON decime (la
-	// datation d'une disparition se joue a la frame, la decimation perdrait le passage qui la
-	// borne). Le calque publie les socles du MATCH — aucun catalogue de carte, aucun ramasseur.
-	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons = buildWeaponPads(
-		opt.GroundWeapons, sorted,
+	// Les SOCLES d'arme au sol, sur le meme nuage NON decime (cf. build_ground_weapons.go).
+	attachWeaponPads(&doc, opt.GroundWeapons, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount})
-	logGroundWeaponCoverage(doc.Coverage.GroundWeapons)
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,
@@ -570,38 +559,6 @@ func frameSpan(sorted []filmdec.BipedPosition, origin, step uint64) int {
 	return int((last-origin)/step) + 1
 }
 
-// boundsOf calcule l'étendue XY (et Z) de tous les points publiés.
-func boundsOf(tracks []Track) Bounds {
-	var b Bounds
-	first := true
-	for _, tr := range tracks {
-		for _, p := range tr.Points {
-			if first {
-				b = Bounds{MinX: p.X, MinY: p.Y, MaxX: p.X, MaxY: p.Y, MinZ: p.Z, MaxZ: p.Z}
-				first = false
-				continue
-			}
-			b.MinX, b.MaxX = minf(b.MinX, p.X), maxf(b.MaxX, p.X)
-			b.MinY, b.MaxY = minf(b.MinY, p.Y), maxf(b.MaxY, p.Y)
-			b.MinZ, b.MaxZ = minf(b.MinZ, p.Z), maxf(b.MaxZ, p.Z)
-		}
-	}
-	return b
-}
-
-// geometryBounds calcule l'étendue XY des props (nil si pas de géométrie).
-func geometryBounds(objs []MapObject) *Bounds {
-	if len(objs) == 0 {
-		return nil
-	}
-	b := Bounds{MinX: objs[0].X, MinY: objs[0].Y, MaxX: objs[0].X, MaxY: objs[0].Y}
-	for _, o := range objs[1:] {
-		b.MinX, b.MaxX = minf(b.MinX, o.X), maxf(b.MaxX, o.X)
-		b.MinY, b.MaxY = minf(b.MinY, o.Y), maxf(b.MaxY, o.Y)
-	}
-	return &b
-}
-
 // round2 arrondit au centième (cf. coordScale).
 func round2(v float32) float32 {
 	return float32(math.Round(float64(v)*coordScale) / coordScale)
@@ -625,18 +582,4 @@ func headingForJSON(v float32) float32 {
 func fractionForJSON(v float32) *float32 {
 	r := float32(math.Round(float64(v)*1000) / 1000)
 	return &r
-}
-
-func minf(a, b float32) float32 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxf(a, b float32) float32 {
-	if a > b {
-		return a
-	}
-	return b
 }
