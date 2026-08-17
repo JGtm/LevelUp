@@ -595,3 +595,42 @@ undefined8 FUN_1411b259c(undefined8 param_1, undefined8 param_2)
 Le commentaire fautif (« remplissage NaN/keep, 0 bit ») venait d'une lecture du RESULTAT
 (le vecteur ecrit est un NaN de conservation) et non du CURSEUR. Sous la portee baseline,
 chacun de ces trois sites perd 96 bits par occurrence.
+
+## 5. Ce que la MESURE en a fait — le drapeau n'est PAS leve sur le payload du film
+
+Le port du mode baseline (`SetKeyframeBaselineScope`, defaut OFF) a ete mesure en A/B sur les
+591 records `ti=35` bornes des trois films oracles, une seule variable changeant entre les deux
+colonnes. Resultat : **l'atterrissage bit-exact tombe de 3/591 a 0/591** et l'ecart absolu
+median monte de 511/636/448 a 543/660/526 bits.
+
+La piece qui tranche est la largeur MEDIANE consommee par `i0` :
+
+| film (decoupage lu dans le film) | portee ETEINTE | portee ALLUMEE |
+|---|---|---|
+| `000d5950` (13/13/14, i0 = 45 bits) | 102 | 102 |
+| `00502e52` (17/17/16, i0 = 55 bits) | **57** | 99 |
+| `07aa428d` (18/18/17, i0 = 58 bits) | **62** | 99 |
+
+Eteinte, `i0` prend TROIS largeurs differentes, chacune accordee au decoupage de sa carte.
+Allumee, les trois convergent vers 99 (le brut 96 bits plus son en-tete) et la mesure se
+degrade. **Le corps d'image-cle porte donc une position QUANTIFIEE aux largeurs de la carte.**
+Le drapeau est reel et desormais correctement porte ; il n'est simplement pas leve sur le
+payload que le film stocke.
+
+Corollaire, et il AMENDE R7-b : « en image-cle, `i0` prend le chemin BRUT, 117 bits, la meme
+mediane sur les trois cartes » est FAUX (102/57/62). Les bornes de carte SONT necessaires pour
+lire la position a une image-cle sur deux films sur trois.
+
+## 6. Une piste NEUVE, trouvee en cherchant autre chose — le lecteur d'etat complet
+
+`FUN_1428e2a04` -> `FUN_1428e2a9c` -> `FUN_142e2bfd0`. Le dernier construit son BitReader
+(`FUN_1424c7b4c`) sur un paquet obtenu par `FUN_142988338(..., 0x10, 0)`, lit l'amorce
+`DAT_144706104 = R(1)` quand la version depasse 7, puis boucle : deux `R(32)` par entree
+(identifiant, type), et pour chaque entree `DAT_144e61ea0 = 1` ; `vtable[0x60]` (etat par
+defaut) ; le corruption-check `R(32)` du mode film si `FUN_14076cea8()` ; `DAT_144e61ea0 = 0`.
+
+C'est la FORME d'un payload d'etat complet, et R5 avait clos sa phase 2 sur « le CONSOMMATEUR
+du payload type-2 n'est identifie nulle part, et c'est ELLE qu'il faut decompiler ». Reste a
+confronter le `0x10` de `FUN_142988338` au demultiplexeur de paquets du film (section « le
+demultiplexeur de paquets du film — et le sort du type-2 » plus haut dans ce fichier). NON
+TRAITE par ce lot : hors de son perimetre.

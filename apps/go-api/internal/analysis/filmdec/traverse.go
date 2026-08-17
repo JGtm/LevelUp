@@ -1147,7 +1147,7 @@ func SetSimStateComplete(v bool) { simStateComplete = v }
 // (ici la garde est runtime, pas un bit du flux) et MOINS son R(2) « fini » de queue — que
 // FUN_14076e494 n'appelle pas.
 func consumeSimStateHandleTail(br *BitReader) {
-	if PositionFullPrecision { // FUN_14076f91c vrai -> copie brute
+	if fullPrecisionGate() { // FUN_14076f91c vrai -> copie brute
 		br.ReadBits(rawVec3Bits) // FUN_1406d676c(..., 0x60)
 		return
 	}
