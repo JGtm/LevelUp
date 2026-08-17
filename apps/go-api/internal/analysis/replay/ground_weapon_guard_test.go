@@ -40,6 +40,8 @@ var gwThresholdOwners = map[string]string{
 // gwRuleOwners : chaque fonction de REGLE, et le seul fichier qui a le droit de la definir.
 var gwRuleOwners = map[string]string{
 	"gwPadsClusterAssign":     "ground_weapon_rules.go",
+	"gwPadsKeep":              "ground_weapon_rules.go",
+	"gwPadsCycle":             "ground_weapon_rules.go",
 	"gwPadsCycleFromGaps":     "ground_weapon_rules.go",
 	"gwPadsClass":             "ground_weapon_rules.go",
 	"gwPadsIdentity":          "ground_weapon_rules.go",
@@ -67,9 +69,14 @@ func TestUneSeuleDeclarationParSeuilDArmeAuSol(t *testing.T) {
 }
 
 // TestUneSeuleDefinitionParRegleDArmeAuSol : une regle de la chaine ne se definit qu une fois.
+//
+// LA PARENTHESE OUVRANTE FAIT PARTIE DU MOTIF, et ce n est pas cosmetique : sans elle,
+// « gwPadsCycle » attrapait aussi `gwPadsCycleSummary` et `gwPadsCycleFromGaps`, si bien qu une
+// regle dont le nom est le PREFIXE d une autre ne pouvait pas entrer dans cette table
+// (correctif de revue du 2026-08-17).
 func TestUneSeuleDefinitionParRegleDArmeAuSol(t *testing.T) {
 	for name, owner := range gwRuleOwners {
-		pattern := regexp.MustCompile(`(?m)^func\s+(\([^)]*\)\s*)?` + regexp.QuoteMeta(name))
+		pattern := regexp.MustCompile(`(?m)^func\s+(\([^)]*\)\s*)?` + regexp.QuoteMeta(name) + `\(`)
 		gwAssertSingleOwner(t, name, owner, pattern)
 	}
 }

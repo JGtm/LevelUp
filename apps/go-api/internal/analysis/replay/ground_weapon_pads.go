@@ -132,13 +132,14 @@ func buildWeaponPads(
 	for j := range atRest {
 		members[assign[j]] = append(members[assign[j]], src[j])
 	}
-	out := make([]WeaponPad, 0, len(pads))
+	// LE FILTRE « UNE GRAPPE DE >= 2 APPARITIONS EST UN SOCLE » EST CELUI DE `gwPadsKeep`, jamais
+	// une seconde écriture du seuil ici (correctif de revue du 2026-08-17). `src` ramène chaque
+	// socle retenu à son index d'avant filtre — celui sur lequel ses membres sont indexés.
+	keep, src := gwPadsKeep(pads, gwPadMinHits)
+	out := make([]WeaponPad, 0, len(keep))
 	var picks []PadPickup
-	for p := range pads {
-		if len(pads[p].TS) < gwPadMinHits {
-			continue
-		}
-		pad, padPicks := gwBuildPad(pads[p], objs, members[p], clock, cov)
+	for p := range keep {
+		pad, padPicks := gwBuildPad(keep[p], objs, members[src[p]], clock, cov)
 		for i := range padPicks {
 			padPicks[i].Pad = len(out)
 		}
