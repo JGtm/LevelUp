@@ -128,19 +128,30 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 // tiennent dans 0,5 u, 62,4 % s'étalent au-delà de 20 u. La majorité de ces « positions » est du
 // BRUIT. Ne pas la brancher sur un artefact ni sur une réponse d'API.
 //
-// DEUX CAUSES STRUCTURELLES, toutes deux hors de portée offline-pur aujourd'hui :
-//   - au KEYFRAME, la position suit le default-state de l'archétype (vtable[0x60]), dont
-//     `defaultStateDeserByTI` n'a PAS d'entrée 42 : l'offset d'i0 y est inconnu, et le lire
-//     « à peu près » produirait des coordonnées inventées. La grammaire de ce default-state
-//     EXISTE pourtant, décompilée par le lot R5 (`FUN_1407f0c68`, chaîne vtable 0x1436fd790 —
-//     .ai/V7.5/killweapon/WALK_PORT_NOTES.md § IMAGE-CLE §4 et
-//     .ai/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md §11) : elle n'est PAS branchée ici,
-//     faute d'oracle qui la valide — la brancher à l'aveugle décalerait le décodage de tous
-//     les records ti=42 sans qu'aucune mesure ne le dise ;
+// DEUX CAUSES STRUCTURELLES ÉTAIENT INVOQUÉES ; LA PREMIÈRE EST LEVÉE (2026-08-17) :
+//   - le default-state de l'archétype (vtable[0x60]) n'avait PAS d'entrée 42 dans
+//     `defaultStateDeserByTI`. Il en a une depuis le 2026-08-17 : `consumeDefaultStateTI42`
+//     (default_state_ti42.go), portée depuis `FUN_1407f0c68` et VALIDÉE par un oracle de
+//     position — 282 atterrissages exacts sur 289 records de création (97,6 %) sur trois films,
+//     contre 0 sur 289 pour trois déserialiseurs faux passés par le même code. C'est ce qui
+//     rend lisible le record de CRÉATION d'une arme au sol
+//     (`ScanFilmGroundWeaponCreations`, ground_weapon_creation.go) ;
 //   - en DELTA, le record ne porte aucun typeIndex (il résout son archétype par le World) et la
-//     bande de slots comblée est contaminée par les archétypes voisins.
+//     bande de slots comblée est contaminée par les archétypes voisins. CETTE CAUSE-LÀ TIENT, et
+//     c'est elle qui gouverne la fonction ci-dessous : le record de création, lui, DIT `ti=42`.
 //
-// Report et condition de reprise : .ai/V7.5/REGISTRE_REPORTS.md (2026-08-12, amendé le 2026-08-17).
+// CE QUE LA SECONDE LECTURE A MESURÉ (2026-08-17, 6 films / 5 cartes, aux largeurs de chaque
+// carte). Restreindre la bande aux VIES (slot, génération) confirmées par un record de création
+// fait tomber la part des vies étalées au-delà de 20 u de 59,1 % à 19,0 % (n = 1 965 -> 1 140)
+// et monter la part sous 2 u de 25,5 % à 53,3 % ; mais la part STABLE au sens strict (0,5 u)
+// ne fait que doubler, 3,2 % -> 6,2 %, loin du saut d'un ordre de grandeur exigé. La raison
+// tient à la nature du flux : un objet posé cesse d'émettre sa position (même acquis que `ti=37`,
+// cf. EquipmentLifeSpan), donc les échantillons delta d'une arme au sol sont sa phase MOBILE —
+// mesurer leur immobilité n'a pas de sens. La position publiable d'une arme au sol est celle de
+// son record de CRÉATION, pas la dispersion de ses deltas.
+//
+// Report et condition de reprise : .ai/V7.5/REGISTRE_REPORTS.md (2026-08-12, amendé les
+// 2026-08-17).
 //
 // HORS LIGNE (I/O disque sur tout le film).
 func GroundWeaponPositions(dir string, wr *Vec3Range) map[uint32][]WorldObjectSample {

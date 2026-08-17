@@ -247,11 +247,36 @@ type equipCreationRead struct {
 }
 
 // equipCreationWalk porte ce que la marche d'un record doit connaître (règle des 5 paramètres).
+//
+// ELLE EST PARAMÉTRÉE PAR L'ARCHÉTYPE, et il le faut : la marche d'un record de création est la
+// MÊME pour tous les objets du monde (en-tête NEW, default-state, porte, masque, i0) — seuls
+// changent le `typeIndex` que l'en-tête doit porter et le déserialiseur du default-state. Les
+// ARMES AU SOL (`ti=42`, ground_weapon_creation.go) empruntent donc ce code au lieu d'en
+// recopier une seconde version qui re-divergerait au premier correctif.
 type equipCreationWalk struct {
 	comps int
 	wr    *Vec3Range
 	band  map[uint32]bool
 	cur   *equipCreationRead
+	// ti est le typeIndex exigé de l'en-tête NEW ; zéro vaut `EquipmentTypeIndex`.
+	ti uint32
+	// deser est le déserialiseur du default-state de cet archétype ; nil vaut celui de `ti=37`.
+	deser func(*BitReader)
+}
+
+// archetype et defaultState rendent les réglages effectifs de la marche (défauts `ti=37`).
+func (w equipCreationWalk) archetype() uint32 {
+	if w.ti == 0 {
+		return EquipmentTypeIndex
+	}
+	return w.ti
+}
+
+func (w equipCreationWalk) defaultState() func(*BitReader) {
+	if w.deser == nil {
+		return consumeDefaultStateTI37
+	}
+	return w.deser
 }
 
 // scanPayload balaye UN payload delta et rend les records de création reconnus.
@@ -262,7 +287,7 @@ func (w equipCreationWalk) scanPayload(
 	total := len(pay) * 8
 	limit := total - woNewHeaderBits
 	for p := 0; p <= limit; p++ {
-		slot, gen, ok := matchEquipmentNewHeader(pay, p, w.band)
+		slot, gen, ok := matchWorldObjectNewHeader(pay, p, w.band, w.archetype())
 		if !ok {
 			continue
 		}
@@ -288,21 +313,28 @@ func (w equipCreationWalk) scanPayload(
 	return out
 }
 
-// matchEquipmentNewHeader reconnaît un en-tête de record de CRÉATION d'objet d'équipement à la
-// position de bit p. PUR (aucune I/O).
+// matchEquipmentNewHeader reconnaît un en-tête de record de CRÉATION d'objet d'ÉQUIPEMENT.
+func matchEquipmentNewHeader(pay []byte, p int, band map[uint32]bool) (slot, gen uint32, ok bool) {
+	return matchWorldObjectNewHeader(pay, p, band, EquipmentTypeIndex)
+}
+
+// matchWorldObjectNewHeader reconnaît un en-tête de record de CRÉATION d'objet du monde de
+// l'archétype `ti` à la position de bit p. PUR (aucune I/O).
 //
 // Quatre contraintes, dont trois sont des CONSTANTES du format : le préfixe de type
-// (`0` puis `01`), le typeIndex R(6) == 37, et l'appartenance du slot à la bande de l'archétype.
+// (`0` puis `01`), le typeIndex R(6) == ti, et l'appartenance du slot à la bande de l'archétype.
 // La génération est libre : ses quatre valeurs sont légitimes (même règle que les deltas
 // d'objet du monde, cf. matchWorldObjectRecord).
-func matchEquipmentNewHeader(pay []byte, p int, band map[uint32]bool) (slot, gen uint32, ok bool) {
+func matchWorldObjectNewHeader(
+	pay []byte, p int, band map[uint32]bool, ti uint32,
+) (slot, gen uint32, ok bool) {
 	if PeekBits(pay, p, 1) != 0 { // un record DELTA ouvre sur 1
 		return 0, 0, false
 	}
 	if PeekBits(pay, p+1, 2) != 1 { // type de record : 1 = NEW
 		return 0, 0, false
 	}
-	if PeekBits(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits) != EquipmentTypeIndex {
+	if uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) != ti {
 		return 0, 0, false
 	}
 	slot = uint32(PeekBits(pay, p+woNewTypeBits, woNewSlotBits))
@@ -326,7 +358,7 @@ func (w equipCreationWalk) readCreation(
 	br := NewBitReader(pay)
 	start := p + woNewHeaderBits
 	br.SetBitPos(start)
-	consumeDefaultStateTI37(br)
+	w.defaultState()(br)
 	if br.BitPos() > total {
 		st.Overflow++
 		return cre, false

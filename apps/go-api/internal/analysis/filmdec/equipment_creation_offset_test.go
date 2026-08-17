@@ -65,7 +65,7 @@ func TestEquipmentCreationOffset(t *testing.T) {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}
 	pr := equipOffsetProbe{
-		comps: len(arch.Components), band: band,
+		comps: len(arch.Components), band: band, want37: EquipmentTypeIndex,
 		want: map[[3]int32][]equipCreationWanted{},
 		gap:  map[uint32]int{}, ti: map[uint32]int{}, hdr: map[uint32]int{},
 		bits: map[uint32]*[equipProfileBits]int{},
@@ -136,6 +136,12 @@ func equipLogBitProfile(t *testing.T, pr equipOffsetProbe) {
 type equipOffsetProbe struct {
 	comps int
 	band  map[uint32]bool
+	// want37 est l'ARCHÉTYPE cherché en amont du corps. Il est un CHAMP et non la constante
+	// `EquipmentTypeIndex` parce que le même instrument sert de contrôle POSITIF à la mesure de
+	// `ti=42` (ground_weapon_creation_offset_test.go) : le déserialiseur de `ti=37` est validé
+	// par ailleurs, donc son pic de distance est la référence à laquelle celui de `ti=42` se
+	// compare — et une comparaison n'a de valeur que si les deux passent par le MÊME code.
+	want37 uint32
 	// want indexe le PREMIER point de chaque vie delta — l'oracle — par CELLULE d'une grille
 	// au pas d'equipCreationPosEps : la position de création n'est pas identique au premier
 	// point transmis en delta (mesuré : écart médian de deux quanta), une égalité stricte ne
@@ -150,6 +156,12 @@ type equipOffsetProbe struct {
 	// bits[g][i] compte les records de distance g dont le i-ème bit (depuis l'en-tête) vaut 1.
 	bits               map[uint32]*[equipProfileBits]int
 	bodies, withHeader int
+	// onMatch, si non nil, reçoit CHAQUE couple (en-tête, masque) apparié — le payload, le bit
+	// de l'en-tête et le bit du masque. C'est ce qui permet à un appelant de faire l'ESSAI
+	// D'ATTERRISSAGE (dérouler un déserialiseur candidat depuis l'en-tête et vérifier qu'il
+	// tombe AU BIT PRÈS sur le masque) sans redécoder le film une seconde fois. Nil ici : la
+	// mesure de `ti=37` n'en a pas besoin, son pic est déjà la preuve.
+	onMatch func(pay []byte, hdr, mask int)
 }
 
 // equipProfileBits borne le profil de bits : 128 couvre l'en-tête (24), le default-state du
@@ -250,10 +262,13 @@ func (pr *equipOffsetProbe) back(pay []byte, b int, life equipCreationLifeKey) {
 			firstAny = d
 			pr.ti[ti]++
 		}
-		if ti == EquipmentTypeIndex && slot == life.slot && gen == life.gen {
+		if ti == pr.want37 && slot == life.slot && gen == life.gen {
 			pr.withHeader++
 			pr.gap[uint32(d)]++
 			pr.profile(pay, p, uint32(d))
+			if pr.onMatch != nil {
+				pr.onMatch(pay, p, b)
+			}
 			break
 		}
 	}
