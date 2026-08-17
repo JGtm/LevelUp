@@ -341,13 +341,51 @@ identifie ; sinon `[!]` avec la mesure.
 > **Consequence contractuelle** : la phase 3 n'est PAS ouverte par ce lot. Ce qu'un arbitrage
 > aurait a trancher : publier les ramassages des SEULS socles (`at_rest`), ou refuser la
 > publication tant qu'un oracle sans plafond n'existe pas. Ce lot ne le decide pas.
+>
+> **ARBITRAGE SUPERVISEUR (2026-08-17, CR verifie sur pieces : `bfa67b4de` instrument et seuils
+> AVANT mesure, `7d3f58940` mesure ; items 2.1/2.3/2.4 `[x]`, 2.2 `[!]` ; gates `EXIT_*=0`)** :
+> le seuil de 90 % reste ; l'ORACLE, lui, etait mal construit : il suivait le SLOT DE VIE du
+> ramasseur, qui migre au respawn — le plafond de 55,3 % est un artefact de l'oracle, pas du
+> phenomene (decouverte 10). Le pont slot -> joueur existe dans le constructeur du document
+> (`replay/owners.go` `SlotXUID`, `lives.go`, `closures.go closeBridge`, `Track.XUID`) : l'oracle
+> doit suivre le JOUEUR. D'ou l'item 2.5 ci-dessous, avec le MEME seuil, sur la SEULE population
+> que la mesure a qualifiee (les socles `at_rest` — la « disparition » d'une arme `dropped` est
+> une despawn, decouverte 11, hors publication du ramassage). Perimetre de la phase 3 TRANCHE des
+> maintenant, dans les deux issues de 2.5 : `weaponPads` (socles par match : position, famille,
+> apparitions, intervalles de presence bornes par les images-cles, cycle depuis le ramassage s'il
+> est etabli sinon `null`) est publie ; `padPickups` (t = intervalle [borne basse, borne haute],
+> socle) est publie ; le RAMASSEUR (xuid) n'est publie QUE si 2.5 tient son gate, sinon `null`
+> partout et le registre porte la condition de reprise. Aucun ramassage d'arme `dropped` n'est
+> publie. L'utilisateur peut renverser.
+
+- [ ] 2.5 ORACLE PAR JOUEUR (meme seuil, meme temoin) — sur les ramassages de SOCLES a ramasseur
+      identifie : ramasseur = slot de vie -> xuid par le pont du constructeur (`SlotXUID`) ; a la
+      premiere image-cle qui suit, prendre le loadout de la VIE COURANTE de ce xuid (son slot a cet
+      instant, quel qu'il soit) ; accord = la famille ramassee y figure. Denominateur = ramassages
+      de socle dont le xuid a un loadout observable a cette image-cle (les morts sans loadout sont
+      COMPTES a part, pas dans le denominateur, et publies). Temoin : autre joueur au hasard a la
+      meme image-cle. Publier aussi la part des ramassages sans pont (slot non attribue).
+      **Gate 2.5** : accord >= 90 % => le ramasseur (xuid) est publiable en phase 3 ; sinon `[!]`
+      et `null`.
+
+**Gate 2 (relu apres 2.5)** : la phase 3 s'ouvre dans les deux issues de 2.5, avec le perimetre
+tranche ci-dessus.
 
 ### Phase 3 — PUBLICATION (schema 11) et note UI
 
-- [ ] 3.1 Document : `weaponPads` (socles : position, famille, cycle, etats presence dans le
-      temps), `weaponPickups` ; `SchemaVersion` chronique ; contrat, OpenAPI, `generated.ts`,
-      golden, couverture ; temoins re-cuits.
-- [ ] 3.2 Note UI (decision 6) pour l'utilisateur ; aucun rendu ici.
+- [ ] 3.1 Document : `weaponPads` (socles PAR MATCH : position i0, famille (mot MPP -> label
+      d'arme via le catalogue existant), apparitions [t], intervalles de presence [t_apparition,
+      borne basse, borne haute] bornes par les images-cles, cycle depuis le ramassage {medianeS,
+      p10, p90} si etabli sinon `null`), `padPickups` [{pad, tLow, tHigh, xuid|null}] (xuid selon
+      2.5) ; couverture (nombre de creations retenues / ecartees, socles, ramassages dates /
+      unknown / never) dans le champ de couverture existant ; `SchemaVersion` chronique (10 -> 11
+      avec la ligne d'historique) ; contrat (`wantReplayDocumentFields`, chronique), OpenAPI
+      regeneree, `generated.ts`, `NULLABLE_ARRAYS`, goldens et fixture v5 re-cuits, temoins
+      re-cuits (`000d5950`, `01e1f945`, `00162144`) ; aucun ramassage d'arme `dropped`, aucun
+      catalogue de carte.
+- [ ] 3.2 Note UI (decision 6, corrigee par la mesure) pour l'utilisateur : icone de l'arme sur le
+      socle, etat present / vide (vide des `tLow`, incertain jusqu'a `tHigh`), compte a rebours
+      SEULEMENT si le cycle est etabli, ramasseur sur la fiche SEULEMENT si publie ; aucun rendu ici.
 
 ## Regles dures
 
@@ -946,3 +984,8 @@ au cycle etabli : BR75, Bandit Evo, Mangler, Disruptor, Pulse Carbine, VK78 Comm
 Bulldog 40,1 et 80,0 s.** L'ordre de grandeur « 2-3 min pour une arme de puissance » que le plan
 citait sans source se retrouve ici par la mesure seule. **Aucune comparaison a une source
 officielle n'est faite** : il n'y en a pas hors ligne, et le plan interdit de comparer sans.
+- 2026-08-17 — **arbitrage superviseur apres la phase 2** : gate 2 NON atteint (35,4 %) mais
+  l'oracle suivait le slot de vie (plafond structurel 55,3 %) ; item 2.5 ajoute (oracle PAR
+  JOUEUR via le pont `SlotXUID`, socles seulement, seuil 90 % inchange) ; perimetre de la phase 3
+  tranche pour les deux issues (`weaponPads` + `padPickups`, xuid selon 2.5, jamais de `dropped`).
+  Agent Opus lance sur 2.5.
