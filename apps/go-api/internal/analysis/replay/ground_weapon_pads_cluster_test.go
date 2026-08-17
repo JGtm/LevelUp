@@ -74,7 +74,7 @@ func TestGwPadsClusterSepareDeuxSoclesVoisins(t *testing.T) {
 		{Kind: gwPadKindWeapon, Family: "A", X: 0.4, TUS: 3},
 		{Kind: gwPadKindWeapon, Family: "A", X: 3.3, TUS: 4},
 	}
-	got := gwPadsCluster(app, gwPadRadiusM)
+	got := gwPadsCluster(app)
 	if len(got) != 2 {
 		t.Fatalf("2 grappes attendues, %d obtenues : %+v", len(got), got)
 	}
@@ -93,7 +93,7 @@ func TestGwPadsClusterNeMelangePasLesFamilles(t *testing.T) {
 		{Kind: gwPadKindWeapon, Family: "B", TUS: 2},
 		{Kind: gwPadKindPowerup, Family: "A", TUS: 3},
 	}
-	if got := gwPadsCluster(app, gwPadRadiusM); len(got) != 3 {
+	if got := gwPadsCluster(app); len(got) != 3 {
 		t.Fatalf("3 grappes attendues (2 familles + 1 nature), %d obtenues : %+v", len(got), got)
 	}
 }
@@ -107,7 +107,7 @@ func TestGwPadsClusterAssignRendLaGrappeDeChaqueEntree(t *testing.T) {
 		{Kind: gwPadKindWeapon, Family: "A", X: 0, TUS: 2},
 		{Kind: gwPadKindWeapon, Family: "Z", X: 10.3, TUS: 3},
 	}
-	pads, assign := gwPadsClusterAssign(app, gwPadRadiusM)
+	pads, assign := gwPadsClusterAssign(app)
 	if len(pads) != 2 || len(assign) != 3 {
 		t.Fatalf("2 grappes et 3 assignations attendues : %d / %d", len(pads), len(assign))
 	}

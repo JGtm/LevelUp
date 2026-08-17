@@ -214,7 +214,7 @@ func buildWeaponPads(
 	objs := groundWeaponObjects(scan, equipmentLives(positions), positions)
 	cov.Kept, cov.Rejected = len(objs), scan.Stats.Accepted-len(objs)
 	atRest, src := gwAtRestOf(objs, cov)
-	pads, assign := gwPadsClusterAssign(atRest, gwPadRadiusM)
+	pads, assign := gwPadsClusterAssign(atRest)
 	cov.Clusters = len(pads)
 	members := map[int][]int{}
 	for j := range atRest {
@@ -270,7 +270,7 @@ func gwBuildPad(
 	cov *GroundWeaponCoverage,
 ) (WeaponPad, []PadPickup) {
 	out := WeaponPad{X: pad.X, Y: pad.Y, Z: pad.Z, Weapon: gwPadWeaponID(objs, members)}
-	var picks []PadPickup
+	picks := make([]PadPickup, 0, len(members))
 	for _, i := range gwMembersByTime(objs, members) {
 		o := objs[i]
 		low, high := gwFrameOf(o.Bounds.LowUS, clock), gwFrameOf(o.Bounds.HighUS, clock)
