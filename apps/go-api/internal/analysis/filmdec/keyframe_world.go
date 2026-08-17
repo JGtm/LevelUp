@@ -22,6 +22,11 @@ const (
 	// et le cap objet réel = 50. Constante Halo Infinite : un autre titre exigerait de re-sourcer
 	// ce COUNT depuis son .exe (walker keyframe = RE Halo-Infinite-spécifique pour l'instant).
 	kfArchMax = 50
+	// keyframeRecordTIBit est la position, EN BITS DEPUIS LE DEBUT DU RECORD, du champ `ti`
+	// de 6 bits : c'est le point exact ou TraverseEntity doit prendre la main (en-tete
+	// [id:32][field:26][ti:6] documente en tete de fichier). Definition unique du paquet —
+	// les marcheurs d'image-cle la reutilisent au lieu de re-ecrire le litteral 58.
+	keyframeRecordTIBit = 58
 )
 
 // KeyframeRec est un record de la table keyframe reconstruit offline.
@@ -75,7 +80,7 @@ func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bo
 	if kfReadBits(buf, q+32, 32) >= kfArchMax { // filtre fort : field26==0 & ti<50
 		return
 	}
-	ti = int(kfReadBits(buf, q+58, 6)) // extraction durcie (== mot 32-bit quand field26==0)
+	ti = int(kfReadBits(buf, q+keyframeRecordTIBit, 6)) // extraction durcie (== mot 32-bit quand field26==0)
 	ok = true
 	return
 }

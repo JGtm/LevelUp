@@ -14,13 +14,34 @@ réfuté. Ce qui reste à faire ou à terminer n'est pas ici mais à la racine d
 |---|---|---|
 | `film_re/` | Format du film Theater : grammaire, chunks, décodeur ECS, keyframes, RE Ghidra, handoffs externes | 15 |
 | `killweapon/` | Arme / source de dégât par kill : kill feed, dead-state, same-clock, walk biped, journal RE | 22 |
-| `replay2d/` | POC du rejeu 2D : trajectoires, inventaire/loadout, vérité terrain | 7 |
+| `replay2d/` | POC du rejeu 2D puis ses chantiers : trajectoires, inventaire/loadout, vérité terrain, plans de lots | 42 |
 | `cartes/` | Géométrie 2D des maps depuis les `.module`, triangles, noms de zones | 3 |
 | `icones/` | Icônes d'armes et du **kill feed** extraites des `.module` : chaîne, tables de correspondance, page de nommage, planches-contact | 5 |
 | `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 69 Mo, lus par du code | 40 entrées |
 
 Plan actif d'habillage du rejeu 2D (marqueurs, noms, amis, logo, rangee `fil | carte | fiches`) :
 `replay2d/PLAN_HABILLAGE_REJEU_2D.md` (ecrit le 2026-08-16, decisions D1-D8 a valider par le user).
+
+Quatre lots de RECHERCHE du 2026-08-17 (branches `wt/ti37-identite`, `wt/ti11-objectifs`,
+`wt/kf-grammaire`, `wt/kf-file-entite`, fusion triee sur `wt/fusion-lots-go`) — leurs plans
+portent le detail mesure, et trois d'entre eux sont des NEGATIFS qui ferment des voies :
+
+- `replay2d/PLAN_R3_IDENTITE_TI37.md` — l'identite de l'objet `ti=37` est le GlobalID d'un tag
+  `eqip` (428 occurrences sur 428, zero ailleurs). Confirmation INDEPENDANTE de la meme
+  decouverte que le lot de production `PLAN_IDENTITE_TI37.md` ; c'est ce dernier qui a livre
+  les poses et le nommage. Le code d'instrumentation de R3 n'a PAS ete fusionne (il aurait
+  double le lecteur de `equipment_creation.go`).
+- `replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md` — `ti=11` est le DESCRIPTEUR d'objectif du HUD,
+  pas l'objet : aucun de ses 34 composants ne porte de position. Voies delta et image-cle
+  refutees, chacune par son temoin.
+- `replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md` — le corps d'un record d'image-cle n'est PAS un
+  record NEW (128 decalages x 16 lectures x 3 films, jamais plus de 1,8 %). Acquis positif :
+  la grammaire de l'etat par defaut de `ti=42` est decompilee bit-exact (`FUN_1407f0c68`), mais
+  NON BRANCHEE dans le decodeur — aucun oracle ne la valide (decision du 17/08). Elle vit dans
+  le plan et dans `killweapon/WALK_PORT_NOTES.md` § IMAGE-CLE §4.
+- `replay2d/PLAN_R6_FILE_PAR_ENTITE.md` — le lecteur de film du jeu SAUTE le payload type-2 :
+  il n'y a aucun consommateur a decompiler. La file par entite n'est pas une transformation,
+  et la capture live de juillet portait sur le premier paquet DELTA, pas sur une image-cle.
 
 À la racine de `V7.5/` : `RECHERCHE_CTF_TIRS_PERDUS.md` — le verdict de la **décision #2** du
 master plan (pourquoi le rejeu perd des tirs, et si le rejeu public est livrable). Ses sorties
