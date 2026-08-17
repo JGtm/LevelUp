@@ -275,3 +275,89 @@ avec sa condition de reprise nommant le lot qui la porte :
 champs de tableau (un `kind|flags|nom` litteral, qui cassait la ligne 240 en 8 champs, a ete
 reecrit `kind + flags + nom`). Trois lignes ANTERIEURES du registre (`:177`, `:182`, `:201`)
 portent le meme defaut ; hors perimetre, non corrigees, notees en Decouvertes.
+
+---
+
+## 0.6 — Plomberie de publication (D15) `[x]`
+
+**Perimetre tenu : 23 composants, quatre hooks, `traverse.go` MAIGRIT de 1 321 a 1 297 lignes.**
+
+| Famille | Composants deplaces | Hook | Fichier |
+|---|---|---|---|
+| ti=0 moteur de jeu | i2, i4, i6, i7, i8 (5) | `SetGameEngineHook` | `components_game_engine.go` (nouveau) |
+| ti=5 entite joueur | i2, i3, i6, i11, i12, i14, i15, i17, i18, i19, i20 (11) | `SetPlayerStateHook` | `components_player.go` (nouveau) |
+| ti=37 equipement | i26 `energy-delay-ticks-left`, i27 `charges-remaining` (2) | `SetEquipmentStateHook` (existant, +2 champs) | `equipment_state.go` |
+| ti=10 objet scripte | i0 `boundary-visibility` (1) | `SetManagedObjectHook` | `components_walk_batch9.go` |
+| sondes | ti=47 i0 et i1, ti=4 i0, ti=13 i0 (4) | `SetProbeHook` | `components_probe.go` (nouveau) |
+
+**Contrat de publication, un seul et ecrit une fois** (`components_game_engine.go:78-87`) :
+`values` porte les champs lus DANS L'ORDRE DU FLUX, bits de porte compris, sans aucune
+dequantification ; `present` est faux quand la porte de TETE s'est fermee sans qu'aucun champ
+ne suive — une porte fermee n'est pas une valeur nulle.
+
+**Trois choix de conception, avec leur raison.**
+
+1. **Enumerations nommees plutot que `comp int`.** Le plan ecrit `comp int` ; le MODELE qu'il
+   designe (`equipment_state.go`) resout l'index par NOM et ne le cable jamais, parce qu'un
+   index de composant est un numero de BUILD — et l'empreinte livree a l'item 0.3 vient de le
+   prouver sur pieces (`06dfe6d9` : 116 blocs contre 118). D'ou `GameEngineField`,
+   `PlayerStateField`, `ManagedObjectField`, `ProbeComponent`, chacune avec un `String()` qui
+   rend l'etiquette de registre. Ce sont des types a base `int` : la signature du plan est
+   respectee, sa lettre est amelioree.
+2. **`SetProbeHook` recoit le `ti` DE LA TRAVERSEE**, jamais une constante
+   (`publishProbe(typeIndex, ...)`). `TestProbeHookPassesRegistryTypeIndex` joue les memes
+   composants sous quatre `ti` differents et exige que le hook les rende tels quels.
+3. **ti=10 i0 : le `Skip(32)` devient une boucle bit a bit, pas un `ReadBits(32)`.** Le jeu pose
+   le bit de l'iteration i au RANG i ; `ReadBits(32)` mettrait l'iteration 0 au rang 31. La
+   CONSOMMATION est identique (32 bits), la VALEUR ne l'est pas —
+   `TestManagedObjectHookFlagOrder` distingue les deux en n'allumant que les rangs 0 et 31.
+
+**Ce qui N'A PAS ete duplique, et le garde-rail qui l'empeche.** ti=0 i5 (round-timer) et ti=5
+i1 (respawn) sont deja rendus TYPES par la couche de capture (`capture.go:20-25`). Leur poser un
+hook ferait une troisieme copie de la meme grammaire. `TestHookedNamesCoversMovedCases` croise
+`hookedNames` avec `captureNames` et echoue si un nom apparait dans les deux.
+
+**Garde-rails ajoutes** (`components_hooks_test.go`, nouveau) :
+
+- `TestHooksConsumeSameBitsWithoutHook` — 23 composants x 500 tampons aleatoires x 12 niveaux :
+  position du lecteur et drapeau `ported` IDENTIQUES avec et sans hook, et le hook doit avoir
+  ete appele au moins une fois. Meme esprit que `TestCaptureConsumesSameBitsAsDispatch`.
+- `TestHookedNamesCoversMovedCases` — la liste fait bien 23 noms, sans doublon, tous traites par
+  le dispatch reel, et disjointe de `captureNames`.
+- `TestGameEngineHookValues` (6 cas), `TestPlayerStateHookValues` (9 cas),
+  `TestPlayerDesiredRespawnLocationHook` (4 cas : les TROIS issues des deux portes imbriquees
+  plus le cas avec index lu), `TestPlayerMalleablePropertiesHook` (les 24 entrees, bits de porte
+  compris), `TestEquipmentHookNewFields`, `TestManagedObjectHookFlagOrder`,
+  `TestProbeHookPassesRegistryTypeIndex`, `TestProbeSplashStaticPublishesUnconditionalField`,
+  `TestHookFieldStringsAreRegistryLabels`.
+
+**Deux effets de bord assumes, mesures.**
+
+- `consumeQuantVec3` delegue desormais a `consumeQuantVec3Values` (une seule copie de la
+  grammaire) — `ok` faux quand `precHigh` est leve, ce qui evite de publier une position a
+  l'origine pour un vecteur par defaut.
+- `EquipmentFieldCount` passe de 4 a 6 : la marche de `ScanFilmEquipmentState` va maintenant
+  jusqu'a i27 au lieu de i24. **MESURE sur `000d5950`** : i26 820 annonces / 820 lectures / 629
+  vies d'objet sur 1 216, i27 883 / 883 / 599 — contre 131 / 62 / 34 / 50 annonces pour les
+  quatre champs d'origine. Les deux nouveaux canaux sont bien les plus bavards de l'archetype,
+  et ils TRANSITIONNENT (126 transitions sur 172 paires consecutives pour i26, 194 sur 263 pour
+  i27) : c'est la these du lot D, verifiee avant lui. `equipment_state_test.go` porte desormais
+  `equipAssertNewFieldsSeen` — une assertion, pas une ligne de journal.
+
+**`DesyncAt` avant / apres 0.6 — les hooks ne changent pas un bit.**
+
+| Film | Paquets | Records | Aboutis AVANT | Aboutis APRES | Ecart |
+|---|---|---|---|---|---|
+| `000d5950` | 14 350 | 38 860 | 30 058 | 30 058 | 0 (0,000 %) |
+| `06dfe6d9` | 6 606 | 10 607 | 8 494 | 8 494 | 0 (0,000 %) |
+| `64e8adfa` | 14 357 | 39 776 | 31 934 | 31 934 | 0 (0,000 %) |
+
+Les trois films rendent « CONFORME au compte fige ». `PeakWorkingSet64` maximal 52,5 Mo.
+
+**Table ECS** : les 23 lignes gardent leur statut `porte` ; seule la colonne `code_source`
+bouge, vers le fichier et la ligne du nouveau deser (les quatre sondes pointent la ligne de
+`publishProbe` dans `traverse.go`, puisque c'est le `case` lui-meme qui publie). G1 vert.
+
+**Gates.** `gofmt -l` vide · `go vet` 0 · `EXIT_0.6_test_filmdec_replay_objectiveevents=0` ·
+`EXIT_0.6_desync_3films=0` · instrument d'equipement sous garde `EQUIP_FILM` : EXIT 0 sur
+`000d5950`.
