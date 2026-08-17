@@ -237,7 +237,7 @@ func KFQFrameVariants(from, to int) []KFQVariant {
 // seed, s'il n'est pas nil, fabrique le World de depart (test de l'hypothese « etat initial
 // venu d'ailleurs ») ; nil = World neuf.
 func BestVariant(reg *Registry, pay []byte, vs []KFQVariant, seed func() *World) (KFQWalk, []KFQWalk) {
-	var all []KFQWalk
+	all := make([]KFQWalk, 0, len(vs))
 	var best KFQWalk
 	for _, v := range vs {
 		w0 := NewWorld(reg)

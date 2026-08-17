@@ -64,6 +64,11 @@ justifie si le style est voulu — decision hors perimetre de cette session) ; l
 utilisateur, jamais joue par cette session (documents et instruments seulement, rien a
 l'ecran) ; signaler a l'utilisateur/superviseur l'activite concurrente detectee sur
 `PLAN_ARMES_AU_SOL_2E_LECTURE.md` avant tout prochain geste sur ce worktree.
+**Suite (superviseur, 2026-08-17)** : `prealloc` corrige d'une ligne (`all := make([]KFQWalk,
+0, len(vs))`, commit suivant), `golangci-lint --new-from-merge-base=origin/main` sur `filmdec`
+= 0 issue ; l'« activite concurrente » etait le superviseur lui-meme (amendement du plan
+item 6, ecriture du plan item 4) — aucun tiers sur le worktree. Aucun gate visuel attendu de
+cette fusion (docs + instruments). Fusion CLOSE.
 
 ## [2026-08-18] Handoff superviseur — fin de contexte de la session de pilotage
 
