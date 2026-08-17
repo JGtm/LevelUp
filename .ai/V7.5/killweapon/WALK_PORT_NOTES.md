@@ -689,7 +689,7 @@ FUN_14076e420(reader, dst, w, f) :
 ```
 
 **Le bit que le port Go appelle `precHigh` ne supprime rien : il selectionne la table de
-dequantification** (`DAT_143b8c6d0` ou aucune), et il est **la porte de la queue de handle**.
+dequantification** (`DAT_143b8c6d0` ou aucune), et il est **la porte de la queue de handle**. La table `DAT_143b8c6d0`, lue octet a octet, vaut `{-100.0, +100.0} x 3` puis `60` : une plage LOCALE de plus ou moins 100 unites, pas les bornes de la carte.
 Le port Go (`consumeAbsoluteWithGate`) en fait un `if precHigh { return }` a zero bit de charge,
 et force la queue a `false`. Les deux lectures du jeu — celle qui ecrit et celle qui lit — sont
 d accord contre lui.
@@ -783,3 +783,13 @@ Sur les 52 composants du bipede balayes, **seuls TROIS ont un `vtable[0x20]` aut
 donc seuls trois ont une forme DELTA distincte de leur forme ETAT COMPLET : `i0`
 (`FUN_143206a88`), `i1 object-translational-velocity` (`FUN_14320ca60`) et `i25 unit-command-tick`
 (`FUN_142ee007c`). Les 49 autres ecrivent la meme chose dans les deux cas.
+
+**RESTE OUVERT (non traite par ce lot)** : la BOUCLE d ecriture au niveau du RECORD — le miroir
+de `FUN_14076cb60` qui appelle, composant par composant, la case `+0x18`. Elle n a pas ete
+localisee : `FUN_142f14a68` (ecrivain d etat par defaut) n a AUCUNE xref CODE, seulement sa case
+de vtable `0x1437371d0` ; les voisines de la vtable d archetype (`+0x50` `FUN_142f1dcc0`,
+`+0x68` `FUN_142f156b0`, `+0x78` `FUN_142f09490`, `+0x80` `FUN_142f12a4c`) sont respectivement de
+la telemetrie, un nettoyage, un bloc de pertinence et un wrapper — aucune ne boucle sur les
+composants ; et les fonctions voisines des lecteurs de record (`FUN_1408f1948`, `FUN_141f865d8`)
+non plus. C est elle qui dirait si le record d image-cle porte un CADRE (en-tete, masque, ordre)
+different de celui du record NEW.
