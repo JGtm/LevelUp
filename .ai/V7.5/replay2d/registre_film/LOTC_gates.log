@@ -52,3 +52,41 @@ EXIT_LINT_1A=0             # golangci-lint run --new-from-merge-base=origin/main
 # conformement a la regle « un go test non-zero dans un chainage se relance SEUL avant de conclure ».
 # Ghidra : LECTURE SEULE, 21 appels MCP (search_strings, get_xrefs_to, read_memory,
 # decompile_function, disassemble_function). Aucun rename, commentaire, script, analyse, sauvegarde.
+
+## 2026-08-18 — phase 1b (port + mesure d etat), base 797d635bc (lot 0 fusionne)
+EXIT_VET_1B=0                 # go vet ./internal/analysis/filmdec/ (CGO_ENABLED=0)
+EXIT_GOFMT_1B=0               # gofmt -l ./internal/analysis/filmdec/ : vide
+EXIT_VECTEURS_1B=0            # 14 vecteurs sur octets reels (6 tests), verts du premier coup
+EXIT_G1_G3_1B=0               # TestG1TableSuitLeCode + TestG3TableSuitLeDocument
+EXIT_TEST_FILMDEC_1B=0        # go test -count=1 ./internal/analysis/filmdec/ (50,6 s)
+EXIT_TEST_REPLAY_1B=0         # go test -count=1 ./internal/analysis/replay/ ./internal/replaybuild/
+EXIT_LINT_1B=0                # golangci-lint run --new-from-merge-base=origin/main ./... -> 0 issues
+# Note lint : une premiere tentative a rendu 7 sur une erreur de typage de `internal/ooz`
+# (paquet garde par CGO, exclu par CGO_ENABLED=0) — artefact d environnement, pas une issue.
+# Relance SANS CGO_ENABLED=0 : 0 issues, exit 0.
+#
+# Temoin DesyncAt (instrument du lot 0, 12 premiers chunks), AVANT puis APRES le port, 12 films :
+# aucun film ne recule, 7 progressent. 7344d24f 25016->25021 · 696a9d7c 24652->24653 ·
+# 01e1f945 29138->29140 · 64e8adfa 31934->31935 · 530820e5 26238->26241 · 53ce4390 28584->28586 ·
+# 000d5950 30058->30060 · 0a247154, 606d9844, 8076f97f, 24dbb67d, 06dfe6d9 inchanges.
+# Table figee de l instrument mise a jour pour 000d5950 et 64e8adfa, justification ecrite sur place.
+EXIT_WITNESS_AVANT=0          # 12 films, pic 17 Mo
+EXIT_WITNESS_APRES=0          # 12 films, pic 17 Mo
+#
+# Mesure d etat (C.0.2 + C.1b.3), un film par processus, avant-plan, plafond 3072 Mo surveille :
+EXIT_ETAT_7344d24f=0          # zone · 28,9 s · pic 19 Mo · PASS
+EXIT_ETAT_696a9d7c=0          # zone · 24,7 s · pic 19 Mo · PASS
+EXIT_ETAT_0a247154=0          # none · 21,2 s · pic 18 Mo · PASS
+EXIT_ETAT_01e1f945=0          # none · 12,0 s · pic 17 Mo · PASS
+EXIT_ETAT_606d9844=0          # none ·  6,1 s · pic 16 Mo · PASS
+EXIT_ETAT_8076f97f=0          # none · 15,0 s · pic 17 Mo · PASS
+# Plafond memoire jamais approche (19 Mo max sur 3072).
+#
+# VERDICT G-C1 : NON TENU sur les trois canaux, seuils ni rebaisses ni reinterpretes.
+#  (a) radial-progress : clause principale TENUE (95,8 % et 90,9 % des captures, seuil 80 %) ;
+#      temoin NON TENU (36,6 % et 28,6 %, seuil <= 20 %) alors que le HASARD mesure vaut 40-46 % ;
+#      clause KOTH NON TENUE (concurrence 1,8 a 100 %, seuil 90 %).
+#  (b) boundary-color : NON TENU sur la NATURE du canal — 996 quadruplets distincts contre 8.
+#  (c) rtpc : la valeur suit une progression (124 rampes), 2 identifiants couvrent 95,3 %.
+# C.0.2 : les 3 hypotheses (par joueur / par equipe / par etat) sont REFUTEES — 32 bits utiles,
+# 1 162 valeurs distinctes sur 1 347 records.
