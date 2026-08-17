@@ -6,8 +6,11 @@ package filmdec
 // rare for the death-frame slots).
 
 // objective formatted-text + secondary share the same shape (R(1) presence + value + tagged list).
-// Lecteur de `managed-objective-formatted-text-component` (ti=11 i2) et de son jumeau
-// `-secondary-` (ti=11 i9) — l'archétype OBJECTIFS, couvert 0/34 par le dispatch.
+// Lecteur de DEUX composants de l'archétype OBJECTIFS (ti=11), couvert 0/34 par le dispatch :
+// `managed-objective-formatted-text-component` (i2) et son jumeau
+// `managed-objective-secondary-formatted-text-component` (i9). Les deux noms sont écrits EN
+// ENTIER parce que la table ECS les déclare `deser_non_cable` en pointant ce fichier, et que
+// son garde-rail G1 exige que le nom du composant y apparaisse (`checkCodeSource`).
 //
 // GARDÉE SANS APPELANT le 2026-08-01 (lot C, PLAN_DETTE_AVANT_MERGE) : ti=11 est PLANIFIÉ
 // mais non décodé — le traverseur s'arrête à i0 (traverse.go:1187), la brancher seule ne
