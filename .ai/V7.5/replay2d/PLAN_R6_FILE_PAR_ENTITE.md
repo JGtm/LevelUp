@@ -248,6 +248,12 @@ par ecrit, le compte d'adresses distinctes en hausse.
       **949 paquets sur 951 films, `par type map[0:949]`, `par rang map[8:949]`**. Autrement
       dit : le tampon capture est le PREMIER PAQUET DELTA d'une session, et cette forme est
       universelle. Sortie exacte au journal §10.
+      **Le SECOND dump mesure aussi**, et il dit la meme chose : `kf_slot0_live.bin`
+      (7 286 o) — coincidence EXACTE **0** sur les 951 films, coincidence de PREFIXE
+      **949 paquets, `par type map[0:949]`, `par rang map[8:949]`**. Detail qui compte :
+      7 286 octets est EXACTEMENT la taille du premier paquet type-0 des deux films CTF
+      (`64e8adfa`, `530820e5`), sans qu'aucun ne coincide au contenu — la taille de ce
+      paquet est donc dictee par la CARTE et le MODE, pas par le match.
 - [x] 2.3 **C1 mesure — ECHOUE, largement.** `DecodeFrameRecords` sur le PREMIER paquet
       type-0, **30 combinaisons de cadre** probees par film (largeur d'id 10..14 x amorce
       0/1/2 x prologue de mode film present/absent), **6 films** :
@@ -547,13 +553,25 @@ CGO_ENABLED=0 KFQ_ROOT=<repo>/data/cache/film_chunks \
   --- PASS: TestKFQReconcile (550.00s)
 ```
 
-**Precision d'honnetete sur C0** : cette sortie a ete produite par l'instrument dans sa
-version A DEUX BALAYAGES (un par question). Le fichier a ensuite ete refactore en UN SEUL
-balayage (`FindPackets` + predicats `KFQEqual` / `KFQPrefix`) pour diviser le cout par deux ;
-les predicats sont identiques au caractere pres, et le refactor ne touche que la boucle de
-parcours. Une re-execution de confirmation sur le meme corpus a ete lancee et n'avait pas
-rendu au moment de la cloture — elle ne peut rien changer aux deux chiffres ci-dessus, mais
-c'est dit.
+**Confirmation de C0, executee.** La sortie ci-dessus vient de l'instrument dans sa version
+a DEUX balayages (un par question). Le fichier a ensuite ete refactore en UN SEUL balayage
+(`FindPackets` + predicats `KFQEqual` / `KFQPrefix`). La re-execution sur le MEME corpus
+avec la version refactoree rend **exactement les memes deux chiffres** (`0 paquet(s)` /
+`949 paquet(s) ; par type map[0:949] ; par rang map[8:949]`) et **le cout tombe de 550 s a
+219 s** — le refactor est donc verifie sur pieces, pas seulement plausible.
+
+Second dump, meme instrument, meme corpus :
+
+```
+CGO_ENABLED=0 KFQ_ROOT=<repo>/data/cache/film_chunks \
+  KFQ_DUMP=.ai/V7.5/dumps/kf_slot0_live.bin \
+  go test ./internal/analysis/filmdec/ -run '^TestKFQReconcile$' -timeout 30m -v
+
+  dump kf_slot0_live.bin : 7286 octets ; denominateur : 951 entrees
+  coincidence EXACTE : 0 paquet(s)
+  coincidence de PREFIXE (16 octets) : 949 paquet(s) ; par type map[0:949] ; par rang map[8:949]
+  --- PASS: TestKFQReconcile (1563.77s)
+```
 
 C1 / C2 / H4 — six films, 30 combinaisons de cadre chacun (tableau a l'item 2.3).
 Plafond de couverture **3,22 %** pour un seuil de 95 %. Le World pre-peuple par
