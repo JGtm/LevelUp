@@ -528,16 +528,16 @@ Exemple ferme : `0x143d0ce00` (`biped-action`) est reference par `0x144747368` (
 ## 2. Le layout d une vtable de descripteur de composant — UNIFORME sur 51/52
 
 ```
-+0x00  destructeur (stubs partages : 14117b4a0 / 141179610 / 1405f0ac0 / 14117e0e0 / 140c85020)
++0x00  getter d ID     (la boucle de lecture FUN_14076cb60 en prend le retour ; stubs partages)
 +0x08  getter de NOM               (per-composant, `lea rax,[rip+X]; ret`)
-+0x10  FUN_1404ab600 = `return false`
++0x10  PREDICAT DE FILTRE (FUN_1404ab600 = `return false`) : c est lui qui decale le masque
 +0x18  **SERIALISEUR (ECRITURE)**  (per-composant)
 +0x20  FUN_1411c8f80 = `int3`      (virtuelle pure ; exceptions : i1, i25)
 +0x28  thunk FUN_14076ce9c = `jmp [rax+0x30]`
 +0x30  **DESERIALISEUR (LECTURE)** (per-composant)
 +0x38  FUN_1408d8220 = `return 1`  /  FUN_1404ab600
 +0x40  FUN_141191ab0 = `*p = 0`
-+0x48  FUN_14076ced0 = zero 16 o en `rdx`, rend `rdx`
++0x48  BASELINE/PREDICAT (FUN_14076ced0 = zero 16 o en `rdx`) : appele par la boucle de lecture, 0 bit
 (+0x50 case supplementaire pour quelques classes : predicat de validation, 0 bit)
 ```
 
@@ -649,3 +649,29 @@ et sans index ni queue : **46 bits**, la ou le lecteur porte en consomme 117 en 
 Ceci CONTREDIT la decouverte n2 de R7-b (« en image-cle i0 prend le chemin brut, 117 bits,
 identiques sur trois cartes ») : ces 117 bits sont ce que le LECTEUR consomme, pas ce que
 l ECRIVAIN pose.
+
+### `i5 object-shield-vitality` — le port est CONFIRME (5e composant lu, hors perimetre initial)
+
+`vtable[0x18]` = `FUN_142f07d68` (`sub = etat + 0x30`) :
+
+```
+FUN_1406d22c0(w, ..., *(uint*)(sub+0x60), 0, DAT_143cd893c, 8, 0, 1)   W(8) quantifie
+FUN_1432073f4(sub + 0x6a, w) :
+    W(1) *(p+4) ; si non nul : 2 x FUN_141e78f88(p, w)   = la paire de regen
+W(16) *(short*)(sub + 100)
+4 x W(1)  (sub+0x66, puis trois autres)
+```
+
+Face a `decodeObjectShieldVitality` (`R(8)` ; `R(1)` regen puis 2 x [`R(1)` + `R(12)`] ; `R(16)` ;
+4 x `R(1)`) : identique, largeur pour largeur, y compris les QUATRE bits de queue. Aucune
+divergence.
+
+## 5. Bilan de lecture — 5 composants, UNE divergence
+
+| composant | ecrivain `vtable[0x18]` | verdict |
+|---|---|---|
+| `i0 object-position-dynamic-precision` | `FUN_14320678c` | **DIVERGE** (3 ecarts, cf. section 4) |
+| `i5 object-shield-vitality` | `FUN_142f07d68` | conforme |
+| `i9 object-multiplayer-properties` | `FUN_142f075d8` puis `FUN_1420ab570` | conforme (confirme la correction R7-b) |
+| `i60 simulation-state` | `FUN_142f04e2c` puis `FUN_142edd10c` | conforme |
+| `i63 biped-action` | `FUN_142f05144` puis `FUN_142f27a68` | conforme (et confirme la limite dure `count2`) |
