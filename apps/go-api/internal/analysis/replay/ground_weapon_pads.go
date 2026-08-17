@@ -208,11 +208,14 @@ func gwBuildPad(
 		}
 		picks = append(picks, PadPickup{TLow: low, THigh: high})
 	}
-	gaps, _ := gwPickupPadGaps(objs, members)
+	// `manques` VOYAGE AVEC LES ÉCARTS : ce sont les réapparitions dont la disparition
+	// précédente n'est pas datée, c'est-à-dire les écarts que ce socle offrait et que la mesure
+	// n'a pas pu prendre. Les jeter faisait lire « 2 écarts » comme « 2 sur 2 ».
+	gaps, manques := gwPickupPadGaps(objs, members)
 	if c := gwPadsCycleFromGaps(gaps); c.Established {
 		out.Cycle = &PadCycle{
 			MedianS: round2(float32(c.MedianS)), P10S: round2(float32(c.P10S)),
-			P90S: round2(float32(c.P90S)), Gaps: c.Gaps,
+			P90S: round2(float32(c.P90S)), Gaps: c.Gaps, Missing: manques,
 		}
 		cov.Cycles++
 	}

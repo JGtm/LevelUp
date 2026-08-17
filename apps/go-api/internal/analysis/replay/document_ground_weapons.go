@@ -64,9 +64,19 @@ type WeaponPad struct {
 	// Presence porte, pour chaque apparition, ce que le film permet d'affirmer de sa présence.
 	Presence []PadPresence `json:"presence"`
 	// Cycle est le délai de réapparition du socle, mesuré DEPUIS la disparition précédente.
-	// ABSENT (`null`) quand il n'est pas ÉTABLI — jamais un chiffre instable publié comme s'il
-	// était stable. C'est la décision 3 du plan, et elle coûte : 24 socles sur 57 seulement
-	// portent un cycle.
+	// La CLÉ EST ABSENTE quand le cycle n'est pas ÉTABLI — jamais un chiffre instable publié
+	// comme s'il était stable. C'est la décision 3 du plan, et elle coûte : 24 socles sur 57
+	// seulement portent un cycle.
+	//
+	// ABSENT, ET NON `null` : LE COMMENTAIRE DISAIT `null` JUSQU'AU 2026-08-17, ET C'ÉTAIT FAUX
+	// (correctif de revue). Le `null` de `PadPickup.XUID` se voit parce qu'un `*string` se décrit
+	// `["string", "null"]` au contrat ; un pointeur de STRUCT ne le peut pas — le générateur
+	// refuse la nullabilité sur un `$ref` (huma v2.39.1 : « nullable is not supported for field
+	// 'Cycle' which is type '#/components/schemas/PadCycle' », vérifié en régénérant). Retirer
+	// `omitempty` sans pouvoir dire `null` ferait promettre au contrat un objet TOUJOURS présent
+	// là où le Go en écrit un sur deux : un mensonge pire que celui qu'on corrige. La clé absente
+	// est donc la vérité publiée, et c'est elle que la note UI et le client doivent lire —
+	// `cycle == null` en TypeScript couvre les deux, `cycle?.medianS` aussi.
 	Cycle *PadCycle `json:"cycle,omitempty"`
 }
 
@@ -103,9 +113,18 @@ type PadCycle struct {
 	MedianS float32 `json:"medianS"`
 	P10S    float32 `json:"p10S"`
 	P90S    float32 `json:"p90S"`
-	// Gaps est le nombre d'écarts mesurés — le dénominateur. Un cycle n'est ÉTABLI qu'à partir
-	// de deux : un écart unique n'a pas d'écart-type, et rien ne dit qu'il se répète.
+	// Gaps est le nombre d'écarts MESURÉS. Un cycle n'est ÉTABLI qu'à partir de deux : un écart
+	// unique n'a pas d'écart-type, et rien ne dit qu'il se répète.
 	Gaps int `json:"gaps"`
+	// Missing est le nombre de réapparitions dont la disparition PRÉCÉDENTE n'est pas datée :
+	// autant d'écarts que le socle offrait et que la mesure n'a pas pu prendre.
+	//
+	// C'EST L'AUTRE MOITIÉ DU DÉNOMINATEUR (correctif de revue du 2026-08-17). Le calcul jetait
+	// ce compte, si bien qu'un cycle établi sur 2 écarts pour 8 occupations se lisait « 2 sur 2 »
+	// au lieu de « 2 sur 3 » : la même médiane, mais une confiance très différente. Sans
+	// `omitempty`, parce qu'un zéro DIT quelque chose : aucune occasion perdue, le cycle porte
+	// tout ce que le socle offrait.
+	Missing int `json:"missing"`
 }
 
 // PadPickup est une occupation de socle qui S'EST ACHEVÉE : le socle s'est vidé quelque part
