@@ -47,8 +47,6 @@ const (
 	statEntryIndexComp = 57
 	// statRoundMaskBits est la largeur du masque de manches d'un composant figee.
 	statRoundMaskBits = 32
-	// statDenseMaskBits est la largeur du masque dense de la forme gate=1.
-	statDenseMaskBits = 64
 )
 
 // finalizedValue est la valeur figee d'un compteur pour une manche donnee.

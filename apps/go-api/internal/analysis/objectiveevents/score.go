@@ -45,7 +45,59 @@ type ScorePoint struct {
 // entites de joueur l'emettent aussi, ou il vaut leur compte de captures. Ce que porte le
 // composant depend donc du mode — c'est une mesure, pas une supposition.
 func ScoreCurve(src FilmSource) []ScorePoint {
-	return keepMonotoneBySlot(collectComponent(StatRecords(src), modeScoreComp, false))
+	return ScoreCurveFrom(StatRecords(src))
+}
+
+// ScoreCurveFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce qui
+// evite de re-decoder le film a chaque courbe demandee.
+//
+// # Les manches (2026-08-18)
+//
+// Le score de mode repart de zero a chaque manche. La courbe rendue est le TOTAL DU MATCH :
+// chaque manche est filtree separement puis decalee du total des precedentes. Mesure sur les
+// 4 films Oddball du corpus : le score final passe de la seule manche 1 (100/78 sur `24dbb67d`)
+// au total (200/121), soit l'oracle, 4 fois sur 4.
+//
+// Sur un match a une seule manche, le resultat est identique a l'ancien (verifie par les tests
+// de verite terrain Strongholds et CTF).
+func ScoreCurveFrom(recs []StatRecord) []ScorePoint {
+	real := RealRounds(recs)
+	teams := cumulateRounds(rawSeriesByRound(recs, statSlotKey{modeScoreComp, sideA}, true), real)
+	players := cumulateRounds(rawSeriesByRound(recs, statSlotKey{modeScoreComp, sideA}, false), real)
+	var all []ScorePoint
+	for _, bySlot := range []map[int][]ScorePoint{teams, players} {
+		for _, pts := range bySlot {
+			all = append(all, pts...)
+		}
+	}
+	return keepMonotoneBySlot(all)
+}
+
+// ScoreRoundsFrom rend la courbe du score de mode PAR MANCHE : par slot, par manche, les
+// emissions retenues (valeurs propres a la manche, non cumulees). C'est la forme que publie
+// l'artefact de rejeu, ou chaque manche est une courbe distincte.
+func ScoreRoundsFrom(recs []StatRecord) map[int]map[int][]ScorePoint {
+	out := map[int]map[int][]ScorePoint{}
+	real := RealRounds(recs)
+	for _, teams := range []bool{true, false} {
+		for slot, byRound := range rawSeriesByRound(recs, statSlotKey{modeScoreComp, sideA}, teams) {
+			for round, pts := range byRound {
+				if !real[round] {
+					continue
+				}
+				sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+				kept := longestRun(pts, true)
+				if len(kept) == 0 {
+					continue
+				}
+				if out[slot] == nil {
+					out[slot] = map[int][]ScorePoint{}
+				}
+				out[slot][round] = kept
+			}
+		}
+	}
+	return out
 }
 
 // PersonalScoreCurve decode la progression du score PERSONNEL de chaque entite.

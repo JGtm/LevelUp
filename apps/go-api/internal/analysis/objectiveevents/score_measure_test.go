@@ -156,7 +156,9 @@ func framePacketCount(src FilmSource) int {
 // a cote du verdict pour que la convention reste verifiable ligne par ligne.
 func writeTeams(m *measureRows, recs []StatRecord, or oracleMatch) map[int]int64 {
 	raw := collectComponent(recs, modeScoreComp, false)
-	kept := keepMonotoneBySlot(raw)
+	// La courbe mesuree est celle de la PRODUCTION (manches cumulees), pas une re-implementation :
+	// l instrument doit juger le code livre, pas un double.
+	kept := ScoreCurveFrom(recs)
 	last := map[int]int64{}
 	emitters := 0
 	for _, slot := range []int{6, 8} {
