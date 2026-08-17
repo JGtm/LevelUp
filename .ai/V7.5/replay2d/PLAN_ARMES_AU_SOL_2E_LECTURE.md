@@ -211,6 +211,20 @@ de push. Lancement valide le 2026-08-17.
 
 _(vide au lancement)_
 
+## Branches utilisateur EN VOL a la date du lancement (a connaitre, ne pas toucher)
+
+- `wt/fusion-finale` (session utilisateur, 41 commits, inclut `wt/fusion-lots-go` + lignee R7
+  kf35/kfd/kfe/kfc) : modifie `traverse.go`, `components_*.go`, `keyframe_fullstate_loop.go`
+  (production filmdec, « polarite i9 corrigee »). Les lots de ce plan n'editent PAS ces fichiers.
+- `wt/poses-revue-fix` (session utilisateur, 6 commits du 17/08) : `7b5e36d18` « **t1 d'une pose
+  est une MISE AU REPOS, pas une disparition** » (`equipment_placements.go`), `370fb0ffb` les
+  cuissons hors ecran quittent `ReplayCanvas.tsx` (`useReplayStaticLayers.ts`, -160 lignes),
+  `projectiles.go` +17. **Consequence pour la phase 2** : la fin d'une vie d'objet au sol ne se lit
+  PAS au `t1` de sa piste de position (une arme posee ne bouge pas : sa piste s'arrete a la mise au
+  repos) — la disparition se lit a la RENAISSANCE du slot (changement de generation / record NEW
+  suivant sur le meme slot) ou a la derniere image-cle ou l'objet est vu, jamais au `t1`. La
+  decision 4 se lit avec cette correction (seuils inchanges).
+
 ## Journal du plan (avancement, source de verite pour la reprise)
 
 - 2026-08-17 — plan valide par l'utilisateur ; lancement de la phase 0 sur le worktree
