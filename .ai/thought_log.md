@@ -1,3 +1,38 @@
+## [2026-08-17] v7.5 rejeu 2D — pilotage : go utilisateur sur le handoff, planche republiee, plans item 4 et item 6 a jour
+
+**Statut** : Complete (lot de pilotage) — item 6 EN ATTENTE de la fusion utilisateur.
+**Decision technique principale** : l'utilisateur a donne le go sur le handoff du 18/08 (« go
+pour l'implem pilotee du plan »), puis demande de PATIENTER le temps que SA fusion soit finie.
+Verifie sur pieces avant tout lancement : ses branches en vol `wt/fusion-finale` (41 commits,
+inclut `wt/fusion-lots-go` + lignee R7, modifie `traverse.go`/`components_*`) et
+`wt/poses-revue-fix` (« t1 d'une pose = MISE AU REPOS, pas disparition » ; cuissons hors ecran
+sorties de `ReplayCanvas.tsx` vers `useReplayStaticLayers.ts`). Consequences : (1) l'item 6
+phase 0 n'est PAS lance tant que ces fusions ne sont pas posees sur `feat/v75` (elles se font
+sur le worktree principal, ou l'agent travaillerait) ; le brief est pret ; (2) le refactor
+`ReplayCanvas.tsx` n'est PAS lance — sa session l'a entame ; (3) la phase 2 de l'item 6 lira
+la disparition d'un objet au sol a la renaissance du slot / derniere image-cle, jamais au `t1`.
+Le plan item 6 est amende (chemins verifies, selection des films tranchee, catalogue de socles
+tranche, contrat + journal, branches en vol) et CORRIGE : `000d5950` est Cliffhanger, pas Bazaar
+(`CLE_USB_REJEU_2D.md` l. 70) — la refutation du 12/08 avait donc les bonnes largeurs sur ce
+film ; la phase 0.1 est une ligne de base multi-cartes, le levier est le default-state `ti=42`
+(phase 0.2). Le plan item 4 (`PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`) est ecrit sur un digest
+verifie de R4/R7 : porteur AVANT objet (`HeldWeapon` delta jamais publie ni mesure, loadouts
+d'images-cles), oracle = evenements CTF nommes par slot a la ms, colline KOTH par periode,
+Stockpile `[!]` corpus, lignee R7 ecartee comme voie (plafond 0,85 %).
+**Resultats observes** : planche de validation REGENEREE par un agent (recette reconstituee
+`assemble.cjs`, bundle rolldown de 20 modules canvas de production, 91 exports, 166,8 Ko ; 41
+sons re-encodes Opus 48 kb/s sans re-coupe ; 26 icones ; page 896 081 o ; cle localStorage
+inchangee ; 27 items = 6 nouveaux, 11 a rejuger, 2 gate en app, 8 inchanges ; fumee Playwright
+clair/sombre 0 erreur, 32 canvas peints — controle des couleurs distinctes ajoute) et republiee
+sur l'artefact existant `1b08c056-33bc-4563-96ee-7eeb52946979`. Liste des gates en une session :
+`replay2d/GATES_PLANCHE_2026-08-17.md` (A planche, B en app avec temoins verifies : `000d5950`
+schema 10 = mur/capteur/grappin/camo, `06dfe6d9` schema 10 = seul terrain traqueur/champ/`other`,
+`084a804d` schema 7 = INUTILISABLE pour poses/grappin ; C deux questions : frag 3,335 s ou 1,2 s ;
+mur en arc). Fusion `wt/fusion-lots-go` close (`d2e46eb5d`, lint `829e2a20d`).
+**Conclusion / prochaine etape** : au signal « fusion posee » de l'utilisateur -> item 6 phase 0
+(agent Opus, principal, brief `scratchpad/brief_item6_phase0.md`) ; ses verdicts de planche ->
+lots ; fenetre ops a caler avec lui.
+
 ## [2026-08-17] v7.5 rejeu 2D — fusion de wt/fusion-lots-go (lots R3-R6) dans feat/v75
 
 **Contexte** : les entrees datees [2026-08-18] situees plus bas dans ce journal ont ete ecrites
