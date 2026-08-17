@@ -171,6 +171,21 @@ export function colorBySlot(
   return indexBySlot(players, (p) => (p.xuid ? colorOf(isAlly(p.xuid)) : neutral))
 }
 
+/**
+ * sideBySlot — LE CAMP D'UNE VIE, celui de son propriétaire (`team_side`, comme `groupByTeam`).
+ *
+ * PAS LE DRAPEAU « allié », qui est relatif au joueur de la page et range tous les autres dans
+ * un seul camp — faux dès qu'il y a plus de deux équipes (mêlée générale, BTB à quatre camps).
+ * Ce que le capteur de menaces doit savoir, c'est si DEUX vies s'opposent ; `team_side` le dit.
+ *
+ * Sans ligne de scoreboard, une vie n'a PAS de camp (null) : ni alliée ni ennemie de personne,
+ * et rien ne l'affirmera à sa place. Chaîne vide = absence (le DTO l'écrit pour un camp non
+ * résolu).
+ */
+export function sideBySlot(players: readonly ReplayPlayer[]): Map<number, string | null> {
+  return indexBySlot(players, (p) => p.board?.team_side || null)
+}
+
 /** markBySlot redescend la marque d'identité (« moi », « ami ») du joueur sur ses vies. */
 export function markBySlot(
   players: readonly ReplayPlayer[],
