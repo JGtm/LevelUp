@@ -1,0 +1,57 @@
+﻿=== LOT B+P phase 0 - gates 2026-08-18 01:20 ===
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/filmdec	1.376s
+ok  	levelup/go-api/internal/analysis/replay	46.121s
+EXIT_TEST=0
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:1 : 574
++ ... gates.log"; golangci-lint run --new-from-merge-base=origin/main ./... ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+internal\analysis\replay\player_state_measure_test.go:443:1: File is not properly formatted (gofmt)
+		t.Logf("B.0.4 VERDICT · NEGATIF : denominateur nul d'un cote au moins — l'appariement "+
+^
+internal\analysis\filmdec\game_entities_scan.go:602:1: argument-limit: maximum number of arguments per function exceeded; max 7 but got 8 (revive)
+func (w *gameEntityWalk) walkRecord(
+	pay []byte, total int, rec WorldObjectRecord, class, chunk int,
+	pk FilmPacket, st *GameEntityStats, sc *GameEntityScan,
+) {
+internal\analysis\filmdec\game_entities_scan.go:304:14: QF1011: could omit type int from declaration; it will be inferred from the right-hand side (staticcheck)
+		var target int = -1
+		           ^
+internal\analysis\replay\player_state_measure_test.go:60:2: const psRespawnToleranceUS is unused (unused)
+	psRespawnToleranceUS = 1_000_000
+	^
+4 issues:
+* gofmt: 1
+* revive: 1
+* staticcheck: 1
+* unused: 1
+EXIT_LINT=1
+golangci-lint : Error: parallel golangci-lint is running
+Au caractère Ligne:1 : 574
++ ... gates.log"; golangci-lint run --new-from-merge-base=origin/main ./... ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: parallel golangci-lint is running:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The command is terminated due to an error: parallel golangci-lint is running
+EXIT_LINT=3
+0 issues.
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:1 : 574
++ ... gates.log"; golangci-lint run --new-from-merge-base=origin/main ./... ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+EXIT_LINT=0
+--- rejeu apres correctifs de lint ---
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/filmdec	4.257s
+ok  	levelup/go-api/internal/analysis/replay	45.758s
+EXIT_TEST=0
