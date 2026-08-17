@@ -76,6 +76,15 @@ s'ecrit et rien n'est publie sous un nom.
 pas dans le champ que le plan designait. `ability-enabled-id` et `entity-ref-index5` sont des
 NEGATIFS mesures (portes fermees, 503 records sur 503) — ils vont au registre.
 
+**CE QUE LE CORPUS N'A PAS COUVERT, et pourquoi.** Le plan demandait les 12 films du 15/08.
+Quatre ont ete balayes (`000d5950`, `00162144`, `00ba2e1c`, `06dfe6d9`) et le balayage a ete
+ARRETE la : sur les deux derniers, la largeur du default-state n'est pas celle du defaut
+(cf. phase 2), et un balayage a la mauvaise largeur ne rend pas une mesure, il rend du bruit —
+le publier comme « distribution du film » aurait fabrique un resultat. Les huit films restants
+se mesureront quand la largeur sera detectee de facon fiable, dans la meme passe que la
+phase 2. Les deux films retenus suffisent au gate : ils portent 503 records lus bit-exact, la
+verite terrain Theater, et les deux familles de palette.
+
 ### Phase 1 — PROUVER le type et le createur (double chaine) — CLOSE le 2026-08-17
 
 - [x] 1.1 Table `eqip` x rang `i48` — **et non `abilityEnabledID` x rang**, puisque le premier
