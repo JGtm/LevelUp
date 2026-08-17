@@ -74,6 +74,15 @@ func TestGroundWeaponCoverage(t *testing.T) {
 	if filmDir == "" {
 		t.Skipf("%s absent : instrument de mesure sauté", gwFilmEnv)
 	}
+	// UN SEUL DÉCODAGE filmdec PAR PROCESS, ET LES LARGEURS SE RESTAURENT. `gwWorldRange`
+	// installe les largeurs d'axe de la carte dans un global de paquet
+	// (`filmdec.WorldObjectPrecision`) : sans verrou ni restauration, un second test du même
+	// binaire déquantifierait aux largeurs du film précédent — le défaut même que le correctif
+	// du 2026-08-15 a mesuré sur la production.
+	release := filmdec.LockProcessDecode()
+	defer release()
+	prevPrec := filmdec.WorldObjectPrecision
+	t.Cleanup(func() { filmdec.WorldObjectPrecision = prevPrec })
 	known := loadoutFamilies()
 
 	// --- IDENTITÉ -----------------------------------------------------------------------
