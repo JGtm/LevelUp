@@ -1160,3 +1160,7 @@ porte pas l'arme du socle. **Le pont ne transforme donc pas un silence en accord
 silence en DESACCORD** — d'ou un plafond qui bouge a peine et un accord qui baisse. Le plafond des
 55,3 % / 71,2 % de la decouverte 10 n'etait pas un artefact du pont : c'est l'espacement de 20 s
 des images-cles, et la mort qui tient dedans.
+- 2026-08-17 — **item 2.5 CLOS `[!]`** (`5546046b0`, `2c0c79842`) : 79,7 % contre 90 %, le pont
+  n'est pas le plafond (l'espacement de 20 s des images-cles l'est) ; **ramasseur NON publiable
+  (`null`)**. Perimetre de la phase 3 inchange (arbitrage apres la phase 2) : **phase 3 LANCEE**
+  (agent Opus, principal) — `weaponPads` + `padPickups` sans ramasseur, schema 11.
