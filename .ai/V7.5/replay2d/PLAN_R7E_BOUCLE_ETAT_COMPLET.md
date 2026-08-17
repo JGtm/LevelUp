@@ -78,11 +78,11 @@ Deficit a combler (R7-b/R7-d) : longueur REELLE mediane 2 765 / 2 777 / 2 781 bi
       derriere une bascule. Reutiliser les deser existants et l'instrument R7-b/R7-d.
 - [x] 2.2 A/B a une seule variable, (a)..(e), 591 records, 3 films : % bit-exact, dispersion,
       histogramme des decrochages.
-- [ ] 2.3 Non-regression si un fichier PARTAGE est touche.
+- [x] 2.3 Non-regression si un fichier PARTAGE est touche.
 
 ### Phase 3 — Verdict
-- [ ] 3.1 Statuer C1/C2, chiffres et denominateurs.
-- [ ] 3.2 Lignes de registre + entree thought_log redigees (NON ecrites par ce lot).
+- [x] 3.1 Statuer C1/C2, chiffres et denominateurs.
+- [x] 3.2 Lignes de registre + entree thought_log redigees (NON ecrites par ce lot).
 
 ## 6. Gates — commandes exactes, a chaque cloture de phase
 
