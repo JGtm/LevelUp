@@ -73,7 +73,7 @@ func TestGroundWeaponPadsAggregate(t *testing.T) {
 		for _, f := range films {
 			sel := gwPadsSelect(byFilm[f], set)
 			clusters, _ := gwPadsClusterAssign(sel)
-			socles[f], _ = gwPadsKeep(clusters, gwPadMinHits)
+			socles[f], _ = gwPadsKeep(clusters)
 			t.Logf("JEU %s · film %s · carte %s · apparitions %d · candidates %d · SOCLES %d",
 				set, f, mapOf[f], len(byFilm[f]), len(sel), len(socles[f]))
 		}
