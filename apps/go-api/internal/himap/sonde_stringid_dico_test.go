@@ -48,7 +48,7 @@ var dicoJetons = []string{
 	"translocator", "translocate", "translocation", "quantum", "teleport", "teleporter",
 	"portal", "warp", "beacon", "marker", "recall", "blink", "phase", "tunnel", "anchor",
 	"threat", "seeker", "sensor", "threatsensor", "tracker", "track", "radar", "detect",
-	"detector", "detection", "location", "locator", "scanner", "scan", "motion", "reveal",
+	"detector", "detection", "location", "locator", "scanner", "motion", "reveal",
 	"repair", "field", "heal", "healing", "regen", "regeneration", "medic", "revive",
 	"grapple", "hook", "grappleshot", "hookshot", "swing", "zipline", "grapplehook",
 	"evade", "thruster", "thrust", "dash", "dodge", "boost", "slide", "dive", "jump",
