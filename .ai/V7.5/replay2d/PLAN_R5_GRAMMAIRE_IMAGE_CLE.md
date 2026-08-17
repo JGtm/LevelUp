@@ -10,6 +10,16 @@
 > Execution sous le contrat du skill `plan-execution` (ordre strict, un item = un statut,
 > zero fix hors perimetre, zero report d'une etape executable).
 
+> **AMENDEMENT A LA FUSION (2026-08-17, `wt/fusion-lots-go`)** — l'item 3.1 de ce plan
+> (« Etat par defaut de `ti=42` PORTE ET INSCRIT ») a ete DEFAIT au moment de la fusion, sur
+> decision superviseur : `filmdec/default_state_ti42.go` et la ligne `42:` de
+> `defaultStateDeserByTI` ne sont PAS dans la branche d'integration. Motif : aucun oracle ne
+> valide ce port, et une entree fausse decale le decodage de TOUS les records `ti=42` sans
+> qu'aucune mesure ne le dise. La grammaire, elle, est conservee — elle fait foi dans
+> `../killweapon/WALK_PORT_NOTES.md` § IMAGE-CLE §4, et sa condition de rebranchement est au
+> registre (`../REGISTRE_REPORTS.md`). Tout ce que ce plan dit du port en Go (items 3.1, §6bis,
+> §10, ligne de registre §11) est donc PERIME sur ce point ; le reste du plan tient.
+
 ---
 
 ## 1. Objectif et critere de succes

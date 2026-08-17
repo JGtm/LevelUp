@@ -255,6 +255,18 @@ sinon         : n = R(4)                      (FUN_1424e1d48, `+4` inline)
 pointent le stub `0x1408d8220` (`return 1`, 0 bit) ; `+0x60` = `0x1407f0c68` (ci-dessus) ;
 `+0x88` = `0x140ea3ef4` (masque par defaut, 0 bit).
 
+
+**ETAT DU PORT (2026-08-17, fusion `wt/fusion-lots-go`)** : cette grammaire n'est PAS branchee
+dans le decodeur Go. Le port `default_state_ti42.go` + son entree `42:` dans
+`defaultStateDeserByTI` ont ete ECRITS par le lot R5 puis RETIRES a la fusion, sur decision
+superviseur : aucun oracle ne les valide, et une entree fausse decalerait le decodage de TOUS
+les records `ti=42` sans qu'aucune mesure ne le dise. **C'est ce paragraphe qui fait foi** —
+la reprise repart d'ici. Conditions pour rebrancher, au registre : un oracle de position d'arme
+au sol (ramassage), ou une calibration a la maniere des poses `ti=37` (`CalibrateMPPWidths`).
+Point d'attention : `FUN_1407f2494` avait deja ete porte puis supprime le 2026-07-26 comme
+doublon de `consumeWeaponMagazineList` (cf. `unit_weaponstate.go`) — le rebrancher demande de
+trancher ce doublon.
+
 ## 5. Ce qui reste NON resolu apres cette passe, et il faut le dire
 
 - Le CONSOMMATEUR du payload type-2 du film (celui qui lit l'en-tete `[id:32][field:26][ti:6]`)
