@@ -82,7 +82,13 @@ func goldenInputsPath() string {
 // CALIBRATION du bloc de replication mesuree sur ce film. La calibration en fait partie parce
 // que l assemblage la PUBLIE : sans elle, une liste vide de poses serait indistinguable d un
 // film sans equipement, alors que ce peut etre un film dont la largeur n a pas ete tranchee.
-const goldenInputsMagic = "REPLAYINPUTS6\n"
+//
+// v7 (2026-08-17, PLAN_ARMES_AU_SOL_2E_LECTURE phase 3) : le fixture porte les ARMES AU SOL —
+// records de creation ti=42 (position i0 et identite MPP), RECENSEMENT des images-cles qui
+// borne les disparitions, et pistes de position qui disent si l objet a bouge. LES TROIS
+// ENSEMBLE, parce qu il en manque une et le calque ment : sans les pistes, toute apparition
+// passerait pour un objet apparu au repos, donc pour un socle.
+const goldenInputsMagic = "REPLAYINPUTS7\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -135,8 +141,12 @@ type goldenInputs struct {
 	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
-	Deaths         []Death
-	Indices        PlayerIndexTable
+	// GroundWeapons : ce que le film rend sur les ARMES AU SOL (creations ti=42, recensement
+	// des images-cles, pistes de position). MEME raison que les precedents : l assemblage en
+	// fait le calque des socles du schema 11.
+	GroundWeapons GroundWeaponScan
+	Deaths        []Death
+	Indices       PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
 	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
 	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
@@ -157,6 +167,7 @@ func (g *goldenInputs) options() Options {
 		GrappleReads:      g.GrappleReads,
 		Placements:        g.Placements,
 		PlacementStats:    g.PlacementStats,
+		GroundWeapons:     g.GroundWeapons,
 		Deaths:            g.Deaths,
 		PlayerIndices:     g.Indices,
 		FilmClockOriginUS: g.ClockOriginUS,
@@ -375,24 +386,7 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		w.u(uint64(t.TypeID))
 	}
 
-	w.u(uint64(len(g.Projectiles)))
-	for _, tr := range g.Projectiles {
-		w.u(uint64(tr.Slot))
-		w.u(uint64(tr.Gen))
-		w.u(uint64(len(tr.Pts)))
-		var pts uint64
-		var prev [3]int64
-		for _, s := range tr.Pts {
-			w.u(s.TimestampUS - pts)
-			pts = s.TimestampUS
-			cur := [3]int64{cmOf(s.X), cmOf(s.Y), cmOf(s.Z)}
-			for a := 0; a < 3; a++ {
-				w.i(cur[a] - prev[a])
-			}
-			prev = cur
-			w.bool8(s.AtRest)
-		}
-	}
+	encodeTracks(w, g.Projectiles)
 
 	w.u(uint64(len(g.Inventory)))
 	for _, inv := range g.Inventory {
@@ -465,6 +459,8 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 	w.u(uint64(g.PlacementStats.Accepted))
 	w.u(uint64(g.PlacementStats.Confirmed))
 
+	encodeGroundWeapons(w, g.GroundWeapons)
+
 	w.u(uint64(len(g.Deaths)))
 	for _, d := range g.Deaths {
 		w.u(d.XUID)
@@ -485,6 +481,156 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		w.i(int64(g.Indices.ByXUID[x]))
 	}
 	return w.b
+}
+
+// encodeTracks / decodeTracks serialisent une liste de pistes d objet du monde (positions
+// delta-codees au centimetre, comme tout le reste du fixture).
+//
+// ELLES SONT EXTRAITES PARCE QUE DEUX LISTES LES EMPRUNTENT : les trajectoires de projectile
+// (schema 3) et les pistes d armes au sol (schema 11, qui disent si un objet a BOUGE). Une
+// seconde copie du codec aurait diverge au premier champ ajoute, et un fixture qui se relit de
+// travers rend des chiffres plausibles — c est le pire des defauts pour un golden.
+func encodeTracks(w *gwriter, tracks []filmdec.ProjectileTrack) {
+	w.u(uint64(len(tracks)))
+	for _, tr := range tracks {
+		w.u(uint64(tr.Slot))
+		w.u(uint64(tr.Gen))
+		w.u(uint64(len(tr.Pts)))
+		var pts uint64
+		var prev [3]int64
+		for _, s := range tr.Pts {
+			w.u(s.TimestampUS - pts)
+			pts = s.TimestampUS
+			cur := [3]int64{cmOf(s.X), cmOf(s.Y), cmOf(s.Z)}
+			for a := 0; a < 3; a++ {
+				w.i(cur[a] - prev[a])
+			}
+			prev = cur
+			w.bool8(s.AtRest)
+		}
+	}
+}
+
+func decodeTracks(r *greader) []filmdec.ProjectileTrack {
+	n := int(r.u())
+	out := make([]filmdec.ProjectileTrack, 0, n)
+	for k := 0; k < n && r.err == nil; k++ {
+		tr := filmdec.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		np := int(r.u())
+		var ts uint64
+		var prev [3]int64
+		for j := 0; j < np && r.err == nil; j++ {
+			ts += r.u()
+			var cur [3]int64
+			for a := 0; a < 3; a++ {
+				cur[a] = prev[a] + r.i()
+			}
+			prev = cur
+			tr.Pts = append(tr.Pts, filmdec.ProjectileSample{
+				TimestampUS: ts, X: fromCM(cur[0]), Y: fromCM(cur[1]), Z: fromCM(cur[2]),
+				AtRest: r.bool8(),
+			})
+		}
+		out = append(out, tr)
+	}
+	return out
+}
+
+// encodeGroundWeapons / decodeGroundWeapons serialisent ce que le film rend sur les ARMES AU
+// SOL : les records de CREATION (position i0, instant, identite MPP), le RECENSEMENT des
+// images-cles qui borne les disparitions, et les pistes de position qui disent si l objet a
+// bouge.
+//
+// LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est deliberé : l assemblage ne la lit pas (elle
+// sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME,
+// pas ce que le decodage a traverse.
+func encodeGroundWeapons(w *gwriter, s GroundWeaponScan) {
+	w.bool8(s.Scanned)
+	w.u(uint64(len(s.Creations)))
+	var lastTS uint64
+	for _, c := range s.Creations {
+		w.u(c.TimestampUS - lastTS) // les creations sortent du balayage dans l ordre du film
+		lastTS = c.TimestampUS
+		w.u(uint64(c.Slot))
+		w.u(uint64(c.Gen))
+		w.f32(c.X)
+		w.f32(c.Y)
+		w.f32(c.Z)
+		w.bool8(c.MPPPresent[filmdec.MPPWord32])
+		w.u(c.MPPVal[filmdec.MPPWord32])
+	}
+	w.u(uint64(s.Stats.Slots))
+	w.u(uint64(s.Stats.Anchors))
+	w.u(uint64(s.Stats.Accepted))
+	w.u(uint64(len(s.Keyframes.TimesUS)))
+	lastTS = 0
+	for _, t := range s.Keyframes.TimesUS {
+		w.u(t - lastTS)
+		lastTS = t
+	}
+	// L ORDRE DES CLES EST RENDU TOTAL : une map Go s itere au hasard, et un fixture dont les
+	// octets changent a chaque regeneration n est plus un fixture.
+	keys := make([]filmdec.EquipmentLifeKey, 0, len(s.Keyframes.SeenUS))
+	for k := range s.Keyframes.SeenUS {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].Slot != keys[j].Slot {
+			return keys[i].Slot < keys[j].Slot
+		}
+		return keys[i].Gen < keys[j].Gen
+	})
+	w.u(uint64(len(keys)))
+	for _, k := range keys {
+		w.u(uint64(k.Slot))
+		w.u(uint64(k.Gen))
+		seen := s.Keyframes.SeenUS[k]
+		w.u(uint64(len(seen)))
+		lastTS = 0
+		for _, t := range seen {
+			w.u(t - lastTS)
+			lastTS = t
+		}
+	}
+	encodeTracks(w, s.Tracks)
+}
+
+func decodeGroundWeapons(r *greader) GroundWeaponScan {
+	s := GroundWeaponScan{Scanned: r.bool8()}
+	n := int(r.u())
+	s.Creations = make([]filmdec.EquipmentCreation, 0, n)
+	var lastTS uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		c := filmdec.EquipmentCreation{TimestampUS: lastTS, Slot: uint32(r.u()), Gen: uint32(r.u())}
+		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
+		c.MPPPresent[filmdec.MPPWord32] = r.bool8()
+		c.MPPVal[filmdec.MPPWord32] = r.u()
+		s.Creations = append(s.Creations, c)
+	}
+	s.Stats.Slots, s.Stats.Anchors, s.Stats.Accepted = int(r.u()), int(r.u()), int(r.u())
+	n = int(r.u())
+	s.Keyframes.TimesUS = make([]uint64, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		s.Keyframes.TimesUS = append(s.Keyframes.TimesUS, lastTS)
+	}
+	n = int(r.u())
+	s.Keyframes.SeenUS = make(map[filmdec.EquipmentLifeKey][]uint64, n)
+	for k := 0; k < n && r.err == nil; k++ {
+		key := filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		np := int(r.u())
+		seen := make([]uint64, 0, np)
+		lastTS = 0
+		for j := 0; j < np && r.err == nil; j++ {
+			lastTS += r.u()
+			seen = append(seen, lastTS)
+		}
+		s.Keyframes.SeenUS[key] = seen
+	}
+	s.Tracks = decodeTracks(r)
+	return s
 }
 
 // encodeAmmo serialise un emplacement de munitions. LES TROIS CAS SONT DISTINCTS (chargeur,
@@ -621,27 +767,7 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		})
 	}
 
-	n = int(r.u())
-	g.Projectiles = make([]filmdec.ProjectileTrack, 0, n)
-	for k := 0; k < n && r.err == nil; k++ {
-		tr := filmdec.ProjectileTrack{Slot: uint32(r.u()), Gen: uint32(r.u())}
-		np := int(r.u())
-		var ts uint64
-		var prev [3]int64
-		for j := 0; j < np && r.err == nil; j++ {
-			ts += r.u()
-			var cur [3]int64
-			for a := 0; a < 3; a++ {
-				cur[a] = prev[a] + r.i()
-			}
-			prev = cur
-			tr.Pts = append(tr.Pts, filmdec.ProjectileSample{
-				TimestampUS: ts, X: fromCM(cur[0]), Y: fromCM(cur[1]), Z: fromCM(cur[2]),
-				AtRest: r.bool8(),
-			})
-		}
-		g.Projectiles = append(g.Projectiles, tr)
-	}
+	g.Projectiles = decodeTracks(r)
 
 	n = int(r.u())
 	g.Inventory = make([]KeyframeInventory, 0, n)
@@ -710,6 +836,8 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	g.PlacementStats.Accepted = int(r.u())
 	g.PlacementStats.Confirmed = int(r.u())
 	g.PlacementStats.Placements = len(g.Placements)
+
+	g.GroundWeapons = decodeGroundWeapons(r)
 
 	n = int(r.u())
 	g.Deaths = make([]Death, 0, n)
@@ -877,6 +1005,9 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	if g.Placements, g.PlacementStats, err = filmdec.ScanFilmEquipmentPlacements(dir, &wr); err != nil {
 		return nil, err
 	}
+	// Les armes au sol passent par LA MEME fonction que BuildFromFilm : le fixture porte ce que
+	// la production decode, pas une variante de lecture.
+	g.GroundWeapons = decodeFilmGroundWeapons(dir, &wr)
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
 		return nil, err
 	}
