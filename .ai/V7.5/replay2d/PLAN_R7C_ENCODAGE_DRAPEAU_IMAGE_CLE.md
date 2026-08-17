@@ -77,13 +77,13 @@ completer) : `PositionDeltaHasHandleTail` (descripteur runtime `precIndex != -1`
 
 ### Phase 1 — LIRE : la table des branches par CONTEXTE
 
-- [ ] 1.1 Extraire des sources `filmdec` la liste des adresses EXE des deser du bipede et de
+- [x] 1.1 Extraire des sources `filmdec` la liste des adresses EXE des deser du bipede et de
       leurs lecteurs de valeurs, decompiler chacune (Ghidra lecture seule, cache local).
-- [ ] 1.2 Pour chacune, relever toute branche conditionnee par un OCTET ou CHAMP DE CONTEXTE
+- [x] 1.2 Pour chacune, relever toute branche conditionnee par un OCTET ou CHAMP DE CONTEXTE
       (global `DAT_`, predicat sans argument, champ d'un parametre qui n'est pas le reader) —
       PAS par un bit du flux : adresse, offset/global, valeurs, encodage de chaque cote.
       Cible prioritaire : position, vitals, munitions, statlines, et la famille `FUN_1406cf008`.
-- [ ] 1.3 Consigner la table dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md`, section neuve
+- [x] 1.3 Consigner la table dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md`, section neuve
       « image-cle — drapeau d'encodage ».
 
 ### Phase 2 — PORTER et MESURER
@@ -151,3 +151,23 @@ repond), quatre lecteurs de valeurs relus ligne a ligne, et UN drapeau de contex
 `FUN_14076f91c`, predicat sans argument sur `DAT_144e61ea0` / `DAT_145121140`, qui bascule le
 lecteur de position entre vec3 QUANTIFIE et vec3 BRUT 96 bits. Le port Go ne le consulte que sur
 sa branche delta. La phase 1 part de la.
+
+**2026-08-17 — Phase 1 CLOSE. Le drapeau existe, il y en a DEUX, et le port en confond un.**
+
+407 fonctions decompilees et balayees. Resultats, table complete dans
+`.ai/V7.5/killweapon/WALK_PORT_NOTES.md` section « IMAGE-CLE — LE DRAPEAU D'ENCODAGE » :
+
+1. **`DAT_144e61ea0` est une PORTEE, pas un reglage** : les huit lecteurs d'etat complet du
+   groupe `142e2*`/`142e3*` le levent a 1 juste avant l'appel `vtable[0x60]` (etat par
+   defaut) et le remettent a 0 juste apres. Pendant cette portee, `FUN_14076f91c()` est VRAI
+   et **six lecteurs de position passent du quantifie au BRUT 96 bits**.
+2. **`DAT_145121140` est un SECOND drapeau, distinct**, de configuration process. Il garde
+   `i49` (R(2) -> R(4)), `i2 forward-and-up` (autre lecteur) et le bloc MPP. Le port Go les
+   confond tous les deux sous `PositionFullPrecision` — c'est une faute de modele : sous la
+   portee baseline seule, `i49` NE bouge PAS.
+3. **Aucun drapeau dans les primitives** : `FUN_1406cf008` et `FUN_140c18a1c` ne lisent que
+   l'etat du lecteur. Le « varint a continuation » annonce par le RE externe n'a aucune trace
+   dans le selecteur 2 bits, qui est inconditionnel.
+4. **Un ECART DE PORT etabli** : `FUN_1411b259c` = `FUN_1406d676c(...,0x60)` = **R(96)**, et
+   TROIS sites Go le traitent comme 0 bit (`consumeAbsoluteWithGate`, `consumeFlockPosition`,
+   `consumeE494Position`). Seule la queue d'`i60` portee en R7-b lit les 96 bits.
