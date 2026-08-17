@@ -184,8 +184,7 @@ func gwPickupResolve(
 		o.Status = gwPickupStatusNever
 		return
 	}
-	o.Picker = gwPickupNearestPass(o.Pos, o.Bounds.LowUS, o.Bounds.HighUS, in.positions,
-		originDropMaxDist)
+	o.Picker = gwPickupNearestPass(o.Pos, o.Bounds.LowUS, o.Bounds.HighUS, in.positions)
 	o.Status = gwPickupStatusUnknown
 	if o.Picker.Found {
 		o.Status = gwPickupStatusDated

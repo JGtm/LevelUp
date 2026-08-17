@@ -116,14 +116,14 @@ func TestGwPickupPremierPassageEtPasLePlusProche(t *testing.T) {
 		{Slot: 3, TimestampUS: 200, X: 1.2, HasWorld: true},
 		{Slot: 5, TimestampUS: 300, X: 0.1, HasWorld: true},
 	}
-	got := gwPickupNearestPass(pos, 0, 400, s, originDropMaxDist)
+	got := gwPickupNearestPass(pos, 0, 400, s)
 	if !got.Found || got.Slot != 3 || got.TUS != 200 {
 		t.Fatalf("le PREMIER passage sous 1,5 m (slot 3 a t=200) attendu : %+v", got)
 	}
-	if hors := gwPickupNearestPass(pos, 250, 400, s, originDropMaxDist); hors.Slot != 5 {
+	if hors := gwPickupNearestPass(pos, 250, 400, s); hors.Slot != 5 {
 		t.Fatalf("hors fenetre, le passage suivant devient le premier : %+v", hors)
 	}
-	if vide := gwPickupNearestPass(pos, 0, 150, s, originDropMaxDist); vide.Found {
+	if vide := gwPickupNearestPass(pos, 0, 150, s); vide.Found {
 		t.Fatalf("aucun passage sous 1,5 m dans la fenetre : %+v", vide)
 	}
 }

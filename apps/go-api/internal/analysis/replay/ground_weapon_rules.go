@@ -118,8 +118,11 @@ type gwPadCycle struct {
 // d'arène deux socles voisins peuvent être à deux mètres l'un de l'autre, et le premier trouvé
 // les fusionnerait selon l'ordre d'arrivée. L'ordre d'entrée est rendu TOTAL avant la marche
 // (instant, puis position) pour que deux exécutions rendent les mêmes grappes.
-func gwPadsCluster(app []gwPadApparition, radiusM float64) []gwPadCluster {
-	out, _ := gwPadsClusterAssign(app, radiusM)
+//
+// LE RAYON N'EST PAS UN PARAMÈTRE : c'est le seuil du plan (`gwPadRadiusM`), écrit avant la
+// mesure et jamais varié. Le passer d'appelant en appelant laissait croire qu'il se règle.
+func gwPadsCluster(app []gwPadApparition) []gwPadCluster {
+	out, _ := gwPadsClusterAssign(app)
 	return out
 }
 
@@ -130,7 +133,7 @@ func gwPadsCluster(app []gwPadApparition, radiusM float64) []gwPadCluster {
 // socle, quel objet est apparu et quand il a disparu. Retrouver la grappe d'une apparition après
 // coup en comparant sa position au centroïde serait une SECONDE règle de grappe, qui divergerait
 // de celle-ci au premier correctif.
-func gwPadsClusterAssign(app []gwPadApparition, radiusM float64) ([]gwPadCluster, []int) {
+func gwPadsClusterAssign(app []gwPadApparition) ([]gwPadCluster, []int) {
 	ord := make([]int, len(app))
 	for i := range ord {
 		ord[i] = i
@@ -146,7 +149,7 @@ func gwPadsClusterAssign(app []gwPadApparition, radiusM float64) ([]gwPadCluster
 				continue
 			}
 			d := gwPadsDist(out[i].X, out[i].Y, out[i].Z, a.X, a.Y, a.Z)
-			if d <= radiusM && d < bestD {
+			if d <= gwPadRadiusM && d < bestD {
 				best, bestD = i, d
 			}
 		}
@@ -446,18 +449,23 @@ type gwPickupHit struct {
 	Found bool
 }
 
-// gwPickupNearestPass rend le PREMIER passage d'un bipède à moins de `maxDistM` de `pos` dans la
-// fenêtre [lowUS, highUS]. `samples` doit être TRIÉ par instant.
+// gwPickupNearestPass rend le PREMIER passage d'un bipède à moins d'`originDropMaxDist` de `pos`
+// dans la fenêtre [lowUS, highUS]. `samples` doit être TRIÉ par instant.
 //
 // « LE PREMIER », PAS « LE PLUS PROCHE » : le plan tranche l'ambiguïté dans ce sens (phase 2.1
 // amendée — « si plusieurs : le premier »). À instant égal, le plus proche l'emporte, puis le
 // slot le plus bas : sans ces deux départages, deux exécutions rendraient deux ramasseurs.
 //
+// LE SEUIL N'EST PAS UN PARAMÈTRE, même raison que le rayon de grappe : 1,5 m est la constante
+// de production de la règle du lâcher (`originDropMaxDist`), et cette règle-ci en est le MIROIR
+// — un objet naît là où son porteur meurt, il disparaît là où un joueur passe. Les deux doivent
+// bouger ensemble ou pas du tout.
+//
 // LA DISTANCE RENDUE N'EST PAS UNE MESURE (découverte 9 du plan) : c'est celle à laquelle le
 // seuil est franchi, et elle vaut mécaniquement 1,46 à 1,50 m sur tous les sous-ensembles. Elle
 // ne se publie pas.
 func gwPickupNearestPass(
-	pos [3]float32, lowUS, highUS uint64, samples []filmdec.BipedPosition, maxDistM float64,
+	pos [3]float32, lowUS, highUS uint64, samples []filmdec.BipedPosition,
 ) gwPickupHit {
 	var out gwPickupHit
 	i := sort.Search(len(samples), func(i int) bool { return samples[i].TimestampUS >= lowUS })
@@ -470,7 +478,7 @@ func gwPickupNearestPass(
 			continue
 		}
 		d := gwPadsDist(pos[0], pos[1], pos[2], p.X, p.Y, p.Z)
-		if d >= maxDistM {
+		if d >= originDropMaxDist {
 			continue
 		}
 		if !out.Found || p.TimestampUS < out.TUS ||

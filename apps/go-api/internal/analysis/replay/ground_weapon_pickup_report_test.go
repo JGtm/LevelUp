@@ -135,7 +135,7 @@ func gwPickupWitnessWindow(f *gwPickupFilm, o gwPickupObject) (bool, bool) {
 		return false, false
 	}
 	start := o.Appar.TUS + uint64(f.rng.Int63n(int64(o.Bounds.LowUS-o.Appar.TUS-w)))
-	return gwPickupNearestPass(o.Pos, start, start+w, f.positions, originDropMaxDist).Found, true
+	return gwPickupNearestPass(o.Pos, start, start+w, f.positions).Found, true
 }
 
 // gwPickupOracleTally compte l'oracle des loadouts sur un sous-ensemble de ramassages.
@@ -319,7 +319,7 @@ func gwPickupReport24(t *testing.T, f *gwPickupFilm, objs []gwPickupObject) {
 			sel, src = append(sel, o.Appar), append(src, i)
 		}
 	}
-	pads, assign := gwPadsClusterAssign(sel, gwPadRadiusM)
+	pads, assign := gwPadsClusterAssign(sel)
 	members := map[int][]int{}
 	for j := range sel {
 		members[assign[j]] = append(members[assign[j]], src[j])
