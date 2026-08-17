@@ -511,6 +511,143 @@ decrochage de l'image-cle (25 % des franchissements de frontiere, R7-a). La sema
 Corrige le 2026-08-17 dans `components_batch7.go`.
 
 ---
+
+# IMAGE-CLE — LE DRAPEAU D'ENCODAGE (lot R7-c, 2026-08-17)
+
+> Ghidra PID 10104, **LECTURE SEULE**, API HTTP du plugin (`GET
+> http://127.0.0.1:8089/decompile_function?address=0x...` et `/get_xrefs_to?address=...` ;
+> le POST JSON et le parametre `name` sont refuses). 407 fonctions du paquet `filmdec`
+> decompilees et balayees automatiquement.
+
+## 1. La question, et la reponse
+
+R7-b laisse un residu DISPERSE (0,54 % bit-exact, p10 46 bits, p50 ~500, p90 quatre ordres de
+grandeur). La question du lot : les lecteurs de valeurs testent-ils un DRAPEAU DE CONTEXTE
+(pas un bit du flux) qui bascule l'encodage ? **OUI, et il y en a DEUX.**
+
+| drapeau | nature | qui l'ecrit | qui le lit |
+|---|---|---|---|
+| `DAT_144e61ea0` | **portee BASELINE** : leve a 1 juste AVANT l'appel d'etat complet, remis a 0 juste APRES | 8 fonctions du groupe `142e2*` / `142e3*` (`FUN_142e2bfd0`, `142e2c690`, `142e2d08c`, `142e2d6d4`, `142e309b4`, `142e30b9c`, `142e31a0c`, `142e31bf8`) | `FUN_14076f91c` (et le groupe `141dc*`/`141dd*`, cote ECRITURE) |
+| `DAT_145121140` | configuration « replication haute precision » du process | `FUN_140a93ec8`, `FUN_142b5c658` | `FUN_14076f91c`, `FUN_14107166c` (i49), `FUN_140c5f938` (i2), `FUN_14080cfe8` (MPP), `FUN_141dcc4a0` |
+
+Le predicat qui les REUNIT est `FUN_14076f91c` (sans argument, 0 bit) :
+
+```
+FUN_14076f91c() = (DAT_144e61ea0 != 0) || (DAT_145121140 == 1)
+```
+
+Preuve de la portee baseline, `FUN_142e2bfd0` (lecteur d'un payload d'etat complet) :
+
+```
+DAT_144e61ea0 = 1;
+cVar5 = (**(code **)(*plVar2 + 0x60))(plVar2, id, dst, reader, 0);   // vtable[0x60] = ETAT PAR DEFAUT
+if (cVar4 != '\0') { R(32) }                                        // corruption-check du mode film
+DAT_144e61ea0 = 0;
+```
+
+C'est-a-dire : **pendant toute la lecture d'un etat complet, tous les lecteurs de position du
+moteur basculent en PLEINE PRECISION.** Le drapeau n'est pas un reglage : c'est une PORTEE.
+
+## 2. La table des branches par contexte — ce qui change, et de combien
+
+| lecteur (EXE) | composant | condition | encodage FAUX (delta) | encodage VRAI (baseline) |
+|---|---|---|---|---|
+| `FUN_1406cfe44` @ branche ABSOLUE | `i0 object-position-dynamic-precision` | `FUN_14076f91c()` | `FUN_14076e524` = R(1) porte d'index [+R(IndexW)] + 3xR(axisW) | `FUN_1411b259c` = `FUN_1406d676c(...,0x60)` = **R(96) brut** |
+| `FUN_1406cfe44` @ branche DELTA | `i0` | `FUN_14076f91c()` | `FUN_14076f3ec` delta predit | `FUN_1406d676c(...,0x60)` = **R(96) brut** |
+| `FUN_14076e494` | queue de `i60 simulation-state` (partagee avec `i57`) | `FUN_14076f91c()` | `FUN_14076e524` (niveau 0x10) | **R(96) brut** |
+| `FUN_14076e4ec` | epine absolue partagee | `FUN_14076f91c()` | `FUN_14076e524` | **R(96) brut** |
+| `FUN_1408f02c8` | corps de `i54 biped-mobility-action` | `FUN_14076f91c()` | `FUN_14076e524` (niveau 0x10) | **R(96) brut** |
+| `FUN_140ee7270` | `flock-position` (ti21 i16) | `FUN_14076f91c()` | `FUN_14076e524` (niveau 0x10) | **R(96) brut** |
+| `FUN_14107166c` | `i49 biped-control-context` | `DAT_145121140 == 1` **seul** | `R(2)` | `R(4)` (`iVar10 = (DAT_145121140=='\x01')*2+2`) |
+| `FUN_140c5f938` | `i2 object-forward-and-up` | `DAT_145121140 == 1` **seul**, croise avec `param_4` | `FUN_140c5fa84` = R(1)[+R(19)]+R(8) | `FUN_142e29bac` (autre lecteur, non decompile) ; `param_4==2` -> R(96)+R(?) |
+| `FUN_14080cfe8` | bloc MPP de l'etat par defaut | `DAT_145121140 == 1` **seul** | rien | bloc de recherche DST, **0 bit** |
+| `FUN_141dcc4a0` (cote ECRITURE) | — | `DAT_144e61ea0 == 0 && DAT_145121140 != 1` | `FUN_14076e524(..., 0x1e)` | `FUN_1406d676c(..., 0x60)` |
+
+**Lecture de la table.** Sous la portee baseline SEULE (`DAT_144e61ea0 = 1`,
+`DAT_145121140 = 0` — le cas d'un film retail), seules les six premieres lignes basculent :
+toutes les positions passent en 96 bits bruts. `i49`, `i2` et le bloc MPP ne bougent PAS,
+parce qu'ils sont gardes par l'AUTRE drapeau. Le port Go les confondait en une seule variable
+`PositionFullPrecision`.
+
+## 3. Ce que le balayage a EXCLU (un negatif, mais il ferme des portes)
+
+- `FUN_1406cf008` (R(1)) et `FUN_140c18a1c` (int signe a selecteur 2 bits) ne lisent QUE
+  l'etat du lecteur (`+0x10` fin, `+0x28`/`+0x2c` compteurs, `+0x30` registre, `+0x38` bits en
+  cache, `+0x40` curseur octet). **Aucun drapeau de contexte dans les primitives.** L'idee
+  « le varint a continuation de l'image-cle contre le selecteur 2 bits du delta » (RE externe)
+  n'a PAS de trace dans ces deux lecteurs : le selecteur 2 bits est inconditionnel.
+- `FUN_14076e524` lit `DAT_144632be0` (largeur d'index) et les tables `DAT_1445cc9e0` /
+  `DAT_14462cbe0` — ce sont des TABLES de precision, pas une bascule d'encodage.
+- Aucun autre global n'apparait en condition de branche dans les 407 decompiles hors :
+  `DAT_144c232e1` (filtre de composants du mode film), `DAT_144706104` (amorce R(1) du
+  paquet type-0), `DAT_14474cd78` (variante bufferisee / directe de la boucle de records),
+  `DAT_1451d2628`, et les constantes flottantes (`DAT_143cd8*`).
+- Le 5e parametre des deserialiseurs (`param_4`/`param_5` du slot `vtable[0x28]`) est une
+  CONSTANTE PAR COMPOSANT (`paramByComponent`), pas un mode : seuls `FUN_142f268c4` (i57,
+  `param_4 < 2`), `FUN_142f26ce8` (i62, `param_4 != 0`) et `FUN_141f86b58` y branchent.
+
+## 4. L'ECART DE PORT, etabli sur piece — `FUN_1411b259c` n'est PAS « 0 bit »
+
+```
+undefined8 FUN_1411b259c(undefined8 param_1, undefined8 param_2)
+{ FUN_1406d676c(param_2, param_2, param_1, 0x60); return param_1; }
+```
+
+`0x60 = 96` bits, et `FUN_1406d676c` est le MEME lecteur brut que le port Go appelle
+`readRawVec3` sur le chemin keep-baseline d'`i0`. Or **trois** sites du port Go traitent
+`FUN_1411b259c` comme un remplissage a ZERO bit :
+
+| site Go | ce qu'il fait | ce que fait l'EXE |
+|---|---|---|
+| `components_movement.go` `consumeAbsoluteWithGate` | `return` (0 bit) | R(96) |
+| `components_flock.go` `consumeFlockPosition` | `return` (0 bit) | R(96) |
+| `components_biped_ability.go` `consumeE494Position` (corps d'`i54`) | `return` (0 bit) | R(96) |
+| `traverse.go` `consumeSimStateHandleTail` (queue d'`i60`, porte en R7-b) | `br.ReadBits(96)` | R(96) — **le seul juste** |
+
+Le commentaire fautif (« remplissage NaN/keep, 0 bit ») venait d'une lecture du RESULTAT
+(le vecteur ecrit est un NaN de conservation) et non du CURSEUR. Sous la portee baseline,
+chacun de ces trois sites perd 96 bits par occurrence.
+
+## 5. Ce que la MESURE en a fait — le drapeau n'est PAS leve sur le payload du film
+
+Le port du mode baseline (`SetKeyframeBaselineScope`, defaut OFF) a ete mesure en A/B sur les
+591 records `ti=35` bornes des trois films oracles, une seule variable changeant entre les deux
+colonnes. Resultat : **l'atterrissage bit-exact tombe de 3/591 a 0/591** et l'ecart absolu
+median monte de 511/636/448 a 543/660/526 bits.
+
+La piece qui tranche est la largeur MEDIANE consommee par `i0` :
+
+| film (decoupage lu dans le film) | portee ETEINTE | portee ALLUMEE |
+|---|---|---|
+| `000d5950` (13/13/14, i0 = 45 bits) | 102 | 102 |
+| `00502e52` (17/17/16, i0 = 55 bits) | **57** | 99 |
+| `07aa428d` (18/18/17, i0 = 58 bits) | **62** | 99 |
+
+Eteinte, `i0` prend TROIS largeurs differentes, chacune accordee au decoupage de sa carte.
+Allumee, les trois convergent vers 99 (le brut 96 bits plus son en-tete) et la mesure se
+degrade. **Le corps d'image-cle porte donc une position QUANTIFIEE aux largeurs de la carte.**
+Le drapeau est reel et desormais correctement porte ; il n'est simplement pas leve sur le
+payload que le film stocke.
+
+Corollaire, et il AMENDE R7-b : « en image-cle, `i0` prend le chemin BRUT, 117 bits, la meme
+mediane sur les trois cartes » est FAUX (102/57/62). Les bornes de carte SONT necessaires pour
+lire la position a une image-cle sur deux films sur trois.
+
+## 6. Une piste NEUVE, trouvee en cherchant autre chose — le lecteur d'etat complet
+
+`FUN_1428e2a04` -> `FUN_1428e2a9c` -> `FUN_142e2bfd0`. Le dernier construit son BitReader
+(`FUN_1424c7b4c`) sur un paquet obtenu par `FUN_142988338(..., 0x10, 0)`, lit l'amorce
+`DAT_144706104 = R(1)` quand la version depasse 7, puis boucle : deux `R(32)` par entree
+(identifiant, type), et pour chaque entree `DAT_144e61ea0 = 1` ; `vtable[0x60]` (etat par
+defaut) ; le corruption-check `R(32)` du mode film si `FUN_14076cea8()` ; `DAT_144e61ea0 = 0`.
+
+C'est la FORME d'un payload d'etat complet, et R5 avait clos sa phase 2 sur « le CONSOMMATEUR
+du payload type-2 n'est identifie nulle part, et c'est ELLE qu'il faut decompiler ». Reste a
+confronter le `0x10` de `FUN_142988338` au demultiplexeur de paquets du film (section « le
+demultiplexeur de paquets du film — et le sort du type-2 » plus haut dans ce fichier). NON
+TRAITE par ce lot : hors de son perimetre.
+
+---
 # L ECRIVAIN PAR VTABLE — la case `+0x18` du descripteur de composant (lot R7-d, 2026-08-17)
 
 > Acces Ghidra : instance PID 10104 (`HaloInfinite.exe`), **API HTTP** `http://127.0.0.1:8089`
