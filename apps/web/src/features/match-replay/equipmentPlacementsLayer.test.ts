@@ -7,7 +7,8 @@
  *  - L'ORIENTATION DU MUR : le milieu de l'arc est DEVANT la position, dans la direction du
  *    cap du poseur — donc la concavité regarde le poseur ; sans cap, un cercle pointillé et
  *    aucune orientation inventée ;
- *  - LA FENÊTRE [t0, t1], exacte, sans rémanence (même contrat que la ligne de grappin) ;
+ *  - LA FENÊTRE D'AFFICHAGE : `t1` date la mise au repos de l'objet et ne referme rien — le
+ *    capteur se tient à sa durée officielle, les autres poses vont jusqu'à la fin du rejeu ;
  *  - LE TRACÉ DU CAPTEUR : sa zone est FIXE au rayon officiel, seule l'onde du ping bouge —
  *    et elle ne part pas sous mouvement réduit (l'arithmétique du ping, elle, est verrouillée
  *    dans threatSensor.test.ts) ;
@@ -22,6 +23,7 @@ import type { ReplayEquipmentPlacement, ReplayPoint } from '@/lib/api/types'
 import {
   drawEquipmentPlacementsLayer,
   isPlacementActive,
+  placementEndFrame,
   type PlacementScene,
   placementAt,
   placementKind,
@@ -34,7 +36,7 @@ import {
 import { worldToCanvas } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
 import { recordingContext } from './test/recordingContext'
-import { REVEAL_RADIUS_PX, SENSOR_RADIUS_M } from './threatSensor'
+import { REVEAL_RADIUS_PX, SENSOR_DURATION_MS, SENSOR_RADIUS_M } from './threatSensor'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le plancher de lisibilité ne mord pas. */
 const VIEW = {
@@ -44,7 +46,14 @@ const VIEW = {
   pad: 0,
 }
 
-const TIME = { frame: 50, frameMs: 100, k: 1, reducedMotion: false, showUnnamed: false }
+const TIME = {
+  frame: 50,
+  frameMs: 100,
+  frames: 600,
+  k: 1,
+  reducedMotion: false,
+  showUnnamed: false,
+}
 
 function pose(over: Partial<ReplayEquipmentPlacement> = {}): ReplayEquipmentPlacement {
   return { t0: 10, t1: 100, x: 5, y: 5, family: 'wall', id: '0x008e2dc5', owner: 3, ...over }
@@ -88,10 +97,28 @@ describe('placementKind — la table par famille', () => {
   })
 })
 
-describe('isPlacementActive — la fenêtre mesurée, bornes comprises', () => {
-  it('vraie sur [t0, t1], fausse d’un cran de part et d’autre', () => {
+describe('placementEndFrame — `t1` n’est PAS la disparition', () => {
+  it('rien avant t0, et t1 ne referme RIEN : le film ne date aucune disparition', () => {
     const p = pose({ t0: 10, t1: 20 })
-    expect([9, 10, 20, 21].map((f) => isPlacementActive(p, f))).toEqual([false, true, true, false])
+    expect([9, 10, 20, 21, 599].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([
+      false, true, true, true, true,
+    ])
+    expect(isPlacementActive(p, 'wall', 600, TIME)).toBe(false)
+  })
+
+  it('le capteur se tient à sa durée OFFICIELLE : 15 s, soit 150 images de 100 ms', () => {
+    const p = pose({ t0: 10, t1: 20, family: 'sensor' })
+    expect(placementEndFrame(p, 'sensor', TIME)).toBe(10 + SENSOR_DURATION_MS / TIME.frameMs)
+    expect(isPlacementActive(p, 'sensor', 161, TIME)).toBe(false)
+  })
+
+  it('la borne MESURÉE l’emporte quand elle dépasse la durée officielle', () => {
+    const p = pose({ t0: 10, t1: 400, family: 'sensor' })
+    expect(placementEndFrame(p, 'sensor', TIME)).toBe(400)
+  })
+
+  it('une pose sans famille à durée publiée va jusqu’à la dernière image du rejeu', () => {
+    expect(placementEndFrame(pose({ t0: 10, t1: 20 }), 'unnamed', TIME)).toBe(599)
   })
 })
 
@@ -252,12 +279,15 @@ describe('drawEquipmentPlacementsLayer — ce qui est tracé, et ce qui ne l’e
     expect(on.ops.filter((o) => o.op === 'fill')).toHaveLength(1)
   })
 
-  it('hors de la fenêtre mesurée, rien n’est tracé : la durée EST la pose', () => {
-    for (const frame of [9, 101]) {
+  it('avant la pose rien n’est tracé, après `t1` le mur reste : il ne disparaît pas', () => {
+    const traced = (frame: number) => {
       const { ops, ctx } = recordingContext()
       drawEquipmentPlacementsLayer(ctx, scene([pose({ h: 45 })]), VIEW, { ...TIME, frame }, INK)
-      expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
+      return ops.filter((o) => o.op === 'stroke').length
     }
+    expect(traced(9)).toBe(0)
+    expect(traced(101)).toBeGreaterThan(0) // t1 = 100 : rien ne se referme là
+    expect(traced(600)).toBe(0) // au-delà de la dernière image du rejeu
   })
 })
 
@@ -349,7 +379,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
 })
 
 describe('placementAt — le survol', () => {
-  const hover = { frame: 50, showUnnamed: false }
+  const hover = { frame: 50, showUnnamed: false, frameMs: TIME.frameMs, frames: TIME.frames }
 
   it('la PLUS PETITE zone gagne : un mur posé dans un capteur reste atteignable', () => {
     const wall = pose({ family: 'wall', id: '0xmur', x: 5, y: 5 })

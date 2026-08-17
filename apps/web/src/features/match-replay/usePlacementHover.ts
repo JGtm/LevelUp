@@ -16,7 +16,11 @@ import { useCallback, useState, type PointerEvent, type RefObject } from 'react'
 
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { placementAt, type PlacementView } from './equipmentPlacementsLayer'
+import {
+  placementAt,
+  type PlacementView,
+  type PlacementWindowTime,
+} from './equipmentPlacementsLayer'
 import type { XY } from './replayLogic'
 
 /** Ce qui est survolé : la pose, et l'endroit du canvas où poser son infobulle. */
@@ -30,6 +34,8 @@ export interface PlacementHoverInput {
   view: PlacementView
   /** L'image courante, telle que la boucle de lecture la tient. */
   frameRef: RefObject<number>
+  /** L'axe de temps du rejeu : il borne la fenêtre d'une pose (cf. placementEndFrame). */
+  time: PlacementWindowTime
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
   showUnnamed: boolean
@@ -44,6 +50,7 @@ export interface PlacementHoverHandlers {
 export function usePlacementHover({
   placements,
   view,
+  time,
   frameRef,
   enabled,
   showUnnamed,
@@ -63,14 +70,19 @@ export function usePlacementHover({
       const kx = rect.width > 0 ? view.width / rect.width : 1
       const ky = rect.height > 0 ? view.height / rect.height : 1
       const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
-      const found = placementAt(placements, view, { frame: frameRef.current, showUnnamed }, at)
+      const found = placementAt(
+        placements,
+        view,
+        { frame: frameRef.current, showUnnamed, frameMs: time.frameMs, frames: time.frames },
+        at,
+      )
       setHover((prev) => {
         if (!found) return prev === null ? prev : null
         if (prev && prev.placement === found && prev.at.x === at.x && prev.at.y === at.y) return prev
         return { placement: found, at }
       })
     },
-    [enabled, placements, view, frameRef, showUnnamed],
+    [enabled, placements, view, frameRef, showUnnamed, time.frameMs, time.frames],
   )
 
   const onPointerLeave = useCallback(() => {
