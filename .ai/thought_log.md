@@ -1,3 +1,31 @@
+## [2026-08-18] Phase W — le rendu web des familles nommees de poses — Complete
+
+**Statut** : Complete (branche `wt/familles-poses`, `f23c1bcc4`, fusionnee dans `feat/v75` le
+2026-08-18, `6f42332c8`). Gate VISUEL utilisateur restant.
+
+**Decision** : le calque filtre sur `origin === 'deployed'` et l'arc du mur passe sur les
+PANNEAUX (`WALL_PANEL_IDS`, garde-rail bilateral contre le manifeste `kind = deployed`) ; le
+SON partage le meme predicat que le trace (`placementIsDeployedObject`), parce qu'il sonnait
+un « mur deploye » a chaque mort tenant un mur (91/222) et un capteur a chaque mort tenant un
+capteur (106/155), et sonnait deux fois un mur reellement deploye. `origin` absent se lit
+`unknown`, jamais `deployed` — le parc anterieur au schema 10 est en production. Rendus neufs
+en unites qui disent ce qu'on sait : balise = losange en pixels a demeure (rien de mesure ne
+bat) ; traqueur = UNE onde en pixels (aucune portee publiee) ; champ de reparation = disque
+POINTILLE a rayon declare 3 m (pointille = non affirme, meme grammaire que le mur sans cap).
+Power-ups HORS table (n = 1 chacun, tous deux avec poseur et `dropped`) — pas de filtre sans
+membre.
+
+**Resultats** : table de 3 a 13 entrees ; 7 familles portees a `null` explicite ; aucun son
+ajoute (bibliotheque : 0 fichier pour traqueur/balise/champ) ; calque decoupe en trois fichiers
+sous le seuil (427 / 346 / 179 L). Sur `000d5950` : 19 formes au lieu de 47, 28 fantomes
+retires (11 murs laches, 15 capteurs laches, 2 appareils). Gates du lot : typecheck 0, lint 0,
+vitest 446 fichiers / 4 083 tests ; apres fusion, memes chiffres, exit 0.
+
+**Suite** : gate visuel utilisateur — `000d5950` (15 arcs de mur sur panneaux + 4 capteurs) et
+`06dfe6d9` (123 deployes) valident le FILTRE, les PANNEAUX et le CAPTEUR ; balise (0 pose
+deployee sur tout le corpus), traqueur (1) et champ (26, aucun sur les temoins) n'ont pas de
+temoin visuel — a dire avant le gate.
+
 ## [2026-08-17] archlint J4R-3 : faux positif du dictionnaire murmur3 leve sans toucher au ratchet — Complete
 
 **Statut** : Complete (branche `feat/v75`, micro-lot dedie sur la ligne registre "Garde-rail
