@@ -56,8 +56,8 @@ instrument rejoue sur les 3 films, `git status` sans divergence openapi/generate
 
 ## F4/F5 — code mort et commentaire perime (`filmdec/default_state.go`)
 
-- [ ] F4 `SetMPPLeadBits` / `MPPLeadBits()` supprimes (+ tests eventuels) — gate : grep 0
-- [ ] F5 commentaire ~373 reecrit vers `CalibrateMPPWidths`
+- [x] F4 `SetMPPLeadBits` / `MPPLeadBits()` supprimes — grep 0 occurrence dans tout le depot
+- [x] F5 commentaire de `mppLeadBits` reecrit vers `CalibrateMPPWidths`
 
 ## F2 — familles `wall/sensor/other` enumerees en 3 endroits sans garde-rail
 
