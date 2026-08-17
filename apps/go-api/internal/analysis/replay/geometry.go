@@ -4,10 +4,26 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 )
+
+// dist3 est LA distance euclidienne 3D du paquet, en mètres — un seul endroit où la formule est
+// écrite (correctif de revue du 2026-08-17 : elle en avait quatre, dont deux à six paramètres).
+//
+// DEUX TRIPLETS ET PAS SIX FLOTTANTS : à six paramètres, une inversion d'argument entre les deux
+// points ne se voit ni à la lecture ni au compilateur — et la règle des cinq paramètres du dépôt
+// interdisait déjà la signature. Le triplet est la forme que le décodeur rend (`Vec3`, masques de
+// position, `[3]float32` des pistes).
+//
+// UN GARDE-RAIL INTERDIT LA CINQUIÈME COPIE (`TestUneSeuleFormuleDeDistance3D`) : une
+// factorisation sans garde-rail re-diverge, et c'est la règle n°6 du dépôt.
+func dist3(a, b [3]float32) float64 {
+	dx, dy, dz := float64(a[0]-b[0]), float64(a[1]-b[1]), float64(a[2]-b[2])
+	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+}
 
 // Fichiers du fond de carte, produits par le RE de la variante Forge (.mvar) et par la
 // résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent sous
@@ -132,4 +148,57 @@ func parseF32(s string) float32 {
 		return 0
 	}
 	return float32(v)
+}
+
+// ---------------------------------------------------------------------------
+// LES ETENDUES du document — deplacees de `build.go` au correctif de revue du 2026-08-17,
+// pour la meme raison que `document_labels.go` : le lot des socles avait pousse `build.go`
+// de 621 a 640 lignes, au-dessus d un seuil deja gele par la baseline. C est un
+// deplacement, aucune ligne de calcul n a change (le golden d assemblage fige les bornes).
+// ---------------------------------------------------------------------------
+
+// boundsOf calcule l'étendue XY (et Z) de tous les points publiés.
+func boundsOf(tracks []Track) Bounds {
+	var b Bounds
+	first := true
+	for _, tr := range tracks {
+		for _, p := range tr.Points {
+			if first {
+				b = Bounds{MinX: p.X, MinY: p.Y, MaxX: p.X, MaxY: p.Y, MinZ: p.Z, MaxZ: p.Z}
+				first = false
+				continue
+			}
+			b.MinX, b.MaxX = minf(b.MinX, p.X), maxf(b.MaxX, p.X)
+			b.MinY, b.MaxY = minf(b.MinY, p.Y), maxf(b.MaxY, p.Y)
+			b.MinZ, b.MaxZ = minf(b.MinZ, p.Z), maxf(b.MaxZ, p.Z)
+		}
+	}
+	return b
+}
+
+// geometryBounds calcule l'étendue XY des props (nil si pas de géométrie).
+func geometryBounds(objs []MapObject) *Bounds {
+	if len(objs) == 0 {
+		return nil
+	}
+	b := Bounds{MinX: objs[0].X, MinY: objs[0].Y, MaxX: objs[0].X, MaxY: objs[0].Y}
+	for _, o := range objs[1:] {
+		b.MinX, b.MaxX = minf(b.MinX, o.X), maxf(b.MaxX, o.X)
+		b.MinY, b.MaxY = minf(b.MinY, o.Y), maxf(b.MaxY, o.Y)
+	}
+	return &b
+}
+
+func minf(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxf(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
 }

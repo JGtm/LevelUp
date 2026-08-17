@@ -312,6 +312,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderEquipment(p, doc)
 	renderGrapple(p, doc)
 	renderPlacements(p, doc)
+	renderGroundWeapons(p, doc)
 	renderLoadouts(p, doc)
 	renderBridge(p, doc)
 	renderLabels(p, doc)
@@ -565,6 +566,60 @@ func renderPlacements(p func(string, ...any), doc ReplayDocument) {
 		p("  %s %s %s t=[%d, %d] pos=(%.2f, %.2f, %.2f) poseur=%d cap=%s",
 			pl.Family, pl.Origin, pl.ID, pl.T0, pl.T1, pl.X, pl.Y, pl.Z, pl.Owner, cap)
 	}
+	p("")
+}
+
+// renderGroundWeapons fige les SOCLES D ARME (schema 11) et, surtout, les DENOMINATEURS qui
+// disent pourquoi il y en a autant — ou aucun.
+//
+// LE FILM DE REFERENCE EN A ZERO, ET C EST UN RESULTAT MESURE, PAS UN TROU. `000d5950` est un
+// Super Fiesta sur variante FORGE : aucun rack de carte, et 82,3 % de ses apparitions d armes
+// sont des LACHERS a une mort (la part la plus elevee des huit films de la mesure, contre 62,3 %
+// et 64,9 % sur les arenes classiques). Un golden qui n afficherait que « 0 socle » laisserait
+// croire a une panne de decodage ; les compteurs ci-dessous distinguent les trois causes.
+func renderGroundWeapons(p func(string, ...any), doc ReplayDocument) {
+	p("## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide")
+	c := doc.Coverage.GroundWeapons
+	if c == nil {
+		p("aucune couverture de socles (calque absent)")
+		p("")
+		return
+	}
+	p("balaye=%t · bande %d slot(s) · %d ancre(s) -> %d acceptee(s) -> %d retenue(s) par "+
+		"l IDENTITE (%d ecartee(s))", c.Scanned, c.Slots, c.Anchors, c.Accepted, c.Kept,
+		c.Rejected)
+	// LES TROIS CLASSES DECIDENT DE TOUT : seules les apparitions NON lachees et qui n ont
+	// jamais bouge (`au repos`) peuvent faire un socle.
+	p("%d lachee(s) a une mort · %d apparue(s) sans mort a proximite, dont %d AU REPOS "+
+		"(jamais bougee : le seul jeu qui fait des socles)", c.Dropped, c.Spawned, c.AtRest)
+	p("%d grappe(s) -> %d socle(s) publie(s) · %d occupation(s) : %d datee(s) · %d sans passage "+
+		"· %d jamais videe(s)", c.Clusters, c.Pads, c.Occupancies, c.Dated, c.Unknown, c.Never)
+	p("%d cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre", c.Cycles)
+	for i, pad := range doc.WeaponPads {
+		cycle := "non etabli"
+		if pad.Cycle != nil {
+			// LES DEUX MOITIES DU DENOMINATEUR SONT FIGEES : les ecarts MESURES et ceux que le
+			// socle offrait sans qu on puisse les prendre (disparition precedente non datee).
+			cycle = fmt.Sprintf("%.1f s (p10 %.1f · p90 %.1f · %d ecarts mesures, %d manques)",
+				pad.Cycle.MedianS, pad.Cycle.P10S, pad.Cycle.P90S, pad.Cycle.Gaps,
+				pad.Cycle.Missing)
+		}
+		p("  socle %d %s pos=(%.2f, %.2f, %.2f) apparitions=%v cycle=%s",
+			i, pad.Weapon, pad.X, pad.Y, pad.Z, pad.Spawns, cycle)
+		for _, pr := range pad.Presence {
+			p("    presence t0=%d prouvee jusqu a %d, absente a %d", pr.T0, pr.TLow, pr.THigh)
+		}
+	}
+	// LE RAMASSEUR N EST PAS PUBLIE, et le golden le VERIFIE : `xuid` vaut `null` partout
+	// (oracle mesure a 88,1 % par slot de vie et 79,7 % par joueur, contre >= 90 % exige).
+	nommes := 0
+	for _, k := range doc.PadPickups {
+		if k.XUID != nil {
+			nommes++
+		}
+	}
+	p("%d occupation(s) achevee(s) publiee(s) · %d avec un ramasseur nomme (l oracle ne le "+
+		"permet pas : 79,7 %% contre 90 %% exige)", len(doc.PadPickups), nommes)
 	p("")
 }
 

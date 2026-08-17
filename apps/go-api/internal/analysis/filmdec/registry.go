@@ -82,6 +82,10 @@ func (a Archetype) indicesOf(name string) []int {
 // Registry is the parsed set of archetype blocks from chunk_00.
 type Registry struct {
 	Archetypes []Archetype
+	// fingerprint est l'empreinte FNV-1a des slots non vides, calculee pendant la passe de
+	// lecture (registry_fingerprint.go) — la seule qui voie le champ `kind`, que le parse ne
+	// retient pas. Se lit par RegistryFingerprint.
+	fingerprint uint64
 }
 
 // Archetype returns archetype #idx, or (zero, false) if idx is out of range.
@@ -112,6 +116,7 @@ func ParseRegistryChunk(raw []byte) (*Registry, error) {
 
 func parseRegistry(data []byte) *Registry {
 	reg := &Registry{}
+	fp := registryHasher()
 	nBlocks := len(data) / archetypeBlockSize
 	for b := 0; b < nBlocks; b++ {
 		base := b * archetypeBlockSize
@@ -124,9 +129,12 @@ func parseRegistry(data []byte) *Registry {
 			}
 			arch.Components = append(arch.Components, name)
 			arch.Flags = append(arch.Flags, binary.LittleEndian.Uint32(data[off+4:])) // flags @ slot+4 = level
+			fp.addSlot(data, off, name)
 		}
 		reg.Archetypes = append(reg.Archetypes, arch)
 	}
+	reg.fingerprint = fp.sum()
+	warnUnknownRegistry(reg.fingerprint, nBlocks, fp.slots)
 	return reg
 }
 

@@ -530,13 +530,25 @@ func quantAxisWidth(level uint) uint {
 // les composants non-position porteurs d'un vec3 quantifié (crew-order, tacmap-offset,
 // desired-respawn-location, ...).
 func consumeQuantVec3(br *BitReader, axisW uint) {
+	_, _, _, _ = consumeQuantVec3Values(br, axisW)
+}
+
+// consumeQuantVec3Values est le MÊME lecteur, qui rend ses trois quanta BRUTS. `ok` est faux
+// quand la garde `precHigh` a valu 1 : le vecteur par défaut, zéro bit de charge utile — ce
+// qui n'est pas un vecteur nul, et les confondre fabriquerait une position à l'origine.
+//
+// UNE SEULE COPIE DE LA GRAMMAIRE, et c'est la règle : `consumeQuantVec3` délègue ici au lieu
+// de relire les mêmes largeurs à côté. Deux lecteurs du même champ divergent le jour où l'un
+// des deux est corrigé.
+func consumeQuantVec3Values(br *BitReader, axisW uint) (x, y, z uint64, ok bool) {
 	if br.ReadBit() { // precHigh == 1 -> vecteur défaut, 0 bit
-		return
+		return 0, 0, 0, false
 	}
 	if !br.ReadBit() { // index-present select ; 0 -> lit l'index
 		br.ReadBits(1) // DAT_144632be0 = 1
 	}
-	br.ReadBits(axisW)
-	br.ReadBits(axisW)
-	br.ReadBits(axisW)
+	x = br.ReadBits(axisW)
+	y = br.ReadBits(axisW)
+	z = br.ReadBits(axisW)
+	return x, y, z, true
 }

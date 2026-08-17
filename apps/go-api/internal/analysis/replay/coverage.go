@@ -132,6 +132,15 @@ type Coverage struct {
 	// calibration échoue et un film sans équipement posé rendent tous deux zéro pose — seule
 	// la couverture les distingue (`calibrated: false` contre `calibrated: true`).
 	Placements *EquipmentPlacementCoverage `json:"placements,omitempty"`
+	// GroundWeapons est la couverture des SOCLES D'ARME (schéma 11, cf. ground_weapon_pads.go) :
+	// créations lues, retenues par l'identité et écartées, apparitions classées, grappes,
+	// socles publiés, et l'issue de chaque occupation (datée / sans passage / jamais vidée).
+	// Absente des artefacts antérieurs au schéma 11.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND IL N'Y A AUCUN SOCLE, pour la même raison que `placements` :
+	// un film sans socle, un film dont toutes les armes sont des lâchers et un film qu'on n'a
+	// pas su balayer rendent tous trois zéro socle — seuls ces compteurs les distinguent.
+	GroundWeapons *GroundWeaponCoverage `json:"groundWeapons,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`

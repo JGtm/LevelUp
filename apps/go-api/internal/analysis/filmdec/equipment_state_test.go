@@ -73,6 +73,7 @@ func TestEquipmentEntityState(t *testing.T) {
 			fl, arch.indicesOfFirst(fl.String()), st.WithField[f], st.Read[f], st.Gated[f])
 	}
 	equipLogCensus(t, arch, st)
+	equipAssertNewFieldsSeen(t, st)
 	if len(samples) == 0 {
 		t.Log("VERDICT A : aucune lecture exploitable — ni datation ni auteur par ce canal")
 		return
@@ -448,4 +449,31 @@ func equipRenderU64(h map[uint64]int) string {
 		out += fmt.Sprintf("%d:%d", k, h[k])
 	}
 	return out
+}
+
+// equipAssertNewFieldsSeen — LES DEUX CANAUX AJOUTÉS AU LOT 0 SONT-ILS VRAIMENT LÀ ?
+//
+// POURQUOI UNE ASSERTION ET PAS UNE LIGNE DE JOURNAL. i26 (`energy-delay-ticks-left`) et i27
+// (`charges-remaining`) ont été ajoutés au hook par la plomberie de publication (lot 0 item
+// 0.6) sur la promesse qu'ils sont les DEUX CANAUX LES PLUS BAVARDS de l'archétype. Une
+// promesse qui ne peut pas échouer n'est pas une mesure : si un jour ces deux champs cessent
+// d'être lus — parce que le désérialiseur a été débranché, ou que la marche s'arrête avant eux
+// — le journal continuerait d'afficher « 0 » sans que personne ne le remarque.
+//
+// MESURE DE RÉFÉRENCE (`000d5950`, 2026-08-17) : i26 820 lectures pour 629 vies d'objet, i27
+// 883 pour 599 vies — contre 129 / 62 / 33 / 48 pour les quatre champs d'origine. Le plancher
+// est volontairement à UN : le compte exact dépend du film, la PRÉSENCE ne doit pas en dépendre.
+func equipAssertNewFieldsSeen(t *testing.T, st EquipmentStateStats) {
+	t.Helper()
+	for _, f := range []EquipmentField{EquipEnergyDelay, EquipCharges} {
+		if st.WithField[f] == 0 {
+			t.Errorf("%s : AUCUN record ne l'annonce au masque — soit le film ne le porte pas, "+
+				"soit l'index a été résolu sur un autre nom", f)
+			continue
+		}
+		if st.Read[f] == 0 {
+			t.Errorf("%s : annoncé %d fois au masque mais JAMAIS lu — la marche s'arrête avant "+
+				"lui, ou le déser ne publie plus", f, st.WithField[f])
+		}
+	}
 }

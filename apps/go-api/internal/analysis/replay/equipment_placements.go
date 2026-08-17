@@ -3,7 +3,6 @@ package replay
 import (
 	"fmt"
 	"log/slog"
-	"math"
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -273,8 +272,7 @@ func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
 	if equipTimeGap(p.T0US, best.to) > originDropWindowUS {
 		return OriginDeployed
 	}
-	dx, dy, dz := p.X-best.x, p.Y-best.y, p.Z-best.z
-	if math.Sqrt(float64(dx*dx+dy*dy+dz*dz)) >= originDropMaxDist {
+	if dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{best.x, best.y, best.z}) >= originDropMaxDist {
 		return OriginDeployed
 	}
 	return OriginDropped
@@ -483,9 +481,10 @@ func equipCloser(a, b filmdec.BipedPosition, at uint64) bool {
 	return equipTimeGap(a.TimestampUS, at) < equipTimeGap(b.TimestampUS, at)
 }
 
+// equipDist n'est qu'un ADAPTATEUR de types vers la distance canonique du paquet (`dist3`) : la
+// formule ne se réécrit pas ici, elle n'est écrite qu'une fois.
 func equipDist(p filmdec.EquipmentPlacement, s filmdec.BipedPosition) float32 {
-	dx, dy, dz := p.X-s.X, p.Y-s.Y, p.Z-s.Z
-	return float32(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
+	return float32(dist3([3]float32{p.X, p.Y, p.Z}, [3]float32{s.X, s.Y, s.Z}))
 }
 
 func equipTimeGap(a, b uint64) uint64 {
