@@ -25,6 +25,7 @@ import type {
   ReplayProjectile,
   ReplaySurface,
   ReplayTrack,
+  ReplayWeaponPad,
 } from '@/lib/api/types'
 
 /** Un sommet d'emprise orientée : le `[2]float32` du Go. */
@@ -41,6 +42,21 @@ type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplaySurfaceReady = Omit<ReplaySurface, 'poly'> & { poly: ReplayXY[] }
 export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplayStep[] }
+/**
+ * ReplayWeaponPadReady — un socle dont les DEUX tableaux imbriqués sont comblés.
+ *
+ * POURQUOI IL FALLAIT UN TYPE DE PLUS. `_ListeExhaustive` ne voit que les tableaux nullables de
+ * la RACINE du document : elle avait donc bien exigé `weaponPads`, et la frontière comblait le
+ * tableau de tête — mais `spawns` et `presence`, nullables eux aussi, traversaient tels quels.
+ * Un socle sans apparition répliquée arrivait au rendu avec `spawns: null`, et `pad.spawns.map`
+ * tombait à l'exécution. Même patron que `tracks` et `structure` (correctif de revue du
+ * 2026-08-17).
+ *
+ * `cycle` N'EST PAS COMBLÉ, et ce n'est pas un oubli : ce n'est pas un tableau mais une mesure
+ * qui peut ne pas exister (24 socles sur 57 seulement en portent une). Le combler par un objet
+ * vide inventerait un cycle de zéro seconde — l'absence est la donnée.
+ */
+export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'>
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -84,7 +100,7 @@ export type ReplayDocumentReady = Omit<
   shots: NonNullable<ReplayDocument['shots']>
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
-  weaponPads: NonNullable<ReplayDocument['weaponPads']>
+  weaponPads: ReplayWeaponPadReady[]
 }
 
 /**
@@ -145,6 +161,14 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Les SOCLES D'ARME du match (schéma 11). Absent = le film n'en porte aucun : rien ne se
     // dessine, jamais un socle deviné. Une donnée de MATCH, pas de carte — l'arme qui apparaît
     // sur un socle change d'un match à l'autre, la position non.
-    weaponPads: raw.weaponPads ?? [],
+    //
+    // LES DEUX TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI (`spawns`, `presence`), comme pour `tracks`
+    // et `structure` : le contrat les déclare nullables, et un socle qui arriverait avec
+    // `spawns: null` ferait tomber le calque à l'exécution — pas à la compilation.
+    weaponPads: (raw.weaponPads ?? []).map((pad) => ({
+      ...pad,
+      spawns: pad.spawns ?? [],
+      presence: pad.presence ?? [],
+    })),
   }
 }

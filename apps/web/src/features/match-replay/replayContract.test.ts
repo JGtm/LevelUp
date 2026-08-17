@@ -150,6 +150,52 @@ describe('la frontière du document de rejeu', () => {
     }
   })
 
+  it('comble aussi les tableaux IMBRIQUÉS, que la liste de tête ne voit pas', () => {
+    // CE QUE `_ListeExhaustive` NE PEUT PAS DIRE. L'assertion de type n'énumère que les tableaux
+    // nullables de la RACINE : elle exige bien `weaponPads`, `tracks`, `inventory`… mais elle est
+    // aveugle à ceux qui vivent DANS leurs éléments. Un socle sans apparition répliquée arrivait
+    // ainsi au rendu avec `spawns: null`, et `pad.spawns.map` tombait à l'exécution — c'est le
+    // correctif de revue du 2026-08-17, et ce test est ce qui le retient.
+    const raw = {
+      weaponPads: [{ x: 1, y: 2, weapon: '0x0000ffff' }],
+      tracks: [{ slot: 1, team: -1 }],
+      inventory: [{ t: 0, slot: 1 }],
+      loadouts: [{ t: 0, slot: 1 }],
+    } as unknown as ReplayDocument
+    const ready = normalizeReplayDocument(raw)
+    expect(ready.weaponPads[0].spawns, 'weaponPads[].spawns').toEqual([])
+    expect(ready.weaponPads[0].presence, 'weaponPads[].presence').toEqual([])
+    expect(ready.tracks[0].points, 'tracks[].points').toEqual([])
+    expect(ready.inventory[0].am, 'inventory[].am').toEqual([])
+    expect(ready.inventory[0].g, 'inventory[].g').toEqual([])
+    expect(ready.loadouts[0].w, 'loadouts[].w').toEqual([])
+    // `cycle` N'EST PAS un tableau : une mesure absente reste absente, jamais un objet vide qui
+    // se lirait comme un cycle de zéro seconde.
+    expect(ready.weaponPads[0].cycle ?? null).toBeNull()
+  })
+
+  it('conserve ce que le socle porte quand il le porte', () => {
+    const raw = {
+      weaponPads: [
+        {
+          x: 1,
+          y: 2,
+          weapon: '0x0000ffff',
+          spawns: [10, 200],
+          presence: [{ t0: 10, tLow: 200, tHigh: 400 }],
+          cycle: { medianS: 30.5, p10S: 30.2, p90S: 30.8, gaps: 2, missing: 1 },
+        },
+      ],
+    } as unknown as ReplayDocument
+    const ready = normalizeReplayDocument(raw)
+    expect(ready.weaponPads[0].spawns).toEqual([10, 200])
+    expect(ready.weaponPads[0].presence).toHaveLength(1)
+    // `missing` dit combien d'écarts le socle offrait sans qu'on ait pu les mesurer : sans lui,
+    // « 2 écarts » se lit comme « 2 sur 2 » alors que la mesure en a perdu un.
+    expect(ready.weaponPads[0].cycle?.gaps).toBe(2)
+    expect(ready.weaponPads[0].cycle?.missing).toBe(1)
+  })
+
   it('recopie EN SURFACE : les points de trajectoire ne sont jamais dupliqués', () => {
     // Ce sont eux qui font le poids du document (29 221 points sur le film de référence) ;
     // les recopier à chaque normalisation coûterait à chaque chargement, pour rien.
