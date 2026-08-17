@@ -297,6 +297,53 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	}
 }
 
+// TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle : LE CORRECTIF DE LA REVUE DU 2026-08-17.
+//
+// Une cle (slot, gen) REPRISE porte deux objets successifs ; seul le PREMIER a une piste delta.
+// Lire « la cle a une piste » (l'ancienne regle) faisait passer le SECOND pour un objet qui a
+// bouge : il sortait du jeu `at_rest`, et la grappe de son socle perdait une apparition. La
+// regle est desormais celle de la vie — la MEME fenetre que le recensement.
+func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
+	fam := gwTestFamily(t, 0)
+	scan := GroundWeaponScan{
+		Scanned: true,
+		Stats:   filmdec.EquipmentCreationStats{Accepted: 2},
+		Creations: []filmdec.EquipmentCreation{
+			gwTestCreation(50, 2, 5_000_000, fam, 7, 7),
+			gwTestCreation(50, 2, 45_000_000, fam, 7, 7),
+		},
+		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
+		// UNE SEULE piste, sur la PREMIERE vie : elle demarre a l'instant de la premiere
+		// creation et s'acheve bien avant la seconde.
+		Tracks: []filmdec.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []filmdec.ProjectileSample{
+			{TimestampUS: 5_000_000, X: 7, Y: 7},
+			{TimestampUS: 9_000_000, X: 9, Y: 9},
+		}}},
+	}
+	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 65_000_000, X: 100, Y: 100, HasWorld: true}}
+	objs := groundWeaponObjects(scan, nil, pos)
+	if len(objs) != 2 {
+		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
+	}
+	if !objs[0].Appar.HasDelta || !objs[0].Moved {
+		t.Fatalf("la PREMIERE vie porte la piste : elle a bouge — %+v", objs[0])
+	}
+	if objs[1].Appar.HasDelta || objs[1].Moved {
+		t.Fatalf("la SECONDE vie n'a AUCUNE piste : elle est apparue au repos et doit rester"+
+			" candidate a un socle — %+v", objs[1])
+	}
+	// La position de reference suit la MEME regle : dernier point de piste pour la premiere,
+	// position de creation pour la seconde.
+	if objs[0].Pos != [3]float32{9, 9, 0} {
+		t.Fatalf("position de reference de la vie mobile : %v, attendu le dernier point (9, 9, 0)",
+			objs[0].Pos)
+	}
+	if objs[1].Pos != [3]float32{7, 7, 0} {
+		t.Fatalf("position de reference de la vie au repos : %v, attendu la creation (7, 7, 0)",
+			objs[1].Pos)
+	}
+}
+
 // TestBuildWeaponPadsSansBalayageNePublieRien : un film qu'on n'a pas su balayer publie ZERO
 // socle et le DIT (`scanned: false`) — sans quoi il serait indistinguable d'un film sans socle.
 func TestBuildWeaponPadsSansBalayageNePublieRien(t *testing.T) {

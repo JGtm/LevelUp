@@ -125,7 +125,6 @@ func groundWeaponObjects(
 	scan GroundWeaponScan, lives map[uint32][]equipLife, positions []filmdec.BipedPosition,
 ) []gwPickupObject {
 	known := loadoutFamilies()
-	spans := filmdec.EquipmentLifeSpans(scan.Tracks)
 	byKey := map[filmdec.EquipmentLifeKey][]filmdec.EquipmentCreation{}
 	kept := 0
 	for _, c := range scan.Creations {
@@ -150,7 +149,7 @@ func groundWeaponObjects(
 			w, _ := gwPadsIdentity(c)
 			o := gwPickupObject{Key: k, FamilyID: w, Appar: gwPadApparition{
 				Kind: gwPadKindWeapon, Family: gwPadsWeaponFamily(w),
-				X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS, HasDelta: len(spans[k]) > 0,
+				X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
 			}}
 			o.Appar.Class = gwPadsClass(lives, o.Appar)
 			gwPickupResolve(&o, c, lifeEnd, filmEnd, gwResolveInputs{
@@ -174,10 +173,16 @@ type gwResolveInputs struct {
 }
 
 // gwPickupResolve borne la disparition de l'objet puis la date.
+//
+// IL POSE AUSSI `HasDelta`, et c'est délibéré : la piste de la vie répond à la fois à « l'objet
+// a-t-il bougé ? » et à « où est-il quand on le prend ? ». Une seule règle
+// (`gwPickupLifeTrack`), un seul endroit qui l'applique.
 func gwPickupResolve(
 	o *gwPickupObject, c filmdec.EquipmentCreation, lifeEnd, filmEnd uint64, in gwResolveInputs,
 ) {
-	o.Pos, o.Moved = gwPickupRefPos(c, lifeEnd, in.tracks)
+	life, moved := gwPickupLifeTrack(in.tracks, c.TimestampUS, lifeEnd)
+	o.Appar.HasDelta = moved
+	o.Pos, o.Moved = gwPickupRefPos(c, life, moved)
 	o.Bounds = gwPickupBoundsFrom(c.TimestampUS, lifeEnd, filmEnd, in.kfTimes,
 		gwPickupSeenWithin(in.seen, c.TimestampUS, lifeEnd))
 	if o.Bounds.NeverPicked {
