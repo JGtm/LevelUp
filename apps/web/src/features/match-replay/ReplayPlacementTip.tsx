@@ -1,10 +1,13 @@
 /**
  * ReplayPlacementTip — L'INFOBULLE D'UNE POSE D'ÉQUIPEMENT, au survol du marqueur.
  *
- * CE QU'ELLE DIT, ET DANS CET ORDRE : ce que l'objet EST (« Mur de protection », « Capteur de
- * menaces », ou « objet non identifié » quand le manifeste ne le nomme pas), puis QUI l'a posé.
- * Le poseur est une MESURE — le bipède le plus proche à 250 ms et moins de 3 m — et quand il
- * n'y en a pas, l'infobulle le dit au lieu de laisser un blanc.
+ * CE QU'ELLE DIT, ET DANS CET ORDRE : ce que l'objet EST (« Mur de protection », « Traqueur de
+ * menaces », « Champ de réparation »… ou « objet non identifié » quand le manifeste ne le nomme
+ * pas), puis QUI l'a posé. Le poseur est une MESURE — le bipède le plus proche à 250 ms et moins
+ * de 3 m — et quand il n'y en a pas, l'infobulle le dit au lieu de laisser un blanc.
+ *
+ * LE NOM VIENT DE LA RÈGLE DE RENDU, PAS DE LA FAMILLE, et c'est la même table que le tracé :
+ * une pose qu'on ne dessine pas ne se survole pas, donc son nom n'a jamais à être servi ici.
  *
  * PAS DE `title` NATIF : le canvas est UNE seule balise, son attribut `title` vaudrait pour
  * toute la carte. L'infobulle est donc un élément posé dans le cadre du canvas, à côté du
@@ -36,10 +39,7 @@ export function ReplayPlacementTip({ locale, hover, ownerName, width }: ReplayPl
   const t = REPLAY_TEXT[locale]
   const { placement, at } = hover
   const kind = PLACEMENT_RENDER[placement.family]
-  const title =
-    kind === 'wall' || kind === 'sensor'
-      ? t.placementFamily[kind]
-      : t.placementUnnamedLabel
+  const title = kind && kind !== 'unnamed' ? t.placementFamily[kind] : t.placementUnnamedLabel
   const owner =
     placement.owner >= 0 && ownerName
       ? t.placementOwnerFmt(ownerName)
