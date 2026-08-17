@@ -20,55 +20,95 @@ import (
 	"levelup/go-api/internal/analysis/filmdec"
 )
 
-// gwPickupReport21 publie le bornage, la datation, et les deux temoins.
+// gwPickup21Tally compte le bornage, la datation et les deux temoins sur un sous-ensemble.
+type gwPickup21Tally struct {
+	N, Dated, Unknown, Never, NoLaterKF, NeverSeen int
+	Dists, Widths, Witness                         []float64
+	WitClose                                       int
+	// WinDenom / WinHit / WinDated : le temoin de fenetre et la MESURE REELLE sur le MEME
+	// denominateur. Comparer un temoin a une mesure prise sur une autre population serait
+	// exactement le genre de comparaison flatteuse que ce chantier refuse.
+	WinDenom, WinHit, WinDated int
+}
+
+// gwPickupReport21 publie le bornage, la datation, et les deux temoins — globalement puis par
+// sous-ensemble, parce qu'une arme lachee a une mort et une arme de socle ne disparaissent pas
+// pour la meme raison.
 func gwPickupReport21(t *testing.T, f *gwPickupFilm, objs []gwPickupObject) {
 	t.Helper()
-	var dists, widths, witness []float64
-	c := map[string]int{}
-	witClose, winHit, winDenom := 0, 0, 0
+	sets := []string{gwPickupSetAll, gwPickupSetAtRest, gwPickupSetDropped, gwPickupSetSwap}
+	tally := map[string]*gwPickup21Tally{}
+	for _, s := range sets {
+		tally[s] = &gwPickup21Tally{}
+	}
 	for _, o := range objs {
-		c[o.Status]++
-		if o.Status == gwPickupStatusNever {
+		gwPickup21Add(f, o, tally[gwPickupSetAll], tally[gwPickupSet(o)])
+	}
+	for _, s := range sets {
+		gwPickup21Log(t, s, tally[s])
+	}
+}
+
+// gwPickup21Add compte UNE apparition dans les deux tallies (global et sous-ensemble).
+func gwPickup21Add(f *gwPickupFilm, o gwPickupObject, all, set *gwPickup21Tally) {
+	dInst, okInst := 0.0, false
+	winHit, okWin := false, false
+	if o.Status != gwPickupStatusNever {
+		dInst, okInst = gwPickupWitnessInstant(f, o)
+		winHit, okWin = gwPickupWitnessWindow(f, o)
+	}
+	for _, a := range []*gwPickup21Tally{all, set} {
+		a.N++
+		switch o.Status {
+		case gwPickupStatusNever:
+			a.Never++
 			continue
+		case gwPickupStatusDated:
+			a.Dated++
+			a.Dists = append(a.Dists, o.Picker.DistM)
+		default:
+			a.Unknown++
 		}
-		if o.Status == gwPickupStatusDated {
-			dists = append(dists, o.Picker.DistM)
-		}
-		widths = append(widths, o.Bounds.WidthS())
+		a.Widths = append(a.Widths, o.Bounds.WidthS())
 		if o.Bounds.NoLaterKF {
-			c["sans_image_cle_posterieure"]++
+			a.NoLaterKF++
 		}
 		if o.Bounds.SeenKF == 0 {
-			c["jamais_recense"]++
+			a.NeverSeen++
 		}
-		if d, ok := gwPickupWitnessInstant(f, o); ok {
-			witness = append(witness, d)
-			if d < originDropMaxDist {
-				witClose++
+		if okInst {
+			a.Witness = append(a.Witness, dInst)
+			if dInst < originDropMaxDist {
+				a.WitClose++
 			}
 		}
-		if hit, ok := gwPickupWitnessWindow(f, o); ok {
-			winDenom++
-			if hit {
-				winHit++
+		if okWin {
+			a.WinDenom++
+			if winHit {
+				a.WinHit++
+			}
+			if o.Status == gwPickupStatusDated {
+				a.WinDated++
 			}
 		}
 	}
-	n := len(objs)
-	t.Logf("2.1 BORNAGE — apparitions %d · DATEES %d (%s) · unknown %d (%s) · jamais ramassees"+
-		" %d (%s) · sans image-cle posterieure %d · jamais recensees a une image-cle %d",
-		n, c[gwPickupStatusDated], gwPadsPart(c[gwPickupStatusDated], n),
-		c[gwPickupStatusUnknown], gwPadsPart(c[gwPickupStatusUnknown], n),
-		c[gwPickupStatusNever], gwPadsPart(c[gwPickupStatusNever], n),
-		c["sans_image_cle_posterieure"], c["jamais_recense"])
-	t.Logf("2.1 INTERVALLES (s) — %s", gwPickupSpread(widths))
-	t.Logf("2.1 DISTANCES du ramasseur (m) — %s", gwPickupSpread(dists))
-	t.Logf("2.1 TEMOIN d'instant (joueur le plus proche a un instant tire au sort PENDANT la"+
-		" presence) — %s · dont sous %.1f m %s", gwPickupSpread(witness), originDropMaxDist,
-		gwPadsPart(witClose, len(witness)))
-	t.Logf("2.1 TEMOIN de fenetre (fenetre de MEME largeur placee au hasard pendant la"+
-		" presence) — contient un passage sous %.1f m : %s", originDropMaxDist,
-		gwPadsPart(winHit, winDenom))
+}
+
+// gwPickup21Log publie un sous-ensemble.
+func gwPickup21Log(t *testing.T, set string, a *gwPickup21Tally) {
+	t.Helper()
+	t.Logf("2.1 BORNAGE [%s] — apparitions %d · DATEES %s · unknown %s · jamais ramassees %s"+
+		" · sans image-cle posterieure %d · jamais recensees a une image-cle %d",
+		set, a.N, gwPadsPart(a.Dated, a.N), gwPadsPart(a.Unknown, a.N),
+		gwPadsPart(a.Never, a.N), a.NoLaterKF, a.NeverSeen)
+	t.Logf("2.1 INTERVALLES [%s] (s) — %s || DISTANCES du ramasseur (m) — %s",
+		set, gwPickupSpread(a.Widths), gwPickupSpread(a.Dists))
+	t.Logf("2.1 TEMOIN d'instant [%s] (joueur le plus proche a un instant tire au sort PENDANT"+
+		" la presence) — %s · dont sous %.1f m %s",
+		set, gwPickupSpread(a.Witness), originDropMaxDist, gwPadsPart(a.WitClose, len(a.Witness)))
+	t.Logf("2.1 TEMOIN de fenetre [%s] — MESURE (le vrai intervalle date) %s CONTRE TEMOIN"+
+		" (fenetre de meme largeur, placee au hasard pendant la presence) %s · MEME denominateur",
+		set, gwPadsPart(a.WinDated, a.WinDenom), gwPadsPart(a.WinHit, a.WinDenom))
 }
 
 // gwPickupWitnessInstant tire un instant au sort PENDANT la presence de l'objet — entre sa

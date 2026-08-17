@@ -1,3 +1,83 @@
+## [2026-08-17] v7.5 rejeu 2D — item 6 phase 2 : le ramassage tient sur les socles, le gate tombe sur les armes lachees, et le cycle vaut 30,5 s
+
+**Statut** : Complete (phase 2 close ; **gate 2 NON ATTEINT**, phase 3 NON ouverte). Items 2.1
+`[x]`, 2.2 `[!]`, 2.3 `[x]`, 2.4 `[x]`.
+
+**Decision technique principale** : lire le ramassage en DEUX temps distincts, et ne jamais les
+confondre. BORNER par le recensement des images-cles (walker durci 249/250) restreint a la vie de
+la cle `(slot, gen)` — sans cette restriction, le recensement de l'objet SUIVANT prouverait la
+survie du PRECEDENT, puisque la generation ne fait que 2 bits. DATER, dans cet intervalle, par le
+premier passage d'un bipede a moins de 1,5 m — le miroir exact de la regle `dropped` du 18/08,
+aux memes constantes de production. Deux positions, deux roles : la position de CREATION grappe
+les socles (item 1.2), la position de REFERENCE (dernier point de piste si l'objet a bouge) date
+le ramassage. Chaque mesure porte son temoin, ecrit et commite AVANT la mesure (commit
+`bfa67b4de`, anterieur au commit de mesure) : un instant tire au sort pendant la presence de
+l'objet, et une FENETRE de meme largeur placee au hasard pendant cette presence, comparee a la
+mesure sur le MEME denominateur.
+
+**Resultats observes** (8 films / 6 cartes de la phase 1, `CGO_ENABLED=0`, un film par processus,
+largeurs de chaque carte, aucune base ouverte) :
+
+- **Controle d'ancrage** : les quantites partagees avec la phase 1 se retrouvent AU CHIFFRE PRES
+  par une chaine reecrite — 1 785 apparitions retenues (identiques film par film), 235 `at_rest`,
+  57 socles, 4 cycles d'apparition etablis. Rien n'a derive entre les deux lots.
+- **2.1** — 1 111 ramassages dates (62,2 %), 554 `unknown` (31,0 %), 120 « jamais ramassees »
+  (6,7 %). Largeur des intervalles : mediane 20,00 s, max 20,02 s — l'espacement des images-cles,
+  et rien de plus. **428 apparitions sur 1 785 (24,0 %) ne sont recensees a AUCUNE image-cle** :
+  nees et disparues entre deux. **La distribution des distances du ramasseur est un artefact de
+  la regle** (« le premier passage sous 1,5 m » rend la distance de franchissement : mediane
+  1,46-1,49 m sur les huit films, indistinctement) — seuls les temoins sont informatifs.
+  **Temoin de fenetre, meme denominateur** : sur les SOCLES la mesure fait 120/134 = 89,6 %
+  contre 30/134 = 22,4 % pour le temoin (facteur 4) ; sur l'ENSEMBLE 221/292 = 75,7 % contre
+  158/292 = 54,1 % (facteur 1,4), et sur le seul Super Fiesta le temoin PASSE DEVANT (83,3 %
+  contre 66,7 %).
+- **2.2 — GATE 2 NON ATTEINT : 393 / 1 111 = 35,4 %** contre >= 90 % exige, seuil NON rebaisse.
+  Il tombe aussi sur le sous-ensemble le plus favorable (socles 62,7 %) : aucun decoupage ne le
+  sauve, et aucun n'a ete essaye pour le sauver. **Mais la mesure scinde la population que le
+  gate traitait ensemble** : sur les SOCLES l'accord ECRASE son temoin — **62,7 % contre 3,5 %,
+  facteur 17,8** — et porte sur des armes que le ramasseur ne portait pas avant (2,3 %) ; sur les
+  armes `dropped` l'accord passe SOUS son temoin (32,1 % contre 65,0 %), signature d'un critere
+  qui ne mesure rien la, parce qu'une arme lachee a une mort DESPAWN au lieu d'etre ramassee. Ces
+  armes pesent 84,1 % du denominateur du gate. **Plafond structurel mesure** : 497/1 111 (44,7 %)
+  des ramasseurs n'ont aucun loadout a l'image-cle suivante — le slot de bipede MIGRE au respawn
+  et 20 s suffisent a mourir, donc 90 % etait inatteignable par construction sur ce denominateur
+  (constat ecrit APRES coup, qui ne rebaisse rien). **Controle d'espace de slots : 96,8 %** des
+  slots repliques a +-100 ms d'une image-cle y portent aussi un loadout — les deux chaines
+  parlent bien du meme espace, l'accord bas n'est pas un decalage d'index.
+- **2.3** — lignes `PICKUP` et `PADSTATE` publiees comme PROPOSITION de format pour la phase 3.
+  Rien n'est ecrit au document de rejeu, au contrat ni a l'OpenAPI.
+- **2.4 — LE RESULTAT DU LOT. 24 socles sur 57 ont un cycle ETABLI contre 4 sur 57 a l'item 1.3
+  (20 socles gagnes)**, aux MEMES regles de stabilite (>= 2 ecarts, ecart-type <= 20 % de la
+  mediane) : le seuil n'a pas bouge, c'est l'horloge qui a change d'origine. Sur 142 ecarts mis
+  en commun, l'histogramme est **un pic** : 55 (38,7 %) dans la tranche 30-35 s, tenant dans
+  **0,34 s** (p25 30,43 · mediane 30,50 · p75 30,77), present sur les 7 films qui ont des socles.
+  Les MEMES socles mesures d'apparition a apparition donnent mediane 99,1 s et 20,0 % dans cette
+  tranche. **Et les armes de puissance sortent seules** : S7 Sniper 114,6-134,3 s, Energy Sword
+  194,5 s, Needler 100,9 s, contre 30,3-31,3 s pour BR75 / Bandit Evo / Mangler / Disruptor /
+  Pulse Carbine / VK78 Commando. Aucune comparaison a une source officielle : il n'y en a pas
+  hors ligne.
+
+**Decouvertes notees, NON traitees** (plan, n. 9 a 11) : la distance du ramasseur est un artefact
+de la regle et se lira comme une mesure si on ne l'ecrit pas ; l'oracle des loadouts a un plafond
+structurel dont la cause est la migration du slot de bipede au respawn — le lever demande une
+attribution slot -> JOUEUR qui n'existe pas et qui conditionne aussi la publication du ramasseur ;
+la regle `dropped` designe une despawn et non un ramassage, donc le seul sous-ensemble publiable
+est `at_rest`.
+
+**Livre** : `replay/ground_weapon_pickup_research_test.go` (garde `GW_PICKUP` / `GW_PICKUP_MAP`,
+un film), `replay/ground_weapon_pickup_report_test.go` (les quatre publications, aucun decodage),
+`replay/ground_weapon_pickup_rule_test.go` (bornage, datation, temoin — 4 tests sans garde dans
+le gate ordinaire). `ground_weapon_pads_cluster_test.go` gagne `gwPadsClusterAssign` et
+`gwPadsCycleFromGaps` (tous deux testes) au lieu d'une seconde copie de la regle de grappe et de
+la regle de stabilite.
+
+**Conclusion / prochaine etape** : arbitrage utilisateur. La phase 3 reste FERMEE par le gate 2.
+Ce qu'il y a a trancher n'est pas un seuil mais un PERIMETRE : publier les ramassages des seuls
+SOCLES (`at_rest`), ou refuser toute publication tant qu'un oracle sans plafond n'existe pas. Le
+cycle depuis le ramassage, lui, est mesure et n'attend rien. Gates verts : `go build ./...`,
+`go vet ./...`, `go test ./internal/analysis/... ./internal/archlint/...`,
+`golangci-lint run --new-from-merge-base=origin/main` = 0 issue.
+
 ## [2026-08-17] v7.5 rejeu 2D — item 6 phase 1 : les socles sont mesures, le catalogue est refuse par son propre critere
 
 **Statut** : Complete (phase 1 close ; **gate 1 NON ATTEINT sur la clause de recouvrement**, phase 2
