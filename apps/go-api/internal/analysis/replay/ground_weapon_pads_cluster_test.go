@@ -45,10 +45,28 @@ type gwPadCycle struct {
 // les fusionnerait selon l'ordre d'arrivee. L'ordre d'entree est rendu TOTAL avant la marche
 // (instant, puis position) pour que deux executions rendent les memes grappes.
 func gwPadsCluster(app []gwPadApparition, radiusM float64) []gwPadCluster {
-	sorted := append([]gwPadApparition(nil), app...)
-	sort.Slice(sorted, func(i, j int) bool { return gwPadsLess(sorted[i], sorted[j]) })
+	out, _ := gwPadsClusterAssign(app, radiusM)
+	return out
+}
+
+// gwPadsClusterAssign agglomere ET rend, pour chaque apparition D'ENTREE (meme index), la
+// grappe qui la porte — ou -1 si l'entree n'a pas ete agglomeree.
+//
+// POURQUOI L'ASSIGNATION EXISTE. La phase 2 mesure le cycle DEPUIS LE RAMASSAGE : il lui faut,
+// socle par socle, quel objet est apparu et quand il a ete ramasse. Retrouver la grappe d'une
+// apparition apres coup en comparant sa position au centroide serait une SECONDE regle de
+// grappe, qui divergerait de celle-ci au premier correctif. `gwPadsCluster` reste le cas
+// d'usage sans assignation, et il n'y a toujours qu'une seule regle.
+func gwPadsClusterAssign(app []gwPadApparition, radiusM float64) ([]gwPadCluster, []int) {
+	ord := make([]int, len(app))
+	for i := range ord {
+		ord[i] = i
+	}
+	sort.Slice(ord, func(i, j int) bool { return gwPadsLess(app[ord[i]], app[ord[j]]) })
+	assign := make([]int, len(app))
 	var out []gwPadCluster
-	for _, a := range sorted {
+	for _, src := range ord {
+		a := app[src]
 		best, bestD := -1, math.Inf(1)
 		for i := range out {
 			if out[i].Kind != a.Kind || out[i].Family != a.Family {
@@ -63,6 +81,7 @@ func gwPadsCluster(app []gwPadApparition, radiusM float64) []gwPadCluster {
 			out = append(out, gwPadCluster{
 				Kind: a.Kind, Family: a.Family, X: a.X, Y: a.Y, Z: a.Z, TS: []uint64{a.TUS},
 			})
+			assign[src] = len(out) - 1
 			continue
 		}
 		n := float32(len(out[best].TS))
@@ -70,12 +89,29 @@ func gwPadsCluster(app []gwPadApparition, radiusM float64) []gwPadCluster {
 		out[best].Y = (out[best].Y*n + a.Y) / (n + 1)
 		out[best].Z = (out[best].Z*n + a.Z) / (n + 1)
 		out[best].TS = append(out[best].TS, a.TUS)
+		assign[src] = best
 	}
 	for i := range out {
 		sort.Slice(out[i].TS, func(a, b int) bool { return out[i].TS[a] < out[i].TS[b] })
 	}
-	sort.Slice(out, func(i, j int) bool { return gwPadsClusterLess(out[i], out[j]) })
-	return out
+	// Les grappes sont rendues dans un ordre TOTAL (et non celui de leur decouverte) : les
+	// index d'assignation deja distribues doivent suivre la permutation, sans quoi ils
+	// designeraient une grappe voisine.
+	perm := make([]int, len(out))
+	for i := range perm {
+		perm[i] = i
+	}
+	sort.Slice(perm, func(i, j int) bool { return gwPadsClusterLess(out[perm[i]], out[perm[j]]) })
+	inv := make([]int, len(out))
+	sorted := make([]gwPadCluster, len(out))
+	for newIdx, oldIdx := range perm {
+		inv[oldIdx] = newIdx
+		sorted[newIdx] = out[oldIdx]
+	}
+	for i := range assign {
+		assign[i] = inv[assign[i]]
+	}
+	return sorted, assign
 }
 
 // gwPadsLess est l'ordre TOTAL des apparitions : instant, puis nature, famille et position.
@@ -135,6 +171,16 @@ func gwPadsCycle(ts []uint64) gwPadCycle {
 	gaps := make([]float64, 0, len(ts)-1)
 	for i := 1; i < len(ts); i++ {
 		gaps = append(gaps, float64(ts[i]-ts[i-1])/1e6)
+	}
+	return gwPadsCycleFromGaps(gaps)
+}
+
+// gwPadsCycleFromGaps juge un cycle a partir des ECARTS deja calcules. La phase 2 mesure des
+// ecarts qui ne sont PAS des differences d'instants successifs (ramassage -> reapparition
+// suivante) : elle passe donc par ici, et le verdict de stabilite reste ecrit une seule fois.
+func gwPadsCycleFromGaps(gaps []float64) gwPadCycle {
+	if len(gaps) == 0 {
+		return gwPadCycle{}
 	}
 	c := gwPadCycle{
 		Gaps:    len(gaps),
@@ -254,6 +300,30 @@ func TestGwPadsClusterNeMelangePasLesFamilles(t *testing.T) {
 	}
 	if got := gwPadsCluster(app, gwPadRadiusM); len(got) != 3 {
 		t.Fatalf("3 grappes attendues (2 familles + 1 nature), %d obtenues : %+v", len(got), got)
+	}
+}
+
+// TestGwPadsClusterAssignRendLaGrappeDeChaqueEntree : l'assignation doit designer la grappe
+// RENDUE (apres l'ordre total), pas celle de l'ordre de decouverte — l'erreur silencieuse que
+// la permutation evite.
+func TestGwPadsClusterAssignRendLaGrappeDeChaqueEntree(t *testing.T) {
+	app := []gwPadApparition{
+		{Kind: gwPadKindWeapon, Family: "Z", X: 10, TUS: 1},
+		{Kind: gwPadKindWeapon, Family: "A", X: 0, TUS: 2},
+		{Kind: gwPadKindWeapon, Family: "Z", X: 10.3, TUS: 3},
+	}
+	pads, assign := gwPadsClusterAssign(app, gwPadRadiusM)
+	if len(pads) != 2 || len(assign) != 3 {
+		t.Fatalf("2 grappes et 3 assignations attendues : %d / %d", len(pads), len(assign))
+	}
+	for i, a := range app {
+		p := pads[assign[i]]
+		if p.Family != a.Family {
+			t.Fatalf("apparition %d (%s) assignee a la grappe %q", i, a.Family, p.Family)
+		}
+		if gwPadsDist(p.X, p.Y, p.Z, a.X, a.Y, a.Z) > gwPadRadiusM {
+			t.Fatalf("apparition %d assignee a une grappe hors du rayon : %+v", i, p)
+		}
 	}
 }
 
