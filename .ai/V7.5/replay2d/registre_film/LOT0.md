@@ -200,3 +200,37 @@ niveaux compris) ne peut pas etre vert sur `06dfe6d9`.
 0.3 sur les trois films.
 
 **Gates.** `gofmt -l` vide · `go vet` 0 · `EXIT_0.3_test_filmdec_replay=0`.
+
+---
+
+## 0.4 — Table ECS : ti=11 i2 et i9 `[x]`
+
+**Ce qui est fait.** Les deux lignes passent `non_porte` -> `deser_non_cable`, avec
+`code_source = components_batch3.go:22` et la grammaire renseignee dans la colonne `grammar`.
+La coherence avec ti=23 est faite : meme statut pour la meme situation (« grammaire ecrite,
+aucun appelant »).
+
+`deser_addr` reste VIDE, et c'est un fait ecrit en `notes` plutot qu'une case remplie au
+hasard : `consumeObjectiveFormattedText` a ete porte par le workflow `port-ecs-deathchains`
+sans jamais etre recoupe a une adresse `FUN_` — contrairement aux lignes ti=23, qui portent
+`FUN_142ed6cec`. Inventer une adresse aurait ete pire que l'absence.
+
+**Une modification de commentaire etait NECESSAIRE, pas cosmetique.** `checkCodeSource`
+(`ecs_table_guard_test.go:271`) exige que le NOM du composant apparaisse dans le fichier
+designe. Le commentaire de `components_batch3.go` ecrivait le jumeau i9 en abrege
+(« son jumeau `-secondary-` »), donc le nom complet
+`managed-objective-secondary-formatted-text-component` n'y figurait pas. Les deux noms sont
+maintenant ecrits en entier, avec la raison.
+
+**Temoin de detection du couplage, JOUE.** En remettant l'abreviation :
+`G1 : ligne 277 : managed-objective-secondary-formatted-text-component est declare
+deser_non_cable mais son nom n apparait pas dans components_batch3.go` — EXIT 1. Restaure :
+EXIT 0. Le garde-rail mord bien sur ces deux lignes precises.
+
+**Comptes de statuts apres edition** (denominateur inchange, 1 081 lignes dont 14 alias) :
+`porte` 458 · `non_porte` **530** (etait 532) · `partiel` 45 · `deser_non_cable` **34**
+(etait 32) · `alias` 14. La ligne `:230` du registre porte ces chiffres et est mise a jour a
+l'item 0.5.
+
+**Gates.** `EXIT_0.4_G1_G3=0` (G1 et G3 verts ; G2 saute, sans film) ·
+`EXIT_0.4_test_filmdec=0` · `gofmt -l` vide.
