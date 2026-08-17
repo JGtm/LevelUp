@@ -38,7 +38,7 @@ var hookedNames = []string{
 	// ti=37 — equipement (deux canaux ajoutes au hook existant)
 	compEquipmentEnergyDelay, compEquipmentCharges,
 	// ti=10 — objet scripte du mode
-	"managed-object-boundary-visibility-component",
+	compManagedObjectBoundaryVisibility,
 	// sondes
 	compSplashMessageStatic, compSplashMessageDynamic, compHighFrequency,
 	compManagedObjectPropName,
@@ -449,7 +449,7 @@ func TestManagedObjectHookFlagOrder(t *testing.T) {
 	}
 	w.put(1, 1) // iteration 31 -> rang 31
 	br := NewBitReader(append(w.buf, make([]byte, 8)...))
-	consumeByName(br, "managed-object-boundary-visibility-component", 10, 0)
+	consumeByName(br, compManagedObjectBoundaryVisibility, 10, 0)
 
 	if appels != 1 {
 		t.Fatalf("%d appel(s) de hook, 1 attendu", appels)
@@ -584,7 +584,7 @@ func TestHookFieldStringsAreRegistryLabels(t *testing.T) {
 			t.Errorf("ProbeComponent(%d).String() = %q", p, s)
 		}
 	}
-	if s := ManagedObjectBoundaryVisibility.String(); s != "managed-object-boundary-visibility-component" {
+	if s := ManagedObjectBoundaryVisibility.String(); s != compManagedObjectBoundaryVisibility {
 		t.Errorf("ManagedObjectField.String() = %q", s)
 	}
 	// Une valeur hors domaine doit se NOMMER comme telle, pas rendre une etiquette au hasard.

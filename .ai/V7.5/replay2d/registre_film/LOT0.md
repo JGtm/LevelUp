@@ -361,3 +361,82 @@ bouge, vers le fichier et la ligne du nouveau deser (les quatre sondes pointent 
 **Gates.** `gofmt -l` vide · `go vet` 0 · `EXIT_0.6_test_filmdec_replay_objectiveevents=0` ·
 `EXIT_0.6_desync_3films=0` · instrument d'equipement sous garde `EQUIP_FILM` : EXIT 0 sur
 `000d5950`.
+
+---
+
+## 0.7 — Gates de cloture `[x]` (avec un `[~]` nomme)
+
+**Commandes exactes du plan (§5), jouees dans cette session, verdicts dans `LOT0_gates.log`.**
+
+| Gate | Commande | EXIT |
+|---|---|---|
+| Build CGO | `go build ./...` (gcc winlibs) | **0** |
+| Vet | `go vet ./internal/analysis/... ./internal/replaybuild/... ./internal/games/halo_infinite/film/... ./contracttest/...` | **0** |
+| Tests sans CGO | `CGO_ENABLED=0 go test -count=1 ./internal/analysis/{filmdec,replay,objectiveevents}/` | **0** |
+| Tests avec CGO | `go test -count=1 ./internal/replaybuild/ ./internal/games/halo_infinite/film/... ./contracttest/` | **0** |
+| Lint du diff | `golangci-lint run --new-from-merge-base=origin/main ./...` | **0** (« 0 issues ») |
+| `gofmt -l` | sur `internal/analysis/filmdec/` | vide |
+
+**UNE issue de lint a ete trouvee et corrigee** avant la relance : `goconst` sur
+`managed-object-boundary-visibility-component`, litteral en 4 endroits apres l'item 0.6. Une
+constante `compManagedObjectBoundaryVisibility` a ete posee dans `components_walk_batch9.go` et
+les quatre sites y renvoient — exactement la regle « a la 3e copie, centraliser ». La relance
+rend 0.
+
+**Temoin `TestGoldenMiniBobine` : INCHANGE, et c'est la conclusion attendue.** L'item 0.2 etant
+stoppe, `simStateComplete` reste `false` et le temoin doit rester a `0 propose(s), 0 publiee(s)`
+sur la voie MARCHE. Verifie sur pieces : `minibobine.golden:56` porte toujours
+`marche, source appartenant a la victime : 0 propose(s), 0 publiee(s)`, et
+`git diff HEAD~6 -- .../killsource/` est VIDE — aucun fichier du paquet killsource n'a bouge de
+tout le lot.
+
+**`[~]` — entree `.ai/thought_log.md`** : couverte par le superviseur, sur consigne explicite
+(« N'edite PAS le journal §7 du plan maitre ni `.ai/thought_log.md` »). Les cases du Lot 0 du
+plan maitre, elles, sont cochees par ce lot.
+
+---
+
+## Recapitulatif des statuts du Lot 0
+
+| Item | Statut | En un mot |
+|---|---|---|
+| 0.1 Test de polarite d'i9 | `[x]` | 2 instruments, temoin joue, comptes figes sur 3 films |
+| 0.2 Chemin absolu d'i0 aux vraies largeurs | `[!]` | STOP motive : killsource n'a pas de carte et `SetAbsoluteAxisW` est un levier de calibration vivant |
+| 0.3 Empreinte du registre | `[x]` | `0x61e492dd4de7fd4e` ; et le registre N'EST PAS identique entre builds |
+| 0.4 Table ECS ti=11 i2/i9 | `[x]` | `deser_non_cable`, G1 vert, couplage prouve rouge |
+| 0.5 Registre des reports | `[x]` | 8 lignes ajoutees, 3 amendees (`:220`, `:221`, `:230`) |
+| 0.6 Plomberie de publication | `[x]` | 23 `case` deplaces, 4 hooks, `DesyncAt` identique au record pres |
+| 0.7 Gates de cloture | `[x]` | tous a 0 ; `thought_log` `[~]` (superviseur) |
+
+**Gate 0 du plan** — « tout vert, `TestGoldenMiniBobine` au temoin ecrit, aucune ligne de table
+sans statut coherent, chaque hook couvert par un test unitaire, `DesyncAt` identique avant/apres
+0.6 » : tenu, A UNE RESERVE — le temoin ecrit du plan (`0 -> 2 sources proposees`) supposait
+l'item 0.2 fait. Il ne l'est pas, donc le temoin correct est « inchange », et c'est ce qui est
+mesure.
+
+---
+
+## Decouvertes hors perimetre (notees, NON traitees)
+
+1. **Le registre du film n'est pas une constante de FORMAT, seulement de BUILD.** `06dfe6d9` :
+   116 blocs / 1 031 slots contre 118 / 1 067. Consequence directe : le garde-rail **G2** de la
+   table ECS ne peut pas etre vert sur ce film. Ecrit au registre (`:230`).
+2. **Le compte « >= 4 chemins de production re-parsent le registre » de la section Decouvertes du
+   plan surestime d'un.** `ground_weapon_creation.go:98` n'a AUCUN appelant de production. Le
+   chemin `replaybuild.Build` en fait TROIS.
+3. **Trois lignes du registre des reports sont mal formees** (`:177` 8 champs, `:182` 5, `:201`
+   7, au lieu de 6) : des `|` litteraux dans le texte cassent leur rendu en tableau. Anterieures
+   a ce lot, non corrigees.
+4. **`equipment_state_test.go:114-116` porte une decouverte perimee** : « aucun chemin de
+   production n'appelle `SetWorldObjectPrecisionFromLayout` ». C'est faux depuis le 2026-08-15 —
+   `replay.installWorldObjectPrecision` le fait pour tout `BuildFromFilm`. Commentaire a
+   corriger par le lot qui touchera ce fichier (lot D).
+5. **`ScanFilmEquipmentState` reste sans consommateur de production** (deja au registre du plan,
+   decouverte n°2). L'item 0.6 l'a ENRICHI de deux champs sans lui donner d'appelant : si le lot
+   D se clot `[!]`, la question « instrument sous garde ou code mort » se posera sur six champs
+   au lieu de quatre.
+6. **`absPerIndexAxisW` / `SetAbsPerIndexAxisW` / `SetAbsDequantMode` / `AbsIndexHistogram`
+   (`position_capture.go`)** : quatre leviers de calibration exportes dont aucun appelant de
+   production n'a ete trouve pendant l'instruction de l'item 0.2. Hors perimetre du lot 0, mais
+   ils appartiennent au meme nettoyage que `absoluteAxisW` — a traiter par le lot qui reprendra
+   `:221`.

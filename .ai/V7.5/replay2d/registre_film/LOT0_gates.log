@@ -1,11 +1,38 @@
-﻿# LOT 0 â€” journal des gates (verdict = code de sortie)
-# worktree wt/registre-film, 2026-08-17
+# LOT 0 - journal des gates (verdict = code de sortie, jamais une sortie lue au travers d un pipe)
+# worktree wt/registre-film, branche depuis 3fdbb8030, session du 2026-08-17
+# Reecrit en ASCII pur : les Add-Content PowerShell avaient double-encode l UTF-8 (BOM + mojibake).
+
+# --- etat initial, avant toute modification ---
 EXIT_baseline_test_filmdec_replay_objectiveevents=0
 EXIT_baseline_minibobine=0
+
+# --- 0.1 polarite d i9 ---
 EXIT_0.1_test_filmdec=0
 EXIT_0.1_witness_3films=0
+
+# --- 0.2 : STOPPE, aucun gate a jouer (aucune ligne de production modifiee) ---
+
+# --- 0.3 empreinte du registre ---
 EXIT_0.3_test_filmdec_replay=0
+
+# --- 0.4 table ECS ti=11 i2/i9 ---
 EXIT_0.4_G1_G3=0
 EXIT_0.4_test_filmdec=0
-EXIT_0.6_desync_3films=0  # comptes IDENTIQUES avant/apres 0.6 sur les 3 films
+
+# --- 0.6 plomberie de publication ---
 EXIT_0.6_test_filmdec_replay_objectiveevents=0
+EXIT_0.6_desync_3films=0
+EXIT_0.6_equip_film_000d5950=0
+
+# --- 0.7 cloture (commandes exactes du plan, section 5) ---
+EXIT_0.7_go_build_cgo=0
+EXIT_0.7_go_vet=0
+EXIT_0.7_test_filmdec_replay_objectiveevents=0
+EXIT_0.7_test_replaybuild_film_contracttest=0
+EXIT_0.7_golangci_lint_premier_passage=1
+EXIT_0.7_golangci_lint_apres_correction_goconst=0
+
+# --- 0.7 relance finale, apres la correction goconst ---
+EXIT_0.7_final_test_nocgo=0
+EXIT_0.7_final_test_cgo=0
+EXIT_0.7_final_go_build=0

@@ -852,7 +852,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// Returns ported=false on the value-gated loop1 dispatch (count>0) so the
 		// traversal desyncs cleanly instead of mis-aligning. Common case: 196 bits.
 		return variant, nil, consumeBipedAction(br)
-	case "managed-object-boundary-visibility-component": // ti10 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1)
+	case compManagedObjectBoundaryVisibility: // ti=10 i0 (FUN_141169e90 -> FUN_14080ae28) — 32xR(1), publie
 		consumeManagedObjectBoundaryVisibility(br)
 		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)

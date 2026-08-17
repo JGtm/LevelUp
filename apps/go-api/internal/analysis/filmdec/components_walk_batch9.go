@@ -55,8 +55,13 @@ func consumeGameEngineCampaignTimer(br *BitReader) { br.Skip(37) }
 func consumeBipedPosturePhysics(br *BitReader) { br.Skip(2) }
 
 // -----------------------------------------------------------------------------------------
-// LE HOOK DE L'OBJET SCRIPTE DU MODE (ti=10)
+// LE HOOK DE L OBJET SCRIPTE DU MODE (ti=10)
 // -----------------------------------------------------------------------------------------
+
+// compManagedObjectBoundaryVisibility est l etiquette de registre de ti=10 i0. Elle sert au
+// routage de `consumeByName`, au `String()` du champ et aux garde-rails : une constante, pas
+// quatre litteraux.
+const compManagedObjectBoundaryVisibility = "managed-object-boundary-visibility-component"
 
 // ManagedObjectField designe le champ publie de ti=10. Enumeration STABLE, pas un index de
 // registre (meme raison que `GameEngineField`). Un seul champ aujourd'hui : les 29 autres
@@ -72,7 +77,7 @@ const (
 // String rend l'etiquette de registre du champ.
 func (f ManagedObjectField) String() string {
 	if f == ManagedObjectBoundaryVisibility {
-		return "managed-object-boundary-visibility-component"
+		return compManagedObjectBoundaryVisibility
 	}
 	return "champ inconnu"
 }
