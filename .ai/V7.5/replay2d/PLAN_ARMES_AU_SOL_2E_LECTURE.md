@@ -176,12 +176,34 @@ la partie « armes » se rabat sur les images-cles (decision 1).
 > brief) : appliquer la decision 1 telle quelle (repli sur les images-cles), ou amender la
 > phase 1 pour qu'elle parte des records de CREATION (`ScanFilmGroundWeaponCreations`) plutot
 > que de la dispersion des deltas. Le second chemin est celui que la mesure designe.
+>
+> **ARBITRAGE SUPERVISEUR (2026-08-17, CR verifie sur pieces : commits `e7aa61494`, `6603eeaf8`,
+> `de1de707b`, entree `42:` de `default_state_arch.go:61`, gates `EXIT_*=0`)** : la phase 1 est
+> AMENDEE pour partir des records de CREATION. Motif ecrit : le seuil du gate 0 n'est pas rebaisse
+> (il reste NON ATTEINT et le plan le dit) ; mais la condition que la decision 1 traitait — « les
+> positions `ti=42` restent du bruit » — est CONTREDITE par une validation positionnelle plus
+> forte que le critere de dispersion : 282/289 atterrissages exacts du corps de creation sur la
+> position de la vie (0/289 sur trois archetypes temoins), identite 937/947. Le critere de
+> dispersion mesurait l'immobilite de la seule phase mobile : il etait mal pose, et son propre
+> temoin (6,5 %) le montre. Le repli « images-cles seules » n'a donc plus d'objet. Ce choix est
+> une decision de PERIMETRE (entree de la phase 1), pas un seuil ; l'utilisateur peut le renverser.
+> Garde-fou herite de la decouverte 2 : une creation ne compte QUE si son identite est croisee
+> (mot MPP resolu en famille d'arme connue, ou egal a la famille high-32 du meme slot a l'image-cle
+> voisine) — jamais par la seule acceptation du balayage (fantome 398 vs reel 366 sur `00162144`).
 
-### Phase 1 — SOCLES par recurrence spatiale, et CYCLE
+### Phase 1 — SOCLES par recurrence spatiale, et CYCLE (entree = records de CREATION `ti=42`)
 
-- [ ] 1.1 Sur les vies d'objets au sol (`ti=42` avec famille high-32 lue ; `ti=37` power-ups) :
-      classer chaque apparition `dropped` (mort a proximite, regle du 18/08 en miroir) ou
-      `spawned` (aucune mort a < 1,5 m dans les 2 frames) — distribution publiee.
+- [ ] 1.0 Entree de la phase : les APPARITIONS = records de creation `ti=42`
+      (`ScanFilmGroundWeaponCreations`, position i0 aux largeurs de la carte, temps du record,
+      identite = mot MPP -> famille d'arme, croisee avec la famille high-32 des images-cles du
+      meme slot) ; une creation sans identite croisee est ECARTEE et comptee. Meme chose pour les
+      power-ups `ti=37` (`ScanFilmEquipmentCreations`, familles `powerup_*`). Publier par film :
+      creations acceptees / croisees / ecartees, et la part des creations SANS vie delta (candidats
+      « apparus au repos » = socles attendus).
+- [ ] 1.1 Classer chaque apparition `dropped` (mort d'un joueur a <= 2 frames et < 1,5 m —
+      regle du 18/08 en miroir) ou `spawned` (aucune mort a < 1,5 m dans les 2 frames) —
+      distribution publiee par film ; temoin : la part `dropped` doit etre elevee sur un Super
+      Fiesta (`000d5950`) et plus faible sur une arene classique.
 - [ ] 1.2 Grapper les apparitions `spawned` par famille et position (rayon 1 m) ; compter les
       grappes par carte ; temoin de Notion 11 (petit et stable, 6-12 sur une arene) ; temoin
       negatif : les positions de mort ne forment pas de grappes de meme famille.
@@ -200,10 +222,14 @@ la partie « armes » se rabat sur les images-cles (decision 1).
 
 ### Phase 2 — RAMASSAGE par disparition + proximite
 
-- [ ] 2.1 Pour chaque vie d'objet au sol : instant de disparition, joueur le plus proche a
-      < 1,5 m dans les 2 frames -> ramasseur ; sinon `unknown`. Distribution des distances
-      (mediane, p90) et temoin (distance au joueur le plus proche a un instant tire au
-      hasard dans la vie de l'objet).
+- [ ] 2.1 Pour chaque apparition (creation `ti=42` identifiee, phase 1.0) : la disparition se
+      BORNE par le recensement des images-cles du slot (derniere image-cle ou l'objet est
+      recense, premiere ou il ne l'est plus — acquis du correctif de revue : `t1` = mise au
+      repos, DEL non isolable, pas de fin explicite) et se DATE dans cet intervalle par le
+      passage d'un joueur a < 1,5 m de la position de l'objet -> ramasseur = ce joueur (si
+      plusieurs : le premier ; si aucun : `unknown`, date = borne haute). Distribution des
+      distances (mediane, p90), largeur des intervalles, et temoin (distance au joueur le plus
+      proche a un instant tire au hasard PENDANT la presence de l'objet).
 - [ ] 2.2 CONTROLE INDEPENDANT : le loadout d'images-cles du ramasseur doit porter la famille
       ramassee a l'image-cle suivante (`keyframe_loadout.go`, 98,3 % de temoin croise) — c'est
       l'oracle du ramassage. Publier le taux d'accord et un temoin (joueur au hasard).
@@ -412,3 +438,6 @@ ne discrimine pas parce qu'il ne peut pas : un objet qui se pose CESSE d'emettre
 (acquis `ti=37`, cf. `EquipmentLifeSpan` et `splitLives`), donc tout echantillon delta d'une arme
 au sol appartient a sa phase MOBILE. Le critere du 12/08 mesurait l'immobilite sur le seul
 sous-ensemble de records qui n'existe que parce qu'il y a eu mouvement.
+- 2026-08-17 — **arbitrage superviseur** : phase 1 amendee (entree = records de CREATION `ti=42`
+  identifies par croisement, item 1.0 ajoute ; phase 2.1 reecrite sur le bornage par images-cles).
+  **Phase 1 LANCEE** (agent Opus, principal). L'utilisateur peut renverser l'arbitrage.
