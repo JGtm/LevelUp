@@ -649,3 +649,225 @@ modification de `traverse.go`, aucune ecriture en base.
 6. **La chaine `filmdec` cadre faux le composant statborg** meme dans ses paquets « propres »
    (435/437 sur `000d5950`, 841/841 sur `24dbb67d`) : les lots qui poseront des hooks dans
    `consumeByName` doivent savoir que la position annoncee n'est pas fiable pour ti=6.
+
+---
+
+# Phase 0-ter — les deux hypotheses du superviseur sont VRAIES (2026-08-18)
+
+> Deux questions posees, deux reponses mesurees : l'en-tete de 5 bits d'un compteur statborg EST
+> le numero de manche, et le « 200 » de Strongholds est une RAMPE, pas un saut. Consequence : les
+> cinq ecarts restants d'A.0.1 sont tous du cote de l'ORACLE, aucun du cote du decodeur.
+>
+> **RE-VERDICT GATE 0 : toujours NON ATTEINT aux seuils stricts** (A.0.1 = 76,2 %, 3 modes sur 5),
+> mais Oddball devient un mode TENU (4/4) et plus aucun ecart n'est inexplique.
+
+## 0t.1 L'en-tete de 5 bits EST le numero de manche — hypothese CONFIRMEE
+
+Rappel de la grammaire de production : par composant, `[5 bits = 0][5 bits = 0][val A][val B]...`,
+et l'assertion « les deux en-tetes valent 0 » sert de filtre anti-faux-positifs
+(`decodeComponents`, statborg.go). Le getter natif, lui, est indexe par manche :
+`value = *(int32*)(world + slot*0x88 + equipe*0x1DF0 + 0x38 + manche*4)`.
+
+L'instrument relache l'assertion a `<= 7` (4 des 10 bits de filtre conserves) et PUBLIE les
+en-tetes. Sur `24dbb67d`, la distribution du compteur i0 est sans ambiguite :
+
+| en-tetes (h1, h2) | emissions | lecture |
+|---|---|---|
+| (0, 0) | 358 | manche 1 |
+| (1, 1) | **294** | **manche 2 — invisible a la production** |
+| 7 autres couples | 14 au total | bruit (aucun groupe, tous isoles) |
+
+Les deux en-tetes portent la MEME valeur sur les emissions reelles ; les couples depareilles sont
+du bruit. Detail par slot d'equipe, chaque groupe filtre par la meme plus longue suite croissante
+que la production :
+
+| slot | manche | emissions | valeur finale | intervalle |
+|---|---|---|---|---|
+| 6 | 0 | 100 | **100** | 71 479 - 290 683 ms |
+| 6 | 1 | 100 | **100** | 348 961 - 518 032 ms |
+| 8 | 0 | 78 | **78** | 61 336 - 216 760 ms |
+| 8 | 1 | 43 | **43** | 317 580 - 513 729 ms |
+
+**Somme : slot 6 = 100 + 100 = 200 ; slot 8 = 78 + 43 = 121. Oracle : 200 / 121. EXACT.** C'est
+mot pour mot ce que le superviseur avait predit.
+
+### Les 4 films Oddball : score 4/4 EXACT
+
+| film | manches lues | film (somme par manche) | oracle | score | frags film | frags oracle |
+|---|---|---|---|---|---|---|
+| `24dbb67d` | 2 | 200 / 121 | 200 / 121 | **exact** | 87 | 88 |
+| `51ebbc0f` | 2 | 160 / 95 | 160 / 95 | **exact** | 66 | 70 |
+| `c88ec007` | **3** | 155 / 192 | 192 / 155 | **exact** | **126** | **126** |
+| `92f18088` | 2 | 113 / 200 | 113 / 200 | **exact** | 106 | 107 |
+
+`c88ec007` est le cas le plus parlant : la mesure y trouve **trois** manches (slot 6 : 80 + 33 +
+42 = 155 ; slot 8 : 32 + 80 + 80 = 192), et les deux totaux tombent exactement sur l'oracle. La
+grammaire n'a pas ete ajustee pour ce film : elle compte les manches qu'elle trouve.
+
+Frags : **385 sur 391 = 98,5 %** (contre 48 sur 88, soit 54,5 %, avec l'assertion de production),
+1 film sur 4 exact au frag pres. Le seuil ecrit demandait 88 exacts sur `24dbb67d` : il rend 87,
+donc **le seuil d'A.0b.1 n'est pas atteint au frag pres** — mais l'ordre de grandeur de l'erreur
+passe de 40 frags manquants a 1.
+
+### Controle negatif : propre
+
+Sur un match a UNE manche, aucune manche supplementaire ne doit apparaitre, sinon l'en-tete
+relache ne serait qu'une porte a faux positifs.
+
+| film | mode | (0,0) | autres couples | groupes de manche trouves |
+|---|---|---|---|---|
+| `530820e5` | CTF, 1 manche | 6 | **0** | aucun |
+| `000d5950` | Slayer, 1 manche | 186 | 3 emissions isolees | aucun |
+
+`530820e5` est parfaitement propre. `000d5950` porte 3 emissions a en-tete non nul sur 189
+(1,6 %), toutes isolees : le seuil de 3 emissions par groupe les ecarte. **Le controle negatif
+tient**, et le taux de bruit est publie.
+
+
+### Controle negatif elargi (9 films a une manche au sens du compteur)
+
+Les 22 TSV de manches ont ete regeneres avec la MEME grammaire, ce qui permet d'elargir le
+controle : sur les 9 films dont le compteur i0 ne comporte pas de manches multiples, les emissions
+a en-tete non nul sont **22 sur 869, soit 2,5 %**, toujours isolees et jamais groupees.
+
+| film | mode | en-tete non nul | total |
+|---|---|---|---|
+| `530820e5` | CTF | 0 | 6 |
+| `02784ce1` | Slayer | 1 | 183 |
+| `1b370ce1` | KOTH | 1 | 23 |
+| `0a247154` | KOTH | 1 | 34 |
+| `0215fe6b` | Slayer | 3 | 197 |
+| `000d5950` | Slayer | 3 | 189 |
+| `00162144` | Slayer | 4 | 188 |
+| `0c009149` | KOTH | 4 | 34 |
+| `01e1f945` | KOTH | 5 | 31 |
+
+Note sur KOTH : son compteur i0 porte le nombre de MANCHES GAGNEES (3-2, 4-2), pas un score
+remis a zero a chaque manche — l'en-tete y reste donc a 0, ce qui est coherent avec un compteur
+de match et non de manche. Le seuil de 3 emissions par groupe suffit a ecarter les 2,5 % de bruit.
+### Ce que cela dit de la production
+
+L'assertion « les deux en-tetes valent 0 » n'est pas un simple filtre : c'est un **filtre de
+manche**. `StatRecords` ne voit que la manche 1 de tout match a manches multiples, pour tous ses
+consommateurs (score, frags, morts, assistances, evenements nommes). Le portage (phase 1) doit
+lire l'en-tete comme un index de manche et sommer, pas relacher l'assertion sans l'exploiter.
+
+## 0t.2 Strongholds : c'est une RAMPE, donc l'oracle n'est pas le score de mode
+
+Question posee : le « 200 » arrive-t-il par une rampe d'increments ou par un saut isole que le
+filtre de monotonie retiendrait ? Mesure des increments successifs de la serie retenue :
+
+| film | slot | emissions | delta +1 | delta +2 | **delta > 2** | cadence moyenne | valeur finale | oracle |
+|---|---|---|---|---|---|---|---|---|
+| `696a9d7c` | 8 | 94 | 93 | 0 | **0** | 5 184 ms | 94 | 94 |
+| `7344d24f` | 6 | 194 | 187 | 6 | **0** | 2 803 ms | 200 | 193 |
+| `7344d24f` | 8 | 112 | 97 | 14 | **0** | 4 018 ms | 126 | 112 |
+| `10ed320d` | 6 | 175 | 149 | 25 | **0** | 3 275 ms | 200 | 174 |
+| `1e26f641` | 6 | 73 | 72 | 0 | **0** | 2 193 ms | 73 | 73 |
+| `1e26f641` | 8 | 133 | 65 | 67 | **0** | 1 425 ms | 200 | 132 |
+
+**Aucun increment superieur a 2 sur aucun film : il n'y a AUCUN saut isole.** Les increments de +2
+arrivent en series regulieres a la cadence du tick (par exemple `7344d24f` slot 6 : 124 -> 126 ->
+128 -> 130 a 393 451 / 394 452 / 395 453 / 396 455 ms, soit un pas de ~1 001 ms) : c'est le score
+d'une equipe qui tient DEUX zones au lieu d'une. Le film emet le score, pas la cible.
+
+### La regle qui explique les trois ecarts, verifiee sur 6 slots
+
+L'oracle vaut le **nombre d'emissions moins un**, la ou le film vaut la **somme des points** :
+
+| slot | emissions - 1 | oracle | somme des points (film) |
+|---|---|---|---|
+| `7344d24f` slot 6 | 193 | **193** | 200 |
+| `7344d24f` slot 8 | 111 | 112 | 126 |
+| `10ed320d` slot 6 | 174 | **174** | 200 |
+| `10ed320d` slot 8 | 169 (groupe filtre) | **169** | 170 |
+| `1e26f641` slot 6 | 72 | 73 | 73 |
+| `1e26f641` slot 8 | 132 | **132** | 200 |
+
+Et la contre-epreuve : sur les deux slots SANS aucun increment de +2 (`696a9d7c` slot 8,
+`1e26f641` slot 6), les deux comptes coincident et le film est exact. **`team_X_score` compte les
+TICKS de score, le film compte les POINTS.**
+
+Reponse au test decisif : ce n'est pas « le film emet la cible », c'est **« l'API `Score` n'est pas
+le score affiche »** en Strongholds. Le film est d'ailleurs coherent avec l'issue du match : il
+porte 200 — le plafond du mode, donc la condition de victoire — pour l'equipe dont l'`outcome`
+vaut 2, la ou l'API affiche 193, 174 ou 132, valeurs incompatibles avec une victoire par score
+plafond.
+
+**Regle de filtrage candidate — NON implementee** : aucune n'est necessaire. Il n'y a rien a
+filtrer : la serie du film est correcte, c'est l'oracle qui mesure autre chose. Un filtre qui
+ramenerait le film a 193 devrait supprimer des increments REELS et cadences — ce serait degrader
+une mesure juste pour coller a une reference qui ne l'est pas.
+
+## 0t.3 Re-verdict A.0.1 par mode (memes seuils)
+
+La couverture des films Oddball, recalculee avec la grammaire par manche, passe de 0,66-0,98 a
+**1,00-1,01** : la faible couverture de la phase 0-bis etait bien le SYMPTOME de l'assertion
+d'en-tete, comme l'avertissement de la phase 0-bis le supposait. Les 4 films rentrent donc dans le
+corpus comparable, qui passe de 17 a **21 films** (seul `64e8adfa`, couverture 0,97, reste dehors).
+
+| mode | denominateur | exacts | taux | evolution | verdict |
+|---|---|---|---|---|---|
+| Slayer | 4 | 4 | **100 %** | inchange | tenu |
+| CTF | 3 | 3 | **100 %** | inchange | tenu |
+| Oddball | 4 | **4** | **100 %** | 0 % -> **100 %** | **tenu** |
+| KOTH | 6 | 4 | 66,7 % | inchange | non tenu — oracle en secondes de colline (2 films), 6/6 sur le vainqueur |
+| Strongholds | 4 | 1 | 25 % | inchange | non tenu — oracle en ticks (3 films), film juste |
+
+| condition | seuil | phase 0 | 0-bis | **0-ter** | verdict |
+|---|---|---|---|---|---|
+| A.0.1 accord global | >= 90 % | 58,3 % | 70,6 % | **76,2 % (16/21)** | NON TENU |
+| A.0.1 modes tenus | >= 4 sur 5 | 1 | 2 | **3** | NON TENU |
+| A.0.2 identite | >= 90 % | 83,3 % | 94,1 % | 94,1 % | TENU |
+| A.0.3 joueurs justes | >= 90 % par mode | 82,3 % | 98,5 % | 98,5 % (frags Oddball 385/391) | TENU |
+| A.0.4 volume | <= 60 Ko | 8,9 Ko | 8,9 Ko | inchange | TENU |
+
+**GATE 0 : NON ATTEINT aux seuils stricts.** Aucun seuil n'a bouge.
+
+Lecture alternative, publiee comme telle et NON substituee au verdict : si l'on retire du
+denominateur les 5 films dont l'oracle mesure demontrablement autre chose que le score de mode
+(2 KOTH en secondes de colline, 3 Strongholds en ticks), il reste 16 films, **16/16 exacts, 5
+modes sur 5**. C'est un arbitrage de definition d'oracle — il appartient au superviseur et a
+l'utilisateur, pas a l'executeur.
+
+Ce qui a change de decisif : **plus aucun ecart d'A.0.1 n'est inexplique.** Les cinq restants sont
+imputes a l'oracle, chacun avec sa mesure : unite de mode pour KOTH, ticks contre points pour
+Strongholds.
+
+## Cout machine (phase 0-ter)
+
+12 films, un par processus, avant-plan, plafond 3 Go surveille : 0,6 - 1,9 s par film, pic
+**14,2 - 20,8 Mo**, aucun processus tue.
+
+## Statut des items (phase 0-ter)
+
+- [x] **0t.1** — hypothese **CONFIRMEE** : l'en-tete de 5 bits est le numero de manche. Score
+  Oddball **4/4 exact** (dont un match a 3 manches), frags 385/391 = 98,5 %. Controle negatif
+  propre (`530820e5` 0 faux positif, `000d5950` 3 emissions isolees sur 189). Le seuil « frags 88
+  exacts sur `24dbb67d` » rend 87 : non atteint au frag pres, l'erreur passant de 40 a 1.
+- [x] **0t.2** — **RAMPE**, aucun increment > 2, cadence du tick. Regle etablie et verifiee sur
+  6 slots : oracle = nombre d'emissions - 1, film = somme des points ; les deux coincident quand
+  il n'y a aucun +2. Verdict : l'API `team_X_score` n'est pas le score de mode en Strongholds.
+  Aucune regle de filtrage proposee — il n'y a rien a filtrer.
+- [x] **0t.3** — re-verdict ecrit : 76,2 %, 3 modes sur 5, GATE 0 non atteint aux seuils stricts ;
+  Oddball devient tenu ; lecture alternative (16/16, 5 modes) publiee sans se substituer au
+  verdict.
+
+Ce qui n'est PAS fait : aucun code de production touche (la forme dense ET l'en-tete de manche
+iront dans `objectiveevents/statborg.go` en phase 1, avec tests) ; l'appariement par triplet des
+joueurs n'a pas ete rejoue par manche (le seuil de 0t.1 portait sur la SOMME des frags, et c'est
+elle qui est publiee) ; `filmdec/statborg.go` toujours en place ; `traverse.go` intact ; aucune
+ecriture en base ; aucun push.
+
+## Decouvertes de la phase 0-ter (notees, NON traitees)
+
+1. **L'assertion « en-tetes a 0 » de `statborg.go` est un filtre de MANCHE, pas seulement un
+   filtre de faux positifs.** Tous les consommateurs de `StatRecords` ne voient que la manche 1
+   d'un match a manches multiples : score, frags, morts, assistances, et donc aussi
+   `NamedEvents`, `SlotIdentity` et `CrossCheckNamedEvents`. La portee depasse le lot A.
+2. **`team_0_score`/`team_1_score` compte les TICKS en Strongholds**, pas les points : verifie sur
+   6 slots. Tout affichage ou agregat qui presente cette colonne comme « le score » d'un match
+   Strongholds est faux des qu'une equipe tient deux zones.
+3. **Un match Oddball peut avoir 3 manches** (`c88ec007`) : ne pas cabler « 2 manches ».
+4. Les deux en-tetes (h1, h2) portent la meme valeur sur les emissions reelles ; un couple
+   depareille est un signal de faux positif exploitable comme controle.
