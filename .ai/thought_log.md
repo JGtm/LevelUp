@@ -1,3 +1,71 @@
+## [2026-08-17] v7.5 rejeu 2D — item 6 phase 3 : les socles d arme entrent au document (schema 11), sans ramasseur
+
+**Statut** : Complete (phase 3 CLOSE, **GATE 3 PASSE**). Items 3.1 et 3.2 `[x]`. Le PLAN entier
+est clos : phases 0, 1, 2 et 3 statuees, items 2.2 et 2.5 `[!]` avec leur mesure.
+
+**Decision technique principale** : PORTER la chaine des phases 1-2 en production plutot que de
+la recopier dans le constructeur. Les regles (grappe, classement `dropped`/`spawned`, bornage par
+le recensement des images-cles, verdict de stabilite du cycle, position de reference) vivaient
+dans des instruments `_test.go` ; elles deviennent `replay/ground_weapon_{rules,bounds,objects,
+pads}.go` et `filmdec/ground_weapon_census.go`, et les instruments sous garde les APPELLENT. Une
+seconde copie aurait diverge au premier correctif — et surtout, le controle d ancrage du plan
+n aurait plus rien prouve : ce que la mesure publie et ce que l artefact publie sont desormais le
+MEME code. Un doublon supprime au passage (`gwPickupTimeGap` faisait ce que `equipTimeGap` fait
+deja), une regle de bande extraite pour n exister qu une fois (`slotBandExcluding`), et UNE seule
+marche des images-cles la ou le chemin naif en demandait trois (bande, recensement, puis celle de
+`ScanFilmWorldObjects`).
+
+**Ce que le document publie, et ce qu il REFUSE de publier** — le refus est la moitie du
+resultat : `weaponPads` (socles PAR MATCH : position, famille, apparitions, intervalles de
+presence bornes par les images-cles, cycle depuis la disparition SEULEMENT s il est etabli) et
+`padPickups` (occupations achevees, publiees comme un INTERVALLE et non comme un instant). Le
+RAMASSEUR n est pas publie : `padPickups[].xuid` existe, vaut `null` partout, et le commentaire
+du champ porte la mesure (88,1 % par slot de vie, 79,7 % par joueur, contre >= 90 % exige) avec
+sa condition de reprise. Aucun ramassage d arme LACHEE a une mort (despawn : l accord y passe
+SOUS son propre temoin, 32,1 % contre 65,0 %). Aucun catalogue de carte (le socle appartient a la
+carte, l arme qui y apparait appartient au match).
+
+**Resultats observes (denominateurs publies)** :
+
+- **Controle d ancrage, 4 films re-cuits par la chaine de PRODUCTION** — `000d5950` 6 487 ancres
+  / 317 acceptees / 220 retenues / 97 ecartees / 181 lachees / 39 apparues / 0 au repos / **0
+  socle** ; `01e1f945` 7 953 / 405 / 291 / 114 / 203 / 88 / 38 / **10 socles** / 5 cycles ;
+  `00162144` 6 485 / 366 / 278 / 88 / 180 / 98 / 49 / **10 socles** / 3 cycles ; `bcb6d393`
+  2 377 / 219 / 159 / 60 / 99 / 60 / 34 / **10 socles** / 3 cycles. Tous ces chiffres sont ceux
+  des items 1.0, 1.1, 1.2 et 2.4 du plan, a une unite pres sur deux films (**decouverte 15** :
+  c est la table de l item 1.1 qui publiait 292 et 279 la ou l item 1.0 et la phase 2 publiaient
+  291 et 278 — la production reproduit 291 et 278).
+- **L ancrage tient SOCLE PAR SOCLE** : les dix socles de Catalyst publies pour `01e1f945` sont
+  aux dix memes coordonnees au centimetre que la table de l item 1.4, avec les memes familles et
+  les memes comptes d apparitions, **10 libelles resolus sur 10** ; les cinq cycles publies
+  retrouvent ceux de l item 2.4 (Bulldog 40,1 s · Epee 194,6 · Sniper 120,2 et 114,6 ·
+  Commando 30,5).
+- **Cout de cuisson : SOUS LE BRUIT DE LA MACHINE.** Meme film, binaire pre-compile, deux passes
+  chacun : AVANT 151,3 et 168,0 s, APRES 150,0 et 155,7 s. Le garde-fou du brief (arret si > 2x)
+  n est pas approche — la mutualisation des marches d images-cles paie exactement ce que les
+  trois lectures ajoutees coutent.
+- **Contrat** : `wantReplayDocumentFields` 31 -> 33 avec sa chronique, `SchemaVersion` 10 -> 11
+  avec la sienne, OpenAPI REGENEREE (+178 lignes, 5 schemas), `generated.ts` regenere (+75),
+  frontiere de nullabilite completee des deux cotes (la completude est verifiee PAR LE
+  COMPILATEUR : `tsc -b` refuse de compiler si un tableau nullable manque a `NULLABLE_ARRAYS`).
+- **Gate 3** : `EXIT_go_build_cgo1=0` · `EXIT_go_vet_cgo1=0` · `EXIT_go_test=0` ·
+  `EXIT_golangci_lint=0` (0 issue apres correction de 3 issues : deux `unparam` qui disaient
+  quelque chose de juste — le rayon de grappe et la distance de passage sont des SEUILS, pas des
+  parametres) · `EXIT_web_typecheck=0` · `EXIT_web_lint=0` · `EXIT_web_test=0` (447 fichiers,
+  4 093 tests ; un echec au premier passage sur `PalmaresRelationsPage.test.tsx` — timeout de 5 s
+  sous charge, le fichier passe seul en 3,2 s et le second passage complet est vert).
+
+**Conclusion / prochaine etape** : le plan `replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md` est CLOS.
+Ce qui reste ouvert est ecrit au registre avec sa condition de reprise : (1) le RAMASSEUR, qui
+demande un oracle plus rapproche que les 20 s des images-cles (inventaire lu dans le flux delta) ;
+(2) les POWER-UPS de socle, negatif de corpus qui demande un film ou il en existe (le cache local
+n a aucun film classe sur 951) ; (3) un catalogue de POSITIONS seules, qui est une decision de
+perimetre et non une mesure a refaire ; (4) la minuterie NOMINALE, qui demande les racks des
+fichiers de jeu. Le **schema 11 s ajoute a la fenetre ops du re-build de masse**. La suite
+naturelle cote produit est un LOT WEB : la note UI (section « Note UI » du plan) en donne le
+cahier des charges et ses temoins de gate visuel (`01e1f945`, `00162144`, `bcb6d393`, plus
+`000d5950` pour le calque VIDE) — quatre artefacts deja cuits en schema 11.
+
 ## [2026-08-17] v7.5 rejeu 2D — item 6 item 2.5 : l oracle du ramassage suit le joueur, et le plafond ne se leve pas
 
 **Statut** : Complete (item 2.5 clos ; **GATE 2.5 NON ATTEINT**, ramasseur `null` en phase 3).
