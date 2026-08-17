@@ -38,7 +38,6 @@ package replay
 //	  go test ./internal/analysis/replay/ -run '^TestGroundWeaponPickups$' -timeout 30m -v
 
 import (
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -54,18 +53,11 @@ const (
 	gwPickupBoundsEnv = "GW_PICKUP_BOUNDS" // catalogue map_quant_bounds.json (defaut : PathResolver)
 )
 
-// gwPickupTrackTolUS est la tolerance d'appariement entre un record de CREATION et la piste
-// delta de la meme vie : 200 ms, soit `originDropWindowUS`. Le record de creation porte lui-meme
-// la position i0, donc la piste commence en principe au MEME paquet ; la tolerance couvre le
-// cas ou le premier point replique suit d'une frame ou deux.
-const gwPickupTrackTolUS = originDropWindowUS
-
-// gwPickupStatus* : les trois issues d'une apparition. Vocabulaire STABLE des lignes de sortie.
-const (
-	gwPickupStatusDated   = "dated"   // un joueur est passe a < 1,5 m dans l'intervalle
-	gwPickupStatusUnknown = "unknown" // personne n'est passe : date = borne haute
-	gwPickupStatusNever   = "never"   // encore recense a la derniere image-cle du film
-)
+// LE BORNAGE, LA DATATION ET L'ASSEMBLAGE SONT EN PRODUCTION depuis la phase 3
+// (`ground_weapon_rules.go` et `ground_weapon_objects.go` : `gwPickupTrackTolUS`,
+// `gwPickupStatus*`, `gwPickupObject`, `groundWeaponObjects`, `gwPickupPadGaps`). Cet instrument
+// les APPELLE : ce qu'il mesure est exactement ce que l'artefact publie, et le controle
+// d'ancrage du plan n'aurait plus de sens contre une seconde chaine.
 
 // gwPickupFilm porte tout ce que le film rend, lu UNE fois : cinq balayages complets, pas un
 // de plus.
@@ -77,21 +69,11 @@ type gwPickupFilm struct {
 	kfTimes       []uint64
 	seen          map[filmdec.EquipmentLifeKey][]uint64
 	loadouts      map[uint64]map[uint32][]string
-	tracks        map[filmdec.EquipmentLifeKey][]filmdec.ProjectileTrack
+	keyframes     filmdec.GroundWeaponKeyframes
+	tracks        []filmdec.ProjectileTrack
 	spans         map[filmdec.EquipmentLifeKey][]filmdec.EquipmentLifeSpan
 	filmEndUS     uint64
 	rng           *rand.Rand
-}
-
-// gwPickupObject est une apparition retenue, bornee et datee.
-type gwPickupObject struct {
-	Key    filmdec.EquipmentLifeKey
-	Appar  gwPadApparition // position de CREATION, classe, vie delta (entree de la phase 1)
-	Pos    [3]float32      // position de REFERENCE (dernier point de piste, ou creation)
-	Moved  bool
-	Bounds gwPickupBounds
-	Picker gwPickupHit
-	Status string
 }
 
 func TestGroundWeaponPickups(t *testing.T) {
@@ -136,7 +118,6 @@ func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm
 		positions: pos,
 		bySlot:    map[uint32][]filmdec.BipedPosition{},
 		lives:     equipmentLives(pos),
-		tracks:    map[filmdec.EquipmentLifeKey][]filmdec.ProjectileTrack{},
 		rng:       rand.New(rand.NewSource(gwPickupWitnessSeed)), //nolint:gosec // temoin reproductible
 	}
 	for _, p := range pos {
@@ -145,65 +126,25 @@ func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm
 			f.filmEndUS = p.TimestampUS
 		}
 	}
-	f.kfTimes, f.seen = gwPickupKeyframes(t, dir)
+	// Le recensement des images-cles vient de la PRODUCTION (`ScanFilmGroundWeaponKeyframes`,
+	// qui rend la bande de slots dans la MEME marche) : la mesure et l'artefact bornent avec le
+	// meme recensement, ou l'ancrage ne prouverait rien.
+	f.keyframes = filmdec.ScanFilmGroundWeaponKeyframes(dir)
+	f.kfTimes, f.seen = f.keyframes.TimesUS, f.keyframes.SeenUS
 	if n := len(f.kfTimes); n > 0 && f.kfTimes[n-1] > f.filmEndUS {
 		f.filmEndUS = f.kfTimes[n-1]
 	}
 	f.loadouts = gwPickupLoadouts(t, dir)
-	tracks, err := filmdec.ScanFilmWorldObjects(dir, wr, filmdec.GroundWeaponTypeIndex)
+	tracks, err := filmdec.ScanFilmWorldObjectsForBand(dir, wr, f.keyframes.Band)
 	if err != nil {
 		t.Fatalf("vies delta ti=42 : %v", err)
 	}
-	for _, tr := range tracks {
-		k := filmdec.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
-		f.tracks[k] = append(f.tracks[k], tr)
-	}
+	f.tracks = tracks
 	f.spans = filmdec.EquipmentLifeSpans(tracks)
 	t.Logf("LECTURE — %d positions de bipede · %d slots · %d vies · %d cles `ti=42` recensees"+
 		" · %d cles a piste delta", len(pos), len(f.bySlot), gwPadsCountLives(f.lives),
 		len(f.seen), len(f.spans))
 	return f
-}
-
-// gwPickupKeyframes rend les instants de TOUTES les images-cles du film et, par vie
-// (slot, gen), ceux qui RECENSENT un record `ti=42`. C'est le walker durci (249/250 entites)
-// qui recense — pas le balayage de familles, qui n'attrape que les records porteurs d'une
-// famille connue et manquerait donc les objets muets.
-func gwPickupKeyframes(t *testing.T, dir string) ([]uint64, map[filmdec.EquipmentLifeKey][]uint64) {
-	t.Helper()
-	n := filmdec.CountFilmChunks(dir)
-	if n == 0 {
-		t.Fatalf("aucun chunk film dans %s", dir)
-	}
-	var times []uint64
-	seen := map[filmdec.EquipmentLifeKey][]uint64{}
-	for c := 1; c <= n; c++ {
-		data, err := filmdec.ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, p := range filmdec.WalkPackets(data) {
-			if p.Type != filmdec.PacketTypeKeyframe {
-				continue
-			}
-			times = append(times, p.TimestampUS)
-			for _, r := range filmdec.WalkKeyframeWorld(p.Payload(data)) {
-				if r.TI != filmdec.GroundWeaponTypeIndex {
-					continue
-				}
-				k := filmdec.EquipmentLifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}
-				if v := seen[k]; len(v) > 0 && v[len(v)-1] == p.TimestampUS {
-					continue // un record par vie et par image-cle
-				}
-				seen[k] = append(seen[k], p.TimestampUS)
-			}
-		}
-	}
-	sort.Slice(times, func(i, j int) bool { return times[i] < times[j] })
-	for k := range seen {
-		sort.Slice(seen[k], func(i, j int) bool { return seen[k][i] < seen[k][j] })
-	}
-	return times, seen
 }
 
 // gwPickupLoadouts indexe les armes PORTEES par image-cle et par slot de bipede, repliees sur
@@ -240,122 +181,25 @@ func gwPickupHasFamily(in []string, want string) bool {
 	return false
 }
 
-// gwPickupObjects rend les apparitions retenues, bornees et datees. Les creations sont d'abord
-// groupees par cle pour que la REPRISE de cle borne la vie de la precedente.
+// gwPickupObjects rend les apparitions retenues, bornees et datees — PAR LA CHAINE DE
+// PRODUCTION (`groundWeaponObjects`), celle-la meme que l'artefact de rejeu publie. Cet
+// instrument n'ajoute que les denominateurs au journal.
 func gwPickupObjects(
 	t *testing.T, dir string, wr *filmdec.Vec3Range, f *gwPickupFilm,
 ) []gwPickupObject {
 	t.Helper()
-	band := filmdec.GroundWeaponSlotBand(dir)
-	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(dir, wr, band)
+	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(dir, wr, f.keyframes.Band)
 	if err != nil {
 		t.Fatalf("creations ti=42 : %v", err)
 	}
-	known := loadoutFamilies()
-	byKey := map[filmdec.EquipmentLifeKey][]filmdec.EquipmentCreation{}
-	kept := 0
-	for _, c := range cre {
-		w, ok := gwPadsIdentity(c)
-		if !ok || !known[w] {
-			continue
-		}
-		kept++
-		k := filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
-		byKey[k] = append(byKey[k], c)
-		if c.TimestampUS > f.filmEndUS {
-			f.filmEndUS = c.TimestampUS
-		}
+	scan := GroundWeaponScan{
+		Scanned: true, Creations: cre, Stats: st, Keyframes: f.keyframes, Tracks: f.tracks,
 	}
-	out := make([]gwPickupObject, 0, kept)
-	for k, list := range byKey {
-		sort.Slice(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
-		for i, c := range list {
-			lifeEnd := f.filmEndUS
-			if i+1 < len(list) {
-				lifeEnd = list[i+1].TimestampUS
-			}
-			out = append(out, gwPickupObject{Key: k, Appar: gwPickupApparition(c, f)})
-			gwPickupResolve(&out[len(out)-1], c, lifeEnd, f)
-		}
+	out, _ := groundWeaponObjects(scan, f.lives, f.positions)
+	if end := gwFilmEndUS(scan, f.positions); end > f.filmEndUS {
+		f.filmEndUS = end
 	}
-	sort.Slice(out, func(i, j int) bool { return gwPadsLess(out[i].Appar, out[j].Appar) })
 	t.Logf("2.1 ENTREE — ancres %d · acceptees %d · RETENUES (identite croisee) %d · ecartees %d",
-		st.Anchors, st.Accepted, kept, st.Accepted-kept)
+		st.Anchors, st.Accepted, len(out), st.Accepted-len(out))
 	return out
-}
-
-// gwPickupApparition rend l'apparition au sens de la phase 1 : position de CREATION, classe
-// `dropped`/`spawned` par la regle de production, et presence d'une vie delta sur la cle. Les
-// trois definitions sont celles de la phase 1, sans une virgule de changement — le jeu
-// `at_rest` de l'item 2.4 doit etre le MEME que celui de l'item 1.2.
-func gwPickupApparition(c filmdec.EquipmentCreation, f *gwPickupFilm) gwPadApparition {
-	w, _ := gwPadsIdentity(c)
-	a := gwPadApparition{
-		Kind: gwPadKindWeapon, Family: gwPadsWeaponFamily(w),
-		X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
-		HasDelta: len(f.spans[filmdec.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}]) > 0,
-	}
-	a.Class = gwPadsClass(f.lives, a)
-	return a
-}
-
-// gwPickupResolve borne la disparition de l'objet puis la date.
-func gwPickupResolve(o *gwPickupObject, c filmdec.EquipmentCreation, lifeEnd uint64, f *gwPickupFilm) {
-	o.Pos, o.Moved = gwPickupRefPos(c, lifeEnd, f.tracks[o.Key])
-	o.Bounds = gwPickupBoundsFrom(c.TimestampUS, lifeEnd, f.filmEndUS, f.kfTimes,
-		gwPickupSeenWithin(f.seen[o.Key], c.TimestampUS, lifeEnd))
-	if o.Bounds.NeverPicked {
-		o.Status = gwPickupStatusNever
-		return
-	}
-	o.Picker = gwPickupNearestPass(o.Pos, o.Bounds.LowUS, o.Bounds.HighUS, f.positions,
-		originDropMaxDist)
-	o.Status = gwPickupStatusUnknown
-	if o.Picker.Found {
-		o.Status = gwPickupStatusDated
-	}
-}
-
-// gwPickupSeenWithin restreint le recensement d'une cle a la vie [t0, lifeEnd).
-func gwPickupSeenWithin(seen []uint64, t0, lifeEnd uint64) []uint64 {
-	lo := sort.Search(len(seen), func(i int) bool { return seen[i] >= t0 })
-	hi := sort.Search(len(seen), func(i int) bool { return seen[i] >= lifeEnd })
-	if hi < lo {
-		hi = lo
-	}
-	return seen[lo:hi]
-}
-
-// gwPickupRefPos rend la position ou l'objet SE TROUVE quand on le ramasse : le dernier point
-// de sa piste delta s'il a bouge dans sa vie, sa position de creation sinon.
-func gwPickupRefPos(
-	c filmdec.EquipmentCreation, lifeEnd uint64, tracks []filmdec.ProjectileTrack,
-) ([3]float32, bool) {
-	best, bestGap := -1, uint64(math.MaxUint64)
-	for i, tr := range tracks {
-		if len(tr.Pts) == 0 {
-			continue
-		}
-		t0 := tr.Pts[0].TimestampUS
-		if t0 >= lifeEnd || t0+gwPickupTrackTolUS < c.TimestampUS {
-			continue
-		}
-		if g := gwPickupTimeGap(t0, c.TimestampUS); g < bestGap {
-			best, bestGap = i, g
-		}
-	}
-	if best < 0 {
-		return [3]float32{c.X, c.Y, c.Z}, false
-	}
-	p := tracks[best].Pts[len(tracks[best].Pts)-1]
-	return [3]float32{p.X, p.Y, p.Z}, true
-}
-
-// gwPickupDateUS rend l'instant retenu du ramassage : celui du passage quand il existe, la
-// borne haute sinon (regle du plan : « aucun : `unknown`, date = borne haute »).
-func (o gwPickupObject) gwPickupDateUS() uint64 {
-	if o.Picker.Found {
-		return o.Picker.TUS
-	}
-	return o.Bounds.HighUS
 }

@@ -1,7 +1,13 @@
 package replay
 
-// ground_weapon_pickup_rule_test.go — LA REGLE DE RAMASSAGE, isolee de tout film pour qu'elle
-// soit TESTEE et non seulement executee (meme parti que `ground_weapon_pads_cluster_test.go`).
+// ground_weapon_pickup_rule_test.go — LES TESTS DE LA REGLE DE RAMASSAGE, isolee de tout film
+// pour qu'elle soit TESTEE et non seulement executee (meme parti que
+// `ground_weapon_pads_cluster_test.go`).
+//
+// LA REGLE ELLE-MEME EST EN PRODUCTION depuis la phase 3 (`ground_weapon_rules.go` :
+// `gwPickupBounds`, `gwPickupBoundsFrom`, `gwPickupNearestPass`, `gwPickupSeenWithin`,
+// `gwPickupRefPos`) : c'est elle qui borne les intervalles publies par l'artefact. Ce fichier
+// garde les TESTS et le seul temoin qui n'a pas de role en production (`gwPickupNearestAt`).
 //
 // CE QUE LA REGLE DIT, ET D'OU ELLE VIENT. Le film ne porte AUCUN evenement type pick-up
 // (mesure du 2026-08-12) et le record DEL n'est pas isolable (78 090 candidats pour 477 vies,
@@ -40,119 +46,6 @@ const gwPickupWitnessTolUS = 100_000
 // l'autre n'est pas un temoin : c'est un bruit qu'on relance jusqu'a ce qu'il arrange.
 const gwPickupWitnessSeed = 20260817
 
-// gwPickupBounds encadre la disparition d'un objet au sol : ce que le recensement des
-// images-cles permet d'affirmer, et rien de plus.
-type gwPickupBounds struct {
-	// LowUS : dernier instant ou l'objet est PROUVE present (derniere image-cle qui le
-	// recense, a defaut l'instant de sa creation).
-	LowUS uint64
-	// HighUS : premier instant ou son absence est PROUVEE (premiere image-cle qui ne le
-	// recense plus), a defaut la fin de sa vie de cle ou la fin du film.
-	HighUS uint64
-	// NeverPicked : l'objet est encore recense a la DERNIERE image-cle du film. Il n'a pas
-	// ete ramasse — ou il l'a ete apres la derniere image-cle, ce que rien ne dit.
-	NeverPicked bool
-	// NoLaterKF : aucune image-cle ne suit l'instant de reference. La borne haute est alors la
-	// fin du film, et l'intervalle n'est pas une mesure de recensement.
-	NoLaterKF bool
-	// SeenKF : nombre d'images-cles qui recensent l'objet. Zero = ne PAS conclure qu'il n'a
-	// jamais existe : il a pu naitre et disparaitre entre deux images-cles.
-	SeenKF int
-}
-
-// WidthS rend la largeur de l'intervalle de bornage, en secondes.
-func (b gwPickupBounds) WidthS() float64 {
-	if b.HighUS <= b.LowUS {
-		return 0
-	}
-	return float64(b.HighUS-b.LowUS) / 1e6
-}
-
-// gwPickupBoundsFrom encadre la disparition d'un objet ne a `t0`, dont la cle (slot, gen) est
-// reprise par une autre creation a `lifeEnd` (ou `filmEnd` si elle ne l'est pas).
-//
-// `kfTimes` sont les instants de TOUTES les images-cles du film, tries ; `seen` ceux qui
-// RECENSENT l'objet, tries, deja restreints a [t0, lifeEnd).
-//
-// LA CLE EST REPRISE, ET C'EST LA DONNEE : la generation ne fait que 2 bits, donc un meme
-// couple (slot, gen) porte plusieurs objets successifs au cours d'un match. Sans la borne
-// `lifeEnd`, le recensement du SUIVANT prouverait la survie du PRECEDENT.
-func gwPickupBoundsFrom(t0, lifeEnd, filmEnd uint64, kfTimes, seen []uint64) gwPickupBounds {
-	b := gwPickupBounds{LowUS: t0, HighUS: filmEnd, SeenKF: len(seen)}
-	if len(seen) > 0 {
-		b.LowUS = seen[len(seen)-1]
-	}
-	if len(kfTimes) > 0 && len(seen) > 0 && seen[len(seen)-1] == kfTimes[len(kfTimes)-1] {
-		b.NeverPicked = true
-		return b
-	}
-	next, ok := gwPickupNextAfter(kfTimes, b.LowUS)
-	switch {
-	case ok:
-		b.HighUS = next
-	default:
-		b.NoLaterKF = true
-	}
-	if lifeEnd < b.HighUS {
-		b.HighUS = lifeEnd
-	}
-	if b.HighUS < b.LowUS {
-		b.HighUS = b.LowUS
-	}
-	return b
-}
-
-// gwPickupNextAfter rend le premier instant de `sorted` strictement superieur a `at`.
-func gwPickupNextAfter(sorted []uint64, at uint64) (uint64, bool) {
-	i := sort.Search(len(sorted), func(i int) bool { return sorted[i] > at })
-	if i >= len(sorted) {
-		return 0, false
-	}
-	return sorted[i], true
-}
-
-// gwPickupHit est un passage de joueur pres d'un objet : qui, quand, a quelle distance.
-type gwPickupHit struct {
-	Slot  uint32
-	TUS   uint64
-	DistM float64
-	Found bool
-}
-
-// gwPickupNearestPass rend le PREMIER passage d'un bipede a moins de `maxDistM` de `pos` dans
-// la fenetre [lowUS, highUS]. `samples` doit etre TRIE par instant.
-//
-// « LE PREMIER », PAS « LE PLUS PROCHE » : le plan tranche l'ambiguite dans ce sens (phase 2.1
-// amendee — « si plusieurs : le premier »). A instant egal, le plus proche l'emporte, puis le
-// slot le plus bas : sans ces deux departages, deux executions rendraient deux ramasseurs.
-func gwPickupNearestPass(
-	pos [3]float32, lowUS, highUS uint64, samples []filmdec.BipedPosition, maxDistM float64,
-) gwPickupHit {
-	var out gwPickupHit
-	i := sort.Search(len(samples), func(i int) bool { return samples[i].TimestampUS >= lowUS })
-	for ; i < len(samples); i++ {
-		p := samples[i]
-		if p.TimestampUS > highUS {
-			break
-		}
-		if !p.HasWorld {
-			continue
-		}
-		d := gwPadsDist(pos[0], pos[1], pos[2], p.X, p.Y, p.Z)
-		if d >= maxDistM {
-			continue
-		}
-		if !out.Found || p.TimestampUS < out.TUS ||
-			(p.TimestampUS == out.TUS && (d < out.DistM || (d == out.DistM && p.Slot < out.Slot))) {
-			out = gwPickupHit{Slot: p.Slot, TUS: p.TimestampUS, DistM: d, Found: true}
-		}
-		if out.Found && p.TimestampUS > out.TUS {
-			break
-		}
-	}
-	return out
-}
-
 // gwPickupNearestAt rend la distance du joueur le PLUS PROCHE de `pos` a l'instant `atUS` —
 // le TEMOIN de l'item 2.1. Chaque slot est represente par son echantillon le plus proche dans
 // le temps, a `gwPickupWitnessTolUS` pres ; un slot sans echantillon dans cette fenetre est un
@@ -167,24 +60,15 @@ func gwPickupNearestAt(
 			if j < 0 || j >= len(pts) || !pts[j].HasWorld {
 				continue
 			}
-			if gwPickupTimeGap(pts[j].TimestampUS, atUS) > gwPickupWitnessTolUS {
+			if equipTimeGap(pts[j].TimestampUS, atUS) > gwPickupWitnessTolUS {
 				continue
 			}
-			if d := gwPadsDist(pos[0], pos[1], pos[2], pts[j].X, pts[j].Y, pts[j].Z); d < best {
+			if d := dist3(pos, [3]float32{pts[j].X, pts[j].Y, pts[j].Z}); d < best {
 				best, found = d, true
 			}
 		}
 	}
 	return best, found
-}
-
-// gwPickupTimeGap rend l'ecart absolu entre deux instants (les uint64 ne se soustraient pas
-// naivement).
-func gwPickupTimeGap(a, b uint64) uint64 {
-	if a > b {
-		return a - b
-	}
-	return b - a
 }
 
 // --- TESTS DE LA REGLE (sans garde : ils tournent avec le paquet) ------------------------
@@ -232,14 +116,14 @@ func TestGwPickupPremierPassageEtPasLePlusProche(t *testing.T) {
 		{Slot: 3, TimestampUS: 200, X: 1.2, HasWorld: true},
 		{Slot: 5, TimestampUS: 300, X: 0.1, HasWorld: true},
 	}
-	got := gwPickupNearestPass(pos, 0, 400, s, originDropMaxDist)
+	got := gwPickupNearestPass(pos, 0, 400, s)
 	if !got.Found || got.Slot != 3 || got.TUS != 200 {
 		t.Fatalf("le PREMIER passage sous 1,5 m (slot 3 a t=200) attendu : %+v", got)
 	}
-	if hors := gwPickupNearestPass(pos, 250, 400, s, originDropMaxDist); hors.Slot != 5 {
+	if hors := gwPickupNearestPass(pos, 250, 400, s); hors.Slot != 5 {
 		t.Fatalf("hors fenetre, le passage suivant devient le premier : %+v", hors)
 	}
-	if vide := gwPickupNearestPass(pos, 0, 150, s, originDropMaxDist); vide.Found {
+	if vide := gwPickupNearestPass(pos, 0, 150, s); vide.Found {
 		t.Fatalf("aucun passage sous 1,5 m dans la fenetre : %+v", vide)
 	}
 }

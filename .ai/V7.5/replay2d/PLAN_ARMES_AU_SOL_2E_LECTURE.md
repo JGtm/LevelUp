@@ -416,7 +416,7 @@ tranche ci-dessus.
 
 ### Phase 3 — PUBLICATION (schema 11) et note UI
 
-- [ ] 3.1 Document : `weaponPads` (socles PAR MATCH : position i0, famille (mot MPP -> label
+- [x] 3.1 Document : `weaponPads` (socles PAR MATCH : position i0, famille (mot MPP -> label
       d'arme via le catalogue existant), apparitions [t], intervalles de presence [t_apparition,
       borne basse, borne haute] bornes par les images-cles, cycle depuis le ramassage {medianeS,
       p10, p90} si etabli sinon `null`), `padPickups` [{pad, tLow, tHigh, xuid|null}] (xuid selon
@@ -426,9 +426,69 @@ tranche ci-dessus.
       regeneree, `generated.ts`, `NULLABLE_ARRAYS`, goldens et fixture v5 re-cuits, temoins
       re-cuits (`000d5950`, `01e1f945`, `00162144`) ; aucun ramassage d'arme `dropped`, aucun
       catalogue de carte.
-- [ ] 3.2 Note UI (decision 6, corrigee par la mesure) pour l'utilisateur : icone de l'arme sur le
+      **FAIT** : schema 11, `weaponPads` + `padPickups` (`xuid` = `null` partout), couverture
+      `coverage.groundWeapons`, contrat 31 -> 33 champs, fixture **v7** (et non v5 : le fixture
+      etait deja en v6), golden d'assemblage re-congele, 4 temoins re-cuits. La chaine est
+      PORTEE en production (`ground_weapon_rules.go`, `ground_weapon_objects.go`,
+      `ground_weapon_pads.go`, `filmdec/ground_weapon_census.go`) et les instruments sous garde
+      l'APPELLENT. Controle d'ancrage et cout de cuisson au journal.
+- [x] 3.2 Note UI (decision 6, corrigee par la mesure) pour l'utilisateur : icone de l'arme sur le
       socle, etat present / vide (vide des `tLow`, incertain jusqu'a `tHigh`), compte a rebours
       SEULEMENT si le cycle est etabli, ramasseur sur la fiche SEULEMENT si publie ; aucun rendu ici.
+      **FAIT** : section « Note UI » ci-dessous. Aucun rendu, aucun fichier web hors `generated.ts`,
+      `types.ts` et la frontiere de nullabilite.
+
+### Note UI — ce que le calque des socles montre, et ce qu'il ne montre pas
+
+> Ecrite a la cloture de la phase 3. AUCUN RENDU N'EST FAIT ICI : c'est le cahier des charges du
+> lot web qui viendra, et la liste de ce qu'il n'a PAS le droit d'afficher.
+
+**CE QUE L'UTILISATEUR VERRA.** Sur la carte du rejeu, aux positions que le match a mesurees :
+
+1. **L'icone de l'arme du socle** (les icones existent — 168 PNG extraits du jeu, pont `killicon`
+   par tag ; la famille publiee (`weaponPads[].weapon`) est ecrite comme celle d'un loadout, donc
+   la meme cle joint `weaponLabels`, le libelle bilingue ET l'icone). Un socle dont la famille
+   n'est pas au catalogue garde son hexadecimal — jamais l'icone d'une arme voisine.
+2. **Present / vide, avec l'incertitude MONTREE.** Le socle est plein de `t0` a `tLow`, puis
+   **vide des `tLow`** et **incertain jusqu'a `tHigh`** — l'ecart vaut ~20 s (l'espacement des
+   images-cles), et le rendu ne doit pas le masquer : une icone qui s'eteint pile a un instant
+   affirmerait une datation que la source n'a pas. Piste : icone pleine, puis fantome (opacite
+   reduite) sur [tLow, tHigh], puis rien. **Aucune animation de disparition « au moment du
+   ramassage »** — cet instant n'est pas publie.
+3. **Un compte a rebours SEULEMENT si `cycle` existe.** 24 socles sur 57 seulement portent un
+   cycle ; les autres publient `null` et ne doivent afficher AUCUN chiffre — ni « ~30 s », ni un
+   tiret suggerant qu'on saurait. Quand il existe, le compte a rebours part de `tHigh` (borne
+   haute de la disparition) et vise `tHigh + medianS`.
+4. **Le ramasseur n'est PAS affiche**, parce qu'il n'est pas publie (`xuid` vaut `null` partout).
+   Aucune fiche joueur ne doit dire « a ramasse le S7 Sniper » : l'oracle plafonne a 79,7 %
+   contre 90 % exige. C'est la clause la plus facile a violer par inadvertance — le champ existe
+   dans le contrat, et un rendu peut le lire sans voir qu'il est toujours vide.
+5. **Aucun socle sur les films qui n'en ont pas.** `000d5950` (Super Fiesta sur variante Forge)
+   en publie ZERO : le calque doit disparaitre proprement, pas afficher un cadre vide. La
+   couverture (`coverage.groundWeapons`) distingue « pas de socle » de « pas su balayer ».
+
+**TEMOINS DU GATE VISUEL** (artefacts deja re-cuits en schema 11, cache local) :
+
+| film | carte | socles | ce qu'il montre |
+|---|---|---:|---|
+| `01e1f945` | Catalyst | 10 | le cas nominal : 5 cycles etablis (Bulldog 40,1 s · Sword 194,6 s · Sniper 114,6 et 120,2 s · Commando 30,5 s), 29 occupations datees sur 38 |
+| `00162144` | Smallhalla | 10 | 45 occupations, 3 cycles etablis, 4 socles jamais vides (fin de match) |
+| `bcb6d393` | Cliffhanger | 10 | 8 occupations « jamais videes » sur 28 — c'est le cas ou l'incertitude se voit le plus |
+| `000d5950` | Cliffhanger-Forge | 0 | le calque VIDE, qui doit disparaitre proprement |
+
+**CE QU'UN LOT WEB AURA A FAIRE** (aucune ligne ecrite ici) :
+
+- un CALQUE canvas de plus dans `features/match-replay/` (patron : `equipmentPlacementsLayer.ts`),
+  qui lit `weaponPads` deja normalise (`normalizeReplayDocument` comble `weaponPads` et
+  `padPickups` — la frontiere est faite, la liste `NULLABLE_ARRAYS` les porte) ;
+- un TIROIR / une info-bulle au survol du socle : nom de l'arme (bilingue, deja dans
+  `weaponLabels`), etat, et le cycle QUAND il existe ;
+- i18n **FR + EN** pour les trois libellés d'etat (« Disponible » / « Pris » / « Incertain » et
+  leurs equivalents), par `Record<Locale, T>` — aucune chaine en dur ;
+- **tokens semantiques uniquement** pour les couleurs de l'etat (skill `color-tokens`) : aucune
+  valeur hex, aucune classe Tailwind couleur dans `features/` ;
+- pas de compteur global « N socles » sur la carte : le chiffre n'a de sens que par match, et
+  l'utilisateur ne compare pas deux matchs sur ce point.
 
 ## Regles dures
 
@@ -533,6 +593,29 @@ de push. Lancement valide le 2026-08-17.
     exposees que la lecture). La regle de l'item 2.5, ecrite avant la mesure, retient le plus petit
     slot et COMPTE le cas. Non traite : 5 cas ne changent pas le verdict du gate (83,6 % au mieux),
     et l'elucider demanderait de re-mesurer le pont lui-meme, hors perimetre de cet item.
+14. **LE DENOMINATEUR « RAMASSAGES DE SOCLE » DE L'ITEM 2.5 N'EST PAS CELUI QUE LE DOCUMENT
+    PUBLIE, et l'ecart est mesure.** L'item 2.5 comptait toutes les apparitions `at_rest` DATEES
+    (`gwPickupSet(o) == at_rest`), y compris celles dont la grappe n'a qu'UNE apparition — donc
+    qui ne sont pas des socles au sens de la decision 2. Le document, lui, ne publie que les
+    occupations des socles RETENUS (>= 2 apparitions) : sur `00162144`, 39 datees contre les 40
+    de l'item 2.5, la difference etant une apparition isolee (14 grappes pour 10 socles, donc
+    4 singletons dont 1 datee). Ce n'est pas une derive : c'est un denominateur plus etroit, et
+    le champ de couverture le dit. Non traite : rien a corriger, mais quiconque comparera les
+    deux chiffres doit savoir lequel il lit.
+15. **L'ITEM 1.1 DU PLAN PUBLIE UNE APPARITION DE PLUS QUE L'ITEM 1.0 SUR DEUX FILMS**
+    (`01e1f945` 292 contre 291, `00162144` 279 contre 278). La phase 2 avait deja publie 291 et
+    278 dans son controle d'ancrage, et la chaine de production reproduit 291 et 278. L'ecart
+    d'une unite vient donc de la table de l'item 1.1, pas du decodage. Non traite : les totaux du
+    plan (1 790 contre 1 785) portent la meme unite de decalage sur ces deux films, et les
+    reecrire apres coup effacerait la trace de la mesure.
+16. **UN OBJET ENCORE PRESENT A LA FIN DU FILM PEUT ETRE CLASSE `unknown` AU LIEU DE `never` si
+    le dernier paquet du film tombe PILE sur la derniere image-cle.** Le recensement d'une vie
+    est restreint a `[creation, fin)` — borne haute EXCLUE — et « jamais ramasse » se reconnait a
+    ce que le dernier recensement egale la derniere image-cle. Quand la fin du film vaut
+    exactement cet instant, le recensement se vide et le test ne peut plus se faire. Le cas ne se
+    produit sur aucun film reel (le nuage des bipedes deborde toujours la derniere image-cle) et
+    n'a ete vu que sur des entrees synthetiques. Non traite : elargir la borne changerait la
+    regle de bornage, publiee et mesuree.
 
 ## Branches utilisateur fusionnees AVANT le lancement (`66e867b80`, 2026-08-17)
 
@@ -1164,3 +1247,126 @@ des images-cles, et la mort qui tient dedans.
   n'est pas le plafond (l'espacement de 20 s des images-cles l'est) ; **ramasseur NON publiable
   (`null`)**. Perimetre de la phase 3 inchange (arbitrage apres la phase 2) : **phase 3 LANCEE**
   (agent Opus, principal) — `weaponPads` + `padPickups` sans ramasseur, schema 11.
+- 2026-08-17 — **phase 3 CLOSE. GATE 3 PASSE, la chaine est en production et le document publie
+  les socles.** Tout ci-dessous a tourne dans la session, sur le worktree principal, branche
+  `feat/v75`.
+
+### Ce qui a ete PORTE (item 3.1, premiere moitie)
+
+La chaine des phases 1 et 2 vivait dans des instruments `_test.go`. Elle est en production, et
+les instruments l'APPELLENT — aucune seconde copie de la regle de grappe, de la regle `dropped`,
+du bornage ni du verdict de stabilite :
+
+| fichier | lignes | ce qu'il porte |
+|---|---:|---|
+| `filmdec/ground_weapon_census.go` | 102 | UNE marche des images-cles rend la bande `ti=42` ET le recensement par vie |
+| `filmdec/projectiles.go` | +24 | `slotBandExcluding` extraite (une seule regle de bande), `ScanFilmWorldObjectsForBand` |
+| `replay/ground_weapon_rules.go` | 361 | seuils, apparition, grappe, cycle, classement, identite |
+| `replay/ground_weapon_bounds.go` | 189 | bornage par le recensement, datation par le passage, position de reference |
+| `replay/ground_weapon_objects.go` | 244 | film -> objets bornes et dates ; le decodage et ses trois refus |
+| `replay/ground_weapon_pads.go` | 349 | types du document, couverture, assemblage |
+| `replay/ground_weapon_pads_test.go` | 310 | 7 tests sans garde (filtre d'identite, reprise de cle, socle publie, refus des lachers et des objets mobiles, refus d'un cycle instable, film non balaye) |
+| `replay/ground_weapon_guard_test.go` | 117 | LE GARDE-RAIL : un seuil ne se declare qu'une fois, une regle ne se definit qu'une fois — `_test.go` compris |
+
+**LE GARDE-RAIL EST LA MOITIE DU PORT** (regle n°6 du depot : une factorisation sans garde-rail
+re-diverge). Deux tests grep, sans garde d'environnement, couvrant AUSSI les instruments : sept
+seuils (rayon, socle minimum, ecarts minimum, ecart-type maximum, tolerance de piste, et les deux
+constantes de la regle du lacher) et douze regles n'ont qu'un seul proprietaire de fichier. Le
+garde echoue AUSSI si le motif disparait de son proprietaire — un garde qui ne peut plus echouer
+ne garde rien.
+
+**TROIS LECTURES DE FILM ET PAS UNE DE PLUS** : le chemin naif en coutait cinq (bande, creations,
+recensement, bande a nouveau dans `ScanFilmWorldObjects`, pistes). La marche d'images-cles
+mutualisee en supprime deux. **Un doublon supprime** : `gwPickupTimeGap` faisait ce que
+`equipTimeGap` fait deja en production.
+
+### Ce qui est PUBLIE (item 3.1, seconde moitie)
+
+| champ | type | nullabilite |
+|---|---|---|
+| `weaponPads` | `[]WeaponPad` | absent si aucun socle (omitempty ; la frontiere web comble) |
+| `WeaponPad.x/y/z` | float32 | `z` omitempty (meme convention que `EquipmentPlacement`) |
+| `WeaponPad.weapon` | string `0x........` | requis — meme cle que `Loadout.W` dans `weaponLabels` |
+| `WeaponPad.spawns` | `[]int` (frames) | requis |
+| `WeaponPad.presence` | `[]PadPresence` {t0, tLow, tHigh} | requis |
+| `WeaponPad.cycle` | `*PadCycle` {medianS, p10S, p90S, gaps} | **`null` si non etabli** |
+| `padPickups` | `[]PadPickup` {pad, tLow, tHigh, xuid} | absent si aucune occupation achevee |
+| `PadPickup.xuid` | `*string` **sans omitempty** | **`null` PARTOUT** (gate 2.5 non atteint, 79,7 %) |
+| `coverage.groundWeapons` | `*GroundWeaponCoverage` (16 compteurs) | toujours presente des que le film est assemble |
+
+`wantReplayDocumentFields` **31 -> 33** avec sa ligne de chronique ; `SchemaVersion` 10 -> 11
+avec la sienne (document.go et le ratchet de `structure_test.go`). OpenAPI REGENEREE par le
+chemin du depot (`go run ./cmd/openapi-gen`, +178 lignes : `WeaponPad`, `PadPresence`, `PadCycle`,
+`PadPickup`, `GroundWeaponCoverage`), `generated.ts` regenere (`npm run generate-types`, +75
+lignes), `NULLABLE_ARRAYS` et `normalizeReplayDocument` completes des deux cotes (la completude
+est verifiee PAR LE COMPILATEUR — `tsc -b` refuse de compiler si un tableau nullable manque).
+
+### CONTROLE D'ANCRAGE — la chaine de PRODUCTION retrouve les phases 1 et 2 au chiffre pres
+
+Quatre films re-cuits par `cmd/replay-build` (lecture des films, ecriture du seul JSON local,
+aucune base ouverte). Les colonnes « plan » viennent des tables des items 1.0, 1.1, 1.2 et 2.4.
+
+| film | ancres | acceptees | retenues | ecartees | lachees | apparues | au repos | grappes | socles | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `000d5950` mesure | 6 487 | 317 | 220 | 97 | 181 | 39 | 0 | 0 | **0** | 0 |
+| `000d5950` plan | 6 487 | 317 | 220 | 97 | 181 | 39 | 0 | 0 | **0** | — |
+| `01e1f945` mesure | 7 953 | 405 | 291 | 114 | 203 | 88 | 38 | 10 | **10** | 5 |
+| `01e1f945` plan | 7 953 | 405 | 291 | 114 | 204* | 88 | 38 | 10 | **10** | 5 |
+| `00162144` mesure | 6 485 | 366 | 278 | 88 | 180 | 98 | 49 | 14 | **10** | 3 |
+| `00162144` plan | 6 485 | 366 | 278 | 88 | 181* | 98 | 49 | 14 | **10** | 3 |
+| `bcb6d393` mesure | 2 377 | 219 | 159 | 60 | 99 | 60 | 34 | 16 | **10** | 3 |
+| `bcb6d393` plan | 2 377 | 219 | 159 | 60 | 99 | 60 | 34 | 16 | **10** | 3 |
+
+\* l'unite d'ecart vient de la table de l'item 1.1 elle-meme, qui publie 292 et 279 retenues la
+ou l'item 1.0 et le controle d'ancrage de la phase 2 publient 291 et 278 (**decouverte 15**).
+
+**L'ANCRAGE TIENT AUSSI SOCLE PAR SOCLE**, et c'est le controle le plus dur. Les DIX socles de
+Catalyst publies pour `01e1f945`, compares a la table de l'item 1.4 : dix positions identiques au
+centimetre, dix familles identiques, dix comptes d'apparitions identiques (Bulldog x3 ·
+Disrupteur x2 · Disrupteur x2 · Epee a energie x4 · SPNKr x8 · S7 Sniper x5 · S7 Sniper x5 ·
+Rayon de Sentinelle x4 · VK78 Commando x2 · VK78 Commando x3), **et 10 libelles resolus sur 10**.
+Les cinq cycles publies retrouvent ceux de l'item 2.4 : Bulldog 40,1 s · Epee 194,6 s (item 2.4 :
+194,5) · S7 Sniper 120,2 et 114,6 s · Commando 30,5 s.
+
+Les occupations datees : 29 sur `01e1f945` (item 2.5 : 29), 39 sur `00162144` (item 2.5 : 40 —
+**decouverte 14**, le denominateur de 2.5 comptait aussi les apparitions `at_rest` isolees).
+
+### COUT DE CUISSON — mesure des deux cotes, binaire pre-compile, meme film
+
+| binaire | passe 1 | passe 2 |
+|---|---:|---:|
+| AVANT (`253226852`) | 151,3 s | 168,0 s |
+| APRES (ce lot) | 150,0 s | 155,7 s |
+
+**Le surcout est sous le bruit de la machine** (les deux passes du MEME binaire different de
+11 % en AVANT et de 4 % en APRES), tres loin du garde-fou de 2x. C'est ce que la mutualisation
+des marches d'images-cles achete : trois lectures ajoutees, dont deux qui remplacent des lectures
+qui auraient eu lieu de toute facon. Films entiers : `000d5950` 115,6 s · `00162144` 161,6 s ·
+`bcb6d393` 129,1 s.
+
+### GATE 3 — sorties de la session
+
+```
+EXIT_go_build_cgo1=0        CGO_ENABLED=1 go build ./...
+EXIT_go_vet_cgo1=0          CGO_ENABLED=1 go vet ./...
+EXIT_go_test=0              CGO_ENABLED=0 go test ./internal/analysis/... ./internal/replaybuild/...
+                            ./contracttest/... ./internal/archlint/... ./internal/games/halo_infinite/film/...
+EXIT_golangci_lint=0        golangci-lint run --new-from-merge-base=origin/main -> 0 issues
+EXIT_web_typecheck=0        npm run typecheck (apres purge de node_modules/.tmp)
+EXIT_web_lint=0             npm run lint (19 warnings preexistants, 0 erreur)
+EXIT_web_test=0             npm run test:run -> 447 fichiers, 4 093 tests
+```
+
+`golangci-lint` a rendu 3 issues au premier passage (2 `unparam`, 1 `prealloc`) : corrigees en
+lisant les deux seuils la ou ils sont DEFINIS plutot qu'en les passant d'appelant en appelant
+(`9b7953840`) — aucun seuil ne change. Le premier passage de `npm run test:run` a rendu UN echec
+(`PalmaresRelationsPage.test.tsx`, « Test timed out in 5000ms ») : le fichier passe seul en 3,2 s
+et le second passage complet est vert — flake de charge sur une page etrangere a ce lot.
+
+### Les trois temoins portent bien le schema 11
+
+`000d5950` : `schemaVersion: 11`, `weaponPads` ABSENT (0 socle — omitempty, comme tous les calques
+voisins ; la frontiere web le lit comme un tableau vide). `01e1f945` : 10 socles, 35 occupations
+achevees. `00162144` : 10 socles, 41 occupations achevees. `bcb6d393` (temoin du gate visuel,
+cuit en plus) : 10 socles, 20 occupations achevees. **Aucun `xuid` non nul sur les 96 occupations
+publiees.**

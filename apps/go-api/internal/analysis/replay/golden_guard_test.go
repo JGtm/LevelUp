@@ -52,6 +52,11 @@ var phrasesGolden = []string{
 	"un rapport publie sans son denominateur ne se juge pas",
 	"le tag brut reste A COTE du libelle, jamais a sa place",
 	"n emprunte pas le nom d une arme voisine",
+	"la RECURRENCE fait le socle, et le film dit quand il se vide",
+	"retenue(s) par l IDENTITE",
+	"le seul jeu qui fait des socles",
+	"un cycle instable publie `null`, jamais un chiffre",
+	"avec un ramasseur nomme (l oracle ne le permet pas",
 }
 
 func lireGoldenAssembly(t *testing.T) string {
