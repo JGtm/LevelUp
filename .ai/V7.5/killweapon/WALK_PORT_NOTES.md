@@ -376,14 +376,14 @@ porte d'image-cle `*(param_1+0x12)` est mise.
 ## 4. Ce qui reste NON resolu apres cette passe
 
 - La SEMANTIQUE du payload type-2 reste inconnue, et elle le restera par cette voie : aucun
-  code de lecture ne l'interprete. Le seul levier serait l'ENCODEUR (cote enregistrement),
-  non identifie ici.
+  code de lecture ne l'interprete. Le seul levier serait l'ECRIVAIN (cote enregistrement) : voir §5,
+  ou il est cherche et NON trouve.
 - `vtable[0x88]` (masque par defaut) n'est toujours porte pour aucun archetype (report R5).
 - `DAT_144731d20` (`FUN_1428e27c0` @`0x1428e2980`) est un MASQUE DE TYPES « a traiter
   immediatement dans le meme tick » ; les autres types sont reportes au tick suivant. Non
   exploite ici.
 
-## 5. L'ECRIVAIN du bloc type-2 — recherche BORNEE, negatif
+## 5. L ECRIVAIN du bloc type-2 — recherche BORNEE, negatif
 
 Puisque le LECTEUR saute le bloc type-2 (§2), la question devient « qui l'ECRIT, et selon
 quelle grammaire ». Recherche bornee a trois sondes de chaines/xrefs, toutes negatives :
