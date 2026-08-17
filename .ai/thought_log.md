@@ -1,3 +1,85 @@
+## [2026-08-18] Fusion finale des lots rejeu 2D (R3 a R7-e + correctif de revue des poses) — Complete
+
+**Statut** : Complete. Branche `wt/fusion-finale` (base `feat/v75` = `5ab07d67b`), quatre
+`merge --no-ff` dans l'ordre `wt/fusion-lots-go` -> `wt/kf-boucle-etat-complet` ->
+`wt/kf-encodage-drapeau` -> `wt/poses-revue-fix`.
+
+**Decision technique** : le tri de `wt/fusion-lots-go` fait foi sur le code de recherche —
+`equipment_identity*.go` (second lecteur d'equipement, doublon du R3 bis de l'autre session) et
+l'etat par defaut de `ti=42` (porte sans oracle) restent DEHORS, alors que la lignee R7 les
+portait dans sa base. Git a garde les suppressions telles quelles : aucun instrument R7 ne les
+importe, verifie au grep (`publishEquipID`, `EquipmentIdentity`, `DefaultStateTI42` : zero
+occurrence). La partie Go de R7-c avait deja ete reprise dans R7-e — les cinq fichiers du
+decodeur sont identiques a la version de `wt/kf-boucle-etat-complet` apres fusion, aucune
+duplication.
+
+**La correction de production i9** (`consumeObjectMultiplayerProperties`, polarite inversee,
+`components_batch7.go`) a ete passee au GRADIENT A/B avant/apres, sur l'instrument
+`cmd/tmp_cleanframe` restaure de l'historique (supprime le 2026-08-01 par le lot de dette J3 A ;
+son amorce du World a ete portee sur `WorldFromKeyframe`, la chaine offline du depot, pour qu'il
+tourne sur un film sans `world_dump.txt`). Sur `000d5950` amorce par son dump — la seule des trois
+configurations ou les records `ti=35` du bipede atteignent le classement des decrochages — le
+gradient monte de **7,25 % a 8,20 %** de frames propres (2 120 -> 2 399 sur 29 257) et les records
+decodes avant echec de **13,0 % a 14,4 %** ; les decrochages `ti=35 i57` tombent de 107 a 71.
+Les deux configurations amorcees par la table type-2 sont saturees par un plancher etranger
+(`ti=0 game-engine-team-mapping-component` porte plus de 97 % des echecs) et bougent dans le
+bruit : `000d5950` 2,63 % -> 2,62 % (-3 frames), `00162144` 2,47 % -> 2,50 % (+8 frames). Aucune
+regression nulle part, et l'ecrivain de R7-d confirme la polarite par une source independante.
+
+**Conflits et resolutions** : neuf fichiers en conflit, tous sur la voie 4 sauf les journaux.
+Regle appliquee — GARDER LES DEUX INTENTIONS ; en contradiction de fond, la version la plus
+recente et la plus mesuree gagne. Le calque des poses combine desormais les familles nommees et le
+filtre d'origine de l'autre session AVEC la fenetre d'affichage du correctif (`placementEndFrame` :
+`t1` est une borne INFERIEURE, le capteur se tient a ses 15 s officielles, les autres poses vont
+jusqu'a la derniere image du rejeu). Deux tests qui affirmaient encore « la duree EST la pose »
+ont ete reecrits. Le garde-rail des familles a ete refait pour le modele actuel : il lit
+`loader_replay_labels_equipment.go` (le valideur a demenage), relie famille -> regle de rendu ->
+libelle au lieu de famille -> libelle, et NOMME les deux power-ups hors table comme une decision
+ecrite. Le cliquet de taille de `ReplayCanvas.tsx` reste a 861 lignes : la fusion le portait a
+865, `countDrawablePlacements` est sorti dans `equipmentPlacementsLayer.ts` (la porte du comptage
+est celle du trace), 853 lignes. Note de revue du TOML ecartee : ses deux points sont absorbes par
+la mesure du 2026-08-18 (la diagonale est devenue le CONTROLE, les quatre « plats » sont nommes
+`grenade_*`).
+
+**Gates** : `gofmt -l` vide, `go build ./...` (CGO) 0, `go vet ./internal/analysis/...` 0,
+`go test filmdec + replay + halo_infinite/film/... + contracttest` verts, `NoART` vert,
+`tsc -b --force` 0, `vitest match-replay` 47 fichiers / 655 tests verts, `eslint` 0 erreur.
+`SchemaVersion` inchangee (9).
+
+**Prochaine etape** : revue puis `merge --no-ff` de `wt/fusion-finale` dans `feat/v75` par le
+superviseur (le present lot ne fusionne pas), CI verte au niveau job, puis gate visuel utilisateur
+(habillage + poses).
+
+## [2026-08-18] Correctif de la revue adversariale du lot poses — `t1` est une borne inferieure, pas une disparition — Complete
+
+**Statut** : Complete. Branche `wt/poses-revue-fix`, 5 commits. Plan :
+`.ai/V7.5/replay2d/PLAN_CORRECTIF_REVUE_POSES.md` (findings F1-F5 + mineurs de la revue du
+2026-08-17).
+
+**Decision technique** : F1 etait le bloquant — `t1` etait publie et affiche comme la
+disparition de l'objet, alors que `splitLives` clot la vie au premier record portant i18
+(`AtRest`). La mesure (instrument versionne `filmdec/equipment_life_end_test.go`, 3 films) rend un
+verdict en deux temps. NEGATIF sur la fin explicite : le record DEL balaye bit a bit rend 78 090 et
+158 098 candidats pour 477 et 993 vies, et la queue de records de la meme cle sans contrainte de
+position touche 98,0 % et 99,4 % des cles sans aucune vie — du bruit des deux cotes. POSITIF sur
+la cause : ce qui borne la vie n'est pas la coupure `AtRest` (distributions IDENTIQUES avec et
+sans elle) mais le trou de 250 ms du flux de POSITION. Et la preuve que `t1` n'est pas la
+disparition est directe : le recensement des keyframes montre 101 poses sur 295 (`000d5950`) et
+228 sur 537 (`00ba2e1c`) encore recensees plus d'une seconde apres la fin de leur flux de position.
+
+**Resultats** : branche NEGATIVE appliquee — aucune valeur publiee ne change, aucune re-cuisson.
+`t1` est redocumente PARTOUT comme la mise au repos (filmdec, replay, i18n FR+EN), et le calque
+cesse d'effacer a `t1` (`placementEndFrame`). F4/F5 : `SetMPPLeadBits`/`MPPLeadBits()` supprimes
+(code mort, grep 0). F2 : `placementFamily.guard.test.ts` tient ensemble les quatre enumerations
+de familles. F3 : les quatre cuissons hors ecran sortent dans `useReplayStaticLayers.ts`,
+`ReplayCanvas.tsx` 952 -> 860 lignes, cliquet pose. F7 : `coverage.placements.scanned` publie —
+`scanned: false` = film illisible, `scanned: true` + `calibrated: false` = calibration qui refuse
+de trancher (champ additif, pas de bosse de schema).
+
+**Prochaine etape** : la duree REELLE d'un equipement pose reste hors d'atteinte du film, et c'est
+au registre avec sa condition de reprise. Les quatre mineurs F6/F8/F9/F11 y sont entres une fois
+leurs enonces transmis.
+
 ## [2026-08-18] Phase W — le rendu web des familles nommees de poses — Complete
 
 **Statut** : Complete (branche `wt/familles-poses`, `f23c1bcc4`, fusionnee dans `feat/v75` le
@@ -141,6 +223,164 @@ en encre du theme), et visibilite du disque de 4,25 m sur carte BTB (pas de plan
 lisibilite, contrairement au mur). Reports au registre : portee = supposition d'unite non
 mesuree ; vie du capteur tronquee par la replication (verifier si `t1` est premature quand la
 largeur de bloc sera tranchee — sans jamais prolonger une pose).
+## [2026-08-17] Lot R7-e — La boucle d'etat complet portee : le cadre n'etait pas la cause
+
+**Statut** : Complete (C1 echoue a 0,51 %, borne d'arret atteinte, negatif chiffre). Branche
+`wt/kf-boucle-etat-complet`. Plan : `.ai/V7.5/replay2d/PLAN_R7E_BOUCLE_ETAT_COMPLET.md`.
+
+**Decision technique** : R7-d avait TROUVE la boucle d'etat complet du jeu sans la PORTER. Ce lot
+la porte entierement et mesure ses cinq variables une a la fois, sur les memes 591 records ti=35
+bornes que R7-a/b/c/d. Trois relectures Ghidra corrigent R7-d au passage : `FUN_142e2c690` essaie
+d'abord le descripteur au MEME index que l'entree de table et ne cherche par nom qu'en
+rattrapage — l'ordre n'est donc pas une variable libre ; `FUN_142e29cf8` est un simple R(4), ce
+qui porte l'en-tete par entite a 108 bits ; et `kfValidAnchor` n'accepte une ancre que si le mot
+de 32 bits a q+32 vaut moins de 50, ce qui veut dire `field26` nul sous une lecture et
+`typeIndex` < 50 sous l'autre : les deux en-tetes sont indiscernables sur les ancres acceptees,
+l'oracle de R3/R5 ne refutait pas les 108 bits. Fait neuf sorti d'une mesure sur les octets du
+registre : l'entree que la boucle lit place le nom en `+0` et le niveau en `+0x100`, la ou
+`registry.go` suppose un `kind` et un `flags` avant le nom — les noms tombent au meme octet dans
+les deux lectures, le niveau non. Les 64 slots ont un `kind` nul, et 25 des 64 composants du
+bipede changent de niveau, les memes 25 sur les trois films.
+
+**Resultats** : trois atterrissages bit-exact sur 591 (0,51 %), meilleure configuration 1 sur 591,
+pour un palier a 50 %. Le decalage de niveau et la correction d'i0 selon l'ecrivain sont INERTES
+au bit pres : aucun deserialiseur porte du bipede ne dimensionne quoi que ce soit sur le niveau du
+registre, et le bit h d'i0 vaut 0 dans le cas dominant. La portee `DAT_144e61ea0` allumee donne un
+ecart median de 543/660/526 — exactement les chiffres de R7-c, obtenus par une marche differente :
+le temoin est fidele et le payload du film est bien ecrit hors de la portee. Le seul mouvement de
+forme qui vise juste est l'en-tete de 108 bits, et sur un seul film : la longueur mediane de
+`000d5950` passe de 2 350 a 2 770 pour un reel de 2 765, cinq bits — les deux autres films ne
+suivent pas. Histogramme des decrochages inchange par toutes les variables : deux tiers de
+sous-lectures, un cinquieme de depassements au DERNIER composant, rien au milieu.
+
+**Prochaine etape** : la borne d'arret du plan est atteinte et respectee. Ce lot ferme une famille
+entiere d'hypotheses — le CADRE du record (en-tete, ordre, niveaux, mots de taille, mots de
+controle, portee de precision) n'est pas la cause de la derive. Reste ce que R7-b nommait deja :
+une derive DISPERSEE dans les deserialiseurs eux-memes. Les deux bascules ajoutees
+(`keyframeWriterI0Grammar`, `keyframeBaselineScope`) sont OFF par defaut, non-regression delta
+verte (20 paquets, zero FAIL). RE image-cle ARRETEE (decision utilisateur).
+
+## [2026-08-17] Lot R7-d — L'ecrivain est la case `+0x18` de la vtable ; et la boucle d'etat complet n'a pas de masque
+
+**Statut** : Complete (C1a atteint, C1b echoue a 0,85 % pour un palier a 50 %). Branche
+`wt/kf-ecrivain-vtable`. Plan : `.ai/V7.5/replay2d/PLAN_R7D_ECRIVAIN_VTABLE.md`.
+
+**Decision technique** : hypothese du lot — les cases voisines de la vtable d'un descripteur de
+composant portent la SERIALISATION. Verifiee, et refermee : la vtable a dix cases et EXACTEMENT
+DEUX touchent le flux de bits — `+0x18` ecrit, `+0x30` lit (thunk `FUN_14076ce9c` en `+0x28`) ;
+les autres sont un getter de nom, un predicat de filtre, des stubs constants et un `int3`. Les
+cases vont par paires etat complet / delta, et seuls trois composants du bipede sur 52 ont une
+forme delta distincte. Meme paire au niveau archetype (`+0x58` ecrit l'etat par defaut, `+0x60` le
+lit). La methode qui a permis de retrouver ces vtables sans xref est reutilisable : dumper
+`.rdata` par l'API HTTP du plugin Ghidra puis chercher le pointeur 8 octets du deser — il est
+UNIQUE pour les 52 composants — et confirmer la base par le getter de nom en `+0x08`.
+
+**Resultats** : quatre ports Go sur cinq sont CONFIRMES largeur pour largeur par l'ecrivain (i5,
+i9, i60, i63) plus l'etat par defaut de l'archetype — la correction de polarite d'i9 du lot R7-b
+est ainsi verifiee independamment — et la limite dure d'i63 (un compte issu d'un popcount en RAM)
+est appelee des DEUX cotes, donc elle est dans le format et le fil se ferme. Une seule divergence,
+i0 : son troisieme bit n'est pas un « precHigh » qui supprime la charge utile mais un selecteur de
+table de plage qui double la porte de queue, et son champ de deux bits est inconditionnel et vient
+en dernier. Surtout, la piste transmise par le lot jumeau R7-c a livre la boucle d'ETAT COMPLET du
+jeu (`FUN_142e2c690`) : AUCUN MASQUE DE PRESENCE, une table fixe de 64 entrees nommees, chaque
+descripteur retrouve PAR NOM, et la portee de pleine precision levee pour toute sa duree. Mesure
+sur 591 records bornes, 3 films : la reference ne fait atterrir AUCUN record ; imposer la largeur
+d'i0 en fait atterrir 5 (0,85 %), largeurs optimales 81 / 54 / 62, les deux dernieres a 2 et 3 bits
+de la prediction de l'ecrivain.
+
+**Prochaine etape** : la forme du corps d'image-cle n'est plus une hypothese. Restent deux
+variables nommees : l'ORDRE (table nommee contre ordre d'archetype) et `DAT_144e61ea0` (96 bits
+bruts contre trois axes quantifies), sur laquelle ce lot et R7-c ne concluent pas pareil selon la
+source — R7-e tranche. Aucun fichier partage du decodeur modifie ; filmdec et replay verts.
+
+## [2026-08-17] Lot R7-c — Le drapeau d'encodage de l'image-cle existe, et il n'est pas leve
+
+**Statut** : Complete (C1 echoue, negatif chiffre ; un bug de port corrige, un modele separe).
+Branche `wt/kf-encodage-drapeau`. Plan :
+`.ai/V7.5/replay2d/PLAN_R7C_ENCODAGE_DRAPEAU_IMAGE_CLE.md`.
+
+**Decision technique** : R7-b laissait un residu DISPERSE (0,54 % bit-exact, p10 46 bits, p90 a
+quatre ordres de grandeur) : ni bloc manquant ni deser casse. Hypothese testee : les memes
+deserialiseurs lus sous un AUTRE encodage, commande par un drapeau de CONTEXTE du lecteur.
+407 fonctions du paquet `filmdec` decompilees (Ghidra LECTURE SEULE, API HTTP du plugin, le pont
+MCP restant HS). Le drapeau EXISTE, et il y en a deux : `DAT_144e61ea0` est une PORTEE que les
+huit lecteurs d'etat complet du groupe `142e2*`/`142e3*` levent juste avant l'appel `vtable[0x60]`
+et abaissent juste apres ; `DAT_145121140` est un reglage de process. Leur OU est `FUN_14076f91c`,
+et il fait passer six lecteurs de position du quantifie au BRUT 96 bits. Le port Go confondait les
+deux sous `PositionFullPrecision` et traitait `FUN_1411b259c` comme zero bit alors qu'il lit 96 :
+quatre sites corriges.
+
+**Resultats** : A/B a une seule variable, 591 records ti=35 bornes, 3 films, 4 lectures, largeurs
+de carte installees. Portee ETEINTE (temoin, qui reproduit la table de dispersion de R7-b chiffre
+pour chiffre) : 3 atterrissages bit-exact sur 591. Portee ALLUMEE : ZERO, et l'ecart absolu median
+monte de 511/636/448 a 543/660/526. La piece qui tranche est le profil d'i0 : eteinte, sa largeur
+mediane vaut 102/57/62 bits sur les trois films et suit le decoupage de CHAQUE carte ; allumee,
+les trois convergent vers 99 (le brut 96 plus en-tete) et la mesure se degrade. Le corps
+d'image-cle porte donc une position QUANTIFIEE aux largeurs de la carte.
+
+**Prochaine etape** : l'hypothese est REFUTEE pour le seul encodage alternatif que le binaire
+propose, et les primitives n'ont aucun drapeau (le selecteur 2 bits est inconditionnel). Ce qui
+reste, et qui est neuf : le lecteur d'etat complet du jeu est NOMME (`FUN_1428e2a04` ->
+`FUN_1428e2a9c` -> `FUN_142e2bfd0`), la ou R5 ecrivait que le consommateur du payload type-2
+n'etait identifie nulle part. Une conclusion de R7-b est amendee : i0 ne prend PAS le chemin brut
+en image-cle, sa largeur suit la carte.
+
+## [2026-08-17] Lot R7-b — La porte d'i9 etait inversee ; le verrou nomme par R7-a n'etait pas le bon
+
+**Statut** : Complete (C1 echoue, mais trois deserialiseurs corriges/portes et deux pistes closes).
+Branche `wt/kf-biped-bit-exact`. Plan :
+`.ai/V7.5/replay2d/PLAN_R7B_BIPEDE_IMAGE_CLE_BIT_EXACT.md`.
+
+**Decision technique** : R7-a designait trois desers bloquants pour l'image-cle du bipede (i60,
+i57, i59). Decompile Ghidra en LECTURE SEULE : (1) i60 `simulation-state` est ENTIEREMENT resolu —
+sa queue `FUN_14076e494` est le lecteur absolu moins `precHigh` et moins le R(2) final, et son
+predicat de garde `FUN_140501798` est VRAI PAR CONSTRUCTION ; (2) i57 `tag==3` est portable a
+moitie, l'autre moitie etant gardee par un octet d'ETAT RUNTIME ; (3) surtout, i9
+`object-multiplayer-properties` avait sa PORTE INVERSEE dans le port Go — `FUN_1407d4c94` lit son
+bloc TLV quand le bit vaut ZERO. Corrige a la source, dans `components_batch7.go` : c'est un
+CHEMIN DE PRODUCTION (le delta), pas seulement l'image-cle.
+
+**Resultats** : sur 591 records ti=35 bornes, 3 films, 48 passes : l'ecart absolu median tombe de
+920/757/927 a 412-507 bits (-45 a -55 %) et CHANGE DE SIGNE ; la longueur mediane d'une lecture
+« etat par defaut + porte + 64 leaf » tombe a 99,9-102,3 % de la longueur reelle. Le taux
+bit-exact, lui, ne bouge pas : 0,54 % contre 0,51 % chez R7-a, pour un seuil de 95 % — C1 ECHOUE.
+Deux pistes closes, chiffrees : les largeurs d'axe de la carte ne sont PAS le levier (mesure
+amendee par R7-c) ; et le benefice apparent du corruption-check du mode film mesure par R7-a etait
+un ARTEFACT de la sur-lecture d'i9 — une fois i9 corrige, l'allumer est systematiquement PIRE.
+
+**Prochaine etape** : le verrou de R7-a n'etait pas le bon — i60/i57/i59 pesent 1, 2 et 5 bits en
+mediane. Le residu est un deficit de longueur DISPERSE (medianes justes a 2 %, aucun record
+individuel juste). `simStateComplete` reste a `false` en production : plus par manque de
+grammaire, mais parce que la queue d'i60 tirerait ses largeurs d'axe d'`absoluteAxisW`, un
+uniforme 14 qui n'est la largeur d'aucune carte.
+
+## [2026-08-17] Lot R7-a — L'image-cle a la TAILLE d'un etat complet, pas les BITS
+
+**Statut** : Complete (experience bornee, negatif mesure + resultat quantitatif neuf). Branche
+`wt/kf-biped-etat-complet`. Plan :
+`.ai/V7.5/replay2d/PLAN_R7A_IMAGE_CLE_BIPEDE_ETAT_COMPLET.md`.
+
+**Decision technique** : probe sur le BIPEDE (ti=35, 64 composants, 63 portes) l'hypothese « le
+corps d'un record d'image-cle est l'etat complet, 64 deserialiseurs leaf concatenes dans l'ordre
+du registre, sans masque ni porte ». Instrument neuf `filmdec/keyframe_biped_fullstate_test.go`
+(garde `KF35_ROOT`), qui REJOUE les lecteurs de production (`WalkKeyframeBody` de R5,
+`TraverseEntity`, `SetUnportedStubWidth`) — aucun deser recopie, aucun fichier partage du decodeur
+modifie. 6 variantes (dont un temoin « record NEW »), corruption-check du mode film OFF/ON,
+3 films oracles, 591 records ti=35 bornes par `WalkKeyframeWorld` (chaine disjointe).
+
+**Resultats** : C1 (>= 95 % d'atterrissage bit-exact) ECHOUE — plafond 0,51 %, 2 atterrissages sur
+~7 000 tentatives. Les variantes sans neutralisation des trous ne finissent JAMAIS : 591/591
+desyncs, toujours sur i60 `simulation-state` (~83 %), i57 et i59 `biped-spartan-ability` (~15 %).
+MAIS l'echelle tombe juste : la concatenation des 64 leaf consomme 2 830-2 890 bits pour une
+longueur reelle mediane de 2 765-2 781 (102-104 %), quand la lecture « record NEW » n'en consomme
+que 12-39 %. L'ecart residuel n'est ni petit ni stable (167-202 valeurs distinctes pour
+~200 records).
+
+**Prochaine etape** : la FORME de la lecture d'image-cle est tranchee — c'est un etat complet, pas
+un record NEW ; la decouverte 3 de R3 est confirmee quantitativement pour la premiere fois. Le
+verrou nomme ici (i57/i59/i60) sera REFUTE par R7-b, qui trouve la vraie cause dans la polarite
+d'i9.
+
 ## [2026-08-17] Fusion triee des quatre lots de recherche R3/R4/R5/R6 — synthese superviseur
 
 **Statut** : Complete (branche d'integration `wt/fusion-lots-go`, base `feat/v75` `085cda41b`).

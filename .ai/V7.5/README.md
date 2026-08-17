@@ -43,6 +43,38 @@ portent le detail mesure, et trois d'entre eux sont des NEGATIFS qui ferment des
   il n'y a aucun consommateur a decompiler. La file par entite n'est pas une transformation,
   et la capture live de juillet portait sur le premier paquet DELTA, pas sur une image-cle.
 
+Cinq lots de RECHERCHE du 2026-08-17 sur l'IMAGE-CLE du bipede (branches `wt/kf-biped-etat-complet`,
+`wt/kf-biped-bit-exact`, `wt/kf-encodage-drapeau`, `wt/kf-ecrivain-vtable`,
+`wt/kf-boucle-etat-complet`), lus dans cet ordre : chacun corrige une conclusion du precedent, et
+le dernier pose la BORNE D'ARRET. **La RE de l'image-cle est ARRETEE (decision utilisateur apres
+R7-e)** — ce qui suit est ce qui reste acquis, pas un chantier ouvert.
+
+- `replay2d/PLAN_R7A_IMAGE_CLE_BIPEDE_ETAT_COMPLET.md` — le corps d'un record d'image-cle a la
+  TAILLE d'un etat complet (102-104 % de la longueur reelle) mais pas les BITS (0,51 % d'exactitude
+  sur 591 records). La FORME est tranchee ; le verrou qu'il nomme (i57/i59/i60) sera refute par
+  R7-b.
+- `replay2d/PLAN_R7B_BIPEDE_IMAGE_CLE_BIT_EXACT.md` — **le seul lot de la serie a corriger la
+  PRODUCTION** : la porte du composant i9 `object-multiplayer-properties` etait INVERSEE dans le
+  port Go (le bloc TLV se lit quand le bit vaut ZERO). Chemin delta, donc tous les films. Ecart
+  median -45 a -55 % ; l'exactitude, elle, ne bouge pas.
+- `replay2d/PLAN_R7C_ENCODAGE_DRAPEAU_IMAGE_CLE.md` — NEGATIF net : les deux drapeaux d'encodage
+  existent (`DAT_144e61ea0` portee, `DAT_145121140` reglage de process), mais le payload d'image-cle
+  est ecrit HORS de la portee — sa position est QUANTIFIEE aux largeurs de la carte. Acquis :
+  le lecteur d'etat complet du jeu est NOMME.
+- `replay2d/PLAN_R7D_ECRIVAIN_VTABLE.md` — l'ECRIVAIN est la case `+0x18` de la vtable d'un
+  descripteur de composant, retrouvee sans xref par dump de `.rdata`. Quatre ports Go sur cinq
+  confirmes largeur pour largeur, **dont la polarite d'i9 de R7-b, verifiee independamment**.
+- `replay2d/PLAN_R7E_BOUCLE_ETAT_COMPLET.md` — la boucle d'etat complet portee telle quelle, ses
+  cinq variables mesurees une a la fois : aucune n'ecrase la dispersion. **Le CADRE du record n'est
+  pas la cause ; la derive est DANS les deserialiseurs.** Borne d'arret atteinte et respectee.
+
+- `replay2d/PLAN_CORRECTIF_REVUE_POSES.md` — le correctif de la revue adversariale du lot des poses
+  d'equipement (2026-08-17). Son acquis central est un NEGATIF MESURE qui change l'affichage : `t1`
+  n'est PAS la disparition d'un objet pose, c'est sa MISE AU REPOS — une borne INFERIEURE. Le film
+  ne date la disparition d'aucun equipement (record DEL noye dans 78 090 / 158 098 candidats). Le
+  calque cesse donc d'effacer a `t1` : le capteur se tient a ses 15 s officielles, les autres poses
+  vont jusqu'a la fin du rejeu.
+
 À la racine de `V7.5/` : `RECHERCHE_CTF_TIRS_PERDUS.md` — le verdict de la **décision #2** du
 master plan (pourquoi le rejeu perd des tirs, et si le rejeu public est livrable). Ses sorties
 brutes sont sous `replay2d/mesures_ctf_2026-08-08/`.
