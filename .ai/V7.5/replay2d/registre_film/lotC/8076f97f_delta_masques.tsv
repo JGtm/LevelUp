@@ -1,0 +1,347 @@
+ti	i	composant	niveau	statut	annonces	pct_records_ti	plancher_bruit	exces_sur_plancher	temoin_vide	temoin_inconnu	temoin_occupe
+10	0	managed-object-boundary-visibility-component	0	porte	306	3.42	71.0	4.3	376	721	98568
+10	1	managed-object-boundary-color-component	1	non_porte	191	2.13	71.0	2.7	361	185	85117
+10	2	managed-object-navpoint-component	2	non_porte	84	0.94	71.0	1.2	103	161	146
+10	3	managed-object-navpoint-component	1	non_porte	127	1.42	71.0	1.8	55	215	83
+10	4	managed-object-navpoint-component	1	non_porte	548	6.12	71.0	7.7	183	489	977
+10	5	managed-object-navpoint-component	1	non_porte	331	3.70	71.0	4.7	189	251	34563
+10	6	managed-object-navpoint-component	1	non_porte	56	0.63	71.0	0.8	35	146	145
+10	7	managed-object-navpoint-component	1	non_porte	88	0.98	71.0	1.2	50	122	95
+10	8	managed-object-navpoint-component	1	non_porte	106	1.18	71.0	1.5	176	362	446
+10	9	managed-object-navpoint-component	1	non_porte	72	0.80	71.0	1.0	168	249	187
+10	10	managed-object-navpoint-component	1	non_porte	43	0.48	71.0	0.6	96	160	81
+10	11	managed-object-navpoint-component	1	non_porte	46	0.51	71.0	0.6	46	103	332
+10	12	managed-object-navpoint-component	1	non_porte	45	0.50	71.0	0.6	60	226	344
+10	13	managed-object-navpoint-component	1	non_porte	53	0.59	71.0	0.7	172	214	389
+10	14	managed-object-navpoint-component	1	non_porte	52	0.58	71.0	0.7	35	53	70
+10	15	managed-object-navpoint-component	1	non_porte	51	0.57	71.0	0.7	59	186	119
+10	16	managed-object-navpoint-component	1	non_porte	70	0.78	71.0	1.0	630	281	114
+10	17	managed-object-navpoint-component	1	non_porte	103	1.15	71.0	1.5	107	277	182
+10	18	managed-object-networked-property-component	1	non_porte	104	1.16	71.0	1.5	136	112	167
+10	19	managed-object-networked-property-component	1	non_porte	44	0.49	71.0	0.6	38	125	80
+10	20	managed-object-networked-property-component	1	non_porte	122	1.36	71.0	1.7	97	171	424
+10	21	managed-object-networked-property-component	1	non_porte	58	0.65	71.0	0.8	19	86	62522
+10	22	managed-object-interaction-filter-component	1	non_porte	42	0.47	71.0	0.6	44	69	247
+10	23	managed-object-flags-component	2	non_porte	46	0.51	71.0	0.6	34	66	86
+10	24	managed-object-looping-sound-component	1	non_porte	215	2.40	71.0	3.0	33	164	152
+10	25	managed-object-looping-sound-component	1	non_porte	265	2.96	71.0	3.7	59	262	100534
+10	26	managed-object-rtpc-component	1	non_porte	2914	32.55	71.0	41.0	87	128	227
+10	27	managed-object-rtpc-component	1	non_porte	2313	25.83	71.0	32.6	86	211	256
+10	28	managed-object-rtpc-component	1	non_porte	215	2.40	71.0	3.0	49	144	884
+10	29	managed-object-rtpc-component	1	non_porte	57	0.64	71.0	0.8	146	152	80
+10	30	(hors grammaire)	-	hors_grammaire	49	0.55	71.0	0.7	169	74	1517
+10	31	(hors grammaire)	-	hors_grammaire	64	0.71	71.0	0.9	39	163	228
+10	32	(hors grammaire)	-	hors_grammaire	86	0.96	71.0	1.2	426	200	379
+10	33	(hors grammaire)	-	hors_grammaire	52	0.58	71.0	0.7	58	304	682
+10	34	(hors grammaire)	-	hors_grammaire	82	0.92	71.0	1.2	57	105	205
+10	35	(hors grammaire)	-	hors_grammaire	31	0.35	71.0	0.4	42	87	129
+10	36	(hors grammaire)	-	hors_grammaire	79	0.88	71.0	1.1	95	192	181
+10	37	(hors grammaire)	-	hors_grammaire	43	0.48	71.0	0.6	51	72	102
+10	38	(hors grammaire)	-	hors_grammaire	38	0.42	71.0	0.5	64	85	262
+10	39	(hors grammaire)	-	hors_grammaire	86	0.96	71.0	1.2	557	127	139
+10	40	(hors grammaire)	-	hors_grammaire	69	0.77	71.0	1.0	148	242	325
+10	41	(hors grammaire)	-	hors_grammaire	33	0.37	71.0	0.5	101	150	140
+10	42	(hors grammaire)	-	hors_grammaire	36	0.40	71.0	0.5	30	127	282
+10	43	(hors grammaire)	-	hors_grammaire	49	0.55	71.0	0.7	159	77	95
+10	44	(hors grammaire)	-	hors_grammaire	49	0.55	71.0	0.7	46	161	205
+10	45	(hors grammaire)	-	hors_grammaire	48	0.54	71.0	0.7	1018	99	75
+10	46	(hors grammaire)	-	hors_grammaire	44	0.49	71.0	0.6	36	127	95
+10	47	(hors grammaire)	-	hors_grammaire	112	1.25	71.0	1.6	624	180	206
+10	48	(hors grammaire)	-	hors_grammaire	103	1.15	71.0	1.5	59	287	321
+10	49	(hors grammaire)	-	hors_grammaire	46	0.51	71.0	0.6	33	172	82
+10	50	(hors grammaire)	-	hors_grammaire	45	0.50	71.0	0.6	46	118	78
+10	51	(hors grammaire)	-	hors_grammaire	40	0.45	71.0	0.6	29	119	106
+10	52	(hors grammaire)	-	hors_grammaire	69	0.77	71.0	1.0	148	169	101
+10	53	(hors grammaire)	-	hors_grammaire	107	1.20	71.0	1.5	82	206	222
+10	54	(hors grammaire)	-	hors_grammaire	99	1.11	71.0	1.4	31	161	976
+10	55	(hors grammaire)	-	hors_grammaire	290	3.24	71.0	4.1	62	495	184
+10	56	(hors grammaire)	-	hors_grammaire	54	0.60	71.0	0.8	33	252	280
+10	57	(hors grammaire)	-	hors_grammaire	138	1.54	71.0	1.9	52	403	865
+10	58	(hors grammaire)	-	hors_grammaire	103	1.15	71.0	1.5	199	248	224
+10	59	(hors grammaire)	-	hors_grammaire	389	4.34	71.0	5.5	128	250	991
+10	60	(hors grammaire)	-	hors_grammaire	286	3.19	71.0	4.0	98	602	186
+10	61	(hors grammaire)	-	hors_grammaire	68	0.76	71.0	1.0	513	211	87
+10	62	(hors grammaire)	-	hors_grammaire	84	0.94	71.0	1.2	33	175	61
+10	63	(hors grammaire)	-	hors_grammaire	91	1.02	71.0	1.3	56	96	75
+12	0	managed-navpoint-sub-type-component	0	porte	55	1.31	25.0	2.2	376	721	98568
+12	1	managed-navpoint-flags-component	1	non_porte	44	1.05	25.0	1.8	361	185	85117
+12	2	managed-navpoint-visibility-distance-filters-component	1	non_porte	21	0.50	25.0	0.8	103	161	146
+12	3	managed-navpoint-visible-offscreen-filters-component	3	non_porte	28	0.67	25.0	1.1	55	215	83
+12	4	managed-navpoint-can-be-occluded-filters-component	2	non_porte	37	0.88	25.0	1.5	183	489	977
+12	5	managed-navpoint-visibility-filter-component	2	non_porte	21	0.50	25.0	0.8	189	251	34563
+12	6	managed-navpoint-docking-filter-component	2	non_porte	131	3.12	25.0	5.2	35	146	145
+12	7	managed-navpoint-docking-order-component	2	non_porte	28	0.67	25.0	1.1	50	122	95
+12	8	managed-navpoint-docking-group-name-component	1	non_porte	39	0.93	25.0	1.6	176	362	446
+12	9	managed-navpoint-formatted-text-component	1	non_porte	34	0.81	25.0	1.4	168	249	187
+12	10	managed-navpoint-timers-component	1	non_porte	20	0.48	25.0	0.8	96	160	81
+12	11	managed-navpoint-manual-timer-initial-duration-component	1	non_porte	17	0.40	25.0	0.7	46	103	332
+12	12	managed-navpoint-manual-timer-current-duration-component	1	non_porte	22	0.52	25.0	0.9	60	226	344
+12	13	managed-navpoint-top-progress	1	non_porte	29	0.69	25.0	1.2	172	214	389
+12	14	managed-navpoint-radial-progress	1	non_porte	2974	70.83	25.0	119.0	35	53	70
+12	15	managed-navpoint-bottom-progress	1	non_porte	17	0.40	25.0	0.7	59	186	119
+12	16	managed-navpoint-override-flags	1	non_porte	29	0.69	25.0	1.2	630	281	114
+12	17	managed-navpoint-object-marker	1	non_porte	27	0.64	25.0	1.1	107	277	182
+12	18	managed-navpoint-position-offset	1	non_porte	25	0.60	25.0	1.0	136	112	167
+12	19	managed-navpoint-visual-states-component	1	non_porte	20	0.48	25.0	0.8	38	125	80
+12	20	managed-navpoint-visual-state-groups-component-0	2	non_porte	80	1.91	25.0	3.2	97	171	424
+12	21	managed-navpoint-visual-state-groups-component-1	1	non_porte	125	2.98	25.0	5.0	19	86	62522
+12	22	managed-navpoint-visual-state-groups-component-2	1	non_porte	129	3.07	25.0	5.2	44	69	247
+12	23	managed-navpoint-visual-state-groups-component-3	1	non_porte	19	0.45	25.0	0.8	34	66	86
+12	24	managed-navpoint-visual-state-groups-component-4	1	non_porte	36	0.86	25.0	1.4	33	164	152
+12	25	managed-navpoint-visual-state-groups-component-5	1	non_porte	30	0.71	25.0	1.2	59	262	100534
+12	26	managed-navpoint-visual-state-groups-component-6	1	non_porte	22	0.52	25.0	0.9	87	128	227
+12	27	managed-navpoint-visual-state-groups-component-7	1	non_porte	50	1.19	25.0	2.0	86	211	256
+12	28	(hors grammaire)	-	hors_grammaire	23	0.55	25.0	0.9	49	144	884
+12	29	(hors grammaire)	-	hors_grammaire	17	0.40	25.0	0.7	146	152	80
+12	30	(hors grammaire)	-	hors_grammaire	35	0.83	25.0	1.4	169	74	1517
+12	31	(hors grammaire)	-	hors_grammaire	14	0.33	25.0	0.6	39	163	228
+12	32	(hors grammaire)	-	hors_grammaire	27	0.64	25.0	1.1	426	200	379
+12	33	(hors grammaire)	-	hors_grammaire	18	0.43	25.0	0.7	58	304	682
+12	34	(hors grammaire)	-	hors_grammaire	18	0.43	25.0	0.7	57	105	205
+12	35	(hors grammaire)	-	hors_grammaire	24	0.57	25.0	1.0	42	87	129
+12	36	(hors grammaire)	-	hors_grammaire	40	0.95	25.0	1.6	95	192	181
+12	37	(hors grammaire)	-	hors_grammaire	20	0.48	25.0	0.8	51	72	102
+12	38	(hors grammaire)	-	hors_grammaire	14	0.33	25.0	0.6	64	85	262
+12	39	(hors grammaire)	-	hors_grammaire	11	0.26	25.0	0.4	557	127	139
+12	40	(hors grammaire)	-	hors_grammaire	17	0.40	25.0	0.7	148	242	325
+12	41	(hors grammaire)	-	hors_grammaire	21	0.50	25.0	0.8	101	150	140
+12	42	(hors grammaire)	-	hors_grammaire	29	0.69	25.0	1.2	30	127	282
+12	43	(hors grammaire)	-	hors_grammaire	23	0.55	25.0	0.9	159	77	95
+12	44	(hors grammaire)	-	hors_grammaire	24	0.57	25.0	1.0	46	161	205
+12	45	(hors grammaire)	-	hors_grammaire	32	0.76	25.0	1.3	1018	99	75
+12	46	(hors grammaire)	-	hors_grammaire	16	0.38	25.0	0.6	36	127	95
+12	47	(hors grammaire)	-	hors_grammaire	25	0.60	25.0	1.0	624	180	206
+12	48	(hors grammaire)	-	hors_grammaire	27	0.64	25.0	1.1	59	287	321
+12	49	(hors grammaire)	-	hors_grammaire	32	0.76	25.0	1.3	33	172	82
+12	50	(hors grammaire)	-	hors_grammaire	17	0.40	25.0	0.7	46	118	78
+12	51	(hors grammaire)	-	hors_grammaire	26	0.62	25.0	1.0	29	119	106
+12	52	(hors grammaire)	-	hors_grammaire	37	0.88	25.0	1.5	148	169	101
+12	53	(hors grammaire)	-	hors_grammaire	22	0.52	25.0	0.9	82	206	222
+12	54	(hors grammaire)	-	hors_grammaire	23	0.55	25.0	0.9	31	161	976
+12	55	(hors grammaire)	-	hors_grammaire	34	0.81	25.0	1.4	62	495	184
+12	56	(hors grammaire)	-	hors_grammaire	9	0.21	25.0	0.4	33	252	280
+12	57	(hors grammaire)	-	hors_grammaire	29	0.69	25.0	1.2	52	403	865
+12	58	(hors grammaire)	-	hors_grammaire	16	0.38	25.0	0.6	199	248	224
+12	59	(hors grammaire)	-	hors_grammaire	25	0.60	25.0	1.0	128	250	991
+12	60	(hors grammaire)	-	hors_grammaire	27	0.64	25.0	1.1	98	602	186
+12	61	(hors grammaire)	-	hors_grammaire	24	0.57	25.0	1.0	513	211	87
+12	62	(hors grammaire)	-	hors_grammaire	18	0.43	25.0	0.7	33	175	61
+12	63	(hors grammaire)	-	hors_grammaire	19	0.45	25.0	0.8	56	96	75
+11	0	managed-objective-timers-component	0	non_porte	3	3.61	1.0	3.0	376	721	98568
+11	1	managed-objective-color-component	1	non_porte	3	3.61	1.0	3.0	361	185	85117
+11	2	managed-objective-formatted-text-component	1	non_porte	1	1.20	1.0	1.0	103	161	146
+11	3	managed-objective-object-reference-component	1	non_porte	1	1.20	1.0	1.0	55	215	83
+11	4	managed-objective-interaction-filter-component	1	non_porte	3	3.61	1.0	3.0	183	489	977
+11	5	managed-objective-type-component	2	non_porte	1	1.20	1.0	1.0	189	251	34563
+11	6	managed-objective-enabled-component	1	non_porte	9	10.84	1.0	9.0	35	146	145
+11	10	managed-objective-is-new-and-unseen-component	1	non_porte	1	1.20	1.0	1.0	96	160	81
+11	12	managed-objective-progress-component	1	non_porte	1	1.20	1.0	1.0	60	226	344
+11	13	managed-objective-required-progress-component	1	non_porte	1	1.20	1.0	1.0	172	214	389
+11	16	managed-objective-sub-objective-entities-component	1	non_porte	3	3.61	1.0	3.0	630	281	114
+11	17	managed-objective-sub-objective-entities-component	1	non_porte	1	1.20	1.0	1.0	107	277	182
+11	18	managed-objective-sub-objective-entities-component	1	non_porte	2	2.41	1.0	2.0	136	112	167
+11	19	managed-objective-sub-objective-entities-component	1	non_porte	1	1.20	1.0	1.0	38	125	80
+11	20	managed-objective-sub-objective-entities-component	1	non_porte	3	3.61	1.0	3.0	97	171	424
+11	21	managed-objective-sub-objective-entities-component	1	non_porte	2	2.41	1.0	2.0	19	86	62522
+11	22	managed-objective-sub-objective-entities-component	1	non_porte	1	1.20	1.0	1.0	44	69	247
+11	25	managed-objective-sub-objective-entities-component	1	non_porte	4	4.82	1.0	4.0	59	262	100534
+11	26	managed-objective-sub-objective-entities-component	1	non_porte	4	4.82	1.0	4.0	87	128	227
+11	27	managed-objective-sub-objective-entities-component	1	non_porte	3	3.61	1.0	3.0	86	211	256
+11	29	managed-objective-sub-objective-entities-component	1	non_porte	1	1.20	1.0	1.0	146	152	80
+11	31	managed-objective-sub-objective-entities-component	1	non_porte	1	1.20	1.0	1.0	39	163	228
+11	32	managed-objective-outro-phase-duration-component	1	non_porte	7	8.43	1.0	7.0	426	200	379
+11	34	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	57	105	205
+11	35	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	42	87	129
+11	36	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	95	192	181
+11	37	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	51	72	102
+11	38	(hors grammaire)	-	hors_grammaire	3	3.61	1.0	3.0	64	85	262
+11	39	(hors grammaire)	-	hors_grammaire	3	3.61	1.0	3.0	557	127	139
+11	40	(hors grammaire)	-	hors_grammaire	4	4.82	1.0	4.0	148	242	325
+11	41	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	101	150	140
+11	42	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	30	127	282
+11	43	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	159	77	95
+11	44	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	46	161	205
+11	45	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	1018	99	75
+11	47	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	624	180	206
+11	48	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	59	287	321
+11	50	(hors grammaire)	-	hors_grammaire	3	3.61	1.0	3.0	46	118	78
+11	52	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	148	169	101
+11	53	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	82	206	222
+11	54	(hors grammaire)	-	hors_grammaire	3	3.61	1.0	3.0	31	161	976
+11	55	(hors grammaire)	-	hors_grammaire	14	16.87	1.0	14.0	62	495	184
+11	56	(hors grammaire)	-	hors_grammaire	3	3.61	1.0	3.0	33	252	280
+11	57	(hors grammaire)	-	hors_grammaire	12	14.46	1.0	12.0	52	403	865
+11	58	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	199	248	224
+11	59	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	128	250	991
+11	60	(hors grammaire)	-	hors_grammaire	2	2.41	1.0	2.0	98	602	186
+11	62	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	33	175	61
+11	63	(hors grammaire)	-	hors_grammaire	1	1.20	1.0	1.0	56	96	75
+13	0	managed-object-property-name-component	0	porte	186	4.17	73.0	2.5	376	721	98568
+13	1	managed-object-property-component	1	non_porte	1311	29.42	73.0	18.0	361	185	85117
+13	2	managed-object-player-masked-property-component	1	non_porte	300	6.73	73.0	4.1	103	161	146
+13	3	managed-object-player-masked-property-component	1	non_porte	274	6.15	73.0	3.8	55	215	83
+13	4	managed-object-player-masked-property-component	1	non_porte	292	6.55	73.0	4.0	183	489	977
+13	5	managed-object-player-masked-property-component	1	non_porte	268	6.01	73.0	3.7	189	251	34563
+13	6	managed-object-player-masked-property-component	1	non_porte	261	5.86	73.0	3.6	35	146	145
+13	7	managed-object-player-masked-property-component	1	non_porte	240	5.39	73.0	3.3	50	122	95
+13	8	managed-object-player-masked-property-component	1	non_porte	265	5.95	73.0	3.6	176	362	446
+13	9	managed-object-player-masked-property-component	1	non_porte	78	1.75	73.0	1.1	168	249	187
+13	10	managed-object-player-masked-property-component	1	non_porte	52	1.17	73.0	0.7	96	160	81
+13	11	managed-object-player-masked-property-component	1	non_porte	226	5.07	73.0	3.1	46	103	332
+13	12	managed-object-player-masked-property-component	1	non_porte	65	1.46	73.0	0.9	60	226	344
+13	13	managed-object-player-masked-property-component	1	non_porte	89	2.00	73.0	1.2	172	214	389
+13	14	managed-object-player-masked-property-component	1	non_porte	123	2.76	73.0	1.7	35	53	70
+13	15	managed-object-player-masked-property-component	1	non_porte	86	1.93	73.0	1.2	59	186	119
+13	16	managed-object-player-masked-property-component	1	non_porte	99	2.22	73.0	1.4	630	281	114
+13	17	managed-object-player-masked-property-component	1	non_porte	70	1.57	73.0	1.0	107	277	182
+13	18	managed-object-player-masked-property-component	1	non_porte	59	1.32	73.0	0.8	136	112	167
+13	19	managed-object-player-masked-property-component	1	non_porte	27	0.61	73.0	0.4	38	125	80
+13	20	managed-object-player-masked-property-component	1	non_porte	95	2.13	73.0	1.3	97	171	424
+13	21	managed-object-player-masked-property-component	1	non_porte	43	0.96	73.0	0.6	19	86	62522
+13	22	managed-object-player-masked-property-component	1	non_porte	61	1.37	73.0	0.8	44	69	247
+13	23	managed-object-player-masked-property-component	1	non_porte	41	0.92	73.0	0.6	34	66	86
+13	24	managed-object-player-masked-property-component	1	non_porte	79	1.77	73.0	1.1	33	164	152
+13	25	managed-object-player-masked-property-component	1	non_porte	128	2.87	73.0	1.8	59	262	100534
+13	26	managed-object-player-masked-property-component	1	non_porte	47	1.05	73.0	0.6	87	128	227
+13	27	managed-object-player-masked-property-component	1	non_porte	61	1.37	73.0	0.8	86	211	256
+13	28	managed-object-player-masked-property-component	1	non_porte	44	0.99	73.0	0.6	49	144	884
+13	29	managed-object-player-masked-property-component	1	non_porte	61	1.37	73.0	0.8	146	152	80
+13	30	managed-object-player-masked-property-component	1	non_porte	53	1.19	73.0	0.7	169	74	1517
+13	31	managed-object-player-masked-property-component	1	non_porte	67	1.50	73.0	0.9	39	163	228
+13	32	managed-object-player-masked-property-component	1	non_porte	106	2.38	73.0	1.5	426	200	379
+13	33	managed-object-player-masked-property-component	1	non_porte	89	2.00	73.0	1.2	58	304	682
+13	34	(hors grammaire)	-	hors_grammaire	55	1.23	73.0	0.8	57	105	205
+13	35	(hors grammaire)	-	hors_grammaire	57	1.28	73.0	0.8	42	87	129
+13	36	(hors grammaire)	-	hors_grammaire	96	2.15	73.0	1.3	95	192	181
+13	37	(hors grammaire)	-	hors_grammaire	66	1.48	73.0	0.9	51	72	102
+13	38	(hors grammaire)	-	hors_grammaire	82	1.84	73.0	1.1	64	85	262
+13	39	(hors grammaire)	-	hors_grammaire	60	1.35	73.0	0.8	557	127	139
+13	40	(hors grammaire)	-	hors_grammaire	117	2.63	73.0	1.6	148	242	325
+13	41	(hors grammaire)	-	hors_grammaire	118	2.65	73.0	1.6	101	150	140
+13	42	(hors grammaire)	-	hors_grammaire	82	1.84	73.0	1.1	30	127	282
+13	43	(hors grammaire)	-	hors_grammaire	65	1.46	73.0	0.9	159	77	95
+13	44	(hors grammaire)	-	hors_grammaire	58	1.30	73.0	0.8	46	161	205
+13	45	(hors grammaire)	-	hors_grammaire	43	0.96	73.0	0.6	1018	99	75
+13	46	(hors grammaire)	-	hors_grammaire	53	1.19	73.0	0.7	36	127	95
+13	47	(hors grammaire)	-	hors_grammaire	85	1.91	73.0	1.2	624	180	206
+13	48	(hors grammaire)	-	hors_grammaire	39	0.88	73.0	0.5	59	287	321
+13	49	(hors grammaire)	-	hors_grammaire	99	2.22	73.0	1.4	33	172	82
+13	50	(hors grammaire)	-	hors_grammaire	53	1.19	73.0	0.7	46	118	78
+13	51	(hors grammaire)	-	hors_grammaire	66	1.48	73.0	0.9	29	119	106
+13	52	(hors grammaire)	-	hors_grammaire	86	1.93	73.0	1.2	148	169	101
+13	53	(hors grammaire)	-	hors_grammaire	76	1.71	73.0	1.0	82	206	222
+13	54	(hors grammaire)	-	hors_grammaire	40	0.90	73.0	0.5	31	161	976
+13	55	(hors grammaire)	-	hors_grammaire	47	1.05	73.0	0.6	62	495	184
+13	56	(hors grammaire)	-	hors_grammaire	82	1.84	73.0	1.1	33	252	280
+13	57	(hors grammaire)	-	hors_grammaire	157	3.52	73.0	2.2	52	403	865
+13	58	(hors grammaire)	-	hors_grammaire	45	1.01	73.0	0.6	199	248	224
+13	59	(hors grammaire)	-	hors_grammaire	60	1.35	73.0	0.8	128	250	991
+13	60	(hors grammaire)	-	hors_grammaire	50	1.12	73.0	0.7	98	602	186
+13	61	(hors grammaire)	-	hors_grammaire	32	0.72	73.0	0.4	513	211	87
+13	62	(hors grammaire)	-	hors_grammaire	37	0.83	73.0	0.5	33	175	61
+13	63	(hors grammaire)	-	hors_grammaire	84	1.89	73.0	1.2	56	96	75
+47	0	managed-object-networked-splash-message-static-component	0	porte	47	0.85	12.0	3.9	376	721	98568
+47	1	managed-object-networked-splash-message-dynamic-component	1	porte	378	6.80	12.0	31.5	361	185	85117
+47	2	personal-ai-data-component	1	non_porte	4439	79.90	12.0	369.9	103	161	146
+47	3	(hors grammaire)	-	hors_grammaire	8	0.14	12.0	0.7	55	215	83
+47	4	(hors grammaire)	-	hors_grammaire	33	0.59	12.0	2.8	183	489	977
+47	5	(hors grammaire)	-	hors_grammaire	11	0.20	12.0	0.9	189	251	34563
+47	6	(hors grammaire)	-	hors_grammaire	46	0.83	12.0	3.8	35	146	145
+47	7	(hors grammaire)	-	hors_grammaire	14	0.25	12.0	1.2	50	122	95
+47	8	(hors grammaire)	-	hors_grammaire	81	1.46	12.0	6.8	176	362	446
+47	9	(hors grammaire)	-	hors_grammaire	27	0.49	12.0	2.2	168	249	187
+47	10	(hors grammaire)	-	hors_grammaire	34	0.61	12.0	2.8	96	160	81
+47	11	(hors grammaire)	-	hors_grammaire	6	0.11	12.0	0.5	46	103	332
+47	12	(hors grammaire)	-	hors_grammaire	17	0.31	12.0	1.4	60	226	344
+47	13	(hors grammaire)	-	hors_grammaire	12	0.22	12.0	1.0	172	214	389
+47	14	(hors grammaire)	-	hors_grammaire	8	0.14	12.0	0.7	35	53	70
+47	15	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	59	186	119
+47	16	(hors grammaire)	-	hors_grammaire	18	0.32	12.0	1.5	630	281	114
+47	17	(hors grammaire)	-	hors_grammaire	12	0.22	12.0	1.0	107	277	182
+47	18	(hors grammaire)	-	hors_grammaire	6	0.11	12.0	0.5	136	112	167
+47	19	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	38	125	80
+47	20	(hors grammaire)	-	hors_grammaire	52	0.94	12.0	4.3	97	171	424
+47	21	(hors grammaire)	-	hors_grammaire	6	0.11	12.0	0.5	19	86	62522
+47	22	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	44	69	247
+47	23	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	34	66	86
+47	24	(hors grammaire)	-	hors_grammaire	19	0.34	12.0	1.6	33	164	152
+47	25	(hors grammaire)	-	hors_grammaire	39	0.70	12.0	3.2	59	262	100534
+47	26	(hors grammaire)	-	hors_grammaire	15	0.27	12.0	1.2	87	128	227
+47	27	(hors grammaire)	-	hors_grammaire	44	0.79	12.0	3.7	86	211	256
+47	28	(hors grammaire)	-	hors_grammaire	6	0.11	12.0	0.5	49	144	884
+47	29	(hors grammaire)	-	hors_grammaire	14	0.25	12.0	1.2	146	152	80
+47	30	(hors grammaire)	-	hors_grammaire	12	0.22	12.0	1.0	169	74	1517
+47	31	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	39	163	228
+47	32	(hors grammaire)	-	hors_grammaire	13	0.23	12.0	1.1	426	200	379
+47	33	(hors grammaire)	-	hors_grammaire	24	0.43	12.0	2.0	58	304	682
+47	34	(hors grammaire)	-	hors_grammaire	12	0.22	12.0	1.0	57	105	205
+47	35	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	42	87	129
+47	36	(hors grammaire)	-	hors_grammaire	37	0.67	12.0	3.1	95	192	181
+47	37	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	51	72	102
+47	38	(hors grammaire)	-	hors_grammaire	6	0.11	12.0	0.5	64	85	262
+47	39	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	557	127	139
+47	40	(hors grammaire)	-	hors_grammaire	15	0.27	12.0	1.2	148	242	325
+47	41	(hors grammaire)	-	hors_grammaire	6	0.11	12.0	0.5	101	150	140
+47	42	(hors grammaire)	-	hors_grammaire	3	0.05	12.0	0.2	30	127	282
+47	43	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	159	77	95
+47	44	(hors grammaire)	-	hors_grammaire	48	0.86	12.0	4.0	46	161	205
+47	45	(hors grammaire)	-	hors_grammaire	28	0.50	12.0	2.3	1018	99	75
+47	46	(hors grammaire)	-	hors_grammaire	14	0.25	12.0	1.2	36	127	95
+47	47	(hors grammaire)	-	hors_grammaire	8	0.14	12.0	0.7	624	180	206
+47	48	(hors grammaire)	-	hors_grammaire	29	0.52	12.0	2.4	59	287	321
+47	49	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	33	172	82
+47	50	(hors grammaire)	-	hors_grammaire	7	0.13	12.0	0.6	46	118	78
+47	51	(hors grammaire)	-	hors_grammaire	3	0.05	12.0	0.2	29	119	106
+47	52	(hors grammaire)	-	hors_grammaire	31	0.56	12.0	2.6	148	169	101
+47	53	(hors grammaire)	-	hors_grammaire	13	0.23	12.0	1.1	82	206	222
+47	54	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	31	161	976
+47	55	(hors grammaire)	-	hors_grammaire	11	0.20	12.0	0.9	62	495	184
+47	56	(hors grammaire)	-	hors_grammaire	16	0.29	12.0	1.3	33	252	280
+47	57	(hors grammaire)	-	hors_grammaire	14	0.25	12.0	1.2	52	403	865
+47	58	(hors grammaire)	-	hors_grammaire	1	0.02	12.0	0.1	199	248	224
+47	59	(hors grammaire)	-	hors_grammaire	20	0.36	12.0	1.7	128	250	991
+47	60	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	98	602	186
+47	61	(hors grammaire)	-	hors_grammaire	10	0.18	12.0	0.8	513	211	87
+47	62	(hors grammaire)	-	hors_grammaire	4	0.07	12.0	0.3	33	175	61
+47	63	(hors grammaire)	-	hors_grammaire	9	0.16	12.0	0.8	56	96	75
+4	0	high-frequency	0	porte	21126	99.67	1.0	21126.0	376	721	98568
+4	2	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	103	161	146
+4	3	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	55	215	83
+4	4	(hors grammaire)	-	hors_grammaire	14	0.07	1.0	14.0	183	489	977
+4	5	(hors grammaire)	-	hors_grammaire	7	0.03	1.0	7.0	189	251	34563
+4	6	(hors grammaire)	-	hors_grammaire	4	0.02	1.0	4.0	35	146	145
+4	7	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	50	122	95
+4	8	(hors grammaire)	-	hors_grammaire	3	0.01	1.0	3.0	176	362	446
+4	11	(hors grammaire)	-	hors_grammaire	2	0.01	1.0	2.0	46	103	332
+4	12	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	60	226	344
+4	14	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	35	53	70
+4	15	(hors grammaire)	-	hors_grammaire	3	0.01	1.0	3.0	59	186	119
+4	17	(hors grammaire)	-	hors_grammaire	3	0.01	1.0	3.0	107	277	182
+4	18	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	136	112	167
+4	19	(hors grammaire)	-	hors_grammaire	2	0.01	1.0	2.0	38	125	80
+4	22	(hors grammaire)	-	hors_grammaire	3	0.01	1.0	3.0	44	69	247
+4	24	(hors grammaire)	-	hors_grammaire	4	0.02	1.0	4.0	33	164	152
+4	28	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	49	144	884
+4	31	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	39	163	228
+4	32	(hors grammaire)	-	hors_grammaire	2	0.01	1.0	2.0	426	200	379
+4	33	(hors grammaire)	-	hors_grammaire	5	0.02	1.0	5.0	58	304	682
+4	34	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	57	105	205
+4	40	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	148	242	325
+4	41	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	101	150	140
+4	42	(hors grammaire)	-	hors_grammaire	2	0.01	1.0	2.0	30	127	282
+4	44	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	46	161	205
+4	45	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	1018	99	75
+4	46	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	36	127	95
+4	48	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	59	287	321
+4	49	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	33	172	82
+4	50	(hors grammaire)	-	hors_grammaire	6	0.03	1.0	6.0	46	118	78
+4	52	(hors grammaire)	-	hors_grammaire	2	0.01	1.0	2.0	148	169	101
+4	53	(hors grammaire)	-	hors_grammaire	4	0.02	1.0	4.0	82	206	222
+4	54	(hors grammaire)	-	hors_grammaire	5	0.02	1.0	5.0	31	161	976
+4	55	(hors grammaire)	-	hors_grammaire	7	0.03	1.0	7.0	62	495	184
+4	56	(hors grammaire)	-	hors_grammaire	4	0.02	1.0	4.0	33	252	280
+4	57	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	52	403	865
+4	58	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	199	248	224
+4	59	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	128	250	991
+4	60	(hors grammaire)	-	hors_grammaire	21	0.10	1.0	21.0	98	602	186
+4	62	(hors grammaire)	-	hors_grammaire	1	0.00	1.0	1.0	33	175	61
