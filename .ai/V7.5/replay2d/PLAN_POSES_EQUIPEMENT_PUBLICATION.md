@@ -193,7 +193,7 @@ rang `i48` lu) entre au registre.
       golden rejoue avec une SECTION dediee, `Coverage.Placements`.
 - [x] 2.3 Artefacts temoins re-cuits : `000d5950` (295 poses · 32 nommees · 289 avec poseur ·
       254 avec cap), `00ba2e1c` (537 poses · 0 nommee · 505 avec poseur · 437 avec cap),
-      `06dfe6d9`. `06dfe6d9` etait declare NON CONSTRUCTIBLE le 16/08 (carte `Threshold` hors
+      `06dfe6d9` (892 poses · 0 nommee · 784 avec poseur · 679 avec cap). Ce dernier etait declare NON CONSTRUCTIBLE le 16/08 (carte `Threshold` hors
       catalogue de bornes) — elle y est desormais, et l'artefact se construit.
 
 **Gate 2 : PASSE** — chiffres exacts au journal ci-dessous.
@@ -250,7 +250,7 @@ il suffit d'enumerer les decoupages plutot que les largeurs.
     film      decoupage  poses  nommees  other  avec poseur  avec cap
     000d5950  9/5          295       32    263          289       254
     00ba2e1c  8/3          537        0    537          505       437
-    06dfe6d9  8/3          892        0    892          (cf. artefact)
+    06dfe6d9  8/3          892        0    892          784       679
 
 `06dfe6d9` etait declare NON CONSTRUCTIBLE le 16/08 (carte `Threshold` hors catalogue de
 bornes) ; elle y figure desormais et l'artefact se construit.
