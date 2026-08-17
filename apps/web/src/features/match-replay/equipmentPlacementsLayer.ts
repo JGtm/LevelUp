@@ -39,6 +39,7 @@ import {
   REVEAL_RADIUS_PX,
   REVEAL_WIDTH,
   revealAlpha,
+  SENSOR_DURATION_MS,
   SENSOR_FILL_ALPHA,
   SENSOR_PING_WIDTH,
   SENSOR_RADIUS_M,
@@ -125,12 +126,17 @@ const RING_DASH: readonly number[] = [3, 3]
 export interface PlacementTime {
   frame: number
   frameMs: number
+  /** Nombre total d'images du rejeu (`doc.frameCount`) : la borne des poses sans fin connue. */
+  frames: number
   /** Densité de pixels : les épaisseurs d'écran la suivent (même règle que les marqueurs). */
   k: number
   reducedMotion: boolean
   /** Les objets non identifiés se dessinent-ils ? Bascule du tiroir, ÉTEINTE par défaut. */
   showUnnamed: boolean
 }
+
+/** Ce qu'il faut connaître du temps pour borner une pose — rien de plus (règle des 5 params). */
+export type PlacementWindowTime = Pick<PlacementTime, 'frameMs' | 'frames'>
 
 /**
  * Ce que le calque a besoin de LIRE : les poses, et — pour le seul capteur de menaces — les
@@ -157,9 +163,45 @@ export interface PlacementInk {
   neutral: string
 }
 
-/** isPlacementActive — la pose existe-t-elle à cette image ? La fenêtre est EXACTE. */
-export function isPlacementActive(p: ReplayEquipmentPlacement, frame: number): boolean {
-  return frame >= p.t0 && frame <= p.t1
+/**
+ * placementEndFrame — LA DERNIÈRE IMAGE à laquelle une pose se dessine.
+ *
+ * `t1` N'EST PAS LA DISPARITION DE L'OBJET, et c'est mesuré, pas supposé (2026-08-18,
+ * `filmdec/equipment_life_end_test.go`) : le décodeur ne suit que les records qui portent une
+ * position, si bien que `t1` date l'instant où l'objet cesse de BOUGER. Un mur de protection y
+ * atteint 0,7 s de médiane et un capteur 2,1 s, quand le recensement des keyframes montre
+ * 101 de ces 295 objets encore présents plus d'une seconde après. Le film ne date AUCUNE
+ * disparition d'équipement — le record de suppression et la queue de records sans position
+ * sont l'un et l'autre du bruit au témoin. `t1` est donc une BORNE INFÉRIEURE.
+ *
+ * D'OÙ LA RÈGLE, en deux temps et sans rien inventer :
+ *  - une famille dont la durée est PUBLIÉE par l'éditeur s'y tient — le capteur de menaces
+ *    dure 15 s (cf. SENSOR_DURATION_MS), du même genre que sa portée et sa cadence, qui
+ *    gouvernent déjà tout son tracé ;
+ *  - les autres restent affichées jusqu'à la fin du rejeu. Effacer un mur à 0,7 s
+ *    affirmerait une disparition que rien ne mesure ; le laisser en place n'affirme rien.
+ *
+ * Jamais AVANT `t1` : la borne mesurée l'emporte si elle dépasse la durée officielle.
+ */
+export function placementEndFrame(
+  p: ReplayEquipmentPlacement,
+  kind: PlacementKind,
+  time: PlacementWindowTime,
+): number {
+  const lastFrame = Math.max(time.frames - 1, p.t1)
+  if (kind !== 'sensor' || !(time.frameMs > 0)) return lastFrame
+  const official = p.t0 + Math.round(SENSOR_DURATION_MS / time.frameMs)
+  return Math.min(Math.max(official, p.t1), lastFrame)
+}
+
+/** isPlacementActive — la pose se dessine-t-elle à cette image ? (cf. placementEndFrame). */
+export function isPlacementActive(
+  p: ReplayEquipmentPlacement,
+  kind: PlacementKind,
+  frame: number,
+  time: PlacementWindowTime,
+): boolean {
+  return frame >= p.t0 && frame <= placementEndFrame(p, kind, time)
 }
 
 /**
@@ -397,9 +439,9 @@ function drawUnnamed(
  * drawEquipmentPlacementsLayer trace les poses ACTIVES à l'image courante, puis les marques de
  * révélation que les pings de capteur produisent à cet instant.
  *
- * La fenêtre [t0, t1] est celle du document, sans rémanence : un mur qui expire disparaît à
- * l'image où sa vie s'arrête, exactement comme la ligne de grappin. Le capteur ne fait PAS
- * exception — sa durée officielle de 15 s ne prolonge rien (cf. threatSensor.ts).
+ * La fenêtre dessinée n'est PAS [t0, t1] : `t1` date la mise au repos de l'objet, pas sa
+ * disparition, que le film ne porte pas (cf. placementEndFrame). Le capteur se tient à sa durée
+ * officielle, les autres poses restent jusqu'à la fin du rejeu.
  *
  * LES MARQUES PASSENT APRÈS TOUTES LES POSES, et jamais dans la boucle : une marque est un
  * signe posé sur un JOUEUR, elle doit se lire par-dessus les zones — y compris celle d'un
@@ -414,9 +456,8 @@ export function drawEquipmentPlacementsLayer(
 ): void {
   const sensors: ReplayEquipmentPlacement[] = []
   for (const p of scene.placements) {
-    if (!isPlacementActive(p, time.frame)) continue
     const kind = placementKind(p, time.showUnnamed)
-    if (!kind) continue
+    if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
     const color = inkOf(p, ink)
     if (kind === 'wall') drawWall(ctx, p, view, time, color)
     else if (kind === 'sensor') {
@@ -451,15 +492,14 @@ function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number {
 export function placementAt(
   placements: readonly ReplayEquipmentPlacement[],
   view: PlacementView,
-  time: Pick<PlacementTime, 'frame' | 'showUnnamed'>,
+  time: Pick<PlacementTime, 'frame' | 'showUnnamed' | 'frameMs' | 'frames'>,
   point: XY,
 ): ReplayEquipmentPlacement | null {
   let best: ReplayEquipmentPlacement | null = null
   let bestR = Infinity
   for (const p of placements) {
-    if (!isPlacementActive(p, time.frame)) continue
     const kind = placementKind(p, time.showUnnamed)
-    if (!kind) continue
+    if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
     const r = hoverRadiusPx(kind, view)
     if (r >= bestR) continue
     const c = project({ x: p.x, y: p.y }, view)

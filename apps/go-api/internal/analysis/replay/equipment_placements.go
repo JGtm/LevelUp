@@ -16,8 +16,16 @@ import (
 // PLAN_POSES_EQUIPEMENT_PUBLICATION) : le record de CRÉATION d'une entité `ti=37` porte, dans
 // son bloc `object-multiplayer-properties`, le GlobalID du tag `eqip` de l'objet — les
 // 21 valeurs du corpus se résolvent toutes dans le groupe `eqip` du jeu. Le MÊME record porte
-// la position i0, c'est-à-dire le lieu exact de la pose. La fin de vie vient de la trajectoire
-// décodée des paquets delta. `filmdec.ScanFilmEquipmentPlacements` rend le tout.
+// la position i0, c'est-à-dire le lieu exact de la pose. `t1` vient de la trajectoire décodée
+// des paquets delta. `filmdec.ScanFilmEquipmentPlacements` rend le tout.
+//
+// `t1` N'EST PAS LA DISPARITION, et c'est mesuré (2026-08-18, `filmdec/equipment_life_end_test
+// .go`) : le décodage ne suit que les records qui portent une position, donc `t1` date l'instant
+// où l'objet S'IMMOBILISE. Le recensement des keyframes prouve que l'entité survit à ce moment
+// (101 poses sur 295 du film 000d5950, 228 sur 537 de 00ba2e1c, encore recensées plus d'une
+// seconde après), et aucune fin explicite n'est isolable — ni record de suppression, ni queue
+// de records sans position (les deux sont du bruit au témoin). Le film porte donc une BORNE
+// INFÉRIEURE ; ce qu'un rendu en fait est une décision de rendu, jamais une lecture de `t1`.
 //
 // CE QUE CETTE COUCHE AJOUTE, et pourquoi c'est ici : le POSEUR et son CAP. Ni l'un ni l'autre
 // n'est écrit dans le record — le champ de référence d'entité du default-state est une porte
@@ -48,8 +56,12 @@ const equipHeadingWindowUS = 200_000
 
 // EquipmentPlacement est UNE pose d'équipement, datée et située.
 type EquipmentPlacement struct {
-	// T0 / T1 bornent la présence de l'objet sur le même axe que Point.T : de la création
-	// (le geste) à la disparition (le dernier point de la vie décodée).
+	// T0 est la création — le geste de pose — sur le même axe que Point.T.
+	//
+	// T1 est le dernier point de la vie DÉCODÉE, c'est-à-dire l'instant où l'objet cesse de
+	// bouger. C'est une BORNE INFÉRIEURE de sa durée de vie, PAS sa disparition : le film ne
+	// date la disparition d'aucun objet d'équipement (mesure du 2026-08-18, cf. l'en-tête).
+	// Un client qui efface la pose à T1 affirme une disparition que rien ne mesure.
 	T0 int `json:"t0"`
 	T1 int `json:"t1"`
 	// X / Y : la position de la pose, en coordonnées monde (mêmes axes que Point.X/Y).

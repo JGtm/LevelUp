@@ -295,6 +295,13 @@ export function ReplayCanvas({
     return { drawable, unnamed }
   }, [doc.equipmentPlacements])
 
+  // L'axe de temps que la fenêtre d'une pose consulte (cf. placementEndFrame) : le dessin et
+  // le survol le partagent, pour qu'ils ne puissent pas répondre deux choses différentes.
+  const placementWindowTime = useMemo(
+    () => ({ frameMs: frameToMs(1, doc), frames: doc.frameCount }),
+    [doc],
+  )
+
   // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
   // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
   // scoreboard + descente sur les vies) vit dans useSlotIdentity.
@@ -476,8 +483,8 @@ export function ReplayCanvas({
     }
     // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
     // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
-    // décor du moment, pas au sujet. Sa fenêtre [t0, t1] est celle du document, sans
-    // rémanence, comme la ligne de grappin.
+    // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
+    // mise au repos de l'objet, pas sa disparition (cf. placementEndFrame).
     if (showPlacements && placementCounts.drawable > 0) {
       drawEquipmentPlacementsLayer(
         ctx,
@@ -489,8 +496,9 @@ export function ReplayCanvas({
         {
           frame,
           // Durée RÉELLE d'une frame : le ping du capteur bat en temps de match, pas en
-          // nombre d'images (même règle que la fin de vol des grenades).
-          frameMs: frameToMs(1, doc),
+          // nombre d'images (même règle que la fin de vol des grenades). Le même objet sert
+          // au survol — une pose ne peut pas être dessinée et non survolable.
+          ...placementWindowTime,
           k: dpr,
           reducedMotion,
           showUnnamed: showUnnamedPlacements,
@@ -598,6 +606,7 @@ export function ReplayCanvas({
     doc, geometryColor, bounds, zRange, timing, totalLabel,
     t.aliveSuffix, renderWidth, canvasView,
     placementCounts.drawable,
+    placementWindowTime,
     showPlacements,
     showUnnamedPlacements,
     shotColor,
@@ -786,6 +795,7 @@ export function ReplayCanvas({
   const placementHover = usePlacementHover({
     placements: doc.equipmentPlacements,
     view: canvasView,
+    time: placementWindowTime,
     frameRef,
     enabled: showPlacements && placementCounts.drawable > 0,
     showUnnamed: showUnnamedPlacements,

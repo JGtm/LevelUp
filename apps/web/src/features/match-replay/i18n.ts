@@ -247,7 +247,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Éteint par défaut.",
     layerPlacements: 'Équipements posés',
     layerPlacementsHint:
-      "Mur de protection et capteur de menaces, du moment où ils sont posés jusqu'à leur disparition. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde.",
+      "Mur de protection et capteur de menaces, à l'endroit et à l'instant où ils sont posés. Le film ne dit pas quand un équipement disparaît : le capteur se tient donc à sa durée officielle de 15 s, le mur reste affiché ensuite. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde.",
     layerPlacementsUnnamed: 'Objets non identifiés',
     layerPlacementsUnnamedHint:
       "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée au mur ni au capteur. Éteint par défaut.",
@@ -386,7 +386,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Line drawn from killer to victim at the moment of the kill. Off by default.',
     layerPlacements: 'Deployed equipment',
     layerPlacementsHint:
-      'Drop wall and threat sensor, from the moment they are deployed until they disappear. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave.',
+      'Drop wall and threat sensor, at the place and moment they are deployed. The film never says when a piece of equipment disappears: the sensor therefore keeps to its official 15 s duration, and the wall stays on screen afterwards. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave.',
     layerPlacementsUnnamed: 'Unidentified objects',
     layerPlacementsUnnamedHint:
       'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the wall or the sensor. Off by default.',
