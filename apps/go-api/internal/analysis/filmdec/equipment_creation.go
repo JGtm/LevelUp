@@ -155,59 +155,6 @@ type EquipmentCreationStats struct {
 	WithRef, WithID int
 }
 
-// mppLeadCandidates borne la détection de la largeur du premier champ du bloc MPP. Le
-// décompile donne 9 ; la mesure du 2026-08-17 en observe 6 sur d'autres films. La plage 5..13
-// encadre les deux avec de la marge, sans jamais permettre une largeur absurde.
-var mppLeadCandidates = []int{9, 6, 5, 7, 8, 10, 11, 12, 13}
-
-// DetectMPPLeadBits mesure, DANS LE FILM, la largeur du premier champ du bloc MPP.
-//
-// L'ORACLE EST L'ÉNUMÉRATION ELLE-MÊME, et c'est ce qui rend la détection honnête. À la bonne
-// largeur, le champ de 32 bits qui suit est le GlobalID du tag `eqip` de l'objet : il prend une
-// POIGNÉE de valeurs sur des centaines de records (8 valeurs pour 274 records sur `000d5950`).
-// À une largeur fausse, le curseur est décalé et le masque de présence ne se lit plus : le
-// balayage rend une poignée de records de bruit, aux valeurs toutes différentes. On retient donc
-// la largeur qui maximise le nombre de records retenus, et on exige que leur identifiant se
-// répète (au plus une valeur distincte pour cinq records) — sans quoi on ne retient RIEN.
-//
-// L'APPELANT DOIT DÉTENIR LockProcessDecode : la détection écrit le global `mppLeadBits`.
-// Elle le restaure à la sortie ; c'est à l'appelant de l'installer pour son décodage.
-//
-// HORS LIGNE (I/O disque : les deux premiers chunks suffisent).
-func DetectMPPLeadBits(dir string, wr *Vec3Range, band map[uint32]bool) (int, bool) {
-	prev := mppLeadBits
-	defer SetMPPLeadBits(prev)
-	best, bestN := 0, 0
-	for _, w := range mppLeadCandidates {
-		SetMPPLeadBits(w)
-		cre, _, err := scanEquipmentCreations(dir, wr, band, mppDetectChunks)
-		if err != nil || len(cre) < mppDetectMinRecords {
-			continue
-		}
-		ids := map[uint32]bool{}
-		for _, c := range cre {
-			ids[uint32(c.MPPVal[MPPWord32])] = true
-		}
-		if len(ids)*mppDetectRepeat > len(cre) {
-			continue // aucun identifiant ne se répète : c'est du bruit, pas une énumération
-		}
-		if len(cre) > bestN {
-			best, bestN = w, len(cre)
-		}
-	}
-	return best, best != 0
-}
-
-const (
-	// mppDetectChunks borne la détection aux premiers chunks : la largeur est une constante de
-	// la partie, pas une propriété d'un instant.
-	mppDetectChunks = 3
-	// mppDetectMinRecords : en deçà, la répétition d'identifiants ne se mesure pas.
-	mppDetectMinRecords = 20
-	// mppDetectRepeat : il faut au moins une valeur répétée pour cinq records.
-	mppDetectRepeat = 5
-)
-
 // ScanFilmEquipmentCreations décode les records de création des objets d'équipement du film de
 // dir, sur la bande de slots de ti=37 lue dans les images-clés.
 //
@@ -237,14 +184,6 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 func ScanFilmEquipmentCreationsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
-	return scanEquipmentCreations(dir, wr, band, 0)
-}
-
-// scanEquipmentCreations balaye au plus `maxChunks` chunks (0 = tous). Le plafond n'existe que
-// pour la détection de largeur, qui n'a pas besoin de tout le film.
-func scanEquipmentCreations(
-	dir string, wr *Vec3Range, band map[uint32]bool, maxChunks int,
-) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
@@ -253,9 +192,6 @@ func scanEquipmentCreations(
 	if n == 0 {
 		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
-	if maxChunks > 0 && maxChunks < n {
-		n = maxChunks
-	}
 	st.Slots = len(band)
 	arch, err := EquipmentArchetype(dir)
 	if err != nil {
@@ -263,16 +199,7 @@ func scanEquipmentCreations(
 	}
 
 	var cur equipCreationRead
-	prev := equipmentCreationHook
-	SetEquipmentCreationHook(func(f EquipmentCreationField, v uint64, present bool) {
-		cur.present[f], cur.val[f] = present, v
-	})
-	defer SetEquipmentCreationHook(prev)
-	prevMPP := mppHook
-	SetMultiplayerPropertiesHook(func(f MPPField, v uint64, present bool) {
-		cur.mppPresent[f], cur.mppVal[f] = present, v
-	})
-	defer SetMultiplayerPropertiesHook(prevMPP)
+	defer installCreationHooks(&cur)()
 
 	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
 	var out []EquipmentCreation
@@ -289,6 +216,26 @@ func scanEquipmentCreations(
 		}
 	}
 	return out, st, nil
+}
+
+// installCreationHooks branche les DEUX sondes du record de création — le default-state de
+// ti=37 et le bloc `object-multiplayer-properties` qu'il contient — sur un même tampon, et rend
+// la fonction qui restaure les sondes précédentes.
+//
+// Les deux vont ENSEMBLE et se posent d'un seul geste : le balayage lit un record entier, et
+// n'installer que l'une des deux rendrait un record à moitié observé sans que rien ne le dise.
+func installCreationHooks(cur *equipCreationRead) func() {
+	prev, prevMPP := equipmentCreationHook, mppHook
+	SetEquipmentCreationHook(func(f EquipmentCreationField, v uint64, present bool) {
+		cur.present[f], cur.val[f] = present, v
+	})
+	SetMultiplayerPropertiesHook(func(f MPPField, v uint64, present bool) {
+		cur.mppPresent[f], cur.mppVal[f] = present, v
+	})
+	return func() {
+		SetEquipmentCreationHook(prev)
+		SetMultiplayerPropertiesHook(prevMPP)
+	}
 }
 
 // equipCreationRead porte ce que les hooks ont publié pour UN record.
