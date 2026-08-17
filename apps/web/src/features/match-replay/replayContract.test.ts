@@ -68,6 +68,11 @@ const NULLABLE_ARRAYS = [
   // `equipmentEpisodes` : l'état ACTIF du camouflage et du surbouclier (schéma 7,
   // 2026-08-16), en épisodes datés par vie. Deux familles seulement — les deux mesurées.
   'equipmentEpisodes',
+  // `equipmentPlacements` : les POSES d'équipement sur la carte (schéma 9, 2026-08-18) —
+  // mur et capteur nommés par le manifeste du titre, tout le reste publié en famille
+  // `other` avec son identifiant de tag. Chaque pose porte son poseur MESURÉ (-1 quand
+  // aucun bipède contemporain n'est assez proche) et le cap de visée de ce poseur.
+  'equipmentPlacements',
   'geometry',
   // `grappleLines` : les tractions de grappin (schéma 8, 2026-08-16) — fenêtre mesurée
   // [t0, t1] par vie + point d'accroche en coordonnées monde.

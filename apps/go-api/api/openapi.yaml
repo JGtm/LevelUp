@@ -10698,6 +10698,8 @@ components:
           $ref: '#/components/schemas/LayerCoverage'
         objectives:
           $ref: '#/components/schemas/LayerCoverage'
+        placements:
+          $ref: '#/components/schemas/EquipmentPlacementCoverage'
         shots:
           $ref: '#/components/schemas/LayerCoverage'
         verdict:
@@ -11413,6 +11415,90 @@ components:
         - fam
         - t0
         - t1
+      type: object
+    EquipmentPlacement:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        h:
+          format: float
+          type: number
+        id:
+          type: string
+        owner:
+          format: int64
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t0
+        - t1
+        - x
+        - "y"
+        - family
+        - id
+        - owner
+      type: object
+    EquipmentPlacementCoverage:
+      additionalProperties: false
+      properties:
+        anchors:
+          format: int64
+          type: integer
+        byFamily:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        calibrated:
+          type: boolean
+        confirmed:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+        named:
+          format: int64
+          type: integer
+        other:
+          format: int64
+          type: integer
+        placements:
+          format: int64
+          type: integer
+        widths:
+          type: string
+        withHeading:
+          format: int64
+          type: integer
+        withOwner:
+          format: int64
+          type: integer
+      required:
+        - calibrated
+        - lives
+        - anchors
+        - confirmed
+        - placements
+        - named
+        - other
+        - withOwner
+        - withHeading
       type: object
     ExplorerBriefing:
       additionalProperties: false
@@ -19577,6 +19663,12 @@ components:
         equipmentEpisodes:
           items:
             $ref: '#/components/schemas/EquipmentEpisode'
+          type:
+            - array
+            - "null"
+        equipmentPlacements:
+          items:
+            $ref: '#/components/schemas/EquipmentPlacement'
           type:
             - array
             - "null"

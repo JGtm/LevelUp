@@ -123,6 +123,15 @@ type Coverage struct {
 	// logique qu'Equipment : le slot est DANS la lecture, pas à rattacher. Absente des
 	// artefacts antérieurs au schéma 8.
 	Grapple *GrappleCoverage `json:"grapple,omitempty"`
+	// Placements est la couverture des POSES d'équipement (schéma 9, cf.
+	// equipment_placements.go) : le découpage de bloc calibré sur CE film, les vies, les
+	// ancres, les poses confirmées par l'oracle, et la part nommée / avec poseur / avec cap.
+	// Absente des artefacts antérieurs au schéma 9.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND IL N'Y A AUCUNE POSE, et c'est le point : un film dont la
+	// calibration échoue et un film sans équipement posé rendent tous deux zéro pose — seule
+	// la couverture les distingue (`calibrated: false` contre `calibrated: true`).
+	Placements *EquipmentPlacementCoverage `json:"placements,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`

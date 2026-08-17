@@ -76,7 +76,13 @@ func goldenInputsPath() string {
 // v5 (2026-08-16, PLAN_GRAPPIN_LIGNE phase 1) : le fixture porte les lectures GrappleReads
 // (corps tag==3 d i59 — tir et accroche de grappin, quanta de position aux largeurs de la
 // carte) que BuildFromFilm decode desormais.
-const goldenInputsMagic = "REPLAYINPUTS5\n"
+//
+// v6 (2026-08-18, PLAN_POSES_EQUIPEMENT_PUBLICATION phase 2) : le fixture porte les POSES
+// d equipement (records de creation ti=37 confirmes par l oracle de position) ET la
+// CALIBRATION du bloc de replication mesuree sur ce film. La calibration en fait partie parce
+// que l assemblage la PUBLIE : sans elle, une liste vide de poses serait indistinguable d un
+// film sans equipement, alors que ce peut etre un film dont la largeur n a pas ete tranchee.
+const goldenInputsMagic = "REPLAYINPUTS6\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -124,8 +130,13 @@ type goldenInputs struct {
 	// sans elles le golden verrouillerait un document sans grappin, donc pas celui que la
 	// production sert.
 	GrappleReads []filmdec.GrappleRead
-	Deaths       []Death
-	Indices      PlayerIndexTable
+	// Placements / PlacementStats : les POSES d equipement et la CALIBRATION du bloc de
+	// replication. MEME raison que les deux precedents : l assemblage en fait le calque du
+	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
+	Placements     []filmdec.EquipmentPlacement
+	PlacementStats filmdec.EquipmentPlacementStats
+	Deaths         []Death
+	Indices        PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
 	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
 	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
@@ -144,6 +155,8 @@ func (g *goldenInputs) options() Options {
 		AbilityRanks:      g.AbilityRanks,
 		CamoStates:        g.CamoStates,
 		GrappleReads:      g.GrappleReads,
+		Placements:        g.Placements,
+		PlacementStats:    g.PlacementStats,
 		Deaths:            g.Deaths,
 		PlayerIndices:     g.Indices,
 		FilmClockOriginUS: g.ClockOriginUS,
@@ -428,6 +441,30 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		}
 	}
 
+	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
+	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
+	w.u(uint64(len(g.Placements)))
+	lastTS = 0
+	for _, p := range g.Placements {
+		w.u(p.T0US - lastTS) // les poses sont triees par instant de creation
+		lastTS = p.T0US
+		w.u(p.T1US)
+		w.u(uint64(p.Life.Slot))
+		w.u(uint64(p.Life.Gen))
+		w.f32(p.X)
+		w.f32(p.Y)
+		w.f32(p.Z)
+		w.u(uint64(p.GlobalID))
+		w.u(uint64(p.Points))
+	}
+	w.i(int64(g.PlacementStats.Calibration.Widths.Lead))
+	w.i(int64(g.PlacementStats.Calibration.Widths.Index))
+	w.i(int64(g.PlacementStats.Calibration.Agree))
+	w.u(uint64(g.PlacementStats.Lives))
+	w.u(uint64(g.PlacementStats.Anchors))
+	w.u(uint64(g.PlacementStats.Accepted))
+	w.u(uint64(g.PlacementStats.Confirmed))
+
 	w.u(uint64(len(g.Deaths)))
 	for _, d := range g.Deaths {
 		w.u(d.XUID)
@@ -655,6 +692,26 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	}
 
 	n = int(r.u())
+	g.Placements = make([]filmdec.EquipmentPlacement, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		p := filmdec.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
+		p.Life = filmdec.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		p.X, p.Y, p.Z = r.f32(), r.f32(), r.f32()
+		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
+		g.Placements = append(g.Placements, p)
+	}
+	g.PlacementStats = filmdec.EquipmentPlacementStats{ByID: map[uint32]int{}}
+	g.PlacementStats.Calibration.Widths = filmdec.MPPWidths{Lead: int(r.i()), Index: int(r.i())}
+	g.PlacementStats.Calibration.Agree = int(r.i())
+	g.PlacementStats.Lives = int(r.u())
+	g.PlacementStats.Anchors = int(r.u())
+	g.PlacementStats.Accepted = int(r.u())
+	g.PlacementStats.Confirmed = int(r.u())
+	g.PlacementStats.Placements = len(g.Placements)
+
+	n = int(r.u())
 	g.Deaths = make([]Death, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		g.Deaths = append(g.Deaths, Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
@@ -815,6 +872,9 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	if g.GrappleReads, _, err = filmdec.ScanFilmGrappleReads(dir); err != nil {
+		return nil, err
+	}
+	if g.Placements, g.PlacementStats, err = filmdec.ScanFilmEquipmentPlacements(dir, &wr); err != nil {
 		return nil, err
 	}
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {

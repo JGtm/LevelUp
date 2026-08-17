@@ -131,8 +131,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   omitempty, même raison de monter que v3/v4/v5/v7 : c'est la CLÉ DE REPRISE du
 	//   backfill — la ligne joueur -> ancre n'existe que sur un artefact qui porte les
 	//   tractions, un v7 doit se lire « à re-cuire », pas « à jour ».
-	if SchemaVersion != 8 {
-		t.Fatalf("SchemaVersion = %d, attendu 8 : incrémenter exige une raison écrite ci-dessus "+
+	//   v8 -> v9 (2026-08-18, plan PLAN_POSES_EQUIPEMENT_PUBLICATION phase 2) :
+	//   equipmentPlacements, les POSES d'objets d'équipement (mur, capteur, et les objets du
+	//   monde qui partagent l'archétype) avec leur position monde, leur fenêtre [t0, t1],
+	//   l'identifiant `eqip` du jeu, le poseur mesuré et son cap de visée. Champ omitempty,
+	//   même raison de monter que v3/v4/v5/v7/v8 : c'est la CLÉ DE REPRISE du backfill — les
+	//   marqueurs d'équipement posé n'existent que sur un artefact qui porte les poses, un v8
+	//   doit se lire « à re-cuire », pas « à jour ». La couverture monte avec le champ
+	//   (`coverage.placements`), et elle porte le découpage de bloc CALIBRÉ sur le film :
+	//   sans elle, zéro pose par absence d'équipement et zéro pose par calibration refusée
+	//   seraient indistinguables.
+	if SchemaVersion != 9 {
+		t.Fatalf("SchemaVersion = %d, attendu 9 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

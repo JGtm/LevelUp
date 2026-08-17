@@ -82,6 +82,8 @@ var replaySchemas = []struct {
 	{"EquipmentCoverage", replay.EquipmentCoverage{}},
 	{"GrappleLine", replay.GrappleLine{}},
 	{"GrappleCoverage", replay.GrappleCoverage{}},
+	{"EquipmentPlacement", replay.EquipmentPlacement{}},
+	{"EquipmentPlacementCoverage", replay.EquipmentPlacementCoverage{}},
 	{"AmmoSlot", replay.AmmoSlot{}},
 	{"Surface", replay.Surface{}},
 	{"MapObject", replay.MapObject{}},
@@ -151,9 +153,23 @@ var replaySchemas = []struct {
 //	                      decodables) : N tractions sans ses rejets se lirait comme une
 //	                      exhaustivite.
 //
-// Les six fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	30 -> 31  2026-08-18  `equipmentPlacements` (plan PLAN_POSES_EQUIPEMENT_PUBLICATION,
+//	                      phase 2) : les POSES d objets d equipement — position monde,
+//	                      fenetre [t0, t1] de la creation a la disparition, famille
+//	                      (`wall` / `sensor` / `other`), identifiant `eqip` du jeu, poseur
+//	                      MESURE (bipede le plus proche a 250 ms et moins de 3 m ; mediane
+//	                      0,52-0,60 m sur 11 films contre 11-36 m pour le temoin) et cap de
+//	                      visee du poseur quand il a ete lu. Source : le mot de 32 bits du
+//	                      bloc `object-multiplayer-properties` du record de CREATION de
+//	                      l archetype 37 — 21 valeurs sur 21 resolues dans le groupe `eqip`
+//	                      du jeu. `Coverage` gagne son bloc `placements`, qui porte le
+//	                      DECOUPAGE de bloc calibre sur le film : sans lui, zero pose par
+//	                      absence d equipement et zero pose par calibration refusee seraient
+//	                      indistinguables.
+//
+// Les sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 30
+const wantReplayDocumentFields = 31
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
