@@ -11494,6 +11494,8 @@ components:
         placements:
           format: int64
           type: integer
+        scanned:
+          type: boolean
         unknown:
           format: int64
           type: integer
@@ -11506,6 +11508,7 @@ components:
           format: int64
           type: integer
       required:
+        - scanned
         - calibrated
         - lives
         - anchors

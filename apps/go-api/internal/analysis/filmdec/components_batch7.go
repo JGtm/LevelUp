@@ -23,7 +23,19 @@ const tlvBodyMaxBytes = 1 << 20
 // N lectures de 8 bits ont donc exactement le même état final qu'un `Skip(8N)` — à 1 048 576
 // itérations près sur le chemin garbage. L'équivalence est structurelle, pas empirique.
 func consumeObjectMultiplayerProperties(br *BitReader) {
-	if !br.ReadBit() { // present flag
+	// POLARITE CORRIGEE le 2026-08-17 (lot R7-b) — elle etait INVERSEE, et c'est le
+	// composant le plus souvent designe par l'histogramme de decrochage de l'image-cle
+	// (25 % des franchissements de frontiere, R7-a).
+	//
+	// Le decompile de FUN_1407d4c94 est sans ambiguite :
+	//
+	//	cVar1 = FUN_1406cf008(br) ;                 // R(1), rend la VALEUR du bit (MSB)
+	//	if (cVar1 == '\0') { R(5) tag ; flux TLV }  // bit==0 -> le bloc EST present
+	//	else { *(dst + 0xbc) = 0 ; }                // bit==1 -> ABSENT, zero bit de charge
+	//
+	// L'ancien port lisait le bloc quand le bit valait 1. La semantique du else le
+	// confirme independamment : `dst+0xbc = 0` est l'effacement d'un champ absent.
+	if br.ReadBit() { // FUN_1406cf008 ; bit==1 -> bloc ABSENT (0 bit de charge)
 		return
 	}
 	br.ReadBits(5) // R(5) variant tag (kind 0..5)

@@ -90,13 +90,18 @@ export const SENSOR_REVEAL_MS = 750
 /**
  * Durée de vie officielle du capteur, en millisecondes (« Sensor Duration: 15 secondes »).
  *
- * ELLE NE COUPE RIEN, ET C'EST DÉLIBÉRÉ : ce qui s'affiche reste la fenêtre MESURÉE [t0, t1]
- * du document. Le corpus dit pourquoi — sur `000d5950`, la vie médiane d'un capteur est de
- * 2,1 s et la plus longue de 12 s, jamais 15 : la fenêtre du film est celle de la RÉPLICATION
- * de l'objet, pas celle de sa règle de jeu. Borner l'une par l'autre ajouterait une durée
- * inventée à une mesure, et prolonger un capteur que le film ne réplique plus serait pire.
- * La constante sert de CONTRÔLE : c'est elle qui dit combien de pings une vie officielle
- * contient, donc la borne de coût d'un capteur (cf. SENSOR_PINGS_DECLARED).
+ * ELLE BORNE CE QUI S'AFFICHE, et ce n'est plus le choix qui figurait ici. Le commentaire
+ * précédent lisait la fenêtre `[t0, t1]` du document comme la RÉPLICATION de l'objet et en
+ * concluait qu'un capteur « que le film ne réplique plus » ne devait pas être prolongé. La
+ * mesure du 2026-08-18 (`filmdec/equipment_life_end_test.go`) l'a réfuté : `t1` date l'instant
+ * où l'objet cesse de BOUGER — le décodage ne suit que les records porteurs d'une position —
+ * et le recensement des keyframes montre l'entité bien vivante après (101 poses sur 295 du
+ * film `000d5950`). Les 2,1 s de vie médiane d'un capteur sont donc la durée de sa CHUTE, pas
+ * de son service.
+ *
+ * Le film ne datant aucune disparition, la seule durée disponible est celle-ci : officielle,
+ * citée verbatim en tête de fichier, du même genre que la portée et la cadence qui gouvernent
+ * déjà tout ce tracé. Elle sert aussi de CONTRÔLE de coût (cf. SENSOR_PINGS_DECLARED).
  */
 export const SENSOR_DURATION_MS = 15_000
 

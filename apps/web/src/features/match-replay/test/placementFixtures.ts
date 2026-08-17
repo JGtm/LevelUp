@@ -37,6 +37,8 @@ export const VIEW = {
 export const TIME: PlacementTime = {
   frame: 50,
   frameMs: 100,
+  /** 600 images de 100 ms = 60 s de rejeu : la borne des poses sans fin connue. */
+  frames: 600,
   k: 1,
   reducedMotion: false,
   showUnnamed: false,

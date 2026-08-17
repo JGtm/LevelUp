@@ -370,7 +370,8 @@ func consumeMultiplayerPropertiesBlock(br *BitReader) {
 // (largeur 9) contre 57 sur `06dfe6d9` et `00ba2e1c`. C'est le même genre de largeur de
 // configuration de réplication que les largeurs d'axe du chemin world-object ou que
 // `defaultReplRange` : posée au chargement de la carte, absente de l'exécutable, et donc
-// DÉTECTÉE dans le film (cf. DetectMPPLeadBits) plutôt que devinée.
+// DÉTECTÉE dans le film (cf. CalibrateMPPWidths, qui la mesure avec mppIndexBits par un
+// oracle de position) plutôt que devinée.
 //
 // Le défaut 9 est celui du chemin bipède, validé en live (rep = 166 ou 198 bits) : il ne bouge
 // pas tant qu'un appelant ne l'a pas mesuré. L'appelant doit détenir LockProcessDecode et
@@ -402,12 +403,6 @@ func (w MPPWidths) String() string { return fmt.Sprintf("%d/%d", w.Lead, w.Index
 
 // Valid dit si le découpage est renseigné.
 func (w MPPWidths) Valid() bool { return w.Lead > 0 && w.Index > 0 }
-
-// SetMPPLeadBits fixe la largeur du premier champ du bloc MPP.
-func SetMPPLeadBits(n int) { mppLeadBits = n }
-
-// MPPLeadBits rend la largeur courante du premier champ du bloc MPP.
-func MPPLeadBits() int { return mppLeadBits }
 
 // SetMPPWidths installe le découpage complet et rend le précédent — l'appelant le restaure.
 // L'APPELANT DOIT DÉTENIR LockProcessDecode : ce sont des globaux de paquet.
