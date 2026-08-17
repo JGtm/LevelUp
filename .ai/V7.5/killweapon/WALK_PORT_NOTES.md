@@ -605,7 +605,7 @@ si c != 0 : W(5) c ; puis le bloc TLV (FUN_1407d5768/5714 puis FUN_14346074c(buf
 La polarite corrigee par R7-b (bit a 0 = bloc PRESENT) et le `R(5)` de tag sont tous deux
 confirmes par l ecrivain. Aucune divergence.
 
-### `i0 object-position-dynamic-precision` — LA DIVERGENCE
+### `i0 object-position-dynamic-precision` — LA DIVERGENCE (sa CONSEQUENCE DE FORME est corrigee en section 6.3)
 
 `vtable[0x18]` = `FUN_14320678c` — et c est l ecrivain d ETAT COMPLET, pas de delta : il appelle
 son corps avec une reference de base **NULLE** et un drapeau **0**.
@@ -793,3 +793,113 @@ la telemetrie, un nettoyage, un bloc de pertinence et un wrapper — aucune ne b
 composants ; et les fonctions voisines des lecteurs de record (`FUN_1408f1948`, `FUN_141f865d8`)
 non plus. C est elle qui dirait si le record d image-cle porte un CADRE (en-tete, masque, ordre)
 different de celui du record NEW.
+
+## 6. LA BOUCLE D ETAT COMPLET DU JEU — trouvee, et elle n a PAS de masque (piste R7-c, 2026-08-17)
+
+Piste transmise par le lot jumeau R7-c : `FUN_1428e2a04` puis `FUN_1428e2a9c` puis
+`FUN_142e2bfd0` = un lecteur d ETAT COMPLET (paquet obtenu par `FUN_142988338(..., 0x10, 0)`).
+Deroulee jusqu au bout, elle donne la chose que R5, R7-a et R7-b cherchaient.
+
+### 6.1 `FUN_142e2bfd0` — l en-tete par entite d un etat complet
+
+```
+FUN_1406d5cc0()                                     alignement
+si version(&DAT_144c23178) > 7 : DAT_144706104 = R(1)
+corrOn = FUN_14076cea8()                            (le meme drapeau que la boucle delta)
+PAR ENTITE, tant qu il reste des entrees :
+  R(32) -> ent[0]      id
+  R(32) -> ent[1]      TYPE INDEX   (0xffffffff = fin d entite ; sinon indexe DAT_144e61d88+8+ti*8)
+  R(32) -> ent[3]
+  FUN_142e29cf8(reader)                              (2 x 4 bits selon les branches)
+  R(8)  -> ent+9
+  si ent[1] != 0xffffffff :
+      desc = *(DAT_144e61d88 + 8 + ent[1]*8)
+      R(32) n1
+      si n1 > 0 :  DAT_144e61ea0 = 1 ; desc->vtable[0x60](...) = ETAT PAR DEFAUT
+                   si corrOn : R(32)                 <- mot de controle
+                   DAT_144e61ea0 = 0
+      R(32) n2
+      si n2 > 0 :  desc->vtable[0x88](...) = MASQUE PAR DEFAUT (0 bit)
+                   FUN_1428e2b68(...)                <- la boucle de composants
+  entree suivante : + 0x32 dwords (200 octets)
+```
+
+**L en-tete d une entite en etat complet n est donc PAS `[id:32][field:26][ti:6]`** (la forme du
+record NEW, validee par R5 sur le chemin delta) : c est `R(32) id`, `R(32) typeIndex`, `R(32)`,
+`FUN_142e29cf8`, `R(8)`, puis `R(32)` de taille avant l etat par defaut et `R(32)` de taille avant
+les composants.
+
+### 6.2 `FUN_1428e2b68` puis `FUN_142e2c690` — la boucle de composants SANS MASQUE
+
+`FUN_1428e2b68` recupere le descripteur d archetype, prend `vtable[0x10]` comme parametre, puis
+appelle `FUN_142e2c690(desc + 8, reader, ctx, table)` — `desc + 8` est exactement le TABLEAU DES
+DESCRIPTEURS DE COMPOSANT (`RECETTE_DECODAGE_FILM_CHUNKS.md` section 5), et `table` est
+`typeIndex * 0x4100 + 8 + base`, soit **64 entrees de 0x104 octets par archetype**.
+
+```
+FUN_142e2c690(comps, reader, ctx, table) :
+  DAT_144e61ea0 = 1                       <- PORTEE levee pour TOUTE la boucle
+  corrOn = FUN_14076cea8()
+  pour k de 0 a 63 :
+      entree = table + k * 0x104
+      si *entree != 0 :                   <- entree[0..] = le NOM du composant, en clair
+          n = *(uint32*)(entree + 0x100)
+          desc = celui des 64 composants dont vtable[0x08] rend LE MEME NOM  (recherche lineaire)
+          desc->vtable[0x28](desc, reader, ctx, &local, n)      <- LE DESER
+          si corrOn et R(1) : R(32)                             <- mot de controle par composant
+  DAT_144e61ea0 = 0
+```
+
+**TROIS faits, et ils tranchent trois questions ouvertes depuis R5 :**
+
+1. **AUCUN MASQUE DE PRESENCE.** La boucle delta (`FUN_14076cb60`) lit un masque
+   (`FUN_1406d7610`) et ne deserialise que les composants presents. La boucle d ETAT COMPLET
+   n en lit aucun : elle parcourt une table FIXE de 64 entrees et deserialise chaque entree
+   nommee. La variante « 64 leaf nus, ni etat par defaut, ni porte, ni masque » de R7-a/R7-b
+   est donc STRUCTURELLEMENT LA BONNE.
+2. **L ORDRE n est pas celui de l archetype** : la boucle suit l ordre de la TABLE et retrouve
+   le descripteur PAR NOM. Rien ne garantit que cet ordre soit celui de `arch.Components`.
+   C est une source de derive que ni R7-a ni R7-b n avaient envisagee.
+3. **`DAT_144e61ea0` est leve pour TOUTE la boucle** — et `FUN_14076f91c()` rend
+   `(DAT_144e61ea0 != 0) || (DAT_145121140 == 1)`. Or ce predicat est exactement la porte de
+   PLEINE PRECISION cote LECTURE **et** cote ECRITURE (`FUN_1407eb61c` : si
+   `FUN_14076f91c()` est vrai, il ecrit `FUN_1406d60f4(..., 0x60)` = 96 bits BRUTS au lieu du
+   vec3 quantifie).
+
+### 6.3 Ce que le point 3 CORRIGE dans la section 4 de ce document
+
+La consequence de forme que j y tirais — « en image-cle `i0` prend le chemin QUANTIFIE, donc
+`6 + 3 x axisW` bits » — **est FAUSSE, et c est cette lecture-ci qui la refute**. Dans la portee
+d etat complet, `FUN_14076f91c` est VRAI, donc l ecrivain `FUN_1407eb61c` prend la branche BRUTE.
+La grammaire d `i0` en image-cle est :
+
+```
+W/R(1) 0          flagRaw d en-tete
+W/R(1) 0          « a une baseline »
+W/R(1) h          selecteur de plage ET porte de queue
+W/R(96)           vec3 IEEE BRUT           <- parce que DAT_144e61ea0 == 1
+si h : queue de handle
+W/R(2)            en dernier
+```
+
+soit **101 bits + la queue**. Le lecteur porte en consomme 117 en mediane sur les trois films :
+la queue vaut donc 16 bits. **La decouverte n2 de R7-b (« en image-cle, `i0` prend le chemin
+BRUT, 117 bits, identiques sur trois cartes ») est RETABLIE**, et on sait maintenant POURQUOI :
+ce n est pas une propriete d `i0`, c est la portee `DAT_144e61ea0` que la boucle d etat complet
+leve autour de lui.
+
+Ce qui RESTE vrai de la section 4, et qui n est pas affecte par la portee : le 3e bit n est pas un
+`precHigh` qui supprime la charge utile (il choisit une table de plage et garde la queue), et le
+champ de 2 bits est INCONDITIONNEL et vient EN DERNIER.
+
+### 6.4 Reserve — a quelle SOURCE ce lecteur s applique
+
+Le paquet vient de `FUN_142988338(..., 0x10, 0)`, pas du bloc type-2 d un film. R6 a etabli que
+le bloc type-2 du film n a AUCUN consommateur ; ce lecteur-ci est donc celui du RESEAU (snapshot
+de base), pas celui du film. Ce qu il apporte n est pas « voici le lecteur du film » mais
+**« voici la grammaire d un ETAT COMPLET dans ce moteur »** — meme table de descripteurs, memes
+cases de vtable, meme portee. R7-c mesure par ailleurs, sur le payload type-2, une position
+QUANTIFIEE aux largeurs de carte (102/57/62 bits selon la carte) : si cette mesure tient, le
+payload du FILM est ecrit HORS de la portee `DAT_144e61ea0`, contrairement au snapshot reseau.
+**C est la contradiction a trancher au lot suivant**, et elle est nommee : une seule variable,
+`DAT_144e61ea0`, decide entre 96 bits bruts et 3 x axisW quantifies.
