@@ -1,3 +1,42 @@
+## [2026-08-18] v7.5 rejeu 2D — item 6 lot correctif de la revue : 10 constats traites, deux tautologies de couverture supprimees, un socle retrouve
+
+**Statut** : Complete (lot correctif CLOS, gates verts). Les 11 constats a TRAITER de la revue
+adversariale du diff `253226852..b5e312581` sont statues : 10 traites (M1, M3, M2, m5, m6, m7, m8,
+m9, m10, m11), m4 CONSIGNE (c'est un constat a consigner du brief). Les 6 constats a consigner
+entrent au plan en decouvertes 17-22, avec la liste « verifie, tient » (13 points).
+**Decision technique principale** : `HasDelta` se lit par VIE et non par CLE (M1) — une seule regle
+(`gwPickupLifeTrack`, la fenetre du recensement) repond desormais aux deux questions « l'objet a-t-il
+bouge ? » et « ou est-il quand on le prend ? ». Le balayage `ti=42` reprend les largeurs MPP que la
+calibration des poses vient de mesurer sur le MEME film et qu'elle restaure en sortant (M3), avec un
+warn quand l'identite ne resout AUCUNE creation. `document.go` (673 -> 578 L) et `build.go`
+(640 -> 585 L) repassent SOUS leur taille d'avant le lot par extraction de
+`document_ground_weapons.go` / `build_ground_weapons.go` (+ `document_labels.go` et les etendues vers
+`geometry.go`, faute de pouvoir deplacer des CHAMPS de struct sans casser le garde-rail de contrat).
+Les deux invariants de couverture cessent d'etre des tautologies : `Rejected` se compte sur le chemin
+de rejet, `Occupancies` a part, et le `switch` perd sa branche attrape-tout — `Balanced()` peut
+TOMBER, et un test le fait tomber.
+**Resultats observes** : 4 temoins re-cuits en schema 11. M1 rend des apparitions que la lecture par
+cle amputait (+2 `at_rest` sur `01e1f945`, +1 sur `00162144`) et **`00162144` gagne un socle
+(10 -> 11)** — le mecanisme exact que la revue decrivait. m6 replie une occupation sur `never`
+(`00162144` 4 -> 5). Le cycle Energy Sword de `01e1f945` (194,6 s) n'est plus etabli (5 -> 4 cycles) :
+la regle de stabilite n'a pas bouge, c'est la matiere qui est plus complete — 5 apparitions au lieu
+de 4. `missing` (m11) montre ce qu'il devait montrer : les Snipers publient 2 ecarts mesures pour 2
+et 3 manques, la ou on lisait « 2 sur 2 ». M3 ne change aucun chiffre sur les temoins (tous calibres
+a 9/5, le defaut) et c'est attendu : son test a largeur fausse est la preuve, pas les temoins.
+**DECOUVERTE 21, qui a change une correction** : retirer `omitempty` de `WeaponPad.Cycle` etait
+IMPOSSIBLE — huma refuse la nullabilite sur un `$ref` et PANIQUE sur `nullable:"true"`. Le contrat
+aurait promis un objet toujours present la ou le Go en ecrit un sur trois. `omitempty` est garde, le
+COMMENTAIRE est corrige (la cle est ABSENTE, pas `null`), et la note UI suit.
+**Gates** : `go build`, `go vet`, `go test` (analysis, replaybuild, contracttest, archlint, film),
+`golangci-lint --new-from-merge-base=origin/main` 0 issue ; web typecheck, lint, 447 fichiers /
+4 095 tests. Tous `EXIT_*=0` (`item6_revue_gates.log`). Le garde-rail du chantier a fait son travail
+DEUX fois pendant le lot (deplacement de `decodeFilmGroundWeapons`, entree de `gwPadsCycle`), et
+l'allowlist `worldObjectPrecisionReaders` une fois.
+**Conclusion / prochaine etape** : 9 commits sur `feat/v75` (`1eb8bcc3e` -> `675ad34d9`), aucun push.
+Le lot des socles est clos revue comprise ; restent, hors perimetre, les decouvertes 17-22 (garde-rail
+a portee de paquet, `slog` sans contexte, golden sans ligne de socle, `PadCycle | null` impossible au
+contrat) et la suite du chantier v7.5.
+
 ## [2026-08-17] v7.5 rejeu 2D — pilotage : item 6 clos en 5 lots, planche rafraichie apres la fusion utilisateur, sujets de commit repares
 
 **Statut** : Complete (pilotage) — item 6 CLOS (phases 0, 1, 2, 2.5, 3), revue adversariale du lot de publication a suivre.
