@@ -30,6 +30,7 @@ import { resolve } from 'node:path'
 
 import { SOUND_CUT_MAX_S } from './replayAudio'
 import {
+  EQUIPMENT_PLACEMENT_SOUND_STEMS,
   EQUIPMENT_SOUND_STEMS,
   KILL_SPRITE_SOUND_STEMS,
   WEAPON_SOUND_STEMS,
@@ -57,6 +58,8 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(KILL_SPRITE_SOUND_STEMS),
     // Les équipements (lot du 2026-08-16) : deux stems par famille mesurée.
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
+    // Les POSES d'équipement (lot du 2026-08-18) : UN stem par famille — le geste de pose.
+    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -109,6 +112,9 @@ describe('garde-rail : durée livrée par catégorie', () => {
   const longs = [
     ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s !== 'melee_kill'),
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
+    // Les poses relèvent de la MÊME catégorie que les épisodes (Équipements) : elles gardent
+    // la durée de leur source, jamais retronquée à la coupe des armes.
+    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
   ]
 
   it('aucun son ne dépasse le plafond de sûreté du lecteur', () => {
