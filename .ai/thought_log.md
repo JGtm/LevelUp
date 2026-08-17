@@ -67,7 +67,11 @@ l'en-tete suivant et saute son payload avec. Cela EXPLIQUE le negatif de R5. (3)
 de juillet, etiquetee « keyframe » depuis, portait sur le PREMIER PAQUET DELTA : ses 16 premiers
 octets sont ceux du premier paquet type-0 de chaque film (toujours rang #8) — coincidence de
 prefixe sur 949 paquets de 951 films, coincidence exacte 0 (le film de la capture n'est pas
-cache). (4) Ce premier paquet type-0 ne se traverse pas davantage : 30 combinaisons de cadre x
+cache) ; le SECOND dump (`kf_slot0_live.bin`, 7 286 o) rend les memes chiffres, et sa taille est
+exactement celle du premier paquet type-0 des deux films CTF sans coincider au contenu — cette
+taille est dictee par la carte et le mode, pas par le match. C0 a ete re-execute avec
+l'instrument refactore : memes deux chiffres, cout 550 s -> 219 s.
+(4) Ce premier paquet type-0 ne se traverse pas davantage : 30 combinaisons de cadre x
 6 films, de 0,33 % a 3,22 % des bits consommes pour un seuil de 95 % ; le World pre-peuple par
 la table type-2 ne change RIEN (H4 refutee). (5) L'ecrivain du bloc type-2 n'est pas dans
 `HaloInfinite.exe` : une seule chaine `saved_games` (celle du LECTEUR), une seule chaine
