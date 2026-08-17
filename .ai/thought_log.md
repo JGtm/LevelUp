@@ -1,3 +1,69 @@
+## [2026-08-18] v7.5 rejeu 2D — les POSES d'equipement sont publiees (schema 9), et la largeur qui bloquait etait un DOUBLE champ
+
+**Statut** : Plan `.ai/V7.5/replay2d/PLAN_POSES_EQUIPEMENT_PUBLICATION.md` COMPLET (phases 0, 1,
+2 closes ; phase 3 = proposition UI, a trancher par l'utilisateur). Branche `feat/v75`.
+
+**Decision technique principale — le diagnostic du 17/08 etait incomplet, et c'est lui qui
+bloquait.** Le default-state de l'archetype d'equipement (ti=37) perd 3 bits sur certains films.
+Le lot precedent avait attribue ces 3 bits au PREMIER champ du bloc `object-multiplayer-
+properties` (`R(9)` au decompile) et l'avait rendu parametrable. C'etait faux. DEUX champs
+inconditionnels du chemin minimal peuvent porter l'ecart : celui-la, et le champ inline `R(5)`
+qui SUIT l'identifiant de 32 bits. Les deux donnent le meme TOTAL, donc la meme position, donc
+le meme accord avec un oracle de position sur les records du chemin minimal — mais PAS la meme
+lecture : retrecir le premier decale l'identifiant de 32 bits de 3 bits et rend un identifiant
+FAUX. La mesure tranche sans ambiguite :
+
+    film       6/5 (hypothese du 17/08)     8/3 (mesure du 18/08)
+    00ba2e1c   19 poses · 1 identifiant     537 poses · 12 identifiants
+    06dfe6d9   37 poses · 1 identifiant     892 poses · 14 identifiants
+    084a804d   23 poses · 1 identifiant     922 poses · 13 identifiants
+
+A `6/5` le pic du default-state n'existait pas (largeurs eparpillees 89, 110, 133...) ; a `8/3`
+il tombe sur 57 bits, exactement ce que le deserialiseur porte predit (487, 991, 1 268 records).
+Le danger evite est concret : a `6/5` un identifiant unique (`0x10c64ad2`) sortait sur les trois
+films BTB et aurait ete publie comme une identite — c'etait un artefact de decalage.
+
+**Resultats observes.** (1) `filmdec.CalibrateMPPWidths` calibre le DECOUPAGE COMPLET par oracle
+de position — la position lue a la fin du record doit retomber sur le premier point de la vie que
+l'en-tete ANNONCE, un decodage (paquets delta) qui ne sait rien du record de creation. Seuils
+ecrits avant : >= 12 accords ET >= 3x la concurrente ; arret anticipe. **11 films sur 12
+tranchent** (Quick Play `9/5` 7/7, Big Team Battle `8/3` 4/4), en 15 a 60 s par film. Le 12e
+(`0014603f`, 41 ancres et 70 vies sur tout le film) NE TRANCHE PAS et publie une liste vide avec
+un `slog.Warn` — le comportement que le gate 0 prescrit. (2) L'oracle sert aussi de FILTRE, et
+sans lui rien n'etait publiable : l'en-tete NEW n'est pas selectif (111 022 ancres pour 922 poses
+sur `084a804d`) et les records acceptes portaient 866 identifiants distincts pour 1 987 records,
+c'est-a-dire du bruit. (3) **21 identifiants sur 21 se resolvent dans le groupe `eqip` du jeu**
+(148 097 tags parcourus). (4) Poseur, en METRES : mediane 0,522 a 0,596 m sur les 11 films,
+contre 11,1 a 35,9 m pour le temoin (autre bipede vivant au meme instant) — facteur 20 a 45.
+(5) Diagonales agregees contre le rang de capacite du poseur : mur `0x8e2dc574` 22/25 = **88,0 %**
+(temoin 30 %), capteur `0x72199cba` 28/32 = **87,5 %** (temoin 22 %). Ce sont les DEUX SEULS noms
+accordes ; quatre autres candidats echouent entre 75 et 82 % et restent `other`.
+
+**Ce qui n'a PAS ete derive, et pourquoi.** Le decoupage correle parfaitement avec la liste
+(Quick Play / Big Team Battle) sur les 11 films. Aucune regle n'en est tiree : la liste n'est pas
+dans le film (donnee du registre de matchs), le proxy cote film n'a pas de frontiere observee
+(rien entre 138 et 161 slots de bipede), et surtout DEUX champs retrecissent de 1 et de 2 bits —
+aucune quantite en log2 n'explique cette paire. La calibration est donc la source, elle est
+publiee dans la couverture du document, et un film qui ne tranche pas ne publie rien.
+
+**Livre.** `filmdec/equipment_creation_width.go` (calibration + oracle de vie),
+`filmdec/equipment_placements.go` (balayage de production), `replay/equipment_placements.go`
+(poseur, cap, famille), `[[equipment_objects]]` dans `replay_labels.toml` avec ses diagonales —
+y compris celles qui ECHOUENT —, loader Go a trois invariants fataux, `SchemaVersion` 8 -> 9,
+`coverage.placements`, contrat Go (30 -> 31 champs, 2 schemas), OpenAPI + `generated.ts`,
+`NULLABLE_ARRAYS` web, fixture d'entrees v5 -> v6, golden avec section dediee. `DetectMPPLeadBits`
+et son heuristique sont SUPPRIMES (la calibration les remplace). Gates : `go build`, `go vet`,
+`go test ./internal/analysis/... ./internal/replaybuild/... ./internal/games/... ./contracttest/...`
+exit 0 (37 paquets), `golangci-lint --new-from-merge-base=origin/main` **0 issue**, typecheck web
+exit 0, lint web 0 erreur (19 warnings preexistants), vitest du contrat de rejeu vert.
+
+**Conclusion / prochaine etape.** Le RENDU reste hors lot : la phase 3 du plan est une
+proposition ecrite (capteur = disque pulse, mur = rectangle oriente par le cap du poseur, bascule
+« Equipements poses » dans le tiroir, sons `Drop Wall` / `Threat Sensor` a t0), a trancher par
+l'utilisateur. Deux reports entrent au registre : le mur et le capteur de la palette famille A
+sont mesures mais NON NOMMES (diagonale 75-82 %, le denominateur `i48` est le frein sur les films
+BTB), et la correlation decoupage/liste est consignee sans etre erigee en regle.
+
 ## [2026-08-17] v7.5 rejeu 2D — l'identite des objets d'equipement (ti=37) est un tag `eqip`
 
 **Statut** : Phases 0, 1 et 3 du plan `.ai/V7.5/replay2d/PLAN_IDENTITE_TI37.md` COMPLETES ;
