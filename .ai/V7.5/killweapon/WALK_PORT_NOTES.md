@@ -402,3 +402,98 @@ LECTURE laisse les deux. La grammaire du bloc type-2 n'est donc pas atteignable 
 chaines/xrefs dans ce binaire. La piste restante, non ouverte ici : le format se deduit du
 CONTENU (la table est deja balayee a 249/250 entites contre un oracle Cheat Engine) ou d'un
 autre binaire (serveur dedie), hors perimetre offline-pur.
+
+---
+# BIPEDE IMAGE-CLE BIT-EXACT — decompiles portes (lot R7-b, 2026-08-17)
+
+> Acces Ghidra : instance PID 10104 (`HaloInfinite.exe`), **API HTTP du plugin**
+> `http://127.0.0.1:8089` (`/decompile_function`, `/disassemble_function`, `/read_memory`),
+> LECTURE SEULE — le pont `mcp__ghidra__*` refuse toujours la connexion (instance UDS
+> `unknown`), contournement deja consigne par R6. Aucun rename, aucun script, aucune analyse.
+
+## 1. `i60 simulation-state-component` — la QUEUE est resolue, le predicat est vrai par construction
+
+`FUN_142ED6D88` (thunk `142f02434`). Grammaire confirmee, decompile + disasm :
+
+```
+cVar1 = FUN_1406cf008(br)                       R(1)   -> dst+0x28
+si cVar1 == 0 : FUN_14058c250(dst)              0 bit, FIN
+sinon :
+  2x ECS_ReadEntityRefIndex5 (= FUN_1407f2058)  R(1)[si 0 -> R(5)]   -> dst+0x00, +0x04
+  4x FUN_142ee2194                              R(16) chacun         -> dst+0x08..+0x14
+  2x R(2) inline                                                     -> dst+0x29, +0x2a
+  4x FUN_142ee2194                              R(16) chacun         -> dst+0x18..+0x24
+  FUN_140c1e79c(br, ?, out=dst+0x2c, dir=dst+0x38)   R(1)[si 0 -> R(19)] + R(8)
+  cVar1 = FUN_140501798(dst+0x2c, dst+0x38)     0 bit
+  si cVar1 != 0 : FUN_14076e494(br, dst+0x44, 0x10, 0,0,0) ; FUN_140492128(dst+0x44)  0 bit
+```
+
+`FUN_142ee2194` = `FUN_1406d84b4(..., DAT_143cd8f84 = -100.0, DAT_143cd84a8 = +100.0, 0x10, 0, 1)`
+-> **R(16)** dequantifie dans [-100, +100].
+
+**POURQUOI LE PREDICAT EST VRAI.** `FUN_140c1e79c` decode une DIRECTION unitaire en `dst+0x38`
+(porte R(1) ; sur 0, packed R(19) -> `FUN_1406d8288`), lit un ANGLE R(8), puis appelle
+`FUN_1406d8678(dir, angle, out)` : produit vectoriel de `dir` avec un vecteur de base, division
+par la norme, rotation de Rodrigues autour de `dir` par l'angle, normalisation finale
+(`FUN_1404fec88`). `out` (= `dst+0x2c`) est donc **unitaire et PERPENDICULAIRE** a `dir`.
+`FUN_140501798(v1, v2)` teste exactement : `|‖v1‖² − DAT_143cd8374| < DAT_143cd84bc`, idem pour
+`v2`, et `|v1·v2 − DAT_143cd8370| < DAT_143cd84bc`. Constantes LUES dans le binaire
+(`/read_memory`) : `DAT_143cd8374 = 0x3f800000 = 1.0`, `DAT_143cd8370 = 0.0`,
+`DAT_143cd8380 = 0x7fffffff` (masque de valeur absolue), `DAT_143cd84bc = 0x3a83126f = 1e-3`.
+Une base orthonormee CONSTRUITE satisfait les trois tests : **la queue est lue**, elle n'est pas
+conditionnelle en pratique. C'est ce qui leve le « NON resoluble offline sans ground-truth CE »
+qui gardait `simStateComplete` a `false` depuis des mois.
+
+## 2. `FUN_14076e494` — la queue handle, partagee par `i60` ET `i57`
+
+```
+cVar1 = FUN_14076f91c()      0 bit — garde RUNTIME (DAT_144e61ea0 / DAT_145121140)
+                             = exactement le global deja modelise `PositionFullPrecision`
+si cVar1 != 0 : FUN_1411b259c -> FUN_1406d676c(br, br, dst, 0x60)      = R(96) brut
+sinon (retail, dominant) : FUN_14076e524(dst, br, idxOut, LEVEL = 0x10) :
+    R(1) porte d'index ; si 0 -> R(DAT_144632be0) index de region
+    FUN_140cc5128 : 3 axes aux largeurs de la ligne LEVEL=16
+        index != -1 -> table DAT_1445ccbe0 + (index*0x20 + LEVEL)*0xc
+        index == -1 -> table DAT_1445cc9e0 + LEVEL*0xc
+```
+
+C'est **le lecteur absolu de `consumeAbsoluteWithGate` MOINS son bit `precHigh`** (ici la garde
+est runtime, pas un bit du flux) **et MOINS son `R(2)` « fini » de queue** — `FUN_14076e494`
+n'appelle pas `FUN_14076e304`. Porte en Go : `consumeSimStateHandleTail` (`traverse.go`).
+
+## 3. `i57 biped-spartan-ability-component`, branche `tag == 3` — PARTIELLEMENT portable
+
+`FUN_142f262d4(dst, br, param_3)` :
+
+```
+FUN_140f03dfc()                          0 bit
+a = FUN_1406cf008(br)   R(1)  -> dst[0]
+si a != 0 :
+    FUN_14297ea84(br)                    R(6)  (decompile 2026-08-17)
+    si (dst[2] & 1) != 0 : b = R(1) ; branche gardee par (dst[2] & 0x10) ;
+                           FUN_142f04664(dst+4, br, b, param_3)
+t = FUN_1406cf008(br)   R(1)  -> dst[1]
+si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)     (la queue du §2)
+```
+
+`dst[2]` est un **octet d'ETAT RUNTIME**, invisible du flux : la branche `a != 0` reste
+irreductible hors ligne. La branche `a == 0` est ENTIEREMENT portable et l'est desormais
+(`consumeSpartanAbilityTag3`, `components_biped_ability.go`) : `R(1)` nul, porte de queue
+`R(1)`, et la queue du §2 quand elle est ouverte.
+
+## 4. `i9 object-multiplayer-properties-component` — la PORTE ETAIT INVERSEE
+
+`FUN_1407d4c94(br, dst)` :
+
+```
+cVar1 = FUN_1406cf008(br)                R(1)
+si cVar1 == 0 : R(5) tag (FUN_1407d54ac) puis le flux TLV (FUN_1407d4e10)   <- PRESENT
+sinon         : *(dst + 0xbc) = 0                                            <- ABSENT, 0 bit
+```
+
+`FUN_1406cf008` rend la **VALEUR** du bit (MSB du registre, `>> 0x3f`) : `cVar1 == 0` veut donc
+dire « bit a 0 ». Le port Go lisait le bloc TLV quand le bit valait **1** — polarite inversee sur
+le composant present dans 100 % des records de bipede, et le suspect n°1 de l'histogramme de
+decrochage de l'image-cle (25 % des franchissements de frontiere, R7-a). La semantique du `else`
+(`dst+0xbc = 0`, effacement d'un champ absent) confirme la lecture independamment.
+Corrige le 2026-08-17 dans `components_batch7.go`.

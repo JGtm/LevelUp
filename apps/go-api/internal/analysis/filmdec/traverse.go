@@ -859,9 +859,11 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// la queue R(3) est lue — l'ancien global brut valait 0 et la sautait).
 		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, paramForComponent(name))
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
-		// Décode la structure CONNUE (flag + 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8 magnitude,
-		// tout disasm-vérifié). Le handle-tail conditionnel reste runtime/predicate-dépendant
-		// (cf. simStateComplete) -> desync propre par défaut (pas de false-clean).
+		// GRAMMAIRE COMPLÈTE depuis le 2026-08-17 (lot R7-b) : structure connue (flag +
+		// 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8) PLUS la queue FUN_14076e494, dont le prédicat
+		// de garde s'est révélé vrai par construction (cf. consumeSimulationState).
+		// Le drapeau `simStateComplete` reste la porte : ce n'est plus la GRAMMAIRE qui manque,
+		// c'est la SOURCE DES LARGEURS D'AXE de la queue en production (cf. simStateComplete).
 		consumeSimulationState(br)
 		return variant, nil, simStateComplete
 	case "simulation-state-playback", "simulation-state-playback-component": // i61 (thunk 142f02454 -> FUN_142ed6d20, vérifié live)
@@ -1109,26 +1111,54 @@ func consumeCorruptionCheck(br *BitReader) {
 	}
 }
 
-// simStateExtra = largeur du handle-tail CONDITIONNEL d'i60 (FUN_14076e494), lu seulement
-// si le predicate FUN_140501798 (validité des vecteurs décodés, 0 bit) est vrai. 0 = predicate
-// supposé faux (pas de tail). Sweepé à l'oracle (cmd/tmp_reccheck) pour trancher.
-var simStateExtra = 0
-
-// SetSimStateExtra règle la largeur du handle-tail d'i60 (0 = pas de tail).
-func SetSimStateExtra(n int) { simStateExtra = n }
-
-// simStateComplete : si true, i60 (simulation-state) est considéré ENTIÈREMENT décodé
-// (consumeSimulationState + tail simStateExtra) et la traversée continue vers i61-63.
-// DÉFAUT false : le handle-tail d'i60 (FUN_14076e494) dépend de deux branches runtime
-// (globals DAT_144e61ea0/DAT_145121140/DAT_144632be0 = 0 en statique) ET d'un predicate
-// float (FUN_140501798) sur les vecteurs décodés — NON résoluble offline sans ground-truth
-// CE. Le décodeur réel consomme donc les 168 bits de structure connue puis désync PROPREMENT
-// (évite les false-cleans qui corrompent les bindings). L'oracle met le flag à true pour
-// explorer i61-63 et sweeper la largeur du tail.
+// simStateComplete : si true, i60 (simulation-state) est déclaré ENTIÈREMENT décodé et la
+// traversée continue vers i61-63. DÉFAUT false — et depuis le 2026-08-17 ce n'est PLUS pour
+// la raison historique (« grammaire de la queue non résoluble offline ») : la grammaire est
+// établie (consumeSimStateHandleTail, lot R7-b, décompile + prédicat prouvé vrai par
+// construction). Ce qui manque est la SOURCE DES LARGEURS D'AXE de cette queue sur le chemin
+// de production : `absAxisWFor` retombe sur `absoluteAxisW`, un UNIFORME 14 qui n'est la
+// largeur d'aucune carte (Cliffhanger 13/13/14, Bazaar 17/17/16, Illusion 18/18/17 —
+// mesurés par DetectI0Layout le 2026-08-17). Continuer la marche avec une queue mal
+// dimensionnée propagerait un désalignement au lieu d'un désync propre.
+//
+// KILL-SWITCH — bascule du défaut à `true` conditionnée à UN critère mesurable : que le
+// chemin absolu d'i0 tire ses trois largeurs de la carte du match (comme
+// `replay.installWorldObjectPrecision` le fait déjà pour `WorldObjectPrecision`) au lieu de
+// l'uniforme `absoluteAxisW`. Retrait cible du drapeau : à la bascule. Témoin de détection
+// connu : `TestGoldenMiniBobine` (killsource) passe de 0 à 2 « source appartenant à la
+// victime » PROPOSÉES, 0 publiée dans les deux cas — mesuré le 2026-08-17.
 var simStateComplete = false
 
-// SetSimStateComplete (dé)active le mode "i60 complet" (exploration harness ; défaut off).
+// SetSimStateComplete (dé)active le mode « i60 complet » (instruments de mesure ; défaut off).
 func SetSimStateComplete(v bool) { simStateComplete = v }
+
+// consumeSimStateHandleTail porte FUN_14076e494(br, dst, LEVEL=0x10, 0, 0, param_6=0) — la
+// QUEUE d'i60, RÉSOLUE le 2026-08-17 (lot R7-b) après avoir été longtemps portée « largeur
+// inconnue, désync propre ».
+//
+//	cVar1 = FUN_14076f91c()   garde RUNTIME (DAT_144e61ea0 / DAT_145121140), 0 bit
+//	                          = PositionFullPrecision, déjà modélisée ici.
+//	cVar1 != 0 : FUN_1411b259c -> FUN_1406d676c(br, br, dst, 0x60)   = R(96) brut.
+//	cVar1 == 0 (retail, dominant) : FUN_14076e524(dst, br, idxOut, LEVEL=0x10) =
+//	          R(1) porte d'index ; si 0 -> R(DAT_144632be0) index de région ;
+//	          puis FUN_140cc5128 = 3 axes aux largeurs de la ligne LEVEL=16.
+//
+// C'est EXACTEMENT le lecteur absolu de `consumeAbsoluteWithGate`, MOINS son bit precHigh
+// (ici la garde est runtime, pas un bit du flux) et MOINS son R(2) « fini » de queue — que
+// FUN_14076e494 n'appelle pas.
+func consumeSimStateHandleTail(br *BitReader) {
+	if PositionFullPrecision { // FUN_14076f91c vrai -> copie brute
+		br.ReadBits(rawVec3Bits) // FUN_1406d676c(..., 0x60)
+		return
+	}
+	idx := -1
+	if !br.ReadBit() { // FUN_14076e524 : porte d'index ; 0 -> lit l'index de région
+		idx = int(br.ReadBits(WorldObjectPrecision.IndexW))
+	}
+	for i := 0; i < 3; i++ {
+		br.ReadBits(absAxisWFor(idx, i)) // FUN_140cc5128 axe i
+	}
+}
 
 // consume140c1e79c porte FUN_140c1e79c (direction+magnitude d'i60) :
 //
@@ -1149,8 +1179,17 @@ func consume140c1e79c(br *BitReader) {
 //	R(1) flag (FUN_1406cf008) ; si 0 -> FUN_14058c250 (0 bit).
 //	si 1 : 2×FUN_1407f2058 (R(1)[R5]) + 4×FUN_142ee2194 (R16) + 2×R(2) inline
 //	       + 4×FUN_142ee2194 (R16) + FUN_140c1e79c (R1[R19]+R8)
-//	       + tail : FUN_140501798 predicate (0 bit, validité vec) ; si vrai
-//	         FUN_14076e494 handle + FUN_140492128 (simStateExtra = largeur handle).
+//	       + queue : FUN_140501798 predicate (0 bit) puis FUN_14076e494.
+//
+// LE PREDICAT EST VRAI PAR CONSTRUCTION (établi le 2026-08-17, lot R7-b), et c'est ce qui
+// débloque la queue. `FUN_140c1e79c(br, ?, out=RBP+0x2c, dir=RBP+0x38)` (disasm @142ed6f9b)
+// décode une DIRECTION unitaire en `+0x38` puis appelle `FUN_1406d8678(dir, angle, out)`,
+// qui construit en `+0x2c` un vecteur PERPENDICULAIRE à la direction (produit vectoriel avec
+// un vecteur de base, normalisé, puis rotation de Rodrigues autour de `dir` par l'angle R(8),
+// et normalisation finale FUN_1404fec88). `FUN_140501798(+0x2c, +0x38)` teste ensuite
+// ‖v1‖²≈1, ‖v2‖²≈1 et v1·v2≈0 — constantes lues dans le binaire : DAT_143cd8374 = 1.0,
+// DAT_143cd8370 = 0.0, tolérance DAT_143cd84bc = 1e-3. Une base orthonormée construite
+// satisfait les trois : la queue est donc LUE, elle n'est pas conditionnelle en pratique.
 func consumeSimulationState(br *BitReader) {
 	if !br.ReadBit() { // FUN_1406cf008 flag ; 0 -> 0 bit
 		return
@@ -1165,8 +1204,8 @@ func consumeSimulationState(br *BitReader) {
 	for i := 0; i < 4; i++ {
 		br.ReadBits(16) // FUN_142ee2194 = R(16)
 	}
-	consume140c1e79c(br)   // FUN_140c1e79c = R(1)[R19]+R8
-	br.Skip(simStateExtra) // tail handle conditionnel (0 par défaut)
+	consume140c1e79c(br)          // FUN_140c1e79c = R(1)[R19]+R8
+	consumeSimStateHandleTail(br) // FUN_14076e494, predicat vrai par construction
 }
 
 func traverseComponentLoop(br *BitReader, arch Archetype, t *EntityTrace) {
