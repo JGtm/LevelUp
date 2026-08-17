@@ -1,3 +1,66 @@
+## [2026-08-17] v7.5 rejeu 2D — item 6 item 2.5 : l oracle du ramassage suit le joueur, et le plafond ne se leve pas
+
+**Statut** : Complete (item 2.5 clos ; **GATE 2.5 NON ATTEINT**, ramasseur `null` en phase 3).
+Item 2.5 `[!]`.
+
+**Decision technique principale** : rejouer l ORACLE DU RAMASSAGE par le pont slot -> joueur DU
+CONSTRUCTEUR, jamais par un pont maison. `buildOwners` (owners.go) aux MEMES entrees que
+`BuildFromFilm` — fil des morts (`ScanFilmDeaths`), index de joueur lu dans les chunks de
+replication (`ScanFilmPlayerIndices` + `injectiveOrEmpty`), events de tir (`fireRefs`, pour les
+fermetures), positions deja lues (`indexBySlot`) — parce que c est `own.SlotXUID` que le document
+publie sur `Track.XUID` : mesurer sur autre chose n aurait rien dit de ce qui serait publie. La
+« vie courante » d un xuid a une image-cle est le slot de CE joueur qui y porte un loadout, quel
+qu il soit — le meme, ou un nouveau apres respawn. Regles, denominateur et seuil ECRITS DANS
+L EN-TETE et COMMITES AVANT la mesure (`5546046b0`, anterieur au commit de mesure). Le rapport 2.5
+est appele EN DERNIER et son temoin a sa propre source a la meme graine : sans cela il aurait
+deplace les tirages des items 2.1 et 2.2, donc le controle d ancrage.
+
+**Resultats observes** (8 films / 6 cartes des phases 1 et 2, `CGO_ENABLED=0`, un film par
+processus, largeurs de chaque carte, aucune base ouverte) :
+
+- **Controle d ancrage, joue AVANT toute modification** : l instrument inchange rend **177
+  ramassages de socle dates, 111 accords = 62,7 %, temoin 6/170 = 3,5 %** — les chiffres de la
+  phase 2. Apres l ajout de 2.5, les sorties des items 2.1 a 2.4 sont **identiques ligne pour
+  ligne sur les 8 films** (diff = 0 ligne).
+- **GATE 2.5 NON ATTEINT : 102 / 128 = 79,7 %** contre >= 90 % exige, seuil NON rebaisse.
+  Ecartements publies a part : **11/177 sans pont** (6,2 %), **0 sans image-cle suivante**,
+  **38/177 sans loadout observable** (21,5 %). Temoin **6/128 = 4,7 %**, rapport **17,0**.
+- **LE PONT N EST PAS EN CAUSE** : il nomme 166 des 177 ramasseurs (94 %), avec **0 collision de
+  slot et 0 desaccord d index sur les huit films**, et 70 a 97 % des vies nommees par le seul fil
+  des morts. Les 11 manques viennent des films pauvres en morts (`b8d1fe0c` 31 morts / 44 vies :
+  4 des 6 ramassages sans pont).
+- **LE PLAFOND NE SE LEVE PAS, ET C ETAIT TOUTE L HYPOTHESE DE L ARBITRAGE** : 126/177 = 71,2 %
+  par slot contre **128/177 = 72,3 %** par joueur. Un point. Suivre le joueur ne recupere qu entre
+  2 et 13 des 51 cas muets, dont 8 sur un seul film.
+- **ET L ACCORD BAISSE, a restriction EGALE** : 111/126 = **88,1 %** par slot contre 102/128 =
+  **79,7 %** par joueur. La cause est physique : un joueur qui MEURT dans les 20 s qui suivent le
+  ramassage lache ce qu il a pris. Par slot ce cas etait MUET ; par joueur il devient un
+  DESACCORD, parce que la nouvelle vie porte le loadout de REAPPARITION. **Le pont ne transforme
+  pas un silence en accord : il transforme un silence en desaccord.**
+- **Controle « ramassage NOUVEAU » TENU** : 4 / 94 = 4,3 % portaient deja la famille a l image-cle
+  precedente (2,3 % par slot a l item 2.2) ; accord sur les NOUVEAUX 68 / 90 = 75,6 %. L accord ne
+  repose pas sur des armes deja portees.
+- **Aucun decoupage ne sauve le gate, et aucun n a ete essaye pour le sauver** : les 5 cas ou un
+  xuid porte un loadout sur plusieurs slots a la meme image-cle, corriges au mieux, donnent
+  107/128 = 83,6 % ; les 11 sans pont, tous ponts et tous d accord, 113/139 = 81,3 %.
+
+**Decouvertes notees, NON traitees** (plan, n. 12 et 13) : le plafond de l oracle n est pas le
+pont mais l espacement de 20 s des images-cles — la decouverte 10 se trompait de cause, et ce qui
+le leverait est un oracle plus RAPPROCHE (inventaire du flux delta), pas un meilleur pont ; un
+meme xuid porte parfois un loadout sur PLUSIEURS slots a la meme image-cle (5 cas sur 128, dont 4
+sur `01e1f945`), ce qui interroge soit la replication a la frontiere d un respawn, soit les
+fermetures du pont.
+
+**Livre** : `replay/ground_weapon_pickup_owner_test.go` (l oracle par joueur, son seuil et son
+denominateur en en-tete ; 3 tests sans garde au gate ordinaire), appel de `gwPickupReport25` en
+DERNIER dans `TestGroundWeaponPickups`.
+
+**Conclusion / prochaine etape** : arbitrage utilisateur. Le RAMASSEUR (xuid) n est PAS publiable
+— `null` partout en phase 3, comme l arbitrage l avait tranche pour cette issue. Le reste du
+perimetre de la phase 3 est inchange et reste ouvert : `weaponPads` (socles par match) et
+`padPickups` (intervalle + socle, sans ramasseur). La condition de reprise du ramasseur est ecrite
+au registre, et ce n est pas un meilleur pont.
+
 ## [2026-08-17] v7.5 rejeu 2D — item 6 phase 2 : le ramassage tient sur les socles, le gate tombe sur les armes lachees, et le cycle vaut 30,5 s
 
 **Statut** : Complete (phase 2 close ; **gate 2 NON ATTEINT**, phase 3 NON ouverte). Items 2.1
