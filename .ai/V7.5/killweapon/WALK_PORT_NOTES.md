@@ -497,3 +497,155 @@ le composant present dans 100 % des records de bipede, et le suspect n°1 de l'h
 decrochage de l'image-cle (25 % des franchissements de frontiere, R7-a). La semantique du `else`
 (`dst+0xbc = 0`, effacement d'un champ absent) confirme la lecture independamment.
 Corrige le 2026-08-17 dans `components_batch7.go`.
+
+---
+# L ECRIVAIN PAR VTABLE — la case `+0x18` du descripteur de composant (lot R7-d, 2026-08-17)
+
+> Acces Ghidra : instance PID 10104 (`HaloInfinite.exe`), **API HTTP** `http://127.0.0.1:8089`
+> (`/decompile_function`, `/disassemble_function`, `/read_memory`, `/get_xrefs_to`,
+> `/list_segments`, `/get_function_by_address`), LECTURE SEULE — aucun rename, aucun script,
+> aucune analyse relancee. Contexte : `PLAN_R7D_ECRIVAIN_VTABLE.md`.
+> **Piege d'outillage** : `/disassemble_function` sur une adresse SANS fonction definie rend
+> 200 Mo (il desassemble jusqu'au bout du segment). Utiliser `/read_memory` sur 32-48 octets.
+
+## 1. Methode — retrouver une vtable de composant sans xref
+
+`DAT_144e61d88` est nul statiquement (la table de descripteurs est batie a l'init), et Ghidra ne
+cree AUCUNE reference vers les cases de vtable (octets non types). La chaine qui marche :
+
+1. dumper `.rdata` (`0x143606000-0x144395200`, 14 217 728 o) par `/read_memory` (55 lectures de
+   256 Kio, champ `hex`) ;
+2. y chercher le pointeur 8 o du deser connu (table `RECETTE_DECODAGE_FILM_CHUNKS.md` section 6) —
+   il est **UNIQUE** pour chacun des 52 desers du bipede ;
+3. la case trouvee est `vtable[0x30]` quand la case precedente vaut le thunk `FUN_14076ce9c`
+   (`jmp [rax+0x30]`), sinon `vtable[0x28]` (cas d `i0`) ;
+4. verifier la base par `vtable[0x08]` = getter de NOM (`lea rax,[rip+X]; ret` puis la chaine) et,
+   quand elle existe, par la xref DATA depuis `.data` (l objet descripteur lui-meme).
+
+Exemple ferme : `0x143d0ce00` (`biped-action`) est reference par `0x144747368` (.data) et son
+`+0x08` = `0x141177560` pointe `0x143c98cf0` = `"biped-action-component"`.
+
+## 2. Le layout d une vtable de descripteur de composant — UNIFORME sur 51/52
+
+```
++0x00  destructeur (stubs partages : 14117b4a0 / 141179610 / 1405f0ac0 / 14117e0e0 / 140c85020)
++0x08  getter de NOM               (per-composant, `lea rax,[rip+X]; ret`)
++0x10  FUN_1404ab600 = `return false`
++0x18  **SERIALISEUR (ECRITURE)**  (per-composant)
++0x20  FUN_1411c8f80 = `int3`      (virtuelle pure ; exceptions : i1, i25)
++0x28  thunk FUN_14076ce9c = `jmp [rax+0x30]`
++0x30  **DESERIALISEUR (LECTURE)** (per-composant)
++0x38  FUN_1408d8220 = `return 1`  /  FUN_1404ab600
++0x40  FUN_141191ab0 = `*p = 0`
++0x48  FUN_14076ced0 = zero 16 o en `rdx`, rend `rdx`
+(+0x50 case supplementaire pour quelques classes : predicat de validation, 0 bit)
+```
+
+**Il n y a QUE DEUX cases qui touchent le flux de bits : `+0x18` ECRIT, `+0x30` LIT.** Toutes les
+autres sont des stubs constants, un nom, un accesseur ou un `int3`. L hypothese « les cases
+voisines portent la serialisation » est donc VRAIE, et elle est fermee : une seule case, `+0x18`.
+
+L archetype porte la MEME paire, decalee : vtable du bipede `0x143737178` (double confirmation —
+`+0x60` = `FUN_140f44c38`, deser d etat par defaut connu ; `+0xa0` = `FUN_14076ca20`, getter de
+masque par defaut connu). **`+0x58` = `FUN_142f14a68` = l ECRIVAIN de l etat par defaut**, et il
+porte les NOMS de ses champs en clair (`"player-representation-name"`,
+`"customization-source-participant"`) : le parametre `nom` des primitives d ecriture est un
+parametre MORT, conserve en retail.
+
+## 3. Les primitives d ECRITURE (miroirs de `FUN_1406cf008` / `FUN_14076e304`)
+
+Etat d ecrivain : `+0x2c` = compteur de bits ecrits, `+0x30` = accumulateur 64 bits,
+`+0x38` = bits tenus, `+0x40` = pointeur de sortie, `+0x10` = fin de tampon, `+0x28` = bits vides.
+Le `+0x2c` est ce qui rend la lecture facile : **chaque `+= N` est la LARGEUR ecrite**.
+
+| fonction | largeur |
+|---|---|
+| `FUN_1406d49c4(w, ., b)` | **W(1)** |
+| `FUN_142f1f71c(w, b)` | **W(2)** |
+| `FUN_1407edaf4(w, "nom", v)` | **W(32)** |
+| `FUN_142f22020(w, ., p)` | **3 x W(32) = vec3 IEEE, 96 bits** |
+| `FUN_1407eb6a8(w, p, idx, ., .)` | `W(1) (idx == -1)` ; si `idx != -1` : `W(DAT_144632be0)` ; puis `FUN_140ffc6b0` = les 3 axes |
+| `FUN_1406d60f4(w, ., p, 0x60)` | vec3 BRUT, 96 bits |
+
+## 4. Ce que l ecrivain dit de chaque composant lu
+
+### `i60 simulation-state` — le port de R7-b est CONFIRME
+
+`vtable[0x18]` = `FUN_142f04e2c` (`sub = etat + 0xa48`) puis `FUN_142edd10c(sub, w)` :
+`W(1) *(sub+0x28)` ; si non nul : 2 x `FUN_14299813c`, 4 x `FUN_142ee5630`, `W(2) *(sub+0x29)`, ...
+C est le MIROIR EXACT du lecteur (`R(1)` vers `dst+0x28` ; si 0, fin). Aucune divergence.
+
+### `i63 biped-action` — le port est CONFIRME, et la limite dure aussi
+
+`vtable[0x18]` = `FUN_142f05144` (`sub = etat + 0xaa8`) puis `FUN_142f27a68(sub, w)` :
+
+```
+FUN_142f22020(w, sub)              vec3 96 bits
+W(4) count1 = *(uint*)(sub+0x18)
+count1 x { W(7) *(item+0x30) ; FUN_142ef5340(item, w) }      item stride 0x38
+count2 = FUN_1409fe718(sub, 0x49)                            POPCOUNT RAM, 0 bit
+count2 x { W(1) (c != -1) ; si oui : FUN_142f1f71c(w, c) = W(2) }
+FUN_142f22020(w, ...)              vec3 96 bits
+```
+
+Identique, largeur pour largeur, a `consumeBipedAction` (96 + R(4) + ... + 96 = 196 au minimum).
+**Et le compte `count2` sort du MEME popcount RAM cote ECRITURE** : la limite « non recuperable
+hors ligne » de R7-b n est pas un defaut de lecture, elle est dans le format. Fil ferme.
+
+### `i9 object-multiplayer-properties` — la correction de R7-b est CONFIRMEE INDEPENDAMMENT
+
+`vtable[0x18]` = `FUN_142f075d8` (`sub = etat + 0x2b4`) puis `FUN_1420ab570(sub, w)` :
+
+```
+c = *(char*)(sub + 0xbc)
+W(1) (c == 0)                      le bit vaut 0 QUAND le bloc est present
+si c != 0 : W(5) c ; puis le bloc TLV (FUN_1407d5768/5714 puis FUN_14346074c(buf, w))
+```
+
+La polarite corrigee par R7-b (bit a 0 = bloc PRESENT) et le `R(5)` de tag sont tous deux
+confirmes par l ecrivain. Aucune divergence.
+
+### `i0 object-position-dynamic-precision` — LA DIVERGENCE
+
+`vtable[0x18]` = `FUN_14320678c` — et c est l ecrivain d ETAT COMPLET, pas de delta : il appelle
+son corps avec une reference de base **NULLE** et un drapeau **0**.
+
+```
+FUN_14320678c(desc, w, ?) :
+  sub  = *(desc + 0x30)
+  ref  = {0, 0}                                  AUCUNE baseline
+  FUN_14320696c(w, sub, &ref, desc, 0)           param_5 = 0
+  FUN_142f1f71c(w, *(byte*)(sub + 0x10))         W(2), INCONDITIONNEL, EN DERNIER
+
+FUN_14320696c(w, sub, ref, desc, flagRaw) :      (desassemble, args resolus au registre)
+  W(1) flagRaw                                   (= 0 pour l etat complet)
+  W(1) (ref[1] != 0)                             (= 0 : pas de baseline)
+  h = *FUN_1404d4f04(sub + 0x2a4)                0 bit
+  si flagRaw != 0 : W(1) (h != -1) ; FUN_1406d60f4(w, sub+4, 0x60) = 96 bits BRUTS
+  sinon si ref[1] != 0 : FUN_142e2c9bc(...)      chemin RELATIF
+  sinon                : FUN_142e2d86c(w, sub+4, *(short*)(sub+0x12)) avec 5e arg = (h != -1)
+                          = W(1) (h != -1) ; FUN_1407eb61c(w, ..., 0x10)
+  si h != -1 : FUN_143206854(w, sub, desc)       la QUEUE DE HANDLE, gardee par h
+```
+
+Face au lecteur porte (`consumeObjectPositionDynamicPrecisionD` + `consumeAbsoluteWithGate` +
+`consumePositionHandleTail`), **trois ecarts, tous dans le meme sens** :
+
+1. **Le 3e bit n est pas un « precHigh » qui SUPPRIME la charge utile.** L ecrivain ecrit ce bit
+   (`h != -1`) PUIS la position, toujours. Le lecteur, lui, fait `precHigh := R(1) ; if precHigh
+   { return }` : quand ce bit vaut 1 il saute toute la position. C est une SOUS-LECTURE de
+   `1 + [idxW] + 3 x axisW` bits.
+2. **Ce meme 3e bit est la PORTE DE LA QUEUE DE HANDLE**, lisible dans le flux. Le lecteur la
+   garde sur un booleen RUNTIME (`PositionDeltaHasHandleTail`, faux par defaut) et la force a
+   `false` sur le chemin absolu.
+3. **Le champ de 2 bits est INCONDITIONNEL et il vient EN DERNIER**, apres la queue de handle.
+   Le lecteur ne le lit qu a l interieur du chemin absolu, avant la queue, et pas du tout quand
+   il est sorti tot.
+
+Consequence de forme : dans une image-cle, `i0` **n est PAS un vec3 brut de 96 bits** — l ecrivain
+d etat complet prend le chemin QUANTIFIE (`flagRaw = 0`, `ref = NULL`), donc une largeur
+DEPENDANTE DE LA CARTE : `2 + 1 + 1 + [idxW] + 3 x axisW + [queue] + 2`. Sur un decoupage 13/13/14
+et sans index ni queue : **46 bits**, la ou le lecteur porte en consomme 117 en mediane.
+Ceci CONTREDIT la decouverte n2 de R7-b (« en image-cle i0 prend le chemin brut, 117 bits,
+identiques sur trois cartes ») : ces 117 bits sont ce que le LECTEUR consomme, pas ce que
+l ECRIVAIN pose.
