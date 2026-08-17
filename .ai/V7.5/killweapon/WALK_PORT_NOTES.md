@@ -138,3 +138,267 @@ Validation décode : grenade ids + weapon ids communautaires == nos valeurs (Dis
 - Events hammer présents près du kill narré 355.7s (356.9/357.9/358.6s marker 0x535 type 0x47). Données mêlée OK, reste le player index.
 - TODO : (1) caler player-index mêlée ; (2) décoder FIRE events (high32 famille + player index + hit/miss + aim vector cubemap) ;
   (3) croiser fire/melee/grenade events (player index → slot tueur chunk_27) par kill → arme ; (4) valider narration.
+
+---
+
+# IMAGE-CLE — la grammaire du CORPS d'un record (lot R5, 2026-08-17)
+
+> Lecture Ghidra STRICTEMENT read-only (instance PID 10104, `HaloInfinite.exe`, GhidraMCP
+> 127.0.0.1:8089 ; `decompile_function` / `get_xrefs_to` / `read_memory` /
+> `get_assembly_context` uniquement — aucun rename, aucun script, aucune analyse relancee).
+> Contexte : `PLAN_R5_GRAMMAIRE_IMAGE_CLE.md`. Deux lots (R3 `ti=37`, R4 `ti=11`) avaient
+> conclu le meme jour que « la grammaire du corps d'un record d'image-cle n'est resolue
+> nulle part ». Ce que la lecture montre est plus precis, et different.
+
+## 1. Les DEUX lecteurs de record NEW du jeu portent la MEME grammaire
+
+| adresse | role | qui l'appelle |
+|---|---|---|
+| `FUN_141f86704` | deser NEW, variante BUFFERISEE | `FUN_1406cd128` a `0x1422f46b8` (unique xref CODE) |
+| `FUN_1408f1aa4` | deser NEW, variante DIRECTE | `FUN_1406cbaa0` a `0x1406cbc?` (`iVar13 = FUN_1408f1aa4(*plVar3, param_2, param_5, param_6, param_7)`) |
+
+Sequence, IDENTIQUE dans les deux (verifiee ligne a ligne) :
+
+```
+R(6) typeIndex
+desc = *(*(param_1 + 0x18) + 8 + ti*8)          (registre d'archetypes, cap 0x32 = 50)
+n     = vtable[0x20](desc)                       0 bit  (taille de l'etat)
+m     = vtable[0x10](desc)                       0 bit  (taille du masque par defaut)
+vtable[0x60](desc, n, dst, READER, 1)            = ETAT PAR DEFAUT  <- le seul appel qui lit
+vtable[0x88](desc, n, dst, m, buf)               0 bit  (remplit le MASQUE PAR DEFAUT)
+vtable[0x30]()                                   0 bit
+si (FUN_1404f2b4c() != 0 ET DAT_144c232e1 != 0)  : porte = R(1)   [mode FILM, lu TOT]
+si (masqueParDefaut != 0 OU porte != 0) :
+    si la porte n'a pas deja ete lue : porte = R(1)
+    si porte != 0 : FUN_14076cb60(desc + 1, ctx)  = MASQUE + COMPOSANTS
+```
+
+`FUN_14076cb60` (boucle de composants) :
+
+```
+FUN_1406d7610(desc, reader, &masque)     = R(1) ; si 0 -> R(3) compte + compte x R(6) index
+                                                  ; si 1 -> R(64)
+pour i de 0 a *(desc + 0x4320) - 1 :
+    si (masque >> (i - sautes)) & 1 :
+        pred = (ctx[4] == 0) ? 0 : vtable[0x48](comp, ...)     0 bit
+        vtable[0x28](comp, reader, ctx, &pred, n)              = LE DESER DU COMPOSANT
+        si mode film : R(1) ; si 1 -> R(32) sentinelle 0xbcddcba
+```
+
+## 2. Reponse a l'hypothese « le corps d'image-cle appelle le deser FEUILLE `+0x28` la ou le delta appelle un wrapper » : REFUTEE PAR LECTURE
+
+Le chemin DELTA (`FUN_141f86b58`) appelle **la meme fonction `FUN_14076cb60`**, avec un
+contexte de meme forme (memset 0x40, puis `ctx+0x00` sortie, `+0x08` taille, `+0x10` etat,
+`+0x28` reader, `+0x30` vtable[0](desc), `+0x34` id, `+0x38` = 1, `+0x39` flag). Dans les
+TROIS lecteurs (NEW bufferise, NEW direct, DELTA) `ctx+0x18` et `ctx+0x20` restent NULS, donc
+`param_2[4] == 0` dans `FUN_14076cb60` et la baseline predite vaut zero partout.
+
+**Il n'existe pas de second site d'appel de composant.** Chaque composant present passe par
+`vtable[0x28]`, en image-cle comme en delta. La difference NEW / DELTA se resume a l'en-tete
+que NEW porte en plus : `R(6) typeIndex` + `vtable[0x60]` (etat par defaut). C'est exactement
+ce que `filmdec.TraverseEntity` fait deja.
+
+## 3. Ce qui DIFFERE entre les chemins, et qui n'est PAS dans le corps du record
+
+- `FUN_1406cd128`, tete de chaque iteration, mode film (`FUN_14076cea8()`) : **`R(32)`**.
+- `FUN_1406cd128`, branches NEW et DEL, mode film : **`R(1)` ; si 1 -> `R(8)`** AVANT le deser.
+- `FUN_1406cbaa0`, avant `FUN_1408f1aa4` (`0x1406cb?46`-`149`) : le MEME prologue
+  **`R(1)` ; si 1 -> `R(8)`**.
+- `FUN_1406cd128` est **DESACTIVEE quand la porte d'image-cle `*(param_1 + 0x12)` est mise** :
+  `uVar14 = -(uint)(cVar3 != 0) & 2` puis `if (uVar14 != 0) break`. Elle NE decode PAS la
+  table d'image-cle. Le chemin d'image-cle passe par `FUN_142f2913c` (baseline-emit), qui
+  draine une file par-entite et redispatche par `FUN_1406cbaa0`.
+
+**Consequence, et c'est le point de methode** : ces trois lectures appartiennent au CADRE
+(la boucle de records du paquet delta), pas au CORPS. La table d'image-cle du film (payload
+type-2) a son propre en-tete, `[id:32][field:26][ti:6]` (etabli empiriquement, 249/250
+entites contre un oracle Cheat Engine, `keyframe_world.go:17-23`) ; le consommateur de ce
+payload n'est PAS identifie statiquement dans cette passe, et il n'a pas besoin de l'etre :
+le CORPS qui suit l'en-tete est celui d'un record NEW, et les deux lecteurs de record NEW du
+jeu sont d'accord sur sa grammaire.
+
+## 4. `ti=42` (arme au sol) — etat par defaut RESOLU
+
+Chaine de resolution (celle de `default_state_arch.go:5-18`, rejouee) :
+
+```
+FUN_140e453b4 (registrar)  ->  FUN_140e45fc4(world, 0x2a, &PTR_PTR_144701780)   @0x140e4578f
+xref [WRITE] sur 0x144701780 -> FUN_1403721d0 : PTR_PTR_144701780 = &PTR_LAB_1436fd790
+vtable 0x1436fd790 , *(vtable + 0x60) = 0x1407f0c68
+```
+
+`FUN_1407f0c68` (lu ligne a ligne, chaque feuille touche `reader+0x2c`) :
+
+| # | lecture | source |
+|---|---|---|
+| 1 | `V` = `R(1)` ; si 1 -> `R(8)` | `FUN_1406cf008` + bloc inline `+8` |
+| 2 | `FUN_1407f2224(desc, 0x60, dst, reader, flag)` = `V` + `FUN_14080cfe8` | `MOV EDX,0x60` @`0x1407f0cd1` ; `FUN_14080cfe8` = le bloc multiplayer-properties DEJA porte bit-exact (`consumeMultiplayerPropertiesBlock`) — donc `FUN_1407f2224` == `consumeDefaultStateTI36` |
+| 3 | `R(12)` -> `dst+0x60` | bloc inline `+0xc` |
+| 4 | `R(7)` -> `dst+0x64` | `FUN_1406d84b4`, largeur figee par `C7 44 24 20 07 00 00 00` (`MOV dword [RSP+0x20],7`) @`0x1407f0d30`, juste avant `CALL 0x1406d84b4` @`0x1407f0d38` |
+| 5 | `FUN_1407f2494(dst+0x68, reader)` — bloc de liste, ci-dessous | `CALL` @`0x1407f0d49` |
+| 6 | `ECS_ReadEntityRefIndex5` = `FUN_1407f2058` = `R(1)` ; si 0 -> `R(5)` | -> `dst+0xa4` apres resolution de handle (0 bit) |
+
+`FUN_1407f2494` :
+
+```
+porte = R(1)                                  (FUN_1406cf008 @0x1407f24c1)
+si porte == 0 : FUN_14080d69c(_, reader, ...) = R(1) ; si 1 -> R(32)
+                (args verifies au desassemblage : MOV RDX,RBP = le reader, CALL @0x1407f24dc)
+sinon         : n = R(4)                      (FUN_1424e1d48, `+4` inline)
+                n fois : R(1) ; si 1 -> R(32) (FUN_1406cf008 + FUN_14080d6f0)
+```
+
+`FUN_14080d69c` verifie : `R(1)` ; si 0 -> valeur par defaut en RAM ; si 1 -> `FUN_14080d6f0`
+= `R(32)`. `FUN_1424e1d48` verifie : `R(4)`.
+
+**Table de la vtable de `ti=42`** (`0x1436fd790`, lue octet a octet) : `+0x40` et `+0x70`
+pointent le stub `0x1408d8220` (`return 1`, 0 bit) ; `+0x60` = `0x1407f0c68` (ci-dessus) ;
+`+0x88` = `0x140ea3ef4` (masque par defaut, 0 bit).
+
+## 5. Ce qui reste NON resolu apres cette passe, et il faut le dire
+
+- Le CONSOMMATEUR du payload type-2 du film (celui qui lit l'en-tete `[id:32][field:26][ti:6]`)
+  n'a pas ete identifie statiquement. Consequence : la SEMANTIQUE des 26 bits de `field`
+  reste inconnue. Le balayeur du depot (`keyframe_world.go:70`) n'accepte une ancre QUE si
+  ces 26 bits sont NULS — c'est un filtre, pas une lecture.
+- `vtable[0x88]` (masque par defaut) n'est porte pour aucun archetype. Il ne lit aucun bit,
+  mais il commande la lecture de la porte `R(1)` : un archetype dont le masque par defaut est
+  non nul lit la porte meme quand le flux ne la porte pas.
+
+# IMAGE-CLE — file par entite, et le vrai sort du payload type-2 (lot R6, 2026-08-17)
+
+> Lecture Ghidra STRICTEMENT read-only (instance PID 10104, `HaloInfinite.exe`).
+> **Note d'acces** : le pont `mcp__ghidra__*` refuse de se connecter (l'instance UDS se
+> declare `unknown`, `connect_instance` refuse tout repli TCP). L'API HTTP du plugin
+> (`127.0.0.1:8089`) a ete utilisee a la place — memes endpoints
+> (`/decompile_function`, `/disassemble_function`, `/get_xrefs_to`, `/read_memory`),
+> meme programme, aucun rename, aucun script, aucune analyse relancee.
+> Contexte : `PLAN_R6_FILE_PAR_ENTITE.md`. Ouvre sur la condition de reprise ecrite par R5
+> (« decompiler le CONSOMMATEUR du payload type-2 »).
+
+## 1. La file par entite n'est PAS une transformation — c'est un REPORT
+
+| adresse | ce que la decompile montre |
+|---|---|
+| `FUN_142f29538` | **push d'un tampon circulaire**. Element de 0x38 = 56 octets (`param_1 + idx*0xe + 4`, en ints). Recopie `param_2[0..3]`, un handle refcompte (`FUN_142a777e8`), puis `param_2[8..0xd]`. **Aucune ecriture de bits, aucun reencodage.** |
+| `FUN_142f2913c` | **drain**. Par item : `FUN_14064c350` (init reader), `FUN_1411b149c(reader, *(item+0x10), *(item+0x20))`, `FUN_1406d5cc0(reader,3)`, `FUN_1432fe23c(reader, *(item+0x2c))`, puis `FUN_1406cbaa0(*(item+0x30), *(item+0x28), param_1+0x38, param_1, item, reader, 0)` |
+| `FUN_1411b149c` | `*(r+8)=data ; *(r+0x10)=data+len ; *(r+0x18)=len` -> `item+0x10` = **pointeur de tampon**, `item+0x20` = **longueur du TAMPON** (pas du record) |
+| `FUN_1432fe23c` | `*(r+0x2c) = *(r+0x28) = param_2 ; *(r+0x20) = 2` -> `+0x2c` est la **position en bits** du reader (meme champ que la capture live de juillet). Donc `item+0x2c` = **le bit de depart du record** |
+| `FUN_142f25334` | **`memcpy` du tampon ENTIER du paquet** (`src = *(reader+8)`, `n = *(reader+0x18)`) dans un bloc alloue refcompte. Chemin source revele par l'allocateur : `...\engine\source\blofeld\networking\replication\replication_entity_manager_view.cpp` |
+| `FUN_1406cd128` @`0x1422f44fb` | **UNIQUE xref CODE du push** (l'autre xref, `0x145691d64`, est une DATA). Branche `DAT_14474cd78 != 0` : `uVar23 = *(param_3+0x2c)` (bit courant, capture AVANT decodage), `FUN_1406cbaa0(..., 1)`, construction de l'item, `FUN_142f29538(*(param_1+0x1b320), &local_110)` |
+| `FUN_142f2b5c4` | la garde du push : vrai si l'entite n'est pas encore reliee cote vue (`*(*param_2+0x68)`, `FUN_142f287f0`) |
+
+**Structure d'item, champ par champ** (56 octets, ordre des locales de `FUN_1406cd128`) :
+
+```
++0x00  16 o   *param_2 / param_2[1]   (contexte de paquet)
++0x10   8 o   handle vers la COPIE du tampon de paquet   (FUN_142f25334 = memcpy integral)
++0x20   4 o   longueur du tampon        (= *(reader+0x18))
++0x24   4 o   horodatage                (FUN_1405f50b8)
++0x28   4 o   id d'entite
++0x2c   4 o   BIT DE DEPART du record dans le tampon
++0x30   4 o   type de record (1=NEW, 2=DEL, 3=DELTA)
++0x34   4 o   index de vue
+```
+
+**REPONSE A LA QUESTION DU LOT** : il n'existe **aucune transformation
+« payload type-2 -> file par-entite »**. Un item ne porte pas de bitstream reconstruit : il
+porte une COPIE OCTET POUR OCTET du tampon du paquet, plus la position en bits du record.
+Le drain repose un reader sur cette copie, se replace au meme bit, et appelle le MEME
+`FUN_1406cbaa0` avec la MEME grammaire. **La file DIFFERE des records ; elle ne les
+reecrit pas.** L'objet que la condition de reprise de R5 demandait de decompiler n'existe
+pas.
+
+## 2. Le demultiplexeur de paquets du film — et le sort du type-2
+
+Chaine remontee : `FUN_142f2913c` / `FUN_1406cd128` <- `FUN_142987460` (3 vues x
+[drain + boucle de records], puis `vtable[0x48]` applique) <- `FUN_14298816c` <-
+`FUN_1428e2778` <- **`FUN_1428e22c0`** <- `FUN_1428e27c0` (boucle de paquets).
+
+`FUN_14298816c` porte la chaine source `...\engine\source\blofeld\saved_games\SavedFilmChunks.cpp`.
+
+**`FUN_1428e22c0` = l'aiguillage par TYPE DE PAQUET** (`sVar2 = *param_3`, le `u16` de tete
+de l'en-tete de 16 octets). Verifie au DESASSEMBLAGE (`0x1428e22ca` `MOVSX EDX,word ptr [R8]`,
+puis la chaine `CMP 8 / TEST / SUB 1 / SUB 1 / SUB 4 / CMP 1`) :
+
+| type | handler |
+|---|---|
+| 0 | `FUN_1428e2778` -> `FUN_14298816c` -> `FUN_142987460` (**decodeur de replication**) |
+| 1 | `FUN_142989418` |
+| **2** | **AUCUN** — `JZ 0x1428e2412` = `XOR SIL,SIL` (retourne 0) + telemetrie `FilmBlockReadError` |
+| 3, 4, 5 | AUCUN — meme cible `0x1428e2412` |
+| 6 | `FUN_142988084` · 7 `FUN_142985698` · 8 `FUN_142987bd4` · 9 compteur `+0xf8` · 10 `FUN_142988244` · 11 `FUN_1429882c8` · 12 `FUN_1429875e4` |
+
+**Et pourtant la lecture du film ne casse pas** — parce que le paquet type-2 n'arrive JAMAIS
+a l'aiguillage :
+
+```
+FUN_142989418 (handler du type 1) :
+  *(ctx+0xf8) += *(hdr+4)                     ; saute le payload du type-1 (343 019 o)
+  FUN_142988338(ctx, local_18, 0x10, 0)       ; lit l'en-tete SUIVANT (16 o)
+  si ok : *(ctx+0xf8) += local_14             ; saute AUSSI le payload suivant (= le type-2)
+```
+
+`FUN_142988338(ctx, dst, n, 0)` = `memcpy` de `n` octets depuis le chunk inflate au curseur
+`*(ctx+0xf8)`, borne par `*(ctx+0xe8)`, puis `curseur += n`. `local_14` est le champ `size`
+(`+4`) de l'en-tete relu.
+
+**CONCLUSION, ET C'EST LE RESULTAT DE FOND DU LOT R6** : **le jeu ne decode JAMAIS le payload
+type-2 en lecture de film. Il le SAUTE**, en meme temps que la table de precision type-1, par
+le handler du type-1. Il n'y a donc pas de consommateur a decompiler : il n'y en a pas.
+Le bloc type-2 est ecrit par l'ENREGISTREUR et ignore par le LECTEUR.
+
+Cela explique a posteriori le negatif de R5 (« le corps d'un record d'image-cle n'est pas un
+record NEW », 128 decalages x 16 lectures x 3 films, jamais plus de 1,8 %) : ces records ne
+sont relus par aucun deserialiseur du jeu.
+
+## 3. Ce que le jeu utilise a la place : le PREMIER paquet type-0
+
+Structure d'entree de session, mesuree sur les 3 films oracles (decoupe de paquets, chaine
+independante de toute lecture de bits) :
+
+```
+#0 type=1  343 019 o   (table de precision — SAUTE)
+#1 type=2  138 340 / 140 837 / 142 695 o   (etat monde — SAUTE)
+#2 type=6  4 o   ·  #3 type=8  25 124 o  ·  #4 type=12  4 o  ·  ... 
+#8 type=0  9 297 / 11 312 / 11 066 o      (PREMIER PAQUET DELTA)
+```
+
+Les 16 premiers octets du premier paquet type-0 sont **identiques d'un film a l'autre** :
+`88 00 15 84 00 2c 54 0c 61 c9 00 0b ff ff ff fc`. Ce sont exactement les 16 premiers octets
+de `.ai/V7.5/dumps/keyframe_buffer_live.bin` (11 485 o) ET de `kf_slot0_live.bin` (7 286 o).
+
+**La capture live de juillet, etiquetee « keyframe » depuis, a ete prise sur le PREMIER
+PAQUET DELTA**, pas sur le payload type-2 — ce que sa propre pile d'appel disait deja
+(`FUN_1406cbaa0` <- `FUN_1406cd128`), puisque `FUN_1406cd128` ne s'execute jamais quand la
+porte d'image-cle `*(param_1+0x12)` est mise.
+
+## 4. Ce qui reste NON resolu apres cette passe
+
+- La SEMANTIQUE du payload type-2 reste inconnue, et elle le restera par cette voie : aucun
+  code de lecture ne l'interprete. Le seul levier serait l'ECRIVAIN (cote enregistrement) : voir §5,
+  ou il est cherche et NON trouve.
+- `vtable[0x88]` (masque par defaut) n'est toujours porte pour aucun archetype (report R5).
+- `DAT_144731d20` (`FUN_1428e27c0` @`0x1428e2980`) est un MASQUE DE TYPES « a traiter
+  immediatement dans le meme tick » ; les autres types sont reportes au tick suivant. Non
+  exploite ici.
+
+## 5. L ECRIVAIN du bloc type-2 — recherche BORNEE, negatif
+
+Puisque le LECTEUR saute le bloc type-2 (§2), la question devient « qui l'ECRIT, et selon
+quelle grammaire ». Recherche bornee a trois sondes de chaines/xrefs, toutes negatives :
+
+| sonde | resultat |
+|---|---|
+| xrefs de la chaine d'allocation `...\saved_games\SavedFilmChunks.cpp` (`0x143ddb470`) | **UNE seule** : `0x1429881b6` dans `FUN_14298816c` — le LECTEUR |
+| `search_strings` sur `saved_games` (min 10, tout le binaire) | **1 seule chaine**, celle ci-dessus |
+| `search_strings` sur `FilmBlock` / `RecordFilm` / `film_block` | **1 seule chaine** : `FilmBlockReadError` (`0x143dcb3b0`), cote LECTURE |
+| xrefs de l'encodeur de snapshot `FUN_142f2e174` (vtable `0x1436a87e0` + 0x10) | **aucun appel direct** : uniquement la case de vtable `0x1436a87f0` et une DATA. Ses appels passent par `vtable[0x10]`, non resolus statiquement |
+| cvar `SavedFilmValidateEntityState` (`0x143732020` -> `FUN_141129458`, valeur `DAT_1450fb320`) | aucune lecture directe de la valeur : elle passe par l'objet cvar `DAT_1450fb2f0` |
+
+**Conclusion bornee** : le chemin d'ECRITURE des chunks de film ne laisse dans
+`HaloInfinite.exe` **ni site d'allocation nomme, ni chaine d'erreur**, la ou le chemin de
+LECTURE laisse les deux. La grammaire du bloc type-2 n'est donc pas atteignable par la voie
+chaines/xrefs dans ce binaire. La piste restante, non ouverte ici : le format se deduit du
+CONTENU (la table est deja balayee a 249/250 entites contre un oracle Cheat Engine) ou d'un
+autre binaire (serveur dedie), hors perimetre offline-pur.

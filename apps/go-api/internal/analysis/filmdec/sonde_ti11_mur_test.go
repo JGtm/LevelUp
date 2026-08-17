@@ -41,11 +41,6 @@ import (
 	"testing"
 )
 
-// ti11HeaderTIOffset est la position, en bits depuis le debut d'un record d'image-cle, du champ
-// `ti` de 6 bits — c'est-a-dire le point exact ou TraverseEntity doit prendre la main.
-// Source : keyframe_world.go:19-22 ([id:32][field:26][ti:6], ti = readBits(q+58, 6)).
-const ti11HeaderTIOffset = 58
-
 // ti11WallStats agrege la traversee des records d'un archetype.
 type ti11WallStats struct {
 	records      int
@@ -92,7 +87,7 @@ func ti11WalkArchetype(dir string, reg *Registry, wantTI int) ti11WallStats {
 				}
 				s.records++
 				br := NewBitReader(pay)
-				br.SetBitPos(r.Bit + ti11HeaderTIOffset)
+				br.SetBitPos(r.Bit + keyframeRecordTIBit)
 				tr := TraverseEntity(br, reg, 0)
 				if int(tr.TypeIndex) != wantTI {
 					s.tiMismatch++
@@ -164,7 +159,7 @@ func TestTI11MurParImageCle(t *testing.T) {
 	}
 	if target.tiMismatch == target.records {
 		t.Logf("VERDICT : alignement REFUTE — TraverseEntity ne relit jamais ti=%d a Bit+%d.",
-			ti11TypeIndex, ti11HeaderTIOffset)
+			ti11TypeIndex, keyframeRecordTIBit)
 		return
 	}
 	firsts := ti11SortedKeys(target.firstPresent)
