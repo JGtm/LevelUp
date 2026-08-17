@@ -12,8 +12,13 @@ les deux aurait pose un second lecteur du meme flux, c'est-a-dire exactement ce 
 copies interdit. Le code de R3 (`equipment_identity*.go`, hooks `publishEquipID` dans
 `default_state*.go`) est donc ECARTE et son plan conserve comme confirmation independante.
 Entrent : R4 en entier (deux sondes sous garde `TI11_FILM`), les instruments de R5 et R6 sous
-gardes `KF_GRAM_FILM` / `KFQ_FILM`, et `default_state_ti42.go` avec la ligne qui l'inscrit dans
-`defaultStateDeserByTI`. Deux adaptations rendues necessaires par le retrait de R3 :
+gardes `KF_GRAM_FILM` / `KFQ_FILM`. N'entre PAS le port de l'etat par defaut de `ti=42`
+(`default_state_ti42.go` et son entree dans `defaultStateDeserByTI`) : sa grammaire est
+decompilee et juste, mais AUCUN oracle ne la valide, et la brancher a l'aveugle decalerait le
+decodage de tous les records `ti=42` sans qu'aucune mesure ne le dise — decision superviseur du
+17/08, appliquee ici. La grammaire reste ecrite dans `WALK_PORT_NOTES.md` § IMAGE-CLE §4 et dans
+le plan R5 §11, avec sa condition de reprise au registre. Deux adaptations rendues necessaires
+par le retrait de R3 :
 `keyframeRecordTIBit` (58) devient la definition unique du paquet, posee dans `keyframe_world.go`
 a cote de la documentation de l'en-tete et reutilisee par les trois marcheurs ; la matrice des
 huit combinaisons de grammaire redescend dans le fichier de test qui l'utilise (`kfGramLayouts`),
@@ -34,8 +39,11 @@ tampon `kf_slot0_live.bin` — un oracle de LARGEUR par archetype.
 
 **Prochaine etape** : la fusion dans `feat/v75` revient au superviseur. `SchemaVersion` reste a
 **9** (celle de la production) : aucun des quatre lots ne publie quoi que ce soit. Registre et
-README de `.ai/V7.5/` a jour ; l'entree `ti=42` de `defaultStateDeserByTI` entre SANS oracle qui
-la valide, et cette absence est ecrite au registre.
+README de `.ai/V7.5/` a jour. Le seul code de production que la fusion aurait ajoute — l'entree
+`ti=42` de `defaultStateDeserByTI` — a ete RETIRE sur decision superviseur : sans oracle, il
+change le decodage sans le prouver. Ce que la reprise devra fournir pour le rebrancher (un
+oracle de position d'arme au sol, ou une calibration a la maniere des poses `ti=37`) est au
+registre.
 
 ## [2026-08-17] Lot R6 — la file par entite n'existe pas comme transformation, et le jeu ne relit jamais son image-cle
 
@@ -93,9 +101,10 @@ image-cle puis s'arrete (26 records de l'oracle sur 7 825, soit 0,3 %). (3) L'en
 ou le `typeIndex` relu est correct, 415/415 et 2 008/2 008. (4) L'oracle de R3 est disculpe :
 zero record intercale traverse, 382 marches sur 415 n'atterrissent meme pas sur un en-tete — le
 filtre `field26 == 0` du balayeur n'y est pour rien. (5) Acquis positif : l'etat par defaut de
-`ti=42` est RESOLU bit-exact (vtable `0x1436fd790`, `*(vtable+0x60)` = `FUN_1407f0c68`) et porte
-dans `filmdec/default_state_ti42.go`. Il remplit la condition de reprise ecrite le 12/08 pour les
-armes au sol — qui s'avere insuffisante.
+`ti=42` est RESOLU bit-exact (vtable `0x1436fd790`, `*(vtable+0x60)` = `FUN_1407f0c68`) — la
+grammaire est ecrite (`WALK_PORT_NOTES.md` § IMAGE-CLE §4, plan R5 §11) mais NON BRANCHEE dans
+`defaultStateDeserByTI` : aucun oracle ne la valide (decision superviseur du 17/08). Elle remplit
+la condition de reprise ecrite le 12/08 pour les armes au sol — qui s'avere insuffisante.
 
 **Prochaine etape** : R5 avait nomme le verrou suivant « decompiler le consommateur du payload
 type-2 » ; R6, le meme jour, a execute cette condition et l'a rendue SANS OBJET. La suite est

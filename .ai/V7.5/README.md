@@ -36,7 +36,9 @@ portent le detail mesure, et trois d'entre eux sont des NEGATIFS qui ferment des
   refutees, chacune par son temoin.
 - `replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md` — le corps d'un record d'image-cle n'est PAS un
   record NEW (128 decalages x 16 lectures x 3 films, jamais plus de 1,8 %). Acquis positif :
-  l'etat par defaut de `ti=42` est porte bit-exact (`filmdec/default_state_ti42.go`).
+  la grammaire de l'etat par defaut de `ti=42` est decompilee bit-exact (`FUN_1407f0c68`), mais
+  NON BRANCHEE dans le decodeur — aucun oracle ne la valide (decision du 17/08). Elle vit dans
+  le plan et dans `killweapon/WALK_PORT_NOTES.md` § IMAGE-CLE §4.
 - `replay2d/PLAN_R6_FILE_PAR_ENTITE.md` — le lecteur de film du jeu SAUTE le payload type-2 :
   il n'y a aucun consommateur a decompiler. La file par entite n'est pas une transformation,
   et la capture live de juillet portait sur le premier paquet DELTA, pas sur une image-cle.

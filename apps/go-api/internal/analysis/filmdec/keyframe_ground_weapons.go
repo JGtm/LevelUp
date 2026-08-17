@@ -129,12 +129,14 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 // BRUIT. Ne pas la brancher sur un artefact ni sur une réponse d'API.
 //
 // DEUX CAUSES STRUCTURELLES, toutes deux hors de portée offline-pur aujourd'hui :
-//   - au KEYFRAME, la position suit le default-state de l'archétype (vtable[0x60]). Sa grammaire
-//     est PORTÉE depuis le 2026-08-17 (lot R5, default_state_ti42.go, entrée 42 de
-//     defaultStateDeserByTI), mais AUCUN oracle ne la valide et cela ne débloque rien : le lot R5
-//     a mesuré que le corps d'un record d'image-clé n'est pas un record NEW (jamais plus de 1,8 %
-//     de marches bit-exactes), et le lot R6 que le jeu SAUTE le payload type-2. Lire une position
-//     ici « à peu près » produirait des coordonnées inventées ;
+//   - au KEYFRAME, la position suit le default-state de l'archétype (vtable[0x60]), dont
+//     `defaultStateDeserByTI` n'a PAS d'entrée 42 : l'offset d'i0 y est inconnu, et le lire
+//     « à peu près » produirait des coordonnées inventées. La grammaire de ce default-state
+//     EXISTE pourtant, décompilée par le lot R5 (`FUN_1407f0c68`, chaîne vtable 0x1436fd790 —
+//     .ai/V7.5/killweapon/WALK_PORT_NOTES.md § IMAGE-CLE §4 et
+//     .ai/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md §11) : elle n'est PAS branchée ici,
+//     faute d'oracle qui la valide — la brancher à l'aveugle décalerait le décodage de tous
+//     les records ti=42 sans qu'aucune mesure ne le dise ;
 //   - en DELTA, le record ne porte aucun typeIndex (il résout son archétype par le World) et la
 //     bande de slots comblée est contaminée par les archétypes voisins.
 //
