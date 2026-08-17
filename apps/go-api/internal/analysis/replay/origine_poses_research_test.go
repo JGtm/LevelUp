@@ -41,7 +41,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -123,27 +122,13 @@ func TestOriginePosesDistribution(t *testing.T) {
 
 // origineMapEntry charge l'entree de catalogue de la carte. Sans elle, pas de METRES — et le
 // seuil du plan est en metres : on echoue plutot que de mesurer dans une unite muette.
+//
+// LE CHARGEMENT EST PARTAGE (`mapQuantEntryFromEnv`, ground_weapon_pads_research_test.go) : la
+// phase 1 des socles avait besoin du meme, et deux copies du meme chargement de catalogue
+// re-divergent (regle du depot).
 func origineMapEntry(t *testing.T) filmdec.MapQuantEntry {
 	t.Helper()
-	nom := os.Getenv(origineMapEnv)
-	if nom == "" {
-		t.Fatalf("%s absent : la carte porte les bornes de dequantification, sans elle la"+
-			" distance n'est pas en metres", origineMapEnv)
-	}
-	chemin := os.Getenv(origineBoundsEnv)
-	if chemin == "" {
-		// PathResolver, jamais un `filepath.Join(..., "data", ...)` a la main (regle du depot).
-		chemin = title.NewPathResolver(repoRootForTest(t)).MapQuantBoundsPath(title.DefaultSlug)
-	}
-	cat, err := filmdec.LoadMapQuantCatalog(chemin)
-	if err != nil {
-		t.Fatalf("catalogue de bornes illisible (%s) : %v", chemin, err)
-	}
-	e, err := cat.Lookup(nom)
-	if err != nil {
-		t.Fatalf("carte %q absente du catalogue : %v", nom, err)
-	}
-	return e
+	return mapQuantEntryFromEnv(t, origineMapEnv, origineBoundsEnv)
 }
 
 // origineFamilles lit le manifeste du titre — la MEME table que la production.
