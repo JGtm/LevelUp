@@ -358,7 +358,7 @@ identifie ; sinon `[!]` avec la mesure.
 > partout et le registre porte la condition de reprise. Aucun ramassage d'arme `dropped` n'est
 > publie. L'utilisateur peut renverser.
 
-- [ ] 2.5 ORACLE PAR JOUEUR (meme seuil, meme temoin) — sur les ramassages de SOCLES a ramasseur
+- [!] 2.5 ORACLE PAR JOUEUR (meme seuil, meme temoin) — sur les ramassages de SOCLES a ramasseur
       identifie : ramasseur = slot de vie -> xuid par le pont du constructeur (`SlotXUID`) ; a la
       premiere image-cle qui suit, prendre le loadout de la VIE COURANTE de ce xuid (son slot a cet
       instant, quel qu'il soit) ; accord = la famille ramassee y figure. Denominateur = ramassages
@@ -367,9 +367,52 @@ identifie ; sinon `[!]` avec la mesure.
       meme image-cle. Publier aussi la part des ramassages sans pont (slot non attribue).
       **Gate 2.5** : accord >= 90 % => le ramasseur (xuid) est publiable en phase 3 ; sinon `[!]`
       et `null`.
+      **MESURE FAITE ET PUBLIEE ; LE GATE 2.5 EST NON ATTEINT** — 102 / 128 = **79,7 %** contre
+      >= 90 % exige, seuil NON rebaisse. Le ramasseur (xuid) n'est donc PAS publiable : `null`
+      partout en phase 3. Le detail est au journal, et il REFUTE l'hypothese de l'arbitrage : le
+      pont fonctionne (11 ramassages sans pont sur 177), mais le plafond ne se leve pas
+      (71,2 % -> 72,3 %) et l'accord, rapporte aux cas ou l'oracle peut parler, BAISSE
+      (88,1 % par slot -> 79,7 % par joueur). **Decouverte 12.**
 
 **Gate 2 (relu apres 2.5)** : la phase 3 s'ouvre dans les deux issues de 2.5, avec le perimetre
 tranche ci-dessus.
+
+> **GATE 2.5 — NON ATTEINT. 79,7 % contre >= 90 % exige (102 / 128), seuil NON rebaisse.** Le
+> denominateur est celui que l'item ecrit : ramassages de SOCLE (`at_rest`) dates, a pont, ayant
+> une image-cle suivante, et dont le xuid a un loadout OBSERVABLE a cette image-cle. Les trois
+> ecartements sont publies a part : **11 / 177 sans pont** (6,2 %), **0 sans image-cle suivante**,
+> **38 / 177 sans loadout observable** (21,5 %).
+>
+> **CE QUE LA MESURE ETABLIT, ET C'EST UNE REFUTATION — il faut les trois enonces** :
+>
+> - **le pont du constructeur n'est pas en cause.** Il nomme 94 % des ramasseurs de socle
+>   (166 / 177), avec 0 collision de slot et 0 desaccord d'index sur les 8 films, et 90 a 97 % des
+>   vies nommees par le seul fil des morts. Quand il manque, c'est le film qui est pauvre en morts
+>   (`b8d1fe0c`, le plus court : 31 morts pour 44 vies, 4 des 6 ramassages sans pont) ;
+> - **le PLAFOND NE SE LEVE PAS, et c'etait toute l'hypothese de l'arbitrage.** Par slot,
+>   126 / 177 = 71,2 % des ramassages avaient un loadout lisible ; par joueur, 128 / 177 = 72,3 %.
+>   Un point de gagne. Suivre le joueur a travers les respawns ne recupere qu'entre 2 et 13 des
+>   51 cas muets, et 8 de ces recuperations tiennent a un seul film (`00162144`, 18 muets par slot
+>   -> 10 par joueur) ;
+> - **rapporte aux cas ou l'oracle PEUT parler — la meme restriction des deux cotes — l'oracle par
+>   joueur est MOINS bon que l'oracle par slot : 102 / 128 = 79,7 % contre 111 / 126 = 88,1 %.**
+>   C'est le fait central, et il a une explication que la mesure designe : un joueur qui MEURT
+>   entre le ramassage et l'image-cle suivante LACHE ce qu'il a ramasse. Son slot d'origine
+>   disparait (cas muet par slot) mais sa nouvelle vie, elle, est bien la — avec le loadout de
+>   REAPPARITION. Suivre le joueur ne transforme donc pas un silence en accord : il transforme un
+>   silence en DESACCORD. **Decouverte 12.**
+>
+> **AUCUN DECOUPAGE NE SAUVE LE GATE, et aucun n'a ete essaye pour le sauver.** Deux bornes
+> suffisent a le dire : si les 5 cas ou un xuid porte un loadout sur PLUSIEURS slots a la meme
+> image-cle etaient tous lus a l'envers, les corriger donnerait au mieux 107 / 128 = 83,6 % ; et si
+> les 11 ramassages sans pont etaient tous ponts et tous d'accord, 113 / 139 = 81,3 %.
+>
+> **Consequence contractuelle** : item 2.5 `[!]`. Le RAMASSEUR (xuid) n'est pas publiable — `null`
+> partout en phase 3, comme l'arbitrage l'avait tranche pour cette issue. Le reste du perimetre de
+> la phase 3 (`weaponPads`, `padPickups` sans ramasseur) est inchange et reste ouvert. Ce que la
+> mesure laisse comme condition de reprise n'est PAS un meilleur pont : c'est un oracle plus
+> RAPPROCHE que 20 s — l'inventaire lu dans le flux delta, ou toute source qui observe le porteur
+> avant qu'il puisse mourir.
 
 ### Phase 3 — PUBLICATION (schema 11) et note UI
 
@@ -473,6 +516,23 @@ de push. Lancement valide le 2026-08-17.
     qu'une arme lachee a une mort disparait le plus souvent toute seule. Consequence pour QUI
     VOUDRA PUBLIER LES RAMASSAGES : le seul sous-ensemble ou la mesure tient est `at_rest` (les
     socles). Non traite : la phase 3 est fermee par le gate 2.
+12. **LE PLAFOND DE L'ORACLE N'EST PAS LE PONT — C'EST L'ESPACEMENT DES IMAGES-CLES, et la
+    decouverte 10 se trompait de cause.** L'item 2.5 a rejoue l'oracle par JOUEUR, avec le pont du
+    constructeur, sur la meme population de socles : le plafond passe de 71,2 % a **72,3 %** (un
+    point), et l'accord rapporte aux cas ou l'oracle peut parler BAISSE de **88,1 % a 79,7 %**. La
+    raison est physique : un joueur qui MEURT dans les 20 s qui suivent le ramassage lache ce
+    qu'il a pris. Par slot, ce cas etait muet ; par joueur, il devient un DESACCORD, parce que la
+    nouvelle vie porte le loadout de reapparition. **Ce qui leverait le plafond n'est donc pas un
+    meilleur pont mais un oracle plus RAPPROCHE** : l'inventaire lu dans le flux delta, ou toute
+    source qui observe le porteur avant qu'il puisse mourir. Non traite : c'est un chantier a soi
+    seul, et la phase 3 est tranchee sans ramasseur.
+13. **UN MEME XUID PORTE PARFOIS UN LOADOUT SUR PLUSIEURS SLOTS A LA MEME IMAGE-CLE** — 5 cas sur
+    128, dont 4 sur le seul `01e1f945`. Un slot est une vie et un joueur n'en a qu'une a la fois :
+    soit deux vies du meme joueur sont repliquees en meme temps a la frontiere d'un respawn, soit
+    le pont attribue au meme joueur un slot qui ne lui appartient pas (les fermetures y sont plus
+    exposees que la lecture). La regle de l'item 2.5, ecrite avant la mesure, retient le plus petit
+    slot et COMPTE le cas. Non traite : 5 cas ne changent pas le verdict du gate (83,6 % au mieux),
+    et l'elucider demanderait de re-mesurer le pont lui-meme, hors perimetre de cet item.
 
 ## Branches utilisateur fusionnees AVANT le lancement (`66e867b80`, 2026-08-17)
 
@@ -989,3 +1049,114 @@ officielle n'est faite** : il n'y en a pas hors ligne, et le plan interdit de co
   JOUEUR via le pont `SlotXUID`, socles seulement, seuil 90 % inchange) ; perimetre de la phase 3
   tranche pour les deux issues (`weaponPads` + `padPickups`, xuid selon 2.5, jamais de `dropped`).
   Agent Opus lance sur 2.5.
+- 2026-08-17 — **item 2.5 CLOS. GATE 2.5 NON ATTEINT (79,7 % contre >= 90 % exige), et la mesure
+  REFUTE l'hypothese qui avait ouvert l'item.** Tout ci-dessous a tourne dans la session, aux
+  largeurs de chaque carte, `CGO_ENABLED=0`, UN FILM PAR PROCESSUS, memes 8 films que les
+  phases 1 et 2, meme chaine.
+
+### Instrument et seuil (ecrits AVANT la mesure, commit `5546046b0` anterieur a la mesure)
+
+`replay/ground_weapon_pickup_owner_test.go` : l'oracle par joueur, appele en DERNIER par
+`TestGroundWeaponPickups` (garde `GW_PICKUP`). Trois tests sans garde entrent au gate ordinaire
+(le loadout suit le joueur a travers le respawn ; deux slots d'un meme xuid ne fusionnent pas en
+silence ; l'ordre du tirage du temoin est total).
+
+**LE PONT EST CELUI DU CONSTRUCTEUR, PAS UN PONT MAISON** : `buildOwners` (owners.go) aux MEMES
+entrees que `BuildFromFilm` — `ScanFilmDeaths`, `ScanFilmPlayerIndices` + `injectiveOrEmpty`,
+`ScanFilmFireEvents` -> `fireRefs` (les fermetures), `indexBySlot` sur les positions deja lues.
+C'est `own.SlotXUID` que le document publie sur `Track.XUID` (`build.go`, `nameTracks`) : mesurer
+sur autre chose n'aurait rien dit de ce qui serait publie.
+
+| seuil / regle | valeur | source |
+|---|---|---|
+| population | ramassages de SOCLE (`at_rest`) DATES | arbitrage, decouverte 11 |
+| ramasseur | `SlotXUID[slot du passage]` ; absent => SANS PONT, hors denominateur | item 2.5 |
+| vie courante | le slot du MEME xuid portant un loadout a l'image-cle visee ; plusieurs => le plus petit, et le cas est COMPTE | ecrit avant mesure |
+| loadout observable | un tel slot existe ; sinon hors denominateur et publie a part | item 2.5 |
+| temoin | un AUTRE xuid tire au sort parmi ceux qui ont un loadout observable a la MEME image-cle, graine 20260817 | item 2.5 |
+| controle NOUVEAU | derniere image-cle PRECEDANT la date, meme regle de vie courante — publie SANS seuil | item 2.5 |
+| **GATE 2.5** | **accord >= 90 %** sur le denominateur ci-dessus | plan (seuil du gate 2) |
+
+### Controle d'ancrage : l'ajout de 2.5 ne deplace RIEN
+
+Les 8 films ont d'abord ete rejoues avec l'instrument INCHANGE (avant tout ajout) : **177
+ramassages de socle dates, 111 accords = 62,7 %, temoin 6 / 170 = 3,5 %** — les chiffres de la
+phase 2, au chiffre pres. Apres l'ajout de 2.5, les sorties des items 2.1 a 2.4 sont **identiques
+ligne pour ligne sur les 8 films** (diff = 0 ligne). C'est voulu et c'est construit : le rapport
+2.5 est appele APRES les autres et son temoin a sa propre source a la meme graine — sans quoi il
+aurait deplace les tirages de 2.1 et 2.2.
+
+### 2.5 — l'oracle par joueur, et ce que son denominateur coute
+
+| film | socles dates | SANS PONT | sans loadout obs. | DENOM | ACCORD | TEMOIN | rapport |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `000d5950` | 0 | — | — | 0 | — | — | — |
+| `bcb6d393` | 19 | 1 (5,3 %) | 4 (21,1 %) | 14 | **14 (100 %)** | 1/14 = 7,1 % | 14,0 |
+| `01e1f945` | 29 | 5 (17,2 %) | 3 (10,3 %) | 21 | 16 (76,2 %) | 2/21 = 9,5 % | 8,0 |
+| `75f1188f` | 25 | 0 | 6 (24,0 %) | 19 | 16 (84,2 %) | 0/19 = 0,0 % | — |
+| `7f1bbf06` | 19 | 0 | 4 (21,1 %) | 15 | 12 (80,0 %) | 1/15 = 6,7 % | 12,0 |
+| `b974a390` | 39 | 1 (2,6 %) | 10 (25,6 %) | 28 | 24 (85,7 %) | 0/28 = 0,0 % | — |
+| `b8d1fe0c` | 6 | 4 (66,7 %) | 1 (16,7 %) | 1 | 1 (100 %) | 0/1 = 0,0 % | — |
+| `00162144` | 40 | 0 | 10 (25,0 %) | 30 | 19 (63,3 %) | 2/30 = 6,7 % | 9,5 |
+| **TOTAL** | **177** | **11 (6,2 %)** | **38 (21,5 %)** | **128** | **102 = 79,7 %** | **6 / 128 = 4,7 %** | **17,0** |
+
+`000d5950` est le Super Fiesta sur variante Forge : il n'a aucun socle depuis l'item 1.2, donc
+aucun ramassage de socle a mesurer. Ce n'est pas une valeur manquante, c'est un zero mesure.
+
+### 2.5 — le controle « ramassage NOUVEAU », et l'anomalie qu'on ne tait pas
+
+| film | loadout obs. a l'image-cle PRECEDENTE | portait DEJA | NOUVEAUX | accord sur les NOUVEAUX | xuid a PLUSIEURS slots |
+|---|---:|---:|---:|---:|---:|
+| `bcb6d393` | 12 | 0 (0,0 %) | 12 | 12 (100 %) | 0 |
+| `01e1f945` | 16 | 2 (12,5 %) | 14 | 9 (64,3 %) | 4 |
+| `75f1188f` | 15 | 1 (6,7 %) | 14 | 12 (85,7 %) | 1 |
+| `7f1bbf06` | 8 | 0 (0,0 %) | 8 | 5 (62,5 %) | 0 |
+| `b974a390` | 19 | 0 (0,0 %) | 19 | 15 (78,9 %) | 0 |
+| `b8d1fe0c` | 1 | 0 (0,0 %) | 1 | 1 (100 %) | 0 |
+| `00162144` | 23 | 1 (4,3 %) | 22 | 14 (63,6 %) | 0 |
+| **TOTAL** | **94** | **4 (4,3 %)** | **90** | **68 (75,6 %)** | **5** |
+
+**LE CONTROLE TIENT** : 4 ramassages sur 94 portaient deja la famille a l'image-cle precedente
+(4,3 %, a comparer aux 2,3 % mesures par slot a l'item 2.2). L'accord ne repose donc pas sur des
+armes deja portees — il porte sur des ramassages NOUVEAUX. **L'anomalie est publiee telle
+quelle** : 5 fois, un meme xuid porte un loadout sur PLUSIEURS slots a la meme image-cle, ce qui
+ne devrait pas arriver. La regle ecrite avant la mesure retient le plus petit slot ; corriger ces
+5 cas dans le sens le plus favorable donnerait 107 / 128 = 83,6 %, toujours sous le seuil.
+
+### 2.5 — la qualite du pont, film par film (il n'est PAS la cause)
+
+| film | morts | slots pontes | vies nommees | par lecture | fermetures tir / respawn | lectures d'index | desaccords | collisions | joueurs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `000d5950` | 93 | 93 | 90/105 | 90 | 0 / 3 | 26 | 0 | 0 | 8 |
+| `bcb6d393` | 49 | 54 | 48/58 | 48 | 1 / 5 | 19 | 0 | 0 | 11 |
+| `01e1f945` | 105 | 100 | 97/113 | 97 | 1 / 2 | 28 | 0 | 0 | 8 |
+| `75f1188f` | 80 | 82 | 79/85 | 79 | 1 / 2 | 22 | 0 | 0 | 8 |
+| `7f1bbf06` | 60 | 67 | 60/71 | 60 | 1 / 6 | 17 | 0 | 0 | 8 |
+| `b974a390` | 141 | 142 | 138/149 | 138 | 0 / 4 | 35 | 0 | 0 | 8 |
+| `b8d1fe0c` | 31 | 33 | 31/44 | 31 | 0 / 2 | 12 | 0 | 0 | 7 |
+| `00162144` | 92 | 98 | 92/108 | 92 | 0 / 6 | 23 | 0 | 0 | 8 |
+
+**Zero collision de slot et zero desaccord d'index sur les huit films** : la table slot -> joueur
+est licite partout ou elle existe. Les deux films qui perdent des ramasseurs sont ceux dont le fil
+des morts nomme le moins de vies (`b8d1fe0c` 31/44 = 70,5 %, 4 des 6 ramassages sans pont ;
+`01e1f945` 97/113 = 85,8 %, 5 sans pont sur 29).
+
+### 2.5 — LA COMPARAISON QUI TRANCHE, sur la meme espece de restriction
+
+| oracle | denominateur | accord | plafond (part du 177 mesurable) | temoin | rapport |
+|---|---:|---:|---:|---:|---:|
+| par SLOT de vie (item 2.2) | 126 | **111 = 88,1 %** | 126/177 = 71,2 % | 3,5 % | 17,8 |
+| par JOUEUR (item 2.5) | 128 | **102 = 79,7 %** | 128/177 = 72,3 % | 4,7 % | 17,0 |
+
+Les deux lignes sont restreintes de la MEME facon — aux cas ou l'oracle peut parler — et le
+resultat est net : suivre le joueur gagne **un point de plafond** (71,2 % -> 72,3 %) et **perd
+huit points d'accord** (88,1 % -> 79,7 %). Le rapport au temoin, lui, ne bouge pas (17,8 -> 17,0) :
+les deux oracles mesurent bien quelque chose, mais celui par joueur ne mesure pas mieux.
+
+**POURQUOI, ET C'EST LE RESULTAT DU LOT.** Un joueur qui meurt entre le ramassage et l'image-cle
+suivante LACHE ce qu'il a ramasse. Par slot, ce cas etait MUET (le slot d'origine a disparu). Par
+joueur, il n'est plus muet : la nouvelle vie est bien la, avec le loadout de REAPPARITION, qui ne
+porte pas l'arme du socle. **Le pont ne transforme donc pas un silence en accord, il transforme un
+silence en DESACCORD** — d'ou un plafond qui bouge a peine et un accord qui baisse. Le plafond des
+55,3 % / 71,2 % de la decouverte 10 n'etait pas un artefact du pont : c'est l'espacement de 20 s
+des images-cles, et la mort qui tient dedans.
