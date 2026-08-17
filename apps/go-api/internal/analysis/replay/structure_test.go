@@ -141,8 +141,19 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   (`coverage.placements`), et elle porte le découpage de bloc CALIBRÉ sur le film :
 	//   sans elle, zéro pose par absence d'équipement et zéro pose par calibration refusée
 	//   seraient indistinguables.
-	if SchemaVersion != 9 {
-		t.Fatalf("SchemaVersion = %d, attendu 9 : incrémenter exige une raison écrite ci-dessus "+
+	//   v9 -> v10 (2026-08-18, plan PLAN_ORIGINE_POSES_ET_FAMILLES phase G) : chaque pose porte
+	//   son ORIGINE MESURÉE (`origin` : `deployed` / `dropped` / `unknown`), et
+	//   `coverage.placements` la croise avec la famille. UN CHAMP S'AJOUTE À UN SOUS-OBJET, ce
+	//   qui d'ordinaire ne monte pas la version — ici c'est le SENS DU CALQUE ENTIER qui change,
+	//   et c'est la raison. Mesure sur les 11 films calibrés : 3 242 des 3 661 poses à poseur
+	//   mesuré (88,6 %) naissent dans les 2 frames ET les 1,5 m du DERNIER POINT de leur poseur
+	//   — ce sont les objets qu'il PORTAIT, relâchés quand sa vie s'achève, pas des poses sur la
+	//   carte. Un client v9 dessine donc un mur là où personne n'en a déployé, et sans montée de
+	//   version il continuerait : la reprise du backfill se fait par SchemaVersion.
+	//   L'hypothèse inverse — une DOTATION AU SPAWN, écrite avant mesure — est RÉFUTÉE : 4 poses
+	//   sur 3 661 (0,1 %), et les 4 sont des vies de 0,13 à 1,49 s où début et fin se confondent.
+	if SchemaVersion != 10 {
+		t.Fatalf("SchemaVersion = %d, attendu 10 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -5689,6 +5689,7 @@ export interface components {
             /** Format: float */
             h?: number;
             id: string;
+            origin?: string;
             /** Format: int64 */
             owner: number;
             /** Format: int64 */
@@ -5708,9 +5709,16 @@ export interface components {
             byFamily?: {
                 [key: string]: number;
             };
+            byFamilyOrigin?: {
+                [key: string]: number;
+            };
             calibrated: boolean;
             /** Format: int64 */
             confirmed: number;
+            /** Format: int64 */
+            deployed: number;
+            /** Format: int64 */
+            dropped: number;
             /** Format: int64 */
             lives: number;
             /** Format: int64 */
@@ -5719,6 +5727,8 @@ export interface components {
             other: number;
             /** Format: int64 */
             placements: number;
+            /** Format: int64 */
+            unknown: number;
             widths?: string;
             /** Format: int64 */
             withHeading: number;

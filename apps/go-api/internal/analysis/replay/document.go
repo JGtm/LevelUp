@@ -85,7 +85,24 @@ package replay
 // optionnel, mais la version monte : les marqueurs d'équipement posé côté client N'EXISTENT que
 // si l'artefact les porte, et la reprise du backfill se fait par SchemaVersion — un artefact v8
 // doit se voir comme « à re-cuire », pas comme à jour.
-const SchemaVersion = 9
+//
+// v10 (2026-08-18, plan PLAN_ORIGINE_POSES_ET_FAMILLES phase G) : chaque pose porte son
+// ORIGINE MESURÉE (`origin` : `deployed` / `dropped` / `unknown`), et `coverage.placements`
+// la croise avec la famille. La version monte alors qu'un champ s'ajoute à un sous-objet, et
+// c'est justifié par ce que la mesure a trouvé : **`equipmentPlacements` n'était pas ce que
+// son nom dit**. Sur les 11 films calibrés, 3 242 des 3 661 poses à poseur mesuré (88,6 %)
+// naissent dans les 2 frames et les 1,5 m du DERNIER POINT de leur poseur — ce sont les objets
+// qu'il PORTAIT, relâchés quand sa vie s'achève, pas des poses sur la carte. Un client v9
+// dessine donc, aujourd'hui, un mur là où personne n'en a déployé ; sans montée de version il
+// continuerait, puisque la reprise du backfill se fait par SchemaVersion.
+//
+// L'HYPOTHÈSE DU PLAN ÉTAIT L'AUTRE BOUT DE LA VIE, ET ELLE EST RÉFUTÉE : le critère écrit
+// avant mesure cherchait une DOTATION AU SPAWN (création dans les 2 frames du DÉBUT de la vie
+// du poseur). Elle compte 4 poses sur 3 661 (0,1 %), et les 4 sont des vies de 0,13 à 1,49 s
+// où début et fin se confondent — le mode n'existe pas. Le témoin interne est dans la même
+// mesure : distance médiane de la pose à la position de DÉBUT de vie 27,03 m, à celle de FIN
+// 0,57 m, soit un facteur 47,5 sur les mêmes poses.
+const SchemaVersion = 10
 
 // Label est un libellé affichable dans les deux langues du produit.
 //

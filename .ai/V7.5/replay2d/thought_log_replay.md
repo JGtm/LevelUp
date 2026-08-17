@@ -4707,3 +4707,82 @@ Et leur nom ne derive pas du nom de base : 2 970 candidats « base + marque de v
 esperance de collision 4e-6, zero resultat. Le lien palette <-> mode reste a etablir, et il se
 fera par une REQUETE au registre le jour ou il sera accessible — ici le serveur local le tenait
 en ecriture, et l'ouvrir depuis un second processus viole les ADR 0013/0016.
+
+## 2026-08-18 — L'origine d'une pose se lit a la FIN de la vie du poseur : `equipmentPlacements` est, a 88,6 %, ce qu'un mort laisse tomber
+
+Plan `PLAN_ORIGINE_POSES_ET_FAMILLES.md`, phase G (Go) close. Ce qui suit est ce qu'un
+successeur doit savoir et qui ne se re-deduit pas.
+
+**L'HYPOTHESE DU PLAN ETAIT LE MAUVAIS BOUT DE LA VIE, et le plan avait prevu de pouvoir se
+tromper.** Le critere ecrit avant mesure cherchait une DOTATION AU SPAWN : un objet cree dans
+les 2 frames et les 1,5 m du DEBUT de la vie de son poseur. Mesure sur les 11 films calibres
+(4 250 poses, 3 661 a poseur mesure) : **4 poses, soit 0,1 %**. La MEME mesure prise a la FIN
+de la vie du poseur : **3 242, soit 88,6 %**. Il y a bien deux modes, mais sur l'autre axe.
+[VERIFIE]
+
+**CE QUE `equipmentPlacements` CONTIENT REELLEMENT** : les objets que le joueur PORTAIT,
+relaches quand sa vie s'acheve. Le groupe simultane que le lot de nommage avait vu au golden —
+deux grenades identiques a 2 cm plus une capacite, meme poseur, meme image — est reel, et son
+interpretation etait fausse : ce n'est pas une dotation RECUE au spawn, c'est un LACHER a la
+mort. Un joueur qui meurt en portant deux grenades a pointes et un capteur produit exactement
+ces trois lignes. La lecon transposable : **un groupe de creations simultanees au meme endroit
+ne dit pas QUAND dans la vie du poseur il tombe** — il fallait mesurer les deux bouts, et le
+lot precedent n'en avait mesure aucun.
+
+**LES 4 POSES DU MODE « SPAWN » ACHEVENT L'HYPOTHESE PLUTOT QUE DE LA SAUVER** : ce sont deux
+paires de grenades de fragmentation dont la vie du poseur dure **0,13 s et 1,49 s**. A cette
+duree debut et fin se confondent, et les quatre sont AUSSI a moins de 2 frames de la fin. Le
+mode est vide, pas faible. [VERIFIE]
+
+**LE TEMOIN EST INTERNE, sur les MEMES poses et la MEME methode** — distance de la pose aux
+deux extremites de la vie de son poseur : **27,03 m** au debut, **0,57 m** a la fin, facteur
+47,5. L'objet nait la ou le poseur s'arrete.
+
+**LE CONTROLE QUI VALIDE LA MESURE EST CELUI QUI REND ZERO.** Si les 88,6 % de lachers etaient
+un artefact (fenetre trop large, poseur mal attribue), les PANNEAUX du mur les porteraient
+aussi. Ils rendent **0 lacher sur 48** (`0x528fce46`) et **1 sur 43** (`0x686b40c9`), soit
+97,9 % et 97,7 % de deploiements. La methode sait rendre 0 % ; c'est ce qui autorise a croire
+les 88,6 %.
+
+**ET C'EST UNE TROISIEME LECTURE INDEPENDANTE DU MEME COUPLE.** La chaine des tags du jeu
+(`sofa_parent`) et la co-occurrence avec une grenade (0/46) designaient deja les deux panneaux
+comme les seuls objets vraiment deployes. La vie du poseur les designe une troisieme fois, par
+un signal qui ne partage aucune piece avec les deux premiers.
+
+**CE QUI TRANCHE LE RENDU DU MUR, et c'etait la question du lot** : `0x8e2dc574` (appareil,
+rang 19) est **PORTE** — 35 lachers sur 46, 13,0 % de deploiements ; `0x72199cba` (capteur,
+rang 22) aussi — 50 lachers sur 60, 15,0 %. L'arc du mur va donc sur les PANNEAUX. 97,7 % d'un
+cote, 29,4 % de l'autre, et rien entre les deux : un seuil a 50 % separe les deux groupes sans
+ambiguite. Piege pour la phase W : un mur deploye produit DEUX poses `deployed` (l'appareil qui
+vole ET ses panneaux) — dessiner l'arc sur les deux dessinerait deux murs pour un.
+
+**LES SEUILS DU PLAN N'ONT PAS BOUGE, ET ILS NE SE REGLENT PAS.** 2 frames et 1,5 m, ecrits
+avant la mesure, appliques a l'axe que la mesure a designe. Les lachers sont a 20-40 ms et
+0,63 m ; les deploiements a 14-42 s et 5,6-21,3 m. Trois ordres de grandeur : n'importe quel
+seuil entre 1 s et 10 s rendrait le meme classement.
+
+**LE REGISTRE DES MATCHS EST ACCESSIBLE, et deux lignes du registre des reports le
+supposaient impossible.** Les noms de carte des 11 films (necessaires aux METRES) viennent du
+SNAPSHOT PARQUET (`match_registry_*.parquet`, `read_parquet` en memoire) : aucune seconde
+ouverture de la DB que le serveur tient RW, donc aucune violation des ADR 0013/0016. Effet de
+bord gratuit : les 11 films sont classes par mode, **six ne sont pas Fiesta**, et le mode de
+`06dfe6d9` — « non documente » depuis le lot precedent — est BTB:Fiesta CTF. Les predicats que
+le lot de nommage avait declares injouables faute de registre le sont desormais ; ils n'ont pas
+ete joues ici (hors perimetre) et le registre des reports le dit.
+
+**DEUX PREDICTIONS SUR TROIS SONT TOMBEES, et la troisieme n'etait pas testable.** (a) « les
+grenades et capacites ~100 % spawn » : refutee par le mecanisme, elles sont a 95 % `dropped`.
+(b) « panneaux, balise, capteur, seeker, champ de reparation ~100 % deployed » : tenue POUR LES
+PANNEAUX SEULS ; les quatre autres sont a 0-28 %, parce que la prediction confondait la FAMILLE
+avec l'IDENTIFIANT — dans chaque famille sauf les panneaux, l'identifiant est l'appareil PORTE.
+(c) « power-ups ~100 % unknown, positions recurrentes » : le corpus entier porte UNE pose de
+surbouclier et UNE de camouflage, toutes deux avec poseur et `dropped`. n = 1 ne prouve rien,
+et ce qui existe contredit la prediction. Les 589 poses `unknown` du corpus ne sont pas des
+power-ups : 388 viennent d'un seul film (`084a804d`, 922 poses, 256 traces).
+
+**INSTRUMENT VERSIONNE** : `replay/origine_poses_research_test.go` (gardes `ORIGINE_FILM` +
+`ORIGINE_MAP`), un film par PROCESSUS, 11 executions a exit 0. Il n'invente pas le poseur : il
+appelle `equipmentOwner`, LA fonction de production — donc il mesure ce qui est publie, et non
+une approximation qui pourrait deriver. Le decoupage des vies reutilise `lifeGapUS` de lives.go
+et reproduit son compte sur le film de reference (105 vies pour 99 slots), ce qui est un
+controle gratuit qu'un second decoupage du meme fait ne divergeait pas.
