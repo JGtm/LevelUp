@@ -24,15 +24,30 @@
  * est donc DEVANT la position, dans la direction du cap (on pose le mur devant soi), et l'arc
  * s'ouvre vers l'arrière.
  *
- * LE CAPTEUR PULSE, ET SA PULSATION EST UNE FONCTION DU TEMPS (patron `explosionFx`) : la
- * lecture avance, recule, saute au curseur — une animation à état afficherait n'importe quoi
- * après un retour en arrière. Sous `prefers-reduced-motion`, la phase est figée.
+ * LE CAPTEUR PINGE, et tout ce qu'il affirme — portée, cadence, durée de révélation, camp
+ * révélé — vit dans `threatSensor.ts` : les chiffres y sont OFFICIELS et sourcés, la logique y
+ * est pure et testée. Ce fichier n'en garde que le TRACÉ (disque, anneau, onde, marques).
  *
  * Pas de React : géométrie pure + un CanvasRenderingContext2D (même règle que replayDraw).
  */
 import type { ReplayBounds, ReplayEquipmentPlacement } from '@/lib/api/types'
 
 import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import type { ReplayTrackReady } from './replayNormalize'
+import {
+  REVEAL_FILL_ALPHA,
+  REVEAL_RADIUS_PX,
+  REVEAL_WIDTH,
+  revealAlpha,
+  SENSOR_FILL_ALPHA,
+  SENSOR_PING_WIDTH,
+  SENSOR_RADIUS_M,
+  SENSOR_RING_ALPHA,
+  SENSOR_RING_WIDTH,
+  sensorPing,
+  sensorReveals,
+  type SensorReveal,
+} from './threatSensor'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 export interface PlacementView {
@@ -71,18 +86,6 @@ export const WALL_RADIUS_M = 1.6
 export const WALL_OPENING_RAD = (110 * Math.PI) / 180
 
 /**
- * Rayon du CAPTEUR, en mètres monde. VALEUR DÉCLARÉE, ET IL FAUT LE DIRE : le film ne porte
- * AUCUNE portée de détection — ni dans le record de création, ni dans la vie de l'objet. 8 m
- * est un choix d'écran : assez large pour se lire comme une ZONE (et non comme un second
- * marqueur ponctuel), assez sobre pour ne pas avaler une arène de 50 m. Le jour où une portée
- * serait mesurée, elle remplacerait cette constante — et la remplacerait seule.
- */
-export const SENSOR_RADIUS_M = 8
-
-/** Période de la pulsation du capteur, en millisecondes (lente, elle respire). */
-export const SENSOR_PULSE_MS = 1_600
-
-/**
  * PLANCHER DE LISIBILITÉ, en pixels d'écran. Un mur de 1,6 m sur une carte de Big Team Battle
  * (150 à 200 m de large pour 432 px utiles, soit ~2,5 px/m) tomberait à 4 px de rayon : une
  * éraflure. Le rayon monde effectif est donc relevé jusqu'à ce que l'arc atteigne ce plancher —
@@ -109,13 +112,6 @@ const WALL_HALO_WIDTH = 5
 const WALL_HALO_ALPHA = 0.22
 const WALL_ALPHA = 0.9
 
-/** Remplissage du capteur : très bas — c'est une zone, elle ne doit rien masquer. */
-const SENSOR_FILL_ALPHA = 0.1
-const SENSOR_RING_ALPHA = 0.55
-const SENSOR_RING_WIDTH = 1.25
-/** Amplitude de la respiration : le rayon oscille de ±6 % autour du rayon déclaré. */
-const SENSOR_PULSE_AMPLITUDE = 0.06
-
 const UNNAMED_ALPHA = 0.5
 
 /** Motif du cercle pointillé — une pose sans cap ne montre aucune direction. */
@@ -134,6 +130,23 @@ export interface PlacementTime {
   reducedMotion: boolean
   /** Les objets non identifiés se dessinent-ils ? Bascule du tiroir, ÉTEINTE par défaut. */
   showUnnamed: boolean
+}
+
+/**
+ * Ce que le calque a besoin de LIRE : les poses, et — pour le seul capteur de menaces — les
+ * vies et leur camp.
+ *
+ * POURQUOI LES TROIS VOYAGENT ENSEMBLE. Le capteur ne se dessine pas seul : son ping RÉVÈLE
+ * des adversaires, et « adversaire » est une relation entre deux vies. Les grouper garde
+ * `drawEquipmentPlacementsLayer` à cinq paramètres (seuil CLAUDE.md n°5) et dit ce qu'ils sont :
+ * une SCÈNE, pas trois arguments indépendants.
+ */
+export interface PlacementScene {
+  placements: readonly ReplayEquipmentPlacement[]
+  /** Toutes les vies du film ; le balayage de révélation filtre lui-même sur leur fenêtre. */
+  lives: readonly ReplayTrackReady[]
+  /** Camp d'une vie (`team_side`) ; null = camp inconnu, donc jamais révélé ni révélateur. */
+  sideOfSlot: (slot: number) => string | null
 }
 
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
@@ -220,19 +233,6 @@ export function wallRadiusM(view: PlacementView): number {
   return Math.max(WALL_RADIUS_M, WALL_MIN_RADIUS_PX / scale)
 }
 
-/**
- * sensorPulse — le facteur de rayon de la respiration du capteur, à l'âge donné.
- *
- * FONCTION DU TEMPS, PAS ANIMATION À ÉTAT : le même âge rend toujours la même valeur, donc un
- * retour en arrière rend exactement l'image qu'on avait vue. Sous mouvement réduit, la phase
- * est figée au rayon déclaré — le disque reste, il cesse de respirer.
- */
-export function sensorPulse(ageMs: number, reducedMotion: boolean): number {
-  if (reducedMotion) return 1
-  const phase = (((ageMs % SENSOR_PULSE_MS) + SENSOR_PULSE_MS) % SENSOR_PULSE_MS) / SENSOR_PULSE_MS
-  return 1 + SENSOR_PULSE_AMPLITUDE * Math.sin(phase * Math.PI * 2)
-}
-
 /** inkOf — la couleur d'équipe du poseur, ou le neutre quand la pose n'a pas de poseur connu. */
 function inkOf(p: ReplayEquipmentPlacement, ink: PlacementInk): string {
   if (p.owner < 0) return ink.neutral
@@ -292,7 +292,12 @@ function drawWall(
 }
 
 /**
- * drawSensor — le disque pulsé : un remplissage à alpha très bas et un anneau qui le borde.
+ * drawSensor — la ZONE du capteur (disque à alpha très bas, borné par son anneau) et, quand
+ * une onde est en cours, LE PING : un anneau parti du centre qui s'ouvre jusqu'au rayon en
+ * s'effaçant.
+ *
+ * LA ZONE NE BOUGE PLUS, seule l'onde bouge : c'est ce qui distingue un capteur qui PINGE d'un
+ * capteur qui respire. Le disque dit la portée officielle, à demeure ; l'onde dit l'instant.
  *
  * `ctx.arc` sur le centre PROJETÉ et le rayon à l'échelle : la projection du rejeu est une
  * similitude (même facteur en X et en Y, cf. worldToCanvas), donc un cercle monde reste un
@@ -307,8 +312,7 @@ function drawSensor(
 ): void {
   const c = project({ x: p.x, y: p.y }, view)
   const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
-  const ageMs = (time.frame - p.t0) * time.frameMs
-  const r = SENSOR_RADIUS_M * scale * sensorPulse(ageMs, time.reducedMotion)
+  const r = SENSOR_RADIUS_M * scale
   if (!(r > 0)) return
   ctx.save()
   ctx.fillStyle = color
@@ -319,6 +323,48 @@ function drawSensor(
   ctx.fill()
   ctx.globalAlpha = SENSOR_RING_ALPHA
   ctx.lineWidth = SENSOR_RING_WIDTH * time.k
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+  ctx.stroke()
+  const wave = sensorPing((time.frame - p.t0) * time.frameMs, time.reducedMotion)
+  if (wave && wave.reach > 0) {
+    ctx.globalAlpha = wave.alpha
+    ctx.lineWidth = SENSOR_PING_WIDTH * time.k
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r * wave.reach, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+/**
+ * drawReveal — la marque « révélé » d'UNE vie : un halo bas et son liseré, à la teinte de
+ * l'équipe du POSEUR (c'est son camp qui voit, pas celui de la cible).
+ *
+ * Elle est peinte SOUS le marqueur du joueur — le calque des poses passe avant celui des
+ * vies — donc elle l'entoure sans jamais le couvrir. Rayon en PIXELS et non en mètres : ce
+ * n'est pas une portée, c'est un signe posé sur un point.
+ */
+function drawReveal(
+  ctx: CanvasRenderingContext2D,
+  reveal: SensorReveal,
+  view: PlacementView,
+  time: PlacementTime,
+  color: string,
+): void {
+  const alpha = revealAlpha(reveal.sinceMs, time.reducedMotion)
+  if (!(alpha > 0)) return
+  const c = project({ x: reveal.x, y: reveal.y }, view)
+  const r = REVEAL_RADIUS_PX * time.k
+  ctx.save()
+  ctx.fillStyle = color
+  ctx.strokeStyle = color
+  ctx.globalAlpha = alpha * REVEAL_FILL_ALPHA
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalAlpha = alpha
+  ctx.lineWidth = REVEAL_WIDTH * time.k
   ctx.beginPath()
   ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
   ctx.stroke()
@@ -348,26 +394,39 @@ function drawUnnamed(
 }
 
 /**
- * drawEquipmentPlacementsLayer trace les poses ACTIVES à l'image courante.
+ * drawEquipmentPlacementsLayer trace les poses ACTIVES à l'image courante, puis les marques de
+ * révélation que les pings de capteur produisent à cet instant.
  *
  * La fenêtre [t0, t1] est celle du document, sans rémanence : un mur qui expire disparaît à
- * l'image où sa vie s'arrête, exactement comme la ligne de grappin.
+ * l'image où sa vie s'arrête, exactement comme la ligne de grappin. Le capteur ne fait PAS
+ * exception — sa durée officielle de 15 s ne prolonge rien (cf. threatSensor.ts).
+ *
+ * LES MARQUES PASSENT APRÈS TOUTES LES POSES, et jamais dans la boucle : une marque est un
+ * signe posé sur un JOUEUR, elle doit se lire par-dessus les zones — y compris celle d'un
+ * second capteur qui recouvrirait le premier.
  */
 export function drawEquipmentPlacementsLayer(
   ctx: CanvasRenderingContext2D,
-  placements: readonly ReplayEquipmentPlacement[],
+  scene: PlacementScene,
   view: PlacementView,
   time: PlacementTime,
   ink: PlacementInk,
 ): void {
-  for (const p of placements) {
+  const sensors: ReplayEquipmentPlacement[] = []
+  for (const p of scene.placements) {
     if (!isPlacementActive(p, time.frame)) continue
     const kind = placementKind(p, time.showUnnamed)
     if (!kind) continue
     const color = inkOf(p, ink)
     if (kind === 'wall') drawWall(ctx, p, view, time, color)
-    else if (kind === 'sensor') drawSensor(ctx, p, view, time, color)
-    else drawUnnamed(ctx, p, view, time, color)
+    else if (kind === 'sensor') {
+      drawSensor(ctx, p, view, time, color)
+      sensors.push(p)
+    } else drawUnnamed(ctx, p, view, time, color)
+  }
+  if (sensors.length === 0) return
+  for (const reveal of sensorReveals(sensors, scene, time)) {
+    drawReveal(ctx, reveal, view, time, ink.colorOfSlot(reveal.owner) ?? ink.neutral)
   }
 }
 
@@ -383,8 +442,8 @@ function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number {
  * placementAt — la pose sous le curseur, à l'image courante, ou null.
  *
  * LA PLUS PETITE GAGNE, et c'est ce qui rend le survol utilisable : le disque du capteur
- * couvre 8 m, un mur posé dedans en couvre 1,6. Prendre la première trouvée montrerait
- * toujours le capteur, et le mur serait inatteignable au pointeur.
+ * couvre 4,25 m de rayon, un mur posé dedans en couvre 1,6. Prendre la première trouvée
+ * montrerait toujours le capteur, et le mur serait inatteignable au pointeur.
  *
  * `point` est en pixels CSS du canvas, le même repère que le dessin (le facteur de densité est
  * déjà absorbé par la transformation du contexte).
