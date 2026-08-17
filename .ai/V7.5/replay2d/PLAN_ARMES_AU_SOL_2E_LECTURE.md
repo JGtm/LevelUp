@@ -455,10 +455,16 @@ tranche ci-dessus.
    affirmerait une datation que la source n'a pas. Piste : icone pleine, puis fantome (opacite
    reduite) sur [tLow, tHigh], puis rien. **Aucune animation de disparition « au moment du
    ramassage »** — cet instant n'est pas publie.
-3. **Un compte a rebours SEULEMENT si `cycle` existe.** 24 socles sur 57 seulement portent un
-   cycle ; les autres publient `null` et ne doivent afficher AUCUN chiffre — ni « ~30 s », ni un
-   tiret suggerant qu'on saurait. Quand il existe, le compte a rebours part de `tHigh` (borne
-   haute de la disparition) et vise `tHigh + medianS`.
+3. **Un compte a rebours SEULEMENT si `cycle` existe.** 10 socles sur 31 seulement en portent un
+   sur les quatre temoins ; les autres n'ont PAS LA CLE `cycle` (correctif m8 : le champ est
+   ABSENT, pas `null` — le generateur de contrat ne sait pas rendre nullable un pointeur de
+   struct, cf. decouverte 21) et ne doivent afficher AUCUN chiffre — ni « ~30 s », ni un tiret
+   suggerant qu'on saurait. Quand il existe, le compte a rebours part de `tHigh` (borne haute de
+   la disparition) et vise `tHigh + medianS`.
+   **`cycle.gaps` NE SE LIT PAS SANS `cycle.missing`** (correctif m11) : `gaps` compte les ecarts
+   MESURES, `missing` ceux que le socle offrait sans qu'on ait pu les prendre. Un « 33,9 s sur
+   2 ecarts » avec `missing: 3` est une mesure sur 2 occasions sur 5, et le rendu qui affiche une
+   confiance doit le savoir.
 4. **Le ramasseur n'est PAS affiche**, parce qu'il n'est pas publie (`xuid` vaut `null` partout).
    Aucune fiche joueur ne doit dire « a ramasse le S7 Sniper » : l'oracle plafonne a 79,7 %
    contre 90 % exige. C'est la clause la plus facile a violer par inadvertance — le champ existe
@@ -467,20 +473,22 @@ tranche ci-dessus.
    en publie ZERO : le calque doit disparaitre proprement, pas afficher un cadre vide. La
    couverture (`coverage.groundWeapons`) distingue « pas de socle » de « pas su balayer ».
 
-**TEMOINS DU GATE VISUEL** (artefacts deja re-cuits en schema 11, cache local) :
+**TEMOINS DU GATE VISUEL** (artefacts re-cuits en schema 11 le 2026-08-18, APRES le lot correctif
+de la revue — les chiffres d'avant sont au tableau AVANT/APRES du lot correctif ci-dessous) :
 
 | film | carte | socles | ce qu'il montre |
 |---|---|---:|---|
-| `01e1f945` | Catalyst | 10 | le cas nominal : 5 cycles etablis (Bulldog 40,1 s · Sword 194,6 s · Sniper 114,6 et 120,2 s · Commando 30,5 s), 29 occupations datees sur 38 |
-| `00162144` | Smallhalla | 10 | 45 occupations, 3 cycles etablis, 4 socles jamais vides (fin de match) |
-| `bcb6d393` | Cliffhanger | 10 | 8 occupations « jamais videes » sur 28 — c'est le cas ou l'incertitude se voit le plus |
+| `01e1f945` | Catalyst | 10 | le cas nominal : 4 cycles etablis (Bulldog 40,1 s · Sniper 120,2 et 114,6 s, `missing` 2 chacun · Commando 30,5 s), 31 occupations datees sur 40 |
+| `00162144` | Smallhalla | 11 | 47 occupations, 3 cycles etablis (Hydra 57,0 s sur 4 ecarts · Vestige Carbine 30,5 et 30,4 s sur 5 et 6 ecarts), 5 socles jamais vides (fin de match) |
+| `bcb6d393` | Cliffhanger | 10 | 8 occupations « jamais videes » sur 28 — c'est le cas ou l'incertitude se voit le plus, et ou `missing` parle (Sniper 33,9 s, 2 ecarts mesures pour 3 manques) |
 | `000d5950` | Cliffhanger-Forge | 0 | le calque VIDE, qui doit disparaitre proprement |
 
 **CE QU'UN LOT WEB AURA A FAIRE** (aucune ligne ecrite ici) :
 
 - un CALQUE canvas de plus dans `features/match-replay/` (patron : `equipmentPlacementsLayer.ts`),
-  qui lit `weaponPads` deja normalise (`normalizeReplayDocument` comble `weaponPads` et
-  `padPickups` — la frontiere est faite, la liste `NULLABLE_ARRAYS` les porte) ;
+  qui lit `weaponPads` deja normalise (`normalizeReplayDocument` comble `weaponPads`,
+  `padPickups`, ET les tableaux IMBRIQUES `spawns` / `presence` depuis le correctif m7 : le type
+  a lire est `ReplayWeaponPadReady`, la liste `NULLABLE_ARRAYS` porte les deux champs de tete) ;
 - un TIROIR / une info-bulle au survol du socle : nom de l'arme (bilingue, deja dans
   `weaponLabels`), etat, et le cycle QUAND il existe ;
 - i18n **FR + EN** pour les trois libellés d'etat (« Disponible » / « Pris » / « Incertain » et
@@ -489,6 +497,91 @@ tranche ci-dessus.
   valeur hex, aucune classe Tailwind couleur dans `features/` ;
 - pas de compteur global « N socles » sur la carte : le chiffre n'a de sens que par match, et
   l'utilisateur ne compare pas deux matchs sur ce point.
+
+### Lot correctif de la revue adversariale (phase 3 bis, 2026-08-18)
+
+> Le diff de la phase 3 (`253226852..b5e312581`, 7 commits) a ete relu par un contexte frais. La
+> revue a rendu 11 constats a TRAITER et 6 a CONSIGNER, plus une liste de 13 points « verifie,
+> tient ». Ce lot les traite tous, sur le worktree principal, branche `feat/v75`. Base
+> `c4518dc04`.
+
+**LES 10 CONSTATS TRAITES** (le 11e, m4, est un constat A CONSIGNER — cf. decouverte 17) :
+
+| # | ce qui n'allait pas | ce qui a change | SHA |
+|---|---|---|---|
+| M1 | `HasDelta` lu par CLE (slot, gen) : un objet pose qui succedait a un objet mobile heritait de sa piste, sortait du jeu `at_rest` et amputait la grappe | UNE regle (`gwPickupLifeTrack`, fenetre du recensement) partagee par `HasDelta` et la position de reference ; test « cle reprise + piste sur la premiere vie seulement » | `1eb8bcc3e` |
+| M3 | le balayage `ti=42` lisait le mot d'identite MPP aux largeurs PAR DEFAUT (9/5), alors que la calibration des poses venait de les mesurer ET de les restaurer — un film BTB (8/3) aurait rendu zero socle en silence | `gwInstallMPPWidths` installe les largeurs mesurees sur CE film et les restaure ; `slog.Warn` « identite ti=42 non resolue — largeurs MPP ? » quand `Kept == 0 && Accepted > 0` ; 3 tests | `c1c5675bb` |
+| M2 | `document.go` 631 -> 673 L et `build.go` 621 -> 640 L : dette de taille gelee, ACCRUE par le lot | `document_ground_weapons.go` (forme publiee + chronique v11) et `build_ground_weapons.go` (decodage + cablage) ; **document.go 578 L, build.go 585 L** — sous les tailles d'avant le lot. Golden d'assemblage IDENTIQUE | `8332dfff5` |
+| m5 | 4 ecritures de la distance euclidienne 3D, dont deux a SIX parametres | `dist3(a, b [3]float32)` dans `geometry.go`, 8 sites migres, garde-rail `TestUneSeuleFormuleDeDistance3D` (motif = la formule SOUS racine ; la distance au CARRE de `grapple_lines.go` n'est pas la meme grandeur) | `96196e52e` |
+| m6 | `NoLaterKF` (objet ne apres la derniere image-cle) etait ignore : ces occupations sortaient `dated`/`unknown` avec la fin du film pour borne haute, publiees comme achevees sans preuve | repliees sur `never`, commentaire et test | `b0d90ab42` |
+| m9 | les DEUX invariants de couverture etaient des tautologies (`Rejected` par difference, statuts incrementes dans le meme `switch` qu'`Occupancies`) | `Rejected` compte sur le chemin de rejet ; `Occupancies` compte a part ; le `switch` perd sa branche attrape-tout ; test qui fait TOMBER `Balanced()` | `2b00e31ed` |
+| m10 | `gwPadsKeep` portait la regle « grappe >= 2 = socle » mais la production la re-exprimait en ligne ; `gwPadsCluster` et `gwPadsCycle` n'avaient d'appelant que sous garde | `buildWeaponPads` appelle `gwPadsKeep` (qui rend les index d'origine) ; `gwPadsCluster` SUPPRIME (enrobage de 2 lignes sur `gwPadsClusterAssign`, 5 sites migres) ; `gwPadsCycle` GARDE et justifie (c'est l'horloge d'APPARITION de l'item 1.3, la seconde grandeur de l'instrument de comparaison — la supprimer renverrait le calcul des ecarts dans l'instrument) ; `gwRuleOwners` gagne 5 entrees | `35c36d981` |
+| m8+m11 | `cycle,omitempty` documentait `null` et publiait ABSENT ; `gwBuildPad` jetait les `manques` de `gwPickupPadGaps` | `PadCycle.Missing` publie (contrat + `generated.ts` + golden), test ; pour `cycle`, cf. **decouverte 21** — retirer `omitempty` etait IMPOSSIBLE, le commentaire dit desormais ABSENT | `5b32a4c56` |
+| m7 | `generated.ts` laisse `weaponPads[].spawns` et `.presence` nullables, `replayNormalize.ts` ne comblait que le tableau de tete | `ReplayWeaponPadReady` (patron `tracks` / `structure`), `spawns ?? []`, `presence ?? []`, 2 tests dans `replayContract.test.ts` (dont un qui couvre AUSSI `tracks`, `inventory`, `loadouts`) | `2c8ace379` |
+| — | ce que les gates ont attrape | `build_ground_weapons.go` entre a l'allowlist `worldObjectPrecisionReaders` avec sa raison datee ; `gwPadsKeep` perd son parametre `min` (unparam : les 3 appelants passaient `gwPadMinHits`) | `675ad34d9` |
+
+**CE QUE LA REVUE A VERIFIE ET TROUVE JUSTE** (13 points ; ils comptent autant que les constats —
+sans eux, un lecteur croirait que tout le lot etait a reprendre). Re-verifies sur pieces pendant
+le lot correctif :
+
+1. le FILTRE D'IDENTITE est bien le garde-fou du calque, et c'est lui qui ecarte le temoin fantome
+   (13 croisees contre 1 785) — pas le taux d'acceptation, qui ne discrimine pas ;
+2. la borne `lifeEnd` par REPRISE DE CLE est correcte et testee : le recensement du suivant ne
+   prouve plus la survie du precedent ;
+3. `gwPickupNearestPass` est DETERMINISTE — departage instant, puis distance, puis slot ;
+4. le seuil de 1,5 m est la constante de PRODUCTION du lacher (`originDropMaxDist`), reutilisee et
+   non recopiee : la regle du ramassage est le miroir de celle du lacher, les deux bougent ensemble ;
+5. `gwFrameOf` clampe VOLONTAIREMENT, et le commentaire dit pourquoi (un socle est un LIEU : l'
+   ecarter parce que sa derniere apparition tombe hors axe effacerait un socle mesure) ;
+6. `gwPadWeaponID` prend l'identifiant de la PREMIERE apparition, et c'est deterministe parce que
+   l'ordre des membres est total ;
+7. le tri des grappes est TOTAL et les assignations suivent la permutation (`gwPadsSortClusters`) —
+   sans quoi un index designerait une grappe voisine ;
+8. `PadPickup.XUID` vaut `null` PARTOUT, verifie deux fois : par le golden et par un test nomme ;
+9. aucun ramassage d'arme `dropped` n'est publie — la population que la mesure a disqualifiee reste
+   dehors ;
+10. aucun catalogue de carte n'est ecrit — le critere 1.4 a rendu son verdict et le code s'y tient ;
+11. le calque se TAIT ENTIEREMENT quand une des trois lectures du film manque, avec trois
+    avertissements distincts (bande absente, creations illisibles, pistes illisibles) ;
+12. `LockProcessDecode` est tenu pour TOUT le decodage et `installWorldObjectPrecision` restaure
+    toujours — la regle du mono-process n'est pas entamee ;
+13. contrat, `generated.ts` et frontiere web sont ALIGNES : 33 champs au contracttest, et la liste
+    `NULLABLE_ARRAYS` est prouvee exhaustive PAR LE TYPAGE contre le contrat genere.
+
+**AVANT / APRES sur les 4 temoins** (re-cuits `CGO_ENABLED=0`, un film par process, schema 11) :
+
+| film | socles | at_rest | occupations | datees | sans passage | jamais videes | cycles | occupations achevees |
+|---|---|---|---|---|---|---|---|---|
+| `000d5950` | 0 -> **0** | 0 -> **0** | 0 -> **0** | 0 -> 0 | 0 -> 0 | 0 -> 0 | 0 -> 0 | 0 -> 0 |
+| `01e1f945` | 10 -> **10** | 38 -> **40** | 38 -> **40** | 29 -> **31** | 6 -> 6 | 3 -> 3 | 5 -> **4** | 35 -> **37** |
+| `00162144` | 10 -> **11** | 49 -> **50** | 45 -> **47** | 39 -> **40** | 2 -> 2 | 4 -> **5** | 3 -> 3 | 41 -> **42** |
+| `bcb6d393` | 10 -> **10** | 34 -> 34 | 28 -> 28 | 16 -> 16 | 4 -> 4 | 8 -> 8 | 3 -> 3 | 20 -> 20 |
+
+**CE QUE CES CHIFFRES DISENT, chacun rattache a son correctif** :
+
+- **M1 rend des apparitions que la lecture par cle amputait** : +2 `at_rest` sur `01e1f945`, +1 sur
+  `00162144`. Sur `00162144` l'une d'elles fait passer une grappe de 1 a 2 apparitions : **un
+  socle de plus (10 -> 11)**, exactement le mecanisme que la revue decrivait. Les deux films sans
+  cle reprise (`bcb6d393`, `000d5950`) ne bougent pas — le correctif ne touche que ce qu'il vise ;
+- **m6 replie une occupation sur `never`** (`00162144` : 4 -> 5) ;
+- **le cycle du socle Energy Sword de `01e1f945` (194,6 s) n'est plus etabli** (5 -> 4). Ce n'est
+  pas une perte de mesure : le socle porte desormais 5 apparitions au lieu de 4, et les ecarts
+  qu'elles rendent ne tiennent plus dans les 20 % de la mediane. **La regle de stabilite n'a pas
+  bouge ; c'est la matiere qui est plus complete.** Un cycle qui disparait quand on lui donne plus
+  de donnees est le comportement voulu de la decision 3 ;
+- **`missing` montre ce qu'il devait montrer** : les deux socles S7 Sniper de `01e1f945` publient
+  `gaps: 2, missing: 2` (2 ecarts mesures sur 4 occasions) et celui de `bcb6d393` `gaps: 2,
+  missing: 3` (2 sur 5). Avant m11, les trois se lisaient « 2 sur 2 » ;
+- **M3 ne change AUCUN chiffre ici**, et c'etait attendu : les quatre temoins calibrent tous a
+  `9/5`, la valeur par defaut (decouverte 8 du plan). Le correctif est une assurance pour les
+  films BTB, pas une correction de mesure — c'est le test a largeur fausse qui le prouve, pas les
+  temoins.
+
+**GATES** (tous verts, codes de retour dans le journal de session, `EXIT_*=0`) : `go build ./...`,
+`go vet ./...`, `go test ./internal/analysis/... ./internal/replaybuild/... ./contracttest/...
+./internal/archlint/... ./internal/games/halo_infinite/film/...`, `golangci-lint run
+--new-from-merge-base=origin/main` (0 issue) ; web : `npm run typecheck`, `npm run lint`,
+`npm run test:run` (447 fichiers, 4 095 tests).
 
 ## Regles dures
 
@@ -616,6 +709,55 @@ de push. Lancement valide le 2026-08-17.
     produit sur aucun film reel (le nuage des bipedes deborde toujours la derniere image-cle) et
     n'a ete vu que sur des entrees synthetiques. Non traite : elargir la borne changerait la
     regle de bornage, publiee et mesuree.
+
+17. **LE GARDE-RAIL DE LA CHAINE EST UN CLIQUET DE PROPRIETE DE FICHIER DANS UN SEUL PAQUET, et
+    le plan le decrivait plus fort qu'il n'est** (constat m4 de la revue, CONSIGNE et non traite).
+    `ground_weapon_guard_test.go` lit `os.ReadDir(".")` : il ne balaie QUE `internal/analysis/
+    replay/`, pas `internal/analysis/`. Et ses motifs portent sur les NOMS (`^func gwPadsClass`),
+    pas sur les valeurs : une seconde regle de grappe ecrite sous un autre nom, ou un seuil recopie
+    en litteral (`1.0` au lieu de `gwPadRadiusM`), passe sans bruit. Il attrape ce qui se produit
+    vraiment — la copie faite « juste pour un instrument », avec le meme nom — et c'est deja
+    beaucoup, mais l'en-tete du fichier le dit mieux que le plan. Non traite : elargir le balayage
+    ou passer aux valeurs est un autre chantier, et le garde-rail actuel a fait son travail DEUX
+    fois pendant ce lot correctif (deplacement de `decodeFilmGroundWeapons`, entree de
+    `gwPadsCycle`).
+18. **`slog.Warn` SANS CONTEXTE dans le constructeur du document** (constat n1). Le dépôt exige
+    `slog.WarnContext(ctx, ...)`, mais ni `BuildFromFilm` ni `BuildFromPositions` ne portent de
+    `ctx` : tout le fichier journalise sans. Le lot correctif a SUIVI ce patron (`gwInstallMPPWidths`,
+    l'avertissement d'identite non resolue) plutot que d'introduire une troisieme forme. Non
+    traite : faire descendre un `ctx` jusqu'au constructeur hors ligne est un chantier a soi seul,
+    et le faire a moitie donnerait deux conventions dans un meme fichier.
+19. **Trois redondances de calcul, mesurees et laissees telles quelles** (constats n2, n3, n4).
+    `CountFilmChunks` est appele deux fois sur le chemin `ScanFilmGroundWeaponCreationsForBand`
+    (une fois par l'appelant, une fois dedans, avec un controle d'ordre qui verifie les bornes
+    APRES le registre) ; `equipmentLives` est calculee deux fois par assemblage (une pour les
+    poses, une pour les socles) ; `gwPadsLess` ordonne sans la cle (slot, gen), donc deux
+    apparitions strictement identiques en instant, nature, famille ET position resteraient
+    departagees par l'ordre de la map — cas theorique, jamais observe. Non traite : aucun n'affecte
+    un resultat publie, et les trois sont hors du perimetre de la revue.
+20. **LE GOLDEN D'ASSEMBLAGE N'EXERCE AUCUNE LIGNE DE SOCLE** (constat n5), et il faut le savoir
+    avant de s'y fier. `000d5950` publie ZERO socle : le golden fige les DENOMINATEURS du calque
+    (220 retenues sur 317, 181 lachees, 0 au repos) mais aucune ligne `socle`, aucune presence,
+    aucun cycle. Ce qui verrouille la FORME, ce sont les tests synthetiques de
+    `ground_weapon_pads_test.go` — 10 apres ce lot correctif. Non traite : ajouter un second film
+    au golden coute un fixture d'entrees decodees (et ce lot en a re-cuit quatre, ce qui donne la
+    matiere a qui voudra le faire).
+21. **LE CONTRAT NE PEUT PAS DIRE `PadCycle | null`, ET C'EST UNE LIMITE DU GENERATEUR** —
+    decouverte du lot correctif, elle a change la correction du constat m8. Retirer `omitempty` de
+    `WeaponPad.Cycle` (un `*PadCycle`) rend le champ REQUIS et non nullable au contrat, parce que
+    huma refuse la nullabilite sur un `$ref` : `nullable:"true"` fait PANIQUER le generateur
+    (« nullable is not supported for field 'Cycle' which is type
+    '#/components/schemas/PadCycle' », huma v2.39.1, verifie en regenerant). Le contrat aurait
+    donc promis un objet TOUJOURS present la ou le Go en ecrit un sur trois — un mensonge pire que
+    celui qu'on corrigeait. `omitempty` est GARDE, et c'est le COMMENTAIRE qui a ete corrige : la
+    cle est ABSENTE, pas `null`. Le `null` de `PadPickup.XUID` reste possible parce qu'un
+    `*string` se decrit `["string", "null"]`. Consequence pour qui voudra le champ visible : il
+    faudra soit un fragment manuel dans `api/openapi_manual_fragment.yaml`, soit un champ
+    discriminant a plat (un `cycleEtabli bool`), soit une version de huma qui le permette.
+22. **DEUX SEUILS DU PAQUET SONT DES PARAMETRES QUI N'EN SONT PAS.** Le lot correctif a retire
+    celui de `gwPadsKeep` (`min`, que les trois appelants passaient a `gwPadMinHits` — `unparam`
+    l'a signale des que la production s'est mise a l'appeler). Le meme raisonnement vaudrait
+    ailleurs dans le paquet ; non audite ici.
 
 ## Branches utilisateur fusionnees AVANT le lancement (`66e867b80`, 2026-08-17)
 
