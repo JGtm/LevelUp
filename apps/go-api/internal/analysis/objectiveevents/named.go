@@ -159,12 +159,17 @@ type NamedEvent struct {
 // emplacements de `hill` et `ball` n'ont pas encore ete nommes : le balayage est le meme,
 // c'est le corpus qui manque.
 func NamedEvents(src FilmSource, objectiveType string) []NamedEvent {
-	return namedEventsFrom(StatRecords(src), objectiveType)
+	return NamedEventsFrom(StatRecords(src), objectiveType)
 }
 
-// namedEventsFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce
+// NamedEventsFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce
 // qui le rend testable sans film.
-func namedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
+//
+// EXPORTE POUR LA PRODUCTION, et pas seulement pour les tests : le constructeur d'artefact
+// decode le film UNE fois (`StatRecordsCtx`) puis en tire la courbe de score, l'identite des
+// slots ET les evenements nommes. Passer par [NamedEvents] rejouerait le decodage complet a
+// chaque appel — trois fois le cout sur une machine qui paie deja le decodage des positions.
+func NamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
 	table, ok := namedStatSlots[objectiveType]
 	if !ok {
 		return nil

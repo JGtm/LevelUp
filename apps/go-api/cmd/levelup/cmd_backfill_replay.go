@@ -65,6 +65,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -74,6 +75,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -173,10 +175,14 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
+	// LES FAITS SE LISENT EN UNE SEULE OUVERTURE, AVANT LA BOUCLE : le decodage d'un film dure
+	// des secondes a des minutes, et tenir un handle shared pendant une passe de masse est
+	// exactement ce que le modele mono-process interdit.
+	faits := chargerFaitsReplay(ctx, pr, o.titleSlug, aFaire)
 	debut := time.Now()
 	for i, c := range aFaire {
 		filmDir := filmcache.ChunkDir(cacheRoot, titlePkg.FilmShortMatchID(c.matchID))
-		out, berr := builder.BuildMatch(c.matchID, c.mapNames, filmDir)
+		out, berr := builder.BuildMatch(c.matchID, c.mapNames, filmDir, faits[c.matchID])
 		switch {
 		case berr == nil:
 			report.construits++
@@ -339,4 +345,43 @@ func afficherRapportReplay(r replayBackfillReport) {
 	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)
 	fmt.Printf("  sans artefact        %d (ecartes par --only-existing)\n", r.sansArtefact)
 	fmt.Printf("  erreurs de decodage  %d\n", r.erreurs)
+}
+
+// chargerFaitsReplay lit, en UNE ouverture RO, ce que la base sait de chaque match du lot :
+// les lignes de match (pont d'identite des joueurs), les scores des deux camps (identite des
+// camps) et le nom de variante (famille d'objectif).
+//
+// LA LECTURE EST COURTE ET FERMEE AVANT TOUT DECODAGE, comme celle du registre : une passe de
+// masse ne tient jamais un handle shared pendant qu'elle decode. Une base indisponible (serveur
+// en ecriture) DEGRADE la passe — les artefacts sortent sans compteurs de joueur ni actions
+// d'objectif — plutot que de la bloquer.
+func chargerFaitsReplay(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string,
+	aFaire []replayCandidat) map[string]port.MatchFacts {
+	out := make(map[string]port.MatchFacts, len(aFaire))
+	sharedPath := pr.SharedDBPath(titleSlug)
+	db, release, err := duckdb.OpenReadForQuery(sharedPath)
+	if err != nil {
+		fmt.Printf("  faits de match indisponibles (%v) — artefacts sans compteurs de joueur ni actions d'objectif\n", err)
+		return out
+	}
+	defer release()
+
+	repo := duckdb.NewReplayFactsRepo(db)
+	manquants := 0
+	for _, c := range aFaire {
+		facts, ferr := repo.FactsForMatch(ctx, c.matchID)
+		if ferr != nil {
+			slog.WarnContext(ctx, "backfill-replay: faits de match illisibles",
+				"err", ferr, "match_id", c.matchID)
+			manquants++
+			continue
+		}
+		if facts.Empty() {
+			manquants++
+			continue
+		}
+		out[c.matchID] = facts
+	}
+	fmt.Printf("faits de match charges : %d/%d (%d sans faits)\n", len(out), len(aFaire), manquants)
+	return out
 }

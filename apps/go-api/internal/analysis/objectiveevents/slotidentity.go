@@ -67,11 +67,15 @@ type PlayerLine struct {
 // repliquees quel que soit le type de partie. L'appariement fonctionne donc aussi en
 // Slayer, KOTH ou Oddball, ou aucun emplacement d'objectif n'est nomme.
 func SlotIdentity(src FilmSource, lines []PlayerLine) map[int]string {
-	return slotIdentityFrom(StatRecords(src), lines)
+	return SlotIdentityFrom(StatRecords(src), lines)
 }
 
-// slotIdentityFrom est le coeur pur : il travaille sur des enregistrements deja decodes.
-func slotIdentityFrom(recs []StatRecord, lines []PlayerLine) map[int]string {
+// SlotIdentityFrom est le coeur pur : il travaille sur des enregistrements deja decodes.
+//
+// EXPORTE POUR LA PRODUCTION (meme raison que [NamedEventsFrom]) : le constructeur
+// d'artefact decode le film une seule fois et fait servir les memes enregistrements a la
+// courbe de score, a l'identite des slots et aux evenements nommes.
+func SlotIdentityFrom(recs []StatRecord, lines []PlayerLine) map[int]string {
 	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA})
 	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB})
 	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA})
