@@ -84,6 +84,19 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // version. Dépendance durable et voulue — la dupliquer donnerait deux définitions de
   // « ce qui est un kill » et deux couleurs pour la même équipe.
   'match-replay=>match-view',
+  // Reciproque, et STRICTEMENT bornee au chargement de l'artefact. La vue match affiche la
+  // courbe « Score dans le temps », qui est un calque de l'ARTEFACT DE REJEU (schema 12,
+  // decision D2 du plan d'exploitation du registre du film : aucune table DuckDB nouvelle,
+  // la donnee vit dans l'artefact). Elle le charge par useMatchReplay — MEME endpoint,
+  // MEME cle de cache (match-replay), MEME gate de presence (header.replay_available) que
+  // le lien « rejeu ». Dupliquer cette query donnerait deux caches pour un document de 1,5
+  // a 2,7 Mio et deux verites sur « l'artefact existe-t-il ». Le hook ne peut pas descendre
+  // dans lib/ sans y emmener replayNormalize (la frontiere de nullabilite du document,
+  // 46 importeurs dans match-replay) : ce serait deplacer la feature, pas partager de la
+  // logique. TOUTE la logique PURE du score, elle, a bien ete sortie dans
+  // lib/replay/scoreTimeline.ts (2026-08-18, ratchet P8.5) — cette exception ne couvre QUE
+  // le chargement de l'artefact.
+  'match-view=>match-replay',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

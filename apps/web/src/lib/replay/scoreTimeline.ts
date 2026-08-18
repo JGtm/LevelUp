@@ -1,14 +1,30 @@
 /**
- * scoreTimelineLogic.ts — LE SCORE À L'INSTANT LU, et ce que le film a le droit de dire.
+ * scoreTimeline.ts — LE SCORE À L'INSTANT LU, et ce que le film a le droit de dire.
+ *
+ * POURQUOI DANS `lib/` ET NON DANS UNE FEATURE. Deux surfaces lisent ce calque : le rejeu 2D
+ * (en-têtes d'équipe, fiches joueur, frise) et la vue match (la courbe « Score dans le
+ * temps »). Tant qu'il vivait dans `features/match-replay/`, la vue match devait aller le
+ * chercher chez sa voisine — un import cross-feature que le ratchet P8.5
+ * (`tools/lint-cross-feature-imports.mjs`) refuse à juste titre : la règle du dépôt
+ * (`frontend-patterns`) veut la logique PURE partagée dans `lib/`, jamais dans une feature
+ * importée par une autre. Ce fichier est donc le foyer, et les deux features en sont
+ * clientes à égalité.
+ *
+ * IL NE CONNAÎT AUCUNE FEATURE, et c'est ce qui le rend déplaçable : les types du document
+ * viennent du contrat généré (`lib/api/types`), et tout ce qu'il attend d'un document ou
+ * d'un index de joueurs est décrit STRUCTURELLEMENT ici même (`ReplayScoreDocument`,
+ * `AllyIndex`). `ReplayDocumentReady` et `XuidMeta` s'y conforment sans que `lib/` ait à
+ * les nommer.
  *
  * CE QUE PUBLIE L'ARTEFACT (schéma 12). Le décodeur du film ne transmet pas un score
  * échantillonné : il transmet les CHANGEMENTS. Une série est donc une suite de PALIERS —
  * `{t, v}` veut dire « à partir de la frame t, la valeur est v », et rien n'est émis tant
  * que rien ne bouge. Lire cette série au frame courant, c'est prendre la dernière valeur
- * transmise au plus tard à ce frame : exactement le patron de `heldReading` (replayLogic),
- * transposé à une grandeur qui ne vieillit pas. Un score ne PÂLIT pas — il n'y a pas de
- * lecture « ancienne » d'un score, il n'y a que le score, qui reste ce qu'il est jusqu'au
- * point suivant. C'est pourquoi cette lecture rend un nombre et non un `HeldReading`.
+ * transmise au plus tard à ce frame : exactement le patron de `heldReading`
+ * (match-replay/replayLogic), transposé à une grandeur qui ne vieillit pas. Un score ne
+ * PÂLIT pas — il n'y a pas de lecture « ancienne » d'un score, il n'y a que le score, qui
+ * reste ce qu'il est jusqu'au point suivant. C'est pourquoi cette lecture rend un nombre et
+ * non un `HeldReading`.
  *
  * DEUX GRANDEURS QUI NE SE CONFONDENT PAS. `total` est le cumul du match, `rounds[]` la
  * valeur DANS chaque manche — celle qui repart de zéro à la manche suivante d'un Oddball.
@@ -18,7 +34,7 @@
  * UNE ÉQUIPE SANS SÉRIE VAUT ZÉRO, ET C'EST UNE MESURE. Le témoin CTF `530820e5` (3-0) ne
  * publie qu'UNE série d'équipe : le camp qui n'a jamais marqué n'émet rien du tout. Son
  * score n'est pas inconnu — il est nul, et le film le dit en se taisant. C'est le seul
- * endroit de ce dossier où une absence se lit comme un zéro, et `teamSeriesFor` est ce qui
+ * endroit de ce module où une absence se lit comme un zéro, et `teamSeriesFor` est ce qui
  * le concentre en un point (cf. son commentaire).
  *
  * UN JOUEUR SANS SÉRIE, LUI, N'EST PAS À ZÉRO — IL N'EST PAS PUBLIÉ. La distinction est
@@ -30,16 +46,136 @@
  *
  * Tout ce fichier est PUR : ni React, ni canvas, ni DOM.
  */
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
-import type { MatchScoreboardRow, ReplayScoreTick } from '@/lib/api/types'
-
 import type {
-  ReplayDocumentReady,
-  ReplayPlayerScoreReady,
-  ReplayScoreTimelineReady,
-  ReplayTeamScoreReady,
-} from './replayNormalize'
+  MatchScoreboardRow,
+  ReplayPlayerScore,
+  ReplayScoreRound,
+  ReplayScoreSeries,
+  ReplayScoreTick,
+  ReplayScoreTimeline,
+  ReplayTeamScore,
+} from '@/lib/api/types'
+
+// ---------------------------------------------------------------------------------------
+// Les types du calque, une fois comblés
+// ---------------------------------------------------------------------------------------
+
+/**
+ * LES QUATRE ÉTAGES DU CALQUE DE SCORE (schéma 12), et pourquoi ils demandent quatre types.
+ *
+ * `scoreTimeline` est le premier champ du document qui empile des tableaux nullables sur
+ * QUATRE niveaux : `teams` → `rounds` → `points`, et `players` → `score|kills|deaths|
+ * assists` → `rounds` → `points`. La garde de tête du document
+ * (`match-replay/replayContract.test.ts`) ne voit que la racine ; c'est son walker de
+ * chemins qui exige désormais chacun de ces niveaux, et ce sont ces types-là qui prouvent
+ * au compilateur qu'ils sont comblés.
+ */
+export type ReplayScoreRoundReady = Omit<ReplayScoreRound, 'points'> & {
+  points: ReplayScoreTick[]
+}
+export type ReplayScoreSeriesReady = Omit<ReplayScoreSeries, 'rounds' | 'total'> & {
+  rounds: ReplayScoreRoundReady[]
+  total: ReplayScoreTick[]
+}
+export type ReplayTeamScoreReady = Omit<ReplayTeamScore, 'rounds' | 'total'> & {
+  rounds: ReplayScoreRoundReady[]
+  total: ReplayScoreTick[]
+}
+export type ReplayPlayerScoreReady = Omit<
+  ReplayPlayerScore,
+  'assists' | 'deaths' | 'kills' | 'score'
+> & {
+  assists: ReplayScoreSeriesReady
+  deaths: ReplayScoreSeriesReady
+  kills: ReplayScoreSeriesReady
+  score: ReplayScoreSeriesReady
+}
+export type ReplayScoreTimelineReady = Omit<ReplayScoreTimeline, 'players' | 'teams'> & {
+  players: ReplayPlayerScoreReady[]
+  teams: ReplayTeamScoreReady[]
+}
+
+/**
+ * ReplayScoreDocument — le strict minimum qu'un document de rejeu doit porter pour que ces
+ * lectures aient un sens.
+ *
+ * STRUCTUREL, ET NON NOMINAL : `ReplayDocumentReady` (la frontière de `match-replay`) s'y
+ * conforme sans que `lib/` ait à le connaître. C'est exactement ce qui permet à cette
+ * logique de vivre hors des features — la dépendance va de la feature vers `lib/`, jamais
+ * l'inverse.
+ */
+export interface ReplayScoreDocument {
+  originMs?: number
+  coverage?: { originResolved?: boolean }
+  scoreTimeline?: ReplayScoreTimelineReady
+}
+
+/**
+ * AllyIndex — de quel côté est un joueur, par xuid.
+ *
+ * Décrit structurellement pour la même raison : `XuidMeta` (match-view) porte aussi le
+ * gamertag, dont ce module n'a que faire. Un index plus riche reste acceptable.
+ */
+type AllyIndex = ReadonlyMap<string, { ally: boolean }>
+
+// ---------------------------------------------------------------------------------------
+// La frontière : combler les cinq tableaux nullables du calque
+// ---------------------------------------------------------------------------------------
+
+/** Une manche dont les paliers sont comblés : un tableau vide dit « aucun point marqué ». */
+function normalizeRound(r: ReplayScoreRound): ReplayScoreRoundReady {
+  return { ...r, points: r.points ?? [] }
+}
+
+/**
+ * Une série (score, frags, morts, assistances) d'un joueur, ses deux tableaux comblés.
+ *
+ * `series` peut manquer alors que le contrat la déclare obligatoire : c'est justement le
+ * rôle d'une frontière de ne pas tomber sur un producteur qui déraille. Le résultat est
+ * vide, jamais inventé — et ce qui distingue « ce joueur n'est pas publié » de « ce joueur
+ * est à zéro » se joue un cran plus haut, sur sa PRÉSENCE dans `players`.
+ */
+function normalizeSeries(series: ReplayScoreSeries | undefined): ReplayScoreSeriesReady {
+  return {
+    ...series,
+    rounds: (series?.rounds ?? []).map(normalizeRound),
+    total: series?.total ?? [],
+  }
+}
+
+/**
+ * normalizeScoreTimeline comble les CINQ tableaux nullables du calque de score
+ * (`teams`, `players`, `rounds`, `total`, `points`) et rend l'absence du calque telle
+ * quelle : `undefined` entre, `undefined` sort.
+ *
+ * L'OBJET GARDE LE DROIT D'ÊTRE ABSENT : un artefact de schéma antérieur à 12 n'en porte
+ * aucun, et un objet vide se lirait « le film a été lu, il n'y avait pas de score ».
+ */
+export function normalizeScoreTimeline(
+  raw: ReplayScoreTimeline | undefined,
+): ReplayScoreTimelineReady | undefined {
+  if (!raw) return undefined
+  return {
+    ...raw,
+    players: (raw.players ?? []).map((p) => ({
+      ...p,
+      assists: normalizeSeries(p.assists),
+      deaths: normalizeSeries(p.deaths),
+      kills: normalizeSeries(p.kills),
+      score: normalizeSeries(p.score),
+    })),
+    teams: (raw.teams ?? []).map((t) => ({
+      ...t,
+      rounds: (t.rounds ?? []).map(normalizeRound),
+      total: t.total ?? [],
+    })),
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// La garde d'horloge
+// ---------------------------------------------------------------------------------------
 
 /**
  * filmClockTrusted — l'artefact sait-il OÙ commence son temps ?
@@ -56,7 +192,7 @@ import type {
  * exactement pour cela que la règle exige LES DEUX conditions — le drapeau à `false` seul
  * ne prouve rien sur les documents antérieurs au champ.
  */
-export function filmClockTrusted(doc: ReplayDocumentReady): boolean {
+export function filmClockTrusted(doc: ReplayScoreDocument): boolean {
   return !(doc.coverage?.originResolved === false && doc.originMs == null)
 }
 
@@ -68,10 +204,14 @@ export function filmClockTrusted(doc: ReplayDocumentReady): boolean {
  * mesure. `undefined` veut dire « rien à afficher » — artefact antérieur au schéma 12,
  * mode sans compteur, ou horloge non recalée.
  */
-export function scoreTimelineOf(doc: ReplayDocumentReady): ReplayScoreTimelineReady | undefined {
+export function scoreTimelineOf(doc: ReplayScoreDocument): ReplayScoreTimelineReady | undefined {
   if (!filmClockTrusted(doc)) return undefined
   return doc.scoreTimeline
 }
+
+// ---------------------------------------------------------------------------------------
+// Les lectures au frame courant
+// ---------------------------------------------------------------------------------------
 
 /**
  * scoreAtFrame rend la valeur du palier courant : la dernière transmise au plus tard à
@@ -97,11 +237,11 @@ export function scoreAtFrame(points: readonly ReplayScoreTick[], frame: number):
 /**
  * teamSeriesFor rend la série d'une équipe, ou `null` quand le film n'en publie aucune.
  *
- * `null` ET ZÉRO DISENT LA MÊME CHOSE ICI, contrairement à tout le reste du dossier : une
- * équipe qui n'a jamais marqué n'émet aucun palier (témoin CTF 3-0, une seule série pour
- * deux camps). Les appelants qui veulent un nombre passent par `teamScoreAtFrame`, qui
- * rend 0 — la vérité du film. Ceux qui veulent savoir si le camp a une série (pour ne pas
- * dessiner une courbe plate là où il n'y a pas de donnée) lisent ce `null`.
+ * `null` ET ZÉRO DISENT LA MÊME CHOSE ICI, contrairement au reste du calque : une équipe
+ * qui n'a jamais marqué n'émet aucun palier (témoin CTF 3-0, une seule série pour deux
+ * camps). Les appelants qui veulent un nombre passent par `teamScoreAtFrame`, qui rend 0 —
+ * la vérité du film. Ceux qui veulent savoir si le camp a une série (pour ne pas dessiner
+ * une courbe plate là où il n'y a pas de donnée) lisent ce `null`.
  */
 export function teamSeriesFor(
   timeline: ReplayScoreTimelineReady | undefined,
@@ -197,6 +337,10 @@ export function playerCountersAt(
   }
 }
 
+// ---------------------------------------------------------------------------------------
+// Les retournements
+// ---------------------------------------------------------------------------------------
+
 /** Un RETOURNEMENT : l'instant où le match change de meneur. */
 export interface LeadChange {
   /** Frame du document où le nouveau meneur passe devant. */
@@ -243,20 +387,20 @@ export function leadChanges(timeline: ReplayScoreTimelineReady | undefined): Lea
  * allyOfTeamId dit si une équipe DU FILM est du côté du joueur de la page.
  *
  * Le film numérote ses équipes (`teamId`) ; la page raisonne en « allié / adverse », une
- * notion RELATIVE au joueur consulté (cf. xuidMeta). Le pont entre les deux passe par le
- * scoreboard, seul endroit où le camp (`team_side` au format `t{N}`) et le xuid coexistent.
- * `null` = camp introuvable ou aucun joueur reconnu : la marque prend une encre neutre,
- * jamais l'une des deux couleurs par défaut.
+ * notion RELATIVE au joueur consulté. Le pont entre les deux passe par le scoreboard, seul
+ * endroit où le camp (`team_side` au format `t{N}`) et le xuid coexistent. `null` = camp
+ * introuvable ou aucun joueur reconnu : la marque prend une encre neutre, jamais l'une des
+ * deux couleurs par défaut.
  */
 export function allyOfTeamId(
-  scoreboard: readonly MatchScoreboardRow[],
-  xuidMeta: XuidMeta | undefined,
+  scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>>,
+  allies: AllyIndex | undefined,
   teamId: number,
 ): boolean | null {
-  if (!xuidMeta) return null
+  if (!allies) return null
   for (const row of scoreboard) {
     if (parseTeamSideID(row.team_side) !== teamId) continue
-    const meta = xuidMeta.get(row.xuid)
+    const meta = allies.get(row.xuid)
     if (meta) return meta.ally
   }
   return null
