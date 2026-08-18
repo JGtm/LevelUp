@@ -16,12 +16,12 @@ import { useCallback, useMemo } from 'react'
 
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { allyOfTeamId, leadChanges, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayLeadMarksProps } from './ReplayLeadMarks'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { allyOfTeamId, leadChanges, scoreTimelineOf } from './scoreTimelineLogic'
 
 export function useLeadMarks(
   doc: ReplayDocumentReady,

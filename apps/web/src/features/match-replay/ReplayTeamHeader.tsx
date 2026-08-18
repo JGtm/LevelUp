@@ -33,17 +33,17 @@
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
-import type { MatchScoreboardRow } from '@/lib/api/types'
-
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { ReplayPlayer } from './rosterLogic'
-import type { ReplayScoreTimelineReady } from './replayNormalize'
 import {
   roundAtFrame,
   teamIdOfSide,
   teamScoreAtFrame,
   teamSeriesFor,
-} from './scoreTimelineLogic'
+  type ReplayScoreTimelineReady,
+} from '@/lib/replay/scoreTimeline'
+import type { MatchScoreboardRow } from '@/lib/api/types'
+
+import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import type { ReplayPlayer } from './rosterLogic'
 
 /** Part du fond qu'occupe la couleur d'équipe : assez pour teinter, jamais pour crier. */
 const TINT_PCT = 14

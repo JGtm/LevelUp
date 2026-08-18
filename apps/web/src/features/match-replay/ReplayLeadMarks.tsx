@@ -19,8 +19,9 @@
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { formatClockMMSS } from '@/lib/formatters'
 
+import type { LeadChange } from '@/lib/replay/scoreTimeline'
+
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { LeadChange } from './scoreTimelineLogic'
 
 /**
  * Largeur supposée du curseur natif, en pixels. La piste d'un `input[type=range]` court de

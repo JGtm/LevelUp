@@ -14,6 +14,11 @@
 import { useMemo, type CSSProperties } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import {
+  playerCountersAt,
+  scoreTimelineOf,
+  type ReplayScoreTimelineReady,
+} from '@/lib/replay/scoreTimeline'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -35,8 +40,7 @@ import {
   READING_FADE,
   trackWindow,
 } from './replayLogic'
-import type { ReplayDocumentReady, ReplayScoreTimelineReady } from './replayNormalize'
-import { playerCountersAt, scoreTimelineOf } from './scoreTimelineLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
@@ -144,7 +148,7 @@ export function ReplayTeams({
   const presence = useMemo(() => vitalityPresence(doc), [doc])
   // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
   // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée
-  // (cf. scoreTimelineLogic.filmClockTrusted). Les fiches et les en-têtes n'ont alors rien
+  // (cf. lib/replay/scoreTimeline.filmClockTrusted). Les fiches et les en-têtes n'ont alors
   // de plus à dire qu'avant — aucune ligne ne se vide, aucun zéro n'apparaît.
   const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
 
