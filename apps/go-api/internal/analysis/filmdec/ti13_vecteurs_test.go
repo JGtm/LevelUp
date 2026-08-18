@@ -409,7 +409,7 @@ func TestTi13ConvertisseursFigent(t *testing.T) {
 	}
 	// L'index de joueur se reconstitue depuis l'index du masque : i2 porte le joueur 0.
 	for i, want := range map[int]int{2: 0, 3: 1, 33: 31, 1: -1, 34: -1} {
-		if got := ManagedPropertyPlayerIndex(i); got != want {
+		if got := ManagedPropertyFilmIndex(i); got != want {
 			t.Errorf("index de joueur : i%d -> %d, attendu %d", i, got, want)
 		}
 	}
