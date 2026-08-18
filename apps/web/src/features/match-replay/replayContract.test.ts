@@ -13,11 +13,22 @@
  * depuis la même liste manuelle.
  *
  * D'OÙ LA FORME DE CE TEST : la complétude est vérifiée PAR LE COMPILATEUR, contre les types
- * GÉNÉRÉS depuis `api/openapi.yaml`. Deux assertions de type suffisent, et elles font tomber
- * `tsc -b` (donc la CI) avant même qu'un test ne s'exécute :
+ * GÉNÉRÉS depuis `api/openapi.yaml`. Les assertions de type font tomber `tsc -b` (donc la CI)
+ * avant même qu'un test ne s'exécute :
  *
- *   1. la liste des tableaux nullables du contrat est EXACTEMENT celle qu'on énumère ici ;
- *   2. le document normalisé n'en porte plus AUCUN.
+ *   1. la liste des tableaux nullables de la RACINE est exactement celle qu'on énumère ici ;
+ *   2. le document normalisé n'en porte plus aucun à la racine ;
+ *   3. la CARTE COMPLÈTE des tableaux nullables — à toute profondeur — est celle qu'on écrit ;
+ *   4. de cette carte, la frontière ne laisse passer QUE les chemins de l'allowlist.
+ *
+ * POURQUOI (3) ET (4) ONT ÉTÉ AJOUTÉES (lot A phase 2, 2026-08-18). La garde de racine était
+ * aveugle à ce qui vit DANS les éléments : `weaponPads[].spawns` était déjà passé au travers
+ * une fois, et le calque de score du schéma 12 empile QUATRE étages de tableaux nullables
+ * (`scoreTimeline.teams[].rounds[].points`). Un quatrième oubli du même genre serait tombé à
+ * l'exécution. Le walker `NullableArrayPaths` descend désormais dans les objets ET dans les
+ * éléments de tableaux, et l'assertion (4) est celle qui compte vraiment : elle compare la
+ * carte du document NORMALISÉ à une allowlist de deux chemins justifiés — tout tableau
+ * nullable que la frontière oublierait, à quelque profondeur qu'il vive, y apparaîtrait.
  *
  * Un champ ajouté côté Go arrive donc ici sans que personne n'ait à y penser. Le reste du
  * fichier vérifie le COMPORTEMENT de la frontière — ce qu'un type ne peut pas dire.
@@ -107,6 +118,115 @@ type _ListeExhaustive = Expect<
 
 /** (2) Le document normalisé n'en porte plus aucun : la frontière les a TOUS comblés. */
 type _FrontiereComplete = Expect<Equals<NullableArrayKeys<ReplayDocumentReady>, never>>
+
+/**
+ * Profondeur restante du walker. Le contrat n'a pas de type récursif — c'est au compilateur
+ * qu'il faut le prouver, et une borne explicite le fait sans rien coûter. 6 laisse deux étages
+ * de marge au plus profond des chemins connus (score.rounds[].points d'un joueur, à 4).
+ */
+type Prev = [never, 0, 1, 2, 3, 4, 5, 6]
+
+/**
+ * NullableArrayPaths — TOUS les chemins de `T` qui mènent à un tableau que le transport a le
+ * droit de laisser `null`, à quelque profondeur qu'il vive.
+ *
+ * `a.b` se lit « le champ b de l'objet a » ; `a[].b` « le champ b des ÉLÉMENTS du tableau a ».
+ * Les objets à signature d'index (`weaponLabels`, `killEffects`, `coverage.verdict` : des
+ * dictionnaires, pas des structures) sont exclus — ils n'ont pas de champ à énumérer.
+ */
+type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
+  ? never
+  : string extends keyof T
+    ? never
+    : {
+        [K in keyof T & string]-?:
+          | (null extends T[K] ? (NonNullable<T[K]> extends readonly unknown[] ? K : never) : never)
+          | (NonNullable<T[K]> extends readonly (infer E)[]
+              ? `${K}[].${NullableArrayPaths<NonNullable<E>, Prev[D]>}`
+              : NonNullable<T[K]> extends object
+                ? `${K}.${NullableArrayPaths<NonNullable<T[K]>, Prev[D]>}`
+                : never)
+      }[keyof T & string]
+
+/**
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 45 chemins, racine et profondeurs confondues.
+ *
+ * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
+ * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
+ */
+const NULLABLE_ARRAY_PATHS = [
+  // Racine — les mêmes que NULLABLE_ARRAYS ci-dessus, retrouvées par le walker.
+  'abilities',
+  'equipmentEpisodes',
+  'equipmentPlacements',
+  'geometry',
+  'grappleLines',
+  'grenadeLabels',
+  'grenades',
+  'inventory',
+  'loadouts',
+  'neutralDeaths',
+  'objectives',
+  'padPickups',
+  'projectiles',
+  'roster',
+  'shots',
+  'structure',
+  'tracks',
+  'weaponPads',
+  // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
+  'inventory[].am',
+  'inventory[].g',
+  'loadouts[].w',
+  'projectiles[].p',
+  'structure[].poly',
+  'tracks[].points',
+  'weaponPads[].presence',
+  'weaponPads[].spawns',
+  // Le CALQUE DE SCORE (schéma 12) : quatre étages, dix-sept chemins. Les paliers d'une
+  // manche (`rounds[].points`) et le cumul du match (`total`) sont deux tableaux distincts,
+  // pour les équipes comme pour chacune des quatre séries d'un joueur.
+  'scoreTimeline.players',
+  'scoreTimeline.teams',
+  'scoreTimeline.players[].assists.rounds',
+  'scoreTimeline.players[].assists.rounds[].points',
+  'scoreTimeline.players[].assists.total',
+  'scoreTimeline.players[].deaths.rounds',
+  'scoreTimeline.players[].deaths.rounds[].points',
+  'scoreTimeline.players[].deaths.total',
+  'scoreTimeline.players[].kills.rounds',
+  'scoreTimeline.players[].kills.rounds[].points',
+  'scoreTimeline.players[].kills.total',
+  'scoreTimeline.players[].score.rounds',
+  'scoreTimeline.players[].score.rounds[].points',
+  'scoreTimeline.players[].score.total',
+  'scoreTimeline.teams[].rounds',
+  'scoreTimeline.teams[].rounds[].points',
+  'scoreTimeline.teams[].total',
+  // Les objectifs STATIQUES du mode : servis à la requête, normalisés à l'entrée de leur
+  // calque (`normalizeMapObjectives`) et non par la frontière du document — d'où leur
+  // présence dans l'allowlist ci-dessous.
+  'mapObjectives.markers',
+  'mapObjectives.zones',
+] as const
+
+/**
+ * PATHS_HORS_FRONTIERE — les seuls chemins que `normalizeReplayDocument` laisse passer, et la
+ * raison tient en une ligne : `mapObjectives` n'appartient pas à l'artefact. Il est REMPLI À LA
+ * REQUÊTE depuis le catalogue de cartes, et son calque a sa propre entrée
+ * (`normalizeMapObjectives`) — le combler ici en ferait une seconde vérité.
+ */
+const PATHS_HORS_FRONTIERE = ['mapObjectives.markers', 'mapObjectives.zones'] as const
+
+/** (3) La carte couvre EXACTEMENT les tableaux nullables du contrat, à toute profondeur. */
+type _CarteExhaustive = Expect<
+  Equals<(typeof NULLABLE_ARRAY_PATHS)[number], NullableArrayPaths<ReplayDocument>>
+>
+
+/** (4) De cette carte, le document normalisé ne laisse passer QUE l'allowlist justifiée. */
+type _FrontiereProfonde = Expect<
+  Equals<(typeof PATHS_HORS_FRONTIERE)[number], NullableArrayPaths<ReplayDocumentReady>>
+>
 
 describe('la frontière du document de rejeu', () => {
   it('énumère EXACTEMENT les tableaux nullables du contrat — vérifié à la compilation', () => {
@@ -204,6 +324,60 @@ describe('la frontière du document de rejeu', () => {
     expect(normalizeReplayDocument(raw).tracks[0].points).toBe(points)
   })
 
+  it('énumère EXACTEMENT les tableaux nullables du contrat À TOUTE PROFONDEUR', () => {
+    const exhaustive: _CarteExhaustive = true
+    const profonde: _FrontiereProfonde = true
+    expect(exhaustive).toBe(true)
+    expect(profonde).toBe(true)
+    // La carte couvre la racine : tout ce que la liste de tête énumère s'y retrouve tel quel.
+    const manquants = NULLABLE_ARRAYS.filter((k) => !NULLABLE_ARRAY_PATHS.includes(k))
+    expect(
+      manquants,
+      `chemin(s) de racine absent(s) de la carte : ${manquants.join(', ')}`,
+    ).toEqual([])
+    expect(PATHS_HORS_FRONTIERE.length).toBeLessThan(NULLABLE_ARRAY_PATHS.length)
+  })
+
+  it('comble les QUATRE étages du calque de score, que la garde de racine ne voit pas', () => {
+    // Un calque de score entièrement hostile : chaque tableau des quatre niveaux vaut null.
+    const raw = {
+      scoreTimeline: {
+        teams: [{ teamId: 0, rounds: [{ round: 0, points: null }], total: null }],
+        players: [
+          {
+            xuid: '2533274815845110',
+            score: { rounds: [{ round: 0, points: null }], total: null },
+            kills: { rounds: null, total: null },
+            deaths: { rounds: null, total: null },
+            assists: { rounds: null, total: null },
+          },
+        ],
+      },
+    } as unknown as ReplayDocument
+    const st = normalizeReplayDocument(raw).scoreTimeline
+    expect(st, 'scoreTimeline').toBeDefined()
+    expect(st?.teams[0].total, 'teams[].total').toEqual([])
+    expect(st?.teams[0].rounds[0].points, 'teams[].rounds[].points').toEqual([])
+    expect(st?.players[0].score.rounds[0].points, 'players[].score.rounds[].points').toEqual([])
+    for (const k of ['score', 'kills', 'deaths', 'assists'] as const) {
+      expect(st?.players[0][k].total, `players[].${k}.total`).toEqual([])
+      expect(st?.players[0][k].rounds, `players[].${k}.rounds`).toBeInstanceOf(Array)
+    }
+  })
+
+  it('comble teams et players quand le calque existe mais qu’ils valent null', () => {
+    const raw = { scoreTimeline: { teams: null, players: null } } as unknown as ReplayDocument
+    const st = normalizeReplayDocument(raw).scoreTimeline
+    expect(st?.teams).toEqual([])
+    expect(st?.players).toEqual([])
+  })
+
+  it('n’invente PAS un calque de score : absent reste absent', () => {
+    // Un artefact de schéma antérieur à 12 n'en porte aucun. Un objet vide se lirait
+    // « le film a été lu, il n'y avait pas de score » — ce n'est pas la même chose.
+    expect(normalizeReplayDocument({} as ReplayDocument).scoreTimeline).toBeUndefined()
+  })
+
   it('rétablit l’arité que JSON Schema ne sait pas rendre en TypeScript', () => {
     // `Surface.poly` est un [2]float32 côté Go, `Projectile.p` un [3]float32, et le contrat le
     // DIT (minItems = maxItems — vérifié côté Go par contracttest/replay_contract_test.go).
@@ -223,3 +397,4 @@ describe('la frontière du document de rejeu', () => {
     expect(vide.structure[0].poly).toEqual([])
   })
 })
+

@@ -23,6 +23,7 @@ import type { ReplayBounds, ReplayMapObjectives } from '@/lib/api/types'
 import { posOfPlayerAt, KILLPOS_WINDOW_MS } from './killFx'
 import { canvasScale, msToFrames, worldToCanvas, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { filmClockTrusted } from './scoreTimelineLogic'
 
 /** Valeur « aucun camp » du team_index — celle du fichier de carte, servie telle quelle. */
 export const OBJECTIVE_TEAM_NEUTRAL = -1
@@ -255,6 +256,12 @@ export function buildObjectivePulses(
   elements: ObjectiveElementReady[],
 ): ObjectivePulse[] {
   if (elements.length === 0 || doc.objectives.length === 0 || doc.tracks.length === 0) return []
+  // L'ORIGINE DOIT ÊTRE CONNUE POUR QUE LA SOUSTRACTION AIT UN SENS (P2 de la revue du lot A
+  // phase 1). Quand elle n'est ni résolue ni publiée, `originMs ?? 0` ne recale rien : les
+  // pulses s'allumeraient au mauvais instant — de 3,6 s à 50,8 s trop tôt selon le match — et
+  // l'appariement lirait la position de l'auteur ailleurs. Un calque muet vaut mieux qu'un
+  // calque faux, et c'est la MÊME règle qui masque le score (cf. filmClockTrusted).
+  if (!filmClockTrusted(doc)) return []
   const deathFrames = Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))
   const livesByXuid = new Map<string, ReplayTrackReady[]>()
   for (const t of doc.tracks) {

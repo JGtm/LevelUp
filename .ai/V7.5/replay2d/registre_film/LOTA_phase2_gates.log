@@ -1,0 +1,6 @@
+=== LOT A PHASE 2 — gates web (worktree wt/score-web) ===
+
+[A.2.0] frontiere + garde etendue + module pur
+EXIT_VITEST_A20=0  (55 tests : scoreTimelineLogic 30, replayContract 22, objectivesLayer 3)
+EXIT_TSC_A20=0
+EXIT_LINT_A20=0  (19 avertissements, tous preexistants ; 0 erreur ; aucun sur les fichiers du lot)
