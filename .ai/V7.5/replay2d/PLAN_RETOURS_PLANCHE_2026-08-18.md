@@ -58,13 +58,33 @@ rond (W1).
       propose sur la planche si la famille apparait : bulle opaque au token `muted` avec bord flou.
 Gate V : typecheck/lint/vitest verts ; planche mise a jour avec les propositions ; aucune couleur en dur.
 
-### R2-S — sons (worktree `wt/r2-sons`)
-- [ ] S1 (D4/D5) egalisation LUFS de TOUS les sons (decision 3), avant/apres publie.
-- [ ] S2 (D2) recouvrement lancers/explosions mesure (decision 4).
-- [ ] S3 (D1) inventaire : armes a TIR CHARGE et a TIR CONTINU (declares dans le tag `weap`, acquis
+### R2-S — sons (worktree `wt/r2-sons`) — LOT CLOS le 2026-08-18
+- [x] S1 (D4/D5) egalisation LUFS de TOUS les sons (decision 3), avant/apres publie. **41 fichiers
+      renormalises a -16 LUFS / plafond -1 dBTP par gain LINEAIRE strict** (equivalence avec
+      `loudnorm linear=true` verifiee sur piece). AVANT : etendue 31,58 LU (-9,20 rayon de Sentinelle
+      a -40,78 melee), 3 fichiers au-dessus de 0 dBTP. APRES : etendue 7,18 LU, 0 fichier au-dessus
+      de -1 dBTP, maximum momentane resserre de 30,10 a 11,60 LU. Durees, frequences, canaux et
+      `duration_ts` INCHANGES sur les 41. Le grief mesure (surbouclier a peine audible) est corrige :
+      -29,53 -> -16,01 LUFS. Commit `83829c7b7`.
+- [x] S2 (D2) recouvrement lancers/explosions mesure (decision 4). **La condition de la decision 4
+      n'est PAS remplie : les deux restent.** Piste reelle des 3 temoins : 343 lancers, 16 explosions,
+      5 chevauchements a moins de 0,3 s = 31,3 %. Mesure de controle sans kill (fin de vol du
+      projectile lie, 296 lancers apparies) : 48,6 %, sous le seuil egalement. Regle epinglee par un
+      test unitaire. Commit `d641ca70d`.
+- [x] S3 (D1) inventaire : armes a TIR CHARGE et a TIR CONTINU (declares dans le tag `weap`, acquis
       registre) presentes dans le corpus vs sons disponibles (charge : Ravager seul ; continu : rayon
-      de Sentinelle) — liste des MANQUANTS avec le nom d'arme, sans inventer de son.
-Gate S : durees inchangees, LUFS dans ±1 de la cible, tests `replaySound` verts.
+      de Sentinelle) — liste des MANQUANTS avec le nom d'arme, sans inventer de son. **Deux armes du
+      registre declarent un second mode de tir : Pistolet a plasma (`hinf_plasma_pistol`, mode 3
+      charge, JAMAIS livre) et Ravageur (`hinf_ravager`, mode 2 charge, le .wav livre est le mode 1).
+      Le tir continu n'est pas un mode de tag : c'est la nature du mode unique du Rayon de Sentinelle,
+      dont le .wav livre est le tir COURT. Aucun fichier cree.** Commit `b87bdd1e2`.
+Gate S : durees inchangees, LUFS dans ±1 de la cible, tests `replaySound` verts. **PASSE avec une
+reserve ECRITE sur la clause LUFS** : 26 fichiers sur 41 sont dans +/-1 LU ; les 15 autres plafonnent
+entre -17,2 et -23,1 LUFS parce que leur facteur de crete (15 a 24 dB) interdit la cible sous -1 dBTP.
+C'est l'echappatoire prevue par la decision 3 (« si un fichier ne peut pas atteindre la cible sans
+ecretage, le laisser au plus pres ») : les y forcer demanderait un limiteur, donc une retouche du
+timbre extrait du jeu — decision d'oreille, non prise ici. Durees : 41/41 identiques a l'echantillon.
+Tests : `replaySound.test.ts`, `replaySoundAssets.guard.test.ts`, `useReplaySound.test.tsx` verts.
 
 ### R2-P — calque des socles (worktree `wt/r2-socles`) — decision 5, note UI item 6
 - [ ] P1 calque `weaponPads` (icone, taille adaptative, plein/vide/incertain, compte a rebours si cycle),
@@ -116,3 +136,23 @@ Gate P : gates web verts ; planche : items P sur `01e1f945`.
 
 - 2026-08-18 — plan ecrit ; fusion tierce `wt/registre-film` POSEE (`104f468c6`, schema 13, contrat 34) ;
   lots R2-V, R2-S, R2-P LANCES (worktrees freres `wt/r2-visuels`, `wt/r2-sons`, `wt/r2-socles`, base `104f468c6`).
+- 2026-08-18 — **lot R2-S CLOS** (worktree frere `wt/r2-sons`, base `3907eb505`) : S1 `83829c7b7`,
+  S2 `d641ca70d`, S3 `b87bdd1e2`, plan `docs`. Gates rejoues sur l'arbre du frere apres `npm ci`.
+  Les trois items sont statues `[x]`, avec une reserve ecrite au gate S sur la clause « LUFS dans
+  +/-1 » (15 fichiers plafonnes par leur facteur de crete — echappatoire de la decision 3).
+
+## Decouvertes (lot R2-S) — notees, NON traitees (regle 7)
+
+1. **L'explosion de grenade ne sonne QUE sur un kill, et c'est la vraie cause du grief D2.** Sur les
+   trois temoins : 343 lancers, 16 explosions (4,7 %), et ZERO sur `00162144` qui porte pourtant
+   143 lancers. Le film ne publiant aucun evenement de detonation, la seule source d'explosion est
+   la vignette d'un kill a la grenade (`KILL_SPRITE_SOUND_STEMS`). Sonner la FIN DE VOL du projectile
+   (`buildGrenadeRestFx`, deja calculee pour l'effet visuel) donnerait une explosion a chaque grenade
+   — mais ce n'est plus « mesurer le recouvrement », c'est une feature : elle appartient a l'utilisateur.
+   Ordre de grandeur du changement : +296 sons sur 3 temoins, dont 48,6 % a moins de 0,3 s de leur
+   lancer. Le point est le meme pour l'ecran (A4 « fin de vol des grenades »).
+2. **Le tir charge du Ravageur et celui du pistolet a plasma sont RENDUS et archives, mais pas livres**
+   (`Desktop/Halo Infinite - Sons armes/`). Les brancher demande d'abord une source qui qualifie le
+   MODE d'un tir : les deux candidats (jauge de charge, cadence) sont des NO-GO mesures au registre.
+3. **`static/sounds/halo_infinite/hinf_gravity_hammer.wav` est le seul fichier MONO** du dossier
+   (les 40 autres sont stereo). Sans effet mesure ici — la normalisation l'a preserve tel quel.
