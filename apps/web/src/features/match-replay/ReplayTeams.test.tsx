@@ -539,6 +539,162 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
   })
 })
 
+describe('ReplayTeams — le score À L’INSTANT LU (schéma 12)', () => {
+  const board = () => [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't1')]
+  const twoLives = {
+    roster: [
+      { xuid: 'A', filmIndex: 0, name: 'Alpha' },
+      { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+    ],
+    tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }],
+  }
+  /** Le témoin Slayer, réduit : t0 monte à 3, t1 à 5 ; un seul joueur a des compteurs. */
+  const slayer = {
+    teams: [
+      { teamId: 0, rounds: [{ round: 0, points: [{ t: 5, v: 1 }, { t: 40, v: 3 }] }], total: [{ t: 5, v: 1 }, { t: 40, v: 3 }] },
+      { teamId: 1, rounds: [{ round: 0, points: [{ t: 3, v: 2 }, { t: 40, v: 5 }] }], total: [{ t: 3, v: 2 }, { t: 40, v: 5 }] },
+    ],
+    players: [
+      {
+        xuid: 'A',
+        score: { rounds: null, total: [{ t: 5, v: 120 }, { t: 40, v: 350 }] },
+        kills: { rounds: null, total: [{ t: 5, v: 1 }, { t: 40, v: 3 }] },
+        deaths: { rounds: null, total: [{ t: 20, v: 2 }] },
+        assists: { rounds: null, total: [{ t: 40, v: 4 }] },
+      },
+    ],
+  }
+
+  it('écrit le score de chaque colonne, LU au frame courant', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: slayer })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={10} locale="fr" />)
+    // À l'image 10, les deux équipes en sont à leur premier palier : 1 et 2.
+    expect(view.getAllByTitle("Score de l'équipe à l'instant lu").map((n) => n.textContent)).toEqual(['1', '2'])
+  })
+
+  it('TIQUE avec la lecture : le même document à une autre image donne d’autres valeurs', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: slayer })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.getAllByTitle("Score de l'équipe à l'instant lu").map((n) => n.textContent)).toEqual(['3', '5'])
+  })
+
+  it('affiche ZÉRO pour le camp SANS série — ne pas marquer est une mesure (témoin CTF 3-0)', () => {
+    const ctf = { teams: [slayer.teams[0]], players: null }
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: ctf })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.getAllByTitle("Score de l'équipe à l'instant lu").map((n) => n.textContent)).toEqual(['3', '0'])
+  })
+
+  it('n’écrit AUCUN score quand le film n’en publie aucun — « 0 » se lirait comme une mesure', () => {
+    const doc = testReplayDoc(twoLives)
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.queryAllByTitle("Score de l'équipe à l'instant lu")).toHaveLength(0)
+  })
+
+  it('rappelle la MANCHE courante quand il y en a plusieurs, et sa valeur (pas le total)', () => {
+    const oddball = {
+      teams: [
+        {
+          teamId: 0,
+          rounds: [
+            { round: 0, points: [{ t: 5, v: 100 }] },
+            { round: 1, points: [{ t: 50, v: 43 }] },
+          ],
+          total: [{ t: 5, v: 100 }, { t: 50, v: 143 }],
+        },
+      ],
+      players: null,
+    }
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: oddball })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={60} locale="fr" />)
+    expect(view.getAllByTitle("Score de l'équipe à l'instant lu")[0].textContent).toBe('143')
+    expect(view.getByTitle('Manche 2 sur 2 : 43').textContent).toContain('M2')
+  })
+
+  it('ne rappelle AUCUNE manche sur un mode à manche unique : elle répéterait le total', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: slayer })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.queryByTitle(/Manche/)).toBeNull()
+  })
+
+  it('MASQUE tout le calque quand l’origine n’est ni résolue ni publiée', () => {
+    // Règle cliente du P2 de la revue : un score qui tique au mauvais instant se lit comme
+    // juste. Mieux vaut ne rien montrer.
+    const doc = testReplayDoc({
+      ...twoLives,
+      scoreTimeline: slayer,
+      coverage: { originResolved: false },
+    } as never)
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.queryAllByTitle("Score de l'équipe à l'instant lu")).toHaveLength(0)
+  })
+})
+
+describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', () => {
+  const board = () => [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't0')]
+  const twoLives = {
+    roster: [
+      { xuid: 'A', filmIndex: 0, name: 'Alpha' },
+      { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+    ],
+    tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }],
+  }
+  const timeline = {
+    teams: null,
+    players: [
+      {
+        xuid: 'A',
+        score: { rounds: null, total: [{ t: 5, v: 120 }, { t: 40, v: 350 }] },
+        kills: { rounds: null, total: [{ t: 5, v: 1 }, { t: 40, v: 3 }] },
+        deaths: { rounds: null, total: [{ t: 20, v: 2 }] },
+        assists: { rounds: null, total: [{ t: 40, v: 4 }] },
+      },
+    ],
+  }
+
+  it('le joueur PUBLIÉ montre son score personnel et ses compteurs à l’instant lu', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('350')
+    const live = view.getByTitle("Frags / morts / assistances à l'instant lu")
+    expect(live.textContent).toBe('3/2/4')
+  })
+
+  it('et ils TIQUENT : à l’image 10, seuls les paliers déjà passés comptent', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={10} locale="fr" />)
+    expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('120')
+    // Aucune mort ni assistance transmise avant l'image 20 : zéro est la valeur, pas une lacune.
+    expect(view.getByTitle("Frags / morts / assistances à l'instant lu").textContent).toBe('1/0/0')
+  })
+
+  it('le joueur NON publié garde les totaux de la BASE — jamais un zéro inventé', () => {
+    // Bravo n'a pas de série : sa fiche ne montre pas de score personnel, et ses trois
+    // nombres restent ceux du match (sbRow : 1 frag, 1 mort, 0 assistance).
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.getAllByTitle("Score personnel à l'instant lu")).toHaveLength(1)
+    const base = view.getAllByTitle('Frags / morts / assistances du match')
+    expect(base).toHaveLength(1)
+    expect(base[0].textContent).toBe('1/1/0')
+  })
+
+  it('sans calque publié, toutes les fiches gardent les totaux du match', () => {
+    const doc = testReplayDoc(twoLives)
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    expect(view.queryAllByTitle("Score personnel à l'instant lu")).toHaveLength(0)
+    expect(view.getAllByTitle('Frags / morts / assistances du match')).toHaveLength(2)
+  })
+
+  it('EN : les mêmes surfaces portent les libellés anglais', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="en" />)
+    expect(view.getByTitle('Personal score at the moment being played').textContent).toBe('350')
+    expect(view.getByTitle('Kills / deaths / assists at the moment being played')).toBeTruthy()
+    expect(view.getByTitle('Kills / deaths / assists for the whole match')).toBeTruthy()
+  })
+})
+
 describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
   it('marque « Moi » le joueur de la page et « Ami » un ami, rien pour les autres', () => {
     const doc = testReplayDoc({

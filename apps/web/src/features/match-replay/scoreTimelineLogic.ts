@@ -30,8 +30,9 @@
  *
  * Tout ce fichier est PUR : ni React, ni canvas, ni DOM.
  */
+import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
-import type { ReplayScoreTick } from '@/lib/api/types'
+import type { MatchScoreboardRow, ReplayScoreTick } from '@/lib/api/types'
 
 import type {
   ReplayDocumentReady,
@@ -236,6 +237,29 @@ export function leadChanges(timeline: ReplayScoreTimelineReady | undefined): Lea
     previous = leader
   }
   return out
+}
+
+/**
+ * allyOfTeamId dit si une équipe DU FILM est du côté du joueur de la page.
+ *
+ * Le film numérote ses équipes (`teamId`) ; la page raisonne en « allié / adverse », une
+ * notion RELATIVE au joueur consulté (cf. xuidMeta). Le pont entre les deux passe par le
+ * scoreboard, seul endroit où le camp (`team_side` au format `t{N}`) et le xuid coexistent.
+ * `null` = camp introuvable ou aucun joueur reconnu : la marque prend une encre neutre,
+ * jamais l'une des deux couleurs par défaut.
+ */
+export function allyOfTeamId(
+  scoreboard: readonly MatchScoreboardRow[],
+  xuidMeta: XuidMeta | undefined,
+  teamId: number,
+): boolean | null {
+  if (!xuidMeta) return null
+  for (const row of scoreboard) {
+    if (parseTeamSideID(row.team_side) !== teamId) continue
+    const meta = xuidMeta.get(row.xuid)
+    if (meta) return meta.ally
+  }
+  return null
 }
 
 /** leaderAt rend l'équipe SEULE en tête au frame donné, ou `null` (égalité, aucun point). */

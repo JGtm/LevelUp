@@ -4,3 +4,9 @@
 EXIT_VITEST_A20=0  (55 tests : scoreTimelineLogic 30, replayContract 22, objectivesLayer 3)
 EXIT_TSC_A20=0
 EXIT_LINT_A20=0  (19 avertissements, tous preexistants ; 0 erreur ; aucun sur les fichiers du lot)
+
+[A.2.1] rejeu : score vivant en-tete + fiches, retournements sur la frise
+EXIT_VITEST_A21=0  (49 fichiers, 710 tests — suite match-replay complete)
+EXIT_TSC_A21=0
+EXIT_LINT_A21=0  (19 avertissements = baseline exacte, 0 erreur)
+Cliquet ReplayCanvas.tsx : 861/861 (extraction useLeadMarks.ts plutot que relevement)

@@ -23,6 +23,7 @@ import { PlayerMark } from './PlayerMark'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
 import { equippedWeapons } from './equippedLogic'
+import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import {
   altitudeAt,
@@ -34,7 +35,8 @@ import {
   READING_FADE,
   trackWindow,
 } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady, ReplayScoreTimelineReady } from './replayNormalize'
+import { playerCountersAt, scoreTimelineOf } from './scoreTimelineLogic'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
@@ -140,6 +142,11 @@ export function ReplayTeams({
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
   const presence = useMemo(() => vitalityPresence(doc), [doc])
+  // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
+  // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée
+  // (cf. scoreTimelineLogic.filmClockTrusted). Les fiches et les en-têtes n'ont alors rien
+  // de plus à dire qu'avant — aucune ligne ne se vide, aucun zéro n'apparaît.
+  const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
 
   if (groups.length === 0) {
     return (
@@ -168,6 +175,8 @@ export function ReplayTeams({
             side={group.side}
             xuidMeta={xuidMeta}
             locale={locale}
+            scoreTimeline={scoreTimeline}
+            frame={frame}
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {group.players.map((p) => (
@@ -183,6 +192,7 @@ export function ReplayTeams({
                 locale={locale}
                 callouts={callouts}
                 mark={(marks ?? NO_MARKS).get(p.xuid)}
+                scoreTimeline={scoreTimeline}
               />
             ))}
           </div>
@@ -204,10 +214,17 @@ interface PlayerCardProps {
   callouts?: CalloutZoneReady[]
   /** Marque d'identité du joueur (« moi », « ami »), ou rien. */
   mark?: PlayerMarkKind
+  /** Calque de score du film, déjà passé par la garde d'horloge. */
+  scoreTimeline?: ReplayScoreTimelineReady
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark, scoreTimeline }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
+  // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
+  // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
+  // publie aucun (0/32 en phase 0). La fiche retombe alors sur les totaux de la BASE, qui
+  // valent pour tout le match — c'est ce qu'elle affichait avant ce lot.
+  const live = playerCountersAt(scoreTimeline, player.xuid, frame)
   const state = playerStateAt(player, frame, presence)
   const name = playerName(player) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
@@ -289,7 +306,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
         >
           {name}
         </span>
-        <KdaBadge board={player.board} />
+        <ReplayCountersBadge board={player.board} live={live} locale={locale} />
       </div>
       {/* La zone courante RÉSERVE sa ligne dès que la carte a des zones : vivant elle se
           remplit, mort elle reste vide — jamais une fiche qui se compacte (règle 1.1). */}
@@ -365,34 +382,6 @@ function currentZone(
   if (!p) return null
   const z = altitudeAt(life.points, frame)
   return zoneAt(zones, p.x, p.y, z ?? 0)
-}
-
-/**
- * KdaBadge — FRAGS, MORTS, ASSISTANCES, chacun sa couleur. Trois nombres collés sans
- * distinction se lisent comme un seul nombre à trois chiffres.
- *
- * CES CHIFFRES VIENNENT DE LA BASE, pas du film, et ils valent pour TOUT le match : ce ne sont
- * pas des compteurs à l'instant lu. Sans ligne de scoreboard, on n'affiche rien.
- */
-function KdaBadge({ board }: { board?: MatchScoreboardRow }) {
-  if (!board) return null
-  const parts: [number | null | undefined, string][] = [
-    [board.kills, 'success'],
-    [board.deaths, 'destructive'],
-    [board.assists, 'info'],
-  ]
-  return (
-    <span className="inline-flex shrink-0 items-baseline gap-0.5 font-mono text-[10px] tabular-nums">
-      {parts.map(([v, token], i) => (
-        <span key={token}>
-          {i > 0 && <span className="opacity-50">/</span>}
-          <span className="font-semibold" style={{ color: tokenCssVar(token as 'success') }}>
-            {v ?? '?'}
-          </span>
-        </span>
-      ))}
-    </span>
-  )
 }
 
 /**
