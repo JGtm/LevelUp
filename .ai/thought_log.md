@@ -1,3 +1,25 @@
+## [2026-08-18] Drapeau OBJET — le LANCER mesure et refute — Complete
+
+**Statut** : Complete (branche `wt/drapeau`, `7f74a43fa` instrument AVANT mesure, `161c9299c` mesure + plan,
+FUSIONNEE dans `feat/v75` par le superviseur). Hypothese utilisateur (« on peut lancer le drapeau plus
+loin ») testee et REFUTEE par la mesure.
+**Decision technique** : regle elargie (branche porteur <= R m DANS LES 2 s ; branche socle et seuils
+90 % / 20 % inchanges ; R = 1,5 / 3 / 5 / 8 / 10 m) ecrite et commitee avant tout chiffre, temoin des armes
+`ti=42` passe a la MEME regle au meme R ; critere de retention de R pose a l'avance.
+**Resultats** : aucun R n'atteint 90 % (82,2 -> 83,2 % du cumul 197 vies), le temoin creve son plafond des
+8 m (22,2 %) ; de 1,5 a 10 m le drapeau gagne 2 vies, le temoin 91 — le rayon mesure la densite des
+joueurs, pas une portee de lancer. Distribution des 35 residuelles (a 1,5 m, fenetre 2 s) : 26 (74 %) SANS
+AUCUNE reference porteur dans les 2 s ; les 9 mesurables a 20,6 m de mediane, tranches ]1,5-3] et
+]3-5] VIDES — refutation independante des seuils. Gain propre releve : la fenetre a 2 s, a rayon
+inchange, porte le controle 3 de 75,6 % a 82,2 % (+13 vies) pour +1,5 pt de temoin — le lacher manquait de
+DELAI, pas de distance (non transporte en production : `flagFreeDropWindowMS` ferme des portages, exigence
+plus forte).
+**Conclusion / prochaine etape** : `flagObjects` reste non publie (`[!]`), `flagCarries` non etendu ; le vrai
+reste = les 26 naissances sans porteur (autre objet du meme archetype ? re-creation serveur ?) — a
+identifier avant tout nouveau balayage de seuil. Decouverte hors perimetre : `TestNoPlayerIndexInFilmScope`
+(archlint) est ROUGE sur `feat/v75` depuis le lot zones `ti=13` (`zone_state_scan.go:63,228`,
+`zone_states_test.go:25`) — a traiter par le lot zones (session utilisateur), signale.
+
 ## [2026-08-18] v7.5 rejeu 2D — lot C-bis phase 2b : correctif CI archlint, l'index de joueur du scanner ti=13 s'appelle `FilmIndex` — Complete
 
 **Contexte** : la CI de `feat/v75` apres la fusion `bbbc0f92d` (job « Go Coverage + Baseline », run 32173015919) est rouge sur `internal/archlint/no_player_index_identity_test.go` (`TestNoPlayerIndexInFilmScope`) : le scanner ti=13 de la phase 2b avait introduit un champ `ManagedPropertyRead.PlayerIndex` dans `analysis/filmdec`, ou le garde-rail interdit ce nom (un index de film est un ORDRE, pas une identite ; precedent `FireEvent.FilmIndex`). Executeur en worktree dedie `wt/fix-filmindex-zones` (depuis `ec21b398f`), commit unique, sans push.
