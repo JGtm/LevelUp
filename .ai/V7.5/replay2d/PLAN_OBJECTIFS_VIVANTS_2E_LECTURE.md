@@ -127,16 +127,13 @@ conformement au brief.
       position du porteur jusqu'au prochain grab, a un `FlagReturns`, ou au retour automatique
       (duree MESUREE : ecart median entre fin de portage sans reprise et prochain grab au socle) ;
       sinon `home` (marqueur statique existant, etat present/absent).
-- [!] 1.3 Document : `flagCarries` [{ team, spans [{ state `carried`|`dropped`|`home`, t0, t1, xuid|null,
-      x, y }] }] + couverture (portages, confirmes par marqueur, incoherences, sans pont) ;
-      `SchemaVersion` chronique (11 -> 12) ; contrat (`wantReplayDocumentFields` 33 -> 34, ligne de
-      chronique), OpenAPI (`cmd/openapi-gen`), `generated.ts`, `NULLABLE_ARRAYS`/`normalizeReplayDocument`,
-      goldens en connaissance de cause, temoins CTF re-cuits ; films non-CTF : tableau vide.
-      **REPORTE PAR COORDINATION (2026-08-18)** — une autre session fait entrer les schemas 12 et
-      13 dans `feat/v75` ; deux montees de version concurrentes se marcheraient dessus. A reprendre
-      APRES le rebasage de `wt/objvivants1`, avec le numero de schema SUIVANT (pas 12). Les types
-      du calque existent deja (`replay/document_objectives_live.go`), SANS etiquette JSON et sans
-      champ dans `ReplayDocument` : aucun changement de contrat n'a ete fait.
+- [x] 1.3 Document : `flagCarries` [{ team, spans [{ state `carried`|`carried_open`|`dropped`|`home`,
+      t0, t1, xuid|null, x, y }] }] + `coverage.flagCarries` (portages, fermes, ouverts, confirmes
+      par marqueur, sans pont, sans piste, incoherences) ; `SchemaVersion` 13 -> 14 avec chronique ;
+      contrat (`wantReplayDocumentFields` 34 -> 35, ligne de chronique), OpenAPI (`cmd/openapi-gen`),
+      `generated.ts`, `NULLABLE_ARRAYS`/`normalizeReplayDocument`, goldens re-congeles, temoins CTF
+      re-cuits ; films non-CTF : tableau vide. **FAIT le 2026-08-18** (report de coordination leve :
+      la fusion tierce a pris 12 et 13, le calque prend 14) — mesures et verdict au journal.
 - [~] 1.4 Registre : ligne R4 « objectifs vivants » -> porteur TRAITE (CTF) ; crane `[!]` (condition
       de reprise : discriminant externe, score par seconde de portage) ; canal delta CLOS (retire).
       Couvert par le CR de lot : les TEXTES de journal et de registre y sont fournis, et c'est le
@@ -152,6 +149,15 @@ du marqueur donne **37 / 42 = 88,1 %** contre 90 % exiges — seuil NON rebaisse
 `carried`, et les 12 manquantes sont TOUTES comptees sous une cause nommee (`NoTrack`). Clause 3
 TENUE : les incoherences sont publiees et comptees (simultaneite > 2, porteurs tues ambigus,
 retours ambigus). Clause 4 SANS OBJET : la publication au document est reportee (item 1.3).
+
+**Gate 1.3 (arbitrage du 2026-08-18) : TENU, ET LA CLAUSE 4 EST LEVEE.** Le controle du marqueur
+sur les portages FERMES donne **38 / 40 = 95,0 %** (seuil >= 90 %, jamais rebaisse), et **40 / 42
+= 95,2 %** tous portages confondus — le 88,1 % de l item 1.1 ne tenait pas au seuil mais au pont :
+la production nomme plus de slots que l instrument (fermetures). Clause 2 TENUE (chaque prise
+nommee ouvre un span porte du bon xuid, rejets comptes). Clause 3 TENUE, avec une reserve NEUVE :
+la simultaneite > 2 de `64e8adfa` n est PAS portee par les portages ouverts (ce film n en a aucun)
+— elle oppose des portages FERMES, et se publie sous `overlaps` ET `closedOverlaps`. Clause 4
+TENUE : contrat, OpenAPI, `generated.ts`, frontiere de nullabilite et goldens sont verts.
 
 ### Phase 2 — La COLLINE par periode (KOTH)
 
@@ -242,6 +248,13 @@ fix hors perimetre (decouvertes ci-dessous) ; un seul `go` a la fois.
   ferait apparaitre un troisieme drapeau qui n'existe pas dans le match. La mesure ne retient que
   les socles d'equipe ; l'item 1.3 devra trancher le cas du drapeau neutre (`0f9550e5` est au
   corpus et le discriminant le reconnait comme CTF).
+- (2026-08-18, item 1.3) **Le calque `objectives` reste vide sur un film TRONQUE, alors que le
+  drapeau ne l'est plus.** `replaybuild.identifiedEvents` nomme ses actions avec le pont par
+  TOTAUX (`objectiveevents.SlotIdentityFrom`), celui que la phase 0 a mesure a 0/8 sur un film
+  tronque ; la cuisson du temoin `64e8adfa` le montre en clair (`nommees=266 identifiees=0
+  slotsApparies=0`) au moment meme ou `flagCarries` publie ses 78 portages par le pont des
+  INSTANTS DE MORT. Le remede est connu (`SlotIdentityResolved`, deja en production) et tient en
+  une ligne, mais `objectives` appartient a un autre chantier et le present lot n'y touche pas.
 - (2026-08-18, phase 1) **Deux espaces de coordonnees se ressemblent assez pour se confondre.** Les
   pistes construites en `QuantaOnly` (phase 0) portent des INDICES DE QUANTUM ; les socles du
   catalogue portent des METRES. Un rayon de ramassage ecrit en metres, applique a des quanta, ne
@@ -461,3 +474,102 @@ decodeur), puis le lot de regles et de mesure. Aucun push.
   seuil 90 % inchange ; simultaneite > 2 portee par les seuls `carried_open` sinon incoherence publiee ;
   `dropped` court jusqu'a reprise / `flag_returns` / fin ; **schema 14** (la fusion tierce a pris 12 et
   13). Item 1.3 LANCE (agent Opus, worktree frere `../LevelUp-wt-objvivants2`, base `016860616`).
+
+### 2026-08-18 — PHASE 1 ITEM 1.3 : LE CALQUE DU DRAPEAU EST PUBLIE (schema 14)
+
+Worktree frere `LevelUp-wt-objvivants2`, branche `wt/objvivants2`, base `e86c17d74`.
+
+**CE QUI ENTRE AU DOCUMENT.** `flagCarries` : une entree PAR DRAPEAU (l'objet, pas le portage) —
+`{team, spans[]}` — et pour chaque span `{state, t0, t1, xuid|null, x, y}` sur l'axe de frames du
+rejeu. `coverage.flagCarries` porte les denominateurs : verdict de mode et ses trois signaux,
+prises de l'oracle, portages publies partages en FERMES / OUVERTS, rejets par cause (sans pont,
+sans piste, hors fenetre), controle du marqueur (fermes ET ouverts, comptes a part), incoherences
+(simultaneite, dont celle des seuls fermes ; porteurs tues ambigus ; retours ambigus), socles
+connus. Films non-CTF : aucune entree, et la couverture dit lequel des deux silences.
+
+**LE QUATRIEME ETAT EST LE RESULTAT, PAS UN CONFORT.** `carried` = un fait DATE ferme le portage ;
+`carried_open` = rien ne le ferme, l'intervalle court jusqu'a la fin de l'axe et c'est une BORNE
+HAUTE. La mesure sur les trois films CTF le justifie chiffre en main : le marqueur confirme 38 des
+40 portages FERMES observables (95,0 %), et les 2 portages ouverts observables le sont aussi — la
+population est trop petite pour trancher a elle seule, mais le partage, lui, se voit.
+
+**GATE 1.3 (arbitrage du 18/08) : TENU.** Controle du marqueur sur les portages FERMES :
+38 / 40 = 95,0 % (seuil >= 90 %, jamais rebaisse). Pour memoire, tous portages confondus :
+40 / 42 = 95,2 % — c'est le 88,1 % de l'item 1.1, et l'ecart entre les deux EST ce que l'etat
+`carried_open` publie.
+
+**CONTROLE D'ANCRAGE — les portages publies sont CEUX de la phase 1.**
+
+| film | CTF (bursts/captures/vols) | prises | portages | fermes | ouverts | sans pont | sans piste | marqueur FERMES | marqueur OUVERTS | simult. > 2 | dont entre FERMES | drapeaux publies |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `64e8adfa` | oui (5/4/17) | 82 | **78** | 78 | 0 | **0** | 4 | **22/22** | — | 12 | **12** | eq. 1 : 111 spans · eq. 0 : 50 |
+| `530820e5` | oui (3/3/10) | 33 | **30** | 28 | 2 | **0** | 3 | 3/5 | **2/2** | 0 | 0 | eq. 1 : 22 spans · eq. 0 : 44 |
+| `53ce4390` | oui (3/3/13) | 34 | **29** | 29 | 0 | **0** | 5 | **13/13** | — | 0 | 0 | eq. 0 : 23 spans · eq. 1 : 44 |
+| `000d5950` | **non** (0/0/0) | 0 | 0 | 0 | 0 | 0 | 0 | — | — | 0 | 0 | **aucun** (calque vide, couverture publiee) |
+
+Les PORTAGES, les rejets et les spans par drapeau sont EXACTEMENT ceux de l item 1.1 (78/30/29,
+0 sans pont, 4/3/5 sans piste, 111+50 / 22+44 / 23+44 spans) : la publication n a rien change a
+la regle. Ce qui a bouge, et il faut le dire, c est le CONTROLE : 40 portages confirmes sur 42
+contre 37/42 a l item 1.1. La cause est nommee — l instrument de l item 1.1 posait le marqueur
+avec SON pont bipede (lecture seule), la production utilise le sien, qui inclut les FERMETURES
+(closures.go) et nomme donc plus de slots. Trois marques de plus trouvent leur porteur.
+
+**SIMULTANEITE : L HYPOTHESE DE L ARBITRAGE NE TIENT PAS, ET C EST PUBLIE.** `530820e5` et
+`53ce4390` n ont aucun depassement. `64e8adfa` en a 12 — et ce film n a AUCUN portage ouvert :
+`closedOverlaps` vaut 12 lui aussi. La simultaneite n y oppose donc pas des portages incertains
+mais des portages FERMES, c est-a-dire des faits dates entre eux. C est le second recours que
+l arbitrage prevoyait : l incoherence est COMPTEE et PUBLIEE sous ses deux formes (`overlaps` et
+`closedOverlaps`), le calque avertit au journal, et rien n est tu. Ce que le compte ne dit pas
+encore, c est POURQUOI : les 5 `flag_carriers_killed` ambigus de ce film et ses 7 retours ambigus
+designent la meme zone d ombre (des fins de portage que rien ne date), et la trancher demande un
+canal qui date le lacher — condition de reprise au registre.
+
+**CE QUI DESCEND JUSQU'AU CONSTRUCTEUR.** Le calque se publie SANS AUCUNE BASE : le pont slot
+statborg -> xuid passe par les INSTANTS DE MORT (film seul). Seuls les SOCLES viennent d'ailleurs
+— du catalogue versionne d'objectifs, joint par `map_id`, que `port.MatchFacts` transporte
+desormais (`match_registry.map_id`, une colonne de plus au SELECT du lecteur de faits) et que
+`replaybuild` resout en socles d'EQUIPE (le socle NEUTRE de chaque carte de CTF est ecarte : le
+publier ferait apparaitre un troisieme drapeau qui n'existe pas dans le match).
+
+**CONTRAT ET CLIENT.** `SchemaVersion` 13 -> 14 (chronique en tete de `document.go`, complete dans
+`document_objectives_live.go`, justification exigee par `structure_test.go`) ;
+`wantReplayDocumentFields` 34 -> 35 avec sa ligne de chronique et trois schemas de plus
+(`FlagCarry`, `FlagSpan`, `FlagCarriesCoverage`) ; `api/openapi.yaml` REGENEREE (+137 lignes,
+jamais editee a la main) ; `generated.ts` regenere (+60 lignes) ; `NULLABLE_ARRAYS` et
+`NULLABLE_ARRAY_PATHS` gagnent `flagCarries` et `flagCarries[].spans`, et
+`normalizeReplayDocument` comble les DEUX (le tableau imbrique compris). AUCUN rendu : la phase 3
+reste entiere.
+
+**GOLDEN.** Une seule ligne change dans `testdata/assembly_000d5950.golden` : `schema 13` ->
+`schema 14`. Le film de reference est un Super Fiesta et le fixture fige ne porte aucune entree de
+drapeau : le calque ne publie rien, sa couverture est ABSENTE (« personne n'a lu »), et c'est
+exactement ce que le golden doit montrer.
+
+**TEMOINS RE-CUITS** sous `C:\Users\Guillaume\Projects\LevelUp\data\cache\replays\halo_infinite\`,
+un film par processus, aucune base ouverte (les faits de match viennent de fichiers JSON, avec le
+`mapId` qui donne les socles) : `64e8adfa` 2 879 687 o, `530820e5` 1 617 220 o, `53ce4390`
+2 540 731 o (absent du cache jusqu'ici), `000d5950` 2 402 255 o. Les quatre portent `schema 14`.
+
+**UN COUT DE PRODUCTION MESURE, ET CORRIGE DANS LE LOT.** Le balayage du marqueur est une marche
+COMPLETE des images-cles avec une fenetre glissante de 32 bits : sur `530820e5` la phase finale du
+decodage passe de 57 s (cuisson de reference du lot A) a 136 s, quand la phase precedente n a
+grossi que du facteur de charge de la machine (1,62x) — soit environ 45 s pour ce seul balayage,
+un quart du temps de construction. Or il ne produit qu un CONTROLE, et sur un film d un autre mode
+le calque est vide de toute facon : il ne tourne desormais QUE sur les films reconnus CTF, le
+verdict se lisant dans ce que l appelant a deja fourni. Les temoins ci-dessus ont ete cuits AVANT
+ce correctif ; il ne change aucune sortie (un film non-CTF n utilisait deja pas ses marques).
+
+**LES GATES.** `go build ./...` 0, `go vet ./...` 0, `go test ./internal/analysis/...
+./internal/replaybuild/... ./contracttest/... ./internal/archlint/...` 0 (19 paquets),
+`golangci-lint run --new-from-merge-base=origin/main` 0 issue, `tsc -b --force` 0,
+`npm run lint` 0 erreur (19 avertissements PREEXISTANTS), `vitest run src/features/match-replay
+src/lib/replay` 0 (49 fichiers, 716 tests). Codes de retour au journal de gates du lot.
+
+**Commits** : `b3e39edac` (calque publie + golden), `b0fb3e10f` (socles par map_id jusqu au
+constructeur), `e527d7be5` (contrat + OpenAPI), `7d1295774` (frontiere web), `57d908989` (le
+balayage du marqueur ne tourne que sur les films CTF), plus ce versement. Aucun push.
+- 2026-08-18 — item 1.3 CLOS `[x]` et item 1.4 `[~]` (textes de journal et de registre au CR du
+  lot ; `.ai/thought_log.md` et `REGISTRE_REPORTS.md` ne sont pas touches par cette branche).
+  Gate 1.3 TENU (38/40 = 95,0 % sur les FERMES). Reserve publiee : la simultaneite > 2 de
+  `64e8adfa` oppose des portages FERMES, ce que l arbitrage n avait pas prevu — comptee sous
+  `closedOverlaps`, condition de reprise (un canal qui date le lacher) au registre.
