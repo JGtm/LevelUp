@@ -9,7 +9,7 @@
  * porter l'état des calques et de la vitesse ; ReplayCanvas les consomme sans savoir qu'ils
  * survivent à la page, ReplaySettingsDrawer les affiche sans savoir où ils vivent.
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import {
@@ -17,6 +17,7 @@ import {
   readStoredChoice,
   readStoredFlag,
   readStoredNumber,
+  subscribePreference,
 } from './replayPreferences'
 
 const SHOW_AIM_KEY = 'replay-show-aim'
@@ -32,6 +33,7 @@ const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
 const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
 const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
+const COMPACT_CARDS_KEY = 'replay-compact-cards'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
@@ -101,6 +103,16 @@ const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
  */
 const SHOW_WEAPON_PADS_DEFAULT = true
 
+/**
+ * LES FICHES COMPACTES SONT ÉTEINTES PAR DÉFAUT (B2/R2-7, verdict du 2026-08-18 : « la
+ * validée reste le défaut, la compacte est une option »). Ce n'est pas un demi-livrable
+ * (CLAUDE.md n°11) : les DEUX fiches sont complètes, et l'utilisateur a explicitement demandé
+ * à garder la validée sous la main — « sans supprimer celle-ci qui est validée, je veux
+ * tenter autre chose visuellement ». L'interrupteur est un réglage d'affichage, pas un
+ * interrupteur de chantier.
+ */
+const COMPACT_CARDS_DEFAULT = false
+
 export interface ReplaySettings {
   /** Calque de visée (direction du regard). Allumé par défaut, comme aujourd'hui. */
   showAim: boolean
@@ -148,6 +160,13 @@ export interface ReplaySettings {
   /** Calque des SOCLES D'ARME (schéma 11). Allumé par défaut (cf. SHOW_WEAPON_PADS_DEFAULT). */
   showWeaponPads: boolean
   toggleWeaponPads: () => void
+  /**
+   * Fiches joueur COMPACTES (B2/R2-7). Éteintes par défaut : la fiche validée le 18/08 reste
+   * le défaut. La compacte ne perd qu'une information — les munitions des armes qui ne sont
+   * PAS en main — et gagne trois lignes de hauteur ; ce qui reste tient sur une seule rangée.
+   */
+  compactCards: boolean
+  toggleCompactCards: () => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
@@ -164,6 +183,10 @@ export interface ReplaySettings {
  */
 function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
   const [value, setValue] = useState(() => readStoredFlag(key, fallback))
+  // L'ABONNEMENT REND LA CLÉ PARTAGEABLE : deux composants qui lisent la même préférence
+  // bougent ensemble (cf. la note de `subscribePreference`). Sans lui, la bascule du tiroir
+  // ne toucherait que sa propre copie de l'état.
+  useEffect(() => subscribePreference(key, (raw) => setValue(raw === 'true')), [key])
   const toggle = useCallback(() => {
     setValue((prev) => {
       const next = !prev
@@ -172,6 +195,19 @@ function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void]
     })
   }, [key])
   return [value, toggle]
+}
+
+/**
+ * useReplayCompactCards — la SEULE préférence que la colonne des fiches a besoin de lire.
+ *
+ * Un hook ÉTROIT plutôt que `useReplaySettings` entier : les fiches n'ont rien à faire des
+ * calques, de la vitesse ni de la carte de chaleur, et lire tout le paquet les re-rendrait à
+ * chaque changement de l'un d'eux. La valeur est la MÊME que celle du tiroir — c'est
+ * l'abonnement de `usePersistedFlag` qui le garantit.
+ */
+export function useReplayCompactCards(): boolean {
+  const [compact] = usePersistedFlag(COMPACT_CARDS_KEY, COMPACT_CARDS_DEFAULT)
+  return compact
 }
 
 export function useReplaySettings(): ReplaySettings {
@@ -193,6 +229,10 @@ export function useReplaySettings(): ReplaySettings {
   const [showWeaponPads, toggleWeaponPads] = usePersistedFlag(
     SHOW_WEAPON_PADS_KEY,
     SHOW_WEAPON_PADS_DEFAULT,
+  )
+  const [compactCards, toggleCompactCards] = usePersistedFlag(
+    COMPACT_CARDS_KEY,
+    COMPACT_CARDS_DEFAULT,
   )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
@@ -244,6 +284,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleUnnamedPlacements,
     showWeaponPads,
     toggleWeaponPads,
+    compactCards,
+    toggleCompactCards,
     speed,
     setSpeed,
   }

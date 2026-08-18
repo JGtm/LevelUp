@@ -80,6 +80,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
     zoneLabel: 'Zone de la carte',
     effects: 'Effets',
+    cards: 'Fiches',
     layerShotFx: 'Effets de tirs',
     layerShotFxHint:
       'Éclair de bouche sur chaque tir décodé, dans la teinte de la décharge (cinétique, plasma, énergie).',
@@ -113,6 +114,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       empty: 'Pris',
     },
     padPlacementNote: "Emplacement d'arme (socle au sol ou râtelier mural : non distingués)",
+    cardsCompact: 'Fiches compactes',
+    cardsCompactHint:
+      "Armes, grenades et équipement sur une seule ligne, sans la zone du joueur. Seule l'arme en main garde ses munitions : celles des armes rangées ne sont plus affichées.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Carte de chaleur',
@@ -255,6 +259,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
     zoneLabel: 'Map zone',
     effects: 'Effects',
+    cards: 'Cards',
     layerShotFx: 'Shot effects',
     layerShotFxHint:
       'Muzzle flash on every decoded shot, in the tint of the discharge (kinetic, plasma, energy).',
@@ -288,6 +293,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       empty: 'Taken',
     },
     padPlacementNote: 'Weapon spot (floor pad or wall rack: not told apart)',
+    cardsCompact: 'Compact cards',
+    cardsCompactHint:
+      'Weapons, grenades and equipment on a single row, without the player zone. Only the weapon in hand keeps its ammo: holstered weapons no longer show theirs.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Heat map',
