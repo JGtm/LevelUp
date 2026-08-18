@@ -271,4 +271,8 @@ crane, 87 acteurs, **87/87 nommes par le pont bipede** — il ne manque que l'ob
 **0.4 — publie ci-dessus.** Verdict du gate 0 : voir la fin de la section Phase 0.
 
 Commits : `26b245d2a` (socle), `bedc3b8d8` (pont par instants, controles, seuils),
-`0e5b70c7a` (canal delta, nommage, crane), plus le present versement.
+`0e5b70c7a` (canal delta, nommage, crane), `5d733c8c6` (ce versement), `baa053ad8` (canal
+delta confronte famille par famille). Gates rejoues dans la session, depuis `apps/go-api` du
+worktree : `go build ./...` (CGO, msys64 ucrt64) = 0, `go vet ./...` = 0, `go test
+./internal/analysis/... ./internal/archlint/...` = 0, garde `OBJ_FILM` absente = 5 SKIP,
+`golangci-lint run --new-from-merge-base=origin/main` = 0 issue.
