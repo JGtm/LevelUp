@@ -327,13 +327,53 @@ hinf_needler        = "needle"
 # identifiants n'ont pas de diagonale mesurable (aucun poseur a rang lu, ou aucun poseur du
 # tout pour les grenades) : c'est « non mesurable », jamais « contredit ».
 #
-# CE QUI RESTE `other` : 0x4396db42 (51 poses sur 5 films). Il est rattache au `sofa`
-# 0xeb500815 — le rang 10 de la palette famille A, le trou non casse le plus frequent du corpus
-# (67 lectures `i48`) — mais son `string_id` 0xb328c9fa resiste au dictionnaire, y compris a
-# trois jetons (51 millions de candidats, esperance de collision 0,07), et son modele
-# `hlmt:eea39cf4` n'est partage avec aucun `eqip` nomme. Ses dependances `gldf` + `lens` le
-# rangent parmi les objets LUMINEUX, comme le surbouclier, le camouflage et le translocateur —
-# ce qui est une piste, pas un nom.
+# CE QUI RESTE `other` : 0x4396db42 (104 poses, 9 films, 26 deployees — releve du 2026-08-18 sur
+# les 33 artefacts de disque). Il est rattache au `sofa` 0xeb500815 — le rang 10 des palettes
+# 0xd91958af ET 0x03137359 de la famille A, le trou non casse le plus frequent du corpus
+# (67 lectures `i48`).
+#
+# TROIS CHAINES L'ONT CHERCHE, LES TROIS RENDENT UN NEGATIF (2026-08-18,
+# PLAN_EQUIPEMENTS_MANQUANTS_SONS phase 1.5). Chacune avec son denominateur, parce qu'un negatif
+# sans denominateur ne vaut rien :
+#
+#   DICTIONNAIRE   son `string_id` 0xb328c9fa resiste a DEUX enumerations independantes : le
+#                  dictionnaire global a trois jetons (49 954 499 candidats, esperance de
+#                  collision 0,070) et un dictionnaire ELARGI construit pour la question
+#                  (31 prefixes x 176 jetons a deux jetons = 1 898 966 candidats, esperance
+#                  0,0022 sur 5 cibles ; `himap/sonde_eqip_anonyme_test.go`). Ce dernier retrouve
+#                  10 sur 10 des noms etablis par ailleurs — son negatif porte donc.
+#                  ET IL REFUTE UNE HYPOTHESE NOMMEE : `shroud_screen`, `smoke_screen`,
+#                  `stealth_screen`, `cloak_screen`, `camo_screen` sont TOUS enumeres, avec les
+#                  31 prefixes dont `ability_`, `equipment_`, `abl_`, `deployable_`. Aucun ne
+#                  hache vers 0xb328c9fa. L'« ecran de dissimulation » n'est pas ecarte comme
+#                  OBJET — aucun de ses noms plausibles n'est le nom de ce tag, c'est tout.
+#   MODELE         `hlmt:eea39cf4` est UNIQUE dans le jeu. La mesure ne porte plus sur les
+#                  21 identifiants du corpus mais sur les 116 tags `eqip` de l'installation,
+#                  ou 16 modeles sont partages par deux `eqip` ou plus (`c62d74c3` capteur,
+#                  `75070361` grappin, `99953db8` propulseur, `2e76f0a9` mur x4,
+#                  `d8ca727d` panneaux x5, `c4b1aebd` surbouclier + camouflage x6).
+#   BANQUE SONORE  son frere de `sofa`, l'`eqip` 0x4eebcb18, atteint une banque SELECTIVE
+#                  (`sbnk 92c830f5`, 38 `.wem` embarques, aucun autre `eqip` ne l'atteint) — mais
+#                  aucun de ces 38 `.wem` ne vit dans un `.pck` NOMME du jeu. La chaine qui
+#                  nomme (`eqip -> effe -> snd! -> sbnk -> .wem -> pack`) est pourtant CALIBREE :
+#                  elle rend `sb_007_abl_repairfield` pour le champ de reparation,
+#                  `sb_010_grn_cv_plasmagrenade` pour la grenade a plasma et
+#                  `sb_010_grn_un_lightninggrenade` pour la Dynamo.
+#
+# CE QUE LA STRUCTURE DIT QUAND MEME. Le `sofa` 0xeb500815 porte DEUX `eqip` : 0x4eebcb18, qui
+# n'a aucun `hlmt` mais un `proj` (un PROJECTILE), et 0x4396db42, qui porte `gldf` + `lens` (un
+# objet LUMINEUX, comme le surbouclier, le camouflage et le translocateur). Un objet lance qui
+# deploie une source de lumiere : c'est une description, pas un nom.
+#
+# LE RANG 10 N'EST PAS UNE IDENTITE, C'EST UNE POSITION. La TROISIEME palette de la famille A
+# (0x13c097ed) met au rang 10 un AUTRE `sofa` (0x457923a0), dont l'identifiant de chaine se
+# casse en `regen_field`. Deux equipements differents occupent donc le meme rang selon la
+# palette — et `regen_field` n'est PAS le rang 10 anonyme.
+#
+# `regen_field` EST LE SEUL NOM DU JEU QUE CE MANIFESTE NE PORTE PAS, et c'est volontaire : ses
+# deux `eqip` (0x0dc0d5b4, 0x03bad9e7) n'apparaissent dans AUCUN artefact du corpus, et la parite
+# de cette table est BILATERALE (toute ligne doit avoir un identifiant mesure). Le jour ou un
+# film en montre un, la ligne s'ecrit — la chaine du nom est deja faite.
 #
 # PARITE : tout identifiant observe au corpus a une ligne ici, nommee ou `other` explicite.
 # Garde-rail : `replaylabels/catalog_test.go`, TestPariteObjetsEquipementDuCorpus.
