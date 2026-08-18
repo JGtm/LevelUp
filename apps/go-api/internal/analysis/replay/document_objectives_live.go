@@ -3,6 +3,37 @@ package replay
 // document_objectives_live.go — L'OBJECTIF VIVANT : la forme que le DRAPEAU de CTF prend dans
 // l'artefact, et ce que la mesure a refuse d'y mettre.
 //
+// CHRONIQUE — v15 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, phase 2). AUCUNE
+// CLE NE BOUGE, ET POURTANT LA VERSION MONTE : c'est le CONTENU de `flagCarries` qui change.
+// L'OBJET drapeau — le meme archetype `ti=42` que les armes au sol, identifie par le manifeste du
+// titre (`[[objective_objects]]`, famille `flag`) — replique sa position quand PERSONNE ne le
+// porte. Cette lecture repare deux defauts que le schema 14 declarait explicitement irreparables :
+//
+//	le LACHER VOLONTAIRE ETAIT NON DATABLE. Un portage que rien ne fermait courait jusqu'a la
+//	  fin de l'axe, publie [FlagStateCarriedOpen] — une BORNE HAUTE, pas une mesure. Quand
+//	  l'objet REAPPARAIT pendant ce portage AUX PIEDS de son porteur, c'est qu'il ne le porte
+//	  plus : le portage se ferme la et devient [FlagStateCarried]. Mesure : 2 portages sur les
+//	  trois films du corpus (les deux que `530820e5` portait ouverts).
+//	le LACHER ETAIT AU MAUVAIS ENDROIT. [FlagStateDropped] valait la derniere position du
+//	  PORTEUR, faute de mieux ; il vaut desormais le dernier point de la piste LIBRE — la ou
+//	  l'objet repose apres sa chute. Mesure : 31 / 17 / 4 lachers deplaces.
+//
+// UN ARTEFACT 14 ET UN 15 DU MEME MATCH PUBLIENT DONC LES MEMES CHAMPS AVEC DES VALEURS ET DES
+// INTERVALLES DIFFERENTS — exactement le cas qu'un client ne peut pas distinguer sans la version,
+// et la reprise du backfill se fait par `SchemaVersion`.
+//
+// CE QUI N'EST PAS PUBLIE, ET C'EST LA MOITIE DU RESULTAT : LA PISTE ELLE-MEME. Le controle 3 du
+// plan, ecrit AVANT la mesure, exigeait que >= 90 % des vies libres naissent a moins de 1,5 m
+// d'un `flag_spawn` ou du porteur qui vient de finir ; la mesure rend 149/197 = 75,6 %. Le temoin
+// tient largement (armes ordinaires soumises a la MEME regle : 12,8 %, seuil <= 20 %), donc la
+// piste discrimine — d'un facteur six — mais un quart des vies reste inexplique. `flagObjects`
+// n'est donc pas publie. LES DEUX CORRECTIONS CI-DESSUS, ELLES, NE TOUCHENT QUE LES VIES NEES AUX
+// PIEDS D'UN PORTEUR : la sous-population que ce meme controle VALIDE. Une vie nee a un socle est
+// explicitement ecartee, une vie nee ailleurs ne passe pas la distance au porteur.
+//
+// CE QUE LA MESURE N'A PAS TRANCHE : la cause des 48 vies inexpliquees. Le diagnostic ecarte la
+// re-creation sur place (3 cas sur 48) ; le registre des reports porte la condition de reprise.
+//
 // CHRONIQUE — v14 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
 // phase 1 item 1.3). Le document publie `flagCarries` — LA VIE DE CHAQUE DRAPEAU sur toute la
 // partie, en intervalles d'etat — et `coverage.flagCarries`, ses denominateurs. Le champ est
@@ -197,6 +228,23 @@ type FlagCarriesCoverage struct {
 	// Spawns est le nombre de socles `flag_spawn` connus de la carte. Zero : la carte est hors
 	// du catalogue d'objectifs, tous les portages tombent dans UN drapeau d'equipe -1.
 	Spawns int `json:"spawns"`
+	// ObjectLives est le nombre de VIES LIBRES de l'objet drapeau LUES sur ce film (schema 15).
+	// C'est le DENOMINATEUR des deux compteurs suivants : sans lui, « 2 portages fermes » ne se
+	// juge pas. La PISTE elle-meme n'est pas publiee — son controle de provenance l'a refusee
+	// (149/197 = 75,6 % contre 90 % exiges) ; seules les vies nees AUX PIEDS D'UN PORTEUR, la
+	// sous-population que ce controle valide, servent aux corrections ci-dessous.
+	ObjectLives int `json:"objectLives"`
+	// ClosedByObject compte les portages que RIEN NE FERMAIT et qu'une vie libre a fermes — le
+	// LACHER VOLONTAIRE, enfin date.
+	//
+	// C'EST LA MESURE DU LOT, ET ELLE SE LIT CONTRE `Open` : ces portages-la etaient publies
+	// [FlagStateCarriedOpen], c'est-a-dire trop longs par construction. Chacun qui bascule est un
+	// drapeau qu'on cesse de dessiner dans une main qui ne le tient plus.
+	ClosedByObject int `json:"closedByObject"`
+	// DropsRepositioned compte les etats [FlagStateDropped] dont la position vient desormais de
+	// la piste LIBRE et non plus de la derniere position du porteur. L'ecart n'est pas
+	// cosmetique : un drapeau tombe rebondit, et le porteur meurt rarement la ou l'objet se pose.
+	DropsRepositioned int `json:"dropsRepositioned"`
 }
 
 // Balanced verifie les DEUX invariants du calque : toute prise de l'oracle est soit publiee, soit

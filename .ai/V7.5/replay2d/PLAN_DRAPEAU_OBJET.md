@@ -33,13 +33,28 @@
    de la derniere position du porteur qui vient de finir (>= 90 % des vies) ; temoin : creations `ti=42`
    d'armes ordinaires <= 20 % ; sinon negatif ecrit, `flagObjects` non publie.
 4. Rendu : phase 3 du plan objectifs vivants (a partir d'`objectivesLayer.ts`), pas ici.
+5. **ARBITRAGE DU 2026-08-18 (superviseur), qui SCINDE la decision 2.** Le controle 3 refuse la
+   PISTE (75,6 % contre 90 %) mais il ne refuse pas ce que la piste CORRIGE : sa branche
+   « porteur » est precisement la sous-population sur laquelle les deux corrections s'appliquent.
+   La decision 2 se lit donc ainsi : `flagObjects` n'est PAS publie ; la datation du lacher et le
+   repositionnement du `dropped` LE SONT, restreints aux vies libres nees a moins de 1,5 m de la
+   derniere position du porteur qui vient de finir — jamais a celles nees a un socle
+   (`flagFreeNearSpawn` les ecarte explicitement) ni ailleurs. Le schema monte quand meme a 15 :
+   le CONTENU de `flagCarries` change (portages fermes, `dropped` deplaces) sans qu'aucune cle ne
+   bouge, et un artefact 14 doit se lire « a re-cuire ». Contrat inchange en nombre de champs ;
+   `coverage.flagCarries` gagne trois compteurs (sous-schema).
 
 ## Phases
 
 - [x] 1 Manifeste + exclusion des socles + garde-rail ; instrument de mesure du controle 3 (garde `OBJ_FILM`).
-- [!] 2 Vies libres -> `flagObjects`, datation du lacher, `dropped` repositionne : NON PUBLIE. Le
-      CONTROLE 3, ecrit avant la mesure, REFUSE la piste — 149/197 = 75,6 % (seuil 90 %). La
-      decision 3 du plan s applique telle qu ecrite. Mesure, diagnostic et ancrage : journal.
+- 2 SCINDEE PAR L'ARBITRAGE DU 2026-08-18 (decision 5 ci-dessous), parce que le controle 3 refuse
+      la PISTE sans refuser ce qu'elle CORRIGE :
+  - [!] 2a `flagObjects` (la piste publiee) : NON PUBLIE. Le CONTROLE 3, ecrit avant la mesure,
+        la REFUSE — 149/197 = 75,6 % (seuil 90 %). Decision 3 appliquee telle qu'ecrite.
+  - [x] 2b Les deux CORRECTIONS de `flagCarries` : lacher volontaire DATE (`carried_open` ->
+        `carried`) et `dropped` repositionne sur la piste libre. Elles ne touchent QUE les vies
+        nees aux pieds d'un porteur — la sous-population que le controle 3 VALIDE. Schema 15,
+        3 compteurs de couverture, OpenAPI + `generated.ts` + golden + 4 temoins re-cuits.
 - [x] 3 Registre/journal (textes au CR), plan statue.
 
 **Gate** : controle 3 tenu ; contrat/OpenAPI/goldens/web verts ; portages inchanges ; sinon `[!]`.
@@ -91,3 +106,18 @@
   TEMOINS NON RE-CUITS `[~]` : plus rien de nouveau a publier (schema 14 inchange), et les deux
   ancrages qu'ils devaient servir sont verifies contre les artefacts EXISTANTS par la mesure
   ci-dessus.
+- 2026-08-18 — ARBITRAGE APPLIQUE : phase 2 scindee, `2a` `[!]` (piste non publiee), `2b` `[x]`
+  (les deux corrections livrees). LA RAISON EN UNE PHRASE : le controle 3 refuse la population
+  ENTIERE des vies libres, mais sa branche « porteur » est exactement celle que les corrections
+  consomment — elles ne touchent aucune des 48 vies inexpliquees.
+  LA RESTRICTION EST DANS LE CODE, PAS DANS UN COMMENTAIRE : `flagFreeNearSpawn` ecarte d'abord
+  toute naissance a moins de 1,5 m d'un socle, puis la distance au porteur fait le reste. Le
+  garde-rail porte SES DEUX TEMOINS NEGATIFS (`flag_objects_test.go`) : une vie nee loin du
+  porteur ne ferme rien, et une vie nee AU SOCLE ne ferme rien MEME a 0,5 m du porteur — ce
+  second temoin est la condition de l'arbitrage, pas un ornement.
+  SCHEMA 15 : aucun champ neuf, mais le CONTENU de `flagCarries` change (portages fermes,
+  `dropped` deplaces) sans qu'aucune cle ne bouge — un artefact 14 se lit « a re-cuire ».
+  Couverture : `objectLives` (le denominateur), `closedByObject`, `dropsRepositioned`.
+  Contrat : 35 champs de document, INCHANGE ; trois proprietes de plus au sous-schema
+  `FlagCarriesCoverage`. OpenAPI et `generated.ts` regeneres, golden `schema 15`, quatre temoins
+  re-cuits sous le cache du depot principal.

@@ -6253,7 +6253,11 @@ export interface components {
             /** Format: int64 */
             closed: number;
             /** Format: int64 */
+            closedByObject: number;
+            /** Format: int64 */
             closedOverlaps: number;
+            /** Format: int64 */
+            dropsRepositioned: number;
             flagFilm: boolean;
             /** Format: int64 */
             markerConfirmed: number;
@@ -6263,6 +6267,8 @@ export interface components {
             noBridge: number;
             /** Format: int64 */
             noTrack: number;
+            /** Format: int64 */
+            objectLives: number;
             /** Format: int64 */
             open: number;
             /** Format: int64 */
