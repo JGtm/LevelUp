@@ -103,7 +103,7 @@ func hillFormes(t *testing.T, mapID string) ([]Zone, string) {
 	t.Helper()
 	path := os.Getenv(hillMvarEnv)
 	if path == "" {
-		return p2aZones(t, mapID, mapvar.Role("hill")), "catalogue (role hill)" // TODO CT.2.2 : mapvar.RoleHill
+		return p2aZones(t, mapID, mapvar.RoleHill), "catalogue (role hill)"
 	}
 	buf, err := os.ReadFile(path)
 	if err != nil {

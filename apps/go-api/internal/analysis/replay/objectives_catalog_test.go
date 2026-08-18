@@ -198,7 +198,9 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 	pointlessConnues := map[string]map[mapvar.Role]int{
 		"cd08bc7a-7ba5-4502-be87-c58b641fc94d": {mapvar.RoleStrongholdZone: 1}, // Salvation
 	}
-	roles := []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone}
+	// RoleHill depuis le lot C-ter volet 2 : 21 collines sur 4 cartes (Catalyst 6, Chasm 5,
+	// Shogun 5, Solitude - Ranked 5), 100 % avec forme.
+	roles := []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone, mapvar.RoleHill}
 	total := map[mapvar.Role]int{}
 	for id, e := range cat.Maps {
 		for _, role := range roles {
@@ -218,6 +220,6 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 			t.Errorf("aucune zone exploitable pour le role %s", role)
 		}
 	}
-	t.Logf("catalogue livre : %d cartes, %d zones Bastion, %d zones Extraction",
-		len(cat.Maps), total[mapvar.RoleStrongholdZone], total[mapvar.RoleExtractionZone])
+	t.Logf("catalogue livre : %d cartes, %d zones Bastion, %d zones Extraction, %d collines",
+		len(cat.Maps), total[mapvar.RoleStrongholdZone], total[mapvar.RoleExtractionZone], total[mapvar.RoleHill])
 }

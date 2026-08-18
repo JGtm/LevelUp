@@ -56,13 +56,12 @@ package replay
 //	carte par captures — le volet colline passe par la GRAPPE des positions, et le dit
 //	(`coverage.zones.method`).
 //
-// LA LIMITE QUI COMPTE POUR LE RENDU, ecrite ici parce qu'elle se verrait sinon comme un bug :
-// `zoneRef` indexe `mapObjectives.zones`, que le SERVICE sert a la requete d'apres la table de
-// roles du titre. En KOTH cette table ne sert AUCUN role (le catalogue de formes ne connait
-// aucun role de colline — mesure de la phase 2a sur 6 cartes) : les intervalles de colline sont
-// donc publies dans l'artefact et le client n'a, aujourd'hui, aucune zone ou les poser.
-// `coverage.zones.roles` publie les roles employes pour que la jointure soit VERIFIABLE plutot
-// que supposee.
+// LA JOINTURE QUI COMPTE POUR LE RENDU : `zoneRef` indexe `mapObjectives.zones`, que le SERVICE
+// sert a la requete d'apres la table de roles du titre — Bastion sur `strongholds_zone`, KOTH sur
+// `hill` (le role de colline du catalogue depuis le lot C-ter volet 2 ; avant lui, la table ne
+// servait rien en KOTH et l'artefact se repliait sur les formes de Bastion/Extraction, que le
+// client ne recevait pas). `coverage.zones.roles` publie les roles employes pour que la jointure
+// soit VERIFIABLE plutot que supposee.
 
 // Les DEUX methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
 // document le dit plutot que de laisser le client le deviner.
@@ -135,7 +134,7 @@ type ZonesCoverage struct {
 	// Method nomme l'appariement employe : [ZoneMethodCaptures] ou [ZoneMethodPositions].
 	Method string `json:"method"`
 	// Roles nomme les roles du catalogue qui composent `mapObjectives.zones`, DANS L'ORDRE et
-	// separes par une virgule (`strongholds_zone`, ou `strongholds_zone,extraction_zone`).
+	// separes par une virgule (`strongholds_zone`, ou `hill` en KOTH).
 	// C'est ce qui rend `zoneRef` verifiable au lieu d'etre suppose.
 	//
 	// UNE CHAINE ET NON UN TABLEAU, deliberement : ce champ est un TEMOIN de jointure que rien

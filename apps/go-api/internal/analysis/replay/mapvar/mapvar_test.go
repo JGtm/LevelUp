@@ -300,3 +300,83 @@ func TestDecodeRootRejectsTruncated(t *testing.T) {
 		t.Error("DecodeRoot a accepté un octet résiduel")
 	}
 }
+
+// TestHillRoleParLaPaireDeHashs — la colline de KOTH se pose par la PAIRE de hashs (role +
+// filtre de mode), jamais par l'un des deux seul : le hash de role est aussi porte par des
+// objets de minigame qui n'existent pas en KOTH, et le filtre l'est par les marqueurs
+// ponctuels. Un label de role NOMME garde la priorite (aucun objet ne porte les deux ; la
+// regle est ecrite pour qu'elle ne bouge pas en silence).
+func TestHillRoleParLaPaireDeHashs(t *testing.T) {
+	cas := []struct {
+		nom    string
+		labels []int32
+		want   Role
+	}{
+		{"paire complete", []int32{LabelHashHillInclude, LabelHashHillRole}, RoleHill},
+		{"paire dans l'autre ordre", []int32{LabelHashHillRole, LabelHashHillInclude}, RoleHill},
+		{"role seul (minigame)", []int32{LabelHash("minigame_include"), LabelHashHillRole}, ""},
+		{"filtre seul (marqueur)", []int32{LabelHashHillInclude, LabelHashHillMarker}, ""},
+		{"rien", nil, ""},
+		{"role nomme prioritaire", []int32{LabelHash("strongholds_zone"), LabelHashHillInclude, LabelHashHillRole}, RoleStrongholdZone},
+	}
+	for _, c := range cas {
+		role, _, unknown := classify(c.labels)
+		if role != c.want {
+			t.Errorf("%s : role %q, attendu %q", c.nom, role, c.want)
+		}
+		// Les hashs de KOTH restent NON RESOLUS : ils n'ont pas de nom, on ne l'invente pas.
+		for _, h := range c.labels {
+			if h == LabelHashHillRole || h == LabelHashHillInclude {
+				trouve := false
+				for _, u := range unknown {
+					trouve = trouve || u == h
+				}
+				if !trouve {
+					t.Errorf("%s : le hash %d devrait rester compte parmi les non resolus", c.nom, h)
+				}
+			}
+		}
+	}
+	if LabelName(LabelHashHillRole) != "" || LabelName(LabelHashHillInclude) != "" {
+		t.Error("les hashs de KOTH ne doivent pas avoir de nom dans labelNames tant qu'il n'est pas retrouve")
+	}
+}
+
+// TestCollinesDeCliffhanger — la fixture versionnee porte 5 collines de KOTH (relevees le
+// 2026-08-19 sur cliffhanger_map.mvar : 2 cylindres r 4,0 / 3,7 et 3 boites), toutes NEUTRES
+// et toutes avec forme ; les 5 marqueurs ponctuels qui les accompagnent n'ont pas de role.
+func TestCollinesDeCliffhanger(t *testing.T) {
+	v, err := Parse(fixture(t, "cliffhanger_map.mvar"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	var hills []Objective
+	for _, o := range v.Objectives() {
+		if o.Role == RoleHill {
+			hills = append(hills, o)
+		}
+	}
+	if len(hills) != 5 {
+		t.Fatalf("collines = %d, attendu 5", len(hills))
+	}
+	cyl := 0
+	for _, h := range hills {
+		if h.TeamIndex != TeamUnset {
+			t.Errorf("colline objet %d : team_index %d, attendu neutre", h.ObjectIdx, h.TeamIndex)
+		}
+		if h.Shape == nil {
+			t.Errorf("colline objet %d : sans forme", h.ObjectIdx)
+			continue
+		}
+		if h.Shape.Family == ShapeCylinder {
+			cyl++
+		}
+		if len(h.Labels) != 0 || len(h.Unresolved) != 2 {
+			t.Errorf("colline objet %d : labels %v, non resolus %v — attendu 0 nom et 2 hashs",
+				h.ObjectIdx, h.Labels, h.Unresolved)
+		}
+	}
+	if cyl != 2 {
+		t.Errorf("cylindres = %d, attendu 2 (r 4,0 et r 3,7)", cyl)
+	}
+}

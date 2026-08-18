@@ -40,12 +40,13 @@ func varianteFixture(t *testing.T, nom string) *mapvar.Variant {
 	return v
 }
 
-// TestRackDuCanevasEcarte — le canevas Forge de Vagabond range 20 objectifs de tous les
-// modes sur 8,2 m alors que ses objets couvrent 356 m. Il doit être écarté.
+// TestRackDuCanevasEcarte — le canevas Forge de Vagabond range 25 objectifs de tous les
+// modes (20 + les 5 collines de KOTH depuis le lot C-ter volet 2) sur 8,2 m alors que ses
+// objets couvrent 356 m. Il doit être écarté.
 func TestRackDuCanevasEcarte(t *testing.T) {
 	v := varianteFixture(t, "vagabond_fo08_wetland.mvar")
-	if n := len(v.Objectives()); n != 20 {
-		t.Fatalf("fixture inattendue : %d objectifs, attendu 20", n)
+	if n := len(v.Objectives()); n != 25 {
+		t.Fatalf("fixture inattendue : %d objectifs, attendu 25 (20 + 5 collines de rack)", n)
 	}
 	if !isParkedPalette(v) {
 		t.Error("le rack du canevas est accepté comme placement — la carte publierait " +
