@@ -441,3 +441,75 @@ describe('ReplayKillFeed — hauteur de colonne (mise en page du 2026-08-16)', (
     expect(card.className).toContain('min-h-0')
   })
 })
+
+/**
+ * V5 (retour utilisateur du 2026-08-18) — TOUT SUR UNE MÊME LIGNE.
+ *
+ * « Parfait mais veiller à bien tout avoir sur une même ligne. » Une élimination décorée ET
+ * assistée occupait trois rangées : la ligne, puis les médailles, puis l'assistance. Ces tests
+ * tiennent la règle sur les trois formes de ligne du fil, et ils la tiennent par la STRUCTURE
+ * (aucun bloc empilé dans le `li`, aucune rangée qui se replie) plutôt que par une capture.
+ */
+describe('ReplayKillFeed — tout sur UNE ligne (V5, 2026-08-18)', () => {
+  /** Les classes de mise en page d'un `li` : c'est là que vit la règle « une ligne ». */
+  const rowClass = (container: HTMLElement) =>
+    container.querySelector('li')?.getAttribute('class') ?? ''
+
+  it('une élimination décorée ET assistée tient dans UNE rangée, sans retour ni empilement', () => {
+    const { container } = renderFeed(
+      [
+        kill({
+          tMs: 1_000,
+          assistState: 'named',
+          assistGamertag: 'Aidant77',
+          assistTeamID: 0,
+          killerDamagePct: 63,
+          assistDamagePct: 37,
+          victimGamertag: 'Cible',
+          victimXuid: 'v',
+        }),
+      ],
+      20_000,
+      T0,
+      [medal({ tMs: 1_000, name: 'Perfect', label: 'Perfection', imageUrl: '/m.png' })],
+    )
+    // La rangée : en ligne, sans repli, et ce qui déborde est rogné — jamais renvoyé dessous.
+    expect(rowClass(container)).toContain('flex-nowrap')
+    expect(rowClass(container)).toContain('overflow-hidden')
+    expect(rowClass(container)).not.toContain('flex-col')
+    // Plus AUCUN bloc empilé : ni la rangée des médailles, ni celle de l'assistance.
+    expect(container.querySelector('li .pl-7')).toBeNull()
+    expect(container.querySelector('li div')).toBeNull()
+    expect(container.querySelectorAll('li')).toHaveLength(1)
+    // Et tout y est encore : le tueur, la victime, la médaille, l'assistant et les deux parts.
+    expect(screen.getByText('Cible')).toBeTruthy()
+    expect(screen.getByText('Aidant77')).toBeTruthy()
+    expect(screen.getByText('- 37 %')).toBeTruthy()
+    expect(screen.getByAltText('Perfection')).toBeTruthy()
+  })
+
+  it('la ligne de MORT NEUTRE suit la même règle', () => {
+    // Le MÊME décor que la section « référentiel des pistes » : deux vies pour un joueur, un
+    // kill qui n'en revendique qu'une — la seconde fin de vie fait donc sa ligne neutre.
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: [
+        { slot: 2, team: -1, xuid: 'foe', points: [{ t: 0, x: 0, y: 0 }], startFrame: 0, endFrame: 20 },
+        { slot: 2, team: -1, xuid: 'foe', points: [{ t: 40, x: 0, y: 0 }], startFrame: 40, endFrame: 80 },
+      ],
+    })
+    const kills = [kill({ tMs: 5_000, xuid: 'me', victimXuid: 'foe', victimGamertag: 'Cobra01' })]
+    const { container } = renderFeed(kills, 9_000, 0, [], doc)
+    const neutre = screen.getByText('mort').closest('li') as HTMLElement
+    expect(neutre.getAttribute('class')).toContain('flex-nowrap')
+    expect(neutre.querySelector('div')).toBeNull()
+    void container
+  })
+
+  it('la ligne de MÉDAILLE SEULE suit la même règle', () => {
+    const { container } = renderFeed([], 20_000, T0, [medal({ tMs: 1_000, imageUrl: '/m.png' })])
+    expect(screen.getByAltText('Sans lunette')).toBeTruthy()
+    expect(rowClass(container)).toContain('flex-nowrap')
+    expect(container.querySelector('li div')).toBeNull()
+  })
+})
