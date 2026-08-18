@@ -283,3 +283,26 @@ func finalize(matchID string, events []domain.ObjectiveEvent) []domain.Objective
 	}
 	return events
 }
+
+// CaptureBurstTimes rend les instants (ms, horloge du match) des BURSTS DE CAPTURE de
+// drapeau du film — le seul signal de mode CTF qui vive DANS le film.
+//
+// POURQUOI IL EST EXPORTE (2026-08-18, plan objectifs vivants, item 1.1). L'artefact de rejeu
+// 2D est construit HORS LIGNE, a partir des seuls chunks : il ne connait ni la carte ni le
+// `game_variant_name`, donc il ne peut pas demander a [ObjectiveTypeOf] de quel mode il s'agit.
+// Or publier le portage du drapeau exige de savoir qu'on est en CTF : la table d'emplacements
+// de statistiques du drapeau lue sur un film d'un AUTRE mode rendrait des « prises » qui n'en
+// sont pas. Le burst repond a la question sans base : c'est l'evenement de score qui accompagne
+// une capture de drapeau, detecte a 6 tiers distincts — 0 manque et 0 faux positif sur les
+// matchs de verite terrain (cf. scanCaptureBursts).
+//
+// CE QU'IL NE DIT PAS : une partie CTF ou personne ne capture n'en produit aucun. Le rejeu
+// publie alors un calque de drapeau VIDE, et sa couverture le dit.
+func CaptureBurstTimes(src FilmSource) []int {
+	bursts := collectCaptureBursts(src)
+	out := make([]int, 0, len(bursts))
+	for _, b := range bursts {
+		out = append(out, b.matchMS)
+	}
+	return out
+}

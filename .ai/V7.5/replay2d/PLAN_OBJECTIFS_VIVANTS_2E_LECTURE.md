@@ -109,13 +109,13 @@ conformement au brief.
 > INSTANTS de mort (repli quand le pont par totaux rend < 8 identites — films tronques), et le
 > retrait de `World.SetHeldWeapon/HeldWeapon` (0 appelant, mesure close : regle 0 code mort).
 
-- [ ] 1.0 Prealables : (a) `objectiveevents` — repli du pont par totaux vers le pont par INSTANTS de
+- [x] 1.0 Prealables : (a) `objectiveevents` — repli du pont par totaux vers le pont par INSTANTS de
       mort (l'instrument de la phase 0 le porte : 8/8 sur les 4 films, 8 accords / 0 desaccord),
       code de production + test (film tronque -> identites completes ; film complet -> identique a
       l'existant) ; (b) `filmdec` — retirer `World.SetHeldWeapon`/`HeldWeapon` et le champ de trace
       qui ne sert qu'a eux (verifier : aucun appelant hors tests ; les instruments de la phase 0.2
       qui les lisaient sont ajustes ou retires — pas de code mort ni de test qui teste du mort).
-- [ ] 1.1 Portages CTF (films `64e8adfa`, `530820e5`, `53ce4390`) : un portage = [`FlagGrabs` ou
+- [!] 1.1 Portages CTF (films `64e8adfa`, `530820e5`, `53ce4390`) : un portage = [`FlagGrabs` ou
       `FlagSteals` du slot S a t0] -> fin = min(`FlagCaptures` de S, mort de S dans les pistes,
       `FlagCarriersKilled` dont la victime se resout a S) ; porteur = S -> xuid par le pont ; equipe du
       drapeau = socle `flag_spawn` le plus proche du point de grab (`FlagSteals` = adverse) ; le
@@ -123,20 +123,35 @@ conformement au brief.
       `0x00010005` sur S ; seuil ecrit >= 90 % des portages ayant une image-cle) ; simultaneite : au
       plus 2 portages ouverts a la fois — les depassements (`64e8adfa` : 6, dus aux 53 records sans
       pont) sont RESOLUS par le pont 1.0(a) ou publies comme incoherences comptees (jamais tus).
-- [ ] 1.2 Drapeau lache / a la maison : fin de portage sans capture => `dropped` a la derniere
+- [x] 1.2 Drapeau lache / a la maison : fin de portage sans capture => `dropped` a la derniere
       position du porteur jusqu'au prochain grab, a un `FlagReturns`, ou au retour automatique
       (duree MESUREE : ecart median entre fin de portage sans reprise et prochain grab au socle) ;
       sinon `home` (marqueur statique existant, etat present/absent).
-- [ ] 1.3 Document : `flagCarries` [{ team, spans [{ state `carried`|`dropped`|`home`, t0, t1, xuid|null,
+- [!] 1.3 Document : `flagCarries` [{ team, spans [{ state `carried`|`dropped`|`home`, t0, t1, xuid|null,
       x, y }] }] + couverture (portages, confirmes par marqueur, incoherences, sans pont) ;
       `SchemaVersion` chronique (11 -> 12) ; contrat (`wantReplayDocumentFields` 33 -> 34, ligne de
       chronique), OpenAPI (`cmd/openapi-gen`), `generated.ts`, `NULLABLE_ARRAYS`/`normalizeReplayDocument`,
       goldens en connaissance de cause, temoins CTF re-cuits ; films non-CTF : tableau vide.
-- [ ] 1.4 Registre : ligne R4 « objectifs vivants » -> porteur TRAITE (CTF) ; crane `[!]` (condition
+      **REPORTE PAR COORDINATION (2026-08-18)** — une autre session fait entrer les schemas 12 et
+      13 dans `feat/v75` ; deux montees de version concurrentes se marcheraient dessus. A reprendre
+      APRES le rebasage de `wt/objvivants1`, avec le numero de schema SUIVANT (pas 12). Les types
+      du calque existent deja (`replay/document_objectives_live.go`), SANS etiquette JSON et sans
+      champ dans `ReplayDocument` : aucun changement de contrat n'a ete fait.
+- [~] 1.4 Registre : ligne R4 « objectifs vivants » -> porteur TRAITE (CTF) ; crane `[!]` (condition
       de reprise : discriminant externe, score par seconde de portage) ; canal delta CLOS (retire).
+      Couvert par le CR de lot : les TEXTES de journal et de registre y sont fournis, et c'est le
+      superviseur qui les consigne a la fusion (`.ai/thought_log.md` et `REGISTRE_REPORTS.md` ne
+      sont pas touches par cette branche).
 
 **Gate 1** : controle 1.1 >= 90 % ; chaque `FlagGrabs`/`FlagSteals` de l'oracle ouvre un span
 `carried` du bon xuid ; contrat/OpenAPI/goldens verts ; incoherences publiees, pas masquees.
+
+**Gate 1 : NON ATTEINT SUR SA PREMIERE CLAUSE (2026-08-18), LES AUTRES SONT TENUES.** Le controle
+du marqueur donne **37 / 42 = 88,1 %** contre 90 % exiges — seuil NON rebaisse, item 1.1 statue
+`[!]` avec sa mesure. Clause 2 TENUE : les 149 prises nommees des trois films rendent 137 spans
+`carried`, et les 12 manquantes sont TOUTES comptees sous une cause nommee (`NoTrack`). Clause 3
+TENUE : les incoherences sont publiees et comptees (simultaneite > 2, porteurs tues ambigus,
+retours ambigus). Clause 4 SANS OBJET : la publication au document est reportee (item 1.3).
 
 ### Phase 2 — La COLLINE par periode (KOTH)
 
@@ -181,26 +196,57 @@ fix hors perimetre (decouvertes ci-dessous) ; un seul `go` a la fois.
 
 ## Decouvertes (hors perimetre — notees, NON traitees)
 
-- `World.HeldWeapon(slot)` n'a aucun appelant (digest 2026-08-17) : soit la phase 0 le branche,
-  soit il devient du code mort a supprimer (regle 0 code mort) — a trancher a la cloture de la
-  phase 0, pas avant.
+- ~~`World.HeldWeapon(slot)` n'a aucun appelant (digest 2026-08-17)~~ **TRAITE (item 1.0(b),
+  2026-08-18)** : la phase 0 ne l'a PAS branche et a REFUTE le canal qui aurait pu lui donner un
+  appelant. `SetHeldWeapon` / `HeldWeapon`, le champ `slotState.HeldWeapon`, le champ
+  `EntityTrace.HeldWeapon` et sa capture dans `traverse.go` sont supprimes, avec l'instrument
+  0.2 qui les mesurait (0 test de code mort).
 - La lignee R7 n'a ni ligne de registre ni entree de journal partage (vit dans 5 plans + commits
   de `wt/fusion-finale`) — a consigner par la session utilisateur a sa fusion.
 - `HANDOFF_KEYFRAME_LIVE_CAPTURE.md` (04/07, « 205 entites keyframe decodees ») contredit R5-R7 sans
   retractation explicite — une note croisee est due au registre.
-- (2026-08-18, phase 0) **`objectiveevents.SlotIdentity` tombe a 0/8 sur un film TRONQUE.** Son
-  appariement compare les TOTAUX du film a ceux de `match_participants` ; un film dont le Theater
-  ne rend pas la fin ne les atteint jamais. Mesure : 0/8 sur `64e8adfa` et `24dbb67d`, 8/8 sur
-  `530820e5` et `53ce4390`. Le remplacant construit ici (appariement des INSTANTS de mort au fil
-  des morts) rend 8/8 sur les quatre et concorde 8/8 avec l'existant la ou celui-ci repond. NON
-  TRAITE dans le paquet de production : `SlotIdentity` reste tel quel.
+- ~~(2026-08-18, phase 0) **`objectiveevents.SlotIdentity` tombe a 0/8 sur un film TRONQUE.**~~
+  **TRAITE (item 1.0(a), 2026-08-18)** : le pont par INSTANTS DE MORT est en production
+  (`objectiveevents/slotidentity_deaths.go`), `SlotIdentityResolved` s'y replie quand il nomme
+  STRICTEMENT plus de slots, et son seul appelant existant (`cmd/zone-attribution`) y est migre.
+  Mesure d'origine conservee : 0/8 sur `64e8adfa` et `24dbb67d`, 8/8 sur `530820e5` et
+  `53ce4390` ; le remplacant rend 8/8 sur les quatre et concorde 8/8 avec l'existant la ou
+  celui-ci repond.
 - (2026-08-18, phase 0) **Le pont bipede laisse 53 records d'image-cle sans porteur sur
   `64e8adfa`** (16 % des records), et c'est le seul film ou le plafond structurel de deux porteurs
   au plus est depasse. Les deux faits vont probablement ensemble ; non instruit ici.
 - (2026-08-18, phase 0) **La marche stateful rend 96 a 100 % de variantes NULLES sur les slots de
   joueur.** Sur 68 284 lectures d'arme tenue, moins de 1 600 tombent sur un bipede nomme, et la
   quasi-totalite valent `0x00000000`. C'est une mesure de la sante du decodeur delta, hors
-  perimetre de ce lot mais utile a qui reprendra `World.HeldWeapon` ou le chemin i43-i46.
+  perimetre de ce lot mais utile a qui reprendra le chemin i43-i46.
+- (2026-08-18, phase 1) **`replay.Options.Objectives` n'est renseigne par AUCUN appelant de
+  production.** Le seul site qui le remplit est `cmd/zone-attribution/measure.go`, un outil de
+  mesure ; `replaybuild.BuildMatch` — la porte de TOUS les artefacts cuits (CLI, ouvrier, action
+  admin, etape post-sync) — ne le fournit pas. Le champ `objectives` du document est donc VIDE
+  dans tous les artefacts de production, alors que le contrat le decrit et que le web le lit. NON
+  TRAITE : le reparer demande le pont d'identite ET la famille d'objectif du match, c'est-a-dire
+  la meme plomberie que l'item 1.3.
+- (2026-08-18, phase 1) **`public_name` est VIDE sur la quasi-totalite des entrees de
+  `map_objectives.json`** (produit depuis les variantes UGC, qui ne le portent pas). Toute
+  jointure carte -> objectifs doit passer par `map_id` ou par `module` ; joindre sur le nom public
+  ne trouve rien, SILENCIEUSEMENT. Le service joint bien par `map_id` — c'est la mesure de la
+  phase 1 qui s'est fait prendre.
+- (2026-08-18, phase 1) **Les deux catalogues de carte ne nomment pas les modules pareil.**
+  `map_quant_bounds.json` dit `va_behemoth` et `ridgeline` la ou `map_objectives.json` dit
+  `behemoth_va_behemoth` et `cliffhanger_ridgeline` ; Catalyst y figure DEUX fois (`catalyst` et
+  `catalyst_map`, memes socles au centimetre). Les deux sont produits par des chaines differentes
+  et AUCUN test ne les rapproche : toute jointure entre eux PAR LE MODULE se fera de travers,
+  sans rien dire. NON TRAITE — l'item 1.3 joindra par `map_id`, comme le service.
+- (2026-08-18, phase 1) **Chaque carte de CTF declare TROIS `flag_spawn`** : un par equipe, plus un
+  NEUTRE au centre (variantes « drapeau neutre »). Les publier tous sur une partie de CTF ordinaire
+  ferait apparaitre un troisieme drapeau qui n'existe pas dans le match. La mesure ne retient que
+  les socles d'equipe ; l'item 1.3 devra trancher le cas du drapeau neutre (`0f9550e5` est au
+  corpus et le discriminant le reconnait comme CTF).
+- (2026-08-18, phase 1) **Deux espaces de coordonnees se ressemblent assez pour se confondre.** Les
+  pistes construites en `QuantaOnly` (phase 0) portent des INDICES DE QUANTUM ; les socles du
+  catalogue portent des METRES. Un rayon de ramassage ecrit en metres, applique a des quanta, ne
+  signale rien — il attribue simplement le drapeau au hasard. La mesure de la phase 1 exige donc
+  les bornes de carte la ou la phase 0 s'en passait.
 
 ## Journal du plan (avancement, source de verite pour la reprise)
 
@@ -307,3 +353,103 @@ worktree : `go build ./...` (CGO, msys64 ucrt64) = 0, `go vet ./...` = 0, `go te
   par le superviseur (portage CTF par evenements nommes + marqueur en controle ; pont par instants
   et retrait de HeldWeapon en prealables ; Oddball `[!]`) ; phase 1 LANCEE (agent Opus, worktree
   frere `../LevelUp-wt-objvivants1`).
+
+### 2026-08-18 — PHASE 1, ITEMS 1.0 A 1.2 (worktree `LevelUp-wt-objvivants1`, branche `wt/objvivants1`)
+
+**ARBITRAGE DE COORDINATION** : l'item 1.3 (publication au document) est REPORTE apres le rebasage
+sur `feat/v75` — une autre session y fait entrer les schemas 12 et 13, et deux montees de version
+concurrentes se marcheraient dessus. Les types du calque existent
+(`replay/document_objectives_live.go`) mais SANS etiquette JSON et sans champ dans
+`ReplayDocument` : contrat, OpenAPI, `generated.ts` et goldens sont INTACTS.
+
+**1.0(a) — LE PONT PAR INSTANTS DE MORT EST EN PRODUCTION.**
+`objectiveevents/slotidentity_deaths.go` : `SlotIdentityFromDeaths` (film seul, aucune base) et
+`SlotIdentityResolved` (totaux d'abord, repli sur les instants quand ceux-ci nomment STRICTEMENT
+plus de slots ; desaccords ECARTES et comptes). Cinq tests purs, sans film, tournent en CI : film
+complet -> identique a `SlotIdentity` ; film tronque -> 8/8 ; abstention sans marge ; abstention
+sous le minimum de morts communes ; sans fil des morts -> totaux seuls ; desaccord -> slot retire.
+Le seul appelant existant de `SlotIdentity` (`cmd/zone-attribution`) est migre vers le pont
+resolu — sans quoi la voie neuve serait du code mort.
+
+Mesure sur films reels, l'instrument APPELANT la production (il n'a plus de pont a lui) :
+
+| film | pont par INSTANTS | pont par TRIPLETS | recoupement | pont RESOLU |
+|---|---|---|---|---|
+| `64e8adfa` | 8 | **0** (film tronque) | — | 8, voie `deaths` |
+| `530820e5` | 8 | 8 | 8 accords / 0 desaccord | 8, voie `totals` |
+| `53ce4390` | 8 | 8 | 8 accords / 0 desaccord | 8, voie `totals` |
+| `24dbb67d` | 8 | **0** (film tronque) | — | 8, voie `deaths` |
+
+**1.0(b) — LE CACHE `World.HeldWeapon` EST RETIRE.** `World.SetHeldWeapon`, `World.HeldWeapon`,
+le champ `slotState.HeldWeapon`, le champ `EntityTrace.HeldWeapon` et sa capture dans
+`traverse.go` (i43-i46) disparaissent, avec les six initialisations `HeldWeapon: noVariant` qui
+les accompagnaient. L'instrument 0.2 qui les mesurait est SUPPRIME (326 lignes) : il testait un
+canal refute a travers du code qui n'existe plus. Diff : 7 fichiers, 11 insertions / 39
+suppressions, plus la suppression de l'instrument. La chronique du retrait, avec le chiffre qui
+l'a tranche, vit en tete de `filmdec/world.go`.
+
+**1.1 — LE MODE CTF SE LIT DANS LE FILM (arbitrage que le plan ne posait pas).** L'artefact est
+construit sur les SEULS chunks : il ne connait ni la carte ni le `game_variant_name`, donc pas le
+mode. Or la table d'emplacements du DRAPEAU, appliquee a un film d'un autre mode, rend n'importe
+quoi (film Oddball : 1 470 « prises » et 994 « vols »). Premier discriminant essaye — le BURST DE
+CAPTURE seul — **REFUTE par la mesure** : quatre films non-CTF en portent (Oddball 2, une colline
+4, un Slayer 2). Ce qui tient est l'ACCORD DE TROIS SIGNAUX, tous du film :
+
+	bursts > 0      captures > 0      captures <= bursts      vols > 0
+
+L'inegalite est dans ce sens parce qu'un film TRONQUE sous-compte ses captures et ne les
+sur-compte jamais (`64e8adfa` : 4 captures pour 5 bursts). **15 films de mode connu, 15 verdicts
+justes, 0 faux positif et 0 film CTF ecarte** (6 CTF, 1 Oddball, 2 zones, 4 collines, 2 Slayer).
+Le corpus est GELE dans `objectiveevents/flagfilm_test.go`, qui rejoue les quinze lignes SANS
+film, et un second test verifie que chacune des quatre clauses est NECESSAIRE.
+
+**1.1 — LES PORTAGES.** Regle en production (`replay/flag_carries*.go`), instrument sous garde
+`OBJ_FILM` + `OBJ_REPO` qui l'appelle. Coordonnees MONDE obligatoires (les socles du catalogue
+sont en metres ; la phase 0 travaillait en quanta).
+
+| film | CTF | prises | portages | sans pont | sans piste | marqueur | simult.>2 | porteurs tues ambigus | retours ambigus |
+|---|---|---|---|---|---|---|---|---|---|
+| `64e8adfa` | oui (5/4/17) | 82 | 78 | **0** | 4 | 21/22 | 12 | 5 | 7 |
+| `530820e5` | oui (3/3/10) | 33 | 30 | **0** | 3 | 3/7 | 0 | 4 | 1 |
+| `53ce4390` | oui (3/3/13) | 34 | 29 | **0** | 5 | 13/13 | 0 | 0 | 3 |
+| `000d5950` | **non** (0/0/0) | 0 | 0 | 0 | 0 | 0/0 | 0 | 0 | 0 |
+
+**ZERO prise sans pont sur les trois films, `64e8adfa` compris** — c'est le gain direct de
+l'item 1.0(a) : le film tronque qui rendait 0 slot sur 8 nomme desormais les huit. L'invariant de
+couverture (`Balanced`) tient sur les quatre films. Le temoin non-CTF publie un calque VIDE.
+
+**CONTROLE DU MARQUEUR : 37 / 42 = 88,1 %, SOUS LE SEUIL DE 90 %.** Le seuil n'est pas rebaisse et
+l'item est `[!]`. Le NUMERATEUR est exactement celui de la phase 0 (21 + 3 + 13 = 37) : le marqueur
+confirme les MEMES portages. C'est le DENOMINATEUR qui grandit — 42 contre 38 — et la cause est
+nommee : la phase 0 fermait ses fenetres au dernier fait date du match, la production les prolonge
+jusqu'a la FIN DE L'AXE quand rien ne les ferme. Quatre portages de plus contiennent donc une
+image-cle, et aucun n'est confirme — ce qui est attendu, puisque le drapeau avait ete lache
+depuis longtemps (le lacher volontaire n'est date par rien, cf. `flag_carries.go`). Le biais joue
+CONTRE ce qu'on affirme, jamais en sa faveur, et il est desormais chiffre.
+
+**LA SIMULTANEITE NE SE RESOUT PAS PAR LE PONT, ET C'ETAIT L'HYPOTHESE DU PLAN.** Le plan prevoyait
+que le pont 1.0(a) leve les 6 depassements de `64e8adfa` ; la mesure en compte **12** avec la regle
+de production, sur un film ou plus AUCUNE prise n'est sans pont. La cause n'etait donc pas
+l'identite mais la DUREE des portages que rien ne ferme. Publie en incoherence comptee, comme le
+plan l'exige en second recours.
+
+**1.2 — LACHE / A LA MAISON, ET LE RETOUR AUTOMATIQUE : NEGATIF ECRIT.** Les trois etats sont
+produits (`carried` / `dropped` / `home`), les socles `flag_spawn` du catalogue donnent l'equipe
+proprietaire, et les deux drapeaux de chaque carte sortent distinctement :
+
+| film | drapeau 0 | drapeau 1 |
+|---|---|---|
+| `64e8adfa` | equipe 1 : 111 spans (54 portes, 52 au sol, 5 a la base) | equipe 0 : 50 spans (24, 22, 4) |
+| `530820e5` | equipe 1 : 22 spans (11, 7, 4) | equipe 0 : 44 spans (19, 19, 6) |
+| `53ce4390` | equipe 0 : 23 spans (9, 9, 5) | equipe 1 : 44 spans (20, 19, 5) |
+
+Duree au sol des laches REPRIS (frames de 100 ms) : `64e8adfa` mediane 28, p10 13, p90 358,
+max 1 116 ; `530820e5` mediane 44, p10 18, p90 86, max 122 ; `53ce4390` mediane 30, p10 19,
+p90 287, max 399. Laches JAMAIS repris : 16, 13 et 15, medianes 66, 90 et 103.
+**AUCUN retour automatique ne se deduit de cette distribution** : de 1,3 s a 35,8 s entre p10 et
+p90 sur le meme film, et un maximum a 111,6 s. Une minuterie fixe posee la-dessus renverrait des
+drapeaux qui sont encore au sol. Le `dropped` court donc jusqu'a sa reprise, un `flag_returns` ou
+la fin du match — un etat trop long, jamais une position inventee.
+
+**Commits** : `26379f180` (1.0a), `cecab6d37` (1.0b), `102152b83` (discriminant + marqueur au
+decodeur), puis le lot de regles et de mesure. Aucun push.

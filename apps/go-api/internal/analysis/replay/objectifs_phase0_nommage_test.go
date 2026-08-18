@@ -52,9 +52,8 @@ func objMotifRetenu(t *testing.T, root string) (uint32, bool) {
 		}
 		films++
 		b := objBridgeOf(t, root, id)
-		identity, _, _ := objStatPont(objectiveevents.StatRecords(src), b.Deaths)
 		evs := objectiveevents.IdentifyNamedEvents(
-			objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentityStrings(identity))
+			objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentites(src, b.Deaths))
 		recs, _ := objRecordsOf(t, root, id)
 		wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 		for _, c := range objCandidats(objConfronte(recs, b, wins)) {
