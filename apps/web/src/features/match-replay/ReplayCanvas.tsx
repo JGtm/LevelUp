@@ -293,8 +293,9 @@ export function ReplayCanvas({
     () => buildObjectivePulses(doc, mapObjectives),
     [doc, mapObjectives],
   )
-  // L'ÉTAT VIVANT DES ZONES (schéma 15) et les encres d'objectif (cf. useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge)
+  // L'ÉTAT VIVANT DES ZONES (schéma 15), les encres d'objectif et la garde de jointure du
+  // catalogue (`zoneRef` est un index cuit à l'artefact) — cf. useZoneStates.
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge, doc.coverage?.zones?.catalog)
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
@@ -555,10 +556,9 @@ export function ReplayCanvas({
     }
     // L'ÉTAT DES ZONES à l'image courante (schéma 15) : teinte du camp qui la tient,
     // surbrillance de la colline ACTIVE, arc de progression de la jauge. Il se peint dans la
-    // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si.
-    if (doc.zoneStates.length > 0 && zones.zoneElements.length > 0) {
-      drawZoneStates(ctx, zones.zoneElements, doc.zoneStates, view, frame, zones.style)
-    }
+    // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque
+    // lui-même refuse de peindre si le catalogue de l'artefact ne joint pas la liste servie.
+    if (doc.zoneStates.length > 0) drawZoneStates(ctx, zones, doc.zoneStates, view, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -613,8 +613,6 @@ export function ReplayCanvas({
     grenadeRestFx,
     restWindow,
     objectivePulses,
-    // L'objet du hook des zones est MÉMOÏSÉ (useZoneStates) : sans cela il serait neuf à
-    // chaque rendu, et `draw` — donc toute la scène — recuirait au moindre survol.
     zones,
     floorStyle.edge,
     slotColors,

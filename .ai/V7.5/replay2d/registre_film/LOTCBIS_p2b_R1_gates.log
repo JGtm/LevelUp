@@ -20,3 +20,7 @@
 [R1-6] npx vitest run src/features/match-replay/useZoneStates.test.ts   EXIT_VITEST=0 (5 tests)
 [R1-6] npx tsc -b --force                                          EXIT_TSC=0
 [R1-6] npm run lint                                                EXIT_LINT=0 (19 warnings = baseline)
+[R1-7] npx tsc -b --force (apps/web)                               EXIT_TSC=0
+[R1-7] npx vitest run objectivesLayer.test.ts useZoneStates.test.ts placementFamily.guard.test.ts   EXIT_VITEST=0 (42 tests ; ReplayCanvas 858 L = plafond tenu)
+[R1-7] contre-epreuve : garde `!zones.joinable` retiree de drawZoneStates -> « jointure REFUSEE ... ne peint rien » ECHOUE (1 failed | 27 passed) ; garde remise
+[R1-7] npx eslint sur les 5 fichiers touches                       EXIT_ESLINT=0

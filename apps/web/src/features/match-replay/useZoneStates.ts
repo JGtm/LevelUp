@@ -15,8 +15,13 @@
  * LE RETOUR EST MÉMOÏSÉ, ET CE N'EST PAS DU CONFORT (revue R1, 2026-08-18). L'objet entre dans
  * les dépendances de `draw` chez l'appelant ; un littéral neuf à chaque rendu recuisait donc le
  * `useCallback` du tracé — c'est-à-dire TOUTE la scène — à chaque mouvement de pointeur, puisque
- * `usePlacementHover` porte un `useState` qui fait rendre le canvas. Les trois membres sont déjà
+ * `usePlacementHover` porte un `useState` qui fait rendre le canvas. Les membres sont déjà
  * stables : leur enveloppe doit l'être aussi.
+ *
+ * LA JOINTURE EST VÉRIFIÉE ICI (revue R1-7). `zoneStates[].zoneRef` indexe la liste que
+ * l'artefact avait sous les yeux à la CUISSON ; `mapObjectives` est reconstruit à la requête.
+ * `coverage.zones.catalog` dit combien de zones l'artefact comptait : s'il diffère de la liste
+ * servie, `joinable` est faux et le calque vivant se tait (cf. `zoneCatalogMatches`).
  */
 import { useCallback, useMemo } from 'react'
 
@@ -24,13 +29,10 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID, resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
-import { zoneElementsOf, type ZoneStateStyle } from './zoneStatesLayer'
+import { zoneCatalogMatches, zoneElementsOf, type ZoneStatesLayerInput } from './zoneStatesLayer'
 
 /** Ce que le canvas recopie tel quel dans ses appels de dessin. */
-export interface ReplayZoneStates {
-  /** Les zones SURFACIQUES dans l'ordre servi : celui que `zoneStates[].zoneRef` indexe. */
-  zoneElements: ObjectiveElementReady[]
-  style: ZoneStateStyle
+export interface ReplayZoneStates extends ZoneStatesLayerInput {
   /**
    * Couleur d'un index d'équipe pour le calque STATIQUE et les pulses : le référentiel
    * d'identité du jeu (donnée de domaine, pas un choix d'UI), encre neutre du thème pour -1 ou
@@ -44,8 +46,11 @@ export function useZoneStates(
   scoreboard: MatchScoreboardRow[] | null | undefined,
   teamColorOf: (isAlly: boolean) => string,
   neutral: string,
+  /** `coverage.zones.catalog` de l'artefact : le nombre de zones qu'il avait sous les yeux. */
+  catalog: number | null | undefined,
 ): ReplayZoneStates {
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
+  const joinable = zoneCatalogMatches(catalog, zoneElements.length)
   const colorOfTeam = useCallback(
     (team: number) => (team >= 0 ? resolveTeamColorFromID(team) : null) ?? neutral,
     [neutral],
@@ -63,7 +68,7 @@ export function useZoneStates(
     [allyTeamID, teamColorOf, neutral],
   )
   return useMemo(
-    () => ({ zoneElements, style, colorOfTeam }),
-    [zoneElements, style, colorOfTeam],
+    () => ({ zoneElements, joinable, style, colorOfTeam }),
+    [zoneElements, joinable, style, colorOfTeam],
   )
 }
