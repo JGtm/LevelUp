@@ -97,19 +97,46 @@ qu'elle est ecrite (elle publie `kind` flag/ball et `team`, qu'aucune mesure ne 
 est a REDIGER A NOUVEAU sur ce que la phase 0 rend reellement. Arret apres la phase 0,
 conformement au brief.
 
-### Phase 1 — PUBLIER les objets portes (schema +1, chronique)
+### Phase 1 — PUBLIER le portage du drapeau (CTF), schema +1 — REECRITE le 2026-08-18 apres la phase 0
 
-- [ ] 1.1 Document : `objectiveObjects` [{ kind `flag`|`ball`, team (drapeau : equipe du socle),
-      spans [{ state `carried`|`dropped`|`home`, t0, t1, slot|-1, x, y }] }] + couverture (nombre
-      d'evenements oracle vs spans) ; retour automatique mesure (decision 3) ; `SchemaVersion`
-      chronique ; contrat (`wantReplayDocumentFields` 31->32 avec la ligne de chronique),
-      OpenAPI, `generated.ts`, `NULLABLE_ARRAYS`, goldens, temoins re-cuits.
-- [ ] 1.2 Controle : chaque `FlagGrabs`/`FlagSteals` de l'oracle tombe dans un span `carried` du
-      bon slot (± 1 image en delta, ± 1 image-cle sinon) — taux publie, seuil >= 90 %.
-- [ ] 1.3 Registre : la ligne R4 « objectifs vivants » passe TRAITEE (porteur) ; l'objet lui-meme
-      reste NON decode (ecrit).
+> **Arbitrage superviseur (2026-08-18, CR de phase 0 verifie sur pieces, fusion `6b856ea3a`)** : la
+> decision 1 est REFUTEE en partie — le marqueur de portage `0x00010005` n'est PAS une famille
+> d'arme et ne nomme rien ; le crane d'Oddball n'a ni marqueur ni oracle. Ce qui EST mesure : en
+> CTF, le porteur se lit a l'image-cle (97,4 %, temoin 2,6 %) et les evenements CTF nommes datent
+> les bornes a la milliseconde. La phase 1 publie donc le PORTAGE DU DRAPEAU en CTF, ou `kind` vient
+> du MODE (CTF => drapeau) et non du marqueur, et ne publie RIEN pour Oddball (item `[!]`) ni pour
+> le canal delta (refute). Deux prealables mesures entrent en production : le pont statborg par
+> INSTANTS de mort (repli quand le pont par totaux rend < 8 identites — films tronques), et le
+> retrait de `World.SetHeldWeapon/HeldWeapon` (0 appelant, mesure close : regle 0 code mort).
 
-**Gate 1** : contrat/OpenAPI/goldens verts, controle 1.2 tenu.
+- [ ] 1.0 Prealables : (a) `objectiveevents` — repli du pont par totaux vers le pont par INSTANTS de
+      mort (l'instrument de la phase 0 le porte : 8/8 sur les 4 films, 8 accords / 0 desaccord),
+      code de production + test (film tronque -> identites completes ; film complet -> identique a
+      l'existant) ; (b) `filmdec` — retirer `World.SetHeldWeapon`/`HeldWeapon` et le champ de trace
+      qui ne sert qu'a eux (verifier : aucun appelant hors tests ; les instruments de la phase 0.2
+      qui les lisaient sont ajustes ou retires — pas de code mort ni de test qui teste du mort).
+- [ ] 1.1 Portages CTF (films `64e8adfa`, `530820e5`, `53ce4390`) : un portage = [`FlagGrabs` ou
+      `FlagSteals` du slot S a t0] -> fin = min(`FlagCaptures` de S, mort de S dans les pistes,
+      `FlagCarriersKilled` dont la victime se resout a S) ; porteur = S -> xuid par le pont ; equipe du
+      drapeau = socle `flag_spawn` le plus proche du point de grab (`FlagSteals` = adverse) ; le
+      marqueur d'image-cle sert de CONTROLE (part des portages confirmes par >= 1 image-cle portant
+      `0x00010005` sur S ; seuil ecrit >= 90 % des portages ayant une image-cle) ; simultaneite : au
+      plus 2 portages ouverts a la fois — les depassements (`64e8adfa` : 6, dus aux 53 records sans
+      pont) sont RESOLUS par le pont 1.0(a) ou publies comme incoherences comptees (jamais tus).
+- [ ] 1.2 Drapeau lache / a la maison : fin de portage sans capture => `dropped` a la derniere
+      position du porteur jusqu'au prochain grab, a un `FlagReturns`, ou au retour automatique
+      (duree MESUREE : ecart median entre fin de portage sans reprise et prochain grab au socle) ;
+      sinon `home` (marqueur statique existant, etat present/absent).
+- [ ] 1.3 Document : `flagCarries` [{ team, spans [{ state `carried`|`dropped`|`home`, t0, t1, xuid|null,
+      x, y }] }] + couverture (portages, confirmes par marqueur, incoherences, sans pont) ;
+      `SchemaVersion` chronique (11 -> 12) ; contrat (`wantReplayDocumentFields` 33 -> 34, ligne de
+      chronique), OpenAPI (`cmd/openapi-gen`), `generated.ts`, `NULLABLE_ARRAYS`/`normalizeReplayDocument`,
+      goldens en connaissance de cause, temoins CTF re-cuits ; films non-CTF : tableau vide.
+- [ ] 1.4 Registre : ligne R4 « objectifs vivants » -> porteur TRAITE (CTF) ; crane `[!]` (condition
+      de reprise : discriminant externe, score par seconde de portage) ; canal delta CLOS (retire).
+
+**Gate 1** : controle 1.1 >= 90 % ; chaque `FlagGrabs`/`FlagSteals` de l'oracle ouvre un span
+`carried` du bon xuid ; contrat/OpenAPI/goldens verts ; incoherences publiees, pas masquees.
 
 ### Phase 2 — La COLLINE par periode (KOTH)
 
@@ -127,7 +154,7 @@ conformement au brief.
 
 ### Phase 3 — RENDU (worktree frere web `../LevelUp-wt-objvivants`, branche `wt/objvivants`)
 
-- [ ] 3.1 `objectivesLayer.ts` : icone drapeau/crane collee au marqueur du porteur (sprite existant
+- [ ] 3.1 `objectivesLayer.ts` : icone DRAPEAU (CTF seulement, le crane est `[!]`) collee au marqueur du porteur (sprite existant
       si le dictionnaire en a un, sinon glyphe SVG neutre), objet `dropped` a sa position avec
       respiration, socle `home` present/absent ; collines : active en surbrillance, inactives
       estompees ; les pulses substituts RETIRES (0 code mort) ; tokens (`color-tokens`), FR+EN.
@@ -276,3 +303,7 @@ delta confronte famille par famille). Gates rejoues dans la session, depuis `app
 worktree : `go build ./...` (CGO, msys64 ucrt64) = 0, `go vet ./...` = 0, `go test
 ./internal/analysis/... ./internal/archlint/...` = 0, garde `OBJ_FILM` absente = 5 SKIP,
 `golangci-lint run --new-from-merge-base=origin/main` = 0 issue.
+- 2026-08-18 — phase 0 CLOSE et fusionnee (`6b856ea3a`, docs `bfe4d5b10`) ; **phase 1 REECRITE**
+  par le superviseur (portage CTF par evenements nommes + marqueur en controle ; pont par instants
+  et retrait de HeldWeapon en prealables ; Oddball `[!]`) ; phase 1 LANCEE (agent Opus, worktree
+  frere `../LevelUp-wt-objvivants1`).
