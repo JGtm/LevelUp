@@ -24,7 +24,7 @@ package filmdec
 //
 //	i1        le variant en mode A (valeur SCALAIRE de la propriete) ;
 //	i2..i33   le variant en mode B (une valeur PAR JOUEUR), dont l'index de joueur se
-//	          reconstitue chez l'appelant — ici — par `ManagedPropertyPlayerIndex`.
+//	          reconstitue chez l'appelant — ici — par `ManagedPropertyFilmIndex`.
 //
 // Le composant i0 (`managed-object-property-name-component`, le NOM de la propriete reseau) est
 // MARCHE mais pas recolte : personne ne le consomme — la jointure des zones se fait par le slot,
@@ -59,8 +59,17 @@ type ManagedPropertyRead struct {
 	TimestampUS uint64
 	// Field dit par quelle voie la valeur est venue : scalaire (i1) ou par joueur (i2..i33).
 	Field ManagedPropertyField
-	// PlayerIndex vaut 0..31 en mode B, et -1 en mode A.
-	PlayerIndex int
+	// FilmIndex est l'index de joueur porte par le masque, tel que LE FILM numerote les joueurs :
+	// 0..31 en mode B (une valeur par joueur), -1 en mode A (valeur scalaire).
+	//
+	// LE NOM DIT SON STATUT, ET C'EST DELIBERE (meme regle que `FireEvent.FilmIndex`, garde-rail
+	// `archlint/no_player_index_identity_test.go`). Il s'appelait `PlayerIndex`, ce qui laissait
+	// croire a une identite de joueur. C'est une NUMEROTATION INTERNE AU FILM, valable seulement a
+	// l'interieur de ce film : elle ne coincide avec aucun ordre que nous fabriquons, et surtout pas
+	// avec le tri alphabetique du roster. L'IDENTITE D'UN JOUEUR EST SON XUID — toute jointure
+	// entre joueurs passe par lui ; cet index ne sert qu'a distinguer les valeurs par joueur d'un
+	// meme slot A L'INTERIEUR du film.
+	FilmIndex int
 	// Tag est l'alternative du variant (cf. ManagedPropertyTag*) : le TYPE de la propriete.
 	Tag int
 	// Value est le quantum BRUT, et HasValue dit si la branche du tag a lu quelque chose.
@@ -225,7 +234,7 @@ func (w *managedPropertyWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 		at = br.BitPos()
 		if w.got {
 			w.cur.Slot, w.cur.TimestampUS = rec.Slot, ts
-			w.cur.PlayerIndex = ManagedPropertyPlayerIndex(id)
+			w.cur.FilmIndex = ManagedPropertyFilmIndex(id)
 			sc.Reads = append(sc.Reads, w.cur)
 		}
 	}

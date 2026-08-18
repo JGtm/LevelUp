@@ -22,7 +22,7 @@ import (
 func zoneReadAt(slot uint32, frame, tag int, value uint64) filmdec.ManagedPropertyRead {
 	return filmdec.ManagedPropertyRead{
 		Slot: slot, TimestampUS: uint64(frame) * 100_000, Field: filmdec.ManagedPropertyScalar,
-		PlayerIndex: -1, Tag: tag, Value: value, HasValue: true,
+		FilmIndex: -1, Tag: tag, Value: value, HasValue: true,
 	}
 }
 
