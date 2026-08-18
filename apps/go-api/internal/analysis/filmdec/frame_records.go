@@ -142,7 +142,7 @@ func readRecordID(br *BitReader, idLowBits int, idBase uint32) uint32 {
 // concordent 54760/54760 AVEC ce bit, et le bit vaut 0 sur 54760/54760 (jamais le R(7)).
 func decodeDelta(br *BitReader, w *World, slot uint32) EntityTrace {
 	setAccumSlot(slot) // cible d'accumulation i0 pour ce record (no-op si pas de World accumulateur)
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1}
+	t := EntityTrace{DesyncAt: -1}
 	if br.ReadBit() { // baseline selector
 		br.Skip(7)
 	}
@@ -611,7 +611,7 @@ func DecodeFrameResync(buf []byte, w *World, cfg FrameConfig, targets map[uint32
 // EXPLICIT archetype (not resolved from the World). Used by unbound-slot archetype
 // inference. Mirrors decodeDelta minus the World lookup.
 func decodeDeltaWithArch(br *BitReader, arch Archetype, typeIndex uint32) EntityTrace {
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1, TypeIndex: typeIndex}
+	t := EntityTrace{DesyncAt: -1, TypeIndex: typeIndex}
 	t.Mask = consumeMask(br)
 	traverseComponentLoop(br, arch, &t)
 	t.EndBit = br.BitPos()
@@ -745,9 +745,6 @@ func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord
 			// until the default-state deser is bit-exact (handoff L3 "T3" wall).
 			if rec.DesyncAt == -1 {
 				w.BindFull(id, rec.TypeIndex)
-				if rec.Trace.HeldWeapon != noVariant {
-					w.SetHeldWeapon(slot, rec.Trace.HeldWeapon)
-				}
 			}
 		case recDel:
 			if cfg.HasExtraFields && br.ReadBit() {
@@ -761,16 +758,13 @@ func DecodeFrameRecords(br *BitReader, w *World, cfg FrameConfig) ([]FrameRecord
 			// ce qui fait `break` a FUN_1406cd128. Un delta qui echoue ce test est donc la preuve
 			// d'une lecture fausse, pas un record a decoder.
 			if !w.GenerationMatches(id) {
-				rec.Trace = EntityTrace{HeldWeapon: noVariant, DesyncAt: 0, EndBit: br.BitPos()}
+				rec.Trace = EntityTrace{DesyncAt: 0, EndBit: br.BitPos()}
 				rec.DesyncAt = 0
 				break
 			}
 			rec.Trace = decodeDelta(br, w, slot)
 			rec.TypeIndex = rec.Trace.TypeIndex
 			rec.DesyncAt = rec.Trace.DesyncAt
-			if rec.DesyncAt == -1 && rec.Trace.HeldWeapon != noVariant {
-				w.SetHeldWeapon(slot, rec.Trace.HeldWeapon)
-			}
 		default:
 			return out, fmt.Errorf("invalid record type %d at bit %d", typ, br.BitPos())
 		}
