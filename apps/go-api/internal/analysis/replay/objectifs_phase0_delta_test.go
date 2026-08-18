@@ -193,9 +193,8 @@ func objLatencesPrise(t *testing.T, root, id string, src *objDiskFilm, lectures 
 	motif uint32) (int, int, []int64) {
 	t.Helper()
 	b := objBridgeOf(t, root, id)
-	identity, _, _ := objStatPont(objectiveevents.StatRecords(src), b.Deaths)
 	evs := objectiveevents.IdentifyNamedEvents(
-		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentityStrings(identity))
+		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentites(src, b.Deaths))
 	wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	parXUID := map[uint64][]int64{}
 	for _, r := range lectures {
@@ -285,9 +284,8 @@ func objDeltaParCamp(lectures []objLectureArme, b objBridge, wins []objWindow) (
 func objLogDeltaParCamp(t *testing.T, root, id string, src *objDiskFilm, lectures []objLectureArme) {
 	t.Helper()
 	b := objBridgeOf(t, root, id)
-	identity, _, _ := objStatPont(objectiveevents.StatRecords(src), b.Deaths)
 	evs := objectiveevents.IdentifyNamedEvents(
-		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentityStrings(identity))
+		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentites(src, b.Deaths))
 	wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	cands, portage, hors := objDeltaParCamp(lectures, b, wins)
 	t.Logf("%s : canal delta sur slots NOMMES — %d lectures en portage, %d hors portage, "+
