@@ -111,9 +111,13 @@ func objStatFenetres(recs []objRecord, b objBridge, wins []objWindow, val uint32
 		}
 		parInstant[r.TS] = append(parInstant[r.TS], r)
 	}
+	parXUID := map[uint64][]objWindow{}
+	for _, w := range wins {
+		parXUID[w.XUID] = append(parXUID[w.XUID], w)
+	}
 	var st objFenetreStat
 	for _, w := range wins {
-		porteur, temoin := objRecordsDeFenetre(parInstant, b, w)
+		porteur, temoin := objRecordsDeFenetre(parInstant, b, w, parXUID)
 		if len(porteur) == 0 {
 			continue
 		}
@@ -133,7 +137,8 @@ func objStatFenetres(recs []objRecord, b objBridge, wins []objWindow, val uint32
 
 // objRecordsDeFenetre rend les records du PORTEUR dans la fenetre, et un record TEMOIN par
 // instant (un autre joueur, choisi de facon deterministe).
-func objRecordsDeFenetre(parInstant map[uint64][]objRecord, b objBridge, w objWindow) (porteur, temoin []objRecord) {
+func objRecordsDeFenetre(parInstant map[uint64][]objRecord, b objBridge, w objWindow,
+	parXUID map[uint64][]objWindow) (porteur, temoin []objRecord) {
 	instants := make([]uint64, 0, len(parInstant))
 	for ts := range parInstant {
 		instants = append(instants, ts)
@@ -146,8 +151,18 @@ func objRecordsDeFenetre(parInstant map[uint64][]objRecord, b objBridge, w objWi
 		}
 		var autres []objRecord
 		for _, r := range parInstant[ts] {
-			if b.SlotXUID[r.Slot] == w.XUID {
+			x := b.SlotXUID[r.Slot]
+			if x == w.XUID {
 				porteur = append(porteur, r)
+				continue
+			}
+			// LE TEMOIN DOIT ETRE UN NON-PORTEUR, ET EN CTF IL Y A DEUX DRAPEAUX : ecarter
+			// le seul porteur de CETTE fenetre laisserait le porteur ADVERSE dans le tirage,
+			// ou il compterait comme un faux positif du temoin. Mesure : sans cette
+			// exclusion le temoin cumule vaut 10,5 % (4/38), avec elle il vaut ce que la
+			// sortie publie. La correction rend le temoin CONFORME a ce que le plan demande
+			// (« un slot NON porteur ») ; elle ne deplace aucun seuil.
+			if objDansFenetre(parXUID[x], matchMS) {
 				continue
 			}
 			autres = append(autres, r)
