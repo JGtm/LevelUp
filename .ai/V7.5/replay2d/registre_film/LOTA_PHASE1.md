@@ -191,3 +191,62 @@ Export lecture seule : `oracle_export_lotA_phase1.sql` -> `oracle_lotA_objective
 
 `internal/platform/duckdb` complet n'a PAS ete joue (paquet trop long) : le gate cible les tests du
 lecteur ajoute, comme le prevoit le contrat du lot.
+
+---
+
+## Ronde 1 de revue (2026-08-18) — sept points P1 corriges
+
+| Point | Correction | Fichier:ligne | Test ajoute |
+|---|---|---|---|
+| R1-1 | deduplication PAR VALEUR des courbes (le contrat disait « aux CHANGEMENTS seulement », 44,7 % des points `kills` et 46,3 % des `deaths` etaient des repetitions) | `replay/score_timeline.go:94-136` | `TestScoreTicksKeepOnlyChanges`, `TestScoreTicksSameFrameDifferentValues`, `TestScoreTimelinePlayerCountersHaveNoRepeats` |
+| R1-2 | `coverage.originResolved` : l artefact DIT quand son axe de temps n est pas fiable | `replay/coverage.go:144-154`, `replay/origin.go:126-136`, `replay/build_score.go:17-25` | `TestCoverageSaysWhetherOriginIsResolved` (les deux sens) |
+| R1-3 | les 3 appelants recoivent `port.ReplayFactsRepo` + assertion cote duckdb | `duckdb/replay_facts_repo.go:34`, `wire/registry_replay_build.go:145`, `replayartifacts/artifacts.go:207`, `cmd_backfill_replay.go:369` | assertion de compilation |
+| R1-4 | code mort : `ParseOptionalValue` SUPPRIMEE ; `ScoreCurve` / `ScoreCurveFrom` / `PersonalScoreCurve` (+ `collectComponent`, `keepMonotoneBySlot`) descendues en helpers de test | `filmdec/bitreader.go`, `objectiveevents/score_instruments_test.go` (NEUF) | — |
+| R1-5 | `build.go` **603 -> 585** (cablage dans `build_score.go`, `attachObjectiveActions` dans `objectives.go`), `document.go` **607 -> 539** (chronique v12 dans `document_score.go`, `NeutralDeath` dans `document_neutral_deaths.go`) | — | golden inchange |
+| R1-6 | cinq familles de tests manquants | — | cf. ci-dessous |
+| R1-7 | `RealRounds` : la contiguite tolere UN trou quand une manche coherente suit — les manches apres une manche 0 courte n etaient PAS publiees | `objectiveevents/statborg.go:400-455` | `TestRealRoundsGardeLesManchesApresUneManche0Courte` |
+
+### R1-6 — les tests qui echoueraient si on inversait la condition
+
+- **(a) branchement** : `replay/build_score_test.go` — avec entree, `scoreTimeline` ET
+  `coverage.score` sont la ; sans entree, NI l un NI l autre. Le test a d abord ROUGI (les
+  enregistrements synthetiques tombaient hors fenetre), ce qui prouve qu il mesure le cablage.
+- **(b) ancrage** : `objectiveevents/statborg_guards_test.go` — un couple d en-tetes DEPAREILLE
+  est refuse, un en-tete au-dela de `statMaxRound` est refuse. Vecteurs negatifs fabriques a
+  partir des vecteurs REELS d A.1.0, un bit a la fois (`setBitsBE`).
+- **(c) manches fantomes** : borne de domaine (valeur 2 104 rejetee + temoin sous la borne),
+  contiguite (manche 5 isolee ecartee), seuil de coherence (emission isolee refusee).
+- **(d) pont des faits** : `replaybuild/matchfacts_test.go` — ordre du triplet avec trois valeurs
+  DISTINCTES, refus des deux cas (mode sans famille / aucune ligne) + temoin positif, camp -1
+  ecarte et camp 0 conserve.
+- **(e) courbes** : quatre compteurs EPINGLES a des valeurs distinctes deux a deux (le fixture a
+  change pour cela), `coverage.score.points` egal au compte reel et non nul, et le cas
+  Strongholds / KOTH — finales du film 200/126 contre registre 193/112 : (a) DECLINE, (b) resout,
+  et la courbe publiee reste celle du FILM.
+
+### Temoins re-cuits apres la ronde 1
+
+| Temoin | `points` avant R1 | `points` apres R1 | repetitions restantes | oracle | `originResolved` | taille |
+|---|---|---|---|---|---|---|
+| `000d5950` Slayer | 960 | **708** (-26,3 %) | **0 / 656** | 43 / 50 | true | 2 270 742 -> 2 266 456 |
+| `530820e5` CTF | 1 100 | **782** (-28,9 %) | **0 / 716** | 3 (le camp a 0 n emet rien) | true | 1 499 597 -> 1 494 172 |
+| `24dbb67d` Oddball | 642 | **642** | **0 / 636** | 200 / 121 (100/78 puis 100/43) | true | 1 516 241 -> 1 516 263 |
+
+L Oddball ne bouge pas, et c est coherent : il ne publie que des courbes d EQUIPE, dont le score
+de mode est deja strictement croissant. Les valeurs d oracle, l identite des camps et les
+183 actions d objectif de `530820e5` sont inchangees.
+
+### Gates de la ronde 1
+
+| Gate | Verdict |
+|---|---|
+| `go build ./...` (CGO) | `EXIT_BUILD=0` |
+| `go vet ./internal/... ./contracttest/... ./cmd/...` | `EXIT_VET=0` |
+| `go test ./internal/analysis/...` (CGO=0) | `EXIT_TEST_ANALYSIS=0` (16 paquets) |
+| `go test ./internal/replaybuild/ ./contracttest/ ./internal/api/wire/ ./internal/games/halo_infinite/film/... ./internal/sync/replayartifacts/` | `EXIT_TEST_CHAINE=0` |
+| `go test -tags=integration -run TestReplayFacts ./internal/platform/duckdb/` | `EXIT_TEST_DUCKDB_LECTEUR=0` |
+| `golangci-lint run --new-from-merge-base=origin/main ./...` | `EXIT_LINT=0` (0 issue) |
+| `npx tsc -b --force` | `EXIT_TSC=0` |
+
+`generated.ts` et `openapi.yaml` ont bouge UNE fois (R1-2 : `Coverage` gagne `originResolved`),
+et sont commites avec lui ; aucun drift depuis.
