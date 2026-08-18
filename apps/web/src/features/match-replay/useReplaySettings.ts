@@ -11,7 +11,7 @@
  */
 import { useCallback, useState } from 'react'
 
-import type { HeatmapMode } from './heatmapLayer'
+import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import {
   persistPreference,
   readStoredChoice,
@@ -26,6 +26,7 @@ const SHOW_TRAIL_KEY = 'replay-show-trail'
 const SPEED_KEY = 'replay-speed'
 const SHOW_HEATMAP_KEY = 'replay-show-heatmap'
 const HEATMAP_MODE_KEY = 'replay-heatmap-mode'
+const HEATMAP_SPAN_KEY = 'replay-heatmap-span'
 const SHOW_SHOT_FX_KEY = 'replay-show-shot-fx'
 const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
 const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
@@ -39,6 +40,9 @@ const SPEED_DEFAULT = 1
 /** Les deux lectures de la carte de chaleur, dans l'ordre où le tiroir les propose. */
 export const HEATMAP_MODES: readonly HeatmapMode[] = ['presence', 'kills']
 
+/** Les deux portées de temps, dans l'ordre où le tiroir les propose (V2, 2026-08-18). */
+export const HEATMAP_SPANS: readonly HeatmapSpan[] = ['match', 'live']
+
 /**
  * La carte de chaleur est ÉTEINTE par défaut. Ce n'est pas un demi-livrable : c'est un
  * calque de synthèse qui recouvre le terrain, et le rejeu s'ouvre sur ce qui bouge — les
@@ -46,6 +50,14 @@ export const HEATMAP_MODES: readonly HeatmapMode[] = ['presence', 'kills']
  */
 const SHOW_HEATMAP_DEFAULT = false
 const HEATMAP_MODE_DEFAULT: HeatmapMode = 'presence'
+
+/**
+ * TOUTE LA PARTIE PAR DÉFAUT, et c'est le comportement inchangé depuis le 16/08 : la carte du
+ * rejeu était DÉJÀ celle du match entier (mesuré avant de coder — `accumulatePresence` ne
+ * connaissait aucune borne). La portée `live` est ce que ce lot AJOUTE ; en faire le défaut
+ * changerait sous les pieds de l'utilisateur la seule lecture qu'il ait validée.
+ */
+const HEATMAP_SPAN_DEFAULT: HeatmapSpan = 'match'
 
 /**
  * LES DEUX EFFETS D'ÉVÉNEMENT, et leurs défauts OPPOSÉS (décision utilisateur du 16/08) :
@@ -109,6 +121,9 @@ export interface ReplaySettings {
   /** Ce que la carte de chaleur mesure — toujours une valeur de HEATMAP_MODES. */
   heatmapMode: HeatmapMode
   setHeatmapMode: (mode: HeatmapMode) => void
+  /** Sur QUELLE PORTÉE elle le mesure — toujours une valeur de HEATMAP_SPANS. */
+  heatmapSpan: HeatmapSpan
+  setHeatmapSpan: (span: HeatmapSpan) => void
   /** Éclairs de bouche sur TOUS les tirs décodés. Allumés par défaut. */
   showShotFx: boolean
   toggleShotFx: () => void
@@ -166,6 +181,9 @@ export function useReplaySettings(): ReplaySettings {
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
+  const [heatmapSpan, setHeatmapSpanState] = useState(() =>
+    readStoredChoice(HEATMAP_SPAN_KEY, HEATMAP_SPAN_DEFAULT, HEATMAP_SPANS),
+  )
   const [speed, setSpeedState] = useState(() =>
     readStoredNumber(SPEED_KEY, SPEED_DEFAULT, (v) => SPEED_MULTIPLIERS.includes(v)),
   )
@@ -173,6 +191,11 @@ export function useReplaySettings(): ReplaySettings {
   const setHeatmapMode = useCallback((next: HeatmapMode) => {
     setHeatmapModeState(next)
     persistPreference(HEATMAP_MODE_KEY, next)
+  }, [])
+
+  const setHeatmapSpan = useCallback((next: HeatmapSpan) => {
+    setHeatmapSpanState(next)
+    persistPreference(HEATMAP_SPAN_KEY, next)
   }, [])
 
   const setSpeed = useCallback((next: number) => {
@@ -193,6 +216,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleHeatmap,
     heatmapMode,
     setHeatmapMode,
+    heatmapSpan,
+    setHeatmapSpan,
     showShotFx,
     toggleShotFx,
     showKillFx,

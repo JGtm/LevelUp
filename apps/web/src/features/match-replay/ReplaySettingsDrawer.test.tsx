@@ -33,6 +33,8 @@ function makeHeatmap(over: Partial<ReplayHeatmapControls> = {}): ReplayHeatmapCo
     onToggle: vi.fn(),
     mode: 'presence',
     onSetMode: vi.fn(),
+    span: 'match',
+    onSetSpan: vi.fn(),
     killsAvailable: true,
     ...over,
   }
