@@ -14,6 +14,7 @@ import {
   buildObjectivePulses,
   drawObjectivePulses,
   drawObjectivesLayer,
+  flagPulsesRetired,
   normalizeMapObjectives,
   OBJECTIVE_TEAM_NEUTRAL,
 } from './objectivesLayer'
@@ -224,6 +225,66 @@ describe('buildObjectivePulses', () => {
     const pulses = buildObjectivePulses(tot, normalizeMapObjectives(MO))
     expect(pulses).toHaveLength(1)
     expect(pulses[0].frame).toBe(5)
+  })
+})
+
+/**
+ * LE SUBSTITUT DU DRAPEAU EST RETIRÉ QUAND L'OBJET EST PUBLIÉ (lot 3.1, schéma 15).
+ *
+ * Le pulse de CTF posait l'action sur l'élément statique le plus proche de son auteur — un socle
+ * voisin, jamais le drapeau. Depuis que `flagCarries` publie l'objet (position, porteur, état,
+ * image par image), le garder ferait dire deux choses différentes au même écran.
+ *
+ * LES AUTRES FAMILLES RESTENT, et c'est la moitié qui compte : zones et crâne n'ont AUCUN objet
+ * vivant publié — leur pulse est encore ce qu'on a de mieux.
+ */
+describe('buildObjectivePulses — la famille DRAPEAU se retire devant l’objet vivant', () => {
+  const actions = [
+    { t: 10, xuid: 'A', stat: 'flag_grabs', timeMs: 1_000 },
+    { t: 11, xuid: 'A', stat: 'flag_captures', timeMs: 1_100 },
+    { t: 12, xuid: 'A', stat: 'zone_captures', timeMs: 1_200 },
+  ]
+  const tracks = [
+    {
+      slot: 1, team: -1, xuid: 'A',
+      points: [{ t: 0, x: 1, y: 9 }, { t: 100, x: 1, y: 9 }],
+      startFrame: 0, endFrame: 100,
+    },
+  ]
+  const drapeaux = [
+    { team: 0, spans: [{ state: 'home', t0: 0, t1: 100, xuid: null, x: 1, y: 9 }] },
+  ]
+
+  it('AVEC des drapeaux publiés : aucune action `flag_*` ne fait de pulse, la zone en fait un', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: tracks as never,
+      objectives: actions,
+      flagCarries: drapeaux as never,
+    })
+    const pulses = buildObjectivePulses(doc, normalizeMapObjectives(MO))
+    expect(pulses.map((p) => p.frame)).toEqual([12])
+  })
+
+  it('SANS drapeau publié : le substitut garde son rôle (artefact plus ancien)', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: tracks as never,
+      objectives: actions,
+    })
+    const pulses = buildObjectivePulses(doc, normalizeMapObjectives(MO))
+    expect(pulses.map((p) => p.frame)).toEqual([10, 11, 12])
+  })
+
+  it('le retrait NE dépend PAS de la bascule d’affichage : il suit la DONNÉE', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: tracks as never,
+      objectives: actions,
+      flagCarries: drapeaux as never,
+    })
+    expect(flagPulsesRetired(doc)).toBe(true)
+    expect(flagPulsesRetired(testReplayDoc({ tracks: tracks as never }))).toBe(false)
   })
 })
 
