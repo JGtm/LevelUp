@@ -1,0 +1,9 @@
+﻿=== RUN   TestZoneEtatPhase2a
+2026/08/18 13:03:40 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    zone_state_p2a_test.go:92: FILM 0a247154 (KOTH, solitude) — 20 slots dans la bande ti=13 · 2928 records ancres, 1962 rejoues entierement, 1056 CHAINES (53.8 %)
+    zone_state_p2a_test.go:95:   VALEURS : i1 scalaire 268 · i2..i33 par joueur 4822 · film de 799097 ms (0 -> 799097)
+    zone_state_p2a_test.go:97:   CHAINAGE par population : records SCALAIRES (i0/i1 seuls) 223/304 = 73.4 % · records PAR JOUEUR 833/1658 = 50.2 % · temoin decale de 3 bits 23/1962 = 1.2 %
+    zone_state_p2a_test.go:106: carte 4a5e5612-2b2e-4375-a0b3-9335a68815f3 absente du catalogue de formes : appariement geometrique IMPOSSIBLE sur ce film (negatif ecrit)
+--- SKIP: TestZoneEtatPhase2a (24.64s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	27.027s

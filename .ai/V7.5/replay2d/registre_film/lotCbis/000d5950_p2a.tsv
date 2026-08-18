@@ -1,0 +1,12 @@
+# lot C-bis phase 2a — film 000d5950 (Slayer (temoin) / cliffhanger)
+# ancrage	000d5950	records	661	rejoues	267	chaines	9	slots_bande	8
+# chainage	000d5950	scal	2	14	joueur	7	253	decale	11	267
+structure	000d5950	1454	0x8002AB20 x1	6	1	2
+structure	000d5950	1455	0x40320725 x1	2	1	1
+structure	000d5950	1458	0xFBE081EF x1	9	2	5
+structure	000d5950	1459	0x6AB2157E x1	8	3	6
+structure	000d5950	1460	0xF3E081EA x1	8	2	5
+structure	000d5950	1461	0x08520E95 x1	6	1	1
+# a1 000d5950 : sans objet (aucun oracle nomme)
+# a2 000d5950 : sans objet (aucune carte slot -> zone)
+# a3 000d5950 : sans objet (aucune rampe)

@@ -1,0 +1,50 @@
+﻿=== RUN   TestZoneEtatPhase2a
+2026/08/18 13:01:29 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    zone_state_p2a_test.go:92: FILM 8076f97f (KOTH, shogun) — 20 slots dans la bande ti=13 · 4573 records ancres, 2898 rejoues entierement, 1674 CHAINES (57.8 %)
+    zone_state_p2a_test.go:95:   VALEURS : i1 scalaire 1380 · i2..i33 par joueur 3887 · film de 360859 ms (0 -> 360859)
+    zone_state_p2a_test.go:97:   CHAINAGE par population : records SCALAIRES (i0/i1 seuls) 1278/1370 = 93.3 % · records PAR JOUEUR 396/1528 = 25.9 % · temoin decale de 3 bits 44/2898 = 1.5 %
+2026/08/18 13:03:18 INFO pont slot->joueur slots=74 viesNommees=69 viesTotal=87 lecturesIndex=19 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 13:03:18 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/18 13:03:18 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/18 13:03:18 INFO rejeu : episodes d'equipement actif viesPubliees=77 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 13:03:18 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/18 13:03:18 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    zone_state_p2a_test.go:108:   REJEU : 77 trajectoires, 3398 frames de 100 ms, origine 15045 ms · CATALOGUE : 3 zones
+    zone_state_p2a_test.go:117: 
+    zone_state_p2a_test.go:117: === STRUCTURE de ti=13 — 18 slots emettent une valeur scalaire
+    zone_state_p2a_test.go:117:     slot 1455  nom i0 0xF3E080E8 x1 · tag dominant 8 (1/1)
+    zone_state_p2a_test.go:117:     slot 1456  nom i0 0x000014D2 x1 · tag dominant 0 (1/3)
+    zone_state_p2a_test.go:117:     slot 1458  nom i0 0xF5D8B008 x1 · tag dominant 8 (1/3)
+    zone_state_p2a_test.go:117:     slot 1459  nom i0 0x3098A783 x1 · tag dominant 0 (5/26)
+    zone_state_p2a_test.go:117:     slot 1460  nom i0 0xB2DACC92 x1 · tag dominant 15 (2/2)
+    zone_state_p2a_test.go:117:     slot 1461  nom i0 0xFBE081E8 x1 · tag dominant 6 (1/3)
+    zone_state_p2a_test.go:117:     slot 1462  nom i0 0x0C7AF1D7 x1 · tag dominant 4 (1/1)
+    zone_state_p2a_test.go:117:     slot 1464  nom i0 0xFBE081E9 x1 · tag dominant 8 (1/2)
+    zone_state_p2a_test.go:117:     slot 1465  nom i0 (jamais emis) · tag dominant 8 (1/2)
+    zone_state_p2a_test.go:117:     slot 1466  nom i0 0x00104315 x1 · tag dominant 2 (1/1)
+    zone_state_p2a_test.go:117:     slot 1467  nom i0 0x8E92000A x1 · tag dominant 8 (2/4)
+    zone_state_p2a_test.go:117:     slot 1468  nom i0 0x00000040 x3 · tag dominant 4 (11/48)
+    zone_state_p2a_test.go:117:     slot 1469  nom i0 0x0001201D x1 · tag dominant 5 (1/5)
+    zone_state_p2a_test.go:117:     slot 1539  nom i0 0xBC833700 x1 · tag dominant 8 (1/3)
+    zone_state_p2a_test.go:117:     slot 1540  nom i0 0x001F2A44 x1 · tag dominant 5 (2/3)
+    zone_state_p2a_test.go:117:     slot 1541  nom i0 0xF7C080EF x1 · tag dominant 4 (35/35)
+    zone_state_p2a_test.go:117:     slot 1542  nom i0 0x001F2A50 x1 · tag dominant 4 (37/38)
+    zone_state_p2a_test.go:117:     slot 1543  nom i0 (jamais emis) · tag dominant 3 (1199/1200)
+    zone_state_p2a_test.go:118: 
+    zone_state_p2a_test.go:118: === CB.2a.1 APPARIEMENT slot ti=13 -> zone — 0 captures identifiees par xuid
+    zone_state_p2a_test.go:118:   aucun oracle nomme sur ce mode : volet CB.2a.1 SANS OBJET (attendu hors zones)
+    zone_state_p2a_test.go:120: 
+    zone_state_p2a_test.go:120: === CB.2a.2 SEMANTIQUE DU TAG 4
+    zone_state_p2a_test.go:120:   aucune carte slot -> zone : volet CB.2a.2 SANS OBJET sur ce film
+    zone_state_p2a_test.go:122: 
+    zone_state_p2a_test.go:122: === CB.2a.3 KOTH — zone active appariee par la grappe des positions
+    zone_state_p2a_test.go:122:   22 rampes -> 22 periodes brutes, attribuees par la grappe puis fusionnees
+    zone_state_p2a_test.go:122:   periode slot 1543  [  55050 ;  132830]  77780 ms -> zone rang 1 (InstanceID 0) · 169/488 positions dedans (2e zone 15) · temoin translate 0
+    zone_state_p2a_test.go:122:   periode slot 1543  [ 132830 ;  136032]   3202 ms -> zone AUCUNE · 0/40 positions dedans (2e zone 0) · temoin translate 0
+    zone_state_p2a_test.go:122:   periode slot 1543  [ 136032 ;  360859] 224827 ms -> zone rang 1 (InstanceID 0) · 1025/3258 positions dedans (2e zone 120) · temoin translate 83
+    zone_state_p2a_test.go:122:   NETTETE : 2/3 periodes ou la zone retenue devance la 2e d'un facteur 2 ET bat le temoin translate — 302607 ms sur 302607 ms attribues (100.0 %)
+    zone_state_p2a_test.go:122:   3 periodes · temps couvert 305809 ms dont 302607 ms ATTRIBUES a une zone = 83.9 % du film (360859 ms) — seuil 80 % : TENU
+    zone_state_p2a_test.go:122:   GRAPPE : 1194/3786 positions dans la zone retenue (31.5 %) · TEMOIN zones a 12 m : 83 (2.2 %)
+--- PASS: TestZoneEtatPhase2a (108.88s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	109.907s
