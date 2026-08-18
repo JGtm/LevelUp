@@ -49,7 +49,7 @@ import {
   UNNAMED_DOT_RADIUS_PX,
   viewScale,
 } from './placementShapes'
-import { drawWall, WALL_PANEL_IDS, wallRadiusM } from './placementWall'
+import { drawWall, wallHeading, WALL_PANEL_IDS, wallRadiusM } from './placementWall'
 import type { XY } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
 import {
@@ -359,29 +359,41 @@ function drawSensor(
 }
 
 /**
- * drawPlacement — la forme d'UNE pose, aiguillée par sa règle de rendu ; rend la règle appliquée
- * (ou null quand rien n'a été dessiné), pour que l'appelant sache quels capteurs collecter.
+ * Ce qu'il faut pour tracer UNE pose : la pose, sa règle de rendu déjà décidée, et LES VIES.
+ *
+ * LES VIES SONT LÀ POUR LE SEUL MUR, et c'est assumé : depuis le 2026-08-18, un mur sans cap
+ * de pose emprunte la TRAJECTOIRE de son poseur (cf. `wallHeading`). Les grouper dans un objet
+ * plutôt que d'ajouter deux paramètres garde `drawPlacement` sous le seuil de la règle des
+ * cinq (CLAUDE.md n°5) et évite de recalculer `placementKind`, que l'appelant connaît déjà.
+ */
+interface PlacementTarget {
+  p: ReplayEquipmentPlacement
+  kind: PlacementKind
+  lives: readonly ReplayTrackReady[]
+}
+
+/**
+ * drawPlacement — la forme d'UNE pose, aiguillée par sa règle de rendu.
  *
  * Le mur et le capteur reçoivent la pose et le cadrage : ils travaillent en MONDE. Les autres
  * reçoivent un centre déjà projeté — c'est la frontière de `placementShapes.ts`.
  */
 function drawPlacement(
   ctx: CanvasRenderingContext2D,
-  p: ReplayEquipmentPlacement,
+  target: PlacementTarget,
   view: PlacementView,
   time: PlacementTime,
   ink: PlacementInk,
-): PlacementKind | null {
-  const kind = placementKind(p, time.showUnnamed)
-  if (!kind) return null
+): void {
+  const { p, kind } = target
   const color = inkOf(p, ink)
   if (kind === 'wall') {
-    drawWall(ctx, p, view, time, color)
-    return kind
+    drawWall(ctx, { p, heading: wallHeading(p, target.lives) }, view, time, color)
+    return
   }
   if (kind === 'sensor') {
     drawSensor(ctx, p, view, time, color)
-    return kind
+    return
   }
   const c = project({ x: p.x, y: p.y }, view)
   const ageMs = (time.frame - p.t0) * time.frameMs
@@ -389,7 +401,6 @@ function drawPlacement(
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field') drawRepairField(ctx, c, REPAIR_FIELD_RADIUS_M * viewScale(view), time, color)
   else drawUnnamedDot(ctx, c, time, color)
-  return kind
 }
 
 /**
@@ -415,7 +426,8 @@ export function drawEquipmentPlacementsLayer(
   for (const p of scene.placements) {
     const kind = placementKind(p, time.showUnnamed)
     if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
-    if (drawPlacement(ctx, p, view, time, ink) === 'sensor') sensors.push(p)
+    drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
+    if (kind === 'sensor') sensors.push(p)
   }
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {
