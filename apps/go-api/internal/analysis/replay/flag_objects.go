@@ -29,6 +29,21 @@ package replay
 // regle d'appariement creation -> piste est celle des armes au sol (`gwPickupLifeTrack`), et
 // c'est deliberement la MEME : deux ecritures de cet appariement divergeraient au premier
 // correctif, et le depot l'interdit.
+//
+// # CE FICHIER NE PUBLIE RIEN, ET C'EST UN RESULTAT DE MESURE (2026-08-18)
+//
+// La phase 2 du plan devait publier ces vies (`flagObjects`), dater le lacher volontaire et
+// reposer l'etat `dropped` sur la piste libre. Le CONTROLE 3, ecrit AVANT la mesure, exigeait
+// que >= 90 % des vies libres naissent a moins de 1,5 m d'un `flag_spawn` OU du porteur qui
+// vient de finir. MESURE SUR LES TROIS FILMS CTF : 149/197 = 75,6 % — NON TENU. Le temoin, lui,
+// tient largement (creations `ti=42` d'armes ordinaires : 122/950 = 12,8 %, seuil <= 20 %), donc
+// la piste discrimine bel et bien — d'un facteur six — mais un quart des vies reste inexplique,
+// et le diagnostic ecarte la re-creation sur place (3 cas sur 48).
+//
+// LA REGLE DU PLAN S'APPLIQUE TELLE QU'ELLE A ETE ECRITE : negatif ecrit, `flagObjects` non
+// publie. Ce qui reste ici est ce que l'INSTRUMENT du controle appelle — la definition d'une vie
+// libre et la fenetre de lacher —, rien de plus. Le detail de la mesure vit dans
+// `drapeau_objet_controle_test.go` ; le registre des reports porte la condition de reprise.
 
 import (
 	"math"
@@ -145,3 +160,18 @@ func flagFreeLess(a, b flagFreeLife) bool {
 	}
 	return a.Key.Gen < b.Key.Gen
 }
+
+// flagFreeDropWindowMS — l'ecart maximal, en millisecondes, entre la fin d'un portage et la
+// naissance de la vie libre qui l'explique : UNE SECONDE.
+//
+// ECRIT AVANT LA MESURE (plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, controle 3). Le lacher
+// est un evenement PHYSIQUE — le porteur tombe, l'objet est recree la — et non une transition de
+// compteur : l'axe du rejeu avance par pas de 100 ms, les deux horloges (match et film) sont
+// calees a la frame pres. Une seconde laisse dix pas de marge sans jamais rattraper le portage
+// PRECEDENT, qui dure des dizaines de secondes.
+//
+// LA DISTANCE N'EST PAS UN SEUIL NEUF : c'est `originDropMaxDist` (1,5 m), celui de la regle du
+// lacher, declare chez son proprietaire (equipment_placements.go). Les deux conditions valent
+// ensemble — une vie libre qui commence au bon moment MAIS a l'autre bout de la carte n'est pas
+// le drapeau que ce porteur vient de lacher.
+const flagFreeDropWindowMS = 1000
