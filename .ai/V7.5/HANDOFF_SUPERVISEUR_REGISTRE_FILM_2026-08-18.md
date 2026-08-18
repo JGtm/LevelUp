@@ -10,6 +10,8 @@
 
 ## 0. Etat exact au moment du handoff
 
+> **MISE A JOUR (18/08, nuit)** : la phase 2b est CLOSE, FUSIONNEE ET POUSSEE (`feat/v75` = `bbbc0f92d`, schema 16, contrat 36, CI a verifier au niveau job) ; le §2 ci-dessous decrit l'etat d'AVANT cette fusion et reste utile comme chronique. Ce qui reste : §3 (gate visuel utilisateur — planche avec la section « zones », temoins schema 16 poses ; hygiene de cloture ; role « colline » du catalogue) et le nettoyage des worktrees du chantier.
+
 - Branche unique `feat/v75`, HEAD **`f41fd362c`** = `origin/feat/v75` (poussee). Le principal
   `C:\Users\Guillaume\Projects\LevelUp` est PARTAGE avec les sessions de l'utilisateur (item 4
   « objectifs vivants » : `wt/drapeau`, `wt/attache`, ...) : n'y faire QUE des fusions, quand
