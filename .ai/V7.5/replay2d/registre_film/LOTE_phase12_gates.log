@@ -51,3 +51,20 @@ replay-build --map Catalyst --facts lotA_faits/530820e5.json 530820e5-cdb5-4956-
 EXIT_COOK_530820e5=0   # 1 494 172 -> 1 611 598 octets
 replay-build --map Vagabond 7344d24f-0154-4949-80ad-e2b781c122f1
 EXIT_COOK_7344d24f=0   # 1 993 725 -> 2 160 362 octets (sans faits : ce film n en a pas au lot A)
+
+## Phase 2 (web) — 2026-08-18, depuis apps/web du worktree
+# node_modules absent : copie depuis un worktree frere au package-lock identique (20 945 fichiers).
+
+npx vitest run src/features/match-replay/replayMarkers.test.ts
+EXIT_VITEST_MARKERS=0   # 20 tests (12 avant, 8 neufs, 1 reecrit)
+
+npx tsc -b --force      (node_modules/.tmp purge avant)
+EXIT_TSC=0
+
+npx vitest run src/features/match-replay
+EXIT_VITEST_REPLAY=0    # 47 fichiers, 663 tests (656 avant)
+
+npm run lint
+EXIT_LINT_WEB=0         # 0 erreur, 19 avertissements PREEXISTANTS (TanStack Table)
+npx eslint src/features/match-replay/replayMarkers.ts src/features/match-replay/replayMarkers.test.ts
+EXIT_LINT_CIBLE=0       # aucun avertissement sur les fichiers touches

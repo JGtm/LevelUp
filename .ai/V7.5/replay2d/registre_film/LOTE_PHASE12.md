@@ -178,3 +178,90 @@ quels. Un arrondi au demi-degre ferait tomber ce cout d'environ 40 %, mais ce se
 3. **Le cout du champ est plein.** Si le volume devenait un sujet, le levier est l'ARRONDI
    (0,1 -> 0,5 deg), pas le seuil d'omission — mais c'est une reouverture de D7, donc une
    decision utilisateur.
+
+---
+
+## E.2 — le cone de visee dit les deux axes (web)
+
+### Ce qui est livre
+
+| Fichier | Ce qu'il porte |
+|---|---|
+| `apps/web/src/features/match-replay/replayMarkers.ts` | `drawAimCone` lit l'elevation ; trois fonctions neuves (`heldPitch`, `pitchScale`, `drawPitchTick`) et quatre constantes (`AIM_PITCH_FLOOR` 0,35, `AIM_TICK_LENGTH` 6, `AIM_TICK_WIDTH` 1,4, `AIM_TICK_DEAD_DEG` 2) |
+| `apps/web/src/features/match-replay/replayMarkers.test.ts` | 8 tests neufs (rayon a plat / 60 / 90 / absent, sens du tick, zone morte, elevation perimee) et le garde D3 reecrit |
+| `shotFx.ts` | **INCHANGE**, verifie : `git diff` vide. Il lit `p.h` pour orienter l'eclair de bouche ; l'elevation ne lui apporte rien en 2D |
+
+### Le rendu, et pourquoi il est fait ainsi
+
+- **Le cone garde son ANGLE et raccourcit** : `AIM_LENGTH x max(0,35 ; cos p)`. Le cosinus est
+  la part horizontale d'un regard incline — c'est la seule grandeur qui a un sens sur une carte
+  vue de dessus. `AIM_LENGTH` (52) reste la longueur MAXIMALE, celle d'une visee a plat.
+- **Le plancher a 0,35** existe pour que le marqueur reste lisible : a +/- 90 deg le cosinus
+  s'annule et le cone disparaitrait, alors qu'un joueur qui vise ses pieds est precisement ce
+  qu'on veut voir. Il mord des 70 deg (cos 70 = 0,34).
+- **Un tick dit le SENS**, parce que le cosinus est PAIR : viser 30 deg en l'air et 30 deg vers
+  le sol raccourcissent le cone exactement pareil. C'est un trait court (6 px d'ecran) pose sur
+  l'axe du regard, A LA POINTE du cone : vers l'EXTERIEUR quand le joueur leve la tete, vers
+  l'INTERIEUR quand il pique. Il ne part jamais du point — « le baton » supprime par D3 reste
+  supprime, et le test le verifie desormais par son ORIGINE plutot qu'en comptant les segments.
+- **Zone morte de 2 deg** : sous 2 deg le cone perd 0,06 % de sa longueur, donc l'oeil ne peut
+  RIEN verifier de ce que le trait affirmerait, et l'affirmation changerait de camp a chaque
+  image. Cout mesure : 10,1 % des points de `000d5950` tombent dans cette bande.
+- **Aucune couleur en dur** : le tick prend `color`, la teinte d'equipe deja resolue depuis les
+  tokens, et l'alpha du cone. Aucun nouveau texte d'interface, donc rien a ajouter a `i18n.ts`.
+
+### La regle d'age, qui n'etait pas demandee mais que le contrat impose
+
+`heldReading` remonte le temps jusqu'a trouver une valeur. Comme `p` est OMIS quand la visee est
+a plat, une lecture naive aurait remonte jusqu'a un point plus ancien portant une elevation :
+le marqueur aurait affiche une PLONGEE PERIMEE sur une visee a plat actuelle. Les deux angles
+venant du meme enregistrement, `heldPitch` refuse toute elevation trouvee PLUS LOIN dans le
+passe que le cap. Un test l'epingle (`prend l'elevation du MEME instant que le cap`).
+
+### Les tests ajoutes
+
+| Test | Ce qu'il verrouille |
+|---|---|
+| `aucun segment ne PART du marqueur` (reecrit) | D3 : aucun `lineTo` ne suit un `moveTo` pose sur le centre. L'ancienne formulation comptait les segments a zero — elle aurait interdit le tick, alors que D3 interdit l'AXE |
+| `garde sa pleine longueur a plat, et quand l artefact ne porte pas d elevation` | le contrat « absent = a plat » (un artefact schema 12 garde son cone entier) |
+| `raccourcit du COSINUS de l elevation — 60 deg = la moitie` | la formule, et la PARITE (−60 rend le meme rayon que +60) |
+| `s arrete au plancher de 35 % a la verticale` | le plancher, y compris a 80 deg ou c'est lui qui tient |
+| `vers le HAUT, le tick sort du cone ; vers le BAS, il rentre dedans` | le SIGNE, en distances au centre : meme depart, sens opposes |
+| `ne dessine AUCUN tick quand la visee se lit a plat` | la zone morte (1,9 deg non, 2,1 deg oui) et l'absence de `p` |
+| `prend l elevation du MEME instant que le cap` | la regle d'age |
+
+### Gate visuel — ce que l'utilisateur doit regarder
+
+Les trois temoins sont cuits sous ce worktree
+(`data/cache/replays/halo_infinite/{000d5950,530820e5,7344d24f}.json`).
+
+1. **Le cone RACCOURCIT en plongee.** A chercher sur `7344d24f` (Vagabond, Strongholds) et
+   `530820e5` (Catalyst, CTF), qui ont les plus fortes elevations (extremes −85,5 et +82 deg) :
+   un joueur qui couvre une passerelle depuis le dessus, un tir en plongee. Le cone doit se
+   contracter franchement, sans jamais disparaitre.
+2. **Le TICK dit le sens.** Trait vers l'exterieur = le joueur leve la tete ; vers l'interieur =
+   il pique. Il doit rester DISCRET : c'est un repere, pas une fleche.
+3. **La plupart du temps, rien ne bouge** — et c'est correct. La mediane est a −4 deg : le cone
+   passe son temps a 99,5 % de sa longueur. Si le rejeu paraissait « agite », ce serait le
+   signe d'un bug, pas d'une donnee riche.
+4. **Le baton n'est pas revenu** : aucun trait ne doit sortir du POINT du joueur.
+
+### Gates de la phase 2
+
+| Gate | Verdict |
+|---|---|
+| `npx tsc -b --force` (apres purge de `node_modules/.tmp`) | `EXIT_TSC=0` |
+| `npx vitest run src/features/match-replay` | `EXIT_VITEST_REPLAY=0` — 47 fichiers, **663** tests (656 avant) |
+| `npm run lint` | `EXIT_LINT_WEB=0` — 0 erreur, 19 avertissements PREEXISTANTS (TanStack Table `incompatible-library`, aucun dans les fichiers touches : `npx eslint` sur les deux = 0) |
+
+### Decouvertes E.2 (hors perimetre — NOTEES, NON TRAITEES)
+
+1. **Le depot n'a AUCUNE configuration Prettier** (ni `.prettierrc`, ni cle `prettier` dans
+   `package.json`) alors que `prettier` est installe et que le style du code est « sans
+   point-virgule ». Un `npx prettier --write` sur un fichier du rejeu le reformate INTEGRALEMENT
+   (313 insertions / 193 suppressions sur `replayMarkers.ts`) et passerait le lint. Piege reel
+   pour tout agent ou contributeur qui croirait bien faire ; le formateur de fait est ESLint
+   (`npm run lint`). Rencontre et annule pendant ce lot.
+2. **`node_modules` etait absent de ce worktree** ; il a ete copie depuis un worktree frere au
+   `package-lock.json` identique (verifie par empreinte), 20 945 fichiers, 73 s — au lieu de
+   plusieurs minutes de `npm ci`.
