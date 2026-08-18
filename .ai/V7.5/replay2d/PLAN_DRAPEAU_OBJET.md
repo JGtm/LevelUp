@@ -37,9 +37,10 @@
 ## Phases
 
 - [x] 1 Manifeste + exclusion des socles + garde-rail ; instrument de mesure du controle 3 (garde `OBJ_FILM`).
-- [ ] 2 Vies libres -> `flagObjects`, datation du lacher, `dropped` repositionne ; schema 15 + contrat +
-      OpenAPI + web + goldens + temoins ; controle 3 publie ; ancrage : portages identiques a 1.3.
-- [ ] 3 Registre/journal (textes au CR), plan statue.
+- [!] 2 Vies libres -> `flagObjects`, datation du lacher, `dropped` repositionne : NON PUBLIE. Le
+      CONTROLE 3, ecrit avant la mesure, REFUSE la piste — 149/197 = 75,6 % (seuil 90 %). La
+      decision 3 du plan s applique telle qu ecrite. Mesure, diagnostic et ancrage : journal.
+- [x] 3 Registre/journal (textes au CR), plan statue.
 
 **Gate** : controle 3 tenu ; contrat/OpenAPI/goldens/web verts ; portages inchanges ; sinon `[!]`.
 
@@ -59,3 +60,34 @@
   fenetre de lacher 1 s ECRITS AVANT la mesure ; rayon = `originDropMaxDist`, jamais redeclare.
   Gates verts : go build/vet/test (replay, games, contracttest, replaybuild, archlint),
   golangci 0 issue, tsc, eslint, vitest 1715/1715.
+- 2026-08-18 — PHASE 2 : LE CONTROLE 3 REFUSE LA PISTE. `[!]`, et la decision 3 s'applique telle
+  qu'elle a ete ecrite — negatif ecrit, `flagObjects` NON PUBLIE.
+  LA MESURE, sur les trois films CTF du corpus (`drapeau_objet_controle_test.go`, garde
+  `OBJ_FILM` + `OBJ_REPO`) : **149/197 = 75,6 %** des vies libres naissent a moins de 1,5 m d'un
+  `flag_spawn` ou du porteur qui vient de finir, contre **>= 90 %** exige. Par film :
+  `64e8adfa` 79/110 = 71,8 % (29 au socle, 55 au porteur) · `530820e5` 33/41 = 80,5 % (15/22) ·
+  `53ce4390` 37/46 = 80,4 % (16/22).
+  LE TEMOIN TIENT, ET C'EST CE QUI REND LE NEGATIF INTERPRETABLE : les creations `ti=42` d'ARMES
+  ORDINAIRES, passees a la MEME regle, ne font que 122/950 = **12,8 %** (seuil <= 20 %). La piste
+  discrimine donc d'un facteur six — elle n'est pas du bruit — mais un quart des vies reste
+  inexplique, et publier ces 48 vies-la ferait dessiner comme drapeau des objets dont rien ne dit
+  qu'ils le sont.
+  LE DIAGNOSTIC ECARTE LA PISTE FACILE : sur les 48 non expliquees, **3** seulement naissent la ou
+  l'objet reposait deja (re-creation d'un drapeau au sol). Le residu n'est donc pas un artefact de
+  re-creation sur place ; sa cause reste ouverte.
+  DEUX DEFAUTS D'INSTRUMENT ONT ETE CORRIGES AVANT DE CONCLURE, aucun ne touche un seuil :
+  (a) la reference « porteur » ne retenait que la DERNIERE frame d'un portage, ce qui excluait par
+  construction le LACHER VOLONTAIRE — le phenomene meme que le lot existe pour dater (48,2 % ->
+  71,8 % sur `64e8adfa`) ; (b) le jeu de socles reutilisait le filtre de PRODUCTION, qui ecarte le
+  socle neutre a bon droit pour publier mais pas pour mesurer, quand le plan et son acquis parlent
+  du ROLE `flag_spawn` (+1 vie). Le temoin a suivi les deux corrections (12,5 % -> 15,1 % sur
+  `64e8adfa`, 12,8 % au total) : elles ne flattent pas le drapeau.
+  CE QUI A ETE MESURE MALGRE TOUT, sur la chaine de publication ecrite puis RETIREE — les chiffres
+  sont au CR et valent pour la reprise : 108/39/44 vies libres publiables, **2 portages
+  `carried_open` fermes par une vie libre** (film `530820e5`, les 2 qu'il portait), 31/17/4
+  `dropped` repositionnes sur la piste libre.
+  ANCRAGE TENU : 78/30/29 portages publies, identiques a l'item 1.3 et aux artefacts en cache ;
+  socles d'arme et couverture `groundWeapons` inchanges (retenues 352/239/359).
+  TEMOINS NON RE-CUITS `[~]` : plus rien de nouveau a publier (schema 14 inchange), et les deux
+  ancrages qu'ils devaient servir sont verifies contre les artefacts EXISTANTS par la mesure
+  ci-dessus.
