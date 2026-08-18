@@ -38,6 +38,8 @@ function makeHeatmap(over: Partial<ReplayHeatmapControls> = {}): ReplayHeatmapCo
     onToggle: vi.fn(),
     mode: 'presence',
     onSetMode: vi.fn(),
+    span: 'match',
+    onSetSpan: vi.fn(),
     killsAvailable: true,
     ...over,
   }
@@ -63,6 +65,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onToggleAim = vi.fn()
   const onToggleZones = vi.fn()
   const onToggleNames = vi.fn()
+  const onToggleTrail = vi.fn()
   const onSetSpeed = vi.fn()
   const onToggleShotFx = vi.fn()
   const onToggleKillFx = vi.fn()
@@ -76,6 +79,8 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleZones={onToggleZones}
       showNames
       onToggleNames={onToggleNames}
+      showTrail
+      onToggleTrail={onToggleTrail}
       zonesAvailable
       placements={makePlacements()}
       weaponPads={makeWeaponPads()}
@@ -91,7 +96,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
     />,
   )
   return {
-    ...utils, onClose, onToggleAim, onToggleZones, onToggleNames, onSetSpeed,
+    ...utils, onClose, onToggleAim, onToggleZones, onToggleNames, onToggleTrail, onSetSpeed,
     onToggleShotFx, onToggleKillFx,
   }
 }
@@ -115,6 +120,17 @@ describe('ReplaySettingsDrawer — calques', () => {
     fireEvent.click(btn)
     expect(onToggleNames).toHaveBeenCalledTimes(1)
     expect(onToggleAim).not.toHaveBeenCalled()
+  })
+
+  // V1 (2026-08-18) : la TRAÎNÉE devient un calque comme les autres — toujours proposée (elle
+  // n'a aucune condition de disponibilité : une vie a toujours un passé), allumée par défaut.
+  it('bascule Traînée : toujours proposée, reflète showTrail, appelle onToggleTrail au clic', () => {
+    const { onToggleTrail, onToggleNames } = renderDrawer({ showTrail: false, zonesAvailable: false })
+    const btn = screen.getByRole('button', { name: 'Traînée' })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(onToggleTrail).toHaveBeenCalledTimes(1)
+    expect(onToggleNames).not.toHaveBeenCalled()
   })
 
   it('bouton Zones absent quand la carte n a pas de zones nommées', () => {

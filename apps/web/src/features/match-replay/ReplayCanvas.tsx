@@ -48,6 +48,7 @@ import { countDrawablePlacements, drawEquipmentPlacementsLayer } from './equipme
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { usePlacementHover } from './usePlacementHover'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
+import { useGrenadeIcons } from './useGrenadeIcons'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 import {
   buildGrenadeRestFx,
@@ -73,7 +74,6 @@ import {
   drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
-  tintedIconCanvas,
 } from './replayDraw'
 import {
   fitWidth,
@@ -84,7 +84,8 @@ import {
   msToFrames,
   sceneBounds,
 } from './replayLogic'
-import { drawProjectilesLayer, drawTracksLayer, type MarkerTiming } from './replayMarkers'
+import { drawProjectilesLayer } from './replayProjectiles'
+import { drawTracksLayer, type MarkerTiming } from './replayMarkers'
 
 // 8 tokens de série = une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
 // getSeriesColors). Ils ne colorent plus les joueurs depuis le 2026-08-16 : un joueur porte
@@ -187,9 +188,6 @@ export function ReplayCanvas({
   const aliveRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
   const publishedAtRef = useRef(0)
-  // Vignettes de TYPE de grenade, teintées à l'encre du thème (masques HUD blanc/gris +
-  // alpha). Rempli hors rendu, par rang — un rang sans visuel garde l'anneau seul.
-  const grenadeIconsRef = useRef<Map<number, HTMLCanvasElement>>(new Map())
 
   const [playing, setPlaying] = useState(true)
   const [width, setWidth] = useState(0)
@@ -207,7 +205,8 @@ export function ReplayCanvas({
   }, [])
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
-    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode,
+    showTrail, toggleTrail,
+    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
     showUnnamedPlacements, toggleUnnamedPlacements,
@@ -220,11 +219,12 @@ export function ReplayCanvas({
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
-  // d'équipe, fond de carte, lancers, sol, teintes d'éclair, grappin, contour des noms. Elles
-  // partageaient huit fois le même corps ici — voir l'en-tête du hook.
+  // d'équipe, fond de carte, lancers, sol, teintes d'éclair, grappin, contour des noms, et le
+  // double contour du joueur de la page. Elles partageaient huit fois le même corps ici — voir
+  // l'en-tête du hook.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
@@ -347,7 +347,12 @@ export function ReplayCanvas({
   )
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
-  const heat = useReplayHeatmap(doc, bounds, killFx, { show: showHeatmap, mode: heatmapMode })
+  const heat = useReplayHeatmap(doc, bounds, killFx, {
+    show: showHeatmap,
+    mode: heatmapMode,
+    span: heatmapSpan,
+    frameRef,
+  })
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
   const restWindow = useMemo(
@@ -375,6 +380,9 @@ export function ReplayCanvas({
   // au moment de l'appel, jamais une capture figee (l'assignation vit avec le redraw plus bas).
   const drawRef = useRef<() => void>(() => {})
   const redraw = useCallback(() => drawRef.current(), [])
+  // Vignettes de TYPE de grenade, teintées à l'encre du thème (masques HUD blanc/gris + alpha)
+  // et remplies hors rendu, par rang : un rang sans visuel garde l'anneau seul.
+  const grenadeIconsRef = useGrenadeIcons(doc.grenadeLabels, floorStyle.edge, redraw)
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
@@ -493,6 +501,8 @@ export function ReplayCanvas({
       markOfSlot,
       nameOfSlot,
       showNames,
+      showTrail,
+      selfInk,
       labelStroke,
     })
 
@@ -581,7 +591,7 @@ export function ReplayCanvas({
   }, [
     doc, geometryColor, bounds, zRange, timing, totalLabel,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    floorRef, zonesRef, heatRef, objectivesRef,
+    floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     t.aliveSuffix, renderWidth, canvasView,
     placementCounts.drawable,
     placementWindowTime,
@@ -589,7 +599,7 @@ export function ReplayCanvas({
     showUnnamedPlacements,
     // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
     // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
-    weaponPads.paint,
+    weaponPads,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -610,6 +620,8 @@ export function ReplayCanvas({
     markOfSlot,
     nameOfSlot,
     showNames,
+    showTrail,
+    selfInk,
     labelStroke,
     reducedMotion,
     showAim,
@@ -619,23 +631,6 @@ export function ReplayCanvas({
     onFrameChange,
     mapImage,
   ])
-
-  // Les vignettes de type de grenade se chargent et se TEIGNENT une fois par document et
-  // par thème (l'encre suit floorStyle.edge) : le canvas ne sait pas teindre un masque au
-  // moment du dessin, et re-teindre 60 fois par seconde coûterait pour rien.
-  useEffect(() => {
-    const map = new Map<number, HTMLCanvasElement>()
-    grenadeIconsRef.current = map
-    doc.grenadeLabels.forEach((lbl, rank) => {
-      if (!lbl.img) return
-      const im = new Image()
-      im.onload = () => {
-        map.set(rank, tintedIconCanvas(im, floorStyle.edge))
-        draw()
-      }
-      im.src = lbl.img
-    })
-  }, [doc.grenadeLabels, floorStyle.edge, draw])
 
   // Redraw hors animation (thème, resize, données, pause), et publication de la version
   // courante de `draw` aux calques statiques (cf. drawRef plus haut).
@@ -821,6 +816,8 @@ export function ReplayCanvas({
             onToggleZones={toggleZones}
             showNames={showNames}
             onToggleNames={toggleNames}
+            showTrail={showTrail}
+            onToggleTrail={toggleTrail}
             zonesAvailable={calloutZones.length > 0}
             placements={{
               available: placementCounts.drawable > 0,
@@ -840,6 +837,8 @@ export function ReplayCanvas({
               onToggle: toggleHeatmap,
               mode: heat.mode,
               onSetMode: setHeatmapMode,
+              span: heatmapSpan,
+              onSetSpan: setHeatmapSpan,
               killsAvailable: heat.killsAvailable,
             }}
             showShotFx={showShotFx}

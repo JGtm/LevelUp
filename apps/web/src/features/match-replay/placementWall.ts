@@ -8,9 +8,31 @@
  *
  * CE QUE LE MUR AFFIRME, ET CE QU'IL N'AFFIRME PAS. Le record de création ne porte AUCUNE
  * orientation d'objet (mesure du 18/08). `h` est le cap où le POSEUR REGARDAIT au moment de la
- * pose, et c'est tout ce dont on dispose ; l'arc est donc orienté par le geste, pas par l'objet.
- * Sans cap, aucune orientation n'est inventée : la pose devient un cercle pointillé du même
- * rayon, qui dit « ici, un mur » sans dire « dans ce sens ».
+ * pose ; l'arc est donc orienté par le geste, pas par l'objet.
+ *
+ * TROIS SOURCES DE CAP, DANS CET ORDRE, ET AUCUNE N'EST INVENTÉE (V3, retour utilisateur du
+ * 2026-08-18 : « sans cap je préférerais qu'on tente de corréler la visée ou la trajectoire du
+ * joueur, un mur portatif rond serait trop troublant »). Mesure sur le corpus en cache — 32
+ * films, 62 panneaux de mur :
+ *
+ *   1. `placement` — le cap `h` de la POSE elle-même : 54 panneaux sur 62 (87,1 %) ;
+ *   2. `trajectory` — la DERNIÈRE DIRECTION DE DÉPLACEMENT du poseur avant la pose, prise sur
+ *      le dernier segment d'au moins 0,5 m : les 8 panneaux restants (12,9 %), TOUS résolus
+ *      (déplacement maximal mesuré de 0,50 à 0,74 m — le seuil tombe juste, et c'est pour cela
+ *      qu'il est bas) ;
+ *   3. `aim` — la visée `h` de la dernière image de la vie du poseur qui en porte une : 0 cas
+ *      sur 62 en pratique, mais disponible dans les 8 (âge 2 à 10 images). C'est le repli du
+ *      repli, et il tient parce que les deux directions concordent souvent — écart médian de
+ *      19,8° sur ces 8 cas, 5 sous 20°, 3 au-delà (43,5°, 83,8°, 103,8°).
+ *
+ * LE CERCLE POINTILLÉ NE DISPARAÎT PAS DU CODE, MAIS IL DISPARAÎT DE L'ÉCRAN : il ne reste que
+ * pour une pose dont le POSEUR N'A AUCUNE PISTE — 0 panneau sur 62 dans le corpus, alors que
+ * 154 poses sur 2 563 (6,0 %, toutes familles confondues) ont bien un poseur sans piste. Ce
+ * n'est donc pas une branche morte, c'est le cas qu'aucun film n'a encore produit POUR UN MUR.
+ *
+ * UN CAP DÉDUIT SE VOIT : l'arc est POINTILLÉ quand il vient de la trajectoire ou de la visée,
+ * franc quand il vient de la pose. Même grammaire que partout dans ce calque (UNCERTAIN_DASH) —
+ * un trait plein dit une valeur qu'on tient de sa source.
  *
  * POURQUOI UN ARC ET PAS UN RECTANGLE (décision utilisateur du 18/08) : « cet équipement laisse
  * passer les dégâts dans un sens et pas dans l'autre ». La concavité regarde le poseur — ses
@@ -29,6 +51,7 @@ import {
   viewScale,
 } from './placementShapes'
 import type { XY } from './replayLogic'
+import type { ReplayTrackReady } from './replayNormalize'
 
 /**
  * LES PANNEAUX DU MUR — les deux identifiants sur lesquels l'arc se dessine.
@@ -65,6 +88,27 @@ export const WALL_OPENING_RAD = (110 * Math.PI) / 180
  * la pose reste à sa place exacte, seule sa TAILLE cesse de suivre l'échelle sous ce seuil.
  */
 export const WALL_MIN_RADIUS_PX = 6
+
+/**
+ * DÉPLACEMENT MINIMAL, en mètres monde, pour qu'un segment de trajectoire dise une DIRECTION.
+ *
+ * 0,5 m N'EST PAS UN CHOIX DE CONFORT : les trajectoires sont échantillonnées à 100 ms, et un
+ * joueur qui vise sans bouger produit des points séparés de quelques centimètres — du bruit de
+ * position, dont l'angle tourne à chaque image. Sous ce seuil, la direction ne serait pas
+ * mesurée, elle serait tirée au sort. Les 8 murs sans cap du corpus atteignent 0,50 à 0,74 m
+ * de déplacement maximal avant la pose : le seuil est exactement au bord, et le relever les
+ * perdrait tous.
+ */
+export const WALL_TRAJECTORY_MIN_M = 0.5
+
+/** D'où vient le cap retenu pour l'arc — l'ordre de la chaîne est celui de cette union. */
+export type WallHeadingSource = 'placement' | 'trajectory' | 'aim'
+
+/** Le cap retenu, et SA PROVENANCE : c'est elle qui décide du trait (franc ou pointillé). */
+export interface WallHeading {
+  deg: number
+  source: WallHeadingSource
+}
 
 /** Nombre de segments du polygone qui approche l'arc du mur (110° -> ~7° par segment). */
 const WALL_ARC_SEGMENTS = 16
@@ -132,6 +176,77 @@ export function wallRingWorld(
 }
 
 /**
+ * poserPointsBefore — les points de la vie du poseur ANTÉRIEURS à la pose, dans l'ordre.
+ *
+ * PAR SLOT ET PAR FENÊTRE : un slot de bipède est réattribué à chaque réapparition, donc
+ * plusieurs vies peuvent porter le même. Celle qui compte est celle qui CONTIENT l'instant de
+ * la pose ; à défaut, la plus longue qui la précède — c'est ce que fait la comparaison sur le
+ * nombre de points retenus.
+ */
+function poserPointsBefore(
+  lives: readonly ReplayTrackReady[],
+  owner: number,
+  t0: number,
+): ReplayTrackReady['points'] {
+  let best: ReplayTrackReady['points'] = []
+  for (const life of lives) {
+    if (life.slot !== owner) continue
+    const pts = life.points.filter((p) => p.t <= t0)
+    if (pts.length > best.length) best = pts
+  }
+  return best
+}
+
+/**
+ * trajectoryHeadingDeg — la DERNIÈRE direction de déplacement, ou null.
+ *
+ * On remonte depuis le dernier point connu jusqu'à trouver un point distant d'au moins
+ * `WALL_TRAJECTORY_MIN_M` : le vecteur qui les joint est la direction dans laquelle le joueur
+ * ARRIVAIT. Remonter — plutôt que prendre les deux derniers points — est ce qui rend la mesure
+ * stable : deux points consécutifs d'un joueur à l'arrêt ne disent rien.
+ */
+function trajectoryHeadingDeg(points: ReplayTrackReady['points']): number | null {
+  const head = points[points.length - 1]
+  if (!head) return null
+  for (let i = points.length - 2; i >= 0; i--) {
+    const dx = head.x - points[i].x
+    const dy = head.y - points[i].y
+    if (Math.hypot(dx, dy) < WALL_TRAJECTORY_MIN_M) continue
+    return ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360
+  }
+  return null
+}
+
+/** aimHeadingDeg — la visée `h` de la dernière image qui en porte une, ou null. */
+function aimHeadingDeg(points: ReplayTrackReady['points']): number | null {
+  for (let i = points.length - 1; i >= 0; i--) {
+    const h = points[i].h
+    if (h !== undefined && h !== null) return h
+  }
+  return null
+}
+
+/**
+ * wallHeading — LE CAP DE L'ARC et sa provenance, ou null si aucune source n'existe.
+ *
+ * `h` de la pose est un cap MESURÉ : nul est une valeur (un poseur peut regarder vers 0°),
+ * seule son ABSENCE ouvre la chaîne — d'où le test sur `undefined`/`null` et non sur la
+ * véracité.
+ */
+export function wallHeading(
+  p: ReplayEquipmentPlacement,
+  lives: readonly ReplayTrackReady[],
+): WallHeading | null {
+  if (p.h !== undefined && p.h !== null) return { deg: p.h, source: 'placement' }
+  const points = poserPointsBefore(lives, p.owner, p.t0)
+  const traj = trajectoryHeadingDeg(points)
+  if (traj !== null) return { deg: traj, source: 'trajectory' }
+  const aim = aimHeadingDeg(points)
+  if (aim !== null) return { deg: aim, source: 'aim' }
+  return null
+}
+
+/**
  * wallRadiusM — le rayon monde effectivement tracé : celui du plan, relevé au plancher de
  * lisibilité quand l'échelle de la carte le réduirait à une éraflure (cf. WALL_MIN_RADIUS_PX).
  */
@@ -142,33 +257,39 @@ export function wallRadiusM(view: PlacementView): number {
 }
 
 /**
- * drawWall — l'arc du mur (ou son cercle pointillé sans cap), halo puis trait franc.
+ * drawWall — l'arc du mur, halo puis trait franc. Cercle pointillé SEULEMENT quand aucune
+ * source de cap n'existe (cf. la chaîne en tête de fichier : 0 panneau sur 62 mesurés).
  *
  * Le HALO est le même tracé, plus large et très transparent : sur un fond de carte chargé, un
  * trait de 2 px se perd dans le décor ; sur un fond clair, il se perd dans le blanc. Le halo
  * lui donne son assise sans rien ajouter à ce qu'il affirme.
+ *
+ * LE POINTILLÉ DIT LA RÉSERVE, PAS LA FORME : un arc déduit de la trajectoire ou de la visée
+ * reste un arc — il est simplement tracé en pointillé, parce que sa direction n'est pas celle
+ * que le record de la pose affirme.
  */
 export function drawWall(
   ctx: CanvasRenderingContext2D,
-  p: ReplayEquipmentPlacement,
+  wall: { p: ReplayEquipmentPlacement; heading: WallHeading | null },
   view: PlacementView,
   style: ShapeStyle,
   color: string,
 ): void {
+  const { p, heading } = wall
   const center = { x: p.x, y: p.y }
   const radiusM = wallRadiusM(view)
-  // `h` est un cap MESURÉ : nul est une valeur (un poseur peut regarder vers 0°), seule son
-  // absence rend la pose non orientée — d'où le test sur `undefined`/`null` et non sur la
-  // véracité. Le cercle est FERMÉ et pointillé, l'arc est ouvert et franc.
-  const heading = p.h === undefined || p.h === null ? null : p.h
   const world =
-    heading === null ? wallRingWorld(center, radiusM) : wallArcWorld(center, heading, radiusM)
+    heading === null
+      ? wallRingWorld(center, radiusM)
+      : wallArcWorld(center, heading.deg, radiusM)
   const closed = heading === null
   const pts = world.map((w) => project(w, view))
   ctx.save()
   ctx.strokeStyle = color
   ctx.lineCap = 'round'
-  if (closed) ctx.setLineDash(UNCERTAIN_DASH.map((d) => d * style.k))
+  if (closed || heading?.source !== 'placement') {
+    ctx.setLineDash(UNCERTAIN_DASH.map((d) => d * style.k))
+  }
   ctx.globalAlpha = WALL_HALO_ALPHA
   ctx.lineWidth = WALL_HALO_WIDTH * style.k
   strokePolyline(ctx, pts, closed)

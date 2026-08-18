@@ -37,6 +37,19 @@ const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
 const SHOT_TOKEN: SemanticToken = 'destructive'
 const GRENADE_TOKEN: SemanticToken = 'info'
 
+/**
+ * LE MARQUEUR DU JOUEUR DE LA PAGE (lot R2-V, retour utilisateur du 2026-08-18 : « avoir
+ * l'icône du joueur actif qui se démarque de tous les autres »).
+ *
+ * `success` EST LE VERT DU DÉPÔT, et c'est le vert qui a été demandé — « j'aurais bien aimé du
+ * vert, mais pour l'accessibilité je sais pas si ça peut le faire ». La réponse est : oui, à
+ * condition que la couleur ne soit JAMAIS SEULE. Elle ne teint ici que le DOUBLE CONTOUR et le
+ * halo, deux signes de FORME qui se lisent sans elle ; le noyau garde la couleur d'ÉQUIPE, qui
+ * dit le camp. Un lecteur qui ne distingue pas ce vert voit toujours le seul marqueur de la
+ * carte qui porte deux anneaux.
+ */
+const SELF_TOKEN: SemanticToken = 'success'
+
 /** Les encres de mise en page du sol reconstruit : son aplat et l'arête de ses marches. */
 export interface ReplayFloorInk {
   fill: string
@@ -60,6 +73,8 @@ export interface ReplayInks {
   grapple: string
   /** Contour des étiquettes : SOMBRE dans les deux thèmes (cf. globals.css). */
   labelStroke: string
+  /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
+  self: string
 }
 
 /**
@@ -83,6 +98,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       fx: readFxInk(),
       grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),
+      self: resolveToken(SELF_TOKEN),
     }
   }, [paletteVersion])
 }

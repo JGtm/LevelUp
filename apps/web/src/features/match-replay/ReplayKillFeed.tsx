@@ -42,6 +42,14 @@
  *
  * AUCUN MOT « ASSISTÉ PAR » (planche du 16/08) : la marque le dit, et elle le dit en
  * pictogramme — le mot coûtait une demi-ligne à chaque élimination assistée.
+ *
+ * UNE LIGNE, UNE SEULE, ET SANS RETOUR (V5, retour utilisateur du 2026-08-18 : « veiller à
+ * bien tout avoir sur une même ligne »). Une élimination décorée et assistée en occupait TROIS
+ * — la ligne, puis les médailles, puis l'assistance, toutes deux en retrait de 7. Elles sont
+ * maintenant dans la MÊME rangée, et c'est la rangée qui refuse de se replier (`flex-nowrap`,
+ * `overflow-hidden`) : ce qui déborde est TRONQUÉ, jamais renvoyé à la ligne suivante. Ce qui
+ * cède en premier est le nom — il tronque proprement, et l'infobulle du navigateur le rend en
+ * entier ; les pictogrammes, eux, sont `shrink-0` : une icône rognée ne se lit plus du tout.
  */
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -53,10 +61,12 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 import { displayPlayerName, normalizeGamertagKey } from '@/lib/players/displayName'
-import { staticAssetURL } from '@/lib/staticAssets'
-import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+
+/** Réexporté pour `assistMarkIcon.guard.test.ts` : le stem a déménagé, sa surface non. */
+export { ASSIST_ICON_STEM }
+import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { PlayerMark } from './PlayerMark'
@@ -86,6 +96,16 @@ const DOT_PX = 7
 const PICTOGRAM_PX = 12
 /** Seuil sous lequel le lecteur est considéré « en tête de fil » (POC : 4 px). */
 const AT_TOP_PX = 4
+
+/**
+ * LA RANGÉE D'UNE LIGNE DU FIL — la classe partagée par les trois formes de ligne (kill, mort
+ * neutre, médaille seule).
+ *
+ * `flex-nowrap` + `overflow-hidden` SONT LA RÈGLE, pas de la mise en forme : c'est ce couple
+ * qui interdit le retour à la ligne demandé le 18/08. Une seule constante parce que les trois
+ * lignes doivent se comporter pareil — trois copies auraient divergé au premier réglage.
+ */
+const FEED_ROW = 'flex flex-nowrap items-center gap-2 overflow-hidden rounded-sm py-0.5 pl-2 text-xs'
 
 interface Props {
   /** Kills du match, tels que `collectKillEvents` les a lus (horloge gameplay). */
@@ -256,20 +276,15 @@ function FeedLine({
     if (!m) return null
     const color = colorOf(m.teamID, allyOf(xuidMeta, m.xuid, true))
     return (
-      <li
-        className="flex flex-col rounded-sm py-0.5 pl-2 text-xs"
-        style={{ borderLeft: `3px solid ${color}` }}
-      >
-        <div className="flex items-center gap-2">
-          <PlayerMark kind={marks.get(m.xuid)} locale={locale} />
-          <span className="truncate font-medium" style={{ color }}>
-            {displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)}
-          </span>
-          <MedalBadges medals={[m]} />
-          <span className="ml-auto font-mono tabular-nums text-muted-foreground">
-            {formatClock(entry.replayMs)}
-          </span>
-        </div>
+      <li className={FEED_ROW} style={{ borderLeft: `3px solid ${color}` }}>
+        <PlayerMark kind={marks.get(m.xuid)} locale={locale} />
+        <span className="truncate font-medium" style={{ color }}>
+          {displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)}
+        </span>
+        <MedalBadges medals={[m]} />
+        <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
+          {formatClock(entry.replayMs)}
+        </span>
       </li>
     )
   }
@@ -323,45 +338,43 @@ function DeathLine({
   const kindLabel = deathKindLabel(death.kind, t)
   return (
     <li
-      className="flex flex-col rounded-sm py-0.5 pl-2 text-xs"
+      className={FEED_ROW}
       style={{ borderLeft: `3px solid ${tokenCssVar('divergent-neutral')}` }}
       title={kindLabel ? `${kindLabel} — ${t.killFeedDeathHint}` : t.killFeedDeathHint}
     >
-      <div className="flex items-center gap-2">
-        {death.img ? (
-          /* LE TYPE DE MORT, à l'encre neutre : personne n'a tué, aucune couleur d'équipe
-             n'a de sens sur cette ligne. */
-          <WeaponIcon
-            imageUrl={death.img}
-            tinted={death.tinted}
-            label={kindLabel || t.killFeedDeathLabel}
-            width={PICTOGRAM_PX}
-            height={PICTOGRAM_PX}
-            style={{ color: tokenCssVar('divergent-neutral'), flex: 'none' }}
-          />
-        ) : (
-          /* Repère NEUTRE : le type de mort n'est pas établi, on ne montre rien d'autre. */
-          <span
-            aria-hidden
-            className="rounded-full"
-            style={{
-              width: DOT_PX,
-              height: DOT_PX,
-              backgroundColor: tokenCssVar('divergent-neutral'),
-              opacity: 0.7,
-              flex: 'none',
-            }}
-          />
-        )}
-        <PlayerMark kind={marks.get(death.xuid)} locale={locale} />
-        <span className="truncate font-medium" style={{ color }}>
-          {displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)}
-        </span>
-        <span className="text-3xs text-muted-foreground">{t.killFeedDeathLabel}</span>
-        <span className="ml-auto font-mono tabular-nums text-muted-foreground">
-          {formatClock(replayMs)}
-        </span>
-      </div>
+      {death.img ? (
+        /* LE TYPE DE MORT, à l'encre neutre : personne n'a tué, aucune couleur d'équipe
+           n'a de sens sur cette ligne. */
+        <WeaponIcon
+          imageUrl={death.img}
+          tinted={death.tinted}
+          label={kindLabel || t.killFeedDeathLabel}
+          width={PICTOGRAM_PX}
+          height={PICTOGRAM_PX}
+          style={{ color: tokenCssVar('divergent-neutral'), flex: 'none' }}
+        />
+      ) : (
+        /* Repère NEUTRE : le type de mort n'est pas établi, on ne montre rien d'autre. */
+        <span
+          aria-hidden
+          className="rounded-full"
+          style={{
+            width: DOT_PX,
+            height: DOT_PX,
+            backgroundColor: tokenCssVar('divergent-neutral'),
+            opacity: 0.7,
+            flex: 'none',
+          }}
+        />
+      )}
+      <PlayerMark kind={marks.get(death.xuid)} locale={locale} />
+      <span className="truncate font-medium" style={{ color }}>
+        {displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)}
+      </span>
+      <span className="shrink-0 text-3xs text-muted-foreground">{t.killFeedDeathLabel}</span>
+      <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
+        {formatClock(replayMs)}
+      </span>
     </li>
   )
 }
@@ -395,124 +408,88 @@ function KillLine({
       : undefined
   return (
     <li
-      className="flex flex-col rounded-sm py-0.5 pl-2 text-xs"
+      className={FEED_ROW}
       style={{
         borderLeft: `3px solid ${killerColor}`,
         background: assisted ? `color-mix(in srgb, ${tokenCssVar('info')} 10%, transparent)` : undefined,
       }}
       title={lineHint}
     >
-      <div className="flex items-center gap-2">
-        <PlayerMark kind={marks.get(k.xuid)} locale={locale} />
-        <span className="truncate font-medium" style={{ color: killerColor }}>
-          {displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)}
-        </span>
+      <PlayerMark kind={marks.get(k.xuid)} locale={locale} />
+      <span className="truncate font-medium" style={{ color: killerColor }}>
+        {displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)}
+      </span>
         {/* L'ARME entre le tueur et la victime — elle remplace la croix (POC). L'icône
             extraite du jeu est un masque teint par currentColor (cf. WeaponIcon) : poser
             la couleur d'équipe du TUEUR ici, c'est la technique du kill feed de la carte
             « Dominance » (MatchKillFeed pose color sur le parent de l'icône). */}
-        {k.weaponImageUrl ? (
-          <WeaponIcon
-            imageUrl={k.weaponImageUrl}
-            tinted={k.weaponTinted}
-            label={k.weaponLabel || t.killFeedUnknownWeapon}
-            width={ICON_W}
-            height={ICON_H}
-            style={{ color: killerColor }}
-          />
-        ) : (
-          /* Repli assumé : la source du dégât n'est pas identifiable sans ambiguïté. */
-          <span
-            aria-hidden
-            className="rounded-full"
-            style={{
-              width: DOT_PX,
-              height: DOT_PX,
-              backgroundColor: killerColor,
-              opacity: 0.7,
-              flex: 'none',
-            }}
-          />
-        )}
-        {k.victimGamertag && (
-          <>
-            <PlayerMark kind={marks.get(k.victimXuid)} locale={locale} />
-            <span
-              className="truncate"
-              style={{ color: colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally)) }}
-            >
-              {k.victimGamertag}
-            </span>
-          </>
-        )}
-        <span className="ml-auto font-mono tabular-nums text-muted-foreground">
-          {formatClock(replayMs)}
-        </span>
-      </div>
-      {k.medals.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1 pl-7">
-          <MedalBadges medals={k.medals} />
-        </div>
+      {k.weaponImageUrl ? (
+        <WeaponIcon
+          imageUrl={k.weaponImageUrl}
+          tinted={k.weaponTinted}
+          label={k.weaponLabel || t.killFeedUnknownWeapon}
+          width={ICON_W}
+          height={ICON_H}
+          style={{ color: killerColor }}
+        />
+      ) : (
+        /* Repli assumé : la source du dégât n'est pas identifiable sans ambiguïté. */
+        <span
+          aria-hidden
+          className="rounded-full"
+          style={{
+            width: DOT_PX,
+            height: DOT_PX,
+            backgroundColor: killerColor,
+            opacity: 0.7,
+            flex: 'none',
+          }}
+        />
       )}
+      {k.victimGamertag && (
+        <>
+          <PlayerMark kind={marks.get(k.victimXuid)} locale={locale} />
+          <span
+            className="truncate"
+            style={{ color: colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally)) }}
+          >
+            {k.victimGamertag}
+          </span>
+        </>
+      )}
+      {/* LES MÉDAILLES DANS LA RANGÉE, plus en dessous : `shrink-0` parce qu'un badge rogné
+          ne se reconnaît plus, alors qu'un nom tronqué se lit encore. */}
+      {k.medals.length > 0 && (
+        <span className="flex shrink-0 items-center gap-1">
+          <MedalBadges medals={k.medals} />
+        </span>
+      )}
+      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque, l'assistant, les deux parts. Le nom de
+          l'assistant est le seul élément qui cède — comme celui du tueur et de la victime. */}
       {assisted && (
-        <div className="flex items-center gap-1 pl-7 text-3xs text-muted-foreground" title={t.killFeedAssistHint}>
+        <span
+          className="flex min-w-0 items-center gap-1 text-3xs text-muted-foreground"
+          title={t.killFeedAssistHint}
+        >
           <AssistMark label={t.killFeedAssistMark} color={colorOf(k.assistTeamID, k.ally)} />
           <PlayerMark kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} locale={locale} />
           <span className="truncate">{k.assistGamertag}</span>
           {k.assistDamagePct != null && (
-            <span className="font-mono tabular-nums">{t.killFeedAssistShare(k.assistDamagePct)}</span>
+            <span className="shrink-0 font-mono tabular-nums">
+              {t.killFeedAssistShare(k.assistDamagePct)}
+            </span>
           )}
           {k.killerDamagePct != null && (
-            <span className="font-mono tabular-nums opacity-70">
+            <span className="shrink-0 font-mono tabular-nums opacity-70">
               · {t.killFeedKillerShare(k.killerDamagePct)}
             </span>
           )}
-        </div>
+        </span>
       )}
+      <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
+        {formatClock(replayMs)}
+      </span>
     </li>
   )
 }
 
-/**
- * Stem (sans dossier ni extension) de la vignette d'assistance du KILL FEED DU JEU —
- * atlas killfeed, index 62. Exporté pour le garde-rail `assistMarkIcon.guard.test.ts`
- * (même patron que `GRENADE_ICON_STEMS`) : le fichier référencé doit exister sur disque
- * ET rester ce que `jeu/index.json` déclare à cet index.
- */
-export const ASSIST_ICON_STEM = 'killfeed-62'
-
-/**
- * AssistMark — LA MARQUE D'ASSISTANCE : la vignette D'ASSISTANCE DU JEU (`jeu/killfeed-62`),
- * en masque teint à la couleur de l'ASSISTANT — la MÊME technique que l'icône d'arme du fil
- * (`WeaponIcon`, masque + `currentColor` porté par le parent).
- *
- * PROVENANCE, CORRECTION DU LOT R1. R1 avait conclu qu'aucune icône d'assistance n'existait
- * dans l'atlas kill feed et dessinait un glyphe SVG neutre à la place : cette conclusion
- * lisait l'ABSENCE de `nom_jeu` sur l'entrée 62 de `jeu/index.json` comme une absence
- * d'icône, alors que l'entrée EXISTE (`source_tag 0302cad3`, celui de l'atlas killfeed) —
- * elle n'a simplement jamais reçu de nom automatique : ni le tag `weap` (l'assistance n'est
- * l'icône d'aucune arme), ni le nommage par hachage du kill feed (`bitd`, cf.
- * cmd/weapon-icons-build/killfeed.go — "assist" y est dans le vocabulaire curaté, mais son
- * hachage n'a jamais été rejoué contre le binaire du jeu depuis). C'est L'UTILISATEUR qui a
- * désigné `killfeed-62.png` à l'œil le 2026-08-17, cohérent avec l'identification
- * indépendante de `.ai/V7.5/icones/NOMMAGE_GATE_2026-08-09.tsv` (killfeed 62 → « Assist »).
- *
- * TAILLE : le pictogramme est quasi carré (40×40 mesuré) — le gabarit bandeau des icônes
- * d'arme (`ICON_W`×`ICON_H`) l'écraserait à la hauteur d'une lettre, d'où `PICTOGRAM_PX`,
- * le même gabarit que le pictogramme de TYPE DE MORT (même atlas, même famille de forme).
- */
-function AssistMark({ label, color }: { label: string; color: string }) {
-  const titleSlug = useTitleSlug()
-  return (
-    <span title={label} className="inline-flex shrink-0 items-center">
-      <WeaponIcon
-        imageUrl={staticAssetURL('weapon', `jeu/${ASSIST_ICON_STEM}`, '.png', titleSlug)}
-        tinted
-        label={label}
-        width={PICTOGRAM_PX}
-        height={PICTOGRAM_PX}
-        style={{ color }}
-      />
-    </span>
-  )
-}

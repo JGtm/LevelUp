@@ -1,230 +1,17 @@
 /**
  * i18n de la feature match-replay (rejeu 2D vue du dessus). Strings UI FR + EN,
  * parité par typage Record<ReplayLocale, ReplayText>.
+ *
+ * LE CONTRAT (un champ par string, et sa justification) VIT DANS `i18nContract.ts` : ce
+ * fichier-ci ne porte plus que les deux TABLES. La découpe date du 2026-08-18 (lot R2-V),
+ * quand le fichier réuni a franchi le seuil de taille du dépôt.
  */
 import type { Locale } from '@/lib/i18n/locale'
 
+import type { ReplayText } from './i18nContract'
+
 /** Alias local du type central : la feature ne redéclare pas l'union des langues. */
 export type ReplayLocale = Locale
-
-interface ReplayText {
-  title: string
-  back: string
-  play: string
-  pause: string
-  restart: string
-  loading: string
-  empty: string
-  note: string
-  livesSuffix: string
-  aliveSuffix: string
-  speed: string
-  time: string
-  propsSuffix: string
-  /** Fond de carte figé : présent, ou remplacé par le sol reconstruit. */
-  mapBackgroundNote: string
-  mapBackgroundFallback: string
-  /**
-   * Fin de vol d'une grenade : DERNIÈRE POSITION CONNUE, jamais « impact » — le film
-   * n'enregistre aucune détonation (règle du plan parité, item 2.3).
-   */
-  grenadeRestNote: string
-  /** Kill feed synchronisé sur l'horloge du rejeu. */
-  killFeedTitle: string
-  killFeedEmpty: string
-  killFeedUnknownWeapon: string
-  killFeedNoAssistHint: string
-  killFeedAssistHint: string
-  killFeedKillerShare: (pct: number) => string
-  /**
-   * L'ASSISTANCE EST UN PICTOGRAMME, PAS UN MOT (décision utilisateur du 16/08) : le fil
-   * n'écrit plus « assisté par », il pose une marque puis le nom. Ce libellé est ce que la
-   * marque DIT (infobulle + lecteur d'écran) — elle ne se lit pas toute seule.
-   */
-  killFeedAssistMark: string
-  /** Part de participation de l'assistant, telle que la ligne l'écrit : « - 37 % ». */
-  killFeedAssistShare: (pct: number) => string
-  /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
-  killFeedDeathLabel: string
-  killFeedDeathHint: string
-  /**
-   * Le TYPE de la mort neutre, quand le film l'établit. Clés = les identifiants stables
-   * publiés par le document (`kind`) — un type inconnu n'a pas de libellé et n'affiche
-   * aucune icône, la ligne garde son repère neutre.
-   */
-  killFeedDeathKind: Record<'environment' | 'suicide', string>
-  /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
-  sound: string
-  soundHint: string
-  soundVolume: string
-  /** Le son est activé mais tu par la vitesse de lecture — le dire, pas le cacher. */
-  soundFastHint: string
-  /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
-  soundCategoriesTitle: string
-  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
-  /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
-   *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
-  settingsButton: string
-  settingsClose: string
-  /** Calques que le lecteur peut éteindre. */
-  layers: string
-  layerAim: string
-  layerAimHint: string
-  /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
-  layerZones: string
-  layerZonesHint: string
-  /** Noms des joueurs sous leur marqueur (calque éteignable — un BTB à 24 joueurs). */
-  layerNames: string
-  layerNamesHint: string
-  zoneLabel: string
-  /**
-   * EFFETS D'ÉVÉNEMENT, réglables séparément (décision utilisateur du 16/08) : les éclairs
-   * de bouche de TOUS les tirs, et le trait tueur -> victime des éliminations. Le premier
-   * porte une RÉSERVE DE MESURE affichée en clair (le film n'enregistre un tir que
-   * lorsqu'un dégât est appliqué) : elle ne vit pas dans un commentaire, elle est à l'écran.
-   */
-  effects: string
-  layerShotFx: string
-  layerShotFxHint: string
-  layerShotFxCoverage: string
-  layerKillFx: string
-  layerKillFxHint: string
-  /**
-   * POSES D'ÉQUIPEMENT (schéma 10) : le calque, sa bascule d'objets non identifiés, et les
-   * NOMS des familles que le calque sait dessiner. Les clés de `placementFamily` sont les
-   * RÈGLES DE RENDU (`PlacementKind`), pas les familles du document : deux familles qui
-   * partageraient un tracé partageraient son libellé, et une famille que le calque ne dessine
-   * pas n'a besoin d'aucun nom — elle n'a pas d'infobulle.
-   *
-   * Les noms français des trois familles ajoutées le 2026-08-18 viennent du manifeste du titre
-   * (`replay_labels.toml`, `[ability_palettes.ranks]`), la même source que le fil et les
-   * fiches : « traqueur de menaces » (rang 12), « champ de réparation » (rang 23),
-   * « translocateur quantique » (rang 11) dont la BALISE est l'objet posé.
-   *
-   * LA RÈGLE `unnamed` N'Y FIGURE PAS : c'est le défaut du serveur, dessiné en point neutre et
-   * nommé par `placementUnnamedLabel`. Le garde-rail `placementFamily.guard.test.ts` tient
-   * cette liste alignée sur `PLACEMENT_RENDER` (calque) et sur `equipmentFamilies` (Go).
-   */
-  layerPlacements: string
-  layerPlacementsHint: string
-  layerPlacementsUnnamed: string
-  layerPlacementsUnnamedHint: string
-  placementFamily: Record<'wall' | 'sensor' | 'beacon' | 'seeker' | 'field', string>
-  /** Ce que dit le point neutre d'un objet dont la nature n'est pas établie. */
-  placementUnnamedLabel: string
-  /** Ligne « posé par <joueur> » de l'infobulle ; le poseur est une MESURE (proximité). */
-  placementOwnerFmt: (name: string) => string
-  /** Poseur non mesuré (aucun bipède contemporain à moins de 3 m) : le dire, pas le taire. */
-  placementOwnerUnknown: string
-  /**
-   * SOCLES D'ARME (schéma 11) : le calque, ses trois états, son compte à rebours et son cycle.
-   *
-   * LES TROIS ÉTATS NE SE VALENT PAS, et les libellés doivent le dire : « Disponible » est une
-   * présence PROUVÉE, « Pris » une absence PROUVÉE, « Incertain » l'intervalle de ~20 s entre
-   * les deux, que le film ne date pas. Aucun de ces libellés ne nomme un joueur : le ramasseur
-   * n'est pas publié (`padPickups[].xuid` vaut `null` partout), et aucune ligne d'écran ne doit
-   * laisser croire qu'on le connaît.
-   *
-   * `padCycleFmt` PORTE LES DEUX MOITIÉS DU DÉNOMINATEUR : les écarts MESURÉS et ceux que le
-   * socle offrait sans qu'on ait pu les prendre (`gaps` / `missing`). « 33,9 s sur 2 écarts »
-   * avec 3 manques est une mesure sur 2 occasions sur 5 — l'écrire autrement gonflerait la
-   * confiance.
-   */
-  layerWeaponPads: string
-  layerWeaponPadsHint: string
-  padState: Record<'full' | 'uncertain' | 'empty', string>
-  /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
-  padPlacementNote: string
-  /** Compte à rebours COMPACT, celui de la carte (« 12 s »). */
-  padCountdownFmt: (seconds: number) => string
-  /** Compte à rebours de l'infobulle, en toutes lettres. */
-  padRespawnFmt: (seconds: number) => string
-  /** Cycle ÉTABLI seulement : médiane, écarts mesurés, écarts manqués. */
-  padCycleFmt: (medianS: number, gaps: number, missing: number) => string
-  /**
-   * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
-   * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
-   */
-  layerHeatmap: string
-  layerHeatmapHint: string
-  heatmapReading: string
-  heatmapMode: Record<'presence' | 'kills', string>
-  heatmapModeHint: Record<'presence' | 'kills', string>
-  /** Extrémités de la légende : elles nomment la QUANTITÉ, le titre dit de quoi il s'agit. */
-  heatLegendLow: string
-  heatLegendHigh: string
-  heatLegendHint: string
-  /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
-  rosterEmpty: string
-  teamUnknown: string
-  /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
-  teamLabelFmt: (name: string) => string
-  teamNumberedFmt: (n: number) => string
-  /**
-   * LE SCORE À L'INSTANT LU (schéma 12) — celui de l'équipe en tête de colonne, celui du
-   * joueur sur sa fiche. Ce n'est PAS le score final : il tique avec la lecture.
-   */
-  scoreLive: string
-  playerScoreLive: string
-  /** Frags / morts / assistances : deux grandeurs qui ne se confondent pas. */
-  countersLive: string
-  countersMatch: string
-  /**
-   * MANCHE : les modes qui en ont (Oddball) remettent le compteur à zéro à chaque manche.
-   * L'en-tête affiche le TOTAL du match, et rappelle en second la manche en cours.
-   */
-  roundShortFmt: (index: number) => string
-  roundLabelFmt: (index: number, count: number, value: number) => string
-  /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
-  leadChange: string
-  leadChangeAtFmt: (time: string, team: string) => string
-  unknownPlayer: string
-  /** Marques d'identité devant un nom (fiches, fil) : le joueur de la page, un ami. */
-  markMe: string
-  markFriend: string
-  healthLabel: string
-  shieldLabel: string
-  abilityLabel: string
-  loadoutUnread: string
-  loadoutAge: string
-  loadoutAhead: string
-  weaponSecondaryHint: string
-  /** Pictogramme « armes rangées » (sélecteur D=2) : tooltip simple, décision produit 4. */
-  holsteredLabel: string
-  /** Badge de lancer sur la fiche (le `.gic` du POC) : l'auteur est écrit dans le film. */
-  grenadeThrown: string
-  weaponSwap: string
-  respawnIn: string
-  respawnUnknown: string
-  /** Ligne d'inventaire : grenades, capacité, munitions. */
-  inventoryAge: string
-  inventoryAhead: string
-  grenadeSelected: string
-  grenadeSelectedRead: string
-  grenadeSelUnknown: string
-  /**
-   * Capacité absente de la table du titre : la fiche pose un GLYPHE NEUTRE (pas un
-   * caractère, décision utilisateur du 16/08) et dit en infobulle ce qu'on ne sait pas —
-   * le RANG lu reste écrit, parce qu'il est la seule chose de vraie à cet endroit.
-   */
-  abilityUnidentified: (rank: number) => string
-  abilityAge: string
-  abilityAhead: string
-  /**
-   * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
-   * camouflage rend la fiche vitreuse, le surbouclier l'encadre d'or (cahier des
-   * charges Notion 21.1, rendu par `ReplayTeams.tsx`). La clé est l'identifiant
-   * stable publié par le document (`fam`) — une famille inconnue n'a pas de libellé et
-   * ne reçoit aucun effet.
-   */
-  equipmentActive: Record<'camo' | 'overshield', string>
-  /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
-  ammoFullLabel: string
-  ammoDrawnHint: string
-  drawnUnknown: string
-  gaugeLabel: string
-  respawnBarLabel: string
-}
 
 export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
   fr: {
@@ -288,6 +75,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
     layerNames: 'Noms',
     layerNamesHint: 'Le nom de chaque joueur sous son marqueur.',
+    layerTrail: 'Traînée',
+    layerTrailHint:
+      "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
     zoneLabel: 'Zone de la carte',
     effects: 'Effets',
     layerShotFx: 'Effets de tirs',
@@ -300,14 +90,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Éteint par défaut.",
     layerPlacements: 'Équipements posés',
     layerPlacementsHint:
-      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur, champ de réparation. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. Le film ne dit pas quand un équipement disparaît : le capteur se tient donc à sa durée officielle de 15 s, les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur, la seule direction que le film enregistre : sans elle, la pose devient un cercle pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
+      "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur quantique, champ de réparation. La BALISE est le point de retour que pose le translocateur quantique — ce n'est pas le marquage d'un ennemi, que le jeu appelle « ping ». Le champ de réparation porte une croix qui respire : elle dit que l'objet soigne, elle ne compte rien — le film ne publie aucune cadence de soin, et son cercle pointillé garde la réserve sur sa portée. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. Le film ne dit pas quand un équipement disparaît : le capteur se tient donc à sa durée officielle de 15 s, les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur ; quand la pose ne porte pas ce cap (un peu plus d'une fois sur huit), il suit la dernière direction de déplacement du poseur, et à défaut sa dernière visée connue — un arc déduit se trace alors en pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
     layerPlacementsUnnamed: 'Objets non identifiés',
     layerPlacementsUnnamedHint:
       "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée aux familles nommées. Ceux-là s'affichent quelle que soit leur origine — on cherche justement à voir ce qu'on ne sait pas nommer. Éteint par défaut.",
     placementFamily: {
       wall: 'Mur de protection',
       sensor: 'Capteur de menaces',
-      beacon: 'Balise du translocateur',
+      beacon: 'Balise du translocateur quantique',
       seeker: 'Traqueur de menaces',
       field: 'Champ de réparation',
     },
@@ -340,6 +130,17 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatmapModeHint: {
       presence: 'Temps passé par les joueurs, lu dans les trajectoires du film.',
       kills: "Morts comptées à l'endroit où la victime est tombée, pas d'où le tir partait.",
+    },
+    heatmapSpanTitle: 'Sur quelle durée',
+    heatmapSpan: {
+      match: 'Toute la partie',
+      live: "Jusqu'à l'image courante",
+    },
+    heatmapSpanHint: {
+      match:
+        "Le match entier, d'un bout à l'autre, quelle que soit l'image affichée : les zones chaudes se lisent d'un coup d'œil, comme une analyse d'après-match.",
+      live:
+        "Seulement ce qui a été joué jusqu'ici : la carte se remplit au fil de la lecture, et revenir en arrière la ramène à ce qu'elle était. Recalculée toutes les deux secondes de match.",
     },
     heatLegendLow: 'rare',
     heatLegendHigh: 'fréquent',
@@ -453,6 +254,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
     layerNames: 'Names',
     layerNamesHint: "Each player's name under their marker.",
+    layerTrail: 'Trail',
+    layerTrailHint:
+      'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
     zoneLabel: 'Map zone',
     effects: 'Effects',
     layerShotFx: 'Shot effects',
@@ -465,14 +269,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Line drawn from killer to victim at the moment of the kill. Off by default.',
     layerPlacements: 'Deployed equipment',
     layerPlacementsHint:
-      'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, translocator beacon, repair field. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The film never says when a piece of equipment disappears: the sensor therefore keeps to its official 15 s duration, and the other placements stay on screen until the end of the replay. The wall arc is oriented by where the deployer was looking, the only direction the film records: without it, the placement becomes a dashed circle. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
+      'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, quantum translocator beacon, repair field. The BEACON is the return point dropped by the quantum translocator — not the enemy marking the game calls a “ping”. The repair field carries a breathing cross: it says the object heals, it counts nothing — the film publishes no healing cadence, and its dashed circle keeps the reservation about its radius. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The film never says when a piece of equipment disappears: the sensor therefore keeps to its official 15 s duration, and the other placements stay on screen until the end of the replay. The wall arc is oriented by where the deployer was looking; when the placement carries no such heading (a little more than once in eight), it follows the deployer’s last direction of travel, and failing that their last known aim — a deduced arc is then drawn dashed. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
     layerPlacementsUnnamed: 'Unidentified objects',
     layerPlacementsUnnamedHint:
       'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the named families. These show whatever their origin — the point is precisely to see what cannot be named. Off by default.',
     placementFamily: {
       wall: 'Drop wall',
       sensor: 'Threat sensor',
-      beacon: 'Translocator beacon',
+      beacon: 'Quantum translocator beacon',
       seeker: 'Threat seeker',
       field: 'Repair field',
     },
@@ -505,6 +309,17 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatmapModeHint: {
       presence: 'Time spent by players, read from the film trails.',
       kills: 'Deaths counted where the victim fell, not where the shot came from.',
+    },
+    heatmapSpanTitle: 'Over what period',
+    heatmapSpan: {
+      match: 'Whole match',
+      live: 'Up to the current frame',
+    },
+    heatmapSpanHint: {
+      match:
+        'The entire match, end to end, whatever frame is showing: hot zones read at a glance, like a post-match analysis.',
+      live:
+        'Only what has been played so far: the map fills in as the replay runs, and stepping back returns it to what it was. Recomputed every two seconds of match time.',
     },
     heatLegendLow: 'rare',
     heatLegendHigh: 'frequent',

@@ -129,7 +129,7 @@ describe('buildHeatmap — éliminations', () => {
       docWith([still(0, 8, 8, 10)]),
       BOUNDS,
       'kills',
-      [{ x: 30, y: 30 }, { x: 30, y: 30 }, { x: 12, y: 30 }],
+      [{ x: 30, y: 30, frame: 5 }, { x: 30, y: 30, frame: 6 }, { x: 12, y: 30, frame: 7 }],
     ) as HeatGrid
     // Deux morts au même endroit chauffent deux fois plus qu'une seule.
     expect(g.value[cellOf(g, 30, 30)] / g.value[cellOf(g, 12, 30)]).toBeCloseTo(2, 5)
@@ -267,5 +267,52 @@ describe('drawHeatmapLayer', () => {
     const { ops, ctx } = recordingContext()
     drawHeatmapLayer(ctx, grid(), view, { ramp: [], k: 1 })
     expect(count(ops, 'fillRect')).toBe(0)
+  })
+})
+
+/**
+ * V2 (retour utilisateur du 2026-08-18) — LA PORTÉE DE TEMPS.
+ *
+ * MESURE PRÉALABLE, ET ELLE CORRIGE LA PRÉMISSE : la carte du 16/08 était DÉJÀ celle de tout
+ * le match — `accumulatePresence` ne portait aucune borne. Ce que ce lot ajoute, c'est la
+ * borne ; ces tests vérifient donc les deux choses qui comptent — sans borne, RIEN ne change ;
+ * avec elle, l'avenir du film ne compte pas.
+ */
+describe('buildHeatmap — portée de temps (V2, 2026-08-18)', () => {
+  /** Un joueur qui reste en (8, 8) pendant les 10 premières images, puis en (30, 30). */
+  function deuxLieux() {
+    const a: ReplayPoint[] = []
+    for (let t = 0; t <= 10; t++) a.push({ t, x: 8, y: 8 })
+    const b: ReplayPoint[] = []
+    for (let t = 11; t <= 20; t++) b.push({ t, x: 30, y: 30 })
+    return docWith([
+      { slot: 0, team: 0, points: [...a, ...b] },
+    ])
+  }
+
+  it('sans borne : le comportement du 16/08, tout le film compte', () => {
+    const g = buildHeatmap(deuxLieux(), BOUNDS, 'presence', []) as HeatGrid
+    expect(g.value[cellOf(g, 8, 8)]).toBeGreaterThan(0)
+    expect(g.value[cellOf(g, 30, 30)]).toBeGreaterThan(0)
+  })
+
+  it('bornée à l image courante : le SECOND lieu n existe pas encore', () => {
+    const g = buildHeatmap(deuxLieux(), BOUNDS, 'presence', [], 10) as HeatGrid
+    expect(g.value[cellOf(g, 8, 8)]).toBeGreaterThan(0)
+    expect(g.value[cellOf(g, 30, 30)]).toBe(0)
+  })
+
+  it('bornée avant toute mesure : aucun calque, jamais une grille vide', () => {
+    expect(buildHeatmap(deuxLieux(), BOUNDS, 'presence', [], -1)).toBeNull()
+  })
+
+  it('éliminations : une mort postérieure à l image courante ne se compte pas', () => {
+    const morts = [
+      { x: 30, y: 30, frame: 5 },
+      { x: 12, y: 30, frame: 40 },
+    ]
+    const g = buildHeatmap(deuxLieux(), BOUNDS, 'kills', morts, 10) as HeatGrid
+    expect(g.value[cellOf(g, 30, 30)]).toBeGreaterThan(0)
+    expect(g.value[cellOf(g, 12, 30)]).toBe(0)
   })
 })
