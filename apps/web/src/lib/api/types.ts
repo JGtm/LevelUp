@@ -2678,6 +2678,27 @@ export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
 // tronquée, et le nombre de points publiés. `oracle` dit à quelle grandeur le décodage a été
 // confronté (`displayed` = le score affiché en jeu).
 export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
+// LA VIE D'UN DRAPEAU de CTF (schéma 14) : une entrée par OBJET (deux drapeaux en CTF), et une
+// suite d'intervalles d'état contigus. `team` est l'équipe PROPRIÉTAIRE du drapeau (-1 = carte
+// hors du catalogue d'objectifs).
+//
+// QUATRE ÉTATS, ET LE QUATRIÈME PORTE UN DOUTE MESURÉ. `carried` = un joueur le porte et un fait
+// DATÉ a mis fin au portage ; `carried_open` = un joueur l'a pris et RIEN dans le film ne dit
+// qu'il l'a lâché (l'intervalle court jusqu'à la fin de l'axe : c'est une borne haute, pas une
+// mesure — le contrôle indépendant du marqueur confirme 37/37 des portages fermés et 0/5 des
+// ouverts) ; `dropped` = au sol, à l'endroit du dernier porteur ; `home` = sur son socle.
+//
+// `xuid` est renseigné pour les deux états portés, `null` pour les deux autres. `x`/`y` sont en
+// coordonnées monde : pour un état porté c'est le POINT DE PRISE, et la suite se lit sur la
+// piste du porteur — le drapeau porté est à la position de son porteur, et republier sa
+// trajectoire serait republier celle du joueur.
+export type ReplayFlagCarry = components['schemas']['FlagCarry']
+export type ReplayFlagSpan = components['schemas']['FlagSpan']
+// La COUVERTURE du calque du drapeau : le verdict de mode et les trois signaux du film qui le
+// fondent, les prises de l'oracle, les portages publiés partagés en fermés / ouverts, les rejets
+// par cause, le contrôle du marqueur (sur les FERMÉS ; les ouverts ont leur propre compte) et
+// les incohérences. Absente = personne n'a lu le film pour ce calque.
+export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCoverage']
 
 export type ReplayDocument = components['schemas']['ReplayDocument']
 
