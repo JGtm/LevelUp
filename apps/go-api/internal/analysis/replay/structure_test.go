@@ -207,8 +207,26 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   confirmés par le marqueur, et c'est exactement ce que l'état dit. Le CRÂNE d'Oddball
 	//   n'est PAS publié (ni canal ni oracle), ni le RETOUR AUTOMATIQUE (de 1,3 s à 35,8 s
 	//   entre p10 et p90 sur le même film : aucune minuterie ne s'en déduit).
-	if SchemaVersion != 14 {
-		t.Fatalf("SchemaVersion = %d, attendu 14 : incrémenter exige une raison écrite ci-dessus "+
+	//   v14 -> v15 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) :
+	//   `zoneStates`, L'ÉTAT DE CHAQUE ZONE du mode — qui la tient, depuis quand, et jusqu'à
+	//   quel niveau de jauge elle a été contestée — avec `coverage.zones`. Champ omitempty,
+	//   même raison de monter que les précédentes : c'est la CLÉ DE REPRISE du backfill, et la
+	//   teinte de propriété n'existe que sur un artefact qui la porte.
+	//   CE QUI EST MESURÉ, ET CE QUI NE L'EST PAS. Le canal est l'archétype `ti=13`, dont un
+	//   SLOT EST UNE PROPRIÉTÉ RÉSEAU NOMMÉE et non une zone : la jauge de capture (tag 3) et le
+	//   propriétaire (tag 4) vivent sur des slots DISJOINTS, et un troisième canal reste
+	//   constamment neutre. L'appariement slot -> zone se refait à CHAQUE MATCH par la
+	//   coïncidence d'un sommet de jauge avec une capture nommée attribuée géométriquement —
+	//   cohérence 93,1 % et 98,4 % pour un seuil de 90 %, contre des témoins à 41-48 %
+	//   (permutation des slots) et 51-57 % (sommet décalé de 20 s). La VALEUR du tag 4 est
+	//   l'index d'équipe du capteur à 100,0 % (48/48) et 91,1 % (51/56) hors émissions neutres.
+	//   Ce qui n'est PAS publié : « contesté » (les slots de rampe ne portent aucun tag 4 — la
+	//   question est vide sur ce corpus), la clé de nommage comme identité de zone (absente de
+	//   deux slots de jauge sur trois, et différente entre deux matchs de la même carte sur la
+	//   troisième), et le propriétaire d'une colline de KOTH (le canal ne parle que là où il y a
+	//   des captures nommées — la colline ne rend que sa PÉRIODE ACTIVE).
+	if SchemaVersion != 15 {
+		t.Fatalf("SchemaVersion = %d, attendu 15 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
