@@ -1,0 +1,33 @@
+=== RUN   TestZoneEtatPhase2bTemoin
+2026/08/18 16:37:25 INFO pont slot->joueur slots=107 viesNommees=103 viesTotal=110 lecturesIndex=29 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 16:37:25 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/18 16:37:25 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/18 16:37:25 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/18 16:37:25 WARN rejeu : slots de jauge NON apparies — zones absentes de l'etat publie match_id=696a9d7c nonApparies=2 apparies=3 captures=77 attribuees=66
+2026/08/18 16:37:25 WARN rejeu : valeurs de proprietaire INCONNUES — intervalles non ouverts match_id=696a9d7c valeurs=1
+2026/08/18 16:37:25 INFO rejeu : etat des zones match_id=696a9d7c methode=captures+geometry catalogue=3 slots=20 apparies=3 intervalles=37 periodesColline=0 proprietaireVerifie=51 proprietaireConcordant=51
+2026/08/18 16:37:25 INFO rejeu : episodes d'equipement actif viesPubliees=110 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 16:37:25 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/18 16:37:25 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    zone_state_p2b_temoin_test.go:61: FILM 696a9d7c (Strongholds, vagabond) — 3 zones au catalogue, 77 captures nommees, 11478 lectures ti=13
+    zone_state_p2b_temoin_test.go:63:   BALAYAGE : 26 slots, 36677 records ancres, 8558 marches abouties, 3777 CHAINEES (44.1 %)
+    zone_state_p2b_temoin_test.go:65:   REJEU : 110 trajectoires, 5337 frames de 100 ms · actions publiees 77
+    zone_state_p2b_temoin_test.go:67:   COUVERTURE : methode captures+geometry · roles "strongholds_zone" · catalogue 3 · slots 20 · apparies 3 · non apparies 2 · captures 77 dont 66 attribuees · intervalles 37 · periodes colline 0 · proprietaire 51/51 · valeurs inconnues 1
+    zone_state_p2b_temoin_test.go:68:     slot 1530  tag4 : 12 emissions, 11 changements dont 9 SUIVENT une capture · valeurs [0x00000001 x6 0x00000000 x6]
+    zone_state_p2b_temoin_test.go:68:     slot 1531  tag4 : 36 emissions, 35 changements dont 19 SUIVENT une capture · valeurs [0xFFFFFFFF x18 0x00000001 x11 0x00000000 x7]
+    zone_state_p2b_temoin_test.go:68:     slot 1535  tag4 : 16 emissions, 15 changements dont 14 SUIVENT une capture · valeurs [0x00000000 x8 0x00000001 x7 0x0320C4C1 x1]
+    zone_state_p2b_temoin_test.go:68:     slot 1536  tag4 : 39 emissions, 38 changements dont 20 SUIVENT une capture · valeurs [0xFFFFFFFF x18 0x00000000 x11 0x00000001 x7 0x00003A02 x1 ...]
+    zone_state_p2b_temoin_test.go:68:     slot 1537  tag4 : 2 emissions, 1 changements dont 0 SUIVENT une capture · valeurs [0x20034460 x1 0x6E8C0059 x1]
+    zone_state_p2b_temoin_test.go:68:     slot 1539  tag4 : 1 emissions, 0 changements dont 0 SUIVENT une capture · valeurs [0xE8222D48 x1]
+    zone_state_p2b_temoin_test.go:68:     slot 1540  tag4 : 10 emissions, 9 changements dont 9 SUIVENT une capture · valeurs [0x00000001 x5 0x00000000 x5]
+    zone_state_p2b_temoin_test.go:68:     slot 1541  tag4 : 32 emissions, 31 changements dont 17 SUIVENT une capture · valeurs [0xFFFFFFFF x16 0x00000001 x11 0x00000000 x5]
+    zone_state_p2b_temoin_test.go:68:     slot 1546  tag4 : 8 emissions, 7 changements dont 5 SUIVENT une capture · valeurs [0x00000001 x4 0x00000000 x4]
+    zone_state_p2b_temoin_test.go:69:   zone 0 : 10 intervalle(s) — extrait {"zoneRef":0,"spans":[{"t0":563,"t1":2045,"owner":0,"progress":0.99759823,"active":false},{"t0":2046,"t1":2330,"owner":1,"progress":0.9773325,"active":false},{"t0":2331,"t1":3164,"owner":0,"progress":0.9988051,"active":false},{"t0":3165,"t1":3325,"owner":1,"progress":0.9880628,"active":false}]}
+    zone_state_p2b_temoin_test.go:69:   zone 1 : 12 intervalle(s) — extrait {"zoneRef":1,"spans":[{"t0":199,"t1":392,"owner":1,"progress":0.9832597,"active":false},{"t0":393,"t1":1458,"owner":0,"progress":0.9892341,"active":false},{"t0":1459,"t1":2008,"owner":1,"progress":0.9856853,"active":false},{"t0":2009,"t1":2109,"owner":0,"progress":1,"active":false}]}
+    zone_state_p2b_temoin_test.go:69:   zone 2 : 15 intervalle(s) — extrait {"zoneRef":2,"key":3805284739,"spans":[{"t0":153,"t1":370,"owner":0,"progress":0.9749606,"active":false},{"t0":371,"t1":556,"owner":1,"progress":0.9892586,"active":false},{"t0":557,"t1":701,"owner":0,"progress":0.98358953,"active":false},{"t0":702,"t1":1086,"owner":1,"progress":0.98569006,"active":false}]}
+    zone_state_p2b_temoin_test.go:70:   ATTRIBUTION geometrique des captures : 66/77 (hors 1, sans position 10, ambigues 0)
+    zone_state_p2b_temoin_test.go:70:   CONTROLE captures -> intervalle du capteur : 64/66 = 97.0 % (seuil 90 %)
+    zone_state_p2b_temoin_test.go:72:   TAILLE : 1300367 octets avec le calque, 1297575 sans — 2792 octets (0.215 %)
+--- PASS: TestZoneEtatPhase2bTemoin (199.57s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	201.780s
