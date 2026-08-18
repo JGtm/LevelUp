@@ -1,7 +1,8 @@
 /// <reference types="node" />
 // @vitest-environment node
 /**
- * Garde-rail (CLAUDE.md n° 6) : le manifeste sonore du rejeu (replaySound.ts) et le
+ * Garde-rail (CLAUDE.md n° 6) : le manifeste sonore du rejeu (replaySound.ts pour les armes,
+ * la mêlée et les équipements ; grenadeSound.ts pour les deux formes de la grenade) et le
  * dossier d'assets `static/sounds/halo_infinite/` sont la MÊME liste, rejouée ici.
  *
  * POURQUOI. Le client ne sonde jamais le serveur pour savoir si un son existe (pas de
@@ -28,13 +29,13 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { EXPLOSION_SOUND_STEMS, THROW_SOUND_STEMS } from './grenadeSound'
 import { SOUND_CUT_MAX_S } from './replayAudio'
 import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS,
   EQUIPMENT_SOUND_STEMS,
   KILL_SPRITE_SOUND_STEMS,
   WEAPON_SOUND_STEMS,
-  THROW_SOUND_STEMS,
 } from './replaySound'
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
@@ -55,6 +56,9 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
   const referenced = new Set([
     ...Object.values(WEAPON_SOUND_STEMS),
     ...THROW_SOUND_STEMS,
+    // Les explosions de FIN DE VOL (lot R2-G, 2026-08-18) : mêmes fichiers que les quatre
+    // explosions de kill, joints par le rang au lieu de la vignette.
+    ...EXPLOSION_SOUND_STEMS,
     ...Object.values(KILL_SPRITE_SOUND_STEMS),
     // Les équipements (lot du 2026-08-16) : deux stems par famille mesurée.
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
@@ -110,6 +114,7 @@ describe('garde-rail : durée livrée par catégorie', () => {
     ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s === 'melee_kill'),
   ]
   const longs = [
+    ...EXPLOSION_SOUND_STEMS,
     ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s !== 'melee_kill'),
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
     // Les poses relèvent de la MÊME catégorie que les épisodes (Équipements) : elles gardent
@@ -173,6 +178,24 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
       expect(trouvees, `vignette ${sprite}`).toHaveLength(1)
       expect({ genre: trouvees[0].genre, key: trouvees[0].key }, `vignette ${sprite}`).toEqual(veut)
     }
+  })
+
+  /**
+   * LES DEUX TABLES D'EXPLOSION NE PEUVENT PAS DIVERGER (lot R2-G, 2026-08-18). Depuis que
+   * la fin de vol d'une grenade sonne, le même fichier est atteint par DEUX chemins : le
+   * RANG que le film publie avec le lancer (EXPLOSION_SOUND_STEMS) et la VIGNETTE que le
+   * backend publie avec le kill (KILL_SPRITE_SOUND_STEMS). Les deux ordres coïncident parce
+   * que `rules.tsv` reporte GGGL 0..3 sur killfeed-46..49 — le test au-dessus le vérifie du
+   * côté Go, celui-ci le vérifie du côté TS. Si l'un des deux bougeait seul, la même grenade
+   * sonnerait deux fichiers différents selon qu'elle tue ou non, EN SILENCE.
+   */
+  const VIGNETTE_PAR_RANG = ['killfeed-46', 'killfeed-47', 'killfeed-48', 'killfeed-49']
+
+  it('rang du lancer et vignette du kill nomment le MÊME fichier d explosion', () => {
+    expect(EXPLOSION_SOUND_STEMS).toHaveLength(VIGNETTE_PAR_RANG.length)
+    VIGNETTE_PAR_RANG.forEach((sprite, rang) => {
+      expect(KILL_SPRITE_SOUND_STEMS[sprite], `rang ${rang}`).toBe(EXPLOSION_SOUND_STEMS[rang])
+    })
   })
 
   it('les quatre entrées gggl du jeu sont toutes servies (aucune grenade sans son)', () => {
