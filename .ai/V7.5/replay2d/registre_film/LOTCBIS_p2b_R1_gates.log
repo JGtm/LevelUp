@@ -17,3 +17,6 @@
 [R1-5] contre-epreuve : avec l ANCIENNE fusion, TestZoneStatesCollineUneSeuleZoneActiveALaFois
        ECHOUE (« zone 0 [150 ; 599] et zone 1 [100 ; 200] ») — le verrou est discriminant
 [R1-5] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-6] npx vitest run src/features/match-replay/useZoneStates.test.ts   EXIT_VITEST=0 (5 tests)
+[R1-6] npx tsc -b --force                                          EXIT_TSC=0
+[R1-6] npm run lint                                                EXIT_LINT=0 (19 warnings = baseline)
