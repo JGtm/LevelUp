@@ -77,6 +77,33 @@ F sondes (ti=5 i11, ti=47, ti=4, tacmap, ti=13) -> G mouvement (optionnel) -> H 
 donne le go du lot 0 ; l'executeur travaille dans `wt/registre-film` (jamais le principal, occupe
 par l'item 6 phase 3) ; le lot C phase 0 peut partir en parallele du lot A dans `wt/zones-film`.
 Films lus par chemin absolu depuis le cache du principal ; aucune ecriture en base.
+## [2026-08-18] Item 4 « objectifs vivants » — phase 0 : le porteur se lit, l'objet ne se nomme pas
+
+**Statut** : Complete (phase 0 seule ; arret prescrit par le brief ; branche `wt/objvivants`
+`26b245d2a`..`e59d07f02`, fusionnee dans `feat/v75` `6b856ea3a` par le superviseur, gates rejoues).
+**Decision technique principale** : ne pas decoder l'objet mais son porteur, et mesurer le canal
+contre l'oracle CTF nomme. Deux canaux confrontes : les loadouts d'images-cles (balayage SANS
+predicat des fenetres de 32 bits de l'emprise du record bipede — le catalogue d'armes exclurait le
+drapeau par construction) et le cache delta `World.HeldWeapon`. Le pont statborg par triplets ayant
+cede sur deux films tronques (0/8), un pont film-seul a ete construit pour la mesure : appariement
+des instants de mort du statborg au fil des morts (8/8 sur les quatre films, 8 accords / 0 desaccord
+avec l'existant la ou il repond) — non porte en production.
+**Resultats observes** : un motif de 32 bits, `0x00010005` (4 valeurs = la meme suite de bits a
+quatre decalages), commun aux trois films CTF, tient les seuils ecrits — 37/38 fenetres = 97,4 %
+(seuil 90 %), temoin 2,6 % (seuil 5 %) ; controle positif d'emprise 74-78 % de records portant une
+famille connue ; aucune famille connue ne separe le portage. Canal delta REFUTE : 0 occurrence du
+motif sur 68 284 lectures, 0/149 prises appariees, 96-100 % de variantes nulles sur les slots joueur
+(`World.HeldWeapon` reste sans appelant : son retrait est tranchable). Nommage NEGATIF : 0 suffixe
+`0x42C9679F` sur 83 occurrences — ce n'est pas un `weap`, aucun tag ne le nomme. Crane NEGATIF :
+motif absent du film Oddball, 195 motifs passent la signature structurelle seule. Reserve : plafond
+« 2 porteurs » respecte exactement sur `53ce4390`, depasse 1 fois sur `530820e5` et 6 fois sur
+`64e8adfa` (film aux 53 records sans pont). Gates : build (msys64 ucrt64) 0, vet 0, test 0, lint 0.
+**Conclusion / prochaine etape** : gate 0 passe sur ses criteres, mais la decision 1 du plan (« le
+drapeau est un weap tenu en main ») est REFUTEE — on a un MARQUEUR DE PORTAGE, pas une identite
+d'objet. La phase 1 est reecrite par le superviseur (publier le portage en CTF : spans par slot,
+`kind` = mode, equipe du drapeau = socle le plus proche du grab, bornes = evenements nommes) ; la
+simultaneite > 2 sur `64e8adfa` est a lever avant publication.
+
 ## [2026-08-18] v7.5 rejeu 2D — item 6 lot correctif de la revue : 10 constats traites, deux tautologies de couverture supprimees, un socle retrouve
 
 **Statut** : Complete (lot correctif CLOS, gates verts). Les 11 constats a TRAITER de la revue
