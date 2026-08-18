@@ -155,3 +155,4 @@ Plan de l'item 6 (armes au sol / socles / power-ups / ramassage, VALIDE le 2026-
 execution) : `replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`. Plan de l'item 4 (objectifs vivants,
 deuxieme lecture : porteur avant objet, colline par periode ; en attente de l'item 6 et des
 fusions utilisateur) : `replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`.
+- `HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md` — handoff du pilotage « exploitation du Registre du film Theater » (score dans le temps, elevation, ti=13 etat des zones : lot C-bis phase 2b en revue, schema 16).
