@@ -2666,7 +2666,7 @@ export type ReplayPadPickup = components['schemas']['PadPickup']
 //
 // UNE ÉQUIPE PEUT N'AVOIR AUCUNE SÉRIE, et c'est une mesure : le camp qui n'a jamais marqué
 // n'émet rien (temoin CTF 3-0 : une seule série publiée). Son score vaut zéro partout —
-// jamais « inconnu » (cf. teamSeriesFor, features/match-replay/scoreTimelineLogic.ts).
+// jamais « inconnu » (cf. teamSeriesFor, lib/replay/scoreTimeline.ts).
 export type ReplayScoreTick = components['schemas']['ScoreTick']
 export type ReplayScoreRound = components['schemas']['ScoreRound']
 export type ReplayScoreSeries = components['schemas']['ScoreSeries']

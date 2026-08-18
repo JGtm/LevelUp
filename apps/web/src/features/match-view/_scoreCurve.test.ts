@@ -7,15 +7,15 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { testReplayDoc } from '@/features/match-replay/test/testDoc'
+import { normalizeScoreTimeline } from '@/lib/replay/scoreTimeline'
 
 import { buildScoreCurve, formatClock, teamIdsOf, type ScoreCurveInput } from './_scoreCurve'
 
-import type { ReplayScoreTimelineReady } from '@/features/match-replay/replayNormalize'
+import type { ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
 
-/** Un calque normalisé, bâti par LA fixture de la feature rejeu (jamais à la main). */
+/** Un calque normalisé, bâti par la frontière du calque (aucun document complet requis). */
 function timelineOf(teams: unknown): ReplayScoreTimelineReady | undefined {
-  return testReplayDoc({ scoreTimeline: { teams, players: null } } as never).scoreTimeline
+  return normalizeScoreTimeline({ teams, players: null } as never)
 }
 
 /** Une équipe à manche unique, décrite par ses paliers `[frame, valeur]`. */

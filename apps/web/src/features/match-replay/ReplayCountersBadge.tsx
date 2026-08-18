@@ -7,8 +7,9 @@
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import type { PlayerCounters } from '@/lib/replay/scoreTimeline'
+
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { PlayerCounters } from './scoreTimelineLogic'
 
 /**
  * KdaBadge — FRAGS, MORTS, ASSISTANCES, chacun sa couleur. Trois nombres collés sans

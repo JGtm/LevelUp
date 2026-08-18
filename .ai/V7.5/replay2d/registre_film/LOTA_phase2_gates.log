@@ -25,3 +25,17 @@ EXIT_LINT=0
   81:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
   74:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
 ✖ 19 problems (0 errors, 19 warnings)
+
+=== [CORRECTIF P8.5] la logique du score passe dans lib/replay — 2026-08-18 ===
+RATCHET cross-feature : 11 (> plafond 7, PUSH BLOQUE) -> 7 (= plafond, EXIT 0)
+  dont lot A phase 2 : 4 occurrences -> 0
+  3 supprimees par le deplacement dans lib/replay/scoreTimeline.ts
+  1 (useMatchReplay) declaree : paire match-view=>match-replay, justification ecrite
+  les 7 restants sont PREEXISTANTS (6 fichiers : ascension x2, explorer, match-view x2, squad)
+EXIT_RATCHET=0
+EXIT_TSC=0
+EXIT_VITEST=0  (162 fichiers, 1852 tests — match-replay + match-view + lib)
+  NB : src/lib/title-routing/langSegmentInheritance.test.ts a flake 2 fois sur 3 passes
+  (timeout a 5017 et 5039 ms sur une limite de 5000) ; vert seul et a la 3e passe complete.
+  Fichier NON touche par le lot — flake de charge preexistant.
+EXIT_LINT=0  (19 avertissements = baseline exacte, 0 erreur)

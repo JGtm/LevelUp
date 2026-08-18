@@ -1,16 +1,21 @@
 /**
- * scoreTimelineLogic.test.ts — la lecture du score au frame courant, et ses trois pièges.
+ * scoreTimeline.test.ts — la lecture du score au frame courant, et ses trois pièges.
  *
  * Les cas ne sont pas inventés : ils reprennent les trois témoins re-cuits de la phase 1
  * (`LOTA_PHASE1.md`) — Slayer `000d5950` 43/50, CTF `530820e5` 3-0 avec UNE seule série
  * publiée, Oddball `24dbb67d` 200/121 en deux manches (100/78 puis 100/43).
+ *
+ * Les fixtures passent par `normalizeScoreTimeline`, la frontière du calque, qui vit dans
+ * ce même module : le test n'a donc besoin d'AUCUN document de rejeu complet, ni d'aucune
+ * feature. C'est ce qui rend cette logique déplaçable — et c'est tout l'objet du
+ * déplacement dans `lib/` (ratchet cross-feature P8.5).
  */
 import { describe, expect, it } from 'vitest'
 
-import { testReplayDoc } from './test/testDoc'
 import {
   filmClockTrusted,
   leadChanges,
+  normalizeScoreTimeline,
   playerCountersAt,
   roundAtFrame,
   scoreAtFrame,
@@ -18,18 +23,15 @@ import {
   teamIdOfSide,
   teamScoreAtFrame,
   teamSeriesFor,
-} from './scoreTimelineLogic'
+} from './scoreTimeline'
 
-import type { ReplayScoreTimelineReady } from './replayNormalize'
+import type { ReplayScoreDocument, ReplayScoreTimelineReady } from './scoreTimeline'
 
-/**
- * Fabrique un calque de score normalisé depuis une forme brute — par LA fixture de la
- * feature, jamais par un appel direct à la frontière (garde-rail testDoc.guard.test.ts).
- */
+/** Fabrique un calque normalisé depuis une forme brute — par la frontière du calque. */
 function timelineOf(raw: unknown): ReplayScoreTimelineReady {
-  const doc = testReplayDoc({ scoreTimeline: raw } as never)
-  if (!doc.scoreTimeline) throw new Error('calque absent après normalisation')
-  return doc.scoreTimeline
+  const timeline = normalizeScoreTimeline(raw as never)
+  if (!timeline) throw new Error('calque absent après normalisation')
+  return timeline
 }
 
 /** Une série d'équipe à une seule manche (le cas des modes sans manche). */
@@ -240,12 +242,11 @@ describe('leadChanges — les retournements du match', () => {
 })
 
 describe('filmClockTrusted — la garde d’horloge (P2 de la revue du lot A phase 1)', () => {
-  const doc = (coverage: unknown, originMs?: number) =>
-    testReplayDoc({
-      coverage,
-      originMs,
-      scoreTimeline: { teams: [equipe(0, [[100, 1]])], players: null },
-    } as never)
+  const doc = (coverage: { originResolved?: boolean } | undefined, originMs?: number): ReplayScoreDocument => ({
+    coverage,
+    originMs,
+    scoreTimeline: timelineOf({ teams: [equipe(0, [[100, 1]])], players: null }),
+  })
 
   it('MASQUE le calque quand l’origine n’est ni résolue ni publiée', () => {
     const d = doc({ originResolved: false })
@@ -271,6 +272,6 @@ describe('filmClockTrusted — la garde d’horloge (P2 de la revue du lot A pha
   })
 
   it('rend undefined quand l’artefact ne porte simplement aucun calque', () => {
-    expect(scoreTimelineOf(testReplayDoc())).toBeUndefined()
+    expect(scoreTimelineOf({})).toBeUndefined()
   })
 })
