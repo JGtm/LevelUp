@@ -1,6 +1,16 @@
 /**
- * objectivesLayer.ts — le CALQUE DES OBJECTIFS STATIQUES du mode joué (lot 4) :
- * normalisation, calque canvas et pulses d'action. Logique pure, pas de React.
+ * objectivesLayer.ts — le CALQUE STATIQUE des objectifs du mode joué (lot 4) : normalisation,
+ * géométrie et pulses d'action. Logique pure, pas de React.
+ *
+ * L'ÉTAT VIVANT DES ZONES VIT À CÔTÉ (`zoneStatesLayer.ts`, schéma 15). La frontière est celle du
+ * TEMPS : ici la géométrie, qui ne change jamais et se cuit une fois hors écran ; là l'état, qui
+ * change à chaque image et se peint dans la boucle. Les deux tracent la MÊME forme — `traceZonePath`
+ * est exporté pour cela, plutôt que recopié.
+ *
+ * LES PULSES RESTENT, ET CE N'EST PAS UN DOUBLON. Ils marquent l'INSTANT d'une action (une
+ * capture vient d'avoir lieu, un anneau s'ouvre et s'éteint) ; l'état vivant, lui, décrit une
+ * DURÉE. La bascule de teinte d'une zone est d'ailleurs ce que le pulse annonce — les deux se
+ * lisent ensemble, l'un ponctuel, l'autre continu.
  *
  * CE QUE LE SERVEUR A DÉJÀ DÉCIDÉ, et que ce calque ne rejoue pas : quels rôles servir
  * (table du titre jointe au pair_name), quelles équipes afficher (les modes à possession
@@ -104,7 +114,7 @@ function unit2D(x: number | undefined, y: number | undefined): XY {
 }
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas, forme de replayDraw). */
-interface CanvasView {
+export interface CanvasView {
   bounds: ReplayBounds
   width: number
   height: number
@@ -160,27 +170,7 @@ function drawZone(
   scale: number,
   color: string,
 ): void {
-  ctx.beginPath()
-  if (e.family === 'cylinder') {
-    const c = px(e)
-    ctx.arc(c.x, c.y, Math.max(e.radius * scale, 2), 0, Math.PI * 2)
-  } else {
-    // Coins monde : centre ± fwd·halfX ± perp·halfY. La perpendiculaire est le fwd
-    // tourné de +90° monde — l'inversion d'axe Y est portée par worldToCanvas.
-    const perp = { x: -e.fwd.y, y: e.fwd.x }
-    const corners: XY[] = [
-      { x: e.x + e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX + perp.y * e.halfY },
-      { x: e.x - e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX + perp.y * e.halfY },
-      { x: e.x - e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX - perp.y * e.halfY },
-      { x: e.x + e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX - perp.y * e.halfY },
-    ]
-    corners.forEach((w, i) => {
-      const c = px(w)
-      if (i === 0) ctx.moveTo(c.x, c.y)
-      else ctx.lineTo(c.x, c.y)
-    })
-    ctx.closePath()
-  }
+  traceZonePath(ctx, e, px, scale)
   ctx.globalAlpha = ZONE_FILL_ALPHA
   ctx.fillStyle = color
   ctx.fill()
@@ -329,4 +319,42 @@ export function drawObjectivePulses(
     ctx.stroke()
   }
   ctx.globalAlpha = 1
+}
+
+/**
+ * traceZonePath pose le contour d'une zone — boîte ORIENTÉE (4 coins monde) ou cylindre (rayon
+ * monde -> pixels).
+ *
+ * IL EST EXPORTÉ PARCE QUE DEUX CALQUES LE TRACENT : celui-ci (géométrie, cuite une fois) et
+ * l'état vivant des zones (`zoneStatesLayer.ts`, repeint à chaque image). Deux copies de la
+ * même forme divergeraient au premier correctif de géométrie — et l'écart serait invisible :
+ * un contour légèrement faux reste crédible.
+ */
+export function traceZonePath(
+  ctx: CanvasRenderingContext2D,
+  e: ObjectiveElementReady,
+  px: (p: XY) => XY,
+  scale: number,
+): void {
+  ctx.beginPath()
+  if (e.family === 'cylinder') {
+    const c = px(e)
+    ctx.arc(c.x, c.y, Math.max(e.radius * scale, 2), 0, Math.PI * 2)
+    return
+  }
+  // Coins monde : centre ± fwd·halfX ± perp·halfY. La perpendiculaire est le fwd tourné de
+  // +90° monde — l'inversion d'axe Y est portée par worldToCanvas.
+  const perp = { x: -e.fwd.y, y: e.fwd.x }
+  const corners: XY[] = [
+    { x: e.x + e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX + perp.y * e.halfY },
+    { x: e.x - e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX + perp.y * e.halfY },
+    { x: e.x - e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX - perp.y * e.halfY },
+    { x: e.x + e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX - perp.y * e.halfY },
+  ]
+  corners.forEach((w, i) => {
+    const c = px(w)
+    if (i === 0) ctx.moveTo(c.x, c.y)
+    else ctx.lineTo(c.x, c.y)
+  })
+  ctx.closePath()
 }

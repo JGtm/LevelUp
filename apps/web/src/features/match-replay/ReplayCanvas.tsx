@@ -30,8 +30,6 @@ import type { MatchScoreboardRow, ReplayMapBackgroundCalibration } from '@/lib/a
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 
-import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
-
 import type { CalloutZoneReady } from './calloutsLayer'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
@@ -43,12 +41,14 @@ import {
   drawObjectivePulses,
   normalizeMapObjectives,
 } from './objectivesLayer'
+import { drawZoneStates } from './zoneStatesLayer'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
 import { countDrawablePlacements, drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { usePlacementHover } from './usePlacementHover'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import { useGrenadeIcons } from './useGrenadeIcons'
+import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 import {
   buildGrenadeRestFx,
@@ -287,19 +287,14 @@ export function ReplayCanvas({
   // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
   const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
-  // Couleur d'un index d'équipe : le référentiel d'identité du jeu (lib/halo — donnée de
-  // domaine, pas un choix d'UI), encre neutre du thème pour -1 ou un index hors
-  // référentiel. `team` est DÉJÀ arbitré côté serveur (Bastion/Extraction = neutres).
-  const objectiveColorOfTeam = useCallback(
-    (team: number) => (team >= 0 ? resolveTeamColorFromID(team) : null) ?? floorStyle.edge,
-    [floorStyle.edge],
-  )
   // Les PULSES d'action d'objectif (doc.objectives, rendu nulle part avant le lot 4.4) :
   // précalculés en monde, comme les effets de mort.
   const objectivePulses = useMemo(
     () => buildObjectivePulses(doc, mapObjectives),
     [doc, mapObjectives],
   )
+  // L'ÉTAT VIVANT DES ZONES (schéma 15) et les encres d'objectif (cf. useZoneStates).
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge)
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
@@ -392,7 +387,7 @@ export function ReplayCanvas({
     floor: { grid: floorGrid, style: floorStyle },
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
-    objectives: { elements: mapObjectives, colorOfTeam: objectiveColorOfTeam },
+    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam },
   })
 
   // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
@@ -558,11 +553,17 @@ export function ReplayCanvas({
         },
       )
     }
+    // L'ÉTAT DES ZONES à l'image courante (schéma 15) : teinte du camp qui la tient,
+    // surbrillance de la colline ACTIVE, arc de progression de la jauge. Il se peint dans la
+    // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si.
+    if (doc.zoneStates.length > 0 && zones.zoneElements.length > 0) {
+      drawZoneStates(ctx, zones.zoneElements, doc.zoneStates, view, frame, zones.style)
+    }
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
       drawObjectivePulses(ctx, objectivePulses, view, win,
-        { colorOfTeam: objectiveColorOfTeam }, reducedMotion)
+        { colorOfTeam: zones.colorOfTeam }, reducedMotion)
     }
     // Les MORTS par-dessus les tirs : c'est l'événement le plus lourd de sens du calque,
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
@@ -612,7 +613,7 @@ export function ReplayCanvas({
     grenadeRestFx,
     restWindow,
     objectivePulses,
-    objectiveColorOfTeam,
+    zones,
     floorStyle.edge,
     slotColors,
     colorOfSlot,
