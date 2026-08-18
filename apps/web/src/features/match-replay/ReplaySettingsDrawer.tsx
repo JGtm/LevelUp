@@ -51,6 +51,8 @@ interface ReplaySettingsDrawerProps {
   placements: ReplayPlacementControls
   /** Les EMPLACEMENTS D'ARME (schéma 11) : un seul calque, allumé par défaut. */
   weaponPads: ReplayWeaponPadControls
+  /** Les DRAPEAUX de capture (schéma 15) : un seul calque, allumé par défaut. */
+  flagCarries: ReplayFlagControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -99,6 +101,17 @@ export interface ReplayWeaponPadControls {
   onToggle: () => void
 }
 
+/**
+ * Ce que le tiroir sait des DRAPEAUX de capture : une bascule, et si le film en porte.
+ * `available` suit la même règle que les zones et les socles — un film qui n'est pas reconnu
+ * comme de la capture de drapeau ne publie aucun drapeau, et ne montre donc pas la bascule.
+ */
+export interface ReplayFlagControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -112,11 +125,12 @@ interface LayersSectionProps {
   zonesAvailable: boolean
   placements: ReplayPlacementControls
   weaponPads: ReplayWeaponPadControls
+  flagCarries: ReplayFlagControls
 }
 
 function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
-  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads,
+  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, flagCarries,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -173,6 +187,17 @@ function LayersSection({
             pressed={weaponPads.show}
             onToggle={weaponPads.onToggle}
             hint={t.layerWeaponPadsHint}
+          />
+        )}
+        {/* Les DRAPEAUX sont l'ENJEU du mode, pas un meuble : ils bougent, ils changent de
+            main, et leur position EST la lecture du match. Ils restent dans les calques —
+            un drapeau au sol est un état du terrain, pas un instant. */}
+        {flagCarries.available && (
+          <SettingsToggle
+            label={t.layerFlagCarries}
+            pressed={flagCarries.show}
+            onToggle={flagCarries.onToggle}
+            hint={t.layerFlagCarriesHint}
           />
         )}
       </div>
@@ -360,6 +385,7 @@ export function ReplaySettingsDrawer({
   zonesAvailable,
   placements,
   weaponPads,
+  flagCarries,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -410,6 +436,7 @@ export function ReplaySettingsDrawer({
         zonesAvailable={zonesAvailable}
         placements={placements}
         weaponPads={weaponPads}
+        flagCarries={flagCarries}
       />
       <EffectsSection
         locale={locale}

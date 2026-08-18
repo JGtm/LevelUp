@@ -1,0 +1,63 @@
+/**
+ * ReplayCanvasTips — LES INFOBULLES DE SURVOL DU CANVAS, réunies derrière une seule balise.
+ *
+ * POURQUOI CE FICHIER EXISTE (CLAUDE.md n°6, « à la 3e copie, centraliser »). Chaque calque
+ * survolable posait dans `ReplayCanvas.tsx` le MÊME bloc — un test de présence, un composant,
+ * `locale` et `width` recopiés. Deux copies étaient tolérables ; le drapeau de CTF (schéma 15)
+ * fait la troisième. Le canvas porte en outre une dette de taille GELÉE par un cliquet
+ * (`placementFamily.guard.test.ts`) : toute addition s'y fait par EXTRACTION.
+ *
+ * CE QUE CE COMPOSANT NE FAIT PAS : décider ce qui est survolé. Chaque hook de calque garde son
+ * survol, sa donnée et sa règle ; celui-ci ne fait que les afficher. Il ne connaît donc aucune
+ * géométrie, et n'a rien à savoir de l'image courante.
+ *
+ * PLUSIEURS INFOBULLES PEUVENT COEXISTER, et c'est voulu : les calques se superposent (un socle
+ * d'arme sous un drapeau lâché), et masquer l'une au profit de l'autre choisirait à la place du
+ * lecteur. Chacune se pose à son propre point.
+ */
+import { ReplayFlagTip } from './ReplayFlagTip'
+import { ReplayPlacementTip } from './ReplayPlacementTip'
+import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
+import type { ReplayLocale } from './i18n'
+import type { FlagHover } from './useReplayFlagCarries'
+import type { PlacementHover } from './usePlacementHover'
+import type { WeaponPadHover } from './useReplayWeaponPads'
+
+interface ReplayCanvasTipsProps {
+  locale: ReplayLocale
+  /** Largeur du canvas : elle borne chaque infobulle du côté droit. */
+  width: number
+  /** Une POSE d'équipement survolée : ce que l'objet est, et qui l'a posé. */
+  placement: PlacementHover | null
+  /** Le nom du poseur, par slot — la pose ne porte que son numéro. */
+  ownerNameOf: (slot: number) => string | null
+  /** Un EMPLACEMENT D'ARME survolé : l'arme, son état, son cycle s'il est établi. */
+  pad: WeaponPadHover | null
+  /** Un DRAPEAU de CTF survolé : son camp, son état, son porteur, depuis quand. */
+  flag: FlagHover | null
+}
+
+export function ReplayCanvasTips({
+  locale,
+  width,
+  placement,
+  ownerNameOf,
+  pad,
+  flag,
+}: ReplayCanvasTipsProps) {
+  return (
+    <>
+      {placement && (
+        <ReplayPlacementTip
+          locale={locale}
+          hover={placement}
+          ownerName={ownerNameOf(placement.placement.owner)}
+          width={width}
+        />
+      )}
+      {/* JAMAIS qui a pris l'arme : le champ existe au contrat et vaut `null` partout. */}
+      {pad && <ReplayWeaponPadTip locale={locale} hover={pad} width={width} />}
+      {flag && <ReplayFlagTip locale={locale} hover={flag} width={width} />}
+    </>
+  )
+}
