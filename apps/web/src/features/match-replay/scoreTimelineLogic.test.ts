@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { normalizeReplayDocument } from './replayNormalize'
+import { testReplayDoc } from './test/testDoc'
 import {
   filmClockTrusted,
   leadChanges,
@@ -20,12 +20,14 @@ import {
   teamSeriesFor,
 } from './scoreTimelineLogic'
 
-import type { ReplayDocument } from '@/lib/api/types'
 import type { ReplayScoreTimelineReady } from './replayNormalize'
 
-/** Fabrique un calque de score normalisé depuis une forme brute (le chemin de production). */
+/**
+ * Fabrique un calque de score normalisé depuis une forme brute — par LA fixture de la
+ * feature, jamais par un appel direct à la frontière (garde-rail testDoc.guard.test.ts).
+ */
 function timelineOf(raw: unknown): ReplayScoreTimelineReady {
-  const doc = normalizeReplayDocument({ scoreTimeline: raw } as unknown as ReplayDocument)
+  const doc = testReplayDoc({ scoreTimeline: raw } as never)
   if (!doc.scoreTimeline) throw new Error('calque absent après normalisation')
   return doc.scoreTimeline
 }
@@ -239,11 +241,11 @@ describe('leadChanges — les retournements du match', () => {
 
 describe('filmClockTrusted — la garde d’horloge (P2 de la revue du lot A phase 1)', () => {
   const doc = (coverage: unknown, originMs?: number) =>
-    normalizeReplayDocument({
+    testReplayDoc({
       coverage,
       originMs,
       scoreTimeline: { teams: [equipe(0, [[100, 1]])], players: null },
-    } as unknown as ReplayDocument)
+    } as never)
 
   it('MASQUE le calque quand l’origine n’est ni résolue ni publiée', () => {
     const d = doc({ originResolved: false })
@@ -269,7 +271,6 @@ describe('filmClockTrusted — la garde d’horloge (P2 de la revue du lot A pha
   })
 
   it('rend undefined quand l’artefact ne porte simplement aucun calque', () => {
-    const vide = normalizeReplayDocument({} as ReplayDocument)
-    expect(scoreTimelineOf(vide)).toBeUndefined()
+    expect(scoreTimelineOf(testReplayDoc())).toBeUndefined()
   })
 })
