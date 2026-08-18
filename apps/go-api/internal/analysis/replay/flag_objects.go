@@ -30,20 +30,33 @@ package replay
 // c'est deliberement la MEME : deux ecritures de cet appariement divergeraient au premier
 // correctif, et le depot l'interdit.
 //
-// # CE FICHIER NE PUBLIE RIEN, ET C'EST UN RESULTAT DE MESURE (2026-08-18)
+// # CE FICHIER NE PUBLIE PAS LA PISTE, ET C'EST UN RESULTAT DE MESURE (2026-08-18)
 //
-// La phase 2 du plan devait publier ces vies (`flagObjects`), dater le lacher volontaire et
-// reposer l'etat `dropped` sur la piste libre. Le CONTROLE 3, ecrit AVANT la mesure, exigeait
-// que >= 90 % des vies libres naissent a moins de 1,5 m d'un `flag_spawn` OU du porteur qui
-// vient de finir. MESURE SUR LES TROIS FILMS CTF : 149/197 = 75,6 % — NON TENU. Le temoin, lui,
-// tient largement (creations `ti=42` d'armes ordinaires : 122/950 = 12,8 %, seuil <= 20 %), donc
-// la piste discrimine bel et bien — d'un facteur six — mais un quart des vies reste inexplique,
-// et le diagnostic ecarte la re-creation sur place (3 cas sur 48).
+// La phase 2 du plan devait publier ces vies (`flagObjects`). Le CONTROLE 3, ecrit AVANT la
+// mesure, exigeait que >= 90 % d'entre elles naissent a moins de 1,5 m d'un `flag_spawn` OU du
+// porteur qui vient de finir. MESURE SUR LES TROIS FILMS CTF : 149/197 = 75,6 % — NON TENU. Le
+// temoin, lui, tient largement (creations `ti=42` d'armes ordinaires soumises a la MEME regle :
+// 122/950 = 12,8 %, seuil <= 20 %), donc la piste discrimine bel et bien — d'un facteur six —
+// mais un quart des vies reste inexplique, et le diagnostic ecarte la re-creation sur place
+// (3 cas sur 48). `flagObjects` n'est donc PAS publie : le detail vit dans
+// `drapeau_objet_controle_test.go`, et le registre des reports porte la condition de reprise.
 //
-// LA REGLE DU PLAN S'APPLIQUE TELLE QU'ELLE A ETE ECRITE : negatif ecrit, `flagObjects` non
-// publie. Ce qui reste ici est ce que l'INSTRUMENT du controle appelle — la definition d'une vie
-// libre et la fenetre de lacher —, rien de plus. Le detail de la mesure vit dans
-// `drapeau_objet_controle_test.go` ; le registre des reports porte la condition de reprise.
+// # CE QUI EST LIVRE MALGRE TOUT, ET POURQUOI CE N'EST PAS UNE ENTORSE (arbitrage du 2026-08-18)
+//
+// Les deux CORRECTIONS que ces vies apportent au calque des portages sont livrees. Elles ne
+// consomment pas la population que le controle refuse : elles ne se declenchent QUE sur les vies
+// nees AUX PIEDS D'UN PORTEUR — c'est-a-dire exactement la sous-population que le controle
+// VALIDE (la branche « porteur » de ses 75,6 %). Une vie nee a un socle est explicitement
+// ecartee (`flagFreeNearSpawn`), une vie nee ailleurs ne passe pas la distance au porteur.
+//
+//	le LACHER VOLONTAIRE SE DATE — un portage que rien ne fermait (`carried_open`, une borne
+//	  haute qui courait jusqu'a la fin de l'axe) se ferme a l'instant ou l'objet reapparait aux
+//	  pieds de son porteur ;
+//	le LACHER CHANGE DE PLACE — `dropped` passe de la derniere position du PORTEUR au dernier
+//	  point de la piste LIBRE, la ou l'objet repose apres sa chute.
+//
+// LE CONTENU DE `flagCarries` CHANGE SANS QU'AUCUNE CLE NE BOUGE : c'est pour cela que le schema
+// monte a 15. Un artefact 14 se lit « a re-cuire », pas « a jour ».
 
 import (
 	"math"
@@ -175,3 +188,138 @@ func flagFreeLess(a, b flagFreeLife) bool {
 // ensemble — une vie libre qui commence au bon moment MAIS a l'autre bout de la carte n'est pas
 // le drapeau que ce porteur vient de lacher.
 const flagFreeDropWindowMS = 1000
+
+// flagFreeNearSpawn dit si une vie libre nait A UN SOCLE.
+//
+// POURQUOI CE REFUS EST LA CONDITION DE TOUT CE QUI SUIT (arbitrage du 2026-08-18). Les deux
+// corrections ci-dessous ne s'appliquent QU'AUX vies nees aux pieds d'un porteur — la seule
+// sous-population que le controle 3 valide (les « porteur » tenues). Une vie nee a la base n'est
+// pas un lacher : c'est un drapeau qui rentre, et un porteur tue juste devant le socle adverse
+// suffirait a la confondre avec le sien. On l'ecarte d'abord, on regarde le porteur ensuite.
+//
+// LES SOCLES SONT CEUX QUE LA PRODUCTION CONNAIT (socles d'EQUIPE, cf. replaybuild/flagspawns.go).
+// Carte hors catalogue : aucun socle, donc aucun refus — et la regle retombe sur la seule
+// condition de distance au porteur, qui reste la bonne.
+func flagFreeNearSpawn(spawns []FlagSpawn, x, y float32) bool {
+	for _, s := range spawns {
+		if sqDist(s.X, s.Y, x, y) <= originDropMaxDist*originDropMaxDist {
+			return true
+		}
+	}
+	return false
+}
+
+// closeByFreeLives DATE LE LACHER VOLONTAIRE — ce que rien d'autre ne sait faire.
+//
+// LA REGLE, ET POURQUOI ELLE EST SURE. Un portage que rien ne ferme court jusqu'a la fin de
+// l'axe : c'est une BORNE HAUTE, publiee `carried_open`. Si l'objet drapeau REAPPARAIT pendant ce
+// portage, AUX PIEDS du porteur, c'est qu'il ne le porte plus — un objet porte ne replique pas sa
+// position, et un objet qui renait ailleurs n'est pas celui-ci. Les trois conditions valent
+// ensemble : fenetre STRICTEMENT interieure au portage, distance au porteur, et naissance qui
+// n'est PAS un socle.
+//
+// LE PORTEUR EST LU SUR SA PISTE PUBLIEE, la meme que celle sur laquelle le client dessine :
+// c'est la seule position dont on soit sur qu'elle existe au rendu.
+func closeByFreeLives(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) ([]flagCarryRaw, int) {
+	if len(scan.Free) == 0 {
+		return raws, 0
+	}
+	idx := tracksByXUID(ctx.tracks)
+	closed := 0
+	for i := range raws {
+		if raws[i].closed {
+			continue
+		}
+		at, ok := flagFreeDropInside(raws[i], ctx, idx[raws[i].xuid], scan)
+		if !ok {
+			continue
+		}
+		raws[i].t1, raws[i].closed, raws[i].captured = at, true, false
+		closed++
+	}
+	return raws, closed
+}
+
+// flagFreeDropInside rend l'instant (horloge du MATCH) de la PREMIERE vie libre qui commence
+// pendant le portage, aux pieds de son porteur et hors de tout socle.
+func flagFreeDropInside(r flagCarryRaw, ctx flagCarryCtx, tracks []Track,
+	scan FlagCarryScan) (int64, bool) {
+	for _, l := range scan.Free {
+		f := frameOf(l.T0US, ctx.origin, ctx.step)
+		at := ctx.matchMSOfFrame(f)
+		if at <= r.t0 || at >= r.t1 {
+			continue
+		}
+		x, y := l.First()
+		if flagFreeNearSpawn(scan.Spawns, x, y) {
+			continue
+		}
+		p, ok := pointOfXUIDAt(tracks, f)
+		if !ok || sqDist(p.X, p.Y, x, y) > originDropMaxDist*originDropMaxDist {
+			continue
+		}
+		return at, true
+	}
+	return 0, false
+}
+
+// repositionFlagDrops remplace la position de LACHER par le dernier point de la piste LIBRE.
+//
+// POURQUOI CE N'EST PAS LA MEME POSITION. `dropped` valait la derniere position du PORTEUR :
+// c'est la ou il est mort, pas la ou l'objet repose. Un drapeau tombe, roule et s'immobilise ;
+// sa piste libre le suit jusqu'a ce qu'il cesse d'emettre, c'est-a-dire jusqu'a son repos.
+//
+// UNE CAPTURE N'EST PAS UN LACHER : le drapeau rentre a sa base, et sa position vient du socle.
+// Elle n'est donc jamais repositionnee.
+func repositionFlagDrops(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) int {
+	if len(scan.Free) == 0 {
+		return 0
+	}
+	moved := 0
+	for i := range raws {
+		if !raws[i].closed || raws[i].captured {
+			continue
+		}
+		l, ok := flagFreeAtDrop(raws[i], ctx, scan)
+		if !ok {
+			continue
+		}
+		x, y := l.Last()
+		if x == raws[i].x1 && y == raws[i].y1 {
+			continue
+		}
+		raws[i].x1, raws[i].y1 = x, y
+		moved++
+	}
+	return moved
+}
+
+// flagFreeAtDrop rend la vie libre qui EXPLIQUE ce lacher : nee dans la seconde qui l'entoure, a
+// moins de `originDropMaxDist` du point de lacher publie, et pas a un socle. La plus proche en
+// temps l'emporte.
+//
+// LA FENETRE EST SYMETRIQUE : on ne suppose pas l'ordre entre l'instant que les compteurs du
+// statborg datent et celui ou le film cree l'objet, on mesure leur voisinage.
+func flagFreeAtDrop(r flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) (flagFreeLife, bool) {
+	var best flagFreeLife
+	bestGap, found := int64(math.MaxInt64), false
+	for _, l := range scan.Free {
+		at := ctx.matchMSOfFrame(frameOf(l.T0US, ctx.origin, ctx.step))
+		gap := at - r.t1
+		if gap < 0 {
+			gap = -gap
+		}
+		if gap > flagFreeDropWindowMS || gap >= bestGap {
+			continue
+		}
+		x, y := l.First()
+		if flagFreeNearSpawn(scan.Spawns, x, y) {
+			continue
+		}
+		if sqDist(r.x1, r.y1, x, y) > originDropMaxDist*originDropMaxDist {
+			continue
+		}
+		best, bestGap, found = l, gap, true
+	}
+	return best, found
+}
