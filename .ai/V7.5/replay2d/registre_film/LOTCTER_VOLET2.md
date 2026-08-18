@@ -178,14 +178,64 @@ changent de forme. La clause « >= 90 % » du gate 2 se mesure en CT.2.3 sur les
 catalogue servi ; sur ce premier film et sous la definition ecrite avant la mesure, elle vaut
 83,3 % (R3) — le negatif est ecrit tel quel, l'analyse des 10 manques est ci-dessus.
 
-## 2. CT.2.2 — a venir
+## 2. CT.2.2 — Le role `hill` : decodeur, table, catalogue, artefact, service
+
+### 2.1 Ce qui est ecrit
+
+| fichier | ce qu'il porte |
+|---|---|
+| `internal/analysis/replay/mapvar/objectives.go` | `RoleHill = "hill"` ; `LabelHashHillRole` (-767961569), `LabelHashHillInclude` (2133978317), `LabelHashHillMarker` (-1482301937, documente, sans role) ; `classify` pose `hill` quand l'objet porte LA PAIRE role + filtre et qu'aucun label NOMME ne donne de role ; les deux hashs restent comptes NON RESOLUS (aucun nom devine — `TestLabelTableIsSelfConsistent` intact) |
+| `mapvar/mapvar_test.go` | `TestHillRoleParLaPaireDeHashs` (paire / role seul = minigame / filtre seul = marqueur / priorite du role nomme) ; `TestCollinesDeCliffhanger` (fixture versionnee : 5 collines, neutres, avec forme, 2 cylindres) |
+| `internal/games/mappings/loader_objective_roles.go` | `hill` admis par la validation stricte |
+| `config/titles/halo_infinite/mappings/objective_roles.toml` | entree `match = ["King of the Hill", "KOTH"]`, `roles = ["hill"]`, `neutral = true` — jetons releves sur les 26 libelles KOTH du registre local (« Arena:King of the Hill on X », « Ranked:King of the Hill on X », `game_variant_name` « KOTH:Arena ») ; en-tete des roles admis mis a jour |
+| `loader_objective_roles_test.go` | fichier versionne : 7 modes, `hill` neutre |
+| `data/titles/halo_infinite/reference/map_objectives.json` | regenere HORS LIGNE pour les 4 cartes des films (`--from-file`, `.mvar` du depot de dumps) : Catalyst 6 collines, Chasm 5, Shogun 5, **Solitude - Ranked 5 (carte NOUVELLE au catalogue, `4a5e5612`)** — 21 collines, 100 % avec forme, 100 % neutres ; les 69 autres cartes ne bougent pas (le diff ne retire que `generated_at` et 3 compteurs de couverture) |
+| `cmd/mapobj-build/main.go` | `--from-file` sur une carte DEJA au catalogue conserve ses metadonnees reseau (`version_id`, `public_name`, `fetched_at`) au lieu de dater le re-parse local |
+| `cmd/mapobj-build/variant_test.go` | rack de Vagabond : 25 objectifs (20 + 5 collines de rack), toujours ecarte |
+| `internal/analysis/replay/objectives_catalog_test.go` | l'invariant « role surfacique = 100 % avec forme » couvre `hill` (21 collines) |
+| `internal/service/replay_map_objectives_test.go` | `TestMapObjectives_KOTH_DonneesReelles` : la table versionnee reconnait les deux libelles, sert `[{hill neutre}]`, Catalyst rend 6 zones / 0 marqueur ; CTF n'en sert aucune |
+| `internal/replaybuild/zones.go` | `hillFallbackRoles` et le repli SUPPRIMES ; `heldZoneRoles = {strongholds_zone, hill}` : le catalogue du match (donc le balayage ti=13) ne se paie que sur les roles de zone TENUE — plus en CTF (18 cartes a `flag_delivery` avec forme) ni en Extraction ; en-tete reecrit ; `isHillVariant` reste la porte de la METHODE (`ZoneInput.Hill`) |
+| `internal/replaybuild/zones_test.go` | `TestMatchZonesModesSansZone` etendu a Catalyst (CTF dans les deux ordres, Extraction, Oddball, Slayer : 0 zone) ; `TestMatchZonesKOTHViennentDuRoleHill` (3 libelles -> 6 collines, `roles = "hill"`, meme liste que le service) ; `TestMatchZonesBastionSansCollines` (Bastion sur Catalyst : 3 zones, pas les collines) ; le test du repli supprime avec le repli |
+| `internal/analysis/replay/build_zones.go`, `document_zones.go` | les deux commentaires faux de la revue ronde 2 (P2) corriges : le balayage se decide par le ROLE tenu (`heldZoneRoles`), plus par la presence de formes ; `zoneRef` se joint sur `hill` en KOTH |
+| `hill_shapes_measure_test.go` | lit desormais `mapvar.RoleHill` du catalogue par defaut (mode CT.2.3) |
+
+Le SERVICE n'a pas change de code : il projette la meme table (`objectiveRoleSpecs`) — l'entree
+KOTH suffit, et le test sur donnees reelles le prouve. Le WEB n'a pas change (interdit au volet, et
+sans besoin : `objectivesLayer.ts` dessine les zones par FORME, le role ne pilote que l'anneau des
+livraisons ; `zoneStatesLayer.ts` teinte par `zoneRef`) — a confirmer au gate visuel utilisateur.
+
+### 2.2 Decisions
+
+- **Cle d'instance** : `instance_id` reste celui du fichier (0 sur toutes les variantes `*_map.mvar`
+  retenues — c'est le fichier, pas le decodeur) et la cle SERVIE reste le RANG SPATIAL dans le role
+  (`ZonesOfRole` trie x, y, z, puis instance_id), exactement comme les zones de Bastion : `zoneRef`
+  = index dans `mapObjectives.zones`, l'artefact et le service construisent la meme liste (test de
+  garde). Rien de nouveau a porter.
+- **Role par HASH, pas par nom** : le nom des labels n'etant pas retrouve (§1.3), `labelNames` ne les
+  recoit pas ; une paire de constantes typees + `isHill` dans le decodeur, avec la preuve en
+  commentaire (motif, comptes, contre-exemple minigame, film). Le jour ou le nom tombe, il entre
+  dans `labelNames`/`roleByLabel` et la paire de constantes se retire — la regle « on ne devine pas
+  de libelle » est tenue.
+- **`neutral = true`** : le team_index des collines vaut -1 dans les 21 cas ; le drapeau est pose par
+  coherence avec Bastion/Extraction (l'etat vivant appartient a `zoneStates`).
+- **Modes a zone TENUE** = `{strongholds_zone, hill}` dans `replaybuild/zones.go` (un ensemble de
+  roles du decodeur, pas un nouveau champ TOML : le plan demandait de conditionner « aux ROLES de
+  zone tenue »). Total Control n'a pas de role au catalogue (variante de MODE, lot 5) : rien a
+  declarer tant qu'il n'existe pas.
+- Les instruments des phases 2a/2b (`zone_state_p2a_*`, `zone_state_p2b_temoin_test.go`) gardent
+  leur union `strongholds_zone,extraction_zone` en KOTH : ce sont les mesures de leur phase, leurs
+  chiffres doivent rester reproductibles ; la mesure KOTH du lot vit dans
+  `hill_shapes_measure_test.go`.
+- `zone_states_hill.go` (en-tete : « le catalogue ne connait AUCUN role de colline ») est
+  INTERDIT au volet (volet 1 en parallele) : trois lignes de doc a rafraichir a la fusion,
+  consignees pour le superviseur (§6).
 
 ## 3. CT.2.3 — a venir
 
 ## 4. Statut des items
 
 - [x] CT.2.1 — inventaire, chasse, croisement `01e1f945`, verdict ecrit (§1).
-- [ ] CT.2.2
+- [x] CT.2.2 — role `hill` (decodeur par paire de hashs), table, catalogue 4 cartes (+ Solitude - Ranked), artefact sans repli, balayage restreint aux zones tenues, service (§2).
 - [ ] CT.2.3
 
 ## 5. Cout machine

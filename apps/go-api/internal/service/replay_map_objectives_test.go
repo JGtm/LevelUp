@@ -214,3 +214,60 @@ func TestMapObjectives_DonneesReelles(t *testing.T) {
 		t.Errorf("marqueurs neutres = %d, attendu 1 (le drapeau central)", neutres)
 	}
 }
+
+// TestMapObjectives_KOTH_DonneesReelles — lot C-ter volet 2 : la table VERSIONNÉE reconnaît
+// King of the Hill sous ses deux libellés du registre (« Arena:King of the Hill on X »
+// normalisé, « Ranked:King of the Hill on X ») et sert le rôle `hill`, NEUTRE ; sur Catalyst
+// le catalogue versionné porte 6 collines (toutes des volumes : aucun marqueur), et le même
+// pair_name en CTF n'en sert aucune.
+func TestMapObjectives_KOTH_DonneesReelles(t *testing.T) {
+	root, err := title.FindRepoRoot()
+	if err != nil {
+		t.Skipf("racine du dépôt introuvable : %v", err)
+	}
+	svc := &replayService{titleSlug: title.DefaultSlug, repoRoot: root}
+	ctx := context.Background()
+	for _, pair := range []string{"Arena:King of the Hill on Catalyst", "Ranked:King of the Hill on Solitude"} {
+		specs := svc.objectiveRoleSpecs(ctx, pair)
+		if len(specs) != 1 || specs[0].Role != "hill" || !specs[0].Neutral {
+			t.Fatalf("%q : specs = %+v, attendu [{hill neutre}]", pair, specs)
+		}
+	}
+	for _, spec := range svc.objectiveRoleSpecs(ctx, "Arena:CTF on Catalyst") {
+		if spec.Role == "hill" {
+			t.Fatalf("CTF sert le rôle hill — la table déborde de son mode")
+		}
+	}
+	res := title.NewPathResolver(root)
+	cat, err := replay.LoadMapObjectives(res.MapObjectivesPath(title.DefaultSlug))
+	if err != nil {
+		t.Fatalf("catalogue versionné illisible : %v", err)
+	}
+	entry, err := cat.Lookup("f7e8cde9-0c0a-487c-94a3-61bfa0f20465") // Catalyst
+	if err != nil {
+		t.Fatalf("Catalyst absent du catalogue : %v", err)
+	}
+	mo := replay.BuildMapObjectives(entry, svc.objectiveRoleSpecs(ctx, "Arena:King of the Hill on Catalyst"))
+	if mo == nil || len(mo.Zones) != 6 || len(mo.Markers) != 0 {
+		t.Fatalf("Catalyst KOTH : zones=%d markers=%d, attendu 6/0", zonesCount(mo), markersCount(mo))
+	}
+	for _, z := range mo.Zones {
+		if z.Role != "hill" || z.Team != replay.TeamNeutral || (z.Family != "box" && z.Family != "cylinder") {
+			t.Errorf("colline inattendue : %+v", z)
+		}
+	}
+}
+
+func zonesCount(mo *replay.MapObjectives) int {
+	if mo == nil {
+		return 0
+	}
+	return len(mo.Zones)
+}
+
+func markersCount(mo *replay.MapObjectives) int {
+	if mo == nil {
+		return 0
+	}
+	return len(mo.Markers)
+}
