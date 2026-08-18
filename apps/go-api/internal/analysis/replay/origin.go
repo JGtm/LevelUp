@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -120,9 +121,15 @@ func resolveOriginMs(firstPosUS, filmClockUS uint64, deathOffsetMS int64, matche
 // premier paquet du film et le premier paquet de position — 3,6 s a 50,8 s selon le match.
 // Le REFUS d'origine est deja journalise par resolveOriginMs ; ce qui se journalise ici est sa
 // CONSEQUENCE sur les calques, qui n'est pas la meme information.
+//
+// L'artefact le DIT desormais, et pas seulement le journal : `coverage.originResolved` vaut
+// faux, et le rendu masque ces calques plutot que de les poser au mauvais instant.
 func originMSOf(origin *int64, matchID string) int {
 	if origin == nil {
-		slog.Warn("rejeu : aucune origine etablie — calques dates sur l'horloge du film NON recales",
+		// Contexte vide, et c'est exact : cet assembleur est HORS LIGNE, il n'y a aucun
+		// contexte de requete a propager ici.
+		slog.WarnContext(context.Background(),
+			"rejeu : aucune origine etablie — calques dates sur l'horloge du film NON recales",
 			"match_id", matchID)
 		return 0
 	}

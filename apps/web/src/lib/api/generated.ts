@@ -5371,6 +5371,7 @@ export interface components {
             grenades: components["schemas"]["LayerCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
+            originResolved: boolean;
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];

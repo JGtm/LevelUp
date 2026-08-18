@@ -10700,6 +10700,8 @@ components:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         objectives:
           $ref: '#/components/schemas/LayerCoverage'
+        originResolved:
+          type: boolean
         placements:
           $ref: '#/components/schemas/EquipmentPlacementCoverage'
         score:
@@ -10714,6 +10716,7 @@ components:
         - shots
         - grenades
         - objectives
+        - originResolved
         - bridge
       type: object
     CreatePlayerProfileResponse:
