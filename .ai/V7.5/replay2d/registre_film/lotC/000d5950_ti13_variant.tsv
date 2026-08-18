@@ -1,0 +1,9 @@
+bande	i	composant	tag	chunk	paquet	bit_charge	slot	gen	bits_bruts_hex	pay_bits	payload
+reelle	1	managed-object-property-component	2	5	1750	890	1460	1	20008AC81976DCD9	1	0	[non chaine]
+reelle	1	managed-object-property-component	5	25	1736	4351	1459	1	5625774CB96D1082	32	1649898699	[CHAINE]
+reelle	1	managed-object-property-component	5	25	1736	4414	1460	1	55BD80087A919100	32	1540882567	[CHAINE]
+reelle	1	managed-object-property-component	8	23	1160	849	1459	2	8E83247367370BA6	0	0	[non chaine]
+reelle	1	managed-object-property-component	11	3	854	2398	1459	1	BB7D0E0100DF8904	0	0	[non chaine]
+reelle	0	property-name	-	8	310	1302	1461	3	08520E952DAF64A4	32	139595413
+reelle	0	property-name	-	8	936	1214	1459	3	673A4EB9B0D10008	32	1731874489
+reelle	0	property-name	-	10	1614	1902	1461	3	37E6C101DF9F040B	32	937869569

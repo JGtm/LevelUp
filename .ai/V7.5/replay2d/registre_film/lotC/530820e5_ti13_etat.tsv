@@ -1,0 +1,56 @@
+a_identifiant	530820e5	1376	818843339	1	1.000	1
+a_identifiant	530820e5	1380	349152386	1	1.000	1
+a_identifiant	530820e5	1381	323025507	1	1.000	1
+# (a) 530820e5 : non jugeable (aucun slot a 10 emissions)
+# (b) 530820e5 : reel 24/56 (42.9 %), temoin 35.7 %, hasard 17.4 %, verdict NON TENU
+c_etat	530820e5	TAG 4 (R32)	1381	1	1
+c_etat	530820e5	TAG 4 (R32)	1392	1	1
+c_etat	530820e5	TAG 4 (R32)	1401	35	3
+c_etat	530820e5	TAG 4 (R32)	1406	38	4
+c_etat	530820e5	TAG 4 (R32)	1407	6	6
+c_etat	530820e5	TAG 4 (R32)	1408	1	1
+c_etat	530820e5	TAG 4 (R32)	1410	1	1
+# (c) TAG 4 (R32) 530820e5 : enumerabilite 2/2 (100.0 %), verdict TENUE
+# (c/TAG 4 (R32)) 530820e5 : reel 54/56 (96.4 %), temoin 57.1 %, hasard 63.0 %, verdict NON TENU
+c_etat	530820e5	TAG 1 (enumere)	1375	2	1
+c_etat	530820e5	TAG 1 (enumere)	1377	2	1
+c_etat	530820e5	TAG 1 (enumere)	1404	2	1
+c_etat	530820e5	TAG 1 (enumere)	1406	1	1
+c_etat	530820e5	TAG 1 (enumere)	1407	1	1
+c_etat	530820e5	TAG 1 (enumere)	1408	1	1
+c_etat	530820e5	TAG 1 (enumere)	1410	2	2
+# (c/TAG 1 (enumere)) 530820e5 : reel 0/56 (0.0 %), temoin 0.0 %, hasard 0.8 %, verdict NON TENU
+# (d) 530820e5 : unicite 175174/224125 ms (78.2 %), seuil 90 %, verdict NON TENUE
+d_joueur	530820e5	0	27	15
+d_joueur	530820e5	1	40	16
+d_joueur	530820e5	2	34	19
+d_joueur	530820e5	3	24	12
+d_joueur	530820e5	4	18	10
+d_joueur	530820e5	5	28	9
+d_joueur	530820e5	6	49	29
+d_joueur	530820e5	7	21	10
+d_joueur	530820e5	8	13	11
+d_joueur	530820e5	9	13	10
+d_joueur	530820e5	10	28	17
+d_joueur	530820e5	11	21	17
+d_joueur	530820e5	12	31	12
+d_joueur	530820e5	13	28	13
+d_joueur	530820e5	14	16	13
+d_joueur	530820e5	15	20	12
+d_joueur	530820e5	16	11	8
+d_joueur	530820e5	17	15	12
+d_joueur	530820e5	18	25	13
+d_joueur	530820e5	19	18	11
+d_joueur	530820e5	20	17	11
+d_joueur	530820e5	21	16	11
+d_joueur	530820e5	22	14	12
+d_joueur	530820e5	23	7	3
+d_joueur	530820e5	24	78	14
+d_joueur	530820e5	25	157	28
+d_joueur	530820e5	26	10	9
+d_joueur	530820e5	27	7	5
+d_joueur	530820e5	28	16	13
+d_joueur	530820e5	29	7	5
+d_joueur	530820e5	30	14	13
+d_joueur	530820e5	31	11	7
+# (d bis) 530820e5 : 1787 echantillons par joueur, 32 index de joueur
