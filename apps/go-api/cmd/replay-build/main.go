@@ -97,7 +97,11 @@ func main() {
 // Forme attendue (les champs absents dégradent, ils ne font jamais échouer) :
 //
 //	{"gameVariantName":"CTF:Arena","teamScores":[3,0],
+//	 "mapId":"e859cf75-9b8a-429a-91be-2376681c8537",
 //	 "players":[{"xuid":"2533274...","kills":12,"deaths":7,"assists":3,"teamId":0}]}
+//
+// `mapId` est l'asset UGC de la carte : la clé du catalogue d'objectifs, d'où sortent les socles
+// de drapeau (sans lui, la vie des drapeaux se publie sans équipe propriétaire ni état `home`).
 //
 // Un chemin vide rend des faits vides, sans bruit : c'est le mode nominal du binaire. Un fichier
 // ILLISIBLE, lui, est journalisé — demander des faits et n'en avoir aucun n'est pas la même chose
