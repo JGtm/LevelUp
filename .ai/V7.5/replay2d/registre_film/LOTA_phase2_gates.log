@@ -15,3 +15,13 @@ Cliquet ReplayCanvas.tsx : 861/861 (extraction useLeadMarks.ts plutot que releve
 EXIT_VITEST_A22=0  (78 fichiers, 989 tests — match-replay + match-view + lib/formatters)
 EXIT_TSC_A22=0
 EXIT_LINT_A22=0  (19 avertissements = baseline exacte, 0 erreur)
+
+=== [A.2.3] GATES DE CLOTURE — 2026-08-18 08:56 ===
+EXIT_TSC=0
+EXIT_VITEST=0
+ Test Files  73 passed (73)
+      Tests  930 passed (930)
+EXIT_LINT=0
+  81:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  74:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+✖ 19 problems (0 errors, 19 warnings)
