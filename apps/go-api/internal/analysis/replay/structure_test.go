@@ -245,8 +245,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   deux slots de jauge sur trois, et différente entre deux matchs de la même carte sur la
 	//   troisième), et le propriétaire d'une colline de KOTH (le canal ne parle que là où il y a
 	//   des captures nommées — la colline ne rend que sa PÉRIODE ACTIVE).
-	if SchemaVersion != 16 {
-		t.Fatalf("SchemaVersion = %d, attendu 16 : incrémenter exige une raison écrite ci-dessus "+
+	//   v16 -> v17 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) :
+	//   `zoneStates[].gauge`, LA JAUGE DE CAPTURE EN DIRECT — la série datée de la valeur de la
+	//   jauge de chaque zone PENDANT ses rampes (allégée : un point par variation >= 0,02 ou par
+	//   seconde de rampe, rien hors rampe, premier et dernier point de chaque rampe toujours
+	//   présents), sur la même échelle que `progress`, et `coverage.zones.gaugePoints`. Un
+	//   sous-champ optionnel, et la version monte quand même — POUR CE QUE LE CLIENT CESSE DE
+	//   DESSINER : l'arc de v16 traçait le SOMMET de la jauge par intervalle de propriété, une
+	//   valeur tenue pendant toute la durée de la propriété, et il se lisait comme « capture en
+	//   cours » alors qu'il n'était que le maximum atteint. Le client ne dessine plus cet arc, et
+	//   ne dessine la jauge que d'un artefact qui porte la série : un v16 n'a plus d'arc du tout
+	//   tant qu'il n'est pas re-cuit, et la reprise du backfill se fait par SchemaVersion.
+	//   `progress` est CONSERVÉ tel quel dans le contrat (aucune clé ne bouge, aucune valeur ne
+	//   change de sens) : le sommet reste lisible pour qui le lit.
+	//   CE QUI EST MESURÉ SUR LES TÉMOINS : le poids de la série (<= +2 % de l'artefact exigé),
+	//   le nombre de points par zone, et « la jauge monte avant la bascule du propriétaire » sur
+	//   >= 90 % des captures de Bastion — chiffres au journal du lot (LOTCTER_VOLET3.md).
+	if SchemaVersion != 17 {
+		t.Fatalf("SchemaVersion = %d, attendu 17 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

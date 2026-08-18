@@ -319,7 +319,7 @@ describe('drawObjectivePulses', () => {
   })
 })
 
-/** L'état d'une zone tel que l'artefact le publie (schéma 16), déjà normalisé. */
+/** L'état d'une zone tel que l'artefact le publie (schéma 16), déjà normalisé (`gauge` comblée à vide). */
 const ZONE_STATES = [
   {
     zoneRef: 0,
@@ -329,8 +329,9 @@ const ZONE_STATES = [
       { t0: 10, t1: 19, owner: 0, active: false, progress: 0.75 },
       { t0: 20, t1: 40, owner: 1, active: false },
     ],
+    gauge: [],
   },
-  { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }] },
+  { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }], gauge: [] },
 ]
 
 describe('zoneStateAt', () => {
