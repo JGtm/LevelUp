@@ -70,7 +70,10 @@ Gate V : typecheck/lint/vitest verts ; planche mise a jour avec les propositions
       n'est PAS remplie : les deux restent.** Piste reelle des 3 temoins : 343 lancers, 16 explosions,
       5 chevauchements a moins de 0,3 s = 31,3 %. Mesure de controle sans kill (fin de vol du
       projectile lie, 296 lancers apparies) : 48,6 %, sous le seuil egalement. Regle epinglee par un
-      test unitaire. Commit `d641ca70d`.
+      test unitaire. Commit `d641ca70d`. **SUITE, ET CLOTURE DE D2 : lot R2-G** (2026-08-18, decision
+      utilisateur « que ca kill ou pas, elles explosent donc faut jouer le son ») — l'explosion sonne
+      desormais a CHAQUE fin de vol, et plus seulement sur un kill. Ce que la mesure S2 avait trouve
+      « a la place » n'est donc plus une decouverte en attente, c'est traite. Commit `329691b49`.
 - [x] S3 (D1) inventaire : armes a TIR CHARGE et a TIR CONTINU (declares dans le tag `weap`, acquis
       registre) presentes dans le corpus vs sons disponibles (charge : Ravager seul ; continu : rayon
       de Sentinelle) — liste des MANQUANTS avec le nom d'arme, sans inventer de son. **Deux armes du
@@ -101,6 +104,36 @@ Tests : `replaySound.test.ts`, `replaySoundAssets.guard.test.ts`, `useReplaySoun
       8 occupations « jamais videes » restent PLEINES, 0 compte) · `000d5950` **0 socle publie,
       0 primitive emise** : le calque disparait proprement, sans cadre vide.
 Gate P : gates web verts ; planche : items P sur `01e1f945`.
+
+### R2-G — l'explosion de grenade a chaque fin de vol (worktree `wt/r2-grenades`) — LOT CLOS le 2026-08-18
+- [x] G1 (D2, suite de S2) l'explosion DU TYPE de la grenade sonne a la fin de vol de CHAQUE lancer
+      dont le type est etabli ; datation reprise de `buildGrenadeRestFx` (une seule regle, ecran et
+      son) ; type non etabli = silence ; dedoublonnage kill / fin de vol a moins de 0,3 s ; lancers
+      conserves ; filtre de categorie inchange. **FAIT** : `grenadeSound.ts` (les deux tables de la
+      grenade, `GRENADE_EXPLOSION_DEDUP_MS`, `grenadeSoundEvents`, doctrine), `buildGrenadeRestFx`
+      ne replie plus un rang absent sur 0 (`-1`, donc halo a l'ecran et silence au son), garde-rail
+      d'egalite rang N <-> `killfeed-46+N`, 9 cas de test neufs. Commit `329691b49`.
+      **MESURE, 3 temoins** (piste reelle, kills servis par `/players/{slug}/matches/{id}`) :
+
+      | temoin | lancers | vols lies | kills grenade | dedoublonnes | explosions AVANT -> APRES |
+      |---|---|---|---|---|---|
+      | `000d5950` | 70 | 65 | 2 | 1 | 2 -> 66 |
+      | `01e1f945` | 130 | 123 | 14 | 12 | 14 -> 125 |
+      | `00162144` | 143 | 108 | 0 | 0 | 0 -> 108 |
+      | **TOTAL** | **343** | **296** | **16** | **13** | **16 -> 299** |
+
+      Les 296 vols lies sont EXACTEMENT la mesure de controle de S2. Aucune grenade du corpus n'a de
+      type non etabli (296/296). Les 47 lancers sans projectile lie ne sonnent que leur geste : rien
+      ne date leur fin. 13 des 16 kills a la grenade coincidaient avec leur propre fin de vol (81 %).
+Gate G : `npm run typecheck` EXIT=0 ; `npm run lint` EXIT=0 (0 erreur, 20 avertissements
+pre-existants, les memes qu'au gate P) ; `npx vitest run src/features/match-replay` EXIT=0
+(51 fichiers, 744 tests) ; les 31 garde-rails hors `match-replay` EXIT=0. **Aucune reserve.**
+
+> **L'AJOUT A ETE PAYE PAR DEUX EXTRACTIONS** (seuil de 500 lignes, CLAUDE.md n° 5) : la doctrine
+> neuve portait `replaySound.ts` a 540 lignes. `grenadeSound.ts` (130 L) prend tout ce qui est propre
+> a la grenade — ses deux tables, le seuil de dedoublonnage, `grenadeSoundEvents` et la doctrine ;
+> `replaySoundCursor.ts` (83 L) prend le curseur de lecture, le seul des trois sujets annonces par
+> l'en-tete du fichier qui ne touche jamais au manifeste. `replaySound.ts` finit a 432 lignes.
 
 > **GATE P — TENU, avec une reserve d'ENVIRONNEMENT ecrite.** `npm run typecheck` EXIT=0 ;
 > `npm run lint` EXIT=0 (0 erreur, 20 avertissements pre-existants `react-hooks/incompatible-library`) ;
@@ -163,12 +196,44 @@ Gate P : gates web verts ; planche : items P sur `01e1f945`.
   S2 `d641ca70d`, S3 `b87bdd1e2`, plan `docs`. Gates rejoues sur l'arbre du frere apres `npm ci`.
   Les trois items sont statues `[x]`, avec une reserve ecrite au gate S sur la clause « LUFS dans
   +/-1 » (15 fichiers plafonnes par leur facteur de crete — echappatoire de la decision 3).
+- 2026-08-18 — **R2-G CLOS** (worktree frere `wt/r2-grenades`, base `5a0cf8497`). G1 fait, commit
+  `329691b49`, gate G tenu SANS reserve. La decouverte n° 1 du lot R2-S ci-dessous est donc TRAITEE :
+  l'utilisateur a tranche (« que ca kill ou pas, elles explosent donc faut jouer le son »), et
+  l'explosion sonne a chaque fin de vol — 16 -> 299 explosions sur les 3 temoins. Trois decisions
+  prises en cours d'execution, toutes ecrites dans le code :
+  1. **C'est le KILL qui survit au dedoublonnage, pas la fin de vol.** Il est date par `alignFeed`,
+     l'horloge qui date deja le flash de la fiche et l'effet de mort, et c'est le son que
+     l'utilisateur a valide le 16/08. L'appariement est UN POUR UN : un kill n'annule qu'UNE fin de
+     vol, sinon deux grenades du meme type lancees ensemble disparaitraient toutes les deux.
+  2. **La Dynamo sonne, alors que l'ecran ne la fait PAS detoner** (`restKindOf` lui donne une nappe
+     electrique). La decharge s'entend, le pack porte `explosion_dynamo`, il sonnait deja sur un kill
+     a la Dynamo, et la decision du 18/08 ne fait pas d'exception de type.
+  3. **`buildGrenadeRestFx` ne replie plus un rang absent sur 0 mais sur `-1`.** Le repli sur 0 aurait
+     fait sonner l'explosion d'une FRAG pour une grenade sans type etabli — l'effet d'une voisine.
+     Consequence a l'ecran : un tel rang rend desormais le halo discret, ce que la doctrine de
+     `restKindOf` promettait deja (et que son test epinglait deja : `restKindOf(-1) === 'halo'`).
+     Aucun effet sur le corpus : 296 vols lies sur 296 ont un type etabli.
+
+## Decouvertes (lot R2-G) — notees, NON traitees (regle 7)
+
+1. **L'infobulle du reglage « Sons » ne mentionne pas les explosions, et se dit encore « coupes a la
+   seconde »** (`i18n.ts`, `soundHint` : « Sons d'armes sur les eliminations, les lancers de grenade
+   et les activations d'equipement, coupes a la seconde »). La seconde moitie est fausse depuis le lot
+   R2.1 du 16/08 (la duree est celle du fichier, jusqu'a 4 s), la premiere l'est depuis ce lot-ci. Une
+   phrase a reecrire, hors perimetre G1.
+2. **Le plafond de voix (`SOUND_MAX_VOICES` = 8) va mordre davantage.** La piste de `00162144` passe
+   de 159 a 267 evenements, et une explosion tient jusqu'a 4 s de voix contre 1,2 s pour un tir : les
+   explosions vont donc refuser des tirs sur les echanges nourris. C'est le plafond TECHNIQUE
+   documente, et le relever est un changement d'UN chiffre — mais c'est une decision d'oreille, a
+   prendre au gate d'ecoute utilisateur, pas ici.
 
 ## Decouvertes (lot R2-S) — notees, NON traitees (regle 7)
 
-1. **L'explosion de grenade ne sonne QUE sur un kill, et c'est la vraie cause du grief D2.** Sur les
-   trois temoins : 343 lancers, 16 explosions (4,7 %), et ZERO sur `00162144` qui porte pourtant
-   143 lancers. Le film ne publiant aucun evenement de detonation, la seule source d'explosion est
+1. ~~**L'explosion de grenade ne sonne QUE sur un kill, et c'est la vraie cause du grief D2.**~~
+   **TRAITEE par le lot R2-G le 2026-08-18** (commit `329691b49`) : l'ordre de grandeur annonce
+   ici (+296) est celui qui a ete livre (16 -> 299 explosions, 13 dedoublonnees). Le releve
+   d'origine, sur les trois temoins : 343 lancers, 16 explosions (4,7 %), et ZERO sur `00162144`
+   qui porte pourtant 143 lancers. Le film ne publiant aucun evenement de detonation, la seule source d'explosion est
    la vignette d'un kill a la grenade (`KILL_SPRITE_SOUND_STEMS`). Sonner la FIN DE VOL du projectile
    (`buildGrenadeRestFx`, deja calculee pour l'effet visuel) donnerait une explosion a chaque grenade
    — mais ce n'est plus « mesurer le recouvrement », c'est une feature : elle appartient a l'utilisateur.
