@@ -37,7 +37,7 @@ type GroundWeaponScan struct {
 	Creations []filmdec.EquipmentCreation
 	Stats     filmdec.EquipmentCreationStats
 	// Keyframes porte la bande de slots et le RECENSEMENT qui borne les disparitions.
-	Keyframes filmdec.GroundWeaponKeyframes
+	Keyframes filmdec.WorldObjectKeyframes
 	// Tracks sont les pistes de position des paquets delta pour la même bande. Elles disent
 	// deux choses : si une vie a bougé (le critère `at_rest`) et où elle s'est arrêtée.
 	Tracks []filmdec.ProjectileTrack

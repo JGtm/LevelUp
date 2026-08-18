@@ -83,7 +83,7 @@ func gwTestPadScan(t *testing.T) (GroundWeaponScan, []filmdec.BipedPosition) {
 			gwTestCreation(12, 0, 51_000_000, fam, 9.9, 10.2),
 			gwTestCreation(13, 0, 71_000_000, fam, 10.1, 9.8),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{
+		Keyframes: filmdec.WorldObjectKeyframes{
 			TimesUS: kf,
 			SeenUS: map[filmdec.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000},
@@ -229,7 +229,7 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 			gwTestCreation(22, 0, 10_000_000, fam, 60, 60),
 			gwTestCreation(23, 0, 50_000_000, fam, 60.1, 60),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: kf},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: kf},
 		Tracks: []filmdec.ProjectileTrack{
 			{Slot: 22, Pts: []filmdec.ProjectileSample{{TimestampUS: 10_000_000, X: 60, Y: 60}}},
 			{Slot: 23, Pts: []filmdec.ProjectileSample{{TimestampUS: 50_000_000, X: 60.1, Y: 60}}},
@@ -272,7 +272,7 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 			gwTestCreation(32, 0, 3_000_000, 0xDEADBEEF, 2, 2), // identite hors catalogue
 			sansMPP,
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	objs, _ := groundWeaponObjects(scan, nil, nil, nil)
 	if len(objs) != 1 {
@@ -299,7 +299,7 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 			gwTestCreation(40, 1, 5_000_000, fam, 0, 0),
 			gwTestCreation(40, 1, 25_000_000, fam, 0, 0),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{
+		Keyframes: filmdec.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000},
 			SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
 		},
@@ -342,7 +342,7 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 			gwTestCreation(81, 0, 2_000_000, fam, 2, 2),
 			gwTestCreation(82, 0, 3_000_000, 0xDEADBEEF, 3, 3),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	_, _, cov := buildWeaponPads(fuite, nil, gwTestClock(), nil)
 	if cov.Kept != 2 || cov.Rejected != 1 {
@@ -367,7 +367,7 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 		Stats:     filmdec.EquipmentCreationStats{Accepted: 1},
 		Creations: []filmdec.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
 		// La derniere image-cle est a 40 s : l'objet nait APRES elle.
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
 	}
 	// Un joueur passe PILE sur l'objet apres sa naissance : sans le correctif, ce passage
 	// datait une disparition que rien ne prouve.
@@ -403,7 +403,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 			gwTestCreation(50, 2, 5_000_000, fam, 7, 7),
 			gwTestCreation(50, 2, 45_000_000, fam, 7, 7),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
 		// UNE SEULE piste, sur la PREMIERE vie : elle demarre a l'instant de la premiere
 		// creation et s'acheve bien avant la seconde.
 		Tracks: []filmdec.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []filmdec.ProjectileSample{

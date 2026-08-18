@@ -38,7 +38,7 @@ func gwFlagScan(id uint32) (GroundWeaponScan, []filmdec.BipedPosition) {
 			gwTestCreation(12, 0, 51_000_000, id, 9.9, 10.2),
 			gwTestCreation(13, 0, 71_000_000, id, 10.1, 9.8),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{
+		Keyframes: filmdec.WorldObjectKeyframes{
 			TimesUS: kf,
 			SeenUS: map[filmdec.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000}, {Slot: 11}: {40_000_000},
