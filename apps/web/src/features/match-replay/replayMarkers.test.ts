@@ -59,6 +59,8 @@ function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
     markOfSlot: () => undefined,
     nameOfSlot: () => 'Spartan',
     showNames: true,
+    showTrail: true,
+    selfInk: 'rgb(4 4 4)',
     labelStroke: 'rgb(8 12 18)',
     ...over,
   }
@@ -255,10 +257,12 @@ describe('formes d identité (D5)', () => {
     expect(count(ops, 'arc')).toBe(0)
   })
 
-  it('MOI porte un arc de plus que le marqueur ordinaire — son anneau externe', () => {
+  // V1 (2026-08-18) : l'anneau externe unique est devenu un DOUBLE CONTOUR posé sur un HALO —
+  // trois arcs de plus, parce que la couleur ne doit jamais porter seule l'identité.
+  it('MOI porte TROIS arcs de plus que le marqueur ordinaire — double contour et halo', () => {
     const plain = count(trace({ markOfSlot: markOf(undefined) }), 'arc')
     const mine = count(trace({ markOfSlot: markOf('me') }), 'arc')
-    expect(mine).toBe(plain + 1)
+    expect(mine).toBe(plain + 3)
   })
 })
 
@@ -335,5 +339,68 @@ describe('couleur par SLOT (D1)', () => {
       },
     }, singlePointTrack(517))
     expect(asked).toEqual([517])
+  })
+})
+
+/**
+ * V1 (retour utilisateur du 2026-08-18) — LA TRAÎNÉE EST UNE OPTION, et LE JOUEUR DE LA PAGE
+ * se distingue par sa FORME avant sa couleur.
+ *
+ * Ce qui est vérifié ici est exactement ce qui a été promis : éteindre la traînée n'enlève
+ * QUE la traînée ; le marqueur « moi » porte DEUX anneaux et un halo, tous trois à l'encre
+ * dédiée, et son NOYAU garde la couleur d'ÉQUIPE — sans quoi la couleur porterait seule.
+ */
+describe('traînée en option et joueur de la page (V1, 2026-08-18)', () => {
+  /** Une vie de trois points : de quoi tracer deux segments de traînée. */
+  const moving = (): ReplayTrackReady => ({
+    slot: 512,
+    team: -1,
+    xuid: 'A',
+    startFrame: 0,
+    endFrame: 100,
+    points: [
+      { t: 48, x: 4, y: 5, z: 0 },
+      { t: 49, x: 4.5, y: 5, z: 0 },
+      { t: 50, x: 5, y: 5, z: 0, h: 90 },
+    ],
+  })
+
+  it('traînée allumée : la polyligne est tracée segment par segment', () => {
+    const ops = trace({ showTrail: true }, moving())
+    expect(count(ops, 'lineTo')).toBeGreaterThan(0)
+  })
+
+  it('traînée éteinte : plus AUCUN segment, et le marqueur reste dessiné', () => {
+    const off = trace({ showTrail: false }, moving())
+    expect(count(off, 'lineTo')).toBe(0)
+    // Le point, lui, est toujours là (liseré + noyau) : on n'a éteint que la trace.
+    expect(count(off, 'arc')).toBeGreaterThan(0)
+    expect(count(off, 'fillText')).toBe(1)
+  })
+
+  it('joueur de la page : DEUX anneaux et un halo, à l encre dédiée', () => {
+    const mine = trace({
+      markOfSlot: (): PlayerMarkKind => 'me',
+      selfInk: 'rgb(7 7 7)',
+      showNames: false,
+    })
+    // Le double contour : deux `stroke` à l'encre dédiée, de rayons DIFFÉRENTS.
+    const strokeStyles = mine.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+    expect(strokeStyles.filter((s) => s === 'rgb(7 7 7)').length).toBeGreaterThanOrEqual(1)
+    const rayons = mine.filter((o) => o.op === 'arc').map((o) => o.args[2] as number)
+    expect(new Set(rayons).size).toBeGreaterThanOrEqual(3)
+    // Le halo : un dégradé radial, que seul le joueur de la page émet.
+    expect(count(mine, 'createRadialGradient')).toBe(1)
+  })
+
+  it('LA COULEUR N EST JAMAIS SEULE : le noyau du joueur de la page garde sa couleur d équipe', () => {
+    const mine = trace({ markOfSlot: (): PlayerMarkKind => 'me', selfInk: 'rgb(7 7 7)' })
+    expect(mine.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0])).toContain('rgb(1 2 3)')
+  })
+
+  it('un joueur ORDINAIRE n a ni double anneau ni halo', () => {
+    const autre = trace({ markOfSlot: () => undefined, selfInk: 'rgb(7 7 7)' })
+    expect(count(autre, 'createRadialGradient')).toBe(0)
+    expect(autre.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])).not.toContain('rgb(7 7 7)')
   })
 })
