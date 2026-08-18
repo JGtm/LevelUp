@@ -268,18 +268,43 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * règle que partout ailleurs ici. Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces
  * stems contre le dossier d'assets.
  *
- * TROIS FAMILLES NOMMÉES RESTENT MUETTES, ET LEUR SILENCE EST UNE MESURE (relevé du
- * 2026-08-18 sur la bibliothèque sonore de l'utilisateur) : elle contient sept dossiers
- * d'équipement — Active Camo, Drop Wall, Grappleshot, Overshield, Repulser, Threat Sensor,
- * Thruster — et AUCUN fichier pour le traqueur de menaces, la balise du translocateur ni le
- * champ de réparation (0 correspondance sur `*seeker*`, `*transloc*`, `*repair*`, `*quantum*`
- * dans toute la bibliothèque). Livrer le son d'une voisine serait le mensonge que ce fichier
- * refuse partout ailleurs ; livrer un `.wav` que rien ne joue casserait le garde-rail
- * « 0 asset mort ». Le jour où ces sources existent, il reste UNE ligne à écrire ici.
+ * LE TRAQUEUR PREND LE SON DU CAPTEUR, ET CE N'EST PAS « LE SON D'UNE VOISINE » (décision
+ * utilisateur du 2026-08-18). La règle générale de ce fichier — une famille sans source reste
+ * muette — vaut contre les EMPRUNTS ARBITRAIRES : donner au champ de réparation le son du mur
+ * affirmerait un objet pour un autre. Ici, le traqueur de menaces et le capteur de menaces
+ * sont le MÊME appareil dans le jeu, à un mode près : le capteur balaie sa zone en boucle, le
+ * traqueur émet une impulsion unique. Le geste de POSE, lui, est identique — c'est le même
+ * boîtier qu'on lâche. L'emprunt est donc adossé à une parenté, écrite ici et testée, et non
+ * au fait qu'il « reste un son disponible ».
+ *
+ * DEUX FAMILLES NOMMÉES RESTENT MUETTES, ET LEUR SILENCE EST UNE MESURE — la balise du
+ * translocateur quantique et le champ de réparation. Relevé du 2026-08-18, rejoué et élargi
+ * le même jour au lot R3 :
+ *
+ *  - la bibliothèque livrée de l'utilisateur contient sept dossiers d'équipement (Active Camo,
+ *    Drop Wall, Grappleshot, Overshield, Repulser, Threat Sensor, Thruster) et AUCUN fichier
+ *    pour ces deux-là ;
+ *  - l'archive d'extraction (`Desktop/Halo Infinite - Sons armes/`, 60 catégories,
+ *    4 651 `.wav`) est une archive d'ARMES, déclarée telle par son propre LISEZ-MOI : 41 armes,
+ *    8 tourelles, 6 packs de sifflements, 4 packs de projectiles. Recherche RÉCURSIVE par nom
+ *    sur `*seeker*`, `*transloc*`, `*repair*`, `*quantum*`, `*beacon*`, `*shroud*`, `*equip*`,
+ *    `*heal*`, `*medic*` : ZÉRO fichier. Son manifeste (`_donnees/manifeste.json`) est indexé
+ *    par ARME et ne porte aucune entrée d'équipement ;
+ *  - la chaîne d'extraction elle-même (`.ai/V7.5/RECETTE_SONS_ARMES.md`) part du champ
+ *    « Weapon Fire Sounds » du tag `weap` : elle ne connaît PAS le groupe `eqip`, et l'outil
+ *    Go n'a aucun mode qui le parcoure. Les sources brutes existent (les `.pck` du jeu, 90 170
+ *    `.wem` SANS NOMS), mais les nommer demanderait une passe de banks sur le module de 7,24 Go
+ *    — un chantier, pas une ligne.
+ *
+ * Livrer un `.wav` que rien ne joue casserait le garde-rail « 0 asset mort » ; emprunter sans
+ * parenté serait le mensonge que ce fichier refuse partout ailleurs. Le jour où ces deux
+ * sources existent, il reste UNE ligne à écrire ici.
  */
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
   sensor: 'sensor_activate',
+  // Même appareil que le capteur, un mode près : même geste de pose, donc même son.
+  threat_seeker: 'sensor_activate',
 }
 
 /** Un événement sonore posé sur l'horloge du rejeu. */

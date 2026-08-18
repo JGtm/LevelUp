@@ -539,3 +539,45 @@ family     = "thruster"
 name_id    = "0x9de62e2f"
 provenance = "sofa_modele"
 kind       = "carried"
+
+# ------------------------------------------------------------------------------------------
+# OBJETS D'OBJECTIF — les objets du monde QUI FONT LE MODE, et que la chaine des socles doit
+# reconnaitre pour ne PAS les publier comme des armes (2026-08-18,
+# `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, decision 1).
+#
+# CE QUE CETTE TABLE EST, ET CE QU'ELLE N'EST PAS. La cle est le mot de 32 bits du bloc
+# `object-multiplayer-properties` d'un record de CREATION `ti=42` — le MEME champ que celui
+# qui identifie une arme au sol, dans le MEME archetype. Ce n'est donc pas une table
+# d'equipement (`equipment_objects`, archetype 37, chaine `sofd -> sofa -> eqip`) : c'est la
+# liste des identifiants `ti=42` qui ne sont PAS des armes et dont la nature est etablie.
+#
+# COMMENT `0x2a392328` A ETE ETABLI (phase 0 du plan attachement,
+# `attachement_phase0_drapeau_test.go`, 2026-08-18) — trois lectures, aucune supposee :
+#
+#   COMBIEN   110 / 41 / 46 creations `ti=42` sur les trois films de CTF du corpus
+#             (`64e8adfa` et `530820e5` sur Catalyst, `53ce4390` sur Behemoth), toutes
+#             ECARTEES du catalogue d'armes par le croisement d'identite.
+#   OU        41 / 16 / 18 d'entre elles naissent a 0,0 m d'un socle `flag_spawn` du
+#             catalogue de carte — un drapeau nait a son socle.
+#   QUAND     l'une d'elles tombe a 1 ms d'un evenement de l'oracle (prise ou fin de portage).
+#
+# ET LE TEMOIN QUI FAIT LA SELECTIVITE : aucun AUTRE mot ecarte du catalogue d'armes ne
+# reunit les deux (naitre au socle ET coincider avec l'oracle). Le seul candidat est celui-ci.
+#
+# CE QUE LA TABLE CHANGE POUR LA CHAINE DES SOCLES. Jusqu'ici ce mot etait ecarte par
+# ACCIDENT — « identite hors du catalogue d'armes », comme le bruit du balayage. Il est
+# desormais ecarte PARCE QU'ON SAIT CE QUE C'EST, avant meme la question « est-ce une arme ? ».
+# Un drapeau n'est pas un socle d'arme : deux apparitions au meme socle en feraient un, et le
+# rejeu dessinerait un socle de fusil a la base de chaque equipe.
+#
+# `family` : liste FERMEE (`flag` aujourd'hui). Le crane d'Oddball n'y est PAS, et ce n'est
+# pas un oubli : le marqueur de portage est TOTALEMENT absent du film Oddball mesure (0
+# porteur sur 26 images-cles), il n'existe donc ni canal ni oracle pour l'etablir.
+#
+# `en` / `fr` : le nom de l'objet, dans les deux langues du produit — jamais en dur en Go ni
+# en TypeScript, meme regle que les grenades et les capacites.
+[[objective_objects]]
+id     = "0x2a392328"
+family = "flag"
+en     = "Flag"
+fr     = "Drapeau"

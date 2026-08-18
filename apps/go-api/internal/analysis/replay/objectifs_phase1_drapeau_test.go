@@ -123,6 +123,10 @@ func objMesurePortages(t *testing.T, root, id string, src *objDiskFilm) ([]FlagC
 type objDoc struct {
 	doc      ReplayDocument
 	originUS uint64
+	// gw est le balayage `ti=42` du film, garde a cote du document : le controle du drapeau
+	// OBJET le rejoue sur les creations d ARMES ordinaires (son temoin), que l artefact ne
+	// publie pas.
+	gw GroundWeaponScan
 }
 
 // objDocMemo memorise le document par film : sa construction rebalaye tout le film.
@@ -165,14 +169,16 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 	if err != nil {
 		t.Fatalf("%s : marqueurs de portage : %v", id, err)
 	}
+	gw := objGroundWeapons(t, root, id, quant)
 	doc := BuildFromPositions(id, "halo_infinite", pos, nil, Options{
 		Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant,
+		Labels: goldenCatalog(t), GroundWeapons: gw,
 		Flag: FlagInput{
 			Scanned: true, Records: objectiveevents.StatRecords(src),
 			Bursts: objectiveevents.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
 		},
 	})
-	out := objDoc{doc: doc, originUS: pos[0].TimestampUS}
+	out := objDoc{doc: doc, originUS: pos[0].TimestampUS, gw: gw}
 	objDocMemo[id] = out
 	return out
 }
@@ -375,4 +381,26 @@ func objMax(v []int) int {
 		}
 	}
 	return m
+}
+
+// objGroundWeapons decode l'archetype `ti=42` du film — LA MEME lecture que la production
+// (`BuildFromFilm`), calibration des largeurs du bloc MPP comprise.
+//
+// POURQUOI L'INSTRUMENT LA FAIT DESORMAIS (2026-08-18, PLAN_DRAPEAU_OBJET phase 1). Le drapeau
+// EST un objet `ti=42` : ses vies libres se lisent dans ce balayage-la, et le calque des socles
+// doit l'ECARTER. Sans cette entree, l'instrument mesurait un document ou ni l'un ni l'autre
+// n'existait — c'est-a-dire un document que la production ne sert pas.
+//
+// LA CALIBRATION VIENT DES POSES `ti=37`, comme en production : le mot d'identite de 32 bits se
+// lit derriere deux champs de largeur VARIABLE, mesures sur CE film. Balayer aux largeurs par
+// defaut d'un film calibre autrement ne rend pas une mesure fausse, il rend du bruit.
+func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntry) GroundWeaponScan {
+	t.Helper()
+	dir := objChunkDir(root, id)
+	release := filmdec.LockProcessDecode()
+	defer release()
+	defer installWorldObjectPrecision(*quant, dir)()
+	wr := quant.Range()
+	_, st := decodeFilmPlacements(dir, &wr)
+	return decodeFilmGroundWeapons(dir, &wr, st.Calibration.Widths)
 }

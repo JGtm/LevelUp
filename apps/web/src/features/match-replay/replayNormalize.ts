@@ -216,7 +216,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
       spawns: pad.spawns ?? [],
       presence: pad.presence ?? [],
     })),
-    // L'ÉTAT DES ZONES (schéma 15) : une entrée par zone appariée, une suite d'intervalles de
+    // L'ÉTAT DES ZONES (schéma 16) : une entrée par zone appariée, une suite d'intervalles de
     // propriété. Absent = le mode n'a pas de zone, ou l'appariement n'a rien rattaché —
     // `coverage.zones` distingue les deux, et c'est pour cela qu'il est publié.
     //

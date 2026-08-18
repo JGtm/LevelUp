@@ -2694,7 +2694,7 @@ export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
 // trajectoire serait republier celle du joueur.
 export type ReplayFlagCarry = components['schemas']['FlagCarry']
 export type ReplayFlagSpan = components['schemas']['FlagSpan']
-// L'ÉTAT DE CHAQUE ZONE du mode (schéma 15) : qui la tient, depuis quand, et jusqu'à quel niveau
+// L'ÉTAT DE CHAQUE ZONE du mode (schéma 16) : qui la tient, depuis quand, et jusqu'à quel niveau
 // de jauge elle a été contestée. `zoneRef` est un INDEX dans `mapObjectives.zones` — le calque
 // statique servi avec le document —, jamais un nom : la lettre A/B/C affichée en jeu n'existe
 // dans aucune donnée décodée.

@@ -101,7 +101,7 @@ func gwTestPadScan(t *testing.T) (GroundWeaponScan, []filmdec.BipedPosition) {
 // occupation achevee.
 func TestBuildWeaponPadsPublieUnSocleEtSesOccupations(t *testing.T) {
 	scan, pos := gwTestPadScan(t)
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock())
+	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
 	if len(pads) != 1 {
 		t.Fatalf("1 socle attendu, %d obtenus : %+v", len(pads), pads)
 	}
@@ -147,7 +147,7 @@ func TestBuildWeaponPadsPublieUnSocleEtSesOccupations(t *testing.T) {
 // cycle se publie, mesure DEPUIS la disparition.
 func TestBuildWeaponPadsPublieLeCycleQuandIlEstEtabli(t *testing.T) {
 	scan, pos := gwTestPadScan(t)
-	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock())
+	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
 	c := pads[0].Cycle
 	if c == nil {
 		t.Fatalf("cycle attendu etabli (trois ecarts identiques) : %+v", pads[0])
@@ -176,7 +176,7 @@ func TestBuildWeaponPadsPublieLesEcartsQuIlNAPasPuPrendre(t *testing.T) {
 	// Le joueur ne passe plus pres du socle apres la DEUXIEME occupation : sa disparition
 	// reste bornee sans etre datee, et l'ecart qui la suivait est perdu.
 	pos := gwTestPositions([]uint64{25_000_000, 65_000_000}, 10, 10)
-	pads, _, _ := buildWeaponPads(scan, pos, gwTestClock())
+	pads, _, _ := buildWeaponPads(scan, pos, gwTestClock(), nil)
 	if len(pads) != 1 || pads[0].Cycle == nil {
 		t.Fatalf("1 socle a cycle etabli attendu : %+v", pads)
 	}
@@ -195,7 +195,7 @@ func TestBuildWeaponPadsTaitUnCycleInstable(t *testing.T) {
 	// troisieme longtemps apres : les ecarts passent de 1 s a 16 s.
 	scan.Creations[1].TimestampUS = 26_000_000
 	pos := gwTestPositions([]uint64{25_000_000, 45_000_000, 65_000_000}, 10, 10)
-	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock())
+	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
 	if len(pads) != 1 {
 		t.Fatalf("1 socle attendu, %d", len(pads))
 	}
@@ -241,7 +241,7 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 		{Slot: 3, TimestampUS: 9_950_000, X: 30, Y: 30, HasWorld: true},
 		{Slot: 3, TimestampUS: 49_950_000, X: 30.1, Y: 30, HasWorld: true},
 	}
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock())
+	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
 	if len(pads) != 0 || len(picks) != 0 {
 		t.Fatalf("aucun socle ni occupation attendus, %d socles / %d occupations : %+v",
 			len(pads), len(picks), pads)
@@ -274,14 +274,14 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 		},
 		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	objs, _ := groundWeaponObjects(scan, nil, nil)
+	objs, _ := groundWeaponObjects(scan, nil, nil, nil)
 	if len(objs) != 1 {
 		t.Fatalf("1 creation retenue attendue, %d : %+v", len(objs), objs)
 	}
 	if objs[0].FamilyID != fam {
 		t.Fatalf("identite retenue 0x%08x, attendu 0x%08x", objs[0].FamilyID, fam)
 	}
-	_, _, cov := buildWeaponPads(scan, nil, gwTestClock())
+	_, _, cov := buildWeaponPads(scan, nil, gwTestClock(), nil)
 	if cov.Kept != 1 || cov.Rejected != 2 {
 		t.Fatalf("1 retenue et 2 ecartees attendues : %+v", cov)
 	}
@@ -307,7 +307,7 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	// Le nuage deborde la derniere image-cle : sans cela la fin du film tomberait dessus et
 	// l'exclurait du recensement (la vie est restreinte a [creation, fin)).
 	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 45_000_000, X: 100, Y: 100, HasWorld: true}}
-	objs, _ := groundWeaponObjects(scan, nil, pos)
+	objs, _ := groundWeaponObjects(scan, nil, pos, nil)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
 	}
@@ -344,7 +344,7 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 		},
 		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	_, _, cov := buildWeaponPads(fuite, nil, gwTestClock())
+	_, _, cov := buildWeaponPads(fuite, nil, gwTestClock(), nil)
 	if cov.Kept != 2 || cov.Rejected != 1 {
 		t.Fatalf("2 retenues et 1 ecartee COMPTEES attendues : %+v", cov)
 	}
@@ -375,7 +375,7 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 		{Slot: 2, TimestampUS: 47_000_000, X: 12, Y: 12, HasWorld: true},
 		{Slot: 1, TimestampUS: 60_000_000, X: 200, Y: 200, HasWorld: true},
 	}
-	objs, _ := groundWeaponObjects(scan, nil, pos)
+	objs, _ := groundWeaponObjects(scan, nil, pos, nil)
 	if len(objs) != 1 {
 		t.Fatalf("1 objet attendu, %d", len(objs))
 	}
@@ -412,7 +412,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 		}}},
 	}
 	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 65_000_000, X: 100, Y: 100, HasWorld: true}}
-	objs, _ := groundWeaponObjects(scan, nil, pos)
+	objs, _ := groundWeaponObjects(scan, nil, pos, nil)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
 	}
@@ -438,7 +438,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 // TestBuildWeaponPadsSansBalayageNePublieRien : un film qu'on n'a pas su balayer publie ZERO
 // socle et le DIT (`scanned: false`) — sans quoi il serait indistinguable d'un film sans socle.
 func TestBuildWeaponPadsSansBalayageNePublieRien(t *testing.T) {
-	pads, picks, cov := buildWeaponPads(GroundWeaponScan{}, nil, gwTestClock())
+	pads, picks, cov := buildWeaponPads(GroundWeaponScan{}, nil, gwTestClock(), nil)
 	if pads != nil || picks != nil {
 		t.Fatalf("aucune publication attendue sans balayage : %+v / %+v", pads, picks)
 	}

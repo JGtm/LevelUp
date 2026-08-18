@@ -25,6 +25,7 @@ import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
+import { useReplayCompactCards } from '@/features/match-replay/useReplaySettings'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
@@ -62,6 +63,7 @@ function ReplayPage() {
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
   const { data: matchView } = useMatchView(playerSlug, matchId)
   const [frame, setFrame] = useState(0)
+  const compactCards = useReplayCompactCards()
 
   // LE FOND DE CARTE, en deux temps assumés : le CALAGE d'abord (quelques centaines
   // d'octets, il dit si la carte a une image et où elle se pose), l'IMAGE ensuite —
@@ -209,6 +211,10 @@ function ReplayPage() {
                 joueur, sans que l'un masque l'autre. */}
             <aside className="relative min-h-[12rem] xl:order-3 xl:min-h-0">
               <div className="flex max-h-[60vh] flex-col xl:absolute xl:inset-0 xl:max-h-none">
+                {/* LA FICHE COMPACTE est une OPTION du tiroir (B2/R2-7) : la bascule vit
+                    sous le canvas, les fiches vivent ici. Les deux lisent la MÊME préférence
+                    — c'est l'abonnement de `usePersistedFlag` qui les tient ensemble, deux
+                    `useState` initialisés du même stockage ne se parleraient pas. */}
                 <ReplayTeams
                   doc={data}
                   scoreboard={scoreboard}
@@ -217,6 +223,7 @@ function ReplayPage() {
                   callouts={callouts}
                   marks={marks}
                   xuidMeta={xuidMeta}
+                  compact={compactCards}
                 />
               </div>
             </aside>

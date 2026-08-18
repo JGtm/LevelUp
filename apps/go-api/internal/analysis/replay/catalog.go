@@ -74,6 +74,24 @@ type LabelCatalog struct {
 	// (diagonale 85 % contre le rang de capacité du poseur) vit dans le TOML, avec ses
 	// chiffres : c'est là qu'on juge, pas ici.
 	EquipmentFamilies map[uint32]string
+	// FlagObjects est la table GlobalID de tag `ti=42` -> NOM DU DRAPEAU, telle que le
+	// manifeste du titre la donne. Posée par la COUCHE TITRE après NewLabelCatalog, comme
+	// Icons, Tints et EquipmentFamilies : elle n'entre dans aucune jointure de construction.
+	//
+	// C'EST UNE TABLE D'IDENTITÉ, PAS UN LIBELLÉ À AFFICHER, et c'est elle qui rend la chaîne
+	// des socles capable de RECONNAÎTRE le drapeau au lieu de l'écarter par accident (« pas au
+	// catalogue d'armes »). Le titre y met les identifiants dont il a établi que ce sont des
+	// drapeaux ; ce paquet ne sait pas ce qu'est un drapeau de Halo — il sait seulement qu'un
+	// objet du monde de cette table n'est JAMAIS une arme au sol, et que ses vies LIBRES sont
+	// ce qu'il publie en `flagObjects`.
+	//
+	// LE NOM VOYAGE AVEC L'IDENTIFIANT parce qu'ils sont UNE entrée de manifeste, et qu'un
+	// libellé rangé ailleurs se désynchronise. Il n'est pas encore publié à l'artefact : le
+	// rendu du drapeau vivant est la phase 3 du plan des objectifs vivants, hors de ce lot.
+	//
+	// TABLE VIDE = le titre ne déclare aucun drapeau : la chaîne des socles se comporte comme
+	// avant et `flagObjects` reste vide. Une dégradation, jamais une erreur.
+	FlagObjects map[uint32]Label
 }
 
 // Empty dit si le catalogue ne nomme rien. Utile aux appelants qui veulent journaliser

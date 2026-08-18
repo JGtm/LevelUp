@@ -160,7 +160,7 @@ type Coverage struct {
 	// publié rendent tous deux un calque vide. Son ABSENCE dit encore autre chose — l'appelant
 	// n'a rien fourni à lire.
 	FlagCarries *FlagCarriesCoverage `json:"flagCarries,omitempty"`
-	// Zones est la couverture de L'ÉTAT DES ZONES (schéma 15, cf. document_zones.go) : la
+	// Zones est la couverture de L'ÉTAT DES ZONES (schéma 16, cf. document_zones.go) : la
 	// MÉTHODE d'appariement employée et les rôles du catalogue qui composent `mapObjectives.zones`
 	// (sans quoi `zoneRef` ne serait pas vérifiable), les slots lus, ceux qu'aucune capture n'a
 	// rattachés, et le contrôle du propriétaire contre l'équipe du capteur.

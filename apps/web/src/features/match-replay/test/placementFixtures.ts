@@ -90,7 +90,7 @@ export function life(slot: number, x: number, y: number): ReplayTrackReady {
   return { slot, team: -1, startFrame: 0, endFrame: 200, points }
 }
 
-export const INK = { colorOfSlot: () => 'equipe', neutral: 'neutre' }
+export const INK = { colorOfSlot: () => 'equipe', neutral: 'neutre', wall: 'mur' }
 
 /** projected — un point monde dans le repère du canvas de test. */
 export function projected(x: number, y: number) {

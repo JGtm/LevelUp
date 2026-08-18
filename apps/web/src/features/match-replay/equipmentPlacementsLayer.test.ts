@@ -234,6 +234,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
     const ops = draw([sensorPose], TIME, { lives: [foe], sideOfSlot }, {
       colorOfSlot: (slot: number) => `slot${slot}`,
       neutral: 'neutre',
+      wall: 'mur',
     })
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot3')).toBe(true)
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot7')).toBe(false)

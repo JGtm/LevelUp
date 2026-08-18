@@ -258,7 +258,7 @@ describe('drawObjectivePulses', () => {
   })
 })
 
-/** L'état d'une zone tel que l'artefact le publie (schéma 15), déjà normalisé. */
+/** L'état d'une zone tel que l'artefact le publie (schéma 16), déjà normalisé. */
 const ZONE_STATES = [
   {
     zoneRef: 0,

@@ -3,17 +3,24 @@ package replay
 // document_zones.go — L'ETAT DES ZONES : la forme que « qui tient quelle zone » prend dans
 // l'artefact, et ce que la mesure a refuse d'y mettre.
 //
-// CHRONIQUE — v15 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
+// CHRONIQUE — v16 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
 // lot C-bis phase 2b). Le document publie `zoneStates` — L'ETAT DE CHAQUE ZONE sur toute la
 // partie, en intervalles — et `coverage.zones`, ses denominateurs. Le champ est optionnel, mais
 // la version monte : la teinte de propriete cote client N'EXISTE que si l'artefact la porte, et
-// la reprise du backfill se fait par SchemaVersion — un artefact v14 doit se voir « a re-cuire »,
+// la reprise du backfill se fait par SchemaVersion — un artefact v15 doit se voir « a re-cuire »,
 // pas « a jour ».
 //
-// v15 AMENDEE (2026-08-18, revue R1 de la phase 2b) — deux compteurs de couverture de plus
+// POURQUOI 16 ET NON 15. Ce lot a ete ecrit en v15 ; le lot voisin du drapeau objet
+// (PLAN_DRAPEAU_OBJET phase 2) a publie SES corrections de `flagCarries` sous le numero 15 le
+// meme jour, et il a ete fusionne le premier. La regle est celle de la chronique de
+// `document.go` : un numero par montee, dans l'ordre de fusion — v15 est le drapeau, v16 les
+// zones. Un artefact v15 porte donc les corrections du drapeau et AUCUN etat de zone : il est a
+// re-cuire, comme les precedents.
+//
+// v16 AMENDEE (2026-08-18, revue R1 de la phase 2b) — deux compteurs de couverture de plus
 // (`ownerUnpaired`, et `unpaired` qui prend un sens propre a la methode par positions). LA
-// VERSION NE MONTE PAS : v15 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
-// publiera. Un artefact deja cuit en v15 sur cette branche est a re-cuire comme les autres.
+// VERSION NE MONTE PAS : v16 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
+// publiera. Un artefact deja cuit sur cette branche avant la revue est a re-cuire comme les autres.
 //
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //

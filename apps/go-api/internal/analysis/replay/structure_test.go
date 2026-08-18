@@ -207,7 +207,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   confirmés par le marqueur, et c'est exactement ce que l'état dit. Le CRÂNE d'Oddball
 	//   n'est PAS publié (ni canal ni oracle), ni le RETOUR AUTOMATIQUE (de 1,3 s à 35,8 s
 	//   entre p10 et p90 sur le même film : aucune minuterie ne s'en déduit).
-	//   v14 -> v15 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) :
+	//   v14 -> v15 (2026-08-18, plan PLAN_DRAPEAU_OBJET phase 2) : AUCUN CHAMP NEUF, et la
+	//   version monte quand même — c'est le CONTENU de `flagCarries` qui change, sans qu'aucune
+	//   clé ne bouge. L'OBJET drapeau (même archétype `ti=42` que les armes au sol, identifié par
+	//   le manifeste du titre) réplique sa position quand PERSONNE ne le porte, et cette lecture
+	//   répare deux défauts que v14 déclarait explicitement irréparables : le LÂCHER VOLONTAIRE
+	//   se date (un portage que rien ne fermait — `carried_open`, borne haute jusqu'à la fin de
+	//   l'axe — se ferme à l'instant où l'objet réapparaît AUX PIEDS de son porteur : 2 portages
+	//   sur le corpus), et l'état `dropped` prend la position du dernier point de la piste LIBRE
+	//   au lieu de celle du porteur mort (31 / 17 / 4 lâchers déplacés). Un artefact v14 et un
+	//   v15 du même match publient donc les mêmes champs avec des valeurs et des intervalles
+	//   différents — le cas qu'un client ne peut pas distinguer sans la version, et la reprise du
+	//   backfill se fait par SchemaVersion.
+	//   CE QUI N'EST PAS PUBLIÉ, ET C'EST LA MOITIÉ DU RÉSULTAT : la PISTE elle-même
+	//   (`flagObjects`). Le contrôle de provenance, écrit AVANT la mesure, exigeait que >= 90 %
+	//   des vies libres naissent à moins de 1,5 m d'un `flag_spawn` ou du porteur qui vient de
+	//   finir ; la mesure rend 149/197 = 75,6 %. Le témoin tient largement (armes ordinaires
+	//   soumises à la MÊME règle : 12,8 %, seuil <= 20 %) — la piste discrimine d'un facteur six,
+	//   mais un quart des vies reste inexpliqué. Les deux corrections ci-dessus ne touchent QUE
+	//   les vies nées aux pieds d'un porteur, c'est-à-dire la sous-population que ce même
+	//   contrôle VALIDE ; une vie née à un socle est explicitement écartée.
+	//   v15 -> v16 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) :
 	//   `zoneStates`, L'ÉTAT DE CHAQUE ZONE du mode — qui la tient, depuis quand, et jusqu'à
 	//   quel niveau de jauge elle a été contestée — avec `coverage.zones`. Champ omitempty,
 	//   même raison de monter que les précédentes : c'est la CLÉ DE REPRISE du backfill, et la
@@ -225,8 +245,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   deux slots de jauge sur trois, et différente entre deux matchs de la même carte sur la
 	//   troisième), et le propriétaire d'une colline de KOTH (le canal ne parle que là où il y a
 	//   des captures nommées — la colline ne rend que sa PÉRIODE ACTIVE).
-	if SchemaVersion != 15 {
-		t.Fatalf("SchemaVersion = %d, attendu 15 : incrémenter exige une raison écrite ci-dessus "+
+	if SchemaVersion != 16 {
+		t.Fatalf("SchemaVersion = %d, attendu 16 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

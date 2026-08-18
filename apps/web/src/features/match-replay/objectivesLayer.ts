@@ -2,7 +2,7 @@
  * objectivesLayer.ts — le CALQUE STATIQUE des objectifs du mode joué (lot 4) : normalisation,
  * géométrie et pulses d'action. Logique pure, pas de React.
  *
- * L'ÉTAT VIVANT DES ZONES VIT À CÔTÉ (`zoneStatesLayer.ts`, schéma 15). La frontière est celle du
+ * L'ÉTAT VIVANT DES ZONES VIT À CÔTÉ (`zoneStatesLayer.ts`, schéma 16). La frontière est celle du
  * TEMPS : ici la géométrie, qui ne change jamais et se cuit une fois hors écran ; là l'état, qui
  * change à chaque image et se peint dans la boucle. Les deux tracent la MÊME forme — `traceZonePath`
  * est exporté pour cela, plutôt que recopié.
