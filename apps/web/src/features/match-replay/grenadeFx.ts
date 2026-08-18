@@ -83,7 +83,11 @@ export interface GrenadeRestFx {
   frame: number
   x: number
   y: number
-  /** Rang du type de grenade (index dans grenadeLabels). */
+  /** Rang du type de grenade (index dans grenadeLabels), `-1` quand le film ne le publie pas.
+   *  PAS DE REPLI SUR 0 : `restKindOf` rend alors le halo discret — exactement ce que sa
+   *  propre doctrine promet — et le SON se tait (EXPLOSION_SOUND_STEMS, grenadeSound.ts).
+   *  Replier sur 0 ferait détoner une frag, et sonner SON explosion, pour une grenade dont
+   *  le type n'est pas établi : l'effet d'une voisine, ce que ce fichier refuse partout. */
   rank: number
   /** Fin de vol CERTIFIÉE (`projectile-at-rest-state`). MESURE sur le témoin 000d5950 :
    *  le composant n'apparaît QUE sur des vols Spike (15/21 liés) — jamais frag, plasma ni
@@ -134,6 +138,11 @@ export function grenadeThrowActive(
  * n'existe que sur les Spike (cf. GrenadeRestFx.rest) — l'exiger éteindrait les autres.
  * Un lien hors bornes (artefact d'une autre version) est ignoré — jamais un effet posé
  * au hasard.
+ *
+ * DEPUIS LE 2026-08-18, ELLE DATE AUSSI LE SON (lot R2-G) : l'explosion de chaque grenade
+ * part à `frame`, la même que l'effet à l'écran (grenadeSound.ts). C'est délibérément la
+ * MÊME fonction et non une règle parallèle — deux datations qui divergeraient feraient
+ * sonner l'explosion à côté de son image, sans que rien ne le dise.
  */
 export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
   const out: GrenadeRestFx[] = []
@@ -147,7 +156,7 @@ export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
       frame,
       x: last[1],
       y: last[2],
-      rank: g.rank ?? 0,
+      rank: g.rank ?? -1,
       rest: !!pr.rest,
       seed: (frame * 2654435761) % 100003,
     })
