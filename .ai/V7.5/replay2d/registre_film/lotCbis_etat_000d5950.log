@@ -1,0 +1,63 @@
+=== RUN   TestTi13EtatLotCbis
+    ti13_etat_test.go:93: FILM 000d5950 — 652 records ti=13 ancres, 263 entierement consommes · ORACLE "none" : 0 evenements d'objectif
+    ti13_etat_test.go:95:   TEMOINS D'ANCRAGE : bande fantome (vide) 7498 records · purete ti=4 30682 records dont 1.33 % hors grammaire
+    ti13_etat_test.go:98:   VALEURS RECOLTEES : i1 scalaire 20 · i2..i33 par joueur 556
+    ti13_etat_test.go:102: 
+    ti13_etat_test.go:102: === (a) TAG 5 identifiant de chaine — 2 slots en portent
+    ti13_etat_test.go:102:   slot 1459 : identifiant dominant 0x625774CB sur 1 emissions (100.0 %), 1 valeurs distinctes
+    ti13_etat_test.go:102:   slot 1460 : identifiant dominant 0x5BD80087 sur 1 emissions (100.0 %), 1 valeurs distinctes
+    ti13_etat_test.go:102:   VERDICT (a) : aucun slot n'atteint 10 emissions — NON JUGEABLE sur ce film
+    ti13_etat_test.go:103: 
+    ti13_etat_test.go:103: === (b) TAG 3 rampe quantifiee — 0 valeurs sur 0 slots · 0 rampes
+    ti13_etat_test.go:103:   aucune rampe : volet (b) SANS OBJET sur ce film
+    ti13_etat_test.go:104: 
+    ti13_etat_test.go:104: === (c) TAG 4 (R32) — 0 valeurs sur 0 slots
+    ti13_etat_test.go:104:   aucune valeur : candidat SANS OBJET sur ce film
+    ti13_etat_test.go:104: 
+    ti13_etat_test.go:104: === (c) TAG 1 (enumere) — 1 valeurs sur 1 slots
+    ti13_etat_test.go:104:   slot 1458 : 1 valeurs, 1 distinctes (seuil <= 8)
+    ti13_etat_test.go:104:   ENUMERABILITE : aucun slot n'atteint 10 valeurs — non jugeable
+    ti13_etat_test.go:104:   0 changements de valeur detectes
+    ti13_etat_test.go:104:   volet (c/TAG 1 (enumere)) : ORACLE ABSENT sur ce film (famille "none") — aucune capture nommee, le volet n'est pas jugeable ici
+    ti13_etat_test.go:105: 
+    ti13_etat_test.go:105: === (d) UNICITE : une seule zone active a la fois ? — 0 rampes sur 0 slots
+    ti13_etat_test.go:105:   aucune rampe : volet (d) SANS OBJET sur ce film
+    ti13_etat_test.go:106: 
+    ti13_etat_test.go:106: === (d bis / e) VALEURS PAR JOUEUR (i2..i33) — 556 echantillons
+    ti13_etat_test.go:106:   distribution des tags : t8:70 (12.6 %) t0:65 (11.7 %) t6:59 (10.6 %) t4:53 (9.5 %) t2:46 (8.3 %) t10:40 (7.2 %)
+    ti13_etat_test.go:106:   joueur 0 : 12 valeurs, 7 distinctes
+    ti13_etat_test.go:106:   joueur 1 : 18 valeurs, 6 distinctes
+    ti13_etat_test.go:106:   joueur 2 : 17 valeurs, 13 distinctes
+    ti13_etat_test.go:106:   joueur 3 : 7 valeurs, 5 distinctes
+    ti13_etat_test.go:106:   joueur 4 : 5 valeurs, 5 distinctes
+    ti13_etat_test.go:106:   joueur 5 : 3 valeurs, 3 distinctes
+    ti13_etat_test.go:106:   joueur 6 : 16 valeurs, 7 distinctes
+    ti13_etat_test.go:106:   joueur 7 : 6 valeurs, 5 distinctes
+    ti13_etat_test.go:106:   joueur 8 : 5 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 9 : 12 valeurs, 10 distinctes
+    ti13_etat_test.go:106:   joueur 10 : 2 valeurs, 2 distinctes
+    ti13_etat_test.go:106:   joueur 11 : 3 valeurs, 3 distinctes
+    ti13_etat_test.go:106:   joueur 12 : 5 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 13 : 4 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 14 : 15 valeurs, 11 distinctes
+    ti13_etat_test.go:106:   joueur 15 : 5 valeurs, 3 distinctes
+    ti13_etat_test.go:106:   joueur 16 : 12 valeurs, 9 distinctes
+    ti13_etat_test.go:106:   joueur 17 : 6 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 18 : 12 valeurs, 6 distinctes
+    ti13_etat_test.go:106:   joueur 19 : 3 valeurs, 3 distinctes
+    ti13_etat_test.go:106:   joueur 20 : 6 valeurs, 3 distinctes
+    ti13_etat_test.go:106:   joueur 21 : 4 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 22 : 3 valeurs, 2 distinctes
+    ti13_etat_test.go:106:   joueur 23 : 10 valeurs, 7 distinctes
+    ti13_etat_test.go:106:   joueur 24 : 4 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 25 : 2 valeurs, 2 distinctes
+    ti13_etat_test.go:106:   joueur 26 : 4 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   joueur 27 : 3 valeurs, 3 distinctes
+    ti13_etat_test.go:106:   joueur 28 : 2 valeurs, 2 distinctes
+    ti13_etat_test.go:106:   joueur 29 : 6 valeurs, 6 distinctes
+    ti13_etat_test.go:106:   joueur 30 : 11 valeurs, 9 distinctes
+    ti13_etat_test.go:106:   joueur 31 : 4 valeurs, 4 distinctes
+    ti13_etat_test.go:106:   RESERVE : la phase 0 a mesure qu'en Strongholds le trafic apparent de ces composants est de la CONTAMINATION d'ancrage (0 % de chainage). Les chiffres ci-dessus ne valent que sur les films ou le chainage les valide (KOTH).
+    ti13_etat_test.go:107:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\000d5950_ti13_etat.tsv (1234 octets)
+--- PASS: TestTi13EtatLotCbis (31.58s)
+PASS
