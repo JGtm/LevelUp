@@ -28,3 +28,6 @@
 [R1-8] gofmt -l internal/analysis/filmdec internal/analysis/replay : vide
 [R1-8] CGO_ENABLED=0 go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/   EXIT_VET=0
 [R1-8] CGO_ENABLED=0 go test -count=1 ./internal/analysis/filmdec/   EXIT_TEST=0
+[R1-9] contre-epreuve (DDL de HEAD) : 4/4 TestReplayFacts* ECHOUENT « Binder Error: Referenced column "map_id" not found » — c est bien la CI qui rougissait
+[R1-9] CGO_ENABLED=1 go test -tags=integration -count=1 -v -run TestReplayFacts ./internal/platform/duckdb/   EXIT_TEST=0 (4 PASS ; MapID blanchi et NULL -> vide verifies)
+[R1-9] gofmt -l internal/platform/duckdb : vide
