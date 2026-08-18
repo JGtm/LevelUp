@@ -62,7 +62,29 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// et les teintes : elle est keyée par GlobalID de tag `eqip` (lu dans le film), et
 	// n'entre dans aucune jointure du catalogue.
 	cat.EquipmentFamilies = labels.EquipmentObjects()
+	// Le DRAPEAU : les identifiants d'objet du monde que le manifeste déclare de la famille
+	// `flag`, projetés vers la table d'identité du rejeu. Le filtrage par famille se fait ICI
+	// — c'est la couche titre qui sait ce que `flag` veut dire dans son manifeste ; le paquet
+	// `replay` ne reçoit que « ces identifiants-là sont des drapeaux », jamais la chaîne.
+	cat.FlagObjects = flagObjects(labels.ObjectiveObjects())
 	return cat, nil
+}
+
+// flagObjects retient les objets d'objectif de la famille DRAPEAU et les rend sous la forme
+// que l'artefact connaît. nil quand le titre n'en déclare aucun : la chaîne des socles se
+// comporte alors comme avant, et le calque des vies libres reste vide.
+func flagObjects(in map[uint32]mappings.ObjectiveObject) map[uint32]replay.Label {
+	out := map[uint32]replay.Label{}
+	for id, o := range in {
+		if o.Family != mappings.ObjectiveFamilyFlag {
+			continue
+		}
+		out[id] = replay.Label{En: o.Label.En, Fr: o.Label.Fr}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // weaponIcons pointe, par famille, l'icône EXTRAITE que le titre sert (fiches joueur du

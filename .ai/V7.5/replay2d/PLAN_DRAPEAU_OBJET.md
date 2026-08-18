@@ -36,7 +36,7 @@
 
 ## Phases
 
-- [ ] 1 Manifeste + exclusion des socles + garde-rail ; instrument de mesure du controle 3 (garde `OBJ_FILM`).
+- [x] 1 Manifeste + exclusion des socles + garde-rail ; instrument de mesure du controle 3 (garde `OBJ_FILM`).
 - [ ] 2 Vies libres -> `flagObjects`, datation du lacher, `dropped` repositionne ; schema 15 + contrat +
       OpenAPI + web + goldens + temoins ; controle 3 publie ; ancrage : portages identiques a 1.3.
 - [ ] 3 Registre/journal (textes au CR), plan statue.
@@ -45,3 +45,17 @@
 
 ## Journal du plan
 - 2026-08-18 — plan ecrit, agent lance (worktree frere `../LevelUp-wt-drapeau`, base `9b2aff1c2`).
+- 2026-08-18 — PHASE 1 CLOSE. `0x2a392328` entre au manifeste sous une table NEUVE
+  (`[[objective_objects]]`, famille `flag`, libelles FR/EN) : ce n est pas `equipment_objects`
+  (archetype 37, chaine `sofd -> sofa -> eqip`) mais l archetype 42, celui des armes au sol.
+  La chaine des socles le RECONNAIT et l ecarte AVANT la question « est-ce une arme ? » — hier
+  il etait ecarte par accident (hors catalogue), ce qui ne se maintient pas. La couverture gagne
+  `groundWeapons.objectives` (sous-ensemble NOMME de `rejected`) : sans lui, un drapeau reconnu
+  et un octet de bruit sortent par la meme porte. Garde-rail a temoin
+  (`ground_weapon_flag_exclusion_test.go`) : une famille DU CATALOGUE D ARMES declaree drapeau
+  ne fait plus de socle, et le meme scan sans la table en fait un — sans ce temoin, le test
+  vert ne prouverait rien. Instrument du controle 3 ecrit
+  (`drapeau_objet_controle_test.go`, garde `OBJ_FILM` + `OBJ_REPO`), seuils 90 %/20 % et
+  fenetre de lacher 1 s ECRITS AVANT la mesure ; rayon = `originDropMaxDist`, jamais redeclare.
+  Gates verts : go build/vet/test (replay, games, contracttest, replaybuild, archlint),
+  golangci 0 issue, tsc, eslint, vitest 1715/1715.

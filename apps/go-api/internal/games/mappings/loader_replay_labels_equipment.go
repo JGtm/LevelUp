@@ -12,7 +12,6 @@ package mappings
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -129,10 +128,9 @@ func parseEquipmentObjects(path string, rows []equipmentObjectEntry) (map[uint32
 		if raw == "" {
 			return nil, fmt.Errorf("%s: objet d'équipement sans id", path)
 		}
-		id, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimPrefix(raw, "0x"), "0X"), 16, 32)
+		id, err := tagGlobalID32(path, raw, "identifiant d'objet d'équipement")
 		if err != nil {
-			return nil, fmt.Errorf("%s: identifiant d'objet d'équipement %q illisible (attendu : GlobalID hexadécimal 32 bits, ex. \"0x8e2dc574\")",
-				path, raw)
+			return nil, err
 		}
 		fam := strings.TrimSpace(e.Family)
 		if !equipmentFamilies[fam] {
@@ -142,11 +140,11 @@ func parseEquipmentObjects(path string, rows []equipmentObjectEntry) (map[uint32
 		if err := verifieProvenanceEquipement(path, raw, fam, e); err != nil {
 			return nil, err
 		}
-		if prev, dup := out[uint32(id)]; dup {
+		if prev, dup := out[id]; dup {
 			return nil, fmt.Errorf("%s: objet d'équipement %q déclaré deux fois (%q puis %q)",
 				path, raw, prev, fam)
 		}
-		out[uint32(id)] = fam
+		out[id] = fam
 	}
 	return out, nil
 }
@@ -174,9 +172,8 @@ func verifieProvenanceEquipement(path, raw, fam string, e equipmentObjectEntry) 
 			" structurelle etablie doit nommer une famille", path, raw, prov)
 	}
 	if nid := strings.TrimSpace(e.NameID); nid != "" {
-		if _, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimPrefix(nid, "0x"), "0X"), 16, 32); err != nil {
-			return fmt.Errorf("%s: name_id %q illisible pour %q (attendu : identifiant de chaine"+
-				" hexadecimal 32 bits, ex. \"0xedebd7b7\")", path, nid, raw)
+		if _, err := tagGlobalID32(path, nid, fmt.Sprintf("name_id de %q", raw)); err != nil {
+			return err
 		}
 	} else if prov == equipProvSofaStringID {
 		return fmt.Errorf("%s: %q declare la provenance `sofa_string_id` sans name_id —"+

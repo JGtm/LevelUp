@@ -427,7 +427,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	logPlacementCoverage(doc.Coverage.Placements)
 	// Les SOCLES d'arme au sol, sur le meme nuage NON decime (cf. build_ground_weapons.go).
 	attachWeaponPads(&doc, opt.GroundWeapons, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels.FlagObjects)
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
