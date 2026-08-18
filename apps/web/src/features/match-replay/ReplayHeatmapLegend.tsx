@@ -29,11 +29,12 @@ interface ReplayHeatmapLegendProps {
 
 export function ReplayHeatmapLegend({ locale, mode }: ReplayHeatmapLegendProps) {
   const t = REPLAY_TEXT[locale]
-  // Rampe de FRÉQUENCE : la grandeur mesurée est une intensité NEUTRE (du temps, un nombre
-  // de morts), pas une performance. La rampe « à connotation » dirait vert = bon / rouge =
-  // mauvais sur des lieux qui ne sont ni l'un ni l'autre — et elle est iso-luminante en
-  // vision daltonienne, là où celle-ci reste monotone en luminance dans TOUTES les palettes.
-  const [low, high] = heatmapRampTokens('frequency').map(tokenCssVar)
+  // Rampe d'INTENSITÉ (2026-08-18) : bleu -> rouge -> violet, le violet ne peignant que le
+  // haut de l'échelle. La grandeur mesurée reste une intensité NEUTRE (du temps, un nombre de
+  // morts), donc la rampe « à connotation » — qui dirait vert = bon / rouge = mauvais sur des
+  // lieux qui ne sont ni l'un ni l'autre — reste écartée. Le dégradé ci-dessous porte TOUS les
+  // arrêts : une légende à deux bouts mentirait sur une rampe qui en a trois.
+  const arrets = heatmapRampTokens('intensity').map(tokenCssVar)
   return (
     <div
       className="absolute bottom-2 left-2 rounded border border-border bg-card/85 px-2 py-1.5 text-[10px] leading-tight text-muted-foreground"
@@ -45,7 +46,7 @@ export function ReplayHeatmapLegend({ locale, mode }: ReplayHeatmapLegendProps) 
         <span
           aria-hidden
           className="h-2 w-16 rounded-sm"
-          style={{ backgroundImage: `linear-gradient(to right, ${low}, ${high})` }}
+          style={{ backgroundImage: `linear-gradient(to right, ${arrets.join(', ')})` }}
         />
         <span>{t.heatLegendHigh}</span>
       </div>
