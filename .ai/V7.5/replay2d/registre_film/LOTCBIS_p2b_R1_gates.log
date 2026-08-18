@@ -24,3 +24,7 @@
 [R1-7] npx vitest run objectivesLayer.test.ts useZoneStates.test.ts placementFamily.guard.test.ts   EXIT_VITEST=0 (42 tests ; ReplayCanvas 858 L = plafond tenu)
 [R1-7] contre-epreuve : garde `!zones.joinable` retiree de drawZoneStates -> « jointure REFUSEE ... ne peint rien » ECHOUE (1 failed | 27 passed) ; garde remise
 [R1-7] npx eslint sur les 5 fichiers touches                       EXIT_ESLINT=0
+[R1-8] grep Names|dominantName|hasName|SetProbeHook hors zone_state_scan.go : aucun consommateur (build_zones.go et le temoin ne lisent que Reads/Slots/Records/Walked/Broken/Chained)
+[R1-8] gofmt -l internal/analysis/filmdec internal/analysis/replay : vide
+[R1-8] CGO_ENABLED=0 go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/   EXIT_VET=0
+[R1-8] CGO_ENABLED=0 go test -count=1 ./internal/analysis/filmdec/   EXIT_TEST=0

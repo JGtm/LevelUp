@@ -20,21 +20,25 @@ package filmdec
 // lisait les memes bits. Ce fichier la SUPPRIME : le balayage vit desormais du bon cote, avec
 // `matchWorldObjectRecord`, `consumeByName` et `worldObjectSlotBand` — zero copie de grammaire.
 //
-// # DEUX HOOKS, PARCE QUE L'ARCHETYPE PARLE PAR DEUX VOIES
+// # UN SEUL HOOK : LE VARIANT DE LA PROPRIETE, PAR SES DEUX VOIES
 //
-//	i0        `managed-object-property-name-component` — le NOM de la propriete, publie par la
-//	          sonde generique (`ProbeManagedObjectPropertyName`) ;
 //	i1        le variant en mode A (valeur SCALAIRE de la propriete) ;
 //	i2..i33   le variant en mode B (une valeur PAR JOUEUR), dont l'index de joueur se
 //	          reconstitue chez l'appelant — ici — par `ManagedPropertyPlayerIndex`.
 //
+// Le composant i0 (`managed-object-property-name-component`, le NOM de la propriete reseau) est
+// MARCHE mais pas recolte : personne ne le consomme — la jointure des zones se fait par le slot,
+// et le tag 5 (cle de nommage) est une valeur du variant comme les autres. Le balayage en a
+// publie un extrait (nom dominant par slot) jusqu'a la revue R1 de la phase 2b, qui l'a retire
+// comme sortie morte : une carte de plus a remplir, un second hook global a poser et restaurer,
+// pour une donnee que rien ne lisait.
+//
 // # CE QU'IL NE DIT PAS
 //
-// La SEMANTIQUE des tags. Ce balayage rend des couples (tag, quantum) bruts et le nom de la
-// propriete ; ce que le tag 3 (jauge de capture), le tag 4 (proprietaire) ou le tag 5 (cle de
-// nommage) veulent dire a ete etabli ailleurs, par la mesure, et c'est `analysis/replay` qui
-// l'exploite. Un decodeur qui nommerait ses propres canaux figerait une interpretation dans le
-// decodage.
+// La SEMANTIQUE des tags. Ce balayage rend des couples (tag, quantum) bruts ; ce que le tag 3
+// (jauge de capture), le tag 4 (proprietaire) ou le tag 5 (cle de nommage) veulent dire a ete
+// etabli ailleurs, par la mesure, et c'est `analysis/replay` qui l'exploite. Un decodeur qui
+// nommerait ses propres canaux figerait une interpretation dans le decodage.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 
@@ -67,12 +71,9 @@ type ManagedPropertyRead struct {
 	HasValue bool
 }
 
-// ManagedPropertyScan est ce qu'un balayage rend : les lectures, les noms, et de quoi juger.
+// ManagedPropertyScan est ce qu'un balayage rend : les lectures, et de quoi juger.
 type ManagedPropertyScan struct {
 	Reads []ManagedPropertyRead
-	// Names donne, par slot, la valeur d'i0 la plus emise — le NOM de la propriete reseau.
-	// C'est la seule cle qui nomme l'objet ti=13 lui-meme.
-	Names map[uint32]uint64
 	// Slots est la taille de la bande d'ancrage : le denominateur de tout ce qui suit.
 	Slots int
 	// Records / Walked / Broken : records ancres, records dont la marche a abouti, et ceux
@@ -88,10 +89,10 @@ type ManagedPropertyScan struct {
 // ScanFilmManagedProperties balaye les paquets delta du film de dir et rend les valeurs des
 // proprietes reseau de ti=13.
 //
-// UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe deux hooks globaux de
-// paquet. Ils sont restaures a la sortie, y compris en cas d'erreur.
+// UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe un hook global de
+// paquet. Il est restaure a la sortie, y compris en cas d'erreur.
 func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
-	sc := ManagedPropertyScan{Names: map[uint32]uint64{}}
+	sc := ManagedPropertyScan{}
 	n := CountFilmChunks(dir)
 	if n == 0 {
 		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
@@ -108,7 +109,6 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 	}
 	w := managedPropertyWalk{arch: arch}
 	defer w.install()()
-	names := map[uint32]map[uint64]int{}
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -118,11 +118,8 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			w.scanPayload(pk.Payload(data), band, pk.TimestampUS, &sc, names)
+			w.scanPayload(pk.Payload(data), band, pk.TimestampUS, &sc)
 		}
-	}
-	for slot, m := range names {
-		sc.Names[slot] = dominantName(m)
 	}
 	return sc, nil
 }
@@ -149,33 +146,19 @@ func managedPropertyArchetype(dir string) (Archetype, error) {
 	return arch, nil
 }
 
-// dominantName rend la valeur d'i0 la plus emise par un slot.
-func dominantName(m map[uint64]int) uint64 {
-	best, bestN := uint64(0), -1
-	for v, n := range m {
-		if n > bestN || (n == bestN && v < best) {
-			best, bestN = v, n
-		}
-	}
-	return best
-}
-
-// managedPropertyWalk porte ce que la marche d'un record doit connaitre, et l'etat que les
-// hooks y deposent (regle des 5 parametres).
+// managedPropertyWalk porte ce que la marche d'un record doit connaitre, et l'etat que le hook
+// y depose (regle des 5 parametres).
 type managedPropertyWalk struct {
 	arch Archetype
-	// cur est la lecture en cours : les hooks n'ont pas le contexte du record, l'appelant si.
+	// cur est la lecture en cours : le hook n'a pas le contexte du record, l'appelant si.
 	cur ManagedPropertyRead
 	// got dit que le hook a publie pour le composant courant.
 	got bool
-	// name est la valeur d'i0 publiee par la sonde pour le record courant.
-	name    uint64
-	hasName bool
 }
 
-// install pose les deux hooks et rend leur restauration (defer).
+// install pose le hook du variant et rend sa restauration (defer).
 func (w *managedPropertyWalk) install() func() {
-	prevProp, prevProbe := managedPropertyHook, probeHook
+	prev := managedPropertyHook
 	SetManagedPropertyHook(func(f ManagedPropertyField, values []uint64) {
 		if len(values) == 0 {
 			return
@@ -187,22 +170,13 @@ func (w *managedPropertyWalk) install() func() {
 		}
 		w.got = true
 	})
-	SetProbeHook(func(ti uint32, comp ProbeComponent, values []uint64) {
-		if ti != ManagedPropertyTypeIndex || comp != ProbeManagedObjectPropertyName || len(values) == 0 {
-			return
-		}
-		w.name, w.hasName = values[0], true
-	})
-	return func() {
-		SetManagedPropertyHook(prevProp)
-		SetProbeHook(prevProbe)
-	}
+	return func() { SetManagedPropertyHook(prev) }
 }
 
 // scanPayload balaye UN payload delta : ancre les records de la bande, marche leur masque, et
 // compte le chainage.
 func (w *managedPropertyWalk) scanPayload(pay []byte, band map[uint32]bool, ts uint64,
-	sc *ManagedPropertyScan, names map[uint32]map[uint64]int,
+	sc *ManagedPropertyScan,
 ) {
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits)
 	for p := 0; p <= limit; p++ {
@@ -220,19 +194,13 @@ func (w *managedPropertyWalk) scanPayload(pay []byte, band map[uint32]bool, ts u
 			if worldObjectHeaderAt(pay, end) {
 				sc.Chained++
 			}
-			if w.hasName {
-				if names[rec.Slot] == nil {
-					names[rec.Slot] = map[uint64]int{}
-				}
-				names[rec.Slot][w.name]++
-			}
 		}
 		p = rec.After // un record reconnu n'est pas re-balaye
 	}
 }
 
-// walk marche les composants du masque avec les desers DE PRODUCTION et recolte ce que les
-// hooks publient. Rend la position de fin et l'aboutissement.
+// walk marche les composants du masque avec les desers DE PRODUCTION et recolte ce que le hook
+// publie. Rend la position de fin et l'aboutissement.
 //
 // ELLE S'ARRETE DES QU'UN COMPOSANT N'EST PAS PORTE ou que la marche deborde : au-dela, la
 // position du curseur ne serait plus digne de confiance, et lire du bruit vaut moins que ne rien
@@ -242,7 +210,6 @@ func (w *managedPropertyWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 ) (int, bool) {
 	total := len(pay) * 8
 	at := rec.After
-	w.hasName = false
 	for _, id := range rec.Idx {
 		name := w.arch.component(id)
 		if name == "" || at > total {
