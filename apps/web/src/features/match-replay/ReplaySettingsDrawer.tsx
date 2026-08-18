@@ -47,6 +47,9 @@ interface ReplaySettingsDrawerProps {
   onToggleZones: () => void
   showNames: boolean
   onToggleNames: () => void
+  /** La TRAÎNÉE des marqueurs (retour du 2026-08-18) : allumée par défaut, éteignable. */
+  showTrail: boolean
+  onToggleTrail: () => void
   /** Le calque zones n'existe que si la carte a des zones nommées (même règle que le
    *  bouton d'origine : un interrupteur qui ne commande rien tromperait plus qu'il n'informe). */
   zonesAvailable: boolean
@@ -166,13 +169,15 @@ interface LayersSectionProps {
   onToggleZones: () => void
   showNames: boolean
   onToggleNames: () => void
+  showTrail: boolean
+  onToggleTrail: () => void
   zonesAvailable: boolean
   placements: ReplayPlacementControls
 }
 
 function LayersSection({
-  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames, zonesAvailable,
-  placements,
+  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
+  showTrail, onToggleTrail, zonesAvailable, placements,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -185,6 +190,12 @@ function LayersSection({
           pressed={showNames}
           onToggle={onToggleNames}
           hint={t.layerNamesHint}
+        />
+        <SettingsToggle
+          label={t.layerTrail}
+          pressed={showTrail}
+          onToggle={onToggleTrail}
+          hint={t.layerTrailHint}
         />
         {zonesAvailable && (
           <SettingsToggle
@@ -411,6 +422,8 @@ export function ReplaySettingsDrawer({
   onToggleZones,
   showNames,
   onToggleNames,
+  showTrail,
+  onToggleTrail,
   zonesAvailable,
   placements,
   heatmap,
@@ -456,6 +469,8 @@ export function ReplaySettingsDrawer({
         onToggleZones={onToggleZones}
         showNames={showNames}
         onToggleNames={onToggleNames}
+        showTrail={showTrail}
+        onToggleTrail={onToggleTrail}
         zonesAvailable={zonesAvailable}
         placements={placements}
       />

@@ -22,6 +22,7 @@ import {
 const SHOW_AIM_KEY = 'replay-show-aim'
 const SHOW_ZONES_KEY = 'replay-show-zones'
 const SHOW_NAMES_KEY = 'replay-show-names'
+const SHOW_TRAIL_KEY = 'replay-show-trail'
 const SPEED_KEY = 'replay-speed'
 const SHOW_HEATMAP_KEY = 'replay-show-heatmap'
 const HEATMAP_MODE_KEY = 'replay-heatmap-mode'
@@ -94,6 +95,14 @@ export interface ReplaySettings {
    */
   showNames: boolean
   toggleNames: () => void
+  /**
+   * Calque de la TRAÎNÉE (V1, retour utilisateur du 2026-08-18 : « avoir la traînée en
+   * option »). ALLUMÉE par défaut, comme aujourd'hui : elle fait partie du marqueur validé
+   * le 16/08, et c'est elle qui dit le SENS d'un déplacement. Ce n'est pas un demi-livrable
+   * (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un réglage d'affichage.
+   */
+  showTrail: boolean
+  toggleTrail: () => void
   /** Calque de la carte de chaleur. ÉTEINT par défaut (cf. SHOW_HEATMAP_DEFAULT). */
   showHeatmap: boolean
   toggleHeatmap: () => void
@@ -142,6 +151,7 @@ export function useReplaySettings(): ReplaySettings {
   const [showAim, toggleAim] = usePersistedFlag(SHOW_AIM_KEY, true)
   const [showZones, toggleZones] = usePersistedFlag(SHOW_ZONES_KEY, true)
   const [showNames, toggleNames] = usePersistedFlag(SHOW_NAMES_KEY, true)
+  const [showTrail, toggleTrail] = usePersistedFlag(SHOW_TRAIL_KEY, true)
   const [showHeatmap, toggleHeatmap] = usePersistedFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT)
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
   const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
@@ -177,6 +187,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleZones,
     showNames,
     toggleNames,
+    showTrail,
+    toggleTrail,
     showHeatmap,
     toggleHeatmap,
     heatmapMode,

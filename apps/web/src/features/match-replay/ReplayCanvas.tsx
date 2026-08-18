@@ -23,9 +23,7 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 
 import { Button } from '@/components/ui/button'
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
-import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
-import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
@@ -34,8 +32,7 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
 import type { CalloutZoneReady } from './calloutsLayer'
-import { readInk } from './canvasInk'
-import { readFxInk } from './fxInk'
+import { useReplayInks } from './useReplayInks'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayLeadMarks } from './ReplayLeadMarks'
@@ -84,7 +81,8 @@ import {
   msToFrames,
   sceneBounds,
 } from './replayLogic'
-import { drawProjectilesLayer, drawTracksLayer, type MarkerTiming } from './replayMarkers'
+import { drawProjectilesLayer } from './replayProjectiles'
+import { drawTracksLayer, type MarkerTiming } from './replayMarkers'
 
 // 8 tokens de série = une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
 // getSeriesColors). Ils ne colorent plus les joueurs depuis le 2026-08-16 : un joueur porte
@@ -93,14 +91,9 @@ const ZONE_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
-// Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs).
-const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
-// Événements ponctuels. Le LANCER emprunte un token d'information ; le TIR, lui, ne prend
-// plus aucun token de données : sa couleur dit la NATURE DE LA DÉCHARGE et vient des teintes
-// diégétiques du thème (fxInk.ts, décision utilisateur du 2026-08-15). Le token d'alerte
-// reste employé par les effets de MORT, qui n'ont pas changé.
-const SHOT_TOKEN: SemanticToken = 'destructive'
-const GRENADE_TOKEN: SemanticToken = 'info'
+// Toutes les autres encres (fond, tirs, lancers, sol, effets, grappin, noms, joueur de la
+// page) vivent dans `useReplayInks` depuis le 2026-08-18 : neuf `useMemo` partageaient la
+// même amorce, et le canvas porte un cliquet de taille (placementFamily.guard.test.ts).
 // Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
 // un TIR est un éclat bref (0,6 s — c'est sa brièveté qui le rend lisible : à 1,4 s le trait
 // traînait dim et se fondait dans la carte, mesure du recalage 2.2), un LANCER et une MORT
@@ -214,6 +207,7 @@ export function ReplayCanvas({
   }, [])
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
+    showTrail, toggleTrail,
     showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
@@ -224,52 +218,14 @@ export function ReplayCanvas({
   // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
   const sound = useReplaySound(doc, kills, t0Ms, multiplier)
 
-  const paletteVersion = useColorPaletteVersion()
-  // LES DEUX COULEURS D'ÉQUIPE, telles que l'utilisateur les a réglées (D1). Résolues une
-  // fois par palette : l'observateur de style de useColorPaletteVersion voit changer les
-  // réglages d'accessibilité comme il voit changer le thème.
-  const teamColorOf = useMemo(() => {
-    void paletteVersion
-    const ally = resolveToken('team-ally')
-    const enemy = resolveToken('team-enemy')
-    return (isAlly: boolean) => (isAlly ? ally : enemy)
-  }, [paletteVersion])
-  const geometryColor = useMemo(() => {
-    void paletteVersion
-    return resolveToken(GEOMETRY_TOKEN)
-  }, [paletteVersion])
-  const shotColor = useMemo(() => {
-    void paletteVersion
-    return resolveToken(SHOT_TOKEN)
-  }, [paletteVersion])
-  const grenadeColor = useMemo(() => {
-    void paletteVersion
-    return resolveToken(GRENADE_TOKEN)
-  }, [paletteVersion])
-  // Encres de mise en page du sol : elles suivent le thème, pas la palette d'accessibilité.
-  const floorStyle = useMemo(() => {
-    void paletteVersion
-    return { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') }
-  }, [paletteVersion])
-  // Teintes des ÉCLAIRS DE BOUCHE : lues UNE fois par thème, jamais par image — un
-  // getComputedStyle par effet et par frame coûterait plus que le dessin lui-même.
-  const fxInk = useMemo(() => {
-    void paletteVersion
-    return readFxInk()
-  }, [paletteVersion])
-  // La LIGNE DE GRAPPIN : « blanche » = l'encre la plus claire du thème sombre
-  // (`--foreground`), jamais un hex — décision du plan grappin (phase 2.2). Elle suit le
-  // thème, comme les encres de mise en page.
-  const grappleInk = useMemo(() => {
-    void paletteVersion
-    return readInk('--foreground')
-  }, [paletteVersion])
-  // L'encre du CONTOUR des noms : sombre dans les DEUX thèmes (cf. globals.css), lue une
-  // fois par thème comme les autres encres — jamais un getComputedStyle par image.
-  const labelStroke = useMemo(() => {
-    void paletteVersion
-    return readInk('--replay-label-stroke')
-  }, [paletteVersion])
+  // TOUTES LES ENCRES, résolues une fois par palette (useReplayInks) : couleurs d'équipe
+  // réglées par l'utilisateur (D1), fond, tirs, lancers, sol, teintes d'effet, grappin,
+  // contour des noms, et le double contour du joueur de la page. `paletteVersion` reste ici
+  // pour les couleurs de ZONES, qui dépendent du nombre de grandes zones de la carte.
+  const {
+    paletteVersion, teamColorOf, geometryColor, shotColor, grenadeColor,
+    floorStyle, fxInk, grappleInk, labelStroke, selfInk,
+  } = useReplayInks()
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
   // LES POSES D'ÉQUIPEMENT (schéma 10), comptées par la MÊME PORTE que le tracé
@@ -521,6 +477,8 @@ export function ReplayCanvas({
       markOfSlot,
       nameOfSlot,
       showNames,
+      showTrail,
+      selfInk,
       labelStroke,
     })
 
@@ -635,6 +593,8 @@ export function ReplayCanvas({
     markOfSlot,
     nameOfSlot,
     showNames,
+    showTrail,
+    selfInk,
     labelStroke,
     reducedMotion,
     showAim,
@@ -829,6 +789,8 @@ export function ReplayCanvas({
             onToggleZones={toggleZones}
             showNames={showNames}
             onToggleNames={toggleNames}
+            showTrail={showTrail}
+            onToggleTrail={toggleTrail}
             zonesAvailable={calloutZones.length > 0}
             placements={{
               available: placementCounts.drawable > 0,
