@@ -1,3 +1,26 @@
+## [2026-08-18] Attachement (`object-parent-state`, i10) — phase 0 : le drapeau OBJET est identifie, i10 ne dit ni le porteur ni le vehicule
+
+**Statut** : Complete (mesure ; worktree frere `wt/attache`, 4 commits `029de3539`..`ce792481a`,
+FUSIONNE dans `feat/v75` par le superviseur, vet + tests filmdec/replay rejoues). Gate 0 NEGATIF ecrit ;
+decision 5 (production) non ouverte pour i10.
+**Decision technique principale** : lire les VALEURS d'i10 sur le chemin delta par un hook minimal de
+production (`SetObjectParentStateHook`, aucun bit lu ne change ; rattachement lecture-record par egalite
+de position de bit), et confronter a deux oracles exacts (evenements CTF a la ms ; coincidence de
+positions bipede/vehicule sur `084a804d` et `a349fea8`).
+**Resultats observes** : (1) **le drapeau EST trouve, et il ne doit rien a i10** : parmi les creations
+`ti=42` ecartees du catalogue d'armes, le mot MPP `0x2A392328` revient sur les 3 films CTF et les 2
+cartes (110/41/46 creations, dont 41/16/18 a 0,0 m d'un `flag_spawn`, une a 1 ms d'un evenement de
+l'oracle) — aucun autre mot ecarte ne fait les deux ; (2) i10 : 0/149 fenetres de portage sur 4
+hypotheses de champ x 4 tolerances, temoin <= 1,3 %, 0 lecture d'i10 sur un bipede pendant qu'il
+porte ; (3) vehicules : nuage `ti=40` sain (temoin fantome 14:1 et 25:1, jamais controle avant), 0
+periode « a bord » observable — l'enfant attache ne replique plus sa position, l'oracle de coincidence
+ne peut rien voir (seuil 4(b) inapplicable, pas refute).
+**Conclusion / prochaine etape** : (a) lot court « drapeau objet » : `0x2A392328` entre au manifeste
+comme famille `flag` (jamais dessine comme socle), sa piste libre est publiee a cote des portages
+(remplace/precise `dropped`) — apres la publication 1.3 (schema 14) ; (b) i10 : conditions de reprise
+par cout croissant : balayage `SetRecordStateParam` par archetype (offline, deja outille), Ghidra sur
+`FUN_140c1e4d0`, sinon ailleurs.
+
 ## [2026-08-18] Lot R2-S — sons du rejeu 2D : egalisation, recouvrement, modes de tir
 
 **Statut** : Complete (worktree frere `wt/r2-sons`, base `3907eb505`, 4 commits `83829c7b7`..`6b9132624`,
