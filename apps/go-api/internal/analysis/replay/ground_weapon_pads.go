@@ -67,6 +67,14 @@ type GroundWeaponCoverage struct {
 	// bande sur un film), l'identité si — 13 fantômes croisées contre 1 785 réelles.
 	Kept     int `json:"kept"`
 	Rejected int `json:"rejected"`
+	// Objectives est le SOUS-ENSEMBLE de `Rejected` que le manifeste du titre NOMME : les
+	// objets d'objectif (le drapeau de CTF), écartés parce qu'on sait ce qu'ils sont.
+	//
+	// POURQUOI IL SE PUBLIE. Sans lui, un drapeau reconnu et un octet de bruit sortent par la
+	// même porte et se comptent dans le même nombre : « 110 écartées » ne dirait pas que 110
+	// d'entre elles sont le drapeau, et le jour où la table d'identité du titre serait vide,
+	// rien ne le signalerait. Un film d'un autre mode le laisse à zéro, et c'est la mesure.
+	Objectives int `json:"objectives"`
 	// Dropped / Spawned : les apparitions retenues, classées par la règle du lâcher (une vie de
 	// bipède s'achève à moins de 2 frames et 1,5 m). AtRest en est le sous-ensemble sans vie
 	// delta — les candidats « apparus au repos », d'où sortent les socles.
@@ -113,6 +121,7 @@ func (c GroundWeaponCoverage) Balanced() bool {
 // datation d'une disparition est une recherche dichotomique sur cette suite.
 func buildWeaponPads(
 	scan GroundWeaponScan, positions []filmdec.BipedPosition, clock replayClock,
+	flags map[uint32]Label,
 ) ([]WeaponPad, []PadPickup, *GroundWeaponCoverage) {
 	cov := &GroundWeaponCoverage{
 		Scanned: scan.Scanned, Slots: scan.Stats.Slots,
@@ -123,8 +132,8 @@ func buildWeaponPads(
 	}
 	// `rejected` est COMPTÉ sur le chemin de rejet, jamais déduit d'`Accepted` : c'est ce qui
 	// fait de l'invariant `Kept + Rejected == Accepted` un contrôle et non une tautologie.
-	objs, rejected := groundWeaponObjects(scan, equipmentLives(positions), positions)
-	cov.Kept, cov.Rejected = len(objs), rejected
+	objs, rejected := groundWeaponObjects(scan, equipmentLives(positions), positions, flags)
+	cov.Kept, cov.Rejected, cov.Objectives = len(objs), rejected.total, rejected.objectives
 	atRest, src := gwAtRestOf(objs, cov)
 	pads, assign := gwPadsClusterAssign(atRest)
 	cov.Clusters = len(pads)
@@ -262,7 +271,7 @@ func logGroundWeaponCoverage(c *GroundWeaponCoverage) {
 	}
 	slog.Info("rejeu : socles d'arme au sol",
 		"balaye", c.Scanned, "ancres", c.Anchors, "acceptees", c.Accepted,
-		"retenues", c.Kept, "ecartees", c.Rejected,
+		"retenues", c.Kept, "ecartees", c.Rejected, "objetsDObjectif", c.Objectives,
 		"lachees", c.Dropped, "apparues", c.Spawned, "auRepos", c.AtRest,
 		"grappes", c.Clusters, "socles", c.Pads, "occupations", c.Occupancies,
 		"datees", c.Dated, "sansPassage", c.Unknown, "jamaisVidees", c.Never,

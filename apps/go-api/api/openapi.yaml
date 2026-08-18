@@ -12737,7 +12737,13 @@ components:
         closed:
           format: int64
           type: integer
+        closedByObject:
+          format: int64
+          type: integer
         closedOverlaps:
+          format: int64
+          type: integer
+        dropsRepositioned:
           format: int64
           type: integer
         flagFilm:
@@ -12752,6 +12758,9 @@ components:
           format: int64
           type: integer
         noTrack:
+          format: int64
+          type: integer
+        objectLives:
           format: int64
           type: integer
         open:
@@ -12799,6 +12808,9 @@ components:
         - ambiguousCarrierKills
         - ambiguousReturns
         - spawns
+        - objectLives
+        - closedByObject
+        - dropsRepositioned
       type: object
     FlagCarry:
       additionalProperties: false
@@ -13190,6 +13202,9 @@ components:
         never:
           format: int64
           type: integer
+        objectives:
+          format: int64
+          type: integer
         occupancies:
           format: int64
           type: integer
@@ -13217,6 +13232,7 @@ components:
         - accepted
         - kept
         - rejected
+        - objectives
         - dropped
         - spawned
         - atRest
