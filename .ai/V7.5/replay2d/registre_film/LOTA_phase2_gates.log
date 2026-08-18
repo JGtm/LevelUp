@@ -10,3 +10,8 @@ EXIT_VITEST_A21=0  (49 fichiers, 710 tests — suite match-replay complete)
 EXIT_TSC_A21=0
 EXIT_LINT_A21=0  (19 avertissements = baseline exacte, 0 erreur)
 Cliquet ReplayCanvas.tsx : 861/861 (extraction useLeadMarks.ts plutot que relevement)
+
+[A.2.2] match view : MatchScoreCurveChart dans le deroule du match
+EXIT_VITEST_A22=0  (78 fichiers, 989 tests — match-replay + match-view + lib/formatters)
+EXIT_TSC_A22=0
+EXIT_LINT_A22=0  (19 avertissements = baseline exacte, 0 erreur)

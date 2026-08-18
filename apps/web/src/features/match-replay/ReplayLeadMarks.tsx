@@ -17,6 +17,7 @@
  * camp non reconnu prend l'encre neutre du thème — jamais l'une des deux par défaut.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { formatClockMMSS } from '@/lib/formatters'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { LeadChange } from './scoreTimelineLogic'
@@ -78,14 +79,11 @@ export function ReplayLeadMarks({
 }
 
 /**
- * formatClock date une image en mm:ss depuis le début du rejeu. Sans échelle temporelle
- * (artefact sans `frameIntervalMs`), l'axe T n'est qu'un index : on rend le numéro d'image
- * plutôt qu'une durée fabriquée.
+ * formatClock date une image depuis le début du rejeu. Sans échelle temporelle (artefact
+ * sans `frameIntervalMs`), l'axe T n'est qu'un index : on rend le NUMÉRO d'image plutôt
+ * qu'une durée fabriquée. La mise en forme M:SS, elle, vient du foyer du dépôt.
  */
 function formatClock(frame: number, frameIntervalMs?: number): string {
   if (!frameIntervalMs) return `#${Math.round(frame)}`
-  const total = Math.round((frame * frameIntervalMs) / 1000)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return formatClockMMSS(frame * frameIntervalMs)
 }
