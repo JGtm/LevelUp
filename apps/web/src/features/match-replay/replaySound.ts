@@ -103,6 +103,28 @@
  * même règle que les libellés et les effets ; leurs sons extraits existent dans l'archive
  * du chantier, prêts si le registre les nomme un jour.
  *
+ * UNE ARME = UN SON, MÊME QUAND SON TAG DÉCLARE DEUX MODES DE TIR — inventaire du
+ * 2026-08-18 (lot R2-S, item S3), réponse à la question « il en manque ? ». Le tableau
+ * « Weapon Fire Sounds » du tag `weap` déclare les modes d'une arme, et un VRAI mode a son
+ * propre son de 1re personne (critère de la recette d'extraction, calibré sur les votes).
+ * Passées à ce crible, les 26 armes du registre en déclarent UN SEUL, sauf DEUX :
+ *  - Pistolet à plasma (`hinf_plasma_pistol`, weap 000041b7) : modes 1 et 3, le 3 étant le
+ *    tir CHARGÉ (surcharge), avec ses événements propres `b4e0f7a3` (1P) et `e370a684` (3P) ;
+ *  - Ravageur (`hinf_ravager`, weap 05b2c46c) : modes 1 et 2, le 2 étant le tir CHARGÉ.
+ * Aucun des deux modes chargés n'est livré : le fichier joué est le mode 1 dans les deux cas
+ * (Ravageur : le tir 3 coups, `bb31841b`). Le tir CONTINU, lui, n'est PAS un second mode de
+ * tag : c'est la nature du mode unique du Rayon de Sentinelle (`a220122d`, rôle confirmé par
+ * l'utilisateur), et le fichier livré pour cette arme est son tir COURT (`503433748`). Les
+ * deux autres candidats au tir continu sont RÉFUTÉS par la mesure de cadence (registre des
+ * reports) : Crémateur 1 400 ms d'écart médian entre deux tirs, Calcineur 800 ms.
+ *
+ * CE QU'ON N'A PAS FAIT, ET POURQUOI : aucun fichier n'a été créé pour ces modes. Le rejeu
+ * ne SAIT pas de quel mode vient un tir — le film ne publie que l'arme, et les deux mesures
+ * de qualification (jauge de charge, cadence) sont des NO-GO documentés. Livrer un son de
+ * tir chargé le ferait donc sonner sur des tirs normaux : ce serait l'invention que ce
+ * fichier refuse partout. Les rendus existent dans l'archive du chantier, prêts le jour où
+ * une source qualifie le mode d'un tir.
+ *
  * UN KILL DONT NI LA VIGNETTE NI LA CLÉ NE RÉPONDENT (véhicules, objets explosifs, dégât
  * global, armes hors registre) = SILENCE
  * PROPRE : jamais le son d'une arme voisine, même règle que les effets de rendu
