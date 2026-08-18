@@ -102,6 +102,10 @@ type Options struct {
 	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.
 	// build_objectives_live.go). `Scanned` faux = ni calque ni couverture de drapeau.
 	Flag FlagInput
+	// Zone : de quoi construire L'ETAT DES ZONES (entrée de DONNÉES comme Flag ; cf.
+	// build_zones.go). Le CATALOGUE de zones vient de l'appelant — c'est lui qui sait joindre la
+	// carte du match — et il commande le balayage : sans zones, `ti=13` n'est pas lu.
+	Zone ZoneInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -258,6 +262,11 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
 	opt.Flag.Marks = decodeFilmCarrierMarks(filmDir, opt.Flag)
+	// PROPRIETES RESEAU ti=13 : l'etat des zones (jauge de capture, proprietaire), lu dans les
+	// paquets delta du MEME film — sur les seuls matchs dont l'appelant a fourni le catalogue de
+	// zones (cf. build_zones.go).
+	opt.Zone.Reads = decodeFilmZoneReads(filmDir, matchID, len(opt.Zone.Zones))
+	opt.Zone.Scanned = len(opt.Zone.Zones) > 0
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -431,6 +440,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
+	// (`doc.Objectives`) — cf. build_zones.go.
+	attachZoneStates(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,
