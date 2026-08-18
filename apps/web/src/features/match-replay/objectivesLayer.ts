@@ -12,6 +12,15 @@
  * DURÉE. La bascule de teinte d'une zone est d'ailleurs ce que le pulse annonce — les deux se
  * lisent ensemble, l'un ponctuel, l'autre continu.
  *
+ * SAUF POUR LE DRAPEAU, ET C'EST LE LOT 3.1 (schéma 15). Le pulse de CTF n'était PAS un instant
+ * annoncé : c'était un SUBSTITUT, faute d'objet — il posait l'action sur l'élément statique le
+ * plus proche de son auteur, c'est-à-dire sur un socle voisin, jamais sur le drapeau. Depuis que
+ * `flagCarries` publie l'objet lui-même (position, porteur, état, image par image), ce substitut
+ * dirait la MÊME chose en moins juste, et les deux se contrediraient à l'écran. Il est donc
+ * RETIRÉ dès que le document porte des drapeaux (cf. `buildObjectivePulses`). Les pulses de zone
+ * et d'Oddball, eux, n'ont pas d'objet vivant et gardent leur rôle entier — la fonction n'est
+ * donc pas supprimée, seule la FAMILLE drapeau sort.
+ *
  * CE QUE LE SERVEUR A DÉJÀ DÉCIDÉ, et que ce calque ne rejoue pas : quels rôles servir
  * (table du titre jointe au pair_name), quelles équipes afficher (les modes à possession
  * dynamique arrivent neutres). Le front dessine CE QUI ARRIVE — un document sans
@@ -210,6 +219,25 @@ function drawMarker(
   }
 }
 
+/**
+ * Préfixe des statistiques d'objectif de CAPTURE DE DRAPEAU, tel que le serveur les nomme
+ * (`objectiveevents/named.go` : `flag_grabs`, `flag_steals`, `flag_captures`, `flag_returns`,
+ * `flag_carriers_killed`, `flag_capture_assists`). C'est ce préfixe qui distingue une action
+ * dont l'OBJET est désormais publié d'une action de zone ou de crâne, qui n'en a pas.
+ */
+const FLAG_STAT_PREFIX = 'flag_'
+
+/**
+ * flagPulsesRetired dit si la famille DRAPEAU des pulses doit se taire : elle se tait dès que le
+ * document publie la vie des drapeaux, parce qu'alors le substitut a un remplaçant EXACT.
+ *
+ * Ce n'est PAS conditionné à la bascule d'affichage du calque : un lecteur qui éteint les
+ * drapeaux demande moins de choses à l'écran, pas le retour d'une approximation.
+ */
+export function flagPulsesRetired(doc: ReplayDocumentReady): boolean {
+  return doc.flagCarries.length > 0
+}
+
 /** Un pulse : une ACTION d'objectif (doc.objectives) posée sur son élément le plus proche. */
 export interface ObjectivePulse {
   frame: number
@@ -256,6 +284,9 @@ export function buildObjectivePulses(
   // `coverage.originResolved` le dit, et un calque muet vaut mieux qu'un calque faux — c'est la
   // MÊME règle qui masque le score (cf. filmClockTrusted).
   if (!filmClockTrusted(doc)) return []
+  // LE SUBSTITUT DU DRAPEAU SORT ICI, à la source, plutôt qu'au tracé : un pulse construit puis
+  // non dessiné resterait dans la mémoire de la scène et dans les dépendances de `draw`.
+  const dropFlags = flagPulsesRetired(doc)
   const deathFrames = Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))
   const livesByXuid = new Map<string, ReplayTrackReady[]>()
   for (const t of doc.tracks) {
@@ -266,6 +297,7 @@ export function buildObjectivePulses(
   }
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
+    if (dropFlags && a.stat.startsWith(FLAG_STAT_PREFIX)) continue
     // AUCUN RECALAGE ICI : `a.t` est déjà une frame du document (cf. en-tête). L'action que
     // la grille ne portait pas a été comptée hors fenêtre côté Go et n'est pas publiée.
     const frame = a.t

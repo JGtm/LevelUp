@@ -114,6 +114,24 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       empty: 'Pris',
     },
     padPlacementNote: "Emplacement d'arme (socle au sol ou râtelier mural : non distingués)",
+    layerFlagCarries: 'Drapeaux',
+    layerFlagCarriesHint:
+      "La vie des drapeaux de capture, lue dans le film : porté (le drapeau suit son porteur image par image), au sol à la dernière position mesurée, ou à sa base. La base garde un drapeau atténué tant que le sien est ailleurs. Un portage dont RIEN ne date la fin s'affiche atténué lui aussi : son intervalle court jusqu'à la fin du film, c'est une borne haute et non une mesure.",
+    flagSide: {
+      ally: 'Drapeau allié',
+      enemy: 'Drapeau adverse',
+      unknown: 'Drapeau',
+    },
+    flagState: {
+      carried: 'Porté',
+      carried_open: 'Porté, fin non datée',
+      dropped: 'Au sol',
+      home: 'À la base',
+    },
+    flagCarrierUnknown: 'Porteur non nommé',
+    flagSinceFmt: (seconds) => `Depuis ${Math.round(seconds)} s`,
+    flagOpenNote:
+      "Rien ne date la fin de ce portage : l'intervalle court jusqu'à la fin du film — c'est une borne haute, pas une durée mesurée.",
     cardsCompact: 'Fiches compactes',
     cardsCompactHint:
       "Armes, grenades et équipement sur une seule ligne, sans la zone du joueur. Seule l'arme en main garde ses munitions : celles des armes rangées ne sont plus affichées.",
@@ -293,6 +311,24 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       empty: 'Taken',
     },
     padPlacementNote: 'Weapon spot (floor pad or wall rack: not told apart)',
+    layerFlagCarries: 'Flags',
+    layerFlagCarriesHint:
+      'The life of capture flags, read from the film: carried (the flag follows its carrier frame by frame), on the ground at the last measured position, or at its base. A base keeps a faded flag for as long as its own is elsewhere. A carry whose end NOTHING dates is faded too: its interval runs to the end of the film, an upper bound rather than a measurement.',
+    flagSide: {
+      ally: 'Allied flag',
+      enemy: 'Enemy flag',
+      unknown: 'Flag',
+    },
+    flagState: {
+      carried: 'Carried',
+      carried_open: 'Carried, end undated',
+      dropped: 'On the ground',
+      home: 'At base',
+    },
+    flagCarrierUnknown: 'Carrier not named',
+    flagSinceFmt: (seconds) => `For ${Math.round(seconds)} s`,
+    flagOpenNote:
+      'Nothing dates the end of this carry: the interval runs to the end of the film — an upper bound, not a measured duration.',
     cardsCompact: 'Compact cards',
     cardsCompactHint:
       'Weapons, grenades and equipment on a single row, without the player zone. Only the weapon in hand keeps its ammo: holstered weapons no longer show theirs.',
