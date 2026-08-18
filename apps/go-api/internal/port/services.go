@@ -254,12 +254,24 @@ type MatchFacts struct {
 	// GameVariantName est le nom de variante du match : il donne la FAMILLE d'objectif
 	// (`objectiveevents.ObjectiveTypeOf`), sans laquelle aucune action ne peut être nommée.
 	GameVariantName string `json:"gameVariantName,omitempty"`
+	// MapID est l'asset UGC de la carte (`match_registry.map_id`) : la SEULE clé qui joint le
+	// match au catalogue versionné d'objectifs de carte, d'où sortent les socles de drapeau.
+	//
+	// PAS LE MODULE, PAS LE NOM PUBLIC, et c'est une mesure : dans `map_objectives.json`,
+	// `public_name` est vide sur la quasi-totalité des entrées, et le module n'y porte pas le
+	// même nom que dans le catalogue de bornes (`ridgeline` contre `cliffhanger_ridgeline`).
+	// Joindre sur l'un ou l'autre ne trouve rien, SILENCIEUSEMENT. C'est déjà par map_id que le
+	// service sert le calque statique des objectifs.
+	//
+	// Vide = artefact sans socles : la vie des drapeaux reste publiée, mais sans équipe
+	// propriétaire ni état `home` (leur position serait inventée).
+	MapID string `json:"mapId,omitempty"`
 }
 
 // Empty dit qu'aucun fait n'a été fourni — l'appelant n'avait pas de base, ou le match n'est pas
 // au registre.
 func (f MatchFacts) Empty() bool {
-	return len(f.Players) == 0 && f.TeamScores == nil && f.GameVariantName == ""
+	return len(f.Players) == 0 && f.TeamScores == nil && f.GameVariantName == "" && f.MapID == ""
 }
 
 // ReplayFactsRepo lit les faits d'un match pour le constructeur d'artefact de rejeu.

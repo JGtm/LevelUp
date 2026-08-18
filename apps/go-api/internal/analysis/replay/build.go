@@ -99,6 +99,9 @@ type Options struct {
 	Objectives []objectiveevents.IdentifiedEvent
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
+	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.
+	// build_objectives_live.go). `Scanned` faux = ni calque ni couverture de drapeau.
+	Flag FlagInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -252,6 +255,9 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// ARMES AU SOL : archetype 42, sur la MEME horloge, AUX LARGEURS MPP que la calibration des
 	// POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
 	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
+	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
+	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
+	opt.Flag.Marks = decodeFilmCarrierMarks(filmDir, opt.Flag)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -422,6 +428,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les SOCLES d'arme au sol, sur le meme nuage NON decime (cf. build_ground_weapons.go).
 	attachWeaponPads(&doc, opt.GroundWeapons, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
+	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
+	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,

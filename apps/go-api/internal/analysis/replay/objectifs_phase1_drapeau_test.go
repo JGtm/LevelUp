@@ -2,15 +2,18 @@ package replay
 
 // objectifs_phase1_drapeau_test.go — ITEMS 1.1 ET 1.2 : LES PORTAGES, MESURES SUR FILMS REELS.
 //
-// CET INSTRUMENT N'A PAS DE REGLE A LUI : il APPELLE la production (`buildFlagCarries`,
-// flag_carries.go) sur les films du corpus et publie ses chiffres. Une seconde copie aurait
-// diverge au premier correctif, et surtout la mesure ne dirait plus rien de ce qui sera publie.
+// CET INSTRUMENT N'A PAS DE REGLE A LUI : il construit le DOCUMENT de production
+// (`BuildFromPositions` avec `Options.Flag`, cf. build_objectives_live.go) sur les films du
+// corpus et publie les chiffres de `doc.FlagCarries` / `doc.Coverage.FlagCarries`. Une seconde
+// copie aurait diverge au premier correctif, et surtout la mesure ne dirait plus rien de ce que
+// le client recoit.
 //
 // CE QU'IL MESURE, ET LES SEUILS ECRITS AVANT (plan, gate 1) :
 //
-//	le CONTROLE DU MARQUEUR   part des portages, PARMI CEUX QUI CONTIENNENT UNE IMAGE-CLE, dont
-//	                          au moins une porte le marqueur `0x00010005` sur le slot du
-//	                          porteur. Seuil : >= 90 %.
+//	le CONTROLE DU MARQUEUR   part des portages FERMES, PARMI CEUX QUI CONTIENNENT UNE IMAGE-CLE,
+//	                          dont au moins une porte le marqueur `0x00010005` sur le slot du
+//	                          porteur. Seuil : >= 90 %. Les portages OUVERTS (que rien ne ferme,
+//	                          publies `carried_open`) ont leur propre compte, publie a cote.
 //	l'ORACLE                  chaque `flag_grabs` / `flag_steals` nomme par le pont doit ouvrir
 //	                          un span `carried` du BON xuid. Seuil : 100 % des prises publiees.
 //	les INCOHERENCES          simultaneite > 2 portages, porteurs tues ambigus, retours ambigus :
@@ -66,7 +69,7 @@ var objCTFCarteNom = map[string]string{
 // TestObjectifsPhase1Portages — items 1.1 et 1.2 sur les trois films CTF et un temoin non-CTF.
 func TestObjectifsPhase1Portages(t *testing.T) {
 	root := objRequireRoot(t)
-	joues, cumObs, cumConf := 0, 0, 0
+	joues, cumObs, cumConf, cumOpenObs, cumOpenConf := 0, 0, 0, 0, 0
 	for _, id := range append(append([]string{}, objCTFFilms...), "000d5950") {
 		src, ok := objOpenFilm(t, root, id)
 		if !ok {
@@ -75,6 +78,7 @@ func TestObjectifsPhase1Portages(t *testing.T) {
 		joues++
 		carries, cov := objMesurePortages(t, root, id, src)
 		cumObs, cumConf = cumObs+cov.MarkerObserved, cumConf+cov.MarkerConfirmed
+		cumOpenObs, cumOpenConf = cumOpenObs+cov.OpenObserved, cumOpenConf+cov.OpenConfirmed
 		objLogPortages(t, id, carries, cov)
 		objVerifieOracle(t, root, id, src, objPortageRes{carries: carries, cov: cov})
 		objMesureRetourAuto(t, id, carries)
@@ -87,33 +91,32 @@ func TestObjectifsPhase1Portages(t *testing.T) {
 	// de la phase 0.2, refute et journalise sans `t.Errorf`. Le seuil est ECRIT ET FIGE ; le
 	// resultat NEGATIF est consigne au plan en `[!]` avec sa mesure, ce qui est sa place. Un
 	// instrument qui echoue en permanence finit par etre desarme, et c est la mesure qu on perd.
-	t.Logf("GATE 1 — CONTROLE DU MARQUEUR : %d/%d portages confirmes = %.1f %% (seuil %.0f %%) -> %s",
+	//
+	// LE DENOMINATEUR EST CELUI DES PORTAGES FERMES (arbitrage du 2026-08-18, item 1.3). Le taux
+	// MELANGE reste publie a cote : c'est lui qui valait 88,1 % a l'item 1.1, et l'ecart entre
+	// les deux EST le resultat — un portage que rien ne ferme est trop long, ses images-cles
+	// tardives tombent apres le lacher, et aucune ne porte le marqueur.
+	t.Logf("GATE 1.3 — CONTROLE DU MARQUEUR SUR LES FERMES : %d/%d = %.1f %% (seuil %.0f %%) -> %s",
 		cumConf, cumObs, 100*part, 100*objSeuilMarqueur, objTenu(part >= objSeuilMarqueur))
+	t.Logf("GATE 1.3 — pour memoire, TOUS PORTAGES CONFONDUS : %d/%d = %.1f %% (ouverts seuls : %d/%d)",
+		cumConf+cumOpenConf, cumObs+cumOpenObs, 100*objPart(cumConf+cumOpenConf, cumObs+cumOpenObs),
+		cumOpenConf, cumOpenObs)
 }
 
-// objMesurePortages joue la chaine de production sur un film et rend ce qu'elle publie.
+// objMesurePortages joue la chaine de production sur un film et rend CE QUE LE DOCUMENT PUBLIE.
+//
+// DEPUIS L'ITEM 1.3, LA MESURE PASSE PAR L'ARTEFACT LUI-MEME : le calque n'est plus construit a
+// cote de l'assemblage mais DEDANS (`Options.Flag` -> `attachFlagCarries`), et c'est
+// `doc.FlagCarries` / `doc.Coverage.FlagCarries` qui sont mesures. Un instrument qui rebatirait
+// le calque a la main ne dirait plus rien de ce que le client recoit.
 func objMesurePortages(t *testing.T, root, id string, src *objDiskFilm) ([]FlagCarry, *FlagCarriesCoverage) {
 	t.Helper()
 	b := objBridgeOf(t, root, id)
-	doc := objDocumentDe(t, root, id, b)
-	marks, err := filmdec.ScanFilmCarrierMarks(objChunkDir(root, id))
-	if err != nil {
-		t.Fatalf("%s : marqueurs de portage : %v", id, err)
+	doc := objDocumentDe(t, root, id, b, src)
+	if doc.doc.Coverage == nil {
+		t.Fatalf("%s : document sans couverture", id)
 	}
-	evs := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag)
-	scan := FlagCarryScan{
-		Scanned:  true,
-		Signals:  objectiveevents.FlagFilmSignalsFrom(objectiveevents.CaptureBurstTimes(src), evs),
-		Events:   evs,
-		Identity: objIdentites(src, b.Deaths),
-		Marks:    marks,
-		Spawns:   objFlagSpawns(t, id),
-	}
-	ctx := flagCarryCtx{
-		origin: doc.originUS, step: uint64(doc.doc.FrameIntervalMS) * 1000, frames: doc.doc.FrameCount,
-		tracks: doc.doc.Tracks, deaths: b.Deaths, deathOffsetMS: b.OffsetMS, slotXUID: b.SlotXUID,
-	}
-	return buildFlagCarries(scan, ctx)
+	return doc.doc.FlagCarries, doc.doc.Coverage.FlagCarries
 }
 
 // objDoc porte le document de rejeu d'un film et l'origine de son axe de temps.
@@ -133,7 +136,7 @@ var objDocMemo = map[string]objDoc{}
 // POSITIONS DE JOUEUR a des SOCLES lus dans le catalogue de carte, qui sont en METRES. Melanger
 // les deux ferait comparer des indices de quantum a des metres — l'attribution du drapeau
 // deviendrait un tirage, sans que rien ne le signale.
-func objDocumentDe(t *testing.T, root, id string, b objBridge) objDoc {
+func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm) objDoc {
 	t.Helper()
 	if d, ok := objDocMemo[id]; ok {
 		return d
@@ -158,8 +161,17 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge) objDoc {
 		t.Fatalf("%s : index de joueur : %v", id, err)
 	}
 	table, _ := injectiveOrEmpty(idx)
-	doc := BuildFromPositions(id, "halo_infinite", pos, nil,
-		Options{Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant})
+	marks, err := filmdec.ScanFilmCarrierMarks(objChunkDir(root, id))
+	if err != nil {
+		t.Fatalf("%s : marqueurs de portage : %v", id, err)
+	}
+	doc := BuildFromPositions(id, "halo_infinite", pos, nil, Options{
+		Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant,
+		Flag: FlagInput{
+			Scanned: true, Records: objectiveevents.StatRecords(src),
+			Bursts: objectiveevents.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
+		},
+	})
 	out := objDoc{doc: doc, originUS: pos[0].TimestampUS}
 	objDocMemo[id] = out
 	return out
@@ -240,12 +252,15 @@ func objLogPortages(t *testing.T, id string, carries []FlagCarry, cov *FlagCarri
 	if cov == nil {
 		t.Fatalf("%s : aucune couverture rendue", id)
 	}
-	t.Logf("%s : CTF=%v (bursts %d, captures %d, vols %d) ; %d prises -> %d portages publies, "+
-		"%d sans pont, %d sans piste, %d hors fenetre ; marqueur %d/%d ; socles %d ; "+
-		"incoherences : simultaneite>2 %d, porteurs tues ambigus %d, retours ambigus %d",
+	t.Logf("%s : CTF=%v (bursts %d, captures %d, vols %d) ; %d prises -> %d portages publies "+
+		"(%d fermes, %d ouverts), %d sans pont, %d sans piste, %d hors fenetre ; marqueur "+
+		"FERMES %d/%d, OUVERTS %d/%d ; socles %d ; incoherences : simultaneite>2 %d (dont entre "+
+		"FERMES %d), porteurs tues ambigus %d, retours ambigus %d",
 		id, cov.FlagFilm, cov.Bursts, cov.Captures, cov.Steals, cov.Openings, cov.Carries,
-		cov.NoBridge, cov.NoTrack, cov.OutOfWindow, cov.MarkerConfirmed, cov.MarkerObserved,
-		cov.Spawns, cov.Overlaps, cov.AmbiguousCarrierKills, cov.AmbiguousReturns)
+		cov.Closed, cov.Open, cov.NoBridge, cov.NoTrack, cov.OutOfWindow,
+		cov.MarkerConfirmed, cov.MarkerObserved, cov.OpenConfirmed, cov.OpenObserved,
+		cov.Spawns, cov.Overlaps, cov.ClosedOverlaps, cov.AmbiguousCarrierKills,
+		cov.AmbiguousReturns)
 	if !cov.Balanced() {
 		t.Errorf("%s : invariant de couverture ROMPU — %+v", id, *cov)
 	}
@@ -255,7 +270,7 @@ func objLogPortages(t *testing.T, id string, carries []FlagCarry, cov *FlagCarri
 			etats[s.State]++
 		}
 		t.Logf("%s : drapeau %d (equipe %d) — %d spans : %d portes, %d au sol, %d a la base",
-			id, i, f.Team, len(f.Spans), etats[FlagStateCarried], etats[FlagStateDropped],
+			id, i, f.Team, len(f.Spans), etats[FlagStateCarried]+etats[FlagStateCarriedOpen], etats[FlagStateDropped],
 			etats[FlagStateHome])
 	}
 }
@@ -277,7 +292,7 @@ func objVerifieOracle(t *testing.T, root, id string, src *objDiskFilm, res objPo
 	porteurs := map[string]int{}
 	for _, f := range carries {
 		for _, s := range f.Spans {
-			if s.State == FlagStateCarried && s.XUID != nil {
+			if flagStateCarrying(s.State) && s.XUID != nil {
 				porteurs[*s.XUID]++
 			}
 		}
@@ -324,7 +339,7 @@ func objMesureRetourAuto(t *testing.T, id string, carries []FlagCarry) {
 				continue
 			}
 			d := s.T1 - s.T0 + 1
-			if i+1 < len(f.Spans) && f.Spans[i+1].State == FlagStateCarried {
+			if i+1 < len(f.Spans) && flagStateCarrying(f.Spans[i+1].State) {
 				reprises = append(reprises, d)
 				continue
 			}

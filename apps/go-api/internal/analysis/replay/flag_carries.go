@@ -186,7 +186,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	assignFlags(raws, scan.Spawns)
 	markFlagCarries(raws, scan.Marks, ctx)
 	tallyFlagCarries(raws, cov)
-	cov.Overlaps = countFlagOverlaps(raws)
+	cov.Overlaps, cov.ClosedOverlaps = countFlagOverlaps(raws)
 	return assembleFlagLives(raws, scan, ctx, cov), cov
 }
 

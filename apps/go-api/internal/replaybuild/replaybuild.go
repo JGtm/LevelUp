@@ -64,6 +64,11 @@ type Builder struct {
 	// structures : cache par module du fond structurel (une carte revient N fois dans une
 	// passe de masse ; recharger le fichier à chaque match serait du pur gaspillage).
 	structures map[string][]replay.Surface
+	// objectives / objectivesTried : le catalogue versionné d'objectifs de carte, d'où sortent
+	// les socles de drapeau (cf. flagspawns.go), chargé au plus une fois par Builder. Le drapeau
+	// booléen distingue « pas encore chargé » de « chargement tenté et échoué ».
+	objectives      *replay.MapObjectivesCatalog
+	objectivesTried bool
 }
 
 // Outcome décrit un artefact construit.
@@ -160,6 +165,9 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		return Outcome{}, err
 	}
 	stats := readFilmStats(context.Background(), matchID, filmDir, facts)
+	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
+	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
+	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
@@ -168,6 +176,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		NeutralDeaths:   b.neutralDeaths(matchID, filmDir),
 		Objectives:      stats.objectives,
 		Score:           stats.score,
+		Flag:            stats.flag,
 		MapQuant:        &entry,
 	})
 	if err != nil {

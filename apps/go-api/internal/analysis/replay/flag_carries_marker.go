@@ -59,32 +59,61 @@ func markFlagCarries(raws []flagCarryRaw, scan filmdec.CarrierMarkScan, ctx flag
 }
 
 // tallyFlagCarries porte les comptes du calque dans la couverture.
+//
+// LE CONTROLE DU MARQUEUR SE COMPTE DEUX FOIS, ET C'EST LE POINT. Les portages FERMES et les
+// portages OUVERTS ne mesurent pas la meme chose : un portage ouvert est trop long par
+// construction, ses images-cles tardives tombent apres le lacher, et aucune ne porte le marqueur.
+// Les additionner ferait baisser un taux qui juge la JUSTESSE DES BORNES. Les deux populations
+// sont donc comptees separement, et publiees toutes les deux — le taux melange reste calculable.
 func tallyFlagCarries(raws []flagCarryRaw, cov *FlagCarriesCoverage) {
 	cov.Carries = len(raws)
 	for _, r := range raws {
-		if r.observable {
-			cov.MarkerObserved++
-		}
-		if r.confirmed {
-			cov.MarkerConfirmed++
+		switch {
+		case r.closed:
+			cov.Closed++
+			if r.observable {
+				cov.MarkerObserved++
+			}
+			if r.confirmed {
+				cov.MarkerConfirmed++
+			}
+		default:
+			cov.Open++
+			if r.observable {
+				cov.OpenObserved++
+			}
+			if r.confirmed {
+				cov.OpenConfirmed++
+			}
 		}
 	}
 }
 
 // countFlagOverlaps compte les prises pour lesquelles plus de deux portages sont ouverts. En CTF
 // il y a deux drapeaux : au-dela, la lecture se contredit, et on le publie.
-func countFlagOverlaps(raws []flagCarryRaw) int {
-	n := 0
+//
+// Rend DEUX comptes : sur tous les portages, puis sur les seuls FERMES. Le second est celui qui
+// juge — un depassement porte par des portages que rien ne ferme est explique par leur duree
+// (incertitude deja publiee en [FlagStateCarriedOpen]), la ou un depassement entre portages
+// FERMES serait une contradiction entre faits dates.
+func countFlagOverlaps(raws []flagCarryRaw) (all, closed int) {
 	for i := range raws {
-		open := 0
+		open, openClosed := 0, 0
 		for j := range raws {
-			if raws[j].t0 <= raws[i].t0 && raws[i].t0 < raws[j].t1 {
-				open++
+			if raws[j].t0 > raws[i].t0 || raws[i].t0 >= raws[j].t1 {
+				continue
+			}
+			open++
+			if raws[j].closed {
+				openClosed++
 			}
 		}
 		if open > 2 {
-			n++
+			all++
+		}
+		if openClosed > 2 && raws[i].closed {
+			closed++
 		}
 	}
-	return n
+	return all, closed
 }

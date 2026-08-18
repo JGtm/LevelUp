@@ -25,6 +25,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"levelup/go-api/internal/port"
 )
@@ -66,20 +67,21 @@ func (r *ReplayFactsRepo) FactsForMatch(ctx context.Context, matchID string) (po
 	return facts, nil
 }
 
-// registryFacts lit la ligne de registre : les scores des deux camps et le nom de variante.
+// registryFacts lit la ligne de registre : les scores des deux camps, le nom de variante et
+// l'asset UGC de la carte (la clé du catalogue d'objectifs, cf. port.MatchFacts.MapID).
 func (r *ReplayFactsRepo) registryFacts(ctx context.Context, matchID string) (port.MatchFacts, error) {
 	var s0, s1 sql.NullInt64
-	var variant sql.NullString
+	var variant, mapID sql.NullString
 	err := r.shared.QueryRowContext(ctx,
-		`SELECT team_0_score, team_1_score, game_variant_name FROM match_registry WHERE match_id = ?`,
-		matchID).Scan(&s0, &s1, &variant)
+		`SELECT team_0_score, team_1_score, game_variant_name, map_id FROM match_registry WHERE match_id = ?`,
+		matchID).Scan(&s0, &s1, &variant, &mapID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return port.MatchFacts{}, nil
 	}
 	if err != nil {
 		return port.MatchFacts{}, fmt.Errorf("faits de rejeu : lecture match_registry : %w", err)
 	}
-	out := port.MatchFacts{GameVariantName: variant.String}
+	out := port.MatchFacts{GameVariantName: variant.String, MapID: strings.TrimSpace(mapID.String)}
 	// LES DEUX SCORES OU AUCUN : un seul des deux ne permet aucune comparaison, et publier
 	// l'autre à zéro inventerait un score.
 	if s0.Valid && s1.Valid {
