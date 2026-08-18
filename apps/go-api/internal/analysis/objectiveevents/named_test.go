@@ -98,11 +98,11 @@ func checkAgainstOracle8(t *testing.T, film, objectiveType string) {
 		t.Skipf("film %s absent du cache (%s=%q)", film, filmCacheEnv, cacheRoot())
 	}
 	recs := StatRecords(src)
-	identity := slotIdentityFrom(recs, linesOf(film))
+	identity := SlotIdentityFrom(recs, linesOf(film))
 	if len(identity) != 8 {
 		t.Fatalf("%s : %d slots apparies, attendu 8", film, len(identity))
 	}
-	counts := CountsBySlot(namedEventsFrom(recs, objectiveType))
+	counts := CountsBySlot(NamedEventsFrom(recs, objectiveType))
 
 	byXUID := map[string]map[string]int{}
 	for _, p := range oracle8[film] {
@@ -210,7 +210,7 @@ func TestNamedEventsCrossCheck(t *testing.T) {
 func TestNamedEventsUnknownModeIsSilent(t *testing.T) {
 	recs := []StatRecord{{TimeMS: 1000, Slot: 10, Comps: map[int]StatValue{20: {A: 0, B: 3}}}}
 	for _, mode := range []string{ObjectiveTypeHill, ObjectiveTypeSkull, "", "slayer"} {
-		if got := namedEventsFrom(recs, mode); got != nil {
+		if got := NamedEventsFrom(recs, mode); got != nil {
 			t.Errorf("mode %q : %d evenements rendus, attendu aucun", mode, len(got))
 		}
 	}
@@ -227,7 +227,7 @@ func TestNamedEventsIgnoresNegativeValues(t *testing.T) {
 		{TimeMS: 2000, Slot: 10, Comps: map[int]StatValue{23: {A: -115}}},
 		{TimeMS: 3000, Slot: 10, Comps: map[int]StatValue{23: {A: 1}}},
 	}
-	got := namedEventsFrom(recs, ObjectiveTypeFlag)
+	got := NamedEventsFrom(recs, ObjectiveTypeFlag)
 	if len(got) != 1 {
 		t.Fatalf("%d evenements rendus, attendu 1 (la valeur negative est un parasite)", len(got))
 	}
@@ -244,7 +244,7 @@ func TestNamedEventsRedundantSlotsDoNotDoubleCount(t *testing.T) {
 		TimeMS: 1000, Slot: 10,
 		Comps: map[int]StatValue{2: {A: 3}, 12: {A: 3, B: 2}, 3: {A: 2}},
 	}}
-	counts := CountsBySlot(namedEventsFrom(recs, ObjectiveTypeZone))
+	counts := CountsBySlot(NamedEventsFrom(recs, ObjectiveTypeZone))
 	if got := counts[10][StatKills]; got != 3 {
 		t.Errorf("kills = %d, attendu 3 (comp 12 A redouble comp 2 A)", got)
 	}
@@ -261,7 +261,7 @@ func TestNamedEventsRepeatedValueIsNotAnEvent(t *testing.T) {
 		{TimeMS: 2000, Slot: 10, Comps: map[int]StatValue{20: {B: 1}}},
 		{TimeMS: 3000, Slot: 10, Comps: map[int]StatValue{20: {B: 2}}},
 	}
-	got := namedEventsFrom(recs, ObjectiveTypeZone)
+	got := NamedEventsFrom(recs, ObjectiveTypeZone)
 	if len(got) != 2 {
 		t.Fatalf("%d evenements rendus, attendu 2 (la reemission a valeur egale n'en est pas un)",
 			len(got))

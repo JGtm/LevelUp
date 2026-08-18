@@ -159,12 +159,17 @@ type NamedEvent struct {
 // emplacements de `hill` et `ball` n'ont pas encore ete nommes : le balayage est le meme,
 // c'est le corpus qui manque.
 func NamedEvents(src FilmSource, objectiveType string) []NamedEvent {
-	return namedEventsFrom(StatRecords(src), objectiveType)
+	return NamedEventsFrom(StatRecords(src), objectiveType)
 }
 
-// namedEventsFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce
+// NamedEventsFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce
 // qui le rend testable sans film.
-func namedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
+//
+// EXPORTE POUR LA PRODUCTION, et pas seulement pour les tests : le constructeur d'artefact
+// decode le film UNE fois (`StatRecordsCtx`) puis en tire la courbe de score, l'identite des
+// slots ET les evenements nommes. Passer par [NamedEvents] rejouerait le decodage complet a
+// chaque appel — trois fois le cout sur une machine qui paie deja le decodage des positions.
+func NamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
 	table, ok := namedStatSlots[objectiveType]
 	if !ok {
 		return nil
@@ -207,10 +212,24 @@ func sortNamedEvents(evs []NamedEvent) {
 // recompense ne recule jamais, donc la plus longue sous-suite NON DECROISSANTE est la vraie
 // suite. Non decroissante et non strictement croissante : un composant porte deux valeurs
 // et il est reemis des que l'UNE des deux bouge, donc la meme valeur revient legitimement.
+// # Les MANCHES, et pourquoi la suite est cumulee (2026-08-18)
+//
+// Un compteur repart de zero a chaque manche (`StatRecord.Round`). Concatener les manches sans
+// rien faire donnerait une suite qui RECULE, et le filtre de plus longue sous-suite n'en
+// garderait qu'une — c'est exactement ce que faisait la version d'avant, qui ne voyait de toute
+// facon que la manche 1. Chaque manche est donc filtree separement, puis DECALEE du total des
+// manches precedentes : la suite rendue est croissante sur tout le match et son dernier point
+// est le total du match. Mesure : les frags d'un Oddball passent de 48 a 87 sur 88 attendus.
 func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
-	raw := map[int][]ScorePoint{}
+	return cumulateRounds(rawSeriesByRound(recs, key, false), RealRounds(recs))
+}
+
+// rawSeriesByRound groupe les emissions par slot puis par manche, en jetant les ancrages
+// parasites. teams choisit les slots d'equipe plutot que ceux de joueur.
+func rawSeriesByRound(recs []StatRecord, key statSlotKey, teams bool) map[int]map[int][]ScorePoint {
+	raw := map[int]map[int][]ScorePoint{}
 	for _, r := range recs {
-		if IsTeamSlot(r.Slot) {
+		if IsTeamSlot(r.Slot) != teams {
 			continue
 		}
 		v, ok := r.Comps[key.Comp]
@@ -226,16 +245,52 @@ func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
 		// sinon elle fausse ce choix. Mesure : sur la suite (1, -115, 1), la plus longue
 		// sous-suite non decroissante retenue devenait (-115, 1), ce qui datait
 		// l'evenement de la DERNIERE emission au lieu de la premiere.
-		if val < 0 {
+		if val < 0 || (key.Comp == modeScoreComp && val > statMaxModeScore) {
 			continue
 		}
-		raw[r.Slot] = append(raw[r.Slot], ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
+		if raw[r.Slot] == nil {
+			raw[r.Slot] = map[int][]ScorePoint{}
+		}
+		raw[r.Slot][r.Round] = append(raw[r.Slot][r.Round],
+			ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 	}
+	return raw
+}
+
+// cumulateRounds filtre chaque manche par la plus longue sous-suite non decroissante, puis
+// decale les manches successives du total des precedentes. Les manches absentes de `real` sont
+// IGNOREES : ce sont des ancrages fortuits, et les cumuler ferait exploser les compteurs.
+func cumulateRounds(raw map[int]map[int][]ScorePoint, real map[int]bool) map[int][]ScorePoint {
 	out := make(map[int][]ScorePoint, len(raw))
-	for slot, pts := range raw {
-		sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
-		out[slot] = longestRun(pts, false)
+	for slot, byRound := range raw {
+		var offset int64
+		for _, round := range sortedRounds(byRound) {
+			if !real[round] {
+				continue
+			}
+			pts := byRound[round]
+			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+			kept := longestRun(pts, false)
+			if len(kept) == 0 {
+				continue
+			}
+			for _, p := range kept {
+				out[slot] = append(out[slot], ScorePoint{
+					TimeMS: p.TimeMS, Slot: slot, Value: p.Value + offset})
+			}
+			offset += kept[len(kept)-1].Value
+		}
 	}
+	return out
+}
+
+// sortedRounds rend les manches d'un slot, dans l'ordre — l'ordre du cumul en depend.
+func sortedRounds(byRound map[int][]ScorePoint) []int {
+	out := make([]int, 0, len(byRound))
+	for r := range byRound {
+		out = append(out, r)
+	}
+	sort.Ints(out)
 	return out
 }
 

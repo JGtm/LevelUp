@@ -54,12 +54,21 @@ type ObjectiveAction struct {
 // buildObjectiveActions pose les evenements identifies sur la grille de frames du rejeu, et
 // rend la couverture du calque.
 //
-// frameCount borne l'axe : un evenement posterieur a la derniere frame publiee est compte
-// hors fenetre plutot que rattache a une frame qui n'existe pas. C'est le cas reel des
-// actions de fin de partie, ou le film continue apres la derniere position rendue.
-func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, intervalMS, frameCount int) ([]ObjectiveAction, LayerCoverage) {
+// L'HORLOGE DEMANDE UNE SOUSTRACTION, ET C'EST TOUT — mais elle n'etait pas faite (report
+// `:123` du registre, corrige le 2026-08-18). Le TimeMS d'un evenement est date depuis le
+// PREMIER PAQUET DU FILM ; la grille de frames, elle, compte depuis le premier paquet de
+// POSITION. L'ecart entre les deux zeros est exactement `originMs`, et il vaut de 3,6 s a
+// 50,8 s selon le match. Sans le retrancher, les pulses d'action s'allumaient trop tard et se
+// posaient sur l'element le plus proche du joueur au MAUVAIS instant : l'appartenance stricte
+// mesuree passe de 9,9 % a 40,9 % quand la correction est appliquee.
+//
+// La fenetre borne l'axe des DEUX cotes : un evenement anterieur a la frame 0 (mise en place
+// du match) ou posterieur a la derniere frame publiee est compte hors fenetre plutot que
+// rattache a une frame qui n'existe pas. La correction RAMENE dans la fenetre les actions de
+// fin de match que l'ancien calcul rejetait (+11 sur 525 au corpus d'origine).
+func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, c scoreClock) ([]ObjectiveAction, LayerCoverage) {
 	cov := LayerCoverage{Available: len(evs)}
-	if intervalMS <= 0 || frameCount <= 0 {
+	if c.intervalMS <= 0 || c.frames <= 0 {
 		cov.OutOfWindow = len(evs)
 		return nil, cov
 	}
@@ -71,8 +80,8 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, intervalMS, fr
 			cov.NoSlot++
 			continue
 		}
-		t := e.TimeMS / intervalMS
-		if t < 0 || t >= frameCount {
+		t, ok := c.frameOf(e.TimeMS)
+		if !ok {
 			cov.OutOfWindow++
 			continue
 		}
@@ -115,4 +124,17 @@ func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track, cov Layer
 		out = append(out, a)
 	}
 	return out, cov
+}
+
+// attachObjectiveActions pose le calque des actions d'objectif sur le document et rend sa
+// couverture.
+//
+// LES ACTIONS ARRIVENT DEJA IDENTIFIEES PAR XUID : leur pont passe par les lignes de match, donc
+// par la base, que ce paquet n'ouvre pas (cf. Options.Objectives). L'horloge, elle, demande une
+// soustraction — celle de l'origine (cf. buildObjectiveActions et build_score.go).
+func attachObjectiveActions(doc *ReplayDocument, evs []objectiveevents.IdentifiedEvent, c scoreClock) LayerCoverage {
+	actions, cov := buildObjectiveActions(evs, c)
+	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, cov)
+	cov.warnIfLossy("objectifs")
+	return cov
 }

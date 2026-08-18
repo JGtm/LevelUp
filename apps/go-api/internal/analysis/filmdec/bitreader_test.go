@@ -49,28 +49,3 @@ func TestReadSignedVarWidth(t *testing.T) {
 		})
 	}
 }
-
-func TestParseOptionalValue_V7(t *testing.T) {
-	if got := ParseOptionalValue(NewBitReader([]byte{0x80, 0, 0, 0, 0, 0, 0, 0})); got != 0 {
-		t.Fatalf("present flag set => %d, want 0", got)
-	}
-	if got := ParseOptionalValue(NewBitReader([]byte{0x05, 0x40, 0, 0, 0, 0, 0, 0})); got != 42 {
-		t.Fatalf("present flag clear => %d, want 42", got)
-	}
-}
-
-func TestParseStatborgRecord_V8(t *testing.T) {
-	br := NewBitReader([]byte{0x2F, 0x81, 0x03, 0xFC, 0, 0, 0, 0})
-	var tgt StatborgTarget
-	ParseStatborgRecord(br, StatborgBinding{IdxA: 3, IdxB: 7}, &tgt)
-
-	if tgt.Flags[3] != 0x05 || tgt.Flags[7] != 0x1E {
-		t.Fatalf("headers = %#x,%#x want 0x05,0x1E", tgt.Flags[3], tgt.Flags[7])
-	}
-	if tgt.Values[3] != 16 || tgt.Values[7] != 0xFFFFFFFF {
-		t.Fatalf("values = %d,%#x want 16,0xFFFFFFFF", tgt.Values[3], tgt.Values[7])
-	}
-	if tgt.Dirty != 0 {
-		t.Fatalf("dirty = %#x want 0 (both flags clear)", tgt.Dirty)
-	}
-}

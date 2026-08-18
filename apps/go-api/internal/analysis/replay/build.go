@@ -97,6 +97,8 @@ type Options struct {
 	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
 	// Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
+	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
+	Score *ScoreInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -373,11 +375,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.Attached = len(doc.Grenades)
 	grenCov.warnIfLossy("grenades")
 
-	// Les actions d'objectif arrivent DÉJÀ identifiées par xuid : leur pont passe par les
-	// lignes de match, donc par la base, que ce paquet n'ouvre pas (cf. Options.Objectives).
-	objActions, objCov := buildObjectiveActions(opt.Objectives, interval, doc.FrameCount)
-	doc.Objectives, objCov = dropUnpublishedActions(objActions, doc.Tracks, objCov)
-	objCov.warnIfLossy("objectifs")
+	clock := replayScoreClock(&doc, interval, matchID)
+	objCov := attachObjectiveActions(&doc, opt.Objectives, clock)
+	scoreCov := attachScoreTimeline(&doc, opt.Score, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
 	// vie, fermes a la mort quand rien n'a mesure la fin (cf. equipment_episodes.go).
@@ -391,7 +391,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 			"lectures", camoNonBinary)
 	}
 
-	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own)
+	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil, scoreCov)
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)

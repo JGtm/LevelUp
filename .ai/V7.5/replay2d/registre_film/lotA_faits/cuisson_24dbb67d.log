@@ -1,0 +1,17 @@
+2026/08/18 03:03:56 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\24dbb67d.json match=24dbb67d-a7d8-4359-b319-bdf13959178d joueurs=8 variante=Ranked:Oddball
+2026/08/18 03:03:57 INFO replaybuild: actions d'objectif identifiees match_id=24dbb67d-a7d8-4359-b319-bdf13959178d famille=skull nommees=0 identifiees=0 slotsApparies=0
+2026/08/18 03:03:57 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+2026/08/18 03:04:28 INFO capacites : lectures d i48 recordsDelta=163012 masqueAvecI48=13 lues=13 illisibles=0 sansIdentite=5
+2026/08/18 03:04:34 INFO camouflage : lectures d i28 queue[1] recordsDelta=163012 masqueAvecI28=1038 lues=1038 illisibles=0 sansVoie=463
+2026/08/18 03:04:41 INFO grappin : lectures d i59 tag==3 recordsDelta=163012 masqueAvecI59=935 lues=926 illisibles=9 tag3=19 corpsCasses=2
+2026/08/18 03:04:52 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=13 ancres=3738 acceptes=290 confirmes=111 poses=111
+2026/08/18 03:04:59 INFO armes au sol : balayage ti=42 slots=559 ancres=7051 acceptees=269 imagesCles=27 viesRecensees=112 pistesDelta=248
+2026/08/18 03:05:59 INFO pont slot->joueur slots=90 viesNommees=87 viesTotal=105 lecturesIndex=27 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 03:05:59 INFO rejeu : courbe de score match_id=24dbb67d-a7d8-4359-b319-bdf13959178d identiteEquipes=a manches=2 modePorte=true equipes=2 joueurs=0 points=642
+2026/08/18 03:05:59 INFO rejeu : tractions de grappin tirs=9 accroches=8 tractions=8 vies=4 rates=1 corpsCasses=0
+2026/08/18 03:05:59 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=111 nommees=109 autres=2 avecPoseur=111 avecCap=100 deployees=10 lachees=101 origineInconnue=0
+2026/08/18 03:05:59 INFO rejeu : socles d'arme au sol balaye=true ancres=7051 acceptees=269 retenues=136 ecartees=133 lachees=105 apparues=31 auRepos=29 grappes=5 socles=5 occupations=29 datees=13 sansPassage=11 jamaisVidees=5 cyclesEtablis=1
+2026/08/18 03:05:59 INFO rejeu : episodes d'equipement actif viesPubliees=97 viesCamo=4 episodesCamo=7 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 03:05:59 INFO rejeu : palette de capacites palette="non classee" lectures=8 rangsNommes=0
+2026/08/18 03:05:59 INFO rejeu : couverture par calque tirsRattaches=844 tirsDisponibles=926 tirsSansSlot=75 tirsAmbigus=7 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=137 grenadesDisponibles=137 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/18 03:05:59 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\24dbb67d.json tracks=97 module=sgh_blueprint bytes=1516263 match=24dbb67d-a7d8-4359-b319-bdf13959178d title=halo_infinite
