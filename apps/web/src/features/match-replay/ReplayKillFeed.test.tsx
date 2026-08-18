@@ -399,7 +399,15 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
     )
   }
 
-  it('marque le tueur AMI et la victime MOI, sur la même ligne', () => {
+  /**
+   * C1 (2026-08-18) — LE GLYPHE « JOUEUR ACTIF » SORT DU FIL, LA COULEUR LE REMPLACE.
+   *
+   * « Il y a un symbole rond dans un cercle affiché, je sais pas ce que c'est » : c'était ce
+   * glyphe. Le fil ne le porte plus ; la marque « ami », elle, reste (elle distingue des gens
+   * dont rien d'autre ne dit qu'on les connaît). Les deux joueurs marqués — moi ET mes amis —
+   * écrivent désormais leur nom au token `success`, jamais à la couleur d'équipe.
+   */
+  it('le glyphe MOI a disparu du fil, celui d’AMI reste', () => {
     renderMarked(
       [kill({ tMs: 1_000, xuid: 'foe', victimXuid: 'me', victimGamertag: 'JGtm' })],
       new Map([
@@ -408,7 +416,38 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
       ]),
     )
     expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
-    expect(screen.getByRole('img', { name: 'Moi' })).toBeTruthy()
+    expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
+    // L'information ne disparaît pas pour autant : elle reste lisible d'un lecteur d'écran.
+    expect(screen.getByText('(Moi)')).toBeTruthy()
+  })
+
+  it('le joueur actif ET ses amis écrivent leur nom au token success', () => {
+    const { container } = renderMarked(
+      [kill({ tMs: 1_000, xuid: 'foe', victimXuid: 'me', victimGamertag: 'JGtm' })],
+      new Map([
+        ['foe', 'friend'],
+        ['me', 'me'],
+      ]),
+    )
+    // Le nom du joueur de la page porte en plus son libellé `sr-only` : on compare le début.
+    const noms = [...container.querySelectorAll('li span')].filter((e) =>
+      ['Cobra01', 'JGtm'].some((n) => (e.textContent ?? '').startsWith(n)),
+    )
+    expect(noms).toHaveLength(2)
+    for (const n of noms) {
+      expect((n as HTMLElement).style.color).toBe('var(--ac-success)')
+    }
+  })
+
+  it('un joueur SANS marque garde la couleur de son équipe', () => {
+    const { container } = renderMarked(
+      [kill({ tMs: 1_000, xuid: 'foe', victimXuid: 'me', victimGamertag: 'JGtm' })],
+      new Map(),
+    )
+    const nom = [...container.querySelectorAll('li span')].find(
+      (e) => e.textContent === 'Cobra01',
+    ) as HTMLElement
+    expect(nom.style.color).not.toBe('var(--ac-success)')
   })
 
   it('ne marque personne quand aucune marque n’est fournie', () => {
@@ -450,6 +489,39 @@ describe('ReplayKillFeed — hauteur de colonne (mise en page du 2026-08-16)', (
  * tiennent la règle sur les trois formes de ligne du fil, et ils la tiennent par la STRUCTURE
  * (aucun bloc empilé dans le `li`, aucune rangée qui se replie) plutôt que par une capture.
  */
+/**
+ * C1 (régression du 2026-08-18) — LE FIL DÉFILE, ET SES LIGNES GARDENT LEUR HAUTEUR.
+ *
+ * « Le fil des morts ne défile plus : tout est compacté en fin de match, illisible. » La cause
+ * est le `overflow-hidden` posé par V5 sur chaque rangée : dans une colonne flex, un élément
+ * dont le débordement n'est plus `visible` voit sa TAILLE MINIMALE AUTOMATIQUE tomber à zéro
+ * (CSS Flexbox §4.5). Les rangées se sont donc écrasées jusqu'à tenir toutes dans la hauteur
+ * disponible, plus rien n'a débordé, et `overflow-y-auto` n'a plus rien eu à faire défiler.
+ *
+ * CE TEST ÉPINGLE LA RÈGLE, PAS UNE CAPTURE : `shrink-0` sur la rangée (elle ne se tasse pas)
+ * ET `overflow-y-auto` sur la liste (elle défile). La preuve de layout, elle, se mesure dans
+ * un vrai navigateur — jsdom ne calcule aucune hauteur.
+ */
+describe('ReplayKillFeed — le fil DÉFILE (régression C1, 2026-08-18)', () => {
+  it('chaque rangée refuse de se tasser, et la liste défile', () => {
+    const many = Array.from({ length: 40 }, (_, i) =>
+      kill({ tMs: 1_000 + i * 100, xuid: 'me', victimXuid: 'foe', victimGamertag: 'Cobra01' }),
+    )
+    const { container } = renderFeed(many, 60_000, 0)
+    const list = container.querySelector('ul') as HTMLElement
+    expect(list.className).toContain('overflow-y-auto')
+    const rows = [...container.querySelectorAll('li')]
+    expect(rows.length).toBe(40)
+    for (const row of rows) {
+      // Sans `shrink-0`, les 40 rangées se partagent la hauteur et se rognent elles-mêmes.
+      expect(row.className, 'une rangée du fil doit refuser de se tasser').toContain('shrink-0')
+      // Et la règle « une ligne » de V5 ne bouge pas.
+      expect(row.className).toContain('flex-nowrap')
+      expect(row.className).toContain('overflow-hidden')
+    }
+  })
+})
+
 describe('ReplayKillFeed — tout sur UNE ligne (V5, 2026-08-18)', () => {
   /** Les classes de mise en page d'un `li` : c'est là que vit la règle « une ligne ». */
   const rowClass = (container: HTMLElement) =>
