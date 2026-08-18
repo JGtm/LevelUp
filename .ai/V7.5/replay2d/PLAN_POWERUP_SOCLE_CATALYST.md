@@ -150,24 +150,29 @@ records NEW aux respawns). Le verdict le dira.
 - `[~]` 2.4 Reapparitions : vies successives au meme point (<= 1 m) ; ecarts, stabilite.
 - `[x]` 2.5 Gate : `go vet` + `go test ./internal/analysis/...` + instrument joue sur 4 films.
 
-### Phase 3 — Images-cles, creations, identite (H1 / H4) et verdict `[ ]`
+### Phase 3 — Images-cles, creations, identite (H1 / H4) et verdict `[x]`
 
-- `[ ]` 3.0 CONTROLE de la phase 1 (ajoute en cours d'execution, item declare) : rejouer la
+- `[x]` 3.0 CONTROLE de la phase 1 (ajoute en cours d'execution, item declare) : rejouer la
   remontee sur d'AUTRES vies aux MEMES instants. Le centre d'une arene est un goulot ; sans ce
   temoin, un croisement au centre pourrait n'etre qu'un artefact de frequentation.
-- `[ ]` 3.1 Recensement `WalkKeyframeWorld` : par image-cle et par ti, nombre de slots ; les
+- `[x]` 3.1 Recensement `WalkKeyframeWorld` : par image-cle et par ti, nombre de slots ; les
   slots presents DES LA PREMIERE image-cle et a TOUTES ; ceux qui n'ont AUCUNE position delta
   (population « invisible », la forme meme de H1) — par archetype, avec denominateurs.
-- `[ ]` 3.2 Creations dans la boite : `ScanFilmEquipmentCreationsForBand` (ti=37) et
-  `...GroundWeaponCreationsForBand` (ti=42), largeurs MPP CALIBREES par film (jamais les
-  defauts), sans l'oracle de vie delta. Identite `MPPVal[MPPWord32]` -> famille du manifeste
-  (`replay_labels.toml`, `powerup_overshield` `0xb781197a`, `powerup_camo` `0xe7be9f5c`).
-- `[ ]` 3.3 Temoin fantome sur 3.2, meme code, meme cardinalite.
-- `[ ]` 3.4 Croisement des 4 films : un identifiant present sur les 4 ? un identifiant qui
+- `[x]` 3.2 Creations dans la boite : `ScanFilmEquipmentCreations` (ti=37), largeurs MPP
+  CALIBREES par film (jamais les defauts), sans l'oracle de vie delta. Identite
+  `MPPVal[MPPWord32]` -> famille du manifeste (`replay_labels.toml`, `powerup_overshield`
+  `0xb781197a`, `powerup_camo` `0xe7be9f5c`).
+  **Le volet `ti=42` est `[~]`** : ce chemin est DEJA en production
+  (`ScanFilmGroundWeaponCreations` -> `weaponPads`, 10 socles publies sur Catalyst, aucun
+  power-up parmi eux), et son mot d'identite se resout dans le catalogue d'ARMES (`weap`),
+  pas dans le catalogue `eqip` ou vivent les familles `powerup_*`. Le rejouer ici n'aurait
+  rien pu rendre de plus.
+- `[x]` 3.3 Temoin fantome sur 3.2, meme code, meme cardinalite.
+- `[x]` 3.4 Croisement des 4 films : un identifiant present sur les 4 ? un identifiant qui
   CHANGE entre CTF et KOTH (signal du sous-mode) ?
-- `[ ]` 3.5 Verdict : hypothese retenue (ou negatif ecrit avec ses chiffres) ; ce que cela
+- `[x]` 3.5 Verdict : hypothese retenue (ou negatif ecrit avec ses chiffres) ; ce que cela
   implique pour la chaine des socles — UNE phase de production A PROPOSER, pas a faire.
-- `[ ]` 3.6 Gate : `go vet` + `go test ./internal/analysis/...` + golangci 0.
+- `[x]` 3.6 Gate : `go vet` + `go test ./internal/analysis/...` + golangci 0.
 
 ## 5. Ce que ce lot ne fait PAS
 
@@ -296,6 +301,135 @@ des quatre films, ni a `ti=37` ni ailleurs. Le temoin `ti=41` se comporte comme 
 portee : voir Decouverte n°3 — les bandes de slots delta se recouvrent, donc ce balayage
 mesure une PRESENCE, jamais une attribution d'archetype.
 
+### Phase 3
+
+**3.0 — CONTROLE de la phase 1 : le croisement n'est PAS un artefact de goulot.**
+Instrument : `powerup_socle_temoin_test.go`. Memes instants `T0`, meme remontee, meme code,
+mais D'AUTRES vies (les slots 513, 518, 557, 612, choisis comme le plus petit slot vivant a
+chaque instant et different des porteurs) :
+
+| | rayon minimal | k | centroide |
+|---|---|---|---|
+| REEL (les 4 porteurs) | **0,256 m** | 15 | (0,393 ; -0,012) |
+| TEMOIN (4 autres vies) | **14,242 m** | 4 | (0,208 ; -4,655) |
+
+**Facteur temoin/reel = 55,6**, pour un seuil ecrit avant mesure de 3. Quatre joueurs
+quelconques aux memes instants ne se croisent nulle part ; ces quatre-la si. La position du
+socle tient.
+
+**3.2 / 3.3 — LE BALAYAGE DES CREATIONS SANS L'ORACLE DE VIE DELTA. LE SOCLE EST TROUVE.**
+Instrument : `powerup_socle_creations_test.go`. Les quatre films calibrent `9/5`.
+
+| film | vies | ancres | acceptees | **confirmees** (production) | **retenues par identite** (brut) | ecartees | **power-ups** | temoin fantome |
+|---|---|---|---|---|---|---|---|---|
+| `64e8adfa` CTF | 483 | 13 162 | 495 | 229 | 326 | 169 | **0** | 350 acceptees / 55 retenues -> **5,9** |
+| `530820e5` CTF | 265 | 4 832 | 253 | 156 | 197 | 56 | **0** | 150 / **0** -> infini |
+| `01e1f945` KOTH | 300 | 5 492 | 283 | 151 | 206 | 77 | **10** | 182 / **0** -> infini |
+| `75f1188f` KOTH | 191 | 3 713 | 202 | 101 | 153 | 49 | **8** | 117 / **0** -> infini |
+
+> **`01e1f945` : NEUF creations de `powerup_overshield` (`0xb781197a`) a la position EXACTE
+> (0,257 ; -0,003 ; 21,36)** — soit **0,19 m en 3D** du socle que la phase 1 avait localise par
+> le croisement des trajectoires des porteurs, sans lire un bit de record de creation.
+> La dixieme est a (0,239 ; 6,802 ; 26,89) : c'est le surbouclier LACHE, deja publie par
+> l'artefact.
+>
+> **`75f1188f` : SEPT creations au MEME point, au centimetre pres** (la huitieme a
+> (3,698 ; 0,122 ; 21,98), un lacher). Le socle appartient a la CARTE, exactement comme les dix
+> socles d'arme de Catalyst.
+
+Instants (horloge du film, secondes) et intervalles entre creations du SOCLE :
+
+```
+01e1f945  11,6 · 123,7 · 154,0 · 243,8 · 274,2 · 364,0 · 394,3 · 484,1 · 514,4
+          ecarts : 112,1 · 30,3 · 89,8 · 30,4 · 89,8 · 30,3 · 89,8 · 30,3
+75f1188f   4,4 · 116,6 · 146,9 · 236,7 · 267,0 · 356,8 · 387,1
+          ecarts : 112,2 · 30,3 · 89,8 · 30,3 · 89,8 · 30,3
+```
+
+Le MEME motif sur les deux films : un premier ecart de ~112,1 s, puis l'alternance
+**30,3 s / 89,8 s**, de periode **120,1 s**. Le 30,3 s tombe exactement sur le pic de 30,5 s
+deja mesure sur les socles d'ARME (registre, phase 2 du plan des armes au sol). Ce que le
+motif SIGNIFIE (deux entites par cycle au meme point) demande la phase de ramassage : hors
+perimetre de ce lot, note en Decouvertes.
+
+**Les deux films CTF ne portent AUCUN power-up**, ni au socle ni ailleurs. Le sous-mode decide
+donc de l'armement du socle — ce que disait le temoignage utilisateur.
+
+**Reserve honnete sur le temoin fantome** : le seuil ecrit avant mesure (facteur >= 10) est
+ATTEINT sur trois films (la bande fantome ne retient RIEN) et **NON atteint sur `64e8adfa`
+(5,9)**. Cela interdirait d'affirmer un POSITIF sur ce film-la ; le resultat y est un NEGATIF,
+qu'un filtre trop permissif ne peut que rendre plus difficile a obtenir, jamais plus facile.
+Les deux positifs (`01e1f945`, `75f1188f`) viennent de films ou le fantome retient zero.
+
+**3.1 — LE RECENSEMENT DES IMAGES-CLES : H1 REFUTEE.** Instrument :
+`powerup_socle_keyframes_test.go`. Lecture : `slots recenses | des la 1re image-cle | a TOUTES
+| SANS aucune position delta | a trou interieur`.
+
+| film | images-cles | ti=37 | ti=38 | ti=41 (temoin) | ti=42 |
+|---|---|---|---|---|---|
+| `64e8adfa` | 43 (0 -> 840,3 s) | 311 \| **0** \| **0** \| 223 \| 0 | 86 \| 0 \| 0 \| 79 \| 0 | 9 \| 0 \| 0 \| **0** \| 0 | 309 \| 0 \| 0 \| 66 \| 1 |
+| `530820e5` | 25 (0 -> 480,1 s) | 187 \| **0** \| **0** \| 135 \| 0 | 41 \| 0 \| 0 \| 41 \| 0 | 23 \| 0 \| 0 \| **0** \| 0 | 203 \| 0 \| 0 \| 39 \| 0 |
+| `01e1f945` | 28 (0 -> 540,1 s) | 225 \| **0** \| **0** \| 164 \| 0 | 36 \| 0 \| 0 \| 36 \| 0 | 13 \| 0 \| 0 \| **0** \| 0 | 227 \| 0 \| 0 \| 35 \| 0 |
+| `75f1188f` | 22 (0 -> 420,1 s) | 170 \| **0** \| **0** \| 132 \| 0 | 36 \| 0 \| 0 \| 36 \| 0 | 9 \| 0 \| 0 \| **0** \| 0 | 170 \| 0 \| 0 \| 32 \| 0 |
+
+**ZERO slot recense a la premiere image-cle, pour TOUS les archetypes et TOUS les films.**
+Aucun objet du monde n'est dans l'etat initial : **H1 est REFUTEE**, et H2 avec elle (les
+archetypes 36, 39 et 40 n'ont AUCUN slot sur les quatre films).
+
+La population « invisible » est en revanche massive et attendue : 132 a 223 slots `ti=37` sur
+170 a 311 n'emettent JAMAIS de position delta (72 % en moyenne), et 100 % des `ti=38`. Le
+temoin `ti=41` en compte **zero** — un projectile bouge toujours, et c'est ce qui valide le
+compteur.
+
+**Item 3.1 « trou interieur » : `[~]` couvert par 3.2.** Le critere cherchait un slot qui
+disparait et revient. La mesure 3.2 montre que le socle prend un **slot NEUF a chaque
+reapparition** (1452, 1625, 1701, 1955, 2011, 2274, 2332, 2511, 2563 sur `01e1f945`) : la
+notion de trou ne s'applique pas. Un seul trou interieur a ete vu sur tout le corpus
+(`64e8adfa`, `ti=42`, slot 1611, retour a 720 s) — sans rapport.
+
+**3.5 — VERDICT**
+
+> **H4 CONFIRMEE, H1 / H2 / H3 REFUTEES.** Le power-up du socle central de Catalyst EXISTE
+> dans le film, il est de l'archetype `ti=37`, son identite `eqip` est **`0xb781197a` =
+> `powerup_overshield`**, il est cree par un record NEW **A CHAQUE REAPPARITION** (jamais dans
+> l'etat initial), a la position **(0,257 ; -0,003 ; 21,36)**, identique au centimetre entre
+> les deux films KOTH.
+>
+> **Pourquoi la production ne le voit pas** : `confirmPlacements` exige que la position de
+> creation retombe sur le premier point d'une vie DELTA. Le socle ne bouge jamais, n'a aucune
+> vie delta, et se fait ecarter par cet oracle — sur 9 creations, ZERO publiee.
+
+Les deux mesures qui se croisent sont INDEPENDANTES et ne partagent aucun code :
+la phase 1 lit des positions de BIPEDE dans l'artefact cuit et n'ouvre aucun film ; la
+phase 3.2 lit des records de CREATION d'objet dans les paquets delta du film et ignore tout
+des joueurs. **Elles tombent a 0,19 m l'une de l'autre.**
+
+**Gate (3.6)** : `go vet` 0 · `go test ./internal/analysis/...` 0 ·
+`golangci-lint run ./internal/analysis/replay/...` 0 issues.
+
+## 8. Ce que cela implique pour la chaine des socles — UNE PHASE A PROPOSER, PAS A FAIRE
+
+La correction est petite et son perimetre est net : dans `filmdec/equipment_placements.go`,
+l'oracle de vie delta (`MatchEquipmentLife`) est le SEUL filtre de selectivite de la chaine
+`ti=37`. Il faut lui adjoindre — jamais le remplacer — la voie que la chaine `ti=42` emploie
+deja : **retenir aussi les creations SANS vie delta dont l'identite se resout dans le
+manifeste**, et les publier avec une origine dediee (`spawned`, aux cotes de `deployed` /
+`dropped` / `unknown`).
+
+Trois garde-fous que la mesure impose a cette phase :
+
+1. **Le filtre d'identite ne suffit pas partout.** Le temoin fantome rend 5,9 sur `64e8adfa` :
+   la publication doit exiger la GRAPPE (>= 2 creations au meme point, `gwPadRadiusM`), qui
+   est ce qui a fait la preuve ici (9 creations au meme centimetre).
+2. **`t1` n'existe pas pour un objet sans vie delta.** La pose se publierait avec `t0` seul,
+   et le rendu devrait borner par le recensement des images-cles — exactement ce que
+   `weaponPads` fait deja (`PadPresence`).
+3. **La ligne R2-P du registre se resout d'elle-meme** : `powerup_overshield` et
+   `powerup_camo` figurent dans `POWER_PAD_KEYS` sans membre mesure. Ce lot fournit le
+   membre.
+
+Aucune de ces trois choses n'est faite ici : le lot est une MESURE.
+
 ## 7. Decouvertes (a ne PAS traiter dans ce lot)
 
 1. **`64e8adfa` : `bounds` de l'artefact hors carte.** Le milieu des bornes publiees vaut
@@ -306,7 +440,17 @@ mesure une PRESENCE, jamais une attribution d'archetype.
    `EquipmentPlacementStats.Calibration` dit « Bits == 0 : le film n'a pas tranche » ;
    `MPPCalibration` ne porte AUCUN champ `Bits` (le test juste est `Widths.Valid()`).
    Constate, NON traite.
-3. **Le chemin DELTA n'attribue aucun archetype, et la mesure le rejoue.** Sur `530820e5`,
+3. **Deux creations par cycle au MEME point, et personne ne sait pourquoi.** Le socle de
+   Catalyst rend l'alternance 30,3 s / 89,8 s (periode 120,1 s) sur les deux films KOTH, avec
+   des SLOTS DIFFERENTS a chaque fois — donc deux entites distinctes par cycle, pas une
+   retransmission. Lecture possible (non mesuree) : le power-up est ramasse peu apres son
+   apparition et le socle le remet 30,3 s plus tard. Trancher demande la phase de ramassage
+   (`gwPickupHit`), hors perimetre.
+4. **`ti=37` porte i30 `equipment-has-infinite-uses-component`**, que le registre documente
+   « socle de carte contre equipement de joueur ». Aucun lecteur ne le lit. C'est le canal
+   qui distinguerait nativement un objet de SOCLE d'un objet POSE par un joueur, sans passer
+   par la proximite d'un poseur. Non instrumente dans ce lot.
+5. **Le chemin DELTA n'attribue aucun archetype, et la mesure le rejoue.** Sur `530820e5`,
    `ti=37`, `ti=38` et `ti=42` rendent la MEME plus courte distance au socle (0,91 m) et les
    MEMES slots (1931, 1933, 2288, 2300) : les bandes de slots se recouvrent, et un record
    delta ne DIT pas son archetype. Ce n'est pas une decouverte nouvelle (c'est la cause (2)
