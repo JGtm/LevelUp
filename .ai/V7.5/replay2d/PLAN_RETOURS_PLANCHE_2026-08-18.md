@@ -33,30 +33,70 @@ rond (W1).
 
 ## Lots
 
-### R2-V — visuels canvas (worktree `wt/r2-visuels`)
-- [ ] V1 (A1) traînee en OPTION (bascule tiroir, persistee) ; marqueur du joueur ACTIF distinct
-      (contour double + halo, token) — proposition planche puis production.
-- [ ] V2 (A8) heatmap : accentuer (echelle p50->p95 -> p40->p95 ou opacite max 0,55 -> 0,75, MESURER la
-      lisibilite sur `000d5950`) ; bascule « toute la partie » (heatmap statique de tout le match, un
-      bouton) en plus du mode progressif.
-- [ ] V3 (W1) mur sans cap : cap = direction de la TRAJECTOIRE du poseur (derniere direction de
-      deplacement > 0,5 m avant la pose) ; sinon direction de visee `h` de la derniere image ; JAMAIS
-      rond ; couleur : proposition `legendary` vs `warning` sur la planche.
-- [ ] V4 (D3) melee fatale : effet visuel special court (a proposer sur la planche : eclat en croix au
-      point d'impact, 400 ms) — le son est court et discret.
-- [ ] V5 (C1) fil des morts : tout sur UNE ligne (assistance comprise, aucun retour a la ligne) ;
-      INVESTIGUER le symbole rond dans un cercle a 1:06 sur `000d5950` pour JGtm (medaille ? sprite
-      killfeed non nomme ?) — lire l'artefact et le sprite, repondre avec la piece.
-- [ ] V6 (B2) reapparition : proposer sur la planche une variante COMPACTE (sans supprimer la validee).
-- [ ] V7 (A4) Dynamo : proposer sur la planche 2 variantes inspirees de la reference utilisateur
-      (champ electrique : anneau + arcs brises pulsants) — la reference est un GIF externe, non
-      embarque ; l'utilisateur tranche.
-- [ ] V8 (W3) `repair_field` = croix de pharmacie qui pulse dans son cercle ; `translocator_beacon` =
-      la BALISE du translocateur quantique (pas le ping) — le dire dans le tiroir/infobulle ; « ecran de
-      dissimulation » : la famille N'EXISTE PAS dans le manifeste (`replay_labels.toml`) — mesurer si un
-      identifiant `other` du corpus lui correspond (nommage `sofd -> sofa`), sinon `[!]` corpus ; visuel
-      propose sur la planche si la famille apparait : bulle opaque au token `muted` avec bord flou.
-Gate V : typecheck/lint/vitest verts ; planche mise a jour avec les propositions ; aucune couleur en dur.
+### R2-V — visuels canvas (worktree `wt/r2-visuels`) — CLOS le 2026-08-18
+- [x] V1 (A1) trainee en OPTION (bascule tiroir « Trainee », cle `replay-show-trail`, defaut ALLUME) ;
+      joueur de la page distinct par la FORME d'abord — DOUBLE contour + halo, encre au token
+      `success` (le vert demande) qui vient EN PLUS, le noyau gardant la couleur d'equipe.
+      Commit `4a98073a2`. Proposition planche `R2-1` : forme seule / `success` / `info` / avant.
+      Extractions rendues necessaires par les deux cliquets de taille : `useReplayInks.ts`,
+      `replayAimCone.ts`, `replayProjectiles.ts`, `i18nContract.ts` (ReplayCanvas 861 -> 824,
+      replayMarkers 589 -> 470, i18n 505 -> 317).
+- [x] V2 (A8) MESURE PUBLIEE + bascule de portee. Commit `d8afc10ed`.
+      **La premisse etait fausse et la mesure le dit** : la carte du 16/08 etait DEJA celle de tout
+      le match (`accumulatePresence` sans borne, calque cuit une fois). Il n'existait aucun mode
+      « au fur et a mesure ». Ce lot AJOUTE la portee `live` (bornee a l'image courante, recuisson
+      toutes les 2 s de match, 6-20 ms mesurees) et la bascule a deux valeurs ; `match` reste le
+      defaut. Accentuation = proposition planche `R2-2`, chiffree sur `000d5950` (11 016 cellules
+      peintes sur 15 232) : aujourd'hui 50,0 % au plancher et 14,6 % a alpha >= 0,30 ; p40->p95
+      +1,4 pt ; alpha max 0,75 +7,1 pt ; les deux +11,0 pt. **Le plafond d'opacite fait cinq fois
+      plus que le quantile** — l'utilisateur tranche.
+- [x] V3 (W1) chaine de cap a trois sources. Commit `65b020804`. Mesure corpus (32 films, 62
+      panneaux) : cap de la pose 54/62 (87,1 %), trajectoire (dernier deplacement >= 0,5 m) 8/62
+      (12,9 %, TOUS resolus, deplacement max 0,50-0,74 m), visee de la derniere image 0/62 mais
+      disponible 8/8. Un cap DEDUIT se trace en pointille. Proposition planche `R2-5` :
+      `legendary` vs `warning` vs couleur d'equipe.
+- [~] V4 (D3) melee fatale : PROPOSITION SEULE sur la planche (`R2-3`, eclat en croix 400 ms, deux
+      tailles 14 px / 20 px). Aucune production : le plan la classait « a proposer », et une valeur
+      d'ecran n'entre pas en production sans verdict (decision 2).
+- [x] V5 (C1) fil des morts sur UNE ligne. Commit `7a48bba78` : les trois formes de ligne (kill,
+      mort neutre, medaille seule) partagent `FEED_ROW` (`flex-nowrap` + `overflow-hidden`) ;
+      medailles et assistance sont rentrees dans la rangee, plus aucun bloc `pl-7`.
+      **Enquete 1:06 RESOLUE, avec la piece** : c'est une ligne de MEDAILLE SEULE. `highlight_events`
+      du match `000d5950-83d9-423f-ab55-d068a7237b9f` porte `medal` a `time_ms = 70542` pour
+      `xuid 2533274823110022` (JGtm), `medal_name = "Odin's Raven"` ; aucun kill de JGtm a moins de
+      500 ms (`MEDAL_ATTACH_MS`), d'ou sa propre ligne. Horloge : `replayMs = 70542 + t0Ms - originMs`
+      = 70542 + 0 - 3604 = 66 938 ms -> `formatClock` 1:06. Calibration verifiee : la mort de JGtm
+      a `time_ms = 62936` tombe sur la fin de sa vie slot 522 (frame 593 = 59 300 ms), residu 32 ms.
+      Le « symbole rond dans un cercle » : le BADGE de la medaille,
+      `static/medals/halo_infinite/87172902.png` (disque vert sombre, corbeau blanc, couronne
+      bronze) rendu a 15 px (`MEDAL_PX`) — a cette taille il ne reste que le disque dans son anneau.
+      La ligne porte AUSSI le glyphe « moi » (`PlayerMark.tsx`, `<circle r=4.2 fill=none stroke>` +
+      `<circle r=2>`), lui aussi un rond dans un cercle. **Ce n'est PAS un sprite killfeed** : le fil
+      n'en emploie que deux (`killfeed-62` assistance, pictogrammes de type de mort), et aucun ne
+      figure sur une ligne de medaille seule.
+- [~] V6 (B2) reapparition compacte : PROPOSITION SEULE sur la planche (`R2-7`) — la validee reste
+      au-dessus, la compacte garde le compte a rebours, remplace les deux jauges par une barre qui
+      se vide et fait respirer un lisere gauche. Sans production, conformement au plan.
+- [~] V7 (A4) Dynamo : DEUX propositions sur la planche (`R2-4`) — variante 1 anneau net qui pulse
+      + arcs brises repartant du centre ; variante 2 nappe diffuse sans anneau, arcs qui rebondissent
+      sur une bordure invisible. Teinte `electric` inchangee, duree 2,5 s inchangee. La reference de
+      l'utilisateur est un GIF externe, non embarquable — l'utilisateur tranche.
+- [x] V8 (W3) `repair_field` porte une CROIX DE PHARMACIE qui respire dans son cercle
+      (`repairCrossAlpha`, periode 1,8 s, alpha 0,55-0,95, immobile sous mouvement reduit) ; la zone
+      et son anneau pointille ne bougent PAS — la respiration ne chiffre aucune cadence. Libelle
+      `translocator_beacon` explicite : « Balise du translocateur quantique » / « Quantum translocator
+      beacon », et le tiroir dit que c'est le POINT DE RETOUR, pas le « ping ». Commit `527495a32`.
+- [!] V8 (suite) « ecran de dissimulation » : **famille ABSENTE du manifeste**, a mesurer cote
+      donnees. `config/titles/halo_infinite/mappings/replay_labels.toml` ne nomme que 15 familles et
+      aucune ne correspond (ni « ecran », ni « dissimulation », ni « camo screen »). Le seul
+      identifiant que le corpus laisse sans nom est `0x4396db42` : 94 poses, 7 films, 24 deployees —
+      rien ne l'y rattache aujourd'hui. Visuel PROPOSE sur la planche (`R2-6`, bulle opaque a l'encre
+      `muted`, bord flou sur 22 % du rayon), non branche. **Reprise : nommer `0x4396db42` par la
+      chaine `sofd -> sofa` AVANT de brancher quoi que ce soit.**
+Gate V : typecheck OK, lint OK, vitest OK (voir journal) ; planche re-bundlee depuis
+`LevelUp-wt-r2-visuels` et augmentee de 7 items `proposition R2` (34 items, fumee 0 erreur en clair
+comme en sombre) ; aucune couleur en dur cote `features/` (les hex de la planche sont des
+transcriptions de `globals.css`, hors depot).
 
 ### R2-S — sons (worktree `wt/r2-sons`)
 - [ ] S1 (D4/D5) egalisation LUFS de TOUS les sons (decision 3), avant/apres publie.
@@ -116,3 +156,18 @@ Gate P : gates web verts ; planche : items P sur `01e1f945`.
 
 - 2026-08-18 — plan ecrit ; fusion tierce `wt/registre-film` POSEE (`104f468c6`, schema 13, contrat 34) ;
   lots R2-V, R2-S, R2-P LANCES (worktrees freres `wt/r2-visuels`, `wt/r2-sons`, `wt/r2-socles`, base `104f468c6`).
+- 2026-08-18 — **lot R2-V CLOS** (branche `wt/r2-visuels`, base `3907eb505`). Cinq commits de
+  production, un par item livre : V1 `4a98073a2`, V2 `d8afc10ed`, V3 `65b020804`, V5 `7a48bba78`,
+  V8 `527495a32`. V4, V6, V7 restent des PROPOSITIONS (decision 2 : rien n'entre en production
+  sans verdict). Planche re-bundlee depuis le worktree frere et augmentee de sept items
+  `proposition R2` (`R2-1` joueur actif, `R2-2` accentuation de la chaleur, `R2-3` melee fatale,
+  `R2-4` Dynamo, `R2-5` couleur du mur, `R2-6` ecran de dissimulation, `R2-7` reapparition
+  compacte) : 34 items, fumee `smoke.cjs` 0 erreur en clair comme en sombre.
+  DECOUVERTES : (a) la carte de chaleur etait DEJA celle de tout le match — il n'y avait pas de
+  mode progressif a completer, il fallait le creer ; (b) le mur sans cap est resolu 8/8 par la
+  trajectoire, le cercle pointille tombe donc a 0/62 a l'ecran ; (c) le symbole de 1:06 est le
+  badge de la medaille « Odin's Raven » rendu a 15 px, pas un sprite killfeed.
+  DETTE TRAITEE EN PASSANT (condition des cliquets, pas un fix opportuniste) : quatre extractions
+  — `useReplayInks.ts`, `replayAimCone.ts`, `replayProjectiles.ts`, `i18nContract.ts`.
+  RESTE : `0x4396db42` (94 poses, 7 films) a nommer cote donnees avant tout branchement d'un
+  « ecran de dissimulation ».
