@@ -13,6 +13,7 @@ import { drawMuzzleFlash } from './muzzleFlash'
 import type { ShotFxEntry } from './shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
+import { drawMeleeStar, meleeStarProgress } from './meleeStar'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
@@ -187,6 +188,13 @@ export interface EventWindow {
   frame: number
   /** Nombre de frames pendant lesquelles l'événement reste visible après son instant. */
   hold: number
+  /**
+   * Durée RÉELLE d'une frame, en ms. Les effets dont la mise en scène a sa propre horloge —
+   * aujourd'hui l'étoile de mêlée, 400 ms — la lisent ici : une durée écrite en frames
+   * changerait de sens le jour où la cadence d'échantillonnage change (même règle que la fin
+   * de vol des grenades, qui porte déjà ce champ).
+   */
+  frameMs: number
 }
 
 /**
@@ -245,6 +253,8 @@ export interface KillFxStyle {
   colorOfSlot: (slot: number) => string | null
   fallback: string
   reducedMotion: boolean
+  /** Densité du canevas : l'étoile de mêlée est déclarée en pixels d'ÉCRAN. */
+  k: number
 }
 
 /**
@@ -255,6 +265,12 @@ export interface KillFxStyle {
  * L'extrémité est RÉELLE (`target`) : c'est la seule différence de nature avec les tirs,
  * dont la longueur n'est qu'une trace. La COULEUR est celle du tueur — la famille d'arme
  * se lit dans la FORME (arbitrage du lot 3.2, conservé).
+ *
+ * LA MÊLÉE FATALE FAIT EXCEPTION depuis le 2026-08-18 (D3/R2-3) : elle ne trace ni arc ni
+ * marqueur, elle pose une ÉTOILE au lieu de la mort (meleeStar.ts). Le corps à corps est
+ * justement le cas où l'axe n'existe presque jamais — tueur et victime tombent sous le seuil
+ * de 1,5 px ci-dessous — et où le rendu générique se réduisait donc à un anneau pointillé,
+ * indiscernable d'une mort dont on ignore tout.
  */
 export function drawKillFxLayer(
   ctx: CanvasRenderingContext2D,
@@ -269,6 +285,17 @@ export function drawKillFxLayer(
     const fade = 1 - age / (win.hold + 1)
     const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
     const color = (e.slot !== null ? style.colorOfSlot(e.slot) : null) ?? style.fallback
+    if (e.fam === 'melee') {
+      // AU LIEU DE LA MORT : la victime quand elle est relue, l'origine sinon (elle vaut
+      // alors la position du tueur, à un pas de corps près — c'est un corps à corps).
+      const mort =
+        e.deathX !== null && e.deathY !== null
+          ? worldToCanvas({ x: e.deathX, y: e.deathY }, view.bounds, view.width, view.height, view.pad)
+          : c
+      const p = meleeStarProgress(age * win.frameMs, style.reducedMotion)
+      if (p !== null) drawMeleeStar(ctx, mort, p, style.k, color)
+      continue
+    }
     let angle: number | null = null
     let length = 0
     if (e.vx !== null && e.vy !== null) {

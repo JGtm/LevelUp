@@ -232,6 +232,12 @@ export interface PlacementScene {
 export interface PlacementInk {
   /** Couleur de la vie qui a posé l'objet ; null = vie inconnue, on tombe sur `neutral`. */
   colorOfSlot: (slot: number) => string | null
+  /**
+   * Encre FIXE de l'arc du mur (token `warning`, verdict R2-5 du 2026-08-18). Elle ne passe
+   * PAS par `inkOf` : le mur est le seul objet posé dont la couleur dit ce qu'il EST plutôt
+   * que qui l'a posé — l'utilisateur a explicitement accepté de perdre le camp sur celui-là.
+   */
+  wall: string
   /** Encre neutre du thème (`--muted-foreground`), servie aux poses sans poseur. */
   neutral: string
 }
@@ -339,7 +345,7 @@ function drawPlacement(
   const { p, kind } = target
   const color = inkOf(p, ink)
   if (kind === 'wall') {
-    drawWall(ctx, { p, heading: wallHeading(p, target.lives) }, view, time, color)
+    drawWall(ctx, { p, heading: wallHeading(p, target.lives) }, view, time, ink.wall)
     return
   }
   if (kind === 'sensor') {
