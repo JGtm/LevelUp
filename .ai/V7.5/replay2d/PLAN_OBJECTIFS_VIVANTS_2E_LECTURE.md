@@ -173,17 +173,35 @@ TENUE : contrat, OpenAPI, `generated.ts`, frontiere de nullabilite et goldens so
 
 **Gate 2** : couverture >= 80 % sur >= 2 films ; sinon `[!]` avec la mesure.
 
-### Phase 3 — RENDU (worktree frere web `../LevelUp-wt-objvivants`, branche `wt/objvivants`)
+### Phase 3 — RENDU (worktree frere web `../LevelUp-wt-drapeau-rendu`, branche `wt/drapeau-rendu`)
 
-- [ ] 3.1 `objectivesLayer.ts` : icone DRAPEAU (CTF seulement, le crane est `[!]`) collee au marqueur du porteur (sprite existant
-      si le dictionnaire en a un, sinon glyphe SVG neutre), objet `dropped` a sa position avec
-      respiration, socle `home` present/absent ; collines : active en surbrillance, inactives
-      estompees ; les pulses substituts RETIRES (0 code mort) ; tokens (`color-tokens`), FR+EN.
-- [ ] 3.2 Tests (formes, etats, aucune couleur en dur, parite i18n) ; typecheck/lint/vitest apres
-      purge `node_modules/.tmp` ; note pour la planche (temoins : `64e8adfa`, `01e1f945`).
+> **PERIMETRE RESTREINT AU DRAPEAU (brief du 2026-08-18)** : la colline de la phase 2 n'est pas
+> publiee (phase 2 non faite) et ne se dessine donc pas ; le crane est `[!]` depuis la phase 0.
+> La clause « collines : active en surbrillance, inactives estompees » de l'item 3.1 est SANS
+> OBJET dans ce lot et attend la phase 2. A ne pas confondre avec `zoneStates` (schema 16, lot
+> C-bis d'un AUTRE chantier) : celui-la teinte les zones, il est deja en place, ce lot ne l'a
+> pas touche.
+
+- [x] 3.1 Icone DRAPEAU (CTF seulement) collee au marqueur du porteur, objet `dropped` a sa
+      position avec respiration, socle `home` present/absent ; les pulses substituts du drapeau
+      RETIRES ; tokens (`color-tokens`), FR+EN. **FAIT** dans un module DEDIE
+      (`flagCarriesLayer.ts` + `useReplayFlagCarries.ts` + `ReplayFlagTip.tsx`) et non dans
+      `objectivesLayer.ts` : meme frontiere que `zoneStatesLayer.ts` (la geometrie se cuit une
+      fois hors ecran, l'etat se peint a chaque image), et le fichier statique serait passe le
+      seuil du depot. Trois arbitrages que le plan ne posait pas, tous mesures — detail au
+      journal ci-dessous. Collines : SANS OBJET (cf. encadre).
+- [x] 3.2 Tests (formes, etats, aucune couleur en dur, parite i18n) ; typecheck/lint/vitest
+      apres purge `node_modules/.tmp` ; primitives comptees sur les quatre temoins. **FAIT** —
+      39 tests neufs, gates et mesures au journal.
 - [ ] 3.3 Fusion `--no-ff` par le superviseur, gates rejoues, journal, registre.
 
 **Gate 3** : gates web verts ; gate VISUEL utilisateur (planche + en app).
+
+**Gate 3 (volet TECHNIQUE) : TENU.** `tsc -b --force` = 0, `eslint .` = 0 erreur (20
+avertissements, tous PREEXISTANTS — les deux que ce lot avait introduits sont corriges, pas
+allowlistes), `vitest run src/features/match-replay src/lib` = 0 (147 fichiers, 1 819 tests).
+Cliquet `ReplayCanvas.tsx` : 812 lignes, INCHANGE. **Le volet VISUEL reste ouvert** : il
+appartient a l'utilisateur (planche + en app), items G1/G2/G3.
 
 ## Regles dures
 
@@ -580,3 +598,99 @@ balayage du marqueur ne tourne que sur les films CTF), plus ce versement. Aucun 
   Gate 1.3 TENU (38/40 = 95,0 % sur les FERMES). Reserve publiee : la simultaneite > 2 de
   `64e8adfa` oppose des portages FERMES, ce que l arbitrage n avait pas prevu — comptee sous
   `closedOverlaps`, condition de reprise (un canal qui date le lacher) au registre.
+
+### 2026-08-18 — PHASE 3, ITEMS 3.1 ET 3.2 : LE DRAPEAU SE VOIT (worktree `LevelUp-wt-drapeau-rendu`, branche `wt/drapeau-rendu`)
+
+Base `f41fd362c`, fusion de `feat/v75` (`ec21b398f`) en entree de lot. Perimetre : le DRAPEAU
+seul (colline non publiee, crane `[!]`).
+
+**TROIS ARBITRAGES QUE LE PLAN NE POSAIT PAS, ET CE QUI LES A TRANCHES.**
+
+1. **Le calque vit A COTE de `objectivesLayer.ts`, pas dedans.** Le plan ecrivait « 3.1
+   `objectivesLayer.ts` : icone DRAPEAU… ». La fusion tierce du lot C-bis (schema 16) a
+   entre-temps pose la MEME frontiere pour l'etat des zones (`zoneStatesLayer.ts`) et l'a
+   documentee : la geometrie ne depend ni de l'image ni de la lecture, se cuit une fois hors
+   ecran et se recopie ; l'etat change a chaque image et se peint dans la boucle. Suivre le
+   plan a la lettre aurait mis les deux dans un fichier qui passait deja le seuil du depot, et
+   aurait casse la symetrie que le lot precedent venait d'etablir.
+
+2. **Pas de vignette du jeu : le glyphe est TRACE.** Le plan laissait le choix (« sprite
+   existant si le dictionnaire en a un, sinon glyphe SVG neutre »). Mesure : l'atlas
+   `static/weapons-assets/halo_infinite/jeu/index.json` PORTE bien un drapeau
+   (`contour-26.png`, `nom_jeu: "flag"`, tags `0000398f` / `2a392328`) — mais le pont du web
+   vers ces vignettes est `weaponLabels[id].img`, keye sur l'espace des tags `weap`, et
+   `weaponLabels` ne nomme AUCUN drapeau sur les trois temoins CTF (verifie sur les artefacts
+   cuits). C'est coherent avec la phase 0 (item 0.3 : le marqueur de portage n'est pas un
+   `weap`, 0 suffixe d'identifiant sur 83 occurrences). Ecrire le chemin `contour-26.png` a la
+   main marcherait aujourd'hui et se tromperait d'arme a la prochaine regeneration de l'atlas,
+   SILENCIEUSEMENT — et coderait `halo_infinite` en dur cote web. Glyphe canvas (hampe +
+   fanion), garde-rail qui interdit tout chemin d'asset dans les quatre fichiers du lot.
+   **DECOUVERTE A GARDER** : la vignette EXISTE ; l'exploiter demande un pont NOMME de l'index
+   d'atlas vers une cle semantique, qui n'existe pas — hors perimetre.
+
+3. **L'ancre de la base vient des spans `home`, pas de `mapObjectives`.** Le brief disait « le
+   marqueur statique `flag_spawn` de l'equipe porte un etat present / absent ». Or (a)
+   `mapObjectives` N'EST PAS dans l'artefact cuit — il est reconstruit A CHAQUE REQUETE par le
+   service (verifie : `'mapObjectives' in doc` = faux sur les quatre temoins) ; (b) le plan a
+   deja mesure deux pieges sur cette jointure (TROIS `flag_spawn` par carte de CTF dont un
+   NEUTRE au centre ; deux catalogues qui ne nomment pas les modules pareil) ; (c) les spans
+   `home` portent EXACTEMENT la position du socle, constante sur tout le film. L'ancre interne
+   ne peut pas se tromper de drapeau. **RESERVE ECRITE** : le losange statique du socle reste
+   peint dessous a pleine opacite — il est cuit hors ecran et ne peut pas etre attenue a
+   l'image. « Absent » se lit donc au glyphe creux pose par-dessus, pas a l'extinction du
+   losange. C'est une question de gate visuel.
+
+**CE QUI EST RETIRE, ET CE QUI RESTE.** `buildObjectivePulses` ecarte desormais les actions
+`flag_*` des que `doc.flagCarries` n'est pas vide (`flagPulsesRetired`). Le substitut posait
+l'action sur l'element statique le plus proche de son AUTEUR — un socle voisin, jamais le
+drapeau ; avec l'objet publie les deux se contrediraient. **Rien n'est supprime** : les
+familles ZONE et CRANE n'ont aucun objet vivant et gardent leur role entier, la fonction reste
+appelee (regle 0 code mort : il n'y a pas de mort a enterrer ici). Le retrait suit la DONNEE,
+pas la bascule d'affichage : eteindre le calque demande moins de choses a l'ecran, pas le
+retour d'une approximation. A noter, mesure au passage et deja au registre du plan :
+`doc.objectives` vaut **0 action sur les quatre temoins** — le substitut ne dessinait donc
+plus rien en production depuis un moment.
+
+**PRIMITIVES COMPTEES SUR LES TEMOINS CUITS** (schema 15, instrument temporaire retire) :
+
+| temoin | drapeaux | intervalles | images avec etat | 1 image (milieu) | film entier |
+|---|---|---|---|---|---|
+| `64e8adfa` | 2 (eq. 1/0) | 160 (9 `home`, 78 `carried`, 73 `dropped`) | **8 337 / 8 337** | 4 glyphes (8 chemins, 2 remplissages) | 56 620 chemins |
+| `530820e5` | 2 (eq. 1/0) | 67 (10, 30, 27) | **4 751 / 4 751** | 2 glyphes | 25 546 |
+| `53ce4390` | 2 (eq. 0/1) | 67 (10, 29, 28) | **7 507 / 7 507** | 2 glyphes | 41 550 |
+| `000d5950` (hors CTF) | **0** | **0** | **0 / 4 985** | **0** | **0** |
+
+Deux faits a retenir. La **couverture est TOTALE** sur les trois films de capture : pas une
+image ou un drapeau soit sans etat connu — le calque ne se tait jamais au milieu d'un match.
+Et **`carried_open` vaut ZERO sur les quatre temoins** : les trois films ferment tous leurs
+portages (`open: 0` dans la couverture). L'etat est implemente, teste et documente, mais LE
+CORPUS CUIT NE L'EXERCE PAS — ce qu'on en verra au gate visuel vient de la planche, pas d'un
+temoin. A dire avant le gate.
+
+**LA PLANCHE.** Bundle reconstruit depuis CE worktree, sortie DEDIEE
+(`fxbundle/replayfx.drapeau.iife.js`, 246 ko contre 233 pour R3 — le scratchpad est partage,
+ecrire sur le bundle d'un autre lot detruirait son travail) ; `add_drapeau_items.cjs`
+idempotent, ancres precises, **ajout seul**. Trois items dans la section « carte », a la suite
+de A8 : **G1** les quatre etats (apercu canvas, code de PRODUCTION, avec le marqueur du
+porteur a cote pour juger le « colle »), **G2** la base presente / absente, **G3** ce que le
+calque NE DIT PAS. Fumee : **38 -> 41 items**, **60 -> 66 canvas** (+4 G1, +2 G2), **0 erreur**
+en theme clair ET sombre, `window.ReplayFx.drawFlagCarries` bien present, libelles d'etat lus
+dans `REPLAY_TEXT` de production.
+
+**LES GATES** (codes de retour au journal du lot, apres purge `node_modules/.tmp`) :
+`tsc -b --force` = 0 ; `eslint .` = 0 erreur / 20 avertissements TOUS PREEXISTANTS — les deux
+que ce lot avait introduits (`react-hooks/refs`, une reference ecrite pendant le rendu) ont ete
+CORRIGES en supprimant la reference devenue inutile, pas allowlistes ; `vitest run
+src/features/match-replay src/lib` = 0 (147 fichiers, 1 819 tests). Cliquet
+`ReplayCanvas.tsx` : **812 lignes, inchange** — l'addition est payee par l'EXTRACTION des trois
+infobulles de survol (`ReplayCanvasTips`), troisieme copie du meme bloc conditionnel, ce que la
+regle 6 de CLAUDE.md demande justement de centraliser.
+
+**MISE EN GARDE REPRODUITE** : la suite `match-replay` + `lib` lancee d'un bloc sur une machine
+chargee rend 16 fichiers en echec, TOUS des garde-rails de `src/lib` qui balaient l'arborescence
+et expirent au delai par defaut de 5 000 ms (aucune assertion en defaut, zero echec dans
+`match-replay`). Machine libre, la meme commande passe. C'est la mise en garde du journal du
+2026-08-18 (item 1.3), verifiee une seconde fois.
+
+Commits : `7bc7a26ee` (calque, hook, infobulle, extraction, bascule, i18n, retrait des pulses),
+`ae5489d9c` (39 tests), plus ce versement. Aucun push.
