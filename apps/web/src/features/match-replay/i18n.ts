@@ -116,6 +116,17 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       presence: 'Temps passé par les joueurs, lu dans les trajectoires du film.',
       kills: "Morts comptées à l'endroit où la victime est tombée, pas d'où le tir partait.",
     },
+    heatmapSpanTitle: 'Sur quelle durée',
+    heatmapSpan: {
+      match: 'Toute la partie',
+      live: "Jusqu'à l'image courante",
+    },
+    heatmapSpanHint: {
+      match:
+        "Le match entier, d'un bout à l'autre, quelle que soit l'image affichée : les zones chaudes se lisent d'un coup d'œil, comme une analyse d'après-match.",
+      live:
+        "Seulement ce qui a été joué jusqu'ici : la carte se remplit au fil de la lecture, et revenir en arrière la ramène à ce qu'elle était. Recalculée toutes les deux secondes de match.",
+    },
     heatLegendLow: 'rare',
     heatLegendHigh: 'fréquent',
     heatLegendHint:
@@ -268,6 +279,17 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatmapModeHint: {
       presence: 'Time spent by players, read from the film trails.',
       kills: 'Deaths counted where the victim fell, not where the shot came from.',
+    },
+    heatmapSpanTitle: 'Over what period',
+    heatmapSpan: {
+      match: 'Whole match',
+      live: 'Up to the current frame',
+    },
+    heatmapSpanHint: {
+      match:
+        'The entire match, end to end, whatever frame is showing: hot zones read at a glance, like a post-match analysis.',
+      live:
+        'Only what has been played so far: the map fills in as the replay runs, and stepping back returns it to what it was. Recomputed every two seconds of match time.',
     },
     heatLegendLow: 'rare',
     heatLegendHigh: 'frequent',

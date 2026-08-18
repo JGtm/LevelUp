@@ -208,7 +208,7 @@ export function ReplayCanvas({
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
     showTrail, toggleTrail,
-    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode,
+    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
     showUnnamedPlacements, toggleUnnamedPlacements,
@@ -347,7 +347,12 @@ export function ReplayCanvas({
   )
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
-  const heat = useReplayHeatmap(doc, bounds, killFx, { show: showHeatmap, mode: heatmapMode })
+  const heat = useReplayHeatmap(doc, bounds, killFx, {
+    show: showHeatmap,
+    mode: heatmapMode,
+    span: heatmapSpan,
+    frameRef,
+  })
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
   const restWindow = useMemo(
@@ -805,6 +810,8 @@ export function ReplayCanvas({
               onToggle: toggleHeatmap,
               mode: heat.mode,
               onSetMode: setHeatmapMode,
+              span: heatmapSpan,
+              onSetSpan: setHeatmapSpan,
               killsAvailable: heat.killsAvailable,
             }}
             showShotFx={showShotFx}

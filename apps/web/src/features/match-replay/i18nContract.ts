@@ -135,6 +135,14 @@ export interface ReplayText {
   heatmapReading: string
   heatmapMode: Record<'presence' | 'kills', string>
   heatmapModeHint: Record<'presence' | 'kills', string>
+  /**
+   * PORTÉE DE TEMPS de la carte de chaleur (V2, 2026-08-18) : toute la partie — la lecture
+   * d'analyse d'après-match, et le défaut — ou jusqu'à l'image courante, la carte qui se
+   * remplit en même temps que le rejeu.
+   */
+  heatmapSpanTitle: string
+  heatmapSpan: Record<'match' | 'live', string>
+  heatmapSpanHint: Record<'match' | 'live', string>
   /** Extrémités de la légende : elles nomment la QUANTITÉ, le titre dit de quoi il s'agit. */
   heatLegendLow: string
   heatLegendHigh: string

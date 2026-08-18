@@ -20,11 +20,11 @@ import { useEffect, useRef, type RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
 
-import type { HeatmapMode } from './heatmapLayer'
+import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { SOUND_CATEGORIES } from './replaySound'
-import { HEATMAP_MODES, SPEED_MULTIPLIERS } from './useReplaySettings'
+import { HEATMAP_MODES, HEATMAP_SPANS, SPEED_MULTIPLIERS } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
 
 /** Ce que le tiroir sait de la carte de chaleur : son état, et ce qu'elle peut mesurer. */
@@ -33,6 +33,9 @@ export interface ReplayHeatmapControls {
   onToggle: () => void
   mode: HeatmapMode
   onSetMode: (mode: HeatmapMode) => void
+  /** La PORTÉE DE TEMPS (V2, 2026-08-18) : toute la partie, ou jusqu'à l'image courante. */
+  span: HeatmapSpan
+  onSetSpan: (span: HeatmapSpan) => void
   /** Faux quand aucune mort du match n'a pu être localisée : la lecture « éliminations »
    *  ne commande alors rien et n'est pas proposée (même règle que le bouton Zones). */
   killsAvailable: boolean
@@ -306,6 +309,23 @@ function HeatmapSection({
                 pressed={heatmap.mode === m}
                 onToggle={() => heatmap.onSetMode(m)}
                 hint={t.heatmapModeHint[m]}
+              />
+            ))}
+          </>
+        )}
+        {/* LA PORTÉE est un second choix, distinct de la lecture : « ce qu'on mesure » et
+            « sur quelle durée » sont deux questions, et les mettre en une seule liste ferait
+            croire à quatre calques là où il y a deux axes. */}
+        {heatmap.show && (
+          <>
+            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapSpanTitle}</p>
+            {HEATMAP_SPANS.map((s) => (
+              <SettingsToggle
+                key={s}
+                label={t.heatmapSpan[s]}
+                pressed={heatmap.span === s}
+                onToggle={() => heatmap.onSetSpan(s)}
+                hint={t.heatmapSpanHint[s]}
               />
             ))}
           </>
