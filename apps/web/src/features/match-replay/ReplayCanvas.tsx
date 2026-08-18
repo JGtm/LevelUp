@@ -263,8 +263,8 @@ export function ReplayCanvas({
     () => buildObjectivePulses(doc, mapObjectives),
     [doc, mapObjectives],
   )
-  // L'ÉTAT VIVANT DES ZONES (schéma 16), les encres d'objectif et la garde de jointure du catalogue (cf. useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge, doc.coverage?.zones?.catalog)
+  // L'ÉTAT VIVANT DES ZONES (schémas 16-17) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge, doc)
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
@@ -514,8 +514,8 @@ export function ReplayCanvas({
         },
       )
     }
-    // L'ÉTAT DES ZONES à l'image courante (schéma 16) : teinte du camp qui la tient,
-    // surbrillance de la colline ACTIVE, arc de progression de la jauge. Il se peint dans la
+    // L'ÉTAT DES ZONES à l'image courante (schémas 16-17) : teinte du camp qui la tient,
+    // surbrillance de la colline ACTIVE, arc de la JAUGE EN DIRECT. Il se peint dans la
     // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque lui-même
     // refuse de peindre si le catalogue de l'artefact ne joint pas la liste servie.
     if (doc.zoneStates.length > 0) drawZoneStates(ctx, zones, doc.zoneStates, view, frame)

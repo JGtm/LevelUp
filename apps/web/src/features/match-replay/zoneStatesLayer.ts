@@ -1,5 +1,6 @@
 /**
- * zoneStatesLayer.ts — L'ÉTAT VIVANT DES ZONES (schéma 16) : qui tient quoi à l'image courante.
+ * zoneStatesLayer.ts — L'ÉTAT VIVANT DES ZONES (schémas 16-17) : qui tient quoi à l'image
+ * courante, et la JAUGE DE CAPTURE qui se remplit sous les yeux.
  *
  * POURQUOI IL VIT À CÔTÉ DU CALQUE STATIQUE, ET PAS DEDANS. `objectivesLayer.ts` porte la
  * GÉOMÉTRIE des objectifs du mode : elle ne dépend ni de l'image ni de la lecture, se cuit une
@@ -9,9 +10,16 @@
  * seconde copie de la géométrie.
  *
  * CE QUE LE CALQUE MONTRE : la zone TEINTÉE de l'encre du camp qui la tient, la colline ACTIVE
- * en surbrillance, et un arc de progression quand la jauge a été mesurée. Une zone sans état à
- * cette frame n'est PAS repeinte : elle garde le trait faible du calque statique, et paraît
- * estompée sous celles qui sont tenues.
+ * en surbrillance, et L'ARC DE LA JAUGE EN DIRECT (schéma 17) : la VALEUR de la jauge à l'image,
+ * lue dans la série `gauge` de la zone en escalier — dernière valeur connue, tenue au plus une
+ * seconde. Une zone sans état à cette frame n'est PAS repeinte : elle garde le trait faible du
+ * calque statique, et paraît estompée sous celles qui sont tenues.
+ *
+ * CE QUE LE CALQUE NE MONTRE PLUS (2026-08-18, lot C-ter volet 3) : le sommet `progress` de
+ * l'intervalle. Le schéma 16 le traçait en arc, une valeur tenue pendant toute la durée de la
+ * propriété — souvent 1,0, des minutes durant — et il se lisait comme « capture en cours »
+ * alors qu'il n'en était que le maximum atteint. Sur un artefact qui ne porte pas `gauge`
+ * (schéma <= 16), il n'y a donc PLUS D'ARC DU TOUT : mieux vaut rien qu'un signe qui ment.
  *
  * AUCUN TEXTE, comme le calque statique : la lettre A/B/C affichée en jeu n'existe dans aucune
  * donnée décodée, et le garde-fou du dossier l'interdit.
@@ -23,18 +31,31 @@ import {
 } from './objectivesLayer'
 import { canvasScale, worldToCanvas, type XY } from './replayLogic'
 
+import type { ReplayGaugePoint } from '@/lib/api/types'
 import type { ReplayZoneStateReady } from './replayNormalize'
+
+/**
+ * ZONE_GAUGE_HOLD_MS — combien de temps la dernière valeur de la jauge reste affichée sans point
+ * plus récent, en TEMPS RÉEL (converti en frames par `useZoneStates`, une fois par document).
+ *
+ * C'EST LA MÊME SECONDE QUE CELLE DU PRODUCTEUR : la série est allégée à un point par variation
+ * >= 0,02 OU par seconde de rampe (`zone_states_gauge.go`). Pendant une rampe, deux points
+ * publiés ne sont donc jamais séparés de plus d'une seconde — l'escalier tient. Une seconde
+ * après le DERNIER point d'une rampe, plus rien ne suit : l'arc s'efface. C'est ainsi que le
+ * client sait qu'une rampe est finie sans qu'on le lui écrive.
+ */
+export const ZONE_GAUGE_HOLD_MS = 1_000
+
 /**
  * ZoneStateNow — ce qu'une zone montre à une frame donnée.
  *
  * `owner` vaut `null` quand PERSONNE ne la tient : c'est une mesure (la valeur neutre du canal
- * de propriété), pas une absence de donnée — d'où le champ, plutôt qu'un état omis.
+ * de propriété), pas une absence de donnée — d'où le champ, plutôt qu'un état omis. Le sommet
+ * `progress` de l'intervalle n'y figure plus : le rendu ne le lit plus (cf. l'en-tête).
  */
 export interface ZoneStateNow {
   owner: number | null
   active: boolean
-  /** Sommet de la jauge atteint pendant l'intervalle, dans [0, 1] ; `null` = zone non contestée. */
-  progress: number | null
 }
 
 /**
@@ -42,22 +63,56 @@ export interface ZoneStateNow {
  * intervalle ne la couvre — avant la première émission du film, la zone n'a pas d'état CONNU,
  * et la dessiner « neutre » affirmerait quelque chose que l'artefact ne dit pas.
  *
- * FONCTION PURE, testée à part : c'est elle que le rendu appelle à chaque image, et c'est elle
- * que l'onglet des objectifs vivants réutilisera.
+ * FONCTION PURE, testée à part : c'est elle que le rendu appelle à chaque image.
  */
 export function zoneStateAt(
   states: readonly ReplayZoneStateReady[],
   zoneRef: number,
   frame: number,
 ): ZoneStateNow | null {
-  for (const st of states) {
-    if (st.zoneRef !== zoneRef) continue
-    for (const sp of st.spans) {
-      if (frame < sp.t0 || frame > sp.t1) continue
-      return { owner: sp.owner ?? null, active: sp.active, progress: sp.progress ?? null }
-    }
+  const st = states.find((s) => s.zoneRef === zoneRef)
+  return st ? spanStateAt(st.spans, frame) : null
+}
+
+/** spanStateAt rend l'intervalle qui couvre la frame (bornes INCLUSES), ou `null`. */
+function spanStateAt(spans: ReplayZoneStateReady['spans'], frame: number): ZoneStateNow | null {
+  for (const sp of spans) {
+    if (frame < sp.t0 || frame > sp.t1) continue
+    return { owner: sp.owner ?? null, active: sp.active }
   }
   return null
+}
+
+/**
+ * zoneGaugeAt rend la VALEUR de la jauge à la frame demandée, lue EN ESCALIER dans la série
+ * publiée : la dernière valeur dont l'instant est <= frame. Rend `null` AVANT le premier point,
+ * et dès que le dernier point connu date de plus de `holdFrames` (une seconde : la borne que le
+ * producteur garantit entre deux points d'une même rampe — au-delà, la rampe est finie).
+ *
+ * FONCTION PURE, SANS INTERPOLATION LINÉAIRE : entre deux points la vraie jauge a bougé, mais
+ * de moins de 0,02 ou pendant moins d'une seconde — inventer une pente lisserait ce que le
+ * producteur a volontairement quantifié.
+ */
+export function zoneGaugeAt(
+  gauge: readonly ReplayGaugePoint[],
+  frame: number,
+  holdFrames: number,
+): number | null {
+  let lo = 0
+  let hi = gauge.length - 1
+  let idx = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (gauge[mid].t <= frame) {
+      idx = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  if (idx < 0) return null
+  const p = gauge[idx]
+  return frame - p.t > holdFrames ? null : p.v
 }
 
 /**
@@ -99,13 +154,24 @@ export function zoneCatalogMatches(catalog: number | null | undefined, served: n
 export interface ZoneStateStyle {
   /** Encre d'un camp ; `null` = camp inconnu (aucune ligne « moi ») — le liseré reste neutre. */
   colorOfOwner: (team: number) => string | null
-  /** Encre neutre : zone que personne ne tient, et arc de progression sans propriétaire. */
+  /**
+   * Encre du camp QUI CAPTURE une zone tenue par `owner` : le camp d'en face. `null` = camp
+   * inconnu (aucune ligne « moi ») — l'arc reste neutre.
+   *
+   * POURQUOI C'EST UNE DÉDUCTION ET PAS UNE INVENTION. Le film ne dit pas qui pousse la jauge
+   * (les slots de rampe ne portent aucun propriétaire — mesure du lot C-bis) ; mais dans un mode
+   * à zones à DEUX camps, une zone TENUE ne se capture que par l'adversaire : le sien n'a rien à
+   * y capturer. Une zone que PERSONNE ne tient, elle, se prend par n'importe qui — l'arc y reste
+   * neutre, comme sur une colline de KOTH dont le propriétaire n'est jamais publié.
+   */
+  colorOfCapturer: (owner: number) => string | null
+  /** Encre neutre : zone que personne ne tient, et arc de jauge sans camp connu. */
   neutral: string
 }
 
 /**
  * ZoneStatesLayerInput — ce que le calque vivant reçoit de l'appelant (`useZoneStates`) : les
- * zones dans l'ordre servi, le verdict de jointure, les encres résolues.
+ * zones dans l'ordre servi, le verdict de jointure, les encres résolues, la tenue de la jauge.
  */
 export interface ZoneStatesLayerInput {
   /** Les zones SURFACIQUES dans l'ordre servi : celui que `zoneStates[].zoneRef` indexe. */
@@ -117,6 +183,8 @@ export interface ZoneStatesLayerInput {
    */
   joinable: boolean
   style: ZoneStateStyle
+  /** ZONE_GAUGE_HOLD_MS converti en frames pour ce document (cf. zoneGaugeAt). */
+  gaugeHoldFrames: number
 }
 
 // Réglages du calque vivant. Plus francs que le calque statique (qui reste dessous) : c'est le
@@ -127,17 +195,23 @@ const ZONE_HELD_STROKE_ALPHA = 0.95
 const ZONE_HELD_STROKE_WIDTH = 2.5
 const ZONE_ACTIVE_FILL_ALPHA = 0.3
 const ZONE_ACTIVE_STROKE_WIDTH = 3.5
-const ZONE_PROGRESS_ALPHA = 0.9
-const ZONE_PROGRESS_WIDTH = 3
-const ZONE_PROGRESS_MIN_RADIUS = 10
+const ZONE_GAUGE_ALPHA = 0.9
+const ZONE_GAUGE_WIDTH = 3
+const ZONE_GAUGE_MIN_RADIUS = 10
 
 /**
  * drawZoneStates peint, PAR-DESSUS le calque statique, ce que le film dit de chaque zone à
- * l'image courante : teinte du propriétaire, surbrillance de la zone ACTIVE, arc de progression.
+ * l'image courante : teinte du propriétaire, surbrillance de la zone ACTIVE, et l'arc de la
+ * JAUGE EN DIRECT quand la série en porte une valeur à cette frame.
  *
  * CE CALQUE N'EST PAS STATIQUE, et c'est tout le point : sa géométrie ne bouge pas, son ÉTAT
  * change à chaque image — comme les socles d'arme. Il se peint donc dans la boucle, pas dans un
  * canvas cuit une fois.
+ *
+ * L'ARC NE DÉPEND PAS DE L'INTERVALLE COURANT : la jauge est une mesure de la ZONE, publiée par
+ * frame ; une rampe qui précède la première émission du canal de propriété se dessine quand
+ * même — à l'encre neutre, faute de savoir qui tient la zone. Quand un intervalle la couvre et
+ * que son propriétaire est connu, l'arc prend l'encre du camp d'en face : celui qui capture.
  *
  * AUCUN TEXTE, comme le calque statique : la lettre A/B/C affichée en jeu n'existe dans aucune
  * donnée décodée, et le garde-fou du fichier l'interdit.
@@ -158,11 +232,18 @@ export function drawZoneStates(
   const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
   const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
   zones.zoneElements.forEach((e, ref) => {
-    const now = zoneStateAt(states, ref, frame)
-    if (!now) return
-    const ink = now.owner === null ? null : style.colorOfOwner(now.owner)
-    paintZoneState(ctx, e, { px, scale, ink: ink ?? style.neutral, held: ink !== null, now })
-    if (now.progress !== null) drawProgressArc(ctx, e, px, scale, now.progress, ink ?? style.neutral)
+    const st = states.find((s) => s.zoneRef === ref)
+    if (!st) return
+    const now = spanStateAt(st.spans, frame)
+    const ownerInk = now && now.owner !== null ? style.colorOfOwner(now.owner) : null
+    if (now) {
+      paintZoneState(ctx, e, { px, scale, ink: ownerInk ?? style.neutral, held: ownerInk !== null, now })
+    }
+    const value = zoneGaugeAt(st.gauge, frame, zones.gaugeHoldFrames)
+    if (value !== null) {
+      const capturer = now && now.owner !== null ? style.colorOfCapturer(now.owner) : null
+      drawGaugeArc(ctx, e, { px, scale, value, ink: capturer ?? style.neutral })
+    }
   })
   ctx.globalAlpha = 1
 }
@@ -195,29 +276,29 @@ function paintZoneState(
   ctx.stroke()
 }
 
-
-/**
- * drawProgressArc dessine la JAUGE de capture : un arc qui part du haut et se referme à mesure
- * que la zone est prise. Il est tracé HORS de la forme (rayon un peu plus grand) pour rester
- * lisible sur une zone déjà teintée.
- */
-function drawProgressArc(
-  ctx: CanvasRenderingContext2D,
-  e: ObjectiveElementReady,
-  px: (p: XY) => XY,
-  scale: number,
-  progress: number,
-  ink: string,
-): void {
-  const c = px(e)
-  const half = e.family === 'cylinder' ? e.radius : Math.max(e.halfX, e.halfY)
-  const r = Math.max(half * scale + ZONE_PROGRESS_WIDTH, ZONE_PROGRESS_MIN_RADIUS)
-  const start = -Math.PI / 2
-  ctx.globalAlpha = ZONE_PROGRESS_ALPHA
-  ctx.strokeStyle = ink
-  ctx.lineWidth = ZONE_PROGRESS_WIDTH
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, r, start, start + 2 * Math.PI * Math.min(Math.max(progress, 0), 1))
-  ctx.stroke()
+/** Ce que l'arc de jauge a besoin de savoir (règle des 5 paramètres — regroupé le 2026-08-18). */
+interface ZoneGaugeArc {
+  px: (p: XY) => XY
+  scale: number
+  /** La valeur de la jauge à l'image, dans [0, 1] (cf. zoneGaugeAt). */
+  value: number
+  ink: string
 }
 
+/**
+ * drawGaugeArc dessine LA JAUGE EN DIRECT : un arc qui part du haut et se referme à mesure que la
+ * capture avance — à la valeur lue à cette image, jamais au sommet de l'intervalle. Il est tracé
+ * HORS de la forme (rayon un peu plus grand) pour rester lisible sur une zone déjà teintée.
+ */
+function drawGaugeArc(ctx: CanvasRenderingContext2D, e: ObjectiveElementReady, a: ZoneGaugeArc): void {
+  const c = a.px(e)
+  const half = e.family === 'cylinder' ? e.radius : Math.max(e.halfX, e.halfY)
+  const r = Math.max(half * a.scale + ZONE_GAUGE_WIDTH, ZONE_GAUGE_MIN_RADIUS)
+  const start = -Math.PI / 2
+  ctx.globalAlpha = ZONE_GAUGE_ALPHA
+  ctx.strokeStyle = a.ink
+  ctx.lineWidth = ZONE_GAUGE_WIDTH
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, r, start, start + 2 * Math.PI * Math.min(Math.max(a.value, 0), 1))
+  ctx.stroke()
+}
