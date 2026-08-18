@@ -110,20 +110,52 @@ func flagFilmSignalsOf(in FlagInput) objectiveevents.FlagFilmSignals {
 // horloges differentes et ne confirmerait rien.
 func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) {
 	in := opt.Flag
-	events := objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag)
+	signals := flagFilmSignalsOf(in)
 	scan := FlagCarryScan{
-		Scanned:  in.Scanned,
-		Signals:  flagFilmSignalsOf(in),
-		Events:   events,
-		Identity: objectiveevents.SlotIdentityByDeaths(in.Records, deathInstantsOf(opt.Deaths)),
-		Marks:    in.Marks,
-		Spawns:   in.Spawns,
+		Scanned: in.Scanned,
+		Signals: signals,
+		Events:  objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag),
+		Spawns:  in.Spawns,
 	}
+	// HORS CTF, LE CALQUE S'ARRETE ICI — ET C'EST UN CORRECTIF DE PRODUCTION (2026-08-18).
+	//
+	// `buildFlagCarries` rendait deja un calque vide sur un film d'un autre mode, mais APRES que
+	// l'appelant eut paye tout le travail : le pont d'identite (`SlotIdentityByDeaths`) deroule
+	// la progression du compteur de morts de CHAQUE slot du statborg, et sur un film dont la
+	// grammaire n'est pas celle du CTF ce compteur se lit n'importe ou. Mesure du terrain :
+	// `cmd/replay-build --facts` montait a 19-22 Go et ne rendait jamais la main.
+	//
+	// LE PLAFOND DU DEROULAGE EST LA VRAIE CORRECTION (`objectiveevents.maxDeathsPerSlot`) : il
+	// ferme le defaut la ou il est, y compris sur un film de CTF. Cette garde-ci est la seconde
+	// moitie, et elle vaut par elle-meme : sur les neuf dixiemes des matchs — tout ce qui n'est
+	// pas du CTF — ce pont ne sert a RIEN, puisque le calque ne publie rien. On ne le paye plus.
+	if !in.Scanned || !signals.IsFlagFilm() {
+		vide, cov := buildFlagCarries(scan, flagCarryCtx{})
+		attachFlagLayer(doc, vide, cov)
+		return
+	}
+	scan.Identity = objectiveevents.SlotIdentityByDeaths(in.Records, deathInstantsOf(opt.Deaths))
+	scan.Marks = in.Marks
+	// LES VIES LIBRES ne se lisent que sur un film de CTF, pour la meme raison : hors CTF,
+	// l'identifiant du manifeste n'apparait dans aucune creation `ti=42`. Elles ne sont PAS
+	// publiees (cf. document_objectives_live.go) — elles CORRIGENT le calque, et seules celles
+	// nees aux pieds d'un porteur y servent.
+	scan.Free = flagFreeLives(opt.GroundWeapons, opt.Labels.FlagObjects)
 	carries, cov := buildFlagCarries(scan, flagCarryCtx{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		tracks: doc.Tracks, deaths: opt.Deaths,
 		deathOffsetMS: own.DeathOffsetMS, slotXUID: own.SlotXUID,
 	})
+	if cov != nil {
+		cov.ObjectLives = len(scan.Free)
+	}
+	attachFlagLayer(doc, carries, cov)
+}
+
+// attachFlagLayer pose le calque et sa couverture sur le document, et journalise. Un seul endroit
+// le fait : les deux sorties d'`attachFlagCarries` (film d'un autre mode, film de CTF) doivent
+// publier la MEME chose — un calque vide et une couverture qui dit POURQUOI.
+func attachFlagLayer(doc *ReplayDocument, carries []FlagCarry, cov *FlagCarriesCoverage) {
 	doc.FlagCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.FlagCarries = cov
@@ -163,7 +195,9 @@ func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
 	}
 	slog.Info("rejeu : vie des drapeaux",
 		"prises", cov.Openings, "portages", cov.Carries, "fermes", cov.Closed,
-		"ouverts", cov.Open, "sansPont", cov.NoBridge, "sansPiste", cov.NoTrack,
+		"ouverts", cov.Open, "viesLibres", cov.ObjectLives,
+		"fermesParLObjet", cov.ClosedByObject, "lachersRepositionnes", cov.DropsRepositioned,
+		"sansPont", cov.NoBridge, "sansPiste", cov.NoTrack,
 		"horsFenetre", cov.OutOfWindow, "marqueurConfirme", cov.MarkerConfirmed,
 		"marqueurObserve", cov.MarkerObserved, "socles", cov.Spawns,
 		"simultaneite", cov.Overlaps, "porteursTuesAmbigus", cov.AmbiguousCarrierKills,

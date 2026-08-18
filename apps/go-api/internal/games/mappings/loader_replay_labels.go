@@ -62,6 +62,10 @@ type ReplayLabelSet struct {
 	shotEffects   map[string]string // weapon_key -> famille de rendu
 	shotTints     map[string]string // weapon_key -> nature de la decharge
 	equipObjects  map[uint32]string // GlobalID de tag `eqip` -> famille de pose
+	// objObjects : GlobalID de tag `ti=42` -> objet d'objectif (famille + nom bilingue).
+	// Table a part de la precedente : autre archetype, autre chaine d'etablissement
+	// (cf. loader_replay_labels_objectives.go).
+	objObjects map[uint32]ObjectiveObject
 }
 
 // replayLabelsTOML — projection brute du fichier.
@@ -72,6 +76,7 @@ type replayLabelsTOML struct {
 	ShotEffects  map[string]string      `toml:"shot_effects"`
 	ShotTints    map[string]string      `toml:"shot_tints"`
 	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
+	ObjObjects   []objectiveObjectEntry `toml:"objective_objects"`
 }
 
 type abilityPaletteEntry struct {
@@ -176,6 +181,23 @@ func (s *ReplayLabelSet) EquipmentObjects() map[uint32]string {
 	return out
 }
 
+// ObjectiveObjects retourne la table GlobalID de tag `ti=42` -> objet d'objectif (copie).
+//
+// Table PARTIELLE par nature, et le plus souvent MINUSCULE : elle ne porte que les objets du
+// monde dont la nature EST le mode de jeu et dont l'identifiant a ete etabli. Un identifiant
+// absent n'est pas un objet d'objectif — c'est ce que la chaine des socles lit pour savoir ce
+// qu'elle doit refuser de publier comme arme.
+func (s *ReplayLabelSet) ObjectiveObjects() map[uint32]ObjectiveObject {
+	out := make(map[uint32]ObjectiveObject)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.objObjects {
+		out[k] = v
+	}
+	return out
+}
+
 // TitleSlug retourne le slug declare.
 func (s *ReplayLabelSet) TitleSlug() string {
 	if s == nil {
@@ -237,6 +259,10 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	objs, err := parseObjectiveObjects(path, doc.ObjObjects)
+	if err != nil {
+		return nil, err
+	}
 	return &ReplayLabelSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
@@ -245,6 +271,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		shotEffects:   effects,
 		shotTints:     tints,
 		equipObjects:  equip,
+		objObjects:    objs,
 	}, nil
 }
 
@@ -366,4 +393,20 @@ func bilingual(path, what string, e bilingualEntry) (BilingualLabel, error) {
 		return BilingualLabel{}, fmt.Errorf("%s: %s sans fr (mettre le EN si aucun FR officiel)", path, what)
 	}
 	return BilingualLabel{En: en, Fr: fr, Icon: strings.TrimSpace(e.Icon)}, nil
+}
+
+// tagGlobalID32 lit un GlobalID de tag du jeu, tel que les manifestes l'ecrivent : un entier
+// hexadecimal de 32 bits, prefixe `0x` ou non.
+//
+// POURQUOI UN HELPER. Le motif etait ecrit deux fois dans la table des objets d'equipement
+// (l'identifiant et l'identifiant de chaine) ; la table des objets d'objectif en faisait la
+// TROISIEME, c'est-a-dire la limite que le depot fixe. `quoi` nomme le champ dans le message,
+// pour qu'une erreur de manifeste dise laquelle des trois cles est illisible.
+func tagGlobalID32(path, raw, quoi string) (uint32, error) {
+	v, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimPrefix(raw, "0x"), "0X"), 16, 32)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %s %q illisible (attendu : GlobalID hexadécimal 32 bits, ex. \"0x8e2dc574\")",
+			path, quoi, raw)
+	}
+	return uint32(v), nil
 }
