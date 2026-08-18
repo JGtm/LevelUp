@@ -5367,6 +5367,7 @@ export interface components {
         Coverage: {
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
+            flagCarries?: components["schemas"]["FlagCarriesCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
@@ -6237,6 +6238,64 @@ export interface components {
         FirstBloodPlayerSeries: {
             matches: components["schemas"]["FirstBloodMatchPoint"][] | null;
             player: string;
+        };
+        FlagCarriesCoverage: {
+            /** Format: int64 */
+            ambiguousCarrierKills: number;
+            /** Format: int64 */
+            ambiguousReturns: number;
+            /** Format: int64 */
+            bursts: number;
+            /** Format: int64 */
+            captures: number;
+            /** Format: int64 */
+            carries: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            closedOverlaps: number;
+            flagFilm: boolean;
+            /** Format: int64 */
+            markerConfirmed: number;
+            /** Format: int64 */
+            markerObserved: number;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            noTrack: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            openConfirmed: number;
+            /** Format: int64 */
+            openObserved: number;
+            /** Format: int64 */
+            openings: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            overlaps: number;
+            /** Format: int64 */
+            spawns: number;
+            /** Format: int64 */
+            steals: number;
+        };
+        FlagCarry: {
+            spans: components["schemas"]["FlagSpan"][] | null;
+            /** Format: int64 */
+            team: number;
+        };
+        FlagSpan: {
+            state: string;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: float */
+            x: number;
+            xuid: string | null;
+            /** Format: float */
+            y: number;
         };
         FormTabResponse: {
             has_enough_data: boolean;
@@ -9232,6 +9291,7 @@ export interface components {
             durationMs?: number;
             equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
             equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
+            flagCarries?: components["schemas"]["FlagCarry"][] | null;
             /** Format: int64 */
             frameCount: number;
             /** Format: int64 */

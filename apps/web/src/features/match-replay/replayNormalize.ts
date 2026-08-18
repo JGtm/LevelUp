@@ -24,6 +24,7 @@ import {
 } from '@/lib/replay/scoreTimeline'
 import type {
   ReplayDocument,
+  ReplayFlagCarry,
   ReplayInventory,
   ReplayLoadout,
   ReplayProjectile,
@@ -61,6 +62,14 @@ export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplaySte
  * vide inventerait un cycle de zéro seconde — l'absence est la donnée.
  */
 export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'>
+/**
+ * ReplayFlagCarryReady — la vie d'un drapeau dont les intervalles sont comblés.
+ *
+ * MÊME PATRON QUE `weaponPads` : le tableau de tête et le tableau IMBRIQUÉ sont tous deux
+ * nullables au contrat, et un drapeau qui arriverait avec `spans: null` ferait tomber le calque
+ * à l'exécution, pas à la compilation.
+ */
+export type ReplayFlagCarryReady = Filled<ReplayFlagCarry, 'spans'>
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -71,6 +80,7 @@ export type ReplayDocumentReady = Omit<
   | 'abilities'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
+  | 'flagCarries'
   | 'geometry'
   | 'grappleLines'
   | 'grenadeLabels'
@@ -91,6 +101,7 @@ export type ReplayDocumentReady = Omit<
   abilities: NonNullable<ReplayDocument['abilities']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
+  flagCarries: ReplayFlagCarryReady[]
   geometry: NonNullable<ReplayDocument['geometry']>
   grappleLines: NonNullable<ReplayDocument['grappleLines']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
@@ -141,6 +152,14 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // de bloc de réplication n'a pas été tranchée : `coverage.placements.calibrated`
     // distingue les deux, et c'est pour cela qu'il est publié.
     equipmentPlacements: raw.equipmentPlacements ?? [],
+    // LA VIE DES DRAPEAUX de CTF (schéma 14) : une entrée par objet, une suite d'intervalles
+    // d'état. Absent = le film n'est pas reconnu comme du CTF, ou personne ne l'a lu pour ce
+    // calque — `coverage.flagCarries` distingue les deux, et c'est pour cela qu'il est publié.
+    //
+    // LE TABLEAU IMBRIQUÉ SE COMBLE AUSSI (`spans`), comme pour `weaponPads` et `tracks` : le
+    // contrat le déclare nullable, et un drapeau qui arriverait avec `spans: null` ferait
+    // tomber le calque à l'exécution — pas à la compilation.
+    flagCarries: (raw.flagCarries ?? []).map((f) => ({ ...f, spans: f.spans ?? [] })),
     geometry: raw.geometry ?? [],
     // Les TRACTIONS de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
     // d'accroche en coordonnées monde. Absent = aucune traction lue sur ce film : rien
