@@ -176,8 +176,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   pulses posés sur la mauvaise zone (appartenance stricte 9,9 % sans correction, 40,9 %
 	//   avec). Un client v11 lit donc des actions absentes ou mal datées, ce qu'aucun champ
 	//   optionnel de plus ne dirait.
-	if SchemaVersion != 12 {
-		t.Fatalf("SchemaVersion = %d, attendu 12 : incrémenter exige une raison écrite ci-dessus "+
+	//   v12 -> v13 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot E phase 1) :
+	//   `Point.p`, l'ÉLÉVATION DE VISÉE en degrés (positif = vers le haut, absent = à plat).
+	//   UN CHAMP OPTIONNEL S'AJOUTE À UN SOUS-OBJET, ce qui d'ordinaire ne monte pas la version
+	//   — ici c'est le SENS DU CÔNE DE VISÉE qui change, comme pour v9 -> v10. Le client
+	//   dessinait le cône à sa longueur maximale sur chaque point porteur de cap : cette
+	//   longueur affirmait une visée HORIZONTALE. Le film dit le contraire — sur les trois
+	//   films de la mesure E.0.1 le mode tombe au centre du champ (1024 / 1013 / 1006) mais le
+	//   support s'étend sur [537, 1490], soit environ ±82°. Un artefact v12 fait donc dessiner
+	//   à plat des visées qui plongent, et la reprise du backfill se faisant par
+	//   SchemaVersion, il continuerait sans montée de version. La convention est MESURÉE et
+	//   non supposée : quantum 360/2048 = 0,17578°/pas (le candidat 180/2048 réfuté à 3,34x et
+	//   4,06x), positif = haut (56 accords de signe sur 58 kills à |dz| >= 1 m), échelle
+	//   contrôlée par l'oracle du kill (r = 0,930 / 0,916 / 0,969 sur 164 kills, écart médian
+	//   de bout en bout 0,82 / 0,66 / 0,67°). Réserve écrite : toutes les valeurs observées
+	//   tiennent dans la MOITIÉ centrale du champ, donc « ±180° sur tout le champ » et « ±90°
+	//   sur sa moitié » sont indistinguables sur ce corpus.
+	if SchemaVersion != 13 {
+		t.Fatalf("SchemaVersion = %d, attendu 13 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

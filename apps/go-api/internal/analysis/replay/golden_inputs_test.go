@@ -88,13 +88,19 @@ func goldenInputsPath() string {
 // borne les disparitions, et pistes de position qui disent si l objet a bouge. LES TROIS
 // ENSEMBLE, parce qu il en manque une et le calque ment : sans les pistes, toute apparition
 // passerait pour un objet apparu au repos, donc pour un socle.
-const goldenInputsMagic = "REPLAYINPUTS7\n"
+//
+// v8 (2026-08-18, PLAN_EXPLOITATION_REGISTRE_FILM lot E phase 1) : la position serialise AUSSI
+// le SECOND scalaire d i21 (`PitchRaw`, l elevation de visee), que l assemblage publie
+// desormais dans `Point.p`. Sans lui le fixture ne porterait qu un des deux angles du meme
+// composant, et le golden verrouillerait un document dont toutes les visees sont a plat —
+// c est-a-dire pas celui que la production sert.
+const goldenInputsMagic = "REPLAYINPUTS8\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :
 //
-//	BipedPosition     Slot · TimestampUS · X/Y/Z · HasWorld · HasYaw+YawRaw ·
+//	BipedPosition     Slot · TimestampUS · X/Y/Z · HasWorld · HasYaw+YawRaw+PitchRaw ·
 //	                  HasBody+Body.Health · HasShield+Shield.Shield+Shield.Q
 //	FireEvent         TimestampUS · FilmIndex · WeaponID · HasAim+Aim
 //	KeyframeLoadout   TimestampUS · Slot · Families
@@ -343,7 +349,11 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 			lastXYZ[p.Slot] = cur
 		}
 		if p.HasYaw {
+			// LES DEUX ANGLES D I21, ensemble : le cap et l elevation viennent du MEME
+			// composant et partagent leur validite. En serialiser un seul rendrait un
+			// fixture ou toutes les visees sont a plat.
 			w.u(uint64(p.YawRaw))
+			w.u(uint64(p.PitchRaw))
 		}
 		if p.HasBody {
 			w.f32(p.Body.Health)
@@ -718,6 +728,7 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 		if fl&gpHasYaw != 0 {
 			p.HasYaw = true
 			p.YawRaw = uint32(r.u())
+			p.PitchRaw = uint32(r.u())
 		}
 		if fl&gpHasBody != 0 {
 			p.HasBody = true

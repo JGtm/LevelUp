@@ -8895,6 +8895,8 @@ export interface components {
             /** Format: float */
             hp?: number;
             /** Format: float */
+            p?: number;
+            /** Format: float */
             sh?: number;
             /** Format: int64 */
             t: number;
