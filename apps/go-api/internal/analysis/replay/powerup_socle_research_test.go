@@ -33,6 +33,8 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmdec"
 )
 
 // LA GARDE DU FILM EST CELLE DE TOUT LE PAQUET : `OBJ_FILM` porte la RACINE du cache film
@@ -221,4 +223,23 @@ func TestPowerupSocleAncrage(t *testing.T) {
 	if ct.Paires < 2 || ct.SurAxe < 2 {
 		t.Fatalf("centre non etabli : %d paires miroir, %d socles sur l'axe", ct.Paires, ct.SurAxe)
 	}
+}
+
+// psMapEnv porte le nom de carte ; psBoundsEnv le catalogue de bornes. Les deux ont un
+// defaut : les quatre films du lot sont tous Catalyst, et le catalogue vit dans le depot.
+const (
+	psMapEnv    = "OBJ_FILM_MAP"
+	psBoundsEnv = "OBJ_FILM_BOUNDS"
+	psCarte     = "Catalyst"
+)
+
+// psEntreeCarte rend les bornes de dequantification de la carte du lot. Elle passe par le
+// MEME helper que l'instrument des socles d'arme (`mapQuantEntryFromEnv`) : une seconde
+// lecture du catalogue divergerait au premier correctif.
+func psEntreeCarte(t *testing.T) filmdec.MapQuantEntry {
+	t.Helper()
+	if os.Getenv(psMapEnv) == "" {
+		t.Setenv(psMapEnv, psCarte)
+	}
+	return mapQuantEntryFromEnv(t, psMapEnv, psBoundsEnv)
 }
