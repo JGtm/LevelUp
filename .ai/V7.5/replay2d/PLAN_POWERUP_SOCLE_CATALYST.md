@@ -451,7 +451,7 @@ trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grande
   retenues par identite, socles publies) + journal.
 - `[x]` 8.5 `SchemaVersion` 17 + chronique ; `GroundWeaponCoverage` +3 champs ; OpenAPI
   regenere ; `generated.ts` regenere.
-- `[ ]` 8.6 TESTS UNITAIRES PURS : grappe, seuil >= 2, exclusion des creations a vie delta,
+- `[x]` 8.6 TESTS UNITAIRES PURS : grappe, seuil >= 2, exclusion des creations a vie delta,
   famille inconnue = rien. Instrument de mesure du lot REBRANCHE sur la production (pas de
   seconde copie de la regle).
 - `[x]` 8.7 GOLDENS : fixture d'entrees v9 (il porte la lecture `ti=37`) et sortie figee,
@@ -530,3 +530,25 @@ les compteurs de la voie `ti=37` a la couverture change le CONTRAT, donc exige l
 
 Gate : `go vet` 0 · `go test ./internal/analysis/... ./contracttest/... ./internal/replaybuild/...`
 0 · `golangci-lint run` replay+filmdec **0 issues**.
+
+**8.6 — CLOSE le 2026-08-19.** `powerup_pads_test.go` : sept tests PURS, aucun octet de film.
+Grappe (3 creations au meme point -> 1 socle, publie sous sa FAMILLE et non son hexadecimal),
+seuil de recurrence (une apparition isolee -> 0), exclusion des creations a vie delta (le
+lacher), famille inconnue et famille connue-mais-pas-power-up (deux cas distincts), index
+d'occupation GLOBAL (le decalage entre les deux voies — une erreur qui ne se verrait qu'a
+l'ecran, sur la mauvaise infobulle), et voie non lue (`powerupScanned` faux, pas un zero muet).
+Un huitieme relie les identites du test au MANIFESTE reel, et verifie que la regle est un
+PREFIXE et non une liste de deux.
+
+`powerup_pads_guard_test.go` : le littéral `"powerup_"` etait ecrit QUATRE fois dans le paquet
+(production naissante + trois instruments). Il n'est plus ecrit qu'une fois, et le garde-rail
+interdit toute reecriture — les noms COMPLETS de famille restent autorises (ce sont des valeurs
+du manifeste, pas la regle).
+
+INSTRUMENT REBRANCHE : `gwPadsPowerups` lisait `ScanFilmEquipmentPlacements`, donc les seules
+poses confirmees par une vie DELTA — qu'un socle n'a pas. **Il mesurait un negatif que sa propre
+source fabriquait.** Il passe desormais par `decodeFilmPadScan` + `padObjects(powerupPadRule)`,
+la chaine de PRODUCTION, et ne garde aucune copie de la regle.
+
+Gate : `go vet` 0 · `go test ./internal/analysis/replay/...` 0 ·
+`golangci-lint run` replay+filmdec **0 issues**.

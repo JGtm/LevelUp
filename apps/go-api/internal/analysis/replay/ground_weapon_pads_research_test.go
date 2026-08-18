@@ -29,10 +29,14 @@ package replay
 //	     NEGATIF : les memes grappes sur les apparitions `dropped` (les morts) ;
 //	1.3  cycle par grappe : mediane, p10, p90, ecart-type, « etabli » ou non.
 //
-// POWER-UPS : memes regles sur les objets `ti=37` dont la famille du manifeste commence par
-// `powerup_` (`ScanFilmEquipmentPlacements`, LA fonction de production, calibration MPP
-// comprise). Le corpus des 12 films du 2026-08-18 n'en portait aucun de socle ; ce qui suit le
-// MESURE au lieu de le supposer.
+// POWER-UPS : memes regles sur les objets `ti=37` dont la famille du manifeste commence par le
+// prefixe de production, PAR LA CHAINE DE PRODUCTION elle-meme (`decodeFilmPadScan` +
+// `padObjects(powerupPadRule)`, calibration MPP comprise).
+//
+// IL LISAIT `ScanFilmEquipmentPlacements` JUSQU'AU 2026-08-19, ET C'EST CE QUI RENDAIT SON
+// NEGATIF FAUX : cette fonction ne retient que les poses confirmees par une vie DELTA, qu'un
+// socle n'a pas. L'instrument mesurait un negatif que sa propre source fabriquait — « aucun
+// power-up de socle sur 12 films » etait une propriete du filtre, pas du corpus.
 //
 // LECTURE SEULE, aucune base (les cartes se lisent hors de cet instrument, dans l'instantane
 // parquet du registre). UN SEUL decodage filmdec par process (`LockProcessDecode`), largeurs
@@ -92,7 +96,7 @@ func TestGroundWeaponPads(t *testing.T) {
 	t.Logf("BIPEDES — %d positions · %d slots · %d vies (fins de vie = les morts)",
 		len(positions), len(lives), gwPadsCountLives(lives))
 
-	app := gwPadsPowerups(t, dir, &wr, lives)
+	app := gwPadsPowerups(t, dir, &wr, positions, lives)
 	app = append(app, gwPadsWeapons(t, dir, &wr, lives)...)
 	for _, a := range app {
 		t.Logf("APPAR\t%s\t%s\t%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%s\t%t",
@@ -180,35 +184,37 @@ func gwPadsWeapons(
 }
 
 // gwPadsPowerups rend les apparitions de POWER-UP retenues (`ti=37`, familles `powerup_*` du
-// manifeste du titre) en passant par `ScanFilmEquipmentPlacements` — LA fonction de production,
-// calibration du bloc MPP comprise. Un film non calibre ne rend AUCUNE pose : c'est le contrat
-// de cette fonction, et le publier est ce qui distingue « pas de power-up » de « pas de lecture ».
+// manifeste du titre) EN PASSANT PAR LA CHAINE DE PRODUCTION — `decodeFilmPadScan` puis
+// `padObjects(powerupPadRule)`, c'est-a-dire exactement ce que l'artefact publie.
+//
+// IL A CHANGE DE SOURCE LE 2026-08-19, ET C'EST LE LOT. Il lisait `ScanFilmEquipmentPlacements`,
+// donc les seules poses que `confirmPlacements` retient — celles qui ont une vie DELTA. Un socle
+// n'en a aucune : l'instrument mesurait un negatif que sa propre source fabriquait. Il mesure
+// desormais ce que la production publie, et il n'a AUCUNE copie de la regle.
+//
+// LA CALIBRATION DU BLOC MPP VIENT TOUJOURS DE LA CHAINE DES POSES, comme en production : sans
+// elle, aucune identite `eqip` ne se resout et le balayage rendrait zero en silence.
 func gwPadsPowerups(
-	t *testing.T, dir string, wr *filmdec.Vec3Range, lives map[uint32][]equipLife,
+	t *testing.T, dir string, wr *filmdec.Vec3Range, pos []filmdec.BipedPosition,
+	lives map[uint32][]equipLife,
 ) []gwPadApparition {
 	t.Helper()
-	raw, st, err := filmdec.ScanFilmEquipmentPlacements(dir, wr)
+	_, st, err := filmdec.ScanFilmEquipmentPlacements(dir, wr)
 	if err != nil {
-		t.Logf("1.0 POWER-UPS — balayage ti=37 impossible : %v", err)
+		t.Logf("1.0 POWER-UPS — calibration ti=37 impossible : %v", err)
 		return nil
 	}
-	familles := origineFamilles(t)
-	out, byFamily := []gwPadApparition{}, map[string]int{}
-	for _, p := range raw {
-		f := familles[p.GlobalID]
-		if !strings.HasPrefix(f, "powerup_") {
-			continue
-		}
-		byFamily[f]++
-		a := gwPadApparition{
-			Kind: gwPadKindPowerup, Family: f,
-			X: p.X, Y: p.Y, Z: p.Z, TUS: p.T0US, HasDelta: p.Points > 0,
-		}
-		a.Class = gwPadsClass(lives, a)
-		out = append(out, a)
+	scan := decodeFilmPadScan(dir, wr, st.Calibration.Widths, worldEquipmentArchetype())
+	objs, rejets := padObjects(scan, powerupPadRule(origineFamilles(t)), lives, pos)
+	out, byFamily := make([]gwPadApparition, 0, len(objs)), map[string]int{}
+	for _, o := range objs {
+		byFamily[o.Appar.Family]++
+		out = append(out, o.Appar)
 	}
-	t.Logf("1.0 POWER-UPS ti=37 — %s · poses lues %d · dont power-up %d %s",
-		st.Calibration, len(raw), len(out), gwPadsFamilyLine(byFamily))
+	t.Logf("1.0 POWER-UPS ti=37 — %s · balaye %t · ancres %d · acceptees %d · RETENUES %d"+
+		" · ecartees %d %s",
+		st.Calibration, scan.Scanned, scan.Stats.Anchors, scan.Stats.Accepted, len(out),
+		rejets.total, gwPadsFamilyLine(byFamily))
 	return out
 }
 
