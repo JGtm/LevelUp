@@ -453,3 +453,11 @@ la fin du match — un etat trop long, jamais une position inventee.
 
 **Commits** : `26379f180` (1.0a), `cecab6d37` (1.0b), `102152b83` (discriminant + marqueur au
 decodeur), puis le lot de regles et de mesure. Aucun push.
+- 2026-08-18 — phase 1 items 1.0-1.2 CLOS et FUSIONNES (`94e4e4142`, correctifs de fusion `016860616`) ;
+  gate 1 NON atteint a 88,1 % (37/42) parce que les portages NON FERMES sont prolonges jusqu'a la fin de
+  l'axe (37/37 des FERMES confirmes par le marqueur) ; retour automatique : NEGATIF (aucune minuterie).
+  **Arbitrage superviseur pour 1.3** (journal du 18/08) : publier `carried` (fermes) et `carried_open`
+  (non fermes, borne haute = fin de l'axe, etat incertain explicite) ; gate 1.3 juge sur les FERMES,
+  seuil 90 % inchange ; simultaneite > 2 portee par les seuls `carried_open` sinon incoherence publiee ;
+  `dropped` court jusqu'a reprise / `flag_returns` / fin ; **schema 14** (la fusion tierce a pris 12 et
+  13). Item 1.3 LANCE (agent Opus, worktree frere `../LevelUp-wt-objvivants2`, base `016860616`).
