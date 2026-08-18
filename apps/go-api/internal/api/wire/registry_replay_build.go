@@ -141,7 +141,9 @@ func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchI
 // de variante (famille d'objectif). Dégradation journalisée, jamais fatale : un artefact sans
 // ces faits reste valide, seulement sans compteurs de joueur ni actions d'objectif.
 func replayMatchFacts(ctx context.Context, sharedSQL *sql.DB, matchID string) port.MatchFacts {
-	facts, err := duckdb.NewReplayFactsRepo(sharedSQL).FactsForMatch(ctx, matchID)
+	// Le type concret ne sort pas d ici : l appelant ne connait que le port.
+	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(sharedSQL)
+	facts, err := repo.FactsForMatch(ctx, matchID)
 	if err != nil {
 		// DEGRADATION, PAS ECHEC : un artefact sans ces faits reste valide et servi ; refuser de
 		// construire pour une lecture ratee couterait le rejeu entier.

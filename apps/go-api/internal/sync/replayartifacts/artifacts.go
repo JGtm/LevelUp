@@ -204,7 +204,7 @@ func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
 	if sharedDB == nil {
 		return
 	}
-	repo := duckdbpkg.NewReplayFactsRepo(sharedDB)
+	var repo port.ReplayFactsRepo = duckdbpkg.NewReplayFactsRepo(sharedDB)
 	for i := range work {
 		facts, err := repo.FactsForMatch(ctx, work[i].matchID)
 		if err != nil {
