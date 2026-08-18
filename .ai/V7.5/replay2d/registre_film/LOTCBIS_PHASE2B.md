@@ -148,7 +148,7 @@ exactement sur le pulse — l'un annonce, l'autre installe.
 
 ## 9. Decouvertes (hors perimetre — notees, NON traitees)
 
-1. **LE CALQUE DU DRAPEAU PART EN VRILLE SUR UN FILM DE BASTION.** `cmd/replay-build --facts` sur
+1. **CLOSE (2026-08-18, item 4 : `deathProgressions` plafonne — §11).** LE CALQUE DU DRAPEAU PARTAIT EN VRILLE SUR UN FILM DE BASTION. `cmd/replay-build --facts` sur
    `7344d24f` n'a JAMAIS rendu d'artefact : le processus atteint **19 a 22 Go** de memoire
    residente et reste bloque > 15 min, systematiquement, apres le journal des socles d'arme —
    c'est-a-dire dans `attachFlagCarries`. **Le calque des zones est hors de cause** : un temoin
@@ -196,3 +196,27 @@ fusion automatique) ; golden `assembly_000d5950.golden` regenere (**une ligne** 
 `schema 16`) ; tous les commentaires « schema 15 » de zoneStates (web + `coverage.go`) passes a 16.
 `ReplayCanvas.tsx` : le cliquet est descendu a **812** cote feat/v75 (extraction `useReplayTiming`),
 la fusion donnait 813 — un commentaire condense, **812** tenu.
+
+## 11. Temoins re-cuits PAR LE CLI, schema 16 (2026-08-18, apres la fusion et la ronde 1)
+
+Le CLI `cmd/replay-build --facts` est DEBLOQUE par le fix de l item 4 (`deathProgressions`
+plafonne) : la decouverte n° 1 du §9 est close. Trois cuissons, un processus chacune, sous
+watchdog (plafond 3 Go de RAM, 10 min) — aucune n a approche le plafond. Journaux :
+`lotCbis/cuisson_cli_<short8>.log` ; artefacts ecrits dans le cache du worktree
+(`data/cache/replays/halo_infinite/<short8>.json`, `LEVELUP_REPO_ROOT` = worktree, film lu dans
+le main tree). Le controle « captures -> intervalle du capteur » ne se lit pas sur l artefact seul
+(l attribution geometrique n y est pas publiee) : il vient de l instrument du journal, rejoue sur
+le MEME code (`temoin_<short8>.log`, mis a jour) ; la couverture KOTH, elle, est relue SUR
+L ARTEFACT CLI (DuckDB, `read_json`).
+
+| film | mode | CLI : duree / pic RAM | artefact (o) | schema | `coverage.zones` (artefact) | captures -> intervalle du capteur (instrument) | KOTH (artefact) |
+|---|---|---|---|---|---|---|---|
+| `7344d24f` | Strongholds | 239 s / 187 Mo | 2 202 930 | 16 | catalogue 3, apparies 3, non apparies 2, captures 71, attribuees 59, proprietaire 46/46, 39 intervalles | **57/59 = 96,6 %** | — |
+| `696a9d7c` | Strongholds | 230 s / 145 Mo | 2 071 392 | 16 | catalogue 3, apparies 3, non apparies 2, captures 77, attribuees 66, proprietaire 51/51, 37 intervalles, 1 valeur inconnue | **64/66 = 97,0 %** | — |
+| `01e1f945` | KOTH | 208 s / 97 Mo | 1 816 953 | 16 | catalogue 8, apparies 6, non apparies 8 (R1-4 : les rampes non localisees se comptent), 20 periodes | sans objet | **20 periodes, 4 975 / 5 343 frames = 93,1 %**, 6 zones actives, **0 chevauchement** (R1-5 verifie sur la forme publiee) |
+
+Les chiffres de controle sont ceux du §3, a l identique, apres les corrections R1-1..R1-9 :
+aucune des neuf n a deplace une capture ni une periode sur ce corpus — c est attendu (seuil
+d accord a 2 et unicite du canal n ont pas change les elections, la fusion des gardes n avait pas
+de recouvrement ici) et c est verifie. La taille du calque sur l artefact complet reste dans les
++0,15 a +0,22 % mesures.

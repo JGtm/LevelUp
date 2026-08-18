@@ -54,3 +54,10 @@
 [CLOTURE] npx vitest run src/features/match-replay src/lib          EXIT_VITEST=0 (144 fichiers, 1777 tests)
 [CLOTURE] npm run lint                                              EXIT_LINT=0 (20 warnings : 19 baseline + 1 `ReplayFeedName.tsx:50` react-refresh/only-export-components — fichier de feat/v75 fea5f2686 (R3.5), identique a origin/feat/v75, HORS perimetre : note, non traite)
 [CLOTURE] node tools/lint-cross-feature-imports.mjs (racine)        EXIT_CROSS=0 (7 <= 7)
+=== TEMOINS (apres fusion, schema 16) ===
+[TEMOINS] CLI cmd/replay-build --facts, un processus, watchdog 3 Go / 10 min :
+          7344d24f vagabond  exit=0 pic 187 Mo 239 s  -> 2 202 930 o  schemaVersion=16
+          696a9d7c vagabond  exit=0 pic 145 Mo 230 s  -> 2 071 392 o  schemaVersion=16
+          01e1f945 catalyst  exit=0 pic  97 Mo 208 s  -> 1 816 953 o  schemaVersion=16
+[TEMOINS] instrument (ZONE_FILM, TestZoneEtatPhase2bTemoin, un film par processus) : 7344d24f 57/59 = 96,6 % · 696a9d7c 64/66 = 97,0 % · 01e1f945 colline 4975/5343 = 93,1 %   EXIT_TEMOIN=0 x3
+[TEMOINS] DuckDB read_json sur l artefact CLI 01e1f945 : 20 periodes actives, union 4975 frames / 5343 = 93,1 %, 6 zones, 0 chevauchement
