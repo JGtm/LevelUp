@@ -6,14 +6,14 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 12 · titre halo_infinite
+schema 13 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
 99 trace(s) · 29221 point(s) de grille
 93 trace(s) NOMMEE(S) par le pont (fil des morts, puis fermetures) · 6 anonyme(s) — une vie que le film ne clot
 par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur
-15315 point(s) portent un cap de visee · 4620 un bouclier · 163 une fraction de vie
+15315 point(s) portent un cap de visee · 15315 une elevation de visee · 4620 un bouclier · 163 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 8 joueur(s)
