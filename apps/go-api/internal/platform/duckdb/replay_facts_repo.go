@@ -29,6 +29,10 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// L'assertion fige le contrat : les appelants ne connaissent que l'interface du port, jamais
+// ce type concret (même convention que port.ReplayMapNameRepo).
+var _ port.ReplayFactsRepo = (*ReplayFactsRepo)(nil)
+
 // ReplayFactsRepo lit les faits d'un match (registre + participants).
 type ReplayFactsRepo struct {
 	shared *sql.DB

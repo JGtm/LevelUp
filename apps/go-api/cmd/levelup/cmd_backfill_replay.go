@@ -366,7 +366,7 @@ func chargerFaitsReplay(ctx context.Context, pr *titlePkg.PathResolver, titleSlu
 	}
 	defer release()
 
-	repo := duckdb.NewReplayFactsRepo(db)
+	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(db)
 	manquants := 0
 	for _, c := range aFaire {
 		facts, ferr := repo.FactsForMatch(ctx, c.matchID)
