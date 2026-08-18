@@ -136,9 +136,34 @@ describe('garde-rail : durée livrée par catégorie', () => {
     expect(hors).toEqual([])
   })
 
+  /**
+   * SOURCES PLUS COURTES QUE LA COUPE — la seule échappatoire, et elle est nominative.
+   *
+   * La règle « un son d'équipement dépasse 1,2 s » est un PROXY : ce qu'elle traque, c'est une
+   * re-livraison qui retronquerait tout à la coupe des armes. Un fichier dont la SOURCE fait
+   * moins que la coupe ne peut pas en être la victime — mais il échoue quand même le proxy.
+   *
+   * Chaque entrée porte donc la durée MESURÉE de sa source et la raison. `repair_field_activate`
+   * (2026-08-18) : les trois variantes du `RandomSequence` de la banque `5724312f` font 0,31 /
+   * 0,35 / 0,38 s dans le jeu — c'est un « pop » de déploiement, pas un son écourté. Allonger le
+   * fichier serait inventer de la matière ; l'exclure de la catégorie mentirait sur sa nature.
+   */
+  const SOURCES_COURTES: Readonly<Record<string, number>> = {
+    repair_field_activate: 0.381,
+  }
+
   it('explosions et équipements gardent la durée de leur source, jamais retronquée à 1,2 s', () => {
-    const retronques = longs.map((s) => ({ stem: s, s: dureeDe(s) })).filter((d) => d.s <= COURT_S)
+    const retronques = longs
+      .filter((s) => SOURCES_COURTES[s] === undefined)
+      .map((s) => ({ stem: s, s: dureeDe(s) }))
+      .filter((d) => d.s <= COURT_S)
     expect(retronques).toEqual([])
+  })
+
+  it('une source déclarée courte a bien la durée déclarée (sinon la dispense ne vaut plus)', () => {
+    for (const [stem, attendu] of Object.entries(SOURCES_COURTES)) {
+      expect(dureeDe(stem), stem).toBeCloseTo(attendu, 2)
+    }
   })
 })
 

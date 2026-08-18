@@ -27,6 +27,7 @@ package main
 // quoi la coincidence n'est pas un nom). C'est la passe 2 qui rend ce croisement.
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -44,11 +45,20 @@ type EqipSon struct {
 	Banks []string `json:"banks"`
 }
 
-// SndSon est un tag de son (`snd!` ou `lsnd`) et les banks qu'il reference.
+// SndSon est un tag de son (`snd!` ou `lsnd`), les banks qu'il reference, et les mots de
+// 32 bits de son corps.
+//
+// POURQUOI LES MOTS VOYAGENT. Un `snd!` DESIGNE un evenement Wwise par son identifiant, et
+// c'est la seule chose qui distingue « le son du deploiement » de « le son du ramassage »
+// dans une bank qui en porte trente. Mais les `snd!` vivent dans `any/globals` et les banks
+// dans `pc/globals` : les deux ne peuvent pas etre ouverts par le meme processus. Le rapport
+// transporte donc les mots BRUTS, et la passe 2 les intersecte avec les Events de la bank —
+// exactement la methode que `chercherPorteurs` emploie pour les armes, retournee.
 type SndSon struct {
 	Tag    string   `json:"tag"`
 	Groupe string   `json:"groupe"`
 	Banks  []string `json:"banks"`
+	Mots   []uint32 `json:"mots,omitempty"`
 }
 
 // RapportEqipSons est le JSON echange entre les deux passes.
@@ -126,9 +136,10 @@ func chaineSonEqip(
 	ajoute := func(gid uint32, groupe string) {
 		s := SndSon{Tag: fmt.Sprintf("%08x", gid), Groupe: groupe}
 		if sf, ok := sons[gid]; ok {
-			for _, b := range banksDuSon(m, sf) {
-				s.Banks = append(s.Banks, b)
-				banks[b] = true
+			b, mots := banksDuSon(m, sf)
+			s.Banks, s.Mots = b, mots
+			for _, x := range b {
+				banks[x] = true
 			}
 		}
 		e.Sons = append(e.Sons, s)
@@ -180,20 +191,29 @@ func sonsParEffet(m *himodule.Module, f himodule.File) []uint32 {
 	return out
 }
 
-// banksDuSon rend les `sbnk` qu'un tag de son reference. Un `snd!` en porte exactement un
-// (mesure du chantier armes, cf. `histogrammeBanks`) ; on ne le postule pas pour autant.
-func banksDuSon(m *himodule.Module, f himodule.File) []string {
+// banksDuSon rend les `sbnk` qu'un tag de son reference et les mots de 32 bits de son CORPS.
+//
+// Un `snd!` porte exactement une bank (mesure du chantier armes, cf. `histogrammeBanks`) ;
+// on ne le postule pas pour autant. Les mots sont lus APRES l'en-tete et la table de
+// dependances : le corps d'un `snd!` fait quelques dizaines d'octets, et c'est la que
+// l'identifiant d'evenement se trouve.
+func banksDuSon(m *himodule.Module, f himodule.File) ([]string, []uint32) {
 	data, err := m.Extract(f)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
+	deps := dependances(data)
 	var out []string
-	for _, d := range dependances(data) {
+	for _, d := range deps {
 		if d.Groupe == "sbnk" {
 			out = append(out, fmt.Sprintf("%08x", d.IDGlobal))
 		}
 	}
-	return out
+	var mots []uint32
+	for o := tailleEnteteT + len(deps)*tailleDep; o+4 <= len(data); o += 4 {
+		mots = append(mots, binary.LittleEndian.Uint32(data[o:]))
+	}
+	return out, mots
 }
 
 // afficherChaineEqip rend le tableau de la passe 1, une ligne par `eqip` sonore.

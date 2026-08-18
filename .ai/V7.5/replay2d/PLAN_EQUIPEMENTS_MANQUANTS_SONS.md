@@ -274,40 +274,87 @@ negatif est desormais triple.
 Aucune ligne de manifeste ajoutee — et le refus est motive par un garde-rail, pas par un
 manque de temps.
 
-### Phase 3 — SONS : adapter la recette des armes au groupe `eqip`
+### Phase 3 — SONS — CLOSE le 2026-08-19
 
-- [ ] 3.1 **Cartographier avant de coder** (lecon n° 1 de la recette) : sur quoi un `eqip`
-      accroche-t-il un son ? Recensement des dependances par GROUPE sur tous les `eqip`
-      (`snd!`, `lsnd`, `sbnk`, `effe`, autres) avec leurs effectifs. Le resultat DECIDE de la
-      suite ; s'il n'y a aucun lien de tag vers le son, la phase s'arrete la, en negatif ecrit.
-- [ ] 3.2 **Chaine `eqip` -> evenements -> banks -> `.wem`** : etendre `cmd/weapon-sounds`
-      d'un mode qui parte du groupe `eqip` au lieu du champ « Weapon Fire Sounds » du `weap`.
-      Reutiliser tout l'aval existant (`lien.go`, `bank.go`, `arbre.go`, `conteneurs*.go`,
-      `pck.go`) — ne rien reimplementer. Deux passes, deux processus, un JSON entre les deux
-      (contrainte memoire).
-- [ ] 3.3 **Cibles** : balise du translocateur (`translocator_beacon`), champ de reparation
-      (`repair_field`), l'ecran de dissimulation SI la phase 1 le nomme, et **toute famille du
-      manifeste encore muette** (aujourd'hui : grapple, thruster, repulsor, repair_field,
-      translocator_beacon, powerup_* ne sonnent pas a la pose ; l'inventaire du manifeste
-      tranchera la liste exacte).
-- [ ] 3.4 **Extraction** : `.wem` -> `.wav` par `vgmstream-cli.exe` (ffmpeg NE decode PAS le
-      Vorbis Wwise). Fichiers de travail dans le scratchpad, jamais dans le depot.
-- [ ] 3.5 **Egalisation** : -16 LUFS / plafond -1 dBTP par gain LINEAIRE strict (lot R2-S).
-      Duree : categorie EQUIPEMENT, donc pas de troncature a 1,2 s, plafond `SOUND_CUT_MAX_S`.
-- [ ] 3.6 **Branchement** : `EQUIPMENT_PLACEMENT_SOUND_STEMS` (geste de pose) et/ou
-      `EQUIPMENT_SOUND_STEMS` (episode d'etat) selon ce que le manifeste dit de la famille —
-      `kind = deployed` / `carried` et l'existence d'un debut ET d'une fin mesures. Le
-      garde-rail `replaySoundAssets.guard.test.ts` doit rester vert (0 stem sans fichier,
-      0 fichier sans stem, durees par categorie).
-- [ ] 3.7 **Ce qui n'est pas trouve est un NEGATIF ECRIT** : chemins fouilles, denominateurs,
-      et la condition de reprise. Mettre a jour le commentaire de `replaySound.ts` si le
-      negatif du 18/08 est desormais faux ou incomplet (une doc inversee est un anti-pattern
-      liste dans `CLAUDE.md`).
+- [x] 3.1 **Cartographier avant de coder** (lecon n° 1 de la recette) — fait en phase 1 par
+      `TestSondeEqipSignatureGlobale`. Groupes de dependances sur les 116 `eqip` :
+      `foot` 116, `effe` 95, `cddf` 88, `hlmt` 62, **`snd!` 41 (69 references)**, `sofa` 36,
+      `proj` 24, `jpt!` 12, `eqip` 9, `gldf` 8, `lens` 5. Le lien tag -> son EXISTE.
+      **ET LA CARTOGRAPHIE A EVITE LA FAUTE.** Le premier tirage (dependances `snd!` du seul
+      `eqip`) rend une chaine INUTILISABLE : les MEMES deux `snd!` (`7b5cbe75`, `725186aa`)
+      sont partages par **21 objets d'equipement**, du mur au surbouclier. Coder dessus aurait
+      donne « un son par equipement » qui aurait ete le meme pour tous. C'est le maillon
+      `effe` — un EFFET est propre a un geste — qui rend la chaine selective : 10 banks
+      atteintes sans lui, **17 avec**, dont **6 SELECTIVES**.
+- [x] 3.2 **Chaine ouverte** : `cmd/weapon-sounds`, modes **`eqip-sons`** (passe 1,
+      `any/globals`, 0,62 Go) et **`eqip-banks`** (passe 2, `pc/globals`, 7,24 Go), JSON entre
+      les deux — l'architecture memoire de la recette est respectee a la lettre. Tout l'aval
+      est REUTILISE (`bank.go`, `pck.go`, `embarques.go`, `arbre.go`) ; rien n'est
+      reimplemente. La chaine complete :
+      `eqip -> effe -> snd! -> (evenement Wwise dans le corps du snd!) -> sbnk -> .wem -> pack`.
+      Le maillon « evenement » est ce qui separe UN GESTE d'un autre dans une banque qui en
+      porte trente ; il se resout en intersectant les mots du `snd!` avec les Events de la
+      banque — la methode de `chercherPorteurs`, retournee.
+      **CALIBRATION, TROIS CONTROLES INDEPENDANTS** : `5724312f` -> `sb_007_abl_repairfield`,
+      `1db55179` -> `sb_010_grn_cv_plasmagrenade`, `2f019657` ->
+      `sb_010_grn_un_lightninggrenade`. Trois banques, trois packs nommes, trois equipements
+      dont l'identite venait d'ailleurs.
+- [x] 3.3 **Cibles et leur verdict, une par une** :
 
-**Gate 3** : gates Go (build, vet, tests `internal/games` + `internal/himap` hors
-`_gamefiles`, golangci 0) ; gate web si `apps/web/` ou `static/sounds/` sont touches
-(`npm ci` dans le frere, purge de `.tmp`, `tsc`, lint, `vitest` match-replay).
-Commit `feat(v7.5-rejeu-eqip): ...` ou `mesure(...)` selon l'issue.
+          famille                banque      wem   gestes   verdict
+          repair_field           5724312f   35(4 au pack)  2   LIVRE (un seul son possible)
+          translocator_beacon    dcfaa487   70            11   NEGATIF : 11 gestes, aucun designe
+          other (rang 10)        92c830f5   38             2   NON BRANCHE (decision, cf. 3.6)
+          repulsor               7bd0883c   33            10   NON BRANCHE (non dessine)
+          sensor + threat_seeker 7acb11cc   32             2   deja sonores (emprunt CONFIRME)
+          wall (panneaux)        60b0f79c   44             3   deja sonore
+          grapple                aucune banque selective       NEGATIF de structure
+          thruster               aucune banque selective       NEGATIF de structure
+          powerup_overshield/camo aucune banque selective      NEGATIF de structure
+
+      **UN RESULTAT NON CHERCHE, ET IL CONFIRME UNE DECISION PRISE AILLEURS** : le capteur de
+      menaces (`5f5f6fef`) et le traqueur (`2f3f467b`) atteignent LA MEME banque `7acb11cc`.
+      Le lot R3 leur avait donne le meme son de pose en invoquant une parente d'appareil, sans
+      connaitre cette chaine. Le jeu range bien leurs sons ensemble.
+- [x] 3.4 **Extraction** : `.wem` ecrits par `eqip-banks -emb` (un sous-dossier par banque,
+      dans le scratchpad — jamais dans le depot), convertis par `vgmstream-cli.exe`.
+      83 `.wem` des six banques cibles convertis et mesures.
+- [x] 3.5 **Egalisation** : gain LINEAIRE de **-1,4 dB**, crete vraie mesuree a **-1,0 dBTP**
+      apres coup — le plafond du lot R2-S.
+      **LA MOITIE « -16 LUFS » N'EST PAS MESURABLE ICI, ET C'EST DIT** : la porte d'EBU R128
+      fait 400 ms, la source 380 ; `ebur128` rend -70,0 LUFS, c'est-a-dire « porte jamais
+      atteinte », pas « tres faible ». Le fichier rejoint les 15 que R2-S avait deja plafonnes
+      par leur facteur de crete. La source clippait a +0,4 dBTP avant traitement.
+- [x] 3.6 **Branchement** : `repair_field: 'repair_field_activate'` dans
+      `EQUIPMENT_PLACEMENT_SOUND_STEMS` — table des POSES, parce que le champ de reparation
+      est un objet POSE sur le terrain (`PLACEMENT_RENDER` le dessine, `kind = carried` mais
+      `origin = deployed` sur 20 de ses 77 poses au corpus). Pas dans `EQUIPMENT_SOUND_STEMS`,
+      qui demande un debut ET UNE FIN mesures sur le porteur — le champ n'en a pas.
+      **CE QUI N'EST PAS BRANCHE, ET POURQUOI** : le repulseur, le grappin et le propulseur
+      parce que `PLACEMENT_RENDER` ne les DESSINE pas non plus (ce sont des capacites qui
+      agissent sur leur porteur, pas des objets poses) — une seule grammaire pour l'oeil et
+      pour l'oreille ; l'objet `other` du rang 10 parce qu'un objet qu'on ne sait pas nommer
+      n'a pas a s'annoncer, et parce que son dessin depend d'une bascule que le son ne partage
+      pas.
+      **LE GARDE-RAIL DE DUREE A DU EVOLUER, ET L'EVOLUTION EST NOMINATIVE.** La regle « un son
+      d'equipement depasse 1,2 s » est un PROXY de « il n'a pas ete retronque a la coupe des
+      armes » ; une source de 0,38 s ne peut pas etre victime de cette coupe mais echoue le
+      proxy. Une table `SOURCES_COURTES` (stem -> duree mesuree de la source) porte la seule
+      dispense, avec sa raison — ET un second test verifie que la duree declaree est la vraie,
+      sans quoi la dispense deviendrait un trou.
+- [x] 3.7 **Les negatifs sont ECRITS, et l'ancien est CORRIGE.** Le commentaire de
+      `replaySound.ts` affirmait « la chaine d'extraction ne connait PAS le groupe `eqip` » :
+      c'est desormais faux, et le laisser aurait ete une « doc inversee » au sens de
+      `CLAUDE.md`. Il porte maintenant la chaine, ce qui designe le fichier livre, l'aveu sur
+      les LUFS, et les trois silences restants avec leur raison propre. Le test
+      `replaySound.test.ts` qui epinglait « balise et champ restent MUETS » est reecrit :
+      il epingle le champ QUI SONNE et la balise QUI SE TAIT.
+
+**Gate 3 : PASSE.** Go : `go build ./...` OK, `go vet ./...` exit 0, `golangci-lint run
+./cmd/weapon-sounds/... ./internal/himap/...` **0 issues**. Web (dans le frere, apres
+`npm ci`, `.tmp` purge) : `tsc --noEmit` exit 0, `npm run lint` exit 0 (0 erreur,
+20 avertissements de baseline preexistants), `vitest run src/features/match-replay`
+**57 fichiers / 877 tests, 0 echec**.
 
 ## Regles dures de ce lot
 
@@ -318,6 +365,41 @@ textes partent au compte rendu.
 
 ## Journal d'execution
 
-(rempli phase par phase)
+- 2026-08-18 — **phase 1 CLOSE**, commit `8bb239213` (`mesure`). Inventaire des 116 `eqip`,
+  verdict triple sur `0x4396db42`, H4 refutee, corpus plein refuse avec son chiffre.
+- 2026-08-18 — **phase 2 CLOSE**, commit `a24107e28` (`docs`). Aucune ligne de manifeste
+  ajoutee (parite bilaterale), negatif ecrit du rang 10 remis a jour.
+- 2026-08-19 — **phase 3 CLOSE**, commit `feat`. Chaine son d'equipement ouverte et calibree,
+  son du champ de reparation extrait du jeu et branche, trois silences documentes.
+
+## Ce qu'il reste, et sa condition de reprise
+
+1. **La balise du translocateur** : sa banque est trouvee (`dcfaa487`, 70 `.wem`, 11 gestes de
+   0,83 a 4,53 s, tous extraits et convertis). Il manque UNE ECOUTE pour designer le geste de
+   pose — la recette des armes tranche exactement ce cas par le vote (§5). Reprise : soumettre
+   les 11 gestes a l'utilisateur, brancher la ligne.
+2. **Le rang 10** (`0x4396db42`) : sa banque `92c830f5` (38 `.wem`, 2 gestes) est extraite
+   elle aussi. Reprise : un NOM (par une chaine, pas une intuition) avant tout branchement.
+3. **`regen_field`** : nomme, sans objet au corpus. Reprise : un film qui en montre un.
 
 ## Decouvertes — notees, NON traitees
+
+1. **Le repulseur a SA banque, et le garde-rail R2.4 attend toujours autre chose.**
+   `replaySoundAssets.guard.test.ts` porte un test qui deviendra rouge le jour ou une regle
+   `killicon` menera a `killfeed-56` (le repulseur), et sa note dit qu'il ne resterait alors
+   qu'a livrer `EQUIPMENT/Repulser - Activate (On Object)` depuis la bibliotheque de
+   l'utilisateur. Ce lot montre qu'il existe une AUTRE source, celle du jeu : banque
+   `7bd0883c`, SELECTIVE (seul l'`eqip` `1e79ebda` = `ability_knockback` l'atteint),
+   **33 `.wem`, 10 gestes de 1,32 a 3,28 s**, tous extraits. Hors perimetre ici (le son de
+   KILL n'est pas le son de POSE), mais la note du garde-rail est desormais incomplete.
+2. **Deux banques d'equipement ne sont rattachees a rien de nomme** : `8c43d4c8`
+   (`eqip 73c5a36d`, 26 `.wem`, 2 gestes d'1 `.wem` chacun) et `9b4559ee` (`eqip 169161cd`,
+   5 `.wem`). Leurs `sofa` ont des identifiants de chaine non casses.
+3. **La banque `de65048f` est atteinte par 33 `eqip`** — le plus large denominateur du jeu —
+   pour UN seul geste d'UN seul `.wem` (`455328312`, via `snd! 7ff6244a`). C'est
+   vraisemblablement le son generique « objet d'equipement cree dans le monde ». Le brancher
+   sonnerait TOUTES les poses, y compris les 88,6 % de lachers a la mort : c'est exactement ce
+   que le lot du 16/08 a mesure comme indesirable. Note, pas traite.
+4. **Les `.pck` nommes couvrent tres peu des banques d'equipement** : 3 banques sur 17
+   touchent un pack nomme, les 14 autres n'ont que des `.wem` EMBARQUES. Le pont de nommage
+   par le nom de pack est donc reel mais rare — il ne remplacera pas le dictionnaire murmur3.
