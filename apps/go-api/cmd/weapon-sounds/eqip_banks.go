@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -32,6 +33,19 @@ type BankResolue struct {
 	Sons      int            `json:"wem_references"`
 	Packs     map[string]int `json:"packs"`
 	Eqip      []string       `json:"eqip"`
+	Gestes    []GesteResolu  `json:"gestes,omitempty"`
+}
+
+// GesteResolu est UN geste sonore : le tag `snd!` qui le porte, l'evenement Wwise qu'il
+// designe dans la bank, et les `.wem` que cet evenement declenche.
+//
+// C'EST LE NIVEAU QUI TRANCHE. Une bank d'equipement porte 20 a 70 `.wem` — le deploiement,
+// le ramassage, la boucle, la fin, les variantes. Livrer « les sons de la bank » ne dirait
+// rien ; c'est l'EVENEMENT qui separe un geste d'un autre, et le `snd!` qui le designe.
+type GesteResolu struct {
+	Snd   string   `json:"snd"`
+	Event string   `json:"event"`
+	Wems  []uint32 `json:"wems"`
 }
 
 // RapportEqipBanks est la sortie de la passe 2.
@@ -40,16 +54,29 @@ type RapportEqipBanks struct {
 	Banks  []BankResolue `json:"banks"`
 }
 
-// banquesDEquipement est la PASSE 2 : elle lit le JSON de la passe 1 et nomme les banks.
-func banquesDEquipement(cheminModule, entree, sortie string) error {
+// banquesDEquipement est la PASSE 2 : elle lit le JSON de la passe 1, nomme les banks et
+// resout chaque GESTE (un `snd!` -> un evenement Wwise -> ses `.wem`).
+//
+// `dossierEmb` non vide : les `.wem` des gestes y sont ecrits, un sous-dossier par bank.
+func banquesDEquipement(cheminModule, entree, sortie, dossierEmb string) error {
 	rap, err := chargerEqipSons(entree)
 	if err != nil {
 		return err
 	}
 	parBank := map[string][]string{}
+	sndsParBank := map[string][]SndSon{}
+	vus := map[string]bool{}
 	for _, e := range rap.Equipement {
 		for _, b := range e.Banks {
 			parBank[b] = append(parBank[b], e.Eqip)
+		}
+		for _, s := range e.Sons {
+			for _, b := range s.Banks {
+				if cle := b + "/" + s.Tag; !vus[cle] {
+					vus[cle] = true
+					sndsParBank[b] = append(sndsParBank[b], s)
+				}
+			}
 		}
 	}
 	fmt.Printf("passe 1 : %d eqip sonores, %d banks a resoudre\n", len(rap.Equipement), len(parBank))
@@ -63,7 +90,7 @@ func banquesDEquipement(cheminModule, entree, sortie string) error {
 	out := RapportEqipBanks{Module: cheminModule}
 	cles := trierCles(parBank)
 	for _, b := range cles {
-		r := resoudreBank(m, b, parBank[b])
+		r := resoudreBank(m, b, parBank[b], sndsParBank[b], dossierEmb)
 		out.Banks = append(out.Banks, r)
 	}
 	afficherBanksResolues(out)
@@ -90,8 +117,10 @@ func chargerEqipSons(chemin string) (RapportEqipSons, error) {
 	return rap, json.Unmarshal(b, &rap)
 }
 
-// resoudreBank rattache les `.wem` d'une bank aux packs nommes du jeu.
-func resoudreBank(m *himodule.Module, hex string, eqips []string) BankResolue {
+// resoudreBank rattache les `.wem` d'une bank aux packs nommes du jeu et resout ses gestes.
+func resoudreBank(
+	m *himodule.Module, hex string, eqips []string, snds []SndSon, dossierEmb string,
+) BankResolue {
 	r := BankResolue{Bank: hex, Packs: map[string]int{}, Eqip: eqips}
 	var gid uint32
 	if _, err := fmt.Sscanf(hex, "%08x", &gid); err != nil {
@@ -130,7 +159,66 @@ func resoudreBank(m *himodule.Module, hex string, eqips []string) BankResolue {
 			r.Packs[nomFichierSansExt(chemin)]++
 		}
 	}
+	r.Gestes = gestesDeBank(bk, snds)
+	if dossierEmb != "" && len(r.Gestes) > 0 {
+		ecrireGestes(ch, emb, r, dossierEmb)
+	}
 	return r
+}
+
+// gestesDeBank intersecte les mots de chaque `snd!` avec les Events de la bank.
+//
+// LA SELECTIVITE EST CELLE DE L'APPARTENANCE, pas d'un offset devine : une bank porte
+// quelques dizaines d'Events dans un espace de 2^32, et le corps d'un `snd!` fait quelques
+// dizaines de mots. Un mot qui tombe sur un Event de CETTE bank n'y tombe pas par hasard.
+func gestesDeBank(bk *bank, snds []SndSon) []GesteResolu {
+	var out []GesteResolu
+	for _, s := range snds {
+		for _, mot := range s.Mots {
+			wems := bk.wemsDeEvent(mot)
+			if _, estEvent := bk.Events[mot]; !estEvent || len(wems) == 0 {
+				continue
+			}
+			out = append(out, GesteResolu{
+				Snd: s.Tag, Event: fmt.Sprintf("%08x", mot), Wems: wems,
+			})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Snd != out[j].Snd {
+			return out[i].Snd < out[j].Snd
+		}
+		return out[i].Event < out[j].Event
+	})
+	return out
+}
+
+// ecrireGestes ecrit les `.wem` des gestes d'une bank, un sous-dossier par bank.
+func ecrireGestes(
+	ch map[string][]byte, emb map[uint32][2]uint32, r BankResolue, racine string,
+) {
+	besoin := map[uint32][2]uint32{}
+	for _, g := range r.Gestes {
+		for _, w := range g.Wems {
+			if pos, ok := emb[w]; ok {
+				besoin[w] = pos
+			}
+		}
+	}
+	if len(besoin) == 0 {
+		return
+	}
+	dossier := filepath.Join(racine, "sbnk_"+r.Bank)
+	if err := os.MkdirAll(dossier, 0o755); err != nil {
+		fmt.Printf("  sbnk %s : dossier %s : %v\n", r.Bank, dossier, err)
+		return
+	}
+	n, err := ecrireEmbarques(ch, besoin, dossier)
+	if err != nil {
+		fmt.Printf("  sbnk %s : ecriture : %v\n", r.Bank, err)
+		return
+	}
+	fmt.Printf("  sbnk %s : %d .wem ecrits dans %s\n", r.Bank, n, dossier)
 }
 
 // afficherBanksResolues rend le tableau final : une bank, son temoin, ses packs nommes.
@@ -149,8 +237,13 @@ func afficherBanksResolues(rap RapportEqipBanks) {
 		if len(noms) == 0 {
 			noms = []string{"aucun pack nomme"}
 		}
-		fmt.Printf("  sbnk %s  %-9s  %2d eqip · %4d wem (%d embarques)  packs: %s\n",
-			b.Bank, verdict, len(b.Eqip), b.Sons, b.Embarques, strings.Join(noms, " "))
+		fmt.Printf("  sbnk %s  %-9s  %2d eqip · %4d wem (%d embarques) · %d gestes  packs: %s\n",
+			b.Bank, verdict, len(b.Eqip), b.Sons, b.Embarques, len(b.Gestes),
+			strings.Join(noms, " "))
+		for _, g := range b.Gestes {
+			fmt.Printf("      geste snd!:%s -> event %s : %d wem %v\n",
+				g.Snd, g.Event, len(g.Wems), g.Wems)
+		}
 	}
 }
 

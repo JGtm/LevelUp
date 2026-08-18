@@ -204,7 +204,7 @@ func main() {
 	case "eqip-sons":
 		err = sonsDEquipement(chemin, parserHexa(*eqipIDs), *sortie)
 	case "eqip-banks":
-		err = banquesDEquipement(chemin, *sortie, *sortieTir)
+		err = banquesDEquipement(chemin, *sortie, *sortieTir, *emb)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}

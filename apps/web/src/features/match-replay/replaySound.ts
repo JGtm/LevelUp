@@ -277,34 +277,51 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * boîtier qu'on lâche. L'emprunt est donc adossé à une parenté, écrite ici et testée, et non
  * au fait qu'il « reste un son disponible ».
  *
- * DEUX FAMILLES NOMMÉES RESTENT MUETTES, ET LEUR SILENCE EST UNE MESURE — la balise du
- * translocateur quantique et le champ de réparation. Relevé du 2026-08-18, rejoué et élargi
- * le même jour au lot R3 :
+ * LE CHAMP DE RÉPARATION SONNE DEPUIS LE 2026-08-18, ET SON SON VIENT DU JEU. Le relevé du
+ * lot R3 concluait « la chaîne d'extraction ne connaît PAS le groupe `eqip` ». Elle le connaît
+ * désormais (`PLAN_EQUIPEMENTS_MANQUANTS_SONS`, phase 3) : `cmd/weapon-sounds`, modes
+ * `eqip-sons` puis `eqip-banks`, chaîne
+ * `eqip -> effe -> snd! -> événement Wwise -> sbnk -> .wem`.
  *
- *  - la bibliothèque livrée de l'utilisateur contient sept dossiers d'équipement (Active Camo,
- *    Drop Wall, Grappleshot, Overshield, Repulser, Threat Sensor, Thruster) et AUCUN fichier
- *    pour ces deux-là ;
- *  - l'archive d'extraction (`Desktop/Halo Infinite - Sons armes/`, 60 catégories,
- *    4 651 `.wav`) est une archive d'ARMES, déclarée telle par son propre LISEZ-MOI : 41 armes,
- *    8 tourelles, 6 packs de sifflements, 4 packs de projectiles. Recherche RÉCURSIVE par nom
- *    sur `*seeker*`, `*transloc*`, `*repair*`, `*quantum*`, `*beacon*`, `*shroud*`, `*equip*`,
- *    `*heal*`, `*medic*` : ZÉRO fichier. Son manifeste (`_donnees/manifeste.json`) est indexé
- *    par ARME et ne porte aucune entrée d'équipement ;
- *  - la chaîne d'extraction elle-même (`.ai/V7.5/RECETTE_SONS_ARMES.md`) part du champ
- *    « Weapon Fire Sounds » du tag `weap` : elle ne connaît PAS le groupe `eqip`, et l'outil
- *    Go n'a aucun mode qui le parcoure. Les sources brutes existent (les `.pck` du jeu, 90 170
- *    `.wem` SANS NOMS), mais les nommer demanderait une passe de banks sur le module de 7,24 Go
- *    — un chantier, pas une ligne.
+ * POURQUOI LE MAILLON `effe` EST INDISPENSABLE, et pourquoi personne ne l'avait vu : la table
+ * de dépendances d'un `eqip` ne porte que deux `snd!`, et ce sont les MÊMES pour 21 objets
+ * d'équipement — du mur au surbouclier. C'est l'EFFET (`effe`) qui est propre à un geste.
  *
- * Livrer un `.wav` que rien ne joue casserait le garde-rail « 0 asset mort » ; emprunter sans
- * parenté serait le mensonge que ce fichier refuse partout ailleurs. Le jour où ces deux
- * sources existent, il reste UNE ligne à écrire ici.
+ * CE QUI DÉSIGNE CE FICHIER-LÀ, et non un autre des 35 `.wem` de la banque : l'`eqip`
+ * `5c8e2316` (l'appareil du champ de réparation, second `eqip` du `sofa` `0e1febf8` =
+ * `repair_field`) atteint la banque `5724312f`, que AUCUN autre `eqip` du jeu n'atteint, et
+ * dont 4 `.wem` tombent dans le pack `sb_007_abl_repairfield.pck` — le jeu la nomme lui-même.
+ * Son unique `snd!` (`22c2323a`) désigne deux événements qui rendent LES MÊMES trois `.wem`,
+ * variantes uniformes d'un seul `RandomSequence` : il n'y a pas de choix à faire, seulement un
+ * tirage. La variante de plus petit identifiant est retenue (894865279, 0,38 s).
+ *
+ * ÉGALISATION : gain LINÉAIRE de -1,4 dB, crête vraie à -1,0 dBTP — le plafond du lot R2-S.
+ * LA MOITIÉ « -16 LUFS » DE LA RÈGLE N'EST PAS MESURABLE ICI et c'est dit plutôt que masqué :
+ * la fenêtre de porte d'EBU R128 fait 400 ms, la source en fait 380 — `ebur128` rend -70 LUFS,
+ * c'est-à-dire « porte jamais atteinte », pas « très faible ». Le fichier rejoint donc les
+ * 15 fichiers que le lot R2-S avait déjà plafonnés par leur facteur de crête.
+ *
+ * LA BALISE DU TRANSLOCATEUR RESTE MUETTE, ET SON SILENCE A CHANGÉ DE RAISON. Sa banque est
+ * TROUVÉE (`dcfaa487`, 70 `.wem`, atteinte par les deux seuls `eqip` `quantum_translocator` du
+ * jeu) — mais elle porte ONZE gestes distincts (8 `snd!`, 11 événements, de 0,83 à 4,53 s), et
+ * RIEN dans les tags ne dit lequel est la pose de la balise : les noms de champs d'un `eqip`
+ * ne sont pas lisibles hors ligne. Choisir serait deviner. La recette des armes tranche ce cas
+ * par le VOTE (« les votes priment sur tout critère », `RECETTE_SONS_ARMES` §5) : il faut une
+ * écoute, pas une mesure de plus.
+ *
+ * RESTENT MUETS AUSSI, par décision et non par manque : le grappin, le propulseur et le
+ * répulseur (que `PLACEMENT_RENDER` ne DESSINE pas non plus — ce sont des capacités qui
+ * agissent sur leur porteur, pas des objets posés), les deux bonus, et l'objet non identifié
+ * `other` (il a pourtant SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas
+ * nommer n'a pas à s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas).
  */
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
   sensor: 'sensor_activate',
   // Même appareil que le capteur, un mode près : même geste de pose, donc même son.
   threat_seeker: 'sensor_activate',
+  // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
+  repair_field: 'repair_field_activate',
 }
 
 /** Un événement sonore posé sur l'horloge du rejeu. */

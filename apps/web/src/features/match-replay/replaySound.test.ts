@@ -306,16 +306,25 @@ describe('buildSoundTimeline', () => {
   })
 
   /**
-   * D5 (2026-08-18) — LE TRAQUEUR PREND LE SON DU CAPTEUR, LES DEUX AUTRES RESTENT MUETS.
+   * D5 (2026-08-18) — LE TRAQUEUR PREND LE SON DU CAPTEUR ; LE CHAMP A DÉSORMAIS LE SIEN ;
+   * LA BALISE RESTE MUETTE.
    *
-   * L'emprunt est adossé à une PARENTÉ (même appareil, un mode près : le capteur balaie en
-   * boucle, le traqueur émet une impulsion unique — le geste de pose est le même), pas au fait
-   * qu'il reste un son disponible. La balise du translocateur et le champ de réparation n'ont
-   * de source NULLE PART (bibliothèque livrée, archive d'extraction, chaîne d'extraction qui
-   * ne connaît que le tag d'arme) : ils se taisent, et ce test l'épingle pour qu'aucun lot ne
-   * leur prête le son d'un voisin par commodité.
+   * L'emprunt du traqueur est adossé à une PARENTÉ (même appareil, un mode près : le capteur
+   * balaie en boucle, le traqueur émet une impulsion unique — le geste de pose est le même),
+   * pas au fait qu'il reste un son disponible. LA STRUCTURE DU JEU L'A CONFIRMÉ DEPUIS, sans
+   * qu'on le lui demande : les deux `eqip` atteignent la MÊME banque sonore (`7acb11cc`).
+   *
+   * LE CHAMP DE RÉPARATION SONNE DEPUIS LE 2026-08-19 (`PLAN_EQUIPEMENTS_MANQUANTS_SONS`,
+   * phase 3) : son son est EXTRAIT DU JEU par la chaîne `eqip -> effe -> snd! -> sbnk`, depuis
+   * une banque que le jeu nomme lui-même (`sb_007_abl_repairfield.pck`). Ce n'est pas un
+   * emprunt, c'est sa source.
+   *
+   * LA BALISE DU TRANSLOCATEUR SE TAIT ENCORE, et la raison a changé : sa banque est trouvée
+   * (`dcfaa487`, 70 `.wem`) mais elle porte ONZE gestes et rien dans les tags ne dit lequel est
+   * la pose. Ce test épingle ce silence pour qu'aucun lot ne lui prête le son d'un voisin par
+   * commodité — le jour où une écoute désigne le geste, c'est UNE ligne à écrire.
    */
-  it('le TRAQUEUR sonne comme le capteur ; balise et champ restent MUETS', () => {
+  it('le TRAQUEUR sonne comme le capteur, le CHAMP a le sien, la BALISE reste MUETTE', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentPlacements: [
@@ -327,7 +336,10 @@ describe('buildSoundTimeline', () => {
       [],
       0,
     )
-    expect(tl).toEqual([{ ms: 1_000, stem: 'sensor_activate' }])
+    expect(tl).toEqual([
+      { ms: 1_000, stem: 'sensor_activate' },
+      { ms: 7_000, stem: 'repair_field_activate' },
+    ])
   })
 
   it('une pose de famille sans fichier (objet non identifié) reste MUETTE', () => {
