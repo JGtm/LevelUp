@@ -34,6 +34,7 @@ import {
   padAt,
   padRespawnSecondsAt,
   padStateAt,
+  type PadIcon,
   type PadState,
 } from './weaponPadsLayer'
 
@@ -55,8 +56,11 @@ export interface WeaponPadsInput {
   frameRef: RefObject<number>
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
-  /** Encre neutre du thème et contour des étiquettes (les deux viennent du canvas). */
-  ink: { neutral: string; labelStroke: string }
+  /**
+   * Les encres du calque : le NEUTRE du terrain (le point) et le couple REMPLISSAGE /
+   * LISERÉ du marquage (la vignette et le compte à rebours). Toutes viennent du canvas.
+   */
+  ink: { neutral: string; fill: string; outline: string }
   locale: ReplayLocale
   /** Repeindre la scène : les vignettes arrivent après coup (chargement asynchrone). */
   redraw: () => void
@@ -83,7 +87,7 @@ export function useReplayWeaponPads({
 }: WeaponPadsInput): WeaponPads {
   const pads = doc.weaponPads
   const [hover, setHover] = useState<WeaponPadHover | null>(null)
-  const iconsRef = useRef<Map<string, CanvasImageSource>>(new Map())
+  const iconsRef = useRef<Map<string, PadIcon>>(new Map())
 
   // LA TAILLE SUIT LA CLÉ CANONIQUE de l'arme (`weaponLabels[id].key`, posée à la requête),
   // jamais son hexadécimal ni son libellé : c'est le vocabulaire commun aux tables du client.
@@ -99,8 +103,13 @@ export function useReplayWeaponPads({
 
   // LES VIGNETTES, cuites une fois par document ET par encre : un masque se teint hors écran,
   // une image finie se pose telle quelle (même contrat `tinted` que WeaponIcon).
+  //
+  // DEUX TEINTURES PAR VIGNETTE depuis le 2026-08-18 : le CORPS à l'encre du texte, le LISERÉ
+  // à celle du fond. Un canvas ne sait pas cerner une image ; le calque repose donc la même
+  // forme tout autour, et il lui faut les deux. Une image FINIE (non masque) n'a ni l'une ni
+  // l'autre : elle se pose telle quelle, sans liseré — on ne peut pas la reteindre.
   useEffect(() => {
-    const map = new Map<string, CanvasImageSource>()
+    const map = new Map<string, PadIcon>()
     iconsRef.current = map
     const seen = new Set<string>()
     for (const pad of pads) {
@@ -111,12 +120,17 @@ export function useReplayWeaponPads({
       const tinted = label.tinted
       const im = new Image()
       im.onload = () => {
-        map.set(weapon, tinted ? tintedIconCanvas(im, ink.neutral) : im)
+        map.set(
+          weapon,
+          tinted
+            ? { fill: tintedIconCanvas(im, ink.fill), outline: tintedIconCanvas(im, ink.outline) }
+            : { fill: im, outline: null },
+        )
         redraw()
       }
       im.src = label.img
     }
-  }, [pads, labels, ink.neutral, redraw])
+  }, [pads, labels, ink.fill, ink.outline, redraw])
 
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
   const t = REPLAY_TEXT[locale]
@@ -131,14 +145,15 @@ export function useReplayWeaponPads({
         { frame, frameMs, k },
         {
           ink: ink.neutral,
-          labelStroke: ink.labelStroke,
+          fill: ink.fill,
+          outline: ink.outline,
           iconOf: (weapon) => iconsRef.current.get(weapon) ?? null,
           scaleOf,
           countdownLabel: t.padCountdownFmt,
         },
       )
     },
-    [enabled, pads, view, frameMs, ink.neutral, ink.labelStroke, scaleOf, t.padCountdownFmt],
+    [enabled, pads, view, frameMs, ink.neutral, ink.fill, ink.outline, scaleOf, t.padCountdownFmt],
   )
 
   const onPointerMove = useCallback(
@@ -156,7 +171,8 @@ export function useReplayWeaponPads({
       const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
       const style = {
         ink: ink.neutral,
-        labelStroke: ink.labelStroke,
+        fill: ink.fill,
+        outline: ink.outline,
         iconOf: () => null,
         scaleOf,
         countdownLabel: t.padCountdownFmt,
@@ -185,7 +201,7 @@ export function useReplayWeaponPads({
         return next
       })
     },
-    [enabled, pads, view, ink.neutral, ink.labelStroke, scaleOf, t.padCountdownFmt, frameRef, frameMs, nameOf],
+    [enabled, pads, view, ink.neutral, ink.fill, ink.outline, scaleOf, t.padCountdownFmt, frameRef, frameMs, nameOf],
   )
 
   const onPointerLeave = useCallback(() => {
