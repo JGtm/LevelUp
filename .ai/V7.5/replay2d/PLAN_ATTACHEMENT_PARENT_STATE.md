@@ -229,6 +229,29 @@ au CR) ; RE image-cle fermee (rien ici ne la rouvre : chemin delta seulement).
   trajectoire propre du drapeau est donc a portee de main par le RECORD DE CREATION, et
   l'attachement au porteur ne l'est pas par i10.
 
+- 2026-08-18 — **ITEM 0.2, TROISIEME VOLET : la PORTE d'i10 CHEZ LE PORTEUR — le composant
+  n'est meme pas EMIS pendant un portage.**
+  Le plan laissait ouvert le sens du lien (« de l'objet drapeau OU du porteur : sens a
+  etablir »). Cette lecture-la ne suppose rien des champs : elle ne regarde qu'un bit, la
+  porte, sur les bipedes que le pont NOMME, et le confronte aux fenetres de portage.
+
+  | film | qualite du pont (vies / morts nommees / calages / collisions) | i10 pendant un portage | i10 hors portage |
+  |---|---|---|---|
+  | `64e8adfa` | 141 / 122 / 122 / 0 | **0 lecture** | 26 lectures, 10 ouvertes (38,5 %) |
+  | `530820e5` | 98 / 92 / 92 / 0 | **0 lecture** | 14 lectures, 5 ouvertes (35,7 %) |
+  | `53ce4390` | 144 / 109 / 109 / 2 | **0 lecture** | 9 lectures, 1 ouverte (11,1 %) |
+  | cumul | 8 joueurs par film | **0/0** | 16/49 = 32,7 % ouvertes |
+
+  **ZERO lecture d'i10 sur un bipede pendant qu'il porte le drapeau**, sur 149 fenetres et
+  trois films. Ce n'est pas « la porte reste fermee » : le composant n'entre PAS au masque du
+  record. Le lien de portage ne passe donc pas par i10 cote porteur, et le denominateur nul
+  interdit d'en dire davantage. Hors portage, i10 est ouvert dans un tiers des lectures —
+  meme taux que partout ailleurs, ce qui confirme que ce bit ne parle pas d'attachement.
+
+  Le pont bipede est excellent la ou on l'accuse : 122 vies nommees sur 141, 92 sur 98, 109
+  sur 144, avec 0, 0 et 2 collisions, et 8 joueurs distincts par film. Le negatif ne vient pas
+  de la chaine qui nomme les slots.
+
 - 2026-08-18 — **ITEM 0.3, PREALABLE : le second film BTB est choisi SUR PREUVE.**
   Une playlist « BTB Heavies » relevee au registre ne dit rien du flux ; des slots `ti=40` dans
   les images-cles, si. Recensement des trois premieres images-cles de huit candidats (tous BTB
@@ -314,7 +337,7 @@ au CR) ; RE image-cle fermee (rien ici ne la rouvre : chemin delta seulement).
 
   | champ | grammaire (param_4 = 1) | sens etabli ? |
   |---|---|---|
-  | porte | `R(1)` | **NON, et l'inverse est suspecte** : ouverte dans 23 a 44 % des lectures, uniformement sur les neuf archetypes, filtre bit-exact compris. Un attachement reel serait rare et tres inegal. |
+  | porte | `R(1)` | **NON, et l'inverse est suspecte** : ouverte dans 23 a 44 % des lectures, uniformement sur les neuf archetypes, filtre bit-exact compris. Un attachement reel serait rare et tres inegal. Et le composant n'est meme pas EMIS sur un bipede pendant qu'il porte le drapeau (0 lecture sur 149 fenetres). |
   | quant16 | sonde `R(1)` + `R(13)` + `R(2)` | **NON** : lu comme `(gen << 30) \| slot`, il ne designe une entite vivante qu'au taux du hasard (2,1 a 14,0 % contre temoin 0 a 16,0 %). Aucun couple enfant->parent ne se repete sur les paquets bit-exacts. |
   | word16 | `R(16)` | **NON** : 1 a 2 lectures sur 144-193 tombent sur un slot de bipede nomme. |
   | opt16 | `R(1)` puis `R(16)` | **NON** : 0 lecture sur un slot de bipede nomme, sur les trois films CTF. |
