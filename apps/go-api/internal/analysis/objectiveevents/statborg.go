@@ -416,12 +416,42 @@ func RealRounds(recs []StatRecord) map[int]bool {
 			runs[k.round] = n
 		}
 	}
+	return contiguousRounds(runs)
+}
+
+// statMaxEmptyRoundRun : combien de manches SANS suite coherente la contiguite tolere d'affilee.
+//
+// LE ZERO ETAIT UN BUG (revue R1, 2026-08-18). La contiguite sortait au PREMIER trou : une
+// premiere manche trop courte pour tirer [statMinRoundRun] emissions coherentes — un camp qui
+// s'effondre en quelques secondes — faisait perdre TOUTES les manches suivantes, y compris
+// completes, et le match retombait sur la seule manche 1 de repli.
+//
+// UN est le plus petit reglage qui repare cela sans rouvrir ce que la contiguite ferme : une
+// manche courte n'a pas de suite coherente, cinq d'affilee n'existent pas. Le controle negatif
+// tient toujours — une « manche 5 » sans les manches 1 a 4 est ecartee, elle laisse quatre
+// manches vides d'affilee.
+const statMaxEmptyRoundRun = 1
+
+// contiguousRounds applique la contiguite : les manches se jouent DANS L'ORDRE, donc la suite
+// retenue part de zero et s'arrete des qu'il n'y a plus rien de coherent apres.
+//
+// Une manche sans suite coherente est CONSERVEE quand une manche coherente la suit encore (elle
+// a bien ete jouee, elle a seulement ete courte) et que le trou ne depasse pas
+// [statMaxEmptyRoundRun]. Sinon on s'arrete : ce qui suit est du bruit.
+func contiguousRounds(runs map[int]int) map[int]bool {
 	out := map[int]bool{}
+	gap := 0
 	for round := 0; round <= statMaxRound; round++ {
-		if runs[round] < statMinRoundRun {
-			break // trou : tout ce qui suit est du bruit
+		if runs[round] >= statMinRoundRun {
+			gap = 0
+			out[round] = true
+			continue
 		}
-		out[round] = true
+		gap++
+		if gap > statMaxEmptyRoundRun || !hasRoundAfter(runs, round) {
+			break
+		}
+		out[round] = true // manche courte, mais une manche coherente la suit encore
 	}
 	// La premiere manche existe toujours : un film tres court, ou tronque par le plafond,
 	// reste lisible.
@@ -429,4 +459,14 @@ func RealRounds(recs []StatRecord) map[int]bool {
 		out[0] = true
 	}
 	return out
+}
+
+// hasRoundAfter dit s'il reste une manche coherente STRICTEMENT apres celle-ci.
+func hasRoundAfter(runs map[int]int, round int) bool {
+	for r := round + 1; r <= statMaxRound; r++ {
+		if runs[r] >= statMinRoundRun {
+			return true
+		}
+	}
+	return false
 }

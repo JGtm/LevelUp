@@ -225,19 +225,21 @@ func TestScoreTimelinePlayerCounters(t *testing.T) {
 	if p == nil {
 		t.Fatal("le joueur x10 n'est pas publie")
 	}
-	for name, got := range map[string]int{
-		"frags": lastValue(p.Kills), "morts": lastValue(p.Deaths),
-		"assistances": lastValue(p.Assists), "score personnel": lastValue(p.Score),
+	// Les quatre valeurs sont EPINGLEES, et elles sont distinctes deux a deux : intervertir
+	// deux compteurs fait rougir ce test, ce qu'un simple « non nul » ne ferait pas.
+	for _, cas := range []struct {
+		nom  string
+		got  int
+		want int
+	}{
+		{"frags", lastValue(p.Kills), 3},
+		{"morts", lastValue(p.Deaths), 1},
+		{"assistances", lastValue(p.Assists), 2},
+		{"score personnel", lastValue(p.Score), 300},
 	} {
-		if got == 0 {
-			t.Errorf("compteur %q vide pour x10", name)
+		if cas.got != cas.want {
+			t.Errorf("%s de x10 = %d, attendu %d", cas.nom, cas.got, cas.want)
 		}
-	}
-	if got := lastValue(p.Kills); got != 3 {
-		t.Errorf("frags de x10 = %d, attendu 3", got)
-	}
-	if got := lastValue(p.Score); got != 300 {
-		t.Errorf("score personnel de x10 = %d, attendu 300", got)
 	}
 }
 
@@ -281,18 +283,18 @@ func fragsIdentityInput() *ScoreInput {
 	// Les slots d'equipe repliquent le total de frags de leur camp (composant 2, valeur A).
 	recs = append(recs, statRec(5_000, 6, 0, map[int]objectiveevents.StatValue{2: {A: 5}}))
 	recs = append(recs, statRec(5_000, 8, 0, map[int]objectiveevents.StatValue{2: {A: 7}}))
-	recs = append(recs, coreLine(10, 0, 3_000, 3, 1, 1, 300)...)
+	recs = append(recs, coreLine(10, 0, 3_000, 3, 1, 2, 300)...)
 	recs = append(recs, coreLine(12, 0, 3_100, 2, 2, 3, 250)...)
-	recs = append(recs, coreLine(14, 0, 3_200, 4, 3, 2, 400)...)
+	recs = append(recs, coreLine(14, 0, 3_200, 4, 3, 6, 400)...)
 	recs = append(recs, coreLine(16, 0, 3_300, 3, 4, 5, 350)...)
 
 	scores := [2]int{3, 3} // egalite : la preuve (a) ne peut pas trancher
 	return &ScoreInput{
 		Records: recs,
 		Lines: []objectiveevents.PlayerLine{
-			{XUID: "x10", Kills: 3, Deaths: 1, Assists: 1},
+			{XUID: "x10", Kills: 3, Deaths: 1, Assists: 2},
 			{XUID: "x12", Kills: 2, Deaths: 2, Assists: 3},
-			{XUID: "x14", Kills: 4, Deaths: 3, Assists: 2},
+			{XUID: "x14", Kills: 4, Deaths: 3, Assists: 6},
 			{XUID: "x16", Kills: 3, Deaths: 4, Assists: 5},
 		},
 		TeamByXUID: map[string]int{"x10": 0, "x12": 0, "x14": 1, "x16": 1},
@@ -393,5 +395,59 @@ func repeatedCountersInput() *ScoreInput {
 	return &ScoreInput{
 		Records: recs,
 		Lines:   []objectiveevents.PlayerLine{{XUID: "x10", Kills: 3, Deaths: 2, Assists: 1}},
+	}
+}
+
+// TestScoreTimelineIdentityWhenFilmDiffersFromRegistry — LE CAS STRONGHOLDS / KOTH, ET C'EST
+// CELUI QUI JUSTIFIE LA PREUVE (b) (revue R1).
+//
+// Le film porte le score AFFICHE ; l'API en porte un autre dans deux modes (des ticks en
+// Strongholds, des secondes de colline en KOTH). Les finales du film ne concordent alors avec
+// AUCUN des deux scores du registre : la preuve (a) ne peut pas trancher — et elle ne doit
+// surtout pas trancher au plus proche — tandis que la somme des frags, elle, departage.
+func TestScoreTimelineIdentityWhenFilmDiffersFromRegistry(t *testing.T) {
+	var recs []objectiveevents.StatRecord
+	// Le film dit 200 et 126 ; le registre dit 193 et 112 (des TICKS, pas des points).
+	recs = append(recs, modeRamp(6, 0, 2_000, 500, 198, 199, 200)...)
+	recs = append(recs, modeRamp(8, 0, 2_100, 500, 124, 125, 126)...)
+	// Les frags departagent : camp 0 = 5 (3 + 2), camp 1 = 7 (4 + 3).
+	recs = append(recs, statRec(5_000, 6, 0, map[int]objectiveevents.StatValue{2: {A: 5}}))
+	recs = append(recs, statRec(5_000, 8, 0, map[int]objectiveevents.StatValue{2: {A: 7}}))
+	recs = append(recs, coreLine(10, 0, 3_000, 3, 1, 2, 300)...)
+	recs = append(recs, coreLine(12, 0, 3_100, 2, 2, 3, 250)...)
+	recs = append(recs, coreLine(14, 0, 3_200, 4, 3, 6, 400)...)
+	recs = append(recs, coreLine(16, 0, 3_300, 3, 4, 5, 350)...)
+
+	scores := [2]int{193, 112} // DIFFERENTS l'un de l'autre : (a) s'applique... et echoue
+	in := &ScoreInput{
+		Records: recs,
+		Lines: []objectiveevents.PlayerLine{
+			{XUID: "x10", Kills: 3, Deaths: 1, Assists: 2},
+			{XUID: "x12", Kills: 2, Deaths: 2, Assists: 3},
+			{XUID: "x14", Kills: 4, Deaths: 3, Assists: 6},
+			{XUID: "x16", Kills: 3, Deaths: 4, Assists: 5},
+		},
+		TeamByXUID: map[string]int{"x10": 0, "x12": 0, "x14": 1, "x16": 1},
+		TeamScores: &scores,
+	}
+
+	tl, cov := buildScoreTimeline(in, testClock())
+	if cov.TeamIdentity != ScoreIdentityFrags {
+		t.Fatalf("identite = %q, attendu %q : (a) doit DECLINER quand les finales du film ne "+
+			"valent aucun des scores du registre, et (b) doit resoudre",
+			cov.TeamIdentity, ScoreIdentityFrags)
+	}
+	if len(tl.Teams) != 2 {
+		t.Fatalf("%d courbe(s) d'equipe, attendu 2", len(tl.Teams))
+	}
+	if tl.Teams[0].TeamID == nil || *tl.Teams[0].TeamID != 0 {
+		t.Errorf("slot 6 (5 frags) : camp %v, attendu 0", tl.Teams[0].TeamID)
+	}
+	if tl.Teams[1].TeamID == nil || *tl.Teams[1].TeamID != 1 {
+		t.Errorf("slot 8 (7 frags) : camp %v, attendu 1", tl.Teams[1].TeamID)
+	}
+	// La courbe publiee reste celle du FILM — l'oracle est le score affiche, pas celui de l'API.
+	if got := tl.Teams[0].Total[len(tl.Teams[0].Total)-1].V; got != 200 {
+		t.Errorf("finale du camp 0 = %d, attendu 200 (la valeur du FILM, pas les 193 de l'API)", got)
 	}
 }
