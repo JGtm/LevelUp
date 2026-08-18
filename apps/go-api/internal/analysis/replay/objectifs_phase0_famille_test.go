@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -314,69 +313,6 @@ func objCandidats(t objTable) []objCandidat {
 		return out[i].Val < out[j].Val
 	})
 	return out
-}
-
-// TestObjectifsPhase0FamilleDrapeau — ITEM 0.1, sur les trois films CTF.
-func TestObjectifsPhase0FamilleDrapeau(t *testing.T) {
-	root := objRequireRoot(t)
-	communs := map[uint32]int{}
-	joues := 0
-	for _, id := range objCTFFilms {
-		src, ok := objOpenFilm(t, root, id)
-		if !ok {
-			t.Logf("film %s absent du cache — non confronte", id)
-			continue
-		}
-		joues++
-		cands := objMesureFilm(t, root, id, src)
-		for _, c := range cands {
-			communs[c.Val]++
-		}
-	}
-	if joues == 0 {
-		t.Skipf("aucun film CTF dans le cache (%s=%q)", objFilmEnv, root)
-	}
-	var retenus []uint32
-	for v, n := range communs {
-		if n == joues {
-			retenus = append(retenus, v)
-		}
-	}
-	sort.Slice(retenus, func(i, j int) bool { return retenus[i] < retenus[j] })
-	t.Logf("ITEM 0.1 — films confrontes : %d ; valeurs candidates COMMUNES aux %d films : %d %s",
-		joues, joues, len(retenus), objHex(retenus))
-}
-
-// objMesureFilm joue la confrontation d'un film et publie ses chiffres.
-func objMesureFilm(t *testing.T, root, id string, src *objDiskFilm) []objCandidat {
-	t.Helper()
-	f := objCorpus[id]
-	evs, _, apparies := objIdentified(src, f)
-	b, err := objBuildBridge(objChunkDir(root, id))
-	if err != nil {
-		t.Fatalf("%s : pont : %v", id, err)
-	}
-	recs, images, err := objScanKeyframeBipeds(objChunkDir(root, id))
-	if err != nil {
-		t.Fatalf("%s : balayage : %v", id, err)
-	}
-	wins, fusions := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
-	tab := objConfronte(recs, b, wins)
-	cands := objCandidats(tab)
-	t.Logf("%s : %d images-cles, %d records bipede (%d sans pont), %d slots statborg apparies, "+
-		"%d fenetres de portage (%d prises fusionnees) ; records ETIQUETES portage=%d hors=%d ; "+
-		"valeurs distinctes=%d ; candidates=%d",
-		id, images, len(recs), tab.SlotsInconnus, apparies, len(wins), fusions,
-		tab.Portage, tab.Hors, len(tab.Par), len(cands))
-	for i, c := range cands {
-		if i >= 8 {
-			t.Logf("%s : ... %d autres candidates", id, len(cands)-8)
-			break
-		}
-		t.Logf("%s : candidate 0x%08X — portage %d/%d = %.1f %% ; hors portage %d/%d = %.2f %%",
-			id, c.Val, c.Portage, tab.Portage, 100*c.TauxP, c.Hors, tab.Hors, 100*c.TauxH)
-	}
-	return cands
 }
 
 // objFinMatch borne la derniere fenetre : le dernier fait date du match.
