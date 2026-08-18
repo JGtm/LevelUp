@@ -105,6 +105,11 @@ type zoneSeries struct {
 	gauge map[uint32][]zoneSample // tag 3 : la jauge de capture
 	owner map[uint32][]zoneSample // tag 4 : le proprietaire
 	keys  map[uint32]uint32       // tag 5 : la cle de nommage, une par slot
+	// desig : tag 5, la SERIE des identifiants CHAINES par slot — en KOTH le slot de l'objet
+	// de mode y porte le DESIGNATEUR de la colline courante (cf. zone_states_hill.go). Seules
+	// les lectures dont le record chaine entrent ici : le tag 5 non chaine des slots combles est
+	// de la contamination d'ancrage (mesure du lot C-ter volet 1, 4 films).
+	desig map[uint32][]zoneSample
 	slots int
 }
 
@@ -153,7 +158,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 // phase 2a). Les retenir ferait entrer du bruit dans les series.
 func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	out := zoneSeries{gauge: map[uint32][]zoneSample{}, owner: map[uint32][]zoneSample{},
-		keys: map[uint32]uint32{}}
+		keys: map[uint32]uint32{}, desig: map[uint32][]zoneSample{}}
 	// L'ensemble des slots QUI PARLENT. Ce sont les slots de l'archetype 13, PAS les slots de
 	// vie publies du rejeu : deux espaces distincts, qui n'ont ni la meme origine ni le meme
 	// sens — d'ou l'ensemble local plutot qu'un appel au helper des pistes publiees.
@@ -174,10 +179,13 @@ func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
 			out.owner[r.Slot] = append(out.owner[r.Slot], zoneSample{t: t, v: r.Value})
 		case filmdec.ManagedPropertyTagStringID:
 			out.keys[r.Slot] = uint32(r.Value)
+			if r.Chained {
+				out.desig[r.Slot] = append(out.desig[r.Slot], zoneSample{t: t, v: r.Value})
+			}
 		}
 	}
 	out.slots = len(seen)
-	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner} {
+	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig} {
 		for s := range m {
 			ss := m[s]
 			sort.SliceStable(ss, func(i, j int) bool { return ss[i].t < ss[j].t })
