@@ -441,7 +441,7 @@ trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grande
 - `[x]` 8.1 `filmdec` — le RECENSEMENT d'images-cles se lit pour tout archetype d'objet du
   monde (`ScanFilmWorldObjectKeyframes(dir, ti)` / `WorldObjectKeyframes`). Sans lui, la voie
   `ti=37` n'a pas de quoi borner une presence.
-- `[ ]` 8.2 `replay` — la REGLE D'IDENTITE d'une chaine de socles devient une regle NOMMEE
+- `[x]` 8.2 `replay` — la REGLE D'IDENTITE d'une chaine de socles devient une regle NOMMEE
   (`padRule`) que la chaine `ti=42` prend telle quelle : meme sortie, ancrage golden inchange.
 - `[ ]` 8.3 La voie `ti=37` : trois lectures du film, apparitions dont la famille du manifeste
   commence par `powerup_`, exclusion des creations a vie delta (les lachers), grappe 1 m,
@@ -467,6 +467,13 @@ trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grande
 `ScanFilmWorldObjectKeyframes(dir, ti)` rend `WorldObjectKeyframes` pour NIMPORTE QUEL archetype.
 Aucun second walker : la marche d images-cles reste unique, l archetype descend au rang de
 parametre. Gate : `go vet ./internal/analysis/...` 0 · `go test ./internal/analysis/{replay,filmdec}/...` 0.
+
+**8.2 — CLOSE le 2026-08-19.** `GroundWeaponScan` devient `WorldObjectScan` (une forme, deux
+archetypes) et `groundWeaponObjects` devient `padObjects(scan, rule, lives, positions)`. La
+REGLE (`padRule`) porte la nature publiee, la table des objets d objectif a ecarter, et la
+resolution d identite ; `weaponPadRule(flags)` est celle des armes. SORTIE INCHANGEE : le
+golden d assemblage passe SANS regeneration, ce qui est l ancrage de l etape. Gate :
+`go vet` 0 · `go test ./internal/analysis/replay/...` 0 · `golangci-lint` replay+filmdec 0 issues.
 
 ## 7. Decouvertes (a ne PAS traiter dans ce lot)
 

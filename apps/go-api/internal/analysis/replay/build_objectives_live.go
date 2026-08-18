@@ -41,7 +41,7 @@ import (
 // FlagInput est CE QUE L'APPELANT FOURNIT du drapeau, plus ce que `BuildFromFilm` y depose.
 //
 // LES LECTURES VOYAGENT ENSEMBLE, ET `Scanned` DIT QU'ELLES ONT ABOUTI : un calque vide sans lui
-// serait indistinguable d'un film qu'on n'a pas su ouvrir (meme regle que [GroundWeaponScan]).
+// serait indistinguable d'un film qu'on n'a pas su ouvrir (meme regle que [WorldObjectScan]).
 type FlagInput struct {
 	// Scanned dit que l'appelant a bien ouvert le film. Faux : ni calque ni couverture — le
 	// document ne dit alors rien du drapeau, ce qui n'est pas « il n'y en avait pas ».

@@ -50,7 +50,7 @@ import (
 // un film qu'on n'a pas su balayer rendent tous trois zéro socle — seuls ces compteurs les
 // distinguent.
 type GroundWeaponCoverage struct {
-	// Scanned dit que le film a été balayé jusqu'au bout (cf. GroundWeaponScan.Scanned).
+	// Scanned dit que le film a été balayé jusqu'au bout (cf. WorldObjectScan.Scanned).
 	Scanned bool `json:"scanned"`
 	// Slots est la largeur de la bande de slots de l'archétype ; Anchors le nombre d'en-têtes
 	// de création reconnus (bruit compris) ; Accepted ceux que l'oracle de position a validés.
@@ -120,7 +120,7 @@ func (c GroundWeaponCoverage) Balanced() bool {
 // `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromPositions) : la
 // datation d'une disparition est une recherche dichotomique sur cette suite.
 func buildWeaponPads(
-	scan GroundWeaponScan, positions []filmdec.BipedPosition, clock replayClock,
+	scan WorldObjectScan, positions []filmdec.BipedPosition, clock replayClock,
 	flags map[uint32]Label,
 ) ([]WeaponPad, []PadPickup, *GroundWeaponCoverage) {
 	cov := &GroundWeaponCoverage{
@@ -132,7 +132,7 @@ func buildWeaponPads(
 	}
 	// `rejected` est COMPTÉ sur le chemin de rejet, jamais déduit d'`Accepted` : c'est ce qui
 	// fait de l'invariant `Kept + Rejected == Accepted` un contrôle et non une tautologie.
-	objs, rejected := groundWeaponObjects(scan, equipmentLives(positions), positions, flags)
+	objs, rejected := padObjects(scan, weaponPadRule(flags), equipmentLives(positions), positions)
 	cov.Kept, cov.Rejected, cov.Objectives = len(objs), rejected.total, rejected.objectives
 	atRest, src := gwAtRestOf(objs, cov)
 	pads, assign := gwPadsClusterAssign(atRest)

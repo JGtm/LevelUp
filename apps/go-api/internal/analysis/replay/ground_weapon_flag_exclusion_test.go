@@ -27,9 +27,9 @@ import (
 
 // gwFlagScan monte QUATRE apparitions au repos au meme endroit sous l'identifiant `id` : le cas
 // qui fait un socle quand l'identite se resout en arme (cf. gwTestPadScan, meme geometrie).
-func gwFlagScan(id uint32) (GroundWeaponScan, []filmdec.BipedPosition) {
+func gwFlagScan(id uint32) (WorldObjectScan, []filmdec.BipedPosition) {
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
 		Creations: []filmdec.EquipmentCreation{

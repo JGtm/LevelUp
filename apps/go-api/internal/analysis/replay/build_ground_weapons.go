@@ -42,31 +42,31 @@ import (
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmGroundWeapons(
 	filmDir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
-) GroundWeaponScan {
+) WorldObjectScan {
 	defer gwInstallMPPWidths(mpp)()
 	kf := filmdec.ScanFilmWorldObjectKeyframes(filmDir, filmdec.GroundWeaponTypeIndex)
 	if len(kf.Band) == 0 {
 		slog.Warn("armes au sol : aucun slot d'archetype ti=42 aux images-cles — rejeu sans socles",
 			"filmDir", filmDir, "imagesCles", len(kf.TimesUS))
-		return GroundWeaponScan{}
+		return WorldObjectScan{}
 	}
 	cre, st, err := filmdec.ScanFilmGroundWeaponCreationsForBand(filmDir, wr, kf.Band)
 	if err != nil {
 		slog.Warn("armes au sol : records de creation ti=42 illisibles — rejeu sans socles",
 			"err", err, "filmDir", filmDir)
-		return GroundWeaponScan{}
+		return WorldObjectScan{}
 	}
 	tracks, err := filmdec.ScanFilmWorldObjectsForBand(filmDir, wr, kf.Band)
 	if err != nil {
 		slog.Warn("armes au sol : pistes delta ti=42 illisibles — AUCUN socle publie (sans elles,"+
 			" toute apparition passerait pour un objet apparu au repos)",
 			"err", err, "filmDir", filmDir)
-		return GroundWeaponScan{}
+		return WorldObjectScan{}
 	}
 	slog.Info("armes au sol : balayage ti=42",
 		"slots", st.Slots, "ancres", st.Anchors, "acceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS), "pistesDelta", len(tracks))
-	return GroundWeaponScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
+	return WorldObjectScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
 }
 
 // gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film et rend leur
@@ -94,7 +94,7 @@ func gwInstallMPPWidths(w filmdec.MPPWidths) func() {
 // `flags` est la table d'identite des DRAPEAUX du titre : la chaine les RECONNAIT et les exclut
 // des socles avant toute autre question. Table vide = comportement d'avant le 2026-08-18.
 func attachWeaponPads(
-	doc *ReplayDocument, scan GroundWeaponScan, positions []filmdec.BipedPosition, clock replayClock,
+	doc *ReplayDocument, scan WorldObjectScan, positions []filmdec.BipedPosition, clock replayClock,
 	flags map[uint32]Label,
 ) {
 	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons =

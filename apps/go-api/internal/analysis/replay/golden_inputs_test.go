@@ -150,7 +150,7 @@ type goldenInputs struct {
 	// GroundWeapons : ce que le film rend sur les ARMES AU SOL (creations ti=42, recensement
 	// des images-cles, pistes de position). MEME raison que les precedents : l assemblage en
 	// fait le calque des socles du schema 11.
-	GroundWeapons GroundWeaponScan
+	GroundWeapons WorldObjectScan
 	Deaths        []Death
 	Indices       PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
@@ -554,7 +554,7 @@ func decodeTracks(r *greader) []filmdec.ProjectileTrack {
 // LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est deliberé : l assemblage ne la lit pas (elle
 // sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME,
 // pas ce que le decodage a traverse.
-func encodeGroundWeapons(w *gwriter, s GroundWeaponScan) {
+func encodeGroundWeapons(w *gwriter, s WorldObjectScan) {
 	w.bool8(s.Scanned)
 	w.u(uint64(len(s.Creations)))
 	var lastTS uint64
@@ -605,8 +605,8 @@ func encodeGroundWeapons(w *gwriter, s GroundWeaponScan) {
 	encodeTracks(w, s.Tracks)
 }
 
-func decodeGroundWeapons(r *greader) GroundWeaponScan {
-	s := GroundWeaponScan{Scanned: r.bool8()}
+func decodeGroundWeapons(r *greader) WorldObjectScan {
+	s := WorldObjectScan{Scanned: r.bool8()}
 	n := int(r.u())
 	s.Creations = make([]filmdec.EquipmentCreation, 0, n)
 	var lastTS uint64
