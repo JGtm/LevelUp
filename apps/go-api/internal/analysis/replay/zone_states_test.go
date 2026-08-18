@@ -370,6 +370,68 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 	}
 }
 
+// zoneGaugeSamplesAt fabrique une rampe de jauge SUR MESURE : trois emissions croissantes aux
+// frames demandees. `zoneRampAt` en pose une de 4 frames ; ici la duree est le sujet du test.
+func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, top uint64) []filmdec.ManagedPropertyRead {
+	return []filmdec.ManagedPropertyRead{
+		zoneReadAt(slot, t0, filmdec.ManagedPropertyTagQuant, 1_000),
+		zoneReadAt(slot, tMid, filmdec.ManagedPropertyTagQuant, 200_000),
+		zoneReadAt(slot, tPeak, filmdec.ManagedPropertyTagQuant, top),
+	}
+}
+
+// TestZoneStatesCollineUneSeuleZoneActiveALaFois — L'INVARIANT DU MODE (revue R1). Deux gardes
+// qui se RECOUVRENT dans le temps, sur deux slots et deux zones, ne peuvent pas laisser deux
+// zones marquees `active` au meme instant : la precedente est fermee a l'instant ou la suivante
+// commence.
+//
+// SANS LA FERMETURE SYSTEMATIQUE, la periode precedente n'etait tronquee que si un TROU la
+// separait de la suivante — deux recouvrantes sortaient donc toutes les deux actives, et le
+// rendu montrait deux collines.
+func TestZoneStatesCollineUneSeuleZoneActiveALaFois(t *testing.T) {
+	var reads []filmdec.ManagedPropertyRead
+	reads = append(reads, zoneGaugeSamplesAt(40, 100, 150, 200, 900_000)...) // garde longue
+	reads = append(reads, zoneGaugeSamplesAt(50, 150, 170, 190, 910_000)...) // garde DEDANS
+	in := zoneTestInput(reads)
+	in.Hill = true
+	// La grappe est dans la zone 1 sauf entre 150 et 190, ou elle passe dans la zone 0 : la
+	// premiere rampe designe la zone 1, la seconde la zone 0, et les deux se recouvrent.
+	var pts []Point
+	for f := 100; f <= 200; f++ {
+		x := float32(20.5)
+		if f >= 150 && f <= 190 {
+			x = -19.5
+		}
+		pts = append(pts, pointAt(f, x, 0, 0))
+	}
+	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	if cov.HillPeriods != 2 || len(states) != 2 {
+		t.Fatalf("%d periode(s) et %d zone(s), attendu 2 et 2 : %+v", cov.HillPeriods,
+			len(states), states)
+	}
+	type span struct {
+		ref    int
+		t0, t1 int
+	}
+	var actifs []span
+	for _, st := range states {
+		for _, sp := range st.Spans {
+			if sp.Active {
+				actifs = append(actifs, span{ref: st.ZoneRef, t0: sp.T0, t1: sp.T1})
+			}
+		}
+	}
+	for i := range actifs {
+		for j := i + 1; j < len(actifs); j++ {
+			a, b := actifs[i], actifs[j]
+			if a.t0 <= b.t1 && b.t0 <= a.t1 {
+				t.Errorf("deux zones ACTIVES au meme instant : zone %d [%d ; %d] et zone %d"+
+					" [%d ; %d]", a.ref, a.t0, a.t1, b.ref, b.t0, b.t1)
+			}
+		}
+	}
+}
+
 // TestZoneStatesCollineCompteLesRampesNonLocalisees — LE DENOMINATEUR DE LA METHODE PAR
 // POSITIONS (revue R1). Une montee de jauge que la grappe ne sait pas localiser est une garde
 // REELLE dont on ignore le lieu : elle est ecartee, et elle se compte dans `unpaired`.

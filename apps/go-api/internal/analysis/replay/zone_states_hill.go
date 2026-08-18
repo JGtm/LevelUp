@@ -111,26 +111,50 @@ func clusterZoneOf(zones []Zone, pts map[int][]Point, t0, t1 int) (int, bool) {
 // mergeHillPeriods fond les periodes voisines qui designent la MEME zone et etend chacune
 // jusqu'au debut de la suivante : entre deux gardes de la meme colline, la colline n'a pas
 // change. Les periodes non appariees sont ECARTEES — elles n'ont pas de zone ou se poser.
+//
+// UNE SEULE COLLINE EST ACTIVE A UN INSTANT, ET C'EST GARANTI PAR CONSTRUCTION : chaque garde
+// FERME la precedente (cf. closeHillTail), au lieu de ne la fermer que lorsqu'un trou les
+// separait.
 func mergeHillPeriods(ps []hillPeriod, frames int) []hillPeriod {
 	var out []hillPeriod
 	for _, p := range ps {
 		if !p.hasRef {
 			continue
 		}
+		out = closeHillTail(out, p.t0)
 		if n := len(out); n > 0 && out[n-1].ref == p.ref {
-			out[n-1].t1 = p.t1
-			if p.top > out[n-1].top {
-				out[n-1].top = p.top
-			}
+			out[n-1].t1 = max(out[n-1].t1, p.t1)
+			out[n-1].top = max(out[n-1].top, p.top)
 			continue
-		}
-		if n := len(out); n > 0 && out[n-1].t1 < p.t0-1 {
-			out[n-1].t1 = p.t0 - 1 // la colline reste la meme jusqu'a la garde suivante
 		}
 		out = append(out, p)
 	}
 	if n := len(out); n > 0 && out[n-1].t1 < frames-1 {
 		out[n-1].t1 = frames - 1
+	}
+	return out
+}
+
+// closeHillTail ferme les periodes deja retenues a `t0 - 1` : a l'instant ou une garde commence,
+// la precedente s'arrete, QUEL QUE SOIT SON SLOT.
+//
+// C'EST LA GARANTIE « UNE SEULE COLLINE ACTIVE » (revue R1, 2026-08-18). L'ancienne ecriture ne
+// fermait la periode precedente que si un TROU la separait de la suivante ; deux rampes de slots
+// DIFFERENTS qui se RECOUVRENT laissaient donc deux zones marquees `active` au meme instant — ce
+// que le mode ne permet pas, et ce que la phase 2a avait justement mesure (une seule jauge monte
+// a la fois, 100,0 % du temps sur 60 rampes du film de reference).
+//
+// UNE PERIODE ENTIEREMENT RECOUVERTE DISPARAIT : fermee avant son propre debut, elle n'a plus
+// d'instant a elle. La boucle remonte alors sur celle d'avant, qui redevient la derniere — et
+// qui peut a son tour se fondre avec la garde entrante si elle designe la meme zone.
+func closeHillTail(out []hillPeriod, t0 int) []hillPeriod {
+	for len(out) > 0 {
+		last := len(out) - 1
+		out[last].t1 = t0 - 1
+		if out[last].t1 >= out[last].t0 {
+			break
+		}
+		out = out[:last]
 	}
 	return out
 }
