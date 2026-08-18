@@ -39,7 +39,6 @@ package replay
 //	  go test ./internal/analysis/replay/ -run Objectifs -v -timeout 30m
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,6 +47,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // objFilmEnv — la garde d'environnement de toute la phase 0.
@@ -133,25 +133,11 @@ var objCTFFilms = []string{"64e8adfa", "530820e5", "53ce4390"}
 // objBallFilm — le film Oddball de l'item 0.3.
 const objBallFilm = "24dbb67d"
 
-// objDiskFilm est la source de film adossee au cache disque, dans la forme qu'attend
-// `objectiveevents.FilmSource`. Copie deliberee de `newDiskFilmSource`
-// (objectiveevents/extract_test.go) : ce type-la vit dans un fichier de test d'un AUTRE
-// paquet, il n'est donc pas atteignable d'ici, et l'exporter pour un instrument de mesure
-// serait une modification de production que la phase 0 s'interdit.
-type objDiskFilm struct {
-	root, id string
-	chunks   []objectiveevents.ChunkMeta
-}
-
-func (d *objDiskFilm) Chunks() []objectiveevents.ChunkMeta { return d.chunks }
-
-func (d *objDiskFilm) ChunkData(index int) ([]byte, bool) {
-	raw, err := os.ReadFile(filepath.Join(d.root, "film_chunks", d.id, fmt.Sprintf("chunk_%02d.bin", index)))
-	if err != nil {
-		return nil, false
-	}
-	return raw, true
-}
+// objDiskFilm est la source de film adossee au cache disque : c'est `filmcache.Source`, la
+// SEULE source disque du depot (garde-rail `TestUneSeuleSourceDisqueDeFilm`). La copie locale
+// que portait la phase 0 (« newDiskFilmSource n'est pas atteignable d'ici ») est retiree le
+// 2026-08-18 : le paquet `replay` importe `filmcache` sans cycle, la raison n'existait pas.
+type objDiskFilm = filmcache.Source
 
 // objChunkDir rend le repertoire des chunks d'un film.
 func objChunkDir(root, id string) string { return filepath.Join(root, "film_chunks", id) }
@@ -159,24 +145,12 @@ func objChunkDir(root, id string) string { return filepath.Join(root, "film_chun
 // objOpenFilm charge le manifeste d'un film ; (nil, false) si le film n'est pas en cache.
 func objOpenFilm(t *testing.T, root, id string) (*objDiskFilm, bool) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(root, "film_manifests", id+".json"))
+	src, ok, err := filmcache.Open(root, id)
 	if err != nil {
-		return nil, false
-	}
-	var mf struct {
-		Chunks []struct {
-			Index     int `json:"index"`
-			ChunkType int `json:"chunk_type"`
-			StartMS   int `json:"start_ms"`
-		} `json:"chunks"`
-	}
-	if err := json.Unmarshal(raw, &mf); err != nil {
 		t.Fatalf("manifeste %s illisible : %v", id, err)
 	}
-	src := &objDiskFilm{root: root, id: id}
-	for _, c := range mf.Chunks {
-		src.chunks = append(src.chunks,
-			objectiveevents.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
+	if !ok {
+		return nil, false
 	}
 	return src, true
 }
