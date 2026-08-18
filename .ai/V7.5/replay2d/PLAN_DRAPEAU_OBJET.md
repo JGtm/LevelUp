@@ -57,6 +57,14 @@
         3 compteurs de couverture, OpenAPI + `generated.ts` + golden + 4 temoins re-cuits.
 - [x] 3 Registre/journal (textes au CR), plan statue.
 
+- [!] 4 LE LANCER (hypothese de l'utilisateur, 2026-08-18) : REFUTEE PAR LA MESURE, et refutee
+      DEUX FOIS — par le balayage et par la distribution. La regle ELARGIE (branche porteur a
+      R m dans les 2 s ; branche socle, seuils 90 %/20 % et reference du porteur INCHANGES ;
+      R balaye 1,5 / 3 / 5 / 8 / 10 m) n'atteint 90 % A AUCUN RAYON, et le temoin creve son
+      plafond de 20 % des R = 8 m. Instrument `drapeau_lancer_controle_test.go`, ecrit et
+      COMMITE AVANT la mesure (`7f74a43fa`). `flagObjects` reste non publie (2a inchangee),
+      et les corrections de `flagCarries` ne sont PAS etendues : aucun R n'a ete retenu.
+
 **Gate** : controle 3 tenu ; contrat/OpenAPI/goldens/web verts ; portages inchanges ; sinon `[!]`.
 
 ## Journal du plan
@@ -121,3 +129,38 @@
   Contrat : 35 champs de document, INCHANGE ; trois proprietes de plus au sous-schema
   `FlagCarriesCoverage`. OpenAPI et `generated.ts` regeneres, golden `schema 15`, quatre temoins
   re-cuits sous le cache du depot principal.
+- 2026-08-18 — PHASE 4 : LE LANCER N'EXISTE PAS DANS LA MESURE. L'utilisateur a propose une cause
+  aux 48 residuelles du controle 3 : dans le jeu on ne LACHE pas seulement le drapeau a ses pieds,
+  on peut aussi le LANCER quelques metres devant soi. La regle ELARGIE a ete ecrite et COMMITEE
+  AVANT tout chiffre (`7f74a43fa`) — vie libre expliquee si elle nait a < 1,5 m d'un `flag_spawn`
+  (branche socle, rayon INCHANGE) OU a <= R m de la position du porteur dans les 2 s de la fin de
+  son portage, R balaye 1,5 / 3 / 5 / 8 / 10 m ; seuils du plan inchanges (>= 90 %, temoin <= 20 %),
+  temoin passe a la MEME regle et au MEME R.
+  LE BALAYAGE, cumul des trois films CTF (197 vies libres, 950 creations d'armes) :
+  R = 1,5 m -> 162/197 = 82,2 %, temoin 136/950 = 14,3 % · R = 3 m -> 162/197 = 82,2 %,
+  temoin 151/950 = 15,9 % · R = 5 m -> 162/197 = 82,2 %, temoin 167/950 = 17,6 % ·
+  R = 8 m -> 163/197 = 82,7 %, temoin 211/950 = 22,2 % · R = 10 m -> 164/197 = 83,2 %,
+  temoin 227/950 = 23,9 %. AUCUN R NE TIENT LES 90 %, et le temoin CREVE son plafond des 8 m.
+  LE RAPPORT EST INVERSE, ET C'EST LA REFUTATION : de 1,5 a 10 m le drapeau gagne DEUX vies
+  (+1,0 point), le temoin en gagne QUATRE-VINGT-ONZE (+9,6 points). Elargir le rayon profite dix
+  fois plus aux armes ordinaires qu'au drapeau — R ne mesure donc pas une portee de lancer, il
+  mesure la densite des joueurs sur la carte. C'est exactement ce que le temoin existe pour dire.
+  LA DISTRIBUTION REFUTE UNE SECONDE FOIS, SANS PASSER PAR LES SEUILS. Sur les 35 residuelles a
+  1,5 m, **26 (74 %) n'ont AUCUNE reference porteur** dans les 2 s : aucun portage ne couvre leur
+  naissance ni ne vient de s'achever, il n'y a meme pas de lanceur candidat. Les 9 mesurables sont
+  a mediane 20,6 m, p90 et max 43,1 m ; par tranche : `]1,5-3 m] : 0` · `]3-5 m] : 0` ·
+  `]5-8 m] : 1` · `]8-10 m] : 1` · `]10-20 m] : 2` · `> 20 m : 5`. UN LANCER DE DRAPEAU PORTE
+  QUELQUES METRES, ET LA TRANCHE DES QUELQUES METRES EST VIDE. Le residu n'est pas un lancer trop
+  long : c'est, aux trois quarts, une naissance dont le film ne dit rien.
+  CE QUE LA MESURE APPREND MALGRE SON NEGATIF, ET QUI N'EST PAS TRAITE ICI (hors perimetre, note
+  pour le registre) : a rayon INCHANGE (1,5 m), passer la fenetre de 1 s a 2 s fait monter le
+  controle 3 de 149/197 = 75,6 % a 162/197 = 82,2 % — treize vies — pour +1,5 point de temoin
+  seulement (12,8 % -> 14,3 %). C'est un gain PROPRE, a l'oppose du rayon : ce qui manquait au
+  lacher, c'est le DELAI, pas la distance. Cela ne se transporte PAS tel quel en production :
+  `flagFreeDropWindowMS` sert a FERMER des portages et a REPOSITIONNER des lachers, exigences plus
+  fortes qu'expliquer une naissance, et sa doc borne la seconde precisement pour ne jamais
+  rattraper le portage PRECEDENT. Piste a mesurer, pas correctif a appliquer.
+  CONSEQUENCES : `flagObjects` reste `[!]` (2a inchangee, aucun R retenu) ; les corrections de
+  `flagCarries` livrees en 2b ne sont PAS etendues ; aucun schema, contrat, OpenAPI, golden ni
+  temoin ne bouge. Le schema du document est a 16 depuis le lot des zones (`ti=13`) — la
+  publication qu'aurait demandee un controle tenu aurait donc ete 17 / contrat 37, non 15 / 36.
