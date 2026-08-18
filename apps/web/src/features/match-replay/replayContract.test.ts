@@ -84,6 +84,12 @@ const NULLABLE_ARRAYS = [
   // `other` avec son identifiant de tag. Chaque pose porte son poseur MESURÉ (-1 quand
   // aucun bipède contemporain n'est assez proche) et le cap de visée de ce poseur.
   'equipmentPlacements',
+  // `flagCarries` : LA VIE DES DRAPEAUX de CTF (schéma 14, 2026-08-18) — une entrée par objet,
+  // une suite d'intervalles d'état (`carried`, `carried_open`, `dropped`, `home`). Le quatrième
+  // état n'en est pas un de plus par confort : un portage que RIEN ne ferme court jusqu'à la fin
+  // de l'axe, et le publier sous le nom d'un portage établi affirmerait une fin que le film ne
+  // date pas.
+  'flagCarries',
   'geometry',
   // `grappleLines` : les tractions de grappin (schéma 8, 2026-08-16) — fenêtre mesurée
   // [t0, t1] par vie + point d'accroche en coordonnées monde.
@@ -149,7 +155,7 @@ type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
       }[keyof T & string]
 
 /**
- * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 45 chemins, racine et profondeurs confondues.
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 47 chemins, racine et profondeurs confondues.
  *
  * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
  * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
@@ -159,6 +165,7 @@ const NULLABLE_ARRAY_PATHS = [
   'abilities',
   'equipmentEpisodes',
   'equipmentPlacements',
+  'flagCarries',
   'geometry',
   'grappleLines',
   'grenadeLabels',
@@ -175,6 +182,7 @@ const NULLABLE_ARRAY_PATHS = [
   'tracks',
   'weaponPads',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
+  'flagCarries[].spans',
   'inventory[].am',
   'inventory[].g',
   'loadouts[].w',
@@ -281,8 +289,10 @@ describe('la frontière du document de rejeu', () => {
       tracks: [{ slot: 1, team: -1 }],
       inventory: [{ t: 0, slot: 1 }],
       loadouts: [{ t: 0, slot: 1 }],
+      flagCarries: [{ team: 0 }],
     } as unknown as ReplayDocument
     const ready = normalizeReplayDocument(raw)
+    expect(ready.flagCarries[0].spans, 'flagCarries[].spans').toEqual([])
     expect(ready.weaponPads[0].spawns, 'weaponPads[].spawns').toEqual([])
     expect(ready.weaponPads[0].presence, 'weaponPads[].presence').toEqual([])
     expect(ready.tracks[0].points, 'tracks[].points').toEqual([])

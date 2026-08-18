@@ -124,6 +124,15 @@ func SlotIdentityFromDeaths(src FilmSource, deaths []DeathInstant) map[int]strin
 	return slotIdentityFromDeaths(StatRecords(src), deaths)
 }
 
+// SlotIdentityByDeaths est la MEME regle sur des enregistrements DEJA DECODES — le suffixe de ce
+// paquet pour les variantes pures est `From` (cf. [SlotIdentityFrom]), mais il se lirait ici
+// « FromDeathsFrom ». Elle existe pour l'appelant qui a deja balaye le film une fois : le calque
+// du drapeau vivant du rejeu 2D le fait, et rebalayer coutait 0,6 a 2,4 s et jusqu'a 21 Mo par
+// film.
+func SlotIdentityByDeaths(recs []StatRecord, deaths []DeathInstant) map[int]string {
+	return slotIdentityFromDeaths(recs, deaths)
+}
+
 // slotIdentityFromDeaths est le coeur pur du pont par instants.
 func slotIdentityFromDeaths(recs []StatRecord, deaths []DeathInstant) map[int]string {
 	if len(deaths) == 0 {

@@ -10692,6 +10692,8 @@ components:
           $ref: '#/components/schemas/BridgeHealth'
         equipment:
           $ref: '#/components/schemas/EquipmentCoverage'
+        flagCarries:
+          $ref: '#/components/schemas/FlagCarriesCoverage'
         grapple:
           $ref: '#/components/schemas/GrappleCoverage'
         grenades:
@@ -12713,6 +12715,135 @@ components:
       required:
         - player
         - matches
+      type: object
+    FlagCarriesCoverage:
+      additionalProperties: false
+      properties:
+        ambiguousCarrierKills:
+          format: int64
+          type: integer
+        ambiguousReturns:
+          format: int64
+          type: integer
+        bursts:
+          format: int64
+          type: integer
+        captures:
+          format: int64
+          type: integer
+        carries:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        closedOverlaps:
+          format: int64
+          type: integer
+        flagFilm:
+          type: boolean
+        markerConfirmed:
+          format: int64
+          type: integer
+        markerObserved:
+          format: int64
+          type: integer
+        noBridge:
+          format: int64
+          type: integer
+        noTrack:
+          format: int64
+          type: integer
+        open:
+          format: int64
+          type: integer
+        openConfirmed:
+          format: int64
+          type: integer
+        openObserved:
+          format: int64
+          type: integer
+        openings:
+          format: int64
+          type: integer
+        outOfWindow:
+          format: int64
+          type: integer
+        overlaps:
+          format: int64
+          type: integer
+        spawns:
+          format: int64
+          type: integer
+        steals:
+          format: int64
+          type: integer
+      required:
+        - flagFilm
+        - bursts
+        - captures
+        - steals
+        - openings
+        - carries
+        - closed
+        - open
+        - noBridge
+        - noTrack
+        - outOfWindow
+        - markerObserved
+        - markerConfirmed
+        - openObserved
+        - openConfirmed
+        - overlaps
+        - closedOverlaps
+        - ambiguousCarrierKills
+        - ambiguousReturns
+        - spawns
+      type: object
+    FlagCarry:
+      additionalProperties: false
+      properties:
+        spans:
+          items:
+            $ref: '#/components/schemas/FlagSpan'
+          type:
+            - array
+            - "null"
+        team:
+          format: int64
+          type: integer
+      required:
+        - team
+        - spans
+      type: object
+    FlagSpan:
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        xuid:
+          type:
+            - string
+            - "null"
+        "y":
+          format: float
+          type: number
+      required:
+        - state
+        - t0
+        - t1
+        - xuid
+        - x
+        - "y"
       type: object
     FormTabResponse:
       additionalProperties: false
@@ -19853,6 +19984,12 @@ components:
         equipmentPlacements:
           items:
             $ref: '#/components/schemas/EquipmentPlacement'
+          type:
+            - array
+            - "null"
+        flagCarries:
+          items:
+            $ref: '#/components/schemas/FlagCarry'
           type:
             - array
             - "null"

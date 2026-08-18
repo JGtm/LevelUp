@@ -43,6 +43,10 @@ import (
 type filmStats struct {
 	score      *replay.ScoreInput
 	objectives []objectiveevents.IdentifiedEvent
+	// flag porte les lectures du DRAPEAU VIVANT que seul cet etage peut faire : les
+	// enregistrements d'entite (les memes que la courbe de score) et les bursts de capture. Les
+	// SOCLES s'y ajoutent chez l'appelant (ils viennent du catalogue de carte, pas du film).
+	flag replay.FlagInput
 }
 
 // readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
@@ -82,6 +86,26 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 			Truncated:  truncated,
 		},
 		objectives: identifiedEvents(ctx, matchID, recs, lines, facts.GameVariantName),
+		flag:       flagInput(recs, src),
+	}
+}
+
+// flagInput assemble ce que le calque du DRAPEAU VIVANT lit dans le film.
+//
+// DEUX GRAMMAIRES, DEUX PARCOURS, ET LE SECOND EST INEVITABLE. Les enregistrements d'entite sont
+// deja la (ils portent les evenements nommes du drapeau et les progressions du compteur de
+// morts) ; les BURSTS DE CAPTURE, eux, sont des evenements de score et se lisent ailleurs dans
+// le film. Sans eux le discriminant de mode ne tient pas : la table d'emplacements du drapeau,
+// appliquee a un film Oddball, rend 1 470 « prises » et 994 « vols ». Le cout est un parcours de
+// plus, sur une chaine qui en fait deja une dizaine pour le meme film.
+//
+// AUCUN FAIT DE MATCH N'ENTRE ICI, et c'est ce qui rend le calque publiable hors ligne : le
+// porteur se nomme par les INSTANTS DE MORT, jamais par les lignes de match.
+func flagInput(recs []objectiveevents.StatRecord, src objectiveevents.FilmSource) replay.FlagInput {
+	return replay.FlagInput{
+		Scanned: true,
+		Records: recs,
+		Bursts:  objectiveevents.CaptureBurstTimes(src),
 	}
 }
 

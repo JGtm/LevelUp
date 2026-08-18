@@ -102,6 +102,9 @@ var replaySchemas = []struct {
 	{"ScoreRound", replay.ScoreRound{}},
 	{"ScoreTick", replay.ScoreTick{}},
 	{"ScoreCoverage", replay.ScoreCoverage{}},
+	{"FlagCarry", replay.FlagCarry{}},
+	{"FlagSpan", replay.FlagSpan{}},
+	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -230,9 +233,33 @@ var replaySchemas = []struct {
 //	                      TestReplayContractDescribesEveryPublishedField, qui compare le type Go
 //	                      `Point` au schema `Point` du contrat, dans les DEUX sens.
 //
-// Les neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	34 -> 35  2026-08-18  `flagCarries` (plan PLAN_OBJECTIFS_VIVANTS_2E_LECTURE, phase 1
+//	                      item 1.3) : LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d etat sur
+//	                      l axe de frames du rejeu. Un champ de document, deux schemas de plus
+//	                      (`FlagCarry`, `FlagSpan`) et un bloc de couverture
+//	                      (`FlagCarriesCoverage`).
+//	                      Sources, toutes dans le film : les bornes viennent des evenements de
+//	                      statistique NOMMES du statborg (`flag_grabs`, `flag_steals`,
+//	                      `flag_captures`, `flag_returns`) et du fil des morts ; le porteur du
+//	                      pont par INSTANTS DE MORT (aucune ligne de match, donc aucune base) ;
+//	                      la position de la piste PUBLIEE du porteur — le drapeau porte EST a la
+//	                      position de son porteur, rien de l objet n est decode ; le mode de
+//	                      l accord de trois signaux du film (15 films de mode connu, 15 verdicts
+//	                      justes). Seuls les SOCLES viennent d ailleurs : du catalogue versionne
+//	                      d objectifs, joint par `map_id`.
+//	                      QUATRE ETATS, ET LE QUATRIEME EST LE RESULTAT : `carried` (un fait date
+//	                      a ferme le portage), `carried_open` (rien ne le ferme — borne haute a
+//	                      la fin de l axe, incertitude publiee comme telle), `dropped`, `home`.
+//	                      Le controle independant du marqueur d image-cle confirme 37/37 des
+//	                      portages FERMES et 0/5 des ouverts : les confondre ferait juger la
+//	                      justesse des bornes par des portages qui n en ont pas.
+//	                      `Coverage` gagne son bloc `flagCarries` : un film d un autre mode et un
+//	                      film CTF sans aucun portage publie rendent tous deux un calque vide, et
+//	                      seuls ces compteurs les distinguent.
+//
+// Les dix fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 34
+const wantReplayDocumentFields = 35
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

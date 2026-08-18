@@ -10,9 +10,11 @@ import (
 //
 // CE QUE CE FICHIER AJOUTE AUX PORTAGES : l'ENTRE-DEUX. Un portage dit « ce joueur l'a tenu de t0
 // a t1 » ; il ne dit pas ou est le drapeau le reste du temps. La simulation chronologique
-// ci-dessous le tient a jour, drapeau par drapeau, avec trois etats et trois seules transitions :
+// ci-dessous le tient a jour, drapeau par drapeau, avec quatre etats et trois seules transitions :
 //
-//	prise    ->  `carried`  a la position du porteur
+//	prise    ->  `carried` a la position du porteur quand un fait DATE ferme le portage,
+//	             `carried_open` sinon (rien ne le ferme : l'intervalle court jusqu'a la fin de
+//	             l'axe, et c'est une borne haute publiee comme telle)
 //	fin      ->  `home` si le portage s'est acheve sur une CAPTURE (le drapeau rentre a sa base),
 //	             `dropped` sinon, a la derniere position connue du porteur
 //	retour   ->  `home` sur un `flag_returns`, quand UN SEUL drapeau est au sol
@@ -147,9 +149,17 @@ func applyFlagLifeEvent(ev flagLifeEvent, raws []flagCarryRaw, scan FlagCarrySca
 	switch ev.kind {
 	case flagLifeOpen:
 		xuid := r.xuid
-		st.state[f] = FlagStateCarried
+		// UN PORTAGE QUE RIEN NE FERME NE PORTE PAS LE MEME NOM. `closed` dit qu'un fait DATE a
+		// mis fin au portage ; sans lui l'intervalle court jusqu'a la fin de l'axe, ce qui est
+		// une BORNE HAUTE et non une mesure (le lacher volontaire n'est date par rien). L'etat
+		// [FlagStateCarriedOpen] publie ce doute au lieu de le noyer dans la certitude.
+		state := FlagStateCarriedOpen
+		if r.closed {
+			state = FlagStateCarried
+		}
+		st.state[f] = state
 		st.trans[f] = append(st.trans[f], flagTransition{
-			frame: st.ctx.frameOfMatchMS(r.t0), state: FlagStateCarried, xuid: &xuid, x: r.x0, y: r.y0,
+			frame: st.ctx.frameOfMatchMS(r.t0), state: state, xuid: &xuid, x: r.x0, y: r.y0,
 		})
 	case flagLifeClose:
 		next := flagTransition{frame: st.ctx.frameOfMatchMS(r.t1) + 1, state: FlagStateDropped, x: r.x1, y: r.y1}
