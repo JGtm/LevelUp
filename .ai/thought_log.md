@@ -1,3 +1,25 @@
+## [2026-08-18] Lot R2-S — sons du rejeu 2D : egalisation, recouvrement, modes de tir
+
+**Statut** : Complete (worktree frere `wt/r2-sons`, base `3907eb505`, 4 commits `83829c7b7`..`6b9132624`,
+FUSIONNE dans `feat/v75` par le superviseur ; tests `replaySound` 39/39 et `replayAudio` 13/13 rejoues
+sur l'arbre fusionne ; le `test:run` complet du frere portait 21 timeouts environnementaux prouves
+A/B/A sur la base — aucun test desactive, la CI Linux reste l'autorite).
+**Decision technique principale** : egalisation par GAIN LINEAIRE strict par fichier (cible -16 LUFS,
+plafond -1 dBTP), pas par loudnorm dynamique (equivalence `loudnorm linear=true` verifiee : memes I,
+TP, nombre d'echantillons) ; les 15 fichiers dont le facteur de crete (15 a 24 dB) interdit la cible
+sont laisses AU PLUS PRES, plafond atteint exactement.
+**Resultats observes** : etendue LUFS 31,58 -> 7,18 LU sur 41 fichiers, 0 crete au-dessus de
+-1 dBTP (3 depassaient 0 dBTP), durees inchangees a l'echantillon ; decision 4 (explosion seule) NON
+declenchee : 31,3 % de chevauchement sur la piste reelle, 48,6 % sur la mesure de controle, sous 50 % ;
+modes de tir : 2 armes du registre sur 26 declarent un second mode, toutes deux un tir CHARGE
+(pistolet a plasma, Ravageur), et aucune ne le joue aujourd'hui (le Ravageur joue son tir normal ; le
+Rayon de Sentinelle joue son tir court, pas le continu). **Decouverte majeure** : l'explosion de
+grenade ne sonne QUE sur un kill — 16 fois pour 343 lancers, zero sur un temoin de 143 lancers.
+C'est la vraie cause du grief D2, pas un masquage.
+**Conclusion / prochaine etape** : trancher avec l'utilisateur : sonner la fin de vol des grenades
+(+296 sons sur 3 temoins, dont 48,6 % a < 0,3 s de leur lancer) — meme question que l'item A4 a
+l'ecran ; limiteur pour les 15 fichiers plafonnes = decision d'oreille.
+
 ## [2026-08-18] Item 4 « objectifs vivants » — phase 1 items 1.0 a 1.2 : le porteur du drapeau se mesure, la publication attend le rebasage
 
 **Statut** : Complete pour 1.0, 1.1 et 1.2 ; 1.3 REPORTE par coordination (`[!]`), 1.4 couvert par
