@@ -206,7 +206,9 @@ quels. Un arrondi au demi-degre ferait tomber ce cout d'environ 40 %, mais ce se
   supprime, et le test le verifie desormais par son ORIGINE plutot qu'en comptant les segments.
 - **Zone morte de 2 deg** : sous 2 deg le cone perd 0,06 % de sa longueur, donc l'oeil ne peut
   RIEN verifier de ce que le trait affirmerait, et l'affirmation changerait de camp a chaque
-  image. Cout mesure : 10,1 % des points de `000d5950` tombent dans cette bande.
+  image. Cout MESURE de la zone morte : 17,3 / 20,0 / 20,9 % des points des trois temoins y
+  tombent — un cinquieme des visees n'a pas de tick, et leur cone est a plus de 99,9 % de sa
+  longueur, donc le marqueur y dit exactement ce qu'il sait : rien de notable.
 - **Aucune couleur en dur** : le tick prend `color`, la teinte d'equipe deja resolue depuis les
   tokens, et l'alpha du cone. Aucun nouveau texte d'interface, donc rien a ajouter a `i18n.ts`.
 
