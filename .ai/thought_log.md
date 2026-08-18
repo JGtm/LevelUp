@@ -1,3 +1,24 @@
+## [2026-08-18] Objectifs vivants — phase 3 : le drapeau CTF est DESSINE sur la carte — Complete
+
+**Statut** : Complete (3.1, 3.2 ; branche `wt/drapeau-rendu`, `7bc7a26ee`..`6131d8da3`, FUSIONNEE dans
+`feat/v75` par le superviseur = 3.3 ; typecheck 0 et tests du calque 32/32 rejoues sur l'arbre fusionne ;
+gates du frere : typecheck 0, lint 0, vitest 147 fichiers / 1 819 tests). Texte detaille de l'agent : plan
+`PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`, section « PHASE 3, ITEMS 3.1 ET 3.2 ».
+**Decision technique** : un calque VIVANT a cote de `objectivesLayer.ts` (frontiere posee par la fusion
+tierce : geometrie cuite / etat par image), glyphe TRACE (l'atlas porte bien un drapeau `contour-26.png`,
+mais aucun pont nomme index -> cle semantique : un chemin en dur se tromperait d'arme a la prochaine
+regeneration), ancre de base = spans `home` (pas `mapObjectives`, absent de l'artefact) ; pulses substituts
+`flag_*` ecartes des que `flagCarries` est non vide (rien de supprime : zone et crane n'ont pas d'objet
+vivant) ; bascule tiroir, infobulle ; infobulles extraites en `ReplayCanvasTips` (3e copie) : `ReplayCanvas.tsx`
+812 L inchange.
+**Resultats** : couverture TOTALE des images sur les 3 films CTF (8 337 / 4 751 / 7 507 images avec un etat),
+0 primitive sur `000d5950` ; `carried_open` = 0 sur les 4 temoins (etat livre et teste, visible sur la
+planche seulement) ; planche 38 -> 41 items (G1 quatre etats, G2 base, G3 ce que le calque ne dit pas),
+fumee 0 erreur. Reserve de gate visuel : le losange statique du socle reste peint dessous a pleine opacite
+(calque cuit) — « absent » se lit au glyphe creux pose par-dessus.
+**Conclusion / prochaine etape** : gate visuel utilisateur (planche republiee + en app sur `64e8adfa`) ;
+KOTH (phase 2) et crane restent a faire.
+
 ## [2026-08-18] Drapeau OBJET — le LANCER mesure et refute — Complete
 
 **Statut** : Complete (branche `wt/drapeau`, `7f74a43fa` instrument AVANT mesure, `161c9299c` mesure + plan,
