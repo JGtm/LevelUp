@@ -1,3 +1,26 @@
+## [2026-08-18] v7.5 rejeu 2D — lot R3-V : les verdicts de la planche R3 rendus, et une regression reparee a sa cause — Complete
+
+**Statut** : Complete (branche `wt/r3-visuels`, base `85ab55648`, 9 commits `fea5f2686`..`dbc1d8f37`,
+FUSIONNE dans `feat/v75` par le superviseur ; typecheck 0 et `ReplayKillFeed` 32/32 rejoues sur l'arbre
+fusionne ; gates du frere : typecheck 0, lint 0, vitest 143 fichiers / 1 756 tests).
+**Decision technique** : C1 joue EN PREMIER — le `overflow-hidden` de V5 mettait a zero la taille minimale
+automatique des rangees flex (Flexbox 4.5) : elles s'ecrasaient, plus rien ne debordait, plus rien ne
+defilait ; `shrink-0` repare (6,06 -> 20 px par rangee, liste 320/320 -> 878/320), test au navigateur.
+La nappe Dynamo demandait DEUX changements : la fenetre disait deja 2,5 s, c'est la courbe d'opacite qui
+coupait a 2,10 s (-> 2,80 s visibles, variante 2). Rampe de chaleur en tokens de STATUT (`info`,
+`destructive`) + token neuf `extreme` (violet, 4 palettes, modele `legendary`) ; opacite : 21,4 -> 29,4 %
+de cellules a alpha >= 0,30 sur `01e1f945`. Socles en version unique (point / icone dessous cernee /
+compteur dessus), melee = etoile, mur = `warning`, croix de mort 3,6 px / 2,6 px / `destructive` / 2,5 s,
+anneau d'etage a la couleur du pion, fiche compacte en OPTION (la validee reste le defaut), glyphe
+« moi » retire du fil, actif + amis en `success`. Traqueur = son du capteur (parente) ; balise et champ de
+reparation : NEGATIF chiffre (bibliotheque livree, archive Desktop 4 651 .wav d'ARMES, chaine
+d'extraction `weap` seulement, 0 fichier). Six extractions payent les ajouts : cliquet du canvas
+858 -> 812. A3 et R2-1 : deja en place, 0 ligne. Planche regeneree : 38 items, 17 valides replies,
+2 propositions (R3-1 duree de croix 2,5 s livree / 4 s proposee ; R3-2 ecran de dissimulation), fumee
+0 erreur.
+**Conclusion / prochaine etape** : gate visuel utilisateur sur la planche republiee ; sons de la balise et
+du champ = chantier de banks `.wem` (90 170 sans nom), hors perimetre web.
+
 ## [2026-08-18] Item 4 « objectifs vivants » — item 1.3 : la vie du drapeau entre au document (schema 14) — FUSIONNE dans feat/v75 (`75794c10a`) par le superviseur, gates rejoues (vet, contracttest, replay, typecheck)
 
 **Statut** : Complete (1.3 `[x]`, 1.4 `[~]` couvert par ce CR). Branche `wt/objvivants2` (worktree
