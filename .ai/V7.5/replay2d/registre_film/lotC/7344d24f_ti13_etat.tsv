@@ -1,0 +1,61 @@
+a_identifiant	7344d24f	1525	1744059075	1	1.000	1
+a_identifiant	7344d24f	1526	3599816372	1	1.000	1
+a_identifiant	7344d24f	1527	4076464935	1	1.000	1
+a_identifiant	7344d24f	1530	3365343744	1	1.000	1
+a_identifiant	7344d24f	1537	664094208	1	1.000	1
+# (a) 7344d24f : non jugeable (aucun slot a 10 emissions)
+# (b) 7344d24f : reel 69/71 (97.2 %), temoin 46.5 %, hasard 56.7 %, verdict TENU
+c_etat	7344d24f	TAG 4 (R32)	1522	1	1
+c_etat	7344d24f	TAG 4 (R32)	1530	16	2
+c_etat	7344d24f	TAG 4 (R32)	1531	36	3
+c_etat	7344d24f	TAG 4 (R32)	1535	12	2
+c_etat	7344d24f	TAG 4 (R32)	1536	36	6
+c_etat	7344d24f	TAG 4 (R32)	1537	1	1
+c_etat	7344d24f	TAG 4 (R32)	1540	11	2
+c_etat	7344d24f	TAG 4 (R32)	1541	31	3
+c_etat	7344d24f	TAG 4 (R32)	1545	1	1
+c_etat	7344d24f	TAG 4 (R32)	1546	5	2
+# (c) TAG 4 (R32) 7344d24f : enumerabilite 6/6 (100.0 %), verdict TENUE
+# (c/TAG 4 (R32)) 7344d24f : reel 71/71 (100.0 %), temoin 60.6 %, hasard 93.1 %, verdict NON TENU
+c_etat	7344d24f	TAG 1 (enumere)	1530	2	1
+c_etat	7344d24f	TAG 1 (enumere)	1532	4	1
+c_etat	7344d24f	TAG 1 (enumere)	1536	4	2
+c_etat	7344d24f	TAG 1 (enumere)	1537	1	1
+c_etat	7344d24f	TAG 1 (enumere)	1538	5	1
+c_etat	7344d24f	TAG 1 (enumere)	1546	2	1
+c_etat	7344d24f	TAG 1 (enumere)	1547	1	1
+# (c/TAG 1 (enumere)) 7344d24f : reel 0/71 (0.0 %), temoin 0.0 %, hasard 0.7 %, verdict NON TENU
+# (d) 7344d24f : unicite 35197/554808 ms (6.3 %), seuil 90 %, verdict NON TENUE
+d_joueur	7344d24f	0	26	16
+d_joueur	7344d24f	1	42	24
+d_joueur	7344d24f	2	71	30
+d_joueur	7344d24f	3	30	15
+d_joueur	7344d24f	4	30	13
+d_joueur	7344d24f	5	54	19
+d_joueur	7344d24f	6	22	15
+d_joueur	7344d24f	7	23	13
+d_joueur	7344d24f	8	17	10
+d_joueur	7344d24f	9	32	18
+d_joueur	7344d24f	10	24	16
+d_joueur	7344d24f	11	16	13
+d_joueur	7344d24f	12	33	15
+d_joueur	7344d24f	13	18	11
+d_joueur	7344d24f	14	47	35
+d_joueur	7344d24f	15	27	10
+d_joueur	7344d24f	16	17	10
+d_joueur	7344d24f	17	57	25
+d_joueur	7344d24f	18	40	22
+d_joueur	7344d24f	19	23	11
+d_joueur	7344d24f	20	30	17
+d_joueur	7344d24f	21	32	21
+d_joueur	7344d24f	22	24	13
+d_joueur	7344d24f	23	40	11
+d_joueur	7344d24f	24	77	22
+d_joueur	7344d24f	25	105	47
+d_joueur	7344d24f	26	21	16
+d_joueur	7344d24f	27	28	18
+d_joueur	7344d24f	28	23	12
+d_joueur	7344d24f	29	17	11
+d_joueur	7344d24f	30	31	19
+d_joueur	7344d24f	31	26	12
+# (d bis) 7344d24f : 11464 echantillons par joueur, 32 index de joueur

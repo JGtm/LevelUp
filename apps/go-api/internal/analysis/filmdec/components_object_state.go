@@ -41,50 +41,138 @@ func consumeObjectConstraint(br *BitReader) {
 	}
 }
 
+// ObjectParentState est UNE lecture du composant i10 `object-parent-state-component`,
+// telle que `consumeObjectParentState` la fait. Les champs sont BRUTS et NON INTERPRÉTÉS :
+// le déserialiseur connaît la GRAMMAIRE (elle est portée de FUN_140c1e4d0 et vérifiée par
+// l'alignement des records), il ne connaît PAS le sens des champs. Nommer ici l'un d'eux
+// « handle du parent » serait écrire une conclusion avant la mesure ; les noms restent
+// donc positionnels (Word16, Mtx, Byte8) et le champ dont le nom du sous-lecteur dit
+// quelque chose (`readQuantStat`, un identifiant à largeur variable) s'appelle Quant16.
+type ObjectParentState struct {
+	// TypeIndex est l'archétype de l'entité (param `typeIndex` du déser) ; Param est le
+	// `recordStateParam` (param_4) sous lequel la lecture s'est faite. Les deux gouvernent
+	// la forme lue : sans eux, deux lectures de largeurs différentes seraient confondues.
+	TypeIndex, Param uint32
+	// Attached est LA PORTE R(1) : la branche « attaché » du déser.
+	Attached bool
+	// StartBit / EndBit localisent la lecture dans le payload — c'est par StartBit que
+	// l'appelant rattache la lecture au composant du record (CompResult.StartBit).
+	StartBit, EndBit int
+
+	// --- branche Attached == true -------------------------------------------------
+	// Quant16 est le champ à largeur variable lu par readQuantStat(1, 13) : 1 bit de
+	// sonde + R(13) + R(2) de poids fort, rendus assemblés comme partout ailleurs.
+	Quant16 uint32
+	// Word16 est le R(16) inconditionnel qui le suit ; Opt16 le R(16) derrière une porte.
+	Word16   uint32
+	HasOpt16 bool
+	Opt16    uint32
+	// FlagA / FlagB : les deux R(1) qui précèdent le triplet.
+	FlagA, FlagB bool
+	// Mtx est le triplet 3 x R(16).
+	Mtx [3]uint32
+	// HasVel / Vel : le R(19) lu quand le bit de signe vaut 0.
+	HasVel bool
+	Vel    uint32
+	// Byte8 est le R(8) de queue de branche, FlagC le R(1) qui le suit.
+	Byte8 uint32
+	FlagC bool
+
+	// --- branche Attached == false ------------------------------------------------
+	// FreeRead dit que le bloc `1408f0ac4` a été lu (il l'est ssi Param < 2) ; FreeBits
+	// compte ses bits — 1 quand sa porte est fermée, 16 quand elle transmet un
+	// identifiant. La VALEUR de cet identifiant n'est pas publiée : la lire exigerait de
+	// toucher `consume1408f0ac4`, qui sert cinq autres composants.
+	FreeRead bool
+	FreeBits int
+	// HasAlt11 / Alt11 : le R(11) optionnel de cette branche.
+	HasAlt11 bool
+	Alt11    uint32
+
+	// --- queue commune aux deux branches -------------------------------------------
+	// TailSign est le R(1) de signe ; Tail6 le R(6) qu'il ouvre ; TailBit le R(1) suivant.
+	TailSign bool
+	HasTail6 bool
+	Tail6    uint32
+	TailBit  bool
+	// HasTail3 / Tail3 : le R(3) final (FUN_140c1e31c), absent sur deux chemins gouvernés
+	// par Param > 2.
+	HasTail3 bool
+	Tail3    uint32
+}
+
+// objectParentStateHook, si non nil, reçoit CHAQUE lecture d'i10. Global de paquet, donc
+// UN SEUL décodage filmdec à la fois par process (même règle que les autres sondes).
+var objectParentStateHook func(ObjectParentState)
+
+// SetObjectParentStateHook installe (ou retire, avec nil) la sonde d'i10. L'appelant
+// restaure la sonde précédente. Aucune conséquence sur les bits lus : la sonde n'est
+// appelée qu'après coup, et le déser ne branche jamais sur elle.
+func SetObjectParentStateHook(h func(ObjectParentState)) { objectParentStateHook = h }
+
+// publishObjectParentState transmet la lecture à la sonde, si elle est posée.
+func publishObjectParentState(br *BitReader, st *ObjectParentState) {
+	if objectParentStateHook == nil {
+		return
+	}
+	st.EndBit = br.BitPos()
+	objectParentStateHook(*st)
+}
+
 // consumeObjectParentState (i10) mirrors FUN_140c1e4d0. recordStateParam == param_4
 // (actor/weapon-set count); typeIndex == *(param_3+0x30). The trailing read is gated
 // by (typeIndex==0x23 biped) AND recordStateParam.
+//
+// Les affectations vers `st` ne changent AUCUN bit lu : l'ordre et la largeur des
+// lectures sont ceux d'avant la sonde, seules les valeurs jetées sont désormais gardées.
 func consumeObjectParentState(br *BitReader, recordStateParam uint32, typeIndex uint32) {
+	st := ObjectParentState{TypeIndex: typeIndex, Param: recordStateParam, StartBit: br.BitPos()}
+	defer publishObjectParentState(br, &st)
 	gate := br.ReadBit()
+	st.Attached = gate
 	if !gate {
 		if recordStateParam < 2 {
+			st.FreeRead = true
+			at := br.BitPos()
 			consume1408f0ac4(br)
+			st.FreeBits = br.BitPos() - at
 			if br.ReadBit() {
-				br.ReadBits(11)
+				st.HasAlt11, st.Alt11 = true, uint32(br.ReadBits(11))
 			}
 		}
 	} else {
-		br.readQuantStat(1, quantStatDefaultWidth) // probe1+13+2 = 16b
-		br.ReadBits(16)
+		st.Quant16 = br.readQuantStat(1, quantStatDefaultWidth) // probe1+13+2 = 16b
+		st.Word16 = uint32(br.ReadBits(16))
 		if br.ReadBit() {
-			br.ReadBits(16)
+			st.HasOpt16, st.Opt16 = true, uint32(br.ReadBits(16))
 		}
-		br.ReadBit()
-		br.ReadBit()
-		br.ReadBits(16) // matrix 3 x R(16)
-		br.ReadBits(16)
-		br.ReadBits(16)
+		st.FlagA = br.ReadBit()
+		st.FlagB = br.ReadBit()
+		st.Mtx[0] = uint32(br.ReadBits(16)) // matrix 3 x R(16)
+		st.Mtx[1] = uint32(br.ReadBits(16))
+		st.Mtx[2] = uint32(br.ReadBits(16))
 		if !br.ReadBit() { // velocity: sign; if 0 -> R(19)
-			br.ReadBits(19)
+			st.HasVel, st.Vel = true, uint32(br.ReadBits(19))
 		}
-		br.ReadBits(8) // dequant width 8
-		br.ReadBit()
+		st.Byte8 = uint32(br.ReadBits(8)) // dequant width 8
+		st.FlagC = br.ReadBit()
 	}
 	signBit := br.ReadBit() // common tail
+	st.TailSign = signBit
 	if signBit {
-		br.ReadBits(6)
+		st.HasTail6, st.Tail6 = true, uint32(br.ReadBits(6))
 	}
-	br.ReadBit()
+	st.TailBit = br.ReadBit()
 	if recordStateParam > 2 {
 		if typeIndex != 0x23 {
 			return
 		}
 		if signBit {
-			br.ReadBits(3)
+			st.HasTail3, st.Tail3 = true, uint32(br.ReadBits(3))
 			return
 		}
 	}
-	br.ReadBits(3) // FUN_140c1e31c R(3)
+	st.HasTail3, st.Tail3 = true, uint32(br.ReadBits(3)) // FUN_140c1e31c R(3)
 }
 
 // consumeObjectScale (i12) mirrors FUN_1407dc6e4 (widths 15/15/12).

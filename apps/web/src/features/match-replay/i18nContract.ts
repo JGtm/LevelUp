@@ -127,6 +127,31 @@ export interface ReplayText {
   /** Poseur non mesuré (aucun bipède contemporain à moins de 3 m) : le dire, pas le taire. */
   placementOwnerUnknown: string
   /**
+   * SOCLES D'ARME (schéma 11) : le calque, ses trois états, son compte à rebours et son cycle.
+   *
+   * LES TROIS ÉTATS NE SE VALENT PAS, et les libellés doivent le dire : « Disponible » est une
+   * présence PROUVÉE, « Pris » une absence PROUVÉE, « Incertain » l'intervalle de ~20 s entre
+   * les deux, que le film ne date pas. Aucun de ces libellés ne nomme un joueur : le ramasseur
+   * n'est pas publié (`padPickups[].xuid` vaut `null` partout), et aucune ligne d'écran ne doit
+   * laisser croire qu'on le connaît.
+   *
+   * `padCycleFmt` PORTE LES DEUX MOITIÉS DU DÉNOMINATEUR : les écarts MESURÉS et ceux que le
+   * socle offrait sans qu'on ait pu les prendre (`gaps` / `missing`). « 33,9 s sur 2 écarts »
+   * avec 3 manques est une mesure sur 2 occasions sur 5 — l'écrire autrement gonflerait la
+   * confiance.
+   */
+  layerWeaponPads: string
+  layerWeaponPadsHint: string
+  padState: Record<'full' | 'uncertain' | 'empty', string>
+  /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
+  padPlacementNote: string
+  /** Compte à rebours COMPACT, celui de la carte (« 12 s »). */
+  padCountdownFmt: (seconds: number) => string
+  /** Compte à rebours de l'infobulle, en toutes lettres. */
+  padRespawnFmt: (seconds: number) => string
+  /** Cycle ÉTABLI seulement : médiane, écarts mesurés, écarts manqués. */
+  padCycleFmt: (medianS: number, gaps: number, missing: number) => string
+  /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
    */

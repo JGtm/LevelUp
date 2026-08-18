@@ -104,7 +104,7 @@ func TraverseKeyframeBipedAt(buf []byte, stateBit int, reg *Registry, ti uint32)
 	br.ReadBit() // [P2] porte has-components (FUN_1406cf008)
 	arch, ok := reg.Archetype(int(ti))
 	if !ok {
-		return EntityTrace{DesyncAt: 0, TypeIndex: ti, HeldWeapon: noVariant}, br.BitPos()
+		return EntityTrace{DesyncAt: 0, TypeIndex: ti}, br.BitPos()
 	}
 	t := decodeDeltaWithArch(br, arch, ti)
 	return t, br.BitPos()

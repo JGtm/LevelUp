@@ -159,7 +159,7 @@ func ResetChainStats() {
 func deltaBodyTrial(buf []byte, bitpos int, arch Archetype, ti uint32, frameLen int) (end, comps int, ok bool) {
 	br := NewBitReader(buf)
 	br.Skip(bitpos)
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1, TypeIndex: ti}
+	t := EntityTrace{DesyncAt: -1, TypeIndex: ti}
 	t.Mask = consumeMask(br)
 	traverseComponentLoop(br, arch, &t)
 	if t.DesyncAt != -1 || br.BitPos() > frameLen {

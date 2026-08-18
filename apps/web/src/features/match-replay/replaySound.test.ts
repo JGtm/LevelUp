@@ -163,6 +163,32 @@ describe('buildSoundTimeline', () => {
     expect(tl.map((e) => e.ms)).toEqual([2_000, 5_000])
   })
 
+  it('un lancer suivi de SON explosion garde les DEUX sons (mesure du 2026-08-18)', () => {
+    // DÉCISION 4 DU PLAN R2, TRANCHÉE PAR LA MESURE ET ÉPINGLÉE ICI. La règle candidate
+    // était : « si le lancer et l'explosion se chevauchent (< 0,3 s entre la fin du fichier
+    // de lancer, 1,2 s, et le début de l'explosion) dans plus de la MOITIÉ des cas, ne
+    // garder que l'explosion ». Mesure sur la piste RÉELLE des trois témoins (000d5950,
+    // 01e1f945, 00162144) : 343 lancers, 16 explosions seulement, dont 5 chevauchent —
+    // 31,3 %, sous le seuil. Les deux restent donc, et ce test interdit qu'un lancer
+    // disparaisse en silence d'une future passe. Mesure de contrôle sur la fin de vol de
+    // TOUS les projectiles appariés (296 lancers), qui ne dépend d'aucun kill : 48,6 %,
+    // sous le seuil elle aussi — les deux mesures concordent.
+    //
+    // CE QUE LA MESURE A TROUVÉ À LA PLACE, et qui explique la remarque « j'ai pas les
+    // explosions » : l'explosion ne sonne QUE sur un kill à la grenade (KILL_SPRITE_SOUND_STEMS).
+    // 16 lancers sur 343 en produisent un — 4,7 %, et ZÉRO sur 00162144 (143 lancers). Ce
+    // n'est pas un masquage, c'est une absence : le film ne porte aucun événement de
+    // détonation (cf. grenadeFx.ts), donc rien ne sonne pour les 95,3 % restants.
+    const doc = docWithCouple({ grenades: [grenade({ t: 8, rank: 3 })] })
+    // Lancer à 800 ms (fichier tenu jusqu'à 2 000 ms) et explosion posée par le fil à
+    // 2 000 ms : 0 ms d'écart, le pire cas mesuré. Les deux événements sont là.
+    const tl = buildSoundTimeline(doc, [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], 0)
+    expect(tl).toEqual([
+      { ms: 800, stem: 'throw_spike' },
+      { ms: 2_000, stem: 'explosion_spike' },
+    ])
+  })
+
   it('CHAQUE tir sonne son arme — aucun filtrage de densité (décision du 2026-08-15)', () => {
     // Six tirs de la même arme en 600 ms : les six sonnent. Le seul plafond est technique
     // (voix simultanées, replayAudio.ts), et il ne vit pas dans cette table.

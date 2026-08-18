@@ -24,6 +24,7 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import { Button } from '@/components/ui/button'
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
@@ -32,7 +33,6 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
 import type { CalloutZoneReady } from './calloutsLayer'
-import { useReplayInks } from './useReplayInks'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayLeadMarks } from './ReplayLeadMarks'
@@ -47,6 +47,9 @@ import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
 import { countDrawablePlacements, drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { usePlacementHover } from './usePlacementHover'
+import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
+import { useGrenadeIcons } from './useGrenadeIcons'
+import { useReplayWeaponPads } from './useReplayWeaponPads'
 import {
   buildGrenadeRestFx,
   DYNAMO_REST_HOLD_MS,
@@ -58,6 +61,7 @@ import type { PlayerMarkKind } from './playerMarks'
 import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
+import { useReplayInks } from './useReplayInks'
 import { useReplayStaticLayers } from './useReplayStaticLayers'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
@@ -70,7 +74,6 @@ import {
   drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
-  tintedIconCanvas,
 } from './replayDraw'
 import {
   fitWidth,
@@ -91,9 +94,7 @@ const ZONE_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
-// Toutes les autres encres (fond, tirs, lancers, sol, effets, grappin, noms, joueur de la
-// page) vivent dans `useReplayInks` depuis le 2026-08-18 : neuf `useMemo` partageaient la
-// même amorce, et le canvas porte un cliquet de taille (placementFamily.guard.test.ts).
+// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks.
 // Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
 // un TIR est un éclat bref (0,6 s — c'est sa brièveté qui le rend lisible : à 1,4 s le trait
 // traînait dim et se fondait dans la carte, mesure du recalage 2.2), un LANCER et une MORT
@@ -187,9 +188,6 @@ export function ReplayCanvas({
   const aliveRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
   const publishedAtRef = useRef(0)
-  // Vignettes de TYPE de grenade, teintées à l'encre du thème (masques HUD blanc/gris +
-  // alpha). Rempli hors rendu, par rang — un rang sans visuel garde l'anneau seul.
-  const grenadeIconsRef = useRef<Map<number, HTMLCanvasElement>>(new Map())
 
   const [playing, setPlaying] = useState(true)
   const [width, setWidth] = useState(0)
@@ -212,20 +210,22 @@ export function ReplayCanvas({
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
     showUnnamedPlacements, toggleUnnamedPlacements,
+    showWeaponPads, toggleWeaponPads,
     speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
   // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
   const sound = useReplaySound(doc, kills, t0Ms, multiplier)
 
-  // TOUTES LES ENCRES, résolues une fois par palette (useReplayInks) : couleurs d'équipe
-  // réglées par l'utilisateur (D1), fond, tirs, lancers, sol, teintes d'effet, grappin,
-  // contour des noms, et le double contour du joueur de la page. `paletteVersion` reste ici
-  // pour les couleurs de ZONES, qui dépendent du nombre de grandes zones de la carte.
+  const paletteVersion = useColorPaletteVersion()
+  // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
+  // d'équipe, fond de carte, lancers, sol, teintes d'éclair, grappin, contour des noms, et le
+  // double contour du joueur de la page. Elles partageaient huit fois le même corps ici — voir
+  // l'en-tête du hook.
   const {
-    paletteVersion, teamColorOf, geometryColor, shotColor, grenadeColor,
-    floorStyle, fxInk, grappleInk, labelStroke, selfInk,
-  } = useReplayInks()
+    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk,
+  } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
   // LES POSES D'ÉQUIPEMENT (schéma 10), comptées par la MÊME PORTE que le tracé
@@ -380,6 +380,9 @@ export function ReplayCanvas({
   // au moment de l'appel, jamais une capture figee (l'assignation vit avec le redraw plus bas).
   const drawRef = useRef<() => void>(() => {})
   const redraw = useCallback(() => drawRef.current(), [])
+  // Vignettes de TYPE de grenade, teintées à l'encre du thème (masques HUD blanc/gris + alpha)
+  // et remplies hors rendu, par rang : un rang sans visuel garde l'anneau seul.
+  const grenadeIconsRef = useGrenadeIcons(doc.grenadeLabels, floorStyle.edge, redraw)
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
@@ -390,6 +393,19 @@ export function ReplayCanvas({
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
     objectives: { elements: mapObjectives, colorOfTeam: objectiveColorOfTeam },
+  })
+
+  // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
+  // NE SONT PAS un calque statique — leur position ne bouge pas, mais leur ÉTAT change avec
+  // l'image (plein, incertain, vide), donc ils se peignent dans la boucle comme les poses.
+  const weaponPads = useReplayWeaponPads({
+    doc,
+    view: canvasView,
+    frameRef,
+    enabled: showWeaponPads,
+    ink: { neutral: floorStyle.edge, labelStroke },
+    locale,
+    redraw,
   })
 
   const draw = useCallback(() => {
@@ -446,6 +462,9 @@ export function ReplayCanvas({
     if (doc.projectiles?.length) {
       drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
     }
+    // Les EMPLACEMENTS D'ARME juste au-dessus du terrain et SOUS les poses : un socle est un
+    // MEUBLE de la carte, il précède ce qu'un joueur y dépose comme ce qui s'y déplace.
+    weaponPads.paint(ctx, frame, dpr)
     // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
     // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
     // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
@@ -572,12 +591,15 @@ export function ReplayCanvas({
   }, [
     doc, geometryColor, bounds, zRange, timing, totalLabel,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    floorRef, zonesRef, heatRef, objectivesRef,
+    floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     t.aliveSuffix, renderWidth, canvasView,
     placementCounts.drawable,
     placementWindowTime,
     showPlacements,
     showUnnamedPlacements,
+    // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
+    // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
+    weaponPads,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -609,23 +631,6 @@ export function ReplayCanvas({
     onFrameChange,
     mapImage,
   ])
-
-  // Les vignettes de type de grenade se chargent et se TEIGNENT une fois par document et
-  // par thème (l'encre suit floorStyle.edge) : le canvas ne sait pas teindre un masque au
-  // moment du dessin, et re-teindre 60 fois par seconde coûterait pour rien.
-  useEffect(() => {
-    const map = new Map<number, HTMLCanvasElement>()
-    grenadeIconsRef.current = map
-    doc.grenadeLabels.forEach((lbl, rank) => {
-      if (!lbl.img) return
-      const im = new Image()
-      im.onload = () => {
-        map.set(rank, tintedIconCanvas(im, floorStyle.edge))
-        draw()
-      }
-      im.src = lbl.img
-    })
-  }, [doc.grenadeLabels, floorStyle.edge, draw])
 
   // Redraw hors animation (thème, resize, données, pause), et publication de la version
   // courante de `draw` aux calques statiques (cf. drawRef plus haut).
@@ -718,13 +723,21 @@ export function ReplayCanvas({
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
                 relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
+            {/* DEUX CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme) :
+                chacun rejoue le survol sur SA donnée, le canvas leur passe le geste. */}
             <div className="relative mx-auto" style={{ width: renderWidth || '100%' }}>
               <canvas
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
-                onPointerMove={placementHover.onPointerMove}
-                onPointerLeave={placementHover.onPointerLeave}
+                onPointerMove={(e) => {
+                  placementHover.onPointerMove(e)
+                  weaponPads.onPointerMove(e)
+                }}
+                onPointerLeave={() => {
+                  placementHover.onPointerLeave()
+                  weaponPads.onPointerLeave()
+                }}
               />
               {/* L'infobulle d'une POSE survolée : ce que l'objet est, et qui l'a posé. */}
               {placementHover.hover && (
@@ -732,6 +745,15 @@ export function ReplayCanvas({
                   locale={locale}
                   hover={placementHover.hover}
                   ownerName={nameOfSlot(placementHover.hover.placement.owner)}
+                  width={renderWidth}
+                />
+              )}
+              {/* L'infobulle d'un EMPLACEMENT D'ARME : l'arme, son état, son cycle s'il est
+                  établi. JAMAIS qui l'a prise — ce n'est pas publié. */}
+              {weaponPads.hover && (
+                <ReplayWeaponPadTip
+                  locale={locale}
+                  hover={weaponPads.hover}
                   width={renderWidth}
                 />
               )}
@@ -804,6 +826,11 @@ export function ReplayCanvas({
               unnamedAvailable: placementCounts.unnamed > 0,
               showUnnamed: showUnnamedPlacements,
               onToggleUnnamed: toggleUnnamedPlacements,
+            }}
+            weaponPads={{
+              available: weaponPads.available,
+              show: showWeaponPads,
+              onToggle: toggleWeaponPads,
             }}
             heatmap={{
               show: showHeatmap,

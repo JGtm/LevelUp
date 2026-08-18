@@ -1,30 +1,30 @@
 /**
- * useReplayInks — TOUTES LES ENCRES DU REJEU, résolues une fois par palette.
+ * useReplayInks — LES ENCRES DU REJEU, résolues une fois par palette.
  *
- * POURQUOI CE FICHIER EXISTE. Neuf `useMemo` partageaient exactement la même amorce dans
- * `ReplayCanvas.tsx` — `void paletteVersion` puis un `resolveToken` ou un `readInk` — et le
- * canvas porte une dette de taille GELÉE par un cliquet (`placementFamily.guard.test.ts`,
- * « prochaine addition : extraire d'abord »). Les encres sont le bloc qui part le plus
- * proprement : elles ne connaissent ni le document, ni l'image courante, ni un seul réglage.
+ * POURQUOI CE FICHIER EXISTE. Huit valeurs de couleur du canvas partageaient EXACTEMENT le même
+ * corps — `void paletteVersion` puis un `resolveToken` ou un `readInk`, mémoïsé sur la version
+ * de palette — recopié huit fois dans `ReplayCanvas.tsx`. C'est la 3e copie de la règle
+ * CLAUDE.md n°6 largement dépassée, et c'est aussi ce qui a fait grossir le canvas jusqu'à son
+ * cliquet de taille (placementFamily.guard.test.ts) : l'extraction est la façon prescrite d'y
+ * ajouter un calque, pas le relèvement du plafond.
  *
- * POURQUOI UN SEUL OBJET MÉMOÏSÉ, et pas neuf valeurs indépendantes : `draw` est un
- * `useCallback` dont la liste de dépendances cite ces encres une par une. Un objet reconstruit
- * à chaque rendu recuirait le calque soixante fois par seconde ; l'objet est donc mémoïsé, et
- * les valeurs qu'on en destructure sont stables tant que la palette ne bouge pas.
+ * UN SEUL MÉMO POUR LES HUIT, ET C'EST MIEUX QUE HUIT : elles dépendaient toutes de la même
+ * chose, elles changent donc toutes en même temps. Les consommateurs y gagnent des références
+ * stables entre deux rendus — ce dont les tableaux de dépendances du canvas ont besoin.
  *
- * `paletteVersion` EST RENDU AVEC ELLES : l'appelant en a encore besoin pour les couleurs de
- * ZONES (`getSeriesColors`), qui dépendent du nombre de grandes zones — une donnée que ce hook
- * n'a pas à connaître.
+ * DEUX SOURCES DE COULEUR, ET LEUR DIFFÉRENCE EST DU SENS. `resolveToken` sert les couleurs qui
+ * DISENT quelque chose (une équipe, un lancer, une mort) : ce sont des tokens sémantiques, et
+ * ils suivent la palette d'accessibilité que l'utilisateur a réglée. `readInk` sert la mise en
+ * page (arête d'une marche, contour d'une étiquette) : ce sont les variables du système de
+ * design, jamais un littéral (cf. canvasInk.ts). Aucune valeur écrite en dur ici.
  */
 import { useMemo } from 'react'
 
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
-import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 
 import { readInk } from './canvasInk'
 import { readFxInk, type FxInk } from './fxInk'
-import type { FloorStyle } from './replayDraw'
 
 /** Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs). */
 const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
@@ -38,8 +38,8 @@ const SHOT_TOKEN: SemanticToken = 'destructive'
 const GRENADE_TOKEN: SemanticToken = 'info'
 
 /**
- * LE MARQUEUR DU JOUEUR DE LA PAGE (V1, retour utilisateur du 2026-08-18 : « avoir l'icône du
- * joueur actif qui se démarque de tous les autres »).
+ * LE MARQUEUR DU JOUEUR DE LA PAGE (lot R2-V, retour utilisateur du 2026-08-18 : « avoir
+ * l'icône du joueur actif qui se démarque de tous les autres »).
  *
  * `success` EST LE VERT DU DÉPÔT, et c'est le vert qui a été demandé — « j'aurais bien aimé du
  * vert, mais pour l'accessibilité je sais pas si ça peut le faire ». La réponse est : oui, à
@@ -50,46 +50,55 @@ const GRENADE_TOKEN: SemanticToken = 'info'
  */
 const SELF_TOKEN: SemanticToken = 'success'
 
-/** Les encres du rejeu, toutes résolues — plus la version de palette qui les a produites. */
-export interface ReplayInks {
-  paletteVersion: number
-  /** Les deux couleurs d'ÉQUIPE réglées par l'utilisateur (D1) : allié / adversaire. */
-  teamColorOf: (isAlly: boolean) => string
-  geometryColor: string
-  shotColor: string
-  grenadeColor: string
-  /** Encres de mise en page du sol : elles suivent le thème, pas la palette d'accessibilité. */
-  floorStyle: FloorStyle
-  /** Teintes des ÉCLAIRS DE BOUCHE, lues UNE fois par thème (jamais par image). */
-  fxInk: FxInk
-  /** La LIGNE DE GRAPPIN : l'encre la plus claire du thème, jamais un hex. */
-  grappleInk: string
-  /** Contour des noms : sombre dans les DEUX thèmes (cf. globals.css). */
-  labelStroke: string
-  /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
-  selfInk: string
+/** Les encres de mise en page du sol reconstruit : son aplat et l'arête de ses marches. */
+export interface ReplayFloorInk {
+  fill: string
+  edge: string
 }
 
-export function useReplayInks(): ReplayInks {
-  const paletteVersion = useColorPaletteVersion()
+export interface ReplayInks {
+  /** Les DEUX couleurs d'équipe telles que l'utilisateur les a réglées (décision D1). */
+  teamColorOf: (isAlly: boolean) => string
+  /** Props Forge du fond de carte, quand aucun sol reconstruit n'est disponible. */
+  geometry: string
+  /** Effets de MORT (le tir, lui, prend sa teinte de la décharge : cf. `fx`). */
+  shot: string
+  /** Lancers de grenade. */
+  grenade: string
+  /** Sol reconstruit ; `edge` sert aussi d'encre NEUTRE à tout ce qui n'a pas de camp. */
+  floor: ReplayFloorInk
+  /** Teintes des éclairs de bouche, lues une fois par thème (jamais par image). */
+  fx: FxInk
+  /** Ligne de grappin : l'encre la plus claire du thème (`--foreground`), jamais un hex. */
+  grapple: string
+  /** Contour des étiquettes : SOMBRE dans les deux thèmes (cf. globals.css). */
+  labelStroke: string
+  /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
+  self: string
+}
+
+/**
+ * useReplayInks résout toutes les encres du rejeu pour la palette courante.
+ *
+ * `paletteVersion` vient de `useColorPaletteVersion()` chez l'appelant — il l'observe déjà pour
+ * ses propres couleurs de série. Le passer plutôt que de le relire ici garde UN observateur de
+ * style pour la page, et rend la dépendance visible à la lecture.
+ */
+export function useReplayInks(paletteVersion: number): ReplayInks {
   return useMemo(() => {
-    // `void paletteVersion` : `resolveToken` et `readInk` lisent le DOM, la version de palette
-    // est ce qui force la re-résolution au changement de thème ou de réglage d'accessibilité.
     void paletteVersion
     const ally = resolveToken('team-ally')
     const enemy = resolveToken('team-enemy')
-    const geometryColor = resolveToken(GEOMETRY_TOKEN)
     return {
-      paletteVersion,
       teamColorOf: (isAlly: boolean) => (isAlly ? ally : enemy),
-      geometryColor,
-      shotColor: resolveToken(SHOT_TOKEN),
-      grenadeColor: resolveToken(GRENADE_TOKEN),
-      floorStyle: { fill: geometryColor, edge: readInk('--muted-foreground') },
-      fxInk: readFxInk(),
-      grappleInk: readInk('--foreground'),
+      geometry: resolveToken(GEOMETRY_TOKEN),
+      shot: resolveToken(SHOT_TOKEN),
+      grenade: resolveToken(GRENADE_TOKEN),
+      floor: { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') },
+      fx: readFxInk(),
+      grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),
-      selfInk: resolveToken(SELF_TOKEN),
+      self: resolveToken(SELF_TOKEN),
     }
   }, [paletteVersion])
 }

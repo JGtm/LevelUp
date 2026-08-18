@@ -60,6 +60,8 @@ interface ReplaySettingsDrawerProps {
   zonesAvailable: boolean
   /** Les POSES d'équipement (schéma 9) : calque + objets non identifiés. */
   placements: ReplayPlacementControls
+  /** Les EMPLACEMENTS D'ARME (schéma 11) : un seul calque, allumé par défaut. */
+  weaponPads: ReplayWeaponPadControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -94,6 +96,17 @@ export interface ReplayPlacementControls {
   onToggleUnnamed: () => void
 }
 
+/**
+ * Ce que le tiroir sait des EMPLACEMENTS D'ARME : une bascule, et si le film en porte.
+ * `available` suit la même règle — un film sans socle publié (Super Fiesta sur variante
+ * Forge : zéro socle mesuré) ne montre pas la bascule.
+ */
+export interface ReplayWeaponPadControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -106,11 +119,12 @@ interface LayersSectionProps {
   onToggleTrail: () => void
   zonesAvailable: boolean
   placements: ReplayPlacementControls
+  weaponPads: ReplayWeaponPadControls
 }
 
 function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
-  showTrail, onToggleTrail, zonesAvailable, placements,
+  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -158,6 +172,16 @@ function LayersSection({
               />
             )}
           </>
+        )}
+        {/* Les EMPLACEMENTS D'ARME sont un calque du terrain eux aussi, mais leur donnée est
+            une récurrence spatiale mesurée, pas un geste de joueur : d'où une bascule à part. */}
+        {weaponPads.available && (
+          <SettingsToggle
+            label={t.layerWeaponPads}
+            pressed={weaponPads.show}
+            onToggle={weaponPads.onToggle}
+            hint={t.layerWeaponPadsHint}
+          />
         )}
       </div>
     </section>
@@ -376,6 +400,7 @@ export function ReplaySettingsDrawer({
   onToggleTrail,
   zonesAvailable,
   placements,
+  weaponPads,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -423,6 +448,7 @@ export function ReplaySettingsDrawer({
         onToggleTrail={onToggleTrail}
         zonesAvailable={zonesAvailable}
         placements={placements}
+        weaponPads={weaponPads}
       />
       <EffectsSection
         locale={locale}

@@ -31,6 +31,7 @@ const SHOW_SHOT_FX_KEY = 'replay-show-shot-fx'
 const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
 const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
 const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
+const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
@@ -92,6 +93,14 @@ const SHOW_KILL_FX_DEFAULT = false
 const SHOW_PLACEMENTS_DEFAULT = true
 const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
 
+/**
+ * LES SOCLES D'ARME SONT ALLUMÉS PAR DÉFAUT (décision utilisateur du 18/08, W4 : « les infos
+ * sont intéressantes à avoir »). Ce sont des lieux du terrain, pas des événements : savoir que
+ * le fusil de précision est encore sur son socle change la lecture d'un échange, exactement
+ * comme une zone de capture. Le film qui n'en porte aucun n'affiche ni calque ni bascule.
+ */
+const SHOW_WEAPON_PADS_DEFAULT = true
+
 export interface ReplaySettings {
   /** Calque de visée (direction du regard). Allumé par défaut, comme aujourd'hui. */
   showAim: boolean
@@ -136,6 +145,9 @@ export interface ReplaySettings {
   /** Poses dont la nature n'est pas établie (famille `other`). ÉTEINT par défaut. */
   showUnnamedPlacements: boolean
   toggleUnnamedPlacements: () => void
+  /** Calque des SOCLES D'ARME (schéma 11). Allumé par défaut (cf. SHOW_WEAPON_PADS_DEFAULT). */
+  showWeaponPads: boolean
+  toggleWeaponPads: () => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
@@ -177,6 +189,10 @@ export function useReplaySettings(): ReplaySettings {
   const [showUnnamedPlacements, toggleUnnamedPlacements] = usePersistedFlag(
     SHOW_UNNAMED_PLACEMENTS_KEY,
     SHOW_UNNAMED_PLACEMENTS_DEFAULT,
+  )
+  const [showWeaponPads, toggleWeaponPads] = usePersistedFlag(
+    SHOW_WEAPON_PADS_KEY,
+    SHOW_WEAPON_PADS_DEFAULT,
   )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
@@ -226,6 +242,8 @@ export function useReplaySettings(): ReplaySettings {
     togglePlacements,
     showUnnamedPlacements,
     toggleUnnamedPlacements,
+    showWeaponPads,
+    toggleWeaponPads,
     speed,
     setSpeed,
   }

@@ -1,0 +1,51 @@
+=== RUN   TestTi13ChainageLotCbis
+    ti13_chainage_test.go:148: FILM 000d5950 — ti=13 : 8 slots · FANTOME : 20 slots · ti=4 (temoin positif) : 1 slots
+    ti13_chainage_test.go:154: 
+    ti13_chainage_test.go:154: === REELLE · hypothese i2..i33 = mode B (element #k, index < 0x20) — 267 records dans la grammaire
+    ti13_chainage_test.go:154:   CHAINES (un en-tete valide commence au bit de fin) : 9 = 3.4 %
+    ti13_chainage_test.go:154:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 11 = 4.1 %
+    ti13_chainage_test.go:154:   cardinalite du masque : 1:148 (55.4 %) 2:109 (40.8 %) 3:10 (3.7 %)
+    ti13_chainage_test.go:154:   chainage PAR COMPOSANT annonce : i20:1/51 (2 %) i0:0/26 (0 %) i4:2/20 (10 %) i9:0/19 (0 %) i32:1/19 (5 %) i18:1/17 (6 %)
+    ti13_chainage_test.go:155: 
+    ti13_chainage_test.go:155: === FANTOME · hypothese i2..i33 = mode B (element #k, index < 0x20) — 4691 records dans la grammaire
+    ti13_chainage_test.go:155:   CHAINES (un en-tete valide commence au bit de fin) : 349 = 7.4 %
+    ti13_chainage_test.go:155:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 248 = 5.3 %
+    ti13_chainage_test.go:155:   cardinalite du masque : 1:4178 (89.1 %) 2:452 (9.6 %) 3:54 (1.2 %) 4:6 (0.1 %) 5:1 (0.0 %)
+    ti13_chainage_test.go:154: 
+    ti13_chainage_test.go:154: === REELLE · hypothese i2..i33 = mode A (scalaire, index hors bornes) — 267 records dans la grammaire
+    ti13_chainage_test.go:154:   CHAINES (un en-tete valide commence au bit de fin) : 8 = 3.0 %
+    ti13_chainage_test.go:154:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 13 = 4.9 %
+    ti13_chainage_test.go:154:   cardinalite du masque : 1:148 (55.4 %) 2:109 (40.8 %) 3:10 (3.7 %)
+    ti13_chainage_test.go:154:   chainage PAR COMPOSANT annonce : i20:0/51 (0 %) i0:0/26 (0 %) i4:0/20 (0 %) i9:0/19 (0 %) i32:0/19 (0 %) i18:0/17 (0 %)
+    ti13_chainage_test.go:155: 
+    ti13_chainage_test.go:155: === FANTOME · hypothese i2..i33 = mode A (scalaire, index hors bornes) — 4691 records dans la grammaire
+    ti13_chainage_test.go:155:   CHAINES (un en-tete valide commence au bit de fin) : 303 = 6.5 %
+    ti13_chainage_test.go:155:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 342 = 7.3 %
+    ti13_chainage_test.go:155:   cardinalite du masque : 1:4178 (89.1 %) 2:452 (9.6 %) 3:54 (1.2 %) 4:6 (0.1 %) 5:1 (0.0 %)
+    ti13_chainage_test.go:157: 
+    ti13_chainage_test.go:157: === TEMOIN POSITIF ti=4 `high-frequency` (R(8), 1 composant) — 30374 records
+    ti13_chainage_test.go:157:   CHAINES : 29255 = 96.3 %  ·  temoin DECALE (+3) : 0 = 0.0 %
+    ti13_chainage_test.go:158:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\000d5950_ti13_chainage.tsv (373 octets)
+--- PASS: TestTi13ChainageLotCbis (12.93s)
+=== RUN   TestTi13VariantLotCbis
+    ti13_variant_test.go:218: FILM 000d5950 — bande ti=13 : 8 slots ; bande FANTOME (temoin) : 20 slots
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i1 managed-object-property-component (mode A/scalaire) — 5 records singleton (REELLE) / 25 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t5:2 (40.0 %) t2:1 (20.0 %) t8:1 (20.0 %) t11:1 (20.0 %)
+    ti13_variant_test.go:229:   tags FANTOME : t0:16 (64.0 %) t1:3 (12.0 %) t2:2 (8.0 %) t5:2 (8.0 %) t10:1 (4.0 %) t12:1 (4.0 %)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 40.0 % · FANTOME 64.0 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE (aucun slot a >= 5 records) · FANTOME mediane 100.0 % sur 1 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 5/5 = 1.00 · FANTOME 25/25 = 1.00
+    ti13_variant_test.go:229:   VECTEUR i1 tag 2 [non chaine] : chunk 5 · paquet 1750 · bit 890 · slot 1460 gen 1 · bruts 0x20008AC81976DCD9 · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 5 [CHAINE] : chunk 25 · paquet 1736 · bit 4351 · slot 1459 gen 1 · bruts 0x5625774CB96D1082 · charge 32 bits = 1649898699
+    ti13_variant_test.go:229:   VECTEUR i1 tag 5 [CHAINE] : chunk 25 · paquet 1736 · bit 4414 · slot 1460 gen 1 · bruts 0x55BD80087A919100 · charge 32 bits = 1540882567
+    ti13_variant_test.go:229:   VECTEUR i1 tag 8 [non chaine] : chunk 23 · paquet 1160 · bit 849 · slot 1459 gen 2 · bruts 0x8E83247367370BA6 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 11 [non chaine] : chunk 3 · paquet 854 · bit 2398 · slot 1459 gen 1 · bruts 0xBB7D0E0100DF8904 · charge 0 bits = 0
+    ti13_variant_test.go:230: 
+    ti13_variant_test.go:230: === ti=13 i0 managed-object-property-name (R(32), porte) — 9 emissions (REELLE) / 558 (FANTOME)
+    ti13_variant_test.go:230:   valeurs distinctes : REELLE 9 (ratio 1.00) · FANTOME 412 (ratio 0.74)
+    ti13_variant_test.go:230:   valeurs les plus frequentes (REELLE) : 0x08520E95:1 (11.1 %) 0x37E80102:1 (11.1 %) 0x77EB8A48:1 (11.1 %) 0x95AC0855:1 (11.1 %) 0x673A4EB9:1 (11.1 %)
+    ti13_variant_test.go:230:   valeurs les plus frequentes (FANTOME): 0x0003010B:26 (4.7 %) 0x37E1C848:15 (2.7 %) 0x37E18848:10 (1.8 %) 0x04A10852:8 (1.4 %) 0x52F68810:6 (1.1 %)
+    ti13_variant_test.go:231:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\000d5950_ti13_variant.tsv (812 octets)
+--- PASS: TestTi13VariantLotCbis (8.03s)
+PASS
