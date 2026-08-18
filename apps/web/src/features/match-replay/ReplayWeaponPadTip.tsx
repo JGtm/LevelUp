@@ -1,0 +1,66 @@
+/**
+ * ReplayWeaponPadTip — L'INFOBULLE D'UN EMPLACEMENT D'ARME, au survol de son anneau.
+ *
+ * CE QU'ELLE DIT, ET DANS CET ORDRE : l'ARME (nom bilingue du catalogue, ou son identifiant
+ * quand rien ne la nomme — jamais le nom d'une arme voisine), son ÉTAT à cet instant, le CYCLE
+ * de réapparition QUAND il est établi, et la réserve de lecture : la mesure ne distingue pas un
+ * socle au sol d'un râtelier mural.
+ *
+ * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
+ * et vaut `null` partout — l'oracle plafonne à 79,7 % contre 90 % exigés. C'est la clause la
+ * plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie qu'il est vide :
+ * ce composant ne le lit pas.
+ *
+ * PAS DE CYCLE = PAS DE LIGNE. Une famille sans cycle établi n'affiche ni chiffre ni tiret : un
+ * tiret suggérerait qu'on saurait. Et quand le cycle existe, ses DEUX dénominateurs voyagent
+ * ensemble (`gaps` mesurés, `missing` manqués) — la confiance se lit sur les deux.
+ *
+ * Purement présentationnel : l'état et le compte à rebours sont calculés au survol
+ * (useReplayWeaponPads), la géométrie dans weaponPadsLayer.
+ */
+import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import type { WeaponPadHover } from './useReplayWeaponPads'
+
+/** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des poses). */
+const TIP_OFFSET = 12
+/** Largeur estimée : elle sert UNIQUEMENT à décider du côté, jamais à contraindre le rendu. */
+const TIP_WIDTH = 192
+
+interface ReplayWeaponPadTipProps {
+  locale: ReplayLocale
+  hover: WeaponPadHover
+  /** Largeur du canvas : elle borne l'infobulle du côté droit. */
+  width: number
+}
+
+export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipProps) {
+  const t = REPLAY_TEXT[locale]
+  const { pad, at, name, state, respawnS } = hover
+  const cycle = pad.cycle
+  const flip = at.x + TIP_OFFSET + TIP_WIDTH > width
+  return (
+    <div
+      role="tooltip"
+      className="pointer-events-none absolute z-10 max-w-[13rem] rounded border border-border bg-card px-2 py-1 text-xs shadow-lg"
+      style={{
+        left: flip ? undefined : at.x + TIP_OFFSET,
+        right: flip ? Math.max(width - at.x + TIP_OFFSET, 0) : undefined,
+        top: at.y + TIP_OFFSET,
+      }}
+    >
+      <span className="block font-medium">{name}</span>
+      <span className="block text-muted-foreground">
+        {t.padState[state]}
+        {respawnS !== null ? ` · ${t.padRespawnFmt(respawnS)}` : ''}
+      </span>
+      {cycle && (
+        <span className="block text-muted-foreground">
+          {t.padCycleFmt(cycle.medianS, cycle.gaps, cycle.missing)}
+        </span>
+      )}
+      <span className="mt-0.5 block text-[0.65rem] text-muted-foreground opacity-80">
+        {t.padPlacementNote}
+      </span>
+    </div>
+  )
+}

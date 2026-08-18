@@ -12,6 +12,7 @@ import {
   ReplaySettingsDrawer,
   type ReplayHeatmapControls,
   type ReplayPlacementControls,
+  type ReplayWeaponPadControls,
 } from './ReplaySettingsDrawer'
 import type { ReplaySound } from './useReplaySound'
 
@@ -25,6 +26,10 @@ function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlac
     onToggleUnnamed: vi.fn(),
     ...over,
   }
+}
+
+function makeWeaponPads(over: Partial<ReplayWeaponPadControls> = {}): ReplayWeaponPadControls {
+  return { available: true, show: true, onToggle: vi.fn(), ...over }
 }
 
 function makeHeatmap(over: Partial<ReplayHeatmapControls> = {}): ReplayHeatmapControls {
@@ -73,6 +78,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleNames={onToggleNames}
       zonesAvailable
       placements={makePlacements()}
+      weaponPads={makeWeaponPads()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}
@@ -162,6 +168,26 @@ describe('ReplaySettingsDrawer — poses d équipement', () => {
     fireEvent.click(btn)
     expect(onToggleUnnamed).toHaveBeenCalledTimes(1)
     expect(onToggle).not.toHaveBeenCalled()
+  })
+})
+
+describe('ReplaySettingsDrawer — emplacements d arme', () => {
+  it('film sans socle publié : pas de bascule (elle ne commanderait rien)', () => {
+    renderDrawer({ weaponPads: makeWeaponPads({ available: false }) })
+    expect(screen.queryByRole('button', { name: "Emplacements d'arme" })).toBeNull()
+  })
+
+  it('bascule Emplacements d arme : reflète son état et appelle SON callback', () => {
+    const onToggle = vi.fn()
+    const { onToggleAim } = renderDrawer({
+      weaponPads: makeWeaponPads({ show: false, onToggle }),
+      placements: makePlacements({ onToggle: vi.fn() }),
+    })
+    const btn = screen.getByRole('button', { name: "Emplacements d'arme" })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onToggleAim).not.toHaveBeenCalled()
   })
 })
 
