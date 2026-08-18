@@ -7,18 +7,17 @@
  */
 import type { ReplayBounds, ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
 
-import { drawExplosion } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { altitudeTint, floorRun, hasEdge, type FloorGrid } from './mapFloor'
 import { drawMuzzleFlash } from './muzzleFlash'
 import type { ShotFxEntry } from './shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
-import { explosionTintOf, restKindOf, type GrenadeRestFx } from './grenadeFx'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
+import { drawMeleeStar, meleeStarProgress } from './meleeStar'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-interface CanvasView {
+export interface CanvasView {
   bounds: ReplayBounds
   width: number
   height: number
@@ -189,6 +188,13 @@ export interface EventWindow {
   frame: number
   /** Nombre de frames pendant lesquelles l'événement reste visible après son instant. */
   hold: number
+  /**
+   * Durée RÉELLE d'une frame, en ms. Les effets dont la mise en scène a sa propre horloge —
+   * aujourd'hui l'étoile de mêlée, 400 ms — la lisent ici : une durée écrite en frames
+   * changerait de sens le jour où la cadence d'échantillonnage change (même règle que la fin
+   * de vol des grenades, qui porte déjà ce champ).
+   */
+  frameMs: number
 }
 
 /**
@@ -242,150 +248,13 @@ export interface ShotStyle {
   reducedMotion: boolean
 }
 
-/** Fenêtres du calque de fin de vol : la nappe électrique persiste plus que le halo. */
-export interface RestWindow {
-  frame: number
-  /** Rémanence du halo « dernière position connue », en frames. */
-  holdHalo: number
-  /** Rémanence de la nappe électrique (Shock/Dynamo), en frames. */
-  holdDynamo: number
-  /** Durée réelle d'une frame, en ms : l'explosion a une timeline en TEMPS, pas en frames
-   *  (la cadence d'échantillonnage est choisie au build et peut changer). */
-  frameMs: number
-}
-
-/**
- * drawGrenadeRestLayer pose l'effet de FIN DE VOL de chaque grenade liée à son projectile.
- *
- * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : la DERNIÈRE POSITION RÉPLIQUÉE
- * du projectile, JAMAIS un impact — le film n'enregistre aucune détonation. L'EXPLOSION
- * POSÉE LÀ EST DONC UNE MISE EN SCÈNE ASSUMÉE (item 3.2), et c'est pourquoi l'écran continue
- * de dire « dernière position connue ».
- *
- * PAR TYPE (`restKindOf`) : la Frag, la Plasma et la Spike détonent ; la Shock/Dynamo, elle,
- * n'explose PAS — elle laisse la nappe électrique persistante livrée au lot 2.3, parce que
- * c'est l'effet que l'arme entretient dans le jeu.
- */
-export function drawGrenadeRestLayer(
-  ctx: CanvasRenderingContext2D,
-  fx: GrenadeRestFx[],
-  view: CanvasView,
-  win: RestWindow,
-  style: GrenadeRestStyle,
-): void {
-  for (const e of fx) {
-    const kind = restKindOf(e.rank)
-    const hold = kind === 'nappe' ? win.holdDynamo : win.holdHalo
-    const age = win.frame - e.frame
-    if (age < 0 || age > hold) continue
-    const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
-    if (kind === 'explosion') {
-      drawExplosion(
-        ctx,
-        {
-          x: c.x,
-          y: c.y,
-          ageMs: age * win.frameMs,
-          seed: e.seed,
-          k: style.k,
-          reduced: style.reducedMotion,
-        },
-        {
-          fire: style.ink.tint[explosionTintOf(e.rank)] || style.ink.tint.neutral,
-          core: style.ink.core,
-          smoke: style.smoke,
-        },
-      )
-      continue
-    }
-    ctx.strokeStyle = style.halo
-    ctx.fillStyle = style.halo
-    const fade = 1 - age / (hold + 1)
-    if (kind === 'nappe') drawDynamoRest(ctx, c.x, c.y, fade, e.seed, style.reducedMotion)
-    else drawRestHalo(ctx, c.x, c.y, fade, style.reducedMotion)
-  }
-  ctx.globalAlpha = 1
-}
-
-/** Style du calque de fin de vol : les encres de l'explosion, et celle du halo discret. */
-export interface GrenadeRestStyle {
-  /** Teintes de nature (fxInk.ts) : la déflagration suit le TYPE, jamais le lanceur. */
-  ink: FxInk
-  /** Poussière résiduelle : encre de mise en page du thème, pas une couleur de donnée. */
-  smoke: string
-  /** Couleur du halo « dernière position connue » et de la nappe électrique (inchangée). */
-  halo: string
-  /** Densité du canevas. */
-  k: number
-  reducedMotion: boolean
-}
-
-/** Halo discret : un anneau qui s'éteint sur place — il ne s'ouvre pas, il n'affirme rien. */
-function drawRestHalo(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  fade: number,
-  reduced: boolean,
-): void {
-  const k = reduced ? 0.6 : fade
-  ctx.globalAlpha = 0.55 * k
-  ctx.lineWidth = 1.4
-  ctx.beginPath()
-  ctx.arc(x, y, 5.5, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.globalAlpha = 0.8 * k
-  ctx.beginPath()
-  ctx.arc(x, y, 1.6, 0, Math.PI * 2)
-  ctx.fill()
-}
-
-/**
- * Nappe électrique de la Shock/Dynamo : des arcs BRISÉS rayonnants (géométrie de la
- * famille `shock`), regénérés d'un germe stable — revenir en arrière redonne la même
- * image. Sous « mouvement réduit » la nappe est statique, opacité constante.
- */
-function drawDynamoRest(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  fade: number,
-  seed: number,
-  reduced: boolean,
-): void {
-  const k = reduced ? 0.6 : fade
-  ctx.globalAlpha = 0.35 * k
-  ctx.lineWidth = 1.2
-  ctx.beginPath()
-  ctx.arc(x, y, 9, 0, Math.PI * 2)
-  ctx.stroke()
-  // Trois arcs brisés, orientés par le germe : la même grammaire que le tir `shock`.
-  let s = seed | 0
-  ctx.globalAlpha = 0.85 * k
-  ctx.lineWidth = 1.3
-  for (let ray = 0; ray < 3; ray++) {
-    s = (s * 1103515245 + 12345) & 0x7fffffff
-    const ang = ((s % 360) * Math.PI) / 180
-    const nx = -Math.sin(ang)
-    const ny = Math.cos(ang)
-    const reach = 8 + (s % 5)
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    for (let i = 1; i <= 3; i++) {
-      s = (s * 1103515245 + 12345) & 0x7fffffff
-      const amp = i === 3 ? 0 : (1.5 + (s % 3)) * (i % 2 ? 1 : -1)
-      const u = i / 3
-      ctx.lineTo(x + Math.cos(ang) * reach * u + nx * amp, y + Math.sin(ang) * reach * u + ny * amp)
-    }
-    ctx.stroke()
-  }
-}
-
 /** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */
 export interface KillFxStyle {
   colorOfSlot: (slot: number) => string | null
   fallback: string
   reducedMotion: boolean
+  /** Densité du canevas : l'étoile de mêlée est déclarée en pixels d'ÉCRAN. */
+  k: number
 }
 
 /**
@@ -396,6 +265,12 @@ export interface KillFxStyle {
  * L'extrémité est RÉELLE (`target`) : c'est la seule différence de nature avec les tirs,
  * dont la longueur n'est qu'une trace. La COULEUR est celle du tueur — la famille d'arme
  * se lit dans la FORME (arbitrage du lot 3.2, conservé).
+ *
+ * LA MÊLÉE FATALE FAIT EXCEPTION depuis le 2026-08-18 (D3/R2-3) : elle ne trace ni arc ni
+ * marqueur, elle pose une ÉTOILE au lieu de la mort (meleeStar.ts). Le corps à corps est
+ * justement le cas où l'axe n'existe presque jamais — tueur et victime tombent sous le seuil
+ * de 1,5 px ci-dessous — et où le rendu générique se réduisait donc à un anneau pointillé,
+ * indiscernable d'une mort dont on ignore tout.
  */
 export function drawKillFxLayer(
   ctx: CanvasRenderingContext2D,
@@ -410,6 +285,17 @@ export function drawKillFxLayer(
     const fade = 1 - age / (win.hold + 1)
     const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
     const color = (e.slot !== null ? style.colorOfSlot(e.slot) : null) ?? style.fallback
+    if (e.fam === 'melee') {
+      // AU LIEU DE LA MORT : la victime quand elle est relue, l'origine sinon (elle vaut
+      // alors la position du tueur, à un pas de corps près — c'est un corps à corps).
+      const mort =
+        e.deathX !== null && e.deathY !== null
+          ? worldToCanvas({ x: e.deathX, y: e.deathY }, view.bounds, view.width, view.height, view.pad)
+          : c
+      const p = meleeStarProgress(age * win.frameMs, style.reducedMotion)
+      if (p !== null) drawMeleeStar(ctx, mort, p, style.k, color)
+      continue
+    }
     let angle: number | null = null
     let length = 0
     if (e.vx !== null && e.vy !== null) {

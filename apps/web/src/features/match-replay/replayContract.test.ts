@@ -115,7 +115,7 @@ const NULLABLE_ARRAYS = [
   // SEULEMENT s'il est établi. Par MATCH et non par carte : sur deux films de la même carte les
   // socles tombent aux mêmes coordonnées au centimètre, mais l'arme qui y apparaît change.
   'weaponPads',
-  // `zoneStates` : L'ÉTAT DE CHAQUE ZONE du mode (schéma 15, 2026-08-18) — une entrée par zone
+  // `zoneStates` : L'ÉTAT DE CHAQUE ZONE du mode (schéma 16, 2026-08-18) — une entrée par zone
   // appariée aux captures du match, une suite d'intervalles de propriété. `owner` vaut `null`
   // quand PERSONNE ne tient la zone, et c'est une MESURE (la valeur neutre du canal), pas une
   // absence de donnée. `zoneRef` indexe `mapObjectives.zones`, le calque servi à la requête.

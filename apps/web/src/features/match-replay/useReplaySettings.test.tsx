@@ -6,7 +6,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { SPEED_MULTIPLIERS, useReplaySettings } from './useReplaySettings'
+import { SPEED_MULTIPLIERS, useReplayCompactCards, useReplaySettings } from './useReplaySettings'
 
 describe('useReplaySettings — valeurs par défaut', () => {
   it("visée, zones et noms allumés, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
@@ -122,5 +122,37 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     expect(result.current.showWeaponPads).toBe(false)
     // Les poses, elles, n'ont pas bougé : deux clés distinctes, jamais une pour deux.
     expect(result.current.showPlacements).toBe(true)
+  })
+})
+
+/**
+ * B2/R2-7 — LES FICHES COMPACTES SONT UNE OPTION, ET ELLE EST PARTAGÉE.
+ *
+ * La bascule vit dans le tiroir (sous le canvas), les fiches vivent dans une autre colonne de
+ * la page : deux `useState` initialisés du même stockage ne se parleraient pas. C'est
+ * l'abonnement de `usePersistedFlag` qui les tient ensemble, et c'est ce que ce test épingle
+ * — sans lui, la bascule bougerait sans que les fiches changent.
+ */
+describe('useReplaySettings — fiches compactes', () => {
+  it('ÉTEINTES par défaut : la fiche validée reste le défaut', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.compactCards).toBe(false)
+  })
+
+  it('la bascule du tiroir change AUSSI ce que lit la colonne des fiches', () => {
+    const tiroir = renderHook(() => useReplaySettings())
+    const fiches = renderHook(() => useReplayCompactCards())
+    expect(fiches.result.current).toBe(false)
+    act(() => tiroir.result.current.toggleCompactCards())
+    expect(tiroir.result.current.compactCards).toBe(true)
+    expect(fiches.result.current).toBe(true)
+  })
+
+  it('elle survit au rechargement de la page', () => {
+    const premier = renderHook(() => useReplaySettings())
+    act(() => premier.result.current.toggleCompactCards())
+    premier.unmount()
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.compactCards).toBe(true)
   })
 })

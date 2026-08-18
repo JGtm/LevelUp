@@ -31,3 +31,15 @@
 [R1-9] contre-epreuve (DDL de HEAD) : 4/4 TestReplayFacts* ECHOUENT « Binder Error: Referenced column "map_id" not found » — c est bien la CI qui rougissait
 [R1-9] CGO_ENABLED=1 go test -tags=integration -count=1 -v -run TestReplayFacts ./internal/platform/duckdb/   EXIT_TEST=0 (4 PASS ; MapID blanchi et NULL -> vide verifies)
 [R1-9] gofmt -l internal/platform/duckdb : vide
+=== FUSION origin/feat/v75 (5e40de47f) + RENUMEROTATION schema 15 -> 16 ===
+[FUSION] conflits : document.go (chronique v15 = drapeau, v16 = zones, SchemaVersion = 16) ; structure_test.go (deux justifications dans l ordre, attendu 16) — resolus a la main
+[FUSION] CGO_ENABLED=0 go vet ./internal/analysis/replay/ ./internal/replaybuild/ ./internal/analysis/filmdec/   EXIT_VET=0
+[FUSION] golden : TestGoldenAssembly ECHOUAIT sur la seule ligne 9 (schema 15 -> 16) ; regenere avec -update, diff = 1 ligne   EXIT_UPDATE=0
+[FUSION] CGO_ENABLED=1 go run ./cmd/openapi-gen                     EXIT_OPENAPIGEN=0 (627301 o, identique a la fusion automatique)
+[FUSION] npm run generate-types (apps/web)                          EXIT_GENTYPES=0 (identique a la fusion automatique)
+[FUSION] wantReplayDocumentFields = 36 (leur 35 + zoneStates ; flagObjects non publie)
+[FUSION] CGO_ENABLED=0 go test -count=1 ./internal/analysis/replay/ ./internal/analysis/filmdec/   EXIT_TEST=0
+[FUSION] CGO_ENABLED=1 go test -count=1 ./internal/replaybuild/ ./contracttest/   EXIT_TEST=0
+[FUSION] purge node_modules/.tmp ; npx tsc -b --force                EXIT_TSC=0
+[FUSION] npx vitest run src/features/match-replay src/lib            EXIT_VITEST=0 (144 fichiers, 1777 tests ; ReplayCanvas 812 L = cliquet feat/v75 tenu, 1 commentaire condense)
+[FUSION] grep « schema 15 » zoneStates (web + coverage.go) : 0 residu ; les mentions restantes du 15 sont celles du drapeau (item 4)

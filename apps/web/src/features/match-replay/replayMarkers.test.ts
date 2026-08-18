@@ -61,6 +61,7 @@ function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
     showNames: true,
     showTrail: true,
     selfInk: 'rgb(4 4 4)',
+    deathInk: 'rgb(5 5 5)',
     labelStroke: 'rgb(8 12 18)',
     ...over,
   }
@@ -308,17 +309,53 @@ describe('style de la planche (§1bis)', () => {
     // Seule l'opacité bouge : plus la mort est ancienne, plus la croix est pâle.
     const alphaOf = (ops: CanvasOp[]) => alphaBefore(ops, ops.findIndex((o) => o.op === 'stroke'))
     expect(alphaOf(late)).toBeLessThan(alphaOf(early))
-    expect(valuesOf(early, 'lineWidth')).toContain(1.6)
   })
 
-  it('marque l étage par un anneau à l ENCRE DU THÈME, pas à la couleur du joueur', () => {
+  /**
+   * A1 (2026-08-18) — LA CROIX EST PLUS PETITE, PLUS ÉPAISSE, ET TOUJOURS ROUGE.
+   *
+   * Les trois tiennent ensemble : réduire la croix sans l'épaissir la ferait disparaître, et
+   * lui laisser la couleur d'équipe la ferait lire comme un marqueur de joueur. Ce test épingle
+   * les trois d'un coup, sur la même croix.
+   */
+  it('la croix de mort est plus petite, plus épaisse, et à l ENCRE DE MORT', () => {
+    const dead = singlePointTrack(512, { endFrame: 50 })
+    const ops = trace({ frame: 55 }, dead)
+    expect(valuesOf(ops, 'lineWidth')).toContain(2.6)
+    expect(valuesOf(ops, 'lineWidth')).not.toContain(1.6)
+    // Demi-taille : l'écart entre les deux extrémités d'une diagonale vaut 2 x 3,6 px.
+    const xs = ops
+      .filter((o) => o.op === 'moveTo' || o.op === 'lineTo')
+      .map((o) => Number(o.args[0]))
+    expect(Math.abs(xs[1] - xs[0])).toBeCloseTo(7.2, 6)
+    // ROUGE, jamais la couleur d'équipe du défunt.
+    const strokeStyles = ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+    expect(strokeStyles).toContain('rgb(5 5 5)')
+    expect(strokeStyles).not.toContain('rgb(1 2 3)')
+  })
+
+  it('une vie SANS couleur de slot ne dessine aucune croix non plus', () => {
+    const dead = singlePointTrack(512, { endFrame: 50 })
+    const ops = trace({ frame: 55, colorOfSlot: () => null }, dead)
+    // Le calque pose ses jointures avant de boucler : aucune PRIMITIVE de tracé ne suit.
+    expect(count(ops, 'stroke')).toBe(0)
+    expect(count(ops, 'moveTo')).toBe(0)
+  })
+
+  /**
+   * A1 (2026-08-18) — L'ANNEAU D'ÉTAGE PREND LA COULEUR DU PION.
+   *
+   * Il était à l'encre du thème pour ne pas faire dire deux choses à la couleur ; à l'écran,
+   * cette neutralité le détachait de son point. C'est le NOMBRE d'anneaux qui dit la hauteur,
+   * et lui seul : la couleur ne dit toujours que le camp.
+   */
+  it('marque l étage par un anneau à la COULEUR DU PION', () => {
     // Joueur en HAUT d'une carte d'amplitude connue : l'étage le plus élevé porte ses anneaux.
     const ops = trace({ z: { min: 0, max: 10 } }, singlePointTrack(512, {
       points: [{ t: 50, x: 5, y: 5, z: 10, h: 90 }],
     }))
     const strokeStyles = ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
-    expect(strokeStyles).toContain('rgb(9 9 9)')
-    expect(strokeStyles).not.toContain('rgb(1 2 3)')
+    expect(strokeStyles).toContain('rgb(1 2 3)')
     expect(valuesOf(ops, 'lineWidth')).toContain(1)
   })
 })

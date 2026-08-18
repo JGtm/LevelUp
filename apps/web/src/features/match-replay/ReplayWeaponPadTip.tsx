@@ -2,9 +2,9 @@
  * ReplayWeaponPadTip — L'INFOBULLE D'UN EMPLACEMENT D'ARME, au survol de son anneau.
  *
  * CE QU'ELLE DIT, ET DANS CET ORDRE : l'ARME (nom bilingue du catalogue, ou son identifiant
- * quand rien ne la nomme — jamais le nom d'une arme voisine), son ÉTAT à cet instant, le CYCLE
- * de réapparition QUAND il est établi, et la réserve de lecture : la mesure ne distingue pas un
- * socle au sol d'un râtelier mural.
+ * quand rien ne la nomme — jamais le nom d'une arme voisine), son ÉTAT à cet instant, le
+ * COMPTE À REBOURS quand un cycle établi le permet, et la réserve de lecture : la mesure ne
+ * distingue pas un socle au sol d'un râtelier mural.
  *
  * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
  * et vaut `null` partout — l'oracle plafonne à 79,7 % contre 90 % exigés. C'est la clause la
@@ -12,8 +12,14 @@
  * ce composant ne le lit pas.
  *
  * PAS DE CYCLE = PAS DE LIGNE. Une famille sans cycle établi n'affiche ni chiffre ni tiret : un
- * tiret suggérerait qu'on saurait. Et quand le cycle existe, ses DEUX dénominateurs voyagent
- * ensemble (`gaps` mesurés, `missing` manqués) — la confiance se lit sur les deux.
+ * tiret suggérerait qu'on saurait.
+ *
+ * NI MÉDIANE NI ÉCARTS (verdict du 2026-08-18) : l'infobulle portait aussi la médiane du cycle
+ * et ses deux dénominateurs (écarts mesurés, écarts manqués). Ces trois nombres disaient la
+ * CONFIANCE dans le cycle — une lecture d'analyse, pas un repère de carte. Le compte à rebours,
+ * lui, répond à la seule question qu'on se pose devant un socle vide : dans combien de temps.
+ * La réserve n'est pas perdue pour autant : elle vit dans le « ≈ » du libellé, et le compte ne
+ * s'affiche QUE quand le cycle est établi.
  *
  * Purement présentationnel : l'état et le compte à rebours sont calculés au survol
  * (useReplayWeaponPads), la géométrie dans weaponPadsLayer.
@@ -35,8 +41,7 @@ interface ReplayWeaponPadTipProps {
 
 export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipProps) {
   const t = REPLAY_TEXT[locale]
-  const { pad, at, name, state, respawnS } = hover
-  const cycle = pad.cycle
+  const { at, name, state, respawnS } = hover
   const flip = at.x + TIP_OFFSET + TIP_WIDTH > width
   return (
     <div
@@ -53,11 +58,6 @@ export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipP
         {t.padState[state]}
         {respawnS !== null ? ` · ${t.padRespawnFmt(respawnS)}` : ''}
       </span>
-      {cycle && (
-        <span className="block text-muted-foreground">
-          {t.padCycleFmt(cycle.medianS, cycle.gaps, cycle.missing)}
-        </span>
-      )}
       <span className="mt-0.5 block text-[0.65rem] text-muted-foreground opacity-80">
         {t.padPlacementNote}
       </span>

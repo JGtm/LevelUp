@@ -90,6 +90,12 @@ type FlagCarryScan struct {
 	Marks filmdec.CarrierMarkScan
 	// Spawns sont les socles `flag_spawn` de la carte (catalogue versionne d'objectifs).
 	Spawns []FlagSpawn
+	// Free sont les VIES LIBRES de l'objet drapeau (cf. flag_objects.go). Elles ne PUBLIENT rien
+	// ici : elles CORRIGENT ce calque — elles DATENT le lacher volontaire, que rien d'autre ne
+	// date, et remettent le lacher la ou l'objet repose. Seules celles nees AUX PIEDS D'UN
+	// PORTEUR servent : c'est la sous-population que le controle 3 valide. Vides : le calque est
+	// exactement celui d'avant le schema 15.
+	Free []flagFreeLife
 }
 
 // flagCarryCtx regroupe ce que la regle consomme en plus du balayage : l'axe de temps, les
@@ -182,7 +188,13 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	}
 	raws := boundFlagCarries(named, scan.Events, ctx)
 	raws, cov.AmbiguousCarrierKills = closeByCarrierKills(raws, scan.Events, scan.Identity)
+	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,
+	// donc le point de lacher que la ligne suivante ira lire sur la piste du porteur.
+	raws, cov.ClosedByObject = closeByFreeLives(raws, ctx, scan)
 	raws = attachFlagCarryPositions(raws, ctx, cov)
+	// ... et le point de lacher se corrige APRES, sur la piste LIBRE : le porteur meurt rarement
+	// la ou l'objet se pose. L'attribution du drapeau qui suit s'en sert.
+	cov.DropsRepositioned = repositionFlagDrops(raws, ctx, scan)
 	assignFlags(raws, scan.Spawns)
 	markFlagCarries(raws, scan.Marks, ctx)
 	tallyFlagCarries(raws, cov)

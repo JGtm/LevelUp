@@ -18,13 +18,13 @@ de l'artefact.
 | fichier | L | ce qu'il porte |
 |---|---|---|
 | `internal/analysis/filmdec/zone_state_scan.go` (NEUF) | 289 | LE BALAYAGE de `ti=13` en production : `ScanFilmManagedProperties`, desers de production par hook, **zero copie de grammaire** |
-| `internal/analysis/replay/document_zones.go` (NEUF) | 165 | la FORME (`ZoneState`, `ZoneSpan`, `ZonesCoverage`) et la chronique du schema 15 |
+| `internal/analysis/replay/document_zones.go` (NEUF) | 165 | la FORME (`ZoneState`, `ZoneSpan`, `ZonesCoverage`) et la chronique du schema **16** (ecrite en 15, renumerotee a la fusion — §10) |
 | `internal/analysis/replay/zone_states.go` (NEUF) | 338 | la REGLE : series par tag, fenetres, catalogue renumerote, echelle de la jauge |
 | `internal/analysis/replay/zone_states_owner.go` (NEUF) | 362 | le volet PROPRIETAIRE : appariement des slots, intervalles, controle |
 | `internal/analysis/replay/zone_states_hill.go` (NEUF) | 166 | le volet COLLINE : periodes de garde par la grappe des positions |
 | `internal/analysis/replay/build_zones.go` (NEUF) | 97 | le CABLAGE (`decodeFilmZoneReads`, `attachZoneStates`) et son journal |
 | `internal/replaybuild/zones.go` (NEUF) | 165 | le CATALOGUE du match, dans l'ordre ou le service le sert |
-| `internal/analysis/replay/{build,document,coverage}.go` | +12/+11/+10 | `Options.Zone`, `ReplayDocument.ZoneStates`, `Coverage.Zones`, schema 14 -> **15** |
+| `internal/analysis/replay/{build,document,coverage}.go` | +12/+11/+10 | `Options.Zone`, `ReplayDocument.ZoneStates`, `Coverage.Zones`, schema 15 -> **16** (14 -> 15 avant la fusion de l item 4, cf. §10) |
 | `contracttest/replay_contract_test.go` | +30 | `wantReplayDocumentFields` 35 -> **36**, 3 schemas de plus, chronique |
 | `apps/web/.../zoneStatesLayer.ts` (NEUF) | 181 | le calque VIVANT : `zoneStateAt`, teinte, surbrillance, arc de jauge |
 | `apps/web/.../useZoneStates.ts` (NEUF) | 63 | le pont camp -> encre, et les zones dans l'ordre servi |
@@ -93,7 +93,7 @@ chainees. La promotion en production n'a rien change a la lecture, elle a suppri
 
 ## 5. Le contrat
 
-- `SchemaVersion` **14 -> 15**, chronique dans `document_zones.go` et raison ecrite dans
+- `SchemaVersion` **15 -> 16** (ecrit 14 -> 15, renumerote a la fusion — §10), chronique dans `document_zones.go` et raison ecrite dans
   `structure_test.go` (le garde exige une justification, pas un numero).
 - `wantReplayDocumentFields` **35 -> 36** + 3 schemas (`ZoneState`, `ZoneSpan`, `ZonesCoverage`).
 - `api/openapi.yaml` REGENERE (`make openapi-gen`), `generated.ts` regenere.
@@ -101,7 +101,7 @@ chainees. La promotion en production n'a rien change a la lecture, elle a suppri
   `zoneStates` et `zoneStates[].spans` dans les deux listes, ce qui est le comportement attendu.
 - `coverage.zones.roles` est une CHAINE et non un tableau : ce temoin de jointure que rien ne
   parcourt aurait sinon fait entrer un tableau nullable de plus dans la frontiere du client.
-- Golden `assembly_000d5950.golden` : **une ligne** change (`schema 14` -> `schema 15`). Le film
+- Golden `assembly_000d5950.golden` : **une ligne** change (`schema 15` -> `schema 16` apres fusion ; `14 -> 15` avant). Le film
   temoin est un Slayer, sans zone : le calque n'y publie rien, et c'est ce que le golden montre.
 
 ## 6. Le rendu (CB.2b.3)
@@ -141,7 +141,7 @@ exactement sur le pulse — l'un annonce, l'autre installe.
 
 - [x] **CB.2b.1** — assemblage Go pur : scanner promu en production (zero copie), regle,
   forme, cablage, catalogue par match. Tests sans film : 12 cas, dont le volume d'un vrai match.
-- [x] **CB.2b.2** — contrat : schema 15, 36 champs, OpenAPI et types regeneres, garde web rougie
+- [x] **CB.2b.2** — contrat : schema **16** (15 avant la fusion de l item 4), 36 champs, OpenAPI et types regeneres, garde web rougie
   puis verte, golden justifie, **3 temoins re-cuits** avec faits et chiffres publies.
 - [x] **CB.2b.3** — rendu : teinte par proprietaire, colline active, arc de progression, helper
   pur `zoneStateAt` teste ; pulses conserves (constat ecrit) ; gates web verts.
@@ -169,3 +169,30 @@ exactement sur le pulse — l'un annonce, l'autre installe.
 5. **La progression pourrait etre resolue dans le temps.** Les intervalles publies sont ceux du
    PROPRIETAIRE ; la jauge n'y entre que par son sommet. Couper aussi aux sommets de rampe
    donnerait une jauge vivante pour ~60 intervalles de plus par zone.
+
+## 10. Revue adversariale, ronde 1 (2026-08-18) — neuf corrections, une fusion, un numero
+
+Gates par point : `LOTCBIS_p2b_R1_gates.log`. Un commit par point.
+
+| # | ce qui etait faux | ce qui a change | verrou |
+|---|---|---|---|
+| R1-1 | le repli « colline » s ouvrait sur tout mode sans capture | il ne s ouvre que sur un mode a colline | `TestZoneStates*` |
+| R1-2 | le web retranchait l origine du film une seconde fois | plus de soustraction cote client | `objectivesLayer.test.ts`, grep 0 residu |
+| R1-3 | le canal proprietaire s elisait par voisinage et pouvait tenir deux zones | election sur un SEUIL d accord roster, une zone par canal ; `ownerUnpaired` publie | `TestZoneStates*`, contrat regenere |
+| R1-4 | les rampes que la grappe ne localise pas etaient perdues | elles se comptent (`unpaired` en methode positions) | `TestZoneStates*` |
+| R1-5 | deux collines pouvaient etre actives a la fois | une seule, par construction de la fusion des periodes | contre-epreuve : l ancienne fusion ECHOUE |
+| R1-6 | `useZoneStates` rendait un objet neuf a chaque rendu (toute la scene recuite au survol) | retour sous `useMemo` | `useZoneStates.test.ts` (stabilite de reference) |
+| R1-7 | rien ne verifiait que `zoneRef` (index cuit) joint la liste servie | `zoneCatalogMatches` + `joinable` ; le CALQUE refuse de peindre (`drawZoneStates` prend un bloc, 5 parametres) | `objectivesLayer.test.ts` « jointure REFUSEE : ne peint rien » ; contre-epreuve : garde retiree = 1 failed |
+| R1-8 | le scanner ti=13 emportait `Names`, `dominantName` et un second hook global que rien ne lisait | retires ; i0 reste marche, pas recolte | filmdec vert, grep 0 consommateur |
+| R1-9 | le DDL du test des faits n avait pas `map_id` (lu depuis `b0fb3e10f`) : 4 cas rouges en CI | DDL + INSERT portent `map_id` ; blanchiment et NULL verifies | contre-epreuve sur le DDL de HEAD : 4/4 « Binder Error » |
+
+**Fusion de `feat/v75` (`5e40de47f`) et RENUMEROTATION.** L item 4 (drapeau objet) a publie ses
+corrections de `flagCarries` sous le **schema 15** et a ete fusionne le premier ; ce lot devient
+donc le **schema 16**. Conflits resolus dans `document.go` (chronique v15 = drapeau, v16 = zones,
+`SchemaVersion = 16`) et `structure_test.go` (les deux justifications, dans l ordre, `attendu 16`) ;
+`document_zones.go` porte la raison du 16 ; `wantReplayDocumentFields` reste **36** (leur compte
+35 : `flagObjects` n est pas publie) ; `openapi.yaml` et `generated.ts` regeneres (identiques a la
+fusion automatique) ; golden `assembly_000d5950.golden` regenere (**une ligne** : `schema 15` ->
+`schema 16`) ; tous les commentaires « schema 15 » de zoneStates (web + `coverage.go`) passes a 16.
+`ReplayCanvas.tsx` : le cliquet est descendu a **812** cote feat/v75 (extraction `useReplayTiming`),
+la fusion donnait 813 — un commentaire condense, **812** tenu.

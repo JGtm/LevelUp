@@ -28,6 +28,13 @@
  * au bas de la rampe. Au-delà de p95 la couleur SATURE : c'est assumé, c'est ce qui rend
  * les zones chaudes comparables entre elles.
  *
+ * LA RAMPE A TROIS POINTS depuis le 2026-08-18 (A8) : bleu -> rouge -> violet. Le violet ne
+ * peint que le HAUT de l'échelle, là où la saturation commence — 5 % des cellules du témoin.
+ * C'est ce que « aux extrêmes rares » veut dire, et c'est pour cela que la couleur change
+ * deux fois plutôt qu'une : une rampe mono-teinte dit « plus ou moins », elle ne dit jamais
+ * « et là, beaucoup plus ». Les trois points sont des TOKENS (heatmapRampTokens('intensity')),
+ * résolus par l'appelant : ce fichier ne nomme toujours aucune couleur.
+ *
  * Pas de React : logique pure + un CanvasRenderingContext2D (même règle que replayDraw).
  */
 import { hexToRgba } from '@/components/charts/_utils'
@@ -89,14 +96,20 @@ const HEAT_Q_LOW = 0.5
 const HEAT_Q_HIGH = 0.95
 
 /**
- * Opacités des extrémités. Le haut est le plafond du plan (0,55) : au-delà, la carte du jeu
- * disparaîtrait sous le calque. Le bas reste franchement visible sans effacer le décor —
- * c'est la moitié froide de l'échelle, et l'utilisateur a demandé à voir AUSSI les lieux
- * froids. L'opacité monte donc avec l'intensité, comme la couleur : sur un fond chargé,
- * une opacité constante noierait les neuf dixièmes de la carte pour montrer un dixième.
+ * Opacités des extrémités. Le bas reste franchement visible sans effacer le décor — c'est la
+ * moitié froide de l'échelle, et l'utilisateur a demandé à voir AUSSI les lieux froids.
+ * L'opacité monte avec l'intensité, comme la couleur : sur un fond chargé, une opacité
+ * constante noierait les neuf dixièmes de la carte pour montrer un dixième.
+ *
+ * LE PLAFOND PASSE DE 0,55 À 0,75 LE 2026-08-18 (A8 : « c'est pas mal mais à accentuer un
+ * peu »). Deux leviers étaient possibles et le lot R2-V les a CHIFFRÉS avant qu'on choisisse :
+ * abaisser le quantile bas déplace le plancher et rien d'autre (+1,4 pt de cellules au-dessus
+ * d'alpha 0,30), relever le plafond éclaire tout le haut de l'échelle (+7,1 pt). Le plafond
+ * fait cinq fois plus, et c'est lui qui a été retenu — l'étalonnage quantile (p50 -> p95) ne
+ * bouge donc PAS.
  */
 const HEAT_ALPHA_MIN = 0.12
-const HEAT_ALPHA_MAX = 0.55
+const HEAT_ALPHA_MAX = 0.75
 
 /** Paliers de la rampe précalculée : un `rgba()` par palier, indexé pendant le dessin. */
 export const HEAT_RAMP_STEPS = 64
@@ -359,20 +372,30 @@ function mixHex(a: Rgb, b: Rgb, t: number): string {
 }
 
 /**
- * heatRamp précalcule la rampe en `rgba()` : couleur ET opacité montent ensemble. Les deux
- * extrémités sont les tokens de rampe DÉJÀ RÉSOLUS par l'appelant (règle color-tokens : ce
- * fichier ne nomme aucune couleur). Un hex illisible rend une rampe VIDE — le calque ne se
- * peint pas, plutôt que de peindre une couleur inventée (même règle que `readInk`).
+ * heatRamp précalcule la rampe en `rgba()` : couleur ET opacité montent ensemble.
+ *
+ * N POINTS, PAS DEUX (2026-08-18) : les arrêts arrivent DÉJÀ RÉSOLUS de l'appelant, dans
+ * l'ordre bas -> haut (règle color-tokens : ce fichier ne nomme aucune couleur). Deux arrêts
+ * donnent la rampe d'avant ; trois donnent le bleu -> rouge -> violet demandé. Ils sont
+ * répartis UNIFORMÉMENT sur l'échelle : la position du point milieu est un choix d'écran, et
+ * la placer ailleurs sans mesure reviendrait à inventer un seuil.
+ *
+ * Un arrêt illisible, ou moins de deux, rend une rampe VIDE — le calque ne se peint pas,
+ * plutôt que de peindre une couleur inventée (même règle que `readInk`).
  */
-export function heatRamp(lowHex: string, highHex: string): string[] {
-  const a = parseHex(lowHex)
-  const b = parseHex(highHex)
-  if (!a || !b) return []
+export function heatRamp(stops: readonly string[]): string[] {
+  const rgb = stops.map(parseHex)
+  if (rgb.length < 2 || rgb.some((c) => c === null)) return []
+  const points = rgb as Rgb[]
+  const segments = points.length - 1
   const out: string[] = []
   for (let i = 0; i < HEAT_RAMP_STEPS; i++) {
     const t = i / (HEAT_RAMP_STEPS - 1)
+    // Segment courant et avancement DANS ce segment : `t = 1` retombe sur le dernier.
+    const seg = Math.min(segments - 1, Math.floor(t * segments))
+    const u = t * segments - seg
     const alpha = HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t
-    out.push(hexToRgba(mixHex(a, b, t), Number(alpha.toFixed(3))))
+    out.push(hexToRgba(mixHex(points[seg], points[seg + 1], u), Number(alpha.toFixed(3))))
   }
   return out
 }

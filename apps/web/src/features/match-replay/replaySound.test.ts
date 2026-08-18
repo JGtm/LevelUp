@@ -305,6 +305,31 @@ describe('buildSoundTimeline', () => {
     ])
   })
 
+  /**
+   * D5 (2026-08-18) — LE TRAQUEUR PREND LE SON DU CAPTEUR, LES DEUX AUTRES RESTENT MUETS.
+   *
+   * L'emprunt est adossé à une PARENTÉ (même appareil, un mode près : le capteur balaie en
+   * boucle, le traqueur émet une impulsion unique — le geste de pose est le même), pas au fait
+   * qu'il reste un son disponible. La balise du translocateur et le champ de réparation n'ont
+   * de source NULLE PART (bibliothèque livrée, archive d'extraction, chaîne d'extraction qui
+   * ne connaît que le tag d'arme) : ils se taisent, et ce test l'épingle pour qu'aucun lot ne
+   * leur prête le son d'un voisin par commodité.
+   */
+  it('le TRAQUEUR sonne comme le capteur ; balise et champ restent MUETS', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        equipmentPlacements: [
+          { t0: 10, t1: 90, x: 0, y: 0, family: 'threat_seeker', id: '0x0001', owner: 1, origin: 'deployed' },
+          { t0: 40, t1: 95, x: 1, y: 1, family: 'translocator_beacon', id: '0x0002', owner: 1, origin: 'deployed' },
+          { t0: 70, t1: 95, x: 2, y: 2, family: 'repair_field', id: '0x0003', owner: 1, origin: 'deployed' },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([{ ms: 1_000, stem: 'sensor_activate' }])
+  })
+
   it('une pose de famille sans fichier (objet non identifié) reste MUETTE', () => {
     const tl = buildSoundTimeline(
       docWithCouple({

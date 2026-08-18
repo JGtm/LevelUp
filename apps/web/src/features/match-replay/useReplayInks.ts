@@ -50,6 +50,17 @@ const GRENADE_TOKEN: SemanticToken = 'info'
  */
 const SELF_TOKEN: SemanticToken = 'success'
 
+/**
+ * LE MUR DE PROTECTION (W1/R2-5, verdict du 2026-08-18 : « je préférerais un orange doré »).
+ *
+ * DEUX TOKENS ÉTAIENT CANDIDATS et la planche les a montrés côte à côte : `legendary` (l'or,
+ * déjà porté par l'encadré du surbouclier) et `warning` (l'orange d'alerte). `warning` est
+ * retenu. Ce qu'on PERD est écrit : la couleur d'ÉQUIPE du poseur — le mur ne dit plus QUI
+ * l'a posé. Ce qu'on gagne : il dit QUOI, et un objet du terrain qui garde sa teinte quel que
+ * soit le camp se reconnaît d'un coup d'œil au milieu de huit trajectoires colorées.
+ */
+const WALL_TOKEN: SemanticToken = 'warning'
+
 /** Les encres de mise en page du sol reconstruit : son aplat et l'arête de ses marches. */
 export interface ReplayFloorInk {
   fill: string
@@ -75,6 +86,16 @@ export interface ReplayInks {
   labelStroke: string
   /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
   self: string
+  /** Arc du mur de protection : un token FIXE, plus la couleur d'équipe (cf. WALL_TOKEN). */
+  wall: string
+  /**
+   * LE MARQUAGE DES SOCLES : ce qui est REMPLI, et ce qui le CERNE (verdict du 2026-08-18 —
+   * « icône blanche remplie, contour noir »). Ce sont les deux encres du THÈME, pas des
+   * tokens de données : en sombre le remplissage est clair et le liseré sombre, en clair
+   * l'inverse. La demande se lit donc telle quelle sur les deux fonds de carte, ce qu'un
+   * blanc et un noir écrits en dur n'auraient pas fait.
+   */
+  mark: { fill: string; outline: string }
 }
 
 /**
@@ -99,6 +120,8 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),
       self: resolveToken(SELF_TOKEN),
+      wall: resolveToken(WALL_TOKEN),
+      mark: { fill: readInk('--foreground'), outline: readInk('--background') },
     }
   }, [paletteVersion])
 }

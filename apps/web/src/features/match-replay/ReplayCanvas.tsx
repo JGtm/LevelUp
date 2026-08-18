@@ -50,11 +50,7 @@ import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
-import {
-  buildGrenadeRestFx,
-  DYNAMO_REST_HOLD_MS,
-  GRENADE_REST_HOLD_MS,
-} from './grenadeFx'
+import { buildGrenadeRestFx } from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
 import type { PlayerMarkKind } from './playerMarks'
@@ -70,22 +66,15 @@ import { buildFloorGrid } from './mapFloor'
 import type { ReplayDocumentReady } from './replayNormalize'
 import {
   drawGeometryLayer,
-  drawGrenadeRestLayer,
   drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
-import {
-  fitWidth,
-  formatClock,
-  frameToMs,
-  framesPerSecond,
-  isAliveAt,
-  msToFrames,
-  sceneBounds,
-} from './replayLogic'
+import { drawGrenadeRestLayer } from './grenadeRestLayer'
+import { fitWidth, formatClock, frameToMs, isAliveAt, sceneBounds } from './replayLogic'
 import { drawProjectilesLayer } from './replayProjectiles'
-import { drawTracksLayer, type MarkerTiming } from './replayMarkers'
+import { drawTracksLayer } from './replayMarkers'
+import { useReplayTiming } from './useReplayTiming'
 
 // 8 tokens de série = une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
 // getSeriesColors). Ils ne colorent plus les joueurs depuis le 2026-08-16 : un joueur porte
@@ -94,32 +83,13 @@ const ZONE_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
-// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks.
-// Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
-// un TIR est un éclat bref (0,6 s — c'est sa brièveté qui le rend lisible : à 1,4 s le trait
-// traînait dim et se fondait dans la carte, mesure du recalage 2.2), un LANCER et une MORT
-// tiennent 1,4 s parce qu'ils portent plus de sens qu'une détonation.
-const SHOT_HOLD_MS = 600
-const EVENT_HOLD_MS = 1_400
-
+// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks ; les DURÉES et leur
+// conversion en images, dans useReplayTiming.
 const CANVAS_HEIGHT = 480
 const CANVAS_PAD = 24
 
 /** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
 const EMPTY_ZONES: CalloutZoneReady[] = []
-
-/**
- * Réglages temporels du calque des joueurs, en TEMPS RÉEL — jamais en nombre de frames : la
- * cadence d'échantillonnage est choisie au build et peut changer sans que la lecture change.
- * Valeurs reprises du POC, où elles ont été réglées à l'écran ; leur justification mesurée est
- * en tête de replayMarkers.ts.
- */
-const TIMING_MS = {
-  trail: 7_000,
-  aimHold: 5_000,
-  death: 1_500,
-  spawn: 800,
-} as const
 
 /**
  * Cadence de publication de l'image courante vers React, en millisecondes.
@@ -205,7 +175,7 @@ export function ReplayCanvas({
   }, [])
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
-    showTrail, toggleTrail,
+    showTrail, toggleTrail, compactCards, toggleCompactCards,
     showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
@@ -224,7 +194,7 @@ export function ReplayCanvas({
   // l'en-tête du hook.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
@@ -293,8 +263,7 @@ export function ReplayCanvas({
     () => buildObjectivePulses(doc, mapObjectives),
     [doc, mapObjectives],
   )
-  // L'ÉTAT VIVANT DES ZONES (schéma 15), les encres d'objectif et la garde de jointure du
-  // catalogue (`zoneRef` est un index cuit à l'artefact) — cf. useZoneStates.
+  // L'ÉTAT VIVANT DES ZONES (schéma 16), les encres d'objectif et la garde de jointure du catalogue (cf. useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge, doc.coverage?.zones?.catalog)
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
@@ -319,18 +288,9 @@ export function ReplayCanvas({
     () => ({ bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD }),
     [bounds, renderWidth],
   )
-  const baseFps = useMemo(() => framesPerSecond(doc), [doc])
-  const timing = useMemo<MarkerTiming>(
-    () => ({
-      trail: msToFrames(TIMING_MS.trail, doc),
-      aimHold: msToFrames(TIMING_MS.aimHold, doc),
-      death: msToFrames(TIMING_MS.death, doc),
-      spawn: msToFrames(TIMING_MS.spawn, doc),
-    }),
-    [doc],
-  )
-  const eventHoldFrames = useMemo(() => msToFrames(EVENT_HOLD_MS, doc), [doc])
-  const shotHoldFrames = useMemo(() => msToFrames(SHOT_HOLD_MS, doc), [doc])
+  // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
+  // du rejeu, converties une fois pour ce document (useReplayTiming).
+  const { baseFps, timing, eventHoldFrames, shotHoldFrames, restWindow } = useReplayTiming(doc)
   // Les tirs sont PRÉCALCULÉS comme les morts : famille, teinte et REGARD du tireur résolus
   // une fois au chargement (mesure : la couverture d'orientation passe de 18,6 % à 100 % sur
   // le film témoin en relisant le regard plutôt que le champ de l'événement).
@@ -351,13 +311,6 @@ export function ReplayCanvas({
   })
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
-  const restWindow = useMemo(
-    () => ({
-      holdHalo: msToFrames(GRENADE_REST_HOLD_MS, doc),
-      holdDynamo: msToFrames(DYNAMO_REST_HOLD_MS, doc),
-    }),
-    [doc],
-  )
   const totalLabel = formatClock(doc.durationMs ?? frameToMs(doc.frameCount, doc))
 
   // Largeur responsive (ResizeObserver du conteneur).
@@ -399,7 +352,7 @@ export function ReplayCanvas({
     view: canvasView,
     frameRef,
     enabled: showWeaponPads,
-    ink: { neutral: floorStyle.edge, labelStroke },
+    ink: { neutral: floorStyle.edge, fill: markInk.fill, outline: markInk.outline },
     locale,
     redraw,
   })
@@ -483,7 +436,7 @@ export function ReplayCanvas({
           reducedMotion,
           showUnnamed: showUnnamedPlacements,
         },
-        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge },
+        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk },
       )
     }
     drawTracksLayer(ctx, doc.tracks, view, {
@@ -499,6 +452,7 @@ export function ReplayCanvas({
       showNames,
       showTrail,
       selfInk,
+      deathInk: shotColor,
       labelStroke,
     })
 
@@ -514,9 +468,9 @@ export function ReplayCanvas({
     // effets d'événement sont ÉTEIGNABLES depuis le tiroir (décision du 16/08) : c'est le
     // DESSIN qui s'éteint, jamais la mesure — `killFx` continue d'alimenter la lecture
     // « éliminations » de la carte de chaleur, qui n'est pas un effet.
-    const win = { frame, hold: eventHoldFrames }
+    const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
     if (showShotFx && shotFx.length > 0) {
-      drawShotsLayer(ctx, shotFx, view, { frame, hold: shotHoldFrames }, {
+      drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
         ink: fxInk,
         k: dpr,
         reducedMotion,
@@ -554,10 +508,10 @@ export function ReplayCanvas({
         },
       )
     }
-    // L'ÉTAT DES ZONES à l'image courante (schéma 15) : teinte du camp qui la tient,
+    // L'ÉTAT DES ZONES à l'image courante (schéma 16) : teinte du camp qui la tient,
     // surbrillance de la colline ACTIVE, arc de progression de la jauge. Il se peint dans la
-    // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque
-    // lui-même refuse de peindre si le catalogue de l'artefact ne joint pas la liste servie.
+    // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque lui-même
+    // refuse de peindre si le catalogue de l'artefact ne joint pas la liste servie.
     if (doc.zoneStates.length > 0) drawZoneStates(ctx, zones, doc.zoneStates, view, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
@@ -571,7 +525,7 @@ export function ReplayCanvas({
       drawKillFxLayer(ctx, killFx, view, win, {
         colorOfSlot: (slot) => slotColors.get(slot) ?? null,
         fallback: shotColor,
-        reducedMotion,
+        reducedMotion, k: dpr,
       })
     }
 
@@ -590,7 +544,7 @@ export function ReplayCanvas({
       }
     }
   }, [
-    doc, geometryColor, bounds, zRange, timing, totalLabel,
+    doc, geometryColor, bounds, zRange, timing, totalLabel, wallInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     t.aliveSuffix, renderWidth, canvasView,
@@ -844,8 +798,8 @@ export function ReplayCanvas({
             }}
             showShotFx={showShotFx}
             onToggleShotFx={toggleShotFx}
-            showKillFx={showKillFx}
-            onToggleKillFx={toggleKillFx}
+            showKillFx={showKillFx} compactCards={compactCards}
+            onToggleKillFx={toggleKillFx} onToggleCompactCards={toggleCompactCards}
             sound={sound}
             speed={multiplier}
             onSetSpeed={setMultiplier}

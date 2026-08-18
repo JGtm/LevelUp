@@ -76,7 +76,7 @@ func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 		},
 		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	_, _, cov := buildWeaponPads(fausse, nil, gwTestClock())
+	_, _, cov := buildWeaponPads(fausse, nil, gwTestClock(), nil)
 	if cov.Kept != 0 || cov.Accepted == 0 {
 		t.Fatalf("le cas temoin doit etre `0 retenue pour N acceptees` : %+v", cov)
 	}
@@ -88,7 +88,7 @@ func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 	// LE CONTRE-CAS COMPTE AUTANT : une identite qui resout ne doit RIEN dire de special,
 	// sans quoi l'avertissement se noierait dans le bruit et personne ne le lirait.
 	bonne, pos := gwTestPadScan(t)
-	_, _, ok := buildWeaponPads(bonne, pos, gwTestClock())
+	_, _, ok := buildWeaponPads(bonne, pos, gwTestClock(), nil)
 	if ok.Kept == 0 {
 		t.Fatalf("le contre-cas doit retenir des creations : %+v", ok)
 	}

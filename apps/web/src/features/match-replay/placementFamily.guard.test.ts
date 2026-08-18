@@ -68,13 +68,28 @@ function goFamilies(): string[] {
   return [...new Set(noms)].sort()
 }
 
-/** Les familles que la table du titre emploie réellement (`family = "…"`). */
+/**
+ * Les familles que la table du titre emploie réellement (`family = "…"`).
+ *
+ * LE BLOC EST BORNÉ PAR LA TABLE SUIVANTE, et ce n'est pas une précaution théorique : le
+ * manifeste porte depuis le 2026-08-18 une table `[[objective_objects]]` qui emploie AUSSI une
+ * clé `family` — d'un autre vocabulaire (le drapeau de CTF, archétype `ti=42`), validé par une
+ * autre liste fermée. Sans cette borne, la lecture allait jusqu'à la fin du fichier et
+ * réclamait au valideur des poses une famille qui ne lui appartient pas.
+ */
 function tomlFamilies(): string[] {
   const src = readFileSync(TOML, 'utf8')
   const start = src.indexOf('[[equipment_objects]]')
   expect(start, '[[equipment_objects]] introuvable dans le manifeste du titre').toBeGreaterThan(-1)
-  const block = src.slice(start)
+  const block = blocDeTable(src.slice(start), '[[equipment_objects]]')
   return [...new Set([...block.matchAll(/^family\s*=\s*"(\w+)"/gm)].map((m) => m[1]))].sort()
+}
+
+/** Rend le préfixe de `src` qui n'appartient qu'à la table `entete` (répétée ou non). */
+function blocDeTable(src: string, entete: string): string {
+  const lignes = src.split('\n')
+  const fin = lignes.findIndex((l) => l.trimStart().startsWith('[[') && l.trim() !== entete)
+  return fin < 0 ? src : lignes.slice(0, fin).join('\n')
 }
 
 /** Les règles de rendu réellement employées par la table, sans le défaut. */
@@ -135,10 +150,15 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * qui y recopiaient huit fois le même corps sont donc parties dans `useReplayInks` AVANT
  * l'ajout — c'est exactement la manœuvre que ce cliquet existe pour imposer, et le nombre
  * descend d'autant.
+ *
+ * 858 -> 812 le 2026-08-18 (lot R3, item R3.1) : la croix de mort change de taille, d'encre et
+ * de duree, et la duree devait ecrire POURQUOI. Plutot que d'allonger le canvas d'un
+ * paragraphe, les reglages temporels et leur conversion sont partis dans `useReplayTiming` —
+ * quatrieme extraction imposee par ce cliquet, et la plus grosse.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(858)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(812)
   })
 })

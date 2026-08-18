@@ -1,5 +1,5 @@
 /**
- * zoneStatesLayer.ts — L'ÉTAT VIVANT DES ZONES (schéma 15) : qui tient quoi à l'image courante.
+ * zoneStatesLayer.ts — L'ÉTAT VIVANT DES ZONES (schéma 16) : qui tient quoi à l'image courante.
  *
  * POURQUOI IL VIT À CÔTÉ DU CALQUE STATIQUE, ET PAS DEDANS. `objectivesLayer.ts` porte la
  * GÉOMÉTRIE des objectifs du mode : elle ne dépend ni de l'image ni de la lecture, se cuit une

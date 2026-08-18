@@ -61,9 +61,17 @@ export function explosionTintOf(rank: number): FxTint {
 }
 
 /**
- * Rémanences au point de repos, en temps réel : la nappe électrique persiste (~2,5 s,
- * décision produit « ~2-3 s »), et la fenêtre des trois types qui détonent vaut EXACTEMENT
- * la timeline de leur explosion.
+ * Rémanences au point de repos, en temps réel : la nappe électrique persiste, et la fenêtre
+ * des trois types qui détonent vaut EXACTEMENT la timeline de leur explosion.
+ *
+ * LA FENÊTRE DE LA NAPPE PASSE DE 2,5 À 3,0 s LE 2026-08-18 (A4 : « la nappe doit persister au
+ * moins 2,5 s au sol »). La fenêtre déclarée disait DÉJÀ 2,5 s ; ce que l'écran montrait, lui,
+ * durait 2,10 s — l'opacité descendait linéairement et passait sous le seuil de lisibilité
+ * avant la fin de la fenêtre (mesure du lot R3, item R3.2). Ce sont donc DEUX choses qui
+ * changent ensemble et qui ne valent qu'ensemble : la fenêtre monte à 3,0 s, et la courbe
+ * d'opacité devient un plateau suivi d'une chute (`dynamoAlpha`, grenadeRestLayer.ts). Mesure
+ * après : 2,60 s visibles. LE SON N'EST PAS TOUCHÉ — il est daté par la fin de vol, pas par
+ * cette fenêtre.
  *
  * ELLE EST ALIGNÉE SUR `EXPLOSION_MS`, ET C'EST UN INVARIANT, pas une coïncidence : cette
  * fenêtre BORNE le dessin (`drawGrenadeRestLayer` sort dès `age > hold`). Restée à 1,4 s
@@ -71,7 +79,7 @@ export function explosionTintOf(rank: number): FxTint {
  * course — exactement le défaut que la planche du 16/08 signalait (« trop bref »), déplacé
  * d'un cran. Le test de `grenadeFx` rejoue l'égalité.
  */
-export const DYNAMO_REST_HOLD_MS = 2_500
+export const DYNAMO_REST_HOLD_MS = 3_000
 export const GRENADE_REST_HOLD_MS = EXPLOSION_MS
 
 /** Rémanence du badge de lancer sur la FICHE (le `.gic` du POC) : celle des lancers. */

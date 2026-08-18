@@ -91,9 +91,13 @@ func gwInstallMPPWidths(w filmdec.MPPWidths) func() {
 // socles du MATCH — aucun catalogue de carte, aucun ramasseur.
 //
 // `positions` doit etre TRIE par instant (c est le cas de `sorted` dans BuildFromPositions).
+// `flags` est la table d'identite des DRAPEAUX du titre : la chaine les RECONNAIT et les exclut
+// des socles avant toute autre question. Table vide = comportement d'avant le 2026-08-18.
 func attachWeaponPads(
 	doc *ReplayDocument, scan GroundWeaponScan, positions []filmdec.BipedPosition, clock replayClock,
+	flags map[uint32]Label,
 ) {
-	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons = buildWeaponPads(scan, positions, clock)
+	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons =
+		buildWeaponPads(scan, positions, clock, flags)
 	logGroundWeaponCoverage(doc.Coverage.GroundWeapons)
 }

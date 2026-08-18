@@ -121,6 +121,9 @@ export const tolBrightPalette: Palette = {
   // reste de cette palette (TOL_BLUE seul sert déjà 7 rôles).
   'legendary': TOL_YELLOW, // #CCBB44
 
+  // ── Extrême rare — Purple du schéma Bright, CVD-safe par construction ─────
+  'extreme': TOL_PURPLE,
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
   'narrative-dominant':              TOL_GREEN,  // vert UI — statut positif

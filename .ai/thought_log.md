@@ -1,3 +1,66 @@
+## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : fusion dans feat/v75, lot C-bis (ti=13) phases 0-2a closes, phase 2b en revue, handoff superviseur — En cours
+
+**Contexte** : suite des entrees « vague 1 » et « vague 2 » ci-dessous. Session de pilotage (superviseur + executeurs Opus par worktree), a la demande de l'utilisateur : « lancer la RE de ti=13 en mode pilotage », puis « go phase 2b », puis « fais-toi un handoff pour survivre a l'auto-compact ».
+
+**Decision technique principale** : (1) fusionner l'integration `wt/registre-film` dans `feat/v75` des que le principal est propre, sans attendre le gate visuel utilisateur (planche publiee : artefact cb1f0981, temoins poses dans le cache du principal) ; (2) sur ti=13, ne pas s'arreter au gate 1 tombe sur une clause de VOLUME et deux clauses temporelles vides par construction : arbitrage ecrit (`LOTCBIS_ARBITRAGE_PHASE1.md`) qui deplace la mesure dans `replay` (la ou vivent le catalogue et le roster) avec des temoins juges contre le NIVEAU DU HASARD ; (3) publier `zoneStates` sous la forme `[{zoneRef, spans: [{t0, t1, owner, progress?}]}] + coverage.zones` et faire lire les chiffres de controle SUR LA FORME PUBLIEE (le temoin relit `spans` a la frame de la capture) ; (4) le numero de schema se prend dans l'ordre des fusions sur `feat/v75` : l'item 4 de l'utilisateur ayant publie le 15 pendant notre ronde de corrections, `zoneStates` passe au 16 a la fusion.
+
+**Resultats observes** : fusion `104f468c6` POUSSEE (score dans le temps schema 12, elevation schema 13, ratchet cross-feature repare par `lib/replay/scoreTimeline.ts`) ; C-bis phase 0 : variant de ti=13 RESOLU (index de champ `contexte+0x10`, deux moities, 33 vecteurs) ; phase 1 (fusion `9b959de28`) : PORTE (DesyncAt : les 12 films progressent), tag 3 = jauge (97,2 / 94,8 % vs hasard 57-61 %), tag 4 enumerable, tag 5 = cle de nommage stable, KOTH une zone active ; phase 2a (fusion `2753e8ee2`) : slot -> zone 93,1 / 98,4 % (temoins 41-57 %), **tag 4 = PROPRIETAIRE 100 / 91 %**, KOTH 91/84/82 % ; phase 2b (`wt/zones-ti13-p2b`) : captures -> intervalle du capteur **96,6 % et 97,0 %** (seuil 90), KOTH **93,1 %** (seuil 80), +0,22 % de l'artefact ; revue adversariale : 2 P1 (repli colline sur `len(pairs)==0` ; `objectivesLayer.ts` retranchait l'origine deux fois — bug du lot A), 5 P2, code mort scanner ; ronde 1 : R1-1..R1-6 commitees (`7843433d0`), R1-7..R1-9 en cours apres deux coupures API (529). CI `feat/v75` : un job rouge (`TestReplayFacts*`, DDL de test sans `map_id` depuis `b0fb3e10f` de l'item 4) — repare par R1-9 a la fusion. Lecons : un canal DENSE se juge contre son niveau de hasard (une clause « temoin sous la moitie du reel » est inatteignable par construction) ; le CLI de cuisson (`replay-build --facts`) etait bloque par un composant voisin (`attachFlagCarries`, 19-22 Go) — signale, corrige par l'autre session (`f41fd362c`).
+
+**Conclusion / prochaine etape** : finir la ronde 1 (R1-7 garde client, R1-8 code mort, R1-9 DDL) + fusion de `origin/feat/v75` avec re-numerotation schema 16 ; ronde 2 par un relecteur frais sur les seules corrections ; fusion `--no-ff` dans `feat/v75`, push, CI verte au niveau job, SHA a l'utilisateur ; section « zones » de la planche ; puis gate visuel utilisateur et hygiene de cloture (liste dans le handoff). Point d'entree de reprise : `.ai/V7.5/HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md`.
+
+## [2026-08-18] Drapeau OBJET — le manifeste le nomme, son controle refuse sa piste ; corrections flagCarries (schema 15) ; FIX bloquant deathProgressions — Complete
+
+**Statut** : Complete (branche `wt/drapeau`, 4 commits `79ea7e569`..`7ee8aedb4`, FUSIONNEE dans `feat/v75`
+par le superviseur, vet + tests objectiveevents/contracttest rejoues, POUSSEE ensuite). `flagObjects` `[!]`.
+**Decision technique** : `0x2A392328` entre au manifeste sous une table neuve `[[objective_objects]]`
+(archetype 42), famille `flag`, libelles FR/EN ; la chaine des socles le RECONNAIT et l'ecarte AVANT la
+question « est-ce une arme ? » (garde-rail a temoin) ; couverture `groundWeapons.objectives`. Controle 3
+(ecrit avant mesure) NON tenu : 149/197 = 75,6 % contre 90 % (temoin armes ordinaires 12,8 % <= 20 %,
+tenu : la piste discrimine d'un facteur six) — la chaine de publication de `flagObjects` etait ecrite,
+elle est RETIREE ; 3 des 48 residuelles seulement naissent la ou l'objet reposait deja. Deux defauts
+d'instrument corriges avant conclusion (reference porteur reduite a la derniere frame ; socle neutre
+ecarte par un filtre de production), aucun seuil touche. **Arbitrage superviseur** : les vies libres
+nees a < 1,5 m du porteur (la sous-population validee, hors naissances au socle) DATENT le lacher et
+REPOSITIONNENT `dropped` — schema 14 -> 15 avec chronique, contrat inchange (35), 3 compteurs de
+couverture (`objectLives`, `closedByObject`, `dropsRepositioned`) ; ancrage : portages 78/30/29,
+`carried_open` -> `carried` = 2 (`530820e5`), `dropped` repositionnes 28/16/4.
+**FIX BLOQUANT (rapporte par l'autre session : `replay-build --facts` 19-22 Go, > 15 min, meme sur un
+Slayer)** : `objectiveevents.deathProgressions` DEROULAIT la progression du compteur de morts (une
+emission positive aberrante allouait autant d'entiers que sa valeur) et le pont d'identite etait paye
+meme hors CTF. Correctif : plafond `maxDeathsPerSlot = 1000` (borne de surete, une valeur au-dela est
+jetee comme une negative) + court-circuit hors CTF dans `attachFlagCarries` (meme calque vide, meme
+couverture) ; garde-rail `slotidentity_deaths_bomb_test.go` (mesure des ALLOCATIONS : 400 M en entree
+-> 0 deroulage). Mesure apres : `000d5950` 230 s / 153 Mo, `01e1f945` 270 s / 111 Mo, `53ce4390`
+~11 min / 102 Mo (lent, pas bloque). Repro des 19-22 Go non obtenue sur ces films (aucune emission
+aberrante) : ferme par construction et garde-rail.
+**Conclusion / prochaine etape** : mesure « LANCER de drapeau » (hypothese utilisateur) sur les 48 vies
+inexpliquees — distance/delai au porteur, regle elargie ecrite avant mesure, R balaye 1,5/3/5/8/10 m ;
+si le controle tient, `flagObjects` devient publiable. Decouvertes pour le plan objectifs vivants :
+`instance_id` = 0 sur toutes les entrees du catalogue de zones ; aucun role « colline » en KOTH.
+
+## [2026-08-18] v7.5 rejeu 2D — lot R3-V : les verdicts de la planche R3 rendus, et une regression reparee a sa cause — Complete
+
+**Statut** : Complete (branche `wt/r3-visuels`, base `85ab55648`, 9 commits `fea5f2686`..`dbc1d8f37`,
+FUSIONNE dans `feat/v75` par le superviseur ; typecheck 0 et `ReplayKillFeed` 32/32 rejoues sur l'arbre
+fusionne ; gates du frere : typecheck 0, lint 0, vitest 143 fichiers / 1 756 tests).
+**Decision technique** : C1 joue EN PREMIER — le `overflow-hidden` de V5 mettait a zero la taille minimale
+automatique des rangees flex (Flexbox 4.5) : elles s'ecrasaient, plus rien ne debordait, plus rien ne
+defilait ; `shrink-0` repare (6,06 -> 20 px par rangee, liste 320/320 -> 878/320), test au navigateur.
+La nappe Dynamo demandait DEUX changements : la fenetre disait deja 2,5 s, c'est la courbe d'opacite qui
+coupait a 2,10 s (-> 2,80 s visibles, variante 2). Rampe de chaleur en tokens de STATUT (`info`,
+`destructive`) + token neuf `extreme` (violet, 4 palettes, modele `legendary`) ; opacite : 21,4 -> 29,4 %
+de cellules a alpha >= 0,30 sur `01e1f945`. Socles en version unique (point / icone dessous cernee /
+compteur dessus), melee = etoile, mur = `warning`, croix de mort 3,6 px / 2,6 px / `destructive` / 2,5 s,
+anneau d'etage a la couleur du pion, fiche compacte en OPTION (la validee reste le defaut), glyphe
+« moi » retire du fil, actif + amis en `success`. Traqueur = son du capteur (parente) ; balise et champ de
+reparation : NEGATIF chiffre (bibliotheque livree, archive Desktop 4 651 .wav d'ARMES, chaine
+d'extraction `weap` seulement, 0 fichier). Six extractions payent les ajouts : cliquet du canvas
+858 -> 812. A3 et R2-1 : deja en place, 0 ligne. Planche regeneree : 38 items, 17 valides replies,
+2 propositions (R3-1 duree de croix 2,5 s livree / 4 s proposee ; R3-2 ecran de dissimulation), fumee
+0 erreur.
+**Conclusion / prochaine etape** : gate visuel utilisateur sur la planche republiee ; sons de la balise et
+du champ = chantier de banks `.wem` (90 170 sans nom), hors perimetre web.
+
 ## [2026-08-18] Item 4 « objectifs vivants » — item 1.3 : la vie du drapeau entre au document (schema 14) — FUSIONNE dans feat/v75 (`75794c10a`) par le superviseur, gates rejoues (vet, contracttest, replay, typecheck)
 
 **Statut** : Complete (1.3 `[x]`, 1.4 `[~]` couvert par ce CR). Branche `wt/objvivants2` (worktree

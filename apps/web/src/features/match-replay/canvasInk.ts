@@ -21,6 +21,8 @@ export type InkVar =
   | '--muted-foreground'
   | '--border'
   | '--foreground'
+  /** Encre du FOND : elle sert de LISERÉ à ce qui est rempli de `--foreground` (socles). */
+  | '--background'
   | '--card'
   /** Contour des noms sous les marqueurs (sombre dans les deux thèmes, cf. globals.css). */
   | '--replay-label-stroke'
