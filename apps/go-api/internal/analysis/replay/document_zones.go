@@ -140,9 +140,21 @@ type ZonesCoverage struct {
 	Catalog int `json:"catalog"`
 	// Slots est le nombre de slots `ti=13` qui emettent une valeur scalaire sur ce film.
 	Slots int `json:"slots"`
-	// Paired / Unpaired partagent les slots PORTEURS D'UNE JAUGE : ceux qu'une zone du
-	// catalogue a recus, et ceux qu'aucune capture n'a permis de rattacher. Les seconds ne sont
-	// PAS publies — un intervalle pose sur une zone devinee serait invisible et credible.
+	// Paired / Unpaired comptent CE QUE L'APPARIEMENT A RETENU ET CE QU'IL A ECARTE. Leur UNITE
+	// depend de la methode, parce que les deux methodes n'apparient pas la meme chose — et le
+	// dire ici vaut mieux que deux paires de champs dont l'une serait toujours nulle :
+	//
+	//	[ZoneMethodCaptures]    des SLOTS PORTEURS D'UNE JAUGE. `Paired` : ceux qu'une zone du
+	//	                        catalogue a recus ; `Unpaired` : ceux qu'aucune capture n'a
+	//	                        permis de rattacher.
+	//	[ZoneMethodPositions]   `Paired` : les ZONES que la grappe a localisees et qui sortent
+	//	                        avec des periodes ; `Unpaired` : les RAMPES DE JAUGE que la
+	//	                        grappe n'a pas su localiser (garde reelle, lieu inconnu) —
+	//	                        compte ajoute a la revue R1 du 2026-08-18, il restait a zero
+	//	                        quoi qu'il arrive.
+	//
+	// CE QUI EST ECARTE N'EST JAMAIS PUBLIE : un intervalle pose sur une zone devinee serait
+	// invisible et credible.
 	Paired   int `json:"paired"`
 	Unpaired int `json:"unpaired"`
 	// Captures / Attributed : les captures nommees du film, et celles qu'une position a permis

@@ -82,9 +82,13 @@ func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
 		return
 	}
 	if cov.Unpaired > 0 {
-		slog.Warn("rejeu : slots de jauge NON apparies — zones absentes de l'etat publie",
-			"match_id", matchID, "nonApparies", cov.Unpaired, "apparies", cov.Paired,
-			"captures", cov.Captures, "attribuees", cov.Attributed)
+		// L'UNITE DEPEND DE LA METHODE (cf. ZonesCoverage.Unpaired) : des slots de jauge
+		// qu'aucune capture ne rattache, ou des rampes que la grappe ne localise pas. La
+		// methode voyage donc DANS le message — sans elle, le meme chiffre se lirait de deux
+		// facons.
+		slog.Warn("rejeu : appariements ECARTES — zones absentes de l'etat publie",
+			"match_id", matchID, "methode", cov.Method, "nonApparies", cov.Unpaired,
+			"apparies", cov.Paired, "captures", cov.Captures, "attribuees", cov.Attributed)
 	}
 	if cov.OwnerUnpaired > 0 {
 		slog.Warn("rejeu : zones SANS canal de proprietaire elu — zones absentes de l'etat publie",
