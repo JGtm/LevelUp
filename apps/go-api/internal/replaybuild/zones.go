@@ -98,10 +98,20 @@ func (b *Builder) zoneRoles(variant string) []mapvar.Role {
 	if len(roles) > 0 {
 		return roles
 	}
-	if objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeHill {
+	if isHillVariant(variant) {
 		return hillFallbackRoles
 	}
 	return nil
+}
+
+// isHillVariant dit si la variante du match est un mode a COLLINE.
+//
+// DEUX APPELANTS, UN SEUL PREDICAT : les roles de repli (ici) et l'autorisation du repli par les
+// positions dans le calque (`replay.ZoneInput.Hill`) doivent parler du MEME ensemble de modes.
+// Les ecrire deux fois les laisserait diverger en silence — et la divergence ne se verrait que
+// par des collines publiees sur un mode qui n'en a pas.
+func isHillVariant(variant string) bool {
+	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeHill
 }
 
 // tableRoles projette la table du titre sur la variante du match : les memes entrees, le meme

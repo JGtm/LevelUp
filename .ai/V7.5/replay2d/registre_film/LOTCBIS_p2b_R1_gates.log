@@ -1,0 +1,5 @@
+=== RONDE 1 (revue adversariale phase 2b) — verdicts par point ===
+[R1-1] gofmt -l internal/analysis/replay internal/replaybuild : vide
+[R1-1] CGO_ENABLED=0 go vet ./internal/analysis/replay/            EXIT_VET=0
+[R1-1] CGO_ENABLED=0 go build ./internal/replaybuild/              EXIT_BUILD=0
+[R1-1] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
