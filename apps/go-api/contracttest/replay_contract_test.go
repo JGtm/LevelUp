@@ -220,6 +220,16 @@ var replaySchemas = []struct {
 //	                      compteurs se lirait comme une certitude — et l ABSENCE du bloc dit
 //	                      encore autre chose : l appelant n a rien fourni a lire.
 //
+//	34 -> 34  2026-08-18  RIEN, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot E
+//	                      phase 1). Le schema 13 publie `Point.p` — l ELEVATION DE VISEE — mais
+//	                      `Point` n est pas un champ RACINE du document : il vit sous
+//	                      `tracks[].points[]`. Le compte ci-dessous ne compte que la racine, il
+//	                      ne bouge donc pas. La ligne existe quand meme parce que l absence de
+//	                      ligne pour une montee de schema se lit comme un OUBLI ; le champ, lui,
+//	                      est bel et bien verrouille — par
+//	                      TestReplayContractDescribesEveryPublishedField, qui compare le type Go
+//	                      `Point` au schema `Point` du contrat, dans les DEUX sens.
+//
 // Les neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
 const wantReplayDocumentFields = 34

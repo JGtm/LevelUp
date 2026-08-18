@@ -1,0 +1,53 @@
+# Lot E phases 1 et 2 — journal des gates (verdict = les lignes EXIT_*=0 ci-dessous)
+# Worktree ../LevelUp-wt-visee-pub, branche wt/visee-pub, base fed987953.
+# GOCACHE=<worktree>/.gocache ; CGO_ENABLED=0 pour internal/analysis/..., CGO pour le reste.
+# Une commande `go` a la fois, avant-plan (D17).
+
+## Phase 1 (Go) — 2026-08-18
+
+# Tests unitaires du lot, avant tout le reste (CGO_ENABLED=0)
+go test -count=1 -run "TestPitch|TestDocumentPorte|TestDocumentSansVisee|TestPointOmet|TestStructure" ./internal/analysis/replay/
+EXIT_TEST_UNIT=0
+
+# Regeneration du fixture d entrees depuis le film de reference (REPLAY_FILM_DIR absolu vers
+# le cache du principal, lecture seule) : le fixture porte desormais PitchRaw.
+REPLAY_FILM_DIR=C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/000d5950 go test -count=1 ./internal/analysis/replay/ -run GoldenInputsRegenerate -update
+EXIT_FIXTURE=0   # 128,0 s ; 171 826 positions ; 789 960 -> 882 458 octets compresses
+
+# Regeneration de la sortie figee
+go test -count=1 ./internal/analysis/replay/ -run GoldenAssembly -update
+EXIT_GOLDEN=0    # 2 lignes changent : schema 12 -> 13, et le compte d elevations (15315)
+
+# Contrat OpenAPI (CGO) puis types web
+go run ./cmd/openapi-gen
+EXIT_OPENAPI=0   # api/openapi.yaml 621 472 -> 621 603 octets (+3 lignes : Point.p)
+npm run generate-types   (depuis apps/web)
+EXIT_GENTYPES=0  # generated.ts : +2 lignes (Point.p)
+
+# Suite d analyse complete (CGO_ENABLED=0) — 16 paquets
+go test -count=1 ./internal/analysis/...
+EXIT_TEST_ANALYSIS=0
+
+# Chaine d artefact + contrat (CGO)
+go test -count=1 ./internal/replaybuild/ ./contracttest/
+EXIT_TEST_BUILDCHAIN=0
+
+# Compilation complete (CGO)
+go build ./...
+EXIT_BUILD=0
+
+go vet ./internal/analysis/... ./internal/replaybuild/... ./internal/games/halo_infinite/film/... ./contracttest/...
+EXIT_VET=0
+
+golangci-lint run --new-from-merge-base=origin/main ./...
+EXIT_LINT=0      # 0 issues
+
+# Temoins re-cuits (binaire compile une fois, un film par processus, avant-plan)
+# LEVELUP_REPO_ROOT = le worktree : les artefacts sont ecrits SOUS le worktree, jamais dans le
+# cache du principal. Les films sont lus par chemin ABSOLU depuis le principal, en lecture seule.
+replay-build --map Cliffhanger --facts lotA_faits/000d5950.json 000d5950-83d9-423f-ab55-d068a7237b9f
+EXIT_COOK_000d5950=0   # 2 266 456 -> 2 401 937 octets
+replay-build --map Catalyst --facts lotA_faits/530820e5.json 530820e5-cdb5-4956-a16e-cf700822ab03
+EXIT_COOK_530820e5=0   # 1 494 172 -> 1 611 598 octets
+replay-build --map Vagabond 7344d24f-0154-4949-80ad-e2b781c122f1
+EXIT_COOK_7344d24f=0   # 1 993 725 -> 2 160 362 octets (sans faits : ce film n en a pas au lot A)

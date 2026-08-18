@@ -18960,6 +18960,9 @@ components:
         hp:
           format: float
           type: number
+        p:
+          format: float
+          type: number
         sh:
           format: float
           type: number
