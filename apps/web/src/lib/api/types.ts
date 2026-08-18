@@ -2655,6 +2655,30 @@ export type ReplayPadCycle = components['schemas']['PadCycle']
 // [tLow, tHigh]. C'est un INTERVALLE et non un instant, et `xuid` vaut TOUJOURS `null` — le
 // ramasseur n'est pas publié (oracle mesuré à 79,7 %, contre 90 % exigé).
 export type ReplayPadPickup = components['schemas']['PadPickup']
+// LE SCORE DANS LE TEMPS (schéma 12) : la courbe des deux équipes et les compteurs des
+// joueurs, décodés du film et publiés AUX CHANGEMENTS SEULEMENT — la donnée est une suite de
+// PALIERS, pas un échantillonnage régulier. `t` est une frame du document (la même grille que
+// `tracks`), `v` la valeur atteinte à cette frame.
+//
+// DEUX NIVEAUX DE LECTURE, ET ILS NE SE CONFONDENT PAS. `rounds` porte la valeur DANS la
+// manche (elle repart de zéro à chaque manche d'un Oddball), `total` le cumul du match.
+// Un mode à une seule manche a donc `rounds` de longueur 1 et un `total` qui lui est égal.
+//
+// UNE ÉQUIPE PEUT N'AVOIR AUCUNE SÉRIE, et c'est une mesure : le camp qui n'a jamais marqué
+// n'émet rien (temoin CTF 3-0 : une seule série publiée). Son score vaut zéro partout —
+// jamais « inconnu » (cf. teamSeriesFor, features/match-replay/scoreTimelineLogic.ts).
+export type ReplayScoreTick = components['schemas']['ScoreTick']
+export type ReplayScoreRound = components['schemas']['ScoreRound']
+export type ReplayScoreSeries = components['schemas']['ScoreSeries']
+export type ReplayTeamScore = components['schemas']['TeamScore']
+export type ReplayPlayerScore = components['schemas']['PlayerScore']
+export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
+// La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
+// (`teamIdentity` : a | b | unresolved), si le mode porte le compteur, si la lecture a été
+// tronquée, et le nombre de points publiés. `oracle` dit à quelle grandeur le décodage a été
+// confronté (`displayed` = le score affiché en jeu).
+export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
+
 export type ReplayDocument = components['schemas']['ReplayDocument']
 
 // Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le
