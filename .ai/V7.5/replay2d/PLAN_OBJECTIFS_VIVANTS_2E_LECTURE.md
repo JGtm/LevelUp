@@ -562,8 +562,15 @@ ce correctif ; il ne change aucune sortie (un film non-CTF n utilisait deja pas 
 **LES GATES.** `go build ./...` 0, `go vet ./...` 0, `go test ./internal/analysis/...
 ./internal/replaybuild/... ./contracttest/... ./internal/archlint/...` 0 (19 paquets),
 `golangci-lint run --new-from-merge-base=origin/main` 0 issue, `tsc -b --force` 0,
-`npm run lint` 0 erreur (19 avertissements PREEXISTANTS), `vitest run src/features/match-replay
-src/lib/replay` 0 (49 fichiers, 716 tests). Codes de retour au journal de gates du lot.
+`npm run lint` 0 erreur (19 avertissements PREEXISTANTS), `npm run test:run` 0 (451 fichiers,
+4 185 tests, 14 sautes). L instrument d ancrage sous garde `OBJ_FILM` passe lui aussi (1 373 s,
+quatre films, gate 1.3 TENU). Codes de retour au journal de gates du lot.
+
+UNE MISE EN GARDE POUR LA PROCHAINE SESSION, MESUREE ICI : la suite web complete tombe a 22
+fichiers en echec quand la machine decode un film en parallele — les 27 tests concernes sont des
+GARDES-RAILS qui balaient l arborescence `src/` et expirent au delai par defaut de 5 000 ms
+(message `Test timed out in 5000ms`, aucune assertion en defaut). Machine libre, les 451 fichiers
+passent. Ne pas lire ces echecs comme une regression, et ne pas cuire de film pendant le gate web.
 
 **Commits** : `b3e39edac` (calque publie + golden), `b0fb3e10f` (socles par map_id jusqu au
 constructeur), `e527d7be5` (contrat + OpenAPI), `7d1295774` (frontiere web), `57d908989` (le
