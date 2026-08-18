@@ -17,6 +17,7 @@ import {
   normalizeMapObjectives,
   OBJECTIVE_TEAM_NEUTRAL,
 } from './objectivesLayer'
+import { drawZoneStates, zoneElementsOf, zoneStateAt } from './zoneStatesLayer'
 import { testReplayDoc } from './test/testDoc'
 
 const MO: ReplayMapObjectives = {
@@ -249,5 +250,112 @@ describe('drawObjectivePulses', () => {
     const ra = a.calls.filter((c) => c.method === 'arc')[0].args[2]
     const rb = b.calls.filter((c) => c.method === 'arc')[0].args[2]
     expect(ra).toBe(rb)
+  })
+})
+
+/** L'état d'une zone tel que l'artefact le publie (schéma 15), déjà normalisé. */
+const ZONE_STATES = [
+  {
+    zoneRef: 0,
+    key: 0x67f43ac3,
+    spans: [
+      { t0: 0, t1: 9, owner: null, active: false },
+      { t0: 10, t1: 19, owner: 0, active: false, progress: 0.75 },
+      { t0: 20, t1: 40, owner: 1, active: false },
+    ],
+  },
+  { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }] },
+]
+
+describe('zoneStateAt', () => {
+  it('rend l’intervalle qui couvre la frame, bornes INCLUSES', () => {
+    expect(zoneStateAt(ZONE_STATES, 0, 10)?.owner).toBe(0)
+    expect(zoneStateAt(ZONE_STATES, 0, 19)?.owner).toBe(0)
+    expect(zoneStateAt(ZONE_STATES, 0, 20)?.owner).toBe(1)
+  })
+
+  it('« personne ne la tient » est une MESURE : owner null, pas un état absent', () => {
+    const now = zoneStateAt(ZONE_STATES, 0, 3)
+    expect(now).not.toBeNull()
+    expect(now?.owner).toBeNull()
+    expect(now?.progress).toBeNull()
+  })
+
+  it('rend null hors de tout intervalle, et pour une zone sans état', () => {
+    expect(zoneStateAt(ZONE_STATES, 0, 41)).toBeNull()
+    expect(zoneStateAt(ZONE_STATES, 7, 10)).toBeNull()
+    expect(zoneStateAt([], 0, 10)).toBeNull()
+  })
+
+  it('porte la zone ACTIVE et la progression telles quelles', () => {
+    const now = zoneStateAt(ZONE_STATES, 1, 30)
+    expect(now?.active).toBe(true)
+    expect(now?.progress).toBe(0.5)
+  })
+})
+
+describe('zoneElementsOf', () => {
+  it('rend les zones SURFACIQUES dans l’ordre servi — celui que zoneRef indexe', () => {
+    const zones = zoneElementsOf(normalizeMapObjectives(MO))
+    expect(zones).toHaveLength(2)
+    expect(zones.every((z) => z.kind === 'zone')).toBe(true)
+    expect(zones[0].family).toBe('box')
+    expect(zones[1].family).toBe('cylinder')
+  })
+})
+
+describe('drawZoneStates', () => {
+  const style = { colorOfOwner: (team: number) => (team === 0 ? '#allié' : '#adverse'), neutral: '#neutre' }
+  const zones = () => zoneElementsOf(normalizeMapObjectives(MO))
+
+  it("n'écrit JAMAIS de texte, comme le calque statique", () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, zones(), ZONE_STATES, VIEW, 10, style)
+    expect(calls.filter((c) => c.method === 'fillText' || c.method === 'strokeText')).toHaveLength(0)
+  })
+
+  it('une zone TENUE est remplie ET cerclée à l’encre de son camp', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 10, style)
+    expect(calls.filter((c) => c.method === 'fill')).toHaveLength(1)
+    expect(calls.filter((c) => c.method === 'stroke').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('une zone que PERSONNE ne tient garde le liseré seul — aucun remplissage', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 3, style)
+    expect(calls.filter((c) => c.method === 'fill')).toHaveLength(0)
+    expect(calls.filter((c) => c.method === 'stroke')).toHaveLength(1)
+  })
+
+  it('une zone sans état à cette frame n’est PAS repeinte : elle reste au trait faible', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, zones(), ZONE_STATES, VIEW, 41, style)
+    expect(calls.filter((c) => c.method === 'fill' || c.method === 'stroke')).toHaveLength(0)
+  })
+
+  it('la progression ajoute un ARC, et seulement quand la jauge est publiée', () => {
+    const avec = mockCtx()
+    drawZoneStates(avec.ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 10, style)
+    expect(avec.calls.filter((c) => c.method === 'arc')).toHaveLength(1)
+    const sans = mockCtx()
+    drawZoneStates(sans.ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 25, style)
+    expect(sans.calls.filter((c) => c.method === 'arc')).toHaveLength(0)
+  })
+
+  it('camp inconnu (aucune ligne « moi ») : encre NEUTRE, jamais une couleur devinée', () => {
+    const { ctx, calls } = mockCtx()
+    const aveugle = { colorOfOwner: () => null, neutral: '#neutre' }
+    drawZoneStates(ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 10, aveugle)
+    // Aucun remplissage : une zone TENUE par un camp qu'on ne sait pas situer garde le liseré
+    // seul. Les deux tracés sont le contour et l'arc de progression, tous deux à l'encre neutre.
+    expect(calls.filter((c) => c.method === 'fill')).toHaveLength(0)
+    expect(calls.filter((c) => c.method === 'stroke')).toHaveLength(2)
+  })
+
+  it('sans état publié, le calque ne dessine rien du tout', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, zones(), [], VIEW, 10, style)
+    expect(calls).toHaveLength(0)
   })
 })
