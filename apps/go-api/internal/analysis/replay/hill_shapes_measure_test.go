@@ -50,9 +50,12 @@ package replay
 //	                 sur chacun des 4 films.
 //	(D5) TEMOINS     (i) formes PERMUTEES : la forme i posee au centre de la forme i+1 — memes
 //	                 tailles, mauvais endroits ; (ii) periodes DECALEES de +20 s sur les vraies
-//	                 formes. Les deux doivent tomber nettement sous le taux reel, et le NIVEAU
-//	                 DU HASARD (part des frames du match ou une colline quelconque est occupee)
-//	                 est publie.
+//	                 formes ; (iii) ajoute apres la premiere passe (R4) : formes DEPLACEES de
+//	                 (+6 m ; +6 m), memes tailles, HORS des collines — parce que (i) pose les
+//	                 formes sur d'autres collines reelles, ou les joueurs vont aussi, et ne
+//	                 discrimine pas le LIEU. Les temoins doivent tomber nettement sous le taux
+//	                 reel, et le NIVEAU DU HASARD (part des frames du match ou une colline
+//	                 quelconque est occupee) est publie.
 //
 // LE MEME INSTRUMENT SERT LES DEUX SOURCES DE FORMES : un `.mvar` et deux hashs de label
 // (HILL_MVAR + HILL_LABEL le role, HILL_INCLUDE le filtre de mode que la forme doit AUSSI
@@ -96,6 +99,8 @@ const (
 	hillHoldMaxFrames = 600
 	// hillStepWindow : demi-fenetre, en frames, autour d'une emission croissante de la jauge (R3).
 	hillStepWindow = 5
+	// hillShiftM : deplacement du temoin HORS colline (R4), en metres sur x et y.
+	hillShiftM = 6.0
 )
 
 // hillFormes rend les volumes de colline a mesurer, avec leur origine (pour le rapport).
@@ -201,6 +206,18 @@ func hillPermute(zones []Zone) []Zone {
 			Z: zones[j].Center.Z - z.Center.Z}
 		z.Volume = z.Volume.Translate(d)
 		z.Center = zones[j].Center
+		out[i] = z
+	}
+	return out
+}
+
+// hillDeplace pose chaque forme a (+hillShiftM ; +hillShiftM) de son centre : le temoin HORS colline (R4).
+func hillDeplace(zones []Zone) []Zone {
+	out := make([]Zone, len(zones))
+	for i, z := range zones {
+		d := mapvar.Vec3{X: hillShiftM, Y: hillShiftM}
+		z.Volume = z.Volume.Translate(d)
+		z.Center = mapvar.Vec3{X: z.Center.X + d.X, Y: z.Center.Y + d.Y, Z: z.Center.Z}
 		out[i] = z
 	}
 	return out
@@ -411,8 +428,12 @@ func TestHillShapesMeasure(t *testing.T) {
 	t.Logf("  MESURE (D4, seuil %.0f %%) : %s", 100*hillGateRate, reel)
 	t.Logf("  TEMOIN formes permutees   : %s", perm)
 	t.Logf("  TEMOIN periodes +20 s     : %s", shift)
-	t.Logf("  HASARD : une colline occupee sur %.1f %% des frames du match (permutees : %.1f %%)",
-		100*hillHasard(hills, pts, doc.FrameCount), 100*hillHasard(hillPermute(hills), pts, doc.FrameCount))
+	depl := hillMesure(hillDeplace(hills), ramps, pts, ser, doc.FrameCount, 0)
+	t.Logf("  TEMOIN formes deplacees   : %s (deplacement +%.0f m ; +%.0f m)", depl, hillShiftM, hillShiftM)
+	t.Logf("  HASARD : une colline occupee sur %.1f %% des frames du match (permutees : %.1f %%, deplacees : %.1f %%)",
+		100*hillHasard(hills, pts, doc.FrameCount), 100*hillHasard(hillPermute(hills), pts, doc.FrameCount),
+		100*hillHasard(hillDeplace(hills), pts, doc.FrameCount))
+	hillManques(t, hills, ramps, pts, ser, doc)
 
 	hillProduction(t, doc, hills)
 	hillAvantApres(t, film, ser, c, hills, pts, doc.FrameCount)
@@ -559,4 +580,36 @@ func hillShapeDesc(s *mapvar.Shape) string {
 		return fmt.Sprintf("cylindre r=%.2f (h +%.2f/-%.2f)", *s.Radius, s.UpZ, s.DownZ)
 	}
 	return string(s.Family)
+}
+
+// hillManques publie le BILAN des periodes qui ne tombent pas « dedans » (D3, emissions
+// croissantes) : combien sont NON APPARIEES (aucune position a moins de hillTolM d'aucune
+// forme, avec leur duree mediane), et combien sont appariees a une forme OCCUPEE pendant la
+// periode (>= 30 % des frames) mais VIDE aux instants ou la jauge monte — la signature d'une
+// jauge qui monte avant l'arrivee des joueurs, pas d'une forme fausse.
+func hillManques(t *testing.T, hills []Zone, ramps []zoneRamp, pts map[int][]Point, ser zoneSeries, doc ReplayDocument) {
+	t.Helper()
+	var durees []int
+	videAuxEmissions, autres := 0, 0
+	for _, r := range ramps {
+		v := hillJuge(hills, pts, ser, r, 0, doc.FrameCount)
+		switch {
+		case v.inside:
+			continue
+		case v.ref < 0:
+			durees = append(durees, r.tPeak-r.t0+1)
+		case v.stepOcc == 0 && v.occupancy >= 0.3:
+			videAuxEmissions++
+		default:
+			autres++
+		}
+	}
+	sort.Ints(durees)
+	med := 0
+	if len(durees) > 0 {
+		med = durees[len(durees)/2]
+	}
+	t.Logf("  MANQUES (D3 emissions) : %d non appariees (duree mediane %.1f s), %d appariees a une forme"+
+		" occupee >= 30 %% des frames mais VIDE a chaque emission croissante, %d autres",
+		len(durees), float64(med*doc.FrameIntervalMS)/1000, videAuxEmissions, autres)
 }

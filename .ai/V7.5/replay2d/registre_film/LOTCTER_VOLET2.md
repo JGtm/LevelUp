@@ -9,12 +9,16 @@
 ## 0. Le resultat, en une phrase
 
 **Les collines de KOTH VIVENT DANS LA VARIANTE DE CARTE** — le meme `.mvar` que le catalogue lit
-deja — sous une paire de labels que la table ne savait pas nommer : 6 volumes sur Catalyst, 5 sur
-Chasm, 5 sur Shogun, 5 sur Solitude - Ranked, tous neutres, tous porteurs d'une forme, et le
-chemin de production les apparie a 56 des 60 rampes de jauge de `01e1f945` (contre 52 avec les
-formes de Bastion/Extraction) ; le gate « la grappe tombe DANS la forme pour >= 90 % des
-periodes » se mesure en CT.2.3, sur le catalogue servi. (Sections 2 et 3 : a venir avec CT.2.2 et
-CT.2.3.)
+deja — sous une paire de labels non nommes ; elles sont au catalogue (21 formes sur les 4 cartes des
+films, Solitude - Ranked entree au passage), servies par la table en KOTH sous le role `hill`, et
+l'artefact les apparie par le meme chemin que Bastion (le repli sur les formes de Bastion/Extraction
+a disparu, le balayage `ti=13` ne se paie plus qu'en Bastion/KOTH). **La clause « >= 90 % » du gate 2
+n'est PAS tenue** sous la definition ecrite avant la mesure — 83,3 % / 57,1 % / 86,4 % (82,0 % sur
+89 periodes de 3 films ; le 4e n'a aucune rampe) — mais les temoins montrent que c'est la
+SEMANTIQUE de la jauge qui manque, pas les formes : deplacees de 6 m, elles tombent a 9-18 %
+d'occupation contre 82-86 % en place, et la production apparie plus de rampes qu'avant sur les
+trois films (13 des 20 periodes publiees de `01e1f945` changent de forme). Le repli d'affichage
+(cercle synthetique) est laisse a la decision de l'utilisateur, non code.
 
 ## 1. CT.2.1 — L'INVENTAIRE : ou vivent les collines
 
@@ -230,29 +234,122 @@ livraisons ; `zoneStatesLayer.ts` teinte par `zoneRef`) — a confirmer au gate 
   INTERDIT au volet (volet 1 en parallele) : trois lignes de doc a rafraichir a la fusion,
   consignees pour le superviseur (§6).
 
-## 3. CT.2.3 — a venir
+## 3. CT.2.3 — La MESURE sur les 4 films, depuis le catalogue servi
+
+Instrument `hill_shapes_measure_test.go`, formes = catalogue (`ZonesOfRole(hill)`, l'ordre servi),
+un film par processus (`ZONE_FILM`), logs `lotCter/volet2_<film>_catalogue.log`. Definitions D1-D5
+et seuils : en tete du fichier, ecrits avant la premiere mesure (§1.4), jamais abaisses ; les
+corrections d'instrument (R1 positions tenues — sans effet ; R2 filtre de mode ; R3 emissions
+croissantes ; R4 temoin deplace) sont datees et motivees dans le meme en-tete.
+
+### 3.1 Le tableau
+
+| film (carte) | collines | rampes | DEDANS emissions (D4) | dedans frames | temoin permute | temoin +20 s | temoin DEPLACE (+6 m ; +6 m) | hasard reel / permute / deplace |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `01e1f945` (Catalyst) | 6 | 60 | **50/60 = 83,3 %** | 42/60 = 70,0 % | 83,3 % | 75,0 % | **13,3 %** | 83,2 / 71,2 / 9,5 % |
+| `606d9844` (Chasm) | 5 | 7 | **4/7 = 57,1 %** | 5/7 = 71,4 % | 71,4 % | 85,7 % | **42,9 %** | 81,9 / 71,1 / 12,4 % |
+| `8076f97f` (Shogun) | 5 | 22 | **19/22 = 86,4 %** | 17/22 = 77,3 % | 86,4 % | 90,9 % | **22,7 %** | 85,6 / 84,6 / 18,4 % |
+| `0a247154` (Solitude - Ranked) | 5 | **0** | sans objet | sans objet | — | — | — | — |
+| ensemble (3 films juges) | 16 | 89 | **73/89 = 82,0 %** | 64/89 = 71,9 % | | | | |
+
+`0a247154` : AUCUNE rampe de jauge (tag 3) sur ce film — la phase 1 l'avait deja mesure (0 rampe) —,
+donc aucun denominateur : le calque vivant y est vide quelles que soient les formes ; les 5 collines
+sont servies (statiques). Ecrit comme absence d'oracle, pas comme echec des formes.
+
+Manques (D3 emissions) : Catalyst 4 micro-rampes non appariees (duree mediane 1,1 s, aucune
+position a moins de 0,5 m d'aucune forme) + 5 rampes appariees a une forme occupee >= 30 % de leurs
+frames mais VIDE a chaque emission croissante + 1 autre ; Chasm 1 micro-rampe + 2 « vides aux
+emissions » (deux rampes de 24 et 54 s, occupees 74 % et 86 % de leurs frames) ; Shogun 3
+micro-rampes. Soit 15 des 16 manques = micro-rampe sans grappe nulle part, ou jauge qui monte
+AVANT que quiconque n'entre (apparition / remise a zero de la colline — a lire par le volet 1) :
+la geometrie n'est en cause dans aucun des 16 cas (la forme appariee est bien celle ou la grappe
+se pose ensuite).
+
+Ce que disent les temoins : le temoin PERMUTE (celui du plan) ne discrimine PAS en KOTH — il pose
+chaque forme sur une AUTRE colline reelle, ou les joueurs vont aussi, et D2 re-apparie (83,3 % =
+le reel sur Catalyst) ; le temoin DEPLACE de 6 m tombe a 13 / 43 / 23 % et le hasard des formes
+deplacees a 9,5-18,4 % contre 82-86 % pour les vraies : les formes sont bien LA ou l'action est.
+
+### 3.2 La production (le chemin de la phase 2b) avec les collines
+
+| film | AVANT (Bastion+Extraction) | APRES (collines) |
+|---|---|---|
+| `01e1f945` | 8 formes, 20 periodes, 6 zones, **8** rampes non appariees, 93,1 % actif | 6 formes, 21 periodes, 6 zones, **4** non appariees, 93,1 % actif |
+| `606d9844` | 8 formes, 5 periodes, 4 zones, 0 non appariee | 5 formes, 5 periodes, 3 zones, 2 non appariees, 83,8 % actif |
+| `8076f97f` | **3 formes, 1 periode, 1 zone**, 1 non appariee | 5 formes, **7 periodes, 4 zones**, 2 non appariees, 80,4 % actif |
+
+Sur `01e1f945`, tableau des 20 periodes publiees (AVANT -> colline APRES) : **13 sur 20 DISTINCTES**
+(la colline est a 1,3 a 24,8 m de la forme de Bastion/Extraction sur laquelle la periode etait
+posee), 7 confondues (les collines qui coincident avec une zone d'un autre role) — le detail
+periode par periode est dans `lotCter/volet2_01e1f945_catalogue.log`. Sur Chasm 3 sur 5, sur
+Shogun 1 sur 1.
+
+### 3.3 Verdict du gate 2
+
+- Formes TROUVEES : oui (§1) ; SERVIES : oui (§2, table + catalogue + service + artefact).
+- Clause « >= 90 % des periodes » sous la definition ecrite avant la mesure : **NON TENUE** —
+  83,3 % / 57,1 % / 86,4 % (82,0 % sur 89 periodes), un film sans denominateur.
+- Le negatif est ecrit tel quel. Ce qu'il mesure, d'apres les temoins et le bilan des manques :
+  la clause est couplee a la SEMANTIQUE de la jauge (rampes d'activation colline vide,
+  micro-rampes d'une seconde), pas a la geometrie — le temoin deplace s'effondre a 9-18 % la ou les
+  vraies formes tiennent 82-86 %, et la production apparie plus de rampes qu'avant sur les trois
+  films.
+- Le repli d'affichage du plan (cercle synthetique au barycentre de la grappe) est une DECISION
+  UTILISATEUR : il n'est pas code. Recommandation de l'executeur : servir les formes reelles (elles
+  sont livrees et jointes ; le cercle synthetique serait posee au barycentre d'une grappe que
+  ces formes contiennent deja).
 
 ## 4. Statut des items
 
 - [x] CT.2.1 — inventaire, chasse, croisement `01e1f945`, verdict ecrit (§1).
 - [x] CT.2.2 — role `hill` (decodeur par paire de hashs), table, catalogue 4 cartes (+ Solitude - Ranked), artefact sans repli, balayage restreint aux zones tenues, service (§2).
-- [ ] CT.2.3
+- [x] CT.2.3 — mesure jouee sur les 4 films depuis le catalogue (3 juges, 1 sans denominateur), tableau AVANT/APRES de `01e1f945` (13/20 distinctes) ; clause >= 90 % NON TENUE (82,0 % sur 89 periodes), negatif ecrit, repli = decision utilisateur (§3).
 
 ## 5. Cout machine
 
-- 3 decodages du film `01e1f945` (~180 s chacun, un par processus, avant-plan) ; force brute
-  murmur3 N <= 7 : ~24 min CPU un coeur ; N <= 6 : 52 s.
+- Films decodes (un par processus, avant-plan, ~180-210 s chacun) : `01e1f945` x 5 (3 passes
+  candidat, 2 catalogue), `606d9844` x 2, `8076f97f` x 2, `0a247154` x 1 — 10 decodages,
+  ~35 min ; force brute murmur3 N <= 7 : ~24 min CPU un
+  coeur (N <= 6 : 52 s) ; gates : ~15 min.
 
-## 6. Decouvertes hors perimetre (non traitees)
+## 6. Decouvertes hors perimetre (non traitees) et consignes pour la fusion
 
-- `landgrab_include` = -886053664 et `landgrab_zone` = 996801386 (9 zones sur Catalyst et Chasm) ;
-  `strongholds_exclude` = -1191131830 (16 objets sur Solitude - Ranked) ; `doubles_include` =
-  390628080 / `doubles_exclude` = 1081676545 (Solitude - Ranked, 5 et 6 objets — le filtre du mode
-  Doubles). Aucun n'est un role servi ; a ajouter a `labelNames` dans un lot de couverture.
-- La jauge KOTH (tag 3) monte par 10 pas fixes ; 6 rampes montent colline VIDE (apparition /
-  remise a zero ?) et 4 micro-rampes n'ont aucune grappe : matiere pour le volet 1 (semantique).
-- Les marqueurs ponctuels `-877512201` `[<mode>_include, <hash de marqueur>]` existent pour
-  Bastion (-1246645531), Land Grab (-941529218) et KOTH (-1482301937) : un objet par zone, a sa
-  position — probablement le repere HUD/nav de la zone. Non exploite.
+- **Artefacts KOTH cuits AVANT ce lot** (`01e1f945.json` schema 16 en cache prod, `606d9844`
+  schema 6) : leur `zoneStates[].zoneRef` indexe l'ancienne liste (Bastion+Extraction, 8 zones sur
+  Catalyst) alors que le service sert desormais 6 collines. Le web se TAIT (`useZoneStates.ts`
+  compare `coverage.zones.catalog` au nombre de zones servies : 8 != 6 => `joinable = false`) —
+  degradation propre, mais le calque vivant KOTH ne se verra qu'apres RECUISSON des artefacts
+  KOTH (`replay-build`). Une carte ou l'ancien compte egalerait le nombre de collines teinterait
+  la mauvaise zone : le web pourrait comparer `coverage.zones.roles` (publie pour cela) en plus
+  du compte — a evaluer par le lot web.
+- `zone_states_hill.go` (INTERDIT au volet, volet 1 en parallele) : l'en-tete dit « le catalogue de
+  formes ne connait AUCUN role de colline » et « appariement contre les zones que la carte declare
+  sous d'autres roles » — trois lignes a rafraichir a la fusion (le catalogue porte `hill`, la
+  grappe s'apparie aux collines).
+- Instruments des phases 2a/2b (`zone_state_p2a_corpus_test.go` `p2aRolesZones`,
+  `zone_state_p2b_temoin_test.go` `p2bRoles`) : gardent l'union Bastion+Extraction en KOTH (leurs
+  chiffres historiques restent reproductibles) ; la mesure KOTH du lot vit dans
+  `hill_shapes_measure_test.go`. A l'occasion d'un temoin recuit KOTH (volet 3, CT.3.3), lire
+  `RoleHill`.
+- Labels craques au passage, aucun n'est un role : `landgrab_include` = -886053664 et
+  `landgrab_zone` = 996801386 (9 zones sur Catalyst et Chasm) ; `strongholds_exclude` =
+  -1191131830 ; `doubles_include` = 390628080 / `doubles_exclude` = 1081676545 (Solitude - Ranked —
+  le filtre du mode Doubles). A ajouter a `labelNames` dans un lot de couverture (le lot 5 en
+  avait deja 7 en attente).
+- Marqueurs ponctuels `-877512201` `[<mode>_include, <hash de marqueur>]` : Bastion -1246645531,
+  Land Grab -941529218, KOTH -1482301937 — un par zone, a sa position (repere HUD/nav ?). Non
+  exploites, non nommes.
+- La jauge KOTH (tag 3) monte par 9-10 pas fixes quelle que soit la duree de la rampe (49 rampes
+  sur 60 sur `01e1f945`) ; 5 + 2 rampes montent colline VIDE puis la colline se remplit (apparition
+  / remise a zero ?), 8 micro-rampes d'une seconde n'ont aucune grappe : matiere pour le volet 1
+  (semantique d'activation).
+- `0a247154` (Ranked KOTH, Solitude - Ranked) : aucune rampe de jauge tag 3 dans le film (deja vu
+  en phase 1) — le variant Ranked emet-il la jauge sur un autre tag ? (volet 1.)
 - Les variantes `*_map.mvar` retenues par le catalogue ont `instance_id = 0` partout ; les
-  variantes de mode (`catalyst.mvar`, `chasm.mvar`) portent des identifiants non nuls.
+  variantes de mode (`catalyst.mvar`, `chasm.mvar`, `ctf_breaker.mvar`) portent des identifiants
+  non nuls — si un jour la cle d'instance devient necessaire, elle est dans l'autre fichier.
+- Le premier commit du volet (`3d6fe97e7`) a ete pose hooks desactives par erreur d'outillage ;
+  gitleaks (0 fuite), gofmt et le controle de marqueurs de conflit ont ete rejoues a la main sur
+  ce commit, les commits suivants passent les hooks.
+- Plan et registre : les cases CT.2.1/CT.2.2/CT.2.3 du plan et l'entree `thought_log` sont a
+  poser par le superviseur (regle du lot) — §4 ci-dessus est la source.
