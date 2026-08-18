@@ -1,0 +1,18 @@
+2026/08/18 01:51:32 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\53ce4390.json match=53ce4390-efa0-455d-acbc-2208865a68b6 joueurs=8 variante=CTF:Arena
+2026/08/18 01:51:33 INFO replaybuild: actions d'objectif identifiees match_id=53ce4390-efa0-455d-acbc-2208865a68b6 famille=flag nommees=200 identifiees=200 slotsApparies=8
+2026/08/18 01:51:57 INFO replaybuild: morts sans revendication typées match_id=53ce4390-efa0-455d-acbc-2208865a68b6 publiees=1 orphelines=2
+2026/08/18 01:53:02 INFO capacites : lectures d i48 recordsDelta=233023 masqueAvecI48=56 lues=56 illisibles=0 sansIdentite=3
+2026/08/18 01:53:17 INFO camouflage : lectures d i28 queue[1] recordsDelta=233023 masqueAvecI28=1760 lues=1760 illisibles=0 sansVoie=807
+2026/08/18 01:53:33 INFO grappin : lectures d i59 tag==3 recordsDelta=233023 masqueAvecI59=1669 lues=1629 illisibles=40 tag3=73 corpsCasses=13
+2026/08/18 01:54:02 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=14 ancres=12771 acceptes=600 confirmes=251 poses=251
+2026/08/18 01:54:17 INFO armes au sol : balayage ti=42 slots=1215 ancres=13638 acceptees=566 imagesCles=39 viesRecensees=276 pistesDelta=685
+2026/08/18 01:56:07 INFO pont slot->joueur slots=109 viesNommees=109 viesTotal=144 lecturesIndex=39 desaccordsIndex=0 collisionsSlot=2
+2026/08/18 01:56:07 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=322 disponibles=2229 rattaches=1777
+2026/08/18 01:56:07 INFO rejeu : courbe de score match_id=53ce4390-efa0-455d-acbc-2208865a68b6 identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=1324
+2026/08/18 01:56:07 INFO rejeu : tractions de grappin tirs=35 accroches=25 tractions=25 vies=16 rates=11 corpsCasses=0
+2026/08/18 01:56:07 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=245 nommees=244 autres=1 avecPoseur=234 avecCap=211 deployees=19 lachees=215 origineInconnue=11
+2026/08/18 01:56:07 INFO rejeu : socles d'arme au sol balaye=true ancres=13638 acceptees=566 retenues=359 ecartees=207 lachees=220 apparues=139 auRepos=57 grappes=16 socles=13 occupations=54 datees=38 sansPassage=16 jamaisVidees=0 cyclesEtablis=4
+2026/08/18 01:56:07 INFO rejeu : episodes d'equipement actif viesPubliees=122 viesCamo=0 episodesCamo=0 viesSurbouclier=5 episodesSurbouclier=5
+2026/08/18 01:56:07 INFO rejeu : palette de capacites palette=famille_a lectures=53 rangsNommes=3
+2026/08/18 01:56:07 INFO rejeu : couverture par calque tirsRattaches=1777 tirsDisponibles=2229 tirsSansSlot=322 tirsAmbigus=130 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=166 grenadesDisponibles=168 verdictTirs=nominal verdictGrenades=nominal verdictPont="non publiable : un slot change de porteur"
+2026/08/18 01:56:07 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\53ce4390.json tracks=122 module=va_behemoth bytes=2332921 match=53ce4390-efa0-455d-acbc-2208865a68b6 title=halo_infinite
