@@ -116,7 +116,10 @@ package replay
 // sur un sous-objet, et pourtant la version monte : jusqu'ici le cône de visée était dessiné à
 // sa longueur maximale sur chaque point porteur de cap, ce qui AFFIRMAIT une visée horizontale
 // que le film contredit. Chronique complète, convention mesurée et réserve : document_aim.go.
-const SchemaVersion = 13
+//
+// v14 (2026-08-18, plan PLAN_OBJECTIFS_VIVANTS_2E_LECTURE phase 1 item 1.3) : `flagCarries` — LA VIE DE
+// CHAQUE DRAPEAU de CTF, et `coverage.flagCarries`. Chronique, sources et refus : document_objectives_live.go.
+const SchemaVersion = 14
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -293,6 +296,9 @@ type ReplayDocument struct {
 	// ScoreTimeline est LE SCORE DANS LE TEMPS des deux camps et de chaque joueur (forme, oracle
 	// et limites : document_score.go). Absente quand l'appelant n'a rien fourni à lire.
 	ScoreTimeline *ScoreTimeline `json:"scoreTimeline,omitempty"`
+	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
+	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
+	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//
