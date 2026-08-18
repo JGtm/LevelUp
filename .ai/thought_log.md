@@ -1,3 +1,27 @@
+## [2026-08-19] Equipements manquants : identifiants, noms, sons — Complete
+
+**Statut** : Complete (worktree `wt/equip-sons`, `8bb239213` / `a24107e28` / `d89b2b590`, FUSIONNE dans
+`feat/v75` par le superviseur ; tests sons 60/60 rejoues ; plan `PLAN_EQUIPEMENTS_MANQUANTS_SONS.md`).
+**Decision technique** : ouvrir la chaine son du groupe `eqip`, absente de l'outil, en passant par le
+maillon `effe` (`eqip -> effe -> snd! -> evenement Wwise -> sbnk -> .wem -> pack`) — la table de
+dependances d'un `eqip` ne porte que deux `snd!` partages par 21 objets ; chaine calibree par trois packs
+nommes (repairfield, plasmagrenade, lightninggrenade).
+**Resultats** : 116 `eqip` inventories (90 rattaches a un `sofa` = equipements de joueur, 14 noms casses) ;
+les 21 identifiants du corpus ont tous leur tag ; `0x4396db42` reste `other` avec un NEGATIF TRIPLE
+(dictionnaire elargi 1,9 M candidats / 10 temoins retrouves, `hlmt` unique sur 116, banque selective
+sans pack nomme) — les cinq graphies de l'« ecran de dissimulation » sont refutees nommement ; H4
+« ajouts debut 2025 » REFUTEE (aucune date de tag lisible hors ligne : deux combinaisons de modules pour
+tout le jeu) ; `regen_field` est le seul nom du jeu absent du manifeste, sans objet au corpus (pas de ligne
+morte) ; croisement des 951 films refuse par son cout (14,3 h plancher) ; **son du champ de reparation
+extrait du jeu et branche** (`repair_field_activate.wav`, banque unique, 3 `.wem` identiques, crete
+-1 dBTP ; LUFS non mesurable sous 400 ms — garde-rail de duree nominatif) ; capteur et traqueur atteignent
+la MEME banque (la decision R3 « traqueur = son du capteur » est confirmee par la structure du jeu) ;
+balise du translocateur : banque trouvee (`dcfaa487`, 11 gestes de 0,83 a 4,53 s extraits) — il faut
+une ECOUTE pour designer la pose ; repulseur : source du jeu trouvee (`7bd0883c`, 10 gestes), non branche
+tant que le calque ne le dessine pas.
+**Conclusion / prochaine etape** : faire ecouter a l'utilisateur les 11 gestes de `dcfaa487` (balise) ;
+`0x4396db42` : un NOM par une chaine avant tout branchement.
+
 ## [2026-08-19] Power-up de socle au centre de Catalyst — mesure et TROUVE — Complete
 
 **Statut** : Complete (mesure ; branche `wt/powerup`, `07cb617a2`..`ae4c5c03e`, FUSIONNEE dans `feat/v75`
