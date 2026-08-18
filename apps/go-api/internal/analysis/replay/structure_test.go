@@ -192,8 +192,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   de bout en bout 0,82 / 0,66 / 0,67°). Réserve écrite : toutes les valeurs observées
 	//   tiennent dans la MOITIÉ centrale du champ, donc « ±180° sur tout le champ » et « ±90°
 	//   sur sa moitié » sont indistinguables sur ce corpus.
-	if SchemaVersion != 13 {
-		t.Fatalf("SchemaVersion = %d, attendu 13 : incrémenter exige une raison écrite ci-dessus "+
+	//   v13 -> v14 (2026-08-18, plan PLAN_OBJECTIFS_VIVANTS_2E_LECTURE phase 1 item 1.3) :
+	//   `flagCarries`, LA VIE DE CHAQUE DRAPEAU de CTF — porté, porté sans fin datée, au sol,
+	//   à sa base — avec `coverage.flagCarries`. Champ omitempty, même raison de monter que
+	//   v3/v4/v5/v7/v8 : c'est la CLÉ DE REPRISE du backfill, et le drapeau vivant n'existe que
+	//   sur un artefact qui le porte — un v13 doit se lire « à re-cuire », pas « à jour ».
+	//   CE QUI EST MESURÉ, ET CE QUI NE L'EST PAS. Les bornes viennent des évènements de
+	//   statistique NOMMÉS du statborg et du fil des morts (aucune estimation) ; le porteur du
+	//   pont par instants de mort, donc du film seul ; la position de la piste PUBLIÉE du
+	//   porteur. Le contrôle indépendant du marqueur d'image-clé confirme 37/37 des portages
+	//   FERMÉS. Mais le LÂCHER VOLONTAIRE n'est daté par rien : un portage que rien ne ferme
+	//   court jusqu'à la fin de l'axe, et il est publié sous un ÉTAT DISTINCT
+	//   (`carried_open`) plutôt que confondu avec un portage établi — 0/5 de ceux-là sont
+	//   confirmés par le marqueur, et c'est exactement ce que l'état dit. Le CRÂNE d'Oddball
+	//   n'est PAS publié (ni canal ni oracle), ni le RETOUR AUTOMATIQUE (de 1,3 s à 35,8 s
+	//   entre p10 et p90 sur le même film : aucune minuterie ne s'en déduit).
+	if SchemaVersion != 14 {
+		t.Fatalf("SchemaVersion = %d, attendu 14 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -150,6 +150,16 @@ type Coverage struct {
 	// camps n'a pas été résolue rendent tous deux une courbe pauvre, et seuls ces compteurs les
 	// distinguent. Son ABSENCE dit autre chose encore — l'appelant n'a rien fourni à lire.
 	Score *ScoreCoverage `json:"score,omitempty"`
+	// FlagCarries est la couverture du calque du DRAPEAU VIVANT (schéma 14, cf.
+	// document_objectives_live.go) : le verdict de mode et les trois signaux qui le fondent, les
+	// prises de l'oracle, les portages publiés partagés en fermés / ouverts, les rejets par
+	// cause, le contrôle du marqueur et les incohérences.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND AUCUN DRAPEAU NE L'EST, pour la même raison que `placements`,
+	// `groundWeapons` et `score` : un film d'un autre mode et un film CTF sans aucun portage
+	// publié rendent tous deux un calque vide. Son ABSENCE dit encore autre chose — l'appelant
+	// n'a rien fourni à lire.
+	FlagCarries *FlagCarriesCoverage `json:"flagCarries,omitempty"`
 	// OriginResolved dit si l'ORIGINE de la frame 0 a été établie (cf. origin.go).
 	//
 	// ELLE VAUT POUR TOUS LES CALQUES DATÉS DEPUIS L'HORLOGE DU FILM, pas seulement pour un :
