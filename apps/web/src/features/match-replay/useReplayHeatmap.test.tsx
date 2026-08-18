@@ -3,7 +3,7 @@
  * la lecture réellement servie quand la préférence n'a rien à mesurer, et la rampe du
  * thème (vide quand le thème ne la donne pas — on ne peint alors pas plutôt que d'inventer).
  */
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ReplayBounds, ReplayPoint } from '@/lib/api/types'
@@ -138,14 +138,34 @@ describe('useReplayHeatmap — portée de temps (V2)', () => {
     expect(total(result.current.grid)).toBeCloseTo(total(tout.result.current.grid), 5)
   })
 
+  /**
+   * LE PREMIER SEAU EST ZÉRO, ET C'EST VOULU : lire la référence pendant le rendu est interdit
+   * (React concurrent, et le lint le refuse). C'est le MINUTEUR qui pose la vraie valeur — ces
+   * tests l'avancent donc explicitement plutôt que d'espérer une lecture au montage.
+   */
   it('portée « jusqu à l image courante » : tôt dans le film, la carte mesure MOINS', () => {
-    const tot = renderHook(() =>
-      useReplayHeatmap(docDeuxLieux(), BOUNDS, [], settings({ span: 'live', frameRef: { current: 40 } })),
-    )
-    const early = renderHook(() =>
-      useReplayHeatmap(docDeuxLieux(), BOUNDS, [], settings({ span: 'live', frameRef: { current: 10 } })),
-    )
-    expect(total(early.result.current.grid)).toBeGreaterThan(0)
-    expect(total(early.result.current.grid)).toBeLessThan(total(tot.result.current.grid))
+    vi.useFakeTimers()
+    try {
+      const tot = renderHook(() =>
+        useReplayHeatmap(docDeuxLieux(), BOUNDS, [], settings({ span: 'live', frameRef: { current: 40 } })),
+      )
+      // 20 images, PAS 10 : le seau est arrondi au pas de recuisson (2 s de match, soit 20
+      // images à 100 ms) — une image inférieure au pas retombe sur le seau zéro, ce qui est
+      // exactement le comportement voulu et ne prouverait rien ici.
+      const early = renderHook(() =>
+        useReplayHeatmap(docDeuxLieux(), BOUNDS, [], settings({ span: 'live', frameRef: { current: 20 } })),
+      )
+      // Avant le premier battement, les deux sont bornées à l'image 0 : même mesure.
+      const avant = total(early.result.current.grid)
+      expect(total(tot.result.current.grid)).toBeCloseTo(avant, 6)
+      act(() => {
+        vi.advanceTimersByTime(400)
+      })
+      // Après, chacune a rattrapé SON image — et celle de l'image 10 en a vu moins.
+      expect(total(early.result.current.grid)).toBeGreaterThan(avant)
+      expect(total(early.result.current.grid)).toBeLessThan(total(tot.result.current.grid))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

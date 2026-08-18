@@ -93,7 +93,12 @@ function useLiveFrameBucket(
   const live = settings.show && settings.span === 'live'
   const step = useMemo(() => Math.max(1, msToFrames(HEAT_LIVE_STEP_MS, doc)), [doc])
   const { frameRef } = settings
-  const [bucket, setBucket] = useState(() => Math.floor(frameRef.current / step) * step)
+  // LE PREMIER SEAU EST ZÉRO, PAS L'IMAGE COURANTE : lire la référence pendant le rendu est
+  // exactement ce qu'un rendu concurrent n'a pas le droit de faire (React le refuse, le lint
+  // aussi). Le minuteur pose la vraie valeur au premier battement — un quart de seconde
+  // pendant lequel la carte bornée à l'image 0 ne mesure rien, donc ne peint rien. C'est un
+  // calque vide de plus qu'avant, jamais une carte fausse.
+  const [bucket, setBucket] = useState(0)
   useEffect(() => {
     if (!live) return
     const id = window.setInterval(() => {

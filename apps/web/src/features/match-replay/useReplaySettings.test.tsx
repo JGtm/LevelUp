@@ -34,6 +34,11 @@ describe('useReplaySettings — valeurs par défaut', () => {
     expect(result.current.showShotFx).toBe(true)
     expect(result.current.showKillFx).toBe(false)
   })
+
+  it('emplacements d arme ALLUMÉS — « les infos sont intéressantes à avoir » (18/08)', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showWeaponPads).toBe(true)
+  })
 })
 
 describe('useReplaySettings — bascules', () => {
@@ -105,5 +110,17 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showShotFx).toBe(false)
     expect(result.current.showKillFx).toBe(true)
+  })
+
+  it('les emplacements d arme survivent au remontage, sur LEUR clé', () => {
+    const first = renderHook(() => useReplaySettings())
+    act(() => first.result.current.toggleWeaponPads())
+    expect(first.result.current.showWeaponPads).toBe(false)
+    first.unmount()
+
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showWeaponPads).toBe(false)
+    // Les poses, elles, n'ont pas bougé : deux clés distinctes, jamais une pour deux.
+    expect(result.current.showPlacements).toBe(true)
   })
 })

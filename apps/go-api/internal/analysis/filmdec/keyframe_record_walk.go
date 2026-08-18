@@ -313,7 +313,7 @@ var KeyframeBodyVariants = []KeyframeBodyVariant{
 func WalkKeyframeBody(pay []byte, recBit int, reg *Registry, v KeyframeBodyVariant) EntityTrace {
 	br := NewBitReader(pay)
 	br.SetBitPos(recBit + keyframeRecordTIBit)
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1}
+	t := EntityTrace{DesyncAt: -1}
 	t.TypeIndex = uint32(br.ReadBits(6))
 	if t.TypeIndex >= objectArchetypeCount {
 		t.DesyncAt, t.EndBit = 0, br.BitPos()

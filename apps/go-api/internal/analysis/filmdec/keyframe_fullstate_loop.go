@@ -71,7 +71,7 @@ func WalkKeyframeFullState(pay []byte, recBit int, reg *Registry, o KeyframeFull
 	if hdr <= 0 {
 		hdr = keyframeHeaderBits
 	}
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1}
+	t := EntityTrace{DesyncAt: -1}
 	// Le typeIndex se lit aux 6 bits de queue du deuxieme mot de 32 bits, position
 	// commune aux deux lectures d'en-tete (cf. `keyframeFullStateHeaderBits`).
 	t.TypeIndex = uint32(kfReadBits(pay, recBit+keyframeRecordTIBit, 6))

@@ -33,7 +33,6 @@ type EntityTrace struct {
 	Gate        bool
 	Mask        uint64
 	Comps       []CompResult
-	HeldWeapon  uint32     // first weapon-state-type-info variant reached (noVariant if none)
 	Dead        *DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
 	DesyncAt    int        // iterator index of the first un-ported present component (-1 if all consumed)
 	EndBit      int
@@ -864,6 +863,12 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
 		consumeNavpointRadialProgress(br)
 		return variant, nil, true
+	case compManagedObjectProperty: // ti=13 i1 (FUN_140ce5554 -> FUN_140ce59bc) — variant mode A, publie
+		consumeManagedObjectProperty(br)
+		return variant, nil, true
+	case compManagedObjectPlayerMaskedProperty: // ti=13 i2..i33 (FUN_140ce593c -> FUN_140ce59bc) — variant mode B, publie
+		consumeManagedObjectPlayerMaskedProperty(br)
+		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
 		consumeDevicePosition(br)
 		return variant, nil, true
@@ -993,7 +998,7 @@ func SetUseBipedDefaultStateDeser(v bool) { useBipedDefaultStateDeser = v }
 // (the residue deser is not yet identified — see useBipedDefaultStateDeser). For
 // other archetypes the legacy fixed Skip(defaultStateBits) is kept.
 func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTrace {
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1, DefaultBits: defaultStateBits}
+	t := EntityTrace{DesyncAt: -1, DefaultBits: defaultStateBits}
 	t.TypeIndex = uint32(br.ReadBits(6))
 	if t.TypeIndex >= objectArchetypeCount {
 		// typeIndex objet cappé < 50 (.exe) : au-delà = désync (curseur en zone de données), pas un record.
@@ -1245,9 +1250,6 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 		consumeCorruptionCheck(br)
 		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant,
 			Ported: ported, StartBit: start, Payload: payload})
-		if arch.Components[i] == compWeaponStateTypeInfo && variant != noVariant && t.HeldWeapon == noVariant {
-			t.HeldWeapon = variant
-		}
 	}
 }
 

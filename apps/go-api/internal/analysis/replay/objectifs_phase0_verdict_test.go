@@ -59,9 +59,8 @@ func objMesureFilm(t *testing.T, root, id string, src *objDiskFilm) objCtx {
 	t.Helper()
 	f := objCorpus[id]
 	b := objBridgeOf(t, root, id)
-	identity, _, _ := objStatPont(objectiveevents.StatRecords(src), b.Deaths)
-	evs := objectiveevents.IdentifyNamedEvents(
-		objectiveevents.NamedEvents(src, f.Mode), objIdentityStrings(identity))
+	identity := objIdentites(src, b.Deaths)
+	evs := objectiveevents.IdentifyNamedEvents(objectiveevents.NamedEvents(src, f.Mode), identity)
 	recs, images := objRecordsOf(t, root, id)
 	wins, fusions := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	tab := objConfronte(recs, b, wins)

@@ -129,10 +129,16 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * le lot des poses l'avait fait passer de 861 à 942 lignes sans extraction préalable, et c'est
  * ce que la revue a relevé. Le plafond n'est pas un idéal, c'est un CLIQUET : il ne remonte
  * jamais. Le franchir se corrige en extrayant, pas en relevant le nombre.
+ *
+ * 861 -> 858 le 2026-08-18 (lot des SOCLES D'ARME) : le calque, son survol et son infobulle
+ * pesaient une soixantaine de lignes, et le canvas était PILE à son plafond. Les huit encres
+ * qui y recopiaient huit fois le même corps sont donc parties dans `useReplayInks` AVANT
+ * l'ajout — c'est exactement la manœuvre que ce cliquet existe pour imposer, et le nombre
+ * descend d'autant.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(861)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(858)
   })
 })

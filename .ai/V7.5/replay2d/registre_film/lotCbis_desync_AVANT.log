@@ -1,0 +1,13 @@
+﻿== DesyncAt AVANT le port du lot C-bis (12 films, 12 premiers chunks) ==
+7344d24f : delta_walk_witness_test.go:96:   records rendus : 33029 · traversee ABOUTIE (DesyncAt == -1) : 25021 (75.755 %) · ported=false : 8008
+696a9d7c : delta_walk_witness_test.go:96:   records rendus : 32713 · traversee ABOUTIE (DesyncAt == -1) : 24653 (75.361 %) · ported=false : 8060
+0a247154 : delta_walk_witness_test.go:96:   records rendus : 33226 · traversee ABOUTIE (DesyncAt == -1) : 24468 (73.641 %) · ported=false : 8758
+01e1f945 : delta_walk_witness_test.go:96:   records rendus : 37967 · traversee ABOUTIE (DesyncAt == -1) : 29140 (76.751 %) · ported=false : 8827
+606d9844 : delta_walk_witness_test.go:96:   records rendus : 34512 · traversee ABOUTIE (DesyncAt == -1) : 26642 (77.196 %) · ported=false : 7870
+8076f97f : delta_walk_witness_test.go:96:   records rendus : 32970 · traversee ABOUTIE (DesyncAt == -1) : 24889 (75.490 %) · ported=false : 8081
+64e8adfa : delta_walk_witness_test.go:96:   records rendus : 39776 · traversee ABOUTIE (DesyncAt == -1) : 31935 (80.287 %) · ported=false : 7841
+530820e5 : delta_walk_witness_test.go:96:   records rendus : 35542 · traversee ABOUTIE (DesyncAt == -1) : 26241 (73.831 %) · ported=false : 9301
+53ce4390 : delta_walk_witness_test.go:96:   records rendus : 38008 · traversee ABOUTIE (DesyncAt == -1) : 28586 (75.210 %) · ported=false : 9422
+24dbb67d : delta_walk_witness_test.go:96:   records rendus : 39634 · traversee ABOUTIE (DesyncAt == -1) : 30917 (78.006 %) · ported=false : 8717
+000d5950 : delta_walk_witness_test.go:96:   records rendus : 38862 · traversee ABOUTIE (DesyncAt == -1) : 30060 (77.351 %) · ported=false : 8802
+06dfe6d9 : delta_walk_witness_test.go:96:   records rendus : 10607 · traversee ABOUTIE (DesyncAt == -1) : 8494 (80.079 %) · ported=false : 2113

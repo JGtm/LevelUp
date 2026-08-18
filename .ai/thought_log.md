@@ -1,3 +1,117 @@
+## [2026-08-18] Rejeu 2D — lot R2-P : le calque des emplacements d'arme — Complete
+
+**Statut** : Complete (worktree frere `wt/r2-socles`, base `3907eb505`, `4f3ef635d` + `739c25de9`,
+FUSIONNE dans `feat/v75` `302b844a8` par le superviseur ; typecheck 0 et 734 tests `match-replay`
+verts rejoues sur l'arbre fusionne).
+**Decision technique principale** : le calque publie trois etats lus de `weaponPads` (plein jusqu'a
+`tLow`, incertain jusqu'a `tHigh`, vide ensuite) et refuse de dater le ramassage, que le film ne
+porte pas ; la taille de l'icone suit l'enjeu de l'arme via une liste explicite keyee sur le
+`weapon_key` du titre, verifiee contre `weapon_names.toml` par un garde-rail ; aucune teinte ne
+distingue (la couleur du mur est encore en arbitrage) ; l'addition au canvas a ete payee par
+l'extraction des huit encres dans `useReplayInks.ts` : `ReplayCanvas.tsx` 861 -> 858 lignes, cliquet
+abaisse d'autant.
+**Resultats observes** : 10, 11, 10 et 0 socles dessines sur `01e1f945`, `00162144`, `bcb6d393`,
+`000d5950` (zero primitive emise sur le dernier) ; suite complete `test:run` : une vingtaine de
+garde-rails de balayage `src/**` depassent 5 s sur ce poste (4229 tests verts avec delai releve,
+aucune assertion ne tombe — la CI Linux reste l'autorite).
+**Conclusion / prochaine etape** : verdict utilisateur sur la planche (tailles, lecture du fantome ;
+items P1/P2 ajoutes dans `scratchpad/r2socles/`, a integrer a la planche principale a la fusion de
+R2-V) ; le ramasseur reste hors ecran jusqu'a un oracle a 90 %.
+
+## [2026-08-18] Attachement (`object-parent-state`, i10) — phase 0 : le drapeau OBJET est identifie, i10 ne dit ni le porteur ni le vehicule
+
+**Statut** : Complete (mesure ; worktree frere `wt/attache`, 4 commits `029de3539`..`ce792481a`,
+FUSIONNE dans `feat/v75` par le superviseur, vet + tests filmdec/replay rejoues). Gate 0 NEGATIF ecrit ;
+decision 5 (production) non ouverte pour i10.
+**Decision technique principale** : lire les VALEURS d'i10 sur le chemin delta par un hook minimal de
+production (`SetObjectParentStateHook`, aucun bit lu ne change ; rattachement lecture-record par egalite
+de position de bit), et confronter a deux oracles exacts (evenements CTF a la ms ; coincidence de
+positions bipede/vehicule sur `084a804d` et `a349fea8`).
+**Resultats observes** : (1) **le drapeau EST trouve, et il ne doit rien a i10** : parmi les creations
+`ti=42` ecartees du catalogue d'armes, le mot MPP `0x2A392328` revient sur les 3 films CTF et les 2
+cartes (110/41/46 creations, dont 41/16/18 a 0,0 m d'un `flag_spawn`, une a 1 ms d'un evenement de
+l'oracle) — aucun autre mot ecarte ne fait les deux ; (2) i10 : 0/149 fenetres de portage sur 4
+hypotheses de champ x 4 tolerances, temoin <= 1,3 %, 0 lecture d'i10 sur un bipede pendant qu'il
+porte ; (3) vehicules : nuage `ti=40` sain (temoin fantome 14:1 et 25:1, jamais controle avant), 0
+periode « a bord » observable — l'enfant attache ne replique plus sa position, l'oracle de coincidence
+ne peut rien voir (seuil 4(b) inapplicable, pas refute).
+**Conclusion / prochaine etape** : (a) lot court « drapeau objet » : `0x2A392328` entre au manifeste
+comme famille `flag` (jamais dessine comme socle), sa piste libre est publiee a cote des portages
+(remplace/precise `dropped`) — apres la publication 1.3 (schema 14) ; (b) i10 : conditions de reprise
+par cout croissant : balayage `SetRecordStateParam` par archetype (offline, deja outille), Ghidra sur
+`FUN_140c1e4d0`, sinon ailleurs.
+
+## [2026-08-18] Lot R2-S — sons du rejeu 2D : egalisation, recouvrement, modes de tir
+
+**Statut** : Complete (worktree frere `wt/r2-sons`, base `3907eb505`, 4 commits `83829c7b7`..`6b9132624`,
+FUSIONNE dans `feat/v75` par le superviseur ; tests `replaySound` 39/39 et `replayAudio` 13/13 rejoues
+sur l'arbre fusionne ; le `test:run` complet du frere portait 21 timeouts environnementaux prouves
+A/B/A sur la base — aucun test desactive, la CI Linux reste l'autorite).
+**Decision technique principale** : egalisation par GAIN LINEAIRE strict par fichier (cible -16 LUFS,
+plafond -1 dBTP), pas par loudnorm dynamique (equivalence `loudnorm linear=true` verifiee : memes I,
+TP, nombre d'echantillons) ; les 15 fichiers dont le facteur de crete (15 a 24 dB) interdit la cible
+sont laisses AU PLUS PRES, plafond atteint exactement.
+**Resultats observes** : etendue LUFS 31,58 -> 7,18 LU sur 41 fichiers, 0 crete au-dessus de
+-1 dBTP (3 depassaient 0 dBTP), durees inchangees a l'echantillon ; decision 4 (explosion seule) NON
+declenchee : 31,3 % de chevauchement sur la piste reelle, 48,6 % sur la mesure de controle, sous 50 % ;
+modes de tir : 2 armes du registre sur 26 declarent un second mode, toutes deux un tir CHARGE
+(pistolet a plasma, Ravageur), et aucune ne le joue aujourd'hui (le Ravageur joue son tir normal ; le
+Rayon de Sentinelle joue son tir court, pas le continu). **Decouverte majeure** : l'explosion de
+grenade ne sonne QUE sur un kill — 16 fois pour 343 lancers, zero sur un temoin de 143 lancers.
+C'est la vraie cause du grief D2, pas un masquage.
+**Conclusion / prochaine etape** : trancher avec l'utilisateur : sonner la fin de vol des grenades
+(+296 sons sur 3 temoins, dont 48,6 % a < 0,3 s de leur lancer) — meme question que l'item A4 a
+l'ecran ; limiteur pour les 15 fichiers plafonnes = decision d'oreille.
+
+## [2026-08-18] Item 4 « objectifs vivants » — phase 1 items 1.0 a 1.2 : le porteur du drapeau se mesure, la publication attend le rebasage
+
+**Statut** : Complete pour 1.0, 1.1 et 1.2 ; 1.3 REPORTE par coordination (`[!]`), 1.4 couvert par
+ce CR (`[~]`). Branche `wt/objvivants1` (worktree frere), <<NB_COMMITS>> commits, aucun push.
+
+**Decision technique principale** : le film ne nomme NI la carte NI le mode — `BuildFromFilm` ne
+lit que des chunks. Publier le portage du drapeau exigeait donc un DISCRIMINANT CTF film-seul, que
+le plan ne posait pas. Le burst de capture SEUL, premiere piste, est REFUTE par la mesure (4 films
+non-CTF sur 10 en portent). Ce qui tient est l'ACCORD DE TROIS SIGNAUX, tous du film :
+bursts > 0, captures > 0, captures <= bursts (l'inegalite dans ce sens parce qu'un film TRONQUE
+sous-compte, jamais l'inverse) et vols > 0 — 15 films de mode connu, 15 verdicts justes, zero faux
+positif, corpus GELE dans un test qui tourne en CI sans film.
+
+Deuxieme decision : le PONT PAR INSTANTS DE MORT entre en production. `SlotIdentity` compare les
+totaux du film aux lignes de match et rend 0/8 sur un film tronque ; le remplacant apparie les
+instants de progression du compteur de morts au fil des morts, sans jamais toucher la base. Le
+repli ne se declenche que s'il nomme STRICTEMENT plus de slots, et les desaccords sont ECARTES.
+
+**Resultats observes** : <<RESULTATS 1.1/1.2>>
+
+**Ce qui n'est PAS fait, et pourquoi** : l'item 1.3 (champ du document, montee de schema, contrat,
+OpenAPI, `generated.ts`, goldens, temoins re-cuits) est REPORTE — une autre session fait entrer les
+schemas 12 et 13 dans `feat/v75`, et deux montees concurrentes se marcheraient dessus. Les types du
+calque existent (`replay/document_objectives_live.go`) mais SANS etiquette JSON et sans champ dans
+`ReplayDocument` : contrat, OpenAPI, `generated.ts` et goldens sont INTACTS.
+
+**Gates** : <<GATES>>
+
+**Conclusion / prochaine etape** : rebaser `wt/objvivants1` sur le nouveau `feat/v75`, puis jouer
+l'item 1.3 avec le numero de schema SUIVANT. Les six decouvertes de la phase 1 sont au plan, dont
+deux qui pesent sur l'item 1.3 : `Options.Objectives` n'est renseigne par AUCUN appelant de
+production (le champ `objectives` est vide dans tous les artefacts cuits), et les deux catalogues
+de carte ne nomment pas les modules pareil.
+
+**Fusion (superviseur, 2026-08-18)** : `wt/objvivants1` fusionnee dans `feat/v75` (`94e4e4142`) apres la
+fusion tierce `104f468c6` ; deux conflits SEMANTIQUES (pas textuels) corriges sur l'arbre fusionne :
+`slotIdentityFrom` exporte en `SlotIdentityFrom` par la fusion tierce (2 appels + tests), et le canal
+`EntityTrace.HeldWeapon` retire par 1.0(b) alors que les instruments tiers `game_entities_chain_test.go`
+(+ `game_state_measure_test.go`, `player_bridge_channels_test.go`) l'echantillonnaient : bloc retire,
+type conserve et documente « canal retire » (leurs echantillons sont desormais vides — le canal etait
+deja mesure mort par eux, 0-4 annonces par film). vet + tests verts sur l'arbre fusionne.
+**Arbitrage superviseur pour 1.3** : gate 1 non atteint a 88,1 % PARCE QUE la production PROLONGE
+jusqu'a la fin de l'axe les portages que rien ne ferme (37/37 des portages FERMES sont confirmes par
+le marqueur ; ce sont les 5 non fermes qui font le denominateur). Decision : le document publie les
+portages FERMES en `carried` et les portages NON FERMES en `carried_open` (borne haute = fin de l'axe,
+etat explicitement incertain, jamais compte comme un portage etabli), le gate 1.3 se juge sur les
+FERMES (seuil 90 % inchange) ; la simultaneite > 2 (12 sur `64e8adfa`) est portee par les seuls
+`carried_open` — a verifier a la publication, sinon incoherence publiee. Schema 14, apres rebase.
+
 ## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 2 close, le score dans le temps est publie (schema 12) et revu
 
 **Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, integration `wt/registre-film` = f4ba22e40 ; reste : E.1/E.2, A.2 web, hygiene de cloture, fusion dans feat/v75).
