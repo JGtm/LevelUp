@@ -8,13 +8,16 @@
  *    n'est publiée) ;
  *  - le TRAQUEUR n'émet QU'UNE impulsion, qui ne se rejoue jamais — c'est sa différence de
  *    nature avec le ping du capteur, et elle est testée à l'âge d'un second ping ;
- *  - le CHAMP n'émet rien du tout, et sa borne est pointillée parce que son rayon est déclaré.
+ *  - le CHAMP ne diffuse aucune ONDE, et sa borne est pointillée parce que son rayon est
+ *    déclaré ; depuis le 2026-08-18 il porte une CROIX DE PHARMACIE qui respire — un signe
+ *    d'activité, jamais une cadence (le film n'en publie aucune).
  */
 import { describe, expect, it } from 'vitest'
 
 import {
   beaconDiamond,
   REPAIR_FIELD_RADIUS_M,
+  repairCrossAlpha,
   SEEKER_IMPULSE_MS,
   seekerImpulse,
   seekerImpulseActive,
@@ -193,5 +196,48 @@ describe('le CHAMP de réparation — un disque au rayon déclaré', () => {
       const arcs = draw([field()], { ...TIME, frame }).filter((o) => o.op === 'arc')
       expect(arcs, `image ${frame}`).toHaveLength(2)
     }
+  })
+
+  /**
+   * V8 (demande utilisateur du 2026-08-18) — LA CROIX DE PHARMACIE QUI RESPIRE.
+   *
+   * Ce qui est vérifié : la croix EXISTE (deux rectangles, un seul remplissage), elle tient
+   * DANS le cercle, et sa respiration ne touche QUE son opacité — la zone, elle, ne bouge pas.
+   */
+  it('porte une CROIX : deux rectangles croisés, entièrement dans le cercle', () => {
+    const ops = draw([field()])
+    const rects = ops.filter((o) => o.op === 'rect')
+    expect(rects).toHaveLength(2)
+    const rayon = REPAIR_FIELD_RADIUS_M * 10
+    for (const r of rects) {
+      const [x, y, w, h] = r.args as number[]
+      const centre = projected(5, 5)
+      expect(Math.hypot(x - centre.x, y - centre.y)).toBeLessThan(rayon)
+      expect(Math.hypot(x + w - centre.x, y + h - centre.y)).toBeLessThan(rayon)
+    }
+  })
+
+  it('la respiration ne touche QUE la croix : les deux arcs gardent leur rayon', () => {
+    for (const frame of [10, 20, 30]) {
+      const arcs = draw([field()], { ...TIME, frame }).filter((o) => o.op === 'arc')
+      for (const a of arcs) expect(a.args[2]).toBeCloseTo(REPAIR_FIELD_RADIUS_M * 10, 6)
+    }
+  })
+
+  it('repairCrossAlpha respire entre deux bornes, et se REJOUE à l’identique', () => {
+    const a0 = repairCrossAlpha(0, false)
+    const a900 = repairCrossAlpha(900, false)
+    expect(a900).toBeGreaterThan(a0)
+    // Fonction du temps, pas animation à état : une période plus tard, la même image.
+    expect(repairCrossAlpha(1_800, false)).toBeCloseTo(a0, 6)
+    for (const t of [0, 300, 900, 1_500, 5_000]) {
+      expect(repairCrossAlpha(t, false)).toBeGreaterThanOrEqual(0.55)
+      expect(repairCrossAlpha(t, false)).toBeLessThanOrEqual(0.95)
+    }
+  })
+
+  it('mouvement réduit : la croix NE respire plus, mais elle reste bien visible', () => {
+    expect(repairCrossAlpha(0, true)).toBe(0.95)
+    expect(repairCrossAlpha(900, true)).toBe(0.95)
   })
 })

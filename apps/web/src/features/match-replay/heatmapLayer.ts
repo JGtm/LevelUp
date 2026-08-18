@@ -39,6 +39,23 @@ import type { ReplayDocumentReady } from './replayNormalize'
 /** Les deux lectures proposées. `kills` = les morts, à la position des victimes. */
 export type HeatmapMode = 'presence' | 'kills'
 
+/**
+ * LES DEUX PORTÉES DE TEMPS de la carte de chaleur (V2, retour utilisateur du 2026-08-18).
+ *
+ * CE QUE LA MESURE A ÉTABLI AVANT DE CODER : la carte de chaleur du 16/08 est DÉJÀ celle de
+ * TOUTE LA PARTIE — `accumulatePresence` parcourt tous les points de toutes les vies, et le
+ * calque est cuit UNE fois hors écran. Il n'existait donc aucun mode « au fur et à mesure »,
+ * contrairement à ce que la lecture à l'écran laissait croire. Ce qui manquait, c'est la
+ * SECONDE portée ; c'est elle que ce type introduit, et `match` reste le défaut.
+ *
+ *  - `match` : tout le film, du début à la fin. La lecture d'analyse d'après-match — « en un
+ *    bouton on voit la heatmap de toute la partie », demande du 18/08 — et le comportement
+ *    inchangé depuis le 16/08 ;
+ *  - `live`  : ce qui a été joué JUSQU'À L'IMAGE COURANTE, et rien après. La carte se remplit
+ *    en même temps que le rejeu, ce qui répond à « la heatmap au fur et à mesure ».
+ */
+export type HeatmapSpan = 'match' | 'live'
+
 /** Côté de cellule visé, en mètres : le quart d'un σ de lissage — assez fin pour que le
  *  noyau ne se voie pas en escalier, assez gros pour qu'une carte tienne en mémoire. */
 export const HEAT_CELL_M = 0.5
@@ -117,18 +134,33 @@ interface GridFrame {
 }
 
 /**
+ * Une mort DATÉE : sa position, et la frame où elle a eu lieu. La date n'existe que pour la
+ * portée `live` — sans elle, une carte « jusqu'à l'image courante » compterait des morts qui
+ * ne se sont pas encore produites.
+ */
+export interface HeatDeath extends XY {
+  frame: number
+}
+
+/**
  * buildHeatmap cuit la carte de chaleur d'un document, UNE fois (patron `buildShotFx`) :
  * accumulation, lissage, étalonnage. Rend null quand rien n'est mesurable — pas de calque
  * plutôt qu'un calque vide.
  *
- * `deaths` sont les positions de MORT relues par `buildKillFx` (champ `deathX`/`deathY`) :
- * la carte des éliminations ne relit pas les trajectoires une seconde fois.
+ * `deaths` sont les positions de MORT relues par `buildKillFx` (champ `deathX`/`deathY`),
+ * datées : la carte des éliminations ne relit pas les trajectoires une seconde fois.
+ *
+ * `untilFrame` BORNE LA MESURE À L'IMAGE COURANTE (portée `live`). Absent = toute la partie,
+ * le comportement du 16/08. La borne s'applique à L'ACCUMULATION, jamais à l'étalonnage : la
+ * rampe se recalcule donc sur ce qui est mesuré à cet instant, et une carte qui se remplit
+ * reste lisible du début à la fin plutôt que de rester pâle pendant deux minutes.
  */
 export function buildHeatmap(
   doc: ReplayDocumentReady,
   bounds: ReplayBounds,
   mode: HeatmapMode,
-  deaths: readonly XY[],
+  deaths: readonly HeatDeath[],
+  untilFrame?: number,
 ): HeatGrid | null {
   const cell = cellSizeFor(bounds)
   const sigma = Math.max(HEAT_SIGMA_M, cell * SIGMA_MIN_CELLS)
@@ -143,8 +175,11 @@ export function buildHeatmap(
     minY: bounds.minY - radius * cell,
   }
   const raw = new Float32Array(g.nx * g.ny)
+  const until = untilFrame === undefined ? Infinity : untilFrame
   const deposited =
-    mode === 'kills' ? accumulateDeaths(raw, g, deaths) : accumulatePresence(raw, g, doc)
+    mode === 'kills'
+      ? accumulateDeaths(raw, g, deaths, until)
+      : accumulatePresence(raw, g, doc, until)
   if (deposited === 0) return null
 
   const value = blur(raw, g.nx, g.ny, gaussianKernel(sigma, cell, radius))
@@ -170,12 +205,16 @@ function accumulatePresence(
   raw: Float32Array,
   g: GridFrame,
   doc: ReplayDocumentReady,
+  until: number,
 ): number {
   const maxGap = msToFrames(HEAT_MAX_GAP_MS, doc)
   let n = 0
   for (const track of doc.tracks) {
     const pts = track.points
     for (let i = 0; i < pts.length; i++) {
+      // La borne est SUR LE POINT, pas sur la vie : une vie qui court encore dépose ce
+      // qu'elle a parcouru jusqu'ici, et rien de son avenir.
+      if (pts[i].t > until) break
       let frames = 0
       if (i > 0) frames += Math.min(pts[i].t - pts[i - 1].t, maxGap) / 2
       if (i + 1 < pts.length) frames += Math.min(pts[i + 1].t - pts[i].t, maxGap) / 2
@@ -186,10 +225,16 @@ function accumulatePresence(
   return n
 }
 
-/** accumulateDeaths dépose une mort par position de victime. Rend le nombre de dépôts. */
-function accumulateDeaths(raw: Float32Array, g: GridFrame, deaths: readonly XY[]): number {
+/** accumulateDeaths dépose une mort par position de victime, jamais une qui n'a pas eu lieu. */
+function accumulateDeaths(
+  raw: Float32Array,
+  g: GridFrame,
+  deaths: readonly HeatDeath[],
+  until: number,
+): number {
   let n = 0
   for (const d of deaths) {
+    if (d.frame > until) continue
     if (deposit(raw, g, d.x, d.y, 1)) n++
   }
   return n

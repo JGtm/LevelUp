@@ -20,11 +20,13 @@ import { useEffect, useRef, type RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
 
-import type { HeatmapMode } from './heatmapLayer'
+import { SettingsToggle } from './ReplaySettingsToggle'
+
+import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { SOUND_CATEGORIES } from './replaySound'
-import { HEATMAP_MODES, SPEED_MULTIPLIERS } from './useReplaySettings'
+import { HEATMAP_MODES, HEATMAP_SPANS, SPEED_MULTIPLIERS } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
 
 /** Ce que le tiroir sait de la carte de chaleur : son état, et ce qu'elle peut mesurer. */
@@ -33,6 +35,9 @@ export interface ReplayHeatmapControls {
   onToggle: () => void
   mode: HeatmapMode
   onSetMode: (mode: HeatmapMode) => void
+  /** La PORTÉE DE TEMPS (V2, 2026-08-18) : toute la partie, ou jusqu'à l'image courante. */
+  span: HeatmapSpan
+  onSetSpan: (span: HeatmapSpan) => void
   /** Faux quand aucune mort du match n'a pu être localisée : la lecture « éliminations »
    *  ne commande alors rien et n'est pas proposée (même règle que le bouton Zones). */
   killsAvailable: boolean
@@ -47,6 +52,9 @@ interface ReplaySettingsDrawerProps {
   onToggleZones: () => void
   showNames: boolean
   onToggleNames: () => void
+  /** La TRAÎNÉE des marqueurs (retour du 2026-08-18) : allumée par défaut, éteignable. */
+  showTrail: boolean
+  onToggleTrail: () => void
   /** Le calque zones n'existe que si la carte a des zones nommées (même règle que le
    *  bouton d'origine : un interrupteur qui ne commande rien tromperait plus qu'il n'informe). */
   zonesAvailable: boolean
@@ -69,78 +77,6 @@ interface ReplaySettingsDrawerProps {
    * — et il RÉCUPÈRE le focus à la fermeture, côté appelant.
    */
   triggerRef?: RefObject<HTMLElement | null>
-}
-
-/**
- * InfoMark — la marque « (i) » d'une RÉSERVE DE MESURE, en SVG et jamais en caractère : le
- * « i cerclé » typographique dépend de la police installée et se rend en carré vide sur les
- * machines qui ne l'ont pas. Elle ne prend pas le focus et n'ouvre rien — tout ce qu'elle a
- * à dire tient dans son infobulle, et le lecteur d'écran lit la même phrase.
- */
-function InfoMark({ text }: { text: string }) {
-  return (
-    <span
-      role="img"
-      aria-label={text}
-      title={text}
-      className="inline-flex shrink-0 items-center text-muted-foreground"
-    >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.1"
-        strokeLinecap="round"
-        aria-hidden="true"
-      >
-        <circle cx="6" cy="6" r="4.6" />
-        <path d="M6 5.4v3" />
-        <path d="M6 3.6v.2" />
-      </svg>
-    </span>
-  )
-}
-
-/**
- * Une ligne de bascule : même gabarit pour les calques, les effets et les catégories de son —
- * huit usages dans ce seul fichier, un seul rendu plutôt que huit copies presque identiques
- * (CLAUDE.md règle 6, « à la 3e copie, centraliser »).
- *
- * `info` ajoute la marque de réserve À CÔTÉ du bouton, pas dedans : elle porte une phrase
- * longue (la couverture des tirs) que l'infobulle du bouton, déjà prise par son propre
- * `hint`, ne peut pas dire — et une marque cliquable serait un bouton de plus à comprendre.
- */
-function SettingsToggle({
-  label, pressed, onToggle, hint, info,
-}: {
-  label: string
-  pressed: boolean
-  onToggle: () => void
-  hint?: string
-  info?: string
-}) {
-  const button = (
-    <Button
-      type="button"
-      variant={pressed ? 'default' : 'ghost'}
-      size="sm"
-      onClick={onToggle}
-      className="h-7 justify-start px-2 text-xs"
-      title={hint}
-      aria-pressed={pressed}
-    >
-      {label}
-    </Button>
-  )
-  if (!info) return button
-  return (
-    <div className="flex items-center gap-1">
-      <span className="flex min-w-0 flex-1 flex-col">{button}</span>
-      <InfoMark text={info} />
-    </div>
-  )
 }
 
 /**
@@ -179,14 +115,16 @@ interface LayersSectionProps {
   onToggleZones: () => void
   showNames: boolean
   onToggleNames: () => void
+  showTrail: boolean
+  onToggleTrail: () => void
   zonesAvailable: boolean
   placements: ReplayPlacementControls
   weaponPads: ReplayWeaponPadControls
 }
 
 function LayersSection({
-  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames, zonesAvailable,
-  placements, weaponPads,
+  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
+  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -199,6 +137,12 @@ function LayersSection({
           pressed={showNames}
           onToggle={onToggleNames}
           hint={t.layerNamesHint}
+        />
+        <SettingsToggle
+          label={t.layerTrail}
+          pressed={showTrail}
+          onToggle={onToggleTrail}
+          hint={t.layerTrailHint}
         />
         {zonesAvailable && (
           <SettingsToggle
@@ -323,6 +267,23 @@ function HeatmapSection({
             ))}
           </>
         )}
+        {/* LA PORTÉE est un second choix, distinct de la lecture : « ce qu'on mesure » et
+            « sur quelle durée » sont deux questions, et les mettre en une seule liste ferait
+            croire à quatre calques là où il y a deux axes. */}
+        {heatmap.show && (
+          <>
+            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapSpanTitle}</p>
+            {HEATMAP_SPANS.map((s) => (
+              <SettingsToggle
+                key={s}
+                label={t.heatmapSpan[s]}
+                pressed={heatmap.span === s}
+                onToggle={() => heatmap.onSetSpan(s)}
+                hint={t.heatmapSpanHint[s]}
+              />
+            ))}
+          </>
+        )}
       </div>
     </section>
   )
@@ -435,6 +396,8 @@ export function ReplaySettingsDrawer({
   onToggleZones,
   showNames,
   onToggleNames,
+  showTrail,
+  onToggleTrail,
   zonesAvailable,
   placements,
   weaponPads,
@@ -481,6 +444,8 @@ export function ReplaySettingsDrawer({
         onToggleZones={onToggleZones}
         showNames={showNames}
         onToggleNames={onToggleNames}
+        showTrail={showTrail}
+        onToggleTrail={onToggleTrail}
         zonesAvailable={zonesAvailable}
         placements={placements}
         weaponPads={weaponPads}
