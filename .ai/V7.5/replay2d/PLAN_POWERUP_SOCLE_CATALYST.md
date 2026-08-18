@@ -407,28 +407,66 @@ des joueurs. **Elles tombent a 0,19 m l'une de l'autre.**
 **Gate (3.6)** : `go vet` 0 · `go test ./internal/analysis/...` 0 ·
 `golangci-lint run ./internal/analysis/replay/...` 0 issues.
 
-## 8. Ce que cela implique pour la chaine des socles — UNE PHASE A PROPOSER, PAS A FAIRE
+## 8. PHASE DE PRODUCTION — la chaine des socles gagne une entree `ti=37`
+
+> Lot de PRODUCTION du 2026-08-19, execute sous le meme contrat
+> (`.claude/skills/plan-execution/SKILL.md`). Worktree `LevelUp-wt-powerup-prod`,
+> branche `wt/powerup-prod`.
 
 La correction est petite et son perimetre est net : dans `filmdec/equipment_placements.go`,
 l'oracle de vie delta (`MatchEquipmentLife`) est le SEUL filtre de selectivite de la chaine
-`ti=37`. Il faut lui adjoindre — jamais le remplacer — la voie que la chaine `ti=42` emploie
+`ti=37`. Il faut lui ADJOINDRE — jamais le remplacer — la voie que la chaine `ti=42` emploie
 deja : **retenir aussi les creations SANS vie delta dont l'identite se resout dans le
-manifeste**, et les publier avec une origine dediee (`spawned`, aux cotes de `deployed` /
-`dropped` / `unknown`).
+manifeste**, et les publier comme des SOCLES, aux memes regles que les armes.
 
 Trois garde-fous que la mesure impose a cette phase :
 
 1. **Le filtre d'identite ne suffit pas partout.** Le temoin fantome rend 5,9 sur `64e8adfa` :
    la publication doit exiger la GRAPPE (>= 2 creations au meme point, `gwPadRadiusM`), qui
    est ce qui a fait la preuve ici (9 creations au meme centimetre).
-2. **`t1` n'existe pas pour un objet sans vie delta.** La pose se publierait avec `t0` seul,
-   et le rendu devrait borner par le recensement des images-cles — exactement ce que
-   `weaponPads` fait deja (`PadPresence`).
-3. **La ligne R2-P du registre se resout d'elle-meme** : `powerup_overshield` et
-   `powerup_camo` figurent dans `POWER_PAD_KEYS` sans membre mesure. Ce lot fournit le
-   membre.
+2. **`t1` n'existe pas pour un objet sans vie delta.** La pose se publie avec `t0` seul, et la
+   presence se borne par le recensement des images-cles — exactement ce que `weaponPads` fait
+   deja (`PadPresence`).
+3. **La ligne R2-P du registre se resout d'elle-meme** : `powerup_overshield` et `powerup_camo`
+   figurent dans `POWER_PAD_KEYS` sans membre mesure. Ce lot fournit le membre.
 
-Aucune de ces trois choses n'est faite ici : le lot est une MESURE.
+ARBITRAGE DE PUBLICATION (pris avant l'ecriture) : les socles de power-up entrent dans
+`weaponPads`, PAS dans un calque neuf. Le socle est le meme objet de jeu, la regle de grappe
+groupe deja par (nature, famille) — `gwPadKindPowerup` existait sans membre —, le calque web
+`weaponPadsLayer` les dessine sans une ligne de plus, et un second tableau aurait duplique
+trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grandeur.
+
+### Items
+
+- `[x]` 8.1 `filmdec` — le RECENSEMENT d'images-cles se lit pour tout archetype d'objet du
+  monde (`ScanFilmWorldObjectKeyframes(dir, ti)` / `WorldObjectKeyframes`). Sans lui, la voie
+  `ti=37` n'a pas de quoi borner une presence.
+- `[ ]` 8.2 `replay` — la REGLE D'IDENTITE d'une chaine de socles devient une regle NOMMEE
+  (`padRule`) que la chaine `ti=42` prend telle quelle : meme sortie, ancrage golden inchange.
+- `[ ]` 8.3 La voie `ti=37` : trois lectures du film, apparitions dont la famille du manifeste
+  commence par `powerup_`, exclusion des creations a vie delta (les lachers), grappe 1 m,
+  socle >= 2, bornage par le recensement, cycle depuis le ramassage. Publication dans
+  `weaponPads` avec la FAMILLE (`powerup_overshield`) pour identifiant.
+- `[ ]` 8.4 COUVERTURE etendue : trois compteurs de la voie `ti=37` (creations acceptees,
+  retenues par identite, socles publies) + journal.
+- `[ ]` 8.5 `SchemaVersion` 17 + chronique ; `GroundWeaponCoverage` +3 champs ; OpenAPI
+  regenere ; `generated.ts` regenere.
+- `[ ]` 8.6 TESTS UNITAIRES PURS : grappe, seuil >= 2, exclusion des creations a vie delta,
+  famille inconnue = rien. Instrument de mesure du lot REBRANCHE sur la production (pas de
+  seconde copie de la regle).
+- `[ ]` 8.7 GOLDENS : fixture d'entrees v9 (il porte la lecture `ti=37`) et sortie figee,
+  regeneres depuis le film de reference.
+- `[ ]` 8.8 TEMOINS re-cuits et ANCRAGE : `01e1f945` / `75f1188f` un socle de power-up au
+  centre ; `64e8adfa` / `530820e5` zero ; `000d5950` inchange ; socles d'ARME inchanges.
+- `[ ]` 8.9 Gates : `go build ./...`, `go vet ./...`, `go test` (analysis, replaybuild,
+  contracttest, archlint), golangci 0, et la chaine web (typecheck, lint, vitest).
+
+### Journal de la phase 8
+
+**8.1 — CLOSE le 2026-08-19.** `filmdec/world_object_census.go` (ex-`ground_weapon_census.go`) :
+`ScanFilmWorldObjectKeyframes(dir, ti)` rend `WorldObjectKeyframes` pour NIMPORTE QUEL archetype.
+Aucun second walker : la marche d images-cles reste unique, l archetype descend au rang de
+parametre. Gate : `go vet ./internal/analysis/...` 0 · `go test ./internal/analysis/{replay,filmdec}/...` 0.
 
 ## 7. Decouvertes (a ne PAS traiter dans ce lot)
 

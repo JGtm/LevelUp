@@ -74,7 +74,7 @@ func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 			gwTestCreation(60, 0, 1_000_000, 0xDEADBEEF, 1, 1),
 			gwTestCreation(61, 0, 2_000_000, 0xBADC0FFE, 2, 2),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
 	_, _, cov := buildWeaponPads(fausse, nil, gwTestClock(), nil)
 	if cov.Kept != 0 || cov.Accepted == 0 {

@@ -69,7 +69,7 @@ type gwPickupFilm struct {
 	kfTimes       []uint64
 	seen          map[filmdec.EquipmentLifeKey][]uint64
 	loadouts      map[uint64]map[uint32][]string
-	keyframes     filmdec.GroundWeaponKeyframes
+	keyframes     filmdec.WorldObjectKeyframes
 	tracks        []filmdec.ProjectileTrack
 	spans         map[filmdec.EquipmentLifeKey][]filmdec.EquipmentLifeSpan
 	filmEndUS     uint64
@@ -126,10 +126,10 @@ func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm
 			f.filmEndUS = p.TimestampUS
 		}
 	}
-	// Le recensement des images-cles vient de la PRODUCTION (`ScanFilmGroundWeaponKeyframes`,
+	// Le recensement des images-cles vient de la PRODUCTION (`ScanFilmWorldObjectKeyframes`,
 	// qui rend la bande de slots dans la MEME marche) : la mesure et l'artefact bornent avec le
 	// meme recensement, ou l'ancrage ne prouverait rien.
-	f.keyframes = filmdec.ScanFilmGroundWeaponKeyframes(dir)
+	f.keyframes = filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.GroundWeaponTypeIndex)
 	f.kfTimes, f.seen = f.keyframes.TimesUS, f.keyframes.SeenUS
 	if n := len(f.kfTimes); n > 0 && f.kfTimes[n-1] > f.filmEndUS {
 		f.filmEndUS = f.kfTimes[n-1]

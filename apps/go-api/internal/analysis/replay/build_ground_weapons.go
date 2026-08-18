@@ -44,7 +44,7 @@ func decodeFilmGroundWeapons(
 	filmDir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 ) GroundWeaponScan {
 	defer gwInstallMPPWidths(mpp)()
-	kf := filmdec.ScanFilmGroundWeaponKeyframes(filmDir)
+	kf := filmdec.ScanFilmWorldObjectKeyframes(filmDir, filmdec.GroundWeaponTypeIndex)
 	if len(kf.Band) == 0 {
 		slog.Warn("armes au sol : aucun slot d'archetype ti=42 aux images-cles — rejeu sans socles",
 			"filmDir", filmDir, "imagesCles", len(kf.TimesUS))
