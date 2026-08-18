@@ -1,3 +1,43 @@
+## [2026-08-18] Item 4 « objectifs vivants » — item 1.3 : la vie du drapeau entre au document (schema 14) — FUSIONNE dans feat/v75 (`75794c10a`) par le superviseur, gates rejoues (vet, contracttest, replay, typecheck)
+
+**Statut** : Complete (1.3 `[x]`, 1.4 `[~]` couvert par ce CR). Branche `wt/objvivants2` (worktree
+frere), 6 commits, aucun push.
+
+**Decision technique principale** : le portage publie porte son incertitude dans son ETAT, pas
+dans une note de bas de page. Un portage que rien ne ferme sort en `carried_open` (borne haute =
+fin de l'axe) et jamais en `carried`. Le gate se juge sur les FERMES : 38/40 = 95,0 %, seuil 90 %
+inchange. Le 88,1 % de l'item 1.1 ne tenait pas au seuil mais AU PONT — la production pose le
+marqueur avec le sien, qui inclut les fermetures et nomme plus de slots que celui de l'instrument
+(40 confirmes sur 42 contre 37/42, memes films, memes portages).
+
+**Deuxieme decision** : le calque se publie SANS AUCUNE BASE. Le pont slot statborg -> xuid passe
+par les INSTANTS DE MORT (film seul) et non par les totaux (qui exigent `match_participants`) :
+un artefact construit hors ligne porte la vie complete des drapeaux. Seuls les SOCLES viennent
+d'ailleurs — du catalogue versionne d'objectifs, joint par `map_id`, que `port.MatchFacts`
+transporte desormais.
+
+**Resultats observes** : les portages publies sont EXACTEMENT ceux de l'item 1.1 (78/30/29, zero
+sans pont, 4/3/5 sans piste, les memes spans par drapeau : 111+50, 22+44, 23+44) ; le temoin
+non-CTF publie un calque vide et une couverture qui dit pourquoi ; l'oracle est tenu (chaque prise
+nommee ouvre un span porte du bon xuid, les manquantes sont toutes comptees). UNE HYPOTHESE DE
+L'ARBITRAGE TOMBE : la simultaneite > 2 de `64e8adfa` (12 depassements) n'est pas portee par les
+portages ouverts — ce film n'en a aucun — elle oppose des portages FERMES. Publiee et comptee
+sous `overlaps` et `closedOverlaps`, jamais tue.
+
+**Ce qui n'est PAS publie** : le crane d'Oddball (ni canal ni oracle), l'objet lui-meme (le
+marqueur dit qu'on porte, il ne nomme pas), le retour automatique (dispersion de 1,3 s a 35,8 s
+entre p10 et p90 sur le meme film : aucune minuterie ne s'en deduit).
+
+**Un cout mesure, et corrige dans le lot** : le balayage du marqueur pesait ~45 s par film (un
+quart du temps de construction) pour un CONTROLE qui ne sert qu'aux films CTF ; il ne tourne plus
+que sur eux.
+
+**Gates** : go build 0, go vet 0, go test (19 paquets) 0, golangci-lint 0 issue, tsc 0, lint web 0
+erreur, vitest du dossier rejeu 0 (49 fichiers, 716 tests), 4 temoins re-cuits 0.
+
+**Conclusion / prochaine etape** : phase 2 (colline KOTH) ou phase 3 (rendu web) selon l'ordre du
+superviseur. Le rendu n'a rien a inventer : `flagCarries` porte l'etat, la position et le porteur.
+
 ## [2026-08-18] Rejeu 2D — l'explosion de grenade sonne a chaque fin de vol (lot R2-G) — Complete
 
 **Statut** : Complete (worktree frere `wt/r2-grenades`, `329691b49` + `58f7c9fbd`, FUSIONNE dans

@@ -313,3 +313,22 @@
 | R2-G — le plafond de voix (`SOUND_MAX_VOICES` = 8) va mordre davantage | lot R2-G, 2026-08-18 | la piste de `00162144` passe de 159 a 267 evenements ; une explosion tient jusqu'a 4 s de voix contre 1,2 s pour un tir | au gate d'ECOUTE utilisateur — decision d'oreille (un chiffre a relever) |
 | Tirs CHARGES / CONTINUS : NON joues — decision utilisateur du 18/08 | lot R2-S S3 + reponse utilisateur, 2026-08-18 | « c'est ok pour le moment de pas jouer les tirs charges, ca ferait trop » ; sans source qualifiant le mode d'un tir, un son charge sonnerait a tort | clos ; rouvrir seulement si une source de mode apparait ET si l'utilisateur le redemande |
 | Re-cuisson de masse des artefacts : REPORTEE par l'utilisateur | decision utilisateur, 2026-08-18 | « on attend pour la re-cuisson, enormement de travail critique en cours » ; les temoins restent re-cuits lot par lot ; le schema courant est 14 | quand les schemas se stabilisent (apres le lot drapeau objet) : passe de dimensionnement 20 films puis passe complete `backfill-replay --only-existing` + `backfill-killsource`, serveur local arrete |
+
+### Item 4 phase 1.3 (2026-08-18) — lignes du registre (texte de l'agent, consigne a la fusion)
+
+
+- **R4 « objectifs vivants » -> PORTEUR TRAITE ET PUBLIE (CTF)** : schema 14, `flagCarries` +
+  `coverage.flagCarries`. Condition de reprise LEVEE pour le drapeau.
+- **Crane d'Oddball `[!]`** (report maintenu) : ni canal (le marqueur CTF est absent du film
+  Oddball, 0 porteur sur 26 images-cles) ni oracle (aucun compteur de crane au statborg).
+  Condition de reprise : un discriminant externe (score par seconde de portage) ou un canal neuf.
+- **Canal delta des armes tenues : CLOS** (retire du decodeur a l'item 1.0(b)).
+- **Portages OUVERTS `carried_open` (report NEUF)** : le lacher volontaire n'est date par aucune
+  chaine du film ; l'etat publie le doute au lieu de le noyer. Condition de reprise : un canal qui
+  DATE le lacher — il fermerait ces portages, retirerait l'etat, et leverait du meme coup la
+  simultaneite > 2 entre portages fermes de `64e8adfa` (12 depassements, meme zone d'ombre que les
+  5 porteurs tues ambigus et les 7 retours ambigus du meme film).
+- **`objectives` sur film tronque (decouverte NEUVE, non traitee)** : le calque des actions
+  d'objectif nomme par le pont des TOTAUX et rend 0 identifiee sur `64e8adfa` (266 nommees), la ou
+  le drapeau publie ses 78 portages par le pont des instants de mort. Remede connu
+  (`SlotIdentityResolved`), une ligne, mais un autre chantier.
