@@ -1,3 +1,33 @@
+## [2026-08-18] Drapeau OBJET — le manifeste le nomme, son controle refuse sa piste ; corrections flagCarries (schema 15) ; FIX bloquant deathProgressions — Complete
+
+**Statut** : Complete (branche `wt/drapeau`, 4 commits `79ea7e569`..`7ee8aedb4`, FUSIONNEE dans `feat/v75`
+par le superviseur, vet + tests objectiveevents/contracttest rejoues, POUSSEE ensuite). `flagObjects` `[!]`.
+**Decision technique** : `0x2A392328` entre au manifeste sous une table neuve `[[objective_objects]]`
+(archetype 42), famille `flag`, libelles FR/EN ; la chaine des socles le RECONNAIT et l'ecarte AVANT la
+question « est-ce une arme ? » (garde-rail a temoin) ; couverture `groundWeapons.objectives`. Controle 3
+(ecrit avant mesure) NON tenu : 149/197 = 75,6 % contre 90 % (temoin armes ordinaires 12,8 % <= 20 %,
+tenu : la piste discrimine d'un facteur six) — la chaine de publication de `flagObjects` etait ecrite,
+elle est RETIREE ; 3 des 48 residuelles seulement naissent la ou l'objet reposait deja. Deux defauts
+d'instrument corriges avant conclusion (reference porteur reduite a la derniere frame ; socle neutre
+ecarte par un filtre de production), aucun seuil touche. **Arbitrage superviseur** : les vies libres
+nees a < 1,5 m du porteur (la sous-population validee, hors naissances au socle) DATENT le lacher et
+REPOSITIONNENT `dropped` — schema 14 -> 15 avec chronique, contrat inchange (35), 3 compteurs de
+couverture (`objectLives`, `closedByObject`, `dropsRepositioned`) ; ancrage : portages 78/30/29,
+`carried_open` -> `carried` = 2 (`530820e5`), `dropped` repositionnes 28/16/4.
+**FIX BLOQUANT (rapporte par l'autre session : `replay-build --facts` 19-22 Go, > 15 min, meme sur un
+Slayer)** : `objectiveevents.deathProgressions` DEROULAIT la progression du compteur de morts (une
+emission positive aberrante allouait autant d'entiers que sa valeur) et le pont d'identite etait paye
+meme hors CTF. Correctif : plafond `maxDeathsPerSlot = 1000` (borne de surete, une valeur au-dela est
+jetee comme une negative) + court-circuit hors CTF dans `attachFlagCarries` (meme calque vide, meme
+couverture) ; garde-rail `slotidentity_deaths_bomb_test.go` (mesure des ALLOCATIONS : 400 M en entree
+-> 0 deroulage). Mesure apres : `000d5950` 230 s / 153 Mo, `01e1f945` 270 s / 111 Mo, `53ce4390`
+~11 min / 102 Mo (lent, pas bloque). Repro des 19-22 Go non obtenue sur ces films (aucune emission
+aberrante) : ferme par construction et garde-rail.
+**Conclusion / prochaine etape** : mesure « LANCER de drapeau » (hypothese utilisateur) sur les 48 vies
+inexpliquees — distance/delai au porteur, regle elargie ecrite avant mesure, R balaye 1,5/3/5/8/10 m ;
+si le controle tient, `flagObjects` devient publiable. Decouvertes pour le plan objectifs vivants :
+`instance_id` = 0 sur toutes les entrees du catalogue de zones ; aucun role « colline » en KOTH.
+
 ## [2026-08-18] v7.5 rejeu 2D — lot R3-V : les verdicts de la planche R3 rendus, et une regression reparee a sa cause — Complete
 
 **Statut** : Complete (branche `wt/r3-visuels`, base `85ab55648`, 9 commits `fea5f2686`..`dbc1d8f37`,
