@@ -103,9 +103,9 @@ func attOracleCTF(t *testing.T, root, id string) attOracle {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	b := objBridgeOf(t, root, id)
-	identity, _, _ := objStatPont(objectiveevents.StatRecords(src), b.Deaths)
+	identity := objectiveevents.SlotIdentityFromDeaths(src, objDeathInstants(b.Deaths))
 	evs := objectiveevents.IdentifyNamedEvents(
-		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentityStrings(identity))
+		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), identity)
 	wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
 	inv := map[uint64]map[uint32]bool{}
 	for slot, x := range b.SlotXUID {
@@ -352,7 +352,7 @@ func attVerdict(t *testing.T, titre string, cumul map[string]map[int64]*attResul
 			t.Logf("%s CUMUL — %-32s tol %4d ms : %d/%d = %.1f %% (seuil %.0f %%), "+
 				"témoin %d/%d = %.1f %% (seuil %.0f %%) ; délai médian %d ms",
 				titre, n, tol, c.Appariees, c.Fenetres, 100*taux, 100*attSeuilTaux,
-				c.Temoin, c.Fenetres, 100*tem, 100*attSeuilTemoin, objMedianeI64(c.Delais))
+				c.Temoin, c.Fenetres, 100*tem, 100*attSeuilTemoin, attMedianeI64(c.Delais))
 			if taux >= attSeuilTaux && tem <= attSeuilTemoin && tenu == "" {
 				tenu = fmt.Sprintf("%s à %d ms", n, tol)
 			}
@@ -442,4 +442,16 @@ func attPorteursGate(o attOracle, lectures []attI10) (dedans, ouvDedans, dehors,
 		}
 	}
 	return dedans, ouvDedans, dehors, ouvDehors
+}
+
+// attMedianeI64 rend la mediane d'une serie (0 si vide). Copie locale de l'ancien
+// `objMedianeI64`, supprime avec l'instrument du canal delta (item 4 phase 1.0b) : cet
+// instrument est le seul lecteur restant, il porte donc le helper.
+func attMedianeI64(v []int64) int64 {
+	if len(v) == 0 {
+		return 0
+	}
+	c := append([]int64{}, v...)
+	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+	return c[len(c)/2]
 }
