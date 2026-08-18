@@ -13213,6 +13213,17 @@ components:
         pads:
           format: int64
           type: integer
+        powerupAccepted:
+          format: int64
+          type: integer
+        powerupKept:
+          format: int64
+          type: integer
+        powerupPads:
+          format: int64
+          type: integer
+        powerupScanned:
+          type: boolean
         rejected:
           format: int64
           type: integer
@@ -13245,6 +13256,10 @@ components:
         - unknown
         - never
         - cycles
+        - powerupScanned
+        - powerupAccepted
+        - powerupKept
+        - powerupPads
       type: object
     Group:
       additionalProperties: false

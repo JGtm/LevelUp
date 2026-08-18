@@ -94,7 +94,13 @@ func goldenInputsPath() string {
 // desormais dans `Point.p`. Sans lui le fixture ne porterait qu un des deux angles du meme
 // composant, et le golden verrouillerait un document dont toutes les visees sont a plat —
 // c est-a-dire pas celui que la production sert.
-const goldenInputsMagic = "REPLAYINPUTS8\n"
+//
+// v9 (2026-08-19, PLAN_POWERUP_SOCLE_CATALYST phase 8) : le fixture porte la SECONDE voie de la
+// chaine des socles — les creations `ti=37` avec leur recensement d images-cles et leurs pistes
+// delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
+// des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
+// entrent ensemble dans l assemblage.
+const goldenInputsMagic = "REPLAYINPUTS9\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -147,12 +153,17 @@ type goldenInputs struct {
 	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
-	// GroundWeapons : ce que le film rend sur les ARMES AU SOL (creations ti=42, recensement
-	// des images-cles, pistes de position). MEME raison que les precedents : l assemblage en
-	// fait le calque des socles du schema 11.
-	GroundWeapons WorldObjectScan
-	Deaths        []Death
-	Indices       PlayerIndexTable
+	// Pads : ce que le film rend sur les SOCLES — la voie des ARMES AU SOL (creations ti=42) et
+	// celle des POWER-UPS (creations ti=37), chacune avec le recensement des images-cles qui
+	// borne les presences et les pistes de position qui disent si l objet a bouge. MEME raison
+	// que les precedents : l assemblage en fait le calque des socles (schemas 11 puis 17).
+	//
+	// LES DEUX VOIES SONT DANS LE FIXTURE, et il le faut : c est la SECONDE qui decide si un
+	// power-up de socle est publie. Sans elle, le golden verrouillerait un document que la
+	// production ne sert plus.
+	Pads    PadScans
+	Deaths  []Death
+	Indices PlayerIndexTable
 	// ClockOriginUS est l horodatage moteur du premier paquet du film, c est-a-dire le zero de
 	// l horloge des highlight events (cf. origin.go). Il est DANS le fixture parce que
 	// l origine publiee est une entree de l assemblage comme une autre — sans lui, le golden
@@ -173,7 +184,7 @@ func (g *goldenInputs) options() Options {
 		GrappleReads:      g.GrappleReads,
 		Placements:        g.Placements,
 		PlacementStats:    g.PlacementStats,
-		GroundWeapons:     g.GroundWeapons,
+		Pads:              g.Pads,
 		Deaths:            g.Deaths,
 		PlayerIndices:     g.Indices,
 		FilmClockOriginUS: g.ClockOriginUS,
@@ -469,7 +480,8 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 	w.u(uint64(g.PlacementStats.Accepted))
 	w.u(uint64(g.PlacementStats.Confirmed))
 
-	encodeGroundWeapons(w, g.GroundWeapons)
+	encodeWorldObjectScan(w, g.Pads.Weapons)
+	encodeWorldObjectScan(w, g.Pads.Powerups)
 
 	w.u(uint64(len(g.Deaths)))
 	for _, d := range g.Deaths {
@@ -546,15 +558,18 @@ func decodeTracks(r *greader) []filmdec.ProjectileTrack {
 	return out
 }
 
-// encodeGroundWeapons / decodeGroundWeapons serialisent ce que le film rend sur les ARMES AU
-// SOL : les records de CREATION (position i0, instant, identite MPP), le RECENSEMENT des
-// images-cles qui borne les disparitions, et les pistes de position qui disent si l objet a
-// bouge.
+// encodeWorldObjectScan / decodeWorldObjectScan serialisent ce que le film rend sur UN archetype
+// d objet du monde : les records de CREATION (position i0, instant, identite MPP), le
+// RECENSEMENT des images-cles qui borne les disparitions, et les pistes de position qui disent
+// si l objet a bouge.
+//
+// UN SEUL CODEC POUR LES DEUX VOIES (armes `ti=42`, power-ups `ti=37`) : elles ont la meme
+// forme, et un second codec aurait diverge du premier au premier champ ajoute.
 //
 // LA BANDE DE SLOTS N EST PAS SERIALISEE, et c est deliberé : l assemblage ne la lit pas (elle
 // sert au seul balayage, qui a deja eu lieu). Le fixture porte ce que l assemblage CONSOMME,
 // pas ce que le decodage a traverse.
-func encodeGroundWeapons(w *gwriter, s WorldObjectScan) {
+func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 	w.bool8(s.Scanned)
 	w.u(uint64(len(s.Creations)))
 	var lastTS uint64
@@ -605,7 +620,7 @@ func encodeGroundWeapons(w *gwriter, s WorldObjectScan) {
 	encodeTracks(w, s.Tracks)
 }
 
-func decodeGroundWeapons(r *greader) WorldObjectScan {
+func decodeWorldObjectScan(r *greader) WorldObjectScan {
 	s := WorldObjectScan{Scanned: r.bool8()}
 	n := int(r.u())
 	s.Creations = make([]filmdec.EquipmentCreation, 0, n)
@@ -848,7 +863,8 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	g.PlacementStats.Confirmed = int(r.u())
 	g.PlacementStats.Placements = len(g.Placements)
 
-	g.GroundWeapons = decodeGroundWeapons(r)
+	g.Pads.Weapons = decodeWorldObjectScan(r)
+	g.Pads.Powerups = decodeWorldObjectScan(r)
 
 	n = int(r.u())
 	g.Deaths = make([]Death, 0, n)
@@ -1018,7 +1034,7 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	}
 	// Les armes au sol passent par LA MEME fonction que BuildFromFilm : le fixture porte ce que
 	// la production decode, pas une variante de lecture — largeurs MPP calibrees comprises.
-	g.GroundWeapons = decodeFilmGroundWeapons(dir, &wr, g.PlacementStats.Calibration.Widths)
+	g.Pads = decodeFilmPadScans(dir, &wr, g.PlacementStats.Calibration.Widths)
 	if g.Grenades, err = filmdec.ScanFilmGrenadeThrows(dir); err != nil {
 		return nil, err
 	}

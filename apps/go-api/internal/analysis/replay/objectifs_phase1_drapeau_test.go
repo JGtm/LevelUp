@@ -172,7 +172,7 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 	gw := objGroundWeapons(t, root, id, quant)
 	doc := BuildFromPositions(id, "halo_infinite", pos, nil, Options{
 		Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant,
-		Labels: goldenCatalog(t), GroundWeapons: gw,
+		Labels: goldenCatalog(t), Pads: PadScans{Weapons: gw},
 		Flag: FlagInput{
 			Scanned: true, Records: objectiveevents.StatRecords(src),
 			Bursts: objectiveevents.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
@@ -402,5 +402,5 @@ func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntr
 	defer installWorldObjectPrecision(*quant, dir)()
 	wr := quant.Range()
 	_, st := decodeFilmPlacements(dir, &wr)
-	return decodeFilmGroundWeapons(dir, &wr, st.Calibration.Widths)
+	return decodeFilmPadScan(dir, &wr, st.Calibration.Widths, groundWeaponArchetype())
 }

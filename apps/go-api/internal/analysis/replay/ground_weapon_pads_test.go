@@ -101,7 +101,7 @@ func gwTestPadScan(t *testing.T) (WorldObjectScan, []filmdec.BipedPosition) {
 // occupation achevee.
 func TestBuildWeaponPadsPublieUnSocleEtSesOccupations(t *testing.T) {
 	scan, pos := gwTestPadScan(t)
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 1 {
 		t.Fatalf("1 socle attendu, %d obtenus : %+v", len(pads), pads)
 	}
@@ -147,7 +147,7 @@ func TestBuildWeaponPadsPublieUnSocleEtSesOccupations(t *testing.T) {
 // cycle se publie, mesure DEPUIS la disparition.
 func TestBuildWeaponPadsPublieLeCycleQuandIlEstEtabli(t *testing.T) {
 	scan, pos := gwTestPadScan(t)
-	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, _, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	c := pads[0].Cycle
 	if c == nil {
 		t.Fatalf("cycle attendu etabli (trois ecarts identiques) : %+v", pads[0])
@@ -176,7 +176,7 @@ func TestBuildWeaponPadsPublieLesEcartsQuIlNAPasPuPrendre(t *testing.T) {
 	// Le joueur ne passe plus pres du socle apres la DEUXIEME occupation : sa disparition
 	// reste bornee sans etre datee, et l'ecart qui la suivait est perdu.
 	pos := gwTestPositions([]uint64{25_000_000, 65_000_000}, 10, 10)
-	pads, _, _ := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, _, _ := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 1 || pads[0].Cycle == nil {
 		t.Fatalf("1 socle a cycle etabli attendu : %+v", pads)
 	}
@@ -195,7 +195,7 @@ func TestBuildWeaponPadsTaitUnCycleInstable(t *testing.T) {
 	// troisieme longtemps apres : les ecarts passent de 1 s a 16 s.
 	scan.Creations[1].TimestampUS = 26_000_000
 	pos := gwTestPositions([]uint64{25_000_000, 45_000_000, 65_000_000}, 10, 10)
-	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, _, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 1 {
 		t.Fatalf("1 socle attendu, %d", len(pads))
 	}
@@ -241,7 +241,7 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 		{Slot: 3, TimestampUS: 9_950_000, X: 30, Y: 30, HasWorld: true},
 		{Slot: 3, TimestampUS: 49_950_000, X: 30.1, Y: 30, HasWorld: true},
 	}
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 0 || len(picks) != 0 {
 		t.Fatalf("aucun socle ni occupation attendus, %d socles / %d occupations : %+v",
 			len(pads), len(picks), pads)
@@ -281,7 +281,7 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 	if objs[0].FamilyID != fam {
 		t.Fatalf("identite retenue 0x%08x, attendu 0x%08x", objs[0].FamilyID, fam)
 	}
-	_, _, cov := buildWeaponPads(scan, nil, gwTestClock(), nil)
+	_, _, cov := buildWeaponPads(PadScans{Weapons: scan}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 1 || cov.Rejected != 2 {
 		t.Fatalf("1 retenue et 2 ecartees attendues : %+v", cov)
 	}
@@ -344,7 +344,7 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 		},
 		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	_, _, cov := buildWeaponPads(fuite, nil, gwTestClock(), nil)
+	_, _, cov := buildWeaponPads(PadScans{Weapons: fuite}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 2 || cov.Rejected != 1 {
 		t.Fatalf("2 retenues et 1 ecartee COMPTEES attendues : %+v", cov)
 	}
@@ -438,7 +438,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 // TestBuildWeaponPadsSansBalayageNePublieRien : un film qu'on n'a pas su balayer publie ZERO
 // socle et le DIT (`scanned: false`) — sans quoi il serait indistinguable d'un film sans socle.
 func TestBuildWeaponPadsSansBalayageNePublieRien(t *testing.T) {
-	pads, picks, cov := buildWeaponPads(WorldObjectScan{}, nil, gwTestClock(), nil)
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: WorldObjectScan{}}, nil, gwTestClock(), padCatalogs{})
 	if pads != nil || picks != nil {
 		t.Fatalf("aucune publication attendue sans balayage : %+v / %+v", pads, picks)
 	}

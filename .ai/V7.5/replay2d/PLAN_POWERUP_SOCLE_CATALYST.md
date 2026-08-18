@@ -443,18 +443,18 @@ trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grande
   `ti=37` n'a pas de quoi borner une presence.
 - `[x]` 8.2 `replay` — la REGLE D'IDENTITE d'une chaine de socles devient une regle NOMMEE
   (`padRule`) que la chaine `ti=42` prend telle quelle : meme sortie, ancrage golden inchange.
-- `[ ]` 8.3 La voie `ti=37` : trois lectures du film, apparitions dont la famille du manifeste
+- `[x]` 8.3 La voie `ti=37` : trois lectures du film, apparitions dont la famille du manifeste
   commence par `powerup_`, exclusion des creations a vie delta (les lachers), grappe 1 m,
   socle >= 2, bornage par le recensement, cycle depuis le ramassage. Publication dans
   `weaponPads` avec la FAMILLE (`powerup_overshield`) pour identifiant.
-- `[ ]` 8.4 COUVERTURE etendue : trois compteurs de la voie `ti=37` (creations acceptees,
+- `[x]` 8.4 COUVERTURE etendue : trois compteurs de la voie `ti=37` (creations acceptees,
   retenues par identite, socles publies) + journal.
-- `[ ]` 8.5 `SchemaVersion` 17 + chronique ; `GroundWeaponCoverage` +3 champs ; OpenAPI
+- `[x]` 8.5 `SchemaVersion` 17 + chronique ; `GroundWeaponCoverage` +3 champs ; OpenAPI
   regenere ; `generated.ts` regenere.
 - `[ ]` 8.6 TESTS UNITAIRES PURS : grappe, seuil >= 2, exclusion des creations a vie delta,
   famille inconnue = rien. Instrument de mesure du lot REBRANCHE sur la production (pas de
   seconde copie de la regle).
-- `[ ]` 8.7 GOLDENS : fixture d'entrees v9 (il porte la lecture `ti=37`) et sortie figee,
+- `[x]` 8.7 GOLDENS : fixture d'entrees v9 (il porte la lecture `ti=37`) et sortie figee,
   regeneres depuis le film de reference.
 - `[ ]` 8.8 TEMOINS re-cuits et ANCRAGE : `01e1f945` / `75f1188f` un socle de power-up au
   centre ; `64e8adfa` / `530820e5` zero ; `000d5950` inchange ; socles d'ARME inchanges.
@@ -501,3 +501,32 @@ golden d assemblage passe SANS regeneration, ce qui est l ancrage de l etape. Ga
    delta ne DIT pas son archetype. Ce n'est pas une decouverte nouvelle (c'est la cause (2)
    documentee dans `keyframe_ground_weapons.go`), mais elle borne la phase 2 : seule la
    CREATION (qui porte `ti`) et l'IMAGE-CLE attribuent.
+
+**8.3 / 8.4 / 8.5 / 8.7 — CLOSES le 2026-08-19, ENSEMBLE.** Elles ne se separent pas : ajouter
+les compteurs de la voie `ti=37` a la couverture change le CONTRAT, donc exige l'OpenAPI et
+`generated.ts` dans le meme commit — sans quoi `contracttest` reste rouge entre deux etapes.
+
+- `powerup_pads.go` (99 L) : `padPowerupPrefix` (le MEME litteral que `POWER_PAD_KEYS` cote web),
+  `powerupPadRule`, `padCatalogs`, `PadScans`.
+- `build_ground_weapons.go` : `padArchetype` porte CE QUI CHANGE d'un archetype a l'autre (le
+  typeIndex, le mot du journal, le balayage de creations) ; `decodeFilmPadScans` fait les deux
+  fois trois lectures aux MEMES largeurs MPP calibrees.
+- `ground_weapon_pads.go` : `buildPadChain` deroule UNE voie, `buildWeaponPads` enchaine les
+  deux et CONCATENE les socles. Les occupations de la seconde voie sont DECALEES du nombre de
+  socles de la premiere — `padPickups[].pad` est un index global.
+- Couverture : `powerupScanned` / `powerupAccepted` / `powerupKept` / `powerupPads`. Les
+  compteurs d'ARME restent la voie `ti=42` seule ; les OCCUPATIONS sont communes aux deux, et
+  `Balanced()` gagne `PowerupKept <= PowerupAccepted`.
+- `SchemaVersion` 16 -> 17, chronique dans `document.go` et raison ecrite dans
+  `structure_test.go` (le garde-rail qui interdit une montee sans motif).
+- Contrat : `GroundWeaponCoverage` +4 champs, `api/openapi.yaml` et
+  `apps/web/src/lib/api/generated.ts` REGENERES (jamais edites a la main). Le nombre de champs
+  de `ReplayDocument` ne bouge pas — aucun champ neuf a la racine.
+- Goldens : fixture d'entrees `REPLAYINPUTS9` (il porte la seconde voie) regenere depuis
+  `000d5950`, sortie figee regeneree. **LE DIFF DE LA SORTIE FAIT DEUX LIGNES** : le numero de
+  schema, et la ligne de couverture de la voie `ti=37`
+  (`balaye=true · 401 creation(s) acceptee(s) -> 0 retenue(s) -> 0 socle(s)`). Le document du
+  film de reference est IDENTIQUE par ailleurs — 482 lignes figees, 482 obtenues.
+
+Gate : `go vet` 0 · `go test ./internal/analysis/... ./contracttest/... ./internal/replaybuild/...`
+0 · `golangci-lint run` replay+filmdec **0 issues**.
