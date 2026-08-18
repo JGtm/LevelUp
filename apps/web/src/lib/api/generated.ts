@@ -6467,6 +6467,13 @@ export interface components {
             /** Format: int64 */
             pads: number;
             /** Format: int64 */
+            powerupAccepted: number;
+            /** Format: int64 */
+            powerupKept: number;
+            /** Format: int64 */
+            powerupPads: number;
+            powerupScanned: boolean;
+            /** Format: int64 */
             rejected: number;
             scanned: boolean;
             /** Format: int64 */

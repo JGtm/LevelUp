@@ -245,8 +245,25 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   deux slots de jauge sur trois, et différente entre deux matchs de la même carte sur la
 	//   troisième), et le propriétaire d'une colline de KOTH (le canal ne parle que là où il y a
 	//   des captures nommées — la colline ne rend que sa PÉRIODE ACTIVE).
-	if SchemaVersion != 16 {
-		t.Fatalf("SchemaVersion = %d, attendu 16 : incrémenter exige une raison écrite ci-dessus "+
+	//   v16 -> v17 (2026-08-19, plan PLAN_POWERUP_SOCLE_CATALYST phase 8) : AUCUN CHAMP NEUF À
+	//   LA RACINE — c'est le CONTENU de `weaponPads` qui change. Les SOCLES DE POWER-UP y
+	//   entrent par une SECONDE voie (`ti=37`), adjointe à celle des armes et jamais substituée
+	//   à elle. Un artefact v16 du même match ne peut PAS les porter : la chaîne de production
+	//   ne retenait un record `ti=37` que si sa position retombait sur une vie DELTA, et un
+	//   socle ne bouge jamais — il était écarté PAR CONSTRUCTION. La reprise du backfill se
+	//   fait par SchemaVersion, donc la version monte.
+	//   CE QUE LA MESURE ÉTABLIT (plan, phase 3) : sur les deux films KOTH de Catalyst, le
+	//   balayage sans l'oracle de vie delta rend 9 et 7 créations de `powerup_overshield` à la
+	//   MÊME position au centimètre — (0,257 ; -0,003 ; 21,36) —, à 0,19 m du point que la
+	//   phase 1 avait localisé par le croisement des trajectoires des quatre porteurs, sans
+	//   lire un seul bit de record de création. Deux mesures indépendantes, aucun code partagé.
+	//   Les deux films CTF de la MÊME carte n'en portent aucun : le sous-mode arme le socle.
+	//   CE QUI N'EST PAS PUBLIÉ : `t1`. Un objet sans vie delta n'en a pas — la présence se
+	//   borne par le recensement des images-clés, comme celle des armes. Et le power-up LÂCHÉ à
+	//   une mort n'est PAS un socle : il bouge (vie delta) et naît là où son porteur meurt
+	//   (`dropped`) — il reste publié par `equipmentPlacements` avec son origine, inchangé.
+	if SchemaVersion != 17 {
+		t.Fatalf("SchemaVersion = %d, attendu 17 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

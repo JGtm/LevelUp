@@ -72,10 +72,10 @@ type Options struct {
 	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
-	// GroundWeapons : ce que le film rend sur les ARMES AU SOL — les TROIS lectures voyagent
-	// ensemble et `Scanned` dit qu'elles ont abouti (cf. build_ground_weapons.go). Entree de
-	// DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
-	GroundWeapons WorldObjectScan
+	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
+	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
+	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
+	Pads PadScans
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -256,9 +256,9 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
-	// ARMES AU SOL : archetype 42, sur la MEME horloge, AUX LARGEURS MPP que la calibration des
-	// POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
-	opt.GroundWeapons = decodeFilmGroundWeapons(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
+	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
+	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
+	opt.Pads = decodeFilmPadScans(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
 	opt.Flag.Marks = decodeFilmCarrierMarks(filmDir, opt.Flag)
@@ -434,9 +434,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies})
 	logPlacementCoverage(doc.Coverage.Placements)
-	// Les SOCLES d'arme au sol, sur le meme nuage NON decime (cf. build_ground_weapons.go).
-	attachWeaponPads(&doc, opt.GroundWeapons, sorted,
-		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels.FlagObjects)
+	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
+	attachWeaponPads(&doc, opt.Pads, sorted,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
