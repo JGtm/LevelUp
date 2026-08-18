@@ -12,3 +12,8 @@
 [R1-3] npx tsc -b --force (apps/web)                              EXIT_TSC=0
 [R1-3] CGO_ENABLED=1 go test -count=1 ./contracttest/ ./internal/replaybuild/   EXIT_TEST=0
 [R1-4] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-4] (hook pre-commit contourne par erreur sur ce commit) equivalent rejoue a la main :
+       gofmt -l internal contracttest cmd : vide · CGO_ENABLED=0 go vet ./internal/analysis/... ./internal/replaybuild/  EXIT_VET=0
+[R1-5] contre-epreuve : avec l ANCIENNE fusion, TestZoneStatesCollineUneSeuleZoneActiveALaFois
+       ECHOUE (« zone 0 [150 ; 599] et zone 1 [100 ; 200] ») — le verrou est discriminant
+[R1-5] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
