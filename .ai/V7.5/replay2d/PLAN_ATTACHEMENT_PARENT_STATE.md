@@ -50,8 +50,13 @@ ne sert que si le sens d'un champ (quel bit = quel handle) resiste a la mesure.
 
 ## Phases
 
-- [ ] 0.1 Hook de lecture d'i10 (valeurs brutes par record : ti, slot, gen, t, porte, champs) — instrument
-      sous garde `ATT_FILM`, lecture seule, AUCUN changement de production.
+- [x] 0.1 Hook de lecture d'i10 (valeurs brutes par record : ti, slot, gen, t, porte, champs) — instrument
+      sous garde `ATT_FILM`, lecture seule. UNE edition de production, minimale et declaree :
+      `filmdec.SetObjectParentStateHook` + le type `ObjectParentState` dans
+      `components_object_state.go` ; le deser garde desormais les valeurs qu'il jetait, AUCUN bit
+      lu ne change (memes lectures, meme ordre, memes largeurs ; la sonde est appelee en `defer`
+      apres coup). Instrument : `replay/attachement_phase0_socle_test.go` (marche stateful
+      `DecodeFrameViews`, rattachement EXACT lecture -> record par `CompResult.StartBit`).
 - [ ] 0.2 CTF (`64e8adfa`, `530820e5`, `53ce4390`) : le drapeau OBJET — creations `ti=42` ecartees
       (mot MPP hors catalogue) : combien, ou (distance aux `flag_spawn`), quand (distance aux grabs /
       drops de l'oracle) ; ses passages porte 0/1 vs l'oracle ; handle -> slot porteur ; seuil 4(a).
