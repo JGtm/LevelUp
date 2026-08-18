@@ -37,6 +37,10 @@ import (
 // LA GRAMMAIRE, lue dans le binaire (lecture seule Ghidra). Voir LOTCBIS_PHASE0.md §2.
 // -------------------------------------------------------------------------------------
 
+// LA TABLE DE LARGEURS A MIGRE DANS LE CODE DE PRODUCTION (phase 1, `components_managed_property.go`,
+// `managedPropertyPayloadBits`) : ce fichier l APPELLE au lieu d en garder une copie, de sorte que
+// les vecteurs figes testent la table PORTEE et non un double qui pourrait diverger.
+//
 // ti13ModeA / ti13ModeB : le variant `FUN_140ce59bc` lit R(4) puis dispatche sur `FUN_140ce5aa4`,
 // qui consulte l'INDEX DE CHAMP porte par le contexte (ctx+0x10) :
 //
@@ -52,35 +56,6 @@ const (
 	ti13ModeB = false
 )
 
-// ti13PayloadBits rend la largeur de la charge utile (TAG EXCLU) d'une valeur de variant.
-func ti13PayloadBits(tag int, modeA bool) int {
-	if modeA {
-		switch tag {
-		case 1: // FUN_1407ef804 : R(4) puis -1 (enumere, 0 dans le flux = « absent »)
-			return 4
-		case 2: // FUN_1406cf008 : R(1)
-			return 1
-		case 3: // FUN_1406d84b4(..., 0x18, ...) : R(24) quantifie sur [-100, +100]
-			return 24
-		case 4, 5, 6: // R(32) inline / "string-id-value" / FUN_141d0f344
-			return 32
-		}
-		return 0 // tag 0 (valeur vide) et tags 7..15 : AUCUN bit lu en mode A
-	}
-	switch tag {
-	case 7: // FUN_142ee59e0 : R(24) quantifie sur [-100, +100]
-		return 24
-	case 8, 9: // FUN_142ecf464 : R(32) ; FUN_14080dec4 "participant-string-id-value" : R(32)
-		return 32
-	case 10: // FUN_1406cf008 : R(1)
-		return 1
-	}
-	if tag >= 11 { // FUN_141fce2f0 -> FUN_1407ef804 : R(4) puis -1
-		return 4
-	}
-	return 0 // tags 0..6 : AUCUN bit lu en mode B
-}
-
 // ti13Val est une valeur de variant lue dans le flux.
 type ti13Val struct {
 	tag     int
@@ -95,7 +70,7 @@ func ti13Decode(pay []byte, bit int, modeA bool) (ti13Val, int, bool) {
 		return ti13Val{}, bit, false
 	}
 	v := ti13Val{tag: int(PeekBits(pay, bit, 4))}
-	v.payBits = ti13PayloadBits(v.tag, modeA)
+	v.payBits = managedPropertyPayloadBits(v.tag, modeA)
 	if bit+4+v.payBits > total {
 		return ti13Val{}, bit, false
 	}

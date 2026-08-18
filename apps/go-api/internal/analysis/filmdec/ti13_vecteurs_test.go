@@ -276,3 +276,141 @@ func TestTi13IdentifiantsPartagesEntreFilms(t *testing.T) {
 		}
 	}
 }
+
+// TestTi13VecteursPortDeser rejoue les MEMES octets a travers les deserialiseurs de PRODUCTION
+// (`consumeManagedObjectProperty` et `consumeManagedObjectPlayerMaskedProperty`) et controle deux
+// choses que le test precedent ne couvre pas : ce que le hook PUBLIE, et combien de bits le
+// lecteur a reellement consommes. C'est le test du port, pas de la table de largeurs.
+func TestTi13VecteursPortDeser(t *testing.T) {
+	release := LockProcessDecode()
+	defer release()
+	prev := managedPropertyHook
+	defer SetManagedPropertyHook(prev)
+
+	for _, groupe := range [][]ti13VecteurFige{ti13VecteursModeA, ti13VecteursModeB} {
+		for _, v := range groupe {
+			ti13VerifiePort(t, v)
+		}
+	}
+}
+
+// ti13VerifiePort passe un vecteur dans le deser de production et controle hook et bits lus.
+func ti13VerifiePort(t *testing.T, v ti13VecteurFige) {
+	t.Helper()
+	ref := ti13Ref(v)
+	var champ ManagedPropertyField
+	var vals []uint64
+	var vu int
+	SetManagedPropertyHook(func(f ManagedPropertyField, values []uint64) {
+		champ, vals, vu = f, append([]uint64(nil), values...), vu+1
+	})
+
+	br := NewBitReader(ti13Octets(v.raw))
+	champAttendu := ManagedPropertyPerPlayer
+	if v.modeA {
+		champAttendu = ManagedPropertyScalar
+		consumeManagedObjectProperty(br)
+	} else {
+		consumeManagedObjectPlayerMaskedProperty(br)
+	}
+
+	if vu != 1 {
+		t.Fatalf("%s : le hook a ete appele %d fois, 1 attendue", ref, vu)
+	}
+	if champ != champAttendu {
+		t.Errorf("%s : champ publie %v, attendu %v", ref, champ, champAttendu)
+	}
+	if got := br.BitPos(); got != managedPropertyTagBits+v.bits {
+		t.Errorf("%s : %d bits consommes, %d attendus", ref, got, managedPropertyTagBits+v.bits)
+	}
+	ti13VerifiePublication(t, ref, v, vals)
+}
+
+// ti13VerifiePublication controle la forme des valeurs publiees : le tag toujours, le quantum
+// seulement quand la branche lit.
+func ti13VerifiePublication(t *testing.T, ref string, v ti13VecteurFige, vals []uint64) {
+	t.Helper()
+	if len(vals) == 0 {
+		t.Fatalf("%s : le hook n a rien publie", ref)
+	}
+	if vals[0] != uint64(v.tag) {
+		t.Errorf("%s : tag publie %d, attendu %d", ref, vals[0], v.tag)
+	}
+	if v.bits == 0 {
+		if len(vals) != 1 {
+			t.Errorf("%s : branche muette, %d valeurs publiees, 1 attendue", ref, len(vals))
+		}
+		return
+	}
+	if len(vals) != 2 {
+		t.Fatalf("%s : branche lisante, %d valeurs publiees, 2 attendues", ref, len(vals))
+	}
+	if vals[1] != v.payload {
+		t.Errorf("%s : quantum publie %d, attendu %d", ref, vals[1], v.payload)
+	}
+}
+
+// TestTi13HookConsommeLesMemesBitsSansHook : poser ou retirer la sonde ne doit RIEN changer a la
+// consommation de bits, sinon un artefact construit avec sonde et un artefact construit sans
+// divergeraient en silence. Meme garde qu'au lot C (`TestZoneHooksConsommentLesMemesBitsSansHook`).
+func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
+	release := LockProcessDecode()
+	defer release()
+	prev := managedPropertyHook
+	defer SetManagedPropertyHook(prev)
+
+	cas := []struct {
+		nom   string
+		deser func(*BitReader)
+	}{
+		{compManagedObjectProperty, consumeManagedObjectProperty},
+		{compManagedObjectPlayerMaskedProperty, consumeManagedObjectPlayerMaskedProperty},
+	}
+	// Un octet de tete par tag possible : la garde doit tenir sur les seize branches, pas
+	// seulement sur celle qui domine le corpus.
+	for tag := 0; tag < 16; tag++ {
+		octets := []byte{byte(tag << 4), 0xA5, 0x3C, 0xF0, 0x0F, 0x5A}
+		for _, c := range cas {
+			SetManagedPropertyHook(nil)
+			brSans := NewBitReader(octets)
+			c.deser(brSans)
+			sans := brSans.BitPos()
+
+			SetManagedPropertyHook(func(ManagedPropertyField, []uint64) {})
+			brAvec := NewBitReader(octets)
+			c.deser(brAvec)
+			avec := brAvec.BitPos()
+
+			if sans != avec {
+				t.Fatalf("%s tag %d : %d bits sans hook contre %d avec — la sonde change la"+
+					" consommation", c.nom, tag, sans, avec)
+			}
+		}
+	}
+}
+
+// TestTi13ConvertisseursFigent fige les deux convertisseurs exportes : la dequantification des
+// tags 3 et 7 sur [-100, +100], et la convention de l'enumere ou 0 signifie « absent » (-1).
+func TestTi13ConvertisseursFigent(t *testing.T) {
+	// 2^23 est le milieu de la plage de 24 bits, donc le zero de [-100, +100].
+	if got := ManagedPropertyQuantValue(1 << 23); got < -0.001 || got > 0.001 {
+		t.Errorf("le milieu de plage doit valoir ~0, il vaut %v", got)
+	}
+	if got := ManagedPropertyQuantValue(0); got > -99.9 {
+		t.Errorf("le quantum 0 doit etre proche de -100, il vaut %v", got)
+	}
+	if got := ManagedPropertyQuantValue(1<<24 - 1); got < 99.9 {
+		t.Errorf("le quantum maximal doit etre proche de +100, il vaut %v", got)
+	}
+	for q, want := range map[uint64]int8{0: -1, 1: 0, 2: 1, 15: 14} {
+		if got := ManagedPropertyEnumValue(q); got != want {
+			t.Errorf("enumere : quantum %d -> %d, attendu %d", q, got, want)
+		}
+	}
+	// L'index de joueur se reconstitue depuis l'index du masque : i2 porte le joueur 0.
+	for i, want := range map[int]int{2: 0, 3: 1, 33: 31, 1: -1, 34: -1} {
+		if got := ManagedPropertyPlayerIndex(i); got != want {
+			t.Errorf("index de joueur : i%d -> %d, attendu %d", i, got, want)
+		}
+	}
+}
