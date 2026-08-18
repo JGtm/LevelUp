@@ -58,7 +58,9 @@ type GameChainStats struct {
 	BipedMask [worldObjectMaxComponent]int
 }
 
-// HeldWeaponSample est UNE lecture d'arme en main sur un slot de bipede, datee.
+// HeldWeaponSample est UNE lecture d arme en main sur un slot de bipede, datee. CANAL RETIRE le
+// 2026-08-18 (item 4 phase 1.0b : EntityTrace.HeldWeapon supprime, 0 appelant, canal mesure mort) :
+// ce balayage ne produit plus aucun echantillon ; le type reste pour les lecteurs de la mesure.
 //
 // POURQUOI ELLE SORT DE CE BALAYAGE ET PAS D'UN AUTRE. `World.SetHeldWeapon` est alimente
 // depuis la CHAINE de trames (`frame_records.go`), et par personne d'autre : la valeur
@@ -229,12 +231,6 @@ func (c *chainScan) attribute(
 				if comp.Index >= 0 && comp.Index < worldObjectMaxComponent {
 					st.BipedMask[comp.Index]++
 				}
-			}
-			if rec.Trace.HeldWeapon != noVariant {
-				st.HeldWeaponReads++
-				c.held = append(c.held, HeldWeaponSample{
-					Slot: rec.Slot, TimestampUS: pk.TimestampUS, Family: rec.Trace.HeldWeapon,
-				})
 			}
 			continue
 		}

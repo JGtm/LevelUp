@@ -1,3 +1,52 @@
+## [2026-08-18] Item 4 « objectifs vivants » — phase 1 items 1.0 a 1.2 : le porteur du drapeau se mesure, la publication attend le rebasage
+
+**Statut** : Complete pour 1.0, 1.1 et 1.2 ; 1.3 REPORTE par coordination (`[!]`), 1.4 couvert par
+ce CR (`[~]`). Branche `wt/objvivants1` (worktree frere), <<NB_COMMITS>> commits, aucun push.
+
+**Decision technique principale** : le film ne nomme NI la carte NI le mode — `BuildFromFilm` ne
+lit que des chunks. Publier le portage du drapeau exigeait donc un DISCRIMINANT CTF film-seul, que
+le plan ne posait pas. Le burst de capture SEUL, premiere piste, est REFUTE par la mesure (4 films
+non-CTF sur 10 en portent). Ce qui tient est l'ACCORD DE TROIS SIGNAUX, tous du film :
+bursts > 0, captures > 0, captures <= bursts (l'inegalite dans ce sens parce qu'un film TRONQUE
+sous-compte, jamais l'inverse) et vols > 0 — 15 films de mode connu, 15 verdicts justes, zero faux
+positif, corpus GELE dans un test qui tourne en CI sans film.
+
+Deuxieme decision : le PONT PAR INSTANTS DE MORT entre en production. `SlotIdentity` compare les
+totaux du film aux lignes de match et rend 0/8 sur un film tronque ; le remplacant apparie les
+instants de progression du compteur de morts au fil des morts, sans jamais toucher la base. Le
+repli ne se declenche que s'il nomme STRICTEMENT plus de slots, et les desaccords sont ECARTES.
+
+**Resultats observes** : <<RESULTATS 1.1/1.2>>
+
+**Ce qui n'est PAS fait, et pourquoi** : l'item 1.3 (champ du document, montee de schema, contrat,
+OpenAPI, `generated.ts`, goldens, temoins re-cuits) est REPORTE — une autre session fait entrer les
+schemas 12 et 13 dans `feat/v75`, et deux montees concurrentes se marcheraient dessus. Les types du
+calque existent (`replay/document_objectives_live.go`) mais SANS etiquette JSON et sans champ dans
+`ReplayDocument` : contrat, OpenAPI, `generated.ts` et goldens sont INTACTS.
+
+**Gates** : <<GATES>>
+
+**Conclusion / prochaine etape** : rebaser `wt/objvivants1` sur le nouveau `feat/v75`, puis jouer
+l'item 1.3 avec le numero de schema SUIVANT. Les six decouvertes de la phase 1 sont au plan, dont
+deux qui pesent sur l'item 1.3 : `Options.Objectives` n'est renseigne par AUCUN appelant de
+production (le champ `objectives` est vide dans tous les artefacts cuits), et les deux catalogues
+de carte ne nomment pas les modules pareil.
+
+**Fusion (superviseur, 2026-08-18)** : `wt/objvivants1` fusionnee dans `feat/v75` (`94e4e4142`) apres la
+fusion tierce `104f468c6` ; deux conflits SEMANTIQUES (pas textuels) corriges sur l'arbre fusionne :
+`slotIdentityFrom` exporte en `SlotIdentityFrom` par la fusion tierce (2 appels + tests), et le canal
+`EntityTrace.HeldWeapon` retire par 1.0(b) alors que les instruments tiers `game_entities_chain_test.go`
+(+ `game_state_measure_test.go`, `player_bridge_channels_test.go`) l'echantillonnaient : bloc retire,
+type conserve et documente « canal retire » (leurs echantillons sont desormais vides — le canal etait
+deja mesure mort par eux, 0-4 annonces par film). vet + tests verts sur l'arbre fusionne.
+**Arbitrage superviseur pour 1.3** : gate 1 non atteint a 88,1 % PARCE QUE la production PROLONGE
+jusqu'a la fin de l'axe les portages que rien ne ferme (37/37 des portages FERMES sont confirmes par
+le marqueur ; ce sont les 5 non fermes qui font le denominateur). Decision : le document publie les
+portages FERMES en `carried` et les portages NON FERMES en `carried_open` (borne haute = fin de l'axe,
+etat explicitement incertain, jamais compte comme un portage etabli), le gate 1.3 se juge sur les
+FERMES (seuil 90 % inchange) ; la simultaneite > 2 (12 sur `64e8adfa`) est portee par les seuls
+`carried_open` — a verifier a la publication, sinon incoherence publiee. Schema 14, apres rebase.
+
 ## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 2 close, le score dans le temps est publie (schema 12) et revu
 
 **Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, integration `wt/registre-film` = f4ba22e40 ; reste : E.1/E.2, A.2 web, hygiene de cloture, fusion dans feat/v75).

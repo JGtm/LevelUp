@@ -99,7 +99,7 @@ func SlotIdentityResolved(src FilmSource, lines []PlayerLine, deaths []DeathInst
 // slotIdentityResolvedFrom est le coeur pur : il travaille sur des enregistrements deja
 // decodes, donc testable sans film.
 func slotIdentityResolvedFrom(recs []StatRecord, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
-	byTotals := slotIdentityFrom(recs, lines)
+	byTotals := SlotIdentityFrom(recs, lines)
 	byDeaths := slotIdentityFromDeaths(recs, deaths)
 	st := IdentityStats{ByTotals: len(byTotals), ByDeaths: len(byDeaths), Source: IdentitySourceTotals}
 	if len(byDeaths) <= len(byTotals) {
