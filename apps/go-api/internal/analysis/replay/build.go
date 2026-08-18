@@ -97,11 +97,7 @@ type Options struct {
 	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
 	// Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
-	// Score : de quoi construire LA COURBE DE SCORE — les enregistrements d'entité du film,
-	// les lignes de match (pont d'identité) et les scores du registre (identité des camps).
-	// Entrée de DONNÉES, comme Objectives, et pour la même raison : le pont passe par la base,
-	// que ni ce paquet ni le CLI hors ligne n'ouvrent. Nil = document sans calque de score et
-	// SANS couverture de score — ce qui le distingue d'un film qui n'a rien livré.
+	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
@@ -379,20 +375,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.Attached = len(doc.Grenades)
 	grenCov.warnIfLossy("grenades")
 
-	// Les actions d'objectif arrivent DÉJÀ identifiées par xuid : leur pont passe par les
-	// lignes de match, donc par la base, que ce paquet n'ouvre pas (cf. Options.Objectives).
-	//
-	// L'ORIGINE EST RETRANCHÉE ICI, et c'est la correction du report `:123` du registre : les
-	// événements sont datés depuis le PREMIER PAQUET DU FILM, la grille de frames compte depuis
-	// le premier paquet de POSITION, et l'écart entre les deux zéros est exactement originMs.
-	clock := scoreClock{intervalMS: interval, frames: doc.FrameCount, originMS: originMSOf(doc.OriginMs, matchID)}
-	objActions, objCov := buildObjectiveActions(opt.Objectives, clock)
-	doc.Objectives, objCov = dropUnpublishedActions(objActions, doc.Tracks, objCov)
-	objCov.warnIfLossy("objectifs")
-	// LE SCORE DANS LE TEMPS, sur la même horloge et donc avec la même correction d'origine.
-	var scoreCov *ScoreCoverage
-	doc.ScoreTimeline, scoreCov = buildScoreTimeline(opt.Score, clock)
-	logScoreCoverage(matchID, scoreCov, doc.ScoreTimeline)
+	clock := replayScoreClock(&doc, interval, matchID)
+	objCov := attachObjectiveActions(&doc, opt.Objectives, clock)
+	scoreCov := attachScoreTimeline(&doc, opt.Score, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
 	// vie, fermes a la mort quand rien n'a mesure la fin (cf. equipment_episodes.go).
@@ -406,10 +391,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 			"lectures", camoNonBinary)
 	}
 
-	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil)
-	// La couverture du score voyage AVEC le calque : son absence dit « rien n'a ete fourni a
-	// lire », ce qu'aucun compteur a zero ne saurait dire.
-	doc.Coverage.Score = scoreCov
+	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil, scoreCov)
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)

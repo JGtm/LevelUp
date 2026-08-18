@@ -125,3 +125,16 @@ func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track, cov Layer
 	}
 	return out, cov
 }
+
+// attachObjectiveActions pose le calque des actions d'objectif sur le document et rend sa
+// couverture.
+//
+// LES ACTIONS ARRIVENT DEJA IDENTIFIEES PAR XUID : leur pont passe par les lignes de match, donc
+// par la base, que ce paquet n'ouvre pas (cf. Options.Objectives). L'horloge, elle, demande une
+// soustraction — celle de l'origine (cf. buildObjectiveActions et build_score.go).
+func attachObjectiveActions(doc *ReplayDocument, evs []objectiveevents.IdentifiedEvent, c scoreClock) LayerCoverage {
+	actions, cov := buildObjectiveActions(evs, c)
+	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, cov)
+	cov.warnIfLossy("objectifs")
+	return cov
+}

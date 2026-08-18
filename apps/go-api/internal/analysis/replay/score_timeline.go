@@ -1,7 +1,6 @@
 package replay
 
 import (
-	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -301,26 +300,4 @@ func countSeriesPoints(s ScoreSeries) int {
 		n += len(r.Points)
 	}
 	return n
-}
-
-// logScoreCoverage journalise ce que le calque a publie — et ce qu'il n'a pas resolu.
-func logScoreCoverage(matchID string, cov *ScoreCoverage, tl *ScoreTimeline) {
-	if cov == nil {
-		return
-	}
-	teams, players := 0, 0
-	if tl != nil {
-		teams, players = len(tl.Teams), len(tl.Players)
-	}
-	if cov.TeamIdentity == ScoreIdentityUnresolved {
-		slog.Warn("rejeu : identite des camps NON RESOLUE — courbes de score publiees sans equipe",
-			"match_id", matchID, "equipes", teams, "joueurs", players, "manches", cov.Rounds)
-	}
-	if cov.Truncated {
-		slog.Warn("rejeu : lecture des enregistrements TRONQUEE — courbes de score incompletes",
-			"match_id", matchID, "points", cov.Points)
-	}
-	slog.Info("rejeu : courbe de score",
-		"match_id", matchID, "identiteEquipes", cov.TeamIdentity, "manches", cov.Rounds,
-		"modePorte", cov.ModeSupported, "equipes", teams, "joueurs", players, "points", cov.Points)
 }
