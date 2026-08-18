@@ -143,16 +143,17 @@ export function useReplayHeatmap(
 
   // La rampe est précalculée PAR THÈME, jamais par cellule : 64 paliers indexés au dessin.
   //
-  // RAMPE DE FRÉQUENCE, ET C'EST UN CHOIX. La grandeur mesurée est une intensité NEUTRE
-  // (du temps passé, un nombre de morts), pas une performance : la rampe « à connotation »
-  // du dépôt va du rouge au vert et dirait donc « bon » du couloir le plus meurtrier. Elle
-  // est de surcroît iso-luminante en vision daltonienne, là où celle-ci reste monotone en
-  // luminance dans TOUTES les palettes (cf. heatmapColors.ts, qui tranche cette question).
+  // RAMPE D'INTENSITÉ, ET C'EST UN CHOIX (2026-08-18, A8). La grandeur mesurée est une
+  // intensité NEUTRE (du temps passé, un nombre de morts), pas une performance : la rampe
+  // « à connotation » du dépôt va du rouge au vert et dirait donc « bon » du couloir le plus
+  // meurtrier — elle reste écartée. La rampe de FRÉQUENCE, employée jusqu'ici, est
+  // mono-teinte : elle dit « plus ou moins » mais jamais « et là, beaucoup plus », et c'est
+  // exactement ce que le retour demandait de voir. Celle-ci change de teinte deux fois —
+  // bleu -> rouge -> violet — et son dernier point ne peint que le haut de l'échelle.
   const paletteVersion = useColorPaletteVersion()
   const ramp = useMemo(() => {
     void paletteVersion // re-résoudre au changement de thème (resolveToken lit le DOM)
-    const [low, high] = heatmapRampTokens('frequency').map(resolveToken)
-    return heatRamp(low ?? '', high ?? '')
+    return heatRamp(heatmapRampTokens('intensity').map(resolveToken))
   }, [paletteVersion])
 
   return { grid, ramp, mode, killsAvailable }

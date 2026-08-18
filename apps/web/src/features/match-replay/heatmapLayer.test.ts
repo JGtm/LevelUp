@@ -203,18 +203,56 @@ describe('heatIntensity', () => {
 })
 
 describe('heatRamp', () => {
-  it('rend une rampe de HEAT_RAMP_STEPS paliers, opacité croissante et bornée à 0,55', () => {
-    const ramp = heatRamp('#1E3A5F', '#60A5FA')
+  const alphasDe = (ramp: string[]) => ramp.map((c) => Number(/,([\d.]+)\)$/.exec(c)?.[1]))
+  const rgbDe = (c: string) => /rgba\((\d+),(\d+),(\d+)/.exec(c)!.slice(1).map(Number)
+
+  it('rend une rampe de HEAT_RAMP_STEPS paliers, opacité croissante et bornée à 0,75', () => {
+    const ramp = heatRamp(['#1E3A5F', '#60A5FA'])
     expect(ramp).toHaveLength(HEAT_RAMP_STEPS)
-    const alphas = ramp.map((c) => Number(/,([\d.]+)\)$/.exec(c)?.[1]))
+    const alphas = alphasDe(ramp)
     expect(alphas[0]).toBeCloseTo(0.12, 3)
-    expect(alphas[alphas.length - 1]).toBeCloseTo(0.55, 3)
+    // A8 (2026-08-18) : le plafond monte de 0,55 à 0,75 — le levier que la mesure du lot
+    // R2-V a chiffré comme cinq fois plus efficace que l'abaissement du quantile bas.
+    expect(alphas[alphas.length - 1]).toBeCloseTo(0.75, 3)
     for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThan(alphas[i - 1])
   })
 
-  it('une couleur illisible rend une rampe VIDE — pas de couleur inventée', () => {
-    expect(heatRamp('', '#60A5FA')).toEqual([])
-    expect(heatRamp('#1E3A5F', 'var(--absente)')).toEqual([])
+  /**
+   * A8 — TROIS POINTS : bleu -> rouge -> violet, le violet AUX EXTRÊMES seulement. Le test
+   * tient la règle par les couleurs des trois positions clés : début, milieu, fin.
+   */
+  it('à trois arrêts, la couleur change DEUX fois et le dernier ne peint que le haut', () => {
+    const ramp = heatRamp(['#0000ff', '#ff0000', '#800080'])
+    expect(ramp).toHaveLength(HEAT_RAMP_STEPS)
+    expect(rgbDe(ramp[0])).toEqual([0, 0, 255])
+    expect(rgbDe(ramp[HEAT_RAMP_STEPS - 1])).toEqual([128, 0, 128])
+    // Le point milieu ne tombe sur AUCUN palier (64 paliers, donc pas de rang central) : le
+    // rouge est pur entre les deux qui l'encadrent, à un cran de quantification près.
+    for (const i of [31, 32]) {
+      const [r, g, b] = rgbDe(ramp[i])
+      expect(r).toBeGreaterThan(248)
+      expect(g).toBe(0)
+      expect(b).toBeLessThan(6)
+    }
+    // Dans la moitié BASSE, le rouge ne fait que monter et le bleu que descendre : aucun
+    // retour de violet — « aux extrêmes rares » se tient.
+    for (let i = 1; i < (HEAT_RAMP_STEPS - 1) / 2; i++) {
+      const [r, , b] = rgbDe(ramp[i])
+      const [rp, , bp] = rgbDe(ramp[i - 1])
+      expect(r).toBeGreaterThanOrEqual(rp)
+      expect(b).toBeLessThanOrEqual(bp)
+    }
+    // L'opacité, elle, ne connaît pas les segments : elle monte de bout en bout.
+    const alphas = alphasDe(ramp)
+    for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThan(alphas[i - 1])
+  })
+
+  it('une couleur illisible, ou un seul arrêt, rend une rampe VIDE — pas de couleur inventée', () => {
+    expect(heatRamp(['', '#60A5FA'])).toEqual([])
+    expect(heatRamp(['#1E3A5F', 'var(--absente)'])).toEqual([])
+    expect(heatRamp(['#1E3A5F', '#ff0000', ''])).toEqual([])
+    expect(heatRamp(['#1E3A5F'])).toEqual([])
+    expect(heatRamp([])).toEqual([])
   })
 })
 

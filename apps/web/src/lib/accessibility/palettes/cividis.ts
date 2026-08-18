@@ -36,6 +36,8 @@ const CIVIDIS_LIGHTEST = '#FEE838' // t=1.00
 const SAFE_BLUE = '#0072B2'
 const SAFE_VERMILLION = '#D55E00'
 const SAFE_GREY = '#888888'
+// Reddish Purple d'Okabe-Ito : le troisième point de la rampe d'intensité (cf. 'extreme').
+const SAFE_REDDISH_PURPLE = '#CC79A7'
 // Vermillion assombri (× 0.75) — les 9 échantillons de la rampe Cividis sont tous
 // déjà affectés (perf-tiers, séries, joueurs), et le vermillion BRUT porte déjà
 // outcome-loss / team-enemy / divergent-neg. Une débâcle se superpose à une
@@ -103,6 +105,12 @@ export const cividisPalette: Palette = {
   // (outcome-draw, narrative-dominant...) — même pattern de partage que le reste
   // de cette palette à 9 échantillons pour N rôles sémantiques.
   'legendary': CIVIDIS_LIGHTEST, // #FEE838, t=1.00
+
+  // ── Extrême rare — emprunt Okabe-Ito, comme les couples binaires ──────────
+  // Les neuf échantillons Cividis sont déjà tous affectés, et Cividis ne définit
+  // aucun violet : on prolonge l'emprunt « hors rampe » déjà fait pour blue /
+  // vermillion plutôt que de voler une valeur à la rampe séquentielle.
+  'extreme': SAFE_REDDISH_PURPLE,
 
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
