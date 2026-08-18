@@ -77,6 +77,12 @@ export const defaultPalette: Palette = {
   // moins orangé — les deux ne se confondent pas côte à côte.
   'legendary': '#FBBF24', // amber-400
 
+  // ── Extrême rare — l'accent violet du sommet d'une rampe d'intensité ──────
+  // Fuchsia plutôt que purple : le violet prolonge le ROUGE vers le magenta, ce qui
+  // se lit comme « au-delà du chaud » sur la rampe d'intensité. Et il ne double pas
+  // la valeur de `bonus` (#A855F7), qui dit les assistances dans les charts.
+  'extreme': '#C026D3', // fuchsia-600
+
   // ── Badges narratifs (source : match-card-presentation.ts) ─────────────────
   // Couleurs ajustées pour atteindre WCAG AA (≥ 4.5:1) — cf. wcagContrast.test.ts
   'narrative-dominant':             '#00DC82',

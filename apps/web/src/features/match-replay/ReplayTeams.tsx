@@ -30,18 +30,10 @@ import { activeEquipmentAt } from './equipmentFx'
 import { equippedWeapons } from './equippedLogic'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import {
-  altitudeAt,
-  formatSeconds,
-  frameToMs,
-  freshness,
-  msToFrames,
-  positionAt,
-  READING_FADE,
-  trackWindow,
-} from './replayLogic'
+import { altitudeAt, msToFrames, positionAt, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
+import { RespawnRow, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
@@ -132,10 +124,18 @@ interface ReplayTeamsProps {
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
   xuidMeta?: XuidMeta
+  /**
+   * FICHE COMPACTE (B2/R2-7, option du tiroir — la validée reste le défaut). Trois choses
+   * changent, et rien d'autre : la ZONE du joueur disparaît, les armes / grenades /
+   * équipement se rangent sur UNE ligne, et seule l'arme en main garde ses munitions. Tout
+   * le reste — nom, marque, compteurs, vitalité, réapparition, éclats, verre et encadré —
+   * est identique : c'est une fiche plus courte, pas une fiche appauvrie.
+   */
+  compact?: boolean
 }
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, callouts, marks, xuidMeta,
+  doc, scoreboard, frame, locale, callouts, marks, xuidMeta, compact = false,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const groups = useMemo(
@@ -197,6 +197,7 @@ export function ReplayTeams({
                 callouts={callouts}
                 mark={(marks ?? NO_MARKS).get(p.xuid)}
                 scoreTimeline={scoreTimeline}
+                compact={compact}
               />
             ))}
           </div>
@@ -220,9 +221,11 @@ interface PlayerCardProps {
   mark?: PlayerMarkKind
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
+  /** Fiche COMPACTE (cf. ReplayTeamsProps.compact). */
+  compact?: boolean
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark, scoreTimeline }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark, scoreTimeline, compact = false }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
   // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
@@ -234,7 +237,8 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // La ZONE COURANTE, affectée en 3D (zoneAt) : les étages d'une même zone se confondent
   // en 2D — c'est le z qui départage « Fer à cheval » de sa version inférieure.
-  const zone = state.alive && state.life && callouts?.length
+  // La ZONE ne se calcule pas en fiche compacte : elle n'y est pas affichée.
+  const zone = !compact && state.alive && state.life && callouts?.length
     ? currentZone(callouts, state.life, frame)
     : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
@@ -314,7 +318,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
       </div>
       {/* La zone courante RÉSERVE sa ligne dès que la carte a des zones : vivant elle se
           remplit, mort elle reste vide — jamais une fiche qui se compacte (règle 1.1). */}
-      {(callouts?.length ?? 0) > 0 && (
+      {!compact && (callouts?.length ?? 0) > 0 && (
         <div className="flex h-3 items-center">
           {zone && (
             <span
@@ -343,7 +347,17 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
         )}
       </div>
-      <div className="flex min-h-[18px] items-center">
+      {/* ARMES ET INVENTAIRE : deux rangées réservées en fiche validée, UNE SEULE en
+          compacte. `flex-nowrap` + `overflow-hidden` y sont la règle, pas de la mise en
+          forme — sans eux la rangée unique se replierait en deux, et la fiche compacte
+          serait plus haute que la validée (leçon C1 du même jour). */}
+      <div
+        className={
+          compact
+            ? 'flex min-h-[18px] flex-nowrap items-center gap-x-2 overflow-hidden'
+            : 'flex min-h-[18px] items-center'
+        }
+      >
         {state.alive && (
           <ReplayWeaponsRow
             doc={doc}
@@ -355,9 +369,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
             locale={locale}
           />
         )}
-      </div>
-      <div className="flex min-h-4 items-center">
-        {state.alive && state.life && (
+        {compact && state.alive && state.life && (
           <ReplayInventoryRow
             doc={doc}
             slot={state.life.slot}
@@ -365,9 +377,24 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
             frame={frame}
             readingFull={readingFull}
             locale={locale}
+            compact
           />
         )}
       </div>
+      {!compact && (
+        <div className="flex min-h-4 items-center">
+          {state.alive && state.life && (
+            <ReplayInventoryRow
+              doc={doc}
+              slot={state.life.slot}
+              equipped={equipped}
+              frame={frame}
+              readingFull={readingFull}
+              locale={locale}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -386,103 +413,6 @@ function currentZone(
   if (!p) return null
   const z = altitudeAt(life.points, frame)
   return zoneAt(zones, p.x, p.y, z ?? 0)
-}
-
-/**
- * VitalityBar — bouclier ou santé, lus dans le MÊME enregistrement que la position.
- *
- * LA BARRE EST TOUJOURS PLEINE AU DÉPART D'UNE VIE : on apparaît vie et bouclier pleins
- * (règle du jeu), et le flux différentiel ne retransmet que ce qui change — l'absence de
- * mesure depuis le spawn veut dire « plein », pas « inconnu » (décision utilisateur
- * 2026-08-12, doctrine du POC). UNE PISTE VIDE reste une MESURE : bouclier brisé, vie
- * entamée. Reading null = le document ne porte pas ce champ (titre sans décodage film) :
- * la ligne n'existe pas — on n'invente pas une jauge pour une donnée qui n'existe nulle
- * part dans le document.
- */
-function VitalityBar({
-  reading,
-  fade,
-  name,
-  token,
-}: {
-  reading: { value: number; age: number } | null
-  fade: number
-  name: string
-  token: 'info' | 'success'
-}) {
-  if (!reading) return null
-  const fresh = freshness(reading.age, fade, READING_FADE)
-  return (
-    <div
-      className="h-1 overflow-hidden rounded-sm bg-muted"
-      style={{ opacity: fresh }}
-      title={name}
-      aria-label={name}
-    >
-      <div
-        className="h-full rounded-sm"
-        style={{
-          width: `${Math.max(0, Math.min(1, reading.value)) * 100}%`,
-          background: tokenCssVar(token),
-        }}
-      />
-    </div>
-  )
-}
-
-/**
- * RespawnRow — ce que la fiche d'un joueur mort a de plus utile à dire.
- *
- * LE RETOUR EST LU, PAS DÉDUIT D'UNE CONSTANTE : c'est l'image de départ de la vie suivante du
- * même joueur. Mesure publiée sur le film de référence : 90 épisodes de mort, 82 avec un retour
- * lisible, médiane 8,0 s, 66 sur 82 exactement à 7,9-8,0 s. Les 8 sans retour affichent une
- * LACUNE — jamais un délai deviné, ce serait remplacer une mesure absente par une moyenne.
- */
-function RespawnRow({
-  state,
-  doc,
-  frame,
-  locale,
-}: {
-  state: PlayerState
-  doc: ReplayDocumentReady
-  frame: number
-  locale: ReplayLocale
-}) {
-  const t = REPLAY_TEXT[locale]
-  if (state.respawnFrame < 0) {
-    // « retour ? » sans infobulle de méthode : la justification (fin de partie sans vie
-    // suivante) vit dans le commentaire de PlayerState.respawnFrame, pas à l'écran.
-    return (
-      <span className="font-mono text-[9.5px] text-muted-foreground">
-        {t.respawnUnknown}
-      </span>
-    )
-  }
-  const remainMs = frameToMs(state.respawnFrame - frame, doc)
-  // La barre montre l'AVANCEMENT DEPUIS LA MORT : la mort est datée par la fin de la vie
-  // précédente, le retour par le départ de la suivante — deux lectures, aucune constante.
-  // Quand la mort n'est pas datée (sinceDeath < 0), le compte s'affiche sans barre plutôt
-  // qu'avec un avancement faux.
-  const span = state.sinceDeath >= 0 ? state.respawnFrame - (frame - state.sinceDeath) : 0
-  const progress = span > 0 ? Math.max(0, Math.min(1, state.sinceDeath / span)) : null
-  return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] text-muted-foreground">
-      {progress !== null && (
-        <span
-          className="inline-block h-1 w-9 overflow-hidden rounded-sm bg-muted"
-          role="progressbar"
-          aria-label={t.respawnBarLabel}
-        >
-          <span
-            className="block h-full rounded-sm opacity-80"
-            style={{ width: `${(progress * 100).toFixed(1)}%`, background: tokenCssVar('success') }}
-          />
-        </span>
-      )}
-      {t.respawnIn} <b className="tabular-nums">{formatSeconds(remainMs)}</b>
-    </span>
-  )
 }
 
 // La rangée d'armes (arme en main, secondaire, indicateur de swap) vit dans

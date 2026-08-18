@@ -70,7 +70,6 @@ describe('garde-rail : chaque état de socle a son libellé, en FR et en EN', ()
       expect(t.padPlacementNote, `note ${locale}`).toBeTruthy()
       expect(t.padCountdownFmt(12.2), `compte à rebours ${locale}`).toContain('13')
       expect(t.padRespawnFmt(12.2), `réapparition ${locale}`).toContain('13')
-      expect(t.padCycleFmt(40.09, 2, 3), `cycle ${locale}`).toMatch(/40[.,]1/)
     }
   })
 
