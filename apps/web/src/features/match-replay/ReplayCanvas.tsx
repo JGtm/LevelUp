@@ -194,7 +194,7 @@ export function ReplayCanvas({
   // l'en-tête du hook.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
@@ -357,7 +357,7 @@ export function ReplayCanvas({
     view: canvasView,
     frameRef,
     enabled: showWeaponPads,
-    ink: { neutral: floorStyle.edge, labelStroke },
+    ink: { neutral: floorStyle.edge, fill: markInk.fill, outline: markInk.outline },
     locale,
     redraw,
   })

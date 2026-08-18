@@ -115,10 +115,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padPlacementNote: "Emplacement d'arme (socle au sol ou râtelier mural : non distingués)",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
-    padCycleFmt: (medianS, gaps, missing) =>
-      `Réapparition ≈ ${medianS.toFixed(1).replace('.', ',')} s` +
-      ` (${gaps} écart${gaps > 1 ? 's' : ''} mesuré${gaps > 1 ? 's' : ''},` +
-      ` ${missing} manqué${missing > 1 ? 's' : ''})`,
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -294,10 +290,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padPlacementNote: 'Weapon spot (floor pad or wall rack: not told apart)',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
-    padCycleFmt: (medianS, gaps, missing) =>
-      `Respawn ≈ ${medianS.toFixed(1)} s` +
-      ` (${gaps} gap${gaps > 1 ? 's' : ''} measured,` +
-      ` ${missing} missed)`,
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',

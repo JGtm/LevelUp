@@ -39,12 +39,15 @@ const SNIPER = '0x0A1992BC'
 const BR75 = '0x2B1824D5'
 const KEYS: Record<string, string> = { [SNIPER]: 'hinf_s7_sniper', [BR75]: 'hinf_br75' }
 
-const ICON = { width: 40, height: 16 } as unknown as CanvasImageSource
+const IMAGE = { width: 40, height: 16 } as unknown as CanvasImageSource
+/** Une vignette prête à poser : son corps et son liseré (cf. PadIcon). */
+const ICON = { fill: IMAGE, outline: IMAGE }
 
 function style(over: Partial<PadStyle> = {}): PadStyle {
   return {
     ink: 'encre',
-    labelStroke: 'contour',
+    fill: 'remplissage',
+    outline: 'contour',
     iconOf: () => ICON,
     scaleOf: (weapon) => (KEYS[weapon] === 'hinf_s7_sniper' ? 'power' : 'classic'),
     countdownLabel: (s) => `${Math.ceil(s)} s`,
@@ -149,27 +152,34 @@ describe('padRespawnSecondsAt — le compte à rebours n’existe qu’avec un c
   })
 })
 
-describe('le tracé — anneau, vignette, fantôme, compte à rebours', () => {
-  it('PLEIN : anneau PLEIN et vignette à pleine encre', () => {
+/**
+ * LE TRACÉ, VERSION UNIQUE (verdict du 2026-08-18) : un POINT qui dit l'état, la VIGNETTE
+ * dessous (remplie et cernée), le COMPTE À REBOURS dessus. L'anneau qui enfermait la vignette
+ * n'existe plus.
+ */
+describe('le tracé — point, vignette dessous, compte à rebours dessus', () => {
+  it('PLEIN : le point est REMPLI, et la vignette à pleine encre', () => {
     const ops = draw([pad()], 50)
     expect(count(ops, 'arc')).toBe(1)
-    expect(count(ops, 'drawImage')).toBe(1)
-    // `setLineDash([])` : l'anneau du socle plein n'est pas pointillé.
-    const dashes = ops.filter((o) => o.op === 'setLineDash').map((o) => o.args[0] as number[])
-    expect(dashes[0]).toEqual([])
+    expect(count(ops, 'drawImage')).toBeGreaterThan(0)
+    // Un point PLEIN se remplit : il n'est ni tracé ni pointillé.
+    expect(count(ops, 'setLineDash')).toBe(0)
+    expect(count(ops, 'stroke')).toBe(0)
+    expect(count(ops, 'fill')).toBe(1)
     expect(Math.max(...valuesOf(ops, 'globalAlpha'))).toBeGreaterThan(0.9)
   })
 
-  it('INCERTAIN : la vignette RESTE, en fantôme, et l’anneau passe au pointillé', () => {
+  it('INCERTAIN : la vignette RESTE, en fantôme, et le point passe au pointillé', () => {
     const ops = draw([pad()], 110)
-    expect(count(ops, 'drawImage'), "l'incertitude ne se masque pas").toBe(1)
+    expect(count(ops, 'drawImage'), "l'incertitude ne se masque pas").toBeGreaterThan(0)
     const dashes = ops.filter((o) => o.op === 'setLineDash').map((o) => o.args[0] as number[])
     expect(dashes[0]?.length).toBeGreaterThan(0)
-    // Aucune opacité pleine : ni l'anneau ni la vignette n'affirment une présence.
-    expect(Math.max(...valuesOf(ops, 'globalAlpha').slice(0, -1))).toBeLessThan(0.5)
+    expect(count(ops, 'fill')).toBe(0)
+    // Aucune opacité pleine : ni le point ni la vignette n'affirment une présence.
+    expect(Math.max(...valuesOf(ops, 'globalAlpha').slice(0, -1))).toBeLessThan(0.6)
   })
 
-  it('VIDE : plus de vignette, mais l’anneau reste — le lieu ne disparaît pas', () => {
+  it('VIDE : plus de vignette, mais le point reste — le lieu ne disparaît pas', () => {
     const ops = draw([pad()], 200)
     expect(count(ops, 'drawImage')).toBe(0)
     expect(count(ops, 'arc')).toBe(1)
@@ -190,7 +200,7 @@ describe('le tracé — anneau, vignette, fantôme, compte à rebours', () => {
 
   it('sans contour de thème, le compte à rebours s’écrit quand même (sans cerne)', () => {
     const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
-    const ops = draw([pad({ cycle })], 320, { labelStroke: '' })
+    const ops = draw([pad({ cycle })], 320, { outline: '' })
     expect(count(ops, 'fillText')).toBe(1)
     expect(count(ops, 'strokeText')).toBe(0)
   })
@@ -198,9 +208,23 @@ describe('le tracé — anneau, vignette, fantôme, compte à rebours', () => {
   it('SANS VIGNETTE : un glyphe neutre, jamais l’icône d’une arme voisine', () => {
     const ops = draw([pad()], 50, { iconOf: () => null })
     expect(count(ops, 'drawImage')).toBe(0)
-    // Deux arcs : l'anneau, puis le disque du glyphe.
+    // Deux arcs : le point, puis le disque du glyphe qui remplace la vignette.
     expect(count(ops, 'arc')).toBe(2)
-    expect(count(ops, 'fill')).toBe(1)
+    expect(count(ops, 'fill')).toBe(2)
+  })
+
+  /**
+   * LE LISERÉ : la même forme reposée tout autour, à l'encre du FOND. C'est lui qui détache la
+   * vignette d'un fond de carte clair comme d'un fond sombre — le « contour noir » demandé.
+   */
+  it('la vignette est CERNÉE : son liseré est reposé huit fois autour du corps', () => {
+    const ops = draw([pad()], 50)
+    expect(count(ops, 'drawImage')).toBe(9)
+  })
+
+  it('une image FINIE (non masque) se pose telle quelle, sans liseré inventé', () => {
+    const ops = draw([pad()], 50, { iconOf: () => ({ fill: IMAGE, outline: null }) })
+    expect(count(ops, 'drawImage')).toBe(1)
   })
 
   it('la TAILLE suit l’arme : une arme de puissance est plus grande qu’une classique', () => {
@@ -214,21 +238,41 @@ describe('le tracé — anneau, vignette, fantôme, compte à rebours', () => {
     expect(hauteur(puissance)).toBeGreaterThan(hauteur(classique))
   })
 
-  it('la vignette est CENTRÉE sur la position monde du socle', () => {
+  /**
+   * LA GÉOMÉTRIE DE LA VERSION UNIQUE : le POINT est à la position monde du socle, la
+   * VIGNETTE entièrement SOUS lui, le COMPTE À REBOURS entièrement AU-DESSUS. L'ordre
+   * vertical EST la règle du verdict.
+   */
+  it('point au socle, et compte à rebours DESSUS', () => {
+    const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
+    const ops = draw([pad({ x: 2, y: 8, cycle })], 320)
+    const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    const [px, py, rayon] = ops.find((o) => o.op === 'arc')!.args as number[]
+    expect(px).toBeCloseTo(c.x, 6)
+    expect(py).toBeCloseTo(c.y, 6)
+    const [, , ty] = ops.find((o) => o.op === 'fillText')!.args as number[]
+    expect(ty).toBeLessThan(c.y - rayon)
+  })
+
+  it('la vignette est entièrement SOUS le point, jamais centrée dessus', () => {
     const ops = draw([pad({ x: 2, y: 8 })], 50)
     const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
-    const [, dx, dy, w, h] = ops.find((o) => o.op === 'drawImage')!.args as number[]
+    const rayon = ops.find((o) => o.op === 'arc')!.args[2] as number
+    // Le CORPS est le dernier posé (le liseré vient d'abord, tout autour).
+    const images = ops.filter((o) => o.op === 'drawImage')
+    const [, dx, dy, w] = images[images.length - 1].args as number[]
     expect(dx + w / 2).toBeCloseTo(c.x, 6)
-    expect(dy + h / 2).toBeCloseTo(c.y, 6)
+    expect(dy).toBeGreaterThan(c.y + rayon)
   })
 
   it('aucune COULEUR n’est écrite ici : les encres viennent toutes de l’appelant', () => {
-    const ops = draw([pad()], 50)
+    const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
+    const ops = draw([pad({ cycle })], 320)
     const encres = ops
       .filter((o) => o.op === 'set fillStyle' || o.op === 'set strokeStyle')
       .map((o) => o.args[0])
     expect(encres.length).toBeGreaterThan(0)
-    for (const e of encres) expect(['encre', 'contour']).toContain(e)
+    for (const e of encres) expect(['encre', 'remplissage', 'contour']).toContain(e)
   })
 
   it('aucun socle : rien n’est dessiné, pas même un cadre vide (témoin 000d5950)', () => {

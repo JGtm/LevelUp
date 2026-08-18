@@ -88,6 +88,14 @@ export interface ReplayInks {
   self: string
   /** Arc du mur de protection : un token FIXE, plus la couleur d'équipe (cf. WALL_TOKEN). */
   wall: string
+  /**
+   * LE MARQUAGE DES SOCLES : ce qui est REMPLI, et ce qui le CERNE (verdict du 2026-08-18 —
+   * « icône blanche remplie, contour noir »). Ce sont les deux encres du THÈME, pas des
+   * tokens de données : en sombre le remplissage est clair et le liseré sombre, en clair
+   * l'inverse. La demande se lit donc telle quelle sur les deux fonds de carte, ce qu'un
+   * blanc et un noir écrits en dur n'auraient pas fait.
+   */
+  mark: { fill: string; outline: string }
 }
 
 /**
@@ -113,6 +121,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       labelStroke: readInk('--replay-label-stroke'),
       self: resolveToken(SELF_TOKEN),
       wall: resolveToken(WALL_TOKEN),
+      mark: { fill: readInk('--foreground'), outline: readInk('--background') },
     }
   }, [paletteVersion])
 }
