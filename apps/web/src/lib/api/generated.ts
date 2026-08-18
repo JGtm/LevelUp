@@ -5379,6 +5379,7 @@ export interface components {
             verdict?: {
                 [key: string]: string;
             };
+            zones?: components["schemas"]["ZonesCoverage"];
         };
         CreatePlayerProfileResponse: {
             db_created: boolean;
@@ -9335,6 +9336,7 @@ export interface components {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
             weaponPads?: components["schemas"]["WeaponPad"][] | null;
+            zoneStates?: components["schemas"]["ZoneState"][] | null;
         };
         ResolveResult: {
             action: string;
@@ -11234,6 +11236,52 @@ export interface components {
             recorded_at: string;
             /** Format: int64 */
             xp_total: number;
+        };
+        ZoneSpan: {
+            active: boolean;
+            /** Format: int64 */
+            owner: number | null;
+            /** Format: float */
+            progress?: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        ZoneState: {
+            /** Format: int32 */
+            key?: number;
+            spans: components["schemas"]["ZoneSpan"][] | null;
+            /** Format: int64 */
+            zoneRef: number;
+        };
+        ZonesCoverage: {
+            /** Format: int64 */
+            attributed: number;
+            /** Format: int64 */
+            captures: number;
+            /** Format: int64 */
+            catalog: number;
+            /** Format: int64 */
+            hillPeriods: number;
+            method: string;
+            /** Format: int64 */
+            ownerAgreed: number;
+            /** Format: int64 */
+            ownerChecked: number;
+            /** Format: int64 */
+            ownerUnpaired: number;
+            /** Format: int64 */
+            paired: number;
+            roles?: string;
+            /** Format: int64 */
+            slots: number;
+            /** Format: int64 */
+            spans: number;
+            /** Format: int64 */
+            unknownOwner: number;
+            /** Format: int64 */
+            unpaired: number;
         };
     };
     responses: {

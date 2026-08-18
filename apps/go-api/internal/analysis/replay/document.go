@@ -126,7 +126,11 @@ package replay
 // où l'objet repose. Un artefact v14 se lit donc « à re-cuire », pas « à jour ». La piste de
 // l'objet, elle, n'est PAS publiée : son contrôle de provenance l'a refusée. Chronique complète,
 // mesures et refus : document_objectives_live.go.
-const SchemaVersion = 15
+//
+// v16 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) : `zoneStates` — L'ETAT
+// DE CHAQUE ZONE (qui la tient, depuis quand, jusqu'a quel niveau de jauge), et `coverage.zones`.
+// Chronique, sources et refus : document_zones.go.
+const SchemaVersion = 16
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -306,6 +310,11 @@ type ReplayDocument struct {
 	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
 	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
+	// ZoneStates est L'ÉTAT DE CHAQUE ZONE du mode, en intervalles de propriété (forme, sources et
+	// refus : document_zones.go). Chaque entrée pointe une zone de `mapObjectives.zones` par son
+	// index. Absente hors des modes à zones, et quand l'appelant n'a fourni aucun catalogue de
+	// carte — `coverage.zones` distingue les deux silences.
+	ZoneStates []ZoneState `json:"zoneStates,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//

@@ -1,0 +1,25 @@
+# Lot C-bis phase 2b — RELEVE DES GATES (2026-08-18, branche wt/zones-ti13-p2b)
+#
+# Verdict = les lignes EXIT_*=0 ci-dessous. Chaque commande a tourne en AVANT-PLAN, sortie
+# redirigee vers un fichier (jamais un pipe tronque : un `go test` coupe laisse un binaire
+# orphelin qui vole la machine — incident du 2026-08-18, phase 2a).
+#
+# Go (depuis apps/go-api, GOCACHE dans le worktree)
+EXIT_BUILD=0            # CGO_ENABLED=1 go build ./...
+EXIT_VET=0              # CGO_ENABLED=1 go vet ./...
+EXIT_TEST_ANALYSIS=0    # CGO_ENABLED=0 go test -count=1 ./internal/analysis/...
+EXIT_TEST_CHAINE=0      # CGO_ENABLED=1 go test -count=1 ./internal/replaybuild/ ./contracttest/
+EXIT_LINT=0             # golangci-lint run --new-from-merge-base=origin/main ./...  (0 issues)
+#
+# Web (depuis apps/web ; node_modules installe par npm ci, absent du worktree au depart)
+EXIT_NPM_CI=0
+EXIT_GENERATE_TYPES=0   # npm run generate-types (apres make openapi-gen)
+EXIT_TSC=0              # npx tsc -b --force, apres purge de node_modules/.tmp
+EXIT_VITEST=0           # npx vitest run src/features/match-replay src/lib — 1727/1727
+EXIT_ESLINT=0           # npm run lint — 19 avertissements (baseline), 0 erreur
+EXIT_CROSSFEATURE=0     # node tools/lint-cross-feature-imports.mjs (depuis la RACINE) — 7 <= 7
+#
+# Temoins sur film reel (un film par processus, avant-plan, garde ZONE_FILM)
+EXIT_TEMOIN_7344d24f=0  # Strongholds Vagabond — controle captures -> proprietaire 57/59 = 96,6 %
+EXIT_TEMOIN_696a9d7c=0  # Strongholds Vagabond — 64/66 = 97,0 %
+EXIT_TEMOIN_01e1f945=0  # KOTH Catalyst — 20 periodes actives, 4 975/5 343 frames = 93,1 %

@@ -35,6 +35,7 @@ import (
 	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -69,6 +70,10 @@ type Builder struct {
 	// booléen distingue « pas encore chargé » de « chargement tenté et échoué ».
 	objectives      *replay.MapObjectivesCatalog
 	objectivesTried bool
+	// roles / rolesTried : la table de roles d objectif du titre, d ou sortent les zones du
+	// calque d ETAT DES ZONES (cf. zones.go). Meme cache, meme raison que ci-dessus.
+	roles      *mappings.ObjectiveRoleSet
+	rolesTried bool
 }
 
 // Outcome décrit un artefact construit.
@@ -168,6 +173,10 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
 	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
+	// Les ZONES du mode viennent du même catalogue de carte, dans l'ORDRE OÙ LE SERVICE LES SERT :
+	// c'est cet ordre qui donne son sens à `zoneStates[].zoneRef` (cf. zones.go). Aucune zone =
+	// aucun balayage de `ti=13`, donc aucun coût sur les modes qui n'en ont pas.
+	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName)
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
@@ -177,7 +186,9 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
-		MapQuant:        &entry,
+		Zone: replay.ZoneInput{Zones: zones, Roles: zoneRoles, TeamByXUID: teamByXUID(facts),
+			Hill: isHillVariant(facts.GameVariantName)},
+		MapQuant: &entry,
 	})
 	if err != nil {
 		return Outcome{}, fmt.Errorf("décodage du film %s: %w", matchID, err)

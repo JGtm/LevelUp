@@ -105,6 +105,9 @@ var replaySchemas = []struct {
 	{"FlagCarry", replay.FlagCarry{}},
 	{"FlagSpan", replay.FlagSpan{}},
 	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
+	{"ZoneState", replay.ZoneState{}},
+	{"ZoneSpan", replay.ZoneSpan{}},
+	{"ZonesCoverage", replay.ZonesCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -257,9 +260,32 @@ var replaySchemas = []struct {
 //	                      film CTF sans aucun portage publie rendent tous deux un calque vide, et
 //	                      seuls ces compteurs les distinguent.
 //
-// Les dix fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	35 -> 36  2026-08-18  `zoneStates` (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot C-bis phase 2b) :
+//	                      L ETAT DE CHAQUE ZONE du mode, en intervalles de propriete sur l axe de
+//	                      frames du rejeu. Un champ de document, deux schemas de plus
+//	                      (`ZoneState`, `ZoneSpan`) et un bloc de couverture (`ZonesCoverage`).
+//	                      Source, toute dans le film : l archetype `ti=13`
+//	                      (`managed-object-property-*`), dont UN SLOT EST UNE PROPRIETE RESEAU
+//	                      NOMMEE et non une zone — la JAUGE de capture (tag 3) et le PROPRIETAIRE
+//	                      (tag 4) vivent sur des slots DISJOINTS. L appariement slot -> zone se
+//	                      refait A CHAQUE MATCH, par la coincidence d un sommet de jauge avec une
+//	                      capture nommee attribuee geometriquement : coherence 93,1 % et 98,4 %
+//	                      (seuil 90 %) contre des temoins a 41-48 % (permutation des slots) et
+//	                      51-57 % (sommet decale de 20 s). La VALEUR du tag 4 est l index d equipe
+//	                      du capteur a 100,0 % (48/48) et 91,1 % (51/56) hors emissions neutres.
+//	                      L EQUIPE vient du ROSTER, jamais du film : `game-engine-team-mapping`
+//	                      lit ses bits sans les publier.
+//	                      `zoneRef` est un INDEX dans `mapObjectives.zones` — le calque statique
+//	                      servi a la requete —, et `coverage.zones.roles` publie les roles qui
+//	                      composent cette liste pour que la jointure se VERIFIE au lieu d etre
+//	                      supposee. `Coverage` gagne son bloc `zones` : un film d un autre mode,
+//	                      un film a zones dont l appariement echoue et une carte hors du
+//	                      catalogue rendent tous trois un calque vide, et seuls ces compteurs les
+//	                      distinguent.
+//
+// Les onze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 35
+const wantReplayDocumentFields = 36
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
