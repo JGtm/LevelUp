@@ -228,30 +228,33 @@ export interface ObjectivePulse {
  * les cartes mesurées. Une action sans position relue est ÉCARTÉE — un pulse posé au
  * hasard désignerait la mauvaise zone.
  *
- * L'ORIGINE DE L'ARTEFACT SE RETRANCHE ICI — défaut mesuré le 2026-08-14 par le lot
- * containment. `a.t` vient du Go (`buildObjectiveActions` : `TimeMS / interval`) et
- * `TimeMS` compte depuis le PREMIER PAQUET DU FILM, alors qu'une frame de l'artefact
- * compte depuis le PREMIER PAQUET DE POSITION. L'écart entre ces deux zéros est
- * exactement `doc.originMs` (schéma v4) — mesuré de 3,6 s à 50,8 s selon le match. Sans
- * cette soustraction, le pulse s'allumait d'autant TROP TARD, et l'appariement lisait la
- * position de l'auteur au mauvais instant : il pouvait donc désigner le mauvais élément.
- * Le fil des éliminations applique la même correction (`killFeedLogic`, `replayMs =
- * event_time_ms + t0Ms − originMs`) ; ici il n'y a pas de `t0Ms` — les actions ne
- * viennent pas de la Match View mais du film, donc seule l'origine se retranche.
+ * `a.t` EST DÉJÀ UNE FRAME DU DOCUMENT — LE CLIENT NE RETRANCHE RIEN. C'est le contrat du
+ * champ, écrit côté Go : `ObjectiveAction.T` est « l'index de frame, sur le même axe que
+ * Point.T et Shot.T » (`analysis/replay/objectives.go`), et c'est `buildObjectiveActions`
+ * qui pose l'instant sur la grille via `scoreClock.frameOf` — laquelle RETRANCHE l'origine
+ * (`build_score.go`, `replayScoreClock` : `originMS = originMSOf(doc.OriginMs, …)`).
  *
- * La correction est faite CÔTÉ CLIENT, comme pour le fil : elle ne change pas le contrat
- * de l'artefact et n'oblige à recuire aucun document déjà produit.
+ * CETTE FONCTION LA RETRANCHAIT UNE SECONDE FOIS (revue R1, 2026-08-18). La correction avait
+ * été faite côté client le 2026-08-14 (lot containment), puis côté Go au lot A phase 1
+ * (`63b90583c`, report `:123` du registre) sans que celle-ci soit retirée. Le double décalage
+ * allumait les pulses `originMs` TROP TÔT — de 3,6 s à 50,8 s selon le match — et JETAIT
+ * purement et simplement les actions dont la frame était inférieure à cette origine.
+ *
+ * Le fil des éliminations, lui, garde sa soustraction (`killFeedLogic`, `replayMs =
+ * event_time_ms + t0Ms − originMs`) et ce n'est pas une incohérence : ses instants viennent
+ * de la Match View, pas du film — personne ne les a recalés avant lui.
  */
 export function buildObjectivePulses(
   doc: ReplayDocumentReady,
   elements: ObjectiveElementReady[],
 ): ObjectivePulse[] {
   if (elements.length === 0 || doc.objectives.length === 0 || doc.tracks.length === 0) return []
-  // L'ORIGINE DOIT ÊTRE CONNUE POUR QUE LA SOUSTRACTION AIT UN SENS (P2 de la revue du lot A
-  // phase 1). Quand elle n'est ni résolue ni publiée, `originMs ?? 0` ne recale rien : les
-  // pulses s'allumeraient au mauvais instant — de 3,6 s à 50,8 s trop tôt selon le match — et
-  // l'appariement lirait la position de l'auteur ailleurs. Un calque muet vaut mieux qu'un
-  // calque faux, et c'est la MÊME règle qui masque le score (cf. filmClockTrusted).
+  // L'ORIGINE DOIT ÊTRE CONNUE POUR QUE `a.t` VEUILLE DIRE QUELQUE CHOSE (P2 de la revue du
+  // lot A phase 1). Le recalage est fait côté Go, mais avec ZÉRO quand l'origine n'a pas pu
+  // être établie (`replayScoreClock` → `originMSOf`) : les frames publiées sont alors décalées
+  // de 3,6 s à 50,8 s selon le match, et l'appariement lirait la position de l'auteur ailleurs.
+  // `coverage.originResolved` le dit, et un calque muet vaut mieux qu'un calque faux — c'est la
+  // MÊME règle qui masque le score (cf. filmClockTrusted).
   if (!filmClockTrusted(doc)) return []
   const deathFrames = Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))
   const livesByXuid = new Map<string, ReplayTrackReady[]>()
@@ -261,13 +264,11 @@ export function buildObjectivePulses(
     if (list) list.push(t)
     else livesByXuid.set(t.xuid, [t])
   }
-  // Frames à retrancher : l'origine de l'artefact, en frames (cf. en-tête). Un document
-  // sans `originMs` (schéma antérieur à v4) donne 0 — l'ancien comportement, à l'identique.
-  const originFrames = Math.round(msToFrames(doc.originMs ?? 0, doc))
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
-    const frame = a.t - originFrames
-    if (frame < 0) continue // action antérieure à la première position connue : rien à montrer
+    // AUCUN RECALAGE ICI : `a.t` est déjà une frame du document (cf. en-tête). L'action que
+    // la grille ne portait pas a été comptée hors fenêtre côté Go et n'est pas publiée.
+    const frame = a.t
     const pos = posOfPlayerAt(livesByXuid.get(a.xuid), frame, deathFrames)
     if (!pos) continue
     let best: ObjectiveElementReady | null = null
