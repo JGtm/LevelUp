@@ -127,9 +127,17 @@ const SELF_RING_GAP_2 = 2.4
 const SELF_HALO_PAD = 2.2
 const SELF_HALO_ALPHA = 0.22
 
-/** Croix de mort : demi-taille FIXE qui s'estompe (elle ne grandit plus, cf. §1bis). */
-const DEATH_RADIUS = 5
-const DEATH_WIDTH = 1.6
+/**
+ * CROIX DE MORT — demi-taille FIXE qui s'estompe (elle ne grandit plus, cf. §1bis).
+ *
+ * PLUS PETITE ET PLUS ÉPAISSE depuis le 2026-08-18 (A1) : « les croix de mort plus petites,
+ * plus épaisses, toujours rouges, et qui persistent plus longtemps ». À 5 px de demi-taille
+ * pour 1,6 px de trait, la croix avait l'emprise d'un marqueur vivant et le poids d'un trait
+ * de traînée — on la voyait large et pâle. À 3,6 pour 2,6 elle occupe moitié moins de surface
+ * et frappe deux fois plus : c'est une marque, pas un joueur.
+ */
+const DEATH_RADIUS = 3.6
+const DEATH_WIDTH = 2.6
 const DEATH_ALPHA = 0.9
 const SPAWN_RADIUS = 2
 const SPAWN_GROWTH = 12
@@ -164,6 +172,13 @@ export interface MarkerStyle {
   showTrail: boolean
   /** Encre du DOUBLE CONTOUR et du halo du joueur de la page (token `success`, cf. useReplayInks). */
   selfInk: string
+  /**
+   * Encre de la CROIX DE MORT — token `destructive`, la même que les effets de mort du
+   * calque d'événements (cf. useReplayInks). « Toujours rouges » (A1, 2026-08-18) : une mort
+   * ne dit plus le camp de celui qui meurt, elle dit qu'on est mort. Le camp reste porté par
+   * la traînée qui vient de s'éteindre, par la fiche et par le fil.
+   */
+  deathInk: string
   /** Encre du CONTOUR des noms — sombre dans les deux thèmes (cf. replayLabels.ts). */
   labelStroke: string
 }
@@ -198,7 +213,9 @@ export function drawTracksLayer(
     const color = style.colorOfSlot(track.slot)
     if (!color) return
     if (!isAliveAt(track, style.frame)) {
-      drawDeathMark(ctx, track, view, style, color)
+      // La couleur du slot reste la PORTE (une vie sans couleur ne se dessine pas), mais la
+      // croix ne la porte plus : elle est rouge (cf. `deathInk`).
+      drawDeathMark(ctx, track, view, style)
       return
     }
     drawLivingTrack(ctx, track, view, style, color)
@@ -215,7 +232,6 @@ function drawDeathMark(
   track: ReplayTrackReady,
   view: CanvasView,
   style: MarkerStyle,
-  color: string,
 ): void {
   const age = style.frame - trackWindow(track).end
   if (age < 0 || age > style.timing.death) return
@@ -226,7 +242,8 @@ function drawDeathMark(
   // LA CROIX NE GRANDIT PAS (planche du 2026-08-16) : une croix qui enfle attire l'œil sur un
   // événement déjà passé. Elle garde sa taille et s'efface.
   const r = DEATH_RADIUS * style.k
-  ctx.strokeStyle = color
+  // TOUJOURS ROUGE (A1, 2026-08-18) : la couleur d'équipe du défunt ne passe plus ici.
+  ctx.strokeStyle = style.deathInk
   ctx.globalAlpha = DEATH_ALPHA * fade
   ctx.lineWidth = DEATH_WIDTH * style.k
   ctx.beginPath()
@@ -357,8 +374,13 @@ function drawSpawnRing(
  * L'ÉTAGE SE LIT PAR DES ANNEAUX CONCENTRIQUES, jamais par un décalage du marqueur : en vue de
  * dessus, déplacer un point vers le haut de l'écran voudrait dire « plus au nord » et
  * fausserait la position. L'altitude est un palier, pas un dégradé — l'histogramme des z montre
- * des pics nets, la carte a trois niveaux de jeu. L'anneau est tracé à l'ENCRE DU THÈME et non
- * à la couleur du joueur : la couleur dit le camp, elle ne doit pas aussi dire la hauteur.
+ * des pics nets, la carte a trois niveaux de jeu.
+ *
+ * L'ANNEAU D'ÉTAGE PREND LA COULEUR DU PION depuis le 2026-08-18 (A1 : « le cercle d'altitude à
+ * la couleur du pion du joueur »). Il était à l'encre du thème, pour ne pas faire dire deux
+ * choses à la couleur ; à l'écran, cette neutralité le détachait de son point et, sur une carte
+ * à trois étages peuplée, on lisait des anneaux orphelins. La couleur ne dit toujours que le
+ * camp — c'est le NOMBRE d'anneaux qui dit la hauteur, et lui seul.
  *
  * LE LOSANGE A LE MÊME RAYON CIRCONSCRIT QUE LE DISQUE : la forme change, la taille non —
  * sinon un ami paraîtrait plus proche ou plus gros que ses coéquipiers.
@@ -376,7 +398,7 @@ function drawMarker(
   // LE HALO EN PREMIER, sous tout le reste : c'est une lueur, pas un trait.
   if (shape === 'ring') drawSelfHalo(ctx, c, style, fl)
 
-  ctx.strokeStyle = style.ink
+  ctx.strokeStyle = color
   ctx.lineWidth = RING_WIDTH * style.k
   for (let r = 1; r <= fl; r++) {
     ctx.globalAlpha = RING_ALPHA - RING_ALPHA_DECAY * (r - 1)
