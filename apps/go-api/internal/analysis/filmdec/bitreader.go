@@ -66,3 +66,19 @@ func (b *BitReader) ReadSignedVarWidth() int32 {
 	}
 	return int32(v)
 }
+
+// ParseOptionalValue mirrors FUN_142ed9298: a 1-bit present flag followed, only
+// when the flag is zero, by a signed variable-width int. A set flag means the
+// value is absent and yields 0.
+//
+// (Moved here on 2026-08-18 from statborg.go, which was DELETED with the statborg
+// record decoder it held — D1 of PLAN_EXPLOITATION_REGISTRE_FILM: that decoder read
+// the chain at a frame offset the measurement disproved, 841/841 wrong readings, and
+// the score now comes from analysis/objectiveevents. This primitive is unrelated to
+// that chain and belongs next to the other bit-level readers.)
+func ParseOptionalValue(br *BitReader) int32 {
+	if br.ReadBit() {
+		return 0
+	}
+	return br.ReadSignedVarWidth()
+}
