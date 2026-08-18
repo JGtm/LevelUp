@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -127,7 +128,13 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	if err != nil {
 		return "", fmt.Errorf("catalogue de titre indisponible : %w", err)
 	}
-	out, err := builder.BuildMatch(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID))
+	// L'OUVRIER N'A PAS DE BASE, ET LE PAYLOAD DE JOB N'EN PORTE PAS ENCORE LES FAITS : son
+	// artefact sort donc sans compteurs de joueur ni actions d'objectif, et avec l'identité des
+	// camps résolue au mieux par les frags. C'est une dégradation ANNONCÉE, pas un oubli — la
+	// porter dans le payload touche le schéma de la file, hors du périmètre du lot A.
+	slog.WarnContext(ctx, "replay-worker: aucun fait de match disponible — artefact sans compteurs "+
+		"de joueur ni actions d'objectif", "job_id", job.JobID, "match_id", p.MatchID)
+	out, err := builder.BuildMatch(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), port.MatchFacts{})
 	if err != nil {
 		return "", err
 	}

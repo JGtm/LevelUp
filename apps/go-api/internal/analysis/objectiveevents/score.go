@@ -38,83 +38,92 @@ type ScorePoint struct {
 	Value int64
 }
 
-// ScoreCurve decode la progression du score de MODE : une entree par changement, par
-// entite, horodatee sur l'horloge du film.
+// StatComponent designe un emplacement de statistique repliquee : l'index du composant, le
+// cote (A ou B) de sa paire de valeurs, et la stricte croissance attendue de sa suite.
 //
-// En Strongholds le composant n'est emis que par les 2 entites d'equipe ; en CTF les 8
-// entites de joueur l'emettent aussi, ou il vaut leur compte de captures. Ce que porte le
-// composant depend donc du mode — c'est une mesure, pas une supposition.
-func ScoreCurve(src FilmSource) []ScorePoint {
-	return keepMonotoneBySlot(collectComponent(StatRecords(src), modeScoreComp, false))
+// C'est la meme adresse que `statSlotKey`, EXPORTEE pour que l'assembleur du rejeu demande
+// une serie sans avoir a connaitre la grammaire du statborg. Aucun de ces emplacements n'est
+// suppose : chacun est mesure (cf. l'en-tete de ce fichier et celui de slotidentity.go).
+type StatComponent struct {
+	// Comp est l'index du composant dans l'archetype.
+	Comp int
+	// SideB choisit la valeur B de la paire plutot que la valeur A.
+	SideB bool
+	// Strict dit si la suite retenue doit etre STRICTEMENT croissante. La distinction n'est
+	// pas cosmetique (cf. [longestRun]) : le score de MODE ne repete jamais une valeur (une
+	// egalite serait un doublon a jeter), alors qu'un compteur de recompense est seulement
+	// NON DECROISSANT — un composant porte deux valeurs et il est reemis des que l'UNE des
+	// deux bouge, donc la meme valeur revient legitimement.
+	Strict bool
 }
 
-// PersonalScoreCurve decode la progression du score PERSONNEL de chaque entite.
-//
-// Son interet n'est pas le chiffre mais ses INCREMENTS : le jeu attribue un nombre de
-// points propre a chaque action, et le depot en a deja le catalogue nomme — la table
-// `personal_score_awards` (colonnes `award_name`, `award_category`, `award_score`) donne
-// killed_player = 100, kill_assist = 50, flag_captured = 300, flag_returned = 25,
-// sensor_assist = 10... Les increments lus ici se rapprochent donc de noms existants.
-//
-// ATTENTION — le score personnel N'EST PAS MONOTONE : `self_destruction` et
-// `betrayed_player` valent **-100**. Aucun filtre de monotonie n'est applique ici (il
-// supprimerait ces evenements), contrairement a [ScoreCurve] ou le score de mode, lui, ne
-// recule jamais. Le prix a payer est mesure et faible : 3 ancrages parasites pour 377
-// lectures reelles (0,8 %) sur le film de reference.
-//
-// Autre limite mesuree : les increments ne sont pas atomiques. Plusieurs actions tombant
-// dans le meme paquet se somment (125 = 100 + 25 observe en CTF). Un increment ne se lit
-// donc pas comme UNE action.
-func PersonalScoreCurve(src FilmSource) []ScorePoint {
-	return collectComponent(StatRecords(src), personalScoreComp, true)
+// Les emplacements que le rejeu publie.
+var (
+	// ModeScoreComponent : le score de MODE (comp 0, valeur A) — celui que l'ECRAN affiche,
+	// et qui n'est pas toujours celui de l'API (phase 0-ter du lot A : Strongholds compte des
+	// ticks, KOTH des secondes de colline).
+	ModeScoreComponent = StatComponent{Comp: modeScoreComp, Strict: true}
+	// PersonalScoreComponent : le score PERSONNEL (comp 1, valeur B).
+	PersonalScoreComponent = StatComponent{Comp: personalScoreComp, SideB: true}
+	// KillsComponent, DeathsComponent, AssistsComponent : les trois compteurs de base,
+	// confirmes nominativement contre `match_participants` (cf. slotidentity.go).
+	KillsComponent   = StatComponent{Comp: coreKillsComp}
+	DeathsComponent  = StatComponent{Comp: coreKillsComp, SideB: true}
+	AssistsComponent = StatComponent{Comp: coreAssistsComp}
+)
+
+// key traduit l'emplacement exporte en cle interne.
+func (c StatComponent) key() statSlotKey {
+	side := sideA
+	if c.SideB {
+		side = sideB
+	}
+	return statSlotKey{Comp: c.Comp, Side: side}
 }
 
-// collectComponent extrait un composant des enregistrements ; useB choisit la valeur B
-// plutot que la valeur A.
-func collectComponent(recs []StatRecord, comp int, useB bool) []ScorePoint {
-	var out []ScorePoint
-	for _, r := range recs {
-		v, ok := r.Comps[comp]
-		if !ok {
-			continue
+// SeriesByRound rend, pour un emplacement, les emissions de chaque slot MANCHE PAR MANCHE :
+// valeurs propres a la manche, NON cumulees. C'est la forme que publie l'artefact de rejeu,
+// ou chaque manche est une courbe distincte.
+//
+// teams choisit les slots d'equipe (6 et 8) plutot que ceux de joueur (10..24 pairs). Les
+// manches FANTOMES — celles que [RealRounds] refuse — sont ecartees : les cumuler ferait
+// exploser les compteurs (mesure : le score d'equipe d'un CTF passait de 1 a 2 104).
+func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[int][]ScorePoint {
+	real := RealRounds(recs)
+	out := map[int]map[int][]ScorePoint{}
+	for slot, byRound := range rawSeriesByRound(recs, c.key(), teams) {
+		for round, pts := range byRound {
+			if !real[round] {
+				continue
+			}
+			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+			kept := longestRun(pts, c.Strict)
+			if len(kept) == 0 {
+				continue
+			}
+			if out[slot] == nil {
+				out[slot] = map[int][]ScorePoint{}
+			}
+			out[slot][round] = kept
 		}
-		val := v.A
-		if useB {
-			val = v.B
-		}
-		out = append(out, ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 	}
 	return out
 }
 
-// keepMonotoneBySlot ne garde, par entite, que la plus longue suite d'emissions
-// strictement croissante — un score ne recule pas.
+// SeriesTotal rend, pour un emplacement, la serie CUMULEE sur le match de chaque slot :
+// chaque manche est decalee du total des precedentes, la suite est donc croissante de bout en
+// bout et son dernier point vaut le total du match.
 //
-// Le critere est la LONGUEUR, et c'est ce qui le rend sans parametre : les emissions
-// reelles ecrasent en nombre les rares ancrages parasites (283 contre 2 sur le film de
-// reference). Un simple filtre glouton « garder ce qui depasse le dernier retenu » a le
-// defaut inverse : un parasite a valeur enorme arrivant en PREMIER masque toute la vraie
-// courbe derriere lui. Mesure sur les 951 films du cache, a contraintes egales : 10 films
-// a valeur aberrante en glouton, **5** avec ce critere.
-func keepMonotoneBySlot(pts []ScorePoint) []ScorePoint {
-	bySlot := map[int][]ScorePoint{}
-	var order []int
-	for _, p := range pts {
-		if _, seen := bySlot[p.Slot]; !seen {
-			order = append(order, p.Slot)
-		}
-		bySlot[p.Slot] = append(bySlot[p.Slot], p)
+// C'est le pendant de [SeriesByRound], et les deux sont necessaires : la manche est ce que
+// l'ecran affiche pendant qu'elle se joue, le total est ce que le match retient.
+func SeriesTotal(recs []StatRecord, c StatComponent, teams bool) map[int][]ScorePoint {
+	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams), RealRounds(recs))
+	if !c.Strict {
+		return out
 	}
-	out := pts[:0:0]
-	for _, slot := range order {
-		out = append(out, longestRun(bySlot[slot], true)...)
+	for slot, pts := range out {
+		out[slot] = longestRun(pts, true)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimeMS != out[j].TimeMS {
-			return out[i].TimeMS < out[j].TimeMS
-		}
-		return out[i].Slot < out[j].Slot
-	})
 	return out
 }
 

@@ -1,0 +1,14 @@
+{
+  "gameVariantName": "Slayer:Arena Super Fiesta",
+  "teamScores": [43, 50],
+  "players": [
+    {"xuid":"2533274823110022","kills":8,"deaths":14,"assists":1,"teamId":0},
+    {"xuid":"2533274826120416","kills":8,"deaths":14,"assists":1,"teamId":0},
+    {"xuid":"2533274980284321","kills":14,"deaths":13,"assists":3,"teamId":0},
+    {"xuid":"2535467794760703","kills":13,"deaths":9,"assists":1,"teamId":0},
+    {"xuid":"2533274815845110","kills":12,"deaths":10,"assists":6,"teamId":1},
+    {"xuid":"2533274882097883","kills":14,"deaths":9,"assists":2,"teamId":1},
+    {"xuid":"2535437947245250","kills":14,"deaths":13,"assists":1,"teamId":1},
+    {"xuid":"2535444178793711","kills":10,"deaths":11,"assists":2,"teamId":1}
+  ]
+}

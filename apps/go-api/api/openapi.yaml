@@ -10700,8 +10700,12 @@ components:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         objectives:
           $ref: '#/components/schemas/LayerCoverage'
+        originResolved:
+          type: boolean
         placements:
           $ref: '#/components/schemas/EquipmentPlacementCoverage'
+        score:
+          $ref: '#/components/schemas/ScoreCoverage'
         shots:
           $ref: '#/components/schemas/LayerCoverage'
         verdict:
@@ -10712,6 +10716,7 @@ components:
         - shots
         - grenades
         - objectives
+        - originResolved
         - bridge
       type: object
     CreatePlayerProfileResponse:
@@ -18765,6 +18770,26 @@ components:
         - skill_rating
         - mu_trend
       type: object
+    PlayerScore:
+      additionalProperties: false
+      properties:
+        assists:
+          $ref: '#/components/schemas/ScoreSeries'
+        deaths:
+          $ref: '#/components/schemas/ScoreSeries'
+        kills:
+          $ref: '#/components/schemas/ScoreSeries'
+        score:
+          $ref: '#/components/schemas/ScoreSeries'
+        xuid:
+          type: string
+      required:
+        - xuid
+        - score
+        - kills
+        - deaths
+        - assists
+      type: object
     PlayerScoreCard:
       additionalProperties: false
       properties:
@@ -19916,6 +19941,8 @@ components:
         schemaVersion:
           format: int64
           type: integer
+        scoreTimeline:
+          $ref: '#/components/schemas/ScoreTimeline'
         shots:
           items:
             $ref: '#/components/schemas/Shot'
@@ -20112,6 +20139,92 @@ components:
         - players
         - gate
         - since_boot
+      type: object
+    ScoreCoverage:
+      additionalProperties: false
+      properties:
+        modeSupported:
+          type: boolean
+        oracle:
+          type: string
+        points:
+          format: int64
+          type: integer
+        rounds:
+          format: int64
+          type: integer
+        teamIdentity:
+          type: string
+        truncated:
+          type: boolean
+      required:
+        - teamIdentity
+        - rounds
+        - modeSupported
+        - truncated
+        - oracle
+        - points
+      type: object
+    ScoreRound:
+      additionalProperties: false
+      properties:
+        points:
+          items:
+            $ref: '#/components/schemas/ScoreTick'
+          type:
+            - array
+            - "null"
+        round:
+          format: int64
+          type: integer
+      required:
+        - round
+        - points
+      type: object
+    ScoreSeries:
+      additionalProperties: false
+      properties:
+        rounds:
+          items:
+            $ref: '#/components/schemas/ScoreRound'
+          type:
+            - array
+            - "null"
+        total:
+          items:
+            $ref: '#/components/schemas/ScoreTick'
+          type:
+            - array
+            - "null"
+      type: object
+    ScoreTick:
+      additionalProperties: false
+      properties:
+        t:
+          format: int64
+          type: integer
+        v:
+          format: int64
+          type: integer
+      required:
+        - t
+        - v
+      type: object
+    ScoreTimeline:
+      additionalProperties: false
+      properties:
+        players:
+          items:
+            $ref: '#/components/schemas/PlayerScore'
+          type:
+            - array
+            - "null"
+        teams:
+          items:
+            $ref: '#/components/schemas/TeamScore'
+          type:
+            - array
+            - "null"
       type: object
     SeasonCalendar:
       additionalProperties: false
@@ -23249,6 +23362,25 @@ components:
         - name
         - exists
         - rows
+      type: object
+    TeamScore:
+      additionalProperties: false
+      properties:
+        rounds:
+          items:
+            $ref: '#/components/schemas/ScoreRound'
+          type:
+            - array
+            - "null"
+        teamId:
+          format: int64
+          type: integer
+        total:
+          items:
+            $ref: '#/components/schemas/ScoreTick'
+          type:
+            - array
+            - "null"
       type: object
     TeamSnapshot:
       additionalProperties: false

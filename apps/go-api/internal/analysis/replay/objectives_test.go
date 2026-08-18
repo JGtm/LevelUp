@@ -29,7 +29,7 @@ func TestBuildObjectiveActionsMapsOntoFrameAxis(t *testing.T) {
 		ident(250, "b", objectiveevents.StatFlagReturns),
 		ident(1_050, "a", objectiveevents.StatFlagGrabs),
 	}
-	got, cov := buildObjectiveActions(evs, 100, 20)
+	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 20})
 	if len(got) != 3 || cov.Attached != 3 {
 		t.Fatalf("%d actions (couverture %d), attendu 3", len(got), cov.Attached)
 	}
@@ -54,7 +54,7 @@ func TestBuildObjectiveActionsCountsOutOfWindow(t *testing.T) {
 		ident(500, "a", objectiveevents.StatZoneCaptures),
 		ident(999_000, "a", objectiveevents.StatZoneSecures),
 	}
-	got, cov := buildObjectiveActions(evs, 100, 10)
+	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 {
 		t.Fatalf("%d actions publiees, attendu 1", len(got))
 	}
@@ -74,7 +74,7 @@ func TestBuildObjectiveActionsRefusesUnidentified(t *testing.T) {
 		ident(100, "", objectiveevents.StatFlagSteals),
 		ident(200, "a", objectiveevents.StatFlagSteals),
 	}
-	got, cov := buildObjectiveActions(evs, 100, 10)
+	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 || cov.NoSlot != 1 {
 		t.Errorf("%d actions, sansSlot = %d ; attendu 1 et 1", len(got), cov.NoSlot)
 	}
@@ -135,5 +135,49 @@ func TestDocumentOmitsEmptyObjectives(t *testing.T) {
 	}
 	if _, present := m["objectives"]; present {
 		t.Error("la cle objectives ne doit pas etre emise quand le calque est vide")
+	}
+}
+
+// TestBuildObjectiveActionsSubtractsOrigin — LE CALQUE ETAIT DECALE DE `originMs`, ET IL NE
+// L'EST PLUS (report `:123` du registre, corrige le 2026-08-18).
+//
+// Les evenements sont dates depuis le premier paquet du FILM, la grille de frames compte depuis
+// le premier paquet de POSITION. Sans la soustraction, une action de 10 500 ms de film tombait a
+// la frame 105 au lieu de 5 — soit 10 s trop tard, donc frequemment sur la mauvaise zone.
+func TestBuildObjectiveActionsSubtractsOrigin(t *testing.T) {
+	evs := []objectiveevents.IdentifiedEvent{
+		ident(10_500, "a", objectiveevents.StatFlagCaptures),
+		ident(20_000, "a", objectiveevents.StatFlagReturns),
+	}
+	clock := scoreClock{intervalMS: 100, frames: 200, originMS: 10_000}
+	got, cov := buildObjectiveActions(evs, clock)
+	if len(got) != 2 || cov.Attached != 2 {
+		t.Fatalf("%d action(s) (couverture %d), attendu 2", len(got), cov.Attached)
+	}
+	for i, want := range []int{5, 100} {
+		if got[i].T != want {
+			t.Errorf("action %d : T = %d, attendu %d (origine non retranchee ?)", i, got[i].T, want)
+		}
+	}
+	// L'instant EXACT reste sur l'horloge du film : lui recaler serait figer dans l'artefact
+	// un decalage que le client sait deja appliquer a ses autres lignes de fil.
+	if got[0].TimeMS != 10_500 {
+		t.Errorf("TimeMS = %d, attendu 10500 (l'instant du film ne se recale pas)", got[0].TimeMS)
+	}
+}
+
+// TestBuildObjectiveActionsRefusesBeforeFrameZero — une action ANTERIEURE a la frame 0 (mise en
+// place du match) est comptee hors fenetre, jamais ecrasee sur la frame 0.
+func TestBuildObjectiveActionsRefusesBeforeFrameZero(t *testing.T) {
+	evs := []objectiveevents.IdentifiedEvent{
+		ident(9_950, "a", objectiveevents.StatFlagGrabs),
+		ident(10_100, "a", objectiveevents.StatFlagGrabs),
+	}
+	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 200, originMS: 10_000})
+	if len(got) != 1 || cov.OutOfWindow != 1 {
+		t.Errorf("%d action(s), horsFenetre = %d ; attendu 1 et 1", len(got), cov.OutOfWindow)
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v", cov)
 	}
 }
