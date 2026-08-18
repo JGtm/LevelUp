@@ -456,9 +456,9 @@ trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grande
   seconde copie de la regle).
 - `[x]` 8.7 GOLDENS : fixture d'entrees v9 (il porte la lecture `ti=37`) et sortie figee,
   regeneres depuis le film de reference.
-- `[ ]` 8.8 TEMOINS re-cuits et ANCRAGE : `01e1f945` / `75f1188f` un socle de power-up au
+- `[x]` 8.8 TEMOINS re-cuits et ANCRAGE : `01e1f945` / `75f1188f` un socle de power-up au
   centre ; `64e8adfa` / `530820e5` zero ; `000d5950` inchange ; socles d'ARME inchanges.
-- `[ ]` 8.9 Gates : `go build ./...`, `go vet ./...`, `go test` (analysis, replaybuild,
+- `[x]` 8.9 Gates : `go build ./...`, `go vet ./...`, `go test` (analysis, replaybuild,
   contracttest, archlint), golangci 0, et la chaine web (typecheck, lint, vitest).
 
 ### Journal de la phase 8
@@ -552,3 +552,66 @@ la chaine de PRODUCTION, et ne garde aucune copie de la regle.
 
 Gate : `go vet` 0 · `go test ./internal/analysis/replay/...` 0 ·
 `golangci-lint run` replay+filmdec **0 issues**.
+
+**8.8 — CLOSE le 2026-08-19. LE SOCLE EST PUBLIE, ET LES ARMES N'ONT PAS BOUGE.**
+Cinq artefacts re-cuits par `cmd/replay-build` dans le worktree (sortie isolee du depot
+principal ; films lus par chemin absolu).
+
+| film | mode | socles d'ARME | socles de POWER-UP | position du socle | apparitions | `cycle` publie |
+|---|---|---|---|---|---|---|
+| `01e1f945` | KOTH | **10, IDENTIQUES** | **1** | (0,257 ; -0,003 ; 21,36) | 9 | 83,7 s (4 ecarts, 4 manques) |
+| `75f1188f` | KOTH | 10 | **1** | (0,257 ; -0,003 ; 21,36) | 7 | 73,0 s (3 ecarts, 3 manques) |
+| `64e8adfa` | CTF | **10, IDENTIQUES** | 0 | — | — | — |
+| `530820e5` | CTF | **5, IDENTIQUES** | 0 | — | — | — |
+| `000d5950` | Fiesta/Forge | **0, IDENTIQUE** | 0 | — | — | — |
+
+Couverture de la voie `ti=37` (`acceptees / retenues / socles`) : 283/10/1 · 202/8/1 · 495/0/0 ·
+253/0/0 · 401/0/0.
+
+**LE SOCLE DES DEUX FILMS KOTH EST AU MEME CENTIMETRE**, et c'est la position que la phase 1
+avait calculee par le croisement des trajectoires des porteurs, sans lire un bit de record de
+creation.
+
+**ANCRAGE — les socles d'ARME sont INCHANGES**, compares champ par champ (famille, position,
+apparitions, intervalles de presence, cycle) contre les artefacts d'avant le lot : identiques
+sur les trois films qui en avaient un. `000d5950` : TOUS les champs de la racine sont identiques
+hors `schemaVersion` et `coverage`. Les power-ups LACHES a une mort restent dans
+`equipmentPlacements` avec leur origine `dropped` (1 sur `01e1f945`, avant comme apres).
+
+**RESERVE HONNETE SUR LE CYCLE PUBLIE.** Le `cycle` de l'artefact se mesure DEPUIS LE RAMASSAGE
+(regle de production des socles d'arme, tranchee au lot precedent : 24 cycles etablis sur 57
+contre 4 pour l'horloge d'apparition). Il rend donc 83,7 s et 73,0 s, avec la MOITIE des ecarts
+`missing` — et non les 120,1 s de la phase 3. **La periode de 120,1 s n'a pas disparu** : elle
+est dans `spawns`, dont les ecarts valent 30,3 s / 89,8 s en alternance sur les DEUX films
+(frames : 1111 · 303 · 898 · 303 · 898 · 303 · 899 · 303). C'est la Decouverte n°3 — deux
+entites par cycle au meme point — qui rend l'horloge du ramassage non uniforme ici. Aucun seuil
+n'a ete rebaisse pour rendre le chiffre plus joli.
+
+**8.9 — CLOSE le 2026-08-19.** `go build ./...` (CGO msys64) 0 · `go vet ./...` 0 ·
+`go test ./internal/analysis/... ./internal/replaybuild/... ./contracttest/... ./internal/archlint/...`
+0 · `golangci-lint run --new-from-merge-base=origin/main` (le lint qui FAIT FOI en CI) **0
+issues** — la dette gelee (229 issues sur `./...`) est inchangee. Chaine web (`generated.ts` a
+bouge) : `npm ci` 0 · `tsc -b` 0 · `eslint` 0 erreur (20 avertissements preexistants) ·
+`vitest run src/features/match-replay src/lib` **147 fichiers / 1819 tests verts**.
+
+### Decouvertes de la phase 8 (a ne PAS traiter dans ce lot)
+
+6. **LE CALQUE WEB NE REND PAS ENCORE LE SOCLE DE POWER-UP EN GRANDE TAILLE, ET IL NE LE NOMME
+   PAS.** `POWER_PAD_KEYS` contient bien `powerup_overshield` / `powerup_camo`, et
+   `padScaleOf('powerup_overshield')` rend `power` — mais la clé qu'on lui passe vient d'une
+   table d'ARMES : `useReplayWeaponPads.ts` fait
+   `scaleOf = (weapon) => padScaleOf(labels?.[weapon]?.key)` avec `labels = doc.weaponLabels`.
+   VERIFIE SUR PIECES sur l'artefact re-cuit : `weaponLabels` porte 17 cles, toutes
+   hexadecimales, AUCUNE nommee `powerup_overshield` — `buildWeaponLabels` n'ajoute que ce que
+   `FamilyOfWeaponID` sait lire, et une famille qui commence par `p` n'est pas un hexadecimal.
+   Consequence a l'ecran : le socle de power-up est dessine en PETIT (`classic`), son infobulle
+   affiche la chaine brute `powerup_overshield` au lieu d'un libellé FR/EN, et il n'a aucune
+   vignette. Les trois manques tiennent ensemble et forment un LOT DE RENDU (taille + nom
+   bilingue + icone), pas un correctif d'une ligne — le corriger a moitie (grand mais sans nom
+   ni icone) serait pire. NON TRAITE ICI : ce lot est la chaine de donnees.
+7. **`FamilyOfWeaponID` accepte silencieusement un nom de famille entierement compose de
+   chiffres hexadecimaux.** `fmt.Sscanf(id, "%X", &v)` ne consomme pas toute l'entree : une
+   famille qui s'appellerait `cab` ou `beac` serait lue comme un identifiant d'arme et
+   emprunterait un libellé qui n'est pas le sien. Aucune famille actuelle n'est dans ce cas
+   (`powerup_*` commence par `p`), et les socles d'arme publient de l'hexadecimal — le risque
+   est LATENT, pas actif. Constate, NON traite.
