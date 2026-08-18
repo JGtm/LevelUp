@@ -79,6 +79,12 @@ export interface ReplayHeatmapSettings {
  * `useMemo` de la grille ne se déclenche qu'alors. Un retour en arrière (barre de lecture,
  * boucle de fin) change le seau vers le bas : la carte se REDESSINE à ce qu'elle était, elle
  * ne garde pas une chaleur qui n'a plus eu lieu.
+ *
+ * AUCUN `setState` DANS LE CORPS DE L'EFFET, et ce n'est pas qu'une question de lint : un état
+ * posé à l'armement déclenche un rendu en cascade à chaque bascule du réglage. La valeur
+ * initiale vient donc de l'initialiseur de `useState`, et les suivantes du seul minuteur. Prix
+ * assumé : en allumant la portée `live` en cours de lecture, le premier seau peut dater d'un
+ * quart de seconde — le temps d'un battement de sondage, invisible sur une carte qui se remplit.
  */
 function useLiveFrameBucket(
   doc: ReplayDocumentReady,
@@ -87,18 +93,13 @@ function useLiveFrameBucket(
   const live = settings.show && settings.span === 'live'
   const step = useMemo(() => Math.max(1, msToFrames(HEAT_LIVE_STEP_MS, doc)), [doc])
   const { frameRef } = settings
-  const [bucket, setBucket] = useState<number | null>(null)
+  const [bucket, setBucket] = useState(() => Math.floor(frameRef.current / step) * step)
   useEffect(() => {
-    if (!live) {
-      setBucket(null)
-      return
-    }
-    const read = () => {
+    if (!live) return
+    const id = window.setInterval(() => {
       const next = Math.floor(frameRef.current / step) * step
       setBucket((prev) => (prev === next ? prev : next))
-    }
-    read()
-    const id = window.setInterval(read, HEAT_LIVE_POLL_MS)
+    }, HEAT_LIVE_POLL_MS)
     return () => window.clearInterval(id)
   }, [live, step, frameRef])
   return live ? bucket : null

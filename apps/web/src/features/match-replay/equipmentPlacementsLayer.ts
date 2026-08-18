@@ -45,15 +45,17 @@ import {
   project,
   REPAIR_FIELD_RADIUS_M,
   SEEKER_IMPULSE_RADIUS_PX,
-  seekerImpulseActive,
   UNNAMED_DOT_RADIUS_PX,
   viewScale,
 } from './placementShapes'
 import { drawWall, wallHeading, WALL_PANEL_IDS, wallRadiusM } from './placementWall'
+// La FENÊTRE d'une pose vit à part (cf. le réexport plus haut) : elle est aussi LUE ici, et un
+// réexport ne met rien dans la portée locale. L'import inverse, lui, ne porte que des TYPES —
+// il n'y a donc aucun cycle à l'exécution.
+import { isPlacementActive, placementShows } from './placementWindow'
 import type { XY } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
 import {
-  SENSOR_DURATION_MS,
   SENSOR_FILL_ALPHA,
   SENSOR_PING_WIDTH,
   SENSOR_RADIUS_M,
@@ -62,6 +64,13 @@ import {
   sensorPing,
   sensorReveals,
 } from './threatSensor'
+
+/**
+ * LA FENÊTRE D'UNE POSE vit dans `placementWindow.ts` depuis le 2026-08-18 (seuil de taille),
+ * et se réexporte ici : le survol et les tests la lisent par ce module, la découpe interne n'a
+ * pas à remonter jusqu'à eux.
+ */
+export { isPlacementActive, placementEndFrame, placementShows } from './placementWindow'
 
 /**
  * Le cadrage est réexporté ici : il est un ARGUMENT de ce calque (`drawEquipmentPlacementsLayer`,
@@ -228,47 +237,6 @@ export interface PlacementInk {
 }
 
 /**
- * placementEndFrame — LA DERNIÈRE IMAGE à laquelle une pose se dessine.
- *
- * `t1` N'EST PAS LA DISPARITION DE L'OBJET, et c'est mesuré, pas supposé (2026-08-18,
- * `filmdec/equipment_life_end_test.go`) : le décodeur ne suit que les records qui portent une
- * position, si bien que `t1` date l'instant où l'objet cesse de BOUGER. Un mur de protection y
- * atteint 0,7 s de médiane et un capteur 2,1 s, quand le recensement des keyframes montre
- * 101 de ces 295 objets encore présents plus d'une seconde après. Le film ne date AUCUNE
- * disparition d'équipement — le record de suppression et la queue de records sans position
- * sont l'un et l'autre du bruit au témoin. `t1` est donc une BORNE INFÉRIEURE.
- *
- * D'OÙ LA RÈGLE, en deux temps et sans rien inventer :
- *  - une famille dont la durée est PUBLIÉE par l'éditeur s'y tient — le capteur de menaces
- *    dure 15 s (cf. SENSOR_DURATION_MS), du même genre que sa portée et sa cadence, qui
- *    gouvernent déjà tout son tracé ;
- *  - les autres restent affichées jusqu'à la fin du rejeu. Effacer un mur à 0,7 s
- *    affirmerait une disparition que rien ne mesure ; le laisser en place n'affirme rien.
- *
- * Jamais AVANT `t1` : la borne mesurée l'emporte si elle dépasse la durée officielle.
- */
-export function placementEndFrame(
-  p: ReplayEquipmentPlacement,
-  kind: PlacementKind,
-  time: PlacementWindowTime,
-): number {
-  const lastFrame = Math.max(time.frames - 1, p.t1)
-  if (kind !== 'sensor' || !(time.frameMs > 0)) return lastFrame
-  const official = p.t0 + Math.round(SENSOR_DURATION_MS / time.frameMs)
-  return Math.min(Math.max(official, p.t1), lastFrame)
-}
-
-/** isPlacementActive — la pose se dessine-t-elle à cette image ? (cf. placementEndFrame). */
-export function isPlacementActive(
-  p: ReplayEquipmentPlacement,
-  kind: PlacementKind,
-  frame: number,
-  time: PlacementWindowTime,
-): boolean {
-  return frame >= p.t0 && frame <= placementEndFrame(p, kind, time)
-}
-
-/**
  * placementKind rend la règle de rendu d'une pose, ou null quand il n'y en a pas.
  *
  * QUATRE RAISONS DE NE RIEN RENDRE, et elles se lisent dans cet ordre : famille hors table,
@@ -288,23 +256,6 @@ export function placementKind(
   if (!kind) return null
   if (kind === 'unnamed') return showUnnamed ? kind : null
   return placementIsDeployedObject(p) ? kind : null
-}
-
-/**
- * placementShows — la pose a-t-elle quelque chose À L'ÉCRAN à cette image ?
- *
- * Toutes les familles montrent quelque chose sur toute leur fenêtre d'affichage (cf.
- * placementEndFrame), SAUF le traqueur :
- * son impulsion est unique et brève, et après elle il ne reste rien. Le survol suit le dessin —
- * on n'inspecte pas ce qui n'est pas là, même règle que la bascule des objets non identifiés.
- */
-export function placementShows(
-  p: ReplayEquipmentPlacement,
-  kind: PlacementKind,
-  time: PlacementHoverTime,
-): boolean {
-  if (kind !== 'seeker') return true
-  return seekerImpulseActive((time.frame - p.t0) * time.frameMs)
 }
 
 /** inkOf — la couleur d'équipe du poseur, ou le neutre quand la pose n'a pas de poseur connu. */
