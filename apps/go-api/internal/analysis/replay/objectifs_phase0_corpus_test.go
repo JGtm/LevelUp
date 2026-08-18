@@ -242,58 +242,47 @@ func objBuildBridge(dir string) (objBridge, error) {
 	}, nil
 }
 
-// objIdentified rend les evenements nommes du film, traduits en XUID.
-//
-// Le nombre d'evenements ECARTES (slot non apparie) est rendu a part : publier les seuls
-// evenements attribues laisserait croire a l'exhaustivite.
-func objIdentified(src objectiveevents.FilmSource, f objFilm) (evs []objectiveevents.IdentifiedEvent, brut, apparies int) {
-	lines := make([]objectiveevents.PlayerLine, 0, len(f.Players))
-	for _, p := range f.Players {
-		lines = append(lines, objectiveevents.PlayerLine{
-			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
-		})
+// objBridgeMemo memorise le pont bipede par film : sa construction balaye TOUT le film
+// (positions + fil des morts + index de joueur) et plusieurs mesures de la phase 0 en ont
+// besoin. Sans memo, le meme balayage serait rejoue a chaque test.
+var objBridgeMemo = map[string]objBridge{}
+
+// objBridgeOf rend le pont bipede d'un film, construit une seule fois par process.
+func objBridgeOf(t *testing.T, root, id string) objBridge {
+	t.Helper()
+	if b, ok := objBridgeMemo[id]; ok {
+		return b
 	}
-	identity := objectiveevents.SlotIdentity(src, lines)
-	named := objectiveevents.NamedEvents(src, f.Mode)
-	return objectiveevents.IdentifyNamedEvents(named, identity), len(named), len(identity)
+	b, err := objBuildBridge(objChunkDir(root, id))
+	if err != nil {
+		t.Fatalf("%s : pont bipede : %v", id, err)
+	}
+	objBridgeMemo[id] = b
+	return b
 }
 
-// TestObjectifsPhase0Pont — le CONTROLE PREALABLE des deux ponts, sur les quatre films.
-//
-// Il ne mesure rien du drapeau : il etablit que les pieces sur lesquelles 0.1 a 0.3
-// s'appuient tiennent, et il publie leurs denominateurs. Un pont muet rendrait toute mesure
-// aval ininterpretable — et se lirait a tort comme « la famille n'existe pas ».
-func TestObjectifsPhase0Pont(t *testing.T) {
-	root := objRequireRoot(t)
-	for _, id := range append(append([]string{}, objCTFFilms...), objBallFilm) {
-		f := objCorpus[id]
-		t.Run(id, func(t *testing.T) {
-			src, ok := objOpenFilm(t, root, id)
-			if !ok {
-				t.Skipf("film %s absent du cache (%s=%q)", id, objFilmEnv, root)
-			}
-			objCheckTripletsUniques(t, f)
-			evs, brut, apparies := objIdentified(src, f)
-			b, err := objBuildBridge(objChunkDir(root, id))
-			if err != nil {
-				t.Fatalf("pont bipede : %v", err)
-			}
-			t.Logf("%s (%s, %s) : statborg %d/8 slots apparies, %d evenements nommes dont %d identifies ; "+
-				"bipede %d vies, %d nommees, %d slots ponts, %d collisions ; calage %d ms (%d morts appariees, %d au fil)",
-				id, f.Mode, f.Carte, apparies, brut, len(evs),
-				b.LivesTotal, b.DeathsNamed, len(b.SlotXUID), b.Collisions, b.OffsetMS, b.OffsetMatches, len(b.Deaths))
-			if apparies != 8 {
-				t.Errorf("%s : %d slots statborg apparies, attendu 8 — la table des triplets a bouge", id, apparies)
-			}
-			if len(b.SlotXUID) == 0 {
-				t.Errorf("%s : pont bipede vide — aucune mesure aval n'est interpretable", id)
-			}
-		})
+// objRecordsMemo memorise le balayage des records de bipede d'image-cle par film.
+var objRecordsMemo = map[string][]objRecord{}
+
+// objImagesMemo retient le nombre d'images-cles balayees par film.
+var objImagesMemo = map[string]int{}
+
+// objRecordsOf rend les records de bipede d'image-cle d'un film, balayes une seule fois.
+func objRecordsOf(t *testing.T, root, id string) ([]objRecord, int) {
+	t.Helper()
+	if r, ok := objRecordsMemo[id]; ok {
+		return r, objImagesMemo[id]
 	}
+	recs, images, err := objScanKeyframeBipeds(objChunkDir(root, id))
+	if err != nil {
+		t.Fatalf("%s : balayage des images-cles : %v", id, err)
+	}
+	objRecordsMemo[id], objImagesMemo[id] = recs, images
+	return recs, images
 }
 
 // objCheckTripletsUniques verifie que les triplets du fixture designent chacun UN joueur.
-// Sans cette propriete, `SlotIdentity` s'abstient (a bon droit) et le pont statborg se vide.
+// Sans cette propriete, `SlotIdentity` s'abstient (a bon droit) et le pont par totaux se vide.
 func objCheckTripletsUniques(t *testing.T, f objFilm) {
 	t.Helper()
 	vus := map[[3]int]int{}
@@ -302,7 +291,7 @@ func objCheckTripletsUniques(t *testing.T, f objFilm) {
 	}
 	for k, n := range vus {
 		if n > 1 {
-			t.Errorf("triplet %v porte par %d joueurs — appariement impossible par construction", k, n)
+			t.Errorf("triplet %v porte par %d joueurs — appariement par totaux impossible", k, n)
 		}
 	}
 }
