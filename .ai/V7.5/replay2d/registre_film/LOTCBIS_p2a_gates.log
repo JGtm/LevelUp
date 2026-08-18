@@ -1,0 +1,26 @@
+﻿# lot C-bis phase 2a — gates joues le 2026-08-18 (worktree wt/zones-ti13-p2, CGO_ENABLED=0)
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/replay	36.969s
+EXIT_TEST_REPLAY=0
+ok  	levelup/go-api/internal/analysis/filmdec	38.001s
+EXIT_TEST_FILMDEC=0
+internal\analysis\replay\zone_state_p2a_stabilite_test.go:38:2: field instanceIDs is unused (unused)
+	instanceIDs int32
+	^
+1 issues:
+* unused: 1
+EXIT_LINT=1
+0 issues.
+EXIT_LINT=0
+# re-jeu apres correction du lint (champ inutilise retire)
+EXIT_VET2=0
+ok  	levelup/go-api/internal/analysis/replay	50.915s
+ok  	levelup/go-api/internal/analysis/filmdec	2.202s
+EXIT_TEST2=0
+# gates FINAUX (apres le volet proprietaire par slot) — 2026-08-18
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/replay	38.075s
+ok  	levelup/go-api/internal/analysis/filmdec	1.756s
+EXIT_TEST=0
+0 issues.
+EXIT_LINT=0
