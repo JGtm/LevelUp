@@ -23,7 +23,6 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 
 import { Button } from '@/components/ui/button'
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
-import { resolveToken } from '@/lib/accessibility/resolveToken'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow, ReplayMapBackgroundCalibration } from '@/lib/api/types'
@@ -34,8 +33,6 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
 import type { CalloutZoneReady } from './calloutsLayer'
-import { readInk } from './canvasInk'
-import { readFxInk } from './fxInk'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayLeadMarks } from './ReplayLeadMarks'
@@ -50,6 +47,8 @@ import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
 import { countDrawablePlacements, drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { usePlacementHover } from './usePlacementHover'
+import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
+import { useReplayWeaponPads } from './useReplayWeaponPads'
 import {
   buildGrenadeRestFx,
   DYNAMO_REST_HOLD_MS,
@@ -61,6 +60,7 @@ import type { PlayerMarkKind } from './playerMarks'
 import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
+import { useReplayInks } from './useReplayInks'
 import { useReplayStaticLayers } from './useReplayStaticLayers'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
@@ -93,14 +93,7 @@ const ZONE_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
-// Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs).
-const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
-// Événements ponctuels. Le LANCER emprunte un token d'information ; le TIR, lui, ne prend
-// plus aucun token de données : sa couleur dit la NATURE DE LA DÉCHARGE et vient des teintes
-// diégétiques du thème (fxInk.ts, décision utilisateur du 2026-08-15). Le token d'alerte
-// reste employé par les effets de MORT, qui n'ont pas changé.
-const SHOT_TOKEN: SemanticToken = 'destructive'
-const GRENADE_TOKEN: SemanticToken = 'info'
+// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks.
 // Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
 // un TIR est un éclat bref (0,6 s — c'est sa brièveté qui le rend lisible : à 1,4 s le trait
 // traînait dim et se fondait dans la carte, mesure du recalage 2.2), un LANCER et une MORT
@@ -218,6 +211,7 @@ export function ReplayCanvas({
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
     showUnnamedPlacements, toggleUnnamedPlacements,
+    showWeaponPads, toggleWeaponPads,
     speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
@@ -225,51 +219,13 @@ export function ReplayCanvas({
   const sound = useReplaySound(doc, kills, t0Ms, multiplier)
 
   const paletteVersion = useColorPaletteVersion()
-  // LES DEUX COULEURS D'ÉQUIPE, telles que l'utilisateur les a réglées (D1). Résolues une
-  // fois par palette : l'observateur de style de useColorPaletteVersion voit changer les
-  // réglages d'accessibilité comme il voit changer le thème.
-  const teamColorOf = useMemo(() => {
-    void paletteVersion
-    const ally = resolveToken('team-ally')
-    const enemy = resolveToken('team-enemy')
-    return (isAlly: boolean) => (isAlly ? ally : enemy)
-  }, [paletteVersion])
-  const geometryColor = useMemo(() => {
-    void paletteVersion
-    return resolveToken(GEOMETRY_TOKEN)
-  }, [paletteVersion])
-  const shotColor = useMemo(() => {
-    void paletteVersion
-    return resolveToken(SHOT_TOKEN)
-  }, [paletteVersion])
-  const grenadeColor = useMemo(() => {
-    void paletteVersion
-    return resolveToken(GRENADE_TOKEN)
-  }, [paletteVersion])
-  // Encres de mise en page du sol : elles suivent le thème, pas la palette d'accessibilité.
-  const floorStyle = useMemo(() => {
-    void paletteVersion
-    return { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') }
-  }, [paletteVersion])
-  // Teintes des ÉCLAIRS DE BOUCHE : lues UNE fois par thème, jamais par image — un
-  // getComputedStyle par effet et par frame coûterait plus que le dessin lui-même.
-  const fxInk = useMemo(() => {
-    void paletteVersion
-    return readFxInk()
-  }, [paletteVersion])
-  // La LIGNE DE GRAPPIN : « blanche » = l'encre la plus claire du thème sombre
-  // (`--foreground`), jamais un hex — décision du plan grappin (phase 2.2). Elle suit le
-  // thème, comme les encres de mise en page.
-  const grappleInk = useMemo(() => {
-    void paletteVersion
-    return readInk('--foreground')
-  }, [paletteVersion])
-  // L'encre du CONTOUR des noms : sombre dans les DEUX thèmes (cf. globals.css), lue une
-  // fois par thème comme les autres encres — jamais un getComputedStyle par image.
-  const labelStroke = useMemo(() => {
-    void paletteVersion
-    return readInk('--replay-label-stroke')
-  }, [paletteVersion])
+  // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
+  // d'équipe, fond de carte, lancers, sol, teintes d'éclair, grappin, contour des noms. Elles
+  // partageaient huit fois le même corps ici — voir l'en-tête du hook.
+  const {
+    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke,
+  } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
   // LES POSES D'ÉQUIPEMENT (schéma 10), comptées par la MÊME PORTE que le tracé
@@ -431,6 +387,19 @@ export function ReplayCanvas({
     objectives: { elements: mapObjectives, colorOfTeam: objectiveColorOfTeam },
   })
 
+  // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
+  // NE SONT PAS un calque statique — leur position ne bouge pas, mais leur ÉTAT change avec
+  // l'image (plein, incertain, vide), donc ils se peignent dans la boucle comme les poses.
+  const weaponPads = useReplayWeaponPads({
+    doc,
+    view: canvasView,
+    frameRef,
+    enabled: showWeaponPads,
+    ink: { neutral: floorStyle.edge, labelStroke },
+    locale,
+    redraw,
+  })
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || renderWidth === 0) return
@@ -485,6 +454,9 @@ export function ReplayCanvas({
     if (doc.projectiles?.length) {
       drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
     }
+    // Les EMPLACEMENTS D'ARME juste au-dessus du terrain et SOUS les poses : un socle est un
+    // MEUBLE de la carte, il précède ce qu'un joueur y dépose comme ce qui s'y déplace.
+    weaponPads.paint(ctx, frame, dpr)
     // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
     // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
     // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
@@ -615,6 +587,9 @@ export function ReplayCanvas({
     placementWindowTime,
     showPlacements,
     showUnnamedPlacements,
+    // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
+    // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
+    weaponPads.paint,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -753,13 +728,21 @@ export function ReplayCanvas({
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
                 relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
+            {/* DEUX CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme) :
+                chacun rejoue le survol sur SA donnée, le canvas leur passe le geste. */}
             <div className="relative mx-auto" style={{ width: renderWidth || '100%' }}>
               <canvas
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
-                onPointerMove={placementHover.onPointerMove}
-                onPointerLeave={placementHover.onPointerLeave}
+                onPointerMove={(e) => {
+                  placementHover.onPointerMove(e)
+                  weaponPads.onPointerMove(e)
+                }}
+                onPointerLeave={() => {
+                  placementHover.onPointerLeave()
+                  weaponPads.onPointerLeave()
+                }}
               />
               {/* L'infobulle d'une POSE survolée : ce que l'objet est, et qui l'a posé. */}
               {placementHover.hover && (
@@ -767,6 +750,15 @@ export function ReplayCanvas({
                   locale={locale}
                   hover={placementHover.hover}
                   ownerName={nameOfSlot(placementHover.hover.placement.owner)}
+                  width={renderWidth}
+                />
+              )}
+              {/* L'infobulle d'un EMPLACEMENT D'ARME : l'arme, son état, son cycle s'il est
+                  établi. JAMAIS qui l'a prise — ce n'est pas publié. */}
+              {weaponPads.hover && (
+                <ReplayWeaponPadTip
+                  locale={locale}
+                  hover={weaponPads.hover}
                   width={renderWidth}
                 />
               )}
@@ -837,6 +829,11 @@ export function ReplayCanvas({
               unnamedAvailable: placementCounts.unnamed > 0,
               showUnnamed: showUnnamedPlacements,
               onToggleUnnamed: toggleUnnamedPlacements,
+            }}
+            weaponPads={{
+              available: weaponPads.available,
+              show: showWeaponPads,
+              onToggle: toggleWeaponPads,
             }}
             heatmap={{
               show: showHeatmap,

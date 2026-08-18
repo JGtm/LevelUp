@@ -87,9 +87,32 @@ timbre extrait du jeu — decision d'oreille, non prise ici. Durees : 41/41 iden
 Tests : `replaySound.test.ts`, `replaySoundAssets.guard.test.ts`, `useReplaySound.test.tsx` verts.
 
 ### R2-P — calque des socles (worktree `wt/r2-socles`) — decision 5, note UI item 6
-- [ ] P1 calque `weaponPads` (icone, taille adaptative, plein/vide/incertain, compte a rebours si cycle),
+- [x] P1 calque `weaponPads` (icone, taille adaptative, plein/vide/incertain, compte a rebours si cycle),
       bascule tiroir, i18n FR+EN, tokens, tests ; temoins `01e1f945`, `00162144`, `bcb6d393`.
+      **FAIT** : `weaponPadsLayer.ts` (trois etats + anneau + compte a rebours), `weaponPadFamilies.ts`
+      (liste EXPLICITE des armes de puissance, keyee sur le `weapon_key` du titre), `useReplayWeaponPads.ts`
+      (cuisson des vignettes teintes, survol, tracé), `ReplayWeaponPadTip.tsx`, bascule
+      `replay-show-weapon-pads` (defaut ALLUME), i18n FR+EN, 4 fichiers de tests (+45 cas).
+      L'ajout au canvas a ete PAYE PAR UNE EXTRACTION (cliquet de taille) : les huit encres
+      partent dans `useReplayInks.ts`, `ReplayCanvas.tsx` passe de 861 a 858 lignes et le cliquet
+      DESCEND a 858. Mesure sur les temoins (bundle de production, contexte enregistreur) :
+      `01e1f945` 10 socles dessines de bout en bout (10 vignettes a t0, 7 a mi-match, 0 a la fin,
+      2 comptes a rebours) · `00162144` 11 (11 / 9 / 0, 1 compte) · `bcb6d393` 10 (8 / 7 / 8 —
+      8 occupations « jamais videes » restent PLEINES, 0 compte) · `000d5950` **0 socle publie,
+      0 primitive emise** : le calque disparait proprement, sans cadre vide.
 Gate P : gates web verts ; planche : items P sur `01e1f945`.
+
+> **GATE P — TENU, avec une reserve d'ENVIRONNEMENT ecrite.** `npm run typecheck` EXIT=0 ;
+> `npm run lint` EXIT=0 (0 erreur, 20 avertissements pre-existants `react-hooks/incompatible-library`) ;
+> planche : items **P1** et **P2** ajoutes (ajout SEUL, aucun item touche), assemblee depuis le
+> bundle du worktree (`replayfx.r2socles.iife.js`), fumee `smoke.cjs` **0 erreur** en clair ET en
+> sombre, 36 items / 56 canvas, les 6 apercus de P1 peignent.
+> **`npm run test:run` : 4229 tests passent, 0 assertion en echec, mais l'EXIT n'est pas 0 sur cette
+> machine** — 19 a 24 garde-rails qui BALAYENT `src/**` depassent le `testTimeout` de 5 s (le meme
+> fichier passe en 2 s puis 11 s d'une execution a l'autre ; aucun ne touche a ce lot). La preuve
+> est faite a cote : `npx vitest run --testTimeout=60000` rend **454/454 fichiers et 4229 tests
+> verts, EXIT=0**. Un manquement reel serait une assertion, pas une horloge. Le gate d'autorite
+> reste la CI Linux.
 
 ## Annexe — bilan utilisateur verbatim (2026-08-18)
 
@@ -156,3 +179,22 @@ Gate P : gates web verts ; planche : items P sur `01e1f945`.
    MODE d'un tir : les deux candidats (jauge de charge, cadence) sont des NO-GO mesures au registre.
 3. **`static/sounds/halo_infinite/hinf_gravity_hammer.wav` est le seul fichier MONO** du dossier
    (les 40 autres sont stereo). Sans effet mesure ici — la normalisation l'a preserve tel quel.
+- 2026-08-18 — **R2-P CLOS** (branche `wt/r2-socles`, base `3907eb505`). P1 fait ; gate P tenu, avec la
+  reserve d'environnement ci-dessus. Trois decisions prises en cours d'execution, toutes ecrites :
+  1. **Aucune couleur ne distingue une arme de puissance** — seule la TAILLE hierarchise (anneau 9 px /
+     vignette 13 px contre 5,5 / 8). Motif : la decision 1 du plan laisse la teinte du MUR en arbitrage
+     entre `legendary` et `warning` ; teinter les socles d'or maintenant creerait une collision de sens
+     sur la meme carte. Si l'utilisateur veut une teinte, elle s'ajoute sans rien defaire.
+  2. **Un socle « jamais vide » reste PLEIN jusqu'au bout**, il ne bascule pas en incertain a la derniere
+     image. Quand `tHigh` ne depasse pas `tLow`, aucune absence n'a jamais ete prouvee (8 occupations sur
+     28 sur `bcb6d393`) : l'ecrire vide, fut-ce une image, affirmerait un ramassage que rien n'a observe.
+  3. **Les deux power-ups figurent dans la liste des « grandes » tailles alors qu'AUCUN socle n'en porte**
+     (corpus de 11 films : une pose de surbouclier et une de camouflage, toutes deux lachees a la mort, et
+     elles voyagent par `equipmentPlacements`). L'utilisateur les a nommees explicitement : la liste est la
+     REGLE, ecrite d'avance et testee, pas le releve du corpus. C'est le seul endroit du lot ou du
+     vocabulaire est pose avant son premier membre — signale ici plutot que tu.
+  Decouvertes (NON traitees, hors perimetre) : (a) le socle `0xD7915565` de `bcb6d393` n'a AUCUN libelle
+  au catalogue du titre — il s'affiche donc en hexadecimal avec un glyphe neutre, ce qui est le
+  comportement voulu, mais la famille meriterait d'entrer dans `weapon_names.toml` ; (b) sur cette machine,
+  une vingtaine de garde-rails web qui balayent `src/**` frolent ou depassent le `testTimeout` de 5 s —
+  le probleme est la duree, jamais une assertion (cf. gate P).
