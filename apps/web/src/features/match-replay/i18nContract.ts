@@ -144,6 +144,28 @@ export interface ReplayText {
   layerWeaponPads: string
   layerWeaponPadsHint: string
   /**
+   * LES DRAPEAUX DE CTF (schéma 15) : le calque et son infobulle. Titre au PLURIEL — une partie
+   * de capture en porte deux, et c'est leur opposition qui se lit.
+   *
+   * LE CAMP SE DIT « allié » / « adverse », jamais par une couleur ni un nom d'équipe : la page
+   * ne connaît que le point de vue du joueur (accessibilité du rejeu), et un film dont la ligne
+   * « moi » manque n'a AUCUN camp allié — d'où la troisième clé, qui ne nomme que l'objet.
+   *
+   * L'ÉTAT « porté, fin non datée » PORTE SA RÉSERVE DANS SON LIBELLÉ, et `flagOpenNote` la
+   * développe : l'intervalle court jusqu'à la fin du film, c'est une BORNE HAUTE. Une icône
+   * atténuée seule se lirait comme un effet de style.
+   */
+  layerFlagCarries: string
+  layerFlagCarriesHint: string
+  flagSide: Record<'ally' | 'enemy' | 'unknown', string>
+  flagState: Record<'carried' | 'carried_open' | 'dropped' | 'home', string>
+  /** Le porteur que le tableau de bord ne nomme pas — jamais un identifiant brut à l'écran. */
+  flagCarrierUnknown: string
+  /** Depuis combien de temps l'état courant dure (infobulle). */
+  flagSinceFmt: (seconds: number) => string
+  /** La réserve de `carried_open`, en toutes lettres. */
+  flagOpenNote: string
+  /**
    * FICHES COMPACTES (B2/R2-7) : la bascule et ce qu'elle change. L'infobulle DIT ce qu'on
    * perd — les munitions des armes qui ne sont pas en main — parce qu'un réglage qui retire
    * de l'information doit l'annoncer.

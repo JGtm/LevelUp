@@ -12,6 +12,7 @@ import {
   ReplaySettingsDrawer,
   type ReplayHeatmapControls,
   type ReplayPlacementControls,
+  type ReplayFlagControls,
   type ReplayWeaponPadControls,
 } from './ReplaySettingsDrawer'
 import type { ReplaySound } from './useReplaySound'
@@ -29,6 +30,10 @@ function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlac
 }
 
 function makeWeaponPads(over: Partial<ReplayWeaponPadControls> = {}): ReplayWeaponPadControls {
+  return { available: true, show: true, onToggle: vi.fn(), ...over }
+}
+
+function makeFlagCarries(over: Partial<ReplayFlagControls> = {}): ReplayFlagControls {
   return { available: true, show: true, onToggle: vi.fn(), ...over }
 }
 
@@ -85,6 +90,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       zonesAvailable
       placements={makePlacements()}
       weaponPads={makeWeaponPads()}
+      flagCarries={makeFlagCarries()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}

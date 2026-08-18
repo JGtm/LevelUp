@@ -33,6 +33,7 @@ const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
 const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
 const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
+const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const COMPACT_CARDS_KEY = 'replay-compact-cards'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
@@ -104,6 +105,17 @@ const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
 const SHOW_WEAPON_PADS_DEFAULT = true
 
 /**
+ * LES DRAPEAUX SONT ALLUMÉS PAR DÉFAUT. C'est l'ENJEU du match en capture de drapeau : savoir
+ * où est le drapeau, qui le porte et depuis quand est la lecture même du mode — un rejeu de CTF
+ * qui s'ouvrirait sans lui montrerait huit points qui courent sans raison. Le film qui n'en
+ * porte aucun (tout mode qui n'est pas de la capture) n'affiche ni calque ni bascule.
+ *
+ * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
+ * RÉGLAGE D'AFFICHAGE offert au lecteur — un BTB de capture reste dense.
+ */
+const SHOW_FLAG_CARRIES_DEFAULT = true
+
+/**
  * LES FICHES COMPACTES SONT ÉTEINTES PAR DÉFAUT (B2/R2-7, verdict du 2026-08-18 : « la
  * validée reste le défaut, la compacte est une option »). Ce n'est pas un demi-livrable
  * (CLAUDE.md n°11) : les DEUX fiches sont complètes, et l'utilisateur a explicitement demandé
@@ -160,6 +172,12 @@ export interface ReplaySettings {
   /** Calque des SOCLES D'ARME (schéma 11). Allumé par défaut (cf. SHOW_WEAPON_PADS_DEFAULT). */
   showWeaponPads: boolean
   toggleWeaponPads: () => void
+  /**
+   * Calque des DRAPEAUX de capture (schéma 15). Allumé par défaut : c'est l'enjeu du mode
+   * (cf. SHOW_FLAG_CARRIES_DEFAULT). Un film hors capture n'en publie aucun.
+   */
+  showFlagCarries: boolean
+  toggleFlagCarries: () => void
   /**
    * Fiches joueur COMPACTES (B2/R2-7). Éteintes par défaut : la fiche validée le 18/08 reste
    * le défaut. La compacte ne perd qu'une information — les munitions des armes qui ne sont
@@ -230,6 +248,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_WEAPON_PADS_KEY,
     SHOW_WEAPON_PADS_DEFAULT,
   )
+  const [showFlagCarries, toggleFlagCarries] = usePersistedFlag(
+    SHOW_FLAG_CARRIES_KEY,
+    SHOW_FLAG_CARRIES_DEFAULT,
+  )
   const [compactCards, toggleCompactCards] = usePersistedFlag(
     COMPACT_CARDS_KEY,
     COMPACT_CARDS_DEFAULT,
@@ -284,6 +306,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleUnnamedPlacements,
     showWeaponPads,
     toggleWeaponPads,
+    showFlagCarries,
+    toggleFlagCarries,
     compactCards,
     toggleCompactCards,
     speed,

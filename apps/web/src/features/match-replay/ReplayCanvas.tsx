@@ -44,9 +44,9 @@ import {
 import { drawZoneStates } from './zoneStatesLayer'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
 import { countDrawablePlacements, drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
-import { ReplayPlacementTip } from './ReplayPlacementTip'
+import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { usePlacementHover } from './usePlacementHover'
-import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
+import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
@@ -180,7 +180,7 @@ export function ReplayCanvas({
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
     showUnnamedPlacements, toggleUnnamedPlacements,
-    showWeaponPads, toggleWeaponPads,
+    showWeaponPads, toggleWeaponPads, showFlagCarries, toggleFlagCarries,
     speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
@@ -356,6 +356,12 @@ export function ReplayCanvas({
     locale,
     redraw,
   })
+  // LA VIE DES DRAPEAUX (schéma 15) : tracé, survol et infobulle dans un seul hook — et pas un
+  // calque statique, le drapeau porté suit son porteur image par image.
+  const flags = useReplayFlagCarries({
+    doc, view: canvasView, frameRef, enabled: showFlagCarries,
+    scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion,
+  })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -513,6 +519,9 @@ export function ReplayCanvas({
     // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque lui-même
     // refuse de peindre si le catalogue de l'artefact ne joint pas la liste servie.
     if (doc.zoneStates.length > 0) drawZoneStates(ctx, zones, doc.zoneStates, view, frame)
+    // LES DRAPEAUX par-dessus les zones et SOUS les morts : l'enjeu du mode prime sur le
+    // terrain, mais une élimination reste l'événement le plus lourd de sens du calque.
+    flags.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -568,6 +577,7 @@ export function ReplayCanvas({
     restWindow,
     objectivePulses,
     zones,
+    flags,
     floorStyle.edge,
     slotColors,
     colorOfSlot,
@@ -678,8 +688,8 @@ export function ReplayCanvas({
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
                 relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
-            {/* DEUX CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme) :
-                chacun rejoue le survol sur SA donnée, le canvas leur passe le geste. */}
+            {/* TROIS CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme,
+                drapeaux) : chacun rejoue le survol sur SA donnée, le canvas passe le geste. */}
             <div className="relative mx-auto" style={{ width: renderWidth || '100%' }}>
               <canvas
                 ref={canvasRef}
@@ -688,30 +698,19 @@ export function ReplayCanvas({
                 onPointerMove={(e) => {
                   placementHover.onPointerMove(e)
                   weaponPads.onPointerMove(e)
+                  flags.onPointerMove(e)
                 }}
                 onPointerLeave={() => {
                   placementHover.onPointerLeave()
                   weaponPads.onPointerLeave()
+                  flags.onPointerLeave()
                 }}
               />
-              {/* L'infobulle d'une POSE survolée : ce que l'objet est, et qui l'a posé. */}
-              {placementHover.hover && (
-                <ReplayPlacementTip
-                  locale={locale}
-                  hover={placementHover.hover}
-                  ownerName={nameOfSlot(placementHover.hover.placement.owner)}
-                  width={renderWidth}
-                />
-              )}
-              {/* L'infobulle d'un EMPLACEMENT D'ARME : l'arme, son état, son cycle s'il est
-                  établi. JAMAIS qui l'a prise — ce n'est pas publié. */}
-              {weaponPads.hover && (
-                <ReplayWeaponPadTip
-                  locale={locale}
-                  hover={weaponPads.hover}
-                  width={renderWidth}
-                />
-              )}
+              {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
+              <ReplayCanvasTips
+                locale={locale} width={renderWidth} ownerNameOf={nameOfSlot}
+                placement={placementHover.hover} pad={weaponPads.hover} flag={flags.hover}
+              />
               {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
             </div>
             <div className="mt-2 flex items-center gap-3">
@@ -787,6 +786,7 @@ export function ReplayCanvas({
               show: showWeaponPads,
               onToggle: toggleWeaponPads,
             }}
+            flagCarries={{ available: flags.available, show: showFlagCarries, onToggle: toggleFlagCarries }}
             heatmap={{
               show: showHeatmap,
               onToggle: toggleHeatmap,
