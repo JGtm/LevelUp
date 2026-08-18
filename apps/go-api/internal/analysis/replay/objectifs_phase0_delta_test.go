@@ -30,6 +30,7 @@ import (
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/analysis/weaponv3"
 )
 
 // objNoVariant : la sentinelle « pas d'arme lue » du decodeur (`filmdec.noVariant`, non
@@ -151,6 +152,7 @@ func TestObjectifsPhase0CanalDelta(t *testing.T) {
 			t.Logf("%s : le motif du drapeau 0x%08X apparait %d fois dans le canal delta",
 				id, motif, objCompteFamille(lectures, motif))
 		}
+		objLogDeltaParCamp(t, root, id, src, lectures)
 		a, p, l := objLatencesPrise(t, root, id, src, lectures, motif)
 		cumApparies, cumPrises = cumApparies+a, cumPrises+p
 		latences = append(latences, l...)
@@ -222,6 +224,83 @@ func objLatencesPrise(t *testing.T, root, id string, src *objDiskFilm, lectures 
 	t.Logf("%s : %d prises, %d appariees a une lecture du motif dans les %d ms",
 		id, len(wins), apparies, objSeuilLatenceMS)
 	return apparies, len(wins), lat
+}
+
+// objDeltaParCamp confronte les familles LUES DANS LE CANAL DELTA a la frontiere de portage,
+// exactement comme l'item 0.1 le fait pour les images-cles.
+//
+// POURQUOI CETTE MESURE COMPLETE L'ITEM 0.2, ET NE LE DEBORDE PAS. Le verdict ci-dessus
+// repond a « le motif du drapeau passe-t-il par le canal delta ? » (non, zero fois). Il reste
+// a savoir si le canal porte, sous un AUTRE identifiant, quelque chose qui marque le portage —
+// sans quoi on conclurait « le canal ne sert a rien » alors qu'on n'aurait teste qu'une valeur.
+// Seules les lectures posees sur un slot que le pont bipede NOMME sont comptees : le canal
+// livre aussi des lectures sur des entites d'arme, qui n'ont pas de porteur.
+func objDeltaParCamp(lectures []objLectureArme, b objBridge, wins []objWindow) ([]objCandidat, int, int) {
+	parXUID := map[uint64][]objWindow{}
+	for _, w := range wins {
+		parXUID[w.XUID] = append(parXUID[w.XUID], w)
+	}
+	compte := map[uint32]*objCompte{}
+	portage, hors := 0, 0
+	for _, r := range lectures {
+		x, ok := b.SlotXUID[r.Slot]
+		if !ok {
+			continue
+		}
+		porte := objDansFenetre(parXUID[x], int64(r.TS/1000)-b.OffsetMS)
+		if porte {
+			portage++
+		} else {
+			hors++
+		}
+		c := compte[r.Fam]
+		if c == nil {
+			c = &objCompte{}
+			compte[r.Fam] = c
+		}
+		if porte {
+			c.Portage++
+		} else {
+			c.Hors++
+		}
+	}
+	var out []objCandidat
+	for v, c := range compte {
+		out = append(out, objCandidat{
+			Val: v, Portage: c.Portage, Hors: c.Hors,
+			TauxP: objPart(c.Portage, portage), TauxH: objPart(c.Hors, hors),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].TauxP != out[j].TauxP {
+			return out[i].TauxP > out[j].TauxP
+		}
+		return out[i].Val < out[j].Val
+	})
+	return out, portage, hors
+}
+
+// objLogDeltaParCamp publie la confrontation des familles du canal delta a la frontiere de
+// portage.
+func objLogDeltaParCamp(t *testing.T, root, id string, src *objDiskFilm, lectures []objLectureArme) {
+	t.Helper()
+	b := objBridgeOf(t, root, id)
+	identity, _, _ := objStatPont(objectiveevents.StatRecords(src), b.Deaths)
+	evs := objectiveevents.IdentifyNamedEvents(
+		objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag), objIdentityStrings(identity))
+	wins, _ := objPortageWindows(evs, b.Deaths, objFinMatch(evs, b.Deaths))
+	cands, portage, hors := objDeltaParCamp(lectures, b, wins)
+	t.Logf("%s : canal delta sur slots NOMMES — %d lectures en portage, %d hors portage, "+
+		"%d familles distinctes", id, portage, hors, len(cands))
+	for i, c := range cands {
+		if i >= 6 {
+			t.Logf("%s : ... %d autres familles du canal delta", id, len(cands)-6)
+			break
+		}
+		t.Logf("%s : canal delta famille 0x%08X (%s) — portage %d/%d = %.1f %% ; hors %d/%d = %.1f %%",
+			id, c.Val, weaponv3.WeaponName(c.Val), c.Portage, portage, 100*c.TauxP,
+			c.Hors, hors, 100*c.TauxH)
+	}
 }
 
 // objMedianeI64 rend la mediane d'une serie (0 si vide).
