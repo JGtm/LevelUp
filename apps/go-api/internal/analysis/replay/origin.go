@@ -111,3 +111,20 @@ func resolveOriginMs(firstPosUS, filmClockUS uint64, deathOffsetMS int64, matche
 	}
 	return &read
 }
+
+// originMSOf rend l'origine de la frame 0 en millisecondes, ou 0 quand elle n'est pas etablie.
+//
+// ZERO N'EST PAS UNE ORIGINE NEUTRE, C'EST UN REPLI, et il se journalise. Les calques dates sur
+// l'horloge du FILM (actions d'objectif, courbe de score) se posent sur la grille de frames par
+// soustraction de cette origine ; sans elle, ils restent decales de l'ecart reel entre le
+// premier paquet du film et le premier paquet de position — 3,6 s a 50,8 s selon le match.
+// Le REFUS d'origine est deja journalise par resolveOriginMs ; ce qui se journalise ici est sa
+// CONSEQUENCE sur les calques, qui n'est pas la meme information.
+func originMSOf(origin *int64, matchID string) int {
+	if origin == nil {
+		slog.Warn("rejeu : aucune origine etablie — calques dates sur l'horloge du film NON recales",
+			"match_id", matchID)
+		return 0
+	}
+	return int(*origin)
+}

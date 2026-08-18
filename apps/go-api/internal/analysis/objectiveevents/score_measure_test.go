@@ -217,7 +217,7 @@ func writePlayers(m *measureRows, recs []StatRecord, or oracleMatch) (map[int]st
 	deaths := lastBySlot(recs, statSlotKey{coreKillsComp, sideB})
 	assists := lastBySlot(recs, statSlotKey{coreAssistsComp, sideA})
 
-	triplet := slotIdentityFrom(recs, or.Lines)
+	triplet := SlotIdentityFrom(recs, or.Lines)
 	noncirc := identityByDeathsAssists(deaths, assists, or.Lines)
 
 	byXUID := map[string]PlayerLine{}

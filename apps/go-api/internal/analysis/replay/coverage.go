@@ -141,6 +141,15 @@ type Coverage struct {
 	// un film sans socle, un film dont toutes les armes sont des lâchers et un film qu'on n'a
 	// pas su balayer rendent tous trois zéro socle — seuls ces compteurs les distinguent.
 	GroundWeapons *GroundWeaponCoverage `json:"groundWeapons,omitempty"`
+	// Score est la couverture de la courbe de score (schéma 12, cf. document_score.go) :
+	// d'où vient l'identité des camps, combien de manches ont été lues, si le mode porte le
+	// score de mode, si la lecture a été tronquée, et ce que la courbe MESURE (`displayed`).
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND AUCUNE COURBE NE L'EST, pour la même raison que `placements`
+	// et `groundWeapons` : un film sans enregistrements d'entité et un film dont l'identité des
+	// camps n'a pas été résolue rendent tous deux une courbe pauvre, et seuls ces compteurs les
+	// distinguent. Son ABSENCE dit autre chose encore — l'appelant n'a rien fourni à lire.
+	Score *ScoreCoverage `json:"score,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`

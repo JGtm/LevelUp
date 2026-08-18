@@ -26,7 +26,7 @@ func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
 			continue
 		}
 		apparies++
-		got := slotIdentityFrom(StatRecords(src), lines)
+		got := SlotIdentityFrom(StatRecords(src), lines)
 		if len(got) != 8 {
 			t.Errorf("%s : %d slots apparies, attendu 8", film, len(got))
 		}
@@ -54,7 +54,7 @@ func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
 	if !ok {
 		t.Skipf("film 1bc77d2e absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
-	got := slotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
+	got := SlotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
 	// slotOwners (named_test.go) donne slot 18 = JGtm, dont le xuid est etabli en §16.2.
 	for slot, want := range map[int]string{
 		18: "2533274823110022", // JGtm
@@ -83,7 +83,7 @@ func TestSlotIdentityRefusesAmbiguousTriplets(t *testing.T) {
 		{XUID: "b", Kills: 5, Deaths: 3, Assists: 2},
 		{XUID: "c", Kills: 9, Deaths: 1, Assists: 4},
 	}
-	got := slotIdentityFrom(recs, lines)
+	got := SlotIdentityFrom(recs, lines)
 	if _, ok := got[10]; ok {
 		t.Error("slot 10 apparie alors que deux joueurs partagent son triplet")
 	}
@@ -119,7 +119,7 @@ func TestSlotIdentityRefuseUnXuidRevendiqueParDeuxSlots(t *testing.T) {
 		{XUID: "a", Kills: 5, Deaths: 3, Assists: 2},
 		{XUID: "c", Kills: 9, Deaths: 1, Assists: 4},
 	}
-	got := slotIdentityFrom(recs, lines)
+	got := SlotIdentityFrom(recs, lines)
 	if _, ok := got[10]; ok {
 		t.Error("slot 10 apparie alors qu'il se dispute le xuid \"a\" avec le slot 12")
 	}
@@ -155,7 +155,7 @@ func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
 		t.Skipf("film 1bc77d2e absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	evs := NamedEvents(src, ObjectiveTypeFlag)
-	identity := slotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
+	identity := SlotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
 	got := IdentifyNamedEvents(evs, identity)
 
 	// Les 8 slots etant apparies, aucun evenement ne doit etre perdu.

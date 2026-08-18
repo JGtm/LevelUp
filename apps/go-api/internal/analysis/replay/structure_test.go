@@ -164,8 +164,20 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   ces compteurs les distinguent. Le RAMASSEUR n'est PAS publié (`padPickups[].xuid` vaut
 	//   `null`) : l'oracle des loadouts donne 88,1 % par slot de vie et 79,7 % par joueur, contre
 	//   >= 90 % exigé, et le seuil n'a pas été rebaissé.
-	if SchemaVersion != 11 {
-		t.Fatalf("SchemaVersion = %d, attendu 11 : incrémenter exige une raison écrite ci-dessus "+
+	//   v11 -> v12 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot A phase 1) :
+	//   `scoreTimeline`, LE SCORE DANS LE TEMPS — la courbe des deux camps (par manche et en
+	//   total) et les compteurs vivants de chaque joueur, avec `coverage.score`. Champ omitempty,
+	//   et DEUX raisons de monter plutôt qu'une. La première est la clé de reprise habituelle : le
+	//   document ne portait aucun score, donc ni la courbe de l'onglet Dominance ni le score
+	//   vivant du rejeu n'existent sur un artefact v11 — il doit se lire « à re-cuire ». La
+	//   seconde est un CORRECTIF : `objectives[]` était vide en production (le pont d'identité
+	//   exige les lignes de match, que personne ne fournissait) et, quand un outil de mesure le
+	//   remplissait, il était DÉCALÉ de `originMs` — 3,6 s à 50,8 s selon le match, d'où des
+	//   pulses posés sur la mauvaise zone (appartenance stricte 9,9 % sans correction, 40,9 %
+	//   avec). Un client v11 lit donc des actions absentes ou mal datées, ce qu'aucun champ
+	//   optionnel de plus ne dirait.
+	if SchemaVersion != 12 {
+		t.Fatalf("SchemaVersion = %d, attendu 12 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

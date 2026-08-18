@@ -61,41 +61,100 @@ func ScoreCurve(src FilmSource) []ScorePoint {
 // Sur un match a une seule manche, le resultat est identique a l'ancien (verifie par les tests
 // de verite terrain Strongholds et CTF).
 func ScoreCurveFrom(recs []StatRecord) []ScorePoint {
-	real := RealRounds(recs)
-	teams := cumulateRounds(rawSeriesByRound(recs, statSlotKey{modeScoreComp, sideA}, true), real)
-	players := cumulateRounds(rawSeriesByRound(recs, statSlotKey{modeScoreComp, sideA}, false), real)
 	var all []ScorePoint
-	for _, bySlot := range []map[int][]ScorePoint{teams, players} {
-		for _, pts := range bySlot {
+	for _, teams := range []bool{true, false} {
+		for _, pts := range SeriesTotal(recs, ModeScoreComponent, teams) {
 			all = append(all, pts...)
 		}
 	}
 	return keepMonotoneBySlot(all)
 }
 
-// ScoreRoundsFrom rend la courbe du score de mode PAR MANCHE : par slot, par manche, les
-// emissions retenues (valeurs propres a la manche, non cumulees). C'est la forme que publie
-// l'artefact de rejeu, ou chaque manche est une courbe distincte.
-func ScoreRoundsFrom(recs []StatRecord) map[int]map[int][]ScorePoint {
-	out := map[int]map[int][]ScorePoint{}
+// StatComponent designe un emplacement de statistique repliquee : l'index du composant, le
+// cote (A ou B) de sa paire de valeurs, et la stricte croissance attendue de sa suite.
+//
+// C'est la meme adresse que `statSlotKey`, EXPORTEE pour que l'assembleur du rejeu demande
+// une serie sans avoir a connaitre la grammaire du statborg. Aucun de ces emplacements n'est
+// suppose : chacun est mesure (cf. l'en-tete de ce fichier et celui de slotidentity.go).
+type StatComponent struct {
+	// Comp est l'index du composant dans l'archetype.
+	Comp int
+	// SideB choisit la valeur B de la paire plutot que la valeur A.
+	SideB bool
+	// Strict dit si la suite retenue doit etre STRICTEMENT croissante. La distinction n'est
+	// pas cosmetique (cf. [longestRun]) : le score de MODE ne repete jamais une valeur (une
+	// egalite serait un doublon a jeter), alors qu'un compteur de recompense est seulement
+	// NON DECROISSANT — un composant porte deux valeurs et il est reemis des que l'UNE des
+	// deux bouge, donc la meme valeur revient legitimement.
+	Strict bool
+}
+
+// Les emplacements que le rejeu publie.
+var (
+	// ModeScoreComponent : le score de MODE (comp 0, valeur A) — celui que l'ECRAN affiche,
+	// et qui n'est pas toujours celui de l'API (phase 0-ter du lot A : Strongholds compte des
+	// ticks, KOTH des secondes de colline).
+	ModeScoreComponent = StatComponent{Comp: modeScoreComp, Strict: true}
+	// PersonalScoreComponent : le score PERSONNEL (comp 1, valeur B).
+	PersonalScoreComponent = StatComponent{Comp: personalScoreComp, SideB: true}
+	// KillsComponent, DeathsComponent, AssistsComponent : les trois compteurs de base,
+	// confirmes nominativement contre `match_participants` (cf. slotidentity.go).
+	KillsComponent   = StatComponent{Comp: coreKillsComp}
+	DeathsComponent  = StatComponent{Comp: coreKillsComp, SideB: true}
+	AssistsComponent = StatComponent{Comp: coreAssistsComp}
+)
+
+// key traduit l'emplacement exporte en cle interne.
+func (c StatComponent) key() statSlotKey {
+	side := sideA
+	if c.SideB {
+		side = sideB
+	}
+	return statSlotKey{Comp: c.Comp, Side: side}
+}
+
+// SeriesByRound rend, pour un emplacement, les emissions de chaque slot MANCHE PAR MANCHE :
+// valeurs propres a la manche, NON cumulees. C'est la forme que publie l'artefact de rejeu,
+// ou chaque manche est une courbe distincte.
+//
+// teams choisit les slots d'equipe (6 et 8) plutot que ceux de joueur (10..24 pairs). Les
+// manches FANTOMES — celles que [RealRounds] refuse — sont ecartees : les cumuler ferait
+// exploser les compteurs (mesure : le score d'equipe d'un CTF passait de 1 a 2 104).
+func SeriesByRound(recs []StatRecord, c StatComponent, teams bool) map[int]map[int][]ScorePoint {
 	real := RealRounds(recs)
-	for _, teams := range []bool{true, false} {
-		for slot, byRound := range rawSeriesByRound(recs, statSlotKey{modeScoreComp, sideA}, teams) {
-			for round, pts := range byRound {
-				if !real[round] {
-					continue
-				}
-				sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
-				kept := longestRun(pts, true)
-				if len(kept) == 0 {
-					continue
-				}
-				if out[slot] == nil {
-					out[slot] = map[int][]ScorePoint{}
-				}
-				out[slot][round] = kept
+	out := map[int]map[int][]ScorePoint{}
+	for slot, byRound := range rawSeriesByRound(recs, c.key(), teams) {
+		for round, pts := range byRound {
+			if !real[round] {
+				continue
 			}
+			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+			kept := longestRun(pts, c.Strict)
+			if len(kept) == 0 {
+				continue
+			}
+			if out[slot] == nil {
+				out[slot] = map[int][]ScorePoint{}
+			}
+			out[slot][round] = kept
 		}
+	}
+	return out
+}
+
+// SeriesTotal rend, pour un emplacement, la serie CUMULEE sur le match de chaque slot :
+// chaque manche est decalee du total des precedentes, la suite est donc croissante de bout en
+// bout et son dernier point vaut le total du match.
+//
+// C'est le pendant de [SeriesByRound], et les deux sont necessaires : la manche est ce que
+// l'ecran affiche pendant qu'elle se joue, le total est ce que le match retient.
+func SeriesTotal(recs []StatRecord, c StatComponent, teams bool) map[int][]ScorePoint {
+	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams), RealRounds(recs))
+	if !c.Strict {
+		return out
+	}
+	for slot, pts := range out {
+		out[slot] = longestRun(pts, true)
 	}
 	return out
 }

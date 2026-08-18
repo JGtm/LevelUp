@@ -41,7 +41,9 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settingsPkg "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -181,10 +183,37 @@ type Deps struct {
 	Enqueue EnqueueFunc
 }
 
-// buildWork : un match à construire, avec ses identités de carte candidates.
+// buildWork : un match à construire, avec ses identités de carte candidates et les faits que
+// seule la base connaît (lignes de match, scores des deux camps, nom de variante).
 type buildWork struct {
 	matchID  string
 	mapNames []string
+	facts    port.MatchFacts
+}
+
+// attachMatchFacts lit, DANS LE MÊME SEGMENT DE LECTURE que la sélection, ce que la base sait
+// de chaque match du lot — le pont d'identité des joueurs et celui des camps.
+//
+// POURQUOI ICI ET PAS AU MOMENT DE CONSTRUIRE : le décodage d'un film dure des secondes à des
+// minutes, et rien ne doit tenir un handle partagé pendant ce temps-là (même règle que l'action
+// admin). Deux SELECT courts par match, puis la base est relâchée.
+//
+// Une lecture qui échoue DÉGRADE ce match seul, journalisée : l'artefact sortira sans compteurs
+// de joueur ni actions d'objectif, ce qui vaut mieux que pas d'artefact du tout.
+func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
+	if sharedDB == nil {
+		return
+	}
+	repo := duckdbpkg.NewReplayFactsRepo(sharedDB)
+	for i := range work {
+		facts, err := repo.FactsForMatch(ctx, work[i].matchID)
+		if err != nil {
+			slog.WarnContext(ctx, "post-sync: faits de match illisibles — rejeu sans courbe de score complète",
+				"err", err, "match_id", work[i].matchID)
+			continue
+		}
+		work[i].facts = facts
+	}
 }
 
 // Run — étape post-sync 1.58 : selon le lieu de construction réglé, ou bien pont
@@ -204,6 +233,7 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	var work []buildWork
 	d.WithRead(ctx, "replay_select", func(sharedDB *sql.DB) {
 		work = selectBuildWork(ctx, sharedDB, d.MetaDB, insertedIDs, d.RetentionMonths)
+		attachMatchFacts(ctx, sharedDB, work)
 	})
 	if len(work) == 0 {
 		return
@@ -296,7 +326,7 @@ func buildAll(ctx context.Context, d Deps, builder *replaybuild.Builder, work []
 			continue
 		}
 		short := titlePkg.FilmShortMatchID(w.matchID)
-		out, berr := builder.BuildMatch(w.matchID, w.mapNames, filmcache.ChunkDir(d.CacheRoot, short))
+		out, berr := builder.BuildMatch(w.matchID, w.mapNames, filmcache.ChunkDir(d.CacheRoot, short), w.facts)
 		if berr != nil {
 			// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
 			// Les deux sont best-effort, mais seuls les seconds méritent un WARN.

@@ -106,7 +106,24 @@ package replay
 // v11 (2026-08-17, plan PLAN_ARMES_AU_SOL_2E_LECTURE phase 3) : `weaponPads` et `padPickups` —
 // les SOCLES D'ARME du match. Chronique complète, et surtout ce que la mesure a REFUSÉ de
 // publier (le ramasseur, les armes lâchées, le catalogue de carte) : document_ground_weapons.go.
-const SchemaVersion = 11
+//
+// v12 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot A phase 1) : `scoreTimeline` — LE
+// SCORE DANS LE TEMPS, des deux camps et de chaque joueur, avec `coverage.score`. Ce que la
+// version monte ferme DEUX défauts, et aucun n'est cosmétique :
+//
+//   - le document ne portait AUCUN score. La courbe de l'onglet Dominance et le score vivant du
+//     rejeu n'existent que si l'artefact les porte, et la reprise du backfill se fait par
+//     SchemaVersion — un artefact v11 doit se voir « à re-cuire », pas « à jour » ;
+//   - `objectives[]` était VIDE en production (le pont d'identité exige les lignes de match, que
+//     personne ne fournissait) et, quand un outil de mesure le remplissait, il était DÉCALÉ de
+//     `originMs` — 3,6 s à 50,8 s selon le match, d'où des pulses posés sur la mauvaise zone
+//     (appartenance stricte 9,9 % sans correction, 40,9 % avec). Les deux sont corrigés ici :
+//     le calque est alimenté par le constructeur d'artefact, et `buildObjectiveActions` retranche
+//     l'origine. Un client v11 lit donc des actions absentes ou mal datées.
+//
+// Forme, oracle (`displayed` — le score AFFICHÉ, qui n'est pas celui de l'API en Strongholds ni
+// en KOTH), identité des camps et limites : document_score.go.
+const SchemaVersion = 12
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -280,6 +297,18 @@ type ReplayDocument struct {
 	// mode n'est pas un mode à objectifs, ou quand l'appelant n'a pas fourni les lignes de
 	// match nécessaires au pont d'identité.
 	Objectives []ObjectiveAction `json:"objectives,omitempty"`
+	// ScoreTimeline est LE SCORE DANS LE TEMPS : la courbe des deux camps (par manche et en
+	// total) et les compteurs vivants de chaque joueur — score personnel, frags, morts,
+	// assistances — posés sur la même grille de frames que les trajectoires.
+	//
+	// CE QU'ELLE APPORTE que `Objectives` n'apporte pas : les actions disent QUAND un joueur a
+	// capturé ; celle-ci dit OÙ EN ÉTAIT LE SCORE à cet instant, y compris dans les modes qui
+	// n'ont aucune action nommée (Slayer, KOTH, Oddball). Son oracle est le score AFFICHÉ, et il
+	// n'est pas toujours celui de l'API : cf. document_score.go.
+	//
+	// Absente quand l'appelant n'a pas fourni les enregistrements du film (CLI hors ligne sans
+	// faits de match) ou quand le film n'en porte aucun — `coverage.score` distingue les deux.
+	ScoreTimeline *ScoreTimeline `json:"scoreTimeline,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//

@@ -18,6 +18,8 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -38,6 +40,12 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 		return nil, err
 	}
 	fullID, names, err := replayMatchIdentity(ctx, sharedSQL, metaSQL, matchID)
+	// LES FAITS SE LISENT AVANT DE RELÂCHER LES HANDLES, et jamais pendant le décodage : deux
+	// SELECT courts, puis la base n'est plus tenue (le décodage dure des secondes à minutes).
+	var facts port.MatchFacts
+	if err == nil {
+		facts = replayMatchFacts(ctx, sharedSQL, fullID)
+	}
 	closeAll()
 	if err != nil {
 		return nil, err
@@ -55,7 +63,7 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 	if err != nil {
 		return nil, err
 	}
-	out, err := builder.BuildMatch(fullID, names, filmcache.ChunkDir(cacheRoot, short))
+	out, err := builder.BuildMatch(fullID, names, filmcache.ChunkDir(cacheRoot, short), facts)
 	if err != nil {
 		return nil, err
 	}
@@ -126,4 +134,20 @@ func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchI
 		names = append(names, h.rawName)
 	}
 	return h.id, names, nil
+}
+
+// replayMatchFacts lit CE QUE LA BASE SAIT DU MATCH et que le film ne dit pas : les lignes de
+// match (pont d'identité des joueurs), les scores des deux camps (identité des camps) et le nom
+// de variante (famille d'objectif). Dégradation journalisée, jamais fatale : un artefact sans
+// ces faits reste valide, seulement sans compteurs de joueur ni actions d'objectif.
+func replayMatchFacts(ctx context.Context, sharedSQL *sql.DB, matchID string) port.MatchFacts {
+	facts, err := duckdb.NewReplayFactsRepo(sharedSQL).FactsForMatch(ctx, matchID)
+	if err != nil {
+		// DEGRADATION, PAS ECHEC : un artefact sans ces faits reste valide et servi ; refuser de
+		// construire pour une lecture ratee couterait le rejeu entier.
+		monitoringLog.WarnContext(ctx, "admin_actions: faits de match illisibles — rejeu sans courbe de score complète",
+			"err", err, "match_id", matchID)
+		return port.MatchFacts{}
+	}
+	return facts
 }
