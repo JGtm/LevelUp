@@ -66,12 +66,27 @@ type FlagInput struct {
 
 // decodeFilmCarrierMarks balaye le marqueur de portage et JOURNALISE ce qu'il en est.
 //
+// IL NE BALAYE QUE LES FILMS DE CTF, et c'est une mesure de cout, pas une optimisation de
+// principe. Le balayage est une marche COMPLETE des images-cles avec une fenetre glissante de
+// 32 bits sur l'emprise de chaque record de bipede : sur les films mesures il pese des dizaines
+// de secondes, a comparer aux ~60 s de tout le reste du decodage. Or ce qu'il produit n'est
+// qu'un CONTROLE — il alimente `markerObserved` / `markerConfirmed`, jamais le calque lui-meme —
+// et sur un film d'un autre mode le calque est vide de toute facon. Le payer partout serait
+// payer pour rien sur la quasi-totalite des artefacts.
+//
+// LE VERDICT DE MODE EST DEJA LA : il se lit dans ce que l'appelant a fourni (enregistrements
+// d'entite + bursts de capture), sans toucher au film. Un film non reconnu rend donc un balayage
+// VIDE, ce qui est exactement ce que `buildFlagCarries` en fera.
+//
 // L'ECHEC N'EST PAS FATAL, et il ne se confond pas avec l'absence de marque : sans ce balayage
 // le calque est publie SANS son controle independant (`markerObserved` a zero), pas ampute. Un
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm, sous LockProcessDecode.
-func decodeFilmCarrierMarks(filmDir string) filmdec.CarrierMarkScan {
+func decodeFilmCarrierMarks(filmDir string, in FlagInput) filmdec.CarrierMarkScan {
+	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
+		return filmdec.CarrierMarkScan{}
+	}
 	marks, err := filmdec.ScanFilmCarrierMarks(filmDir)
 	if err != nil {
 		slog.Warn("drapeau : marqueur de portage illisible — calque publie sans son controle",
@@ -79,6 +94,12 @@ func decodeFilmCarrierMarks(filmDir string) filmdec.CarrierMarkScan {
 		return filmdec.CarrierMarkScan{}
 	}
 	return marks
+}
+
+// flagFilmSignalsOf rend le verdict de mode a partir des SEULES lectures deja faites. Pur.
+func flagFilmSignalsOf(in FlagInput) objectiveevents.FlagFilmSignals {
+	return objectiveevents.FlagFilmSignalsFrom(in.Bursts,
+		objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag))
 }
 
 // attachFlagCarries pose la vie des drapeaux sur le document, avec sa couverture et son journal.
@@ -92,7 +113,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	events := objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag)
 	scan := FlagCarryScan{
 		Scanned:  in.Scanned,
-		Signals:  objectiveevents.FlagFilmSignalsFrom(in.Bursts, events),
+		Signals:  flagFilmSignalsOf(in),
 		Events:   events,
 		Identity: objectiveevents.SlotIdentityByDeaths(in.Records, deathInstantsOf(opt.Deaths)),
 		Marks:    in.Marks,
