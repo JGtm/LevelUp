@@ -127,16 +127,16 @@ records NEW aux respawns). Le verdict le dira.
 - `[x]` 0.3 Gate : `go vet ./internal/analysis/...` ; `go test ./internal/analysis/...`
   (l'instrument se saute, la suite reste verte) ; `golangci-lint` 0 nouveau.
 
-### Phase 1 — L'oracle des cinq ramassages `[ ]`
+### Phase 1 — L'oracle des cinq ramassages `[x]`
 
-- `[ ]` 1.1 Lire `equipmentEpisodes` + `tracks[].points[]` de `01e1f945` ; rendre la position
+- `[x]` 1.1 Lire `equipmentEpisodes` + `tracks[].points[]` de `01e1f945` ; rendre la position
   du bipede de chaque episode a son `t0` (et l'encadrement le plus proche si `t0` n'est pas
   un point).
-- `[ ]` 1.2 Dispersion des 5 points : centroide, rayon max, ecart au centre de la carte.
-- `[ ]` 1.3 TEMOIN : 5 instants tires au hasard sur les MEMES bipedes, par le MEME code.
-- `[ ]` 1.4 Verdict d'etape : la position du socle est-elle MESUREE ? Si oui, elle devient la
+- `[x]` 1.2 Dispersion des 5 points : centroide, rayon max, ecart au centre de la carte.
+- `[x]` 1.3 TEMOIN : 5 instants tires au hasard sur les MEMES bipedes, par le MEME code.
+- `[x]` 1.4 Verdict d'etape : la position du socle est-elle MESUREE ? Si oui, elle devient la
   cible des phases 2 et 3 (boite 3 m autour d'ELLE, en plus du centre geometrique).
-- `[ ]` 1.5 Gate : `go vet` + `go test ./internal/analysis/...` + instrument joue sur
+- `[x]` 1.5 Gate : `go vet` + `go test ./internal/analysis/...` + instrument joue sur
   `01e1f945`.
 
 ### Phase 2 — Les archetypes dans la boite (H2 / H3) `[ ]`
@@ -201,6 +201,57 @@ a 0,042 m du centre retenu, `01e1f945` a 0,208 m. `64e8adfa` rend (-106,0 ; -93,
 141,7 m — voir Decouvertes n°1.
 
 **Gate (0.3)** : `go vet ./internal/analysis/...` 0 · `go test ./internal/analysis/...` 0 ·
+`golangci-lint run ./internal/analysis/replay/...` **0 issues**.
+
+### Phase 1 — CLOSE le 2026-08-18. **LE SOCLE EST MESURE.**
+
+Instrument : `apps/go-api/internal/analysis/replay/powerup_socle_oracle_test.go`.
+
+**1.1 — les cinq ramassages, a leur `T0` d'episode** (centre de la carte (0,276 ; 0,016)) :
+
+| slot | `t0` | position a `T0` | z | d(centre) |
+|---|---|---|---|---|
+| 512 | 347 (34,7 s) | (-3,520 ; -0,850) | 22,08 | 3,89 m |
+| 537 | 1444 (144,4 s) | (4,230 ; -0,090) | 21,36 | 3,96 m |
+| 564 | 2690 (269,0 s) | (3,770 ; 0,210) | 22,02 | 3,50 m |
+| 604 | 4363 (436,3 s) | (0,200 ; 5,920) | **26,73** | 5,90 m |
+| 619 | 5219 (521,9 s) | (-3,460 ; -0,410) | 21,36 | 3,76 m |
+
+Rayon du nuage a `T0` : **3,98 m** (temoin, memes vies a instants decorreles : 15,78 m,
+facteur 3,18). Le seuil de 2 m n'est PAS atteint a `T0` — et c'est le resultat qui a ouvert
+l'etape 1.5 : `T0` ne date pas le ramassage, il date l'instant ou la LECTURE du bouclier
+depasse le plein. Entre les deux, le porteur a couru.
+
+**1.6 — un ramassage sur cinq n'est PAS celui d'un socle, et la regle l'ecarte.** Le slot 604
+ramasse a 0,88 m d'une pose `powerup_overshield` `0xb781197a` d'origine `dropped` posee a
+`t0=4104` : c'est un surbouclier LACHE A UNE MORT, pas un socle. Regle appliquee (ecrite avant
+la mesure, symetrique de la production) : pose `powerup_*` `dropped`, anterieure, a moins
+d'`equipOwnerMaxDist` (3 m). **4 episodes retenus sur 5.**
+
+**1.5 — la remontee : les quatre trajectoires SE CROISENT.** Dispersion du nuage `k` images
+avant `T0`, k de 0 a 40 :
+
+| k | 0 | 5 | 10 | 13 | **15** | 16 | 20 | 30 | 40 |
+|---|---|---|---|---|---|---|---|---|---|
+| rayon (m) | 3,980 | 2,745 | 1,463 | 0,650 | **0,256** | 0,312 | 0,781 | 2,359 | 4,545 |
+| d(centre) | 0,30 | 0,19 | 0,11 | 0,06 | **0,12** | 0,28 | 0,96 | 3,04 | 5,12 |
+
+Un V net, monotone des deux cotes. Minimum a **k = 15 images (1,5 s avant `T0`)** :
+
+> **SOCLE MESURE en (0,393 ; -0,012), rayon 0,256 m, a 0,12 m du centre de la carte.**
+> Altitude des quatre porteurs a cet instant : **z de 21,36 a 21,90** — l'etage BAS du
+> milieu, 0,5 a 5,6 m sous les socles d'arme (22,40 a 27,02).
+
+Les deux seuils ecrits avant la mesure sont ATTEINTS (rayon <= 2 m ; centroide a <= 3 m du
+centre), et de deux ordres de grandeur pour le premier. Le decalage de 1,5 s est coherent avec
+la MONTEE du surbouclier, qui n'est pas instantanee.
+
+**Ce que la phase 1 etablit, et qui ne se remesure pas** : le power-up du centre de Catalyst
+EXISTE, il est a **(0,39 ; -0,01)** au niveau **z ~ 21,4-21,9**, il est ramasse **4 fois** en
+534 s sur `01e1f945`, et ses instants de ramassage sont `T0 - 15` images, soit **19,7 s ;
+142,9 s ; 267,5 s ; 520,4 s**.
+
+**Gate (1.5)** : `go vet` 0 · `go test ./internal/analysis/...` 0 ·
 `golangci-lint run ./internal/analysis/replay/...` **0 issues**.
 
 ## 7. Decouvertes (a ne PAS traiter dans ce lot)
