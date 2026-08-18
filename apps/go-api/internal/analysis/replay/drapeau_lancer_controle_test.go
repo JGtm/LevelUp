@@ -44,6 +44,35 @@ package replay
 //
 //	CGO_ENABLED=0 OBJ_FILM=<depot>/data/cache OBJ_REPO=<depot> \
 //	  go test ./internal/analysis/replay/ -run DrapeauLancerControle -v -timeout 60m
+//
+// ────────────────────────────────────────────────────────────────────────────────────────────
+// CE QUE LA MESURE A DONNE (2026-08-18, trois films CTF : 197 vies libres, 950 armes) —
+// L'HYPOTHESE DU LANCER EST REFUTEE, ET DEUX FOIS PLUTOT QU'UNE.
+//
+//	R = 1,5 m   162/197 = 82,2 %   temoin 136/950 = 14,3 %
+//	R = 3   m   162/197 = 82,2 %   temoin 151/950 = 15,9 %
+//	R = 5   m   162/197 = 82,2 %   temoin 167/950 = 17,6 %
+//	R = 8   m   163/197 = 82,7 %   temoin 211/950 = 22,2 %   (le temoin creve son plafond)
+//	R = 10  m   164/197 = 83,2 %   temoin 227/950 = 23,9 %
+//
+// AUCUN R N'ATTEINT 90 %, ET LE RAPPORT EST INVERSE : de 1,5 a 10 m le drapeau gagne DEUX vies,
+// le temoin en gagne QUATRE-VINGT-ONZE. Elargir profite dix fois plus aux armes ordinaires qu'au
+// drapeau — le rayon ne mesure pas une portee de lancer, il mesure la densite des joueurs.
+//
+// LA DISTRIBUTION REFUTE SANS MEME PASSER PAR LES SEUILS : sur les 35 residuelles a 1,5 m, 26
+// (74 %) n'ont AUCUNE reference porteur dans les 2 s — pas meme un lanceur candidat. Les 9
+// mesurables sont a mediane 20,6 m (p90 et max 43,1 m), et les tranches ]1,5-3 m] et ]3-5 m]
+// sont VIDES. Un lancer de drapeau porte quelques metres ; a quelques metres, il n'y a rien.
+//
+// CE QUE LA MESURE APPREND QUAND MEME, ET QUI N'EST PAS TRAITE : a rayon INCHANGE, la fenetre a
+// 2 s fait passer le controle 3 de 75,6 % a 82,2 % (treize vies) pour +1,5 point de temoin. Ce
+// qui manquait au lacher est le DELAI, pas la distance. Non transporte en production : la
+// fenetre de `flag_objects.go` FERME des portages, et sa seconde est bornee pour ne jamais
+// rattraper le portage precedent. Piste au registre, pas correctif.
+//
+// CE TEST RESTE, ET IL RESTE VERT : il ne juge pas, il PUBLIE le balayage. Le refus est ecrit au
+// plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md` (phase 4), la ou un verdict se conteste.
+// ────────────────────────────────────────────────────────────────────────────────────────────
 
 import (
 	"fmt"
