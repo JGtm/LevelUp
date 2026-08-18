@@ -62,27 +62,40 @@
 
 ### Phase 0 — MESURER le canal du porteur (worktree principal, films)
 
-- [ ] 0.1 **La famille du drapeau.** Sur les 3 films CTF : pour chaque `FlagGrabs`/`FlagSteals`
+- [x] 0.1 **La famille du drapeau.** Sur les 3 films CTF : pour chaque `FlagGrabs`/`FlagSteals`
       d'un slot S a t, fenetre de portage = [t, min(capture de S, mort de S, `FlagCarriersKilled`
       dont la victime est S)] ; familles des loadouts d'images-cles de S DANS la fenetre moins
       familles de S HORS fenetre => famille candidate. Seuil : UN identifiant 32 bits, le MEME sur
       les 3 films, present dans >= 90 % des fenetres qui contiennent au moins une image-cle ; temoin :
       un slot non porteur tire au hasard sur les memes fenetres le porte dans <= 5 %. Denominateurs.
-- [ ] 0.2 **Le canal delta `HeldWeapon`.** Instrument sous garde (`OBJ_FILM`), lecture seule, dans
+- [x] 0.2 **Le canal delta `HeldWeapon`.** Instrument sous garde (`OBJ_FILM`), lecture seule, dans
       le paquet `filmdec` (accesseur de test ou hook — AUCUN changement de production avant
       validation) : latence entre le grab et la premiere image ou `HeldWeapon(S)` = famille du
       drapeau (mediane, p90) et entre la fin de portage et le retour a une autre famille. Seuil :
       >= 90 % des grabs apparies a <= 2 s ; sinon canal REFUTE (ecrit), le canal image-cle seul est
       retenu s'il a tenu 0.1.
-- [ ] 0.3 **Nommer et generaliser.** Croiser la famille du drapeau avec le dictionnaire des tags
+- [x] 0.3 **Nommer et generaliser.** Croiser la famille du drapeau avec le dictionnaire des tags
       `weap` (index killweapon, `weapon_labels`, sprite index) — attendu : le tag du drapeau ; le
       crane d'Oddball sur `24dbb67d` par signature structurelle (une famille portee par UN seul
       bipede a la fois, qui change de main) — seuil : <= 1 porteur sur >= 90 % des images ou la
       famille est portee ; les evenements approx `th=10` comme controle (accord grossier publie).
-- [ ] 0.4 Publier au journal du plan : famille(s), canal retenu, latences, denominateurs.
+- [x] 0.4 Publier au journal du plan : famille(s), canal retenu, latences, denominateurs.
 
 **Gate 0** : famille du drapeau identifiee (0.1) ET un canal valide (0.2 ou 0.1) => phase 1 ;
 sinon NEGATIF ecrit, phase 1 `[!]`, passage direct a la phase 2.
+
+**Gate 0 : PASSE SUR SES CRITERES ECRITS, AVEC UNE RESERVE DE NATURE** (2026-08-18, mesures au
+journal ci-dessous). Le critere (b) est tenu : le canal IMAGE-CLE porte les deux seuils. Le
+critere (a) est tenu AU SENS DE SES PROPRES CHIFFRES — un identifiant de 32 bits, le meme sur
+les trois films, 97,4 % des fenetres, temoin 2,6 % — mais l'item 0.3 etablit que cet
+identifiant **n'est PAS une famille d'arme** : il ne porte pas le suffixe d'identifiant `weap`
+(0x42C9679F, 0 occurrence sur 83), et le canal delta des armes tenues ne le voit jamais
+(0 sur 68 284 lectures). **La decision 1 du plan — le drapeau et le crane seraient des `weap`
+tenus en main — est donc REFUTEE** ; ce qui est trouve est un MARQUEUR DE PORTAGE, lisible et
+mesure, mais anonyme et non generalise au crane. La phase 1 ne peut donc pas etre ouverte telle
+qu'elle est ecrite (elle publie `kind` flag/ball et `team`, qu'aucune mesure ne donne) : elle
+est a REDIGER A NOUVEAU sur ce que la phase 0 rend reellement. Arret apres la phase 0,
+conformement au brief.
 
 ### Phase 1 — PUBLIER les objets portes (schema +1, chronique)
 
@@ -148,8 +161,114 @@ fix hors perimetre (decouvertes ci-dessous) ; un seul `go` a la fois.
   de `wt/fusion-finale`) — a consigner par la session utilisateur a sa fusion.
 - `HANDOFF_KEYFRAME_LIVE_CAPTURE.md` (04/07, « 205 entites keyframe decodees ») contredit R5-R7 sans
   retractation explicite — une note croisee est due au registre.
+- (2026-08-18, phase 0) **`objectiveevents.SlotIdentity` tombe a 0/8 sur un film TRONQUE.** Son
+  appariement compare les TOTAUX du film a ceux de `match_participants` ; un film dont le Theater
+  ne rend pas la fin ne les atteint jamais. Mesure : 0/8 sur `64e8adfa` et `24dbb67d`, 8/8 sur
+  `530820e5` et `53ce4390`. Le remplacant construit ici (appariement des INSTANTS de mort au fil
+  des morts) rend 8/8 sur les quatre et concorde 8/8 avec l'existant la ou celui-ci repond. NON
+  TRAITE dans le paquet de production : `SlotIdentity` reste tel quel.
+- (2026-08-18, phase 0) **Le pont bipede laisse 53 records d'image-cle sans porteur sur
+  `64e8adfa`** (16 % des records), et c'est le seul film ou le plafond structurel de deux porteurs
+  au plus est depasse. Les deux faits vont probablement ensemble ; non instruit ici.
+- (2026-08-18, phase 0) **La marche stateful rend 96 a 100 % de variantes NULLES sur les slots de
+  joueur.** Sur 68 284 lectures d'arme tenue, moins de 1 600 tombent sur un bipede nomme, et la
+  quasi-totalite valent `0x00000000`. C'est une mesure de la sante du decodeur delta, hors
+  perimetre de ce lot mais utile a qui reprendra `World.HeldWeapon` ou le chemin i43-i46.
 
 ## Journal du plan (avancement, source de verite pour la reprise)
 
 - 2026-08-17 — plan ecrit (digest R4/R7 verifie sur pieces par un agent de lecture). EN ATTENTE :
   fin de l'item 6, fusion utilisateur de `wt/fusion-finale` + `wt/poses-revue-fix`. Non lance.
+
+### 2026-08-18 — PHASE 0 CLOSE (worktree `LevelUp-wt-objvivants`, branche `wt/objvivants`)
+
+Instruments : `internal/analysis/replay/objectifs_phase0_*_test.go` (6 fichiers, garde `OBJ_FILM`
+= racine du cache film, lecture seule, aucune base ouverte, aucun changement de production).
+
+**Prealable — LES DEUX PONTS, et un pont NEUF qu'il a fallu construire.** Le pont statborg par
+TRIPLETS (`objectiveevents.SlotIdentity`, totaux frags/morts/assistances contre
+`match_participants`) rend **0 slot sur 8** sur `64e8adfa` et `24dbb67d` : ces films sont
+TRONQUES (compteurs du film inferieurs aux totaux de l'API — ex. `64e8adfa` slot 24 = 10/18/7
+contre 10/21/7 a l'API). Voie de remplacement, sans aucun recours a la base : apparier les
+INSTANTS de progression du compteur de morts (`comp 2 B`) au FIL DES MORTS du film (xuid +
+instant), les deux etant sur l'horloge du match. Resultat **8/8 sur les quatre films**, et
+**8 accords / 0 desaccord** avec le pont par triplets la ou celui-ci repond (`530820e5`,
+`53ce4390`) — deux chaines totalement disjointes qui disent la meme chose. Pont bipede (fil des
+morts) : 122/141, 92/98, 109/144, 87/105 vies nommees ; collisions 0, 0, 2, 0.
+
+**0.1 — LE MARQUEUR DE PORTAGE : `0x00010005`.** Balayage SANS predicat des fenetres de 32 bits
+de l'emprise des records de bipede d'image-cle (le catalogue d'armes exclurait le drapeau par
+construction), confronte aux fenetres de portage de l'oracle CTF.
+
+| film | images-cles | records bipede (sans pont) | fenetres de portage | records portage / hors | motifs candidats |
+|---|---|---|---|---|---|
+| `64e8adfa` | 43 | 337 (53) | 82 | 24 / 260 | 1 |
+| `530820e5` | 25 | 178 (14) | 33 | 4 / 160 | 11 |
+| `53ce4390` | 39 | 300 (39) | 34 | 20 / 241 | 8 |
+
+Taux par record : 24/24 = 100 % en portage contre 6/260 = 2,31 % hors (`64e8adfa`) ; 3/4 = 75 %
+contre 2/160 = 1,25 % (`530820e5`) ; 20/20 = 100 % contre 4/241 = 1,66 % (`53ce4390`).
+**Un seul motif est commun aux trois films** : 4 valeurs (`0x00010005`, `0x0002000B`,
+`0x00040017`, `0x0008002F`) qui sont **la meme suite de bits lue a quatre decalages** — repliees,
+elles font UN motif de racine `0x00010005`.
+
+Seuils du plan, appliques aux FENETRES : **37/38 = 97,4 %** (seuil >= 90 %) — par film 21/21,
+3/4, 13/13. **Temoin 1/38 = 2,6 %** (seuil <= 5 %). **TENU.**
+Correction d'instrument a signaler : un premier passage donnait un temoin a 10,5 % (4/38) parce
+que le tirage pouvait designer le porteur ADVERSE (il y a deux drapeaux en CTF). Le tirage
+exclut desormais tout joueur lui-meme en fenetre de portage — c'est ce que le plan demande
+(un slot NON porteur) ; aucun seuil n'a bouge.
+
+**Controle POSITIF de l'emprise** (sans lui, un ecart ne prouve rien) : 258/337, 132/178 et
+233/300 records (74 a 78 %) portent au moins une famille d'arme CONNUE, 1,47 a 1,55 par record.
+Le balayage lit donc bien la zone des armes. **Controle croise sur les familles connues** : le
+MA40 et le Sidekick sont a 87,5 % / 75,0 % en portage contre 60,4 % / 66,9 % hors — aucune
+famille connue ne separe le portage. Le marqueur n'est donc pas un effet de changement
+d'armement du porteur.
+
+**0.2 — CANAL DELTA `World.HeldWeapon` : REFUTE, et diagnostique.** Marche stateful sur tout le
+film (monde reamorce a chaque image-cle), API exportee seulement, aucun changement de production.
+
+| film | paquets delta | records propres | lectures d'arme | slots | familles |
+|---|---|---|---|---|---|
+| `64e8adfa` | 50 956 | 138 610 / 183 330 | 30 141 | 5 783 | 33 |
+| `530820e5` | 29 148 | 68 464 / 94 564 | 15 298 | 3 970 | 23 |
+| `53ce4390` | 45 856 | 120 112 / 161 058 | 22 845 | 5 514 | 26 |
+
+Le canal VIT (68 284 lectures au total) mais **il ne porte pas le marqueur : 0 occurrence sur les
+trois films**, et **0/149 prises appariees a <= 2 s** (seuil >= 90 %) — latence mediane et p90
+sans objet. Cause nommee et mesuree : sur les slots que le pont bipede NOMME il ne reste que
+462, 456 et 617 lectures, et **96 a 100 % d'entre elles valent `0x00000000`** (variante nulle) ;
+aucune des familles lues n'est nommee par le catalogue d'armes. La quasi-totalite des 5 783
+slots touches ne sont pas des joueurs. **Canal REFUTE ; le canal image-cle de 0.1 est le seul
+retenu.** Consequence pour la decouverte du plan (`World.HeldWeapon` sans appelant) : la phase 0
+ne le branche PAS — il reste sans appelant, et la question de son retrait est desormais
+tranchable, avec ce chiffre.
+
+**0.3 — NOMMER : NEGATIF ECRIT. GENERALISER AU CRANE : NEGATIF ECRIT.**
+Nommage : le marqueur n'est suivi du suffixe d'identifiant d'arme `0x42C9679F` **0 fois sur
+83 occurrences** (42 + 11 + 30). Ce n'est donc pas un `weap`, il n'a pas de global tag id, et
+**aucun nom de tag ne peut lui etre donne** — ni par l'index killweapon, ni par `weapon_labels`,
+ni par le sprite index, qui sont tous keyes sur ce meme espace de tags. Contexte binaire, stable
+sur les trois films : les 32 bits qui le PRECEDENT valent `0x00000006` (42/42, 11/11, 25/30) ;
+ceux qui le SUIVENT sont `0xF19A127D` (12, 6, 12 fois) puis des valeurs `0xE01340xx` a octet bas
+variable. Position mediane dans le record : **1 100, 1 068 et 1 190 bits** depuis son debut —
+loin des ~1 950 bits ou vivent les identifiants d'arme.
+Simultaneite (controle structurel : deux drapeaux en CTF, donc 0, 1 ou 2 porteurs) : `53ce4390`
+respecte exactement le plafond (0 -> 17 images, 1 -> 12, 2 -> 9) ; `530820e5` le depasse une fois
+(3 porteurs sur 1 image sur 23) ; `64e8adfa` six fois (3 porteurs sur 5 images, 4 sur 1, sur 42)
+— c'est le film dont 53 records n'ont pas de pont. **Le marqueur n'est donc pas exclusivement
+l'objet drapeau**, ou l'attribution de slot derape sur ce film ; a trancher avant toute
+publication.
+Crane (`24dbb67d`, 27 images-cles, 209 records) : **le motif CTF y est totalement absent**
+(0 porteur sur les 26 images) — le marqueur n'est PAS universel entre modes. La signature
+structurelle seule ne discrimine pas : 1 981 valeurs (195 motifs apres repli) tiennent
+« presente sur >= 20 % des images, <= 1 porteur sur >= 90 % d'entre elles, >= 2 porteurs
+distincts ». Sans oracle nomme (le statborg ne replique aucun compteur de crane), **aucun
+candidat unique ne se degage**. Controle grossier disponible et sain : 87 evenements `th=10` de
+crane, 87 acteurs, **87/87 nommes par le pont bipede** — il ne manque que l'objet a confronter.
+
+**0.4 — publie ci-dessus.** Verdict du gate 0 : voir la fin de la section Phase 0.
+
+Commits : `26b245d2a` (socle), `bedc3b8d8` (pont par instants, controles, seuils),
+`0e5b70c7a` (canal delta, nommage, crane), plus le present versement.
