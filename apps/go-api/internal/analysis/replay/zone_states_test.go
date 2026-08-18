@@ -370,6 +370,37 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 	}
 }
 
+// TestZoneStatesCollineCompteLesRampesNonLocalisees — LE DENOMINATEUR DE LA METHODE PAR
+// POSITIONS (revue R1). Une montee de jauge que la grappe ne sait pas localiser est une garde
+// REELLE dont on ignore le lieu : elle est ecartee, et elle se compte dans `unpaired`.
+//
+// SANS CE COMPTE, `unpaired` restait a zero quoi qu'il arrive en methode `positions+geometry` :
+// un appariement partiel se lisait exactement comme un appariement complet.
+func TestZoneStatesCollineCompteLesRampesNonLocalisees(t *testing.T) {
+	var reads []filmdec.ManagedPropertyRead
+	reads = append(reads, zoneRampAt(40, 100, 900_000)...) // gardee DANS la zone 1
+	reads = append(reads, zoneRampAt(40, 400, 910_000)...) // gardee loin de toute zone
+	in := zoneTestInput(reads)
+	in.Hill = true
+	var pts []Point
+	for f := 96; f <= 100; f++ {
+		pts = append(pts, pointAt(f, 20.5, 0, 0))
+	}
+	for f := 396; f <= 400; f++ {
+		pts = append(pts, pointAt(f, 500, 500, 0))
+	}
+	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	if cov.Unpaired != 1 {
+		t.Errorf("rampes non localisees %d, attendu 1", cov.Unpaired)
+	}
+	if cov.HillPeriods != 1 || cov.Paired != 1 {
+		t.Errorf("periodes %d / zones appariees %d, attendu 1 et 1", cov.HillPeriods, cov.Paired)
+	}
+	if len(states) != 1 || states[0].ZoneRef != 1 {
+		t.Errorf("%d zone(s) publiee(s) : %+v — seule la garde localisee sort", len(states), states)
+	}
+}
+
 // TestZoneStatesCollineSansGrappeNePublieRien : une montee de jauge sans position pour la
 // localiser ne pose aucune colline — on refuse plutot que de choisir la zone la plus proche.
 func TestZoneStatesCollineSansGrappeNePublieRien(t *testing.T) {

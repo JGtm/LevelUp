@@ -39,6 +39,14 @@ func buildHillStates(zones []Zone, ser zoneSeries, c zoneCtx,
 	for _, r := range ramps {
 		p := hillPeriod{slot: r.slot, t0: r.t0, t1: r.tPeak, top: r.top}
 		p.ref, p.hasRef = clusterZoneOf(zones, pts, r.t0, r.tPeak)
+		if !p.hasRef {
+			// LA RAMPE QUE LA GRAPPE NE LOCALISE PAS EST ECARTEE, ET ELLE SE COMPTE (revue R1,
+			// 2026-08-18) : une montee de jauge que personne n'entoure est une garde REELLE
+			// dont on ne sait pas ou elle a lieu. La taire faisait passer un appariement
+			// partiel pour un appariement complet — `unpaired` restait a zero quoi qu'il
+			// arrive (cf. ZonesCoverage.Unpaired, semantique propre a cette methode).
+			cov.Unpaired++
+		}
 		raw = append(raw, p)
 	}
 	periods := mergeHillPeriods(raw, c.frames)
