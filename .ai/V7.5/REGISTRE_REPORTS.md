@@ -271,3 +271,41 @@
 | R2-P — power-ups dans la regle de taille, sans membre mesure | lot R2-P, 2026-08-18 | `powerup_overshield` et `powerup_camo` figurent dans `POWER_PAD_KEYS` alors qu'aucun socle du corpus n'en porte (11 films : une pose chacun, toutes deux `dropped`, publiees par `equipmentPlacements`) | des qu'un film publie un power-up dans `weaponPads`, verifier le rendu grande taille et retirer cette ligne ; sinon decider si le calque des socles doit lire `equipmentPlacements`, ou retirer les deux cles |
 | R2-P — teinte des socles laissee ouverte | lot R2-P, 2026-08-18 | aucune couleur ne distingue une arme de puissance : la taille seule hierarchise, pour ne pas entrer en concurrence avec la teinte du mur (`legendary` vs `warning`, en arbitrage utilisateur) | a l'arbitrage de la couleur du mur, rejuger si les socles de puissance meritent une teinte |
 | R2-P — famille `0xD7915565` sans libelle au catalogue | lot R2-P, 2026-08-18 | un socle de `bcb6d393` s'affiche en hexadecimal avec un glyphe neutre (comportement voulu) | identifier la famille et l'ajouter a `weapon_names.toml` (hors perimetre web) |
+
+### Reports du lot R2-V (2026-08-18) — texte de l'agent, consigne a la fusion
+
+
+- 2026-08-18 — **« Ecran de dissimulation » : famille absente du manifeste** (lot R2-V, item V8).
+  L'utilisateur decrit un objet reel du jeu (« une bulle opaque, dedans on voit pas dehors »),
+  mais `config/titles/halo_infinite/mappings/replay_labels.toml` ne nomme que quinze familles
+  et aucune ne correspond. Le seul identifiant que le corpus laisse SANS NOM est `0x4396db42`
+  (94 poses, 7 films, 24 deployees), rattache au `sofa` non nomme du corpus ; rien ne prouve
+  aujourd'hui que c'est lui. Le VISUEL est propose sur la planche (item `R2-6`, bulle opaque a
+  l'encre `muted`, bord flou sur 22 % du rayon) et n'est branche sur rien.
+  **Condition de reprise : nommer `0x4396db42` cote donnees (chaine `sofd -> sofa`) — tant que
+  l'identifiant n'est pas nomme, aucune famille ne doit etre ajoutee au manifeste ni a
+  `PLACEMENT_RENDER`.**
+
+- 2026-08-18 — **Le mur sans poseur tracable garde son cercle pointille** (lot R2-V, item V3).
+  La chaine de cap (pose -> trajectoire -> visee) resout 62/62 panneaux du corpus, mais elle
+  suppose que le poseur ait une piste. 154 poses sur 2 563 (6,0 %, toutes familles) ont un
+  poseur sans aucune piste ; pour un MUR, ce cas est a 0/62. La branche du cercle reste donc
+  au code, testee, comme dernier repli.
+  **Condition de reprise : si un film produit un panneau de mur sans piste de poseur, decider
+  avec l'utilisateur ce qu'on dessine — le cercle est refuse « en general », pas dans ce cas
+  precis qui n'a jamais ete observe.**
+
+- 2026-08-18 — **Trois propositions visuelles en attente de verdict** (lot R2-V, items V4, V6,
+  V7). Melee fatale (eclat en croix 400 ms, deux tailles), reapparition compacte, Dynamo (deux
+  champs electriques). Aucune ligne de production ecrite : la decision 2 du plan interdit
+  qu'une valeur d'ecran entre en production sans passer par la planche.
+  **Condition de reprise : verdict utilisateur sur les items `R2-3`, `R2-4`, `R2-7` de la
+  planche du 18/08.**
+
+- 2026-08-18 — **Trois choix de reglage a trancher** (lot R2-V, items V1, V2, V3). Couleur du
+  marqueur du joueur actif (`success` livre vs `info` vs forme seule, item `R2-1`) ;
+  accentuation de la carte de chaleur (quatre calibrations chiffrees, item `R2-2`) ; couleur du
+  mur (`legendary` vs `warning` vs couleur d'equipe, item `R2-5`). Les trois sont livres dans
+  un etat par defaut assume, et changeront d'une constante si l'utilisateur tranche autrement.
+  **Condition de reprise : verdict sur `R2-1`, `R2-2`, `R2-5`.**
+
