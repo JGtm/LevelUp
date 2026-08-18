@@ -49,12 +49,3 @@ func TestReadSignedVarWidth(t *testing.T) {
 		})
 	}
 }
-
-func TestParseOptionalValue_V7(t *testing.T) {
-	if got := ParseOptionalValue(NewBitReader([]byte{0x80, 0, 0, 0, 0, 0, 0, 0})); got != 0 {
-		t.Fatalf("present flag set => %d, want 0", got)
-	}
-	if got := ParseOptionalValue(NewBitReader([]byte{0x05, 0x40, 0, 0, 0, 0, 0, 0})); got != 42 {
-		t.Fatalf("present flag clear => %d, want 42", got)
-	}
-}

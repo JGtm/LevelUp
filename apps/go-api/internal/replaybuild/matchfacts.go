@@ -11,7 +11,7 @@ package replaybuild
 //	les ACTIONS D'OBJECTIF nommees (capture, retour, prise de zone) et attribuees a un xuid.
 //
 // UN SEUL DECODAGE POUR LES DEUX, et c'est la raison d'etre du fichier : les fonctions de
-// facade d'`objectiveevents` (`ScoreCurve`, `NamedEvents`, `SlotIdentity`) re-decodent le film
+// facade d'`objectiveevents` (`NamedEvents`, `SlotIdentity`) re-decodent le film
 // a chaque appel. Les enchainer coûterait trois balayages complets la ou un seul suffit — sur
 // une machine qui paie deja le decodage des positions, ce n'est pas un detail (0,6 a 2,4 s et
 // jusqu'a 21 Mo par film, mesure du corpus de 22).
