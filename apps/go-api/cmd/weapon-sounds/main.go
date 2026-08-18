@@ -18,6 +18,13 @@
 //	banks    (etape 3) histogramme des `sbnk` references par les `snd!`
 //	sndscan  (etape 3) cherche des identifiants arbitraires dans les `snd!`
 //
+// LA CHAINE D'EQUIPEMENT (2026-08-18, PLAN_EQUIPEMENTS_MANQUANTS_SONS) est une SECONDE
+// FAMILLE de modes, distincte de celle des armes parce que la source l'est : un equipement
+// n'a pas de tag `weap` ni de champ « Weapon Fire Sounds ». Detail dans `eqip.go`.
+//
+//	eqip-sons   passe 1, module `any/globals` : eqip -> effe -> snd! -> sbnk
+//	eqip-banks  passe 2, module `pc/globals`  : sbnk -> .wem -> pack nomme
+//
 // ATTENTION MEMOIRE : `himodule.Open` lit le module ENTIER en memoire. Le module qui porte
 // les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
 // deux dans le meme processus : les modes s'echangent leurs resultats par le fichier JSON.
@@ -80,6 +87,7 @@ func main() {
 	sbnkGid := flag.Uint("sbnk", 0, "identifiant d'une bank (mode embarques, alternative a -pck)")
 	banksSup := flag.String("banks", "", "identifiants de banks a analyser en plus (mode lot), separes par des virgules, en hexa")
 	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
+	eqipIDs := flag.String("eqip", "", "identifiants de tags `eqip` cibles (hexa, virgules) ; vide = tous (modes eqip-sons/eqip-banks)")
 	flag.Parse()
 
 	racine, err := resoudreDeploy(*deploy)
@@ -193,6 +201,10 @@ func main() {
 			break
 		}
 		err = livrerTir(chemin, *sortie, temoins[0], *sortieTir)
+	case "eqip-sons":
+		err = sonsDEquipement(chemin, parserHexa(*eqipIDs), *sortie)
+	case "eqip-banks":
+		err = banquesDEquipement(chemin, *sortie, *sortieTir)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
@@ -208,6 +220,24 @@ func resoudreDeploy(explicite string) (string, error) {
 		return explicite, nil
 	}
 	return himap.DeployRoot()
+}
+
+// parserHexa lit une liste d'identifiants de tags en HEXADECIMAL, separes par des virgules.
+// Vide rend une table vide, que les modes interpretent comme « tous ».
+func parserHexa(s string) map[uint32]bool {
+	out := map[uint32]bool{}
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(part), "0x"))
+		if part == "" {
+			continue
+		}
+		if v, err := strconv.ParseUint(part, 16, 32); err == nil {
+			out[uint32(v)] = true
+		} else {
+			fmt.Fprintf(os.Stderr, "option -eqip : %q ignore (%v)\n", part, err)
+		}
+	}
+	return out
 }
 
 // parserWem lit la liste d'identifiants recherches ; vide rend les temoins du fusil d'assaut.
