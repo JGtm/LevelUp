@@ -220,3 +220,28 @@ aucune des neuf n a deplace une capture ni une periode sur ce corpus — c est a
 d accord a 2 et unicite du canal n ont pas change les elections, la fusion des gardes n avait pas
 de recouvrement ici) et c est verifie. La taille du calque sur l artefact complet reste dans les
 +0,15 a +0,22 % mesures.
+
+## 12. Correctif CI apres fusion : `PlayerIndex` -> `FilmIndex` (2026-08-18)
+
+**Le garde-rail.** `internal/archlint/no_player_index_identity_test.go` (`TestNoPlayerIndexInFilmScope`)
+interdit tout identifiant `PlayerIndex` hors commentaire dans `analysis/filmdec` et `analysis/replay` :
+un index de film est un ORDRE, pas une identite — le champ s appelle `FilmIndex` (valable seulement a
+l interieur d un film), et une jointure entre joueurs passe par le XUID (precedent : `FireEvent.FilmIndex`,
+`fire_events.go`). Le job CI « Go Coverage + Baseline » de `feat/v75` (run 32173015919) l a vu rougir
+apres la fusion `bbbc0f92d` : le scanner ti=13 de cette phase avait introduit `ManagedPropertyRead.PlayerIndex`.
+
+**Renomme, sans changement de comportement** (branche `wt/fix-filmindex-zones`) :
+`ManagedPropertyRead.PlayerIndex` -> `FilmIndex` (`zone_state_scan.go` : champ + commentaire de statut, et
+son ecriture dans le hook ; litteral de `replay/zone_states_test.go`) ; le convertisseur exporte
+`ManagedPropertyPlayerIndex` -> `ManagedPropertyFilmIndex` (`components_managed_property.go`, ses trois
+appelants `ti13_etat_report_test.go` / `ti13_vecteurs_test.go` / `zone_state_scan.go`, et les deux
+commentaires qui le nomment). Les `PlayerIndex` de `weaponv3`, `skill_v2`, `persist`, `cmd/diag_*` sont
+HORS perimetre et hors regle (le garde-rail ne couvre que le film et le rejeu).
+
+**Gates** (`LOTCBIS_fix_filmindex_gates.log`) : `gofmt -l` vide, `go vet` filmdec+replay, `go test
+./internal/archlint/`, `go test` filmdec+replay (no-CGO), `go build ./...` (CGO), `go test ./internal/replaybuild/`
+(CGO) — **6/6 EXIT 0**.
+
+**Lecon.** Les gates locaux du lot (§ gates de la phase 2b, deux rondes de revue comprises) ne lancaient
+pas `./internal/archlint/` : la CI l a attrape apres la fusion. Ce paquet (~10 s) entre dans la liste des
+gates de TOUT lot qui touche `filmdec` ou `replay`, au meme titre que `gofmt` et `vet`.

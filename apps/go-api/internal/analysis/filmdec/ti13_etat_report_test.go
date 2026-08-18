@@ -267,7 +267,7 @@ func ti13RapportParJoueur(t *testing.T, sb *strings.Builder, short string, col *
 	parJoueur := map[int]map[uint64]int{}
 	for _, e := range col.joue {
 		parTag[e.tag]++
-		j := ManagedPropertyPlayerIndex(e.idx)
+		j := ManagedPropertyFilmIndex(e.idx)
 		if j < 0 || !e.hasPay {
 			continue
 		}

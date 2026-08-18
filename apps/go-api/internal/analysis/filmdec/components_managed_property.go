@@ -209,13 +209,18 @@ func consumeManagedObjectPlayerMaskedProperty(br *BitReader) {
 	consumeManagedPropertyVariant(br, ManagedPropertyPerPlayer, false)
 }
 
-// ManagedPropertyPlayerIndex rend l'index de joueur porte par le composant d'index `i` du masque
-// (i2 porte le joueur 0). Rend -1 hors de la plage des 32 instances declarees.
+// ManagedPropertyFilmIndex rend l'index de joueur porte par le composant d'index `i` du masque
+// (i2 porte le joueur 0), tel que LE FILM numerote les joueurs. Rend -1 hors de la plage des 32
+// instances declarees.
+//
+// LE NOM DIT SON STATUT. Il s'appelait `ManagedPropertyPlayerIndex` : cet index est un ORDRE
+// interne au film, jamais une identite — la jointure entre joueurs passe par le XUID (garde-rail
+// `archlint/no_player_index_identity_test.go`, precedent `FireEvent.FilmIndex`).
 //
 // POURQUOI CHEZ L'APPELANT ET NON DANS LE DESER : `consumeByName` ne recoit pas l'index du
 // composant, et le jeu le lit dans le descripteur. L'appelant, lui, a le masque — c'est le meme
 // partage des roles que pour les quatre `rtpc` de ti=10.
-func ManagedPropertyPlayerIndex(i int) int {
+func ManagedPropertyFilmIndex(i int) int {
 	n := i - managedPropertyIndexPremier
 	if n < 0 || n >= managedPropertyPlayerCount {
 		return -1

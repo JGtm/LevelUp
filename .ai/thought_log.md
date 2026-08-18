@@ -1,3 +1,13 @@
+## [2026-08-18] v7.5 rejeu 2D — lot C-bis phase 2b : correctif CI archlint, l'index de joueur du scanner ti=13 s'appelle `FilmIndex` — Complete
+
+**Contexte** : la CI de `feat/v75` apres la fusion `bbbc0f92d` (job « Go Coverage + Baseline », run 32173015919) est rouge sur `internal/archlint/no_player_index_identity_test.go` (`TestNoPlayerIndexInFilmScope`) : le scanner ti=13 de la phase 2b avait introduit un champ `ManagedPropertyRead.PlayerIndex` dans `analysis/filmdec`, ou le garde-rail interdit ce nom (un index de film est un ORDRE, pas une identite ; precedent `FireEvent.FilmIndex`). Executeur en worktree dedie `wt/fix-filmindex-zones` (depuis `ec21b398f`), commit unique, sans push.
+
+**Decision technique principale** : renommage pur, sans changement de comportement — `ManagedPropertyRead.PlayerIndex` -> `FilmIndex` (`zone_state_scan.go` : champ avec commentaire de statut + ecriture dans le hook ; litteral de `replay/zone_states_test.go`) et le convertisseur exporte `ManagedPropertyPlayerIndex` -> `ManagedPropertyFilmIndex` (`components_managed_property.go` + 3 appelants + 2 commentaires qui le nomment). Les `PlayerIndex` de `weaponv3`, `skill_v2`, `persist`, `cmd/diag_*` restent : hors perimetre du garde-rail (il ne couvre que `filmdec` et `replay`).
+
+**Resultats observes** : `grep -P '\bPlayerIndex\b'` sur `filmdec`+`replay` = 0 ligne de code (seuls des commentaires, autorises) ; gates 6/6 EXIT 0 (`gofmt -l` vide, `go vet` filmdec+replay, `go test ./internal/archlint/` — `TestNoPlayerIndexInFilmScope` PASS —, `go test` filmdec+replay no-CGO, `go build ./...` CGO, `go test ./internal/replaybuild/` CGO), log `.ai/V7.5/replay2d/registre_film/LOTCBIS_fix_filmindex_gates.log` ; journal du lot §12.
+
+**Conclusion / prochaine etape** : la lecon est ecrite en §12 du journal — les gates locaux du lot ne lancaient pas `./internal/archlint/` (~10 s) ; ce paquet entre dans la liste des gates de tout lot qui touche `filmdec`/`replay`. Superviseur : fusion de `wt/fix-filmindex-zones` dans `feat/v75`, push, CI verte au niveau job.
+
 ## [2026-08-18] v7.5 rejeu 2D — lot C-bis phase 2b : l'etat des zones (`zoneStates`, schema 16) est fusionne dans feat/v75 apres deux rondes de revue — Complete
 
 **Contexte** : suite de l'entree « fusion dans feat/v75, lot C-bis phases 0-2a closes, phase 2b en revue » (ci-dessous). Superviseur + executeurs par worktree (`wt/zones-ti13-p2b`) ; l'incident API du 18/08 soir (529 sur Opus) a tue deux executeurs avant qu'ils ne commencent — relance sur le modele herite de la session.

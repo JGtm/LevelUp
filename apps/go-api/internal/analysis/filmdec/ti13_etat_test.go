@@ -10,7 +10,7 @@ package filmdec
 //
 // L'INDEX DE JOUEUR SE RECONSTITUE DEPUIS LE MASQUE. `consumeByName` ne recoit pas l'index du
 // composant ; le hook, lui, est appele DANS L'ORDRE DU MASQUE. Un curseur suit donc la position
-// dans `rec.Idx` et rend l'index reel, que `ManagedPropertyPlayerIndex` traduit en numero de
+// dans `rec.Idx` et rend l'index reel, que `ManagedPropertyFilmIndex` traduit en numero de
 // joueur. C'est le partage des roles decrit dans `components_managed_property.go`.
 //
 // LES SEUILS SONT ECRITS AVANT LA MESURE (constantes ci-dessous) et ne sont pas ajustables ici.
