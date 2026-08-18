@@ -135,10 +135,15 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * qui y recopiaient huit fois le même corps sont donc parties dans `useReplayInks` AVANT
  * l'ajout — c'est exactement la manœuvre que ce cliquet existe pour imposer, et le nombre
  * descend d'autant.
+ *
+ * 858 -> 812 le 2026-08-18 (lot R3, item R3.1) : la croix de mort change de taille, d'encre et
+ * de duree, et la duree devait ecrire POURQUOI. Plutot que d'allonger le canvas d'un
+ * paragraphe, les reglages temporels et leur conversion sont partis dans `useReplayTiming` —
+ * quatrieme extraction imposee par ce cliquet, et la plus grosse.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(858)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(812)
   })
 })

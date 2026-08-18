@@ -50,11 +50,7 @@ import { usePlacementHover } from './usePlacementHover'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
-import {
-  buildGrenadeRestFx,
-  DYNAMO_REST_HOLD_MS,
-  GRENADE_REST_HOLD_MS,
-} from './grenadeFx'
+import { buildGrenadeRestFx } from './grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
 import type { PlayerMarkKind } from './playerMarks'
@@ -75,17 +71,10 @@ import {
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
-import {
-  fitWidth,
-  formatClock,
-  frameToMs,
-  framesPerSecond,
-  isAliveAt,
-  msToFrames,
-  sceneBounds,
-} from './replayLogic'
+import { fitWidth, formatClock, frameToMs, isAliveAt, sceneBounds } from './replayLogic'
 import { drawProjectilesLayer } from './replayProjectiles'
-import { drawTracksLayer, type MarkerTiming } from './replayMarkers'
+import { drawTracksLayer } from './replayMarkers'
+import { useReplayTiming } from './useReplayTiming'
 
 // 8 tokens de série = une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
 // getSeriesColors). Ils ne colorent plus les joueurs depuis le 2026-08-16 : un joueur porte
@@ -94,32 +83,13 @@ const ZONE_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
-// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks.
-// Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :
-// un TIR est un éclat bref (0,6 s — c'est sa brièveté qui le rend lisible : à 1,4 s le trait
-// traînait dim et se fondait dans la carte, mesure du recalage 2.2), un LANCER et une MORT
-// tiennent 1,4 s parce qu'ils portent plus de sens qu'une détonation.
-const SHOT_HOLD_MS = 600
-const EVENT_HOLD_MS = 1_400
-
+// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks ; les DURÉES et leur
+// conversion en images, dans useReplayTiming.
 const CANVAS_HEIGHT = 480
 const CANVAS_PAD = 24
 
 /** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
 const EMPTY_ZONES: CalloutZoneReady[] = []
-
-/**
- * Réglages temporels du calque des joueurs, en TEMPS RÉEL — jamais en nombre de frames : la
- * cadence d'échantillonnage est choisie au build et peut changer sans que la lecture change.
- * Valeurs reprises du POC, où elles ont été réglées à l'écran ; leur justification mesurée est
- * en tête de replayMarkers.ts.
- */
-const TIMING_MS = {
-  trail: 7_000,
-  aimHold: 5_000,
-  death: 1_500,
-  spawn: 800,
-} as const
 
 /**
  * Cadence de publication de l'image courante vers React, en millisecondes.
@@ -323,18 +293,9 @@ export function ReplayCanvas({
     () => ({ bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD }),
     [bounds, renderWidth],
   )
-  const baseFps = useMemo(() => framesPerSecond(doc), [doc])
-  const timing = useMemo<MarkerTiming>(
-    () => ({
-      trail: msToFrames(TIMING_MS.trail, doc),
-      aimHold: msToFrames(TIMING_MS.aimHold, doc),
-      death: msToFrames(TIMING_MS.death, doc),
-      spawn: msToFrames(TIMING_MS.spawn, doc),
-    }),
-    [doc],
-  )
-  const eventHoldFrames = useMemo(() => msToFrames(EVENT_HOLD_MS, doc), [doc])
-  const shotHoldFrames = useMemo(() => msToFrames(SHOT_HOLD_MS, doc), [doc])
+  // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
+  // du rejeu, converties une fois pour ce document (useReplayTiming).
+  const { baseFps, timing, eventHoldFrames, shotHoldFrames, restWindow } = useReplayTiming(doc)
   // Les tirs sont PRÉCALCULÉS comme les morts : famille, teinte et REGARD du tireur résolus
   // une fois au chargement (mesure : la couverture d'orientation passe de 18,6 % à 100 % sur
   // le film témoin en relisant le regard plutôt que le champ de l'événement).
@@ -355,13 +316,6 @@ export function ReplayCanvas({
   })
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
-  const restWindow = useMemo(
-    () => ({
-      holdHalo: msToFrames(GRENADE_REST_HOLD_MS, doc),
-      holdDynamo: msToFrames(DYNAMO_REST_HOLD_MS, doc),
-    }),
-    [doc],
-  )
   const totalLabel = formatClock(doc.durationMs ?? frameToMs(doc.frameCount, doc))
 
   // Largeur responsive (ResizeObserver du conteneur).
@@ -503,6 +457,7 @@ export function ReplayCanvas({
       showNames,
       showTrail,
       selfInk,
+      deathInk: shotColor,
       labelStroke,
     })
 
