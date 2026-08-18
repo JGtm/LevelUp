@@ -24,6 +24,20 @@ describe('heatmapRampTokens', () => {
     }
   })
 
+  /**
+   * A8 (2026-08-18) — RAMPE D'INTENSITÉ À TROIS POINTS : bleu -> rouge -> violet.
+   *
+   * Elle est IDENTIQUE dans toutes les palettes parce que ce sont des tokens : c'est la
+   * palette qui les remappe, pas ce helper. Sous Okabe-Ito, la rampe devient Sky Blue ->
+   * Vermillion -> Reddish Purple — trois couleurs de la même référence CUD, distinguables
+   * entre elles sur les deux axes de confusion.
+   */
+  it("mode 'intensity' : bleu → rouge → violet, mêmes tokens dans toute palette", () => {
+    for (const p of ALL_PALETTES) {
+      expect(heatmapRampTokens('intensity', p)).toEqual(['info', 'destructive', 'extreme'])
+    }
+  })
+
   it("mode 'sequential' + palette default : rampe cold→hot familière conservée", () => {
     expect(heatmapRampTokens('sequential', 'default')).toEqual(['heatmap-cold', 'heatmap-hot'])
   })

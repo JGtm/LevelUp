@@ -94,6 +94,8 @@ export interface ReplayText {
    * lorsqu'un dégât est appliqué) : elle ne vit pas dans un commentaire, elle est à l'écran.
    */
   effects: string
+  /** Titre de la section FICHES du tiroir (la colonne d etat, pas le canvas). */
+  cards: string
   layerShotFx: string
   layerShotFxHint: string
   layerShotFxCoverage: string
@@ -135,13 +137,19 @@ export interface ReplayText {
    * n'est pas publié (`padPickups[].xuid` vaut `null` partout), et aucune ligne d'écran ne doit
    * laisser croire qu'on le connaît.
    *
-   * `padCycleFmt` PORTE LES DEUX MOITIÉS DU DÉNOMINATEUR : les écarts MESURÉS et ceux que le
-   * socle offrait sans qu'on ait pu les prendre (`gaps` / `missing`). « 33,9 s sur 2 écarts »
-   * avec 3 manques est une mesure sur 2 occasions sur 5 — l'écrire autrement gonflerait la
-   * confiance.
+   * NI MÉDIANE NI ÉCARTS À L'ÉCRAN (verdict du 2026-08-18) : le cycle mesuré ne sert plus qu'à
+   * DATER le compte à rebours, il ne s'affiche plus. `padCycleFmt` a donc été retiré avec sa
+   * ligne d'infobulle — du texte qu'aucun écran ne rend est du code mort (CLAUDE.md n°7).
    */
   layerWeaponPads: string
   layerWeaponPadsHint: string
+  /**
+   * FICHES COMPACTES (B2/R2-7) : la bascule et ce qu'elle change. L'infobulle DIT ce qu'on
+   * perd — les munitions des armes qui ne sont pas en main — parce qu'un réglage qui retire
+   * de l'information doit l'annoncer.
+   */
+  cardsCompact: string
+  cardsCompactHint: string
   padState: Record<'full' | 'uncertain' | 'empty', string>
   /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
   padPlacementNote: string
@@ -149,8 +157,6 @@ export interface ReplayText {
   padCountdownFmt: (seconds: number) => string
   /** Compte à rebours de l'infobulle, en toutes lettres. */
   padRespawnFmt: (seconds: number) => string
-  /** Cycle ÉTABLI seulement : médiane, écarts mesurés, écarts manqués. */
-  padCycleFmt: (medianS: number, gaps: number, missing: number) => string
   /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.

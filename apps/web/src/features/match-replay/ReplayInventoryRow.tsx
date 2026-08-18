@@ -41,6 +41,7 @@ export function ReplayInventoryRow({
   frame,
   readingFull,
   locale,
+  compact = false,
 }: {
   doc: ReplayDocumentReady
   slot: number
@@ -48,6 +49,14 @@ export function ReplayInventoryRow({
   frame: number
   readingFull: number
   locale: ReplayLocale
+  /**
+   * Fiche COMPACTE (B2/R2-7) : seule l'arme EN MAIN garde ses munitions. C'est la seule
+   * information que la variante compacte perd, et elle est choisie — les munitions d'une
+   * arme rangée ne se lisent que pour préparer une permutation, ce qui n'est pas ce qu'on
+   * regarde dans un rejeu. Sans sélecteur lu, aucune arme n'est « en main » : la ligne perd
+   * alors ses munitions entières plutôt que d'en désigner une au hasard.
+   */
+  compact?: boolean
 }) {
   const t = REPLAY_TEXT[locale]
   // La vignette de grenade est une IMAGE VERSIONNÉE, choisie à l'encre du thème (planche du
@@ -73,7 +82,9 @@ export function ReplayInventoryRow({
   // LA LIGNE DES MUNITIONS SUIT L'ORDRE DES ARMES AU-DESSUS (l'arme dégainée d'abord) : les
   // deux lignes partagent la même lecture d'ordre, sinon chaque cellule se rattacherait à la
   // mauvaise arme. Le numéro d'emplacement lève l'ambiguïté quand l'ordre bascule.
-  const ammoOrder = (equipped?.order ?? ammo.map((_, i) => i)).filter((i) => i < ammo.length)
+  const ammoOrder = (equipped?.order ?? ammo.map((_, i) => i))
+    .filter((i) => i < ammo.length)
+    .filter((i) => !compact || i === equipped?.drawn)
   // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. inventoryAt) :
   // l'infobulle le dit — l'estompage porte déjà sur la valeur absolue. La capacité, elle,
   // porte le sien (elle vient d'un autre canal) : la ligne n'estompe que ce qu'elle décrit.

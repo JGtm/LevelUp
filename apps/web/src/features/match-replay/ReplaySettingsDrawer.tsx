@@ -22,26 +22,15 @@ import { Button } from '@/components/ui/button'
 
 import { SettingsToggle } from './ReplaySettingsToggle'
 
-import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { SOUND_CATEGORIES } from './replaySound'
-import { HEATMAP_MODES, HEATMAP_SPANS, SPEED_MULTIPLIERS } from './useReplaySettings'
+import { SPEED_MULTIPLIERS } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
 
-/** Ce que le tiroir sait de la carte de chaleur : son état, et ce qu'elle peut mesurer. */
-export interface ReplayHeatmapControls {
-  show: boolean
-  onToggle: () => void
-  mode: HeatmapMode
-  onSetMode: (mode: HeatmapMode) => void
-  /** La PORTÉE DE TEMPS (V2, 2026-08-18) : toute la partie, ou jusqu'à l'image courante. */
-  span: HeatmapSpan
-  onSetSpan: (span: HeatmapSpan) => void
-  /** Faux quand aucune mort du match n'a pu être localisée : la lecture « éliminations »
-   *  ne commande alors rien et n'est pas proposée (même règle que le bouton Zones). */
-  killsAvailable: boolean
-}
+/** Réexporté : la section a déménagé (ReplayHeatmapSection), sa surface d'appel non. */
+export type { ReplayHeatmapControls } from './ReplayHeatmapSection'
 
 interface ReplaySettingsDrawerProps {
   locale: ReplayLocale
@@ -68,6 +57,9 @@ interface ReplaySettingsDrawerProps {
   onToggleShotFx: () => void
   showKillFx: boolean
   onToggleKillFx: () => void
+  /** Fiches joueur COMPACTES (B2/R2-7) : une option, la validée reste le défaut. */
+  compactCards: boolean
+  onToggleCompactCards: () => void
   sound: ReplaySound
   speed: number
   onSetSpeed: (speed: number) => void
@@ -229,62 +221,29 @@ function EffectsSection({
   )
 }
 
+
 /**
- * La CARTE DE CHALEUR a sa propre section : c'est un calque, mais qui porte un CHOIX de
- * lecture (ce qu'on mesure). Le noyer dans la liste des calques mettrait ce choix au même
- * rang qu'une bascule, alors qu'il change la grandeur affichée. Le choix ne s'affiche que
- * lorsque le calque est allumé — sinon il commanderait quelque chose d'invisible.
+ * Les FICHES ont leur propre section, minuscule mais à part : elles ne vivent pas sur la
+ * carte. Les ranger parmi les calques ferait croire qu'on allume ou éteint un dessin du
+ * canvas, alors que le réglage change la COLONNE d'à côté.
  */
-function HeatmapSection({
-  locale, heatmap,
+function CardsSection({
+  locale, compactCards, onToggleCompactCards,
 }: {
   locale: ReplayLocale
-  heatmap: ReplayHeatmapControls
+  compactCards: boolean
+  onToggleCompactCards: () => void
 }) {
   const t = REPLAY_TEXT[locale]
-  const modes = heatmap.killsAvailable ? HEATMAP_MODES : HEATMAP_MODES.filter((m) => m !== 'kills')
   return (
     <section className="space-y-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.layerHeatmap}</h3>
-      <div className="flex flex-col gap-1">
-        <SettingsToggle
-          label={t.layerHeatmap}
-          pressed={heatmap.show}
-          onToggle={heatmap.onToggle}
-          hint={t.layerHeatmapHint}
-        />
-        {heatmap.show && modes.length > 1 && (
-          <>
-            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapReading}</p>
-            {modes.map((m) => (
-              <SettingsToggle
-                key={m}
-                label={t.heatmapMode[m]}
-                pressed={heatmap.mode === m}
-                onToggle={() => heatmap.onSetMode(m)}
-                hint={t.heatmapModeHint[m]}
-              />
-            ))}
-          </>
-        )}
-        {/* LA PORTÉE est un second choix, distinct de la lecture : « ce qu'on mesure » et
-            « sur quelle durée » sont deux questions, et les mettre en une seule liste ferait
-            croire à quatre calques là où il y a deux axes. */}
-        {heatmap.show && (
-          <>
-            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapSpanTitle}</p>
-            {HEATMAP_SPANS.map((s) => (
-              <SettingsToggle
-                key={s}
-                label={t.heatmapSpan[s]}
-                pressed={heatmap.span === s}
-                onToggle={() => heatmap.onSetSpan(s)}
-                hint={t.heatmapSpanHint[s]}
-              />
-            ))}
-          </>
-        )}
-      </div>
+      <h3 className="text-xs font-medium text-muted-foreground">{t.cards}</h3>
+      <SettingsToggle
+        label={t.cardsCompact}
+        pressed={compactCards}
+        onToggle={onToggleCompactCards}
+        hint={t.cardsCompactHint}
+      />
     </section>
   )
 }
@@ -406,6 +365,8 @@ export function ReplaySettingsDrawer({
   onToggleShotFx,
   showKillFx,
   onToggleKillFx,
+  compactCards,
+  onToggleCompactCards,
   sound,
   speed,
   onSetSpeed,
@@ -458,6 +419,11 @@ export function ReplaySettingsDrawer({
         onToggleKillFx={onToggleKillFx}
       />
       <HeatmapSection locale={locale} heatmap={heatmap} />
+      <CardsSection
+        locale={locale}
+        compactCards={compactCards}
+        onToggleCompactCards={onToggleCompactCards}
+      />
       <SpeedSection locale={locale} speed={speed} onSetSpeed={onSetSpeed} />
       <SoundSection locale={locale} sound={sound} />
     </div>

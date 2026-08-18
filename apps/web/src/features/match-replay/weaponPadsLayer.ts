@@ -47,8 +47,15 @@ export type { PlacementView as PadView } from './placementShapes'
  */
 export type PadState = 'full' | 'uncertain' | 'empty'
 
-/** Rayon de l'anneau du socle, en pixels d'ÉCRAN, par taille. */
-const PAD_RING_PX: Record<PadScale, number> = { power: 9, classic: 5.5 }
+/**
+ * Rayon du POINT du socle, en pixels d'ÉCRAN, par taille.
+ *
+ * UN POINT, PLUS UN ANNEAU (verdict du 2026-08-18) : « point disponible + icône de l'arme en
+ * dessous + compteur au-dessus ». L'anneau enfermait la vignette, ce qui donnait à chaque
+ * socle l'emprise d'une cible et faisait de l'icône un contenu illisible à 8 px. Le point dit
+ * le LIEU et l'ÉTAT ; l'icône, posée dessous et libre, dit ce qu'on y trouve.
+ */
+const PAD_DOT_PX: Record<PadScale, number> = { power: 4.6, classic: 3.2 }
 
 /**
  * Hauteur de la vignette d'arme, en pixels d'écran, par taille.
@@ -63,22 +70,31 @@ const PAD_ICON_H_PX: Record<PadScale, number> = { power: 13, classic: 8 }
 /** Une vignette d'arme est large : au-delà de ce rapport, la largeur est bornée. */
 const PAD_ICON_MAX_ASPECT = 3.2
 
-/** Épaisseur de l'anneau, en pixels d'écran (elle suit la densité comme tout le reste). */
-const PAD_RING_WIDTH = 1.1
+/** Épaisseur du contour du point (états incertain et vide), en pixels d'écran. */
+const PAD_DOT_WIDTH = 1.2
 
-/** Opacités de l'anneau et de la vignette, par état. `empty` n'a pas de vignette. */
-const PAD_ALPHA: Record<PadState, { ring: number; icon: number }> = {
-  full: { ring: 0.55, icon: 0.95 },
-  uncertain: { ring: 0.4, icon: 0.3 },
-  empty: { ring: 0.28, icon: 0 },
+/** Écart entre le bord du point et ce qu'on pose au-dessus ou en dessous, en pixels d'écran. */
+const PAD_GAP_PX = 2.5
+
+/**
+ * Épaisseur du LISERÉ de la vignette, en pixels d'écran, et le nombre de directions où on la
+ * repose pour l'obtenir. Huit : à quatre, les diagonales laissent passer le fond.
+ */
+const PAD_OUTLINE_PX = 1.2
+const PAD_OUTLINE_STEPS = 8
+
+/** Opacités du point et de la vignette, par état. `empty` n'a pas de vignette. */
+const PAD_ALPHA: Record<PadState, { dot: number; icon: number }> = {
+  full: { dot: 0.95, icon: 0.95 },
+  uncertain: { dot: 0.55, icon: 0.3 },
+  empty: { dot: 0.35, icon: 0 },
 }
 
 /** Corps du compte à rebours, en pixels d'écran, et son contour de lisibilité. */
 const PAD_COUNTDOWN_FONT_PX = 8
 const PAD_COUNTDOWN_STROKE_PX = 2.4
-const PAD_COUNTDOWN_GAP_PX = 2.5
 
-/** Rayon minimal de la zone sensible au survol : un anneau de 5,5 px ne se vise pas. */
+/** Rayon minimal de la zone sensible au survol : un point de 3,2 px ne se vise pas. */
 const PAD_HOVER_MIN_RADIUS_PX = 9
 
 /** Ce que le calque a besoin de savoir de l'instant courant. */
@@ -90,14 +106,33 @@ export interface PadTime {
   k: number
 }
 
+/**
+ * Une vignette d'arme prête à poser : son CORPS et son LISERÉ, déjà teints hors écran.
+ *
+ * DEUX IMAGES ET NON UNE, parce qu'un canvas ne sait pas cerner une image : le liseré
+ * s'obtient en reposant la MÊME forme, teinte de l'encre du fond, tout autour du corps.
+ * `outline` vaut null quand la source n'est pas un masque (image finie du jeu) : on ne peut
+ * alors ni la reteindre ni la cerner, et elle se pose telle quelle.
+ */
+export interface PadIcon {
+  fill: CanvasImageSource
+  outline: CanvasImageSource | null
+}
+
 /** Ce que le calque emprunte au thème et au catalogue du document. */
 export interface PadStyle {
   /** Encre neutre du thème : un socle est un objet du terrain, il n'a pas de camp. */
   ink: string
-  /** Contour du compte à rebours (sombre dans les deux thèmes) ; vide = pas de contour. */
-  labelStroke: string
+  /**
+   * Les DEUX encres du marquage (verdict du 2026-08-18) : la vignette et le compte à rebours
+   * sont REMPLIS de l'encre du texte et CERNÉS de celle du fond. En thème sombre cela donne
+   * le « blanc rempli, contour noir » demandé ; en thème clair, l'inverse — c'est la même
+   * règle, et c'est la seule qui reste lisible sur les deux fonds de carte.
+   */
+  fill: string
+  outline: string
   /** Vignette TEINTE de la famille, ou null : le socle garde alors un glyphe neutre. */
-  iconOf: (weapon: string) => CanvasImageSource | null
+  iconOf: (weapon: string) => PadIcon | null
   /** La taille à donner au socle, d'après ce qu'il porte (cf. weaponPadFamilies). */
   scaleOf: (weapon: string) => PadScale
   /** Le compte à rebours déjà localisé ; appelé seulement quand un cycle est établi. */
@@ -161,9 +196,9 @@ export function padRespawnSecondsAt(
   return left > 0 ? left : null
 }
 
-/** padRadiusPx — le rayon d'écran de l'anneau d'un socle (sa taille suit ce qu'il porte). */
+/** padRadiusPx — le rayon d'écran du POINT d'un socle (sa taille suit ce qu'il porte). */
 export function padRadiusPx(pad: ReplayWeaponPadReady, style: PadStyle, k: number): number {
-  return PAD_RING_PX[style.scaleOf(pad.weapon)] * k
+  return PAD_DOT_PX[style.scaleOf(pad.weapon)] * k
 }
 
 /**
@@ -194,26 +229,40 @@ export function padAt(
   return best
 }
 
-/** drawRing — l'anneau du socle : plein quand la présence est prouvée, pointillé sinon. */
-function drawRing(
+/**
+ * drawDot — LE POINT du socle : plein quand l'arme est prouvée là, pointillé quand le film ne
+ * dit rien, discret quand l'absence est prouvée.
+ *
+ * L'ÉTAT SE LIT SANS LA COULEUR (le point n'en a qu'une, l'encre neutre du terrain) : c'est le
+ * REMPLISSAGE qui dit « disponible », le POINTILLÉ qui dit « on ne sait pas » — la même
+ * grammaire que `placementShapes`, où le pointillé a toujours voulu dire « non affirmé ».
+ */
+function drawDot(
   ctx: CanvasRenderingContext2D,
   c: XY,
   radius: number,
   state: PadState,
   time: PadTime,
 ): void {
-  ctx.globalAlpha = PAD_ALPHA[state].ring
-  ctx.lineWidth = PAD_RING_WIDTH * time.k
-  ctx.setLineDash(state === 'full' ? [] : UNCERTAIN_DASH.map((d) => d * time.k))
+  ctx.globalAlpha = PAD_ALPHA[state].dot
   ctx.beginPath()
   ctx.arc(c.x, c.y, radius, 0, Math.PI * 2)
+  if (state === 'full') {
+    ctx.fill()
+    return
+  }
+  ctx.lineWidth = PAD_DOT_WIDTH * time.k
+  ctx.setLineDash(state === 'uncertain' ? UNCERTAIN_DASH.map((d) => d * time.k) : [])
   ctx.stroke()
   ctx.setLineDash([])
 }
 
 /**
- * drawPadIcon — la vignette de l'arme, centrée sur l'anneau, à hauteur imposée et largeur
- * déduite du rapport de l'image (bornée : une vignette d'arme est très large).
+ * drawPadIcon — la vignette de l'arme, posée SOUS le point, remplie et cernée.
+ *
+ * Hauteur imposée, largeur déduite du rapport de l'image (bornée : une vignette d'arme est
+ * très large). Le liseré est la même image reposée tout autour, à l'encre du fond : c'est ce
+ * qui la détache d'un fond de carte clair comme d'un fond sombre.
  *
  * Sans vignette — famille hors catalogue du titre, ou visuel absent — un GLYPHE NEUTRE prend
  * sa place : jamais l'icône d'une arme voisine. Le nom (ou, à défaut, l'hexadécimal) reste
@@ -224,42 +273,59 @@ function drawPadIcon(
   c: XY,
   scale: PadScale,
   time: PadTime,
-  icon: CanvasImageSource | null,
+  icon: PadIcon | null,
 ): void {
   const h = PAD_ICON_H_PX[scale] * time.k
   if (!icon) {
     ctx.beginPath()
-    ctx.arc(c.x, c.y, PAD_RING_PX[scale] * time.k * 0.38, 0, Math.PI * 2)
+    ctx.arc(c.x, c.y, PAD_DOT_PX[scale] * time.k * 0.5, 0, Math.PI * 2)
     ctx.fill()
     return
   }
-  const natW = 'width' in icon && typeof icon.width === 'number' ? icon.width : 0
-  const natH = 'height' in icon && typeof icon.height === 'number' ? icon.height : 0
+  const source = icon.fill
+  const natW = 'width' in source && typeof source.width === 'number' ? source.width : 0
+  const natH = 'height' in source && typeof source.height === 'number' ? source.height : 0
   const aspect = natW > 0 && natH > 0 ? Math.min(natW / natH, PAD_ICON_MAX_ASPECT) : 1
   const w = h * aspect
-  ctx.drawImage(icon, c.x - w / 2, c.y - h / 2, w, h)
+  const x = c.x - w / 2
+  const y = c.y - h / 2
+  if (icon.outline) {
+    const d = PAD_OUTLINE_PX * time.k
+    for (let i = 0; i < PAD_OUTLINE_STEPS; i++) {
+      const a = (i / PAD_OUTLINE_STEPS) * Math.PI * 2
+      ctx.drawImage(icon.outline, x + Math.cos(a) * d, y + Math.sin(a) * d, w, h)
+    }
+  }
+  ctx.drawImage(source, x, y, w, h)
 }
 
-/** drawCountdown — le compte à rebours sous l'anneau ; cerné pour rester lisible partout. */
+/**
+ * drawCountdown — le compte à rebours AU-DESSUS du point, rempli et cerné comme la vignette.
+ *
+ * SEULEMENT LE COMPTE (verdict du 2026-08-18) : ni médiane, ni nombre d'écarts, ni marge —
+ * ces trois-là disaient la CONFIANCE dans le cycle, ce qui est une lecture d'analyse, pas un
+ * repère de carte. Le compte, lui, répond à la seule question qu'on se pose en regardant un
+ * socle vide : dans combien de temps.
+ */
 function drawCountdown(
   ctx: CanvasRenderingContext2D,
   c: XY,
   radius: number,
   text: string,
-  style: { ink: string; labelStroke: string; k: number },
+  style: { fill: string; outline: string; k: number },
 ): void {
   ctx.globalAlpha = 1
   ctx.font = `600 ${PAD_COUNTDOWN_FONT_PX * style.k}px ui-sans-serif, system-ui, sans-serif`
   ctx.textAlign = 'center'
-  ctx.textBaseline = 'top'
-  const y = c.y + radius + PAD_COUNTDOWN_GAP_PX * style.k
-  if (style.labelStroke) {
+  ctx.textBaseline = 'bottom'
+  const y = c.y - radius - PAD_GAP_PX * style.k
+  if (style.outline) {
     ctx.lineJoin = 'round'
     ctx.lineWidth = PAD_COUNTDOWN_STROKE_PX * style.k
-    ctx.strokeStyle = style.labelStroke
+    ctx.strokeStyle = style.outline
     ctx.strokeText(text, c.x, y)
   }
-  ctx.fillStyle = style.ink
+  ctx.fillStyle = style.fill
   ctx.fillText(text, c.x, y)
 }
 
@@ -279,28 +345,32 @@ export function drawWeaponPadsLayer(
 ): void {
   if (pads.length === 0 || view.width === 0) return
   ctx.save()
-  ctx.strokeStyle = style.ink
-  ctx.fillStyle = style.ink
   for (const pad of pads) {
     const c = project({ x: pad.x, y: pad.y }, view)
     const scale = style.scaleOf(pad.weapon)
-    const radius = PAD_RING_PX[scale] * time.k
+    const radius = PAD_DOT_PX[scale] * time.k
     const state = padStateAt(pad, time.frame)
-    drawRing(ctx, c, radius, state, time)
+    // LE POINT, à l'encre neutre du terrain.
+    ctx.strokeStyle = style.ink
+    ctx.fillStyle = style.ink
+    drawDot(ctx, c, radius, state, time)
+    // LA VIGNETTE, SOUS le point : son centre est décalé de son propre demi-cadre, sinon
+    // c'est son bord haut qui viendrait toucher le point.
     const iconAlpha = PAD_ALPHA[state].icon
     if (iconAlpha > 0) {
       ctx.globalAlpha = iconAlpha
-      drawPadIcon(ctx, c, scale, time, style.iconOf(pad.weapon))
+      ctx.fillStyle = style.fill
+      const dy = radius + (PAD_GAP_PX + PAD_ICON_H_PX[scale] / 2) * time.k
+      drawPadIcon(ctx, { x: c.x, y: c.y + dy }, scale, time, style.iconOf(pad.weapon))
     }
+    // LE COMPTE À REBOURS, AU-DESSUS du point.
     const left = padRespawnSecondsAt(pad, time.frame, time.frameMs)
     if (left !== null) {
       drawCountdown(ctx, c, radius, style.countdownLabel(left), {
-        ink: style.ink,
-        labelStroke: style.labelStroke,
+        fill: style.fill,
+        outline: style.outline,
         k: time.k,
       })
-      ctx.strokeStyle = style.ink
-      ctx.fillStyle = style.ink
     }
   }
   ctx.globalAlpha = 1

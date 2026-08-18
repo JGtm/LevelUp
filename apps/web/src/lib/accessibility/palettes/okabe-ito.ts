@@ -100,6 +100,11 @@ export const okabePalette: Palette = {
   // Okabe-Ito n'a que 8 teintes fixes : on évite ici une collision évitable.
   'legendary': '#F0E442', // Yellow
 
+  // ── Extrême rare — Reddish Purple, la 8e couleur d'Okabe-Ito ──────────────
+  // Elle ne collapse sur aucun des deux axes de confusion (protan/deutan) avec le
+  // Blue et le Vermillion qui la précèdent sur la rampe d'intensité.
+  'extreme': '#CC79A7', // Reddish Purple
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA sur le fond correspondant
   'narrative-dominant':              '#009E73', // Bluish Green

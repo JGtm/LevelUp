@@ -69,6 +69,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onSetSpeed = vi.fn()
   const onToggleShotFx = vi.fn()
   const onToggleKillFx = vi.fn()
+  const onToggleCompactCards = vi.fn()
   const utils = render(
     <ReplaySettingsDrawer
       locale="fr"
@@ -89,6 +90,8 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleShotFx={onToggleShotFx}
       showKillFx={false}
       onToggleKillFx={onToggleKillFx}
+      compactCards={false}
+      onToggleCompactCards={onToggleCompactCards}
       sound={makeSound()}
       speed={1}
       onSetSpeed={onSetSpeed}

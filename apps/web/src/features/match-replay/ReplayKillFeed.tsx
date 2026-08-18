@@ -31,8 +31,9 @@
  * et fait défiler à l'intérieur. Le sens de lecture ne change pas : le plus récent en tête,
  * descendre va chercher les événements anciens.
  *
- * LES MARQUES D'IDENTITÉ (« moi », « ami ») précèdent chaque nom, comme dans les fiches et
- * sur la carte — une seule grammaire sur les trois panneaux (décision D5).
+ * LES NOMS PASSENT TOUS PAR `FeedName` (ReplayFeedName.tsx), qui porte les deux règles du
+ * retour C1 du 18/08 : le glyphe « joueur actif » ne s'affiche plus ICI (les fiches et la
+ * carte le gardent), et un joueur marqué — moi ou un ami — écrit son nom au token `success`.
  *
  * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : marque
  * d'assistance, marque d'identité de l'assistant, Nom, « - part % », puis la part du
@@ -69,7 +70,7 @@ export { ASSIST_ICON_STEM }
 import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
-import { PlayerMark } from './PlayerMark'
+import { FeedName } from './ReplayFeedName'
 import {
   buildFeedEntries,
   feedAt,
@@ -104,8 +105,21 @@ const AT_TOP_PX = 4
  * `flex-nowrap` + `overflow-hidden` SONT LA RÈGLE, pas de la mise en forme : c'est ce couple
  * qui interdit le retour à la ligne demandé le 18/08. Une seule constante parce que les trois
  * lignes doivent se comporter pareil — trois copies auraient divergé au premier réglage.
+ *
+ * `shrink-0` RÉPARE LA RÉGRESSION C1 DU 2026-08-18 (« le fil ne défile plus, tout est compacté
+ * en fin de match, illisible »), et il la répare à sa CAUSE. La liste est une colonne flex
+ * bornée par la rangée : ses `li` sont donc des éléments flex, rétrécissables par défaut. Tant
+ * que leur débordement restait `visible`, leur taille minimale automatique valait leur contenu
+ * (CSS Flexbox §4.5, `min-height: auto`) — ils refusaient de se tasser, la liste débordait, et
+ * `overflow-y-auto` faisait défiler. `overflow-hidden`, ajouté par V5 pour la règle « une
+ * ligne », met cette taille minimale automatique à ZÉRO : les lignes se sont écrasées jusqu'à
+ * tenir toutes dans la hauteur disponible, en rognant leur propre contenu, et plus rien n'a
+ * débordé donc plus rien n'a défilé. La demande de V5 portait sur CHAQUE ENTRÉE, pas sur la
+ * liste : `shrink-0` rend aux rangées leur hauteur naturelle et au fil son défilement, sans
+ * toucher au couple qui les tient sur une ligne.
  */
-const FEED_ROW = 'flex flex-nowrap items-center gap-2 overflow-hidden rounded-sm py-0.5 pl-2 text-xs'
+const FEED_ROW =
+  'flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden rounded-sm py-0.5 pl-2 text-xs'
 
 interface Props {
   /** Kills du match, tels que `collectKillEvents` les a lus (horloge gameplay). */
@@ -277,10 +291,8 @@ function FeedLine({
     const color = colorOf(m.teamID, allyOf(xuidMeta, m.xuid, true))
     return (
       <li className={FEED_ROW} style={{ borderLeft: `3px solid ${color}` }}>
-        <PlayerMark kind={marks.get(m.xuid)} locale={locale} />
-        <span className="truncate font-medium" style={{ color }}>
-          {displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)}
-        </span>
+        <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className="font-medium"
+          name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)} />
         <MedalBadges medals={[m]} />
         <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
           {formatClock(entry.replayMs)}
@@ -367,10 +379,8 @@ function DeathLine({
           }}
         />
       )}
-      <PlayerMark kind={marks.get(death.xuid)} locale={locale} />
-      <span className="truncate font-medium" style={{ color }}>
-        {displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)}
-      </span>
+      <FeedName kind={marks.get(death.xuid)} color={color} locale={locale} className="font-medium"
+        name={displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)} />
       <span className="shrink-0 text-3xs text-muted-foreground">{t.killFeedDeathLabel}</span>
       <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
         {formatClock(replayMs)}
@@ -415,10 +425,8 @@ function KillLine({
       }}
       title={lineHint}
     >
-      <PlayerMark kind={marks.get(k.xuid)} locale={locale} />
-      <span className="truncate font-medium" style={{ color: killerColor }}>
-        {displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)}
-      </span>
+      <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
+        name={displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} />
         {/* L'ARME entre le tueur et la victime — elle remplace la croix (POC). L'icône
             extraite du jeu est un masque teint par currentColor (cf. WeaponIcon) : poser
             la couleur d'équipe du TUEUR ici, c'est la technique du kill feed de la carte
@@ -448,13 +456,8 @@ function KillLine({
       )}
       {k.victimGamertag && (
         <>
-          <PlayerMark kind={marks.get(k.victimXuid)} locale={locale} />
-          <span
-            className="truncate"
-            style={{ color: colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally)) }}
-          >
-            {k.victimGamertag}
-          </span>
+          <FeedName kind={marks.get(k.victimXuid)} name={k.victimGamertag} locale={locale}
+            color={colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally))} />
         </>
       )}
       {/* LES MÉDAILLES DANS LA RANGÉE, plus en dessous : `shrink-0` parce qu'un badge rogné
@@ -472,8 +475,8 @@ function KillLine({
           title={t.killFeedAssistHint}
         >
           <AssistMark label={t.killFeedAssistMark} color={colorOf(k.assistTeamID, k.ally)} />
-          <PlayerMark kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} locale={locale} />
-          <span className="truncate">{k.assistGamertag}</span>
+          <FeedName name={k.assistGamertag} locale={locale}
+            kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} />
           {k.assistDamagePct != null && (
             <span className="shrink-0 font-mono tabular-nums">
               {t.killFeedAssistShare(k.assistDamagePct)}

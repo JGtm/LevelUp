@@ -75,6 +75,18 @@ export type SemanticToken =
   // autres paliers de rareté n'ont pas d'usage hors Battlepass à ce jour.
   | 'legendary'
 
+  // ── Extrême rare (1) — le sommet d'une rampe d'intensité ──────────────────
+  // Accent VIOLET pour ce qui sort de l'ordinaire par le HAUT, au-delà de la zone
+  // « chaude » : le dernier palier d'une carte de chaleur, là où une poignée de
+  // cellules concentre ce que le reste de la carte n'a pas. Même statut générique
+  // que `legendary` (un rôle, pas un composant) : `legendary` dit « rare et
+  // précieux », `extreme` dit « rare et intense » — un pic, pas un trésor.
+  // PAS un token de la famille `heatmap-*` : ces six-là forment des rampes fermées
+  // à deux bouts (cold/hot, freq-low/high, divergent-low/high) et sont remappées
+  // ensemble ; celui-ci est un troisième point, réutilisable hors heatmap.
+  // Composition de la rampe qui l'emploie : `heatmapRampTokens('intensity')`.
+  | 'extreme'
+
   // ── Badges narratifs — fond (5) ────────────────────────────────────────────
   | 'narrative-dominant'
   | 'narrative-humiliation'
@@ -143,6 +155,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
   'bonus',
   'legendary',
+  'extreme',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',
   'narrative-debacle', 'narrative-contre-remontada',
   'narrative-dominant-text', 'narrative-humiliation-text', 'narrative-remontada-text',
