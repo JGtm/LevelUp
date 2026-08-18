@@ -114,3 +114,35 @@ func TestCliffhangerNonEcarte(t *testing.T) {
 		}
 	}
 }
+
+// TestDumpPublieLesLabelsNonResolusEtLInstance — le dump de diagnostic doit montrer les
+// labels que la table ne sait PAS nommer (en hash brut), pas seulement ceux qu'elle sait :
+// c'est sur eux qu'un inventaire de mode se fait (lot C-ter volet 2). Il porte aussi
+// l'instance_id, clé candidate du catalogue.
+//
+// Mutation qui doit le faire rougir : retirer le `continue` et l'append d'Unresolved dans
+// dumpedObjectsOf.
+func TestDumpPublieLesLabelsNonResolusEtLInstance(t *testing.T) {
+	v := varianteFixture(t, "cliffhanger_map.mvar")
+	want := 0
+	for _, n := range v.UnresolvedLabels() {
+		want += n
+	}
+	if want == 0 {
+		t.Skip("la fixture ne porte aucun label non résolu — le témoin ne dit rien")
+	}
+	got, named := 0, 0
+	for _, d := range dumpedObjectsOf(v) {
+		got += len(d.Unresolved)
+		named += len(d.Labels)
+	}
+	if got != want {
+		t.Errorf("labels non résolus publiés = %d, la variante en porte %d", got, want)
+	}
+	if named == 0 {
+		t.Error("aucun label résolu publié — le dump a perdu les noms")
+	}
+	if len(dumpedObjectsOf(v)) != len(v.Objects) {
+		t.Errorf("objets publiés = %d, la variante en a %d", len(dumpedObjectsOf(v)), len(v.Objects))
+	}
+}
