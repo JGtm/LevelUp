@@ -11,15 +11,17 @@ import type { ReplayDocument, ReplayGrenade } from '@/lib/api/types'
 
 import { SOUND_CUT_MAX_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
 import {
-  advanceSoundCursor,
   buildSoundTimeline,
   killSound,
   killSourceSpriteStem,
-  resyncSoundCursor,
-  SOUND_RESYNC_JUMP_MS,
   type ReplaySoundEvent,
   type SoundCategoryFilter,
 } from './replaySound'
+import {
+  advanceSoundCursor,
+  resyncSoundCursor,
+  SOUND_RESYNC_JUMP_MS,
+} from './replaySoundCursor'
 import { testReplayDoc } from './test/testDoc'
 
 /** URL de vignette telle que le backend la compose (adapter_asset_urls.go + static.URL). */
@@ -92,6 +94,16 @@ function docAvecTirs(n: number) {
     frameIntervalMs: 100,
     shots: Array.from({ length: n }, (_, i) => ({ slot: 1, t: i, x: 0, y: 0, w: '0x2B1824D5' })),
     weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', fx: 'ballistic', key: 'hinf_br75' } },
+  })
+}
+
+/** Document 10 Hz portant des lancers LIÉS à leur projectile : `flight` frames de vol, donc
+ *  une fin de vol à la frame `t + flight` — l'instant que `buildGrenadeRestFx` rend et que
+ *  l'explosion prend pour horloge (une seule règle de datation, écran et son). */
+function docAvecVols(vols: { t: number; rank: number; flight: number }[]) {
+  return docWithCouple({
+    grenades: vols.map((v, i) => grenade({ t: v.t, rank: v.rank, s: 'projectile', proj: i })),
+    projectiles: vols.map((v) => ({ t0: v.t, p: [[0, 0, 0], [v.flight, 1, 1]] })),
   })
 }
 
@@ -174,11 +186,12 @@ describe('buildSoundTimeline', () => {
     // TOUS les projectiles appariés (296 lancers), qui ne dépend d'aucun kill : 48,6 %,
     // sous le seuil elle aussi — les deux mesures concordent.
     //
-    // CE QUE LA MESURE A TROUVÉ À LA PLACE, et qui explique la remarque « j'ai pas les
-    // explosions » : l'explosion ne sonne QUE sur un kill à la grenade (KILL_SPRITE_SOUND_STEMS).
-    // 16 lancers sur 343 en produisent un — 4,7 %, et ZÉRO sur 00162144 (143 lancers). Ce
-    // n'est pas un masquage, c'est une absence : le film ne porte aucun événement de
-    // détonation (cf. grenadeFx.ts), donc rien ne sonne pour les 95,3 % restants.
+    // CE QUE LA MESURE AVAIT TROUVÉ À LA PLACE, et qui expliquait la remarque « j'ai pas les
+    // explosions » : l'explosion ne sonnait QUE sur un kill à la grenade — 16 lancers sur
+    // 343 en produisaient une (4,7 %), ZÉRO sur 00162144 (143 lancers). C'est ce point-là
+    // que la décision du 18/08 a tranché (lot R2-G) : la fin de vol sonne désormais AUSSI,
+    // ce qui ne change RIEN à la règle épinglée ici — le lancer et l'explosion coexistent.
+    // Ce document-ci ne lie aucun projectile : sa seule explosion est donc celle du kill.
     const doc = docWithCouple({ grenades: [grenade({ t: 8, rank: 3 })] })
     // Lancer à 800 ms (fichier tenu jusqu'à 2 000 ms) et explosion posée par le fil à
     // 2 000 ms : 0 ms d'écart, le pire cas mesuré. Les deux événements sont là.
@@ -351,6 +364,118 @@ describe('buildSoundTimeline', () => {
   })
 })
 
+/**
+ * L'EXPLOSION DE FIN DE VOL (lot R2-G, décision utilisateur du 2026-08-18 : « que ça kill ou
+ * pas, elles explosent donc faut jouer le son »).
+ *
+ * CE QUE CES CAS TIENNENT, et qu'aucune écoute ne dirait à coup sûr : l'instant est celui de
+ * `buildGrenadeRestFx` — la FRAME DE FIN DE VOL, pas la frame du lancer ; un type non établi
+ * ne sonne rien plutôt que l'explosion d'à côté ; et un kill à la grenade ne fait pas sonner
+ * deux fois la même détonation.
+ */
+describe('buildSoundTimeline — explosions de fin de vol', () => {
+  it('chaque grenade dont le type est établi sonne SON explosion, à sa fin de vol', () => {
+    // Quatre vols de longueurs différentes : l'explosion suit le projectile, pas le geste.
+    const tl = buildSoundTimeline(
+      docAvecVols([
+        { t: 10, rank: 0, flight: 14 },
+        { t: 20, rank: 1, flight: 5 },
+        { t: 30, rank: 2, flight: 8 },
+        { t: 40, rank: 3, flight: 20 },
+      ]),
+      [],
+      0,
+    )
+    expect(tl.filter((e) => e.stem.startsWith('explosion_'))).toEqual([
+      { ms: 2_400, stem: 'explosion_frag' }, // 10 + 14
+      { ms: 2_500, stem: 'explosion_plasma' }, // 20 + 5
+      { ms: 3_800, stem: 'explosion_dynamo' }, // 30 + 8
+      { ms: 6_000, stem: 'explosion_spike' }, // 40 + 20
+    ])
+    // Les lancers restent : décision 4 du plan R2, mesurée sous le seuil (cf. test S2).
+    expect(tl.filter((e) => e.stem.startsWith('throw_'))).toHaveLength(4)
+  })
+
+  it('la DYNAMO sonne aussi, alors que l écran ne la fait pas détoner (nappe)', () => {
+    // `restKindOf(2)` rend une nappe électrique et non une explosion : c'est un choix de
+    // RENDU. La décharge s'entend quand même, et le pack porte son fichier.
+    const tl = buildSoundTimeline(docAvecVols([{ t: 10, rank: 2, flight: 6 }]), [], 0)
+    expect(tl.map((e) => e.stem)).toEqual(['throw_dynamo', 'explosion_dynamo'])
+  })
+
+  it('un type NON ÉTABLI reste muet des deux côtés — jamais l explosion d une voisine', () => {
+    const tl = buildSoundTimeline(docAvecVols([{ t: 10, rank: 7, flight: 6 }]), [], 0)
+    expect(tl).toEqual([])
+  })
+
+  it('une grenade sans projectile lié ne sonne que son lancer : rien ne date sa fin', () => {
+    const tl = buildSoundTimeline(docWithCouple({ grenades: [grenade({ t: 10, rank: 0 })] }), [], 0)
+    expect(tl).toEqual([{ ms: 1_000, stem: 'throw_frag' }])
+  })
+
+  it('un kill à la grenade et LA fin de vol du même type : UNE seule explosion', () => {
+    // Le kill du fil tombe à 2 000 ms (fin de vie de la victime) ; la fin de vol du vol lié
+    // aussi (frame 6 + 14 = 20). Même type : c'est la même détonation, entendue deux fois.
+    const tl = buildSoundTimeline(
+      docAvecVols([{ t: 6, rank: 3, flight: 14 }]),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
+      0,
+    )
+    expect(tl).toEqual([
+      { ms: 600, stem: 'throw_spike' },
+      { ms: 2_000, stem: 'explosion_spike' },
+    ])
+  })
+
+  it('c est la FIN DE VOL qui cède, pas le kill : l explosion reste sur l horloge du fil', () => {
+    // Fin de vol à 2 100 ms, kill à 2 000 ms : 100 ms d écart, sous le seuil. L instant
+    // retenu est celui du KILL — celui qui date déjà le flash de la fiche et l effet de mort.
+    const tl = buildSoundTimeline(
+      docAvecVols([{ t: 7, rank: 3, flight: 14 }]),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
+      0,
+    )
+    expect(tl.filter((e) => e.stem === 'explosion_spike')).toEqual([{ ms: 2_000, stem: 'explosion_spike' }])
+  })
+
+  it('au-delà de 0,3 s, les deux sonnent : ce sont deux détonations distinctes', () => {
+    // Fin de vol à 2 400 ms contre un kill à 2 000 ms : 400 ms, au-dessus du seuil.
+    const tl = buildSoundTimeline(
+      docAvecVols([{ t: 10, rank: 3, flight: 14 }]),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
+      0,
+    )
+    expect(tl.filter((e) => e.stem === 'explosion_spike').map((e) => e.ms)).toEqual([2_000, 2_400])
+  })
+
+  it('un kill d un AUTRE type ne masque pas l explosion : le dédoublonnage est par TYPE', () => {
+    const tl = buildSoundTimeline(
+      docAvecVols([{ t: 6, rank: 0, flight: 14 }]),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], // Spike
+      0,
+    )
+    // À instant égal, le tri conserve l'ordre de construction : le kill d'abord.
+    expect(tl.filter((e) => e.stem.startsWith('explosion_'))).toEqual([
+      { ms: 2_000, stem: 'explosion_spike' },
+      { ms: 2_000, stem: 'explosion_frag' },
+    ])
+  })
+
+  it('un kill n annule qu UNE fin de vol : la jumelle du même type garde la sienne', () => {
+    // Deux grenades à pointes finissent leur vol au même instant, un seul kill : l une est
+    // la détonation que le fil raconte, l autre a bel et bien explosé sans tuer personne.
+    const tl = buildSoundTimeline(
+      docAvecVols([
+        { t: 6, rank: 3, flight: 14 },
+        { t: 6, rank: 3, flight: 14 },
+      ]),
+      [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
+      0,
+    )
+    expect(tl.filter((e) => e.stem === 'explosion_spike').map((e) => e.ms)).toEqual([2_000, 2_000])
+  })
+})
+
 describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, phase 2)', () => {
   const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true }
 
@@ -373,12 +498,15 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
     expect(tl.map((e) => e.stem)).toEqual(['throw_frag'])
   })
 
-  it('catégorie GRENADES coupée : ni le lancer ni l explosion ne sonnent, l arme reste', () => {
+  it('catégorie GRENADES coupée : ni lancer, ni fin de vol, ni kill à la grenade — l arme reste', () => {
+    // Les TROIS sources de son de grenade sont ici : le geste, la fin de vol du projectile
+    // lié (lot R2-G) et la vignette du kill. Le filtre les coupe toutes les trois.
     const tl = buildSoundTimeline(
       docWithCouple({
         shots: [{ slot: 1, t: 5, x: 0, y: 0, w: '0x2B1824D5' }],
         weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', key: 'hinf_br75' } },
-        grenades: [grenade({ t: 50, rank: 0 })],
+        grenades: [grenade({ t: 6, rank: 3, s: 'projectile', proj: 0 })],
+        projectiles: [{ t0: 6, p: [[0, 0, 0], [14, 1, 1]] }],
       }),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], // kill à la grenade à pointes
       0,
