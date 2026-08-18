@@ -613,6 +613,8 @@ export function ReplayCanvas({
     grenadeRestFx,
     restWindow,
     objectivePulses,
+    // L'objet du hook des zones est MÉMOÏSÉ (useZoneStates) : sans cela il serait neuf à
+    // chaque rendu, et `draw` — donc toute la scène — recuirait au moindre survol.
     zones,
     floorStyle.edge,
     slotColors,
