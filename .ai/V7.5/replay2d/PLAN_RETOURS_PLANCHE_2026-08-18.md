@@ -254,3 +254,21 @@ Gate P : gates web verts ; planche : items P sur `01e1f945`.
   comportement voulu, mais la famille meriterait d'entrer dans `weapon_names.toml` ; (b) sur cette machine,
   une vingtaine de garde-rails web qui balayent `src/**` frolent ou depassent le `testTimeout` de 5 s —
   le probleme est la duree, jamais une assertion (cf. gate P).
+- 2026-08-18 (suite) — **R2-V remis a niveau sur `feat/v75`** (qui porte desormais R2-P et R2-S).
+  Le REBASE a ete tente et abandonne : il conflictait des le premier des sept commits, sur quatre
+  fichiers dont un add/add (`useReplayInks.ts`, cree independamment par R2-P et R2-V), et se
+  serait rejoue a chaque commit. MERGE retenu — une seule passe (`f1a48b7d2`).
+  UNION tenue sur les cinq conflits : `useReplayInks` garde la forme du tronc
+  (`useReplayInks(paletteVersion)`, champs `geometry`/`shot`/`floor`/`fx`) et gagne le champ
+  `self` de R2-V ; `i18n` garde la DECOUPE de R2-V (contrat / tables) et recoit le vocabulaire
+  des socles de R2-P ; le tiroir porte les deux bascules ; le plan garde les deux journaux.
+  CLIQUET DU CANVAS : le plafond est passe a 858 (R2-P) et la fusion des deux lots menait a 873.
+  Extraction de plus — `useGrenadeIcons.ts` — et `ReplayCanvas.tsx` retombe a 857.
+  TROIS AUTRES EXTRACTIONS de cloture (`24ba67c91`), parce que le lot avait pousse trois fichiers
+  au-dela du seuil de 500 lignes : `ReplaySettingsToggle.tsx` (tiroir 474 -> 509 -> 440),
+  `ReplayAssistMark.tsx` (fil 518 -> 536 -> 496), `placementWindow.ts` (calque des poses
+  503 -> 521 -> 469).
+  PLANCHE : un seul bundle pour les deux lots (l'entree de R2-P est fondue dans `entry3.ts`) et
+  une seule page — 36 items, dont les 7 `proposition R2` et les 2 items de socles (`P1`, `P2`).
+  Fumee 0 erreur en clair comme en sombre. Gates sur l'arbre fusionne : typecheck 0, lint 0
+  (aucun avertissement dans `match-replay`), `test:run` 0 sur les 4 227 tests web.
