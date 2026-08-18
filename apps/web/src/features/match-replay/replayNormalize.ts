@@ -31,6 +31,7 @@ import type {
   ReplaySurface,
   ReplayTrack,
   ReplayWeaponPad,
+  ReplayZoneState,
 } from '@/lib/api/types'
 
 /** Un sommet d'emprise orientée : le `[2]float32` du Go. */
@@ -70,6 +71,14 @@ export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'
  * à l'exécution, pas à la compilation.
  */
 export type ReplayFlagCarryReady = Filled<ReplayFlagCarry, 'spans'>
+/**
+ * ReplayZoneStateReady — l'état d'une zone dont les intervalles sont comblés.
+ *
+ * MÊME PATRON QUE `flagCarries` et `weaponPads` : le tableau de tête et le tableau IMBRIQUÉ
+ * (`spans`) sont tous deux nullables au contrat, et une zone qui arriverait avec `spans: null`
+ * ferait tomber le calque à l'exécution, pas à la compilation.
+ */
+export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans'>
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -97,6 +106,7 @@ export type ReplayDocumentReady = Omit<
   | 'structure'
   | 'tracks'
   | 'weaponPads'
+  | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
@@ -125,6 +135,7 @@ export type ReplayDocumentReady = Omit<
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
   weaponPads: ReplayWeaponPadReady[]
+  zoneStates: ReplayZoneStateReady[]
 }
 
 /**
@@ -205,5 +216,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
       spawns: pad.spawns ?? [],
       presence: pad.presence ?? [],
     })),
+    // L'ÉTAT DES ZONES (schéma 16) : une entrée par zone appariée, une suite d'intervalles de
+    // propriété. Absent = le mode n'a pas de zone, ou l'appariement n'a rien rattaché —
+    // `coverage.zones` distingue les deux, et c'est pour cela qu'il est publié.
+    //
+    // LE TABLEAU IMBRIQUÉ SE COMBLE AUSSI (`spans`), comme pour `flagCarries` et `weaponPads`.
+    zoneStates: (raw.zoneStates ?? []).map((z) => ({ ...z, spans: z.spans ?? [] })),
   }
 }

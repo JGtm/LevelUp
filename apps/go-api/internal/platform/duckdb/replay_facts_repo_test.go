@@ -15,7 +15,8 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// seedReplayFacts cree le schema minimal (les seules colonnes que le repo lit).
+// seedReplayFacts cree le schema minimal (les seules colonnes que le repo lit — dont `map_id`,
+// la cle du catalogue d objectifs, lue par `registryFacts` depuis b0fb3e10f).
 func seedReplayFacts(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
@@ -25,7 +26,8 @@ func seedReplayFacts(t *testing.T) *sql.DB {
 	t.Cleanup(func() { _ = db.Close() })
 	if _, err := db.ExecContext(context.Background(), `
 		CREATE TABLE match_registry (
-			match_id VARCHAR, team_0_score INTEGER, team_1_score INTEGER, game_variant_name VARCHAR);
+			match_id VARCHAR, team_0_score INTEGER, team_1_score INTEGER, game_variant_name VARCHAR,
+			map_id VARCHAR);
 		CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, kills INTEGER, deaths INTEGER, assists INTEGER, team_id INTEGER);
 	`); err != nil {
@@ -34,13 +36,13 @@ func seedReplayFacts(t *testing.T) *sql.DB {
 	return db
 }
 
-// TestReplayFactsForMatch — le cas nominal : les deux scores, la variante, et les lignes de
-// match avec leur camp.
+// TestReplayFactsForMatch — le cas nominal : les deux scores, la variante, la carte (blanchie), et
+// les lignes de match avec leur camp.
 func TestReplayFactsForMatch(t *testing.T) {
 	db := seedReplayFacts(t)
 	ctx := context.Background()
 	if _, err := db.ExecContext(ctx,
-		`INSERT INTO match_registry VALUES ('m1', 3, 0, 'CTF:Arena')`); err != nil {
+		`INSERT INTO match_registry VALUES ('m1', 3, 0, 'CTF:Arena', ' asset-m1 ')`); err != nil {
 		t.Fatalf("insert registry: %v", err)
 	}
 	if _, err := db.ExecContext(ctx, `INSERT INTO match_participants VALUES
@@ -54,6 +56,9 @@ func TestReplayFactsForMatch(t *testing.T) {
 	}
 	if got.GameVariantName != "CTF:Arena" {
 		t.Errorf("variante = %q, attendu \"CTF:Arena\"", got.GameVariantName)
+	}
+	if got.MapID != "asset-m1" {
+		t.Errorf("carte = %q, attendu \"asset-m1\" (map_id blanchi)", got.MapID)
 	}
 	if got.TeamScores == nil || *got.TeamScores != [2]int{3, 0} {
 		t.Fatalf("scores = %v, attendu [3 0]", got.TeamScores)
@@ -92,7 +97,7 @@ func TestReplayFactsNullScoresAreAbsent(t *testing.T) {
 	db := seedReplayFacts(t)
 	ctx := context.Background()
 	if _, err := db.ExecContext(ctx,
-		`INSERT INTO match_registry VALUES ('m2', 5, NULL, 'Slayer:Arena')`); err != nil {
+		`INSERT INTO match_registry VALUES ('m2', 5, NULL, 'Slayer:Arena', NULL)`); err != nil {
 		t.Fatalf("insert registry: %v", err)
 	}
 	got, err := NewReplayFactsRepo(db).FactsForMatch(ctx, "m2")
@@ -105,13 +110,16 @@ func TestReplayFactsNullScoresAreAbsent(t *testing.T) {
 	if got.GameVariantName != "Slayer:Arena" {
 		t.Errorf("variante = %q", got.GameVariantName)
 	}
+	if got.MapID != "" {
+		t.Errorf("carte = %q pour un map_id NULL, attendu vide", got.MapID)
+	}
 }
 
 // TestReplayFactsNullTeamIsMinusOne — un camp absent vaut -1 et non 0 : zero EST un camp.
 func TestReplayFactsNullTeamIsMinusOne(t *testing.T) {
 	db := seedReplayFacts(t)
 	ctx := context.Background()
-	if _, err := db.ExecContext(ctx, `INSERT INTO match_registry VALUES ('m3', 50, 43, 'Slayer:Arena')`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT INTO match_registry VALUES ('m3', 50, 43, 'Slayer:Arena', 'asset-m3')`); err != nil {
 		t.Fatalf("insert registry: %v", err)
 	}
 	if _, err := db.ExecContext(ctx,

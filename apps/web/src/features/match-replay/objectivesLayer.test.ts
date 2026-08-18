@@ -17,6 +17,7 @@ import {
   normalizeMapObjectives,
   OBJECTIVE_TEAM_NEUTRAL,
 } from './objectivesLayer'
+import { drawZoneStates, zoneElementsOf, zoneStateAt } from './zoneStatesLayer'
 import { testReplayDoc } from './test/testDoc'
 
 const MO: ReplayMapObjectives = {
@@ -182,14 +183,14 @@ describe('buildObjectivePulses', () => {
     expect(buildObjectivePulses(doc, [])).toHaveLength(0)
   })
 
-  // VERROU du défaut mesuré le 2026-08-14 (lot containment) : `a.t` compte depuis le
-  // premier paquet du FILM, une frame d'artefact depuis le premier paquet de POSITION.
-  // L'écart est `originMs`. Sans la soustraction, le pulse s'allumait jusqu'à 50,8 s trop
-  // tard et l'appariement lisait la position de l'auteur au mauvais instant.
-  it("retranche l'origine de l'artefact — le pulse s'allume à l'instant vu à l'écran", () => {
+  // VERROU DE LA REVUE R1 (2026-08-18) : `objectives[].t` est DÉJÀ une frame du document —
+  // le Go retranche l'origine depuis le lot A phase 1 (`63b90583c`, `scoreClock.frameOf`).
+  // Le client la retranchait une SECONDE fois : les pulses s'allumaient `originMs` trop tôt.
+  // La fixture porte donc la sortie Go actuelle : `t` recalé, `timeMs` sur l'horloge du film.
+  it("ne retranche PLUS l'origine — `t` est déjà une frame du document", () => {
     const decale = testReplayDoc({
       frameIntervalMs: 100,
-      originMs: 3_000, // 30 frames
+      originMs: 3_000, // 30 frames — le Go les a déjà retranchées pour produire `t`
       tracks: [
         {
           slot: 1, team: -1, xuid: 'A',
@@ -197,15 +198,18 @@ describe('buildObjectivePulses', () => {
           startFrame: 0, endFrame: 100,
         },
       ],
-      objectives: [{ t: 40, xuid: 'A', stat: 'flag_grabs', timeMs: 4_000 }],
+      // t = (7 000 − 3 000) / 100 = 40 : la frame du document, pas celle du film.
+      objectives: [{ t: 40, xuid: 'A', stat: 'flag_grabs', timeMs: 7_000 }],
     })
     const pulses = buildObjectivePulses(decale, normalizeMapObjectives(MO))
     expect(pulses).toHaveLength(1)
-    expect(pulses[0].frame).toBe(10) // 40 - 30, et non 40
+    expect(pulses[0].frame).toBe(40) // et non 10, qui serait la seconde soustraction
   })
 
-  it("une action antérieure à la première position connue est écartée, jamais posée à zéro", () => {
-    const avant = testReplayDoc({
+  // Le second visage du même défaut : une action dont la frame est INFÉRIEURE à l'origine
+  // était purement et simplement jetée (`frame < 0`). Elle doit sortir, à sa frame.
+  it("une action des premières secondes du document n'est plus jetée", () => {
+    const tot = testReplayDoc({
       frameIntervalMs: 100,
       originMs: 3_000, // 30 frames
       tracks: [
@@ -215,9 +219,11 @@ describe('buildObjectivePulses', () => {
           startFrame: 0, endFrame: 100,
         },
       ],
-      objectives: [{ t: 5, xuid: 'A', stat: 'flag_grabs', timeMs: 500 }],
+      objectives: [{ t: 5, xuid: 'A', stat: 'flag_grabs', timeMs: 3_500 }],
     })
-    expect(buildObjectivePulses(avant, normalizeMapObjectives(MO))).toHaveLength(0)
+    const pulses = buildObjectivePulses(tot, normalizeMapObjectives(MO))
+    expect(pulses).toHaveLength(1)
+    expect(pulses[0].frame).toBe(5)
   })
 })
 
@@ -249,5 +255,125 @@ describe('drawObjectivePulses', () => {
     const ra = a.calls.filter((c) => c.method === 'arc')[0].args[2]
     const rb = b.calls.filter((c) => c.method === 'arc')[0].args[2]
     expect(ra).toBe(rb)
+  })
+})
+
+/** L'état d'une zone tel que l'artefact le publie (schéma 16), déjà normalisé. */
+const ZONE_STATES = [
+  {
+    zoneRef: 0,
+    key: 0x67f43ac3,
+    spans: [
+      { t0: 0, t1: 9, owner: null, active: false },
+      { t0: 10, t1: 19, owner: 0, active: false, progress: 0.75 },
+      { t0: 20, t1: 40, owner: 1, active: false },
+    ],
+  },
+  { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }] },
+]
+
+describe('zoneStateAt', () => {
+  it('rend l’intervalle qui couvre la frame, bornes INCLUSES', () => {
+    expect(zoneStateAt(ZONE_STATES, 0, 10)?.owner).toBe(0)
+    expect(zoneStateAt(ZONE_STATES, 0, 19)?.owner).toBe(0)
+    expect(zoneStateAt(ZONE_STATES, 0, 20)?.owner).toBe(1)
+  })
+
+  it('« personne ne la tient » est une MESURE : owner null, pas un état absent', () => {
+    const now = zoneStateAt(ZONE_STATES, 0, 3)
+    expect(now).not.toBeNull()
+    expect(now?.owner).toBeNull()
+    expect(now?.progress).toBeNull()
+  })
+
+  it('rend null hors de tout intervalle, et pour une zone sans état', () => {
+    expect(zoneStateAt(ZONE_STATES, 0, 41)).toBeNull()
+    expect(zoneStateAt(ZONE_STATES, 7, 10)).toBeNull()
+    expect(zoneStateAt([], 0, 10)).toBeNull()
+  })
+
+  it('porte la zone ACTIVE et la progression telles quelles', () => {
+    const now = zoneStateAt(ZONE_STATES, 1, 30)
+    expect(now?.active).toBe(true)
+    expect(now?.progress).toBe(0.5)
+  })
+})
+
+describe('zoneElementsOf', () => {
+  it('rend les zones SURFACIQUES dans l’ordre servi — celui que zoneRef indexe', () => {
+    const zones = zoneElementsOf(normalizeMapObjectives(MO))
+    expect(zones).toHaveLength(2)
+    expect(zones.every((z) => z.kind === 'zone')).toBe(true)
+    expect(zones[0].family).toBe('box')
+    expect(zones[1].family).toBe('cylinder')
+  })
+})
+
+describe('drawZoneStates', () => {
+  const style = { colorOfOwner: (team: number) => (team === 0 ? '#allié' : '#adverse'), neutral: '#neutre' }
+  const zones = () => zoneElementsOf(normalizeMapObjectives(MO))
+  /** L'entrée du calque telle que `useZoneStates` la rend : jointure ACCORDÉE sauf dit autrement. */
+  const layer = (zoneElements = zones(), joinable = true) => ({ zoneElements, joinable, style })
+
+  it("n'écrit JAMAIS de texte, comme le calque statique", () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 10)
+    expect(calls.filter((c) => c.method === 'fillText' || c.method === 'strokeText')).toHaveLength(0)
+  })
+
+  it('une zone TENUE est remplie ET cerclée à l’encre de son camp', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 10)
+    expect(calls.filter((c) => c.method === 'fill')).toHaveLength(1)
+    expect(calls.filter((c) => c.method === 'stroke').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('une zone que PERSONNE ne tient garde le liseré seul — aucun remplissage', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 3)
+    expect(calls.filter((c) => c.method === 'fill')).toHaveLength(0)
+    expect(calls.filter((c) => c.method === 'stroke')).toHaveLength(1)
+  })
+
+  it('une zone sans état à cette frame n’est PAS repeinte : elle reste au trait faible', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 41)
+    expect(calls.filter((c) => c.method === 'fill' || c.method === 'stroke')).toHaveLength(0)
+  })
+
+  it('la progression ajoute un ARC, et seulement quand la jauge est publiée', () => {
+    const avec = mockCtx()
+    drawZoneStates(avec.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 10)
+    expect(avec.calls.filter((c) => c.method === 'arc')).toHaveLength(1)
+    const sans = mockCtx()
+    drawZoneStates(sans.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 25)
+    expect(sans.calls.filter((c) => c.method === 'arc')).toHaveLength(0)
+  })
+
+  it('camp inconnu (aucune ligne « moi ») : encre NEUTRE, jamais une couleur devinée', () => {
+    const { ctx, calls } = mockCtx()
+    const aveugle = { colorOfOwner: () => null, neutral: '#neutre' }
+    drawZoneStates(ctx, { ...layer([zones()[0]]), style: aveugle }, [ZONE_STATES[0]], VIEW, 10)
+    // Aucun remplissage : une zone TENUE par un camp qu'on ne sait pas situer garde le liseré
+    // seul. Les deux tracés sont le contour et l'arc de progression, tous deux à l'encre neutre.
+    expect(calls.filter((c) => c.method === 'fill')).toHaveLength(0)
+    expect(calls.filter((c) => c.method === 'stroke')).toHaveLength(2)
+  })
+
+  it('sans état publié, le calque ne dessine rien du tout', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer(), [], VIEW, 10)
+    expect(calls).toHaveLength(0)
+  })
+
+  // VERROU DE LA REVUE R1-7 : `zoneRef` est un index figé à la cuisson, la liste servie est
+  // reconstruite à la requête. Quand le catalogue de l'artefact ne joint pas la liste servie,
+  // le calque VIVANT ne touche PAS au contexte — pas un trait, pas même un `beginPath` : teinter
+  // la mauvaise zone serait une erreur invisible et crédible. Retirer la garde du calque fait
+  // échouer ce cas, avec exactement les mêmes états et les mêmes zones que le cas « tenue ».
+  it('jointure REFUSÉE (catalogue différent de la liste servie) : le calque ne peint rien', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer([zones()[0]], false), [ZONE_STATES[0]], VIEW, 10)
+    expect(calls).toHaveLength(0)
   })
 })

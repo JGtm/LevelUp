@@ -2694,6 +2694,16 @@ export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
 // trajectoire serait republier celle du joueur.
 export type ReplayFlagCarry = components['schemas']['FlagCarry']
 export type ReplayFlagSpan = components['schemas']['FlagSpan']
+// L'ÉTAT DE CHAQUE ZONE du mode (schéma 16) : qui la tient, depuis quand, et jusqu'à quel niveau
+// de jauge elle a été contestée. `zoneRef` est un INDEX dans `mapObjectives.zones` — le calque
+// statique servi avec le document —, jamais un nom : la lettre A/B/C affichée en jeu n'existe
+// dans aucune donnée décodée.
+//
+// `owner` vaut `null` quand PERSONNE ne tient la zone, et c'est une mesure (la valeur neutre du
+// canal), pas une absence de donnée. `active` marque la zone ACTIVE d'un mode à colline ;
+// `progress` est le sommet de la jauge atteint pendant l'intervalle, ramené à [0, 1].
+export type ReplayZoneState = components['schemas']['ZoneState']
+export type ReplayZoneSpan = components['schemas']['ZoneSpan']
 // La COUVERTURE du calque du drapeau : le verdict de mode et les trois signaux du film qui le
 // fondent, les prises de l'oracle, les portages publiés partagés en fermés / ouverts, les rejets
 // par cause, le contrôle du marqueur (sur les FERMÉS ; les ouverts ont leur propre compte) et
