@@ -72,13 +72,18 @@ export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'
  */
 export type ReplayFlagCarryReady = Filled<ReplayFlagCarry, 'spans'>
 /**
- * ReplayZoneStateReady — l'état d'une zone dont les intervalles sont comblés.
+ * ReplayZoneStateReady — l'état d'une zone dont les intervalles ET la jauge en direct sont comblés.
  *
- * MÊME PATRON QUE `flagCarries` et `weaponPads` : le tableau de tête et le tableau IMBRIQUÉ
- * (`spans`) sont tous deux nullables au contrat, et une zone qui arriverait avec `spans: null`
- * ferait tomber le calque à l'exécution, pas à la compilation.
+ * MÊME PATRON QUE `flagCarries` et `weaponPads` : le tableau de tête et les tableaux IMBRIQUÉS
+ * (`spans`, et `gauge` depuis le schéma 17) sont tous nullables au contrat, et une zone qui
+ * arriverait avec `spans: null` ferait tomber le calque à l'exécution, pas à la compilation.
+ *
+ * `gauge` SE COMBLE À VIDE, et ce n'est pas inventer une valeur : pour le rendu, « artefact de
+ * schéma <= 16 » (le champ n'existe pas), « série absente » (aucune rampe sur cette zone) et
+ * « série vide » disent la même chose — AUCUN ARC. Le sommet statique n'y supplée pas : il se
+ * lisait comme une jauge, et c'est ce que le schéma 17 corrige (décision du plan, lot C-ter).
  */
-export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans'>
+export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -220,7 +225,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // propriété. Absent = le mode n'a pas de zone, ou l'appariement n'a rien rattaché —
     // `coverage.zones` distingue les deux, et c'est pour cela qu'il est publié.
     //
-    // LE TABLEAU IMBRIQUÉ SE COMBLE AUSSI (`spans`), comme pour `flagCarries` et `weaponPads`.
-    zoneStates: (raw.zoneStates ?? []).map((z) => ({ ...z, spans: z.spans ?? [] })),
+    // LES TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI (`spans`, et `gauge` — la jauge en direct du
+    // schéma 17), comme pour `flagCarries` et `weaponPads`. Une jauge absente (schéma <= 16, ou
+    // zone sans rampe) devient VIDE : aucun arc, jamais le sommet statique à sa place.
+    zoneStates: (raw.zoneStates ?? []).map((z) => ({ ...z, spans: z.spans ?? [], gauge: z.gauge ?? [] })),
   }
 }

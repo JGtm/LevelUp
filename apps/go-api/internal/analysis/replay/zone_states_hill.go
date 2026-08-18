@@ -51,10 +51,50 @@ func buildHillStates(zones []Zone, ser zoneSeries, c zoneCtx,
 	}
 	periods := mergeHillPeriods(raw, c.frames)
 	cov.HillPeriods = len(periods)
-	states := hillStatesOf(periods, zoneGaugeScales(ser))
+	scales := zoneGaugeScales(ser)
+	states := hillStatesOf(periods, scales)
+	attachHillGauges(states, raw, ser, scales, zoneGaugeGapFrames(c.intervalMS))
 	cov.Paired = len(states)
-	tallyZoneSpans(states, cov)
+	tallyZoneStates(states, cov)
 	return states
+}
+
+// attachHillGauges pose sur chaque colline publiee SA jauge en direct (schema 17) : la serie
+// allegee des rampes BRUTES que la grappe a posees sur elle — avant la fusion des periodes et
+// leur extension jusqu'a la garde suivante, qui sont des conventions d'intervalle et non des
+// mouvements de jauge. L'echelle est celle du slot de chaque rampe (cf. zoneGaugeScales), la
+// meme que `progress`.
+//
+// LES RAMPES NON LOCALISEES N'Y ENTRENT PAS : une montee que la grappe n'a pas su poser sur une
+// colline n'a pas de zone ou s'afficher — elle est deja comptee dans `unpaired`.
+func attachHillGauges(states []ZoneState, raw []hillPeriod, ser zoneSeries,
+	scales map[uint32]zoneGauge, gap int,
+) {
+	for i := range states {
+		var pts []GaugePoint
+		for _, p := range raw {
+			if !p.hasRef || p.ref != states[i].ZoneRef {
+				continue
+			}
+			pts = append(pts, zoneGaugeSeriesOf(ser.gauge[p.slot], scales[p.slot],
+				[]zoneGaugeWindow{{t0: p.t0, t1: p.t1}}, gap)...)
+		}
+		states[i].Gauge = mergeGaugePoints(pts)
+	}
+}
+
+// mergeGaugePoints trie des points venus de plusieurs rampes et garde T strictement croissant
+// (un point sur la meme frame que le precedent le remplace, cf. pushGaugePoint).
+func mergeGaugePoints(pts []GaugePoint) []GaugePoint {
+	if len(pts) == 0 {
+		return nil
+	}
+	sort.SliceStable(pts, func(i, j int) bool { return pts[i].T < pts[j].T })
+	out := make([]GaugePoint, 0, len(pts))
+	for _, p := range pts {
+		out = pushGaugePoint(out, p)
+	}
+	return out
 }
 
 // hillPeriod est un intervalle pendant lequel une colline est gardee.

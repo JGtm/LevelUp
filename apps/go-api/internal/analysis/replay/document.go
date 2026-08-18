@@ -130,7 +130,15 @@ package replay
 // v16 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) : `zoneStates` — L'ETAT
 // DE CHAQUE ZONE (qui la tient, depuis quand, jusqu'a quel niveau de jauge), et `coverage.zones`.
 // Chronique, sources et refus : document_zones.go.
-const SchemaVersion = 16
+//
+// v17 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) : `zoneStates[].gauge`
+// — LA JAUGE DE CAPTURE EN DIRECT (serie datee, allegee, pendant les rampes seulement) et
+// `coverage.zones.gaugePoints`. Un sous-champ optionnel, et pourtant la version monte : le sommet
+// statique de v16 (`progress`, CONSERVE dans le contrat) se lisait comme une jauge alors qu'il
+// n'en etait que le maximum — le client cesse de le dessiner, et ne dessine l'arc que d'un
+// artefact qui porte la serie. Un v16 se lit donc « a re-cuire ». Chronique : document_zones.go ;
+// regle et seuils : zone_states_gauge.go.
+const SchemaVersion = 17
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

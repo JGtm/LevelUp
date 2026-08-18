@@ -6396,6 +6396,12 @@ export interface components {
             /** Format: int64 */
             stale_count: number;
         };
+        GaugePoint: {
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            v: number;
+        };
         GrappleCoverage: {
             /** Format: int64 */
             brokenBodies: number;
@@ -11249,6 +11255,7 @@ export interface components {
             t1: number;
         };
         ZoneState: {
+            gauge?: components["schemas"]["GaugePoint"][] | null;
             /** Format: int32 */
             key?: number;
             spans: components["schemas"]["ZoneSpan"][] | null;
@@ -11262,6 +11269,8 @@ export interface components {
             captures: number;
             /** Format: int64 */
             catalog: number;
+            /** Format: int64 */
+            gaugePoints: number;
             /** Format: int64 */
             hillPeriods: number;
             method: string;

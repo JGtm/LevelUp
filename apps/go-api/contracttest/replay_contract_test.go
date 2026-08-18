@@ -107,6 +107,7 @@ var replaySchemas = []struct {
 	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
+	{"GaugePoint", replay.GaugePoint{}},
 	{"ZonesCoverage", replay.ZonesCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
@@ -282,6 +283,21 @@ var replaySchemas = []struct {
 //	                      un film a zones dont l appariement echoue et une carte hors du
 //	                      catalogue rendent tous trois un calque vide, et seuls ces compteurs les
 //	                      distinguent.
+//
+//	36 -> 36  2026-08-18  RIEN A LA RACINE, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM,
+//	                      lot C-ter volet 3). Le schema 17 publie `zoneStates[].gauge` — LA JAUGE
+//	                      DE CAPTURE EN DIRECT (serie datee `[{t, v}]`, allegee : un point par
+//	                      variation >= 0,02 ou par seconde de rampe, rien hors rampe, sur l echelle
+//	                      de `progress`) et `coverage.zones.gaugePoints` — mais ni l un ni l autre
+//	                      n est un champ RACINE du document : le premier vit sous `zoneStates[]`,
+//	                      le second sous `coverage.zones`. Le compte ci-dessous ne compte que la
+//	                      racine, il ne bouge donc pas. La ligne existe pour la meme raison que
+//	                      celle du schema 13 : une montee de schema sans ligne se lit comme un
+//	                      OUBLI. Les champs, eux, sont verrouilles — `GaugePoint` entre dans
+//	                      replaySchemas, et TestReplayContractDescribesEveryPublishedField compare
+//	                      `ZoneState`, `ZonesCoverage` et `GaugePoint` a leur schema dans les DEUX
+//	                      sens. `progress` reste tel quel : le sommet par intervalle est CONSERVE
+//	                      dans le contrat, c est le client qui cesse de le dessiner.
 //
 // Les onze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.

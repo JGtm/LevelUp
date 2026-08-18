@@ -142,7 +142,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 		return buildHillStates(cat, ser, c, cov), cov
 	}
 	states := zoneOwnerStates(in, ser, pairs, c, cov)
-	tallyZoneSpans(states, cov)
+	tallyZoneStates(states, cov)
 	return states, cov
 }
 

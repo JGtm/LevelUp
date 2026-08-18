@@ -22,6 +22,18 @@ package replay
 // VERSION NE MONTE PAS : v16 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
 // publiera. Un artefact deja cuit sur cette branche avant la revue est a re-cuire comme les autres.
 //
+// CHRONIQUE — v17 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
+// lot C-ter volet 3). `ZoneState.gauge` — LA JAUGE DE CAPTURE EN DIRECT : la serie datee des
+// valeurs de la jauge de chaque zone PENDANT ses rampes (allegee : un point par variation
+// >= 0,02 ou par seconde de rampe, rien hors rampe), et `coverage.zones.gaugePoints`. Le
+// `progress` des intervalles est CONSERVE tel quel (contrat stable : le sommet par intervalle
+// reste lisible pour qui le lit) — mais LE CLIENT NE LE DESSINE PLUS : l'arc de v16, trace au
+// sommet de l'intervalle, restait plein pendant toute la duree de la propriete et se LISAIT
+// COMME UNE JAUGE alors qu'il n'en etait que le maximum atteint. La version monte pour cette
+// raison : sur un artefact v16 le client n'a plus d'arc du tout (le sommet statique disparait,
+// decision du plan), et il ne retrouve un arc — le vrai, qui se remplit a l'image — qu'une fois
+// l'artefact re-cuit. Un v16 se lit donc « a re-cuire ». Regle et seuils : zone_states_gauge.go.
+//
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //
 //	le CANAL       l'archetype `ti=13` du film (`managed-object-property-*`), porte au lot C-bis
@@ -97,6 +109,29 @@ type ZoneState struct {
 	Key uint32 `json:"key,omitempty"`
 	// Spans est l'etat de la zone, en intervalles tries par T0 et sans recouvrement.
 	Spans []ZoneSpan `json:"spans"`
+	// Gauge est LA JAUGE DE CAPTURE EN DIRECT (schema 17) : la serie datee de la valeur de la
+	// jauge de cette zone, sur la MEME echelle que `Progress` (part de l'excursion mesuree sur
+	// ce match : 1 = le sommet atteint), triee par T strictement croissant.
+	//
+	// ELLE NE PORTE QUE LES RAMPES — les montees monotones de la jauge, c'est-a-dire les
+	// captures en cours (menees a terme ou non). Hors rampe, RIEN n'est publie : la jauge au
+	// repos n'a pas de valeur a montrer, et l'absence de point est la donnee (le client efface
+	// l'arc une seconde apres le dernier point). Elle est ALLEGEE : un point par variation
+	// >= 0,02 ou par seconde de rampe (cf. zone_states_gauge.go), premier et dernier point de
+	// chaque rampe toujours presents. `v` est arrondi a trois decimales.
+	//
+	// ABSENTE quand la zone n'a aucune rampe de jauge sur ce match, ou quand aucun slot de
+	// jauge ne lui est apparie (KOTH : la serie est celle des rampes que la grappe a posees sur
+	// cette colline). Un artefact de schema <= 16 ne la porte jamais.
+	Gauge []GaugePoint `json:"gauge,omitempty"`
+}
+
+// GaugePoint est UN point de la jauge en direct : la frame et la valeur lue a cet instant.
+type GaugePoint struct {
+	// T est la frame (meme axe que Point.T).
+	T int `json:"t"`
+	// V est la valeur de la jauge dans [0, 1], sur l'echelle de la zone (cf. ZoneSpan.Progress).
+	V float32 `json:"v"`
 }
 
 // ZoneSpan est UN intervalle d'etat d'une zone.
@@ -196,4 +231,8 @@ type ZonesCoverage struct {
 	// un index d'equipe connu. Elles n'ouvrent aucun intervalle : publier un camp qu'aucun
 	// joueur n'occupe serait une invention, et la taire empecherait de la voir arriver.
 	UnknownOwner int `json:"unknownOwner"`
+	// GaugePoints est le nombre de points de jauge en direct publies, toutes zones confondues
+	// (schema 17). C'est le poids du calque vivant, et le denominateur de sa legerete : la
+	// serie est allegee (cf. ZoneState.Gauge), et ce compte dit de combien.
+	GaugePoints int `json:"gaugePoints"`
 }
