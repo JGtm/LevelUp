@@ -1,3 +1,23 @@
+## [2026-08-18] Rejeu 2D — lot R2-P : le calque des emplacements d'arme — Complete
+
+**Statut** : Complete (worktree frere `wt/r2-socles`, base `3907eb505`, `4f3ef635d` + `739c25de9`,
+FUSIONNE dans `feat/v75` `302b844a8` par le superviseur ; typecheck 0 et 734 tests `match-replay`
+verts rejoues sur l'arbre fusionne).
+**Decision technique principale** : le calque publie trois etats lus de `weaponPads` (plein jusqu'a
+`tLow`, incertain jusqu'a `tHigh`, vide ensuite) et refuse de dater le ramassage, que le film ne
+porte pas ; la taille de l'icone suit l'enjeu de l'arme via une liste explicite keyee sur le
+`weapon_key` du titre, verifiee contre `weapon_names.toml` par un garde-rail ; aucune teinte ne
+distingue (la couleur du mur est encore en arbitrage) ; l'addition au canvas a ete payee par
+l'extraction des huit encres dans `useReplayInks.ts` : `ReplayCanvas.tsx` 861 -> 858 lignes, cliquet
+abaisse d'autant.
+**Resultats observes** : 10, 11, 10 et 0 socles dessines sur `01e1f945`, `00162144`, `bcb6d393`,
+`000d5950` (zero primitive emise sur le dernier) ; suite complete `test:run` : une vingtaine de
+garde-rails de balayage `src/**` depassent 5 s sur ce poste (4229 tests verts avec delai releve,
+aucune assertion ne tombe — la CI Linux reste l'autorite).
+**Conclusion / prochaine etape** : verdict utilisateur sur la planche (tailles, lecture du fantome ;
+items P1/P2 ajoutes dans `scratchpad/r2socles/`, a integrer a la planche principale a la fusion de
+R2-V) ; le ramasseur reste hors ecran jusqu'a un oracle a 90 %.
+
 ## [2026-08-18] Attachement (`object-parent-state`, i10) — phase 0 : le drapeau OBJET est identifie, i10 ne dit ni le porteur ni le vehicule
 
 **Statut** : Complete (mesure ; worktree frere `wt/attache`, 4 commits `029de3539`..`ce792481a`,
