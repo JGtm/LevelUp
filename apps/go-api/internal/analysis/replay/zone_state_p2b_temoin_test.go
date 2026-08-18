@@ -54,7 +54,7 @@ func TestZoneEtatPhase2bTemoin(t *testing.T) {
 	sc := p2bScan(t, dir)
 	doc, origin := p2bBuild(t, dir, short, quant, ZoneInput{
 		Scanned: true, Reads: sc.Reads, Zones: zones, Roles: p2bRoles(film),
-		TeamByXUID: film.p2aTeams(),
+		TeamByXUID: film.p2aTeams(), Hill: film.Mode == "KOTH",
 	}, caps)
 
 	t.Logf("FILM %s (%s, %s) — %d zones au catalogue, %d captures nommees, %d lectures ti=13",

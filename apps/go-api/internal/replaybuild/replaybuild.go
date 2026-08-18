@@ -186,8 +186,9 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
-		Zone:            replay.ZoneInput{Zones: zones, Roles: zoneRoles, TeamByXUID: teamByXUID(facts)},
-		MapQuant:        &entry,
+		Zone: replay.ZoneInput{Zones: zones, Roles: zoneRoles, TeamByXUID: teamByXUID(facts),
+			Hill: isHillVariant(facts.GameVariantName)},
+		MapQuant: &entry,
 	})
 	if err != nil {
 		return Outcome{}, fmt.Errorf("décodage du film %s: %w", matchID, err)

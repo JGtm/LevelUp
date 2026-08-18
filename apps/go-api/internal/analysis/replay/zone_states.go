@@ -67,6 +67,18 @@ type ZoneInput struct {
 	// TeamByXUID est le roster (xuid -> camp). Il VALIDE la valeur du canal de propriete, il ne
 	// la remplace pas. Vide : seuls les camps 0 et 1 — les deux valeurs mesurees — sont acceptes.
 	TeamByXUID map[string]int
+	// Hill dit que le mode du match est un mode a COLLINE — la famille d'objectif `hill` au sens
+	// d'`objectiveevents.ObjectiveTypeOf(game_variant_name)`. L'appelant la resout ; ce paquet ne
+	// connait pas la variante.
+	//
+	// C'EST LA SEULE PORTE DU REPLI PAR LES POSITIONS, ET ELLE EST FERMEE PAR DEFAUT (revue R1,
+	// 2026-08-18). Le repli s'ouvrait sur le seul fait qu'AUCUNE capture n'ait ete appariee ; or
+	// un mode SANS capture de zone joue sur une carte qui DECLARE des zones — un CTF sur les 18
+	// cartes a role `flag_delivery`, Catalyst en tete — n'en apparie evidemment aucune. Il
+	// publiait alors des intervalles `active=true` sur des zones de livraison, c'est-a-dire une
+	// colline la ou le mode n'en a pas. Une colline se lit dans la grappe des positions ; une
+	// zone de livraison ne se lit pas du tout, et le calque doit se taire.
+	Hill bool
 }
 
 // zoneCtx porte l'axe de temps et les entrees deja assemblees du document (regle des 5
@@ -117,6 +129,16 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 	pairs := zonePairsOf(att)
 	cov.Attributed = len(pairs)
 	if len(pairs) == 0 {
+		// LE REPLI PAR LES POSITIONS N'EST PAS UN REPLI D'ECHEC : il n'a de sens que dans un
+		// mode a COLLINE (cf. ZoneInput.Hill). Partout ailleurs — CTF, Assassin, Bastion dont
+		// aucune capture n'a pu etre attribuee — l'absence d'appariement se PUBLIE en
+		// couverture et ne se comble pas.
+		if !in.Hill {
+			slog.Info("rejeu : aucune capture appariee hors mode a colline — aucun etat de zone",
+				"match_id", c.matchID, "zones", len(in.Zones), "captures", cov.Captures,
+				"attribuees", cov.Attributed)
+			return nil, cov
+		}
 		return buildHillStates(cat, ser, c, cov), cov
 	}
 	states := zoneOwnerStates(in, ser, pairs, c, cov)

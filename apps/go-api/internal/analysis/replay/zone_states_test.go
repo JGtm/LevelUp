@@ -256,6 +256,7 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 	reads = append(reads, zoneRampAt(40, 400, 900_000)...)
 	in := zoneTestInput(reads)
 	in.Roles = "strongholds_zone,extraction_zone"
+	in.Hill = true // le mode du match est un mode a COLLINE : c'est ce qui ouvre le repli
 	// Aucune capture nommee (KOTH n'en a pas) : la grappe seule parle. Les joueurs se tiennent
 	// dans la zone 102 pendant la premiere montee, dans la 101 pendant la seconde.
 	var pts []Point
@@ -289,10 +290,61 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 // localiser ne pose aucune colline — on refuse plutot que de choisir la zone la plus proche.
 func TestZoneStatesCollineSansGrappeNePublieRien(t *testing.T) {
 	in := zoneTestInput(zoneRampAt(40, 100, 900_000))
+	in.Hill = true
 	c := zoneTestCtx(nil, []Track{track("2533", pointAt(100, 500, 500, 0))})
 	states, cov := buildZoneStates(in, c)
 	if len(states) != 0 || cov.HillPeriods != 0 {
 		t.Errorf("%d etat(s) et %d periode(s) publies sans grappe", len(states), cov.HillPeriods)
+	}
+}
+
+// TestZoneStatesHorsCollineNeReplieJamaisSurLesPositions — LE VERROU DE LA REVUE R1 : un mode
+// SANS capture de zone joue sur une carte qui en DECLARE (un CTF sur une carte a zones de
+// livraison : 18 cartes du catalogue) ne doit publier AUCUN intervalle actif.
+//
+// SANS LA GARDE, LE REPLI S'OUVRAIT SUR L'ABSENCE DE CAPTURE — c'est-a-dire sur le cas nominal
+// de tous les modes qui n'en ont pas — et posait des collines sur des zones de livraison. Les
+// memes lectures, avec `Hill` a vrai, publient bien des periodes : c'est le mode qui tranche, pas
+// le silence de l'oracle.
+func TestZoneStatesHorsCollineNeReplieJamaisSurLesPositions(t *testing.T) {
+	reads := zoneRampAt(40, 100, 900_000)
+	pts := make([]Point, 0, 5)
+	for f := 96; f <= 100; f++ {
+		pts = append(pts, pointAt(f, 20.5, 0, 0))
+	}
+	c := zoneTestCtx(nil, []Track{track("2533", pts...)}) // aucune capture nommee : un CTF
+
+	ctf := zoneTestInput(reads) // Hill reste FAUX : le mode n'est pas un mode a colline
+	states, cov := buildZoneStates(ctf, c)
+	if len(states) != 0 {
+		t.Errorf("%d etat(s) publie(s) hors mode a colline : %+v", len(states), states)
+	}
+	if cov == nil {
+		t.Fatalf("aucune couverture publiee : le silence doit rester explicite")
+	}
+	if cov.Catalog != 2 || cov.HillPeriods != 0 || cov.Spans != 0 {
+		t.Errorf("couverture %+v : attendu catalogue 2, 0 periode, 0 intervalle", cov)
+	}
+	if cov.Method != ZoneMethodCaptures {
+		t.Errorf("methode %q, attendu %q — la methode par positions n'a pas ete tentee",
+			cov.Method, ZoneMethodCaptures)
+	}
+
+	koth := zoneTestInput(reads)
+	koth.Hill = true
+	kothStates, kothCov := buildZoneStates(koth, c)
+	if len(kothStates) == 0 || kothCov.HillPeriods == 0 {
+		t.Fatalf("le MEME film en mode a colline ne publie rien (%d etats, %d periodes) :"+
+			" la garde doit trancher sur le mode, pas sur la lecture",
+			len(kothStates), kothCov.HillPeriods)
+	}
+	for _, s := range kothStates {
+		for _, sp := range s.Spans {
+			if !sp.Active {
+				t.Errorf("zone %d : intervalle [%d ; %d] non ACTIF en mode a colline",
+					s.ZoneRef, sp.T0, sp.T1)
+			}
+		}
 	}
 }
 
