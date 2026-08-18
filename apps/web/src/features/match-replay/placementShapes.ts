@@ -312,22 +312,67 @@ const REPAIR_FIELD_RING_ALPHA = 0.5
 const REPAIR_FIELD_RING_WIDTH = 1.25
 
 /**
- * drawRepairField — le disque du champ, à l'encre de l'équipe du poseur, borné d'un pointillé.
+ * LA CROIX DE PHARMACIE (V8, demande utilisateur du 2026-08-18 : « comme c'est un truc pour
+ * la santé tu peux mettre une croix comme une croix de pharmacie qui pulse ? avec le cercle
+ * autour évidemment »).
  *
- * AUCUNE ONDE, AUCUNE RESPIRATION : le champ soigne en continu, il n'émet pas d'événement. Ce
- * qui bouge dans ce calque signale une impulsion mesurée (le ping du capteur, l'impulsion du
- * traqueur) ; un champ qui pulserait inventerait une cadence.
+ * CE QUE LA PULSATION DIT, ET CE QU'ELLE NE DIT PAS. Elle ne compte RIEN : le film ne porte
+ * aucune cadence de soin, et prétendre le contraire serait inventer une mesure. Elle ne touche
+ * donc QUE la croix — le disque et son anneau pointillé restent immobiles, et c'est eux qui
+ * portent l'information (la zone, et la réserve sur sa portée). La croix respire parce qu'un
+ * objet qui soigne est ACTIF, et une respiration lente est le seul signe d'activité qui ne
+ * chiffre rien.
  *
- * `radiusPx` arrive DÉJÀ converti : la conversion mètres -> pixels appartient au calque, qui
- * seul connaît le cadrage.
+ * SOUS MOUVEMENT RÉDUIT ELLE NE RESPIRE PAS, mais elle reste : la famille ne doit pas devenir
+ * invisible pour qui demande moins de mouvement (même règle que l'onde du traqueur).
+ */
+const REPAIR_CROSS_PERIOD_MS = 1_800
+/** Demi-longueur de la croix, en fraction du rayon du champ. */
+const REPAIR_CROSS_REACH = 0.42
+/** Épaisseur de la branche, même fraction : la croix garde ses proportions à toute échelle. */
+const REPAIR_CROSS_ARM = 0.15
+/** Croix la plus petite qui reste lisible, en pixels d'écran (BTB : 2,5 px/m). */
+const REPAIR_CROSS_MIN_PX = 3.5
+const REPAIR_CROSS_ALPHA_LOW = 0.55
+const REPAIR_CROSS_ALPHA_HIGH = 0.95
+
+/**
+ * repairCrossAlpha — l'opacité de la croix à cet âge : une respiration lente entre deux bornes.
+ *
+ * FONCTION DU TEMPS, PAS ANIMATION À ÉTAT (même règle que `sensorPing` et `seekerImpulse`) : le
+ * même âge redonne toujours la même image, donc un retour en arrière rejoue ce qu'on avait vu.
+ * Sous mouvement réduit, la valeur haute, constante.
+ */
+export function repairCrossAlpha(ageMs: number, reducedMotion: boolean): number {
+  if (reducedMotion) return REPAIR_CROSS_ALPHA_HIGH
+  const phase = (1 - Math.cos((2 * Math.PI * ageMs) / REPAIR_CROSS_PERIOD_MS)) / 2
+  return REPAIR_CROSS_ALPHA_LOW + (REPAIR_CROSS_ALPHA_HIGH - REPAIR_CROSS_ALPHA_LOW) * phase
+}
+
+/** Ce qu'il faut savoir d'un champ pour le tracer : où, jusqu'où, et depuis quand. */
+export interface RepairFieldShape {
+  c: XY
+  /** Rayon DÉJÀ converti en pixels : la conversion appartient au calque, seul à voir le cadrage. */
+  radiusPx: number
+  /** Âge de la pose, en millisecondes de match — il donne sa phase à la respiration. */
+  ageMs: number
+}
+
+/**
+ * drawRepairField — le disque du champ, à l'encre de l'équipe du poseur, borné d'un pointillé,
+ * et LA CROIX DE PHARMACIE qui respire en son centre (cf. REPAIR_CROSS_PERIOD_MS).
+ *
+ * LA ZONE NE BOUGE PAS, SEULE LA CROIX RESPIRE. C'est la même distinction que pour le capteur —
+ * ce qui affirme une mesure est immobile, ce qui bouge ne chiffre rien. Le disque dit la portée
+ * (déclarée, d'où le pointillé), la croix dit « ici, on se soigne ».
  */
 export function drawRepairField(
   ctx: CanvasRenderingContext2D,
-  c: XY,
-  radiusPx: number,
+  field: RepairFieldShape,
   style: ShapeStyle,
   color: string,
 ): void {
+  const { c, radiusPx } = field
   if (!(radiusPx > 0)) return
   ctx.save()
   ctx.fillStyle = color
@@ -342,5 +387,14 @@ export function drawRepairField(
   ctx.beginPath()
   ctx.arc(c.x, c.y, radiusPx, 0, Math.PI * 2)
   ctx.stroke()
+  // LA CROIX : trait plein, à l'intérieur du cercle, jamais au-delà de sa borne.
+  ctx.setLineDash([])
+  ctx.globalAlpha = repairCrossAlpha(field.ageMs, style.reducedMotion)
+  const reach = Math.max(radiusPx * REPAIR_CROSS_REACH, REPAIR_CROSS_MIN_PX * style.k)
+  const arm = Math.max(radiusPx * REPAIR_CROSS_ARM, REPAIR_CROSS_MIN_PX * style.k * 0.36)
+  ctx.beginPath()
+  ctx.rect(c.x - reach, c.y - arm, reach * 2, arm * 2)
+  ctx.rect(c.x - arm, c.y - reach, arm * 2, reach * 2)
+  ctx.fill()
   ctx.restore()
 }

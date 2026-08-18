@@ -399,7 +399,13 @@ function drawPlacement(
   const ageMs = (time.frame - p.t0) * time.frameMs
   if (kind === 'beacon') drawBeacon(ctx, c, time, color)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
-  else if (kind === 'field') drawRepairField(ctx, c, REPAIR_FIELD_RADIUS_M * viewScale(view), time, color)
+  else if (kind === 'field')
+    drawRepairField(
+      ctx,
+      { c, radiusPx: REPAIR_FIELD_RADIUS_M * viewScale(view), ageMs },
+      time,
+      color,
+    )
   else drawUnnamedDot(ctx, c, time, color)
 }
 
