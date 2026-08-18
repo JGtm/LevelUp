@@ -20,13 +20,16 @@
  *
  * Zéro dépendance React/ECharts : testable en pur (`_scoreCurve.test.ts`).
  */
-// LES LECTURES DU CALQUE VIENNENT DU REJEU, ET NE SONT PAS RECOPIÉES ICI. `teamSeriesFor`
-// (un camp sans série vaut zéro) et `leadChanges` (le meneur unique, l'égalité qui suspend)
-// sont déjà écrits et éprouvés dans `match-replay/scoreTimelineLogic.ts` : les réécrire
-// serait la deuxième vérité que la règle « ≤ 2 copies » interdit. La dépendance va dans le
-// sens de la donnée — l'artefact appartient au rejeu, cette page ne fait que le lire.
-import type { ReplayScoreTimelineReady } from '@/features/match-replay/replayNormalize'
-import { leadChanges, teamSeriesFor } from '@/features/match-replay/scoreTimelineLogic'
+// LES LECTURES DU CALQUE NE SONT PAS RECOPIÉES ICI. `teamSeriesFor` (un camp sans série
+// vaut zéro) et `leadChanges` (le meneur unique, l'égalité qui suspend) sont déjà écrits et
+// éprouvés dans `lib/replay/scoreTimeline` : les réécrire serait la deuxième vérité que la
+// règle « ≤ 2 copies » interdit. Le rejeu 2D lit le MÊME module — la logique partagée par
+// deux features vit dans `lib/`, jamais dans l'une que l'autre irait importer (ratchet P8.5).
+import {
+  leadChanges,
+  teamSeriesFor,
+  type ReplayScoreTimelineReady,
+} from '@/lib/replay/scoreTimeline'
 // L'instant en M:SS a UN foyer dans le dépôt (`lib/formatters`) : la carte et la frise du
 // rejeu l'appellent toutes deux, aucune ne le réécrit.
 export { formatClockMMSS as formatClock } from '@/lib/formatters'

@@ -18,18 +18,16 @@
  * garantit, pas une supposition d'ici. Le rétablir tient en une assertion posée à cet
  * endroit unique, plutôt qu'en un cast par appelant.
  */
+import {
+  normalizeScoreTimeline,
+  type ReplayScoreTimelineReady,
+} from '@/lib/replay/scoreTimeline'
 import type {
   ReplayDocument,
   ReplayInventory,
   ReplayLoadout,
-  ReplayPlayerScore,
   ReplayProjectile,
-  ReplayScoreRound,
-  ReplayScoreSeries,
-  ReplayScoreTick,
-  ReplayScoreTimeline,
   ReplaySurface,
-  ReplayTeamScore,
   ReplayTrack,
   ReplayWeaponPad,
 } from '@/lib/api/types'
@@ -63,38 +61,6 @@ export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplaySte
  * vide inventerait un cycle de zéro seconde — l'absence est la donnée.
  */
 export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'>
-
-/**
- * LES QUATRE ÉTAGES DU CALQUE DE SCORE (schéma 12), et pourquoi ils demandent quatre types.
- *
- * `scoreTimeline` est le premier champ du document qui empile des tableaux nullables sur
- * QUATRE niveaux : `teams` → `rounds` → `points`, et `players` → `score|kills|deaths|
- * assists` → `rounds` → `points`. La garde de tête (`_ListeExhaustive`) ne voit que la
- * racine ; c'est le walker de `replayContract.test.ts` qui exige désormais chacun de ces
- * niveaux, et ce sont ces types-là qui prouvent au compilateur qu'ils sont comblés.
- */
-export type ReplayScoreRoundReady = Filled<ReplayScoreRound, 'points'>
-export type ReplayScoreSeriesReady = Omit<ReplayScoreSeries, 'rounds' | 'total'> & {
-  rounds: ReplayScoreRoundReady[]
-  total: ReplayScoreTick[]
-}
-export type ReplayTeamScoreReady = Omit<ReplayTeamScore, 'rounds' | 'total'> & {
-  rounds: ReplayScoreRoundReady[]
-  total: ReplayScoreTick[]
-}
-export type ReplayPlayerScoreReady = Omit<
-  ReplayPlayerScore,
-  'assists' | 'deaths' | 'kills' | 'score'
-> & {
-  assists: ReplayScoreSeriesReady
-  deaths: ReplayScoreSeriesReady
-  kills: ReplayScoreSeriesReady
-  score: ReplayScoreSeriesReady
-}
-export type ReplayScoreTimelineReady = Omit<ReplayScoreTimeline, 'players' | 'teams'> & {
-  players: ReplayPlayerScoreReady[]
-  teams: ReplayTeamScoreReady[]
-}
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -219,53 +185,6 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
       ...pad,
       spawns: pad.spawns ?? [],
       presence: pad.presence ?? [],
-    })),
-  }
-}
-
-/** Une manche dont les paliers sont comblés : un tableau vide dit « aucun point marqué ». */
-function normalizeRound(r: ReplayScoreRound): ReplayScoreRoundReady {
-  return { ...r, points: r.points ?? [] }
-}
-
-/**
- * Une série (score, frags, morts, assistances) d'un joueur, ses deux tableaux comblés.
- *
- * `series` peut manquer alors que le contrat la déclare obligatoire : c'est justement le
- * rôle d'une frontière de ne pas tomber sur un producteur qui déraille. Le résultat est vide,
- * jamais inventé — et ce qui distingue « ce joueur n'est pas publié » de « ce joueur est à
- * zéro » se joue un cran plus haut, sur sa PRÉSENCE dans `players` (cf. scoreTimelineLogic).
- */
-function normalizeSeries(series: ReplayScoreSeries | undefined): ReplayScoreSeriesReady {
-  return {
-    ...series,
-    rounds: (series?.rounds ?? []).map(normalizeRound),
-    total: series?.total ?? [],
-  }
-}
-
-/**
- * normalizeScoreTimeline comble les CINQ tableaux nullables du calque de score
- * (`teams`, `players`, `rounds`, `total`, `points`) et rend l'absence du calque telle
- * quelle : `undefined` entre, `undefined` sort.
- */
-function normalizeScoreTimeline(
-  raw: ReplayScoreTimeline | undefined,
-): ReplayScoreTimelineReady | undefined {
-  if (!raw) return undefined
-  return {
-    ...raw,
-    players: (raw.players ?? []).map((p) => ({
-      ...p,
-      assists: normalizeSeries(p.assists),
-      deaths: normalizeSeries(p.deaths),
-      kills: normalizeSeries(p.kills),
-      score: normalizeSeries(p.score),
-    })),
-    teams: (raw.teams ?? []).map((t) => ({
-      ...t,
-      rounds: (t.rounds ?? []).map(normalizeRound),
-      total: t.total ?? [],
     })),
   }
 }

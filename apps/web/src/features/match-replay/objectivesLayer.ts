@@ -22,8 +22,9 @@ import type { ReplayBounds, ReplayMapObjectives } from '@/lib/api/types'
 
 import { posOfPlayerAt, KILLPOS_WINDOW_MS } from './killFx'
 import { canvasScale, msToFrames, worldToCanvas, type XY } from './replayLogic'
+import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
+
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
-import { filmClockTrusted } from './scoreTimelineLogic'
 
 /** Valeur « aucun camp » du team_index — celle du fichier de carte, servie telle quelle. */
 export const OBJECTIVE_TEAM_NEUTRAL = -1

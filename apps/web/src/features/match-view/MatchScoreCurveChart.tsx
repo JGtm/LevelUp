@@ -37,11 +37,11 @@ import {
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
 import { useMatchReplay } from '@/features/match-replay/queries'
-import { allyOfTeamId, scoreTimelineOf } from '@/features/match-replay/scoreTimelineLogic'
 import { resolveToken } from '@/lib/accessibility'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
+import { allyOfTeamId, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { buildScoreCurve, formatClock, teamIdsOf, type ScoreCurve, type ScoreCurveSeries } from './_scoreCurve'
@@ -70,7 +70,7 @@ export function MatchScoreCurveChart({
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const xuidMeta = useMemo(() => resolveXuidMeta(board, meXUID), [board, meXUID])
   // La garde d'horloge du rejeu s'applique ICI AUSSI : un calque daté depuis une origine
-  // non résolue placerait chaque but au mauvais instant (cf. scoreTimelineLogic).
+  // non résolue placerait chaque but au mauvais instant (cf. lib/replay/scoreTimeline).
   const timeline = useMemo(() => (data ? scoreTimelineOf(data) : undefined), [data])
   const curve = useMemo(
     () =>
