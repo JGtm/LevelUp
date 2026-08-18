@@ -87,14 +87,24 @@ func (o gwPickupObject) gwPickupDateUS() uint64 {
 // `continue` qui écarterait une création sans la compter le ferait tomber.
 func groundWeaponObjects(
 	scan GroundWeaponScan, lives map[uint32][]equipLife, positions []filmdec.BipedPosition,
-) ([]gwPickupObject, int) {
+	flags map[uint32]Label,
+) ([]gwPickupObject, gwRejects) {
 	known := loadoutFamilies()
 	byKey := map[filmdec.EquipmentLifeKey][]filmdec.EquipmentCreation{}
-	kept, rejected := 0, 0
+	kept := 0
+	var rejected gwRejects
 	for _, c := range scan.Creations {
 		w, ok := gwPadsIdentity(c)
+		// L'OBJET D'OBJECTIF EST ECARTE AVANT LA QUESTION « EST-CE UNE ARME ? », et l'ordre
+		// est la regle : un drapeau reconnu ne devient pas un socle parce qu'un jour son
+		// identifiant entrerait au catalogue d'armes. Il etait deja ecarte hier — mais par
+		// ACCIDENT (hors catalogue), c'est-a-dire de la meme facon que le bruit du balayage.
+		if ok && flags[w] != (Label{}) {
+			rejected.total, rejected.objectives = rejected.total+1, rejected.objectives+1
+			continue
+		}
 		if !ok || !known[w] {
-			rejected++
+			rejected.total++
 			continue
 		}
 		kept++
@@ -126,6 +136,17 @@ func groundWeaponObjects(
 	}
 	sort.Slice(out, func(i, j int) bool { return gwPadsLess(out[i].Appar, out[j].Appar) })
 	return out, rejected
+}
+
+// gwRejects ventile les créations ÉCARTÉES de la chaîne des socles. `total` est le terme de
+// l'invariant `Kept + Rejected == Accepted` ; `objectives` en est le sous-ensemble NOMMÉ — les
+// objets que le manifeste du titre identifie (le drapeau), écartés parce qu'on sait ce qu'ils
+// sont et non parce qu'on ne les reconnaît pas.
+//
+// LES DEUX SE COMPTENT SUR LEUR PROPRE CHEMIN DE REJET, jamais par différence : c'est ce qui
+// fait de l'invariant un contrôle plutôt qu'une tautologie (correctif de revue du 2026-08-17).
+type gwRejects struct {
+	total, objectives int
 }
 
 // gwResolveInputs porte ce que le bornage et la datation d'UN objet consomment (règle des

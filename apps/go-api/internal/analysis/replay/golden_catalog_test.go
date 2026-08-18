@@ -33,10 +33,7 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 	if err != nil {
 		t.Fatalf("weapon_names.toml : %v", err)
 	}
-	labels, err := mappings.LoadReplayLabelsFromFile(filepath.Join(dir, "replay_labels.toml"))
-	if err != nil {
-		t.Fatalf("replay_labels.toml : %v", err)
-	}
+	labels := goldenReplayLabels(t)
 
 	byKey := map[string]Label{}
 	for k, v := range names.Names() {
@@ -61,7 +58,35 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 	// ici ferait publier au golden un document dont TOUTES les poses sont `other`, alors que
 	// le manifeste en nomme — c'est-à-dire un document que la production ne sert pas.
 	cat.EquipmentFamilies = labels.EquipmentObjects()
+	// LE DRAPEAU, pour la MÊME raison et par le MÊME chemin que les familles d'équipement
+	// (cf. replaylabels.Load) : sans cette table, la chaîne des socles ne reconnaîtrait pas
+	// l'objet d'objectif du titre, et le golden figerait un document que la production ne sert
+	// pas. Le filtrage par famille est celui de la couche titre — un seul propriétaire du
+	// littéral, `mappings.ObjectiveFamilyFlag`.
+	for id, o := range labels.ObjectiveObjects() {
+		if o.Family != mappings.ObjectiveFamilyFlag {
+			continue
+		}
+		if cat.FlagObjects == nil {
+			cat.FlagObjects = map[uint32]Label{}
+		}
+		cat.FlagObjects[id] = Label{En: o.Label.En, Fr: o.Label.Fr}
+	}
 	return cat
+}
+
+// goldenReplayLabels lit le manifeste de rejeu du titre de référence. Extrait de
+// `goldenCatalog` le 2026-08-18 : le garde-rail du drapeau interroge la table des objets
+// d'objectif SANS avoir besoin de tout le catalogue.
+func goldenReplayLabels(t *testing.T) *mappings.ReplayLabelSet {
+	t.Helper()
+	path := filepath.Join(repoRootForTest(t), "config", "titles", "halo_infinite", "mappings",
+		"replay_labels.toml")
+	labels, err := mappings.LoadReplayLabelsFromFile(path)
+	if err != nil {
+		t.Fatalf("replay_labels.toml : %v", err)
+	}
+	return labels
 }
 
 // repoRootForTest remonte jusqu'au répertoire qui porte `config/titles` — le test tourne

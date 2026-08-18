@@ -13190,6 +13190,9 @@ components:
         never:
           format: int64
           type: integer
+        objectives:
+          format: int64
+          type: integer
         occupancies:
           format: int64
           type: integer
@@ -13217,6 +13220,7 @@ components:
         - accepted
         - kept
         - rejected
+        - objectives
         - dropped
         - spawned
         - atRest

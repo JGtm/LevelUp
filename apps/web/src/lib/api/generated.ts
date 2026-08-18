@@ -6454,6 +6454,8 @@ export interface components {
             /** Format: int64 */
             never: number;
             /** Format: int64 */
+            objectives: number;
+            /** Format: int64 */
             occupancies: number;
             /** Format: int64 */
             pads: number;
