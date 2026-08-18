@@ -3,3 +3,6 @@
 [R1-1] CGO_ENABLED=0 go vet ./internal/analysis/replay/            EXIT_VET=0
 [R1-1] CGO_ENABLED=0 go build ./internal/replaybuild/              EXIT_BUILD=0
 [R1-1] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-2] npx tsc -b --force (apps/web)                               EXIT_TSC=0
+[R1-2] npx vitest run src/features/match-replay/objectivesLayer.test.ts  EXIT_VITEST=0 (27 tests)
+[R1-2] grep originFrames|originMs dans features/match-replay et lib/replay : 0 soustraction residuelle

@@ -183,14 +183,14 @@ describe('buildObjectivePulses', () => {
     expect(buildObjectivePulses(doc, [])).toHaveLength(0)
   })
 
-  // VERROU du défaut mesuré le 2026-08-14 (lot containment) : `a.t` compte depuis le
-  // premier paquet du FILM, une frame d'artefact depuis le premier paquet de POSITION.
-  // L'écart est `originMs`. Sans la soustraction, le pulse s'allumait jusqu'à 50,8 s trop
-  // tard et l'appariement lisait la position de l'auteur au mauvais instant.
-  it("retranche l'origine de l'artefact — le pulse s'allume à l'instant vu à l'écran", () => {
+  // VERROU DE LA REVUE R1 (2026-08-18) : `objectives[].t` est DÉJÀ une frame du document —
+  // le Go retranche l'origine depuis le lot A phase 1 (`63b90583c`, `scoreClock.frameOf`).
+  // Le client la retranchait une SECONDE fois : les pulses s'allumaient `originMs` trop tôt.
+  // La fixture porte donc la sortie Go actuelle : `t` recalé, `timeMs` sur l'horloge du film.
+  it("ne retranche PLUS l'origine — `t` est déjà une frame du document", () => {
     const decale = testReplayDoc({
       frameIntervalMs: 100,
-      originMs: 3_000, // 30 frames
+      originMs: 3_000, // 30 frames — le Go les a déjà retranchées pour produire `t`
       tracks: [
         {
           slot: 1, team: -1, xuid: 'A',
@@ -198,15 +198,18 @@ describe('buildObjectivePulses', () => {
           startFrame: 0, endFrame: 100,
         },
       ],
-      objectives: [{ t: 40, xuid: 'A', stat: 'flag_grabs', timeMs: 4_000 }],
+      // t = (7 000 − 3 000) / 100 = 40 : la frame du document, pas celle du film.
+      objectives: [{ t: 40, xuid: 'A', stat: 'flag_grabs', timeMs: 7_000 }],
     })
     const pulses = buildObjectivePulses(decale, normalizeMapObjectives(MO))
     expect(pulses).toHaveLength(1)
-    expect(pulses[0].frame).toBe(10) // 40 - 30, et non 40
+    expect(pulses[0].frame).toBe(40) // et non 10, qui serait la seconde soustraction
   })
 
-  it("une action antérieure à la première position connue est écartée, jamais posée à zéro", () => {
-    const avant = testReplayDoc({
+  // Le second visage du même défaut : une action dont la frame est INFÉRIEURE à l'origine
+  // était purement et simplement jetée (`frame < 0`). Elle doit sortir, à sa frame.
+  it("une action des premières secondes du document n'est plus jetée", () => {
+    const tot = testReplayDoc({
       frameIntervalMs: 100,
       originMs: 3_000, // 30 frames
       tracks: [
@@ -216,9 +219,11 @@ describe('buildObjectivePulses', () => {
           startFrame: 0, endFrame: 100,
         },
       ],
-      objectives: [{ t: 5, xuid: 'A', stat: 'flag_grabs', timeMs: 500 }],
+      objectives: [{ t: 5, xuid: 'A', stat: 'flag_grabs', timeMs: 3_500 }],
     })
-    expect(buildObjectivePulses(avant, normalizeMapObjectives(MO))).toHaveLength(0)
+    const pulses = buildObjectivePulses(tot, normalizeMapObjectives(MO))
+    expect(pulses).toHaveLength(1)
+    expect(pulses[0].frame).toBe(5)
   })
 })
 
