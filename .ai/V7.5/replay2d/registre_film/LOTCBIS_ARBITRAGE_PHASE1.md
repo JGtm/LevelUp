@@ -69,3 +69,24 @@ les pulses substituts retires (0 code mort). Gate visuel utilisateur.
 
 Regles : instrument sous garde d'environnement, un film par processus, avant-plan, plafond 3 Go, jamais le
 principal, seuils jamais rebaisses, temoins juges contre le hasard PUBLIE.
+
+## Statut de la phase 2a (renseigne par l'executeur, 2026-08-18 — detail : `LOTCBIS_PHASE2A.md`)
+
+- [x] **CB.2a.1** — TENU. Coherence de la carte slot -> zone **93,1 %** (`7344d24f`, 54/58) et
+  **98,4 %** (`696a9d7c`, 62/63) pour un seuil de 90 %, temoins a 41,4/47,6 % (permutation) et
+  57,1/51,4 % (decalage). **Stabilite inter-films 3/3 = 100 %** (1532 -> zone 1, 1537 -> zone 2,
+  1542 -> zone 0 sur les DEUX matchs), verifiee par `TestZoneEtatPhase2aStabilite`. Reserve : la
+  cle porteuse est le NUMERO DE SLOT, pas le tag 5 (absent ou instable sur les slots de jauge).
+- [x] **CB.2a.2** — clause temporelle **NON TENUE** (precision 59,0 / 61,6 % pour un hasard de
+  10,5 / 11,1 %, soit 5,6x le facteur 2 exige, mais rappel **74,8 / 77,5 %** sous le seuil de
+  80 %) ; volet VALEUR **TENU : le tag 4 EST le PROPRIETAIRE** — valeurs `0xFFFFFFFF` / `0x0` /
+  `0x1`, concordance avec l'index d'equipe du capteur **100,0 %** (48/48) et **91,1 %** (51/56)
+  hors emissions neutres, un slot de proprietaire par zone (1530, 1535, 1540). « Conteste » NON
+  MESURABLE : les slots de rampe ne portent pas de tag 4.
+- [x] **CB.2a.3** — TENU au seuil ecrit : couverture **91,1 %** (`01e1f945`), **83,9 %**
+  (`8076f97f`), **81,9 %** (`606d9844`) pour 80 % exiges sur >= 2 films. L'hypothese « une colline
+  = un slot » est REFUTEE (un seul slot porte la jauge de tout un match KOTH) : la segmentation se
+  fait par rampe. Clause faible, nettete inegale (2/3 films), `0a247154` non mesurable (Solitude
+  absente du catalogue), temoin Slayer muet (0 rampe).
+- [x] **Gate 2a : TENU**, par les deux branches (CB.2a.1 >= 90 % ET proprietaire etabli ET KOTH
+  tenu). Forme PROPOSEE de `zoneStates` en section 7 du journal — **aucune publication faite**.
