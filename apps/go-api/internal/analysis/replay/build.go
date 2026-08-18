@@ -406,7 +406,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 			"lectures", camoNonBinary)
 	}
 
-	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own)
+	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil)
 	// La couverture du score voyage AVEC le calque : son absence dit « rien n'a ete fourni a
 	// lire », ce qu'aucun compteur a zero ne saurait dire.
 	doc.Coverage.Score = scoreCov

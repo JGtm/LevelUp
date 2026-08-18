@@ -1,6 +1,10 @@
 package replay
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/analysis/filmdec"
+)
 
 // origin_test.go — L'ORIGINE PUBLIEE : ce qu'elle vaut, et quand elle se TAIT.
 //
@@ -74,5 +78,48 @@ func TestScanFilmClockOrigin_LitUnHorodatage(t *testing.T) {
 func TestScanFilmClockOrigin_FilmAbsent(t *testing.T) {
 	if _, err := ScanFilmClockOrigin("testdata/film_inexistant"); err == nil {
 		t.Fatalf("aucune erreur sur un film absent")
+	}
+}
+
+// TestCoverageSaysWhetherOriginIsResolved — L'ARTEFACT DOIT DIRE QUE SON AXE DE TEMPS EST
+// DOUTEUX (correctif de revue R1).
+//
+// Quand l'origine n'est pas etablie, les calques dates depuis l'horloge du film (actions
+// d'objectif, courbe de score) sont poses avec une soustraction de zero, donc decales de 3,6 s a
+// 50,8 s selon le match. Rien, dans l'artefact, ne le signalait : le rendu ne pouvait pas les
+// masquer, il les dessinait au mauvais instant.
+func TestCoverageSaysWhetherOriginIsResolved(t *testing.T) {
+	for _, cas := range []struct {
+		nom      string
+		clockUS  uint64
+		veutVrai bool
+	}{
+		{"origine etablie", 1_000_000, true},
+		{"origine absente", 0, false},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil,
+				Options{FilmClockOriginUS: cas.clockUS})
+			if doc.Coverage == nil {
+				t.Fatal("aucune couverture publiee")
+			}
+			if doc.Coverage.OriginResolved != cas.veutVrai {
+				t.Errorf("coverage.originResolved = %v, attendu %v (originMs = %v)",
+					doc.Coverage.OriginResolved, cas.veutVrai, doc.OriginMs)
+			}
+			if (doc.OriginMs != nil) != doc.Coverage.OriginResolved {
+				t.Errorf("le drapeau ne suit pas la publication de l'origine : originMs=%v drapeau=%v",
+					doc.OriginMs, doc.Coverage.OriginResolved)
+			}
+		})
+	}
+}
+
+// positionsPourOrigine rend deux positions d'un meme slot, assez pour qu'une trace soit publiee.
+func positionsPourOrigine() []filmdec.BipedPosition {
+	return []filmdec.BipedPosition{
+		{Slot: 1, TimestampUS: 2_000_000, X: 1, Y: 1, Z: 1},
+		{Slot: 1, TimestampUS: 2_100_000, X: 2, Y: 2, Z: 1},
+		{Slot: 1, TimestampUS: 2_200_000, X: 3, Y: 3, Z: 1},
 	}
 }
