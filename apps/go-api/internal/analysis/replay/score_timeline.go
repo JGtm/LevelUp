@@ -92,12 +92,27 @@ func (s scoreSeriesSet) final(slot int) (int64, bool) {
 	return pts[len(pts)-1].Value, true
 }
 
-// scoreTicksOf pose une suite d'emissions sur la grille de frames, une valeur par frame.
+// scoreTicksOf pose une suite d'emissions sur la grille de frames, AUX CHANGEMENTS SEULEMENT.
 //
-// LA DERNIERE VALEUR D'UNE FRAME GAGNE : plusieurs emissions peuvent tomber dans le meme pas
-// de 100 ms, et ce que le client dessine a cette frame est l'etat a sa fin. Les emissions
-// hors fenetre sont ecartees sans bruit — elles sont le cas nominal (le film continue apres
-// la derniere position publiee, et commence avant la premiere).
+// DEUX FILTRES, ET LE PREMIER MANQUAIT (correctif de revue R1, 2026-08-18) :
+//
+//	PAR VALEUR   une emission qui REPETE la valeur precedente n'est pas un changement, et le
+//	             contrat du champ dit « aux CHANGEMENTS seulement ». Le cas n'est pas marginal :
+//	             un composant porte DEUX valeurs (le composant 2 porte les frags en A et les
+//	             morts en B) et il est reemis des que l'UNE des deux bouge — chaque frag creait
+//	             donc aussi un point de morts a valeur inchangee. Mesure sur les 5 temoins :
+//	             44,7 % des points `kills` et 46,3 % des points `deaths` etaient des repetitions
+//	             (23 points pour 11 frags chez un joueur de `530820e5`). On garde la PREMIERE
+//	             emission d'un palier : c'est l'instant ou la valeur a ete atteinte.
+//	PAR FRAME    la derniere valeur d'une frame gagne — plusieurs changements peuvent tomber
+//	             dans le meme pas de 100 ms, et ce que le client dessine a cette frame est
+//	             l'etat a sa fin.
+//
+// La deduplication ne se fait JAMAIS sur `T` seul : deux valeurs differentes dans la meme frame
+// sont un vrai changement, c'est la VALEUR qui tranche.
+//
+// Les emissions hors fenetre sont ecartees sans bruit — elles sont le cas nominal (le film
+// continue apres la derniere position publiee, et commence avant la premiere).
 func scoreTicksOf(pts []objectiveevents.ScorePoint, c scoreClock) []ScoreTick {
 	out := make([]ScoreTick, 0, len(pts))
 	for _, p := range pts {
@@ -105,11 +120,15 @@ func scoreTicksOf(pts []objectiveevents.ScorePoint, c scoreClock) []ScoreTick {
 		if !ok {
 			continue
 		}
-		if n := len(out); n > 0 && out[n-1].T == t {
-			out[n-1].V = int(p.Value)
-			continue
+		v, n := int(p.Value), len(out)
+		switch {
+		case n > 0 && out[n-1].V == v:
+			continue // palier : la valeur n'a pas change, l'emission n'est pas un point
+		case n > 0 && out[n-1].T == t:
+			out[n-1].V = v // meme frame, valeur differente : l'etat de fin de frame gagne
+		default:
+			out = append(out, ScoreTick{T: t, V: v})
 		}
-		out = append(out, ScoreTick{T: t, V: int(p.Value)})
 	}
 	if len(out) == 0 {
 		return nil

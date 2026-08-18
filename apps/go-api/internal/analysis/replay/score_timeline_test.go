@@ -307,3 +307,91 @@ func lastValue(s ScoreSeries) int {
 	}
 	return s.Total[len(s.Total)-1].V
 }
+
+// TestScoreTicksKeepOnlyChanges — LE CONTRAT DU CHAMP EST « AUX CHANGEMENTS SEULEMENT », et il
+// etait viole (correctif de revue R1).
+//
+// Le composant 2 porte les frags en valeur A et les morts en valeur B : il est reemis des que
+// l'UNE des deux bouge, si bien que la serie des morts repetait sa valeur a chaque frag. Une
+// emission qui ne change rien n'est pas un point.
+func TestScoreTicksKeepOnlyChanges(t *testing.T) {
+	// Valeurs : 1, 1, 1, 2, 2, 3 — trois paliers, donc trois points, aux instants ou la
+	// valeur a ete ATTEINTE (la premiere emission du palier).
+	pts := []objectiveevents.ScorePoint{
+		{TimeMS: 2_000, Value: 1}, {TimeMS: 3_000, Value: 1}, {TimeMS: 4_000, Value: 1},
+		{TimeMS: 5_000, Value: 2}, {TimeMS: 6_000, Value: 2}, {TimeMS: 7_000, Value: 3},
+	}
+	got := scoreTicksOf(pts, testClock())
+	want := []ScoreTick{{T: 10, V: 1}, {T: 40, V: 2}, {T: 60, V: 3}}
+	if len(got) != len(want) {
+		t.Fatalf("%d point(s) publie(s), attendu %d : %+v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("point %d = %+v, attendu %+v", i, got[i], want[i])
+		}
+	}
+}
+
+// TestScoreTicksSameFrameDifferentValues — la deduplication ne se fait PAS sur `T` seul : deux
+// valeurs differentes dans la meme frame sont un vrai changement, et c'est l'etat de FIN de
+// frame que le client dessine.
+func TestScoreTicksSameFrameDifferentValues(t *testing.T) {
+	pts := []objectiveevents.ScorePoint{
+		{TimeMS: 2_000, Value: 1}, {TimeMS: 2_040, Value: 2}, {TimeMS: 2_090, Value: 3},
+	}
+	got := scoreTicksOf(pts, testClock())
+	if len(got) != 1 || got[0] != (ScoreTick{T: 10, V: 3}) {
+		t.Fatalf("obtenu %+v, attendu un seul point {T:10 V:3} (l'etat de fin de frame)", got)
+	}
+}
+
+// TestScoreTimelinePlayerCountersHaveNoRepeats — le meme controle, mais SUR LE CALQUE ASSEMBLE :
+// aucune serie publiee ne doit porter deux points consecutifs de meme valeur.
+func TestScoreTimelinePlayerCountersHaveNoRepeats(t *testing.T) {
+	tl, cov := buildScoreTimeline(repeatedCountersInput(), testClock())
+	if tl == nil || len(tl.Players) == 0 {
+		t.Fatal("aucun joueur publie")
+	}
+	compte := 0
+	for _, p := range tl.Players {
+		for nom, s := range map[string]ScoreSeries{
+			"score": p.Score, "kills": p.Kills, "deaths": p.Deaths, "assists": p.Assists,
+		} {
+			compte += countSeriesPoints(s)
+			for i := 1; i < len(s.Total); i++ {
+				if s.Total[i].V == s.Total[i-1].V {
+					t.Errorf("%s de %s : point %d repete la valeur %d", nom, p.XUID, i, s.Total[i].V)
+				}
+			}
+		}
+	}
+	for _, team := range tl.Teams {
+		compte += countSeriesPoints(ScoreSeries{Rounds: team.Rounds, Total: team.Total})
+	}
+	// La couverture publie le compte REEL des points, pas une estimation.
+	if cov.Points != compte {
+		t.Errorf("coverage.score.points = %d, compte reel %d", cov.Points, compte)
+	}
+	if cov.Points == 0 {
+		t.Error("coverage.score.points nul alors que le calque publie des courbes")
+	}
+}
+
+// repeatedCountersInput construit un joueur dont le composant 2 est reemis a chaque frag :
+// les morts y REPETENT leur valeur, exactement comme dans un film reel.
+func repeatedCountersInput() *ScoreInput {
+	var recs []objectiveevents.StatRecord
+	recs = append(recs, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...)
+	for i, kills := range []int64{1, 2, 3} {
+		recs = append(recs, statRec(3_000+i*500, 10, 0, map[int]objectiveevents.StatValue{
+			1: {B: int64(100 * (i + 1))},
+			2: {A: kills, B: 2}, // les morts ne bougent pas : 2, 2, 2
+			3: {A: 1},
+		}))
+	}
+	return &ScoreInput{
+		Records: recs,
+		Lines:   []objectiveevents.PlayerLine{{XUID: "x10", Kills: 3, Deaths: 2, Assists: 1}},
+	}
+}
