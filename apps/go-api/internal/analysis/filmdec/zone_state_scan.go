@@ -78,6 +78,16 @@ type ManagedPropertyRead struct {
 	// et que ce record n'en porte pas la valeur (cf. le hook).
 	Value    uint64
 	HasValue bool
+	// Chained dit que le RECORD qui porte cette lecture est CHAINE : sa position de fin porte un
+	// en-tete de record valide (cf. ManagedPropertyScan.Chained, le meme temoin, compte par
+	// record). C'est le seul temoin de fiabilite PAR LECTURE que le balayage possede, et il est
+	// publie pour que l'appelant puisse ecarter la contamination d'ancrage — le canal par joueur
+	// (i2..i33) chaine a 33 % sur un KOTH de reference contre 97 % pour le canal scalaire
+	// (mesure du lot C-bis phase 2a), et la bande d'ancrage COMBLE les trous de slots. Faux pour
+	// le dernier record d'un paquet (rien ne peut le suivre) : le filtre coute ~3 % de lectures
+	// reelles, il ne les invente jamais. Ajoute par le lot C-ter volet 1 (2026-08-19), sans
+	// effet sur les consommateurs existants, qui ne le lisent pas.
+	Chained bool
 }
 
 // ManagedPropertyScan est ce qu'un balayage rend : les lectures, et de quoi juger.
@@ -194,6 +204,7 @@ func (w *managedPropertyWalk) scanPayload(pay []byte, band map[uint32]bool, ts u
 			continue
 		}
 		sc.Records++
+		first := len(sc.Reads) // les lectures de CE record commencent ici
 		end, done := w.walk(pay, rec, ts, sc)
 		switch {
 		case !done:
@@ -202,6 +213,9 @@ func (w *managedPropertyWalk) scanPayload(pay []byte, band map[uint32]bool, ts u
 			sc.Walked++
 			if worldObjectHeaderAt(pay, end) {
 				sc.Chained++
+				for k := first; k < len(sc.Reads); k++ {
+					sc.Reads[k].Chained = true
+				}
 			}
 		}
 		p = rec.After // un record reconnu n'est pas re-balaye
