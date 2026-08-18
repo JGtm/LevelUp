@@ -1,3 +1,21 @@
+## [2026-08-18] Rejeu 2D — l'explosion de grenade sonne a chaque fin de vol (lot R2-G) — Complete
+
+**Statut** : Complete (worktree frere `wt/r2-grenades`, `329691b49` + `58f7c9fbd`, FUSIONNE dans
+`feat/v75` par le superviseur ; tests sons rejoues sur l'arbre fusionne : 58/58).
+**Decision technique principale** : decision utilisateur du 18/08 (« que ca kill ou pas, elles
+explosent ») — l'explosion n'a plus une seule source (la vignette d'un kill) mais deux : la fin de vol
+de CHAQUE projectile lie a un lancer s'y ajoute, datee par `buildGrenadeRestFx` (la fonction de l'effet
+visuel : une seule regle pour l'ecran et le son) ; kill + fin de vol du meme type a < 0,3 s = une
+seule detonation, dedoublonnee UN POUR UN, le kill survit ; rang de type inconnu = muet des deux cotes
+(`buildGrenadeRestFx` replie sur -1, plus sur 0). Lancers conserves (31,3 % de recouvrement mesure).
+Extractions payees par le seuil 500 L : `grenadeSound.ts`, `replaySoundCursor.ts` (`replaySound.ts`
+540 -> 432) ; garde-rail neuf `replaySoundAssets.guard.test.ts` (rang N <-> `killfeed-46+N`).
+**Resultats observes** (3 temoins) : 16 -> 299 explosions ; 343 lancers, 296 vols lies, 16 kills a la
+grenade dont 13 dedoublonnes ; `00162144` 0 -> 108. Gates typecheck 0, lint 0, vitest 744/744.
+**Conclusion / prochaine etape** : D2 clos ; reste le gate d'ECOUTE (le plafond de 8 voix va mordre
+davantage sur les echanges nourris — decision d'oreille). Tirs charges : NON joues (decision
+utilisateur du 18/08, clos).
+
 
 [2026-08-18] Lot R2-V — les retours de la planche deviennent du canvas (rejeu 2D)
 Statut : Complete (branche `wt/r2-visuels`, 6 commits, non fusionnee)
