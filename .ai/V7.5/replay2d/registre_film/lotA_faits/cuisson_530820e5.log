@@ -1,17 +1,17 @@
-2026/08/18 01:40:28 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\530820e5.json match=530820e5-cdb5-4956-a16e-cf700822ab03 joueurs=8 variante=CTF:Arena
-2026/08/18 01:40:28 INFO replaybuild: actions d'objectif identifiees match_id=530820e5-cdb5-4956-a16e-cf700822ab03 famille=flag nommees=183 identifiees=183 slotsApparies=8
-2026/08/18 01:40:36 INFO replaybuild: attribution ligne par ligne refusée — morts neutres sans type match_id=530820e5-cdb5-4956-a16e-cf700822ab03 candidates=2
-2026/08/18 01:41:01 INFO capacites : lectures d i48 recordsDelta=148911 masqueAvecI48=22 lues=22 illisibles=0 sansIdentite=4
-2026/08/18 01:41:08 INFO camouflage : lectures d i28 queue[1] recordsDelta=148911 masqueAvecI28=1140 lues=1140 illisibles=0 sansVoie=541
-2026/08/18 01:41:15 INFO grappin : lectures d i59 tag==3 recordsDelta=148911 masqueAvecI59=1097 lues=1091 illisibles=6 tag3=12 corpsCasses=0
-2026/08/18 01:41:27 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=19 ancres=4832 acceptes=253 confirmes=156 poses=156
-2026/08/18 01:41:34 INFO armes au sol : balayage ti=42 slots=853 ancres=6786 acceptees=368 imagesCles=25 viesRecensees=203 pistesDelta=461
-2026/08/18 01:42:34 INFO pont slot->joueur slots=97 viesNommees=92 viesTotal=98 lecturesIndex=25 desaccordsIndex=0 collisionsSlot=0
-2026/08/18 01:42:34 INFO rejeu : courbe de score match_id=530820e5-cdb5-4956-a16e-cf700822ab03 identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=1100
-2026/08/18 01:42:34 INFO rejeu : tractions de grappin tirs=6 accroches=6 tractions=6 vies=4 rates=0 corpsCasses=0
-2026/08/18 01:42:34 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=156 nommees=153 autres=3 avecPoseur=152 avecCap=138 deployees=19 lachees=133 origineInconnue=4
-2026/08/18 01:42:34 INFO rejeu : socles d'arme au sol balaye=true ancres=6786 acceptees=368 retenues=239 ecartees=129 lachees=184 apparues=55 auRepos=30 grappes=10 socles=5 occupations=25 datees=19 sansPassage=3 jamaisVidees=3 cyclesEtablis=2
-2026/08/18 01:42:34 INFO rejeu : episodes d'equipement actif viesPubliees=98 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
-2026/08/18 01:42:34 INFO rejeu : palette de capacites palette=famille_a lectures=18 rangsNommes=3
-2026/08/18 01:42:34 INFO rejeu : couverture par calque tirsRattaches=1705 tirsDisponibles=1783 tirsSansSlot=70 tirsAmbigus=8 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=91 grenadesDisponibles=91 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
-2026/08/18 01:42:34 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\530820e5.json tracks=98 module=catalyst bytes=1499597 match=530820e5-cdb5-4956-a16e-cf700822ab03 title=halo_infinite
+2026/08/18 03:01:52 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\530820e5.json match=530820e5-cdb5-4956-a16e-cf700822ab03 joueurs=8 variante=CTF:Arena
+2026/08/18 03:01:53 INFO replaybuild: actions d'objectif identifiees match_id=530820e5-cdb5-4956-a16e-cf700822ab03 famille=flag nommees=183 identifiees=183 slotsApparies=8
+2026/08/18 03:02:00 INFO replaybuild: attribution ligne par ligne refusée — morts neutres sans type match_id=530820e5-cdb5-4956-a16e-cf700822ab03 candidates=2
+2026/08/18 03:02:25 INFO capacites : lectures d i48 recordsDelta=148911 masqueAvecI48=22 lues=22 illisibles=0 sansIdentite=4
+2026/08/18 03:02:32 INFO camouflage : lectures d i28 queue[1] recordsDelta=148911 masqueAvecI28=1140 lues=1140 illisibles=0 sansVoie=541
+2026/08/18 03:02:39 INFO grappin : lectures d i59 tag==3 recordsDelta=148911 masqueAvecI59=1097 lues=1091 illisibles=6 tag3=12 corpsCasses=0
+2026/08/18 03:02:51 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=19 ancres=4832 acceptes=253 confirmes=156 poses=156
+2026/08/18 03:02:58 INFO armes au sol : balayage ti=42 slots=853 ancres=6786 acceptees=368 imagesCles=25 viesRecensees=203 pistesDelta=461
+2026/08/18 03:03:55 INFO pont slot->joueur slots=97 viesNommees=92 viesTotal=98 lecturesIndex=25 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 03:03:55 INFO rejeu : courbe de score match_id=530820e5-cdb5-4956-a16e-cf700822ab03 identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=782
+2026/08/18 03:03:55 INFO rejeu : tractions de grappin tirs=6 accroches=6 tractions=6 vies=4 rates=0 corpsCasses=0
+2026/08/18 03:03:55 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=156 nommees=153 autres=3 avecPoseur=152 avecCap=138 deployees=19 lachees=133 origineInconnue=4
+2026/08/18 03:03:55 INFO rejeu : socles d'arme au sol balaye=true ancres=6786 acceptees=368 retenues=239 ecartees=129 lachees=184 apparues=55 auRepos=30 grappes=10 socles=5 occupations=25 datees=19 sansPassage=3 jamaisVidees=3 cyclesEtablis=2
+2026/08/18 03:03:55 INFO rejeu : episodes d'equipement actif viesPubliees=98 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 03:03:55 INFO rejeu : palette de capacites palette=famille_a lectures=18 rangsNommes=3
+2026/08/18 03:03:55 INFO rejeu : couverture par calque tirsRattaches=1705 tirsDisponibles=1783 tirsSansSlot=70 tirsAmbigus=8 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=91 grenadesDisponibles=91 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/18 03:03:55 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\530820e5.json tracks=98 module=catalyst bytes=1494172 match=530820e5-cdb5-4956-a16e-cf700822ab03 title=halo_infinite
