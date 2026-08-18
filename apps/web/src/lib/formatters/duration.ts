@@ -27,6 +27,28 @@ export function formatDurationMMSS(seconds?: number | null, fallback = '-'): str
 }
 
 /**
+ * formatClockMMSS — un INSTANT sur l'horloge d'un match, en M:SS, depuis des millisecondes.
+ *
+ * POURQUOI CE N'EST PAS `formatDurationMMSS`, ET POURQUOI CE N'EN EST PAS UNE COPIE. Une
+ * DURÉE nulle n'existe pas : `formatDurationMMSS(0)` rend « - », et c'est juste — un match
+ * de zéro seconde n'a pas eu lieu. Un INSTANT nul, lui, est le coup d'envoi : le rendre
+ * « - » effacerait le début de toute frise. Les deux fonctions ont donc la même sortie
+ * visuelle et deux domaines disjoints ; l'entrée en millisecondes (l'unité des calques du
+ * film) achève de les distinguer.
+ *
+ * @example
+ *   formatClockMMSS(0)        // "0:00" (le coup d'envoi, pas une absence)
+ *   formatClockMMSS(65_300)   // "1:05"
+ *   formatClockMMSS(-5_000)   // "0:00" (jamais un temps négatif)
+ */
+export function formatClockMMSS(ms: number): string {
+  const total = Math.max(0, Math.round((Number.isFinite(ms) ? ms : 0) / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+/**
  * Format durée en HH:MM:SS (utile pour les durées longues — total de jeu
  * sur la saison, par exemple).
  *
