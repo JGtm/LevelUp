@@ -292,7 +292,8 @@ func verdictOfBridge(b BridgeHealth) string {
 // buildCoverage assemble la couverture publiée et ses verdicts. `originResolved` dit si
 // l'origine de la frame 0 a été établie — elle conditionne la justesse de l'axe de temps de
 // TOUS les calques datés depuis l'horloge du film (cf. Coverage.OriginResolved).
-func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport, originResolved bool) *Coverage {
+func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport,
+	originResolved bool, score *ScoreCoverage) *Coverage {
 	b := BridgeHealth{
 		Slots: len(own.Owner), FromReading: own.FromDeaths,
 		LivesNamed: own.DeathsNamed, LivesTotal: own.LivesTotal,
@@ -306,7 +307,7 @@ func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport, o
 	}
 	return &Coverage{
 		Shots: shots, Grenades: grenades, Objectives: objectives, Bridge: b,
-		OriginResolved: originResolved,
+		OriginResolved: originResolved, Score: score,
 		Verdict: map[string]string{
 			"shots":      verdictOf(shots),
 			"grenades":   verdictOf(grenades),

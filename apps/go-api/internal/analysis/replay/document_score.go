@@ -2,6 +2,20 @@ package replay
 
 // document_score.go — LA COURBE DU SCORE, ET CE QU'ELLE GARANTIT.
 //
+// # CHRONIQUE DU SCHEMA 12 (2026-08-18, PLAN_EXPLOITATION_REGISTRE_FILM lot A phase 1)
+//
+// La version monte pour DEUX defauts, et aucun n'est cosmetique :
+//
+//   - le document ne portait AUCUN score. La courbe de l'onglet Dominance et le score vivant du
+//     rejeu n'existent que si l'artefact les porte, et la reprise du backfill se fait par
+//     SchemaVersion — un artefact v11 doit se voir « a re-cuire », pas « a jour » ;
+//   - `objectives[]` etait VIDE en production (le pont d'identite exige les lignes de match, que
+//     personne ne fournissait) et, quand un outil de mesure le remplissait, il etait DECALE de
+//     `originMs` — 3,6 s a 50,8 s selon le match, d'ou des pulses poses sur la mauvaise zone
+//     (appartenance stricte 9,9 % sans correction, 40,9 % avec). Les deux sont corriges : le
+//     calque est alimente par le constructeur d'artefact, et `buildObjectiveActions` retranche
+//     l'origine. Un client v11 lit donc des actions absentes ou mal datees.
+//
 // # CE QUE LE CALQUE APPORTE
 //
 // Les positions disent ou les joueurs etaient, les actions d'objectif ce qu'ils ont accompli.
