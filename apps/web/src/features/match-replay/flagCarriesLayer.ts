@@ -48,9 +48,11 @@ export const FLAG_STATES: readonly FlagState[] = ['carried', 'carried_open', 'dr
 /**
  * FlagNow — ce qu'un drapeau montre à une image donnée.
  *
- * `state` est rendu tel que l'artefact l'écrit. Un état INCONNU du client n'est pas corrigé en
- * silence : il est rendu tel quel, et le rendu s'en tient au glyphe neutre — inventer une
- * traduction ferait passer une donnée neuve pour une donnée connue.
+ * `state` est rendu tel que l'artefact l'écrit — d'où le type `string` et non l'union fermée.
+ * Un état INCONNU du client (artefact plus récent que ce code) se dessine comme un drapeau
+ * PRÉSENT : glyphe plein à sa position publiée, base marquée absente. C'est le comportement le
+ * moins trompeur — l'objet EST quelque part, l'artefact le dit — et l'infobulle, elle, omet la
+ * ligne d'état plutôt que d'inventer un libellé.
  */
 export interface FlagNow {
   /** L'équipe PROPRIÉTAIRE du drapeau (celle de sa base), telle que l'artefact la publie. */
