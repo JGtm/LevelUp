@@ -21,6 +21,27 @@
  * « écourtés ». Le lecteur joue le fichier jusqu'à sa fin (replayAudio.ts) — allonger un
  * son, c'est donc re-couper son asset, jamais toucher au moteur.
  *
+ * LE NIVEAU EST ÉGALISÉ, ET C'EST AUSSI UNE PROPRIÉTÉ DU FICHIER (lot R2-S, 2026-08-18).
+ * Les 41 assets étaient livrés à leur niveau de source : de -9,20 LUFS (rayon de Sentinelle)
+ * à -40,78 LUFS (coup de mêlée), soit 31,58 LU d'écart — c'est la mesure de la remarque
+ * utilisateur « surbouclier activation à peine audible » (il était 19 LU sous la carabine à
+ * impulsion). Tous ont été renormalisés à -16 LUFS intégré, plafond -1 dBTP, par un GAIN
+ * LINÉAIRE strict par fichier (mesure `ffmpeg -af loudnorm` en analyse, gain appliqué en
+ * seconde passe) : ni compression, ni limiteur, ni ré-échantillonnage — durée, fréquence
+ * d'échantillonnage, canaux et nombre d'échantillons INCHANGÉS, le timbre extrait du jeu
+ * n'est pas retouché. Écart résiduel : 7,18 LU.
+ *
+ * QUINZE FICHIERS N'ATTEIGNENT PAS -16 LUFS, ET C'EST DE LA PHYSIQUE, PAS UN OUBLI : leur
+ * facteur de crête (écart entre la crête vraie et le niveau intégré) va de 15 à 24 dB, si
+ * bien qu'au plafond -1 dBTP ils plafonnent entre -17,2 et -23,1 LUFS. Les monter à la cible
+ * exigerait un limiteur, c'est-à-dire écraser la transitoire d'un coup de feu ou la détente
+ * d'une explosion. Ils sont donc laissés AU PLUS PRÈS, plafond atteint exactement : les armes
+ * à salves (MA40 AR, MA5K Avenger, Bandit EVO, BR75, MK50 Sidekick, VK78 Commando, Fusil
+ * traqueur, Disrupteur, Calcineur) et les impulsions isolées (lancers de fragmentation et de
+ * plasma, coup de mêlée, capteur de menaces, explosions de fragmentation et de plasma).
+ * Relever leur niveau intégré est une décision d'oreille sur le
+ * TIMBRE, pas un réglage de gain — elle n'est pas prise ici.
+ *
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
  *  - les KILLS du fil (source résolue : vignette OU weapon_key, cf. `killSound`) —
