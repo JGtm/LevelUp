@@ -50,7 +50,7 @@ var gwRuleOwners = map[string]string{
 	"gwPickupSeenWithin":      "ground_weapon_bounds.go",
 	"gwPickupRefPos":          "ground_weapon_bounds.go",
 	"gwPickupLifeTrack":       "ground_weapon_bounds.go",
-	"groundWeaponObjects":     "ground_weapon_objects.go",
+	"padObjects":              "ground_weapon_objects.go",
 	"gwPickupPadGaps":         "ground_weapon_objects.go",
 	"equipmentLives":          "equipment_placements.go",
 	"decodeFilmGroundWeapons": "build_ground_weapons.go",

@@ -67,7 +67,7 @@ func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
 // fabrique — des records acceptes dont le mot MPP ne resout aucune arme. C'est cet etat-la que
 // le journal doit nommer, quelle qu'en soit la cause.
 func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
-	fausse := GroundWeaponScan{
+	fausse := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
 		Creations: []filmdec.EquipmentCreation{

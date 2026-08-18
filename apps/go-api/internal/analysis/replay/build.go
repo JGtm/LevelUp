@@ -75,7 +75,7 @@ type Options struct {
 	// GroundWeapons : ce que le film rend sur les ARMES AU SOL — les TROIS lectures voyagent
 	// ensemble et `Scanned` dit qu'elles ont abouti (cf. build_ground_weapons.go). Entree de
 	// DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
-	GroundWeapons GroundWeaponScan
+	GroundWeapons WorldObjectScan
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//

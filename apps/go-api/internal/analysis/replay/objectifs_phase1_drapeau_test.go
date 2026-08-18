@@ -126,7 +126,7 @@ type objDoc struct {
 	// gw est le balayage `ti=42` du film, garde a cote du document : le controle du drapeau
 	// OBJET le rejoue sur les creations d ARMES ordinaires (son temoin), que l artefact ne
 	// publie pas.
-	gw GroundWeaponScan
+	gw WorldObjectScan
 }
 
 // objDocMemo memorise le document par film : sa construction rebalaye tout le film.
@@ -394,7 +394,7 @@ func objMax(v []int) int {
 // LA CALIBRATION VIENT DES POSES `ti=37`, comme en production : le mot d'identite de 32 bits se
 // lit derriere deux champs de largeur VARIABLE, mesures sur CE film. Balayer aux largeurs par
 // defaut d'un film calibre autrement ne rend pas une mesure fausse, il rend du bruit.
-func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntry) GroundWeaponScan {
+func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntry) WorldObjectScan {
 	t.Helper()
 	dir := objChunkDir(root, id)
 	release := filmdec.LockProcessDecode()
