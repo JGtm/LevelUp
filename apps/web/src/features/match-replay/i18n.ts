@@ -117,6 +117,31 @@ interface ReplayText {
   /** Poseur non mesuré (aucun bipède contemporain à moins de 3 m) : le dire, pas le taire. */
   placementOwnerUnknown: string
   /**
+   * SOCLES D'ARME (schéma 11) : le calque, ses trois états, son compte à rebours et son cycle.
+   *
+   * LES TROIS ÉTATS NE SE VALENT PAS, et les libellés doivent le dire : « Disponible » est une
+   * présence PROUVÉE, « Pris » une absence PROUVÉE, « Incertain » l'intervalle de ~20 s entre
+   * les deux, que le film ne date pas. Aucun de ces libellés ne nomme un joueur : le ramasseur
+   * n'est pas publié (`padPickups[].xuid` vaut `null` partout), et aucune ligne d'écran ne doit
+   * laisser croire qu'on le connaît.
+   *
+   * `padCycleFmt` PORTE LES DEUX MOITIÉS DU DÉNOMINATEUR : les écarts MESURÉS et ceux que le
+   * socle offrait sans qu'on ait pu les prendre (`gaps` / `missing`). « 33,9 s sur 2 écarts »
+   * avec 3 manques est une mesure sur 2 occasions sur 5 — l'écrire autrement gonflerait la
+   * confiance.
+   */
+  layerWeaponPads: string
+  layerWeaponPadsHint: string
+  padState: Record<'full' | 'uncertain' | 'empty', string>
+  /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
+  padPlacementNote: string
+  /** Compte à rebours COMPACT, celui de la carte (« 12 s »). */
+  padCountdownFmt: (seconds: number) => string
+  /** Compte à rebours de l'infobulle, en toutes lettres. */
+  padRespawnFmt: (seconds: number) => string
+  /** Cycle ÉTABLI seulement : médiane, écarts mesurés, écarts manqués. */
+  padCycleFmt: (medianS: number, gaps: number, missing: number) => string
+  /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
    */
@@ -289,6 +314,21 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     placementUnnamedLabel: "Objet d'équipement non identifié",
     placementOwnerFmt: (name) => `Posé par ${name}`,
     placementOwnerUnknown: 'Poseur non mesuré',
+    layerWeaponPads: "Emplacements d'arme",
+    layerWeaponPadsHint:
+      "Les endroits où une arme réapparaît au fil du match, mesurés sur ce match : l'arme y est dessinée en grand quand elle change une partie (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, surbouclier, camouflage), en petit sinon. Socle au sol ou râtelier mural : la mesure ne porte qu'une position, elle ne les distingue pas. Le film ne date pas l'instant du ramassage — l'emplacement reste donc INCERTAIN pendant l'intervalle des relevés, environ vingt secondes, plutôt que de s'éteindre à un instant inventé. Un compte à rebours n'apparaît que là où le délai de réapparition a pu être établi ; ailleurs, aucun chiffre. Qui a pris l'arme n'est jamais affiché : la mesure n'atteint pas le niveau de certitude exigé.",
+    padState: {
+      full: 'Disponible',
+      uncertain: 'Incertain',
+      empty: 'Pris',
+    },
+    padPlacementNote: "Emplacement d'arme (socle au sol ou râtelier mural : non distingués)",
+    padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
+    padRespawnFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
+    padCycleFmt: (medianS, gaps, missing) =>
+      `Réapparition ≈ ${medianS.toFixed(1).replace('.', ',')} s` +
+      ` (${gaps} écart${gaps > 1 ? 's' : ''} mesuré${gaps > 1 ? 's' : ''},` +
+      ` ${missing} manqué${missing > 1 ? 's' : ''})`,
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -439,6 +479,21 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     placementUnnamedLabel: 'Unidentified equipment object',
     placementOwnerFmt: (name) => `Deployed by ${name}`,
     placementOwnerUnknown: 'Deployer not measured',
+    layerWeaponPads: 'Weapon spots',
+    layerWeaponPadsHint:
+      'The spots where a weapon reappears during the match, measured on this match: the weapon is drawn large when it changes a game (sniper, sword, hammer, rockets, skewer, cindershot, overshield, camo), small otherwise. Floor pad or wall rack: the measurement only carries a position, it does not tell them apart. The film never dates the moment of pickup — the spot therefore stays UNCERTAIN for the sampling interval, about twenty seconds, rather than going dark at an invented instant. A countdown only appears where the respawn delay could be established; nowhere else. Who took the weapon is never shown: the measurement falls short of the required certainty.',
+    padState: {
+      full: 'Available',
+      uncertain: 'Uncertain',
+      empty: 'Taken',
+    },
+    padPlacementNote: 'Weapon spot (floor pad or wall rack: not told apart)',
+    padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
+    padRespawnFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
+    padCycleFmt: (medianS, gaps, missing) =>
+      `Respawn ≈ ${medianS.toFixed(1)} s` +
+      ` (${gaps} gap${gaps > 1 ? 's' : ''} measured,` +
+      ` ${missing} missed)`,
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',
