@@ -1,3 +1,25 @@
+## [2026-08-19] Power-up de socle au centre de Catalyst — mesure et TROUVE — Complete
+
+**Statut** : Complete (mesure ; branche `wt/powerup`, `07cb617a2`..`ae4c5c03e`, FUSIONNEE dans `feat/v75`
+par le superviseur ; plan `PLAN_POWERUP_SOCLE_CATALYST.md`). Phase de production PROPOSEE, lancee a part.
+**Decision technique** : mesurer d'abord OU par les episodes de surbouclier (hors Fiesta un surbouclier
+actif ne peut venir que d'un ramassage — ancre de l'utilisateur), remonter les porteurs au minimum de
+dispersion ; puis chercher les records de CREATION `ti=37` a cet endroit, tous archetypes en controle.
+**Resultats** : le socle EXISTE dans le film — `ti=37`, `eqip 0xb781197a = powerup_overshield`, cree par
+un record NEW a CHAQUE reapparition (jamais dans l'etat initial : 0 slot a la premiere image-cle), a
+(0,257 ; -0,003 ; 21,36) — deux chaines independantes (bipedes de l'artefact / creations d'objet des
+paquets delta) a 0,19 m l'une de l'autre ; KOTH `01e1f945` 10 creations (9 au socle + 1 lachee),
+`75f1188f` 8 (7 + 1) ; CTF `64e8adfa`/`530820e5` 0 (le sous-mode decide de l'armement du socle) ;
+cycle 120,1 s (30,3 / 89,8 alternes) ; temoin fantome 0-5,9 ; H1/H2/H3 refutees, H4 confirmee.
+**Pourquoi la production ne le voyait pas** : `confirmPlacements` (`equipment_placements.go`) exige que
+la creation retombe sur le premier point d'une vie DELTA — un objet de socle ne bouge jamais : 9
+creations, 0 publiee. Le « negatif de corpus » du registre etait un FILTRE, pas une absence — leve.
+**Conclusion / prochaine etape** : phase de production (lot lance) : retenir les creations `ti=37`
+SANS vie delta dont l'identite se resout, en grappe (>= 2 au meme point), bornees par le recensement
+d'images-cles, publiees comme socles (`weaponPads`, familles `powerup_*`) ; decouvertes : i30
+`equipment-has-infinite-uses-component` jamais lu (« socle de carte contre equipement de joueur »),
+`bounds` de `64e8adfa` hors carte, doc inversee `MPPCalibration.Bits`.
+
 ## [2026-08-18] Objectifs vivants — phase 3 : le drapeau CTF est DESSINE sur la carte — Complete
 
 **Statut** : Complete (3.1, 3.2 ; branche `wt/drapeau-rendu`, `7bc7a26ee`..`6131d8da3`, FUSIONNEE dans
