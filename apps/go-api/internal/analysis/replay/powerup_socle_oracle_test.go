@@ -251,7 +251,7 @@ func psNuageA(doc ReplayDocument, eps []EquipmentEpisode, k int) ([]psPoint, []f
 // laquelle la proximite ne veut plus rien dire.
 func psExpliqueParUnLacher(doc ReplayDocument, e EquipmentEpisode, p psPoint) (EquipmentPlacement, bool) {
 	for _, pl := range doc.EquipmentPlacements {
-		if !strings.HasPrefix(pl.Family, "powerup_") || pl.Origin != OriginDropped {
+		if !strings.HasPrefix(pl.Family, padPowerupPrefix) || pl.Origin != OriginDropped {
 			continue
 		}
 		if pl.T0 > e.T0 {

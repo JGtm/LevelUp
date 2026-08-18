@@ -38,9 +38,10 @@ import (
 	"levelup/go-api/internal/analysis/filmdec"
 )
 
-// psPrefixePowerup — le prefixe de famille du manifeste qui designe un power-up
+// padPowerupPrefix — le prefixe de famille du manifeste qui designe un power-up
 // (`powerup_overshield`, `powerup_camo`). Meme litteral que la table de rendu du web.
-const psPrefixePowerup = "powerup_"
+// padPowerupPrefix a ete RETIRE le 2026-08-19 : le prefixe vit en PRODUCTION
+// (`padPowerupPrefix`, powerup_pads.go), et un garde-rail interdit sa reecriture.
 
 // psCreationVue est UN record de creation retenu, avec ce qui permet de le juger.
 type psCreationVue struct {
@@ -183,7 +184,7 @@ func psRapportPowerups(t *testing.T, vues []psCreationVue, c psCible) {
 	proche := math.Inf(1)
 	for _, v := range vues {
 		parFamille[v.Famille]++
-		if !strings.HasPrefix(v.Famille, psPrefixePowerup) {
+		if !strings.HasPrefix(v.Famille, padPowerupPrefix) {
 			continue
 		}
 		pow = append(pow, v)
