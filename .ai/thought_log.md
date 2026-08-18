@@ -1,3 +1,66 @@
+
+[2026-08-18] Lot R2-V — les retours de la planche deviennent du canvas (rejeu 2D)
+Statut : Complete (branche `wt/r2-visuels`, 6 commits, non fusionnee)
+
+Decision technique principale : mesurer AVANT de coder, et laisser la mesure corriger la
+demande quand elle a tort. Trois cas :
+ - la carte de chaleur du 16/08 etait DEJA celle de tout le match (`accumulatePresence` sans
+   borne, calque cuit une fois hors ecran) : il n'y avait pas de « mode progressif » a
+   completer d'un bouton, il fallait CREER la portee bornee. Livree comme second choix, le
+   match entier restant le defaut ;
+ - le mur sans cap n'a pas besoin d'un repli rond : sur 62 panneaux du corpus, 54 portent le
+   cap de la pose et les 8 restants sont TOUS resolus par la trajectoire du poseur (dernier
+   deplacement >= 0,5 m, distance max mesuree 0,50 a 0,74 m — le seuil tombe juste). Le cercle
+   pointille ne subsiste que pour un poseur sans piste : 0/62 mesure, alors que 154 poses sur
+   2 563 toutes familles confondues ont un poseur sans piste ;
+ - le « symbole rond dans un cercle » de 1:06 n'est pas un sprite killfeed non nomme : c'est le
+   badge de la medaille « Odin's Raven » rendu a 15 px.
+
+Resultats observes :
+ - V1 trainee optionnelle (cle `replay-show-trail`, defaut allume) ; joueur de la page = double
+   contour + halo au token `success`, noyau a la couleur d'equipe — la couleur ne porte jamais
+   seule l'identite (a11y) ;
+ - V2 portee de temps `match` / `live` ; accentuation MESUREE sur `000d5950` : 50,0 % des
+   cellules peintes sont au plancher aujourd'hui, 14,6 % atteignent alpha >= 0,30 ; p40->p95
+   +1,4 pt, plafond 0,75 +7,1 pt, les deux +11,0 pt — le plafond fait cinq fois plus que le
+   quantile ;
+ - V3 chaine de cap a trois sources, cap deduit trace en pointille ;
+ - V5 fil des morts sur une seule ligne (`FEED_ROW`, `flex-nowrap` + `overflow-hidden`) ;
+ - V8 croix de pharmacie qui respire (periode 1,8 s, alpha 0,55-0,95, figee sous mouvement
+   reduit) — la zone et son anneau pointille ne bougent pas, la respiration ne chiffre rien.
+
+Dette traitee EN CONDITION, pas en opportunisme : les deux cliquets de taille (ReplayCanvas
+861 lignes, i18n 505) interdisaient toute addition. Quatre extractions : `useReplayInks.ts`
+(neuf `useMemo` d'encres), `replayAimCone.ts`, `replayProjectiles.ts`, `i18nContract.ts`.
+ReplayCanvas 861 -> 824, replayMarkers 589 -> 470, i18n 505 -> 317.
+
+Gates : typecheck 0, lint 0 (20 warnings de baseline, aucune erreur), vitest web complet 0
+apres relance (un timeout de charge sur `generated-types-fresh.guard`, vert en isole en 2,7 s,
+sans rapport avec le lot). Planche re-bundlee depuis le worktree frere : 34 items, fumee 0
+erreur en clair comme en sombre.
+
+Conclusion / prochaine etape : trois propositions attendent un verdict utilisateur (melee
+fatale, Dynamo, reapparition compacte) et trois choix de reglage aussi (couleur du joueur
+actif, accentuation de la chaleur, couleur du mur). Rien de tout cela n'entre en production
+avant la planche — decision 2 du plan.
+
+
+Le lot a ete FUSIONNE avec `feat/v75` (qui portait deja R2-P et R2-S). Le rebase a ete tente puis
+abandonne : il conflictait des le premier des sept commits sur quatre fichiers, dont un add/add
+(`useReplayInks.ts`, cree independamment par R2-P et R2-V), et se serait rejoue a chaque commit.
+Merge retenu : une seule passe de resolution (`f1a48b7d2`), union tenue sur les cinq conflits.
+
+La fusion des deux lots portait `ReplayCanvas.tsx` a 873 lignes pour un cliquet a 858 : une
+cinquieme extraction (`useGrenadeIcons.ts`) le ramene a 857. Trois autres extractions avaient
+deja ete faites en cloture, parce que le lot avait pousse trois fichiers au-dela du seuil de 500 :
+`ReplaySettingsToggle.tsx`, `ReplayAssistMark.tsx`, `placementWindow.ts`.
+
+Deux avertissements de lint INTRODUITS par le lot ont ete corriges plutot que tolores : un
+`setState` synchrone dans le corps d'un effet (`useReplayHeatmap`) — la valeur initiale vient
+desormais de l'initialiseur de `useState`, les suivantes du seul minuteur — et une lecture de
+reference PENDANT LE RENDU au meme endroit. Le test de la portee `live` a ete refait avec des
+minuteurs simules, puisque le premier seau est maintenant pose par le minuteur.
+
 ## [2026-08-18] Rejeu 2D — lot R2-P : le calque des emplacements d'arme — Complete
 
 **Statut** : Complete (worktree frere `wt/r2-socles`, base `3907eb505`, `4f3ef635d` + `739c25de9`,
