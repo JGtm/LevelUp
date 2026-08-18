@@ -43,3 +43,14 @@
 [FUSION] purge node_modules/.tmp ; npx tsc -b --force                EXIT_TSC=0
 [FUSION] npx vitest run src/features/match-replay src/lib            EXIT_VITEST=0 (144 fichiers, 1777 tests ; ReplayCanvas 812 L = cliquet feat/v75 tenu, 1 commentaire condense)
 [FUSION] grep « schema 15 » zoneStates (web + coverage.go) : 0 residu ; les mentions restantes du 15 sont celles du drapeau (item 4)
+=== GATES DE CLOTURE (apres fusion, HEAD d80de6d19) ===
+[CLOTURE] CGO_ENABLED=1 go build ./...                              EXIT_BUILD=0
+[CLOTURE] CGO_ENABLED=1 go vet ./...                                EXIT_VET=0
+[CLOTURE] CGO_ENABLED=0 go test -count=1 ./internal/analysis/...    EXIT_TEST=0 (16 paquets ok)
+[CLOTURE] CGO_ENABLED=1 go test -count=1 ./internal/replaybuild/ ./contracttest/   EXIT_TEST=0
+[CLOTURE] CGO_ENABLED=1 go test -tags=integration -count=1 -run TestReplayFacts ./internal/platform/duckdb/   EXIT_TEST=0
+[CLOTURE] golangci-lint run --new-from-merge-base=origin/main ./... EXIT_LINT=0 (0 issues)
+[CLOTURE] purge node_modules/.tmp ; npx tsc -b --force              EXIT_TSC=0
+[CLOTURE] npx vitest run src/features/match-replay src/lib          EXIT_VITEST=0 (144 fichiers, 1777 tests)
+[CLOTURE] npm run lint                                              EXIT_LINT=0 (20 warnings : 19 baseline + 1 `ReplayFeedName.tsx:50` react-refresh/only-export-components — fichier de feat/v75 fea5f2686 (R3.5), identique a origin/feat/v75, HORS perimetre : note, non traite)
+[CLOTURE] node tools/lint-cross-feature-imports.mjs (racine)        EXIT_CROSS=0 (7 <= 7)
