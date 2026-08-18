@@ -1,0 +1,27 @@
+# Lot C-ter volet 2 — gates (2026-08-18T22:41:44Z), branche wt/colline-formes
+## gofmt -l ./...
+EXIT_GOFMT=0 (liste vide = OK)
+## go vet ./... (CGO)
+EXIT_VET=0
+## go test -count=1 ./internal/analysis/replay/... ./internal/games/mappings/ (CGO_ENABLED=0, LEVELUP_REPO_ROOT=worktree)
+ok  	levelup/go-api/internal/analysis/replay	46.415s
+ok  	levelup/go-api/internal/analysis/replay/mapvar	0.844s
+ok  	levelup/go-api/internal/games/mappings	1.379s
+EXIT_TEST_ANALYSIS=0
+## go test -count=1 ./internal/replaybuild/ ./contracttest/ (CGO)
+ok  	levelup/go-api/internal/replaybuild	1.917s
+ok  	levelup/go-api/contracttest	1.502s
+EXIT_TEST_REPLAYBUILD=0
+## go test -count=1 ./internal/archlint/
+ok  	levelup/go-api/internal/archlint	9.232s
+EXIT_TEST_ARCHLINT=0
+## go test -count=1 ./cmd/mapobj-build/ ./internal/service/ (CGO, paquets touches)
+ok  	levelup/go-api/cmd/mapobj-build	0.574s
+ok  	levelup/go-api/internal/service	17.320s
+EXIT_TEST_TOUCHES=0
+## go build ./... (CGO)
+EXIT_BUILD=0
+## golangci-lint run --new-from-merge-base=origin/main ./...
+level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — limit/placeholders maîtrisés, plr0913 — coordinator function"
+0 issues.
+EXIT_LINT=0
