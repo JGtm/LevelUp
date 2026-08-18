@@ -30,3 +30,11 @@ internal\analysis\filmdec\components_managed_property.go:125:1: File is not prop
 EXIT_LINT=1
 EXIT_BUILD_CGO=0
 EXIT_LINT=0
+=== LOT C-bis PHASE 1 (CB.1.2 mesure) — gates joues le 2026-08-18 ===
+EXIT_FMT=0
+EXIT_VET=0
+ok  	levelup/go-api/internal/analysis/filmdec	1.647s
+ok  	levelup/go-api/internal/analysis/replay	29.089s
+ok  	levelup/go-api/internal/analysis/objectiveevents	0.938s
+EXIT_TEST_FILMDEC=0
+EXIT_LINT=0
