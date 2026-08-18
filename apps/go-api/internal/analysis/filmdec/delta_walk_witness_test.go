@@ -58,27 +58,42 @@ type deltaWitnessCounts struct {
 // valeurs ne se « rafraichissent » pas : si l'une bouge, c'est la GRAMMAIRE qui a bouge, et
 // c'est ce qu'il faut expliquer avant de reecrire le chiffre.
 var deltaWitnessFrozen = map[string]deltaWitnessCounts{
-	"000d5950": {packets: 14350, records: 38862, walked: 30060}, // 77,351 % aboutis
-	"06dfe6d9": {packets: 6606, records: 10607, walked: 8494},   // 80,079 % aboutis (inchange)
-	"64e8adfa": {packets: 14357, records: 39776, walked: 31935}, // 80,287 % aboutis
+	"000d5950": {packets: 14350, records: 38878, walked: 30080}, // 77,370 % aboutis
+	"06dfe6d9": {packets: 6606, records: 10613, walked: 8502},   // 80,109 % aboutis
+	"64e8adfa": {packets: 14357, records: 39806, walked: 31973}, // 80,322 % aboutis
 }
 
-// POURQUOI CES COMPTES ONT BOUGE LE 2026-08-18 (lot C phase 1b, item C.1b.1) — la raison est
-// exigee par le contrat ci-dessus, et elle est de la seule espece acceptable : la grammaire a
-// GAGNE des composants. Trois desers ont ete portes (`managed-navpoint-radial-progress`,
-// `managed-object-boundary-color-component`, `managed-object-rtpc-component`), donc des records
-// qui desynchronisaient aboutissent, et la marche sequentielle qui s arretait sur eux continue et
-// decouvre des records de plus loin dans le paquet.
-//
-// Mesure sur les DOUZE films du corpus, avant -> apres : aucun film ne recule, sept progressent.
+// POURQUOI CES COMPTES ONT BOUGE LE 2026-08-18, PREMIERE FOIS (lot C phase 1b, item C.1b.1) — la
+// raison est exigee par le contrat ci-dessus, et elle est de la seule espece acceptable : la
+// grammaire a GAGNE des composants. Trois desers ont ete portes
+// (`managed-navpoint-radial-progress`, `managed-object-boundary-color-component`,
+// `managed-object-rtpc-component`), donc des records qui desynchronisaient aboutissent.
+// Mesure sur les douze films, avant -> apres : aucun film ne recule, sept progressent.
 // 000d5950 30 058 -> 30 060 · 64e8adfa 31 934 -> 31 935 · 06dfe6d9 8 494 (inchange)
 // 7344d24f 25 016 -> 25 021 · 696a9d7c 24 652 -> 24 653 · 01e1f945 29 138 -> 29 140
 // 530820e5 26 238 -> 26 241 · 53ce4390 28 584 -> 28 586 · 0a247154, 606d9844, 8076f97f,
 // 24dbb67d inchanges. Detail : `.ai/V7.5/replay2d/registre_film/LOTC_PHASE1B.md`.
 //
-// Le gain est PETIT et il faut dire pourquoi : dans la fenetre de douze chunks, les records de
-// ti=10 et ti=12 sont une petite part du trafic (le bipede domine), et une traversee n aboutit
-// que si TOUS ses composants annonces sont portes — or ti=10 en compte encore 26 non portes.
+// POURQUOI CES COMPTES ONT BOUGE LE 2026-08-18, DEUXIEME FOIS (lot C-bis phase 1, item CB.1.1) —
+// meme espece de raison que la premiere : la grammaire a GAGNE des composants. Les deux desers de
+// ti=13 ont ete portes (`managed-object-property-component` en mode A et
+// `managed-object-player-masked-property-component` en mode B, les 32 instances), donc des records
+// qui desynchronisaient aboutissent, et la marche sequentielle qui s arretait sur eux continue et
+// decouvre des records de plus loin dans le paquet.
+//
+// Mesure sur les DOUZE films du corpus, avant -> apres : AUCUN film ne recule, LES DOUZE
+// progressent (le lot C n en avait fait progresser que sept).
+// 7344d24f 25 021 -> 25 149 (+128) · 8076f97f 24 889 -> 24 943 (+54) · 696a9d7c 24 653 -> 24 693
+// (+40) · 64e8adfa 31 935 -> 31 973 (+38) · 24dbb67d 30 917 -> 30 954 (+37) · 530820e5 26 241 ->
+// 26 273 (+32) · 53ce4390 28 586 -> 28 613 (+27) · 01e1f945 29 140 -> 29 162 (+22) · 000d5950
+// 30 060 -> 30 080 (+20) · 0a247154 24 468 -> 24 484 (+16) · 606d9844 26 642 -> 26 657 (+15) ·
+// 06dfe6d9 8 494 -> 8 502 (+8). Detail : `.ai/V7.5/replay2d/registre_film/LOTCBIS_PHASE1.md`.
+//
+// Le gain reste MODESTE, et pour la meme raison qu au lot C : une traversee n aboutit que si TOUS
+// les composants annonces sont portes, et ti=13 n a que 34 composants sur un trafic domine par le
+// bipede. Ce qui est neuf, c est que le gain touche LES DOUZE films, y compris le temoin Slayer ou
+// ti=13 est pourtant quasi muet — signe que les records concernes ne sont pas seulement ceux de la
+// bande ti=13 mais aussi ceux qui la SUIVENT dans le paquet.
 
 // TestDeltaWalkWitness : la mesure, confrontee au fige quand le film est connu.
 func TestDeltaWalkWitness(t *testing.T) {

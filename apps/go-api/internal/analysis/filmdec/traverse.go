@@ -864,6 +864,12 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
 		consumeNavpointRadialProgress(br)
 		return variant, nil, true
+	case compManagedObjectProperty: // ti=13 i1 (FUN_140ce5554 -> FUN_140ce59bc) — variant mode A, publie
+		consumeManagedObjectProperty(br)
+		return variant, nil, true
+	case compManagedObjectPlayerMaskedProperty: // ti=13 i2..i33 (FUN_140ce593c -> FUN_140ce59bc) — variant mode B, publie
+		consumeManagedObjectPlayerMaskedProperty(br)
+		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
 		consumeDevicePosition(br)
 		return variant, nil, true
