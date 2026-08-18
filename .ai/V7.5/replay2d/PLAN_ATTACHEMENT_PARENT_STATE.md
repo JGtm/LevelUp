@@ -65,10 +65,17 @@ ne sert que si le sens d'un champ (quel bit = quel handle) resiste a la mesure.
       4 hypotheses x 4 tolerances x 2 sous-ensembles). Instruments : `attachement_phase0_ctf_test.go`
       (hypotheses de champ + porte du porteur), `attachement_phase0_drapeau_test.go` (objet),
       `attachement_phase0_cartes_test.go` (bornes et socles).
-- [ ] 0.3 Vehicules (`084a804d` + un second film BTB choisi sur preuve `ti=40` present) : bipedes
-      porte=1, handle -> `ti=40`, coincidence de positions ; seuil 4(b) ; temoin.
-- [ ] 0.4 Publier au journal du plan (denominateurs, verdicts) ; sens des champs d'i10 etabli ou
-      « non etabli » champ par champ.
+- [x] 0.3 Vehicules (`084a804d` + `a349fea8`, second film choisi SUR PREUVE par recensement des
+      slots `ti=40` en image-cle) : bipedes porte=1, handle -> `ti=40`, coincidence de positions ;
+      seuil 4(b) ; temoin. RESULTAT : le nuage `ti=40` est CONTROLE BON (temoin fantome 14:1 puis
+      25:1, etalement comparable a une trajectoire d'objet et non a un melange de slots), les
+      reperes concordent sur le premier film (71 % de recouvrement), et il y a **0 periode
+      « a bord »** sur les deux films — donc un denominateur NUL : le seuil 4(b) est INAPPLICABLE,
+      pas refute. Instruments : `attachement_phase0_bord_test.go`, `attachement_phase0_vehicules_test.go`.
+- [x] 0.4 Publier au journal du plan (denominateurs, verdicts) ; sens des champs d'i10 etabli ou
+      « non etabli » champ par champ. Fait : journal ci-dessous (denominateurs par film, verdicts
+      par oracle, tableau champ par champ) + GATE 0 negatif ecrit avec ses trois conditions de
+      reprise ordonnees par cout.
 
 **Gate 0** : au moins UN des deux oracles tenu (>= 90 %, temoin <= 5 %) => plan de production ecrit
 (decision 5) ; aucun => negatif ecrit, condition de reprise = Ghidra sur `FUN_140c1e4d0` (sens des
@@ -106,7 +113,7 @@ au CR) ; RE image-cle fermee (rien ici ne la rouvre : chemin delta seulement).
 - 2026-08-18 — plan ecrit ; phase 0 lancee (agent Opus, worktree frere `../LevelUp-wt-attache`).
 
 - 2026-08-18 — **ITEM 0.1 : la sonde d'i10 existe, et elle ne coute pas un bit.**
-  `filmdec.SetObjectParentStateHook` publie, en UN appel par lecture, les onze champs que
+  `filmdec.SetObjectParentStateHook` publie, en UN appel par lecture, chacun des champs que
   `consumeObjectParentState` lisait et jetait (porte, quant16, word16, opt16, deux drapeaux,
   matrice 3 x R(16), vitesse R(19), R(8), queue R(6)/R(3)), plus l'archetype, le param_4 et
   les positions de bit de debut et de fin. La grammaire n'a PAS bouge : le diff ne fait
@@ -242,6 +249,64 @@ au CR) ; RE image-cle fermee (rien ici ne la rouvre : chemin delta seulement).
   bornes, et c'est un mode a objectif (Total Control) donc un autre regime de jeu que le CTF de
   `084a804d`.
 
+- 2026-08-18 — **ITEM 0.3 : le nuage des vehicules est BON, les reperes CONCORDENT, et il n'y a
+  AUCUNE periode « a bord ». L'oracle 4(b) ne se refute pas : il ne se remplit pas.**
+
+  Le controle vient AVANT la mesure, parce que le meme decodeur d'objet du monde a deja ete
+  refute une fois (armes au sol, 2026-08-12) et que personne ne l'avait re-controle sur `ti=40`.
+  Sur `084a804d` (Fortitude Heavies) :
+
+  - **Etalement** : 497 vies decodees, toutes a >= 3 echantillons ; 262 (52,7 %) tiennent dans
+    0,5 u, 235 (47,3 %) s'etalent au-dela de 20 u. A comparer aux armes au sol, ou 3,3 %
+    seulement tenaient dans 0,5 u : le nuage `ti=40` est d'une tout autre qualite.
+  - **Temoin fantome** (180 slots jamais vus porter `ti=40`, meme cardinalite, meme decodeur) :
+    36 vies seulement contre 497, soit un rapport de 14 pour 1. Le signal est LARGEMENT au-dessus
+    du bruit — la ou la refutation des armes au sol mesurait 493 slots fantomes contre 661 reels.
+  - **Reperes** : emprise des vehicules x[-228,7 ; 187,8] y[-226,0 ; 226,1] z[-925,7 ; 210,8]
+    (109 383 points) contre bipedes x[-229,1 ; 203,0] y[-201,0 ; 152,7] z[-866,0 ; 205,8]
+    (330 769 points) ; 71,0 % des points de vehicule tombent dans l'emprise des bipedes. Les
+    deux chaines dequantifient bien dans le meme repere, ce qui n'allait pas de soi (largeurs
+    DETECTEES pour le bipede, largeurs du CATALOGUE pour l'objet du monde).
+
+  **ET POURTANT : 0 periode.** Aucun bipede, sur 330 769 echantillons et 256 vies, ne reste a
+  moins de 1,5 m d'un vehicule pendant 3 s. Le seuil 4(b) porte donc sur un denominateur NUL
+  (0/0) : il n'est ni tenu ni refute, il est INAPPLICABLE — et c'est exactement ce que le modele
+  parent-enfant du plan predit. Un enfant attache ne replique plus sa position ; un oracle qui
+  cherche le passager LA OU IL N'EMET PLUS ne peut rien trouver, par construction. Le plan
+  portait cette contradiction en lui, et la mesure la rend visible plutot que de la masquer.
+
+  **LE VOLET COMPLEMENTAIRE (les TROUS) ne la leve pas non plus** : 105 interruptions d'au moins
+  3 s dans le flux de position des bipedes, dont **0** dont le dernier point avant le trou soit
+  a moins de 1,5 m d'un vehicule. Si un embarquement etait un trou, il ne commence pas a portee
+  du vehicule tel que ce nuage le place.
+
+  **UNE LIMITE DE L'ORACLE, ECRITE PLUTOT QUE TUE.** L'appariement temporel bipede <-> vehicule
+  refuse tout echantillon de vehicule distant de plus d'UNE SECONDE de l'instant du bipede — sans
+  quoi on comparerait deux positions prises a des moments differents. Or le depot a deja mesure
+  qu'un objet du monde AU REPOS cesse d'emettre sa position (poses, armes au sol), et 52,7 % des
+  vies de vehicule tiennent dans 0,5 u, c'est-a-dire sont a l'arret. Un vehicule gare qui
+  n'emet plus n'a aucun echantillon dans la seconde : la coincidence devient inobservable
+  precisement pour les vehicules qu'on approche pour y monter. Cette borne n'a PAS ete relachee
+  ici (elle fait partie de l'oracle ecrit avant mesure), mais elle est la premiere chose a faire
+  varier si l'item 0.3 est repris.
+
+  **SECOND FILM, `a349fea8` (Fragmentation Heavies, Total Control) : meme verdict, et le
+  temoin fantome y est encore plus net.** 505 vies de vehicule contre **20** pour la bande
+  fantome de meme cardinalite (255 slots) — un rapport de 25 pour 1 ; etalement 241 vies
+  (47,7 %) dans 0,5 u et 259 (51,3 %) au-dela de 20 u, comparable au premier film. **0 periode
+  « a bord »** sur 332 367 echantillons de bipede et 249 vies.
+
+  **UNE RESERVE PROPRE A CE FILM, et elle se lit dans les emprises** : 25,5 % seulement des
+  points de vehicule tombent dans l'emprise des bipedes (contre 71,0 % sur `084a804d`). Les
+  vehicules y couvrent y[-702 ; 749] quand les bipedes tiennent dans y[-76 ; 361]. Sur cette
+  carte, les deux nuages ne decrivent pas le meme volume — soit la bande `ti=40` reste
+  contaminee malgre le temoin, soit une partie des vehicules vit hors de la zone jouable. Le
+  « 0 periode » de ce film est donc MOINS concluant que celui du premier, et c'est le premier
+  qui porte le verdict.
+
+  Volet des trous sur ce film : 153 interruptions d'au moins 3 s, dont 0 dont le dernier point
+  avant le trou soit a moins de 1,5 m d'un vehicule. Meme lecture que sur `084a804d`.
+
 - 2026-08-18 — **ITEM 0.4 : le sens des champs d'i10, champ par champ.**
   La GRAMMAIRE reste ce qu'elle etait : elle est portee, et rien ici ne la conteste. Ce qui est
   etabli, c'est qu'AUCUN de ses champs n'a recu de sens. La colonne « etabli » ne dit pas « faux »,
@@ -259,3 +324,31 @@ au CR) ; RE image-cle fermee (rien ici ne la rouvre : chemin delta seulement).
   | byte8 | `R(8)` | non mesure — 24 a 48 valeurs distinctes selon l'archetype. |
   | queue | `R(1)` [`R(6)`] `R(1)` `R(3)` | non mesure. |
   | branche libre | bloc `1408f0ac4` (1 ou 16 bits) + `R(11)` optionnel | non mesure. La sonde publie la LARGEUR consommee, pas la valeur : la lire exigerait de toucher `consume1408f0ac4`, qui sert cinq autres composants. |
+
+- 2026-08-18 — **GATE 0 : NEGATIF ECRIT. Aucun des deux oracles n'est tenu.**
+
+  - Oracle (a), CTF : **REFUTE** — 0/149 fenetres de portage, quatre hypotheses de champ,
+    quatre tolerances, deux sous-ensembles. Temoin 0 a 1,3 %.
+  - Oracle (b), vehicules : **INAPPLICABLE** — 0 periode « a bord » sur un nuage pourtant
+    controle bon (rapport 14:1 sur le temoin fantome) et des reperes concordants (71 % de
+    recouvrement). Denominateur nul : le seuil ne peut pas etre evalue.
+  - Controle transverse (item 0.1), qui ne depend d'aucun des deux : le champ candidat ne
+    designe pas d'entite vivante plus souvent que son temoin, et la porte du composant est
+    ouverte a un tiers uniformement sur les neuf archetypes.
+
+  **CONDITIONS DE REPRISE**, dans l'ordre de cout croissant :
+  1. **Balayage de `param_4` par archetype** (`SetRecordStateParam`, offline-pur, deja outille,
+     jamais essaye hors bipede). Le code dit lui-meme que la desynchronisation d'i10 vient de
+     ce parametre ; s'il vaut autre chose que 1 pour ti=37/38/40/42, la grammaire lue n'est pas
+     celle du flux, et tout ce qui precede mesure du bruit avec rigueur. C'est le premier a
+     faire, et il ne coute qu'un balayage.
+  2. **Ghidra sur `FUN_140c1e4d0`** (condition de reprise ecrite au plan) : etablir quel bit est
+     quel handle, puis remesurer avec les memes instruments — ils sont ecrits et rejouables.
+  3. Si les deux echouent, l'attachement n'est pas dans i10 sur le chemin delta, et il faudra
+     chercher ailleurs (evenements de cycle de vie, ou le record de creation lui-meme).
+
+  **CE QUI RESTE ACQUIS ET UTILISABLE SANS i10** : l'identite du drapeau de CTF
+  (`0x2A392328` dans `MPPVal[MPPWord32]` d'une creation `ti=42`), qui donne sa NAISSANCE au
+  socle et sa position propre a chaque creation — donc « quand il sort de la zone jouable, il
+  respawn a son emplacement », qui etait l'une des deux demandes de l'utilisateur. La decision 5
+  (production) n'est PAS ouverte : elle exigeait un oracle tenu.
