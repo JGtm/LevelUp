@@ -194,7 +194,7 @@ export function ReplayCanvas({
   // l'en-tête du hook.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
@@ -441,7 +441,7 @@ export function ReplayCanvas({
           reducedMotion,
           showUnnamed: showUnnamedPlacements,
         },
-        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge },
+        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk },
       )
     }
     drawTracksLayer(ctx, doc.tracks, view, {
@@ -473,9 +473,9 @@ export function ReplayCanvas({
     // effets d'événement sont ÉTEIGNABLES depuis le tiroir (décision du 16/08) : c'est le
     // DESSIN qui s'éteint, jamais la mesure — `killFx` continue d'alimenter la lecture
     // « éliminations » de la carte de chaleur, qui n'est pas un effet.
-    const win = { frame, hold: eventHoldFrames }
+    const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
     if (showShotFx && shotFx.length > 0) {
-      drawShotsLayer(ctx, shotFx, view, { frame, hold: shotHoldFrames }, {
+      drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
         ink: fxInk,
         k: dpr,
         reducedMotion,
@@ -525,7 +525,7 @@ export function ReplayCanvas({
       drawKillFxLayer(ctx, killFx, view, win, {
         colorOfSlot: (slot) => slotColors.get(slot) ?? null,
         fallback: shotColor,
-        reducedMotion,
+        reducedMotion, k: dpr,
       })
     }
 
@@ -544,7 +544,7 @@ export function ReplayCanvas({
       }
     }
   }, [
-    doc, geometryColor, bounds, zRange, timing, totalLabel,
+    doc, geometryColor, bounds, zRange, timing, totalLabel, wallInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     t.aliveSuffix, renderWidth, canvasView,

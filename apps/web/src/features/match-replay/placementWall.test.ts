@@ -100,10 +100,24 @@ describe('drawWall — l’arc, son halo, et le cercle des poses sans cap', () =
         Math.abs((o.args[1] as number) - mid.y) < 1e-6,
     )
     expect(hit).toBe(true)
-    // Trait franc, halo, couleur d'équipe — et JAMAIS de pointillé sur une pose orientée.
+    // Trait franc, halo — et JAMAIS de pointillé sur une pose orientée.
     expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(2)
-    expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'equipe')).toBe(true)
     expect(ops.some((o) => o.op === 'setLineDash')).toBe(false)
+  })
+
+  /**
+   * R2-5 (2026-08-18) — LE MUR PORTE UN TOKEN FIXE, PLUS LA COULEUR D'ÉQUIPE.
+   *
+   * « Je préférerais un orange doré pour sa couleur » : c'est `warning` qui a été retenu
+   * entre les deux tokens proposés. Ce mur est donc le SEUL objet posé dont la couleur dit
+   * ce qu'il EST au lieu de dire qui l'a posé — l'utilisateur a explicitement accepté de
+   * perdre le camp sur celui-là. Le test tient les deux moitiés de la règle.
+   */
+  it('l’arc prend l’encre FIXE du mur, jamais celle de l’équipe du poseur', () => {
+    const ops = draw([pose({ h: 0 })])
+    const encres = ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+    expect(encres).toContain('mur')
+    expect(encres).not.toContain('equipe')
   })
 
   it('le mur sans AUCUNE source de cap : le cercle fermé, dernier repli (0/62 mesuré)', () => {
@@ -114,10 +128,11 @@ describe('drawWall — l’arc, son halo, et le cercle des poses sans cap', () =
     expect(ops.filter((o) => o.op === 'closePath').length).toBeGreaterThan(0)
   })
 
-  it('une pose sans poseur porte l’encre neutre, jamais une couleur d’équipe inventée', () => {
+  it('une pose de mur sans poseur garde la MÊME encre : elle ne dépend pas du poseur', () => {
     const ops = draw([pose({ h: 0, owner: -1 })])
-    expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'neutre')).toBe(true)
-    expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'equipe')).toBe(false)
+    const encres = ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+    expect(encres).toContain('mur')
+    expect(encres).not.toContain('equipe')
   })
 
   it('avant `t0` rien n’est tracé, et après `t1` le mur RESTE : il ne disparaît pas', () => {
