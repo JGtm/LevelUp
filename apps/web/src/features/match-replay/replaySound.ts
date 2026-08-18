@@ -1,5 +1,10 @@
 /**
- * replaySound.ts — CE QUI SONNE, QUAND, ET COMMENT LE CURSEUR NE REJOUE RIEN DEUX FOIS.
+ * replaySound.ts — CE QUI SONNE, ET QUAND.
+ *
+ * DEUX VOISINS, EXTRAITS LE 2026-08-18 (lot R2-G) parce que ce fichier atteignait son
+ * plafond : `replaySoundCursor.ts` tient le curseur de lecture (un événement ne part qu'une
+ * fois), et `grenadeSound.ts` tient tout ce qui est propre à la GRENADE — ses deux tables,
+ * la datation de l'explosion et le dédoublonnage, doctrine comprise.
  *
  * LES SOURCES (deux, par nature — fusion du 2026-08-16) : les sons d'ARMES sont EXTRAITS
  * DU JEU (chantier sons-armes : banks Wwise decodees, coups reconstitues selon la
@@ -11,7 +16,8 @@
  * natures : une ARME porte le nom de sa clé canonique (weapon_names.toml, PAS le nom de
  * fichier FR des images — piège Crémateur/Cindershot) ; un ÉVÉNEMENT que le registre
  * d'armes ne nomme pas porte le nom de l'événement (`throw_*`, `explosion_*`,
- * `melee_kill`). Le manifeste ci-dessous est la liste EXACTE des fichiers livrés ; le
+ * `melee_kill`). Le manifeste — les tables ci-dessous et les deux de `grenadeSound.ts` —
+ * est la liste EXACTE des fichiers livrés ; le
  * garde-rail `replaySoundAssets.guard.test.ts` le rejoue contre le dossier : un stem sans
  * fichier ou un fichier sans stem casse le test, jamais l'écoute.
  *
@@ -48,11 +54,12 @@
  *    l'horloge est celle du fil (`alignFeed`), la même qui date le flash des fiches et
  *    l'effet de mort : un son qui partirait sur l'horloge brute sonnerait à côté de son
  *    image ;
- *  - les LANCERS de grenade (doc.grenades, l'auteur est écrit dans le film), par TYPE —
- *    le pack porte les quatre lancers (frag/plasma/dynamo/spike, item 5.3) ;
- *  - un kill À LA grenade sonne l'explosion DE SON TYPE (c'est elle qui a tué, pas le
- *    geste du lancer), et un kill À LA MÊLÉE sonne le coup qui a tué — les deux passent
- *    par la VIGNETTE de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
+ *  - les LANCERS de grenade (doc.grenades, l'auteur est écrit dans le film), par TYPE, et
+ *    l'EXPLOSION de CHAQUE grenade à la FIN DE VOL de son projectile (décision utilisateur
+ *    du 2026-08-18) — les deux formes du même objet, doctrine et tables : `grenadeSound.ts` ;
+ *  - un kill À LA MÊLÉE sonne le coup qui a tué, et un kill À LA grenade l'explosion DE SON
+ *    TYPE (c'est elle qui a tué, pas le geste du lancer) — les deux passent par la VIGNETTE
+ *    de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
  *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 10 — mur, capteur) : le GESTE de
  *    pose sonne, à `t0`, ET SEULEMENT SI LA POSE EST UN DÉPLOIEMENT MESURÉ
  *    (`placementIsDeployedObject`, la MÊME règle que le calque). Rien ne sonne à la fin : la
@@ -84,7 +91,13 @@
  *    Le fichier n'est donc pas livré : un asset que rien ne joue casserait le garde-rail ;
  *  - les 2 étiquettes de grenade AMBIGU sur 17 (`damagetag/data/labels.tsv` : effet
  *    générique traversant plusieurs entrées `gggl`) : non publiables, donc sans vignette,
- *    donc sans son. Le type n'est pas établi : silence, jamais l'explosion d'une voisine.
+ *    donc sans son DE KILL. Le type de la source de dégât n'est pas établi : silence, jamais
+ *    l'explosion d'une voisine. La grenade concernée garde son explosion de FIN DE VOL —
+ *    l'inconnue n'est pas la même : ce qui manque là est le lien mort -> grenade, pas le
+ *    type du lancer, que le film publie avec son rang ;
+ *  - un LANCER dont le film ne publie pas le rang, ou publie un rang hors des quatre types
+ *    connus : ni geste ni explosion. Le type n'est pas établi, donc rien ne sonne — et
+ *    `buildGrenadeRestFx` ne replie plus un rang absent sur 0 pour cette raison exacte.
  *
  * LA DENSITÉ N'EST PAS FILTRÉE — DÉCISION UTILISATEUR DU 2026-08-15, mot pour mot : « tu me
  * les mets TOUS autant que possible pour le moment, je verrai si c'est trop ensuite ». Il n'y
@@ -137,6 +150,7 @@
 import type { KillEvent } from '@/features/match-view/_momentum'
 
 import { placementIsDeployedObject } from './equipmentPlacementsLayer'
+import { grenadeSoundEvents } from './grenadeSound'
 import { alignFeed } from './killFeedLogic'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -156,10 +170,11 @@ export type SoundCategory = 'weapon' | 'grenade' | 'melee' | 'equipment'
  * son. La séparer en deux ferait deux vérités à tenir à jour, et le jour où elles
  * divergeraient un tir et le kill qu'il produit ne sonneraient plus pareil.
  *
- * LES GRENADES N'Y SONT PAS, et ce n'est pas un oubli : leur son est celui de l'EXPLOSION,
- * qui n'appartient qu'aux kills — le film ne publie aucun tir de grenade (mesure du
- * 2026-08-15 sur les 23 artefacts locaux : 0 des 17 904 tirs porte une clé de grenade). Le
- * lancer, lui, a sa propre table (THROW_SOUND_STEMS) et sa propre horloge.
+ * LES GRENADES N'Y SONT PAS, et ce n'est pas un oubli : le film ne publie aucun TIR de
+ * grenade (mesure du 2026-08-15 sur les 23 artefacts locaux : 0 des 17 904 tirs porte une
+ * clé de grenade). Elles ont leurs deux tables à elles, une par forme du même objet — le
+ * geste (THROW_SOUND_STEMS) et la détonation (EXPLOSION_SOUND_STEMS) — et chacune sa propre
+ * horloge.
  *
  * Une clé absente de cette table = silence propre.
  */
@@ -194,17 +209,6 @@ export const WEAPON_SOUND_STEMS: Readonly<Record<string, string>> = {
 }
 
 /**
- * Son de LANCER par rang de grenade (l'index EST le rang, même règle que grenadeLabels :
- * 0 Frag, 1 Plasma, 2 Dynamo, 3 Spike — replay_labels.toml). Un rang hors table = silence.
- */
-export const THROW_SOUND_STEMS: readonly string[] = [
-  'throw_frag',
-  'throw_plasma',
-  'throw_dynamo',
-  'throw_spike',
-]
-
-/**
  * Son d'un KILL dont la SOURCE DE DÉGÂT n'a pas de nom propre — grenades et mêlée : la
  * vignette du kill feed -> stem de fichier.
  *
@@ -219,6 +223,10 @@ export const THROW_SOUND_STEMS: readonly string[] = [
  * clé (frag, plasma, dynamo) sonneraient sinon deux vérités concurrentes. Une vignette
  * absente de cette table (toutes les armes, les véhicules, les objets) retombe sur la clé
  * canonique, et une source sans vignette du tout reste muette.
+ *
+ * DEPUIS LE 2026-08-18, ELLE N'EST PLUS LA SEULE SOURCE D'EXPLOSION : la fin de vol de
+ * chaque grenade en programme une (EXPLOSION_SOUND_STEMS). Ce que cette table garde en
+ * propre, c'est la MÊLÉE — et, pour les grenades, la priorité au dédoublonnage.
  *
  * Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces cinq clés contre `rules.tsv` :
  * un index d'atlas qui bougerait, ou une cinquième grenade, casse le test — jamais l'écoute.
@@ -355,8 +363,8 @@ export function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>)
 /**
  * buildSoundTimeline précalcule la piste sonore du document : TIRS datés par leur frame de
  * film + kills recalés par `alignFeed` (même règle que le fil et l'effet de mort — une seule
- * horloge) + lancers de grenade datés par leur frame. Triée chronologiquement, construite
- * une fois.
+ * horloge) + lancers de grenade et explosions de fin de vol. Triée chronologiquement,
+ * construite une fois.
  *
  * LES TIRS ET LES KILLS COEXISTENT SANS DÉDUPLICATION, et c'est voulu : le tir qui tue est
  * un événement du film, la mort qu'il cause en est un autre, daté par le fil. Les fondre
@@ -381,18 +389,21 @@ export function buildSoundTimeline(
       if (stem) out.push({ ms: frameToMs(s.t, doc), stem })
     }
   }
+  // Les explosions programmées PAR UN KILL, retenues au passage : ce sont elles qui
+  // dédoublonnent les fins de vol, et elles doivent donc être connues avant.
+  const killExplosions: ReplaySoundEvent[] = []
   if (kills.length > 0 && doc.tracks.length > 0) {
     for (const k of alignFeed(kills, t0Ms, doc).kills) {
       const snd = killSound(k)
-      if (snd && categories[snd.category]) out.push({ ms: k.replayMs, stem: snd.stem })
+      if (!snd || !categories[snd.category]) continue
+      const ev = { ms: k.replayMs, stem: snd.stem }
+      out.push(ev)
+      if (snd.category === 'grenade') killExplosions.push(ev)
     }
   }
-  if (categories.grenade) {
-    for (const g of doc.grenades) {
-      const stem = THROW_SOUND_STEMS[g.rank ?? -1]
-      if (stem) out.push({ ms: frameToMs(g.t, doc), stem })
-    }
-  }
+  // Le filtre « grenades » couvre les DEUX formes de l'objet, comme depuis le 16/08 : couper
+  // la catégorie coupe les lancers ET les explosions, y compris celles des kills ci-dessus.
+  if (categories.grenade) out.push(...grenadeSoundEvents(doc, killExplosions))
   // Les épisodes d'équipement actif : l'activation au début, la désactivation SEULEMENT
   // sur une fin MESURÉE (`endRead`) — un épisode fermé par la mort ne sonne rien de plus,
   // le kill sonne déjà là et rien n'a mesuré une désactivation.
@@ -418,70 +429,4 @@ export function buildSoundTimeline(
     }
   }
   return out.sort((a, b) => a.ms - b.ms)
-}
-
-/**
- * Saut au-delà duquel une avance n'est PAS une lecture continue mais un déplacement
- * (scrub, retour au début, reprise après pause longue) : le curseur se RECALE sans rien
- * jouer — rejouer d'un coup tous les sons enjambés ferait un mur de bruit. À 4x, un pas
- * d'animation avance de ~70 ms de rejeu : 1 s de marge ne peut pas confondre les deux.
- */
-export const SOUND_RESYNC_JUMP_MS = 1_000
-
-/**
- * Vitesse de lecture au-delà de laquelle le son se TAIT.
- *
- * POURQUOI. Un son tient ~1 s de temps réel quelle que soit la vitesse : à 4×, cette
- * seconde couvre 4 s de match, et les éliminations d'un même échange (2 à 4 s d'écart) se
- * recouvrent en permanence. Ce qu'on entendrait alors n'est plus le rythme du match mais
- * celui du lecteur. À 2×, elles restent distinctes — c'est la borne.
- */
-export const SOUND_MAX_SPEED = 2
-
-/** soundPlaysAtSpeed — le son a-t-il un sens à cette vitesse de lecture ? */
-export function soundPlaysAtSpeed(multiplier: number): boolean {
-  return multiplier <= SOUND_MAX_SPEED
-}
-
-/** Le curseur de lecture sonore : dernier instant servi, index du prochain événement. */
-export interface SoundCursor {
-  ms: number
-  idx: number
-}
-
-/** resyncSoundCursor pose le curseur À l'instant donné : rien avant lui ne jouera. */
-export function resyncSoundCursor(timeline: ReplaySoundEvent[], ms: number): SoundCursor {
-  // Premier index strictement postérieur à `ms` (recherche binaire, timeline triée).
-  let lo = 0
-  let hi = timeline.length
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (timeline[mid].ms <= ms) lo = mid + 1
-    else hi = mid
-  }
-  return { ms, idx: lo }
-}
-
-/**
- * advanceSoundCursor avance le curseur à `nowMs` et rend les événements à jouer.
- *
- * Lecture continue (avance courte) : tout événement dans (cursor.ms, nowMs] part UNE
- * fois. Recul ou saut long : recalage silencieux — le son accompagne la lecture, il ne
- * raconte pas ce qu'on a enjambé.
- */
-export function advanceSoundCursor(
-  timeline: ReplaySoundEvent[],
-  cursor: SoundCursor,
-  nowMs: number,
-): { cursor: SoundCursor; fire: ReplaySoundEvent[] } {
-  if (nowMs < cursor.ms || nowMs - cursor.ms > SOUND_RESYNC_JUMP_MS) {
-    return { cursor: resyncSoundCursor(timeline, nowMs), fire: [] }
-  }
-  const fire: ReplaySoundEvent[] = []
-  let idx = cursor.idx
-  while (idx < timeline.length && timeline[idx].ms <= nowMs) {
-    fire.push(timeline[idx])
-    idx++
-  }
-  return { cursor: { ms: nowMs, idx }, fire }
 }

@@ -28,16 +28,18 @@ import type { ReplayDocumentReady } from './replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import {
-  advanceSoundCursor,
   buildSoundTimeline,
-  resyncSoundCursor,
-  soundPlaysAtSpeed,
   SOUND_CATEGORIES,
   SOUND_CATEGORIES_DEFAULT,
   type SoundCategory,
   type SoundCategoryFilter,
-  type SoundCursor,
 } from './replaySound'
+import {
+  advanceSoundCursor,
+  resyncSoundCursor,
+  soundPlaysAtSpeed,
+  type SoundCursor,
+} from './replaySoundCursor'
 
 /** Préférences persistées — patron partagé (replayPreferences.ts), né ici. */
 const SOUND_ON_KEY = 'replay-sound-on'

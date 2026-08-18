@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 
-import { SOUND_MAX_SPEED } from './replaySound'
+import { SOUND_MAX_SPEED } from './replaySoundCursor'
 import { type FakeContext, flushAudio, installFakeAudio } from './test/fakeAudio'
 import { testReplayDoc } from './test/testDoc'
 import { SOUND_VOLUME_DEFAULT, useReplaySound } from './useReplaySound'
