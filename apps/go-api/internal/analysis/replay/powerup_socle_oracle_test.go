@@ -6,6 +6,7 @@ package replay
 
 import (
 	"math"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -332,4 +333,89 @@ func TestPowerupSocleRemontee(t *testing.T) {
 	} else {
 		t.Log("  NON ATTEINT : aucun point de croisement au centre")
 	}
+}
+
+// psRemontee est le resultat de la remontee : le point de croisement et ses pieces.
+type psRemontee struct {
+	// C est le centroide au minimum de dispersion — LE SOCLE ; Z l altitude MOYENNE des
+	// porteurs a cet instant. R le rayon a ce minimum, K le decalage en images entre le
+	// ramassage et le `T0` d episode.
+	C psPoint
+	Z float32
+	R float64
+	K int
+	// Garde / Total : episodes retenus (pas expliques par un lacher) sur episodes lus.
+	Garde, Total int
+	// Instants sont les ramassages DATES sur la grille du document (`T0 - K`), tries.
+	Instants []int
+}
+
+// psSocleParRemontee applique la regle de la phase 1 : ecarter les ramassages expliques par
+// un lacher, puis remonter la vie des porteurs jusqu'au minimum de dispersion.
+//
+// C'EST LA SEULE COPIE DE LA REGLE. La phase 2 appelle cette fonction plutot que de recopier
+// le point (0,393 ; -0,012) : un litteral recopie ne suit pas un correctif de la regle.
+func psSocleParRemontee(doc ReplayDocument) (psRemontee, bool) {
+	var out psRemontee
+	var garde []EquipmentEpisode
+	for _, e := range doc.EquipmentEpisodes {
+		if e.Fam != EquipFamilyOvershield {
+			continue
+		}
+		out.Total++
+		p, _, _, ok := psPosDeLaVie(doc, e.Slot, e.T0)
+		if !ok {
+			continue
+		}
+		if _, lache := psExpliqueParUnLacher(doc, e, p); lache {
+			continue
+		}
+		garde = append(garde, e)
+	}
+	out.Garde = len(garde)
+	if len(garde) < 2 {
+		return out, false
+	}
+	out.K, out.R = -1, math.Inf(1)
+	for k := 0; k <= psLagMax; k++ {
+		pts, zs := psNuageA(doc, garde, k)
+		if len(pts) < len(garde) {
+			continue
+		}
+		c, r := psDispersion(pts)
+		if r >= out.R {
+			continue
+		}
+		var sz float64
+		for _, z := range zs {
+			sz += float64(z)
+		}
+		out.C, out.R, out.K = c, r, k
+		out.Z = float32(sz / float64(len(zs)))
+	}
+	if out.K < 0 {
+		return out, false
+	}
+	for _, e := range garde {
+		out.Instants = append(out.Instants, e.T0-out.K)
+	}
+	sort.Ints(out.Instants)
+	return out, out.R <= psRayonOracle
+}
+
+// psSocleMesure rend la position ET l altitude du socle mesurees par la phase 1, ou saute
+// l etape appelante.
+func psSocleMesure(t *testing.T) (psPoint, float32) {
+	t.Helper()
+	dir := psArtDir(t)
+	doc, ok := psLoadDoc(t, dir, "01e1f945")
+	if !ok {
+		t.Skipf("artefact 01e1f945 absent de %s : le socle n est pas mesure", dir)
+	}
+	r, ok := psSocleParRemontee(doc)
+	if !ok {
+		t.Skipf("la remontee ne rend pas de socle (%d episodes retenus, rayon %.3f m)",
+			r.Garde, r.R)
+	}
+	return r.C, r.Z
 }

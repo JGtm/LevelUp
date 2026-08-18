@@ -139,19 +139,22 @@ records NEW aux respawns). Le verdict le dira.
 - `[x]` 1.5 Gate : `go vet` + `go test ./internal/analysis/...` + instrument joue sur
   `01e1f945`.
 
-### Phase 2 — Les archetypes dans la boite (H2 / H3) `[ ]`
+### Phase 2 — Les archetypes dans la boite (H2 / H3) `[x]`
 
-- `[ ]` 2.1 `ScanFilmWorldObjects` pour ti = 36..42 sur les 4 films ; ne garder que les vies
+- `[x]` 2.1 `ScanFilmWorldObjects` pour ti = 36..42 sur les 4 films ; ne garder que les vies
   dont un point tombe dans la boite large. Par archetype : nombre de vies, t du premier et du
   dernier point, etendue spatiale, z.
-- `[ ]` 2.2 Presence a t=0 : vies dont le premier point est a t <= 5 s.
-- `[ ]` 2.3 Disparitions liees a un joueur : dernier point d'une vie de la boite avec un
+- `[x]` 2.2 Presence a t=0 : vies dont le premier point est a t <= 5 s.
+- `[~]` 2.3 Disparitions liees a un joueur : dernier point d'une vie de la boite avec un
   bipede a < 1,5 m dans les 2 images. Sur `01e1f945`, croiser avec les 5 instants de l'oracle.
-- `[ ]` 2.4 Reapparitions : vies successives au meme point (<= 1 m) ; ecarts, stabilite.
-- `[ ]` 2.5 Gate : `go vet` + `go test ./internal/analysis/...` + instrument joue sur 4 films.
+- `[~]` 2.4 Reapparitions : vies successives au meme point (<= 1 m) ; ecarts, stabilite.
+- `[x]` 2.5 Gate : `go vet` + `go test ./internal/analysis/...` + instrument joue sur 4 films.
 
 ### Phase 3 — Images-cles, creations, identite (H1 / H4) et verdict `[ ]`
 
+- `[ ]` 3.0 CONTROLE de la phase 1 (ajoute en cours d'execution, item declare) : rejouer la
+  remontee sur d'AUTRES vies aux MEMES instants. Le centre d'une arene est un goulot ; sans ce
+  temoin, un croisement au centre pourrait n'etre qu'un artefact de frequentation.
 - `[ ]` 3.1 Recensement `WalkKeyframeWorld` : par image-cle et par ti, nombre de slots ; les
   slots presents DES LA PREMIERE image-cle et a TOUTES ; ceux qui n'ont AUCUNE position delta
   (population « invisible », la forme meme de H1) — par archetype, avec denominateurs.
@@ -254,9 +257,58 @@ EXISTE, il est a **(0,39 ; -0,01)** au niveau **z ~ 21,4-21,9**, il est ramasse 
 **Gate (1.5)** : `go vet` 0 · `go test ./internal/analysis/...` 0 ·
 `golangci-lint run ./internal/analysis/replay/...` **0 issues**.
 
+### Phase 2 — CLOSE le 2026-08-18 : les archetypes autour du socle. **NEGATIF, ET IL SE CHIFFRE.**
+
+Instrument : `apps/go-api/internal/analysis/replay/powerup_socle_archetypes_test.go`. Cible :
+le socle mesure en phase 1, **(0,393 ; -0,012) z 21,50** — calcule par appel a
+`psSocleParRemontee`, jamais recopie. Boite XY 6 m (large) / 3 m (serree), z LIBRE.
+
+**2.1 — vies des paquets DELTA, par archetype et par film :**
+
+| film | ti=36 | ti=37 equip. | ti=38 rigide | ti=39 | ti=40 | ti=41 proj. (temoin) | ti=42 arme |
+|---|---|---|---|---|---|---|---|
+| `64e8adfa` CTF | aucun slot | 610 vies · 35/20/2 · 3D 1,13 | 468 · 27/19/1 · 1,13 | aucun | aucun | 303 · 34/20/2 · 2,16 | 810 · 52/25/4 · 1,13 |
+| `530820e5` CTF | aucun slot | 282 · 32/21/4 · **0,91** | 210 · 27/18/4 · 0,91 | aucun | aucun | 199 · 39/28/**0** · 3,51 | 461 · 56/27/4 · 0,91 |
+| `01e1f945` KOTH | aucun slot | 374 · 32/13/3 · **0,98** | 216 · 28/11/1 · 0,98 | aucun | aucun | 251 · 57/44/**0** · 2,26 | 646 · 79/27/5 · 0,98 |
+| `75f1188f` KOTH | aucun slot | 225 · 50/21/1 · 1,16 | 129 · 15/9/1 · 1,16 | aucun | aucun | 271 · 85/57/7 · 1,95 | 399 · 89/43/8 · **0,70** |
+
+Duree du balayage : 536 s pour les quatre films (204 / 112 / 130 / 90 s).
+
+(lecture : `vies · boite/serree/immobiles · plus courte distance 3D au socle, en metres`)
+
+**2.2 — « present des le depart » (premier point dans les 5 premieres secondes) : ZERO, pour
+TOUS les archetypes et TOUS les films.** Aucun objet du monde n'emet de position au centre au
+debut du match. C'est le resultat le plus net de la phase, et il ferme H4 dans sa forme naive
+(« cree au premier respawn seulement ») autant que la lecture delta de H1.
+
+**2.3 — aucune vie immobile a l'ALTITUDE du socle.** Les vies immobiles de la boite serree
+sont a `z = 27,3 a 29,4` — l'etage HAUT du milieu, 6 a 8 m au-dessus du socle. La seule
+exception est `530820e5` : deux vies a `z = 21,90` (slots 1931/1933, a 1,7-1,9 m du socle), de
+1,2 et 3,8 s de duree, a 224,3 s — trop breves et trop tardives pour un socle. Il n'y a donc
+**aucune disparition a correler avec les quatre ramassages** : `[~]` couvert par 2.1/2.2, il
+n'existe pas d'objet a faire disparaitre.
+
+**2.4 — reapparitions** : `[~]` meme raison. Sans vie delta au socle, aucune grappe.
+
+**Ce que la phase 2 etablit** : le chemin DELTA ne porte PAS le power-up du socle, sur aucun
+des quatre films, ni a `ti=37` ni ailleurs. Le temoin `ti=41` se comporte comme prevu (44 a
+57 vies dans la boite serree, 0 immobile sur trois films sur quatre). Et il borne sa propre
+portee : voir Decouverte n°3 — les bandes de slots delta se recouvrent, donc ce balayage
+mesure une PRESENCE, jamais une attribution d'archetype.
+
 ## 7. Decouvertes (a ne PAS traiter dans ce lot)
 
 1. **`64e8adfa` : `bounds` de l'artefact hors carte.** Le milieu des bornes publiees vaut
    (-106,0 ; -93,7) alors que les deux autres films Catalyst tombent a moins de 0,21 m du
    centre. Au moins une position aberrante entre dans `bounds` — le cadrage du rejeu 2D de ce
    match est donc dilate. Constate, NON traite (hors perimetre du lot).
+2. **Doc inversee dans `filmdec/equipment_placements.go`.** Le commentaire de
+   `EquipmentPlacementStats.Calibration` dit « Bits == 0 : le film n'a pas tranche » ;
+   `MPPCalibration` ne porte AUCUN champ `Bits` (le test juste est `Widths.Valid()`).
+   Constate, NON traite.
+3. **Le chemin DELTA n'attribue aucun archetype, et la mesure le rejoue.** Sur `530820e5`,
+   `ti=37`, `ti=38` et `ti=42` rendent la MEME plus courte distance au socle (0,91 m) et les
+   MEMES slots (1931, 1933, 2288, 2300) : les bandes de slots se recouvrent, et un record
+   delta ne DIT pas son archetype. Ce n'est pas une decouverte nouvelle (c'est la cause (2)
+   documentee dans `keyframe_ground_weapons.go`), mais elle borne la phase 2 : seule la
+   CREATION (qui porte `ti`) et l'IMAGE-CLE attribuent.
