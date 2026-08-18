@@ -233,30 +233,46 @@ tournent (2 a 4 s), le dictionnaire elargi passe ses 10 temoins, chaque identifi
 denominateur, aucun nom ecrit sans sa chaine. Le seul `other` du manifeste le reste, et son
 negatif est desormais triple.
 
-### Phase 2 — MANIFESTE : les identifiants nommes entrent, avec leurs garde-rails
+### Phase 2 — MANIFESTE — CLOSE le 2026-08-18 (AUCUNE LIGNE NOUVELLE, et c'est le resultat)
 
-- [ ] 2.1 Pour chaque identifiant que la phase 1 NOMME et qui est au corpus : ligne
-      `[[equipment_objects]]` complete (`id`, `family`, `name_id` si `sofa_string_id`,
-      `provenance`, `kind`). Familles : reutiliser la liste fermee existante ; n'en creer une
-      que si la chaine impose un objet nouveau, et l'ecrire au commentaire du fichier.
-- [ ] 2.2 Libelles FR/EN : le manifeste ne porte aujourd'hui de `en`/`fr` que sur
-      `[[objective_objects]]` ; les familles d'equipement sont libellees cote web. **Verifier
-      sur pieces** ou vit le libelle d'une famille de pose avant d'en ajouter un — ne pas
-      creer une seconde source (regle CLAUDE.md n° 6).
-- [ ] 2.3 Icone : n'ajouter `icon = "hud/..."` que si l'asset existe reellement sous
-      `static/weapons-assets/halo_infinite/hud/` (verification sur pieces, pas de chemin
-      devine).
-- [ ] 2.4 Loader : `mappings/loader_replay_labels_equipment.go` +
-      `verifieProvenanceEquipement` — les invariants (famille nommee => provenance de
-      structure ; `sofa_anonyme`/`aucune` => famille `other` ; `sofa_string_id` => `name_id`)
-      doivent rester FATAUX et couvrir toute famille nouvelle.
-- [ ] 2.5 Tests : `replaylabels/catalog_test.go` (dont `TestPariteObjetsEquipementDuCorpus`)
-      et les tests du loader passent. Si la phase 1 ne nomme RIEN de nouveau, cette phase est
-      statuee `[!]` avec sa justification — pas de ligne inventee pour la remplir.
+- [!] 2.1 **AUCUN IDENTIFIANT NOUVEAU N'ENTRE, ET LE PLAN L'AVAIT PREVU.** La phase 1 ne
+      nomme rien de nouveau QUI SOIT AU CORPUS : les 21 identifiants mesures sont deja tous
+      au manifeste (parite bilaterale verte), et le seul nom du jeu qui manque —
+      `regen_field` — n'a aucun objet dans les 33 artefacts. La decision 5, ecrite avant la
+      mesure, interdit de lui ecrire une ligne : le garde-rail
+      `TestPariteObjetsEquipementDuCorpus` refuse une ligne sans identifiant du corpus, et il
+      a raison de la refuser (une ligne morte se perime en silence).
+      **CE QUI EST ECRIT A LA PLACE** : `regen_field` est documente dans le manifeste comme le
+      seul nom du jeu qu'il ne porte pas, avec ses deux `eqip` et sa palette — la chaine du nom
+      est faite, la ligne s'ecrira le jour ou un film en montre un.
+- [x] 2.2 **LE NEGATIF ECRIT DU `other` EST REMIS A JOUR, et c'etait necessaire** : il
+      annoncait « 51 poses sur 5 films » (le corpus a grandi : 104 / 9 / 26) et « son modele
+      n'est partage avec aucun `eqip` nomme » — une phrase mesuree sur 21 identifiants, quand
+      le denominateur reel est 116. Les trois chaines de la phase 1 y sont desormais, chacune
+      avec son denominateur, plus la REFUTATION NOMMEE des cinq graphies de l'« ecran de
+      dissimulation » et le fait que le rang 10 est une POSITION, pas une identite (la
+      troisieme palette de famille A y met `regen_field`). Laisser l'ancienne redaction aurait
+      ete une « doc inversee » au sens de `CLAUDE.md`.
+- [~] 2.3 Libelles FR/EN : **rien a ajouter, et la verification sur pieces le montre.** Les
+      libelles de famille ne vivent PAS dans le manifeste (qui n'a de `en`/`fr` que sur
+      `[[objective_objects]]`) mais dans `apps/web/src/features/match-replay/i18n.ts`
+      (`placementFamily`, clef = `PlacementKind`), tenus par
+      `placementFamily.guard.test.ts` qui LIT le fichier Go des familles. Aucune famille
+      nouvelle => aucun libelle a ecrire. En ajouter un au manifeste creerait une seconde
+      source (regle n° 6).
+- [~] 2.4 Icone : aucune famille nouvelle => aucune icone. Non traite faute d'objet.
+- [x] 2.5 Loader : `loader_replay_labels_equipment.go` relu sur pieces. Les quatre invariants
+      (famille dans la liste fermee ; famille nommee <=> provenance de structure ;
+      `sofa_string_id` => `name_id` ; `deployed` <=> `sofa_parent`) sont FATAUX et inchanges —
+      le lot n'ajoute ni famille ni provenance, il n'y avait rien a elargir.
+- [x] 2.6 Tests : `go test ./internal/games/...` **19 paquets OK** (dont `replaylabels` et
+      `mappings`, qui portent la parite et les invariants) ; `go test ./internal/himap/` hors
+      `_gamefiles` **OK** (41 tests, 9,3 s), dont les deux nouveaux du dictionnaire elargi.
 
-**Gate 2** : `go build ./...`, `go vet ./...`,
-`go test ./internal/games/... ./internal/himap/...` (hors `_gamefiles`), golangci 0.
-Commit `feat(v7.5-rejeu-eqip): ...`.
+**Gate 2 : PASSE.** `go build ./...` OK, `go vet ./...` OK (exit 0),
+`go test ./internal/games/...` OK, `go test ./internal/himap/` (hors `_gamefiles`) OK.
+Aucune ligne de manifeste ajoutee — et le refus est motive par un garde-rail, pas par un
+manque de temps.
 
 ### Phase 3 — SONS : adapter la recette des armes au groupe `eqip`
 
