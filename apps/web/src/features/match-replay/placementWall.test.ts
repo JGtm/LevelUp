@@ -21,9 +21,11 @@ import {
   WALL_PANEL_IDS,
   WALL_RADIUS_M,
   wallArcWorld,
+  wallHeading,
   wallRadiusM,
   wallRingWorld,
 } from './placementWall'
+import type { ReplayTrackReady } from './replayNormalize'
 import {
   DEVICE_ID,
   draw,
@@ -104,7 +106,9 @@ describe('drawWall — l’arc, son halo, et le cercle des poses sans cap', () =
     expect(ops.some((o) => o.op === 'setLineDash')).toBe(false)
   })
 
-  it('le mur sans cap : un cercle FERMÉ et POINTILLÉ, aucune direction affirmée', () => {
+  it('le mur sans AUCUNE source de cap : le cercle fermé, dernier repli (0/62 mesuré)', () => {
+    // Aucune vie dans la scène : le poseur n'a pas de piste, donc ni trajectoire ni visée.
+    // C'est le seul cas où le cercle subsiste — cf. la chaîne en tête de placementWall.ts.
     const ops = draw([pose()])
     expect(ops.some((o) => o.op === 'setLineDash')).toBe(true)
     expect(ops.filter((o) => o.op === 'closePath').length).toBeGreaterThan(0)
@@ -148,5 +152,120 @@ describe('les PANNEAUX du mur contre son APPAREIL', () => {
 
   it("la règle des panneaux ne vise QUE le mur : ailleurs, aucun identifiant n'est privilégié", () => {
     expect(placementIsDeployedObject(pose({ family: 'sensor', id: DEVICE_ID }))).toBe(true)
+  })
+})
+
+/**
+ * V3 (retour utilisateur du 2026-08-18) — LA CHAÎNE DE CAP DU MUR.
+ *
+ * « Sans cap je préférerais qu'on tente de corréler la visée ou la trajectoire du joueur, un
+ * mur portatif rond serait trop troublant. » La chaîne est donc : cap de la POSE, puis
+ * TRAJECTOIRE du poseur (dernier déplacement d'au moins 0,5 m), puis VISÉE de la dernière
+ * image qui en porte une. Le rond ne reste que pour un poseur sans piste — 0 cas sur 62.
+ */
+describe('wallHeading — la chaîne des trois sources (V3, 2026-08-18)', () => {
+  /** Une vie qui va vers l'EST (X croissants) puis s'arrête juste avant la pose. */
+  function versEst(slot: number): ReplayTrackReady {
+    return {
+      slot,
+      team: -1,
+      startFrame: 0,
+      endFrame: 20,
+      points: [
+        { t: 0, x: 0, y: 5 },
+        { t: 5, x: 3, y: 5 },
+        // Deux derniers points quasi confondus : le bruit d'un joueur à l'arrêt, que le
+        // seuil de 0,5 m doit refuser au profit du segment qui précède.
+        { t: 9, x: 4.95, y: 5 },
+        { t: 10, x: 5, y: 5 },
+      ],
+    }
+  }
+
+  it('cap de la POSE : il prime sur tout le reste, même quand la trajectoire existe', () => {
+    const h = wallHeading(pose({ h: 90, owner: 3 }), [versEst(3)])
+    expect(h).toEqual({ deg: 90, source: 'placement' })
+  })
+
+  it('cap NUL de la pose est une VALEUR, pas une absence (un poseur peut viser 0°)', () => {
+    expect(wallHeading(pose({ h: 0, owner: 3 }), [versEst(3)])).toEqual({
+      deg: 0,
+      source: 'placement',
+    })
+  })
+
+  it('sans cap : la TRAJECTOIRE du poseur, prise sur le dernier segment d au moins 0,5 m', () => {
+    const h = wallHeading(pose({ owner: 3 }), [versEst(3)])
+    expect(h?.source).toBe('trajectory')
+    // Le joueur arrivait vers les X croissants : 0° dans la convention de `Point.h`.
+    expect(h?.deg).toBeCloseTo(0, 6)
+  })
+
+  it('le seuil de 0,5 m ÉCARTE le bruit : deux points à 5 cm ne disent aucune direction', () => {
+    const immobile: ReplayTrackReady = {
+      slot: 3, team: -1, startFrame: 0, endFrame: 10,
+      points: [{ t: 9, x: 4.95, y: 5 }, { t: 10, x: 5, y: 5, h: 180 }],
+    }
+    const h = wallHeading(pose({ owner: 3 }), [immobile])
+    // Faute de déplacement mesurable, on tombe sur la VISÉE — jamais sur un angle de bruit.
+    expect(h).toEqual({ deg: 180, source: 'aim' })
+  })
+
+  it('ni cap ni trajectoire ni visée : null — et c est là, et seulement là, que le rond sert', () => {
+    const sansRien: ReplayTrackReady = {
+      slot: 3, team: -1, startFrame: 0, endFrame: 10,
+      points: [{ t: 10, x: 5, y: 5 }],
+    }
+    expect(wallHeading(pose({ owner: 3 }), [sansRien])).toBeNull()
+    expect(wallHeading(pose({ owner: 3 }), [])).toBeNull()
+  })
+
+  it('la vie lue est celle du SLOT du poseur, jamais celle d un voisin', () => {
+    expect(wallHeading(pose({ owner: 7 }), [versEst(3)])).toBeNull()
+  })
+
+  it('les points POSTÉRIEURS à la pose ne comptent pas : on n oriente pas par l avenir', () => {
+    const apres: ReplayTrackReady = {
+      slot: 3, team: -1, startFrame: 0, endFrame: 40,
+      points: [
+        { t: 0, x: 0, y: 5 },
+        { t: 5, x: 3, y: 5 },
+        { t: 10, x: 5, y: 5 },
+        // Après t0 = 10, le joueur repart plein NORD : cela ne doit rien changer.
+        { t: 20, x: 5, y: 9 },
+      ],
+    }
+    const h = wallHeading(pose({ owner: 3, t0: 10 }), [apres])
+    expect(h?.source).toBe('trajectory')
+    expect(h?.deg).toBeCloseTo(0, 6)
+  })
+})
+
+describe('drawWall — un cap DÉDUIT se voit (V3)', () => {
+  it('cap de la pose : arc FRANC, aucun pointillé', () => {
+    const ops = draw([pose({ h: 90, owner: 3 })])
+    expect(ops.some((o) => o.op === 'setLineDash')).toBe(false)
+    expect(ops.filter((o) => o.op === 'closePath')).toHaveLength(0)
+  })
+
+  it('cap déduit de la trajectoire : un ARC (jamais un cercle), mais POINTILLÉ', () => {
+    const vie: ReplayTrackReady = {
+      slot: 3, team: -1, startFrame: 0, endFrame: 20,
+      points: [{ t: 0, x: 0, y: 5 }, { t: 10, x: 5, y: 5 }],
+    }
+    const ops = draw([pose({ owner: 3 })], TIME, { lives: [vie] })
+    expect(ops.some((o) => o.op === 'setLineDash')).toBe(true)
+    // OUVERT : un cercle se referme, un arc non. C'est la différence que l'utilisateur voit.
+    expect(ops.filter((o) => o.op === 'closePath')).toHaveLength(0)
+    // Et le milieu de l'arc est bien devant le poseur, dans la direction où il arrivait.
+    const mid = projected(5 + wallRadiusM(VIEW), 5)
+    expect(
+      ops.some(
+        (o) =>
+          o.op === 'lineTo' &&
+          Math.abs((o.args[0] as number) - mid.x) < 1e-6 &&
+          Math.abs((o.args[1] as number) - mid.y) < 1e-6,
+      ),
+    ).toBe(true)
   })
 })
