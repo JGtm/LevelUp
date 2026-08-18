@@ -20,6 +20,17 @@ package replay
 
 import "sort"
 
+// zoneOwnerMinAgreements est le nombre MINIMAL de captures concordantes qu'un canal doit porter
+// pour etre elu proprietaire d'une zone (revue R1, 2026-08-18).
+//
+// POURQUOI DEUX, ET PAS UN. L'election maximise l'accord avec le roster (cf. ownerScores) sur des
+// canaux ENUMERABLES qui ne prennent que trois valeurs — `0`, `1` et le neutre. Une concordance
+// UNIQUE est donc ce que le hasard produit tout seul : un canal quelconque qui vaut `0` au bon
+// moment est elu, et il publie alors une teinte sur toute la duree du match. L'artefact ne dit
+// plus « je ne sais pas », il dit une couleur — invisible et credible. Deux concordances ne sont
+// pas une preuve ; elles ferment le cas ou le canal n'a jamais ete confirme qu'une seule fois.
+const zoneOwnerMinAgreements = 2
+
 // zoneOwnerStates construit les intervalles de propriete de chaque zone appariee.
 func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	cov *ZonesCoverage,
@@ -31,6 +42,10 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	ownerSlot := pairOwnerSlots(ser, pairs, in.TeamByXUID, win)
 	cov.Method = ZoneMethodCaptures
 	refs := zoneRefsOf(gaugeSlot, ownerSlot)
+	// Les zones dont la jauge est appariee mais dont AUCUN canal n'a ete elu : elles ne sont
+	// pas publiees, et sans ce compteur leur silence serait indistinguable d'une carte qui ne
+	// les declare pas (cf. ZonesCoverage.OwnerUnpaired).
+	cov.OwnerUnpaired = len(gaugeSlot) - len(refs)
 	out := make([]ZoneState, 0, len(refs))
 	for _, ref := range refs {
 		st := ZoneState{ZoneRef: ref, Key: ser.keys[gaugeSlot[ref]]}
@@ -154,12 +169,7 @@ func slotAtPeak(ramps []zoneRamp, t, win int) (uint32, bool) {
 // modalZone rend la zone la plus votee d'un slot, et son compte.
 func modalZone(m map[int]int) (int, int) {
 	best, bestN := -1, 0
-	refs := make([]int, 0, len(m))
-	for ref := range m {
-		refs = append(refs, ref)
-	}
-	sort.Ints(refs)
-	for _, ref := range refs {
+	for _, ref := range sortedZoneRefs(m) {
 		if m[ref] > bestN {
 			best, bestN = ref, m[ref]
 		}
@@ -167,27 +177,88 @@ func modalZone(m map[int]int) (int, int) {
 	return best, bestN
 }
 
-// pairOwnerSlots apparie les slots porteurs du canal de propriete a une zone : par la jauge
-// quand le slot porte les deux, sinon par vote des captures proches de ses CHANGEMENTS.
+// sortedZoneRefs rend les zones d'une table de votes, triees — determinisme du parcours.
+func sortedZoneRefs(m map[int]int) []int {
+	out := make([]int, 0, len(m))
+	for ref := range m {
+		out = append(out, ref)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// zoneOwnerCandidate est un couple (canal, zone) note par son ACCORD AVEC LE ROSTER.
+type zoneOwnerCandidate struct {
+	slot  uint32
+	ref   int
+	score int
+}
+
+// pairOwnerSlots elit le canal de propriete de chaque zone : les candidats sont notes par
+// l'accord avec le roster, puis attribues par accord decroissant.
+func pairOwnerSlots(ser zoneSeries, pairs []zonePair, teams map[string]int, win int) map[int]uint32 {
+	return electZoneOwners(zoneOwnerCandidates(ser, pairs, teams, win))
+}
+
+// zoneOwnerCandidates note tout couple (canal, zone) qui ATTEINT LE SEUIL d'accord.
 //
 // UN SLOT SANS AUCUN CHANGEMENT EST ECARTE D'OFFICE : le corpus porte des canaux constamment
 // neutres (`0xFFFFFFFF` sur tout le match, trois slots par carte mesuree). Ils ne disent rien
 // d'un proprietaire, et les publier remplirait la carte d'intervalles « personne ».
-func pairOwnerSlots(ser zoneSeries, pairs []zonePair, teams map[string]int, win int) map[int]uint32 {
-	best := map[int]uint32{}
-	bestN := map[int]int{}
+//
+// LE SEUIL EST LA SECONDE GARDE (cf. zoneOwnerMinAgreements) : sous deux concordances, le couple
+// n'entre meme pas dans l'election — la zone reste sans proprietaire et se compte.
+func zoneOwnerCandidates(ser zoneSeries, pairs []zonePair, teams map[string]int,
+	win int,
+) []zoneOwnerCandidate {
+	var out []zoneOwnerCandidate
 	for _, slot := range sortedZoneSlots(ser.owner) {
 		ss := ser.owner[slot]
 		if len(zoneChanges(ss)) == 0 {
 			continue
 		}
-		for ref, n := range ownerScores(ss, pairs, teams, win) {
-			if n > bestN[ref] {
-				best[ref], bestN[ref] = slot, n
+		scores := ownerScores(ss, pairs, teams, win)
+		for _, ref := range sortedZoneRefs(scores) {
+			if scores[ref] < zoneOwnerMinAgreements {
+				continue
 			}
+			out = append(out, zoneOwnerCandidate{slot: slot, ref: ref, score: scores[ref]})
 		}
 	}
-	return best
+	return out
+}
+
+// electZoneOwners attribue AU PLUS un canal par zone et AU PLUS une zone par canal, par accord
+// decroissant.
+//
+// L'UNICITE DU CANAL EST LA CORRECTION QUI COMPTE (revue R1, 2026-08-18). Sans elle, un canal
+// bavard pouvait etre l'argmax de DEUX zones a la fois et publiait alors les MEMES intervalles
+// sur les deux — deux zones qui basculent ensemble, ce que le film ne dit nulle part, et
+// qu'aucun compteur ne signalait. En cas de double argmax, la zone au plus grand accord garde le
+// canal ; l'autre reste sans proprietaire, n'est pas publiee, et entre dans `ownerUnpaired`.
+//
+// LES EGALITES SE TRANCHENT PAR L'ORDRE (zone croissante, puis slot croissant), jamais au
+// hasard : deux cuissons du meme film doivent rendre le meme artefact.
+func electZoneOwners(cands []zoneOwnerCandidate) map[int]uint32 {
+	sort.SliceStable(cands, func(i, j int) bool {
+		switch {
+		case cands[i].score != cands[j].score:
+			return cands[i].score > cands[j].score
+		case cands[i].ref != cands[j].ref:
+			return cands[i].ref < cands[j].ref
+		default:
+			return cands[i].slot < cands[j].slot
+		}
+	})
+	out := map[int]uint32{}
+	held := map[uint32]bool{}
+	for _, c := range cands {
+		if _, taken := out[c.ref]; taken || held[c.slot] {
+			continue
+		}
+		out[c.ref], held[c.slot] = c.slot, true
+	}
+	return out
 }
 
 // ownerScores note un slot candidat, ZONE PAR ZONE : combien de captures de cette zone sont

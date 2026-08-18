@@ -6,3 +6,8 @@
 [R1-2] npx tsc -b --force (apps/web)                               EXIT_TSC=0
 [R1-2] npx vitest run src/features/match-replay/objectivesLayer.test.ts  EXIT_VITEST=0 (27 tests)
 [R1-2] grep originFrames|originMs dans features/match-replay et lib/replay : 0 soustraction residuelle
+[R1-3] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-3] CGO_ENABLED=1 go run ./cmd/openapi-gen                     EXIT_OPENAPIGEN=0 (626921 o, +ownerUnpaired)
+[R1-3] npm run generate-types (apps/web)                          EXIT_GENTYPES=0
+[R1-3] npx tsc -b --force (apps/web)                              EXIT_TSC=0
+[R1-3] CGO_ENABLED=1 go test -count=1 ./contracttest/ ./internal/replaybuild/   EXIT_TEST=0

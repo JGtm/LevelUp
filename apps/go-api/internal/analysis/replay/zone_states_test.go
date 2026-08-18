@@ -48,24 +48,32 @@ func zoneTestInput(reads []filmdec.ManagedPropertyRead) ZoneInput {
 	}
 }
 
-// bastionCase monte le cas nominal : deux zones, deux jauges, deux canaux de proprietaire, trois
-// captures nommees posees DANS leur zone.
+// bastionCase monte le cas nominal : deux zones, deux jauges, deux canaux de proprietaire,
+// QUATRE captures nommees posees DANS leur zone — deux par zone.
+//
+// DEUX CAPTURES PAR ZONE, ET C'EST LE SEUIL QUI L'EXIGE (revue R1) : un canal n'est elu
+// proprietaire qu'a partir de deux concordances avec le roster (zoneOwnerMinAgreements). Une
+// zone prise une seule fois dans tout le match n'a pas de proprietaire publie — c'est la regle,
+// et le cas nominal doit la franchir plutot que de vivre dessous.
 func bastionCase() (ZoneInput, zoneCtx) {
 	var reads []filmdec.ManagedPropertyRead
 	reads = append(reads, zoneRampAt(10, 100, 900_000)...) // zone 101, prise par l'equipe 0
 	reads = append(reads, zoneRampAt(10, 300, 950_000)...) // zone 101, reprise par l'equipe 1
 	reads = append(reads, zoneRampAt(20, 200, 800_000)...) // zone 102, prise par l'equipe 1
+	reads = append(reads, zoneRampAt(20, 400, 820_000)...) // zone 102, reprise par l'equipe 0
 	reads = append(reads,
 		zoneReadAt(11, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
 		zoneReadAt(11, 101, filmdec.ManagedPropertyTagU32, 0),
 		zoneReadAt(11, 301, filmdec.ManagedPropertyTagU32, 1),
 		zoneReadAt(21, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
 		zoneReadAt(21, 201, filmdec.ManagedPropertyTagU32, 1),
+		zoneReadAt(21, 401, filmdec.ManagedPropertyTagU32, 0),
 		zoneReadAt(10, 5, filmdec.ManagedPropertyTagStringID, 0x67F43AC3),
 	)
-	actions := []ObjectiveAction{action("2533", 100), action("2535", 200), action("2535", 300)}
+	actions := []ObjectiveAction{action("2533", 100), action("2535", 200), action("2535", 300),
+		action("2533", 400)}
 	tracks := []Track{
-		track("2533", pointAt(100, -19.5, 0, 0)),
+		track("2533", pointAt(100, -19.5, 0, 0), pointAt(400, 20.5, 0, 0)),
 		track("2535", pointAt(200, 20.5, 0, 0), pointAt(300, -19.5, 0, 0)),
 	}
 	return zoneTestInput(reads), zoneTestCtx(actions, tracks)
@@ -92,8 +100,11 @@ func TestZoneStatesPublieUnEtatParZoneAppariee(t *testing.T) {
 	if cov.Paired != 2 || cov.Unpaired != 0 {
 		t.Errorf("apparies %d / non apparies %d, attendu 2 / 0", cov.Paired, cov.Unpaired)
 	}
-	if cov.Captures != 3 || cov.Attributed != 3 {
-		t.Errorf("captures %d, attribuees %d — attendu 3 et 3", cov.Captures, cov.Attributed)
+	if cov.Captures != 4 || cov.Attributed != 4 {
+		t.Errorf("captures %d, attribuees %d — attendu 4 et 4", cov.Captures, cov.Attributed)
+	}
+	if cov.OwnerUnpaired != 0 {
+		t.Errorf("zones sans proprietaire elu %d, attendu 0", cov.OwnerUnpaired)
 	}
 }
 
@@ -173,9 +184,82 @@ func TestZoneStatesProgressionSansExcursionEstAbsente(t *testing.T) {
 func TestZoneStatesControleDuProprietaire(t *testing.T) {
 	in, c := bastionCase()
 	_, cov := buildZoneStates(in, c)
-	if cov.OwnerChecked != 3 || cov.OwnerAgreed != 3 {
-		t.Errorf("controle du proprietaire %d/%d, attendu 3/3", cov.OwnerAgreed, cov.OwnerChecked)
+	if cov.OwnerChecked != 4 || cov.OwnerAgreed != 4 {
+		t.Errorf("controle du proprietaire %d/%d, attendu 4/4", cov.OwnerAgreed, cov.OwnerChecked)
 	}
+}
+
+// TestZoneStatesCanalConfirmeUneSeuleFoisNEstPasElu — LE SEUIL D'ACCORD (revue R1). Un canal
+// qui ne concorde qu'UNE fois avec le roster n'est pas elu : la zone n'a pas de proprietaire
+// publie, elle n'entre pas dans `zoneStates`, et `coverage.zones.ownerUnpaired` le dit.
+//
+// SANS LE SEUIL, une seule coincidence suffisait : le canal elu teintait alors la zone sur toute
+// la duree du match, ce qui a exactement l'apparence d'une mesure.
+func TestZoneStatesCanalConfirmeUneSeuleFoisNEstPasElu(t *testing.T) {
+	in, c := bastionCase()
+	// La reprise de la zone 1 disparait : il ne reste qu'UNE capture concordante sur son canal.
+	in.Reads = zoneReadsWithout(in.Reads, 21, 401)
+	c.actions = c.actions[:3]
+	states, cov := buildZoneStates(in, c)
+	if len(states) != 1 || states[0].ZoneRef != 0 {
+		t.Fatalf("%d zone(s) publiee(s) : %+v — seule la zone 0 a deux concordances", len(states), states)
+	}
+	if cov.Paired != 2 {
+		t.Errorf("jauges appariees %d, attendu 2 — la zone 1 reste appariee par sa jauge", cov.Paired)
+	}
+	if cov.OwnerUnpaired != 1 {
+		t.Errorf("zones sans proprietaire elu %d, attendu 1", cov.OwnerUnpaired)
+	}
+}
+
+// TestZoneStatesUnCanalNEstProprietaireQueDUneZone — L'UNICITE (revue R1). Un canal qui est
+// l'argmax de DEUX zones n'en garde qu'une : celle du plus grand accord. L'autre reste sans
+// proprietaire plutot que de recevoir les MEMES intervalles.
+func TestZoneStatesUnCanalNEstProprietaireQueDUneZone(t *testing.T) {
+	in, c := bastionCase()
+	// Le canal de la zone 1 disparait : le canal de la zone 0 (slot 11) devient l'argmax des
+	// deux zones — il concorde deux fois sur la zone 0 et deux fois sur la zone 1.
+	in.Reads = zoneReadsWithoutSlot(in.Reads, 21)
+	in.Reads = append(in.Reads,
+		zoneReadAt(11, 201, filmdec.ManagedPropertyTagU32, 1),
+		zoneReadAt(11, 401, filmdec.ManagedPropertyTagU32, 0),
+	)
+	states, cov := buildZoneStates(in, c)
+	if len(states) != 1 {
+		t.Fatalf("%d zone(s) publiee(s), attendu 1 : un canal ne tient qu'une zone — %+v",
+			len(states), states)
+	}
+	if cov.OwnerUnpaired != 1 {
+		t.Errorf("zones sans proprietaire elu %d, attendu 1", cov.OwnerUnpaired)
+	}
+}
+
+// zoneReadsWithout retire la lecture d'un slot posee sur une frame donnee.
+func zoneReadsWithout(reads []filmdec.ManagedPropertyRead, slot uint32,
+	frame int,
+) []filmdec.ManagedPropertyRead {
+	out := make([]filmdec.ManagedPropertyRead, 0, len(reads))
+	for _, r := range reads {
+		if r.Slot == slot && r.TimestampUS == uint64(frame)*100_000 {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// zoneReadsWithoutSlot retire toutes les lectures d'un slot.
+func zoneReadsWithoutSlot(reads []filmdec.ManagedPropertyRead,
+	slot uint32,
+) []filmdec.ManagedPropertyRead {
+	out := make([]filmdec.ManagedPropertyRead, 0, len(reads))
+	for _, r := range reads {
+		if r.Slot == slot {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // TestZoneStatesSlotNonApparieNEstPasPublie : un slot de jauge qu'aucune capture ne rattache

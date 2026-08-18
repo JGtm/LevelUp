@@ -72,10 +72,11 @@ func attachZoneStates(doc *ReplayDocument, opt Options, c replayClock) {
 
 // logZoneStatesCoverage journalise ce que le calque publie — et ce qu'il a ecarte.
 //
-// DEUX PHRASES, PARCE QUE DEUX SITUATIONS APPELLENT DEUX REPONSES : des slots de jauge qu'aucune
-// capture ne rattache sont un trou d'appariement (le calque est partiel) ; une valeur de canal
-// qui n'est pas un camp connu est une SURPRISE — le corpus n'en connait que trois — et elle doit
-// se voir arriver.
+// TROIS PHRASES, PARCE QUE TROIS SITUATIONS APPELLENT TROIS REPONSES : des slots de jauge
+// qu'aucune capture ne rattache sont un trou d'appariement (le calque est partiel) ; une zone
+// appariee dont aucun canal n'a passe le seuil d'accord est un trou de PROPRIETE (la zone est
+// lue, mais on ne sait pas qui la tient) ; une valeur de canal qui n'est pas un camp connu est
+// une SURPRISE — le corpus n'en connait que trois — et elle doit se voir arriver.
 func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
 	if cov == nil {
 		return
@@ -85,13 +86,19 @@ func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
 			"match_id", matchID, "nonApparies", cov.Unpaired, "apparies", cov.Paired,
 			"captures", cov.Captures, "attribuees", cov.Attributed)
 	}
+	if cov.OwnerUnpaired > 0 {
+		slog.Warn("rejeu : zones SANS canal de proprietaire elu — zones absentes de l'etat publie",
+			"match_id", matchID, "sansProprietaire", cov.OwnerUnpaired, "apparies", cov.Paired,
+			"seuilAccord", zoneOwnerMinAgreements)
+	}
 	if cov.UnknownOwner > 0 {
 		slog.Warn("rejeu : valeurs de proprietaire INCONNUES — intervalles non ouverts",
 			"match_id", matchID, "valeurs", cov.UnknownOwner)
 	}
 	slog.Info("rejeu : etat des zones",
 		"match_id", matchID, "methode", cov.Method, "catalogue", cov.Catalog,
-		"slots", cov.Slots, "apparies", cov.Paired, "intervalles", cov.Spans,
+		"slots", cov.Slots, "apparies", cov.Paired, "nonApparies", cov.Unpaired,
+		"sansProprietaire", cov.OwnerUnpaired, "intervalles", cov.Spans,
 		"periodesColline", cov.HillPeriods, "proprietaireVerifie", cov.OwnerChecked,
 		"proprietaireConcordant", cov.OwnerAgreed)
 }

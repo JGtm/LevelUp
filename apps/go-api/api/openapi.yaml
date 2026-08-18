@@ -25071,6 +25071,9 @@ components:
         ownerChecked:
           format: int64
           type: integer
+        ownerUnpaired:
+          format: int64
+          type: integer
         paired:
           format: int64
           type: integer
@@ -25098,6 +25101,7 @@ components:
         - attributed
         - ownerChecked
         - ownerAgreed
+        - ownerUnpaired
         - spans
         - hillPeriods
         - unknownOwner
