@@ -73,12 +73,50 @@ export function zoneElementsOf(
   return elements.filter((e) => e.kind === 'zone')
 }
 
+/**
+ * zoneCatalogMatches dit si l'index `zoneRef` de l'artefact est JOIGNABLE à la liste servie.
+ *
+ * POURQUOI CETTE VÉRIFICATION EXISTE (revue R1, 2026-08-18). `zoneRef` est un INDEX dans
+ * `mapObjectives.zones` — figé à la CUISSON de l'artefact — alors que `mapObjectives` est
+ * reconstruit À CHAQUE REQUÊTE par le service, depuis le catalogue de formes de la carte et la
+ * table de rôles du titre. Ces deux listes ne sont les mêmes que tant que ni le catalogue ni la
+ * table ne bougent. Le jour où l'un des deux change sans que les artefacts soient recuits, la
+ * teinte du camp se poserait sur une AUTRE zone : une erreur invisible et parfaitement crédible.
+ *
+ * `coverage.zones.catalog` est le nombre de zones que l'artefact avait sous les yeux. Il ne
+ * prouve pas que les listes coïncident — deux listes différentes peuvent avoir la même
+ * longueur — mais il attrape le cas qui arrive vraiment : une zone ajoutée ou retirée du
+ * catalogue. Dans le doute, le calque vivant se TAIT et le calque statique reste seul.
+ *
+ * UN CATALOGUE ABSENT NE PASSE PAS : un artefact qui publie des états sans publier sa couverture
+ * ne permet aucune vérification, et « pas vérifiable » se traite comme « pas joignable ».
+ */
+export function zoneCatalogMatches(catalog: number | null | undefined, served: number): boolean {
+  return catalog != null && catalog === served
+}
+
 /** Style du calque VIVANT : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface ZoneStateStyle {
   /** Encre d'un camp ; `null` = camp inconnu (aucune ligne « moi ») — le liseré reste neutre. */
   colorOfOwner: (team: number) => string | null
   /** Encre neutre : zone que personne ne tient, et arc de progression sans propriétaire. */
   neutral: string
+}
+
+/**
+ * ZoneStatesLayerInput — ce que le calque vivant reçoit de l'appelant (`useZoneStates`) : les
+ * zones dans l'ordre servi, le verdict de jointure, les encres résolues.
+ */
+export interface ZoneStatesLayerInput {
+  /** Les zones SURFACIQUES dans l'ordre servi : celui que `zoneStates[].zoneRef` indexe. */
+  zoneElements: readonly ObjectiveElementReady[]
+  /**
+   * `zoneRef` est-il joignable à `zoneElements` (cf. zoneCatalogMatches) ? Faux : le calque ne
+   * peint RIEN — l'index de l'artefact est figé à la cuisson, la liste servie est reconstruite à
+   * la requête, et teinter la mauvaise zone serait une erreur invisible.
+   */
+  joinable: boolean
+  style: ZoneStateStyle
 }
 
 // Réglages du calque vivant. Plus francs que le calque statique (qui reste dessous) : c'est le
@@ -103,19 +141,23 @@ const ZONE_PROGRESS_MIN_RADIUS = 10
  *
  * AUCUN TEXTE, comme le calque statique : la lettre A/B/C affichée en jeu n'existe dans aucune
  * donnée décodée, et le garde-fou du fichier l'interdit.
+ *
+ * LA GARDE DE JOINTURE EST ICI, dans le calque, et pas seulement chez l'appelant : quand
+ * `zones.joinable` est faux, la fonction rend AVANT le premier trait. C'est le calque qui
+ * refuse de peindre — un appelant ne peut pas l'oublier, et le test le vérifie sur le contexte.
  */
 export function drawZoneStates(
   ctx: CanvasRenderingContext2D,
-  zones: readonly ObjectiveElementReady[],
+  zones: ZoneStatesLayerInput,
   states: readonly ReplayZoneStateReady[],
   view: CanvasView,
   frame: number,
-  style: ZoneStateStyle,
 ): void {
-  if (states.length === 0) return
+  if (!zones.joinable || states.length === 0) return
+  const { style } = zones
   const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
   const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
-  zones.forEach((e, ref) => {
+  zones.zoneElements.forEach((e, ref) => {
     const now = zoneStateAt(states, ref, frame)
     if (!now) return
     const ink = now.owner === null ? null : style.colorOfOwner(now.owner)

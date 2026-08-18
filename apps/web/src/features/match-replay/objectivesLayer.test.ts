@@ -312,46 +312,48 @@ describe('zoneElementsOf', () => {
 describe('drawZoneStates', () => {
   const style = { colorOfOwner: (team: number) => (team === 0 ? '#allié' : '#adverse'), neutral: '#neutre' }
   const zones = () => zoneElementsOf(normalizeMapObjectives(MO))
+  /** L'entrée du calque telle que `useZoneStates` la rend : jointure ACCORDÉE sauf dit autrement. */
+  const layer = (zoneElements = zones(), joinable = true) => ({ zoneElements, joinable, style })
 
   it("n'écrit JAMAIS de texte, comme le calque statique", () => {
     const { ctx, calls } = mockCtx()
-    drawZoneStates(ctx, zones(), ZONE_STATES, VIEW, 10, style)
+    drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 10)
     expect(calls.filter((c) => c.method === 'fillText' || c.method === 'strokeText')).toHaveLength(0)
   })
 
   it('une zone TENUE est remplie ET cerclée à l’encre de son camp', () => {
     const { ctx, calls } = mockCtx()
-    drawZoneStates(ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 10, style)
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 10)
     expect(calls.filter((c) => c.method === 'fill')).toHaveLength(1)
     expect(calls.filter((c) => c.method === 'stroke').length).toBeGreaterThanOrEqual(1)
   })
 
   it('une zone que PERSONNE ne tient garde le liseré seul — aucun remplissage', () => {
     const { ctx, calls } = mockCtx()
-    drawZoneStates(ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 3, style)
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 3)
     expect(calls.filter((c) => c.method === 'fill')).toHaveLength(0)
     expect(calls.filter((c) => c.method === 'stroke')).toHaveLength(1)
   })
 
   it('une zone sans état à cette frame n’est PAS repeinte : elle reste au trait faible', () => {
     const { ctx, calls } = mockCtx()
-    drawZoneStates(ctx, zones(), ZONE_STATES, VIEW, 41, style)
+    drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 41)
     expect(calls.filter((c) => c.method === 'fill' || c.method === 'stroke')).toHaveLength(0)
   })
 
   it('la progression ajoute un ARC, et seulement quand la jauge est publiée', () => {
     const avec = mockCtx()
-    drawZoneStates(avec.ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 10, style)
+    drawZoneStates(avec.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 10)
     expect(avec.calls.filter((c) => c.method === 'arc')).toHaveLength(1)
     const sans = mockCtx()
-    drawZoneStates(sans.ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 25, style)
+    drawZoneStates(sans.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 25)
     expect(sans.calls.filter((c) => c.method === 'arc')).toHaveLength(0)
   })
 
   it('camp inconnu (aucune ligne « moi ») : encre NEUTRE, jamais une couleur devinée', () => {
     const { ctx, calls } = mockCtx()
     const aveugle = { colorOfOwner: () => null, neutral: '#neutre' }
-    drawZoneStates(ctx, [zones()[0]], [ZONE_STATES[0]], VIEW, 10, aveugle)
+    drawZoneStates(ctx, { ...layer([zones()[0]]), style: aveugle }, [ZONE_STATES[0]], VIEW, 10)
     // Aucun remplissage : une zone TENUE par un camp qu'on ne sait pas situer garde le liseré
     // seul. Les deux tracés sont le contour et l'arc de progression, tous deux à l'encre neutre.
     expect(calls.filter((c) => c.method === 'fill')).toHaveLength(0)
@@ -360,7 +362,18 @@ describe('drawZoneStates', () => {
 
   it('sans état publié, le calque ne dessine rien du tout', () => {
     const { ctx, calls } = mockCtx()
-    drawZoneStates(ctx, zones(), [], VIEW, 10, style)
+    drawZoneStates(ctx, layer(), [], VIEW, 10)
+    expect(calls).toHaveLength(0)
+  })
+
+  // VERROU DE LA REVUE R1-7 : `zoneRef` est un index figé à la cuisson, la liste servie est
+  // reconstruite à la requête. Quand le catalogue de l'artefact ne joint pas la liste servie,
+  // le calque VIVANT ne touche PAS au contexte — pas un trait, pas même un `beginPath` : teinter
+  // la mauvaise zone serait une erreur invisible et crédible. Retirer la garde du calque fait
+  // échouer ce cas, avec exactement les mêmes états et les mêmes zones que le cas « tenue ».
+  it('jointure REFUSÉE (catalogue différent de la liste servie) : le calque ne peint rien', () => {
+    const { ctx, calls } = mockCtx()
+    drawZoneStates(ctx, layer([zones()[0]], false), [ZONE_STATES[0]], VIEW, 10)
     expect(calls).toHaveLength(0)
   })
 })
