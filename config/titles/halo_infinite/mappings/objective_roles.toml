@@ -13,7 +13,7 @@
 # (analysis.NormalizeModeLabel : "Arena:CTF on Aquarius" -> "CTF") puis cherche chaque
 # jeton de `match` comme MOT ENTIER, insensible a la casse, dans le libelle normalise
 # (analysis.ExtractKnownMode). "Fiesta CTF", "One Flag CTF", "CTF 3 Captures" matchent
-# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer, King of the Hill,
+# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer, Land Grab,
 # un UUID brut) = aucun role = aucun calque. Plusieurs entrees peuvent matcher : leurs
 # roles s'additionnent.
 #
