@@ -1,0 +1,113 @@
+# lot C-ter volet 1 — CT.1.2 — film 01e1f945 (KOTH / catalyst)
+# increment	film	equipe	valeur	t_ms	frame	terminal
+# hasard_1	film	part	t0_ms	t1_ms
+# periode_actuelle	film	zone	frame_t0	frame_t1 · rampe	film	slot	frame_t0	frame_pic
+# lecture	film	mode	tag	lecture	role	slot_candidat	bascules	exclusivite	ok_tous	tot_tous	taux_tous	ok_chg	tot_chg	taux_chg	decale	permute	hasard_1	hasard_n	delai_film_ms	delai_rejeu_ms	kf_premiere_presente_ms	kf_derniere_absente_ms	premier_contact_ms	verdict
+increment	01e1f945	8	1	109984	973	false
+increment	01e1f945	8	2	229227	2166	false
+increment	01e1f945	6	1	345912	3333	false
+increment	01e1f945	6	2	434220	4216	false
+increment	01e1f945	6	3	539244	5266	true
+hasard_1	01e1f945	0.0187	12588	546888
+periode_actuelle	01e1f945	0	474	521
+periode_actuelle	01e1f945	0	561	1118
+periode_actuelle	01e1f945	0	3757	4042
+periode_actuelle	01e1f945	0	4390	4498
+periode_actuelle	01e1f945	0	4616	5342
+periode_actuelle	01e1f945	1	368	473
+periode_actuelle	01e1f945	3	522	560
+periode_actuelle	01e1f945	3	1762	1860
+periode_actuelle	01e1f945	3	4132	4185
+periode_actuelle	01e1f945	4	1297	1402
+periode_actuelle	01e1f945	4	1986	2037
+periode_actuelle	01e1f945	4	2280	2349
+periode_actuelle	01e1f945	4	4043	4131
+periode_actuelle	01e1f945	4	4186	4389
+periode_actuelle	01e1f945	6	1119	1296
+periode_actuelle	01e1f945	6	1403	1761
+periode_actuelle	01e1f945	6	1861	1985
+periode_actuelle	01e1f945	6	2038	2279
+periode_actuelle	01e1f945	6	2350	3756
+periode_actuelle	01e1f945	7	4499	4615
+rampe	01e1f945	1474	368	377
+rampe	01e1f945	1474	420	458
+rampe	01e1f945	1474	474	496
+rampe	01e1f945	1474	522	548
+rampe	01e1f945	1474	561	571
+rampe	01e1f945	1474	603	646
+rampe	01e1f945	1474	647	1102
+rampe	01e1f945	1474	1119	1129
+rampe	01e1f945	1474	1194	1242
+rampe	01e1f945	1474	1259	1269
+rampe	01e1f945	1474	1297	1323
+rampe	01e1f945	1474	1403	1426
+rampe	01e1f945	1474	1462	1477
+rampe	01e1f945	1474	1515	1530
+rampe	01e1f945	1474	1700	1709
+rampe	01e1f945	1474	1723	1732
+rampe	01e1f945	1474	1755	1759
+rampe	01e1f945	1474	1762	1797
+rampe	01e1f945	1474	1861	1896
+rampe	01e1f945	1474	1956	1965
+rampe	01e1f945	1474	1986	2021
+rampe	01e1f945	1474	2029	2032
+rampe	01e1f945	1474	2038	2055
+rampe	01e1f945	1474	2135	2156
+rampe	01e1f945	1474	2157	2263
+rampe	01e1f945	1474	2280	2310
+rampe	01e1f945	1474	2350	2379
+rampe	01e1f945	1474	2443	2544
+rampe	01e1f945	1474	2575	2649
+rampe	01e1f945	1474	2664	2666
+rampe	01e1f945	1474	2687	2770
+rampe	01e1f945	1474	2776	2800
+rampe	01e1f945	1474	2994	2997
+rampe	01e1f945	1474	3051	3080
+rampe	01e1f945	1474	3106	3117
+rampe	01e1f945	1474	3130	3168
+rampe	01e1f945	1474	3285	3312
+rampe	01e1f945	1474	3313	3393
+rampe	01e1f945	1474	3405	3415
+rampe	01e1f945	1474	3504	3513
+rampe	01e1f945	1474	3617	3661
+rampe	01e1f945	1474	3757	3767
+rampe	01e1f945	1474	4000	4010
+rampe	01e1f945	1474	4043	4052
+rampe	01e1f945	1474	4132	4152
+rampe	01e1f945	1474	4176	4185
+rampe	01e1f945	1474	4186	4322
+rampe	01e1f945	1474	4384	4387
+rampe	01e1f945	1474	4390	4468
+rampe	01e1f945	1474	4499	4532
+rampe	01e1f945	1474	4616	4625
+rampe	01e1f945	1474	4667	4677
+rampe	01e1f945	1474	4691	4738
+rampe	01e1f945	1474	4751	4774
+rampe	01e1f945	1474	4858	4868
+rampe	01e1f945	1474	4955	4973
+rampe	01e1f945	1474	5001	5011
+rampe	01e1f945	1474	5070	5080
+rampe	01e1f945	1474	5108	5117
+rampe	01e1f945	1474	5132	5142
+lecture	01e1f945	A	2	F	candidat	sans_objet
+lecture	01e1f945	A	1	F	candidat	sans_objet
+lecture	01e1f945	A	1	D	candidat	sans_objet
+lecture	01e1f945	A	6	D	candidat	sans_objet
+lecture	01e1f945	A	5	D	hors liste	1471	4	0.9824	4	5	0.8000	4	4	1.0000	0.0000	0.2000	0.0187	0.0160	110004	97416	40001	19993	49443	NON TENU [hors terminal : TENU]
+lecture	01e1f945	A	4	D	temoin	1473	106	0.0018	1	5	0.2000	1	4	0.2500	0.6000	0.8000	0.0187	0.3330	49443	36855	40001	19993	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	A	3	D	temoin	1474	793	0.9998	1	5	0.2000	1	4	0.2500	0.8000	0.0000	0.0187	0.9470	49443	36855	40001	19993	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	7	D	candidat	1390	222	0.0000	4	5	0.8000	3	4	0.7500	0.8000	0.1333	0.0187	0.5680	51361	38773	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	8	D	candidat	1383	6	0.0787	5	5	1.0000	4	4	1.0000	0.0000	0.0286	0.0187	0.0210	109988	97400	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	9	D	candidat	1443	6	0.1886	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0210	179613	167025	-1	540115	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	10	F	candidat	1409	1	0.9998	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	130725	118137	-1	540115	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	10	D	candidat	1387	1	0.2729	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	537027	524439	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	11	F	candidat	1427	1	0.9997	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	162479	149891	-1	540115	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	11	D	candidat	1427	1	0.9997	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	162479	149891	-1	540115	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	12	F	candidat	1383	1	0.1467	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	424928	412340	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	12	D	candidat	1383	1	0.1467	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	424928	412340	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	13	F	candidat	1392	1	0.0344	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	378848	366260	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	13	D	candidat	1392	2	0.0344	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0070	378848	366260	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	14	F	candidat	1393	1	0.1908	1	5	0.2000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	539863	527275	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	14	D	candidat	1393	1	0.1908	1	5	0.2000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	539863	527275	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	15	F	candidat	1388	1	0.4029	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	285354	272766	19993	0	49443	NON TENU [hors terminal : NON TENU]
+lecture	01e1f945	B	15	D	candidat	1388	1	0.4029	0	5	0.0000	0	4	0.0000	0.0000	0.0000	0.0187	0.0050	285354	272766	19993	0	49443	NON TENU [hors terminal : NON TENU]
