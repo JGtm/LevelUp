@@ -33,7 +33,6 @@ type EntityTrace struct {
 	Gate        bool
 	Mask        uint64
 	Comps       []CompResult
-	HeldWeapon  uint32     // first weapon-state-type-info variant reached (noVariant if none)
 	Dead        *DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
 	DesyncAt    int        // iterator index of the first un-ported present component (-1 if all consumed)
 	EndBit      int
@@ -1008,7 +1007,7 @@ func SetUseBipedDefaultStateDeser(v bool) { useBipedDefaultStateDeser = v }
 // (the residue deser is not yet identified — see useBipedDefaultStateDeser). For
 // other archetypes the legacy fixed Skip(defaultStateBits) is kept.
 func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTrace {
-	t := EntityTrace{HeldWeapon: noVariant, DesyncAt: -1, DefaultBits: defaultStateBits}
+	t := EntityTrace{DesyncAt: -1, DefaultBits: defaultStateBits}
 	t.TypeIndex = uint32(br.ReadBits(6))
 	if t.TypeIndex >= objectArchetypeCount {
 		// typeIndex objet cappé < 50 (.exe) : au-delà = désync (curseur en zone de données), pas un record.
@@ -1260,9 +1259,6 @@ func traverseComponentLoopFrom(br *BitReader, arch Archetype, t *EntityTrace, fr
 		consumeCorruptionCheck(br)
 		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant,
 			Ported: ported, StartBit: start, Payload: payload})
-		if arch.Components[i] == compWeaponStateTypeInfo && variant != noVariant && t.HeldWeapon == noVariant {
-			t.HeldWeapon = variant
-		}
 	}
 }
 

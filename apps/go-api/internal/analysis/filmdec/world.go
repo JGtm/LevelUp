@@ -1,6 +1,6 @@
 package filmdec
 
-// World tracks entity-id -> archetype (and a held-weapon cache) ACROSS FRAME records.
+// World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.
 // A FRAME delta (type-3) carries NO typeIndex: it must resolve its archetype from the
 // entity created earlier by a NEW record (or by the keyframe init). This mirrors the
 // game's runtime datum store (FUN_1406cb5f0: per-id slot table, stride 0xa0, the
@@ -11,16 +11,23 @@ package filmdec
 // a slot's identity is reset whenever a NEW record rebinds it (BindFull/BindSoft rewrite
 // the whole slotState, PosValid=false). No separate generation guard is maintained — a
 // well-formed stream only changes a slot's occupant via such a rebind.
+//
+// UN CACHE « ARME EN MAIN » A VECU ICI, ET IL A ETE RETIRE le 2026-08-18 (regle 0 code mort).
+// `SetHeldWeapon` / `HeldWeapon` recopiaient la variante `weapon-state-type-info` (i43-i46) de
+// chaque record propre dans le slot. Le cache n avait AUCUN appelant, et la mesure qui aurait pu
+// lui en donner un l a REFUTE : sur trois films CTF, 68 284 lectures d arme tenue, dont 96 a
+// 100 % valent la variante NULLE sur les slots que le pont bipede nomme, et zero occurrence du
+// marqueur de portage du drapeau (plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
+// phase 0, item 0.2). Le canal du porteur publie par la phase 1 passe par les IMAGES-CLES.
 type World struct {
 	Reg   *Registry
 	slots map[uint32]slotState
 }
 
 type slotState struct {
-	TypeIndex  uint32
-	FullID     uint32 // eid COMPLET (generation 2 bits comprise) tel que pose par le NEW / le keyframe
-	HeldWeapon uint32 // last known held-weapon high-32 family (noVariant if none) — cache for deltas
-	Soft       bool   // inferred binding (chain inference), not a dump/NEW ground truth
+	TypeIndex uint32
+	FullID    uint32 // eid COMPLET (generation 2 bits comprise) tel que pose par le NEW / le keyframe
+	Soft      bool   // inferred binding (chain inference), not a dump/NEW ground truth
 	// GenAny : la GENERATION de cette liaison est inconnue (aucun keyframe ni NEW ne l'a
 	// posee ; cf. BindWildcard). Le test strict de generation est alors neutralise pour ce
 	// slot — sans quoi la liaison serait inutilisable, l'eid complet du flux ne pouvant pas
@@ -47,7 +54,7 @@ func NewWorld(reg *Registry) *World {
 // l'eid entier avant de lire le corps d'un delta (FUN_1406caad8 -> `return 3`), donc la generation
 // est une contrainte de validite gratuite. Elle n'est appliquee que si SetStrictGeneration(true).
 func (w *World) BindFull(id, typeIndex uint32) {
-	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, HeldWeapon: noVariant}
+	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id}
 }
 
 // strictGeneration exige que l'eid COMPLET d'un delta (tag de generation inclus) corresponde a
@@ -77,7 +84,7 @@ func (w *World) GenerationMatches(id uint32) bool {
 // neutralise pour ce slot, l'eid complet ne pouvant pas etre devine.
 func (w *World) BindWildcard(slot, typeIndex uint32) {
 	w.slots[slot&0x3fffffff] = slotState{
-		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, HeldWeapon: noVariant, GenAny: true,
+		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true,
 	}
 }
 
@@ -85,7 +92,7 @@ func (w *World) BindWildcard(slot, typeIndex uint32) {
 // bindings decode subsequent deltas like hard ones, but are NOT confirmation anchors
 // for further inference (a soft anchor could self-confirm a wrong chain).
 func (w *World) BindSoft(id, typeIndex uint32) {
-	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, HeldWeapon: noVariant, Soft: true}
+	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Soft: true}
 }
 
 // HardBound reports whether slot carries a NON-inferred binding (world dump or clean
@@ -102,23 +109,6 @@ func (w *World) Unbind(slot uint32) { delete(w.slots, slot) }
 func (w *World) ArchetypeForSlot(slot uint32) (uint32, bool) {
 	s, ok := w.slots[slot]
 	return s.TypeIndex, ok
-}
-
-// SetHeldWeapon updates the cached held-weapon (high-32) for a slot. No-op if the slot
-// is unknown.
-func (w *World) SetHeldWeapon(slot, v uint32) {
-	if s, ok := w.slots[slot]; ok {
-		s.HeldWeapon = v
-		w.slots[slot] = s
-	}
-}
-
-// HeldWeapon returns the cached held-weapon (high-32) for a slot, or noVariant.
-func (w *World) HeldWeapon(slot uint32) uint32 {
-	if s, ok := w.slots[slot]; ok {
-		return s.HeldWeapon
-	}
-	return noVariant
 }
 
 // SetPos mémorise la position ABSOLUE résolue d'un slot (seed absolu ou prev+delta). No-op si
