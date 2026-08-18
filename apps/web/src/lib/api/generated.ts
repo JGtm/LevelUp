@@ -11262,6 +11262,8 @@ export interface components {
             /** Format: int64 */
             ownerChecked: number;
             /** Format: int64 */
+            ownerUnpaired: number;
+            /** Format: int64 */
             paired: number;
             roles?: string;
             /** Format: int64 */

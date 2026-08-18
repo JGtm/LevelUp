@@ -10,6 +10,11 @@ package replay
 // la reprise du backfill se fait par SchemaVersion — un artefact v14 doit se voir « a re-cuire »,
 // pas « a jour ».
 //
+// v15 AMENDEE (2026-08-18, revue R1 de la phase 2b) — deux compteurs de couverture de plus
+// (`ownerUnpaired`, et `unpaired` qui prend un sens propre a la methode par positions). LA
+// VERSION NE MONTE PAS : v15 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
+// publiera. Un artefact deja cuit en v15 sur cette branche est a re-cuire comme les autres.
+//
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //
 //	le CANAL       l'archetype `ti=13` du film (`managed-object-property-*`), porte au lot C-bis
@@ -153,6 +158,16 @@ type ZonesCoverage struct {
 	// verifie pas. La phase 2a a mesure 48/48 et 51/56.
 	OwnerChecked int `json:"ownerChecked"`
 	OwnerAgreed  int `json:"ownerAgreed"`
+	// OwnerUnpaired compte les zones dont la JAUGE est appariee mais dont AUCUN canal de
+	// propriete n'a ete elu — moins de deux captures concordantes, ou canal deja retenu par une
+	// zone au meilleur accord (cf. zoneOwnerMinAgreements et electZoneOwners). Elles ne sont
+	// PAS publiees : une zone dont on ne lit pas le proprietaire n'a pas d'etat a montrer, et
+	// lui en inventer un serait invisible et credible.
+	//
+	// SANS CE COMPTEUR, LE SILENCE SERAIT MUET : « cette carte ne declare pas cette zone » et
+	// « le canal de cette zone n'a pas passe le seuil » se liraient tous les deux comme une
+	// zone absente de `zoneStates`.
+	OwnerUnpaired int `json:"ownerUnpaired"`
 	// Spans est le nombre d'intervalles publies, toutes zones confondues.
 	Spans int `json:"spans"`
 	// HillPeriods est le nombre de periodes de COLLINE publiees (methode par positions). Zero
