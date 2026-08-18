@@ -10714,6 +10714,8 @@ components:
           additionalProperties:
             type: string
           type: object
+        zones:
+          $ref: '#/components/schemas/ZonesCoverage'
       required:
         - shots
         - grenades
@@ -20115,6 +20117,12 @@ components:
           type:
             - array
             - "null"
+        zoneStates:
+          items:
+            $ref: '#/components/schemas/ZoneState'
+          type:
+            - array
+            - "null"
       required:
         - schemaVersion
         - matchId
@@ -24994,6 +25002,105 @@ components:
         - rank
         - current_xp
         - xp_total
+      type: object
+    ZoneSpan:
+      additionalProperties: false
+      properties:
+        active:
+          type: boolean
+        owner:
+          format: int64
+          type:
+            - integer
+            - "null"
+        progress:
+          format: float
+          type: number
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - t0
+        - t1
+        - owner
+        - active
+      type: object
+    ZoneState:
+      additionalProperties: false
+      properties:
+        key:
+          format: int32
+          minimum: 0
+          type: integer
+        spans:
+          items:
+            $ref: '#/components/schemas/ZoneSpan'
+          type:
+            - array
+            - "null"
+        zoneRef:
+          format: int64
+          type: integer
+      required:
+        - zoneRef
+        - spans
+      type: object
+    ZonesCoverage:
+      additionalProperties: false
+      properties:
+        attributed:
+          format: int64
+          type: integer
+        captures:
+          format: int64
+          type: integer
+        catalog:
+          format: int64
+          type: integer
+        hillPeriods:
+          format: int64
+          type: integer
+        method:
+          type: string
+        ownerAgreed:
+          format: int64
+          type: integer
+        ownerChecked:
+          format: int64
+          type: integer
+        paired:
+          format: int64
+          type: integer
+        roles:
+          type: string
+        slots:
+          format: int64
+          type: integer
+        spans:
+          format: int64
+          type: integer
+        unknownOwner:
+          format: int64
+          type: integer
+        unpaired:
+          format: int64
+          type: integer
+      required:
+        - method
+        - catalog
+        - slots
+        - paired
+        - unpaired
+        - captures
+        - attributed
+        - ownerChecked
+        - ownerAgreed
+        - spans
+        - hillPeriods
+        - unknownOwner
       type: object
   securitySchemes:
     sessionCookie:

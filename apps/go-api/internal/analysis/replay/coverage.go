@@ -160,6 +160,16 @@ type Coverage struct {
 	// publié rendent tous deux un calque vide. Son ABSENCE dit encore autre chose — l'appelant
 	// n'a rien fourni à lire.
 	FlagCarries *FlagCarriesCoverage `json:"flagCarries,omitempty"`
+	// Zones est la couverture de L'ÉTAT DES ZONES (schéma 15, cf. document_zones.go) : la
+	// MÉTHODE d'appariement employée et les rôles du catalogue qui composent `mapObjectives.zones`
+	// (sans quoi `zoneRef` ne serait pas vérifiable), les slots lus, ceux qu'aucune capture n'a
+	// rattachés, et le contrôle du propriétaire contre l'équipe du capteur.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND AUCUNE ZONE NE L'EST, pour la même raison que les précédentes :
+	// un film d'un autre mode, un film à zones dont l'appariement échoue et une carte hors du
+	// catalogue rendent tous trois un calque vide. Son ABSENCE dit encore autre chose — l'appelant
+	// n'a rien fourni à lire.
+	Zones *ZonesCoverage `json:"zones,omitempty"`
 	// OriginResolved dit si l'ORIGINE de la frame 0 a été établie (cf. origin.go).
 	//
 	// ELLE VAUT POUR TOUS LES CALQUES DATÉS DEPUIS L'HORLOGE DU FILM, pas seulement pour un :
