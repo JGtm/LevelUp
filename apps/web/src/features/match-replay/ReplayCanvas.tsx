@@ -66,11 +66,11 @@ import { buildFloorGrid } from './mapFloor'
 import type { ReplayDocumentReady } from './replayNormalize'
 import {
   drawGeometryLayer,
-  drawGrenadeRestLayer,
   drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
+import { drawGrenadeRestLayer } from './grenadeRestLayer'
 import { fitWidth, formatClock, frameToMs, isAliveAt, sceneBounds } from './replayLogic'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
