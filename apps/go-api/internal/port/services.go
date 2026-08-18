@@ -218,6 +218,57 @@ type ReplayMapNameRepo interface {
 	MapKeysForMatch(ctx context.Context, matchID string) (MatchMapKeys, error)
 }
 
+// MatchPlayerFact est la ligne de match d'un joueur, telle que le constructeur d'artefact de
+// rejeu en a besoin.
+//
+// LE TRIPLET EST UNE CLÉ, pas une statistique d'affichage : (frags, morts, assistances) est ce
+// qui apparie le slot d'entité du film au xuid, et rien d'autre ne le fait — le slot d'entité
+// et le slot de biped sont deux espaces différents (cf. objectiveevents/slotidentity.go).
+type MatchPlayerFact struct {
+	// XUID en décimal, même forme que la base et que le rejeu.
+	XUID string `json:"xuid"`
+	// Kills, Deaths, Assists : le triplet d'appariement.
+	Kills   int `json:"kills"`
+	Deaths  int `json:"deaths"`
+	Assists int `json:"assists"`
+	// TeamID est le camp du joueur ; -1 quand la base ne le porte pas. Sert à rattacher les
+	// slots d'entité d'équipe aux camps quand les scores du registre sont à égalité.
+	TeamID int `json:"teamId"`
+}
+
+// MatchFacts est CE QUE LA BASE SAIT DU MATCH ET QUE LE FILM NE DIT PAS.
+//
+// POURQUOI CE TYPE EXISTE. `replaybuild` et `analysis/replay` n'ouvrent AUCUNE base — c'est leur
+// contrat, et il est ce qui rend le constructeur d'artefact utilisable hors ligne. Les deux ponts
+// qui manquent au film (l'identité des joueurs et celle des camps) arrivent donc en ENTRÉE, par
+// ce type, résolue par l'appelant là où il sait le faire.
+//
+// Sa forme vide est LÉGITIME : un appelant sans base (l'ouvrier distant, le CLI unitaire) construit
+// un artefact valide, seulement sans compteurs de joueur ni actions d'objectif. La dégradation est
+// journalisée, jamais avalée.
+type MatchFacts struct {
+	// Players sont les lignes de match (`match_participants`).
+	Players []MatchPlayerFact `json:"players,omitempty"`
+	// TeamScores porte `team_0_score` / `team_1_score` du registre. Nil = absents.
+	TeamScores *[2]int `json:"teamScores,omitempty"`
+	// GameVariantName est le nom de variante du match : il donne la FAMILLE d'objectif
+	// (`objectiveevents.ObjectiveTypeOf`), sans laquelle aucune action ne peut être nommée.
+	GameVariantName string `json:"gameVariantName,omitempty"`
+}
+
+// Empty dit qu'aucun fait n'a été fourni — l'appelant n'avait pas de base, ou le match n'est pas
+// au registre.
+func (f MatchFacts) Empty() bool {
+	return len(f.Players) == 0 && f.TeamScores == nil && f.GameVariantName == ""
+}
+
+// ReplayFactsRepo lit les faits d'un match pour le constructeur d'artefact de rejeu.
+type ReplayFactsRepo interface {
+	// FactsForMatch retourne les faits du match. Un match absent du registre rend des faits
+	// VIDES sans erreur : l'appelant dégrade (artefact sans compteurs de joueur), il n'échoue pas.
+	FactsForMatch(ctx context.Context, matchID string) (MatchFacts, error)
+}
+
 // MatchEventsService construit la timeline canonique d'events d'un match
 // (kill-feed / timeline, chargée on-demand), avec résolution des gamertags via
 // le chokepoint canonique. Capability-gated : retourne games.ErrCapabilityNotSupported

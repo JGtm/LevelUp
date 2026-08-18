@@ -9,11 +9,30 @@ package filmdec
 //
 // Le bloc de descripteur se localise par le thunk partage FUN_14076ce9c, present en bloc+0x38.
 
-// consumeManagedObjectBoundaryVisibility (ti10 i?) — deser FUN_141169e90 -> FUN_14080ae28 :
+// consumeManagedObjectBoundaryVisibility (ti=10 i0) — deser FUN_141169e90 -> FUN_14080ae28 :
 // boucle de 32 iterations qui lit UN bit par iteration (FUN_1406cf008) et le range dans un
 // u32 de flags. Largeur = 32 bits PLATS, sans gate.
 // C'etait le 1er bloqueur non-biped de la marche apres game-engine-team-mapping.
-func consumeManagedObjectBoundaryVisibility(br *BitReader) { br.Skip(32) }
+//
+// LE `Skip(32)` EST DEVENU UNE LECTURE (lot 0 item 0.6, 2026-08-17), et le u32 est assemble
+// COMME LE JEU L'ASSEMBLE : l'iteration i pose son bit au rang i. Ce n'est pas la meme valeur
+// que `ReadBits(32)`, qui rendrait le bit de l'iteration 0 au rang 31 — et c'est precisement
+// pourquoi la boucle est ecrite bit par bit ici plutot que raccourcie. La CONSOMMATION est
+// identique au bit (32 bits dans les deux cas) : `TestHooksConsumeSameBitsWithoutHook` le
+// verifie.
+//
+// CE QUE CES 32 DRAPEAUX SONT, ET CE QU'ILS NE SONT PAS : la visibilite de bordure de l'objet
+// SCRIPTE du mode (ti=10). Ce qu'ils signifient est la question du lot C ; ici, on les rend
+// lisibles, sans les interpreter.
+func consumeManagedObjectBoundaryVisibility(br *BitReader) {
+	var flags uint64
+	for i := 0; i < 32; i++ {
+		if br.ReadBit() {
+			flags |= 1 << uint(i)
+		}
+	}
+	publishManagedObject(ManagedObjectBoundaryVisibility, flags)
+}
 
 // consumeDevicePosition (ti43) — deser FUN_140bef320 :
 //

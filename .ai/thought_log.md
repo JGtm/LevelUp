@@ -1,3 +1,82 @@
+## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 2 close, le score dans le temps est publie (schema 12) et revu
+
+**Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, integration `wt/registre-film` = f4ba22e40 ; reste : E.1/E.2, A.2 web, hygiene de cloture, fusion dans feat/v75).
+**Decision technique principale** : la phase 1 du lot A ne s'est ouverte qu'apres trois passes de mesure (gate strict non atteint : l'API `team_score` n'est pas le score affiche en Strongholds — ticks — ni sur deux KOTH — secondes ; sur l'oracle « score affiche » : 16/16, 5 modes) et l'en-tete de 5 bits du statborg s'est revele etre le NUMERO DE MANCHE (Oddball 4/4 exact, y compris un match a 3 manches ; tous les consommateurs de `StatRecords` ne voyaient que la manche 1). Publication : `scoreTimeline` (equipes par manche + total, joueurs aux changements), `objectives[]` enfin peuple en production avec l'origine retranchee, faits du match par port + lecteur DuckDB lecture seule ; `filmdec/statborg.go` supprime ; revue adversariale a 3 lentilles puis ronde 2 : 0 P0/P1 restant, 4 P2 consignes.
+**Resultats observes (vague 2)** : (1) ti=0 (moteur de partie) n'est PAS replique dans le film (1 record / 1 269 000, image-cle vide, Cheat Engine concordant) : pas d'horloge officielle, pas de mort subite, pas de manches par ti=0 — lots B et P clos `[!]` ; ti=5 present mais epars (i43-i46 0-4 fois/film : `HeldWeapon` inexploitable en delta — vaut pour le plan item 4) ; le temps mort se mesure par les trajectoires (mediane 8-10 s, 865-1 136 s/match) ; (2) les charges d'equipement (i27) ne datent rien (0/501 vs oracle grappin, temoin 0/501 ; les 16 125 annonces etaient du bruit d'ancrage : 368 reelles / 12 954 fantomes) — lot D clos `[!]`, i27 hors reserve ; (3) l'etat des zones n'est porte par aucun canal enumerable de ti=10/12 (couleur ANIMEE, drapeaux fins, rtpc = progression) ; `radial-progress` = jauge de capture (95 % des captures precedees d'une rampe a son max, hasard 40-46 %) ; 3 canaux portes en production ; ti=13 STOP maintenu (F5 : noms muets) — lot C clos `[!]` sur l'etat, jauge tracee ; (4) l'elevation de visee est etablie (`360 x (raw+0,5)/2048 - 180`, positif = haut, r = 0,93-0,97 sur 164 kills, oeil a 5-30 cm) — lot E gate tenu, E.1/E.2 en file ; ti=4 = tic de simulation 60 Hz (temoin d'ancrage pur) ; tacmap = campagne ; (5) lecons : temoin d'un canal DENSE vs son niveau de hasard ; `MaskCensus` seul ne classe rien ; lint sous CGO actif ; un scanner sans consommateur devient un instrument de test.
+**Conclusion / prochaine etape** : E.1/E.2 (Point.p schema 13 + cone web) puis A.2 (web : score vivant en-tete/fiches, courbe dans Dominance, `normalizeReplayDocument` etendu, masquage si `originResolved` faux), hygiene de cloture (P2 : `RealRounds` manche du trou, `OriginResolved *bool`, `components_hooks_test.go` 600 L, lignes registre mal formees, leviers absAxis), puis fusion `wt/registre-film` -> `feat/v75` (principal libre, CI verte au niveau job). Decisions utilisateur en attente : jauge de capture, temps mort par trajectoires, RE de ti=13, regle « camp absent = 0 » pour le rendu.
+
+## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 1 close (lot 0, A.0, C.0/C.1a), vague 2 lancee
+
+**Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, branche
+d'integration `wt/registre-film`).
+**Decision technique principale** : deux gates 0 NON ATTEINTS tels qu'ecrits (lot A : 7/12 accords
+de score final ; lot C : concentration 2,37x pour 3x) et AUCUN seuil rebaisse — mais dans les deux
+cas la lecture des ecarts requalifie le critere, pas le decodeur, et un arbitrage ecrit ouvre la
+suite : lot A phase 0-bis (Oddball : les emissions du statborg s'arretent a 290 s sur 519 s — la
+manche 2 est invisible a la grammaire d'ancrage, ce n'est pas un negatif de mode ; oracle KOTH non
+homogene ; film tronque ; corpus n >= 3 par mode) ; lot C : la clause de concentration etait un
+critere d'EVENEMENT applique a un ETAT continu (`radial-progress` emet pendant tout le
+remplissage, avant l'instant de capture) — phase 1a de RE en lecture seule ouverte et CLOSE le
+meme soir (`radial-progress` = R(8) sur [-1,+1], `boundary-color` = 4xR(8) RGBA, `rtpc` =
+R(32)+[R(22)], ti=13 STOP), gate d'etat G-C1 ecrit avant le port.
+**Resultats observes** : (1) ti=23 est ABSENT des 11 films et 5 modes (image-cle et delta) —
+l'artefact « Registre du film Theater » extrapolait d'un deser jamais mesure ; les zones parlent en
+delta par ti=10 (barriere) et ti=12 (navpoint), absents du temoin Slayer ; (2) le registre `chunk_00`
+CHANGE AVEC LE BUILD (`06dfe6d9` juillet 2025 : 116 blocs / 1 031 slots vs 118 / 1 067 en 2026) —
+G2 n'est pas applicable aux films d'un autre build, les hooks du lot 0 s'appuient sur des
+enumerations nommees, jamais un index ; (3) la chaine `consumeByName` desynchronise 61-68 % des
+paquets delta — un hook n'y voit qu'un tiers des paquets, les scanners par bande restent la voie,
+et `ti=4` (1 slot) est un temoin d'ancrage a 98,7-99,8 % de purete ; (4) le lot 0 sort 23 `case`
+de `traverse.go` (1 321 -> 1 297 L) vers quatre fichiers a hooks sans qu'un bit ne bouge, ajoute le
+test de polarite d'i9, l'empreinte du registre, 8 lignes de registre ; l'item 0.2 est STOPPE `[!]`
+(`SetAbsoluteAxisW` est le levier d'une calibration VIVANTE de killsource, goldens 13/15/16/16 ;
+reprise en 3 etapes au registre :221) ; (5) couts mesures : 0,4-15 s et 15-75 Mo par film pour
+les instruments par ancrage — D17 amende a 4 executeurs simultanes, la regle un film par processus
+demeure. Corrections du plan : `06dfe6d9` = BTB Fiesta CTF (26 joueurs), pas un Slayer.
+**Conclusion / prochaine etape** : vague 2 depuis `wt/registre-film` : lot C phase 1b (port Go de
+radial-progress/boundary-color/rtpc + C.0.2 + mesure G-C1, `wt/zones-film`), lots B+P
+(`wt/joueur-moteur`), lot D (`wt/usages-film`), E.0.1 + sondes F (`wt/visee-sondes`) ; A.0-bis en
+cours. Publications (phases 1) toujours SERIALISEES et apres l'item 6 phase 3.
+
+## [2026-08-17] v7.5 rejeu 2D — exploitation du « Registre du film Theater » : plan ecrit, artefact re-verifie sur pieces, worktree dedie
+
+**Statut** : En cours — plan VALIDE par l utilisateur le 17/08 (soir) : D1/D2/D3/D6/D12 confirmes apres explications, lot P (ti=5, inventaire du joueur) ajoute, item 0.6 (plomberie des hooks, D15) et D16/D17 (publications serialisees, machine bornee) ajoutes ; GO donne (« piloter ca avec des agents et workflow sur des worktrees dedies, paralleliser ») ; vague 1 lancee : lot 0 (`wt/registre-film`), A.0 (`wt/score-film`), C.0.1/0.3 (`wt/zones-film`) — un executeur Opus par worktree, films lus par chemin absolu, un film par processus, avant-plan, plafond RAM.
+**Decision technique principale** : ne pas prendre l'artefact au mot. Trois lectures independantes du
+depot ont confronte chaque piste au code du 17/08 (fusion `66e867b80` posee) ; le plan
+`.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (worktree `../LevelUp-wt-registre-film`,
+branche `wt/registre-film`, base `253226852`) est ecrit sur l'etat VERIFIE, pas sur l'inventaire.
+Deux decisions structurantes : (D1) le score dans le temps est un lot de BRANCHEMENT — le decodeur
+statborg complet et mesure existe (`objectiveevents/statborg.go`, `ScoreCurve` 283/284 vs Cheat
+Engine, `SlotIdentity`, table des 28 compteurs) et n'a aucun appelant ; `filmdec/statborg.go`
+(0 appelant, 1 test) sera supprime ; (D2) aucune table DuckDB : tout est publie dans l'artefact de
+rejeu, la match view LIT l'artefact (le paquet `objectivescore` a ete supprime le 08/08 pour son
+motif ART, on ne le recree pas).
+**Resultats observes (ecarts avec l'artefact)** : (1) ti=23 « zones » est ABSENT des deux captures
+live (0/1 205 704 Strongholds, 0/988 752 CTF — `RELEVE_TERRAIN_CAPTURES_2026-07-31.md`) et son
+deser (`components_world.go:108`) ne rend RIEN (bits consommes, largeurs figees 6/6/6) ; les
+porteurs vivants des zones en delta sont ti=10 managed-object (26 006 records Strongholds, « barriere
+de zone », seul i0 porte par `Skip(32)`, i1 boundary-color non porte) et ti=12 managed-navpoint
+(18 903 records, progress/timers non portes) -> le lot zones part de la, recensement offline
+d'abord, RE bornee ensuite ; (2) tacmap ti=34/30 = campagne (4 records en CTF, 0 en Strongholds) ;
+(3) dette i9 CORRIGEE en prod (`components_batch7.go:38-41`), il manque un test ; dette
+absoluteAxisW INTACTE (`position_capture.go:205`, `killsource/decode.go:87` rearme 14), i60 a sa
+grammaire complete, seul `ported` est verrouille ; (4) les 4 champs d'equipement « publies par
+hook » n'ont aucun consommateur de production (tests seuls) ; i26/i27 hors hook ; (5) round-timer
+et respawn-timer sortent DEJA par `CompResult.Payload` (`capture.go`) sans consommateur ; mort
+subite/grace/etat/manche/conditions lus-jetes inline ; le badge « Prolongation » est un badge
+d'en-tete (`overtime.go`, DB x `regulation.toml`, marge 40 s), pas de dominance, et le film n'y
+entre pas ; (6) elevation de visee deja capturee (`componentDirs.PitchRaw`) sans accesseur ni
+champ ; `Point` = t,x,y,z,h,sh,hp ; cone web = secteur plan a rayon fixe ; ti=5 i17 jamais atteint
+(aucun scanner ti=5) ; (7) `objectives[]` de l'artefact est VIDE en production (`Options.Objectives`
+n'a d'appelant que `cmd/zone-attribution`) ; (8) huit sujets de l'artefact n'ont aucune ligne au
+registre. Lots proposes : 0 hygiene/dettes -> A score (statborg + peuplement live des evenements +
+originMs) -> B horloge/etats/temps morts (+ mesure de la mort subite vs badge Prolongation) -> C
+zones ti=10/12 (recherche) -> D usages d'equipement (i27/i26, oracle grappin) -> E elevation ->
+F sondes (ti=5 i11, ti=47, ti=4, tacmap, ti=13) -> G mouvement (optionnel) -> H melees.
+**Conclusion / prochaine etape** : l'utilisateur valide le plan et l'ordre (ou re-ordonne), puis
+donne le go du lot 0 ; l'executeur travaille dans `wt/registre-film` (jamais le principal, occupe
+par l'item 6 phase 3) ; le lot C phase 0 peut partir en parallele du lot A dans `wt/zones-film`.
+Films lus par chemin absolu depuis le cache du principal ; aucune ecriture en base.
 ## [2026-08-18] Item 4 « objectifs vivants » — phase 0 : le porteur se lit, l'objet ne se nomme pas
 
 **Statut** : Complete (phase 0 seule ; arret prescrit par le brief ; branche `wt/objvivants`

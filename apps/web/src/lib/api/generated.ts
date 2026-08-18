@@ -5371,7 +5371,9 @@ export interface components {
             grenades: components["schemas"]["LayerCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
+            originResolved: boolean;
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
+            score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             verdict?: {
                 [key: string]: string;
@@ -8812,6 +8814,13 @@ export interface components {
             updated_at: string;
             user_id: string;
         };
+        PlayerScore: {
+            assists: components["schemas"]["ScoreSeries"];
+            deaths: components["schemas"]["ScoreSeries"];
+            kills: components["schemas"]["ScoreSeries"];
+            score: components["schemas"]["ScoreSeries"];
+            xuid: string;
+        };
         PlayerScoreCard: {
             /** Format: double */
             accuracy: number;
@@ -8885,6 +8894,8 @@ export interface components {
             h?: number;
             /** Format: float */
             hp?: number;
+            /** Format: float */
+            p?: number;
             /** Format: float */
             sh?: number;
             /** Format: int64 */
@@ -9246,6 +9257,7 @@ export interface components {
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */
             schemaVersion: number;
+            scoreTimeline?: components["schemas"]["ScoreTimeline"];
             shots?: components["schemas"]["Shot"][] | null;
             structure?: components["schemas"]["Surface"][] | null;
             structureBounds?: components["schemas"]["Bounds"];
@@ -9319,6 +9331,35 @@ export interface components {
             /** Format: int64 */
             pool_size: number;
             since_boot: boolean;
+        };
+        ScoreCoverage: {
+            modeSupported: boolean;
+            oracle: string;
+            /** Format: int64 */
+            points: number;
+            /** Format: int64 */
+            rounds: number;
+            teamIdentity: string;
+            truncated: boolean;
+        };
+        ScoreRound: {
+            points: components["schemas"]["ScoreTick"][] | null;
+            /** Format: int64 */
+            round: number;
+        };
+        ScoreSeries: {
+            rounds?: components["schemas"]["ScoreRound"][] | null;
+            total?: components["schemas"]["ScoreTick"][] | null;
+        };
+        ScoreTick: {
+            /** Format: int64 */
+            t: number;
+            /** Format: int64 */
+            v: number;
+        };
+        ScoreTimeline: {
+            players?: components["schemas"]["PlayerScore"][] | null;
+            teams?: components["schemas"]["TeamScore"][] | null;
         };
         SeasonCalendar: {
             content_hash: string;
@@ -10578,6 +10619,12 @@ export interface components {
             name: string;
             /** Format: int64 */
             rows: number;
+        };
+        TeamScore: {
+            rounds?: components["schemas"]["ScoreRound"][] | null;
+            /** Format: int64 */
+            teamId?: number;
+            total?: components["schemas"]["ScoreTick"][] | null;
         };
         TeamSnapshot: {
             /** Format: double */

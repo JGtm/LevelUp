@@ -1,0 +1,14 @@
+{
+  "gameVariantName": "CTF:Arena",
+  "teamScores": [2, 3],
+  "players": [
+    {"xuid":"2533274823110022","kills":20,"deaths":16,"assists":1,"teamId":0},
+    {"xuid":"2535413221816250","kills":10,"deaths":21,"assists":7,"teamId":0},
+    {"xuid":"2535449464686885","kills":9,"deaths":19,"assists":4,"teamId":0},
+    {"xuid":"2535465820713037","kills":8,"deaths":19,"assists":3,"teamId":0},
+    {"xuid":"2533274792763167","kills":18,"deaths":12,"assists":5,"teamId":1},
+    {"xuid":"2533274808613055","kills":15,"deaths":15,"assists":9,"teamId":1},
+    {"xuid":"2535449963449748","kills":17,"deaths":12,"assists":10,"teamId":1},
+    {"xuid":"2535456378021162","kills":24,"deaths":9,"assists":4,"teamId":1}
+  ]
+}

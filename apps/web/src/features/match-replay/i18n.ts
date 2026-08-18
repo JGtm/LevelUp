@@ -135,6 +135,24 @@ interface ReplayText {
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
   teamLabelFmt: (name: string) => string
   teamNumberedFmt: (n: number) => string
+  /**
+   * LE SCORE À L'INSTANT LU (schéma 12) — celui de l'équipe en tête de colonne, celui du
+   * joueur sur sa fiche. Ce n'est PAS le score final : il tique avec la lecture.
+   */
+  scoreLive: string
+  playerScoreLive: string
+  /** Frags / morts / assistances : deux grandeurs qui ne se confondent pas. */
+  countersLive: string
+  countersMatch: string
+  /**
+   * MANCHE : les modes qui en ont (Oddball) remettent le compteur à zéro à chaque manche.
+   * L'en-tête affiche le TOTAL du match, et rappelle en second la manche en cours.
+   */
+  roundShortFmt: (index: number) => string
+  roundLabelFmt: (index: number, count: number, value: number) => string
+  /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
+  leadChange: string
+  leadChangeAtFmt: (time: string, team: string) => string
   unknownPlayer: string
   /** Marques d'identité devant un nom (fiches, fil) : le joueur de la page, un ami. */
   markMe: string
@@ -292,6 +310,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     teamUnknown: 'Sans équipe',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamNumberedFmt: (n) => `Équipe ${n}`,
+    scoreLive: "Score de l'équipe à l'instant lu",
+    playerScoreLive: "Score personnel à l'instant lu",
+    countersLive: "Frags / morts / assistances à l'instant lu",
+    countersMatch: 'Frags / morts / assistances du match',
+    roundShortFmt: (index) => `M${index}`,
+    roundLabelFmt: (index, count, value) => `Manche ${index} sur ${count} : ${value}`,
+    leadChange: 'Retournement',
+    leadChangeAtFmt: (time, team) => `Retournement à ${time} — ${team} passe devant`,
     unknownPlayer: 'Joueur inconnu',
     markMe: 'Moi',
     markFriend: 'Ami',
@@ -433,6 +459,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
     teamNumberedFmt: (n) => `Team ${n}`,
+    scoreLive: 'Team score at the moment being played',
+    playerScoreLive: 'Personal score at the moment being played',
+    countersLive: 'Kills / deaths / assists at the moment being played',
+    countersMatch: 'Kills / deaths / assists for the whole match',
+    roundShortFmt: (index) => `R${index}`,
+    roundLabelFmt: (index, count, value) => `Round ${index} of ${count}: ${value}`,
+    leadChange: 'Lead change',
+    leadChangeAtFmt: (time, team) => `Lead change at ${time} — ${team} moves ahead`,
     unknownPlayer: 'Unknown player',
     markMe: 'Me',
     markFriend: 'Friend',

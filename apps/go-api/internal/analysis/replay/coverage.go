@@ -141,6 +141,27 @@ type Coverage struct {
 	// un film sans socle, un film dont toutes les armes sont des lâchers et un film qu'on n'a
 	// pas su balayer rendent tous trois zéro socle — seuls ces compteurs les distinguent.
 	GroundWeapons *GroundWeaponCoverage `json:"groundWeapons,omitempty"`
+	// Score est la couverture de la courbe de score (schéma 12, cf. document_score.go) :
+	// d'où vient l'identité des camps, combien de manches ont été lues, si le mode porte le
+	// score de mode, si la lecture a été tronquée, et ce que la courbe MESURE (`displayed`).
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND AUCUNE COURBE NE L'EST, pour la même raison que `placements`
+	// et `groundWeapons` : un film sans enregistrements d'entité et un film dont l'identité des
+	// camps n'a pas été résolue rendent tous deux une courbe pauvre, et seuls ces compteurs les
+	// distinguent. Son ABSENCE dit autre chose encore — l'appelant n'a rien fourni à lire.
+	Score *ScoreCoverage `json:"score,omitempty"`
+	// OriginResolved dit si l'ORIGINE de la frame 0 a été établie (cf. origin.go).
+	//
+	// ELLE VAUT POUR TOUS LES CALQUES DATÉS DEPUIS L'HORLOGE DU FILM, pas seulement pour un :
+	// les actions d'objectif et la courbe de score se posent sur la grille de frames en
+	// RETRANCHANT cette origine. Quand elle n'est pas établie (chunk 1 illisible, premier
+	// paquet de position antérieur au zéro du film, ou témoin du fil des morts en désaccord),
+	// la soustraction se fait avec zéro et ces calques restent décalés de 3,6 s à 50,8 s selon
+	// le match — un décalage que RIEN, dans l'artefact, ne signalait avant ce champ.
+	//
+	// FAUX N'EST PAS « PAS DE DONNÉE » : les calques sont publiés, mais leur axe de temps n'est
+	// pas fiable. Le rendu les masque plutôt que de les poser au mauvais instant.
+	OriginResolved bool `json:"originResolved"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`
@@ -268,8 +289,11 @@ func verdictOfBridge(b BridgeHealth) string {
 	}
 }
 
-// buildCoverage assemble la couverture publiée et ses verdicts.
-func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport) *Coverage {
+// buildCoverage assemble la couverture publiée et ses verdicts. `originResolved` dit si
+// l'origine de la frame 0 a été établie — elle conditionne la justesse de l'axe de temps de
+// TOUS les calques datés depuis l'horloge du film (cf. Coverage.OriginResolved).
+func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport,
+	originResolved bool, score *ScoreCoverage) *Coverage {
 	b := BridgeHealth{
 		Slots: len(own.Owner), FromReading: own.FromDeaths,
 		LivesNamed: own.DeathsNamed, LivesTotal: own.LivesTotal,
@@ -283,6 +307,7 @@ func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport) *
 	}
 	return &Coverage{
 		Shots: shots, Grenades: grenades, Objectives: objectives, Bridge: b,
+		OriginResolved: originResolved, Score: score,
 		Verdict: map[string]string{
 			"shots":      verdictOf(shots),
 			"grenades":   verdictOf(grenades),

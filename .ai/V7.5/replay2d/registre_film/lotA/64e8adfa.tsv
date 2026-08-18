@@ -1,0 +1,19 @@
+meta	64e8adfa	CTF:Arena	flag	Catalyst	2	3	839	8	1131	520	611	2160	837397	50970	1623
+team	6	2	2	3	529075	710957	oui
+team	8	2	2	2	159001	472578	oui
+a01	ecart	2/2	2/3	2
+player	10	-	-	17	-	11	-	4	-	non	non	0
+player	12	-	-	11	-	14	-	9	-	non	non	0
+player	14	-	-	9	-	16	-	4	-	non	non	0
+player	16	-	2535449963449748	14	17	12	12	10	10	non	non	0
+player	18	-	-	7	-	18	-	3	-	non	non	0
+player	20	-	-	22	-	9	-	3	-	non	non	0
+player	22	-	-	19	-	13	-	1	-	non	non	0
+player	24	-	-	10	-	18	-	7	-	non	non	0
+a03	0	1	0	0	8	8	0
+teamcore	64	45	0	0	0
+a02	c			comp2A equipes 64/45 vs sommes joueurs 0/0
+a01b	ecart	0/0	2/3	0	0
+volume	4	0	0	0	0	125	25	150
+probe	total	0
+cost	1623	1672	17	1	91	1131

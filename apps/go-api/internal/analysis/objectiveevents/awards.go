@@ -92,7 +92,7 @@ func (e LabelledEvent) Resolved() bool { return e.Award != "" }
 
 // LabelPersonalScore etiquette les increments de score personnel d'un film.
 //
-// points vient de [PersonalScoreCurve] ; quotas donne, par slot d'entite, les recompenses
+// points vient de la courbe de score personnel (composant 1, valeur B) ; quotas donne, par slot d'entite, les recompenses
 // que l'API attribue au joueur de ce slot sur ce match (la correspondance slot -> joueur
 // est du ressort de l'appelant). Un slot sans quota est ignore : sans quota il n'y a pas de
 // nommage possible, et inventer un nom serait pire que se taire.

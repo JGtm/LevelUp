@@ -362,14 +362,53 @@ func ecsTableFilmDirs() []string {
 }
 
 // TestG3TableSuitLeDocument : chaque champ cite en `doc_field` existe dans le document de rejeu.
+//
+// LE PAQUET ENTIER, PAS UN SEUL FICHIER (2026-08-18, lot E phase 1). La garde lisait
+// `document.go` seul, alors que la forme publiee est repartie sur plusieurs fichiers depuis que
+// les gros calques ont leur chronique a part (`document_score.go`, `document_ground_weapons.go`,
+// `document_aim.go`...). Elle etait donc AVEUGLE a tout champ deplace — et le deplacement de
+// `Point` l a rendue rouge alors que le champ existait toujours. Lire le paquet ferme les deux
+// defauts d un coup : plus de faux rouge, et plus de faux vert.
 func TestG3TableSuitLeDocument(t *testing.T) {
-	const docPath = "../replay/document.go"
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, docPath, nil, 0)
+	const docDir = "../replay"
+	entries, err := os.ReadDir(docDir)
 	if err != nil {
-		t.Fatalf("%s : %v", docPath, err)
+		t.Fatalf("%s : %v", docDir, err)
 	}
+	fset := token.NewFileSet()
 	fields := map[string]bool{}
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, filepath.Join(docDir, name), nil, 0)
+		if err != nil {
+			t.Fatalf("%s : %v", name, err)
+		}
+		collectStructFields(f, fields)
+	}
+	if len(fields) == 0 {
+		t.Fatalf("aucun champ lu dans %s", docDir)
+	}
+	n := 0
+	for _, r := range loadECSTable(t) {
+		if r.DocField == "" {
+			continue
+		}
+		for _, ref := range strings.Split(r.DocField, ";") {
+			n++
+			if !fields[ref] {
+				t.Errorf("G3 : ligne %d (%s) cite %q, absent du paquet %s", r.LineNo, r.Component, ref, docDir)
+			}
+		}
+	}
+	t.Logf("G3 : %d references de champ verifiees contre %d champs du paquet %s", n, len(fields), docDir)
+}
+
+// collectStructFields empile les champs de toutes les structures d un fichier, sous la forme
+// `Type.Champ`.
+func collectStructFields(f *ast.File, fields map[string]bool) {
 	ast.Inspect(f, func(n ast.Node) bool {
 		ts, ok := n.(*ast.TypeSpec)
 		if !ok {
@@ -386,20 +425,4 @@ func TestG3TableSuitLeDocument(t *testing.T) {
 		}
 		return true
 	})
-	if len(fields) == 0 {
-		t.Fatalf("aucun champ lu dans %s", docPath)
-	}
-	n := 0
-	for _, r := range loadECSTable(t) {
-		if r.DocField == "" {
-			continue
-		}
-		for _, ref := range strings.Split(r.DocField, ";") {
-			n++
-			if !fields[ref] {
-				t.Errorf("G3 : ligne %d (%s) cite %q, absent de %s", r.LineNo, r.Component, ref, docPath)
-			}
-		}
-	}
-	t.Logf("G3 : %d references de champ verifiees contre %d champs de %s", n, len(fields), docPath)
 }

@@ -1,0 +1,16 @@
+=== RUN   TestPlayerBridgePhase0
+    player_state_measure_test.go:77: FILM 000d5950 · positions 171842 · tirs 519 · morts 93 · vies 105 · slots nommes 93 (vies nommees 90 / 105)
+    player_state_measure_test.go:77: CHAINE · paquets 30418 dont propres 11384 · records de bipede confirmes 18041 dont porteurs d une identite d arme 0 · echantillons d arme en main 0 · records ti=5 836
+    player_state_measure_test.go:78: P.0.3 ARME EN MAIN · tirs 519 · tirs avec une arme en main connue 0 (0.0 %) · ACCORD famille 0 (0.0 % des tirs couverts, 0.0 % de tous les tirs) · seuil 90 % · NON MESURABLE (denominateur nul)
+    player_state_measure_test.go:78: P.0.3 CHANGEMENTS D ARME · 0 transitions relevees sur 0 slots · latence mediane entre deux lectures du meme slot 0.00 s
+    player_state_measure_test.go:78: P.0.3 ANNONCES AU MASQUE (records de bipede certains 18041, composant le plus annonce 17973 fois) · i40:0 i41:1 i42:11 i43:1 i44:0 i45:1 i46:0 i47:0
+    player_state_measure_test.go:79: PONT ti=5 -> BIPEDE · entites joueur avec au moins une fenetre active 4 · appariees 4 · 4 fenetres actives appariees sur 4
+    player_state_measure_test.go:79: P.0.4 VISEE · pont 4 entites joueur (qualite 4 fenetres actives appariees sur 4) · paires a <= 100 ms 0 · |delta cap| <= 5° 0 (0.0 %) · ecart median 0.0° · seuil 90 % · NON MESURABLE (denominateur nul)
+    player_state_measure_test.go:79: P.0.4 COUVERTURE · points sans cap de corps 81491 / 171842 (47.4 %) · lectures de visee joueur disponibles 0 — couverture AJOUTEE au mieux 0.00 %
+    player_state_measure_test.go:80: B.0.4 TEMPS MORT · lectures du compte a rebours 310 dont ACTIVES 4 (1.29 %) · morts du fil 93 · intervalles mort -> reapparition mesurables 91 · mediane 8.06 s
+    player_state_measure_test.go:80: B.0.4 COUVERTURE · 4 fenetres actives pour 93 morts (4.30 %) · seuil 90 % · NON TENU
+    player_state_measure_test.go:80: B.0.4 TEMPS MORT CUMULE · 91 intervalles · total 865.3 s · moyenne 9.51 s (equipe NON resolue : le film ne la porte pas de facon fiable)
+    player_state_measure_test.go:81: TSV arme en main depose dans C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP\000d5950_arme_en_main.tsv (0 lignes)
+--- PASS: TestPlayerBridgePhase0 (59.94s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	61.187s

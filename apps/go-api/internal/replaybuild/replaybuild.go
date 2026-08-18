@@ -9,10 +9,15 @@
 // qui divergent produiraient deux artefacts différents pour le même film sans que rien ne
 // le signale.
 //
-// Ce paquet ne décode rien lui-même : le décodage vit dans `analysis/replay` (qui
-// serialise par le verrou process de `filmdec`). Il ne lit AUCUNE base : les identités de
-// carte (noms candidats) viennent de l'appelant, qui les résout où il veut (registre
-// partagé, flag CLI).
+// Il ne lit AUCUNE base : les identités de carte (noms candidats) ET les faits du match
+// (`port.MatchFacts` — lignes de match, scores des deux camps, nom de variante) viennent de
+// l'appelant, qui les résout où il veut (registre partagé, flag CLI, fichier). C'est ce qui le
+// garde utilisable hors ligne, et c'est la même frontière que `replay.Options.Objectives`.
+//
+// Il décode le film à DEUX endroits, et pour deux grammaires différentes : `analysis/replay`
+// pour les positions et les événements de réplication (sérialisé par le verrou process de
+// `filmdec`), `analysis/objectiveevents` pour les enregistrements d'entité d'où sortent la
+// courbe de score et les actions d'objectif (cf. matchfacts.go).
 package replaybuild
 
 import (
@@ -30,6 +35,7 @@ import (
 	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/port"
 )
 
 // ErrMapNotInCatalog : aucune identité de carte candidate ne résout dans le catalogue de
@@ -141,17 +147,27 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, err
 // sont les identités de carte candidates (cf. ResolveMapEntry). Le décodage est sérialisé
 // par le verrou process de filmdec (dans replay.BuildFromFilm) — jamais deux films en
 // parallèle dans un même process.
-func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string) (Outcome, error) {
+//
+// `facts` est CE QUE LA BASE SAIT DU MATCH et que le film ne dit pas (cf. port.MatchFacts) :
+// les lignes de match qui apparient les slots d'entité aux joueurs, les scores des deux camps
+// et le nom de variante. CE PAQUET N'OUVRE AUCUNE BASE — c'est l'appelant qui les résout, là
+// où il sait le faire. Des faits vides restent un cas nominal (ouvrier distant, CLI unitaire) :
+// l'artefact sort sans compteurs de joueur ni actions d'objectif, et la dégradation est
+// journalisée.
+func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Outcome, error) {
 	entry, err := b.ResolveMapEntry(mapNames)
 	if err != nil {
 		return Outcome{}, err
 	}
+	stats := readFilmStats(context.Background(), matchID, filmDir, facts)
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
 		Structure:       b.structureFor(entry.Module),
 		Labels:          b.labels,
 		NeutralDeaths:   b.neutralDeaths(matchID, filmDir),
+		Objectives:      stats.objectives,
+		Score:           stats.score,
 		MapQuant:        &entry,
 	})
 	if err != nil {

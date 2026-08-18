@@ -111,6 +111,15 @@ export interface MatchViewText {
   combatHighlights: string
   combatKdCumulTitle: string
   combatTugOfWarTitle: string
+  /**
+   * LA COURBE DE SCORE, décodée du film du match (schéma 12). Elle n'apparaît que pour les
+   * matchs dont un artefact de rejeu existe — d'où la note de source, qui dit à
+   * l'utilisateur pourquoi cette carte est là sur ce match et pas sur le précédent.
+   */
+  scoreCurveTitle: string
+  scoreCurveSource: string
+  scoreCurveTruncated: string
+  scoreCurveLead: string
   combatCadenceTitle: string
   combatKillsLabel: string
   combatDeathsLabel: string
@@ -333,6 +342,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatHighlights: 'Faits marquants',
     combatKdCumulTitle: 'Frags cumulés',
     combatTugOfWarTitle: 'Dominance',
+    scoreCurveTitle: 'Score dans le temps',
+    scoreCurveSource:
+      'Décodé du film du match : le score des deux camps, tel qu’il s’affichait en jeu.',
+    scoreCurveTruncated:
+      'Lecture du film incomplète — la courbe s’arrête avant la fin du match.',
+    scoreCurveLead: 'Retournement',
     combatCadenceTitle: 'Cadence des frags',
     combatKillsLabel: 'Frags',
     combatDeathsLabel: 'Morts',
@@ -605,6 +620,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatHighlights: 'Highlights',
     combatKdCumulTitle: 'Cumulative frags',
     combatTugOfWarTitle: 'Dominance',
+    scoreCurveTitle: 'Score over time',
+    scoreCurveSource: 'Decoded from the match film: both teams’ score, as it showed in game.',
+    scoreCurveTruncated:
+      'Incomplete film reading — the curve stops before the end of the match.',
+    scoreCurveLead: 'Lead change',
     combatCadenceTitle: 'Kill cadence',
     combatKillsLabel: 'Kills',
     combatDeathsLabel: 'Deaths',

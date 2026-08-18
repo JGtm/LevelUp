@@ -38,6 +38,8 @@ import { readInk } from './canvasInk'
 import { readFxInk } from './fxInk'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
+import { ReplayLeadMarks } from './ReplayLeadMarks'
+import { useLeadMarks } from './useLeadMarks'
 import { buildShotFx } from './shotFx'
 import {
   buildObjectivePulses,
@@ -342,6 +344,8 @@ export function ReplayCanvas({
     () => buildObjectivePulses(doc, mapObjectives),
     [doc, mapObjectives],
   )
+
+  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
   // La trame d'altitudes ne dépend QUE du document : construite une fois, pas à chaque resize.
   const floorGrid = useMemo(
@@ -785,16 +789,20 @@ export function ReplayCanvas({
                 className="min-w-[5.5rem] font-mono text-xs tabular-nums text-muted-foreground"
                 aria-label={t.time}
               />
-              <input
-                ref={sliderRef}
-                type="range"
-                min={0}
-                max={Math.max(doc.frameCount - 1, 0)}
-                defaultValue={0}
-                onChange={onScrub}
-                className="flex-1"
-                aria-label={t.time}
-              />
+              {/* Les marques de retournement se posent SUR la piste (cf. ReplayLeadMarks). */}
+              <span className="relative flex-1">
+                <input
+                  ref={sliderRef}
+                  type="range"
+                  min={0}
+                  max={Math.max(doc.frameCount - 1, 0)}
+                  defaultValue={0}
+                  onChange={onScrub}
+                  className="block w-full"
+                  aria-label={t.time}
+                />
+                <ReplayLeadMarks {...leadMarks} />
+              </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               {t.note}
