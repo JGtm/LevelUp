@@ -94,6 +94,8 @@ export interface ReplayText {
    * lorsqu'un dégât est appliqué) : elle ne vit pas dans un commentaire, elle est à l'écran.
    */
   effects: string
+  /** Titre de la section FICHES du tiroir (la colonne d etat, pas le canvas). */
+  cards: string
   layerShotFx: string
   layerShotFxHint: string
   layerShotFxCoverage: string
@@ -141,6 +143,13 @@ export interface ReplayText {
    */
   layerWeaponPads: string
   layerWeaponPadsHint: string
+  /**
+   * FICHES COMPACTES (B2/R2-7) : la bascule et ce qu'elle change. L'infobulle DIT ce qu'on
+   * perd — les munitions des armes qui ne sont pas en main — parce qu'un réglage qui retire
+   * de l'information doit l'annoncer.
+   */
+  cardsCompact: string
+  cardsCompactHint: string
   padState: Record<'full' | 'uncertain' | 'empty', string>
   /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
   padPlacementNote: string

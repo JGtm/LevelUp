@@ -724,3 +724,122 @@ describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
     expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
   })
 })
+
+/**
+ * B2/R2-7 (2026-08-18) — LA FICHE COMPACTE, EN OPTION.
+ *
+ * « Tu pourrais me proposer une version plus compacte ? Sans supprimer celle-ci qui est
+ * validée. » Trois choses changent, et ce sont les trois que ces tests tiennent : la ZONE
+ * disparaît, les armes et l'inventaire se rangent sur UNE rangée, et seule l'arme EN MAIN
+ * garde ses munitions. Tout le reste doit être identique — c'est une fiche plus courte, pas
+ * une fiche appauvrie.
+ */
+describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
+  const ZONES = normalizeCallouts({
+    module: 'ridgeline',
+    provenance: 'brut',
+    zones: [
+      {
+        volume_index: 1, name: 'yard', en: 'Yard', fr: 'Cour',
+        x: 0, y: 0, z: 0, z_bottom: -1, z_top: 3,
+        polygon: [[-2, -2], [2, -2], [2, 2]],
+      },
+    ],
+  })
+  const DEUX_ARMES = {
+    weaponLabels: {
+      '0xAAAA': { fr: 'Fusil', en: 'Rifle' },
+      '0xBBBB': { fr: 'Pistolet', en: 'Pistol' },
+    },
+    loadouts: [{ t: 0, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
+  }
+  const AMMO = {
+    ...DEUX_ARMES,
+    inventory: [{ t: 0, slot: 512, d: 1, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] }],
+  }
+
+  function renderCompact(over: Partial<ReplayDocument>, compact: boolean, frame = 10) {
+    const doc = testReplayDoc({
+      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+      tracks: [TRACK],
+      ...over,
+    })
+    return render(
+      <ReplayTeams
+        doc={doc}
+        scoreboard={[]}
+        frame={frame}
+        locale="fr"
+        callouts={ZONES}
+        compact={compact}
+      />,
+    )
+  }
+
+  it('la ZONE du joueur disparaît, et elle ne laisse pas de place vide', () => {
+    const validee = renderCompact({}, false)
+    expect(validee.getByTitle('Zone de la carte')).toBeTruthy()
+    const rangees = (view: ReturnType<typeof render>) =>
+      (view.getByText('Alpha').parentElement?.parentElement as HTMLElement).childElementCount
+    const avant = rangees(validee)
+    validee.unmount()
+    const compacte = renderCompact({}, true)
+    expect(compacte.queryByTitle('Zone de la carte')).toBeNull()
+    // Deux rangées de moins : la zone, et la rangée d'inventaire fondue dans celle des armes.
+    expect(rangees(compacte)).toBe(avant - 2)
+  })
+
+  it('SEULE l’arme en main garde ses munitions', () => {
+    const validee = renderCompact(AMMO, false)
+    expect(validee.container.textContent).toContain('10/20')
+    expect(validee.container.textContent).toContain('5/6')
+    validee.unmount()
+    const compacte = renderCompact(AMMO, true)
+    // `d: 1` = l'emplacement 1 est dégainé : ses munitions (5/6) restent, l'autre part.
+    expect(compacte.container.textContent).toContain('5/6')
+    expect(compacte.container.textContent).not.toContain('10/20')
+  })
+
+  it('sans sélecteur lu, AUCUNE munition n’est montrée — jamais une arme désignée au hasard', () => {
+    const sansSelecteur = {
+      ...DEUX_ARMES,
+      inventory: [{ t: 0, slot: 512, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] }],
+    }
+    const compacte = renderCompact(sansSelecteur, true)
+    expect(compacte.container.textContent).not.toContain('10/20')
+    expect(compacte.container.textContent).not.toContain('5/6')
+  })
+
+  it('ce qui RESTE est identique : nom, armes, grenades, capacité', () => {
+    const doc = {
+      ...AMMO,
+      inventory: [
+        { t: 0, slot: 512, d: 1, g: [2, 0, 0, 0], am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] },
+      ],
+      abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
+      abilities: [{ t: 0, slot: 512, r: 20, src: 'i48' }],
+    }
+    const compacte = renderCompact(doc, true)
+    const texte = compacte.container.textContent ?? ''
+    expect(compacte.getByText('Alpha')).toBeTruthy()
+    // Les DEUX armes restent (c'est leur MUNITION qui est réduite, pas la rangée d'armes).
+    expect(texte).toContain('Fusil')
+    expect(texte).toContain('Pistolet')
+    expect(texte).toContain('Grappin')
+    // Les grenades portées gardent leur compteur.
+    expect(texte).toContain('2')
+  })
+
+  it('la rangée unique refuse de se replier — sinon la compacte serait plus HAUTE', () => {
+    const compacte = renderCompact(AMMO, true)
+    const carte = compacte.getByText('Alpha').parentElement?.parentElement as HTMLElement
+    const rangee = [...carte.children].find((e) => e.className.includes('flex-nowrap'))
+    expect(rangee, 'la rangée armes + inventaire').toBeTruthy()
+    expect(rangee!.className).toContain('overflow-hidden')
+  })
+
+  it('la fiche MORTE reste lisible en compact : le retour s’affiche', () => {
+    const compacte = renderCompact({}, true, 140)
+    expect(compacte.getByText('Réapparition ?')).toBeTruthy()
+  })
+})

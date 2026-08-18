@@ -175,7 +175,7 @@ export function ReplayCanvas({
   }, [])
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
-    showTrail, toggleTrail,
+    showTrail, toggleTrail, compactCards, toggleCompactCards,
     showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
@@ -798,8 +798,8 @@ export function ReplayCanvas({
             }}
             showShotFx={showShotFx}
             onToggleShotFx={toggleShotFx}
-            showKillFx={showKillFx}
-            onToggleKillFx={toggleKillFx}
+            showKillFx={showKillFx} compactCards={compactCards}
+            onToggleKillFx={toggleKillFx} onToggleCompactCards={toggleCompactCards}
             sound={sound}
             speed={multiplier}
             onSetSpeed={setMultiplier}
