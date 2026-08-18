@@ -11,6 +11,7 @@ import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchKDCumulChart } from './MatchKDCumulChart'
+import { MatchScoreCurveChart } from './MatchScoreCurveChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchNemesisCards } from './MatchNemesisCards'
@@ -413,6 +414,17 @@ export function MatchViewPage() {
                   t={t}
                 />
               </div>
+
+              {/* Le SCORE DANS LE TEMPS (film) ouvre le déroulé : c'est le fil du match.
+                  Sans artefact il ne rend rien, et la mise en page ne bouge pas. */}
+              <MatchScoreCurveChart
+                playerSlug={playerSlug}
+                matchId={matchId}
+                replayAvailable={header.replay_available === true}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
 
               {/* Dominance | Cadence des frags */}
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

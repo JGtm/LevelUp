@@ -106,7 +106,17 @@ package replay
 // v11 (2026-08-17, plan PLAN_ARMES_AU_SOL_2E_LECTURE phase 3) : `weaponPads` et `padPickups` —
 // les SOCLES D'ARME du match. Chronique complète, et surtout ce que la mesure a REFUSÉ de
 // publier (le ramasseur, les armes lâchées, le catalogue de carte) : document_ground_weapons.go.
-const SchemaVersion = 11
+//
+// v12 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot A phase 1) : `scoreTimeline` — LE
+// SCORE DANS LE TEMPS, et deux correctifs du calque `objectives` (vide en production, décalé de
+// `originMs`). Chronique complète, oracle et limites : document_score.go.
+//
+// v13 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot E phase 1) : `Point.p` — LE
+// DEUXIÈME AXE DE LA VISÉE (élévation en degrés, positif = vers le haut). Un champ optionnel
+// sur un sous-objet, et pourtant la version monte : jusqu'ici le cône de visée était dessiné à
+// sa longueur maximale sur chaque point porteur de cap, ce qui AFFIRMAIT une visée horizontale
+// que le film contredit. Chronique complète, convention mesurée et réserve : document_aim.go.
+const SchemaVersion = 13
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -280,6 +290,9 @@ type ReplayDocument struct {
 	// mode n'est pas un mode à objectifs, ou quand l'appelant n'a pas fourni les lignes de
 	// match nécessaires au pont d'identité.
 	Objectives []ObjectiveAction `json:"objectives,omitempty"`
+	// ScoreTimeline est LE SCORE DANS LE TEMPS des deux camps et de chaque joueur (forme, oracle
+	// et limites : document_score.go). Absente quand l'appelant n'a rien fourni à lire.
+	ScoreTimeline *ScoreTimeline `json:"scoreTimeline,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//
@@ -287,52 +300,6 @@ type ReplayDocument struct {
 	// sans dire que 519 existent laisse croire à l'exhaustivité. L'écart doit être lisible
 	// là où le résultat l'est. Absent des artefacts construits avant cette version.
 	Coverage *Coverage `json:"coverage,omitempty"`
-}
-
-// NeutralDeath est une mort que PERSONNE ne revendique — et de quoi le joueur est mort.
-//
-// # CE QU'ELLE EST, ET CE QU'ELLE N'EST PAS
-//
-// Le kill feed du match porte cette MORT sans aucun kill en face, et la source du dégât fatal
-// désigne la victime elle-même : chute, sortie de zone, ou sa propre arme. Ce n'est donc pas un
-// kill sans tueur, c'est une mort SANS TUEUR — la distinction n'est pas rhétorique, elle
-// interdit d'inventer un responsable pour faire tenir la ligne dans le moule d'un kill.
-//
-// # POURQUOI L'ARTEFACT LA PORTE
-//
-// Le client déduit déjà ces morts de ses pistes (une fin de vie qu'aucun kill ne consomme) et
-// leur donne une ligne grise. Ce qu'il ne peut PAS déduire, c'est DE QUOI le joueur est mort :
-// cela se lit dans le composant dead-state du film, hors ligne, par le décodeur de source de
-// dégât. Cette table est ce pont-là, et rien d'autre.
-//
-// # LA RÈGLE QUI GOUVERNE LE CHAMP `Kind`
-//
-// Une mort dont la nature n'est pas établie N'ENTRE PAS dans cette table : le fil garde son
-// repère neutre. Jamais l'icône d'une autre mort — même faute que servir l'icône d'une autre
-// arme, déjà refusée au chantier des icônes de kill feed.
-type NeutralDeath struct {
-	// XUID identifie le joueur mort. C'est la SEULE clé de jointure avec les pistes : un
-	// pseudo change, un xuid non.
-	XUID string `json:"xuid"`
-	// FeedMs est l'instant de la mort SUR L'HORLOGE DU FIL, pas sur l'axe du rejeu — la même
-	// horloge que les kills du feed une fois `t0_ms` ajouté, celle dont `OriginMs` donne le
-	// décalage. Le client applique le MÊME recalage qu'à ses autres lignes de fil ; publier
-	// ici un instant déjà recalé figerait dans l'artefact un décalage que le client sait
-	// mesurer autrement quand l'origine n'est pas établie.
-	FeedMs int `json:"feedMs"`
-	// Kind est le TYPE de mort établi, en identifiant stable (jamais un libellé traduit — la
-	// règle i18n du dépôt : les libellés vivent côté affichage) :
-	//
-	//	environment  chute, hors-limites, dégât de monde — la nature `DEGAT_GLOBAL` du décodeur
-	//	suicide      le joueur s'est tué avec sa propre source de dégât (sa roquette, sa grenade)
-	//
-	// Un type inconnu ne s'écrit pas : l'entrée est omise.
-	Kind string `json:"kind"`
-	// Img est l'URL du pictogramme du jeu qui représente ce type de mort. Vide = le titre n'en
-	// sert pas : le client garde son repère neutre. Tinted dit si le visuel est un masque à
-	// teindre (même contrat que les icônes d'arme du fil).
-	Img    string `json:"img,omitempty"`
-	Tinted bool   `json:"tinted,omitempty"`
 }
 
 // RosterEntry est un joueur du film : son identité, et l'index sous lequel le film le désigne.
@@ -460,57 +427,6 @@ type Track struct {
 	// le client peut masquer l'entité hors de cette fenêtre au lieu de la figer.
 	StartFrame int `json:"startFrame,omitempty"`
 	EndFrame   int `json:"endFrame,omitempty"`
-}
-
-// Point est une position échantillonnée au pas de temps T. X/Y = plan horizontal de la
-// carte ; Z (optionnel) = altitude, pour l'indication d'étage — non critique au rendu 2D.
-type Point struct {
-	T int     `json:"t"`
-	X float32 `json:"x"`
-	Y float32 `json:"y"`
-	Z float32 `json:"z,omitempty"`
-	// H (optionnel) est le CAP DE VISÉE en degrés dans le plan XY, même origine et même
-	// sens que atan2(Y, X) : 0 = +X, 90 = +Y. Décodé du composant i21
-	// (unit-desired-aiming-vector) du même record que la position, donc au même instant.
-	// Présent sur ~44 % des points (le record ne réplique pas toujours la visée) ; le
-	// client oriente alors le marqueur sur son déplacement, ou pas du tout.
-	// PIÈGE omitempty évité à l'écriture : un cap qui s'arrondirait à 0 est publié comme
-	// 360 (même angle), sans quoi il serait omis et relu comme « pas de visée ».
-	H float32 `json:"h,omitempty"`
-	// Sh (optionnel) est la FRACTION DE BOUCLIER dans [0, 1], décodée du composant i5
-	// (object-shield-vitality) du MÊME record que la position — donc au même instant.
-	// Présente sur ~16 % des points : le film ne réplique le bouclier que lorsqu'il change.
-	//
-	// POINTEUR, PAS float32 : c'est le PIÈGE omitempty documenté ailleurs dans ce fichier,
-	// et ici il serait fatal — un bouclier à ZÉRO est l'information la plus utile de tout
-	// le champ (bouclier brisé), et `float32 + omitempty` l'omettrait exactement comme une
-	// absence de mesure. Un pointeur n'est omis que s'il est nil, donc « 0 » reste publié.
-	//
-	// CE QUE LE CHAMP GARANTIT (mesuré sur le film 000d5950, cf. cmd/tmp_vitals) :
-	// les 27 404 quanta observés tombent TOUS dans [0, 64], c'est-à-dire exactement la plage
-	// [0, 1] d'un bouclier standard, alors que la sérialisation en autorise 0..255 (25,4 %
-	// attendus d'un champ lu au mauvais endroit). C'est le témoin décisif du décodage.
-	// Témoin du MOMENT, sur une source indépendante (les instants de mort viennent des fins
-	// de vie des trajectoires, pas du bouclier) : bouclier médian 0,00 dans la demi-seconde
-	// avant une mort contre 0,23 ailleurs, écart jamais atteint par 10 000 permutations des
-	// étiquettes. NUANCE PUBLIÉE : le test binaire « bouclier nul ? » ne donne que 1,32x
-	// (50,5 % contre 38,2 %) — le film ne réplique le bouclier que lorsqu'il CHANGE, une
-	// mesure isolée est donc déjà une mesure de combat.
-	//
-	// CE QU'IL NE GARANTIT PAS : la RECHARGE. Le témoin de remontée monotone ÉCHOUE
-	// (4 suites croissantes réelles contre 7 pour le même échantillon dont on a mélangé
-	// l'ordre) : l'échantillonnage est trop lâche pour lire une régénération.
-	Sh *float32 `json:"sh,omitempty"`
-	// Hp (optionnel) est la FRACTION DE VIE dans [0, 1] (composant i4, object-body-vitality),
-	// même record, même instant. Même choix de pointeur, même raison.
-	//
-	// PUBLIÉ MAIS NON DESTINÉ À UNE BARRE : la couverture est de 0,6 % (974 points sur
-	// 171 826). Le décodage est crédible — les 974 quanta tombent tous dans la moitié
-	// POSITIVE de la plage sérialisée [-1, +1] (49,6 % attendus au hasard), et la médiane
-	// passe de 0,79 chez un joueur vivant à 0,55 dans la demi-seconde avant sa mort
-	// (p < 10⁻⁴ par permutation des étiquettes). Mais à 0,6 % de couverture, toute barre
-	// affichée serait, 99 % du temps, une valeur périmée présentée comme actuelle.
-	Hp *float32 `json:"hp,omitempty"`
 }
 
 // Surface est l'emprise au sol d'un élément de structure : la projection sur (x, y) de

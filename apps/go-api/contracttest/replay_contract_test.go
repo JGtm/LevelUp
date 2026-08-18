@@ -95,6 +95,13 @@ var replaySchemas = []struct {
 	{"Bounds", replay.Bounds{}},
 	{"RosterEntry", replay.RosterEntry{}},
 	{"ObjectiveAction", replay.ObjectiveAction{}},
+	{"ScoreTimeline", replay.ScoreTimeline{}},
+	{"TeamScore", replay.TeamScore{}},
+	{"PlayerScore", replay.PlayerScore{}},
+	{"ScoreSeries", replay.ScoreSeries{}},
+	{"ScoreRound", replay.ScoreRound{}},
+	{"ScoreTick", replay.ScoreTick{}},
+	{"ScoreCoverage", replay.ScoreCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -192,9 +199,40 @@ var replaySchemas = []struct {
 //	                      balayer rendent tous trois zero socle, et seuls ces compteurs les
 //	                      distinguent.
 //
-// Les huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	33 -> 34  2026-08-18  `scoreTimeline` (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot A phase 1) :
+//	                      LE SCORE DANS LE TEMPS. Un seul champ de document, mais SEPT schemas
+//	                      de plus, parce que la courbe a deux formes et deux porteurs :
+//	                      `teams[]` (le camp, sa courbe par MANCHE et son total cumule) et
+//	                      `players[]` (score personnel, frags, morts, assistances, chacun sous
+//	                      les deux memes formes). Les manches ne sont pas un detail : le score
+//	                      de mode repart de zero a chaque manche, et lire la derniere valeur
+//	                      brute donnait 100/78 la ou l oracle affiche dit 200/121.
+//	                      Source : les enregistrements d entite des paquets FRAME, dont la
+//	                      grammaire a ete calibree sur 1 078 en-tetes et 2 708 lectures de
+//	                      composant issus d une capture Cheat Engine. Oracle : le score
+//	                      AFFICHE (16/16 exact sur les films ou l API le porte, 5 modes sur 5) —
+//	                      et il est NOMME dans le document (`coverage.score.oracle`), parce que
+//	                      l API compte autre chose en Strongholds (des ticks) et en KOTH (des
+//	                      secondes de colline).
+//	                      `Coverage` gagne son bloc `score` : identite des camps (`a` par le
+//	                      score final, `b` par la somme des frags, `unresolved`), manches lues,
+//	                      mode porte, lecture tronquee, points publies. Une courbe sans ces
+//	                      compteurs se lirait comme une certitude — et l ABSENCE du bloc dit
+//	                      encore autre chose : l appelant n a rien fourni a lire.
+//
+//	34 -> 34  2026-08-18  RIEN, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot E
+//	                      phase 1). Le schema 13 publie `Point.p` — l ELEVATION DE VISEE — mais
+//	                      `Point` n est pas un champ RACINE du document : il vit sous
+//	                      `tracks[].points[]`. Le compte ci-dessous ne compte que la racine, il
+//	                      ne bouge donc pas. La ligne existe quand meme parce que l absence de
+//	                      ligne pour une montee de schema se lit comme un OUBLI ; le champ, lui,
+//	                      est bel et bien verrouille — par
+//	                      TestReplayContractDescribesEveryPublishedField, qui compare le type Go
+//	                      `Point` au schema `Point` du contrat, dans les DEUX sens.
+//
+// Les neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 33
+const wantReplayDocumentFields = 34
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

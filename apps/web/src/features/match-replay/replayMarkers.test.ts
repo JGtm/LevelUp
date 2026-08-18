@@ -112,11 +112,20 @@ describe('étiquette de nom (D4)', () => {
 })
 
 describe('visée (D3/D3prime) — le bâton a disparu, le cône s ouvre à 0,42 rad', () => {
-  it('le cône allumé n émet AUCUN segment de droite', () => {
+  it('aucun segment ne PART du marqueur : le bâton reste supprimé', () => {
     const ops = trace({ showAim: true })
-    // Le cône est un secteur : moveTo + arc + closePath + fill dégradé. Un seul `lineTo`
-    // signerait le retour de l'axe supprimé.
-    expect(count(ops, 'lineTo')).toBe(0)
+    // La règle D3 porte sur l'AXE — un trait issu du point. Depuis le schéma 13 le calque
+    // émet un segment (le tick d'élévation), mais il vit à la POINTE du cône : aucun `lineTo`
+    // ne doit suivre un `moveTo` posé sur le centre du marqueur. Le compter, comme avant,
+    // aurait interdit le tick ; vérifier son ORIGINE interdit ce que D3 interdisait vraiment.
+    const centre = ops.find((o) => o.op === 'arc')!.args as number[]
+    ops.forEach((o, i) => {
+      if (o.op !== 'lineTo') return
+      const prev = ops[i - 1]
+      if (prev?.op !== 'moveTo') return
+      const [mx, my] = prev.args as number[]
+      expect(Math.hypot(mx - centre[0], my - centre[1])).toBeGreaterThan(1)
+    })
     expect(count(ops, 'createRadialGradient')).toBe(1)
   })
 
@@ -129,6 +138,101 @@ describe('visée (D3/D3prime) — le bâton a disparu, le cône s ouvre à 0,42 
     expect(to - from).toBeCloseTo(0.84, 6)
     // Rayon de la planche « un peu plus prononcé » : 52 px d'écran (k = 1 dans ce test).
     expect(radius).toBeCloseTo(52, 6)
+  })
+})
+
+/**
+ * L'ÉLÉVATION (schéma 13) : le cône raccourcit, le tick dit le sens.
+ *
+ * `AIM_LENGTH` (52) reste la longueur d'une visée à plat ; l'élévation la multiplie par
+ * `max(0,35 ; cos p)`. Le rayon du secteur est donc l'observable, et le tick — un segment posé
+ * à la pointe — porte le signe que le cosinus, étant pair, ne peut pas porter.
+ */
+describe('élévation de visée (schéma 13)', () => {
+  /** viséeInclinée : une vie d'un point, cap plein est (h = 0), élévation donnée. */
+  const inclinee = (p?: number) =>
+    singlePointTrack(512, { points: [{ t: 50, x: 5, y: 5, z: 0, h: 360, ...(p === undefined ? {} : { p }) }] })
+
+  /** rayonDuCone : le 3e argument du seul `arc` du relevé (marqueur losange = zéro autre arc). */
+  const rayonDuCone = (p?: number): number => {
+    const ops = trace({ showAim: true, markOfSlot: () => 'friend' }, inclinee(p))
+    return (ops.find((o) => o.op === 'arc')!.args as number[])[2]
+  }
+
+  it('garde sa pleine longueur à plat, et quand l artefact ne porte pas d élévation', () => {
+    expect(rayonDuCone(0)).toBeCloseTo(52, 6)
+    // Artefact antérieur au schéma 13 : `p` absent se lit « à plat », jamais « inconnu ».
+    expect(rayonDuCone(undefined)).toBeCloseTo(52, 6)
+  })
+
+  it('raccourcit du COSINUS de l élévation — 60° = la moitié', () => {
+    expect(rayonDuCone(60)).toBeCloseTo(26, 6)
+    // Le cosinus est PAIR : plonger de 60° raccourcit exactement autant que viser 60° en l'air.
+    expect(rayonDuCone(-60)).toBeCloseTo(rayonDuCone(60), 6)
+  })
+
+  it('s arrête au plancher de 35 % à la verticale (le marqueur doit rester lisible)', () => {
+    expect(rayonDuCone(90)).toBeCloseTo(52 * 0.35, 6)
+    expect(rayonDuCone(-90)).toBeCloseTo(52 * 0.35, 6)
+    // 80° tomberait à 9 px sans plancher : c'est lui qui tient, pas le cosinus.
+    expect(rayonDuCone(80)).toBeCloseTo(52 * 0.35, 6)
+  })
+
+  /**
+   * tick : le segment d'élévation, en distances au centre du marqueur.
+   *
+   * Marqueur ORDINAIRE ici (pas le losange qui sert au rayon) : le disque n'émet aucun
+   * `lineTo`, donc le seul du relevé est le tick, et les seuls `moveTo` sont celui du secteur
+   * — posé sur le centre — puis celui du tick.
+   */
+  const tick = (p?: number): { from: number; to: number } | null => {
+    const ops = trace({ showAim: true }, inclinee(p))
+    const centre = ops.find((o) => o.op === 'moveTo')!.args as number[]
+    const i = ops.findIndex((o) => o.op === 'lineTo')
+    if (i < 0) return null
+    const [mx, my] = ops[i - 1].args as number[]
+    const [lx, ly] = ops[i].args as number[]
+    return {
+      from: Math.hypot(mx - centre[0], my - centre[1]),
+      to: Math.hypot(lx - centre[0], ly - centre[1]),
+    }
+  }
+
+  it('vers le HAUT, le tick sort du cône ; vers le BAS, il rentre dedans', () => {
+    const haut = tick(30)!
+    expect(haut.from).toBeCloseTo(52 * Math.cos(Math.PI / 6), 6)
+    expect(haut.to).toBeCloseTo(haut.from + 6, 6)
+
+    const bas = tick(-30)!
+    // Même longueur de cône (cosinus pair), sens opposé : c'est TOUT ce qui distingue les deux.
+    expect(bas.from).toBeCloseTo(haut.from, 6)
+    expect(bas.to).toBeCloseTo(bas.from - 6, 6)
+  })
+
+  it('ne dessine AUCUN tick quand la visée se lit à plat', () => {
+    expect(tick(0)).toBeNull()
+    expect(tick(undefined)).toBeNull()
+    // Zone morte : sous 2°, le cône n'a pas bougé (cos 2° = 0,9994) et un trait affirmerait un
+    // sens que l'œil ne peut pas vérifier — il changerait de camp à chaque image.
+    expect(tick(1.9)).toBeNull()
+    expect(tick(-1.9)).toBeNull()
+    expect(tick(2.1)).not.toBeNull()
+  })
+
+  it('prend l élévation du MÊME instant que le cap, jamais une plus ancienne', () => {
+    // Le cap est frais (t = 50), l'élévation ne vit que sur un point BIEN plus vieux : la
+    // publier reviendrait à poser une plongée périmée sur une visée à plat actuelle.
+    const perimee = singlePointTrack(512, {
+      points: [
+        { t: 10, x: 5, y: 5, z: 0, h: 360, p: -70 },
+        { t: 50, x: 5, y: 5, z: 0, h: 360 },
+      ],
+    })
+    const ops = trace({ showAim: true }, perimee)
+    const secteur = ops.find((o) => o.op === 'arc' && (o.args as number[]).length === 5)!
+    expect((secteur.args as number[])[2]).toBeCloseTo(52, 6)
+    // Marqueur ORDINAIRE : il n emet aucun segment, donc zero `lineTo` = zero tick.
+    expect(count(ops, 'lineTo')).toBe(0)
   })
 })
 

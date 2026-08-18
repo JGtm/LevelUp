@@ -9,7 +9,7 @@
 //
 // Usage:
 //
-//	replay-build --map <nom de carte> [--title slug] [--interval MS] [--geometry DIR] <matchId> [filmDir]
+//	replay-build --map <nom de carte> [--title slug] [--interval MS] [--geometry DIR] [--facts FICHIER.json] <matchId> [filmDir]
 //
 // PIÈGE : le paquet flag arrête l'analyse au premier argument positionnel — les options
 // doivent précéder <matchId>.
@@ -26,12 +26,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log/slog"
 	"os"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -41,10 +43,13 @@ func main() {
 	geomDir := flag.String("geometry", "",
 		"répertoire des CSV de props Forge (défaut : PathResolver.MapGeometryDir du titre)")
 	mapName := flag.String("map", "", "nom de carte du match (obligatoire : porte les bornes de déquantification)")
+	factsPath := flag.String("facts", "",
+		"fichier JSON des faits du match (lignes de match, scores des deux camps, nom de variante) ; "+
+			"sans lui : artefact sans compteurs de joueur ni actions d'objectif")
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 1 || *mapName == "" {
-		slog.Error("usage: replay-build --map <carte> [--title slug] [--interval MS] [--geometry DIR] <matchId> [filmDir] (les options précèdent le matchId)")
+		slog.Error("usage: replay-build --map <carte> [--title slug] [--interval MS] [--geometry DIR] [--facts FICHIER.json] <matchId> [filmDir] (les options précèdent le matchId)")
 		os.Exit(2)
 	}
 	matchID := args[0]
@@ -70,7 +75,7 @@ func main() {
 		filmDir = args[1]
 	}
 
-	out, err := builder.BuildMatch(matchID, []string{*mapName}, filmDir)
+	out, err := builder.BuildMatch(matchID, []string{*mapName}, filmDir, loadFacts(*factsPath, matchID))
 	if err != nil {
 		slog.Error("construction de l'artefact", "err", err, "filmDir", filmDir, "match", matchID)
 		os.Exit(1)
@@ -78,4 +83,42 @@ func main() {
 	slog.Info("artefact rejeu écrit",
 		"path", out.ArtifactPath, "tracks", out.Tracks, "module", out.Module,
 		"bytes", out.Bytes, "match", matchID, "title", *titleFlag)
+}
+
+// loadFacts lit les faits du match dans un fichier JSON.
+//
+// POURQUOI UN FICHIER ET PAS LA BASE. Ce binaire est HORS LIGNE par construction : il n'ouvre
+// aucune DuckDB, et c'est ce qui le rend utilisable sur une machine qui n'a que des chunks de
+// film (et qui le laisse compiler sans CGO). Les faits que le film ne dit pas — les lignes de
+// match, les scores des deux camps, le nom de variante — arrivent donc par la même porte que
+// tout le reste : l'appelant. `levelup backfill-replay`, l'action admin et le fil de l'eau, eux,
+// les lisent en base.
+//
+// Forme attendue (les champs absents dégradent, ils ne font jamais échouer) :
+//
+//	{"gameVariantName":"CTF:Arena","teamScores":[3,0],
+//	 "players":[{"xuid":"2533274...","kills":12,"deaths":7,"assists":3,"teamId":0}]}
+//
+// Un chemin vide rend des faits vides, sans bruit : c'est le mode nominal du binaire. Un fichier
+// ILLISIBLE, lui, est journalisé — demander des faits et n'en avoir aucun n'est pas la même chose
+// que ne pas en demander.
+func loadFacts(path, matchID string) port.MatchFacts {
+	if path == "" {
+		return port.MatchFacts{}
+	}
+	raw, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'operateur du CLI
+	if err != nil {
+		slog.Warn("faits du match illisibles — artefact sans compteurs de joueur ni actions d'objectif",
+			"err", err, "path", path, "match", matchID)
+		return port.MatchFacts{}
+	}
+	var facts port.MatchFacts
+	if err := json.Unmarshal(raw, &facts); err != nil {
+		slog.Warn("faits du match invalides — artefact sans compteurs de joueur ni actions d'objectif",
+			"err", err, "path", path, "match", matchID)
+		return port.MatchFacts{}
+	}
+	slog.Info("faits du match charges", "path", path, "match", matchID,
+		"joueurs", len(facts.Players), "variante", facts.GameVariantName)
+	return facts
 }

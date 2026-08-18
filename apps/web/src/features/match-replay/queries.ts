@@ -15,7 +15,18 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { normalizeReplayDocument } from './replayNormalize'
 
-export function useMatchReplay(playerSlug: string, matchId: string) {
+/**
+ * useMatchReplay charge l'artefact du match, normalisé.
+ *
+ * `enabled` EXISTE POUR LA VUE MATCH, PAS POUR LE REJEU. Sur la page de rejeu, l'artefact
+ * EST la page : on le demande toujours. La vue match, elle, en lit un seul calque (la courbe
+ * de score, décision D2) et un artefact pèse de 1,5 à 2,7 Mio — le télécharger pour rien sur
+ * chaque match sans film serait un coût pur. L'appelant passe donc la même présence que le
+ * lien « rejeu » (`header.replay_available`, résolu par un `os.Stat` côté API), ce qui est
+ * exactement le gating que le plan demande. La CLÉ NE CHANGE PAS : les deux surfaces
+ * partagent le cache, et ouvrir le rejeu depuis la vue match ne refait aucun appel.
+ */
+export function useMatchReplay(playerSlug: string, matchId: string, enabled = true) {
   // Le titre courant entre dans la clé comme pour la vue match : deux titres ne
   // partagent jamais un artefact, et changer de titre ne doit pas servir le cache
   // de l'autre.
@@ -27,7 +38,7 @@ export function useMatchReplay(playerSlug: string, matchId: string) {
         await api.get<ReplayDocument>(`/players/${playerSlug}/matches/${matchId}/replay`),
       ),
     staleTime: 5 * 60_000,
-    enabled: !!playerSlug && !!matchId,
+    enabled: enabled && !!playerSlug && !!matchId,
     // 404 = pas d'artefact de rejeu pour ce match → état vide, ne pas réessayer.
     retry: false,
   })

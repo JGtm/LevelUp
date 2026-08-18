@@ -27,8 +27,16 @@ var sourceImpl = regexp.MustCompile(`func \([^)]*\) Chunks\(\) \[\](objectiveeve
 //	filmcache importe objectiveevents pour ses types ; un test DANS le paquet
 //	objectiveevents ne peut donc pas importer filmcache. Le lever demanderait de
 //	convertir ce fichier en paquet de test externe — hors du perimetre du lot v7.5-4.
+//	internal/analysis/objectiveevents/statborg_rounds_test.go (2026-08-18) — MEME CYCLE
+//	D'IMPORT. Ce test fige les corrections de production du decodeur d'enregistrements sur des
+//	vecteurs reels ; il vit DANS le paquet objectiveevents (il lit des symboles non exportes),
+//	donc il ne peut pas importer filmcache, qui l'importe. Sa source n'est d'ailleurs pas une
+//	source disque : c'est un buffer construit en memoire, repete — la disposition du cache
+//	n'entre pas dans son sujet. Entree posee au lot A phase 1, apres que le garde-rail a
+//	rougi (le test etait arrive au commit precedent sans elle).
 var allowlist = map[string]string{
-	filepath.FromSlash("internal/analysis/objectiveevents/extract_test.go"): "cycle d'import (2026-08-08)",
+	filepath.FromSlash("internal/analysis/objectiveevents/extract_test.go"):         "cycle d'import (2026-08-08)",
+	filepath.FromSlash("internal/analysis/objectiveevents/statborg_rounds_test.go"): "cycle d'import (2026-08-18)",
 }
 
 func TestUneSeuleSourceDisqueDeFilm(t *testing.T) {

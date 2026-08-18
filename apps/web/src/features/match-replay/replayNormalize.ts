@@ -22,8 +22,14 @@ import type {
   ReplayDocument,
   ReplayInventory,
   ReplayLoadout,
+  ReplayPlayerScore,
   ReplayProjectile,
+  ReplayScoreRound,
+  ReplayScoreSeries,
+  ReplayScoreTick,
+  ReplayScoreTimeline,
   ReplaySurface,
+  ReplayTeamScore,
   ReplayTrack,
   ReplayWeaponPad,
 } from '@/lib/api/types'
@@ -59,6 +65,38 @@ export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplaySte
 export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'>
 
 /**
+ * LES QUATRE ÉTAGES DU CALQUE DE SCORE (schéma 12), et pourquoi ils demandent quatre types.
+ *
+ * `scoreTimeline` est le premier champ du document qui empile des tableaux nullables sur
+ * QUATRE niveaux : `teams` → `rounds` → `points`, et `players` → `score|kills|deaths|
+ * assists` → `rounds` → `points`. La garde de tête (`_ListeExhaustive`) ne voit que la
+ * racine ; c'est le walker de `replayContract.test.ts` qui exige désormais chacun de ces
+ * niveaux, et ce sont ces types-là qui prouvent au compilateur qu'ils sont comblés.
+ */
+export type ReplayScoreRoundReady = Filled<ReplayScoreRound, 'points'>
+export type ReplayScoreSeriesReady = Omit<ReplayScoreSeries, 'rounds' | 'total'> & {
+  rounds: ReplayScoreRoundReady[]
+  total: ReplayScoreTick[]
+}
+export type ReplayTeamScoreReady = Omit<ReplayTeamScore, 'rounds' | 'total'> & {
+  rounds: ReplayScoreRoundReady[]
+  total: ReplayScoreTick[]
+}
+export type ReplayPlayerScoreReady = Omit<
+  ReplayPlayerScore,
+  'assists' | 'deaths' | 'kills' | 'score'
+> & {
+  assists: ReplayScoreSeriesReady
+  deaths: ReplayScoreSeriesReady
+  kills: ReplayScoreSeriesReady
+  score: ReplayScoreSeriesReady
+}
+export type ReplayScoreTimelineReady = Omit<ReplayScoreTimeline, 'players' | 'teams'> & {
+  players: ReplayPlayerScoreReady[]
+  teams: ReplayTeamScoreReady[]
+}
+
+/**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
  * tableau est présent, jamais null, et les coordonnées ont retrouvé leur arité.
  */
@@ -78,6 +116,7 @@ export type ReplayDocumentReady = Omit<
   | 'padPickups'
   | 'projectiles'
   | 'roster'
+  | 'scoreTimeline'
   | 'shots'
   | 'structure'
   | 'tracks'
@@ -97,6 +136,14 @@ export type ReplayDocumentReady = Omit<
   padPickups: NonNullable<ReplayDocument['padPickups']>
   projectiles: ReplayProjectileReady[]
   roster: NonNullable<ReplayDocument['roster']>
+  /**
+   * LE CALQUE DE SCORE RESTE OPTIONNEL, et c'est la seule façon honnête de l'écrire : un
+   * artefact de schéma antérieur à 12 n'en porte AUCUN, et un objet vide se lirait comme
+   * « le film a été lu, il n'y avait pas de score ». Absent veut dire « personne n'a
+   * regardé » ; les tableaux qu'il contient, eux, sont comblés — « aucun point » est une
+   * mesure, et se lit sur la même grille que les pistes.
+   */
+  scoreTimeline?: ReplayScoreTimelineReady
   shots: NonNullable<ReplayDocument['shots']>
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
@@ -155,6 +202,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // tuple que JSON Schema ne sait pas dire est réaffirmée (cf. en-tête).
     projectiles: (raw.projectiles ?? []).map((pr) => ({ ...pr, p: (pr.p ?? []) as ReplayStep[] })),
     roster: raw.roster ?? [],
+    // Le SCORE DANS LE TEMPS (schéma 12) : quatre étages de tableaux nullables comblés d'un
+    // coup (cf. normalizeScoreTimeline). L'OBJET, lui, garde le droit d'être absent.
+    scoreTimeline: normalizeScoreTimeline(raw.scoreTimeline),
     shots: raw.shots ?? [],
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
     tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
@@ -169,6 +219,53 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
       ...pad,
       spawns: pad.spawns ?? [],
       presence: pad.presence ?? [],
+    })),
+  }
+}
+
+/** Une manche dont les paliers sont comblés : un tableau vide dit « aucun point marqué ». */
+function normalizeRound(r: ReplayScoreRound): ReplayScoreRoundReady {
+  return { ...r, points: r.points ?? [] }
+}
+
+/**
+ * Une série (score, frags, morts, assistances) d'un joueur, ses deux tableaux comblés.
+ *
+ * `series` peut manquer alors que le contrat la déclare obligatoire : c'est justement le
+ * rôle d'une frontière de ne pas tomber sur un producteur qui déraille. Le résultat est vide,
+ * jamais inventé — et ce qui distingue « ce joueur n'est pas publié » de « ce joueur est à
+ * zéro » se joue un cran plus haut, sur sa PRÉSENCE dans `players` (cf. scoreTimelineLogic).
+ */
+function normalizeSeries(series: ReplayScoreSeries | undefined): ReplayScoreSeriesReady {
+  return {
+    ...series,
+    rounds: (series?.rounds ?? []).map(normalizeRound),
+    total: series?.total ?? [],
+  }
+}
+
+/**
+ * normalizeScoreTimeline comble les CINQ tableaux nullables du calque de score
+ * (`teams`, `players`, `rounds`, `total`, `points`) et rend l'absence du calque telle
+ * quelle : `undefined` entre, `undefined` sort.
+ */
+function normalizeScoreTimeline(
+  raw: ReplayScoreTimeline | undefined,
+): ReplayScoreTimelineReady | undefined {
+  if (!raw) return undefined
+  return {
+    ...raw,
+    players: (raw.players ?? []).map((p) => ({
+      ...p,
+      assists: normalizeSeries(p.assists),
+      deaths: normalizeSeries(p.deaths),
+      kills: normalizeSeries(p.kills),
+      score: normalizeSeries(p.score),
+    })),
+    teams: (raw.teams ?? []).map((t) => ({
+      ...t,
+      rounds: (t.rounds ?? []).map(normalizeRound),
+      total: t.total ?? [],
     })),
   }
 }

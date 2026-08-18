@@ -132,3 +132,20 @@ func ListShortIDs(root string) ([]string, error) {
 }
 
 func chunkName(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
+
+// OpenChunkDir ouvre le film dont on connait le REPERTOIRE DE CHUNKS.
+//
+// POURQUOI CETTE PORTE EXISTE. Le manifeste et les chunks vivent dans deux sous-dossiers
+// FRERES (cf. l'en-tete de ce paquet) ; les balayages hors ligne, eux, recoivent un chemin de
+// chunks parce que `analysis/filmdec` et `analysis/replay` lisent le dossier directement. Le
+// constructeur d'artefact a besoin des deux — les chunks pour le decodage, le manifeste pour
+// le `start_ms` de chaque chunk, sans lequel les enregistrements d'entite ne sont pas datables.
+//
+// La remontee du chemin est faite ICI et nulle part ailleurs : la disposition du cache est
+// declaree dans ce paquet, et un appelant qui la reconstituerait chez lui serait exactement la
+// copie que le garde-rail interdit.
+func OpenChunkDir(chunkDir string) (*Source, bool, error) {
+	cleaned := filepath.Clean(chunkDir)
+	root := filepath.Dir(filepath.Dir(cleaned))
+	return Open(root, filepath.Base(cleaned))
+}

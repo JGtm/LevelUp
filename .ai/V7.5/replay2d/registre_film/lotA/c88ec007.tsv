@@ -1,0 +1,19 @@
+meta	c88ec007	Oddball:Arena	skull	Live Fire	192	155	666	8	2632	1296	1336	2609	438289	40624	6764
+team	6	80	80	80	47834	229518	oui
+team	8	32	32	32	148936	216889	oui
+a01	ecart	80/32	192/155	2
+player	10	-	-	3	-	4	-	3	-	non	non	0
+player	12	-	-	7	-	6	-	1	-	non	non	0
+player	14	-	-	6	-	3	-	1	-	non	non	0
+player	16	-	-	2	-	6	-	4	-	non	non	0
+player	18	-	-	5	-	7	-	1	-	non	non	0
+player	20	-	-	6	-	6	-	3	-	non	non	0
+player	22	-	-	9	-	2	-	2	-	non	non	0
+player	24	-	-	2	-	6	-	1	-	non	non	0
+a03	0	0	0	0	8	8	0
+teamcore	25	15	0	0	0
+a02	c			comp2A equipes 25/15 vs sommes joueurs 0/0
+a01b	ecart	80/32	192/155	1	1
+volume	112	0	0	0	0	2230	25	2255
+probe	total	0
+cost	6764	6824	21	6	84	2632
