@@ -93,7 +93,7 @@ package replay
 // `coverage.zones.roles` publie les roles employes pour que la jointure soit VERIFIABLE plutot
 // que supposee.
 
-// Les DEUX methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
+// Les TROIS methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
 // document le dit plutot que de laisser le client le deviner.
 const (
 	// ZoneMethodCaptures : la zone d'un slot vient des CAPTURES NOMMEES du statborg, attribuees
@@ -102,7 +102,15 @@ const (
 	// ZoneMethodPositions : aucun oracle nomme (KOTH). La zone d'une periode de garde vient de
 	// la GRAPPE des positions pendant la montee de la jauge. Methode plus faible : sa nettete
 	// est excellente sur un film, moyenne sur un autre, NULLE sur un troisieme (phase 2a).
+	// Depuis le lot C-ter volet 1, c'est le REPLI des films KOTH sans designateur lisible.
 	ZoneMethodPositions = "positions+geometry"
+	// ZoneMethodDesignator : KOTH, les PERIODES viennent du DESIGNATEUR de colline (tag 5 du
+	// slot de l'objet de mode, qui change 13-21 ms apres chaque capture — lot C-ter volet 1,
+	// 13/13 changements sur 4 films, temoins a 0 %) ; la GRAPPE des positions ne sert plus qu'a
+	// apparier chaque periode a une forme. La colline VIDE (avant que quelqu'un n'y entre) est
+	// visible ; la premiere periode s'ouvre au PREMIER CONTACT avec l'objet de mode (borne haute
+	// de l'activation : le film ne date pas celle-ci en delta, cf. zone_states_hill.go).
+	ZoneMethodDesignator = "designator+geometry"
 )
 
 // ZoneState est L'ETAT D'UNE ZONE sur toute la partie : une suite d'intervalles.
@@ -196,7 +204,8 @@ type ZoneSpan struct {
 // `groundWeapons`, `score` et `flagCarries`. Son ABSENCE dit encore autre chose : l'appelant n'a
 // rien fourni a lire (pas de catalogue de zones, ou film non balaye).
 type ZonesCoverage struct {
-	// Method nomme l'appariement employe : [ZoneMethodCaptures] ou [ZoneMethodPositions].
+	// Method nomme l'appariement employe : [ZoneMethodCaptures], [ZoneMethodDesignator] ou
+	// [ZoneMethodPositions].
 	Method string `json:"method"`
 	// Roles nomme les roles du catalogue qui composent `mapObjectives.zones`, DANS L'ORDRE et
 	// separes par une virgule (`strongholds_zone`, ou `strongholds_zone,extraction_zone`).
@@ -212,8 +221,8 @@ type ZonesCoverage struct {
 	// Slots est le nombre de slots `ti=13` qui emettent une valeur scalaire sur ce film.
 	Slots int `json:"slots"`
 	// Paired / Unpaired comptent CE QUE L'APPARIEMENT A RETENU ET CE QU'IL A ECARTE. Leur UNITE
-	// depend de la methode, parce que les deux methodes n'apparient pas la meme chose — et le
-	// dire ici vaut mieux que deux paires de champs dont l'une serait toujours nulle :
+	// depend de la methode, parce que les methodes n'apparient pas la meme chose — et le dire ici
+	// vaut mieux que trois paires de champs dont deux seraient toujours nulles :
 	//
 	//	[ZoneMethodCaptures]    des SLOTS PORTEURS D'UNE JAUGE. `Paired` : ceux qu'une zone du
 	//	                        catalogue a recus ; `Unpaired` : ceux qu'aucune capture n'a
@@ -223,6 +232,10 @@ type ZonesCoverage struct {
 	//	                        grappe n'a pas su localiser (garde reelle, lieu inconnu) —
 	//	                        compte ajoute a la revue R1 du 2026-08-18, il restait a zero
 	//	                        quoi qu'il arrive.
+	//	[ZoneMethodDesignator]  `Paired` : les ZONES que la grappe a localisees et qui sortent
+	//	                        avec des periodes ; `Unpaired` : les PERIODES DESIGNEES (une
+	//	                        colline, bornee par le designateur) que la grappe n'a pas su
+	//	                        localiser — colline reelle, forme inconnue.
 	//
 	// CE QUI EST ECARTE N'EST JAMAIS PUBLIE : un intervalle pose sur une zone devinee serait
 	// invisible et credible.
@@ -253,8 +266,10 @@ type ZonesCoverage struct {
 	OwnerUnpaired int `json:"ownerUnpaired"`
 	// Spans est le nombre d'intervalles publies, toutes zones confondues.
 	Spans int `json:"spans"`
-	// HillPeriods est le nombre de periodes de COLLINE publiees (methode par positions). Zero
-	// dans les modes a zones simultanees.
+	// HillPeriods est le nombre de periodes de COLLINE : publiees (methode par positions), ou
+	// DESIGNEES par le film — localisees ou non (methode par designateur : c'est le nombre de
+	// collines du match, `Unpaired` dit combien n'ont pas de forme). Zero dans les modes a zones
+	// simultanees.
 	HillPeriods int `json:"hillPeriods"`
 	// UnknownOwner compte les emissions du canal de propriete dont la valeur n'est ni neutre ni
 	// un index d'equipe connu. Elles n'ouvrent aucun intervalle : publier un camp qu'aucun
