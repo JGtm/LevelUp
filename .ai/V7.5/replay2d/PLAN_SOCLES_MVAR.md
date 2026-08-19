@@ -125,11 +125,11 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
 
 ### Phase 1 — que contient le `.mvar` de Catalyst ? (Q1) (commit 2)
 
-- [ ] 1.1 Inventaire complet de `catalyst_catalyst.mvar` (337 objets) : histogramme des
+- [x] 1.1 Inventaire complet de `catalyst_catalyst.mvar` (337 objets) : histogramme des
       type_id, des categories, des labels.
-- [ ] 1.2 Idem pour `catalyst_map.mvar` (357 objets) — deux fichiers pour la meme carte,
+- [x] 1.2 Idem pour `catalyst_map.mvar` (357 objets) — deux fichiers pour la meme carte,
       il faut savoir lequel est le bon avant d'apparier.
-- [ ] 1.3 Verdict Q1 ecrit : le `.mvar` porte-t-il des objets de type « spawner » ?
+- [x] 1.3 Verdict Q1 ecrit : le `.mvar` porte-t-il des objets de type « spawner » ?
 
 ### Phase 2 — appariement de l'oracle Catalyst (Q2) (commit 3)
 
@@ -190,6 +190,27 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
   trois SKIP explicites sans garde. Report assume : la consigne du lot demande « ni journal
   ni registre », donc AUCUNE entree `.ai/thought_log.md` n'est ecrite — les textes partent
   au CR. C'est la seule derogation au contrat `plan-execution`, et elle est ordonnee.
+- **2026-08-19, phase 1 close** — Inventaire des deux `.mvar` de Catalyst (meme `level_id`
+  `-1044063363`, deux map_id distincts au catalogue).
+  `catalyst_catalyst.mvar` : 337 objets, **36 type_id distincts**, 3 categories (-1, 1, 2),
+  31 objets avec forme, 124 avec index d'equipe, table de chaines **VIDE**. Labels resolus :
+  `infection_include` 109, `ctf_include` 8, `strongholds_include` 6, `extraction_zone` 6,
+  `extraction_include` 5, `assault_include` 4, `flag_spawn` 3, `strongholds_zone` 3,
+  `flag_delivery` 2, plus 4 unitaires. **9 hashs de label INCONNUS** (le plus frequent
+  `-886053664`, 18 fois).
+  `catalyst_map.mvar` : 357 objets, 42 type_id, 4 categories, 3 noms, **20 hashs inconnus**.
+  `root[6]` DECODE (il n'etait pas seulement « non exploite », il n'avait jamais ete
+  regarde) : 11 blocs, chacun `{.0 = offset de depart, .1 = liste d'entrees, .5.0 = un
+  int32 de type hash}`. Les offsets s'enchainent (0, 135, 143, 167, 268, 293, 294, 300,
+  337, 340, 346) et la somme des entrees vaut 348 = `root[6].2`. Chaque entree vaut
+  `{0:1, 1:identifiant sequentiel, 6:0xFFFFFFFF, 8:index, 9:struct vide}` : c'est une
+  **table d'allocation d'identifiants**, sans position ni reference d'objet. La coincidence
+  « 11 blocs / 11 socles » est fortuite et le disque le montre.
+  `root[11]` : present, type BT_MAP, **vide** sur Catalyst.
+  **Verdict 1.3** : le fichier porte 36 a 42 types d'objets dont un seul est identifie
+  (`-1239931096`, le volume d'objectif que `map_objectives.json` publie deja) ; RIEN ne les
+  nomme (table de chaines vide sur les cartes DEV) ; aucune reference d'arme n'est lisible.
+  Le seul discriminant disponible est donc la POSITION — c'est l'objet de la phase 2.
 
 ## 8. Verdict et suite
 
