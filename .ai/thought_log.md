@@ -1,3 +1,39 @@
+## [2026-08-20] v7.5 rejeu 2D — lot C-ter : integration des trois volets, re-fusion de l'amont, CI reparee — Complete
+
+**Statut** : Complete (branche `wt/cter-fusion`, socle volet 3 `80f6eb033`, six commits jusqu'a
+la cloture ; NON fusionnee — regime branche unique). Journal : `LOTCTER_FUSION.md`. Gates :
+section « APRES RE-FUSION D'ORIGIN » de `LOTCTER_fusion_gates.log`, tous les EXIT_* a 0.
+**Decision technique** : (1) L'AMONT REFUSIONNE UNE SECONDE FOIS (`2711d26f9`, origin a
+`c154f5136` — douze commits d'une autre session : catalogue des socles, laches hors Fiesta).
+Deux conflits, les deux resolus en GARDANT LES DEUX COTES. Le seul arbitrage reel est la
+chronique du contrat : notre entree « 36 -> 36 » (la jauge ne pose AUCUN champ racine) et la
+leur « 36 -> 37 » (`mapWeaponPads`, un vrai champ racine) coexistent ; le compte va a 37 et la
+formule de cloture a « Les douze fois » — une entree sans champ racine n'incremente pas ce
+compteur, c'est la convention du fichier. Notre entree gagne une precision datee parce que sa
+derniere phrase (« le compte reste donc 36 des DEUX cotes ») devenait fausse a cote de sa
+voisine. (2) LA CI EST REPAREE HORS LOT, ET ELLE LE DIT (`784868147`) : deux allowlists datees
+du 2026-08-20 pour `cmd/variant-probe` (violation reelle halowaypoint hors frontiere ; faux
+positif du drapeau CLI `"scan"` contre le ratchet killscope), chacune avec sa condition de
+reprise ecrite dans le fichier de regle, statut [!] a router vers la session proprietaire. Le
+ratchet killscope n'est pas affaibli — motif, proprietaires et marche du walk intacts — et son
+allowlist, jusqu'ici vide, gagne son self-check pour que l'exception ne survive pas a sa cause.
+**Resultats observes** : un TROISIEME rouge est ne de la re-fusion elle-meme et d'aucun lot —
+le test neuf d'amont `map_weapon_pads_catalog_test.go` ecrit l'echelle « ../../../.. » a la
+main, que le cliquet neuf du volet 2 interdit ; ni l'un ni l'autre n'etait rouge seul. Migre
+vers `testutil.RepoRoot()` comme le cliquet le prescrit, `t.Skip` supprime puisque le catalogue
+EST versionne. Six temoins recuits verifies champ par champ au schema 18 : Bastion x2 =
+`captures+geometry`, jauge a 1 701 et 1 794 points sur l'echelle du jeu (v dans [0 ; 0,999]),
+rampes toutes fermees (49/49 et 51/51), proprietaire d'accord 46/46 et 51/51 = 100 % ; colline
+x4 = `designator+geometry`, role `hill`, ZERO point de jauge et pas meme le champ, chevauchement
+maximal des periodes actives = 1 (une seule colline a la fois, mesure). `0a247154` n'a aucune
+jauge tag 3 : il publie les six periodes du designateur, contigues et sans trou, SANS `progress`
+— un zero invente y aurait ete un chiffre faux. Gates : archlint vert (controle negatif joue,
+les deux tests rougissent sur les fichiers attendus et sur rien d'autre), build, golangci-lint 0
+issue, tsc 0, vitest 154/1901, eslint 20/20, cross-feature 7/7.
+**Conclusion / prochaine etape** : le lot C-ter est integre et mesure ; il reste a router
+`cmd/variant-probe` vers sa session (ou vers le superviseur) et a confirmer une resolution
+« ligne 160 » du handoff que je n'ai pas pu rattacher sur pieces. Aucun push, aucun merge.
+
 ## [2026-08-19] v7.5 rejeu 2D — lot C-ter volet 3 : revue adversariale ronde 1 (0 P0/P1, 4 constats de forme corriges) — Complete
 
 **Statut** : Complete (branche `wt/jauge-live`, un commit au-dessus de `9039fb646`, NON fusionnee —
