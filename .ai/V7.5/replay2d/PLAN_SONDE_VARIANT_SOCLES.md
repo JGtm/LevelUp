@@ -116,9 +116,9 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
 - [x] 1.3 Gate : `go vet ./cmd/variant-probe/...`, golangci 0 sur le perimetre.
 
 ### Phase 2 — les fichiers references (commit 3)
-- [ ] 2.1 Telecharger les fichiers references depuis `Files.Prefix`.
-- [ ] 2.2 Inventaire : nom, taille, type (texte/binaire), entete.
-- [ ] 2.3 AJOUTE EN COURS D'EXECUTION (decouverte de 1.2, elle deplace la cible) : interroger
+- [x] 2.1 Telecharger les fichiers references depuis `Files.Prefix`.
+- [x] 2.2 Inventaire : nom, taille, type (texte/binaire), entete.
+- [x] 2.3 AJOUTE EN COURS D'EXECUTION (decouverte de 1.2, elle deplace la cible) : interroger
       l'asset `EngineGameVariants/{assetId}/versions/{versionId}` pointe par chaque variant.
       C'est l'alternative n. 3 de la section 6, servie par le document lui-meme.
 
@@ -176,6 +176,23 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
   interroger l'asset engine directement. Item 2.3 ajoute en consequence.
   Gates : `go vet ./cmd/variant-probe/...` = 0, `golangci-lint run ./cmd/variant-probe/...` =
   **0 issues**.
+
+- **2026-08-19, phase 2 close** — Fichiers references par les UgcGameVariants : **QUE des
+  images** (hero, screenshots, thumbnail — 41 Mo pour CTF:Arena, la hero est en pleine
+  resolution). Aucune donnee de regle de ce cote : Q2 est NEGATIF sur l'asset de vitrine.
+  **L'asset `engineGameVariants` change tout** : il expose **38 fichiers**, dont un `.bin`
+  de regles par mode — `MultiFlag.bin` (CTF, **529 643 o**), `Default.bin` (KOTH/Bastion,
+  **516 332 o**), `SlayerSuperFiesta.bin` (**405 880 o**) — plus 18 `CustomGamesUIMarkup/
+  *_{langue}.bin` (98 a 147 Ko) et 18 fichiers de libelles minuscules (`MultiFlag.fr` =
+  153 o). Le `_guid.txt` donne un GUID stable par mode (CTF `27ee48da-...`, KOTH
+  `23c9f7c0-...`, Fiesta `50ec7add-...`).
+  **Les `.bin` sont du Bond**, comme les `.mvar` : entete `e8a9 202b 4a...` puis des chaines
+  lisibles en clair — `CTF` / `MultiFlag`, `Bastion` / `Default`, `Slayer` /
+  `SlayerSuperFiesta`. La grammaire `internal/analysis/replay/mapvar/cb2.go` est donc
+  candidate a les lire.
+  Le segment `engineGameVariants` n'existait dans aucune table du depot : il a ete trouve
+  par le document lui-meme, pas devine.
+  Gates : `go vet` = 0, `golangci-lint run ./cmd/variant-probe/...` = **0 issues**.
 
 ## 8. Decouvertes (notees, NON traitees)
 

@@ -1,4 +1,4 @@
-// cmd/variant-probe — fetch.go : client UGC pour l'asset UgcGameVariants.
+// cmd/variant-probe — fetch.go : client UGC pour les assets de mode.
 //
 // Deux étapes, exactement comme cmd/mapobj-build/fetch.go pour les cartes :
 //  1. Discovery UGC (AUTHENTIFIÉ, jeton Spartan) : assetId → document d'asset
@@ -6,7 +6,8 @@
 //     le JSON BRUT, la sonde cherche des champs qu'on ne connaît pas encore) ;
 //  2. Stockage blob (ANONYME) : télécharge les fichiers depuis Files.Prefix.
 //
-// Le segment est `ugcGameVariants` (internal/platform/halo/discovery_types.go).
+// Segments : `ugcGameVariants` (internal/platform/halo/discovery_types.go) et
+// `engineGameVariants`, découvert par l'EngineGameVariantLink que sert le premier.
 package main
 
 import (
@@ -25,6 +26,7 @@ import (
 const (
 	discoveryHost   = "https://discovery-infiniteugc.svc.halowaypoint.com"
 	variantSegment  = "ugcGameVariants"
+	engineSegment   = "engineGameVariants"
 	requestTimeout  = 30 * time.Second
 	maxPayloadBytes = 64 << 20
 	politeUserAgent = "LevelUp/1.0 (dashboard stats Halo, usage personnel)"
@@ -42,15 +44,27 @@ func newUGCClient(tokens *domain.HaloTokens) *ugcClient {
 	}
 }
 
-// fetchVariantRaw récupère le document d'asset d'un UgcGameVariant, BRUT.
+// fetchAssetRaw récupère le document d'un asset de mode, BRUT.
 // versionID vide → endpoint sans /versions/ (dernière version publiée) : c'est le
 // cas de 1544 lignes du registre sur 1819, qui n'ont pas de game_variant_version_id.
-func (c *ugcClient) fetchVariantRaw(ctx context.Context, assetID, versionID string) ([]byte, error) {
-	endpoint := fmt.Sprintf("%s/hi/%s/%s", discoveryHost, variantSegment, url.PathEscape(assetID))
+func (c *ugcClient) fetchAssetRaw(ctx context.Context, segment, assetID, versionID string) ([]byte, error) {
+	endpoint := fmt.Sprintf("%s/hi/%s/%s", discoveryHost, segment, url.PathEscape(assetID))
 	if versionID != "" {
 		endpoint += "/versions/" + url.PathEscape(versionID)
 	}
 	return c.get(ctx, endpoint, true)
+}
+
+// fetchBlob télécharge un fichier référencé par l'asset depuis le stockage blob
+// (lecture anonyme : les en-têtes Spartan y seraient inattendus).
+func (c *ugcClient) fetchBlob(ctx context.Context, prefix, relPath string) ([]byte, error) {
+	endpoint := strings.TrimSuffix(prefix, "/") + "/" + relPath
+	body, err := c.get(ctx, endpoint, false)
+	if err != nil {
+		return nil, err
+	}
+	slog.InfoContext(ctx, "variant-probe: blob téléchargé", "file", relPath, "bytes", len(body))
+	return body, nil
 }
 
 // get exécute un GET. withAuth pose les en-têtes Spartan/Clearance.

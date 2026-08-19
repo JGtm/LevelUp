@@ -12,7 +12,7 @@
 // Usage :
 //
 //	go run ./cmd/variant-probe --player <Gamertag> --out <dossier> \
-//	    --variant <assetId>[:<versionId>] [--variant ...]
+//	    --variant <assetId>[:<versionId>] [--variant ...] [--fetch-files] [--engine]
 //
 // Authentification : ADR 0023 strict — MultiUserTokenStore via
 // auth.RefreshHaloTokensViaStoreFirst, AUCUNE re-capture, aucune écriture de
@@ -39,6 +39,14 @@ type variantList []string
 func (v *variantList) String() string     { return strings.Join(*v, ",") }
 func (v *variantList) Set(s string) error { *v = append(*v, s); return nil }
 
+// probeOpts regroupe les options d'une passe de sonde (évite la fonction à
+// 6 paramètres — seuil du CLAUDE.md).
+type probeOpts struct {
+	outDir     string
+	fetchFiles bool
+	engine     bool
+}
+
 func main() {
 	var (
 		variants  variantList
@@ -46,6 +54,8 @@ func main() {
 		titleSlug = flag.String("title", titlePkg.DefaultSlug, "slug du titre")
 		outDir    = flag.String("out", "", "dossier de dépôt des payloads (OBLIGATOIRE)")
 		rateMS    = flag.Int("rate-ms", 1000, "délai entre deux requêtes (politesse)")
+		fetchAll  = flag.Bool("fetch-files", false, "télécharger aussi les fichiers référencés par l'asset")
+		engine    = flag.Bool("engine", false, "suivre EngineGameVariantLink et récupérer l'asset moteur")
 	)
 	flag.Var(&variants, "variant", "assetId[:versionId] d'un UgcGameVariant (répétable, OBLIGATOIRE)")
 	flag.Parse()
@@ -73,12 +83,13 @@ func main() {
 		fail(ctx, "création du dossier de sortie", err)
 	}
 
+	opts := probeOpts{outDir: *outDir, fetchFiles: *fetchAll, engine: *engine}
 	var failures []string
 	for i, spec := range variants {
 		if i > 0 && *rateMS > 0 {
 			time.Sleep(time.Duration(*rateMS) * time.Millisecond)
 		}
-		if err := probeVariant(ctx, client, spec, *outDir); err != nil {
+		if err := probeVariant(ctx, client, spec, opts); err != nil {
 			slog.ErrorContext(ctx, "variant-probe: variant non récupéré", "spec", spec, "err", err)
 			failures = append(failures, fmt.Sprintf("%s: %v", spec, err))
 		}
@@ -90,41 +101,108 @@ func main() {
 	}
 }
 
-// probeVariant récupère un asset UgcGameVariant et dépose son JSON BRUT.
-//
-// Le brut est déposé tel quel : cette sonde cherche des champs qu'on ne connaît
-// pas encore, un décodage typé les mangerait en silence.
-func probeVariant(ctx context.Context, c *ugcClient, spec, outDir string) error {
+// assetHead est la partie du document d'asset que la sonde exploite. Le reste du
+// JSON n'est PAS décodé : il est déposé BRUT, cette sonde cherche des champs
+// qu'on ne connaît pas encore et un décodage typé les mangerait en silence.
+type assetHead struct {
+	AssetID    string          `json:"AssetId"`
+	VersionID  string          `json:"VersionId"`
+	PublicName json.RawMessage `json:"PublicName"`
+	Files      assetFiles      `json:"Files"`
+	EngineLink struct {
+		AssetID   string     `json:"AssetId"`
+		VersionID string     `json:"VersionId"`
+		Name      string     `json:"PublicName"`
+		Files     assetFiles `json:"Files"`
+	} `json:"EngineGameVariantLink"`
+}
+
+type assetFiles struct {
+	Prefix            string   `json:"Prefix"`
+	FileRelativePaths []string `json:"FileRelativePaths"`
+}
+
+// probeVariant récupère un UgcGameVariant, dépose son JSON BRUT, puis suit les
+// pistes demandées (fichiers référencés, asset moteur).
+func probeVariant(ctx context.Context, c *ugcClient, spec string, opts probeOpts) error {
 	assetID, versionID := splitSpec(spec)
-	raw, err := c.fetchVariantRaw(ctx, assetID, versionID)
+	head, err := c.dumpAsset(ctx, variantSegment, assetID, versionID, opts.outDir)
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(outDir, assetID+".json")
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
-		return fmt.Errorf("écriture %s: %w", path, err)
+	if opts.fetchFiles {
+		c.dumpFiles(ctx, head.Files, filepath.Join(opts.outDir, "files", assetID))
 	}
+	if opts.engine && head.EngineLink.AssetID != "" {
+		if err := c.probeEngine(ctx, head, opts); err != nil {
+			return fmt.Errorf("asset moteur %s: %w", head.EngineLink.AssetID, err)
+		}
+	}
+	return nil
+}
 
-	// Résumé lisible : ce que la sonde attend en premier (les fichiers référencés).
-	var head struct {
-		AssetID    string          `json:"AssetId"`
-		VersionID  string          `json:"VersionId"`
-		PublicName json.RawMessage `json:"PublicName"`
-		Files      struct {
-			Prefix            string   `json:"Prefix"`
-			FileRelativePaths []string `json:"FileRelativePaths"`
-		} `json:"Files"`
+// probeEngine récupère l'asset EngineGameVariants pointé par un variant.
+func (c *ugcClient) probeEngine(ctx context.Context, head *assetHead, opts probeOpts) error {
+	slog.InfoContext(ctx, "variant-probe: lien moteur",
+		"from", head.AssetID, "engine_asset", head.EngineLink.AssetID,
+		"engine_version", head.EngineLink.VersionID, "engine_name", head.EngineLink.Name,
+		"files_dans_le_lien", len(head.EngineLink.Files.FileRelativePaths))
+	eng, err := c.dumpAsset(ctx, engineSegment, head.EngineLink.AssetID, head.EngineLink.VersionID, opts.outDir)
+	if err != nil {
+		return err
 	}
+	if opts.fetchFiles {
+		c.dumpFiles(ctx, eng.Files, filepath.Join(opts.outDir, "files", eng.AssetID))
+	}
+	return nil
+}
+
+// dumpAsset récupère un document d'asset, l'écrit BRUT, et retourne son en-tête.
+func (c *ugcClient) dumpAsset(ctx context.Context, segment, assetID, versionID, outDir string) (*assetHead, error) {
+	raw, err := c.fetchAssetRaw(ctx, segment, assetID, versionID)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(outDir, segment+"_"+assetID+".json")
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		return nil, fmt.Errorf("écriture %s: %w", path, err)
+	}
+	var head assetHead
 	if err := json.Unmarshal(raw, &head); err != nil {
-		return fmt.Errorf("décoder l'en-tête de %s: %w", assetID, err)
+		return nil, fmt.Errorf("décoder l'en-tête de %s: %w", assetID, err)
 	}
 	slog.InfoContext(ctx, "variant-probe: asset récupéré",
-		"asset_id", head.AssetID, "version_id", head.VersionID,
+		"segment", segment, "asset_id", head.AssetID, "version_id", head.VersionID,
 		"name", string(head.PublicName), "bytes", len(raw),
 		"files", len(head.Files.FileRelativePaths),
 		"file_paths", strings.Join(head.Files.FileRelativePaths, " | "),
 		"path", path)
-	return nil
+	return &head, nil
+}
+
+// dumpFiles télécharge les fichiers référencés par un asset. Un échec par fichier
+// est loggué et n'interrompt pas la passe : la sonde veut l'inventaire, pas la
+// perfection.
+func (c *ugcClient) dumpFiles(ctx context.Context, files assetFiles, dir string) {
+	if len(files.FileRelativePaths) == 0 {
+		slog.InfoContext(ctx, "variant-probe: aucun fichier référencé", "prefix", files.Prefix)
+		return
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		slog.ErrorContext(ctx, "variant-probe: création du dossier de fichiers", "dir", dir, "err", err)
+		return
+	}
+	for _, rel := range files.FileRelativePaths {
+		body, err := c.fetchBlob(ctx, files.Prefix, rel)
+		if err != nil {
+			slog.ErrorContext(ctx, "variant-probe: fichier non téléchargé", "file", rel, "err", err)
+			continue
+		}
+		dest := filepath.Join(dir, strings.ReplaceAll(rel, "/", "_"))
+		if err := os.WriteFile(dest, body, 0o644); err != nil {
+			slog.ErrorContext(ctx, "variant-probe: écriture du fichier", "dest", dest, "err", err)
+		}
+	}
 }
 
 // splitSpec découpe "assetId[:versionId]".
