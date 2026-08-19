@@ -56,12 +56,21 @@ func main() {
 		rateMS    = flag.Int("rate-ms", 1000, "délai entre deux requêtes (politesse)")
 		fetchAll  = flag.Bool("fetch-files", false, "télécharger aussi les fichiers référencés par l'asset")
 		engine    = flag.Bool("engine", false, "suivre EngineGameVariantLink et récupérer l'asset moteur")
+		scanDir   = flag.String("scan", "", "mode HORS LIGNE : analyser les payloads deja deposes dans ce dossier (aucune requete)")
 	)
 	flag.Var(&variants, "variant", "assetId[:versionId] d'un UgcGameVariant (répétable, OBLIGATOIRE)")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	ctx := context.Background()
+
+	// Mode hors ligne : ni auth ni reseau, il ne lit que des fichiers deposes.
+	if strings.TrimSpace(*scanDir) != "" {
+		if err := runScan(ctx, *scanDir); err != nil {
+			fail(ctx, "scan hors ligne", err)
+		}
+		return
+	}
 
 	// Garde de sonde : rien d'implicite, aucune requête sans cible explicite.
 	if len(variants) == 0 || strings.TrimSpace(*outDir) == "" {
