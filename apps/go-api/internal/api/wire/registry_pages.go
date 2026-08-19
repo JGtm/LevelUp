@@ -91,6 +91,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
 		WithTitleSlug(pdb.TitleSlug).
+		// ModeCategory du header (garde Fiesta du rejeu 2D) : même taxonomie que
+		// MediaRepo, cf. haloInfiniteModeTaxonomy (registry_media.go).
+		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
 		// Flag « Prolongation » : table réglementaire du titre (regulation.toml).
 		// Titre sans table → nil → jamais de flag.
 		WithRegulation(r.regulationFor(pdb)).

@@ -16624,6 +16624,8 @@ components:
           type: string
         match_id:
           type: string
+        mode_category:
+          type: string
         mode_ui:
           type: string
         outcome_code:

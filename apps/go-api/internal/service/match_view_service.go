@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -132,6 +133,11 @@ type MatchViewService struct {
 	// Injecté via WithAssetURL au boot. Si nil, MapImageURL et IconURL restent
 	// vides — le front affiche les fallbacks texte (dégradation gracieuse).
 	assetURL games.TitleAssetURLAdapter
+	// modeTaxonomy (optionnel) : résout pair_name → catégorie custom de mode pour
+	// MatchViewHeader.ModeCategory. Injecté via WithModeTaxonomy avec la MÊME
+	// taxonomie que MediaRepo (wire.haloInfiniteModeTaxonomy — une seule résolution
+	// par titre). Zéro-value → ModeCategory reste vide (dégradation gracieuse).
+	modeTaxonomy analysis.ModeTaxonomy
 	// socialRepo (optionnel) : repo des données sociales (favoris). Injecté
 	// via WithSocial. Si nil ou shared_social indisponible, IsFavorite reste
 	// false — le bouton favori côté front reste fonctionnel mais idempotent.

@@ -8,27 +8,26 @@
  * deviendrait un semis de marques qui ne dit plus rien du terrain (témoin `000d5950`, Super
  * Fiesta : 26 lâchers de puissance sur un seul match).
  *
- * POURQUOI ELLE EST DIFFICILE, ET LA MESURE EST SANS APPEL :
+ * POURQUOI ELLE EST DIFFICILE :
  *
  *  1. LE DOCUMENT DE REJEU NE PORTE AUCUN MODE. `ReplayDocument` n'a ni `mode`, ni `playlist`,
  *     ni `pair_name` ; `Coverage` non plus. Le calque ne peut donc PAS décider seul — d'où
  *     cette garde, qui vit du côté de la PAGE et lui arrive déjà tranchée.
  *  2. LA PLAYLIST NE DIT RIEN. `header.playlist_label` vaut « Quick Play » aussi bien sur le
  *     témoin Super Fiesta que sur le témoin roi de la colline (relevé en base sur les deux).
- *  3. LE LIBELLÉ DE MODE DIT PRESQUE TOUT. `header.mode_ui` est `NormalizeModeLabel(pair_name)`
- *     côté serveur : il CONSERVE l'identité de playlist « Super Fiesta » (428 matchs du corpus
- *     de 1 855) et rend « Castle Wars » (1), mais pour un `pair_name` de la forme
- *     « Fiesta:Slayer on … » il extrait le SOUS-mode (« Slayer », affiché « Assassin ») et
- *     l'indice DISPARAÎT : 3 matchs du corpus.
+ *
+ * LA CORRÉLATION (2026-08-20) SE FAIT SUR `header.mode_category`, PAS SUR UN LIBELLÉ DEVINÉ.
+ * `mode_ui` est `NormalizeModeLabel(pair_name)` côté serveur : il extrait le SOUS-mode affiché
+ * et peut perdre l'identité de playlist (« Fiesta:Slayer on … » → sous-mode « Slayer », affiché
+ * « Assassin ») — c'était le trou mesuré, 3 matchs sur les 432 de catégorie Fiesta du corpus
+ * (0,7 %). `mode_category` est la sortie de `InferModeCategoryFromPairName` (même résolution
+ * que le filtre Mode de la galerie média) : elle CONSERVE cette identité, donc le trou se ferme
+ * sans deviner. `mode_ui`/`playlist_label` ne restent qu'un REPLI, pour les en-têtes où
+ * `mode_category` est absente (titre sans la notion, ou pair_name non résolu).
  *
  * D'OÙ LA RÈGLE, ET ELLE EST CONSERVATRICE PAR CONSTRUCTION : on ne dessine les lâchés QUE si
  * le match ne porte AUCUN indice de Fiesta. Un en-tête absent (réponse en vol, match view en
  * erreur) n'est PAS une preuve de non-Fiesta : il rend `unknown`, et `unknown` ne dessine rien.
- *
- * TROU MESURÉ ET ASSUMÉ : 3 matchs sur les 432 de catégorie Fiesta (0,7 %) — ceux dont le
- * `pair_name` commence par « Fiesta: » — passeront pour non-Fiesta. Le fermer demande de
- * publier la catégorie de mode (ou le `pair_name`) dans l'en-tête de la Match View, côté Go :
- * c'est un report écrit au registre, pas une correction que ce module peut faire.
  *
  * Pas de React, aucun appel réseau : une fonction pure sur ce que la réponse porte déjà.
  */
@@ -68,11 +67,16 @@ function looksFiesta(label: string | undefined): boolean {
  * `undefined` (réponse pas encore là, ou match view en erreur) rend `unknown` : l'appelant ne
  * dessine alors rien. C'est le sens de la règle — l'absence d'indice n'est pas une preuve.
  *
- * Les DEUX champs sont lus. `mode_ui` est celui qui parle ; `playlist_label` ne dit rien sur le
- * corpus mesuré, mais une playlist explicitement nommée « Fiesta » sur un autre compte ou un
- * autre titre serait un indice qu'il aurait été absurde d'ignorer pour économiser une ligne.
+ * `mode_category` d'abord — la résolution de mode CANONIQUE de l'app, pas un libellé deviné.
+ * Absente (titre sans la notion, pair_name non résolu) → repli sur `mode_ui`/`playlist_label`,
+ * les DEUX lus : `mode_ui` est celui qui parle ; `playlist_label` ne dit rien sur le corpus
+ * mesuré, mais une playlist explicitement nommée « Fiesta » sur un autre compte ou un autre
+ * titre serait un indice qu'il aurait été absurde d'ignorer pour économiser une ligne.
  */
 export function matchFiestaGuard(header: MatchViewHeader | undefined): FiestaGuard {
   if (!header) return 'unknown'
+  if (header.mode_category) {
+    return looksFiesta(header.mode_category) ? 'fiesta' : 'clear'
+  }
   return looksFiesta(header.mode_ui) || looksFiesta(header.playlist_label) ? 'fiesta' : 'clear'
 }
