@@ -130,7 +130,13 @@ package replay
 // v16 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) : `zoneStates` — L'ETAT
 // DE CHAQUE ZONE (qui la tient, depuis quand, jusqu'a quel niveau de jauge), et `coverage.zones`.
 // Chronique, sources et refus : document_zones.go.
-const SchemaVersion = 16
+//
+// v17 (2026-08-19, plan PLAN_POWERUP_SOCLE_CATALYST phase 8) : AUCUN CHAMP NEUF À LA RACINE —
+// c'est le CONTENU de `weaponPads` qui change. Les SOCLES DE POWER-UP y entrent (voie `ti=37`,
+// famille du manifeste pour identifiant), et `coverage.groundWeapons` gagne les quatre
+// compteurs de cette voie. Un artefact v16 se lit donc « à re-cuire », pas « à jour » : il
+// n'a jamais pu porter ces socles. Chronique, mesure et garde-fous : powerup_pads.go.
+const SchemaVersion = 17
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

@@ -27,9 +27,9 @@ import (
 
 // gwFlagScan monte QUATRE apparitions au repos au meme endroit sous l'identifiant `id` : le cas
 // qui fait un socle quand l'identite se resout en arme (cf. gwTestPadScan, meme geometrie).
-func gwFlagScan(id uint32) (GroundWeaponScan, []filmdec.BipedPosition) {
+func gwFlagScan(id uint32) (WorldObjectScan, []filmdec.BipedPosition) {
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
 		Creations: []filmdec.EquipmentCreation{
@@ -38,7 +38,7 @@ func gwFlagScan(id uint32) (GroundWeaponScan, []filmdec.BipedPosition) {
 			gwTestCreation(12, 0, 51_000_000, id, 9.9, 10.2),
 			gwTestCreation(13, 0, 71_000_000, id, 10.1, 9.8),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{
+		Keyframes: filmdec.WorldObjectKeyframes{
 			TimesUS: kf,
 			SeenUS: map[filmdec.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000}, {Slot: 11}: {40_000_000},
@@ -57,7 +57,7 @@ func TestUnObjetDObjectifNeFaitJamaisUnSocle(t *testing.T) {
 
 	// TEMOIN — sans table d'objets d'objectif, ces quatre apparitions font un socle. C'est ce
 	// qui rend le test suivant capable d'echouer.
-	temoin, _, covT := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	temoin, _, covT := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(temoin) != 1 {
 		t.Fatalf("temoin : 1 socle attendu sans table d'objets d'objectif, %d obtenus", len(temoin))
 	}
@@ -66,8 +66,8 @@ func TestUnObjetDObjectifNeFaitJamaisUnSocle(t *testing.T) {
 	}
 
 	// LA REGLE — le meme identifiant declare DRAPEAU par le titre : aucun socle.
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(),
-		map[uint32]Label{fam: {En: "Flag", Fr: "Drapeau"}})
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(),
+		padCatalogs{FlagObjects: map[uint32]Label{fam: {En: "Flag", Fr: "Drapeau"}}})
 	for _, p := range pads {
 		if p.Weapon == formatWeaponFamily(fam) {
 			t.Errorf("un socle porte la famille DRAPEAU %q — un drapeau n'est pas un socle d'arme",
@@ -98,7 +98,8 @@ func TestLeDrapeauDuManifesteNeFaitJamaisUnSocle(t *testing.T) {
 	}
 	for id := range cat.FlagObjects {
 		scan, pos := gwFlagScan(id)
-		pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), cat.FlagObjects)
+		pads, _, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(),
+			padCatalogs{FlagObjects: cat.FlagObjects})
 		if len(pads) != 0 {
 			t.Errorf("l'identifiant de drapeau %s du manifeste a produit %d socle(s)",
 				formatWeaponFamily(id), len(pads))

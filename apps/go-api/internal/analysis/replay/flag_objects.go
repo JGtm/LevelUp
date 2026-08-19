@@ -113,7 +113,7 @@ func (l flagFreeLife) Last() (float32, float32) {
 // regle des armes au sol, et elle est ici SUFFISANTE : les pistes rendues par le decodeur sont
 // deja decoupees par vie (`splitLives`), donc l'appariement par instant de depart le plus proche
 // ne peut pas prendre la piste d'une vie ulterieure tant qu'une creation les separe.
-func flagFreeLives(scan GroundWeaponScan, flags map[uint32]Label) []flagFreeLife {
+func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife {
 	if !scan.Scanned || len(flags) == 0 {
 		return nil
 	}

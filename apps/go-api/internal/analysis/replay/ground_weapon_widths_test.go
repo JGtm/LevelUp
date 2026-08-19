@@ -67,16 +67,16 @@ func TestGwInstallMPPWidthsIgnoreUnDecoupageNonMesure(t *testing.T) {
 // fabrique — des records acceptes dont le mot MPP ne resout aucune arme. C'est cet etat-la que
 // le journal doit nommer, quelle qu'en soit la cause.
 func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
-	fausse := GroundWeaponScan{
+	fausse := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 400, Accepted: 12},
 		Creations: []filmdec.EquipmentCreation{
 			gwTestCreation(60, 0, 1_000_000, 0xDEADBEEF, 1, 1),
 			gwTestCreation(61, 0, 2_000_000, 0xBADC0FFE, 2, 2),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	_, _, cov := buildWeaponPads(fausse, nil, gwTestClock(), nil)
+	_, _, cov := buildWeaponPads(PadScans{Weapons: fausse}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 0 || cov.Accepted == 0 {
 		t.Fatalf("le cas temoin doit etre `0 retenue pour N acceptees` : %+v", cov)
 	}
@@ -88,7 +88,7 @@ func TestCouvertureAvertitQuandAucuneIdentiteNeResout(t *testing.T) {
 	// LE CONTRE-CAS COMPTE AUTANT : une identite qui resout ne doit RIEN dire de special,
 	// sans quoi l'avertissement se noierait dans le bruit et personne ne le lirait.
 	bonne, pos := gwTestPadScan(t)
-	_, _, ok := buildWeaponPads(bonne, pos, gwTestClock(), nil)
+	_, _, ok := buildWeaponPads(PadScans{Weapons: bonne}, pos, gwTestClock(), padCatalogs{})
 	if ok.Kept == 0 {
 		t.Fatalf("le contre-cas doit retenir des creations : %+v", ok)
 	}

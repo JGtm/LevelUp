@@ -41,7 +41,7 @@ import (
 // FlagInput est CE QUE L'APPELANT FOURNIT du drapeau, plus ce que `BuildFromFilm` y depose.
 //
 // LES LECTURES VOYAGENT ENSEMBLE, ET `Scanned` DIT QU'ELLES ONT ABOUTI : un calque vide sans lui
-// serait indistinguable d'un film qu'on n'a pas su ouvrir (meme regle que [GroundWeaponScan]).
+// serait indistinguable d'un film qu'on n'a pas su ouvrir (meme regle que [WorldObjectScan]).
 type FlagInput struct {
 	// Scanned dit que l'appelant a bien ouvert le film. Faux : ni calque ni couverture — le
 	// document ne dit alors rien du drapeau, ce qui n'est pas « il n'y en avait pas ».
@@ -140,7 +140,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	// l'identifiant du manifeste n'apparait dans aucune creation `ti=42`. Elles ne sont PAS
 	// publiees (cf. document_objectives_live.go) — elles CORRIGENT le calque, et seules celles
 	// nees aux pieds d'un porteur y servent.
-	scan.Free = flagFreeLives(opt.GroundWeapons, opt.Labels.FlagObjects)
+	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.FlagObjects)
 	carries, cov := buildFlagCarries(scan, flagCarryCtx{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		tracks: doc.Tracks, deaths: opt.Deaths,

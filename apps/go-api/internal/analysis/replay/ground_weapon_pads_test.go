@@ -70,11 +70,11 @@ func gwTestPositions(passes []uint64, px, py float32) []filmdec.BipedPosition {
 // gwTestPadScan monte le cas de reference : QUATRE apparitions au meme endroit, recensees une
 // image-cle chacune, dont trois suivies d'un passage de joueur. La quatrieme est encore recensee
 // a la derniere image-cle : le socle ne s'est pas vide.
-func gwTestPadScan(t *testing.T) (GroundWeaponScan, []filmdec.BipedPosition) {
+func gwTestPadScan(t *testing.T) (WorldObjectScan, []filmdec.BipedPosition) {
 	t.Helper()
 	fam := gwTestFamily(t, 0)
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Slots: 8, Anchors: 40, Accepted: 4},
 		Creations: []filmdec.EquipmentCreation{
@@ -83,7 +83,7 @@ func gwTestPadScan(t *testing.T) (GroundWeaponScan, []filmdec.BipedPosition) {
 			gwTestCreation(12, 0, 51_000_000, fam, 9.9, 10.2),
 			gwTestCreation(13, 0, 71_000_000, fam, 10.1, 9.8),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{
+		Keyframes: filmdec.WorldObjectKeyframes{
 			TimesUS: kf,
 			SeenUS: map[filmdec.EquipmentLifeKey][]uint64{
 				{Slot: 10}: {20_000_000},
@@ -101,7 +101,7 @@ func gwTestPadScan(t *testing.T) (GroundWeaponScan, []filmdec.BipedPosition) {
 // occupation achevee.
 func TestBuildWeaponPadsPublieUnSocleEtSesOccupations(t *testing.T) {
 	scan, pos := gwTestPadScan(t)
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 1 {
 		t.Fatalf("1 socle attendu, %d obtenus : %+v", len(pads), pads)
 	}
@@ -147,7 +147,7 @@ func TestBuildWeaponPadsPublieUnSocleEtSesOccupations(t *testing.T) {
 // cycle se publie, mesure DEPUIS la disparition.
 func TestBuildWeaponPadsPublieLeCycleQuandIlEstEtabli(t *testing.T) {
 	scan, pos := gwTestPadScan(t)
-	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, _, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	c := pads[0].Cycle
 	if c == nil {
 		t.Fatalf("cycle attendu etabli (trois ecarts identiques) : %+v", pads[0])
@@ -176,7 +176,7 @@ func TestBuildWeaponPadsPublieLesEcartsQuIlNAPasPuPrendre(t *testing.T) {
 	// Le joueur ne passe plus pres du socle apres la DEUXIEME occupation : sa disparition
 	// reste bornee sans etre datee, et l'ecart qui la suivait est perdu.
 	pos := gwTestPositions([]uint64{25_000_000, 65_000_000}, 10, 10)
-	pads, _, _ := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, _, _ := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 1 || pads[0].Cycle == nil {
 		t.Fatalf("1 socle a cycle etabli attendu : %+v", pads)
 	}
@@ -195,7 +195,7 @@ func TestBuildWeaponPadsTaitUnCycleInstable(t *testing.T) {
 	// troisieme longtemps apres : les ecarts passent de 1 s a 16 s.
 	scan.Creations[1].TimestampUS = 26_000_000
 	pos := gwTestPositions([]uint64{25_000_000, 45_000_000, 65_000_000}, 10, 10)
-	pads, _, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, _, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 1 {
 		t.Fatalf("1 socle attendu, %d", len(pads))
 	}
@@ -218,7 +218,7 @@ func TestBuildWeaponPadsTaitUnCycleInstable(t *testing.T) {
 func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 	fam := gwTestFamily(t, 1)
 	kf := []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000}
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Accepted: 4},
 		Creations: []filmdec.EquipmentCreation{
@@ -229,7 +229,7 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 			gwTestCreation(22, 0, 10_000_000, fam, 60, 60),
 			gwTestCreation(23, 0, 50_000_000, fam, 60.1, 60),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: kf},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: kf},
 		Tracks: []filmdec.ProjectileTrack{
 			{Slot: 22, Pts: []filmdec.ProjectileSample{{TimestampUS: 10_000_000, X: 60, Y: 60}}},
 			{Slot: 23, Pts: []filmdec.ProjectileSample{{TimestampUS: 50_000_000, X: 60.1, Y: 60}}},
@@ -241,7 +241,7 @@ func TestBuildWeaponPadsEcarteLesLachersEtLesObjetsQuiOntBouge(t *testing.T) {
 		{Slot: 3, TimestampUS: 9_950_000, X: 30, Y: 30, HasWorld: true},
 		{Slot: 3, TimestampUS: 49_950_000, X: 30.1, Y: 30, HasWorld: true},
 	}
-	pads, picks, cov := buildWeaponPads(scan, pos, gwTestClock(), nil)
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(), padCatalogs{})
 	if len(pads) != 0 || len(picks) != 0 {
 		t.Fatalf("aucun socle ni occupation attendus, %d socles / %d occupations : %+v",
 			len(pads), len(picks), pads)
@@ -264,7 +264,7 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 	fam := gwTestFamily(t, 0)
 	sansMPP := gwTestCreation(30, 0, 1_000_000, fam, 0, 0)
 	sansMPP.MPPPresent[filmdec.MPPWord32] = false
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Accepted: 3},
 		Creations: []filmdec.EquipmentCreation{
@@ -272,16 +272,16 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 			gwTestCreation(32, 0, 3_000_000, 0xDEADBEEF, 2, 2), // identite hors catalogue
 			sansMPP,
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	objs, _ := groundWeaponObjects(scan, nil, nil, nil)
+	objs, _ := padObjects(scan, weaponPadRule(nil), nil, nil)
 	if len(objs) != 1 {
 		t.Fatalf("1 creation retenue attendue, %d : %+v", len(objs), objs)
 	}
 	if objs[0].FamilyID != fam {
 		t.Fatalf("identite retenue 0x%08x, attendu 0x%08x", objs[0].FamilyID, fam)
 	}
-	_, _, cov := buildWeaponPads(scan, nil, gwTestClock(), nil)
+	_, _, cov := buildWeaponPads(PadScans{Weapons: scan}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 1 || cov.Rejected != 2 {
 		t.Fatalf("1 retenue et 2 ecartees attendues : %+v", cov)
 	}
@@ -292,14 +292,14 @@ func TestGroundWeaponObjectsEcarteLesCreationsSansIdentite(t *testing.T) {
 // prouverait la survie du premier.
 func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	fam := gwTestFamily(t, 0)
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Accepted: 2},
 		Creations: []filmdec.EquipmentCreation{
 			gwTestCreation(40, 1, 5_000_000, fam, 0, 0),
 			gwTestCreation(40, 1, 25_000_000, fam, 0, 0),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{
+		Keyframes: filmdec.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000},
 			SeenUS:  map[filmdec.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
 		},
@@ -307,7 +307,7 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 	// Le nuage deborde la derniere image-cle : sans cela la fin du film tomberait dessus et
 	// l'exclurait du recensement (la vie est restreinte a [creation, fin)).
 	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 45_000_000, X: 100, Y: 100, HasWorld: true}}
-	objs, _ := groundWeaponObjects(scan, nil, pos, nil)
+	objs, _ := padObjects(scan, weaponPadRule(nil), nil, pos)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
 	}
@@ -332,7 +332,7 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 // acceptees et n'en transmet que trois — la fuite exacte que l'invariant existe pour attraper.
 func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 	fam := gwTestFamily(t, 0)
-	fuite := GroundWeaponScan{
+	fuite := WorldObjectScan{
 		Scanned: true,
 		// CINQ acceptees annoncees par le balayage...
 		Stats: filmdec.EquipmentCreationStats{Accepted: 5},
@@ -342,9 +342,9 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 			gwTestCreation(81, 0, 2_000_000, fam, 2, 2),
 			gwTestCreation(82, 0, 3_000_000, 0xDEADBEEF, 3, 3),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000}},
 	}
-	_, _, cov := buildWeaponPads(fuite, nil, gwTestClock(), nil)
+	_, _, cov := buildWeaponPads(PadScans{Weapons: fuite}, nil, gwTestClock(), padCatalogs{})
 	if cov.Kept != 2 || cov.Rejected != 1 {
 		t.Fatalf("2 retenues et 1 ecartee COMPTEES attendues : %+v", cov)
 	}
@@ -362,12 +362,12 @@ func TestCouvertureDesequilibreeQuandUneCreationSePerd(t *testing.T) {
 // fonde. Il vaut desormais `never`, comme un objet encore recense a la derniere image-cle.
 func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 	fam := gwTestFamily(t, 0)
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned:   true,
 		Stats:     filmdec.EquipmentCreationStats{Accepted: 1},
 		Creations: []filmdec.EquipmentCreation{gwTestCreation(70, 0, 45_000_000, fam, 12, 12)},
 		// La derniere image-cle est a 40 s : l'objet nait APRES elle.
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000}},
 	}
 	// Un joueur passe PILE sur l'objet apres sa naissance : sans le correctif, ce passage
 	// datait une disparition que rien ne prouve.
@@ -375,7 +375,7 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 		{Slot: 2, TimestampUS: 47_000_000, X: 12, Y: 12, HasWorld: true},
 		{Slot: 1, TimestampUS: 60_000_000, X: 200, Y: 200, HasWorld: true},
 	}
-	objs, _ := groundWeaponObjects(scan, nil, pos, nil)
+	objs, _ := padObjects(scan, weaponPadRule(nil), nil, pos)
 	if len(objs) != 1 {
 		t.Fatalf("1 objet attendu, %d", len(objs))
 	}
@@ -396,14 +396,14 @@ func TestGroundWeaponObjectsSansImageCleSuivanteEstNever(t *testing.T) {
 // regle est desormais celle de la vie — la MEME fenetre que le recensement.
 func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 	fam := gwTestFamily(t, 0)
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Stats:   filmdec.EquipmentCreationStats{Accepted: 2},
 		Creations: []filmdec.EquipmentCreation{
 			gwTestCreation(50, 2, 5_000_000, fam, 7, 7),
 			gwTestCreation(50, 2, 45_000_000, fam, 7, 7),
 		},
-		Keyframes: filmdec.GroundWeaponKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
+		Keyframes: filmdec.WorldObjectKeyframes{TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000}},
 		// UNE SEULE piste, sur la PREMIERE vie : elle demarre a l'instant de la premiere
 		// creation et s'acheve bien avant la seconde.
 		Tracks: []filmdec.ProjectileTrack{{Slot: 50, Gen: 2, Pts: []filmdec.ProjectileSample{
@@ -412,7 +412,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 		}}},
 	}
 	pos := []filmdec.BipedPosition{{Slot: 1, TimestampUS: 65_000_000, X: 100, Y: 100, HasWorld: true}}
-	objs, _ := groundWeaponObjects(scan, nil, pos, nil)
+	objs, _ := padObjects(scan, weaponPadRule(nil), nil, pos)
 	if len(objs) != 2 {
 		t.Fatalf("2 objets attendus sur la meme cle, %d", len(objs))
 	}
@@ -438,7 +438,7 @@ func TestGroundWeaponObjectsHasDeltaEstParVieEtNonParCle(t *testing.T) {
 // TestBuildWeaponPadsSansBalayageNePublieRien : un film qu'on n'a pas su balayer publie ZERO
 // socle et le DIT (`scanned: false`) — sans quoi il serait indistinguable d'un film sans socle.
 func TestBuildWeaponPadsSansBalayageNePublieRien(t *testing.T) {
-	pads, picks, cov := buildWeaponPads(GroundWeaponScan{}, nil, gwTestClock(), nil)
+	pads, picks, cov := buildWeaponPads(PadScans{Weapons: WorldObjectScan{}}, nil, gwTestClock(), padCatalogs{})
 	if pads != nil || picks != nil {
 		t.Fatalf("aucune publication attendue sans balayage : %+v / %+v", pads, picks)
 	}

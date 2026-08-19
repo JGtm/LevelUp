@@ -55,7 +55,7 @@ const (
 
 // LE BORNAGE, LA DATATION ET L'ASSEMBLAGE SONT EN PRODUCTION depuis la phase 3
 // (`ground_weapon_rules.go` et `ground_weapon_objects.go` : `gwPickupTrackTolUS`,
-// `gwPickupStatus*`, `gwPickupObject`, `groundWeaponObjects`, `gwPickupPadGaps`). Cet instrument
+// `gwPickupStatus*`, `gwPickupObject`, `padObjects`, `gwPickupPadGaps`). Cet instrument
 // les APPELLE : ce qu'il mesure est exactement ce que l'artefact publie, et le controle
 // d'ancrage du plan n'aurait plus de sens contre une seconde chaine.
 
@@ -69,7 +69,7 @@ type gwPickupFilm struct {
 	kfTimes       []uint64
 	seen          map[filmdec.EquipmentLifeKey][]uint64
 	loadouts      map[uint64]map[uint32][]string
-	keyframes     filmdec.GroundWeaponKeyframes
+	keyframes     filmdec.WorldObjectKeyframes
 	tracks        []filmdec.ProjectileTrack
 	spans         map[filmdec.EquipmentLifeKey][]filmdec.EquipmentLifeSpan
 	filmEndUS     uint64
@@ -126,10 +126,10 @@ func gwPickupRead(t *testing.T, dir string, wr *filmdec.Vec3Range) *gwPickupFilm
 			f.filmEndUS = p.TimestampUS
 		}
 	}
-	// Le recensement des images-cles vient de la PRODUCTION (`ScanFilmGroundWeaponKeyframes`,
+	// Le recensement des images-cles vient de la PRODUCTION (`ScanFilmWorldObjectKeyframes`,
 	// qui rend la bande de slots dans la MEME marche) : la mesure et l'artefact bornent avec le
 	// meme recensement, ou l'ancrage ne prouverait rien.
-	f.keyframes = filmdec.ScanFilmGroundWeaponKeyframes(dir)
+	f.keyframes = filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.GroundWeaponTypeIndex)
 	f.kfTimes, f.seen = f.keyframes.TimesUS, f.keyframes.SeenUS
 	if n := len(f.kfTimes); n > 0 && f.kfTimes[n-1] > f.filmEndUS {
 		f.filmEndUS = f.kfTimes[n-1]
@@ -182,7 +182,7 @@ func gwPickupHasFamily(in []string, want string) bool {
 }
 
 // gwPickupObjects rend les apparitions retenues, bornees et datees — PAR LA CHAINE DE
-// PRODUCTION (`groundWeaponObjects`), celle-la meme que l'artefact de rejeu publie. Cet
+// PRODUCTION (`padObjects`), celle-la meme que l'artefact de rejeu publie. Cet
 // instrument n'ajoute que les denominateurs au journal.
 func gwPickupObjects(
 	t *testing.T, dir string, wr *filmdec.Vec3Range, f *gwPickupFilm,
@@ -192,10 +192,10 @@ func gwPickupObjects(
 	if err != nil {
 		t.Fatalf("creations ti=42 : %v", err)
 	}
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true, Creations: cre, Stats: st, Keyframes: f.keyframes, Tracks: f.tracks,
 	}
-	out, _ := groundWeaponObjects(scan, f.lives, f.positions, nil)
+	out, _ := padObjects(scan, weaponPadRule(nil), f.lives, f.positions)
 	if end := gwFilmEndUS(scan, f.positions); end > f.filmEndUS {
 		f.filmEndUS = end
 	}
