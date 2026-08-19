@@ -43,6 +43,7 @@ func (v *variantList) Set(s string) error { *v = append(*v, s); return nil }
 // 6 paramètres — seuil du CLAUDE.md).
 type probeOpts struct {
 	outDir     string
+	segment    string
 	fetchFiles bool
 	engine     bool
 }
@@ -57,6 +58,7 @@ func main() {
 		fetchAll  = flag.Bool("fetch-files", false, "télécharger aussi les fichiers référencés par l'asset")
 		engine    = flag.Bool("engine", false, "suivre EngineGameVariantLink et récupérer l'asset moteur")
 		scanDir   = flag.String("scan", "", "mode HORS LIGNE : analyser les payloads deja deposes dans ce dossier (aucune requete)")
+		segment   = flag.String("segment", variantSegment, "segment discovery interroge (ugcGameVariants, mapModePairs, maps...)")
 	)
 	flag.Var(&variants, "variant", "assetId[:versionId] d'un UgcGameVariant (répétable, OBLIGATOIRE)")
 	flag.Parse()
@@ -92,7 +94,7 @@ func main() {
 		fail(ctx, "création du dossier de sortie", err)
 	}
 
-	opts := probeOpts{outDir: *outDir, fetchFiles: *fetchAll, engine: *engine}
+	opts := probeOpts{outDir: *outDir, fetchFiles: *fetchAll, engine: *engine, segment: *segment}
 	var failures []string
 	for i, spec := range variants {
 		if i > 0 && *rateMS > 0 {
@@ -135,7 +137,7 @@ type assetFiles struct {
 // pistes demandées (fichiers référencés, asset moteur).
 func probeVariant(ctx context.Context, c *ugcClient, spec string, opts probeOpts) error {
 	assetID, versionID := splitSpec(spec)
-	head, err := c.dumpAsset(ctx, variantSegment, assetID, versionID, opts.outDir)
+	head, err := c.dumpAsset(ctx, opts.segment, assetID, versionID, opts.outDir)
 	if err != nil {
 		return err
 	}

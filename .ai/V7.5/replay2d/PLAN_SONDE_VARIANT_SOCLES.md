@@ -127,25 +127,100 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
 - [x] 3.2 Verdict Q2 : ou est l'activation, ou elle n'est pas. Negatif ecrit si negatif.
 
 ### Phase 4 — verdict discriminant (Q3) + cout (Q4) (commit 5)
-- [ ] 4.1 Comparer les deux paires (Cliffhanger CTF/Fiesta ; Catalyst KOTH/CTF).
-- [ ] 4.2 Verdict Q3 au seuil de la section 4, sans complaisance.
-- [ ] 4.3 Q4 : 56 variants distincts / 1819 matchs (deja mesure) + taille des payloads +
+- [x] 4.1 Comparer les deux paires (Cliffhanger CTF/Fiesta ; Catalyst KOTH/CTF).
+- [x] 4.2 Verdict Q3 au seuil de la section 4, sans complaisance.
+- [x] 4.3 Q4 : 56 variants distincts / 1819 matchs (deja mesure) + taille des payloads +
       faisabilite d'une reference versionnee.
-- [ ] 4.4 Architecture validee ou refutee ; si refutee, alternatives nommees.
+- [x] 4.4 Architecture validee ou refutee ; si refutee, alternatives nommees.
+- [x] 4.5 AJOUTE EN COURS D EXECUTION (regle 3 du contrat : une action executable maintenant
+      ne se differe pas) : instruire l alternative n. 2 de la section 6 — `mapModePairs` —
+      plutot que la laisser en piste. Auth et outil disponibles, 2 appels.
+
+## 5 bis. VERDICT
+
+**L'architecture proposee est REFUTEE pour cette fin.** Le chemin technique fonctionne
+(auth, recuperation, versionnage : tout marche, et c'est mesure) ; ce qu'on veut y mettre
+n'y est pas. **L'activation des socles n'est dans AUCUN asset servi par l'API.**
+
+### La chaine complete, mesuree bout en bout
+
+| Asset | Ce qu'il porte | Socles ? |
+|---|---|---|
+| `mapModePairs` (513 distincts) | `MapLink` + `UgcGameVariantLink`, `CustomData` **`{}`**, `Tags` **`[]`**, `Files` **`[]`** | **NON** — trait d'union vide |
+| `ugcGameVariants` (56 distincts) | vitrine : nom, description, stats, images. `CustomData.KeyValues` **`{}`** | **NON** |
+| `engineGameVariants` | **les regles** : 38 fichiers, un `.bin` Bond de 406 a 530 Ko avec 107 a 124 chunks de bytecode Lua | **NON** |
+| `.mvar` de la carte | **les positions**, au centimetre (lot socles-mvar : 32/32, mediane 0,01 m) | positions OUI, activation NON |
+
+### Q3 : le variant n'explique pas 17 -> 10 / 0, et il est refute DEUX FOIS
+
+**Refutation 1, logique, sans ouvrir un octet.** `CTF:Arena` (`8650f7e0`) est le MEME asset,
+la MEME version (`7f104b0c`), sur les deux temoins CTF — et il sert **31 cartes**. Sur
+Cliffhanger il coexiste avec 10 socles actifs, sur Catalyst avec 11 socles et AUCUN
+power-up. Un asset identique qui donne deux resultats differents ne peut pas etre la cause
+de la difference. Aucune mesure de contenu ne peut sauver ca.
+
+**Refutation 2, par la mesure croisee.** Le seul candidat trouve — la liste de labels de
+mode — va a l'INVERSE sur la seconde paire :
+
+| Paire | Mode | Labels dans le `.bin` | Observe en jeu |
+|---|---|---|---|
+| Cliffhanger (`5324364b`, meme `map_id` des deux cotes) | CTF | 3 (`ctf_include`, `ctf_exclude`, `ctf_multi_exclude`) | **10 socles** |
+| | Super Fiesta | **0** | **0 socle** |
+| Catalyst (`f7e8cde9`, meme `map_id` des deux cotes) | KOTH | **0** | **surbouclier PRESENT** |
+| | CTF | 3 (les memes) | **aucun power-up** |
+
+Sur Cliffhanger la correlation va dans le bon sens ; sur Catalyst elle s'inverse — c'est le
+mode a ZERO label qui allume le power-up. Le seuil de la section 4 exigeait qu'un champ
+« vaille des deux cotes des DEUX paires ». Il ne vaut que d'un cote d'une paire : **NEGATIF**.
+
+Controle annexe leve : le libelle `Super Fiesta:Slayer on Cliffhanger - Forge` faisait
+craindre une autre carte. **Refute** — `map_id` identique (`5324364b`) sur les deux temoins
+Cliffhanger, et le `MapLink` de la paire le confirme. Meme carte, meme fichier, 10 contre 0.
+
+### Ou est l'activation, alors
+
+Dans le **jeu installe**. Les `.bin` de regles ne CONTIENNENT pas les gestionnaires d'armes,
+ils les REFERENCENT par chemin de tag —
+`tags\scripts\parcellibrary\parcel_mp_weapon_manager.lua`, `MPWeaponManagerStartup.lua`,
+`p_mp_item_manager.lua` — et ces chemins sont **identiques dans les trois modes**, Super
+Fiesta compris. Le serveur de jeu resout ces tags contre son propre contenu ; l'API ne sert
+jamais ce contenu-la.
+
+### Q4 : cout et perennite (chiffre, meme si sans objet ici)
+
+| Poste | Distincts | Taille unitaire | Total |
+|---|---|---|---|
+| `ugcGameVariants` | **56** (sur 1819 matchs) | 2 361 a 2 538 o | ~140 Ko |
+| `mapModePairs` | **513** | 3 557 a 3 652 o | ~1,8 Mo |
+| `engineGameVariants` | <= 56 | JSON 2,5 Ko + `.bin` **406 a 530 Ko** | <= ~30 Mo |
+| images des variants | — | **41 a 43 Mo par variant** | a EXCLURE |
+
+Une reference versionnee serait donc techniquement confortable (le JSON des 56 variants tient
+en 140 Ko) — et elle n'apporterait rien a la question posee. **On ne la construit pas.**
 
 ## 6. Alternatives si NEGATIF (a instruire, pas a supposer)
 
-1. **Le blob du variant est binaire et l'activation y est encodee** — parser (grammaire CB2
-   deja ecrite pour `.mvar` : `internal/analysis/replay/mapvar/cb2.go`).
-2. **`mapModePairs`** : la PAIRE carte x mode est le seul asset qui connait les deux. Le
-   registre porte deja `pair_id` + `pair_version_id`.
-3. **Engine game variant** : le variant UGC pointe peut-etre un variant de MOTEUR
-   (`EngineGameVariantLink`), ou vivraient les regles.
-4. **Le jeu installe** : les tags `himap` portent les type_id de socle (piste ouverte au
-   plan socles-mvar section 9). Hors ligne pur, mais dependant d'une installation.
-5. **Repli empirique deja disponible** : le FILM dit ce qui a spawn. La regle de croisement
-   « ne montrer les socles statiques que si le film en confirme au moins un » est deja
-   proposee au plan socles-mvar section 8bis — elle ne demande AUCUN reseau.
+1. ~~**Le blob du variant est binaire**~~ — **INSTRUITE ET FERMEE** : le blob existe bien
+   (`MultiFlag.bin`, 529 643 o, Bond + bytecode Lua), il a ete telecharge et scanne. Aucun
+   `type_id` de socle, aucun nom d arme, aucune palette.
+2. ~~**`mapModePairs`**~~ — **INSTRUITE ET FERMEE** (mesuree dans ce lot, phase 4) : la paire
+   est un trait d union. `CustomData` `{}`, `Tags` `[]`, `Files` `[]` sur les deux paires
+   mesurees. Elle ne porte rien en propre. Note d usage : contrairement aux variants, le
+   segment `mapModePairs` **404 sans `/versions/`** — la version y est obligatoire.
+3. ~~**Engine game variant**~~ — **INSTRUITE ET FERMEE** : trouve (le document le sert
+   lui-meme), recupere, scanne. C est bien la que vivent les regles, et les socles n y sont
+   pas.
+4. **Le jeu installe** — SEULE voie deterministe restante. Les `.bin` referencent
+   `parcel_mp_weapon_manager.lua` et les tags d objet par chemin ; le contenu est dans
+   l installation. Les 3 `type_id` de socle y auraient un nom (piste ouverte au plan
+   socles-mvar section 9). Hors ligne pur une fois extrait, mais dependant d une
+   installation du jeu — donc pas reproductible sur le VPS sans un depot d extraction.
+5. **Le repli empirique, deja disponible, ZERO reseau** — le FILM dit ce qui a spawne. La
+   regle de croisement « ne montrer les socles statiques que si le film en confirme au moins
+   un » est deja proposee au plan socles-mvar section 8bis. **C est la voie recommandee pour
+   le VPS** : le catalogue statique donne les 22 emplacements que le film ne montre jamais,
+   le film donne l activation reelle du match rejoue. Aucun des deux ne demande le reseau au
+   rejeu.
 
 ## 7. Journal
 
@@ -228,6 +303,23 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
   socles des cartes DEV ne portent AUCUN label** : un filtre par label ne peut pas allumer un
   objet qui n'en porte pas.
   Gates : `go vet` = 0, `golangci-lint run ./cmd/variant-probe/...` = **0 issues**.
+
+- **2026-08-19, phase 4 close — LOT CLOS** — Verdict ecrit en section 5 bis. **Architecture
+  REFUTEE** : le chemin marche, le contenu n'y est pas. Q3 negatif, refute deux fois
+  (identite d'asset sur 31 cartes ; inversion de la correlation sur la paire Catalyst).
+  Item 4.5 ajoute et EXECUTE plutot que reporte : `mapModePairs` mesure (2 appels), c'est un
+  trait d'union vide. Note d'usage relevee : ce segment **404 sans `/versions/`** alors que
+  `ugcGameVariants` accepte l'appel sans version.
+  Controle annexe leve : le libelle « on Cliffhanger - Forge » ne cachait PAS une autre
+  carte — `map_id` identique (`5324364b`) sur les deux temoins.
+  Cout Q4 chiffre : 56 variants (~140 Ko de JSON), 513 paires (~1,8 Mo), `.bin` de regles
+  406 a 530 Ko, images 41 a 43 Mo par variant (a exclure). Faisable, sans objet, **non
+  construit**.
+  **25 items sur 25 statues, aucune case vide, aucun `[!]`.**
+  Gates finaux : `go vet ./cmd/variant-probe/...` = 0, `golangci-lint run
+  ./cmd/variant-probe/...` = **0 issues**, `go build ./cmd/variant-probe/` = 0.
+  Report assume, ordonne par la consigne du lot : ni entree `.ai/thought_log.md` ni entree
+  au `REGISTRE_REPORTS.md` — les textes partent au CR.
 
 ## 8. Decouvertes (notees, NON traitees)
 
