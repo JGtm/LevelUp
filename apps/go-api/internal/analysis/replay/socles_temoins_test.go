@@ -74,10 +74,7 @@ func TestSoclesTemoins(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent — mesure des témoins ignorée", soclesTemoinsEnv)
 	}
-	path := cheminCatalogueLivre("map_weapon_pads.json")
-	if path == "" {
-		t.Skip("catalogue des socles absent de cet arbre")
-	}
+	path := cheminCatalogueLivre(t, "map_weapon_pads.json")
 	cat, err := LoadMapWeaponPads(path)
 	if err != nil {
 		t.Fatal(err)
