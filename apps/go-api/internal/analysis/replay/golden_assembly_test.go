@@ -599,6 +599,13 @@ func renderGroundWeapons(p func(string, ...any), doc ReplayDocument) {
 	p("%d grappe(s) -> %d socle(s) publie(s) · %d occupation(s) : %d datee(s) · %d sans passage "+
 		"· %d jamais videe(s)", c.Clusters, c.Pads, c.Occupancies, c.Dated, c.Unknown, c.Never)
 	p("%d cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre", c.Cycles)
+	// LA VOIE ti=37 A SA PROPRE LIGNE : ses denominateurs sont ceux d un AUTRE balayage, et le
+	// film de reference (Super Fiesta sur variante Forge) en retient ZERO sur 401 creations
+	// acceptees — un mode qui ne pose aucun power-up de carte. Sans ce rapport, ce zero-la se
+	// confondrait avec une lecture qui aurait echoue en bloc.
+	p("POWER-UPS (voie ti=37) — balaye=%t · %d creation(s) acceptee(s) -> %d retenue(s) par "+
+		"l IDENTITE `powerup_*` -> %d socle(s) publie(s)",
+		c.PowerupScanned, c.PowerupAccepted, c.PowerupKept, c.PowerupPads)
 	for i, pad := range doc.WeaponPads {
 		cycle := "non etabli"
 		if pad.Cycle != nil {

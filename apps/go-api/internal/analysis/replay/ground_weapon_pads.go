@@ -28,9 +28,13 @@ package replay
 //	          mais trois portent une arme différente. **Le socle appartient à la carte, l'arme
 //	          qui y apparaît appartient au match** — d'où une publication PAR MATCH.
 //
-//	REFUSÉ    les POWER-UPS de socle : négatif de corpus. 5 apparitions de power-up sur 8 films,
-//	          toutes `powerup_overshield`, toutes lâchées à une mort, toutes avec une vie delta.
-//	          Zéro grappe, zéro socle sur les cinq cartes natives d'arène du jeu de films.
+//	PUBLIÉ    les POWER-UPS de socle, depuis le 2026-08-19 — la voie `ti=37` (`powerup_pads.go`).
+//	          LE NÉGATIF DE CORPUS QUI FIGURAIT ICI (« 5 apparitions sur 8 films, toutes lâchées
+//	          à une mort, zéro grappe ») ÉTAIT UN ARTEFACT DE LA CHAÎNE QUI LE MESURAIT : il ne
+//	          comptait que les poses que `confirmPlacements` retient, c'est-à-dire celles qui ont
+//	          une vie DELTA — un socle n'en a aucune. Mesuré sans cet oracle, le socle central de
+//	          Catalyst rend 9 et 7 créations au MÊME centimètre sur les deux films KOTH, et zéro
+//	          sur les deux films CTF de la même carte (le sous-mode arme le socle).
 
 import (
 	"log/slog"
@@ -50,7 +54,7 @@ import (
 // un film qu'on n'a pas su balayer rendent tous trois zéro socle — seuls ces compteurs les
 // distinguent.
 type GroundWeaponCoverage struct {
-	// Scanned dit que le film a été balayé jusqu'au bout (cf. GroundWeaponScan.Scanned).
+	// Scanned dit que le film a été balayé jusqu'au bout (cf. WorldObjectScan.Scanned).
 	Scanned bool `json:"scanned"`
 	// Slots est la largeur de la bande de slots de l'archétype ; Anchors le nombre d'en-têtes
 	// de création reconnus (bruit compris) ; Accepted ceux que l'oracle de position a validés.
@@ -99,6 +103,33 @@ type GroundWeaponCoverage struct {
 	// Cycles est le nombre de socles dont le cycle est ÉTABLI, donc publié. Les autres portent
 	// `cycle: null`.
 	Cycles int `json:"cycles"`
+	// LES QUATRE CHAMPS SUIVANTS SONT LA VOIE `ti=37` — les socles de POWER-UP (schéma 17, cf.
+	// powerup_pads.go). Tous les compteurs ci-DESSUS restent ceux de la voie `ti=42` : les
+	// mélanger aurait rendu illisible le seul chiffre qui compte quand un calque se tait
+	// (« combien de créations cette voie-là a-t-elle lues ? »).
+	//
+	// LES OCCUPATIONS, ELLES, SONT COMMUNES (`Occupancies` et ses trois issues, `Cycles`) : un
+	// socle est un socle, quelle que soit sa nature, et l'invariant `Dated + Unknown + Never ==
+	// Occupancies` vaut sur les deux voies réunies. `len(weaponPads) == Pads + PowerupPads`.
+	//
+	// PowerupScanned dit que le film a été balayé pour `ti=37` jusqu'au bout. Sans lui, un film
+	// dont l'archétype est absent des images-clés et un film sans aucun power-up de socle
+	// rendraient tous deux zéro, et se liraient pareil.
+	PowerupScanned bool `json:"powerupScanned"`
+	// PowerupAccepted est le nombre de records de création `ti=37` dont le corps s'est déroulé
+	// (masque valide, position décodable) ; PowerupKept ceux dont l'identité `eqip` se résout en
+	// famille `powerup_*` du manifeste.
+	//
+	// L'ÉCART ENTRE LES DEUX EST LE GARDE-FOU : l'en-tête NEW n'est pas sélectif (un quart des
+	// positions de bit tirées au hasard passent le test de bande sur un film BTB), et c'est
+	// l'identité qui discrimine. `PowerupKept == 0` avec `PowerupAccepted > 0` ne veut PAS dire
+	// « pas de power-up » : cela peut aussi vouloir dire que la table de familles du titre est
+	// vide, ou que les largeurs du bloc MPP n'ont pas été réinstallées.
+	PowerupAccepted int `json:"powerupAccepted"`
+	PowerupKept     int `json:"powerupKept"`
+	// PowerupPads est le nombre de socles de power-up publiés — le sous-ensemble de
+	// `weaponPads` que cette voie porte.
+	PowerupPads int `json:"powerupPads"`
 }
 
 // Balanced vérifie les deux invariants du calque : toute création acceptée est retenue ou
@@ -112,31 +143,88 @@ type GroundWeaponCoverage struct {
 // de rejet, et la première somme tombe dès qu'une création acceptée n'atteint pas l'assemblage.
 func (c GroundWeaponCoverage) Balanced() bool {
 	return c.Kept+c.Rejected == c.Accepted &&
-		c.Dated+c.Unknown+c.Never == c.Occupancies
+		c.Dated+c.Unknown+c.Never == c.Occupancies &&
+		c.PowerupKept <= c.PowerupAccepted
 }
 
-// buildWeaponPads assemble les socles du match et les occupations achevées.
+// padChainInputs porte ce qu'une voie de la chaîne des socles consomme en plus de sa lecture de
+// film et de sa règle (règle des 5 paramètres — ces trois-là voyagent toujours ensemble).
+type padChainInputs struct {
+	lives     map[uint32][]equipLife
+	positions []filmdec.BipedPosition
+	clock     replayClock
+}
+
+// padChainCounts porte les comptes d'UNE voie. La couverture les VENTILE ensuite : les armes
+// champ par champ, les power-ups en trois nombres (cf. GroundWeaponCoverage).
+//
+// POURQUOI ILS NE S'ÉCRIVENT PAS DIRECTEMENT DANS LA COUVERTURE : les deux voies emploient le
+// MÊME code, et un code qui écrirait dans des champs nommés « arme » depuis la voie des
+// power-ups mélangerait deux dénominateurs — c'est exactement ce que la couverture existe pour
+// empêcher.
+type padChainCounts struct {
+	accepted, kept, rejected, objectives int
+	dropped, spawned, atRest             int
+	clusters, pads                       int
+}
+
+// buildWeaponPads assemble les socles du match — LES DEUX NATURES — et les occupations achevées.
+//
+// LES DEUX VOIES ABOUTISSENT AU MÊME TABLEAU, et l'ordre est celui-ci : les ARMES d'abord, les
+// POWER-UPS ensuite. Il est arbitraire mais il doit être STABLE, parce que `padPickups[].pad`
+// est un index dans ce tableau — et c'est pourquoi les occupations de la seconde voie sont
+// décalées du nombre de socles de la première.
 //
 // `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromPositions) : la
 // datation d'une disparition est une recherche dichotomique sur cette suite.
 func buildWeaponPads(
-	scan GroundWeaponScan, positions []filmdec.BipedPosition, clock replayClock,
-	flags map[uint32]Label,
+	scans PadScans, positions []filmdec.BipedPosition, clock replayClock, cat padCatalogs,
 ) ([]WeaponPad, []PadPickup, *GroundWeaponCoverage) {
 	cov := &GroundWeaponCoverage{
-		Scanned: scan.Scanned, Slots: scan.Stats.Slots,
-		Anchors: scan.Stats.Anchors, Accepted: scan.Stats.Accepted,
+		Scanned: scans.Weapons.Scanned, Slots: scans.Weapons.Stats.Slots,
+		Anchors: scans.Weapons.Stats.Anchors, Accepted: scans.Weapons.Stats.Accepted,
+		PowerupScanned: scans.Powerups.Scanned, PowerupAccepted: scans.Powerups.Stats.Accepted,
 	}
-	if !scan.Scanned || clock.step == 0 {
+	if clock.step == 0 {
 		return nil, nil, cov
 	}
+	in := padChainInputs{lives: equipmentLives(positions), positions: positions, clock: clock}
+	pads, picks, wc := buildPadChain(scans.Weapons, weaponPadRule(cat.FlagObjects), in, cov)
+	cov.Kept, cov.Rejected, cov.Objectives = wc.kept, wc.rejected, wc.objectives
+	cov.Dropped, cov.Spawned, cov.AtRest = wc.dropped, wc.spawned, wc.atRest
+	cov.Clusters, cov.Pads = wc.clusters, wc.pads
+	pu, puPicks, pc := buildPadChain(
+		scans.Powerups, powerupPadRule(cat.EquipmentFamilies), in, cov)
+	cov.PowerupKept, cov.PowerupPads = pc.kept, pc.pads
+	for i := range puPicks {
+		puPicks[i].Pad += len(pads)
+	}
+	out := append(pads, pu...)
+	if len(out) == 0 {
+		return nil, nil, cov
+	}
+	return out, append(picks, puPicks...), cov
+}
+
+// buildPadChain déroule UNE voie : identité, classement, grappes, socles, occupations.
+//
+// `cov` ne reçoit ici QUE les compteurs d'occupation, qui sont communs aux deux voies ; tout le
+// reste sort par `padChainCounts`, que l'appelant ventile.
+func buildPadChain(
+	scan WorldObjectScan, rule padRule, in padChainInputs, cov *GroundWeaponCoverage,
+) ([]WeaponPad, []PadPickup, padChainCounts) {
+	var n padChainCounts
+	if !scan.Scanned {
+		return nil, nil, n
+	}
+	n.accepted = scan.Stats.Accepted
 	// `rejected` est COMPTÉ sur le chemin de rejet, jamais déduit d'`Accepted` : c'est ce qui
 	// fait de l'invariant `Kept + Rejected == Accepted` un contrôle et non une tautologie.
-	objs, rejected := groundWeaponObjects(scan, equipmentLives(positions), positions, flags)
-	cov.Kept, cov.Rejected, cov.Objectives = len(objs), rejected.total, rejected.objectives
-	atRest, src := gwAtRestOf(objs, cov)
+	objs, rejected := padObjects(scan, rule, in.lives, in.positions)
+	n.kept, n.rejected, n.objectives = len(objs), rejected.total, rejected.objectives
+	atRest, src := gwAtRestOf(objs, &n)
 	pads, assign := gwPadsClusterAssign(atRest)
-	cov.Clusters = len(pads)
+	n.clusters = len(pads)
 	members := map[int][]int{}
 	for j := range atRest {
 		members[assign[j]] = append(members[assign[j]], src[j])
@@ -148,17 +236,14 @@ func buildWeaponPads(
 	out := make([]WeaponPad, 0, len(keep))
 	var picks []PadPickup
 	for p := range keep {
-		pad, padPicks := gwBuildPad(keep[p], objs, members[padSrc[p]], clock, cov)
+		pad, padPicks := gwBuildPad(keep[p], objs, members[padSrc[p]], in.clock, cov)
 		for i := range padPicks {
 			padPicks[i].Pad = len(out)
 		}
 		out, picks = append(out, pad), append(picks, padPicks...)
 	}
-	cov.Pads = len(out)
-	if len(out) == 0 {
-		return nil, nil, cov
-	}
-	return out, picks, cov
+	n.pads = len(out)
+	return out, picks, n
 }
 
 // gwAtRestOf sélectionne les apparitions « apparues au repos » — `spawned` SANS vie delta — et
@@ -169,18 +254,22 @@ func buildWeaponPads(
 // cartes — et PAS sur `spawned` littéral, qui va de 1 à 21. La différence est mesurée et
 // nommée : 280 apparitions sur 1 790 sont `spawned` tout en ayant bougé, presque toutes des
 // `MA40 AR` / `Mk51 Sidekick` — l'arme de départ qu'un joueur lâche en ramassant autre chose.
-func gwAtRestOf(objs []gwPickupObject, cov *GroundWeaponCoverage) ([]gwPadApparition, []int) {
+//
+// C'EST AUSSI CE QUI ÉCARTE LE POWER-UP LÂCHÉ À UNE MORT (2026-08-19), et par les DEUX critères
+// à la fois : il naît là où son porteur meurt (donc `dropped`) et il tombe (donc vie delta). Il
+// reste publié par `equipmentPlacements` avec son origine ; il n'est pas un socle.
+func gwAtRestOf(objs []gwPickupObject, n *padChainCounts) ([]gwPadApparition, []int) {
 	app, src := make([]gwPadApparition, 0, len(objs)), make([]int, 0, len(objs))
 	for i, o := range objs {
 		if o.Appar.Class == gwClassDropped {
-			cov.Dropped++
+			n.dropped++
 			continue
 		}
-		cov.Spawned++
+		n.spawned++
 		if o.Appar.HasDelta {
 			continue
 		}
-		cov.AtRest++
+		n.atRest++
 		app, src = append(app, o.Appar), append(src, i)
 	}
 	return app, src
@@ -245,10 +334,19 @@ func gwMembersByTime(objs []gwPickupObject, members []int) []int {
 // NOM CANONIQUE de l'arme (alias repliés), et un même canon apparaît sous deux identifiants
 // distincts. Prendre celui de la première apparition rend le choix déterministe — l'ordre des
 // membres est total — et les deux identifiants nomment la même arme dans `weaponLabels`.
+// UN POWER-UP PUBLIE SA FAMILLE, PAS SON IDENTIFIANT `eqip` (2026-08-19), et ce n'est pas une
+// commodité : `weaponPads[].weapon` est la clé que le client joint à `weaponLabels`, une table
+// d'ARMES où aucun identifiant d'équipement n'entre. La famille du manifeste
+// (`powerup_overshield`) est en revanche le vocabulaire que la règle de taille du calque
+// connaît déjà (`POWER_PAD_KEYS`). Publier l'hexadécimal aurait rendu un socle que rien ne
+// nomme et que rien n'agrandit.
 func gwPadWeaponID(objs []gwPickupObject, members []int) string {
 	ms := gwMembersByTime(objs, members)
 	if len(ms) == 0 {
 		return ""
+	}
+	if o := objs[ms[0]]; o.Appar.Kind == gwPadKindPowerup {
+		return o.Appar.Family
 	}
 	return formatWeaponFamily(objs[ms[0]].FamilyID)
 }
@@ -276,6 +374,12 @@ func logGroundWeaponCoverage(c *GroundWeaponCoverage) {
 		"grappes", c.Clusters, "socles", c.Pads, "occupations", c.Occupancies,
 		"datees", c.Dated, "sansPassage", c.Unknown, "jamaisVidees", c.Never,
 		"cyclesEtablis", c.Cycles)
+	// LA VOIE `ti=37` A SA PROPRE LIGNE, et il le faut : ses dénominateurs sont ceux d'un AUTRE
+	// balayage. Les fondre dans la ligne ci-dessus aurait rendu illisible le seul rapport qui
+	// dit si la lecture a réussi — acceptées contre retenues par l'identité.
+	slog.Info("rejeu : socles de power-up",
+		"balaye", c.PowerupScanned, "acceptees", c.PowerupAccepted,
+		"retenues", c.PowerupKept, "socles", c.PowerupPads)
 	// LE SILENCE QU'IL FAUT ROMPRE : des créations acceptées dont AUCUNE ne résout d'arme n'est
 	// pas « un film sans socle », c'est une lecture qui a échoué en bloc — largeurs du bloc MPP
 	// non réinstallées, ou grammaire de l'état par défaut qui a bougé. Sans ce warn, un film BTB

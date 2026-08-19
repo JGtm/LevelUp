@@ -57,6 +57,8 @@ var phrasesGolden = []string{
 	"le seul jeu qui fait des socles",
 	"un cycle instable publie `null`, jamais un chiffre",
 	"avec un ramasseur nomme (l oracle ne le permet pas",
+	"POWER-UPS (voie ti=37)",
+	"retenue(s) par l IDENTITE `powerup_*`",
 }
 
 func lireGoldenAssembly(t *testing.T) string {

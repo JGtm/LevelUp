@@ -407,28 +407,73 @@ des joueurs. **Elles tombent a 0,19 m l'une de l'autre.**
 **Gate (3.6)** : `go vet` 0 · `go test ./internal/analysis/...` 0 ·
 `golangci-lint run ./internal/analysis/replay/...` 0 issues.
 
-## 8. Ce que cela implique pour la chaine des socles — UNE PHASE A PROPOSER, PAS A FAIRE
+## 8. PHASE DE PRODUCTION — la chaine des socles gagne une entree `ti=37`
+
+> Lot de PRODUCTION du 2026-08-19, execute sous le meme contrat
+> (`.claude/skills/plan-execution/SKILL.md`). Worktree `LevelUp-wt-powerup-prod`,
+> branche `wt/powerup-prod`.
 
 La correction est petite et son perimetre est net : dans `filmdec/equipment_placements.go`,
 l'oracle de vie delta (`MatchEquipmentLife`) est le SEUL filtre de selectivite de la chaine
-`ti=37`. Il faut lui adjoindre — jamais le remplacer — la voie que la chaine `ti=42` emploie
+`ti=37`. Il faut lui ADJOINDRE — jamais le remplacer — la voie que la chaine `ti=42` emploie
 deja : **retenir aussi les creations SANS vie delta dont l'identite se resout dans le
-manifeste**, et les publier avec une origine dediee (`spawned`, aux cotes de `deployed` /
-`dropped` / `unknown`).
+manifeste**, et les publier comme des SOCLES, aux memes regles que les armes.
 
 Trois garde-fous que la mesure impose a cette phase :
 
 1. **Le filtre d'identite ne suffit pas partout.** Le temoin fantome rend 5,9 sur `64e8adfa` :
    la publication doit exiger la GRAPPE (>= 2 creations au meme point, `gwPadRadiusM`), qui
    est ce qui a fait la preuve ici (9 creations au meme centimetre).
-2. **`t1` n'existe pas pour un objet sans vie delta.** La pose se publierait avec `t0` seul,
-   et le rendu devrait borner par le recensement des images-cles — exactement ce que
-   `weaponPads` fait deja (`PadPresence`).
-3. **La ligne R2-P du registre se resout d'elle-meme** : `powerup_overshield` et
-   `powerup_camo` figurent dans `POWER_PAD_KEYS` sans membre mesure. Ce lot fournit le
-   membre.
+2. **`t1` n'existe pas pour un objet sans vie delta.** La pose se publie avec `t0` seul, et la
+   presence se borne par le recensement des images-cles — exactement ce que `weaponPads` fait
+   deja (`PadPresence`).
+3. **La ligne R2-P du registre se resout d'elle-meme** : `powerup_overshield` et `powerup_camo`
+   figurent dans `POWER_PAD_KEYS` sans membre mesure. Ce lot fournit le membre.
 
-Aucune de ces trois choses n'est faite ici : le lot est une MESURE.
+ARBITRAGE DE PUBLICATION (pris avant l'ecriture) : les socles de power-up entrent dans
+`weaponPads`, PAS dans un calque neuf. Le socle est le meme objet de jeu, la regle de grappe
+groupe deja par (nature, famille) — `gwPadKindPowerup` existait sans membre —, le calque web
+`weaponPadsLayer` les dessine sans une ligne de plus, et un second tableau aurait duplique
+trois types publies (`PadPresence`, `PadCycle`, `PadPickup`) pour la meme grandeur.
+
+### Items
+
+- `[x]` 8.1 `filmdec` — le RECENSEMENT d'images-cles se lit pour tout archetype d'objet du
+  monde (`ScanFilmWorldObjectKeyframes(dir, ti)` / `WorldObjectKeyframes`). Sans lui, la voie
+  `ti=37` n'a pas de quoi borner une presence.
+- `[x]` 8.2 `replay` — la REGLE D'IDENTITE d'une chaine de socles devient une regle NOMMEE
+  (`padRule`) que la chaine `ti=42` prend telle quelle : meme sortie, ancrage golden inchange.
+- `[x]` 8.3 La voie `ti=37` : trois lectures du film, apparitions dont la famille du manifeste
+  commence par `powerup_`, exclusion des creations a vie delta (les lachers), grappe 1 m,
+  socle >= 2, bornage par le recensement, cycle depuis le ramassage. Publication dans
+  `weaponPads` avec la FAMILLE (`powerup_overshield`) pour identifiant.
+- `[x]` 8.4 COUVERTURE etendue : trois compteurs de la voie `ti=37` (creations acceptees,
+  retenues par identite, socles publies) + journal.
+- `[x]` 8.5 `SchemaVersion` 17 + chronique ; `GroundWeaponCoverage` +3 champs ; OpenAPI
+  regenere ; `generated.ts` regenere.
+- `[x]` 8.6 TESTS UNITAIRES PURS : grappe, seuil >= 2, exclusion des creations a vie delta,
+  famille inconnue = rien. Instrument de mesure du lot REBRANCHE sur la production (pas de
+  seconde copie de la regle).
+- `[x]` 8.7 GOLDENS : fixture d'entrees v9 (il porte la lecture `ti=37`) et sortie figee,
+  regeneres depuis le film de reference.
+- `[x]` 8.8 TEMOINS re-cuits et ANCRAGE : `01e1f945` / `75f1188f` un socle de power-up au
+  centre ; `64e8adfa` / `530820e5` zero ; `000d5950` inchange ; socles d'ARME inchanges.
+- `[x]` 8.9 Gates : `go build ./...`, `go vet ./...`, `go test` (analysis, replaybuild,
+  contracttest, archlint), golangci 0, et la chaine web (typecheck, lint, vitest).
+
+### Journal de la phase 8
+
+**8.1 — CLOSE le 2026-08-19.** `filmdec/world_object_census.go` (ex-`ground_weapon_census.go`) :
+`ScanFilmWorldObjectKeyframes(dir, ti)` rend `WorldObjectKeyframes` pour NIMPORTE QUEL archetype.
+Aucun second walker : la marche d images-cles reste unique, l archetype descend au rang de
+parametre. Gate : `go vet ./internal/analysis/...` 0 · `go test ./internal/analysis/{replay,filmdec}/...` 0.
+
+**8.2 — CLOSE le 2026-08-19.** `GroundWeaponScan` devient `WorldObjectScan` (une forme, deux
+archetypes) et `groundWeaponObjects` devient `padObjects(scan, rule, lives, positions)`. La
+REGLE (`padRule`) porte la nature publiee, la table des objets d objectif a ecarter, et la
+resolution d identite ; `weaponPadRule(flags)` est celle des armes. SORTIE INCHANGEE : le
+golden d assemblage passe SANS regeneration, ce qui est l ancrage de l etape. Gate :
+`go vet` 0 · `go test ./internal/analysis/replay/...` 0 · `golangci-lint` replay+filmdec 0 issues.
 
 ## 7. Decouvertes (a ne PAS traiter dans ce lot)
 
@@ -456,3 +501,117 @@ Aucune de ces trois choses n'est faite ici : le lot est une MESURE.
    delta ne DIT pas son archetype. Ce n'est pas une decouverte nouvelle (c'est la cause (2)
    documentee dans `keyframe_ground_weapons.go`), mais elle borne la phase 2 : seule la
    CREATION (qui porte `ti`) et l'IMAGE-CLE attribuent.
+
+**8.3 / 8.4 / 8.5 / 8.7 — CLOSES le 2026-08-19, ENSEMBLE.** Elles ne se separent pas : ajouter
+les compteurs de la voie `ti=37` a la couverture change le CONTRAT, donc exige l'OpenAPI et
+`generated.ts` dans le meme commit — sans quoi `contracttest` reste rouge entre deux etapes.
+
+- `powerup_pads.go` (99 L) : `padPowerupPrefix` (le MEME litteral que `POWER_PAD_KEYS` cote web),
+  `powerupPadRule`, `padCatalogs`, `PadScans`.
+- `build_ground_weapons.go` : `padArchetype` porte CE QUI CHANGE d'un archetype a l'autre (le
+  typeIndex, le mot du journal, le balayage de creations) ; `decodeFilmPadScans` fait les deux
+  fois trois lectures aux MEMES largeurs MPP calibrees.
+- `ground_weapon_pads.go` : `buildPadChain` deroule UNE voie, `buildWeaponPads` enchaine les
+  deux et CONCATENE les socles. Les occupations de la seconde voie sont DECALEES du nombre de
+  socles de la premiere — `padPickups[].pad` est un index global.
+- Couverture : `powerupScanned` / `powerupAccepted` / `powerupKept` / `powerupPads`. Les
+  compteurs d'ARME restent la voie `ti=42` seule ; les OCCUPATIONS sont communes aux deux, et
+  `Balanced()` gagne `PowerupKept <= PowerupAccepted`.
+- `SchemaVersion` 16 -> 17, chronique dans `document.go` et raison ecrite dans
+  `structure_test.go` (le garde-rail qui interdit une montee sans motif).
+- Contrat : `GroundWeaponCoverage` +4 champs, `api/openapi.yaml` et
+  `apps/web/src/lib/api/generated.ts` REGENERES (jamais edites a la main). Le nombre de champs
+  de `ReplayDocument` ne bouge pas — aucun champ neuf a la racine.
+- Goldens : fixture d'entrees `REPLAYINPUTS9` (il porte la seconde voie) regenere depuis
+  `000d5950`, sortie figee regeneree. **LE DIFF DE LA SORTIE FAIT DEUX LIGNES** : le numero de
+  schema, et la ligne de couverture de la voie `ti=37`
+  (`balaye=true · 401 creation(s) acceptee(s) -> 0 retenue(s) -> 0 socle(s)`). Le document du
+  film de reference est IDENTIQUE par ailleurs — 482 lignes figees, 482 obtenues.
+
+Gate : `go vet` 0 · `go test ./internal/analysis/... ./contracttest/... ./internal/replaybuild/...`
+0 · `golangci-lint run` replay+filmdec **0 issues**.
+
+**8.6 — CLOSE le 2026-08-19.** `powerup_pads_test.go` : sept tests PURS, aucun octet de film.
+Grappe (3 creations au meme point -> 1 socle, publie sous sa FAMILLE et non son hexadecimal),
+seuil de recurrence (une apparition isolee -> 0), exclusion des creations a vie delta (le
+lacher), famille inconnue et famille connue-mais-pas-power-up (deux cas distincts), index
+d'occupation GLOBAL (le decalage entre les deux voies — une erreur qui ne se verrait qu'a
+l'ecran, sur la mauvaise infobulle), et voie non lue (`powerupScanned` faux, pas un zero muet).
+Un huitieme relie les identites du test au MANIFESTE reel, et verifie que la regle est un
+PREFIXE et non une liste de deux.
+
+`powerup_pads_guard_test.go` : le littéral `"powerup_"` etait ecrit QUATRE fois dans le paquet
+(production naissante + trois instruments). Il n'est plus ecrit qu'une fois, et le garde-rail
+interdit toute reecriture — les noms COMPLETS de famille restent autorises (ce sont des valeurs
+du manifeste, pas la regle).
+
+INSTRUMENT REBRANCHE : `gwPadsPowerups` lisait `ScanFilmEquipmentPlacements`, donc les seules
+poses confirmees par une vie DELTA — qu'un socle n'a pas. **Il mesurait un negatif que sa propre
+source fabriquait.** Il passe desormais par `decodeFilmPadScan` + `padObjects(powerupPadRule)`,
+la chaine de PRODUCTION, et ne garde aucune copie de la regle.
+
+Gate : `go vet` 0 · `go test ./internal/analysis/replay/...` 0 ·
+`golangci-lint run` replay+filmdec **0 issues**.
+
+**8.8 — CLOSE le 2026-08-19. LE SOCLE EST PUBLIE, ET LES ARMES N'ONT PAS BOUGE.**
+Cinq artefacts re-cuits par `cmd/replay-build` dans le worktree (sortie isolee du depot
+principal ; films lus par chemin absolu).
+
+| film | mode | socles d'ARME | socles de POWER-UP | position du socle | apparitions | `cycle` publie |
+|---|---|---|---|---|---|---|
+| `01e1f945` | KOTH | **10, IDENTIQUES** | **1** | (0,257 ; -0,003 ; 21,36) | 9 | 83,7 s (4 ecarts, 4 manques) |
+| `75f1188f` | KOTH | 10 | **1** | (0,257 ; -0,003 ; 21,36) | 7 | 73,0 s (3 ecarts, 3 manques) |
+| `64e8adfa` | CTF | **10, IDENTIQUES** | 0 | — | — | — |
+| `530820e5` | CTF | **5, IDENTIQUES** | 0 | — | — | — |
+| `000d5950` | Fiesta/Forge | **0, IDENTIQUE** | 0 | — | — | — |
+
+Couverture de la voie `ti=37` (`acceptees / retenues / socles`) : 283/10/1 · 202/8/1 · 495/0/0 ·
+253/0/0 · 401/0/0.
+
+**LE SOCLE DES DEUX FILMS KOTH EST AU MEME CENTIMETRE**, et c'est la position que la phase 1
+avait calculee par le croisement des trajectoires des porteurs, sans lire un bit de record de
+creation.
+
+**ANCRAGE — les socles d'ARME sont INCHANGES**, compares champ par champ (famille, position,
+apparitions, intervalles de presence, cycle) contre les artefacts d'avant le lot : identiques
+sur les trois films qui en avaient un. `000d5950` : TOUS les champs de la racine sont identiques
+hors `schemaVersion` et `coverage`. Les power-ups LACHES a une mort restent dans
+`equipmentPlacements` avec leur origine `dropped` (1 sur `01e1f945`, avant comme apres).
+
+**RESERVE HONNETE SUR LE CYCLE PUBLIE.** Le `cycle` de l'artefact se mesure DEPUIS LE RAMASSAGE
+(regle de production des socles d'arme, tranchee au lot precedent : 24 cycles etablis sur 57
+contre 4 pour l'horloge d'apparition). Il rend donc 83,7 s et 73,0 s, avec la MOITIE des ecarts
+`missing` — et non les 120,1 s de la phase 3. **La periode de 120,1 s n'a pas disparu** : elle
+est dans `spawns`, dont les ecarts valent 30,3 s / 89,8 s en alternance sur les DEUX films
+(frames : 1111 · 303 · 898 · 303 · 898 · 303 · 899 · 303). C'est la Decouverte n°3 — deux
+entites par cycle au meme point — qui rend l'horloge du ramassage non uniforme ici. Aucun seuil
+n'a ete rebaisse pour rendre le chiffre plus joli.
+
+**8.9 — CLOSE le 2026-08-19.** `go build ./...` (CGO msys64) 0 · `go vet ./...` 0 ·
+`go test ./internal/analysis/... ./internal/replaybuild/... ./contracttest/... ./internal/archlint/...`
+0 · `golangci-lint run --new-from-merge-base=origin/main` (le lint qui FAIT FOI en CI) **0
+issues** — la dette gelee (229 issues sur `./...`) est inchangee. Chaine web (`generated.ts` a
+bouge) : `npm ci` 0 · `tsc -b` 0 · `eslint` 0 erreur (20 avertissements preexistants) ·
+`vitest run src/features/match-replay src/lib` **147 fichiers / 1819 tests verts**.
+
+### Decouvertes de la phase 8 (a ne PAS traiter dans ce lot)
+
+6. **LE CALQUE WEB NE REND PAS ENCORE LE SOCLE DE POWER-UP EN GRANDE TAILLE, ET IL NE LE NOMME
+   PAS.** `POWER_PAD_KEYS` contient bien `powerup_overshield` / `powerup_camo`, et
+   `padScaleOf('powerup_overshield')` rend `power` — mais la clé qu'on lui passe vient d'une
+   table d'ARMES : `useReplayWeaponPads.ts` fait
+   `scaleOf = (weapon) => padScaleOf(labels?.[weapon]?.key)` avec `labels = doc.weaponLabels`.
+   VERIFIE SUR PIECES sur l'artefact re-cuit : `weaponLabels` porte 17 cles, toutes
+   hexadecimales, AUCUNE nommee `powerup_overshield` — `buildWeaponLabels` n'ajoute que ce que
+   `FamilyOfWeaponID` sait lire, et une famille qui commence par `p` n'est pas un hexadecimal.
+   Consequence a l'ecran : le socle de power-up est dessine en PETIT (`classic`), son infobulle
+   affiche la chaine brute `powerup_overshield` au lieu d'un libellé FR/EN, et il n'a aucune
+   vignette. Les trois manques tiennent ensemble et forment un LOT DE RENDU (taille + nom
+   bilingue + icone), pas un correctif d'une ligne — le corriger a moitie (grand mais sans nom
+   ni icone) serait pire. NON TRAITE ICI : ce lot est la chaine de donnees.
+7. **`FamilyOfWeaponID` accepte silencieusement un nom de famille entierement compose de
+   chiffres hexadecimaux.** `fmt.Sscanf(id, "%X", &v)` ne consomme pas toute l'entree : une
+   famille qui s'appellerait `cab` ou `beac` serait lue comme un identifiant d'arme et
+   emprunterait un libellé qui n'est pas le sien. Aucune famille actuelle n'est dans ce cas
+   (`powerup_*` commence par `p`), et les socles d'arme publient de l'hexadecimal — le risque
+   est LATENT, pas actif. Constate, NON traite.
