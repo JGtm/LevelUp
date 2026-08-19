@@ -123,8 +123,8 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
       C'est l'alternative n. 3 de la section 6, servie par le document lui-meme.
 
 ### Phase 3 — chercher l'activation (Q2) (commit 4)
-- [ ] 3.1 Les 4 sondes a/b/c/d du seuil, sur JSON ET blobs.
-- [ ] 3.2 Verdict Q2 : ou est l'activation, ou elle n'est pas. Negatif ecrit si negatif.
+- [x] 3.1 Les 4 sondes a/b/c/d du seuil, sur JSON ET blobs.
+- [x] 3.2 Verdict Q2 : ou est l'activation, ou elle n'est pas. Negatif ecrit si negatif.
 
 ### Phase 4 — verdict discriminant (Q3) + cout (Q4) (commit 5)
 - [ ] 4.1 Comparer les deux paires (Cliffhanger CTF/Fiesta ; Catalyst KOTH/CTF).
@@ -192,6 +192,41 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
   candidate a les lire.
   Le segment `engineGameVariants` n'existait dans aucune table du depot : il a ete trouve
   par le document lui-meme, pas devine.
+  Gates : `go vet` = 0, `golangci-lint run ./cmd/variant-probe/...` = **0 issues**.
+
+- **2026-08-19, phase 3 close** — Mode `--scan` ajoute (HORS LIGNE, aucune requete).
+  **32 valeurs cherchees x 4 encodages** (4 octets LE, 4 octets BE, varint LEB128, varint
+  zigzag) sur 123 fichiers. Le quadruple encodage n'est pas du zele : le seul resultat
+  positif de tout le lot est en **varint zigzag**, un scan en 4 octets fixes aurait conclu
+  « absent » a tort.
+
+  | Sonde | `MultiFlag.bin` (CTF) | `Default.bin` (KOTH) | `SlayerSuperFiesta.bin` |
+  |---|---|---|---|
+  | a) 3 `type_id` de socle | **0** | **0** | **0** |
+  | b) 27 labels connus | **3** : `ctf_include`, `ctf_exclude`, `ctf_multi_exclude`, x1 chacun | **0** | **0** |
+  | c) hashs non resolus cibles | **0** | **0** | **0** |
+  | d) famille spawner/pad/palette | **0** | **0** | **0** |
+
+  Le motif est VERIFIE, pas suppose : a l'offset 526037 de `MultiFlag.bin`, la sequence
+  `0a 07 10 9b 8c c9 c6 0f 00` decode en varint zigzag vers **-2087265038**, soit exactement
+  `mapvar.LabelHash("ctf_include")`.
+  **Ce qu'on ne trouve nulle part** : aucun des 3 `type_id` de socle, aucun nom d'arme de
+  socle ni de power-up (`overshield`, `camo`, `sword`, `hammer`, `sniper`, `spnkr`... : zero
+  sur les trois), aucune structure de palette. Les seules chaines d'armes sont une
+  enumeration de vehicules identique entre CTF et KOTH.
+  **Les .bin embarquent du bytecode Lua** (`LuaQ`, 107 a 124 chunks) : les regles sont bien
+  la. Ses identifiants ne parlent que de drapeaux et de spawn joueur (`FlagSpawnEffect`,
+  `HandlePlayerSpawnOnClient`, `PowerWeaponKills` = une statistique). Les gestionnaires
+  d'armes sont des **chemins de tags vers le jeu installe**
+  (`tags\scripts\parcellibrary\parcel_mp_weapon_manager.lua`,
+  `MPWeaponManagerStartup.lua`) — **identiques dans les trois modes**, Super Fiesta compris,
+  qui n'allume pourtant aucun socle. Le payload reference le code, il ne le contient pas.
+  **Verdict Q2** : le seuil (b) est techniquement atteint sur CTF, et **il ne prouve pas ce
+  qu'on cherchait**. Ces trois labels sont les filtres des objets d'OBJECTIF (les supports de
+  drapeau, nommes en clair dans le meme fichier : `Blue Flag Stand`, `Red Flag Stand`,
+  `Neutral Flag Stand`), pas des socles d'armes. Et le lot socles-mvar a mesure que **les
+  socles des cartes DEV ne portent AUCUN label** : un filtre par label ne peut pas allumer un
+  objet qui n'en porte pas.
   Gates : `go vet` = 0, `golangci-lint run ./cmd/variant-probe/...` = **0 issues**.
 
 ## 8. Decouvertes (notees, NON traitees)
