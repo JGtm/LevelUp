@@ -1,3 +1,36 @@
+## [2026-08-19] v7.5 rejeu 2D — lot C-ter volet 3 : la jauge de capture EN DIRECT (schema 17), et le recadrage « pas de jauge en KOTH » — Complete
+
+**Statut** : Complete (CT.3.1, CT.3.2, CT.3.3 ; branche `wt/jauge-live`, `97bab1ccc`..HEAD, NON fusionnee —
+un seul merge final dans `feat/v75`, regime branche unique). Journal detaille :
+`.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET3.md`. Gates : `registre_film/LOTCTER_volet3_gates.log`
+(tous les EXIT_* a 0). Reprise d'un executeur mort en plein recadrage : 8 fichiers non commites repris,
+verifies sur pieces, termines.
+**Decision technique** : trois decisions, chacune tenue par une mesure. (1) LA SERIE `zoneStates[].gauge`
+N'EXISTE QU'EN ZONES SIMULTANEES — sur une colline de KOTH le tag 3 est un COMPTEUR DE TRANSFERT d'environ
+une seconde (volet 1 : 9-10 pas fixes quelle que soit la duree de la garde), pas la progression de garde ;
+`buildHillStates` ne pose plus rien (`attachHillGauges`, `mergeGaugePoints` supprimes) et un test ECHOUE si
+une serie reapparait. (2) L'ECHELLE PASSE SUR CELLE DU JEU (zero quantifie 8 388 607, unite 83 886 quanta)
+pour `progress` comme pour `gauge` : l'excursion mesuree du match (convention v16) se faussait sur UNE
+emission aberrante sous zero. (3) CHAQUE RAMPE EST FERMEE PAR SON RETOUR A ZERO, et le client tient donc la
+derniere valeur jusqu'au point suivant au lieu de l'effacer au bout d'une seconde (une capture figee reste
+a l'ecran).
+**Resultats** : trois films recuits par `cmd/replay-build --facts` (un processus, peak 194/159/140 Mo,
+239/235/224 s) et relus SUR l'artefact. Bastion `7344d24f` : 1 701 points de jauge (479/666/556), series =
+1,562 % de l'artefact, poids +1,590 % contre le schema 16, **36/36 = 100,0 %** des bascules de proprietaire
+precedees d'une montee dans [-5 s ; +2 s] (seuil 90 % ; temoin decale +20 s : 38,9 %, hasard 38,6 %).
+Bastion `696a9d7c` : 1 794 points, 1,748 %, +1,785 %, **34/34 = 100,0 %** (temoin 29,4 %, hasard 40,0 %).
+KOTH `01e1f945` : **gaugePoints = 0**, +0,002 % (les 28 octets du schema). Clause de poids (<= +2 %) tenue
+sur les trois. Preuve du recadrage d'echelle : deux slots sur trois de `7344d24f` portent une emission a
+-51,6 et -2,3 unites, qui ecrasait les captures dans [0,981 ; 1] et [0,694 ; 1].
+**Conclusion / prochaine etape** : volet 3 clos, aucun push, aucune fusion. Restent, au superviseur : la
+revue adversariale de fin de volet (prescrite par le plan), le gate visuel utilisateur sur un Bastion
+recuit, et la fusion du volet 3 EN PREMIER dans `feat/v75` (c'est lui qui bouge le schema a 17 : tout
+artefact v16 se lit « a re-cuire », son `progress` n'etant plus sur la meme echelle). Trois decouvertes
+notees non traitees (journal §9) : `progress` en KOTH est desormais le sommet du compteur de transfert et
+n'apprend plus grand-chose (le volet 1 possede ce fichier) ; deux slots tag 3 de `7344d24f` ne sont pas des
+jauges de zone et restent a nommer ; les silences intra-rampe sont tenus a l'ecran faute d'une emission qui
+distinguerait « figee » de « finie ».
+
 ## [2026-08-18] Objectifs vivants — phase 3 : le drapeau CTF est DESSINE sur la carte — Complete
 
 **Statut** : Complete (3.1, 3.2 ; branche `wt/drapeau-rendu`, `7bc7a26ee`..`6131d8da3`, FUSIONNEE dans

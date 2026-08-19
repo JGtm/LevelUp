@@ -1,0 +1,15 @@
+# LOT C-ter volet 3 (jauge de capture EN DIRECT) — gates du 2026-08-19, worktree LevelUp-wt-jauge-live, branche wt/jauge-live
+# HEAD au lancement des gates : 118be01b6
+# verdict = les lignes EXIT_*=0 ci-dessous (un pipe masquerait le code de sortie : chaque gate ecrit le sien)
+EXIT_GOFMT=0 (fichiers non formates : 0)
+EXIT_VET=0
+EXIT_TEST_ANALYSIS=0
+EXIT_TEST_REPLAYBUILD_CONTRACT=0
+EXIT_TEST_ARCHLINT=0
+EXIT_BUILD=0
+EXIT_GOLANGCI=0
+EXIT_TSC=0
+EXIT_VITEST=0
+EXIT_ESLINT=0
+# eslint : 20 avertissements, 0 erreur (plafond : baseline 19 + 1 connu ReplayFeedName.tsx:50)
+EXIT_CROSSFEATURE=0
