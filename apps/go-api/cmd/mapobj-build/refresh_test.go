@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/testutil"
 )
 
 // ecrireCatalogue pose un catalogue de départ à la version demandée, avec des cartes
@@ -212,5 +214,85 @@ func TestRefreshRegenereEtDemarqueUneCarteReparsee(t *testing.T) {
 	}
 	if formes == 0 {
 		t.Error("aucune forme de zone après re-parse — c'est précisément ce que le schéma 2 apporte")
+	}
+}
+
+// mvarVersionne rend le chemin d'un `.mvar` SUIVI EN DÉPÔT (témoins de test de
+// `.ai/V7.5/dumps/mapvar/`). Il est versionné : son absence est une installation cassée,
+// pas un cas à sauter — la racine vient de testutil.RepoRoot(), sans variable
+// d'environnement (revue ronde 1, R1-1).
+func mvarVersionne(t *testing.T, nom string) string {
+	t.Helper()
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	p := filepath.Join(root, ".ai", "V7.5", "dumps", "mapvar", nom)
+	if _, statErr := os.Stat(p); statErr != nil {
+		t.Fatalf("témoin versionné absent : %v", statErr)
+	}
+	return p
+}
+
+// TestIngestLocalPreserveLesMetadonneesReseau — LE GARDE-FOU du chemin `--from-file` :
+// une carte DÉJÀ au catalogue garde ses métadonnées RÉSEAU quand on la re-parse hors ligne.
+//
+// Pourquoi c'est une règle et pas un détail : `--from-file` ne parle à personne. S'il
+// écrasait `version_id`, `public_name` et `fetched_at`, un catalogue gelé serait daté du
+// jour de sa RELECTURE et perdrait le nom public et la version de l'asset — sans un mot,
+// et sans moyen de savoir ensuite à quel état de l'UGC il correspond. C'est la même règle
+// que `--refresh-from` (refresh.go), qui, lui, était déjà gardé. La revue adversariale
+// ronde 1 (R1-4) a relevé que ce bloc de `ingestLocal` n'avait aucun test.
+//
+// Mutation qui doit le faire rougir : retirer le `if prev, ok := cat.Maps[mapID]` de
+// ingestLocal (cmd/mapobj-build/main.go).
+func TestIngestLocalPreserveLesMetadonneesReseau(t *testing.T) {
+	src := mvarVersionne(t, "cliffhanger_map.mvar")
+	gele := time.Date(2026, 7, 26, 0, 13, 14, 0, time.UTC)
+	cat := newCatalog("halo_infinite")
+	cat.Maps["carte-a"] = &mapEntry{
+		MapID: "carte-a", VersionID: "v-reseau", PublicName: "Cliffhanger",
+		MvarFile: "map.mvar", Module: "map", FetchedAt: gele,
+	}
+
+	if err := ingestLocal(context.Background(), cat, "carte-a", src, ""); err != nil {
+		t.Fatalf("ingestLocal: %v", err)
+	}
+	e := cat.Maps["carte-a"]
+	if e == nil {
+		t.Fatal("la carte a disparu du catalogue")
+	}
+	if e.VersionID != "v-reseau" {
+		t.Errorf("version_id = %q, attendu « v-reseau » — le re-parse local a écrasé une "+
+			"métadonnée qu'il ne connaît pas", e.VersionID)
+	}
+	if e.PublicName != "Cliffhanger" {
+		t.Errorf("public_name = %q, attendu « Cliffhanger »", e.PublicName)
+	}
+	if !e.FetchedAt.Equal(gele) {
+		t.Errorf("fetched_at = %s, attendu %s — le catalogue serait daté du jour de sa relecture",
+			e.FetchedAt.Format(time.RFC3339), gele.Format(time.RFC3339))
+	}
+	// Le nom de fichier, LUI, doit suivre le parse : c'est la vérité de ce que le
+	// catalogue porte désormais.
+	if e.MvarFile != "cliffhanger_map.mvar" || e.Module != "cliffhanger_map" {
+		t.Errorf("mvar_file/module = %q/%q, attendu ceux du fichier parsé", e.MvarFile, e.Module)
+	}
+	if len(e.Objectives) == 0 {
+		t.Error("aucun objectif ingéré — le témoin ne dit rien")
+	}
+
+	// Une carte NEUVE n'hérite de rien et se date du jour : la préservation ne doit pas
+	// se transformer en refus d'écrire.
+	if err := ingestLocal(context.Background(), cat, "carte-neuve", src, ""); err != nil {
+		t.Fatalf("ingestLocal (carte neuve): %v", err)
+	}
+	n := cat.Maps["carte-neuve"]
+	if n.VersionID != "" || n.PublicName != "" {
+		t.Errorf("carte neuve : version_id=%q public_name=%q, attendus vides", n.VersionID, n.PublicName)
+	}
+	if !n.FetchedAt.After(gele) {
+		t.Errorf("carte neuve : fetched_at = %s, attendu la date du parse",
+			n.FetchedAt.Format(time.RFC3339))
 	}
 }

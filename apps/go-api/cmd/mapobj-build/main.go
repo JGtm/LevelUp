@@ -293,6 +293,13 @@ func ingestLocal(ctx context.Context, cat *catalog, mapID, path, dumpPath string
 	}
 	e := &mapEntry{MapID: mapID, MvarFile: base,
 		Module: strings.TrimSuffix(base, ".mvar"), FetchedAt: time.Now().UTC()}
+	// Une carte DEJA au catalogue garde ses metadonnees RESEAU (version_id, public_name,
+	// fetched_at) : le re-parse local ne les connait pas, et les ecraser daterait un objet fige
+	// au reseau du jour de sa relecture (meme regle que --refresh-from). Le nom de fichier, lui,
+	// est celui qui vient d'etre parse : c'est la verite de ce que le catalogue porte.
+	if prev, ok := cat.Maps[mapID]; ok && prev != nil {
+		e.VersionID, e.PublicName, e.FetchedAt = prev.VersionID, prev.PublicName, prev.FetchedAt
+	}
 	cat.addVariant(e, v)
 	slog.InfoContext(ctx, "mapobj: variante locale ingérée",
 		"map_id", mapID, "file", base, "objets", len(v.Objects), "objectifs", len(e.Objectives))

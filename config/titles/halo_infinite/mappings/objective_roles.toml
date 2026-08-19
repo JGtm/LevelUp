@@ -13,7 +13,7 @@
 # (analysis.NormalizeModeLabel : "Arena:CTF on Aquarius" -> "CTF") puis cherche chaque
 # jeton de `match` comme MOT ENTIER, insensible a la casse, dans le libelle normalise
 # (analysis.ExtractKnownMode). "Fiesta CTF", "One Flag CTF", "CTF 3 Captures" matchent
-# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer, King of the Hill,
+# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer, Land Grab,
 # un UUID brut) = aucun role = aucun calque. Plusieurs entrees peuvent matcher : leurs
 # roles s'additionnent.
 #
@@ -27,7 +27,7 @@
 #
 # Les roles admis sont ceux du decodeur (mapvar) : flag_spawn, flag_delivery,
 # stockpile_socket, stockpile_navpoint, strongholds_zone, extraction_zone,
-# oddball_spawn, assault_bomb. Un role inconnu est une erreur de configuration
+# oddball_spawn, assault_bomb, hill. Un role inconnu est une erreur de configuration
 # (validation stricte au chargement), jamais un silence.
 
 [meta]
@@ -65,3 +65,19 @@ neutral = true
 # de la bombe — neutre dans le fichier (4/4 en team_index -1).
 match = ["Assault", "Neutral Bomb", "One Bomb"]
 roles = ["assault_bomb"]
+
+[[modes]]
+# King of the Hill (lot C-ter volet 2, 2026-08-19). "King of the Hill" attrape les pair_name
+# "Arena:King of the Hill on X" / "Ranked:King of the Hill on X" une fois normalises ("King of
+# the Hill"), et "KOTH" attrape le game_variant_name "KOTH:Arena" que l'artefact lit en brut
+# (releve du registre local : 26 libelles, 2026-08-19). Les deux jetons attrapent aussi
+# "Heroic King of the Hill" / "Heroic KOTH" (Firefight PvE) : ces cartes ne portent aucun
+# objet du role, rien n'est servi — degradation par absence, pas une erreur.
+#
+# La colline se pose par la PAIRE de hashs de mapvar (LabelHashHillRole + LabelHashHillInclude,
+# noms non retrouves) ; le catalogue en porte 5 a 6 par carte, toutes neutres dans le fichier.
+# neutral = true par coherence avec Bastion/Extraction : la colline ACTIVE et son proprietaire
+# sont l'affaire de zoneStates (etat vivant), jamais du team_index du fichier.
+match   = ["King of the Hill", "KOTH"]
+roles   = ["hill"]
+neutral = true
