@@ -63,7 +63,16 @@ type MatchViewHeader struct {
 	MapID          string                   `json:"map_id,omitempty"`
 	ModeUI         string                   `json:"mode_ui"`
 	PlaylistLabel  string                   `json:"playlist_label"`
-	PerfDisplay    string                   `json:"performance_display"`
+	// ModeCategory : catégorie custom de mode (Assassin/Fiesta/Super Fiesta/Husky
+	// Raid/BTB/Ranked/Firefight/Other) résolue depuis pair_name par la taxonomie du
+	// titre (analysis.ModeTaxonomy, impl. halo_infinite.InferModeCategoryFromPairName).
+	// CONTRAIREMENT à ModeUI (le sous-mode affiché, qui peut perdre l'identité
+	// playlist : "Fiesta:Slayer on X" → "Assassin"), cette catégorie la CONSERVE
+	// ("Fiesta:Slayer on X" → "Fiesta") : c'est le champ à corréler pour savoir si un
+	// match EST une Fiesta, pas un libellé à deviner. Vide si le titre n'a pas cette
+	// notion ou si pair_name est absent — le consommateur se replie alors sur ModeUI.
+	ModeCategory string `json:"mode_category,omitempty"`
+	PerfDisplay  string `json:"performance_display"`
 	// PerfColor : valeur hex legacy. Deprecated (cf. OutcomeColor).
 	PerfColor *string `json:"performance_color,omitempty"`
 	// PerfColorToken : token sémantique perf-tier-1..5 (1=meilleur, 5=pire).

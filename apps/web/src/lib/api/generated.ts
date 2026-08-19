@@ -7926,6 +7926,7 @@ export interface components {
             map_image_url?: string;
             map_ui: string;
             match_id: string;
+            mode_category?: string;
             mode_ui: string;
             /** Format: int64 */
             outcome_code?: number;
