@@ -1,7 +1,7 @@
 ## [2026-08-19] Objets de puissance laches au sol : dessines hors Fiesta — Complete
 
 **Statut** : Complete (branche `wt/dropped-hors-fiesta`, base `feat/v75` = `e4a15e7c6`, 4 commits
-`4b1c53357`..`<docs>`, non fusionnee — mode branche unique, le superviseur decide de la fusion).
+`4b1c53357`..`6adbeb397`, non fusionnee — mode branche unique, le superviseur decide de la fusion).
 **Decision technique** : la decision produit du 18/08 (« hors Fiesta, dessiner les armes speciales et
 equipements LACHES a la mort ») est livree pour les EQUIPEMENTS et les POWER-UPS ; **les ARMES lachees
 ne sont dans AUCUN canal du document** (`equipmentPlacements` = tag `eqip`, `weaponPads` = socles de
