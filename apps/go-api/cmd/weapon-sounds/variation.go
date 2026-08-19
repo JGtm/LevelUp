@@ -37,19 +37,25 @@ import (
 // Le gain se SOMME (mesure de l'etape 18 du chantier sons), et la fourchette de variation
 // aussi : chaque noeud du chemin tire son propre ecart, les ecarts s'additionnent en dB
 // comme en centiemes. La somme des bornes est l'enveloppe exacte du resultat possible.
+// Le DELAI se somme lui aussi (`AkPropID_InitialDelay`, propriete 17, deja lue par
+// `proprietes.go`) : un noeud qui retarde ce qu'il joue retarde tout son sous-arbre. Il
+// n'etait pas propage tant que le chantier ne portait que sur les armes, ou la mesure
+// donne zero partout ; une couche d'equipement peut, elle, arriver en decale — le mode
+// `eqip-arbre` compte les noeuds porteurs avant que le moindre mixage s'en serve.
 type etatChemin struct {
-	Gain float64
-	Var  fourchetteSon
+	Gain  float64
+	Delai float64
+	Var   fourchetteSon
 }
 
-// avec rend l'etat obtenu en traversant un noeud qui porte `gain` et `variation`.
-func (e etatChemin) avec(gain float64, v fourchetteSon) etatChemin {
-	return etatChemin{Gain: e.Gain + gain, Var: sommeFourchettes(e.Var, v)}
+// avec rend l'etat obtenu en traversant un noeud qui porte `gain`, `delai` et `variation`.
+func (e etatChemin) avec(gain, delai float64, v fourchetteSon) etatChemin {
+	return etatChemin{Gain: e.Gain + gain, Delai: e.Delai + delai, Var: sommeFourchettes(e.Var, v)}
 }
 
 // plusGain rend l'etat avec un gain additionnel, sans nouvelle variation (courbe de fondu).
 func (e etatChemin) plusGain(gain float64) etatChemin {
-	return etatChemin{Gain: e.Gain + gain, Var: e.Var}
+	return etatChemin{Gain: e.Gain + gain, Delai: e.Delai, Var: e.Var}
 }
 
 func sommeFourchettes(a, b fourchetteSon) fourchetteSon {
