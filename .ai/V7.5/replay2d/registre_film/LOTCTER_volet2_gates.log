@@ -55,3 +55,27 @@ EXIT_BUILD=0
 level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — limit/placeholders maîtrisés, plr0913 — coordinator function"
 0 issues.
 EXIT_LINT=0
+
+# Ronde 2 (revue adversariale) — 2026-08-19T10:28:27Z, branche wt/colline-formes, HEAD 6ee5f3946
+## gofmt -l ./...
+EXIT_GOFMT=0
+## go vet ./... (CGO)
+EXIT_VET=0
+## go test -count=1 ./internal/replaybuild/ ./internal/service/ (CGO, LEVELUP_REPO_ROOT NON POSE — le point de R2-1)
+ok  	levelup/go-api/internal/replaybuild	1.684s
+ok  	levelup/go-api/internal/service	15.179s
+EXIT_TEST_GARDES=0
+## go test -count=1 ./internal/analysis/replay/... ./internal/games/mappings/ (CGO_ENABLED=0, LEVELUP_REPO_ROOT NON POSE)
+ok  	levelup/go-api/internal/analysis/replay	33.497s
+ok  	levelup/go-api/internal/analysis/replay/mapvar	0.788s
+ok  	levelup/go-api/internal/games/mappings	1.153s
+EXIT_TEST_ANALYSIS=0
+## go test -count=1 ./internal/archlint/
+ok  	levelup/go-api/internal/archlint	6.990s
+EXIT_TEST_ARCHLINT=0
+## go build ./... (CGO)
+EXIT_BUILD=0
+## golangci-lint run --new-from-merge-base=origin/main ./...
+level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — limit/placeholders maîtrisés, plr0913 — coordinator function"
+0 issues.
+EXIT_LINT=0
