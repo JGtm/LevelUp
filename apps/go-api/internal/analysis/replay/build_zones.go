@@ -83,9 +83,9 @@ func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
 	}
 	if cov.Unpaired > 0 {
 		// L'UNITE DEPEND DE LA METHODE (cf. ZonesCoverage.Unpaired) : des slots de jauge
-		// qu'aucune capture ne rattache, ou des rampes que la grappe ne localise pas. La
-		// methode voyage donc DANS le message — sans elle, le meme chiffre se lirait de deux
-		// facons.
+		// qu'aucune capture ne rattache, des rampes que la grappe ne localise pas, ou des
+		// periodes designees que la grappe ne localise pas. La methode voyage donc DANS le
+		// message — sans elle, le meme chiffre se lirait de trois facons.
 		slog.Warn("rejeu : appariements ECARTES — zones absentes de l'etat publie",
 			"match_id", matchID, "methode", cov.Method, "nonApparies", cov.Unpaired,
 			"apparies", cov.Paired, "captures", cov.Captures, "attribuees", cov.Attributed)

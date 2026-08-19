@@ -147,7 +147,7 @@ func hillDesignatedPeriods(d hillDesignator, frames int) []hillPeriod {
 		if t1 < t0 {
 			continue
 		}
-		out = append(out, hillPeriod{slot: d.slot, t0: t0, t1: t1})
+		out = append(out, hillPeriod{t0: t0, t1: t1})
 	}
 	return out
 }
@@ -176,13 +176,11 @@ func hillVotesInRamps(zones []Zone, pts map[int][]Point, ramps []zoneRamp, p *hi
 
 // hillPeriod est un intervalle pendant lequel une colline est gardee.
 type hillPeriod struct {
-	slot   uint32
 	t0, t1 int
 	ref    int
 	hasRef bool
 	// top est le sommet de la jauge atteint pendant la periode — la progression publiee — et
-	// gaugeSlot le slot de jauge qui l'a atteint (son echelle). Methode par rampes : slot est
-	// deja le slot de jauge.
+	// gaugeSlot le slot de jauge qui l'a atteint (son echelle).
 	top       uint64
 	hasTop    bool
 	gaugeSlot uint32
@@ -209,7 +207,7 @@ func buildRampHills(zones []Zone, ser zoneSeries, c zoneCtx, cov *ZonesCoverage)
 	pts := zonePointsByFrame(c.tracks)
 	raw := make([]hillPeriod, 0, len(ramps))
 	for _, r := range ramps {
-		p := hillPeriod{slot: r.slot, t0: r.t0, t1: r.tPeak, top: r.top, gaugeSlot: r.slot, hasTop: true}
+		p := hillPeriod{t0: r.t0, t1: r.tPeak, top: r.top, gaugeSlot: r.slot, hasTop: true}
 		p.ref, p.hasRef = clearModalZone(hillVotes(zones, pts, r.t0, r.tPeak))
 		if !p.hasRef {
 			// LA RAMPE QUE LA GRAPPE NE LOCALISE PAS EST ECARTEE, ET ELLE SE COMPTE (revue R1,

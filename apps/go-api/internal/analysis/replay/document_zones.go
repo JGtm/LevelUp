@@ -64,7 +64,7 @@ package replay
 // `coverage.zones.roles` publie les roles employes pour que la jointure soit VERIFIABLE plutot
 // que supposee.
 
-// Les DEUX methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
+// Les TROIS methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
 // document le dit plutot que de laisser le client le deviner.
 const (
 	// ZoneMethodCaptures : la zone d'un slot vient des CAPTURES NOMMEES du statborg, attribuees

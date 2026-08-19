@@ -263,3 +263,38 @@ Pic memoire maximal : 297 Mo (10 % du plafond). Gates : build CGO ~3 min, lint ~
    (zone 6 pour les collines 2, 3, 4) : le catalogue n'a aucune forme de colline (volet 2), la
    grappe vote parmi les zones de Bastion/Extraction. La qualite de l'appariement forme <-> colline
    est l'objet de CT.2.3, pas de ce volet.
+
+## 10. Revue adversariale ronde 1 (2026-08-19)
+
+**0 P0/P1 fonctionnel.** Les 20 conditions du volet tiennent a la relecture (chaine designateur
+-> periodes -> appariement par la grappe -> intervalles publies, denominateurs de `coverage.zones`,
+temoins). DEUX constats de FORME, corriges dans le commit qui porte cette section :
+
+1. **L'en-tete des methodes annoncait DEUX methodes pour TROIS.**
+   `internal/analysis/replay/document_zones.go:67` — le bloc const est precede de « les DEUX
+   methodes d'appariement slot -> zone » alors qu'il declare `ZoneMethodCaptures`,
+   `ZoneMethodDesignator` et `ZoneMethodPositions` ; la phrase dit desormais TROIS, comme la doc
+   de `ZonesCoverage.Method`. Meme defaut a
+   `internal/analysis/replay/build_zones.go:85-88` — le commentaire du WARN de
+   `logZoneStatesCoverage` n'enumerait que deux lectures de `Unpaired` (slots de jauge sans
+   capture, rampes que la grappe ne localise pas) et concluait « le meme chiffre se lirait de
+   deux facons » : les PERIODES DESIGNEES non appariees, ajoutees par ce volet, en font une
+   troisieme — la liste et la conclusion la portent.
+2. **`hillPeriod.slot` etait un champ MORT.** `internal/analysis/replay/zone_states_hill.go` — il
+   etait ecrit sur les DEUX voies (`hillDesignatedPeriods`, l. 150 ; `buildRampHills`, l. 210) et
+   lu NULLE PART depuis que la lecture est passee a `gaugeSlot`. Le champ, ses deux ecritures et
+   son commentaire (« Methode par rampes : slot est deja le slot de jauge ») sont supprimes ; ni
+   le paquet ni les tests ne le lisaient (grep sur `.slot` dans le paquet + compilation).
+
+### Deux notes SOUS LA BARRE — consignees, NON corrigees
+
+(a) **La fenetre de vote peut se clipper a une frame.** Dans `hillVotesInRamps`, une rampe qui
+culmine exactement a `p.t0` reduit la fenetre `[max(r.t0, p.t0) ; min(r.tPeak, p.t1)]` a une
+seule frame : le vote de cette rampe ne pese alors que les presences d'une image. THEORIQUE —
+non exhibe sur le corpus : 7 a 19 rampes tombent dans chaque periode, et le vote modal est dilue
+par les autres.
+
+(b) **La branche `ser.gauge[d.slot+k]` de `hillFirstContact` est inerte sur ce corpus** et les
+tests ne la discriminent pas : sur 3 films les series `d+2` et `d+3` demarrent a la MEME frame,
+et le 4e film n'a pas de jauge. Elle ne coute rien et couvre le cas ou la jauge parlerait avant
+le proprietaire ; a re-mesurer si un film KOTH exhibe un decalage entre les deux.
