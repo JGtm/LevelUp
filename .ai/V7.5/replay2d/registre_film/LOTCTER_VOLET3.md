@@ -23,15 +23,16 @@ que le tag 3 n'y est pas une jauge de capture.
 | `internal/analysis/replay/zone_states.go` | 347 | `gaugeProgressOf` : l'echelle du JEU (zero quantifie 8 388 607, unite 83 886 quanta), et pourquoi ce n'est plus l'excursion du match |
 | `internal/analysis/replay/zone_states_owner.go` | 431 | la serie posee sur chaque zone de Bastion : TOUTES les rampes du slot, pas seulement celles qu'une capture rattache |
 | `internal/analysis/replay/zone_states_hill.go` | 195 | le volet colline, qui ne publie AUCUNE serie et l'ecrit |
-| `internal/analysis/replay/document_zones.go` | 260 | la forme (`GaugePoint`, `ZoneState.Gauge`, `ZonesCoverage.GaugePoints`) et la chronique du schema **17** |
-| `apps/web/.../zoneStatesLayer.ts` | 313 | `zoneGaugeAt` (escalier pur) et `drawGaugeArc` (3 parametres) ; le sommet statique de v16 n'est plus dessine |
+| `internal/analysis/replay/document_zones.go` | 262 | la forme (`GaugePoint`, `ZoneState.Gauge`, `ZonesCoverage.GaugePoints`) et la chronique du schema **17** |
+| `apps/web/.../zoneStatesLayer.ts` | 306 | `zoneGaugeAt` (escalier pur) et `drawGaugeArc` (3 parametres) ; le sommet statique de v16 n'est plus dessine |
 | `apps/web/.../useZoneStates.ts` | 90 | la tenue en frames (`ZONE_GAUGE_HOLD_MS` converti une fois par document) et l'encre du CAPTEUR |
 | `contracttest/replay_contract_test.go` | +6 | la chronique « 36 -> 36 » : un sous-champ, pas un champ racine |
 
-Tests : `zone_states_gauge_test.go` (254 L, 6 cas : les deux clauses d'allegement avec
-contre-epreuve, T strictement croissant, rien hors rampe, le retour a zero, **et le calque en
-KOTH qui ne publie rien**), `zone_gauge_temoin_test.go` (320 L, l'instrument de mesure sous
-gardes `ZONE_ARTEFACT` / `ZONE_FILM`), `zoneStatesLayer.test.ts` (293 L, 26 cas).
+Tests : `zone_states_gauge_test.go` (294 L, 7 cas : les TROIS clauses d'allegement avec
+contre-epreuve — variation, seconde, et le DERNIER point d'une rampe (revue, §10) —, T strictement
+croissant, rien hors rampe, le retour a zero, **et le calque en KOTH qui ne publie rien**),
+`zone_gauge_temoin_test.go` (320 L, l'instrument de mesure sous gardes `ZONE_ARTEFACT` /
+`ZONE_FILM`), `zoneStatesLayer.test.ts` (275 L, 21 cas).
 
 ## 2. La forme publiee (extrait REEL, `7344d24f`, zone 1)
 
@@ -151,3 +152,52 @@ clause ne doit rien a la densite des pas montants, elle mesure bien un ordre tem
    et 10 avec l'arc visible). Ils sont maintenant TENUS a l'ecran (§5) ; s'ils devaient etre
    distingues d'une capture reellement figee, il faudrait une emission de plus, que le film ne
    porte pas.
+
+## 10. Revue adversariale ronde 1 (2026-08-19)
+
+Verdict du contexte frais sur le volet : **0 P0, 0 P1** — les **25 conditions** du volet tiennent
+sur pieces. Quatre constats de FORME, corriges ici. **Aucun changement de comportement** : le seul
+fichier de production touche est de la documentation (godoc) ou de la suppression de code mort.
+
+1. **La clause `!last` n'avait AUCUN test** (`zone_states_gauge.go:98-99`). Elle est pourtant
+   vivante sur donnees reelles : sur `7344d24f`, le sommet **0,991** d'une capture n'est publie
+   que par elle — le pas precedent vaut 0,976, soit 0,015 de variation (sous 0,02) UNE frame plus
+   tard (sous la seconde) ; les deux clauses d'allegement l'ecarteraient, et l'arc s'arreterait a
+   0,976. `zone_states_gauge_test.go` porte desormais
+   `TestZoneGaugeDernierPointToujoursPublie`, qui rejoue exactement cette rampe (frames
+   1060..1073) et verifie EN PLUS que le dernier pas reste sous LES DEUX seuils — sans cette
+   garde, une retouche des valeurs rendrait le cas vacant sans que rien ne rougisse.
+   **CONTROLE NEGATIF JOUE** : `last := i+1 >= len(ss) || ss[i+1].t > w.t1` remplace par
+   `last := false` (la clause devient inerte) donne
+   `--- FAIL: TestZoneGaugeDernierPointToujoursPublie` — « 7 points publies pour 8 emissions »,
+   serie arretee a `{1072 0.976}` — et c'est le **SEUL rouge de tout le paquet**
+   `internal/analysis/replay` (41 s de tests) : la clause n'avait effectivement aucun autre
+   gardien. Mutation annulee (`git checkout --`) ; le code de production n'a pas bouge d'un octet.
+2. **Godoc restes a l'echelle de v16** (`document_zones.go:123-124` et `:148`). `ZoneState.Gauge`
+   annoncait « part de l'excursion mesuree sur ce match » et `GaugePoint.V` « sur l'echelle de la
+   zone », alors que le code est passe a l'ECHELLE DU JEU (§4 : `gaugeProgressOf`, 0 = jauge au
+   repos, 1 = pleine, ecretee). Les deux godoc disent maintenant ce que le code fait, et renvoient
+   a `gaugeProgressOf`. `ZoneSpan.Progress`, verifie au passage, etait deja juste.
+3. **`zoneStateAt` etait du code mort** (`zoneStatesLayer.ts:69-71`) : exporte, et documente
+   « c'est elle que le rendu appelle a chaque image » — faux, `drawZoneStates` appelle le prive
+   `spanStateAt`. Grep de `zoneStateAt` sur TOUT `apps/web` (`node_modules` compris) : sa
+   definition, sa doc, et son fichier de tests — **aucun appelant de production**. Aucun reemploi
+   prevu non plus : la seule mention au plan est CT.3.2, close, et c'est `zoneGaugeAt` qui l'a
+   servie ; le rendu des objectifs vivants passe par `objectivesLayer.ts` (`PLAN_DRAPEAU_OBJET.md`
+   §4). Regle « 0 code mort » appliquee : l'export et ses **4 cas dedies** sont SUPPRIMES,
+   `spanStateAt` reste l'unique lecture d'etat du calque et herite de la doc — verite comprise sur
+   qui l'appelle, et sur le fait qu'on l'exportera le jour ou quelqu'un la lira, plutot que d'en
+   garder deux versions. Trois des quatre cas etaient deja couverts par les tests de
+   `drawZoneStates` (bornes INCLUSES, « personne ne la tient » = mesure, rien hors intervalle) ;
+   le quatrieme — la zone ACTIVE — ne l'etait pas, il est donc REPORTE AU RENDU (« la zone ACTIVE
+   est en SURBRILLANCE : remplie sans proprietaire, lisere renforce »), la ou la surbrillance se
+   voit vraiment. Bilan : 24 cas -> 21.
+4. **Comptes documentes faux.** §1 de ce journal annoncait « 26 cas » pour
+   `zoneStatesLayer.test.ts` (reel avant revue : **24**) et la puce CT.3.2 du plan « 22 » puis
+   « 26 » ; `replayContract.test.ts:163` annoncait « 47 chemins » pour un tableau de **50**. Tout
+   est recompte (`grep -c "  it("`, comptage du tableau) et corrige : **21 cas / 275 L**,
+   **50 chemins**, et les longueurs de la table §1 remises a jour
+   (`document_zones.go` 260 -> 262, `zoneStatesLayer.ts` 313 -> 306,
+   `zone_states_gauge_test.go` 254 L / 6 cas -> 294 L / 7 cas).
+
+Gates de la revue : section « revue ronde 1 » de `LOTCTER_volet3_gates.log`.

@@ -120,8 +120,9 @@ type ZoneState struct {
 	// Spans est l'etat de la zone, en intervalles tries par T0 et sans recouvrement.
 	Spans []ZoneSpan `json:"spans"`
 	// Gauge est LA JAUGE DE CAPTURE EN DIRECT (schema 17) : la serie datee de la valeur de la
-	// jauge de cette zone, sur la MEME echelle que `Progress` (part de l'excursion mesuree sur
-	// ce match : 1 = le sommet atteint), triee par T strictement croissant.
+	// jauge de cette zone, sur la MEME echelle que `Progress` — celle du JEU : 0 = jauge au
+	// repos, 1 = jauge pleine, ecretee aux deux bouts (gaugeProgressOf dans zone_states.go) —,
+	// triee par T strictement croissant.
 	//
 	// ELLE NE PORTE QUE LES RAMPES — les montees monotones de la jauge, c'est-a-dire les
 	// captures en cours (menees a terme ou non) — et le RETOUR A ZERO qui ferme chacune quand
@@ -145,7 +146,8 @@ type ZoneState struct {
 type GaugePoint struct {
 	// T est la frame (meme axe que Point.T).
 	T int `json:"t"`
-	// V est la valeur de la jauge dans [0, 1], sur l'echelle de la zone (cf. ZoneSpan.Progress).
+	// V est la valeur de la jauge dans [0, 1], sur l'echelle du JEU : 0 = jauge au repos, 1 =
+	// jauge pleine (gaugeProgressOf dans zone_states.go — la meme echelle que ZoneSpan.Progress).
 	V float32 `json:"v"`
 }
 

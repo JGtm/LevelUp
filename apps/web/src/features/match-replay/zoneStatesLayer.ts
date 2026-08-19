@@ -62,22 +62,15 @@ export interface ZoneStateNow {
 }
 
 /**
- * zoneStateAt rend l'état de la zone `zoneRef` à la frame demandée, ou `null` quand aucun
- * intervalle ne la couvre — avant la première émission du film, la zone n'a pas d'état CONNU,
- * et la dessiner « neutre » affirmerait quelque chose que l'artefact ne dit pas.
+ * spanStateAt rend l'état porté par l'intervalle qui couvre la frame (bornes INCLUSES), ou `null`
+ * quand aucun ne la couvre — avant la première émission du film, la zone n'a pas d'état CONNU, et
+ * la dessiner « neutre » affirmerait quelque chose que l'artefact ne dit pas.
  *
- * FONCTION PURE, testée à part : c'est elle que le rendu appelle à chaque image.
+ * FONCTION PURE, et la SEULE lecture d'état du calque : c'est elle que le rendu appelle à chaque
+ * image, pour chaque zone (cf. drawZoneStates). Elle est privée parce que rien hors du calque ne
+ * lit l'état d'une zone ; un jour où quelque chose le lira, c'est elle qu'on exportera — pas une
+ * seconde façon de faire la même lecture.
  */
-export function zoneStateAt(
-  states: readonly ReplayZoneStateReady[],
-  zoneRef: number,
-  frame: number,
-): ZoneStateNow | null {
-  const st = states.find((s) => s.zoneRef === zoneRef)
-  return st ? spanStateAt(st.spans, frame) : null
-}
-
-/** spanStateAt rend l'intervalle qui couvre la frame (bornes INCLUSES), ou `null`. */
 function spanStateAt(spans: ReplayZoneStateReady['spans'], frame: number): ZoneStateNow | null {
   for (const sp of spans) {
     if (frame < sp.t0 || frame > sp.t1) continue
