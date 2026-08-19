@@ -25,7 +25,10 @@ package replay
 // CHRONIQUE — v17 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
 // lot C-ter volet 3). `ZoneState.gauge` — LA JAUGE DE CAPTURE EN DIRECT : la serie datee des
 // valeurs de la jauge de chaque zone PENDANT ses rampes (allegee : un point par variation
-// >= 0,02 ou par seconde de rampe, rien hors rampe), et `coverage.zones.gaugePoints`. Le
+// >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe fermee par son retour a zero
+// quand le film le porte), SUR LES MODES A ZONES SIMULTANEES SEULEMENT — jamais sur une colline
+// de KOTH, ou le canal est un compteur de transfert d'une seconde (volet 1) — et
+// `coverage.zones.gaugePoints`. Le
 // `progress` des intervalles est CONSERVE tel quel (contrat stable : le sommet par intervalle
 // reste lisible pour qui le lit) — mais LE CLIENT NE LE DESSINE PLUS : l'arc de v16, trace au
 // sommet de l'intervalle, restait plein pendant toute la duree de la propriete et se LISAIT
@@ -33,6 +36,13 @@ package replay
 // raison : sur un artefact v16 le client n'a plus d'arc du tout (le sommet statique disparait,
 // decision du plan), et il ne retrouve un arc — le vrai, qui se remplit a l'image — qu'une fois
 // l'artefact re-cuit. Un v16 se lit donc « a re-cuire ». Regle et seuils : zone_states_gauge.go.
+//
+// v17, MEME JOUR (2026-08-19), L'ECHELLE : la mesure des temoins a montre que l'excursion mesuree
+// du match (convention de v16) se faussait sur une seule emission aberrante sous zero — deux zones
+// sur trois de `7344d24f` voyaient toutes leurs captures ecrasees dans [0,694 ; 1] et [0,981 ; 1].
+// `progress` ET `gauge` passent sur l'echelle du JEU (0 = jauge au repos, 1 = pleine, cf.
+// gaugeProgressOf dans zone_states.go) : les valeurs de `progress` d'un v16 et d'un v17 ne sont
+// donc pas comparables — une raison de plus de re-cuire.
 //
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //
@@ -114,15 +124,20 @@ type ZoneState struct {
 	// ce match : 1 = le sommet atteint), triee par T strictement croissant.
 	//
 	// ELLE NE PORTE QUE LES RAMPES — les montees monotones de la jauge, c'est-a-dire les
-	// captures en cours (menees a terme ou non). Hors rampe, RIEN n'est publie : la jauge au
-	// repos n'a pas de valeur a montrer, et l'absence de point est la donnee (le client efface
-	// l'arc une seconde apres le dernier point). Elle est ALLEGEE : un point par variation
-	// >= 0,02 ou par seconde de rampe (cf. zone_states_gauge.go), premier et dernier point de
-	// chaque rampe toujours presents. `v` est arrondi a trois decimales.
+	// captures en cours (menees a terme ou non) — et le RETOUR A ZERO qui ferme chacune quand
+	// le film le porte : la jauge ne redescend jamais autrement (mesure du lot). Hors rampe,
+	// RIEN n'est publie : la jauge au repos n'a pas de valeur a montrer. Le client lit la serie
+	// EN ESCALIER — la derniere valeur tient jusqu'au point suivant (une capture figee reste
+	// affichee), et l'arc s'efface une seconde apres le dernier point de la serie. Elle est
+	// ALLEGEE : un point par variation >= 0,02 ou par seconde de rampe (cf.
+	// zone_states_gauge.go), premier et dernier point de chaque rampe toujours presents. `v`
+	// est arrondi a trois decimales.
 	//
 	// ABSENTE quand la zone n'a aucune rampe de jauge sur ce match, ou quand aucun slot de
-	// jauge ne lui est apparie (KOTH : la serie est celle des rampes que la grappe a posees sur
-	// cette colline). Un artefact de schema <= 16 ne la porte jamais.
+	// jauge ne lui est apparie — ET TOUJOURS ABSENTE SUR UNE COLLINE (KOTH) : la, le meme
+	// canal est un compteur de transfert d'environ une seconde, pas la progression de garde
+	// (lot C-ter volet 1) ; `coverage.zones.gaugePoints` y vaut 0. Un artefact de schema <= 16
+	// ne la porte jamais.
 	Gauge []GaugePoint `json:"gauge,omitempty"`
 }
 
@@ -146,13 +161,18 @@ type ZoneSpan struct {
 	// sinon « zone neutre » et « artefact plus ancien » se confondraient (meme regle que
 	// `FlagSpan.XUID`).
 	Owner *int `json:"owner"`
-	// Progress est le SOMMET de la jauge de capture atteint pendant l'intervalle, ramene a
-	// [0, 1]. Absent quand la zone n'a pas de slot de jauge apparie sur ce match, ou quand
-	// aucune emission de jauge ne tombe dans l'intervalle.
+	// Progress est le SOMMET de la jauge de capture atteint pendant l'intervalle, dans [0, 1] :
+	// la fraction de capture sur l'echelle du JEU (0 = jauge au repos, 1 = pleine ; cf.
+	// gaugeProgressOf). Absent quand la zone n'a pas de slot de jauge apparie sur ce match, ou
+	// quand aucune emission de jauge ne tombe dans l'intervalle.
 	//
-	// LA CONVERSION EST UNE CONVENTION, PAS UNE MESURE : le deser declare la plage [-100, +100]
-	// (constantes `0x143cd8f84` / `0x143cd84a8` du jeu) et la valeur est ramenee lineairement.
-	// Le quantum brut n'est pas republie — il n'aurait de sens qu'avec la table de largeurs.
+	// L'ECHELLE A CHANGE AU SCHEMA 17 (2026-08-19). Le deser declare la plage [-100, +100]
+	// (constantes `0x143cd8f84` / `0x143cd84a8` du jeu) ; la jauge y vit sur [0, +1], et c'est
+	// cette unite qui fait l'echelle. Le schema 16 ramenait la valeur sur l'EXCURSION MESUREE de
+	// la zone sur le match — juste tant qu'aucune emission ne sortait de [0, 1], fausse des
+	// qu'une emission aberrante sous zero servait de plancher (mesure sur `7344d24f`, deux zones
+	// sur trois). Le quantum brut n'est pas republie — il n'aurait de sens qu'avec la table de
+	// largeurs.
 	Progress *float32 `json:"progress,omitempty"`
 	// Active dit que la zone est LA ZONE ACTIVE du mode pendant l'intervalle (colline de KOTH).
 	// Faux partout dans les modes a zones simultanees (Bastion) : c'est `owner` qui y parle.
@@ -233,6 +253,8 @@ type ZonesCoverage struct {
 	UnknownOwner int `json:"unknownOwner"`
 	// GaugePoints est le nombre de points de jauge en direct publies, toutes zones confondues
 	// (schema 17). C'est le poids du calque vivant, et le denominateur de sa legerete : la
-	// serie est allegee (cf. ZoneState.Gauge), et ce compte dit de combien.
+	// serie est allegee (cf. ZoneState.Gauge), et ce compte dit de combien. ZERO sur un film a
+	// COLLINE (KOTH) : la jauge n'y est pas publiee du tout, le tag 3 y etant un compteur de
+	// transfert et non la progression de garde (lot C-ter, volets 1 et 3).
 	GaugePoints int `json:"gaugePoints"`
 }

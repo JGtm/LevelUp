@@ -18,8 +18,8 @@ import (
 // des positions, et les intervalles sortent marques ACTIFS et sans proprietaire.
 func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, zoneRampAt(40, 100, 900_000)...)
-	reads = append(reads, zoneRampAt(40, 400, 900_000)...)
+	reads = append(reads, zoneRampAt(40, 100, 900)...)
+	reads = append(reads, zoneRampAt(40, 400, 900)...)
 	in := zoneTestInput(reads)
 	in.Roles = "strongholds_zone,extraction_zone"
 	in.Hill = true // le mode du match est un mode a COLLINE : c'est ce qui ouvre le repli
@@ -54,11 +54,11 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 
 // zoneGaugeSamplesAt fabrique une rampe de jauge SUR MESURE : trois emissions croissantes aux
 // frames demandees. `zoneRampAt` en pose une de 4 frames ; ici la duree est le sujet du test.
-func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, top uint64) []filmdec.ManagedPropertyRead {
+func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, topMilli uint64) []filmdec.ManagedPropertyRead {
 	return []filmdec.ManagedPropertyRead{
-		zoneReadAt(slot, t0, filmdec.ManagedPropertyTagQuant, 1_000),
-		zoneReadAt(slot, tMid, filmdec.ManagedPropertyTagQuant, 200_000),
-		zoneReadAt(slot, tPeak, filmdec.ManagedPropertyTagQuant, top),
+		zoneReadAt(slot, t0, filmdec.ManagedPropertyTagQuant, gaugeQ(1)),
+		zoneReadAt(slot, tMid, filmdec.ManagedPropertyTagQuant, gaugeQ(200)),
+		zoneReadAt(slot, tPeak, filmdec.ManagedPropertyTagQuant, gaugeQ(topMilli)),
 	}
 }
 
@@ -72,8 +72,8 @@ func zoneGaugeSamplesAt(slot uint32, t0, tMid, tPeak int, top uint64) []filmdec.
 // rendu montrait deux collines.
 func TestZoneStatesCollineUneSeuleZoneActiveALaFois(t *testing.T) {
 	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, zoneGaugeSamplesAt(40, 100, 150, 200, 900_000)...) // garde longue
-	reads = append(reads, zoneGaugeSamplesAt(50, 150, 170, 190, 910_000)...) // garde DEDANS
+	reads = append(reads, zoneGaugeSamplesAt(40, 100, 150, 200, 900)...) // garde longue
+	reads = append(reads, zoneGaugeSamplesAt(50, 150, 170, 190, 910)...) // garde DEDANS
 	in := zoneTestInput(reads)
 	in.Hill = true
 	// La grappe est dans la zone 1 sauf entre 150 et 190, ou elle passe dans la zone 0 : la
@@ -122,8 +122,8 @@ func TestZoneStatesCollineUneSeuleZoneActiveALaFois(t *testing.T) {
 // un appariement partiel se lisait exactement comme un appariement complet.
 func TestZoneStatesCollineCompteLesRampesNonLocalisees(t *testing.T) {
 	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, zoneRampAt(40, 100, 900_000)...) // gardee DANS la zone 1
-	reads = append(reads, zoneRampAt(40, 400, 910_000)...) // gardee loin de toute zone
+	reads = append(reads, zoneRampAt(40, 100, 900)...) // gardee DANS la zone 1
+	reads = append(reads, zoneRampAt(40, 400, 910)...) // gardee loin de toute zone
 	in := zoneTestInput(reads)
 	in.Hill = true
 	var pts []Point
@@ -148,7 +148,7 @@ func TestZoneStatesCollineCompteLesRampesNonLocalisees(t *testing.T) {
 // TestZoneStatesCollineSansGrappeNePublieRien : une montee de jauge sans position pour la
 // localiser ne pose aucune colline — on refuse plutot que de choisir la zone la plus proche.
 func TestZoneStatesCollineSansGrappeNePublieRien(t *testing.T) {
-	in := zoneTestInput(zoneRampAt(40, 100, 900_000))
+	in := zoneTestInput(zoneRampAt(40, 100, 900))
 	in.Hill = true
 	c := zoneTestCtx(nil, []Track{track("2533", pointAt(100, 500, 500, 0))})
 	states, cov := buildZoneStates(in, c)
@@ -166,7 +166,7 @@ func TestZoneStatesCollineSansGrappeNePublieRien(t *testing.T) {
 // memes lectures, avec `Hill` a vrai, publient bien des periodes : c'est le mode qui tranche, pas
 // le silence de l'oracle.
 func TestZoneStatesHorsCollineNeReplieJamaisSurLesPositions(t *testing.T) {
-	reads := zoneRampAt(40, 100, 900_000)
+	reads := zoneRampAt(40, 100, 900)
 	pts := make([]Point, 0, 5)
 	for f := 96; f <= 100; f++ {
 		pts = append(pts, pointAt(f, 20.5, 0, 0))
