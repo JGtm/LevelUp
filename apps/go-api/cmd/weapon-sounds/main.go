@@ -24,6 +24,9 @@
 //
 //	eqip-sons   passe 1, module `any/globals` : eqip -> effe -> snd! -> sbnk
 //	eqip-banks  passe 2, module `pc/globals`  : sbnk -> .wem -> pack nomme
+//	eqip-arbre  module `pc/globals` : la STRUCTURE des evenements d'une banque
+//	            (couches simultanees vs variantes, gains, delais, couverture). Detail
+//	            dans `eqip_arbre.go` — c'est ce qui manque pour RECONSTRUIRE un son.
 //
 // ATTENTION MEMOIRE : `himodule.Open` lit le module ENTIER en memoire. Le module qui porte
 // les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
@@ -54,6 +57,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -205,6 +209,13 @@ func main() {
 		err = sonsDEquipement(chemin, parserHexa(*eqipIDs), *sortie)
 	case "eqip-banks":
 		err = banquesDEquipement(chemin, *sortie, *sortieTir, *emb)
+	case "eqip-arbre":
+		var gids []uint32
+		for id := range parserHexa(*banksSup) {
+			gids = append(gids, id)
+		}
+		sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
+		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}

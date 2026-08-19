@@ -55,6 +55,10 @@ type brancheRendue struct {
 	// Absente quand aucun noeud du chemin n'en declare : la couche se joue alors telle
 	// quelle, ce qui est le cas le plus frequent.
 	Variation *variationRendue `json:"variation,omitempty"`
+	// DelaiS : decalage de DEBUT de la couche, en secondes — somme des delais du chemin.
+	// Zero (donc absent) partout ou la mesure ne trouve rien, ce qui etait le cas sur les
+	// armes ; une valeur non nulle est ce qui autoriserait un `adelay` au mixage.
+	DelaiS float32 `json:"delai_s,omitempty"`
 }
 
 type eventCouches struct {
@@ -87,8 +91,11 @@ type rapportCouches struct {
 // nul (jusqu'a -96 dB) — ne lire que celui du Sound laissait au premier plan des branches
 // que le moteur eteint.
 //
-// DELAIS : zero delai mesure sur les 62 753 Sound et les conteneurs ; l'empilement a t=0
-// est donc conforme aux donnees, pas une simplification.
+// DELAIS : zero delai mesure sur les 62 753 Sound et les conteneurs DES ARMES ;
+// l'empilement a t=0 y est donc conforme aux donnees, pas une simplification. Le delai est
+// desormais PROPAGE le long du chemin (`etatChemin.Delai`) et rendu par couche, pour que la
+// meme question se remesure sur d'autres familles — les banques d'equipement notamment —
+// au lieu d'heriter d'un zero constate ailleurs.
 //
 // couchesDeEvent rend un POINT DE CHOIX par couche : un ensemble de `.wem` dont le moteur
 // joue EXACTEMENT UN, chacun avec son gain de chemin.
@@ -109,7 +116,7 @@ func (b *bank) descendre(n uint32, etat etatChemin, vus map[uint32]bool) []branc
 		return nil
 	}
 	vus[n] = true
-	etat = etat.avec(float64(b.VolNoeud[n]), b.VarNoeud[n])
+	etat = etat.avec(float64(b.VolNoeud[n]), float64(b.DelaiNoeud[n]), b.VarNoeud[n])
 	if w, estSon := b.Sons[n]; estSon {
 		return []brancheRendue{b.brancheDe(n, map[uint32]etatChemin{w: etat})}
 	}
@@ -145,7 +152,7 @@ func (b *bank) collecterPool(n uint32, etat etatChemin, vus map[uint32]bool, out
 			continue
 		}
 		vus[e] = true
-		suivant := etat.avec(float64(b.VolNoeud[e]), b.VarNoeud[e])
+		suivant := etat.avec(float64(b.VolNoeud[e]), float64(b.DelaiNoeud[e]), b.VarNoeud[e])
 		if fondu, ok := b.GainsFondu[n]; ok {
 			suivant = suivant.plusGain(fondu[e])
 		}
@@ -171,6 +178,9 @@ func (b *bank) brancheDe(cible uint32, etats map[uint32]etatChemin) brancheRendu
 	// la couche domine le melange).
 	var variation fourchetteSon
 	gainMax, premier := 0.0, true
+	// Le DELAI de la couche est le PLUS PETIT de ses variantes : la couche commence quand
+	// le moteur peut la faire commencer, et un tirage plus tardif ne recule pas le geste.
+	delaiMin := 0.0
 	for w, e := range etats {
 		wems = append(wems, w)
 		if e.Gain != 0 {
@@ -178,12 +188,17 @@ func (b *bank) brancheDe(cible uint32, etats map[uint32]etatChemin) brancheRendu
 		}
 		variation = enveloppeFourchettes(variation, e.Var)
 		if premier || e.Gain > gainMax {
-			gainMax, premier = e.Gain, false
+			gainMax = e.Gain
 		}
+		if premier || e.Delai < delaiMin {
+			delaiMin = e.Delai
+		}
+		premier = false
 	}
 	sort.Slice(wems, func(i, j int) bool { return wems[i] < wems[j] })
 	br := brancheRendue{
 		Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gs,
+		DelaiS: float32(delaiMin),
 	}
 	if variation.Lu && !variation.Nulle() {
 		br.Variation = &variationRendue{
