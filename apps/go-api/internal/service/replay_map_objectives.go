@@ -30,22 +30,40 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/port"
 )
 
 // objectiveRolesFilename est le nom du fichier de table sous mappings/ du titre.
 const objectiveRolesFilename = "objective_roles.toml"
 
-// mapObjectivesForMatch résout le calque statique des objectifs du match. Rend nil pour
-// TOUTE absence (mode sans objectifs, carte hors catalogue, titre sans table...).
-func (s *replayService) mapObjectivesForMatch(ctx context.Context, matchID string) *replay.MapObjectives {
+// matchMapKeys résout les identités de carte du match, UNE SEULE FOIS par requête.
+//
+// POURQUOI CE PALIER EXISTE : DEUX calques statiques en dépendent désormais — les
+// objectifs du mode, et les emplacements de socle (replay_map_weapon_pads.go). Les laisser
+// interroger chacun la base ferait deux allers-retours pour la même réponse, sur le chemin
+// le plus chaud du rejeu. Rend la valeur zéro pour toute absence, toujours journalisée :
+// une carte non résolue n'est pas une erreur, mais elle ne doit pas être un silence.
+func (s *replayService) matchMapKeys(ctx context.Context, matchID string) port.MatchMapKeys {
 	if s.maps == nil {
-		return nil
+		return port.MatchMapKeys{}
 	}
 	keys, err := s.maps.MapKeysForMatch(ctx, matchID)
-	if err != nil || keys.MapID == "" || keys.PairName == "" {
+	if err != nil {
+		slog.DebugContext(ctx, "rejeu 2D : carte du match non résolue — calques statiques absents",
+			"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+		return port.MatchMapKeys{}
+	}
+	return keys
+}
+
+// mapObjectivesForKeys résout le calque statique des objectifs du match. Rend nil pour
+// TOUTE absence (mode sans objectifs, carte hors catalogue, titre sans table...).
+func (s *replayService) mapObjectivesForKeys(ctx context.Context, matchID string,
+	keys port.MatchMapKeys) *replay.MapObjectives {
+	if keys.MapID == "" || keys.PairName == "" {
 		// Sans map_id la jointure n'existe pas ; sans pair_name le mode non plus.
 		slog.DebugContext(ctx, "rejeu 2D : clés de match incomplètes — pas d'objectifs statiques",
-			"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+			"match_id", matchID, "titleSlug", s.titleSlug)
 		return nil
 	}
 	specs := s.objectiveRoleSpecs(ctx, keys.PairName)
