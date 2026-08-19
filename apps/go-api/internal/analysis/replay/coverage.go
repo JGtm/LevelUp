@@ -163,7 +163,7 @@ type Coverage struct {
 	// Zones est la couverture de L'ÉTAT DES ZONES (schéma 16, cf. document_zones.go) : la
 	// MÉTHODE d'appariement employée et les rôles du catalogue qui composent `mapObjectives.zones`
 	// (sans quoi `zoneRef` ne serait pas vérifiable), les slots lus, ceux qu'aucune capture n'a
-	// rattachés, le contrôle du propriétaire contre l'équipe du capteur, et depuis le schéma 17
+	// rattachés, le contrôle du propriétaire contre l'équipe du capteur, et depuis le schéma 18
 	// le nombre de points de la jauge en direct (`gaugePoints`).
 	//
 	// ELLE EST PUBLIÉE MÊME QUAND AUCUNE ZONE NE L'EST, pour la même raison que les précédentes :

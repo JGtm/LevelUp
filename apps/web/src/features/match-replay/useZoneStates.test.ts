@@ -10,7 +10,7 @@
  * l'artefact, la liste servie est reconstruite à la requête. Quand les deux ne s'accordent pas,
  * le calque vivant se tait plutôt que de teinter la mauvaise zone.
  *
- * Et depuis le schéma 17 : la TENUE de la jauge en direct est convertie ici, en frames de CE
+ * Et depuis le schéma 18 : la TENUE de la jauge en direct est convertie ici, en frames de CE
  * document, et l'encre du camp QUI CAPTURE est celle du camp d'en face du propriétaire.
  */
 import { renderHook } from '@testing-library/react'

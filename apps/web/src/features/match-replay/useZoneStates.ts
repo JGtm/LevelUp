@@ -23,7 +23,7 @@
  * `coverage.zones.catalog` dit combien de zones l'artefact comptait : s'il diffère de la liste
  * servie, `joinable` est faux et le calque vivant se tait (cf. `zoneCatalogMatches`).
  *
- * LA TENUE DE LA JAUGE EN DIRECT (schéma 17) SE CONVERTIT ICI, une fois par document : déclarée
+ * LA TENUE DE LA JAUGE EN DIRECT (schéma 18) SE CONVERTIT ICI, une fois par document : déclarée
  * en temps réel (`ZONE_GAUGE_HOLD_MS`), jamais en nombre d'images — la cadence du film peut
  * changer au build sans que la lecture change (même règle que `useReplayTiming`).
  */

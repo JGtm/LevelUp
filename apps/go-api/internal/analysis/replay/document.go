@@ -131,14 +131,22 @@ package replay
 // DE CHAQUE ZONE (qui la tient, depuis quand, jusqu'a quel niveau de jauge), et `coverage.zones`.
 // Chronique, sources et refus : document_zones.go.
 //
-// v17 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) : `zoneStates[].gauge`
+// v17 (2026-08-19, plan PLAN_POWERUP_SOCLE_CATALYST phase 8) : AUCUN CHAMP NEUF À LA RACINE —
+// c'est le CONTENU de `weaponPads` qui change. Les SOCLES DE POWER-UP y entrent (voie `ti=37`,
+// famille du manifeste pour identifiant), et `coverage.groundWeapons` gagne les quatre
+// compteurs de cette voie. Un artefact v16 se lit donc « à re-cuire », pas « à jour » : il
+// n'a jamais pu porter ces socles. Chronique, mesure et garde-fous : powerup_pads.go.
+//
+// v18 (2026-08-19, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) : `zoneStates[].gauge`
 // — LA JAUGE DE CAPTURE EN DIRECT (serie datee, allegee, pendant les rampes seulement) et
 // `coverage.zones.gaugePoints`. Un sous-champ optionnel, et pourtant la version monte : le sommet
 // statique de v16 (`progress`, CONSERVE dans le contrat) se lisait comme une jauge alors qu'il
 // n'en etait que le maximum — le client cesse de le dessiner, et ne dessine l'arc que d'un
-// artefact qui porte la serie. Un v16 se lit donc « a re-cuire ». Chronique : document_zones.go ;
-// regle et seuils : zone_states_gauge.go.
-const SchemaVersion = 17
+// artefact qui porte la serie. LE NUMERO EST 18, PAS 17 : le 17 est parti aux socles de power-up,
+// fusionnes avant nous (regle du depot : un numero par montee, dans l'ordre de fusion). Un v16
+// COMME un v17 se lit donc « a re-cuire » — ni l'un ni l'autre ne porte la serie. Chronique :
+// document_zones.go ; regle et seuils : zone_states_gauge.go.
+const SchemaVersion = 18
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

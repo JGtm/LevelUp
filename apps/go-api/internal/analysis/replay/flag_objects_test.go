@@ -164,7 +164,7 @@ func TestLeLacherPrendLaPositionDeLaPisteLibre(t *testing.T) {
 func TestFlagFreeLivesApparieCreationEtPiste(t *testing.T) {
 	const drapeau = uint32(0x2a392328)
 	arme := gwTestFamily(t, 0)
-	scan := GroundWeaponScan{
+	scan := WorldObjectScan{
 		Scanned: true,
 		Creations: []filmdec.EquipmentCreation{
 			gwTestCreation(7, 0, 1_000_000, drapeau, 10, 10),

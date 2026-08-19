@@ -12,14 +12,22 @@
  *  - les deux POWER-UPS sont des familles que le valideur Go admet — même piège, autre table ;
  *  - la règle de taille : puissance = grande, tout le reste (y compris l'inconnu) = petite.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { POWER_PAD_KEYS, POWER_PAD_WEAPON_KEYS, padScaleOf } from './weaponPadFamilies'
+import {
+  PAD_EQUIPMENT_FAMILIES,
+  POWER_PAD_KEYS,
+  POWER_PAD_WEAPON_KEYS,
+  padEquipmentFamilyOf,
+  padScaleOf,
+} from './weaponPadFamilies'
 
 const REPO = resolve(__dirname, '..', '..', '..', '..', '..')
 const WEAPON_NAMES = resolve(REPO, 'config/titles/halo_infinite/mappings/weapon_names.toml')
+const REPLAY_LABELS = resolve(REPO, 'config/titles/halo_infinite/mappings/replay_labels.toml')
+const HUD_DIR = resolve(REPO, 'static/weapons-assets/halo_infinite/hud')
 const GO_LOADER = resolve(
   REPO,
   'apps/go-api/internal/games/mappings/loader_replay_labels_equipment.go',
@@ -77,5 +85,51 @@ describe('padScaleOf — la règle de taille', () => {
     expect(padScaleOf(null)).toBe('classic')
     expect(padScaleOf('')).toBe('classic')
     expect(padScaleOf('cle_d_un_titre_futur')).toBe('classic')
+  })
+})
+
+describe('PAD_EQUIPMENT_FAMILIES — les familles NON-ARME d’un socle', () => {
+  const cles = Object.keys(PAD_EQUIPMENT_FAMILIES)
+
+  it('chaque famille est DÉJÀ dans la règle de taille — jamais une seconde règle', () => {
+    for (const key of cles) {
+      expect(POWER_PAD_KEYS, `${key} hors de POWER_PAD_KEYS : le socle resterait petit`).toContain(
+        key,
+      )
+    }
+  })
+
+  it('chaque famille est admise par le valideur Go — même vocabulaire des deux côtés', () => {
+    const src = readFileSync(GO_LOADER, 'utf8')
+    for (const key of cles) {
+      expect(src, `${key} n’est pas une famille d’équipement du manifeste`).toContain(`"${key}":`)
+    }
+  })
+
+  it('chaque vignette de HUD est LIVRÉE, et nommée par le manifeste du titre', () => {
+    // Le manifeste ne déclare aucune icône sur ses `[[equipment_objects]]` — il nomme en
+    // revanche ces MÊMES masques pour les capacités de même nom (`icon = "hud/Overshield"`).
+    // Les deux vérifications comptent : un fichier absent donnerait un cadre vide en
+    // production, un stem inventé une image qui ne vient pas du jeu.
+    const manifeste = readFileSync(REPLAY_LABELS, 'utf8')
+    for (const [key, famille] of Object.entries(PAD_EQUIPMENT_FAMILIES)) {
+      expect(
+        existsSync(resolve(HUD_DIR, `${famille.icon}.png`)),
+        `${key} : vignette hud/${famille.icon}.png absente des assets livrés`,
+      ).toBe(true)
+      expect(manifeste, `${key} : hud/${famille.icon} n’est nommée nulle part au manifeste`).toContain(
+        `"hud/${famille.icon}"`,
+      )
+    }
+  })
+
+  it('c’est une TABLE, pas un test de préfixe : une famille inconnue n’en est pas une', () => {
+    expect(padEquipmentFamilyOf('powerup_overshield')).toBe('powerup_overshield')
+    expect(padEquipmentFamilyOf('powerup_inconnu')).toBeNull()
+    expect(padEquipmentFamilyOf('0x0A1992BC')).toBeNull()
+    expect(padEquipmentFamilyOf('wall')).toBeNull()
+    // Une clé héritée du prototype n’est pas une famille (un socle peut porter n’importe quoi).
+    expect(padEquipmentFamilyOf('constructor')).toBeNull()
+    expect(padEquipmentFamilyOf('toString')).toBeNull()
   })
 })

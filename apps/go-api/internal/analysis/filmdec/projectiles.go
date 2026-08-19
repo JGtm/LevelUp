@@ -123,7 +123,7 @@ func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]Projectil
 // ScanFilmWorldObjectsForBand décode les trajectoires d'une BANDE DE SLOTS déjà relevée.
 //
 // LA BANDE EST UN PARAMÈTRE parce qu'elle se lit dans les images-clés, et qu'un appelant qui a
-// déjà marché ces images-clés (cf. `ScanFilmGroundWeaponKeyframes`) n'a pas à les remarcher pour
+// déjà marché ces images-clés (cf. `ScanFilmWorldObjectKeyframes`) n'a pas à les remarcher pour
 // la même donnée. Le chemin par défaut reste `ScanFilmWorldObjects`, qui la relève lui-même.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
@@ -423,7 +423,7 @@ func worldObjectSlotBand(dir string, n int, typeIndex int) map[uint32]bool {
 // slotBandExcluding applique la règle ci-dessus à des ensembles DÉJÀ RELEVÉS : combler la plage
 // de l'archétype, puis retirer tout slot vu porter un autre archétype.
 //
-// ELLE EST EXTRAITE PARCE QU'UN SECOND APPELANT LA LIT (`ScanFilmGroundWeaponKeyframes`, qui
+// ELLE EST EXTRAITE PARCE QU'UN SECOND APPELANT LA LIT (`ScanFilmWorldObjectKeyframes`, qui
 // relève bande et recensement dans la MÊME marche d'images-clés). Deux copies d'une règle de
 // bande divergeraient au premier correctif — et celle-ci a déjà été corrigée une fois.
 func slotBandExcluding(seen, others map[uint32]bool) map[uint32]bool {

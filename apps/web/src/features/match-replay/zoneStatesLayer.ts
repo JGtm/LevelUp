@@ -1,5 +1,5 @@
 /**
- * zoneStatesLayer.ts — L'ÉTAT VIVANT DES ZONES (schémas 16-17) : qui tient quoi à l'image
+ * zoneStatesLayer.ts — L'ÉTAT VIVANT DES ZONES (schémas 16-18) : qui tient quoi à l'image
  * courante, et la JAUGE DE CAPTURE qui se remplit sous les yeux.
  *
  * POURQUOI IL VIT À CÔTÉ DU CALQUE STATIQUE, ET PAS DEDANS. `objectivesLayer.ts` porte la
@@ -10,7 +10,7 @@
  * seconde copie de la géométrie.
  *
  * CE QUE LE CALQUE MONTRE : la zone TEINTÉE de l'encre du camp qui la tient, la colline ACTIVE
- * en surbrillance, et L'ARC DE LA JAUGE EN DIRECT (schéma 17) : la VALEUR de la jauge à l'image,
+ * en surbrillance, et L'ARC DE LA JAUGE EN DIRECT (schéma 18) : la VALEUR de la jauge à l'image,
  * lue dans la série `gauge` de la zone en escalier — dernière valeur connue, tenue jusqu'au point
  * suivant (une seconde après le dernier de la série). Une zone sans état à cette frame n'est PAS
  * repeinte : elle garde le trait faible du calque statique, et paraît estompée sous celles qui
@@ -20,7 +20,7 @@
  * l'intervalle. Le schéma 16 le traçait en arc, une valeur tenue pendant toute la durée de la
  * propriété — souvent 1,0, des minutes durant — et il se lisait comme « capture en cours »
  * alors qu'il n'en était que le maximum atteint. Sur un artefact qui ne porte pas `gauge`
- * (schéma <= 16), il n'y a donc PLUS D'ARC DU TOUT : mieux vaut rien qu'un signe qui ment.
+ * (schéma <= 17), il n'y a donc PLUS D'ARC DU TOUT : mieux vaut rien qu'un signe qui ment.
  *
  * AUCUN TEXTE, comme le calque statique : la lettre A/B/C affichée en jeu n'existe dans aucune
  * donnée décodée, et le garde-fou du dossier l'interdit.

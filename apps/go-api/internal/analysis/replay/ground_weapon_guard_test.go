@@ -39,22 +39,22 @@ var gwThresholdOwners = map[string]string{
 
 // gwRuleOwners : chaque fonction de REGLE, et le seul fichier qui a le droit de la definir.
 var gwRuleOwners = map[string]string{
-	"gwPadsClusterAssign":     "ground_weapon_rules.go",
-	"gwPadsKeep":              "ground_weapon_rules.go",
-	"gwPadsCycle":             "ground_weapon_rules.go",
-	"gwPadsCycleFromGaps":     "ground_weapon_rules.go",
-	"gwPadsClass":             "ground_weapon_rules.go",
-	"gwPadsIdentity":          "ground_weapon_rules.go",
-	"gwPickupBoundsFrom":      "ground_weapon_bounds.go",
-	"gwPickupNearestPass":     "ground_weapon_bounds.go",
-	"gwPickupSeenWithin":      "ground_weapon_bounds.go",
-	"gwPickupRefPos":          "ground_weapon_bounds.go",
-	"gwPickupLifeTrack":       "ground_weapon_bounds.go",
-	"groundWeaponObjects":     "ground_weapon_objects.go",
-	"gwPickupPadGaps":         "ground_weapon_objects.go",
-	"equipmentLives":          "equipment_placements.go",
-	"decodeFilmGroundWeapons": "build_ground_weapons.go",
-	"gwInstallMPPWidths":      "build_ground_weapons.go",
+	"gwPadsClusterAssign": "ground_weapon_rules.go",
+	"gwPadsKeep":          "ground_weapon_rules.go",
+	"gwPadsCycle":         "ground_weapon_rules.go",
+	"gwPadsCycleFromGaps": "ground_weapon_rules.go",
+	"gwPadsClass":         "ground_weapon_rules.go",
+	"gwPadsIdentity":      "ground_weapon_rules.go",
+	"gwPickupBoundsFrom":  "ground_weapon_bounds.go",
+	"gwPickupNearestPass": "ground_weapon_bounds.go",
+	"gwPickupSeenWithin":  "ground_weapon_bounds.go",
+	"gwPickupRefPos":      "ground_weapon_bounds.go",
+	"gwPickupLifeTrack":   "ground_weapon_bounds.go",
+	"padObjects":          "ground_weapon_objects.go",
+	"gwPickupPadGaps":     "ground_weapon_objects.go",
+	"equipmentLives":      "equipment_placements.go",
+	"decodeFilmPadScan":   "build_ground_weapons.go",
+	"gwInstallMPPWidths":  "build_ground_weapons.go",
 }
 
 // TestUneSeuleDeclarationParSeuilDArmeAuSol : un seuil du plan ne se declare qu une fois.

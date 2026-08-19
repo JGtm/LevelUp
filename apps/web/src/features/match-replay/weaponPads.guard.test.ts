@@ -22,6 +22,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { REPLAY_TEXT } from './i18n'
+import { PAD_EQUIPMENT_FAMILIES } from './weaponPadFamilies'
 import type { PadState } from './weaponPadsLayer'
 
 /** Les fichiers de ce lot : le calque, la liste des tailles, le hook, l'infobulle. */
@@ -81,6 +82,40 @@ describe('garde-rail : chaque état de socle a son libellé, en FR et en EN', ()
   it('la note de lecture DIT que socle et râtelier ne sont pas distingués', () => {
     expect(REPLAY_TEXT.fr.padPlacementNote.toLowerCase()).toContain('râtelier')
     expect(REPLAY_TEXT.en.padPlacementNote.toLowerCase()).toContain('rack')
+  })
+})
+
+describe('garde-rail : une famille NON-ARME de socle est nommée, jamais servie brute', () => {
+  const cles = Object.keys(PAD_EQUIPMENT_FAMILIES)
+
+  it('chaque famille de la table a son libellé dans les DEUX langues', () => {
+    for (const locale of ['fr', 'en'] as const) {
+      const labels = REPLAY_TEXT[locale].padEquipmentFamily
+      expect(Object.keys(labels).sort(), `familles ${locale} désynchronisées`).toEqual(
+        [...cles].sort(),
+      )
+      for (const key of cles) {
+        expect(labels[key as keyof typeof labels], `${key} sans libellé ${locale}`).toBeTruthy()
+      }
+    }
+  })
+
+  it('aucun libellé ne recopie la clé du document — c’est le défaut qu’on corrige', () => {
+    for (const locale of ['fr', 'en'] as const) {
+      for (const value of Object.values(REPLAY_TEXT[locale].padEquipmentFamily)) {
+        expect(value, `libellé ${locale} = clé brute`).not.toMatch(/_/)
+      }
+    }
+  })
+
+  it('les deux langues DIFFÈRENT là où elles le doivent, et la réserve existe', () => {
+    expect(REPLAY_TEXT.fr.padEquipmentFamily.powerup_overshield).not.toBe(
+      REPLAY_TEXT.en.padEquipmentFamily.powerup_overshield,
+    )
+    for (const locale of ['fr', 'en'] as const) {
+      expect(REPLAY_TEXT[locale].padPlacementNotePowerUp, `réserve ${locale}`).toBeTruthy()
+    }
+    expect(REPLAY_TEXT.fr.padPlacementNotePowerUp).not.toBe(REPLAY_TEXT.en.padPlacementNotePowerUp)
   })
 })
 

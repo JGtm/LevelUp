@@ -245,7 +245,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   deux slots de jauge sur trois, et différente entre deux matchs de la même carte sur la
 	//   troisième), et le propriétaire d'une colline de KOTH (le canal ne parle que là où il y a
 	//   des captures nommées — la colline ne rend que sa PÉRIODE ACTIVE).
-	//   v16 -> v17 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) :
+	//   v16 -> v17 (2026-08-19, plan PLAN_POWERUP_SOCLE_CATALYST phase 8) : AUCUN CHAMP NEUF À
+	//   LA RACINE — c'est le CONTENU de `weaponPads` qui change. Les SOCLES DE POWER-UP y
+	//   entrent par une SECONDE voie (`ti=37`), adjointe à celle des armes et jamais substituée
+	//   à elle. Un artefact v16 du même match ne peut PAS les porter : la chaîne de production
+	//   ne retenait un record `ti=37` que si sa position retombait sur une vie DELTA, et un
+	//   socle ne bouge jamais — il était écarté PAR CONSTRUCTION. La reprise du backfill se
+	//   fait par SchemaVersion, donc la version monte.
+	//   CE QUE LA MESURE ÉTABLIT (plan, phase 3) : sur les deux films KOTH de Catalyst, le
+	//   balayage sans l'oracle de vie delta rend 9 et 7 créations de `powerup_overshield` à la
+	//   MÊME position au centimètre — (0,257 ; -0,003 ; 21,36) —, à 0,19 m du point que la
+	//   phase 1 avait localisé par le croisement des trajectoires des quatre porteurs, sans
+	//   lire un seul bit de record de création. Deux mesures indépendantes, aucun code partagé.
+	//   Les deux films CTF de la MÊME carte n'en portent aucun : le sous-mode arme le socle.
+	//   CE QUI N'EST PAS PUBLIÉ : `t1`. Un objet sans vie delta n'en a pas — la présence se
+	//   borne par le recensement des images-clés, comme celle des armes. Et le power-up LÂCHÉ à
+	//   une mort n'est PAS un socle : il bouge (vie delta) et naît là où son porteur meurt
+	//   (`dropped`) — il reste publié par `equipmentPlacements` avec son origine, inchangé.
+	//   v17 -> v18 (2026-08-19, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) :
 	//   `zoneStates[].gauge`, LA JAUGE DE CAPTURE EN DIRECT — la série datée de la valeur de la
 	//   jauge de chaque zone PENDANT ses rampes (allégée : un point par variation >= 0,02 ou par
 	//   seconde de rampe, rien hors rampe, premier et dernier point de chaque rampe toujours
@@ -256,17 +273,20 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   DESSINER : l'arc de v16 traçait le SOMMET de la jauge par intervalle de propriété, une
 	//   valeur tenue pendant toute la durée de la propriété, et il se lisait comme « capture en
 	//   cours » alors qu'il n'était que le maximum atteint. Le client ne dessine plus cet arc, et
-	//   ne dessine la jauge que d'un artefact qui porte la série : un v16 n'a plus d'arc du tout
-	//   tant qu'il n'est pas re-cuit, et la reprise du backfill se fait par SchemaVersion.
+	//   ne dessine la jauge que d'un artefact qui porte la série : un artefact ANTÉRIEUR À v18 —
+	//   un v16 comme un v17, qui n'a pas davantage de série — n'a plus d'arc du tout tant qu'il
+	//   n'est pas re-cuit, et la reprise du backfill se fait par SchemaVersion.
 	//   `progress` est CONSERVÉ dans le contrat (aucune clé ne bouge) : le sommet reste lisible
 	//   pour qui le lit — mais son ÉCHELLE change avec celle de la jauge : la fraction de capture
 	//   du JEU (0 = repos, 1 = pleine) remplace l'excursion mesurée du match, qu'une seule
 	//   émission aberrante sous zéro suffisait à fausser (deux zones sur trois de `7344d24f`).
+	//   LE NUMÉRO EST 18 ET PAS 17 : le 17 est parti aux socles de power-up ci-dessus, fusionnés
+	//   avant nous — un numéro par montée, dans l'ordre de fusion.
 	//   CE QUI EST MESURÉ SUR LES TÉMOINS : le poids de la série (<= +2 % de l'artefact exigé),
 	//   le nombre de points par zone, et « la jauge monte avant la bascule du propriétaire » sur
 	//   >= 90 % des captures de Bastion — chiffres au journal du lot (LOTCTER_VOLET3.md).
-	if SchemaVersion != 17 {
-		t.Fatalf("SchemaVersion = %d, attendu 17 : incrémenter exige une raison écrite ci-dessus "+
+	if SchemaVersion != 18 {
+		t.Fatalf("SchemaVersion = %d, attendu 18 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
