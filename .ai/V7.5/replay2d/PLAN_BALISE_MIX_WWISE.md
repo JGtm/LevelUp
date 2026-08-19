@@ -126,18 +126,49 @@ orphelins compris).
 
 ## Phase 2 — LES DEUX CHAINES, gestes nommes par leur role
 
-- [ ] 2.1 Extraire les `.wem` **de toutes les banques cibles** (mode `embarques`/`-emb`),
+- [x] 2.1 Extraire les `.wem` **de toutes les banques cibles** (mode `embarques`/`-emb`),
       y compris les 38 non couverts de `dcfaa487` et les 36 des trois banques de la balise
       posee ; convertir en `.wav` par `vgmstream-cli` dans le scratchpad (jamais le depot).
-- [ ] 2.2 Pour CHAQUE evenement des deux `eqip` : dire **quels wem, joues comment**
+      **106 `.wav`** dans `scratchpad/wav_balise/` (70 + 20 + 8 + 8), durees dans
+      `durees_balise.txt`. Le temoin `5724312f` et le temoin negatif `92c830f5` restent en
+      `.wem` : leur role s'arrete a la structure.
+- [x] 2.2 Pour CHAQUE evenement des deux `eqip` : dire **quels wem, joues comment**
       (simultanes / sequence / un parmi N) et **avec quels gains**. Tableau au compte rendu.
-- [ ] 2.3 Attribuer un ROLE plausible a chaque geste (pose, retour/rappel, activation,
-      boucle, fin) — chaque attribution avec l'element qui la porte (nombre de variantes,
-      duree, structure, banque d'origine), pas une intuition. Ce qui n'a pas d'element
-      reste « indetermine » et le dit.
+      Fait : 47 evenements tabules (23 + 15 + 2 + 7), avec gain de chemin et fourchette de
+      duree. **Aucun evenement de `dcfaa487` n'a plus d'une couche** ; les seuls multi-couches
+      du perimetre balise sont les deux de `15c5b355`.
+- [x] 2.3 **ROLES — ce que les elements portent, et ou ils s'arretent.**
 
-**Gate 2** : chaque `.wav` cite existe sur le disque avec sa duree mesuree ; aucun role
-affirme sans son element.
+      **`b29ac6de` — le couple le plus proche d'une POSE.** Deux evenements, PAS UN DE PLUS,
+      tous deux designes par `7b5cbe75` — le `snd!` accroche DIRECTEMENT au tag `eqip`
+      (sans passer par `effe`), celui que 21 objets d'equipement partagent. Quatre variantes
+      chacun, toutes entre 0,41 et 0,48 s, gains +6 dB et +3 dB. Elements : la paire, le
+      `snd!` direct, la brievete, l'uniformite des durees. **Role : la paire d'un objet
+      d'equipement — apparition et disparition.** Lequel des deux est la pose n'est PAS
+      determine par la structure : les deux ont la meme forme.
+
+      **`15c5b355` — l'autre `snd!` direct, et les deux seuls empilements.** `c73036e4`
+      (designe par `725186aa`, le second `snd!` direct, 2 variantes de 0,59 et 0,80 s) ;
+      `044005ec` et `92206f7d`, **les deux seuls evenements a deux couches de tout le
+      perimetre balise**, non designes, 1,34 s et 1,94 s. Element pour les seconds : une
+      couche pleine plus une couche attenuee (-23 dB) ou renforcee (+3 dB) — le profil d'un
+      impact suivi d'une resonance. **Role : indetermine entre pose et activation** ; la
+      structure ne nomme pas, elle classe.
+
+      **`de65048f` — ecartee par la mesure.** Son unique evenement designe (`92491129`,
+      `snd! 7ff6244a`, 33 `eqip`) porte **-96 dB** de gain de chemin : le « son generique
+      d'objet cree dans le monde » est muet. Les six autres evenements ne sont designes par
+      aucun `snd!` d'equipement.
+
+      **`dcfaa487` — la banque de l'APPAREIL, et ses durees le disent.** Gestes de 0,32 s a
+      **6,77 s** (les deux orphelins), sept evenements au-dela de 3 s. Un objet pose au sol
+      n'a pas besoin de six secondes ; un voyage, une charge, une boucle de vol, si.
+      **Role : le trajet et l'appareil, pas la pose** — ce qui est coherent avec le refus
+      d'ecoute du 19/08 sur ses 32 fichiers.
+
+**Gate 2 : PASSE.** Les 106 `.wav` existent, chacun avec sa duree mesuree par `ffprobe` ;
+chaque role ci-dessus cite l'element qui le porte, et les deux indeterminations sont
+ecrites comme telles.
 
 ## Phase 3 — RECONSTRUCTION : 2 a 5 candidats de POSE, chacun avec sa recette
 
