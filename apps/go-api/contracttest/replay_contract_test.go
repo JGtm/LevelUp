@@ -304,10 +304,30 @@ var replaySchemas = []struct {
 //	                      pris en fusionnant avant nous (socles de power-up dans `weaponPads`,
 //	                      eux aussi SANS champ racine neuf). Le compte reste donc 36 des DEUX
 //	                      cotes de la fusion — aucun des deux lots n ajoute de champ a la racine.
+//	                      PRECISION 2026-08-20 (re-fusion d origin) : le compte racine passe
+//	                      bien a 37, mais par l entree SUIVANTE (`mapWeaponPads`, un champ servi
+//	                      a la requete) — la jauge, elle, n y est toujours pour rien.
 //
-// Les onze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	36 -> 37  2026-08-19  `mapWeaponPads` (plan PLAN_SOCLES_MVAR, section 8 ter) : LES
+//	                      EMPLACEMENTS DE SOCLE de la carte, CROISES avec les socles du match.
+//	                      Un champ de document et deux schemas de plus (`MapWeaponPads`,
+//	                      `MapWeaponPadDTO`), rempli A LA REQUETE par le service comme
+//	                      `mapObjectives` et jamais ecrit dans l artefact — d ou un SchemaVersion
+//	                      d artefact INCHANGE a 17 : rien n a bouge dans l artefact.
+//	                      Source : les trois type_id de socle du fichier de carte
+//	                      (0x5F379533 pouvoir, 0x6253CFC0 ratelier, 0x5E86D110 power-up), figes
+//	                      hors ligne en catalogue versionne — 72 cartes, 1 454 emplacements,
+//	                      32 positions d oracle appariees sur 32 a une mediane de 0,01 m.
+//	                      LE CHAMP NE PORTE QUE LES EMPLACEMENTS ALLUMES : le fichier de carte
+//	                      POSE les socles, le mode les ALLUME, et Cliffhanger en porte dix-huit
+//	                      dont dix servis en CTF et ZERO en Super Fiesta. Un emplacement qu aucun
+//	                      socle du match ne confirme a moins d un metre reste au serveur
+//	                      (decision utilisateur du 2026-08-19) ; `catalogN` dit combien la carte
+//	                      en porte, pour que le calque avoue ce qu il n affiche pas.
+//
+// Les douze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 36
+const wantReplayDocumentFields = 37
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

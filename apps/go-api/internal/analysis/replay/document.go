@@ -311,6 +311,21 @@ type ReplayDocument struct {
 	// map_objectives.go). Absent quand le mode n'a pas d'objectifs statiques (Slayer),
 	// quand map_id est vide ou la carte hors catalogue — jamais une erreur.
 	MapObjectives *MapObjectives `json:"mapObjectives,omitempty"`
+	// MapWeaponPads est le calque des EMPLACEMENTS DE SOCLE de la carte, CROISÉ avec les
+	// socles du match — REMPLI À LA REQUÊTE par le service, jamais écrit dans l'artefact
+	// (même règle et même raison que MapObjectives, cf. map_weapon_pads.go).
+	//
+	// IL NE PORTE QUE LES EMPLACEMENTS ALLUMÉS, et c'est une décision produit du
+	// 2026-08-19 : le fichier de carte POSE les socles, le mode les ALLUME. Un emplacement
+	// que `weaponPads` ne confirme pas à moins d'un mètre ne part PAS au client —
+	// Cliffhanger en porte dix-sept au fichier, dix en CTF et zéro en Super Fiesta.
+	//
+	// CE QU'IL CHANGE POUR LE CLIENT : la position dessinée devient celle du SPAWNER, connue
+	// dès la première image et au centimètre, au lieu du centroïde des apparitions vues. La
+	// PRÉSENCE ne change pas : elle reste celle du match, socle par socle. Absent quand
+	// map_id est vide, la carte hors catalogue, ou qu'aucun emplacement n'est confirmé — le
+	// client retombe alors sur les socles du film seuls.
+	MapWeaponPads *MapWeaponPads `json:"mapWeaponPads,omitempty"`
 	// Objectives est la liste des ACTIONS D'OBJECTIF nommées : ce que chaque joueur a
 	// accompli (capture de drapeau, retour, prise de zone, porteur stoppé), daté à la
 	// milliseconde et attribué à un xuid (cf. objectives.go).

@@ -8,6 +8,12 @@
  * écriture qu'un loadout, donc même clé dans `weaponLabels`), ses apparitions, ses intervalles
  * de présence, et son CYCLE quand il est établi.
  *
+ * LA POSITION PEUT VENIR D'AILLEURS depuis le 2026-08-19, et c'est la seule chose qui le
+ * peut : quand la réponse porte `mapWeaponPads`, l'appelant a remplacé le centroïde des
+ * apparitions par la position du SPAWNER lue dans le fichier de carte (cf.
+ * `crossedWeaponPads`). Ce calque ne le sait pas et n'a pas à le savoir — il dessine ce
+ * qu'on lui donne, et tout le reste (présence, états, cycle) reste la mesure du match.
+ *
  * TROIS ÉTATS, ET LE TROISIÈME EST L'HONNÊTETÉ DU CALQUE. Une occupation publie trois
  * instants : `t0` l'apparition (mesurée), `tLow` le dernier instant où l'arme est PROUVÉE
  * présente, `tHigh` le premier où son absence est prouvée. Entre les deux, le film ne dit

@@ -346,7 +346,7 @@ Cliffhanger, 15 sur Smallhalla, 0 sur Catalyst). La demande de depart — « ne 
 est satisfaite, et elle l'est la ou on ne l'attendait pas : Catalyst, la carte la mieux
 mesuree, n'avait rien de cache.
 
-## 8 bis. Phase de production proposee (a decider, RIEN N'EST FAIT)
+## 8 bis. Phase de production proposee (TRANCHEE le 2026-08-19 : voir 8 ter, elle est faite)
 
 Un catalogue statique **`data/titles/halo_infinite/reference/map_weapon_pads.json`**, sur le
 modele exact de `map_objectives.json` : cle `map_id`, produit HORS LIGNE depuis
@@ -368,6 +368,68 @@ modele exact de `map_objectives.json` : cle `map_id`, produit HORS LIGNE depuis
   sur ce rejeu. La regle de croisement doit donc etre conditionnee par le film (par exemple :
   ne montrer les socles statiques que si le film en confirme au moins un), et cette regle
   demande sa propre mesure. **C'est une decision produit, elle revient a l'utilisateur.**
+
+## 8 ter. Production FAITE (2026-08-19) — decision utilisateur : « on ne les affiche que si allumes »
+
+La section 8 bis proposait ; l'utilisateur a tranche le meme jour. Le catalogue est produit,
+versionne, croise par le film et consomme par le calque. Quatre lots, quatre commits, sur
+`wt/pads-catalogue`.
+
+- [x] **P1 — CATALOGUE** (`2f4ca95bc`). `cmd/mapopads-build --from <dossier de .mvar>` ecrit
+      `data/titles/halo_infinite/reference/map_weapon_pads.json` (schema 1, cle `map_id`) :
+      **72 cartes, 1 454 emplacements** (1 143 `rack`, 215 `power`, 96 `powerup`), chacun avec
+      `pos`, `type_id` BRUT en hexadecimal et famille DERIVEE **a cote** du brut. Un frere de
+      `mapobj-build` et non une extension : le depot de mesure nomme ses fichiers
+      `{carte}_{fichier}.mvar` (ni `--refresh-from` ni `--from-file` ne savent le lire), le type
+      `catalog` de `mapobj-build` est lie a UN document, et ce producteur-ci CONSOMME
+      `map_objectives.json`, seul index reliant un map_id a un nom de fichier.
+      Trois regles de resolution EXACTES, aucune par ressemblance : 69 cartes par le nom
+      enregistre, 3 par `slug(public_name) + "_" + fichier`, 0 par map_id. **72/72 resolues.**
+      Piege Forge : le fichier retenu est celui du catalogue d'objectifs, qui choisit deja la
+      variante la plus riche en objectifs — soit le RACK. Aucune des 72 cartes ne retient un
+      canevas `fo##_*`, et `smallhalla_map.mvar` (le rack) rend **11/11 apparies a l'oracle du
+      film `00162144`, entre 2 et 8 mm**.
+- [x] **P2 — CROISEMENT** (`87f1532ef`). `mapWeaponPads` part par la REPONSE, patron
+      `mapObjectives` (`internal/service/replay_map_weapon_pads.go`), **sans bump de
+      SchemaVersion d'artefact** — rien n'a change dans l'artefact. Un emplacement ne part que
+      si un socle publie du match le confirme a moins d'un metre ; les autres restent au
+      serveur ; `catalogN` dit ce que le calque n'affiche pas. Les cles de carte du match sont
+      desormais resolues UNE fois par requete pour les deux calques statiques.
+- [x] **P3 — WEB** (`f8e488a6c`). `crossedWeaponPads` pose chaque socle du match a la position
+      du spawner. Presence, apparitions, cycle, famille, etats et compte a rebours INCHANGES.
+      Socle du film sans catalogue : dessine tel quel. Sans croisement : liste du film telle
+      quelle (le repli EST le comportement d'avant).
+- [x] **P4 — TEMOINS** (`internal/analysis/replay/socles_temoins_test.go`, sous garde
+      `SOCLES_TEMOINS`).
+
+| Film | Carte, mode | Socles au film | Catalogue | **Allumes** | Eteints | Points image 0 AV/AP | Icones image 0 AV/AP | Deplacement max |
+|---|---|---|---|---|---|---|---|---|
+| `01e1f945` | Catalyst, KOTH | 10 | 11 | **10** | 1 | 10 / 10 | 10 / 10 | 0,047 m |
+| `64e8adfa` | Catalyst, CTF | 10 | 11 | **10** | 1 | 10 / 10 | 10 / 10 | 0,047 m |
+| `bcb6d393` | Cliffhanger, CTF | 10 | 18 | **10** | 8 | 10 / 10 | 8 / 8 | 0,008 m |
+| `000d5950` | Cliffhanger, **Super Fiesta** | 0 | 18 | **0** | 18 | 0 / 0 | 0 / 0 | — |
+
+**LE TEST DE LA DECISION PASSE** : Cliffhanger porte dix-huit emplacements au fichier, et le
+rejeu de Super Fiesta n'en affiche AUCUN. C'est une assertion du test, pas une observation.
+
+**ET UNE PREMISSE DU LOT EST CORRIGEE, sur pieces.** Le brief attendait des socles « affiches
+des la premiere image la ou ils n'apparaissaient qu'a la premiere apparition vue ». La mesure
+dit autre chose : `drawWeaponPadsLayer` dessinait DEJA tous les socles a toutes les images —
+le compte de primitives a l'image 0 est donc **identique avant et apres** (colonnes AV/AP
+ci-dessus), et le test l'affirme desormais comme un invariant. Ce que le croisement change
+reellement : la position dessinee devient celle du SPAWNER et non le centroide des apparitions
+vues (jusqu'a 4,7 cm sur Catalyst, 8 mm sur Cliffhanger), et le calque tient enfin le compte de
+ce qu'il n'affiche pas.
+
+**Deux ecarts de comptage avec les phases 4 et 5, expliques et non corriges** : le catalogue
+rend 18 emplacements sur Cliffhanger contre 17 au plan, et 27 sur Smallhalla contre 26.
+L'instrument de mesure n'enumerait que les `type_id` que l'oracle de CETTE carte validait ; les
+artefacts de Cliffhanger et de Smallhalla, cuits avant la voie `ti=37`, ne portent aucun
+power-up a valider. Le producteur, lui, applique les trois `type_id` uniformement. Les
+emplacements en plus sont donc des socles reels que la mesure par-carte ne pouvait pas compter.
+
+**Report assume, ordonne par la consigne du lot** : aucune entree `.ai/thought_log.md` ni au
+registre — les textes partent au CR.
 
 ## 9. Decouvertes (notees, NON traitees)
 

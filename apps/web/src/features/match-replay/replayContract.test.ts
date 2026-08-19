@@ -228,6 +228,9 @@ const NULLABLE_ARRAY_PATHS = [
   // présence dans l'allowlist ci-dessous.
   'mapObjectives.markers',
   'mapObjectives.zones',
+  // Les socles de carte croises (allumes seulement) : meme regime que mapObjectives —
+  // servis a la requete, consommes par le calque des socles avec son propre repli.
+  'mapWeaponPads.pads',
 ] as const
 
 /**
@@ -236,7 +239,11 @@ const NULLABLE_ARRAY_PATHS = [
  * REQUÊTE depuis le catalogue de cartes, et son calque a sa propre entrée
  * (`normalizeMapObjectives`) — le combler ici en ferait une seconde vérité.
  */
-const PATHS_HORS_FRONTIERE = ['mapObjectives.markers', 'mapObjectives.zones'] as const
+const PATHS_HORS_FRONTIERE = [
+  'mapObjectives.markers',
+  'mapObjectives.zones',
+  'mapWeaponPads.pads',
+] as const
 
 /** (3) La carte couvre EXACTEMENT les tableaux nullables du contrat, à toute profondeur. */
 type _CarteExhaustive = Expect<

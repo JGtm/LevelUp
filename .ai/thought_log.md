@@ -62,6 +62,85 @@ n'apprend plus grand-chose (le volet 1 possede ce fichier) ; deux slots tag 3 de
 jauges de zone et restent a nommer ; les silences intra-rampe sont tenus a l'ecran faute d'une emission qui
 distinguerait « figee » de « finie ».
 
+## [2026-08-19] Laches hors Fiesta : les equipements et power-ups laches a la mort se dessinent — Complete
+
+**Statut** : Complete (branche `wt/dropped-hors-fiesta`, 5 commits `4b1c53357`..`617978624`, FUSIONNEE
+dans `feat/v75` par le superviseur ; tsc -b --force 0 erreur et 61 tests cibles rejoues sur l'arbre
+fusionne ; gates du frere : tsc 0, lint 0, vitest 948 tests). Decision produit du 18/08 appliquee.
+**Decision technique** : regle ORTHOGONALE a `PLACEMENT_RENDER` (`placementDropped.ts` : origine
+`dropped` x 5 equipements deployables + 2 power-ups repris de `PAD_EQUIPMENT_FAMILIES`, jamais
+recopies) ; forme unique = anneau pointille attenue sans portee ni pulsation (les `wall/dropped`
+portent l'identifiant de l'APPAREIL, pas des panneaux) ; GARDE DE MODE conservatrice — le document ne
+porte aucun mode, la Match View oui : `matchFiestaGuard` -> `fiesta | clear | unknown`, en-tete absent
+= rien (trou mesure et fige par test : 3 matchs Fiesta sur 432 dont le pair_name masque l'indice,
+0,7 %) ; bascule tiroir par defaut, invisible en Fiesta ; infobulle « Lache par X / Au sol depuis » ;
+cliquet `ReplayCanvas.tsx` 812 -> 808 (extraction `useReplayPlacements` + `placementHitTest`).
+**Resultats** : `01e1f945` +1 primitive (le surbouclier lache), `000d5950` +0 AVEC la mesure des 26
+qu'il gagnerait sans la garde (assertion de la garde) ; incident de l'agent signale et repare par lui :
+worktree cree PAR ERREUR sous `apps/LevelUp-wt-dropped` (dans l'arbre !) puis `git worktree move` —
+verifie au merge : aucun residu.
+**Conclusion / prochaine etape** : gate visuel utilisateur (anneau sous un capteur deploye ;
+infobulle) ; REPORT donnees : « telle ARME est au sol en (x,y) depuis telle image » n'existe dans
+aucun canal (`equipmentPlacements` = eqip, `weaponPads` = socles) — la decision du 18/08 couvre
+aussi les armes de puissance lachees : lot de donnees dedie a planifier ; decouverte notee :
+`expected_stats.hist_mode_category` passe un pair_name a `ComputeModeCategory` (attend une categorie).
+
+## [2026-08-19] Objets de puissance laches au sol : dessines hors Fiesta — Complete
+
+**Statut** : Complete (branche `wt/dropped-hors-fiesta`, base `feat/v75` = `e4a15e7c6`, 4 commits
+`4b1c53357`..`6adbeb397`, non fusionnee — mode branche unique, le superviseur decide de la fusion).
+**Decision technique** : la decision produit du 18/08 (« hors Fiesta, dessiner les armes speciales et
+equipements LACHES a la mort ») est livree pour les EQUIPEMENTS et les POWER-UPS ; **les ARMES lachees
+ne sont dans AUCUN canal du document** (`equipmentPlacements` = tag `eqip`, `weaponPads` = socles de
+reapparition) — report de DONNEES ouvert au registre, hors perimetre d'un lot web. La regle vit dans
+`placementDropped.ts` (origine mesuree `dropped` croisee avec 5 familles deployables + les 2 power-ups
+repris de `PAD_EQUIPMENT_FAMILIES`, jamais recopies), PAS dans `PLACEMENT_RENDER` : un power-up n'a
+aucune forme d'objet actif, et un mur lache porte l'identifiant de l'APPAREIL (`0x8e2dc574`) et non
+celui des panneaux (`0x528fce46`). D'ou une forme UNIQUE — anneau pointille attenue, sans portee ni
+pulsation. **La garde de mode ne pouvait pas vivre dans le calque** : `ReplayDocument` ne publie ni
+mode ni playlist ni `pair_name`. Elle vit dans la page (`replayFiesta.ts`), qui lit l'en-tete de la
+Match View deja chargee pour le fil et les fiches ; regle conservatrice — on ne dessine QUE si aucun
+indice de Fiesta, un en-tete absent ne dessine rien.
+**Resultats** : temoins rejoues sur leur recensement mesure (artefacts non versionnes, methode
+`killFeedLogic`/`mapBackground`) — `01e1f945` (KOTH Catalyst, 151 poses) gagne **exactement 1**
+primitive, le surbouclier, malgre 108 grenades a fragmentation autour ; `000d5950` (Super Fiesta
+Cliffhanger, 295 poses) gagne **0**, et le test mesure aussi les **26** qu'il gagnerait sans la garde
+(15 capteurs + 11 murs laches), sans quoi « rien ne change » ne prouverait rien. **Trou mesure et
+assume sur la detection de mode : 3 matchs sur les 432 de categorie Fiesta du corpus de 1 855**
+(`pair_name` « Fiesta:… », dont `mode_ui` extrait le sous-mode) — `playlist_label` vaut « Quick Play »
+sur les DEUX temoins et ne sert a rien. Le cliquet de taille de `ReplayCanvas.tsx` a mordu comme prevu
+(fichier PILE a 812) : extraction prealable de `useReplayPlacements` et `placementHitTest`, 812 -> 808.
+Gates : `EXIT_PURGE=0`, `EXIT_TSC=0` (`tsc -b --force`, sans pipe), `EXIT_LINT=0`, `EXIT_VITEST=0`
+(948 tests / 63 fichiers, +25).
+**Conclusion / prochaine etape** : gate VISUEL utilisateur a faire (l'anneau pointille se lit-il sous
+un capteur deploye ? l'infobulle « Lache par X / Au sol depuis m:ss » dit-elle ce qu'il faut ?). Deux
+reports ouverts au registre avec leur condition de reprise : publier les ARMES au sol cote Go, et
+publier la CATEGORIE de mode dans `MatchViewHeader` pour fermer les 0,7 %. Decouverte NON traitee :
+`expected_stats.hist_mode_category` passe un `pair_name` a `ComputeModeCategory`, qui attend une
+categorie — a signaler au chantier donnees.
+
+## [2026-08-19] Socles de carte : du catalogue au calque, allumes seulement — Complete
+
+**Statut** : Complete (branche `wt/pads-catalogue`, 4 commits `2f4ca95bc`..`9131d9679`, FUSIONNEE dans
+`feat/v75` par le superviseur + correctif de fusion `4aeb4bb07` : `mapWeaponPads.pads` ajoute a la carte
+des tableaux nullables et a l'allowlist hors frontiere du contrat web — l'agent avait un gate vert sur
+son arbre, le superviseur a d'abord lu un FAUX VERT de pipe avant de rejouer `tsc -b --force` sans pipe).
+**Decision technique** : catalogue statique `map_weapon_pads.json` fige hors ligne (`cmd/mapopads-build`,
+frere de `mapobj-build` justifie : nommage des dumps, index map_id) — **72 cartes, 1 454 emplacements**
+(1 143 rack, 215 power, 96 powerup), `type_id` brut + famille derivee A COTE, 72/72 cartes resolues par
+regles exactes, piege Forge respecte (le rack de Smallhalla rend 11/11 a 2-8 mm de l'oracle) ; croisement
+« allumes seulement » (decision utilisateur du 19/08) cote REPONSE (`mapWeaponPads`, patron
+`mapObjectives` : contrat 36 -> 37, artefact 17 INCHANGE) : seuls les emplacements confirmes par les
+`weaponPads` du match a < 1 m partent au client ; un socle film sans catalogue reste publie.
+**Resultats** : 4 temoins — Catalyst KOTH/CTF 10 allumes + 1 eteint, Cliffhanger CTF 10 allumes + 8
+eteints, **Cliffhanger Fiesta 0 allume malgre 18 poses (ASSERTION de test)** ; prémisse du brief
+corrigee sur pieces : le calque dessinait DEJA tous les socles a toutes les images — le vrai gain du
+croisement est la POSITION DU SPAWNER (4,7 cm max vs centroide des apparitions) et le compte de ce qui
+n'est pas affiche (`catalogN`). Gates Go + web verts (1 847 tests).
+**Conclusion / prochaine etape** : re-cuire les artefacts au schema 17 pour que le 11e emplacement de
+Catalyst (le power-up) s'allume — attend la fenetre ops (reportee) ; reprise « posés-mais-eteints avec
+leur etat » conditionnee a une source d'activation lisible (voie API fermee par la sonde du meme jour).
+
 ## [2026-08-19] Sonde variant/socles — l'activation n'est dans AUCUN asset de l'API — Complete
 
 **Statut** : Complete (sonde ; branche `wt/variant-sonde`, 5 commits `05a598053`..`c35573d8b`,

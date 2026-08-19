@@ -750,6 +750,18 @@ func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
 }
 
+// MapWeaponPadsPath retourne le chemin du catalogue des EMPLACEMENTS DE SOCLE par carte
+// (socles d'arme et de power-up), extrait des mêmes variantes de carte UGC (.mvar) par
+// cmd/mapopads-build. Donnée de RÉFÉRENCE versionnée — pas un cache.
+//
+// IL NE SE SERT JAMAIS SEUL : le fichier de carte POSE les socles, le mode les ALLUME
+// (Cliffhanger : 17 posés, 10 en CTF, 0 en Super Fiesta). Le calque servi au rejeu ne
+// publie donc que les emplacements qu'un socle du MATCH confirme (replay/map_weapon_pads.go).
+// Ex: data/titles/halo_infinite/reference/map_weapon_pads.json
+func (p *PathResolver) MapWeaponPadsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_weapon_pads.json")
+}
+
 // MapCalloutsPath retourne le chemin du catalogue des CALLOUTS (zones nommées
 // officielles) par carte : polygones monde, tranche verticale et libellés FR/EN, extraits
 // du tag levl des modules du jeu par cmd/mapcallouts-build. Donnée de RÉFÉRENCE

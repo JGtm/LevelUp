@@ -14845,6 +14845,42 @@ components:
             - array
             - "null"
       type: object
+    MapWeaponPadDTO:
+      additionalProperties: false
+      properties:
+        pad:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - x
+        - "y"
+        - pad
+      type: object
+    MapWeaponPads:
+      additionalProperties: false
+      properties:
+        catalogN:
+          format: int64
+          type: integer
+        pads:
+          items:
+            $ref: '#/components/schemas/MapWeaponPadDTO'
+          type:
+            - array
+            - "null"
+      required:
+        - pads
+        - catalogN
+      type: object
     MarkResult:
       additionalProperties: false
       properties:
@@ -20089,6 +20125,8 @@ components:
             - "null"
         mapObjectives:
           $ref: '#/components/schemas/MapObjectives'
+        mapWeaponPads:
+          $ref: '#/components/schemas/MapWeaponPads'
         matchId:
           type: string
         neutralDeaths:
