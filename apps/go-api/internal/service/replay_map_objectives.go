@@ -50,7 +50,11 @@ func (s *replayService) mapObjectivesForMatch(ctx context.Context, matchID strin
 	}
 	specs := s.objectiveRoleSpecs(ctx, keys.PairName)
 	if len(specs) == 0 {
-		return nil // mode sans objectifs statiques (Slayer, KOTH...) : le cas nominal
+		// Mode sans objectifs statiques : le cas nominal. Slayer, Land Grab, Total Control —
+		// PAS King of the Hill, qui sert le rôle `hill` depuis le lot C-ter volet 2 (la
+		// table du titre le déclare ; l'exemple d'avant était devenu faux : revue ronde 1,
+		// R1-5).
+		return nil
 	}
 	res := title.NewPathResolver(s.repoRoot)
 	cat, err := replay.LoadMapObjectives(res.MapObjectivesPath(s.titleSlug))
