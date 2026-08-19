@@ -172,11 +172,11 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
 
 ### Phase 6 — cloture (commit 7)
 
-- [ ] 6.1 Section « production proposee » (catalogue statique `map_weapon_pads.json`) OU
+- [x] 6.1 Section « production proposee » (catalogue statique `map_weapon_pads.json`) OU
       negatif ecrit.
-- [ ] 6.2 Gates finaux : `go vet ./internal/analysis/...`,
+- [x] 6.2 Gates finaux : `go vet ./internal/analysis/...`,
       `go test ./internal/analysis/...`, golangci 0 nouveau.
-- [ ] 6.3 CR : reponses aux 5 questions avec chiffres, textes journal et registre.
+- [x] 6.3 CR : reponses aux 5 questions avec chiffres, textes journal et registre.
 
 ## 7. Journal
 
@@ -305,11 +305,95 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
   sur un vocabulaire du domaine : **1 010 100 candidats, 0 hash resolu sur 9**. Ils restent
   inconnus — on ne devine pas un libelle (garde-fou `objectives.go`).
 
-## 8. Verdict et suite
+## 8. Verdict
 
-A ECRIRE A LA CLOTURE — section « production proposee » si la mesure la porte, negatif
-ecrit sinon.
+**H1 CONFIRMEE : LES SOCLES SONT DANS LE FICHIER DE CARTE, AU CENTIMETRE.** Trois cartes,
+32 positions d'oracle, **32 appariees a moins d'un metre** — mediane 0,01 m partout.
+
+| Carte | Fichier | Oracle | Apparies | Mediane | Temoin large | Temoin restreint | Objets socle | Emplacements | Vus | **Invisibles** |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Catalyst | `catalyst_catalyst.mvar` | 11 | 11/11 | 0,01 m | 4,5 % | 0,5 % | 13 | 11 | 11 | **0** |
+| Catalyst | `catalyst_map.mvar` | 11 | 11/11 | 0,01 m | 4,5 % | — | 13 | 11 | 11 | **0** |
+| Cliffhanger | `cliffhanger_ridgeline.mvar` | 10 | 10/10 | 0,01 m | 5,6 % | 0,4 % | 17 | 17 | 10 | **7** |
+| Cliffhanger | `cliffhanger_map.mvar` | 10 | 10/10 | 0,01 m | 5,8 % | — | 17 | 17 | 10 | **7** |
+| Smallhalla (rack) | `smallhalla_map.mvar` | 11 | 11/11 | 0,01 m | **75,5 %** | 4,7 % | 37 | 26 | 11 | **15** |
+| Smallhalla (canevas) | `smallhalla_fo08_wetland.mvar` | 11 | 0/11 | 81 a 102 m | 0 % | — | 0 | — | — | — |
+
+**Reponses aux cinq questions**
+
+1. **Le `.mvar` d'une carte DEV porte-t-il des spawners avec leurs positions ?** OUI. Trois
+   type_id, jamais identifies jusqu'ici : `1597478195`, `1649659840`, `1585893648`.
+2. **Chaque socle de l'oracle a-t-il un objet a moins d'un metre ?** OUI, 32 sur 32,
+   mediane 0,01 m, contre un temoin de 0,4 a 5,6 % sur les cartes DEV.
+3. **L'objet porte-t-il ce qu'il fait spawn ?** NON pour l'arme, OUI pour la FAMILLE. Un
+   meme objet porte l'epee ou le marteau selon le match. Le type_id, lui, separe
+   **armes de pouvoir** (`1597478195` : epee, marteau, SPNKr, Cindershot, S7 Sniper),
+   **armes de rack** (`1649659840` : Bulldog, Disruptor, Mangler, Commando, Vestige, BR75,
+   Sentinel Beam) et **socle de power-up** (`1585893648`). Le sac de proprietes est
+   identique d'un socle a l'autre ; `root[11]` est vide ; la table de chaines aussi sur les
+   cartes DEV.
+4. **Le variant de mode est-il un fichier different ?** NON. Les deux `.mvar` d'une meme
+   carte portent les MEMES socles. La difference 10 socles (CTF) contre 0 (Super Fiesta) sur
+   Cliffhanger ne vient d'aucun fichier de carte : **le fichier POSE, le mode ALLUME**.
+   L'activation n'est pas lisible dans le `.mvar` des cartes DEV (aucun label sur ces
+   objets) ; elle l'est partiellement sur Forge, ou les socles portent `stockpile_include`,
+   `infection_exclude`, `ctf_multi_exclude` et des hashs non resolus.
+5. **Generalisation ?** OUI, 3 cartes sur 3, avec une reserve ecrite : sur une carte Forge,
+   le temoin large echoue (75,5 %) et seul le temoin restreint aux type_id de socle conclut.
+
+**LE GAIN, chiffre** : **22 emplacements de socle que le film ne montre jamais** (7 sur
+Cliffhanger, 15 sur Smallhalla, 0 sur Catalyst). La demande de depart — « ne rien manquer » —
+est satisfaite, et elle l'est la ou on ne l'attendait pas : Catalyst, la carte la mieux
+mesuree, n'avait rien de cache.
+
+## 8 bis. Phase de production proposee (a decider, RIEN N'EST FAIT)
+
+Un catalogue statique **`data/titles/halo_infinite/reference/map_weapon_pads.json`**, sur le
+modele exact de `map_objectives.json` : cle `map_id`, produit HORS LIGNE depuis
+`.ai/re_dump/mapvar/`, jamais appele au rejeu.
+
+- **Producteur** : etendre `cmd/mapobj-build` (il a deja `--refresh-from`, le depot de
+  `.mvar` et l'ecriture de catalogue) ou un `cmd/mappad-build` jumeau. Aucune requete
+  reseau supplementaire : les 199 `.mvar` sont deja en depot.
+- **Contenu par socle** : `pos {x,y,z}`, `type_id` brut, `famille` derivee
+  (`power_weapon` / `rack_weapon` / `powerup`), `emplacement` (regroupement a moins d'un
+  metre, pour ne pas compter deux fois une position declaree deux fois).
+- **La famille est une INFERENCE**, mesuree sur 3 cartes par correlation avec les armes
+  observees. Elle se publie a cote du `type_id` brut, jamais a sa place — le jour ou elle
+  est infirmee, on recalcule sans re-extraire.
+- **Croisement au rejeu** : le statique dit OU sont tous les socles ; le film dit ce qu'ils
+  ont fait apparaitre et quand.
+- **LE PIEGE A NE PAS TENDRE, et il est serieux** : en Super Fiesta, Cliffhanger a 17 socles
+  au fichier et ZERO actif en jeu. Publier le catalogue brut afficherait 17 socles fantomes
+  sur ce rejeu. La regle de croisement doit donc etre conditionnee par le film (par exemple :
+  ne montrer les socles statiques que si le film en confirme au moins un), et cette regle
+  demande sa propre mesure. **C'est une decision produit, elle revient a l'utilisateur.**
 
 ## 9. Decouvertes (notees, NON traitees)
 
-A remplir au fil de l'execution.
+- `root[6]` n'est pas une table de regroupement d'objets mais une **table d'allocation
+  d'identifiants** : 11 blocs, offsets enchaines, somme = `root[6].2`. Le commentaire de
+  grammaire de `mapvar.go` est a preciser le jour ou on y touche.
+- `root[11]` est present mais VIDE sur toutes les cartes mesurees, alors que la grammaire
+  le presente comme « surcharges de proprietes indexees ».
+- La table de chaines `root[10][1]` est VIDE sur les cartes DEV et pleine sur les cartes
+  Forge (Smallhalla : 99 noms). `map_objectives.json` ne publie donc de `names[]` que pour
+  les cartes communautaires.
+- Une carte expose 1 a 3 `.mvar` ; les seconds portent des noms de mode
+  (`ctf_breaker.mvar`, `va_behemoth.mvar`, `ridgeline.mvar`) sans porter de socles
+  differents. Le catalogue enregistre parfois DEUX map_id pour la meme carte
+  (`e859cf75-...` et `f7e8cde9-...` pour Catalyst, meme `level_id`).
+- 9 a 20 hashs de label restent inconnus par carte ; la recherche murmur3 ciblee
+  (1 010 100 candidats) n'en resout aucun.
+- Les type_id de socle (`1597478195` = `0x5F379533`, `1649659840` = `0x6253CFC0`,
+  `1585893648` = `0x5E86D110`) ne figurent dans aucun index du depot. Les chercher dans les
+  tags du jeu installe (chaine `himap`) donnerait leur nom — piste, hors perimetre.
+
+## 10. Journal de cloture
+
+- **2026-08-19, phase 6 close** — Verdict et section « production proposee » ecrits.
+  Gates : `go vet ./internal/analysis/...` = 0, `go test ./internal/analysis/...` = 0
+  (aucun echec, les instruments SKIPPENT sans garde), `golangci-lint run
+  ./internal/analysis/replay/mapvar/...` = **0 issues**. 25 items sur 25 statues, aucune
+  case vide. Rappel du seul report du lot, ordonne par la consigne : ni entree
+  `.ai/thought_log.md` ni entree au registre — les textes partent au CR.
