@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/testutil"
 )
 
 // mapNamesStub joue le rôle du registre : il rend les identités de carte d'un match
@@ -302,12 +303,15 @@ func TestMapBackground_IsoleParTitre(t *testing.T) {
 // catalogue qui ne désigne aucun module et un sidecar dont la version de schéma a bougé.
 //
 // IL NE SE DÉCLARE PAS `SKIP` EN SILENCE quand la donnée manque : les fonds de carte et le
-// catalogue de bornes sont VERSIONNÉS (git ls-files le confirme), donc leur absence est un
-// échec, pas une dispense. Seule l'impossibilité de situer la racine du dépôt fait passer.
+// catalogue de bornes sont VERSIONNÉS (git ls-files le confirme, 2026-08-19), donc leur
+// absence est un échec, pas une dispense. Et la racine vient désormais de
+// testutil.RepoRoot() (déduite de l'arbre source) : plus AUCUN chemin ne mène au skip —
+// jusqu'au 2026-08-19 la porte « racine introuvable » sautait ce test à chaque exécution
+// hors LEVELUP_REPO_ROOT, CI comprise (revue ronde 2, R2-1).
 func TestMapBackground_DonneesReelles(t *testing.T) {
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(root)
 	if _, statErr := os.Stat(res.MapQuantBoundsPath(title.DefaultSlug)); statErr != nil {
@@ -355,9 +359,9 @@ func TestMapBackground_DonneesReelles(t *testing.T) {
 // bornes qui possède un fond doit livrer un calage LISIBLE. Un sous-test par carte : un
 // t.Fatal dans une boucle de balayage tuerait tout le balayage (piège du chantier cartes).
 func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(root)
 	cat, err := filmdec.LoadMapQuantCatalog(res.MapQuantBoundsPath(title.DefaultSlug))
@@ -405,9 +409,9 @@ func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 // publiés sous cette clé depuis le lot fonds par map_id — zéro fond uuid, c'est la chaîne
 // Forge débranchée.
 func TestMapBackground_TousLesFondsMapID(t *testing.T) {
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(root)
 	entrees, err := os.ReadDir(res.MapBackgroundDir(title.DefaultSlug))

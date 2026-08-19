@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/testutil"
 )
 
 func zoneObjective(idx int, instance int32, pos mapvar.Vec3, withShape bool) mapvar.Objective {
@@ -169,17 +170,11 @@ func TestCarteReporteeEstSignalee(t *testing.T) {
 // forme et aucune forme degeneree. Le jour ou ce n'est plus vrai, c'est une nouveaute a
 // expliquer, pas un cas a rattraper en silence.
 func TestCatalogueLivreEstExploitable(t *testing.T) {
-	path := ""
-	for _, up := range []string{"../../../..", "../../../../.."} {
-		p := filepath.Join(up, "data", "titles", "halo_infinite", "reference", "map_objectives.json")
-		if _, err := os.Stat(p); err == nil {
-			path = p
-			break
-		}
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
 	}
-	if path == "" {
-		t.Skip("catalogue d'objectifs absent de cet arbre")
-	}
+	path := filepath.Join(root, "data", "titles", "halo_infinite", "reference", "map_objectives.json")
 	cat, err := LoadMapObjectives(path)
 	if err != nil {
 		t.Fatal(err)
@@ -198,7 +193,10 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 	pointlessConnues := map[string]map[mapvar.Role]int{
 		"cd08bc7a-7ba5-4502-be87-c58b641fc94d": {mapvar.RoleStrongholdZone: 1}, // Salvation
 	}
-	roles := []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone}
+	// RoleHill depuis le lot C-ter volet 2 : 113 collines sur 23 cartes, 100 % avec forme —
+	// les 4 cartes des films (Catalyst 6, Chasm 5, Shogun 5, Solitude - Ranked 5) plus les
+	// 19 autres cartes KOTH du registre, regenerees a la revue ronde 1 (R1-3).
+	roles := []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone, mapvar.RoleHill}
 	total := map[mapvar.Role]int{}
 	for id, e := range cat.Maps {
 		for _, role := range roles {
@@ -218,6 +216,6 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 			t.Errorf("aucune zone exploitable pour le role %s", role)
 		}
 	}
-	t.Logf("catalogue livre : %d cartes, %d zones Bastion, %d zones Extraction",
-		len(cat.Maps), total[mapvar.RoleStrongholdZone], total[mapvar.RoleExtractionZone])
+	t.Logf("catalogue livre : %d cartes, %d zones Bastion, %d zones Extraction, %d collines",
+		len(cat.Maps), total[mapvar.RoleStrongholdZone], total[mapvar.RoleExtractionZone], total[mapvar.RoleHill])
 }

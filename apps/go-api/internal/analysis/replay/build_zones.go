@@ -22,6 +22,12 @@ package replay
 // est une marche BIT A BIT de tous les paquets delta du film — le meme ordre de grandeur que le
 // balayage des positions. Le payer sur un Slayer serait payer pour rien : c'est la regle deja
 // tenue par le marqueur de portage du drapeau, qui ne balaye que les films de CTF.
+//
+// ET C'EST L'APPELANT QUI DECIDE PAR LE MODE, PAS PAR LA CARTE (`replaybuild/zones.go`,
+// `heldZoneRoles`) : il ne fournit de zones que pour les roles de zone TENUE — Bastion, colline
+// de KOTH. Un CTF sur une carte qui declare des livraisons en cylindre, une Extraction avec ses
+// zones, arrivent ici SANS catalogue et ne paient rien (revue de la phase 2b, P2 : avant le lot
+// C-ter, 18 cartes payaient le balayage en CTF pour une couverture vide).
 
 import (
 	"log/slog"

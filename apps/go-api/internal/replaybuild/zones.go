@@ -25,15 +25,26 @@ package replaybuild
 // ordres rendent le meme jeu de roles. Une variante sans jeton connu ne rend AUCUN role, ce qui
 // est le cas nominal des modes sans zone.
 //
-// # Le repli des modes a COLLINE, et la limite qu'il porte
+// # Seules les zones TENUES entrent au catalogue du match
 //
-// La table du titre ne sert aucun role en KOTH, et c'est justifie cote service : le catalogue de
-// formes ne contient AUCUN role de colline (mesure du 2026-08-18 sur 6 cartes). L'artefact, lui,
-// SAIT lire les periodes de garde — il les apparie a la grappe des positions, sur les zones que
-// la carte declare sous d'autres roles. Il les publie donc, en le disant
-// (`coverage.zones.method` et `coverage.zones.roles`), et le client ne les dessinera que le jour
-// ou le catalogue portera un role de colline. Publier une mesure que le rendu n'exploite pas
-// encore vaut mieux que de la perdre a chaque cuisson.
+// L'etat des zones (`ti=13`) n'a de sens que pour une zone que l'on TIENT — Bastion, colline de
+// KOTH — et le balayage de `ti=13` est une marche bit a bit de tous les paquets delta du film
+// (11-12 s par film). Or la table du titre sert aussi des VOLUMES a des modes sans etat de zone :
+// 18 cartes portent des cylindres `flag_delivery` avec forme (Catalyst, Aquarius, Fortress, ...),
+// et l'Extraction a ses `extraction_zone`. Avant le lot C-ter, un CTF ou une Extraction sur ces
+// cartes rendait 2 a 5 zones, payait le balayage et publiait une couverture VIDE (revue de la
+// phase 2b, P2 hors perimetre). Le catalogue du match ne retient donc que les roles de
+// `heldZoneRoles` : c'est le ROLE qui decide, jamais la presence d'une forme.
+//
+// # La colline de KOTH vient du role `hill`, plus d'un repli
+//
+// Jusqu'au lot C-ter, la table ne servait rien en KOTH et l'artefact se repliait sur les formes
+// de Bastion/Extraction (`strongholds_zone,extraction_zone`), qui n'etaient les collines que par
+// coincidence (3 sur 6 sur Catalyst). Le catalogue porte desormais le role `hill` (les volumes
+// que la variante de carte declare sous la paire de hashs de mapvar), la table le sert en KOTH,
+// et l'artefact le lit par le MEME chemin que Bastion : le repli a disparu avec sa raison d'etre.
+// `ZoneInput.Hill` reste, lui, la porte de la METHODE (periodes de garde par la grappe des
+// positions au lieu des captures nommees) — c'est le mode qui la decide, pas le catalogue.
 
 import (
 	"log/slog"
@@ -53,10 +64,14 @@ import (
 // COTE SERVICE : les deux lisent le meme fichier, c'est ce qui fait tenir la jointure.
 const objectiveRolesFilename = "objective_roles.toml"
 
-// hillFallbackRoles sont les roles SURFACIQUES essayes pour les modes a colline, dans un ordre
-// FIXE. Il est fixe pour que l'index publie reste valable le jour ou la table du titre servirait
-// ces memes roles a KOTH : elle devra les declarer dans cet ordre.
-var hillFallbackRoles = []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone}
+// heldZoneRoles sont les roles dont la zone se TIENT — ceux pour lesquels un etat de zone
+// (`zoneStates`) peut etre publie, et donc les seuls qui valent le balayage de `ti=13`. Un
+// role servi par la table mais absent d'ici (livraison de drapeau, zone d'Extraction) reste
+// dessine par le service et n'entre pas au catalogue du match.
+var heldZoneRoles = map[mapvar.Role]bool{
+	mapvar.RoleStrongholdZone: true,
+	mapvar.RoleHill:           true,
+}
 
 // matchZones rend le catalogue de zones du match et les roles qui le composent, DANS L'ORDRE.
 func (b *Builder) matchZones(matchID, mapID, variant string) ([]replay.Zone, string) {
@@ -67,7 +82,9 @@ func (b *Builder) matchZones(matchID, mapID, variant string) ([]replay.Zone, str
 	}
 	roles := b.zoneRoles(variant)
 	if len(roles) == 0 {
-		return nil, "" // mode sans zone : le cas nominal (Assassin, CTF, Oddball)
+		// Mode sans zone TENUE : le cas nominal (Assassin, CTF, Oddball, Extraction) — meme
+		// quand la carte declare des volumes sous d'autres roles.
+		return nil, ""
 	}
 	cat := b.objectivesCatalog()
 	if cat == nil {
@@ -91,25 +108,19 @@ func (b *Builder) matchZones(matchID, mapID, variant string) ([]replay.Zone, str
 	return zones, strings.Join(names, ",")
 }
 
-// zoneRoles rend les roles SURFACIQUES du mode, dans l'ordre de la table du titre — ou le repli
-// des modes a colline.
+// zoneRoles rend les roles de zone TENUE du mode, dans l'ordre de la table du titre.
 func (b *Builder) zoneRoles(variant string) []mapvar.Role {
-	roles := b.tableRoles(variant)
-	if len(roles) > 0 {
-		return roles
+	var out []mapvar.Role
+	for _, r := range b.tableRoles(variant) {
+		if heldZoneRoles[r] {
+			out = append(out, r)
+		}
 	}
-	if isHillVariant(variant) {
-		return hillFallbackRoles
-	}
-	return nil
+	return out
 }
 
-// isHillVariant dit si la variante du match est un mode a COLLINE.
-//
-// DEUX APPELANTS, UN SEUL PREDICAT : les roles de repli (ici) et l'autorisation du repli par les
-// positions dans le calque (`replay.ZoneInput.Hill`) doivent parler du MEME ensemble de modes.
-// Les ecrire deux fois les laisserait diverger en silence — et la divergence ne se verrait que
-// par des collines publiees sur un mode qui n'en a pas.
+// isHillVariant dit si la variante du match est un mode a COLLINE — la porte de la METHODE par
+// les positions (`replay.ZoneInput.Hill`). Un seul predicat, pour qu'il ne diverge pas.
 func isHillVariant(variant string) bool {
 	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeHill
 }

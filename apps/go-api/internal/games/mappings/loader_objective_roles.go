@@ -66,6 +66,7 @@ var objectiveRolesAdmis = map[mapvar.Role]bool{
 	mapvar.RoleExtractionZone:    true,
 	mapvar.RoleOddballSpawn:      true,
 	mapvar.RoleAssaultBomb:       true,
+	mapvar.RoleHill:              true,
 }
 
 // Modes retourne les entrees DANS L'ORDRE DU FICHIER (copie).

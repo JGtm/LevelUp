@@ -40,12 +40,13 @@ func varianteFixture(t *testing.T, nom string) *mapvar.Variant {
 	return v
 }
 
-// TestRackDuCanevasEcarte — le canevas Forge de Vagabond range 20 objectifs de tous les
-// modes sur 8,2 m alors que ses objets couvrent 356 m. Il doit être écarté.
+// TestRackDuCanevasEcarte — le canevas Forge de Vagabond range 25 objectifs de tous les
+// modes (20 + les 5 collines de KOTH depuis le lot C-ter volet 2) sur 8,2 m alors que ses
+// objets couvrent 356 m. Il doit être écarté.
 func TestRackDuCanevasEcarte(t *testing.T) {
 	v := varianteFixture(t, "vagabond_fo08_wetland.mvar")
-	if n := len(v.Objectives()); n != 20 {
-		t.Fatalf("fixture inattendue : %d objectifs, attendu 20", n)
+	if n := len(v.Objectives()); n != 25 {
+		t.Fatalf("fixture inattendue : %d objectifs, attendu 25 (20 + 5 collines de rack)", n)
 	}
 	if !isParkedPalette(v) {
 		t.Error("le rack du canevas est accepté comme placement — la carte publierait " +
@@ -112,5 +113,37 @@ func TestCliffhangerNonEcarte(t *testing.T) {
 		if isParkedPalette(varianteFixture(t, nom)) {
 			t.Errorf("%s écartée à tort", nom)
 		}
+	}
+}
+
+// TestDumpPublieLesLabelsNonResolusEtLInstance — le dump de diagnostic doit montrer les
+// labels que la table ne sait PAS nommer (en hash brut), pas seulement ceux qu'elle sait :
+// c'est sur eux qu'un inventaire de mode se fait (lot C-ter volet 2). Il porte aussi
+// l'instance_id, clé candidate du catalogue.
+//
+// Mutation qui doit le faire rougir : retirer le `continue` et l'append d'Unresolved dans
+// dumpedObjectsOf.
+func TestDumpPublieLesLabelsNonResolusEtLInstance(t *testing.T) {
+	v := varianteFixture(t, "cliffhanger_map.mvar")
+	want := 0
+	for _, n := range v.UnresolvedLabels() {
+		want += n
+	}
+	if want == 0 {
+		t.Skip("la fixture ne porte aucun label non résolu — le témoin ne dit rien")
+	}
+	got, named := 0, 0
+	for _, d := range dumpedObjectsOf(v) {
+		got += len(d.Unresolved)
+		named += len(d.Labels)
+	}
+	if got != want {
+		t.Errorf("labels non résolus publiés = %d, la variante en porte %d", got, want)
+	}
+	if named == 0 {
+		t.Error("aucun label résolu publié — le dump a perdu les noms")
+	}
+	if len(dumpedObjectsOf(v)) != len(v.Objects) {
+		t.Errorf("objets publiés = %d, la variante en a %d", len(dumpedObjectsOf(v)), len(v.Objects))
 	}
 }
