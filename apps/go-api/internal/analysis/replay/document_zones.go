@@ -22,7 +22,7 @@ package replay
 // VERSION NE MONTE PAS : v16 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
 // publiera. Un artefact deja cuit sur cette branche avant la revue est a re-cuire comme les autres.
 //
-// CHRONIQUE — v17 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
+// CHRONIQUE — v18 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
 // lot C-ter volet 3). `ZoneState.gauge` — LA JAUGE DE CAPTURE EN DIRECT : la serie datee des
 // valeurs de la jauge de chaque zone PENDANT ses rampes (allegee : un point par variation
 // >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe fermee par son retour a zero
@@ -33,16 +33,23 @@ package replay
 // reste lisible pour qui le lit) — mais LE CLIENT NE LE DESSINE PLUS : l'arc de v16, trace au
 // sommet de l'intervalle, restait plein pendant toute la duree de la propriete et se LISAIT
 // COMME UNE JAUGE alors qu'il n'en etait que le maximum atteint. La version monte pour cette
-// raison : sur un artefact v16 le client n'a plus d'arc du tout (le sommet statique disparait,
-// decision du plan), et il ne retrouve un arc — le vrai, qui se remplit a l'image — qu'une fois
-// l'artefact re-cuit. Un v16 se lit donc « a re-cuire ». Regle et seuils : zone_states_gauge.go.
+// raison : sur un artefact ANTERIEUR le client n'a plus d'arc du tout (le sommet statique
+// disparait, decision du plan), et il ne retrouve un arc — le vrai, qui se remplit a l'image —
+// qu'une fois l'artefact re-cuit. Un v16 COMME un v17 se lit donc « a re-cuire » : le 17 est
+// celui des socles de power-up, qui ne porte pas davantage de serie. Regle et seuils :
+// zone_states_gauge.go.
 //
-// v17, MEME JOUR (2026-08-19), L'ECHELLE : la mesure des temoins a montre que l'excursion mesuree
-// du match (convention de v16) se faussait sur une seule emission aberrante sous zero — deux zones
-// sur trois de `7344d24f` voyaient toutes leurs captures ecrasees dans [0,694 ; 1] et [0,981 ; 1].
-// `progress` ET `gauge` passent sur l'echelle du JEU (0 = jauge au repos, 1 = pleine, cf.
-// gaugeProgressOf dans zone_states.go) : les valeurs de `progress` d'un v16 et d'un v17 ne sont
-// donc pas comparables — une raison de plus de re-cuire.
+// LE NUMERO EST 18 ET PAS 17 (renumerotation du 2026-08-19). Pendant le volet, une autre session
+// a fait entrer les socles de power-up dans `weaponPads` et a pris le 17 en fusionnant avant
+// nous. Regle du depot : un numero par montee, dans l'ordre de FUSION — leur 17 reste, la jauge
+// prend le 18. Les deux chroniques se lisent cote a cote dans document.go.
+//
+// v18, MEME JOUR (2026-08-19), L'ECHELLE : la mesure des temoins a montre que l'excursion mesuree
+// du match (convention de v16) se faussait sur une seule emission aberrante sous zero — deux
+// zones sur trois de `7344d24f` voyaient toutes leurs captures ecrasees dans [0,694 ; 1] et
+// [0,981 ; 1]. `progress` ET `gauge` passent sur l'echelle du JEU (0 = jauge au repos, 1 =
+// pleine, cf. gaugeProgressOf dans zone_states.go) : les valeurs de `progress` d'un v16 (ou d'un
+// v17) et d'un v18 ne sont donc pas comparables — une raison de plus de re-cuire.
 //
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //
@@ -119,7 +126,7 @@ type ZoneState struct {
 	Key uint32 `json:"key,omitempty"`
 	// Spans est l'etat de la zone, en intervalles tries par T0 et sans recouvrement.
 	Spans []ZoneSpan `json:"spans"`
-	// Gauge est LA JAUGE DE CAPTURE EN DIRECT (schema 17) : la serie datee de la valeur de la
+	// Gauge est LA JAUGE DE CAPTURE EN DIRECT (schema 18) : la serie datee de la valeur de la
 	// jauge de cette zone, sur la MEME echelle que `Progress` — celle du JEU : 0 = jauge au
 	// repos, 1 = jauge pleine, ecretee aux deux bouts (gaugeProgressOf dans zone_states.go) —,
 	// triee par T strictement croissant.
@@ -137,7 +144,7 @@ type ZoneState struct {
 	// ABSENTE quand la zone n'a aucune rampe de jauge sur ce match, ou quand aucun slot de
 	// jauge ne lui est apparie — ET TOUJOURS ABSENTE SUR UNE COLLINE (KOTH) : la, le meme
 	// canal est un compteur de transfert d'environ une seconde, pas la progression de garde
-	// (lot C-ter volet 1) ; `coverage.zones.gaugePoints` y vaut 0. Un artefact de schema <= 16
+	// (lot C-ter volet 1) ; `coverage.zones.gaugePoints` y vaut 0. Un artefact de schema <= 17
 	// ne la porte jamais.
 	Gauge []GaugePoint `json:"gauge,omitempty"`
 }
@@ -254,7 +261,7 @@ type ZonesCoverage struct {
 	// joueur n'occupe serait une invention, et la taire empecherait de la voir arriver.
 	UnknownOwner int `json:"unknownOwner"`
 	// GaugePoints est le nombre de points de jauge en direct publies, toutes zones confondues
-	// (schema 17). C'est le poids du calque vivant, et le denominateur de sa legerete : la
+	// (schema 18). C'est le poids du calque vivant, et le denominateur de sa legerete : la
 	// serie est allegee (cf. ZoneState.Gauge), et ce compte dit de combien. ZERO sur un film a
 	// COLLINE (KOTH) : la jauge n'y est pas publiee du tout, le tag 3 y etant un compteur de
 	// transfert et non la progression de garde (lot C-ter, volets 1 et 3).

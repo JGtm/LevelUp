@@ -62,6 +62,161 @@ n'apprend plus grand-chose (le volet 1 possede ce fichier) ; deux slots tag 3 de
 jauges de zone et restent a nommer ; les silences intra-rampe sont tenus a l'ecran faute d'une emission qui
 distinguerait « figee » de « finie ».
 
+## [2026-08-19] Socles d'armes depuis les fichiers de carte — MESURE, confirmee — Complete
+
+**Statut** : Complete (mesure ; branche `wt/socles-mvar`, 7 commits `3d5baf1e1`..`702afa777`, FUSIONNEE
+dans `feat/v75` par le superviseur ; plan et chiffres : `PLAN_SOCLES_MVAR.md`). Production proposee,
+NON faite — decision produit chez l'utilisateur (piege des socles eteints).
+**Resultats** : les socles SONT dans le `.mvar` au centimetre — 32 positions d'oracle sur 3 cartes,
+32 appariees a < 1 m, mediane 0,01 m, temoin 0,4-5,6 % (Forge : temoin large 75,5 %, temoin restreint
+declare 4,7 %). Trois `type_id` jamais identifies portent les socles et codent une FAMILLE (armes de
+pouvoir / armes de rack / power-up) mais PAS l'arme (epee en KOTH, marteau en CTF sur le meme objet —
+l'arme appartient au match, confirme). **Le fichier POSE, le mode ALLUME** : les deux `.mvar` d'une
+carte portent les memes socles ; Cliffhanger 17 poses -> 10 vues en CTF, 0 en Super Fiesta (hypothese
+scenario de l'utilisateur : tranchee ainsi) ; l'activation par mode n'est PAS lisible hors ligne sur
+cartes DEV (labels partiels sur Forge). **Gain : 22 emplacements que le film ne montre jamais** (0 sur
+Catalyst — la recurrence y voyait tout ; 7 sur Cliffhanger ; 15 sur Smallhalla). Antecedents cites
+(journal du 25/07 : map.mvar deja parse 453 objets ; registre l. 229 : racks non extraits — extraction
+FAITE ; piege Forge rack/canevas respecte). Methode : le plan avait ete pre-rempli par erreur, reecrit
+cases vides AVANT mesure ; le temoin Forge echoue et n'est pas efface.
+**Conclusion / prochaine etape** : production = catalogue statique `map_weapon_pads.json` (cle map_id,
+`pos` + `type_id` brut + famille derivee A COTE du brut, via `cmd/mapobj-build` etendu) + croisement au
+rejeu CONDITIONNE par le film (jamais publier les 17 socles fantomes d'un Fiesta) — DECISION PRODUIT a
+valider ; reports : activation par mode = asset `UgcGameVariants` (reseau, client discovery en place) ;
+nommer les 3 `type_id` via himap.
+
+## [2026-08-19] Rendu des socles de POWER-UP : taille, nom, vignette — Complete
+
+**Statut** : Complete (branche `wt/powerup-rendu`, `a21ebc4e6` + `b918ab477`, FUSIONNEE dans `feat/v75`
+par le superviseur ; typecheck 0 et 62 tests cibles rejoues sur l'arbre fusionne). Gate restant :
+verification VISUELLE en app (socle du centre de Catalyst sur `01e1f945`) — main de l'utilisateur.
+**Decision technique (verifiee sur pieces, pas supposee)** : le manifeste ne porte ni libelle ni canal
+vers le client (`[[equipment_objects]]` = identite seule ; aucun `equipmentLabels` dans le depot) —
+donc zero Go, zero contrat : table ecrite `PAD_EQUIPMENT_FAMILIES` (2 cles, garde-rail « chaque cle
+est dans POWER_PAD_KEYS »), libelles FR/EN locaux au web tenus par le TYPAGE (`Record<PadEquipmentFamilyKey,
+string>`), vignette = le masque HUD que le manifeste nomme (`hud/Overshield`, `hud/ActiveCamouflage`),
+resolu comme `grenadeIcon.ts`. L'infobulle ne montre jamais la chaine brute ; la reserve « socle ou
+ratelier » n'a pas de sens pour un power-up et disparait pour eux. Doc inversee corrigee dans
+`equipmentPlacementsLayer.ts` (les socles voyagent par `weaponPads`, pas par `PLACEMENT_RENDER`).
+**Resultats** : temoins re-cuits en schema 17 dans le worktree (ceux du principal etaient en 16) —
+`01e1f945` : le power-up passe de point 3,2 px + glyphe neutre a point 4,6 px + 9 vignettes de 13 px ;
+les 10 socles d'armes identiques champ par champ ; `64e8adfa` strictement inchange. 13 tests ajoutes
+(dont le RENDU de l'infobulle). Planche `[!]` motive : scratchpad partage date du 18/08, la republier
+aurait publie l'etat en vol d'autres lots — 2 lignes devenues fausses notees pour sa reconstruction.
+**Conclusion / prochaine etape** : gate visuel utilisateur ; reports : libelles d'equipement a remonter
+au manifeste au 2e titre qui posera des socles ; planche a reconstruire a la prochaine fournee.
+
+## [2026-08-19] Rendu des socles de POWER-UP : taille, nom, vignette — Complete
+
+**Statut** : Complete (worktree `wt/powerup-rendu`, `a21ebc4e6` + doc ; gates web a 0). Ligne
+« le calque web ne rend pas le socle de power-up » du registre RESOLUE.
+**Decision technique** : une TABLE ECRITE des familles NON-ARME (`PAD_EQUIPMENT_FAMILIES`,
+deux cles) et non un test de prefixe `powerup_` — le manifeste porte quinze familles
+d'equipement et rien ne dit que les prochaines a monter sur un socle s'appelleront ainsi ;
+une cle hors table reste traitee comme un identifiant d'arme (comportement d'avant,
+inchange). Les trois resolutions deviennent PURES et partagees par le trace, le survol et
+l'infobulle : TAILLE (`padScaleFor` — la famille EST deja sa cle canonique, et elle etait
+dans `POWER_PAD_KEYS` depuis le 18/08, donc pas de seconde regle), LIBELLE (`padNameFor` —
+FR/EN locaux, parite tenue PAR LE TYPAGE `Record<PadEquipmentFamilyKey, string>`), VIGNETTE
+(`padIconRefFor` — masque de HUD livre sous `static/weapons-assets/{slug}/hud/`, resolu cote
+client comme les vignettes de grenade, parce que les libelles d'un artefact sont figes a sa
+cuisson). **VERIFIE SUR PIECES avant de coder** : `[[equipment_objects]]` de
+`replay_labels.toml` ne porte AUCUN libelle bilingue ni icone (que famille / `name_id` /
+provenance / nature), et il n'existe aucun `equipmentLabels` cote client — d'ou les libelles
+locaux, comme `placementFamily` avant eux ; l'icone, elle, est bien celle que le manifeste
+nomme (`icon = "hud/Overshield"`), et un garde-rail rejoue le fichier livre ET la ligne du
+manifeste.
+**Resultats** : les deux temoins RE-CUITS dans le worktree (le cache du principal etait reste
+en schema 16), puis primitives comptees au contexte enregistreur. `01e1f945` (KOTH Catalyst,
+11 socles) AVANT : le power-up sort en `classic`, point 3,20 px, DEUX arcs (le point + le
+glyphe neutre), 0 `drawImage` ; APRES : `power`, point 4,60 px, 9 `drawImage` de 13,0 px —
+calque 12 arc / 90 drawImage -> 11 arc / 99 drawImage. Les 10 socles d'ARME du meme temoin
+sont identiques champ par champ (3,20 px, vignette 8,0 px, x9), et `64e8adfa` (CTF, zero
+power-up) est strictement inchange (10 arc / 90 drawImage des deux cotes). Controle : en
+posant la cle canonique que le service ajoute a la requete (l'artefact hors ligne ne la porte
+pas), le sniper reste `power` et le bulldog `classic` avant comme apres. 13 tests ajoutes,
+dont un RENDU d'infobulle : le defaut etait a l'ecran, et un test des seuls resolveurs
+laisserait repasser la meme faute par un autre chemin. Commentaire redresse dans
+`equipmentPlacementsLayer.ts` (il annoncait l'entree des power-ups dans `PLACEMENT_RENDER`
+« le jour ou un film en portera » — c'est arrive, et la conclusion s'inverse : les socles
+voyagent par `weaponPads`, les y ajouter dessinerait une SECONDE marque au meme endroit).
+**Non traite, avec sa raison** : aucun item de planche. La planche vit dans le scratchpad
+PARTAGE entre agents et datait du 18/08 21h57 — la republier aurait publie l'etat en vol
+d'autres lots sur une base non verifiable ; le gate utile de ce lot est EN APP. Les deux
+lignes de la planche devenues fausses (« power-ups absents de la table de rendu ») sont
+consignees au registre pour sa prochaine reconstruction.
+**Conclusion / prochaine etape** : gate visuel utilisateur dans l'app (le socle du centre de
+Catalyst sur `01e1f945`). Reste au registre : les libelles d'equipement devront remonter au
+manifeste au 2e titre qui posera des socles de power-up, sinon le vocabulaire d'un titre
+s'ecrit dans le code du web.
+
+## [2026-08-19] Socles de POWER-UP en production (schema 17) — Complete
+
+**Statut** : Complete (branche `wt/powerup-prod`, `56158d8a8`..`09261f90a`, FUSIONNEE dans `feat/v75` par
+le superviseur ; contracttest + replay rejoues verts). Ligne R2-P du registre RESOLUE.
+**Decision technique** : voie `ti=37` ADJOINTE a la chaine des socles (jamais remplacee) — creations
+`ScanFilmEquipmentCreations` SANS vie delta, identite `powerup_*` du manifeste, grappe 1 m >= 2,
+presence bornee par le recensement d'images-cles (`ScanFilmWorldObjectKeyframes`, nouveau, tout
+archetype) ; regle d'identite nommee (`padRule`) partagee avec les armes, sortie des armes INCHANGEE
+(golden sans regeneration) ; `SchemaVersion` 16 -> 17 (contenu de `weaponPads`), couverture +4 champs,
+OpenAPI/`generated.ts` regeneres, fixture `REPLAYINPUTS9`, goldens a 2 lignes de diff.
+**Resultats** : 1 socle `powerup_overshield` au MEME centimetre (0,257 ; -0,003) sur chaque KOTH
+Catalyst (9 et 7 apparitions), 0 sur les CTF et le Fiesta ; socles d'armes identiques champ par champ
+sur les 5 temoins ; `cycle` publie 83,7 / 73,0 s (horloge du ramassage — la periode vraie de 120,1 s
+est dans `spawns`, 30,3/89,8 alternes : deux entites par cycle au meme point, decouverte notee).
+**Ecart de consigne signale par l'agent** : un `git add -A` sur `617a4c8c4` — contenu verifie apres
+coup (20 fichiers, tous intentionnels, rien d'etranger) ; rappele dans le brief type.
+**Conclusion / prochaine etape** : DECOUVERTE 1 = le calque web ne rend PAS encore le power-up en
+grande taille ni nomme ni avec vignette (`useReplayWeaponPads.ts` lit `doc.weaponLabels`, table
+d'ARMES : la cle `powerup_overshield` n'y est pas) -> lot de rendu dedie (taille + libelle FR/EN +
+icone), lance. Notees : i30 infinite-uses sans lecteur, `FamilyOfWeaponID` accepte un nom tout-hexa.
+
+## [2026-08-19] Equipements manquants : identifiants, noms, sons — Complete
+
+**Statut** : Complete (worktree `wt/equip-sons`, `8bb239213` / `a24107e28` / `d89b2b590`, FUSIONNE dans
+`feat/v75` par le superviseur ; tests sons 60/60 rejoues ; plan `PLAN_EQUIPEMENTS_MANQUANTS_SONS.md`).
+**Decision technique** : ouvrir la chaine son du groupe `eqip`, absente de l'outil, en passant par le
+maillon `effe` (`eqip -> effe -> snd! -> evenement Wwise -> sbnk -> .wem -> pack`) — la table de
+dependances d'un `eqip` ne porte que deux `snd!` partages par 21 objets ; chaine calibree par trois packs
+nommes (repairfield, plasmagrenade, lightninggrenade).
+**Resultats** : 116 `eqip` inventories (90 rattaches a un `sofa` = equipements de joueur, 14 noms casses) ;
+les 21 identifiants du corpus ont tous leur tag ; `0x4396db42` reste `other` avec un NEGATIF TRIPLE
+(dictionnaire elargi 1,9 M candidats / 10 temoins retrouves, `hlmt` unique sur 116, banque selective
+sans pack nomme) — les cinq graphies de l'« ecran de dissimulation » sont refutees nommement ; H4
+« ajouts debut 2025 » REFUTEE (aucune date de tag lisible hors ligne : deux combinaisons de modules pour
+tout le jeu) ; `regen_field` est le seul nom du jeu absent du manifeste, sans objet au corpus (pas de ligne
+morte) ; croisement des 951 films refuse par son cout (14,3 h plancher) ; **son du champ de reparation
+extrait du jeu et branche** (`repair_field_activate.wav`, banque unique, 3 `.wem` identiques, crete
+-1 dBTP ; LUFS non mesurable sous 400 ms — garde-rail de duree nominatif) ; capteur et traqueur atteignent
+la MEME banque (la decision R3 « traqueur = son du capteur » est confirmee par la structure du jeu) ;
+balise du translocateur : banque trouvee (`dcfaa487`, 11 gestes de 0,83 a 4,53 s extraits) — il faut
+une ECOUTE pour designer la pose ; repulseur : source du jeu trouvee (`7bd0883c`, 10 gestes), non branche
+tant que le calque ne le dessine pas.
+**Conclusion / prochaine etape** : faire ecouter a l'utilisateur les 11 gestes de `dcfaa487` (balise) ;
+`0x4396db42` : un NOM par une chaine avant tout branchement.
+
+## [2026-08-19] Power-up de socle au centre de Catalyst — mesure et TROUVE — Complete
+
+**Statut** : Complete (mesure ; branche `wt/powerup`, `07cb617a2`..`ae4c5c03e`, FUSIONNEE dans `feat/v75`
+par le superviseur ; plan `PLAN_POWERUP_SOCLE_CATALYST.md`). Phase de production PROPOSEE, lancee a part.
+**Decision technique** : mesurer d'abord OU par les episodes de surbouclier (hors Fiesta un surbouclier
+actif ne peut venir que d'un ramassage — ancre de l'utilisateur), remonter les porteurs au minimum de
+dispersion ; puis chercher les records de CREATION `ti=37` a cet endroit, tous archetypes en controle.
+**Resultats** : le socle EXISTE dans le film — `ti=37`, `eqip 0xb781197a = powerup_overshield`, cree par
+un record NEW a CHAQUE reapparition (jamais dans l'etat initial : 0 slot a la premiere image-cle), a
+(0,257 ; -0,003 ; 21,36) — deux chaines independantes (bipedes de l'artefact / creations d'objet des
+paquets delta) a 0,19 m l'une de l'autre ; KOTH `01e1f945` 10 creations (9 au socle + 1 lachee),
+`75f1188f` 8 (7 + 1) ; CTF `64e8adfa`/`530820e5` 0 (le sous-mode decide de l'armement du socle) ;
+cycle 120,1 s (30,3 / 89,8 alternes) ; temoin fantome 0-5,9 ; H1/H2/H3 refutees, H4 confirmee.
+**Pourquoi la production ne le voyait pas** : `confirmPlacements` (`equipment_placements.go`) exige que
+la creation retombe sur le premier point d'une vie DELTA — un objet de socle ne bouge jamais : 9
+creations, 0 publiee. Le « negatif de corpus » du registre etait un FILTRE, pas une absence — leve.
+**Conclusion / prochaine etape** : phase de production (lot lance) : retenir les creations `ti=37`
+SANS vie delta dont l'identite se resout, en grappe (>= 2 au meme point), bornees par le recensement
+d'images-cles, publiees comme socles (`weaponPads`, familles `powerup_*`) ; decouvertes : i30
+`equipment-has-infinite-uses-component` jamais lu (« socle de carte contre equipement de joueur »),
+`bounds` de `64e8adfa` hors carte, doc inversee `MPPCalibration.Bits`.
+
 ## [2026-08-18] Objectifs vivants — phase 3 : le drapeau CTF est DESSINE sur la carte — Complete
 
 **Statut** : Complete (3.1, 3.2 ; branche `wt/drapeau-rendu`, `7bc7a26ee`..`6131d8da3`, FUSIONNEE dans

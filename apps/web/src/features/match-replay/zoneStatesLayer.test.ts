@@ -1,9 +1,9 @@
 /**
- * Tests — zoneStatesLayer (l'état VIVANT des zones, schémas 16-17).
+ * Tests — zoneStatesLayer (l'état VIVANT des zones, schémas 16-18).
  *
  * CE QU'ILS PROTÈGENT : l'état se lit sur l'intervalle qui couvre la frame (bornes incluses),
  * « personne ne la tient » est une MESURE, le calque n'écrit jamais de texte, il refuse de
- * peindre quand la jointure du catalogue est douteuse — et, depuis le schéma 17, L'ARC SUIT LA
+ * peindre quand la jointure du catalogue est douteuse — et, depuis le schéma 18, L'ARC SUIT LA
  * SÉRIE DE LA JAUGE EN DIRECT en escalier : jamais le sommet de l'intervalle (le test échoue si
  * l'on y repasse), AUCUN arc sans `gauge`, la valeur TENUE jusqu'au point suivant (une capture figée reste
  * affichée) et retour à rien une seconde après le dernier point de la série.
@@ -40,7 +40,7 @@ const VIEW = { bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, width: 480 + 48
 const HOLD = 10
 
 /**
- * L'état d'une zone tel que l'artefact le publie (schéma 17), déjà normalisé. La zone 0 porte
+ * L'état d'une zone tel que l'artefact le publie (schéma 18), déjà normalisé. La zone 0 porte
  * une RAMPE de jauge aux frames 12..18 (le sommet 0,75 de l'intervalle [10 ; 19] est atteint à
  * la frame 18) FERMÉE par son retour à zéro à 19 ; puis une seconde capture qui monte (30..32),
  * se FIGE 28 frames à 0,2 (zone contestée : aucun point), reprend à 60 et est abandonnée — retour
@@ -102,7 +102,7 @@ describe('zoneGaugeAt — l’escalier de la jauge en direct', () => {
     expect(zoneGaugeAt(sommet, 18 + HOLD + 1, HOLD)).toBeNull()
   })
 
-  it('une série vide (schéma <= 16, ou zone sans rampe) ne rend jamais de valeur', () => {
+  it('une série vide (schéma <= 17, ou zone sans rampe) ne rend jamais de valeur', () => {
     expect(zoneGaugeAt([], 15, HOLD)).toBeNull()
   })
 })
@@ -205,7 +205,7 @@ describe('drawZoneStates', () => {
     expect(count(eteint.ops, 'arc')).toBe(0)
   })
 
-  // LA DÉCISION DU PLAN : sur un artefact qui ne porte pas `gauge` (schéma <= 16), il n'y a
+  // LA DÉCISION DU PLAN : sur un artefact qui ne porte pas `gauge` (schéma <= 17), il n'y a
   // PLUS D'ARC DU TOUT — même quand l'intervalle publie un sommet. Le sommet statique se lisait
   // comme une jauge ; mieux vaut rien.
   it("sans `gauge`, AUCUN arc — le sommet `progress` de l'intervalle ne le remplace pas", () => {

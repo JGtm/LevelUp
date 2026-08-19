@@ -3,7 +3,7 @@ package replay
 // zone_gauge_temoin_test.go — LOT C-ter VOLET 3 (CT.3.3) : LE TEMOIN DE LA JAUGE EN DIRECT, relu
 // SUR L'ARTEFACT cuit par le CLI (`cmd/replay-build --facts`), jamais sur les compteurs internes.
 //
-// CE QU'IL MESURE, sur un artefact de schema 17 :
+// CE QU'IL MESURE, sur un artefact de schema 18 :
 //
 //	POIDS         les octets de `zoneStates[].gauge` (serialisation JSON des seules series) contre
 //	              la taille du fichier — c'est la part de la jauge en direct, independamment des

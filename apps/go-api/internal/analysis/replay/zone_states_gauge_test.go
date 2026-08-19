@@ -1,6 +1,6 @@
 package replay
 
-// zone_states_gauge_test.go — LA JAUGE EN DIRECT (schema 17), sur des enregistrements CONSTRUITS :
+// zone_states_gauge_test.go — LA JAUGE EN DIRECT (schema 18), sur des enregistrements CONSTRUITS :
 // la serie est ALLEGEE comme ecrit (un point par variation >= 0,02, OU par seconde de rampe, ET le
 // DERNIER point de chaque rampe toujours — trois tests, un par clause, qui ECHOUENT si la clause
 // est retiree), elle est monotone en T, dans [0, 1], et VIDE hors rampe ; elle sort du calque en

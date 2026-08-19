@@ -285,7 +285,7 @@ var replaySchemas = []struct {
 //	                      distinguent.
 //
 //	36 -> 36  2026-08-18  RIEN A LA RACINE, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM,
-//	                      lot C-ter volet 3). Le schema 17 publie `zoneStates[].gauge` — LA JAUGE
+//	                      lot C-ter volet 3). Le schema 18 publie `zoneStates[].gauge` — LA JAUGE
 //	                      DE CAPTURE EN DIRECT (serie datee `[{t, v}]`, allegee : un point par
 //	                      variation >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe
 //	                      fermee par son retour a zero, sur l echelle de `progress`, modes a zones
@@ -300,6 +300,10 @@ var replaySchemas = []struct {
 //	                      `ZoneState`, `ZonesCoverage` et `GaugePoint` a leur schema dans les DEUX
 //	                      sens. `progress` reste tel quel : le sommet par intervalle est CONSERVE
 //	                      dans le contrat, c est le client qui cesse de le dessiner.
+//	                      RENUMEROTE LE 2026-08-19 : la jauge visait le 17, une autre session l a
+//	                      pris en fusionnant avant nous (socles de power-up dans `weaponPads`,
+//	                      eux aussi SANS champ racine neuf). Le compte reste donc 36 des DEUX
+//	                      cotes de la fusion — aucun des deux lots n ajoute de champ a la racine.
 //
 // Les onze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.

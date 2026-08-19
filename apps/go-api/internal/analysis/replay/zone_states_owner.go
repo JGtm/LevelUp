@@ -58,7 +58,7 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		if len(st.Spans) == 0 {
 			continue
 		}
-		// LA JAUGE EN DIRECT (schema 17) : TOUTES les rampes du slot de jauge de la zone, pas
+		// LA JAUGE EN DIRECT (schema 18) : TOUTES les rampes du slot de jauge de la zone, pas
 		// seulement celles qu'une capture a rattachees — une montee interrompue est une capture
 		// en cours que le film montre, et l'ecran doit la montrer aussi.
 		st.Gauge = zoneGaugeSeriesOf(gauge, rampWindowsOf(findZoneRamps(slot, gauge)), gap)

@@ -190,9 +190,10 @@ const NULLABLE_ARRAY_PATHS = [
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   'zoneStates[].spans',
-  // `zoneStates[].gauge` : LA JAUGE DE CAPTURE EN DIRECT (schéma 17, 2026-08-18) — la série
-  // datée `[{t, v}]` de la jauge pendant ses rampes. Absente sur un artefact de schéma <= 16 :
-  // la frontière la comble à VIDE, et le rendu ne dessine alors aucun arc.
+  // `zoneStates[].gauge` : LA JAUGE DE CAPTURE EN DIRECT (schéma 18, 2026-08-18 — le 17 est
+  // parti aux socles de power-up, fusionnés avant nous) — la série datée `[{t, v}]` de la
+  // jauge pendant ses rampes. Absente sur un artefact de schéma <= 17 : la frontière la comble
+  // à VIDE, et le rendu ne dessine alors aucun arc.
   'zoneStates[].gauge',
   'inventory[].am',
   'inventory[].g',
@@ -306,7 +307,7 @@ describe('la frontière du document de rejeu', () => {
     const ready = normalizeReplayDocument(raw)
     expect(ready.flagCarries[0].spans, 'flagCarries[].spans').toEqual([])
     expect(ready.zoneStates[0].spans, 'zoneStates[].spans').toEqual([])
-    // La jauge en direct (schéma 17) : un artefact plus ancien ne la porte pas, et elle se
+    // La jauge en direct (schéma 18) : un artefact plus ancien ne la porte pas, et elle se
     // comble à VIDE — « aucun arc », jamais le sommet statique à sa place.
     expect(ready.zoneStates[0].gauge, 'zoneStates[].gauge').toEqual([])
     expect(ready.weaponPads[0].spawns, 'weaponPads[].spawns').toEqual([])

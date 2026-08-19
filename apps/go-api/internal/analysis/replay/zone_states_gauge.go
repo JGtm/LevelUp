@@ -1,6 +1,6 @@
 package replay
 
-// zone_states_gauge.go — LA JAUGE EN DIRECT (schema 17) : comment la serie brute du tag 3 devient
+// zone_states_gauge.go — LA JAUGE EN DIRECT (schema 18) : comment la serie brute du tag 3 devient
 // `ZoneState.gauge`, c'est-a-dire une jauge qui se remplit a l'image, et pas seulement son sommet.
 //
 // CE QUE v16 MONTRAIT, ET POURQUOI CE N'ETAIT PAS UNE JAUGE. `ZoneSpan.progress` porte le SOMMET
