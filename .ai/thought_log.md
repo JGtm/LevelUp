@@ -1,3 +1,26 @@
+## [2026-08-19] Laches hors Fiesta : les equipements et power-ups laches a la mort se dessinent — Complete
+
+**Statut** : Complete (branche `wt/dropped-hors-fiesta`, 5 commits `4b1c53357`..`617978624`, FUSIONNEE
+dans `feat/v75` par le superviseur ; tsc -b --force 0 erreur et 61 tests cibles rejoues sur l'arbre
+fusionne ; gates du frere : tsc 0, lint 0, vitest 948 tests). Decision produit du 18/08 appliquee.
+**Decision technique** : regle ORTHOGONALE a `PLACEMENT_RENDER` (`placementDropped.ts` : origine
+`dropped` x 5 equipements deployables + 2 power-ups repris de `PAD_EQUIPMENT_FAMILIES`, jamais
+recopies) ; forme unique = anneau pointille attenue sans portee ni pulsation (les `wall/dropped`
+portent l'identifiant de l'APPAREIL, pas des panneaux) ; GARDE DE MODE conservatrice — le document ne
+porte aucun mode, la Match View oui : `matchFiestaGuard` -> `fiesta | clear | unknown`, en-tete absent
+= rien (trou mesure et fige par test : 3 matchs Fiesta sur 432 dont le pair_name masque l'indice,
+0,7 %) ; bascule tiroir par defaut, invisible en Fiesta ; infobulle « Lache par X / Au sol depuis » ;
+cliquet `ReplayCanvas.tsx` 812 -> 808 (extraction `useReplayPlacements` + `placementHitTest`).
+**Resultats** : `01e1f945` +1 primitive (le surbouclier lache), `000d5950` +0 AVEC la mesure des 26
+qu'il gagnerait sans la garde (assertion de la garde) ; incident de l'agent signale et repare par lui :
+worktree cree PAR ERREUR sous `apps/LevelUp-wt-dropped` (dans l'arbre !) puis `git worktree move` —
+verifie au merge : aucun residu.
+**Conclusion / prochaine etape** : gate visuel utilisateur (anneau sous un capteur deploye ;
+infobulle) ; REPORT donnees : « telle ARME est au sol en (x,y) depuis telle image » n'existe dans
+aucun canal (`equipmentPlacements` = eqip, `weaponPads` = socles) — la decision du 18/08 couvre
+aussi les armes de puissance lachees : lot de donnees dedie a planifier ; decouverte notee :
+`expected_stats.hist_mode_category` passe un pair_name a `ComputeModeCategory` (attend une categorie).
+
 ## [2026-08-19] Objets de puissance laches au sol : dessines hors Fiesta — Complete
 
 **Statut** : Complete (branche `wt/dropped-hors-fiesta`, base `feat/v75` = `e4a15e7c6`, 4 commits
