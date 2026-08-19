@@ -14,7 +14,9 @@
 // ~5 attendues sur 1,0e8 candidats × 210 cibles). Seules les correspondances
 // SÉMANTIQUEMENT cohérentes avec le domaine Halo sont retenues ici ; les
 // collisions absurdes ("seed_post_off_of", "weapon_attrition_assault_the") sont
-// rejetées. Un hash non listé reste INCONNU — on ne devine pas de libellé.
+// rejetées. Un hash non listé reste INCONNU — on ne devine pas de libellé. Une seule
+// exception, par HASH et non par nom : la colline de KOTH (voir LabelHashHillRole), dont
+// le nom n'a pas été retrouvé mais dont le rôle est établi par la géométrie et un film.
 package mapvar
 
 // labelNames : hash murmur3_x86_32(seed=0) → nom du label de mode de jeu.
@@ -58,6 +60,43 @@ var labelNames = map[int32]string{
 // LabelName retourne le nom d'un label, ou "" s'il n'est pas résolu.
 func LabelName(hash int32) string { return labelNames[hash] }
 
+// LABELS DE KOTH — HASHS ETABLIS, NOMS NON RETROUVES (lot C-ter volet 2, 2026-08-19).
+//
+// Les collines de King of the Hill vivent dans la variante de CARTE, sous un motif identique
+// a celui des autres modes du meme fichier (volume + filtre de mode + marqueur ponctuel) :
+//
+//	volumes    type -1476457415, boite ou cylindre, neutres, TOUS avec forme,
+//	           labels [2133978317, -767961569] — 6 sur Catalyst, 5 sur Chasm, Shogun,
+//	           Solitude - Ranked, Cliffhanger ; 5 de RACK sur le canevas Forge fo11/fo08 ;
+//	marqueurs  type -877512201, sans forme, un par colline a sa position,
+//	           labels [2133978317, -1482301937].
+//
+// Comparaison : Land Grab = volumes [landgrab_include, landgrab_zone] + marqueurs
+// [landgrab_include, -941529218] ; Bastion = [strongholds_include, strongholds_zone] +
+// [strongholds_include, -1246645531]. 2133978317 est donc le FILTRE de mode (l'« include »
+// de KOTH), -767961569 le ROLE (la colline). Le nom snake_case des trois n'a pas ete
+// retrouve : radicaux x suffixes (koth, hill, king_of_the_hill, kingofthehill, crown, zone,
+// ... x _include/_zone/_hill/...), variantes de casse, dictionnaire de deux mots, et force
+// brute sur [a-z_] jusqu'a 7 caracteres (10,9 milliards de radicaux) — aucune paire
+// coherente. Ils N'ENTRENT PAS dans labelNames (une entree devinee y serait refusee par
+// TestLabelTableIsSelfConsistent) : le role se pose par HASH, ci-dessous.
+//
+// POURQUOI LES DEUX HASHS, ET PAS LE SEUL ROLE. Le hash de role est AUSSI porte par deux
+// cylindres `minigame_include` par carte de developpeur (Catalyst, Chasm : r = 1,4 m, un par
+// camp, aux bases, type -1855279381) qui n'existent pas en KOTH. Le filtre 2133978317 les
+// ecarte : une colline est un objet qui porte le role ET le filtre de KOTH.
+//
+// Verifie sur le film 01e1f945 (Catalyst, 60 rampes de jauge) : la production apparie 56
+// rampes a ces 6 volumes (52 avec les formes de Bastion/Extraction), et 13 des 20 periodes
+// publiees changent de forme (registre_film/LOTCTER_VOLET2.md).
+const (
+	LabelHashHillRole    int32 = -767961569
+	LabelHashHillInclude int32 = 2133978317
+	// LabelHashHillMarker est documente pour l'inventaire ; il n'attribue AUCUN role (le
+	// marqueur ponctuel n'est pas dessine — meme regle que le marqueur de Bastion, non resolu).
+	LabelHashHillMarker int32 = -1482301937
+)
+
 // Role est le rôle d'objectif d'un objet, tel que le rejeu doit l'afficher.
 type Role string
 
@@ -72,6 +111,9 @@ const (
 	RoleExtractionZone    Role = "extraction_zone"    // zone d'Extraction
 	RoleOddballSpawn      Role = "oddball_spawn"      // apparition du crâne (Oddball)
 	RoleAssaultBomb       Role = "assault_bomb"       // apparition de la bombe (Assaut)
+	// RoleHill est la colline de King of the Hill — attribuee par la PAIRE de hashs
+	// LabelHashHillRole + LabelHashHillInclude (voir ci-dessus), jamais par un nom.
+	RoleHill Role = "hill"
 )
 
 // roleByLabel : labels qui portent un RÔLE (l'objet EST cet objectif).
@@ -168,5 +210,24 @@ func classify(labels []int32) (Role, []string, []int32) {
 			role = r
 		}
 	}
+	if role == "" && isHill(labels) {
+		role = RoleHill
+	}
 	return role, names, unknown
+}
+
+// isHill dit si l'objet porte LA PAIRE de hashs de la colline de KOTH (role ET filtre de mode).
+// Les deux hashs restent comptes parmi les labels non resolus : le nom n'est pas connu, et
+// on ne le devine pas.
+func isHill(labels []int32) bool {
+	role, include := false, false
+	for _, h := range labels {
+		switch h {
+		case LabelHashHillRole:
+			role = true
+		case LabelHashHillInclude:
+			include = true
+		}
+	}
+	return role && include
 }

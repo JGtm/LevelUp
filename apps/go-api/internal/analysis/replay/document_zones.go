@@ -22,6 +22,35 @@ package replay
 // VERSION NE MONTE PAS : v16 n'a jamais ete servie, ces champs entrent dans le contrat qu'elle
 // publiera. Un artefact deja cuit sur cette branche avant la revue est a re-cuire comme les autres.
 //
+// CHRONIQUE — v18 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`,
+// lot C-ter volet 3). `ZoneState.gauge` — LA JAUGE DE CAPTURE EN DIRECT : la serie datee des
+// valeurs de la jauge de chaque zone PENDANT ses rampes (allegee : un point par variation
+// >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe fermee par son retour a zero
+// quand le film le porte), SUR LES MODES A ZONES SIMULTANEES SEULEMENT — jamais sur une colline
+// de KOTH, ou le canal est un compteur de transfert d'une seconde (volet 1) — et
+// `coverage.zones.gaugePoints`. Le
+// `progress` des intervalles est CONSERVE tel quel (contrat stable : le sommet par intervalle
+// reste lisible pour qui le lit) — mais LE CLIENT NE LE DESSINE PLUS : l'arc de v16, trace au
+// sommet de l'intervalle, restait plein pendant toute la duree de la propriete et se LISAIT
+// COMME UNE JAUGE alors qu'il n'en etait que le maximum atteint. La version monte pour cette
+// raison : sur un artefact ANTERIEUR le client n'a plus d'arc du tout (le sommet statique
+// disparait, decision du plan), et il ne retrouve un arc — le vrai, qui se remplit a l'image —
+// qu'une fois l'artefact re-cuit. Un v16 COMME un v17 se lit donc « a re-cuire » : le 17 est
+// celui des socles de power-up, qui ne porte pas davantage de serie. Regle et seuils :
+// zone_states_gauge.go.
+//
+// LE NUMERO EST 18 ET PAS 17 (renumerotation du 2026-08-19). Pendant le volet, une autre session
+// a fait entrer les socles de power-up dans `weaponPads` et a pris le 17 en fusionnant avant
+// nous. Regle du depot : un numero par montee, dans l'ordre de FUSION — leur 17 reste, la jauge
+// prend le 18. Les deux chroniques se lisent cote a cote dans document.go.
+//
+// v18, MEME JOUR (2026-08-19), L'ECHELLE : la mesure des temoins a montre que l'excursion mesuree
+// du match (convention de v16) se faussait sur une seule emission aberrante sous zero — deux
+// zones sur trois de `7344d24f` voyaient toutes leurs captures ecrasees dans [0,694 ; 1] et
+// [0,981 ; 1]. `progress` ET `gauge` passent sur l'echelle du JEU (0 = jauge au repos, 1 =
+// pleine, cf. gaugeProgressOf dans zone_states.go) : les valeurs de `progress` d'un v16 (ou d'un
+// v17) et d'un v18 ne sont donc pas comparables — une raison de plus de re-cuire.
+//
 // D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
 //
 //	le CANAL       l'archetype `ti=13` du film (`managed-object-property-*`), porte au lot C-bis
@@ -56,15 +85,14 @@ package replay
 //	carte par captures — le volet colline passe par la GRAPPE des positions, et le dit
 //	(`coverage.zones.method`).
 //
-// LA LIMITE QUI COMPTE POUR LE RENDU, ecrite ici parce qu'elle se verrait sinon comme un bug :
-// `zoneRef` indexe `mapObjectives.zones`, que le SERVICE sert a la requete d'apres la table de
-// roles du titre. En KOTH cette table ne sert AUCUN role (le catalogue de formes ne connait
-// aucun role de colline — mesure de la phase 2a sur 6 cartes) : les intervalles de colline sont
-// donc publies dans l'artefact et le client n'a, aujourd'hui, aucune zone ou les poser.
-// `coverage.zones.roles` publie les roles employes pour que la jointure soit VERIFIABLE plutot
-// que supposee.
+// LA JOINTURE QUI COMPTE POUR LE RENDU : `zoneRef` indexe `mapObjectives.zones`, que le SERVICE
+// sert a la requete d'apres la table de roles du titre — Bastion sur `strongholds_zone`, KOTH sur
+// `hill` (le role de colline du catalogue depuis le lot C-ter volet 2 ; avant lui, la table ne
+// servait rien en KOTH et l'artefact se repliait sur les formes de Bastion/Extraction, que le
+// client ne recevait pas). `coverage.zones.roles` publie les roles employes pour que la jointure
+// soit VERIFIABLE plutot que supposee.
 
-// Les DEUX methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
+// Les TROIS methodes d'appariement slot -> zone. Elles ne valent pas la meme chose, et le
 // document le dit plutot que de laisser le client le deviner.
 const (
 	// ZoneMethodCaptures : la zone d'un slot vient des CAPTURES NOMMEES du statborg, attribuees
@@ -73,7 +101,15 @@ const (
 	// ZoneMethodPositions : aucun oracle nomme (KOTH). La zone d'une periode de garde vient de
 	// la GRAPPE des positions pendant la montee de la jauge. Methode plus faible : sa nettete
 	// est excellente sur un film, moyenne sur un autre, NULLE sur un troisieme (phase 2a).
+	// Depuis le lot C-ter volet 1, c'est le REPLI des films KOTH sans designateur lisible.
 	ZoneMethodPositions = "positions+geometry"
+	// ZoneMethodDesignator : KOTH, les PERIODES viennent du DESIGNATEUR de colline (tag 5 du
+	// slot de l'objet de mode, qui change 13-21 ms apres chaque capture — lot C-ter volet 1,
+	// 13/13 changements sur 4 films, temoins a 0 %) ; la GRAPPE des positions ne sert plus qu'a
+	// apparier chaque periode a une forme. La colline VIDE (avant que quelqu'un n'y entre) est
+	// visible ; la premiere periode s'ouvre au PREMIER CONTACT avec l'objet de mode (borne haute
+	// de l'activation : le film ne date pas celle-ci en delta, cf. zone_states_hill.go).
+	ZoneMethodDesignator = "designator+geometry"
 )
 
 // ZoneState est L'ETAT D'UNE ZONE sur toute la partie : une suite d'intervalles.
@@ -97,6 +133,36 @@ type ZoneState struct {
 	Key uint32 `json:"key,omitempty"`
 	// Spans est l'etat de la zone, en intervalles tries par T0 et sans recouvrement.
 	Spans []ZoneSpan `json:"spans"`
+	// Gauge est LA JAUGE DE CAPTURE EN DIRECT (schema 18) : la serie datee de la valeur de la
+	// jauge de cette zone, sur la MEME echelle que `Progress` — celle du JEU : 0 = jauge au
+	// repos, 1 = jauge pleine, ecretee aux deux bouts (gaugeProgressOf dans zone_states.go) —,
+	// triee par T strictement croissant.
+	//
+	// ELLE NE PORTE QUE LES RAMPES — les montees monotones de la jauge, c'est-a-dire les
+	// captures en cours (menees a terme ou non) — et le RETOUR A ZERO qui ferme chacune quand
+	// le film le porte : la jauge ne redescend jamais autrement (mesure du lot). Hors rampe,
+	// RIEN n'est publie : la jauge au repos n'a pas de valeur a montrer. Le client lit la serie
+	// EN ESCALIER — la derniere valeur tient jusqu'au point suivant (une capture figee reste
+	// affichee), et l'arc s'efface une seconde apres le dernier point de la serie. Elle est
+	// ALLEGEE : un point par variation >= 0,02 ou par seconde de rampe (cf.
+	// zone_states_gauge.go), premier et dernier point de chaque rampe toujours presents. `v`
+	// est arrondi a trois decimales.
+	//
+	// ABSENTE quand la zone n'a aucune rampe de jauge sur ce match, ou quand aucun slot de
+	// jauge ne lui est apparie — ET TOUJOURS ABSENTE SUR UNE COLLINE (KOTH) : la, le meme
+	// canal est un compteur de transfert d'environ une seconde, pas la progression de garde
+	// (lot C-ter volet 1) ; `coverage.zones.gaugePoints` y vaut 0. Un artefact de schema <= 17
+	// ne la porte jamais.
+	Gauge []GaugePoint `json:"gauge,omitempty"`
+}
+
+// GaugePoint est UN point de la jauge en direct : la frame et la valeur lue a cet instant.
+type GaugePoint struct {
+	// T est la frame (meme axe que Point.T).
+	T int `json:"t"`
+	// V est la valeur de la jauge dans [0, 1], sur l'echelle du JEU : 0 = jauge au repos, 1 =
+	// jauge pleine (gaugeProgressOf dans zone_states.go — la meme echelle que ZoneSpan.Progress).
+	V float32 `json:"v"`
 }
 
 // ZoneSpan est UN intervalle d'etat d'une zone.
@@ -111,13 +177,18 @@ type ZoneSpan struct {
 	// sinon « zone neutre » et « artefact plus ancien » se confondraient (meme regle que
 	// `FlagSpan.XUID`).
 	Owner *int `json:"owner"`
-	// Progress est le SOMMET de la jauge de capture atteint pendant l'intervalle, ramene a
-	// [0, 1]. Absent quand la zone n'a pas de slot de jauge apparie sur ce match, ou quand
-	// aucune emission de jauge ne tombe dans l'intervalle.
+	// Progress est le SOMMET de la jauge de capture atteint pendant l'intervalle, dans [0, 1] :
+	// la fraction de capture sur l'echelle du JEU (0 = jauge au repos, 1 = pleine ; cf.
+	// gaugeProgressOf). Absent quand la zone n'a pas de slot de jauge apparie sur ce match, ou
+	// quand aucune emission de jauge ne tombe dans l'intervalle.
 	//
-	// LA CONVERSION EST UNE CONVENTION, PAS UNE MESURE : le deser declare la plage [-100, +100]
-	// (constantes `0x143cd8f84` / `0x143cd84a8` du jeu) et la valeur est ramenee lineairement.
-	// Le quantum brut n'est pas republie — il n'aurait de sens qu'avec la table de largeurs.
+	// L'ECHELLE A CHANGE AU SCHEMA 17 (2026-08-19). Le deser declare la plage [-100, +100]
+	// (constantes `0x143cd8f84` / `0x143cd84a8` du jeu) ; la jauge y vit sur [0, +1], et c'est
+	// cette unite qui fait l'echelle. Le schema 16 ramenait la valeur sur l'EXCURSION MESUREE de
+	// la zone sur le match — juste tant qu'aucune emission ne sortait de [0, 1], fausse des
+	// qu'une emission aberrante sous zero servait de plancher (mesure sur `7344d24f`, deux zones
+	// sur trois). Le quantum brut n'est pas republie — il n'aurait de sens qu'avec la table de
+	// largeurs.
 	Progress *float32 `json:"progress,omitempty"`
 	// Active dit que la zone est LA ZONE ACTIVE du mode pendant l'intervalle (colline de KOTH).
 	// Faux partout dans les modes a zones simultanees (Bastion) : c'est `owner` qui y parle.
@@ -132,10 +203,11 @@ type ZoneSpan struct {
 // `groundWeapons`, `score` et `flagCarries`. Son ABSENCE dit encore autre chose : l'appelant n'a
 // rien fourni a lire (pas de catalogue de zones, ou film non balaye).
 type ZonesCoverage struct {
-	// Method nomme l'appariement employe : [ZoneMethodCaptures] ou [ZoneMethodPositions].
+	// Method nomme l'appariement employe : [ZoneMethodCaptures], [ZoneMethodDesignator] ou
+	// [ZoneMethodPositions].
 	Method string `json:"method"`
 	// Roles nomme les roles du catalogue qui composent `mapObjectives.zones`, DANS L'ORDRE et
-	// separes par une virgule (`strongholds_zone`, ou `strongholds_zone,extraction_zone`).
+	// separes par une virgule (`strongholds_zone`, ou `hill` en KOTH).
 	// C'est ce qui rend `zoneRef` verifiable au lieu d'etre suppose.
 	//
 	// UNE CHAINE ET NON UN TABLEAU, deliberement : ce champ est un TEMOIN de jointure que rien
@@ -148,8 +220,8 @@ type ZonesCoverage struct {
 	// Slots est le nombre de slots `ti=13` qui emettent une valeur scalaire sur ce film.
 	Slots int `json:"slots"`
 	// Paired / Unpaired comptent CE QUE L'APPARIEMENT A RETENU ET CE QU'IL A ECARTE. Leur UNITE
-	// depend de la methode, parce que les deux methodes n'apparient pas la meme chose — et le
-	// dire ici vaut mieux que deux paires de champs dont l'une serait toujours nulle :
+	// depend de la methode, parce que les methodes n'apparient pas la meme chose — et le dire ici
+	// vaut mieux que trois paires de champs dont deux seraient toujours nulles :
 	//
 	//	[ZoneMethodCaptures]    des SLOTS PORTEURS D'UNE JAUGE. `Paired` : ceux qu'une zone du
 	//	                        catalogue a recus ; `Unpaired` : ceux qu'aucune capture n'a
@@ -159,6 +231,10 @@ type ZonesCoverage struct {
 	//	                        grappe n'a pas su localiser (garde reelle, lieu inconnu) —
 	//	                        compte ajoute a la revue R1 du 2026-08-18, il restait a zero
 	//	                        quoi qu'il arrive.
+	//	[ZoneMethodDesignator]  `Paired` : les ZONES que la grappe a localisees et qui sortent
+	//	                        avec des periodes ; `Unpaired` : les PERIODES DESIGNEES (une
+	//	                        colline, bornee par le designateur) que la grappe n'a pas su
+	//	                        localiser — colline reelle, forme inconnue.
 	//
 	// CE QUI EST ECARTE N'EST JAMAIS PUBLIE : un intervalle pose sur une zone devinee serait
 	// invisible et credible.
@@ -189,11 +265,19 @@ type ZonesCoverage struct {
 	OwnerUnpaired int `json:"ownerUnpaired"`
 	// Spans est le nombre d'intervalles publies, toutes zones confondues.
 	Spans int `json:"spans"`
-	// HillPeriods est le nombre de periodes de COLLINE publiees (methode par positions). Zero
-	// dans les modes a zones simultanees.
+	// HillPeriods est le nombre de periodes de COLLINE : publiees (methode par positions), ou
+	// DESIGNEES par le film — localisees ou non (methode par designateur : c'est le nombre de
+	// collines du match, `Unpaired` dit combien n'ont pas de forme). Zero dans les modes a zones
+	// simultanees.
 	HillPeriods int `json:"hillPeriods"`
 	// UnknownOwner compte les emissions du canal de propriete dont la valeur n'est ni neutre ni
 	// un index d'equipe connu. Elles n'ouvrent aucun intervalle : publier un camp qu'aucun
 	// joueur n'occupe serait une invention, et la taire empecherait de la voir arriver.
 	UnknownOwner int `json:"unknownOwner"`
+	// GaugePoints est le nombre de points de jauge en direct publies, toutes zones confondues
+	// (schema 18). C'est le poids du calque vivant, et le denominateur de sa legerete : la
+	// serie est allegee (cf. ZoneState.Gauge), et ce compte dit de combien. ZERO sur un film a
+	// COLLINE (KOTH) : la jauge n'y est pas publiee du tout, le tag 3 y etant un compteur de
+	// transfert et non la progression de garde (lot C-ter, volets 1 et 3).
+	GaugePoints int `json:"gaugePoints"`
 }

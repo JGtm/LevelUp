@@ -46,14 +46,22 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	// pas publiees, et sans ce compteur leur silence serait indistinguable d'une carte qui ne
 	// les declare pas (cf. ZonesCoverage.OwnerUnpaired).
 	cov.OwnerUnpaired = len(gaugeSlot) - len(refs)
+	teams := zoneTeamSet(in.TeamByXUID)
+	gap := zoneGaugeGapFrames(c.intervalMS)
 	out := make([]ZoneState, 0, len(refs))
 	for _, ref := range refs {
-		st := ZoneState{ZoneRef: ref, Key: ser.keys[gaugeSlot[ref]]}
-		st.Spans = ownerSpansOf(ser.owner[ownerSlot[ref]], ser.gauge[gaugeSlot[ref]],
-			zoneSpanCtx{frames: c.frames, teams: zoneTeamSet(in.TeamByXUID)}, cov)
+		slot := gaugeSlot[ref]
+		gauge := ser.gauge[slot]
+		st := ZoneState{ZoneRef: ref, Key: ser.keys[slot]}
+		st.Spans = ownerSpansOf(ser.owner[ownerSlot[ref]], gauge,
+			zoneSpanCtx{frames: c.frames, teams: teams}, cov)
 		if len(st.Spans) == 0 {
 			continue
 		}
+		// LA JAUGE EN DIRECT (schema 18) : TOUTES les rampes du slot de jauge de la zone, pas
+		// seulement celles qu'une capture a rattachees — une montee interrompue est une capture
+		// en cours que le film montre, et l'ecran doit la montrer aussi.
+		st.Gauge = zoneGaugeSeriesOf(gauge, rampWindowsOf(findZoneRamps(slot, gauge)), gap)
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
@@ -316,9 +324,6 @@ func zoneChanges(ss []zoneSample) []zoneSample {
 // rien de cette zone. L'etendre jusqu'au debut affirmerait une neutralite qui n'est pas mesuree.
 func ownerSpansOf(owner, gauge []zoneSample, c zoneSpanCtx, cov *ZonesCoverage) []ZoneSpan {
 	groups := mergeZoneRuns(owner)
-	// L echelle de la progression est celle de la jauge DE CETTE ZONE sur CE match (cf.
-	// zoneGaugeOf) : la plage declaree du deser ne dit rien de l excursion reelle.
-	scale := zoneGaugeOf(gauge)
 	out := make([]ZoneSpan, 0, len(groups))
 	for i, g := range groups {
 		t1 := c.frames - 1
@@ -334,7 +339,7 @@ func ownerSpansOf(owner, gauge []zoneSample, c zoneSpanCtx, cov *ZonesCoverage) 
 			continue
 		}
 		span := ZoneSpan{T0: g.t, T1: t1, Owner: team}
-		span.Progress = zonePeakProgress(gauge, scale, g.t, t1)
+		span.Progress = zonePeakProgress(gauge, g.t, t1)
 		out = append(out, span)
 	}
 	return out
@@ -370,7 +375,7 @@ func zoneOwnerTeam(v uint64, teams map[uint64]bool) (*int, bool) {
 
 // zonePeakProgress rend le SOMMET de la jauge dans l'intervalle, ou nil quand aucune emission
 // n'y tombe (la zone n'a pas de jauge appariee, ou personne ne l'a contestee).
-func zonePeakProgress(gauge []zoneSample, scale zoneGauge, t0, t1 int) *float32 {
+func zonePeakProgress(gauge []zoneSample, t0, t1 int) *float32 {
 	top, found := uint64(0), false
 	for _, s := range gauge {
 		if s.t < t0 || s.t > t1 {
@@ -383,8 +388,8 @@ func zonePeakProgress(gauge []zoneSample, scale zoneGauge, t0, t1 int) *float32 
 	if !found {
 		return nil
 	}
-	return scale.progressOf(top)
-
+	p := gaugeProgressOf(top)
+	return &p
 }
 
 // checkOwnerAgreement confronte la valeur du canal juste APRES chaque capture a l'equipe du
@@ -423,11 +428,4 @@ func zoneValueAfter(ss []zoneSample, t, win int) (uint64, bool) {
 		return 0, false
 	}
 	return ss[i].v, true
-}
-
-// tallyZoneSpans compte les intervalles publies, toutes zones confondues.
-func tallyZoneSpans(states []ZoneState, cov *ZonesCoverage) {
-	for _, s := range states {
-		cov.Spans += len(s.Spans)
-	}
 }

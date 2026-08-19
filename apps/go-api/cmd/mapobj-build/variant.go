@@ -74,15 +74,23 @@ const inf = 1e18
 // vérifier un repère de terrain — la revue visuelle du 2026-08-08 a buté exactement là.
 // Le type_id n'est pas résolu en nom : cette table n'existe pas encore (question Q1 de la
 // piste palette Forge), donc on publie l'entier brut plutôt qu'un libellé deviné.
+//
+// LES LABELS NON RÉSOLUS SONT PUBLIÉS EN BRUT (lot C-ter volet 2, 2026-08-19) : un dump qui
+// ne montre que les labels que la table sait nommer cache exactement ce qu'un inventaire
+// cherche — les objets de mode dont le label n'est PAS encore craqué (les collines de KOTH
+// n'avaient aucun label résolu). Le hash brut se confronte ensuite à mapvar.LabelHash.
+// L'instance_id voyage aussi : c'est la clé que le catalogue devra décider de porter.
 type dumpedObject struct {
-	Index   int           `json:"index"`
-	TypeID  int32         `json:"type_id"`
-	Pos     mapvar.Vec3   `json:"pos"`
-	Up      mapvar.Vec3   `json:"up"`
-	Forward mapvar.Vec3   `json:"forward"`
-	Team    int           `json:"team_index"`
-	Labels  []string      `json:"labels,omitempty"`
-	Shape   *mapvar.Shape `json:"shape,omitempty"`
+	Index      int           `json:"index"`
+	TypeID     int32         `json:"type_id"`
+	InstanceID int32         `json:"instance_id"`
+	Pos        mapvar.Vec3   `json:"pos"`
+	Up         mapvar.Vec3   `json:"up"`
+	Forward    mapvar.Vec3   `json:"forward"`
+	Team       int           `json:"team_index"`
+	Labels     []string      `json:"labels,omitempty"`
+	Unresolved []int32       `json:"unresolved_labels,omitempty"`
+	Shape      *mapvar.Shape `json:"shape,omitempty"`
 }
 
 // dumpObjects écrit tous les objets d'une variante, pour inspection hors ligne.
@@ -90,22 +98,30 @@ func dumpObjects(path string, v *mapvar.Variant) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	blob, err := json.Marshal(dumpedObjectsOf(v))
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, blob, 0o644)
+}
+
+// dumpedObjectsOf projette chaque objet de la variante en forme de diagnostic : labels
+// résolus par leur nom, labels inconnus par leur hash brut — jamais tus.
+func dumpedObjectsOf(v *mapvar.Variant) []dumpedObject {
 	out := make([]dumpedObject, 0, len(v.Objects))
 	for _, o := range v.Objects {
 		d := dumpedObject{
-			Index: o.Index, TypeID: o.TypeID, Pos: o.Pos, Up: o.Up,
+			Index: o.Index, TypeID: o.TypeID, InstanceID: o.InstanceID, Pos: o.Pos, Up: o.Up,
 			Forward: o.Forward, Team: o.TeamIndex, Shape: o.Shape(),
 		}
 		for _, h := range o.Labels {
 			if n := mapvar.LabelName(h); n != "" {
 				d.Labels = append(d.Labels, n)
+				continue
 			}
+			d.Unresolved = append(d.Unresolved, h)
 		}
 		out = append(out, d)
 	}
-	blob, err := json.Marshal(out)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, blob, 0o644)
+	return out
 }

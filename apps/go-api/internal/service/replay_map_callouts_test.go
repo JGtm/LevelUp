@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/testutil"
 )
 
 // calloutsFixture pose, sous une racine neuve, le catalogue de bornes et un catalogue de
@@ -117,11 +118,14 @@ func TestMapCallouts_IsoleParTitre(t *testing.T) {
 //
 // Cliffhanger -> ridgeline : la carte de référence du gate visuel. 28 zones dont 11
 // grandes (classement du POC), provenance découpée, libellés FR/EN pleins. Il ne se
-// déclare pas SKIP quand le catalogue manque : il est versionné, son absence est un échec.
+// déclare pas SKIP quand le catalogue manque : il est versionné (git ls-files, 2026-08-19),
+// son absence est un échec. La racine vient de testutil.RepoRoot() (déduite de l'arbre
+// source) : jusqu'au 2026-08-19 la porte « racine introuvable » sautait ce test à chaque
+// exécution hors LEVELUP_REPO_ROOT, CI comprise (revue ronde 2, R2-1).
 func TestMapCallouts_DonneesReelles(t *testing.T) {
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(root)
 	if _, statErr := os.Stat(res.MapCalloutsPath(title.DefaultSlug)); statErr != nil {

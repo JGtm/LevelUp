@@ -26,13 +26,19 @@ func zoneReadAt(slot uint32, frame, tag int, value uint64) filmdec.ManagedProper
 	}
 }
 
-// zoneRampAt fabrique une rampe de jauge culminant a `peak` : trois emissions croissantes et une
-// amplitude tres au-dessus du seuil (4 096 quanta).
-func zoneRampAt(slot uint32, peak int, top uint64) []filmdec.ManagedPropertyRead {
+// gaugeQ rend le quantum d'une valeur de jauge donnee en MILLIEMES d'unite du jeu (0 = jauge au
+// repos, 1 000 = pleine) — l'echelle de gaugeProgressOf.
+func gaugeQ(milli uint64) uint64 {
+	return zoneGaugeQuantZero + milli*zoneGaugeQuantUnit/1000
+}
+
+// zoneRampAt fabrique une rampe de jauge culminant a `peak` : trois emissions croissantes (0,001,
+// 0,2 puis `topMilli` milliemes) et une amplitude tres au-dessus du seuil (4 096 quanta).
+func zoneRampAt(slot uint32, peak int, topMilli uint64) []filmdec.ManagedPropertyRead {
 	return []filmdec.ManagedPropertyRead{
-		zoneReadAt(slot, peak-4, filmdec.ManagedPropertyTagQuant, 1_000),
-		zoneReadAt(slot, peak-2, filmdec.ManagedPropertyTagQuant, 200_000),
-		zoneReadAt(slot, peak, filmdec.ManagedPropertyTagQuant, top),
+		zoneReadAt(slot, peak-4, filmdec.ManagedPropertyTagQuant, gaugeQ(1)),
+		zoneReadAt(slot, peak-2, filmdec.ManagedPropertyTagQuant, gaugeQ(200)),
+		zoneReadAt(slot, peak, filmdec.ManagedPropertyTagQuant, gaugeQ(topMilli)),
 	}
 }
 
@@ -62,10 +68,10 @@ func zoneTestInput(reads []filmdec.ManagedPropertyRead) ZoneInput {
 // et le cas nominal doit la franchir plutot que de vivre dessous.
 func bastionCase() (ZoneInput, zoneCtx) {
 	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, zoneRampAt(10, 100, 900_000)...) // zone 101, prise par l'equipe 0
-	reads = append(reads, zoneRampAt(10, 300, 950_000)...) // zone 101, reprise par l'equipe 1
-	reads = append(reads, zoneRampAt(20, 200, 800_000)...) // zone 102, prise par l'equipe 1
-	reads = append(reads, zoneRampAt(20, 400, 820_000)...) // zone 102, reprise par l'equipe 0
+	reads = append(reads, zoneRampAt(10, 100, 900)...) // zone 101, prise par l'equipe 0
+	reads = append(reads, zoneRampAt(10, 300, 950)...) // zone 101, reprise par l'equipe 1
+	reads = append(reads, zoneRampAt(20, 200, 800)...) // zone 102, prise par l'equipe 1
+	reads = append(reads, zoneRampAt(20, 400, 820)...) // zone 102, reprise par l'equipe 0
 	reads = append(reads,
 		zoneReadAt(11, 0, filmdec.ManagedPropertyTagU32, zoneNeutralOwner),
 		zoneReadAt(11, 101, filmdec.ManagedPropertyTagU32, 0),
@@ -115,16 +121,22 @@ func TestZoneStatesPublieUnEtatParZoneAppariee(t *testing.T) {
 	}
 }
 
-// TestZoneStatesProgressionSansExcursionEstAbsente : une jauge qui ne bouge pas n'a pas de
-// progression a montrer — publier 0 ou 1 affirmerait une capture qui n'a pas eu lieu.
-func TestZoneStatesProgressionSansExcursionEstAbsente(t *testing.T) {
-	var plate zoneGauge
-	if p := plate.progressOf(42); p != nil {
-		t.Errorf("progression %v sur une jauge jamais vue, attendu absente", *p)
+// TestZoneStatesProgressionSurLEchelleDuJeu : la progression est la fraction de capture sur
+// l'echelle du JEU (0 = le zero quantifie de [-100, +100], 1 = +1,0 unite), ecretee — pas la part
+// d'une excursion mesuree, qu'une emission aberrante sous zero suffisait a fausser (lot C-ter
+// volet 3, temoin `7344d24f`).
+func TestZoneStatesProgressionSurLEchelleDuJeu(t *testing.T) {
+	cas := []struct {
+		q    uint64
+		want float32
+	}{
+		{zoneGaugeQuantZero, 0}, {gaugeQ(1000), 1}, {gaugeQ(500), 0.5},
+		{zoneGaugeQuantZero - 4_000_000, 0}, {gaugeQ(1000) + 2_000_000, 1},
 	}
-	fige := zoneGaugeOf([]zoneSample{{t: 0, v: 7}, {t: 1, v: 7}})
-	if p := fige.progressOf(7); p != nil {
-		t.Errorf("progression %v sur une jauge plate, attendu absente", *p)
+	for _, c := range cas {
+		if got := gaugeProgressOf(c.q); got < c.want-0.001 || got > c.want+0.001 {
+			t.Errorf("progression de %d = %v, attendu %v", c.q, got, c.want)
+		}
 	}
 }
 
@@ -166,7 +178,7 @@ func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 	var reads []filmdec.ManagedPropertyRead
 	for slot := uint32(10); slot < 15; slot++ { // 5 slots de jauge, ~1 000 emissions chacun
 		for i := 0; i < 330; i++ {
-			reads = append(reads, zoneRampAt(slot, 8+i*15, uint64(500_000+i))...)
+			reads = append(reads, zoneRampAt(slot, 8+i*15, uint64(500+i))...)
 		}
 	}
 	for slot := uint32(30); slot < 40; slot++ { // 10 slots de propriete

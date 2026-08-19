@@ -22,6 +22,10 @@
  * l'artefact avait sous les yeux à la CUISSON ; `mapObjectives` est reconstruit à la requête.
  * `coverage.zones.catalog` dit combien de zones l'artefact comptait : s'il diffère de la liste
  * servie, `joinable` est faux et le calque vivant se tait (cf. `zoneCatalogMatches`).
+ *
+ * LA TENUE DE LA JAUGE EN DIRECT (schéma 18) SE CONVERTIT ICI, une fois par document : déclarée
+ * en temps réel (`ZONE_GAUGE_HOLD_MS`), jamais en nombre d'images — la cadence du film peut
+ * changer au build sans que la lecture change (même règle que `useReplayTiming`).
  */
 import { useCallback, useMemo } from 'react'
 
@@ -29,7 +33,14 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID, resolveTeamColorFromID } from '@/lib/halo/teamNames'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
-import { zoneCatalogMatches, zoneElementsOf, type ZoneStatesLayerInput } from './zoneStatesLayer'
+import { msToFrames } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
+import {
+  ZONE_GAUGE_HOLD_MS,
+  zoneCatalogMatches,
+  zoneElementsOf,
+  type ZoneStatesLayerInput,
+} from './zoneStatesLayer'
 
 /** Ce que le canvas recopie tel quel dans ses appels de dessin. */
 export interface ReplayZoneStates extends ZoneStatesLayerInput {
@@ -46,11 +57,12 @@ export function useZoneStates(
   scoreboard: MatchScoreboardRow[] | null | undefined,
   teamColorOf: (isAlly: boolean) => string,
   neutral: string,
-  /** `coverage.zones.catalog` de l'artefact : le nombre de zones qu'il avait sous les yeux. */
-  catalog: number | null | undefined,
+  /** Le document : `coverage.zones.catalog` (jointure) et sa cadence (tenue de la jauge). */
+  doc: ReplayDocumentReady,
 ): ReplayZoneStates {
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
-  const joinable = zoneCatalogMatches(catalog, zoneElements.length)
+  const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)
+  const gaugeHoldFrames = useMemo(() => msToFrames(ZONE_GAUGE_HOLD_MS, doc), [doc])
   const colorOfTeam = useCallback(
     (team: number) => (team >= 0 ? resolveTeamColorFromID(team) : null) ?? neutral,
     [neutral],
@@ -63,12 +75,16 @@ export function useZoneStates(
     () => ({
       colorOfOwner: (team: number) =>
         allyTeamID === null ? null : teamColorOf(team === allyTeamID),
+      // Le camp QUI CAPTURE une zone tenue est le camp d'en face (cf. ZoneStateStyle) : allié
+      // si le propriétaire est adverse, adverse s'il est allié.
+      colorOfCapturer: (owner: number) =>
+        allyTeamID === null ? null : teamColorOf(owner !== allyTeamID),
       neutral,
     }),
     [allyTeamID, teamColorOf, neutral],
   )
   return useMemo(
-    () => ({ zoneElements, joinable, style, colorOfTeam }),
-    [zoneElements, joinable, style, colorOfTeam],
+    () => ({ zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames }),
+    [zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames],
   )
 }

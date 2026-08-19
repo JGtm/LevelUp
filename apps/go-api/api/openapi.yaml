@@ -13080,6 +13080,19 @@ components:
         - coalesced_total
         - stale_count
       type: object
+    GaugePoint:
+      additionalProperties: false
+      properties:
+        t:
+          format: int64
+          type: integer
+        v:
+          format: float
+          type: number
+      required:
+        - t
+        - v
+      type: object
     GrappleCoverage:
       additionalProperties: false
       properties:
@@ -25100,6 +25113,12 @@ components:
     ZoneState:
       additionalProperties: false
       properties:
+        gauge:
+          items:
+            $ref: '#/components/schemas/GaugePoint'
+          type:
+            - array
+            - "null"
         key:
           format: int32
           minimum: 0
@@ -25127,6 +25146,9 @@ components:
           format: int64
           type: integer
         catalog:
+          format: int64
+          type: integer
+        gaugePoints:
           format: int64
           type: integer
         hillPeriods:
@@ -25174,6 +25196,7 @@ components:
         - spans
         - hillPeriods
         - unknownOwner
+        - gaugePoints
       type: object
   securitySchemes:
     sessionCookie:

@@ -107,6 +107,7 @@ var replaySchemas = []struct {
 	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
+	{"GaugePoint", replay.GaugePoint{}},
 	{"ZonesCoverage", replay.ZonesCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
@@ -282,6 +283,30 @@ var replaySchemas = []struct {
 //	                      un film a zones dont l appariement echoue et une carte hors du
 //	                      catalogue rendent tous trois un calque vide, et seuls ces compteurs les
 //	                      distinguent.
+//
+//	36 -> 36  2026-08-18  RIEN A LA RACINE, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM,
+//	                      lot C-ter volet 3). Le schema 18 publie `zoneStates[].gauge` — LA JAUGE
+//	                      DE CAPTURE EN DIRECT (serie datee `[{t, v}]`, allegee : un point par
+//	                      variation >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe
+//	                      fermee par son retour a zero, sur l echelle de `progress`, modes a zones
+//	                      SIMULTANEES seulement — jamais sur une colline de KOTH, volet 1) et
+//	                      `coverage.zones.gaugePoints` — mais ni l un ni l autre
+//	                      n est un champ RACINE du document : le premier vit sous `zoneStates[]`,
+//	                      le second sous `coverage.zones`. Le compte ci-dessous ne compte que la
+//	                      racine, il ne bouge donc pas. La ligne existe pour la meme raison que
+//	                      celle du schema 13 : une montee de schema sans ligne se lit comme un
+//	                      OUBLI. Les champs, eux, sont verrouilles — `GaugePoint` entre dans
+//	                      replaySchemas, et TestReplayContractDescribesEveryPublishedField compare
+//	                      `ZoneState`, `ZonesCoverage` et `GaugePoint` a leur schema dans les DEUX
+//	                      sens. `progress` reste tel quel : le sommet par intervalle est CONSERVE
+//	                      dans le contrat, c est le client qui cesse de le dessiner.
+//	                      RENUMEROTE LE 2026-08-19 : la jauge visait le 17, une autre session l a
+//	                      pris en fusionnant avant nous (socles de power-up dans `weaponPads`,
+//	                      eux aussi SANS champ racine neuf). Le compte reste donc 36 des DEUX
+//	                      cotes de la fusion — aucun des deux lots n ajoute de champ a la racine.
+//	                      PRECISION 2026-08-20 (re-fusion d origin) : le compte racine passe
+//	                      bien a 37, mais par l entree SUIVANTE (`mapWeaponPads`, un champ servi
+//	                      a la requete) — la jauge, elle, n y est toujours pour rien.
 //
 //	36 -> 37  2026-08-19  `mapWeaponPads` (plan PLAN_SOCLES_MVAR, section 8 ter) : LES
 //	                      EMPLACEMENTS DE SOCLE de la carte, CROISES avec les socles du match.

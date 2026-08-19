@@ -1,5 +1,5 @@
 /**
- * useZoneStates.test.ts — LA STABILITÉ DE RÉFÉRENCE et LA GARDE DE JOINTURE.
+ * useZoneStates.test.ts — LA STABILITÉ DE RÉFÉRENCE, LA GARDE DE JOINTURE et LES ENCRES.
  *
  * L'objet rendu par ce hook entre dans les dépendances de `draw` (`ReplayCanvas`). Un littéral
  * neuf à chaque rendu recuit donc le `useCallback` du tracé — TOUTE la scène — à chaque
@@ -9,6 +9,9 @@
  * Il verrouille aussi ce que le hook REFUSE : `zoneRef` est un index figé à la cuisson de
  * l'artefact, la liste servie est reconstruite à la requête. Quand les deux ne s'accordent pas,
  * le calque vivant se tait plutôt que de teinter la mauvaise zone.
+ *
+ * Et depuis le schéma 18 : la TENUE de la jauge en direct est convertie ici, en frames de CE
+ * document, et l'encre du camp QUI CAPTURE est celle du camp d'en face du propriétaire.
  */
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -16,6 +19,7 @@ import { describe, expect, it } from 'vitest'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
+import { testReplayDoc } from './test/testDoc'
 import { useZoneStates } from './useZoneStates'
 import { zoneCatalogMatches } from './zoneStatesLayer'
 
@@ -29,8 +33,16 @@ function element(kind: 'zone' | 'marker', x: number): ObjectiveElementReady {
 
 const OBJECTIFS: ObjectiveElementReady[] = [element('zone', -20), element('marker', 0), element('zone', 20)]
 
-/** Le catalogue que l'artefact avait sous les yeux : deux zones, comme la liste servie. */
-const CATALOGUE = 2
+/**
+ * Le document tel que le hook le lit : le catalogue que l'artefact avait sous les yeux (deux
+ * zones, comme la liste servie) et sa cadence (100 ms par frame).
+ */
+const docWith = (catalog: number | undefined) =>
+  testReplayDoc({
+    frameIntervalMs: 100,
+    coverage: catalog === undefined ? undefined : { zones: { catalog } },
+  } as never)
+const DOC = docWith(2)
 
 /** Le tableau de bord réduit à ce que le hook lit : la ligne « moi » et son `team_side`. */
 const TABLEAU = [{ is_me: true, team_side: 't1' }] as unknown as MatchScoreboardRow[]
@@ -41,7 +53,7 @@ describe('useZoneStates', () => {
   it('rend la MÊME référence quand rien ne change — un survol ne doit pas recuire le tracé', () => {
     const { result, rerender } = renderHook(
       (p: { objectifs: ObjectiveElementReady[] }) =>
-        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', CATALOGUE),
+        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC),
       { initialProps: { objectifs: OBJECTIFS } },
     )
     const premier = result.current
@@ -57,7 +69,7 @@ describe('useZoneStates', () => {
   it('rend une NOUVELLE référence quand les objectifs servis changent', () => {
     const { result, rerender } = renderHook(
       (p: { objectifs: ObjectiveElementReady[] }) =>
-        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', CATALOGUE),
+        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC),
       { initialProps: { objectifs: OBJECTIFS } },
     )
     const premier = result.current
@@ -67,32 +79,49 @@ describe('useZoneStates', () => {
   })
 
   it("ne garde que les zones, dans l'ordre servi — c'est ce que `zoneRef` indexe", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', CATALOGUE))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
     expect(result.current.zoneElements.map((e) => e.x)).toEqual([-20, 20])
     expect(result.current.joinable).toBe(true)
   })
 
-  it("sans ligne « moi », aucun camp n'est allié : l'encre du propriétaire reste inconnue", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, null, ENCRE, '#neutre', CATALOGUE))
+  it("sans ligne « moi », aucun camp n'est allié : les encres du propriétaire et du capteur restent inconnues", () => {
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, null, ENCRE, '#neutre', DOC))
     expect(result.current.style.colorOfOwner(1)).toBeNull()
+    expect(result.current.style.colorOfCapturer(1)).toBeNull()
   })
 
   it("avec la ligne « moi », le camp du tableau de bord est l'allié", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', CATALOGUE))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
     expect(result.current.style.colorOfOwner(1)).toBe('#allie')
     expect(result.current.style.colorOfOwner(0)).toBe('#adverse')
+  })
+
+  it("le camp QUI CAPTURE une zone tenue est le camp d'en face du propriétaire", () => {
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
+    // Ma zone (camp 1) se fait capturer : l'arc est ADVERSE ; leur zone (camp 0) : l'arc est ALLIÉ.
+    expect(result.current.style.colorOfCapturer(1)).toBe('#adverse')
+    expect(result.current.style.colorOfCapturer(0)).toBe('#allie')
+  })
+
+  it('la tenue de la jauge en direct est UNE seconde, en frames de ce document', () => {
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
+    expect(result.current.gaugeHoldFrames).toBe(10)
+    const lent = renderHook(() =>
+      useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', testReplayDoc({ frameIntervalMs: 250 })),
+    )
+    expect(lent.result.current.gaugeHoldFrames).toBe(4)
   })
 
   // VERROU DE LA REVUE R1 : le catalogue a bougé depuis la cuisson (une zone ajoutée au
   // catalogue de formes, ou un rôle de plus dans la table du titre). `zoneRef` ne désigne plus
   // la même zone : le calque vivant ne peint RIEN.
   it('catalogue de l\'artefact différent de la liste servie : la jointure est refusée', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', 3))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(3)))
     expect(result.current.joinable).toBe(false)
   })
 
   it('couverture absente : « pas vérifiable » se traite comme « pas joignable »', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', undefined))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(undefined)))
     expect(result.current.joinable).toBe(false)
   })
 })

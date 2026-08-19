@@ -105,6 +105,11 @@ type zoneSeries struct {
 	gauge map[uint32][]zoneSample // tag 3 : la jauge de capture
 	owner map[uint32][]zoneSample // tag 4 : le proprietaire
 	keys  map[uint32]uint32       // tag 5 : la cle de nommage, une par slot
+	// desig : tag 5, la SERIE des identifiants CHAINES par slot — en KOTH le slot de l'objet
+	// de mode y porte le DESIGNATEUR de la colline courante (cf. zone_states_hill.go). Seules
+	// les lectures dont le record chaine entrent ici : le tag 5 non chaine des slots combles est
+	// de la contamination d'ancrage (mesure du lot C-ter volet 1, 4 films).
+	desig map[uint32][]zoneSample
 	slots int
 }
 
@@ -142,7 +147,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 		return buildHillStates(cat, ser, c, cov), cov
 	}
 	states := zoneOwnerStates(in, ser, pairs, c, cov)
-	tallyZoneSpans(states, cov)
+	tallyZoneStates(states, cov)
 	return states, cov
 }
 
@@ -153,7 +158,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 // phase 2a). Les retenir ferait entrer du bruit dans les series.
 func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	out := zoneSeries{gauge: map[uint32][]zoneSample{}, owner: map[uint32][]zoneSample{},
-		keys: map[uint32]uint32{}}
+		keys: map[uint32]uint32{}, desig: map[uint32][]zoneSample{}}
 	// L'ensemble des slots QUI PARLENT. Ce sont les slots de l'archetype 13, PAS les slots de
 	// vie publies du rejeu : deux espaces distincts, qui n'ont ni la meme origine ni le meme
 	// sens — d'ou l'ensemble local plutot qu'un appel au helper des pistes publiees.
@@ -174,10 +179,13 @@ func zoneSeriesOf(reads []filmdec.ManagedPropertyRead, c zoneCtx) zoneSeries {
 			out.owner[r.Slot] = append(out.owner[r.Slot], zoneSample{t: t, v: r.Value})
 		case filmdec.ManagedPropertyTagStringID:
 			out.keys[r.Slot] = uint32(r.Value)
+			if r.Chained {
+				out.desig[r.Slot] = append(out.desig[r.Slot], zoneSample{t: t, v: r.Value})
+			}
 		}
 	}
 	out.slots = len(seen)
-	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner} {
+	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig} {
 		for s := range m {
 			ss := m[s]
 			sort.SliceStable(ss, func(i, j int) bool { return ss[i].t < ss[j].t })
@@ -312,49 +320,36 @@ func sortedZoneSlots[T any](m map[uint32]T) []uint32 {
 	return out
 }
 
-// zoneGauge porte l'excursion MESUREE de la jauge d'une zone sur ce match : le plancher et le
-// sommet observes, qui donnent son echelle a la progression publiee.
-type zoneGauge struct {
-	low, high uint64
-	seen      bool
-}
-
-// zoneGaugeOf releve l'excursion d'une serie de jauge.
+// L'ECHELLE DE LA JAUGE EST CELLE DU JEU, ET C'EST UNE MESURE QUI L'IMPOSE (lot C-ter volet 3,
+// 2026-08-19, temoin `echelle_<film>.log`). Le deser declare [-100, +100] sur 24 bits ; la
+// jauge de capture y vit sur [0, +1] : la valeur au repos est EXACTEMENT le zero quantifie
+// (2^23 - 1 = 8 388 607, la valeur la plus frequente de chacun des sept slots de jauge des trois
+// temoins), et une capture menee a terme culmine juste sous +1,0 (8 471 108 a 8 472 395 quanta,
+// pour 8 472 493 a l'unite). C'est la meme echelle sur les deux Bastion et sur le KOTH.
 //
-// POURQUOI L'ECHELLE EST CELLE DU MATCH, ET PAS LA PLAGE DECLAREE DU DESER. Le deser annonce
-// [-100, +100] (constantes du jeu), mais la mesure du 2026-08-18 dit que la jauge n'y fait qu'une
-// EXCURSION MINUSCULE autour de zero : ramenee lineairement sur la plage declaree, toute valeur
-// reelle vaut 0,50 a trois decimales pres — un arc a moitie plein en permanence, c'est-a-dire une
-// information nulle affichee comme une mesure. La progression publiee est donc la part de
-// l'excursion OBSERVEE sur ce match pour CETTE zone : 1 = le sommet atteint (une capture menee a
-// son terme), 0 = le plancher. C'est une echelle relative, et le champ le dit.
-func zoneGaugeOf(ss []zoneSample) zoneGauge {
-	var g zoneGauge
-	for _, s := range ss {
-		switch {
-		case !g.seen:
-			g.low, g.high, g.seen = s.v, s.v, true
-		case s.v < g.low:
-			g.low = s.v
-		case s.v > g.high:
-			g.high = s.v
-		}
-	}
-	return g
-}
+// POURQUOI PAS L'EXCURSION MESUREE DU MATCH (la convention de la phase 2b). Elle etait juste tant
+// qu'aucune emission ne sortait de [0, 1] ; or `7344d24f` porte, sur deux slots de jauge sur
+// trois, UNE emission aberrante sous zero (-2,3 et -51,6 unites, la premiere emission du slot),
+// et cette seule valeur, prise pour plancher, ecrasait toutes les captures reelles de la zone
+// dans [0,694 ; 1] et [0,981 ; 1] : un arc aux deux tiers plein au DEPART d'une capture, ou plein
+// en permanence. Le sommet par intervalle ne le montrait pas (il vaut ~1 dans les deux echelles) ;
+// la jauge en direct l'a montre. L'echelle absolue rend les deux — `progress` et `gauge` — sur
+// la meme grandeur : la fraction de capture, 0 = vide, 1 = pleine, ecretee hors de [0, 1].
+const (
+	// zoneGaugeQuantZero est le quantum de la valeur 0,0 sur la plage declaree [-100, +100] en
+	// 24 bits : (2^24 - 1) x 100 / 200.
+	zoneGaugeQuantZero = 8388607
+	// zoneGaugeQuantUnit est le nombre de quanta par unite : (2^24 - 1) / 200.
+	zoneGaugeQuantUnit = 83886
+)
 
-// progressOf ramene un quantum a [0, 1] sur l'excursion mesuree. Rend nil quand l'excursion est
-// vide ou plate : une jauge qui ne bouge pas n'a pas de progression a montrer.
-func (g zoneGauge) progressOf(q uint64) *float32 {
-	if !g.seen || g.high <= g.low {
-		return nil
+// gaugeProgressOf ramene un quantum de jauge a [0, 1] sur l'echelle du jeu, ecrete.
+func gaugeProgressOf(q uint64) float32 {
+	if q <= zoneGaugeQuantZero {
+		return 0
 	}
-	if q < g.low {
-		q = g.low
+	if q >= zoneGaugeQuantZero+zoneGaugeQuantUnit {
+		return 1
 	}
-	if q > g.high {
-		q = g.high
-	}
-	p := float32(float64(q-g.low) / float64(g.high-g.low))
-	return &p
+	return float32(float64(q-zoneGaugeQuantZero) / zoneGaugeQuantUnit)
 }
