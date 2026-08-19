@@ -1,3 +1,25 @@
+## [2026-08-19] Socles de carte : du catalogue au calque, allumes seulement — Complete
+
+**Statut** : Complete (branche `wt/pads-catalogue`, 4 commits `2f4ca95bc`..`9131d9679`, FUSIONNEE dans
+`feat/v75` par le superviseur + correctif de fusion `4aeb4bb07` : `mapWeaponPads.pads` ajoute a la carte
+des tableaux nullables et a l'allowlist hors frontiere du contrat web — l'agent avait un gate vert sur
+son arbre, le superviseur a d'abord lu un FAUX VERT de pipe avant de rejouer `tsc -b --force` sans pipe).
+**Decision technique** : catalogue statique `map_weapon_pads.json` fige hors ligne (`cmd/mapopads-build`,
+frere de `mapobj-build` justifie : nommage des dumps, index map_id) — **72 cartes, 1 454 emplacements**
+(1 143 rack, 215 power, 96 powerup), `type_id` brut + famille derivee A COTE, 72/72 cartes resolues par
+regles exactes, piege Forge respecte (le rack de Smallhalla rend 11/11 a 2-8 mm de l'oracle) ; croisement
+« allumes seulement » (decision utilisateur du 19/08) cote REPONSE (`mapWeaponPads`, patron
+`mapObjectives` : contrat 36 -> 37, artefact 17 INCHANGE) : seuls les emplacements confirmes par les
+`weaponPads` du match a < 1 m partent au client ; un socle film sans catalogue reste publie.
+**Resultats** : 4 temoins — Catalyst KOTH/CTF 10 allumes + 1 eteint, Cliffhanger CTF 10 allumes + 8
+eteints, **Cliffhanger Fiesta 0 allume malgre 18 poses (ASSERTION de test)** ; prémisse du brief
+corrigee sur pieces : le calque dessinait DEJA tous les socles a toutes les images — le vrai gain du
+croisement est la POSITION DU SPAWNER (4,7 cm max vs centroide des apparitions) et le compte de ce qui
+n'est pas affiche (`catalogN`). Gates Go + web verts (1 847 tests).
+**Conclusion / prochaine etape** : re-cuire les artefacts au schema 17 pour que le 11e emplacement de
+Catalyst (le power-up) s'allume — attend la fenetre ops (reportee) ; reprise « posés-mais-eteints avec
+leur etat » conditionnee a une source d'activation lisible (voie API fermee par la sonde du meme jour).
+
 ## [2026-08-19] Sonde variant/socles — l'activation n'est dans AUCUN asset de l'API — Complete
 
 **Statut** : Complete (sonde ; branche `wt/variant-sonde`, 5 commits `05a598053`..`c35573d8b`,
