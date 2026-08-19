@@ -1,3 +1,34 @@
+## [2026-08-19] v7.5 rejeu 2D — lot C-ter volet 3 : revue adversariale ronde 1 (0 P0/P1, 4 constats de forme corriges) — Complete
+
+**Statut** : Complete (branche `wt/jauge-live`, un commit au-dessus de `9039fb646`, NON fusionnee —
+regime branche unique). Detail : `LOTCTER_VOLET3.md` §10. Gates : section « revue ronde 1 » de
+`LOTCTER_volet3_gates.log` (tous les EXIT_* a 0). **Aucun changement de comportement** : un test
+ajoute, deux godoc remis en accord avec le code, un export mort supprime, quatre comptes recomptes.
+**Decision technique** : (1) LA CLAUSE `!last` DE L'ALLEGEMENT GAGNE SON TEST. Elle est vivante sur
+donnees reelles — sur `7344d24f` le sommet 0,991 d'une capture n'est publie que par elle (pas
+precedent 0,976 : 0,015 de variation UNE frame plus tard, sous les deux seuils) — et aucune
+mesure ne la couvrait. `TestZoneGaugeDernierPointToujoursPublie` rejoue cette rampe et verifie EN
+PLUS que le dernier pas reste sous les deux seuils, sans quoi le cas deviendrait vacant sans
+rougir. (2) LES GODOC DISENT L'ECHELLE DU JEU : `ZoneState.Gauge` et `GaugePoint.V`
+(`document_zones.go:123-124` et `:148`) decrivaient encore l'excursion mesuree de v16.
+(3) `zoneStateAt` EST SUPPRIME (regle « 0 code mort ») : exporte, documente « c'est elle que le
+rendu appelle a chaque image » alors que `drawZoneStates` appelle le prive `spanStateAt` ; grep sur
+tout `apps/web` (node_modules compris) = zero appelant de production et zero reemploi prevu (la
+seule mention au plan est CT.3.2, close, servie par `zoneGaugeAt`). `spanStateAt` reste l'unique
+lecture d'etat et herite de la doc.
+**Resultats** : CONTROLE NEGATIF joue sur (1) — la clause neutralisee (`last := false`) donne
+`--- FAIL: TestZoneGaugeDernierPointToujoursPublie` (« 7 points publies pour 8 emissions », serie
+arretee a `{1072 0.976}`), et c'est le SEUL rouge de tout `internal/analysis/replay` (41 s) :
+preuve que la clause n'avait aucun autre gardien. Mutation annulee, production intacte. Sur (3),
+trois des quatre cas supprimes etaient deja couverts par les tests de `drawZoneStates` ; le
+quatrieme — la zone ACTIVE — ne l'etait pas et passe AU RENDU (surbrillance : remplie sans
+proprietaire, lisere renforce). Comptes recomptes : `zoneStatesLayer.test.ts` 24 -> 21 cas (le
+journal annoncait 26, le plan 22 puis 26), `replayContract.test.ts:163` « 47 chemins » pour un
+tableau de 50 -> 50. Gates : gofmt 0, vet 0, `go test ./internal/analysis/replay/` ok (38,5 s),
+`tsc -b --force` 0, vitest 148 fichiers / 1 829 tests.
+**Conclusion / prochaine etape** : les 25 conditions du volet tiennent, la revue est close sans
+P0 ni P1. Le volet 3 reste a fusionner dans `feat/v75` avec le reste de la branche unique.
+
 ## [2026-08-19] v7.5 rejeu 2D — lot C-ter volet 3 : la jauge de capture EN DIRECT (schema 17), et le recadrage « pas de jauge en KOTH » — Complete
 
 **Statut** : Complete (CT.3.1, CT.3.2, CT.3.3 ; branche `wt/jauge-live`, `97bab1ccc`..HEAD, NON fusionnee —

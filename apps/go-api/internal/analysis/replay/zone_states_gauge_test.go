@@ -1,9 +1,10 @@
 package replay
 
 // zone_states_gauge_test.go — LA JAUGE EN DIRECT (schema 17), sur des enregistrements CONSTRUITS :
-// la serie est ALLEGEE comme ecrit (un point par variation >= 0,02 OU par seconde de rampe — deux
-// tests, un par clause, qui ECHOUENT si la clause est retiree), elle est monotone en T, dans
-// [0, 1], et VIDE hors rampe ; elle sort du calque en Bastion, et JAMAIS sur une colline (KOTH).
+// la serie est ALLEGEE comme ecrit (un point par variation >= 0,02, OU par seconde de rampe, ET le
+// DERNIER point de chaque rampe toujours — trois tests, un par clause, qui ECHOUENT si la clause
+// est retiree), elle est monotone en T, dans [0, 1], et VIDE hors rampe ; elle sort du calque en
+// Bastion, et JAMAIS sur une colline (KOTH).
 //
 // Les fabriques partagees vivent dans `zone_states_test.go`.
 
@@ -90,6 +91,45 @@ func TestZoneGaugeSerieReEmetChaqueSeconde(t *testing.T) {
 			t.Errorf("points %d et %d : %d frames sans point, plus d'une seconde", i-1, i,
 				pts[i].T-pts[i-1].T)
 		}
+	}
+}
+
+// TestZoneGaugeDernierPointToujoursPublie — LA CLAUSE DU DERNIER POINT (`!last` dans
+// appendGaugeWindow). Le SOMMET d'une rampe se gagne souvent par un pas COURT, et les deux clauses
+// d'allegement l'ecarteraient : sur `7344d24f` (zone 1), la jauge monte de 0,028 toutes les deux
+// frames jusqu'a 0,976, puis atteint 0,991 la frame SUIVANTE — 0,015 de variation (sous 0,02) une
+// frame apres le point precedent (sous la seconde). Sans `!last`, l'arc s'arreterait a 0,976 et le
+// sommet reellement atteint ne serait jamais publie ; le film le porte, l'oeil le lit.
+//
+// Le test verifie AUSSI que le dernier pas reste sous LES DEUX seuils : sans cette garde, une
+// retouche des valeurs rendrait le cas vacant (le point passerait par la clause de variation) et
+// la clause `!last` redeviendrait non couverte sans que rien ne rougisse.
+func TestZoneGaugeDernierPointToujoursPublie(t *testing.T) {
+	gap := zoneGaugeGapFrames(100)
+	ss := []zoneSample{
+		{t: 1060, v: gaugeQ(805)}, {t: 1062, v: gaugeQ(833)}, {t: 1064, v: gaugeQ(862)},
+		{t: 1066, v: gaugeQ(891)}, {t: 1068, v: gaugeQ(919)}, {t: 1070, v: gaugeQ(948)},
+		{t: 1072, v: gaugeQ(976)}, {t: 1073, v: gaugeQ(991)},
+	}
+	wins := []zoneGaugeWindow{{t0: 1060, t1: 1073}}
+	pts := zoneGaugeSeriesOf(ss, wins, gap)
+	checkGaugeSeries(t, pts, wins)
+	if len(pts) != len(ss) {
+		t.Fatalf("%d points publies pour %d emissions, attendu %d (chaque pas de 0,028 franchit le "+
+			"seuil, et le SOMMET est publie meme sous les seuils) : %v", len(pts), len(ss), len(ss), pts)
+	}
+	last, avant := pts[len(pts)-1], pts[len(pts)-2]
+	if last != (GaugePoint{T: 1073, V: 0.991}) {
+		t.Errorf("dernier point %+v, attendu le SOMMET {1073 0.991} — sans la clause `!last` la serie "+
+			"s'arreterait a %+v : %v", last, avant, pts)
+	}
+	if d := last.V - avant.V; d >= float32(zoneGaugeMinDeltaMilli)/zoneGaugeMilli {
+		t.Errorf("le dernier pas vaut %.4f, au-dessus du seuil de variation : le cas ne prouve plus "+
+			"rien sur la clause `!last` (la clause de variation suffirait)", d)
+	}
+	if d := last.T - avant.T; d >= gap {
+		t.Errorf("le dernier pas suit de %d frames (gap = %d) : le cas ne prouve plus rien sur la "+
+			"clause `!last` (la clause de la seconde suffirait)", d, gap)
 	}
 }
 

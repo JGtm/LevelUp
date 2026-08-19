@@ -18,12 +18,7 @@ import type { ReplayMapObjectives } from '@/lib/api/types'
 import { normalizeMapObjectives, OBJECTIVE_TEAM_NEUTRAL } from './objectivesLayer'
 import { count, recordingContext, valuesOf } from './test/recordingContext'
 import type { ReplayZoneStateReady } from './replayNormalize'
-import {
-  drawZoneStates,
-  zoneElementsOf,
-  zoneGaugeAt,
-  zoneStateAt,
-} from './zoneStatesLayer'
+import { drawZoneStates, zoneElementsOf, zoneGaugeAt } from './zoneStatesLayer'
 
 const MO: ReplayMapObjectives = {
   zones: [
@@ -67,30 +62,6 @@ const ZONE_STATES: ReplayZoneStateReady[] = [
   },
   { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }], gauge: [] },
 ]
-
-describe('zoneStateAt', () => {
-  it('rend l’intervalle qui couvre la frame, bornes INCLUSES', () => {
-    expect(zoneStateAt(ZONE_STATES, 0, 10)?.owner).toBe(0)
-    expect(zoneStateAt(ZONE_STATES, 0, 19)?.owner).toBe(0)
-    expect(zoneStateAt(ZONE_STATES, 0, 20)?.owner).toBe(1)
-  })
-
-  it('« personne ne la tient » est une MESURE : owner null, pas un état absent', () => {
-    const now = zoneStateAt(ZONE_STATES, 0, 3)
-    expect(now).not.toBeNull()
-    expect(now?.owner).toBeNull()
-  })
-
-  it('rend null hors de tout intervalle, et pour une zone sans état', () => {
-    expect(zoneStateAt(ZONE_STATES, 0, 41)).toBeNull()
-    expect(zoneStateAt(ZONE_STATES, 7, 10)).toBeNull()
-    expect(zoneStateAt([], 0, 10)).toBeNull()
-  })
-
-  it('porte la zone ACTIVE', () => {
-    expect(zoneStateAt(ZONE_STATES, 1, 30)?.active).toBe(true)
-  })
-})
 
 describe('zoneGaugeAt — l’escalier de la jauge en direct', () => {
   const gauge = ZONE_STATES[0].gauge
@@ -180,6 +151,17 @@ describe('drawZoneStates', () => {
     drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 3)
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'stroke')).toBe(1)
+  })
+
+  // La zone ACTIVE est le SEUL cas où le calque remplit sans propriétaire : la surbrillance dit
+  // « c'est ici que ça se joue » là où le liseré seul dirait « personne ne la tient ». Ce cas
+  // porte la lecture d'`active` depuis la revue du 2026-08-19 : elle était vérifiée sur la
+  // fonction de lecture exportée, que plus rien n'appelait — c'est au RENDU qu'elle se voit.
+  it('la zone ACTIVE est en SURBRILLANCE : remplie sans propriétaire, liseré renforcé', () => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer(), [ZONE_STATES[1]], VIEW, 30)
+    expect(count(ops, 'fill')).toBe(1)
+    expect(valuesOf(ops, 'lineWidth')).toContain(3.5)
   })
 
   it('une zone sans état à cette frame n’est PAS repeinte : elle reste au trait faible', () => {

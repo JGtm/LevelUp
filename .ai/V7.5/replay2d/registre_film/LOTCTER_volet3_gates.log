@@ -13,3 +13,15 @@ EXIT_VITEST=0
 EXIT_ESLINT=0
 # eslint : 20 avertissements, 0 erreur (plafond : baseline 19 + 1 connu ReplayFeedName.tsx:50)
 EXIT_CROSSFEATURE=0
+
+# --- revue ronde 1 (2026-08-19) : 4 constats de forme corriges, 0 changement de comportement ---
+# HEAD au lancement : 9039fb646 ; worktree LevelUp-wt-jauge-live, branche wt/jauge-live
+# perimetre : Go = internal/analysis/replay (CGO_ENABLED=0) ; web = src/features/match-replay + src/lib
+EXIT_GOFMT=0 (fichiers non formates : 0)
+EXIT_VET=0
+EXIT_TEST_REPLAY=0 (go test -count=1 ./internal/analysis/replay/ — ok, 38,5 s)
+EXIT_TSC=0 (npx tsc -b --force, node_modules/.tmp purge avant)
+EXIT_VITEST=0 (npx vitest run src/features/match-replay src/lib — 148 fichiers, 1829 tests)
+# controle negatif du point 1 (mutation `last := false`, hors commit, annulee par git checkout --) :
+#   --- FAIL: TestZoneGaugeDernierPointToujoursPublie (7 points publies pour 8 emissions)
+#   SEUL rouge du paquet internal/analysis/replay (41 s) : la clause `!last` n'avait aucun autre gardien
