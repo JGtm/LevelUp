@@ -149,14 +149,14 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
 
 ### Phase 4 — le variant de MODE (Q4 + H-SCENARIO) (commit 5)
 
-- [ ] 4.1 Inventorier les `.mvar` du depot par carte : combien de fichiers, quels noms
+- [x] 4.1 Inventorier les `.mvar` du depot par carte : combien de fichiers, quels noms
       (`ctf_breaker.mvar`, `ridgeline.mvar`, `map.mvar`...), quel `level_id`.
-- [ ] 4.2 Cliffhanger : comparer objet par objet les fichiers servant le match CTF
+- [x] 4.2 Cliffhanger : comparer objet par objet les fichiers servant le match CTF
       (`bcb6d393`) et le match Super Fiesta (`000d5950`) — meme fichier ? memes objets ?
-- [ ] 4.3 Chercher, dans la chaine `himap` et le catalogue UGC, ce qu'une combinaison
+- [x] 4.3 Chercher, dans la chaine `himap` et le catalogue UGC, ce qu'une combinaison
       carte x mode expose comme fichiers (tags de scenario / gametype referencant des
       spawners).
-- [ ] 4.4 Verdict : H-SCENARIO-a (activation) ou -b (pose), ou « hors de portee hors
+- [x] 4.4 Verdict : H-SCENARIO-a (activation) ou -b (pose), ou « hors de portee hors
       ligne » ecrit comme tel.
 
 ### Phase 5 — generalisation (Q5) (commit 6)
@@ -249,6 +249,31 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
   ne revele AUCUN emplacement que le film ignorait. Ce qu'il apporte est ailleurs : il les
   donne TOUS sans exiger de recurrence (le film `530820e5` n'en montre que 6 sur 11) et il
   donne leur famille.
+- **2026-08-19, phase 4 close — H-SCENARIO-b REFUTEE, H-SCENARIO-a RETENUE.**
+  Corpus : **199 fichiers lus, 0 en echec**. Une carte expose un ou plusieurs `.mvar`, et
+  les seconds fichiers portent souvent un nom de MODE (`ctf_breaker.mvar`,
+  `ctf_aquarius.mvar`, `va_behemoth.mvar`, `ridgeline.mvar`) — la piste « un fichier par
+  combinaison carte x mode » avait donc une base de nommage. Elle ne resiste pas a la
+  mesure. Cliffhanger expose `cliffhanger_map.mvar` (453 objets) et
+  `cliffhanger_ridgeline.mvar` (443 objets), meme `level_id` `-1009396204` : **les deux
+  portent EXACTEMENT les memes 17 socles, aux memes positions, avec les memes type_id**
+  (10/10 apparies contre l'oracle CTF `bcb6d393`, mediane 0,01 m, temoin 5,6 %). Le choix
+  du fichier ne change donc rien.
+  **Et c'est ce qui tranche H-SCENARIO** : la meme carte, en Super Fiesta (`000d5950`),
+  rend **zero** socle mesure — son artefact cuit n'a meme pas de cle `weaponPads`. Le
+  fichier de carte, identique dans les deux cas, POSE les socles ; il n'explique pas leur
+  extinction. Ce qui allume ou eteint un socle vient d'ailleurs, et **le `.mvar` n'en dit
+  rien** : ces objets ne portent AUCUN label, donc aucun filtre `*_include` / `*_exclude`
+  comme en portent les objets d'objectif. La lecture « le mode active » est retenue par
+  elimination, pas par lecture directe — c'est une nuance, elle est ecrite.
+  4.3, sur pieces : l'asset `Maps` de l'UGC n'expose que des `.mvar`
+  (`cmd/mapobj-build/fetch.go`, `Files.FileRelativePaths`). Mais le depot SAIT DEJA parler
+  aux variants de mode : `internal/platform/halo/discovery_types.go` declare
+  `AssetTypeGameVariant -> "ugcGameVariants"`, et `internal/openspartan/mapper/mapper.go`
+  enregistre `UgcGameVariant.AssetId` / `VersionId` de chaque match. L'endpoint
+  `/hi/ugcGameVariants/{assetId}/versions/{versionId}` est donc atteignable avec
+  l'outillage existant — un appel reseau, hors du perimetre hors ligne de ce lot, mais la
+  piste est nommee et l'identifiant necessaire est deja en base.
 
 ## 8. Verdict et suite
 
