@@ -1,3 +1,20 @@
+## [2026-08-20] Garde Fiesta du rejeu 2D : correlation sur mode_category, plus de deviner sur un libelle — Complete
+
+**Statut** : Complete (branche `wt/fiesta-mode`, commit unique `b43af20ea`, FUSIONNEE dans `feat/v75`
+par le superviseur ; gates du frere : Go build/vet/test + golangci 0, web tsc/eslint/vitest 951/951).
+**Decision technique** : demande utilisateur du 20/08 (« on resout bien le mode dans l'app : correle
+au lieu de deviner ») — `MatchViewHeader.ModeCategory` (`mode_category`, omitempty) expose cote Go,
+resolu par LA taxonomie canonique deja injectee pour la galerie media (`InferModeCategoryFromPairName`
+via `wire.haloInfiniteModeTaxonomy`, 3e consommateur), calcule en post-etape du header ; cote web,
+`matchFiestaGuard` correle sur `mode_category` EN PREMIER, les libelles ne restent qu'un repli
+(exclusivite testee : un `playlist_label` « Fiesta » seul ne suffit plus). Retrocompatible (H5 :
+champ absent -> repli).
+**Resultats** : le trou de 0,7 % (3 matchs Fiesta dont le pair_name masquait l'indice) est FERME —
+`InferModeCategoryFromPairName` conserve l'identite « Fiesta » que `NormalizeModeLabel` perdait ;
+contrat regenere (openapi-gen -check, generate-types). Decouverte notee : un commentaire de test
+invoque `exactOptionalPropertyTypes` qui n'est active nulle part (hors scope).
+**Conclusion** : le report « garde Fiesta, trou 0,7 % » du 19/08 est clos.
+
 ## [2026-08-20] v7.5 rejeu 2D — lot C-ter clos : la colline de KOTH designee par le film, les formes de colline au catalogue, la jauge de capture en direct (schema 18) — Complete
 
 **Contexte** : pilotage superviseur, 3 volets paralleles en worktrees + 1 integration, 2 rondes de revue adversariale par volet code, arbitrages gate 1/2 traces au plan §7. Incidents traverses : limites de quota (Fable puis Opus puis Sonnet — executeurs relances en changeant de modele), schema 17 pris par le lot socles de l'autre session (re-numerotation 18, meme regle que 15->16), CI d'origin rouge 3 push sur `cmd/variant-probe` (reparee ici par allowlists datees, dette routee au registre).
