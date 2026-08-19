@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 )
 
 // TestArtifactUpToDate — la clé de reprise du backfill : seule la version de schéma
@@ -41,10 +42,15 @@ func TestArtifactUpToDate(t *testing.T) {
 // TestResolveMapEntry_SurLeCatalogueLivre — le builder résout les candidats DANS L'ORDRE
 // sur le catalogue de bornes VERSIONNÉ, et rend l'échec voulu quand aucun ne résout.
 // Oracle réel : Cliffhanger -> module ridgeline (la référence du POC).
+//
+// AUCUN SKIP : la racine vient de testutil.RepoRoot() (déduite de l'arbre source), et tout
+// ce que NewBuilder lit est versionné — map_quant_bounds.json, weapon_names.toml,
+// replay_labels.toml (git ls-files, 2026-08-19). Leur absence est une installation cassée,
+// pas une dispense.
 func TestResolveMapEntry_SurLeCatalogueLivre(t *testing.T) {
-	repoRoot, err := title.FindRepoRoot()
+	repoRoot, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine repo introuvable: %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	b, err := NewBuilder(repoRoot, title.DefaultSlug)
 	if err != nil {
