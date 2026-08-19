@@ -137,8 +137,14 @@ export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = 
   // pose de surbouclier et UNE de camouflage, et les DEUX ont un poseur et sont `dropped` (23 et
   // 38 ms, 0,53 et 0,67 m de la fin de vie de leur poseur). Aucune position récurrente n'a pu
   // être cherchée. Coder une règle dont aucun membre mesuré ne relève serait du vocabulaire
-  // mort (CLAUDE.md n°7) : la famille entrera dans cette table le jour où un film portera de
-  // vrais power-ups de socle, et pas avant.
+  // mort (CLAUDE.md n°7).
+  //
+  // LE SOCLE EXISTE DEPUIS LE 2026-08-19 (schéma 17) ET NE CHANGE RIEN ICI — à lire avant de
+  // « corriger » cette absence. La voie `ti=37` publie bien un vrai power-up de socle, mais
+  // dans `weaponPads`, l'autre canal du document, et le calque des SOCLES le dessine (grand,
+  // nommé, avec sa vignette de HUD). Les faire entrer dans cette table-ci dessinerait une
+  // SECONDE marque au même endroit. Ce qui reste hors table est ce que voit CE calque : les
+  // power-ups LÂCHÉS à la mort, dont la décision n'a pas bougé.
 }
 
 /**

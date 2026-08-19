@@ -19,6 +19,11 @@
  * CETTE LISTE EST LA RÈGLE, PAS LE RELEVÉ D'UN CORPUS. Elle est écrite AVANT la mesure et vaut
  * pour les matchs à venir : un socle qui porterait une arme de puissance jamais vue dans les
  * quatre témoins doit être grand du premier coup.
+ *
+ * TOUT SOCLE N'EST PAS UNE ARME (schéma 17, 2026-08-19) : un socle de POWER-UP publie une
+ * famille d'ÉQUIPEMENT et non un identifiant d'arme. La seconde table de ce fichier
+ * (`PAD_EQUIPMENT_FAMILIES`) les nomme une par une, et c'est elle — jamais un test de préfixe —
+ * qui décide qu'une clé n'est pas à chercher dans `weaponLabels`.
  */
 
 /** Les deux tailles d'icône de socle. `power` = grande, `classic` = petite. */
@@ -29,13 +34,16 @@ export type PadScale = 'power' | 'classic'
  * « liste EXPLICITE »). Ce sont les `weapon_key` du registre du titre
  * (`config/titles/halo_infinite/mappings/weapon_names.toml`) — un garde-rail les y vérifie.
  *
- * LES DEUX POWER-UPS SONT LÀ SANS QU'AUCUN SOCLE N'EN PORTE AUJOURD'HUI, et ce n'est pas un
- * oubli de mesure : le corpus des onze films ne compte qu'UNE pose de surbouclier et UNE de
- * camouflage, toutes deux LÂCHÉES À LA MORT (registre des reports, 2026-08-18) — elles
- * voyagent d'ailleurs par un autre canal du document (`equipmentPlacements`), pas par les
- * socles. L'utilisateur les a nommées explicitement dans la règle de taille : elles y figurent
- * donc comme règle ÉCRITE D'AVANCE, avec leurs identifiants de famille d'équipement, et le
- * jour où un film en portera une sur un socle elle sera grande sans qu'on y revienne.
+ * LES DEUX POWER-UPS Y ÉTAIENT AVANT D'AVOIR UN MEMBRE MESURÉ, et le pari est tenu. Ils ont
+ * été écrits le 2026-08-18 sur la seule demande de l'utilisateur — le corpus des onze films
+ * ne montrait alors qu'UNE pose de surbouclier et UNE de camouflage, toutes deux LÂCHÉES À LA
+ * MORT, publiées par un autre canal du document (`equipmentPlacements`). Le 2026-08-19, la
+ * voie `ti=37` a trouvé leur socle : un `powerup_overshield` au centre de Catalyst, publié
+ * dans `weaponPads` (schéma 17). Ils sont donc GRANDS sans qu'on ait eu à y revenir.
+ *
+ * CE SONT DES CLÉS DE FAMILLE D'ÉQUIPEMENT, pas des clés d'arme, et elles ne se joignent donc
+ * à AUCUNE table de `weaponLabels` : `PAD_EQUIPMENT_FAMILIES`, plus bas, dit ce que le calque
+ * en fait (taille, libellé, vignette).
  */
 export const POWER_PAD_KEYS: readonly string[] = [
   // Armes de puissance — le registre d'armes du titre.
@@ -46,7 +54,7 @@ export const POWER_PAD_KEYS: readonly string[] = [
   'hinf_fuel_rod_spnkr',
   'hinf_skewer',
   'hinf_cindershot',
-  // Power-ups — familles d'équipement (cf. en-tête : aucun socle mesuré n'en porte).
+  // Power-ups — familles d'équipement (cf. `PAD_EQUIPMENT_FAMILIES` : un socle mesuré en porte).
   'powerup_overshield',
   'powerup_camo',
 ]
@@ -64,4 +72,58 @@ export const POWER_PAD_WEAPON_KEYS: readonly string[] = POWER_PAD_KEYS.filter(
  */
 export function padScaleOf(key: string | null | undefined): PadScale {
   return key && POWER_PAD_KEYS.includes(key) ? 'power' : 'classic'
+}
+
+// --- LES FAMILLES NON-ARME D'UN SOCLE -------------------------------------------------------
+
+/**
+ * CE QU'UN SOCLE PORTE QUAND CE N'EST PAS UNE ARME — et pourquoi il fallait une seconde table.
+ *
+ * DEPUIS LE SCHÉMA 17 (2026-08-19), `weaponPads[].weapon` n'est plus toujours l'hexadécimal
+ * d'une famille d'arme : un socle de POWER-UP publie la FAMILLE du manifeste d'équipement
+ * (`powerup_overshield`), parce que `weaponLabels` est une table d'ARMES où aucun identifiant
+ * d'équipement n'entre (cf. `gwPadWeaponID`, côté Go). Le calque joignait cette clé à
+ * `weaponLabels` : elle n'y était pas, donc le socle restait PETIT, sans vignette, et
+ * l'infobulle affichait la chaîne brute « powerup_overshield ».
+ *
+ * UNE TABLE ÉCRITE, PAS UN TEST DE PRÉFIXE. Reconnaître « ça commence par `powerup_` » aurait
+ * marché aujourd'hui et menti demain : le manifeste du titre porte quinze familles
+ * d'équipement (`wall`, `sensor`, `grenade_*`…), et rien ne dit que les prochaines à monter sur
+ * un socle s'appelleront `powerup_*`. Une clé absente de cette table reste donc traitée comme
+ * un identifiant d'arme — le comportement d'avant, inchangé.
+ */
+export interface PadEquipmentFamily {
+  /**
+   * Stem de la vignette de HUD, servie sous `static/weapons-assets/{slug}/hud/`.
+   *
+   * C'EST L'IMAGE QUE LE MANIFESTE DU TITRE NOMME DÉJÀ pour la capacité de même nom
+   * (`icon = "hud/Overshield"` dans `replay_labels.toml`) : le manifeste ne déclare aucune
+   * icône sur ses `[[equipment_objects]]`, mais il nomme celle-ci ailleurs, et c'est le même
+   * masque. Le garde-rail rejoue les deux — le fichier livré ET la ligne du manifeste.
+   */
+  icon: string
+}
+
+/** Les familles NON-ARME connues du calque des socles. Le typage porte la parité FR/EN. */
+export type PadEquipmentFamilyKey = 'powerup_overshield' | 'powerup_camo'
+
+/**
+ * LA TABLE. Ses clés sont les familles publiées par le document, et elles figurent toutes
+ * dans `POWER_PAD_KEYS` (garde-rail) : un power-up de socle est GRAND, sans règle en double.
+ */
+export const PAD_EQUIPMENT_FAMILIES: Readonly<Record<PadEquipmentFamilyKey, PadEquipmentFamily>> = {
+  powerup_overshield: { icon: 'Overshield' },
+  powerup_camo: { icon: 'ActiveCamouflage' },
+}
+
+/**
+ * padEquipmentFamilyOf — la famille non-arme d'un socle, ou null quand la clé n'en est pas une.
+ *
+ * `hasOwnProperty` et non `in` : `'constructor'` est une clé de socle parfaitement possible sur
+ * un titre futur, et un identifiant hérité du prototype rendrait une famille qui n'existe pas.
+ */
+export function padEquipmentFamilyOf(weapon: string): PadEquipmentFamilyKey | null {
+  return Object.prototype.hasOwnProperty.call(PAD_EQUIPMENT_FAMILIES, weapon)
+    ? (weapon as PadEquipmentFamilyKey)
+    : null
 }

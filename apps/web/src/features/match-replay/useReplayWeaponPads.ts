@@ -15,6 +15,14 @@
  * les vignettes de grenade). Une famille sans visuel n'en emprunte aucun : le calque lui dessine
  * un glyphe neutre.
  *
+ * UN SOCLE N'EST PAS TOUJOURS UNE ARME (schéma 17, 2026-08-19). Un socle de POWER-UP publie une
+ * famille d'ÉQUIPEMENT (`powerup_overshield`) et non l'hexadécimal d'une arme : elle n'est
+ * dans AUCUNE table du document, ni pour la taille, ni pour le nom, ni pour la vignette. Les
+ * trois résolutions passent donc par des fonctions pures (`padScaleFor`, `padNameFor`,
+ * `padIconRefFor`) qui interrogent d'abord la table des familles non-arme — une table écrite,
+ * jamais un test de préfixe — avant de retomber sur le catalogue d'armes. Sans elles, le socle
+ * du centre de Catalyst restait petit, sans image, et son infobulle affichait sa clé brute.
+ *
  * L'IMAGE COURANTE EST LUE DANS UNE RÉFÉRENCE, jamais dans un état React (même règle et même
  * conséquence assumée que `usePlacementHover`) : si l'état d'un socle change SOUS un pointeur
  * immobile, son infobulle attend le prochain mouvement. À l'arrêt — le cas où l'on inspecte —
@@ -22,13 +30,17 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from 'react'
 
+import { staticAssetURL } from '@/lib/staticAssets'
+import { useTitleSlug } from '@/lib/title-routing'
+
 import { catalogText } from './catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import type { ReplayText } from './i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
 import { frameToMs, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from './replayNormalize'
-import { padScaleOf } from './weaponPadFamilies'
+import { PAD_EQUIPMENT_FAMILIES, padEquipmentFamilyOf, padScaleOf, type PadScale } from './weaponPadFamilies'
 import {
   drawWeaponPadsLayer,
   padAt,
@@ -37,6 +49,69 @@ import {
   type PadIcon,
   type PadState,
 } from './weaponPadsLayer'
+
+/** Le catalogue d'ARMES du document, tel qu'il arrive : une table par identifiant, ou rien. */
+type PadLabels = ReplayDocumentReady['weaponLabels']
+
+/**
+ * padScaleFor — la TAILLE d'un socle, quelle que soit la nature de ce qu'il porte.
+ *
+ * DEUX VOCABULAIRES, UNE SEULE RÈGLE. Un socle d'ARME publie l'hexadécimal d'une famille : sa
+ * clé canonique se lit dans `weaponLabels[id].key` (posée à la requête par le service). Un
+ * socle de POWER-UP publie DIRECTEMENT sa famille d'équipement, qui EST déjà la clé — la
+ * chercher dans `weaponLabels`, table d'armes, ne rendait rien et laissait le socle petit.
+ * `POWER_PAD_KEYS` porte les deux vocabulaires, donc la règle de taille ne se dédouble pas.
+ */
+export function padScaleFor(weapon: string, labels: PadLabels): PadScale {
+  return padScaleOf(padEquipmentFamilyOf(weapon) ?? labels?.[weapon]?.key)
+}
+
+/**
+ * padNameFor — CE QUE L'INFOBULLE ÉCRIT, et l'ordre est une règle.
+ *
+ * 1. une famille d'équipement connue rend son libellé bilingue local (`padEquipmentFamily`) ;
+ * 2. sinon le libellé bilingue du document, s'il nomme cet identifiant ;
+ * 3. sinon l'identifiant lui-même — et c'est VOULU pour une arme hors catalogue du titre
+ *    (l'hexadécimal est alors la seule chose vraie qu'on puisse écrire, cf. la famille
+ *    `0xD7915565` du registre des reports). Une famille d'équipement, elle, ne peut jamais
+ *    tomber dans ce cas : elle est nommée à l'étape 1 ou elle n'est pas dans la table.
+ */
+export function padNameFor(
+  weapon: string,
+  labels: PadLabels,
+  t: ReplayText,
+  locale: ReplayLocale,
+): string {
+  const family = padEquipmentFamilyOf(weapon)
+  if (family) return t.padEquipmentFamily[family]
+  return catalogText(labels?.[weapon], locale) ?? weapon
+}
+
+/** Une vignette à charger : son URL et son mode (masque à teindre, ou image finie). */
+export interface PadIconRef {
+  url: string
+  tinted: boolean
+}
+
+/**
+ * padIconRefFor — QUELLE IMAGE pour ce socle, ou null (le calque pose alors un glyphe neutre).
+ *
+ * LES POWER-UPS SE RÉSOLVENT CÔTÉ CLIENT, comme les vignettes de grenade et pour la même
+ * raison (cf. `grenadeIcon.ts`) : leur famille n'entre dans AUCUN catalogue du document — le
+ * manifeste du titre ne déclare d'icône que sur ses grenades et ses capacités, jamais sur ses
+ * `[[equipment_objects]]`. Le masque de HUD existe pourtant, livré sous
+ * `static/weapons-assets/{slug}/hud/`, et c'est celui-là même que le manifeste nomme pour la
+ * capacité de même nom. Un garde-rail rejoue le lien ; rien n'est deviné à l'exécution.
+ */
+export function padIconRefFor(weapon: string, labels: PadLabels, titleSlug: string): PadIconRef | null {
+  const family = padEquipmentFamilyOf(weapon)
+  if (family) {
+    const url = staticAssetURL('weapon', `hud/${PAD_EQUIPMENT_FAMILIES[family].icon}`, '.png', titleSlug)
+    return url ? { url, tinted: true } : null
+  }
+  const label = labels?.[weapon]
+  return label?.img ? { url: label.img, tinted: !!label.tinted } : null
+}
 
 /** Ce qui est survolé : le socle, son état LU À CET INSTANT, et où poser l'infobulle. */
 export interface WeaponPadHover {
@@ -88,17 +163,18 @@ export function useReplayWeaponPads({
   const pads = doc.weaponPads
   const [hover, setHover] = useState<WeaponPadHover | null>(null)
   const iconsRef = useRef<Map<string, PadIcon>>(new Map())
+  const titleSlug = useTitleSlug()
+  const t = REPLAY_TEXT[locale]
 
-  // LA TAILLE SUIT LA CLÉ CANONIQUE de l'arme (`weaponLabels[id].key`, posée à la requête),
-  // jamais son hexadécimal ni son libellé : c'est le vocabulaire commun aux tables du client.
+  // LA TAILLE ET LE NOM suivent la CLÉ CANONIQUE de ce que porte le socle — jamais son
+  // hexadécimal, jamais un libellé. Les trois résolutions vivent au-dessus, en fonctions
+  // pures : elles sont les mêmes pour une arme et pour un power-up de socle, et c'est là
+  // qu'est écrit lequel des deux vocabulaires s'applique.
   const labels = doc.weaponLabels
-  const scaleOf = useCallback(
-    (weapon: string) => padScaleOf(labels?.[weapon]?.key),
-    [labels],
-  )
+  const scaleOf = useCallback((weapon: string) => padScaleFor(weapon, labels), [labels])
   const nameOf = useCallback(
-    (weapon: string) => catalogText(labels?.[weapon], locale) ?? weapon,
-    [labels, locale],
+    (weapon: string) => padNameFor(weapon, labels, t, locale),
+    [labels, t, locale],
   )
 
   // LES VIGNETTES, cuites une fois par document ET par encre : un masque se teint hors écran,
@@ -113,11 +189,11 @@ export function useReplayWeaponPads({
     iconsRef.current = map
     const seen = new Set<string>()
     for (const pad of pads) {
-      const label = labels?.[pad.weapon]
-      if (!label?.img || seen.has(pad.weapon)) continue
+      const ref = padIconRefFor(pad.weapon, labels, titleSlug)
+      if (!ref || seen.has(pad.weapon)) continue
       seen.add(pad.weapon)
       const weapon = pad.weapon
-      const tinted = label.tinted
+      const tinted = ref.tinted
       const im = new Image()
       im.onload = () => {
         map.set(
@@ -128,12 +204,11 @@ export function useReplayWeaponPads({
         )
         redraw()
       }
-      im.src = label.img
+      im.src = ref.url
     }
-  }, [pads, labels, ink.fill, ink.outline, redraw])
+  }, [pads, labels, titleSlug, ink.fill, ink.outline, redraw])
 
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
-  const t = REPLAY_TEXT[locale]
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number, k: number) => {

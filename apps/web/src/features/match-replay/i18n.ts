@@ -113,7 +113,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       uncertain: 'Incertain',
       empty: 'Pris',
     },
+    padEquipmentFamily: {
+      powerup_overshield: 'Surbouclier',
+      powerup_camo: 'Camouflage actif',
+    },
     padPlacementNote: "Emplacement d'arme (socle au sol ou râtelier mural : non distingués)",
+    padPlacementNotePowerUp: 'Socle de bonus de puissance (position mesurée sur ce match)',
     layerFlagCarries: 'Drapeaux',
     layerFlagCarriesHint:
       "La vie des drapeaux de capture, lue dans le film : porté (le drapeau suit son porteur image par image), au sol à la dernière position mesurée, ou à sa base. La base garde un drapeau atténué tant que le sien est ailleurs. Un portage dont RIEN ne date la fin s'affiche atténué lui aussi : son intervalle court jusqu'à la fin du film, c'est une borne haute et non une mesure.",
@@ -310,7 +315,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       uncertain: 'Uncertain',
       empty: 'Taken',
     },
+    padEquipmentFamily: {
+      powerup_overshield: 'Overshield',
+      powerup_camo: 'Active camouflage',
+    },
     padPlacementNote: 'Weapon spot (floor pad or wall rack: not told apart)',
+    padPlacementNotePowerUp: 'Power-up pad (position measured on this match)',
     layerFlagCarries: 'Flags',
     layerFlagCarriesHint:
       'The life of capture flags, read from the film: carried (the flag follows its carrier frame by frame), on the ground at the last measured position, or at its base. A base keeps a faded flag for as long as its own is elsewhere. A carry whose end NOTHING dates is faded too: its interval runs to the end of the film, an upper bound rather than a measurement.',

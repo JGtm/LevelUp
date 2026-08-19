@@ -10,6 +10,8 @@
  * LA PARITÉ FR/EN RESTE TENUE PAR LE TYPAGE : `Record<ReplayLocale, ReplayText>` dans
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
+import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
+
 export interface ReplayText {
   title: string
   back: string
@@ -173,8 +175,28 @@ export interface ReplayText {
   cardsCompact: string
   cardsCompactHint: string
   padState: Record<'full' | 'uncertain' | 'empty', string>
+  /**
+   * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
+   * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
+   * `weaponPadFamilies.ts` — d'où le typage : une famille ajoutée là-bas sans libellé ici ne
+   * compile pas, dans AUCUNE des deux langues.
+   *
+   * POURQUOI CES LIBELLÉS SONT LOCAUX ET NON SERVIS PAR LE DOCUMENT : le manifeste du titre
+   * (`replay_labels.toml`) ne porte, sur ses `[[equipment_objects]]`, que l'identité (famille,
+   * provenance, nature) — aucun libellé bilingue, aucune icône — et aucun canal du document ne
+   * transporte de libellé d'équipement au client (il n'existe pas de `equipmentLabels`). Les
+   * noms des familles DESSINÉES vivent déjà ici, dans `placementFamily` : ceux-ci les
+   * rejoignent, avec les mêmes mots que le jeu.
+   */
+  padEquipmentFamily: Record<PadEquipmentFamilyKey, string>
   /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
   padPlacementNote: string
+  /**
+   * La même réserve pour un socle NON-ARME : la question du râtelier mural n'y a pas de sens
+   * (un power-up n'est jamais accroché à un mur), mais la position reste une mesure de CE
+   * match — l'infobulle ne doit pas laisser croire à un catalogue de carte.
+   */
+  padPlacementNotePowerUp: string
   /** Compte à rebours COMPACT, celui de la carte (« 12 s »). */
   padCountdownFmt: (seconds: number) => string
   /** Compte à rebours de l'infobulle, en toutes lettres. */
