@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
 // ecrireCatalogueSocles pose un catalogue minimal sur disque et rend son chemin.
@@ -103,24 +105,25 @@ var cartesMesurees = map[string]struct {
 	"98783453-ce40-4020-9e87-62099a290b62": {"Smallhalla (Forge, le RACK)", 27},
 }
 
-// cheminCatalogueLivre localise le fichier versionné, ou rend "" (arbre partiel).
-func cheminCatalogueLivre(nom string) string {
-	for _, up := range []string{"../../../..", "../../../../.."} {
-		p := filepath.Join(up, "data", "titles", "halo_infinite", "reference", nom)
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
+// cheminCatalogueLivre localise le fichier VERSIONNÉ par testutil.RepoRoot().
+//
+// Pas d'échelle de « .. » écrite à la main, et pas de Skip : le catalogue est versionné,
+// donc son absence est une anomalie d'arbre, pas un cas normal (garde-rail J-R1-1 —
+// `internal/archlint/no_repo_root_walk_test.go` : une échelle en dur tombe à côté en
+// SILENCE et la garde cesse de tourner en CI sans que rien ne rougisse).
+func cheminCatalogueLivre(t *testing.T, nom string) string {
+	t.Helper()
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
 	}
-	return ""
+	return filepath.Join(root, "data", "titles", "halo_infinite", "reference", nom)
 }
 
 // TestCatalogueSoclesLivre lit le catalogue RÉELLEMENT versionné — celui que le
 // croisement lira au rejeu.
 func TestCatalogueSoclesLivre(t *testing.T) {
-	path := cheminCatalogueLivre("map_weapon_pads.json")
-	if path == "" {
-		t.Skip("catalogue des socles absent de cet arbre")
-	}
+	path := cheminCatalogueLivre(t, "map_weapon_pads.json")
 	cat, err := LoadMapWeaponPads(path)
 	if err != nil {
 		t.Fatal(err)
@@ -193,10 +196,7 @@ func verifierPads(t *testing.T, id string, e MapWeaponPadsEntry) {
 // fichier source produit un diff git illisible à chaque régénération, et personne ne relit
 // alors ce qui a réellement changé.
 func TestCatalogueSoclesLivreEstDeterministe(t *testing.T) {
-	path := cheminCatalogueLivre("map_weapon_pads.json")
-	if path == "" {
-		t.Skip("catalogue des socles absent de cet arbre")
-	}
+	path := cheminCatalogueLivre(t, "map_weapon_pads.json")
 	blob, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

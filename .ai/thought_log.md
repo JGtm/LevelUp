@@ -1,3 +1,112 @@
+## [2026-08-20] v7.5 rejeu 2D — lot C-ter clos : la colline de KOTH designee par le film, les formes de colline au catalogue, la jauge de capture en direct (schema 18) — Complete
+
+**Contexte** : pilotage superviseur, 3 volets paralleles en worktrees + 1 integration, 2 rondes de revue adversariale par volet code, arbitrages gate 1/2 traces au plan §7. Incidents traverses : limites de quota (Fable puis Opus puis Sonnet — executeurs relances en changeant de modele), schema 17 pris par le lot socles de l'autre session (re-numerotation 18, meme regle que 15->16), CI d'origin rouge 3 push sur `cmd/variant-probe` (reparee ici par allowlists datees, dette routee au registre).
+
+**Decision technique principale** : (1) la colline active vient du DESIGNATEUR (tag 5 de l'objet de mode KOTH), plus du mouvement de la jauge — periodes fermees a la bascule, colline vide visible, delai d'activation borne par le film (l'objet nait entre 20 et 40 s) ; (2) les formes de colline sont EXTRAITES de la variante de carte et servies sous le role `hill` (113/23 cartes) — le `zoneRef` des periodes pointe enfin une vraie forme ; (3) la jauge en direct n'existe qu'en zones simultanees : en KOTH le tag 3 est un compteur de transfert (~1 s), mesure et ecrit — publier une serie la-bas aurait montre un mensonge ; (4) l'echelle de la jauge est celle du JEU (constantes du deser), plus l'excursion du match — les progress v16/v18 ne sont pas comparables et la chronique le dit.
+
+**Resultats observes** : 6 temoins schema 18 verifies sur artefact — Bastion `captures+geometry` avec 1 701/1 794 points de jauge (poids +1,6/1,8 %, plafond 2 %), 100 % des bascules precedees d'une montee, rampes 49/49 et 51/51 fermees au retour a zero ; KOTH x4 `designator+geometry`, 5/6/3/3 periodes, chevauchement maximal 1, gaugePoints 0 partout, `0a247154` (sans aucune jauge tag 3) porte par le seul designateur. Gates tous verts (archlint compris apres reparation), contrat 37, cliquet ReplayCanvas 808 (amont) tenu, eslint 20/20, cross-feature 7/7.
+
+**Conclusion / prochaine etape** : fusion `wt/cter-fusion` -> feat/v75, push, CI verte au niveau job attendue (elle etait rouge AVANT nous) ; temoins poses dans le cache du principal ; planche de validation mise a jour (la colline s'illumine, l'arc suit la jauge) ; gate visuel utilisateur ; hygiene (registre : variant-probe, 5 cartes UGC, slots non nommes). Prochain schema libre : 19.
+
+## [2026-08-20] v7.5 rejeu 2D — lot C-ter : integration des trois volets, re-fusion de l'amont, CI reparee — Complete
+
+**Statut** : Complete (branche `wt/cter-fusion`, socle volet 3 `80f6eb033`, six commits jusqu'a
+la cloture ; NON fusionnee — regime branche unique). Journal : `LOTCTER_FUSION.md`. Gates :
+section « APRES RE-FUSION D'ORIGIN » de `LOTCTER_fusion_gates.log`, tous les EXIT_* a 0.
+**Decision technique** : (1) L'AMONT REFUSIONNE UNE SECONDE FOIS (`2711d26f9`, origin a
+`c154f5136` — douze commits d'une autre session : catalogue des socles, laches hors Fiesta).
+Deux conflits, les deux resolus en GARDANT LES DEUX COTES. Le seul arbitrage reel est la
+chronique du contrat : notre entree « 36 -> 36 » (la jauge ne pose AUCUN champ racine) et la
+leur « 36 -> 37 » (`mapWeaponPads`, un vrai champ racine) coexistent ; le compte va a 37 et la
+formule de cloture a « Les douze fois » — une entree sans champ racine n'incremente pas ce
+compteur, c'est la convention du fichier. Notre entree gagne une precision datee parce que sa
+derniere phrase (« le compte reste donc 36 des DEUX cotes ») devenait fausse a cote de sa
+voisine. (2) LA CI EST REPAREE HORS LOT, ET ELLE LE DIT (`784868147`) : deux allowlists datees
+du 2026-08-20 pour `cmd/variant-probe` (violation reelle halowaypoint hors frontiere ; faux
+positif du drapeau CLI `"scan"` contre le ratchet killscope), chacune avec sa condition de
+reprise ecrite dans le fichier de regle, statut [!] a router vers la session proprietaire. Le
+ratchet killscope n'est pas affaibli — motif, proprietaires et marche du walk intacts — et son
+allowlist, jusqu'ici vide, gagne son self-check pour que l'exception ne survive pas a sa cause.
+**Resultats observes** : un TROISIEME rouge est ne de la re-fusion elle-meme et d'aucun lot —
+le test neuf d'amont `map_weapon_pads_catalog_test.go` ecrit l'echelle « ../../../.. » a la
+main, que le cliquet neuf du volet 2 interdit ; ni l'un ni l'autre n'etait rouge seul. Migre
+vers `testutil.RepoRoot()` comme le cliquet le prescrit, `t.Skip` supprime puisque le catalogue
+EST versionne. Six temoins recuits verifies champ par champ au schema 18 : Bastion x2 =
+`captures+geometry`, jauge a 1 701 et 1 794 points sur l'echelle du jeu (v dans [0 ; 0,999]),
+rampes toutes fermees (49/49 et 51/51), proprietaire d'accord 46/46 et 51/51 = 100 % ; colline
+x4 = `designator+geometry`, role `hill`, ZERO point de jauge et pas meme le champ, chevauchement
+maximal des periodes actives = 1 (une seule colline a la fois, mesure). `0a247154` n'a aucune
+jauge tag 3 : il publie les six periodes du designateur, contigues et sans trou, SANS `progress`
+— un zero invente y aurait ete un chiffre faux. Gates : archlint vert (controle negatif joue,
+les deux tests rougissent sur les fichiers attendus et sur rien d'autre), build, golangci-lint 0
+issue, tsc 0, vitest 154/1901, eslint 20/20, cross-feature 7/7.
+**Conclusion / prochaine etape** : le lot C-ter est integre et mesure ; il reste a router
+`cmd/variant-probe` vers sa session (ou vers le superviseur) et a confirmer une resolution
+« ligne 160 » du handoff que je n'ai pas pu rattacher sur pieces. Aucun push, aucun merge.
+
+## [2026-08-19] v7.5 rejeu 2D — lot C-ter volet 3 : revue adversariale ronde 1 (0 P0/P1, 4 constats de forme corriges) — Complete
+
+**Statut** : Complete (branche `wt/jauge-live`, un commit au-dessus de `9039fb646`, NON fusionnee —
+regime branche unique). Detail : `LOTCTER_VOLET3.md` §10. Gates : section « revue ronde 1 » de
+`LOTCTER_volet3_gates.log` (tous les EXIT_* a 0). **Aucun changement de comportement** : un test
+ajoute, deux godoc remis en accord avec le code, un export mort supprime, quatre comptes recomptes.
+**Decision technique** : (1) LA CLAUSE `!last` DE L'ALLEGEMENT GAGNE SON TEST. Elle est vivante sur
+donnees reelles — sur `7344d24f` le sommet 0,991 d'une capture n'est publie que par elle (pas
+precedent 0,976 : 0,015 de variation UNE frame plus tard, sous les deux seuils) — et aucune
+mesure ne la couvrait. `TestZoneGaugeDernierPointToujoursPublie` rejoue cette rampe et verifie EN
+PLUS que le dernier pas reste sous les deux seuils, sans quoi le cas deviendrait vacant sans
+rougir. (2) LES GODOC DISENT L'ECHELLE DU JEU : `ZoneState.Gauge` et `GaugePoint.V`
+(`document_zones.go:123-124` et `:148`) decrivaient encore l'excursion mesuree de v16.
+(3) `zoneStateAt` EST SUPPRIME (regle « 0 code mort ») : exporte, documente « c'est elle que le
+rendu appelle a chaque image » alors que `drawZoneStates` appelle le prive `spanStateAt` ; grep sur
+tout `apps/web` (node_modules compris) = zero appelant de production et zero reemploi prevu (la
+seule mention au plan est CT.3.2, close, servie par `zoneGaugeAt`). `spanStateAt` reste l'unique
+lecture d'etat et herite de la doc.
+**Resultats** : CONTROLE NEGATIF joue sur (1) — la clause neutralisee (`last := false`) donne
+`--- FAIL: TestZoneGaugeDernierPointToujoursPublie` (« 7 points publies pour 8 emissions », serie
+arretee a `{1072 0.976}`), et c'est le SEUL rouge de tout `internal/analysis/replay` (41 s) :
+preuve que la clause n'avait aucun autre gardien. Mutation annulee, production intacte. Sur (3),
+trois des quatre cas supprimes etaient deja couverts par les tests de `drawZoneStates` ; le
+quatrieme — la zone ACTIVE — ne l'etait pas et passe AU RENDU (surbrillance : remplie sans
+proprietaire, lisere renforce). Comptes recomptes : `zoneStatesLayer.test.ts` 24 -> 21 cas (le
+journal annoncait 26, le plan 22 puis 26), `replayContract.test.ts:163` « 47 chemins » pour un
+tableau de 50 -> 50. Gates : gofmt 0, vet 0, `go test ./internal/analysis/replay/` ok (38,5 s),
+`tsc -b --force` 0, vitest 148 fichiers / 1 829 tests.
+**Conclusion / prochaine etape** : les 25 conditions du volet tiennent, la revue est close sans
+P0 ni P1. Le volet 3 reste a fusionner dans `feat/v75` avec le reste de la branche unique.
+
+## [2026-08-19] v7.5 rejeu 2D — lot C-ter volet 3 : la jauge de capture EN DIRECT (schema 17), et le recadrage « pas de jauge en KOTH » — Complete
+
+**Statut** : Complete (CT.3.1, CT.3.2, CT.3.3 ; branche `wt/jauge-live`, `97bab1ccc`..HEAD, NON fusionnee —
+un seul merge final dans `feat/v75`, regime branche unique). Journal detaille :
+`.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET3.md`. Gates : `registre_film/LOTCTER_volet3_gates.log`
+(tous les EXIT_* a 0). Reprise d'un executeur mort en plein recadrage : 8 fichiers non commites repris,
+verifies sur pieces, termines.
+**Decision technique** : trois decisions, chacune tenue par une mesure. (1) LA SERIE `zoneStates[].gauge`
+N'EXISTE QU'EN ZONES SIMULTANEES — sur une colline de KOTH le tag 3 est un COMPTEUR DE TRANSFERT d'environ
+une seconde (volet 1 : 9-10 pas fixes quelle que soit la duree de la garde), pas la progression de garde ;
+`buildHillStates` ne pose plus rien (`attachHillGauges`, `mergeGaugePoints` supprimes) et un test ECHOUE si
+une serie reapparait. (2) L'ECHELLE PASSE SUR CELLE DU JEU (zero quantifie 8 388 607, unite 83 886 quanta)
+pour `progress` comme pour `gauge` : l'excursion mesuree du match (convention v16) se faussait sur UNE
+emission aberrante sous zero. (3) CHAQUE RAMPE EST FERMEE PAR SON RETOUR A ZERO, et le client tient donc la
+derniere valeur jusqu'au point suivant au lieu de l'effacer au bout d'une seconde (une capture figee reste
+a l'ecran).
+**Resultats** : trois films recuits par `cmd/replay-build --facts` (un processus, peak 194/159/140 Mo,
+239/235/224 s) et relus SUR l'artefact. Bastion `7344d24f` : 1 701 points de jauge (479/666/556), series =
+1,562 % de l'artefact, poids +1,590 % contre le schema 16, **36/36 = 100,0 %** des bascules de proprietaire
+precedees d'une montee dans [-5 s ; +2 s] (seuil 90 % ; temoin decale +20 s : 38,9 %, hasard 38,6 %).
+Bastion `696a9d7c` : 1 794 points, 1,748 %, +1,785 %, **34/34 = 100,0 %** (temoin 29,4 %, hasard 40,0 %).
+KOTH `01e1f945` : **gaugePoints = 0**, +0,002 % (les 28 octets du schema). Clause de poids (<= +2 %) tenue
+sur les trois. Preuve du recadrage d'echelle : deux slots sur trois de `7344d24f` portent une emission a
+-51,6 et -2,3 unites, qui ecrasait les captures dans [0,981 ; 1] et [0,694 ; 1].
+**Conclusion / prochaine etape** : volet 3 clos, aucun push, aucune fusion. Restent, au superviseur : la
+revue adversariale de fin de volet (prescrite par le plan), le gate visuel utilisateur sur un Bastion
+recuit, et la fusion du volet 3 EN PREMIER dans `feat/v75` (c'est lui qui bouge le schema a 17 : tout
+artefact v16 se lit « a re-cuire », son `progress` n'etant plus sur la meme echelle). Trois decouvertes
+notees non traitees (journal §9) : `progress` en KOTH est desormais le sommet du compteur de transfert et
+n'apprend plus grand-chose (le volet 1 possede ce fichier) ; deux slots tag 3 de `7344d24f` ne sont pas des
+jauges de zone et restent a nommer ; les silences intra-rampe sont tenus a l'ecran faute d'une emission qui
+distinguerait « figee » de « finie ».
 ## [2026-08-20] Son de pose de la balise — l'evenement Wwise lu, la bonne banque enfin ouverte — Complete
 
 **Statut** : Complete (branche `wt/balise-mix`, 6 commits `aaf7c4b8b`..`2fafc4721`, FUSIONNEE dans

@@ -22,6 +22,12 @@ package replay
 // est une marche BIT A BIT de tous les paquets delta du film — le meme ordre de grandeur que le
 // balayage des positions. Le payer sur un Slayer serait payer pour rien : c'est la regle deja
 // tenue par le marqueur de portage du drapeau, qui ne balaye que les films de CTF.
+//
+// ET C'EST L'APPELANT QUI DECIDE PAR LE MODE, PAS PAR LA CARTE (`replaybuild/zones.go`,
+// `heldZoneRoles`) : il ne fournit de zones que pour les roles de zone TENUE — Bastion, colline
+// de KOTH. Un CTF sur une carte qui declare des livraisons en cylindre, une Extraction avec ses
+// zones, arrivent ici SANS catalogue et ne paient rien (revue de la phase 2b, P2 : avant le lot
+// C-ter, 18 cartes payaient le balayage en CTF pour une couverture vide).
 
 import (
 	"log/slog"
@@ -83,9 +89,9 @@ func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
 	}
 	if cov.Unpaired > 0 {
 		// L'UNITE DEPEND DE LA METHODE (cf. ZonesCoverage.Unpaired) : des slots de jauge
-		// qu'aucune capture ne rattache, ou des rampes que la grappe ne localise pas. La
-		// methode voyage donc DANS le message — sans elle, le meme chiffre se lirait de deux
-		// facons.
+		// qu'aucune capture ne rattache, des rampes que la grappe ne localise pas, ou des
+		// periodes designees que la grappe ne localise pas. La methode voyage donc DANS le
+		// message — sans elle, le meme chiffre se lirait de trois facons.
 		slog.Warn("rejeu : appariements ECARTES — zones absentes de l'etat publie",
 			"match_id", matchID, "methode", cov.Method, "nonApparies", cov.Unpaired,
 			"apparies", cov.Paired, "captures", cov.Captures, "attribuees", cov.Attributed)

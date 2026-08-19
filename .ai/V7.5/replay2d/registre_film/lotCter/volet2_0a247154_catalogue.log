@@ -1,0 +1,23 @@
+=== RUN   TestHillShapesMeasure
+2026/08/19 00:31:01 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+2026/08/19 00:34:12 INFO pont slot->joueur slots=159 viesNommees=158 viesTotal=169 lecturesIndex=40 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 00:34:12 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/19 00:34:12 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/19 00:34:12 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 objetsDObjectif=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/19 00:34:12 INFO rejeu : etat des zones match_id=0a247154 methode=positions+geometry catalogue=5 slots=26 apparies=0 nonApparies=0 sansProprietaire=0 intervalles=0 periodesColline=0 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/19 00:34:12 INFO rejeu : episodes d'equipement actif viesPubliees=161 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/19 00:34:12 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/19 00:34:12 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    hill_shapes_measure_test.go:384: FILM 0a247154 (KOTH, solitude) — 5 formes de colline depuis catalogue (role hill) ; 161 trajectoires, 7838 frames de 100 ms
+    hill_shapes_measure_test.go:388:   forme 0 : boite 1.90 x 2.92 (h +2.00/-0.00) centre (-15.78 ; -12.11 ; 80.58) idx 964 inst 0 team -1
+    hill_shapes_measure_test.go:388:   forme 1 : boite 1.67 x 4.50 (h +1.85/-0.00) centre (-3.79 ; -15.90 ; 77.88) idx 1431 inst 0 team -1
+    hill_shapes_measure_test.go:388:   forme 2 : boite 1.82 x 1.88 (h +1.65/-0.05) centre (-3.77 ; -32.16 ; 78.87) idx 963 inst 0 team -1
+    hill_shapes_measure_test.go:388:   forme 3 : boite 1.42 x 1.67 (h +1.75/-1.00) centre (1.16 ; -7.81 ; 79.52) idx 965 inst 0 team -1
+    hill_shapes_measure_test.go:388:   forme 4 : boite 2.61 x 2.25 (h +1.70/-0.00) centre (3.15 ; -26.67 ; 80.65) idx 962 inst 0 team -1
+    hill_shapes_measure_test.go:398:   POSITIONS : 44183 points bruts, 46412 positions tenues ; ecart entre deux points d'une vie p50 1, p90 1, p99 1, max 214 frames
+    hill_shapes_measure_test.go:400: aucune rampe de jauge sur ce film — la mesure n'a pas de denominateur
+--- FAIL: TestHillShapesMeasure (207.32s)
+FAIL
+FAIL	levelup/go-api/internal/analysis/replay	208.849s
+FAIL
+EXIT=1
