@@ -62,6 +62,29 @@ n'apprend plus grand-chose (le volet 1 possede ce fichier) ; deux slots tag 3 de
 jauges de zone et restent a nommer ; les silences intra-rampe sont tenus a l'ecran faute d'une emission qui
 distinguerait « figee » de « finie ».
 
+## [2026-08-19] Sonde variant/socles — l'activation n'est dans AUCUN asset de l'API — Complete
+
+**Statut** : Complete (sonde ; branche `wt/variant-sonde`, 5 commits `05a598053`..`c35573d8b`,
+FUSIONNEE dans `feat/v75` par le superviseur ; plan `PLAN_SONDE_VARIANT_SOCLES.md`, 25/25 statues).
+Architecture « fetch des variants a la synchro + reference locale » REFUTEE par la mesure — pas
+construite, et c'est le resultat.
+**Decision technique** : mesurer avant de construire. Auth par le store seulement (zero re-capture) ;
+serveur local sur :8000 detecte => registre lu par l'instantane parquet, aucune base ouverte.
+**Resultats** : `ugcGameVariants` = vitrine (2,4 Ko, `CustomData` vide, images 41-43 Mo a exclure) ;
+`engineGameVariants` = les regles (`.bin` Bond 406-530 Ko + 107-124 chunks Lua) mais ZERO `type_id` de
+socle sur 32 valeurs x 4 encodages x 123 fichiers ; `mapModePairs` = trait d'union vide (note : 404
+sans `/versions/`). Verdict discriminant REFUTE DEUX FOIS : `CTF:Arena` est le MEME asset (meme
+version) sur 31 cartes — 10 socles sur Cliffhanger, 11 + aucun power-up sur Catalyst ; et la
+correlation par labels s'INVERSE sur Catalyst (KOTH 0 label -> surbouclier present ; CTF 3 labels ->
+rien). Seul positif : `MultiFlag.bin` porte `ctf_include`/`ctf_exclude`/`ctf_multi_exclude` (filtres
+des SUPPORTS DE DRAPEAU, pas des socles). L'activation vit dans le JEU INSTALLE (les `.bin`
+referencent `parcel_mp_weapon_manager.lua` par chemin de tag, identique dans les trois modes).
+**Conclusion / prochaine etape** : pour le VPS, la voie retenue est le REPLI EMPIRIQUE deja en
+production : le film dit ce qui a spawne, le catalogue statique (lot en cours) donne les emplacements
+et l'affichage des la premiere image — zero reseau au rejeu. Reprise de la voie deterministe :
+extraction des tags du jeu installe (les 3 `type_id`, `parcel_mp_weapon_manager.lua`) — ne pas
+rouvrir la piste API sans element neuf.
+
 ## [2026-08-19] Socles d'armes depuis les fichiers de carte — MESURE, confirmee — Complete
 
 **Statut** : Complete (mesure ; branche `wt/socles-mvar`, 7 commits `3d5baf1e1`..`702afa777`, FUSIONNEE
