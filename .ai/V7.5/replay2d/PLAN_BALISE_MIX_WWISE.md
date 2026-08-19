@@ -175,13 +175,13 @@ ecrites comme telles.
 - [x] 3.1 Choisir les candidats par la STRUCTURE (evenements multi-couches en tete), pas
       par le nom de fichier. Un candidat = un evenement reconstruit.
       **CINQ candidats, douze fichiers** (un par tirage possible), dans
-       ; recettes dans .
-- [x] 3.2 Mixer par  :  des couches, gain de chemin applique en ,
-      decalage par  quand la phase 1 en a mesure un, boucles tronquees a UNE
+      `scratchpad/candidats_balise/` ; recettes dans `candidats_recettes.txt`.
+- [x] 3.2 Mixer par `ffmpeg` : `amix` des couches, gain de chemin applique en `volume`,
+      decalage par `adelay` quand la phase 1 en a mesure un, boucles tronquees a UNE
       occurrence, normalisation identique au lot R2-S (crete vraie <= -1,0 dBTP).
-      **AUCUN  : la phase 1 mesure zero delai.** Aucune boucle a tronquer non plus —
-      pas un evenement du perimetre n'en porte. Outil : ,
-      reutilisable (sortie + couches ), qui imprime sa propre recette.
+      **AUCUN `adelay` : la phase 1 mesure zero delai.** Aucune boucle a tronquer non plus —
+      pas un evenement du perimetre n'en porte. Outil : `scratchpad/mix_candidat.sh`,
+      reutilisable (sortie puis couches `fichier:gain_dB`), qui imprime sa propre recette.
 - [x] 3.3 **Publier la recette de chaque candidat** : couches, gains, decalages, et la
       commande exacte. Faite par le script, une recette par fichier produit :
 
@@ -201,8 +201,8 @@ ecrites comme telles.
       A et B en portent quatre chacun, C deux. Le tirage est uniforme (regle prouvee du
       chantier armes), aucune variante n'est privilegiee.
 
-**Gate 3 : PASSE.** Les 12  existent, chacun avec sa duree et sa crete avant/apres
-correction consignees dans .
+**Gate 3 : PASSE.** Les 12 `.wav` existent, chacun avec sa duree et sa crete avant/apres
+correction consignees dans `candidats_recettes.txt`.
 
 ## Phase 4 — PAGE D'ECOUTE v2
 
