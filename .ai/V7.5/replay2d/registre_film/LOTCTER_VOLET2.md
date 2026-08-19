@@ -407,9 +407,14 @@ versionne) et `internal/ops/seed_citation_assets_test.go` (const `citationRepoRo
 Condition de reprise ecrite dans le fichier : au prochain passage sur ces paquets, migrer et
 retirer l'entree.
 
-**Preuve.** `go test -v ./internal/replaybuild/ ./internal/service/` SANS `LEVELUP_REPO_ROOT` :
-12 tests, **0 SKIP**, tous verts. Controle negatif du garde-rail (allowlist videe) : FAIL sur
-les deux fichiers attendus, et sur eux seuls.
+**Preuve (phrase corrigee en ronde 2).** `go test -v ./internal/replaybuild/
+./internal/service/` SANS `LEVELUP_REPO_ROOT`, **restreint aux tests migres du tableau
+ci-dessus** : 12 tests, 0 SKIP, tous verts. La redaction d'origine — « 12 tests, **0 SKIP** »
+— ne disait pas de QUOI elle parlait et se lisait comme un verdict de paquet : au niveau des
+PAQUETS la meme commande rendait alors 1302 PASS / **14 SKIP**, dont 5 encore du motif racine,
+dans trois fichiers que la ronde 1 n'avait pas migres. Le compte reel avant/apres est au §8.
+Controle negatif du garde-rail (allowlist videe) : FAIL sur les deux fichiers attendus, et sur
+eux seuls.
 
 ### R1-2 (P1) — `hill_shapes_measure_test.go` a 615 lignes (seuil 500)
 
@@ -498,3 +503,108 @@ Slayer, Land Grab, Total Control.
   condition de reprise (R1-1).
 - Le web, `zone_states_hill.go`/`zone_state_scan.go` (volet 1) et `document.go`/schema
   (volet 3) n'ont pas ete touches : interdits au perimetre.
+
+## 8. Revue adversariale ronde 2 — le garde-rail n'attrapait pas son propre motif
+
+Ronde 2 jouee le 2026-08-19 sur le resultat de la ronde 1 (HEAD `397d341c3`). Un constat P1 et
+son P2 associe, un commit par correction, gates rejoues (section « Ronde 2 » de
+`LOTCTER_volet2_gates.log`).
+
+### Le constat
+
+Le garde-rail pose en R1-1 (`TestNoAdHocRepoRootLadderInTests`) ne cherchait QUE le litteral de
+l'echelle `../../../..`. Il n'attrapait donc NI `title.FindRepoRoot()` + `t.Skip` — le motif
+EXACT qui a cause R1-1 — NI la lecture directe de `LEVELUP_REPO_ROOT`. Une garde qui n'attrape
+pas le defaut qu'elle documente ne garde rien.
+
+Mesure : `go test -v ./internal/replaybuild/ ./internal/service/` sans variable rendait
+**14 SKIP** au niveau des PAQUETS, dont **5 du motif racine**, dans trois fichiers que la ronde
+1 n'avait pas migres — deux d'entre eux portant, AU-DESSUS du skip, un commentaire affirmant
+« il ne se declare pas SKIP en silence ». Les catalogues versionnes `map_callouts.json` et
+`map_quant_bounds.json` n'avaient donc, en fait, aucune couverture CI. P2 associe : la phrase
+de preuve du §7 (« 12 tests, 0 SKIP ») etait vraie des seuls fichiers migres — elle est
+corrigee ci-dessus.
+
+### R2-1 — les cinq derniers appels migres (commit `8fe1d1b5c`)
+
+Verification prealable exigee par la revue, `git ls-files` (2026-08-19) : TOUT ce que ces tests
+lisent est VERSIONNE — `map_quant_bounds.json`, `map_callouts.json`, les 112 entrees de
+`map_backgrounds/`, `weapon_names.toml` et `replay_labels.toml` (charges par `NewBuilder`).
+Aucun skip n'est donc conserve : `t.Skipf` -> `t.Fatalf` sur les cinq.
+
+| test | fichier:ligne (avant) |
+|---|---|
+| `TestResolveMapEntry_SurLeCatalogueLivre` | `internal/replaybuild/replaybuild_test.go:45` |
+| `TestMapBackground_DonneesReelles` | `internal/service/replay_map_background_test.go:308` |
+| `TestMapBackground_TousLesModulesDuCatalogue` | `internal/service/replay_map_background_test.go:358` |
+| `TestMapBackground_TousLesFondsMapID` | `internal/service/replay_map_background_test.go:408` |
+| `TestMapCallouts_DonneesReelles` | `internal/service/replay_map_callouts_test.go:122` |
+
+**Le compte AU NIVEAU DES PAQUETS**, `go test -count=1 -v ./internal/replaybuild/
+./internal/service/` sans `LEVELUP_REPO_ROOT` :
+
+| | PASS (racine) | SKIP (racine) | PASS (tous niveaux) | SKIP (tous niveaux) |
+|---|---|---|---|---|
+| avant R2-1 | 1302 | **14** | 1446 | 14 |
+| apres R2-1 | 1307 | **9** | 1507 | 68 |
+
+Zero SKIP du motif racine apres. Les 9 restants sont d'une AUTRE nature, tous legitimes :
+3 dans `openspartan_import_realdb_manual_test.go` (`OPENSPARTAN_DB_PATH` non pose), 3 dans
+`home_service_test.go` (TODO P4.4, cache canonical-aware), 2 dans `grenade_join_corpus_test.go`
+(`REPLAY_CORPUS`, corpus d'artefacts NON versionne), 1 dans `grenade_ambigu_sweep_test.go`
+(`FILM_SWEEP`). Les 59 SKIP de sous-tests qui apparaissent sont le cas normal documente « pas
+de fond fige pour X » de `TestMapBackground_TousLesModulesDuCatalogue`, que son parent borne
+par `avecFond == 0` : ils etaient invisibles avant parce que le parent lui-meme skippait.
+
+### R2-2 — le garde-rail etendu (commit `922b0d424`)
+
+`TestNoProdRepoRootHelperInTests` (`internal/archlint/no_repo_root_walk_test.go:206`) interdit
+desormais, hors commentaires, dans tout `_test.go` sous `internal/` et `cmd/` :
+
+- `title.FindRepoRoot` — l'APPEL. L'import de `title` reste libre : le paquet sert aussi
+  `DefaultSlug` et `PathResolver`, l'interdire ferait tomber des dizaines de tests legitimes,
+  et un test ne peut pas appeler le helper sans ecrire cet appel.
+- `os.Getenv("LEVELUP_REPO_ROOT")`. Le motif est ECRIT AVEC son `os.Getenv` : `t.Setenv` dans
+  `internal/config/config_extra_test.go` (qui teste le paquet config) et l'injection
+  d'environnement d'un sous-process dans `internal/ops/seed_demo_cli_test.go` ne sont pas
+  visees — elles ne situent aucune racine.
+
+Le motif (c) — boucle `filepath.Dir` ad hoc — n'est PAS implemente : (a) et (b) couvrent les
+cinq tests d'avant migration, et plus aucun helper de ce genre ne subsiste dans les tests
+(`reposRootDepuisTests` a disparu en R1-1). Ne pas sur-ingenier.
+
+Le fichier de garde s'exclut par SON CHEMIN (`runtime.Caller`), pas par une entree d'allowlist :
+il CITE les motifs dans ses messages d'erreur et sa table sans en appeler aucun — meme
+intention que le motif construit de `TestNoAdHocRepoRootLadderInTests`, exprimee une seule fois.
+
+Allowlist DATEE (2026-08-19), quatre entrees, chacune avec sa condition de reprise ecrite dans
+le fichier :
+
+| fichier | raison |
+|---|---|
+| `internal/analysis/replay/ctf_research_test.go` | instrument de recherche sous garde `CTF_RESEARCH_FILMS` : ne tourne jamais en CI |
+| `internal/himap/carte_oracle_gamefiles_test.go` | lit `data/cache/replays/...`, un CACHE **non versionne** : ici le skip est le comportement JUSTE |
+| `internal/mapdecoupe/oracle_corpus_test.go` | meme defaut que R2-1 sur un dump VERSIONNE, mais hors perimetre du volet 2 |
+| `cmd/mapcallouts-build/classify_test.go` | idem |
+
+Les deux entrees de l'echelle `../` posees en R1-1 restent inchangees.
+
+### Controles negatifs joues
+
+1. **Allowlist videe** -> FAIL sur les 4 fichiers attendus ET EUX SEULS
+   (`cmd/mapcallouts-build/classify_test.go`, `internal/analysis/replay/ctf_research_test.go`,
+   `internal/himap/carte_oracle_gamefiles_test.go`, `internal/mapdecoupe/oracle_corpus_test.go`),
+   chacun avec le motif qui l'a fait tomber. Le fichier de garde ne s'y signale pas : il
+   s'exclut par son chemin.
+2. **Fichier de test mute** : `internal/replaybuild/replaybuild_test.go` remis en
+   `title.FindRepoRoot()` — mutation COMPILABLE, verifiee par `go vet` CGO=1 exit 0, donc une
+   vraie regression et pas une simple mutation de texte -> FAIL sur ce seul fichier.
+
+### Ce qui reste ouvert (ronde 2)
+
+- `internal/mapdecoupe/oracle_corpus_test.go` et `cmd/mapcallouts-build/classify_test.go`
+  portent le MEME defaut que R2-1 sur un dump VERSIONNE
+  (`.ai/V7.5/dumps/callout_zones_ridgeline_clipped.json`, `git ls-files` non vide) : ils
+  skippent en silence en CI. Hors perimetre du volet 2 — les migrer sans rejouer leurs paquets
+  serait un fix aveugle. Reprise au prochain passage sur ces deux paquets ; l'allowlist datee
+  porte la condition.
