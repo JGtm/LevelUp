@@ -64,6 +64,12 @@ type bank struct {
 	// Meme raisonnement que VolNoeud : un conteneur peut faire varier ce que ses enfants
 	// jouent, la variation d'un `.wem` est donc celle de tout son chemin.
 	VarNoeud map[uint32]fourchetteSon
+	// DelaiNoeud : delai propre du noeud, en secondes (`AkPropID_InitialDelay`). Meme
+	// raisonnement que VolNoeud : un noeud qui retarde ce qu'il joue retarde tout son
+	// sous-arbre, le delai d'une couche est donc la somme de son chemin. Le chantier armes
+	// mesurait zero delai partout ; la table existe pour que la mesure SE REFASSE par
+	// banque au lieu d'etre postulee vraie ailleurs.
+	DelaiNoeud map[uint32]float32
 	// GainsFondu : gain additionnel (dB) impose par la courbe de fondu d'un `Blend` a l'un
 	// de ses enfants, au point de reference. Mesure : 0 gain partiel sur les 1305 banks —
 	// la table reste correcte si une future version du jeu en introduit.
@@ -167,6 +173,7 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		Switchs:    map[uint32]conteneurSwitch{},
 		VolNoeud:   map[uint32]float32{},
 		VarNoeud:   map[uint32]fourchetteSon{},
+		DelaiNoeud: map[uint32]float32{},
 		GainsFondu: map[uint32]map[uint32]float64{},
 	}
 	for _, o := range objs {
@@ -230,6 +237,9 @@ func (b *bank) noterProps(id uint32, p proprietesSon) {
 	}
 	if p.Variation.Lu && !p.Variation.Nulle() {
 		b.VarNoeud[id] = p.Variation
+	}
+	if p.DelaiS != 0 {
+		b.DelaiNoeud[id] = p.DelaiS
 	}
 }
 

@@ -67,27 +67,62 @@ push. `GOCACHE` dedie au scratchpad, un seul `go` a la fois.
 
 ## Phase 1 — STRUCTURE : la banque rend ses couches, pas un sac de `.wem`
 
-- [ ] 1.1 Mode Go **`eqip-arbre`** dans `cmd/weapon-sounds` : pour une liste de banques
+- [x] 1.1 Mode Go **`eqip-arbre`** dans `cmd/weapon-sounds` : pour une liste de banques
       (`-banks`), enumerer **TOUS** les Events avec, pour chacun, ses COUCHES
       (`couchesDeEvent` : type de noeud, `.wem` candidats, gain de chemin, variation), et
       marquer ceux qu'un `snd!` de la passe 1 DESIGNE (lecture de `-json`, l'echange
       existant). Sortie JSON + tableau lisible. Reutilise `bankParIdentifiant`,
       `parserBank`, `couchesDeEvent` : aucun parseur nouveau.
-- [ ] 1.2 **Couverture** : par banque, les `.wem` embarques qu'aucun Event n'atteint —
+- [x] 1.2 **Couverture** : par banque, les `.wem` embarques qu'aucun Event n'atteint —
       le chiffre qui dit si l'ecoute du 18/08 portait sur toute la banque ou sur un tiers.
-- [ ] 1.3 **Delai de couche** : propager `DelaiS` dans `etatChemin` et le rendre par
+- [x] 1.3 **Delai de couche** : propager `DelaiS` dans `etatChemin` et le rendre par
       couche ; MESURER combien de noeuds en portent un non nul sur les banques cibles.
       Zero mesure = les couches s'empilent a t=0 et le plan le dit.
-- [ ] 1.4 Lancer sur les **cinq** banques du translocateur (`dcfaa487`, `15c5b355`,
+- [x] 1.4 Lancer sur les **cinq** banques du translocateur (`dcfaa487`, `15c5b355`,
       `b29ac6de`, `de65048f`, et `92c830f5` en temoin negatif : elle appartient a un autre
       `eqip`) ; module `pc/globals` (7,24 Go) charge SEUL.
-- [ ] 1.5 **Temoin de methode** : rejouer le cas simple reussi `repair_field`
+- [x] 1.5 **Temoin de methode** : rejouer le cas simple reussi `repair_field`
       (`5724312f`, evenement -> 3 wem) et verifier que la structure rendue explique le
       resultat livre (3 variantes d'un point de choix, pas 3 couches). Une mesure qui ne
       retrouve pas un cas connu ne vaut rien.
 
-**Gate 1** : `go build ./...`, `go vet ./cmd/weapon-sounds/`, `golangci-lint run
-./cmd/weapon-sounds/...` — 0 issue ; le JSON de structure existe ; le temoin 1.5 passe.
+**Gate 1 : PASSE** (2026-08-19). `go build ./cmd/weapon-sounds/` OK, `go vet` exit 0,
+`golangci-lint run ./cmd/weapon-sounds/...` **0 issues**. Sortie :
+`scratchpad/balise_structure.json` + `.log`, 175 `.wem` ecrits (toutes les banques,
+orphelins compris).
+
+**CE QUE LA MESURE DIT, ET ELLE CONTREDIT EN PARTIE L'HYPOTHESE DE DEPART :**
+
+        banque     eqip  events  wem  orphelins  events multi-couches
+        dcfaa487     2      23    70      2              0
+        15c5b355    21      15    20      0              2   <- balise POSEE
+        b29ac6de    17       2     8      0              0   <- balise POSEE
+        de65048f    33       7     8      0              0   <- balise POSEE
+        5724312f     1      14    31      0              1   (temoin repair_field)
+        92c830f5     1      11    38      0              2   (temoin negatif)
+
+1. **DANS `dcfaa487` — LA BANQUE ECOUTEE — AUCUN EVENEMENT N'EST MULTI-COUCHES.** Les
+   23 evenements sont tous « une couche, un son tire parmi N » (N = 1 a 6). L'hypothese
+   « le son de cette banque est un empilement que le `.wem` isole ne rend pas » est donc
+   **REFUTEE POUR CETTE BANQUE** : ce que le jeu y joue EST un fichier unique.
+2. **CE QUI EXPLIQUE L'ECHEC D'ECOUTE EST AILLEURS, ET C'EST UN COMPTE.** Les 11 gestes du
+   18/08 (ceux qu'un `snd!` designe) ne couvrent que **11 evenements sur 23** et 32 `.wem`
+   sur 70. **12 evenements de cette meme banque n'ont jamais ete entendus**, et 2 `.wem`
+   ne sont atteints par aucun evenement.
+3. **LES EVENEMENTS MULTI-COUCHES EXISTENT, ET DEUX SONT DANS LA BANQUE DE LA BALISE
+   POSEE** (`15c5b355`, jamais extraite avant ce lot) :
+   `044005ec` = `303633458` (0 dB) + `1062674912` (-23 dB) ;
+   `92206f7d` = `405210764` (-3 dB) + `636465689` (+3 dB).
+4. **ZERO DELAI SUR LES SIX BANQUES** (`DelaiNoeud` vide partout) : l'empilement a t=0
+   n'est pas une simplification ici non plus, c'est la mesure. Aucun `adelay` au mixage.
+5. **Temoin 1.5 PASSE** : les deux evenements designes de `repair_field` (`15b73ee0` et
+   `8ed46d21`, `snd! 22c2323a`) rendent tous deux « 1 couche, un son parmi 3 » avec les
+   MEMES trois `.wem` (`894865279`, `899552962`, `1001730562`) — exactement les trois
+   fichiers livres. La structure explique le resultat connu.
+6. **Un negatif utile en passant** : le geste generique `de65048f` / `92491129`
+   (`snd! 7ff6244a`, 33 `eqip`) porte un gain de chemin de **-96 dB**. Le « son generique
+   d'objet cree dans le monde » que le plan du 18/08 envisageait de brancher est donc
+   **muet par construction**.
 
 ## Phase 2 — LES DEUX CHAINES, gestes nommes par leur role
 
@@ -140,5 +175,8 @@ recette est ecrite.
 ## Journal d'execution
 
 - 2026-08-19 — plan ecrit.
+- 2026-08-19 — **phase 1 CLOSE**. Mode `eqip-arbre` ecrit, delai propage et mesure a zero,
+  structure des six banques rendue. L'hypothese « paquet multi-couches » tombe sur
+  `dcfaa487` et se deplace sur `15c5b355` (deux evenements a deux couches, jamais extraits).
 
 ## Decouvertes — notees, NON traitees
