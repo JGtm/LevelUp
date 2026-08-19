@@ -7152,6 +7152,21 @@ export interface components {
             markers?: components["schemas"]["ObjectiveMarkerDTO"][] | null;
             zones?: components["schemas"]["ObjectiveZoneDTO"][] | null;
         };
+        MapWeaponPadDTO: {
+            /** Format: int64 */
+            pad: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        MapWeaponPads: {
+            /** Format: int64 */
+            catalogN: number;
+            pads: components["schemas"]["MapWeaponPadDTO"][] | null;
+        };
         MarkResult: {
             /** Format: int64 */
             updated: number;
@@ -9323,6 +9338,7 @@ export interface components {
             };
             loadouts?: components["schemas"]["Loadout"][] | null;
             mapObjectives?: components["schemas"]["MapObjectives"];
+            mapWeaponPads?: components["schemas"]["MapWeaponPads"];
             matchId: string;
             neutralDeaths?: components["schemas"]["NeutralDeath"][] | null;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
