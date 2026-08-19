@@ -43,9 +43,9 @@ import {
 } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
-import { countDrawablePlacements, drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
+import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
-import { usePlacementHover } from './usePlacementHover'
+import { useReplayPlacements } from './useReplayPlacements'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
@@ -145,10 +145,18 @@ interface ReplayCanvasProps {
   xuidMeta?: XuidMeta
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
+  /**
+   * Les objets de PUISSANCE lâchés à la mort ont-ils le droit de se dessiner ? La route le
+   * tranche (`matchFiestaGuard`) : jamais en Fiesta, et jamais tant que le mode n'est pas
+   * connu. ABSENT = faux, le défaut conservateur — le canvas ne devine pas un mode que son
+   * document ne publie pas.
+   */
+  droppedAllowed?: boolean
 }
 
 export function ReplayCanvas({
   doc, locale, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+  droppedAllowed = false,
 }: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -180,6 +188,7 @@ export function ReplayCanvas({
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
     showUnnamedPlacements, toggleUnnamedPlacements,
+    showDroppedPlacements, toggleDroppedPlacements,
     showWeaponPads, toggleWeaponPads, showFlagCarries, toggleFlagCarries,
     speed: multiplier, setSpeed: setMultiplier,
   } = useReplaySettings()
@@ -198,21 +207,6 @@ export function ReplayCanvas({
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
-  // LES POSES D'ÉQUIPEMENT (schéma 10), comptées par la MÊME PORTE que le tracé
-  // (`countDrawablePlacements` -> `placementKind`) : une bascule ne s'allume que si quelque
-  // chose se dessinerait derrière elle.
-  const placementCounts = useMemo(
-    () => countDrawablePlacements(doc.equipmentPlacements),
-    [doc.equipmentPlacements],
-  )
-
-  // L'axe de temps que la fenêtre d'une pose consulte (cf. placementEndFrame) : le dessin et
-  // le survol le partagent, pour qu'ils ne puissent pas répondre deux choses différentes.
-  const placementWindowTime = useMemo(
-    () => ({ frameMs: frameToMs(1, doc), frames: doc.frameCount }),
-    [doc],
-  )
-
   // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
   // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
   // scoreboard + descente sur les vies) vit dans useSlotIdentity.
@@ -356,6 +350,15 @@ export function ReplayCanvas({
     locale,
     redraw,
   })
+  // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
+  // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE n'y entrent que si la page l'a
+  // permis — jamais en Fiesta, jamais sur un mode inconnu.
+  const placements = useReplayPlacements({
+    doc, view: canvasView, frameRef, enabled: showPlacements,
+    showUnnamed: showUnnamedPlacements,
+    showDropped: showDroppedPlacements && droppedAllowed,
+  })
+
   // LA VIE DES DRAPEAUX (schéma 15) : tracé, survol et infobulle dans un seul hook — et pas un
   // calque statique, le drapeau porté suit son porteur image par image.
   const flags = useReplayFlagCarries({
@@ -424,7 +427,7 @@ export function ReplayCanvas({
     // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
     // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
     // mise au repos de l'objet, pas sa disparition (cf. placementEndFrame).
-    if (showPlacements && placementCounts.drawable > 0) {
+    if (showPlacements && placements.counts.drawable > 0) {
       drawEquipmentPlacementsLayer(
         ctx,
         // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur révèle les
@@ -437,10 +440,10 @@ export function ReplayCanvas({
           // Durée RÉELLE d'une frame : le ping du capteur bat en temps de match, pas en
           // nombre d'images (même règle que la fin de vol des grenades). Le même objet sert
           // au survol — une pose ne peut pas être dessinée et non survolable.
-          ...placementWindowTime,
+          ...placements.windowTime,
           k: dpr,
           reducedMotion,
-          showUnnamed: showUnnamedPlacements,
+          ...placements.toggles,
         },
         { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk },
       )
@@ -557,10 +560,10 @@ export function ReplayCanvas({
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     t.aliveSuffix, renderWidth, canvasView,
-    placementCounts.drawable,
-    placementWindowTime,
+    placements.counts.drawable,
+    placements.windowTime,
+    placements.toggles,
     showPlacements,
-    showUnnamedPlacements,
     // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
     // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
     weaponPads,
@@ -631,16 +634,6 @@ export function ReplayCanvas({
     return () => cancelAnimationFrame(raf)
   }, [playing, baseFps, multiplier, doc, renderWidth, draw, soundTick])
 
-  // LE SURVOL D'UNE POSE : rejoué sur la donnée, jamais sur les pixels (usePlacementHover).
-  const placementHover = usePlacementHover({
-    placements: doc.equipmentPlacements,
-    view: canvasView,
-    time: placementWindowTime,
-    frameRef,
-    enabled: showPlacements && placementCounts.drawable > 0,
-    showUnnamed: showUnnamedPlacements,
-  })
-
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)
     if (!playing) draw()
@@ -696,12 +689,12 @@ export function ReplayCanvas({
                 className="block"
                 style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
                 onPointerMove={(e) => {
-                  placementHover.onPointerMove(e)
+                  placements.hover.onPointerMove(e)
                   weaponPads.onPointerMove(e)
                   flags.onPointerMove(e)
                 }}
                 onPointerLeave={() => {
-                  placementHover.onPointerLeave()
+                  placements.hover.onPointerLeave()
                   weaponPads.onPointerLeave()
                   flags.onPointerLeave()
                 }}
@@ -709,7 +702,7 @@ export function ReplayCanvas({
               {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
                 locale={locale} width={renderWidth} ownerNameOf={nameOfSlot}
-                placement={placementHover.hover} pad={weaponPads.hover} flag={flags.hover}
+                placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
               />
               {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
             </div>
@@ -774,12 +767,15 @@ export function ReplayCanvas({
             onToggleTrail={toggleTrail}
             zonesAvailable={calloutZones.length > 0}
             placements={{
-              available: placementCounts.drawable > 0,
+              available: placements.counts.drawable > 0,
               show: showPlacements,
               onToggle: togglePlacements,
-              unnamedAvailable: placementCounts.unnamed > 0,
+              unnamedAvailable: placements.counts.unnamed > 0,
               showUnnamed: showUnnamedPlacements,
               onToggleUnnamed: toggleUnnamedPlacements,
+              droppedAvailable: placements.counts.dropped > 0 && droppedAllowed,
+              showDropped: showDroppedPlacements,
+              onToggleDropped: toggleDroppedPlacements,
             }}
             weaponPads={{
               available: weaponPads.available,

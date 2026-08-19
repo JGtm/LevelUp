@@ -16,17 +16,23 @@ import { useCallback, useState, type PointerEvent, type RefObject } from 'react'
 
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import {
-  placementAt,
-  type PlacementView,
-  type PlacementWindowTime,
-} from './equipmentPlacementsLayer'
+import type { PlacementView, PlacementWindowTime } from './equipmentPlacementsLayer'
+import { placementAt } from './placementHitTest'
 import type { XY } from './replayLogic'
 
-/** Ce qui est survolé : la pose, et l'endroit du canvas où poser son infobulle. */
+/** Ce qui est survolé : la pose, l'endroit du canvas où poser son infobulle, et sa naissance. */
 export interface PlacementHover {
   placement: ReplayEquipmentPlacement
   at: XY
+  /**
+   * L'INSTANT DE LA POSE au chronomètre du rejeu, en millisecondes (`t0` converti ici, où la
+   * durée réelle d'une image est connue).
+   *
+   * UN INSTANT ABSOLU, JAMAIS UN ÂGE. L'image courante est lue dans une référence et l'infobulle
+   * ne se recalcule qu'au mouvement du pointeur (cf. l'en-tête) : un « il y a 12 s » se
+   * périmerait sous un pointeur immobile pendant la lecture, un « à 4:32 » reste vrai.
+   */
+  atMs: number
 }
 
 export interface PlacementHoverInput {
@@ -44,6 +50,11 @@ export interface PlacementHoverInput {
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
   showUnnamed: boolean
+  /**
+   * Les objets de PUISSANCE lâchés se survolent-ils ? La valeur arrive DÉJÀ croisée avec la
+   * garde de mode (jamais en Fiesta) : le survol suit le dessin, jamais l'inverse.
+   */
+  showDropped: boolean
 }
 
 export interface PlacementHoverHandlers {
@@ -59,6 +70,7 @@ export function usePlacementHover({
   frameRef,
   enabled,
   showUnnamed,
+  showDropped,
 }: PlacementHoverInput): PlacementHoverHandlers {
   const [hover, setHover] = useState<PlacementHover | null>(null)
 
@@ -78,16 +90,16 @@ export function usePlacementHover({
       const found = placementAt(
         placements,
         view,
-        { frame: frameRef.current, showUnnamed, frameMs: time.frameMs, frames: time.frames },
+        { frame: frameRef.current, showUnnamed, showDropped, frameMs: time.frameMs, frames: time.frames },
         at,
       )
       setHover((prev) => {
         if (!found) return prev === null ? prev : null
         if (prev && prev.placement === found && prev.at.x === at.x && prev.at.y === at.y) return prev
-        return { placement: found, at }
+        return { placement: found, at, atMs: found.t0 * time.frameMs }
       })
     },
-    [enabled, placements, view, frameRef, showUnnamed, time.frameMs, time.frames],
+    [enabled, placements, view, frameRef, showUnnamed, showDropped, time.frameMs, time.frames],
   )
 
   const onPointerLeave = useCallback(() => {

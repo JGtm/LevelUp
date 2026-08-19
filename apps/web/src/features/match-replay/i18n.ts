@@ -92,6 +92,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerPlacements: 'Équipements posés',
     layerPlacementsHint:
       "Les objets qu'un joueur a DÉPLOYÉS en cours de vie : mur de protection, capteur de menaces, traqueur de menaces, balise du translocateur quantique, champ de réparation. La BALISE est le point de retour que pose le translocateur quantique — ce n'est pas le marquage d'un ennemi, que le jeu appelle « ping ». Le champ de réparation porte une croix qui respire : elle dit que l'objet soigne, elle ne compte rien — le film ne publie aucune cadence de soin, et son cercle pointillé garde la réserve sur sa portée. Ce que la mesure classe autrement ne se dessine pas — près de neuf poses sur dix sont en réalité l'équipement et les grenades qu'un joueur lâche en mourant, et ce n'est pas un geste. Le film ne dit pas quand un équipement disparaît : le capteur se tient donc à sa durée officielle de 15 s, les autres poses restent affichées jusqu'à la fin du rejeu. L'arc du mur est orienté par le regard du poseur ; quand la pose ne porte pas ce cap (un peu plus d'une fois sur huit), il suit la dernière direction de déplacement du poseur, et à défaut sa dernière visée connue — un arc déduit se trace alors en pointillé. Le capteur balaie sa portée toutes les 1,8 s — chiffres officiels du jeu, le film n'en porte aucun — et marque brièvement les adversaires du poseur qui s'y trouvent au passage de l'onde ; le traqueur, lui, n'émet qu'une seule impulsion.",
+    layerPlacementsDropped: 'Objets lâchés au sol',
+    layerPlacementsDroppedHint:
+      "Les objets de PUISSANCE qu'un joueur laisse au sol en mourant : power-ups (surbouclier, camouflage) et équipements déployables (mur de protection, capteur, traqueur, balise, champ de réparation). Ils sont RAMASSABLES — savoir qu'ils traînent change la lecture de l'échange suivant. Un anneau pointillé et atténué, jamais la forme de l'objet actif : au sol, l'objet n'exerce ni portée ni effet. Les grenades et les capacités lâchées restent hors carte : elles représentent près de neuf poses sur dix et ne diraient rien du terrain. Allumé par défaut.",
     layerPlacementsUnnamed: 'Objets non identifiés',
     layerPlacementsUnnamedHint:
       "Les objets d'équipement que la mesure situe sans pouvoir les nommer : un point neutre, sans forme empruntée aux familles nommées. Ceux-là s'affichent quelle que soit leur origine — on cherche justement à voir ce qu'on ne sait pas nommer. Éteint par défaut.",
@@ -105,6 +108,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     placementUnnamedLabel: "Objet d'équipement non identifié",
     placementOwnerFmt: (name) => `Posé par ${name}`,
     placementOwnerUnknown: 'Poseur non mesuré',
+    placementDroppedLabel: 'Objet lâché au sol',
+    placementDroppedOwnerFmt: (name) => `Lâché par ${name}`,
+    placementDroppedAtFmt: (clock) => `Au sol depuis ${clock}`,
     layerWeaponPads: "Emplacements d'arme",
     layerWeaponPadsHint:
       "Les endroits où une arme réapparaît au fil du match, mesurés sur ce match : l'arme y est dessinée en grand quand elle change une partie (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, surbouclier, camouflage), en petit sinon. Socle au sol ou râtelier mural : la mesure ne porte qu'une position, elle ne les distingue pas. Le film ne date pas l'instant du ramassage — l'emplacement reste donc INCERTAIN pendant l'intervalle des relevés, environ vingt secondes, plutôt que de s'éteindre à un instant inventé. Un compte à rebours n'apparaît que là où le délai de réapparition a pu être établi ; ailleurs, aucun chiffre. Qui a pris l'arme n'est jamais affiché : la mesure n'atteint pas le niveau de certitude exigé.",
@@ -294,6 +300,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerPlacements: 'Deployed equipment',
     layerPlacementsHint:
       'The objects a player actually DEPLOYED while alive: drop wall, threat sensor, threat seeker, quantum translocator beacon, repair field. The BEACON is the return point dropped by the quantum translocator — not the enemy marking the game calls a “ping”. The repair field carries a breathing cross: it says the object heals, it counts nothing — the film publishes no healing cadence, and its dashed circle keeps the reservation about its radius. Anything the measurement classes otherwise stays off the map — nearly nine placements out of ten are in fact the equipment and grenades a player drops on death, and that is not a gesture. The film never says when a piece of equipment disappears: the sensor therefore keeps to its official 15 s duration, and the other placements stay on screen until the end of the replay. The wall arc is oriented by where the deployer was looking; when the placement carries no such heading (a little more than once in eight), it follows the deployer’s last direction of travel, and failing that their last known aim — a deduced arc is then drawn dashed. The sensor sweeps its radius every 1.8 s — official game figures, the film carries none — and briefly marks the deployer’s opponents caught by the wave; the seeker emits a single pulse.',
+    layerPlacementsDropped: 'Objects dropped on the ground',
+    layerPlacementsDroppedHint:
+      'The POWER objects a player leaves on the ground when they die: power-ups (overshield, camouflage) and deployable equipment (drop wall, sensor, seeker, beacon, repair field). They can be PICKED UP — knowing they are lying around changes how the next fight reads. A dashed, dimmed ring, never the shape of the active object: on the ground it exerts no radius and no effect. Dropped grenades and abilities stay off the map: they are nearly nine placements out of ten and would say nothing about the terrain. On by default.',
     layerPlacementsUnnamed: 'Unidentified objects',
     layerPlacementsUnnamedHint:
       'Equipment objects the measurement locates without being able to name them: a neutral dot, borrowing no shape from the named families. These show whatever their origin — the point is precisely to see what cannot be named. Off by default.',
@@ -307,6 +316,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     placementUnnamedLabel: 'Unidentified equipment object',
     placementOwnerFmt: (name) => `Deployed by ${name}`,
     placementOwnerUnknown: 'Deployer not measured',
+    placementDroppedLabel: 'Object dropped on the ground',
+    placementDroppedOwnerFmt: (name) => `Dropped by ${name}`,
+    placementDroppedAtFmt: (clock) => `On the ground since ${clock}`,
     layerWeaponPads: 'Weapon spots',
     layerWeaponPadsHint:
       'The spots where a weapon reappears during the match, measured on this match: the weapon is drawn large when it changes a game (sniper, sword, hammer, rockets, skewer, cindershot, overshield, camo), small otherwise. Floor pad or wall rack: the measurement only carries a position, it does not tell them apart. The film never dates the moment of pickup — the spot therefore stays UNCERTAIN for the sampling interval, about twenty seconds, rather than going dark at an invented instant. A countdown only appears where the respawn delay could be established; nowhere else. Who took the weapon is never shown: the measurement falls short of the required certainty.',

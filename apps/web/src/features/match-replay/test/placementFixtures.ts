@@ -42,6 +42,15 @@ export const TIME: PlacementTime = {
   k: 1,
   reducedMotion: false,
   showUnnamed: false,
+  /**
+   * LES DEUX BASCULES SONT ÉTEINTES DANS LA FIXTURE, y compris celle des objets lâchés — qui
+   * est pourtant ALLUMÉE en production, hors Fiesta. C'est délibéré : le décor par défaut de
+   * ces tests est le comportement HISTORIQUE du calque (seuls les déployés), pour que tout
+   * test qui ne parle pas des lâchers continue de mesurer ce qu'il mesurait. Les tests des
+   * lâchers, eux, l'allument explicitement — et l'un d'eux vérifie qu'allumée, elle ne change
+   * RIEN aux déployés.
+   */
+  showDropped: false,
 }
 
 /** L'IDENTIFIANT DES PANNEAUX du mur — celui sur lequel l'arc se dessine (manifeste). */
@@ -54,6 +63,13 @@ export const SENSOR_ID = '0x72b63d69'
 export const BEACON_ID = '0x730dc70f'
 export const SEEKER_ID = '0x4744d742'
 export const FIELD_ID = '0x32d97758'
+
+/**
+ * L'IDENTIFIANT DU SURBOUCLIER LÂCHÉ, relevé sur le témoin `01e1f945` (KOTH Catalyst) : la
+ * SEULE pose de power-up du corpus des onze films, et elle est `dropped`. Écrit ici pour que
+ * les tests des objets lâchés parlent de la donnée réelle et non d'un identifiant inventé.
+ */
+export const OVERSHIELD_ID = '0xb781197a'
 
 /** Une pose : par défaut le déploiement d'un panneau de mur au centre de la carte. */
 export function pose(over: Partial<ReplayEquipmentPlacement> = {}): ReplayEquipmentPlacement {
