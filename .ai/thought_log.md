@@ -1,3 +1,37 @@
+## [2026-08-19] Objets de puissance laches au sol : dessines hors Fiesta — Complete
+
+**Statut** : Complete (branche `wt/dropped-hors-fiesta`, base `feat/v75` = `e4a15e7c6`, 4 commits
+`4b1c53357`..`<docs>`, non fusionnee — mode branche unique, le superviseur decide de la fusion).
+**Decision technique** : la decision produit du 18/08 (« hors Fiesta, dessiner les armes speciales et
+equipements LACHES a la mort ») est livree pour les EQUIPEMENTS et les POWER-UPS ; **les ARMES lachees
+ne sont dans AUCUN canal du document** (`equipmentPlacements` = tag `eqip`, `weaponPads` = socles de
+reapparition) — report de DONNEES ouvert au registre, hors perimetre d'un lot web. La regle vit dans
+`placementDropped.ts` (origine mesuree `dropped` croisee avec 5 familles deployables + les 2 power-ups
+repris de `PAD_EQUIPMENT_FAMILIES`, jamais recopies), PAS dans `PLACEMENT_RENDER` : un power-up n'a
+aucune forme d'objet actif, et un mur lache porte l'identifiant de l'APPAREIL (`0x8e2dc574`) et non
+celui des panneaux (`0x528fce46`). D'ou une forme UNIQUE — anneau pointille attenue, sans portee ni
+pulsation. **La garde de mode ne pouvait pas vivre dans le calque** : `ReplayDocument` ne publie ni
+mode ni playlist ni `pair_name`. Elle vit dans la page (`replayFiesta.ts`), qui lit l'en-tete de la
+Match View deja chargee pour le fil et les fiches ; regle conservatrice — on ne dessine QUE si aucun
+indice de Fiesta, un en-tete absent ne dessine rien.
+**Resultats** : temoins rejoues sur leur recensement mesure (artefacts non versionnes, methode
+`killFeedLogic`/`mapBackground`) — `01e1f945` (KOTH Catalyst, 151 poses) gagne **exactement 1**
+primitive, le surbouclier, malgre 108 grenades a fragmentation autour ; `000d5950` (Super Fiesta
+Cliffhanger, 295 poses) gagne **0**, et le test mesure aussi les **26** qu'il gagnerait sans la garde
+(15 capteurs + 11 murs laches), sans quoi « rien ne change » ne prouverait rien. **Trou mesure et
+assume sur la detection de mode : 3 matchs sur les 432 de categorie Fiesta du corpus de 1 855**
+(`pair_name` « Fiesta:… », dont `mode_ui` extrait le sous-mode) — `playlist_label` vaut « Quick Play »
+sur les DEUX temoins et ne sert a rien. Le cliquet de taille de `ReplayCanvas.tsx` a mordu comme prevu
+(fichier PILE a 812) : extraction prealable de `useReplayPlacements` et `placementHitTest`, 812 -> 808.
+Gates : `EXIT_PURGE=0`, `EXIT_TSC=0` (`tsc -b --force`, sans pipe), `EXIT_LINT=0`, `EXIT_VITEST=0`
+(948 tests / 63 fichiers, +25).
+**Conclusion / prochaine etape** : gate VISUEL utilisateur a faire (l'anneau pointille se lit-il sous
+un capteur deploye ? l'infobulle « Lache par X / Au sol depuis m:ss » dit-elle ce qu'il faut ?). Deux
+reports ouverts au registre avec leur condition de reprise : publier les ARMES au sol cote Go, et
+publier la CATEGORIE de mode dans `MatchViewHeader` pour fermer les 0,7 %. Decouverte NON traitee :
+`expected_stats.hist_mode_category` passe un `pair_name` a `ComputeModeCategory`, qui attend une
+categorie — a signaler au chantier donnees.
+
 ## [2026-08-19] Socles de carte : du catalogue au calque, allumes seulement — Complete
 
 **Statut** : Complete (branche `wt/pads-catalogue`, 4 commits `2f4ca95bc`..`9131d9679`, FUSIONNEE dans

@@ -114,50 +114,60 @@ film porte au moins un lâcher de puissance ET que le match n'est pas Fiesta.
 
 ## 4. Étapes
 
-### Étape 1 — la règle et la forme (logique pure)
-- [ ] `placementDropped.ts` : `PLACEMENT_ORIGIN_DROPPED`, `PLACEMENT_DROPPED_FAMILIES`,
+### Étape 1 — la règle et la forme (logique pure) — FUSIONNÉE AVEC L'ÉTAPE 2 AU COMMIT
+
+> **Écart au plan, assumé et daté (2026-08-19).** Les étapes 1 et 2 forment UN commit
+> (`ea027dfa5`) et non deux : découper au milieu aurait laissé un arbre qui ne compile pas
+> (le calque change la signature de `placementKind`, ses appelants React sont dans l'étape 2).
+> Les items restent statués séparément ci-dessous ; ce sont les GATES qui ont été joués une
+> seule fois, à la fin des deux. Aucun item n'a été reporté.
+- [x] `placementDropped.ts` : `PLACEMENT_ORIGIN_DROPPED`, `PLACEMENT_DROPPED_FAMILIES`,
       `placementIsDroppedPower()`.
-- [ ] `placementShapes.ts` : `drawDroppedObject()` + ses constantes (aucune couleur écrite).
-- [ ] `equipmentPlacementsLayer.ts` : `PlacementKind` += `'dropped'`, `placementKind()` prend
+- [x] `placementShapes.ts` : `drawDroppedObject()` + ses constantes (aucune couleur écrite).
+- [x] `equipmentPlacementsLayer.ts` : `PlacementKind` += `'dropped'`, `placementKind()` prend
       désormais les DEUX bascules, `drawPlacement` aiguille, `hoverRadiusPx`,
       `countDrawablePlacements` rend `dropped`.
-- [ ] `placementWindow.ts` : un lâché reste jusqu'à la fin du rejeu (aucun changement de
-      code attendu — à VÉRIFIER sur pièces, pas à supposer).
-- [ ] Tests : familles de puissance seulement, grenades/capacités jamais, `deployed`
+- [~] `placementWindow.ts` : VÉRIFIÉ sur pièces, aucun changement nécessaire —
+      `placementEndFrame` ne traite spécialement que `sensor` et rend la dernière image du
+      rejeu pour tout le reste. Un test le fige (`placementEndFrame(p, 'dropped', TIME)`).
+- [x] Tests : familles de puissance seulement, grenades/capacités jamais, `deployed`
       inchangés, bascule éteinte = rien.
 - Gate : `vitest run src/features/match-replay` + `tsc -b --force`.
 
 ### Étape 2 — la garde de mode, la bascule, l'infobulle
-- [ ] `replayFiesta.ts` : `matchFiestaGuard(header)` → `'fiesta' | 'clear' | 'unknown'`, pur
+- [x] `replayFiesta.ts` : `matchFiestaGuard(header)` → `'fiesta' | 'clear' | 'unknown'`, pur
       et testé.
-- [ ] `useReplaySettings` : `showDroppedPlacements` / `toggleDroppedPlacements`.
-- [ ] `useReplayPlacements.ts` : EXTRACTION préalable imposée par le cliquet de taille de
+- [x] `useReplaySettings` : `showDroppedPlacements` / `toggleDroppedPlacements`.
+- [x] `useReplayPlacements.ts` : EXTRACTION préalable imposée par le cliquet de taille de
       `ReplayCanvas.tsx` (812 lignes, plafond atteint) — comptes, axe de temps, bascules du
       calque et survol dans un seul hook, sur le modèle de `useReplayWeaponPads`.
-- [ ] `ReplayCanvas` : prop `droppedAllowed` (défaut faux), câblage du calque, du survol et
-      du tiroir. Le fichier doit RESTER sous 812 lignes.
-- [ ] `ReplaySettingsDrawer` : la bascule et son aide.
-- [ ] `ReplayPlacementTip` : famille, lâcheur, instant.
-- [ ] `i18n.ts` + `i18nContract.ts` : FR et EN, parité par typage.
-- [ ] Route `replay.tsx` : `droppedAllowed = matchFiestaGuard(matchView?.header) === 'clear'`.
+- [x] `ReplayCanvas` : prop `droppedAllowed` (défaut faux), câblage du calque, du survol et
+      du tiroir. Le fichier descend de 812 à 808 lignes, et le cliquet suit.
+- [x] `ReplaySettingsDrawer` : la bascule et son aide.
+- [x] `ReplayPlacementTip` : famille, lâcheur, instant.
+- [x] `i18n.ts` + `i18nContract.ts` : FR et EN, parité par typage.
+- [x] Route `replay.tsx` : `droppedAllowed = matchFiestaGuard(matchView?.header) === 'clear'`.
 - Gate : `tsc -b --force`, `eslint`, `vitest run src/features/match-replay`.
 
 ### Étape 3 — témoins mesurés et garde-rails
-- [ ] Test des deux témoins : recensement du § 2.2 rejoué en fixture, comptage des
+- [x] Test des deux témoins : recensement du § 2.2 rejoué en fixture, comptage des
       PRIMITIVES de canvas (`recordingContext`) — `01e1f945` : +1 ; `000d5950` : +0 sous la
       garde Fiesta, et +26 sans elle (sinon le témoin ne prouverait rien).
-- [ ] Garde-rail de vocabulaire : `PLACEMENT_DROPPED_FAMILIES` cohérente avec
+- [x] Garde-rail de vocabulaire : `PLACEMENT_DROPPED_FAMILIES` cohérente avec
       `PLACEMENT_RENDER` et avec les power-ups de `weaponPadFamilies`.
-- [ ] Garde-rail couleurs : aucune valeur hex ni classe Tailwind couleur dans les fichiers
-      touchés (le garde `canvasInk.guard` / `fxInk.guard` existe — vérifier la portée).
-- [ ] Parité i18n FR/EN sur les clés neuves.
-- [ ] Cliquet `ReplayCanvas.tsx` toujours vert.
+- [x] Garde-rail couleurs : `canvasInk.guard` et `fxInk.guard` ne couvrent PAS ces
+      fichiers (portée vérifiée : ils visent `InkVar` et les teintes d'effets). Deux tests
+      neufs dans `placementDropped.guard.test.ts` couvrent les cinq fichiers du lot.
+- [~] Parité i18n FR/EN : tenue par le TYPAGE (`Record<ReplayLocale, ReplayText>` +
+      `i18nContract.ts`), la convention du dépôt — `tsc` refuse une clé absente d'une
+      langue. Aucun test à ajouter : il doublerait le compilateur.
+- [x] Cliquet `ReplayCanvas.tsx` toujours vert.
 - Gate : la suite `src/features/match-replay` entière.
 
 ### Étape 4 — plan statué, journal, registre
-- [ ] Toutes les cases statuées `[x]` / `[~]` / `[!]`.
-- [ ] Entrée `.ai/thought_log.md`.
-- [ ] Registre des reports : la ligne du 18/08 passe à TRAITÉE (périmètre équipements +
+- [x] Toutes les cases statuées `[x]` / `[~]` / `[!]`.
+- [x] Entrée `.ai/thought_log.md`.
+- [x] Registre des reports : la ligne du 18/08 passe à TRAITÉE (périmètre équipements +
       power-ups) ; deux reports NEUFS ouverts (armes lâchées = données ; trou de 0,7 % sur la
       détection de mode).
 
@@ -170,8 +180,39 @@ film porte au moins un lâcher de puissance ET que le match n'est pas Fiesta.
 
 ## 6. Découvertes (à NE PAS traiter dans ce lot)
 
-_(rempli en cours d'exécution)_
+1. **`expected_stats.hist_mode_category` n'est pas l'oracle de mode qu'il semble être.** Il
+   est `omitempty`, conditionné à l'existence de matchs historiques de la même catégorie, et
+   sa valeur passe par `ComputeModeCategory(row.PairName, …)` — une fonction qui attend une
+   CATÉGORIE et reçoit un `pair_name`, d'où des valeurs de la forme `pvp_<pair_name>`.
+   Vérifié sur pièces, non corrigé (aucun Go dans ce lot) — à signaler au chantier données.
+2. **Le worktree frère n'existait pas au chemin annoncé** : il avait été créé sous
+   `apps/LevelUp-wt-dropped`, DANS l'arbre principal. Déplacé par `git worktree move` vers
+   le chemin frère annoncé avant toute autre action.
+3. **Le recensement du témoin `000d5950` a changé de schéma** (17 au lieu de 16 pour
+   `01e1f945`) : les deux artefacts sur disque ne sont pas de la même cuisson. Sans effet sur
+   ce lot — `origin` existe depuis le schéma 10 — mais à savoir avant toute comparaison
+   chiffrée entre les deux films.
 
 ## 7. Journal d'exécution
 
-_(rempli en cours d'exécution)_
+**2026-08-19 — plan écrit** (`4b1c53357`). Lecture sur pièces AVANT d'écrire : le calque, ses
+quatre modules voisins, le contrat i18n, le tiroir, la route, le schéma généré, et la base
+(1 855 matchs) pour trancher la question du mode. C'est cette lecture qui a fermé deux
+hypothèses du brief : les armes lâchées ne sont pas dans le document, et le mode n'est
+résoluble qu'à 99,3 %.
+
+**2026-08-19 — étapes 1 et 2** (`ea027dfa5`, un seul commit, cf. l'écart ci-dessus).
+Trois modules neufs (`placementDropped`, `replayFiesta`, `useReplayPlacements`), un quatrième
+issu d'une extraction (`placementHitTest`). Le cliquet de `ReplayCanvas.tsx` a mordu comme il
+devait : le fichier était PILE à 812, le lot y ajoutait ~16 lignes, l'extraction a rendu
+808. Gates : `tsc -b --force` 0, `eslint` 0, `vitest` 923 tests verts.
+
+**2026-08-19 — étape 3** (`57ab2fab1`). Les deux témoins rejoués sur leur recensement mesuré.
+Un défaut du premier jet, attrapé par le test lui-même : le recensement du témoin Fiesta
+totalisait 293 au lieu de 295 — une ligne (`thruster/unknown: 2`) oubliée à la recopie. Le
+test qui fige le TOTAL des poses avant de compter les primitives existe exactement pour cela.
+Gates finaux : `EXIT_PURGE=0`, `EXIT_TSC=0`, `EXIT_LINT=0`, `EXIT_VITEST=0` (948 tests, 63
+fichiers) — journal complet dans le bloc-notes de session (`dropped_gates.log`).
+
+**2026-08-19 — étape 4.** Plan statué, registre amendé (une ligne passe à TRAITÉE, deux
+reports neufs ouverts avec leur condition de reprise), entrée au journal de décisions.
