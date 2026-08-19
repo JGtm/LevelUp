@@ -1,5 +1,26 @@
 ## [2026-08-19] Rendu des socles de POWER-UP : taille, nom, vignette — Complete
 
+**Statut** : Complete (branche `wt/powerup-rendu`, `a21ebc4e6` + `b918ab477`, FUSIONNEE dans `feat/v75`
+par le superviseur ; typecheck 0 et 62 tests cibles rejoues sur l'arbre fusionne). Gate restant :
+verification VISUELLE en app (socle du centre de Catalyst sur `01e1f945`) — main de l'utilisateur.
+**Decision technique (verifiee sur pieces, pas supposee)** : le manifeste ne porte ni libelle ni canal
+vers le client (`[[equipment_objects]]` = identite seule ; aucun `equipmentLabels` dans le depot) —
+donc zero Go, zero contrat : table ecrite `PAD_EQUIPMENT_FAMILIES` (2 cles, garde-rail « chaque cle
+est dans POWER_PAD_KEYS »), libelles FR/EN locaux au web tenus par le TYPAGE (`Record<PadEquipmentFamilyKey,
+string>`), vignette = le masque HUD que le manifeste nomme (`hud/Overshield`, `hud/ActiveCamouflage`),
+resolu comme `grenadeIcon.ts`. L'infobulle ne montre jamais la chaine brute ; la reserve « socle ou
+ratelier » n'a pas de sens pour un power-up et disparait pour eux. Doc inversee corrigee dans
+`equipmentPlacementsLayer.ts` (les socles voyagent par `weaponPads`, pas par `PLACEMENT_RENDER`).
+**Resultats** : temoins re-cuits en schema 17 dans le worktree (ceux du principal etaient en 16) —
+`01e1f945` : le power-up passe de point 3,2 px + glyphe neutre a point 4,6 px + 9 vignettes de 13 px ;
+les 10 socles d'armes identiques champ par champ ; `64e8adfa` strictement inchange. 13 tests ajoutes
+(dont le RENDU de l'infobulle). Planche `[!]` motive : scratchpad partage date du 18/08, la republier
+aurait publie l'etat en vol d'autres lots — 2 lignes devenues fausses notees pour sa reconstruction.
+**Conclusion / prochaine etape** : gate visuel utilisateur ; reports : libelles d'equipement a remonter
+au manifeste au 2e titre qui posera des socles ; planche a reconstruire a la prochaine fournee.
+
+## [2026-08-19] Rendu des socles de POWER-UP : taille, nom, vignette — Complete
+
 **Statut** : Complete (worktree `wt/powerup-rendu`, `a21ebc4e6` + doc ; gates web a 0). Ligne
 « le calque web ne rend pas le socle de power-up » du registre RESOLUE.
 **Decision technique** : une TABLE ECRITE des familles NON-ARME (`PAD_EQUIPMENT_FAMILIES`,
