@@ -250,6 +250,34 @@ func applyMatchHeaderOvertime(h *domain.MatchViewHeader, meta *domain.MatchMetaR
 	h.OvertimeSeconds = seconds
 }
 
+// WithModeTaxonomy injecte la taxonomie de classification des modes (pair_name →
+// catégorie custom), pour peupler MatchViewHeader.ModeCategory. Même taxonomie que
+// MediaRepo (wire.haloInfiniteModeTaxonomy) — une seule résolution par titre.
+// Zéro-value (non injectée) : ModeCategory reste vide (dégradation gracieuse).
+func (s *MatchViewService) WithModeTaxonomy(t analysis.ModeTaxonomy) *MatchViewService {
+	s.modeTaxonomy = t
+	return s
+}
+
+// applyMatchHeaderModeCategory renseigne ModeCategory, résolu APRÈS le header pour
+// la même raison que la Prolongation et le rejeu 2D juste au-dessus : la taxonomie
+// est portée par le service (WithModeTaxonomy), pas par le builder — buildMatchHeader
+// est déjà à la limite de paramètres du dépôt.
+//
+// CONTRAIREMENT à ModeUI (applyMatchHeaderMetaLabels → NormalizeModeLabel, qui
+// extrait le SOUS-mode et peut perdre l'identité playlist : "Fiesta:Slayer on X" →
+// "Assassin"), la taxonomie CONSERVE cette identité ("Fiesta:Slayer on X" →
+// "Fiesta") : c'est la résolution de mode que matchFiestaGuard (web,
+// apps/web/src/features/match-replay/replayFiesta.ts) corrèle, pas un libellé
+// deviné. meta.PairName nil (donnée absente) → ModeCategory reste vide, le
+// consommateur se replie sur ModeUI/PlaylistLabel.
+func applyMatchHeaderModeCategory(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, taxonomy analysis.ModeTaxonomy) {
+	if h == nil || meta == nil || meta.PairName == nil {
+		return
+	}
+	h.ModeCategory = taxonomy.Classify(*meta.PairName)
+}
+
 // buildScoreLabelFromMeta construit "X-Y" depuis team_0_score/team_1_score de
 // match_registry. L'équipe du joueur (stats.TeamID) est toujours affichée en
 // premier (miroir de buildHomeScoreLabel dans analysis/home.go).

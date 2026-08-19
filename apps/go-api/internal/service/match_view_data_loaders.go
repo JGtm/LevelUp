@@ -328,6 +328,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
 	// le service, pas par le builder.
 	applyMatchHeaderReplay(ctx, &header, matchID, s.replaySvc)
+	// ModeCategory : catégorie custom résolue depuis pair_name (taxonomie injectée,
+	// WithModeTaxonomy) — pour que la garde Fiesta du rejeu 2D corrèle sur la
+	// résolution de mode de l'app plutôt que deviner sur ModeUI/PlaylistLabel.
+	applyMatchHeaderModeCategory(&header, meta, s.modeTaxonomy)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
 	curDurSec := 0
 	if meta != nil && meta.DurationSeconds != nil {
