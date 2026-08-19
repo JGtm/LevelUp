@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
 func writeCalloutsCatalog(t *testing.T, body string) string {
@@ -61,17 +63,11 @@ func TestCalloutsLookupCarteInconnueEstUnCasNominal(t *testing.T) {
 // la règle « aucun découpage deviné » — une liste de cartes se serait désynchronisée à la
 // première carte ajoutée.
 func TestCatalogueCalloutsLivreEstExploitable(t *testing.T) {
-	path := ""
-	for _, up := range []string{"../../../..", "../../../../.."} {
-		p := filepath.Join(up, "data", "titles", "halo_infinite", "reference", "map_callouts.json")
-		if _, err := os.Stat(p); err == nil {
-			path = p
-			break
-		}
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
 	}
-	if path == "" {
-		t.Skip("catalogue de callouts absent de cet arbre")
-	}
+	path := filepath.Join(root, "data", "titles", "halo_infinite", "reference", "map_callouts.json")
 	cat, err := LoadMapCallouts(path)
 	if err != nil {
 		t.Fatal(err)
