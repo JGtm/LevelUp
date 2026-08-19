@@ -11,9 +11,10 @@
  *
  * CE QUE LE CALQUE MONTRE : la zone TEINTÉE de l'encre du camp qui la tient, la colline ACTIVE
  * en surbrillance, et L'ARC DE LA JAUGE EN DIRECT (schéma 17) : la VALEUR de la jauge à l'image,
- * lue dans la série `gauge` de la zone en escalier — dernière valeur connue, tenue au plus une
- * seconde. Une zone sans état à cette frame n'est PAS repeinte : elle garde le trait faible du
- * calque statique, et paraît estompée sous celles qui sont tenues.
+ * lue dans la série `gauge` de la zone en escalier — dernière valeur connue, tenue jusqu'au point
+ * suivant (une seconde après le dernier de la série). Une zone sans état à cette frame n'est PAS
+ * repeinte : elle garde le trait faible du calque statique, et paraît estompée sous celles qui
+ * sont tenues.
  *
  * CE QUE LE CALQUE NE MONTRE PLUS (2026-08-18, lot C-ter volet 3) : le sommet `progress` de
  * l'intervalle. Le schéma 16 le traçait en arc, une valeur tenue pendant toute la durée de la
@@ -35,14 +36,16 @@ import type { ReplayGaugePoint } from '@/lib/api/types'
 import type { ReplayZoneStateReady } from './replayNormalize'
 
 /**
- * ZONE_GAUGE_HOLD_MS — combien de temps la dernière valeur de la jauge reste affichée sans point
- * plus récent, en TEMPS RÉEL (converti en frames par `useZoneStates`, une fois par document).
+ * ZONE_GAUGE_HOLD_MS — combien de temps le DERNIER point de la série reste affiché, en TEMPS RÉEL
+ * (converti en frames par `useZoneStates`, une fois par document).
  *
- * C'EST LA MÊME SECONDE QUE CELLE DU PRODUCTEUR : la série est allégée à un point par variation
- * >= 0,02 OU par seconde de rampe (`zone_states_gauge.go`). Pendant une rampe, deux points
- * publiés ne sont donc jamais séparés de plus d'une seconde — l'escalier tient. Une seconde
- * après le DERNIER point d'une rampe, plus rien ne suit : l'arc s'efface. C'est ainsi que le
- * client sait qu'une rampe est finie sans qu'on le lui écrive.
+ * ENTRE DEUX POINTS, LA VALEUR TIENT — quel que soit l'écart. La jauge du film ne redescend
+ * jamais pas à pas (mesure du lot C-ter volet 3, `echelle_7344d24f.log`) : elle monte tant qu'on
+ * capture, se TAIT tant que la capture est figée (zone contestée : 29 s à 0,92 sur `7344d24f`),
+ * et revient à zéro d'une seule émission — que le producteur publie comme dernier point de la
+ * rampe. Un silence entre deux points est donc une jauge FIGÉE, et l'escalier la garde à l'écran.
+ * Seul le dernier point de la série n'a rien après lui pour dire ce qu'il devient : il tient une
+ * seconde (la borne du producteur entre deux points d'une rampe), puis l'arc s'efface.
  */
 export const ZONE_GAUGE_HOLD_MS = 1_000
 
@@ -85,13 +88,16 @@ function spanStateAt(spans: ReplayZoneStateReady['spans'], frame: number): ZoneS
 
 /**
  * zoneGaugeAt rend la VALEUR de la jauge à la frame demandée, lue EN ESCALIER dans la série
- * publiée : la dernière valeur dont l'instant est <= frame. Rend `null` AVANT le premier point,
- * et dès que le dernier point connu date de plus de `holdFrames` (une seconde : la borne que le
- * producteur garantit entre deux points d'une même rampe — au-delà, la rampe est finie).
+ * publiée : la dernière valeur dont l'instant est <= frame, tenue jusqu'au point suivant. Rend
+ * `null` AVANT le premier point, et une fois le DERNIER point de la série plus vieux que
+ * `holdFrames` (une seconde : la borne du producteur entre deux points d'une rampe — au-delà, plus
+ * rien ne viendra dire ce que la jauge est devenue).
  *
- * FONCTION PURE, SANS INTERPOLATION LINÉAIRE : entre deux points la vraie jauge a bougé, mais
- * de moins de 0,02 ou pendant moins d'une seconde — inventer une pente lisserait ce que le
- * producteur a volontairement quantifié.
+ * FONCTION PURE, SANS INTERPOLATION LINÉAIRE ET SANS EXPIRATION ENTRE DEUX POINTS : entre deux
+ * points la vraie jauge a bougé de moins de 0,02, ou n'a pas bougé du tout (capture figée) —
+ * inventer une pente lisserait ce que le producteur a quantifié, effacer l'arc cacherait un
+ * blocage que le film montre. Une jauge qui retombe à zéro le dit par un point (cf.
+ * ZONE_GAUGE_HOLD_MS).
  */
 export function zoneGaugeAt(
   gauge: readonly ReplayGaugePoint[],
@@ -112,7 +118,8 @@ export function zoneGaugeAt(
   }
   if (idx < 0) return null
   const p = gauge[idx]
-  return frame - p.t > holdFrames ? null : p.v
+  const last = idx === gauge.length - 1
+  return last && frame - p.t > holdFrames ? null : p.v
 }
 
 /**
@@ -239,8 +246,10 @@ export function drawZoneStates(
     if (now) {
       paintZoneState(ctx, e, { px, scale, ink: ownerInk ?? style.neutral, held: ownerInk !== null, now })
     }
+    // Une jauge à ZÉRO (au repos, ou revenue à zéro) n'a pas d'arc : un arc d'angle nul ne trace
+    // rien, autant ne pas l'émettre.
     const value = zoneGaugeAt(st.gauge, frame, zones.gaugeHoldFrames)
-    if (value !== null) {
+    if (value !== null && value > 0) {
       const capturer = now && now.owner !== null ? style.colorOfCapturer(now.owner) : null
       drawGaugeArc(ctx, e, { px, scale, value, ink: capturer ?? style.neutral })
     }

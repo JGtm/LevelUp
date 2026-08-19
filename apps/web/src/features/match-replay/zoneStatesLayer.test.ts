@@ -5,7 +5,8 @@
  * « personne ne la tient » est une MESURE, le calque n'écrit jamais de texte, il refuse de
  * peindre quand la jointure du catalogue est douteuse — et, depuis le schéma 17, L'ARC SUIT LA
  * SÉRIE DE LA JAUGE EN DIRECT en escalier : jamais le sommet de l'intervalle (le test échoue si
- * l'on y repasse), AUCUN arc sans `gauge`, retour à rien une seconde après le dernier point.
+ * l'on y repasse), AUCUN arc sans `gauge`, la valeur TENUE jusqu'au point suivant (une capture figée reste
+ * affichée) et retour à rien une seconde après le dernier point de la série.
  *
  * Extraits de `objectivesLayer.test.ts` le 2026-08-18 (lot C-ter volet 3) : le calque a son
  * fichier, ses tests aussi.
@@ -46,7 +47,9 @@ const HOLD = 10
 /**
  * L'état d'une zone tel que l'artefact le publie (schéma 17), déjà normalisé. La zone 0 porte
  * une RAMPE de jauge aux frames 12..18 (le sommet 0,75 de l'intervalle [10 ; 19] est atteint à
- * la frame 18), et une seconde rampe, interrompue, à 30..32.
+ * la frame 18) FERMÉE par son retour à zéro à 19 ; puis une seconde capture qui monte (30..32),
+ * se FIGE 28 frames à 0,2 (zone contestée : aucun point), reprend à 60 et est abandonnée — retour
+ * à zéro à 62.
  */
 const ZONE_STATES: ReplayZoneStateReady[] = [
   {
@@ -58,8 +61,8 @@ const ZONE_STATES: ReplayZoneStateReady[] = [
       { t0: 20, t1: 40, owner: 1, active: false },
     ],
     gauge: [
-      { t: 12, v: 0 }, { t: 14, v: 0.3 }, { t: 16, v: 0.55 }, { t: 18, v: 0.75 },
-      { t: 30, v: 0 }, { t: 32, v: 0.2 },
+      { t: 12, v: 0 }, { t: 14, v: 0.3 }, { t: 16, v: 0.55 }, { t: 18, v: 0.75 }, { t: 19, v: 0 },
+      { t: 30, v: 0 }, { t: 32, v: 0.2 }, { t: 60, v: 0.5 }, { t: 62, v: 0 },
     ],
   },
   { zoneRef: 1, spans: [{ t0: 5, t1: 40, owner: null, active: true, progress: 0.5 }], gauge: [] },
@@ -105,14 +108,27 @@ describe('zoneGaugeAt — l’escalier de la jauge en direct', () => {
     expect(zoneGaugeAt(gauge, 18, HOLD)).toBe(0.75)
   })
 
-  it('tient le dernier point de la rampe UNE seconde, puis plus rien', () => {
-    expect(zoneGaugeAt(gauge, 18 + HOLD, HOLD)).toBe(0.75)
-    expect(zoneGaugeAt(gauge, 18 + HOLD + 1, HOLD)).toBeNull()
-    // Entre les deux rampes, l'arc est ÉTEINT : la seconde repart de zéro à 30.
-    expect(zoneGaugeAt(gauge, 29, HOLD)).toBeNull()
-    expect(zoneGaugeAt(gauge, 30, HOLD)).toBe(0)
-    expect(zoneGaugeAt(gauge, 32 + HOLD, HOLD)).toBe(0.2)
-    expect(zoneGaugeAt(gauge, 32 + HOLD + 1, HOLD)).toBeNull()
+  it('le retour à zéro FERME la rampe : la valeur retombe à 0 et y reste', () => {
+    expect(zoneGaugeAt(gauge, 19, HOLD)).toBe(0)
+    expect(zoneGaugeAt(gauge, 25, HOLD)).toBe(0)
+    expect(zoneGaugeAt(gauge, 29, HOLD)).toBe(0)
+  })
+
+  it('une capture FIGÉE tient sa valeur jusqu’au point suivant — pas d’expiration entre deux points', () => {
+    expect(zoneGaugeAt(gauge, 32, HOLD)).toBe(0.2)
+    expect(zoneGaugeAt(gauge, 32 + HOLD + 1, HOLD)).toBe(0.2)
+    expect(zoneGaugeAt(gauge, 59, HOLD)).toBe(0.2)
+    expect(zoneGaugeAt(gauge, 60, HOLD)).toBe(0.5)
+    expect(zoneGaugeAt(gauge, 62, HOLD)).toBe(0)
+  })
+
+  it('le DERNIER point de la série tient une seconde, puis plus rien', () => {
+    expect(zoneGaugeAt(gauge, 62 + HOLD, HOLD)).toBe(0)
+    expect(zoneGaugeAt(gauge, 62 + HOLD + 1, HOLD)).toBeNull()
+    // Une série qui s'arrête sur un sommet (fin de film, retour à zéro non lu) : même tenue.
+    const sommet = [{ t: 12, v: 0 }, { t: 18, v: 0.75 }]
+    expect(zoneGaugeAt(sommet, 18 + HOLD, HOLD)).toBe(0.75)
+    expect(zoneGaugeAt(sommet, 18 + HOLD + 1, HOLD)).toBeNull()
   })
 
   it('une série vide (schéma <= 16, ou zone sans rampe) ne rend jamais de valeur', () => {
@@ -168,7 +184,7 @@ describe('drawZoneStates', () => {
 
   it('une zone sans état à cette frame n’est PAS repeinte : elle reste au trait faible', () => {
     const { ctx, ops } = recordingContext()
-    drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 45)
+    drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 80)
     expect(count(ops, 'fill') + count(ops, 'stroke')).toBe(0)
   })
 
@@ -188,15 +204,22 @@ describe('drawZoneStates', () => {
     expect(arcFraction(a18.ops)).toBeCloseTo(0.75, 6)
   })
 
-  it("aucun arc AVANT la rampe, ni une seconde APRÈS son dernier point", () => {
+  it("aucun arc AVANT la rampe ni APRÈS son retour à zéro ; l'arc TIENT pendant un blocage", () => {
     const avant = recordingContext()
     drawZoneStates(avant.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 11)
     expect(count(avant.ops, 'arc')).toBe(0)
-    const tenu = recordingContext()
-    drawZoneStates(tenu.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 18 + HOLD)
-    expect(count(tenu.ops, 'arc')).toBe(1)
+    // Frame 25 : la jauge est revenue à zéro (point de la frame 19) — rien à tracer.
+    const retombe = recordingContext()
+    drawZoneStates(retombe.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 25)
+    expect(count(retombe.ops, 'arc')).toBe(0)
+    // Frame 45 : la capture est FIGÉE à 0,2 depuis la frame 32 — l'arc reste, à 0,2.
+    const fige = recordingContext()
+    drawZoneStates(fige.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 45)
+    expect(count(fige.ops, 'arc')).toBe(1)
+    expect(arcFraction(fige.ops)).toBeCloseTo(0.2, 6)
+    // Une seconde après le DERNIER point de la série (62, retour à zéro), plus rien.
     const eteint = recordingContext()
-    drawZoneStates(eteint.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 18 + HOLD + 1)
+    drawZoneStates(eteint.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 62 + HOLD + 1)
     expect(count(eteint.ops, 'arc')).toBe(0)
   })
 
