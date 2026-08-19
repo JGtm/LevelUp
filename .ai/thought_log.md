@@ -1,3 +1,24 @@
+## [2026-08-19] Socles de POWER-UP en production (schema 17) — Complete
+
+**Statut** : Complete (branche `wt/powerup-prod`, `56158d8a8`..`09261f90a`, FUSIONNEE dans `feat/v75` par
+le superviseur ; contracttest + replay rejoues verts). Ligne R2-P du registre RESOLUE.
+**Decision technique** : voie `ti=37` ADJOINTE a la chaine des socles (jamais remplacee) — creations
+`ScanFilmEquipmentCreations` SANS vie delta, identite `powerup_*` du manifeste, grappe 1 m >= 2,
+presence bornee par le recensement d'images-cles (`ScanFilmWorldObjectKeyframes`, nouveau, tout
+archetype) ; regle d'identite nommee (`padRule`) partagee avec les armes, sortie des armes INCHANGEE
+(golden sans regeneration) ; `SchemaVersion` 16 -> 17 (contenu de `weaponPads`), couverture +4 champs,
+OpenAPI/`generated.ts` regeneres, fixture `REPLAYINPUTS9`, goldens a 2 lignes de diff.
+**Resultats** : 1 socle `powerup_overshield` au MEME centimetre (0,257 ; -0,003) sur chaque KOTH
+Catalyst (9 et 7 apparitions), 0 sur les CTF et le Fiesta ; socles d'armes identiques champ par champ
+sur les 5 temoins ; `cycle` publie 83,7 / 73,0 s (horloge du ramassage — la periode vraie de 120,1 s
+est dans `spawns`, 30,3/89,8 alternes : deux entites par cycle au meme point, decouverte notee).
+**Ecart de consigne signale par l'agent** : un `git add -A` sur `617a4c8c4` — contenu verifie apres
+coup (20 fichiers, tous intentionnels, rien d'etranger) ; rappele dans le brief type.
+**Conclusion / prochaine etape** : DECOUVERTE 1 = le calque web ne rend PAS encore le power-up en
+grande taille ni nomme ni avec vignette (`useReplayWeaponPads.ts` lit `doc.weaponLabels`, table
+d'ARMES : la cle `powerup_overshield` n'y est pas) -> lot de rendu dedie (taille + libelle FR/EN +
+icone), lance. Notees : i30 infinite-uses sans lecteur, `FamilyOfWeaponID` accepte un nom tout-hexa.
+
 ## [2026-08-19] Equipements manquants : identifiants, noms, sons — Complete
 
 **Statut** : Complete (worktree `wt/equip-sons`, `8bb239213` / `a24107e28` / `d89b2b590`, FUSIONNE dans
