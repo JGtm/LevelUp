@@ -193,8 +193,9 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 	pointlessConnues := map[string]map[mapvar.Role]int{
 		"cd08bc7a-7ba5-4502-be87-c58b641fc94d": {mapvar.RoleStrongholdZone: 1}, // Salvation
 	}
-	// RoleHill depuis le lot C-ter volet 2 : 21 collines sur 4 cartes (Catalyst 6, Chasm 5,
-	// Shogun 5, Solitude - Ranked 5), 100 % avec forme.
+	// RoleHill depuis le lot C-ter volet 2 : 113 collines sur 23 cartes, 100 % avec forme —
+	// les 4 cartes des films (Catalyst 6, Chasm 5, Shogun 5, Solitude - Ranked 5) plus les
+	// 19 autres cartes KOTH du registre, regenerees a la revue ronde 1 (R1-3).
 	roles := []mapvar.Role{mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone, mapvar.RoleHill}
 	total := map[mapvar.Role]int{}
 	for id, e := range cat.Maps {
