@@ -353,3 +353,148 @@ Shogun 1 sur 1.
   ce commit, les commits suivants passent les hooks.
 - Plan et registre : les cases CT.2.1/CT.2.2/CT.2.3 du plan et l'entree `thought_log` sont a
   poser par le superviseur (regle du lot) — §4 ci-dessus est la source.
+- **DETTE PREEXISTANTE, consignee et NON traitee (revue ronde 1, 2026-08-19)** :
+  `cmd/mapobj-build/main.go:274` `ingestLocal` (le chemin `--from-file`) n'applique PAS
+  `isParkedPalette` — seul `ingestRemote` le fait (`main.go:221`). Le piege du rack Forge est
+  donc ouvert sur le chemin hors ligne : un `.mvar` de canevas ingere a la main entre au
+  catalogue avec ses objectifs ranges hors terrain. La demonstration est faite au passage de
+  R1-3 : sonde dans un faux depot, `empyrean_fo11_blank.mvar` (le canevas, 100 objets) rend
+  **5 collines de rack** la ou la carte jouee n'en a qu'une. Le lot n'a emprunte ce chemin que
+  sur des `*_map.mvar` surs (les 4 cartes des films, puis les 23 de R1-3, tous choisis parce
+  que le catalogue les avait DEJA retenus apres `isParkedPalette` a l'ingestion reseau).
+  **Condition de reprise** : le jour ou `--from-file` est offert a un fichier non deja retenu
+  (nouvelle carte, dump manuel), poser `isParkedPalette` dans `ingestLocal` — ou un drapeau
+  explicite `--accept-parked` — AVANT de s'en servir.
+
+## 7. Revue adversariale ronde 1 — constats et corrections
+
+Ronde 1 jouee le 2026-08-19 sur le diff `638c4d044..2951d7f55`. Cinq constats, un commit par
+correction, gates rejoues en entier (section « Ronde 1 » de `LOTCTER_volet2_gates.log` : tous
+les EXIT_* a 0).
+
+### R1-1 (P1) — les gardes centrales du lot ne tournaient PAS en CI
+
+**Constat.** `zonesTestBuilder` (`internal/replaybuild/zones_test.go`) et les deux tests sur
+donnees reelles du service localisaient le depot par `title.FindRepoRoot()` : marqueur
+`db_profiles.json`, GITIGNORE donc absent d'un checkout CI, ou `LEVELUP_REPO_ROOT`, jamais
+pose en CI. Les gardes du lot sortaient en SKIP silencieux — « KOTH = 6 collines, meme liste
+que le service », « CTF/Extraction/Oddball/Slayer = 0 zone sur Catalyst », « Bastion = 3
+zones », « specs reels = [{hill neutre}] ». Le worktree du lot n'a pas `db_profiles.json` non
+plus : elles n'ont tourne qu'avec la variable posee a la main — c'est ce que dit la premiere
+section du log de gates, « LEVELUP_REPO_ROOT=worktree ».
+
+**Correction.** Mecanisme CANONIQUE unique : `internal/testutil/repo_root.go`,
+`testutil.RepoRoot()` deduit la racine de l'EMPLACEMENT DE SON PROPRE FICHIER SOURCE
+(`runtime.Caller`) — l'arbre versionne, donc trouve quel que soit le repertoire courant, sans
+variable ni fichier ignore — puis verifie un repertoire versionne. Les cinq copies maison sont
+migrees, et un fichier VERSIONNE absent echoue desormais au lieu de skipper :
+
+| fichier | avant | apres |
+|---|---|---|
+| `internal/replaybuild/zones_test.go:153` | `FindRepoRoot` + 2 `t.Skipf` | `testutil.RepoRoot()` + `t.Fatalf` |
+| `internal/service/replay_map_objectives_test.go:177` et `:224` | `FindRepoRoot` + `t.Skipf` | idem |
+| `internal/analysis/replay/objectives_catalog_test.go:172` | echelle `../../../..` + `t.Skip` | idem |
+| `internal/analysis/replay/callouts_catalog_test.go:65` | echelle + `t.Skip` | idem |
+| `internal/games/mappings/loader_objective_roles_test.go:135` | `reposRootDepuisTests` (remontee cwd) | idem, helper local supprime |
+| `internal/games/mappings/loader_awards_test.go:143` | chemin relatif en dur + `t.Skipf` | idem |
+
+**Garde-rail** (regle CLAUDE.md n.6 : centraliser ET interdire l'ancien litteral) :
+`internal/archlint/no_repo_root_walk_test.go:111` `TestNoAdHocRepoRootLadderInTests` interdit
+l'echelle de remontee ecrite a la main dans un `_test.go`. Allowlist DATEE de deux fichiers
+ANTERIEURS et hors du perimetre de gate du lot :
+`internal/analysis/filmdec/map_bounds_test.go` (echelle + Skip sur `map_quant_bounds.json`,
+versionne) et `internal/ops/seed_citation_assets_test.go` (const `citationRepoRoot`).
+Condition de reprise ecrite dans le fichier : au prochain passage sur ces paquets, migrer et
+retirer l'entree.
+
+**Preuve.** `go test -v ./internal/replaybuild/ ./internal/service/` SANS `LEVELUP_REPO_ROOT` :
+12 tests, **0 SKIP**, tous verts. Controle negatif du garde-rail (allowlist videe) : FAIL sur
+les deux fichiers attendus, et sur eux seuls.
+
+### R1-2 (P1) — `hill_shapes_measure_test.go` a 615 lignes (seuil 500)
+
+Scission par RESPONSABILITE : le fichier de mesure (449 L) garde l'instrument entier
+(definitions et seuils ecrits avant la mesure, appariement, temoins, `TestHillShapesMeasure`) ;
+`hill_shapes_report_test.go` (190 L) recoit les fonctions qui IMPRIMENT un rapport a partir
+d'une mesure deja faite : `hillTableau`, `hillMark`, `hillProduction`, `hillAvantApres`,
+`p2aZonesOrNil`, `hillShapeDesc`, `hillManques`.
+
+Deplacement PUR, verifie octet pour octet : le bloc deplace est identique aux lignes 447-615
+de l'ancien fichier, la tete conservee identique aux lignes 1-445 — a 4 lignes de renvoi pres
+ajoutees a l'en-tete (ou sont passes les rapports). Un seul `func Test` dans le paquet avant
+comme apres : les chiffres de `lotCter/volet2_*.log` restent reproductibles a l'identique.
+
+### R1-3 (P2) — les 19 autres cartes KOTH du registre entrent au catalogue
+
+**Inventaire** (lecture seule, `duckdb -readonly` sur `shared_matches_v2.duckdb` du principal) :
+34 `map_id` distincts joues en King of the Hill / KOTH ; 27 sont au catalogue, 7 n'y sont pas
+(Chasm `fc1ced39`, Ecotone, Vallaheim Firefight, Argyle, Cliffhanger, Live Fire `b6aca0c7`,
+Recharge) ; 23 des 27 n'avaient aucune colline.
+
+**Regeneration** par le MEME chemin que les 4 cartes du lot : `--from-file` sur le `.mvar`
+depose (`.ai/re_dump/mapvar/` du principal, lecture seule), une carte a la fois, catalogue du
+worktree (`LEVELUP_REPO_ROOT` explicite). AUCUN appel reseau : les 23 fichiers etaient deposes.
+Vagabond a exige une copie de travail nommee `map.mvar` (son nom de fichier est partage avec
+Highpower ; le depot le range sous `vagabond_map.mvar`) — la copie garde `mvar_file`/`module` a
+l'identique. Le compte d'objets parses coincide avec l'`objects_n` deja au catalogue sur les 23
+cartes : chaque fichier est bien celui de sa carte.
+
+**Garde-fou, verifie sur le diff** : 20 lignes supprimees en tout — `generated_at` et 19
+compteurs de couverture —, ZERO autre suppression ; 92 lignes `"role": "hill"` ajoutees et 92
+`unresolved_labels` qui les accompagnent, rien d'autre. 54 entrees identiques octet pour octet
+(les 50 cartes non touchees + les 4 sans colline). Aucune carte ajoutee ni retiree (73 avant,
+73 apres).
+
+| collines | cartes |
+|---:|---|
+| 6 | Catalyst, Prism, Salvation |
+| 5 | Absolution, Curfew, Goliath, Live Fire `6c01f693`, Shogun, Snowbound, Vagabond, Banished Narrows, Bazaar, Behemoth, Chasm `a455572d`, Elevation, Fortress, Isolation, Nemesis, Opulence, Solitude - Ranked, Streets |
+| 4 | Dredge |
+| 1 | **Empyrean** |
+| 0 | **Forbidden, Illusion, Oasis, Oasis Firefight** |
+
+Total : **113 collines sur 23 cartes**, 100 % avec forme, aucune forme degeneree (invariant
+`TestCatalogueLivreEstExploitable`, dont le commentaire est mis a jour).
+
+**Verdict sur les cartes SANS colline.** Quatre cartes KOTH du registre n'ont AUCUNE colline
+dans leur variante, et Empyrean n'en a qu'une. Ce n'est pas un `.mvar` perime : le fichier gele
+(2026-07-26 / 08-13) est POSTERIEUR au dernier match KOTH de ces cartes (2026-01-18 au plus
+tard). Ce n'est pas non plus la variante de MODE : sondees a part, dans un faux depot et sans
+toucher au catalogue, `forbidden_ctf_forbidden`, `illusion_ctf_illusion`, `oasis_btb_exiled` et
+`oasis_firefight_btb_exiled` rendent **0 colline** — avec temoin POSITIF `catalyst_catalyst.mvar`
+= 6 collines, qui valide la methode. La colline de ces matchs n'est donc pas dans les fichiers
+dont on dispose. **Condition de reprise** : re-tirer l'asset UGC de ces cinq cartes
+(`--player <GT> --map-id <uuid>` — une version plus recente peut exister) ; si elle rend encore
+0, la colline de ces variantes vient d'ailleurs que du motif `[2133978317, -767961569]` et
+l'inventaire de CT.2.1 est a rouvrir sur elles.
+
+### R1-4 (L6) — la preservation des metadonnees reseau par `--from-file` n'avait aucun test
+
+`ingestLocal` (`cmd/mapobj-build/main.go:300`) conserve `version_id`, `public_name` et
+`fetched_at` d'une carte deja au catalogue. Sans ce bloc, un catalogue gele serait date du jour
+de sa RELECTURE et perdrait le nom public et la version de l'asset, sans un mot. La meme regle
+cote `--refresh-from` etait deja gardee ; celle-ci ne l'etait pas — alors que R1-3 vient de
+l'emprunter 23 fois.
+
+`TestIngestLocalPreserveLesMetadonneesReseau` (`cmd/mapobj-build/refresh_test.go:249`) : carte
+deja au catalogue = les trois metadonnees survivent, `mvar_file`/`module` suivent le fichier
+parse ; carte neuve = rien d'herite et date du parse. Temoin = le `.mvar` VERSIONNE de
+Cliffhanger, localise par `testutil.RepoRoot()`. **Controle negatif joue** : bloc retire de
+`main.go` -> FAIL sur les trois champs ; bloc remis -> vert.
+
+### R1-5 (doc inversee) — `internal/service/replay_map_objectives.go:53`
+
+Le commentaire disait « mode sans objectifs statiques (Slayer, KOTH...) » alors que la table du
+titre sert `hill` en King of the Hill depuis le lot : il decrivait l'etat d'AVANT le fichier de
+config qu'il commente. Exemples remplaces par trois modes reellement absents de la table :
+Slayer, Land Grab, Total Control.
+
+### Ce qui n'a PAS ete fait (et pourquoi)
+
+- La dette `ingestLocal` / `isParkedPalette` est CONSIGNEE, pas corrigee (§6, entree du
+  2026-08-19) : la revue la classe hors correction.
+- `internal/analysis/filmdec/map_bounds_test.go` et `internal/ops/seed_citation_assets_test.go`
+  gardent leur echelle de remontee : hors perimetre de gate du lot, allowlist datee avec
+  condition de reprise (R1-1).
+- Le web, `zone_states_hill.go`/`zone_state_scan.go` (volet 1) et `document.go`/schema
+  (volet 3) n'ont pas ete touches : interdits au perimetre.
