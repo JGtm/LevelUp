@@ -379,13 +379,36 @@ func TestSoclesAppariement(t *testing.T) {
 	t.Logf("distances au plus proche objet : min %.2f m, mediane %.2f m, max %.2f m",
 		dists[0], dists[len(dists)/2], dists[len(dists)-1])
 
-	soclesTemoin(t, v.Objects, pts, doc)
+	soclesTemoin(t, v.Objects, pts, doc, nil)
+
+	// TEMOIN RESTREINT — ajoute le 2026-08-19, en phase 5, parce que le temoin large a
+	// ECHOUE sur Smallhalla (75,5 %) : une carte Forge porte des milliers d'objets dans une
+	// emprise de quelques dizaines de metres, et « un objet a moins d'un metre » y est vrai
+	// presque partout. Le premier temoin N'EST PAS EFFACE : il reste au rapport, et c'est
+	// lui qui dit que l'appariement brut ne conclut pas sur une carte dense. Celui-ci pose
+	// la question plus fine que la mesure appelle — un point au hasard tombe-t-il a moins
+	// d'un metre d'un objet DE TYPE SOCLE ?
+	types := map[int32]bool{}
+	for _, p := range pts {
+		if idx, d, _ := soclesPlusProche(v.Objects, p.Pos); d < soclesSeuilM {
+			types[v.Objects[idx].TypeID] = true
+		}
+	}
+	restreint := make([]Object, 0, 64)
+	for _, o := range v.Objects {
+		if types[o.TypeID] {
+			restreint = append(restreint, o)
+		}
+	}
+	t.Logf("TEMOIN RESTREINT aux %d type_id de socle (%d objets sur %d) :",
+		len(types), len(restreint), len(v.Objects))
+	soclesTemoin(t, restreint, pts, doc, types)
 }
 
 // soclesTemoin tire des positions au hasard dans l'emprise de la carte, en conservant
 // l'altitude des socles : sans lui, « a moins d'un metre » ne prouve rien sur une carte
 // dense en objets.
-func soclesTemoin(t *testing.T, objs []Object, pts []soclesPoint, doc soclesOracle) {
+func soclesTemoin(t *testing.T, objs []Object, pts []soclesPoint, doc soclesOracle, restreint map[int32]bool) {
 	t.Helper()
 	if doc.Bounds.MaxX <= doc.Bounds.MinX || doc.Bounds.MaxY <= doc.Bounds.MinY {
 		t.Log("TEMOIN : emprise absente de l'oracle, tirage impossible")
@@ -406,7 +429,12 @@ func soclesTemoin(t *testing.T, objs []Object, pts []soclesPoint, doc soclesOrac
 		}
 	}
 	n := soclesTirages * len(pts)
-	t.Logf("TEMOIN : %d / %d (%.1f %%) a moins de %.0f m (graine %d, emprise X[%.1f %.1f] Y[%.1f %.1f]) — seuil du plan : <= 20 %%",
+	etiquette := "TEMOIN"
+	if restreint != nil {
+		etiquette = "TEMOIN RESTREINT"
+	}
+	t.Logf("%s : %d / %d (%.1f %%) a moins de %.0f m (graine %d, emprise X[%.1f %.1f] Y[%.1f %.1f]) — seuil du plan : <= 20 %%",
+		etiquette,
 		total, n, 100*float64(total)/float64(n), soclesSeuilM, soclesGraine,
 		doc.Bounds.MinX, doc.Bounds.MaxX, doc.Bounds.MinY, doc.Bounds.MaxY)
 }

@@ -161,10 +161,14 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
 
 ### Phase 5 — generalisation (Q5) (commit 6)
 
-- [ ] 5.1 Cliffhanger (`bcb6d393`, 10 socles) : appariement + temoin.
-- [ ] 5.2 Smallhalla (`00162144`, 11 socles) : appariement + temoin, sur le rack ET sur le
+- [x] 5.1 Cliffhanger (`bcb6d393`, 10 socles) : appariement + temoin.
+- [x] 5.2 Smallhalla (`00162144`, 11 socles) : appariement + temoin, sur le rack ET sur le
       canevas (piege Forge).
-- [ ] 5.3 Verdict Q5.
+- [x] 5.3 Verdict Q5.
+- [x] 5.4 AJOUTE EN COURS D'EXECUTION (decouverte de 5.2, elle change la lecture de
+      H-SCENARIO) : sur Forge, les socles portent des LABELS de mode que les cartes DEV
+      n'ont pas. Tenter de resoudre les hashs inconnus les plus frequents par recherche
+      murmur3 ciblee, sous le meme garde-fou anti-collision que `objectives.go`.
 
 ### Phase 6 — cloture (commit 7)
 
@@ -274,6 +278,32 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
   `/hi/ugcGameVariants/{assetId}/versions/{versionId}` est donc atteignable avec
   l'outillage existant — un appel reseau, hors du perimetre hors ligne de ce lot, mais la
   piste est nommee et l'identifiant necessaire est deja en base.
+- **2026-08-19, phase 5 close — LA GENERALISATION TIENT, 3 CARTES SUR 3, ET C'EST LA QUE LE
+  GAIN APPARAIT.**
+  **Cliffhanger** (`cliffhanger_ridgeline.mvar`, 443 objets) contre `bcb6d393` : **10 / 10**
+  a moins d'un metre, mediane 0,01 m, temoin 5,6 %. Le fichier porte **17 objets de socle,
+  17 emplacements distincts** — le film n'en montre que 10. **SEPT EMPLACEMENTS QUE LE FILM
+  NE VOIT JAMAIS**, et ce ne sont pas des doublons : (14,3 ; 22,7), (19,9 ; 3,2),
+  (32,0 ; -0,4), (24,5 ; -18,4), (26,5 ; -17,8), (19,3 ; 14,2), (13,7 ; -15,1).
+  **Smallhalla**, carte Forge, mesuree sur les DEUX fichiers du piege canevas+rack :
+  - le rack `smallhalla_map.mvar` (3 901 objets, 222 type_id) rend **11 / 11**, mediane
+    0,01 m — mais **le temoin large ECHOUE a 75,5 %**. C'est le seuil du plan qui parle :
+    sur une carte Forge, « un objet a moins d'un metre » est vrai presque partout, et
+    l'appariement brut n'y prouve RIEN. Le temoin n'est pas efface ; un temoin RESTREINT
+    aux deux type_id de socle a ete ajoute (37 objets sur 3 901) et rend **4,7 %**, soit un
+    rapport signal/temoin de 21. C'est cette mesure-la qui conclut, et la nuance est ecrite.
+    Le rack porte **37 objets de socle, 26 emplacements distincts**, 11 vus par le film :
+    **QUINZE emplacements invisibles**.
+  - le canevas `smallhalla_fo08_wetland.mvar` (100 objets) rend **0 / 11**, distances 81 a
+    102 m. Le piege canevas+rack est confirme dans le bon sens : sur Forge, TOUT est dans le
+    rack, le canevas ne porte aucun socle.
+  **Decouverte (item 5.4, ajoute en cours d'execution)** : sur Forge, les socles portent des
+  LABELS, ce que les cartes DEV ne font pas — `stockpile_include`, `stockpile_exclude`,
+  `infection_exclude`, `ctf_multi_exclude` y cotoient des hashs inconnus dont un
+  (`-831896525`) revient trois a quatre fois sur le meme objet. C'est la premiere trace
+  LISIBLE d'une activation par mode. Tentative de resolution par recherche murmur3 ciblee
+  sur un vocabulaire du domaine : **1 010 100 candidats, 0 hash resolu sur 9**. Ils restent
+  inconnus — on ne devine pas un libelle (garde-fou `objectives.go`).
 
 ## 8. Verdict et suite
 
