@@ -109,15 +109,18 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
       avant mesure par la mesure de cadrage 1 variant / 31 cartes.
 
 ### Phase 1 — recuperer les 4 variants (Q1) (commit 2)
-- [ ] 1.1 `cmd/variant-probe` : outil de SONDE, args explicites obligatoires, aucun defaut qui
+- [x] 1.1 `cmd/variant-probe` : outil de SONDE, args explicites obligatoires, aucun defaut qui
       tape le reseau. Reutilise `cmd/mapobj-build/auth.go` + `fetch.go` comme patron.
-- [ ] 1.2 Recuperer les 4 assets. Ecrire les JSON bruts dans `.ai/re_dump/gamevariant/`
+- [x] 1.2 Recuperer les 4 assets. Ecrire les JSON bruts dans `.ai/re_dump/gamevariant/`
       (gitignore : `.gitignore:254`). Chiffrer : taille, liste `FileRelativePaths`.
-- [ ] 1.3 Gate : `go vet ./cmd/variant-probe/...`, golangci 0 sur le perimetre.
+- [x] 1.3 Gate : `go vet ./cmd/variant-probe/...`, golangci 0 sur le perimetre.
 
 ### Phase 2 — les fichiers references (commit 3)
-- [ ] 2.1 Telecharger chaque fichier reference par les 4 assets depuis `Files.Prefix`.
+- [ ] 2.1 Telecharger les fichiers references depuis `Files.Prefix`.
 - [ ] 2.2 Inventaire : nom, taille, type (texte/binaire), entete.
+- [ ] 2.3 AJOUTE EN COURS D'EXECUTION (decouverte de 1.2, elle deplace la cible) : interroger
+      l'asset `EngineGameVariants/{assetId}/versions/{versionId}` pointe par chaque variant.
+      C'est l'alternative n. 3 de la section 6, servie par le document lui-meme.
 
 ### Phase 3 — chercher l'activation (Q2) (commit 4)
 - [ ] 3.1 Les 4 sondes a/b/c/d du seuil, sur JSON ET blobs.
@@ -153,4 +156,35 @@ jeton. Appels : une poignee (4 variants + leurs blobs), jamais de boucle sur le 
   H-POSITIONS avant la premiere mesure et reduit la sonde a H-FILTRE. Seuils poses, y compris
   le seuil anti-illusion de Q3 (« les payloads different » ne prouve rien).
 
+- **2026-08-19, phase 1 close** — `cmd/variant-probe` ecrit (3 fichiers, 94 a 140 lignes,
+  garde : sans `--variant` ET `--out` il sort en erreur sans emettre une requete). Auth par
+  le store : `oauth_refresh: echange OK`, xuid 2533274823110022 (JGtm), clearance presente,
+  **aucune re-capture**. Les 4 temoins ne font que **3 variants distincts** (CTF:Arena sert
+  Cliffhanger ET Catalyst) : 3 appels, pas 4.
+  **Le repli sans `/versions/` marche** et il resout la MEME version que le registre quand
+  celui-ci en a une : CTF:Arena -> `7f104b0c` (identique au registre), Super Fiesta ->
+  `c1e1f80d` (identique), KOTH:Arena -> `e76c9d61` (le registre n'en avait pas). Q1 = OUI.
+  **Taille des payloads : 2 361 a 2 538 octets.** Un document de VITRINE, pas de regles :
+  `CustomData.KeyValues` = **`{}` vide sur les trois**, `HasNodeGraph: false`, et
+  `Files.FileRelativePaths` ne liste que des **images** (hero, screenshots, thumbnail — 3 a 8
+  fichiers). Aucun `.bin`, aucun blob de donnees.
+  **DECOUVERTE qui redirige la phase 2** : chaque variant porte un `EngineGameVariantLink`
+  vers un asset SEPARE — CTF:Arena -> `71cca199` « Capture the Flag » (`ParentAssetCount`
+  107 517), KOTH:Arena -> `62216cfe` « King of the Hill », Super Fiesta -> `a65a43f0`
+  « Slayer-SlayerSuperFiesta ». C'est l'alternative n. 3 de la section 6, et elle est servie
+  par le document lui-meme. Dans le lien imbriqué, `FileRelativePaths` est **vide** — il faut
+  interroger l'asset engine directement. Item 2.3 ajoute en consequence.
+  Gates : `go vet ./cmd/variant-probe/...` = 0, `golangci-lint run ./cmd/variant-probe/...` =
+  **0 issues**.
+
 ## 8. Decouvertes (notees, NON traitees)
+
+- `resolveTokens` + `lookupPlayer` de `cmd/mapobj-build/auth.go` sont RECOPIES dans
+  `cmd/variant-probe/auth.go` — 2e copie, encore sous le seuil de la regle 6 du CLAUDE.md.
+  A la 3e, centraliser dans un helper partage + garde-rail. Non traite : hors perimetre d'un
+  lot de mesure.
+- Le registre a `game_variant_version_id` NULL sur 1544 lignes / 1819. L'API resout pourtant
+  la bonne version sans le champ. Le backfill de cette colonne n'est donc pas un prealable.
+- `CTF:Arena` apparait au registre sous deux libelles (`CTF:Arena`) et `Slayer:Arena` sous
+  deux (`Slayer:Arena` et `Arena:Slayer`, meme `game_variant_id` `1e8cd10b`) : le libelle
+  suit l'ordre de la paire, pas l'asset. Sans effet sur cette sonde.
