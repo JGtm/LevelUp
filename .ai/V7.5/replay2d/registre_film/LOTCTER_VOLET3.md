@@ -201,3 +201,109 @@ fichier de production touche est de la documentation (godoc) ou de la suppressio
    `zone_states_gauge_test.go` 254 L / 6 cas -> 294 L / 7 cas).
 
 Gates de la revue : section « revue ronde 1 » de `LOTCTER_volet3_gates.log`.
+
+## 11. Schema 18 (2026-08-19) : renumerotation apres fusion, trois temoins recuits
+
+Le **17** du CT.3.3 (S6-S8) etait celui de CETTE branche (`wt/jauge-live`), mesure a HEAD
+`1a6f4a46e`. Une AUTRE session, en parallele sur `feat/v75`, a livre pendant le volet les socles
+de power-up extraits des `.mvar` (`617a4c8c4` : `weaponPads` + compteurs
+`coverage.groundWeapons`) et a elle aussi pris le numero **17**. Regle du depot : un numero par
+montee, dans l'ordre de FUSION. La fusion d'`origin/feat/v75` (`b1f5f4188`) dans `wt/jauge-live`
+(`b13e0721d`) a donc GARDE leur 17 tel quel et renumerote la jauge en direct en **18** — leur code
+etait deja livre, jamais l'inverse.
+
+**Trois conflits resolus** (`b13e0721d`, fusion de `b1f5f4188` dans `db895680d`) :
+- `document.go` : les DEUX chroniques de schema, dans l'ordre des versions — leur v17 (socles
+  power-up) conservee telle quelle, la notre renumerotee v18 avec la raison du numero.
+  `const SchemaVersion = 18`.
+- `structure_test.go` : justifications dans l'ordre (v16 -> v17 socles, puis v17 -> v18 jauge) ;
+  l'assertion attend 18.
+- `.ai/thought_log.md` : les deux blocs d'entrees conserves, aucune perdue.
+
+Renumerotation HORS conflit (la jauge ne s'appelait 17 nulle part ailleurs) : `document_zones.go`
+(chronique reecrite : v18, l'echelle du jeu, et le fait qu'un artefact v17-socles n'a pas non
+plus de gauge — a re-cuire pour l'un comme pour l'autre), `coverage.go`, `zone_states_gauge.go`,
+`zone_states_gauge_test.go`, `zone_states_owner.go`, `zone_gauge_temoin_test.go`, la chronique du
+contracttest, et cote web `replayNormalize.ts`, `replayContract.test.ts`, `zoneStatesLayer.ts` +
+test, `useZoneStates.ts` + test, `ReplayCanvas.tsx`, `lib/api/types.ts`. Les mentions
+« schema <= 16 » (artefact sans gauge) deviennent « <= 17 » : un v17-socles n'en porte pas
+davantage.
+
+**Contrat inchange** : `wantReplayDocumentFields` reste **36** — ni les socles (sous
+`weaponPads`) ni la jauge (sous `zoneStates[]` et `coverage.zones`) n'ajoutent de champ RACINE.
+`openapi.yaml` regenere (aucun delta : la fusion l'avait deja juste), `generated.ts` regenere et
+verifie (porte `GaugePoint` ET `powerupPads`), golden `assembly_000d5950` recuit en schema 18,
+garde web `_ListeExhaustive` / `NULLABLE_ARRAY_PATHS` inchangee a 50 chemins.
+
+### Les trois temoins, recuits en schema 18
+
+Meme commande que S6 (`cmd/replay-build --facts`, un film par processus, `LEVELUP_REPO_ROOT` =
+worktree, films lus dans le tronc principal, plafond watchdog 3 Go / 900 s) : **peak 0 / 159 /
+120 Mo**, **260 / 284 / 278 s**. `7344d24f` etait deja cuit avant ce sous-volet (le watchdog de
+cette cuisson-la n'a mesure aucun pic, cf. `lotCter/cuisson_cli_7344d24f.log`) ; les deux autres
+sont recuits ici, a l'identique de la commande CLI (memes `--map`, `--facts`, meme film du tronc
+principal). Le code de sortie du watchdog est vide sur `696a9d7c` et `01e1f945` — meme limite deja
+presente dans LEUR cuisson schema 17 d'origine (`kill=[] exit=` deja vide dans les logs d'avant ce
+sous-volet). La reussite est etablie par l'artefact ecrit et verifie ci-dessous, pas par ce champ.
+
+| film | mode | zones | points de jauge (par zone) | octets des series | artefact v18 | v16 | ecart |
+|---|---|---|---|---|---|---|---|
+| `7344d24f` | Strongholds | 3 | **1 701** (479 / 666 / 556) | 34 960 o = **1,561 %** | 2 238 996 o | 2 202 930 o | **+1,637 %** |
+| `696a9d7c` | Strongholds | 3 | **1 794** (554 / 623 / 617) | 36 858 o = **1,747 %** | 2 109 409 o | 2 071 392 o | **+1,835 %** |
+| `01e1f945` | KOTH | 6 | **0** | 24 o = 0,001 % | 1 818 031 o | 1 816 953 o | **+0,059 %** |
+
+Clause de poids (<= +2 % par artefact) : **TENUE** sur les trois. Le delta v18/v16 cumule DEUX
+montees (socles v17 + jauge v18) : le poids « v17-socles seul » pour CE trio n'est pas
+discernable — `PLAN_SOCLES_MVAR.md` et `PLAN_POWERUP_SOCLE_CATALYST.md` ne publient pas de poids
+par match pour `7344d24f`/`696a9d7c`/`01e1f945` — delta publie BRUT, comme convenu quand il n'est
+pas discernable. Le poids attribuable a la jauge SEULE, lui, se lit directement en colonne
+« octets des series » : une mesure sur l'artefact v18, pas une soustraction.
+
+Points et poids de serie **identiques au chiffre CT.3.3 d'avant renumerotation** (S6 : memes
+1 701 / 1 794 / 0 points, memes octets de serie a l'octet pres) — attendu, la renumerotation ne
+touche pas le calcul de la jauge, verifie sur les artefacts fraichement cuits plutot que suppose.
+
+Chaque artefact verifie individuellement (`node -e`, pas un grep brut du fichier) : `schemaVersion
+18` sur les trois ; `zoneStates[].gauge` present sur les 3 zones des deux Bastion, ABSENT
+(`hasOwnProperty` faux) sur les 6 zones de la colline. `01e1f945` contient bien la sous-chaine
+`"gauge"` a 25 reprises — ce n'est PAS une fuite : c'est `Inventory.Am[].Gauge`
+(`inventory.go:40`), la jauge de CONSOMMATION DE MUNITIONS d'une arme a charge, un champ
+preexistant et sans rapport avec la jauge de zone de ce volet. Une verification par grep brut du
+fichier l'aurait faussement compte comme une clause rompue ; la verification structuree
+(`zoneStates[].gauge` uniquement) est celle qui fait foi.
+
+Le contrat « la jauge MONTE avant la bascule du proprietaire » (CT.3.3) est REJOUE, pas cite : la
+mesure d'avant renumerotation datait du meme jour et l'instrument (`TestZoneGaugeTemoin`, garde
+`ZONE_ARTEFACT`, un run Go de moins de deux secondes par artefact) est trivial a relancer.
+
+| film | bascules du proprietaire | precedees d'une MONTEE [-5 s ; +2 s] | temoin (+20 s) | niveau du hasard |
+|---|---|---|---|---|
+| `7344d24f` | 36 | **36/36 = 100,0 %** (seuil 90 %) | 14/36 = 38,9 % | 38,6 % |
+| `696a9d7c` | 34 | **34/34 = 100,0 %** | 10/34 = 29,4 % | 40,0 % |
+| `01e1f945` | 0 (mode a colline) | sans objet | — | — |
+
+Chiffres BYTE-IDENTIQUES a S6 : la clause tient toujours a 100 % sur les trois artefacts schema
+18, la renumerotation n'a rien deplace.
+
+### Le point eslint : 22 consignes au gate, 20 mesures a la reprise
+
+`_gates_s18_web.log` (2026-08-19 12:57:03) consignait **22** avertissements eslint contre un
+plafond attendu de **20** (baseline 19 + 1 connu `ReplayFeedName.tsx:50`, cf. section « revue
+ronde 1 » de `LOTCTER_volet3_gates.log`). RE-MESURE le meme jour a 20:46 depuis `apps/web`
+(`npm run lint`, DEUX runs consecutifs, HEAD inchange `b13e0721d`, arbre propre a l'exception des
+fichiers de ce sous-volet, aucun cache eslint sur le disque) : **20/20 avertissements, 0 erreur**
+— le plafond est TENU, l'ecart de 2 ne s'est PAS reproduit.
+
+Les 20 avertissements couvrent 16 fichiers ; UN seul touche le perimetre du volet
+(`features/match-replay`) : `ReplayFeedName.tsx:50` (`react-refresh/only-export-components`) —
+et c'est exactement le « 1 connu » deja documente dans le plafond AVANT ce sous-volet, pas une
+nouveaute. Les 15 autres fichiers (`MatchEncountersTable.tsx`, `MatchKDCumulChart.tsx`,
+`MatchPositionsHeatmap.tsx` x3, `MatchScoreboard.tsx`, `MediaAudioConfigButton.tsx`,
+`RelationsTable.tsx`, `SquadImpactScoreboard.tsx`, `SquadSynergyHistoryTable.tsx`,
+`ExplorerMatchesTable.tsx`, `CareerChartsSection.gauges.tsx`, `AdminTitlesPage.tsx`,
+`DetectionsPanel.tsx`, `IssueTable.tsx`, `PostSyncMatrix.tsx`, `useGamertagSuggestions.ts`) sont
+tous HORS perimetre du volet (aucun sous `match-replay`) et hors perimetre de la fusion socles
+(aucun sous `weaponPads`/`ground_weapon`/`powerup`). Cause du 22 d'origine NON IDENTIFIEE : aucun
+fichier de code n'a change entre les deux mesures pour l'expliquer, pas de cache eslint en cause.
+Aucun fichier touche ici — une regression aurait ete un STOP, pas une correction ; l'etat courant
+est propre et au plafond documente.
