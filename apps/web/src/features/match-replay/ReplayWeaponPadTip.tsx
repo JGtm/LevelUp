@@ -6,6 +6,10 @@
  * COMPTE À REBOURS quand un cycle établi le permet, et la réserve de lecture : la mesure ne
  * distingue pas un socle au sol d'un râtelier mural.
  *
+ * UN SOCLE DE POWER-UP N'EST PAS UNE ARME (schéma 17) : son nom vient de la table des familles
+ * non-arme (`padNameFor`), jamais de la clé brute du document, et sa réserve de lecture change
+ * avec lui — le râtelier mural n'a pas de sens pour un objet qu'on ramasse au sol.
+ *
  * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
  * et vaut `null` partout — l'oracle plafonne à 79,7 % contre 90 % exigés. C'est la clause la
  * plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie qu'il est vide :
@@ -26,6 +30,7 @@
  */
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { WeaponPadHover } from './useReplayWeaponPads'
+import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des poses). */
 const TIP_OFFSET = 12
@@ -42,6 +47,11 @@ interface ReplayWeaponPadTipProps {
 export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipProps) {
   const t = REPLAY_TEXT[locale]
   const { at, name, state, respawnS } = hover
+  // LA RÉSERVE SUIT LA NATURE DU SOCLE : « socle au sol ou râtelier mural » n'a aucun sens
+  // pour un power-up — il ne s'accroche pas à un mur. Même table que la taille et le nom.
+  const note = padEquipmentFamilyOf(hover.pad.weapon)
+    ? t.padPlacementNotePowerUp
+    : t.padPlacementNote
   const flip = at.x + TIP_OFFSET + TIP_WIDTH > width
   return (
     <div
@@ -59,7 +69,7 @@ export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipP
         {respawnS !== null ? ` · ${t.padRespawnFmt(respawnS)}` : ''}
       </span>
       <span className="mt-0.5 block text-[0.65rem] text-muted-foreground opacity-80">
-        {t.padPlacementNote}
+        {note}
       </span>
     </div>
   )
