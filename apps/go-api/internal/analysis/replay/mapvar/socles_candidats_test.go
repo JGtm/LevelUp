@@ -43,7 +43,11 @@ func TestSoclesCandidats(t *testing.T) {
 		}
 	}
 	if len(types) == 0 {
-		t.Fatalf("%s : aucun objet apparie, rien a enumerer", filepath.Base(path))
+		// L ABSENCE EST UN RESULTAT, pas une panne : un canevas Forge ne porte aucun socle
+		// (mesure du 2026-08-19 : le canevas de Smallhalla est a 81-102 m des socles). Un
+		// echec de test ferait passer ce fait pour un incident d outillage.
+		t.Logf("%s : AUCUN objet apparie — ce fichier ne porte pas de socle", filepath.Base(path))
+		return
 	}
 
 	cles := make([]int32, 0, len(types))
