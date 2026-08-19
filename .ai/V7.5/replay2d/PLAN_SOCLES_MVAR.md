@@ -133,11 +133,11 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
 
 ### Phase 2 — appariement de l'oracle Catalyst (Q2) (commit 3)
 
-- [ ] 2.1 Coder les 11 positions de l'oracle (section 2.1) dans l'instrument, sous garde.
-- [ ] 2.2 Pour chaque position : objet du `.mvar` le plus proche, distance 3D, type_id,
+- [x] 2.1 Coder les 11 positions de l'oracle (section 2.1) dans l'instrument, sous garde.
+- [x] 2.2 Pour chaque position : objet du `.mvar` le plus proche, distance 3D, type_id,
       labels.
-- [ ] 2.3 Temoin negatif : 100 tirages, graine fixe, meme emprise, meme N.
-- [ ] 2.4 **GATE D'ARRET** : >= 90 % a < 1 m et signal/temoin >= 3, sinon aller en phase 4
+- [x] 2.3 Temoin negatif : 100 tirages, graine fixe, meme emprise, meme N.
+- [x] 2.4 **GATE D'ARRET** : >= 90 % a < 1 m et signal/temoin >= 3, sinon aller en phase 4
       puis 6.
 
 ### Phase 3 — que fait spawn le socle ? (Q3) (commit 4)
@@ -211,6 +211,22 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
   (`-1239931096`, le volume d'objectif que `map_objectives.json` publie deja) ; RIEN ne les
   nomme (table de chaines vide sur les cartes DEV) ; aucune reference d'arme n'est lisible.
   Le seul discriminant disponible est donc la POSITION — c'est l'objet de la phase 2.
+- **2026-08-19, phase 2 close — H1 CONFIRMEE, ET LARGEMENT** — les socles d'armes SONT dans
+  le `.mvar` de la carte. **11 / 11 apparies** a moins d'un metre, et pas de justesse :
+  distance mediane **0,01 m**, maximum **0,01 m** — le centimetre, la meme resolution que
+  l'oracle. Temoin negatif 4,5 % (50 sur 1 100 tirages, graine 20260819) : rapport
+  signal/temoin **22**, seuil du plan 3.
+  Le resultat tient sur les TROIS films de la carte et sur les DEUX `.mvar` : `01e1f945`
+  (KOTH) 11/11, `64e8adfa` (CTF) 11/11, `530820e5` (CTF, film qui ne voit que 5 socles) 6/6.
+  Ce sont a chaque fois les MEMES objets, aux memes index (271 a 287).
+  **Et les type_id sont discriminants** : `1597478195` porte les socles 4, 5, 6, 7 (marteau
+  ou epee, SPNKr ou Cremateur, les deux snipers) ; `1649659840` porte les six autres ;
+  `1585893648` porte le socle de power-up, a lui seul. Le fichier distingue donc au moins
+  trois familles de socle.
+  **Signal decisif pour la demande de depart** : l'inventaire compte **7** objets de type
+  `1649659840` et **5** de type `1597478195`, soit **12 socles d'armes** la ou le meilleur
+  film n'en montre que **10**. Deux socles existent que le film ne voit jamais. Gate d'arret
+  NON declenche : phases 3 et 5 s'executent.
 
 ## 8. Verdict et suite
 
