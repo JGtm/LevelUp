@@ -1,3 +1,13 @@
+## [2026-08-20] v7.5 rejeu 2D — lot C-ter clos : la colline de KOTH designee par le film, les formes de colline au catalogue, la jauge de capture en direct (schema 18) — Complete
+
+**Contexte** : pilotage superviseur, 3 volets paralleles en worktrees + 1 integration, 2 rondes de revue adversariale par volet code, arbitrages gate 1/2 traces au plan §7. Incidents traverses : limites de quota (Fable puis Opus puis Sonnet — executeurs relances en changeant de modele), schema 17 pris par le lot socles de l'autre session (re-numerotation 18, meme regle que 15->16), CI d'origin rouge 3 push sur `cmd/variant-probe` (reparee ici par allowlists datees, dette routee au registre).
+
+**Decision technique principale** : (1) la colline active vient du DESIGNATEUR (tag 5 de l'objet de mode KOTH), plus du mouvement de la jauge — periodes fermees a la bascule, colline vide visible, delai d'activation borne par le film (l'objet nait entre 20 et 40 s) ; (2) les formes de colline sont EXTRAITES de la variante de carte et servies sous le role `hill` (113/23 cartes) — le `zoneRef` des periodes pointe enfin une vraie forme ; (3) la jauge en direct n'existe qu'en zones simultanees : en KOTH le tag 3 est un compteur de transfert (~1 s), mesure et ecrit — publier une serie la-bas aurait montre un mensonge ; (4) l'echelle de la jauge est celle du JEU (constantes du deser), plus l'excursion du match — les progress v16/v18 ne sont pas comparables et la chronique le dit.
+
+**Resultats observes** : 6 temoins schema 18 verifies sur artefact — Bastion `captures+geometry` avec 1 701/1 794 points de jauge (poids +1,6/1,8 %, plafond 2 %), 100 % des bascules precedees d'une montee, rampes 49/49 et 51/51 fermees au retour a zero ; KOTH x4 `designator+geometry`, 5/6/3/3 periodes, chevauchement maximal 1, gaugePoints 0 partout, `0a247154` (sans aucune jauge tag 3) porte par le seul designateur. Gates tous verts (archlint compris apres reparation), contrat 37, cliquet ReplayCanvas 808 (amont) tenu, eslint 20/20, cross-feature 7/7.
+
+**Conclusion / prochaine etape** : fusion `wt/cter-fusion` -> feat/v75, push, CI verte au niveau job attendue (elle etait rouge AVANT nous) ; temoins poses dans le cache du principal ; planche de validation mise a jour (la colline s'illumine, l'arc suit la jauge) ; gate visuel utilisateur ; hygiene (registre : variant-probe, 5 cartes UGC, slots non nommes). Prochain schema libre : 19.
+
 ## [2026-08-20] v7.5 rejeu 2D — lot C-ter : integration des trois volets, re-fusion de l'amont, CI reparee — Complete
 
 **Statut** : Complete (branche `wt/cter-fusion`, socle volet 3 `80f6eb033`, six commits jusqu'a
