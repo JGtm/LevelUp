@@ -97,6 +97,24 @@ notees non traitees (journal §9) : `progress` en KOTH est desormais le sommet d
 n'apprend plus grand-chose (le volet 1 possede ce fichier) ; deux slots tag 3 de `7344d24f` ne sont pas des
 jauges de zone et restent a nommer ; les silences intra-rampe sont tenus a l'ecran faute d'une emission qui
 distinguerait « figee » de « finie ».
+## [2026-08-20] Son de pose de la balise — l'evenement Wwise lu, la bonne banque enfin ouverte — Complete
+
+**Statut** : Complete (branche `wt/balise-mix`, 6 commits `aaf7c4b8b`..`2fafc4721`, FUSIONNEE dans
+`feat/v75` par le superviseur ; gates verts). En attente : ECOUTE utilisateur (page v2).
+**Decision technique** : brancher le mode `arbre` existant sur la chaine `eqip` (mode `eqip-arbre`,
+`cmd/weapon-sounds/eqip_arbre.go` — aucun parseur reecrit) et propager le delai d'objet jusque-la
+ignore. **La mesure contredit l'hypothese du mix a moitie** : les 23 evenements de `dcfaa487` (la
+banque des 32 sons refuses) sont TOUS mono-couche — mais cette banque est celle de l'APPAREIL qui
+vole (`eqip a1344fc2`) ; la BALISE POSEE (`730dc70f`, l'objet que le film cree) atteint `b29ac6de`,
+`15c5b355`, `de65048f`, JAMAIS extraites — les 32 sons ecoutes ne pouvaient pas etre la pose.
+**Resultats** : 106 `.wav` extraits des deux chaines ; 5 candidats reconstruits avec recette (2 vrais
+mix, 3 gestes remis au niveau — l'aveu est publie) ; zero delai sur les 6 banques ; temoin de methode
+`repair_field` retrouve exactement les 3 wem livres ; page v2 = 45 sons (temoin capteur + 12
+candidats avec recette + 32 gestes jamais entendus). Decouvertes : le « son generique d'objet cree »
+est a -96 dB (muet — le plan du 18/08 envisageait de le brancher) ; `15c5b355` est partagee par 21
+objets (une identification y vaudrait pour TOUS les objets poses).
+**Conclusion / prochaine etape** : l'ecoute tranche ; si les 44 sont refuses, balayer les 1 305
+`sbnk` de `pc/globals` (20-30 min, la chaine eqip n'en atteint que 1,3 %).
 
 ## [2026-08-19] Laches hors Fiesta : les equipements et power-ups laches a la mort se dessinent — Complete
 
