@@ -1,3 +1,26 @@
+## [2026-08-19] Socles d'armes depuis les fichiers de carte — MESURE, confirmee — Complete
+
+**Statut** : Complete (mesure ; branche `wt/socles-mvar`, 7 commits `3d5baf1e1`..`702afa777`, FUSIONNEE
+dans `feat/v75` par le superviseur ; plan et chiffres : `PLAN_SOCLES_MVAR.md`). Production proposee,
+NON faite — decision produit chez l'utilisateur (piege des socles eteints).
+**Resultats** : les socles SONT dans le `.mvar` au centimetre — 32 positions d'oracle sur 3 cartes,
+32 appariees a < 1 m, mediane 0,01 m, temoin 0,4-5,6 % (Forge : temoin large 75,5 %, temoin restreint
+declare 4,7 %). Trois `type_id` jamais identifies portent les socles et codent une FAMILLE (armes de
+pouvoir / armes de rack / power-up) mais PAS l'arme (epee en KOTH, marteau en CTF sur le meme objet —
+l'arme appartient au match, confirme). **Le fichier POSE, le mode ALLUME** : les deux `.mvar` d'une
+carte portent les memes socles ; Cliffhanger 17 poses -> 10 vues en CTF, 0 en Super Fiesta (hypothese
+scenario de l'utilisateur : tranchee ainsi) ; l'activation par mode n'est PAS lisible hors ligne sur
+cartes DEV (labels partiels sur Forge). **Gain : 22 emplacements que le film ne montre jamais** (0 sur
+Catalyst — la recurrence y voyait tout ; 7 sur Cliffhanger ; 15 sur Smallhalla). Antecedents cites
+(journal du 25/07 : map.mvar deja parse 453 objets ; registre l. 229 : racks non extraits — extraction
+FAITE ; piege Forge rack/canevas respecte). Methode : le plan avait ete pre-rempli par erreur, reecrit
+cases vides AVANT mesure ; le temoin Forge echoue et n'est pas efface.
+**Conclusion / prochaine etape** : production = catalogue statique `map_weapon_pads.json` (cle map_id,
+`pos` + `type_id` brut + famille derivee A COTE du brut, via `cmd/mapobj-build` etendu) + croisement au
+rejeu CONDITIONNE par le film (jamais publier les 17 socles fantomes d'un Fiesta) — DECISION PRODUIT a
+valider ; reports : activation par mode = asset `UgcGameVariants` (reseau, client discovery en place) ;
+nommer les 3 `type_id` via himap.
+
 ## [2026-08-19] Rendu des socles de POWER-UP : taille, nom, vignette — Complete
 
 **Statut** : Complete (branche `wt/powerup-rendu`, `a21ebc4e6` + `b918ab477`, FUSIONNEE dans `feat/v75`
