@@ -142,10 +142,10 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
 
 ### Phase 3 — que fait spawn le socle ? (Q3) (commit 4)
 
-- [ ] 3.1 Sur les objets apparies : quels champs varient avec l'arme observee ?
-- [ ] 3.2 Croiser avec les deux films de Catalyst (armes differentes sur 3 socles).
-- [ ] 3.3 Inspecter `root[11]` (surcharges indexees) sur les index des objets apparies.
-- [ ] 3.4 Verdict Q3 ecrit : arme fixee dans le fichier, ou spawner generique ?
+- [x] 3.1 Sur les objets apparies : quels champs varient avec l'arme observee ?
+- [x] 3.2 Croiser avec les deux films de Catalyst (armes differentes sur 3 socles).
+- [x] 3.3 Inspecter `root[11]` (surcharges indexees) sur les index des objets apparies.
+- [x] 3.4 Verdict Q3 ecrit : arme fixee dans le fichier, ou spawner generique ?
 
 ### Phase 4 — le variant de MODE (Q4 + H-SCENARIO) (commit 5)
 
@@ -227,6 +227,28 @@ jamais de push, de stash, ni de `git add -A`. Gates par phase :
   `1649659840` et **5** de type `1597478195`, soit **12 socles d'armes** la ou le meilleur
   film n'en montre que **10**. Deux socles existent que le film ne voit jamais. Gate d'arret
   NON declenche : phases 3 et 5 s'executent.
+- **2026-08-19, phase 3 close — H2 TRANCHEE : la FAMILLE est lisible, l'ARME ne l'est pas.**
+  Les objets de socle sont NUS : categorie absente, aucun index d'equipe, aucun label,
+  aucune forme, et un sac de proprietes RIGOUREUSEMENT identique d'un socle a l'autre
+  (`#8.0[0].13` vide, `#8.1[0]` vide, `#8.24[0] = {0:4}` sur les treize). Le seul champ qui
+  varie est le **type_id**, et il code une FAMILLE, confirmee par le croisement des trois
+  films et du catalogue d'armes :
+  - `1597478195` — **armes de pouvoir** : Duelist Energy Sword et Diminisher of Hope au meme
+    objet 276 selon le match, Fuel Rod SPNKr / M41 SPNKr / Cindershot a l'objet 287,
+    S7 Sniper aux objets 282 et 283 dans les trois films ;
+  - `1649659840` — **armes de rack** : CQS48 Bulldog, Disruptor ou Mangler, VK78 Commando ou
+    Vestige Carbine ou BR75, Sentinel Beam ;
+  - `1585893648` — **le socle de power-up**, seul de son type sur la carte.
+  Un MEME objet porte donc des armes differentes selon le match : l'arme n'est pas dans le
+  fichier de carte, et le fait etabli du lot precedent (« le socle appartient a la carte,
+  l'arme au match ») se verifie a la source.
+  `root[11]` est present mais VIDE sur Catalyst : aucune surcharge indexee a croiser (3.3).
+  **ET LE COMPTE HONNETE** : 13 objets de socle, mais **11 emplacements distincts** — les
+  deux objets « jamais vus » sont a 4,7 cm et 9 mm d'un socle deja vu, donc le meme
+  emplacement declare deux fois, pas deux socles de plus. Sur Catalyst, le fichier de carte
+  ne revele AUCUN emplacement que le film ignorait. Ce qu'il apporte est ailleurs : il les
+  donne TOUS sans exiger de recurrence (le film `530820e5` n'en montre que 6 sur 11) et il
+  donne leur famille.
 
 ## 8. Verdict et suite
 
