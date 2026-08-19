@@ -63,22 +63,7 @@ func banquesDEquipement(cheminModule, entree, sortie, dossierEmb string) error {
 	if err != nil {
 		return err
 	}
-	parBank := map[string][]string{}
-	sndsParBank := map[string][]SndSon{}
-	vus := map[string]bool{}
-	for _, e := range rap.Equipement {
-		for _, b := range e.Banks {
-			parBank[b] = append(parBank[b], e.Eqip)
-		}
-		for _, s := range e.Sons {
-			for _, b := range s.Banks {
-				if cle := b + "/" + s.Tag; !vus[cle] {
-					vus[cle] = true
-					sndsParBank[b] = append(sndsParBank[b], s)
-				}
-			}
-		}
-	}
+	parBank, sndsParBank := indexerPasse1(rap)
 	fmt.Printf("passe 1 : %d eqip sonores, %d banks a resoudre\n", len(rap.Equipement), len(parBank))
 
 	m, err := himodule.Open(cheminModule)
