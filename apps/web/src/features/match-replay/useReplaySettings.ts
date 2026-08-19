@@ -32,6 +32,7 @@ const SHOW_SHOT_FX_KEY = 'replay-show-shot-fx'
 const SHOW_KILL_FX_KEY = 'replay-show-kill-fx'
 const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
 const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
+const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const COMPACT_CARDS_KEY = 'replay-compact-cards'
@@ -95,6 +96,22 @@ const SHOW_KILL_FX_DEFAULT = false
  */
 const SHOW_PLACEMENTS_DEFAULT = true
 const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
+
+/**
+ * LES OBJETS DE PUISSANCE LÂCHÉS SONT ALLUMÉS PAR DÉFAUT (décision utilisateur du 2026-08-18 :
+ * « hors Fiesta c'est tactiquement interessant »). Un surbouclier ou un capteur au sol est
+ * RAMASSABLE : savoir qu'il est là change la lecture de l'échange suivant, exactement comme
+ * savoir qu'une arme est encore sur son socle.
+ *
+ * LA BASCULE NE COMMANDE RIEN EN FIESTA, et ce n'est pas elle qui le décide : la garde de mode
+ * vit dans la page (cf. `replayFiesta.ts`), parce que le document de rejeu ne publie aucun
+ * mode. Le tiroir n'affiche donc la commande que là où elle a un effet — même règle que le
+ * bouton Zones.
+ *
+ * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
+ * RÉGLAGE D'AFFICHAGE offert au lecteur.
+ */
+const SHOW_DROPPED_PLACEMENTS_DEFAULT = true
 
 /**
  * LES SOCLES D'ARME SONT ALLUMÉS PAR DÉFAUT (décision utilisateur du 18/08, W4 : « les infos
@@ -169,6 +186,12 @@ export interface ReplaySettings {
   /** Poses dont la nature n'est pas établie (famille `other`). ÉTEINT par défaut. */
   showUnnamedPlacements: boolean
   toggleUnnamedPlacements: () => void
+  /**
+   * Objets de PUISSANCE lâchés à la mort (power-ups, équipements déployables). ALLUMÉ par
+   * défaut — mais sans effet en Fiesta, où la garde de mode de la page l'annule.
+   */
+  showDroppedPlacements: boolean
+  toggleDroppedPlacements: () => void
   /** Calque des SOCLES D'ARME (schéma 11). Allumé par défaut (cf. SHOW_WEAPON_PADS_DEFAULT). */
   showWeaponPads: boolean
   toggleWeaponPads: () => void
@@ -244,6 +267,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_UNNAMED_PLACEMENTS_KEY,
     SHOW_UNNAMED_PLACEMENTS_DEFAULT,
   )
+  const [showDroppedPlacements, toggleDroppedPlacements] = usePersistedFlag(
+    SHOW_DROPPED_PLACEMENTS_KEY,
+    SHOW_DROPPED_PLACEMENTS_DEFAULT,
+  )
   const [showWeaponPads, toggleWeaponPads] = usePersistedFlag(
     SHOW_WEAPON_PADS_KEY,
     SHOW_WEAPON_PADS_DEFAULT,
@@ -304,6 +331,8 @@ export function useReplaySettings(): ReplaySettings {
     togglePlacements,
     showUnnamedPlacements,
     toggleUnnamedPlacements,
+    showDroppedPlacements,
+    toggleDroppedPlacements,
     showWeaponPads,
     toggleWeaponPads,
     showFlagCarries,

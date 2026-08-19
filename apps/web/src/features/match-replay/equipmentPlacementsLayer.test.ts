@@ -23,15 +23,18 @@ import { describe, expect, it } from 'vitest'
 import {
   isPlacementActive,
   PLACEMENT_RENDER,
-  placementAt,
   placementEndFrame,
   placementIsDeployedObject,
   placementKind,
   placementOrigin,
+  type PlacementToggles,
+  countDrawablePlacements,
 } from './equipmentPlacementsLayer'
+import { placementAt } from './placementHitTest'
 import {
   BEACON_ID,
   DEVICE_ID,
+  OVERSHIELD_ID,
   draw,
   FIELD_ID,
   life,
@@ -45,6 +48,14 @@ import {
   VIEW,
 } from './test/placementFixtures'
 import { REVEAL_RADIUS_PX, SENSOR_DURATION_MS, SENSOR_RADIUS_M } from './threatSensor'
+
+/**
+ * LES DEUX JEUX DE BASCULES de ce fichier. `RIEN` est le comportement HISTORIQUE du calque (seuls
+ * les objets déployés) ; `TOUT` allume les deux commandes du tiroir, ce que fait déjà le comptage
+ * (`countDrawablePlacements`) pour savoir si une commande a quelque chose à commander.
+ */
+const RIEN: PlacementToggles = { showUnnamed: false, showDropped: false }
+const TOUT: PlacementToggles = { showUnnamed: true, showDropped: true }
 
 describe('PLACEMENT_RENDER — la table, famille par famille', () => {
   it('les cinq familles DÉPLOYABLES ont chacune leur règle de rendu', () => {
@@ -69,7 +80,7 @@ describe('PLACEMENT_RENDER — la table, famille par famille', () => {
     for (const f of portees) {
       expect(f in PLACEMENT_RENDER, `${f} doit être DANS la table`).toBe(true)
       expect(PLACEMENT_RENDER[f], `${f} doit valoir null`).toBeNull()
-      expect(placementKind(pose({ family: f }), true)).toBeNull()
+      expect(placementKind(pose({ family: f }), TOUT)).toBeNull()
     }
   })
 
@@ -78,12 +89,12 @@ describe('PLACEMENT_RENDER — la table, famille par famille', () => {
     // l'hypothèse « objet de la carte sans poseur ». Pas de vocabulaire mort (CLAUDE.md n°7).
     for (const f of ['powerup_overshield', 'powerup_camo']) {
       expect(f in PLACEMENT_RENDER, `${f} doit rester HORS table`).toBe(false)
-      expect(placementKind(pose({ family: f }), true)).toBeNull()
+      expect(placementKind(pose({ family: f }), TOUT)).toBeNull()
     }
   })
 
   it('une famille inconnue du manifeste ne dessine RIEN', () => {
-    expect(placementKind(pose({ family: 'famille_future' }), true)).toBeNull()
+    expect(placementKind(pose({ family: 'famille_future' }), TOUT)).toBeNull()
     expect(painted([pose({ family: 'famille_future', h: 12 })])).toBe(0)
   })
 })
@@ -94,13 +105,13 @@ describe('placementOrigin / placementIsDeployedObject — le filtre du schéma 1
     delete sansOrigine.origin
     expect(placementOrigin(sansOrigine)).toBe('unknown')
     expect(placementIsDeployedObject(sansOrigine)).toBe(false)
-    expect(placementKind(sansOrigine, false)).toBeNull()
+    expect(placementKind(sansOrigine, RIEN)).toBeNull()
   })
 
   it('un LÂCHER ne se dessine pas — 88,6 % du corpus en est', () => {
     for (const origin of ['dropped', 'unknown']) {
       expect(placementIsDeployedObject(pose({ origin })), origin).toBe(false)
-      expect(placementKind(pose({ origin }), false), origin).toBeNull()
+      expect(placementKind(pose({ origin }), RIEN), origin).toBeNull()
       expect(painted([pose({ origin, h: 90 })]), origin).toBe(0)
     }
   })
@@ -126,8 +137,8 @@ describe('placementOrigin / placementIsDeployedObject — le filtre du schéma 1
     // Sa bascule est un outil de diagnostic — on cherche à voir ce qu'on ne sait pas nommer,
     // d'où que l'objet vienne. Comportement inchangé par ce lot.
     const lache = pose({ family: 'other', origin: 'dropped' })
-    expect(placementKind(lache, false)).toBeNull()
-    expect(placementKind(lache, true)).toBe('unnamed')
+    expect(placementKind(lache, RIEN)).toBeNull()
+    expect(placementKind(lache, { showUnnamed: true, showDropped: false })).toBe('unnamed')
     expect(painted([lache])).toBe(0)
     expect(painted([lache], { ...TIME, showUnnamed: true })).toBe(1)
   })
@@ -265,7 +276,13 @@ describe('la marque « révélé », tracée dans ce calque', () => {
 })
 
 describe('placementAt — le survol', () => {
-  const hover = { frame: 50, frameMs: TIME.frameMs, frames: TIME.frames, showUnnamed: false }
+  const hover = {
+    frame: 50,
+    frameMs: TIME.frameMs,
+    frames: TIME.frames,
+    showUnnamed: false,
+    showDropped: false,
+  }
   const center = projected(5, 5)
 
   it('la PLUS PETITE zone gagne : un mur posé dans un capteur reste atteignable', () => {
@@ -300,5 +317,96 @@ describe('placementAt — le survol', () => {
     const seeker = pose({ family: 'threat_seeker', id: SEEKER_ID, t0: 50, t1: 200 })
     expect(placementAt([seeker], VIEW, { ...hover, frame: 52 }, center)?.id).toBe(SEEKER_ID)
     expect(placementAt([seeker], VIEW, { ...hover, frame: 60 }, center)).toBeNull()
+  })
+})
+
+/**
+ * LES OBJETS DE PUISSANCE LÂCHÉS (décision produit du 2026-08-18) — et le comptage qui décide
+ * si la commande du tiroir s'affiche.
+ *
+ * Ce bloc défend trois choses que rien d'autre ne défend : que la bascule ALLUMÉE ne change
+ * RIEN aux déployés (c'est la promesse de non-régression du lot), qu'un lâcher se dessine avec
+ * SA forme et non celle de sa famille, et que le comptage passe par la même porte que le tracé.
+ */
+describe('les objets de PUISSANCE lâchés — la troisième porte de placementKind', () => {
+  const LACHE: PlacementToggles = { showUnnamed: false, showDropped: true }
+
+  it('un power-up lâché se dessine — le surbouclier du témoin 01e1f945', () => {
+    const p = pose({ family: 'powerup_overshield', id: OVERSHIELD_ID, origin: 'dropped' })
+    expect(placementKind(p, LACHE)).toBe('dropped')
+    expect(painted([p], { ...TIME, showDropped: true })).toBe(1)
+  })
+
+  it('un équipement lâché se dessine, et l’APPAREIL du mur y compris — témoin 000d5950', () => {
+    // Les 11 `wall/dropped` du témoin portent l'identifiant de l'APPAREIL : la règle des
+    // panneaux ne s'applique qu'au DÉPLOIEMENT, un lâcher ne publie qu'une pose.
+    const mur = pose({ family: 'wall', id: DEVICE_ID, origin: 'dropped' })
+    const capteur = pose({ family: 'sensor', id: SENSOR_ID, origin: 'dropped' })
+    expect(placementKind(mur, LACHE)).toBe('dropped')
+    expect(placementKind(capteur, LACHE)).toBe('dropped')
+    expect(painted([mur, capteur], { ...TIME, showDropped: true })).toBe(2)
+  })
+
+  it('un capteur lâché n’a NI zone NI onde : une seule primitive, pas celle de sa famille', () => {
+    // Un capteur déployé émet son disque, son anneau et parfois son ping : au moins trois.
+    const lache = pose({ family: 'sensor', id: SENSOR_ID, origin: 'dropped', t0: 48 })
+    const deploye = pose({ family: 'sensor', id: SENSOR_ID, origin: 'deployed', t0: 48 })
+    expect(painted([lache], { ...TIME, showDropped: true })).toBe(1)
+    expect(painted([deploye], { ...TIME, showDropped: true })).toBeGreaterThan(1)
+  })
+
+  it('les grenades et les capacités lâchées restent MUETTES, bascule allumée ou non', () => {
+    const muets = ['grenade_frag', 'grenade_plasma', 'grenade_dynamo', 'grenade_spike',
+      'grapple', 'thruster', 'repulsor']
+    for (const family of muets) {
+      const p = pose({ family, origin: 'dropped' })
+      expect(placementKind(p, LACHE), family).toBeNull()
+      expect(painted([p], { ...TIME, showDropped: true }), family).toBe(0)
+    }
+  })
+
+  it('la bascule ÉTEINTE rend le comportement d’avant le lot, à la primitive près', () => {
+    const p = pose({ family: 'powerup_overshield', id: OVERSHIELD_ID, origin: 'dropped' })
+    expect(placementKind(p, RIEN)).toBeNull()
+    expect(painted([p])).toBe(0)
+  })
+
+  it('la bascule ALLUMÉE ne change RIEN aux objets DÉPLOYÉS — la non-régression du lot', () => {
+    const attendu: [string, string][] = [
+      ['wall', PANEL_ID],
+      ['sensor', SENSOR_ID],
+      ['translocator_beacon', BEACON_ID],
+      ['threat_seeker', SEEKER_ID],
+      ['repair_field', FIELD_ID],
+    ]
+    for (const [family, id] of attendu) {
+      const p = pose({ family, id, t0: 48, h: 90 })
+      expect(painted([p], { ...TIME, showDropped: true }), family).toBe(painted([p]))
+    }
+  })
+
+  it('un lâché reste à l’écran jusqu’à la fin du rejeu : le film ne date aucune disparition', () => {
+    const p = pose({ family: 'powerup_overshield', id: OVERSHIELD_ID, origin: 'dropped', t0: 10, t1: 20 })
+    expect(placementEndFrame(p, 'dropped', TIME)).toBe(TIME.frames - 1)
+  })
+})
+
+describe('countDrawablePlacements — la porte du comptage est celle du tracé', () => {
+  it('compte les deux bascules ALLUMÉES, sinon la commande ne s’afficherait jamais', () => {
+    const n = countDrawablePlacements([
+      pose(),
+      pose({ family: 'other', origin: 'dropped' }),
+      pose({ family: 'powerup_overshield', id: OVERSHIELD_ID, origin: 'dropped' }),
+      pose({ family: 'sensor', id: SENSOR_ID, origin: 'dropped' }),
+      pose({ family: 'grenade_frag', origin: 'dropped' }),
+    ])
+    // Le mur déployé, l'objet non identifié, le power-up lâché et le capteur lâché : 4.
+    // La grenade lâchée n'entre nulle part.
+    expect(n).toEqual({ drawable: 4, unnamed: 1, dropped: 2 })
+  })
+
+  it('un film SANS lâcher de puissance rend `dropped: 0` — le tiroir n’affiche alors rien', () => {
+    const n = countDrawablePlacements([pose(), pose({ family: 'grenade_spike', origin: 'dropped' })])
+    expect(n.dropped).toBe(0)
   })
 })

@@ -16,15 +16,22 @@
  * Le témoin qui valide la méthode est interne — si les 88,6 % étaient un artefact de fenêtre,
  * les PANNEAUX du mur les porteraient aussi ; ils en ont zéro sur 48 et un sur 43.
  *
+ * DEPUIS LE 2026-08-19, UNE PART ÉTROITE DE CES LÂCHERS SE DESSINE QUAND MÊME, et c'est une
+ * décision produit datée (utilisateur, 2026-08-18) : hors Fiesta, les objets de PUISSANCE au
+ * sol — power-ups et équipements déployables — se voient, parce qu'ils sont ramassables et
+ * qu'ils changent l'échange suivant. La liste de ce qui compte et la raison vivent dans
+ * `placementDropped.ts` ; la garde de MODE vit hors du calque (cf. `PlacementToggles`).
+ *
  * LE RENDU EST UNE TABLE PAR FAMILLE (`PLACEMENT_RENDER`), et c'est la règle qui compte : une
  * famille absente de la table ne dessine RIEN, une famille à `null` ne dessine rien NON PLUS
  * mais l'a décidé. Jamais le dessin d'une voisine, même principe que les libellés et les sons.
  *
  * CE FICHIER DÉCIDE, IL NE TRACE PRESQUE PLUS. Le MUR (géométrie monde + identifiants des
  * panneaux) vit dans `placementWall.ts` ; les formes qui tiennent dans un centre projeté
- * (balise, impulsion du traqueur, disque du champ, point neutre, marque de révélation) vivent
- * dans `placementShapes.ts` avec le socle du cadrage. Reste ici le CAPTEUR — sa portée est en
- * mètres et il est le seul à révéler — et l'aiguillage.
+ * (balise, impulsion du traqueur, disque du champ, point neutre, objet lâché, marque de
+ * révélation) vivent dans `placementShapes.ts` avec le socle du cadrage ; la ZONE SENSIBLE au
+ * pointeur vit dans `placementHitTest.ts`. Reste ici le CAPTEUR — sa portée est en mètres et
+ * il est le seul à révéler — et l'aiguillage.
  *
  * LE CAPTEUR PINGE, et tout ce qu'il affirme — portée, cadence, durée de révélation, camp
  * révélé — vit dans `threatSensor.ts` : les chiffres y sont OFFICIELS et sourcés, la logique y
@@ -34,9 +41,10 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import { placementIsDroppedPower } from './placementDropped'
 import {
-  BEACON_RADIUS_PX,
   drawBeacon,
+  drawDroppedObject,
   drawRepairField,
   drawRevealMark,
   drawSeekerImpulse,
@@ -44,16 +52,13 @@ import {
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
-  SEEKER_IMPULSE_RADIUS_PX,
-  UNNAMED_DOT_RADIUS_PX,
   viewScale,
 } from './placementShapes'
-import { drawWall, wallHeading, WALL_PANEL_IDS, wallRadiusM } from './placementWall'
+import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
 // La FENÊTRE d'une pose vit à part (cf. le réexport plus haut) : elle est aussi LUE ici, et un
 // réexport ne met rien dans la portée locale. L'import inverse, lui, ne porte que des TYPES —
 // il n'y a donc aucun cycle à l'exécution.
-import { isPlacementActive, placementShows } from './placementWindow'
-import type { XY } from './replayLogic'
+import { isPlacementActive } from './placementWindow'
 import type { ReplayTrackReady } from './replayNormalize'
 import {
   SENSOR_FILL_ALPHA,
@@ -84,7 +89,19 @@ export type { PlacementView } from './placementShapes'
  * partageront un rendu (deux murs de palettes différentes, par exemple), la table les enverra
  * toutes deux sur la même valeur sans qu'on duplique un tracé.
  */
-export type PlacementKind = 'wall' | 'sensor' | 'beacon' | 'seeker' | 'field' | 'unnamed'
+export type PlacementKind =
+  | 'wall'
+  | 'sensor'
+  | 'beacon'
+  | 'seeker'
+  | 'field'
+  | 'unnamed'
+  /**
+   * L'OBJET DE PUISSANCE TOMBÉ AU SOL. Règle ORTHOGONALE à la table : elle ne vient pas d'une
+   * famille mais d'une ORIGINE (`dropped`) croisée avec la liste de `placementDropped.ts`.
+   * Une seule forme pour toutes les familles concernées — un objet au sol n'agit pas.
+   */
+  | 'dropped'
 
 /** Famille du MUR — nommée parce que la règle des panneaux la vise explicitement. */
 const PLACEMENT_FAMILY_WALL = 'wall'
@@ -143,8 +160,13 @@ export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = 
   // « corriger » cette absence. La voie `ti=37` publie bien un vrai power-up de socle, mais
   // dans `weaponPads`, l'autre canal du document, et le calque des SOCLES le dessine (grand,
   // nommé, avec sa vignette de HUD). Les faire entrer dans cette table-ci dessinerait une
-  // SECONDE marque au même endroit. Ce qui reste hors table est ce que voit CE calque : les
-  // power-ups LÂCHÉS à la mort, dont la décision n'a pas bougé.
+  // SECONDE marque au même endroit.
+  //
+  // LEUR LÂCHER, LUI, SE DESSINE DEPUIS LE 2026-08-19 — et pas par cette table. La décision
+  // produit du 2026-08-18 (« hors Fiesta, dessiner les objets lâchés à la mort ») passe par
+  // une règle d'ORIGINE, `placementDropped.ts`, qui ne demande à aucune famille d'avoir une
+  // forme d'objet actif. Cette table reste ce qu'elle a toujours été : ce qui se dessine
+  // quand l'objet est DÉPLOYÉ. Les power-ups n'en ont pas, et n'en auront pas.
 }
 
 /**
@@ -188,15 +210,12 @@ export function placementIsDeployedObject(p: ReplayEquipmentPlacement): boolean 
   return WALL_PANEL_IDS.includes(p.id)
 }
 
-/** Rayon minimal de la zone sensible au survol, en pixels : un point de 2,5 px ne se vise pas. */
-const HOVER_MIN_RADIUS_PX = 9
-
 /**
  * Ce que le calque a besoin de savoir de l'instant courant. `frameMs` est la durée RÉELLE
  * d'une frame (cf. `frameToMs(1, doc)`) : c'est elle qui donne son âge à la pulsation, jamais
  * un compteur d'images — la cadence d'échantillonnage est choisie au build.
  */
-export interface PlacementTime {
+export interface PlacementTime extends PlacementToggles {
   frame: number
   frameMs: number
   /** Nombre total d'images du rejeu (`doc.frameCount`) : la borne des poses sans fin connue. */
@@ -204,18 +223,29 @@ export interface PlacementTime {
   /** Densité de pixels : les épaisseurs d'écran la suivent (même règle que les marqueurs). */
   k: number
   reducedMotion: boolean
+}
+
+/**
+ * LES DEUX BASCULES DONT LE RENDU DÉPEND, et elles voyagent ensemble parce qu'elles répondent
+ * à la même question : qu'est-ce qui a le droit d'apparaître en plus des objets déployés ?
+ *
+ * `showDropped` arrive DÉJÀ croisée avec la garde de mode (jamais en Fiesta) : ce module ne
+ * connaît aucun mode, et il ne doit pas — le document de rejeu n'en publie aucun, seule la
+ * page le sait (cf. `replayFiesta.ts`).
+ */
+export interface PlacementToggles {
   /** Les objets non identifiés se dessinent-ils ? Bascule du tiroir, ÉTEINTE par défaut. */
   showUnnamed: boolean
+  /** Les objets de puissance LÂCHÉS se dessinent-ils ? Allumée par défaut, hors Fiesta. */
+  showDropped: boolean
 }
 
 /** Ce qu'il faut connaître du temps pour borner une pose — rien de plus (règle des 5 params). */
 export type PlacementWindowTime = Pick<PlacementTime, 'frameMs' | 'frames'>
 
-/** Ce que le SURVOL a besoin de savoir de l'instant : l'image, sa fenêtre, et la bascule. */
-export type PlacementHoverTime = Pick<
-  PlacementTime,
-  'frame' | 'frameMs' | 'frames' | 'showUnnamed'
->
+/** Ce que le SURVOL a besoin de savoir de l'instant : l'image, sa fenêtre, et les bascules. */
+export type PlacementHoverTime = Pick<PlacementTime, 'frame' | 'frameMs' | 'frames'> &
+  PlacementToggles
 
 /**
  * Ce que le calque a besoin de LIRE : les poses, et — pour le seul capteur de menaces — les
@@ -251,22 +281,27 @@ export interface PlacementInk {
 /**
  * placementKind rend la règle de rendu d'une pose, ou null quand il n'y en a pas.
  *
- * QUATRE RAISONS DE NE RIEN RENDRE, et elles se lisent dans cet ordre : famille hors table,
- * famille à `null` (objet porté), objet non identifié alors que la bascule est éteinte, et
- * enfin pose qui n'est pas un DÉPLOIEMENT.
+ * TROIS PORTES, DANS CET ORDRE, ET L'ORDRE EST LA RÈGLE :
+ *  1. l'OBJET NON IDENTIFIÉ passe en premier et ÉCHAPPE au filtre d'origine — sa bascule est
+ *     un outil de diagnostic (« un objet d'équipement est ici, sa nature n'est pas établie »),
+ *     et pour ce service-là l'origine n'apporte rien : on cherche à voir ce qu'on ne sait pas
+ *     nommer, d'où qu'il vienne. Éteinte par défaut, comportement inchangé ;
+ *  2. l'OBJET DE PUISSANCE LÂCHÉ ensuite, parce qu'il ne dépend PAS de la table : un power-up
+ *     n'y figure pas du tout, et un mur lâché y figure sans en relever (son identifiant est
+ *     celui de l'appareil, pas des panneaux). Le tester après la table le perdrait ;
+ *  3. le DÉPLOIEMENT enfin — la règle d'origine, inchangée depuis le schéma 10.
  *
- * L'OBJET NON IDENTIFIÉ EST LE SEUL À ÉCHAPPER AU FILTRE D'ORIGINE, et c'est délibéré : sa
- * bascule est un outil de diagnostic (« un objet d'équipement est ici, sa nature n'est pas
- * établie »), et pour ce service-là l'origine n'apporte rien — on cherche à voir ce qu'on ne
- * sait pas nommer, d'où qu'il vienne. Elle reste éteinte par défaut, comportement inchangé.
+ * Ce qui ne passe aucune des trois ne dessine rien : famille hors table, famille à `null`
+ * (grenades et capacités), lâcher d'une famille qui n'est pas de puissance.
  */
 export function placementKind(
   p: ReplayEquipmentPlacement,
-  showUnnamed: boolean,
+  toggles: PlacementToggles,
 ): PlacementKind | null {
   const kind = PLACEMENT_RENDER[p.family]
+  if (kind === 'unnamed') return toggles.showUnnamed ? kind : null
+  if (toggles.showDropped && placementIsDroppedPower(p)) return 'dropped'
   if (!kind) return null
-  if (kind === 'unnamed') return showUnnamed ? kind : null
   return placementIsDeployedObject(p) ? kind : null
 }
 
@@ -360,7 +395,8 @@ function drawPlacement(
   }
   const c = project({ x: p.x, y: p.y }, view)
   const ageMs = (time.frame - p.t0) * time.frameMs
-  if (kind === 'beacon') drawBeacon(ctx, c, time, color)
+  if (kind === 'dropped') drawDroppedObject(ctx, c, time, color)
+  else if (kind === 'beacon') drawBeacon(ctx, c, time, color)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field')
     drawRepairField(
@@ -393,7 +429,7 @@ export function drawEquipmentPlacementsLayer(
 ): void {
   const sensors: ReplayEquipmentPlacement[] = []
   for (const p of scene.placements) {
-    const kind = placementKind(p, time.showUnnamed)
+    const kind = placementKind(p, time)
     if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
     drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
     if (kind === 'sensor') sensors.push(p)
@@ -406,79 +442,35 @@ export function drawEquipmentPlacementsLayer(
 }
 
 /**
- * Rayon de la zone sensible au survol d'une pose, en pixels d'écran.
- *
- * Les familles dont la forme est déjà en PIXELS (balise, impulsion du traqueur, point neutre)
- * gardent leur taille, relevée au plancher de visée ; celles dont la forme est en MÈTRES
- * (capteur, champ de réparation, mur) suivent l'échelle de la carte — leur zone sensible est
- * celle qu'on voit.
- */
-function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number {
-  const scale = viewScale(view)
-  if (kind === 'sensor') return SENSOR_RADIUS_M * scale
-  if (kind === 'field') return REPAIR_FIELD_RADIUS_M * scale
-  if (kind === 'wall') return Math.max(wallRadiusM(view) * scale, HOVER_MIN_RADIUS_PX)
-  if (kind === 'seeker') return Math.max(SEEKER_IMPULSE_RADIUS_PX, HOVER_MIN_RADIUS_PX)
-  if (kind === 'beacon') return Math.max(BEACON_RADIUS_PX, HOVER_MIN_RADIUS_PX)
-  return Math.max(UNNAMED_DOT_RADIUS_PX, HOVER_MIN_RADIUS_PX)
-}
-
-/**
- * placementAt — la pose sous le curseur, à l'image courante, ou null.
- *
- * LA PLUS PETITE GAGNE, et c'est ce qui rend le survol utilisable : le disque du capteur
- * couvre 4,25 m de rayon, un mur posé dedans en couvre 1,6. Prendre la première trouvée
- * montrerait toujours le capteur, et le mur serait inatteignable au pointeur.
- *
- * `point` est en pixels CSS du canvas, le même repère que le dessin (le facteur de densité est
- * déjà absorbé par la transformation du contexte).
- */
-export function placementAt(
-  placements: readonly ReplayEquipmentPlacement[],
-  view: PlacementView,
-  time: PlacementHoverTime,
-  point: XY,
-): ReplayEquipmentPlacement | null {
-  let best: ReplayEquipmentPlacement | null = null
-  let bestR = Infinity
-  for (const p of placements) {
-    const kind = placementKind(p, time.showUnnamed)
-    if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
-    if (!placementShows(p, kind, time)) continue
-    const r = hoverRadiusPx(kind, view)
-    if (r >= bestR) continue
-    const c = project({ x: p.x, y: p.y }, view)
-    const dx = point.x - c.x
-    const dy = point.y - c.y
-    if (dx * dx + dy * dy > r * r) continue
-    best = p
-    bestR = r
-  }
-  return best
-}
-
-/**
  * countDrawablePlacements — ce qu'un document donne À DESSINER, compté par la MÊME PORTE que
  * le tracé (`placementKind`).
  *
  * POURQUOI ICI ET PAS DANS LE COMPOSANT. Une bascule d'interface ne doit s'allumer que si
  * quelque chose se dessinerait derrière elle (même règle que le bouton Zones), et « quelque
  * chose se dessinerait » est une décision de CE module — famille hors table, objet porté,
- * lâcher à la mort. La recompter dans le composant, c'est deux réponses possibles à la même
- * question. `showUnnamed` vaut `true` au comptage : on compte ce qui SERAIT dessiné, les deux
- * bascules allumées.
+ * lâcher d'une famille sans enjeu. La recompter dans le composant, c'est deux réponses
+ * possibles à la même question. LES BASCULES VALENT TOUTES `true` AU COMPTAGE : on compte ce
+ * qui SERAIT dessiné si le lecteur les allumait, sinon la commande qui les allume ne
+ * s'afficherait jamais.
+ *
+ * `dropped` EST UN SOUS-ENSEMBLE DE `drawable`, comme `unnamed` : ce sont trois vues du même
+ * balayage, pas trois populations disjointes.
  */
 export function countDrawablePlacements(placements: readonly ReplayEquipmentPlacement[]): {
   drawable: number
   unnamed: number
+  dropped: number
 } {
+  const toggles: PlacementToggles = { showUnnamed: true, showDropped: true }
   let drawable = 0
   let unnamed = 0
+  let dropped = 0
   for (const p of placements) {
-    const kind = placementKind(p, true)
+    const kind = placementKind(p, toggles)
     if (!kind) continue
     drawable++
     if (kind === 'unnamed') unnamed++
+    if (kind === 'dropped') dropped++
   }
-  return { drawable, unnamed }
+  return { drawable, unnamed, dropped }
 }
