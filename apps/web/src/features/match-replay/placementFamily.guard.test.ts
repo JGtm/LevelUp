@@ -27,6 +27,11 @@
  * seule aujourd'hui porte sur les power-ups de carte (registre des reports, 2026-08-18 : un
  * seul membre mesuré chacun, tous deux `dropped`). Un ajout au valideur qui ne serait ni
  * dessiné ni listé ici fait ROUGIR ce test — c'est voulu.
+ *
+ * CETTE TABLE NE DIT RIEN DES LÂCHERS depuis le 2026-08-19 : un power-up LÂCHÉ se dessine, et
+ * il reste pourtant hors table. La règle est ORTHOGONALE (une ORIGINE croisée avec une liste
+ * de familles) et son garde-rail est `placementDropped.guard.test.ts` — ne pas « corriger »
+ * l'absence des power-ups ci-dessous en les ajoutant à `PLACEMENT_RENDER`.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -155,10 +160,15 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * de duree, et la duree devait ecrire POURQUOI. Plutot que d'allonger le canvas d'un
  * paragraphe, les reglages temporels et leur conversion sont partis dans `useReplayTiming` —
  * quatrieme extraction imposee par ce cliquet, et la plus grosse.
+ *
+ * 812 -> 808 le 2026-08-19 (lot des objets LACHES) : le canvas etait PILE a son plafond et le
+ * lot y ajoutait une bascule, un comptage, un argument de survol et une prop de garde de mode.
+ * Les trois morceaux des poses — comptes, axe de temps, survol — sont donc partis dans
+ * `useReplayPlacements` AVANT l'ajout, cinquieme extraction imposee par ce cliquet.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(812)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(808)
   })
 })
