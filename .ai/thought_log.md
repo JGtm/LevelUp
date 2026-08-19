@@ -1,3 +1,47 @@
+## [2026-08-19] Rendu des socles de POWER-UP : taille, nom, vignette — Complete
+
+**Statut** : Complete (worktree `wt/powerup-rendu`, `a21ebc4e6` + doc ; gates web a 0). Ligne
+« le calque web ne rend pas le socle de power-up » du registre RESOLUE.
+**Decision technique** : une TABLE ECRITE des familles NON-ARME (`PAD_EQUIPMENT_FAMILIES`,
+deux cles) et non un test de prefixe `powerup_` — le manifeste porte quinze familles
+d'equipement et rien ne dit que les prochaines a monter sur un socle s'appelleront ainsi ;
+une cle hors table reste traitee comme un identifiant d'arme (comportement d'avant,
+inchange). Les trois resolutions deviennent PURES et partagees par le trace, le survol et
+l'infobulle : TAILLE (`padScaleFor` — la famille EST deja sa cle canonique, et elle etait
+dans `POWER_PAD_KEYS` depuis le 18/08, donc pas de seconde regle), LIBELLE (`padNameFor` —
+FR/EN locaux, parite tenue PAR LE TYPAGE `Record<PadEquipmentFamilyKey, string>`), VIGNETTE
+(`padIconRefFor` — masque de HUD livre sous `static/weapons-assets/{slug}/hud/`, resolu cote
+client comme les vignettes de grenade, parce que les libelles d'un artefact sont figes a sa
+cuisson). **VERIFIE SUR PIECES avant de coder** : `[[equipment_objects]]` de
+`replay_labels.toml` ne porte AUCUN libelle bilingue ni icone (que famille / `name_id` /
+provenance / nature), et il n'existe aucun `equipmentLabels` cote client — d'ou les libelles
+locaux, comme `placementFamily` avant eux ; l'icone, elle, est bien celle que le manifeste
+nomme (`icon = "hud/Overshield"`), et un garde-rail rejoue le fichier livre ET la ligne du
+manifeste.
+**Resultats** : les deux temoins RE-CUITS dans le worktree (le cache du principal etait reste
+en schema 16), puis primitives comptees au contexte enregistreur. `01e1f945` (KOTH Catalyst,
+11 socles) AVANT : le power-up sort en `classic`, point 3,20 px, DEUX arcs (le point + le
+glyphe neutre), 0 `drawImage` ; APRES : `power`, point 4,60 px, 9 `drawImage` de 13,0 px —
+calque 12 arc / 90 drawImage -> 11 arc / 99 drawImage. Les 10 socles d'ARME du meme temoin
+sont identiques champ par champ (3,20 px, vignette 8,0 px, x9), et `64e8adfa` (CTF, zero
+power-up) est strictement inchange (10 arc / 90 drawImage des deux cotes). Controle : en
+posant la cle canonique que le service ajoute a la requete (l'artefact hors ligne ne la porte
+pas), le sniper reste `power` et le bulldog `classic` avant comme apres. 13 tests ajoutes,
+dont un RENDU d'infobulle : le defaut etait a l'ecran, et un test des seuls resolveurs
+laisserait repasser la meme faute par un autre chemin. Commentaire redresse dans
+`equipmentPlacementsLayer.ts` (il annoncait l'entree des power-ups dans `PLACEMENT_RENDER`
+« le jour ou un film en portera » — c'est arrive, et la conclusion s'inverse : les socles
+voyagent par `weaponPads`, les y ajouter dessinerait une SECONDE marque au meme endroit).
+**Non traite, avec sa raison** : aucun item de planche. La planche vit dans le scratchpad
+PARTAGE entre agents et datait du 18/08 21h57 — la republier aurait publie l'etat en vol
+d'autres lots sur une base non verifiable ; le gate utile de ce lot est EN APP. Les deux
+lignes de la planche devenues fausses (« power-ups absents de la table de rendu ») sont
+consignees au registre pour sa prochaine reconstruction.
+**Conclusion / prochaine etape** : gate visuel utilisateur dans l'app (le socle du centre de
+Catalyst sur `01e1f945`). Reste au registre : les libelles d'equipement devront remonter au
+manifeste au 2e titre qui posera des socles de power-up, sinon le vocabulaire d'un titre
+s'ecrit dans le code du web.
+
 ## [2026-08-19] Socles de POWER-UP en production (schema 17) — Complete
 
 **Statut** : Complete (branche `wt/powerup-prod`, `56158d8a8`..`09261f90a`, FUSIONNEE dans `feat/v75` par
