@@ -52,20 +52,16 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	for _, ref := range refs {
 		slot := gaugeSlot[ref]
 		gauge := ser.gauge[slot]
-		// L echelle de la progression ET de la jauge en direct est celle de la jauge DE CETTE
-		// ZONE sur CE match (cf. zoneGaugeOf) : la plage declaree du deser ne dit rien de
-		// l excursion reelle. Une seule echelle, calculee une fois, pour les deux.
-		scale := zoneGaugeOf(gauge)
 		st := ZoneState{ZoneRef: ref, Key: ser.keys[slot]}
 		st.Spans = ownerSpansOf(ser.owner[ownerSlot[ref]], gauge,
-			zoneSpanCtx{frames: c.frames, teams: teams, scale: scale}, cov)
+			zoneSpanCtx{frames: c.frames, teams: teams}, cov)
 		if len(st.Spans) == 0 {
 			continue
 		}
 		// LA JAUGE EN DIRECT (schema 17) : TOUTES les rampes du slot de jauge de la zone, pas
 		// seulement celles qu'une capture a rattachees — une montee interrompue est une capture
 		// en cours que le film montre, et l'ecran doit la montrer aussi.
-		st.Gauge = zoneGaugeSeriesOf(gauge, scale, rampWindowsOf(findZoneRamps(slot, gauge)), gap)
+		st.Gauge = zoneGaugeSeriesOf(gauge, rampWindowsOf(findZoneRamps(slot, gauge)), gap)
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
@@ -78,9 +74,6 @@ type zoneSpanCtx struct {
 	// teams est l'ensemble des camps du roster. Vide : seuls 0 et 1 — les deux valeurs
 	// MESUREES du canal — sont acceptes comme camps.
 	teams map[uint64]bool
-	// scale est l'echelle de la jauge de la zone (cf. zoneGaugeOf) : celle du sommet publie par
-	// intervalle ET de la jauge en direct.
-	scale zoneGauge
 }
 
 // zoneTeamSet rend les camps du roster, en valeurs de canal.
@@ -346,7 +339,7 @@ func ownerSpansOf(owner, gauge []zoneSample, c zoneSpanCtx, cov *ZonesCoverage) 
 			continue
 		}
 		span := ZoneSpan{T0: g.t, T1: t1, Owner: team}
-		span.Progress = zonePeakProgress(gauge, c.scale, g.t, t1)
+		span.Progress = zonePeakProgress(gauge, g.t, t1)
 		out = append(out, span)
 	}
 	return out
@@ -382,7 +375,7 @@ func zoneOwnerTeam(v uint64, teams map[uint64]bool) (*int, bool) {
 
 // zonePeakProgress rend le SOMMET de la jauge dans l'intervalle, ou nil quand aucune emission
 // n'y tombe (la zone n'a pas de jauge appariee, ou personne ne l'a contestee).
-func zonePeakProgress(gauge []zoneSample, scale zoneGauge, t0, t1 int) *float32 {
+func zonePeakProgress(gauge []zoneSample, t0, t1 int) *float32 {
 	top, found := uint64(0), false
 	for _, s := range gauge {
 		if s.t < t0 || s.t > t1 {
@@ -395,7 +388,8 @@ func zonePeakProgress(gauge []zoneSample, scale zoneGauge, t0, t1 int) *float32 
 	if !found {
 		return nil
 	}
-	return scale.progressOf(top)
+	p := gaugeProgressOf(top)
+	return &p
 }
 
 // checkOwnerAgreement confronte la valeur du canal juste APRES chaque capture a l'equipe du

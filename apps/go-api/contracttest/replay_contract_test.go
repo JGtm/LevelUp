@@ -287,8 +287,10 @@ var replaySchemas = []struct {
 //	36 -> 36  2026-08-18  RIEN A LA RACINE, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM,
 //	                      lot C-ter volet 3). Le schema 17 publie `zoneStates[].gauge` — LA JAUGE
 //	                      DE CAPTURE EN DIRECT (serie datee `[{t, v}]`, allegee : un point par
-//	                      variation >= 0,02 ou par seconde de rampe, rien hors rampe, sur l echelle
-//	                      de `progress`) et `coverage.zones.gaugePoints` — mais ni l un ni l autre
+//	                      variation >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe
+//	                      fermee par son retour a zero, sur l echelle de `progress`, modes a zones
+//	                      SIMULTANEES seulement — jamais sur une colline de KOTH, volet 1) et
+//	                      `coverage.zones.gaugePoints` — mais ni l un ni l autre
 //	                      n est un champ RACINE du document : le premier vit sous `zoneStates[]`,
 //	                      le second sous `coverage.zones`. Le compte ci-dessous ne compte que la
 //	                      racine, il ne bouge donc pas. La ligne existe pour la meme raison que

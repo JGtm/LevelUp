@@ -51,50 +51,17 @@ func buildHillStates(zones []Zone, ser zoneSeries, c zoneCtx,
 	}
 	periods := mergeHillPeriods(raw, c.frames)
 	cov.HillPeriods = len(periods)
-	scales := zoneGaugeScales(ser)
-	states := hillStatesOf(periods, scales)
-	attachHillGauges(states, raw, ser, scales, zoneGaugeGapFrames(c.intervalMS))
+	// AUCUNE JAUGE EN DIRECT SUR UNE COLLINE (lot C-ter, volets 1 et 3, 2026-08-19) : en KOTH le
+	// tag 3 n'est PAS la progression de garde mais un COMPTEUR DE TRANSFERT d'environ une seconde
+	// (9-10 pas fixes quelle que soit la duree de la garde, mesure du volet 1 sur les 4 films
+	// KOTH) ; la progression de garde vit dans le canal par joueur (mode B tag 7), hors de ce
+	// calque. Publier cette rampe comme jauge montrerait un arc qui se remplit en une seconde a
+	// chaque prise — credible et faux. `ZoneState.Gauge` reste donc nil ici, et
+	// `coverage.zones.gaugePoints` vaut 0 sur un film a colline.
+	states := hillStatesOf(periods)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
-}
-
-// attachHillGauges pose sur chaque colline publiee SA jauge en direct (schema 17) : la serie
-// allegee des rampes BRUTES que la grappe a posees sur elle — avant la fusion des periodes et
-// leur extension jusqu'a la garde suivante, qui sont des conventions d'intervalle et non des
-// mouvements de jauge. L'echelle est celle du slot de chaque rampe (cf. zoneGaugeScales), la
-// meme que `progress`.
-//
-// LES RAMPES NON LOCALISEES N'Y ENTRENT PAS : une montee que la grappe n'a pas su poser sur une
-// colline n'a pas de zone ou s'afficher — elle est deja comptee dans `unpaired`.
-func attachHillGauges(states []ZoneState, raw []hillPeriod, ser zoneSeries,
-	scales map[uint32]zoneGauge, gap int,
-) {
-	for i := range states {
-		var pts []GaugePoint
-		for _, p := range raw {
-			if !p.hasRef || p.ref != states[i].ZoneRef {
-				continue
-			}
-			pts = append(pts, zoneGaugeSeriesOf(ser.gauge[p.slot], scales[p.slot],
-				[]zoneGaugeWindow{{t0: p.t0, t1: p.t1}}, gap)...)
-		}
-		states[i].Gauge = mergeGaugePoints(pts)
-	}
-}
-
-// mergeGaugePoints trie des points venus de plusieurs rampes et garde T strictement croissant
-// (un point sur la meme frame que le precedent le remplace, cf. pushGaugePoint).
-func mergeGaugePoints(pts []GaugePoint) []GaugePoint {
-	if len(pts) == 0 {
-		return nil
-	}
-	sort.SliceStable(pts, func(i, j int) bool { return pts[i].T < pts[j].T })
-	out := make([]GaugePoint, 0, len(pts))
-	for _, p := range pts {
-		out = pushGaugePoint(out, p)
-	}
-	return out
 }
 
 // hillPeriod est un intervalle pendant lequel une colline est gardee.
@@ -204,14 +171,14 @@ func closeHillTail(out []hillPeriod, t0 int) []hillPeriod {
 // AUCUN PROPRIETAIRE N'EST PUBLIE ICI, et c'est la limite du mode : le canal de propriete ne
 // parle que la ou il y a des captures nommees. Une colline gardee ne dit pas, dans le film, PAR
 // QUI — l'affirmer d'apres la grappe serait une deduction, pas une lecture.
-func hillStatesOf(periods []hillPeriod, scales map[uint32]zoneGauge) []ZoneState {
+func hillStatesOf(periods []hillPeriod) []ZoneState {
 	byRef := map[int][]ZoneSpan{}
 	for _, p := range periods {
 		if p.t1 < p.t0 {
 			continue
 		}
-		prog := scales[p.slot].progressOf(p.top)
-		byRef[p.ref] = append(byRef[p.ref], ZoneSpan{T0: p.t0, T1: p.t1, Active: true, Progress: prog})
+		prog := gaugeProgressOf(p.top)
+		byRef[p.ref] = append(byRef[p.ref], ZoneSpan{T0: p.t0, T1: p.t1, Active: true, Progress: &prog})
 	}
 	refs := make([]int, 0, len(byRef))
 	for ref := range byRef {
@@ -223,16 +190,6 @@ func hillStatesOf(periods []hillPeriod, scales map[uint32]zoneGauge) []ZoneState
 		spans := byRef[ref]
 		sort.SliceStable(spans, func(i, j int) bool { return spans[i].T0 < spans[j].T0 })
 		out = append(out, ZoneState{ZoneRef: ref, Spans: spans})
-	}
-	return out
-}
-
-// zoneGaugeScales releve l'excursion de chaque slot de jauge : c'est l'echelle de la
-// progression publiee (cf. zoneGaugeOf).
-func zoneGaugeScales(ser zoneSeries) map[uint32]zoneGauge {
-	out := make(map[uint32]zoneGauge, len(ser.gauge))
-	for slot, ss := range ser.gauge {
-		out[slot] = zoneGaugeOf(ss)
 	}
 	return out
 }

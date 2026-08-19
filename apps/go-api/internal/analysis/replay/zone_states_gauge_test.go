@@ -3,7 +3,7 @@ package replay
 // zone_states_gauge_test.go — LA JAUGE EN DIRECT (schema 17), sur des enregistrements CONSTRUITS :
 // la serie est ALLEGEE comme ecrit (un point par variation >= 0,02 OU par seconde de rampe — deux
 // tests, un par clause, qui ECHOUENT si la clause est retiree), elle est monotone en T, dans
-// [0, 1], et VIDE hors rampe ; et elle sort bien du calque, en Bastion comme en KOTH.
+// [0, 1], et VIDE hors rampe ; elle sort du calque en Bastion, et JAMAIS sur une colline (KOTH).
 //
 // Les fabriques partagees vivent dans `zone_states_test.go`.
 
@@ -46,14 +46,13 @@ func checkGaugeSeries(t *testing.T, pts []GaugePoint, wins []zoneGaugeWindow) {
 }
 
 // TestZoneGaugeSerieAllegeeParVariation — LA CLAUSE DES 0,02. Une rampe rapide de 61 emissions
-// (une par frame de 100 ms, un pas de 1/60 de l'echelle, soit 0,0167 < 0,02) ne publie qu'un
+// (une par frame de 100 ms, un pas de 1/60 d'unite, soit 0,0167 < 0,02) ne publie qu'un
 // point sur deux : 31, premier et dernier compris. Retirer le seuil de variation en publierait 61
 // — c'est exactement ce que ce test refuse.
 func TestZoneGaugeSerieAllegeeParVariation(t *testing.T) {
-	ss := gaugeSamples(61, 100, 1, 0, 1)
-	scale := zoneGaugeOf(ss)
+	ss := gaugeSamples(61, 100, 1, zoneGaugeQuantZero, zoneGaugeQuantUnit/60)
 	wins := []zoneGaugeWindow{{t0: 100, t1: 160}}
-	pts := zoneGaugeSeriesOf(ss, scale, wins, zoneGaugeGapFrames(100))
+	pts := zoneGaugeSeriesOf(ss, wins, zoneGaugeGapFrames(100))
 	if len(pts) != 31 {
 		t.Fatalf("%d points publies pour 61 emissions, attendu 31 (un point par variation >= 0,02) : %v",
 			len(pts), pts)
@@ -73,17 +72,14 @@ func TestZoneGaugeSerieAllegeeParVariation(t *testing.T) {
 }
 
 // TestZoneGaugeSerieReEmetChaqueSeconde — LA CLAUSE DE LA SECONDE. Une rampe LENTE (une emission
-// toutes les 0,5 s, un pas de 0,005 de l'echelle) ne franchirait le seuil de variation que tous
+// toutes les 0,5 s, un pas de 0,005 d'unite) ne franchirait le seuil de variation que tous
 // les 2 s ; la clause de la seconde publie un point toutes les deux emissions : 11 sur 21, et
 // jamais plus d'une seconde entre deux points. Retirer la clause en publierait 6.
 func TestZoneGaugeSerieReEmetChaqueSeconde(t *testing.T) {
-	ss := gaugeSamples(21, 0, 5, 0, 10)
-	// L'ECHELLE EST CELLE DE LA ZONE, PAS DE CETTE RAMPE : une autre montee du meme slot est
-	// allee bien plus haut, et cette rampe-ci n'en parcourt qu'un dixieme.
-	scale := zoneGauge{low: 0, high: 2000, seen: true}
+	ss := gaugeSamples(21, 0, 5, zoneGaugeQuantZero, zoneGaugeQuantUnit/200)
 	wins := []zoneGaugeWindow{{t0: 0, t1: 100}}
 	gap := zoneGaugeGapFrames(100)
-	pts := zoneGaugeSeriesOf(ss, scale, wins, gap)
+	pts := zoneGaugeSeriesOf(ss, wins, gap)
 	if len(pts) != 11 {
 		t.Fatalf("%d points publies pour 21 emissions, attendu 11 (un point par seconde de rampe) : %v",
 			len(pts), pts)
@@ -100,10 +96,9 @@ func TestZoneGaugeSerieReEmetChaqueSeconde(t *testing.T) {
 // TestZoneGaugeRienHorsRampe : les emissions hors des fenetres ne sont JAMAIS publiees, et une
 // fenetre publie toujours son depart et son sommet.
 func TestZoneGaugeRienHorsRampe(t *testing.T) {
-	ss := gaugeSamples(31, 90, 1, 0, 100)
-	scale := zoneGaugeOf(ss)
+	ss := gaugeSamples(31, 90, 1, zoneGaugeQuantZero, 2_000)
 	wins := []zoneGaugeWindow{{t0: 100, t1: 104}, {t0: 110, t1: 112}}
-	pts := zoneGaugeSeriesOf(ss, scale, wins, zoneGaugeGapFrames(100))
+	pts := zoneGaugeSeriesOf(ss, wins, zoneGaugeGapFrames(100))
 	checkGaugeSeries(t, pts, wins)
 	want := []int{100, 101, 102, 103, 104, 110, 111, 112}
 	if len(pts) != len(want) {
@@ -114,11 +109,11 @@ func TestZoneGaugeRienHorsRampe(t *testing.T) {
 			t.Errorf("point %d : T=%d, attendu %d", i, p.T, want[i])
 		}
 	}
-	if zoneGaugeSeriesOf(ss, scale, nil, 10) != nil {
+	if zoneGaugeSeriesOf(ss, nil, 10) != nil {
 		t.Errorf("sans rampe, la serie doit etre nil")
 	}
-	if zoneGaugeSeriesOf(ss, zoneGauge{}, wins, 10) != nil {
-		t.Errorf("sans echelle (jauge jamais vue), la serie doit etre nil")
+	if zoneGaugeSeriesOf(nil, wins, 10) != nil {
+		t.Errorf("sans emission, la serie doit etre nil")
 	}
 }
 
@@ -133,10 +128,6 @@ func TestZoneGaugeTStrictementCroissant(t *testing.T) {
 	out = pushGaugePoint(out, GaugePoint{T: 11, V: 0.9})
 	if len(out) != 2 || out[0] != (GaugePoint{T: 10, V: 0.2}) || out[1] != (GaugePoint{T: 12, V: 0.3}) {
 		t.Fatalf("serie %v, attendu [{10 0.2} {12 0.3}]", out)
-	}
-	merged := mergeGaugePoints([]GaugePoint{{T: 5, V: 0.5}, {T: 1, V: 0.1}, {T: 5, V: 0.6}, {T: 3, V: 0.3}})
-	if len(merged) != 3 || merged[0].T != 1 || merged[1].T != 3 || merged[2] != (GaugePoint{T: 5, V: 0.6}) {
-		t.Fatalf("fusion %v, attendu [{1 0.1} {3 0.3} {5 0.6}]", merged)
 	}
 }
 
@@ -160,12 +151,12 @@ func TestZoneStatesPublieLaJaugeEnDirect(t *testing.T) {
 		t.Errorf("coverage.zones.gaugePoints = %d, attendu %d (la somme des points publies)",
 			cov.GaugePoints, total)
 	}
-	// La zone 0 (slot 10) : deux rampes de trois emissions culminant a 900 000 puis 950 000, sur
-	// une echelle [1 000 ; 950 000]. Trois points par rampe (depart, milieu a 0,21, sommet), et
-	// le sommet de la seconde vaut 1 — le meme que le `progress` de son intervalle.
+	// La zone 0 (slot 10) : deux rampes de trois emissions (0,001, 0,2, puis 0,9 et 0,95 sur
+	// l'echelle du jeu). Trois points par rampe (depart, milieu, sommet), et le sommet de la
+	// seconde (0,95) est le meme que le `progress` de son intervalle.
 	got := states[0].Gauge
-	want := []GaugePoint{{T: 96, V: 0}, {T: 98, V: 0.21}, {T: 100, V: 0.947},
-		{T: 296, V: 0}, {T: 298, V: 0.21}, {T: 300, V: 1}}
+	want := []GaugePoint{{T: 96, V: 0.001}, {T: 98, V: 0.2}, {T: 100, V: 0.9},
+		{T: 296, V: 0.001}, {T: 298, V: 0.2}, {T: 300, V: 0.95}}
 	if len(got) != len(want) {
 		t.Fatalf("zone 0 : serie %v, attendu %v", got, want)
 	}
@@ -184,17 +175,19 @@ func TestZoneStatesPublieLaJaugeEnDirect(t *testing.T) {
 			top = sp.Progress
 		}
 	}
-	if top == nil || *top != 1 {
-		t.Errorf("progress de l'intervalle a 101 = %v, attendu 1 (le sommet de la seconde rampe)", top)
+	if want := gaugeProgressOf(gaugeQ(950)); top == nil || *top != want {
+		t.Errorf("progress de l'intervalle a 101 = %v, attendu %v (le sommet de la seconde rampe)", top, want)
 	}
 }
 
-// TestZoneStatesCollinePublieLaJaugeEnDirect — LE CALQUE, en KOTH : la colline active porte la
-// serie de la rampe que la grappe a posee sur elle, et rien de la rampe posee sur une autre.
-func TestZoneStatesCollinePublieLaJaugeEnDirect(t *testing.T) {
+// TestZoneStatesCollineNePublieAucuneJauge — LE CALQUE, en KOTH : la colline active ne porte
+// AUCUNE serie de jauge, et la couverture le dit (gaugePoints = 0). Le tag 3 y est un compteur de
+// transfert d'environ une seconde, pas la progression de garde (lot C-ter volet 1) : une serie
+// montrerait un arc qui se remplit en une seconde a chaque prise — credible et faux.
+func TestZoneStatesCollineNePublieAucuneJauge(t *testing.T) {
 	var reads []filmdec.ManagedPropertyRead
-	reads = append(reads, zoneRampAt(40, 100, 900_000)...)
-	reads = append(reads, zoneRampAt(40, 400, 900_000)...)
+	reads = append(reads, zoneRampAt(40, 100, 900)...)
+	reads = append(reads, zoneRampAt(40, 400, 900)...)
 	in := zoneTestInput(reads)
 	in.Hill = true
 	var pts []Point
@@ -208,17 +201,54 @@ func TestZoneStatesCollinePublieLaJaugeEnDirect(t *testing.T) {
 	if len(states) != 2 || cov.Method != ZoneMethodPositions {
 		t.Fatalf("%d zone(s), methode %q — attendu 2 et %q", len(states), cov.Method, ZoneMethodPositions)
 	}
-	byRef := map[int][]GaugePoint{}
 	for _, st := range states {
-		byRef[st.ZoneRef] = st.Gauge
+		if st.Gauge != nil {
+			t.Errorf("colline %d : serie de jauge publiee (%d points) — aucune n'est attendue en KOTH",
+				st.ZoneRef, len(st.Gauge))
+		}
 	}
-	if g := byRef[1]; len(g) != 3 || g[0].T != 96 || g[2].T != 100 || g[2].V != 1 {
-		t.Errorf("colline 1 : serie %v, attendu la premiere rampe [96 ; 100] culminant a 1", g)
+	if cov.GaugePoints != 0 {
+		t.Errorf("gaugePoints = %d, attendu 0 sur un film a colline", cov.GaugePoints)
 	}
-	if g := byRef[0]; len(g) != 3 || g[0].T != 396 || g[2].T != 400 || g[2].V != 1 {
-		t.Errorf("colline 0 : serie %v, attendu la seconde rampe [396 ; 400] culminant a 1", g)
+}
+
+// TestZoneGaugeRetourAZeroFermeLaRampe — LE POINT DE FIN. La premiere emission qui suit une rampe,
+// si elle est un retour au zero du jeu, est publiee a sa frame avec v = 0 : c'est ainsi que le
+// client sait que la capture est finie (aboutie ou abandonnee) et non figee. Une emission qui
+// suit en MONTANT (capture qui reprend apres un blocage) n'ajoute rien ; un retour a zero deja
+// depart de la rampe suivante n'entre pas deux fois.
+func TestZoneGaugeRetourAZeroFermeLaRampe(t *testing.T) {
+	gap := zoneGaugeGapFrames(100)
+	// Une rampe 0,001 -> 0,5 (frames 10..14), abandonnee : retour a zero 14 frames plus tard.
+	ss := gaugeSamples(5, 10, 1, gaugeQ(1), zoneGaugeQuantUnit/8)
+	ss = append(ss, zoneSample{t: 28, v: zoneGaugeQuantZero})
+	pts := zoneGaugeSeriesOf(ss, []zoneGaugeWindow{{t0: 10, t1: 14}}, gap)
+	if n := len(pts); n < 3 || pts[n-1] != (GaugePoint{T: 28, V: 0}) {
+		t.Fatalf("serie %v : attendu un dernier point {28 0}, le retour a zero qui ferme la rampe", pts)
 	}
-	if cov.GaugePoints != 6 {
-		t.Errorf("gaugePoints = %d, attendu 6", cov.GaugePoints)
+	// La meme rampe, FIGEE puis reprise : l'emission suivante est plus haute, rien n'est ajoute.
+	reprise := gaugeSamples(5, 10, 1, gaugeQ(1), zoneGaugeQuantUnit/8)
+	reprise = append(reprise, zoneSample{t: 300, v: gaugeQ(600)})
+	pts = zoneGaugeSeriesOf(reprise, []zoneGaugeWindow{{t0: 10, t1: 14}}, gap)
+	if n := len(pts); pts[n-1].T != 14 {
+		t.Fatalf("serie %v : aucun point ne doit suivre le sommet 14 quand la jauge reprend plus haut", pts)
 	}
+	// Deux rampes que separe un retour a zero qui est aussi le DEPART de la seconde : un seul point.
+	deux := gaugeSamples(5, 10, 1, gaugeQ(1), zoneGaugeQuantUnit/8)
+	deux = append(deux, zoneSample{t: 15, v: zoneGaugeQuantZero})
+	deux = append(deux, gaugeSamples(4, 40, 1, gaugeQ(200), zoneGaugeQuantUnit/8)...)
+	pts = zoneGaugeSeriesOf(deux, []zoneGaugeWindow{{t0: 10, t1: 14}, {t0: 15, t1: 43}}, gap)
+	zeros := 0
+	for _, p := range pts {
+		if p.T == 15 {
+			zeros++
+			if p.V != 0 {
+				t.Errorf("le point de la frame 15 vaut %v, attendu 0 (retour a zero)", p.V)
+			}
+		}
+	}
+	if zeros != 1 {
+		t.Errorf("%d point(s) a la frame 15, attendu 1 : %v", zeros, pts)
+	}
+	checkGaugeSeries(t, pts, []zoneGaugeWindow{{t0: 10, t1: 14}, {t0: 15, t1: 43}})
 }

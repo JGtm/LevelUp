@@ -45,21 +45,22 @@ func TestZoneStatesIntervallesSuiventLesBascules(t *testing.T) {
 }
 
 // TestZoneStatesProgressionEstLeSommetDeLaJauge : la progression publiee est le sommet atteint
-// DANS l'intervalle, ramene sur l'EXCURSION MESUREE de la jauge de cette zone.
+// DANS l'intervalle, sur l'echelle du JEU (0 = jauge au repos, 1 = pleine).
 //
-// L'ECHELLE EST CELLE DU MATCH, ET C'EST UNE MESURE QUI L'IMPOSE : la plage declaree du deser
-// ([-100, +100]) est mille fois plus large que ce que la jauge parcourt reellement — ramenee
-// dessus, toute valeur vaut 0,50, soit un arc a moitie plein en permanence.
+// L'ECHELLE EST CELLE DU JEU, ET C'EST UNE MESURE QUI L'IMPOSE (lot C-ter volet 3) : la plage
+// declaree du deser ([-100, +100]) est cent fois plus large que ce que la jauge parcourt (elle vit
+// sur [0, +1]), et l'excursion mesuree du match, adoptee un temps a la place, se faussait sur une
+// seule emission aberrante sous zero (cf. gaugeProgressOf).
 func TestZoneStatesProgressionEstLeSommetDeLaJauge(t *testing.T) {
 	in, c := bastionCase()
 	states, _ := buildZoneStates(in, c)
 	spans := states[0].Spans
-	// L'intervalle qui contient la rampe LA PLUS HAUTE du slot (950 000) touche le sommet de
-	// l'excursion : sa progression vaut exactement 1.
-	if spans[1].Progress == nil || *spans[1].Progress != 1 {
-		t.Errorf("progression %v sur l'intervalle du sommet, attendu 1", spans[1].Progress)
+	// L'intervalle qui contient la rampe LA PLUS HAUTE du slot (0,95) publie ce sommet, sur
+	// l'echelle du jeu.
+	if want := gaugeProgressOf(gaugeQ(950)); spans[1].Progress == nil || *spans[1].Progress != want {
+		t.Errorf("progression %v sur l'intervalle du sommet, attendu %v", spans[1].Progress, want)
 	}
-	// Celui de la rampe plus basse (900 000) reste en dessous, sans jamais sortir de [0, 1].
+	// Celui de la rampe plus basse (0,9) reste en dessous, sans jamais sortir de [0, 1].
 	if spans[0].Progress == nil {
 		t.Fatalf("aucune progression sur l'intervalle qui contient la premiere rampe")
 	}
@@ -159,7 +160,7 @@ func zoneReadsWithoutSlot(reads []filmdec.ManagedPropertyRead,
 // n'invente pas de zone — il se compte, et rien de plus.
 func TestZoneStatesSlotNonApparieNEstPasPublie(t *testing.T) {
 	in, c := bastionCase()
-	in.Reads = append(in.Reads, zoneRampAt(30, 450, 700_000)...) // rampe loin de toute capture
+	in.Reads = append(in.Reads, zoneRampAt(30, 450, 700)...) // rampe loin de toute capture
 	states, cov := buildZoneStates(in, c)
 	if len(states) != 2 {
 		t.Errorf("%d zone(s) publiee(s), attendu 2 — le slot orphelin ne doit rien publier",
