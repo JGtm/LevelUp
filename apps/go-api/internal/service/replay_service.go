@@ -59,9 +59,12 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
 // si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.
 //
-// DEUX RÉSOLUTIONS SE POSENT ICI, à la requête, et pour la même raison : elles viennent
+// TROIS RÉSOLUTIONS SE POSENT ICI, à la requête, et pour la même raison : elles viennent
 // d'un catalogue du TITRE, que l'artefact (décodé des seuls chunks du film) ne connaît pas.
 //   - le calque d'objectifs statiques (MapObjectives), qui dépend de la carte et du mode ;
+//   - les EMPLACEMENTS DE SOCLE de la carte (MapWeaponPads), croisés avec les socles du
+//     match : le fichier de carte les pose, seul le film dit lesquels sont allumés (cf.
+//     replay_map_weapon_pads.go) ;
 //   - ce que le TITRE sait de chaque arme (WeaponLabel.Key et .Tint) : la clé qui ouvre la
 //     banque de sons du client, et la nature de la décharge qui teinte son éclair de
 //     bouche (cf. replay_weapon_labels.go).
@@ -80,7 +83,11 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.R
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
-	doc.MapObjectives = s.mapObjectivesForMatch(ctx, matchID)
+	// LES CLÉS DE CARTE, UNE SEULE FOIS : deux calques statiques les partagent, et la base
+	// ne doit pas être interrogée deux fois pour la même réponse.
+	keys := s.matchMapKeys(ctx, matchID)
+	doc.MapObjectives = s.mapObjectivesForKeys(ctx, matchID, keys)
+	doc.MapWeaponPads = s.mapWeaponPadsForKeys(ctx, matchID, keys, doc.WeaponPads)
 	// La CLÉ CANONIQUE et la TEINTE de chaque arme, même règle et même raison : elles se
 	// résolvent d'un catalogue du titre, donc ici et pas dans l'artefact (cf.
 	// replay_weapon_labels.go).
