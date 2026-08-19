@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/testutil"
 )
 
 func zoneObjective(idx int, instance int32, pos mapvar.Vec3, withShape bool) mapvar.Objective {
@@ -169,17 +170,11 @@ func TestCarteReporteeEstSignalee(t *testing.T) {
 // forme et aucune forme degeneree. Le jour ou ce n'est plus vrai, c'est une nouveaute a
 // expliquer, pas un cas a rattraper en silence.
 func TestCatalogueLivreEstExploitable(t *testing.T) {
-	path := ""
-	for _, up := range []string{"../../../..", "../../../../.."} {
-		p := filepath.Join(up, "data", "titles", "halo_infinite", "reference", "map_objectives.json")
-		if _, err := os.Stat(p); err == nil {
-			path = p
-			break
-		}
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
 	}
-	if path == "" {
-		t.Skip("catalogue d'objectifs absent de cet arbre")
-	}
+	path := filepath.Join(root, "data", "titles", "halo_infinite", "reference", "map_objectives.json")
 	cat, err := LoadMapObjectives(path)
 	if err != nil {
 		t.Fatal(err)

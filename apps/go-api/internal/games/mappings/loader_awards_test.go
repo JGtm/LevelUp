@@ -1,8 +1,11 @@
 package mappings
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
 // Tests unitaires du loader awards.toml (V2 §2).
@@ -138,13 +141,16 @@ func TestAwardMappingSet_NilSafe(t *testing.T) {
 // et contient les awards critiques (objective + impact) — garde-fou contre
 // les régressions sur awards.toml de halo_infinite.
 func TestLoadAwardsFromFile_RealConfig(t *testing.T) {
-	// Path relatif au repo root via 4 niveaux up depuis ce fichier
-	// (apps/go-api/internal/games/mappings/ → repo root).
-	path := "../../../../../config/titles/halo_infinite/mappings/awards.toml"
+	// awards.toml est VERSIONNÉ : son absence est une installation cassée, pas un cas à
+	// skipper (revue ronde 1, R1-1 — un skip ici rendait ce garde-fou muet en CI).
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	path := filepath.Join(root, "config", "titles", "halo_infinite", "mappings", "awards.toml")
 	set, err := LoadAwardsFromFile(path)
 	if err != nil {
-		t.Skipf("awards.toml non trouvé à %s : %v (test repo-relative, skip si exécuté hors arborescence)", path, err)
-		return
+		t.Fatalf("awards.toml versionné illisible (%s) : %v", path, err)
 	}
 	criticalAwards := []struct {
 		name     string

@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 )
 
 // objectifsFixture pose, sous une racine neuve, tout ce que le calque d'objectifs
@@ -174,9 +175,9 @@ func TestMapObjectives_TitreSansTable(t *testing.T) {
 // 2 zones — relevé au champ près du catalogue le 2026-08-13. La zone de Bastion, les
 // zones d'Extraction et les apparitions d'Oddball de la même carte ne sortent PAS.
 func TestMapObjectives_DonneesReelles(t *testing.T) {
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(root)
 	if _, statErr := os.Stat(res.MapObjectivesPath(title.DefaultSlug)); statErr != nil {
@@ -221,9 +222,9 @@ func TestMapObjectives_DonneesReelles(t *testing.T) {
 // le catalogue versionné porte 6 collines (toutes des volumes : aucun marqueur), et le même
 // pair_name en CTF n'en sert aucune.
 func TestMapObjectives_KOTH_DonneesReelles(t *testing.T) {
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	svc := &replayService{titleSlug: title.DefaultSlug, repoRoot: root}
 	ctx := context.Background()

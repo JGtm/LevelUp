@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/testutil"
 )
 
 const objectiveRolesValide = `
@@ -132,7 +133,11 @@ func errUnwrapAll(err error) error {
 // porte les sept modes du plan (CTF, Strongholds, Oddball, Stockpile, Extraction, Assaut,
 // King of the Hill — ce dernier depuis le lot C-ter volet 2).
 func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
-	path := filepath.Join(reposRootDepuisTests(t), "config", "titles", "halo_infinite", "mappings", "objective_roles.toml")
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	path := filepath.Join(root, "config", "titles", "halo_infinite", "mappings", "objective_roles.toml")
 	set, err := LoadObjectiveRolesFromFile(path)
 	if err != nil {
 		t.Fatalf("le fichier versionné doit charger: %v", err)
@@ -159,22 +164,7 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 	}
 }
 
-// reposRootDepuisTests remonte du répertoire du package vers la racine du dépôt (présence
-// de go.mod au niveau apps/go-api puis config/ au-dessus).
-func reposRootDepuisTests(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, statErr := os.Stat(filepath.Join(dir, "config", "titles")); statErr == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("racine du dépôt introuvable depuis le package")
-		}
-		dir = parent
-	}
-}
+// reposRootDepuisTests SUPPRIMÉ (revue ronde 1, R1-1) : la remontée depuis le répertoire
+// courant était le troisième mécanisme maison de localisation de la racine. Le mécanisme
+// canonique est testutil.RepoRoot() (déduit de l'arbre source), gardé par
+// internal/archlint.

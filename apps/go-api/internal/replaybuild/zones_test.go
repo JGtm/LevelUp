@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 )
 
 // vagabondMapID est la carte des deux temoins de Bastion du lot C-bis.
@@ -143,11 +144,17 @@ func TestMatchZonesSansMapID(t *testing.T) {
 	}
 }
 
+// zonesTestBuilder monte le constructeur sur les fichiers VERSIONNES du depot (catalogue
+// d'objectifs, table des roles, bornes de quantification).
+//
+// AUCUN SKIP : la racine vient de testutil.RepoRoot() (deduite de l'arbre source, pas d'un
+// marqueur gitignore ni de LEVELUP_REPO_ROOT) et tout ce que ce test lit est versionne. Un
+// skip ici a rendu ces gardes muettes en CI pendant tout le lot (revue ronde 1, R1-1).
 func zonesTestBuilder(t *testing.T) (*Builder, *replay.MapObjectivesCatalog) {
 	t.Helper()
-	repoRoot, err := title.FindRepoRoot()
+	repoRoot, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine repo introuvable : %v", err)
+		t.Fatalf("racine du depot introuvable : %v", err)
 	}
 	b, err := NewBuilder(repoRoot, title.DefaultSlug)
 	if err != nil {
@@ -155,7 +162,7 @@ func zonesTestBuilder(t *testing.T) (*Builder, *replay.MapObjectivesCatalog) {
 	}
 	cat := b.objectivesCatalog()
 	if cat == nil {
-		t.Skipf("catalogue d'objectifs indisponible")
+		t.Fatal("catalogue d'objectifs versionne illisible — cf. le log de objectivesCatalog()")
 	}
 	return b, cat
 }
