@@ -121,6 +121,13 @@ export interface ReplayText {
    */
   layerPlacements: string
   layerPlacementsHint: string
+  /**
+   * OBJETS DE PUISSANCE LÂCHÉS (décision produit du 2026-08-18). La commande n'apparaît QUE
+   * hors Fiesta et que si le film en porte : son libellé n'a donc pas à parler de Fiesta —
+   * l'utilisateur ne la voit jamais là où la règle ne s'applique pas.
+   */
+  layerPlacementsDropped: string
+  layerPlacementsDroppedHint: string
   layerPlacementsUnnamed: string
   layerPlacementsUnnamedHint: string
   placementFamily: Record<'wall' | 'sensor' | 'beacon' | 'seeker' | 'field', string>
@@ -130,6 +137,16 @@ export interface ReplayText {
   placementOwnerFmt: (name: string) => string
   /** Poseur non mesuré (aucun bipède contemporain à moins de 3 m) : le dire, pas le taire. */
   placementOwnerUnknown: string
+  /**
+   * L'INFOBULLE D'UN OBJET LÂCHÉ : ce qu'il est, qui l'a lâché, et à quel instant du rejeu.
+   *
+   * `placementDroppedOwnerFmt` remplace « posé par » : le geste n'est pas le même, et écrire
+   * « posé » sur un objet tombé d'un cadavre serait faux. `placementDroppedAtFmt` reçoit un
+   * chronomètre déjà formaté (`m:ss`) — un INSTANT et jamais une durée écoulée.
+   */
+  placementDroppedLabel: string
+  placementDroppedOwnerFmt: (name: string) => string
+  placementDroppedAtFmt: (clock: string) => string
   /**
    * SOCLES D'ARME (schéma 11) : le calque, ses trois états, son compte à rebours et son cycle.
    *

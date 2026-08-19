@@ -108,6 +108,54 @@ export function drawUnnamedDot(
   ctx.restore()
 }
 
+// --- OBJET LÂCHÉ AU SOL -------------------------------------------------------------------
+
+/** Rayon de l'anneau d'un objet lâché, en pixels d'écran. */
+export const DROPPED_RADIUS_PX = 4.5
+
+/**
+ * L'ATTÉNUATION D'UN OBJET AU SOL. Elle est plus basse que celle du point non identifié (0,5) :
+ * un lâcher est un fait certain mais SECONDAIRE, et il ne doit jamais prendre le pas sur le mur
+ * ou le capteur déployés au même endroit.
+ */
+const DROPPED_ALPHA = 0.42
+
+/** Épaisseur du liseré, à la densité de l'écran (même règle que les autres traits du calque). */
+const DROPPED_LINE_WIDTH = 1.25
+
+/**
+ * drawDroppedObject — l'objet de puissance tombé au sol : un anneau POINTILLÉ, atténué, vide.
+ *
+ * TROIS CHOIX, ET CHACUN DIT LA MÊME CHOSE — l'objet est là, il n'agit pas.
+ *  - POINTILLÉ : c'est la grammaire du calque (cf. UNCERTAIN_DASH), employée ici pour ce
+ *    qu'elle sait déjà dire — la limite n'est pas affirmée, l'objet n'exerce aucune portée ;
+ *  - VIDE (aucun remplissage) : les formes pleines de ce calque disent une ZONE d'effet
+ *    (disque du capteur, champ de réparation). Un objet au sol n'en a aucune ;
+ *  - UNE SEULE FORME pour toutes les familles : reprendre l'arc du mur ou le disque du capteur
+ *    affirmerait un déploiement qui n'a pas eu lieu — la mesure dit l'inverse (un mur lâché
+ *    porte l'identifiant de l'APPAREIL, jamais celui des panneaux).
+ *
+ * La famille, elle, se lit au survol : c'est l'infobulle qui nomme, jamais la forme.
+ */
+export function drawDroppedObject(
+  ctx: CanvasRenderingContext2D,
+  c: XY,
+  style: ShapeStyle,
+  color: string,
+): void {
+  const r = DROPPED_RADIUS_PX * style.k
+  if (!(r > 0)) return
+  ctx.save()
+  ctx.globalAlpha = DROPPED_ALPHA
+  ctx.strokeStyle = color
+  ctx.lineWidth = DROPPED_LINE_WIDTH * style.k
+  ctx.setLineDash(UNCERTAIN_DASH.map((d) => d * style.k))
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
+}
+
 // --- MARQUE « RÉVÉLÉ » --------------------------------------------------------------------
 
 /**
