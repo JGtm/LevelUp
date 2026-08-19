@@ -33,13 +33,27 @@ import (
 	"testing"
 )
 
-// killScopeAllowlist : VIDE, et elle doit le rester.
+// killScopeAllowlist : UNE entrée, un FAUX POSITIF, et elle doit disparaître.
 //
 // Contrairement aux ratchets de dette (allowlist décroissante), il n'y a rien à migrer ici : les
 // quatre écrivains lisent déjà `domain/killscope`. Une entrée ajoutée ici serait une seconde
 // source de vérité pour une valeur qui décide de la préséance — la justifier par écrit ET par
 // une date, ou ne pas l'ajouter.
-var killScopeAllowlist = map[string]bool{}
+//
+// `cmd/variant-probe/main.go` (ajouté le 2026-08-20) : ce n'est PAS une seconde source de
+// vérité. Le fichier ne touche ni `match_kill_events`, ni `read_path`, ni la préséance : son
+// unique occurrence est le NOM d'un drapeau CLI — `flag.String("scan", ...)` — qui déclare le
+// mode hors ligne d'une sonde réseau ponctuelle écrite par une AUTRE session. La collision est
+// purement textuelle avec le mot `scan`, entré au ratchet le 2026-08-03 comme voie de film. Le
+// ratchet lui-même ne bouge pas : ni le motif, ni les propriétaires, ni la marche du walk — seul
+// ce fichier-là sort du périmètre, et le self-check ci-dessous interdit que l'entrée survive à
+// sa cause.
+// CONDITION DE REPRISE (à router vers la session variant-probe) : suppression de l'outil (la
+// voie API qu'il sondait est fermée depuis le 2026-08-19) ou renommage du drapeau — dans les
+// deux cas l'entrée DISPARAÎT.
+var killScopeAllowlist = map[string]bool{
+	"cmd/variant-probe/main.go": true,
+}
 
 // killScopeRE matche les valeurs de portée en littéral Go OU SQL (simples quotes).
 //
@@ -125,5 +139,34 @@ func TestNoRawKillScopeLiteral(t *testing.T) {
 			"import : importable depuis persist, migration, killcollector et ops sans cycle). "+
 			"Une copie qui dérive d'un caractère rend la préséance film aveugle, SANS erreur "+
 			"ni compteur :\n  %s", strings.Join(violations, "\n  "))
+	}
+}
+
+// TestKillScopeAllowlistEntriesStayJustified (self-check, même leçon V4d/VF-6 que
+// `TestHalowaypointAllowlistEntriesPointToExistingFiles`) — chaque clé de killScopeAllowlist
+// doit désigner un fichier EXISTANT qui matche RÉELLEMENT le motif. Une entrée dont le fichier
+// a disparu, ou dont le littéral a été retiré, est un trou latent : un fichier recréé à ce
+// chemin pourrait écrire une vraie valeur de portée sans déclencher le ratchet. C'est ce test
+// qui garantit que l'exception du 2026-08-20 s'efface d'elle-même le jour où sa cause s'en va.
+func TestKillScopeAllowlistEntriesStayJustified(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
+
+	for rel := range killScopeAllowlist {
+		data, err := os.ReadFile(filepath.Join(apiRoot, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Errorf("killScopeAllowlist : entrée %q pointe un fichier inexistant (%v) — sa cause "+
+				"a disparu, retirer l'entrée (un fichier recréé à ce chemin échapperait au "+
+				"ratchet).", rel, err)
+			continue
+		}
+		if !killScopeRE.Match(data) {
+			t.Errorf("killScopeAllowlist : entrée %q ne matche plus le motif de portée — le "+
+				"littéral a été retiré ou renommé, retirer l'entrée (allowlist décroissante, "+
+				"cible : VIDE).", rel)
+		}
 	}
 }
