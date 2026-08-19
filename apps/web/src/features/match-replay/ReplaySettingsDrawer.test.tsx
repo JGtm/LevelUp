@@ -25,6 +25,9 @@ function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlac
     unnamedAvailable: true,
     showUnnamed: false,
     onToggleUnnamed: vi.fn(),
+    droppedAvailable: true,
+    showDropped: true,
+    onToggleDropped: vi.fn(),
     ...over,
   }
 }

@@ -88,6 +88,15 @@ export interface ReplayPlacementControls {
   unnamedAvailable: boolean
   showUnnamed: boolean
   onToggleUnnamed: () => void
+  /**
+   * Les objets de PUISSANCE lâchés à la mort. `droppedAvailable` croise DEUX conditions : le
+   * film en porte au moins un, ET le match n'est pas une Fiesta (la garde de mode vit dans la
+   * page, cf. `replayFiesta.ts`). En Fiesta la commande ne s'affiche donc pas du tout — elle
+   * ne commanderait rien, et l'afficher éteinte laisserait croire qu'on peut l'allumer.
+   */
+  droppedAvailable: boolean
+  showDropped: boolean
+  onToggleDropped: () => void
 }
 
 /**
@@ -169,6 +178,14 @@ function LayersSection({
               onToggle={placements.onToggle}
               hint={t.layerPlacementsHint}
             />
+            {placements.show && placements.droppedAvailable && (
+              <SettingsToggle
+                label={t.layerPlacementsDropped}
+                pressed={placements.showDropped}
+                onToggle={placements.onToggleDropped}
+                hint={t.layerPlacementsDroppedHint}
+              />
+            )}
             {placements.show && placements.unnamedAvailable && (
               <SettingsToggle
                 label={t.layerPlacementsUnnamed}

@@ -155,7 +155,7 @@ describe('les PANNEAUX du mur contre son APPAREIL', () => {
   it("l'APPAREIL déployé ne dessine RIEN : un mur déployé produit deux poses, pas deux arcs", () => {
     const appareil = pose({ id: DEVICE_ID, h: 45 })
     expect(placementIsDeployedObject(appareil)).toBe(false)
-    expect(placementKind(appareil, true)).toBeNull()
+    expect(placementKind(appareil, { showUnnamed: true, showDropped: true })).toBeNull()
     expect(painted([appareil])).toBe(0)
   })
 
