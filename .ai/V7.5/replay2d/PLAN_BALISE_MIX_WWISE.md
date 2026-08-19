@@ -172,18 +172,37 @@ ecrites comme telles.
 
 ## Phase 3 — RECONSTRUCTION : 2 a 5 candidats de POSE, chacun avec sa recette
 
-- [ ] 3.1 Choisir les candidats par la STRUCTURE (evenements multi-couches en tete), pas
+- [x] 3.1 Choisir les candidats par la STRUCTURE (evenements multi-couches en tete), pas
       par le nom de fichier. Un candidat = un evenement reconstruit.
-- [ ] 3.2 Mixer par `ffmpeg` : `amix` des couches, gain de chemin applique en `volume`,
-      decalage par `adelay` quand la phase 1 en a mesure un, boucles tronquees a UNE
+      **CINQ candidats, douze fichiers** (un par tirage possible), dans
+       ; recettes dans .
+- [x] 3.2 Mixer par  :  des couches, gain de chemin applique en ,
+      decalage par  quand la phase 1 en a mesure un, boucles tronquees a UNE
       occurrence, normalisation identique au lot R2-S (crete vraie <= -1,0 dBTP).
-- [ ] 3.3 **Publier la recette de chaque candidat** : couches, gains, decalages, et la
-      commande exacte. Un candidat sans recette lisible ne part pas a l'ecoute.
-- [ ] 3.4 Joindre les **variantes** quand un point de choix en offre plusieurs : le tirage
-      change le son, et l'oreille doit pouvoir refuser le tirage plutot que le geste.
+      **AUCUN  : la phase 1 mesure zero delai.** Aucune boucle a tronquer non plus —
+      pas un evenement du perimetre n'en porte. Outil : ,
+      reutilisable (sortie + couches ), qui imprime sa propre recette.
+- [x] 3.3 **Publier la recette de chaque candidat** : couches, gains, decalages, et la
+      commande exacte. Faite par le script, une recette par fichier produit :
 
-**Gate 3** : chaque `.wav` de candidat existe, sa duree et sa crete sont mesurees, sa
-recette est ecrite.
+          candidat                            couches (gain de chemin)                duree
+          A  b29ac6de / 0b2a938e  4 tirages   1 couche, +6 dB                    0,41-0,48 s
+          B  b29ac6de / fb25cbdd  4 tirages   1 couche, +3 dB                    0,41-0,48 s
+          C  15c5b355 / c73036e4  2 tirages   1 couche, 0 dB                     0,59-0,80 s
+          D  15c5b355 / 044005ec  1 tirage    303633458 (0 dB) + 1062674912 (-23 dB)  1,34 s
+          E  15c5b355 / 92206f7d  1 tirage    405210764 (-3 dB) + 636465689 (+3 dB)   1,94 s
+
+      **CE QUE LA RECETTE DOIT AVOUER** : sur A, B et C — une seule couche — appliquer le
+      gain de chemin puis normaliser a -1,0 dBTP revient au fichier normalise. Le gain n'y
+      change que le niveau RELATIF a d'autres couches, et il n'y en a pas. Ces trois
+      candidats sont donc des gestes bruts remis au bon niveau, pas des melanges ; seuls
+      D et E sont des reconstructions au sens strict.
+- [x] 3.4 Joindre les **variantes** quand un point de choix en offre plusieurs : fait,
+      A et B en portent quatre chacun, C deux. Le tirage est uniforme (regle prouvee du
+      chantier armes), aucune variante n'est privilegiee.
+
+**Gate 3 : PASSE.** Les 12  existent, chacun avec sa duree et sa crete avant/apres
+correction consignees dans .
 
 ## Phase 4 — PAGE D'ECOUTE v2
 
