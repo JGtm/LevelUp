@@ -113,6 +113,48 @@ export function padIconRefFor(weapon: string, labels: PadLabels, titleSlug: stri
   return label?.img ? { url: label.img, tinted: !!label.tinted } : null
 }
 
+/**
+ * crossedWeaponPads — LES SOCLES À DESSINER, une fois le catalogue de la carte croisé.
+ *
+ * CE QUE LE CROISEMENT APPORTE, et il n'apporte que ça : la POSITION. Le serveur ne sert
+ * que les emplacements qu'un socle du match CONFIRME (à moins d'un mètre), et il les sert
+ * à la position du SPAWNER telle que le fichier de carte la pose — au centimètre, connue
+ * dès la première image. Le film, lui, ne donne que le centroïde des apparitions qu'il a
+ * vues, donc rien avant la première.
+ *
+ * CE QUE LE CROISEMENT NE TOUCHE PAS : la PRÉSENCE. Les apparitions, les intervalles, le
+ * cycle, la famille d'arme et donc les états plein / incertain / vide et le compte à
+ * rebours restent EXACTEMENT ceux du match. Le catalogue ne sait pas ce qui apparaît sur
+ * un socle (un même objet porte l'épée ou le marteau selon le match), ni quand.
+ *
+ * UN SOCLE DU FILM QUE LE CATALOGUE IGNORE RESTE DESSINÉ, à sa position d'origine : le
+ * film fait foi, le catalogue complète. Et un emplacement du catalogue que le film ne
+ * confirme pas n'arrive jamais ici — le serveur ne l'envoie pas, et rien de ce qui suit ne
+ * pourrait l'inventer, puisque tout part de `weaponPads`.
+ *
+ * SANS CROISEMENT (carte hors catalogue, artefact d'un autre titre, réponse d'une version
+ * antérieure) : la liste du film, inchangée. C'est le repli, et c'est le comportement
+ * d'avant le 2026-08-19.
+ */
+export function crossedWeaponPads(
+  pads: readonly ReplayWeaponPadReady[],
+  cross: ReplayDocumentReady['mapWeaponPads'],
+): readonly ReplayWeaponPadReady[] {
+  const spots = cross?.pads ?? []
+  if (spots.length === 0) return pads
+  // PREMIÈRE CITATION GAGNE : deux emplacements ne peuvent pas déplacer le même socle à
+  // deux endroits. Le serveur ne le fait pas, le client ne s'y fie pas.
+  const parSocle = new Map<number, (typeof spots)[number]>()
+  for (const spot of spots) {
+    if (!parSocle.has(spot.pad)) parSocle.set(spot.pad, spot)
+  }
+  return pads.map((pad, i) => {
+    const spot = parSocle.get(i)
+    if (!spot) return pad
+    return { ...pad, x: spot.x, y: spot.y, z: spot.z ?? pad.z }
+  })
+}
+
 /** Ce qui est survolé : le socle, son état LU À CET INSTANT, et où poser l'infobulle. */
 export interface WeaponPadHover {
   pad: ReplayWeaponPadReady
@@ -160,7 +202,13 @@ export function useReplayWeaponPads({
   locale,
   redraw,
 }: WeaponPadsInput): WeaponPads {
-  const pads = doc.weaponPads
+  // LES SOCLES DU MATCH, POSÉS AUX EMPLACEMENTS DE LA CARTE quand le serveur les a croisés
+  // (cf. crossedWeaponPads). Mémoïsé sur les deux sources : le tableau change d'identité à
+  // chaque croisement, et il commande le tracé, le survol ET la cuisson des vignettes.
+  const pads = useMemo(
+    () => crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads),
+    [doc.weaponPads, doc.mapWeaponPads],
+  )
   const [hover, setHover] = useState<WeaponPadHover | null>(null)
   const iconsRef = useRef<Map<string, PadIcon>>(new Map())
   const titleSlug = useTitleSlug()

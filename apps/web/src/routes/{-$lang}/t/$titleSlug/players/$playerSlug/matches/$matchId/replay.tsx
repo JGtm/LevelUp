@@ -23,6 +23,7 @@ import { collectMedalEvents } from '@/features/match-replay/killFeedLogic'
 import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
+import { matchFiestaGuard } from '@/features/match-replay/replayFiesta'
 import { frameToMs } from '@/features/match-replay/replayLogic'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { useReplayCompactCards } from '@/features/match-replay/useReplaySettings'
@@ -119,6 +120,12 @@ function ReplayPage() {
     () => collectMedalEvents(matchView?.combat_tab.highlight_events),
     [matchView?.combat_tab.highlight_events],
   )
+  // LES OBJETS LÂCHÉS AU SOL SE DESSINENT-ILS ? La question est de MODE, et le document de
+  // rejeu ne porte aucun mode — c'est donc ici, où la Match View est déjà chargée pour le fil
+  // et les fiches, qu'elle se tranche. Décision produit du 2026-08-18 : jamais en Fiesta.
+  // `unknown` (réponse en vol, ou match view en erreur) ne dessine rien : une absence d'indice
+  // n'est pas une preuve de non-Fiesta. Cf. replayFiesta.ts pour les limites mesurées.
+  const droppedAllowed = matchFiestaGuard(matchView?.header) === 'clear'
   // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
   const t0Ms = matchView?.header.t0_ms ?? 0
   const nowMs = data ? frameToMs(frame, data) : 0
@@ -182,6 +189,7 @@ function ReplayPage() {
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               marks={marks}
+              droppedAllowed={droppedAllowed}
             />
           </section>
           <div className="order-2 grid grid-cols-2 gap-3 xl:contents">

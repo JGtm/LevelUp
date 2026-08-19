@@ -2744,6 +2744,19 @@ export type ReplayMapObjectives = components['schemas']['MapObjectives']
 export type ReplayObjectiveZone = components['schemas']['ObjectiveZoneDTO']
 export type ReplayObjectiveMarker = components['schemas']['ObjectiveMarkerDTO']
 
+// Les EMPLACEMENTS DE SOCLE de la carte, croisés avec le match et servis AVEC le document
+// (`mapWeaponPads` — rempli à la requête comme `mapObjectives`, jamais écrit dans
+// l'artefact). Chaque entrée porte la position du SPAWNER telle que le fichier de carte la
+// pose, au centimètre, et `pad` : l'index du socle de `weaponPads` qui la CONFIRME.
+//
+// SEULS LES EMPLACEMENTS ALLUMÉS ARRIVENT, et c'est une décision produit : le fichier de
+// carte pose les socles, le mode les allume (Cliffhanger en porte dix-sept, dix en CTF et
+// zéro en Super Fiesta). `catalogN` dit combien la carte en porte au total — ce que le
+// calque n'affiche donc pas. Absent = carte hors catalogue, ou aucun socle confirmé : le
+// calque retombe alors sur les socles du film seuls.
+export type ReplayMapWeaponPads = components['schemas']['MapWeaponPads']
+export type ReplayMapWeaponPad = components['schemas']['MapWeaponPadDTO']
+
 // La table d'appariement du film : xuid ET index de slot.
 //
 // LES DEUX CHAMPS NE SONT PAS INTERCHANGEABLES : le xuid IDENTIFIE, l'index ORDONNE et n'a de
