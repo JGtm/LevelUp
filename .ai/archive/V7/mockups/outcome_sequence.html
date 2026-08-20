@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Outcome Sequence &mdash; G + brackets split</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body { margin: 0; padding: 24px; background: #0f1419; color: #e6edf3;
+           font-family: -apple-system, system-ui, "Segoe UI", sans-serif; }
+    h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+    p.lead { color: #8b949e; margin-top: 0; font-size: 14px; }
+    .panel { margin: 16px 0; background: #161b22; border: 1px solid #30363d;
+             border-radius: 4px; padding: 16px 20px; }
+    .panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+    .panel .desc { color: #8b949e; font-size: 12px; margin: 0 0 8px; }
+    .chart { height: 180px; }
+    .controls { margin: 16px 0 8px; display: flex; gap: 10px; align-items: center;
+                flex-wrap: wrap; font-size: 13px; color: #8b949e; }
+    button { background: #21262d; color: #e6edf3; border: 1px solid #30363d;
+             padding: 5px 11px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    button:hover:not(.active) { background: #2a3038; }
+    .sep { width: 1px; height: 18px; background: #30363d; margin: 0 6px; }
+  </style>
+</head>
+<body>
+  <h1>Outcome sequence &mdash; G + brackets split</h1>
+  <p class="lead">Un seul strip d'outcomes. Les brackets se positionnent au-dessus (wins/ties) ou en-dessous (losses/dnf), couleur outcome, label x N pour les groupements de 2+.</p>
+
+  <div class="controls">
+    <span>Largeur :</span>
+    <button id="modeCount" class="active">par count</button>
+    <button id="modeDuration">par duree</button>
+    <span class="sep"></span>
+    <span>Regrouper streaks :</span>
+    <button id="groupOn" class="active">on</button>
+    <button id="groupOff">off</button>
+    <span class="sep"></span>
+    <button id="reroll">re-roll donnees</button>
+  </div>
+
+  <div class="panel">
+    <h2>G &mdash; Single strip + brackets split top/bottom</h2>
+    <p class="desc">Strip outcome centre, brackets wins/ties au-dessus, brackets losses/dnf en-dessous (mirrors).</p>
+    <div id="chart" class="chart"></div>
+  </div>
+
+  <script>
+    const COLORS = { win: '#3fb950', loss: '#f85149', tie: '#d29922', dnf: '#8b949e' };
+    const LABEL  = { win: 'W', loss: 'L', tie: 'T', dnf: '-' };
+    const MAPS   = ['Aquarius','Live Fire','Recharge','Streets','Bazaar','Argyle'];
+    const MODES  = ['Slayer','CTF','Strongholds','Oddball'];
+    const FONT   = '-apple-system, system-ui, "Segoe UI", sans-serif';
+
+    const SEQ = ['win','win','win','loss','loss','win','win','win','win','win','tie','loss','loss','loss','win','win','dnf','win','loss','loss','loss','loss','win','win','win','tie','win','loss','win','win'];
+
+    let matches = [];
+    function generateMatches() {
+      matches = SEQ.map((o, i) => ({
+        matchId: 'm' + i,
+        outcome: o,
+        perfScore: 25 + Math.round(Math.random() * 70),
+        durationMin: 7 + Math.round(Math.random() * 13),
+        map: MAPS[Math.floor(Math.random() * MAPS.length)],
+        mode: MODES[Math.floor(Math.random() * MODES.length)],
+      }));
+    }
+    generateMatches();
+
+    function toRuns(arr) {
+      const runs = [];
+      for (const m of arr) {
+        const last = runs[runs.length - 1];
+        if (last && last.outcome === m.outcome) {
+          last.count += 1; last.duration += m.durationMin; last.matches.push(m);
+        } else {
+          runs.push({ outcome: m.outcome, count: 1, duration: m.durationMin, matches: [m] });
+        }
+      }
+      runs.forEach(r => {
+        r.avgPerf = r.matches.reduce((s, m) => s + m.perfScore, 0) / r.count;
+      });
+      return runs;
+    }
+
+    function toIndividual(arr) {
+      return arr.map((m) => ({
+        outcome: m.outcome, count: 1, duration: m.durationMin,
+        matches: [m], avgPerf: m.perfScore,
+      }));
+    }
+
+    let mode = 'count';
+    let group = true;
+
+    function getRuns() { return group ? toRuns(matches) : toIndividual(matches); }
+    function widthOf(run) { return mode === 'count' ? run.count : run.duration; }
+    function startOf(runs, i) {
+      let p = 0; for (let k = 0; k < i; k++) p += widthOf(runs[k]); return p;
+    }
+    function xMaxOf(runs) { return runs.reduce((s, r) => s + widthOf(r), 0); }
+    function nameFor(o) { return o.charAt(0).toUpperCase() + o.slice(1); }
+
+    function tooltipFmt(p) {
+      const r = p.data.run;
+      const head = `<b>${r.count}x ${LABEL[r.outcome]}</b> &middot; perf moy. ${r.avgPerf.toFixed(0)} &middot; ${r.duration} min`;
+      const list = r.matches.slice(0, 6).map(m => `&middot; ${m.map} (${m.mode}) - ${m.perfScore}`).join('<br/>');
+      const more = r.matches.length > 6 ? `<br/>... +${r.matches.length - 6}` : '';
+      return `${head}<br/>${list}${more}`;
+    }
+
+    function legendDef() {
+      return {
+        bottom: 0, textStyle: { color: '#8b949e', fontFamily: FONT, fontSize: 11 },
+        itemHeight: 8, itemWidth: 14,
+        data: [
+          { name: 'Win',  itemStyle: { color: COLORS.win  } },
+          { name: 'Tie',  itemStyle: { color: COLORS.tie  } },
+          { name: 'Loss', itemStyle: { color: COLORS.loss } },
+          { name: 'DNF',  itemStyle: { color: COLORS.dnf  } },
+        ],
+      };
+    }
+
+    // Above-strip outcomes vs below-strip outcomes
+    const isTopOutcome = (o) => o === 'win' || o === 'tie';
+
+    function buildOption(runs) {
+      const xMax = xMaxOf(runs);
+      return {
+        backgroundColor: 'transparent',
+        grid: { top: 36, bottom: 48, left: 12, right: 12 },
+        xAxis: { type: 'value', min: 0, max: xMax, show: false },
+        yAxis: { type: 'value', min: -1, max: 1, show: false },
+        tooltip: {
+          trigger: 'item', formatter: tooltipFmt,
+          backgroundColor: '#21262d', borderColor: '#30363d',
+          textStyle: { color: '#e6edf3', fontSize: 12, fontFamily: FONT },
+        },
+        legend: legendDef(),
+        series: [{
+          type: 'custom',
+          renderItem: (params, api) => {
+            const i = api.value(0);
+            const r = runs[i];
+            const x0 = api.coord([startOf(runs, i), 0])[0];
+            const x1 = api.coord([startOf(runs, i) + widthOf(r), 0])[0];
+            const yCenter = api.coord([0, 0])[1];
+
+            // Single centered strip
+            const stripH = 14;
+            const yStripTop = yCenter - stripH / 2;
+            const yStripBot = yCenter + stripH / 2;
+            const w = Math.max(2, x1 - x0 - 1);
+            const stroke = COLORS[r.outcome];
+
+            const children = [{
+              type: 'rect',
+              shape: { x: x0, y: yStripTop, width: w, height: stripH, r: 0 },
+              style: { fill: stroke },
+            }];
+
+            // Bracket positioned above (top outcomes) or below (bottom outcomes)
+            if (r.count >= 2 && (x1 - x0) >= 8) {
+              const top = isTopOutcome(r.outcome);
+              const tickH = 4;
+              const bracketGap = 10;
+              const xL = x0 + 3;
+              const xR = x1 - 3;
+              const xMid = (xL + xR) / 2;
+
+              let yLine, tickEnd, labelY, labelBaseline;
+              if (top) {
+                yLine = yStripTop - bracketGap;
+                tickEnd = yLine + tickH;     // ticks down toward strip
+                labelY = yLine - 4;
+                labelBaseline = 'bottom';
+              } else {
+                yLine = yStripBot + bracketGap;
+                tickEnd = yLine - tickH;     // ticks up toward strip
+                labelY = yLine + 4;
+                labelBaseline = 'top';
+              }
+
+              children.push(
+                { type: 'line', shape: { x1: xL, y1: yLine, x2: xR, y2: yLine },
+                  style: { stroke, lineWidth: 1 } },
+                { type: 'line', shape: { x1: xL, y1: yLine, x2: xL, y2: tickEnd },
+                  style: { stroke, lineWidth: 1 } },
+                { type: 'line', shape: { x1: xR, y1: yLine, x2: xR, y2: tickEnd },
+                  style: { stroke, lineWidth: 1 } },
+                { type: 'text', style: {
+                    text: 'x' + r.count,
+                    x: xMid, y: labelY,
+                    fill: stroke, fontSize: 11, fontWeight: 700, fontFamily: FONT,
+                    textAlign: 'center', textBaseline: labelBaseline,
+                  }},
+              );
+            }
+
+            return { type: 'group', children };
+          },
+          encode: { x: 0, y: 1 },
+          data: runs.map((r, i) => ({ value: [i, 0], run: r, name: nameFor(r.outcome) })),
+        }],
+      };
+    }
+
+    const chart = echarts.init(document.getElementById('chart'));
+
+    function refresh() {
+      const runs = getRuns();
+      chart.setOption(buildOption(runs), true);
+    }
+    refresh();
+
+    window.addEventListener('resize', () => chart.resize());
+
+    function activate(activeId, otherId) {
+      document.getElementById(activeId).classList.add('active');
+      document.getElementById(otherId).classList.remove('active');
+    }
+    document.getElementById('modeCount').addEventListener('click', () => { mode = 'count'; activate('modeCount', 'modeDuration'); refresh(); });
+    document.getElementById('modeDuration').addEventListener('click', () => { mode = 'duration'; activate('modeDuration', 'modeCount'); refresh(); });
+    document.getElementById('groupOn').addEventListener('click', () => { group = true; activate('groupOn', 'groupOff'); refresh(); });
+    document.getElementById('groupOff').addEventListener('click', () => { group = false; activate('groupOff', 'groupOn'); refresh(); });
+    document.getElementById('reroll').addEventListener('click', () => { generateMatches(); refresh(); });
+  </script>
+</body>
+</html>
