@@ -179,6 +179,197 @@ fichiers:lignes, codes de sortie et extraits de gate, decouvertes NON traitees �
 2 autres skips de `mapdecoupe` portant sur des fichiers EUX AUSSI versionnes
 (`map_callouts.json`, `map_backgrounds/ridgeline.*`), non nommes par le perimetre H4, donc non
 touches). Fusion de `wt/hygiene-ci` vers `feat/v75` a la discretion du superviseur.
+## [2026-08-20] Lot L3 — nettoyage UI rejeu 2D / vue match (branche wt/ui-nettoyage) — Complete
+
+**Contexte** : demande utilisateur portant huit corrections d ergonomie sur le rejeu 2D et la
+vue match (U1 a U8). Travail isole dans le worktree `LevelUp-wt-ui`, branche
+`wt/ui-nettoyage` basee sur `ce9933ea5`. Un commit par etape, contrat plan-execution.
+
+**Decision technique principale** : voir le journal par etape ci-dessous — chaque etape
+porte sa propre decision, consignee au moment de son commit.
+
+**Journal par etape**
+
+- **U1 — retrait du fil des frags sous le graphe Dominance (Complete)**. Le fil DOM
+  `MatchKillFeed` doublonnait le fil du rejeu 2D sans rien apporter sous l histogramme :
+  supprime avec son test (aucun autre importeur ; `KillFeedLaneKill` n etait consomme que
+  par lui). Les lanes et les vagues collectives RESTENT dans le graphe — elles vivent sur
+  l echelle Y des barres, ce qui n a de sens que dedans — donc `feedKills`/`xuidMeta` sont
+  conserves : ils alimentent `buildKillFeedSeries`. Trois cles i18n retirees
+  (`combatKillFeedTitle`/`UnknownWeapon`/`Coverage`, FR+EN+interface) ;
+  `combatTeamLabel`/`combatEnemyLabel` gardees (partagees). Le mock `tokenCssVar` de
+  `MatchCombatCtfOverlay.test.tsx` est retire apres VERIFICATION empirique : son unique
+  consommateur dans l arbre de ce test etait `MatchKillFeed` via `teamColor.ts` (4 tests
+  toujours verts sans lui). Commentaires anti doc-inversee corriges dans
+  `MatchTugOfWarChart.tsx` (en-tete + bloc `buildKillFeedSeries` + memo du binning),
+  `ReplayKillFeed.tsx` et `teamColor.ts` (ils citaient un fichier desormais supprime).
+
+- **U2 — bug du retour arriere des bascules (Complete)**. `usePersistedFlag` appelait
+  `persistPreference` DEPUIS l updater de `setValue` ; or `persistPreference` notifie
+  SYNCHRONEMENT les abonnes de la cle, qui appellent `setValue` a leur tour — donc une mise
+  a jour d etat en pleine phase de rendu. Correctif : `next` calcule hors updater a partir de
+  la valeur rendue, `setValue(next)` nu, persistance APRES ; `value` entre dans les
+  dependances du `useCallback`. VERIFIE SUR PIECES que c est le SEUL setter du fichier bati
+  sur ce motif : `setHeatmapMode`, `setHeatmapSpan` et `setSpeed` recoivent deja `next` en
+  parametre et persistent apres — rien a y changer. `usePersistedFlag` est aussi le seul
+  abonne de `subscribePreference`, donc le seul expose a la re-entrance.
+  POINT METHODE : les deux allers-retours demandes (`compactCards`, `showHeatmap`) passaient
+  AUSSI avec le corps fautif — deux `renderHook` cote a cote sont deux racines React
+  independantes, la notification ne traverse jamais de frontiere ancetre/descendant. Un
+  troisieme test a donc ete ecrit dans l ARBRE REEL (route qui lit via
+  `useReplayCompactCards` + tiroir descendant qui bascule, sous `StrictMode`) : il est ROUGE
+  sur le corps fautif — React imprime « Cannot update a component (`Page`) while rendering a
+  different component (`Tiroir`) » et la fiche ancetre reste a `false` des le PREMIER clic —
+  et VERT apres correctif. Les deux allers-retours sont conserves : ils epinglent le contrat
+  vu de l utilisateur, le troisieme epingle la cause.
+
+- **U3 — parite de hauteur de la fiche morte en compact (Complete, sans correctif code)**.
+  L assertion demandee est ajoutee (`rangees(morte+compacte) === rangees(vivante+compacte)`,
+  helper `rangees` mutualise au lieu d en faire une 2e copie) : elle est VERTE. Le nombre de
+  rangees vaut 4 en compact, mort comme vivant. Diligence demandee poussee plus loin : AUCUNE
+  classe de hauteur n est conditionnee a `state.alive` dans `PlayerCard` — les cinq usages de
+  `alive` ne pilotent que du CONTENU (L340 vitalite/RespawnRow) ou de la COULEUR (L312, via
+  `style`, pas une classe) ; les deux conditions de PRESENCE de rangee (L321 zone, L384
+  inventaire) ne dependent que de `compact`. Un second garde-rail epingle ce corollaire :
+  les classes des rangees sont identiques morte et vivante. Vert aussi.
+  MECANISME RESIDUEL IDENTIFIE, NON CORRIGE (le gate prescrit est vert ; le correctif touche
+  au rendu de la fiche VALIDEE et releve du gate visuel) : la rangee 3 est a hauteur FIXE
+  (`h-3.5`) donc insensible, mais la rangee fusionnee du compact est en `min-h-[18px]` et
+  contient DEUX enfants `flex flex-wrap` comprimes par un parent `flex-nowrap`. Vivante, si
+  ces enfants se replient, la rangee depasse 18 px ; morte, elle est vide et retombe a
+  exactement 18 px — d ou un saut de hauteur que jsdom ne peut pas mesurer (aucun calcul de
+  layout). Piste de correctif si le gate visuel confirme : hauteur FIXE au lieu de `min-h`
+  sur cette rangee en compact, ce qui acheve l intention deja ecrite a cote
+  (`overflow-hidden`, « la rangee unique refuse de se replier », lecon C1) — `overflow-hidden`
+  ecrete a l affichage mais n empeche pas la boite de grandir.
+
+- **U4 — plus de pions gris pour les vies sans identite (Complete)**. Cause confirmee sur
+  pieces : `buildPlayers` fait `if (!track.xuid) continue`, donc le slot d une trace anonyme
+  (camera, spectateur de fin de partie) n entre dans AUCUNE table d identite ;
+  `slotColors.get(slot)` rend `undefined` et le repli `?? neutral` le peignait en gris.
+  Correctif : `?? null`, signature `colorOfSlot: (slot) => string | null`. La garde
+  `if (!color) return` de `drawTracksLayer` fait le reste — elle existait deja, avec la
+  convention documentee « null = ne rien dessiner ». `tsc` exit 0 du premier coup : TOUS les
+  consommateurs typaient deja `string | null` (`replayMarkers.ts:156`,
+  `equipmentPlacementsLayer.ts:270`, `replayDraw.ts:253`), et les deux autres sites de
+  ReplayCanvas passaient deja la table BRUTE avec `?? null`. Le seul consommateur reel de
+  `colorOfSlot` est `drawTracksLayer`.
+  `neutral` EST CONSERVE : il a encore un consommateur, `colorBySlot` (`rosterLogic.ts:171`,
+  entree de roster avec xuid vide) — ce n est donc pas du code mort. Sa doc est reformulee
+  pour dire ce cas et le distinguer d une vie absente des tables.
+  Aucun test n attendait le repli neutre — le correctif partait donc NON GARDE : creation de
+  `useSlotIdentity.test.ts` (4 cas ; le hook n avait aucun test). Verifie qu il discrimine :
+  ROUGE sur l ancien repli (« expected 'encre-neutre' to be null »), VERT apres.
+  Trois commentaires anti doc-inversee corriges — ils affirmaient tous « le calque la dessine
+  quand meme » : en-tete de `useSlotIdentity.ts`, `MarkerStyle` dans `replayMarkers.ts`,
+  `buildPlayers` dans `rosterLogic.ts`.
+
+- **U5 — les murs portatifs disparaissent a leur duree officielle (Complete)**. Citation lue
+  a la source (`filmdec/equipment_life_end_test.go:15`) : « le capteur de menaces dure 15 s
+  (« Sensor Duration: 6.5 -> 15 secondes », Halo Waypoint, Sandbox Overview Season 4), le mur
+  une dizaine de secondes ». La source NE DONNE PAS de chiffre exact pour le mur, contrairement
+  au capteur : `WALL_DURATION_MS = 10_000` (lecture litterale de « une dizaine »), avec un
+  commentaire qui cite la source ET dit que c est une approximation identifiee comme telle —
+  pour qu un chiffre publie plus tard remplace une approximation, pas une valeur oubliee.
+  La constante vit dans `placementWall.ts`, avec la geometrie et le rayon du mur — symetrie
+  exacte de `SENSOR_DURATION_MS` dans `threatSensor.ts` (pas de cycle d import verifie).
+  MECANIQUE IDENTIQUE AU CAPTEUR plutot que dupliquee : le `kind !== 'sensor'` en dur laisse
+  place a une table `OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>>` ; la
+  formule `min(max(t0 + duree, t1), lastFrame)` est inchangee. Elle couvre donc TOUJOURS au
+  moins `t1` — le mur suivi 18,9 s du temoin reste jusqu a sa derniere mesure, on n efface
+  pas un objet que la mesure montre vivant.
+  Tests : `placementWall.test.ts` reecrit (le titre et les assertions disaient « il ne
+  disparait pas », l ancienne regle) — survie a `t1`, effacement a `t0 + duree`, borne mesuree
+  prioritaire, et cas `frameMs = 0` (aucune conversion possible : la fenetre reste ouverte
+  plutot que de se fermer au hasard). Un SECOND test portait la meme ancienne regle et a vire
+  rouge — `equipmentPlacementsLayer.test.ts` (« t1 ne referme RIEN ») : rectifie, plus deux
+  cas ajoutes pour le mur. Commentaire doctrinal de `placementWindow.ts` mis a jour (anti
+  doc-inversee) : il justifiait explicitement de laisser le mur jusqu a la fin du rejeu.
+
+- **U5-bis — reliquat i18n (Complete)**. La revue i18n de U6 a trouve `layerPlacementsHint`
+  qui annoncait encore « le capteur se tient donc a sa duree officielle de 15 s, les autres
+  poses restent affichees jusqu a la fin du rejeu » : doc inversee VUE PAR L UTILISATEUR.
+  Corrige FR et EN, commit separe etiquete U5 (`6e931c5ff`) pour garder l histoire lisible.
+
+- **U6 — la garde Fiesta des lachers redevient un simple reglage (Complete)**. Le ET dur est
+  retire des trois sites : `replay.tsx` (calcul `droppedAllowed` + passage de prop + import),
+  `ReplayCanvas.tsx` (prop `droppedAllowed`, croisement `showDropped`, croisement
+  `droppedAvailable`). Le toggle « Objets lachers au sol » (defaut ON) redevient disponible
+  dans TOUS les modes des que `counts.dropped > 0`.
+  `matchFiestaGuard` n avait plus AUCUN consommateur de production — seulement ses propres
+  tests et le temoin. C est exactement le « dead code museum » de CLAUDE.md (« le pire : avec
+  des tests verts qui entretiennent l illusion ») : `replayFiesta.ts` et `replayFiesta.test.ts`
+  sont supprimes.
+  `placementDroppedWitness.test.ts` est reecrit : il mesurait « la garde annule la bascule, a
+  la primitive pres » ; il mesure desormais l inverse, les 26 marques (15 capteurs + 11 murs)
+  que la Fiesta `000d5950` GAGNE. Le chiffre mesure hors ligne est conserve — c est lui qui
+  prouve que quelque chose apparait. Un test tautologique que j avais d abord ecrit a ete
+  retire plutot que garde pour faire nombre.
+  Huit commentaires anti doc-inversee corriges (`equipmentPlacementsLayer.ts` x3,
+  `placementDropped.ts`, `ReplaySettingsDrawer.tsx`, `useReplayPlacements.ts`,
+  `usePlacementHover.ts`, `useReplaySettings.ts` x2, `i18nContract.ts`,
+  `test/placementFixtures.ts`). Les libelles i18n ne mentionnaient PAS Fiesta (verifie par
+  grep) : rien a y changer, seul le commentaire du contrat qui expliquait POURQUOI ils n en
+  parlaient pas est mis a jour.
+  Effet de bord favorable : `ReplayCanvas.tsx` passe de 808 a 800 lignes — sous le plafond du
+  cliquet, avec 8 lignes de marge regagnees.
+
+- **U7 — croix de mort a 2,5 s (Complete ; la VALEUR etait deja livree)**. Verification sur
+  pieces AVANT de coder, et elle change l etape : `useReplayTiming.ts` porte deja
+  `death: 2_500`, pose le 2026-08-18 par `a7aa0e71c` (git blame), avec exactement la decision
+  R3-1 (2,5 s livre, 4 s ecarte). Rien a changer au comportement — ne pas le repasser a 2,5 s
+  « pour faire l etape ».
+  Ce qui RESTAIT, et qui est fait : quatre commentaires citaient encore 1,5 s comme la duree
+  courante — `replayMarkers.ts` L63 (« mort marquee 1,5 s ») et L204 (« la croix survit
+  1,5 s »), `killFx.ts` L31 et `killFx.test.ts` L111 (qui presentaient `KILLPOS_WINDOW_MS`
+  comme « la fenetre DEATH, deja employee par le marqueur de mort » — faux depuis le 18/08).
+  La VALEUR de `KILLPOS_WINDOW_MS` reste 1_500 : c est une autre question (jusqu ou une
+  position reste VRAIE, pas combien de temps un repere reste LISIBLE), et sa mesure propre la
+  justifie (1/93 victimes relues avant recalage, 90/93 apres). Le commentaire dit desormais
+  que les deux durees coincident sans dependre l une de l autre.
+  DEUX EXPORTS MORTS TROUVES au passage, traites en sens opposes : `DEATH_HOLD_LONG_MS`
+  (4 000 ms, « la duree proposee EN PLUS : elle n est pas livree ») n avait aucun consommateur
+  et l option 4 s est ECARTEE par la decision superviseur — supprime. `REPLAY_TIMING_MS` se
+  disait « exposee pour les tests » sans qu aucun test ne la lise : la decision produit n etait
+  defendue par RIEN. Plutot que la supprimer, creation de `useReplayTiming.test.ts` (3 cas)
+  qui epingle les 2,5 s et la conversion en images — l export a enfin le consommateur qu il
+  annoncait.
+
+- **U8 — les effets de mort sont allumes par defaut (Complete)**. `SHOW_KILL_FX_DEFAULT`
+  passe a `true`. La raison est ecrite au bon endroit : eteints, ils demandaient de SAVOIR
+  qu ils existaient pour aller les allumer — l utilisateur les cherchait sans les trouver.
+  Trois docs corrigees (anti doc-inversee) : le bloc doctrinal des deux effets (qui opposait
+  leurs defauts), le champ `showKillFx` de l interface `ReplaySettings` (« ETEINT par
+  defaut »), et le hint i18n dans les DEUX langues (« Eteint par defaut » -> « Allume par
+  defaut » ; « Off by default » -> « On by default »).
+  Deux tests ajustes : le defaut (qui epinglait `showKillFx === false`) et la survie au
+  remontage — ce dernier basculait les DEUX effets pour verifier deux cles distinctes ;
+  desormais qu ils partent tous deux allumes, ne basculer QUE les tirs prouve mieux la
+  separation des cles (l un tombe a false, l autre reste a true).
+  Verifie par grep qu aucune autre chaine ne dit encore « eteint par defaut » pour ce calque :
+  les mentions restantes visent la carte de chaleur, les objets non identifies et le son, tous
+  legitimement eteints.
+
+**Resultats observes — GATES DE CLOTURE (tous verts)** : `npx tsc -b --force` nu exit 0 ;
+`npx vitest run` complet 467 fichiers / 4447 tests / 14 skipped exit 0 ; `npx eslint .`
+0 erreur, 20 avertissements exit 0 (baseline INCHANGEE depuis le debut du lot) ;
+`node tools/lint-cross-feature-imports.mjs` 7 <= plafond 7 exit 0 ; cliquet de taille :
+`ReplayCanvas.tsx` a 800 lignes pour un plafond de 808 (8 lignes regagnees par U6 ; il
+partait PILE au plafond). Gates intermediaires a chaque etape : U1 466/4448, U2 64 fichiers /
+964, U4 65/970, U5 65/974, U6 67/987, U7 65/960, U8 65/960.
+
+**Decouvertes hors perimetre (NON traitees)** : (1) `useReplaySound.ts` porte le MEME motif
+fautif a `toggleCategory` (~L106-114) et `toggle` (~L217) — sans consequence visible
+aujourd hui car aucune de ses cles n a d abonne, mais l updater reste impur (StrictMode le
+fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.tsx` calcule
+`computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
+supprime en U1 ; fusionnable, mais hors perimetre du lot.
+
+**Conclusion / prochaine etape** : les huit etapes sont statuees, sept livrees avec code et
+une (U3) close sans correctif code parce que son gate prescrit est vert. AUCUN PUSH — la
+branche `wt/ui-nettoyage` attend le gate visuel de l utilisateur. Deux points a rejouer a
+l ecran : la hauteur de la fiche morte en compact (U3, mecanisme et piste de correctif
+consignes ci-dessus) et la disparition des murs a 10 s (U5, chiffre approche assume).
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 

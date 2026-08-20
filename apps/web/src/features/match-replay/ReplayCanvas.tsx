@@ -145,18 +145,10 @@ interface ReplayCanvasProps {
   xuidMeta?: XuidMeta
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
-  /**
-   * Les objets de PUISSANCE lâchés à la mort ont-ils le droit de se dessiner ? La route le
-   * tranche (`matchFiestaGuard`) : jamais en Fiesta, et jamais tant que le mode n'est pas
-   * connu. ABSENT = faux, le défaut conservateur — le canvas ne devine pas un mode que son
-   * document ne publie pas.
-   */
-  droppedAllowed?: boolean
 }
 
 export function ReplayCanvas({
   doc, locale, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
-  droppedAllowed = false,
 }: ReplayCanvasProps) {
   const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -351,12 +343,12 @@ export function ReplayCanvas({
     redraw,
   })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
-  // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE n'y entrent que si la page l'a
-  // permis — jamais en Fiesta, jamais sur un mode inconnu.
+  // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
+  // d'autre — plus de garde de mode par-dessus (2026-08-20).
   const placements = useReplayPlacements({
     doc, view: canvasView, frameRef, enabled: showPlacements,
     showUnnamed: showUnnamedPlacements,
-    showDropped: showDroppedPlacements && droppedAllowed,
+    showDropped: showDroppedPlacements,
   })
 
   // LA VIE DES DRAPEAUX (schéma 15) : tracé, survol et infobulle dans un seul hook — et pas un
@@ -773,7 +765,7 @@ export function ReplayCanvas({
               unnamedAvailable: placements.counts.unnamed > 0,
               showUnnamed: showUnnamedPlacements,
               onToggleUnnamed: toggleUnnamedPlacements,
-              droppedAvailable: placements.counts.dropped > 0 && droppedAllowed,
+              droppedAvailable: placements.counts.dropped > 0,
               showDropped: showDroppedPlacements,
               onToggleDropped: toggleDroppedPlacements,
             }}

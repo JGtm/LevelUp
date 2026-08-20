@@ -18,7 +18,21 @@ import type {
   PlacementWindowTime,
 } from './equipmentPlacementsLayer'
 import { seekerImpulseActive } from './placementShapes'
+import { WALL_DURATION_MS } from './placementWall'
 import { SENSOR_DURATION_MS } from './threatSensor'
+
+/**
+ * LES DURÉES DE VIE PUBLIÉES PAR L'ÉDITEUR, par famille. Une famille absente de cette table
+ * n'a aucune durée connue : elle reste affichée jusqu'à la fin du rejeu, faute de mieux.
+ *
+ * Les deux valeurs vivent dans le fichier de LEUR famille (`threatSensor.ts`,
+ * `placementWall.ts`), avec leur portée et leur géométrie : c'est là qu'on va lire ce que le
+ * jeu déclare d'un objet, et cette table ne fait que les rassembler pour la fenêtre.
+ */
+const OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>> = {
+  sensor: SENSOR_DURATION_MS,
+  wall: WALL_DURATION_MS,
+}
 
 /**
  * placementEndFrame — LA DERNIÈRE IMAGE à laquelle une pose se dessine.
@@ -33,10 +47,14 @@ import { SENSOR_DURATION_MS } from './threatSensor'
  *
  * D'OÙ LA RÈGLE, en deux temps et sans rien inventer :
  *  - une famille dont la durée est PUBLIÉE par l'éditeur s'y tient — le capteur de menaces
- *    dure 15 s (cf. SENSOR_DURATION_MS), du même genre que sa portée et sa cadence, qui
- *    gouvernent déjà tout son tracé ;
- *  - les autres restent affichées jusqu'à la fin du rejeu. Effacer un mur à 0,7 s
- *    affirmerait une disparition que rien ne mesure ; le laisser en place n'affirme rien.
+ *    dure 15 s, le mur une dizaine de secondes (cf. OFFICIAL_DURATION_MS), du même genre que
+ *    la portée et la cadence qui gouvernent déjà leur tracé ;
+ *  - les autres restent affichées jusqu'à la fin du rejeu, faute d'une durée à leur opposer.
+ *
+ * LE MUR A REJOINT LE CAPTEUR le 2026-08-20 (demande utilisateur). Il restait jusqu'à la fin
+ * du rejeu au nom du principe « ne rien affirmer que la mesure ne porte » — mais laisser un
+ * mur à l'écran pendant huit minutes affirme lui aussi quelque chose, et de plus faux : la
+ * durée officielle est la meilleure information disponible, exactement comme pour le capteur.
  *
  * Jamais AVANT `t1` : la borne mesurée l'emporte si elle dépasse la durée officielle.
  */
@@ -46,8 +64,9 @@ export function placementEndFrame(
   time: PlacementWindowTime,
 ): number {
   const lastFrame = Math.max(time.frames - 1, p.t1)
-  if (kind !== 'sensor' || !(time.frameMs > 0)) return lastFrame
-  const official = p.t0 + Math.round(SENSOR_DURATION_MS / time.frameMs)
+  const duration = OFFICIAL_DURATION_MS[kind]
+  if (duration === undefined || !(time.frameMs > 0)) return lastFrame
+  const official = p.t0 + Math.round(duration / time.frameMs)
   return Math.min(Math.max(official, p.t1), lastFrame)
 }
 

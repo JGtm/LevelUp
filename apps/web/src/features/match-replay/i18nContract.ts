@@ -122,9 +122,10 @@ export interface ReplayText {
   layerPlacements: string
   layerPlacementsHint: string
   /**
-   * OBJETS DE PUISSANCE LÂCHÉS (décision produit du 2026-08-18). La commande n'apparaît QUE
-   * hors Fiesta et que si le film en porte : son libellé n'a donc pas à parler de Fiesta —
-   * l'utilisateur ne la voit jamais là où la règle ne s'applique pas.
+   * OBJETS DE PUISSANCE LÂCHÉS (décision produit du 2026-08-18). La commande apparaît dès que
+   * le film en porte, dans TOUS les modes — la restriction « hors Fiesta » a été levée le
+   * 2026-08-20. Son libellé n'a donc toujours pas à parler de Fiesta, et pour une raison
+   * désormais plus simple : le mode n'entre plus dans la règle.
    */
   layerPlacementsDropped: string
   layerPlacementsDroppedHint: string

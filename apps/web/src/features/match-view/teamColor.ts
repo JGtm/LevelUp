@@ -1,10 +1,10 @@
 /**
  * teamColor.ts — LA COULEUR D'IDENTITÉ D'UNE ÉQUIPE, et il n'y en a qu'une.
  *
- * Extraite de `MatchKillFeed.tsx` quand le rejeu 2D a eu besoin de la même cascade : deux
+ * Centralisée ici quand le rejeu 2D a eu besoin de la même cascade que la vue match : deux
  * cascades divergentes, ce sont deux couleurs pour la même équipe sur deux pages du même
- * match. Le kill feed de la carte « Dominance » et celui du rejeu appellent désormais cette
- * fonction, et rien d'autre.
+ * match. Scoreboard, objectifs et fil des frags du rejeu appellent tous cette fonction, et
+ * rien d'autre.
  *
  * L'ORDRE DE LA CASCADE reproduit celui de l'en-tête du scoreboard (`MatchScoreboard.tsx`) :
  * couleur fournie par le backend (`team_color`, Halo 5) d'abord, sinon la couleur officielle

@@ -17,10 +17,11 @@
  * les PANNEAUX du mur les porteraient aussi ; ils en ont zéro sur 48 et un sur 43.
  *
  * DEPUIS LE 2026-08-19, UNE PART ÉTROITE DE CES LÂCHERS SE DESSINE QUAND MÊME, et c'est une
- * décision produit datée (utilisateur, 2026-08-18) : hors Fiesta, les objets de PUISSANCE au
- * sol — power-ups et équipements déployables — se voient, parce qu'ils sont ramassables et
- * qu'ils changent l'échange suivant. La liste de ce qui compte et la raison vivent dans
- * `placementDropped.ts` ; la garde de MODE vit hors du calque (cf. `PlacementToggles`).
+ * décision produit datée (utilisateur, 2026-08-18) : les objets de PUISSANCE au sol —
+ * power-ups et équipements déployables — se voient, parce qu'ils sont ramassables et qu'ils
+ * changent l'échange suivant. La liste de ce qui compte et la raison vivent dans
+ * `placementDropped.ts`. La restriction « hors Fiesta » qui accompagnait cette décision a
+ * été levée le 2026-08-20 : le réglage du tiroir gouverne seul, dans tous les modes.
  *
  * LE RENDU EST UNE TABLE PAR FAMILLE (`PLACEMENT_RENDER`), et c'est la règle qui compte : une
  * famille absente de la table ne dessine RIEN, une famille à `null` ne dessine rien NON PLUS
@@ -163,7 +164,7 @@ export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = 
   // SECONDE marque au même endroit.
   //
   // LEUR LÂCHER, LUI, SE DESSINE DEPUIS LE 2026-08-19 — et pas par cette table. La décision
-  // produit du 2026-08-18 (« hors Fiesta, dessiner les objets lâchés à la mort ») passe par
+  // produit du 2026-08-18 (« dessiner les objets lâchés à la mort ») passe par
   // une règle d'ORIGINE, `placementDropped.ts`, qui ne demande à aucune famille d'avoir une
   // forme d'objet actif. Cette table reste ce qu'elle a toujours été : ce qui se dessine
   // quand l'objet est DÉPLOYÉ. Les power-ups n'en ont pas, et n'en auront pas.
@@ -229,14 +230,15 @@ export interface PlacementTime extends PlacementToggles {
  * LES DEUX BASCULES DONT LE RENDU DÉPEND, et elles voyagent ensemble parce qu'elles répondent
  * à la même question : qu'est-ce qui a le droit d'apparaître en plus des objets déployés ?
  *
- * `showDropped` arrive DÉJÀ croisée avec la garde de mode (jamais en Fiesta) : ce module ne
- * connaît aucun mode, et il ne doit pas — le document de rejeu n'en publie aucun, seule la
- * page le sait (cf. `replayFiesta.ts`).
+ * `showDropped` est le RÉGLAGE, et rien de plus. Une garde de mode le croisait jusqu'au
+ * 2026-08-20 pour l'annuler en Fiesta ; elle a été retirée (demande utilisateur : ces lâchers
+ * sont réels, et il veut les voir). Ce module n'a jamais connu aucun mode, et n'en connaît
+ * toujours aucun — le document de rejeu n'en publie pas.
  */
 export interface PlacementToggles {
   /** Les objets non identifiés se dessinent-ils ? Bascule du tiroir, ÉTEINTE par défaut. */
   showUnnamed: boolean
-  /** Les objets de puissance LÂCHÉS se dessinent-ils ? Allumée par défaut, hors Fiesta. */
+  /** Les objets de puissance LÂCHÉS se dessinent-ils ? Bascule du tiroir, ALLUMÉE par défaut. */
   showDropped: boolean
 }
 

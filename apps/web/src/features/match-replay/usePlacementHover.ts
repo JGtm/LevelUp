@@ -51,8 +51,8 @@ export interface PlacementHoverInput {
   enabled: boolean
   showUnnamed: boolean
   /**
-   * Les objets de PUISSANCE lâchés se survolent-ils ? La valeur arrive DÉJÀ croisée avec la
-   * garde de mode (jamais en Fiesta) : le survol suit le dessin, jamais l'inverse.
+   * Les objets de PUISSANCE lâchés se survolent-ils ? La valeur est celle du réglage, la même
+   * que celle du tracé : le survol suit le dessin, jamais l'inverse.
    */
   showDropped: boolean
 }
