@@ -172,3 +172,21 @@ condition = "AND"
 paths = ['''(^|/)apps/go-api/internal/platform/halo/testdata/leaderboard_sample\.html$''']
 regexTarget = "match"
 regexes = ['''(?i)instrumentationkey''']
+
+[[allowlists]]
+# 2026-08-20 — CI Secrets rouge sur feat/v75, finding :
+#   .ai/archive/V7/PLAYER_INDEX_FIRE-EVENTS_RESOLUTION.md:464:generic-api-key
+# Journal de rétro-ingénierie des fire events (cas edge TypeRsamurai). La phrase
+# « sentinel grenade (API confirme : `grenade_kills=1`). » fait lire le mot-clé « API »
+# suivi du champ de statistique `grenade_kills=1` (compteur de kills à la grenade
+# renvoyé par l'API Halo pour ce joueur sur ce match) comme une assignation clé=valeur
+# (entropie suffisante). Ce n'est pas un secret : c'est un champ de stat public cité dans
+# un journal de résolution de bug, pas un credential. Motif strict sur la valeur exacte :
+# un vrai secret collé dans ce même fichier ne matcherait pas ^grenade_kills=1$ et
+# resterait détecté.
+description = "Champ de stat grenade_kills=1 lu comme une clé dans le journal de résolution fire-events"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)\.ai/archive/V7/PLAYER_INDEX_FIRE-EVENTS_RESOLUTION\.md$''']
+regexTarget = "secret"
+regexes = ['''^grenade_kills=1$''']

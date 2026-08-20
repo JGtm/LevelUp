@@ -33,27 +33,14 @@ import (
 	"testing"
 )
 
-// killScopeAllowlist : UNE entrée, un FAUX POSITIF, et elle doit disparaître.
+// killScopeAllowlist : VIDE (cible atteinte le 2026-08-20 — l'unique entrée a disparu
+// avec la suppression de l'outil de sonde qui la causait ; cf. historique git).
 //
 // Contrairement aux ratchets de dette (allowlist décroissante), il n'y a rien à migrer ici : les
 // quatre écrivains lisent déjà `domain/killscope`. Une entrée ajoutée ici serait une seconde
 // source de vérité pour une valeur qui décide de la préséance — la justifier par écrit ET par
 // une date, ou ne pas l'ajouter.
-//
-// `cmd/variant-probe/main.go` (ajouté le 2026-08-20) : ce n'est PAS une seconde source de
-// vérité. Le fichier ne touche ni `match_kill_events`, ni `read_path`, ni la préséance : son
-// unique occurrence est le NOM d'un drapeau CLI — `flag.String("scan", ...)` — qui déclare le
-// mode hors ligne d'une sonde réseau ponctuelle écrite par une AUTRE session. La collision est
-// purement textuelle avec le mot `scan`, entré au ratchet le 2026-08-03 comme voie de film. Le
-// ratchet lui-même ne bouge pas : ni le motif, ni les propriétaires, ni la marche du walk — seul
-// ce fichier-là sort du périmètre, et le self-check ci-dessous interdit que l'entrée survive à
-// sa cause.
-// CONDITION DE REPRISE (à router vers la session variant-probe) : suppression de l'outil (la
-// voie API qu'il sondait est fermée depuis le 2026-08-19) ou renommage du drapeau — dans les
-// deux cas l'entrée DISPARAÎT.
-var killScopeAllowlist = map[string]bool{
-	"cmd/variant-probe/main.go": true,
-}
+var killScopeAllowlist = map[string]bool{}
 
 // killScopeRE matche les valeurs de portée en littéral Go OU SQL (simples quotes).
 //

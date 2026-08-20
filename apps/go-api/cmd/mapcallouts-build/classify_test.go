@@ -4,15 +4,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 )
 
-// dumpRidgeline charge le dump versionné de référence (skip si l'arbre ne le porte pas).
+// dumpRidgeline charge le dump versionné de référence (échec dur si l'arbre ne le porte pas :
+// fichier versionné, son absence sur un checkout propre est une anomalie).
 func dumpRidgeline(t *testing.T) map[int]decoupeZone {
 	t.Helper()
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	_, zones, err := chargeDecoupe(filepath.Join(root, ".ai", "V7.5", "dumps",
 		"callout_zones_ridgeline_clipped.json"))

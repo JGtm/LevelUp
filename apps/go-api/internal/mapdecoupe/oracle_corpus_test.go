@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 )
 
 // corpus rassemble les pièces de l'oracle.
@@ -71,9 +72,9 @@ const moduleRidgeline = "ridgeline"
 
 func ouvreCorpus(t *testing.T) corpus {
 	t.Helper()
-	racine, err := title.FindRepoRoot()
+	racine, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skip("racine du dépôt introuvable :", err)
+		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
 	res := title.NewPathResolver(racine)
 	cat, err := replay.LoadMapCallouts(res.MapCalloutsPath(title.DefaultSlug))
@@ -104,9 +105,12 @@ func ouvreCorpus(t *testing.T) corpus {
 
 func chargeDumpPOC(t *testing.T, path string) map[int]zonePOC {
 	t.Helper()
+	// Fichier VERSIONNÉ (git ls-files confirme .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json)
+	// : son absence sur un checkout propre est une anomalie, pas un cas nominal — t.Fatalf, pas
+	// t.Skip (un skip aurait rendu cet oracle muet en CI, cf. l'en-tête du fichier).
 	blob, err := os.ReadFile(path)
 	if err != nil {
-		t.Skip("dump découpé du POC absent :", err)
+		t.Fatalf("dump découpé du POC illisible (fichier versionné) : %v", err)
 	}
 	var d struct {
 		Zones []zonePOC `json:"zones"`
