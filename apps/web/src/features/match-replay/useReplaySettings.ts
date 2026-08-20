@@ -65,19 +65,22 @@ const HEATMAP_MODE_DEFAULT: HeatmapMode = 'presence'
 const HEATMAP_SPAN_DEFAULT: HeatmapSpan = 'match'
 
 /**
- * LES DEUX EFFETS D'ÉVÉNEMENT, et leurs défauts OPPOSÉS (décision utilisateur du 16/08) :
+ * LES DEUX EFFETS D'ÉVÉNEMENT SONT ALLUMÉS PAR DÉFAUT.
  *
- *  - les ÉCLAIRS DE BOUCHE sont ALLUMÉS : ils disent où le match se joue, image après image,
- *    et c'est le calque que l'utilisateur a validé sans réserve ;
- *  - les EFFETS DE MORT sont ÉTEINTS : « optionnel, désactivé par défaut ». Le trait tueur ->
- *    victime affirme un couple complet ; il ne s'allume que si on le demande.
+ *  - les ÉCLAIRS DE BOUCHE le sont depuis le 16/08 : ils disent où le match se joue, image
+ *    après image, et c'est le calque que l'utilisateur a validé sans réserve ;
+ *  - les EFFETS DE MORT les rejoignent le 2026-08-20. Ils étaient éteints au titre du 16/08
+ *    (« optionnel, désactivé par défaut »), et c'est cette réserve qui s'est retournée contre
+ *    eux : l'utilisateur les CHERCHAIT sans les trouver, puisqu'il fallait déjà savoir qu'ils
+ *    existaient pour aller les allumer. Un trait tueur -> victime au moment de l'élimination
+ *    est précisément ce qu'on vient lire sur un rejeu.
  *
  * Ce n'est PAS un demi-livrable au sens de CLAUDE.md n°11 (« pas de flag qui laisse une
  * feature OFF pour plus tard ») : les deux effets sont livrés, complets, et l'interrupteur
  * est un RÉGLAGE D'AFFICHAGE offert au lecteur — pas un interrupteur de chantier.
  */
 const SHOW_SHOT_FX_DEFAULT = true
-const SHOW_KILL_FX_DEFAULT = false
+const SHOW_KILL_FX_DEFAULT = true
 
 /**
  * LES DEUX BASCULES DES POSES D'ÉQUIPEMENT, et leurs défauts OPPOSÉS eux aussi (décision
@@ -177,7 +180,7 @@ export interface ReplaySettings {
   /** Éclairs de bouche sur TOUS les tirs décodés. Allumés par défaut. */
   showShotFx: boolean
   toggleShotFx: () => void
-  /** Trait orienté tueur -> victime sur les éliminations. ÉTEINT par défaut. */
+  /** Trait orienté tueur -> victime sur les éliminations. ALLUMÉ par défaut. */
   showKillFx: boolean
   toggleKillFx: () => void
   /** Calque des POSES d'équipement (mur, capteur). Allumé par défaut. */
