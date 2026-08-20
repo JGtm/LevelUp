@@ -12,14 +12,16 @@
  *   - `delta = 0` → pas de barre (DEC-5) ; l'axe de symétrie est `y = 0` (DEC-7)
  *     et l'échelle Y est symétrique dynamique (DEC-6).
  *
- * Kill feed conservé (DEC-2) sur le même axe X, dans une grille double :
- *   Grille haute (histogramme + lane alliée + kills alliés + vagues alliées)
- *   Grille basse (lane ennemie + kills ennemis + vagues ennemies)
+ * Lanes de temps et vagues collectives (DEC-2) sur le même axe X, dans une
+ * grille double :
+ *   Grille haute (histogramme + lane alliée + vagues alliées)
+ *   Grille basse (lane ennemie + vagues ennemies)
  *
  * Le calcul par tranche (delta, counts, cumuls, trend) et l'affectation des
  * kills vivent dans `_momentum.ts` (pur, testé). Source de données :
  * `combat_tab.tug_of_war` (bornes de bins), `combat_tab.highlight_events`
- * (kill feed + recompute des counts par équipe), scoreboard (team_side).
+ * (kills : détection des vagues + recompute des counts par équipe), scoreboard
+ * (team_side).
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback, useMemo } from 'react'
@@ -43,7 +45,6 @@ import type {
 } from '@/lib/api/types'
 import { computeMomentumBins, type MomentumBin, type MomentumKill } from './_momentum'
 import { extractCtfCaptures, type CtfCapture } from './_objectiveCaptures'
-import { MatchKillFeed } from './MatchKillFeed'
 import type { MatchViewText } from './i18n'
 // La cascade « allie = meme camp que moi » etait ecrite ici ET dans MatchKDCumulChart, a
 // l'identique : elle vit desormais dans xuidMeta.ts, sous garde-rail.
@@ -238,11 +239,12 @@ interface KillFeedInput {
 }
 
 /**
- * Lanes de temps + vagues collectives (DEC-2). Les KILLS eux-mêmes ne sont plus ici :
- * ils sont rendus en DOM par `MatchKillFeed`, sous le graphe, pour porter l'icône de
- * l'arme TEINTÉE à la couleur d'équipe — un symbole image ECharts se dessine tel quel et
- * ne peut pas être teinté. Les lanes restent dans le graphe : ce sont elles qui portent
- * les segments de vague, dont la position en Y n'a de sens que sur l'échelle des barres.
+ * Lanes de temps + vagues collectives (DEC-2). Les KILLS UN À UN ne sont PAS dessinés :
+ * la carte Dominance montre le momentum (barres) et les temps forts collectifs (vagues),
+ * pas le détail frag par frag — le fil détaillé vit sur la page de rejeu 2D
+ * (`features/match-replay/ReplayKillFeed`). Les lanes restent dans le graphe : ce sont
+ * elles qui portent les segments de vague, dont la position en Y n'a de sens que sur
+ * l'échelle des barres.
  */
 function buildKillFeedSeries(input: KillFeedInput): Record<string, unknown>[] {
   const { bins, allyKills, enemyKills, colorTeam, colorEnemy, xuidMeta, t, allyLaneY } = input
@@ -355,9 +357,9 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objective
       ? [{ key: 'match_view.combat.tug_of_war', datapoints: bins }]
       : []
 
-  // Le binning est calculé UNE fois ici et partagé : le graphe (barres, vagues) et le
-  // kill feed DOM doivent poser leurs kills aux mêmes abscisses. Deux calculs, ce serait
-  // deux vérités et un décalage visible entre l'histogramme et le feed.
+  // Le binning des kills est mémoïsé ici : c'est lui qui alimente la détection des
+  // vagues (`buildKillFeedSeries`), dont les abscisses doivent coller à celles des
+  // barres. Deux calculs, ce serait deux vérités et un décalage visible.
   const xuidMeta = useMemo(() => resolveXuidMeta(scoreboard, meXUID), [scoreboard, meXUID])
   const feedKills = useMemo(
     () => (bins && bins.length > 0 ? computeMomentumBins(bins, events, xuidMeta).kills : []),
@@ -423,10 +425,6 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objective
       height={360}
       buildOption={buildOption}
       emptyMessage={t.combatNoData}
-    >
-      {series.length > 0 && bins && (
-        <MatchKillFeed bins={bins} kills={feedKills} scoreboard={scoreboard} xuidMeta={xuidMeta} t={t} />
-      )}
-    </ChartCard>
+    />
   )
 }

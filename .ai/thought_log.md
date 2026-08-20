@@ -1,3 +1,36 @@
+## [2026-08-20] Lot L3 — nettoyage UI rejeu 2D / vue match (branche wt/ui-nettoyage) — En cours
+
+**Contexte** : demande utilisateur portant huit corrections d ergonomie sur le rejeu 2D et la
+vue match (U1 a U8). Travail isole dans le worktree `LevelUp-wt-ui`, branche
+`wt/ui-nettoyage` basee sur `ce9933ea5`. Un commit par etape, contrat plan-execution.
+
+**Decision technique principale** : voir le journal par etape ci-dessous — chaque etape
+porte sa propre decision, consignee au moment de son commit.
+
+**Journal par etape**
+
+- **U1 — retrait du fil des frags sous le graphe Dominance (Complete)**. Le fil DOM
+  `MatchKillFeed` doublonnait le fil du rejeu 2D sans rien apporter sous l histogramme :
+  supprime avec son test (aucun autre importeur ; `KillFeedLaneKill` n etait consomme que
+  par lui). Les lanes et les vagues collectives RESTENT dans le graphe — elles vivent sur
+  l echelle Y des barres, ce qui n a de sens que dedans — donc `feedKills`/`xuidMeta` sont
+  conserves : ils alimentent `buildKillFeedSeries`. Trois cles i18n retirees
+  (`combatKillFeedTitle`/`UnknownWeapon`/`Coverage`, FR+EN+interface) ;
+  `combatTeamLabel`/`combatEnemyLabel` gardees (partagees). Le mock `tokenCssVar` de
+  `MatchCombatCtfOverlay.test.tsx` est retire apres VERIFICATION empirique : son unique
+  consommateur dans l arbre de ce test etait `MatchKillFeed` via `teamColor.ts` (4 tests
+  toujours verts sans lui). Commentaires anti doc-inversee corriges dans
+  `MatchTugOfWarChart.tsx` (en-tete + bloc `buildKillFeedSeries` + memo du binning),
+  `ReplayKillFeed.tsx` et `teamColor.ts` (ils citaient un fichier desormais supprime).
+
+**Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
+4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
+`tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
+plafond du cliquet `placementFamily.guard.test.ts:172`.
+
+**Conclusion / prochaine etape** : U2 — bug de retour arriere des bascules (effet de bord
+`persistPreference` appele depuis l updater de `setValue`, en phase de rendu).
+
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
 **Contexte** : demande utilisateur (« commit les fichiers en attente ; je ne sais pas si la sonde bouillie faut garder »). Deux fichiers non suivis trainaient dans le principal depuis des jours et genaient chaque verification de proprete avant fusion.
