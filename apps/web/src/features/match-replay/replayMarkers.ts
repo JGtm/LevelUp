@@ -60,7 +60,9 @@ export interface CanvasView {
  * Réglages temporels du calque, tous exprimés en frames de la grille du rejeu.
  * Les valeurs de référence viennent du POC, où elles ont été réglées à l'écran :
  * traînée 7 s, cône maintenu 5 s (la couverture de la visée passe de 43,6 % à 93,5 % du temps
- * de jeu), mort marquée 1,5 s, apparition 0,8 s.
+ * de jeu), apparition 0,8 s. La mort, elle, a été RALLONGÉE depuis : 2,5 s et non plus les
+ * 1,5 s du POC, où la croix passait inaperçue en lecture accélérée (cf. TIMING_MS dans
+ * `useReplayTiming.ts`, seule source des durées déclarées).
  */
 export interface MarkerTiming {
   trail: number
@@ -148,8 +150,10 @@ const SPAWN_ALPHA = 0.8
  *
  * TOUT SE LIT PAR SLOT, jamais par index de trace. Le slot est la clé d'une vie, et le
  * propriétaire de la vie porte sa couleur d'équipe, sa marque d'identité et son nom
- * (rosterLogic.ts). Une vie sans propriétaire rend `null` / `undefined` : le calque la
- * dessine quand même — elle existe — mais sans nom ni marque.
+ * (rosterLogic.ts). Une vie SANS propriétaire rend `null` en couleur, et le calque ne la
+ * dessine PAS : ce sont les caméras et les spectateurs de fin de partie, qui ne désignent
+ * personne (2026-08-20). La marque et le nom, eux, peuvent manquer sur une vie qui se
+ * dessine — elle sort alors sans étiquette ni marque, pas sans marqueur.
  */
 export interface MarkerStyle {
   /** Couleur d'équipe du propriétaire de la vie. `null` = ne rien dessiner pour ce slot. */
@@ -199,7 +203,7 @@ function shapeOfMark(mark: PlayerMarkKind | undefined): MarkerShape {
 
 /**
  * drawTracksLayer dessine chaque vie à la frame courante : celles qui vivent, et celles qui
- * viennent de se fermer (la croix survit 1,5 s à la vie qu'elle termine).
+ * viennent de se fermer (la croix survit 2,5 s à la vie qu'elle termine).
  */
 export function drawTracksLayer(
   ctx: CanvasRenderingContext2D,

@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest'
 
 import { placementIsDeployedObject, placementKind } from './equipmentPlacementsLayer'
 import {
+  WALL_DURATION_MS,
   WALL_OPENING_RAD,
   WALL_PANEL_IDS,
   WALL_RADIUS_M,
@@ -135,12 +136,45 @@ describe('drawWall — l’arc, son halo, et le cercle des poses sans cap', () =
     expect(encres).not.toContain('equipe')
   })
 
-  it('avant `t0` rien n’est tracé, et après `t1` le mur RESTE : il ne disparaît pas', () => {
-    // `t1` date la mise au repos de l'objet, pas sa disparition — que le film ne porte pas
-    // (mesure du 2026-08-18, cf. placementEndFrame). Seule la fin du rejeu referme la fenêtre.
-    expect(painted([pose({ h: 45 })], { ...TIME, frame: 9 })).toBe(0)
-    expect(painted([pose({ h: 45 })], { ...TIME, frame: 101 })).toBeGreaterThan(0)
-    expect(painted([pose({ h: 45 })], { ...TIME, frame: 600 })).toBe(0)
+  /**
+   * LA FENÊTRE DU MUR, et elle se referme — règle changée le 2026-08-20 (demande utilisateur).
+   *
+   * `t1` date la mise au repos de l'objet, PAS sa disparition, que le film ne porte nulle part
+   * (mesure du 2026-08-18, cf. placementEndFrame) : le mur survit donc à `t1`. Ce qui le
+   * referme, c'est la durée OFFICIELLE — comme le capteur avant lui. La fixture bat à 100 ms
+   * par image et pose le mur à `t0 = 10` : la fenêtre court jusqu'à l'image
+   * 10 + 10 000/100 = 110.
+   */
+  it('le mur survit à `t1` mais s’efface au terme de sa durée officielle', () => {
+    const mur = pose({ h: 45 }) // t0 = 10, t1 = 100
+    const fin = 10 + WALL_DURATION_MS / TIME.frameMs
+    expect(fin).toBe(110)
+    // Avant la pose : rien.
+    expect(painted([mur], { ...TIME, frame: 9 })).toBe(0)
+    // Après `t1` (100) : le mur est TOUJOURS là — la mise au repos n'est pas la disparition.
+    expect(painted([mur], { ...TIME, frame: 101 })).toBeGreaterThan(0)
+    // À la dernière image de sa vie officielle : encore là.
+    expect(painted([mur], { ...TIME, frame: fin })).toBeGreaterThan(0)
+    // L'image d'après : plus rien. C'est le changement de règle.
+    expect(painted([mur], { ...TIME, frame: fin + 1 })).toBe(0)
+    expect(painted([mur], { ...TIME, frame: 600 })).toBe(0)
+  })
+
+  /**
+   * LA BORNE MESURÉE L'EMPORTE. Un mur suivi 18,9 s existe au témoin : effacer à 10 s
+   * effacerait un objet que la mesure montre encore vivant. La fenêtre couvre donc toujours
+   * au moins `t1`, exactement comme pour le capteur.
+   */
+  it('un mur suivi PLUS LONGTEMPS que sa durée officielle reste jusqu’à `t1`', () => {
+    const suiviLongtemps = pose({ h: 45, t1: 200 }) // 19 s de suivi, contre 10 s officielles
+    expect(painted([suiviLongtemps], { ...TIME, frame: 150 })).toBeGreaterThan(0)
+    expect(painted([suiviLongtemps], { ...TIME, frame: 200 })).toBeGreaterThan(0)
+    expect(painted([suiviLongtemps], { ...TIME, frame: 201 })).toBe(0)
+  })
+
+  /** Sans cadence d'images, aucune durée ne se convertit : on ne referme rien au hasard. */
+  it('sans `frameMs`, la fenêtre reste ouverte plutôt que de se fermer sur une conversion fausse', () => {
+    expect(painted([pose({ h: 45 })], { ...TIME, frame: 400, frameMs: 0 })).toBeGreaterThan(0)
   })
 })
 

@@ -134,12 +134,6 @@ export interface MatchViewText {
   combatKilledMeFmt: (n: number) => string
   combatIKilledFmt: (n: number) => string
   combatNoData: string
-  // Kill feed DOM de la carte Dominance (icône d'arme teintée par équipe)
-  combatKillFeedTitle: string
-  /** Repli quand la source du dégât n'est pas identifiable sans ambiguïté. */
-  combatKillFeedUnknownWeapon: string
-  /** « 12/37 avec arme » — la couverture dépend du décodage de film, pas du rendu. */
-  combatKillFeedCoverage: (withIcon: number, total: number) => string
   // Overlay capture CTF (charts combat — câblé couche 2)
   combatCtfCaptureLabel: string
   combatCtfCaptureTooltip: (player: string, time: string) => string
@@ -361,9 +355,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `T'a martyrisé ${n} fois`,
     combatIKilledFmt: (n) => `Victimisé ${n} fois`,
     combatNoData: 'Pas de données disponibles',
-    combatKillFeedTitle: 'Fil des frags',
-    combatKillFeedUnknownWeapon: 'Arme inconnue',
-    combatKillFeedCoverage: (withIcon, total) => `${withIcon}/${total} avec arme`,
     combatCtfCaptureLabel: 'Capture',
     combatCtfCaptureTooltip: (player, time) => `${player} — capture à ${time}`,
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
@@ -639,9 +630,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatIKilledFmt: (n) => `You victimized them ${n} times`,
     combatNoData: 'No data available',
     combatCtfCaptureLabel: 'Capture',
-    combatKillFeedTitle: 'Kill feed',
-    combatKillFeedUnknownWeapon: 'Unknown weapon',
-    combatKillFeedCoverage: (withIcon, total) => `${withIcon}/${total} with weapon`,
     combatCtfCaptureTooltip: (player, time) => `${player} — captured at ${time}`,
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',

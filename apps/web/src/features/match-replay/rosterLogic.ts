@@ -69,8 +69,9 @@ export interface ReplayTeamGroup {
  * buildPlayers regroupe les vies par joueur et les joint au scoreboard.
  *
  * LES VIES ANONYMES NE SONT PAS INVENTÉES DE PROPRIÉTAIRE : une trace sans xuid n'entre dans
- * aucun joueur. Elle continue d'être dessinée sur la carte — elle existe — mais elle n'ajoute
- * ni une fiche ni une ligne à personne.
+ * aucun joueur. Elle n'ajoute donc ni fiche ni ligne à personne — et son slot n'entrant dans
+ * aucune des tables ci-dessous, le calque ne la dessine pas non plus (`colorOfSlot` rend
+ * `null`, cf. useSlotIdentity) : ce sont les caméras et les spectateurs de fin de partie.
  *
  * CE QUI EST STABLE SUR TOUT LE REJEU (couleur, marque d'identité, nom) est attribué AU
  * JOUEUR, jamais à la vie : c'est `indexBySlot` ci-dessous qui redescend l'attribut sur

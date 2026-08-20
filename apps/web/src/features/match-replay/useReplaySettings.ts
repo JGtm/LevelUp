@@ -65,19 +65,22 @@ const HEATMAP_MODE_DEFAULT: HeatmapMode = 'presence'
 const HEATMAP_SPAN_DEFAULT: HeatmapSpan = 'match'
 
 /**
- * LES DEUX EFFETS D'ÉVÉNEMENT, et leurs défauts OPPOSÉS (décision utilisateur du 16/08) :
+ * LES DEUX EFFETS D'ÉVÉNEMENT SONT ALLUMÉS PAR DÉFAUT.
  *
- *  - les ÉCLAIRS DE BOUCHE sont ALLUMÉS : ils disent où le match se joue, image après image,
- *    et c'est le calque que l'utilisateur a validé sans réserve ;
- *  - les EFFETS DE MORT sont ÉTEINTS : « optionnel, désactivé par défaut ». Le trait tueur ->
- *    victime affirme un couple complet ; il ne s'allume que si on le demande.
+ *  - les ÉCLAIRS DE BOUCHE le sont depuis le 16/08 : ils disent où le match se joue, image
+ *    après image, et c'est le calque que l'utilisateur a validé sans réserve ;
+ *  - les EFFETS DE MORT les rejoignent le 2026-08-20. Ils étaient éteints au titre du 16/08
+ *    (« optionnel, désactivé par défaut »), et c'est cette réserve qui s'est retournée contre
+ *    eux : l'utilisateur les CHERCHAIT sans les trouver, puisqu'il fallait déjà savoir qu'ils
+ *    existaient pour aller les allumer. Un trait tueur -> victime au moment de l'élimination
+ *    est précisément ce qu'on vient lire sur un rejeu.
  *
  * Ce n'est PAS un demi-livrable au sens de CLAUDE.md n°11 (« pas de flag qui laisse une
  * feature OFF pour plus tard ») : les deux effets sont livrés, complets, et l'interrupteur
  * est un RÉGLAGE D'AFFICHAGE offert au lecteur — pas un interrupteur de chantier.
  */
 const SHOW_SHOT_FX_DEFAULT = true
-const SHOW_KILL_FX_DEFAULT = false
+const SHOW_KILL_FX_DEFAULT = true
 
 /**
  * LES DEUX BASCULES DES POSES D'ÉQUIPEMENT, et leurs défauts OPPOSÉS eux aussi (décision
@@ -103,10 +106,10 @@ const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
  * RAMASSABLE : savoir qu'il est là change la lecture de l'échange suivant, exactement comme
  * savoir qu'une arme est encore sur son socle.
  *
- * LA BASCULE NE COMMANDE RIEN EN FIESTA, et ce n'est pas elle qui le décide : la garde de mode
- * vit dans la page (cf. `replayFiesta.ts`), parce que le document de rejeu ne publie aucun
- * mode. Le tiroir n'affiche donc la commande que là où elle a un effet — même règle que le
- * bouton Zones.
+ * LA BASCULE COMMANDE DANS TOUS LES MODES depuis le 2026-08-20. Une garde de mode l'annulait
+ * en Fiesta au nom de la même décision du 18/08 ; elle masquait en fait 26 lâchers réels sur
+ * le témoin Fiesta `000d5950`, et l'utilisateur veut les voir. Le tiroir affiche donc la
+ * commande dès que le film porte de quoi la commander — même règle que le bouton Zones.
  *
  * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
  * RÉGLAGE D'AFFICHAGE offert au lecteur.
@@ -177,7 +180,7 @@ export interface ReplaySettings {
   /** Éclairs de bouche sur TOUS les tirs décodés. Allumés par défaut. */
   showShotFx: boolean
   toggleShotFx: () => void
-  /** Trait orienté tueur -> victime sur les éliminations. ÉTEINT par défaut. */
+  /** Trait orienté tueur -> victime sur les éliminations. ALLUMÉ par défaut. */
   showKillFx: boolean
   toggleKillFx: () => void
   /** Calque des POSES d'équipement (mur, capteur). Allumé par défaut. */
@@ -188,7 +191,7 @@ export interface ReplaySettings {
   toggleUnnamedPlacements: () => void
   /**
    * Objets de PUISSANCE lâchés à la mort (power-ups, équipements déployables). ALLUMÉ par
-   * défaut — mais sans effet en Fiesta, où la garde de mode de la page l'annule.
+   * défaut, et effectif dans TOUS les modes (cf. SHOW_DROPPED_PLACEMENTS_DEFAULT).
    */
   showDroppedPlacements: boolean
   toggleDroppedPlacements: () => void
@@ -221,6 +224,20 @@ export interface ReplaySettings {
  * le même corps — état initial lu du stockage, bascule qui persiste la nouvelle valeur. Six
  * copies de six lignes se seraient mises à diverger (l'une oubliant la persistance, l'autre
  * la forme fonctionnelle du setState).
+ *
+ * L'ÉCRITURE NE SE FAIT JAMAIS DEPUIS L'UPDATER de `setValue`, et c'est un invariant, pas un
+ * style. `persistPreference` prévient SYNCHRONEMENT tous les abonnés de la clé, qui appellent
+ * `setValue` à leur tour : le faire depuis l'updater, c'est déclencher une mise à jour d'état
+ * en pleine phase de rendu, ré-entrante sur ce hook — et sur l'AUTRE instance de la même clé
+ * quand elle vit chez un ancêtre (`compactCards` : le tiroir dans ReplayCanvas, les fiches via
+ * `useReplayCompactCards` dans la page). React y répondait en gardant l'ancienne valeur une
+ * fois sur deux : la bascule « revenait en arrière » toute seule, et StrictMode, qui invoque
+ * les updaters deux fois pour débusquer exactement cette impureté, doublait le symptôme.
+ *
+ * Donc : `next` se calcule ICI, hors updater, à partir de la valeur rendue ; `setValue` reçoit
+ * une valeur nue ; la persistance vient APRÈS, depuis le gestionnaire d'événement. `value` est
+ * de ce fait une dépendance de la bascule — c'est le prix, et il est juste : une bascule qui ne
+ * connaît pas la valeur qu'elle inverse n'existe pas.
  */
 function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
   const [value, setValue] = useState(() => readStoredFlag(key, fallback))
@@ -229,12 +246,10 @@ function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void]
   // ne toucherait que sa propre copie de l'état.
   useEffect(() => subscribePreference(key, (raw) => setValue(raw === 'true')), [key])
   const toggle = useCallback(() => {
-    setValue((prev) => {
-      const next = !prev
-      persistPreference(key, String(next))
-      return next
-    })
-  }, [key])
+    const next = !value
+    setValue(next)
+    persistPreference(key, String(next))
+  }, [key, value])
   return [value, toggle]
 }
 

@@ -47,6 +47,7 @@ import {
   TIME,
   VIEW,
 } from './test/placementFixtures'
+import { WALL_DURATION_MS } from './placementWall'
 import { REVEAL_RADIUS_PX, SENSOR_DURATION_MS, SENSOR_RADIUS_M } from './threatSensor'
 
 /**
@@ -146,17 +147,30 @@ describe('placementOrigin / placementIsDeployedObject — le filtre du schéma 1
 
 describe('placementEndFrame — `t1` n’est PAS la disparition', () => {
   it('rien avant t0, et t1 ne referme RIEN : le film ne date aucune disparition', () => {
+    // `t1 = 20` ne ferme pas la fenêtre — c'est la mise au repos, pas la disparition. Ce qui
+    // la ferme, pour un mur, c'est sa durée OFFICIELLE (110 avec t0 = 10) ; l'image 21 est
+    // donc encore active, l'image 599 ne l'est plus.
     const p = pose({ t0: 10, t1: 20 })
-    expect([9, 10, 20, 21, 599].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([
+    expect([9, 10, 20, 21, 110].map((f) => isPlacementActive(p, 'wall', f, TIME))).toEqual([
       false, true, true, true, true,
     ])
-    expect(isPlacementActive(p, 'wall', 600, TIME)).toBe(false)
+    expect(isPlacementActive(p, 'wall', 111, TIME)).toBe(false)
+    expect(isPlacementActive(p, 'wall', 599, TIME)).toBe(false)
   })
 
   it('le capteur se tient à sa durée OFFICIELLE : 15 s, soit 150 images de 100 ms', () => {
     const p = pose({ t0: 10, t1: 20, family: 'sensor' })
     expect(placementEndFrame(p, 'sensor', TIME)).toBe(10 + SENSOR_DURATION_MS / TIME.frameMs)
     expect(isPlacementActive(p, 'sensor', 161, TIME)).toBe(false)
+  })
+
+  it('le mur se tient à la sienne : une dizaine de secondes, soit 100 images de 100 ms', () => {
+    const p = pose({ t0: 10, t1: 20 })
+    expect(placementEndFrame(p, 'wall', TIME)).toBe(10 + WALL_DURATION_MS / TIME.frameMs)
+  })
+
+  it('la borne MESURÉE l’emporte pour le mur aussi : un mur suivi 19 s reste jusqu’à `t1`', () => {
+    expect(placementEndFrame(pose({ t0: 10, t1: 200 }), 'wall', TIME)).toBe(200)
   })
 
   it('la borne MESURÉE l’emporte quand elle dépasse la durée officielle', () => {

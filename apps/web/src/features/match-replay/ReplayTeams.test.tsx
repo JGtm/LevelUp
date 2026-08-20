@@ -776,11 +776,13 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
     )
   }
 
+  /** Le nombre de RANGÉES d'une fiche : les enfants directs de la carte d'Alpha. */
+  const rangees = (view: ReturnType<typeof render>) =>
+    (view.getByText('Alpha').parentElement?.parentElement as HTMLElement).childElementCount
+
   it('la ZONE du joueur disparaît, et elle ne laisse pas de place vide', () => {
     const validee = renderCompact({}, false)
     expect(validee.getByTitle('Zone de la carte')).toBeTruthy()
-    const rangees = (view: ReturnType<typeof render>) =>
-      (view.getByText('Alpha').parentElement?.parentElement as HTMLElement).childElementCount
     const avant = rangees(validee)
     validee.unmount()
     const compacte = renderCompact({}, true)
@@ -841,5 +843,39 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
   it('la fiche MORTE reste lisible en compact : le retour s’affiche', () => {
     const compacte = renderCompact({}, true, 140)
     expect(compacte.getByText('Réapparition ?')).toBeTruthy()
+  })
+
+  /**
+   * LA PARITÉ DE GABARIT MORTE/VIVANTE, en compact — la règle 1.1 de la fiche, épinglée là
+   * où elle n'était vérifiée qu'en fiche validée. Le nombre de rangées ne doit dépendre que
+   * de `compact`, JAMAIS de l'état vital : une fiche qui perd une rangée à la mort fait
+   * sauter toute la colonne à chaque élimination, et sur une équipe de douze la liste danse
+   * en permanence. La mort remplace le CONTENU d'une rangée, jamais la rangée.
+   */
+  it('la fiche MORTE en compact a EXACTEMENT le gabarit de la vivante', () => {
+    const vivante = renderCompact({}, true, 10)
+    const attendu = rangees(vivante)
+    vivante.unmount()
+    const morte = renderCompact({}, true, 140)
+    expect(morte.getByText('Réapparition ?')).toBeTruthy()
+    expect(rangees(morte)).toBe(attendu)
+  })
+
+  /**
+   * AUCUNE CLASSE DE HAUTEUR NE SE CONDITIONNE À L'ÉTAT VITAL — le corollaire de la règle
+   * ci-dessus, et celui qu'un futur `state.alive ? 'h-6' : 'h-4'` casserait sans toucher au
+   * nombre de rangées. Les rangées RÉSERVENT leur place (`h-3.5` fixe pour la vitalité,
+   * `min-h-[18px]` pour les armes) : ce sont les mêmes classes, mortes ou vivantes. Seuls le
+   * CONTENU et la couleur changent, et la couleur passe par `style`, pas par une classe.
+   */
+  it('les classes des rangées sont identiques morte et vivante, en compact', () => {
+    const classes = (view: ReturnType<typeof render>) =>
+      [...((view.getByText('Alpha').parentElement?.parentElement as HTMLElement).children)]
+        .map((e) => e.className)
+    const vivante = renderCompact({}, true, 10)
+    const attendues = classes(vivante)
+    vivante.unmount()
+    const morte = renderCompact({}, true, 140)
+    expect(classes(morte)).toEqual(attendues)
   })
 })
