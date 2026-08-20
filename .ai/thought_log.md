@@ -1,3 +1,53 @@
+## [2026-08-20] Lot L1 hygiene CI + dettes registre (H1-H8) — Complete
+
+**Contexte** : execution du lot L1 « hygiene CI + dettes registre » pilote par le superviseur,
+dans le worktree dedie `LevelUp-wt-hygiene` (branche `wt/hygiene-ci`, base `feat/v75` a
+`ce9933ea5`). 8 items independants (H1 a H8), chacun avec ses propres gates, un commit par
+etape, aucun fix hors perimetre traite (decouvertes notees, pas corrigees).
+
+**Decision technique principale** : (1) H1 — exception gitleaks CIBLEE sur le faux positif
+`grenade_kills=1` (`.ai/archive/V7/PLAYER_INDEX_FIRE-EVENTS_RESOLUTION.md:464`, un champ de
+stat public lu comme une cle par la regle `generic-api-key`) ; binaire gitleaks absent du poste
+(PATH verifie bash + powershell, recherche filesystem exhaustive), exception construite depuis
+la valeur retracee A LA MAIN via la regex par defaut `generic-api-key` (mot-cle + operateur +
+capture), sans aucun telechargement — des binaires orphelins trouves dans le scratchpad
+d'AUTRES sessions ont ete deliberement ecartes (source non fiable, hors du mecanisme PATH
+sanctionne par `gitleaks.sh`). (2) H2 — suppression de `cmd/variant-probe` (decision
+superviseur : session sonde close, voie API fermee, 0 appelant) + ses 2 allowlists datees
+2026-08-20 (`no_halowaypoint_literal_test.go`, `no_raw_kill_scope_literal_test.go` —
+`killScopeAllowlist` revient VIDE, sa cible ; son self-check `TestKillScopeAllowlistEntriesStayJustified`
+tolere une map vide). (3) H3 — `ZoneStateNow` (match-replay) de-exporte, usage confirme
+interne au fichier seul. (4) H4 — 2 tests repo-root migres de `title.FindRepoRoot()+t.Skip`
+(motif qui rend une garde muette en CI, defaut R1-1 deja documente) vers
+`testutil.RepoRoot()+t.Fatalf` (`internal/mapdecoupe/oracle_corpus_test.go`,
+`cmd/mapcallouts-build/classify_test.go`) + retrait des 2 entrees d'allowlist devenues
+obsoletes dans `no_repo_root_walk_test.go`. (5)-(6) H5/H6 — 3 lignes mal formees (dont un
+FAUX VERT : `-run 'A\|B'` est un motif littéral en RE2, 0 test matche malgre le `ok` observe)
+et 2 dettes statuees dans `.ai/V7.5/REGISTRE_REPORTS.md` (tableau 4 colonnes / 5 pipes,
+verifie avant/apres CHAQUE edit — une premiere passe H5 avait accidentellement reintroduit
+un `\|` dans le texte explicatif, detectee par le recomptage et corrigee). (7) H7 — lint Go
+(`golangci-lint`, 0 issues) et web (`eslint`, 20 warnings/0 erreur, aucun sur le seul fichier
+web touche par ce lot) verifies ; aucun diff donc aucun commit. (8) H8 — doc perimee de
+`killsource/doc.go` corrigee : le paquet EST importe par l'application
+(`internal/replaybuild/replaybuild.go:36`, fonction `neutralDeaths`, brique partagee par
+plusieurs producteurs d'artefacts), le pont cite comme unique importeur
+(`internal/sync/killsource_bridge.go`) n'existe plus (verifie `test -f`) ; preuve SHA-256
+voisine preservee verbatim.
+
+**Resultats observes** : 7 commits (H1 `bc510f2c0`, H2 `1f852d644`, H3 `b2e417794`,
+H4 `647f5c8c7`, H5 `543b54a26`, H6 `3bb58e689`, H8 `b71ee549a`) ; H7 sans commit (etape de
+verification pure, 0 diff). Tous les gates prescrits verts sur pieces (go build/vet/test par
+paquet cible, `npx tsc -b --force` + vitest web apres `npm ci` — node_modules absent du
+worktree —, les 2 commandes de remplacement H5 rejouees REELLEMENT en PASS). Node_modules du
+worktree installe a neuf (`npm ci`, 505 paquets, 10 s, lockfile identique au principal).
+Aucun push.
+
+**Conclusion / prochaine etape** : CR complet transmis au superviseur (statuts par etape,
+fichiers:lignes, codes de sortie et extraits de gate, decouvertes NON traitees — notamment
+2 autres skips de `mapdecoupe` portant sur des fichiers EUX AUSSI versionnes
+(`map_callouts.json`, `map_backgrounds/ridgeline.*`), non nommes par le perimetre H4, donc non
+touches). Fusion de `wt/hygiene-ci` vers `feat/v75` a la discretion du superviseur.
+
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
 **Contexte** : demande utilisateur (« commit les fichiers en attente ; je ne sais pas si la sonde bouillie faut garder »). Deux fichiers non suivis trainaient dans le principal depuis des jours et genaient chaque verification de proprete avant fusion.
