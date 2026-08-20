@@ -11,8 +11,12 @@
  * « hors Fiesta c'est tactiquement interessant (power-ups, armes de puissance, equipements
  * laches a la mort) ». Un surbouclier au sol change ce que vaut le prochain échange ; une
  * grenade à fragmentation au sol, non. Ce fichier porte la LISTE de ce qui vaut le coup, et
- * rien d'autre — la garde de MODE (jamais en Fiesta) vit ailleurs (`replayFiesta.ts`), parce
- * que le document de rejeu ne porte aucun mode et que seule la page le connaît.
+ * rien d'autre.
+ *
+ * LA RESTRICTION « HORS FIESTA » A ÉTÉ LEVÉE LE 2026-08-20 : elle masquait 26 lâchers bien
+ * réels sur le témoin Fiesta `000d5950` (11 murs, 15 capteurs), et l'utilisateur veut les
+ * voir. Le réglage « Objets lâchés au sol » gouverne seul, dans tous les modes ; plus aucune
+ * garde de mode ne le croise.
  *
  * LES ARMES LÂCHÉES N'Y SONT PAS, ET CE N'EST PAS UN OUBLI. `equipmentPlacements` est un canal
  * d'ÉQUIPEMENT (tag `eqip`) ; `weaponPads` est un canal de SOCLES (position où une arme

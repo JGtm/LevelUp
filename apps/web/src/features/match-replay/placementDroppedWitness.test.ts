@@ -13,20 +13,18 @@
  *    poses — un surbouclier — noyée dans 108 grenades à fragmentation et 11 répulseurs. Le
  *    lot doit en faire apparaître EXACTEMENT une marque de plus, pas 130 ;
  *  - `000d5950` (Super Fiesta, Cliffhanger) en porte 26 (15 capteurs, 11 murs) sur 295 poses,
- *    et la garde de mode doit en faire apparaître ZÉRO. Sans la mesure des 26, l'assertion
- *    « rien ne change » ne prouverait rien : on ne saurait pas si la garde a agi ou si le film
- *    n'avait simplement rien à montrer.
+ *    et ces 26 marques DOIVENT apparaître quand la bascule est allumée.
  *
- * LA GARDE DE MODE EST JOUÉE, PAS SIMULÉE : le test passe par `matchFiestaGuard` avec le
- * `mode_ui` que le serveur publie réellement pour chaque match (« Roi de la colline » et
- * « Super Fiesta »), pour que le câblage de la page soit couvert avec le calque.
+ * LA GARDE DE MODE A DISPARU LE 2026-08-20 (demande utilisateur : « je veux les voir »). Elle
+ * masquait ces 26 lâchers réels au nom d'une décision produit du 18/08 ; le réglage
+ * « Objets lâchés au sol » gouverne désormais seul, dans TOUS les modes. Ce témoin mesure
+ * donc exactement l'inverse de ce qu'il mesurait : les 26 marques sont ce que la Fiesta gagne.
  */
 import { describe, expect, it } from 'vitest'
 
-import type { MatchViewHeader, ReplayEquipmentPlacement } from '@/lib/api/types'
+import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
 import { type PlacementTime } from './equipmentPlacementsLayer'
-import { matchFiestaGuard } from './replayFiesta'
 import { DEVICE_ID, OVERSHIELD_ID, painted, PANEL_ID, SENSOR_ID, TIME } from './test/placementFixtures'
 
 /** Un recensement : `famille/origine` -> nombre de poses, tel que relevé sur l'artefact. */
@@ -106,49 +104,24 @@ function poses(census: Census): ReplayEquipmentPlacement[] {
   return out
 }
 
-/** Un en-tête de Match View minimal : seuls `mode_ui` et `playlist_label` sont lus. */
-function header(modeUi: string): MatchViewHeader {
-  return {
-    dominance_flag: false,
-    had_bot_teammate: false,
-    is_excluded: false,
-    is_favorite: false,
-    is_ranked: false,
-    map_ui: 'Carte',
-    match_id: 'temoin',
-    mode_ui: modeUi,
-    outcome_color: '',
-    outcome_label: '',
-    performance_display: '',
-    playlist_label: 'Quick Play',
-    replay_available: true,
-    start_time_label: '',
-  }
-}
-
 /**
- * Ce que la PAGE dessinerait : la bascule du tiroir (allumée par défaut) croisée avec la garde
- * de mode. C'est exactement l'expression câblée dans `ReplayCanvas`.
+ * Ce que la PAGE dessinerait : la bascule du tiroir, ALLUMÉE par défaut, et rien d'autre.
+ * C'est exactement l'expression câblée dans `ReplayCanvas` depuis le retrait de la garde de
+ * mode — le mode du match n'entre plus dans le calcul.
  */
-function timeFor(modeUi: string): PlacementTime {
-  const droppedAllowed = matchFiestaGuard(header(modeUi)) === 'clear'
-  return { ...TIME, showDropped: droppedAllowed }
-}
+const AVEC_LACHERS: PlacementTime = { ...TIME, showDropped: true }
+const SANS_LACHERS: PlacementTime = { ...TIME, showDropped: false }
 
-describe('témoin 01e1f945 — roi de la colline, Catalyst (hors Fiesta)', () => {
+describe('témoin 01e1f945 — roi de la colline, Catalyst', () => {
   const scene = poses(KOTH)
 
   it('le recensement fige bien 151 poses', () => {
     expect(scene).toHaveLength(151)
   })
 
-  it('le mode n’est PAS une Fiesta : les lâchés ont le droit de se dessiner', () => {
-    expect(matchFiestaGuard(header('Roi de la colline'))).toBe('clear')
-  })
-
   it('EXACTEMENT une primitive de plus : le surbouclier, et rien des 130 autres lâchers', () => {
-    const avant = painted(scene, { ...TIME, showDropped: false })
-    const apres = painted(scene, timeFor('Roi de la colline'))
+    const avant = painted(scene, SANS_LACHERS)
+    const apres = painted(scene, AVEC_LACHERS)
     expect(apres - avant).toBe(1)
   })
 })
@@ -160,21 +133,14 @@ describe('témoin 000d5950 — Super Fiesta, Cliffhanger', () => {
     expect(scene).toHaveLength(295)
   })
 
-  it('le mode EST une Fiesta, reconnu sur le `mode_ui` que le serveur publie', () => {
-    expect(matchFiestaGuard(header('Super Fiesta'))).toBe('fiesta')
-  })
-
-  it('RIEN ne change : la garde annule la bascule, à la primitive près', () => {
-    const avant = painted(scene, { ...TIME, showDropped: false })
-    const apres = painted(scene, timeFor('Super Fiesta'))
-    expect(apres).toBe(avant)
-  })
-
-  it('et la garde a bien AGI : sans elle, ce film gagnerait 26 marques', () => {
-    // 15 capteurs lâchés + 11 murs lâchés. Sans ce chiffre, le test précédent ne prouverait
-    // pas que la garde sert à quelque chose sur CE film.
-    const avant = painted(scene, { ...TIME, showDropped: false })
-    const sansGarde = painted(scene, { ...TIME, showDropped: true })
-    expect(sansGarde - avant).toBe(26)
+  /**
+   * LES 26 LÂCHERS DE LA FIESTA SONT VISIBLES — c'est le changement du 2026-08-20. La garde de
+   * mode les masquait tous ; le réglage les rend, et ce chiffre est celui du film réel :
+   * 15 capteurs lâchés + 11 murs lâchés.
+   */
+  it('la Fiesta gagne bien ses 26 marques : le mode ne masque plus rien', () => {
+    const avant = painted(scene, SANS_LACHERS)
+    const apres = painted(scene, AVEC_LACHERS)
+    expect(apres - avant).toBe(26)
   })
 })
