@@ -148,8 +148,10 @@ const SPAWN_ALPHA = 0.8
  *
  * TOUT SE LIT PAR SLOT, jamais par index de trace. Le slot est la clé d'une vie, et le
  * propriétaire de la vie porte sa couleur d'équipe, sa marque d'identité et son nom
- * (rosterLogic.ts). Une vie sans propriétaire rend `null` / `undefined` : le calque la
- * dessine quand même — elle existe — mais sans nom ni marque.
+ * (rosterLogic.ts). Une vie SANS propriétaire rend `null` en couleur, et le calque ne la
+ * dessine PAS : ce sont les caméras et les spectateurs de fin de partie, qui ne désignent
+ * personne (2026-08-20). La marque et le nom, eux, peuvent manquer sur une vie qui se
+ * dessine — elle sort alors sans étiquette ni marque, pas sans marqueur.
  */
 export interface MarkerStyle {
   /** Couleur d'équipe du propriétaire de la vie. `null` = ne rien dessiner pour ce slot. */

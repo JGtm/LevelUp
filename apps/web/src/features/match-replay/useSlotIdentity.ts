@@ -9,8 +9,14 @@
  * de plus (CLAUDE.md n°5).
  *
  * TOUT EST INDEXÉ PAR SLOT, jamais par rang de trace : un slot est une VIE, et son
- * propriétaire est ce qui ne change pas d'une vie à l'autre. Une vie sans propriétaire tombe
- * sur les replis — encre neutre, aucune marque, aucun nom.
+ * propriétaire est ce qui ne change pas d'une vie à l'autre.
+ *
+ * UNE VIE SANS PROPRIÉTAIRE NE SE DESSINE PAS. `buildPlayers` écarte les traces sans xuid
+ * (`if (!track.xuid) continue`) : leur slot n'entre donc dans aucune table, et `colorOfSlot`
+ * rend `null` — la convention du calque pour « ne rien dessiner » (cf. `MarkerStyle`). Ce
+ * sont les caméras et les spectateurs de fin de partie ; les replier sur l'encre neutre
+ * semait des pions gris qui ne désignaient personne (retour utilisateur du 2026-08-20). La
+ * marque et le nom, eux, tombent déjà sur `undefined` / `null`.
  */
 import { useCallback, useMemo } from 'react'
 
@@ -22,9 +28,12 @@ import { buildPlayers, colorBySlot, markBySlot, nameBySlot, sideBySlot } from '.
 import type { ReplayDocumentReady } from './replayNormalize'
 
 export interface SlotIdentity {
-  /** Couleur d'équipe d'une vie, repli neutre compris — pour les marqueurs et les traînées. */
-  colorOfSlot: (slot: number) => string
-  /** La MÊME table, brute : les effets de mort veulent distinguer « pas de couleur » du repli. */
+  /**
+   * Couleur d'équipe d'une vie — pour les marqueurs et les traînées. `null` = vie sans
+   * propriétaire, donc RIEN à dessiner (convention `MarkerStyle.colorOfSlot`).
+   */
+  colorOfSlot: (slot: number) => string | null
+  /** La MÊME table, brute. Elle ne porte que les slots dont le propriétaire est connu. */
   slotColors: ReadonlyMap<number, string>
   markOfSlot: (slot: number) => PlayerMarkKind | undefined
   nameOfSlot: (slot: number) => string | null
@@ -43,7 +52,11 @@ export interface SlotIdentityInput {
   marks: ReadonlyMap<string, PlayerMarkKind> | undefined
   /** Couleur d'un camp, tokens déjà résolus par l'appelant (ils suivent la palette). */
   teamColorOf: (ally: boolean) => string
-  /** Encre servie quand l'identité est inconnue : ni équipe inventée, ni point invisible. */
+  /**
+   * Encre servie à une entrée de roster SANS xuid : elle a un slot, donc elle se dessine,
+   * mais aucune équipe ne peut lui être attribuée (cf. `rosterLogic.colorBySlot`). À ne pas
+   * confondre avec une vie ABSENTE des tables — celle-là ne se dessine pas du tout.
+   */
   neutral: string
 }
 
@@ -56,9 +69,12 @@ export function useSlotIdentity({
     () => colorBySlot(players, teamColorOf, (xuid) => xuidMeta?.get(xuid)?.ally ?? false, neutral),
     [players, teamColorOf, xuidMeta, neutral],
   )
+  // PAS DE REPLI ICI : un slot absent de la table est une vie sans propriétaire (caméra,
+  // spectateur de fin de partie), et `null` dit au calque de ne rien dessiner. Le repli sur
+  // l'encre neutre semait des pions gris qui ne désignaient personne.
   const colorOfSlot = useCallback(
-    (slot: number) => slotColors.get(slot) ?? neutral,
-    [slotColors, neutral],
+    (slot: number): string | null => slotColors.get(slot) ?? null,
+    [slotColors],
   )
   const slotMarks = useMemo(() => markBySlot(players, marks ?? NO_MARKS), [players, marks])
   const markOfSlot = useCallback((slot: number) => slotMarks.get(slot), [slotMarks])

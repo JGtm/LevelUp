@@ -62,6 +62,27 @@ porte sa propre decision, consignee au moment de son commit.
   (`overflow-hidden`, « la rangee unique refuse de se replier », lecon C1) — `overflow-hidden`
   ecrete a l affichage mais n empeche pas la boite de grandir.
 
+- **U4 — plus de pions gris pour les vies sans identite (Complete)**. Cause confirmee sur
+  pieces : `buildPlayers` fait `if (!track.xuid) continue`, donc le slot d une trace anonyme
+  (camera, spectateur de fin de partie) n entre dans AUCUNE table d identite ;
+  `slotColors.get(slot)` rend `undefined` et le repli `?? neutral` le peignait en gris.
+  Correctif : `?? null`, signature `colorOfSlot: (slot) => string | null`. La garde
+  `if (!color) return` de `drawTracksLayer` fait le reste — elle existait deja, avec la
+  convention documentee « null = ne rien dessiner ». `tsc` exit 0 du premier coup : TOUS les
+  consommateurs typaient deja `string | null` (`replayMarkers.ts:156`,
+  `equipmentPlacementsLayer.ts:270`, `replayDraw.ts:253`), et les deux autres sites de
+  ReplayCanvas passaient deja la table BRUTE avec `?? null`. Le seul consommateur reel de
+  `colorOfSlot` est `drawTracksLayer`.
+  `neutral` EST CONSERVE : il a encore un consommateur, `colorBySlot` (`rosterLogic.ts:171`,
+  entree de roster avec xuid vide) — ce n est donc pas du code mort. Sa doc est reformulee
+  pour dire ce cas et le distinguer d une vie absente des tables.
+  Aucun test n attendait le repli neutre — le correctif partait donc NON GARDE : creation de
+  `useSlotIdentity.test.ts` (4 cas ; le hook n avait aucun test). Verifie qu il discrimine :
+  ROUGE sur l ancien repli (« expected 'encre-neutre' to be null »), VERT apres.
+  Trois commentaires anti doc-inversee corriges — ils affirmaient tous « le calque la dessine
+  quand meme » : en-tete de `useSlotIdentity.ts`, `MarkerStyle` dans `replayMarkers.ts`,
+  `buildPlayers` dans `rosterLogic.ts`.
+
 **Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
 4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
 `tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
@@ -75,7 +96,7 @@ fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.
 `computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
 supprime en U1 ; fusionnable, mais hors perimetre du lot.
 
-**Conclusion / prochaine etape** : U4 — ne plus dessiner en gris les vies sans identite.
+**Conclusion / prochaine etape** : U5 — disparition des murs portatifs a duree officielle.
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
