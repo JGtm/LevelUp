@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "title_slug": "halo_infinite",
-  "generated_at": "2026-08-19T09:27:29.7149813Z",
+  "generated_at": "2026-08-20T09:36:27.5286438Z",
   "maps": {
     "003c828e-c2b3-43b5-b482-4005f9d4ec25": {
       "map_id": "003c828e-c2b3-43b5-b482-4005f9d4ec25",
@@ -24134,13 +24134,13 @@
     },
     "6aa0a116-66a6-4242-a1b3-41aa417d6dc6": {
       "map_id": "6aa0a116-66a6-4242-a1b3-41aa417d6dc6",
-      "version_id": "",
-      "public_name": "",
-      "mvar_file": "oasis_map.mvar",
-      "module": "oasis_map",
+      "version_id": "32465034-7f98-4dea-b178-8058d3d39c8e",
+      "public_name": "Oasis",
+      "mvar_file": "btb_exiled.mvar",
+      "module": "btb_exiled",
       "level_id": -611378397,
-      "objects_n": 518,
-      "fetched_at": "2026-07-26T00:13:21.6560553Z",
+      "objects_n": 497,
+      "fetched_at": "2026-08-20T09:36:35.7091336Z",
       "objectives": [
         {
           "role": "extraction_zone",
@@ -24148,7 +24148,7 @@
           "pos": {
             "x": 3.06732177734375,
             "y": 0.12631621956825256,
-            "z": 25.307252883911133
+            "z": 24.6064453125
           },
           "forward": {
             "x": -4.371138828673793e-8,
@@ -24156,7 +24156,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 506661536,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -24200,7 +24200,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1409481054,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -24245,7 +24245,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -669982579,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -24282,7 +24282,7 @@
           "pos": {
             "x": 2.312483310699463,
             "y": 48.1153564453125,
-            "z": 25.39266014099121
+            "z": 27.618927001953125
           },
           "forward": {
             "x": 1,
@@ -24290,7 +24290,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1537233097,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -24325,9 +24325,9 @@
           "role": "extraction_zone",
           "type_id": -1239931096,
           "pos": {
-            "x": 47.82254409790039,
+            "x": 48.28358840942383,
             "y": -0.09162057936191559,
-            "z": 20.809904098510742
+            "z": 21.42597198486328
           },
           "forward": {
             "x": -4.371138828673793e-8,
@@ -24335,7 +24335,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -973497675,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -24380,13 +24380,10 @@
             "z": -0.004714699927717447
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -321359028,
           "labels": [
             "ctf_include",
             "flag_delivery"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 370
         },
@@ -24404,7 +24401,7 @@
             "z": -0.004714699927717447
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1169896517,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -24412,110 +24409,12 @@
           "object_index": 375
         },
         {
-          "role": "flag_delivery",
-          "type_id": -863615175,
-          "pos": {
-            "x": 8.052571296691895,
-            "y": 43.411312103271484,
-            "z": 24.390792846679688
-          },
-          "forward": {
-            "x": -0.9999247193336487,
-            "y": -0.012271496467292309,
-            "z": 0
-          },
-          "team_index": 0,
-          "instance_id": 0,
-          "labels": [
-            "flag_delivery"
-          ],
-          "unresolved_labels": [
-            755967513,
-            -363505968,
-            -1734121946
-          ],
-          "object_index": 506,
-          "shape": {
-            "family": "box",
-            "half_x": 3.899993896484375,
-            "half_y": 3.899993896484375,
-            "up_z": 6.399993896484375,
-            "down_z": 0,
-            "forward": {
-              "x": -0.9999247193336487,
-              "y": -0.012271496467292309,
-              "z": 0
-            },
-            "up": {
-              "x": 0,
-              "y": 0,
-              "z": 1
-            },
-            "raw": {
-              "family": 3,
-              "s5": 511180,
-              "s6": 511180,
-              "s7": 419430,
-              "s8": 0
-            }
-          }
-        },
-        {
-          "role": "flag_delivery",
-          "type_id": -863615175,
-          "pos": {
-            "x": 19.280351638793945,
-            "y": -33.77826690673828,
-            "z": 23.880168914794922
-          },
-          "forward": {
-            "x": -0.9967635273933411,
-            "y": -0.008942869491875172,
-            "z": 0.07989014685153961
-          },
-          "team_index": 1,
-          "instance_id": 0,
-          "labels": [
-            "flag_delivery"
-          ],
-          "unresolved_labels": [
-            -1793455665,
-            -363505968,
-            -1734121946
-          ],
-          "object_index": 509,
-          "shape": {
-            "family": "box",
-            "half_x": 3.899993896484375,
-            "half_y": 3.899993896484375,
-            "up_z": 7.79998779296875,
-            "down_z": 0,
-            "forward": {
-              "x": -0.9967635273933411,
-              "y": -0.008942869491875172,
-              "z": 0.07989014685153961
-            },
-            "up": {
-              "x": 0.07955663651227951,
-              "y": 0.03188233822584152,
-              "z": 0.9963204264640808
-            },
-            "raw": {
-              "family": 3,
-              "s5": 511180,
-              "s6": 511180,
-              "s7": 511180,
-              "s8": 0
-            }
-          }
-        },
-        {
           "role": "flag_spawn",
           "type_id": -1430101324,
           "pos": {
-            "x": 47.72087860107422,
-            "y": -18.150285720825195,
-            "z": 22.476943969726562
+            "x": 6.800000190734863,
+            "y": -21.500001907348633,
+            "z": 25.600000381469727
           },
           "forward": {
             "x": 1,
@@ -24523,14 +24422,11 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -2023867686,
           "labels": [
             "ctf_include",
             "ctf_multi_exclude",
             "flag_spawn"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 371
         },
@@ -24538,9 +24434,9 @@
           "role": "flag_spawn",
           "type_id": -1430101324,
           "pos": {
-            "x": -22.87541389465332,
-            "y": -20.714920043945312,
-            "z": 25.49437141418457
+            "x": 23.631694793701172,
+            "y": -39,
+            "z": 24.256305694580078
           },
           "forward": {
             "x": 1,
@@ -24548,14 +24444,11 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -204384923,
           "labels": [
             "ctf_multi_exclude",
             "flag_spawn",
             "ctf_include"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 372
         },
@@ -24563,9 +24456,9 @@
           "role": "flag_spawn",
           "type_id": -1430101324,
           "pos": {
-            "x": -26.895174026489258,
-            "y": 20.192203521728516,
-            "z": 25.251720428466797
+            "x": 8.800000190734863,
+            "y": 43.39999771118164,
+            "z": 24.399999618530273
           },
           "forward": {
             "x": 1,
@@ -24573,14 +24466,11 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 123522309,
           "labels": [
             "ctf_multi_exclude",
             "flag_spawn",
             "ctf_include"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 373
         },
@@ -24588,9 +24478,9 @@
           "role": "flag_spawn",
           "type_id": -1430101324,
           "pos": {
-            "x": 6.679367542266846,
-            "y": -17.012792587280273,
-            "z": 25.60025405883789
+            "x": 19.200000762939453,
+            "y": -53.70000076293945,
+            "z": 26.299999237060547
           },
           "forward": {
             "x": 1,
@@ -24598,13 +24488,10 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": 1743768389,
           "labels": [
             "ctf_include",
             "flag_spawn"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 374
         },
@@ -24612,9 +24499,9 @@
           "role": "flag_spawn",
           "type_id": -1430101324,
           "pos": {
-            "x": 41.57501983642578,
-            "y": 30.489959716796875,
-            "z": 21.691017150878906
+            "x": 4.300000190734863,
+            "y": 26.30000114440918,
+            "z": 25.200302124023438
           },
           "forward": {
             "x": 1,
@@ -24622,14 +24509,11 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -795280263,
           "labels": [
             "ctf_include",
             "flag_spawn",
             "ctf_multi_exclude"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 376
         },
@@ -24637,9 +24521,9 @@
           "role": "flag_spawn",
           "type_id": -1430101324,
           "pos": {
-            "x": 4.424530029296875,
-            "y": 30.333019256591797,
-            "z": 25.205242156982422
+            "x": 0.20000000298023224,
+            "y": 49,
+            "z": 25.38189125061035
           },
           "forward": {
             "x": 1,
@@ -24647,13 +24531,10 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1803981767,
           "labels": [
             "ctf_include",
             "flag_spawn"
-          ],
-          "unresolved_labels": [
-            -1750228438
           ],
           "object_index": 377
         },
@@ -24671,135 +24552,22 @@
             "z": 0
           },
           "team_index": -1,
-          "instance_id": 0,
+          "instance_id": -1987286594,
           "labels": [
             "ctf_neutral_include",
             "flag_spawn"
           ],
           "object_index": 378
-        },
-        {
-          "role": "flag_spawn",
-          "type_id": -1430101324,
-          "pos": {
-            "x": 4.422779560089111,
-            "y": 25.9856014251709,
-            "z": 25.200510025024414
-          },
-          "forward": {
-            "x": 0,
-            "y": 1,
-            "z": 0
-          },
-          "team_index": 0,
-          "instance_id": 0,
-          "labels": [
-            "ctf_include",
-            "flag_spawn"
-          ],
-          "unresolved_labels": [
-            1186941395
-          ],
-          "object_index": 497
-        },
-        {
-          "role": "oddball_spawn",
-          "type_id": 848694842,
-          "pos": {
-            "x": 23.62826156616211,
-            "y": -39.05971908569336,
-            "z": 24.26510238647461
-          },
-          "forward": {
-            "x": -1,
-            "y": 0,
-            "z": 0
-          },
-          "team_index": 1,
-          "instance_id": 0,
-          "labels": [
-            "oddball_spawn"
-          ],
-          "unresolved_labels": [
-            755967513,
-            -363505968,
-            -1843278509
-          ],
-          "object_index": 508
-        },
-        {
-          "role": "oddball_spawn",
-          "type_id": 848694842,
-          "pos": {
-            "x": 2.9742777347564697,
-            "y": 44.34254837036133,
-            "z": 24.40168571472168
-          },
-          "forward": {
-            "x": -1,
-            "y": 0,
-            "z": 0
-          },
-          "team_index": 0,
-          "instance_id": 0,
-          "labels": [
-            "oddball_spawn"
-          ],
-          "unresolved_labels": [
-            -1793455665,
-            -363505968,
-            -1843278509
-          ],
-          "object_index": 512
-        },
-        {
-          "role": "oddball_spawn",
-          "type_id": 848694842,
-          "pos": {
-            "x": 5.684798240661621,
-            "y": 0.008261289447546005,
-            "z": 23.788684844970703
-          },
-          "forward": {
-            "x": -1,
-            "y": 0,
-            "z": 0
-          },
-          "team_index": -1,
-          "instance_id": 0,
-          "labels": [
-            "oddball_spawn"
-          ],
-          "unresolved_labels": [
-            -1793455665,
-            -363505968,
-            -1537427652
-          ],
-          "object_index": 514
         }
       ],
       "unresolved_labels": {
         "-1265790513": 2,
         "-1505155597": 56,
-        "-1537427652": 1,
         "-1624244313": 5,
-        "-1734121946": 6,
-        "-1750228438": 7,
-        "-1793455665": 4,
-        "-1843278509": 2,
-        "-363505968": 8,
-        "-48107149": 2,
-        "-48901254": 16,
-        "-752088371": 1,
-        "-767961569": 2,
-        "-831896525": 2,
-        "-961536527": 1,
         "1140968013": 2,
-        "1186941395": 2,
         "1589616376": 14,
         "1750425936": 14,
-        "732028173": 5,
-        "755967513": 4
+        "732028173": 5
       },
       "names": [
         "fo_ai_zone_07",
@@ -24869,19 +24637,18 @@
         "fo_ai_zone_05",
         "fo_ai_zone_05",
         "fo_ai_zone_05",
-        "fo_ai_zone_03",
-        ""
+        "fo_ai_zone_03"
       ],
       "bounds": {
         "max": [
           58.26689529418945,
-          61.329959869384766,
+          60.20000076293945,
           29.30000114440918
         ],
         "min": [
           -31.600000381469727,
           -58.20000076293945,
-          7.849998950958252
+          20.714019775390625
         ]
       }
     },
@@ -28445,13 +28212,13 @@
     },
     "87c03bfd-2db3-4a5b-bbf9-d5369c5894d1": {
       "map_id": "87c03bfd-2db3-4a5b-bbf9-d5369c5894d1",
-      "version_id": "",
-      "public_name": "",
-      "mvar_file": "forbidden_map.mvar",
-      "module": "forbidden_map",
+      "version_id": "500d0305-72eb-47a4-aba5-f599e221cf00",
+      "public_name": "Forbidden",
+      "mvar_file": "ctf_forbidden.mvar",
+      "module": "ctf_forbidden",
       "level_id": -1418393216,
-      "objects_n": 509,
-      "fetched_at": "2026-07-26T00:13:16.34907Z",
+      "objects_n": 499,
+      "fetched_at": "2026-08-20T09:36:31.0297101Z",
       "objectives": [
         {
           "role": "extraction_zone",
@@ -28467,7 +28234,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1384999457,
           "labels": [
             "extraction_zone",
             "extraction_zone",
@@ -28513,7 +28280,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 286386796,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -28558,7 +28325,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1139092187,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -28603,7 +28370,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -1799815126,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -28648,7 +28415,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -1795350844,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -28693,7 +28460,7 @@
             "z": -0.008639753796160221
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1201780926,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -28714,7 +28481,7 @@
             "z": -0.008639753796160221
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": 437985269,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -28735,7 +28502,7 @@
             "z": 0.00863975565880537
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -1269930264,
           "labels": [
             "ctf_include",
             "flag_spawn"
@@ -28756,7 +28523,7 @@
             "z": -0.008639753796160221
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -1732282068,
           "labels": [
             "ctf_include",
             "flag_spawn"
@@ -28777,7 +28544,7 @@
             "z": 0.002838230226188898
           },
           "team_index": -1,
-          "instance_id": 0,
+          "instance_id": 1288865858,
           "labels": [
             "ctf_neutral_include",
             "flag_spawn"
@@ -28798,7 +28565,7 @@
             "z": -9.084674275072757e-7
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1397847647,
           "labels": [
             "oddball_include",
             "oddball_spawn"
@@ -28819,7 +28586,7 @@
             "z": 0.002452363958582282
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -2086180629,
           "labels": [
             "strongholds_include",
             "strongholds_zone"
@@ -28864,7 +28631,7 @@
             "z": 0.00245204521343112
           },
           "team_index": -1,
-          "instance_id": 0,
+          "instance_id": 1784258510,
           "labels": [
             "strongholds_include",
             "strongholds_zone"
@@ -28909,7 +28676,7 @@
             "z": 4.6566123179658803e-10
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -745893135,
           "labels": [
             "strongholds_include",
             "strongholds_zone"
@@ -28943,25 +28710,14 @@
       ],
       "unresolved_labels": {
         "-1246645531": 3,
-        "-1992510718": 2,
         "-2072819386": 1,
-        "-2086997171": 1,
         "-767961569": 5,
         "-886053664": 18,
         "-941529218": 9,
-        "-975844529": 1,
-        "1065383626": 10,
-        "1191941951": 2,
-        "1444579965": 10,
-        "1865268241": 8,
-        "2062593711": 7,
-        "2117885420": 1,
+        "2062593711": 2,
         "820803547": 2,
         "996801386": 9
       },
-      "names": [
-        ""
-      ],
       "bounds": {
         "max": [
           21.90000343322754,
@@ -28971,7 +28727,7 @@
         "min": [
           -27.30000114440918,
           -26.099531173706055,
-          -20.150096893310547
+          -4.908411979675293
         ]
       }
     },
@@ -34316,13 +34072,13 @@
     },
     "9e821f5e-042f-407c-97f3-de165b1cdb26": {
       "map_id": "9e821f5e-042f-407c-97f3-de165b1cdb26",
-      "version_id": "",
-      "public_name": "",
-      "mvar_file": "illusion_map.mvar",
-      "module": "illusion_map",
+      "version_id": "b1f66098-0095-472e-947f-de171998fc10",
+      "public_name": "Illusion",
+      "mvar_file": "ctf_illusion.mvar",
+      "module": "ctf_illusion",
       "level_id": -1472606249,
       "objects_n": 387,
-      "fetched_at": "2026-07-26T00:13:19.3215549Z",
+      "fetched_at": "2026-08-20T09:36:33.3043413Z",
       "objectives": [
         {
           "role": "extraction_zone",
@@ -34338,7 +34094,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1384999457,
           "labels": [
             "extraction_zone",
             "extraction_zone",
@@ -34384,7 +34140,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 286386796,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -34429,7 +34185,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1139092187,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -34474,7 +34230,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -1799815126,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -34519,7 +34275,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -1795350844,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -34564,7 +34320,7 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": 1119036020,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -34585,7 +34341,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1173250072,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -34606,7 +34362,7 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -1996868974,
           "labels": [
             "ctf_include",
             "flag_spawn"
@@ -34627,7 +34383,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1764626852,
           "labels": [
             "ctf_include",
             "flag_spawn"
@@ -34648,7 +34404,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1092073439,
           "labels": [
             "ctf_neutral_include",
             "flag_spawn"
@@ -34669,7 +34425,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1397847647,
           "labels": [
             "oddball_include",
             "oddball_spawn"
@@ -34690,7 +34446,7 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -1708679932,
           "labels": [
             "strongholds_zone"
           ],
@@ -34734,7 +34490,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1337830932,
           "labels": [
             "strongholds_zone"
           ],
@@ -34778,7 +34534,7 @@
             "z": 0
           },
           "team_index": -1,
-          "instance_id": 0,
+          "instance_id": -1014035212,
           "labels": [
             "strongholds_zone"
           ],
@@ -34813,11 +34569,9 @@
         "-1246645531": 3,
         "-1482301937": 5,
         "-2072819386": 1,
-        "-2086997171": 1,
         "-767961569": 5,
         "-886053664": 18,
         "-941529218": 9,
-        "2062593711": 1,
         "2133978317": 5,
         "996801386": 9
       },
@@ -47665,13 +47419,13 @@
     },
     "f566aa62-afe4-4f33-b44f-7a314cb23f9b": {
       "map_id": "f566aa62-afe4-4f33-b44f-7a314cb23f9b",
-      "version_id": "",
-      "public_name": "",
-      "mvar_file": "oasis_firefight_map.mvar",
-      "module": "oasis_firefight_map",
+      "version_id": "f2fc571a-14b5-413d-9b52-dfb69de94110",
+      "public_name": "Oasis Firefight",
+      "mvar_file": "btb_exiled.mvar",
+      "module": "btb_exiled",
       "level_id": -611378397,
-      "objects_n": 498,
-      "fetched_at": "2026-07-26T00:13:21.0390344Z",
+      "objects_n": 497,
+      "fetched_at": "2026-08-20T09:36:37.3675024Z",
       "objectives": [
         {
           "role": "extraction_zone",
@@ -47687,7 +47441,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 506661536,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -47731,7 +47485,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1409481054,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -47776,7 +47530,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -669982579,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -47821,7 +47575,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1537233097,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -47866,7 +47620,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -973497675,
           "labels": [
             "extraction_zone",
             "extraction_zone"
@@ -47911,7 +47665,7 @@
             "z": -0.004714699927717447
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -321359028,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -47932,7 +47686,7 @@
             "z": -0.004714699927717447
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1169896517,
           "labels": [
             "ctf_include",
             "flag_delivery"
@@ -47953,7 +47707,7 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -2023867686,
           "labels": [
             "ctf_include",
             "ctf_multi_exclude",
@@ -47975,7 +47729,7 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": -204384923,
           "labels": [
             "ctf_multi_exclude",
             "flag_spawn",
@@ -47997,7 +47751,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 123522309,
           "labels": [
             "ctf_multi_exclude",
             "flag_spawn",
@@ -48019,7 +47773,7 @@
             "z": 0
           },
           "team_index": 1,
-          "instance_id": 0,
+          "instance_id": 1743768389,
           "labels": [
             "ctf_include",
             "flag_spawn"
@@ -48040,7 +47794,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": -795280263,
           "labels": [
             "ctf_include",
             "flag_spawn",
@@ -48062,7 +47816,7 @@
             "z": 0
           },
           "team_index": 0,
-          "instance_id": 0,
+          "instance_id": 1803981767,
           "labels": [
             "ctf_include",
             "flag_spawn"
@@ -48083,7 +47837,7 @@
             "z": 0
           },
           "team_index": -1,
-          "instance_id": 0,
+          "instance_id": -1987286594,
           "labels": [
             "ctf_neutral_include",
             "flag_spawn"
@@ -48095,9 +47849,7 @@
         "-1265790513": 2,
         "-1505155597": 56,
         "-1624244313": 5,
-        "-48901254": 14,
         "1140968013": 2,
-        "1186941395": 1,
         "1589616376": 14,
         "1750425936": 14,
         "732028173": 5
@@ -48181,7 +47933,7 @@
         "min": [
           -31.600000381469727,
           -58.20000076293945,
-          11.874422073364258
+          20.714019775390625
         ]
       }
     },
@@ -49318,8 +49070,8 @@
       "unresolved_label_hashes": 18
     },
     "6aa0a116-66a6-4242-a1b3-41aa417d6dc6": {
-      "objectives": 20,
-      "unresolved_label_hashes": 21
+      "objectives": 14,
+      "unresolved_label_hashes": 7
     },
     "6c01f693-c968-4a71-b157-efc35ffcf71f": {
       "objectives": 19,
@@ -49343,7 +49095,7 @@
     },
     "87c03bfd-2db3-4a5b-bbf9-d5369c5894d1": {
       "objectives": 14,
-      "unresolved_label_hashes": 16
+      "unresolved_label_hashes": 8
     },
     "8be179f7-8940-4868-b881-44cad1ca8711": {
       "objectives": 4,
@@ -49379,7 +49131,7 @@
     },
     "9e821f5e-042f-407c-97f3-de165b1cdb26": {
       "objectives": 14,
-      "unresolved_label_hashes": 10
+      "unresolved_label_hashes": 8
     },
     "a289bafe-102e-4363-98f7-80b596007338": {
       "objectives": 16,
@@ -49471,7 +49223,7 @@
     },
     "f566aa62-afe4-4f33-b44f-7a314cb23f9b": {
       "objectives": 14,
-      "unresolved_label_hashes": 9
+      "unresolved_label_hashes": 7
     },
     "f7e8cde9-0c0a-487c-94a3-61bfa0f20465": {
       "objectives": 25,
