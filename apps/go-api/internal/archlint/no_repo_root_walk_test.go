@@ -173,12 +173,9 @@ var repoRootInTestsAllowlist = map[string]bool{
 	// (git ls-files vide au 2026-08-19). Ici le skip est le comportement JUSTE : le fichier
 	// est vraiment absent d'un checkout. Reprise : s'il devient versionne, migrer + Fatal.
 	"internal/himap/carte_oracle_gamefiles_test.go": true,
-	// Les deux entrees suivantes lisent .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json,
-	// qui EST versionne : elles portent donc le meme defaut que R2-1 (skip muet en CI).
-	// Hors du perimetre du lot C-ter volet 2 — les migrer sans rejouer leurs paquets serait
-	// un fix aveugle. Reprise : au prochain passage sur mapdecoupe / mapcallouts-build.
-	"internal/mapdecoupe/oracle_corpus_test.go": true,
-	"cmd/mapcallouts-build/classify_test.go":    true,
+	// (2026-08-20, lot hygiene H4) internal/mapdecoupe/oracle_corpus_test.go et
+	// cmd/mapcallouts-build/classify_test.go migres vers testutil.RepoRoot() + t.Fatalf —
+	// les deux entrees qui etaient ici ont disparu avec la cause (cf. historique git).
 }
 
 // repoRootInTestsMotifs : les deux voies par lesquelles un test retombe sur une racine
