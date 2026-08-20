@@ -34,6 +34,35 @@ import (
 // est posé entre les deux, avec un facteur ~2 de marge de part et d'autre.
 const parkedSpreadRatio = 0.05
 
+// parkedAbsoluteSpreadM : au-dessus de cette emprise ABSOLUE, des objectifs sont POSÉS,
+// quel que soit leur rapport à l'emprise du canevas.
+//
+// POURQUOI UN SECOND CRITÈRE, ET POURQUOI ABSOLU (mesuré le 2026-08-20). Le rapport
+// ci-dessus compare l'emprise des objectifs à celle de TOUS les objets de la variante.
+// Sur une carte bâtie dans Forge, cet ensemble n'est PAS le terrain : c'est le CANEVAS
+// entier, décor lointain et volumes de bord compris. Le rapport répond alors à « les
+// objectifs sont-ils petits devant le monde constructible ? », qui n'est pas la question
+// que ce garde-fou pose. Les deux variantes d'Empyrean (asset d035fc3e) le montrent :
+//
+//	map.mvar (la carte JOUÉE)  : 5 297 objets sur 1 061,64 m, 10 objectifs sur 38,32 m
+//	                             -> 3,609 %  ->  ÉCARTÉE À TORT
+//	fo11_blank.mvar (le rack)  :   100 objets sur   356,10 m, 25 objectifs sur 13,30 m
+//	                             -> 3,735 %  ->  écartée, à raison
+//
+// Les deux rapports sont à 0,13 point l'un de l'autre : AUCUN recalibrage du seuil relatif
+// ne les sépare — le critère lui-même est aveugle ici. Ce qui les sépare est l'emprise
+// ABSOLUE : un rack range un exemplaire de chaque objet de mode côte à côte, à l'échelle
+// de l'OBJET ; un terrain place ses objectifs à l'échelle du JEU. Le coût du faux négatif
+// est mesuré : au 2026-08-20, 12 des 73 cartes du catalogue sont INGÉRABLES par le réseau
+// (« aucune variante exploitable : 2 fichier(s), 2 écarté(s) »).
+//
+// Calibration, même méthode que parkedSpreadRatio : sur les 73 entrées RETENUES du
+// catalogue, la plus petite emprise d'objectifs réellement posés est 21,21 m
+// (`cliffside_map`, 9 objectifs), puis 22,20 et 22,73 m ; le plus grand rack connu est
+// 13,30 m (Empyrean), le plus petit 8,20 m (Vagabond). Le plancher est posé entre les deux
+// (moyenne géométrique 16,79 m), avec un facteur ~1,27 de marge de part et d'autre.
+const parkedAbsoluteSpreadM = 17.0
+
 // minObjectivesForSpread : à un seul objectif l'emprise vaut 0 et ne dit rien.
 const minObjectivesForSpread = 2
 
@@ -59,7 +88,10 @@ func isParkedPalette(v *mapvar.Variant) bool {
 		gMinY, gMaxY = min(gMinY, o.Pos.Y), max(gMaxY, o.Pos.Y)
 	}
 	goalSpread := max(gMaxX-gMinX, gMaxY-gMinY)
-	return goalSpread < parkedSpreadRatio*objSpread
+	// Un rangement est compact DANS LES DEUX SENS : devant le canevas ET dans l'absolu.
+	// Le ET ne peut que RELÂCHER le garde-fou — aucune variante déjà retenue ne peut
+	// devenir un rack par cet ajout.
+	return goalSpread < parkedSpreadRatio*objSpread && goalSpread < parkedAbsoluteSpreadM
 }
 
 // inf sert de borne initiale aux min/max (pas de math.Inf pour rester en float64 littéral

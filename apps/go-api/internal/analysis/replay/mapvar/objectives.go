@@ -81,10 +81,12 @@ func LabelName(hash int32) string { return labelNames[hash] }
 // coherente. Ils N'ENTRENT PAS dans labelNames (une entree devinee y serait refusee par
 // TestLabelTableIsSelfConsistent) : le role se pose par HASH, ci-dessous.
 //
-// POURQUOI LES DEUX HASHS, ET PAS LE SEUL ROLE. Le hash de role est AUSSI porte par deux
+// LE ROLE ET LE FILTRE NE JOUENT PAS LE MEME ROLE. Le hash de role est AUSSI porte par deux
 // cylindres `minigame_include` par carte de developpeur (Catalyst, Chasm : r = 1,4 m, un par
-// camp, aux bases, type -1855279381) qui n'existent pas en KOTH. Le filtre 2133978317 les
-// ecarte : une colline est un objet qui porte le role ET le filtre de KOTH.
+// camp, aux bases, type -1855279381) qui n'existent pas en KOTH. Le filtre 2133978317 sert a
+// les ecarter — mais il n'est pas la marque de la colline : des cartes declarent leurs
+// collines sans aucun filtre (Forbidden, Illusion). La regle exacte, et la mesure qui l'a
+// corrigee le 2026-08-20, sont sur isHill (plus bas).
 //
 // Verifie sur le film 01e1f945 (Catalyst, 60 rampes de jauge) : la production apparie 56
 // rampes a ces 6 volumes (52 avec les formes de Bastion/Extraction), et 13 des 20 periodes
@@ -158,25 +160,37 @@ type Objective struct {
 }
 
 // Objectives extrait les objets porteurs d'un rôle d'objectif.
+//
+// UN OBJET PEUT PORTER PLUSIEURS RÔLES, et il produit alors PLUSIEURS objectifs — un par
+// rôle, même position, même forme, même `object_index` (mesuré le 2026-08-20). Ce n'est pas
+// une commodité : dans Forge, un volume se déclare pour plusieurs modes à la fois, et c'est
+// exactement pourquoi les labels sont une LISTE. Sur Empyrean (asset d035fc3e), les trois
+// zones de Bastion portent `[strongholds_include, strongholds_zone]` ET la paire de hashs
+// de la colline ; les quatre marqueurs ponctuels de KOTH tombent sur ces trois volumes plus
+// un quatrième. La carte a donc QUATRE collines. L'ancien code retenait le PREMIER rôle
+// nommé et n'en publiait qu'UNE — le catalogue livré porte « Empyrean : 1 colline », et
+// c'est ce choix-là, pas le fichier, qui perdait les trois autres.
+//
+// Les consommateurs lisent par rôle (`ZonesOfRole`) : un volume qui est zone de Bastion en
+// Bastion et colline en KOTH doit apparaître dans les deux listes, jamais dans une seule.
 func (v *Variant) Objectives() []Objective {
 	out := make([]Objective, 0, 16)
 	for _, o := range v.Objects {
-		role, names, unknown := classify(o.Labels)
-		if role == "" {
-			continue
+		roles, names, unknown := classify(o.Labels)
+		for _, role := range roles {
+			out = append(out, Objective{
+				Role:       role,
+				TypeID:     o.TypeID,
+				Pos:        o.Pos,
+				Forward:    o.Forward,
+				TeamIndex:  o.TeamIndex,
+				InstanceID: o.InstanceID,
+				Labels:     names,
+				Unresolved: unknown,
+				ObjectIdx:  o.Index,
+				Shape:      o.Shape(),
+			})
 		}
-		out = append(out, Objective{
-			Role:       role,
-			TypeID:     o.TypeID,
-			Pos:        o.Pos,
-			Forward:    o.Forward,
-			TeamIndex:  o.TeamIndex,
-			InstanceID: o.InstanceID,
-			Labels:     names,
-			Unresolved: unknown,
-			ObjectIdx:  o.Index,
-			Shape:      o.Shape(),
-		})
 	}
 	return out
 }
@@ -195,10 +209,20 @@ func (v *Variant) UnresolvedLabels() map[int32]int {
 	return out
 }
 
-func classify(labels []int32) (Role, []string, []int32) {
-	var role Role
+// classify rend TOUS les rôles portés par un objet, dans l'ordre des labels (la colline en
+// dernier, elle se lit sur la liste entière), sans doublon — un même nom de label peut
+// figurer deux fois dans le fichier.
+func classify(labels []int32) ([]Role, []string, []int32) {
 	names := make([]string, 0, len(labels))
 	var unknown []int32
+	var roles []Role
+	seen := make(map[Role]bool, 2)
+	add := func(r Role) {
+		if !seen[r] {
+			seen[r] = true
+			roles = append(roles, r)
+		}
+	}
 	for _, h := range labels {
 		name := labelNames[h]
 		if name == "" {
@@ -206,28 +230,63 @@ func classify(labels []int32) (Role, []string, []int32) {
 			continue
 		}
 		names = append(names, name)
-		if r, ok := roleByLabel[name]; ok && role == "" {
-			role = r
+		if r, ok := roleByLabel[name]; ok {
+			add(r)
 		}
 	}
-	if role == "" && isHill(labels) {
-		role = RoleHill
+	if isHill(labels) {
+		add(RoleHill)
 	}
-	return role, names, unknown
+	return roles, names, unknown
 }
 
-// isHill dit si l'objet porte LA PAIRE de hashs de la colline de KOTH (role ET filtre de mode).
-// Les deux hashs restent comptes parmi les labels non resolus : le nom n'est pas connu, et
-// on ne le devine pas.
+// isHill dit si l'objet est une colline de King of the Hill.
+//
+// LA REGLE : il porte le hash de ROLE, et il n'est pas revendique par un AUTRE mode. Un
+// objet est revendique par un autre mode quand il porte le filtre d'activation de ce mode
+// (`<mode>_include`) sans porter celui de KOTH. Les hashs de KOTH restent comptes parmi les
+// labels non resolus : leur nom n'est pas connu, et on ne le devine pas.
+//
+// POURQUOI LA PAIRE N'EST PLUS EXIGEE (mesure du 2026-08-20 ; corrige la regle posee au lot
+// C-ter volet 2 le 2026-08-19). Le filtre de KOTH n'a jamais servi qu'a ECARTER un decoy
+// precis, documente plus haut : deux cylindres par carte de developpeur qui portent le hash
+// de role ET `minigame_include` (r = 1,4 m, un par camp, type -1855279381). Exiger la paire
+// ecartait bien ce decoy — mais avec lui, toutes les collines que leur fichier declare SANS
+// filtre. Mesure sur les deux cartes concernees :
+//
+//	Illusion (9e821f5e) : 5 volumes type 1818458590 portant le hash de role SEUL (aucun
+//	   autre label, resolu ou non), et 5 marqueurs ponctuels de KOTH type -877512201
+//	   [filtre KOTH + marqueur] AUX MEMES POSITIONS (3 au centimetre, les 2 autres a 0,59 m
+//	   et 0,22 m). Le marqueur dit ou est la colline ; le volume dit sa forme.
+//	Forbidden (87c03bfd) : les memes 5 volumes type 1818458590, formes TOUTES DIFFERENTES
+//	   (7,80x4,80 / 5,40x4,20 / 6,00x5,25 / 8,17x3,64 / 7,90x2,60 m).
+//
+// Ces deux cartes ont de vrais matchs Arena KOTH au registre (Forbidden 3, Illusion 2, tous
+// en Quick Play, variante de mode `KOTH:Arena`). Le registre du 2026-08-20 supposait un
+// « prefab Forge partage » au vu d'`instance_id` identiques : c'etait un artefact — TOUS les
+// objets des variantes `*_map.mvar` ont `instance_id = 0` (deja consigne au lot C-ter, §6),
+// et cinq formes differentes ne sont pas un prefab partage.
 func isHill(labels []int32) bool {
-	role, include := false, false
+	role, kothInclude, foreignInclude := false, false, false
 	for _, h := range labels {
 		switch h {
 		case LabelHashHillRole:
 			role = true
 		case LabelHashHillInclude:
-			include = true
+			kothInclude = true
+		default:
+			if isModeIncludeLabel(labelNames[h]) {
+				foreignInclude = true
+			}
 		}
 	}
-	return role && include
+	return role && (kothInclude || !foreignInclude)
+}
+
+// isModeIncludeLabel dit si un nom de label RESOLU est un filtre d'activation par mode.
+// La convention est celle de labelNames et de l'en-tete de roleByLabel : `<mode>_include`.
+// Un hash NON resolu ne peut pas etre juge — on ne devine pas plus ici qu'ailleurs.
+func isModeIncludeLabel(name string) bool {
+	const suffix = "_include"
+	return len(name) > len(suffix) && name[len(name)-len(suffix):] == suffix
 }

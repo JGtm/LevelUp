@@ -301,28 +301,52 @@ func TestDecodeRootRejectsTruncated(t *testing.T) {
 	}
 }
 
-// TestHillRoleParLaPaireDeHashs — la colline de KOTH se pose par la PAIRE de hashs (role +
-// filtre de mode), jamais par l'un des deux seul : le hash de role est aussi porte par des
-// objets de minigame qui n'existent pas en KOTH, et le filtre l'est par les marqueurs
-// ponctuels. Un label de role NOMME garde la priorite (aucun objet ne porte les deux ; la
-// regle est ecrite pour qu'elle ne bouge pas en silence).
-func TestHillRoleParLaPaireDeHashs(t *testing.T) {
+// TestHillRoleParLeHashDeRole — la colline de KOTH se pose par le hash de ROLE, sauf quand
+// un AUTRE mode revendique l'objet par son filtre d'activation. Les quatre cas mesures le
+// 2026-08-20 sont ici, et ils corrigent la regle « paire obligatoire » du 2026-08-19 :
+//
+//	role seul, sans aucun filtre  -> colline  (Forbidden 87c03bfd, Illusion 9e821f5e : 5
+//	                                volumes type 1818458590, formes toutes differentes,
+//	                                aux positions des 5 marqueurs de KOTH)
+//	role + filtre d'un autre mode -> PAS une colline (le decoy documente : 2 cylindres
+//	                                `minigame_include` par carte de developpeur)
+//	role + filtre etranger + filtre KOTH -> colline (Empyrean : ses volumes sont declares
+//	                                pour Bastion ET pour KOTH)
+//	filtre KOTH seul              -> PAS une colline (le marqueur ponctuel)
+//
+// Mutation qui doit le faire rougir : rendre `role && kothInclude` (l'ancienne regle) —
+// Forbidden et Illusion reperdent leurs 5 collines.
+func TestHillRoleParLeHashDeRole(t *testing.T) {
 	cas := []struct {
 		nom    string
 		labels []int32
-		want   Role
+		want   []Role
 	}{
-		{"paire complete", []int32{LabelHashHillInclude, LabelHashHillRole}, RoleHill},
-		{"paire dans l'autre ordre", []int32{LabelHashHillRole, LabelHashHillInclude}, RoleHill},
-		{"role seul (minigame)", []int32{LabelHash("minigame_include"), LabelHashHillRole}, ""},
-		{"filtre seul (marqueur)", []int32{LabelHashHillInclude, LabelHashHillMarker}, ""},
-		{"rien", nil, ""},
-		{"role nomme prioritaire", []int32{LabelHash("strongholds_zone"), LabelHashHillInclude, LabelHashHillRole}, RoleStrongholdZone},
+		{"paire complete", []int32{LabelHashHillInclude, LabelHashHillRole}, []Role{RoleHill}},
+		{"paire dans l'autre ordre", []int32{LabelHashHillRole, LabelHashHillInclude}, []Role{RoleHill}},
+		{"role seul sans filtre (Forbidden/Illusion)", []int32{LabelHashHillRole}, []Role{RoleHill}},
+		{"role + filtre etranger (decoy minigame)", []int32{LabelHash("minigame_include"), LabelHashHillRole}, nil},
+		{"role + filtre etranger + filtre KOTH (Empyrean)",
+			[]int32{LabelHash("elimination_include"), LabelHashHillInclude, LabelHashHillRole}, []Role{RoleHill}},
+		{"filtre seul (marqueur)", []int32{LabelHashHillInclude, LabelHashHillMarker}, nil},
+		{"rien", nil, nil},
+		// Un volume declare pour Bastion ET pour KOTH porte LES DEUX roles : c'est le cas
+		// d'Empyrean, et l'ancienne regle « premier role nomme gagnant » perdait la colline.
+		{"volume multi-mode (Bastion + KOTH)",
+			[]int32{LabelHash("strongholds_zone"), LabelHashHillInclude, LabelHashHillRole},
+			[]Role{RoleStrongholdZone, RoleHill}},
 	}
 	for _, c := range cas {
-		role, _, unknown := classify(c.labels)
-		if role != c.want {
-			t.Errorf("%s : role %q, attendu %q", c.nom, role, c.want)
+		roles, _, unknown := classify(c.labels)
+		if len(roles) != len(c.want) {
+			t.Errorf("%s : roles %v, attendu %v", c.nom, roles, c.want)
+			continue
+		}
+		for i := range roles {
+			if roles[i] != c.want[i] {
+				t.Errorf("%s : roles %v, attendu %v", c.nom, roles, c.want)
+				break
+			}
 		}
 		// Les hashs de KOTH restent NON RESOLUS : ils n'ont pas de nom, on ne l'invente pas.
 		for _, h := range c.labels {
@@ -339,6 +363,42 @@ func TestHillRoleParLaPaireDeHashs(t *testing.T) {
 	}
 	if LabelName(LabelHashHillRole) != "" || LabelName(LabelHashHillInclude) != "" {
 		t.Error("les hashs de KOTH ne doivent pas avoir de nom dans labelNames tant qu'il n'est pas retrouve")
+	}
+}
+
+// TestObjectifMultiRolePublieChaqueRole — un objet declare pour deux modes produit DEUX
+// objectifs, un par role, qui partagent position, forme et object_index. C'est la forme
+// mesuree sur Empyrean : ses trois zones de Bastion sont AUSSI ses trois premieres collines
+// (le catalogue livre n'en publiait qu'une seule, la quatrieme).
+//
+// Mutation qui doit le faire rougir : ne publier que le premier role.
+func TestObjectifMultiRolePublieChaqueRole(t *testing.T) {
+	v := &Variant{Objects: []Object{{
+		Index: 42, TypeID: -1476457415, TeamIndex: TeamUnset,
+		Pos:    Vec3{X: 0.13, Y: -30.37, Z: 139.05},
+		Labels: []int32{LabelHash("strongholds_include"), LabelHash("strongholds_zone"), LabelHashHillInclude, LabelHashHillRole},
+	}}}
+	objs := v.Objectives()
+	if len(objs) != 2 {
+		t.Fatalf("objectifs = %d, attendu 2 (zone de Bastion + colline)", len(objs))
+	}
+	if objs[0].Role != RoleStrongholdZone || objs[1].Role != RoleHill {
+		t.Fatalf("roles = %q puis %q, attendu %q puis %q",
+			objs[0].Role, objs[1].Role, RoleStrongholdZone, RoleHill)
+	}
+	for _, o := range objs {
+		if o.ObjectIdx != 42 || o.Pos != (Vec3{X: 0.13, Y: -30.37, Z: 139.05}) {
+			t.Errorf("role %q : l'objectif a perdu l'identite de son objet (idx %d, pos %v)",
+				o.Role, o.ObjectIdx, o.Pos)
+		}
+	}
+	// Un meme role declare deux fois dans le fichier ne se publie qu'UNE fois.
+	dbl := &Variant{Objects: []Object{{
+		Index:  7,
+		Labels: []int32{LabelHash("extraction_zone"), LabelHash("extraction_zone")},
+	}}}
+	if n := len(dbl.Objectives()); n != 1 {
+		t.Errorf("label repete : %d objectifs, attendu 1", n)
 	}
 }
 
