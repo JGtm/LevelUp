@@ -97,10 +97,13 @@
 // nommees depassent 100, jusqu a 228. Une valeur > 100 est une DONNEE REELLE, pas une lecture
 // ratee — son interpretation (degat excedentaire) n est PAS etablie.
 //
-// AUCUN CHEMIN D EXECUTION DE L APPLICATION NE PASSE ENCORE PAR CE PAQUET : il est autonome et se
-// teste seul. Son unique importeur cote application est le PONT `internal/sync/killsource_bridge.go`,
-// ecrit d avance et lui-meme SANS APPELANT ; le reste (`cmd/killsource`, sondes `cmd/tmp_*`) sont
-// des outils. Il ne touche ni la base, ni le reseau, ni les fichiers du jeu. Une ecriture per-match
+// CE PAQUET EST IMPORTE PAR L APPLICATION : `internal/replaybuild/replaybuild.go`
+// (`neutralDeaths`, via `killsource.DirChunks` + `killsource.Decode`) l utilise pour typer
+// les lignes de mort neutres de l artefact de rejeu 2D — brique partagee par
+// `cmd/replay-build`, `levelup backfill-replay`, l action admin replay-build et l etape
+// post-sync locale (cf. l en-tete de `replaybuild`). Le reste (`cmd/killsource`) est un
+// outil. Il ne touche ni la base, ni le reseau, ni les fichiers du jeu : il decode des
+// chunks deja mis en cache sur disque par un producteur anterieur. Une ecriture per-match
 // issue de ce decodage devra passer par `internal/persist/BatchBuilder` (regle anti-ART,
 // ADR 0019/0030).
 //

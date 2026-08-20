@@ -88,17 +88,6 @@ var halowaypointAllowlist = map[string]bool{
 	// (`cmd/tmp_filmmanifest/main.go` retiré le 2026-08-01 — outillage de recherche
 	// supprimé au lot A du plan de dette avant merge.)
 	"cmd/mapobj-build/fetch.go": true,
-	// Sonde variants (ajoutée le 2026-08-20, HORS FRONTIÈRE — entrée à durée de vie
-	// courte) : `cmd/variant-probe/` est une sonde réseau PONCTUELLE d'une autre
-	// session (voie API des socles, refermée le 2026-08-19 — l'activation n'est dans
-	// aucun asset servi par l'API). Elle nomme deux hôtes officiels en dur
-	// (`discovery-infiniteugc` et l'Origin waypoint web) SANS passer par la frontière
-	// `haloclient`. Entrée posée ici pour rendre la CI de `feat/v75` lisible, PAS pour
-	// bénir le contournement.
-	// CONDITION DE REPRISE (à router vers la session variant-probe) : router ces URLs
-	// par la frontière `internal/sync/haloclient/` OU supprimer l'outil (la voie qu'il
-	// sondait est fermée) — dans les deux cas cette entrée DISPARAÎT.
-	"cmd/variant-probe/fetch.go": true,
 	// scripts/ — warm-up d'assets (URLs gamecms).
 	"scripts/warm_bp_assets/main.go": true,
 	// ops/ — seeder démo synthétique : URL blob-infiniteugc FACTICE d'assets démo
