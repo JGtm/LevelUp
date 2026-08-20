@@ -56,7 +56,7 @@ export const ZONE_GAUGE_HOLD_MS = 1_000
  * de propriété), pas une absence de donnée — d'où le champ, plutôt qu'un état omis. Le sommet
  * `progress` de l'intervalle n'y figure plus : le rendu ne le lit plus (cf. l'en-tête).
  */
-export interface ZoneStateNow {
+interface ZoneStateNow {
   owner: number | null
   active: boolean
 }
