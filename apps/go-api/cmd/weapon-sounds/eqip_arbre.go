@@ -17,6 +17,14 @@ package main
 //
 // MEMOIRE : il ouvre `pc/globals/globals-rtx-new.module` (7,24 Go). JAMAIS en parallele
 // d'un autre gros chargement — meme regle que `eqip-banks`.
+//
+// BALAYAGE STRUCTUREL (`-banks all`, lot L6, phase 5.1 de `PLAN_BALISE_MIX_WWISE.md`). La
+// chaine `eqip -> effe -> snd! -> sbnk` n'atteint que 17 des 1305 banques du module (1,3 %) :
+// si le son cherche vit ailleurs, aucune liste explicite ne le trouvera. `-banks all` enumere
+// TOUTES les banques `sbnk` (precedent : `probe.go`/`sonder`, `audit.go`/`auditFormat`, qui
+// balaient deja `m.Files("sbnk")` sans liste) et applique EXACTEMENT la meme structuration
+// qu'une banque nommee — aucun parseur nouveau, seul le denominateur change. Estimation du
+// plan : 20 a 30 minutes en un seul processus une fois le module charge (~2 min, ~7,2 Go).
 
 import (
 	"encoding/json"
@@ -24,6 +32,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/himodule"
 )
@@ -59,13 +68,16 @@ type RapportStructure struct {
 
 // structureDesBanques est le mode `eqip-arbre`.
 //
-// `banques` : identifiants de `sbnk` a ouvrir. `entree` : rapport de la passe 1
-// (`eqip-sons`), facultatif — il sert a dire quel `snd!` designe quel evenement et quels
-// `eqip` atteignent la banque. `dossierEmb` : si non vide, TOUS les `.wem` embarques y sont
-// ecrits (un sous-dossier par banque), pas seulement ceux des gestes designes.
-func structureDesBanques(cheminModule string, banques []uint32, entree, sortie, dossierEmb string) error {
-	if len(banques) == 0 {
-		return fmt.Errorf("le mode eqip-arbre exige -banks (identifiants de sbnk, hexa, virgules)")
+// `banques` : identifiants de `sbnk` a ouvrir ; ignore si `toutes`. `entree` : rapport de la
+// passe 1 (`eqip-sons`), facultatif — il sert a dire quel `snd!` designe quel evenement et
+// quels `eqip` atteignent la banque. `dossierEmb` : si non vide, TOUS les `.wem` embarques y
+// sont ecrits (un sous-dossier par banque), pas seulement ceux des gestes designes. `toutes` :
+// `-banks all` — `banques` est ALORS remplace par l'enumeration complete du module
+// (`tousLesGidsSbnk`), et la sortie console bascule du tableau detaille (illisible sur 1305
+// banques) a une progression compacte, cf. `afficherProgres`.
+func structureDesBanques(cheminModule string, banques []uint32, entree, sortie, dossierEmb string, toutes bool) error {
+	if !toutes && len(banques) == 0 {
+		return fmt.Errorf(`le mode eqip-arbre exige -banks (identifiants de sbnk, hexa, virgules, ou "all")`)
 	}
 	var parBank map[string][]string
 	var sndsParBank map[string][]SndSon
@@ -84,13 +96,29 @@ func structureDesBanques(cheminModule string, banques []uint32, entree, sortie, 
 	}
 	rapporterMemoire("module charge")
 
+	if toutes {
+		banques = tousLesGidsSbnk(m)
+		fmt.Printf("balayage structurel : %d banques sbnk (toutes, hors liste explicite)\n", len(banques))
+	}
+
 	out := RapportStructure{Module: cheminModule}
-	for _, gid := range banques {
+	debut := time.Now()
+	totalEvenements := 0
+	for i, gid := range banques {
 		hex := fmt.Sprintf("%08x", gid)
 		b := structureDUneBanque(m, gid, parBank[hex], sndsParBank[hex], dossierEmb)
 		out.Banks = append(out.Banks, b)
+		totalEvenements += len(b.Evenements)
+		if toutes {
+			afficherProgres(i+1, len(banques), totalEvenements, debut)
+		}
 	}
-	afficherStructure(out)
+	if toutes {
+		fmt.Printf("\nbalayage termine : %d banques, %d evenements, en %s\n",
+			len(banques), totalEvenements, time.Since(debut).Round(time.Second))
+	} else {
+		afficherStructure(out)
+	}
 	if sortie == "" {
 		return nil
 	}
@@ -100,6 +128,33 @@ func structureDesBanques(cheminModule string, banques []uint32, entree, sortie, 
 	}
 	fmt.Printf("\nstructure ecrite : %s\n", sortie)
 	return os.WriteFile(sortie, j, 0o644)
+}
+
+// tousLesGidsSbnk enumere TOUS les tags `sbnk` du module, tries par identifiant croissant —
+// determinisme : deux executions du balayage traitent les banques dans le meme ordre.
+//
+// Precedent qui valide l'appel : `probe.go` (`sonder`) et `audit.go` (`auditFormat`)
+// enumerent deja `m.Files("sbnk")` sans liste explicite pour parcourir le module entier.
+func tousLesGidsSbnk(m *himodule.Module) []uint32 {
+	fichiers := m.Files("sbnk")
+	gids := make([]uint32, 0, len(fichiers))
+	for _, f := range fichiers {
+		gids = append(gids, f.GlobalID)
+	}
+	sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
+	return gids
+}
+
+// afficherProgres imprime un point d'avancement toutes les 50 banques (et sur la derniere).
+// Le balayage complet est estime a 20-30 minutes (plan, phase 5.1) : un processus muet tout
+// ce temps ne permet pas de distinguer un traitement normal d'un blocage.
+func afficherProgres(fait, total, evenements int, debut time.Time) {
+	if fait%50 != 0 && fait != total {
+		return
+	}
+	ecoule := time.Since(debut).Round(time.Second)
+	fmt.Printf("  progression : %d/%d banques, %d evenements cumules (%s ecoule)\n",
+		fait, total, evenements, ecoule)
 }
 
 // indexerPasse1 rend, depuis le rapport de `eqip-sons` : les `eqip` par banque (le

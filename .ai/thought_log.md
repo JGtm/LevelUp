@@ -1,4 +1,128 @@
-## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
+## [2026-08-20] Lot L6 sons (S6 prep) — extraction brute des .wem candidats (eqip-durees -emb) — Complete
+
+**Contexte** : preparer l'ecoute (S6) sans decoder ici (decodeur vgmstream-cli.exe confirme
+present dans le scratchpad par le superviseur, mais son execution reste une action prohibee
+pour cet agent — cf. compte rendu final, aucun contournement tente). Ce qui EST du ressort de
+l'agent : extraire les `.wem` BRUTS des candidats pour que la conversion, une fois autorisee
+par l'utilisateur, n'exige plus de rouvrir le module.
+
+**Decision technique principale** : option `-emb <dossier>` ajoutee au mode `eqip-durees`
+(reutilise le flag existant, deja multi-usage sur ce mode) + `-limite <n>` pour le nombre de
+candidats (0 => 40, coherent avec `afficherTop`). Nouvelle fonction
+`extraireTopCandidats` : reouvre uniquement les banques necessaires aux N premiers candidats
+(le module `m` deja charge par l'appelant, pas un 3e chargement complet), ecrit un `.wem` brut
+par variante, nomme `<bank>_<event>_<wemid>.wem`. Meme discipline que le mode `embarques`
+existant : zero decodage.
+
+**Resultats observes** : gates `go build`/`go vet` OK, `gofmt` propre, fichier a 267 L (seuil
+500 L respecte). Extraction reelle : voir le compte rendu final pour le compte de fichiers.
+
+## [2026-08-20] Lot L6 sons (S3) — mode eqip-durees, triage par duree RIFF, valide contre vgmstream — Complete
+
+**Contexte** : suite de S2. Triager les 6151 evenements du balayage en candidats "pose de
+balise" : hors des 17 banques deja ecoutees par le graphe eqip, hors familles musicales,
+duree 0,3-2 s — sans decodeur audio disponible sur ce poste au moment de l'implementation.
+
+**Decision technique principale** : nouveau mode `eqip-durees` (`eqip_durees.go`, 201 L) +
+lecteur `wemduree.go` (97 L, fonctions `chunksRIFF`/`dureeApproxRIFF`/`dureesEmbarquees`). La
+duree est lue dans l'EN-TETE RIFF (`nAvgBytesPerSec` du sous-chunk `fmt `, taille du sous-chunk
+`data`) — PAS un decodage, une estimation. Deux filtres dans l'ordre de leur cout : (1)
+structurel (gratuit, deja dans le JSON du balayage) — banque exclue ou evenement dont une
+couche est de famille Music* ; (2) duree (cout d'un second chargement du module de 7,24 Go,
+mais seulement pour les banques ayant au moins un survivant du filtre 1).
+
+**VALIDATION AVANT CONFIANCE** (regle du chantier : « toute mesure de similarite embarque son
+temoin ») : rejeu de `eqip-durees` SANS exclusion pour comparer aux 3 evenements dont la duree
+REELLE est connue par decodage vgmstream (`PLAN_BALISE_MIX_WWISE.md` phase 3.3, worktree sœur) :
+
+    evenement              estimation RIFF (ce mode)   verite vgmstream (decodage reel)
+    b29ac6de / fb25cbdd    0,432 - 0,481 s              0,41 - 0,48 s
+    b29ac6de / 0b2a938e    0,416 - 0,435 s              0,41 - 0,48 s
+    15c5b355 / c73036e4    0,593 - 0,809 s              0,59 - 0,80 s
+
+Ecart maximal observe : ~2 %, sur trois evenements dont les vraies durees vont de 0,41 a 0,80 s
+— pas un biais systematique constant, donc pas un artefact d'offset. La fonction est jugee
+fiable pour un TRI par tranche de duree (pas pour un montage, la reserve reste ecrite dans le
+code).
+
+**Resultats observes** (triage reel, 17 banques exclues) : **5982 evenements survivants** du
+filtre structurel (974 banques a rouvrir) ; **0 evenement ecarte explicitement comme musical**
+— probablement parce que la hierarchie MUSIQUE ne resout deja aucun `.wem` via le lecteur
+generique de `bank.go` (candidats sans couche => deja abandonnes par `structureDUneBanque`
+avant meme ce filtre, pas une preuve que le filtre est inoperant : NOTE, pas verifiee plus
+loin, hors perimetre de ce lot). **4840/5982 evenements ont au moins un wem dont la duree se
+lit** (1142 wems vivent hors banque — .pck externe, hors de portee sans rouvrir un autre
+module). **2674 evenements dans le bucket 0,3-2 s**, 2166 hors bucket. Table complete :
+`candidats_triage.json` (scratchpad `sons_L6/`, jamais le depot) ; top 40 imprimes en console
+et repris au compte rendu.
+
+Gates : `go build`/`go vet` OK sur les deux fichiers neufs, `gofmt` propre, tailles 97 L et
+201 L (seuil 500 L respecte).
+
+**Conclusion / prochaine etape** : S4 — investigation du grappin muet (donnees -> declencheur
+-> asset). Le "non-boucle" du triage n'est PAS verifie par un drapeau Wwise (aucun n'est
+decode dans ce parseur) : la colonne consignee est la duree et la nature, jamais un
+"non-boucle" invente — limite ecrite explicitement plutot que masquee.
+
+## [2026-08-20] Lot L6 sons (S2) — RUN du balayage complet, 1305 banques en 24 s — Complete
+
+**Contexte** : suite de S1. Executer `eqip-arbre -banks all` sur `pc/globals/globals-rtx-new.module`
+(7,24 Go) en un seul processus, budget annonce par le plan 20-30 min, mesurer le temps reel.
+
+**Decision technique principale** : passe 1 `eqip-sons` regeneree a neuf (module `any/globals`,
+0,62 Go) avant le balayage — 58 eqip sonores, **17 banks atteintes** (liste exacte : `15c5b355
+1db55179 2ddcd774 2f019657 5724312f 60b0f79c 7acb11cc 7bd0883c 8c43d4c8 92c830f5 9b4559ee
+b29ac6de dcfaa487 de65048f e9e5b32e ebee7599 ee912fba`), confirme le chiffre du plan (1,3 %) et
+sert de reference d'exclusion pour S3. Balayage lance sans `-emb` (aucune extraction .wem en
+masse : 1305 banques auraient pu representer plusieurs Go, hors propos de la structuration).
+Suivi par un `Monitor` (log + verification de vie du PID natif Windows, la premiere tentative de
+fond imbriquant `nohup ... &` DANS `run_in_background` du Bash tool a declenche une notification
+d'achevement prematuree — le process reel continuait derriere ; corrige en verifiant sur pieces
+via `Get-Process` avant de faire confiance a la notification).
+
+**Resultats observes** : **24 secondes de bout en bout** (11:49:01 -> 11:49:25), pas 20-30
+minutes — l'estimation du plan supposait vraisemblablement une extraction disque en plus de la
+structuration. 1305 banques traitees, **1180 lisibles** (122 sans chunk BKHD, 3 HIRC absent —
+concorde exactement avec l'audit historique du chantier armes : « BKHD 1183, HIRC 1180 » sur
+1305), **6151 evenements** au total, memoire pic 8,6 Go alloues / 9,2 Go systeme. Sortie :
+`balayage_structurel.json` (5,48 Mo, scratchpad `sons_L6/`, jamais le depot) + log console
+complet.
+
+**Conclusion / prochaine etape** : S3 — triage des candidats « pose de balise » sur cette sortie
+(exclusion des 17 banques ci-dessus, familles musicales, duree 0,3-2 s via un nouveau mode qui
+relit le module une seconde fois, cible uniquement sur les survivants des filtres structurels).
+
+## [2026-08-20] Lot L6 sons (S1) — capacite "toutes les banques" pour eqip-arbre — Complete
+
+**Contexte** : lot L6, worktree `wt/sons-balise`. Le son de POSE de la balise du translocateur
+reste introuvable ; la chaine `eqip -> effe -> snd! -> sbnk` n'atteint que 17 des 1305 banques
+`sbnk` de `pc/globals` (1,3 %, mesure `PLAN_BALISE_MIX_WWISE.md` phase 5.1). Etape S1 : donner
+au mode `eqip-arbre` la capacite de balayer TOUTES les banques, prealable au balayage complet
+(S2).
+
+**Decision technique principale** : `-banks all` (comparaison insensible a la casse, decidee
+UNE fois dans `main.go`) declenche dans `eqip_arbre.go` l'enumeration `tousLesGidsSbnk(m)` —
+`m.Files("sbnk")` trie par identifiant, EXACT precedent de `probe.go`/`sonder` et
+`audit.go`/`auditFormat`, qui balaient deja le module sans liste explicite. Zero parseur
+nouveau : `structureDUneBanque` (deja prouvee) s'applique inchangee a chaque banque. Ajout
+d'une progression (`afficherProgres`, toutes les 50 banques + derniere : compte de banques,
+evenements cumules, temps ecoule) car le balayage est estime a 20-30 min en un seul processus
+et un outil muet ce temps-la ne distingue pas un traitement normal d'un blocage — la sortie
+console detaillee (`afficherStructure`, illisible sur 1305 banques) est desactivee en mode
+`toutes` au profit de ce resume, la sortie JSON complete restant inchangee. Duree/RIFF et
+filtrage (S3) delibrement HORS PERIMETRE de S1 : le gate de cette etape est build+vet, pas une
+execution reelle contre le module de 7,24 Go (reservee a S2).
+
+**Resultats observes** : `go build ./cmd/weapon-sounds/` OK, `go vet ./cmd/weapon-sounds/` exit
+0, `gofmt -l` silencieux sur les deux fichiers touches. Tailles : `eqip_arbre.go` 324 L,
+`main.go` 282 L (seuil 500 L respecte, pas de nouveau fichier necessaire). Comportement
+existant (`-banks <hexa,...>`) inchange : la branche `toutes` ne s'active que sur la valeur
+litterale `"all"`.
+
+**Conclusion / prochaine etape** : S2 — RUN du balayage complet sur `pc/globals/globals-rtx-new.module`
+(process unique, mesurer le temps reel), sortie JSON au scratchpad (jamais le depot).
+
+
 
 **Contexte** : demande utilisateur (« commit les fichiers en attente ; je ne sais pas si la sonde bouillie faut garder »). Deux fichiers non suivis trainaient dans le principal depuis des jours et genaient chaque verification de proprete avant fusion.
 
