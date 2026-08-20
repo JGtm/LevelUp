@@ -89,7 +89,7 @@ func main() {
 	sfx := flag.String("sfx", "", "dossier des .pck (deduit de -deploy si vide) ; construit l'index large")
 	emb := flag.String("emb", "", "dossier ou ecrire les .wem embarques des banks (mode lot)")
 	sbnkGid := flag.Uint("sbnk", 0, "identifiant d'une bank (mode embarques, alternative a -pck)")
-	banksSup := flag.String("banks", "", "identifiants de banks a analyser en plus (mode lot), separes par des virgules, en hexa")
+	banksSup := flag.String("banks", "", "identifiants de banks a analyser en plus (mode lot) ou a structurer (mode eqip-arbre), separes par des virgules, en hexa ; \"all\" (mode eqip-arbre) = toutes les banques sbnk du module")
 	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
 	eqipIDs := flag.String("eqip", "", "identifiants de tags `eqip` cibles (hexa, virgules) ; vide = tous (modes eqip-sons/eqip-banks)")
 	flag.Parse()
@@ -210,12 +210,19 @@ func main() {
 	case "eqip-banks":
 		err = banquesDEquipement(chemin, *sortie, *sortieTir, *emb)
 	case "eqip-arbre":
+		// "-banks all" : BALAYAGE STRUCTUREL de toutes les banques du module, hors du
+		// graphe eqip deja ecoute (`.ai/V7.5/replay2d/PLAN_BALISE_MIX_WWISE.md`, phase 5.1).
+		// Le booleen se decide ICI, une seule fois : `structureDesBanques` n'a pas a
+		// re-interpreter la chaine source.
+		toutes := strings.EqualFold(strings.TrimSpace(*banksSup), "all")
 		var gids []uint32
-		for id := range parserHexa(*banksSup) {
-			gids = append(gids, id)
+		if !toutes {
+			for id := range parserHexa(*banksSup) {
+				gids = append(gids, id)
+			}
+			sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
 		}
-		sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
-		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb)
+		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb, toutes)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
