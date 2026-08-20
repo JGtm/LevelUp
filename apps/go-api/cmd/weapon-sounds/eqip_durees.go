@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -49,8 +50,10 @@ type candidatDuree struct {
 //
 // `entree` : sortie de `eqip-arbre -banks all` (schema `RapportStructure`). `exclues` :
 // banques a ecarter (le graphe eqip deja ecoute, `-exclure`). `sortie` : table complete
-// (JSON), triee par duree minimale croissante.
-func triageDurees(cheminModule, entree string, exclues map[uint32]bool, sortie string) error {
+// (JSON), triee par duree minimale croissante. `dossierExtrait` (option `-emb`) : si non
+// vide, ecrit le `.wem` BRUT de chaque wem des `topN` premiers candidats (0 = 40) — aucun
+// decodage, prepare l'ecoute sans rouvrir le module une troisieme fois (lot L6, S6).
+func triageDurees(cheminModule, entree string, exclues map[uint32]bool, sortie, dossierExtrait string, topN int) error {
 	if entree == "" {
 		return fmt.Errorf("le mode eqip-durees exige -json (sortie de eqip-arbre -banks all)")
 	}
@@ -159,6 +162,16 @@ func triageDurees(cheminModule, entree string, exclues map[uint32]bool, sortie s
 		resolus, len(survivants)-resolus, len(out), horsBucket)
 	afficherTop(out, 40)
 
+	if dossierExtrait != "" {
+		n := topN
+		if n <= 0 {
+			n = 40
+		}
+		if errX := extraireTopCandidats(m, out, n, dossierExtrait); errX != nil {
+			fmt.Printf("extraction candidats : %v\n", errX)
+		}
+	}
+
 	if sortie == "" {
 		return nil
 	}
@@ -198,4 +211,57 @@ func afficherTop(out []candidatDuree, n int) {
 		fmt.Printf("%2d. sbnk %s  event %s  %.2f-%.2fs  %d couche(s)  %d/%d wem resolus  gains=%v  [%s]\n",
 			i+1, c.Bank, c.Event, c.DureeMinS, c.DureeMaxS, c.NbCouches, c.WemsResolus, len(c.Wems), c.GainsDB, c.Nature)
 	}
+}
+
+// extraireTopCandidats ecrit le `.wem` BRUT de chaque wem des `topN` premiers candidats — un
+// fichier par wem, nomme `<bank>_<event>_<wemid>.wem`. AUCUN decodage (meme discipline que le
+// mode `embarques`) : l'ecoute reelle exige un decodeur Vorbis Wwise, absent de ce poste.
+// Reouvre chaque bank necessaire UNE fois (le module `m` est deja charge par l'appelant) —
+// beaucoup moins couteux que rouvrir tout le module une troisieme fois pour cette seule liste.
+func extraireTopCandidats(m *himodule.Module, out []candidatDuree, topN int, dossier string) error {
+	if topN > len(out) {
+		topN = len(out)
+	}
+	if err := os.MkdirAll(dossier, 0o755); err != nil {
+		return err
+	}
+	banques := map[uint32]bool{}
+	for _, c := range out[:topN] {
+		if gid, err := strconv.ParseUint(c.Bank, 16, 32); err == nil {
+			banques[uint32(gid)] = true
+		}
+	}
+	dataParBanque := map[string][]byte{}
+	embParBanque := map[string]map[uint32][2]uint32{}
+	for gid := range banques {
+		hex := fmt.Sprintf("%08x", gid)
+		_, brut, errB := bankParIdentifiant(m, gid)
+		if errB != nil {
+			continue
+		}
+		ch := chunks(brut)
+		dataParBanque[hex] = ch["DATA"]
+		embParBanque[hex] = mediasEmbarques(ch)
+	}
+	ecrits := 0
+	for _, c := range out[:topN] {
+		emb, data := embParBanque[c.Bank], dataParBanque[c.Bank]
+		for _, w := range c.Wems {
+			e, ok := emb[w]
+			if !ok {
+				continue
+			}
+			debut, taille := int(e[0]), int(e[1])
+			if debut < 0 || taille <= 0 || debut+taille > len(data) {
+				continue
+			}
+			nom := fmt.Sprintf("%s_%s_%d.wem", c.Bank, c.Event, w)
+			if err := os.WriteFile(filepath.Join(dossier, nom), data[debut:debut+taille], 0o644); err != nil {
+				return err
+			}
+			ecrits++
+		}
+	}
+	fmt.Printf("candidats extraits (bruts, .wem) : %d fichiers dans %s\n", ecrits, dossier)
+	return nil
 }
