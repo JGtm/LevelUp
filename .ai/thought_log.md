@@ -42,6 +42,26 @@ porte sa propre decision, consignee au moment de son commit.
   et VERT apres correctif. Les deux allers-retours sont conserves : ils epinglent le contrat
   vu de l utilisateur, le troisieme epingle la cause.
 
+- **U3 — parite de hauteur de la fiche morte en compact (Complete, sans correctif code)**.
+  L assertion demandee est ajoutee (`rangees(morte+compacte) === rangees(vivante+compacte)`,
+  helper `rangees` mutualise au lieu d en faire une 2e copie) : elle est VERTE. Le nombre de
+  rangees vaut 4 en compact, mort comme vivant. Diligence demandee poussee plus loin : AUCUNE
+  classe de hauteur n est conditionnee a `state.alive` dans `PlayerCard` — les cinq usages de
+  `alive` ne pilotent que du CONTENU (L340 vitalite/RespawnRow) ou de la COULEUR (L312, via
+  `style`, pas une classe) ; les deux conditions de PRESENCE de rangee (L321 zone, L384
+  inventaire) ne dependent que de `compact`. Un second garde-rail epingle ce corollaire :
+  les classes des rangees sont identiques morte et vivante. Vert aussi.
+  MECANISME RESIDUEL IDENTIFIE, NON CORRIGE (le gate prescrit est vert ; le correctif touche
+  au rendu de la fiche VALIDEE et releve du gate visuel) : la rangee 3 est a hauteur FIXE
+  (`h-3.5`) donc insensible, mais la rangee fusionnee du compact est en `min-h-[18px]` et
+  contient DEUX enfants `flex flex-wrap` comprimes par un parent `flex-nowrap`. Vivante, si
+  ces enfants se replient, la rangee depasse 18 px ; morte, elle est vide et retombe a
+  exactement 18 px — d ou un saut de hauteur que jsdom ne peut pas mesurer (aucun calcul de
+  layout). Piste de correctif si le gate visuel confirme : hauteur FIXE au lieu de `min-h`
+  sur cette rangee en compact, ce qui acheve l intention deja ecrite a cote
+  (`overflow-hidden`, « la rangee unique refuse de se replier », lecon C1) — `overflow-hidden`
+  ecrete a l affichage mais n empeche pas la boite de grandir.
+
 **Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
 4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
 `tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
@@ -55,7 +75,7 @@ fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.
 `computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
 supprime en U1 ; fusionnable, mais hors perimetre du lot.
 
-**Conclusion / prochaine etape** : U3 — parite de hauteur de la fiche morte en compact.
+**Conclusion / prochaine etape** : U4 — ne plus dessiner en gris les vies sans identite.
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
