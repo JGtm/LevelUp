@@ -24,6 +24,7 @@ import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
+import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { useReplayCompactCards } from '@/features/match-replay/useReplaySettings'
 import { collectKillEvents } from '@/features/match-view/_momentum'
@@ -171,6 +172,25 @@ function ReplayPage() {
           {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
               contraindre — c'est la colonne que le ResizeObserver du canvas mesure. */}
           <section className="order-1 min-w-0 xl:order-2">
+            {/* LE BANDEAU DE SCORE COIFFE LE TERRAIN (demande utilisateur du 2026-08-20) :
+                score des deux camps à l'image lue, de part et d'autre de l'horloge. Il est
+                DANS la colonne du canvas, et non en frère de celle-ci : la rangée est une
+                grille à trois colonnes ordonnées, où un frère supplémentaire prendrait une
+                cellule et décalerait le fil, le terrain et les fiches d'un cran. Ici il
+                coiffe la carte, à sa largeur exacte, sans toucher à la grille.
+
+                IL TIQUE SANS RIEN AJOUTER : la page tient déjà `frame` (le canvas le lui
+                publie toutes les 150 ms via `onFrameChange`) et `nowMs` en découle. C'est
+                la même horloge que le fil et que les scores en tête des colonnes — un
+                montage déclaratif suffit, aucun pilotage par ref n'est nécessaire. */}
+            <ReplayScoreBanner
+              doc={data}
+              scoreboard={scoreboard}
+              xuidMeta={xuidMeta}
+              frame={frame}
+              nowMs={nowMs}
+              locale={locale}
+            />
             <ReplayCanvas
               doc={data}
               locale={locale}
