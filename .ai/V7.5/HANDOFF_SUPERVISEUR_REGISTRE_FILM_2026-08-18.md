@@ -10,6 +10,21 @@
 
 ## 0. Etat exact au moment du handoff
 
+> **MISE A JOUR (20/08, nuit) — LOT C-ter LIVRE, CHANTIER ENTIEREMENT CLOS COTE CODE** :
+> `feat/v75` = `d1e1df583`, CI VERTE AU NIVEAU JOB (run 32314953623 — elle etait rouge 3 push
+> avant nous sur `cmd/variant-probe`, reparee par allowlists datees). Livre par C-ter : colline
+> KOTH designee par le film (tag 5), formes de colline au catalogue (role `hill`, 113/23 cartes)
+> servies en KOTH, jauge de capture EN DIRECT en zones simultanees (schema **18**, contrat 37 —
+> le +1 vient du `mapWeaponPads` d une autre session). Worktrees C-ter supprimes. IL RESTE
+> (mains de l utilisateur) : (1) gate visuel — planche
+> https://claude.ai/code/artifact/88a91930-a4a2-493a-a596-a89e97045a24 (R/V/C/Z1-Z6 + D7),
+> 8 temoins poses dans le cache du principal (anciens sous `_backup_gate_registre_film/`) ;
+> (2) dettes au REGISTRE : `cmd/variant-probe` a router vers sa session (2 allowlists datees),
+> 5 cartes KOTH sans colline dans leur `.mvar` (re-tirage UGC), slots tag 3 non nommes
+> (1545/1547), silences intra-rampe, `ZoneStateNow` export residuel, `oracle_corpus_test`/
+> `classify_test` allowlistes repo-root. Prochain schema libre = **19**. Journaux :
+> `registre_film/LOTCTER_VOLET1/2/3.md`, `LOTCTER_FUSION.md` ; arbitrages gate 1/2 au plan §7.
+
 > **MISE A JOUR (18/08, nuit)** : la phase 2b est CLOSE, FUSIONNEE ET POUSSEE (`feat/v75` = `9cde26529` apres le correctif archlint `PlayerIndex` -> `FilmIndex` ; schema 16, contrat 36 ; **CI VERTE AU NIVEAU JOB**, run 32176682166) ; le §2 ci-dessous decrit l'etat d'AVANT cette fusion et reste utile comme chronique. Ce qui reste : §3 (gate visuel utilisateur — planche avec la section « zones », temoins schema 16 poses ; hygiene de cloture ; role « colline » du catalogue) et le nettoyage des worktrees du chantier.
 
 - Branche unique `feat/v75`, HEAD **`f41fd362c`** = `origin/feat/v75` (poussee). Le principal
