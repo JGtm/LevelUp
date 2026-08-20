@@ -82,6 +82,27 @@ export const WALL_RADIUS_M = 1.6
 export const WALL_OPENING_RAD = (110 * Math.PI) / 180
 
 /**
+ * DURÉE DE VIE OFFICIELLE DU MUR, en millisecondes.
+ *
+ * MÊME RAISONNEMENT QUE LE CAPTEUR (cf. SENSOR_DURATION_MS), et il faut le rappeler parce
+ * que le film n'y aide pas : le décodeur ne suit que les records porteurs d'une position, si
+ * bien que `t1` date l'instant où l'objet cesse de BOUGER — 0,6 s de médiane pour un mur —
+ * et non sa disparition, que le film ne date NULLE PART. La seule durée disponible est donc
+ * l'officielle.
+ *
+ * LA SOURCE NE DONNE PAS DE CHIFFRE EXACT, contrairement au capteur : « le capteur de menaces
+ * dure 15 s [...], le mur une dizaine de secondes » (Halo Waypoint, Sandbox Overview
+ * Season 4, cité dans `filmdec/equipment_life_end_test.go`). On retient donc 10 s, la lecture
+ * littérale de « une dizaine » — et c'est écrit ici pour qu'un chiffre publié plus tard
+ * remplace une approximation identifiée comme telle, et pas une valeur d'origine oubliée.
+ *
+ * LA BORNE MESURÉE L'EMPORTE si elle dépasse : un mur suivi 18,9 s existe au témoin, et la
+ * fenêtre couvre toujours au moins `t1` (cf. `placementEndFrame`). On n'efface pas un objet
+ * que la mesure montre encore vivant.
+ */
+export const WALL_DURATION_MS = 10_000
+
+/**
  * PLANCHER DE LISIBILITÉ, en pixels d'écran. Un mur de 1,6 m sur une carte de Big Team Battle
  * (150 à 200 m de large pour 432 px utiles, soit ~2,5 px/m) tomberait à 4 px de rayon : une
  * éraflure. Le rayon monde effectif est donc relevé jusqu'à ce que l'arc atteigne ce plancher —
