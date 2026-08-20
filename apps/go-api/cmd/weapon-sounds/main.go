@@ -92,6 +92,7 @@ func main() {
 	banksSup := flag.String("banks", "", "identifiants de banks a analyser en plus (mode lot) ou a structurer (mode eqip-arbre), separes par des virgules, en hexa ; \"all\" (mode eqip-arbre) = toutes les banques sbnk du module")
 	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
 	eqipIDs := flag.String("eqip", "", "identifiants de tags `eqip` cibles (hexa, virgules) ; vide = tous (modes eqip-sons/eqip-banks)")
+	exclure := flag.String("exclure", "", "identifiants de banks a exclure du triage (mode eqip-durees), hexa, virgules")
 	flag.Parse()
 
 	racine, err := resoudreDeploy(*deploy)
@@ -223,6 +224,8 @@ func main() {
 			sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
 		}
 		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb, toutes)
+	case "eqip-durees":
+		err = triageDurees(chemin, *sortie, parserHexa(*exclure), *sortieTir)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
