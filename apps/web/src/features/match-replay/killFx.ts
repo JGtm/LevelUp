@@ -27,9 +27,13 @@ import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from './repla
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 /**
- * Fenêtre d'acceptation d'une DERNIÈRE position après la fin d'une vie, en ms. C'est la
- * fenêtre DEATH du POC (1,5 s), déjà employée par le marqueur de mort : la victime, par
- * construction, vient de mourir — sa trace est close, sa dernière position reste vraie.
+ * Fenêtre d'acceptation d'une DERNIÈRE position après la fin d'une vie, en ms. La victime,
+ * par construction, vient de mourir — sa trace est close, sa dernière position reste vraie.
+ *
+ * ELLE VAUT LA FENÊTRE DEATH D'ORIGINE (1,5 s) MAIS N'EN DÉPEND PLUS : la croix de mort est
+ * passée à 2,5 s le 2026-08-18, celle-ci non. Ce sont deux questions différentes — combien de
+ * temps un repère reste LISIBLE d'un côté, jusqu'où une position reste VRAIE de l'autre — et
+ * les lier ferait bouger la seconde à chaque réglage d'écran de la première.
  */
 export const KILLPOS_WINDOW_MS = 1_500
 

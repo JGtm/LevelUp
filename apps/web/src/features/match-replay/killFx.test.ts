@@ -108,7 +108,7 @@ describe('buildKillFx', () => {
   it("retranche le décalage d'origine de l'artefact : l'effet se pose sur la fin de vie", () => {
     // Kill servi 3 s après la fin de vie de sa victime (le décalage d'origine mesuré sur
     // le témoin 000d5950 vaut +3 678 ms) : l'alignement le pose frame 20 — victime
-    // relue, effet orienté. Avec le recalage brut, la fenêtre DEATH (1,5 s) le ratait
+    // relue, effet orienté. Avec le recalage brut, la fenêtre de position (1,5 s) le ratait
     // (mesure : 1/93 victimes relues avant, 90/93 après).
     const fx = buildKillFx(docWithCouple(), [kill({ tMs: 5_000 })], 0)
     expect(fx[0]?.frame).toBe(20)
