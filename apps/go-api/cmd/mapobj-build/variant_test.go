@@ -106,6 +106,50 @@ func TestNomDeMvarPartageRefuseLeRepliAPlat(t *testing.T) {
 	}
 }
 
+// variantePourGarde construit une variante SYNTHÉTIQUE : deux objets de décor qui fixent
+// l'emprise du canevas, et deux objectifs de Bastion qui fixent celle des objectifs. C'est
+// tout ce que le garde-fou regarde, et cela permet de rejouer en CI une mesure faite sur des
+// `.mvar` de 1 Mo non versionnables.
+func variantePourGarde(empriseCanevas, empriseObjectifs float64) *mapvar.Variant {
+	zone := []int32{mapvar.LabelHash("strongholds_include"), mapvar.LabelHash("strongholds_zone")}
+	return &mapvar.Variant{Objects: []mapvar.Object{
+		{Index: 0, Pos: mapvar.Vec3{}},
+		{Index: 1, Pos: mapvar.Vec3{X: empriseCanevas}},
+		{Index: 2, Pos: mapvar.Vec3{}, Labels: zone},
+		{Index: 3, Pos: mapvar.Vec3{X: empriseObjectifs}, Labels: zone},
+	}}
+}
+
+// TestGrandCanevasNEcartePasLaCarteJouee — LE témoin du plancher absolu, aux chiffres
+// mesurés sur Empyrean (asset d035fc3e) le 2026-08-20. Les deux variantes de cette carte
+// ont un rapport d'emprise à 0,13 point l'une de l'autre — 3,609 % pour la carte JOUÉE,
+// 3,735 % pour le rack — et pourtant l'une doit être retenue et l'autre écartée. Aucun
+// réglage du seuil RELATIF ne les sépare : seule l'emprise absolue le fait.
+//
+// Mutation qui doit le faire rougir : retirer le `&& goalSpread < parkedAbsoluteSpreadM`
+// (la carte jouée d'Empyrean redevient un rack, et 12 des 73 cartes du catalogue
+// redeviennent iningérables par le réseau).
+func TestGrandCanevasNEcartePasLaCarteJouee(t *testing.T) {
+	cas := []struct {
+		nom                        string
+		empriseCanevas, empriseObj float64
+		wantParked                 bool
+	}{
+		{"empyrean map.mvar (carte jouée sur canevas Forge)", 1061.64, 38.32, false},
+		{"empyrean fo11_blank.mvar (rack du canevas)", 356.10, 13.30, true},
+		{"vagabond fo08_wetland.mvar (rack, mesure 2026-08-08)", 356.10, 8.20, true},
+		{"cliffside_map (plus petite emprise réellement posée du catalogue)", 5384, 21.21, false},
+	}
+	for _, c := range cas {
+		got := isParkedPalette(variantePourGarde(c.empriseCanevas, c.empriseObj))
+		if got != c.wantParked {
+			t.Errorf("%s : isParkedPalette = %v, attendu %v (objectifs %.2f m sur un canevas de %.2f m, soit %.3f %%)",
+				c.nom, got, c.wantParked, c.empriseObj, c.empriseCanevas,
+				100*c.empriseObj/c.empriseCanevas)
+		}
+	}
+}
+
 // TestCliffhangerNonEcarte — témoin de non-régression sur une carte non-Forge : ses deux
 // variantes portent les mêmes 14 objectifs étalés sur 50 m, aucune ne doit être écartée.
 func TestCliffhangerNonEcarte(t *testing.T) {
