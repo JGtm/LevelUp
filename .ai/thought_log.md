@@ -1,3 +1,22 @@
+## [2026-08-20] Lot L6 sons (S6 prep) — extraction brute des .wem candidats (eqip-durees -emb) — Complete
+
+**Contexte** : preparer l'ecoute (S6) sans decoder ici (decodeur vgmstream-cli.exe confirme
+present dans le scratchpad par le superviseur, mais son execution reste une action prohibee
+pour cet agent — cf. compte rendu final, aucun contournement tente). Ce qui EST du ressort de
+l'agent : extraire les `.wem` BRUTS des candidats pour que la conversion, une fois autorisee
+par l'utilisateur, n'exige plus de rouvrir le module.
+
+**Decision technique principale** : option `-emb <dossier>` ajoutee au mode `eqip-durees`
+(reutilise le flag existant, deja multi-usage sur ce mode) + `-limite <n>` pour le nombre de
+candidats (0 => 40, coherent avec `afficherTop`). Nouvelle fonction
+`extraireTopCandidats` : reouvre uniquement les banques necessaires aux N premiers candidats
+(le module `m` deja charge par l'appelant, pas un 3e chargement complet), ecrit un `.wem` brut
+par variante, nomme `<bank>_<event>_<wemid>.wem`. Meme discipline que le mode `embarques`
+existant : zero decodage.
+
+**Resultats observes** : gates `go build`/`go vet` OK, `gofmt` propre, fichier a 267 L (seuil
+500 L respecte). Extraction reelle : voir le compte rendu final pour le compte de fichiers.
+
 ## [2026-08-20] Lot L6 sons (S3) — mode eqip-durees, triage par duree RIFF, valide contre vgmstream — Complete
 
 **Contexte** : suite de S2. Triager les 6151 evenements du balayage en candidats "pose de

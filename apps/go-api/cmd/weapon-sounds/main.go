@@ -225,7 +225,7 @@ func main() {
 		}
 		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb, toutes)
 	case "eqip-durees":
-		err = triageDurees(chemin, *sortie, parserHexa(*exclure), *sortieTir)
+		err = triageDurees(chemin, *sortie, parserHexa(*exclure), *sortieTir, *emb, *limite)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
