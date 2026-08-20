@@ -83,6 +83,28 @@ porte sa propre decision, consignee au moment de son commit.
   quand meme » : en-tete de `useSlotIdentity.ts`, `MarkerStyle` dans `replayMarkers.ts`,
   `buildPlayers` dans `rosterLogic.ts`.
 
+- **U5 — les murs portatifs disparaissent a leur duree officielle (Complete)**. Citation lue
+  a la source (`filmdec/equipment_life_end_test.go:15`) : « le capteur de menaces dure 15 s
+  (« Sensor Duration: 6.5 -> 15 secondes », Halo Waypoint, Sandbox Overview Season 4), le mur
+  une dizaine de secondes ». La source NE DONNE PAS de chiffre exact pour le mur, contrairement
+  au capteur : `WALL_DURATION_MS = 10_000` (lecture litterale de « une dizaine »), avec un
+  commentaire qui cite la source ET dit que c est une approximation identifiee comme telle —
+  pour qu un chiffre publie plus tard remplace une approximation, pas une valeur oubliee.
+  La constante vit dans `placementWall.ts`, avec la geometrie et le rayon du mur — symetrie
+  exacte de `SENSOR_DURATION_MS` dans `threatSensor.ts` (pas de cycle d import verifie).
+  MECANIQUE IDENTIQUE AU CAPTEUR plutot que dupliquee : le `kind !== 'sensor'` en dur laisse
+  place a une table `OFFICIAL_DURATION_MS: Partial<Record<PlacementKind, number>>` ; la
+  formule `min(max(t0 + duree, t1), lastFrame)` est inchangee. Elle couvre donc TOUJOURS au
+  moins `t1` — le mur suivi 18,9 s du temoin reste jusqu a sa derniere mesure, on n efface
+  pas un objet que la mesure montre vivant.
+  Tests : `placementWall.test.ts` reecrit (le titre et les assertions disaient « il ne
+  disparait pas », l ancienne regle) — survie a `t1`, effacement a `t0 + duree`, borne mesuree
+  prioritaire, et cas `frameMs = 0` (aucune conversion possible : la fenetre reste ouverte
+  plutot que de se fermer au hasard). Un SECOND test portait la meme ancienne regle et a vire
+  rouge — `equipmentPlacementsLayer.test.ts` (« t1 ne referme RIEN ») : rectifie, plus deux
+  cas ajoutes pour le mur. Commentaire doctrinal de `placementWindow.ts` mis a jour (anti
+  doc-inversee) : il justifiait explicitement de laisser le mur jusqu a la fin du rejeu.
+
 **Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
 4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
 `tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
@@ -96,7 +118,7 @@ fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.
 `computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
 supprime en U1 ; fusionnable, mais hors perimetre du lot.
 
-**Conclusion / prochaine etape** : U5 — disparition des murs portatifs a duree officielle.
+**Conclusion / prochaine etape** : U6 — garde Fiesta des lachers ramenee a un simple reglage.
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
