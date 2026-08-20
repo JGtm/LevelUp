@@ -1,4 +1,34 @@
-## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
+## [2026-08-20] Lot L6 sons (S1) — capacite "toutes les banques" pour eqip-arbre — Complete
+
+**Contexte** : lot L6, worktree `wt/sons-balise`. Le son de POSE de la balise du translocateur
+reste introuvable ; la chaine `eqip -> effe -> snd! -> sbnk` n'atteint que 17 des 1305 banques
+`sbnk` de `pc/globals` (1,3 %, mesure `PLAN_BALISE_MIX_WWISE.md` phase 5.1). Etape S1 : donner
+au mode `eqip-arbre` la capacite de balayer TOUTES les banques, prealable au balayage complet
+(S2).
+
+**Decision technique principale** : `-banks all` (comparaison insensible a la casse, decidee
+UNE fois dans `main.go`) declenche dans `eqip_arbre.go` l'enumeration `tousLesGidsSbnk(m)` —
+`m.Files("sbnk")` trie par identifiant, EXACT precedent de `probe.go`/`sonder` et
+`audit.go`/`auditFormat`, qui balaient deja le module sans liste explicite. Zero parseur
+nouveau : `structureDUneBanque` (deja prouvee) s'applique inchangee a chaque banque. Ajout
+d'une progression (`afficherProgres`, toutes les 50 banques + derniere : compte de banques,
+evenements cumules, temps ecoule) car le balayage est estime a 20-30 min en un seul processus
+et un outil muet ce temps-la ne distingue pas un traitement normal d'un blocage — la sortie
+console detaillee (`afficherStructure`, illisible sur 1305 banques) est desactivee en mode
+`toutes` au profit de ce resume, la sortie JSON complete restant inchangee. Duree/RIFF et
+filtrage (S3) delibrement HORS PERIMETRE de S1 : le gate de cette etape est build+vet, pas une
+execution reelle contre le module de 7,24 Go (reservee a S2).
+
+**Resultats observes** : `go build ./cmd/weapon-sounds/` OK, `go vet ./cmd/weapon-sounds/` exit
+0, `gofmt -l` silencieux sur les deux fichiers touches. Tailles : `eqip_arbre.go` 324 L,
+`main.go` 282 L (seuil 500 L respecte, pas de nouveau fichier necessaire). Comportement
+existant (`-banks <hexa,...>`) inchange : la branche `toutes` ne s'active que sur la valeur
+litterale `"all"`.
+
+**Conclusion / prochaine etape** : S2 — RUN du balayage complet sur `pc/globals/globals-rtx-new.module`
+(process unique, mesurer le temps reel), sortie JSON au scratchpad (jamais le depot).
+
+
 
 **Contexte** : demande utilisateur (« commit les fichiers en attente ; je ne sais pas si la sonde bouillie faut garder »). Deux fichiers non suivis trainaient dans le principal depuis des jours et genaient chaque verification de proprete avant fusion.
 
