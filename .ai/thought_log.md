@@ -69805,3 +69805,72 @@ derive pas du nom de base (2 970 candidats « base + marque de variante », espe
 4e-6, zero resultat — `TestDicoVariantesSuffixes`, versionne). Le mode des films n'a pas pu etre
 etabli : le registre est tenu en ecriture par le serveur local, et l'ouvrir depuis un second
 processus viole les ADR 0013/0016.
+
+---
+
+## [2026-08-20] Lot L13 — KOTH : Empyrean, les 4 cartes sans colline, et verification des bases Strongholds
+
+**Statut** : Complete (volets A et B livres ; volet C = verification, une refutation majeure
+consignee et NON traitee par consigne).
+
+**Decision technique principale** : trois defauts distincts, tous mesures sur pieces, dont
+DEUX contredisent le registre du 2026-08-20.
+
+1. `isParkedPalette` (`cmd/mapobj-build/variant.go`) comparait l'emprise des objectifs a celle
+   de TOUS les objets de la variante. Sur une carte Forge, cet ensemble est le CANEVAS, pas le
+   terrain. Les deux variantes d'Empyrean tiennent en 0,13 point de rapport (carte jouee
+   3,609 %, rack 3,735 %) : aucun reglage du seuil relatif ne les separe. Correctif principiel :
+   un plancher d'emprise ABSOLUE (17,0 m), en ET avec le rapport — le garde-fou ne peut que se
+   relacher. Calibre entre le plus grand rack connu (13,30 m) et la plus petite emprise
+   reellement posee des 73 entrees (21,21 m, cliffside_map).
+
+2. `classify` retenait le PREMIER role nomme et `Objectives()` n'emettait qu'un objectif par
+   objet. Or dans Forge un volume se declare pour PLUSIEURS modes. Sur Empyrean, les 3 zones de
+   Bastion portent AUSSI la paire de hashs de la colline, et les 4 marqueurs ponctuels de KOTH
+   tombent sur ces 3 volumes plus un quatrieme : la carte a QUATRE collines. C'est CE defaut,
+   et non `isParkedPalette`, qui expliquait « Empyrean : 1 seule colline » au catalogue (l'entree
+   etait entree par `--from-file`, chemin qui n'applique pas le garde-fou).
+
+3. `isHill` exigeait la PAIRE role+filtre. Le filtre ne servait qu'a ecarter un decoy documente
+   (cylindres `minigame_include`) ; l'exiger ecartait avec lui les collines declarees SANS
+   filtre. Regle corrigee : le hash de ROLE, sauf revendication par un autre mode
+   (`<mode>_include` resolu, sans le filtre de KOTH).
+
+**Resultats observes** :
+- Empyrean 1 -> 4 collines ; Forbidden 0 -> 5 ; Illusion 0 -> 5 ; Smallhalla 0 -> 5 ;
+  `map`/33c6505d 0 -> 2. Catalogue : 113 -> 133 collines, **0 perdue, 0 deplacee**, 1108
+  objectifs non-colline strictement inchanges, 68 des 73 entrees identiques octet pour octet,
+  aucun autre champ modifie.
+- Reseau : 12 des 73 cartes etaient iningerables (« aucune variante exploitable ») ; apres
+  correctif, 73/73, 0 echec, 34 variantes de rack toujours ecartees. Controle negatif joue en
+  direct : `fo11_blank.mvar` d'Empyrean (25 objectifs, qui gagnerait au nombre) reste ecarte.
+- Couverture, source OFFICIELLE (`map_mode_pair_definitions`, 850 paires 343) : 33 cartes ont
+  une paire KOTH **Arena** officielle, 25 sont au catalogue ; 2 d'entre elles avaient zero
+  colline avant, ZERO apres.
+- Oasis et Oasis Firefight n'ont AUCUNE paire KOTH Arena officielle : leur unique match KOTH est
+  un **Firefight** KOTH. Leur absence de colline est correcte — verdict officiel et corpus
+  concordent.
+- Volet C : sur 57 cartes ayant des matchs Strongholds/Total Control, **toute carte du catalogue
+  ayant au moins un match Strongholds a exactement 3 zones**. Aucun trou Strongholds.
+
+**Refutation majeure (volet C, consignee, NON traitee — verification seule)** : la ligne du
+registre du 2026-08-08 « Zones de Total Control absentes des variantes de CARTE — la donnee est
+ailleurs, ouvrir la variante de MODE » est FAUSSE. `totalcontrol_zone` = 1750425936 et
+`totalcontrol_include` = 1589616376 (controle : murmur3(`stockpile_socket`) = 2110778921). La
+recherche de 2026-08-08 avait essaye `total_control_zone` — le vrai nom n'a pas d'underscore.
+Mesure sur 6 variantes de carte : Breaker 16 zones, Command 18, Deadlock 15, Highpower 15,
+Oasis 14, Scarr 14, toutes avec forme, toutes de type 850884602, toutes neutres. 99 matchs Total
+Control sur 13 cartes du catalogue attendent ce lot. Meme surface : `firefight_objective` =
+-1624244313 est un ROLE (5 volumes avec forme + 5 marqueurs par carte), contrairement a la
+conclusion du lot 5.
+
+**Gates** : `go build ./...` exit 0 ; `gofmt -l` vide ; `go test $(go list ./... | grep -v
+internal/himap)` **exit 0, 142 paquets** (himap exclu : timeout preexistant consigne au registre) ;
+hooks lefthook verts a chaque commit (gofmt, gitleaks 0 fuite, go-vet, check-merge-conflict).
+
+**Conclusion / prochaine etape** : deux lots prets a lancer, tous deux quantifies au registre.
+(1) **Total Control + Firefight** : 4 hashs nommes, roles a poser, ~13 cartes a regenerer.
+(2) **Regeneration du catalogue** : 29 cartes n'ont jamais ete re-parsees depuis l'arrivee du
+role `hill` — un re-parse complet passe de 113 a 247 collines AVANT tout correctif. Deux pieges
+mesures y attendent (5 cartes dont l'asset n'expose plus le fichier nomme au catalogue ;
+`--from-file` n'applique pas `isParkedPalette`).
