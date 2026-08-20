@@ -1,3 +1,31 @@
+## [2026-08-20] Lot L6 sons (S2) — RUN du balayage complet, 1305 banques en 24 s — Complete
+
+**Contexte** : suite de S1. Executer `eqip-arbre -banks all` sur `pc/globals/globals-rtx-new.module`
+(7,24 Go) en un seul processus, budget annonce par le plan 20-30 min, mesurer le temps reel.
+
+**Decision technique principale** : passe 1 `eqip-sons` regeneree a neuf (module `any/globals`,
+0,62 Go) avant le balayage — 58 eqip sonores, **17 banks atteintes** (liste exacte : `15c5b355
+1db55179 2ddcd774 2f019657 5724312f 60b0f79c 7acb11cc 7bd0883c 8c43d4c8 92c830f5 9b4559ee
+b29ac6de dcfaa487 de65048f e9e5b32e ebee7599 ee912fba`), confirme le chiffre du plan (1,3 %) et
+sert de reference d'exclusion pour S3. Balayage lance sans `-emb` (aucune extraction .wem en
+masse : 1305 banques auraient pu representer plusieurs Go, hors propos de la structuration).
+Suivi par un `Monitor` (log + verification de vie du PID natif Windows, la premiere tentative de
+fond imbriquant `nohup ... &` DANS `run_in_background` du Bash tool a declenche une notification
+d'achevement prematuree — le process reel continuait derriere ; corrige en verifiant sur pieces
+via `Get-Process` avant de faire confiance a la notification).
+
+**Resultats observes** : **24 secondes de bout en bout** (11:49:01 -> 11:49:25), pas 20-30
+minutes — l'estimation du plan supposait vraisemblablement une extraction disque en plus de la
+structuration. 1305 banques traitees, **1180 lisibles** (122 sans chunk BKHD, 3 HIRC absent —
+concorde exactement avec l'audit historique du chantier armes : « BKHD 1183, HIRC 1180 » sur
+1305), **6151 evenements** au total, memoire pic 8,6 Go alloues / 9,2 Go systeme. Sortie :
+`balayage_structurel.json` (5,48 Mo, scratchpad `sons_L6/`, jamais le depot) + log console
+complet.
+
+**Conclusion / prochaine etape** : S3 — triage des candidats « pose de balise » sur cette sortie
+(exclusion des 17 banques ci-dessus, familles musicales, duree 0,3-2 s via un nouveau mode qui
+relit le module une seconde fois, cible uniquement sur les survivants des filtres structurels).
+
 ## [2026-08-20] Lot L6 sons (S1) — capacite "toutes les banques" pour eqip-arbre — Complete
 
 **Contexte** : lot L6, worktree `wt/sons-balise`. Le son de POSE de la balise du translocateur
