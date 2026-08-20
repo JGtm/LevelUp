@@ -261,6 +261,23 @@ export interface ReplayText {
    */
   roundShortFmt: (index: number) => string
   roundLabelFmt: (index: number, count: number, value: number) => string
+  /**
+   * LE BANDEAU DE SCORE au-dessus du terrain : deux barres de camp encadrant l'horloge de
+   * lecture. Les deux camps s'y nomment par leur RAPPORT au joueur de la page (allié /
+   * adverse) et non par leur nom d'équipe, qui est déjà en tête des colonnes de fiches —
+   * le bandeau dit un affrontement, la colonne dit une identité.
+   *
+   * `roundNumberFmt` est le rang seul, affiché sous l'horloge ; `roundOfCountFmt` le
+   * situe dans le match pour l'infobulle. Aucun des deux ne porte de valeur : entre deux
+   * barres, un nombre sans camp ne se rattacherait à personne (`roundLabelFmt`, lui, sert
+   * une colonne, où le camp est acquis).
+   */
+  scoreBannerLabel: string
+  scoreBannerAlly: string
+  scoreBannerEnemy: string
+  scoreBannerClock: string
+  roundNumberFmt: (index: number) => string
+  roundOfCountFmt: (index: number, count: number) => string
   /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
   leadChange: string
   leadChangeAtFmt: (time: string, team: string) => string
