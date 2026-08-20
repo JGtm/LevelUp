@@ -13,9 +13,6 @@ import type {
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(${token})`,
-  // tokenCssVar : requis depuis que le kill feed est rendu en DOM (MatchKillFeed) et
-  // teinte les icônes d'arme par équipe. Sans lui, le mock partiel casse le rendu.
-  tokenCssVar: (token: string) => `var(--${token})`,
 }))
 
 // Un chart ECharts monté en jsdom crashe le canvas — on stubbe le wrapper.

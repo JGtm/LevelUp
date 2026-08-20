@@ -428,9 +428,8 @@ function KillLine({
       <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
         name={displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} />
         {/* L'ARME entre le tueur et la victime — elle remplace la croix (POC). L'icône
-            extraite du jeu est un masque teint par currentColor (cf. WeaponIcon) : poser
-            la couleur d'équipe du TUEUR ici, c'est la technique du kill feed de la carte
-            « Dominance » (MatchKillFeed pose color sur le parent de l'icône). */}
+            extraite du jeu est un masque teint par currentColor (cf. WeaponIcon) : on
+            pose donc la couleur d'équipe du TUEUR sur l'icône elle-même. */}
       {k.weaponImageUrl ? (
         <WeaponIcon
           imageUrl={k.weaponImageUrl}
