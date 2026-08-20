@@ -27,13 +27,13 @@ describe('useReplaySettings — valeurs par défaut', () => {
     expect(result.current.heatmapMode).toBe('presence')
   })
 
-  it('effets de tirs ALLUMÉS, effets de mort ÉTEINTS — les deux défauts du 16/08', () => {
-    // Ce ne sont pas deux réglages symétriques : l'éclair de bouche dit où le match se joue
-    // et il a été validé sans réserve ; le trait tueur -> victime, lui, est « optionnel,
-    // désactivé par défaut » — c'est la décision produit, elle se teste.
+  it('les DEUX effets d événement sont ALLUMÉS par défaut', () => {
+    // Les effets de mort ont rejoint les éclairs de bouche le 2026-08-20. Éteints, ils
+    // demandaient de savoir qu'ils existaient pour aller les allumer : l'utilisateur les
+    // cherchait sans les trouver. C'est la décision produit, elle se teste.
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showShotFx).toBe(true)
-    expect(result.current.showKillFx).toBe(false)
+    expect(result.current.showKillFx).toBe(true)
   })
 
   it('emplacements d arme ALLUMÉS — « les infos sont intéressantes à avoir » (18/08)', () => {
@@ -120,9 +120,10 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
   })
 
   it('les deux effets survivent au remontage, chacun sur SA clé', () => {
+    // Les deux partent ALLUMÉS : une bascule chacun les éteint, et c'est cet état-là qui doit
+    // survivre. Deux clés distinctes, jamais une pour deux.
     const first = renderHook(() => useReplaySettings())
     act(() => first.result.current.toggleShotFx())
-    act(() => first.result.current.toggleKillFx())
     first.unmount()
 
     const { result } = renderHook(() => useReplaySettings())

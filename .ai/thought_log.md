@@ -1,4 +1,4 @@
-## [2026-08-20] Lot L3 — nettoyage UI rejeu 2D / vue match (branche wt/ui-nettoyage) — En cours
+## [2026-08-20] Lot L3 — nettoyage UI rejeu 2D / vue match (branche wt/ui-nettoyage) — Complete
 
 **Contexte** : demande utilisateur portant huit corrections d ergonomie sur le rejeu 2D et la
 vue match (U1 a U8). Travail isole dans le worktree `LevelUp-wt-ui`, branche
@@ -154,11 +154,28 @@ porte sa propre decision, consignee au moment de son commit.
   qui epingle les 2,5 s et la conversion en images — l export a enfin le consommateur qu il
   annoncait.
 
-**Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
-4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
-`tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
-plafond du cliquet `placementFamily.guard.test.ts:172`. U2 — `match-replay` 64 fichiers /
-964 tests exit 0 ; tsc exit 0 ; eslint 20 avertissements (baseline tenue).
+- **U8 — les effets de mort sont allumes par defaut (Complete)**. `SHOW_KILL_FX_DEFAULT`
+  passe a `true`. La raison est ecrite au bon endroit : eteints, ils demandaient de SAVOIR
+  qu ils existaient pour aller les allumer — l utilisateur les cherchait sans les trouver.
+  Trois docs corrigees (anti doc-inversee) : le bloc doctrinal des deux effets (qui opposait
+  leurs defauts), le champ `showKillFx` de l interface `ReplaySettings` (« ETEINT par
+  defaut »), et le hint i18n dans les DEUX langues (« Eteint par defaut » -> « Allume par
+  defaut » ; « Off by default » -> « On by default »).
+  Deux tests ajustes : le defaut (qui epinglait `showKillFx === false`) et la survie au
+  remontage — ce dernier basculait les DEUX effets pour verifier deux cles distinctes ;
+  desormais qu ils partent tous deux allumes, ne basculer QUE les tirs prouve mieux la
+  separation des cles (l un tombe a false, l autre reste a true).
+  Verifie par grep qu aucune autre chaine ne dit encore « eteint par defaut » pour ce calque :
+  les mentions restantes visent la carte de chaleur, les objets non identifies et le son, tous
+  legitimement eteints.
+
+**Resultats observes — GATES DE CLOTURE (tous verts)** : `npx tsc -b --force` nu exit 0 ;
+`npx vitest run` complet 467 fichiers / 4447 tests / 14 skipped exit 0 ; `npx eslint .`
+0 erreur, 20 avertissements exit 0 (baseline INCHANGEE depuis le debut du lot) ;
+`node tools/lint-cross-feature-imports.mjs` 7 <= plafond 7 exit 0 ; cliquet de taille :
+`ReplayCanvas.tsx` a 800 lignes pour un plafond de 808 (8 lignes regagnees par U6 ; il
+partait PILE au plafond). Gates intermediaires a chaque etape : U1 466/4448, U2 64 fichiers /
+964, U4 65/970, U5 65/974, U6 67/987, U7 65/960, U8 65/960.
 
 **Decouvertes hors perimetre (NON traitees)** : (1) `useReplaySound.ts` porte le MEME motif
 fautif a `toggleCategory` (~L106-114) et `toggle` (~L217) — sans consequence visible
@@ -167,7 +184,11 @@ fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.
 `computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
 supprime en U1 ; fusionnable, mais hors perimetre du lot.
 
-**Conclusion / prochaine etape** : U8 — effets de mort allumes par defaut + hint corrige FR/EN.
+**Conclusion / prochaine etape** : les huit etapes sont statuees, sept livrees avec code et
+une (U3) close sans correctif code parce que son gate prescrit est vert. AUCUN PUSH — la
+branche `wt/ui-nettoyage` attend le gate visuel de l utilisateur. Deux points a rejouer a
+l ecran : la hauteur de la fiche morte en compact (U3, mecanisme et piste de correctif
+consignes ci-dessus) et la disparition des murs a 10 s (U5, chiffre approche assume).
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
