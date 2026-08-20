@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mock A — Cinéma (hero image + barre info)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #09090b; color: #fafafa; min-height: 100vh; }
+
+  /* ── Palette ── */
+  :root {
+    --bg:        #09090b;
+    --surface:   #18181b;
+    --border:    #27272a;
+    --muted:     #71717a;
+    --win:       #22c55e;
+    --loss:      #ef4444;
+    --draw:      #a78bfa;
+    --perf-high: #22c55e;
+    --accent:    #3b82f6;
+    --rank-gold: #f59e0b;
+  }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 24px;
+    font-size: 13px; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .breadcrumb a { color: var(--muted); text-decoration: none; }
+  .breadcrumb a:hover { color: #fafafa; }
+  .breadcrumb .current { color: #fafafa; }
+  .breadcrumb-arrow { color: var(--border); }
+
+  /* ── VARIANTE A : Hero image pleine largeur ── */
+  .hero {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    background:
+      linear-gradient(135deg,
+        #0f172a 0%, #1e3a5f 30%, #0d4f6b 55%, #0c2340 80%, #06111f 100%);
+  }
+  /* Simulation d'une map Halo — grille géométrique subtile */
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg,   transparent, transparent 39px, rgba(255,255,255,.04) 40px),
+      repeating-linear-gradient(90deg,  transparent, transparent 39px, rgba(255,255,255,.04) 40px);
+    background-size: 40px 40px;
+  }
+  /* Formes géométriques style structure Halo */
+  .hero::after {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 400px 150px at 30% 60%, rgba(56,189,248,.10) 0%, transparent 70%),
+      radial-gradient(ellipse 300px 120px at 75% 35%, rgba(139,92,246,.12) 0%, transparent 70%);
+  }
+  /* Gradient assombrissant le bas */
+  .hero-gradient {
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(9,9,11,0) 0%,
+      rgba(9,9,11,0) 35%,
+      rgba(9,9,11,.6) 65%,
+      rgba(9,9,11,.92) 100%
+    );
+    pointer-events: none;
+  }
+  /* Navigation match en haut à droite */
+  .hero-nav {
+    position: absolute; top: 14px; right: 16px; z-index: 2;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: rgba(255,255,255,.7);
+    background: rgba(0,0,0,.45);
+    padding: 5px 10px;
+    backdrop-filter: blur(4px);
+  }
+  .hero-nav button {
+    background: none; border: none; color: rgba(255,255,255,.8);
+    cursor: pointer; font-size: 14px; padding: 0 2px;
+    line-height: 1;
+  }
+  .hero-nav button:hover { color: #fff; }
+  /* Outcome en bas à gauche */
+  .hero-outcome {
+    position: absolute; bottom: 18px; left: 20px; z-index: 2;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .outcome-label {
+    font-size: 28px; font-weight: 800; letter-spacing: -.5px;
+    color: var(--win); text-shadow: 0 2px 12px rgba(34,197,94,.4);
+  }
+  .outcome-score {
+    font-size: 18px; font-weight: 600; color: rgba(255,255,255,.7);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Barre info 3 colonnes ── */
+  .info-bar {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .info-col {
+    padding: 16px 24px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .info-col + .info-col {
+    border-left: 1px solid var(--border);
+  }
+
+  /* Col 1 — contexte */
+  .match-title { font-size: 16px; font-weight: 600; color: #fafafa; }
+  .match-date  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .playlist-tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted);
+    padding: 2px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Col 2 — performance */
+  .perf-col { align-items: center; min-width: 120px; }
+  .perf-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .perf-value { font-size: 48px; font-weight: 800; line-height: 1; color: var(--perf-high); margin: 4px 0; font-variant-numeric: tabular-nums; }
+  .perf-sub   { font-size: 11px; color: var(--muted); }
+
+  /* Col 3 — rang */
+  .rank-col { align-items: flex-start; min-width: 180px; }
+  .rank-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .rank-body { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+  .rank-icon {
+    width: 48px; height: 48px; flex-shrink: 0;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #1e3a5f, #4f46e5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .rank-details { display: flex; flex-direction: column; gap: 3px; }
+  .rank-tier   { font-size: 16px; font-weight: 700; color: var(--rank-gold); }
+  .rank-csr    { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rank-delta  { font-size: 13px; font-weight: 600; color: var(--win); }
+  .rank-delta.neg { color: var(--loss); }
+
+  /* ── Faits marquants (placeholder) ── */
+  .impact-bar {
+    display: flex; gap: 8px; align-items: center;
+    padding: 10px 24px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .impact-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .impact-badge {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12px; color: #fafafa; white-space: nowrap;
+  }
+  .impact-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-win  { background: var(--win); }
+  .dot-gold { background: var(--rank-gold); }
+  .dot-blue { background: var(--accent); }
+
+  /* ── Label variante ── */
+  .variant-label {
+    background: #3b82f6; color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    display: inline-block;
+    margin: 16px 24px 0;
+  }
+  .variant-desc { font-size: 12px; color: var(--muted); padding: 4px 24px 12px; }
+</style>
+</head>
+<body>
+
+<div class="variant-label">Variante A — Cinéma</div>
+<div class="variant-desc">Hero image pleine largeur (h-200) · outcome en overlay bas-gauche · navigation en overlay haut-droite · barre info 3 colonnes</div>
+
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+  <button style="background:none;border:none;color:#71717a;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:13px;">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd"/></svg>
+    Retour
+  </button>
+  <span class="breadcrumb-arrow">·</span>
+  <a href="#">MonGamertag</a>
+  <span class="breadcrumb-arrow">›</span>
+  <span class="current">Slayer sur Aquarius</span>
+</nav>
+
+<!-- Hero image -->
+<div class="hero">
+  <div class="hero-gradient"></div>
+
+  <div class="hero-nav">
+    <button>◀</button>
+    <span>3 / 42</span>
+    <button>▶</button>
+  </div>
+
+  <div class="hero-outcome">
+    <span class="outcome-label">Victoire</span>
+    <span class="outcome-score">87 – 62</span>
+  </div>
+</div>
+
+<!-- Barre info -->
+<div class="info-bar">
+
+  <!-- Col 1 : contexte -->
+  <div class="info-col">
+    <span class="match-title">Slayer sur Aquarius</span>
+    <span class="match-date">Dim. 4 mai 2026 · 19h35</span>
+    <span class="playlist-tag">Classée</span>
+  </div>
+
+  <!-- Col 2 : performance -->
+  <div class="info-col perf-col">
+    <span class="perf-label">Performance</span>
+    <span class="perf-value">76</span>
+    <span class="perf-sub">sur 100 pts</span>
+  </div>
+
+  <!-- Col 3 : rang -->
+  <div class="info-col rank-col">
+    <span class="rank-label">Rang ce match</span>
+    <div class="rank-body">
+      <div class="rank-icon">💎</div>
+      <div class="rank-details">
+        <span class="rank-tier">Diamond 1</span>
+        <span class="rank-csr">CSR &nbsp;1 452</span>
+        <span class="rank-delta">▲ +34 ce match</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Faits marquants (placeholder) -->
+<div class="impact-bar">
+  <span class="impact-label">Faits marquants</span>
+  <div class="impact-badge"><span class="dot dot-win"></span>Premier sang</div>
+  <div class="impact-badge"><span class="dot dot-gold"></span>Meilleur K/D · 1.8</div>
+  <div class="impact-badge"><span class="dot dot-blue"></span>Finisseur d'équipe</div>
+  <div class="impact-badge"><span class="dot dot-win"></span>5 élim. sans mort</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+Couleurs HI
+Herbe : befc77
+Citron : a8ff3a
+Jade : 96ffc4
+Menthe : 43ff93
+Bleu ciel : 5dd4ff
+Céruléen : 4dc0ff
+Soleil : fffb6c
+Ananas : fffa2e
+Carotte : ff734d
+Tangelo : ff4d0a
+Saumon : ff4c4c
+Vermillon : ff5756
+Barbe à papa : ffb0ff
+Cerise : fc4ddd
+Lavande : b986da
+Aubergine : b64efb
