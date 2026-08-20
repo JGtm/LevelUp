@@ -221,6 +221,20 @@ export interface ReplaySettings {
  * le même corps — état initial lu du stockage, bascule qui persiste la nouvelle valeur. Six
  * copies de six lignes se seraient mises à diverger (l'une oubliant la persistance, l'autre
  * la forme fonctionnelle du setState).
+ *
+ * L'ÉCRITURE NE SE FAIT JAMAIS DEPUIS L'UPDATER de `setValue`, et c'est un invariant, pas un
+ * style. `persistPreference` prévient SYNCHRONEMENT tous les abonnés de la clé, qui appellent
+ * `setValue` à leur tour : le faire depuis l'updater, c'est déclencher une mise à jour d'état
+ * en pleine phase de rendu, ré-entrante sur ce hook — et sur l'AUTRE instance de la même clé
+ * quand elle vit chez un ancêtre (`compactCards` : le tiroir dans ReplayCanvas, les fiches via
+ * `useReplayCompactCards` dans la page). React y répondait en gardant l'ancienne valeur une
+ * fois sur deux : la bascule « revenait en arrière » toute seule, et StrictMode, qui invoque
+ * les updaters deux fois pour débusquer exactement cette impureté, doublait le symptôme.
+ *
+ * Donc : `next` se calcule ICI, hors updater, à partir de la valeur rendue ; `setValue` reçoit
+ * une valeur nue ; la persistance vient APRÈS, depuis le gestionnaire d'événement. `value` est
+ * de ce fait une dépendance de la bascule — c'est le prix, et il est juste : une bascule qui ne
+ * connaît pas la valeur qu'elle inverse n'existe pas.
  */
 function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
   const [value, setValue] = useState(() => readStoredFlag(key, fallback))
@@ -229,12 +243,10 @@ function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void]
   // ne toucherait que sa propre copie de l'état.
   useEffect(() => subscribePreference(key, (raw) => setValue(raw === 'true')), [key])
   const toggle = useCallback(() => {
-    setValue((prev) => {
-      const next = !prev
-      persistPreference(key, String(next))
-      return next
-    })
-  }, [key])
+    const next = !value
+    setValue(next)
+    persistPreference(key, String(next))
+  }, [key, value])
   return [value, toggle]
 }
 

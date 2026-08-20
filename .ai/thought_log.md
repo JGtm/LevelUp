@@ -23,13 +23,39 @@ porte sa propre decision, consignee au moment de son commit.
   `MatchTugOfWarChart.tsx` (en-tete + bloc `buildKillFeedSeries` + memo du binning),
   `ReplayKillFeed.tsx` et `teamColor.ts` (ils citaient un fichier desormais supprime).
 
+- **U2 — bug du retour arriere des bascules (Complete)**. `usePersistedFlag` appelait
+  `persistPreference` DEPUIS l updater de `setValue` ; or `persistPreference` notifie
+  SYNCHRONEMENT les abonnes de la cle, qui appellent `setValue` a leur tour — donc une mise
+  a jour d etat en pleine phase de rendu. Correctif : `next` calcule hors updater a partir de
+  la valeur rendue, `setValue(next)` nu, persistance APRES ; `value` entre dans les
+  dependances du `useCallback`. VERIFIE SUR PIECES que c est le SEUL setter du fichier bati
+  sur ce motif : `setHeatmapMode`, `setHeatmapSpan` et `setSpeed` recoivent deja `next` en
+  parametre et persistent apres — rien a y changer. `usePersistedFlag` est aussi le seul
+  abonne de `subscribePreference`, donc le seul expose a la re-entrance.
+  POINT METHODE : les deux allers-retours demandes (`compactCards`, `showHeatmap`) passaient
+  AUSSI avec le corps fautif — deux `renderHook` cote a cote sont deux racines React
+  independantes, la notification ne traverse jamais de frontiere ancetre/descendant. Un
+  troisieme test a donc ete ecrit dans l ARBRE REEL (route qui lit via
+  `useReplayCompactCards` + tiroir descendant qui bascule, sous `StrictMode`) : il est ROUGE
+  sur le corps fautif — React imprime « Cannot update a component (`Page`) while rendering a
+  different component (`Tiroir`) » et la fiche ancetre reste a `false` des le PREMIER clic —
+  et VERT apres correctif. Les deux allers-retours sont conserves : ils epinglent le contrat
+  vu de l utilisateur, le troisieme epingle la cause.
+
 **Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
 4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
 `tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
-plafond du cliquet `placementFamily.guard.test.ts:172`.
+plafond du cliquet `placementFamily.guard.test.ts:172`. U2 — `match-replay` 64 fichiers /
+964 tests exit 0 ; tsc exit 0 ; eslint 20 avertissements (baseline tenue).
 
-**Conclusion / prochaine etape** : U2 — bug de retour arriere des bascules (effet de bord
-`persistPreference` appele depuis l updater de `setValue`, en phase de rendu).
+**Decouvertes hors perimetre (NON traitees)** : (1) `useReplaySound.ts` porte le MEME motif
+fautif a `toggleCategory` (~L106-114) et `toggle` (~L217) — sans consequence visible
+aujourd hui car aucune de ses cles n a d abonne, mais l updater reste impur (StrictMode le
+fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.tsx` calcule
+`computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
+supprime en U1 ; fusionnable, mais hors perimetre du lot.
+
+**Conclusion / prochaine etape** : U3 — parite de hauteur de la fiche morte en compact.
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
