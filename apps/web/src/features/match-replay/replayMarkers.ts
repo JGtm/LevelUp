@@ -60,7 +60,9 @@ export interface CanvasView {
  * Réglages temporels du calque, tous exprimés en frames de la grille du rejeu.
  * Les valeurs de référence viennent du POC, où elles ont été réglées à l'écran :
  * traînée 7 s, cône maintenu 5 s (la couverture de la visée passe de 43,6 % à 93,5 % du temps
- * de jeu), mort marquée 1,5 s, apparition 0,8 s.
+ * de jeu), apparition 0,8 s. La mort, elle, a été RALLONGÉE depuis : 2,5 s et non plus les
+ * 1,5 s du POC, où la croix passait inaperçue en lecture accélérée (cf. TIMING_MS dans
+ * `useReplayTiming.ts`, seule source des durées déclarées).
  */
 export interface MarkerTiming {
   trail: number
@@ -201,7 +203,7 @@ function shapeOfMark(mark: PlayerMarkKind | undefined): MarkerShape {
 
 /**
  * drawTracksLayer dessine chaque vie à la frame courante : celles qui vivent, et celles qui
- * viennent de se fermer (la croix survit 1,5 s à la vie qu'elle termine).
+ * viennent de se fermer (la croix survit 2,5 s à la vie qu'elle termine).
  */
 export function drawTracksLayer(
   ctx: CanvasRenderingContext2D,

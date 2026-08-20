@@ -39,16 +39,13 @@ const TIMING_MS = {
   /**
    * LA CROIX DE MORT PERSISTE 2,5 s depuis le 2026-08-18 (A1 : « une persistance plus
    * longue »). 1,5 s était la valeur du POC : à 4x, une croix vivait moins de dix images et
-   * la mort passait inaperçue. DEUX durées sont proposées sur la planche (2,5 s et 4 s) et
-   * c'est la PLUS COURTE qui est livrée — allonger un repère qui reste à l'écran sans que
-   * rien ne l'y appelle encombre la carte, et le pas suivant se juge avant d'être pris.
+   * la mort passait inaperçue. DEUX durées étaient proposées sur la planche (2,5 s et 4 s) ;
+   * la question est TRANCHÉE depuis le 2026-08-20 — 4 s encombre la carte, 2,5 s reste. La
+   * constante qui gardait l'option longue sous la main est retirée avec cette décision.
    */
   death: 2_500,
   spawn: 800,
 } as const
-
-/** La durée proposée EN PLUS sur la planche (item R3-1) : elle n'est pas livrée. */
-export const DEATH_HOLD_LONG_MS = 4_000
 
 /** Les durées de la fin de vol d'une grenade, en frames : halo court, nappe Dynamo longue. */
 export interface GrenadeRestWindow {

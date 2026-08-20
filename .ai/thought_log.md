@@ -133,6 +133,27 @@ porte sa propre decision, consignee au moment de son commit.
   Effet de bord favorable : `ReplayCanvas.tsx` passe de 808 a 800 lignes — sous le plafond du
   cliquet, avec 8 lignes de marge regagnees.
 
+- **U7 — croix de mort a 2,5 s (Complete ; la VALEUR etait deja livree)**. Verification sur
+  pieces AVANT de coder, et elle change l etape : `useReplayTiming.ts` porte deja
+  `death: 2_500`, pose le 2026-08-18 par `a7aa0e71c` (git blame), avec exactement la decision
+  R3-1 (2,5 s livre, 4 s ecarte). Rien a changer au comportement — ne pas le repasser a 2,5 s
+  « pour faire l etape ».
+  Ce qui RESTAIT, et qui est fait : quatre commentaires citaient encore 1,5 s comme la duree
+  courante — `replayMarkers.ts` L63 (« mort marquee 1,5 s ») et L204 (« la croix survit
+  1,5 s »), `killFx.ts` L31 et `killFx.test.ts` L111 (qui presentaient `KILLPOS_WINDOW_MS`
+  comme « la fenetre DEATH, deja employee par le marqueur de mort » — faux depuis le 18/08).
+  La VALEUR de `KILLPOS_WINDOW_MS` reste 1_500 : c est une autre question (jusqu ou une
+  position reste VRAIE, pas combien de temps un repere reste LISIBLE), et sa mesure propre la
+  justifie (1/93 victimes relues avant recalage, 90/93 apres). Le commentaire dit desormais
+  que les deux durees coincident sans dependre l une de l autre.
+  DEUX EXPORTS MORTS TROUVES au passage, traites en sens opposes : `DEATH_HOLD_LONG_MS`
+  (4 000 ms, « la duree proposee EN PLUS : elle n est pas livree ») n avait aucun consommateur
+  et l option 4 s est ECARTEE par la decision superviseur — supprime. `REPLAY_TIMING_MS` se
+  disait « exposee pour les tests » sans qu aucun test ne la lise : la decision produit n etait
+  defendue par RIEN. Plutot que la supprimer, creation de `useReplayTiming.test.ts` (3 cas)
+  qui epingle les 2,5 s et la conversion en images — l export a enfin le consommateur qu il
+  annoncait.
+
 **Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
 4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
 `tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
@@ -146,7 +167,7 @@ fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.
 `computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
 supprime en U1 ; fusionnable, mais hors perimetre du lot.
 
-**Conclusion / prochaine etape** : U7 — croix de mort portee de 1,5 s a 2,5 s.
+**Conclusion / prochaine etape** : U8 — effets de mort allumes par defaut + hint corrige FR/EN.
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
