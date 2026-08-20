@@ -1,3 +1,13 @@
+## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
+
+**Contexte** : demande utilisateur (« commit les fichiers en attente ; je ne sais pas si la sonde bouillie faut garder »). Deux fichiers non suivis trainaient dans le principal depuis des jours et genaient chaque verification de proprete avant fusion.
+
+**Decision technique principale** : (1) `.ai/AUDIT_V7.2.0_MAIN_2026-08-06.md` (523 L, audit retrospectif v7.2.0->main, reference par la memoire de travail) : VERSIONNE tel quel. (2) `internal/himap/sonde_bouillie_gamefiles_test.go` : GARDE et versionne — c est l instrument de l investigation bouillie Forge (`INVESTIGATION_BOUILLIE_FORGE_2026-08-13.md`, versionnee), sous garde reelle (skip sans les fichiers du jeu : muet en CI, verifie `go vet` 0 et aucun motif archlint) ; le supprimer aurait perdu l instrument d une investigation encore ouverte (fonds Forge refuses au gate visuel). Son en-tete « BROUILLON NON VERSIONNE » est mis a jour dans le meme commit (anti doc inversee). (3) Handoff `HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md` : mise a jour C-ter (livre, CI verte, ce qui reste, schema 19).
+
+**Resultats observes** : arbre du principal PROPRE apres commit (plus aucun fichier en attente) ; vet himap 0 ; la sonde ne tourne pas en CI.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur (planche Z1-Z6 + D7) ; dettes du registre (variant-probe, 5 cartes UGC). Si la sonde bouillie doit finalement partir, un revert du commit suffit — git garde l historique.
+
 ## [2026-08-20] Garde Fiesta du rejeu 2D : correlation sur mode_category, plus de deviner sur un libelle — Complete
 
 **Statut** : Complete (branche `wt/fiesta-mode`, commit unique `b43af20ea`, FUSIONNEE dans `feat/v75`
