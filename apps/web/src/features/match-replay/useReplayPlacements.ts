@@ -42,9 +42,9 @@ export interface ReplayPlacementsInput {
   /** Bascule des objets non identifiés (famille `other`). ÉTEINTE par défaut. */
   showUnnamed: boolean
   /**
-   * Bascule des objets de PUISSANCE lâchés, DÉJÀ croisée avec la garde de mode : l'appelant
-   * passe `showDroppedPlacements && droppedAllowed`. Ni ce hook ni le calque ne connaissent
-   * la notion de Fiesta — le document de rejeu ne publie aucun mode (cf. `replayFiesta.ts`).
+   * Bascule des objets de PUISSANCE lâchés — le réglage du tiroir, tel quel. Une garde de
+   * mode le croisait jusqu'au 2026-08-20 pour l'annuler en Fiesta ; elle a été retirée. Ni ce
+   * hook ni le calque n'ont jamais connu la notion de mode, et le document n'en publie aucun.
    */
   showDropped: boolean
 }

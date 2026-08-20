@@ -44,7 +44,7 @@ export const TIME: PlacementTime = {
   showUnnamed: false,
   /**
    * LES DEUX BASCULES SONT ÉTEINTES DANS LA FIXTURE, y compris celle des objets lâchés — qui
-   * est pourtant ALLUMÉE en production, hors Fiesta. C'est délibéré : le décor par défaut de
+   * est pourtant ALLUMÉE en production. C'est délibéré : le décor par défaut de
    * ces tests est le comportement HISTORIQUE du calque (seuls les déployés), pour que tout
    * test qui ne parle pas des lâchers continue de mesurer ce qu'il mesurait. Les tests des
    * lâchers, eux, l'allument explicitement — et l'un d'eux vérifie qu'allumée, elle ne change

@@ -103,10 +103,10 @@ const SHOW_UNNAMED_PLACEMENTS_DEFAULT = false
  * RAMASSABLE : savoir qu'il est là change la lecture de l'échange suivant, exactement comme
  * savoir qu'une arme est encore sur son socle.
  *
- * LA BASCULE NE COMMANDE RIEN EN FIESTA, et ce n'est pas elle qui le décide : la garde de mode
- * vit dans la page (cf. `replayFiesta.ts`), parce que le document de rejeu ne publie aucun
- * mode. Le tiroir n'affiche donc la commande que là où elle a un effet — même règle que le
- * bouton Zones.
+ * LA BASCULE COMMANDE DANS TOUS LES MODES depuis le 2026-08-20. Une garde de mode l'annulait
+ * en Fiesta au nom de la même décision du 18/08 ; elle masquait en fait 26 lâchers réels sur
+ * le témoin Fiesta `000d5950`, et l'utilisateur veut les voir. Le tiroir affiche donc la
+ * commande dès que le film porte de quoi la commander — même règle que le bouton Zones.
  *
  * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
  * RÉGLAGE D'AFFICHAGE offert au lecteur.
@@ -188,7 +188,7 @@ export interface ReplaySettings {
   toggleUnnamedPlacements: () => void
   /**
    * Objets de PUISSANCE lâchés à la mort (power-ups, équipements déployables). ALLUMÉ par
-   * défaut — mais sans effet en Fiesta, où la garde de mode de la page l'annule.
+   * défaut, et effectif dans TOUS les modes (cf. SHOW_DROPPED_PLACEMENTS_DEFAULT).
    */
   showDroppedPlacements: boolean
   toggleDroppedPlacements: () => void

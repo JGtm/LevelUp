@@ -89,10 +89,10 @@ export interface ReplayPlacementControls {
   showUnnamed: boolean
   onToggleUnnamed: () => void
   /**
-   * Les objets de PUISSANCE lâchés à la mort. `droppedAvailable` croise DEUX conditions : le
-   * film en porte au moins un, ET le match n'est pas une Fiesta (la garde de mode vit dans la
-   * page, cf. `replayFiesta.ts`). En Fiesta la commande ne s'affiche donc pas du tout — elle
-   * ne commanderait rien, et l'afficher éteinte laisserait croire qu'on peut l'allumer.
+   * Les objets de PUISSANCE lâchés à la mort. `droppedAvailable` ne pose plus qu'UNE
+   * condition : le film en porte au moins un. La garde de mode qui l'annulait en Fiesta a été
+   * retirée le 2026-08-20 (elle masquait 26 lâchers réels sur le témoin Fiesta) — la commande
+   * s'affiche donc dans tous les modes dès qu'elle a de quoi commander.
    */
   droppedAvailable: boolean
   showDropped: boolean

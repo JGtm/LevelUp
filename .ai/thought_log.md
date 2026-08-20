@@ -105,6 +105,34 @@ porte sa propre decision, consignee au moment de son commit.
   cas ajoutes pour le mur. Commentaire doctrinal de `placementWindow.ts` mis a jour (anti
   doc-inversee) : il justifiait explicitement de laisser le mur jusqu a la fin du rejeu.
 
+- **U5-bis — reliquat i18n (Complete)**. La revue i18n de U6 a trouve `layerPlacementsHint`
+  qui annoncait encore « le capteur se tient donc a sa duree officielle de 15 s, les autres
+  poses restent affichees jusqu a la fin du rejeu » : doc inversee VUE PAR L UTILISATEUR.
+  Corrige FR et EN, commit separe etiquete U5 (`6e931c5ff`) pour garder l histoire lisible.
+
+- **U6 — la garde Fiesta des lachers redevient un simple reglage (Complete)**. Le ET dur est
+  retire des trois sites : `replay.tsx` (calcul `droppedAllowed` + passage de prop + import),
+  `ReplayCanvas.tsx` (prop `droppedAllowed`, croisement `showDropped`, croisement
+  `droppedAvailable`). Le toggle « Objets lachers au sol » (defaut ON) redevient disponible
+  dans TOUS les modes des que `counts.dropped > 0`.
+  `matchFiestaGuard` n avait plus AUCUN consommateur de production — seulement ses propres
+  tests et le temoin. C est exactement le « dead code museum » de CLAUDE.md (« le pire : avec
+  des tests verts qui entretiennent l illusion ») : `replayFiesta.ts` et `replayFiesta.test.ts`
+  sont supprimes.
+  `placementDroppedWitness.test.ts` est reecrit : il mesurait « la garde annule la bascule, a
+  la primitive pres » ; il mesure desormais l inverse, les 26 marques (15 capteurs + 11 murs)
+  que la Fiesta `000d5950` GAGNE. Le chiffre mesure hors ligne est conserve — c est lui qui
+  prouve que quelque chose apparait. Un test tautologique que j avais d abord ecrit a ete
+  retire plutot que garde pour faire nombre.
+  Huit commentaires anti doc-inversee corriges (`equipmentPlacementsLayer.ts` x3,
+  `placementDropped.ts`, `ReplaySettingsDrawer.tsx`, `useReplayPlacements.ts`,
+  `usePlacementHover.ts`, `useReplaySettings.ts` x2, `i18nContract.ts`,
+  `test/placementFixtures.ts`). Les libelles i18n ne mentionnaient PAS Fiesta (verifie par
+  grep) : rien a y changer, seul le commentaire du contrat qui expliquait POURQUOI ils n en
+  parlaient pas est mis a jour.
+  Effet de bord favorable : `ReplayCanvas.tsx` passe de 808 a 800 lignes — sous le plafond du
+  cliquet, avec 8 lignes de marge regagnees.
+
 **Resultats observes** : U1 — `tsc -b --force` exit 0 ; `vitest run` complet 466 fichiers /
 4448 tests / 14 skipped exit 0 ; `eslint .` 0 erreur, 20 avertissements (baseline) exit 0 ;
 `tools/lint-cross-feature-imports.mjs` 7/7 exit 0 ; `ReplayCanvas.tsx` a 808 lignes, pile au
@@ -118,7 +146,7 @@ fait ecrire deux fois). Hors perimetre : autre fichier. (2) `MatchTugOfWarChart.
 `computeMomentumBins` DEUX fois (memo `feedKills` + `buildOption`) — heritage du fil DOM
 supprime en U1 ; fusionnable, mais hors perimetre du lot.
 
-**Conclusion / prochaine etape** : U6 — garde Fiesta des lachers ramenee a un simple reglage.
+**Conclusion / prochaine etape** : U7 — croix de mort portee de 1,5 s a 2,5 s.
 
 ## [2026-08-20] Adoption des deux fichiers orphelins du principal et handoff registre-film mis a jour — Complete
 
