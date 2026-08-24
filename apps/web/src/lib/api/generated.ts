@@ -4717,6 +4717,7 @@ export interface components {
         };
         BuildQueuePayload: {
             chunks?: components["schemas"]["BuildQueueChunk"][] | null;
+            facts?: components["schemas"]["MatchFacts"];
             map_names?: string[] | null;
             match_id: string;
             short_id: string;
@@ -7315,6 +7316,12 @@ export interface components {
             hist_mode_category?: string;
             locally_estimated?: boolean;
         };
+        MatchFacts: {
+            gameVariantName?: string;
+            mapId?: string;
+            players?: components["schemas"]["MatchPlayerFact"][] | null;
+            teamScores?: number[];
+        };
         MatchFavoriteResponse: {
             favorited: boolean;
             match_id: string;
@@ -7618,6 +7625,17 @@ export interface components {
             rank_in_team?: number;
             /** Format: int64 */
             score?: number;
+        };
+        MatchPlayerFact: {
+            /** Format: int64 */
+            assists: number;
+            /** Format: int64 */
+            deaths: number;
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            teamId: number;
+            xuid: string;
         };
         MatchPositionDTO: {
             /** Format: int64 */
