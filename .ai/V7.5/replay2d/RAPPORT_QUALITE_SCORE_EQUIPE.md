@@ -323,13 +323,21 @@ Contraintes communes, verifiees sur pieces :
 
 - `match_registry` **n'est PAS append-only** : pas de vue `_latest`, pas de `written_at`.
   La correction se fait par `UPDATE`.
-- Le garde-rail anti-ART (`internal/sync/no_art_patterns_test.go:390-400`, liste
-  `criticalMatchTables`) **autorise** l'`UPDATE` row-by-row `WHERE match_id = ?` et
-  **interdit** `UPDATE … FROM (VALUES …)` et l'`UPDATE` set-based sans placeholder.
-  Precedent exact, meme table et memes deux colonnes : `cmd/h5-teamscore-backfill/main.go:108`.
+- **Forme d'ecriture** : `UPDATE` row-by-row `WHERE match_id = ?`, jamais
+  `UPDATE … FROM (VALUES …)` ni d'`UPDATE` set-based sans placeholder (declencheur ART
+  #23046). C'est la doctrine du depot (`criticalMatchTables`, ADR 0019/0026/0030), et le
+  precedent exact — meme table, memes deux colonnes — est
+  `cmd/h5-teamscore-backfill/main.go:108`.
+  **Mais le ratchet `internal/sync/no_art_patterns_test.go` ne l'IMPOSE PAS a un outil de
+  `cmd/`** : il exclut explicitement ces chemins de ses trois scans (lignes 220, 296, 452).
+  Un backfill qui emploierait la forme interdite passerait donc tous les gates du depot.
+  La protection doit etre posee LOCALEMENT au paquet de l'outil — c'est ce que fait
+  `cmd/backfill-team-scores/no_bulk_update_test.go`.
 - **Aucune migration de schema** n'est requise (pas de colonne nouvelle) : la contrainte
   « elargir une migration deployee = step au nom neuf » ne s'applique pas ici.
-- Ecriture RW sur la shared DB → **serveur arrete** (ADR 0013 dblease, un seul writer).
+- Ecriture RW sur la shared DB → **serveur arrete**. Ce qui l'impose est le VERROU FICHIER
+  DuckDB (ping a l'ouverture RW, `platform/duckdb/db.go:461`), pas le lease `dblease` qui
+  n'est qu'un mutex intra-process. Un seul writer par base : ADR 0013.
 
 | # | option | perimetre | cout | risque | ce qu'elle ne couvre pas |
 |---|---|---|---|---|---|
@@ -368,7 +376,7 @@ session tient des fichiers du depot principal.
 | `apps/go-api/cmd/backfill-team-scores/ids.go` | chargement de la liste — **seule la colonne `match_id`** sort du TSV |
 | `apps/go-api/cmd/backfill-team-scores/registry.go` | la jonction avec la base, reduite a des coutures observables (`execer`, `rowScanner`, SQL en constantes) |
 | `apps/go-api/cmd/backfill-team-scores/main.go` | cablage en deux phases : auth store-first, fetch, puis fenetre d'ecriture courte |
-| `…/decide_test.go`, `…/ids_test.go`, `…/junction_test.go`, `…/no_bulk_update_test.go` | 23 tests / 50 sous-cas, sans reseau ni base |
+| `…/decide_test.go`, `…/ids_test.go`, `…/junction_test.go`, `…/no_bulk_update_test.go` | 27 tests / 54 sous-cas, sans reseau ni base |
 
 ### Garanties inscrites dans le code
 
@@ -423,15 +431,19 @@ cd apps/go-api
 export GOCACHE=<cache prive>          # une commande go a la fois
 
 # 1. REPETITION A BLANC — serveur allume, aucune ecriture.
-#    Attendu : « corriges=80 » (ce qui SERAIT corrige), « echecs=0 ».
+#    Attendu : « planifiees=80 corriges=0 echecs=0 » + l'avertissement « RIEN n'a ete ecrit ».
+#    `planifiees` = ce qui SERAIT corrige ; `corriges` reste a 0 tant qu'on n'applique pas.
 LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/backfill-team-scores --gamertag JGtm
 
 # 2. APPLICATION — SERVEUR ARRETE (air + server.exe), sinon l'ouverture RW echoue.
+#    Attendu : « planifiees=80 corriges=80 echecs=0 ». Tout ecart entre les deux
+#    compteurs = des lignes prevues qui n'ont pas ete ecrites : lire les ERROR.
 LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/backfill-team-scores --gamertag JGtm --apply
 
-# 3. CONTROLE — re-jouer le dry-run : attendu « identiques=80, corriges=0 ».
+# 3. CONTROLE — re-jouer le dry-run : attendu « identiques=80 planifiees=0 »,
+#    et PLUS d'avertissement de repetition a blanc.
 LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
   go run ./cmd/backfill-team-scores --gamertag JGtm
 ```
@@ -443,9 +455,10 @@ go run ./cmd/backfill-team-scores --match 7344d24f-0154-4949-80ad-e2b781c122f1 -
 # attendu : avant 193/112 -> apres 200/126
 ```
 
-Deux ecarts au resume signalent un vrai probleme, pas un alea : `echecs > 0` (API ou
-`UPDATE`) et `skippes` inattendu (un match qui n'etait pas FFA en phase 1 ne doit pas le
-devenir). Le decompte de reference de la phase 1 est **80 a corriger, 0 skip**.
+Trois ecarts au resume signalent un vrai probleme, pas un alea : `echecs > 0` (API ou
+`UPDATE`), `skippes` inattendu (un match qui n'etait pas FFA en phase 1 ne doit pas le
+devenir), et `corriges < planifiees` en mode `--apply` (des lignes prevues n'ont pas ete
+ecrites). Le decompte de reference de la phase 1 est **80 planifiees, 0 skip**.
 
 **Controle specifique des 11 lignes « cause = autre ».** Ces 11-la ne reposent que sur
 l'API et sur la concordance des `Outcome` (§Decouvertes 1 et 2) : aucun film ne les
@@ -490,7 +503,7 @@ Phase 2 (CLI de backfill, sans execution) :
 | gate | commande | resultat |
 |---|---|---|
 | build de la CLI | `go build ./cmd/backfill-team-scores/` | exit 0 |
-| tests de la CLI | `go test ./cmd/backfill-team-scores/ -count=1 -v` | `ok … 0.203s` — 23 tests / 50 sous-cas, dont le chargement du TSV versionne (80 ids) |
+| tests de la CLI | `go test ./cmd/backfill-team-scores/ -count=1 -v` | `ok … 0.083s` — 27 tests / 54 sous-cas, dont le chargement du TSV versionne (80 ids) |
 | **campagne de mutation** (ronde 1) | 4 mutations injectees puis annulees | les 4 sont TUEES : arguments de l'`UPDATE` permutes -> `TestJonction_ValeursEcritesSontCellesDecidees` ; colonnes du `SELECT` permutees -> `TestSelectListeLesColonnesDansLOrdreDuScan` ; `Old` lie au lieu de `New` -> meme test de jonction ; garde de vraisemblance reduite au seul camp 0 -> les 2 cas « camp 1 ». Etat restaure et re-verifie apres chaque injection |
 | gofmt | `gofmt -l ./cmd/backfill-team-scores/ ./internal/sync/transforms{,_helpers}.go ./internal/sync/transforms_helpers_unit_test.go` | sortie vide |
 | go vet | `go vet ./cmd/backfill-team-scores/ ./internal/sync/` | exit 0 |
