@@ -20,20 +20,8 @@ export interface ReplayText {
   restart: string
   loading: string
   empty: string
-  note: string
-  livesSuffix: string
-  aliveSuffix: string
   speed: string
   time: string
-  propsSuffix: string
-  /** Fond de carte figé : présent, ou remplacé par le sol reconstruit. */
-  mapBackgroundNote: string
-  mapBackgroundFallback: string
-  /**
-   * Fin de vol d'une grenade : DERNIÈRE POSITION CONNUE, jamais « impact » — le film
-   * n'enregistre aucune détonation (règle du plan parité, item 2.3).
-   */
-  grenadeRestNote: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
   killFeedTitle: string
   killFeedEmpty: string

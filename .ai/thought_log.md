@@ -1,3 +1,35 @@
+## [2026-08-24] Rejeu 2D — le « ! » dans le point du tireur (calque fireMark) — Complete
+
+**Contexte** : demande user — un point d'exclamation quand un joueur tire, CENTRE DANS le point du joueur (clarification en cours de route : pas a cote), sans rien changer d'autre en apparence.
+
+**Decision technique principale** : nouveau calque `fireMark.ts` (patron `grappleLayer`) — `buildFireMarks` joint chaque tir non-melee de `doc.shots` a la VIE qui couvre son instant (meme disambiguisation que `buildShotFx`), `drawFireMarks` pose un glyphe GEOMETRIQUE (barre a bouts ronds + point, ~5 px — un « ! » de police se dissout a cette taille) centre sur `positionAt` du marqueur, a l'encre `labelStroke` (contour des etiquettes, sombre dans les deux themes, prevue pour se detacher des couleurs d'equipe). Fenetre = `shotHoldFrames` (600 ms), la MEME que l'eclair de bouche ; interrupteur = le calque « Effets de tirs » existant (meme evenement, un seul geste). Portes : vie fermee (croix de mort) et vie sans couleur ne marquent rien. CLIQUET DE TAILLE ReplayCanvas : le canvas etait PILE a 808 — extraction prealable de `SlidersIcon.tsx` (sixieme extraction imposee par le cliquet), plafond abaisse 808 -> 797 avec historique.
+
+**Resultats observes** : typecheck `tsc -b` apres purge du cache = 0 ; eslint 0 erreur (20 warnings preexistants) ; vitest match-replay 68 fichiers / 1008 tests verts (7 nouveaux : jointure par vie, exclusion melee, fenetre, portes, centrage, encre).
+
+**Conclusion / prochaine etape** : gate visuel au user (glyphe lisible aux deux themes et aux vitesses ?) ; commit a sa demande sur feat/v75, avec le lot score/epure du meme jour.
+
+## [2026-08-24] Rejeu 2D — bandeau de score a 0-0 (artefact sans faits) + epure de l'UI (note, compteur de vies, bouton reglages en icone) — Complete (hors re-bake de masse en cours)
+
+**Contexte** : sur `000d5950`, le bandeau de score restait a 0-0 des deux cotes. Diagnostic : l'artefact servi etait au schema 17 avec `coverage.score.teamIdentity = "unresolved"` — les series d'equipe sortaient SANS `teamId`, donc `teamScoreAtFrame` (frontend) ne trouvait aucune serie pour les camps du scoreboard et rendait 0 partout. Cause racine : artefact cuit SANS `port.MatchFacts` (ni `TeamScores` ni `TeamByXUID`), alors que la base porte tout (43/50, 8 participants).
+
+**Decision technique principale** : re-cuisson de l'artefact AVEC les faits, pas de rustine frontend — le refus d'afficher un score non prouve est une doctrine assumee (`scoreBannerLogic.ts`), c'est la donnee qui manquait. Re-cuisson unitaire par `cmd/replay-build --facts` (faits extraits de shared via `diag_q`, JSON au format `port.MatchFacts`) ; identite resolue par la preuve (a) score final (`identiteEquipes=a`, 2 equipes, 6 joueurs, 708 points, schema 18). Passe de masse `levelup backfill-replay --only-existing` lancee dans la foulee : 18 artefacts encore sous le schema 18 (dont 5 `unresolved`, 13 sans courbe) — les 2 artefacts v18 restes `unresolved` (`82f29378`, `c0a82e88`) sont probablement irresolubles (egalites), a re-verifier apres la passe.
+
+**Cote UI (demandes user du 24/08)** : (1) suppression du paragraphe de note sous le canvas (trajectoires/objets de decor/fond de carte/grenades) et du compteur « N vies / N en jeu » de la barre — 7 cles i18n mortes retirees des DEUX tables et du contrat (`note`, `livesSuffix`, `aliveSuffix`, `propsSuffix`, `mapBackgroundNote`, `mapBackgroundFallback`, `grenadeRestNote`), plus `aliveRef`/`isAliveAt` debranches de `ReplayCanvas` ; (2) bouton « Reglages » remplace par une icone curseurs de reglage (SVG inline `SlidersIcon`, pas de lucide-react — idiome `ShareLinkButton`), libelle conserve en `aria-label`/`title`.
+
+**Resultats observes** : artefact `000d5950` re-cuit v18 identite=a (teams 0/1, totaux 43/50) ; `tsc` propre ; vitest match-replay 67 fichiers / 1001 tests verts.
+
+**Conclusion / prochaine etape** : verifier visuellement le bandeau (la main au user) ; commit a la demande du user (branche feat/v75). La passe `backfill-replay --only-existing` (19 artefacts < schema 18) est MORTE OOM sur son 1er film (`51101d1d`, CTF) : bombe RAM dans `NamedEventsFrom`/`incrementTimes` (growslice ~26 Go — un comp hors mode-score sans plafond). Decouverte consignee au REGISTRE_REPORTS avec condition de reprise ; PAS corrigee (hors perimetre). Ne pas relancer la passe avant le correctif de plafond.
+
+## [2026-08-24] Faisabilite du suivi DELTA de l'inventaire (grenades, munitions, selecteurs) — Complete (etude, aucune implementation)
+
+**Contexte** : le rejeu 2D ne lit l'inventaire qu'aux images-cles (~1 / 20 s, age median 8,4 s). Question posee : le moteur suivant l'etat en continu via les paquets delta, peut-on les exploiter alors que les grammaires du `HANDOFF_INVENTAIRE_2026-07-27` ont ete mesurees par capture Cheat Engine (curseur moteur journalise) ? Rapport : `.ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md`.
+
+**Decision technique principale** : la capture CE n'est PAS le chemin de lecture, seulement le juge de calibration. Le depot possede deja une reconstruction OFFLINE du curseur moteur — ancre bit a bit `matchBipedHeader` (offline_biped.go:305) + marche des desers de PRODUCTION `walkRecordTo` (ability_rank.go:188, `consumeByName`) — celle qui fait marcher `ScanFilmAbilityRanks` (i48) en prod. Le prototype applique ce chemin, cible i22, i30/i31/i33/i34, i42, i47. Sondes jetables gatees par `I22_FILM` : `filmdec/i22_delta_research_test.go` (3 tests) et `replay/i22_confrontation_research_test.go`.
+
+**Resultats observes** (film `000d5950`, 49 chunks, 171 851 records biped delta ancres) : recensement masque -> atteint a **100 %** pour i22 (120), i30 (740), i31 (56), i33 (773), i34 (43), i42 (245), i43 (14), i44 (9), i47 (64), i48 (92) ; seul i57 est a 97,4 %. i22 : compteur R(3) = 4 dans **120/120**, valeurs dans {0,1,2} exclusivement — le test refutable de `unit_weaponstate.go` ne refute pas, et la note « 92,46 % de comptes impossibles » de `frame_records.go:81` est PERIMEE (autre chemin, anterieure aux correctifs i0/i25/i30). Confrontation aux images-cles : **35/36 = 97,2 %**, l'unique divergence etant un ramassage survenu 3,3 s apres le dernier delta (defaut de rappel, pas de justesse). Fraicheur : age median 11,0 s -> **7,0 s** fusionne. MUNITIONS CALIBREES au passage (le handoff les disait « valeurs non calibrees ») : chargeur R(8) = 1 156 lectures toutes dans 1..80 sur un champ 0..255, reserve R(11) = 99 lectures dans 0..240 sur 0..2047 — un curseur mal place donnerait une loi uniforme. i47 : selection dans le masque **44/44** hors valeur 0 (= absence, codage 1-base). i43/i44 quasi absents des deltas (14 et 9) : l'arme en main reste une lecture d'image-cle.
+
+**Conclusion / prochaine etape** : VERDICT FAISABLE, sans aucune RE nouvelle. Plan en 5 lots au §4 du rapport : lot 0 assainir les deux commentaires perimes, lot 1 scanner delta d'inventaire (i22/i47 par hooks de deser), lot 2 munitions (le vrai gisement, x10 en volume), lot 3 mesurer le RAPPEL de l'ancre (seul risque residuel), lot 4 fusion dans le document sur le patron `abilities.go` (publier la SOURCE de chaque lecture). Le NOMMAGE des types de grenade et des rangs de capacite reste hors perimetre (handoff 2026-07-27 §8.1). Mesures sur UN seul film.
+
 ## [2026-08-20] Lot G — le son du grappin dans le rejeu 2D — Complete
 
 **Contexte** : suite directe du lot L6 sons (entree du dessus) — `grappleLines` deja publie
@@ -69918,3 +69950,45 @@ hooks lefthook verts a chaque commit (gofmt, gitleaks 0 fuite, go-vet, check-mer
 role `hill` — un re-parse complet passe de 113 a 247 collines AVANT tout correctif. Deux pieges
 mesures y attendent (5 cartes dont l'asset n'expose plus le fichier nomme au catalogue ;
 `--from-file` n'applique pas `isParkedPalette`).
+
+## [2026-08-24] Rejeu 2D — MESURE des trous de la fiche d'inventaire (24 films, 6 721 records)
+
+**Statut** : Complete (mesure ; aucun correctif, aucun commit).
+
+**Decision technique principale** : ecrire un test de recherche gate par variable
+d'environnement (`inventory_trous_mesure_test.go` + `inventory_trous_rapport_test.go`,
+`TestInventaireTrousMesure`) qui enumere chaque image-cle x chaque record de bipede (ti=35) et
+classe l'echec par la PREMIERE regle qui tombe (R1 ancre absente / motif absent / ancre non
+unique, R2, R3, R4), avec trois sondes de cause posees a cote du verdict et sans l'influencer :
+ancre a distance de Hamming 1, lecture generalisee par le prefixe 17 bits, et oracle
+independant i48 (`ScanFilmAbilityRanks`) avec son temoin de hasard (rang+1).
+
+**Resultats observes** (24 films echantillonnes a pas constant + le film de verite terrain
+`000d5950` ; 698 images-cles, 6 721 records ; corpus balaye deux fois, totaux identiques au
+record pres, 0 chunk illisible) :
+- **b1 ancre absente : 5 440 / 6 721 = 80,9 %**. Regime BIMODAL : 11 films sur 24 rendent
+  `h_complet = 0` — pas une seule capacite ni une seule grenade sur tout le film. Les 13 autres
+  tournent entre 60 et 75 % de lectures completes. Un film porte l'ancre, ou il ne la porte pas.
+- **d R2 : 104 / 104 des echecs ont un i22 de SOMME NULLE apres l'ancre.** Le critere
+  `somme > 0` rend « zero grenade » (une mesure) indistinguable d'une non-lecture. Cause
+  entierement close.
+- **Fiches VIDES : 1 169 / 6 721 = 17,4 %**, dont **1 131 (96,7 %) sont des records SANS AUCUNE
+  ARME**. Et le mecanisme du symptome est en AVAL, verifie sur pieces : `buildInventory` publie
+  l'entree vide inconditionnellement, `nearestReading` la retient comme la plus recente, et
+  `ReplayInventoryRow` fait `return null` — la ligne disparait ~20 s. **Une lecture vide
+  n'est pas une absence de lecture : elle EFFACE.**
+
+**Trois refutations, toutes chiffrees** : (1) fenetre 60 -> 400 bits = 0 recuperation ; (2)
+l'ancre relachee d'un bit — la variante existe dans 93 % des records sans ancre et TOUJOURS au
+meme rang de bit (`b26=5102`, zero ailleurs, donc une structure et non du hasard) mais le motif
+ne la suit JAMAIS dans les 60 bits ; (3) le prefixe 17 bits + 6 bits de rang — sur 2 992 records
+ou i48 donne une reference, 328 « bons rangs » contre **443 pour le temoin rang+1** : le hasard
+depasse le signal. La capacite aux images-cles ne se rattrape pas par motif.
+
+**Conclusion / prochaine etape** : rapport `.ai/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`,
+6 pistes classees par gain. Les deux premieres : **decoupler R2 de R1** (les grenades sans passer
+par l'ancre de capacite — 4 278 records armes, 63,7 %, a valider par l'oracle des lancers) et
+**empecher une lecture vide d'effacer la fiche** (17,4 % des lectures ; prerequis : croiser les
+records sans arme avec le fil des morts pour dire « mort » plutot que taire). La voie
+structurelle reste le chantier R7 (marche ECS du record d'image-cle) : ce rapport lui apporte la
+preuve que les voies par motif sont epuisees.
