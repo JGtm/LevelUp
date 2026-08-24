@@ -27,8 +27,12 @@ export function useMatchView(playerSlug: string, matchId: string) {
  * (throw), donc on désactive `retry` ; les consommateurs traitent l'absence de
  * données via `data ?? []` (la query reste en erreur silencieuse, `data`
  * undefined, sans crasher la page).
+ *
+ * `enabled` : la donnée n'alimente que les charts de l'onglet Chronologie — la
+ * page ne la tire donc que quand cet onglet est actif (défaut `true` pour les
+ * appelants qui l'affichent inconditionnellement).
  */
-export function useMatchObjectiveEvents(playerSlug: string, matchId: string) {
+export function useMatchObjectiveEvents(playerSlug: string, matchId: string, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.matchObjectiveEvents(playerSlug, titleSlug, matchId),
@@ -36,7 +40,7 @@ export function useMatchObjectiveEvents(playerSlug: string, matchId: string) {
       api.get<MatchObjectiveEvent[]>(
         `/players/${playerSlug}/matches/${matchId}/objective-events`,
       ),
-    enabled: !!playerSlug && !!matchId,
+    enabled: enabled && !!playerSlug && !!matchId,
     staleTime: 10 * 60 * 1000,
     retry: false,
   })
@@ -50,8 +54,11 @@ export function useMatchObjectiveEvents(playerSlug: string, matchId: string) {
  * ou les matchs non backfillés. `api.get` transforme tout statut non-OK en throw,
  * donc `retry: false` ; les consommateurs traitent l'absence via `data ?? []`
  * (la query reste en erreur silencieuse, `data` undefined, sans crasher la page).
+ *
+ * `enabled` : la heatmap qui consomme ces positions vit dans l'onglet Chronologie —
+ * la page ne tire la donnée que quand cet onglet est actif.
  */
-export function useMatchPositions(playerSlug: string, matchId: string) {
+export function useMatchPositions(playerSlug: string, matchId: string, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.matchPositions(playerSlug, titleSlug, matchId),
@@ -59,7 +66,7 @@ export function useMatchPositions(playerSlug: string, matchId: string) {
       api.get<MatchPlayerPosition[]>(
         `/players/${playerSlug}/matches/${matchId}/positions`,
       ),
-    enabled: !!playerSlug && !!matchId,
+    enabled: enabled && !!playerSlug && !!matchId,
     staleTime: 10 * 60 * 1000,
     retry: false,
   })
