@@ -155,9 +155,27 @@ func determineModeCategory(pairName string) string {
 	}
 }
 
-// extractTeamScoresByID extrait les scores de team_0 et team_1.
+// ExtractTeamScoresByID extrait les scores de team_0 et team_1 depuis le payload
+// GetMatchStats, en les indexant par `Teams[].TeamId` (jamais par position dans le
+// tableau : l'ordre y suit le rang, pas l'identifiant de camp).
+//
 // Portage de _extract_team_scores_by_id() Python.
-func extractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
+//
+// SOURCE UNIQUE DU SCORE D'ÉQUIPE, ET C'EST POUR ÇA QU'ELLE EST EXPORTÉE. Le champ lu,
+// `Teams[].Stats.CoreStats.Score`, est le score AFFICHÉ par le jeu — mesuré sur les 1 934
+// matchs du corpus le 2026-08-24 (rapport `.ai/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`).
+// Le bloc voisin `Stats.ZonesStats.StrongholdScoringTicks` porte, lui, le compteur brut du
+// mode : 69 lignes de `match_registry` le contiennent par erreur, héritage d'une période où
+// l'API 343 servait ce compteur dans `CoreStats.Score` (corrigée entre avril et mai 2026).
+//
+// Toute relecture de ce score — sync ou backfill — passe par ICI. Une seconde
+// implémentation re-divergerait le jour où l'un des deux appelants suivrait le mauvais
+// champ, et c'est exactement le défaut que le backfill répare.
+// Appelants : `buildMatchRegistryRow` (sync) et `cmd/backfill-team-scores`.
+//
+// Retourne (nil, nil) si aucun bloc `Teams` exploitable ; un pointeur nil par camp absent
+// (FFA, équipes au-delà de 0/1) — l'appelant ne doit JAMAIS substituer un zéro à un nil.
+func ExtractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
 	teams, _ := matchJSON["Teams"].([]any)
 	scores := map[int]int{}
 	for _, t := range teams {
