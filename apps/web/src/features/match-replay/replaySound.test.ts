@@ -399,6 +399,28 @@ describe('buildSoundTimeline', () => {
     )
     expect(tl).toEqual([{ ms: 1_400, stem: 'wall_activate' }])
   })
+
+  it('deux tractions de grappin sonnent deux fois, chacune SON tir à SON t0', () => {
+    const tl = buildSoundTimeline(
+      docWithCouple({
+        grappleLines: [
+          { slot: 2, t0: 12, t1: 18, ax: 6, ay: 1 },
+          { slot: 1, t0: 5, t1: 20, ax: 3, ay: 3 },
+        ],
+      }),
+      [],
+      0,
+    )
+    expect(tl).toEqual([
+      { ms: 500, stem: 'grapple_fire' },
+      { ms: 1_200, stem: 'grapple_fire' },
+    ])
+  })
+
+  it('un document sans grappleLines ne sonne aucun grappin', () => {
+    const tl = buildSoundTimeline(docWithCouple(), [], 0)
+    expect(tl).toEqual([])
+  })
 })
 
 /**
@@ -562,13 +584,14 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
     expect(tl).toEqual([])
   })
 
-  it('catégorie ÉQUIPEMENTS coupée : ni activation, ni désactivation, ni POSE ne sonnent', () => {
+  it('catégorie ÉQUIPEMENTS coupée : ni activation, ni désactivation, ni POSE, ni TIR DE GRAPPIN ne sonnent', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentEpisodes: [{ slot: 1, fam: 'camo', t0: 10, t1: 30, endRead: true }],
         equipmentPlacements: [
           { t0: 12, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1, origin: 'deployed' },
         ],
+        grappleLines: [{ slot: 1, t0: 15, t1: 25, ax: 3, ay: 3 }],
       }),
       [],
       0,
