@@ -171,7 +171,7 @@ func determineModeCategory(pairName string) string {
 // Toute relecture de ce score — sync ou backfill — passe par ICI. Une seconde
 // implémentation re-divergerait le jour où l'un des deux appelants suivrait le mauvais
 // champ, et c'est exactement le défaut que le backfill répare.
-// Appelants : `buildMatchRegistryRow` (sync) et `cmd/backfill-team-scores`.
+// Appelants : `ExtractRegistry` (`transforms.go:128`, la sync) et `cmd/backfill-team-scores`.
 //
 // Retourne (nil, nil) si aucun bloc `Teams` exploitable ; un pointeur nil par camp absent
 // (FFA, équipes au-delà de 0/1) — l'appelant ne doit JAMAIS substituer un zéro à un nil.

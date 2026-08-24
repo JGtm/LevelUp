@@ -39,6 +39,9 @@ func teamWithZones(id int, score, ticks float64) map[string]any {
 
 func ptr(v int) *int { return &v }
 
+// Exemption de seuil assumée (CLAUDE.md, fonction <= 80 L) : le corps est une TABLE de
+// cas, pas de la logique. La découper en plusieurs fonctions éclaterait la table sans rien
+// simplifier et rendrait plus difficile de voir qu'un cas a son miroir sur l'autre camp.
 func TestDecide(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -127,25 +130,57 @@ func TestDecide(t *testing.T) {
 		},
 		{
 			// Garde de vraisemblance : jamais de négatif en base.
-			name:    "score negatif refuse",
+			name:    "score negatif refuse (camp 0)",
 			payload: teamsPayload(team(0, -1), team(1, 5)),
 			current: RegistryScores{Team0: ptr(0), Team1: ptr(5)},
 			want:    VerdictSkipImplausible,
 		},
 		{
+			// MIROIR du précédent sur l'autre camp. Sans lui, réduire la boucle de
+			// vraisemblance au seul t0 passerait tous les tests (constat P2-6 de la
+			// revue adversariale du 2026-08-24).
+			name:    "score negatif refuse (camp 1)",
+			payload: teamsPayload(team(0, 5), team(1, -1)),
+			current: RegistryScores{Team0: ptr(5), Team1: ptr(0)},
+			want:    VerdictSkipImplausible,
+		},
+		{
 			// Garde de vraisemblance : la colonne est un SMALLINT.
-			name:    "score hors bornes SMALLINT refuse",
+			name:    "score hors bornes SMALLINT refuse (camp 0)",
 			payload: teamsPayload(team(0, 32768), team(1, 5)),
 			current: RegistryScores{Team0: ptr(1), Team1: ptr(5)},
 			want:    VerdictSkipImplausible,
 		},
 		{
-			name:    "borne haute SMALLINT exactement acceptee",
+			// MIROIR sur le camp 1.
+			name:    "score hors bornes SMALLINT refuse (camp 1)",
+			payload: teamsPayload(team(0, 5), team(1, 32768)),
+			current: RegistryScores{Team0: ptr(5), Team1: ptr(1)},
+			want:    VerdictSkipImplausible,
+		},
+		{
+			name:    "borne haute SMALLINT exactement acceptee (camp 0)",
 			payload: teamsPayload(team(0, 32767), team(1, 5)),
 			current: RegistryScores{Team0: ptr(1), Team1: ptr(5)},
 			want:    VerdictFix,
 			wantT0:  32767, wantT1: 5,
 			writable: true,
+		},
+		{
+			// MIROIR : la borne haute doit être acceptée des DEUX côtés.
+			name:    "borne haute SMALLINT exactement acceptee (camp 1)",
+			payload: teamsPayload(team(0, 5), team(1, 32767)),
+			current: RegistryScores{Team0: ptr(1), Team1: ptr(5)},
+			want:    VerdictFix,
+			wantT0:  5, wantT1: 32767,
+			writable: true,
+		},
+		{
+			// MIROIR de « camp 1 absent » : ici c'est le camp 0 qui manque.
+			name:    "camp 0 absent du payload",
+			payload: teamsPayload(team(1, 12)),
+			current: RegistryScores{Team0: ptr(0), Team1: ptr(12)},
+			want:    VerdictSkipNoTeams,
 		},
 	}
 
@@ -186,18 +221,26 @@ func TestDecide_TicksNeverWin(t *testing.T) {
 
 // TestDecide_NeverWritesNilOrNegative balaie une plage de valeurs et vérifie qu'AUCUN
 // verdict écrivable ne porte une valeur hors du domaine autorisé de la colonne.
+// La plage est balayée sur LES DEUX camps : une garde qui ne contrôlerait que le camp 0
+// laisserait passer une valeur hors domaine sur le camp 1.
 func TestDecide_NeverWritesNilOrNegative(t *testing.T) {
 	for _, v := range []float64{-100000, -32768, -1, 0, 1, 32767, 32768, 100000} {
-		t.Run(fmt.Sprintf("score_%.0f", v), func(t *testing.T) {
-			got := Decide(teamsPayload(team(0, v), team(1, 0)), RegistryScores{})
-			if !got.Writable() {
-				return
-			}
-			if got.NewTeam0 < scoreMin || got.NewTeam0 > scoreMax ||
-				got.NewTeam1 < scoreMin || got.NewTeam1 > scoreMax {
-				t.Fatalf("verdict écrivable avec une valeur hors domaine : %d/%d", got.NewTeam0, got.NewTeam1)
-			}
-		})
+		for _, camp := range []int{0, 1} {
+			t.Run(fmt.Sprintf("camp%d_score_%.0f", camp, v), func(t *testing.T) {
+				payload := teamsPayload(team(0, v), team(1, 0))
+				if camp == 1 {
+					payload = teamsPayload(team(0, 0), team(1, v))
+				}
+				got := Decide(payload, RegistryScores{})
+				if !got.Writable() {
+					return
+				}
+				if got.NewTeam0 < scoreMin || got.NewTeam0 > scoreMax ||
+					got.NewTeam1 < scoreMin || got.NewTeam1 > scoreMax {
+					t.Fatalf("verdict écrivable avec une valeur hors domaine : %d/%d", got.NewTeam0, got.NewTeam1)
+				}
+			})
+		}
 	}
 }
 

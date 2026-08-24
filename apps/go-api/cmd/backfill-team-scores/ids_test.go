@@ -114,21 +114,35 @@ func TestLoadMatchIDs_ValeursIgnorees(t *testing.T) {
 	}
 }
 
-// TestLoadMatchIDs_FichierVersionneDuLot lit le TSV réellement livré par la phase 1 :
-// le défaut de --ids-file doit rester chargeable, en-tête compris.
-func TestLoadMatchIDs_FichierVersionneDuLot(t *testing.T) {
-	// Le test tourne depuis apps/go-api/cmd/backfill-team-scores/ ; la racine du dépôt
-	// est cinq niveaux au-dessus.
-	path := filepath.Join("..", "..", "..", "..", defaultIDsFile)
-	if _, err := os.Stat(path); err != nil {
-		t.Skipf("TSV du lot introuvable depuis ce répertoire (%v) — test sans objet hors arborescence", err)
-	}
-	got, err := LoadMatchIDs(path)
+// TestLoadMatchIDs_EnTeteAvecBOM : PowerShell ajoute un BOM UTF-8 par défaut à
+// `Out-File` / `>`. Sans retrait, l'en-tête devient "<BOM>match_id", n'est plus reconnu,
+// le fichier bascule en « liste nue » et la colonne 0 est prise pour des match_id — ce qui
+// donne ici des noms de mode. La colonne est délibérément AILLEURS qu'en position 0 pour
+// que l'erreur soit visible plutôt que masquée par un heureux hasard.
+func TestLoadMatchIDs_EnTeteAvecBOM(t *testing.T) {
+	content := utf8BOM + "game_variant_name\tmatch_id\tdb_t0\n" +
+		"Strongholds:Arena\tabc-1\t193\n" +
+		"KOTH:Arena\tabc-2\t105\n"
+	got, err := LoadMatchIDs(writeTemp(t, content))
 	if err != nil {
-		t.Fatalf("le TSV versionné du lot doit être chargeable : %v", err)
+		t.Fatalf("LoadMatchIDs : %v", err)
 	}
-	if len(got) != 80 {
-		t.Errorf("%d ids chargés, 80 attendus (les 80 écarts mesurés le 2026-08-24)", len(got))
+	want := []string{"abc-1", "abc-2"}
+	if len(got) != len(want) {
+		t.Fatalf("%d ids, attendu %d : %v — le BOM a fait perdre l'en-tête", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("id[%d] = %q, attendu %q — colonne mal résolue à cause du BOM", i, got[i], want[i])
+		}
+	}
+}
+
+// TestLoadMatchIDs_LigneDEnTeteJamaisPriseCommeDonnee : garde-fou explicite.
+func TestLoadMatchIDs_LigneDEnTeteJamaisPriseCommeDonnee(t *testing.T) {
+	got, err := LoadMatchIDs(writeTemp(t, "match_id\tapi_t0\nabc-1\t200\n"))
+	if err != nil {
+		t.Fatalf("LoadMatchIDs : %v", err)
 	}
 	for _, id := range got {
 		if strings.EqualFold(id, matchIDColumn) {
