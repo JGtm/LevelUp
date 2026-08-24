@@ -132,6 +132,8 @@ export interface SquadText {
     totalRows: (n: number) => string
     /** aria-label/tooltip du lien « Ouvrir sur Halo Waypoint » (I19). */
     waypointAriaLabel: string
+    /** aria-label/tooltip du lien interne vers le rejeu 2D du match. */
+    replayAriaLabel: string
     /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
     sortByAriaLabel: (col: string) => string
     /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
@@ -450,6 +452,7 @@ const FR_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
     waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
+    replayAriaLabel: 'Ouvrir le rejeu 2D du match',
     sortByAriaLabel: (col) => `Trier par ${col}`,
     winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
     winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
@@ -773,6 +776,7 @@ const EN_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
     waypointAriaLabel: 'Open on Halo Waypoint',
+    replayAriaLabel: 'Open the 2D replay of the match',
     sortByAriaLabel: (col) => `Sort by ${col}`,
     winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
     winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
