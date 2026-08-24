@@ -1,3 +1,13 @@
+## [2026-08-24] Backlog Notion REPLAY 2D / Rejeu 2D — etat des lieux + lancement de 3 lots (qualite score, ti=47, temps mort) — En cours
+
+**Contexte** : demande user — passer au crible les deux sections du backlog Notion (« REPLAY 2D » et « Rejeu 2D — exploitation du film Theater (bilan du 18/08/2026) »), hors gate humain « Pour la v7.3 : », statuer fait/pas fait et traiter le reste.
+
+**Decision technique principale** : etat des lieux croise Notion x REGISTRE_REPORTS x code. Sections quasi soldees : score s12 / elevation s13 / zones s15 / jauge live s18 / colline KOTH LIVRES (reste le gate visuel user) ; les « 5 cartes KOTH sans colline » du bilan sont RESOLUES depuis (0b45d922a, catalogue 133 collines) ; callouts items 3-4 FAITS (provenance « decoupe » par etage, brut conserve, masque alpha) ; libelles A/B/C REFUTES (aucune donnee decodee, regle « aucun texte » testee) ; VIP definitif ; ouvrier distant deja au registre (post-tag). Restes arbitres par le user (questionnaire du 24/08) : 3 lots LANCES en worktrees freres — PLAN_QUALITE_SCORE_EQUIPE_SYNC (wt/qualite-score), PLAN_TI47_ANNONCES_ZONE (wt/ti47-annonces, direction produit : effet UI, jamais de texte), PLAN_TEMPS_MORT_WEB (wt/temps-mort-web) ; dispositifs de carte -> registre (plus tard) ; retention chunks -> tout garder, re-statuer au tag v7.5.0 (2 lignes registre ajoutees).
+
+**Resultats observes** : 3 plans commites avec les 2 lignes de registre ; worktrees crees depuis feat/v75 ; executeurs lances (recherche pour qualite-score et ti47 : STOP au verdict, arbitrage avant toute implementation ; temps-mort = implementation web fermee, decisions tranchees au plan).
+
+**Conclusion / prochaine etape** : verifier chaque CR sur pieces, fusionner --no-ff, journal + registre a la fusion. NON lance (non retenu au questionnaire) : lot hygiene de cloture v7.5 (RealRounds adjacence, OriginResolved *bool, garde web scoreTimeline...) — reste DU avant le tag, deja consigne. Toujours cote user : gate visuel planche, verdicts R3-1/R3-2, ecoute page balise v2.
+
 ## [2026-08-24] Rejeu 2D — le « ! » dans le point du tireur (calque fireMark) — Complete
 
 **Contexte** : demande user — un point d'exclamation quand un joueur tire, CENTRE DANS le point du joueur (clarification en cours de route : pas a cote), sans rien changer d'autre en apparence.
