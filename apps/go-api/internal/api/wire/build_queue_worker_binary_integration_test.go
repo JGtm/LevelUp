@@ -101,6 +101,32 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 	t.Logf("artefact livré : %d octets, %d trajectoires, %d frames",
 		len(blobRecu), len(doc.Tracks), doc.FrameCount)
 
+	// ── … et il est COMPLET : l'ouvrier a reçu les faits et s'en est servi ───
+	//
+	// C'EST LE CRITÈRE DE SUCCÈS DU CHANTIER. Un ouvrier qui décode sans les faits rend un
+	// artefact appauvri qui porte pourtant le bon numéro de schéma : les deux assertions
+	// ci-dessous sont ce qui distingue « livré » de « livré vide ». Mesuré sur ce même
+	// couple de chemins le 2026-08-24 : joueurs de la courbe de score 8 avec faits, 0 sans ;
+	// identité des camps résolue avec faits, `unresolved` sans.
+	//
+	// Pas d'assertion sur `objectives` ni sur `zoneStates` ICI : le film témoin est un Slayer,
+	// il n'a légitimement ni action d'objectif ni zone de mode. Leur transport est prouvé au
+	// niveau de la file (ops.TestBuildQueue_LesFaitsSurviventALaFile) et leur effet sur
+	// l'artefact est mesuré hors test (témoin 7344d24f : 246 -> 0 et 3 -> 0).
+	if doc.ScoreTimeline == nil || len(doc.ScoreTimeline.Players) == 0 {
+		t.Fatal("artefact livré SANS compteurs de joueur — les faits du job n'ont pas été utilisés " +
+			"(c'est exactement l'appauvrissement que le transport des faits doit supprimer)")
+	}
+	if doc.Coverage == nil || doc.Coverage.Score == nil {
+		t.Fatal("artefact livré sans couverture de score : impossible de dire ce que vaut la courbe")
+	}
+	if doc.Coverage.Score.TeamIdentity == "unresolved" {
+		t.Errorf("identité des camps non résolue alors que les faits portent les deux scores (43-50) "+
+			"et les camps de 8 joueurs — couverture obtenue : %+v", doc.Coverage.Score)
+	}
+	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q",
+		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
+
 	// ── Le job est `succeeded` (donc le compte rendu a trouvé le fichier) ────
 	vue, err := reg.monitoringStore.BuildQueueReport(context.Background(), 10)
 	if err != nil {
@@ -195,6 +221,7 @@ func enqueueTravailReel(t *testing.T, reg *ServiceRegistry, cdnURL string, chunk
 	payload := &domain.BuildQueuePayload{
 		MatchID: filmTemoin, ShortID: filmTemoin, TitleSlug: titlePkg.DefaultSlug,
 		MapNames: []string{carteTemoin},
+		Facts:    faitsDuTemoin(),
 	}
 	for _, c := range chunks {
 		payload.Chunks = append(payload.Chunks, domain.BuildQueueChunk{
@@ -212,6 +239,35 @@ func enqueueTravailReel(t *testing.T, reg *ServiceRegistry, cdnURL string, chunk
 		t.Fatalf("mise en file: err=%v created=%v", err, created)
 	}
 	return job
+}
+
+// faitsDuTemoin : CE QUE LA BASE SAIT du film témoin, tel que EnqueueReplayBuild
+// le lirait dans `match_registry` et `match_participants`.
+//
+// Valeurs RÉELLES du match (relevé versionné
+// `.ai/V7.5/replay2d/registre_film/lotA_faits/000d5950.json`) recopiées ici plutôt
+// que lues : un test ne dépend pas d'un fichier de travail de `.ai/`, et le triplet
+// (frags, morts, assistances) doit être exact — c'est la CLÉ qui apparie les slots
+// d'entité du film aux xuid, pas une décoration.
+//
+// `mapId` est absent du relevé : ce match est un Slayer, il n'a ni zone de mode ni
+// socle de drapeau à en tirer.
+func faitsDuTemoin() *domain.MatchFacts {
+	scores := [2]int{43, 50}
+	return &domain.MatchFacts{
+		GameVariantName: "Slayer:Arena Super Fiesta",
+		TeamScores:      &scores,
+		Players: []domain.MatchPlayerFact{
+			{XUID: "2533274823110022", Kills: 8, Deaths: 14, Assists: 1, TeamID: 0},
+			{XUID: "2533274826120416", Kills: 8, Deaths: 14, Assists: 1, TeamID: 0},
+			{XUID: "2533274980284321", Kills: 14, Deaths: 13, Assists: 3, TeamID: 0},
+			{XUID: "2535467794760703", Kills: 13, Deaths: 9, Assists: 1, TeamID: 0},
+			{XUID: "2533274815845110", Kills: 12, Deaths: 10, Assists: 6, TeamID: 1},
+			{XUID: "2533274882097883", Kills: 14, Deaths: 9, Assists: 2, TeamID: 1},
+			{XUID: "2535437947245250", Kills: 14, Deaths: 13, Assists: 1, TeamID: 1},
+			{XUID: "2535444178793711", Kills: 10, Deaths: 11, Assists: 2, TeamID: 1},
+		},
+	}
 }
 
 // nomDeMorceau reproduit la convention de nommage du cache film.
