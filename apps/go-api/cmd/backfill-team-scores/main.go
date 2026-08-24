@@ -90,8 +90,14 @@ const defaultIDsFile = ".ai/V7.5/replay2d/registre_film/score_equipe_ecarts_2026
 const writerLeaseTimeout = 30 * time.Second
 
 // tally compte les issues. Publié tel quel en fin de course.
+//
+// `planned` et `fixed` sont DEUX compteurs distincts, et le découpage en deux phases rend
+// la distinction nécessaire : la phase A décide (elle incrémente `planned`), la phase B
+// écrit (elle incrémente `fixed`). En répétition à blanc la phase B n'existe pas — les
+// confondre ferait afficher « corriges=0 » alors que N corrections sont prêtes, et rendrait
+// l'avertissement de fin inatteignable. C'est le défaut P1-a de la ronde 2 de revue.
 type tally struct {
-	read, identical, fixed, skipped, failed int
+	read, identical, planned, fixed, skipped, failed int
 }
 
 // plannedFix est une correction décidée en phase A, en attente de la phase B.
@@ -160,13 +166,18 @@ func parseFlags() options {
 	return o
 }
 
+// reportTally publie le résumé. `planifiees` et `corriges` sont affichés dans LES DEUX
+// modes : en répétition à blanc on lit `planifiees=N corriges=0`, après application
+// `planifiees=N corriges=N`. Un écart entre les deux en mode `--apply` se voit donc d'un
+// coup d'oeil, au lieu d'être noyé.
 func reportTally(ctx context.Context, apply bool, t tally) {
 	slog.InfoContext(ctx, "backfill_team_scores: terminé",
 		"apply", apply, "lus", t.read, "identiques", t.identical,
-		"corriges", t.fixed, "skippes", t.skipped, "echecs", t.failed)
-	if !apply && t.fixed > 0 {
+		"planifiees", t.planned, "corriges", t.fixed,
+		"skippes", t.skipped, "echecs", t.failed)
+	if !apply && t.planned > 0 {
 		slog.WarnContext(ctx, "backfill_team_scores: répétition à blanc — RIEN n'a été écrit ; relancer avec --apply (serveur arrêté) pour appliquer",
-			"a_corriger", t.fixed)
+			"a_corriger", t.planned)
 	}
 }
 
@@ -228,6 +239,7 @@ func planMatch(ctx context.Context, f matchFetcher, r registryReader, id string,
 			"match_id", id, "verdict", string(dec.Verdict), "cause", dec.Reason)
 		return plannedFix{}, false
 	}
+	t.planned++
 	slog.InfoContext(ctx, "backfill_team_scores: correction retenue",
 		"match_id", id,
 		"avant", formatScores(dec.Old), "apres", fmt.Sprintf("%d/%d", dec.NewTeam0, dec.NewTeam1),

@@ -145,7 +145,12 @@ func TestJonction_ValeursEcritesSontCellesDecidees(t *testing.T) {
 	}
 	call := exec.calls[0]
 
-	// (a) — le SQL et, surtout, l'ORDRE des arguments liés.
+	// (a) — le SQL émis est bien LA constante du paquet.
+	//
+	// Attention : cette égalité seule est une TAUTOLOGIE (elle compare la requête à la
+	// constante qui l'a produite). Permuter les colonnes DANS la constante y survivrait.
+	// C'est `TestUpdateLieLePremierArgumentATeam0` qui verrouille la structure de la
+	// constante elle-même — défaut P1-b de la ronde 2 de revue.
 	if call.query != updateScoresSQL {
 		t.Errorf("SQL écrit = %q, attendu %q", call.query, updateScoresSQL)
 	}
@@ -408,6 +413,40 @@ func TestSelectListeLesColonnesDansLOrdreDuScan(t *testing.T) {
 	}
 	if i0 > i1 {
 		t.Errorf("selectScoresSQL sélectionne team_1_score AVANT team_0_score : le Scan les inverserait — %q", selectScoresSQL)
+	}
+}
+
+// TestUpdateLieLePremierArgumentATeam0 verrouille la STRUCTURE de `updateScoresSQL`, pas
+// son égalité à elle-même.
+//
+// Sans lui, permuter les deux affectations dans la constante
+// (`SET team_1_score = ?, team_0_score = ?`) passait toute la suite : le double de test
+// compare la requête émise à cette même constante, donc la permutation était invisible —
+// et les 80 lignes auraient été écrites camps inversés. Miroir exact de
+// `TestSelectListeLesColonnesDansLOrdreDuScan`, pour l'écriture.
+func TestUpdateLieLePremierArgumentATeam0(t *testing.T) {
+	i0 := indexIn(updateScoresSQL, "team_0_score")
+	i1 := indexIn(updateScoresSQL, "team_1_score")
+	iMatch := indexIn(updateScoresSQL, "match_id")
+	iFirstQ := indexIn(updateScoresSQL, "?")
+	if i0 < 0 || i1 < 0 || iMatch < 0 || iFirstQ < 0 {
+		t.Fatalf("updateScoresSQL ne porte pas les trois colonnes et un placeholder : %q", updateScoresSQL)
+	}
+	if i0 > i1 {
+		t.Errorf("updateScoresSQL affecte team_1_score AVANT team_0_score : les arguments "+
+			"liés (team0, team1) écriraient les camps INVERSÉS — %q", updateScoresSQL)
+	}
+	// Le 1er `?` doit tomber ENTRE team_0_score et team_1_score : c'est ce qui prouve que
+	// le premier argument lié alimente bien team_0_score.
+	if !(iFirstQ > i0 && iFirstQ < i1) {
+		t.Errorf("le 1er placeholder n'est pas celui de team_0_score (pos %d, team_0 en %d, "+
+			"team_1 en %d) : le 1er argument lié n'irait pas dans team_0_score — %q",
+			iFirstQ, i0, i1, updateScoresSQL)
+	}
+	// match_id est le DERNIER : c'est le 3e argument lié.
+	if iMatch < i1 {
+		t.Errorf("match_id apparaît avant team_1_score : l'ordre des arguments liés "+
+			"(team0, team1, matchID) ne correspond plus — %q", updateScoresSQL)
 	}
 }
 
