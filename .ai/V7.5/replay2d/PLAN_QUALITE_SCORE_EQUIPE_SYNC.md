@@ -40,12 +40,16 @@ coût (colonne nouvelle + backfill / correction à l'affichage / statu quo docum
 
 ## Phase 0 — Recensement des surfaces qui lisent team_0/1_score
 
-- [ ] 0.1 Recenser TOUTES les lectures Go de `team_0_score`/`team_1_score` (grep sur
+- [x] 0.1 Recenser TOUTES les lectures Go de `team_0_score`/`team_1_score` (grep sur
       `apps/go-api/`, colonnes SQL et champs struct qui en dérivent) : fichier:ligne, ce que
       la surface affiche (en-tête de match, media, dominance, historique, autre).
-- [ ] 0.2 Recenser les surfaces web qui affichent ces valeurs (chaîne handler -> composant).
-- [ ] 0.3 Dire pour chaque surface si l'anomalie est VISIBLE par l'utilisateur (ex. un
+      -> 14 chaînes L1..L14 dans le rapport §0.1, plus 4 familles de faux positifs écartées.
+- [x] 0.2 Recenser les surfaces web qui affichent ces valeurs (chaîne handler -> composant).
+      -> 7 entrées W1..W7 dans le rapport §0.2.
+- [x] 0.3 Dire pour chaque surface si l'anomalie est VISIBLE par l'utilisateur (ex. un
       Strongholds affiché « 193-112 » au lieu de « 200-126 ») ou masquée (outcome seul).
+      -> rapport §0.3 : 5 surfaces visibles (W1..W5), Explorer aggravée par un tri
+      inter-modes ; rejeu 2D et dominance Infinite non impactés.
 
 Gate 0 : tableau exhaustif dans le rapport (aucun « etc. ») ; commande de contrôle fournie
 dans le rapport (le grep exact rejouable). Clore la phase avant d'ouvrir la phase 1.
