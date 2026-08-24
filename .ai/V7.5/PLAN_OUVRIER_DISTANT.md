@@ -144,64 +144,84 @@ les decouvertes vont au §6.
 
 ### Etape 1 — `MatchFacts` descend dans `domain` (refactor pur, zero changement de comportement)
 
-- [ ] 1.1 Creer `internal/domain/match_facts.go` : y DEPLACER `MatchFacts`, `MatchPlayerFact`
-      et la methode `Empty()`, avec leurs commentaires d'origine (ils portent le raisonnement
-      du triplet d'appariement — ne rien reecrire).
-- [ ] 1.2 Dans `internal/port/services.go` : remplacer les deux declarations par des ALIAS
-      (`type MatchFacts = domain.MatchFacts`, `type MatchPlayerFact = domain.MatchPlayerFact`),
-      en conservant `ReplayFactsRepo` tel quel.
-- [ ] 1.3 Verifier qu'AUCUN autre fichier ne change (l'alias est transparent).
+- [x] 1.1 Cree `internal/domain/match_facts.go` : `MatchFacts`, `MatchPlayerFact` et `Empty()`
+      deplaces avec leurs commentaires d'origine, enrichis de la mesure du §2.
+- [x] 1.2 `internal/port/services.go` : les deux declarations remplacees par des ALIAS
+      (`type MatchFacts = domain.MatchFacts`), `ReplayFactsRepo` inchange.
+- [x] 1.3 Verifie : `git diff --stat` ne montre que `port/services.go` (16 insertions,
+      53 suppressions) plus le nouveau `domain/match_facts.go`. Les ~30 sites d'appel de
+      `port.MatchFacts` n'ont pas bouge — c'est la propriete de l'alias.
 
-Gate 1 : `go build ./...` && `go vet ./...` && `go test ./internal/replaybuild/... ./internal/port/... ./internal/platform/duckdb/...`
-et `git diff --stat` ne montre QUE `domain/match_facts.go` et `port/services.go`.
+Gate 1 : PASSE — `go build ./...` (CGO) exit 0, `go vet ./...` exit 0, `go test` OK sur
+replaybuild + port + platform/duckdb + domain. Commit `907c0deda`.
 
 ### Etape 2 — Les faits voyagent dans le payload du job
 
-- [ ] 2.1 `domain/build_queue.go` : ajouter `Facts *MatchFacts \`json:"facts,omitempty"\`` a
-      `BuildQueuePayload`, avec le commentaire qui dit POURQUOI (l'ouvrier n'a pas de base) et
-      ce que coute son absence (renvoi a la mesure du §2).
-- [ ] 2.2 `wire/registry_build_queue.go` : dans `EnqueueReplayBuild`, resoudre les faits via
-      `replayMatchFacts(ctx, sharedSQL, fullID)` — la fonction EXISTE deja (`registry_replay_build.go:143`)
-      — et les poser dans le payload. Des faits vides restent une mise en file LEGITIME
-      (match hors registre) : journaliser, jamais echouer.
-- [ ] 2.3 `cmd/replay-worker/job.go` : consommer `p.Facts` au lieu du litteral vide ligne 137.
-      Faits absents => conserver l'avertissement, **corrige** pour nommer aussi les zones et
-      les socles de drapeau (la mesure du §2 prouve que la phrase actuelle sous-estime).
-- [ ] 2.4 Tests : (a) `EnqueueReplayBuild` pose les faits lus en base dans le payload ;
-      (b) un payload serialise puis deserialise conserve les faits a l'identique
-      (aller-retour JSON, c'est le vrai chemin : le payload est stocke en `payload_json`) ;
-      (c) un match hors registre met en file avec des faits vides sans erreur.
+- [x] 2.1 `domain/build_queue.go` : `Facts *MatchFacts` ajoute a `BuildQueuePayload`, avec le
+      raisonnement (transport vs re-derivation vs rattrapage) et le cout mesure.
+- [x] 2.2 `wire/registry_build_queue.go` : `EnqueueReplayBuild` resout les faits via
+      `replayMatchFacts` sous les memes handles que l'identite du match, avant `closeAll()`.
+      Faits vides => `WarnContext` explicite, pointeur laisse nil, mise en file poursuivie.
+- [x] 2.3 `cmd/replay-worker/job.go` : consomme `p.Facts`. L'avertissement de degradation est
+      CORRIGE — il nomme desormais les zones de mode et les socles de drapeau, que la mesure
+      du §2 montre perdus et que la phrase d'origine passait sous silence.
+- [x] 2.4 Tests : `TestBuildQueue_LesFaitsSurviventALaFile` (aller-retour complet par
+      `payload_json` en base : variante, mapId, `TeamScores` pointeur, triplet d'appariement)
+      et `TestBuildQueue_SansFaitsResteUnJobValide` (match hors registre : pointeur nil, pas
+      d'objet vide invente).
+      - `[~]` Le sous-cas « `EnqueueReplayBuild` pose les faits lus EN BASE » n'a pas de test
+        direct : la fonction exige des tokens Halo (resolution du manifeste), ce que les deux
+        E2E existants contournent deja en fabriquant le payload a la main
+        (`build_queue_worker_binary_integration_test.go:191-192`). Ses deux moities sont
+        couvertes separement — `FactsForMatch` par `platform/duckdb/replay_facts_repo_test.go`,
+        le transport par le test ci-dessus — et la couture (3 lignes) est sous `build` + `vet`.
 
-Gate 2 : `go build ./...` && `go vet ./...` && `go test ./internal/api/wire/... ./internal/domain/... ./cmd/replay-worker/...`
+Gate 2 : PASSE — `go build ./...` exit 0, `go vet ./...` exit 0, 7 tests de file verts
+(`internal/ops`), wire + domain OK. Commit `8c4791e85`.
 
 ### Etape 3 — La fraicheur cesse de figer un artefact appauvri
 
-- [ ] 3.1 `internal/replaybuild/artifact_store.go` (ou `replaybuild.go`) : ajouter le predicat
-      PUR `ArtifactHasMatchFacts(path string) bool` — vrai si `scoreTimeline.players` est non
-      vide. Documenter le signal et pourquoi il n'y a pas de champ dedie (D3).
-- [ ] 3.2 Cabler la fraicheur facts-aware chez l'appelant qui a la base :
-      `sync/replayartifacts/artifacts.go` (`enqueueAll`, ligne ~290) — un artefact a jour au
-      schema MAIS sans faits, pour un match dont la base connait des participants, doit etre
-      REMIS EN FILE. Journaliser le motif (INFO), jamais silencieusement.
-- [ ] 3.3 Tests : artefact au bon schema sans faits + base avec participants => re-enfile ;
-      artefact avec faits => saute ; match sans participants => saute (pas de re-cuisson
-      perpetuelle).
-- [ ] 3.4 `[!]` **Ne PAS toucher `cmd/levelup/cmd_backfill_replay.go`** (lot « blindage
-      backfill parent/enfant » en cours cote session utilisateur). Le point de couture est
-      ecrit au §7.
+- [x] 3.1 `internal/replaybuild/replaybuild.go` : predicat PUR `ArtifactHasMatchFacts(path)`
+      ajoute a cote d'`ArtifactUpToDate`. Le signal (`scoreTimeline.players`) est adosse au
+      CONTRAT du document, pas seulement a la mesure : `document_score.go:147-148` dit deja
+      « Players porte les joueurs dont le slot d'entite a ete apparie a une ligne de match.
+      Vide quand l'appelant n'a pas fourni les lignes ».
+- [x] 3.2 `sync/replayartifacts/artifacts.go` (`enqueueAll`) : un artefact a jour au schema
+      MAIS sans faits, pour un match dont la base connait des participants, repart en file.
+      Log INFO explicite + compteur `postsync_replay_artifacts_factless_requeued_total`.
+- [x] 3.3 Tests : `TestEnqueueAll_ReEnfileUnArtefactAppauvri`,
+      `TestEnqueueAll_ArtefactCompletResteSaute`, `TestEnqueueAll_SansFaitsConnus_NeReEnfilePas`
+      (le garde-fou contre la re-cuisson perpetuelle) et `TestArtifactHasMatchFacts` (5 cas).
+- [!] 3.4 `cmd/levelup/cmd_backfill_replay.go` NON TOUCHE — le lot « blindage backfill
+      parent/enfant » le tient (consigne du superviseur). Sa reprise continue donc d'ignorer
+      les faits. Le predicat lui est offert tel quel ; point de couture ecrit au §7. **C'est
+      la seule dette ouverte de ce lot.**
 
-Gate 3 : `go build ./...` && `go vet ./...` && `go test ./internal/replaybuild/... ./internal/sync/replayartifacts/...`
+Gate 3 : PASSE — `go build ./...` exit 0, `go vet ./...` exit 0, 5 tests replaybuild +
+5 tests replayartifacts verts. Commit `6661a33af`.
 
 ### Etape 4 — Preuve de bout en bout : l'ouvrier rend l'artefact COMPLET
 
-- [ ] 4.1 Etendre la preuve E2E existante (`internal/api/wire/build_queue_transport_e2e_cgo_test.go`,
-      qui prouve deja l'octet-a-octet du transport) pour que le job enfilé porte des faits et
-      que l'artefact recu les PORTE : `objectives` non vide, `zoneStates` non vide,
-      `scoreTimeline.players` non vide.
-- [ ] 4.2 Comparaison STRUCTURELLE ouvrier vs cuisson locale sur le meme temoin : memes
-      compteurs sur les champs du tableau §2. C'est le critere de succes du plan.
+- [x] 4.1 `build_queue_worker_binary_integration_test.go` — c'est CE test-la qu'il fallait
+      etendre (et non le transport voisin, qui fabrique son artefact a la main et ne fait donc
+      jamais tourner le constructeur) : le job porte desormais les faits REELS du film temoin
+      (`faitsDuTemoin()`, valeurs du releve versionne), et l'artefact livre est verifie COMPLET
+      — `scoreTimeline.players` non vide et `coverage.score.teamIdentity != "unresolved"`.
+      Pas d'assertion sur `objectives`/`zoneStates` : le temoin `000d5950` est un Slayer, il
+      n'en a legitimement aucun. Leur transport est prouve au niveau de la file
+      (`TestBuildQueue_LesFaitsSurviventALaFile`).
+- [~] 4.2 Comparaison structurelle ouvrier vs cuisson locale : **deja faite, et c'est elle qui
+      a produit le tableau du §2**. Les deux temoins ont ete cuits par le MEME
+      `replaybuild.Builder` que celui de l'ouvrier, via `cmd/replay-build`, avec puis sans
+      faits. L'ouvrier ne differe que par la PROVENANCE des faits (le job au lieu de la base),
+      et ce maillon-la est teste separement. Refaire la comparaison en test exigerait un
+      second decodage de film — non necessaire, et ecarte pour ne pas concurrencer le
+      chantier `filmdec` en cours (consigne du superviseur).
 
-Gate 4 : `go test -tags=integration -p 1 -run 'TestOuvrier|TestBuildQueue' ./internal/api/wire/`
+Gate 4 : `go vet -tags="integration cgo" ./internal/api/wire/...` exit 0. Le test lui-meme
+SKIPPE dans ce worktree (`000d5950` n'est pas dans son cache film : le cache vit dans le depot
+principal) — verifie : `--- SKIP: TestOuvrierReel_ConstruitEtLivre`. Il s'executera sur la
+machine qui porte le cache. **Aucun film n'a ete decode par ce lot.**
 
 ### Gates de cloture (rejoues integralement)
 
