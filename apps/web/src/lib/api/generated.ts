@@ -7178,6 +7178,21 @@ export interface components {
             /** Format: int64 */
             updated: number;
         };
+        MatchAssistPair: {
+            /** Format: int64 */
+            assist_count: number;
+            assist_gamertag: string;
+            assist_xuid: string;
+            killer_gamertag?: string;
+            killer_xuid: string;
+            /** Format: int64 */
+            stolen_count: number;
+        };
+        MatchAssistPairs: {
+            /** Format: int64 */
+            measured_deaths: number;
+            pairs: components["schemas"]["MatchAssistPair"][] | null;
+        };
         MatchAssociatedMedia: {
             capture_time?: string;
             /** Format: int64 */
@@ -7221,6 +7236,7 @@ export interface components {
             native_commendations?: components["schemas"]["MatchNativeCommendation"][] | null;
         };
         MatchCombatTab: {
+            assist_pairs?: components["schemas"]["MatchAssistPairs"];
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;

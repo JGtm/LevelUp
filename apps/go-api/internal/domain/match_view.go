@@ -424,6 +424,12 @@ type MatchCombatTab struct {
 	// (match_view.18). Vide si killer_victim_pairs n'est pas peuplé.
 	KillerVictim []MatchKillerVictimPair `json:"killer_victim,omitempty"`
 
+	// AssistPairs : paires (assistant → tueur assisté) + la PORTÉE de leur mesure.
+	// NIL quand le match n'a aucune ligne de film : l'UI ne rend alors rien. Le bloc
+	// présent avec MeasuredDeaths à 0 est un état DIFFÉRENT (« non mesuré »), cf.
+	// domain.MatchAssistPairs.
+	AssistPairs *MatchAssistPairs `json:"assist_pairs,omitempty"`
+
 	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
 	// fondations narrative). 8 rôles narratifs typés via
 	// narrative.IdentifyImpactRoles, en parallèle des 4 ImpactBadges

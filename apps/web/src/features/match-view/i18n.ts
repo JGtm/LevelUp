@@ -153,6 +153,15 @@ export interface MatchViewText {
   tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
+  // Graphe des ASSISTANCES (assistant -> tueur assisté). Les DEUX états vides sont
+  // distincts et ne se remplacent jamais l'un l'autre : « non mesurée » dit qu'on ne
+  // sait pas, « aucune » dit qu'on a mesuré zéro.
+  assistTitle: string
+  assistNotMeasured: string
+  assistNoData: string
+  // Note d'infobulle d'un segment : les éliminations volées de ce couple
+  // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
+  assistStolenNote: (n: number) => string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
   sectionFlow: string
@@ -379,6 +388,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     tabChronology: 'Chronologie',
     tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
+    assistTitle: 'Assistances',
+    assistNotMeasured: 'Assistance non mesurée pour ce match.',
+    assistNoData: 'Aucune assistance sur ce match.',
+    assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -654,6 +667,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     tabChronology: 'Timeline',
     tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
+    assistTitle: 'Assists',
+    assistNotMeasured: 'Assists were not measured for this match.',
+    assistNoData: 'No assists in this match.',
+    assistStolenNote: (n) => `${n} stolen`,
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
