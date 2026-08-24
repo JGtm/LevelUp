@@ -1,3 +1,47 @@
+## [2026-08-20] Lot G — le son du grappin dans le rejeu 2D — Complete
+
+**Contexte** : suite directe du lot L6 sons (entree du dessus) — `grappleLines` deja publie
+ET dessine (`grappleLayer.ts`), mais `buildSoundTimeline` ne le lisait jamais : aucun son a la
+traction. Asset livre par le superviseur (archive utilisateur, sons extraits du jeu nov. 2021,
+variante « Activate (Hit Short) », decision superviseur) - pas le meme pipeline que les deux
+provenances documentees en tete de `replaySound.ts` (extraction Wwise votee / pack evenements
+2026-08-13-15). Execute en worktree exclusif `wt/son-grappin`, base `0b45d922a`.
+
+**Decision technique principale** : un evenement par element de `doc.grappleLines[]`, a `t0`
+(frameToMs, meme conversion que shots/equipmentEpisodes), stem `grapple_fire`, categorie
+EQUIPEMENT existante (aucune categorie creee - le grappin est un objet d'equipement du joueur).
+Rien ne sonne a `t1` : c'est la fin de fenetre du calque visuel, pas un geste. `GRAPPLE_SOUND_STEM`
+est une constante simple (pas une table) : une seule source, aucune famille par slot. Asset
+normalise en GAIN LINEAIRE PUR (jamais le mode dynamique de loudnorm, regle du lot R2-S) ET
+conforme au format des 42 fichiers existants (source native pcm_f32le/44100 Hz/32 bits ne
+matchait pas pcm_s16le/48000 Hz - resample + requantification en sortie, gain applique a part).
+Doc de `replaySound.ts` corrigee en consequence (anti-pattern 9 CLAUDE.md, doc inversee) : « le
+grappin » retire de la liste des objets volontairement muets dans le JSDoc de
+`EQUIPMENT_PLACEMENT_SOUND_STEMS`, remplace par un renvoi vers sa propre table - ce n'est pas
+une POSE (`doc.equipmentPlacements`), c'est une traction (`doc.grappleLines`, schema 8).
+
+**Resultats observes** :
+- G1 (asset) : mesure pass 1 - input_i -31,07 LUFS, input_tp -16,95 dBTP. Gain =
+  min(-16-(-31,07), -1-(-16,95)) = min(15,07, 15,95) = +15,07 dB. Controle post-normalisation :
+  -16,01 LUFS / -1,88 dBTP - cible et plafond atteints. Duree 1,687 s inchangee (hors arrondi du
+  reechantillonnage).
+- G3 (garde-rail) : `replaySoundAssets.guard.test.ts` recense les stems PAR TABLE, jamais par
+  decouverte de fichier - `GRAPPLE_SOUND_STEM` manquait des deux collecteurs (`referenced` et
+  `longs`), ce qui aurait casse « 0 asset mort » des que G1+G2 coexistent. Corrige dans les deux
+  sens ; aucune entree `SOURCES_COURTES` necessaire (1,687 s > 1,2 s, deja au-dessus de la coupe).
+- G4 : 3 cas neufs/etendus dans `replaySound.test.ts` (2 grappleLines -> 2 evenements a leur t0 ;
+  doc sans grappleLines -> tl vide ; filtre categorie ÉQUIPEMENTS etendu a la traction).
+- Node_modules absent du worktree au demarrage (non partage entre worktrees git) : `npm ci`
+  relance avant les gates.
+
+**Gates** : `npx tsc -b --force` (NU) exit 0, aucune sortie ; `npx vitest run` (suite complete)
+exit 0, 469/469 fichiers, 4488 tests passes + 14 skipped (preexistants, sans lien) ; `npx eslint .`
+exit 0, 20 problemes (0 erreur, 20 avertissements - baseline inchangee) ; garde-rail sonore
+inclus et vert dans le run complet.
+
+**Conclusion / prochaine etape** : lot clos, 4 commits (`grappin(G1)` a `grappin(G4)`), aucun
+push. Decouvertes non traitees : aucune - perimetre tenu strictement aux 4 etapes du mandat.
+
 ## [2026-08-20] Supervision reprise v7.5 — fusions L2 (KOTH UGC negatif), L6 (balayage sons), L1 (hygiene CI) ; decisions D7/R3-1/garde Fiesta — En cours
 
 **Contexte** : reprise du pilotage sur demande utilisateur (handoffs 18-20/08 + liste de retours produit) ; 5 explorations paralleles puis lots executes en worktrees freres (Sonnet/Opus), CR verifies sur pieces (gates rejoues : archlint, diff structurel du catalogue objectives). Plan : `.ai/V7.5/PLAN_SUPERVISION_2026-08-20.md`.
