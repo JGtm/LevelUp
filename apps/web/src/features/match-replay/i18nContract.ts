@@ -244,6 +244,16 @@ export interface ReplayText {
   countersLive: string
   countersMatch: string
   /**
+   * TEMPS MORT CUMULÉ du joueur sur tout le match (`deadTimeLogic`) : la somme des
+   * intervalles entre une mort et le retour suivant, écrite `mm:ss`.
+   *
+   * C'EST UN TOTAL DE MATCH, PAS UNE VALEUR À L'INSTANT LU — il ne tique pas avec la lecture,
+   * contrairement aux compteurs ci-dessus. Le libellé le porte donc seul : il nomme la
+   * grandeur, et sa méthode (intervalles LUS, sans constante de réapparition, sans compter
+   * avant la première vie ni après la dernière) vit dans `deadTimeLogic.ts`.
+   */
+  deadTimeLabel: string
+  /**
    * MANCHE : les modes qui en ont (Oddball) remettent le compteur à zéro à chaque manche.
    * L'en-tête affiche le TOTAL du match, et rappelle en second la manche en cours.
    */
