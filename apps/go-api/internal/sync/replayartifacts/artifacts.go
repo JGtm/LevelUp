@@ -280,16 +280,30 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		return
 	}
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
-	queued, skipped := 0, 0
+	queued, skipped, appauvris := 0, 0, 0
 	for _, w := range work {
 		if ctx.Err() != nil {
 			break
 		}
 		// Idempotence : un artefact déjà à jour ne se reconstruit pas (même règle
 		// que le chemin local ; la mise en file absorbe de son côté les doublons).
-		if replaybuild.ArtifactUpToDate(paths.ReplayArtifactPath(d.TitleSlug, w.matchID)) {
-			skipped++
-			continue
+		//
+		// « À JOUR » NE SE RÉSUME PAS À LA VERSION DE SCHÉMA. Un artefact construit sans les
+		// faits du match porte le bon numéro tout en étant APPAUVRI (sans actions d'objectif,
+		// sans zones de mode, sans socles de drapeau, sans compteurs de joueur). Le sauter sur
+		// le seul critère de version le figerait à demeure — c'est précisément ainsi qu'un
+		// ouvrier sans faits empoisonnerait le cache. Ici, et seulement ici, on sait trancher :
+		// la base a été lue (attachMatchFacts), donc on sait si des faits EXISTAIENT.
+		artefact := paths.ReplayArtifactPath(d.TitleSlug, w.matchID)
+		if replaybuild.ArtifactUpToDate(artefact) {
+			if w.facts.Empty() || replaybuild.ArtifactHasMatchFacts(artefact) {
+				skipped++
+				continue
+			}
+			// Jamais muet : un artefact re-enfilé alors qu'il paraît à jour doit s'expliquer.
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS les faits du match, remis en file",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "joueurs_connus", len(w.facts.Players))
+			appauvris++
 		}
 		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID); err != nil {
 			// Cas nominal du refus : film absent ou expiré côté serveur (~29 % du
@@ -301,9 +315,11 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		queued++
 	}
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_jobs_enqueued_total", int64(queued))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_artifacts_factless_requeued_total", int64(appauvris))
 	if queued > 0 || skipped > 0 {
 		slog.InfoContext(ctx, "post-sync: rejeu 2D mis en file (construction déléguée à un ouvrier)",
-			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped, "selected", len(work))
+			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped,
+			"appauvris_re_enfiles", appauvris, "selected", len(work))
 	}
 }
 

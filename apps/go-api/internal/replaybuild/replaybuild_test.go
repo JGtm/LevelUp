@@ -39,6 +39,39 @@ func TestArtifactUpToDate(t *testing.T) {
 	}
 }
 
+// TestArtifactHasMatchFacts — le prédicat qui distingue un artefact COMPLET d'un artefact
+// APPAUVRI, là où la version de schéma ne les distingue pas.
+//
+// Le signal est `scoreTimeline.players`, et il est adossé au contrat du document lui-même
+// (`document_score.go:147-148` : « Players porte les joueurs dont le slot d'entité a été apparié
+// à une ligne de match. Vide quand l'appelant n'a pas fourni les lignes »). Mesuré sur deux
+// témoins le 2026-08-24 : 8 avec faits, 0 sans, sur 7344d24f comme sur 530820e5.
+func TestArtifactHasMatchFacts(t *testing.T) {
+	dir := t.TempDir()
+	cas := map[string]struct {
+		contenu string
+		attendu bool
+	}{
+		"avec joueurs de score":  {`{"schemaVersion":18,"scoreTimeline":{"players":[{"xuid":"25332748"}]}}`, true},
+		"joueurs vides":          {`{"schemaVersion":18,"scoreTimeline":{"players":[]}}`, false},
+		"courbe sans joueurs":    {`{"schemaVersion":18,"scoreTimeline":{"teams":[{"team":0}]}}`, false},
+		"aucune courbe de score": {`{"schemaVersion":18,"matchId":"m"}`, false},
+		"json illisible":         {`{pas du json`, false},
+	}
+	for nom, c := range cas {
+		p := filepath.Join(dir, nom+".json")
+		if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
+			t.Fatalf("écriture fixture %s: %v", nom, err)
+		}
+		if got := ArtifactHasMatchFacts(p); got != c.attendu {
+			t.Errorf("%s : ArtifactHasMatchFacts = %v, attendu %v", nom, got, c.attendu)
+		}
+	}
+	if ArtifactHasMatchFacts(filepath.Join(dir, "absent.json")) {
+		t.Error("artefact absent : attendu « sans faits », obtenu « avec faits »")
+	}
+}
+
 // TestResolveMapEntry_SurLeCatalogueLivre — le builder résout les candidats DANS L'ORDRE
 // sur le catalogue de bornes VERSIONNÉ, et rend l'échec voulu quand aucun ne résout.
 // Oracle réel : Cliffhanger -> module ridgeline (la référence du POC).
