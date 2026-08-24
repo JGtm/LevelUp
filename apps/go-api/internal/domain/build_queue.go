@@ -37,6 +37,28 @@ type BuildQueuePayload struct {
 	TitleSlug string            `json:"title_slug"`
 	MapNames  []string          `json:"map_names,omitempty"`
 	Chunks    []BuildQueueChunk `json:"chunks,omitempty"`
+
+	// Facts est CE QUE LA BASE SAIT DU MATCH, embarqué avec le travail parce que
+	// l'ouvrier n'a AUCUNE base pour le résoudre lui-même — c'est sa propriété de
+	// sécurité, pas une lacune à combler chez lui.
+	//
+	// POURQUOI IL VOYAGE ICI PLUTÔT QUE D'ÊTRE RE-DÉRIVÉ OU RATTRAPÉ APRÈS COUP.
+	// Re-dériver est exclu (il faudrait donner une base à l'ouvrier) ; rattraper au
+	// retour imposerait au VPS web de re-cuire l'artefact, ce que la règle « le VPS
+	// web ne décode JAMAIS » interdit. Reste le transport, et il est bon marché :
+	// MESURÉ à 713-756 octets sur trois matchs, contre ~20 Ko d'URL pré-signées que
+	// ce même payload porte déjà — environ 3 % de plus.
+	//
+	// CE QUE COÛTE SON ABSENCE, MESURÉ le 2026-08-24 (témoin 7344d24f, Strongholds) :
+	// actions d'objectif 246 -> 0, zones du mode 3 -> 0, joueurs de la courbe de
+	// score 8 -> 0, identité des camps `b` -> `unresolved`. Un artefact ainsi appauvri
+	// porte le bon `schemaVersion` : sans le prédicat de fraîcheur qui regarde les
+	// faits, plus rien ne le re-cuirait jamais.
+	//
+	// Nil = l'enfileur n'a pas résolu de faits (match hors registre, base
+	// indisponible). C'est LÉGITIME et journalisé : l'ouvrier construit alors un
+	// artefact valide mais appauvri, exactement comme le CLI hors ligne.
+	Facts *MatchFacts `json:"facts,omitempty"`
 }
 
 // BuildQueueJob : l'état courant d'un job de la file (vue build_jobs_latest).

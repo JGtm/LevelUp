@@ -51,6 +51,15 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 		return domain.BuildQueueJob{}, false, err
 	}
 	fullID, names, err := replayMatchIdentity(ctx, sharedSQL, metaSQL, matchID)
+	// LES FAITS SE LISENT ICI, ET C'EST LE SEUL ENDROIT OÙ ILS PEUVENT L'ÊTRE : l'ouvrier
+	// n'a pas de base, et le job est tout ce qu'il recevra jamais. Deux SELECT courts, sous
+	// les mêmes handles que l'identité du match, avant de les relâcher — même geste que
+	// RunReplayBuild, pour la même raison (on ne tient pas une lecture shared pendant la
+	// suite, qui va sur le réseau résoudre un manifeste).
+	var facts domain.MatchFacts
+	if err == nil {
+		facts = replayMatchFacts(ctx, sharedSQL, fullID)
+	}
 	closeAll()
 	if err != nil {
 		return domain.BuildQueueJob{}, false, err
@@ -61,17 +70,30 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 		return domain.BuildQueueJob{}, false, err
 	}
 
+	payload := &domain.BuildQueuePayload{
+		MatchID:   fullID,
+		ShortID:   titlePkg.FilmShortMatchID(fullID),
+		TitleSlug: titleSlug,
+		MapNames:  names,
+		Chunks:    chunks,
+	}
+	// DES FAITS VIDES NE SONT PAS UNE ERREUR DE MISE EN FILE : un film du cache dont le match
+	// n'est pas au registre se construit quand même, seulement appauvri. On le DIT (règle n°3 :
+	// jamais de dégradation muette) et on n'embarque rien plutôt qu'un objet vide.
+	if !facts.Empty() {
+		payload.Facts = &facts
+	} else {
+		monitoringLog.WarnContext(ctx, "build queue: aucun fait de match à embarquer — "+
+			"l'artefact sortira sans actions d'objectif, sans zones de mode, sans socles de "+
+			"drapeau et sans compteurs de joueur",
+			"match_id", fullID, "title", titleSlug)
+	}
+
 	job, created, err := r.monitoringStore.EnqueueBuildJob(ctx, ops.EnqueueBuildJobRequest{
 		JobType:   string(domain.JobTypeReplayBuild),
 		TitleSlug: titleSlug,
 		MatchID:   fullID,
-		Payload: &domain.BuildQueuePayload{
-			MatchID:   fullID,
-			ShortID:   titlePkg.FilmShortMatchID(fullID),
-			TitleSlug: titleSlug,
-			MapNames:  names,
-			Chunks:    chunks,
-		},
+		Payload:   payload,
 	})
 	if err != nil {
 		return domain.BuildQueueJob{}, false, err
@@ -79,7 +101,8 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 	if created {
 		observability.IncCounter("build_queue_replay_enqueued_total")
 		monitoringLog.InfoContext(ctx, "build queue: rejeu 2D mis en file",
-			"job_id", job.JobID, "match_id", fullID, "title", titleSlug, "chunks", len(chunks))
+			"job_id", job.JobID, "match_id", fullID, "title", titleSlug, "chunks", len(chunks),
+			"faits", !facts.Empty(), "joueurs", len(facts.Players), "variante", facts.GameVariantName)
 	}
 	return job, created, nil
 }

@@ -128,13 +128,28 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	if err != nil {
 		return "", fmt.Errorf("catalogue de titre indisponible : %w", err)
 	}
-	// L'OUVRIER N'A PAS DE BASE, ET LE PAYLOAD DE JOB N'EN PORTE PAS ENCORE LES FAITS : son
-	// artefact sort donc sans compteurs de joueur ni actions d'objectif, et avec l'identité des
-	// camps résolue au mieux par les frags. C'est une dégradation ANNONCÉE, pas un oubli — la
-	// porter dans le payload touche le schéma de la file, hors du périmètre du lot A.
-	slog.WarnContext(ctx, "replay-worker: aucun fait de match disponible — artefact sans compteurs "+
-		"de joueur ni actions d'objectif", "job_id", job.JobID, "match_id", p.MatchID)
-	out, err := builder.BuildMatch(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), port.MatchFacts{})
+	// L'OUVRIER N'A PAS DE BASE : les faits du match lui arrivent DANS LE JOB, résolus par le
+	// web au moment de la mise en file (cf. domain.BuildQueuePayload.Facts). C'est ce qui lui
+	// permet de rendre un artefact COMPLET sans jamais toucher une DuckDB.
+	var facts port.MatchFacts
+	if p.Facts != nil {
+		facts = *p.Facts
+	}
+	if facts.Empty() {
+		// DÉGRADATION ANNONCÉE, JAMAIS MUETTE. Cas réel : un match hors registre, ou un job
+		// enfilé par une version antérieure du serveur (le payload est stocké tel quel dans la
+		// file, il ne se met pas à jour tout seul). L'artefact reste VALIDE, seulement appauvri —
+		// et la liste ci-dessous est MESURÉE (témoin 7344d24f, 2026-08-24), pas supposée.
+		slog.WarnContext(ctx, "replay-worker: aucun fait de match dans le job — artefact sans "+
+			"actions d'objectif, sans zones de mode, sans socles de drapeau et sans compteurs de "+
+			"joueur, identité des camps au mieux par les frags",
+			"job_id", job.JobID, "match_id", p.MatchID)
+	} else {
+		slog.InfoContext(ctx, "replay-worker: faits du match reçus dans le job",
+			"job_id", job.JobID, "match_id", p.MatchID, "joueurs", len(facts.Players),
+			"variante", facts.GameVariantName, "carte", facts.MapID)
+	}
+	out, err := builder.BuildMatch(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), facts)
 	if err != nil {
 		return "", err
 	}
