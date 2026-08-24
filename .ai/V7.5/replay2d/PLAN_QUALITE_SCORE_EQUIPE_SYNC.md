@@ -124,8 +124,11 @@ jouer**, pas un correctif joué.
 - [x] 2.3 CLI — décision et écriture. Re-fetch `GetMatchStats`, extraction via 2.1,
       comparaison à `match_registry.team_0_score/team_1_score`. Écriture UNIQUEMENT si
       différent, par `UPDATE … WHERE match_id = ?` row-by-row sérialisé (JAMAIS
-      `UPDATE … FROM (VALUES …)` — garde-rail `no_art_patterns_test.go`), sous lease writer
-      `dblease.KindSharedMatches`. `--dry-run` par DÉFAUT ; `--apply` explicite pour écrire.
+      `UPDATE … FROM (VALUES …)`). **Le ratchet `no_art_patterns_test.go` exclut `cmd/` de
+      ses scans : il ne protège PAS cet outil.** La protection est posée localement au
+      paquet (`no_bulk_update_test.go`), et l'unicité du writer vient du verrou fichier
+      DuckDB, pas du lease `dblease` (mutex intra-process, gardé pour la discipline).
+      `--dry-run` par DÉFAUT ; `--apply` explicite pour écrire.
       Gardes de vraisemblance : jamais de NULL, jamais de négatif, jamais hors bornes du
       `SMALLINT` de la colonne ; un match sans `TeamId` 0/1 (FFA) = skip loggé.
 - [x] 2.4 Tests unitaires table-driven, SANS réseau ni DB réelle, sur la décision de
