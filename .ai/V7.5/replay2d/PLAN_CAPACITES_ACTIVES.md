@@ -7,12 +7,17 @@
 >   `i56` (ses chutes suivent le grappin), `i51` (jamais transmis), `i59` tags 0/2 (état
 >   générique), `i59` tag 1 (2 transitions pour 72 vies). **Conséquence produit : pas de son
 >   ni d'effet de répulseur, faute de canal — et non faute de fichier son.**
-> - **PROPULSEUR (rangs 5 / 21) — PISTE POSITIVE, À CONFIRMER.** Le **tag 1 d'`i59`**
->   discrimine : **78,8 % des transitions sur les vies de propulseur, ZÉRO sur les 76 vies de
->   grappin** (le confondeur qui avait avalé `i56`), quasi-zéro sur les autres rangs et sur
->   les vies sans identité. Volume encore faible (66 transitions, 3 films) : quatre seuils de
->   confirmation sont proposés au journal de l'item 0.7. **Rien n'est affiché tant qu'ils ne
->   sont pas tenus** (Décision D5).
+> - **PROPULSEUR (rangs 5 / 21) — CLASSÉ SUR MESURES à son tour** (Phase 0-bis, 6 films,
+>   2026-08-25). La piste `i59 tag==1` ouverte par l'étape 0.7 a été confirmée sous les
+>   quatre seuils écrits d'avance : **le seuil de REPRODUCTIBILITÉ est tombé** — 3 films sur
+>   6 échouent le contraste (masse à 46-69 % pour 75 % requis), quand le seuil n'autorise que
+>   2 échecs sur 8. Le seuil éliminatoire de DATATION était pourtant tenu (0,0 % au spawn sur
+>   5 films sur 6) : le signal existe, il n'est pas régulier. **Aucun seuil n'a été
+>   renégocié.**
+>
+> **CONSÉQUENCE PRODUIT, assumée : ni son ni effet de répulseur ou de propulseur — faute de
+> CANAL, pas faute de fichier son. L'archive sonore de l'utilisateur n'a jamais été
+> sollicitée.**
 >
 > Le gate de la Phase 0 est PASSÉ (un verdict publié par capacité EST le livrable attendu).
 > **Zéro ligne de production, aucun effet simulé, aucun son téléchargé.** Détail, options et
@@ -812,6 +817,89 @@ film, jamais deux vivants à la fois. **Pic RSS observé : 23 MiB** (plafond 3 0
 surveillé par `Start-Process -PassThru` / `WorkingSet64`, jamais approché). Durées : 5 s
 (`000d5950`, 21 Mo) à 127 s (`084a804d`, 60 Mo). Le film-bombe `51101d1d` n'a jamais été
 ouvert.
+
+---
+
+## PHASE 0-BIS — confirmer ou tuer `i59 tag==1` pour le PROPULSEUR *(2026-08-25, autorisée par le superviseur après l'étape 0.7)*
+
+**Périmètre : instrumental pur.** Aucune ligne de production, aucune publication. Les quatre
+seuils ci-dessous ont été écrits à l'étape 0.7, AVANT cette mesure, et validés tels quels par
+le superviseur : **aucun n'a été renégocié.** Instrument :
+`apps/go-api/internal/analysis/filmdec/i59_tag1_confirm_test.go` (garde `I59T1_FILM`), qui
+instruit les quatre en une passe par film.
+
+- [x] 0-bis.1 **SEUIL (1) VOLUME — ≥ 150 transitions `tag==1` cumulées : NON ATTEINT, 147.**
+      Six films mesurés (les deux familles), 147 transitions dont 107 sur des vies de
+      propulseur. À 3 transitions du seuil — non bloquant en soi, mais non atteint.
+- [x] 0-bis.2 **SEUIL (2) REPRODUCTIBILITÉ — TOMBÉ, et c'est lui qui tranche.**
+
+      | film | fam. | masse prop. | total | % prop. (≥ 75 %) | grappin (≤ 0,10) | sans identité (≤ 0,15) | verdict |
+      |---|---|---|---|---|---|---|---|
+      | `000d5950` | B | 38 | 43 | **88,4 %** | 0,00 | 0,13 | PASSE |
+      | `00502e52` | B | 15 | 25 | **60,0 %** | 0,06 | 0,22 | **ÉCHOUE** |
+      | `07aa428d` | B | 36 | 52 | **69,2 %** | 0,12 | 0,28 | **ÉCHOUE** |
+      | `00ba2e1c` | A | 8 | 10 | **80,0 %** | 0,00 | 0,03 | PASSE |
+      | `06dfe6d9` | A | 6 | 13 | **46,2 %** | 0,00 | 0,05 | **ÉCHOUE** |
+      | `084a804d` | A | 4 | 4 | **100,0 %** | 0,00 | 0,00 | PASSE |
+
+      **3 échecs sur 6 films.** Le seuil autorise **2 échecs sur 8**. Il est donc
+      **arithmétiquement hors d'atteinte** : même en mesurant les deux films manquants et
+      même s'ils passaient tous les deux, le compte serait de 5 succès sur 8, sous les 6
+      exigés. **Les films restants n'ont pas été décodés — ils ne peuvent pas changer le
+      verdict**, et dépenser du temps machine pour un résultat déjà déterminé n'aurait rien
+      prouvé.
+- [x] 0-bis.3 **SEUIL (3) DATATION (ÉLIMINATOIRE) — TENU, largement.** C'était le risque
+      majeur : un tag qui ne se lèverait qu'au spawn daterait une DOTATION, et l'effet
+      pulserait à chaque réapparition. Transitions `tag==1` **sur les vies de propulseur**,
+      offset au début de la vie :
+
+      | film | n | au spawn (< 2 s) | médiane | témoin tag 0 au spawn | témoin tag 2 au spawn |
+      |---|---|---|---|---|---|
+      | `000d5950` | 38 | **0,0 %** | 24,1 s | 5,6 % | 2,3 % |
+      | `00502e52` | 15 | **0,0 %** | 19,5 s | 8,4 % | 1,5 % |
+      | `07aa428d` | 36 | **8,3 %** | 24,2 s | 9,4 % | 3,1 % |
+      | `00ba2e1c` | 8 | **0,0 %** | 15,0 s | — | — |
+      | `06dfe6d9` | 7 | **0,0 %** | 37,6 s | — | — |
+      | `084a804d` | 4 | **0,0 %** | 33,3 s | — | — |
+
+      **Le tag 1 date un événement EN COURS DE VIE**, et il est même MOINS « au spawn » que
+      les états génériques qui lui servent de témoins. Ce seuil-là, le canal le passe.
+- [x] 0-bis.4 **SEUIL (4) CHARGE UTILE — NON MESURABLE PAR LE FLUX, et il faut le dire ainsi
+      plutôt que de le déclarer tenu.** Le test prévu (si `R(2)` était une largeur fausse
+      pour le tag 1, la marche AVAL casserait plus souvent sur ces records) s'est révélé
+      **inapplicable : sur les six films, AUCUN record n'a de composant après `i59` dans son
+      masque** — `i59` est toujours le DERNIER composant annoncé. Il n'y a donc rien en aval
+      dont la casse pourrait trahir un décalage. Reste la preuve documentaire, inchangée : le
+      déser reproduit `FUN_142f2679c` = `R(2)` plat, et la seule branche à corps est
+      `tag==3` → `FUN_142f25e90`. **Conséquence à retenir : la largeur du tag 1 n'est pas
+      falsifiable par le flux sur ce corpus.** Ce n'est pas un échec du seuil, c'est une
+      impossibilité de mesure — consignée comme telle.
+
+**GATE PHASE 0-BIS : le SEUIL (2) est TOMBÉ → PROPULSEUR CLASSÉ SUR MESURES**, avec la même
+netteté que le répulseur, et sans renégocier le seuil (consigne explicite du superviseur).
+`go vet` et `go test ./internal/analysis/filmdec/ ./internal/analysis/replay/` verts.
+
+**CONSÉQUENCE PRODUIT, assumée : aucun son ni effet de propulseur ni de répulseur dans le
+rejeu 2D — faute de CANAL, pas faute de fichier.** L'archive sonore de l'utilisateur n'a
+jamais été sollicitée, et ne doit pas l'être tant qu'aucun canal ne date les usages.
+
+### Journal de la Phase 0-bis — ce que ce négatif dit, et ce qu'il ne dit pas
+
+**Le signal du tag 1 n'est pas une illusion, il est INSUFFISANT.** Trois films sur six
+tiennent le contraste, dont l'un à 88,4 % avec zéro transition sur les vies de grappin ; le
+seuil éliminatoire de datation est tenu partout. Ce qui manque, c'est la RÉGULARITÉ : sur
+trois autres films, la masse tombe à 46-69 % et le témoin « sans identité » monte à 0,22-0,28.
+
+**Une limite de méthode est identifiée — elle est notée, et elle n'excuse rien.** Le témoin
+« vies sans identité `i48` » est structurellement gonflé : `i48` n'est transmis qu'environ une
+fois par vie, si bien que **4,8 % à 60 % des vies n'ont aucune identité selon le film** (150
+vies sur 250 pour `084a804d`, 53 sur 89 pour `07aa428d`). Une vie de propulseur non
+identifiée compte donc dans le témoin et pénalise le contraste deux fois. Les deux films où
+le témoin dépasse le seuil sont précisément ceux où les vies sans identité sont les plus
+nombreuses. **Cela n'annule pas le verdict** — le seuil était posé d'avance en connaissance
+de la méthode — mais toute reprise éventuelle devrait d'abord améliorer le taux
+d'identification des vies, faute de quoi elle rejouerait le même biais et obtiendrait le
+même résultat.
 
 ---
 

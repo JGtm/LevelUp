@@ -19,6 +19,78 @@
 
 ---
 
+## 0-BIS. VERDICT FINAL DU 2026-08-25 — le propulseur est CLASSÉ à son tour : le seuil de reproductibilité est tombé
+
+> Le superviseur a validé la Phase 0-bis **sous les quatre seuils écrits d'avance à l'étape
+> 0.7, sans en renégocier aucun**, avec le contrôle de datation déclaré ÉLIMINATOIRE.
+> Six films mesurés, un processus par film. **Aucun seuil n'a été renégocié, et le verdict
+> est négatif.**
+
+| seuil | exigé | mesuré | verdict |
+|---|---|---|---|
+| (1) volume | ≥ 150 transitions `tag==1` cumulées | **147** (dont 107 sur vies de propulseur) | non atteint, non bloquant |
+| (2) reproductibilité | ≥ 6 films sur 8 tenant les 3 critères | **3 succès / 3 échecs sur 6** | **TOMBÉ** |
+| (3) datation *(éliminatoire)* | transitions en cours de vie, pas au spawn | **0,0 % au spawn sur 5 films / 6** (8,3 % sur le 6ᵉ) | **TENU** |
+| (4) charge utile | établir ce que `tag==1` transporte | **non mesurable par le flux** (voir plus bas) | indéterminé |
+
+**Le détail du seuil (2), qui tranche :**
+
+| film | fam. | masse prop. | total | % prop. (≥ 75 %) | grappin (≤ 0,10) | sans identité (≤ 0,15) | |
+|---|---|---|---|---|---|---|---|
+| `000d5950` | B | 38 | 43 | 88,4 % | 0,00 | 0,13 | PASSE |
+| `00502e52` | B | 15 | 25 | **60,0 %** | 0,06 | **0,22** | ÉCHOUE |
+| `07aa428d` | B | 36 | 52 | **69,2 %** | **0,12** | **0,28** | ÉCHOUE |
+| `00ba2e1c` | A | 8 | 10 | 80,0 % | 0,00 | 0,03 | PASSE |
+| `06dfe6d9` | A | 6 | 13 | **46,2 %** | 0,00 | 0,05 | ÉCHOUE |
+| `084a804d` | A | 4 | 4 | 100,0 % | 0,00 | 0,00 | PASSE |
+
+**3 échecs sur 6 films, quand le seuil n'en autorise que 2 sur 8 : hors d'atteinte
+arithmétiquement.** Même si les deux films manquants passaient tous les deux, le compte
+serait de 5 sur 8. **Ils n'ont donc pas été décodés** — ils ne peuvent pas changer le verdict,
+et dépenser du temps machine sur un résultat déjà déterminé n'aurait rien prouvé.
+
+**Ce que ce négatif ne dit PAS.** Le signal n'est pas une illusion : trois films tiennent le
+contraste (dont un à 88,4 % avec **zéro** transition sur les vies de grappin), et le seuil
+éliminatoire de datation est tenu partout — **le tag 1 date bien un événement en cours de
+vie, pas une dotation au spawn.** Ce qui manque, c'est la RÉGULARITÉ.
+
+**La limite de méthode, notée sans qu'elle serve d'excuse.** Le témoin « vies sans identité
+`i48` » est structurellement gonflé : `i48` n'est transmis qu'environ une fois par vie, si
+bien que **4,8 % à 60 % des vies n'ont aucune identité selon le film** (150 vies sur 250 pour
+`084a804d`, 53 sur 89 pour `07aa428d`). Une vie de propulseur non identifiée tombe dans le
+témoin et pénalise le contraste deux fois — et les deux films où le témoin dépasse le seuil
+sont précisément les plus riches en vies anonymes. **Le seuil était posé d'avance en
+connaissance de cette méthode ; le verdict tient.** Mais toute reprise devrait commencer par
+améliorer le taux d'identification des vies, sans quoi elle rejouerait le même biais pour le
+même résultat.
+
+**Sur le seuil (4), une précision qui vaut pour tout le chantier.** Le test prévu — si `R(2)`
+était une largeur fausse, la marche AVAL casserait — s'est révélé inapplicable : **sur les six
+films, aucun record n'a de composant après `i59` dans son masque.** `i59` est toujours le
+dernier composant annoncé, il n'y a rien en aval dont la casse trahirait un décalage. La
+largeur du tag 1 **n'est pas falsifiable par le flux** sur ce corpus ; il reste la preuve
+documentaire (`FUN_142f2679c` = `R(2)` plat, corps sur `tag==3` seulement). Dit comme tel
+plutôt que déclaré « tenu ».
+
+### Ce qui est classé, et ce que ça coûte
+
+**Répulseur ET propulseur : classés sur mesures.** Cinq voies fermées par écrit, chacune avec
+ses dénominateurs : `i27` (objets du monde), `i54` (mobilité), `i56` (énergie), `i51` (EMP),
+`i59` (tags 0/2 génériques, tag 1 non reproductible).
+
+**Conséquence produit, assumée : pas de son ni d'effet d'équipement actif pour ces deux
+capacités dans le rejeu 2D — faute de CANAL, et non faute de fichier son.** L'archive sonore
+de l'utilisateur n'a jamais été sollicitée et ne doit pas l'être tant qu'aucun canal ne date
+les usages : un son déclenché sur un signal à 46-69 % de justesse se remarquerait
+immédiatement à l'oreille, et la règle du chantier est qu'on n'affiche jamais une donnée
+qu'on n'a pas mesurée.
+
+**Ce qui reste vivant** : le camouflage, le surbouclier et le grappin, livrés, chacun sur un
+canal dédié validé — la méthode fonctionne, elle a simplement épuisé ce que ces deux
+capacités-là laissent voir dans le film.
+
+---
+
 ## 0. ADDENDUM DU 2026-08-25 (soir) — la sonde `i59` a été autorisée, exécutée, et elle change le verdict pour LE PROPULSEUR
 
 > Le superviseur a autorisé l'option A de ce document (§5) en périmètre **strictement
