@@ -16,7 +16,15 @@
  *                                  est affichée à l'écran (cf. `EquipmentUsageEpisode`) ;
  *   - `equipmentPlacements[]` `deployed` — les DÉPLOIEMENTS, par famille ;
  *   - `equipmentPlacements[]` `dropped`  — ce qu'on LÂCHE en mourant, par famille ;
- *   - `grenades[]`               — les lancers, par type ;
+ *   - `grenades[]`               — les lancers, par type. ATTENTION, LA CLÉ N'EST PAS LA MÊME :
+ *                                  `Grenade.slot` est « le biped lanceur QUAND IL EST CONNU
+ *                                  (0 sinon) », l'auteur est `Grenade.i`, l'index de joueur
+ *                                  ÉCRIT dans le film (cf. grenades.go, et `grenadeThrowActive`
+ *                                  qui joint déjà par là). Mesuré sur quatre témoins du cache :
+ *                                  65/70, 108/143, 123/130 lancers portent un slot ABSENT des
+ *                                  pistes — joindre par le slot perdrait la quasi-totalité des
+ *                                  lancers, ou pire, les verserait tous au propriétaire du
+ *                                  slot 0 sur un film où ce slot existe ;
  *   - `padPickups[]` x `weaponPads[]` de famille `powerup_*` — les SOCLES DE BONUS VIDÉS. Ce
  *     canal-là est ANONYME PAR MESURE (`padPickups[].xuid` vaut `null` partout, oracle à
  *     79,7 % contre 90 % exigé) : il ne descend JAMAIS sur une ligne de joueur, il reste au
@@ -213,14 +221,16 @@ export function buildEquipmentUsage(
   doc: ReplayDocumentReady,
   scoreboard: MatchScoreboardRow[] | undefined,
 ): EquipmentUsage {
-  const players = buildPlayers(doc, scoreboard ?? [])
+  // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne (cf. `teamsOf`) : la table des
+  // compteurs se borne aux mêmes, sinon un geste attribué à une entrée de roster sans piste
+  // disparaîtrait de l'écran SANS entrer dans les orphelins — et la somme mentirait.
+  const players = buildPlayers(doc, scoreboard ?? []).filter((p) => p.lives.length > 0)
   const ownerOfSlot = indexBySlot(players, (p) => p)
   const tallies = new Map<string, EquipmentUsageTally>()
   const unattributed = emptyTally()
 
-  /** Le compteur du propriétaire d'une vie, ou celui des gestes sans propriétaire. */
-  const tallyOfSlot = (slot: number): EquipmentUsageTally => {
-    const owner = ownerOfSlot.get(slot)
+  /** Le compteur d'un joueur, créé à la demande ; celui des gestes orphelins sans lui. */
+  const tallyOf = (owner: ReplayPlayer | undefined): EquipmentUsageTally => {
     if (!owner) return unattributed
     let t = tallies.get(owner.xuid)
     if (!t) {
@@ -229,6 +239,17 @@ export function buildEquipmentUsage(
     }
     return t
   }
+  /** Le compteur du propriétaire d'une VIE (clé : le slot de piste). */
+  const tallyOfSlot = (slot: number): EquipmentUsageTally => tallyOf(ownerOfSlot.get(slot))
+  /**
+   * Le compteur d'un joueur désigné par son INDEX DE FILM — l'autre clé du document, et la
+   * seule que les lancers de grenade portent vraiment (cf. en-tête). Le roster fait le pont,
+   * comme `ReplayTeams` le fait déjà pour le badge de lancer.
+   */
+  const byFilmIndex = new Map(
+    doc.roster.map((entry) => [entry.filmIndex, players.find((p) => p.xuid === entry.xuid)]),
+  )
+  const tallyOfFilmIndex = (index: number): EquipmentUsageTally => tallyOf(byFilmIndex.get(index))
 
   for (const line of doc.grappleLines) tallyOfSlot(line.slot).grapplePulls += 1
 
@@ -246,7 +267,8 @@ export function buildEquipmentUsage(
     else if (placementIsDroppedPower(p)) bump(t.dropped, p.family)
   }
 
-  for (const g of doc.grenades) bump(tallyOfSlot(g.slot).grenades, g.rank)
+  // LE LANCER PORTE SON AUTEUR : `i`, l'index de joueur du film — jamais `slot` (cf. en-tête).
+  for (const g of doc.grenades) bump(tallyOfFilmIndex(g.i).grenades, g.rank)
 
   const byTeam = teamsOf(players, tallies)
   const byPlayer = byTeam.flatMap((g) => g.players)
@@ -268,15 +290,15 @@ export function buildEquipmentUsage(
 /**
  * teamsOf range les joueurs par camp et somme chaque camp.
  *
- * SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne : une entrée de roster sans aucune
- * vie n'a été mesurée sur aucun de ces canaux, et une ligne de zéros la ferait passer pour
- * quelqu'un qui n'a rien fait. L'ordre est celui du roster du film (stable, reproductible).
+ * Le filtre « au moins une vie » a déjà été appliqué par l'appelant (cf. `buildEquipmentUsage`) :
+ * une entrée de roster sans aucune vie n'a été mesurée sur aucun canal, et une ligne de zéros la
+ * ferait passer pour quelqu'un qui n'a rien fait. L'ordre est celui du roster du film (stable).
  */
 function teamsOf(
   players: ReplayPlayer[],
   tallies: Map<string, EquipmentUsageTally>,
 ): EquipmentUsageTeam[] {
-  return groupByTeam(players.filter((p) => p.lives.length > 0)).map((group) => {
+  return groupByTeam(players).map((group) => {
     const total = emptyTally()
     const rows = group.players.map((p) => {
       const tally = tallies.get(p.xuid) ?? emptyTally()

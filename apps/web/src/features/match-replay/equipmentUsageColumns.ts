@@ -103,12 +103,12 @@ export function usageColumnGroups(
       columns: usage.columns.episodes.flatMap((fam) => [
         {
           key: `${fam}.count`,
-          label: `${t.equipmentActive[fam]} (${u.activeCount})`,
+          label: `${u.activeFamily[fam]} (${u.activeCount})`,
           cell: (x: EquipmentUsageTally) => intCell(x.episodes[fam]?.count),
         },
         {
           key: `${fam}.ms`,
-          label: `${t.equipmentActive[fam]} (${u.activeDuration})`,
+          label: `${u.activeFamily[fam]} (${u.activeDuration})`,
           cell: (x: EquipmentUsageTally) =>
             formatDurationMMSS((x.episodes[fam]?.ms ?? 0) / 1000, '—'),
         },

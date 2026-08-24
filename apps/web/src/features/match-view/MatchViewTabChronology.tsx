@@ -6,6 +6,7 @@
  * « Déroulé du match » de l'ancien onglet Détails, dont le sous-titre est conservé.
  */
 import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
+import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type {
   MatchHighlightEvent,
@@ -82,6 +83,17 @@ export function MatchViewTabChronology({
         scoreboard={scoreboard}
         meXUID={meXUID}
         t={t}
+      />
+
+      {/* Le BILAN d'équipement du match (film), juste après la courbe : même artefact, même
+          clé de cache, aucun appel de plus. Le rejeu montre ces gestes image par image ; ce
+          tableau les compte. Sans artefact ou sans grandeur mesurée, il ne rend rien. */}
+      <MatchEquipmentUsageSection
+        playerSlug={playerSlug}
+        matchId={matchId}
+        replayAvailable={replayAvailable}
+        scoreboard={scoreboard}
+        locale={locale}
       />
 
       {/* Dominance | Cadence des frags */}

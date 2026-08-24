@@ -42,6 +42,16 @@ export interface EquipmentUsageText {
   /** États actifs mesurés (camouflage, surbouclier) : nombre d'épisodes et durée cumulée. */
   groupActive: string
   groupActiveHint: string
+  /**
+   * LE NOM COURT des deux familles d'état, et pourquoi il ne se prend nulle part ailleurs.
+   *
+   * `equipmentActive` porte bien ces deux familles, mais ce sont des PHRASES d'infobulle de
+   * fiche (« Camouflage actif — le joueur est invisible à l'écran de jeu ») : illisibles en tête
+   * de colonne. `padEquipmentFamily` porte bien deux noms courts, mais ce sont ceux des SOCLES
+   * de bonus — les employer ici nommerait l'ÉTAT par la source que `groupActiveHint` dit
+   * justement ne pas être établie. D'où deux libellés propres, et le typage tient la parité.
+   */
+  activeFamily: Record<'camo' | 'overshield', string>
   activeCount: string
   activeDuration: string
   groupDeployed: string
