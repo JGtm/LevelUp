@@ -15,6 +15,21 @@
 // (`internal/persist/shared_persister.go:154`) est un INSERT NU, sans `ON CONFLICT` — un
 // match déjà présent n'est jamais réécrit. D'où cet outil.
 //
+// # DEUX PHASES, ET LA RAISON EST LE VERROU
+//
+// Phase A — SANS aucun droit d'écriture : lecture des lignes visées, téléchargement des
+// payloads, décisions. C'est la phase longue (un appel API par match, de l'ordre de la
+// minute pour 80 matchs, bien davantage si l'API traîne).
+//
+// Phase B — n'existe qu'avec `--apply`, et elle est COURTE : ouverture en écriture, puis
+// par ligne une re-lecture de la valeur courante suivie de l'écriture, seulement si elle
+// diffère toujours.
+//
+// Découper ainsi n'est pas cosmétique. Prendre le droit d'écriture avant la boucle de
+// téléchargement tiendrait la base fermée pendant toute la durée des appels réseau —
+// des heures si l'API répond mal — alors qu'aucune écriture n'a encore lieu. La re-lecture
+// en phase B rend la séquence sûre même si quelque chose a bougé entre les deux phases.
+//
 // # CE QU'IL NE FAIT PAS
 //
 // Il ne fait JAMAIS confiance au fichier de liste pour les VALEURS : le TSV ne fournit que
@@ -22,21 +37,20 @@
 // valeur diffère, jamais un NULL, jamais un négatif, jamais hors bornes du SMALLINT de la
 // colonne. Un match sans camps 0 et 1 (FFA) est sauté et loggé.
 //
-// # ÉCRITURE
+// # QUI GARANTIT L'UNICITÉ DU WRITER
 //
-// `--dry-run` est le DÉFAUT : sans `--apply`, aucune écriture, l'outil imprime ce qu'il
-// ferait. Avec `--apply`, l'écriture est un `UPDATE … WHERE match_id = ?` row-by-row
-// sérialisé sous lease writer `dblease.KindSharedMatches` — jamais un
-// `UPDATE … FROM (VALUES …)`, forme interdite par `internal/sync/no_art_patterns_test.go`
-// (déclencheur ART #23046). Idempotent : rejouer l'outil ne change plus rien.
+// C'est le VERROU FICHIER de DuckDB, pas autre chose : `OpenReadWrite` ping la base à
+// l'ouverture (`platform/duckdb/db.go:461`), donc `--apply` échoue immédiatement, avec un
+// « Could not set lock », si le serveur LevelUp tient déjà la base. Le serveur doit donc
+// être arrêté (ADR 0013, un seul writer par base).
 //
-// Le mode `--apply` ouvre la base en lecture-écriture : le SERVEUR DOIT ÊTRE ARRÊTÉ
-// (ADR 0013, un seul writer par base). Le mode dry-run, lui, lit par `OpenReadForQuery` et
-// tourne serveur allumé.
+// Le lease `dblease` pris en phase B ne joue AUCUN rôle là-dedans : c'est un mutex
+// INTRA-process (`platform/dblease/lease.go:45`), sans effet entre deux process. Il est
+// conservé pour la discipline et la métrique, pas comme garantie d'exclusion.
 //
 // # USAGE
 //
-//	# 1. répétition à blanc (serveur allumé, aucune écriture)
+//	# 1. répétition à blanc (aucune écriture, aucun droit d'écriture demandé)
 //	LEVELUP_REPO_ROOT=<repo qui porte data/> \
 //	  go run ./cmd/backfill-team-scores --gamertag JGtm
 //
@@ -53,8 +67,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -73,8 +85,8 @@ import (
 // defaultIDsFile : la liste nominative produite par la phase 1 du lot, versionnée.
 const defaultIDsFile = ".ai/V7.5/replay2d/registre_film/score_equipe_ecarts_2026-08-24.tsv"
 
-// writerLeaseTimeout borne l'attente du lease : au-delà, un autre process tient la base
-// et l'outil doit le dire plutôt que d'attendre indéfiniment.
+// writerLeaseTimeout borne l'attente du lease intra-process. Court : en CLI mono-process
+// il est toujours libre, un dépassement signalerait un bug d'appel, pas une contention.
 const writerLeaseTimeout = 30 * time.Second
 
 // tally compte les issues. Publié tel quel en fin de course.
@@ -82,13 +94,14 @@ type tally struct {
 	read, identical, fixed, skipped, failed int
 }
 
+// plannedFix est une correction décidée en phase A, en attente de la phase B.
+type plannedFix struct {
+	matchID  string
+	decision Decision
+}
+
 func main() {
-	gamertag := flag.String("gamertag", "JGtm", "Gamertag dont les tokens servent à l'auth API (db_profiles.json)")
-	idsFile := flag.String("ids-file", defaultIDsFile, "Liste de match_id (TSV à en-tête `match_id`, ou une colonne nue). Relatif = depuis la racine du dépôt")
-	single := flag.String("match", "", "Traiter CE seul match_id (ignore --ids-file)")
-	apply := flag.Bool("apply", false, "ÉCRIRE réellement. Sans ce drapeau : répétition à blanc, aucune écriture")
-	rps := flag.Int("rps", 4, "Requêtes API par seconde")
-	flag.Parse()
+	opts := parseFlags()
 
 	ctx := context.Background()
 	cfg, err := config.Load()
@@ -98,82 +111,108 @@ func main() {
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
 
-	matchIDs, err := resolveMatchIDs(*single, *idsFile, cfg.RepoRoot)
+	matchIDs, err := resolveMatchIDs(opts.single, opts.idsFile, cfg.RepoRoot)
 	if err != nil {
 		fatal("%v", err)
 	}
-
-	client, err := newAPIClient(ctx, cfg, pr, *gamertag, *rps)
+	client, err := newAPIClient(ctx, cfg, pr, opts.gamertag, opts.rps)
 	if err != nil {
 		fatal("%v", err)
 	}
 
 	slog.InfoContext(ctx, "backfill_team_scores: démarrage",
-		"matchs", len(matchIDs), "apply", *apply, "shared_db", sharedPath)
+		"matchs", len(matchIDs), "apply", opts.apply, "shared_db", sharedPath)
 
-	t, err := run(ctx, runDeps{
-		client: client, sharedPath: sharedPath, matchIDs: matchIDs, apply: *apply,
-	})
+	// --- Phase A : aucun droit d'écriture n'est demandé ici. ---
+	plans, t, err := planPhase(ctx, client, sharedPath, matchIDs)
 	if err != nil {
 		fatal("%v", err)
 	}
 
-	slog.InfoContext(ctx, "backfill_team_scores: terminé",
-		"apply", *apply, "lus", t.read, "identiques", t.identical,
-		"corriges", t.fixed, "skippes", t.skipped, "echecs", t.failed)
-	if !*apply && t.fixed > 0 {
-		slog.WarnContext(ctx, "backfill_team_scores: répétition à blanc — RIEN n'a été écrit ; relancer avec --apply (serveur arrêté) pour appliquer",
-			"a_corriger", t.fixed)
+	// --- Phase B : courte, et seulement si on applique. ---
+	if opts.apply && len(plans) > 0 {
+		if err := applyPhase(ctx, sharedPath, plans, &t); err != nil {
+			fatal("%v", err)
+		}
 	}
+
+	reportTally(ctx, opts.apply, t)
 	if t.failed > 0 {
 		os.Exit(1)
 	}
 }
 
-// runDeps regroupe ce dont la boucle a besoin (≤ 5 paramètres, seuil CLAUDE.md).
-type runDeps struct {
-	client     *go_sync.HaloAPIClient
-	sharedPath string
-	matchIDs   []string
-	apply      bool
+// options porte les drapeaux, pour que main reste lisible et sous les seuils.
+type options struct {
+	gamertag, idsFile, single string
+	apply                     bool
+	rps                       int
 }
 
-// run ouvre la base selon le mode, puis traite les matchs un par un.
-func run(ctx context.Context, d runDeps) (tally, error) {
+func parseFlags() options {
+	var o options
+	flag.StringVar(&o.gamertag, "gamertag", "JGtm", "Gamertag dont les tokens servent à l'auth API (db_profiles.json)")
+	flag.StringVar(&o.idsFile, "ids-file", defaultIDsFile, "Liste de match_id (TSV à en-tête `match_id`, ou une colonne nue). Relatif = depuis la racine du dépôt")
+	flag.StringVar(&o.single, "match", "", "Traiter CE seul match_id (ignore --ids-file)")
+	flag.BoolVar(&o.apply, "apply", false, "ÉCRIRE réellement. Sans ce drapeau : répétition à blanc, aucune écriture")
+	flag.IntVar(&o.rps, "rps", 4, "Requêtes API par seconde")
+	flag.Parse()
+	return o
+}
+
+func reportTally(ctx context.Context, apply bool, t tally) {
+	slog.InfoContext(ctx, "backfill_team_scores: terminé",
+		"apply", apply, "lus", t.read, "identiques", t.identical,
+		"corriges", t.fixed, "skippes", t.skipped, "echecs", t.failed)
+	if !apply && t.fixed > 0 {
+		slog.WarnContext(ctx, "backfill_team_scores: répétition à blanc — RIEN n'a été écrit ; relancer avec --apply (serveur arrêté) pour appliquer",
+			"a_corriger", t.fixed)
+	}
+}
+
+// planPhase ouvre la base en LECTURE, décide pour chaque match, et rend le plan.
+//
+// `OpenReadForQuery` dégénère en ouverture read-only depuis un process séparé : la lecture
+// cohabite avec un serveur qui tient la base EN LECTURE, mais avorte proprement (« Could
+// not set lock ») s'il est en train d'y écrire. C'est une limite acceptée : la répétition à
+// blanc n'a rien à réparer, on la relance.
+func planPhase(ctx context.Context, f matchFetcher, path string, ids []string) ([]plannedFix, tally, error) {
 	var t tally
-	db, writer, closeDB, err := openRegistry(d.sharedPath, d.apply)
+	db, closeDB, err := duckdbpkg.OpenReadForQuery(path)
 	if err != nil {
-		return t, err
+		return nil, t, fmt.Errorf("ouverture lecture de %s : %w", path, err)
 	}
 	defer closeDB()
-	if writer != nil {
-		defer writer.Release()
-	}
 
-	for _, id := range d.matchIDs {
-		processMatch(ctx, d, db, writer, id, &t)
+	reg := sqlRegistry{q: db}
+	var plans []plannedFix
+	for _, id := range ids {
+		if p, ok := planMatch(ctx, f, reg, id, &t); ok {
+			plans = append(plans, p)
+		}
 	}
-	return t, nil
+	return plans, t, nil
 }
 
-// processMatch traite UN match : fetch, lecture du registre, décision, écriture éventuelle.
-func processMatch(ctx context.Context, d runDeps, db *sql.DB, w *dblease.LeasedWriter, id string, t *tally) {
-	matchJSON, err := d.client.GetMatchStats(ctx, id)
-	if err != nil {
-		slog.ErrorContext(ctx, "backfill_team_scores: GetMatchStats échoué", "match_id", id, "err", err)
-		t.failed++
-		return
-	}
-	cur, found, err := loadRegistryScores(ctx, db, id)
+// planMatch traite UN match en phase A : lecture, fetch, décision. ok=true si une
+// correction est à faire.
+func planMatch(ctx context.Context, f matchFetcher, r registryReader, id string, t *tally) (plannedFix, bool) {
+	cur, found, err := r.ReadScores(ctx, id)
 	if err != nil {
 		slog.ErrorContext(ctx, "backfill_team_scores: lecture match_registry échouée", "match_id", id, "err", err)
 		t.failed++
-		return
+		return plannedFix{}, false
 	}
 	if !found {
 		slog.WarnContext(ctx, "backfill_team_scores: match absent de match_registry — sauté", "match_id", id)
 		t.skipped++
-		return
+		return plannedFix{}, false
+	}
+	matchJSON, err := f.GetMatchStats(ctx, id)
+	if err != nil {
+		slog.ErrorContext(ctx, "backfill_team_scores: GetMatchStats échoué", "match_id", id, "err", err)
+		t.failed++
+		return plannedFix{}, false
 	}
 	t.read++
 
@@ -182,103 +221,78 @@ func processMatch(ctx context.Context, d runDeps, db *sql.DB, w *dblease.LeasedW
 	case VerdictIdentical:
 		t.identical++
 		slog.DebugContext(ctx, "backfill_team_scores: identique", "match_id", id, "cause", dec.Reason)
-		return
+		return plannedFix{}, false
 	case VerdictSkipNoTeams, VerdictSkipImplausible:
 		t.skipped++
 		slog.WarnContext(ctx, "backfill_team_scores: sauté",
 			"match_id", id, "verdict", string(dec.Verdict), "cause", dec.Reason)
-		return
+		return plannedFix{}, false
 	}
-
-	slog.InfoContext(ctx, "backfill_team_scores: correction",
-		"match_id", id, "apply", d.apply,
+	slog.InfoContext(ctx, "backfill_team_scores: correction retenue",
+		"match_id", id,
 		"avant", formatScores(dec.Old), "apres", fmt.Sprintf("%d/%d", dec.NewTeam0, dec.NewTeam1),
 		"cause", dec.Reason)
-	if !d.apply {
-		t.fixed++
-		return
-	}
-	if err := applyFix(ctx, w, id, dec); err != nil {
-		slog.ErrorContext(ctx, "backfill_team_scores: UPDATE échoué", "match_id", id, "err", err)
-		t.failed++
-		return
-	}
-	t.fixed++
+	return plannedFix{matchID: id, decision: dec}, true
 }
 
-// applyFix écrit UNE ligne. La forme est imposée par le garde-rail anti-ART : un UPDATE
-// row-by-row, `WHERE match_id = ?`, avec toutes les valeurs liées à des placeholders.
-// Aucune autre forme n'est acceptable sur `match_registry` (cf. `criticalMatchTables`).
-func applyFix(ctx context.Context, w *dblease.LeasedWriter, matchID string, d Decision) error {
-	if w == nil {
-		return errors.New("écriture demandée sans lease writer (bug d'appel)")
-	}
-	if !d.Writable() {
-		return fmt.Errorf("écriture demandée sur un verdict non écrivable (%s)", d.Verdict)
-	}
-	res, err := w.ExecContext(ctx,
-		`UPDATE match_registry SET team_0_score = ?, team_1_score = ? WHERE match_id = ?`,
-		d.NewTeam0, d.NewTeam1, matchID)
+// applyPhase ouvre la base en ÉCRITURE et applique le plan. Fenêtre volontairement courte :
+// plus aucun appel réseau ici.
+func applyPhase(ctx context.Context, path string, plans []plannedFix, t *tally) error {
+	handle, err := duckdbpkg.OpenReadWrite(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("ouverture écriture de %s (serveur LevelUp arrêté ?) : %w", path, err)
 	}
-	n, err := res.RowsAffected()
+	defer func() { _ = handle.Close() }()
+	db := handle.SQLDb()
+
+	// Mutex intra-process : discipline et métrique, PAS la garantie d'exclusion (celle-ci
+	// vient du verrou fichier DuckDB, déjà éprouvé par l'ouverture ci-dessus).
+	w, err := dblease.AcquireWriter(db, path, dblease.KindSharedMatches, writerLeaseTimeout)
 	if err != nil {
-		return nil // pilote sans RowsAffected : l'UPDATE a réussi, on ne peut pas compter
+		return fmt.Errorf("lease writer sur %s : %w", path, err)
 	}
-	if n != 1 {
-		return fmt.Errorf("UPDATE a touché %d lignes au lieu de 1", n)
+	defer w.Release()
+
+	reg := sqlRegistry{q: db, ex: w}
+	for _, p := range plans {
+		applyOne(ctx, reg, reg, p, t)
 	}
 	return nil
 }
 
-// loadRegistryScores lit les deux colonnes. found=false quand le match n'est pas au registre.
-func loadRegistryScores(ctx context.Context, db *sql.DB, matchID string) (RegistryScores, bool, error) {
-	var t0, t1 sql.NullInt64
-	err := db.QueryRowContext(ctx,
-		`SELECT team_0_score, team_1_score FROM match_registry WHERE match_id = ?`,
-		matchID).Scan(&t0, &t1)
-	if errors.Is(err, sql.ErrNoRows) {
-		return RegistryScores{}, false, nil
-	}
-	if err != nil {
-		return RegistryScores{}, false, err
-	}
-	return RegistryScores{Team0: nullIntPtr(t0), Team1: nullIntPtr(t1)}, true, nil
-}
-
-func nullIntPtr(n sql.NullInt64) *int {
-	if !n.Valid {
-		return nil
-	}
-	v := int(n.Int64)
-	return &v
-}
-
-// openRegistry ouvre la base selon le mode.
+// applyOne écrit UNE correction, après re-lecture.
 //
-// Dry-run : `OpenReadForQuery` — lecture qui cohabite avec un serveur qui tient la base.
-// Apply   : `OpenReadWrite` + lease writer — échoue si un autre process tient la base,
-// ce qui EST le comportement voulu (ADR 0013 : un seul writer).
-func openRegistry(path string, apply bool) (*sql.DB, *dblease.LeasedWriter, func(), error) {
-	if !apply {
-		db, closer, err := duckdbpkg.OpenReadForQuery(path)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("ouverture lecture de %s : %w", path, err)
-		}
-		return db, nil, closer, nil
-	}
-	handle, err := duckdbpkg.OpenReadWrite(path)
+// La re-lecture n'est pas une précaution de principe : entre la phase A et la phase B il
+// s'est écoulé le temps de tous les appels API, et rien ne garantit que la ligne n'a pas
+// bougé. Si elle porte déjà la valeur visée, on ne réécrit pas — l'outil reste idempotent
+// et un second passage ne compte rien à tort.
+func applyOne(ctx context.Context, r registryReader, w registryWriter, p plannedFix, t *tally) {
+	cur, found, err := r.ReadScores(ctx, p.matchID)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("ouverture écriture de %s (serveur LevelUp arrêté ?) : %w", path, err)
+		slog.ErrorContext(ctx, "backfill_team_scores: re-lecture avant écriture échouée", "match_id", p.matchID, "err", err)
+		t.failed++
+		return
 	}
-	db := handle.SQLDb()
-	w, err := dblease.AcquireWriter(db, path, dblease.KindSharedMatches, writerLeaseTimeout)
-	if err != nil {
-		_ = handle.Close()
-		return nil, nil, nil, fmt.Errorf("lease writer sur %s : %w", path, err)
+	if !found {
+		slog.WarnContext(ctx, "backfill_team_scores: match disparu du registre entre les deux phases — sauté", "match_id", p.matchID)
+		t.skipped++
+		return
 	}
-	return db, w, func() { _ = handle.Close() }, nil
+	if cur.Team0 != nil && cur.Team1 != nil &&
+		*cur.Team0 == p.decision.NewTeam0 && *cur.Team1 == p.decision.NewTeam1 {
+		t.identical++
+		slog.InfoContext(ctx, "backfill_team_scores: déjà à jour à la seconde lecture — rien à écrire", "match_id", p.matchID)
+		return
+	}
+	if err := w.WriteScores(ctx, p.matchID, p.decision.NewTeam0, p.decision.NewTeam1); err != nil {
+		slog.ErrorContext(ctx, "backfill_team_scores: écriture échouée", "match_id", p.matchID, "err", err)
+		t.failed++
+		return
+	}
+	t.fixed++
+	slog.InfoContext(ctx, "backfill_team_scores: écrit",
+		"match_id", p.matchID,
+		"avant", formatScores(cur), "apres", fmt.Sprintf("%d/%d", p.decision.NewTeam0, p.decision.NewTeam1))
 }
 
 // resolveMatchIDs rend la liste de travail : le match unique s'il est fourni, sinon le

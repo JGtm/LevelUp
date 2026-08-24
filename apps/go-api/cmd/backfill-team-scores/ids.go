@@ -18,6 +18,10 @@ import (
 // matchIDColumn est l'en-tête de la SEULE colonne exploitée.
 const matchIDColumn = "match_id"
 
+// utf8BOM : marque d'ordre des octets UTF-8, en séquence d'échappement — un BOM littéral
+// dans un source Go est un refus de compilation (« invalid BOM in the middle of the file »).
+const utf8BOM = "\ufeff"
+
 // LoadMatchIDs lit les match_id d'un fichier TSV ou d'une liste nue.
 //
 // Deux formes acceptées, parce que les deux existent dans le dépôt :
@@ -40,11 +44,21 @@ func LoadMatchIDs(path string) ([]string, error) {
 
 	col := -1
 	headerSeen := false
+	first := true
 	var out []string
 	seen := map[string]struct{}{}
 
 	for sc.Scan() {
 		line := strings.TrimRight(sc.Text(), "\r")
+		if first {
+			// BOM UTF-8 en tête de fichier. PowerShell l'ajoute par défaut à
+			// `Out-File` / `>` : sans ce retrait, l'en-tête devient "<BOM>match_id",
+			// n'est plus reconnu, et le fichier bascule en « liste nue » — la colonne 0
+			// d'un TSV à 13 colonnes se trouve être `match_id`, donc ça marcherait par
+			// accident ici, et casserait silencieusement sur un fichier réordonné.
+			line = strings.TrimPrefix(line, utf8BOM)
+			first = false
+		}
 		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
 			continue
 		}
