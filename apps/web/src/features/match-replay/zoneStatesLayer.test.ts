@@ -50,6 +50,9 @@ const ZONE_STATES: ReplayZoneStateReady[] = [
   {
     zoneRef: 0,
     key: 0x67f43ac3,
+    // Rang 0 = la lettre A (fallback d'ordre, cf. `letterRank`). La zone 1, elle, n'en porte
+    // pas : c'est la colline du fixture, et une colline n'a pas de lettre.
+    letterRank: 0,
     spans: [
       { t0: 0, t1: 9, owner: null, active: false },
       { t0: 10, t1: 19, owner: 0, active: false, progress: 0.75 },
@@ -133,10 +136,104 @@ describe('drawZoneStates', () => {
     return ((a[4] as number) - (a[3] as number)) / (2 * Math.PI)
   }
 
-  it("n'écrit JAMAIS de texte, comme le calque statique", () => {
+  /** Les textes écrits par un rendu, dans l'ordre d'émission. */
+  const textesDe = (ops: { op: string; args: unknown[] }[]) =>
+    ops.filter((o) => o.op === 'fillText' || o.op === 'strokeText').map((o) => String(o.args[0]))
+
+  /**
+   * L'encre EN VIGUEUR AU MOMENT DU DERNIER ARC.
+   *
+   * POURQUOI PAS « LA DERNIÈRE `strokeStyle` DU RENDU », qui était l'écriture d'origine : depuis
+   * que le calque écrit la lettre de la zone (2026-08-24), la dernière encre posée est celle du
+   * cerne du glyphe — une encre STRUCTURELLE, qui n'a rien à voir avec l'arc. Viser l'instant de
+   * l'arc dit ce que ces cas veulent réellement dire, et ne dépend plus de ce qui est peint après.
+   */
+  const encreDeLArc = (ops: { op: string; args: unknown[] }[]): string | undefined => {
+    const dernierArc = ops.map((o) => o.op).lastIndexOf('arc')
+    if (dernierArc < 0) return undefined
+    const avant = ops.slice(0, dernierArc).filter((o) => o.op === 'set strokeStyle')
+    return avant.length > 0 ? String(avant[avant.length - 1].args[0]) : undefined
+  }
+
+  /**
+   * Les opérations de la passe GÉOMÉTRIQUE : tout ce qui précède la passe des lettres.
+   *
+   * LA COUPURE EST `set font`, PAS LE PREMIER GLYPHE : la passe des lettres pose ses encres
+   * AVANT d'écrire, donc couper au premier `strokeText` laisserait le noir du cerne dans la
+   * passe géométrique — ce qu'un premier essai a montré en rougissant.
+   */
+  const avantTexte = (ops: { op: string; args: unknown[] }[]) => {
+    const premier = ops.findIndex((o) => o.op === 'set font')
+    return premier < 0 ? ops : ops.slice(0, premier)
+  }
+
+  // GARDE AMENDÉE LE 2026-08-24 (décision utilisateur, plan PLAN_LETTRES_BASES_FALLBACK).
+  // Ce calque n'écrivait RIEN, parce que la lettre A/B/C du HUD n'existait dans aucune donnée
+  // décodée. Elle n'y est toujours pas : ce que l'artefact publie est un FALLBACK D'ORDRE
+  // (`letterRank`), mesuré reproductible sur 8 cartes, et le relevé Theater de l'utilisateur
+  // reste le juge de « ce sont bien les lettres du jeu ». La garde autorise donc LE glyphe
+  // d'une lettre de base — une seule chaîne d'UN caractère, dans A-C — et continue d'interdire
+  // tout AUTRE texte : un libellé de zone, un chiffre de jauge, un nom de camp échoueraient ici.
+  it("n'écrit AUCUN texte hors le glyphe d'une lettre de base A-C", () => {
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer(), ZONE_STATES, VIEW, 10)
+    const textes = textesDe(ops)
+    expect(textes.length).toBeGreaterThan(0)
+    for (const t of textes) expect(t).toMatch(/^[ABC]$/)
+  })
+
+  it('sans `letterRank`, le calque redevient MUET — aucun texte du tout', () => {
+    const sansLettre = ZONE_STATES.map((s) => ({ ...s, letterRank: undefined }))
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer(), sansLettre, VIEW, 10)
     expect(count(ops, 'fillText') + count(ops, 'strokeText')).toBe(0)
+  })
+
+  // LA LETTRE EST UNE IDENTITÉ, PAS UN ÉTAT : le HUD l'affiche en permanence. Elle se dessine
+  // donc même à une frame qu'aucun intervalle ne couvre — là où la teinte, elle, se tait.
+  it("la lettre est écrite CERNÉE (strokeText puis fillText) et tient hors des intervalles", () => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 80)
+    expect(count(ops, 'fill') + count(ops, 'stroke')).toBe(0)
+    expect(textesDe(ops)).toEqual(['A', 'A'])
+    expect(count(ops, 'strokeText')).toBe(1)
+    expect(count(ops, 'fillText')).toBe(1)
+  })
+
+  it("la lettre suit le RANG publié : rang 1 rend « B », rang 2 rend « C »", () => {
+    for (const [rank, lettre] of [
+      [1, 'B'],
+      [2, 'C'],
+    ] as const) {
+      const { ctx, ops } = recordingContext()
+      drawZoneStates(ctx, layer([zones()[0]]), [{ ...ZONE_STATES[0], letterRank: rank }], VIEW, 10)
+      expect(textesDe(ops)).toEqual([lettre, lettre])
+    }
+  })
+
+  // Le producteur ne publie jamais au-delà de C, mais le client ne le suppose pas : une donnée
+  // hors bornes se tait plutôt que d'écrire « undefined » sur la carte.
+  it('un rang hors alphabet ne dessine aucune lettre', () => {
+    for (const rank of [3, -1, 1.5]) {
+      const { ctx, ops } = recordingContext()
+      drawZoneStates(ctx, layer([zones()[0]]), [{ ...ZONE_STATES[0], letterRank: rank }], VIEW, 10)
+      expect(textesDe(ops)).toEqual([])
+    }
+  })
+
+  it("l'alignement du texte est RENDU comme il a été trouvé — rien ne fuite au calque suivant", () => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 10)
+    const aligns = ops.filter((o) => o.op === 'set textAlign').map((o) => o.args[0])
+    const baselines = ops.filter((o) => o.op === 'set textBaseline').map((o) => o.args[0])
+    expect(aligns[aligns.length - 1]).toBe('left')
+    expect(baselines[baselines.length - 1]).toBe('alphabetic')
+  })
+
+  it('jamais de lettre sur une COLLINE : la zone active du fixture n’en porte pas', () => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer(), [ZONE_STATES[1]], VIEW, 30)
+    expect(textesDe(ops)).toEqual([])
   })
 
   it('une zone TENUE est remplie ET cerclée à l’encre de son camp', () => {
@@ -224,8 +321,7 @@ describe('drawZoneStates', () => {
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
     // Le propriétaire à la frame 14 est le camp 0 (allié) : l'arc est ADVERSE.
-    const inks = valuesOf(ops, 'strokeStyle') as unknown as string[]
-    expect(inks[inks.length - 1]).toBe('#adverse')
+    expect(encreDeLArc(ops)).toBe('#adverse')
   })
 
   it("propriétaire inconnu (zone neutre) : l'arc est NEUTRE, jamais une couleur devinée", () => {
@@ -233,8 +329,7 @@ describe('drawZoneStates', () => {
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), neutre, VIEW, 3)
     expect(count(ops, 'arc')).toBe(1)
-    const inks = valuesOf(ops, 'strokeStyle') as unknown as string[]
-    expect(inks[inks.length - 1]).toBe('#neutre')
+    expect(encreDeLArc(ops)).toBe('#neutre')
   })
 
   it("une rampe AVANT le premier intervalle se dessine quand même, à l'encre neutre", () => {
@@ -243,8 +338,7 @@ describe('drawZoneStates', () => {
     drawZoneStates(ctx, layer([zones()[0]]), tot, VIEW, 3)
     expect(count(ops, 'arc')).toBe(1)
     expect(count(ops, 'fill')).toBe(0)
-    const inks = valuesOf(ops, 'strokeStyle') as unknown as string[]
-    expect(inks[inks.length - 1]).toBe('#neutre')
+    expect(encreDeLArc(ops)).toBe('#neutre')
   })
 
   it('camp inconnu (aucune ligne « moi ») : encre NEUTRE, jamais une couleur devinée', () => {
@@ -255,7 +349,11 @@ describe('drawZoneStates', () => {
     // seul. Les deux tracés sont le contour et l'arc de jauge, tous deux à l'encre neutre.
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'stroke')).toBe(2)
-    expect((valuesOf(ops, 'strokeStyle') as unknown as string[]).every((i) => i === '#neutre')).toBe(true)
+    // La passe GÉOMÉTRIQUE n'emploie que l'encre neutre. Le cerne de la lettre, posé après, est
+    // une encre structurelle hors thème et ne dit aucun camp : il n'entre pas dans ce compte.
+    const encres = valuesOf(avantTexte(ops), 'strokeStyle') as unknown as string[]
+    expect(encres.length).toBeGreaterThan(0)
+    expect(encres.every((i) => i === '#neutre')).toBe(true)
   })
 
   it('sans état publié, le calque ne dessine rien du tout', () => {
