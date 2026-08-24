@@ -49,6 +49,12 @@ type matchViewData struct {
 	// (Q21c). Une mort absente de la tranche reste « on ne sait pas » — jamais
 	// « pas d'assistant ».
 	killAssists []domain.KillAssistRaw
+	// assistPairs / assistScope : agrégat (assistant → tueur assisté) du match et la
+	// PORTÉE de sa lecture (Q21d). assistScope.MatchDeaths à 0 = aucune ligne de film :
+	// le builder n'émet alors aucun bloc. Sans clé temporelle — donc jamais recalé T0
+	// (cf. correctMatchViewEventsT0, qui ne le touche pas).
+	assistPairs []domain.MatchAssistPairRaw
+	assistScope domain.MatchAssistScopeRaw
 	kvPairs     []domain.KVPairRaw
 	// kvPairsFeed : COPIE des paires killer→victim corrigée T0, réservée à la
 	// décoration du kill feed (clé exacte tueur+instant contre les events corrigés).
@@ -151,6 +157,11 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	goLoad(gctx, g, matchID, "kill_assists", func() error {
 		var e error
 		d.killAssists, e = s.repo.GetMatchKillAssists(gctx, matchID)
+		return e
+	})
+	goLoad(gctx, g, matchID, "assist_pairs", func() error {
+		var e error
+		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
 		return e
 	})
 	goLoad(gctx, g, matchID, "kv_pairs", func() error {
@@ -373,6 +384,11 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// L'identité des médailles se pose par le même modèle : une décoration du feed,
 	// résolue contre le référentiel du titre (best-effort).
 	decorateMedalEvents(ctx, combat.HighlightEvents, s.repo, s.assetURL)
+	// Les paires d'assistance sont un AGRÉGAT PAR MATCH, pas une décoration du feed :
+	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
+	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
+	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
+	combat.AssistPairs = buildAssistPairs(d.assistPairs, d.assistScope, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).

@@ -7,6 +7,7 @@
  * DÉPLACÉES telles quelles, sous-titres compris.
  */
 import type {
+  MatchAssistPairs,
   MatchCitationSnippet,
   MatchEncounterRow,
   MatchHighlightEvent,
@@ -20,6 +21,7 @@ import type {
 import type { Locale } from '@/lib/i18n/locale'
 import { DetailSection } from './DetailSection'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
+import { MatchAssistChart } from './MatchAssistChart'
 import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { MatchNemesisCards } from './MatchNemesisCards'
@@ -33,6 +35,8 @@ interface Props {
   roster: MatchRosterRow[]
   nemesis: MatchNemesisRow[]
   killerVictim: MatchKillerVictimPair[]
+  /** Bloc « assistances » — absent quand le match n'a aucune ligne de film. */
+  assistPairs: MatchAssistPairs | undefined
   highlightEvents: MatchHighlightEvent[]
   citations: MatchCitationSnippet[]
   encounters: MatchEncounterRow[]
@@ -49,6 +53,7 @@ export function MatchViewTabPlayers({
   roster,
   nemesis,
   killerVictim,
+  assistPairs,
   highlightEvents,
   citations,
   encounters,
@@ -71,6 +76,14 @@ export function MatchViewTabPlayers({
           />
           <MatchAntagonistChart
             pairs={killerVictim}
+            scoreboard={scoreboard}
+            meXUID={meXUID}
+            t={t}
+          />
+          {/* Assistances (assistant → tueur assisté) — sous les antagonistes, dont il
+              est le miroir. Ne rend rien quand le match n'a aucune ligne de film. */}
+          <MatchAssistChart
+            block={assistPairs}
             scoreboard={scoreboard}
             meXUID={meXUID}
             t={t}

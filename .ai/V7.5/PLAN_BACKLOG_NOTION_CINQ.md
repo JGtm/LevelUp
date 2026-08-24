@@ -237,13 +237,24 @@ Patron agrégat multi-matchs scopé : `Q28RelationsScopedTpl` / `Q32cSquadKVPair
 
 ### Items — page match
 
-- [ ] C1 — Go SQL : nouvelle requête (Q21d) sur `match_kill_events_latest` :
+- [x] C1 — Go SQL : nouvelle requête (Q21d) sur `match_kill_events_latest` :
   `WHERE match_id = ? AND publishable AND assist_known AND assist_gamertag IS NOT
   NULL AND assist_xuid IS NOT NULL`, `GROUP BY assist_xuid, assist_gamertag,
   feed_killer_xuid` avec `COUNT(*)` et `COUNT(*) FILTER (assist_damage_pct >
   killer_damage_pct)` (kills volés). Agrégat par match_id direct — PAS de clé
   temporelle, donc pas de correction T0.
-- [ ] C2 — Go domain/service : type `MatchAssistPair` (`assist_xuid`,
+  → Q21d et son lecteur vivent dans un fichier DÉDIÉ
+  (`platform/duckdb/match_view_repo_assist_pairs.go`) : `queries_match.go` (626 L) et
+  `match_view_repo_extras.go` (530 L) sont tous deux au-delà du seuil des 500 lignes
+  (dette gelée). Un renvoi de 3 lignes reste dans `queries_match.go` après Q21c pour
+  la découvrabilité de la série Q. La requête porte DEUX dénominateurs et non un :
+  `match_deaths` (toutes lignes du match) ET `measured_deaths`
+  (`publishable AND assist_known`), joints aux paires par `LEFT JOIN … ON TRUE` —
+  sans cette jointure, un match « mesuré, zéro assistant » ne rendrait AUCUNE ligne
+  et le contrat perdrait la distinction au moment exact où elle est nécessaire.
+  `feed_killer_xuid IS NOT NULL` ajouté aux filtres du plan (tueur BOT : une paire
+  sans destinataire nommable, écartée au SQL et jamais normalisée en chaîne vide).
+- [x] C2 — Go domain/service : type `MatchAssistPair` (`assist_xuid`,
   `assist_gamertag`, `killer_xuid`, `killer_gamertag`, `assist_count`,
   `stolen_count`) sur le modèle de `MatchKillerVictimPair` ; nouveau bloc
   `combat_tab.assist_pairs` + indicateur de mesure distinct (le contrat DOIT
@@ -253,15 +264,43 @@ Patron agrégat multi-matchs scopé : `Q28RelationsScopedTpl` / `Q32cSquadKVPair
   scoreboard comme `buildKillerVictimPairs`
   (`match_view_builders_combat.go:159-218`). Loader dans
   `match_view_data_loaders.go` à côté de `killAssists`.
-- [ ] C3 — contrats : openapi + `make generate-types` ; gate openapi vert.
-- [ ] C4 — web : `MatchAssistChart.tsx` (clone structurel de
+  → Bloc = OBJET `*MatchAssistPairs { measured_deaths, pairs }` et non deux champs
+  frères : c'est ce qui donne les TROIS états — bloc absent (aucune ligne de film →
+  l'UI ne rend rien, ce qui couvre aussi le titre sans décodeur), `measured_deaths`
+  à 0 (« non mesuré »), `pairs` vide avec `measured_deaths` > 0 (« aucune
+  assistance »). Le seuil d'émission du bloc est `match_deaths > 0`, décidé par
+  `buildAssistPairs` (`service/match_view_builders_assists.go`, fichier dédié —
+  `match_view_builders_combat.go` est à 432 L). Piège huma CONFIRMÉ sur pièces :
+  toute tranche Go sort `T[] | null` en TS (`pairs` compris) — comblé À LA
+  FRONTIÈRE du composant, une seule fois. Un tueur absent du scoreboard garde son
+  xuid et un `killer_gamertag` VIDE (aucun nom inventé, aucun xuid recopié dans un
+  champ de nom).
+- [x] C3 — contrats : openapi + `make generate-types` ; gate openapi vert.
+  → `make openapi-gen` (+42 lignes : `MatchAssistPair`, `MatchAssistPairs`,
+  `assist_pairs`) puis `make generate-types` ; `make openapi-check` vert (document à
+  jour ET `generated.ts` dérivé). Ré-exports `MatchAssistPair` / `MatchAssistPairs`
+  ajoutés à `lib/api/types.ts` SANS réécrire le `pairs: […] | null` du contrat.
+- [x] C4 — web : `MatchAssistChart.tsx` (clone structurel de
   `MatchAntagonistChart`) : 1 barre par ASSISTANT, segments = tueurs assistés ;
   infobulle : nb d'assists + « dont volés : N » ; état vide « Assistance non
   mesurée pour ce match » ≠ « Aucune assistance » selon l'indicateur C2 ; série
   via un `assistStackedSeries` dans `_chartSeries.ts` (même tri, même palette de
   tokens). Monté dans l'onglet **Joueurs** (lot B), sous `MatchAntagonistChart`.
   i18n FR/EN complet.
-- [ ] C5 — web : ne PAS toucher au kill feed existant ni à `assist_state` (livré).
+  → L'infobulle a exigé UNE prop optionnelle sur le wrapper partagé
+  `components/charts/BarStackedChart.tsx` : `tooltipComponentNote(category,
+  component)`. Aucun appelant existant n'est affecté (sans la prop, le formateur
+  natif d'ECharts reste en place ; le formateur personnalisé ne s'active que sur
+  `tooltipHideZero` — comportement d'avant — ou sur la nouvelle note). README des
+  wrappers mis à jour dans le même commit. Palette `ASSIST_TOKENS` = les mêmes 11
+  tokens sémantiques que le graphe des antagonistes (aucune couleur en dur), pour
+  qu'un joueur garde sa teinte d'un graphe à l'autre. i18n : `assistTitle`,
+  `assistNotMeasured`, `assistNoData`, `assistStolenNote(n)` — FR « Éliminations
+  volées » sans anglicisme (« dont N volée(s) » à l'infobulle), EN « stolen ».
+- [x] C5 — web : ne PAS toucher au kill feed existant ni à `assist_state` (livré).
+  → Vérifié sur pièces à la clôture : `git diff -- '*killfeed*' '*KillFeed*'` vide,
+  aucune occurrence d'`assist_state` dans le diff. Le graphe lit un bloc SÉPARÉ
+  (`assist_pairs`), jamais les events décorés du feed.
 
 ### Items — page escouade
 

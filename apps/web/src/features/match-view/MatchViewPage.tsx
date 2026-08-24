@@ -215,6 +215,10 @@ export function MatchViewPage() {
   const weaponKills = combat_tab.weapon_kills ?? []
   const highlightEvents = combat_tab.highlight_events ?? []
   const killerVictim = combat_tab.killer_victim ?? []
+  // assist_pairs n'est PAS normalisé en objet vide : son absence est un ÉTAT
+  // (aucune ligne de film pour ce match) que le graphe distingue de « mesuré, zéro
+  // assistance ». Le combler ici effacerait la distinction avant l'écran.
+  const assistPairs = combat_tab.assist_pairs
   const impactBadges = combat_tab.impact_badges ?? []
   const tugOfWar = combat_tab.tug_of_war ?? []
 
@@ -405,6 +409,7 @@ export function MatchViewPage() {
             roster={roster}
             nemesis={nemesis}
             killerVictim={killerVictim}
+            assistPairs={assistPairs}
             highlightEvents={highlightEvents}
             citations={summary_tab.citations ?? []}
             encounters={team_tab.encounters ?? []}

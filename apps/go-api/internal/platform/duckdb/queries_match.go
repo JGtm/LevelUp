@@ -555,6 +555,10 @@ HAVING count(DISTINCT (
     COALESCE(assist_damage_pct, -1)
 )) = 1`
 
+// Q21d vit dans match_view_repo_assist_pairs.go, à côté de son unique lecteur : ce
+// fichier est au-delà du seuil des 500 lignes (dette gelée). Elle agrège la MÊME table
+// par (assistant, tueur assisté) sur tout le match — un agrégat, pas une ligne par mort.
+
 // Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
 // Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).
 // Ordre : start_time DESC (plus récent = index 0).

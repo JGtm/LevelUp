@@ -254,6 +254,13 @@ type MatchViewRepository interface {
 	// tranche est un « on ne sait pas » — même dégradation gracieuse que Q21b.
 	GetMatchKillAssists(ctx context.Context, matchID string) ([]domain.KillAssistRaw, error)
 
+	// GetMatchAssistPairs retourne les paires (assistant → tueur assisté) AGRÉGÉES sur le
+	// match (Q21d), et la PORTÉE de leur lecture. Sœur de Q21c mais d'une autre nature :
+	// un agrégat par match, sans clé temporelle — rien à recaler sur T0. La portée à zéro
+	// (aucune ligne de film) est un résultat, pas une erreur : même dégradation gracieuse
+	// que Q21b/Q21c.
+	GetMatchAssistPairs(ctx context.Context, matchID string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error)
+
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
 
@@ -480,6 +487,9 @@ func (n *noopMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]
 }
 func (n *noopMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
 	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchAssistPairs(_ context.Context, _ string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
+	return nil, domain.MatchAssistScopeRaw{}, nil
 }
 func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return nil, nil

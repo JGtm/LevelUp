@@ -1744,6 +1744,19 @@ export type MatchKDTimelinePoint = components['schemas']['MatchKDTimelinePoint']
 /** Paire killer→victim agrégée pour le chart match_view.18 (antagonistes). */
 export type MatchKillerVictimPair = components['schemas']['MatchKillerVictimPair']
 
+/** Paire (assistant → tueur assisté) agrégée sur le match. */
+export type MatchAssistPair = components['schemas']['MatchAssistPair']
+
+/**
+ * Bloc « assistances » : les paires ET la portée de leur mesure.
+ *
+ * Ré-export DIRECT du contrat, sans réécriture du `pairs: […] | null` : le tableau
+ * nullable est la forme réelle du fil (huma sérialise toute tranche Go ainsi) et le
+ * masquer ferait porter au composant un `undefined` silencieux. `measured_deaths` à 0
+ * = « non mesuré » ; `pairs` vide avec `measured_deaths` > 0 = « aucune assistance ».
+ */
+export type MatchAssistPairs = components['schemas']['MatchAssistPairs']
+
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
@@ -1755,6 +1768,11 @@ export interface MatchCombatTab {
   nemesis_duels: MatchNemesisRow[]
   /** Paires killer→victim agrégées (match_view.18). Vide si killer_victim_pairs absent. */
   killer_victim?: MatchKillerVictimPair[]
+  /**
+   * Paires (assistant → tueur assisté) + portée de la mesure. ABSENT quand le match
+   * n'a aucune ligne de film : l'UI ne rend alors rien.
+   */
+  assist_pairs?: MatchAssistPairs
   /** Phase 1 MV2 : 8 rôles narratifs typés via narrative.IdentifyImpactRoles. */
   impact_roles?: MatchViewImpactRole[]
   /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */
