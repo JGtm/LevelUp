@@ -199,8 +199,8 @@ describe('deadTimeByPlayer — quand le film ne permet pas de conclure', () => {
     expect(deadFrames(tracks, 'A')).toBe(80)
   })
 
-  it('simple CONTACT de bornes (intersection nulle) : on ne refuse pas pour rien', () => {
-    // Le trou est ]100, 180[. Une trace qui finit à 100 ou démarre à 180 ne dit rien de son
+  it('simple CONTACT de bornes (durée nulle dans le trou) : on ne refuse pas pour rien', () => {
+    // Le trou est [100, 180]. Une trace qui finit à 100 ou démarre à 180 ne dit rien de son
     // intérieur — refuser ici rendrait la ligne muette sur presque tous les matchs.
     const avant = [life(512, 'A', 0, 100), anonymous(900, 50, 100), life(513, 'A', 180, 300)]
     expect(deadFrames(avant, 'A')).toBe(80)
@@ -208,9 +208,79 @@ describe('deadTimeByPlayer — quand le film ne permet pas de conclure', () => {
     expect(deadFrames(apres, 'A')).toBe(80)
   })
 
-  it('une vie anonyme qui ENJAMBE le trou le pollue quand même', () => {
-    // Elle commence avant la mort et finit après le retour : l'intersection reste positive.
+  it('trace anonyme PONCTUELLE dans le trou : aucune étendue, donc aucune preuve', () => {
+    const tracks = [life(512, 'A', 0, 100), anonymous(900, 140, 140), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+})
+
+/**
+ * LA PREUVE D'EXCLUSION — affinement du 2026-08-24 (ronde 1b).
+ *
+ * UN JOUEUR N'A QU'UN BIPÈDE À LA FOIS. Une trace anonyme qui déborde sur une vie NOMMÉE du
+ * joueur ne peut pas être une vie de lui : il était ailleurs, incarné, à ce moment-là. Elle ne
+ * prouve donc rien contre son trou, et la mesure tient. Seule une trace CONTENUE dans le trou
+ * reste une candidate au titre de « vie manquante », et c'est elle seule qui force le refus.
+ *
+ * CE QUE CETTE FAMILLE PROTÈGE CONTRE : le sur-refus. La règle large de la ronde 1 refusait
+ * 19 joueurs sur 24 sur trois témoins, parce que les traces anonymes vivent en fin de match et
+ * traversaient les trous de presque tout le monde.
+ */
+describe('deadTimeByPlayer — seule une vie anonyme CONTENUE dans le trou refuse', () => {
+  it('cas RÉEL `64e8adfa` / flamesamurai : slot 607 [5541..7496] dans le trou [5441..7519]', () => {
+    // Coordonnées relevées sur l'artefact servi (1 866 points sur la trace anonyme). C'est le
+    // cas qui a fondé le constat 1 de la revue : 05:11 affichés dont ~63 % couverts par elle.
+    const tracks = [
+      life(512, 'FLAME', 5000, 5441),
+      anonymous(607, 5541, 7496),
+      life(513, 'FLAME', 7519, 8000),
+    ]
+    expect(deadFrames(tracks, 'FLAME', 8337)).toBeNull()
+  })
+
+  it('cas RÉEL `000d5950` / JGtm : slot 588 [3853..4170] dans le trou [3714..4256]', () => {
+    // Le « plus long trou » de 54,2 s de la première mesure : ce n'était pas une longue mort,
+    // c'était cette trace non pontée.
+    const tracks = [
+      life(512, 'JGTM', 3400, 3714),
+      anonymous(588, 3853, 4170),
+      life(513, 'JGTM', 4256, 4600),
+    ]
+    expect(deadFrames(tracks, 'JGTM', 4985)).toBeNull()
+  })
+
+  it('elle DÉBORDE sur la vie nommée SUIVANTE : le joueur reste mesuré', () => {
+    // Trou [100, 180], trace [120, 250] : elle court encore après le retour du joueur. Deux
+    // bipèdes en même temps pour la même personne, donc ce n'est pas sa vie manquante.
+    const tracks = [life(512, 'A', 0, 100), anonymous(900, 120, 250), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+
+  it('elle DÉBORDE sur la vie nommée PRÉCÉDENTE : le joueur reste mesuré', () => {
+    // Trace [50, 160] : elle vivait déjà pendant que le joueur était en vie.
+    const tracks = [life(512, 'A', 0, 100), anonymous(900, 50, 160), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+
+  it('elle ENJAMBE tout le trou (avant la mort, après le retour) : mesuré', () => {
     const tracks = [life(512, 'A', 0, 100), anonymous(900, 90, 190), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+
+  it('CAMÉRA DE FIN DE MATCH : elle traverse le trou et court jusqu’à la dernière image', () => {
+    // Le cas de masse mesuré sur les témoins : une trace tardive qui ne s'arrête jamais. Elle
+    // ne peut être la vie manquante d'aucun joueur revenu ensuite — plus aucun refus.
+    const tracks = [life(512, 'A', 0, 100), anonymous(900, 120, 999), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+
+  it('deux traces, une seule contenue : la contenue suffit à refuser', () => {
+    const tracks = [
+      life(512, 'A', 0, 100),
+      anonymous(900, 120, 999),
+      anonymous(901, 130, 150),
+      life(513, 'A', 180, 300),
+    ]
     expect(deadFrames(tracks, 'A')).toBeNull()
   })
 })
