@@ -288,9 +288,18 @@ export function zoneLetterOf(rank: number | null | undefined): string | null {
 /**
  * drawZoneLetters écrit les lettres à l'ancre de leur zone, blanc cerné de noir.
  *
- * L'ÉTAT DU CONTEXTE EST RENDU COMME IL A ÉTÉ TROUVÉ (`textAlign`, `textBaseline`) : ce calque
- * est peint au milieu d'une boucle qui en enchaîne une dizaine d'autres, et un alignement qui
- * fuiterait décalerait le texte du calque suivant — un défaut qui ne se voit qu'à l'écran.
+ * CE QUE LA FONCTION FAIT DE `textAlign` / `textBaseline`, EXACTEMENT (relevé de revue,
+ * 2026-08-25 — la version précédente de ce commentaire prétendait restaurer l'état trouvé, ce
+ * qui était faux). Elle POSE `center` / `middle` pour centrer le glyphe sur l'ancre, puis
+ * réécrit les VALEURS PAR DÉFAUT du canvas (`left` / `alphabetic`) en sortant. Elle ne lit rien
+ * et ne restaure donc pas un réglage antérieur : si un calque précédent avait posé autre chose,
+ * il ne le retrouverait pas.
+ *
+ * POURQUOI C'EST SANS CONSÉQUENCE ICI, et sous quelle condition ça le reste : ce calque est le
+ * dernier à écrire du texte dans la boucle de rendu, et les calques qui écrivent (callouts,
+ * noms sous les marqueurs, socles) posent tous leur propre alignement avant de tracer. Aucun ne
+ * dépend d'un état hérité. Le jour où un calque de texte s'appuierait sur l'état laissé par le
+ * précédent, c'est cette hypothèse-là qu'il faudrait rouvrir — pas cette fonction seule.
  */
 function drawZoneLetters(ctx: CanvasRenderingContext2D, letters: { at: XY; text: string }[]): void {
   if (letters.length === 0) return

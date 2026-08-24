@@ -45,12 +45,13 @@ package replay
 //	                 Chaque structure est desormais LIBEREE des qu'elle est consommee, et chacune
 //	                 porte un plafond explicite avec erreur franche.
 //
-// # LES LIGNES DE MATCH SONT GELEES, AUCUNE BASE N'EST OUVERTE
+// # OU VIT LE RESTE DU LOT
 //
-// La carte, l'identifiant de carte, la variante et le roster sont relus dans les exports
-// versionnes du registre (`oracle_lotA*.tsv`, `oracle_lotA*_participants.tsv`) — meme convention
-// que la phase 2a. Le paquet `replay` n'ouvre aucune DuckDB, et un serveur tient de toute facon la
-// base en RW.
+//	`lettres_corpus_test.go`      LES ENTREES GELEES : carte, identifiant de carte, variante et
+//	                              roster, relus des exports versionnes du registre. Aucune base
+//	                              n'est ouverte, ici pas plus qu'ailleurs.
+//	`lettres_stabilite_test.go`   LA CLAUSE : les films d'une meme carte rendent-ils la meme
+//	                              permutation ? Il relit les TSV, il ne decode aucun film.
 //
 // MESURE SEULEMENT : aucun fichier de production n'est touche par ce fichier.
 //
@@ -71,7 +72,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -111,11 +111,6 @@ const (
 	// reste sous la sentinelle — et il refuse alors de continuer sur une donnee absurde.
 	lettresMaxNamed = 2_000_000
 )
-
-// lettresFilm est l'identite d'un film mesure, relue des exports geles du registre.
-type lettresFilm struct {
-	short, carte, mapID, variant string
-}
 
 // lettresMesure est le resultat d'un film : la carte zone -> slot de jauge que la production
 // construirait, et de quoi la juger.
@@ -193,54 +188,6 @@ func lettresSentinelle(t *testing.T) (*atomic.Uint64, func()) {
 		}
 	}()
 	return pic, func() { close(done) }
-}
-
-// lettresIdentite relit la ligne de match GELEE du film : carte, identifiant de carte, variante.
-func lettresIdentite(t *testing.T, short string) lettresFilm {
-	t.Helper()
-	for _, name := range []string{"oracle_lotA.tsv", "oracle_lotA_bis.tsv"} {
-		if f, ok := lettresLitLigneMatch(t, filepath.Join(lettresRegistreDir(t), name), short); ok {
-			return f
-		}
-	}
-	t.Skipf("film %s absent des exports de match geles — identite inconnue, mesure impossible", short)
-	return lettresFilm{}
-}
-
-// lettresLitLigneMatch cherche le film dans un export de matchs et rend son identite.
-func lettresLitLigneMatch(t *testing.T, path, short string) (lettresFilm, bool) {
-	t.Helper()
-	blob, err := os.ReadFile(path)
-	if err != nil {
-		t.Logf("export de matchs absent (%s) : %v", path, err)
-		return lettresFilm{}, false
-	}
-	cols := map[string]int{}
-	for i, line := range strings.Split(string(blob), "\n") {
-		f := strings.Split(strings.TrimRight(line, "\r"), "\t")
-		if i == 0 {
-			for j, name := range f {
-				cols[name] = j
-			}
-			continue
-		}
-		if len(f) < len(cols) || !strings.HasPrefix(f[0], short) {
-			continue
-		}
-		return lettresFilm{
-			short:   short,
-			carte:   strings.ToLower(f[cols["map_name"]]),
-			mapID:   f[cols["map_id"]],
-			variant: f[cols["game_variant_name"]],
-		}, true
-	}
-	return lettresFilm{}, false
-}
-
-// lettresRegistreDir rend le repertoire des exports geles du registre du film.
-func lettresRegistreDir(t *testing.T) string {
-	t.Helper()
-	return filepath.Join(repoRootForTest(t), ".ai", "V7.5", "replay2d", "registre_film")
 }
 
 // lettresMesureFilm decode UN film et rend la carte zone -> slot de jauge de la production.
@@ -416,70 +363,6 @@ func lettresTeams(t *testing.T, short string) map[string]int {
 	return out
 }
 
-// lettresRoster relit les lignes de match GELEES du film.
-//
-// LES DEUX EXPORTS SE RECOUVRENT, ET LE DOUBLON EST FATAL : `oracle_lotA_participants.tsv` et
-// `oracle_lotA_bis_participants.tsv` portent tous deux les 12 matchs du lot A. Concatener les
-// lignes donnait 16 joueurs pour une partie a 8, et `SlotIdentity` — qui apparie les slots du
-// statborg aux lignes de match par leurs compteurs — n'identifiait alors PLUS AUCUNE capture
-// (0/0/0 sur `7344d24f` et `696a9d7c`, la ou le meme film en rend 71 en phase 2a). La table est
-// donc dedoublonnee par xuid, premier export lu gagnant.
-func lettresRoster(t *testing.T, short string) []p2aPlayer {
-	t.Helper()
-	var out []p2aPlayer
-	vus := map[string]bool{}
-	for _, name := range []string{"oracle_lotA_participants.tsv", "oracle_lotA_bis_participants.tsv"} {
-		out = append(out, lettresLitParticipants(t, filepath.Join(lettresRegistreDir(t), name),
-			short, vus)...)
-	}
-	if len(out) == 0 {
-		t.Skipf("film %s : aucune ligne de match gelee — le pont slot -> xuid est impossible", short)
-	}
-	return out
-}
-
-// lettresLitParticipants rend les lignes d'un export TSV pour un film, hors doublons.
-func lettresLitParticipants(t *testing.T, path, short string, vus map[string]bool) []p2aPlayer {
-	t.Helper()
-	blob, err := os.ReadFile(path)
-	if err != nil {
-		t.Logf("export de participants absent (%s) : %v", path, err)
-		return nil
-	}
-	cols := map[string]int{}
-	var out []p2aPlayer
-	for i, line := range strings.Split(string(blob), "\n") {
-		f := strings.Split(strings.TrimRight(line, "\r"), "\t")
-		if i == 0 {
-			for j, name := range f {
-				cols[name] = j
-			}
-			continue
-		}
-		if len(f) < len(cols) || !strings.HasPrefix(f[0], short) || vus[f[cols["xuid"]]] {
-			continue
-		}
-		vus[f[cols["xuid"]]] = true
-		out = append(out, p2aPlayer{
-			XUID:    f[cols["xuid"]],
-			Kills:   lettresAtoi(f[cols["kills"]]),
-			Deaths:  lettresAtoi(f[cols["deaths"]]),
-			Assists: lettresAtoi(f[cols["assists"]]),
-			Team:    lettresAtoi(f[cols["team_id"]]),
-		})
-	}
-	return out
-}
-
-// lettresAtoi lit un entier, 0 a defaut.
-func lettresAtoi(s string) int {
-	n, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil {
-		return 0
-	}
-	return n
-}
-
 // lettresPermutation rend la permutation zone -> rang de lettre : les zones appariees, triees par
 // NUMERO DE SLOT croissant, chacune prenant son rang.
 //
@@ -600,110 +483,4 @@ func lettresWrite(t *testing.T, dir, name, content string) {
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 		t.Fatalf("ecriture de %s : %v", name, err)
 	}
-}
-
-// TestLettresOrdreStabilite compare les permutations des films d'une MEME carte.
-//
-// CE TEST NE DECODE AUCUN FILM — il relit les TSV produits film par film, donc il tourne en une
-// fraction de seconde et ne peut rien faire exploser. Meme patron que
-// `TestZoneEtatPhase2aStabilite` : la comparaison inter-match n'a aucune raison de vivre dans le
-// processus qui decode.
-func TestLettresOrdreStabilite(t *testing.T) {
-	dir := os.Getenv(lettresOutEnv)
-	if dir == "" {
-		t.Skipf("comparaison non demandee : %s vide", lettresOutEnv)
-	}
-	byMap := lettresLitMesures(t, dir)
-	if len(byMap) == 0 {
-		t.Skipf("aucune mesure sous %s — jouer TestLettresOrdreSlots film par film d'abord", dir)
-	}
-	ids := make([]string, 0, len(byMap))
-	for k := range byMap {
-		ids = append(ids, k)
-	}
-	sort.Strings(ids)
-	comparees, stables := 0, 0
-	for _, id := range ids {
-		rows := byMap[id]
-		if len(rows) < 2 {
-			t.Logf("  CARTE %-14s : un seul film mesure (%s) — non comparable", rows[0].carte,
-				rows[0].short)
-			continue
-		}
-		comparees++
-		if lettresMemePermutation(t, rows) {
-			stables++
-		}
-	}
-	t.Logf("VERDICT — %d cartes a >= 2 films mesures, %d rendent la MEME permutation", comparees,
-		stables)
-	if comparees > 0 && stables < comparees {
-		t.Errorf("%d carte(s) INSTABLE(S) : le fallback des lettres ne tient pas en l'etat",
-			comparees-stables)
-	}
-}
-
-// lettresLigne est une ligne de mesure relue d'un TSV.
-type lettresLigne struct {
-	short, carte, mapID, perm, slots string
-}
-
-// lettresLitMesures relit toutes les mesures d'un repertoire, groupees par carte.
-func lettresLitMesures(t *testing.T, dir string) map[string][]lettresLigne {
-	t.Helper()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Skipf("repertoire de mesures illisible (%s) : %v", dir, err)
-	}
-	out := map[string][]lettresLigne{}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), "_lettres.tsv") {
-			continue
-		}
-		blob, err := os.ReadFile(filepath.Join(dir, e.Name()))
-		if err != nil {
-			t.Fatalf("mesure illisible (%s) : %v", e.Name(), err)
-		}
-		for _, line := range strings.Split(string(blob), "\n") {
-			f := strings.Split(strings.TrimRight(line, "\r"), "\t")
-			if len(f) < 28 || f[0] != "film" {
-				continue
-			}
-			out[f[3]] = append(out[f[3]],
-				lettresLigne{short: f[1], carte: f[2], mapID: f[3], perm: f[27], slots: f[29]})
-		}
-	}
-	for id := range out {
-		rows := out[id]
-		sort.Slice(rows, func(i, j int) bool { return rows[i].short < rows[j].short })
-	}
-	return out
-}
-
-// lettresMemePermutation dit si tous les films COMPLETS d'une carte rendent la meme permutation.
-func lettresMemePermutation(t *testing.T, rows []lettresLigne) bool {
-	t.Helper()
-	ref, refShort, complets, identiques := "", "", 0, 0
-	for _, r := range rows {
-		if r.perm == "INCOMPLETE" {
-			t.Logf("    %s %-10s : permutation INCOMPLETE (aucune lettre publiee) · %s", r.carte,
-				r.short, r.slots)
-			continue
-		}
-		complets++
-		switch {
-		case ref == "":
-			ref, refShort, identiques = r.perm, r.short, 1
-		case r.perm == ref:
-			identiques++
-		default:
-			t.Errorf("    %s %s : permutation %s, mais %s rend %s — ORDRE INSTABLE", r.carte,
-				r.short, r.perm, refShort, ref)
-		}
-		t.Logf("    %s %-10s : %s · %s", r.carte, r.short, r.perm, r.slots)
-	}
-	verdict := complets >= 2 && identiques == complets
-	t.Logf("  CARTE %-14s : %d films, %d permutations completes, %d identiques — stable=%v",
-		rows[0].carte, len(rows), complets, identiques, verdict)
-	return verdict
 }
