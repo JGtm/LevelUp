@@ -139,7 +139,6 @@ export const explorerManifest = {
   "explorer.matches.col_rank_tooltip": { fr: "Palier de classement atteint sur ce match, ou progression de placement en cours.", en: "Ranking tier reached this match, or placement progress if unranked." },
   "explorer.matches.col_rating": { fr: "Note", en: "Rating" },
   "explorer.matches.col_rating_tooltip": { fr: "Type de classement du match : CSR (classé en jeu) ou LUSR (classement maison).", en: "Match rating type: CSR (in-game ranked) or LUSR (in-house rating)." },
-  "explorer.matches.col_replay": { fr: "Rejeu", en: "Replay" },
   "explorer.matches.col_replay_aria": { fr: "Ouvrir le rejeu 2D du match", en: "Open the 2D replay of the match" },
   "explorer.matches.col_score": { fr: "Score", en: "Score" },
   "explorer.matches.col_score_tooltip": { fr: "Score final de la partie : l'équipe puis l'équipe adverse.", en: "Final match score: the team, then the opposing team." },

@@ -109,7 +109,11 @@ Précédent de listing en masse : `replay_purge_cron.go:137` (`os.ReadDir` uniqu
   Waypoint `ExplorerMatchesTable.tsx:406-441`, mais lien interne, pas externe) ;
   rien rendu si `has_replay` faux. En-têtes i18n FR « Rejeu » / EN « Replay ».
   → i18n via le MANIFESTE `lib/i18n/manifests/explorer.toml` (mécanisme de la feature
-  Explorer, ADR 0003), pas un `i18n.ts` : `explorer.matches.col_replay(_aria)`.
+  Explorer, ADR 0003), pas un `i18n.ts`. L'en-tête de la colonne est VIDE, comme celui
+  de son voisin Waypoint (colonne d'icône de 20 px) : le couple FR/EN vit donc dans
+  l'aria-label + infobulle `explorer.matches.col_replay_aria` (« Ouvrir le rejeu 2D du
+  match » / « Open the 2D replay of the match »), et la clé `col_replay` (« Rejeu » /
+  « Replay ») a été retirée du manifeste faute d'appelant (règle 0 code mort).
 - [x] A8 — web : même colonne dans `SquadSynergyHistoryTable`.
   → Cellule factorisée dès la 2e copie dans `lib/match-nav/MatchReplayLink.tsx`
   (partagé par les deux tableaux) ; i18n squad = `history.replayAriaLabel` (FR/EN).
