@@ -3,111 +3,164 @@ package main
 // cmd_backfill_replay.go — sous-commande `levelup backfill-replay`.
 //
 // ELLE CONSTRUIT LES ARTEFACTS DE REJEU 2D de tous les films du cache local
-// (data/cache/replays/{title}/{short8}.json), par la LIBRAIRIE internal/replaybuild —
-// jamais en exécutant un CLI (règle admin_actions : pas de spawn, conflit DuckDB
-// mono-process ; et un exec perdrait le verrou process filmdec).
+// (data/cache/replays/{title}/{short8}.json), par la LIBRAIRIE internal/replaybuild.
 //
-// # ELLE NE PASSE PAS PAR LE RÉGLAGE « OÙ SE CONSTRUIT UN REJEU », ET C'EST VOULU
+// # UN FILM = UN PROCESSUS (depuis le 2026-08-20)
 //
-// Le réglage `replay_build_location` (local / worker / off) arbitre les chemins de
-// SERVICE : le fil de l'eau post-sync et l'action admin. Cette commande est un outil
-// d'OPÉRATEUR — celui qui la tape a déjà décidé où il construit, sur SA machine, avec
-// SES films en cache. La soumettre au réglage lui ferait mettre en file un rattrapage de
-// 951 matchs dont aucun ouvrier n'a les films (le master plan §1 est explicite : « un
-// ouvrier neuf ne doit pas retélécharger 23 Go pour rattraper l'historique »), ou refuser
-// de tourner sur un poste réglé en « worker ». Comportement direct, donc, et inchangé.
+// Le parent PLANIFIE (enumeration, tri par cout, sauts, `--dry-run`) et ne decode RIEN :
+// pour chaque film retenu il RE-EXECUTE SON PROPRE BINAIRE (`backfill-replay --one <id>`),
+// sequentiellement, et traduit le code de sortie de l'enfant en categorie de recap.
 //
-// # ELLE EST 100 % HORS LIGNE — NI RÉSEAU, NI TOKENS, NI CDN
+// Cette commande bouclait auparavant sur tout le corpus dans un seul processus, et la note
+// qui tient ici disait « jamais en executant un CLI ». Le 2026-08-20 cette boucle a SATURE
+// LA MACHINE : quatre petits films cuits, puis six heures de spirale GC sur le cinquieme, et
+// `runtime.preemptM: duplicatehandle failed; errno=1450` — le runtime n'obtenait plus un
+// handle de thread de Windows. Les deux objections de l'ancienne note tombent, et il faut
+// dire pourquoi plutot que de les laisser contredire le code :
 //
-// La source est le cache film sur disque (filmcache) ; la seule base touchée est le
-// registre partagé, en LECTURE COURTE au démarrage (le handle est relâché AVANT le
-// premier décodage — la passe dure des heures, on ne tient pas un lock DuckDB pendant
-// des heures).
+//   - « conflit DuckDB mono-process » : les enfants sont STRICTEMENT SEQUENTIELS et chacun
+//     RELACHE son handle de lecture AVANT de decoder. Il n'existe jamais deux lecteurs, et
+//     jamais un lecteur pendant un decodage.
+//   - « un exec perdrait le verrou process filmdec » : ce verrou
+//     (filmdec.LockProcessDecode) protege des GLOBAUX DE PAQUET contre deux decodages
+//     simultanes DANS UN MEME PROCESSUS. Deux processus ne partagent pas ces globaux : un
+//     film par processus est une isolation STRICTEMENT PLUS FORTE que le verrou, pas sa
+//     perte. Elle remet meme a zero, a chaque film, la table d'observation compWidthObs que
+//     le paquet n'efface jamais.
 //
-// # ELLE EST REPRENABLE, ET LA CLÉ EST replay.SchemaVersion
+// Le decodage passe donc toujours par la librairie, jamais par un autre binaire : le seul
+// processus lance est CELUI-CI, sur un seul film.
 //
-// Un artefact présent qui porte la version de schéma courante est sauté ; toute version
-// antérieure se lit « à re-cuire » (cf. document.go). `--force` re-cuit tout.
+// # ELLE NE PASSE PAS PAR LE REGLAGE « OU SE CONSTRUIT UN REJEU », ET C'EST VOULU
 //
-// # ELLE PASSE LES GROS FILMS EN DERNIER (même règle que backfill-killsource)
+// Le reglage `replay_build_location` (local / worker / off) arbitre les chemins de SERVICE :
+// le fil de l'eau post-sync et l'action admin. Cette commande est un outil d'OPERATEUR —
+// celui qui la tape a deja decide ou il construit, sur SA machine, avec SES films en cache.
 //
-// Le coût croît avec le nombre de chunks : trier par coût croissant produit la
-// quasi-totalité de la valeur avant les films les plus chers — une interruption laisse un
-// résultat presque complet.
+// # ELLE EST 100 % HORS LIGNE — NI RESEAU, NI TOKENS, NI CDN
 //
-// # « CARTE HORS CATALOGUE » EST UN ÉCHEC VOULU, COMPTÉ À PART
+// La source est le cache film sur disque (filmcache) ; la seule base touchee est le registre
+// partage, en LECTURE COURTE au demarrage cote parent, puis une lecture par enfant pour SES
+// seuls faits de match — relachee, elle aussi, avant tout decodage.
 //
-// Les cartes Forge n'ont pas de bornes de déquantification (leur canevas n'est pas la
-// carte) : ces films ne sont PAS constructibles aujourd'hui, et les compter comme des
-// erreurs noierait les vraies erreurs de décodage.
+// # ELLE EST REPRENABLE, ET LA CLE EST replay.SchemaVersion
+//
+// Un artefact present qui porte la version de schema courante est saute ; toute version
+// anterieure se lit « a re-cuire » (cf. document.go). `--force` re-cuit tout. L'ecriture
+// d'un artefact est atomique : un enfant tue ne laisse jamais un artefact a moitie ecrit.
+//
+// # ELLE PASSE LES GROS FILMS EN DERNIER (meme regle que backfill-killsource)
+//
+// Le cout croit avec le nombre de chunks : trier par cout croissant produit la quasi-totalite
+// de la valeur avant les films les plus chers.
+//
+// # UN FILM QUI ECHOUE N'EMPORTE QUE LUI
+//
+// « Carte hors catalogue » est un echec VOULU (cartes Forge sans bornes de dequantification),
+// compte a part. Une MORT MEMOIRE (plafond depasse) et une MORT SUBITE (crash, tue par l'OS)
+// sont comptees a part elles aussi — et dans les trois cas LA PASSE CONTINUE.
 //
 // Usage :
 //
-//	levelup backfill-replay --dry-run              # le plan de passe, aucune écriture
+//	levelup backfill-replay --dry-run              # le plan de passe, aucune ecriture
 //	levelup backfill-replay --limit 25             # pilote : les 25 films les moins chers
 //	levelup backfill-replay                        # tout (~8 h, artefacts ~2 Go)
-//	levelup backfill-replay --force                # re-cuit même les artefacts à jour
-//	levelup backfill-replay --only-existing         # re-cuit UNIQUEMENT les artefacts déjà là
+//	levelup backfill-replay --force                # re-cuit meme les artefacts a jour
+//	levelup backfill-replay --only-existing        # re-cuit UNIQUEMENT les artefacts deja la
+//	levelup backfill-replay --mem-limit-gib 6      # remonte le plafond memoire des enfants
 //
-// # `--only-existing` EST LA PASSE D'APRÈS UN BUMP DE SCHÉMA
+// `--one <matchID>` est la forme INTERNE : c'est ainsi que le parent appelle l'enfant. La
+// taper a la main est licite (cuire un film precis), mais elle ne planifie rien et ne saute
+// rien — elle cuit.
 //
-// Une montée de `replay.SchemaVersion` périme d'un coup TOUS les artefacts : une passe
-// ordinaire repartirait alors sur les 951 films du cache (des heures) là où l'on veut
-// seulement remettre à niveau ce qui est déjà servi. Ce drapeau borne la passe aux matchs
-// qui ont DÉJÀ un artefact sur disque, quelle que soit sa version.
+// # `--only-existing` EST LA PASSE D'APRES UN BUMP DE SCHEMA
 //
-// Le cache de films se résout par `--cache`, sinon `LEVELUP_LEGACY_FILM_CACHE_DIR`,
-// sinon `<repo>/data/cache` (même règle que backfill-killsource).
+// Une montee de `replay.SchemaVersion` perime d'un coup TOUS les artefacts : une passe
+// ordinaire repartirait alors sur les 951 films du cache (des heures) la ou l'on veut
+// seulement remettre a niveau ce qui est deja servi.
+//
+// Le cache de films se resout par `--cache`, sinon `LEVELUP_LEGACY_FILM_CACHE_DIR`, sinon
+// `<repo>/data/cache` (meme regle que backfill-killsource). La racine du depot se resout par
+// `LEVELUP_REPO_ROOT` — le parent l'IMPOSE a ses enfants pour que toute la passe ecrive dans
+// la meme arborescence.
 
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
 
-// replayCandidat : un film du cache joint à son match du registre.
+// replayCandidat : un film du cache joint a son match du registre.
 type replayCandidat struct {
 	matchID  string
 	mapNames []string // candidats du plus fiable au moins fiable (asset EN, puis brut)
 	chunks   int
 }
 
-// replayBackfillOptions : les réglages de la passe.
+// replayBackfillOptions : les reglages de la passe.
 type replayBackfillOptions struct {
 	titleSlug string
 	cacheDir  string
 	limit     int
 	force     bool
 	dryRun    bool
-	// onlyExisting borne la passe aux matchs qui portent DÉJÀ un artefact sur disque.
+	// onlyExisting borne la passe aux matchs qui portent DEJA un artefact sur disque.
 	onlyExisting bool
-}
-
-// replayBackfillReport : le rapport par catégories exigé par le gate du lot 6.
-type replayBackfillReport struct {
-	construits    int
-	dejaAJour     int
-	horsCatalogue int // échec VOULU (cartes Forge sans bornes), compté À PART
-	horsRegistre  int // film en cache sans ligne match_registry
-	sansArtefact  int // écarté par --only-existing : aucun artefact sur disque
-	erreurs       int
+	// one : forme INTERNE. Non vide = ce processus est un ENFANT et cuit ce seul film.
+	one string
+	// mapNames : les identites de carte candidates, passees par le parent a l'enfant.
+	mapNames listeDrapeau
+	// memLimitGiB : le plafond memoire de CHAQUE enfant (0 = desarme).
+	memLimitGiB int
 }
 
 func runBackfillReplay(cfg *config.AppConfig, args []string) error {
+	o, err := parserOptionsReplay(args)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
+
+	// FORME ENFANT : un film, puis ce processus meurt. Le code de sortie EST le canal de
+	// retour vers le parent (cf. backfill_child.go) — d'ou l'`os.Exit` plutot qu'un `return`.
+	if strings.TrimSpace(o.one) != "" {
+		os.Exit(runBackfillReplayUn(cfg, o, cacheRoot))
+	}
+
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	candidats, horsRegistre, err := replaysACuire(ctx, cfg, pr, cacheRoot, o)
+	if err != nil {
+		return err
+	}
+	report := replayBackfillReport{horsRegistre: horsRegistre}
+	aFaire := filtrerEtTrierReplay(candidats, pr, o, &report)
+
+	fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d sans artefact)\n",
+		len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.sansArtefact)
+	if o.dryRun {
+		afficherPlanReplay(aFaire)
+		return nil
+	}
+	if len(aFaire) == 0 {
+		afficherRapportReplay(report)
+		return nil
+	}
+	return executerPasseReplay(ctx, cfg.RepoRoot, o, cacheRoot, aFaire, &report)
+}
+
+// parserOptionsReplay : les drapeaux de la commande.
+func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 	fs := flag.NewFlagSet("backfill-replay", flag.ExitOnError)
 	o := replayBackfillOptions{}
 	fs.StringVar(&o.titleSlug, "title", titlePkg.DefaultSlug, "slug du titre")
@@ -117,22 +170,24 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.dryRun, "dry-run", false, "afficher le plan de passe sans rien construire")
 	fs.BoolVar(&o.onlyExisting, "only-existing", false,
 		"ne traiter que les matchs qui ont deja un artefact sur disque (passe d apres un bump de schema)")
+	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
+	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
+	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", plafondMemoireDefautGiB,
+		"plafond memoire de chaque enfant, en GiB (0 = desarme)")
 	if err := fs.Parse(args); err != nil {
-		return err
+		return o, err
 	}
+	return o, nil
+}
 
-	ctx := context.Background()
-	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-
-	candidats, horsRegistre, err := replaysACuire(ctx, cfg, pr, cacheRoot, o)
-	if err != nil {
-		return err
-	}
-	report := replayBackfillReport{horsRegistre: horsRegistre}
-
-	// Le filtre « déjà à jour » se fait AVANT le tri/limit : un pilote --limit 25 doit
-	// livrer 25 constructions réelles, pas 25 skips.
+// filtrerEtTrierReplay ecarte ce qui n'est pas a cuire, puis trie par cout croissant.
+//
+// LE FILTRE « DEJA A JOUR » SE FAIT AVANT LE TRI ET LE `--limit` : un pilote `--limit 25`
+// doit livrer 25 constructions REELLES, pas 25 sauts.
+func filtrerEtTrierReplay(
+	candidats []replayCandidat, pr *titlePkg.PathResolver, o replayBackfillOptions,
+	report *replayBackfillReport,
+) []replayCandidat {
 	aFaire := make([]replayCandidat, 0, len(candidats))
 	for _, c := range candidats {
 		path := pr.ReplayArtifactPath(o.titleSlug, c.matchID)
@@ -148,7 +203,7 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 		}
 		aFaire = append(aFaire, c)
 	}
-	// LES GROS EN DERNIER. À coût égal, l'identifiant départage — une passe doit être
+	// LES GROS EN DERNIER. A cout egal, l'identifiant departage — une passe doit etre
 	// reproductible, y compris dans son ordre.
 	sort.Slice(aFaire, func(i, j int) bool {
 		if aFaire[i].chunks != aFaire[j].chunks {
@@ -159,52 +214,12 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	if o.limit > 0 && len(aFaire) > o.limit {
 		aFaire = aFaire[:o.limit]
 	}
-
-	fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d sans artefact)\n",
-		len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.sansArtefact)
-	if o.dryRun {
-		afficherPlanReplay(aFaire)
-		return nil
-	}
-	if len(aFaire) == 0 {
-		afficherRapportReplay(report)
-		return nil
-	}
-
-	builder, err := replaybuild.NewBuilder(cfg.RepoRoot, o.titleSlug)
-	if err != nil {
-		return err
-	}
-	// LES FAITS SE LISENT EN UNE SEULE OUVERTURE, AVANT LA BOUCLE : le decodage d'un film dure
-	// des secondes a des minutes, et tenir un handle shared pendant une passe de masse est
-	// exactement ce que le modele mono-process interdit.
-	faits := chargerFaitsReplay(ctx, pr, o.titleSlug, aFaire)
-	debut := time.Now()
-	for i, c := range aFaire {
-		filmDir := filmcache.ChunkDir(cacheRoot, titlePkg.FilmShortMatchID(c.matchID))
-		out, berr := builder.BuildMatch(c.matchID, c.mapNames, filmDir, faits[c.matchID])
-		switch {
-		case berr == nil:
-			report.construits++
-			fmt.Printf("  [%d/%d] %s : %d tracks, %d octets (%s)\n",
-				i+1, len(aFaire), c.matchID, out.Tracks, out.Bytes, out.Module)
-		case errors.Is(berr, replaybuild.ErrMapNotInCatalog):
-			report.horsCatalogue++
-			fmt.Printf("  [%d/%d] %s : carte hors catalogue (%v) — echec voulu\n",
-				i+1, len(aFaire), c.matchID, c.mapNames)
-		default:
-			report.erreurs++
-			fmt.Printf("  [%d/%d] %s : ERREUR %v\n", i+1, len(aFaire), c.matchID, berr)
-		}
-	}
-	fmt.Printf("passe terminee en %s\n", time.Since(debut).Round(time.Second))
-	afficherRapportReplay(report)
-	return nil
+	return aFaire
 }
 
-// replaysACuire joint le cache film au registre : pour chaque film du cache, le match et
-// ses identités de carte candidates. LA LECTURE DE BASE EST COURTE : les deux handles
-// (shared RO, metadata RO) sont relâchés au retour, AVANT tout décodage.
+// replaysACuire joint le cache film au registre : pour chaque film du cache, le match et ses
+// identites de carte candidates. LA LECTURE DE BASE EST COURTE : les deux handles (shared RO,
+// metadata RO) sont relaches au retour, AVANT tout lancement d'enfant.
 func replaysACuire(
 	ctx context.Context, cfg *config.AppConfig, pr *titlePkg.PathResolver, cacheRoot string, o replayBackfillOptions,
 ) ([]replayCandidat, int, error) {
@@ -231,26 +246,25 @@ func replaysACuire(
 		}
 		n, ok := compterChunks(cacheRoot, short)
 		if !ok {
-			continue // manifeste illisible/vide : rien à décoder
+			continue // manifeste illisible/vide : rien a decoder
 		}
 		out = append(out, replayCandidat{matchID: entry.matchID, mapNames: entry.mapNames, chunks: n})
 	}
 	return out, horsRegistre, nil
 }
 
-// registreEntry : un match du registre, avec ses identités de carte candidates.
+// registreEntry : un match du registre, avec ses identites de carte candidates.
 type registreEntry struct {
 	matchID  string
 	mapNames []string
 }
 
-// registreParShort lit match_registry (RO) et metadata.asset_translations (RO,
-// best-effort) et indexe par forme courte de match_id.
+// registreParShort lit match_registry (RO) et metadata.asset_translations (RO, best-effort)
+// et indexe par forme courte de match_id.
 //
-// L'ordre des candidats est celui de ReplayMapRepo : nom d'asset EN (résolu, fiable même
-// quand map_name porte un UUID brut) PUIS map_name brut. metadata peut être tenue RW par
-// un serveur qui tourne : son ouverture en échec DÉGRADE (candidat brut seul), jamais ne
-// bloque la passe.
+// L'ordre des candidats est celui de ReplayMapRepo : nom d'asset EN (resolu, fiable meme
+// quand map_name porte un UUID brut) PUIS map_name brut. metadata peut etre tenue RW par un
+// serveur qui tourne : son ouverture en echec DEGRADE (candidat brut seul), jamais ne bloque.
 func registreParShort(ctx context.Context, cfg *config.AppConfig, pr *titlePkg.PathResolver, titleSlug string) (map[string]registreEntry, error) {
 	sharedPath := pr.SharedDBPath(titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(sharedPath)
@@ -286,8 +300,8 @@ func registreParShort(ctx context.Context, cfg *config.AppConfig, pr *titlePkg.P
 }
 
 // nomsAssetsEN charge la table map_id -> nom EN depuis metadata.asset_translations.
-// BEST-EFFORT : metadata absente ou tenue RW par un autre process → map vide + message,
-// la passe continue sur les map_name bruts du registre.
+// BEST-EFFORT : metadata absente ou tenue RW par un autre process → map vide + message, la
+// passe continue sur les map_name bruts du registre.
 func nomsAssetsEN(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string) map[string]string {
 	metaPath := pr.MetadataDBPath(titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(metaPath)
@@ -311,77 +325,5 @@ func nomsAssetsEN(ctx context.Context, pr *titlePkg.PathResolver, titleSlug stri
 		}
 		out[strings.TrimSpace(id)] = strings.TrimSpace(name)
 	}
-	return out
-}
-
-// afficherPlanReplay : le plan de passe, avec sa queue de films chers en évidence.
-func afficherPlanReplay(candidats []replayCandidat) {
-	total, gros := 0, 0
-	for _, c := range candidats {
-		total += c.chunks
-		if c.chunks > 50 {
-			gros++
-		}
-	}
-	fmt.Printf("  chunks a decoder : %d au total, %d film(s) au-dela de 50 chunks (passes en dernier)\n", total, gros)
-	for i, c := range candidats {
-		if i >= 5 && i < len(candidats)-3 {
-			continue
-		}
-		if i == 5 {
-			fmt.Println("  ...")
-		}
-		fmt.Printf("  %-40s %3d chunks  %v\n", c.matchID, c.chunks, c.mapNames)
-	}
-}
-
-// afficherRapportReplay : le rapport final par catégories (gate lot 6 : la couverture se
-// publie, « carte hors catalogue » est un échec VOULU compté à part des erreurs).
-func afficherRapportReplay(r replayBackfillReport) {
-	fmt.Println("rapport de passe :")
-	fmt.Printf("  construits           %d\n", r.construits)
-	fmt.Printf("  deja a jour          %d\n", r.dejaAJour)
-	fmt.Printf("  carte hors catalogue %d (echec voulu : cartes sans bornes, Forge en tete)\n", r.horsCatalogue)
-	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)
-	fmt.Printf("  sans artefact        %d (ecartes par --only-existing)\n", r.sansArtefact)
-	fmt.Printf("  erreurs de decodage  %d\n", r.erreurs)
-}
-
-// chargerFaitsReplay lit, en UNE ouverture RO, ce que la base sait de chaque match du lot :
-// les lignes de match (pont d'identite des joueurs), les scores des deux camps (identite des
-// camps) et le nom de variante (famille d'objectif).
-//
-// LA LECTURE EST COURTE ET FERMEE AVANT TOUT DECODAGE, comme celle du registre : une passe de
-// masse ne tient jamais un handle shared pendant qu'elle decode. Une base indisponible (serveur
-// en ecriture) DEGRADE la passe — les artefacts sortent sans compteurs de joueur ni actions
-// d'objectif — plutot que de la bloquer.
-func chargerFaitsReplay(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string,
-	aFaire []replayCandidat) map[string]port.MatchFacts {
-	out := make(map[string]port.MatchFacts, len(aFaire))
-	sharedPath := pr.SharedDBPath(titleSlug)
-	db, release, err := duckdb.OpenReadForQuery(sharedPath)
-	if err != nil {
-		fmt.Printf("  faits de match indisponibles (%v) — artefacts sans compteurs de joueur ni actions d'objectif\n", err)
-		return out
-	}
-	defer release()
-
-	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(db)
-	manquants := 0
-	for _, c := range aFaire {
-		facts, ferr := repo.FactsForMatch(ctx, c.matchID)
-		if ferr != nil {
-			slog.WarnContext(ctx, "backfill-replay: faits de match illisibles",
-				"err", ferr, "match_id", c.matchID)
-			manquants++
-			continue
-		}
-		if facts.Empty() {
-			manquants++
-			continue
-		}
-		out[c.matchID] = facts
-	}
-	fmt.Printf("faits de match charges : %d/%d (%d sans faits)\n", len(out), len(aFaire), manquants)
 	return out
 }

@@ -83,6 +83,127 @@ inclus et vert dans le run complet.
 
 **Conclusion / prochaine etape** : lot clos, 4 commits (`grappin(G1)` a `grappin(G4)`), aucun
 push. Decouvertes non traitees : aucune - perimetre tenu strictement aux 4 etapes du mandat.
+## [2026-08-24] Lot S (S5) — validation sur le crash reel : 24 films cuits, 1 film-bombe isole — Complete
+
+**Contexte** : rejouer la passe qui avait tue la machine le 2026-08-20, avec le binaire blinde,
+sur le VRAI cache du depot principal (951 films). `LEVELUP_REPO_ROOT` pointe le principal et le
+parent l'IMPOSE a ses enfants ; `--cache` pointe le `data/cache` du principal. Aucun serveur ne
+tournait (port 8000 libre, verifie).
+
+**Resultats observes** : 25 films au plan, **24 construits**, **1 mort memoire**, et RIEN
+d'autre — 0 erreur de decodage, 0 echec de preparation, 0 mort subite, 0 carte hors catalogue.
+Duree de decodage ~90 min en deux segments (19:49:27 -> ~20:46, puis 20:54:19 -> 21:27:24).
+47,1 Mio d'artefacts ecrits, tous en `data/cache/replays/halo_infinite` du PRINCIPAL,
+`schemaVersion=18` verifie ; le worktree ne contient aucun artefact (rien n'a fuit).
+
+Le film-bombe est `51101d1d` — celui-la meme sur lequel la machine etait morte. Il monte a
+4-7 Gio EN UNE SECONDE (le chiffre varie avec l'instant d'echantillonnage : 7,36 Gio a 2 s de
+periode, 5,11 puis 4,09 Gio a 250 ms), la sentinelle le tue, et LA PASSE CONTINUE. Il pese
+9,1 Mio sur disque pour 13 chunks : son pic n'a aucun rapport avec sa taille. Par contraste,
+les 24 films sains plafonnent entre 48 et 256 Mio, le pic croissant proprement avec le nombre
+de chunks (le plus gros, `084a804d`, 57 chunks : 19m16s et 256 Mio). Trois ordres de grandeur
+separent le corpus sain du film pathologique — c'est la mesure qui justifie a elle seule un
+processus par film.
+
+**Deux proprietes verifiees en passant** : (1) STRICTE SEQUENTIALITE — l'echantillonnage n'a
+jamais vu plus de 2 processus `levelup` vivants (le parent et UN enfant) ; (2) REPRISE — le
+premier segment a ete interrompu de l'exterieur en plein film 24, sans laisser un seul
+processus orphelin ; la relance a recompte « 32 deja a jour » (10 initiaux + 22 cuits) et n'a
+repris que les 3 films restants. Un artefact a moitie ecrit n'a jamais existe (ecriture
+atomique).
+
+**Faux signal ecarte** : la RAM libre (`FreePhysicalMemory`) est descendue a 0,01 Gio pendant
+une fenetre de mesure, alors que les enfants concernes plafonnaient a 48-73 Mio. Ce compteur ne
+compte QUE la liste libre, pas la standby list que remplit la lecture des chunks ; elle est
+remontee seule a 22,69 Gio, plus gros processus de la machine = `dwm` a 996 Mio. Le signal utile
+est le RSS par processus (max observe : 260 Mio), pas la RAM « libre ».
+
+**Conclusion / prochaine etape** : lot S clos, 5 etapes sur 5. `51101d1d` reste non
+constructible : c'est desormais un ECHEC ISOLE ET NOMME (1 s, une ligne de recap) au lieu d'un
+sinistre machine. Instruire sa cause (quelle structure explose sur ce film) est un chantier a
+part, hors perimetre de ce lot.
+
+## [2026-08-24] Lot S (S3+S4) — backfill-killsource examine et LAISSE EN L ETAT, docs remises d accord — Complete
+
+**Contexte** : S3 demandait le meme blindage parent/enfant pour `backfill-killsource`, ou une
+refutation motivee. S4 : que les docs qui decrivent le comportement ne le contredisent pas.
+
+**Decision technique principale** : S3 statue `[!]` — PAS de decoupage, PAS de sentinelle, avec
+quatre motifs verifies sur pieces. (1) Aucune retention inter-matchs : `KillSourceCollector`
+n'a que des poignees sans etat, `CollectMatches` n'accumule que des compteurs et le `[]string`
+des identifiants. (2) Le pic est une fonction BORNEE des octets du film — brut garde vivant
+(`ChunkSourceOf` l'aliase) plus decompresse (`loadFilm` : `f.chunks = make([][]byte, n)`) ;
+mesure du cache (951 films) : le plus gros du corpus est `1c4c63c2` a 88 Mio / 69 chunks,
+moyenne 24 Mio, donc pire cas largement sous le gibioctet. (3) Le rejeu 2D n'a AUCUN rapport
+avec la taille du film : `51101d1d` pese 9,1 Mio sur disque et a fait monter la passe a
+7,36 Gio — pres de 800x ses octets — parce que son pic est fait d'une quinzaine de tranches a
+l'echelle du RECORD, toutes vivantes ensemble. C'est cette amplification qui exigeait un
+processus par film ; elle n'existe pas chez killsource. (4) Le decoupage couterait plus qu'il
+ne rapporterait : cette commande tient un handle RW sur le shared pendant toute la passe ; un
+enfant par match devrait rouvrir la base en ecriture et rejouer les migrations 950 fois, en
+multipliant les occasions de mourir au milieu d'une transaction (ADR 0013/0019/0026).
+Corollaire ecrit : aucune sentinelle non plus, car elle fait `os.Exit` — acceptable dans un
+processus qui ne tient aucune base en ecriture, interdit dans celui-ci ; et un plafond souple a
+3 Gio sur une passe qui plafonne sous le gibioctet ne serait qu'un reglage mort (regle 11).
+Le raisonnement et son critere de reexamen (un film > ~500 Mio sur disque, ou des structures a
+l'echelle du record cote killsource) sont deposes dans l'en-tete du fichier, la ou le prochain
+lecteur les cherchera.
+
+**Resultats observes** : S4 — `docs/COMMANDS.md` (EN et FR) ne documente NI `backfill-replay` NI
+`backfill-killsource` : la clause « si la commande y figure » ne s'applique pas, rien a
+traduire, statue `[~]` (l'en-tete de fichier fait autorite pour ces deux commandes). En
+revanche `main.go/printUsage` decrivait `backfill-replay` avec « (--dry-run, --limit, --force) »
+— desormais faux et incomplet : ligne reecrite (un processus par film, echecs ventiles,
+`--only-existing`, `--mem-limit-gib`). L'en-tete de `cmd_backfill_replay.go` a ete refait dans
+le commit S1+S2, en LEVANT ses deux anciennes objections au lieu de les laisser contredire le
+code. Gates verts (build, vet, test cmd/levelup).
+
+**Conclusion / prochaine etape** : S5 — passe complete sur les ~25 films restants.
+
+## [2026-08-24] Lot S (S1+S2) — blindage memoire de backfill-replay : un film = un processus — Complete
+
+**Contexte** : le 2026-08-20 vers 14h50, `levelup backfill-replay --only-existing` (29 films) a
+sature la RAM de la machine apres seulement 4 petits films cuits (8-13 chunks). Journal du
+crash relu sur pieces : `runtime.preemptM: duplicatehandle failed; errno=1450`
+(ERROR_NO_SYSTEM_RESOURCES — le runtime Go n'obtenait plus un handle de thread de Windows),
+goroutine 1 bloquee 332 minutes, process age 396 minutes. Les deux premieres lignes du journal
+correspondent AU CARACTERE PRES aux formats de `cmd_backfill_replay.go:163` et `:385` : la
+passe fautive est bien cette commande, pas le chemin serveur.
+
+**Decision technique principale** : UN FILM = UN PROCESSUS (doctrine machine D17). Le parent
+garde le PLAN (enumeration, tri par cout, `--dry-run`, saut des artefacts a jour) et ne decode
+plus rien ; pour chaque film il re-execute son propre binaire (`backfill-replay --one <id>`),
+sequentiellement, et traduit le CODE DE SORTIE en categorie de recap (10 hors catalogue,
+11 decodage, 12 preparation, 13 memoire ; tout autre code = MORT SUBITE). Les codes demarrent a
+10 pour ne jamais collider avec 1 (erreur rendue par main) ni 2 (`flag.ExitOnError` et
+`fatal error` du runtime). Plafond memoire dans l'enfant : `debug.SetMemoryLimit` (souple,
+defaut 3 GiB, flag `--mem-limit-gib`) DOUBLE d'une sentinelle qui tue au-dela de +25 % — le
+plafond souple seul ne tue rien et aurait reproduit la spirale GC dans l'enfant. Le parent
+IMPOSE `LEVELUP_REPO_ROOT` a ses enfants (sinon un enfant re-detecte sa racine depuis son
+executable, qui sous `go run` est un dossier temporaire). Suppression de `chargerFaitsReplay` :
+la map de faits indexee par match, vivante toute la passe, etait la SEULE structure du process
+qui croissait avec le corpus et non avec le film ; chaque enfant lit desormais les siens et
+relache son handle avant de decoder.
+
+**Resultats observes** : gates verts (`go build ./...`, `go vet ./cmd/levelup/`,
+`go test ./cmd/levelup/`). Fichiers 95 a 329 L, aucune fonction > 60 L. Garde-rail pose
+(`backfill_child_guard_test.go`) : `BuildMatch(` n'existe que dans le fichier de l'enfant,
+`exec.Command*` que dans le runner partage, et `chargerFaitsReplay` doit rester disparu.
+VALIDATION SUR LE CRASH REEL : le film `51101d1d` — celui-la meme sur lequel la machine est
+morte — a ete relance avec le nouveau binaire. Il monte a **7,36 GiB en 2,6 s** (~3 Go/s), la
+sentinelle le tue, la passe rend `morts memoire 1` et sort en code 0. Trois secondes au lieu de
+six heures, machine vivante. Effet de bord mesure : a 2 s d'echantillonnage le depassement du
+plafond dur atteignait ~4 Go avant detection — periode ramenee a 250 ms (cout : deux compteurs
+runtime par tick).
+
+**Limite assumee et documentee** : une sentinelle qui echantillonne ne peut pas interrompre une
+allocation DEJA EN VOL ; un `make([]T, n)` de plusieurs Go d'un seul tenant passe sous les deux
+plafonds. Le cran suivant serait un Job Object Windows (`ProcessMemoryLimit`) qui fait ECHOUER
+l'allocation — non fait : le blindage par processus suffit a ce que la passe et la machine
+survivent, ce qui etait l'objet du lot.
+
+**Conclusion / prochaine etape** : S3 (statuer `backfill-killsource`), S4 (docs), puis S5 (passe
+complete sur les ~25 films restants du cache du depot principal).
 
 ## [2026-08-20] Supervision reprise v7.5 — fusions L2 (KOTH UGC negatif), L6 (balayage sons), L1 (hygiene CI) ; decisions D7/R3-1/garde Fiesta — En cours
 

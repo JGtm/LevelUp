@@ -1,0 +1,186 @@
+package main
+
+// cmd_backfill_replay_passe.go — LA PASSE DU PARENT : un processus enfant par film.
+//
+// Le parent ne decode RIEN. Il lance, attend, traduit un code de sortie en categorie,
+// compte, et PASSE AU SUIVANT — quoi qu'il soit arrive au precedent. C'est la seule
+// propriete qui compte ici : la sante de la passe ne depend plus de la sante d'un film.
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"strconv"
+	"time"
+)
+
+// replayBackfillReport : le rapport par categories.
+//
+// LES ECHECS SONT VENTILES, PAS ADDITIONNES. « Carte hors catalogue » est un echec VOULU
+// (cartes Forge sans bornes) ; une mort memoire est un film-bombe a instruire ; une mort
+// subite est un incident machine. Les fondre dans un seul compteur « erreurs » rendrait le
+// recap inutile le jour ou il sert vraiment.
+type replayBackfillReport struct {
+	construits    int
+	dejaAJour     int
+	horsCatalogue int // echec VOULU (cartes Forge sans bornes), compte A PART
+	horsRegistre  int // film en cache sans ligne match_registry
+	sansArtefact  int // ecarte par --only-existing : aucun artefact sur disque
+	erreurs       int // decodage en echec, film present
+	preparation   int // l'enfant n'a pas pu commencer (builder, catalogue, ...)
+	mortsMemoire  int // plafond memoire depasse — film-bombe
+	mortsSubites  int // code hors protocole : crash, OOM systeme, tue par l'OS
+}
+
+// executerPasseReplay lance un enfant par film, sequentiellement.
+func executerPasseReplay(
+	ctx context.Context, repoRoot string, o replayBackfillOptions, cacheRoot string,
+	aFaire []replayCandidat, r *replayBackfillReport,
+) error {
+	runner, err := nouveauRunnerEnfant(repoRoot, os.Stdout)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("mode parent/enfant : 1 processus par film, plafond memoire %s (racine %s)\n",
+		libellePlafond(o.memLimitGiB), repoRoot)
+
+	debut := time.Now()
+	var picMax uint64
+	for i, c := range aFaire {
+		res := runner.executer(ctx, argsEnfantReplay(o, cacheRoot, c))
+		if res.picOctets > picMax {
+			picMax = res.picOctets
+		}
+		traiterResultatEnfant(r, res, c.matchID, i+1, len(aFaire))
+	}
+	fmt.Printf("passe terminee en %s (pic memoire max observe : %s)\n",
+		time.Since(debut).Round(time.Second), libelleOctets(picMax))
+	afficherRapportReplay(*r)
+	return nil
+}
+
+// argsEnfantReplay : la ligne de commande de l'enfant pour CE film.
+//
+// L'enfant ne recoit AUCUN drapeau de planification (`--force`, `--limit`, `--only-existing`,
+// `--dry-run`) : ces arbitrages sont deja rendus par le parent, et les repasser ouvrirait la
+// porte a un enfant qui saute le film qu'on vient justement de decider de cuire.
+func argsEnfantReplay(o replayBackfillOptions, cacheRoot string, c replayCandidat) []string {
+	args := []string{
+		"backfill-replay",
+		"--one", c.matchID,
+		"--cache", cacheRoot,
+		"--title", o.titleSlug,
+		"--mem-limit-gib", strconv.Itoa(o.memLimitGiB),
+	}
+	for _, n := range c.mapNames {
+		args = append(args, "--map-name", n)
+	}
+	return args
+}
+
+// traiterResultatEnfant compte l'issue, la journalise et l'affiche.
+func traiterResultatEnfant(r *replayBackfillReport, res resultatEnfant, matchID string, rang, total int) {
+	switch res.issue {
+	case issueOK:
+		r.construits++
+	case issueHorsCatalogue:
+		r.horsCatalogue++
+	case issueErreurDecodage:
+		r.erreurs++
+	case issuePreparation:
+		r.preparation++
+	case issueMemoire:
+		r.mortsMemoire++
+	default:
+		r.mortsSubites++
+	}
+	if res.issue != issueOK && res.issue != issueHorsCatalogue {
+		slog.Error("backfill-replay: enfant en echec — LA PASSE CONTINUE",
+			"match_id", matchID, "issue", libelleIssue(res.issue),
+			"code", res.code, "err", res.err,
+			"duree_s", res.duree.Seconds(), "pic_octets", res.picOctets)
+	}
+	fmt.Printf("  [%d/%d] %s : %s — code %d, %s%s\n", rang, total, matchID,
+		libelleIssue(res.issue), res.code, res.duree.Round(time.Second), suffixePic(res.picOctets))
+}
+
+// libelleIssue : le mot que lit l'operateur.
+func libelleIssue(i issueEnfant) string {
+	switch i {
+	case issueOK:
+		return "construit"
+	case issueHorsCatalogue:
+		return "carte hors catalogue (echec voulu)"
+	case issueErreurDecodage:
+		return "ERREUR de decodage"
+	case issuePreparation:
+		return "ECHEC de preparation"
+	case issueMemoire:
+		return "MORT MEMOIRE (plafond depasse)"
+	default:
+		return "MORT SUBITE (crash / tue par l'OS)"
+	}
+}
+
+// libellePlafond : le plafond memoire, ou son absence.
+func libellePlafond(gib int) string {
+	if gib <= 0 {
+		return "DESARME"
+	}
+	return strconv.Itoa(gib) + " GiB"
+}
+
+// libelleOctets : une taille lisible. 0 = jamais mesure.
+func libelleOctets(n uint64) string {
+	if n == 0 {
+		return "inconnu"
+	}
+	if n >= octetsParGiB {
+		return fmt.Sprintf("%.2f GiB", float64(n)/float64(octetsParGiB))
+	}
+	return fmt.Sprintf("%.0f MiB", float64(n)/(1024*1024))
+}
+
+// suffixePic : le pic memoire de l'enfant, quand il a eu le temps de le rendre.
+func suffixePic(n uint64) string {
+	if n == 0 {
+		return " (pic inconnu)"
+	}
+	return " (pic " + libelleOctets(n) + ")"
+}
+
+// afficherPlanReplay : le plan de passe, avec sa queue de films chers en evidence.
+func afficherPlanReplay(candidats []replayCandidat) {
+	total, gros := 0, 0
+	for _, c := range candidats {
+		total += c.chunks
+		if c.chunks > 50 {
+			gros++
+		}
+	}
+	fmt.Printf("  chunks a decoder : %d au total, %d film(s) au-dela de 50 chunks (passes en dernier)\n", total, gros)
+	for i, c := range candidats {
+		if i >= 5 && i < len(candidats)-3 {
+			continue
+		}
+		if i == 5 {
+			fmt.Println("  ...")
+		}
+		fmt.Printf("  %-40s %3d chunks  %v\n", c.matchID, c.chunks, c.mapNames)
+	}
+}
+
+// afficherRapportReplay : le rapport final par categories.
+func afficherRapportReplay(r replayBackfillReport) {
+	fmt.Println("rapport de passe :")
+	fmt.Printf("  construits           %d\n", r.construits)
+	fmt.Printf("  deja a jour          %d\n", r.dejaAJour)
+	fmt.Printf("  carte hors catalogue %d (echec voulu : cartes sans bornes, Forge en tete)\n", r.horsCatalogue)
+	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)
+	fmt.Printf("  sans artefact        %d (ecartes par --only-existing)\n", r.sansArtefact)
+	fmt.Printf("  erreurs de decodage  %d\n", r.erreurs)
+	fmt.Printf("  echecs de preparation %d (l enfant n a pas pu demarrer)\n", r.preparation)
+	fmt.Printf("  morts memoire        %d (plafond depasse — film-bombe, passe poursuivie)\n", r.mortsMemoire)
+	fmt.Printf("  morts subites        %d (crash / tue par l OS — passe poursuivie)\n", r.mortsSubites)
+}
