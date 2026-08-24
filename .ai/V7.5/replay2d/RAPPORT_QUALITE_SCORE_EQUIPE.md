@@ -351,6 +351,96 @@ ne demande que des valeurs DISTINCTES — les 80 corrections ne changeront l'iss
 resolution (a), sauf a rendre distinctes deux valeurs qui ne l'etaient pas, ce qui ne peut
 qu'ameliorer la cascade.
 
+## Correctif pret (phase 2 — arbitrage du 2026-08-24 : CODE SEULEMENT)
+
+L'utilisateur a arbitre l'**option 1** (backfill cible). La CLI est ecrite ; elle **n'a ete
+executee contre aucune base** — ni `--apply`, ni `--dry-run`, ni contre une copie.
+L'execution est gatee « avant le tag v7.5.0 » et suivie cote superviseur. La raison de la
+barriere : le `--dry-run` lui-meme fait 80 appels API et lit la shared DB, et une autre
+session tient des fichiers du depot principal.
+
+### Ce qui a ete livre
+
+| fichier | role |
+|---|---|
+| `apps/go-api/internal/sync/transforms_helpers.go:178` | `extractTeamScoresByID` **exporte** en `ExtractTeamScoresByID`. La sync et le backfill lisent desormais le score d'equipe par LA MEME fonction — zero seconde implementation, donc zero re-divergence possible |
+| `apps/go-api/cmd/backfill-team-scores/decide.go` | la regle de correction, pure : ni reseau, ni DuckDB, ni flags |
+| `apps/go-api/cmd/backfill-team-scores/ids.go` | chargement de la liste — **seule la colonne `match_id`** sort du TSV |
+| `apps/go-api/cmd/backfill-team-scores/main.go` | cablage : auth store-first, fetch, lease writer, `UPDATE` row-by-row |
+| `…/decide_test.go`, `…/ids_test.go` | 24 cas table-driven, sans reseau ni base |
+
+### Garanties inscrites dans le code
+
+- **Le TSV ne sert que de liste.** Ses colonnes de valeurs (`api_t0`, `db_t0`, …) ne sont
+  jamais lues : chaque score est re-telecharge a l'execution. Une mesure vieille de
+  plusieurs semaines ne peut pas devenir une ecriture. Fige par
+  `TestLoadMatchIDs_ValeursIgnorees`.
+- **`CoreStats.Score` fait foi, jamais les ticks.** `TestDecide_TicksNeverWin` construit un
+  payload ou les deux coexistent et echoue si le tick l'emporte — c'est exactement le bug
+  d'origine, il ne peut plus revenir en silence.
+- **Ecriture uniquement si different**, sinon `identique` (outil idempotent).
+- **Jamais de NULL, jamais de negatif, jamais hors bornes** du `SMALLINT` de la colonne
+  (`scoreMin`/`scoreMax`) ; `TestDecide_NeverWritesNilOrNegative` balaie la plage.
+- **NULL n'est pas zero** : une colonne NULL est une ligne A CORRIGER, pas une ligne conforme.
+- **FFA saute et le dit** : sans `TeamId` 0 ET 1, aucun camp n'est devine.
+- **Forme d'ecriture** : `UPDATE match_registry SET team_0_score = ?, team_1_score = ?
+  WHERE match_id = ?`, row-by-row serialise, sous lease `dblease.KindSharedMatches`. Jamais
+  de `UPDATE … FROM (VALUES …)` — forme interdite par `no_art_patterns_test.go`
+  (declencheur ART #23046). Un `UPDATE` qui touche un nombre de lignes different de 1 est
+  une erreur, pas un succes silencieux.
+- **`--dry-run` par defaut** : il lit par `OpenReadForQuery` et tourne SERVEUR ALLUME.
+  `--apply` ouvre en `OpenReadWrite` et echoue si un autre process tient la base — c'est le
+  comportement voulu (ADR 0013, un seul writer).
+
+### Commandes du jour J
+
+```bash
+cd apps/go-api
+export GOCACHE=<cache prive>          # une commande go a la fois
+
+# 1. REPETITION A BLANC — serveur allume, aucune ecriture.
+#    Attendu : « corriges=80 » (ce qui SERAIT corrige), « echecs=0 ».
+LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  go run ./cmd/backfill-team-scores --gamertag JGtm
+
+# 2. APPLICATION — SERVEUR ARRETE (air + server.exe), sinon l'ouverture RW echoue.
+LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  go run ./cmd/backfill-team-scores --gamertag JGtm --apply
+
+# 3. CONTROLE — re-jouer le dry-run : attendu « identiques=80, corriges=0 ».
+LEVELUP_REPO_ROOT=C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration \
+  go run ./cmd/backfill-team-scores --gamertag JGtm
+```
+
+Un seul match, pour un premier essai prudent :
+
+```bash
+go run ./cmd/backfill-team-scores --match 7344d24f-0154-4949-80ad-e2b781c122f1 --apply
+# attendu : avant 193/112 -> apres 200/126
+```
+
+Deux ecarts au resume signalent un vrai probleme, pas un alea : `echecs > 0` (API ou
+`UPDATE`) et `skippes` inattendu (un match qui n'etait pas FFA en phase 1 ne doit pas le
+devenir). Le decompte de reference de la phase 1 est **80 a corriger, 0 skip**.
+
+### Note PROD (VPS) — a verifier AVANT de rejouer la passe
+
+Tout ce qui precede est mesure sur la base LOCALE. **Le residu de 80 lignes n'a pas ete
+verifie sur le VPS** et il n'y est pas necessairement identique : la base de prod a sa
+propre histoire de synchronisation, et c'est la DATE DE SYNC — pas le match — qui determine
+si une ligne est fausse. Avant toute execution en prod :
+
+1. Mesurer le residu la-bas plutot que de supposer la meme liste : re-jouer la confrontation
+   de la phase 1 (`cmd/diag_matchstats_dump` + comparaison) sur la base du VPS, ou a defaut
+   lancer le `--dry-run` de la CLI, qui est non destructif et fait le meme travail de
+   comparaison.
+2. Si le residu prod differe, **produire une liste prod** et la passer en `--ids-file` : ne
+   pas rejouer le TSV local sur une base dont ce n'est pas l'inventaire.
+3. Le `--apply` exige l'arret du service (un seul writer) : operation a annoncer a
+   l'utilisateur AVANT, comme toute intervention VPS.
+4. Rien n'est urgent : le defaut est clos a la source depuis mai 2026, la prod ne se degrade
+   plus. La passe peut attendre une fenetre choisie.
+
 ## Gates rejoues
 
 | gate | commande | resultat |
@@ -362,6 +452,20 @@ qu'ameliorer la cascade.
 | gofmt | `gofmt -l ./cmd/diag_matchstats_dump/` | sortie vide |
 | go vet | `go vet ./cmd/diag_matchstats_dump/` | exit 0 |
 | Garde-rail anti-ART | `go test ./internal/sync/ -run "ART\|Art\|NoArt\|BulkUpdate\|Pattern\|TeamScore" -count=1` | `ok levelup/go-api/internal/sync 12.624s` |
+
+Phase 2 (CLI de backfill, sans execution) :
+
+| gate | commande | resultat |
+|---|---|---|
+| build de la CLI | `go build ./cmd/backfill-team-scores/` | exit 0 |
+| tests de la CLI | `go test ./cmd/backfill-team-scores/ -count=1 -v` | `ok … 0.140s` — 24 cas, dont le chargement du TSV versionne (80 ids) |
+| gofmt | `gofmt -l ./cmd/backfill-team-scores/ ./internal/sync/transforms{,_helpers}.go ./internal/sync/transforms_helpers_unit_test.go` | sortie vide |
+| go vet | `go vet ./cmd/backfill-team-scores/ ./internal/sync/` | exit 0 |
+| Garde-rail anti-ART (2.1 touche `internal/`) | `go test ./internal/sync/ -run "NoArt\|Pattern" -count=1` | `ok … 13.245s` |
+| Gel du god-package sync + ratchets | `go test ./internal/archlint/ -count=1` | `ok … 15.489s` (aucun fichier ajoute a la racine de `internal/sync/`) |
+| Non-regression du renommage | `go test ./internal/sync/... -count=1` | `ok` sur les 12 paquets (`internal/sync` 44,950s) |
+| Seuils CLAUDE.md | `wc -l` + scan des longueurs de fonction | 332 / 127 / 91 L par fichier, aucune fonction > 80 L |
+| **Aucune execution** | — | la CLI n'a ete lancee contre AUCUNE base, ni `--apply`, ni `--dry-run`, ni sur une copie |
 
 `GOCACHE` prive au lot (`<worktree>/.gocache`) sur toutes les commandes `go`, une seule a la
 fois. Le dossier n'est pas suivi.
@@ -408,6 +512,15 @@ fois. Le dossier n'est pas suivi.
 | 1.2 ampleur par mode | `[x]` | mesure EXACTE sur les 1 934 matchs au lieu de l'heuristique prevue (devenue sans objet apres 1.1) ; §1.2 |
 | 1.3 oracle croise film | `[x]` | 20 artefacts confrontables sur 35, 18/20 exacts ; §1.3 |
 | 1.4 verdict | `[x]` | issue (a), §1.4 |
+| 2.1 mutualiser l'extraction | `[x]` | `ExtractTeamScoresByID` exportee, 1 appelant de production migre, aucun fichier ajoute a la racine de `internal/sync/` |
+| 2.2 CLI — entree et liste | `[x]` | `--ids-file` (defaut = TSV du lot, colonne `match_id` par son NOM) + `--match` |
+| 2.3 CLI — decision et ecriture | `[x]` | `UPDATE` row-by-row sous lease `KindSharedMatches`, `--apply` requis, gardes NULL / negatif / bornes / FFA |
+| 2.4 tests unitaires | `[x]` | 24 cas table-driven, sans reseau ni base ; aucun test d'ecriture necessaire (la decision est pure, l'`UPDATE` est une ligne) |
+| 2.5 gates | `[x]` | tableau §Gates rejoues, partie phase 2 |
+| 2.6 section « Correctif pret » | `[x]` | commandes du jour J + note prod VPS |
 
-Phase 2 : **n'existe pas dans ce lot** (le plan l'exclut explicitement). Aucune ecriture
-DuckDB, aucun changement de sync ni d'affichage n'a ete effectue.
+**Phase 2 = code seulement, par arbitrage du 2026-08-24.** La CLI existe et est testee ;
+elle **n'a ete executee contre aucune base**. Aucune ecriture DuckDB, aucun changement de
+sync ni d'affichage n'a ete effectue par ce lot. La seule modification de code de production
+est l'EXPORT (renommage) de `extractTeamScoresByID` : aucun changement de comportement, la
+sync lit toujours le meme champ de la meme facon.
