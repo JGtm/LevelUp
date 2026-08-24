@@ -205,7 +205,7 @@ export function ReplayTeams({
                 callouts={callouts}
                 mark={(marks ?? NO_MARKS).get(p.xuid)}
                 scoreTimeline={scoreTimeline}
-                deadTimeMs={deadTime.get(p.xuid) ?? 0}
+                deadTimeMs={deadTime.get(p.xuid) ?? null}
                 compact={compact}
               />
             ))}
@@ -231,10 +231,11 @@ interface PlayerCardProps {
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
   /**
-   * TEMPS MORT CUMULÉ du joueur sur tout le match, en millisecondes (`deadTimeLogic`).
-   * Calculé une fois pour la colonne : la fiche l'affiche, elle ne le mesure pas.
+   * TEMPS MORT CUMULÉ du joueur sur tout le match, en millisecondes (`deadTimeLogic`), ou
+   * `null` quand le film ne permet pas de le mesurer. Calculé une fois pour la colonne : la
+   * fiche l'affiche, elle ne le mesure pas — et elle ne remplace jamais `null` par zéro.
    */
-  deadTimeMs: number
+  deadTimeMs: number | null
   /** Fiche COMPACTE (cf. ReplayTeamsProps.compact). */
   compact?: boolean
 }
@@ -421,24 +422,28 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
  * lecture. La glisser entre la zone, la vitalité et l'inventaire couperait le bloc de l'état
  * courant par un total de match ; en pied de fiche, elle se lit pour ce qu'elle est.
  *
- * ELLE S'AFFICHE TOUJOURS, y compris à `00:00`. Un joueur mort zéro fois est une information,
- * pas une lacune — c'est même la seule fiche du rejeu dont l'absence de mesure et la mesure
- * nulle se confondent légitimement : le film date toutes les vies, donc « aucun trou » veut
- * bien dire « jamais à terre ». La ligne ne dépend donc d'aucun état vital, et sa hauteur est
- * la même vivant et mort (règle 1.1 des fiches).
+ * ELLE S'AFFICHE TOUJOURS, ET DIT L'UN DES DEUX : une mesure — « 00:00 » compris, un joueur
+ * mort zéro fois est une information — ou son REFUS, écrit d'un tiret, quand le film ne permet
+ * pas de conclure (`deadTimeLogic` : une vie non rattachée à un joueur vit dans l'un de ses
+ * trous, ou bien il n'a aucune vie publiée). Les deux cas occupent la même hauteur, et aucun ne
+ * dépend de l'état vital : la parité de rangées morte/vivante tient (règle 1.1 des fiches).
+ *
+ * LE REFUS N'EST PAS UNE PANNE D'AFFICHAGE, et l'infobulle le dit en toutes lettres. Sans elle,
+ * un tiret se lirait comme un bogue ; avec elle, il se lit comme ce qu'il est — le film manque
+ * d'un rattachement, et on préfère le taire que de l'inventer.
  *
  * ABSENTE DE LA FICHE COMPACTE (décision de lot, 2026-08-24) : la compacte n'a pas de rangée
  * libre, et son objet est d'être PLUS COURTE — lui ajouter une ligne annulerait exactement ce
  * qu'elle gagne. La déporter sur la rangée du nom aurait serré le gamertag tronqué contre les
  * compteurs, dans la mise en page la plus étroite du rejeu.
  */
-function DeadTimeRow({ ms, locale }: { ms: number; locale: ReplayLocale }) {
+function DeadTimeRow({ ms, locale }: { ms: number | null; locale: ReplayLocale }) {
   const t = REPLAY_TEXT[locale]
   return (
     <div className="flex h-3 items-center">
       <span
         className="truncate font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
-        title={t.deadTimeLabel}
+        title={ms === null ? t.deadTimeUnmeasurable : t.deadTimeLabel}
       >
         {t.deadTimeLabel} <span className="tabular-nums">{formatDeadTime(ms)}</span>
       </span>
