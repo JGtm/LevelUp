@@ -71,9 +71,9 @@ func i59xSpec(tag uint32) xrSpec {
 	return xrSpec{
 		event: fmt.Sprintf("TRANSITIONS vers i59 tag==%d", tag),
 		groups: []xrGroup{
-			{name: "RÉPULSEUR (rang 6)", ranks: []int{6}},
-			{name: "PROPULSEUR (rangs 5/21)", ranks: []int{5, 21}},
-			{name: "GRAPPIN (rangs 4/20) TÉMOIN+", ranks: []int{4, 20}},
+			{name: "RÉPULSEUR (rang 6)", ranks: xrRepulsorRanks},
+			{name: "PROPULSEUR (rangs 5/21)", ranks: xrThrusterRanks},
+			{name: "GRAPPIN (rangs 4/20) TÉMOIN+", ranks: xrGrappleRanks},
 		},
 	}
 }
