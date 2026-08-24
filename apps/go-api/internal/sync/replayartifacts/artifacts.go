@@ -216,6 +216,24 @@ func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
 	}
 }
 
+// etatArtefact dit ce que vaut l'artefact déjà sur disque pour ce match : est-il à la version
+// COURANTE, et porte-t-il ce que les faits permettent d'y mettre.
+//
+// UNE SEULE ÉCRITURE DE LA RÈGLE POUR LES DEUX CHEMINS post-sync (mise en file et construction
+// locale). En deux exemplaires elle aurait divergé au premier ajustement, et un chemin serait
+// resté à figer des artefacts appauvris pendant que l'autre les répare.
+//
+// `complet` est une PRÉSOMPTION, pas une preuve : sans lignes de match, il n'y a rien de mieux
+// à espérer d'une reconstruction, donc l'artefact est réputé complet ; avec des lignes, l'absence
+// de compteurs de joueur le fait présumer appauvri (cf. l'en-tête d'ArtifactHasPlayerCounters
+// pour les trois vacuités légitimes que cette présomption peut confondre).
+func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
+	if !replaybuild.ArtifactUpToDate(path) {
+		return false, false
+	}
+	return true, len(facts.Players) == 0 || replaybuild.ArtifactHasPlayerCounters(path)
+}
+
 // Run — étape post-sync 1.58 : selon le lieu de construction réglé, ou bien pont
 // disque + construction locale des artefacts, ou bien MISE EN FILE des matchs
 // insérés (l'ouvrier fera les deux chez lui), ou bien rien.
@@ -304,8 +322,9 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		// CPU — pour un verdict qui ne basculerait jamais. Ce sont les LIGNES DE MATCH, et elles
 		// seules, qui peuplent `scoreTimeline.players` : c'est donc leur présence qui décide.
 		artefact := paths.ReplayArtifactPath(d.TitleSlug, w.matchID)
-		if replaybuild.ArtifactUpToDate(artefact) {
-			if len(w.facts.Players) == 0 || replaybuild.ArtifactHasPlayerCounters(artefact) {
+		aJour, complet := etatArtefact(artefact, w.facts)
+		if aJour {
+			if complet {
 				skipped++
 				continue
 			}
@@ -365,8 +384,17 @@ func buildAll(ctx context.Context, d Deps, builder *replaybuild.Builder, work []
 		if saved {
 			filmsSaved++
 		}
-		if replaybuild.ArtifactUpToDate(paths.ReplayArtifactPath(d.TitleSlug, w.matchID)) {
+		// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
+		// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
+		// le sauter ici le figerait, sur le chemin même qui a les faits sous la main pour le
+		// réparer (ils sont passés à BuildMatch quinze lignes plus bas).
+		aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
+		if aJour && complet {
 			continue
+		}
+		if aJour {
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, reconstruit",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
 		}
 		short := titlePkg.FilmShortMatchID(w.matchID)
 		out, berr := builder.BuildMatch(w.matchID, w.mapNames, filmcache.ChunkDir(d.CacheRoot, short), w.facts)
