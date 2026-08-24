@@ -147,12 +147,14 @@ export interface MatchViewText {
   impactBadgeNames: Record<string, string>
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
-  // Onglets de la page (GH2-B2)
+  // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs)
   tabGeneral: string
-  tabDetails: string
+  tabChronology: string
+  tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
-  // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
+  // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
+  // d'harmonisation)
   sectionFlow: string
   sectionDuels: string
   sectionEncounters: string
@@ -374,7 +376,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     },
     back: 'Retour',
     tabGeneral: 'Général',
-    tabDetails: 'Détails',
+    tabChronology: 'Chronologie',
+    tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
@@ -648,7 +651,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     },
     back: 'Back',
     tabGeneral: 'General',
-    tabDetails: 'Details',
+    tabChronology: 'Timeline',
+    tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
