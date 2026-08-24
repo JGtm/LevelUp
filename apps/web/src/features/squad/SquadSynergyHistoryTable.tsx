@@ -2,7 +2,7 @@
  * SquadSynergyHistoryTable — historique des matchs partagés pour la page Synergies.
  *
  * Colonnes contextuelles (pas de stats personnelles) :
- *   Ouvrir | Waypoint | Date | Carte | Playlist | Mode |
+ *   Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode |
  *   Résultat | Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
@@ -15,9 +15,14 @@
  * Labels carte/playlist via useFieldMappings (assets titre).
  *
  * Tri CLIENT par clic sur les en-têtes (I16) : toutes les colonnes de données sont
- * triables (helpers partagés `explorerMatchesClientSort.ts`), sauf Ouvrir/Waypoint.
+ * triables (helpers partagés `explorerMatchesClientSort.ts`), sauf Ouvrir/Waypoint/Rejeu.
  * Aucun tri actif par défaut (ordre serveur = chronologique ASC, cf. `sortedRows`) ;
  * le tri réinitialise la pagination en page 1 (pattern RelationsTable).
+ *
+ * Colonne « Rejeu » : lien INTERNE vers la page de rejeu 2D (composant partagé
+ * `lib/match-nav/MatchReplayLink`), rendu uniquement quand `has_replay` est vrai
+ * (présence d'artefact résolue côté API en un listing de dossier par requête). La
+ * donnée EST la gate : pas de capability à brancher.
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -41,6 +46,7 @@ import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
+import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import {
   NUMERIC_SORT,
   dateTimeSortingFn,
@@ -185,6 +191,22 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             } as ColumnDef<SquadMatchHistoryRow>,
           ]
         : []),
+      {
+        id: 'replay',
+        header: '',
+        // Lien INTERNE vers la page de rejeu 2D — jamais triable (I16). Composant
+        // partagé avec le tableau Explorer (lib/match-nav/MatchReplayLink), qui porte
+        // la règle d'affichage : rien n'est rendu sans artefact.
+        enableSorting: false,
+        cell: (ctx) => (
+          <MatchReplayLink
+            available={!!ctx.row.original.has_replay}
+            matchId={ctx.row.original.match_id}
+            playerSlug={playerSlug}
+            label={labels.replayAriaLabel}
+          />
+        ),
+      },
       {
         accessorKey: 'start_time',
         header: labels.date,

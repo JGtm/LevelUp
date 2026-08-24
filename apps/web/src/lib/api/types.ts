@@ -757,6 +757,9 @@ export interface ExplorerMatchRow {
   /** Dépassement réel du temps réglementaire en secondes (tooltip « Prolongation : +X »). */
   overtime_seconds?: number
   match_url?: string
+  /** Un artefact de rejeu 2D existe pour ce match → la ligne porte un lien vers la
+   *  page de rejeu. Absent/false = rien n'est rendu (jamais de lien vers un 404). */
+  has_replay?: boolean
   /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
   dominance_flag?: number
   /**
@@ -813,6 +816,8 @@ export interface ExplorerMatchesQueryRequest {
   map_names?: string[]
   mode_names?: string[]
   squad_scope?: 'solo' | 'squad' | ''
+  /** Présence d'un rejeu 2D : '' (tous) | 'with' | 'without'. Filtré côté Go. */
+  replay_scope?: 'with' | 'without' | ''
   match_id_search?: string
   /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
   match_ids?: string[]
