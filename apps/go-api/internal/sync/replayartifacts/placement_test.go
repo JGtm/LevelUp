@@ -169,6 +169,38 @@ func TestEnqueueAll_ArtefactCompletResteSaute(t *testing.T) {
 	}
 }
 
+// TestEnqueueAll_FaitsSansLignes_NeReEnfilePas — LE CAS DISCRIMINANT.
+//
+// Un match PRÉSENT au registre mais sans participants rend des faits NON vides (variante et
+// scores connus) dont `Players` est vide. `facts.Empty()` vaut alors false, et un garde fondé
+// sur lui re-cuirait un artefact strictement identique — manifeste authentifié, ~24 Mo,
+// ~50 s de CPU — pour un verdict qui ne basculerait JAMAIS. Ce sont les lignes de match qui
+// peuplent `scoreTimeline.players` : c'est leur présence, et elle seule, qui doit décider.
+func TestEnqueueAll_FaitsSansLignes_NeReEnfilePas(t *testing.T) {
+	repoRoot := t.TempDir()
+	sansLignes := "ffffffff-6666-4000-8000-000000000000"
+	ecrireArtefact(t, repoRoot, sansLignes) // schéma courant, aucun compteur de joueur
+
+	scores := [2]int{43, 50}
+	var enfiles []string
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug,
+		Enqueue: func(_ context.Context, _, matchID string) error {
+			enfiles = append(enfiles, matchID)
+			return nil
+		},
+	}
+	enqueueAll(context.Background(), d, []buildWork{{
+		matchID: sansLignes,
+		// Non vide au sens d'Empty(), mais SANS aucune ligne de match.
+		facts: port.MatchFacts{GameVariantName: "Slayer:Arena", TeamScores: &scores},
+	}})
+	if len(enfiles) != 0 {
+		t.Fatalf("mis en file = %v, attendu aucun : sans lignes de match, la re-cuisson "+
+			"rendrait le même artefact et le verdict ne basculerait jamais", enfiles)
+	}
+}
+
 // TestEnqueueAll_SansFaitsConnus_NeReEnfilePas : un match dont la base ne sait RIEN a
 // légitimement un artefact sans joueurs. Le re-cuire serait une boucle perpétuelle — le
 // prédicat ne doit pas transformer une absence de données en travail sans fin.

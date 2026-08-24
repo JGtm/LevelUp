@@ -280,11 +280,12 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		return
 	}
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
-	queued, skipped, appauvris := 0, 0, 0
+	queued, skipped, appauvris, refuses := 0, 0, 0, 0
 	for _, w := range work {
 		if ctx.Err() != nil {
 			break
 		}
+		pourAppauvrissement := false
 		// Idempotence : un artefact déjà à jour ne se reconstruit pas (même règle
 		// que le chemin local ; la mise en file absorbe de son côté les doublons).
 		//
@@ -293,33 +294,59 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		// sans zones de mode, sans socles de drapeau, sans compteurs de joueur). Le sauter sur
 		// le seul critère de version le figerait à demeure — c'est précisément ainsi qu'un
 		// ouvrier sans faits empoisonnerait le cache. Ici, et seulement ici, on sait trancher :
-		// la base a été lue (attachMatchFacts), donc on sait si des faits EXISTAIENT.
+		// la base a été lue (attachMatchFacts), donc on sait de quoi on dispose.
+		//
+		// LA CONDITION PORTE SUR `len(Players)`, PAS SUR `facts.Empty()`, et la nuance a un
+		// coût réel. `Empty()` est faux dès qu'un SEUL champ est renseigné : un match présent
+		// au registre mais SANS participants (variante et scores connus, aucune ligne) passerait
+		// le test tout en étant incapable de produire le moindre compteur de joueur. On
+		// re-cuirait alors un artefact identique — un manifeste authentifié, ~24 Mo et ~50 s de
+		// CPU — pour un verdict qui ne basculerait jamais. Ce sont les LIGNES DE MATCH, et elles
+		// seules, qui peuplent `scoreTimeline.players` : c'est donc leur présence qui décide.
 		artefact := paths.ReplayArtifactPath(d.TitleSlug, w.matchID)
 		if replaybuild.ArtifactUpToDate(artefact) {
-			if w.facts.Empty() || replaybuild.ArtifactHasMatchFacts(artefact) {
+			if len(w.facts.Players) == 0 || replaybuild.ArtifactHasPlayerCounters(artefact) {
 				skipped++
 				continue
 			}
 			// Jamais muet : un artefact re-enfilé alors qu'il paraît à jour doit s'expliquer.
-			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS les faits du match, remis en file",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "joueurs_connus", len(w.facts.Players))
-			appauvris++
+			//
+			// PRÉSOMPTION, PAS PREUVE : l'artefact peut être vide de compteurs pour une raison
+			// légitime (film sans enregistrement d'entité, appariement ambigu, aucun compteur
+			// dans la fenêtre — cf. l'en-tête d'ArtifactHasPlayerCounters). La re-cuisson rendra
+			// alors le même document. Le résidu est BORNÉ des deux côtés : en fréquence, parce
+			// que la sélection ne voit que les matchs INSÉRÉS du cycle (un match ne repasse pas
+			// ici à chaque sync) ; en dégâts, parce que `StoreArtifact` refuse toute régression.
+			// Le pire cas est donc UN cycle d'ouvrier gâché, jamais un artefact rétrogradé.
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, remis en file",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
+			pourAppauvrissement = true
 		}
 		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID); err != nil {
 			// Cas nominal du refus : film absent ou expiré côté serveur (~29 % du
 			// corpus). Journalisé en debug, jamais avalé.
 			slog.DebugContext(ctx, "post-sync: rejeu 2D non mis en file",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "err", err)
+			refuses++
 			continue
 		}
 		queued++
+		// Le compteur ne s'incrémente qu'APRÈS la mise en file effective : un film expiré
+		// (~29 % du corpus) est refusé ici même, et le compter comme « re-enfilé » ferait
+		// sur-déclarer la métrique de tout ce que la file n'a jamais reçu.
+		if pourAppauvrissement {
+			appauvris++
+		}
 	}
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_jobs_enqueued_total", int64(queued))
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_artifacts_factless_requeued_total", int64(appauvris))
-	if queued > 0 || skipped > 0 {
+	// Le résumé sort dès qu'il y a eu du travail à examiner. Le conditionner à
+	// `queued > 0 || skipped > 0` rendait MUET le cas où tout a été refusé (film expiré sur
+	// tout le lot) : un cycle entier sans la moindre trace au niveau INFO.
+	if len(work) > 0 {
 		slog.InfoContext(ctx, "post-sync: rejeu 2D mis en file (construction déléguée à un ouvrier)",
 			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped,
-			"appauvris_re_enfiles", appauvris, "selected", len(work))
+			"appauvris_re_enfiles", appauvris, "refuses", refuses, "selected", len(work))
 	}
 }
 
