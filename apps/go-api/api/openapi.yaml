@@ -8982,6 +8982,8 @@ components:
           type:
             - array
             - "null"
+        facts:
+          $ref: '#/components/schemas/MatchFacts'
         map_names:
           items:
             type: string
@@ -15233,6 +15235,27 @@ components:
       required:
         - has_hist_avg
       type: object
+    MatchFacts:
+      additionalProperties: false
+      properties:
+        gameVariantName:
+          type: string
+        mapId:
+          type: string
+        players:
+          items:
+            $ref: '#/components/schemas/MatchPlayerFact'
+          type:
+            - array
+            - "null"
+        teamScores:
+          items:
+            format: int64
+            type: integer
+          maxItems: 2
+          minItems: 2
+          type: array
+      type: object
     MatchFavoriteResponse:
       additionalProperties: false
       properties:
@@ -16014,6 +16037,30 @@ components:
       required:
         - outcome_label
         - outcome_color
+      type: object
+    MatchPlayerFact:
+      additionalProperties: false
+      properties:
+        assists:
+          format: int64
+          type: integer
+        deaths:
+          format: int64
+          type: integer
+        kills:
+          format: int64
+          type: integer
+        teamId:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - xuid
+        - kills
+        - deaths
+        - assists
+        - teamId
       type: object
     MatchPositionDTO:
       additionalProperties: false
