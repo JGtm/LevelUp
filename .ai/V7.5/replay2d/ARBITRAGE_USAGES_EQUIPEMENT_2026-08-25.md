@@ -17,7 +17,70 @@
 
 ---
 
-## 1. Le verdict, en cinq lignes
+---
+
+## 0. ADDENDUM DU 2026-08-25 (soir) — la sonde `i59` a été autorisée, exécutée, et elle change le verdict pour LE PROPULSEUR
+
+> Le superviseur a autorisé l'option A de ce document (§5) en périmètre **strictement
+> instrumental** : sonde seule, aucun code de production, aucune publication, et les Phases
+> 1-2 restent fermées **même en cas de positif**. Étape **0.7** ajoutée au plan, barre de
+> décision écrite dans l'instrument AVANT la mesure. Trois films, un processus par film.
+> Ce qui suit remplace la recommandation du §5 — le reste du document reste vrai.
+
+**Le contrôle de validité est passé, et c'est lui qui rend le reste opposable.** Le tag 3
+(grappin, canal déjà livré) a été mesuré avec les autres bien qu'on connaisse sa réponse : il
+ressort à **1,08 / 1,63 / 1,14** transition par vie-lue sur les vies de grappin, contre
+**0,00 / 0,05 / 0,00** sur les autres rangs. La méthode discrimine donc quand il y a quelque
+chose à discriminer ; un négatif obtenu avec elle est une propriété du signal, pas un défaut
+de mesure.
+
+**Tags 0 et 2 — ce que le superviseur avait mandaté : NÉGATIF, état générique.** Portés par
+**99 à 100 % des vies lues**, transitions partout à volume comparable (écart maximal entre une
+cible et le témoin sans identité : **1,5×**, quand le tag 3 fait 20× et plus). C'est le défaut
+exact d'`i57`. La réserve écrite dans ce document avant la mesure est confirmée : on classe,
+sans renégocier le seuil.
+
+**Tag 1 — le résultat inattendu : il discrimine LE PROPULSEUR.**
+
+| film | RÉPULSEUR (6) | **PROPULSEUR (5/21)** | GRAPPIN (4/20) | autres rangs | sans identité | transitions |
+|---|---|---|---|---|---|---|
+| `00ba2e1c` | 0,03 | **0,50** | **0,00** | 0,00 | 0,03 | 10 |
+| `06dfe6d9` | 0,03 | **0,32** | **0,00** | 0,02 | 0,05 | 13 |
+| `000d5950` | — | **1,52** | **0,00** | 0,07 | 0,13 | 43 |
+
+**Zéro transition sur les 76 vies de grappin cumulées** — le confondeur qui avait avalé
+`i56`. **52 des 66 transitions (78,8 %) tombent sur des vies de propulseur**, alors que
+celles-ci ne pèsent que 7,6 % à 25,8 % des vies lues : enrichissement **×3,4 à ×9**.
+
+**Verdict par capacité, révisé :**
+
+| capacité | verdict | suite |
+|---|---|---|
+| **Répulseur** (6) | **CLASSÉ SUR MESURES** — rien sur quatre voies (`i56`, `i51`, `i59` tags 0/2, `i59` tag 1 : 2 transitions pour 72 vies) | pas de son ni d'effet, **faute de canal** — pas faute de fichier son |
+| **Propulseur** (5/21) | **PISTE POSITIVE À CONFIRMER** — `i59 tag==1` | quatre seuils ci-dessous, à valider avant toute implémentation |
+
+**Les quatre seuils de reprise proposés** (aucun n'est tenu aujourd'hui — c'est pourquoi rien
+n'est affiché) :
+
+1. **Volume** — ≥ **150 transitions `tag==1`** cumulées (66 aujourd'hui), corpus élargi à
+   **8-10 films** portant du propulseur dans les DEUX familles (rangs 5 et 21).
+2. **Reproductibilité** — sur **6 films sur 8** au moins : ≥ 75 % de la masse sur les vies de
+   propulseur, **≤ 0,10 par vie-lue sur le grappin**, **≤ 0,15 sur les vies sans identité**.
+3. **Datation, jamais contrôlée pour ce tag** — les instants `tag==1` doivent tomber EN COURS
+   DE VIE, pas à l'apparition (le contrôle qui avait qualifié `i54` : « 3 épisodes seulement à
+   moins de 2 s d'un spawn »). Un tag qui ne se lèverait qu'au spawn daterait une DOTATION,
+   pas un usage — et produirait un effet à chaque réapparition.
+4. **Sémantique** — le corps d'`i59` n'est porté que pour `tag==3` ; on ignore ce que
+   `tag==1` transporte. Établir s'il a une charge utile avant d'en faire un événement produit.
+
+**Ce que je ne fais pas, et pourquoi** : ni Phase 1 ni Phase 2, conformément à la consigne —
+un signal à 66 transitions dont on ne connaît ni la sémantique ni le comportement au spawn
+n'est pas un canal livrable, c'est une piste qui mérite un lot de confirmation. **Décision
+au superviseur.**
+
+---
+
+## 1. Le verdict, en cinq lignes *(état avant l'addendum §0 — conservé pour la traçabilité)*
 
 | capacité | rang(s) | canal cherché | verdict | pourquoi |
 |---|---|---|---|---|
