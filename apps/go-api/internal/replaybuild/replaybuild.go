@@ -307,6 +307,47 @@ func ArtifactUpToDate(path string) bool {
 	return head.SchemaVersion == replay.SchemaVersion
 }
 
+// ArtifactHasMatchFacts dit si l'artefact au chemin donné a été construit AVEC les faits du
+// match. Faux aussi quand le fichier est absent ou illisible (même convention
+// qu'ArtifactUpToDate : dans le doute, il est à re-cuire).
+//
+// POURQUOI CE PRÉDICAT EXISTE — LE PIÈGE QU'IL FERME. `ArtifactUpToDate` ne compare que la
+// VERSION DE SCHÉMA. Or un artefact cuit sans faits porte exactement le même numéro qu'un
+// artefact complet : il est donc déclaré « à jour », et plus RIEN ne le re-cuit jamais. Activer
+// un ouvrier qui construit sans faits empoisonnerait le cache de rejeu de façon PERMANENTE —
+// c'est le préalable inscrit au registre avant toute activation.
+//
+// LE SIGNAL, ET POURQUOI CELUI-LÀ. `scoreTimeline.players` n'est peuplé que par
+// `ScoreInput.Lines`, qui vient des lignes de match — donc des faits, et de rien d'autre.
+// Mesuré sur deux témoins le 2026-08-24 : 8 joueurs avec faits, 0 sans, sur 7344d24f comme sur
+// 530820e5. Les autres candidats ont été écartés : `coverage.score.teamIdentity` vaut
+// légitimement `unresolved` sur des artefacts POURTANT cuits avec faits (7 des 34 du cache),
+// et `objectives` est vide de plein droit sur un Slayer.
+//
+// PAS DE CHAMP DÉDIÉ DANS LE DOCUMENT, ET C'EST DÉLIBÉRÉ : un marqueur `factsApplied` forcerait
+// un incrément de `replay.SchemaVersion`, donc la re-cuisson de tout le cache — aujourd'hui
+// bloquée par la bombe RAM de `NamedEventsFrom` (registre du 2026-08-24). Ce prédicat lit ce que
+// le document dit DÉJÀ.
+//
+// IL NE DÉCIDE PAS SEUL : un match dont la base ne connaît aucun participant a légitimement un
+// artefact sans joueurs, et le re-cuire en boucle serait un défaut. La décision appartient donc
+// à l'appelant, qui seul sait si des faits existaient (cf. `replayartifacts.enqueueAll`).
+func ArtifactHasMatchFacts(path string) bool {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var head struct {
+		ScoreTimeline struct {
+			Players []json.RawMessage `json:"players"`
+		} `json:"scoreTimeline"`
+	}
+	if err := json.Unmarshal(raw, &head); err != nil {
+		return false
+	}
+	return len(head.ScoreTimeline.Players) > 0
+}
+
 // writeArtifact sérialise le document et l'écrit ATOMIQUEMENT (cf.
 // writeArtifactBytes, artifact_store.go) ; renvoie la taille en octets. Même
 // écriture que le dépôt d'un ouvrier : le service de lecture sert le fichier tel
