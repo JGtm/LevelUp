@@ -169,26 +169,51 @@ deep-links : `features/settings/tabs.ts` (`TAB_ALIASES`).
 
 ### Items
 
-- [ ] B1 — layout : `z.enum(['summary','chronology','players'])`, avec rétro-compat
+- [x] B1 — layout : `z.enum(['summary','chronology','players'])`, avec rétro-compat
   des deep-links : `tab=details` accepté et résolu vers `chronology` (alias au
   décodage, patron `TAB_ALIASES` de settings ; pas de redirect).
-- [ ] B2 — `MatchViewPage.tsx` : table `TABS` à 3 entrées ; les CONTENUS des onglets
+  → Ids + alias + résolveur dans `features/match-view/tabs.ts` (source unique
+  partagée route/page, patron `features/settings/tabs.ts`). La route garde
+  `matchViewTabSchema.optional().catch((ctx) => resolveMatchViewTab(ctx.value))` :
+  `tab` reste OPTIONNEL (aucun `?tab=` ajouté aux liens match existants), une
+  valeur inconnue retombe sur `summary`, `details` sur `chronology`.
+- [x] B2 — `MatchViewPage.tsx` : table `TABS` à 3 entrées ; les CONTENUS des onglets
   Chronologie et Joueurs sont EXTRAITS en deux composants
   (`MatchViewTabChronology.tsx`, `MatchViewTabPlayers.tsx`) — `MatchViewPage.tsx`
   doit passer SOUS 500 lignes à la clôture (il est à 523 : l'extraction paie la
   dette au passage, sans changer le rendu des blocs déplacés).
-- [ ] B3 — requêtes : `useMatchObjectiveEvents` et `useMatchPositions` ne doivent
+  → 523 → **420 lignes**. Blocs déplacés à l'identique (JSX et commentaires) ;
+  le helper `DetailSection` sort dans son propre fichier `DetailSection.tsx` pour
+  être partagé par les deux onglets sans cycle d'import vers la page. Le ternaire
+  summary/details devient trois blocs `{activeTab === '…' && (…)}` (aucun nœud DOM
+  supplémentaire — le test de structure de l'onglet Général passe inchangé).
+- [x] B3 — requêtes : `useMatchObjectiveEvents` et `useMatchPositions` ne doivent
   être actives que quand leur onglet les affiche (aujourd'hui tirées dès l'arrivée
   pour des composants de Détails ; utiliser `enabled:` selon l'onglet actif —
   l'artefact de rejeu et engagement sont déjà conditionnels par le rendu).
-- [ ] B4 — i18n : `tabChronology` FR « Chronologie » / EN « Timeline »,
+  → Vérifié sur pièces : `objectiveEvents` n'a que deux consommateurs
+  (`MatchKDCumulChart`, `MatchTugOfWarChart`) et `matchPositions` un seul
+  (`MatchPositionsHeatmap`) — tous les trois dans Chronologie. 3e paramètre
+  `enabled = true` sur les deux hooks (`enabled: enabled && !!playerSlug && !!matchId`),
+  passé `activeTab === 'chronology'` par la page.
+- [x] B4 — i18n : `tabChronology` FR « Chronologie » / EN « Timeline »,
   `tabPlayers` FR « Joueurs » / EN « Players » ; `tabDetails` supprimé des DEUX
   tables (0 code mort) ; les sous-titres de sections conservés tels quels dans
   leurs onglets.
-- [ ] B5 — tests : vitest — l'alias `details` → onglet Chronologie actif ; chaque
+  → Pas de contrat i18n typé pour match-view (le seul `i18nContract.ts` du dépôt
+  est celui de match-replay) : la parité FR/EN est portée par le typage
+  `Record<MatchViewLocale, MatchViewText>`, `tabDetails` retiré de l'interface ET
+  des deux tables. Commentaire « Sections de l'onglet Détails » corrigé (doc
+  inversée) en « Sections des onglets Chronologie et Joueurs ».
+- [x] B5 — tests : vitest — l'alias `details` → onglet Chronologie actif ; chaque
   onglet rend ses sections attendues (smoke par titre de section) ; typecheck.
-- [ ] B6 — NE PAS brancher `MatchNarrativeSection.tsx` (composant orphelin constaté)
-  → Découvertes.
+  → `MatchViewTabs.test.tsx` (14 tests) : résolveur d'alias, schéma de recherche
+  RÉEL de la route (`Route.options.validateSearch.parse({tab:'details'})` →
+  `chronology`), barre à 3 onglets FR sans « Détails », contenu par onglet (smoke
+  par titre de section + testids des blocs), et les trois cas d'activation des
+  deux calques de film (Général/Joueurs désactivés, Chronologie activé).
+- [x] B6 — NE PAS brancher `MatchNarrativeSection.tsx` (composant orphelin constaté)
+  → Découvertes. → Re-vérifié : aucun import hors de son propre test ; non touché.
 
 ### Gate B
 
@@ -412,3 +437,11 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
 - L'avertissement eslint `react-hooks/incompatible-library` sur `useReactTable()` est
   générique au dépôt (vérifié sur `MatchEncountersTable.tsx`, fichier non touché) :
   2 occurrences sur les fichiers du lot, aucune nouvelle.
+- E2E `apps/web/e2e/match-view-combat.spec.ts` (lot B, 2026-08-24) : spec déjà
+  neutralisée par `skipObsoleteSpec`, dont le commentaire et le message de skip
+  nomment encore les onglets « Général / Détails » — périmés depuis le passage à 3
+  onglets. Rien de fonctionnel (test skippé) ; non traité, hors périmètre.
+- `MatchViewPage.tsx` coerce encore `locale === 'en' ? 'en' : 'fr'` sur une valeur
+  déjà typée `Locale` (`'fr' | 'en'`) avant de la passer à `MatchMediaTab` et au
+  breadcrumb : ternaires no-op héritées. Les deux composants d'onglets extraits
+  reçoivent la `Locale` telle quelle. Nettoyage du reste non tenté (hors périmètre).
