@@ -1,12 +1,22 @@
 # PLAN — les capacités d'armure : les nommer toutes, puis montrer leurs usages actifs
 
-> **ÉTAT AU 2026-08-25 — PHASE 0 CLOSE, VERDICT NÉGATIF POUR LES DEUX CAPACITÉS. PHASES 1 ET
-> 2 NON EXÉCUTÉES.** Ni le répulseur (rang 6) ni le propulseur (rangs 5 / 21) n'ont de canal
-> dédié mesurable : `i56` chute sur les vies de GRAPPIN, pas sur les leurs, et `i51` n'est
-> jamais transmis (0 annonce sur 1 427 763 records delta). Le gate de la Phase 0 est PASSÉ
-> (un verdict publié par capacité, même négatif, EST le livrable attendu — Décision D5) ;
-> zéro ligne de production, aucun effet simulé. Détail, options et coûts pour le
-> superviseur : `.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`.
+> **ÉTAT AU 2026-08-25 — PHASE 0 CLOSE (items 0.1 à 0.7). VERDICT PARTIEL. PHASES 1 ET 2 NON
+> EXÉCUTÉES, y compris sur le résultat positif.**
+>
+> - **RÉPULSEUR (rang 6) — CLASSÉ SUR MESURES.** Aucun canal, sur quatre voies indépendantes :
+>   `i56` (ses chutes suivent le grappin), `i51` (jamais transmis), `i59` tags 0/2 (état
+>   générique), `i59` tag 1 (2 transitions pour 72 vies). **Conséquence produit : pas de son
+>   ni d'effet de répulseur, faute de canal — et non faute de fichier son.**
+> - **PROPULSEUR (rangs 5 / 21) — PISTE POSITIVE, À CONFIRMER.** Le **tag 1 d'`i59`**
+>   discrimine : **78,8 % des transitions sur les vies de propulseur, ZÉRO sur les 76 vies de
+>   grappin** (le confondeur qui avait avalé `i56`), quasi-zéro sur les autres rangs et sur
+>   les vies sans identité. Volume encore faible (66 transitions, 3 films) : quatre seuils de
+>   confirmation sont proposés au journal de l'item 0.7. **Rien n'est affiché tant qu'ils ne
+>   sont pas tenus** (Décision D5).
+>
+> Le gate de la Phase 0 est PASSÉ (un verdict publié par capacité EST le livrable attendu).
+> **Zéro ligne de production, aucun effet simulé, aucun son téléchargé.** Détail, options et
+> coûts pour le superviseur : `.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`.
 > Branche `wt/usages-equipement`, non poussée.
 
 > **LIRE D'ABORD LA SECTION SUIVANTE** (« ACTUALISATION DU 2026-08-24 »). Le reste du
@@ -651,6 +661,111 @@ comme tout ce chantier.
       pour le répulseur, `[!]` AUCUN CANAL pour le propulseur**, cause mesurée documentée,
       **aucun effet simulé** (Décision D5). Arbitrage détaillé pour le superviseur :
       `.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`.
+
+- [x] 0.7 **FAIT (3 films). VERDICT EN TROIS TEMPS : tags 0 et 2 = ÉTAT GÉNÉRIQUE (négatif) ·
+      contrôle de validité PASSÉ · TAG 1 = SIGNAL DISCRIMINANT POUR LE PROPULSEUR, à
+      confirmer.** Détail et seuils de reprise dans le journal de l'item, plus bas.
+      *(énoncé d'origine ci-dessous, inchangé)*
+      **SONDE `i59` TAGS 0 ET 2 — ajoutée au plan le 2026-08-25 sur DÉCISION DU
+      SUPERVISEUR**, après l'arbitrage de clôture (option A). Périmètre **strictement
+      instrumental** : aucun code de production, aucune publication, et **les Phases 1-2 ne
+      s'ouvrent PAS même si le verdict est positif** — dans ce cas l'exécutant écrit un
+      arbitrage de reprise avec seuils proposés et s'arrête pour validation.
+      Croiser les tags **0 et 2** d'`i59` aux rangs `i48` **PAR VIE**, exactement comme
+      l'item 0.4, sur **3 films** : `00ba2e1c` (3 234 lectures / 98,8 % mesurées le
+      2026-08-25), puis un film à répulseur dominant et un à propulseur dominant tirés du
+      tableau de l'item 0.3.
+      **BARRE DE DÉCISION, POSÉE AVANT LA MESURE et écrite dans l'instrument** :
+      **POSITIF** seulement si les transitions se CONCENTRENT sur les vies du rang cible ET
+      sont ~nulles sur les vies des autres rangs ET sur les vies SANS identité `i48` — la
+      forme du camouflage (39 transitions sur la cible, 0 sur 574 autres vies).
+      **NÉGATIF** si le signal est présent PARTOUT à volume comparable : c'est un ÉTAT
+      GÉNÉRIQUE, le défaut exact d'`i57` (bit 0 à 1 sur 386/386), et **on classe sans
+      renégocier le seuil**.
+      **CONTRÔLE DE VALIDITÉ INTERNE** : le tag **3** est mesuré avec les autres bien qu'on
+      connaisse sa réponse (canal du grappin, 115/117 sur les vies de rang 20). Il DOIT
+      ressortir concentré sur le groupe GRAPPIN ; sinon c'est la MÉTHODE qui est en cause et
+      le verdict sur les tags 0/1/2 ne vaut rien.
+      Instrument : `apps/go-api/internal/analysis/filmdec/i59_rank_cross_test.go` (garde
+      `I59X_FILM`), réutilisant le balayage existant `i59Scan` et le tableau partagé
+      `rank_cross_shared_test.go` — aucun second lecteur du même champ.
+
+### Journal de l'item 0.7 (2026-08-25) — la sonde `i59`
+
+Trois films, un processus par film : `00ba2e1c` (famille A, mixte riche), `06dfe6d9`
+(famille A, répulseur dominant : 28 vies de rang 6), `000d5950` (famille B, propulseur
+dominant : 23 vies de rang 21). Couverture d'`i59` : **3 234/3 274 · 4 720/4 817 ·
+1 309/1 342**, soit **97,5 à 98,8 % des annonces**, sur 0,78 à 1,43 % des records — un canal
+dix fois plus bavard qu'`i56`, comme l'arbitrage l'annonçait.
+
+**1. LE CONTRÔLE DE VALIDITÉ EST PASSÉ, et c'est ce qui rend la suite opposable.** Le tag 3
+(grappin, canal déjà livré) devait ressortir concentré sur le groupe GRAPPIN. Il le fait, sur
+les trois films — transitions par vie-lue :
+
+| film | GRAPPIN (4/20) | RÉPULSEUR (6) | PROPULSEUR (5/21) | autres rangs | sans identité |
+|---|---|---|---|---|---|
+| `00ba2e1c` | **1,08** | 0,26 | 0,06 | **0,00** | 0,23 |
+| `06dfe6d9` | **1,63** | 0,49 | 0,00 | **0,05** | 0,26 |
+| `000d5950` | **1,14** | — | 0,04 | **0,00** | 0,22 |
+
+La méthode discrimine donc quand il y a quelque chose à discriminer. Un négatif obtenu avec
+elle est une propriété du signal, pas un défaut de la mesure.
+
+**2. TAGS 0 ET 2 — ÉTAT GÉNÉRIQUE, verdict NÉGATIF, on classe sans renégocier le seuil.**
+Le tag 0 est porté par **99 à 100 % des vies lues**, le tag 2 par **100 %**. Leurs transitions
+sont partout, à volume comparable :
+
+| tag | film | RÉP. | PROP. | GRAPPIN | autres rangs | sans identité |
+|---|---|---|---|---|---|---|
+| 0 | `00ba2e1c` | 8,51 | 7,75 | 9,00 | 6,79 | 7,35 |
+| 0 | `06dfe6d9` | 10,78 | 11,32 | 8,97 | 8,81 | 7,11 |
+| 0 | `000d5950` | — | 7,32 | 6,95 | 6,46 | 5,00 |
+| 2 | `00ba2e1c` | 7,80 | 6,75 | 7,64 | 5,93 | 6,48 |
+| 2 | `06dfe6d9` | 9,89 | 10,11 | 7,67 | 7,95 | 6,14 |
+| 2 | `000d5950` | — | 5,36 | 5,14 | 5,46 | 3,70 |
+
+L'écart maximal entre une cible et le témoin « sans identité » est de **1,5×**, là où le tag 3
+fait 20× et plus. **C'est exactement le défaut d'`i57`** (bit 0 à 1 sur 386/386) : un état que
+tout le monde porte tout le temps ne date personne. La réserve écrite dans l'arbitrage avant
+la mesure — « tags 0+2 = 97 % des lectures, risque d'état générique » — est confirmée.
+
+**3. TAG 1 — LE RÉSULTAT INATTENDU : il discrimine LE PROPULSEUR.** Le tag 1 était le parent
+pauvre (10, 13 et 43 lectures). Sa forme est celle qu'on cherchait :
+
+| film | RÉP. (6) | **PROP. (5/21)** | GRAPPIN (4/20) | autres rangs | sans identité | événements tag 1 |
+|---|---|---|---|---|---|---|
+| `00ba2e1c` | 0,03 | **0,50** | **0,00** | 0,00 | 0,03 | 10 |
+| `06dfe6d9` | 0,03 | **0,32** | **0,00** | 0,02 | 0,05 | 13 |
+| `000d5950` | — | **1,52** | **0,00** | 0,07 | 0,13 | 43 |
+
+**Zéro transition sur les 76 vies de grappin cumulées** — le confondeur naturel, celui qui
+avait avalé `i56`. Quatre transitions sur 209 vies d'autres rangs. **52 des 66 transitions
+(78,8 %) tombent sur des vies de propulseur**, alors que ces vies ne pèsent que 7,6 % à 25,8 %
+des vies lues selon le film — un enrichissement de **3,4× à 9×**. Le rapport cible/autres
+rangs va de 16× à l'infini (0,00 au dénominateur), et cible/sans identité de 6,4× à 17×.
+
+**Le répulseur, lui, ne sort sur AUCUN tag** : 0,03 · 0,03 sur le tag 1 (2 transitions pour 72
+vies), noyé sur les tags 0 et 2, sous le grappin sur le tag 3. **Classé sur mesures.**
+
+**CE QUI MANQUE AVANT D'APPELER ÇA UN CANAL — seuils proposés pour la reprise, à valider par
+le superviseur :**
+
+1. **Volume.** 66 transitions cumulées, c'est peu. Exiger **≥ 150 transitions `tag==1`
+   cumulées** sur un corpus élargi à **8-10 films portant du propulseur** dans les DEUX
+   familles (rang 5 et rang 21) — le corpus actuel n'en a que trois.
+2. **Reproductibilité du contraste.** Sur **au moins 6 films sur 8** : ≥ 75 % de la masse des
+   transitions sur les vies de propulseur, **≤ 0,10 par vie-lue sur les vies de grappin** (le
+   confondeur), **≤ 0,15 sur les vies sans identité**.
+3. **Contrôle de datation, jamais fait pour ce tag.** Les instants `tag==1` doivent tomber EN
+   COURS DE VIE et non à l'apparition — le contrôle qui avait sauvé l'interprétation d'`i54`
+   (« 3 épisodes seulement à moins de 2 s d'un spawn »). Un tag qui ne se lèverait qu'au
+   spawn daterait une dotation, pas un usage.
+4. **Sémantique.** Le corps d'`i59` n'est porté que pour `tag==3` ; on ne sait pas ce que
+   `tag==1` transporte. Établir s'il a une charge utile avant d'en faire un événement produit.
+
+**Tant que ces quatre points ne sont pas tenus, aucun effet n'est affiché** (Décision D5) —
+et conformément à la consigne du superviseur, **les Phases 1 et 2 restent fermées** même sur
+ce résultat positif : la suite est un arbitrage de reprise, pas une implémentation.
 
 **GATE PHASE 0 : PASSÉ — verdict publié pour répulseur ET pour propulseur** (négatif pour
 les deux, ce que la Décision D5 qualifie explicitement de résultat valide et non d'échec du
