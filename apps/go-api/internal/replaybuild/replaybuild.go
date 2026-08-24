@@ -307,45 +307,81 @@ func ArtifactUpToDate(path string) bool {
 	return head.SchemaVersion == replay.SchemaVersion
 }
 
-// ArtifactHasMatchFacts dit si l'artefact au chemin donné a été construit AVEC les faits du
-// match. Faux aussi quand le fichier est absent ou illisible (même convention
-// qu'ArtifactUpToDate : dans le doute, il est à re-cuire).
+// ArtifactHasPlayerCounters dit si l'artefact au chemin donné PORTE des compteurs de joueur
+// (`scoreTimeline.players` non vide). Faux aussi quand le fichier est absent ou illisible.
 //
-// POURQUOI CE PRÉDICAT EXISTE — LE PIÈGE QU'IL FERME. `ArtifactUpToDate` ne compare que la
-// VERSION DE SCHÉMA. Or un artefact cuit sans faits porte exactement le même numéro qu'un
-// artefact complet : il est donc déclaré « à jour », et plus RIEN ne le re-cuit jamais. Activer
-// un ouvrier qui construit sans faits empoisonnerait le cache de rejeu de façon PERMANENTE —
-// c'est le préalable inscrit au registre avant toute activation.
+// CE QU'IL AFFIRME, ET CE QU'IL N'AFFIRME PAS. Il constate une PROPRIÉTÉ DU DOCUMENT, il ne
+// devine pas comment il a été cuit. L'implication ne vaut que dans un sens :
 //
-// LE SIGNAL, ET POURQUOI CELUI-LÀ. `scoreTimeline.players` n'est peuplé que par
-// `ScoreInput.Lines`, qui vient des lignes de match — donc des faits, et de rien d'autre.
-// Mesuré sur deux témoins le 2026-08-24 : 8 joueurs avec faits, 0 sans, sur 7344d24f comme sur
-// 530820e5. Les autres candidats ont été écartés : `coverage.score.teamIdentity` vaut
-// légitimement `unresolved` sur des artefacts POURTANT cuits avec faits (7 des 34 du cache),
-// et `objectives` est vide de plein droit sur un Slayer.
+//	compteurs présents  =>  les lignes de match ont été fournies   (sûr)
+//	compteurs absents   =>  les lignes de match manquaient          (FAUX en général)
 //
-// PAS DE CHAMP DÉDIÉ DANS LE DOCUMENT, ET C'EST DÉLIBÉRÉ : un marqueur `factsApplied` forcerait
-// un incrément de `replay.SchemaVersion`, donc la re-cuisson de tout le cache — aujourd'hui
-// bloquée par la bombe RAM de `NamedEventsFrom` (registre du 2026-08-24). Ce prédicat lit ce que
-// le document dit DÉJÀ.
+// TROIS FAÇONS LÉGITIMES d'être vide MALGRÉ des faits complets, toutes constatées dans le code :
+// (a) le film n'a aucun enregistrement d'entité à lire (cas journalisé, `matchfacts.go:70-73`) ;
+// (b) l'appariement slot -> joueur échoue — `SlotIdentityFrom` écarte les triplets ambigus, et
+// les `COALESCE(..., 0)` de `replay_facts_repo.go` peuvent rendre plusieurs (0,0,0)
+// indistinguables ; (c) aucun compteur ne bouge dans la fenêtre lue (`PlayerScore` vide).
 //
-// IL NE DÉCIDE PAS SEUL : un match dont la base ne connaît aucun participant a légitimement un
-// artefact sans joueurs, et le re-cuire en boucle serait un défaut. La décision appartient donc
-// à l'appelant, qui seul sait si des faits existaient (cf. `replayartifacts.enqueueAll`).
-func ArtifactHasMatchFacts(path string) bool {
+// UN APPELANT NE DOIT DONC JAMAIS EN DÉDUIRE « à re-cuire » À LUI SEUL. Le vide est une
+// PRÉSOMPTION d'appauvrissement, pas une preuve : c'est pour cela que `replayartifacts.enqueueAll`
+// exige EN PLUS de tenir des lignes de match (`len(facts.Players) > 0`), et que le rangement
+// d'artefact (`StoreArtifact`) refuse de son côté toute régression. Le pire résidu possible est
+// alors UN cycle d'ouvrier gâché — jamais un artefact rétrogradé, jamais une boucle qui converge
+// vers rien.
+//
+// POURQUOI CE SIGNAL PLUTÔT QU'UN AUTRE. Mesuré sur deux témoins le 2026-08-24 : 8 joueurs avec
+// faits, 0 sans, sur 7344d24f comme sur 530820e5. Les autres candidats sont pires :
+// `coverage.score.teamIdentity` vaut légitimement `unresolved` sur 7 des 34 artefacts du cache
+// POURTANT cuits avec faits, et `objectives` est vide de plein droit sur un Slayer.
+//
+// PAS DE CHAMP DÉDIÉ DANS LE DOCUMENT, ET C'EST DÉLIBÉRÉ : un marqueur `factsApplied` — qui
+// LUI porterait l'implication dans les deux sens — forcerait un incrément de
+// `replay.SchemaVersion`, donc la re-cuisson de tout le cache, aujourd'hui bloquée par la bombe
+// RAM de `NamedEventsFrom` (registre du 2026-08-24). C'est la dette assumée de ce choix.
+func ArtifactHasPlayerCounters(path string) bool {
+	d, ok := readArtifactDigest(path)
+	return ok && d.players > 0
+}
+
+// artifactDigest : les seules marques d'un artefact que les gardes ont à lire. Une SEULE forme
+// de lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le
+// nom d'un champ, et le garde deviendrait muet sans que rien ne le signale.
+type artifactDigest struct {
+	schemaVersion int
+	players       int
+	tracks        int
+	bytes         int
+}
+
+// readArtifactDigest lit un artefact sur disque. ok=false si absent ou illisible : dans le
+// doute, l'appelant traite l'artefact comme inexploitable, jamais comme bon.
+func readArtifactDigest(path string) (artifactDigest, bool) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return false
+		return artifactDigest{}, false
 	}
+	return digestFromBytes(raw)
+}
+
+// digestFromBytes lit les marques d'un artefact déjà en mémoire (cas du dépôt d'un ouvrier :
+// le blob est là, le relire depuis le disque serait absurde).
+func digestFromBytes(raw []byte) (artifactDigest, bool) {
 	var head struct {
+		SchemaVersion int               `json:"schemaVersion"`
+		Tracks        []json.RawMessage `json:"tracks"`
 		ScoreTimeline struct {
 			Players []json.RawMessage `json:"players"`
 		} `json:"scoreTimeline"`
 	}
 	if err := json.Unmarshal(raw, &head); err != nil {
-		return false
+		return artifactDigest{}, false
 	}
-	return len(head.ScoreTimeline.Players) > 0
+	return artifactDigest{
+		schemaVersion: head.SchemaVersion,
+		players:       len(head.ScoreTimeline.Players),
+		tracks:        len(head.Tracks),
+		bytes:         len(raw),
+	}, true
 }
 
 // writeArtifact sérialise le document et l'écrit ATOMIQUEMENT (cf.

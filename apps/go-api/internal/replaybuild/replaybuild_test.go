@@ -39,14 +39,14 @@ func TestArtifactUpToDate(t *testing.T) {
 	}
 }
 
-// TestArtifactHasMatchFacts — le prédicat qui distingue un artefact COMPLET d'un artefact
-// APPAUVRI, là où la version de schéma ne les distingue pas.
+// TestArtifactHasPlayerCounters — le prédicat constate une PROPRIÉTÉ DU DOCUMENT
+// (`scoreTimeline.players` non vide), là où la version de schéma ne distingue rien.
 //
-// Le signal est `scoreTimeline.players`, et il est adossé au contrat du document lui-même
-// (`document_score.go:147-148` : « Players porte les joueurs dont le slot d'entité a été apparié
-// à une ligne de match. Vide quand l'appelant n'a pas fourni les lignes »). Mesuré sur deux
+// Il n'affirme PAS que les faits manquaient quand il rend faux : trois vacuités légitimes
+// existent (film sans enregistrement d'entité, appariement ambigu, aucun compteur dans la
+// fenêtre). C'est pourquoi ses appelants exigent une condition de plus. Mesuré sur deux
 // témoins le 2026-08-24 : 8 avec faits, 0 sans, sur 7344d24f comme sur 530820e5.
-func TestArtifactHasMatchFacts(t *testing.T) {
+func TestArtifactHasPlayerCounters(t *testing.T) {
 	dir := t.TempDir()
 	cas := map[string]struct {
 		contenu string
@@ -63,11 +63,11 @@ func TestArtifactHasMatchFacts(t *testing.T) {
 		if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
 			t.Fatalf("écriture fixture %s: %v", nom, err)
 		}
-		if got := ArtifactHasMatchFacts(p); got != c.attendu {
-			t.Errorf("%s : ArtifactHasMatchFacts = %v, attendu %v", nom, got, c.attendu)
+		if got := ArtifactHasPlayerCounters(p); got != c.attendu {
+			t.Errorf("%s : ArtifactHasPlayerCounters = %v, attendu %v", nom, got, c.attendu)
 		}
 	}
-	if ArtifactHasMatchFacts(filepath.Join(dir, "absent.json")) {
+	if ArtifactHasPlayerCounters(filepath.Join(dir, "absent.json")) {
 		t.Error("artefact absent : attendu « sans faits », obtenu « avec faits »")
 	}
 }
