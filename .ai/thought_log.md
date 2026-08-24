@@ -1,3 +1,40 @@
+## [2026-08-24] Lot S (S3+S4) — backfill-killsource examine et LAISSE EN L ETAT, docs remises d accord — Complete
+
+**Contexte** : S3 demandait le meme blindage parent/enfant pour `backfill-killsource`, ou une
+refutation motivee. S4 : que les docs qui decrivent le comportement ne le contredisent pas.
+
+**Decision technique principale** : S3 statue `[!]` — PAS de decoupage, PAS de sentinelle, avec
+quatre motifs verifies sur pieces. (1) Aucune retention inter-matchs : `KillSourceCollector`
+n'a que des poignees sans etat, `CollectMatches` n'accumule que des compteurs et le `[]string`
+des identifiants. (2) Le pic est une fonction BORNEE des octets du film — brut garde vivant
+(`ChunkSourceOf` l'aliase) plus decompresse (`loadFilm` : `f.chunks = make([][]byte, n)`) ;
+mesure du cache (951 films) : le plus gros du corpus est `1c4c63c2` a 88 Mio / 69 chunks,
+moyenne 24 Mio, donc pire cas largement sous le gibioctet. (3) Le rejeu 2D n'a AUCUN rapport
+avec la taille du film : `51101d1d` pese 9,1 Mio sur disque et a fait monter la passe a
+7,36 Gio — pres de 800x ses octets — parce que son pic est fait d'une quinzaine de tranches a
+l'echelle du RECORD, toutes vivantes ensemble. C'est cette amplification qui exigeait un
+processus par film ; elle n'existe pas chez killsource. (4) Le decoupage couterait plus qu'il
+ne rapporterait : cette commande tient un handle RW sur le shared pendant toute la passe ; un
+enfant par match devrait rouvrir la base en ecriture et rejouer les migrations 950 fois, en
+multipliant les occasions de mourir au milieu d'une transaction (ADR 0013/0019/0026).
+Corollaire ecrit : aucune sentinelle non plus, car elle fait `os.Exit` — acceptable dans un
+processus qui ne tient aucune base en ecriture, interdit dans celui-ci ; et un plafond souple a
+3 Gio sur une passe qui plafonne sous le gibioctet ne serait qu'un reglage mort (regle 11).
+Le raisonnement et son critere de reexamen (un film > ~500 Mio sur disque, ou des structures a
+l'echelle du record cote killsource) sont deposes dans l'en-tete du fichier, la ou le prochain
+lecteur les cherchera.
+
+**Resultats observes** : S4 — `docs/COMMANDS.md` (EN et FR) ne documente NI `backfill-replay` NI
+`backfill-killsource` : la clause « si la commande y figure » ne s'applique pas, rien a
+traduire, statue `[~]` (l'en-tete de fichier fait autorite pour ces deux commandes). En
+revanche `main.go/printUsage` decrivait `backfill-replay` avec « (--dry-run, --limit, --force) »
+— desormais faux et incomplet : ligne reecrite (un processus par film, echecs ventiles,
+`--only-existing`, `--mem-limit-gib`). L'en-tete de `cmd_backfill_replay.go` a ete refait dans
+le commit S1+S2, en LEVANT ses deux anciennes objections au lieu de les laisser contredire le
+code. Gates verts (build, vet, test cmd/levelup).
+
+**Conclusion / prochaine etape** : S5 — passe complete sur les ~25 films restants.
+
 ## [2026-08-24] Lot S (S1+S2) — blindage memoire de backfill-replay : un film = un processus — Complete
 
 **Contexte** : le 2026-08-20 vers 14h50, `levelup backfill-replay --only-existing` (29 films) a
