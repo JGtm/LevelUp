@@ -19,10 +19,26 @@
  *
  * LA RÈGLE QUI EN SORT — on n'affiche jamais un nombre non prouvé (même doctrine que le
  * bandeau de score, masqué quand son horloge n'est pas recalée) : dès qu'une trace SANS xuid
- * chevauche un seul des trous d'un joueur, sa mesure est REFUSÉE (`null`), et la fiche écrit
+ * POURRAIT ÊTRE LA VIE MANQUANTE d'un joueur, sa mesure est REFUSÉE (`null`) et la fiche écrit
  * « non mesurable ». Pas d'attribution devinée, pas de soustraction de la portion douteuse :
  * rafistoler un chiffre faux le rendrait invérifiable, pas juste. Même refus pour un joueur du
  * roster SANS AUCUNE vie : le film ne l'a jamais situé, « 00:00 » se lirait « jamais à terre ».
+ *
+ * « POURRAIT ÊTRE LA VIE MANQUANTE » SE DÉMONTRE, ET C'EST UNE PREUVE D'EXCLUSION (affinement
+ * du 2026-08-24, ronde 1b). UN JOUEUR N'A QU'UN BIPÈDE À LA FOIS : une trace anonyme qui
+ * déborde sur une vie NOMMÉE de P — elle commence avant sa mort, ou elle court encore après son
+ * retour — ne peut pas être une vie de P, puisque P était ailleurs, incarné, à ce moment-là.
+ * Elle ne prouve donc RIEN contre son trou. Seule une trace CONTENUE dans le trou (`start >=`
+ * début du trou ET `end <=` fin du trou) reste une candidate, et c'est elle seule qui force le
+ * refus. On ne rattache toujours rien à personne : on refuse quand le doute est réel, et on
+ * mesure quand il ne l'est pas.
+ *
+ * CE QUE CET AFFINEMENT CHANGE, MESURÉ : la version large refusait 19 joueurs sur 24 sur trois
+ * témoins, parce que les traces anonymes sont groupées en FIN de match (caméras et spectateurs
+ * qui courent au-delà d'un respawn, souvent jusqu'à la dernière image) et traversaient donc les
+ * trous de presque tout le monde. Les deux cas PROUVÉS par la revue, eux, sont bien contenus et
+ * restent refusés : `64e8adfa` slot 607 [5541..7496] dans le trou [5441..7519] de flamesamurai,
+ * `000d5950` slot 588 [3853..4170] dans le trou [3714..4256] de JGtm.
  *
  * AUCUNE CONSTANTE DE RÉAPPARITION N'ENTRE ICI. Le délai de retour mesuré sur le film de
  * référence (médiane 8,0 s, 66 épisodes sur 82 à 7,9-8,0 s) est un PALIER OBSERVÉ sur un match,
@@ -102,7 +118,7 @@ function deadFrames(
   let covered = -1
   for (const w of windows) {
     if (covered >= 0 && w.start > covered) {
-      if (overlapsAny(orphans, covered, w.start)) return null
+      if (containsAny(orphans, covered, w.start)) return null
       total += w.start - covered
     }
     if (w.end > covered) covered = w.end
@@ -111,14 +127,19 @@ function deadFrames(
 }
 
 /**
- * overlapsAny — une vie anonyme vit-elle DANS le trou `]start, end[` ?
+ * containsAny — le trou `[start, end]` contient-il une vie anonyme ENTIÈRE ?
  *
- * INTERSECTION STRICTEMENT POSITIVE : une trace qui ne fait que toucher la borne du trou (elle
- * finit là où il commence, ou commence là où il finit) ne prouve rien sur son intérieur, et
- * refuser la mesure pour un contact de largeur nulle rendrait la ligne muette partout.
+ * DEUX CONDITIONS, ET CHACUNE ÉCARTE UN FAUX REFUS :
+ *   - CONTENUE (`o.start >= start` et `o.end <= end`) : une trace qui déborde d'un côté ou de
+ *     l'autre chevauche une vie nommée du joueur, donc ne peut pas être une vie de lui (un
+ *     bipède à la fois). Elle ne prouve rien — cf. l'en-tête du module.
+ *   - DE DURÉE NON NULLE (`o.end > o.start`) : une trace ponctuelle, sans étendue, ne montre
+ *     personne en train de jouer pendant le trou. C'est la règle « intersection strictement
+ *     positive » de la ronde 1, conservée : elle interdisait déjà de refuser sur un simple
+ *     contact de bornes, elle interdit ici de refuser sur un point.
  */
-function overlapsAny(orphans: readonly Span[], start: number, end: number): boolean {
-  return orphans.some((o) => Math.min(end, o.end) - Math.max(start, o.start) > 0)
+function containsAny(orphans: readonly Span[], start: number, end: number): boolean {
+  return orphans.some((o) => o.start >= start && o.end <= end && o.end > o.start)
 }
 
 /** spanOf borne la vie d'une trace à la fenêtre publiée du match. */

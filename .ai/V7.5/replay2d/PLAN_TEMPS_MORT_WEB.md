@@ -169,7 +169,59 @@ seuls joueurs mesurés :
 
 Les médianes des joueurs mesurés restent dans la fourchette 8-10 s du registre, et le cas
 prouvé faux ne s'affiche plus. Le TAUX DE REFUS, lui, est très élevé : cf. Découverte 6, qui
-est la question à trancher en ronde 2.
+est la question à trancher en ronde 2. RÉSOLU EN RONDE 1b — voir ci-dessous.
+
+## Ronde 1b — affinement de la règle et gel de dette (2026-08-24)
+
+Deux points arbitrés par le coordinateur après vérification de la ronde 1.
+
+- `[x]` **Taux de refus (Découverte 6) — règle AFFINÉE, pas assouplie.** Une trace anonyme
+  n'invalide le trou `G` d'un joueur que si elle y est CONTENUE (`start >= G.start` ET
+  `end <= G.end`, bornes en images après clamp). Justification, écrite en tête du module :
+  UN JOUEUR N'A QU'UN BIPÈDE À LA FOIS — une trace qui déborde sur une vie NOMMÉE du joueur
+  ne peut pas être une vie de lui, il était ailleurs, incarné ; elle ne prouve donc rien
+  contre son trou. Seule une trace qui POURRAIT être la vie manquante force le refus. C'est
+  une preuve d'EXCLUSION, pas une attribution devinée : on ne rattache toujours rien à
+  personne. La clause « durée non nulle » de la ronde 1 est CONSERVÉE (une trace ponctuelle
+  ne montre personne en train de jouer) — les deux conditions se cumulent.
+- `[x]` **Gel de dette : `ReplayTeams.test.tsx` ramené à sa taille d'avant-lot.** Tous les
+  tests de temps mort (phase 1 ET ronde 1) sont partis dans `ReplayTeamsDeadTime.test.tsx`
+  (nouveau fichier, 165 L). `ReplayTeams.test.tsx` fait de nouveau 881 L — EXACTEMENT sa
+  taille d'origine — et son diff vs `b16ba17e5` tient en 2 lignes (le compteur de rangées de
+  la fiche compacte, `avant - 2` -> `avant - 3`, et son commentaire). La Découverte 8 est
+  donc close. `TRACK` est recopié localement dans le nouveau fichier (2e et dernière copie,
+  règle « <= 2 ») : exporter une constante d'un fichier de test pour l'importer dans un autre
+  créerait une dépendance entre suites.
+
+Tests ajoutés (dans `deadTimeLogic.test.ts`, nouveau bloc « seule une vie anonyme CONTENUE
+dans le trou refuse ») : les DEUX cas réels du relecteur en fixtures aux coordonnées exactes
+(`64e8adfa` slot 607 [5541..7496] dans [5441..7519] ; `000d5950` slot 588 [3853..4170] dans
+[3714..4256]) -> refus ; débordement sur la vie suivante, sur la précédente, enjambement
+complet, caméra de fin de match courant jusqu'à `frameCount` -> MESURÉ ; deux traces dont une
+seule contenue -> refus ; trace ponctuelle dans le trou -> mesuré. Inchangés et re-vérifiés :
+`lives` vide -> null, anonyme avant la première vie / après la dernière -> inoffensif.
+
+Gates ronde 1b (`node_modules/.tmp` purgé avant `tsc`) :
+- `npx tsc -b` -> 0 erreur ;
+- `npx vitest run src/features/match-replay` -> 70 fichiers, 1 047 tests, 0 échec ;
+- `npx eslint src/features/match-replay --max-warnings=-1` -> 0 erreur, 1 avertissement
+  préexistant hors périmètre.
+
+Plausibilité — AVANT (règle large, ronde 1) puis APRÈS (règle contenue, ronde 1b) :
+
+| artefact | ronde 1 | ronde 1b | médiane/mort des mesurés | plus long trou |
+|---|---|---|---|---|
+| `000d5950` | 1 mesuré / 7 « — » | **2 / 6** | 8,1 s | 8,8 s |
+| `7344d24f` | 3 mesurés / 5 « — » | **8 / 0** | 10,1 s | 18,3 s |
+| `64e8adfa` | 1 mesuré / 7 « — » | **3 / 5** | 10,1 s | 10,7 s |
+| TOTAL | 5 / 19 | **13 mesurés / 11 refus** | | |
+
+VÉRIFIÉ NOMMÉMENT (assertions de la sonde, pas une lecture à l'oeil) : `JGtm` sur `000d5950`
+et `flamesamurai` sur `64e8adfa` restent REFUSÉS — les deux cas prouvés par la revue.
+`7344d24f` passe à zéro refus : ses 5 traces anonymes courent toutes jusqu'à la dernière
+image (5 647 à 5 688 sur 5 689), donc aucune n'est contenue dans un trou. C'est exactement le
+motif « caméra de fin de match » que l'affinement devait cesser de punir. Les 11 refus qui
+restent sont des traces courtes et tardives, réellement contenues : le doute y est réel.
 
 ## Garde-rails d'exécution
 
@@ -212,7 +264,8 @@ est la question à trancher en ronde 2.
    `normalizeReplayDocument` hors de la fixture. Sonde donc placée sous `src/lib/replay/`
    puis supprimée. Garde-rail correct, simple contrainte à connaître pour les mesures
    ponctuelles sur artefacts réels.
-6. **LE TAUX DE REFUS EST TRÈS ÉLEVÉ — question de ronde 2, non tranchée ici.** La règle
+6. **TRANCHÉE EN RONDE 1b (règle affinée : contenue dans le trou). Taux de refus ramené de
+   19/24 à 11/24.** Ce qui suit est le constat d'origine, gardé pour la trace. La règle
    arbitrée (toute trace sans xuid qui chevauche un trou invalide le joueur) refuse
    **19 joueurs sur 24** sur les trois témoins (1/8, 3/8, 1/8 mesurés). La ligne affiche donc
    « — » quatre fois sur cinq. La règle est appliquée telle qu'arbitrée ; ce qui suit est la
@@ -239,11 +292,10 @@ est la question à trancher en ronde 2.
    d'espionner le module ou de compter des rendus, deux tests réputés fragiles. Le risque
    résiduel est une régression de performance silencieuse sur les gros BTB, pas un faux
    affichage.
-8. **`ReplayTeams.test.tsx` dépasse le seuil de 500 L du dépôt** : 882 L avant ce lot, 982 L
-   après (les cas du temps mort et du refus). Dette PRÉEXISTANTE que ce lot accroît de 100 L,
-   signalée et non traitée : découper un fichier de tests est un lot à part (il faudrait
-   décider la frontière — par étage de fiche ? par règle ?), et le faire ici mêlerait un
-   refactor de tests à une correction de revue.
+8. **CLOSE EN RONDE 1b.** ~~`ReplayTeams.test.tsx` dépasse le seuil de 500 L : 881 L avant ce
+   lot, 981 L après.~~ Les tests de temps mort sont partis dans `ReplayTeamsDeadTime.test.tsx`
+   et le fichier est revenu à 881 L, sa taille exacte d'avant-lot : la dette gelée n'est pas
+   accrue. Elle reste une dette (881 L pour un seuil à 500), simplement pas de notre fait.
 
 ## CR attendu
 

@@ -695,105 +695,6 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   })
 })
 
-/**
- * LE TEMPS MORT (2026-08-24) — un TOTAL DE MATCH sur une fiche par ailleurs peuplée de
- * lectures à l'instant. Ces tests tiennent les quatre choses qui le distinguent : il ne tique
- * pas, il s'écrit `mm:ss` même à zéro, il s'écrit d'un TIRET quand le film ne permet pas de le
- * mesurer (et l'infobulle dit alors pourquoi), et la fiche compacte ne le porte pas.
- */
-describe('ReplayTeams — temps mort cumulé', () => {
-  /** Deux vies séparées de 80 images ; une image = une seconde, donc 80 s de temps mort. */
-  const AVEC_TROU = {
-    frameCount: 1000,
-    frameIntervalMs: 1000,
-    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
-    tracks: [TRACK, { ...TRACK, slot: 513, startFrame: 180, endFrame: 300 }],
-  }
-
-  it('écrit le cumul en mm:ss, minutes complétées', () => {
-    const doc = testReplayDoc(AVEC_TROU)
-    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
-    expect(view.getByTitle('Temps mort').textContent).toContain('01:20')
-  })
-
-  it('ne TIQUE pas avec la lecture : c’est un total de match, pas une valeur à l’instant lu', () => {
-    const doc = testReplayDoc(AVEC_TROU)
-    const tot = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
-    expect(tot.getByTitle('Temps mort').textContent).toContain('01:20')
-    tot.unmount()
-    // Image 140 : le joueur est justement DANS son trou, et le total reste le même.
-    const tard = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
-    expect(tard.getByTitle('Temps mort').textContent).toContain('01:20')
-  })
-
-  it('un joueur jamais mort affiche 00:00 — une mesure, pas une lacune', () => {
-    renderTeams({})
-    expect(screen.getByTitle('Temps mort').textContent).toContain('00:00')
-  })
-
-  it('EN : « Time dead » porte la même valeur', () => {
-    const doc = testReplayDoc(AVEC_TROU)
-    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="en" />)
-    expect(view.getByTitle('Time dead').textContent).toContain('01:20')
-    expect(view.queryByTitle('Temps mort')).toBeNull()
-  })
-
-  it('la fiche COMPACTE ne le porte pas : elle n’a pas de rangée libre', () => {
-    const doc = testReplayDoc(AVEC_TROU)
-    const view = render(
-      <ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" compact />,
-    )
-    expect(view.queryByTitle('Temps mort')).toBeNull()
-    expect(view.queryByTitle(/Non mesurable/)).toBeNull()
-  })
-
-  /**
-   * LA MESURE REFUSÉE À L'ÉCRAN (revue adversariale du 24/08, constats 1 et 2) : une vie que le
-   * film ne rattache à personne vit dans le trou du joueur. La fiche écrit un tiret et DIT
-   * pourquoi — sans l'infobulle, le tiret se lirait comme une panne d'affichage.
-   */
-  it('vie non rattachée dans le trou : un TIRET, et l’infobulle en donne la raison', () => {
-    const doc = testReplayDoc({
-      ...AVEC_TROU,
-      tracks: [
-        TRACK,
-        { ...TRACK, slot: 900, xuid: undefined, startFrame: 120, endFrame: 160 },
-        { ...TRACK, slot: 513, startFrame: 180, endFrame: 300 },
-      ],
-    })
-    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
-    const ligne = view.getByTitle(/^Non mesurable/)
-    expect(ligne.textContent).toContain('—')
-    expect(ligne.textContent).not.toContain('01:20')
-    // La rangée existe toujours : le refus ne fait pas sauter la fiche.
-    expect(ligne.textContent).toContain('Temps mort')
-  })
-
-  it('joueur du roster sans aucune vie : le même tiret, jamais 00:00', () => {
-    const doc = testReplayDoc({
-      ...AVEC_TROU,
-      roster: [
-        { xuid: 'A', filmIndex: 0, name: 'Alpha' },
-        { xuid: 'Z', filmIndex: 1, name: 'Zoulou' },
-      ],
-    })
-    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
-    // Alpha garde sa mesure ; Zoulou, que le film n'a jamais situé, affiche le refus.
-    expect(view.getByTitle('Temps mort').textContent).toContain('01:20')
-    expect(view.getByTitle(/^Non mesurable/).textContent).toContain('—')
-  })
-
-  it('EN : le refus parle anglais lui aussi', () => {
-    const doc = testReplayDoc({
-      ...AVEC_TROU,
-      roster: [{ xuid: 'Z', filmIndex: 1, name: 'Zoulou' }],
-      tracks: [],
-    })
-    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="en" />)
-    expect(view.getByTitle(/^Not measurable/).textContent).toContain('—')
-  })
-})
-
 describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
   it('marque « Moi » le joueur de la page et « Ami » un ami, rien pour les autres', () => {
     const doc = testReplayDoc({
@@ -886,9 +787,7 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
     validee.unmount()
     const compacte = renderCompact({}, true)
     expect(compacte.queryByTitle('Zone de la carte')).toBeNull()
-    // Trois rangées de moins : la zone, la rangée d'inventaire fondue dans celle des armes,
-    // et le TEMPS MORT (2026-08-24) — un total de match que la compacte ne porte pas, son
-    // objet étant d'être plus courte.
+    // Trois de moins : la zone, l'inventaire fondu dans les armes, le temps mort (24/08).
     expect(rangees(compacte)).toBe(avant - 3)
   })
 
