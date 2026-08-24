@@ -42,7 +42,9 @@ import {
   normalizeMapObjectives,
 } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
+import { buildFireMarks, drawFireMarks } from './fireMark'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
+import { SlidersIcon } from './SlidersIcon'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
@@ -71,7 +73,7 @@ import {
   drawShotsLayer,
 } from './replayDraw'
 import { drawGrenadeRestLayer } from './grenadeRestLayer'
-import { fitWidth, formatClock, frameToMs, isAliveAt, sceneBounds } from './replayLogic'
+import { fitWidth, formatClock, frameToMs, sceneBounds } from './replayLogic'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
@@ -155,7 +157,6 @@ export function ReplayCanvas({
   const containerRef = useRef<HTMLDivElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
-  const aliveRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
   const publishedAtRef = useRef(0)
 
@@ -281,6 +282,9 @@ export function ReplayCanvas({
   // une fois au chargement (mesure : la couverture d'orientation passe de 18,6 % à 100 % sur
   // le film témoin en relisant le regard plutôt que le champ de l'événement).
   const shotFx = useMemo(() => buildShotFx(doc, timing.aimHold), [doc, timing.aimHold])
+  // Le « ! » dans le point du tireur (demande du 2026-08-24) : mêmes tirs, même fenêtre
+  // que l'éclair de bouche — deux effets du même événement (cf. fireMark.ts).
+  const fireMarks = useMemo(() => buildFireMarks(doc), [doc])
   // Les effets de mort sont PRÉCALCULÉS en monde (positions relues une fois, patron POC) :
   // pendant la lecture, seul le passage monde -> pixels reste à faire.
   const killFx = useMemo(
@@ -456,6 +460,14 @@ export function ReplayCanvas({
       deathInk: shotColor,
       labelStroke,
     })
+    // Le « ! » PAR-DESSUS le marqueur du tireur, centré dans le noyau : il se lit sur le
+    // point, il se dessine donc juste après lui. Même interrupteur que l'éclair de bouche
+    // (« Effets de tirs ») : c'est le même événement, un seul geste l'éteint.
+    if (showShotFx && fireMarks.length > 0) {
+      drawFireMarks(ctx, fireMarks, view, {
+        frame, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k: dpr,
+      })
+    }
 
     // La LIGNE DE GRAPPIN juste au-dessus des trajectoires et SOUS les effets de tir :
     // c'est un lien joueur -> point d'accroche, il se lit sur la trajectoire sans couvrir
@@ -536,10 +548,6 @@ export function ReplayCanvas({
     if (clockRef.current) {
       clockRef.current.textContent = `${formatClock(frameToMs(frame, doc))} / ${totalLabel}`
     }
-    if (aliveRef.current) {
-      const alive = doc.tracks.reduce((n, tr) => n + (isAliveAt(tr, frame) ? 1 : 0), 0)
-      aliveRef.current.textContent = `${alive} ${t.aliveSuffix}`
-    }
     if (onFrameChange) {
       const now = performance.now()
       if (now - publishedAtRef.current >= FRAME_PUBLISH_MS) {
@@ -551,7 +559,7 @@ export function ReplayCanvas({
     doc, geometryColor, bounds, zRange, timing, totalLabel, wallInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
-    t.aliveSuffix, renderWidth, canvasView,
+    renderWidth, canvasView,
     placements.counts.drawable,
     placements.windowTime,
     placements.toggles,
@@ -564,6 +572,7 @@ export function ReplayCanvas({
     eventHoldFrames,
     shotHoldFrames,
     shotFx,
+    fireMarks,
     fxInk,
     grappleFx,
     grappleInk,
@@ -648,25 +657,23 @@ export function ReplayCanvas({
             lui prendre sa place, donc le canvas ne se retaille plus et le rendu ne saute
             plus à l'ouverture. */}
         <div ref={containerRef} className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-            <div className="flex items-baseline gap-2 text-sm">
-              <span className="font-medium">
-                {doc.tracks.length} {t.livesSuffix}
-              </span>
-              <span ref={aliveRef} className="text-xs text-muted-foreground" />
-            </div>
+          <div className="flex items-center justify-end border-b border-border px-3 py-2">
             {/* TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : un bouton unique, plutôt
                 que la rangée de calques/son/vitesse qui vivait ici — ils sont tous dans le
-                panneau maintenant, avec les nouveaux filtres de son par catégorie. */}
+                panneau maintenant, avec les nouveaux filtres de son par catégorie. Le bouton
+                est une ICÔNE seule (demande du 2026-08-24) : le libellé reste porté par
+                aria-label/title pour l'infobulle et le lecteur d'écran. */}
             <Button
               ref={settingsButtonRef}
               variant={settingsOpen ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setSettingsOpen((v) => !v)}
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2"
               aria-expanded={settingsOpen}
+              aria-label={t.settingsButton}
+              title={t.settingsButton}
             >
-              {t.settingsButton}
+              <SlidersIcon />
             </Button>
           </div>
           <div className="p-3">
@@ -730,16 +737,6 @@ export function ReplayCanvas({
                 <ReplayLeadMarks {...leadMarks} />
               </span>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t.note}
-              {doc.geometry?.length ? ` ${doc.geometry.length} ${t.propsSuffix}.` : ''}
-              {/* CE QUI EST SOUS LES JOUEURS EST DIT. Une carte du jeu et un sol reconstruit ne
-                  se lisent pas de la même façon, et rien à l'écran ne les distingue. */}
-              {` ${mapImage ? t.mapBackgroundNote : t.mapBackgroundFallback}`}
-              {/* L'ÉCRAN DIT « dernière position connue », JAMAIS « impact » : aucun événement
-                  de détonation n'existe dans le film (item 2.3). */}
-              {grenadeRestFx.length > 0 ? ` ${t.grenadeRestNote}` : ''}
-            </p>
           </div>
         </div>
         {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois

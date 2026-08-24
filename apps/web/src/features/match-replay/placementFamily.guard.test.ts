@@ -165,10 +165,15 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * lot y ajoutait une bascule, un comptage, un argument de survol et une prop de garde de mode.
  * Les trois morceaux des poses — comptes, axe de temps, survol — sont donc partis dans
  * `useReplayPlacements` AVANT l'ajout, cinquieme extraction imposee par ce cliquet.
+ *
+ * 808 -> 797 le 2026-08-24 (epure UI + « ! » du tireur) : le canvas etait PILE a son plafond
+ * et le lot y ajoutait le calque fireMark. L'icone du bouton de reglages (ajoutee le meme
+ * jour) est donc partie dans `SlidersIcon.tsx` AVANT l'ajout, sixieme extraction imposee par
+ * ce cliquet ; la suppression du paragraphe de note et du compteur de vies fait le reste.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(808)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(797)
   })
 })
