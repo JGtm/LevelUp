@@ -10026,6 +10026,25 @@ export interface components {
             id: string;
             name: string;
         };
+        SquadAssistPair: {
+            /** Format: int64 */
+            assist_count: number;
+            assist_gamertag: string;
+            assist_xuid: string;
+            killer_gamertag: string;
+            killer_xuid: string;
+            /** Format: int64 */
+            stolen_count: number;
+        };
+        SquadAssistPairs: {
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            pairs: components["schemas"]["SquadAssistPair"][] | null;
+            /** Format: int64 */
+            total_assists: number;
+        };
         SquadBreakdownStats: {
             /** Format: double */
             avg_kda: number;
@@ -10793,6 +10812,7 @@ export interface components {
             xuid?: string;
         };
         TeammatesPageResponse: {
+            assist_pairs?: components["schemas"]["SquadAssistPairs"];
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;

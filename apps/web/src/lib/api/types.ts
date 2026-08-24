@@ -1336,6 +1336,16 @@ export type MedalDigestItem = components['schemas']['MedalDigestItem'] & {
 
 export type MedalDigestEntry = components['schemas']['MedalDigestEntry']
 
+/** Ligne du tableau « qui assiste qui » de l'escouade (assistant → tueur assisté). */
+export type SquadAssistPair = components['schemas']['SquadAssistPair']
+
+/**
+ * Bloc « assistances » de l'escouade : les paires internes ET la couverture de la
+ * mesure (`matches_measured` / `matches_total`). Ré-export DIRECT du contrat, sans
+ * réécrire le `pairs: […] | null` : le tableau nullable est la forme réelle du fil.
+ */
+export type SquadAssistPairs = components['schemas']['SquadAssistPairs']
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
@@ -1364,6 +1374,9 @@ export interface TeammatesPageResponse {
   native_kill_mechanics?: SquadKillMechanics
   /** Premiers frag/mort PAR MATCH, une série par joueur de l'escouade (onglet Dynamique). */
   first_blood?: FirstBloodPlayerSeriesDTO[]
+  /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
+   *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
+  assist_pairs?: SquadAssistPairs
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
