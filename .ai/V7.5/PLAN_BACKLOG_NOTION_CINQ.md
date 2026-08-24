@@ -67,43 +67,66 @@ Précédent de listing en masse : `replay_purge_cron.go:137` (`os.ReadDir` uniqu
 
 ### Items
 
-- [ ] A1 — Go : méthode bulk sur le service replay (`internal/service/replay_service.go`
+- [x] A1 — Go : méthode bulk sur le service replay (`internal/service/replay_service.go`
   + port) : `AvailableSet(ctx) (map[string]struct{}, error)` — UN `os.ReadDir` de
   `ReplayArtifactsDir(titleSlug)`, clés = short8 (`FilmShortMatchID`). Chemins via
   `PathResolver` uniquement. Erreur : logger `slog.ErrorContext` puis set vide
   (dégradation propre, pas de 500).
-- [ ] A2 — Go : `HasReplay bool \`json:"has_replay,omitempty"\`` sur
+  → Type nommé `port.ReplayAvailability` (`internal/port/replay_availability.go`) au
+  lieu du `map[string]struct{}` nu : il porte `Has(matchID)` qui normalise le match_id
+  complet en forme courte, une seule fois, pour tous les appelants.
+- [x] A2 — Go : `HasReplay bool \`json:"has_replay,omitempty"\`` sur
   `domain.MatchHistoryRow` (au niveau de `MatchURL`) ; câblage
   `MatchHistoryService` : nouveau `WithReplay(...)`, `rowFormatters.hasReplay`
   (lookup O(1) dans le set construit UNE fois par requête dans `GetPage`, jamais un
   Stat par ligne) ; wiring dans `MatchHistoryCtx`
   (`internal/api/wire/registry_pages_home.go`) sur le modèle de `MatchViewCtx`
   (`registry_pages.go:112-115`).
-- [ ] A3 — Go : propagation `ExplorerMatchesRow.HasReplay` dans
+  → `rowFormatters()` prend désormais l'ensemble en paramètre ; l'export CSV passe
+  `nil` (pas de colonne rejeu dans le CSV → aucun listing payé).
+- [x] A3 — Go : propagation `ExplorerMatchesRow.HasReplay` dans
   `BuildExplorerRowFromMatchHistory` (`handlers/projections.go`), comme `MatchURL`.
-- [ ] A4 — Go : filtre Explorer `replay_scope` (3 états `''|'with'|'without'`, patron
+- [x] A4 — Go : filtre Explorer `replay_scope` (3 états `''|'with'|'without'`, patron
   exact du `squadScope`) : champ dans `ExplorerMatchesQueryRequest`
   (`domain/explorer.go`) + branche dans `applyExplorerMatchFilters`
   (`match_history_service_filters.go`). Le filtre s'applique côté Go, comme les 7
   existants.
-- [ ] A5 — Go : `SquadMatchHistoryRow.HasReplay` (`domain/teammates.go:344-369`) +
+  → L'ensemble est passé en PARAMÈTRE explicite à `applyExplorerMatchFilters` et aux
+  5 compteurs cascade (`computeAvailable*`), pas caché dans le DTO de requête : les
+  counts des autres dimensions restent cohérents quand le filtre rejeu est actif. Le
+  filtre vit dans `match_history_filter_replay.go` (le fichier filtres était au seuil
+  des 500 lignes).
+- [x] A5 — Go : `SquadMatchHistoryRow.HasReplay` (`domain/teammates.go:344-369`) +
   câblage dans le service teammates (deuxième point d'ajout, service séparé).
-- [ ] A6 — contrats : régénérer `openapi.yaml` + `make generate-types` ; gate openapi
-  contracttest vert.
-- [ ] A7 — web : colonne « Rejeu » dans `ExplorerMatchesTable` (dans `baseColumns`,
+- [x] A6 — contrats : régénérer `openapi.yaml` + `make generate-types` ; gate openapi
+  contracttest vert. → `has_replay` publié sur les 3 schémas de ligne ; `replay_scope`
+  n'apparaît pas au contrat car les request bodies `RawBody` ne sont décrits que
+  partiellement par le fragment manuel (même traitement que `squad_scope` et les 6
+  autres filtres Explorer — cf. Découvertes).
+- [x] A7 — web : colonne « Rejeu » dans `ExplorerMatchesTable` (dans `baseColumns`,
   `columnHelper.display`) : icône `themedIconSrc('replay', theme)` + `<Link>` interne
   typé vers la route `.../matches/$matchId/replay` (gabarit STRUCTUREL = colonne
   Waypoint `ExplorerMatchesTable.tsx:406-441`, mais lien interne, pas externe) ;
   rien rendu si `has_replay` faux. En-têtes i18n FR « Rejeu » / EN « Replay ».
-- [ ] A8 — web : même colonne dans `SquadSynergyHistoryTable`.
-- [ ] A9 — web : filtre « Rejeu » dans la page Explorer : champ `replayScope` dans
+  → i18n via le MANIFESTE `lib/i18n/manifests/explorer.toml` (mécanisme de la feature
+  Explorer, ADR 0003), pas un `i18n.ts` : `explorer.matches.col_replay(_aria)`.
+- [x] A8 — web : même colonne dans `SquadSynergyHistoryTable`.
+  → Cellule factorisée dès la 2e copie dans `lib/match-nav/MatchReplayLink.tsx`
+  (partagé par les deux tableaux) ; i18n squad = `history.replayAriaLabel` (FR/EN).
+- [x] A9 — web : filtre « Rejeu » dans la page Explorer : champ `replayScope` dans
   `ExplorerScope` + `EncodedExplorerScope` + encode/decode + `EXPLORER_URL_KEYS` +
   `explorerSearchSchema` + contrôle UI (3 états : tous / avec rejeu / sans rejeu),
   patron du contrôle `squadScope` existant ; branché dans la requête
-  `matches-query`.
-- [ ] A10 — tests : Go = test unitaire du set bulk (dossier fixture) + test du filtre
+  `matches-query`. → param URL `replay`. Sans compte par option (le backend n'expose
+  pas de dimension cascade pour le rejeu, cf. A4).
+- [x] A10 — tests : Go = test unitaire du set bulk (dossier fixture) + test du filtre
   `replay_scope` dans les tests du service match_history existants ; web = test du
   rendu conditionnel de la colonne + encode/decode du scope (vitest).
+  → Go : `replay_service_test.go` (3 tests set bulk : listing/intrus, dossier absent,
+  isolation par titre) + `match_history_replay_test.go` (has_replay, UN SEUL listing
+  par requête, 3 états du filtre, double dégradation, ensemble vide). Web :
+  `ExplorerMatchesTable.test.tsx` + `SquadSynergyHistoryTable.test.tsx` (rendu
+  conditionnel) + `explorerScope.test.ts` (encode/decode/schéma 3 états).
 
 Hors périmètre déclaré : cartes de la Home (`match-card.tsx` — pattern cards, pas un
 tableau) → Découvertes si jugé souhaitable plus tard.
@@ -372,3 +395,16 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
   inexistantes) et ne mentionne pas `match_kill_events` (recherche 2026-08-24).
 - `MatchNarrativeSection.tsx` (221 L) : composant orphelin jamais monté.
 - Cartes Home (`match-card.tsx`) sans indicateur rejeu (hors périmètre lot A).
+- Fragment OpenAPI manuel PÉRIMÉ sur les request bodies Explorer (lot A, 2026-08-24) :
+  `ExplorerMatchesQueryRequest` y est décrit avec un `match_filters:
+  ExplorerMatchFilters` que le handler Go NE LIT PLUS (le corps réel porte les filtres
+  à plat : `squad_scope`, `experience_types`, `playlists`, `perf_tiers`, `match_ids`…).
+  `MatchHistoryQueryRequest` est décrit de même de façon partielle (4 champs sur ~20).
+  Conséquence : aucun des 8 filtres Explorer n'est au contrat publié. Non traité (hors
+  périmètre) — `replay_scope` a reçu le même traitement que ses 7 voisins.
+- `ExplorerMatchesTable.tsx` reste un god-file (1113 L avant le lot, 1132 après) : la
+  colonne rejeu y ajoute ~19 lignes malgré l'extraction de la cellule dans
+  `lib/match-nav/MatchReplayLink.tsx`. Découpe du fichier non tentée (hors périmètre).
+- L'avertissement eslint `react-hooks/incompatible-library` sur `useReactTable()` est
+  générique au dépôt (vérifié sur `MatchEncountersTable.tsx`, fichier non touché) :
+  2 occurrences sur les fichiers du lot, aucune nouvelle.
