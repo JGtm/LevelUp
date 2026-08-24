@@ -55,9 +55,18 @@ type BuildQueuePayload struct {
 	// porte le bon `schemaVersion` : sans le prédicat de fraîcheur qui regarde les
 	// faits, plus rien ne le re-cuirait jamais.
 	//
-	// Nil = l'enfileur n'a pas résolu de faits (match hors registre, base
-	// indisponible). C'est LÉGITIME et journalisé : l'ouvrier construit alors un
-	// artefact valide mais appauvri, exactement comme le CLI hors ligne.
+	// NIL VEUT DIRE « RIEN DU TOUT », PAS « RIEN D'UTILE ». L'enfileur n'attache ces
+	// faits que s'ils sont non vides au sens de `MatchFacts.Empty()` — c'est-à-dire dès
+	// qu'UN SEUL champ est renseigné. Un pointeur non nil ne promet donc PAS des lignes
+	// de match : un match présent au registre sans aucun participant voyage avec une
+	// variante et des scores, et `Players` vide.
+	//
+	// Un consommateur qui a besoin des COMPTEURS DE JOUEUR doit donc tester
+	// `len(Facts.Players)`, jamais la seule non-nullité du pointeur.
+	//
+	// Nil = l'enfileur n'a résolu aucun fait (match hors registre, base indisponible).
+	// C'est LÉGITIME et journalisé : l'ouvrier construit alors un artefact valide mais
+	// appauvri, exactement comme le CLI hors ligne.
 	Facts *MatchFacts `json:"facts,omitempty"`
 }
 
