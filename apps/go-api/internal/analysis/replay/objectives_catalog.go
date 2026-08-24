@@ -118,9 +118,13 @@ type Zone struct {
 	//
 	// CE N'EST PAS LA LETTRE DU JEU. Le catalogue ne porte aucun nom de zone, et
 	// l'ordre du fichier n'en est pas un non plus. Ce rang sert à désigner la même
-	// zone de la même façon d'une exécution à l'autre — rien de plus. Le jour où la
-	// lettre A/B/C sera établie par un témoin (relevé Theater), elle se posera dans un
-	// champ DISTINCT, sans écraser celui-ci.
+	// zone de la même façon d'une exécution à l'autre — rien de plus.
+	//
+	// LA LETTRE VIT AILLEURS, depuis le 2026-08-24 : `ZoneState.LetterRank`, un champ
+	// DISTINCT du calque vivant, rempli par un FALLBACK D'ORDRE (les zones rangées par
+	// numéro de slot `ti=13` croissant — un ordre mesuré reproductible sur 8 cartes).
+	// Celui-ci n'a pas été écrasé, et ne doit jamais l'être : le rang spatial et le rang
+	// de lettre ne coïncident sur aucune des cartes mesurées.
 	SpatialRank int
 	Center      mapvar.Vec3
 	Volume      mapvar.Volume

@@ -1,0 +1,17 @@
+{
+  "gameVariantName": "Arena:Strongholds",
+  "mapId": "b302eb62-da9a-480b-a409-3c89df8c1a04",
+  "teamScores": [3, 134],
+  "players": [
+    {"xuid":"2533274816256935","kills":6,"deaths":8,"assists":0,"teamId":0},
+    {"xuid":"2533274979078718","kills":0,"deaths":4,"assists":3,"teamId":0},
+    {"xuid":"2535448659276956","kills":3,"deaths":7,"assists":2,"teamId":0},
+    {"xuid":"2535458863661330","kills":0,"deaths":0,"assists":0,"teamId":0},
+    {"xuid":"2535466540701394","kills":3,"deaths":6,"assists":3,"teamId":0},
+    {"xuid":"bid(44.0)","kills":0,"deaths":0,"assists":0,"teamId":0},
+    {"xuid":"2533274823110022","kills":2,"deaths":4,"assists":5,"teamId":1},
+    {"xuid":"2533274858283686","kills":9,"deaths":3,"assists":4,"teamId":1},
+    {"xuid":"2535434426959923","kills":7,"deaths":2,"assists":5,"teamId":1},
+    {"xuid":"2535439626766471","kills":7,"deaths":3,"assists":1,"teamId":1}
+  ]
+}
