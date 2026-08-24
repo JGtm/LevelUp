@@ -228,13 +228,13 @@ Les niveaux de la colonne 2 sont ceux du registre du film, tels que
 **Non, pas aujourd'hui.** Mesure existante du corpus, non re-jouée (item C.0.1 du lot C,
 `registre_film/lotC/7344d24f_delta_masques.tsv` et `696a9d7c_delta_masques.tsv`) :
 
-| film | `ti=12 i9` annonces en delta | plancher de bruit | excès |
-|---|---|---|---|
-| `7344d24f` (Bastion / Vagabond) | 206 | 119,5 | **1,7x** |
-| (rappel du témoin qui parle) `ti=12 i14` | 16 788 | 119,5 | 140,5x |
+| film | `ti=12 i9` annonces en delta | plancher de bruit | excès | témoin qui parle : `ti=12 i14` |
+|---|---|---|---|---|
+| `7344d24f` (Bastion / Vagabond) | 206 | 119,5 | **1,7x** | 16 788 = 140,5x |
+| `696a9d7c` (Bastion / Vagabond) | 25 | 20,0 | **1,2x** | 17 369 = 868,5x |
 
-1,7x le plancher, c'est le niveau de la contamination d'ancrage : **le texte du marqueur
-n'est pas ré-émis en delta**. C'est cohérent avec sa nature — il est posé UNE FOIS, à la
+1,2 à 1,7x le plancher, c'est le niveau de la contamination d'ancrage : **le texte du
+marqueur n'est pas ré-émis en delta**. C'est cohérent avec sa nature — il est posé UNE FOIS, à la
 création du marqueur, comme `ti=13 i0 property-name` (négatif delta déjà établi au lot
 C-bis, §CB.0.3). Le texte vit donc dans l'**image-clé**.
 
