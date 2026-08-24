@@ -22,8 +22,13 @@
  * alors qu'il n'en était que le maximum atteint. Sur un artefact qui ne porte pas `gauge`
  * (schéma <= 17), il n'y a donc PLUS D'ARC DU TOUT : mieux vaut rien qu'un signe qui ment.
  *
- * AUCUN TEXTE, comme le calque statique : la lettre A/B/C affichée en jeu n'existe dans aucune
- * donnée décodée, et le garde-fou du dossier l'interdit.
+ * UN SEUL TEXTE, ET C'EST LA LETTRE DE LA ZONE (2026-08-24). Le calque n'écrivait rien, parce que
+ * la lettre A/B/C du HUD n'existe dans aucune donnée décodée. Elle n'y est toujours pas : ce que
+ * l'artefact publie désormais (`letterRank`) est un FALLBACK D'ORDRE — les zones rangées par
+ * numéro de slot `ti=13` croissant, un ordre mesuré reproductible d'un match à l'autre sur 8
+ * cartes (17 films, 8/8 permutations identiques). Le garde-fou du dossier est amendé en
+ * conséquence : il autorise LE glyphe d'une lettre A-C, et continue d'interdire tout AUTRE texte.
+ * Le verdict « ce sont bien les lettres du jeu » appartient au relevé Theater de l'utilisateur.
  */
 import {
   traceZonePath,
@@ -199,6 +204,19 @@ const ZONE_GAUGE_ALPHA = 0.9
 const ZONE_GAUGE_WIDTH = 3
 const ZONE_GAUGE_MIN_RADIUS = 10
 
+// LA LETTRE DE LA ZONE. Même technique que les libellés de callouts (`calloutsLayer.ts`) :
+// blanc cerné de noir, volontairement HORS thème, cerne arrondi pour que les angles des lettres
+// ne produisent pas de pointes. C'est une encre STRUCTURELLE de calque — elle ne dit aucun rôle
+// métier, elle porte du contraste sur les aplats de la carte, exactement comme le HUD du jeu —,
+// donc la même exception documentée que `canvasInk.ts` s'applique. Plus grande que les callouts :
+// une lettre de base est un repère de premier plan, pas une annotation.
+const ZONE_LETTER_FONT = '700 13px ui-sans-serif, system-ui, sans-serif'
+const ZONE_LETTER_OUTLINE_WIDTH = 2.4
+const ZONE_LETTER_FILL = 'rgba(255, 255, 255, 1)'
+const ZONE_LETTER_STROKE = 'rgba(0, 0, 0, 0.92)'
+/** Les lettres que le HUD connaît. Le producteur ne publie jamais de rang au-delà. */
+const ZONE_LETTERS = ['A', 'B', 'C'] as const
+
 /**
  * drawZoneStates peint, PAR-DESSUS le calque statique, ce que le film dit de chaque zone à
  * l'image courante : teinte du propriétaire, surbrillance de la zone ACTIVE, et l'arc de la
@@ -213,8 +231,9 @@ const ZONE_GAUGE_MIN_RADIUS = 10
  * même — à l'encre neutre, faute de savoir qui tient la zone. Quand un intervalle la couvre et
  * que son propriétaire est connu, l'arc prend l'encre du camp d'en face : celui qui capture.
  *
- * AUCUN TEXTE, comme le calque statique : la lettre A/B/C affichée en jeu n'existe dans aucune
- * donnée décodée, et le garde-fou du fichier l'interdit.
+ * LA LETTRE DE LA ZONE se pose EN DERNIER, dans une seconde passe : une lettre recouverte par le
+ * remplissage de la zone suivante serait illisible une fois sur trois, au hasard de l'ordre du
+ * catalogue. C'est le seul texte que ce calque écrit (cf. l'en-tête).
  *
  * LA GARDE DE JOINTURE EST ICI, dans le calque, et pas seulement chez l'appelant : quand
  * `zones.joinable` est faux, la fonction rend AVANT le premier trait. C'est le calque qui
@@ -231,6 +250,7 @@ export function drawZoneStates(
   const { style } = zones
   const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
   const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
+  const letters: { at: XY; text: string }[] = []
   zones.zoneElements.forEach((e, ref) => {
     const st = states.find((s) => s.zoneRef === ref)
     if (!st) return
@@ -246,8 +266,50 @@ export function drawZoneStates(
       const capturer = now && now.owner !== null ? style.colorOfCapturer(now.owner) : null
       drawGaugeArc(ctx, e, { px, scale, value, ink: capturer ?? style.neutral })
     }
+    const text = zoneLetterOf(st.letterRank)
+    if (text !== null) letters.push({ at: px(e), text })
   })
   ctx.globalAlpha = 1
+  drawZoneLetters(ctx, letters)
+}
+
+/**
+ * zoneLetterOf traduit le rang publié en lettre, ou `null` quand il n'y en a pas.
+ *
+ * UN RANG HORS ALPHABET NE DESSINE RIEN. Le producteur ne publie jamais au-delà de C (la règle
+ * `zoneLetterRanks` refuse un catalogue de plus de trois zones), mais le client ne le suppose
+ * pas : une donnée future hors bornes doit se taire, pas afficher `undefined`.
+ */
+export function zoneLetterOf(rank: number | null | undefined): string | null {
+  if (rank == null || !Number.isInteger(rank) || rank < 0 || rank >= ZONE_LETTERS.length) return null
+  return ZONE_LETTERS[rank]
+}
+
+/**
+ * drawZoneLetters écrit les lettres à l'ancre de leur zone, blanc cerné de noir.
+ *
+ * L'ÉTAT DU CONTEXTE EST RENDU COMME IL A ÉTÉ TROUVÉ (`textAlign`, `textBaseline`) : ce calque
+ * est peint au milieu d'une boucle qui en enchaîne une dizaine d'autres, et un alignement qui
+ * fuiterait décalerait le texte du calque suivant — un défaut qui ne se voit qu'à l'écran.
+ */
+function drawZoneLetters(ctx: CanvasRenderingContext2D, letters: { at: XY; text: string }[]): void {
+  if (letters.length === 0) return
+  ctx.font = ZONE_LETTER_FONT
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  // Cerne arrondi : sans lineJoin round + miterLimit bas, les angles des lettres produisent des
+  // pointes là où deux segments du contour se rejoignent (même réglage que les callouts).
+  ctx.lineJoin = 'round'
+  ctx.miterLimit = 2
+  ctx.lineWidth = ZONE_LETTER_OUTLINE_WIDTH
+  ctx.strokeStyle = ZONE_LETTER_STROKE
+  ctx.fillStyle = ZONE_LETTER_FILL
+  for (const l of letters) {
+    ctx.strokeText(l.text, l.at.x, l.at.y)
+    ctx.fillText(l.text, l.at.x, l.at.y)
+  }
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
 }
 
 /** Ce que le tracé d'une zone vivante a besoin de savoir (règle des 5 paramètres). */

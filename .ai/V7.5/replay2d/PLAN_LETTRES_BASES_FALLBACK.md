@@ -187,21 +187,78 @@ restauré et les cinq cas repassent au vert.
 
 ## Phase 2 — Rendu web
 
-- [ ] 2.1 Lettre dessinée à l'ancre de zone dans le calque zones (zoneStatesLayer /
+- [x] 2.1 Lettre dessinée à l'ancre de zone dans le calque zones (zoneStatesLayer /
       objectivesLayer selon qui possède l'ancre — suivre l'existant), style libellé
       callout, seulement si `letterRank` présent.
-- [ ] 2.2 Amender le garde-test « ni fillText ni strokeText » : il autorise LE glyphe de
+- [x] 2.2 Amender le garde-test « ni fillText ni strokeText » : il autorise LE glyphe de
       lettre (une seule chaîne d'un caractère, A-C), avec le commentaire daté prescrit en
       décision 3 ; il continue d'échouer sur tout autre texte.
-- [ ] 2.3 Tests vitest : lettre présente avec rang, absente sans rang, jamais en KOTH ;
+- [x] 2.3 Tests vitest : lettre présente avec rang, absente sans rang, jamais en KOTH ;
       garde amendé testé dans les deux sens.
-- [ ] 2.4 Item de planche pour le calibrage : préparer le texte de l'item (matchs témoins,
+- [x] 2.4 Item de planche pour le calibrage : préparer le texte de l'item (matchs témoins,
       ce que l'utilisateur doit comparer au Theater) et le livrer au CR — la republication
       de la planche appartient au superviseur.
 
 Gate 2 (depuis apps/web du worktree, node_modules/.tmp purgé) : `npx tsc -b` 0 erreur ;
 `npx vitest run src/features/match-replay` 0 échec ; `npx eslint src/features/match-replay`
 0 erreur nouvelle.
+
+### Journal de la phase 2 (2026-08-25)
+
+**2.1 — la lettre, à l'ancre, en dernier.** `drawZoneStates` (`zoneStatesLayer.ts`) collecte
+les lettres pendant sa boucle et les écrit dans une SECONDE PASSE : une lettre recouverte
+par le remplissage de la zone suivante serait illisible une fois sur trois, au hasard de
+l'ordre du catalogue. Style repris des libellés de callouts — blanc cerné de noir, cerne
+arrondi, hors thème (encre structurelle, même exception documentée que `canvasInk.ts`) —,
+en plus grand : une lettre de base est un repère de premier plan, pas une annotation.
+`zoneLetterOf` traduit le rang et **refuse un rang hors A-C** : le producteur n'en publie
+jamais, le client ne le suppose pas. L'état du contexte (`textAlign`, `textBaseline`) est
+rendu comme il a été trouvé — une dizaine de calques se peignent après celui-ci.
+`ReplayCanvas.tsx` n'est pas touché : le cliquet à 797 lignes tient.
+
+**LA LETTRE EST UNE IDENTITÉ, PAS UN ÉTAT** : elle est dessinée dès que `letterRank` est
+présent, y compris aux frames qu'aucun intervalle ne couvre — comme le HUD, qui l'affiche en
+permanence. C'est la teinte qui se tait hors intervalle, pas le nom de la zone.
+
+**2.2 — le garde amendé, et sa contre-épreuve.** Le cas
+« n'écrit AUCUN texte hors le glyphe d'une lettre de base A-C » remplace l'ancien
+« n'écrit JAMAIS de texte » : il exige au moins un texte et vérifie que **chacun** matche
+`/^[ABC]$/`. **Contre-épreuve jouée** : en faisant écrire `'ZONE ' + lettre` au calque,
+3 cas passent au rouge ; le code restauré, les 27 repassent au vert.
+
+**2.3 — 27 cas sur le fichier (7 neufs).** Lettre présente / absente sans rang / rang hors
+alphabet / rangs 1 et 2 rendant B et C / cernée (strokeText puis fillText) et tenue hors
+intervalle / jamais sur la colline / alignement rendu comme trouvé.
+
+**Quatre cas préexistants corrigés, dans le périmètre du fichier modifié.** Ils visaient
+« l'encre de l'arc » par la DERNIÈRE `strokeStyle` du rendu — un raccourci qui cesse d'être
+vrai dès que quelque chose se peint après l'arc. Ils visent désormais l'encre EN VIGUEUR AU
+MOMENT DE L'ARC (`encreDeLArc`), et la passe géométrique se lit avant `set font`
+(`avantTexte`). Les cas disent maintenant ce qu'ils voulaient dire, et ne dépendent plus de
+l'ordre de peinture.
+
+### Item de planche pour le calibrage Theater (2.4)
+
+> **Lettres A/B/C des bases — fallback par ordre de slot.** Trois témoins re-cuits portent
+> désormais une lettre à l'ancre de chaque zone de Bastion. Cette lettre n'est **pas** lue
+> dans le jeu : c'est un ordre mesuré (les zones rangées par numéro de slot `ti=13`
+> croissant), stable d'un match à l'autre sur 8 cartes. **Ce qu'il faut vérifier au
+> Theater** : ouvrir chaque match ci-dessous, regarder le HUD au moment d'une capture, et
+> dire pour chaque zone si la lettre du jeu est celle du rejeu.
+>
+> | match | carte | ce que le rejeu affiche |
+> |---|---|---|
+> | `7344d24f` | Vagabond | la zone la plus à l'ouest = **C**, celle du milieu = **A**, celle de l'est = **B** (zones 0, 1, 2 dans l'ordre servi) |
+> | `696a9d7c` | Vagabond | **la même chose** — c'est le point : deux matchs de la même carte doivent montrer les mêmes lettres |
+> | `af13e2b2` | Origin | zones 0, 1, 2 = **A, B, C** dans l'ordre servi |
+>
+> **Trois réponses possibles, et chacune est utile** : (1) les lettres coïncident sur les
+> deux cartes -> le fallback est validé, on le garde ; (2) elles coïncident *à une rotation
+> près* (A->B->C->A) -> il manque une constante, corrigible en une ligne ; (3) elles ne
+> coïncident pas, ou pas de la même façon sur les deux cartes -> le fallback est réfuté et
+> les lettres sont retirées de l'écran. Sur Vagabond, la comparaison des DEUX matchs
+> tranche aussi la stabilité côté jeu : si le jeu lui-même nommait les zones différemment
+> d'un match à l'autre, aucun ordre fixe ne pourrait convenir.
 
 ## Garde-rails d'exécution
 
@@ -217,7 +274,29 @@ Gate 2 (depuis apps/web du worktree, node_modules/.tmp purgé) : `npx tsc -b` 0 
 
 ## Découvertes
 
-(consigner ici — rien corriger)
+(consignées, NON traitées — hors périmètre)
+
+1. **Total Control n'est servi par personne.** `config/titles/halo_infinite/mappings/objective_roles.toml`
+   ne déclare aucune entrée pour ce mode : aucun rôle, donc aucun catalogue de zones, donc
+   aucun `zoneStates` et aucune lettre. Le lot visait « Strongholds + Total Control » ; en
+   l'état seul Strongholds est atteignable, et ce n'est pas un défaut de ce lot mais une
+   entrée manquante dans la table du titre. Aucun film de Total Control n'existe au cache.
+2. **Les deux exports de participants du registre se recouvrent.**
+   `oracle_lotA_participants.tsv` et `oracle_lotA_bis_participants.tsv` portent tous deux
+   les 12 matchs du lot A. Les concaténer donne 16 joueurs pour une partie à 8, et
+   `SlotIdentity` n'identifie alors PLUS AUCUNE capture — un échec parfaitement silencieux
+   (0 capture au lieu de 71), qui a coûté une passe de mesure. Tout futur lecteur de ces
+   exports doit dédoublonner par (match, xuid).
+3. **La bombe `incrementTimes` est toujours vivante et toujours hors périmètre.**
+   `objectiveevents.NamedEvents` émet un événement par UNITÉ de compteur ; c'est elle qui a
+   fait exploser la première version de l'instrument. Elle est déjà au registre des reports
+   avec sa recette de correction. Ce lot s'en protège (sentinelle mémoire) sans la corriger.
+4. **Deux cartes du corpus Strongholds sont hors de portée géométrique** : `solution` est
+   absente du catalogue de formes, `live fire - ranked` des bornes de quantification.
+   Aucune lettre n'y est possible aujourd'hui — dégradation muette, conforme.
+5. **Un match du corpus n'a aucune capture attribuée** (`aaaf6c76`, Kaiketsu) : 0 zone
+   appariée, donc aucune lettre. C'est le cas qui justifie la garde de bijection, et il
+   confirme qu'elle sert.
 
 ## CR attendu
 
