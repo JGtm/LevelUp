@@ -127,6 +127,14 @@ bump 18 -> 19, donc la re-cuisson des 34 artefacts — bloquee aujourd'hui par l
 `NamedEventsFrom`/`incrementTimes` (OOM ~26 Go) consignee au registre le 2026-08-24.
 Le predicat pur vit dans `replaybuild` ; la COMBINAISON avec la base vit chez l'appelant.
 
+*Cout assume de ce choix, dit plutot que taise* : quand un artefact EST a jour, il est
+desormais lu DEUX fois (une par predicat, ~2 Mo chacune). Le surcout ne porte que sur les
+matchs deja construits d'un cycle post-sync — negligeable devant la lecture DuckDB et la
+resolution reseau du manifeste qui l'entourent. Le fusionner en un seul passage
+(`ArtifactFreshness(path) (aJour, avecFaits bool)`) est possible mais ajouterait une
+troisieme fonction publique la ou deux predicats se lisent mieux ; a reconsiderer si un
+backfill de masse en fait un poste de cout mesure.
+
 **D4 — File durable, heartbeat, reprise, transport, integrite, jeton : RIEN A FAIRE.**
 Livres et prouves (tableau §1). Toute reecriture serait du travail detruit.
 
