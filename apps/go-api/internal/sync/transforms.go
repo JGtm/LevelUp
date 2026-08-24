@@ -125,7 +125,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	}
 
 	// Team scores (depuis Teams[].Stats.CoreStats.Score)
-	t0, t1 := extractTeamScoresByID(matchJSON)
+	t0, t1 := ExtractTeamScoresByID(matchJSON)
 	row.Team0Score = t0
 	row.Team1Score = t1
 
