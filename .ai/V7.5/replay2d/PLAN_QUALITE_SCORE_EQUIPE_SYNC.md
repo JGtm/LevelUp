@@ -98,6 +98,59 @@ Gate 1 : les 3 matchs fautifs expliqués par le verdict ; toute règle proposée
 l'échantillon 1.2 avec taux chiffré. STOP : rendre le CR au superviseur. La phase 2
 (implémentation) n'existe pas dans ce lot — elle sera un lot séparé après arbitrage.
 
+-> Gate 1 PASSÉ le 2026-08-24, CR rendu et vérifié sur pièces par le superviseur.
+
+## Phase 2 (arbitrée le 2026-08-24) : CLI de backfill, SANS EXÉCUTION
+
+Arbitrage utilisateur du 2026-08-24, sur la base du verdict (a) et des options chiffrées :
+**option 1 (backfill ciblé), CODE SEULEMENT.** La CLI s'écrit maintenant ; elle ne s'exécute
+pas — ni `--apply`, ni `--dry-run`, ni contre une copie. L'exécution est gatée « avant le tag
+v7.5.0 » et suivie côté superviseur.
+
+Raison de la barrière : le `--dry-run` lui-même fait 80 appels API et lit la shared DB, et une
+autre session tient des fichiers du dépôt principal. Le lot livre donc un correctif **prêt à
+jouer**, pas un correctif joué.
+
+- [x] 2.1 Mutualiser l'extraction, ZÉRO copie : exporter `extractTeamScoresByID`
+      (`internal/sync/transforms_helpers.go:160`) en `ExtractTeamScoresByID` et migrer ses
+      appelants. La CLI DOIT appeler cette fonction, jamais une réimplémentation — c'est la
+      seule façon de garantir que le backfill et la sync lisent le MÊME champ pour toujours.
+      Contrainte : ne PAS créer de fichier à la racine de `internal/sync/` (ratchet
+      `archlint/sync_root_freeze_test.go`, baseline gelée à 80).
+- [x] 2.2 CLI `apps/go-api/cmd/backfill-team-scores` — entrée et lecture.
+      `--ids-file` (défaut : le TSV versionné `registre_film/score_equipe_ecarts_2026-08-24.tsv`,
+      dont SEULE la colonne `match_id` est lue) ; `--match` pour un id unique. Le TSV ne sert
+      QUE de liste : les valeurs à écrire sont re-fetchées à l'exécution, jamais lues du TSV.
+- [x] 2.3 CLI — décision et écriture. Re-fetch `GetMatchStats`, extraction via 2.1,
+      comparaison à `match_registry.team_0_score/team_1_score`. Écriture UNIQUEMENT si
+      différent, par `UPDATE … WHERE match_id = ?` row-by-row sérialisé (JAMAIS
+      `UPDATE … FROM (VALUES …)` — garde-rail `no_art_patterns_test.go`), sous lease writer
+      `dblease.KindSharedMatches`. `--dry-run` par DÉFAUT ; `--apply` explicite pour écrire.
+      Gardes de vraisemblance : jamais de NULL, jamais de négatif, jamais hors bornes du
+      `SMALLINT` de la colonne ; un match sans `TeamId` 0/1 (FFA) = skip loggé.
+- [x] 2.4 Tests unitaires table-driven, SANS réseau ni DB réelle, sur la décision de
+      correction (extraction + comparaison + gardes) et sur le chargement de la liste.
+- [x] 2.5 Gates : `gofmt -l`, `go vet`, tests des packages touchés, et — puisque 2.1 touche
+      `internal/` — le garde-rail anti-ART et le gel du god-package sync.
+- [x] 2.6 Documenter dans le rapport une section « Correctif prêt » : commandes exactes du
+      jour J (dry-run puis apply, serveur arrêté) et note prod (vérifier si le résidu existe
+      sur le VPS avant d'y rejouer la même passe).
+
+Gate 2 : la CLI compile, ses tests passent, les ratchets `no_art_patterns` et
+`sync_root_freeze` sont verts, et **la CLI n'a été exécutée contre AUCUNE base** — ni réelle,
+ni copie. Toute sortie de mesure dans ce rapport doit provenir de la phase 1, jamais d'un run
+de la phase 2.
+
+-> Gate 2 PASSÉ le 2026-08-24 : `go build ./cmd/backfill-team-scores/` exit 0 ;
+`go test ./cmd/backfill-team-scores/ -count=1` ok (24 cas, dont le chargement du TSV
+versionné → 80 ids) ; `gofmt -l` vide ; `go vet` exit 0 ;
+`go test ./internal/sync/ -run "NoArt|Pattern" -count=1` ok 13,245 s ;
+`go test ./internal/archlint/ -count=1` ok 15,489 s (gel du god-package sync tenu — aucun
+fichier ajouté à sa racine) ; `go test ./internal/sync/... -count=1` ok sur les 12 paquets
+(non-régression du renommage). Seuils : 332 / 127 / 91 L par fichier, aucune fonction > 80 L.
+**Aucune exécution de la CLI, contre aucune base.** Détail : rapport §Correctif prêt et
+§Gates rejoués.
+
 ## Garde-rails d'exécution
 
 - DuckDB : lecture SEULE, via `OpenReadForQuery` / CLI existants (`cmd/diag_q`) — le serveur
