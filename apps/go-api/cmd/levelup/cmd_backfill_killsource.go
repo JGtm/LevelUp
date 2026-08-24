@@ -40,6 +40,41 @@ package main
 // interruption au bout d une heure laisse alors un resultat presque complet, pas un tiers de
 // corpus.
 //
+// # ELLE BOUCLE DANS UN SEUL PROCESSUS, ET ON L Y LAISSE (examen du 2026-08-24)
+//
+// `backfill-replay` a ete decoupee en parent/enfant (un film = un processus) apres avoir sature
+// la machine le 2026-08-20. Cette passe-ci a ete examinee pour le meme traitement et NE L A PAS
+// RECU. Ce n est pas un oubli, et voici de quoi refaire le raisonnement :
+//
+//	1. AUCUNE RETENTION INTER-MATCHS. `KillSourceCollector` ne porte que des poignees sans
+//	   etat (client, roster, lease, capabilities, delai) et `CollectMatches` n accumule que
+//	   des compteurs plus le `[]string` des identifiants. Son etat apres 950 matchs est celui
+//	   qu il avait apres un seul. `replaybuild` n en avait pas davantage — mais SON APPELANT
+//	   chargeait les faits de TOUT le lot dans une map vivante toute la passe (supprime).
+//	2. LE PIC EST UNE FONCTION DES OCTETS DU FILM, BORNEE ET MESUREE. Le pic vaut le film brut
+//	   (garde vivant, `ChunkSourceOf` l aliase) plus le film decompresse (`loadFilm` :
+//	   `f.chunks = make([][]byte, n)`). Mesure du cache au 2026-08-24, 951 films : le PLUS GROS
+//	   du corpus est `1c4c63c2` a 88 Mio sur disque (69 chunks), la moyenne est a 24 Mio. Le
+//	   pire cas tient donc largement sous le gibioctet.
+//	3. LE REJEU 2D, LUI, N A AUCUN RAPPORT AVEC LA TAILLE DU FILM. `51101d1d` pese 9,1 Mio sur
+//	   disque (13 chunks) et a fait monter `backfill-replay` a 7,36 Gio en 2,6 s — pres de 800
+//	   fois ses octets — parce que son pic est fait d une quinzaine de tranches a l echelle du
+//	   RECORD decode, toutes vivantes ensemble. C est cette amplification-la qui exigeait un
+//	   processus par film ; elle n existe pas ici.
+//	4. LE DECOUPAGE COUTERAIT PLUS CHER QU IL NE RAPPORTERAIT. Cette commande tient un handle
+//	   RW sur le shared pendant TOUTE la passe. Un enfant par match devrait rouvrir cette base
+//	   en ecriture et rejouer les migrations a chaque film — 950 cycles ouverture/checkpoint —
+//	   et multiplierait d autant les occasions de mourir au milieu d une transaction, ce que
+//	   la doctrine anti-corruption (ADR 0013/0019/0026) existe precisement pour eviter.
+//
+// COROLLAIRE : aucune sentinelle memoire ici non plus. Celle de l enfant du rejeu fait
+// `os.Exit` — un procede acceptable dans un processus qui ne tient AUCUNE base en ecriture, et
+// interdit dans celui-ci. Poser un plafond souple a 3 Gio sur une passe qui plafonne sous le
+// gibioctet ne serait qu un reglage mort.
+//
+// A REEXAMINER SI : un film du cache depasse ~500 Mio sur disque, ou si le decodage killsource
+// se met a produire des structures a l echelle du record (comme le fait le rejeu 2D).
+//
 // Usage (SERVEUR ARRETE — `OpenReadWrite` echoue si le lock est tenu) :
 //
 //	levelup backfill-killsource --dry-run              # ce qui SERAIT fait, aucune ecriture
