@@ -19,12 +19,9 @@ package filmdec
 // l'identité `i48` est celle d'une capacité à charges : rang 6 (répulseur) et rang 5 / 21
 // (propulseur). Les vies aux autres rangs n'en ont pratiquement aucune.
 //
-// LE CONTRÔLE QUI PEUT ÉCHOUER, ET LE DÉNOMINATEUR QUI LE REND LISIBLE. Une exclusivité ne
-// se juge PAS sur un compte de chutes : un rang sans chute peut n'avoir aucune LECTURE.
-// Le tableau publie donc, par rang, les vies IDENTIFIÉES, les vies ayant au moins une
-// lecture d'i56, les lectures, puis seulement les chutes — et le taux se prend sur les
-// vies LUES, jamais sur les vies identifiées. Sans cette colonne, « 0 chute sur le rang 2 »
-// se lirait comme une exclusivité alors que ce serait un trou de transmission.
+// LE CONTRÔLE QUI PEUT ÉCHOUER, ET LE DÉNOMINATEUR QUI LE REND LISIBLE : cf.
+// `rank_cross_shared_test.go`, qui porte le tableau et son critère (partagé avec l'item 0.5,
+// pour que les deux canaux se jugent au même bar).
 //
 // LECTURE SEULE, gardé par I56X_FILM, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process : le verrou est pris pour tout le test (globaux de paquet).
@@ -35,7 +32,6 @@ package filmdec
 //	  go test ./internal/analysis/filmdec/ -run '^TestI56CrossI48Rank$' -timeout 30m -v
 
 import (
-	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -43,13 +39,16 @@ import (
 
 const i56xFilmEnv = "I56X_FILM"
 
-// i56xRepulsorRank est le rang de palette du répulseur (famille A). Aucun rang famille B
-// n'a été établi pour lui — un film de famille B ne le contredit donc pas, il l'ignore.
-const i56xRepulsorRank = 6
-
-// i56xThrusterRanks sont les rangs du propulseur : 5 en famille A (RECETTE_LOADOUT §13),
-// 21 en famille B (`ability_evade`, nommé par murmur3 le 2026-08-18, REGISTRE_REPORTS).
-var i56xThrusterRanks = []int{5, 21}
+// i56xSpec : les deux capacités du périmètre (décision D2). Le répulseur n'a de rang établi
+// qu'en famille A (6) ; le propulseur en a un dans chaque famille — 5 (RECETTE_LOADOUT §13)
+// et 21 (`ability_evade`, nommé par murmur3 le 2026-08-18, REGISTRE_REPORTS).
+var i56xSpec = xrSpec{
+	event: "CHUTES i56",
+	groups: []xrGroup{
+		{name: "RÉPULSEUR (rang 6)", ranks: []int{6}},
+		{name: "PROPULSEUR (rangs 5/21)", ranks: []int{5, 21}},
+	},
+}
 
 // i56xSample est UNE lecture d'i56 localisée, telle que le déserialiseur de production l'a
 // publiée. Même forme que celle de l'instrument des chutes, pour que les deux se comparent.
@@ -78,9 +77,7 @@ func TestI56CrossI48Rank(t *testing.T) {
 		t.Log("VERDICT : aucune lecture d'i56 sur ce film — rien à croiser")
 		return
 	}
-	drops := i56xDropsBySlot(energy)
-	reads := i56xReadsBySlot(energy)
-	i56xTable(t, slotRanks, reads, drops)
+	xrTable(t, i56xSpec, slotRanks, i56xReadsBySlot(energy), i56xDropsBySlot(energy))
 }
 
 // i56xScan parcourt les paquets delta et lit i56 par le DÉSERIALISEUR DE PRODUCTION partout
@@ -174,115 +171,4 @@ func i56xDropsBySlot(energy []i56xSample) map[uint32]int {
 		}
 	}
 	return out
-}
-
-// i56xRow agrège un groupe de vies. `lives` compte les vies IDENTIFIÉES, `withRead` celles
-// qui ont au moins une lecture d'i56 : c'est sur ces dernières que le taux se prend.
-type i56xRow struct {
-	lives, withRead, reads, withDrop, drops int
-}
-
-func (r *i56xRow) add(reads, drops int) {
-	r.lives++
-	r.reads += reads
-	r.drops += drops
-	if reads > 0 {
-		r.withRead++
-	}
-	if drops > 0 {
-		r.withDrop++
-	}
-}
-
-func (r i56xRow) String() string {
-	per := 0.0
-	if r.withRead > 0 {
-		per = float64(r.drops) / float64(r.withRead)
-	}
-	return fmt.Sprintf("%3d vies · %3d avec lecture i56 · %4d lectures · %3d avec chute · "+
-		"%4d chutes · %.2f chute/vie-lue", r.lives, r.withRead, r.reads, r.withDrop, r.drops, per)
-}
-
-// i56xTable publie le tableau chutes x rang, puis les groupes disjoints par capacité.
-func i56xTable(t *testing.T, slotRanks map[uint32][]int, reads, drops map[uint32]int) {
-	rows := map[int]*i56xRow{}
-	for sl, ranks := range slotRanks {
-		for _, r := range eaRankSet(ranks) {
-			if rows[r] == nil {
-				rows[r] = &i56xRow{}
-			}
-			rows[r].add(reads[sl], drops[sl])
-		}
-	}
-	keys := make([]int, 0, len(rows))
-	for r := range rows {
-		keys = append(keys, r)
-	}
-	sort.Ints(keys)
-	t.Log("== TABLEAU CHUTES i56 x RANG i48 (une vie multi-rangs compte dans chaque rang) ==")
-	for _, r := range keys {
-		t.Logf("  rang %-2d : %s%s", r, rows[r], i56xTag(r))
-	}
-	i56xGroups(t, slotRanks, reads, drops)
-	t.Log("RAPPEL du critère (item 0.4) : la quasi-totalité de la masse de chutes doit tomber " +
-		"sur les vies du rang CIBLE, et 0 ou quasi-0 sur les autres rangs LUS. Un rang sans " +
-		"lecture ne prouve rien. Verdict PAR CAPACITÉ, jamais groupé.")
-}
-
-// i56xTag marque les rangs cibles dans le tableau.
-func i56xTag(r int) string {
-	if r == i56xRepulsorRank {
-		return "  <- RÉPULSEUR"
-	}
-	for _, x := range i56xThrusterRanks {
-		if r == x {
-			return "  <- PROPULSEUR"
-		}
-	}
-	return ""
-}
-
-// i56xGroups publie les groupes DISJOINTS : répulseur, propulseur, autres rangs, sans
-// identité. Une vie qui a transmis les DEUX rangs cibles est comptée au répulseur et dite
-// telle quelle — le cas est rare et ne doit pas se dissoudre en silence.
-func i56xGroups(t *testing.T, slotRanks map[uint32][]int, reads, drops map[uint32]int) {
-	var gRep, gThr, gOther, gNoID i56xRow
-	both := 0
-	all := map[uint32]bool{}
-	for sl := range slotRanks {
-		all[sl] = true
-	}
-	for sl := range reads {
-		all[sl] = true
-	}
-	for sl := range all {
-		ranks, hasID := slotRanks[sl]
-		isRep := eaHasRank(ranks, i56xRepulsorRank)
-		isThr := false
-		for _, x := range i56xThrusterRanks {
-			if eaHasRank(ranks, x) {
-				isThr = true
-			}
-		}
-		if isRep && isThr {
-			both++
-		}
-		switch {
-		case isRep:
-			gRep.add(reads[sl], drops[sl])
-		case isThr:
-			gThr.add(reads[sl], drops[sl])
-		case hasID:
-			gOther.add(reads[sl], drops[sl])
-		default:
-			gNoID.add(reads[sl], drops[sl])
-		}
-	}
-	t.Logf("  GROUPE RÉPULSEUR  (rang 6)      : %s", gRep)
-	t.Logf("  GROUPE PROPULSEUR (rangs 5/21)  : %s", gThr)
-	t.Logf("  GROUPE autres rangs identifiés  : %s", gOther)
-	t.Logf("  GROUPE sans identité i48        : %s", gNoID)
-	if both > 0 {
-		t.Logf("  (dont %d vies ayant transmis les DEUX rangs cibles, comptées au répulseur)", both)
-	}
 }
