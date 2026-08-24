@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 func filterMatchHistoryRowsBySoloSessions(
@@ -290,7 +291,13 @@ func filterByMatchIDsWhitelist(rows []domain.MatchHistoryRawRow, ids []string) [
 }
 
 // applyExplorerMatchFilters applique tous les filtres Explorer additionnels en séquence.
-func applyExplorerMatchFilters(rows []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.MatchHistoryRawRow {
+//
+// replays : ensemble des matchs ayant un artefact de rejeu 2D, résolu UNE FOIS par
+// requête par l'appelant (nil = présence non résolue → le filtre replay_scope « avec
+// rejeu » ne garde rien).
+func applyExplorerMatchFilters(
+	rows []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.MatchHistoryRawRow {
 	rows = filterByMatchIDsWhitelist(rows, req.MatchIDs)
 	rows = filterByExplorerDateRange(rows, req.MatchStartDate, req.MatchEndDate)
 	rows = filterByExplorerExperienceTypes(rows, req.ExperienceTypes)
@@ -298,6 +305,7 @@ func applyExplorerMatchFilters(rows []domain.MatchHistoryRawRow, req domain.Matc
 	rows = filterByExplorerMapNames(rows, req.MapNames)
 	rows = filterByExplorerModeNames(rows, req.ModeNames)
 	rows = filterByExplorerSquadScope(rows, req.SquadScope)
+	rows = filterByExplorerReplayScope(rows, req.ReplayScope, replays)
 	rows = filterByExplorerMatchIDSearch(rows, req.MatchIDSearch)
 	return rows
 }
@@ -376,7 +384,9 @@ func (s *MatchHistoryService) ExportCSV(
 	filtered = filterBySkillTier(filtered, req.SkillTiers, req.RankedContext)
 	filtered = filterByPerfTiers(filtered, req.PerfTiers)
 	mapWinRates := computeMapWinRates(rawRows)
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
+	// Rejeu 2D : l'export CSV ne porte pas de colonne « Rejeu » (cf. availableColumns)
+	// — inutile de lister le dossier d'artefacts pour un fichier qui ne l'affiche pas.
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil))
 	sortItems(items, req.SortField, req.SortDir)
 
 	return items, nil

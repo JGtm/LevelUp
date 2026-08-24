@@ -26,6 +26,7 @@ func BuildExplorerRowFromMatchHistory(item domain.MatchHistoryRow) domain.Explor
 		IsWithFriends:       item.IsWithFriends,
 		ExperienceTypeLabel: item.ExperienceTypeLabel,
 		MatchURL:            item.MatchURL,
+		HasReplay:           item.HasReplay,
 		Kills:               item.Kills,
 		Deaths:              item.Deaths,
 		Assists:             item.Assists,

@@ -132,6 +132,7 @@ func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQu
 		MapNames:          req.MapNames,
 		ModeNames:         req.ModeNames,
 		SquadScope:        req.SquadScope,
+		ReplayScope:       req.ReplayScope,
 		MatchIDSearch:     req.MatchIDSearch,
 		MatchIDs:          req.MatchIDs,
 		// Opt-in du bandeau de briefing étendu (mode Matchs). L'Explorer l'envoie

@@ -812,7 +812,7 @@ func TestBuildSquadMatchHistory_PropagatesDominanceFlag(t *testing.T) {
 		{MatchID: "m1", MapUI: "Aquarius", DominanceFlag: 3},
 		{MatchID: "m2", MapUI: "Recharge"}, // aucun badge
 	}
-	hist := buildSquadMatchHistory(rows, nil, "halo_infinite")
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil)
 	if len(hist) != 2 {
 		t.Fatalf("want 2 rows, got %d", len(hist))
 	}

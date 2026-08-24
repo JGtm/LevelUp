@@ -357,11 +357,15 @@ type SquadMatchHistoryRow struct {
 	// TeamMMRAvg : MMR moyen de l'équipe. nil quand le titre ne fournit pas de MMR
 	// d'équipe (Halo 5, games.ProvidesTeamMMR=false) → le front masque la colonne MMR
 	// au lieu d'afficher 0. omitempty pour distinguer nil (masquer) de 0 (réel).
-	TeamMMRAvg      *float64 `json:"team_mmr_avg,omitempty"`
-	EnemyMMRAvg     *float64 `json:"enemy_mmr_avg,omitempty"`
-	DeltaMMR        *float64 `json:"delta_mmr,omitempty"`
-	ScoreLabel      string   `json:"score_label,omitempty"`
-	DurationSeconds int      `json:"duration_seconds,omitempty"`
+	TeamMMRAvg  *float64 `json:"team_mmr_avg,omitempty"`
+	EnemyMMRAvg *float64 `json:"enemy_mmr_avg,omitempty"`
+	DeltaMMR    *float64 `json:"delta_mmr,omitempty"`
+	ScoreLabel  string   `json:"score_label,omitempty"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match → la ligne porte un
+	// lien vers la page de rejeu. Résolu en UN listing de dossier par requête, jamais
+	// un accès disque par ligne. Faux/absent = rien n'est rendu (pas de lien mort).
+	HasReplay       bool `json:"has_replay,omitempty"`
+	DurationSeconds int  `json:"duration_seconds,omitempty"`
 	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché),
 	// préférée par le front pour l'affichage de la durée du match.
 	GameplayDurationSeconds int `json:"gameplay_duration_seconds,omitempty"`
