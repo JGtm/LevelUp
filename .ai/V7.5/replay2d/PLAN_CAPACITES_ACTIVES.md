@@ -1,5 +1,14 @@
 # PLAN — les capacités d'armure : les nommer toutes, puis montrer leurs usages actifs
 
+> **ÉTAT AU 2026-08-25 — PHASE 0 CLOSE, VERDICT NÉGATIF POUR LES DEUX CAPACITÉS. PHASES 1 ET
+> 2 NON EXÉCUTÉES.** Ni le répulseur (rang 6) ni le propulseur (rangs 5 / 21) n'ont de canal
+> dédié mesurable : `i56` chute sur les vies de GRAPPIN, pas sur les leurs, et `i51` n'est
+> jamais transmis (0 annonce sur 1 427 763 records delta). Le gate de la Phase 0 est PASSÉ
+> (un verdict publié par capacité, même négatif, EST le livrable attendu — Décision D5) ;
+> zéro ligne de production, aucun effet simulé. Détail, options et coûts pour le
+> superviseur : `.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`.
+> Branche `wt/usages-equipement`, non poussée.
+
 > **LIRE D'ABORD LA SECTION SUIVANTE** (« ACTUALISATION DU 2026-08-24 »). Le reste du
 > fichier est un historique daté, encore VRAI pour l'identité des capacités (étapes 1 et
 > 2 : la table `replay_labels.toml` est correcte et à jour), mais SUPERSEDED pour l'état
@@ -494,14 +503,35 @@ camouflage, `i5` pour le surbouclier) — PAS le croisement `i54`×`i56` par fen
 temporelle (mort, Décision D1). Aucune capture Cheat Engine, aucun runtime : offline-pur,
 comme tout ce chantier.
 
-- [ ] 0.1 **Vérifier sur pièces** l'état d'`i56` dans la marche de production : a-t-il déjà
+- [x] 0.1 **Vérifier sur pièces** l'état d'`i56` dans la marche de production : a-t-il déjà
       un `case` dans `consumeByName` (`traverse.go`) ? Est-il déjà publié par un hook
       appelable depuis `walkRecordTo` (patron `SetAbilitySetHook` pour `i48`) ? L'ancien
       lecteur (`i56_energy_test.go`, étape 3) atteint 176 lectures par UN mécanisme — établir
       lequel avant de coder, pour ne pas dupliquer un lecteur qui existe déjà à moitié.
       Sortie attendue : un court constat écrit (oui/non, ligne de fichier), pas de gate
       chiffré — c'est une lecture, pas une mesure.
-- [ ] 0.2 Si `i56` n'est pas déjà branché sur `walkRecordTo` : l'y brancher (grammaire déjà
+      **CONSTAT (2026-08-25) : TOUT EXISTE DÉJÀ, rien à brancher.** `case
+      "biped-spartan-ability-energy", "biped-spartan-ability-energy-component"` →
+      `consumeBipedSpartanAbilityEnergy(br)`, `traverse.go:810-811` — donc `walkRecordTo` le
+      traverse. Hook de publication `SetAbilityEnergyHook` (`ability_energy.go:69`, posé le
+      2026-08-15), masque R(3) + 7 bits par charge armée, `AbilityEnergyUnarmed = -1` pour un
+      emplacement non armé. Et un instrument utilisant DÉJÀ la marche de production existe :
+      `i56_drops_test.go` (garde `I56_DROPS_FILM`). L'item 0.2 n'a donc rien à coder.
+- [~] 0.2 **COUVERT PAR L'INSTRUMENT EXISTANT** `i56_drops_test.go` — aucun lecteur neuf
+      écrit (item 0.1 : `i56` est déjà branché ET publié). **SEUIL ATTEINT, ET LA PRÉMISSE DE
+      LA PHASE 0 EST RÉFUTÉE AU PASSAGE.** Mesure du 2026-08-25 sur `000d5950` :
+      `masque∋i56 176 (0,102 %) · i56 LU 176 · i56 illisible 0` → **couverture de lecture
+      176/176 = 100,0 %**, très au-dessus du seuil de 80 % posé avant la mesure.
+      **MAIS le plafond de 176 n'a JAMAIS été un problème de couverture** : il est la
+      FRÉQUENCE D'ANNONCE. `i56` n'est annoncé au masque que dans 0,102 % des records, et
+      tout ce qui est annoncé est lu. La cause supposée (« les records à masque dense
+      échappent au détecteur, 176 est un PLANCHER ») est mesurée MARGINALE par
+      `TestI57Reach` sur le même film : **records reconnus 171 979 — masque CREUX 171 778
+      (99,9 %) · masque DENSE 201 (0,1 %)**, et l'instrument conclut de lui-même « AUCUN
+      composant ne casse la marche : la traversée n'est PAS le facteur limitant ».
+      La marche à haute couverture ne pouvait donc rien débloquer : il n'y avait rien de
+      bloqué. Le contenu original de l'item est conservé ci-dessous pour mémoire.
+      *(original)* Si `i56` n'est pas déjà branché sur `walkRecordTo` : l'y brancher (grammaire déjà
       connue et confirmée à l'étape 3 — masque R(3) + 7 bits par charge armée,
       `RECETTE_LOADOUT_2026-07-27.md` §9), hook de publication dédié, instrument de
       recherche neuf `apps/go-api/internal/analysis/filmdec/i56_delta_coverage_test.go`
@@ -514,7 +544,27 @@ comme tout ce chantier.
       enchaîner sur 0.4 avec des données trop clairsemées, c'est exactement l'erreur du
       2026-08-14.
       Commande : `cd apps/go-api && CGO_ENABLED=0 I56D_FILM=<repo>/data/cache/film_chunks/000d5950 go test ./internal/analysis/filmdec/ -run '^TestI56DeltaCoverage$' -v`
-- [ ] 0.3 Identifier les vies porteuses de répulseur (rang 6, famille A uniquement — aucun
+- [x] 0.3 **GATE PASSÉ, largement** (mesure du 2026-08-25, `TestI48PaletteRank`, un `go test`
+      par film, aucun code neuf comme prescrit). Vies par rang, sur les six films du corpus :
+
+      | film | famille | records | i48 lu/annoncé | rang 5 PROP. | rang 6 RÉP. | rang 21 PROP. |
+      |---|---|---|---|---|---|---|
+      | `084a804d` | A | 330 981 | 143/143 | **9 vies** | **14 vies** | — |
+      | `06dfe6d9` | A | 336 212 | 230/230 | **19 vies** | **28 vies** | — |
+      | `00ba2e1c` | A | 240 645 | 206/206 | **16 vies** | **31 vies** | — |
+      | `000d5950` | B | 171 851 | 92/92 | — | — | **23 vies** |
+      | `00502e52` | B | 182 876 | 82/82 | — | — | **8 vies** |
+      | `07aa428d` | B | 165 198 | 56/56 | — | — | **12 vies** |
+
+      Seuil demandé (≥ 5 vies répulseur sur un film ET ≥ 5 vies propulseur sur un film) :
+      atteint sur **trois** films pour chaque capacité. Élargissement au lot `d4be4ab95`
+      INUTILE. `i48` est lu à 100 % de ses annonces sur les six films (759/759, 0 illisible).
+      **CORRECTION D'UNE HYPOTHÈSE DU PLAN** : `00ba2e1c` ne peut PAS servir de témoin
+      négatif (l'item 0.4 le proposait « à vérifier en 0.3 ») — il porte au contraire **31
+      vies de rang 6 et 16 de rang 5**, c'est le film le PLUS riche en répulseurs du corpus.
+      Le témoin retenu à la place est INTERNE (les autres rangs du même film) et le groupe
+      **sans identité `i48`**, plus sévère encore.
+      *(original)* Identifier les vies porteuses de répulseur (rang 6, famille A uniquement — aucun
       rang famille B n'a été établi pour lui) et de propulseur (rang 5 famille A / 21
       famille B) sur un corpus candidat, **par l'instrument EXISTANT, aucun code neuf** :
       `filmdec/i48_rank_test.go` (garde `I48_FILM`). Réutiliser le corpus déjà rassemblé
@@ -525,7 +575,46 @@ comme tout ce chantier.
       **Gate** : au moins un film avec ≥ 5 vies répulseur ET un film avec ≥ 5 vies
       propulseur. Si absent sur ces six films, élargir au lot `d4be4ab95` (12 films) avant
       d'abandonner — ne pas conclure sur un corpus qu'on n'a pas vérifié suffisant.
-- [ ] 0.4 **Le test qui remplace le croisement mort.** Sur les vies identifiées en 0.3,
+- [x] 0.4 **FAIT, ET LE CONTRÔLE ÉCHOUE POUR LES DEUX CAPACITÉS.** Instrument neuf
+      `apps/go-api/internal/analysis/filmdec/i56_rank_cross_test.go` (garde `I56X_FILM`) —
+      **dans `filmdec/` et non dans `replay/`** comme le plan l'annonçait : la mesure a besoin
+      du hook non exporté d'`i56`, du détecteur de records et des désers de production, tous
+      internes à `filmdec`. Jointure PAR VIE (slot), jamais par fenêtre. Le tableau publie le
+      dénominateur qui rend l'exclusivité lisible (vies AYANT UNE LECTURE d'`i56`), sans quoi
+      « 0 chute sur ce rang » se lirait comme une exclusivité au lieu d'un trou de
+      transmission.
+
+      **Chutes de charge par vie-lue** (quartet fort décroissant, même définition qu'au
+      2026-08-15) :
+
+      | film | famille | GRAPPIN (4/20) | **PROPULSEUR (5/21)** | **RÉPULSEUR (6)** | autres rangs | TÉMOIN sans identité |
+      |---|---|---|---|---|---|---|
+      | `00ba2e1c` | A | **0,59** | 0,30 | 0,17 | 0,09 | 0,60 |
+      | `06dfe6d9` | A | **0,83** | 0,14 | 0,16 | 0,27 | 0,91 |
+      | `084a804d` | A | **1,15** | 0,27 | 0,27 | 0,69 | 0,02 |
+      | `000d5950` | B | 0,52 | **0,69** | — | 0,15 | 0,60 |
+      | `00502e52` | B | 0,53 | **1,25** | — | 0,17 | 1,38 |
+      | `07aa428d` | B | 1,70 | **2,42** | — | 0,30 | 0,93 |
+
+      **RÉPULSEUR — verdict NON.** 0,17 / 0,16 / 0,27 chute par vie-lue, quand le GRAPPIN du
+      MÊME film en porte 0,59 / 0,83 / 1,15 — soit 3,5 à 4,3 fois plus. Le critère échoue
+      dans les deux sens : la cible est minoritaire, ET les autres rangs ne sont pas à zéro
+      (sur `084a804d` ils font 0,69 contre 0,27 à la cible).
+      **PROPULSEUR — verdict NON.** Famille A (rang 5) : 0,30 / 0,14 / 0,27, dominé par le
+      grappin sur les trois films. Famille B (rang 21) : 0,69 / 1,25 / 2,42, en tête de son
+      film à chaque fois — mais le grappin (rang 20) suit à 0,52 / 0,53 / 1,70 (ratio 1,3 /
+      2,4 / 1,4 seulement) et surtout **le témoin « sans identité `i48` » l'ÉGALE ou le
+      DÉPASSE sur deux films sur trois** (1,38 contre 1,25 ; 0,60 contre 0,69). Un canal qui
+      ne bat pas des vies dont on ne sait rien ne distingue rien.
+      **Le bar de comparaison, rappelé** : le camouflage (Phase A) avait donné 39 transitions
+      sur les vies du rang cible contre **0 sur 574 autres vies**. C'est cela, une
+      exclusivité. Rien ici n'en approche.
+      **CE QUE LA MESURE ÉTABLIT QUAND MÊME** : `i56` est bien un compteur de charges — mais
+      il suit la capacité la plus CONSOMMATRICE de charges du film, le grappin (rang 4
+      famille A, rangs 20/21 famille B), lequel a déjà son canal dédié livré (`i59 tag==3`).
+      Ce n'est pas un canal par capacité, c'est un compteur générique de l'équipement porté,
+      transmis trop rarement (0,089 à 0,125 % des records) pour dater quoi que ce soit.
+      *(original)* **Le test qui remplace le croisement mort.** Sur les vies identifiées en 0.3,
       examiner la série `i56` PAR VIE (self-référentielle — PAS de croisement à `i54`) :
       cherche-t-on des paliers de décrément du quartet fort (0→4, déjà confirmé
       sémantiquement à l'étape 3) suivis d'une remontée — la signature d'un usage puis
@@ -540,28 +629,93 @@ comme tout ce chantier.
       l'inverse ; pas de verdict groupé.
       Instrument : `apps/go-api/internal/analysis/replay/i56_capacity_episodes_research_test.go`
       (nouveau, gardé, s'appuie sur 0.2).
-- [ ] 0.5 **Candidat secondaire, coût faible, SEULEMENT si 0.4 échoue pour une des deux
+- [x] 0.5 **FAIT (0.4 ayant échoué pour les deux capacités, la condition d'ouverture est
+      remplie). VERDICT : `i51` NE VOYAGE PAS.** Le déser jetait ses 8 bits ; il les PUBLIE
+      désormais (`emp_timer.go` + `publishEmpTimer` dans `traverse.go:495`, largeur
+      inchangée, même règle que `i48`/`i56` : c'est le déserialiseur qui publie). Instrument
+      `i51_rank_cross_test.go` (garde `I51X_FILM`), même tableau et même bar que 0.4
+      (`rank_cross_shared_test.go`, une seule implémentation pour les deux canaux).
+      **MESURE, six films, 1 427 763 records delta biped cumulés : `masque∋i51 = 0` sur les
+      six.** Le composant est correctement nommé dans l'archétype
+      (`"biped-emp-timer-component"`) mais n'est JAMAIS annoncé dans un paquet delta. Aucun
+      tableau d'exclusivité n'a pu être produit — il n'y a rien à croiser. Négatif net, sans
+      zone grise. *(À noter : sa sémantique documentée — « combien de temps le joueur reste
+      neutralisé » — en faisait de toute façon un effet SUBI, pas une action ; la mesure
+      tranche sans avoir à en débattre.)*
+      *(original)* **Candidat secondaire, coût faible, SEULEMENT si 0.4 échoue pour une des deux
       capacités** (règle d'ordre : ne pas paralléliser sans raison écrite) : `i51
       biped-emp-timer`, jamais interrogé (`PLAN_EQUIPEMENT_TI37.md`, section
       Découvertes). Hook minimal, publier ses valeurs brutes et leur cadence de
       transmission, même contrôle d'exclusivité qu'en 0.4.
-- [ ] 0.6 Verdict écrit, PAR CAPACITÉ, publié au `REGISTRE_REPORTS.md` : `[x]` canal trouvé
-      (→ Phase 1 pour cette capacité seule) ou `[!]` aucun canal, cause mesurée documentée,
-      **aucun effet simulé** (Décision D5).
+- [x] 0.6 Verdict écrit, PAR CAPACITÉ, publié au `REGISTRE_REPORTS.md` : **`[!]` AUCUN CANAL
+      pour le répulseur, `[!]` AUCUN CANAL pour le propulseur**, cause mesurée documentée,
+      **aucun effet simulé** (Décision D5). Arbitrage détaillé pour le superviseur :
+      `.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`.
 
-**GATE PHASE 0 : verdict publié pour répulseur ET pour propulseur** (même si négatif pour
-l'un ou les deux) ; contraintes machine D17 respectées (voir plus bas) ;
-`go vet ./internal/analysis/filmdec/... ./internal/analysis/replay/...` et
-`CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/` verts.
+**GATE PHASE 0 : PASSÉ — verdict publié pour répulseur ET pour propulseur** (négatif pour
+les deux, ce que la Décision D5 qualifie explicitement de résultat valide et non d'échec du
+plan) ; contraintes machine D17 respectées (voir plus bas) ;
+`go vet ./internal/analysis/filmdec/... ./internal/analysis/replay/...` **exit 0** et
+`CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/` **verts**
+(`ok filmdec 10,598s`, `ok replay 17,642s`, 2026-08-25).
+
+**CONSÉQUENCE, appliquée sans discussion (Décision D5 + règle d'ordre de la section
+« Exécution ») : les PHASES 1 et 2 NE S'EXÉCUTENT PAS.** Aucune ligne de production, aucun
+rendu, aucun son. « Une capacité sans canal mesuré en Phase 0 ne voit ni Phase 1 ni
+Phase 2 » — c'est le cas des deux. Les items des deux phases sont statués `[!]` ci-dessous
+avec cette justification unique.
+
+### Journal de la Phase 0 (2026-08-25) — ce que la mesure a déplacé
+
+**La prémisse qui a motivé la réouverture était fausse, et c'est le résultat le plus
+réutilisable de ce lot.** L'actualisation du 2026-08-24 pariait que le plafond d'`i56` (176
+lectures) était un PLANCHER dû au décodeur, et que la marche à haute couverture le ferait
+tomber. Trois mesures indépendantes disent le contraire :
+
+1. `i56` était **déjà** branché (`traverse.go:810`) et **déjà** publié
+   (`ability_energy.go:69`) — il n'y avait rien à brancher ;
+2. tout ce qui est annoncé est lu : **176 annoncées, 176 lues, 0 illisible** (100,0 %) ;
+3. la cause supposée — les records à masque dense — pèse **201 records sur 171 979
+   (0,1 %)**, et l'instrument de census conclut lui-même que « la traversée n'est PAS le
+   facteur limitant ».
+
+`i56` n'est pas mal décodé : **il est rarement transmis** (0,089 à 0,125 % des records
+selon le film). Le journal de l'étape 3 le disait déjà en 2026-08-14 (« `i56` est transmis
+trop rarement dans les deltas pour dater un usage ») ; ce lot le confirme avec le
+dénominateur correct et ferme la reprise n°1 du registre.
+
+**Ce que le croisement par rang apporte de neuf**, au-delà du verdict : `i56` n'est pas
+inerte — il chute, et ses chutes ne sont pas réparties au hasard. Elles suivent le
+**grappin**, sur les deux familles de palette et sur les six films. C'est cohérent avec sa
+sémantique (compteur de charges) et avec le jeu (le grappin est la capacité dont on
+consomme le plus de charges). Mais un canal qui répond « grappin » quand on lui demande
+« répulseur » n'est pas un canal de répulseur — et le grappin, lui, a déjà son canal dédié
+livré (`i59 tag==3`).
+
+**Coût machine (D17), mesuré et non supposé** : 19 décodages de film, un processus par
+film, jamais deux vivants à la fois. **Pic RSS observé : 23 MiB** (plafond 3 072 MiB
+surveillé par `Start-Process -PassThru` / `WorkingSet64`, jamais approché). Durées : 5 s
+(`000d5950`, 21 Mo) à 127 s (`084a804d`, 60 Mo). Le film-bombe `51101d1d` n'a jamais été
+ouvert.
 
 ---
 
 ## PHASE 1 — port production + publication *(uniquement pour la ou les capacités où la Phase 0 a trouvé un canal)*
 
-- [ ] 1.1 Revérifier `SchemaVersion` sur `feat/v75` fraîchement rebasée AVANT de coder —
+> **NON EXÉCUTÉE — tous les items ci-dessous sont `[!]`, avec CETTE justification unique :
+> la Phase 0 n'a trouvé de canal pour AUCUNE des deux capacités du périmètre** (item 0.6,
+> verdict du 2026-08-25). La condition d'entrée de cette phase — « uniquement pour la ou les
+> capacités où la Phase 0 a trouvé un canal » — n'est remplie par aucune capacité. Aucune
+> ligne de production n'a été écrite, et c'est la règle D5 qui l'impose, pas un manque de
+> temps : **aucun effet simulé sans donnée mesurée.**
+> Rien ici n'est périmé pour autant : le jour où un canal sort (voir les options de
+> l'arbitrage), ces six items restent le chemin de portage, `SchemaVersion` à revérifier en
+> premier (item 1.1, Décision D6) parce que la branche bouge vite.
+
+- [!] 1.1 Revérifier `SchemaVersion` sur `feat/v75` fraîchement rebasée AVANT de coder —
       NE PAS supposer un numéro figé dans ce plan (Décision D6).
       Commande : `grep -n "const SchemaVersion" apps/go-api/internal/analysis/replay/document.go`
-- [ ] 1.2 Étendre `internal/analysis/replay/equipment_episodes.go` : nouvelle(s) constante(s)
+- [!] 1.2 Étendre `internal/analysis/replay/equipment_episodes.go` : nouvelle(s) constante(s)
       `EquipFamilyRepulsor` / `EquipFamilyThruster` (identifiants stables, pas des
       libellés — même règle que `EquipFamilyCamo`/`EquipFamilyOvershield`), nouvelle
       fonction `buildXEpisodes` sur le patron exact de `buildCamoEpisodes` /
@@ -571,14 +725,14 @@ l'un ou les deux) ; contraintes machine D17 respectées (voir plus bas) ;
       pour un usage court, contrairement à camo/surbouclier), documenter pourquoi
       `EquipmentEpisode{T0,T1}` convient quand même (T0==T1, ou une fenêtre de charge
       mesurée) plutôt que d'inventer un second type de donnée pour deux lignes de plus.
-- [ ] 1.3 `EquipmentCoverage` : ajouter les compteurs Lives/Episodes de la ou des nouvelles
+- [!] 1.3 `EquipmentCoverage` : ajouter les compteurs Lives/Episodes de la ou des nouvelles
       familles, même patron que `CamoLives`/`CamoEpisodes`.
-- [ ] 1.4 `apps/go-api/contracttest/replay_contract_test.go` : mettre à jour le compte gelé
+- [!] 1.4 `apps/go-api/contracttest/replay_contract_test.go` : mettre à jour le compte gelé
       des champs de `ReplayDocument` (piège déjà noté au registre pour tout document
       SERVI — un oubli ici casse silencieusement la garde de non-régression).
-- [ ] 1.5 `make generate-types` (régénération des types web depuis `openapi.yaml` /
+- [!] 1.5 `make generate-types` (régénération des types web depuis `openapi.yaml` /
       le contrat d'artefact).
-- [ ] 1.6 i18n FR + EN : vérifier si un libellé NOUVEAU apparaît côté document (probablement
+- [!] 1.6 i18n FR + EN : vérifier si un libellé NOUVEAU apparaît côté document (probablement
       aucun — les identifiants restent stables, le libellage vit déjà côté client comme
       documenté au registre pour `padEquipmentFamily`, patron à réutiliser si un libellé
       d'équipement doit s'afficher).
@@ -591,7 +745,14 @@ avec les nouveaux épisodes visibles au JSON produit.
 
 ## PHASE 2 — rendu web + sons *(uniquement pour la ou les capacités livrées en Phase 1)*
 
-- [ ] 2.1 **Rendu (Décision D3, proposition par défaut)** : pulse géométrique court sur le
+> **NON EXÉCUTÉE — tous les items ci-dessous sont `[!]`, même justification qu'en Phase 1 :
+> aucune capacité n'a passé la Phase 0, donc aucune n'a été livrée en Phase 1.** Rien n'a été
+> rendu, rien n'a été sonorisé, et **aucun fichier son n'a été téléchargé depuis l'archive de
+> l'utilisateur** (item 2.2) : il n'y a rien à déclencher. Le pulse du marqueur (D3) et les
+> `.wav` répulseur/propulseur (D4) restent des décisions valides — elles attendent une
+> donnée, pas un arbitrage.
+
+- [!] 2.1 **Rendu (Décision D3, proposition par défaut)** : pulse géométrique court sur le
       marqueur du joueur, patron du `fireMark` (~600 ms, même mécanique que le « ! » du
       tireur livré au lot score/épure du 2026-08-24) ou du tracé du grappin —
       PAS l'effet plein-fiche doré/vitreux (réservé aux états soutenus, incohérent avec un
@@ -600,17 +761,17 @@ avec les nouveaux épisodes visibles au JSON produit.
       produire. **Couleurs : tokens sémantiques uniquement (skill `color-tokens`)** —
       aucune valeur hex ni classe Tailwind couleur en dur, même règle que le reste de
       `features/match-replay/`.
-- [ ] 2.2 **Son (Décision D4)** : fichiers depuis l'archive personnelle de l'utilisateur —
+- [!] 2.2 **Son (Décision D4)** : fichiers depuis l'archive personnelle de l'utilisateur —
       chemins à obtenir avant cet item, comme pour le grappin. Normalisation identique au
       précédent : **-16 LUFS / -1 dBTP gain linéaire, pcm_s16le 48 kHz**. Déclenchement
       par le(s) même(s) canal(aux) que les épisodes publiés en Phase 1 (patron
       `doc.grappleLines[].t0`), catégorie « équipements » de `replaySound.ts`.
-- [ ] 2.3 Étendre le garde-rail de parité stem↔fichier (`replaySoundAssets.guard.test.ts`),
+- [!] 2.3 Étendre le garde-rail de parité stem↔fichier (`replaySoundAssets.guard.test.ts`),
       même patron que l'extension faite pour le grappin.
-- [ ] 2.4 Si l'archive contient plusieurs gestes candidats par capacité : arbitrage par
+- [!] 2.4 Si l'archive contient plusieurs gestes candidats par capacité : arbitrage par
       écoute utilisateur, règle du vote (`RECETTE_SONS_ARMES.md` §5) — ne pas choisir à la
       place de l'utilisateur.
-- [ ] 2.5 Bascule d'activation : réutiliser la bascule son globale existante (catégorie
+- [!] 2.5 Bascule d'activation : réutiliser la bascule son globale existante (catégorie
       équipements, déjà réglée par défaut comme les autres sons d'équipement) — pas de
       nouveau réglage UI à créer sans raison.
 
@@ -748,6 +909,41 @@ est noté ; **il ne nomme rien** et n'entre dans aucune table.
     témoin 0014603f (0 identité i48)         631 lectures flag1==1 quand même
 
 ## DÉCOUVERTES — notées, NON traitées (règle 7)
+
+- **2026-08-25 — « masque dense » ne veut PAS dire « plus de 7 composants », et ce n'est pas
+  un gisement.** Plusieurs documents (dont le journal de l'étape 3 de ce plan) présentent
+  `bipedMaxMaskCnt = 7` comme une limite du détecteur qui laisserait échapper les records
+  « à masque dense (> 7 composants) », faisant de toute mesure un PLANCHER. Vérifié sur
+  pièces : le champ `maskCount` de l'en-tête fait **3 bits** (`offline_biped.go:334`), donc 7
+  est le maximum REPRÉSENTABLE — un masque creux de 8 composants n'existe pas dans la
+  grammaire. Le « masque dense » est l'AUTRE encodage (porte à 1 → `R(64)`, cf.
+  `consumeMask` / FUN_1406d7610), et il pèse **201 records sur 171 979 (0,1 %)** sur
+  `000d5950`. Corriger cette formulation partout où elle sert d'espoir de couverture.
+- **2026-08-25 — `i56` suit le GRAPPIN, pas la capacité interrogée.** Ses chutes de charge se
+  concentrent sur le rang 4 (famille A) et les rangs 20/21 (famille B), sur les six films.
+  C'est un compteur de charges de l'équipement porté, pas un canal par capacité — et le
+  grappin a déjà son canal dédié (`i59 tag==3`). Si une capacité à charges DEVAIT un jour se
+  dater par `i56`, ce serait celle-là, et elle n'en a pas besoin.
+- **2026-08-25 — `084a804d` mélange des rangs des deux familles de palette.** Le film rend
+  {1, 4, 5, 6, 8, 9, 10, **19**, 23, **44**} : le 19 appartient à la plage famille B (19-22),
+  et le **44** est hors de toute palette connue (1 lecture). Les autres films du corpus sont
+  homogènes (famille A pure ou famille B pure). Non diagnostiqué — cela peut être une lecture
+  fantôme (cf. l'avertissement réel/fantôme du 2026-07-26) ou un vrai mélange de palettes. À
+  regarder avant toute conclusion fondée sur la palette de CE film.
+- **2026-08-25 — `i59` tags 0 et 2 : le canal jamais interrogé, et il est GROS.** Mesuré
+  pendant l'arbitrage (disponibilité seulement, aucun croisement — hors périmètre de la
+  Phase 0) : sur `00ba2e1c`, `masque∋i59 = 3 274 · LUS 3 234` (**98,8 %**), tags
+  `0:1572 · 1:10 · 2:1565 · 3:87`. C'est **12,7 fois plus de lectures qu'`i56`** sur le même
+  film. `tag==3` est le grappin (livré) ; l'instrument existant compte tous les tags
+  (`i59_tag3_test.go:71`) mais ne croise aux rangs QUE le tag 3 (ligne 72). Les tags 0 et 2
+  n'ont jamais été confrontés à une identité. **Réserve à ne pas oublier** : ils pèsent ~97 %
+  des lectures, ce qui peut signaler un état générique « au repos / en cours » — le défaut
+  exact qui a tué `i57`. Option A de l'arbitrage, à ouvrir par le superviseur.
+- **2026-08-25 — `i51` a désormais un hook, et zéro donnée dans les deltas.** `emp_timer.go`
+  publie ce que le déser lisait déjà. Le composant n'est annoncé dans AUCUN des 1 427 763
+  records delta mesurés. Si la durée d'immobilisation par EMP redevient un objectif, la
+  donnée devra être cherchée ailleurs que dans le delta bipède (images-clés ? autre `ti` ?) —
+  le hook est posé, il ne coûte rien à laisser en place, il ne rapporte rien en l'état.
 
 - **Rangs 19–22 et la plage `sofd` non cassée** : voir le journal de l'étape 1. Ne pas agir
   sans avoir cassé les rangs 13–22 de la palette.
