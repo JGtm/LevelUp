@@ -93,11 +93,14 @@ Gate 0 : connexion établie + liste d'adresses concrètes (pas « à chercher »
       gaté env var, lecture seule, plafonné en mémoire — bombe RAM consignée) aux 2
       matchs Bastion : la permutation prédite reproduit-elle l'ordre ti=13 du fallback ?
       **NON JOUÉE** — le canal est désigné mais inatteignable dans le budget du lot :
-      atteindre i9 dans l'image-clé impose de porter cinq listes de filtres
-      (`ti=12 i2..i6`, déserialiseurs `140DBDE1C` / `140DBDF80` / `140DBDFAC` /
-      `140DBE194` / `140DBDF34`) en plus de trois largeurs triviales. Coût chiffré et
-      marche à suivre en 5 étapes au rapport §6. Aucun périmètre adapté en douce, aucun
-      bit deviné.
+      atteindre i9 dans l'image-clé impose de porter `ti=12 i1..i8`. Le lot a poussé la
+      RE jusqu'au bout de ce qui était atteignable en statique : i1 `R(8)`, i7 `R(8)`,
+      i8 `R(32)` sont établis, et les cinq listes de filtres (i2..i6) se ramènent à UN
+      lecteur partagé `FUN_140dbe400` (`R(4)` masque + `R(1)`/`R(32)` + par bit :
+      `R(4)` tag + variant). **Il ne reste qu'un objet à faire : le variant
+      `FUN_141e98e10`, ~12 alternatives** (même forme que le variant de ti=13 du lot
+      C-bis). Coût chiffré et marche à suivre au rapport §4.3 et §6. Aucun périmètre
+      adapté en douce, aucun bit deviné.
 
 Gate 1 : verdict (a)/(b)/(c) écrit, chaque affirmation adossée à une adresse décompilée
 ou une mesure rejouable. En (a) : dire explicitement si le fallback ti=13 est CONFIRMÉ,

@@ -186,19 +186,40 @@ du dépôt pour `ti=13 i0` (`FUN_142ed69d8 = FUN_14080dec4(rdr,"property-name",�
 
 ### 4.3 Les autres composants de `ti=12` (matière pour le portage)
 
-| i | composant | déserialiseur | grammaire |
-|---|---|---|---|
-| 0 | `sub-type` | `1410E0CAC` | `R(32)` — **déjà porté** |
-| 1 | `flags` | `141094130` → `14109414c` | **`R(8)`** |
-| 2 | `visibility-distance-filters` | `140DBDE1C` | liste de filtres (non décompilée) |
-| 3 | `visible-offscreen-filters` | `140DBDF80` | liste de filtres (non décompilée) |
-| 4 | `can-be-occluded-filters` | `140DBDFAC` | liste de filtres (non décompilée) |
-| 5 | `visibility-filter` | `140DBE194` | liste de filtres (non décompilée) |
-| 6 | `docking-filter` | `140DBDF34` → `FUN_140dbe400(dest, rdr, level > 1)` | liste de filtres, largeur dépendante du NIVEAU |
-| 7 | `docking-order` | `142ED5050` | **`R(8)`** |
-| 8 | `docking-group-name` | `142ED5028` | **`R(32)`** string-id (`"navpoint-docking-group-name"`) |
-| 9 | `formatted-text` | `1410E7B90` | §4.2 |
-| 14 | `radial-progress` | `140FC8D14` | `R(8)` — **déjà porté** |
+| i | niveau | composant | déserialiseur | grammaire |
+|---|---|---|---|---|
+| 0 | 0 | `sub-type` | `1410E0CAC` | `R(32)` — **déjà porté** |
+| 1 | 1 | `flags` | `141094130` → `14109414c` | **`R(8)`** |
+| 2 | 1 | `visibility-distance-filters` | `140DBDE1C` → `FUN_140dbde44(dst, rdr, 0, lvl > 2)` | **`LF(lvl>2)`** + 2 x `FUN_1411b4e6c` + par bit du masque : `FUN_140dbdf00()` [+ `R(4)` si le drapeau est faux] |
+| 3 | 3 | `visible-offscreen-filters` | `140DBDF80` → `FUN_140dbdfd8(dst, rdr, ctx, lvl > 1)` | **`LF(lvl>1)`** + `R(1)` + par bit du masque : `R(1)` [+ `R(4)` si le drapeau est faux] |
+| 4 | 2 | `can-be-occluded-filters` | `140DBDFAC` → `FUN_140dbdfd8(…, lvl > 1)` | idem i3 |
+| 5 | 2 | `visibility-filter` | `140DBE194` → `FUN_140dbe400(dst, rdr, lvl > 1)` | **`LF(lvl>1)`** seul |
+| 6 | 2 | `docking-filter` | `140DBDF34` → `FUN_140dbe400(dst, rdr, lvl > 1)` | **`LF(lvl>1)`** seul |
+| 7 | 2 | `docking-order` | `142ED5050` | **`R(8)`** |
+| 8 | 1 | `docking-group-name` | `142ED5028` | **`R(32)`** string-id (`"navpoint-docking-group-name"`) |
+| 9 | 1 | `formatted-text` | `1410E7B90` | §4.2 |
+| 14 | 1 | `radial-progress` | `140FC8D14` | `R(8)` — **déjà porté** |
+
+`LF(flag)` = **la liste de filtres, lecteur UNIQUE partagé par i2..i6** —
+`FUN_140dbe400(dst, rdr, flag)` :
+
+```
+R(4)  masque            ; FUN_140dbe598 -> jusqu'a 4 fentes de filtre, ecrit en dst+0x100
+si flag : R(1)          ; sinon R(32)        ; ecrit en dst+0x104
+pour k = 0..3, si le bit k du masque est mis :
+    R(4)  tag           ; type du filtre
+    variant FUN_141e98e10 selon le tag
+```
+
+`FUN_141e98e10` est **un variant à ~12 alternatives** (12 cibles de saut internes +
+la table `PTR_FUN_143c4ebe0`) : c'est exactement la forme, et l'ordre de grandeur
+d'effort, du variant de `ti=13` qui a occupé une phase entière du lot C-bis.
+**Le porter UNE fois débloque i2, i3, i4, i5 ET i6.**
+
+Les niveaux de la colonne 2 sont ceux du registre du film, tels que
+`registre_film/lotC/7344d24f_delta_masques.tsv` les publie : les drapeaux
+`lvl > 1` / `lvl > 2` sont donc **déterminés d'avance** pour cet archétype
+(i2 : faux ; i3, i4, i5, i6 : vrai).
 
 ---
 
@@ -220,9 +241,10 @@ C-bis, §CB.0.3). Le texte vit donc dans l'**image-clé**.
 Lire une image-clé de `ti=12` passe par `WalkKeyframeFullState`
 (`filmdec/keyframe_fullstate_loop.go`) : **aucun masque de présence, les 64 entrées de
 l'archétype sont désérialisées dans l'ordre**. Atteindre i9 impose donc de porter
-i1..i8 — soit, d'après §4.3 : trois largeurs triviales (i1 `R(8)`, i7 `R(8)`, i8 `R(32)`)
-et **cinq listes de filtres** (i2, i3, i4, i5, i6), dont au moins une à largeur
-dépendante du niveau.
+i1..i8 — soit, d'après §4.3 : trois largeurs triviales (i1 `R(8)`, i7 `R(8)`, i8 `R(32)`,
+toutes établies par ce lot) et **cinq listes de filtres** (i2..i6) qui se ramènent à
+**un seul lecteur partagé** `FUN_140dbe400`, dont le seul morceau non résolu est un
+variant à ~12 alternatives (`FUN_141e98e10`).
 
 ---
 
@@ -235,11 +257,14 @@ de i9. Ce n'est pas un contournement — c'est le coût, chiffré, du lot suivan
 
 **Marche à suivre proposée (lot suivant, RE + portage) :**
 
-1. Décompiler `140DBDE1C`, `140DBDF80`, `140DBDFAC`, `140DBE194`, `140DBDF34`
-   (elles convergent vers `FUN_140dbe400` et voisines : un seul lecteur de liste de
-   filtres, probablement partagé) — recette §4.1, 2 appels MCP par composant.
-2. Porter i1, i7, i8 (triviaux) puis les filtres, avec les vecteurs figés d'usage
-   (`zone_vectors_test.go`) et le témoin de chaînage (`Chained`).
+1. **Fait par ce lot** — les cinq déserialiseurs de filtres sont décompilés et
+   convergent vers UN lecteur partagé, `FUN_140dbe400` (§4.3). Ce qui reste à faire
+   côté RE est **un seul objet** : le variant `FUN_141e98e10` (~12 alternatives, table
+   `PTR_FUN_143c4ebe0`) — même forme et même ordre de grandeur que le variant de `ti=13`
+   du lot C-bis phase 0. Le porter une fois débloque i2..i6.
+2. Porter i1 `R(8)`, i7 `R(8)`, i8 `R(32)` (triviaux, déjà établis ici) puis la liste de
+   filtres, avec les vecteurs figés d'usage (`zone_vectors_test.go`) et le témoin de
+   chaînage (`Chained`).
 3. Instrument sous garde d'environnement, un film par processus : image-clé des
    films `7344d24f` et `696a9d7c`, relever `textStringId` par entité `ti=12`.
 4. Résoudre les identifiants par `FUN_140748a74` (implémentation §3.1 ; le dépôt a déjà
