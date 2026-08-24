@@ -36,6 +36,13 @@ témoins (médiane par mort de l'ordre de 8-10 s), tsc/vitest/lint verts, parit�
    surface naturelle saute aux yeux — ne pas l'implémenter).
 5. Pas d'interrupteur, pas d'option : la ligne s'affiche toujours (un match sans mort
    affiche 00:00). Aucun flag.
+6. AMENDEMENT du 2026-08-24 (revue adversariale, ronde 1 — constats 1 et 2, arbitrés par le
+   coordinateur) : la mesure est REFUSÉE (`null`, la fiche écrit « — » avec son infobulle)
+   dès qu'une trace SANS xuid chevauche (intersection strictement positive) au moins un trou
+   du joueur, et pour tout joueur du roster SANS AUCUNE vie. Un trou entre deux vies nommées
+   n'est pas une mort : le pont slot -> xuid est incomplet sur une partie du corpus. Pas
+   d'attribution devinée, pas de soustraction — on refuse le chiffre, on ne le rafistole pas.
+   La décision n°5 tient toujours : la ligne est TOUJOURS présente, seule sa valeur change.
 
 ## Hors périmètre (fermé)
 
@@ -120,6 +127,49 @@ Gate 1 PASSÉ le 2026-08-24 (depuis `apps/web/` du worktree) :
   Verdict : la médiane par mort tombe exactement dans la fourchette 8-10 s du registre. Le
   cumul par match encadre la fourchette 865-1 136 s sans y tomber des deux côtés (769 s et
   1 097 s) — cf. §Découvertes, non corrigé.
+  CES CHIFFRES SONT CEUX D'AVANT LA RONDE 1 : ils comptaient comme temps mort des trous
+  occupés par des vies non rattachées. Mesures faisant foi : §Ronde 1 ci-dessous.
+
+## Ronde 1 — corrections de revue adversariale (2026-08-24)
+
+Constats arbitrés par le coordinateur ; ronde 2 relira. Statut :
+
+- `[x]` **Constat 1 (P1)** — trou occupé par une vie SANS xuid : `deadTimeByPlayer` rend
+  `number | null`, refus dès une intersection strictement positive avec un trou. Le contact
+  de bornes (intersection nulle) ne refuse PAS — sans cette précision la ligne serait muette
+  partout. `DeadTimeRow` écrit « — » et porte l'infobulle explicative.
+- `[x]` **Constat 2** — joueur du roster sans aucune vie : même refus. Le commentaire de
+  `DeadTimeRow` qui affirmait « le film date toutes les vies » (faux sur 5 artefacts du
+  cache) est réécrit : il décrit maintenant les deux issues, mesure ou refus.
+- `[x]` **Constat 3 (P2)** — tri défensif éprouvé pour de bon : nouveau test construisant un
+  `ReplayPlayer` À LA MAIN, vies en désordre, sans passer par `buildPlayers`. VÉRIFIÉ PAR
+  MUTATION : `.sort` retiré -> ce test seul échoue (`expected +0 to be 140000`), 22 autres
+  passent ; `.sort` remis -> 23/23.
+- `[x]` **Constat 4 (P2)** — le cas nuisible est couvert : vie anonyme ENTRE deux vies
+  nommées -> `null`. Les cas inoffensifs (anonyme avant la première vie, après la dernière,
+  contact de bornes) restent testés à part pour interdire le sur-refus.
+- `[~]` **Constat 5 (P2)** — non corrigé sur arbitrage : cf. Découverte 7.
+
+Gates de la ronde 1 (depuis `apps/web/`, `node_modules/.tmp` purgé avant `tsc`) :
+- `npx tsc -b` -> 0 erreur ;
+- `npx vitest run src/features/match-replay` -> 69 fichiers, 1 040 tests, 0 échec ;
+- `npx eslint src/features/match-replay --max-warnings=-1` -> 0 erreur, 1 avertissement
+  préexistant hors périmètre.
+
+Plausibilité APRÈS refus (sonde jetable, supprimée) — mesurés / refusés, et médiane sur les
+seuls joueurs mesurés :
+- `000d5950` (499 s, 8 joueurs, 6 vies non rattachées) : **1 mesuré / 7 en « — »** ; le seul
+  mesuré (whiteknight2519) 73,8 s (01:13), médiane par mort 8,1 s, plus long trou 8,8 s ;
+- `7344d24f` (569 s, 8 joueurs, 5 vies non rattachées) : **3 mesurés / 5 en « — »** ;
+  120,9 s / 130,7 s / 159,2 s (02:00 à 02:39), médiane par mort 10,1 s, plus long trou
+  18,3 s ; cumul des mesurés 411 s sur 40 trous ;
+- `64e8adfa` (834 s, 8 joueurs, 11 vies non rattachées) : **1 mesuré / 7 en « — »** ;
+  Bel homme 21 à 92,4 s (01:32), médiane par mort 10,2 s. flamesamurai, le cas du
+  relecteur, est bien REFUSÉ (il aurait affiché 311,1 s, soit 05:11).
+
+Les médianes des joueurs mesurés restent dans la fourchette 8-10 s du registre, et le cas
+prouvé faux ne s'affiche plus. Le TAUX DE REFUS, lui, est très élevé : cf. Découverte 6, qui
+est la question à trancher en ronde 2.
 
 ## Garde-rails d'exécution
 
@@ -147,9 +197,12 @@ Gate 1 PASSÉ le 2026-08-24 (depuis `apps/web/` du worktree) :
    investigué : la bande du registre peut avoir été mesurée sur d'autres matchs, ou sur une
    définition incluant les bornes de tête/queue que ce lot exclut délibérément. Aucun
    changement de définition n'a été fait pour rentrer dans la bande.
-3. **Trous longs réels** : maximum 54,2 s sur `000d5950` (contre 18,3 s sur `7344d24f`).
-   Un joueur peut rester à terre bien au-delà du palier — c'est exactement ce qu'un cumul
-   « nombre de morts x délai médian » aurait effacé.
+3. ~~**Trous longs réels** : maximum 54,2 s sur `000d5950`.~~ **AMENDÉE (ronde 1) : cette
+   découverte était FAUSSE.** Le trou de 54,2 s de JGtm n'est pas une longue mort mais une
+   VIE NON PONTÉE (trace anonyme du slot 588, 317 points, preuve du relecteur). Après le
+   refus, le plus long trou d'un joueur mesuré tombe à 8,8 s sur `000d5950`, 18,3 s sur
+   `7344d24f` et 10,6 s sur `64e8adfa`. Ce qui reste vrai : le cumul se fait sur des
+   intervalles LUS, jamais sur « nombre de morts x délai médian ».
 4. **Surface naturelle pour l'agrégat d'équipe** (HORS PÉRIMÈTRE, non implémenté) :
    `ReplayTeamHeader.tsx` porte déjà le score de la colonne à l'instant lu et reçoit
    `players` — il pourrait sommer les cumuls de ses joueurs sans nouvelle dérivation. À
@@ -159,6 +212,38 @@ Gate 1 PASSÉ le 2026-08-24 (depuis `apps/web/` du worktree) :
    `normalizeReplayDocument` hors de la fixture. Sonde donc placée sous `src/lib/replay/`
    puis supprimée. Garde-rail correct, simple contrainte à connaître pour les mesures
    ponctuelles sur artefacts réels.
+6. **LE TAUX DE REFUS EST TRÈS ÉLEVÉ — question de ronde 2, non tranchée ici.** La règle
+   arbitrée (toute trace sans xuid qui chevauche un trou invalide le joueur) refuse
+   **19 joueurs sur 24** sur les trois témoins (1/8, 3/8, 1/8 mesurés). La ligne affiche donc
+   « — » quatre fois sur cinq. La règle est appliquée telle qu'arbitrée ; ce qui suit est la
+   MESURE qui permettra de la réviser ou de la confirmer, pas une proposition de correctif.
+   Diagnostic des traces sans xuid (sonde jetable, supprimée) :
+   - elles sont TOUTES groupées en FIN de match : `000d5950` -> les 6 vivent entre les images
+     3 795 et 4 945 sur 4 985 (dernier quart) ; `7344d24f` -> les 5 entre 5 117 et 5 688 sur
+     5 689 (dernier dixième) ; `64e8adfa` -> les 11 entre 3 700 et 8 336 sur 8 337, dont 9
+     après l'image 5 541 ;
+   - leurs durées vont de 2 s (4 points) à 196 s (1 866 points — c'est le slot 607 de
+     `64e8adfa`, celui du relecteur) ;
+   - `team` vaut -1 sur toutes.
+   Autrement dit une poignée de traces tardives suffit à invalider presque tout le monde,
+   parce que presque tout le monde meurt au moins une fois en fin de partie. Deux lectures
+   possibles, à départager avec une donnée que ce lot n'a pas cherchée (le commentaire de
+   `rosterLogic.buildPlayers` dit que les traces sans xuid sont « les caméras et les
+   spectateurs de fin de partie », ce qui n'est pas compatible avec 1 866 points de
+   déplacement) : soit ces traces sont de vraies vies mal pontées et le refus est juste, soit
+   une partie sont des caméras et le refus est trop large. Trancher demande de savoir
+   distinguer une caméra d'un bipède — hors périmètre de cette ronde.
+7. **Constat 5 de la revue, consigné et NON corrigé (arbitrage coordinateur)** : l'invariant
+   « le temps mort n'est pas recalculé par image » (le `useMemo` sur `[groups, doc]` dans
+   `ReplayTeams`) n'est protégé par aucun test. Accepté : éprouver une mémoïsation demande
+   d'espionner le module ou de compter des rendus, deux tests réputés fragiles. Le risque
+   résiduel est une régression de performance silencieuse sur les gros BTB, pas un faux
+   affichage.
+8. **`ReplayTeams.test.tsx` dépasse le seuil de 500 L du dépôt** : 882 L avant ce lot, 982 L
+   après (les cas du temps mort et du refus). Dette PRÉEXISTANTE que ce lot accroît de 100 L,
+   signalée et non traitée : découper un fichier de tests est un lot à part (il faudrait
+   décider la frontière — par étage de fiche ? par règle ?), et le faire ici mêlerait un
+   refactor de tests à une correction de revue.
 
 ## CR attendu
 

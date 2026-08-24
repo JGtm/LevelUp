@@ -254,6 +254,17 @@ export interface ReplayText {
    */
   deadTimeLabel: string
   /**
+   * LA MESURE REFUSÉE, et POURQUOI elle l'est. La ligne écrit alors un tiret, et ce texte est
+   * ce qui empêche de le lire comme une panne d'affichage : le film porte des vies que son
+   * pont slot -> xuid ne rattache à personne, et l'une d'elles vit dans un trou de ce joueur
+   * (ou bien il n'a AUCUNE vie publiée). Le trou n'est donc pas prouvé être une mort.
+   *
+   * IL DIT LA CAUSE EN LANGUE DE L'UTILISATEUR, PAS LE MÉCANISME : ni « xuid », ni « slot »,
+   * ni « track » — un lecteur du rejeu n'a pas à connaître le transport pour comprendre qu'il
+   * manque un rattachement.
+   */
+  deadTimeUnmeasurable: string
+  /**
    * MANCHE : les modes qui en ont (Oddball) remettent le compteur à zéro à chaque manche.
    * L'en-tête affiche le TOTAL du match, et rappelle en second la manche en cours.
    */

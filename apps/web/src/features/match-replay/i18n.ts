@@ -175,6 +175,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     countersLive: "Frags / morts / assistances à l'instant lu",
     countersMatch: 'Frags / morts / assistances du match',
     deadTimeLabel: 'Temps mort',
+    deadTimeUnmeasurable:
+      'Non mesurable : des vies du film ne sont pas rattachées aux joueurs',
     roundShortFmt: (index) => `M${index}`,
     roundLabelFmt: (index, count, value) => `Manche ${index} sur ${count} : ${value}`,
     scoreBannerLabel: "Score des équipes à l'instant lu",
@@ -381,6 +383,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     countersLive: 'Kills / deaths / assists at the moment being played',
     countersMatch: 'Kills / deaths / assists for the whole match',
     deadTimeLabel: 'Time dead',
+    deadTimeUnmeasurable: 'Not measurable: some lives in the film are not bridged to players',
     roundShortFmt: (index) => `R${index}`,
     roundLabelFmt: (index, count, value) => `Round ${index} of ${count}: ${value}`,
     scoreBannerLabel: 'Team scores at the moment being played',

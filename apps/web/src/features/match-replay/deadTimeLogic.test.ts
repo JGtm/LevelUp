@@ -1,45 +1,56 @@
 /**
  * Tests — deadTimeLogic (le temps mort cumulé d'un joueur).
  *
- * CE QU'ILS PROTÈGENT : les deux bornes de la définition. Le temps AVANT la première vie et le
- * temps APRÈS la dernière ne sont pas du temps mort, et ce sont exactement les deux endroits où
- * un cumul naïf gonfle. Le reste tient la robustesse d'entrée : vies désordonnées, vies qui se
- * chevauchent, débordement de la fenêtre du match.
+ * CE QU'ILS PROTÈGENT, EN DEUX FAMILLES.
  *
- * Les vies entrent par `buildPlayers`, comme à l'écran : un test qui fabriquerait des
- * `ReplayPlayer` à la main éprouverait une structure que la page ne construit jamais.
+ * 1. LA DÉFINITION ET SES DEUX BORNES : le temps AVANT la première vie et le temps APRÈS la
+ *    dernière ne sont pas du temps mort, et ce sont exactement les deux endroits où un cumul
+ *    naïf gonfle. Autour : vies désordonnées, vies qui se chevauchent, débordement de la
+ *    fenêtre du match.
+ * 2. LE REFUS DE MESURER. Un trou entre deux vies NOMMÉES n'est pas une mort si une vie que le
+ *    pont n'a rattachée à personne y vit : le film montre quelqu'un qui court. Ces tests-là
+ *    tiennent le `null` — et, tout aussi important, tiennent qu'on ne refuse PAS quand rien ne
+ *    le justifie (vie anonyme hors trou, simple contact de bornes) : une ligne muette partout
+ *    serait un autre défaut.
+ *
+ * Les vies entrent par `buildPlayers`, comme à l'écran — sauf le test du tri défensif, qui doit
+ * justement contourner ce tri pour éprouver celui du module.
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayTrack } from '@/lib/api/types'
-
 import { deadTimeByPlayer, formatDeadTime } from './deadTimeLogic'
-import { buildPlayers } from './rosterLogic'
+import type { ReplayTrackReady } from './replayNormalize'
+import { buildPlayers, type ReplayPlayer } from './rosterLogic'
 import { testReplayDoc } from './test/testDoc'
 
 /** Une vie du film : un slot, un propriétaire, une fenêtre [start, end]. */
-function life(slot: number, xuid: string, start: number, end: number): ReplayTrack {
-  return {
-    slot,
-    team: -1,
-    xuid,
-    startFrame: start,
-    endFrame: end,
-    points: [{ t: start, x: 0, y: 0 }],
-  }
+function life(slot: number, xuid: string, start: number, end: number): ReplayTrackReady {
+  return { slot, team: -1, xuid, startFrame: start, endFrame: end, points: [{ t: start, x: 0, y: 0 }] }
+}
+
+/** Une vie que le pont slot -> xuid n'a rattachée à PERSONNE — le cas qui invalide un trou. */
+function anonymous(slot: number, start: number, end: number): ReplayTrackReady {
+  return { slot, team: -1, startFrame: start, endFrame: end, points: [{ t: start, x: 0, y: 0 }] }
 }
 
 /**
- * Temps mort du joueur `xuid`, en images — la grandeur que les cas ci-dessous raisonnent.
- * `frameIntervalMs: 1000` fait qu'une image vaut une seconde : les millisecondes rendues par
- * le module se relisent alors directement en images, sans arithmétique dans le test.
+ * Temps mort du joueur `xuid`, en images — la grandeur que les cas ci-dessous raisonnent, ou
+ * `null` quand le module refuse de mesurer. `frameIntervalMs: 1000` fait qu'une image vaut une
+ * seconde : les millisecondes rendues se relisent alors directement en images.
+ *
+ * Joueur absent de la table = -1, une valeur qui ne satisfait aucune attente — surtout pas
+ * confondue avec `null`, qui est ici un RÉSULTAT attendu et non une absence.
  */
-function deadFrames(tracks: ReplayTrack[], xuid: string, frameCount = 1000): number {
+function deadFrames(
+  tracks: ReplayTrackReady[],
+  xuid: string,
+  frameCount = 1000,
+): number | null {
   const doc = testReplayDoc({ frameCount, frameIntervalMs: 1000, tracks })
-  // Joueur absent de la table = -1 : une valeur qui ne peut satisfaire aucune attente
-  // ci-dessous, plutôt qu'un zéro qui se confondrait avec « aucune mort ».
-  const ms = deadTimeByPlayer(buildPlayers(doc, []), doc).get(xuid) ?? -1000
-  return ms / 1000
+  const dead = deadTimeByPlayer(buildPlayers(doc, []), doc)
+  if (!dead.has(xuid)) return -1
+  const ms = dead.get(xuid) ?? null
+  return ms === null ? null : ms / 1000
 }
 
 describe('deadTimeByPlayer — la définition et ses deux bornes', () => {
@@ -79,6 +90,22 @@ describe('deadTimeByPlayer — la définition et ses deux bornes', () => {
     expect(deadFrames(ordre, 'A')).toBe(140)
   })
 
+  /**
+   * LE TRI DÉFENSIF, ÉPROUVÉ POUR DE BON. Le test ci-dessus passe par `buildPlayers`, qui trie
+   * déjà : il ne verrait pas la disparition du `.sort` du module. Celui-ci construit le
+   * `ReplayPlayer` À LA MAIN, vies en désordre, et c'est le seul de ce fichier à le faire —
+   * précisément parce que la structure qu'il fabrique n'existe qu'ici. Sans le tri interne, la
+   * couverture partirait de la vie la plus tardive et le total tomberait à 0.
+   */
+  it('tri INTERNE : des vies désordonnées reçues telles quelles donnent le même total', () => {
+    const player: ReplayPlayer = {
+      xuid: 'A',
+      lives: [life(514, 'A', 360, 500), life(512, 'A', 0, 100), life(513, 'A', 180, 300)],
+    }
+    const doc = testReplayDoc({ frameCount: 1000, frameIntervalMs: 1000, tracks: [] })
+    expect(deadTimeByPlayer([player], doc).get('A')).toBe(140_000)
+  })
+
   it('vies qui se CHEVAUCHENT : aucun trou inventé sous une vie couvrante', () => {
     // [0,400] couvre [100,200] : la troisième vie démarre à 300, donc toujours sous la
     // couverture de la première. Comparer chaque vie à la seule précédente compterait ici
@@ -94,24 +121,6 @@ describe('deadTimeByPlayer — la définition et ses deux bornes', () => {
     expect(deadFrames([life(512, 'A', 0, 100), life(513, 'A', 500, 600)], 'A', 200)).toBe(99)
   })
 
-  it('chaque joueur a son propre cumul, et les vies anonymes n’entrent chez personne', () => {
-    const doc = testReplayDoc({
-      frameCount: 1000,
-      frameIntervalMs: 1000,
-      tracks: [
-        life(512, 'A', 0, 100),
-        life(513, 'A', 200, 300),
-        life(514, 'B', 0, 500),
-        { ...life(515, 'A', 600, 700), xuid: undefined },
-      ],
-    })
-    const dead = deadTimeByPlayer(buildPlayers(doc, []), doc)
-    // A : un seul trou [100,200] — la trace SANS xuid (caméra, spectateur) n'ouvre pas de
-    // second trou chez lui, elle n'appartient à personne.
-    expect(dead.get('A')).toBe(100_000)
-    expect(dead.get('B')).toBe(0)
-  })
-
   it('sans échelle temporelle, la cadence de repli de la page s’applique (60 images / s)', () => {
     // Artefact ancien sans `frameIntervalMs` : l'axe T est un index, et `frameToMs` retombe
     // sur 60 images par seconde — la même règle que le chronomètre du rejeu.
@@ -123,9 +132,96 @@ describe('deadTimeByPlayer — la définition et ses deux bornes', () => {
   })
 })
 
+/**
+ * LE REFUS DE MESURER — la correction du 2026-08-24 (revue adversariale, constats 1 et 2).
+ *
+ * Le pont slot -> xuid du film est incomplet sur une partie du corpus. Un trou entre deux vies
+ * NOMMÉES peut donc être occupé par une vie réelle que personne ne réclame : mesuré sur les
+ * artefacts servis, `64e8adfa` affichait 5:11 de « temps mort » pour flamesamurai dont ~63 %
+ * couverts par la trace anonyme du slot 607. On ne rafistole pas ce chiffre, on le refuse.
+ */
+describe('deadTimeByPlayer — quand le film ne permet pas de conclure', () => {
+  it('vie ANONYME DANS un trou : mesure refusée (null), jamais un chiffre rafistolé', () => {
+    const tracks = [life(512, 'A', 0, 100), anonymous(900, 120, 160), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBeNull()
+  })
+
+  it('un seul trou pollué suffit à refuser TOUT le cumul du joueur', () => {
+    // Deux trous, un seul occupé : soustraire le douteux rendrait le reste invérifiable.
+    const tracks = [
+      life(512, 'A', 0, 100),
+      life(513, 'A', 180, 300),
+      anonymous(900, 320, 340),
+      life(514, 'A', 360, 500),
+    ]
+    expect(deadFrames(tracks, 'A')).toBeNull()
+  })
+
+  it('joueur du roster SANS AUCUNE VIE : refus aussi — « 00:00 » dirait « jamais à terre »', () => {
+    const doc = testReplayDoc({
+      frameCount: 1000,
+      frameIntervalMs: 1000,
+      roster: [{ xuid: 'C', filmIndex: 0, name: 'Charlie' }],
+      tracks: [life(512, 'A', 0, 400)],
+    })
+    const dead = deadTimeByPlayer(buildPlayers(doc, []), doc)
+    expect(dead.has('C')).toBe(true)
+    expect(dead.get('C')).toBeNull()
+    // Et le joueur qui, lui, a des vies garde sa mesure : le refus n'est pas contagieux.
+    expect(dead.get('A')).toBe(0)
+  })
+
+  it('le refus est PAR JOUEUR : une vie anonyme hors des trous de B ne l’atteint pas', () => {
+    const doc = testReplayDoc({
+      frameCount: 1000,
+      frameIntervalMs: 1000,
+      tracks: [
+        life(512, 'A', 0, 100),
+        anonymous(900, 120, 160),
+        life(513, 'A', 180, 300),
+        life(514, 'B', 500, 600),
+        life(515, 'B', 700, 800),
+      ],
+    })
+    const dead = deadTimeByPlayer(buildPlayers(doc, []), doc)
+    expect(dead.get('A')).toBeNull()
+    expect(dead.get('B')).toBe(100_000)
+  })
+
+  it('vie anonyme APRÈS la dernière vie nommée : rien à invalider, la mesure tient', () => {
+    // La queue n'est pas comptée : une trace anonyme qui y vit ne prouve rien contre le cumul.
+    const tracks = [life(512, 'A', 0, 100), life(513, 'A', 180, 300), anonymous(900, 600, 700)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+
+  it('vie anonyme AVANT la première vie nommée : de même, aucun trou concerné', () => {
+    const tracks = [anonymous(900, 0, 50), life(512, 'A', 100, 200), life(513, 'A', 280, 400)]
+    expect(deadFrames(tracks, 'A')).toBe(80)
+  })
+
+  it('simple CONTACT de bornes (intersection nulle) : on ne refuse pas pour rien', () => {
+    // Le trou est ]100, 180[. Une trace qui finit à 100 ou démarre à 180 ne dit rien de son
+    // intérieur — refuser ici rendrait la ligne muette sur presque tous les matchs.
+    const avant = [life(512, 'A', 0, 100), anonymous(900, 50, 100), life(513, 'A', 180, 300)]
+    expect(deadFrames(avant, 'A')).toBe(80)
+    const apres = [life(512, 'A', 0, 100), anonymous(901, 180, 220), life(513, 'A', 180, 300)]
+    expect(deadFrames(apres, 'A')).toBe(80)
+  })
+
+  it('une vie anonyme qui ENJAMBE le trou le pollue quand même', () => {
+    // Elle commence avant la mort et finit après le retour : l'intersection reste positive.
+    const tracks = [life(512, 'A', 0, 100), anonymous(900, 90, 190), life(513, 'A', 180, 300)]
+    expect(deadFrames(tracks, 'A')).toBeNull()
+  })
+})
+
 describe('formatDeadTime — mm:ss, minutes complétées', () => {
   it('un match sans mort s’écrit 00:00', () => {
     expect(formatDeadTime(0)).toBe('00:00')
+  })
+
+  it('une mesure REFUSÉE s’écrit d’un tiret, jamais 00:00', () => {
+    expect(formatDeadTime(null)).toBe('—')
   })
 
   it('complète les minutes ET les secondes pour que la colonne s’aligne', () => {
