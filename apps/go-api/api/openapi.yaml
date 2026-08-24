@@ -25125,6 +25125,9 @@ components:
           format: int32
           minimum: 0
           type: integer
+        letterRank:
+          format: int64
+          type: integer
         spans:
           items:
             $ref: '#/components/schemas/ZoneSpan'
@@ -25154,6 +25157,9 @@ components:
           format: int64
           type: integer
         hillPeriods:
+          format: int64
+          type: integer
+        letters:
           format: int64
           type: integer
         method:
@@ -25198,6 +25204,7 @@ components:
         - spans
         - hillPeriods
         - unknownOwner
+        - letters
         - gaugePoints
       type: object
   securitySchemes:

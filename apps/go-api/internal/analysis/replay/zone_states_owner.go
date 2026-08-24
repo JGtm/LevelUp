@@ -48,11 +48,15 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	cov.OwnerUnpaired = len(gaugeSlot) - len(refs)
 	teams := zoneTeamSet(in.TeamByXUID)
 	gap := zoneGaugeGapFrames(c.intervalMS)
+	letters := zoneLetterRanks(gaugeSlot, len(in.Zones), in.Hill)
 	out := make([]ZoneState, 0, len(refs))
 	for _, ref := range refs {
 		slot := gaugeSlot[ref]
 		gauge := ser.gauge[slot]
 		st := ZoneState{ZoneRef: ref, Key: ser.keys[slot]}
+		if rank, ok := letters[ref]; ok {
+			st.LetterRank = &rank
+		}
 		st.Spans = ownerSpansOf(ser.owner[ownerSlot[ref]], gauge,
 			zoneSpanCtx{frames: c.frames, teams: teams}, cov)
 		if len(st.Spans) == 0 {
@@ -65,6 +69,51 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
+	return out
+}
+
+// zoneLetterMax est le nombre de lettres que le HUD du jeu affiche sur une carte a bases
+// simultanees : A, B, C. Au-dela, le fallback se tait — un « D » serait une invention, et les
+// cartes mesurees n'en portent de toute facon que trois (8 cartes, phase 0.2).
+const zoneLetterMax = 3
+
+// zoneLetterRanks rend le rang de lettre de chaque zone : les zones RANGEES PAR NUMERO DE SLOT
+// `ti=13` CROISSANT, chacune prenant son rang (0 = A, 1 = B, 2 = C).
+//
+// POURQUOI CET ORDRE-LA, ET CE QU'IL VAUT (mesure du 2026-08-24, plan
+// `.ai/V7.5/replay2d/PLAN_LETTRES_BASES_FALLBACK.md`, phase 0.2). La lettre affichee en jeu
+// n'existe dans AUCUNE donnee decodee : ni le catalogue de formes, ni la variante, ni — verdict
+// de la RE Ghidra du meme jour — le binaire, ou elle vient d'un script de mode. Ce qui se mesure,
+// c'est que l'ordre des slots de jauge est REPRODUCTIBLE : sur 8 cartes et 17 films de Bastion,
+// les films d'une meme carte rendent 8/8 la MEME permutation zone -> rang. Les slots d'une carte
+// forment des blocs reguliers de pas 5 (un par zone : proprietaire, canal neutre, jauge) — l'ordre
+// des jauges est donc l'ordre d'allocation du moteur au chargement, pas une coincidence de vote.
+// Un ordre stable suffit a dire A, B ou C ; que ce soient LES lettres du jeu appartient au releve
+// Theater de l'utilisateur, et ce paquet ne le pretend nulle part.
+//
+// TROIS PORTES FERMEES, chacune parce que l'ouvrir publierait du faux :
+//
+//	la BIJECTION   sans une zone appariee PAR zone du catalogue, une zone muette decale les
+//	               lettres de toutes les suivantes. Le cas existe (un film du corpus n'a aucune
+//	               capture attribuee) et il est invisible a l'oeil : rien plutot qu'un decalage.
+//	l'ALPHABET     au-dela de trois zones, la lettre suivante n'existe pas dans le HUD.
+//	la COLLINE     un mode a colline n'a qu'une zone active a la fois et aucune lettre. La porte
+//	               est fermee ici EN PLUS du chemin (le volet colline ne passe pas par cette
+//	               fonction) : une ceinture, parce qu'un mode a colline QUI porterait aussi des
+//	               captures nommees retomberait sinon dans ce chemin sans que rien ne le dise.
+func zoneLetterRanks(gauge map[int]uint32, catalog int, hill bool) map[int]int {
+	if hill || catalog <= 0 || catalog > zoneLetterMax || len(gauge) != catalog {
+		return nil
+	}
+	refs := make([]int, 0, len(gauge))
+	for ref := range gauge {
+		refs = append(refs, ref)
+	}
+	sort.Slice(refs, func(i, j int) bool { return gauge[refs[i]] < gauge[refs[j]] })
+	out := make(map[int]int, len(refs))
+	for i, ref := range refs {
+		out[ref] = i
+	}
 	return out
 }
 

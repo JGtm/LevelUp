@@ -11282,6 +11282,8 @@ export interface components {
             gauge?: components["schemas"]["GaugePoint"][] | null;
             /** Format: int32 */
             key?: number;
+            /** Format: int64 */
+            letterRank?: number;
             spans: components["schemas"]["ZoneSpan"][] | null;
             /** Format: int64 */
             zoneRef: number;
@@ -11297,6 +11299,8 @@ export interface components {
             gaugePoints: number;
             /** Format: int64 */
             hillPeriods: number;
+            /** Format: int64 */
+            letters: number;
             method: string;
             /** Format: int64 */
             ownerAgreed: number;

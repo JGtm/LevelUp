@@ -120,21 +120,70 @@ AVEC la mesure. **Régime constaté sur les 17 films : 32 à 123 Mio de tas, 40 
 
 ## Phase 1 — Publication (champ optionnel, pas de bump)
 
-- [ ] 1.1 `letterRank` optionnel au niveau zone dans la charge servie (là où les zones
+- [x] 1.1 `letterRank` optionnel au niveau zone dans la charge servie (là où les zones
       partent déjà au client — suivre l'existant de zoneStates/mapObjectives, pas de
       nouveau canal), omis quand l'ordre n'est pas établi.
-- [ ] 1.2 Contrat OpenAPI + `make generate-types` (generated.ts) ; si tableau nullable,
+- [x] 1.2 Contrat OpenAPI + `make generate-types` (generated.ts) ; si tableau nullable,
       passer par la liste NULLABLE_ARRAYS existante.
-- [ ] 1.3 Re-cuire les témoins nécessaires SEULEMENT (2-3 : les 2 Bastion + 1 Total
+- [x] 1.3 Re-cuire les témoins nécessaires SEULEMENT (2-3 : les 2 Bastion + 1 Total
       Control s'il y en a un au cache), UN à la fois via `cmd/replay-build --facts`,
       anciens sauvegardés sous le motif `_backup_*` existant. La bombe RAM consignée a
       frappé un comp de mode-score sur un film CTF : si un re-bake dérape en mémoire,
       tuer, consigner, continuer avec les témoins qui passent.
-- [ ] 1.4 Tests Go du package touché (table : zone avec rang, sans rang, mode non
+- [x] 1.4 Tests Go du package touché (table : zone avec rang, sans rang, mode non
       simultané => absent).
 
 Gate 1 : témoin re-cuit porte `letterRank` cohérent avec la mesure 0.2 ; artefact schéma
 antérieur servi tel quel => champ absent, aucun crash contrat.
+
+### Journal de la phase 1 (2026-08-24)
+
+**1.1 — la règle.** `zoneLetterRanks(gauge, catalog, hill)` (`zone_states_owner.go`) : les
+zones rangées par numéro de slot `ti=13` croissant, chacune prenant son rang. Trois portes
+fermées, chacune parce que l'ouvrir publierait du faux : **bijection** exigée (sinon une
+zone muette décale les lettres des suivantes), **alphabet** limité à A/B/C (le HUD n'a pas
+de « D »), **colline** exclue (ceinture, en plus du chemin). Le rang est posé sur
+`ZoneState.LetterRank *int` dans `zoneOwnerStates`, et compté dans
+`coverage.zones.letters` par `tallyZoneStates`.
+
+**1.2 — le contrat, sans montée de version.** `letterRank` (optionnel, `omitempty`) et
+`letters` (compteur de couverture) : `openapi.yaml` et `generated.ts` régénérés, +7 et +4
+lignes, rien d'autre. `SchemaVersion` reste **18** — règle écrite dans `document.go` :
+« L'ajout de champs OPTIONNELS (omitempty) ne casse pas le client et n'incrémente pas la
+version ». Le pointeur est délibéré : avec un `int` nu, `omitempty` effacerait le rang 0,
+c'est-à-dire la lettre A (même piège que `ZoneSpan.Owner`).
+
+**1.3 — trois témoins re-cuits, un par processus.** Anciens sauvegardés sous
+`data/cache/replays/halo_infinite/_backup_lettres_2026-08-24/`. Le troisième témoin est un
+Strongholds sur une AUTRE carte (Origin), délibérément : deux cartes valent mieux qu'une
+pour le relevé Theater, et aucun Total Control n'existe au cache (voir Découvertes).
+
+| témoin | carte | avant | après | permutation publiée |
+|---|---|---|---|---|
+| `7344d24f` | Vagabond | pas de `letterRank`, pas de `letters` | `letters: 3` | z0=C, z1=A, z2=B |
+| `696a9d7c` | Vagabond | idem | `letters: 3` | z0=C, z1=A, z2=B |
+| `af13e2b2` | Origin | idem | `letters: 3` | z0=A, z1=B, z2=C |
+
+Les permutations publiées sont **exactement** celles de la mesure 0.2, et **tous les autres
+compteurs de couverture sont inchangés** (71/59, 46/46, 39 intervalles, 1 701 points de
+jauge sur `7344d24f` ; 19/14, 9/9, 8 intervalles, 467 points sur `af13e2b2`) : le champ est
+purement additif. Les faits d'`af13e2b2` ont été reconstruits des exports gelés du registre
+(`lotLettres/faits_af13e2b2.json`) et reproduisent la couverture de la cuisson précédente à
+l'unité — donc ils sont fidèles à la base sans qu'aucune base ait été ouverte.
+
+**Gate 1, second volet, vérifié sur pièces.** Le service DÉSÉRIALISE l'artefact
+(`replay_service.go:83`, `json.Unmarshal`) avant que Huma ne le resérialise : un artefact
+antérieur (`01e1f945`, KOTH, non re-cuit — 0 occurrence de `letterRank`) donne
+`LetterRank = nil` et `letters = 0` sur le fil. Contrat respecté, aucune lettre, aucun
+avertissement.
+
+**1.4 — cinq cas, dont un qui porte tout le lot.** `zone_states_lettres_test.go` :
+nominal ; **le rang suit le SLOT et pas le `zoneRef`** (mêmes zones, slots de jauge
+échangés — la zone 1 prend A) ; bijection incomplète => aucune lettre ; colline => aucune
+lettre ; et la règle pure en table (alphabet, catalogue vide). **Contre-épreuve jouée** :
+en remplaçant le tri par slot par un tri par `zoneRef`, 2 cas passent au rouge
+(`TestZoneLettresSuiventLeSlotPasLeZoneRef` et `TestZoneLettresRegleDuRang`) ; le code a été
+restauré et les cinq cas repassent au vert.
 
 ## Phase 2 — Rendu web
 
