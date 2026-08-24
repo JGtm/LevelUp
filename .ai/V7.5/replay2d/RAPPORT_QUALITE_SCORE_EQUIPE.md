@@ -366,8 +366,9 @@ session tient des fichiers du depot principal.
 | `apps/go-api/internal/sync/transforms_helpers.go:178` | `extractTeamScoresByID` **exporte** en `ExtractTeamScoresByID`. La sync et le backfill lisent desormais le score d'equipe par LA MEME fonction — zero seconde implementation, donc zero re-divergence possible |
 | `apps/go-api/cmd/backfill-team-scores/decide.go` | la regle de correction, pure : ni reseau, ni DuckDB, ni flags |
 | `apps/go-api/cmd/backfill-team-scores/ids.go` | chargement de la liste — **seule la colonne `match_id`** sort du TSV |
-| `apps/go-api/cmd/backfill-team-scores/main.go` | cablage : auth store-first, fetch, lease writer, `UPDATE` row-by-row |
-| `…/decide_test.go`, `…/ids_test.go` | 24 cas table-driven, sans reseau ni base |
+| `apps/go-api/cmd/backfill-team-scores/registry.go` | la jonction avec la base, reduite a des coutures observables (`execer`, `rowScanner`, SQL en constantes) |
+| `apps/go-api/cmd/backfill-team-scores/main.go` | cablage en deux phases : auth store-first, fetch, puis fenetre d'ecriture courte |
+| `…/decide_test.go`, `…/ids_test.go`, `…/junction_test.go`, `…/no_bulk_update_test.go` | 23 tests / 50 sous-cas, sans reseau ni base |
 
 ### Garanties inscrites dans le code
 
@@ -384,13 +385,36 @@ session tient des fichiers du depot principal.
 - **NULL n'est pas zero** : une colonne NULL est une ligne A CORRIGER, pas une ligne conforme.
 - **FFA saute et le dit** : sans `TeamId` 0 ET 1, aucun camp n'est devine.
 - **Forme d'ecriture** : `UPDATE match_registry SET team_0_score = ?, team_1_score = ?
-  WHERE match_id = ?`, row-by-row serialise, sous lease `dblease.KindSharedMatches`. Jamais
-  de `UPDATE … FROM (VALUES …)` — forme interdite par `no_art_patterns_test.go`
-  (declencheur ART #23046). Un `UPDATE` qui touche un nombre de lignes different de 1 est
-  une erreur, pas un succes silencieux.
-- **`--dry-run` par defaut** : il lit par `OpenReadForQuery` et tourne SERVEUR ALLUME.
-  `--apply` ouvre en `OpenReadWrite` et echoue si un autre process tient la base — c'est le
-  comportement voulu (ADR 0013, un seul writer).
+  WHERE match_id = ?`, row-by-row serialise. Un `UPDATE` qui touche un nombre de lignes
+  different de 1 est une erreur, pas un succes silencieux.
+- **Le garde-rail anti-ART du depot ne couvrait PAS ce code**, et le commentaire qui s'en
+  reclamait etait faux : `internal/sync/no_art_patterns_test.go` exclut explicitement tout
+  chemin `cmd/` de ses trois scans (lignes 220, 296, 452). Un
+  `UPDATE … FROM (VALUES …)` ecrit ici serait passe tous les gates. La protection est donc
+  posee **localement** : `no_bulk_update_test.go` echoue si `FROM (VALUES` ou `ON CONFLICT`
+  apparait dans un `.go` du paquet (commentaires strippes), et un test de bon sens verifie
+  que ce scan MORD reellement.
+- **La jonction lecture -> decision -> ecriture est testee de bout en bout** avec un fetch
+  factice et un double de base qui observe le SQL et l'ordre exact des arguments lies. Une
+  permutation des colonnes ou une liaison de l'ANCIENNE valeur produirait un journal
+  parfaitement correct — il est construit depuis la decision, pas depuis ce qui part vers la
+  base. Quatre mutations ont ete injectees pour verifier que ces tests tuent bien ces bugs.
+- **`--dry-run` par defaut** : il ne demande AUCUN droit d'ecriture. Promesse exacte :
+  il tourne **serveur allume, hors fenetre d'ecriture de la sync**. Depuis un process
+  separe, `OpenReadForQuery` degenere en ouverture read-only ; pendant une fenetre RW du
+  B-swap il avorte proprement sur « Could not set lock ». Ce n'est pas une panne : on
+  relance. `--apply` ouvre en `OpenReadWrite` et echoue tant que le serveur tient la base.
+- **Ce qui garantit l'unicite du writer, c'est le VERROU FICHIER DuckDB**, pas le lease :
+  `OpenReadWrite` ping la base a l'ouverture (`platform/duckdb/db.go:461`), donc `--apply`
+  echoue immediatement serveur allume. Le lease `dblease` pris en phase B est un mutex
+  INTRA-process (`platform/dblease/lease.go:45`) : il ne protege de rien entre deux process
+  et n'est conserve que pour la discipline et la metrique.
+- **Deux phases, pour ne pas tenir la base pendant les appels reseau.** Phase A (sans droit
+  d'ecriture) : lectures, 80 telechargements, decisions. Phase B (`--apply` seulement,
+  courte) : ouverture RW, et par ligne une RE-LECTURE avant ecriture — on n'ecrit que si la
+  valeur diverge toujours. Prendre le verrou avant la boucle de fetch aurait tenu la base
+  fermee pendant toute la duree du reseau, des heures en cas de panne API, sans ecrire une
+  seule ligne.
 
 ### Commandes du jour J
 
@@ -422,6 +446,14 @@ go run ./cmd/backfill-team-scores --match 7344d24f-0154-4949-80ad-e2b781c122f1 -
 Deux ecarts au resume signalent un vrai probleme, pas un alea : `echecs > 0` (API ou
 `UPDATE`) et `skippes` inattendu (un match qui n'etait pas FFA en phase 1 ne doit pas le
 devenir). Le decompte de reference de la phase 1 est **80 a corriger, 0 skip**.
+
+**Controle specifique des 11 lignes « cause = autre ».** Ces 11-la ne reposent que sur
+l'API et sur la concordance des `Outcome` (§Decouvertes 1 et 2) : aucun film ne les
+corrobore. Au dry-run, les 7 inversions attendues doivent apparaitre comme des
+**permutations EXACTES** (`avant a/b` -> `apres b/a`, memes deux nombres). Toute autre forme
+sur ces identifiants — un nombre qui n'etait pas deja la, un ecart partiel — est un signal :
+**STOP et revue**, ne pas appliquer. Les identifiants concernes sont dans
+`score_equipe_ecarts_2026-08-24.tsv`, colonne `cause = autre`.
 
 ### Note PROD (VPS) — a verifier AVANT de rejouer la passe
 
@@ -458,7 +490,8 @@ Phase 2 (CLI de backfill, sans execution) :
 | gate | commande | resultat |
 |---|---|---|
 | build de la CLI | `go build ./cmd/backfill-team-scores/` | exit 0 |
-| tests de la CLI | `go test ./cmd/backfill-team-scores/ -count=1 -v` | `ok … 0.140s` — 24 cas, dont le chargement du TSV versionne (80 ids) |
+| tests de la CLI | `go test ./cmd/backfill-team-scores/ -count=1 -v` | `ok … 0.203s` — 23 tests / 50 sous-cas, dont le chargement du TSV versionne (80 ids) |
+| **campagne de mutation** (ronde 1) | 4 mutations injectees puis annulees | les 4 sont TUEES : arguments de l'`UPDATE` permutes -> `TestJonction_ValeursEcritesSontCellesDecidees` ; colonnes du `SELECT` permutees -> `TestSelectListeLesColonnesDansLOrdreDuScan` ; `Old` lie au lieu de `New` -> meme test de jonction ; garde de vraisemblance reduite au seul camp 0 -> les 2 cas « camp 1 ». Etat restaure et re-verifie apres chaque injection |
 | gofmt | `gofmt -l ./cmd/backfill-team-scores/ ./internal/sync/transforms{,_helpers}.go ./internal/sync/transforms_helpers_unit_test.go` | sortie vide |
 | go vet | `go vet ./cmd/backfill-team-scores/ ./internal/sync/` | exit 0 |
 | Garde-rail anti-ART (2.1 touche `internal/`) | `go test ./internal/sync/ -run "NoArt\|Pattern" -count=1` | `ok … 13.245s` |
@@ -500,6 +533,26 @@ fois. Le dossier n'est pas suivi.
    justification datee (« ne pas relabelliser retroactivement des badges HINF »). Le
    commentaire ne porte ni date cible de retrait ni critere mesurable, contrairement au modele
    de kill-switch impose par le CLAUDE.md. Non traite.
+
+Ajouts de la revue adversariale du 2026-08-24 (triage : consignes, NON corriges) :
+
+8. **Les 11 lignes « cause = autre » n'ont pas d'oracle independant.** Leur diagnostic
+   repose sur l'API du jour et sur la concordance des `Outcome` (Decouverte 2) ; aucun de
+   ces matchs n'a d'artefact de rejeu, donc le film ne les corrobore pas. C'est plus faible
+   que les 69 lignes « ticks », ou l'egalite au tick pres vaut preuve. Contre-mesure retenue
+   sans code : un controle de forme au dry-run (§Correctif pret) — les 7 inversions doivent
+   apparaitre comme des permutations exactes, toute autre forme = STOP.
+9. **Divergence de schema preexistante sur le type des deux colonnes** :
+   `internal/sync/schema.go:181-182` les declare `SMALLINT`, alors que
+   `internal/games/halo_infinite/migrations/steps_shared_core.go:56-57` les declare
+   `INTEGER`. Sans effet ici (la garde de vraisemblance de la CLI borne au domaine le plus
+   etroit, donc elle est sure dans les deux cas), mais c'est une incoherence de definition
+   qui merite d'etre tranchee ailleurs. Non traite — anterieure a ce lot.
+10. **Les dumps versionnes portent des xuid et des gamertags de tiers.** Les trois payloads
+    de `registre_film/api_dumps/` contiennent l'integralite de la reponse API, joueurs
+    adverses compris. Dette de rapport assumee : ils sont la preuve a l'octet du verdict
+    (§1.1) et le depot n'est pas public. A garder en tete si la politique de diffusion du
+    depot change.
 
 ## Statut des items du plan
 
