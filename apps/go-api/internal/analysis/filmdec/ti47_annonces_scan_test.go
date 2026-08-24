@@ -58,6 +58,7 @@ const (
 	ti47TSVEnv     = "TI47_TSV"     // repertoire de sortie des TSV (facultatif)
 	ti47WidthEnv   = "TI47_WIDTH"   // phase 1 : largeur de i2 retenue au gate 0, en bits
 	ti47RunEnv     = "TI47_RUN"     // largeurs candidates a departager par longueur de chaine
+	ti47ChampEnv   = "TI47_CHAMP"   // sous-champ analyse, « debut:fin » en positions de bit
 )
 
 // compPersonalAIData nomme le composant cible. Un NOM, jamais un numero : le lot 0 a mesure deux
@@ -153,6 +154,16 @@ type ti47Moisson struct {
 	emissionsDebordees     int
 	luesTotal, luesRefusee int
 	deltaPaquets, chunks   int
+	// bits[k] : nombre d'emissions dont le k-ieme bit de la charge utile (0 = premier bit lu)
+	// vaut 1. Un champ de 45 bits dont la moitie des positions ne bouge jamais n'est pas un
+	// scalaire de 45 bits : c'est une structure, et ce profil la montre sans rien supposer.
+	bits []int
+	// largeur retenue, recopiee pour les rapports.
+	largeur int
+	// champLo / champHi bornent le SOUS-CHAMP analyse (positions de bit dans la charge utile,
+	// fin exclue). Par defaut toute la largeur. Le profil de bits porte toujours sur la largeur
+	// ENTIERE — c'est lui qui justifie le sous-champ, il ne peut donc pas en dependre.
+	champLo, champHi int
 }
 
 // ti47Cle assemble la cle d'une vie : la PAIRE slot+generation, jamais le slot seul (le pool de
@@ -236,11 +247,38 @@ func ti47Candidates(t *testing.T) []int {
 	return out
 }
 
+// ti47Champ lit le sous-champ a analyser (TI47_CHAMP="debut:fin"), ou toute la largeur.
+//
+// POURQUOI UN SOUS-CHAMP. Le profil de bits de la phase 1 a mesure que la charge utile de 45 bits
+// porte un en-tete quasi constant (bit 0 a zero, bit 1 a un, dix-huit bits a zero) suivi de 25
+// bits qui varient. Analyser les 45 bits comme un entier fait dominer le bit 1 : ses rares
+// bascules pesent 2^43, donc tout « saut » mesure sur l'entier n'est que cela. Le sous-champ
+// n'est pas un reglage de confort, c'est la condition pour que la mesure porte sur la donnee.
+func ti47Champ(t *testing.T, width int) (lo, hi int) {
+	t.Helper()
+	v := os.Getenv(ti47ChampEnv)
+	if v == "" {
+		return 0, width
+	}
+	parts := strings.SplitN(v, ":", 2)
+	if len(parts) != 2 {
+		t.Fatalf("%s = %q : format attendu « debut:fin »", ti47ChampEnv, v)
+	}
+	a, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+	b, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err1 != nil || err2 != nil || a < 0 || b > width || a >= b {
+		t.Fatalf("%s = %q : bornes invalides (0 <= debut < fin <= %d)", ti47ChampEnv, v, width)
+	}
+	return a, b
+}
+
 // ti47Balaye fait LA passe sur les paquets delta du film.
-func ti47Balaye(dir string, n int, b *ti47Bande, hor probeHorloge, width int, cands []int) *ti47Moisson {
+func ti47Balaye(dir string, n int, b *ti47Bande, hor probeHorloge, width int, cands []int,
+	champLo, champHi int) *ti47Moisson {
 	m := &ti47Moisson{b: b, reel: nouveauTi47Stat(), fantome: nouveauTi47Stat(),
 		valeurs: map[uint64]int{}, runs: map[int][]int{}, ecarts: map[int][]int{},
-		ecartsHors: map[int]int{}, suivants: map[int]map[int]int{}}
+		ecartsHors: map[int]int{}, suivants: map[int]map[int]int{},
+		bits: make([]int, maxI(width, 1)), largeur: width, champLo: champLo, champHi: champHi}
 	for _, w := range cands {
 		m.runs[w] = make([]int, ti47MaxRun+1)
 	}
@@ -378,16 +416,23 @@ func (m *ti47Moisson) lit(pay []byte, rec WorldObjectRecord, chunk, tMS, width i
 	}
 }
 
-// ajoute range une valeur lue, sous plafond.
+// ajoute range une valeur lue, sous plafond. Le profil de bits porte sur la charge utile
+// ENTIERE ; la valeur analysee est le sous-champ.
 func (m *ti47Moisson) ajoute(v uint64, rec WorldObjectRecord, chunk, tMS int) {
-	if _, vu := m.valeurs[v]; vu || len(m.valeurs) < ti47MaxValeurs {
-		m.valeurs[v]++
+	for k := 0; k < m.largeur; k++ {
+		if v&(1<<uint(m.largeur-1-k)) != 0 {
+			m.bits[k]++
+		}
+	}
+	a := (v >> uint(m.largeur-m.champHi)) & ((1 << uint(m.champHi-m.champLo)) - 1)
+	if _, vu := m.valeurs[a]; vu || len(m.valeurs) < ti47MaxValeurs {
+		m.valeurs[a]++
 	} else {
 		m.valeursDebordees++
 	}
 	if len(m.emissions) < ti47MaxEmissions {
 		m.emissions = append(m.emissions,
-			ti47Emission{val: v, slot: rec.Slot, gen: rec.Gen, chunk: chunk, tMS: tMS})
+			ti47Emission{val: a, slot: rec.Slot, gen: rec.Gen, chunk: chunk, tMS: tMS})
 		return
 	}
 	m.emissionsDebordees++

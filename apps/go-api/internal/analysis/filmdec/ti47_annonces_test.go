@@ -14,7 +14,6 @@ package filmdec
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -59,9 +58,10 @@ func TestTI47Annonces(t *testing.T) {
 	ti47JournaliseGrammaire(t, b, census)
 
 	width := ti47Largeur(t)
+	champLo, champHi := ti47Champ(t, maxI(width, 1))
 	hor := ti47Horloge(t)
 	debut = time.Now()
-	m := ti47Balaye(dir, n, b, hor, width, ti47Candidates(t))
+	m := ti47Balaye(dir, n, b, hor, width, ti47Candidates(t), champLo, champHi)
 	t.Logf("COUT — passe delta : %s · %d chunks · %d paquets delta",
 		time.Since(debut).Round(time.Millisecond), m.chunks, m.deltaPaquets)
 
@@ -76,6 +76,7 @@ func TestTI47Annonces(t *testing.T) {
 		return
 	}
 	ti47JournaliseValeurs(t, m, width)
+	ti47OracleRapport(t, court, m)
 }
 
 // ti47Horloge charge le manifeste du film : sans lui, les emissions n'ont pas d'instant de match
@@ -329,86 +330,4 @@ func ti47EcrisChainageTSV(t *testing.T, court string, m *ti47Moisson) {
 		t.Fatalf("ecriture TSV : %v", err)
 	}
 	t.Logf("  TSV : %s", path)
-}
-
-// ti47JournaliseValeurs publie la cardinalite et la structure des valeurs lues (phase 1).
-func ti47JournaliseValeurs(t *testing.T, m *ti47Moisson, width int) {
-	t.Helper()
-	t.Logf("VALEURS (largeur %d bits) : %d records annoncent i%d · %d refuses (payload trop court)"+
-		" · %d emissions retenues · %d valeurs distinctes",
-		width, m.luesTotal, m.b.iPersonal, m.luesRefusee, len(m.emissions), len(m.valeurs))
-	if m.valeursDebordees > 0 || m.emissionsDebordees > 0 {
-		t.Logf("   PLAFOND ATTEINT : %d valeurs et %d emissions ecartees",
-			m.valeursDebordees, m.emissionsDebordees)
-	}
-	type vc struct {
-		v uint64
-		n int
-	}
-	tri := make([]vc, 0, len(m.valeurs))
-	for v, n := range m.valeurs {
-		tri = append(tri, vc{v, n})
-	}
-	sort.Slice(tri, func(i, j int) bool {
-		if tri[i].n != tri[j].n {
-			return tri[i].n > tri[j].n
-		}
-		return tri[i].v < tri[j].v
-	})
-	var cumul int
-	for i, e := range tri {
-		if i >= 16 {
-			break
-		}
-		cumul += e.n
-		t.Logf("   %-12d %7d  %5.2f %%", e.v, e.n,
-			100*float64(e.n)/float64(maxI(1, len(m.emissions))))
-	}
-	t.Logf("   les 16 premieres valeurs couvrent %.2f %% des emissions",
-		100*float64(cumul)/float64(maxI(1, len(m.emissions))))
-	ti47StructureValeurs(t, m)
-}
-
-// ti47StructureValeurs distingue une ENUMERATION d'un continuum : une horloge ou une rampe suit
-// le temps, un identifiant de message ne le suit pas.
-func ti47StructureValeurs(t *testing.T, m *ti47Moisson) {
-	t.Helper()
-	if len(m.emissions) < 8 {
-		return
-	}
-	es := append([]ti47Emission(nil), m.emissions...)
-	sort.SliceStable(es, func(i, j int) bool {
-		if es[i].chunk != es[j].chunk {
-			return es[i].chunk < es[j].chunk
-		}
-		return es[i].tMS < es[j].tMS
-	})
-	croissant := 0
-	for i := 1; i < len(es); i++ {
-		if es[i].val > es[i-1].val {
-			croissant++
-		}
-	}
-	var sx, sy, sxy, sxx, syy float64
-	n := float64(len(es))
-	for _, e := range es {
-		x, y := float64(e.tMS), float64(e.val)
-		sx, sy, sxy, sxx, syy = sx+x, sy+y, sxy+x*y, sxx+x*x, syy+y*y
-	}
-	den := (n*sxx - sx*sx) * (n*syy - sy*sy)
-	r := 0.0
-	if den > 0 {
-		r = (n*sxy - sx*sy) / math.Sqrt(den)
-	}
-	t.Logf("   structure : %.1f %% de transitions croissantes · correlation valeur/instant"+
-		" r = %.3f · %d valeurs distinctes pour %d emissions",
-		100*float64(croissant)/(n-1), r, len(m.valeurs), len(es))
-	switch {
-	case len(m.valeurs) <= 64:
-		t.Logf("   -> ENUMERATION : moins de 64 valeurs distinctes.")
-	case r >= 0.90:
-		t.Logf("   -> la valeur SUIT LE TEMPS : horloge ou compteur, pas un identifiant.")
-	default:
-		t.Logf("   -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).")
-	}
 }
