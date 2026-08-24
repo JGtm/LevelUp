@@ -167,9 +167,14 @@ type MatchHistoryRow struct {
 	// réel du temps réglementaire en secondes (cf. analysis.ComputeOvertime).
 	// Faux/0 quand le titre n'a pas de table réglementaire, que la variante y est
 	// inconnue ou que la durée n'est pas estimable — dégradation sûre.
-	IsOvertime          bool   `json:"is_overtime,omitempty"`
-	OvertimeSeconds     int    `json:"overtime_seconds,omitempty"`
-	MatchURL            string `json:"match_url"`
+	IsOvertime      bool   `json:"is_overtime,omitempty"`
+	OvertimeSeconds int    `json:"overtime_seconds,omitempty"`
+	MatchURL        string `json:"match_url"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match — la ligne peut donc
+	// porter un lien vers la page de rejeu. Résolu en UN listing de dossier par requête
+	// (port.ReplayAvailability), jamais un accès disque par ligne. Faux/absent quand le
+	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
+	HasReplay           bool   `json:"has_replay,omitempty"`
 	IsExcluded          bool   `json:"is_excluded"`
 	IsWithFriends       bool   `json:"is_with_friends"`
 	ExperienceTypeLabel string `json:"experience_type_label,omitempty"`
@@ -242,7 +247,11 @@ type MatchHistoryQueryRequest struct {
 	MapNames        []string   `json:"map_names,omitempty"`
 	ModeNames       []string   `json:"mode_names,omitempty"`
 	SquadScope      string     `json:"squad_scope,omitempty"`
-	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// ReplayScope : présence d'un rejeu 2D — "" (tous) | "with" | "without".
+	// Même forme à 3 états que SquadScope. Filtré côté Go depuis l'ensemble des
+	// artefacts listé une fois par requête (jamais un accès disque par ligne).
+	ReplayScope   string `json:"replay_scope,omitempty"`
+	MatchIDSearch string `json:"match_id_search,omitempty"`
 	// MatchIDs : whitelist de match_id à conserver. Si non vide, seules les
 	// rows dont match_id ∈ MatchIDs sont gardées (filtre exact). Utilisé par
 	// l'Explorer mode Joueur pour scoper aux matchs en commun avec une cible.

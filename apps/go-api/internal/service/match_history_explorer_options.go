@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 // perfTierLabel retourne le label FR canonique pour un palier perf (1..5).
@@ -76,7 +77,9 @@ func skillTierLabel(en string) string {
 // base = rows post-cascade post-PickedSoloSessions (avant les filtres Explorer).
 // Pour chaque outcome X candidat, on simule selected ∪ {X} et on applique tous
 // les autres filtres (ranked, skill, perf + Explorer-cascade).
-func computeAvailableOutcomes(base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.LabelValue {
+func computeAvailableOutcomes(
+	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.LabelValue {
 	candidates := []int{2, 3, 1, 4}
 	selected := intSliceToSet(req.OutcomeFilter)
 	out := make([]domain.LabelValue, 0, len(candidates))
@@ -86,7 +89,7 @@ func computeAvailableOutcomes(base []domain.MatchHistoryRawRow, req domain.Match
 		rs = filterByOutcome(rs, sim)
 		rs = filterBySkillTier(rs, req.SkillTiers, req.RankedContext)
 		rs = filterByPerfTiers(rs, req.PerfTiers)
-		rs = applyExplorerMatchFilters(rs, req)
+		rs = applyExplorerMatchFilters(rs, req, replays)
 		out = append(out, domain.LabelValue{
 			Label: outcomeLabel(o),
 			Value: strconv.Itoa(o),
@@ -97,7 +100,9 @@ func computeAvailableOutcomes(base []domain.MatchHistoryRawRow, req domain.Match
 }
 
 // computeAvailablePerfTiers : count par palier perf (1..5), sémantique OR.
-func computeAvailablePerfTiers(base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.LabelValue {
+func computeAvailablePerfTiers(
+	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.LabelValue {
 	candidates := []int{1, 2, 3, 4, 5}
 	selected := intSliceToSet(req.PerfTiers)
 	out := make([]domain.LabelValue, 0, len(candidates))
@@ -107,7 +112,7 @@ func computeAvailablePerfTiers(base []domain.MatchHistoryRawRow, req domain.Matc
 		rs = filterByOutcome(rs, req.OutcomeFilter)
 		rs = filterBySkillTier(rs, req.SkillTiers, req.RankedContext)
 		rs = filterByPerfTiers(rs, sim)
-		rs = applyExplorerMatchFilters(rs, req)
+		rs = applyExplorerMatchFilters(rs, req, replays)
 		out = append(out, domain.LabelValue{
 			Label: perfTierLabel(t),
 			Value: strconv.Itoa(t),
@@ -121,7 +126,9 @@ func computeAvailablePerfTiers(base []domain.MatchHistoryRawRow, req domain.Matc
 //
 // Si RankedContext est vide, tous les counts valent 0 (skill_tier nécessite
 // un contexte ranked/unranked pour être appliqué — voir filterBySkillTier).
-func computeAvailableSkillTiers(base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.LabelValue {
+func computeAvailableSkillTiers(
+	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.LabelValue {
 	candidates := []string{csrTierBronze, csrTierSilver, csrTierGold, csrTierPlatinum, csrTierDiamond, csrTierOnyx}
 	selected := stringSliceToSet(req.SkillTiers)
 	out := make([]domain.LabelValue, 0, len(candidates))
@@ -133,7 +140,7 @@ func computeAvailableSkillTiers(base []domain.MatchHistoryRawRow, req domain.Mat
 			rs = filterByOutcome(rs, req.OutcomeFilter)
 			rs = filterBySkillTier(rs, sim, req.RankedContext)
 			rs = filterByPerfTiers(rs, req.PerfTiers)
-			rs = applyExplorerMatchFilters(rs, req)
+			rs = applyExplorerMatchFilters(rs, req, replays)
 			count = len(rs)
 		}
 		out = append(out, domain.LabelValue{
@@ -151,7 +158,9 @@ func computeAvailableSkillTiers(base []domain.MatchHistoryRawRow, req domain.Mat
 // (pas d'union avec sélection courante puisqu'il n'y a qu'une valeur active).
 // Pour "ranked"/"unranked" on remet aussi les filtres skill_tier (qui en
 // dépendent) ; pour "" (all) on désactive le filtre skill_tier.
-func computeAvailableRankedContexts(base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.LabelValue {
+func computeAvailableRankedContexts(
+	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.LabelValue {
 	contexts := []struct {
 		Value string
 		Label string
@@ -167,7 +176,7 @@ func computeAvailableRankedContexts(base []domain.MatchHistoryRawRow, req domain
 		// skill_tiers ne s'applique que si un contexte ranked est défini
 		rs = filterBySkillTier(rs, req.SkillTiers, c.Value)
 		rs = filterByPerfTiers(rs, req.PerfTiers)
-		rs = applyExplorerMatchFilters(rs, req)
+		rs = applyExplorerMatchFilters(rs, req, replays)
 		out = append(out, domain.LabelValue{
 			Label: c.Label,
 			Value: c.Value,
@@ -180,7 +189,9 @@ func computeAvailableRankedContexts(base []domain.MatchHistoryRawRow, req domain
 // computeAvailableSquadScopes : count par scope squad (all/solo/squad).
 //
 // Single-select : applique tous les filtres + force squad_scope = X.
-func computeAvailableSquadScopes(base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.LabelValue {
+func computeAvailableSquadScopes(
+	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.LabelValue {
 	scopes := []struct {
 		Value string
 		Label string
@@ -199,7 +210,7 @@ func computeAvailableSquadScopes(base []domain.MatchHistoryRawRow, req domain.Ma
 		rs = filterByOutcome(rs, req.OutcomeFilter)
 		rs = filterBySkillTier(rs, req.SkillTiers, req.RankedContext)
 		rs = filterByPerfTiers(rs, req.PerfTiers)
-		rs = applyExplorerMatchFilters(rs, reqNoScope)
+		rs = applyExplorerMatchFilters(rs, reqNoScope, replays)
 		rs = filterByExplorerSquadScope(rs, s.Value)
 		out = append(out, domain.LabelValue{
 			Label: s.Label,

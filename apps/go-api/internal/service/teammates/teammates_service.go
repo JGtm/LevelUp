@@ -70,6 +70,10 @@ type TeammatesService struct {
 	// suivis) pour l'axe « Objectifs » par opportunité du radar synergie. Câblé
 	// gated par la capability match.objective.stats ; nil → axe retiré du radar.
 	objectiveIndex port.ObjectiveIndexRepository
+	// replaySvc (optionnel) : service de rejeu 2D, appelé UNE FOIS par requête pour
+	// lister les matchs ayant un artefact (colonne « Rejeu » du tableau historique de
+	// l'escouade). Nil → aucune ligne ne porte de rejeu (dégradation gracieuse).
+	replaySvc port.ReplayService
 }
 
 // NewTeammatesService crÃƒÂ©e un TeammatesService.
@@ -120,6 +124,29 @@ func (s *TeammatesService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyReposi
 func (s *TeammatesService) WithObjectiveIndexRepo(repo port.ObjectiveIndexRepository) *TeammatesService {
 	s.objectiveIndex = repo
 	return s
+}
+
+// WithReplay injecte le service de rejeu 2D — MÊME service que l'endpoint /replay
+// (une seule résolution de chemin dans le dépôt). Seul AvailableSet est appelé : un
+// listing de dossier par requête, jamais un accès disque par ligne du tableau.
+// Sans injection : has_replay reste faux sur toutes les lignes.
+func (s *TeammatesService) WithReplay(svc port.ReplayService) *TeammatesService {
+	s.replaySvc = svc
+	return s
+}
+
+// replayAvailability liste les matchs ayant un artefact de rejeu. Service non câblé
+// ou listing en échec (déjà journalisé côté service de rejeu) : ensemble vide — la
+// page se sert sans la colonne plutôt qu'en erreur.
+func (s *TeammatesService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	if s.replaySvc == nil {
+		return nil
+	}
+	set, err := s.replaySvc.AvailableSet(ctx)
+	if err != nil {
+		return nil
+	}
+	return set
 }
 
 // GetPage retourne la page Teammates avec options, comparaisons et solo ref.
@@ -300,7 +327,8 @@ func (s *TeammatesService) GetPage(
 			issues.add(ctx, domain.DataIssueMapStats, "", err)
 		}
 		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
-		matchHistory = buildSquadMatchHistory(allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug)
+		matchHistory = buildSquadMatchHistory(
+			allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug, s.replayAvailability(ctx))
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)

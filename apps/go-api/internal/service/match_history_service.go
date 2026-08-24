@@ -116,6 +116,10 @@ type MatchHistoryService struct {
 	// courant, injecté par le wiring (jamais dérivé d'un slug ici — ADR 0025).
 	// Nil → colonne « Rang » en texte localisé, comme avant (H5, titre sans badge).
 	skillBadgeResolver func(tierEN string, subTier int) string
+	// replaySvc (optionnel) : service de rejeu 2D, appelé UNE FOIS par requête pour
+	// lister les matchs ayant un artefact (colonne « Rejeu » + filtre replay_scope).
+	// Nil → aucune ligne ne porte de rejeu (titre sans film cuit, dégradation propre).
+	replaySvc port.ReplayService
 }
 
 // outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
@@ -171,12 +175,39 @@ func (s *MatchHistoryService) WithSkillBadgeResolver(f func(tierEN string, subTi
 	return s
 }
 
+// WithReplay injecte le service de rejeu 2D — MÊME service que l'endpoint /replay et
+// que la Match View (une seule résolution de chemin dans le dépôt). Seul AvailableSet
+// est appelé ici : un listing de dossier par requête, jamais un accès disque par ligne.
+// Sans injection : has_replay reste faux partout et le filtre replay_scope ne garde
+// rien en mode « avec rejeu » (état d'un titre sans artefact — dégradation gracieuse).
+func (s *MatchHistoryService) WithReplay(svc port.ReplayService) *MatchHistoryService {
+	s.replaySvc = svc
+	return s
+}
+
+// replayAvailability liste les matchs ayant un artefact de rejeu — UN listing de
+// dossier par requête. Service non câblé ou listing en échec (déjà journalisé par le
+// service de rejeu) : ensemble vide, la page se sert sans la colonne plutôt qu'en 500.
+func (s *MatchHistoryService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	if s.replaySvc == nil {
+		return nil
+	}
+	set, err := s.replaySvc.AvailableSet(ctx)
+	if err != nil {
+		return nil
+	}
+	return set
+}
+
 // rowFormatters construit les résolveurs title-agnostic injectés dans
 // l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
 // d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
 // nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
-func (s *MatchHistoryService) rowFormatters() rowFormatters {
-	f := rowFormatters{}
+//
+// replays : ensemble des matchs ayant un artefact de rejeu, résolu une fois par
+// requête par l'appelant (nil = aucun rejeu publié sur les lignes).
+func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) rowFormatters {
+	f := rowFormatters{replays: replays}
 	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
 	// même « Super Fiesta » que la Match View / les tuiles home.
 	cfg := s.playlistDisplay
@@ -246,6 +277,11 @@ func (s *MatchHistoryService) GetPage(
 	}
 	totalUnfiltered := len(rawRows)
 
+	// Rejeu 2D : la présence d'artefact est résolue UNE FOIS pour toute la requête
+	// (un listing de dossier), puis consultée en O(1) — par le filtre replay_scope
+	// comme par la colonne « Rejeu » de chaque ligne.
+	replays := s.replayAvailability(ctx)
+
 	// Placement (X/Y) calculé sur l'ensemble brut AVANT filtrage : la
 	// stratégie LUSR (10 plus anciens par chaîne) a besoin de l'ordre
 	// chronologique global pour rester stable quels que soient les filtres
@@ -283,14 +319,14 @@ func (s *MatchHistoryService) GetPage(
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
 	// d'une dimension, AND entre dimensions). Calculées sur baseForExplorerOptions
 	// pour que chaque dimension reflète "ce qu'on aurait si on cochait X".
-	availOutcomes := computeAvailableOutcomes(baseForExplorerOptions, req)
-	availPerfTiers := computeAvailablePerfTiers(baseForExplorerOptions, req)
-	availSkillTiers := computeAvailableSkillTiers(baseForExplorerOptions, req)
-	availRankedCtxs := computeAvailableRankedContexts(baseForExplorerOptions, req)
-	availSquadScopes := computeAvailableSquadScopes(baseForExplorerOptions, req)
+	availOutcomes := computeAvailableOutcomes(baseForExplorerOptions, req, replays)
+	availPerfTiers := computeAvailablePerfTiers(baseForExplorerOptions, req, replays)
+	availSkillTiers := computeAvailableSkillTiers(baseForExplorerOptions, req, replays)
+	availRankedCtxs := computeAvailableRankedContexts(baseForExplorerOptions, req, replays)
+	availSquadScopes := computeAvailableSquadScopes(baseForExplorerOptions, req, replays)
 
 	// Filtres Explorer additionnels (date, experience, playlist, carte, mode, squad, match ID).
-	filtered = applyExplorerMatchFilters(filtered, req)
+	filtered = applyExplorerMatchFilters(filtered, req, replays)
 
 	totalScoped := len(filtered)
 
@@ -298,7 +334,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays))
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

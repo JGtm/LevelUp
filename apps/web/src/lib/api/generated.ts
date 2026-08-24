@@ -5969,6 +5969,7 @@ export interface components {
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
             had_bot_teammate?: boolean;
+            has_replay?: boolean;
             is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
@@ -7421,6 +7422,7 @@ export interface components {
             /** Format: double */
             expected_win_prob?: number;
             experience_type_label?: string;
+            has_replay?: boolean;
             is_excluded: boolean;
             is_overtime?: boolean;
             is_with_friends: boolean;
@@ -10172,6 +10174,7 @@ export interface components {
             expected_win_prob?: number;
             /** Format: int64 */
             gameplay_duration_seconds?: number;
+            has_replay?: boolean;
             /** Format: int64 */
             kills: number;
             map_ui: string;

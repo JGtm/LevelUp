@@ -12022,6 +12022,8 @@ components:
         had_bot_teammate:
           description: Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend).
           type: boolean
+        has_replay:
+          type: boolean
         is_overtime:
           type: boolean
         is_with_friends:
@@ -15509,6 +15511,8 @@ components:
           type: number
         experience_type_label:
           type: string
+        has_replay:
+          type: boolean
         is_excluded:
           type: boolean
         is_overtime:
@@ -22298,6 +22302,8 @@ components:
         gameplay_duration_seconds:
           format: int64
           type: integer
+        has_replay:
+          type: boolean
         kills:
           format: int64
           type: integer

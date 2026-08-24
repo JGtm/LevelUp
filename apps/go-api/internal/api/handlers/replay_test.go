@@ -53,6 +53,12 @@ func (m *mockReplayService) IsAvailable(_ context.Context, _ string) bool {
 	return m.err == nil
 }
 
+// AvailableSet : même règle que IsAvailable — le mock ne connaît qu'un match, il
+// rend l'ensemble vide (aucun tableau de matchs n'est servi par ce handler).
+func (m *mockReplayService) AvailableSet(_ context.Context) (port.ReplayAvailability, error) {
+	return port.ReplayAvailability{}, nil
+}
+
 func newReplayRouter(factory handlers.ServiceFactory[port.ReplayService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewReplayHandler(factory)
