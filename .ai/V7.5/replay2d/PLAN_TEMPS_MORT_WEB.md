@@ -46,16 +46,31 @@ témoins (médiane par mort de l'ordre de 8-10 s), tsc/vitest/lint verts, parit�
 
 ## Phase 0 — Logique pure + tests
 
-- [ ] 0.1 Vérifier l'existant : où les vies par joueur sont-elles déjà dérivées côté web
+- [x] 0.1 Vérifier l'existant : où les vies par joueur sont-elles déjà dérivées côté web
       (replayNormalize / rosterLogic / useReplayStaticLayers) ? RÉUTILISER cette dérivation,
       ne pas re-parser les tracks.
-- [ ] 0.2 Module `deadTimeLogic.ts` (features/match-replay) : `deadTimeByPlayer(...)` ->
+      VÉRIFIÉ SUR PIÈCES : `rosterLogic.buildPlayers(doc, scoreboard)` groupe les traces par
+      xuid en `ReplayPlayer.lives` DÉJÀ TRIÉES par `trackWindow(l).start`, et
+      `replayLogic.trackWindow` borne chaque vie (startFrame ?? 0, endFrame ?? t du dernier
+      point). C'est la dérivation qui sert la vitalité, les croix de mort et fireMark : le
+      module la consomme, il ne re-parse aucune track. `rosterLogic.ts` est à 499 L (seuil
+      500) — d'où le module dédié, conformément au plan.
+- [x] 0.2 Module `deadTimeLogic.ts` (features/match-replay) : `deadTimeByPlayer(...)` ->
       millisecondes cumulées par joueur, borné à la fenêtre du match.
-- [ ] 0.3 Tests unitaires (vitest) : joueur sans mort = 0 ; mort sans respawn (fin de match,
+      `deadTimeByPlayer(players, doc): Map<xuid, ms>` (conversion par `frameToMs`, donc par
+      `frameIntervalMs` de l'artefact) + `formatDeadTime(ms): 'mm:ss'`. Tri défensif et
+      COUVERTURE COURANTE (`covered`) plutôt que comparaison à la seule vie précédente : deux
+      vies qui se chevauchent ne fabriquent pas de faux trou. Bornage `[0, frameCount-1]`.
+- [x] 0.3 Tests unitaires (vitest) : joueur sans mort = 0 ; mort sans respawn (fin de match,
       abandon) = rien d'accumulé pour cet intervalle ; deux vies contiguës sans trou = 0 ;
       cas nominal multi-vies ; vies désordonnées en entrée (tri défensif).
+      14 tests (`deadTimeLogic.test.ts`), dont en plus : pas d'intervalle de tête, vies
+      chevauchantes, bornage `frameCount`, vie anonyme (sans xuid) qui n'entre chez personne,
+      artefact sans `frameIntervalMs` (cadence de repli), et le format.
 
 Gate 0 : `npx vitest run` sur les nouveaux tests, verts. Clore avant phase 1.
+PASSÉ le 2026-08-24 : `npx vitest run src/features/match-replay/deadTimeLogic.test.ts` ->
+1 fichier, 14 tests, 0 échec. `npx tsc -b` -> 0 erreur.
 
 ## Phase 1 — Affichage fiche joueur + i18n
 
