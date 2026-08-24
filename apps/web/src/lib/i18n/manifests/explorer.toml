@@ -368,10 +368,6 @@ en = "Open"
 fr = "Ouvrir sur Halo Waypoint"
 en = "Open on Halo Waypoint"
 
-[explorer.matches.col_replay]
-fr = "Rejeu"
-en = "Replay"
-
 [explorer.matches.col_replay_aria]
 fr = "Ouvrir le rejeu 2D du match"
 en = "Open the 2D replay of the match"
