@@ -1,3 +1,43 @@
+## [2026-08-24] Lot S (S5) — validation sur le crash reel : 24 films cuits, 1 film-bombe isole — Complete
+
+**Contexte** : rejouer la passe qui avait tue la machine le 2026-08-20, avec le binaire blinde,
+sur le VRAI cache du depot principal (951 films). `LEVELUP_REPO_ROOT` pointe le principal et le
+parent l'IMPOSE a ses enfants ; `--cache` pointe le `data/cache` du principal. Aucun serveur ne
+tournait (port 8000 libre, verifie).
+
+**Resultats observes** : 25 films au plan, **24 construits**, **1 mort memoire**, et RIEN
+d'autre — 0 erreur de decodage, 0 echec de preparation, 0 mort subite, 0 carte hors catalogue.
+Duree de decodage ~90 min en deux segments (19:49:27 -> ~20:46, puis 20:54:19 -> 21:27:24).
+47,1 Mio d'artefacts ecrits, tous en `data/cache/replays/halo_infinite` du PRINCIPAL,
+`schemaVersion=18` verifie ; le worktree ne contient aucun artefact (rien n'a fuit).
+
+Le film-bombe est `51101d1d` — celui-la meme sur lequel la machine etait morte. Il monte a
+4-7 Gio EN UNE SECONDE (le chiffre varie avec l'instant d'echantillonnage : 7,36 Gio a 2 s de
+periode, 5,11 puis 4,09 Gio a 250 ms), la sentinelle le tue, et LA PASSE CONTINUE. Il pese
+9,1 Mio sur disque pour 13 chunks : son pic n'a aucun rapport avec sa taille. Par contraste,
+les 24 films sains plafonnent entre 48 et 256 Mio, le pic croissant proprement avec le nombre
+de chunks (le plus gros, `084a804d`, 57 chunks : 19m16s et 256 Mio). Trois ordres de grandeur
+separent le corpus sain du film pathologique — c'est la mesure qui justifie a elle seule un
+processus par film.
+
+**Deux proprietes verifiees en passant** : (1) STRICTE SEQUENTIALITE — l'echantillonnage n'a
+jamais vu plus de 2 processus `levelup` vivants (le parent et UN enfant) ; (2) REPRISE — le
+premier segment a ete interrompu de l'exterieur en plein film 24, sans laisser un seul
+processus orphelin ; la relance a recompte « 32 deja a jour » (10 initiaux + 22 cuits) et n'a
+repris que les 3 films restants. Un artefact a moitie ecrit n'a jamais existe (ecriture
+atomique).
+
+**Faux signal ecarte** : la RAM libre (`FreePhysicalMemory`) est descendue a 0,01 Gio pendant
+une fenetre de mesure, alors que les enfants concernes plafonnaient a 48-73 Mio. Ce compteur ne
+compte QUE la liste libre, pas la standby list que remplit la lecture des chunks ; elle est
+remontee seule a 22,69 Gio, plus gros processus de la machine = `dwm` a 996 Mio. Le signal utile
+est le RSS par processus (max observe : 260 Mio), pas la RAM « libre ».
+
+**Conclusion / prochaine etape** : lot S clos, 5 etapes sur 5. `51101d1d` reste non
+constructible : c'est desormais un ECHEC ISOLE ET NOMME (1 s, une ligne de recap) au lieu d'un
+sinistre machine. Instruire sa cause (quelle structure explose sur ce film) est un chantier a
+part, hors perimetre de ce lot.
+
 ## [2026-08-24] Lot S (S3+S4) — backfill-killsource examine et LAISSE EN L ETAT, docs remises d accord — Complete
 
 **Contexte** : S3 demandait le meme blindage parent/enfant pour `backfill-killsource`, ou une
