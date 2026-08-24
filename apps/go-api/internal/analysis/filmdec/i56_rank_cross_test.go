@@ -39,14 +39,13 @@ import (
 
 const i56xFilmEnv = "I56X_FILM"
 
-// i56xSpec : les deux capacités du périmètre (décision D2). Le répulseur n'a de rang établi
-// qu'en famille A (6) ; le propulseur en a un dans chaque famille — 5 (RECETTE_LOADOUT §13)
-// et 21 (`ability_evade`, nommé par murmur3 le 2026-08-18, REGISTRE_REPORTS).
+// i56xSpec : les deux capacités du périmètre (décision D2). Les rangs viennent de la source
+// unique `rank_cross_shared_test.go` — ils sont partagés avec les instruments d'`i59`.
 var i56xSpec = xrSpec{
 	event: "CHUTES i56",
 	groups: []xrGroup{
-		{name: "RÉPULSEUR (rang 6)", ranks: []int{6}},
-		{name: "PROPULSEUR (rangs 5/21)", ranks: []int{5, 21}},
+		{name: "RÉPULSEUR (rang 6)", ranks: xrRepulsorRanks},
+		{name: "PROPULSEUR (rangs 5/21)", ranks: xrThrusterRanks},
 	},
 }
 
