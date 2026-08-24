@@ -695,6 +695,57 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   })
 })
 
+/**
+ * LE TEMPS MORT (2026-08-24) — un TOTAL DE MATCH sur une fiche par ailleurs peuplée de
+ * lectures à l'instant. Ces tests tiennent les trois choses qui le distinguent : il ne tique
+ * pas, il s'écrit `mm:ss` même à zéro, et la fiche compacte ne le porte pas.
+ */
+describe('ReplayTeams — temps mort cumulé', () => {
+  /** Deux vies séparées de 80 images ; une image = une seconde, donc 80 s de temps mort. */
+  const AVEC_TROU = {
+    frameCount: 1000,
+    frameIntervalMs: 1000,
+    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+    tracks: [TRACK, { ...TRACK, slot: 513, startFrame: 180, endFrame: 300 }],
+  }
+
+  it('écrit le cumul en mm:ss, minutes complétées', () => {
+    const doc = testReplayDoc(AVEC_TROU)
+    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    expect(view.getByTitle('Temps mort').textContent).toContain('01:20')
+  })
+
+  it('ne TIQUE pas avec la lecture : c’est un total de match, pas une valeur à l’instant lu', () => {
+    const doc = testReplayDoc(AVEC_TROU)
+    const tot = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    expect(tot.getByTitle('Temps mort').textContent).toContain('01:20')
+    tot.unmount()
+    // Image 140 : le joueur est justement DANS son trou, et le total reste le même.
+    const tard = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
+    expect(tard.getByTitle('Temps mort').textContent).toContain('01:20')
+  })
+
+  it('un joueur jamais mort affiche 00:00 — une mesure, pas une lacune', () => {
+    renderTeams({})
+    expect(screen.getByTitle('Temps mort').textContent).toContain('00:00')
+  })
+
+  it('EN : « Time dead » porte la même valeur', () => {
+    const doc = testReplayDoc(AVEC_TROU)
+    const view = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="en" />)
+    expect(view.getByTitle('Time dead').textContent).toContain('01:20')
+    expect(view.queryByTitle('Temps mort')).toBeNull()
+  })
+
+  it('la fiche COMPACTE ne le porte pas : elle n’a pas de rangée libre', () => {
+    const doc = testReplayDoc(AVEC_TROU)
+    const view = render(
+      <ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" compact />,
+    )
+    expect(view.queryByTitle('Temps mort')).toBeNull()
+  })
+})
+
 describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
   it('marque « Moi » le joueur de la page et « Ami » un ami, rien pour les autres', () => {
     const doc = testReplayDoc({
@@ -787,8 +838,10 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
     validee.unmount()
     const compacte = renderCompact({}, true)
     expect(compacte.queryByTitle('Zone de la carte')).toBeNull()
-    // Deux rangées de moins : la zone, et la rangée d'inventaire fondue dans celle des armes.
-    expect(rangees(compacte)).toBe(avant - 2)
+    // Trois rangées de moins : la zone, la rangée d'inventaire fondue dans celle des armes,
+    // et le TEMPS MORT (2026-08-24) — un total de match que la compacte ne porte pas, son
+    // objet étant d'être plus courte.
+    expect(rangees(compacte)).toBe(avant - 3)
   })
 
   it('SEULE l’arme en main garde ses munitions', () => {

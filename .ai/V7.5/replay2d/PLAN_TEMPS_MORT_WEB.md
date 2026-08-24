@@ -74,12 +74,27 @@ PASSÉ le 2026-08-24 : `npx vitest run src/features/match-replay/deadTimeLogic.t
 
 ## Phase 1 — Affichage fiche joueur + i18n
 
-- [ ] 1.1 Ligne « Temps mort » dans la fiche joueur pleine (composant de fiche existant —
+- [x] 1.1 Ligne « Temps mort » dans la fiche joueur pleine (composant de fiche existant —
       PAS ReplayCanvas), format mm:ss, libellé via les tables i18n du feature.
-- [ ] 1.2 Clés ajoutées aux DEUX tables (FR et EN) ET au contrat `i18nContract.ts` (la
+      `DeadTimeRow` dans `ReplayTeams.tsx` (composant local, en PIED de fiche : c'est la
+      seule ligne qui ne change pas avec la lecture, l'intercaler couperait le bloc de
+      l'état courant). Le cumul est calculé UNE FOIS pour toute la colonne (`useMemo` sur
+      `[groups, doc]`) et descendu en prop : aucune fiche ne le recalcule, aucune image ne
+      le refait. `ReplayCanvas.tsx` NON TOUCHÉ (797 L, cliquet intact).
+- [x] 1.2 Clés ajoutées aux DEUX tables (FR et EN) ET au contrat `i18nContract.ts` (la
       parité est typée `Record<Locale, T>` : tsc est le gate).
-- [ ] 1.3 Variante compacte : appliquer la décision n°2.
-- [ ] 1.4 Aucune couleur en dur (tokens sémantiques uniquement) ; pas d'emoji.
+      Une seule clé, `deadTimeLabel` : FR « Temps mort », EN « Time dead ».
+- [x] 1.3 Variante compacte : appliquer la décision n°2.
+      NON — pleine seulement. La compacte n'a AUCUNE rangée libre (nom+compteurs, vitalité,
+      armes+inventaire fondus) et son objet est d'être plus courte : lui ajouter une rangée
+      annulerait ce qu'elle gagne (leçon C1 du 18/08, « la compacte serait plus HAUTE que la
+      validée »). La seule rangée partagée est celle du NOM, où la valeur aurait serré le
+      gamertag tronqué contre les compteurs dans la mise en page la plus étroite du rejeu.
+      La parité de rangées morte/vivante reste tenue dans les DEUX variantes (la ligne ne
+      dépend d'aucun état vital) ; le test de la compacte passe de `avant - 2` à `avant - 3`.
+- [x] 1.4 Aucune couleur en dur (tokens sémantiques uniquement) ; pas d'emoji.
+      `text-muted-foreground` seul, aucun hex ni classe de couleur Tailwind ; diff vérifié
+      sans emoji.
 
 Gate 1 (commandes exactes, depuis `apps/web/` du worktree) :
 - `npx tsc -b` -> 0 erreur ;
@@ -88,6 +103,23 @@ Gate 1 (commandes exactes, depuis `apps/web/` du worktree) :
 - plausibilité : sur 2 artefacts témoins du cache du principal (ex. `000d5950`,
   `7344d24f`), imprimer (test ou script jetable de worktree) le temps mort par joueur et
   vérifier l'ordre de grandeur vs le registre (médiane 8-10 s par mort) — chiffres au CR.
+
+Gate 1 PASSÉ le 2026-08-24 (depuis `apps/web/` du worktree) :
+- `npx tsc -b` -> 0 erreur ;
+- `npx vitest run src/features/match-replay` -> 69 fichiers, 1027 tests, 0 échec ;
+- `npx eslint src/features/match-replay --max-warnings=-1` -> 0 erreur, 1 avertissement
+  PRÉEXISTANT et hors périmètre (`ReplayFeedName.tsx:50`, react-refresh) ;
+- plausibilité (sonde jetable `src/lib/replay/_tmp_plausibilite.test.ts`, supprimée après
+  mesure — les tests commités ne dépendent pas du cache local) :
+  - `000d5950` (schéma 18, 4 985 images, 100 ms/image, 499 s, 8 joueurs) : temps mort par
+    joueur 73,8 s à 135,5 s (1:13 à 2:15), soit 15 % à 27 % de la partie ; 85 trous ;
+    MÉDIANE PAR MORT 8,1 s (min 2,7 s, max 54,2 s) ; cumul de match 769 s ;
+  - `7344d24f` (schéma 18, 5 689 images, 100 ms/image, 569 s, 8 joueurs) : 120,8 s à
+    167,3 s (2:00 à 2:47), soit 21 % à 29 % ; 109 trous ; MÉDIANE PAR MORT 10,1 s
+    (min 1,8 s, max 18,3 s) ; cumul de match 1 097 s.
+  Verdict : la médiane par mort tombe exactement dans la fourchette 8-10 s du registre. Le
+  cumul par match encadre la fourchette 865-1 136 s sans y tomber des deux côtés (769 s et
+  1 097 s) — cf. §Découvertes, non corrigé.
 
 ## Garde-rails d'exécution
 
@@ -102,6 +134,31 @@ Gate 1 (commandes exactes, depuis `apps/web/` du worktree) :
 ## Découvertes
 
 (consigner ici — rien corriger)
+
+1. **Le délai de réapparition n'est PAS une constante entre matchs.** Les deux témoins
+   donnent 8,1 s et 10,1 s de médiane par mort, chacun très serré autour de sa valeur
+   (les huit joueurs d'un même match affichent la MÊME médiane à 0,1 s près). Le palier
+   « 8,0 s » consigné jusqu'ici vient du film de référence, c'est-à-dire d'UN match : il
+   dépend visiblement du mode ou de la playlist. Rien à corriger — c'est au contraire ce
+   qui valide le refus d'une constante dans le calcul — mais tout commentaire du dépôt qui
+   présente 8,0 s comme un palier du JEU est trop fort d'un cran.
+2. **Cumul par match sous la fourchette du registre sur `000d5950`** : 769 s mesurés contre
+   la bande 865-1 136 s consignée (`7344d24f` tombe dedans, 1 097 s). Écart non
+   investigué : la bande du registre peut avoir été mesurée sur d'autres matchs, ou sur une
+   définition incluant les bornes de tête/queue que ce lot exclut délibérément. Aucun
+   changement de définition n'a été fait pour rentrer dans la bande.
+3. **Trous longs réels** : maximum 54,2 s sur `000d5950` (contre 18,3 s sur `7344d24f`).
+   Un joueur peut rester à terre bien au-delà du palier — c'est exactement ce qu'un cumul
+   « nombre de morts x délai médian » aurait effacé.
+4. **Surface naturelle pour l'agrégat d'équipe** (HORS PÉRIMÈTRE, non implémenté) :
+   `ReplayTeamHeader.tsx` porte déjà le score de la colonne à l'instant lu et reçoit
+   `players` — il pourrait sommer les cumuls de ses joueurs sans nouvelle dérivation. À
+   traiter comme un lot à part si le besoin se confirme.
+5. **La sonde jetable a dû sortir du dossier `match-replay`** : le garde-rail
+   `testDoc.guard.test.ts` interdit à tout `*.test.ts` du dossier d'appeler
+   `normalizeReplayDocument` hors de la fixture. Sonde donc placée sous `src/lib/replay/`
+   puis supprimée. Garde-rail correct, simple contrainte à connaître pour les mesures
+   ponctuelles sur artefacts réels.
 
 ## CR attendu
 

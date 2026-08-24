@@ -23,6 +23,7 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { calloutLabel, zoneAt, type CalloutZoneReady } from './calloutsLayer'
+import { deadTimeByPlayer, formatDeadTime } from './deadTimeLogic'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { PlayerMark } from './PlayerMark'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
@@ -142,6 +143,13 @@ export function ReplayTeams({
     () => groupByTeam(buildPlayers(doc, scoreboard)),
     [doc, scoreboard],
   )
+  // LE TEMPS MORT EST UN TOTAL DE MATCH : il se calcule UNE FOIS pour toute la colonne, sur
+  // les mêmes joueurs que les fiches, et ne dépend pas de l'image lue. Le recalculer par
+  // fiche et par image ferait balayer toutes les vies de tout le monde à chaque frame.
+  const deadTime = useMemo(
+    () => deadTimeByPlayer(groups.flatMap((g) => g.players), doc),
+    [groups, doc],
+  )
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
@@ -197,6 +205,7 @@ export function ReplayTeams({
                 callouts={callouts}
                 mark={(marks ?? NO_MARKS).get(p.xuid)}
                 scoreTimeline={scoreTimeline}
+                deadTimeMs={deadTime.get(p.xuid) ?? 0}
                 compact={compact}
               />
             ))}
@@ -221,11 +230,16 @@ interface PlayerCardProps {
   mark?: PlayerMarkKind
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
+  /**
+   * TEMPS MORT CUMULÉ du joueur sur tout le match, en millisecondes (`deadTimeLogic`).
+   * Calculé une fois pour la colonne : la fiche l'affiche, elle ne le mesure pas.
+   */
+  deadTimeMs: number
   /** Fiche COMPACTE (cf. ReplayTeamsProps.compact). */
   compact?: boolean
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark, scoreTimeline, compact = false }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark, scoreTimeline, deadTimeMs, compact = false }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
   // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
@@ -395,6 +409,39 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           )}
         </div>
       )}
+      {!compact && <DeadTimeRow ms={deadTimeMs} locale={locale} />}
+    </div>
+  )
+}
+
+/**
+ * DeadTimeRow — LE TEMPS MORT CUMULÉ du joueur, en dernière ligne de la fiche.
+ *
+ * EN BAS, ET C'EST UN CHOIX : c'est la seule ligne de la fiche qui ne change pas avec la
+ * lecture. La glisser entre la zone, la vitalité et l'inventaire couperait le bloc de l'état
+ * courant par un total de match ; en pied de fiche, elle se lit pour ce qu'elle est.
+ *
+ * ELLE S'AFFICHE TOUJOURS, y compris à `00:00`. Un joueur mort zéro fois est une information,
+ * pas une lacune — c'est même la seule fiche du rejeu dont l'absence de mesure et la mesure
+ * nulle se confondent légitimement : le film date toutes les vies, donc « aucun trou » veut
+ * bien dire « jamais à terre ». La ligne ne dépend donc d'aucun état vital, et sa hauteur est
+ * la même vivant et mort (règle 1.1 des fiches).
+ *
+ * ABSENTE DE LA FICHE COMPACTE (décision de lot, 2026-08-24) : la compacte n'a pas de rangée
+ * libre, et son objet est d'être PLUS COURTE — lui ajouter une ligne annulerait exactement ce
+ * qu'elle gagne. La déporter sur la rangée du nom aurait serré le gamertag tronqué contre les
+ * compteurs, dans la mise en page la plus étroite du rejeu.
+ */
+function DeadTimeRow({ ms, locale }: { ms: number; locale: ReplayLocale }) {
+  const t = REPLAY_TEXT[locale]
+  return (
+    <div className="flex h-3 items-center">
+      <span
+        className="truncate font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
+        title={t.deadTimeLabel}
+      >
+        {t.deadTimeLabel} <span className="tabular-nums">{formatDeadTime(ms)}</span>
+      </span>
     </div>
   )
 }
