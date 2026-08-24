@@ -493,7 +493,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBits(3)
 		return variant, nil, true
 	case "biped-emp-timer-component": // ti=35 i51 (FUN_142f02830) — R(8) (timer quant 0..10s)
-		br.ReadBits(8)
+		publishEmpTimer(br.ReadBits(8)) // cf. emp_timer.go — largeur inchangée, valeur publiée
 		return variant, nil, true
 	case compSplashMessageDynamic: // ti=47 i1 (FUN_140daebd0) — R(24), sonde
 		publishProbe(typeIndex, ProbeSplashDynamic, br.ReadBits(24))
