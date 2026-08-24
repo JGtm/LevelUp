@@ -1,4 +1,10 @@
-// Package domain — match_assist_pairs.go : QUI EST L'ASSISTANT DE QUI.
+// Package domain — assist_pairs.go : QUI EST L'ASSISTANT DE QUI.
+//
+// DEUX SURFACES, UNE SEULE DOCTRINE — et c'est pour ça qu'elles partagent ce fichier :
+// la page MATCH (graphe assistant -> tueur assisté sur un match) et la page ESCOUADE
+// (tableau des assistances internes sur une sélection de matchs) lisent la même table
+// avec les mêmes trois états et le même refus de plafonner les parts de dégâts. Les
+// séparer ferait recopier l'en-tête ci-dessous, et une doctrine recopiée diverge.
 //
 // Le graphe des assistances lit la MÊME LIGNE de `match_kill_events_latest` que le kill
 // feed, mais il en tire un agrégat au lieu d'une décoration : une paire
@@ -105,4 +111,60 @@ type MatchAssistPairs struct {
 	MeasuredDeaths int `json:"measured_deaths"`
 	// Pairs : les paires nommées, triées par AssistCount décroissant.
 	Pairs []MatchAssistPair `json:"pairs"`
+}
+
+// ---------------------------------------------------------------------------
+// Page ESCOUADE — les mêmes paires, sur une sélection de matchs
+// ---------------------------------------------------------------------------
+
+// SquadAssistPairRaw : une paire (assistant, tueur assisté) agrégée sur les matchs de la
+// sélection, telle que Q32d la rend.
+//
+// AUCUN gamertag ne sort de la requête, et c'est délibéré : les deux joueurs sont des
+// MEMBRES DE L'ESCOUADE par construction, donc leurs noms viennent du roster de la page
+// (alias résolus), pas de ce que le film a écrit. Un nom de film périmé afficherait, dans
+// le même tableau, un joueur sous deux orthographes.
+type SquadAssistPairRaw struct {
+	AssistXUID  string
+	KillerXUID  string
+	AssistCount int
+	StolenCount int
+}
+
+// SquadAssistPair : une ligne du tableau des assistances de l'escouade.
+type SquadAssistPair struct {
+	AssistXUID     string `json:"assist_xuid"`
+	AssistGamertag string `json:"assist_gamertag"`
+	KillerXUID     string `json:"killer_xuid"`
+	KillerGamertag string `json:"killer_gamertag"`
+	AssistCount    int    `json:"assist_count"`
+	// StolenCount : « Éliminations volées » — part de dégâts de l'assistant supérieure
+	// à celle du tueur crédité. Un décompte, pas une réattribution.
+	StolenCount int `json:"stolen_count"`
+}
+
+// SquadAssistPairs : le bloc « assistances » de la page Escouade, avec sa COUVERTURE.
+//
+// La couverture n'est pas un ornement : l'assistance n'est mesurée que sur les matchs
+// dont le film a été décodé (les films Theater EXPIRENT côté serveur — le manque est
+// DÉFINITIF). Un pourcentage calculé sur la moitié d'une sélection sans dire laquelle
+// serait un chiffre non reproductible. `MatchesMeasured` / `MatchesTotal` s'affiche AVEC
+// le tableau, jamais en note de bas de page.
+//
+// Bloc NIL quand `MatchesMeasured` vaut 0 : rien n'a été mesuré sur la sélection, il n'y
+// a pas de tableau à rendre. C'est aussi ce qui arrive sur un titre sans décodeur de
+// film — sans jamais brancher sur le slug.
+type SquadAssistPairs struct {
+	// MatchesMeasured : matchs de la sélection portant AU MOINS une ligne d'assistance
+	// mesurée et publiable ligne à ligne.
+	MatchesMeasured int `json:"matches_measured"`
+	// MatchesTotal : matchs de la sélection, tous confondus. Dénominateur affiché.
+	MatchesTotal int `json:"matches_total"`
+	// TotalAssists : somme des AssistCount des paires publiées. C'est le dénominateur
+	// de la colonne « part », et il ne vaut QUE pour les assistances INTERNES à
+	// l'escouade — un membre qui assiste un joueur hors escouade n'y entre pas.
+	TotalAssists int `json:"total_assists"`
+	// Pairs : triées par AssistCount décroissant. Vide = mesuré, aucune assistance
+	// interne à l'escouade.
+	Pairs []SquadAssistPair `json:"pairs"`
 }

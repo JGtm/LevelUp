@@ -513,6 +513,11 @@ type TeammatesPageResponse struct {
 	// (assassinats + compétences spartiate, barres empilées). Nil hors h5
 	// (capability native_kill_mechanics) ou aucune mécanique sur les matchs partagés.
 	NativeKillMechanics *SquadKillMechanics `json:"native_kill_mechanics,omitempty"`
+	// AssistPairs alimente le tableau « qui assiste qui » de la page Synergies :
+	// les paires (assistant → tueur assisté) INTERNES à l'escouade sur les matchs de
+	// la sélection, avec la couverture de la mesure. Nil quand aucun match de la
+	// sélection n'a d'assistance mesurée (dont : titre sans décodeur de film).
+	AssistPairs *SquadAssistPairs `json:"assist_pairs,omitempty"`
 	// FirstBlood alimente le chart « Premier frag / première mort » (lanes) de
 	// l'onglet Dynamique : une série PAR JOUEUR de l'escouade, valeurs par match
 	// (aucun bucketing serveur). Vide si aucune donnée highlight_events.

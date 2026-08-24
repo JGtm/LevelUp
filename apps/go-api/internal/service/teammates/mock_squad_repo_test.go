@@ -23,6 +23,9 @@ type mockSquadRepo struct {
 	impactRows          []domain.ImpactEventRow
 	impactErr           error
 	kvPairs             []domain.KVPairRaw
+	assistPairs         []domain.SquadAssistPairRaw
+	assistMeasured      int
+	assistErr           error
 	kvErr               error
 	heatmapRows         []domain.SynthesisHeatmapRow
 	heatmapErr          error
@@ -74,6 +77,9 @@ func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 }
 func (m *mockSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
+}
+func (m *mockSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) ([]domain.SquadAssistPairRaw, int, error) {
+	return m.assistPairs, m.assistMeasured, m.assistErr
 }
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr

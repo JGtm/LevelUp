@@ -304,20 +304,60 @@ Patron agrégat multi-matchs scopé : `Q28RelationsScopedTpl` / `Q32cSquadKVPair
 
 ### Items — page escouade
 
-- [ ] C6 — Go : agrégat par paire scopé aux matchs de l'escouade dans le service
+- [x] C6 — Go : agrégat par paire scopé aux matchs de l'escouade dans le service
   teammates (patron Q32c/Q28Scoped) : par (assistant, tueur) au sein de l'escouade
   → `assist_count`, `stolen_count`, plus dénominateur de couverture
   `matches_measured` / `matches_total` (nb de matchs de la sélection ayant au
   moins une ligne `assist_known=TRUE`). Bloc ajouté à `TeammatesPageResponse`.
-- [ ] C7 — web : tableau dans la page **Synergies** de l'escouade (TanStack Table) :
+  → Q32d (`queries_squad.go`, à côté de Q32c) + lecteur
+  `SquadRepo.LoadSquadAssistPairs` (fichier dédié, `squad_repo.go` est à 444 L).
+  DEUX décisions non écrites au plan, toutes deux tranchées par la question posée :
+  (a) les DEUX joueurs sont contraints à l'escouade — une assistance rendue à un
+  allié de passage ne parle pas de l'escouade et gonflerait le dénominateur de la
+  colonne « part » ; (b) la requête ne rend AUCUN gamertag — les deux xuids sont au
+  roster de la page, dont les noms sont déjà résolus (alias compris) ; reprendre le
+  nom écrit dans le film ferait apparaître un même joueur sous deux orthographes
+  dans un seul tableau. `matches_total` n'est pas redemandé à la base : c'est la
+  taille de la sélection, connue de l'appelant. Périmètre repris de `firstBloodScope`
+  (helper partagé, mêmes matchs et mêmes joueurs que les blocs voisins). Bloc nil
+  quand `matches_measured` vaut 0 — ce qui couvre le titre sans décodeur de film,
+  par la DONNÉE et jamais par un test sur le slug. `TotalAssists` publié comme
+  dénominateur de la part (le front ne le dérive pas de l'affichage).
+- [x] C7 — web : tableau dans la page **Synergies** de l'escouade (TanStack Table) :
   colonnes assistant, bénéficiaire, assists (brut), part (% des assists mesurées
   de l'escouade), kills volés ; bandeau de couverture « mesuré sur N des M matchs »
   (patron `killFeedWeaponCoverage`). i18n FR/EN. Bascule %/brut : les DEUX colonnes
   affichées (pas de toggle).
-- [ ] C8 — tests : Go = test du builder des paires (fixtures avec les 3 états
+  → `features/squad/SquadAssistPairsTable.tsx`, gabarit structurel
+  `SquadSynergyHistoryTable` (mêmes classes d'en-tête et de cellule, mêmes helpers de
+  tri `explorerMatchesClientSort`, même `HeaderLabelTooltip`) — sans pagination : une
+  escouade a au plus quelques dizaines de paires. Le bandeau de couverture n'existait
+  PAS côté web (aucun patron à reprendre : `killFeedWeaponCoverage` est un compteur de
+  LOG Go, pas un composant) : rendu en `text-xs text-muted-foreground` au-dessus du
+  tableau, et MAINTENU sur l'état vide — sans lui, « aucune assistance » se lirait
+  « rien mesuré ». Libellé produit FR « Éliminations volées » / EN « Stolen kills ».
+  Pourcentage via `Intl.NumberFormat(style: 'percent')` : le FR met une espace
+  insécable avant le « % », pas l'EN — un `${x} %` en dur serait faux dans une des deux
+  langues. Monté dans `SquadSynergiesPage` après le tableau d'historique ; bloc absent
+  → section non montée (aucun cadre vide).
+- [x] C8 — tests : Go = test du builder des paires (fixtures avec les 3 états
   d'assist ; kills volés ; unmeasured vs zéro) + test service teammates du bloc ;
   web = vitest chart (série, état vide double) + tableau escouade (couverture
   affichée).
+  → Go, 21 tests : `platform/duckdb/match_view_repo_assist_pairs_test.go` (7 — Q21d
+  sur le SCHÉMA DE PRODUCTION via `migration.EnsureMatchKillEvents`, pas une table de
+  circonstance : la lecture passe par la vue `_latest` et son QUALIFY ; couvre les
+  3 états, non publiable, part manquante, part à 228 non plafonnée, tueur bot),
+  `platform/duckdb/squad_repo_assist_pairs_test.go` (5 — paires internes seules,
+  couverture partielle, sélection vide, placeholders),
+  `service/match_view_builders_assists_test.go` (3 — bloc absent, « non mesuré » vs
+  « zéro », gamertag du tueur depuis le scoreboard sans invention),
+  `service/teammates/teammates_squad_assist_pairs_test.go` (6 — couverture en matchs,
+  rien mesuré, mesuré sans paire, paire hors roster exclue DU TOTAL, périmètre vide,
+  repo absent/en erreur). Web, 18 tests : `MatchAssistChart.test.tsx` (11 — les trois
+  états vides, `pairs: null`, agrégation par assistant, ennemis en tête, repli du nom
+  masqué, table des volées) et `SquadAssistPairsTable.test.tsx` (7 — couverture
+  affichée y compris sans paire, 5 colonnes FR, part sur le total SERVEUR, tri, EN).
 
 Dégradation multi-titre : la table est peuplée par le pipeline film Halo Infinite ;
 pour un titre sans données le bloc est absent → l'UI ne rend rien (double porte
@@ -480,6 +520,24 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
   neutralisée par `skipObsoleteSpec`, dont le commentaire et le message de skip
   nomment encore les onglets « Général / Détails » — périmés depuis le passage à 3
   onglets. Rien de fonctionnel (test skippé) ; non traité, hors périmètre.
+- Flake Windows sur `TestStartImport_HappyPathReturns202WithJobID`
+  (`internal/api/handlers`, lot C, 2026-08-25) : `t.TempDir()` échoue au nettoyage
+  (« Le répertoire n'est pas vide ») parce qu'une goroutine de `jobs.Store` écrit
+  encore `jobs.json` quand le test se termine — le log du même run porte
+  « jobs.Store: write error … utilisé par un autre processus ». Rouge au premier
+  passage du gate C, VERT au re-run isolé (`-count=3`) et au re-run du paquet entier.
+  Aucun rapport avec les assistances (import OpenSpartan). Non traité, hors périmètre.
+- Aucun bandeau de couverture n'existait côté web avant le lot C (vérifié sur
+  `features/squad`, `match-view`, `match-replay`) : `killFeedWeaponCoverage` cité par le
+  plan est un compteur de LOG Go, pas un composant. Le bandeau de C7 est donc une
+  première — si une deuxième surface en demande un, c'est le moment de le factoriser
+  (règle des 2 copies).
+- `TeammatesPageResponse` (web) est une interface ÉCRITE À LA MAIN dans
+  `lib/api/types.ts`, exemptée dans `response-types.guard.test.ts` (« page composite
+  squad »). Tout nouveau bloc de la page escouade doit donc être déclaré à DEUX endroits
+  (Go + cette interface), sans quoi il n'existe pas pour le front — le contrat généré ne
+  suffit pas. Constaté au lot C, non traité (la migration de cette interface vers le
+  contrat généré est un chantier à part entière).
 - `MatchViewPage.tsx` coerce encore `locale === 'en' ? 'en' : 'fr'` sur une valeur
   déjà typée `Locale` (`'fr' | 'en'`) avant de la passer à `MatchMediaTab` et au
   breadcrumb : ternaires no-op héritées. Les deux composants d'onglets extraits
