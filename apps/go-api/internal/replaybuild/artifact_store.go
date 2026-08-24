@@ -23,12 +23,14 @@ package replaybuild
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 )
 
@@ -53,6 +55,9 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 		return StoredArtifact{}, err
 	}
 	outPath := title.NewPathResolver(repoRoot).ReplayArtifactPath(titleSlug, matchID)
+	if kept, held := keepRicherArtifact(outPath, blob, matchID); held {
+		return kept, nil
+	}
 	if err := writeArtifactBytes(outPath, blob); err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
@@ -60,6 +65,46 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 		Path: outPath, MatchID: matchID, Bytes: len(blob),
 		Tracks: len(doc.Tracks), SchemaVersion: doc.SchemaVersion,
 	}, nil
+}
+
+// keepRicherArtifact garde l'artefact EN PLACE quand celui qui arrive le RÉTROGRADERAIT :
+// même version de schéma, mais des compteurs de joueur présents d'un côté et absents de
+// l'autre. Rend (ce qui reste rangé, true) dans ce cas ; (zéro, false) pour laisser écrire.
+//
+// POURQUOI CE GARDE EXISTE — LE SCÉNARIO EXACT QU'IL FERME. À la bascule vers l'ouvrier, tout
+// job DÉJÀ en file porte un payload d'AVANT le transport des faits. Son ouvrier construira donc
+// un artefact appauvri, en toute bonne foi, et le déposera par-dessus un artefact complet. Le
+// match ne repassera jamais par la sélection post-sync (elle ne voit que les matchs INSÉRÉS
+// d'un cycle) : la perte serait DÉFINITIVE, sans que rien ne la signale.
+//
+// C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. `ArtifactHasPlayerCounters` ne peut que
+// PRÉSUMER l'appauvrissement (cf. son en-tête : trois façons légitimes d'être vide). Avec ce
+// garde, une présomption fausse coûte au pire UN cycle d'ouvrier gâché — jamais un artefact
+// rétrogradé. C'est ce qui rend la présomption acceptable.
+//
+// LE GARDE NE MONTE PAS DE VERSION : à schéma DIFFÉRENT il ne dit rien (un artefact d'un autre
+// schéma est déjà refusé en amont par validateArtifact). Il ne compare que ce qui est
+// comparable.
+func keepRicherArtifact(outPath string, blob []byte, matchID string) (StoredArtifact, bool) {
+	current, ok := readArtifactDigest(outPath)
+	if !ok || current.players == 0 {
+		return StoredArtifact{}, false // rien à protéger
+	}
+	incoming, ok := digestFromBytes(blob)
+	if !ok || incoming.players > 0 || incoming.schemaVersion != current.schemaVersion {
+		return StoredArtifact{}, false
+	}
+	// Jamais muet : un artefact refusé au rangement doit s'expliquer, sinon l'admin verra un
+	// job « réussi » sans comprendre pourquoi le fichier n'a pas changé.
+	slog.Warn("replaybuild: dépôt d'artefact REFUSÉ — il rétrograderait celui en place "+
+		"(compteurs de joueur présents sur disque, absents dans le dépôt, même schéma)",
+		"match_id", matchID, "path", outPath, "joueurs_en_place", current.players,
+		"schema", current.schemaVersion, "octets_refuses", incoming.bytes)
+	observability.IncCounter("build_queue_artifact_downgrade_refused_total")
+	return StoredArtifact{
+		Path: outPath, MatchID: matchID, Bytes: current.bytes,
+		Tracks: current.tracks, SchemaVersion: current.schemaVersion,
+	}, true
 }
 
 // validateArtifact désérialise et contrôle l'artefact. Rend le document lu.
