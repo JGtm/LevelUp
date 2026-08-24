@@ -1,3 +1,48 @@
+## [2026-08-24] Lot S (S1+S2) — blindage memoire de backfill-replay : un film = un processus — Complete
+
+**Contexte** : le 2026-08-20 vers 14h50, `levelup backfill-replay --only-existing` (29 films) a
+sature la RAM de la machine apres seulement 4 petits films cuits (8-13 chunks). Journal du
+crash relu sur pieces : `runtime.preemptM: duplicatehandle failed; errno=1450`
+(ERROR_NO_SYSTEM_RESOURCES — le runtime Go n'obtenait plus un handle de thread de Windows),
+goroutine 1 bloquee 332 minutes, process age 396 minutes. Les deux premieres lignes du journal
+correspondent AU CARACTERE PRES aux formats de `cmd_backfill_replay.go:163` et `:385` : la
+passe fautive est bien cette commande, pas le chemin serveur.
+
+**Decision technique principale** : UN FILM = UN PROCESSUS (doctrine machine D17). Le parent
+garde le PLAN (enumeration, tri par cout, `--dry-run`, saut des artefacts a jour) et ne decode
+plus rien ; pour chaque film il re-execute son propre binaire (`backfill-replay --one <id>`),
+sequentiellement, et traduit le CODE DE SORTIE en categorie de recap (10 hors catalogue,
+11 decodage, 12 preparation, 13 memoire ; tout autre code = MORT SUBITE). Les codes demarrent a
+10 pour ne jamais collider avec 1 (erreur rendue par main) ni 2 (`flag.ExitOnError` et
+`fatal error` du runtime). Plafond memoire dans l'enfant : `debug.SetMemoryLimit` (souple,
+defaut 3 GiB, flag `--mem-limit-gib`) DOUBLE d'une sentinelle qui tue au-dela de +25 % — le
+plafond souple seul ne tue rien et aurait reproduit la spirale GC dans l'enfant. Le parent
+IMPOSE `LEVELUP_REPO_ROOT` a ses enfants (sinon un enfant re-detecte sa racine depuis son
+executable, qui sous `go run` est un dossier temporaire). Suppression de `chargerFaitsReplay` :
+la map de faits indexee par match, vivante toute la passe, etait la SEULE structure du process
+qui croissait avec le corpus et non avec le film ; chaque enfant lit desormais les siens et
+relache son handle avant de decoder.
+
+**Resultats observes** : gates verts (`go build ./...`, `go vet ./cmd/levelup/`,
+`go test ./cmd/levelup/`). Fichiers 95 a 329 L, aucune fonction > 60 L. Garde-rail pose
+(`backfill_child_guard_test.go`) : `BuildMatch(` n'existe que dans le fichier de l'enfant,
+`exec.Command*` que dans le runner partage, et `chargerFaitsReplay` doit rester disparu.
+VALIDATION SUR LE CRASH REEL : le film `51101d1d` — celui-la meme sur lequel la machine est
+morte — a ete relance avec le nouveau binaire. Il monte a **7,36 GiB en 2,6 s** (~3 Go/s), la
+sentinelle le tue, la passe rend `morts memoire 1` et sort en code 0. Trois secondes au lieu de
+six heures, machine vivante. Effet de bord mesure : a 2 s d'echantillonnage le depassement du
+plafond dur atteignait ~4 Go avant detection — periode ramenee a 250 ms (cout : deux compteurs
+runtime par tick).
+
+**Limite assumee et documentee** : une sentinelle qui echantillonne ne peut pas interrompre une
+allocation DEJA EN VOL ; un `make([]T, n)` de plusieurs Go d'un seul tenant passe sous les deux
+plafonds. Le cran suivant serait un Job Object Windows (`ProcessMemoryLimit`) qui fait ECHOUER
+l'allocation — non fait : le blindage par processus suffit a ce que la passe et la machine
+survivent, ce qui etait l'objet du lot.
+
+**Conclusion / prochaine etape** : S3 (statuer `backfill-killsource`), S4 (docs), puis S5 (passe
+complete sur les ~25 films restants du cache du depot principal).
+
 ## [2026-08-20] Supervision reprise v7.5 — fusions L2 (KOTH UGC negatif), L6 (balayage sons), L1 (hygiene CI) ; decisions D7/R3-1/garde Fiesta — En cours
 
 **Contexte** : reprise du pilotage sur demande utilisateur (handoffs 18-20/08 + liste de retours produit) ; 5 explorations paralleles puis lots executes en worktrees freres (Sonnet/Opus), CR verifies sur pieces (gates rejoues : archlint, diff structurel du catalogue objectives). Plan : `.ai/V7.5/PLAN_SUPERVISION_2026-08-20.md`.
