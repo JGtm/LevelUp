@@ -301,10 +301,14 @@ type ZonesCoverage struct {
 	// joueur n'occupe serait une invention, et la taire empecherait de la voir arriver.
 	UnknownOwner int `json:"unknownOwner"`
 	// Letters est le nombre de zones qui portent un rang de lettre (cf. ZoneState.LetterRank).
-	// Zero dit quelque chose de precis : le fallback n'a pas conclu sur ce match — zones
-	// appariees incompletes, mode a colline, ou catalogue de plus de trois zones. Sans ce
-	// compteur, « aucune lettre a l'ecran » et « artefact anterieur au champ » se liraient
-	// pareil.
+	// C'est sa seule promesse : COMBIEN de lettres ce calque publie.
+	//
+	// ZERO NE DISTINGUE PAS DEUX SITUATIONS, ET IL FAUT LE SAVOIR AVANT DE LIRE CE CHAMP
+	// (releve de revue, 2026-08-25). Un match ou le fallback n'a pas conclu — appariement
+	// incomplet, mode a colline, catalogue de plus de trois zones — et un artefact ANTERIEUR au
+	// champ donnent tous deux `letters: 0` sur le fil, a l'octet pres : l'entier n'est ni un
+	// pointeur ni `omitempty`, donc l'absence dans le JSON stocke se relit en zero. Pour separer
+	// les deux cas, c'est `ReplayDocument.SchemaVersion` qu'il faut regarder, pas ce compteur.
 	Letters int `json:"letters"`
 	// GaugePoints est le nombre de points de jauge en direct publies, toutes zones confondues
 	// (schema 18). C'est le poids du calque vivant, et le denominateur de sa legerete : la

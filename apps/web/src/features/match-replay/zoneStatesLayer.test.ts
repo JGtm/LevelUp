@@ -221,7 +221,9 @@ describe('drawZoneStates', () => {
     }
   })
 
-  it("l'alignement du texte est RENDU comme il a été trouvé — rien ne fuite au calque suivant", () => {
+  // La fonction ne LIT pas l'état trouvé : elle sort sur les valeurs PAR DÉFAUT du canvas.
+  // C'est ce que ce cas vérifie — pas une restauration, qui n'a jamais eu lieu.
+  it("le tracé sort sur les réglages de texte PAR DÉFAUT du canvas (left / alphabetic)", () => {
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 10)
     const aligns = ops.filter((o) => o.op === 'set textAlign').map((o) => o.args[0])
@@ -230,9 +232,14 @@ describe('drawZoneStates', () => {
     expect(baselines[baselines.length - 1]).toBe('alphabetic')
   })
 
-  it('jamais de lettre sur une COLLINE : la zone active du fixture n’en porte pas', () => {
+  // CE CAS N'EST PAS UNE GARDE COLLINE, et le dire importe : le client ne connaît pas la
+  // notion de colline. Il vérifie qu'une zone SANS `letterRank` reste muette — la zone active
+  // du fixture en est une. L'invariant « une colline ne porte jamais de lettre » est tenu
+  // ailleurs, côté Go (`zoneLetterRanks`, porte `hill`), et c'est là qu'il est testé.
+  it('une zone sans `letterRank` — dont toute colline, jamais publiée avec — reste muette', () => {
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer(), [ZONE_STATES[1]], VIEW, 30)
+    expect(ZONE_STATES[1].letterRank).toBeUndefined()
     expect(textesDe(ops)).toEqual([])
   })
 
