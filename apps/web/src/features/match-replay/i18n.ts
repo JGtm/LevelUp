@@ -223,6 +223,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       groupActive: 'États actifs',
       groupActiveHint:
         "Épisodes de camouflage et de surbouclier. Le film mesure que l'effet COURT ; il ne dit pas d'où il vient — un bonus ramassé au socle et une capacité déclenchée produisent le même épisode, et la source n'est pas distinguée. Le nombre et la durée cumulée se lisent ensemble : six épisodes d'une seconde et un épisode de six secondes ne racontent pas la même partie.",
+      activeFamily: { camo: 'Camouflage', overshield: 'Surbouclier' },
       activeCount: 'épisodes',
       activeDuration: 'durée',
       groupDeployed: 'Déploiements',
@@ -462,6 +463,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       groupActive: 'Active states',
       groupActiveHint:
         'Camo and overshield episodes. The film measures that the effect IS RUNNING; it never says where it came from — a power-up picked up from a pad and a triggered ability produce the same episode, and the source is not told apart. Count and cumulative duration read together: six one-second episodes and one six-second episode are not the same game.',
+      activeFamily: { camo: 'Camo', overshield: 'Overshield' },
       activeCount: 'episodes',
       activeDuration: 'duration',
       groupDeployed: 'Deployments',

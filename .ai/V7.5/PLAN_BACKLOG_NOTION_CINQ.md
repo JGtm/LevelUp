@@ -393,7 +393,7 @@ ligne de scoreboard est un trou AFFICHÉ, pas comblé.
 
 ### Items
 
-- [ ] D1 — `equipmentUsageLogic.ts` (features/match-replay) : agrégation PURE
+- [x] D1 — `equipmentUsageLogic.ts` (features/match-replay) : agrégation PURE
   `doc → { byPlayer, byTeam }` des grandeurs : tractions de grappin, épisodes camo,
   épisodes surbouclier (nombre + durée cumulée), déploiements par famille, objets
   lâchés à la mort par famille, grenades par type ; et par match : socles de
@@ -401,7 +401,30 @@ ligne de scoreboard est un trou AFFICHÉ, pas comblé.
   `doc.coverage` (`equipment.tracksTotal`, `grapple.pullLives`,
   `placements.byFamilyOrigin`, `groundWeapons.powerupPads`). Tests vitest complets
   sur fixtures synthétiques (y compris joueur hors scoreboard).
-- [ ] D2 — composant `MatchEquipmentUsageSection.tsx` (features/match-view ou
+  → TROIS DÉCISIONS non écrites au plan, toutes trois imposées par la vérification sur
+  pièces des canaux :
+  (a) **les grenades ne se joignent PAS par `slot`**. `Grenade.Slot` est « le biped lanceur
+  QUAND IL EST CONNU (0 sinon) » (`grenades.go`) ; l'auteur est `Grenade.i`, l'index de
+  joueur ÉCRIT dans le film, et `grenadeFx.grenadeThrowActive` joint déjà par là. Mesuré sur
+  4 témoins du cache : 65/70, 108/143 et 123/130 lancers portent un slot ABSENT des pistes —
+  la jointure par slot en perdait la quasi-totalité, et les aurait TOUS versés au
+  propriétaire du slot 0 sur un film où ce slot existe. Corrigé : pont
+  `roster[].filmIndex → xuid`. Orphelins retombés de 70/108/4/125 à 5/17/4/3.
+  (b) **les déploiements passent par `placementIsDeployedObject` croisé à
+  `PLACEMENT_RENDER[family] != null`**, pas par `origin === 'deployed'` nu. Le premier
+  dédoublonne le mur (un mur déployé publie DEUX poses : l'appareil et ses panneaux) ; le
+  second écarte les familles que la table déclare explicitement « pas un objet posé sur le
+  terrain » — les 4 grenades (leurs poses `deployed` sont des LANCERS, déjà comptés par
+  `grenades[]` : deux colonnes pour un seul geste) et `grapple`/`thruster`/`repulsor`. Les
+  lâchers passent de même par `placementIsDroppedPower` (décision produit du 18/08, déjà
+  mesurée et écrite). Sans ces deux filtres, le tableau publiait des colonnes `repulsor` et
+  `thruster` — exactement ce que le lot interdit — et des colonnes de grenades en double.
+  (c) **une entrée de roster sans aucune vie n'a pas de ligne**, et ses gestes éventuels vont
+  aux ORPHELINS : sans ce garde, un lancer attribué à une telle entrée disparaissait de
+  l'écran sans entrer nulle part, et la somme des lignes mentait.
+  Le module a été SCINDÉ avant d'atteindre le seuil (498 L / 500) : `equipmentUsageColumns.ts`
+  porte la mise en colonnes et les libellés, `equipmentUsageLogic.ts` ne connaît aucune langue.
+- [x] D2 — composant `MatchEquipmentUsageSection.tsx` (features/match-view ou
   match-replay selon l'existant du lot B) : tableau par joueur avec ligne « Total
   équipe » (patron `MatchObjectivesSection.tsx`), ligne à part pour l'anonyme
   (« Socles de power-up vidés : N » au niveau match), libellés des familles via les
@@ -409,13 +432,54 @@ ligne de scoreboard est un trou AFFICHÉ, pas comblé.
   (« état actif mesuré — source socle ou capacité non distinguée », en infobulle).
   Double porte : artefact présent (`header.replay_available` + donnée non vide)
   sinon rien. i18n FR/EN.
-- [ ] D3 — montage dans l'onglet **Chronologie** (lot B), après la courbe de score ;
+  → Posé dans **`features/match-replay/`** : chaque libellé qu'il écrit appartient au
+  dictionnaire du rejeu (`placementFamily`, `padEquipmentFamily`, catalogue de grenades du
+  document). Le poser dans `match-view` aurait forcé soit l'import du dictionnaire voisin,
+  soit une SECONDE table de noms — celle qui diverge au premier ajout du manifeste. Le sens
+  de l'import est déjà établi en face : `MatchScoreCurveChart` (match-view) lit
+  `match-replay/queries`.
+  Libellé FR « Socles de bonus de puissance vidés » et non « power-up » : c'est le mot déjà
+  employé par `padPlacementNotePowerUp` (règle FR sans anglicismes). Le compte est un nombre
+  de VIDAGES, pas de socles — un socle se vide plusieurs fois (témoin `00162144` : 7 vidages
+  sur 1 socle) — d'où le dénominateur affiché « sur N socle(s) mesuré(s) ».
+  DEUX libellés courts ajoutés (`equipmentUsage.activeFamily`) plutôt que réutilisés :
+  `equipmentActive` porte des PHRASES d'infobulle de fiche (« Camouflage actif — le joueur
+  est invisible à l'écran de jeu »), illisibles en tête de colonne ; `padEquipmentFamily`
+  porte bien deux noms courts, mais ce sont ceux des SOCLES — les employer nommerait l'ÉTAT
+  par la source que la réserve dit justement ne pas être établie. Justification écrite au
+  contrat.
+  Une phrase à l'écran (`notMeasured`) dit que répulseur et propulseur ne sont pas mesurés :
+  aucune colonne vide (elle se lirait « zéro utilisation »), mais l'absence est NOMMÉE.
+- [x] D3 — montage dans l'onglet **Chronologie** (lot B), après la courbe de score ;
   consomme `useMatchReplay` (déjà utilisé par `MatchScoreCurveChart` — même cache,
   aucun fetch additionnel).
-- [ ] D4 — INTERDITS respectés : aucun accès `filmdec/`, aucun bump de schéma,
+  → Monté dans `MatchViewTabChronology.tsx` juste après `MatchScoreCurveChart`, avec les
+  mêmes `playerSlug` / `matchId` / `replayAvailable` : la clé
+  `queryKeys.matchReplay(playerSlug, titleSlug, matchId)` est identique, TanStack Query
+  dédoublonne — aucun téléchargement de plus pour un artefact de 1,5 à 2,7 Mio.
+- [x] D4 — INTERDITS respectés : aucun accès `filmdec/`, aucun bump de schéma,
   aucune modification de `ReplayCanvas.tsx` (cliquet 777), aucune table DB.
-- [ ] D5 — tests : vitest logique (D1) + rendu (tableau, porte artefact absent,
+  → Vérifié sur pièces à la clôture : `git diff --name-only` sur le lot ne touche AUCUN
+  fichier de `apps/go-api` (0), aucun `*filmdec*` (0), aucun `*ReplayCanvas*` (0) ;
+  `SchemaVersion = 18` inchangé (`document.go:149`) ; zéro `CREATE TABLE` dans le diff ;
+  zéro hex et zéro classe Tailwind de couleur dans les fichiers du lot (tokens sémantiques
+  seuls) ; zéro emoji. Le cliquet de taille de `ReplayCanvas.tsx` (797, pas 777) n'est pas
+  approché : le fichier n'est pas touché.
+- [x] D5 — tests : vitest logique (D1) + rendu (tableau, porte artefact absent,
   ligne anonyme) ; typecheck.
+  → 40 tests : `equipmentUsageLogic.test.ts` (24 — pont slot/joueur/équipe, joueur hors
+  scoreboard, sans scoreboard du tout, roster sans vie, épisodes bornés et famille inconnue,
+  dédoublonnage du mur, origine non établie, répulseur/propulseur sans grandeur, poseur -1,
+  jointure des grenades par index de film et le slot menteur, socle hors bornes, couverture
+  présente et absente, double porte) et `MatchEquipmentUsageSection.test.tsx` (16 — les trois
+  portes fermées, groupes de colonnes, libellés pris aux tables existantes, total d'équipe
+  = somme du CAMP, durée m:ss et « — », joueur hors scoreboard sous « Sans équipe », ligne
+  anonyme HORS tableau avec son dénominateur, dénominateurs de couverture, absence de colonne
+  répulseur/propulseur + phrase, réserve en infobulle d'en-tête, orphelins, parité EN).
+  PLAUSIBILITÉ sur 4 artefacts réels du cache du dépôt principal (mesure jetable, non
+  commitée) : 8 à 26 joueurs, 129 à 171 gestes attribués par match, 3 à 17 orphelins,
+  17 à 23 grenades par joueur, épisodes de camouflage de 3,5 à 41,4 s cumulées,
+  7 et 9 vidages de socle de bonus sur 1 socle mesuré.
 
 ### Gate D
 
@@ -538,6 +602,13 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
   (Go + cette interface), sans quoi il n'existe pas pour le front — le contrat généré ne
   suffit pas. Constaté au lot C, non traité (la migration de cette interface vers le
   contrat généré est un chantier à part entière).
+- `Grenade.Slot` est un champ PIÈGE du document de rejeu (lot D, 2026-08-25) : le Go le
+  documente « le biped lanceur quand il est connu (0 sinon) », et sur les 4 témoins mesurés du
+  cache 65/70, 108/143 et 123/130 lancers portent un slot absent des pistes. Un seul consommateur
+  existe côté web (`grenadeFx.grenadeThrowActive`) et il joint bien par `Grenade.i` — mais rien
+  n'empêche le prochain lecteur de tomber dans le piège, le champ étant nommé comme les `slot`
+  des trois autres calques, qui eux SONT des slots de piste. Un garde-rail (ou un renommage du
+  champ à la prochaine montée de schéma) serait à sa place. Non traité, hors périmètre.
 - `MatchViewPage.tsx` coerce encore `locale === 'en' ? 'en' : 'fr'` sur une valeur
   déjà typée `Locale` (`'fr' | 'en'`) avant de la passer à `MatchMediaTab` et au
   breadcrumb : ternaires no-op héritées. Les deux composants d'onglets extraits

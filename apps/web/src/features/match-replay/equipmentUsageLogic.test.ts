@@ -253,10 +253,11 @@ describe('buildEquipmentUsage — grenades lancées', () => {
   it('compte les lancers par RANG du catalogue, dans l’ordre des rangs', () => {
     const doc = temoin({
       grenades: [
-        { slot: 1, rank: 1, t: 5, i: 0, s: 'x', x: 0, y: 0 },
-        { slot: 1, rank: 0, t: 6, i: 1, s: 'x', x: 0, y: 0 },
-        { slot: 1, rank: 0, t: 7, i: 2, s: 'x', x: 0, y: 0 },
-        { slot: 3, rank: 1, t: 8, i: 3, s: 'x', x: 0, y: 0 },
+        // `i` = l'index de joueur du film (0 = Alpha, 2 = Charlie au roster du témoin).
+        { slot: 0, rank: 1, t: 5, i: 0, s: 'x', x: 0, y: 0 },
+        { slot: 0, rank: 0, t: 6, i: 0, s: 'x', x: 0, y: 0 },
+        { slot: 0, rank: 0, t: 7, i: 0, s: 'x', x: 0, y: 0 },
+        { slot: 0, rank: 1, t: 8, i: 2, s: 'x', x: 0, y: 0 },
       ],
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
@@ -264,6 +265,45 @@ describe('buildEquipmentUsage — grenades lancées', () => {
     expect(alpha?.grenades).toEqual({ 0: 2, 1: 1 })
     expect(u.columns.grenades).toEqual([0, 1])
     expect(u.byTeam.find((g) => g.side === 't1')?.total.grenades).toEqual({ 1: 1 })
+  })
+
+  /**
+   * LE PIÈGE DU CANAL, vérifié sur pièces le 2026-08-25 : `Grenade.slot` est « le biped lanceur
+   * QUAND IL EST CONNU (0 sinon) » (grenades.go), l'auteur est `Grenade.i`. Sur quatre témoins
+   * du cache, 65/70, 108/143 et 123/130 lancers portent un slot ABSENT des pistes. Joindre par
+   * le slot verserait tous ces lancers au propriétaire du slot 0 dès qu'il existe.
+   */
+  it('joint par l’INDEX DE FILM, jamais par le slot — un slot menteur ne trompe personne', () => {
+    const doc = temoin({
+      // Slot 3 = la vie de Charlie ; l'auteur écrit dans le film est Alpha (index 0).
+      grenades: [{ slot: 3, rank: 0, t: 5, i: 0, s: 'x', x: 0, y: 0 }],
+    } as Partial<ReplayDocument>)
+    const u = buildEquipmentUsage(doc, SB)
+    expect(u.byPlayer.find((r) => r.name === 'Alpha')?.grenades).toEqual({ 0: 1 })
+    expect(u.byPlayer.find((r) => r.name === 'Charlie')?.grenades).toEqual({})
+  })
+
+  it('range un lancer dont l’index de film n’est à personne dans les orphelins', () => {
+    const doc = temoin({
+      grenades: [{ slot: 0, rank: 0, t: 5, i: 77, s: 'x', x: 0, y: 0 }],
+    } as Partial<ReplayDocument>)
+    const u = buildEquipmentUsage(doc, SB)
+    expect(u.unattributed.grenades).toEqual({ 0: 1 })
+    expect(u.hasData).toBe(false)
+  })
+
+  it('un lancer d’une entrée de roster SANS vie va aux orphelins, jamais dans le vide', () => {
+    const doc = temoin({
+      roster: [
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
+        { filmIndex: 5, xuid: 'jamais_vu', name: 'Echo' },
+      ],
+      tracks: [vie(1, 'a1')],
+      grenades: [{ slot: 0, rank: 0, t: 5, i: 5, s: 'x', x: 0, y: 0 }],
+    } as Partial<ReplayDocument>)
+    const u = buildEquipmentUsage(doc, SB)
+    expect(u.byPlayer.map((r) => r.name)).toEqual(['Alpha'])
+    expect(u.unattributed.grenades).toEqual({ 0: 1 })
   })
 })
 
@@ -303,7 +343,7 @@ describe('buildEquipmentUsage — le canal ANONYME et les gestes sans propriéta
   it('compte à part ce qui vient d’une vie SANS propriétaire (caméra, spectateur)', () => {
     const doc = temoin({
       grappleLines: [{ slot: 9, t0: 1, t1: 5, ax: 0, ay: 0 }],
-      grenades: [{ slot: 9, rank: 2, t: 5, i: 0, s: 'x', x: 0, y: 0 }],
+      grenades: [{ slot: 9, rank: 2, t: 5, i: 99, s: 'x', x: 0, y: 0 }],
       equipmentEpisodes: [{ slot: 9, fam: 'camo', t0: 0, t1: 10 }],
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
