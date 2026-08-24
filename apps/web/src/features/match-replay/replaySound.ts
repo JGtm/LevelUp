@@ -71,7 +71,10 @@
  *    épisode fermé par la mort du porteur ne sonne pas de désactivation, rien ne l'a
  *    mesurée et le kill sonne déjà là. CHOIX DOCUMENTÉ pour le surbouclier : sa fin
  *    mesurée est l'ÉPUISEMENT (retour sous 100 %), et y jouer la désactivation est un
- *    choix de mise en scène — le gate d'écoute utilisateur tranchera.
+ *    choix de mise en scène — le gate d'écoute utilisateur tranchera ;
+ *  - les TRACTIONS DE GRAPPIN (doc.grappleLines, schéma 8, lot G du 2026-08-20) : le TIR
+ *    sonne à `t0`, un événement par traction. Rien ne sonne à `t1` : l'arrivée sur la
+ *    trajectoire ferme la fenêtre du calque (`grappleLayer.ts`), ce n'est pas un geste.
  *
  * POURQUOI LA VIGNETTE, ET PAS LE weapon_key, POUR LES GRENADES ET LA MÊLÉE. Le registre
  * d'armes ne porte NI la grenade à pointes NI la mêlée générique : la table de pont
@@ -309,11 +312,14 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * par le VOTE (« les votes priment sur tout critère », `RECETTE_SONS_ARMES` §5) : il faut une
  * écoute, pas une mesure de plus.
  *
- * RESTENT MUETS AUSSI, par décision et non par manque : le grappin, le propulseur et le
- * répulseur (que `PLACEMENT_RENDER` ne DESSINE pas non plus — ce sont des capacités qui
- * agissent sur leur porteur, pas des objets posés), les deux bonus, et l'objet non identifié
- * `other` (il a pourtant SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas
- * nommer n'a pas à s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas).
+ * RESTENT MUETS AUSSI, par décision et non par manque : le propulseur et le répulseur (que
+ * `PLACEMENT_RENDER` ne DESSINE pas non plus — ce sont des capacités qui agissent sur leur
+ * porteur, pas des objets posés), les deux bonus, et l'objet non identifié `other` (il a
+ * pourtant SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas nommer n'a pas
+ * à s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas). LE GRAPPIN
+ * N'EST PLUS DE CEUX-LÀ (lot G, 2026-08-20) : il sonne désormais, mais par SA PROPRE table
+ * (`GRAPPLE_SOUND_STEM` ci-dessous, jointe à `doc.grappleLines`, schéma 8) — ce n'est pas un
+ * objet posé au sens de CETTE table-ci.
  */
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
@@ -323,6 +329,20 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> =
   // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
   repair_field: 'repair_field_activate',
 }
+
+/**
+ * Son du TIR de grappin (doc.grappleLines, schéma 8, lot G du 2026-08-20) — UN SEUL stem,
+ * aucune famille : chaque traction sonne le même tir, quel que soit le slot. Catégorie
+ * ÉQUIPEMENT (le grappin est un objet d'équipement du joueur, au même titre que camouflage
+ * et surbouclier) — cf. `buildSoundTimeline`.
+ *
+ * SOURCE DISTINCTE DES DEUX DÉCRITES EN TÊTE DE FICHIER : une archive utilisateur de sons
+ * extraits du jeu (nov. 2021), variante « Activate (Hit Short) » — décision superviseur, lot
+ * G. 1,687 s, au-dessus de la coupe des armes (1,2 s) : gardée entière, comme les
+ * équipements. ÉGALISATION : gain LINÉAIRE de +15,07 dB (mesuré -31,07 LUFS / -16,95 dBTP en
+ * entrée), résultat -16,01 LUFS / -1,88 dBTP — cible et plafond du lot R2-S atteints.
+ */
+export const GRAPPLE_SOUND_STEM = 'grapple_fire'
 
 /** Un événement sonore posé sur l'horloge du rejeu. */
 export interface ReplaySoundEvent {
@@ -468,6 +488,11 @@ export function buildSoundTimeline(
       if (!placementIsDeployedObject(p)) continue
       const stem = EQUIPMENT_PLACEMENT_SOUND_STEMS[p.family]
       if (stem) out.push({ ms: frameToMs(p.t0, doc), stem })
+    }
+    // Les TRACTIONS de grappin (schéma 8) : le TIR sonne à `t0`, un événement par traction —
+    // aucune fin sonnée, `t1` ne fait que fermer la fenêtre du calque (`grappleLayer.ts`).
+    for (const g of doc.grappleLines) {
+      out.push({ ms: frameToMs(g.t0, doc), stem: GRAPPLE_SOUND_STEM })
     }
   }
   return out.sort((a, b) => a.ms - b.ms)
