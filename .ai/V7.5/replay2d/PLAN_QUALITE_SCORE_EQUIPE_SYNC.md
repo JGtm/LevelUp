@@ -56,23 +56,43 @@ dans le rapport (le grep exact rejouable). Clore la phase avant d'ouvrir la phas
 
 ## Phase 1 — Diagnostic données : existe-t-il une source du score affiché ?
 
-- [ ] 1.1 JSON brut API : re-télécharger les stats des 3 matchs fautifs (`7344d24f`,
+- [x] 1.1 JSON brut API : re-télécharger les stats des 3 matchs fautifs (`7344d24f`,
       `606d9844`, `8076f97f`) via le wrapper API existant (Grunt/SPNKr ; tokens via
       `MultiUserTokenStore`, JAMAIS de re-capture — un RT valide se rafraîchit) et inspecter
       `Teams[].Stats` EN ENTIER : y a-t-il un autre champ (round scores, objective stats,
       score par manche) qui porte 200/126, 3/2, 105 ? Dumper les JSON dans le dossier du lot.
-- [ ] 1.2 Ampleur : sur `match_registry` (lecture seule), mesurer par mode (pair_name /
+      -> OUI : `Teams[].Stats.CoreStats.Score` porte 200/126, 3/0, 0/3 — le score AFFICHÉ, et
+      c'est le champ que la sync lit déjà. La base contient l'autre champ,
+      `ZonesStats.StrongholdScoringTicks` (193/112, 105/8, 78/105). Dumps dans
+      `registre_film/api_dumps/`. **La prémisse « la même colonne API change de sémantique »
+      est RÉFUTÉE** : c'est la base qui mélange deux champs, pas l'API.
+- [x] 1.2 Ampleur : sur `match_registry` (lecture seule), mesurer par mode (pair_name /
       famille de modes, jamais un slug de titre) la population concernée : combien de
       Strongholds (score = ticks), combien de KOTH, et pour KOTH la proportion
       secondes vs collines (heuristique à documenter : un score de KOTH affiché est <= 5
       en Arena ; > 20 = secondes). Chiffres exacts, requêtes jointes au rapport.
-- [ ] 1.3 Oracle croisé : pour les matchs qui ONT un artefact de rejeu (39), confronter
+      -> heuristique DEVENUE SANS OBJET après 1.1 (et impossible en Strongholds : ticks et
+      score dans la même plage). Remplacée par une mesure EXACTE : re-fetch des 1 934 matchs
+      portant un score, confrontation base/API. **80 faux (4,1 %), tous synchronisés avant le
+      2026-04-06 ; 396/396 justes depuis le 2026-05-06.** Strongholds 51/83, Total Control
+      16/124, Oddball 6/26, KOTH 3/56, CTF 2/353, Slayer et autres 2/1 248. Liste nominative :
+      `registre_film/score_equipe_ecarts_2026-08-24.tsv`.
+- [x] 1.3 Oracle croisé : pour les matchs qui ONT un artefact de rejeu (39), confronter
       colonne API vs score affiché du film — proportion de matchs où l'écart existe, par mode.
-- [ ] 1.4 Verdict : une des trois issues, écrite et argumentée —
+      -> 35 artefacts sur disque (pas 39), 20 confrontables (identité des deux camps résolue) :
+      **18/20 film = API**, les 2 écarts sont des films tronqués qui sous-comptent. Sur les 2
+      artefacts où base et API divergent (`7344d24f`, `af13e2b2`), **le film tranche pour l'API**.
+- [x] 1.4 Verdict : une des trois issues, écrite et argumentée —
       (a) l'API porte le score affiché ailleurs (nommer le champ, couverture mesurée) ;
       (b) l'API ne le porte pas, mais il est CALCULABLE par règle de mode (donner la règle
           et son taux de réussite sur l'échantillon) ;
       (c) ni l'un ni l'autre — seul le film le porte (statu quo documenté).
+      -> **ISSUE (a)** : l'API porte le score affiché dans `Teams[].Stats.CoreStats.Score`,
+      couverture 1 933/1 934 matchs (le seul manquant est un FFA sans TeamId 0/1), concordance
+      100 % avec la base depuis le 2026-05-06 et 18/20 avec le film. (b) et (c) réfutées.
+      Le défaut est CLOS À LA SOURCE (correction API 343 entre avril et mai 2026) ; ce qui
+      reste est un résidu de 80 lignes qu'un re-sync ne répare PAS (`persistMatchRegistry` est
+      un INSERT nu, sans ON CONFLICT). Options chiffrées dans le rapport.
 
 Gate 1 : les 3 matchs fautifs expliqués par le verdict ; toute règle proposée testée sur
 l'échantillon 1.2 avec taux chiffré. STOP : rendre le CR au superviseur. La phase 2
@@ -93,7 +113,22 @@ l'échantillon 1.2 avec taux chiffré. STOP : rendre le CR au superviseur. La ph
 
 ## Découvertes
 
-(consigner ici tout ce qui dépasse le périmètre — rien corriger)
+Détail et justification dans `RAPPORT_QUALITE_SCORE_EQUIPE.md` §Découvertes. Résumé :
+
+1. 11 des 80 lignes fausses ne s'expliquent pas par les ticks de zone : 7 inversions exactes
+   des deux camps (6 Oddball + 1 BTB:Sentry Defense), 1 inversion + ticks, 2 One Flag CTF à
+   2 au lieu de 3, et `f395b462` (Attrition) à **1 950** contre 0 à l'API. Toutes du lot
+   2026-02-14, 10/11 par `first_sync_by = Madina97294`. Mécanisme non identifié.
+2. `match_participants.team_id` est SAIN sur ces mêmes matchs (les `Outcome` par camp
+   concordent avec l'API) : l'inversion ne touche que les deux colonnes de score.
+3. Aucun contrôle de vraisemblance à l'écriture du registre (1 950 passe le `SMALLINT`).
+4. La colonne « Score » de l'Explorer est triable sur des unités hétérogènes entre modes —
+   question de conception, pas de donnée.
+5. Le plan annonce 39 artefacts de rejeu ; il y en a **35** sur disque.
+6. `LOTA_PHASE0.md` §0b.3 est à amender : `7344d24f` « non expliqué » l'est désormais —
+   l'oracle était faux, pas le film. Fichier NON modifié.
+7. `sync/comeback.go:141-143` : kill-switch daté dans sa justification mais sans date cible
+   de retrait ni critère mesurable (modèle CLAUDE.md non suivi). Non traité.
 
 ## CR attendu (à rendre au superviseur)
 
