@@ -73,6 +73,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -144,23 +145,29 @@ func TestLettresOrdreSlots(t *testing.T) {
 	if outDir == "" {
 		t.Fatalf("%s est requis", lettresOutEnv)
 	}
-	stop := lettresSentinelle(t)
+	pic, stop := lettresSentinelle(t)
 	defer stop()
 	film := lettresIdentite(t, filepath.Base(dir))
 	m := lettresMesureFilm(t, dir, film)
+	m.heapPeak = pic.Load()
 	lettresLogFilm(t, m)
 	lettresWrite(t, outDir, film.short+"_lettres.tsv", lettresLigneFilm(m))
 }
 
-// lettresSentinelle arme la garde memoire : elle echantillonne le tas et ARRETE LE PROCESSUS au
-// premier depassement, avant que la machine ne souffre.
+// lettresSentinelle arme la garde memoire : elle echantillonne le tas, RETIENT LE PIC et ARRETE
+// LE PROCESSUS au premier depassement, avant que la machine ne souffre.
 //
 // POURQUOI `os.Exit` ET PAS `t.Fatal`. `t.Fatal` ne peut etre appele que depuis la goroutine du
 // test ; la croissance, elle, a lieu dans un appel de production qui ne rend pas la main. Le seul
 // arret qui vaille est donc brutal — et c'est exactement ce qu'on veut : mieux vaut un code de
 // sortie a expliquer qu'un poste bloque. Le film en cours est consigne sur stderr avant de sortir.
-func lettresSentinelle(t *testing.T) func() {
+//
+// LE PIC EST RENDU A L'APPELANT parce qu'un tas lu A LA FIN ne dit rien du regime : le ramasse-
+// miettes a deja repris les positions et les lectures `ti=13`. C'est le maximum echantillonne qui
+// se compare au plafond, et c'est lui que la mesure publie.
+func lettresSentinelle(t *testing.T) (*atomic.Uint64, func()) {
 	t.Helper()
+	pic := &atomic.Uint64{}
 	done := make(chan struct{})
 	go func() {
 		var ms runtime.MemStats
@@ -172,6 +179,9 @@ func lettresSentinelle(t *testing.T) func() {
 				return
 			case <-tick.C:
 				runtime.ReadMemStats(&ms)
+				if ms.HeapAlloc > pic.Load() {
+					pic.Store(ms.HeapAlloc)
+				}
 				if ms.HeapAlloc <= lettresHeapMaxBytes {
 					continue
 				}
@@ -182,15 +192,7 @@ func lettresSentinelle(t *testing.T) func() {
 			}
 		}
 	}()
-	return func() { close(done) }
-}
-
-// lettresHeapNow rend le tas courant, en octets — publie avec la mesure pour que le regime
-// memoire soit une donnee, pas une impression.
-func lettresHeapNow() uint64 {
-	var ms runtime.MemStats
-	runtime.ReadMemStats(&ms)
-	return ms.HeapAlloc
+	return pic, func() { close(done) }
 }
 
 // lettresIdentite relit la ligne de match GELEE du film : carte, identifiant de carte, variante.
@@ -269,7 +271,7 @@ func lettresMesureFilm(t *testing.T, dir string, film lettresFilm) lettresMesure
 	win := zoneWindowFrames(c.intervalMS)
 	m.gauge, m.unpaired = pairGaugeSlots(zoneRampsOf(ser), pairs, win)
 	m.owner = pairOwnerSlots(ser, pairs, lettresTeams(t, film.short), win)
-	m.duration, m.heapPeak = time.Since(start), lettresHeapNow()
+	m.duration = time.Since(start)
 	return m
 }
 

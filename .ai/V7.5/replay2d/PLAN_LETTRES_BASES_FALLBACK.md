@@ -47,16 +47,76 @@ l'utilisateur — ce lot fournit les témoins et l'item de planche, il ne tranch
 
 ## Phase 0 — L'ordre, vérifié sur pièces
 
-- [ ] 0.1 Retrouver dans `internal/analysis/replay/zone_states*.go` (et la construction
+- [x] 0.1 Retrouver dans `internal/analysis/replay/zone_states*.go` (et la construction
       slot->zone du lot C-bis) où vit l'index de slot ti=13 par zone, et vérifier qu'il
       est disponible au moment de la publication.
-- [ ] 0.2 Mesurer la stabilité : sur les 2 matchs Bastion du corpus (et tout autre
+- [x] 0.2 Mesurer la stabilité : sur les 2 matchs Bastion du corpus (et tout autre
       Strongholds/TC disponible dans `data/cache/film_chunks` du principal), l'ordre des
       slots donne-t-il la MÊME permutation zone->rang sur une même carte ? Instrument
       jetable gaté par env var si besoin (patron TI47_FILM).
-- [ ] 0.3 Verdict de phase : ordre stable => on publie ; instable => STOP + CR.
+- [x] 0.3 Verdict de phase : ordre stable => on publie ; instable => STOP + CR.
 
 Gate 0 : permutation identique sur les matchs d'une même carte, chiffres au CR.
+
+### Journal de la phase 0 (2026-08-24)
+
+**0.1 — l'index est là où il faut.** La carte zone -> slot de jauge est `gaugeSlot`, rendue
+par `pairGaugeSlots` dans `zone_states_owner.go:40` (`zoneOwnerStates`), c'est-à-dire
+EXACTEMENT au point où les `ZoneState` sont construits, et le catalogue du match
+(`in.Zones`) y est disponible pour juger la complétude. Rien à déplacer, rien à recalculer.
+
+**0.2 — GATE 0 TENU : 8 cartes, 17 films, 8/8 permutations identiques.** Instrument
+`lettres_ordre_research_test.go` (mesure seulement) : il appelle `pairGaugeSlots` et
+`pairOwnerSlots` DE PRODUCTION sur les captures nommées du statborg, lignes de match gelées
+relues des exports versionnés du registre — aucune base ouverte.
+
+| carte | films | permutation (zone -> lettre) | slots de jauge (propriétaire) |
+|---|---|---|---|
+| vagabond | 3 | z0=C, z1=A, z2=B | 1532>z1 (p1530), 1537>z2 (p1535), 1542>z0 (p1540) |
+| forest | 2 | z0=A, z1=C, z2=B | 1413>z0 (p1411), 1418>z2 (p1416), 1423>z1 (p1421) |
+| fortress | 2 | z0=C, z1=B, z2=A | 1445>z2 (p1443), 1450>z1 (p1448), 1455>z0 (p1453) |
+| houseki | 2 | z0=B, z1=C, z2=A | 1518>z2 (p1516), 1523>z0 (p1521), 1528>z1 (p1526) |
+| illusion | 2 | z0=B, z1=C, z2=A | 1603>z2 (p1601), 1608>z0 (p1606), 1613>z1 (p1611) |
+| kaiketsu | 2 | z0=A, z1=B, z2=C | 1558>z0 (p1556), 1563>z1 (p1561), 1568>z2 (p1566) |
+| origin | 2 | z0=A, z1=B, z2=C | 1525>z0 (p1523), 1530>z1 (p1528), 1535>z2 (p1533) |
+| prism | 2 | z0=C, z1=A, z2=B | 1415>z1 (p1413), 1420>z2 (p1418), 1425>z0 (p1423) |
+
+Trois faits que la table porte, et qui décident de la règle de publication :
+
+1. **La permutation n'est PAS l'ordre spatial**, et elle diffère d'une carte à l'autre
+   (A,B,C sur Kaiketsu et Origin ; C,A,B sur Vagabond et Prism ; B,C,A sur Houseki et
+   Illusion). C'est précisément ce qui rend le fallback utile : le rang spatial du
+   catalogue ne dit rien de la lettre.
+2. **Les slots `ti=13` d'une carte de Bastion forment des BLOCS RÉGULIERS de pas 5**, un
+   par zone, `[propriétaire, canal neutre, jauge]` aux offsets 0, 1, 2 — sur les 8 cartes,
+   sans exception. L'ordre des jauges est donc l'ordre des blocs, c'est-à-dire l'ordre
+   d'allocation du moteur au chargement de la carte : la reproductibilité inter-match n'est
+   pas une coïncidence de vote, elle est structurelle.
+3. **Sur Vagabond, la table reproduit exactement la phase 2a** (1532 -> zone 1, 1537 ->
+   zone 2, 1542 -> zone 0) avec ses chiffres de captures (59/71 et 66/77) : l'instrument
+   lit bien ce que la production publie.
+
+**0.3 — verdict : ORDRE STABLE, on publie.** La règle retenue en conséquence :
+la lettre n'est publiée que si les zones appariées couvrent TOUT le catalogue de la carte
+(bijection). Sans cette garde, une zone muette décalerait les lettres des suivantes — le
+cas existe (`aaaf6c76` sur Kaiketsu : 0 capture attribuée, donc 0 zone appariée).
+
+**Négatif gardé — un oracle refusé.** Une première écriture de l'instrument remplaçait les
+captures nommées par la GRAPPE des positions (méthode du volet colline), pour se passer du
+roster. Elle retrouve les trois slots canoniques de Vagabond, mais donne AUSSI une zone au
+quatrième bloc (1545-1547, l'objet de MODE, dont les rampes suivent toutes les captures de
+la carte) et le fait gagner l'élection sur un film sur trois. La grappe ne sépare pas une
+prise d'un passage ; les captures nommées, si.
+
+**Incident mémoire, et ce qu'il a changé (2026-08-24).** La première version de l'instrument
+bouclait sur le corpus dans UN processus. Laissée orpheline par un redémarrage de l'hôte,
+elle est montée à 18,4 Gio résidents / 95 Gio de commit et a mis la machine à genoux. Cause
+racine : `objectiveevents.NamedEvents` -> `incrementTimes` émet un événement PAR UNITÉ de
+compteur (la bombe déjà au registre des reports, OOM ~26 Gio sur `51101d1d`) — du code de
+PRODUCTION, hors périmètre de ce lot. L'instrument a été réécrit : un film = un processus,
+sentinelle mémoire (arrêt net au-delà de 3 Gio de tas), plafonds francs sur chaque
+collection, refus d'emblée des variantes hors zones simultanées, et le pic de tas publié
+AVEC la mesure. **Régime constaté sur les 17 films : 32 à 123 Mio de tas, 40 à 105 s.**
 
 ## Phase 1 — Publication (champ optionnel, pas de bump)
 
