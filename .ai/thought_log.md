@@ -1,7 +1,21 @@
 ## [2026-08-25] Citations — état terminal pour matchs sans events (matchs annulés)
 
-**Statut** : Complété (gates locaux verts, ni merge ni push — décision du superviseur).
-Branche `fix/citations-terminal-state`, worktree dédié, base `origin/main` `97a109b0d`.
+**Statut** : En cours — R1 après revue adversariale (2 relecteurs frais). Le mécanisme est
+validé, la CONDITION DE DÉCLENCHEMENT a été RÉFUTÉE et remplacée ; éditions faites, gates R1
+à rejouer. Branche `fix/citations-terminal-state`, worktree dédié, base `origin/main`
+`97a109b0d`.
+
+**REVUE ADVERSARIALE — P1 CONVERGENT (trouvé indépendamment par les deux relecteurs)** : le
+seuil d'âge local de 7 jours contredisait la politique film du MÊME package.
+`defaultFilmRetryWindow = 30 jours` (`engine_highlight_events.go:50`) — valeur RÉVISÉE
+depuis 48 h précisément parce que les incidents RC-A/RC-E (shared servi read-only > 24 h)
+avaient marqué définitivement absents des films encore disponibles — et l'opérateur peut
+même la RALLONGER via `LEVELUP_FILM_RETRY_WINDOW_HOURS`, alors que ma constante n'était pas
+réglable. Entre J+7 et J+30 le pipeline events RETENTE encore : mon jeton aurait rendu
+définitivement vides les citations d'un match dont le film arrive à J+8..30, en MASSE
+pendant une panne (0 delta est courant sur un compte mûr), et SILENCIEUSEMENT (un jeton est
+indistinguable après coup). C'était la régression Phase 4 rouverte sur 23 jours. Vérifié sur
+pièces avant refonte : constante, commentaire d'incident, override d'environnement.
 
 **Défaut** (prouvé en prod, non re-diagnostiqué) : `BackfillMatchCitations`
 (`internal/sync/citations.go`) laissait candidat, SANS jeton `_processed`, tout match à 0
@@ -12,23 +26,47 @@ coquille (chunk non vide, 0 event extractible). Le match `5da6fd30-f29e-4713-93a
 (~35 passes/jour, 372 WARN collatéraux en août), avec accumulation monotone : une boucle
 perpétuelle de plus par futur match annulé.
 
-**Décision technique** : la 3e condition `!isCitationsTerminalNoEvents(...)` est ajoutée à
-la branche de skip — court-circuit du `&&`, donc la requête d'âge ne tourne QUE dans la
-branche rare (0 delta ET events absents), zéro coût sur le chemin chaud. Passé
-`citationsTerminalNoEventsAge = 7 jours` (un film Theater arrive en heures ou jamais ; seuil
-large pour qu'une panne d'API ou un arrêt du watcher ne jetonne pas un match récupérable),
-l'absence d'events devient un état terminal et le jeton est posé par le `writeCitations`
-existant (append-only inchangé). L'âge se lit sur `match_registry` via le fragment timezone
-CANONIQUE `analysis.SQLStartTimeCanonical` (règle n°8 — jamais `start_time` brut, les
-imports OpenSpartan portent un start_time naïf décalé). Tempérament d'échec INVERSE de
-`isEventsLoaded` : celle-ci répond true quand elle ne sait pas (legacy), alors qu'ici tout
-âge indéterminable (sharedDB nil, match absent, colonnes illisibles, horodatages NULL)
-donne WARN + false — rester candidat est l'échec sûr, un cycle de plus coûte moins qu'un
-match jetonné à tort.
+**Décision technique (R1) — lire le verdict au lieu de le deviner.** L'état que le seuil
+d'âge tentait d'inférer est DÉJÀ enregistré de façon déterministe :
+`match_registry.events_empty`, posé par `persist.MarkEventsEmptyDefinitive`
+(`events_completion_persister.go:191`) UNIQUEMENT sous `isNoFilmDefinitive`
+(`engine_highlight_events.go:72`) — donc au-delà de la fenêtre de retry, PAR CONSTRUCTION,
+sans qu'aucune constante locale n'ait à la connaître. La 3e condition devient
+`!isEventsEmptyDefinitive(...)` (même court-circuit du `&&` : la requête ne tourne que dans
+la branche rare, zéro coût sur le chemin chaud) ; le jeton reste posé par le `writeCitations`
+existant (append-only inchangé). `citationsTerminalNoEventsAge` et `matchAge` sont SUPPRIMÉS
+avec leurs tests (règle n°7, zéro code mort) — d'où la disparition de l'usage du fragment
+timezone canonique dans ce fichier : plus aucun âge n'est calculé ici.
 
-**Arbitrage de placement (découverte en cours de lot)** : la décision et son seuil ont
-d'abord été isolés dans un fichier neuf (`citations_terminal_state.go`) pour ne pas
-alourdir `citations.go`, déjà à 700 lignes. Le ratchet K3c
+Couverture des trois états du pipeline events, vérifiée sur pièces et sans recouvrement :
+film 404-définitif → `MarkNoFilmDefinitive` pose `events_loaded=TRUE` → chemin sentinel
+EXISTANT, inchangé ; film-coquille (`f.found`, chunk lu et parsé, 0 event) → `events_empty=TRUE`
+→ nouvelle branche ; film encore attendu → aucun marqueur → le match reste candidat et est
+retenté. Le même marqueur est déjà lu par le retry set events (`backfill.go:266-270`, sonde
+`hasEventsEmptyColumn` `backfill.go:163`) : les deux pipelines lisent désormais la MÊME
+source de vérité et ne peuvent plus se contredire.
+
+**Latence assumée** : un futur match annulé boucle au pire le temps de la fenêtre de retry
+(~30 j, BORNÉ — contre l'infini d'avant), puis est jetonné au cycle citations suivant le
+verdict. C'est le prix de la cohérence entre les deux pipelines, et il est explicite dans le
+commentaire de code.
+
+**Tempérament d'échec** inchangé et désormais utile au multi-titre : `isEventsLoaded` répond
+true quand elle ne sait pas (legacy), alors qu'ici tout verdict ILLISIBLE (sharedDB nil,
+colonne `events_empty` absente sur un titre non migré, match hors registre) donne WARN +
+false. Sur un schéma sans la colonne, la branche est donc INERTE et le comportement est
+exactement celui d'avant le lot. NULL n'est pas une erreur : c'est l'absence de verdict, elle
+se lit false sans WARN (sinon chaque match en attente de film polluerait les logs).
+
+**P2 corrigé — log menteur** : le `slog.InfoContext « jeton posé »` était émis DANS le helper
+de décision, donc AVANT `writeCitations` — si l'écriture échouait (player DB read-only,
+disque plein), le log affirmait une écriture absente et se répétait à chaque cycle. Il est
+déplacé chez l'appelant, APRÈS le succès de `writeCitations` (`match_id` + raison
+`events_empty`), avec le motif écrit en commentaire pour qu'il n'y retourne pas.
+
+**Arbitrage de placement (découverte en cours de lot)** : la décision avait d'abord été
+isolée dans un fichier neuf (`citations_terminal_state.go`) pour ne pas alourdir
+`citations.go`, déjà à 700 lignes. Le ratchet K3c
 (`archlint/sync_root_freeze_test.go`, ADR 0027) GÈLE le nombre de fichiers `.go` non-test à
 la racine du god-package `internal/sync/` à EXACTEMENT 80 — il échoue aussi bien au-dessus
 qu'en dessous — et impose que le neuf aille dans `sync/v2` ou un sous-package cohésif. Les
@@ -49,21 +87,49 @@ recompute. Propriété documentée dans le commentaire de la branche ET asserté
 Deux commentaires devenus faux (`isEventsLoaded`, `writeCitations` : « sentinel posé
 seulement si les events sont chargés ») corrigés dans le même commit.
 
-**Tests** : décision isolée (`_test.go`, tag `cgo`) — les deux bras du fragment canonique
-(start_time_utc et repli start_time naïf), les quatre cas d'âge indéterminable, et
-l'encadrement du seuil (seuil+24 h → terminal, seuil−24 h → candidat : une inversion de la
-comparaison fait rougir les deux). Bout en bout (`_pipeline_test.go`, tag `integration`, sur
-la fixture de pipeline dont `match_registry` reçoit `events_loaded` par ALTER — buildSharedDDL
-ne la porte pas, sans quoi `isEventsLoaded` répond true par best-effort et la branche n'est
-jamais atteinte) — match vieux sans events : jeton posé + sortie du pool force=false + toujours
-sélectionné par force=true ; match récent : zéro ligne écrite, reste candidat ; events chargés :
-jeton posé comme avant, sans considération d'âge. Les âges sont posés relativement à
-`time.Now()`, pas aux dates figées de la fixture.
+**Tests (R1)** — décision isolée (`_test.go`, tag `cgo`) : séparation VERDICT (true / false /
+NULL = pas de verdict, jamais une erreur) contre verdict ILLISIBLE (colonne absente, match
+hors registre, DB nil, toujours une erreur) ; arbitrage des 6 cas ; et surtout **le WARN de
+l'échec sûr est désormais asserté** (capture `slog` JSONHandler + `SetDefault`, motif repris
+de `engine_postsync_csr_warn_test.go`) — auparavant, supprimer les deux lignes de WARN
+laissait tout vert, la dégradation silencieuse n'était gardée par rien. Un second volet
+prouve que ce WARN est SPÉCIFIQUE à l'erreur : l'absence de verdict (NULL), état normal, ne
+doit rien logger.
 
-**Découvertes (non traitées, hors périmètre)** : `sortMatchIDsChrono` (`citations.go`) trie par
-`ORDER BY start_time` brut — dette préexistante gelée par l'allowlist fichier du ratchet
-`no_raw_start_time_literal_test.go`. Non touchée. Le WARN pve `database is closed` du même
-fichier relève du lot `fix/shared-read-recovery`.
+Bout en bout (`_pipeline_test.go`, tag `integration`) : (1) verdict `events_empty` → jeton
+posé + sortie du pool `force=false` — ce test rougit si on retire le `&&` de la branche, ce
+qui couvre le CÂBLAGE et pas seulement les helpers ; (2) **rattrapage `force=true` réellement
+prouvé** — l'ancienne assertion (« le match figure dans `selectMatchesForCitations(force=true)` »)
+ne prouvait RIEN, cette requête retournant tout, jeton ou pas : on simule désormais l'arrivée
+tardive des events (verdict corrigé + médaille) et on rejoue la VRAIE chaîne force
+(`selectMatchesForCitations(true)` → `recreateCitationsTable` → `BackfillMatchCitations`),
+puis on asserte que la citation réelle est recalculée et que le jeton a disparu ; (3) sans
+verdict → zéro ligne écrite, reste candidat ; (4) events chargés → jeton posé comme avant ;
+(5) schéma SANS `events_empty` → branche inerte, match candidat (non-régression multi-titre).
+
+**Découvertes (non traitées, hors périmètre)**
+
+1. **TROU DE RATCHET — correction d'une affirmation FAUSSE de la version précédente de cette
+   entrée.** `sortMatchIDsChrono` (`citations.go:739`) trie par `ORDER BY start_time ASC`
+   brut. J'avais écrit que cette dette était « gelée par l'allowlist » de
+   `no_raw_start_time_literal_test.go` : c'est FAUX, `internal/sync/citations.go` n'est PAS
+   dans `rawOrderByStartTimeAllowlist` (vérifié : 0 occurrence). La réalité est pire — la
+   dette est INVISIBLE du ratchet : sa regex (`:51`) n'attrape que la forme TABLE-QUALIFIÉE
+   `ORDER BY \w+\.start_time`, jamais la forme nue `ORDER BY start_time`. Le commentaire du
+   ratchet assume ce choix (une colonne nue peut être l'alias d'une projection canonique) et
+   le renvoie « à la revue » — mais aucune revue ne le rattrape en pratique. Matière à un lot
+   garde-rail dédié : distinguer alias-de-projection et colonne brute demande de l'AST, pas
+   de la regex.
+2. Le WARN pve `database is closed` du même fichier relève du lot `fix/shared-read-recovery`.
+3. **État attendu du match de prod `5da6fd30-f29e-4713-93a6-73d69d87626e`** : joué le
+   13/06, donc bien au-delà de la fenêtre de retry de 30 j, et son symptôme journalisé
+   (`parse_anomaly: chunk non-vide mais 0 events extraits`) est EXACTEMENT la branche
+   `f.found` de `convergence_backfill_events.go:356` → `events_empty` doit valoir TRUE, ou le
+   devenir au prochain passage events. NON VÉRIFIÉ sur la donnée : le serveur local tient
+   `shared_matches_v2.duckdb` en RW (PID 19836) et le modèle mono-process interdit de
+   l'ouvrir en parallèle. À confirmer par une lecture read-only en prod avant/après
+   déploiement — si la colonne était FALSE/NULL, le jeton ne serait pas posé et la boucle
+   continuerait jusqu'au verdict.
 
 **Gates (locaux, exit codes dans des logs persistants)** : `EXIT_GOFMT=0` · `EXIT_BUILD=0`
 · `EXIT_VET=0` · `EXIT_HOOK_GOVET=0` (le hook pre-commit `go-vet` avait été exclu au commit
@@ -73,12 +139,19 @@ sur sync + persist) · `EXIT_GOLANGCI=0` (« 0 issues », `--new-from-merge-base
 Ratchets cités nommément : `TestSyncRootPackageFrozen`, `TestNoNewRawStartTimeLiteral`,
 `TestStartTimeGuardsAreDiscriminant`, garde-rails anti-ART du package sync — tous PASS.
 
-**Mordant des tests prouvé par MUTATION** : condition inversée en `age > seuil` →
-`TestIsCitationsTerminalNoEvents` rougit sur 3 sous-cas (`m-vieux` want true got false,
-`m-recent` et `m-frais` want false got true), `EXIT_MUTATION=1`. Condition restaurée, arbre
-re-vérifié propre, test re-vert. Le fichier tagué `cgo` s'exécute dans le gate UNITAIRE
-(`go test ./...` sans `-tags=integration`, CGO_ENABLED=1) — 12 sous-cas PASS ; les 3 tests
-bout en bout s'exécutent dans le gate INTÉGRATION.
+Ces verdicts portent sur la version PRÉ-REVUE (condition d'âge) ; les gates R1 restent à
+rejouer sur la condition `events_empty`. Le mordant y avait été prouvé par MUTATION
+(condition inversée en `age > seuil` → 3 sous-cas rouges, `EXIT_MUTATION=1`, puis restaurée) ;
+la nouvelle condition est un booléen : sa mutation équivalente (retirer le `&&`, ou inverser
+le booléen retourné) fait rougir le test de câblage bout en bout (1) et l'arbitrage (6 cas).
+
+**CORRECTION d'une affirmation FAUSSE de la version précédente** : j'avais écrit que le
+fichier tagué `cgo` « s'exécute dans le gate UNITAIRE ». C'est vrai LOCALEMENT (`go test ./...`
+avec CGO_ENABLED=1) mais FAUX en CI : le job `unit` tourne `CGO_ENABLED=0` sur
+`./internal/domain/... ./internal/analysis/... ./contracttest/...` seulement (`ci.yml:171-174`)
+— le package `internal/sync` n'y figure pas. En CI, mes DEUX fichiers de tests ne sont
+exécutés que par le job couverture/intégration (`ci.yml:316-337`, `CGO_ENABLED=1`,
+`-tags=integration -p 1 ./...`) et par `check_test_baseline.sh`.
 
 **Environnement à consigner** : la note `reference_cgo_linker_winlibs_not_msys64` est
 PÉRIMÉE sur ce poste — le gcc winlibs (`C:\Users\Guillaume\mingw-winlibs\...`) n'existe
@@ -86,8 +159,9 @@ plus, `CC` est vide, et le seul gcc disponible est msys64 ucrt64 **15.2.0** (la 
 échouait au lien `libduckdb_static` était la 16.1.0). Build, tests unitaires et intégration
 passent avec lui : plus de contournement `CC` nécessaire ici.
 
-**Prochaine étape** : décision du superviseur (revue puis merge). Aucune CI n'a tourné —
-la branche n'est pas poussée, le verdict d'autorité reste à venir.
+**Prochaine étape** : rejouer les gates sur la refonte R1 (gofmt, build, vet, unitaires,
+intégration `-p 1` sync+persist, golangci ratchet), puis décision du superviseur. Aucune CI
+n'a tourné — la branche n'est pas poussée, le verdict d'autorité reste à venir.
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 

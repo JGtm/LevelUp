@@ -2,60 +2,63 @@
 
 // Package sync — citations_terminal_state_pipeline_test.go : état terminal des
 // citations, de bout en bout à travers BackfillMatchCitations sur la fixture de
-// pipeline (jeton posé, sortie du pool, réversibilité par force=true,
-// non-régression du chemin « events présents »).
+// pipeline (jeton posé, sortie du pool, rattrapage réel par force=true,
+// non-régression du chemin « events présents », inertie sur schéma non migré).
 //
-// La décision isolée (matchAge, isCitationsTerminalNoEvents — citations.go) est
+// La décision isolée (readEventsEmpty, isEventsEmptyDefinitive — citations.go) est
 // couverte par citations_terminal_state_test.go.
+//
+// OÙ CES TESTS TOURNENT : job CI couverture/intégration (CGO_ENABLED=1,
+// -tags=integration ./...), check_test_baseline.sh, et en local. Le job CI `unit`
+// (CGO_ENABLED=0, domain/analysis/contracttest) ne les exécute PAS.
 package sync
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
-	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 const (
-	termRecentMatch = "match-terminal-recent"
-	termHealedMatch = "match-terminal-events-ok"
+	termPendingMatch = "match-terminal-film-attendu"
+	termHealedMatch  = "match-terminal-events-ok"
 )
 
-// addEventsLoadedColumn ajoute events_loaded à la fixture partagée. buildSharedDDL
-// ne porte PAS cette colonne : sans elle, isEventsLoaded répond true par
-// best-effort et la branche testée ici n'est jamais atteinte. Les lignes déjà
-// insérées héritent du DEFAULT FALSE (events non chargés).
-func addEventsLoadedColumn(t *testing.T, shared *sql.DB) {
+// addEventsVerdictColumns ajoute au registre de la fixture les deux colonnes que
+// le pipeline events utilise pour rendre son verdict. buildSharedDDL ne les porte
+// PAS : sans events_loaded, isEventsLoaded répond true par best-effort et la
+// branche testée n'est jamais atteinte ; sans events_empty, la nouvelle condition
+// est inerte (cas couvert par le test dédié, qui n'appelle pas ce helper). Les
+// lignes existantes héritent du DEFAULT.
+func addEventsVerdictColumns(t *testing.T, shared *sql.DB) {
 	t.Helper()
 	mustExec(t, shared, `ALTER TABLE match_registry ADD COLUMN events_loaded BOOLEAN DEFAULT FALSE`)
+	mustExec(t, shared, `ALTER TABLE match_registry ADD COLUMN events_empty BOOLEAN`)
 }
 
-// setRegistryAge repositionne le début d'un match du registre à `ago` dans le
-// passé (les deux colonnes du fragment canonique) et fixe son events_loaded.
-// L'âge est relatif à maintenant : le test ne dépend pas de l'horloge de la
-// machine ni des dates figées de la fixture.
-func setRegistryAge(t *testing.T, shared *sql.DB, matchID string, ago time.Duration, eventsLoaded bool) {
+// setEventsVerdict fixe le verdict du pipeline events pour un match existant.
+// eventsEmpty accepte nil (NULL = aucun verdict, le film est encore attendu).
+func setEventsVerdict(t *testing.T, shared *sql.DB, matchID string, eventsLoaded bool, eventsEmpty any) {
 	t.Helper()
-	start := time.Now().Add(-ago)
 	mustExec(t, shared,
-		`UPDATE match_registry SET start_time = ?, start_time_utc = ?, events_loaded = ? WHERE match_id = ?`,
-		start.UTC(), start, eventsLoaded, matchID)
+		`UPDATE match_registry SET events_loaded = ?, events_empty = ? WHERE match_id = ?`,
+		eventsLoaded, eventsEmpty, matchID)
 }
 
-// insertCitationCandidate crée un match candidat aux citations : ligne registre
-// (âge choisi), participant pour fixXUID, ligne player_match_enrichment. Aucune
-// médaille → 0 delta, le cas qui déclenche la décision d'état terminal.
-func insertCitationCandidate(t *testing.T, f *pipelineFixture, matchID string, ago time.Duration, eventsLoaded bool) {
+// insertCitationCandidate crée un match candidat aux citations : ligne registre,
+// participant pour fixXUID, ligne player_match_enrichment. Aucune médaille → 0
+// delta, le cas qui déclenche la décision d'état terminal.
+func insertCitationCandidate(t *testing.T, f *pipelineFixture, matchID string, eventsLoaded bool, eventsEmpty any) {
 	t.Helper()
-	start := time.Now().Add(-ago)
 	mustExec(t, f.shared, `
 		INSERT INTO match_registry
-			(match_id, start_time, start_time_utc, playlist_name, game_variant_name,
-			 is_ranked, duration_seconds, events_loaded)
-		VALUES (?, ?, ?, 'Ranked Arena', 'Slayer', FALSE, 600, ?)`,
-		matchID, start.UTC(), start, eventsLoaded)
+			(match_id, start_time, playlist_name, game_variant_name,
+			 is_ranked, duration_seconds, events_loaded, events_empty)
+		VALUES (?, TIMESTAMP '2026-06-13 20:00:00', 'Ranked Arena', 'Slayer', FALSE, 600, ?, ?)`,
+		matchID, eventsLoaded, eventsEmpty)
 	mustExec(t, f.shared, `
 		INSERT INTO match_participants
 			(match_id, xuid, gamertag, team_id, outcome, kills, deaths, assists,
@@ -72,6 +75,25 @@ func runCitationsFor(t *testing.T, f *pipelineFixture, matchID string) {
 		context.Background(), f.metadata, f.shared, f.player, nil, fixXUID, []string{matchID},
 	); err != nil {
 		t.Fatalf("BackfillMatchCitations(%s): %v", matchID, err)
+	}
+}
+
+// runCitationsForceRecompute rejoue la CHAÎNE force=true de RunBackfillCitations
+// (citations_backfill.go) : sélection sans LEFT JOIN, recreateCitationsTable, puis
+// backfill. Seule la plomberie leases/ouverture de fichiers est omise — la fixture
+// travaille sur des DB in-memory.
+func runCitationsForceRecompute(t *testing.T, f *pipelineFixture) {
+	t.Helper()
+	ctx := context.Background()
+	ids, err := selectMatchesForCitations(ctx, f.player, true)
+	if err != nil {
+		t.Fatalf("selectMatchesForCitations(force=true): %v", err)
+	}
+	if err := recreateCitationsTable(ctx, f.player); err != nil {
+		t.Fatalf("recreateCitationsTable: %v", err)
+	}
+	if err := BackfillMatchCitations(ctx, f.metadata, f.shared, f.player, nil, fixXUID, ids); err != nil {
+		t.Fatalf("BackfillMatchCitations(force): %v", err)
 	}
 }
 
@@ -99,6 +121,18 @@ func countSentinelRows(t *testing.T, player *sql.DB, matchID string) int {
 	return n
 }
 
+// realCitationValue retourne la valeur d'une citation RÉELLE (hors jeton).
+func realCitationValue(t *testing.T, player *sql.DB, matchID, nameNorm string) int {
+	t.Helper()
+	var v sql.NullInt64
+	if err := player.QueryRow(
+		`SELECT value FROM match_citations_latest WHERE match_id = ? AND citation_name_norm = ?`,
+		matchID, nameNorm).Scan(&v); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("realCitationValue(%s/%s): %v", matchID, nameNorm, err)
+	}
+	return int(v.Int64)
+}
+
 // isCandidate indique si le match figure encore dans le pool de sélection.
 func isCandidate(t *testing.T, player *sql.DB, matchID string, force bool) bool {
 	t.Helper()
@@ -114,18 +148,18 @@ func isCandidate(t *testing.T, player *sql.DB, matchID string, force bool) bool 
 	return false
 }
 
-// TestCitationsTerminalState_OldMatchWithoutEvents — cas du match ANNULÉ : 0
-// citation, events jamais chargés, âge au-delà du seuil. Le jeton doit être posé
-// et le match sortir du pool force=false (fin de la boucle perpétuelle), tout en
-// restant rattrapable par un recompute force=true.
-func TestCitationsTerminalState_OldMatchWithoutEvents(t *testing.T) {
+// TestCitationsTerminalState_VerdictEventsEmpty — cas du match ANNULÉ : 0 citation,
+// events non chargés, et le pipeline events a rendu son verdict (events_empty).
+// Le jeton doit être posé et le match sortir du pool force=false : fin de la
+// boucle perpétuelle. Retirer la 3e condition de la branche fait rougir ce test.
+func TestCitationsTerminalState_VerdictEventsEmpty(t *testing.T) {
 	f := buildPipelineFixture(t)
-	addEventsLoadedColumn(t, f.shared)
+	addEventsVerdictColumns(t, f.shared)
 
-	// fixM3 : aucune médaille dans la fixture → 0 delta. Les events du film sont
-	// purgés et le registre les déclare non chargés : le match annulé de prod.
+	// fixM3 : aucune médaille dans la fixture → 0 delta. Film récupéré mais sans
+	// event exploitable, et les events du film sont purgés : le match annulé de prod.
 	mustExec(t, f.shared, `DELETE FROM highlight_events WHERE match_id = ?`, fixM3)
-	setRegistryAge(t, f.shared, fixM3, citationsTerminalNoEventsAge+30*24*time.Hour, false)
+	setEventsVerdict(t, f.shared, fixM3, false, true)
 
 	if !isCandidate(t, f.player, fixM3, false) {
 		t.Fatal("préalable : le match doit être candidat avant le backfill")
@@ -134,42 +168,73 @@ func TestCitationsTerminalState_OldMatchWithoutEvents(t *testing.T) {
 	runCitationsFor(t, f, fixM3)
 
 	if got := countSentinelRows(t, f.player, fixM3); got != 1 {
-		t.Errorf("jeton _processed = %d, want 1 (état terminal : events jamais arrivés)", got)
+		t.Errorf("jeton _processed = %d, want 1 (verdict events_empty rendu)", got)
 	}
 	if isCandidate(t, f.player, fixM3, false) {
 		t.Error("le match reste candidat après le jeton — la boucle perpétuelle continue")
 	}
-	// Réversibilité documentée dans citations.go : force=true ne consulte pas
-	// match_citations, un match jetonné est donc retraité par un recompute.
-	if !isCandidate(t, f.player, fixM3, true) {
-		t.Error("force=true doit toujours re-sélectionner un match jetonné (recompute impossible sinon)")
+}
+
+// TestCitationsTerminalState_ForceRecomputeRattrapeLesEvents — le jeton ne doit
+// pas être une impasse. Après sa pose, on simule l'arrivée tardive des events
+// (verdict corrigé + médaille présente) et on rejoue la VRAIE chaîne force=true,
+// recreateCitationsTable compris : les citations doivent être recalculées.
+//
+// Asserter la seule présence du match dans selectMatchesForCitations(force=true)
+// ne prouverait rien — cette requête retourne tout, jeton ou pas.
+func TestCitationsTerminalState_ForceRecomputeRattrapeLesEvents(t *testing.T) {
+	f := buildPipelineFixture(t)
+	addEventsVerdictColumns(t, f.shared)
+	mustExec(t, f.shared, `DELETE FROM highlight_events WHERE match_id = ?`, fixM3)
+	setEventsVerdict(t, f.shared, fixM3, false, true)
+
+	runCitationsFor(t, f, fixM3)
+	if got := countSentinelRows(t, f.player, fixM3); got != 1 {
+		t.Fatalf("préalable : jeton attendu, got %d", got)
+	}
+	if v := realCitationValue(t, f.player, fixM3, "bulltrue"); v != 0 {
+		t.Fatalf("préalable : aucune citation réelle attendue avant l'arrivée des events, got %d", v)
+	}
+
+	// Arrivée tardive des events + de la médaille (fix parser, re-fetch réussi).
+	setEventsVerdict(t, f.shared, fixM3, true, false)
+	mustExec(t, f.shared, `INSERT INTO medals_earned VALUES (?, ?, ?, ?)`, fixM3, fixXUID, fixMedalBulltrue, 1)
+
+	runCitationsForceRecompute(t, f)
+
+	if v := realCitationValue(t, f.player, fixM3, "bulltrue"); v == 0 {
+		t.Error("force=true n'a pas recalculé les citations d'un match jetonné — le jeton est une impasse")
+	}
+	if got := countSentinelRows(t, f.player, fixM3); got != 0 {
+		t.Errorf("le jeton survit au recompute (%d) alors que le match a désormais une citation réelle", got)
 	}
 }
 
-// TestCitationsTerminalState_RecentMatchStaysCandidate — sous le seuil, le
-// comportement Phase 4 est intact : rien n'est écrit, le match attend son film.
-func TestCitationsTerminalState_RecentMatchStaysCandidate(t *testing.T) {
+// TestCitationsTerminalState_SansVerdictResteCandidat — tant que le pipeline
+// events n'a pas conclu (events_empty NULL : le film est encore retenté, jusqu'à
+// 30 jours), le comportement Phase 4 est intact — rien n'est écrit.
+func TestCitationsTerminalState_SansVerdictResteCandidat(t *testing.T) {
 	f := buildPipelineFixture(t)
-	addEventsLoadedColumn(t, f.shared)
-	insertCitationCandidate(t, f, termRecentMatch, time.Hour, false)
+	addEventsVerdictColumns(t, f.shared)
+	insertCitationCandidate(t, f, termPendingMatch, false, nil)
 
-	runCitationsFor(t, f, termRecentMatch)
+	runCitationsFor(t, f, termPendingMatch)
 
-	if got := countCitationRows(t, f.player, termRecentMatch); got != 0 {
-		t.Errorf("lignes écrites = %d, want 0 (match récent : les events peuvent encore arriver)", got)
+	if got := countCitationRows(t, f.player, termPendingMatch); got != 0 {
+		t.Errorf("lignes écrites = %d, want 0 (film encore attendu : les events peuvent arriver)", got)
 	}
-	if !isCandidate(t, f.player, termRecentMatch, false) {
-		t.Error("un match récent sans events doit RESTER candidat (régression Phase 4)")
+	if !isCandidate(t, f.player, termPendingMatch, false) {
+		t.Error("un match sans verdict doit RESTER candidat (régression Phase 4)")
 	}
 }
 
 // TestCitationsTerminalState_EventsLoadedUnchanged — non-régression : quand les
-// events sont chargés, le jeton est posé comme avant, sans considération d'âge
-// (ici un match d'une heure, très en-deçà du seuil).
+// events sont chargés (dont le cas film 404-définitif, où MarkNoFilmDefinitive
+// pose events_loaded=TRUE), le jeton est posé comme avant, sans consulter le verdict.
 func TestCitationsTerminalState_EventsLoadedUnchanged(t *testing.T) {
 	f := buildPipelineFixture(t)
-	addEventsLoadedColumn(t, f.shared)
-	insertCitationCandidate(t, f, termHealedMatch, time.Hour, true)
+	addEventsVerdictColumns(t, f.shared)
+	insertCitationCandidate(t, f, termHealedMatch, true, nil)
 
 	runCitationsFor(t, f, termHealedMatch)
 
@@ -178,5 +243,24 @@ func TestCitationsTerminalState_EventsLoadedUnchanged(t *testing.T) {
 	}
 	if isCandidate(t, f.player, termHealedMatch, false) {
 		t.Error("un match aux events chargés doit sortir du pool (comportement existant)")
+	}
+}
+
+// TestCitationsTerminalState_SchemaSansEventsEmpty — sur une DB dont le registre
+// n'a pas la colonne events_empty (titre non migré), la nouvelle branche est
+// INERTE : verdict illisible → le match reste candidat, exactement comme avant le
+// lot. On n'appelle donc pas addEventsVerdictColumns : seul events_loaded est ajouté.
+func TestCitationsTerminalState_SchemaSansEventsEmpty(t *testing.T) {
+	f := buildPipelineFixture(t)
+	mustExec(t, f.shared, `ALTER TABLE match_registry ADD COLUMN events_loaded BOOLEAN DEFAULT FALSE`)
+	mustExec(t, f.shared, `DELETE FROM highlight_events WHERE match_id = ?`, fixM3)
+
+	runCitationsFor(t, f, fixM3)
+
+	if got := countCitationRows(t, f.player, fixM3); got != 0 {
+		t.Errorf("lignes écrites = %d, want 0 (verdict illisible : échec sûr = rester candidat)", got)
+	}
+	if !isCandidate(t, f.player, fixM3, false) {
+		t.Error("schéma sans events_empty : le match doit rester candidat (comportement d'avant le lot)")
 	}
 }
