@@ -32,8 +32,10 @@ import (
 // pour qu'un incident ne se voie pas.
 //
 // Dépassement = zéro, pas d'erreur : la pastille d'amis disparaît, la liste des
-// joueurs est servie. Le comptage se poursuit en arrière-plan jusqu'à
-// l'annulation de son contexte et alimentera le cache pour l'appel suivant.
+// joueurs est servie. Le contexte annulé fait AVORTER le lot en cours : rien
+// n'alimente le cache, et l'échec arme le backoff d'échec du compteur (~30 s).
+// Dans un régime où Xbox dépasse durablement le budget, le compteur reste donc
+// à zéro — dégradation assumée (consignée au plan, lot F ronde 2, constat 1).
 const friendsCountBudget = 3 * time.Second
 
 // presenceFreshnessWindow : au-delà, le titre courant d'un joueur n'est plus
