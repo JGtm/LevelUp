@@ -295,9 +295,9 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 		return
 	}
 	defer releaseShared()
-	pveDB, releasePve := sync.OpenPveReadForCitations(ctx, in.pveDBPath)
-	defer releasePve()
-	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, pveDB, in.xuid, in.matchIDs); err != nil {
+	pve := sync.OpenPveReadForCitations(ctx, in.pveDBPath)
+	defer pve.Close()
+	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, pve, in.xuid, in.matchIDs); err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations", Err: err.Error()})
 		s.log.Warn("post_import_citations_failed", "xuid", in.xuid, "err", err)
 		return

@@ -1,3 +1,72 @@
+## [2026-08-25] Recovery lectures shared best-effort — IndexMedia + citations pve
+
+**Statut** : Complété (branche `fix/shared-read-recovery` depuis `origin/main` `97a109b0d`,
+worktree dédié). Pas de merge ni de push : rendu au superviseur.
+
+**Le trou, et il était structurel.** `duckdb.OpenReadForQuery(path)` rend un INSTANTANÉ du
+`*sql.DB` porté par le wrapper `*DB` au moment de l'appel. Quand il l'a EMPRUNTÉ au cache
+process (`LookupCachedDB`), l'emprunt est NON POSSÉDANT — aucun incrément de refCount, release
+no-op. Le propriétaire peut donc fermer le `*sql.DB` sous les pieds de l'emprunteur, qui voit
+« sql: database is closed » PENDANT sa requête ou son itération. Les deux familles mesurées en
+prod sont ce cas, avec deux propriétaires différents :
+
+- **IndexMedia** (~67 ERROR en août, `load match windows: query match_registry` sur
+  shared_matches_v2) : le propriétaire est le pool, et c'est le B-swap RO→RW
+  (`PlayerDB.PrepareForSharedSwap`, ADR 0016) qui ferme le handle RO pour laisser le Provider
+  ouvrir en RW.
+- **Citations pve** (372 WARN, `BackfillMatchCitations: pve_stats` sur shared_pve) : CAUSE
+  RACINE = câblage. `OpenPveReadForCitations` (citations_backfill.go:42) capturait l'instantané
+  UNE fois et le gardait pour TOUTE la boucle des matchs de `BackfillMatchCitations`. Or
+  shared_pve n'est tenu par personne en régime établi — le serveur ne l'ouvre en RW qu'au boot
+  pour les migrations (cmd/server/main.go:1705) — donc chaque post-sync joueur l'ouvre
+  lui-même, et `RunPostSync` (ADR 0027) tourne avec `PostSyncParallelism = 0`, c'est-à-dire
+  SANS limite de parallélisme entre joueurs (sync/v2/cycle.go:29). Le premier joueur arrivé
+  possède le refCount, les suivants empruntent ; quand le propriétaire finit sa boucle, son
+  release supprime l'entrée de cache et ferme le `*sql.DB` — les autres, encore dans la leur,
+  lisent une handle morte. D'où l'intermittence (~40 % des passes) et sa présence dès le
+  premier cycle après un restart. Ce n'était donc ni un handle caché périmé, ni un B-swap.
+
+**Décision technique.** Un seul helper canonique, `duckdb.RecoveringReader`
+(`internal/platform/duckdb/read_recovery.go`) : il garde le CHEMIN et non l'instantané, et
+`Do(ctx, fn)` rejoue `fn` UNE fois après ré-ouverture quand l'erreur est
+`IsInvalidatedError` (WARN sur la reprise, ERROR si le retry échoue — même registre que
+`WithReopenOnInvalidated`). Aucun helper existant ne couvrait « handle invalidée en cours de
+requête » : `WithReopenOnInvalidated` et les variantes `*Recovered` s'appliquent à un `*DB`
+possédé, pas à un instantané emprunté.
+
+**Alternative écartée, et c'est important** : rendre l'emprunt POSSÉDANT (refCount++ dans
+`OpenReadForQuery`) supprimerait la classe entière… en cassant le B-swap —
+`pdb.Shared.Close()` deviendrait un simple décrément, le fichier resterait tenu en RO et
+l'`OpenReadWrite` du Provider échouerait en « different configuration ». Le modèle assumé
+reste « le swap gagne, le lecteur se répare ». Consigné dans l'en-tête du helper.
+
+**Garde-rail** : `internal/sync/shared_read_recovery_routing_test.go` (scan statique, sans tag
+`integration`, donc dans le gate par défaut) — les 3 fichiers corrigés ne doivent plus appeler
+`OpenReadForQuery(`, et `loadPveStats` doit prendre un `*duckdbpkg.RecoveringReader`. Le vrai
+verrou de la famille citations est le TYPE : on ne peut plus lui passer un `*sql.DB` capturé.
+Le garde-rail a été vérifié PAR L'ÉCHEC (sonde temporaire réintroduisant le motif → rouge).
+
+**Frères vérifiés sur pièces, pas traités** : les autres lectures de `buildCitationContext`
+(sharedDB, playerDB) passent par `SharedAccess.Read` et son drain lecteurs
+(`outstandingReads`) — le swap attend, elles ne sont pas exposées. Les deux autres accès de
+`media_associate.go` visent shared_social (hors périmètre) et sont des écritures.
+
+**Résultats** : gofmt 0 fichier, `go build ./...` 0, `go vet ./...` 0, `go test ./...` 0,
+`go test -tags=integration -p 1` sur sync/persist/duckdb/ops 0 (16 paquets ok),
+`golangci-lint --new-from-merge-base=origin/main` 0 issue. Les deux tests de reprise
+(unitaire dans platform/duckdb, bout-en-bout dans internal/sync) reproduisent la fermeture
+concurrente et prouvent la ré-ouverture.
+
+**Découvertes consignées (non traitées)** : `ops.IndexMedia` (media.go:152-163) emprunte
+shared_social via `LookupCachedDB` avec un fallback `sql.Open` nu — même classe d'emprunt
+non possédant, plus un bare connect hors provider ; `ops/healthcheck.go:224` ouvre chaque DB
+par un `sql.Open` direct hors cache (échouerait en « different configuration » si la DB est
+tenue RW). `internal/sync/citations.go` reste un god-file (700 → 711 L, seuil 500) : dette
+préexistante, découpage hors périmètre.
+
+**Prochaine étape** : revue puis merge par le superviseur ; aucun run CI sur cette branche
+(pas de push, conformément à la consigne du lot).
+
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
 **Statut** : Complété (même worktree `deps-security`). Le push de `dependabot.yml` a
