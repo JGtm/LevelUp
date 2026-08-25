@@ -304,27 +304,6 @@ export interface ReplayText {
   countersLive: string
   countersMatch: string
   /**
-   * TEMPS MORT CUMULÉ du joueur sur tout le match (`deadTimeLogic`) : la somme des
-   * intervalles entre une mort et le retour suivant, écrite `mm:ss`.
-   *
-   * C'EST UN TOTAL DE MATCH, PAS UNE VALEUR À L'INSTANT LU — il ne tique pas avec la lecture,
-   * contrairement aux compteurs ci-dessus. Le libellé le porte donc seul : il nomme la
-   * grandeur, et sa méthode (intervalles LUS, sans constante de réapparition, sans compter
-   * avant la première vie ni après la dernière) vit dans `deadTimeLogic.ts`.
-   */
-  deadTimeLabel: string
-  /**
-   * LA MESURE REFUSÉE, et POURQUOI elle l'est. La ligne écrit alors un tiret, et ce texte est
-   * ce qui empêche de le lire comme une panne d'affichage : le film porte des vies que son
-   * pont slot -> xuid ne rattache à personne, et l'une d'elles vit dans un trou de ce joueur
-   * (ou bien il n'a AUCUNE vie publiée). Le trou n'est donc pas prouvé être une mort.
-   *
-   * IL DIT LA CAUSE EN LANGUE DE L'UTILISATEUR, PAS LE MÉCANISME : ni « xuid », ni « slot »,
-   * ni « track » — un lecteur du rejeu n'a pas à connaître le transport pour comprendre qu'il
-   * manque un rattachement.
-   */
-  deadTimeUnmeasurable: string
-  /**
    * LE BANDEAU DE SCORE au-dessus du terrain : deux barres de camp encadrant l'horloge de
    * lecture. Les deux camps s'y nomment par leur RAPPORT au joueur de la page (allié /
    * adverse) et non par leur nom d'équipe, qui est déjà en tête des colonnes de fiches —
