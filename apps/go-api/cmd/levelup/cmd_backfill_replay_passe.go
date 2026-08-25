@@ -31,6 +31,11 @@ type replayBackfillReport struct {
 	preparation   int // l'enfant n'a pas pu commencer (builder, catalogue, ...)
 	mortsMemoire  int // plafond memoire depasse — film-bombe
 	mortsSubites  int // code hors protocole : crash, OOM systeme, tue par l'OS
+
+	// Ventilation propre au mode --repair-impoverished (0 en passe ordinaire).
+	dejaComplets      int // a jour AVEC compteurs de joueur — rien a reparer
+	vacuitesLegitimes int // a jour, sans compteurs, mais base SANS joueur — re-cuire ne donnerait rien
+	horsSchemaCourant int // artefact d'une version anterieure — domaine de --only-existing ordinaire
 }
 
 // executerPasseReplay lance un enfant par film, sequentiellement.
@@ -183,4 +188,10 @@ func afficherRapportReplay(r replayBackfillReport) {
 	fmt.Printf("  echecs de preparation %d (l enfant n a pas pu demarrer)\n", r.preparation)
 	fmt.Printf("  morts memoire        %d (plafond depasse — film-bombe, passe poursuivie)\n", r.mortsMemoire)
 	fmt.Printf("  morts subites        %d (crash / tue par l OS — passe poursuivie)\n", r.mortsSubites)
+	// Lignes propres au mode reparation : muettes en passe ordinaire (elles y valent 0).
+	if r.dejaComplets+r.vacuitesLegitimes+r.horsSchemaCourant > 0 {
+		fmt.Printf("  deja complets        %d (artefact a jour avec compteurs de joueur — rien a reparer)\n", r.dejaComplets)
+		fmt.Printf("  vacuites legitimes   %d (a jour, sans compteurs, mais aucun joueur en base — re-cuire ne donnerait rien)\n", r.vacuitesLegitimes)
+		fmt.Printf("  hors schema courant  %d (version anterieure — passe --only-existing ordinaire d apres bump)\n", r.horsSchemaCourant)
+	}
 }
