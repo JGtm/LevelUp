@@ -432,7 +432,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 	// Protocole ouvrier de la file de construction (piste F). HORS du groupe
 	// /admin : un ouvrier n'a ni session ni compte, il présente un jeton dédié qui
-	// n'ouvre QUE ces trois routes. Sans jeton configuré, elles répondent 503.
+	// n'ouvre QUE ces quatre routes. Sans jeton configuré, elles répondent 503.
 	// Cf. server_build_worker.go.
 	// Le contrôle CSRF-par-origine est levé sur ce préfixe (et sur lui seul) par
 	// applyTransverseMiddlewares : un ouvrier n'envoie pas d'Origin et n'a pas de
