@@ -1,4 +1,9 @@
 // Package auth — cli_refresh_test.go : tests RefreshHaloTokensViaStoreFirst.
+//
+// ADR 0023 Phase 5 (2026-08-25) : les cas « fallback legacy » (sync_meta, env
+// var, MSAL cache) ont disparu avec les sources. Ce qui reste couvert : la
+// cascade store, la persistance de rotation, la politique reauth_required, et
+// les gardes défensives (provider/store nil, xuid vide).
 package auth
 
 import (
@@ -12,9 +17,6 @@ import (
 // fakeProvider est un TokenProvider stub configurable pour les tests cli_refresh.
 // Distinct de stubProvider (watcher_refresh_test) qui ne supporte pas Exchange ok.
 type fakeProvider struct {
-	// silentResp/silentErr : valeurs retournées par TrySilentRefresh
-	silentResp string
-	silentErr  error
 	// oauthAccess/oauthRotated/oauthErr : valeurs de TryOAuthRefreshWithRotation
 	oauthAccess  string
 	oauthRotated string
@@ -24,7 +26,6 @@ type fakeProvider struct {
 	exchangeErr    error
 
 	// Trace des appels pour les assertions
-	silentCalls   int
 	oauthCalls    int
 	exchangeCalls int
 	lastOAuthRT   string
@@ -32,11 +33,6 @@ type fakeProvider struct {
 
 func (p *fakeProvider) InitDeviceFlow(_ context.Context) (DeviceFlow, error) {
 	return nil, errors.New("not implemented")
-}
-
-func (p *fakeProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	p.silentCalls++
-	return p.silentResp, p.silentErr
 }
 
 func (p *fakeProvider) TryOAuthRefresh(_ context.Context, rt string) (string, error) {
@@ -61,33 +57,6 @@ func okExchangeResult() *ExchangeResult {
 	}
 }
 
-func TestRefreshHaloTokensViaStoreFirst_StoreMSAL_SilentRefresh(t *testing.T) {
-	store := NewMultiUserTokenStore(tempTokenDir(t))
-	_ = store.UpdateMSALCache("111", `{"cache":"data"}`)
-
-	prov := &fakeProvider{
-		silentResp:     "access-from-msal",
-		exchangeResult: okExchangeResult(),
-	}
-
-	result, err := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
-	if err != nil {
-		t.Fatalf("err = %v", err)
-	}
-	if result == nil || result.Tokens == nil {
-		t.Fatal("result vide")
-	}
-	if result.Tokens.SpartanToken != "spartan-X" {
-		t.Errorf("Spartan = %q", result.Tokens.SpartanToken)
-	}
-	if prov.silentCalls != 1 {
-		t.Errorf("silent appels = %d, want 1", prov.silentCalls)
-	}
-	if prov.oauthCalls != 0 {
-		t.Errorf("oauth appels = %d, want 0 (MSAL doit suffire)", prov.oauthCalls)
-	}
-}
-
 // TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth : credentials présents
 // (RT) mais le refresh échoue (RT révoqué) → le store est marqué reauth_required.
 func TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth(t *testing.T) {
@@ -98,7 +67,7 @@ func TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth(t *testing.T) {
 	// serait classé "transient" → pas de marquage, cf. test transitoire ci-dessous).
 	prov := &fakeProvider{oauthErr: &OAuthExchangeError{ErrorCode: "invalid_grant"}}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 	if result != nil {
 		t.Fatal("result devrait être nil (refresh KO)")
 	}
@@ -117,7 +86,7 @@ func TestRefreshHaloTokensViaStoreFirst_TransientError_NoMark(t *testing.T) {
 
 	prov := &fakeProvider{oauthErr: errors.New("dial tcp 20.190.1.1:443: i/o timeout")}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 	if result != nil {
 		t.Fatal("result devrait être nil (refresh KO transitoire)")
 	}
@@ -138,7 +107,7 @@ func TestRefreshHaloTokensViaStoreFirst_Success_ClearsReauth(t *testing.T) {
 		exchangeResult: okExchangeResult(),
 	}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 	if result == nil {
 		t.Fatal("result nil (refresh devait réussir)")
 	}
@@ -151,14 +120,17 @@ func TestRefreshHaloTokensViaStoreFirst_Success_ClearsReauth(t *testing.T) {
 // (jamais authentifié) ne doit PAS être marqué reauth_required.
 func TestRefreshHaloTokensViaStoreFirst_NoCreds_NoMark(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
-	// Entrée présente mais sans MSAL ni RT (ex. gamertag seul).
+	// Entrée présente mais sans RT (ex. gamertag seul).
 	_ = store.Upsert(&UserTokens{XUID: "111", Gamertag: "Alice"})
 
 	prov := &fakeProvider{}
-	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 
 	if store.IsReauthRequired("111") {
 		t.Error("pas de marquage attendu sans credentials (compte jamais authentifié)")
+	}
+	if prov.oauthCalls != 0 {
+		t.Errorf("aucun refresh attendu sans RT, oauth calls = %d", prov.oauthCalls)
 	}
 }
 
@@ -172,7 +144,7 @@ func TestRefreshHaloTokensViaStoreFirst_StoreOAuth_RotationPersisted(t *testing.
 		exchangeResult: okExchangeResult(),
 	}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 	if result == nil {
 		t.Fatal("result nil")
 	}
@@ -197,7 +169,7 @@ func TestRefreshHaloTokensViaStoreFirst_StoreOAuth_NoRotationKeepsOriginal(t *te
 		exchangeResult: okExchangeResult(),
 	}
 
-	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 
 	user, _ := store.Load("111")
 	if user.OAuthRefreshToken != "rt-v1" {
@@ -216,7 +188,7 @@ func TestRefreshHaloTokensViaStoreFirst_StoreOAuth_RotationIdenticalNoWrite(t *t
 		exchangeResult: okExchangeResult(),
 	}
 
-	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 
 	user, _ := store.Load("111")
 	// UpdatedAt ne devrait PAS avoir bougé (rotation === original → no-op).
@@ -225,162 +197,93 @@ func TestRefreshHaloTokensViaStoreFirst_StoreOAuth_RotationIdenticalNoWrite(t *t
 	}
 }
 
-func TestRefreshHaloTokensViaStoreFirst_StoreFailsFallsBackToLegacy(t *testing.T) {
+// TestRefreshHaloTokensViaStoreFirst_StoreEmpty_NoFallback : ADR 0023 Phase 5 —
+// un store vide n'a plus AUCUNE source de repli : aucun appel provider, nil.
+func TestRefreshHaloTokensViaStoreFirst_StoreEmpty_NoFallback(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
-	// Store n'a rien — fallback legacy attendu.
-
 	prov := &fakeProvider{
-		oauthAccess:    "access-from-legacy",
-		oauthRotated:   "rt-legacy-rotated",
+		oauthAccess:    "access-jamais-servi",
 		exchangeResult: okExchangeResult(),
 	}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{
-		OAuthRT: "rt-legacy",
-		Source:  "test_legacy",
-	})
-	if result == nil {
-		t.Fatal("result nil — devrait fallback sur legacy")
-	}
-
-	// Le RT rotaté devrait être persisté dans le store (auto-réparation).
-	user, err := store.Load("111")
-	if err != nil {
-		t.Fatalf("store devrait contenir 111 après rotation legacy : %v", err)
-	}
-	if user.OAuthRefreshToken != "rt-legacy-rotated" {
-		t.Errorf("RT rotaté = %q, want rt-legacy-rotated (auto-migration)", user.OAuthRefreshToken)
-	}
-}
-
-func TestRefreshHaloTokensViaStoreFirst_LegacyMSALFirst(t *testing.T) {
-	store := NewMultiUserTokenStore(tempTokenDir(t))
-
-	prov := &fakeProvider{
-		silentResp:     "access-msal",
-		exchangeResult: okExchangeResult(),
-	}
-
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{
-		MSALCache: `{"legacy":"cache"}`,
-		Source:    "duckdb",
-	})
-	if result == nil {
-		t.Fatal("result nil")
-	}
-	if prov.silentCalls != 1 {
-		t.Errorf("MSAL legacy devrait être essayé, silent calls = %d", prov.silentCalls)
-	}
-	if prov.oauthCalls != 0 {
-		t.Errorf("OAuth ne devrait pas être appelé si MSAL marche, got %d", prov.oauthCalls)
-	}
-}
-
-func TestRefreshHaloTokensViaStoreFirst_BothEmptyReturnsNil(t *testing.T) {
-	store := NewMultiUserTokenStore(tempTokenDir(t))
-	prov := &fakeProvider{}
-
-	result, err := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	result, err := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if result != nil {
-		t.Errorf("result = %v, want nil", result)
+		t.Errorf("result = %v, want nil (aucune source legacy)", result)
 	}
-	if prov.oauthCalls != 0 || prov.silentCalls != 0 || prov.exchangeCalls != 0 {
-		t.Errorf("aucun call attendu, got silent=%d oauth=%d exchange=%d",
-			prov.silentCalls, prov.oauthCalls, prov.exchangeCalls)
+	if prov.oauthCalls != 0 || prov.exchangeCalls != 0 {
+		t.Errorf("aucun call attendu, got oauth=%d exchange=%d", prov.oauthCalls, prov.exchangeCalls)
 	}
 }
 
 func TestRefreshHaloTokensViaStoreFirst_ProviderNilError(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
-	_, err := RefreshHaloTokensViaStoreFirst(context.Background(), store, nil, "111", "Alice", LegacyAuthInputs{})
+	_, err := RefreshHaloTokensViaStoreFirst(context.Background(), store, nil, "111", "Alice")
 	if err == nil {
 		t.Error("provider nil devrait retourner une erreur")
 	}
 }
 
-func TestRefreshHaloTokensViaStoreFirst_NilStoreFallsBackLegacy(t *testing.T) {
+// TestRefreshHaloTokensViaStoreFirst_NilStoreNoCredentials : sans store, il n'y a
+// plus aucune source — retour (nil, nil) sans panic ni appel réseau.
+func TestRefreshHaloTokensViaStoreFirst_NilStoreNoCredentials(t *testing.T) {
 	prov := &fakeProvider{
 		oauthAccess:    "access",
-		oauthRotated:   "rt-rotated",
 		exchangeResult: okExchangeResult(),
 	}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), nil, prov, "111", "Alice", LegacyAuthInputs{
-		OAuthRT: "rt-legacy",
-	})
-	if result == nil {
-		t.Error("store nil ne devrait pas bloquer le fallback legacy")
+	result, err := RefreshHaloTokensViaStoreFirst(context.Background(), nil, prov, "111", "Alice")
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
 	}
-	// Pas d'écriture store puisque store nil — pas de panic attendu.
+	if result != nil {
+		t.Error("store nil → aucune source de credentials, result attendu nil")
+	}
+	if prov.oauthCalls != 0 {
+		t.Errorf("aucun refresh attendu sans store, oauth calls = %d", prov.oauthCalls)
+	}
 }
 
-func TestRefreshHaloTokensViaStoreFirst_EmptyXUIDSkipsStore(t *testing.T) {
+// TestRefreshHaloTokensViaStoreFirst_EmptyXUIDNoCredentials : sans xuid, le store
+// n'est pas adressable → aucune source.
+func TestRefreshHaloTokensViaStoreFirst_EmptyXUIDNoCredentials(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	_ = store.UpdateOAuthRefreshToken("111", "rt-in-store")
 
 	prov := &fakeProvider{
-		oauthAccess:    "access-legacy",
-		oauthRotated:   "rt-rotated-legacy",
-		exchangeResult: okExchangeResult(),
-	}
-
-	// xuid vide → store skipped → fallback direct sur legacy.
-	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "", "Alice", LegacyAuthInputs{
-		OAuthRT: "rt-legacy",
-	})
-	if prov.lastOAuthRT != "rt-legacy" {
-		t.Errorf("xuid vide devrait skipper le store, lastOAuthRT = %q", prov.lastOAuthRT)
-	}
-}
-
-func TestRefreshHaloTokensViaStoreFirst_LegacyRotationPersistedIfStoreAvailable(t *testing.T) {
-	store := NewMultiUserTokenStore(tempTokenDir(t))
-	// Store vide.
-
-	prov := &fakeProvider{
 		oauthAccess:    "access",
-		oauthRotated:   "rt-rotated-from-legacy",
 		exchangeResult: okExchangeResult(),
 	}
 
-	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{
-		OAuthRT: "rt-legacy-original",
-	})
-
-	user, err := store.Load("111")
-	if err != nil {
-		t.Fatalf("Load: %v", err)
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "", "Alice")
+	if result != nil {
+		t.Error("xuid vide → aucune entrée adressable, result attendu nil")
 	}
-	if user.OAuthRefreshToken != "rt-rotated-from-legacy" {
-		t.Errorf("RT persisté = %q, want rt-rotated-from-legacy (auto-migration)", user.OAuthRefreshToken)
+	if prov.lastOAuthRT != "" {
+		t.Errorf("aucun RT ne doit être tenté sans xuid, lastOAuthRT = %q", prov.lastOAuthRT)
 	}
 }
 
-func TestRefreshHaloTokensViaStoreFirst_ExchangeFailureSkipsToLegacy(t *testing.T) {
+// TestRefreshHaloTokensViaStoreFirst_ExchangeFailureReturnsNil : le refresh OAuth
+// réussit mais l'Exchange Halo échoue → nil sans erreur (skip non fatal).
+func TestRefreshHaloTokensViaStoreFirst_ExchangeFailureReturnsNil(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	_ = store.UpdateOAuthRefreshToken("111", "rt-store")
 
 	prov := &fakeProvider{
-		oauthAccess: "access",
-		oauthErr:    nil,
-		// Exchange échoue côté store → on devrait tomber sur legacy.
+		oauthAccess:    "access",
 		exchangeResult: nil,
 		exchangeErr:    errors.New("halo exchange down"),
 	}
 
-	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{
-		OAuthRT: "rt-legacy",
-	})
-	// Avec Exchange qui échoue partout, on attend nil. Le test vérifie que le code
-	// ne panique pas et que les deux paths sont tentés.
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice")
 	if result != nil {
-		t.Errorf("Exchange échoue partout → result devrait être nil, got %v", result)
+		t.Errorf("Exchange échoue → result devrait être nil, got %v", result)
 	}
-	if prov.oauthCalls < 2 {
-		t.Errorf("les deux sources devraient être tentées, oauth calls = %d", prov.oauthCalls)
+	if prov.oauthCalls != 1 {
+		t.Errorf("une seule source doit être tentée, oauth calls = %d", prov.oauthCalls)
 	}
 }
 

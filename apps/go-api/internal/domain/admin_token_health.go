@@ -1,5 +1,5 @@
 // Package domain — admin_token_health.go : payload du dashboard admin
-// « Santé des tokens » (MSAL / XSTS / Refresh par joueur).
+// « Santé des tokens » (Accès / XSTS / Refresh par joueur).
 //
 // Statuts calculés à partir de l'état persisté (MultiUserTokenStore, ADR 0023),
 // SANS déclencher de refresh réseau.
@@ -12,8 +12,10 @@ type PlayerTokenHealth struct {
 	XUID       string `json:"xuid"`
 	// Statuts : "ok" | "expiring" | "expired" | "absent" | "reauth".
 	Refresh string `json:"refresh"`
-	MSAL    string `json:"msal"`
-	XSTS    string `json:"xsts"`
+	// Access : fraîcheur de l'access_token Microsoft persisté (ex-champ "msal",
+	// renommé ADR 0023 Phase 5 — il ne mesure plus aucun cache MSAL).
+	Access string `json:"access"`
+	XSTS   string `json:"xsts"`
 	// Horodatages d'expiration (RFC3339, vides si inconnus) — pour affichage.
 	XSTSExpiresAt  string `json:"xsts_expires_at,omitempty"`
 	OAuthExpiresAt string `json:"oauth_expires_at,omitempty"`
@@ -26,9 +28,9 @@ type PlayerTokenHealth struct {
 	LastAuthErrorClass string `json:"last_auth_error_class,omitempty"`
 	LastAuthError      string `json:"last_auth_error,omitempty"`
 	LastAuthErrorAt    string `json:"last_auth_error_at,omitempty"`
-	// CredentialSource : source de credentials retenue au dernier scan du pool
-	// (ex. "watcher_oauth", "duckdb_msal+env_oauth"). "unknown" si aucun scan
-	// depuis le boot. Rend la dette ADR-0023 visible (objectif : watcher_*).
+	// CredentialSource : source de credentials retenue au dernier scan du pool.
+	// Depuis ADR 0023 Phase 5, la seule valeur possible est "watcher_oauth" ;
+	// "unknown" si aucun scan depuis le boot.
 	CredentialSource string `json:"credential_source,omitempty"`
 }
 

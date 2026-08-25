@@ -47,7 +47,7 @@ func TestMigrateLegacyTokens_DuckDBOnly(t *testing.T) {
 		{XUID: "111", Gamertag: "Alice"},
 	}
 	reader := fakeReader(map[string]LegacySources{
-		"111": {DuckDBRT: "rt-from-duckdb", DuckDBMSAL: `{"cache":"data"}`},
+		"111": {DuckDBRT: "rt-from-duckdb"},
 	})
 
 	stats, err := MigrateLegacyTokens(context.Background(), store, players, reader)
@@ -58,16 +58,10 @@ func TestMigrateLegacyTokens_DuckDBOnly(t *testing.T) {
 	if stats.OAuthRTMigrated != 1 {
 		t.Errorf("OAuthRTMigrated = %d, want 1", stats.OAuthRTMigrated)
 	}
-	if stats.MSALCacheMigrated != 1 {
-		t.Errorf("MSALCacheMigrated = %d, want 1", stats.MSALCacheMigrated)
-	}
 
 	loaded, _ := store.Load("111")
 	if loaded.OAuthRefreshToken != "rt-from-duckdb" {
 		t.Errorf("RT = %q", loaded.OAuthRefreshToken)
-	}
-	if loaded.MSALCacheJSON != `{"cache":"data"}` {
-		t.Errorf("MSAL = %q", loaded.MSALCacheJSON)
 	}
 }
 
@@ -93,17 +87,15 @@ func TestMigrateLegacyTokens_DuckDBPriorityOverEnv(t *testing.T) {
 
 func TestMigrateLegacyTokens_StoreAutoritativeOnExistingRT(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
-	// Store déjà rempli avec RT et MSAL — entrée complète.
+	// Store déjà rempli avec un RT — entrée complète.
 	_ = store.UpdateOAuthRefreshToken("111", "rt-already-in-store")
-	_ = store.UpdateMSALCache("111", "msal-already-in-store")
 
 	players := []LegacyPlayer{{XUID: "111", Gamertag: "Alice"}}
 	// Source legacy avec valeurs différentes — ne doit PAS écraser.
 	reader := fakeReader(map[string]LegacySources{
 		"111": {
-			EnvRT:      "rt-legacy-should-not-overwrite",
-			DuckDBRT:   "rt-legacy-too",
-			DuckDBMSAL: "msal-legacy",
+			EnvRT:    "rt-legacy-should-not-overwrite",
+			DuckDBRT: "rt-legacy-too",
 		},
 	})
 
@@ -115,9 +107,6 @@ func TestMigrateLegacyTokens_StoreAutoritativeOnExistingRT(t *testing.T) {
 	if stats.OAuthRTMigrated != 0 {
 		t.Errorf("OAuthRTMigrated = %d, want 0 (store autoritaire)", stats.OAuthRTMigrated)
 	}
-	if stats.MSALCacheMigrated != 0 {
-		t.Errorf("MSALCacheMigrated = %d, want 0 (store autoritaire)", stats.MSALCacheMigrated)
-	}
 	if stats.PlayersSkipped != 1 {
 		t.Errorf("PlayersSkipped = %d, want 1 (entrée complète)", stats.PlayersSkipped)
 	}
@@ -126,60 +115,25 @@ func TestMigrateLegacyTokens_StoreAutoritativeOnExistingRT(t *testing.T) {
 	if loaded.OAuthRefreshToken != "rt-already-in-store" {
 		t.Errorf("RT = %q, want rt-already-in-store (préservé)", loaded.OAuthRefreshToken)
 	}
-	if loaded.MSALCacheJSON != "msal-already-in-store" {
-		t.Errorf("MSAL = %q, want msal-already-in-store (préservé)", loaded.MSALCacheJSON)
-	}
-}
-
-func TestMigrateLegacyTokens_PartialFillMigratesOnlyMissing(t *testing.T) {
-	store := NewMultiUserTokenStore(tempTokenDir(t))
-	// Store a RT mais pas MSAL.
-	_ = store.UpdateOAuthRefreshToken("111", "rt-existing")
-
-	players := []LegacyPlayer{{XUID: "111", Gamertag: "Alice"}}
-	reader := fakeReader(map[string]LegacySources{
-		"111": {DuckDBRT: "rt-legacy", DuckDBMSAL: `{"new":"msal"}`},
-	})
-
-	stats, _ := MigrateLegacyTokens(context.Background(), store, players, reader)
-
-	if stats.OAuthRTMigrated != 0 {
-		t.Errorf("RT ne devrait PAS être migré (déjà présent)")
-	}
-	if stats.MSALCacheMigrated != 1 {
-		t.Errorf("MSAL devrait être migré (absent)")
-	}
-
-	loaded, _ := store.Load("111")
-	if loaded.OAuthRefreshToken != "rt-existing" {
-		t.Errorf("RT écrasé : %q", loaded.OAuthRefreshToken)
-	}
-	if loaded.MSALCacheJSON != `{"new":"msal"}` {
-		t.Errorf("MSAL = %q", loaded.MSALCacheJSON)
-	}
 }
 
 func TestMigrateLegacyTokens_Idempotent(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	players := []LegacyPlayer{{XUID: "111", Gamertag: "Alice"}}
 	reader := fakeReader(map[string]LegacySources{
-		"111": {DuckDBRT: "rt-v1", DuckDBMSAL: "msal-v1"},
+		"111": {DuckDBRT: "rt-v1"},
 	})
 
-	// Premier passage : migration RT + MSAL.
+	// Premier passage : migration du RT.
 	stats1, _ := MigrateLegacyTokens(context.Background(), store, players, reader)
 	if stats1.OAuthRTMigrated != 1 {
 		t.Fatalf("première passe : RT migré = %d, want 1", stats1.OAuthRTMigrated)
 	}
-	if stats1.MSALCacheMigrated != 1 {
-		t.Fatalf("première passe : MSAL migré = %d, want 1", stats1.MSALCacheMigrated)
-	}
 
 	// Second passage : entrée complète → skip.
 	stats2, _ := MigrateLegacyTokens(context.Background(), store, players, reader)
-	if stats2.OAuthRTMigrated != 0 || stats2.MSALCacheMigrated != 0 {
-		t.Errorf("seconde passe : RT=%d MSAL=%d, want 0/0 (idempotence)",
-			stats2.OAuthRTMigrated, stats2.MSALCacheMigrated)
+	if stats2.OAuthRTMigrated != 0 {
+		t.Errorf("seconde passe : RT=%d, want 0 (idempotence)", stats2.OAuthRTMigrated)
 	}
 	if stats2.PlayersSkipped != 1 {
 		t.Errorf("seconde passe : skipped = %d, want 1 (entrée complète)", stats2.PlayersSkipped)
@@ -199,8 +153,8 @@ func TestMigrateLegacyTokens_NoSourcesNoChange(t *testing.T) {
 	})
 
 	stats, _ := MigrateLegacyTokens(context.Background(), store, players, reader)
-	if stats.OAuthRTMigrated != 0 || stats.MSALCacheMigrated != 0 {
-		t.Errorf("aucune source → 0 migration, got RT=%d MSAL=%d", stats.OAuthRTMigrated, stats.MSALCacheMigrated)
+	if stats.OAuthRTMigrated != 0 {
+		t.Errorf("aucune source → 0 migration, got RT=%d", stats.OAuthRTMigrated)
 	}
 
 	if _, err := store.Load("111"); err == nil {

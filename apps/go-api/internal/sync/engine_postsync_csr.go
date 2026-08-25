@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -123,9 +122,9 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 		return achievementsSkipped
 	}
 
-	// Résoudre l'access_token Xbox Live : store watcher_tokens d'abord (ADR 0023),
-	// puis résidus legacy sync_meta / env var.
-	accessToken, err := e.resolveAchievementsAccessToken(ctx, playerDB)
+	// Résoudre l'access_token Xbox Live depuis le store watcher_tokens (ADR 0023,
+	// source unique).
+	accessToken, err := e.resolveAchievementsAccessToken(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: échec résolution access_token",
 			"gamertag", e.gamertag, "err", err)
@@ -314,52 +313,18 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 }
 
 // resolveAchievementsAccessToken résout l'access_token Xbox Live (achievements)
-// selon la priorité ADR 0023 : store watcher_tokens d'abord, puis les résidus
-// legacy sync_meta / env var. Délègue à auth.ResolveMSAccessTokenStoreFirst
-// (source UNIQUE de l'ordre de résolution, partagée avec world-enrich).
+// depuis le MultiUserTokenStore (source unique ADR 0023). Délègue à
+// auth.ResolveMSAccessTokenStoreFirst (source UNIQUE de la résolution, partagée
+// avec world-enrich).
 //
 // Avant ce câblage, ce chemin lisait EXCLUSIVEMENT sync_meta et n'a jamais
 // consulté le store → il servait toujours un RT legacy et comptait la télémétrie
 // de dépréciation duckdb_oauth à chaque post-sync des 4 joueurs (incident prod
-// 2026-07-12), alors que le store watcher_tokens couvrait ces joueurs. Store-first,
-// la télémétrie ne se déclenche plus qu'en vraie absence de RT store.
+// 2026-07-12), alors que le store watcher_tokens couvrait ces joueurs. Depuis
+// ADR 0023 Phase 5 (2026-08-25) les résidus legacy n'existent plus du tout.
 //
 // Retourne ("", nil) si aucun token n'est disponible (non fatal — skip achievements).
-func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context, playerDB *sql.DB) (string, error) {
-	legacy := e.readLegacyAuthInputs(ctx, playerDB)
+func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context) (string, error) {
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(e.repoRoot).WatcherTokensDir())
-	return auth.ResolveMSAccessTokenStoreFirst(ctx, e.provider, store, e.xuid, e.gamertag, legacy)
-}
-
-// readLegacyAuthInputs lit les résidus legacy depuis sync_meta (DB déjà ouverte)
-// + le fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GT>. Best-effort (champs vides
-// si absents). Ces valeurs ne servent QUE si le store watcher_tokens ne couvre pas
-// le joueur (cf. ResolveMSAccessTokenStoreFirst) → à supprimer en Phase 5 (D2).
-func (e *SyncEngine) readLegacyAuthInputs(ctx context.Context, playerDB *sql.DB) auth.LegacyAuthInputs {
-	var cacheJSON, refreshToken string
-	if err := playerDB.QueryRowContext(ctx,
-		"SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON); err != nil {
-		slog.DebugContext(ctx, "achievements: msal_token_cache absent", "gamertag", e.gamertag)
-	}
-	if err := playerDB.QueryRowContext(ctx,
-		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken); err != nil {
-		slog.DebugContext(ctx, "achievements: oauth_refresh_token absent", "gamertag", e.gamertag)
-	}
-
-	// Fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> (résidu dev/transition).
-	fromEnv := false
-	if refreshToken == "" && e.gamertag != "" {
-		key := strings.ToUpper(strings.NewReplacer(" ", "_", "-", "_", ".", "_").Replace(e.gamertag))
-		if v := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key); v != "" {
-			refreshToken = v
-			fromEnv = true
-		}
-	}
-
-	return auth.LegacyAuthInputs{
-		OAuthRT:        refreshToken,
-		MSALCache:      cacheJSON,
-		Source:         "player_db.sync_meta",
-		OAuthRTFromEnv: fromEnv,
-	}
+	return auth.ResolveMSAccessTokenStoreFirst(ctx, e.provider, store, e.xuid, e.gamertag)
 }

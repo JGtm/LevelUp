@@ -76,9 +76,6 @@ var _ auth.TokenProvider = (*fakeProvider)(nil)
 func (f *fakeProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, error) {
 	return nil, nil
 }
-func (f *fakeProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
 func (f *fakeProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
 	return "", nil
 }

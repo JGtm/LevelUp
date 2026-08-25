@@ -306,11 +306,10 @@ func TestPersistRefreshToken_NewEntry(t *testing.T) {
 func TestPersistRefreshToken_ExistingEntryPreservesFields(t *testing.T) {
 	store := tempStore(t)
 	if err := store.Upsert(&auth.UserTokens{
-		XUID:          "2533274858283686",
-		Gamertag:      "Madina97294",
-		XSTSToken:     "xsts-original",
-		XSTSUserHash:  "uhs-original",
-		MSALCacheJSON: `{"cache":"original"}`,
+		XUID:         "2533274858283686",
+		Gamertag:     "Madina97294",
+		XSTSToken:    "xsts-original",
+		XSTSUserHash: "uhs-original",
 	}); err != nil {
 		t.Fatalf("Upsert pré-existant: %v", err)
 	}
@@ -326,8 +325,8 @@ func TestPersistRefreshToken_ExistingEntryPreservesFields(t *testing.T) {
 	if user.XSTSToken != "xsts-original" {
 		t.Errorf("XSTS écrasé : %q", user.XSTSToken)
 	}
-	if user.MSALCacheJSON != `{"cache":"original"}` {
-		t.Errorf("MSAL écrasé : %q", user.MSALCacheJSON)
+	if user.XSTSUserHash != "uhs-original" {
+		t.Errorf("XSTSUserHash écrasé : %q", user.XSTSUserHash)
 	}
 }
 

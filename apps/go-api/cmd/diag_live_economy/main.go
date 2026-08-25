@@ -25,7 +25,6 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	authpkg "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -51,11 +50,7 @@ func main() {
 
 	provider := authpkg.NewSISUProvider()
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := authpkg.LegacyAuthInputs{Source: "duckdb"}
-	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
-
-	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {
 		fmt.Fprintf(os.Stderr, "AUTH FAIL: %v\n", rerr)
 		os.Exit(1)

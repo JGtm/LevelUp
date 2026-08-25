@@ -859,7 +859,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Santé des tokens auth (MSAL / XSTS / Refresh) par joueur (auth admin requis) */
+        /** Santé des tokens auth (Accès / XSTS / Refresh) par joueur (auth admin requis) */
         get: operations["getAdminTokenHealth"];
         put?: never;
         post?: never;
@@ -1101,7 +1101,7 @@ export interface paths {
         put?: never;
         /**
          * Initier un Device Code Flow Microsoft
-         * @description Lance un Device Code Flow pour l'authentification Halo (MSAL).
+         * @description Lance un Device Code Flow pour l'authentification Halo (SISU).
          *     Non disponible en DEMO_MODE.
          */
         post: operations["postAuthDeviceFlowStart"];
@@ -9022,13 +9022,13 @@ export interface components {
             xuid: string;
         };
         PlayerTokenHealth: {
+            access: string;
             credential_source?: string;
             gamertag: string;
             last_auth_error?: string;
             last_auth_error_at?: string;
             last_auth_error_class?: string;
             load_error?: string;
-            msal: string;
             oauth_expires_at?: string;
             player_slug: string;
             refresh: string;
@@ -11190,7 +11190,6 @@ export interface components {
         TokenProbeResult: {
             discovered_in_pool: boolean;
             gamertag: string;
-            has_msal_cache: boolean;
             has_refresh_token: boolean;
             /** Format: int64 */
             refresh_token_len?: number;

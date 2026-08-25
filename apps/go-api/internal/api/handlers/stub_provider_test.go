@@ -31,10 +31,6 @@ func (s *stubTokenProvider) InitDeviceFlow(_ context.Context) (auth_platform.Dev
 	return auth_platform.NewStubDeviceFlow("STUB1234", "https://microsoft.com/devicelogin", "Stub message", 0, "msal"), nil
 }
 
-func (s *stubTokenProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
-
 func (s *stubTokenProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
 	return "", nil
 }

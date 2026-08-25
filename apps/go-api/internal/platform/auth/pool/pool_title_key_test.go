@@ -10,11 +10,11 @@ func titledSources(titleSlug string, gamertags ...string) []CredentialSource {
 	out := make([]CredentialSource, len(gamertags))
 	for i, gt := range gamertags {
 		out[i] = CredentialSource{
-			Gamertag:  gt,
-			TitleSlug: titleSlug,
-			XUID:      "xuid_" + gt,
-			MSALCache: "cache_" + gt,
-			Source:    "test",
+			Gamertag:     gt,
+			TitleSlug:    titleSlug,
+			XUID:         "xuid_" + gt,
+			RefreshToken: "rt_" + gt,
+			Source:       "test",
 		}
 	}
 	return out
@@ -54,7 +54,7 @@ func TestPool_AddOrUpdateSource_CrossTitleRejected(t *testing.T) {
 		t.Fatalf("NewPool: %v", err)
 	}
 
-	foreign := CredentialSource{Gamertag: "Eve", TitleSlug: "other_game", XUID: "x", MSALCache: "c", Source: "test"}
+	foreign := CredentialSource{Gamertag: "Eve", TitleSlug: "other_game", XUID: "x", RefreshToken: "rt", Source: "test"}
 	if err := p.AddOrUpdateSource(context.Background(), foreign); err == nil {
 		t.Fatalf("AddOrUpdateSource cross-title: attendu une erreur, got nil")
 	}
@@ -72,7 +72,7 @@ func TestPool_AddOrUpdateSource_SameTitleOK(t *testing.T) {
 		t.Fatalf("NewPool: %v", err)
 	}
 
-	add := CredentialSource{Gamertag: "Carol", TitleSlug: "halo_infinite", XUID: "x", MSALCache: "c", Source: "test"}
+	add := CredentialSource{Gamertag: "Carol", TitleSlug: "halo_infinite", XUID: "x", RefreshToken: "rt", Source: "test"}
 	if err := p.AddOrUpdateSource(context.Background(), add); err != nil {
 		t.Fatalf("AddOrUpdateSource same-title: %v", err)
 	}

@@ -2322,7 +2322,7 @@ export type AdminInvariantsResponse = components['schemas']['AdminInvariantsResp
 
 export type DBContentionResponse = components['schemas']['DBContentionResponse']
 
-// ─── Admin — Santé des tokens (MSAL / XSTS / Refresh) ────────────────────────
+// ─── Admin — Santé des tokens (Accès / XSTS / Refresh) ───────────────────────
 // Miroir de domain.TokenHealthResponse (GET /admin/token-health).
 
 export type TokenStatus = 'ok' | 'expiring' | 'expired' | 'absent' | 'reauth'

@@ -8,7 +8,6 @@
 // Sources legacy migrées :
 //   - env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> → store.OAuthRefreshToken
 //   - sync_meta.oauth_refresh_token (DuckDB)       → store.OAuthRefreshToken
-//   - sync_meta.msal_token_cache    (DuckDB)       → store.MSALCacheJSON
 //
 // Priorité quand plusieurs sources ont une valeur pour le même xuid :
 //  1. DuckDB sync_meta (probablement le RT rotaté maintenu par le Pool)
@@ -20,6 +19,20 @@
 //
 // Le package auth ne dépend pas de DuckDB : le caller (cmd/server/main.go) fournit
 // les valeurs déjà lues via le callback `LegacySourcesReader`.
+//
+// KILL-SWITCH DATÉ (CLAUDE.md règle 11) — EXCEPTION UNIQUE de l'ADR 0023 Phase 5 :
+// cette migration one-shot est le SEUL chemin de code encore autorisé à lire une
+// source de credentials legacy (env var + sync_meta). Tous les autres lecteurs ont
+// été supprimés le 2026-08-25 (bascule du défaut : plus aucun fallback runtime).
+//   - Date cible de retrait : 2026-10-01.
+//   - Critère mesurable : 0 token migré au boot sur 30 jours de logs prod, soit
+//     `auth_migration: scan terminé` avec rt_migrated=0 à chaque boot (et aucun
+//     `auth_migration: RT migré vers store`). Vérifier avant de retirer :
+//     `grep 'auth_migration: RT migré' sync.log`.
+//
+// Au retrait : supprimer ce fichier, son test, le wiring boot
+// (cmd/server/main.go migrateLegacyAuthTokensAtBoot + legacyAuthSourcesReader) et
+// les derniers helpers DuckDB de queries_auth.go.
 package auth
 
 import (
@@ -47,9 +60,8 @@ type LegacyPlayer struct {
 // LegacySources regroupe les valeurs legacy lues pour un joueur donné.
 // Toutes les valeurs sont des strings vides quand absentes.
 type LegacySources struct {
-	EnvRT      string // SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER>
-	DuckDBRT   string // sync_meta WHERE key='oauth_refresh_token'
-	DuckDBMSAL string // sync_meta WHERE key='msal_token_cache'
+	EnvRT    string // SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER>
+	DuckDBRT string // sync_meta WHERE key='oauth_refresh_token'
 }
 
 // LegacySourcesReader lit les sources legacy pour un joueur. Le caller production
@@ -62,11 +74,10 @@ type LegacySourcesReader func(ctx context.Context, player LegacyPlayer) (LegacyS
 // MigrationStats résume ce qui a été migré pendant un appel à
 // MigrateLegacyTokens. Utilisé pour le logging et les tests.
 type MigrationStats struct {
-	PlayersScanned    int // total players inspectés
-	PlayersSkipped    int // store déjà rempli, rien à faire
-	OAuthRTMigrated   int // RT copié depuis legacy (env ou DuckDB)
-	MSALCacheMigrated int // MSAL cache copié depuis DuckDB
-	Errors            int // erreurs individuelles non bloquantes
+	PlayersScanned  int // total players inspectés
+	PlayersSkipped  int // store déjà rempli, rien à faire
+	OAuthRTMigrated int // RT copié depuis legacy (env ou DuckDB)
+	Errors          int // erreurs individuelles non bloquantes
 }
 
 // EnvRefreshTokenForGamertag retourne SPNKR_OAUTH_REFRESH_TOKEN_<KEY> où KEY est
@@ -90,16 +101,16 @@ func EnvRefreshTokenForGamertag(gamertag string) string {
 	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
 }
 
-// MigrateLegacyTokens copie les tokens legacy (env var + sync_meta DuckDB)
-// dans le MultiUserTokenStore pour les joueurs qui n'y ont pas encore d'entrée
-// complète.
+// MigrateLegacyTokens copie les refresh tokens legacy (env var + sync_meta
+// DuckDB) dans le MultiUserTokenStore pour les joueurs qui n'y ont pas encore
+// d'entrée.
 //
 // Idempotent : peut être appelé à chaque boot sans corrompre le store. Best-effort
 // par joueur (une erreur sur un joueur n'interrompt pas les autres).
 //
 // Le store est autoritaire : si un xuid a déjà OAuthRefreshToken défini dans le
 // store, la migration ne l'écrase pas, même si une source legacy a une valeur
-// différente. Idem pour MSALCacheJSON.
+// différente.
 func MigrateLegacyTokens(
 	ctx context.Context,
 	store *MultiUserTokenStore,
@@ -133,10 +144,7 @@ func MigrateLegacyTokens(
 			continue
 		}
 
-		needsRT := existing == nil || existing.OAuthRefreshToken == ""
-		needsMSAL := existing == nil || existing.MSALCacheJSON == ""
-
-		if !needsRT && !needsMSAL {
+		if existing != nil && existing.OAuthRefreshToken != "" {
 			stats.PlayersSkipped++
 			continue
 		}
@@ -149,30 +157,15 @@ func MigrateLegacyTokens(
 			continue
 		}
 
-		if needsRT {
-			rt := pickRT(sources)
-			if rt != "" {
-				if err := store.UpdateOAuthRefreshToken(p.XUID, rt); err != nil {
-					slog.WarnContext(ctx, "auth_migration: écriture RT échouée",
-						"xuid", p.XUID, "gamertag", p.Gamertag, "err", err)
-					stats.Errors++
-				} else {
-					stats.OAuthRTMigrated++
-					slog.InfoContext(ctx, "auth_migration: RT migré vers store",
-						"xuid", p.XUID, "gamertag", p.Gamertag, "source", rtSource(sources))
-				}
-			}
-		}
-
-		if needsMSAL && sources.DuckDBMSAL != "" {
-			if err := store.UpdateMSALCache(p.XUID, sources.DuckDBMSAL); err != nil {
-				slog.WarnContext(ctx, "auth_migration: écriture MSAL échouée",
+		if rt := pickRT(sources); rt != "" {
+			if err := store.UpdateOAuthRefreshToken(p.XUID, rt); err != nil {
+				slog.WarnContext(ctx, "auth_migration: écriture RT échouée",
 					"xuid", p.XUID, "gamertag", p.Gamertag, "err", err)
 				stats.Errors++
 			} else {
-				stats.MSALCacheMigrated++
-				slog.InfoContext(ctx, "auth_migration: MSAL cache migré vers store",
-					"xuid", p.XUID, "gamertag", p.Gamertag, "source", "duckdb")
+				stats.OAuthRTMigrated++
+				slog.InfoContext(ctx, "auth_migration: RT migré vers store",
+					"xuid", p.XUID, "gamertag", p.Gamertag, "source", rtSource(sources))
 			}
 		}
 
@@ -193,7 +186,6 @@ func MigrateLegacyTokens(
 		"players_scanned", stats.PlayersScanned,
 		"players_skipped", stats.PlayersSkipped,
 		"rt_migrated", stats.OAuthRTMigrated,
-		"msal_migrated", stats.MSALCacheMigrated,
 		"errors", stats.Errors)
 
 	return stats, nil

@@ -176,8 +176,9 @@ type SyncEngine struct {
 // déplacés vers engine_options.go (refactor 2026-05-21).
 //
 // AcquireSharedWriterStandalone, AcquireMetadataWriterStandalone,
-// AcquirePlayerWriterStandalone, e.acquireSharedWriter :
-// déplacés vers engine_acquire.go (refactor 2026-05-21).
+// e.acquireSharedWriter : déplacés vers engine_acquire.go (refactor 2026-05-21).
+// AcquirePlayerWriterStandalone : supprimé (ADR 0023 Phase 5 — son unique appelant,
+// le double-write DuckDB de la rotation du refresh token, a disparu).
 
 // RunDelta synchronise uniquement les matchs nouveaux depuis la dernière sync.
 // S'arrête dès qu'un match connu est rencontré dans l'historique paginé.

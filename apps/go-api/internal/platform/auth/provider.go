@@ -74,16 +74,8 @@ type TokenProvider interface {
 	// Le DeviceFlow retourné expose les accesseurs UI et AcquireToken.
 	InitDeviceFlow(ctx context.Context) (DeviceFlow, error)
 
-	// TrySilentRefresh tente un refresh non-interactif depuis un cache persisté.
-	// VOIE MORTE depuis le retrait de MSAL (2026-07-15) : SISUProvider répond
-	// toujours ("", nil) et les callers (resolver/pool/cli_refresh) tombent sur
-	// la voie refresh_token. Retrait de la méthode + des call sites + des champs
-	// MSALCacheJSON planifié avec le lot D2 de purge legacy (armable ≥ 2026-07-20,
-	// critère : telemetrie legacy_source_used muette). Ne pas réimplémenter.
-	TrySilentRefresh(ctx context.Context, cacheJSON string) (string, error)
-
 	// TryOAuthRefresh tente d'obtenir un access_token via OAuth v2 refresh_token.
-	// refreshToken : valeur brute du refresh token (env var ou sync_meta DuckDB).
+	// refreshToken : valeur brute du refresh token (MultiUserTokenStore, ADR 0023).
 	// Retourne ("", nil) si le token est vide ou si le refresh échoue proprement.
 	//
 	// DEPRECATED : préférer TryOAuthRefreshWithRotation qui expose le RT

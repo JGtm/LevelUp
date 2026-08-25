@@ -1,7 +1,7 @@
 // warm_bp_assets — préchargement one-shot de tous les assets Battle Pass.
 //
-// Lit les tokens depuis db_profiles.json (premier joueur avec un refresh token
-// valide dans sync_meta — MSAL cache ou oauth_refresh_token), fetche les
+// Lit les tokens depuis le MultiUserTokenStore (premier joueur avec un refresh
+// token valide — source unique ADR 0023), fetche les
 // définitions de tracks + images de couverture/fond + images des paliers
 // (InventoryItems) depuis GameCMS, et les persiste dans :
 //   - data/cache/bp-track-image/   (images binaires sur FS)
@@ -100,7 +100,7 @@ func main() {
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	// Charger .env.local pour exposer SPNKR_OAUTH_REFRESH_TOKEN_* et autres vars.
+	// Charger .env.local pour exposer SPNKR_AZURE_CLIENT_ID et autres vars.
 	loadEnvLocal(filepath.Join(*repoRoot, ".env.local"))
 
 	ctx := context.Background()
@@ -131,12 +131,11 @@ func main() {
 		slog.Info("auth: token fourni directement via --access-token")
 		accessToken = *directAccessToken
 	} else {
-		// Essayer tous les joueurs de db_profiles.json via le provider (MSAL + OAuth v2).
-		dbProfilesPath := filepath.Join(*repoRoot, "db_profiles.json")
-		accessToken, err = readAccessTokenFromProfiles(ctx, dbProfilesPath, *titleSlug, *repoRoot)
+		// Essayer tous les joueurs du MultiUserTokenStore (source unique ADR 0023).
+		accessToken, err = readAccessTokenFromStore(ctx, *repoRoot)
 		if err != nil || accessToken == "" {
-			// Fallback: watcher_tokens.json (refresh_token si présent)
-			slog.Warn("auth: aucun token trouvé dans les joueurs, essai watcher_tokens.json")
+			// Fallback: access_token déjà en cache dans watcher_tokens.json.
+			slog.Warn("auth: aucun token trouvé dans le store, essai watcher_tokens.json")
 			accessToken, err = readWatcherToken(*repoRoot)
 		}
 		if err != nil || accessToken == "" {
@@ -725,83 +724,32 @@ func upsertItemDef(db *sql.DB, itemPath, quality, itemType, displayPath string, 
 	return err
 }
 
-// readAccessToken lit le cache MSAL ou l'oauth_refresh_token depuis sync_meta
-// et retourne un access_token Microsoft valide.
-//
-// readAccessTokenFromProfiles itère sur tous les joueurs de db_profiles.json
-// pour le titleSlug donné et tente, via le provider, un refresh MSAL silencieux
-// ou OAuth v2 sur chaque sync_meta. Retourne le premier access_token obtenu.
-func readAccessTokenFromProfiles(ctx context.Context, dbProfilesPath, titleSlug, repoRoot string) (string, error) {
-	raw, err := os.ReadFile(dbProfilesPath)
-	if err != nil {
-		return "", fmt.Errorf("db_profiles.json: %w", err)
-	}
-	var profiles struct {
-		Profiles map[string]map[string]struct {
-			DBPath string `json:"db_path"`
-		} `json:"profiles"`
-	}
-	if err := json.Unmarshal(raw, &profiles); err != nil {
-		return "", fmt.Errorf("db_profiles.json parse: %w", err)
-	}
-	players, ok := profiles.Profiles[titleSlug]
-	if !ok || len(players) == 0 {
-		return "", fmt.Errorf("aucun joueur pour le titre %q dans db_profiles.json", titleSlug)
-	}
-
+// readAccessTokenFromStore itère sur les entrées du MultiUserTokenStore
+// (data/auth/watcher_tokens/{xuid}.json — source unique ADR 0023) et retourne le
+// premier access_token Microsoft obtenu par refresh OAuth v2. La rotation est
+// persistée par le helper canonique.
+func readAccessTokenFromStore(ctx context.Context, repoRoot string) (string, error) {
+	store := auth.NewMultiUserTokenStore(title.NewPathResolver(repoRoot).WatcherTokensDir())
 	provider := auth.NewSISUProvider()
 
-	for gamertag, p := range players {
-		dbPath := filepath.Join(repoRoot, filepath.FromSlash(p.DBPath))
-		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-			slog.Debug("auth: DB absente, joueur ignoré", "gamertag", gamertag, "path", dbPath)
-			continue
-		}
-
-		db, err := sql.Open("duckdb", dbPath+"?access_mode=read_only")
-		if err != nil {
-			slog.Warn("auth: ouverture DB échouée", "gamertag", gamertag, "err", err)
-			continue
-		}
-		db.SetMaxOpenConns(1)
-
-		var cacheJSON, refreshToken string
-		_ = db.QueryRowContext(ctx, "SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON)
-		_ = db.QueryRowContext(ctx, "SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken)
-		db.Close() //nolint:errcheck
-
-		if cacheJSON != "" {
-			token, err := provider.TrySilentRefresh(ctx, cacheJSON)
-			if err == nil && token != "" {
-				slog.Info("auth: MSAL silent refresh OK", "gamertag", gamertag)
-				return token, nil
-			}
-			slog.Warn("auth: MSAL silent refresh raté", "gamertag", gamertag, "err", err)
-		}
-
-		if refreshToken != "" {
-			token, err := provider.TryOAuthRefresh(ctx, refreshToken)
-			if err == nil && token != "" {
-				slog.Info("auth: OAuth v2 refresh OK", "gamertag", gamertag)
-				return token, nil
-			}
-			slog.Warn("auth: OAuth v2 refresh raté", "gamertag", gamertag, "err", err)
-		}
-
-		// Fallback: SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> depuis .env.local
-		envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-		if envRT := os.Getenv(envKey); envRT != "" {
-			token, err := provider.TryOAuthRefresh(ctx, envRT)
-			if err == nil && token != "" {
-				slog.Info("auth: OAuth v2 refresh OK (env var)", "gamertag", gamertag, "env", envKey)
-				return token, nil
-			}
-			slog.Warn("auth: OAuth v2 refresh raté (env var)", "gamertag", gamertag, "err", err)
-		}
-
-		slog.Debug("auth: aucun token utilisable", "gamertag", gamertag)
+	all, err := store.LoadAll()
+	if err != nil {
+		return "", fmt.Errorf("scan watcher_tokens: %w", err)
 	}
-
+	for xuid, ut := range all {
+		if ut.OAuthRefreshToken == "" {
+			continue
+		}
+		token, rerr := auth.ResolveMSAccessTokenStoreFirst(ctx, provider, store, xuid, ut.Gamertag)
+		if rerr != nil {
+			slog.WarnContext(ctx, "auth: refresh OAuth v2 raté", "gamertag", ut.Gamertag, "err", rerr)
+			continue
+		}
+		if token != "" {
+			slog.InfoContext(ctx, "auth: OAuth v2 refresh OK", "gamertag", ut.Gamertag)
+			return token, nil
+		}
+	}
 	return "", nil
 }
 

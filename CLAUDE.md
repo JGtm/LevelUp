@@ -129,8 +129,12 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 
 ## Règle auth tokens (ADR 0023)
 
-- **Source unique** : `data/auth/watcher_tokens/{xuid}.json` via `*auth.MultiUserTokenStore`
-  (`OAuthRefreshToken` + `MSALCacheJSON` par xuid).
+- **Source unique et EXCLUSIVE** : `data/auth/watcher_tokens/{xuid}.json` via
+  `*auth.MultiUserTokenStore` (champ `OAuthRefreshToken` par xuid). Depuis la Phase 5
+  (2026-08-25), **plus aucun fallback** : ni `sync_meta.oauth_refresh_token` /
+  `msal_token_cache`, ni `SPNKR_OAUTH_REFRESH_TOKEN_*`, ni le store mono-user
+  `data/auth/watcher_tokens.json` (celui-ci ne porte plus que l'état du watcher RTA :
+  access_token + XSTS). Un joueur absent du store n'a pas de token.
 - **JAMAIS de re-capture de token** pour « réparer » une auth : un refresh token valide se
   rafraîchit ; s'il est mort, diagnostiquer la cause (rotation perdue, mauvais xuid) avant
   tout. `AADSTS70000` = vieille app / RT étranger, pas une raison de re-capturer.
@@ -138,10 +142,14 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   ou `token-import` (RT sur stdin). Pré-requis : joueur déclaré dans `db_profiles.json`.
 - **Cache process** : après rotation externe d'un RT, appeler
   `halo.InvalidateCachedPlayerTokens(xuid)` (sinon le cache 50 min sert l'ancien chain).
-- **Fallbacks legacy en transition** (`sync_meta.*`, `SPNKR_OAUTH_REFRESH_TOKEN_*`) :
-  encore lus ; la télémétrie `legacy_source_used` puis leur suppression (Phase 5) sont
-  planifiées (plan audits, lots D1a/D2). Aucune logique métier dans le package `auth`.
-- Helper canonique CLI : `auth.RefreshHaloTokensViaStoreFirst(...)`.
+- **Seule exception legacy restante** : la migration one-shot du boot
+  (`auth.MigrateLegacyTokens` + `migrateLegacyAuthTokensAtBoot`) lit encore env +
+  `sync_meta` pour recopier un RT résiduel vers le store. Kill-switch daté : bascule
+  2026-08-25, **retrait cible 2026-10-01**, critère « 0 token migré au boot sur 30 j de
+  logs prod ». Garde-rails : `auth/sentinel_test.go` (allowlist à 1 entrée),
+  `sync/no_legacy_source_used_test.go`. Aucune logique métier dans le package `auth`.
+- Helper canonique CLI : `auth.RefreshHaloTokensViaStoreFirst(...)` ; access_token brut :
+  `auth.ResolveMSAccessTokenStoreFirst(...)`.
 
 ## Multi-titre — title-agnostic (règle transverse)
 

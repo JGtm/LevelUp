@@ -190,7 +190,7 @@ func setupH5CarnageSource(ctx context.Context, cfg *config.AppConfig, tokensDir,
 		return nil, nil, fmt.Errorf("xuid auth introuvable pour %q dans db_profiles", authGT)
 	}
 	store := auth.NewMultiUserTokenStore(tokensDir)
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		return nil, nil, fmt.Errorf("refresh tokens auth_as=%s: %w", authGT, err)
 	}

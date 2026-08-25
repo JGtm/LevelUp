@@ -202,7 +202,6 @@ func TestMigrateLegacyAuthTokensAtBoot_StoreEntryPreserved(t *testing.T) {
 		XUID:              "2533274858283686",
 		Gamertag:          "Madina97294",
 		OAuthRefreshToken: "rt-already-fresh-DO-NOT-OVERWRITE",
-		MSALCacheJSON:     `{"existing":"cache"}`,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -216,8 +215,5 @@ func TestMigrateLegacyAuthTokensAtBoot_StoreEntryPreserved(t *testing.T) {
 	user, _ := store.Load("2533274858283686")
 	if user.OAuthRefreshToken != "rt-already-fresh-DO-NOT-OVERWRITE" {
 		t.Errorf("RT = %q, store autoritaire devrait être préservé", user.OAuthRefreshToken)
-	}
-	if user.MSALCacheJSON != `{"existing":"cache"}` {
-		t.Errorf("MSAL écrasé : %q", user.MSALCacheJSON)
 	}
 }

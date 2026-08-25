@@ -16,22 +16,22 @@ func tempTokenDir(t *testing.T) string {
 }
 
 // TestUpsert_PreservesRefreshTokenOnPartialWrite : un Upsert PARTIEL (XSTS/access
-// seulement, RT/MSAL vides — comme le mirror ou le link AddPlayer) ne doit PAS
-// effacer le refresh_token / MSAL cache déjà persistés. Régression incident
+// seulement, RT vide — comme le mirror ou le link AddPlayer) ne doit PAS
+// effacer le refresh_token déjà persisté. Régression incident
 // 2026-06-13/14 : RT e1cb35ab frais écrasé à vide → migration refill RT mort →
 // AADSTS70000 en boucle (la reconnexion ne tenait jamais).
 func TestUpsert_PreservesRefreshTokenOnPartialWrite(t *testing.T) {
 	s := NewMultiUserTokenStore(tempTokenDir(t))
 
-	// 1) Semer RT + MSAL frais (comme le callback SSO).
+	// 1) Semer un RT frais (comme le callback SSO).
 	if err := s.Upsert(&UserTokens{
 		XUID: "111", Gamertag: "Alice",
-		OAuthRefreshToken: "rt_frais", MSALCacheJSON: `{"c":"frais"}`,
+		OAuthRefreshToken: "rt_frais",
 	}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	// 2) Upsert PARTIEL : XSTS/access seulement, RT/MSAL vides.
+	// 2) Upsert PARTIEL : XSTS/access seulement, RT vide.
 	if err := s.Upsert(&UserTokens{
 		XUID: "111", Gamertag: "Alice",
 		XSTSToken: "xsts_new", AccessToken: "at_new",
@@ -39,16 +39,13 @@ func TestUpsert_PreservesRefreshTokenOnPartialWrite(t *testing.T) {
 		t.Fatalf("upsert partiel: %v", err)
 	}
 
-	// 3) RT + MSAL PRÉSERVÉS, XSTS mis à jour.
+	// 3) RT PRÉSERVÉ, XSTS mis à jour.
 	got, err := s.Load("111")
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
 	if got.OAuthRefreshToken != "rt_frais" {
 		t.Errorf("RT effacé = %q, want rt_frais (préservé)", got.OAuthRefreshToken)
-	}
-	if got.MSALCacheJSON != `{"c":"frais"}` {
-		t.Errorf("MSAL effacé = %q, want préservé", got.MSALCacheJSON)
 	}
 	if got.XSTSToken != "xsts_new" {
 		t.Errorf("XSTSToken = %q, want xsts_new (mis à jour)", got.XSTSToken)
@@ -347,7 +344,6 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_PreservesOtherFields(t *tes
 		XSTSToken:     "xsts-original",
 		XSTSUserHash:  "hash-original",
 		XSTSExpiresAt: time.Now().Add(1 * time.Hour),
-		MSALCacheJSON: `{"cached":"data"}`,
 	}
 	if err := s.Upsert(original); err != nil {
 		t.Fatalf("Upsert original: %v", err)
@@ -371,9 +367,6 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_PreservesOtherFields(t *tes
 	}
 	if loaded.XSTSToken != "xsts-original" {
 		t.Errorf("XSTSToken écrasé : %q", loaded.XSTSToken)
-	}
-	if loaded.MSALCacheJSON != `{"cached":"data"}` {
-		t.Errorf("MSALCacheJSON écrasé : %q", loaded.MSALCacheJSON)
 	}
 	if !loaded.CreatedAt.Equal(createdAt.CreatedAt) {
 		t.Errorf("CreatedAt = %v, want %v (préservé)", loaded.CreatedAt, createdAt.CreatedAt)
@@ -428,35 +421,6 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_Idempotent(t *testing.T) {
 	loaded, _ := s.Load("111")
 	if loaded.OAuthRefreshToken != "rt-v1" {
 		t.Errorf("OAuthRefreshToken après double update = %q, want rt-v1", loaded.OAuthRefreshToken)
-	}
-}
-
-func TestMultiUserTokenStore_UpdateMSALCache_PreservesOtherFields(t *testing.T) {
-	s := NewMultiUserTokenStore(tempTokenDir(t))
-
-	original := &UserTokens{
-		XUID:              "111",
-		Gamertag:          "alice",
-		OAuthRefreshToken: "rt-pre-existing",
-		XSTSToken:         "xsts",
-	}
-	if err := s.Upsert(original); err != nil {
-		t.Fatalf("Upsert: %v", err)
-	}
-
-	if err := s.UpdateMSALCache("111", `{"new":"cache"}`); err != nil {
-		t.Fatalf("UpdateMSALCache: %v", err)
-	}
-
-	loaded, _ := s.Load("111")
-	if loaded.MSALCacheJSON != `{"new":"cache"}` {
-		t.Errorf("MSALCacheJSON = %q", loaded.MSALCacheJSON)
-	}
-	if loaded.OAuthRefreshToken != "rt-pre-existing" {
-		t.Errorf("OAuthRefreshToken écrasé : %q", loaded.OAuthRefreshToken)
-	}
-	if loaded.XSTSToken != "xsts" {
-		t.Errorf("XSTSToken écrasé : %q", loaded.XSTSToken)
 	}
 }
 
@@ -515,6 +479,43 @@ func TestMultiUserTokenStore_LoadByGamertag_EmptyDir(t *testing.T) {
 	_, err := s.LoadByGamertag("alice")
 	if !errors.Is(err, ErrUserTokensNotFound) {
 		t.Errorf("err = %v, want ErrUserTokensNotFound", err)
+	}
+}
+
+// TestMultiUserTokenStore_LoadByGamertag_CorruptFileIsNotNotFound — revue
+// adversariale r2 : un fichier de tokens illisible était avalé par un `continue`
+// nu, si bien qu'un store CORROMPU se présentait aux appelants comme une simple
+// absence de token. Le remède affiché (« lancer token-capture ») ne répare pas un
+// fichier corrompu, et la branche ERROR de watcher_refresh.lookupRefreshToken
+// était de fait inatteignable. Ce test verrouille la distinction.
+func TestMultiUserTokenStore_LoadByGamertag_CorruptFileIsNotNotFound(t *testing.T) {
+	dir := tempTokenDir(t)
+	s := NewMultiUserTokenStore(dir)
+	// Crée le répertoire via une écriture valide, puis corrompt un AUTRE fichier.
+	if err := s.Upsert(&UserTokens{XUID: "111", Gamertag: "alice", XSTSToken: "tok"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "222.json"), []byte("{ pas du JSON"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Gamertag absent + un fichier illisible → PAS ErrUserTokensNotFound.
+	_, err := s.LoadByGamertag("bob")
+	if err == nil {
+		t.Fatal("err = nil, want une erreur (fichier illisible dans le store)")
+	}
+	if errors.Is(err, ErrUserTokensNotFound) {
+		t.Errorf("err = %v : « introuvable » et « illisible » appellent des remèdes "+
+			"opposés (authentifier vs réparer le fichier) — ne pas les confondre", err)
+	}
+
+	// Un fichier corrompu ne doit PAS empêcher de trouver un gamertag sain.
+	got, err := s.LoadByGamertag("alice")
+	if err != nil {
+		t.Fatalf("le scan doit continuer malgré un fichier corrompu : %v", err)
+	}
+	if got == nil || got.XUID != "111" {
+		t.Errorf("got = %+v, want l'entrée saine 111", got)
 	}
 }
 

@@ -13,53 +13,60 @@ func TestUserTokens_Health(t *testing.T) {
 	past := now.Add(-time.Hour)
 
 	cases := []struct {
-		name                            string
-		u                               UserTokens
-		wantRefresh, wantMSAL, wantXSTS string
+		name                              string
+		u                                 UserTokens
+		wantRefresh, wantAccess, wantXSTS string
 	}{
 		{
 			name:        "tout absent",
 			u:           UserTokens{},
-			wantRefresh: TokenAbsent, wantMSAL: TokenAbsent, wantXSTS: TokenAbsent,
+			wantRefresh: TokenAbsent, wantAccess: TokenAbsent, wantXSTS: TokenAbsent,
 		},
 		{
 			name: "tout sain",
 			u: UserTokens{
-				OAuthRefreshToken: "rt", MSALCacheJSON: "{}",
-				AccessToken: "at", OAuthExpiresAt: future,
+				OAuthRefreshToken: "rt",
+				AccessToken:       "at", OAuthExpiresAt: future,
 				XSTSToken: "xs", XSTSExpiresAt: future,
 			},
-			wantRefresh: TokenOK, wantMSAL: TokenOK, wantXSTS: TokenOK,
+			wantRefresh: TokenOK, wantAccess: TokenOK, wantXSTS: TokenOK,
 		},
 		{
 			name: "reauth requis (RT mort)",
 			u: UserTokens{
 				OAuthRefreshToken: "rt", ReauthRequired: true,
-				MSALCacheJSON: "{}", OAuthExpiresAt: future,
+				AccessToken: "at", OAuthExpiresAt: future,
 				XSTSToken: "xs", XSTSExpiresAt: future,
 			},
-			wantRefresh: TokenReauth, wantMSAL: TokenOK, wantXSTS: TokenOK,
+			wantRefresh: TokenReauth, wantAccess: TokenOK, wantXSTS: TokenOK,
 		},
 		{
-			name: "xsts expiré, msal expire bientôt",
+			name: "xsts expiré, access expire bientôt",
 			u: UserTokens{
-				OAuthRefreshToken: "rt", MSALCacheJSON: "{}", OAuthExpiresAt: soon,
+				OAuthRefreshToken: "rt", AccessToken: "at", OAuthExpiresAt: soon,
 				XSTSToken: "xs", XSTSExpiresAt: past,
 			},
-			wantRefresh: TokenOK, wantMSAL: TokenExpiring, wantXSTS: TokenExpired,
+			wantRefresh: TokenOK, wantAccess: TokenExpiring, wantXSTS: TokenExpired,
 		},
 		{
-			name:        "cache MSAL présent sans expiry connu → ok",
-			u:           UserTokens{MSALCacheJSON: "{}"},
-			wantRefresh: TokenOK, wantMSAL: TokenOK, wantXSTS: TokenAbsent,
+			name:        "access_token présent sans expiry connu → ok",
+			u:           UserTokens{AccessToken: "at"},
+			wantRefresh: TokenAbsent, wantAccess: TokenOK, wantXSTS: TokenAbsent,
+		},
+		{
+			// ADR 0023 Phase 5 : le RT est la SEULE credential de refresh — un
+			// compte sans RT est « absent », même s'il porte encore un access_token.
+			name:        "RT absent → refresh absent",
+			u:           UserTokens{AccessToken: "at", OAuthExpiresAt: future},
+			wantRefresh: TokenAbsent, wantAccess: TokenOK, wantXSTS: TokenAbsent,
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			h := c.u.Health(now, margin)
-			if h.Refresh != c.wantRefresh || h.MSAL != c.wantMSAL || h.XSTS != c.wantXSTS {
-				t.Fatalf("Health = %+v ; want refresh=%s msal=%s xsts=%s",
-					h, c.wantRefresh, c.wantMSAL, c.wantXSTS)
+			if h.Refresh != c.wantRefresh || h.Access != c.wantAccess || h.XSTS != c.wantXSTS {
+				t.Fatalf("Health = %+v ; want refresh=%s access=%s xsts=%s",
+					h, c.wantRefresh, c.wantAccess, c.wantXSTS)
 			}
 		})
 	}

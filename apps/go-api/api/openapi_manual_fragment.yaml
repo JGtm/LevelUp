@@ -648,7 +648,7 @@ paths:
   /auth/device-flow/start:
     post:
       description: |
-        Lance un Device Code Flow pour l'authentification Halo (MSAL).
+        Lance un Device Code Flow pour l'authentification Halo (SISU).
         Non disponible en DEMO_MODE.
       responses:
         '200':

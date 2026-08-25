@@ -3,7 +3,7 @@
  *
  * Affichée par LoginPage quand auth_mode='xbox'. Permet à un user de se connecter
  * via son compte Xbox Live (login.live.com/devicelogin). Côté backend, la session
- * est créée par XboxSSOLinkStrategy (PR 2) après l'échange MSAL.
+ * est créée par XboxSSOLinkStrategy (PR 2) après l'échange OAuth.
  *
  * En mode xbox, le login password est réservé aux admins (PR 1, D3). Cette page
  * propose un toggle "Connexion admin (mot de passe)" pour le fallback.

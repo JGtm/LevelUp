@@ -168,7 +168,6 @@ func TestXboxSSOLinkStrategy_WithTokenStore_PersistsRTATokens(t *testing.T) {
 		Gamertag:             "Spartan42",
 		XUID:                 "2535471234567890",
 		MicrosoftAccessToken: "ms-access-token",
-		MSALCacheJSON:        `{"AccessToken":{"...":"..."}}`,
 		XSTSRTAToken:         "xsts-rta-token",
 		XSTSRTAUserHash:      "rta-user-hash",
 		XSTSRTAExpiresAt:     time.Now().Add(55 * time.Minute),
@@ -195,30 +194,27 @@ func TestXboxSSOLinkStrategy_WithTokenStore_PersistsRTATokens(t *testing.T) {
 	if stored.AccessToken != "ms-access-token" {
 		t.Errorf("AccessToken = %q", stored.AccessToken)
 	}
-	if stored.MSALCacheJSON == "" {
-		t.Error("MSALCacheJSON devrait être persisté")
-	}
 }
 
 // TestXboxSSOLinkStrategy_PersistRTA_MergePreserveCredentials : Upsert remplace
-// le fichier entier — un login SISU (RT brut, pas de cache MSAL) ne doit pas
-// écraser le cache MSAL existant, et réciproquement (fix 2026-07-15).
+// le fichier entier — un login qui ne porte PAS de RT brut (ex. relogin XSTS
+// seul) ne doit pas effacer le refresh_token déjà semé (fix 2026-07-15, durci
+// ADR 0023 Phase 5 : le RT est la seule credential durable).
 func TestXboxSSOLinkStrategy_PersistRTA_MergePreserveCredentials(t *testing.T) {
 	users := newXboxStore(t)
 	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
 	s := service.NewXboxSSOLinkStrategy(users).WithTokenStore(tokenStore)
 
-	// État existant : credentials des deux providers déjà semés.
+	// État existant : RT déjà semé.
 	if err := tokenStore.Upsert(&auth.UserTokens{
 		XUID:              "2535471234567890",
 		Gamertag:          "Spartan42",
 		OAuthRefreshToken: "rt-ancien",
-		MSALCacheJSON:     `{"cache":"ancien"}`,
 	}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	// Login SISU : RT brut frais, PAS de cache MSAL.
+	// Login SISU : RT brut frais → remplace l'ancien.
 	attempt := &auth.Attempt{
 		Gamertag:          "Spartan42",
 		XUID:              "2535471234567890",
@@ -236,16 +232,12 @@ func TestXboxSSOLinkStrategy_PersistRTA_MergePreserveCredentials(t *testing.T) {
 	if stored.OAuthRefreshToken != "rt-sisu-frais" {
 		t.Errorf("OAuthRefreshToken = %q, attendu le RT SISU frais", stored.OAuthRefreshToken)
 	}
-	if stored.MSALCacheJSON != `{"cache":"ancien"}` {
-		t.Errorf("MSALCacheJSON = %q, le cache MSAL existant doit être préservé", stored.MSALCacheJSON)
-	}
 
-	// Login MSAL ensuite : cache frais, PAS de RT brut → le RT SISU est préservé.
+	// Login SANS RT brut → le RT existant doit être préservé (pas d'effacement).
 	attempt2 := &auth.Attempt{
-		Gamertag:      "Spartan42",
-		XUID:          "2535471234567890",
-		XSTSRTAToken:  "xsts-rta-token-2",
-		MSALCacheJSON: `{"cache":"frais"}`,
+		Gamertag:     "Spartan42",
+		XUID:         "2535471234567890",
+		XSTSRTAToken: "xsts-rta-token-2",
 	}
 	if err := s.OnAuthSuccess(context.Background(), attempt2, &domain.SessionData{}); err != nil {
 		t.Fatalf("OnAuthSuccess (2e): %v", err)
@@ -255,10 +247,10 @@ func TestXboxSSOLinkStrategy_PersistRTA_MergePreserveCredentials(t *testing.T) {
 		t.Fatalf("Load (2e): %v", err)
 	}
 	if stored.OAuthRefreshToken != "rt-sisu-frais" {
-		t.Errorf("OAuthRefreshToken = %q, le RT SISU doit être préservé", stored.OAuthRefreshToken)
+		t.Errorf("OAuthRefreshToken = %q, le RT doit être préservé", stored.OAuthRefreshToken)
 	}
-	if stored.MSALCacheJSON != `{"cache":"frais"}` {
-		t.Errorf("MSALCacheJSON = %q, attendu le cache frais", stored.MSALCacheJSON)
+	if stored.XSTSToken != "xsts-rta-token-2" {
+		t.Errorf("XSTSToken = %q, want xsts-rta-token-2 (mis à jour)", stored.XSTSToken)
 	}
 }
 

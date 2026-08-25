@@ -387,7 +387,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// métriques expvar du sharedprovider. NoStore : état courant.
 		contentionHandler := handlers.NewAdminDBContentionHandler(reg.DBContention)
 		contentionHandler.Mount(r.With(middleware.NoStore), adminOpt)
-		// Santé des tokens auth (MSAL / XSTS / Refresh) par joueur. Lecture
+		// Santé des tokens auth (Accès / XSTS / Refresh) par joueur. Lecture
 		// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 		tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
 		tokenHealthHandler.Mount(r.With(middleware.NoStore), adminOpt)
@@ -1170,10 +1170,11 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// matching catalogue reste fonctionnel).
 	reg.WithCoachAdvisorBundle(wire.NewCoachAdvisorBundle(cfg.RepoRoot))
 
-	// MultiUserTokenStore (ADR 0023) — source unique des tokens auth (RT + MSAL).
-	// refreshTokensFromDB le lit AVANT de tomber sur les fallbacks legacy
-	// (sync_meta DuckDB + env var). Idempotent : peut être re-créé à chaque boot
-	// (pointe sur le même répertoire `data/auth/watcher_tokens/`).
+	// MultiUserTokenStore (ADR 0023) — SEULE source des tokens auth (refresh token)
+	// depuis la Phase 5 (2026-08-25) : refreshTokensFromDB n'a plus aucun fallback
+	// derrière (ni sync_meta DuckDB, ni env var, ni store mono-user). Idempotent :
+	// peut être re-créé à chaque boot (pointe sur le même répertoire
+	// `data/auth/watcher_tokens/`).
 	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	reg.WithAuthStore(authStore)
 

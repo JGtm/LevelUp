@@ -110,18 +110,13 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside
       the admin group). Confirm an anonymous request is rejected and an admin request
       returns JSON.
-- [ ] **`legacy_source_used_*` telemetry visible in `/debug/vars`** (key `levelup`).
-      Counters: `legacy_source_used_duckdb_msal`, `_duckdb_oauth`, `_env_oauth`,
-      `_watcher_legacy` (source: `internal/observability/legacy_source.go`). This is the
-      machine signal that arms D2 (ADR 0023 Phase 5): while > 0, installs still depend on
-      the legacy auth fallback.
-- [ ] **NOTE THE D1A PRODUCTION DATE.** D1A (legacy-source telemetry) goes live with this
-      merge. Record the exact deploy date in the parent plan §6 — it arms D2 at **≥ 7 days**
-      after. TODO fill-in below:
-
-      > **D1A live in production on: `__________` (YYYY-MM-DD).**
-      > D2 (`refactor/adr0023-phase5`) may start on/after `live_date + 7d`, gated on
-      > `legacy_source_used_*` observed over that window (parent plan step 8).
+- [ ] **Boot auth migration is a no-op** (ADR 0023 Phase 5, delivered 2026-08-25).
+      The `legacy_source_used_*` counters no longer exist: the legacy auth fallbacks were
+      removed, so there is nothing left to count. What remains is the one-shot boot
+      migration — check `sync.log` for `auth_migration: scan terminé` and confirm
+      `rt_migrated=0` (and no `auth_migration: RT migré vers store` line). Thirty
+      consecutive days at zero arms the removal of the migration itself, scheduled for
+      **2026-10-01** (source: `internal/platform/auth/migration.go`, dated kill-switch).
 
 - [ ] **shared_social durability after writes.** Any social write path must `CHECKPOINT`
       shared_social (ADR 0022) — without it the WAL can be lost (incident #7659). If a

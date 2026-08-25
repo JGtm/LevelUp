@@ -26,8 +26,8 @@ const (
 	// Valeurs courantes
 	jsonBoolTrueStr = "true"
 
-	// Codes d'erreur partagés (MSAL device-code flow).
-	errCodeMSALAcquire = "msal_acquire_error"
+	// Codes d'erreur partagés (device-code flow SISU).
+	errCodeDeviceFlowAcquire = "device_flow_acquire_error"
 
 	// Modes auth.
 	authModeXbox = "xbox"
