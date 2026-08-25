@@ -1,3 +1,62 @@
+## [2026-08-25] Citations — état terminal pour matchs sans events (matchs annulés)
+
+**Statut** : En cours — éditions et tests écrits, commit local posé ; gates NON joués
+(créneau de build machine réservé à un lot voisin, phasage imposé). Branche
+`fix/citations-terminal-state`, worktree dédié, base `origin/main` `97a109b0d`.
+
+**Défaut** (prouvé en prod, non re-diagnostiqué) : `BackfillMatchCitations`
+(`internal/sync/citations.go`) laissait candidat, SANS jeton `_processed`, tout match à 0
+delta dont `match_registry.events_loaded` est faux — pari Phase 4 « les events finiront par
+arriver ». Pour un match ANNULÉ par les serveurs, ils n'arrivent jamais : le film est une
+coquille (chunk non vide, 0 event extractible). Le match `5da6fd30-f29e-4713-93a6-73d69d87626e`
+était ainsi re-sélectionné, recalculé et re-rejeté à chaque cycle depuis des semaines
+(~35 passes/jour, 372 WARN collatéraux en août), avec accumulation monotone : une boucle
+perpétuelle de plus par futur match annulé.
+
+**Décision technique** : la 3e condition `!isCitationsTerminalNoEvents(...)` est ajoutée à
+la branche de skip — court-circuit du `&&`, donc la requête d'âge ne tourne QUE dans la
+branche rare (0 delta ET events absents), zéro coût sur le chemin chaud. Passé
+`citationsTerminalNoEventsAge = 7 jours` (un film Theater arrive en heures ou jamais ; seuil
+large pour qu'une panne d'API ou un arrêt du watcher ne jetonne pas un match récupérable),
+l'absence d'events devient un état terminal et le jeton est posé par le `writeCitations`
+existant (append-only inchangé). L'âge se lit sur `match_registry` via le fragment timezone
+CANONIQUE `analysis.SQLStartTimeCanonical` (règle n°8 — jamais `start_time` brut, les
+imports OpenSpartan portent un start_time naïf décalé). Tempérament d'échec INVERSE de
+`isEventsLoaded` : celle-ci répond true quand elle ne sait pas (legacy), alors qu'ici tout
+âge indéterminable (sharedDB nil, match absent, colonnes illisibles, horodatages NULL)
+donne WARN + false — rester candidat est l'échec sûr, un cycle de plus coûte moins qu'un
+match jetonné à tort. Décision et seuil isolés dans un fichier neuf
+(`citations_terminal_state.go`) : `citations.go` est déjà à 700 lignes, on ne l'alourdit
+que d'une ligne de condition.
+
+**Vérifié sur pièces** : `selectMatchesForCitations` (`citations_backfill.go`) ne fait le
+`LEFT JOIN ... IS NULL` sur `match_citations` que dans la branche `force=false` ; `force=true`
+sélectionne tous les matchs de `player_match_enrichment_latest`. Le jeton n'est donc PAS une
+impasse — un match jetonné dont les events arriveraient plus tard reste rattrapable par un
+recompute. Propriété documentée dans le commentaire de la branche ET assertée par un test.
+Deux commentaires devenus faux (`isEventsLoaded`, `writeCitations` : « sentinel posé
+seulement si les events sont chargés ») corrigés dans le même commit.
+
+**Tests** : décision isolée (`_test.go`, tag `cgo`) — les deux bras du fragment canonique
+(start_time_utc et repli start_time naïf), les quatre cas d'âge indéterminable, et
+l'encadrement du seuil (seuil+24 h → terminal, seuil−24 h → candidat : une inversion de la
+comparaison fait rougir les deux). Bout en bout (`_pipeline_test.go`, tag `integration`, sur
+la fixture de pipeline dont `match_registry` reçoit `events_loaded` par ALTER — buildSharedDDL
+ne la porte pas, sans quoi `isEventsLoaded` répond true par best-effort et la branche n'est
+jamais atteinte) — match vieux sans events : jeton posé + sortie du pool force=false + toujours
+sélectionné par force=true ; match récent : zéro ligne écrite, reste candidat ; events chargés :
+jeton posé comme avant, sans considération d'âge. Les âges sont posés relativement à
+`time.Now()`, pas aux dates figées de la fixture.
+
+**Découverte (non traitée, hors périmètre)** : `sortMatchIDsChrono` (`citations.go`) trie par
+`ORDER BY start_time` brut — dette préexistante gelée par l'allowlist fichier du ratchet
+`no_raw_start_time_literal_test.go`. Non touchée. Le WARN pve `database is closed` du même
+fichier relève du lot `fix/shared-read-recovery`.
+
+**Prochaine étape** : gates de phase B (gofmt, build, vet, tests, tests intégration
+`-p 1` sur sync+persist, golangci `--new-from-merge-base=origin/main`) puis mise à jour de
+cette entrée en Complété. Pas de merge ni de push depuis ce lot.
+
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
 **Statut** : Complété (même worktree `deps-security`). Le push de `dependabot.yml` a

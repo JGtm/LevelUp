@@ -106,7 +106,21 @@ func BackfillMatchCitations(
 		// heal (post-sync, avant citations) charge les events, et le prochain cycle
 		// citations recalcule. events_loaded distingue "vraiment 0 citation"
 		// (events présents) de "0 par manque d'events" (film pas encore là).
-		if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) {
+		//
+		// ÉTAT TERMINAL (2026-08-25) : le pari « les events finiront par arriver »
+		// est FAUX pour un match annulé par les serveurs (film réduit à une coquille,
+		// 0 event extractible). Un tel match restait candidat à vie et était retraité
+		// à chaque cycle de sync, sans fin ni effet — charge qui croît d'une boucle
+		// par match annulé. Passé citationsTerminalNoEventsAge, l'absence d'events
+		// devient un état terminal (isCitationsTerminalNoEvents,
+		// citations_terminal_state.go) : la 3e condition tombe et le jeton EST posé
+		// par writeCitations ci-dessous. Le jeton n'est PAS une impasse : le chemin
+		// force=true (recompute) sélectionne tous les matchs sans consulter
+		// match_citations — le LEFT JOIN IS NULL ne vit que dans la branche
+		// force=false de selectMatchesForCitations — donc un match jetonné dont les
+		// events arriveraient plus tard reste rattrapable par un recompute.
+		if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) &&
+			!isCitationsTerminalNoEvents(ctx, sharedDB, matchID) {
 			slog.DebugContext(ctx, "citations: 0 delta + events non chargés → skip sentinel (match reste candidat)",
 				"match_id", matchID)
 			skipped++
@@ -578,7 +592,9 @@ ORDER BY time_ms ASC`
 // lecture (table absente en tests minimaux, match inconnu) → true pour préserver
 // le comportement legacy (poser le sentinel). Sert à décider, en Phase 4, si un
 // match à 0 citation peut recevoir le sentinel "_processed" (events présents) ou
-// doit rester candidat (events pas encore chargés — film retardé).
+// doit rester candidat (events pas encore chargés — film retardé). Depuis l'état
+// terminal (2026-08-25), « rester candidat » est en plus borné dans le temps :
+// cf. isCitationsTerminalNoEvents (citations_terminal_state.go).
 func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
 	if sharedDB == nil {
 		return true
@@ -597,7 +613,9 @@ func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool 
 // "_processed" est insérée : cela sort le match du pool de
 // selectMatchesForCitations et évite de le retraiter à chaque sync.
 // NB Phase 4 : ce sentinel n'est posé (cas 0 delta) que si les events sont
-// chargés — décision prise par le caller BackfillMatchCitations via isEventsLoaded.
+// chargés (isEventsLoaded) OU si le match est assez vieux pour que leur absence
+// soit un état terminal (isCitationsTerminalNoEvents) — décision prise par le
+// caller BackfillMatchCitations.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
 	// Append-only #23046 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
 	// préalable. Chaque réécriture d'un match alloue UNE génération
