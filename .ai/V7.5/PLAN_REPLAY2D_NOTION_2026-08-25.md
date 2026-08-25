@@ -103,8 +103,13 @@ navigateur (gate visuel = utilisateur, à la fusion).
   substitut `managed-objective-object-reference`) ; pour chaque mode : canal mesurable,
   oracle + témoin négatif, seuil de gate ; UN SEUL bump schéma (19) pour tout le lot ;
   re-cuisson des témoins seulement. STOP — validation superviseur.
-- [ ] D1+ : implémentation par mode après go, gate mesuré par phase. CONTRAINTE : le
-  rendu (calques objectifs) ne démarre qu'APRÈS fusion du lot A (mêmes fichiers).
+- [ ] D1+ : implémentation par mode, gate mesuré par phase. **GO UTILISATEUR 25/08** :
+  « KOTH et Total Control à finaliser correctement, pour Oddball aussi. VIP on verra
+  plus tard. Ton ordre est correct. » => périmètre confirmé D2 (KOTH) + D3 (TC) + D4
+  (Oddball) à FINALISER, VIP reste `[!]` définitif (reprise = décision utilisateur),
+  ordre D6(D-R) -> D2 -> D3 -> D4 confirmé. CONTRAINTE inchangée : le rendu (calques
+  objectifs) ne démarre qu'APRÈS fusion du lot A (mêmes fichiers) ; les phases Go
+  attendent un créneau de build libre (jamais deux builds Go concurrents).
 - [ ] D-R (demande utilisateur VALIDÉE le 25/08, en cours de pilotage) : rendu — la
   progression de capture ET l'appartenance directement SUR LA FORME de la base :
   remplissage progressif par découpe (`ctx.clip` sur `traceZonePath`) proportionnel à la
