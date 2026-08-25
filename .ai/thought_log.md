@@ -8,7 +8,7 @@
 
 **Conclusion / prochaine etape** : cote user — calibrage Theater des lettres (7344d24f/696a9d7c Vagabond : ouest=C milieu=A est=B ; af13e2b2 Origin : A,B,C), gate visuel temps mort/fiches ; pre-tag v7.5.0 — backfill des 80 scores (dry-run puis apply serveur arrete, puis verif residu VPS) + lot hygiene de cloture ; nettoyage des worktrees des cinq lots fait dans la foulee.
 
-## [2026-08-25] Backlog Notion — les 5 points (assistances, colonne rejeu, usages d'équipement, présence, 3 onglets match) — Complété sur branche, fusion en attente
+## [2026-08-25] Backlog Notion — les 5 points (assistances, colonne rejeu, usages d'équipement, présence, 3 onglets match) — Complété et FUSIONNÉ (926ac009e)
 
 **Contexte** : demande user du 24/08 — planifier et piloter les 5 points de la page Notion « Backlog LevelUp » dans UN worktree unique, agents pilotés, puis barrer les items. Recherche préalable : 5 agents d'exploration (un par point) ; 3 décisions produit tranchées par questionnaire (3 onglets Général/Chronologie/Joueurs ; amis = friend_gamertags ; assistances = assistant→tueur + « éliminations volées »).
 
@@ -16,7 +16,7 @@
 
 **Résultats observés** : 124 fichiers, ~+9,1k lignes, 20 commits `e8400dcfb..b6360a261`. Gate global vert (vet 0, go test complet hors himap, tsc 0, vitest 476 fichiers / 4592 tests). Revue adversariale : ronde 1 = 4 relecteurs aveugles + gate → 0 P0, 4 P1 (~15 P2) tous corrigés au lot F (dont : clé de cache React Query du filtre rejeu qui ne changeait pas — le filtre ne refetchait JAMAIS ; singleflight/backoff manquants sur le batch Xbox ; 2 ratchets archlint/netguard) ; ronde 2 sur les seuls correctifs → 0 P0/P1, 4 P2 consignés au plan. Décroissance stricte, boucle close.
 
-**Conclusion / prochaine étape** : fusion `--no-ff` vers `feat/v75` BLOQUÉE par 4 fichiers en chevauchement avec les lots user du 24/08 non commités dans le principal (`openapi.yaml`, `generated.ts`, `match-replay/i18n.ts`, `i18nContract.ts`) — attendre le commit user, puis fusionner (openapi/generated : régénérer plutôt que résoudre), journal de fusion, barrer les 5 items Notion (format TRAITÉ + sha), supprimer worktree+branche. Gate visuel user : témoins listés au CR (Explorer colonne+filtre, 3 onglets, graphe assistances 3 états, tableau équipement sur 00162144/000d5950/00ba2e1c, manette+compteur). Point remonté au user : sur instance multi-utilisateurs, le compteur d'amis (liste globale admin) est servi à tout authentifié.
+**Conclusion / prochaine étape** : fusion `--no-ff` FAITE le 25/08 (`926ac009e`, après libération du principal par le user) — auto-fusion sans conflit textuel, contrats RÉGÉNÉRÉS sur l'arbre fusionné (delta réel vs auto-fusion : le cas exact que la régénération couvre), gates de fusion verts (vet 0, 16 paquets go test ok dont les 2 ratchets, tsc 0, vitest 2071 tests ciblés). Reste : barrer les 5 items Notion (format TRAITÉ + sha), supprimer worktree+branche, push + CI au niveau job. Gate visuel user : témoins listés au CR (Explorer colonne+filtre, 3 onglets, graphe assistances 3 états, tableau équipement sur 00162144/000d5950/00ba2e1c, manette+compteur). Point remonté au user : sur instance multi-utilisateurs, le compteur d'amis (liste globale admin) est servi à tout authentifié.
 
 ## [2026-08-24] Veille externe guilty-spark — relecture complete du depot (branches + PR), suite de la note Notion du 20/08 — Complete
 
