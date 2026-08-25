@@ -51,10 +51,47 @@ var labelNames = map[int32]string{
 	1673870030:  "elimination_include",
 	1838764749:  "elimination_exclude",
 	1192059526:  "skull_weapon",
+	// --- Total Control (craqués 2026-08-20, lot L13 volet C) ---
+	//
+	// La ligne de registre du 2026-08-08 (« zones de Total Control absentes des variantes de
+	// CARTE, la donnée est ailleurs, ouvrir la variante de MODE ») est FAUSSE, et sa cause est
+	// une seule lettre : la recherche de 2026-08-08 essayait `total_control_zone`. Le vrai nom
+	// n'a pas d'underscore entre les deux mots. Les zones sont bien dans la variante de CARTE,
+	// sous le motif habituel volume + filtre de mode.
+	//
+	// MESURE SUR LE CATALOGUE COMPLET (2026-08-25, 302 zones sur 21 entrées) — elle AMENDE le
+	// relevé du 2026-08-20, qui portait sur 6 cartes et annonçait « toutes de type 850884602,
+	// toutes neutres » :
+	//
+	//	forme        302 / 302 en portent une (aucune zone ponctuelle) — confirmé ;
+	//	type_id      301 / 302 valent 850884602 ; UNE vaut -722308271 (Sylvanus, ci-dessous) ;
+	//	team_index   296 / 302 sont neutres — 3 en équipe 0, 2 en équipe 2, 1 en ÉQUIPE 7.
+	//	             Une équipe 7 sur un mode à deux camps finit d'établir que ce champ ne
+	//	             porte rien ici : la table du titre sert le rôle en `neutral = true`.
+	//
+	// L'exception de Sylvanus est le seul objet du catalogue à porter `totalcontrol_zone`
+	// SANS `totalcontrol_include`, et c'est aussi le seul de son type : une boîte de
+	// 2,74 x 2,20 x 0,16 m, soit l'échelle d'une plaque de décor et non d'une zone de
+	// contrôle. C'est un decoy probable, de la même famille que les cylindres
+	// `minigame_include` qui portent le hash de la colline. Il est publié quand même : le
+	// contrat de ce fichier est qu'un rôle vient d'un label de rôle EXPLICITE, jamais d'une
+	// heuristique de type_id ou de dimensions — l'écarter sur sa taille serait exactement la
+	// devinette que roleByLabel interdit. Consigné au registre, à trancher sur mesure (la
+	// carte n'a aucun match Total Control).
+	1750425936: "totalcontrol_zone",
+	1589616376: "totalcontrol_include",
 	// --- Filtres d'activation hors PvP d'arène (craqués 2026-08-01/02) ---
 	2140598169:  "firefight_include",
 	248451123:   "minigame_include",
 	-1875636905: "forge_include",
+	// firefight_objective est un ROLE, et c'est une RÉFUTATION du lot 5 (2026-08-08), qui
+	// l'avait rangé parmi « 7 labels identifiés, aucun n'est un rôle ». Mesure du 2026-08-20 :
+	// sur Oasis ET Highpower, 5 volumes type -1476457415 AVEC forme portent
+	// [firefight_include, ce hash], accompagnés de 5 marqueurs ponctuels type -877512201
+	// portant [firefight_include, 732028173] — exactement le motif volume+marqueur des zones
+	// de Bastion et des collines. Le marqueur, lui, n'attribue aucun rôle (même règle que le
+	// marqueur de Bastion) et son nom n'est pas retrouvé : il n'entre pas dans cette table.
+	-1624244313: "firefight_objective",
 }
 
 // LabelName retourne le nom d'un label, ou "" s'il n'est pas résolu.
@@ -113,8 +150,16 @@ const (
 	RoleExtractionZone    Role = "extraction_zone"    // zone d'Extraction
 	RoleOddballSpawn      Role = "oddball_spawn"      // apparition du crâne (Oddball)
 	RoleAssaultBomb       Role = "assault_bomb"       // apparition de la bombe (Assaut)
-	// RoleHill est la colline de King of the Hill — attribuee par la PAIRE de hashs
-	// LabelHashHillRole + LabelHashHillInclude (voir ci-dessus), jamais par un nom.
+	// RoleTotalControlZone est une zone de Total Control. ATTENTION AU VIVIER : le fichier
+	// en declare 14 a 18 par carte, alors qu'une manche n'en ACTIVE que 3. Le choix des 3
+	// n'est PAS dans le fichier (il ne l'est pas davantage pour la colline de KOTH) : ce
+	// role publie des FORMES, pas un etat. Un consommateur qui dessinerait les 14 a 18 comme
+	// autant de zones actives se tromperait — cf. l'entree Total Control d'objective_roles.toml.
+	RoleTotalControlZone Role = "totalcontrol_zone"
+	// RoleFirefightObjective est la zone d'objectif d'une manche de Firefight (PvE).
+	RoleFirefightObjective Role = "firefight_objective"
+	// RoleHill est la colline de King of the Hill — attribuee par le hash de ROLE
+	// LabelHashHillRole (voir isHill), jamais par un nom.
 	RoleHill Role = "hill"
 )
 
@@ -134,6 +179,9 @@ var roleByLabel = map[string]Role{
 	// une par carte — la même signature que le crâne d'Oddball. C'est l'objet, pas
 	// un filtre de mode.
 	"assault_bomb": RoleAssaultBomb,
+	// `totalcontrol_include`, lui, N'EST PAS ici : c'est le filtre de mode, pas l'objet.
+	"totalcontrol_zone":   RoleTotalControlZone,
+	"firefight_objective": RoleFirefightObjective,
 }
 
 // Objective est un objet d'objectif identifié.

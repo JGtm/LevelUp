@@ -58,15 +58,17 @@ type objectiveModeEntryTOML struct {
 // silence sur « aucun objet de ce role au catalogue », indistinguable d'une carte qui n'en
 // a pas : on refuse au chargement.
 var objectiveRolesAdmis = map[mapvar.Role]bool{
-	mapvar.RoleFlagSpawn:         true,
-	mapvar.RoleFlagDelivery:      true,
-	mapvar.RoleStockpileSocket:   true,
-	mapvar.RoleStockpileNavpoint: true,
-	mapvar.RoleStrongholdZone:    true,
-	mapvar.RoleExtractionZone:    true,
-	mapvar.RoleOddballSpawn:      true,
-	mapvar.RoleAssaultBomb:       true,
-	mapvar.RoleHill:              true,
+	mapvar.RoleFlagSpawn:          true,
+	mapvar.RoleFlagDelivery:       true,
+	mapvar.RoleStockpileSocket:    true,
+	mapvar.RoleStockpileNavpoint:  true,
+	mapvar.RoleStrongholdZone:     true,
+	mapvar.RoleExtractionZone:     true,
+	mapvar.RoleOddballSpawn:       true,
+	mapvar.RoleAssaultBomb:        true,
+	mapvar.RoleHill:               true,
+	mapvar.RoleTotalControlZone:   true,
+	mapvar.RoleFirefightObjective: true,
 }
 
 // Modes retourne les entrees DANS L'ORDRE DU FICHIER (copie).
