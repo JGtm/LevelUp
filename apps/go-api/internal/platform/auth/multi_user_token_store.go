@@ -408,9 +408,16 @@ func (s *MultiUserTokenStore) IsReauthRequired(xuid string) bool {
 // le Gamertag matche (case-insensitive). Utilisé par cmd/token-capture et
 // cmd/token-import qui ne connaissent pas le xuid avant l'authentification.
 //
-// Retourne ErrUserTokensNotFound si aucun match. Si plusieurs entrées matchent
-// (cas pathologique : doublon gamertag pour deux xuid différents), retourne la
-// première trouvée et log un warning.
+// Retourne ErrUserTokensNotFound si aucun match ET que tous les fichiers ont pu
+// être lus — c'est-à-dire « ce gamertag n'a jamais été authentifié ». Si aucun
+// match mais qu'au moins un fichier était ILLISIBLE (I/O, JSON corrompu),
+// retourne une erreur DISTINCTE enveloppant la cause : sans cette distinction, un
+// store corrompu se présentait aux appelants comme une simple absence de token,
+// et le remède affiché (« lancer token-capture ») ne répare pas un fichier
+// corrompu (revue adversariale r2).
+//
+// Si plusieurs entrées matchent (cas pathologique : doublon gamertag pour deux
+// xuid différents), retourne la première trouvée et log un warning.
 func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, error) {
 	if gamertag == "" {
 		return nil, fmt.Errorf("multi_user_token_store: gamertag vide")
@@ -430,6 +437,8 @@ func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, erro
 	target := strings.ToLower(strings.TrimSpace(gamertag))
 	var match *UserTokens
 	matchCount := 0
+	var unreadableErr error
+	unreadable := 0
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -445,6 +454,18 @@ func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, erro
 		}
 		t, err := s.loadLocked(xuid)
 		if err != nil {
+			// Fichier illisible : le scan CONTINUE (le gamertag cherché vit
+			// peut-être dans un fichier sain), mais l'anomalie ne se perd plus
+			// dans un `continue` nu. Warn et non Error : à ce niveau on ne sait
+			// pas encore si la corruption bloque quoi que ce soit — c'est
+			// l'appelant réellement privé d'auth qui escalade en Error (cf.
+			// watcher_refresh.lookupRefreshToken). Même politique que LoadAll.
+			// Récurrent tant que le fichier est corrompu : c'est voulu, l'anomalie
+			// demande une action humaine.
+			slog.Warn("multi_user_token_store: fichier de tokens illisible, ignoré du scan",
+				"file", name, "dir", s.dir, "err", err)
+			unreadableErr = err
+			unreadable++
 			continue
 		}
 		if strings.ToLower(t.Gamertag) == target {
@@ -456,6 +477,13 @@ func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, erro
 	}
 
 	if matchCount == 0 {
+		if unreadable > 0 {
+			// PAS ErrUserTokensNotFound : « introuvable » et « illisible » appellent
+			// des remèdes opposés (authentifier vs réparer/supprimer le fichier).
+			return nil, fmt.Errorf(
+				"multi_user_token_store: aucun match pour %q et %d fichier(s) illisible(s) dans %s: %w",
+				gamertag, unreadable, s.dir, unreadableErr)
+		}
 		return nil, ErrUserTokensNotFound
 	}
 	if matchCount > 1 {

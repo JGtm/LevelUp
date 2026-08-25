@@ -1149,10 +1149,11 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// matching catalogue reste fonctionnel).
 	reg.WithCoachAdvisorBundle(wire.NewCoachAdvisorBundle(cfg.RepoRoot))
 
-	// MultiUserTokenStore (ADR 0023) — source unique des tokens auth (refresh token).
-	// refreshTokensFromDB le lit AVANT de tomber sur les fallbacks legacy
-	// (sync_meta DuckDB + env var). Idempotent : peut être re-créé à chaque boot
-	// (pointe sur le même répertoire `data/auth/watcher_tokens/`).
+	// MultiUserTokenStore (ADR 0023) — SEULE source des tokens auth (refresh token)
+	// depuis la Phase 5 (2026-08-25) : refreshTokensFromDB n'a plus aucun fallback
+	// derrière (ni sync_meta DuckDB, ni env var, ni store mono-user). Idempotent :
+	// peut être re-créé à chaque boot (pointe sur le même répertoire
+	// `data/auth/watcher_tokens/`).
 	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	reg.WithAuthStore(authStore)
 

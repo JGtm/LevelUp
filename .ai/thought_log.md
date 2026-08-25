@@ -145,11 +145,49 @@ gates ne pouvaient pas voir :
    en dur que j'avais introduits (`refresh_golden_fixture`, `get-token`) — relatifs
    au CWD alors que ces outils se lancent depuis `apps/go-api` : échec systématique.
 
+**Ronde 2 (r2) — 2 incomplétudes de mes propres corrections.** Les deux sont la
+même erreur de méthode : avoir vérifié qu'un chemin était ÉCRIT sans vérifier
+qu'il était ATTEIGNABLE / que le bloc entier était à jour.
+
+1. La moitié « JSON corrompu » de la correction 3 était **inatteignable**.
+   `LoadByGamertag` avalait l'erreur de décodage d'un fichier du store dans un
+   `continue` nu puis rendait `ErrUserTokensNotFound` : ma branche `ErrorContext`
+   de `watcher_refresh` ne pouvait se déclencher que sur une erreur de RÉPERTOIRE,
+   jamais sur un fichier corrompu — exactement le cas que mon commentaire
+   prétendait éliminer. Fix retenu (le moins invasif des deux évalués) : logger la
+   corruption au niveau du store **et** distinguer le contrat d'erreur — plus de
+   match + au moins un fichier illisible → erreur enveloppant la cause, PAS
+   `ErrUserTokensNotFound`. L'alternative du relecteur (passer par `Load(xuid)`)
+   n'était pas applicable ici : `lookupRefreshToken` ne connaît justement pas le
+   xuid, c'est la raison d'être de `LoadByGamertag`. Warn au niveau du store
+   (le scan tolère un fichier mort parmi d'autres, comme `LoadAll`), Error au
+   niveau de l'appelant réellement privé d'auth. Test neuf
+   `LoadByGamertag_CorruptFileIsNotNotFound` : verrouille la distinction ET le
+   fait qu'un fichier corrompu n'empêche pas de trouver un gamertag sain.
+2. Trois blocs de commentaire (`wire/registry.go` ×2, `server_apiv1.go`) réécrits
+   sur leur seule 1re ligne : la suite affirmait encore « lit le store AVANT de
+   tomber sur les fallbacks legacy » et « Nil pour les tests qui veulent l'ancien
+   comportement legacy-only ». Blocs réécrits en entier — `nil` signifie
+   désormais « aucune source », pas « mode legacy ».
+
+**Suite possible, consignée et NON traitée** (observation hors périmètre du
+relecteur) : le CLI `--all` et le serveur partagent désormais le même RT
+canonique, et `resolverImpl.Refresh` rejoue la `CredentialSource` mémorisée en
+cache. Un `--all` lancé serveur allumé peut donc laisser le pool serveur sur un
+RT périmé jusqu'au re-scan Discovery (15 min). C'est pré-existant par nature dès
+lors que le RT est partagé, et **strictement réduit** par la persistance de
+rotation ajoutée en r1 (avant, le RT était brûlé sans être réécrit nulle part).
+Traitement possible plus tard : relire la source depuis le store dans `Refresh`,
+ou invalider l'entrée pool sur rotation externe.
+
 **Rebase** sur `origin/main` `97a109b0d` (10 commits deps mergés entre-temps).
 Conflits : `.ai/thought_log.md` (résolu en gardant les deux entrées, D2 en tête)
 et `apps/web/package-lock.json` — vérifié par comparaison de blob que HEAD porte
 EXACTEMENT la version d'`origin/main` (les 20 bumps npm du matin priment, et les
 champs `libc` que mon `npm install` Windows avait retirés sont bien là).
+Réinstallation front ultérieure faite avec `npm ci` (et non `npm install`) :
+il installe strictement depuis le lock sans le réécrire — l'artefact `libc` ne
+peut plus revenir.
 
 **Conclusion / prochaine étape** : ADR 0023 Phase 5 livrée, Phase 6 absorbée. Il
 reste UN chemin legacy, daté et instrumenté. Les gates de la 1re passe étaient
