@@ -70385,3 +70385,118 @@ par l'ancre de capacite — 4 278 records armes, 63,7 %, a valider par l'oracle 
 records sans arme avec le fil des morts pour dire « mort » plutot que taire). La voie
 structurelle reste le chantier R7 (marche ECS du record d'image-cle) : ce rapport lui apporte la
 preuve que les voies par motif sont epuisees.
+
+---
+
+## [2026-08-25] v7.5 containment — `clockOffsets` etait deja resolu le 08-14 : reverifie sur les 8 films, rien a balayer
+
+**Statut** : Complete — verdict INCHANGE (deja NEGATIF depuis le 2026-08-14). Worktree
+`wt/clock-offsets`, base `3cafdfbe8`, commits `clock(K1)`/`clock(K2)`, AUCUN push.
+
+**Le constat qui commande le lot**. La mission recue demandait d'elargir `clockOffsets`
+au-dela de -10 s (registre `REGISTRE_REPORTS.md` L13, lot 4 2026-08-08 : « 3 films sur 8
+piquent a la borne du balayage ; ~1 h de calcul ; DECISION USER en attente »), avec un GO
+utilisateur donne le 24-25/08. **Verification sur pieces AVANT tout calcul** (regle
+`plan-execution` n°4) : `.ai/V7.5/PLAN_CONTAINMENT_ZONES.md` etape 1 (2026-08-14) et
+l'entree thought_log de la meme date avaient DEJA traite cette question — en mieux. Au lieu
+de chercher un decalage par balayage, le lot applique la correction EXACTE LUE sur
+l'artefact (`originMs`, mesure 3,6-50,8 s/film) via `correctedActions`/
+`printOriginCorrection` (`cmd/zone-attribution/measure.go`) : cette correction bat le
+meilleur decalage balaye sur CHACUN des 8 films (13,7 % -> 58,6 %), et explique precisement
+pourquoi 3 films pinaient la borne — leur origine la depassait (19,8 s · 30,9 s · 38,3 s).
+« L'etape 2 du plan (elargir le balayage) est donc ANNULEE : il n'y a rien a balayer. » Le
+verdict containment complet avait deja ete rendu ce jour-la, sur le corpus ELARGI
+(32/48 films) : **NE PERSISTE PAS** (40,9 % d'attribution, 64,1 % au mieux, contre le seuil
+de 80 % ; aucun oracle de justesse a 95 %). Le registre (L13-14) et le journal de
+supervision du jour meme (`PLAN_SUPERVISION_2026-08-20.md`, entree 2026-08-25 : « restent...
+(declencheurs) : ... clockOffsets... ») etaient RESTES au 08-08, jamais mis a jour apres le
+lot du 14 — source vraisemblable du GO donne sur un item deja clos.
+
+**Decision technique principale** : ne pas bruler ~1 h a re-mesurer un decalage deja
+explique et supersede. A la place, executer un CONTROLE cible et peu couteux, qui repond
+quand meme a la lettre de la mission : elargir la constante `clockOffsets` (`report.go`) de
+-10 s a -60 s (fenetre justifiee par la plage d'`originMs` mesuree), et REJOUER les 8 films
+du corpus d'origine — 1 processus par film (`zone-attribution.exe -match <id>`), RSS
+surveille avec coupe-circuit a 3 Gio, `LEVELUP_REPO_ROOT` pointant en LECTURE SEULE sur le
+depot principal (DB + cache film) — pour verifier deux choses sur pieces : (a) le code,
+vieux de 11 jours et un catalogue regenere le jour meme, reproduit-il toujours la
+conclusion du 08-14 ? (b) les 3 films a la borne trouvent-ils desormais un pic interieur ?
+
+**Resultats observes — sante du run** : 8/8 films OK (exit 0, 0 kill), duree totale
+18,7 min (97,6 a 184,7 s/film), pic RSS 178 a 237 Mo (6-8 % du plafond de 3 Gio, coherent
+avec les ~216 Mo deja mesures le 08-14) — loin de toute bombe RAM, corpus sans rapport avec
+le film-bombe `51101d1d`.
+
+**Resultats observes — le balayage elargi, par film** (ancien pic borne 08-08 -> nouveau
+pic sur [-60 s ; +1 s], taux au pic) :
+
+| film | carte | ancien pic (08-08) | ancien taux | nouveau pic | nouveau taux | interieur ? |
+|---|---|---:|---:|---:|---:|---|
+| 68e58d18 | Forbidden | **-10,0 s (BORNE)** | 11,1 % | **-1,0 s** | 58,9 % | OUI |
+| f6a9d127 | Illusion | **-10,0 s (BORNE)** | 15,5 % | **0,0 s** | 40,7 % | OUI |
+| 415f2c6c | Illusion | **-10,0 s (BORNE)** | 12,8 % | **0,0 s** | 37,5 % | OUI |
+| 10ed320d | Forest | -3,0 s | 65,9 % | 0,0 s | 76,5 % | (deja interieur) |
+| 28d77409 | Forest | -0,5 s | 15,6 % | 0,0 s | 81,2 % | (deja interieur) |
+| 6d49207d | Illusion | -5,0 s | 21,2 % | -1,0 s | 44,1 % | (deja interieur) |
+| b974a390 | Streets | -5,0 s | 58,8 % | 0,0 s | 67,5 % | (deja interieur) |
+| d4230304 | Cliffhanger | -5,0 s | 40,7 % | -0,5 s | 50,0 % | (deja interieur) |
+
+Les 3 films a la borne trouvent bien un pic interieur, et AUCUN des 8 (nouveaux comme
+anciens) ne pique dans la zone nouvellement ouverte (-60 s a -15 s) : le maximum de chaque
+film reste entre -1,0 s et 0,0 s.
+
+**DECOUVERTE NON PREVUE, et elle change la lecture du resultat ci-dessus** : ce n'est PAS
+l'elargissement qui a resorbe le pic-a-la-borne. Verification sur pieces
+(`internal/analysis/replay/score_timeline.go:57-66`, `build_score.go:20-26`) :
+`scoreClock.frameOf` retranche DEJA `originMS` a la source, et `replayScoreClock` le cable
+sur `doc.OriginMs` — un correctif de PRODUCTION independant, deja livre (thought_log
+« [2026-08-14] les pulses d'objectif s'allumaient jusqu'a 50,8 s trop tard », qui fermait la
+« decouverte non traitee » du lot containment sur `buildObjectiveActions`). Consequence
+mesuree aujourd'hui : les colonnes AVANT et APRES de `printOriginCorrection` rendent des
+chiffres IDENTIQUES au bit pres sur les 8 films (ex. Forbidden : posAV=posAP=56,
+dansAV=dansAP=31, 55,4 %=55,4 %) — il n'y avait plus rien a corriger au moment de mesurer,
+donc le chemin `correctedActions` de `measure.go` est aujourd'hui REDONDANT avec le calcul
+de production. Le balayage elargi ne confirme donc pas « le vrai pic etait loin, on l'a
+trouve » mais « il n'y a plus de retard multi-secondes a trouver nulle part dans le signal
+d'entree » — un resultat plus fort, pour une raison differente de celle anticipee.
+
+**Taux de rattachement re-mesure** (aggrege sur les 8 films) : **316/552 = 57,2 %** a 0 s
+(pics par film, methode d'aujourd'hui), temoin plat 74/552 = **13,4 %**, rapport 4,3 —
+coherent avec le 58,6 % du 08-14 (leger ecart de dénominateur : 552 vs 536 posees, du au
+pont d'identite ameliore depuis le 08-18, cf. `measure.go` commentaire `identifyZoneActions`).
+A -5 s, methode 08-08 (decalage global unique, pas le pic par film) : **38,4 %** (212/552)
+contre le 28,6 % historique — amelioration MECANIQUE due au correctif de production en
+amont, pas a l'elargissement du balayage : sur un signal deja corrige, 0 s bat -5 s sur les
+8 films (57,2 % > 38,4 %), l'inverse d'avant correction.
+
+**Verdict honnete** : la fenetre elargie NE CHANGE PAS la donne du containment. Le taux de
+rattachement sur ce corpus de 8 (57,2 %) reconfirme, dans la marge du pont d'identite, le
+58,6 % deja etabli le 08-14 — un signal net (rapport signal/temoin 4,3) mais qui ne dit rien
+de neuf sur le gate de persistance, lequel se joue sur le corpus ELARGI (40,9 %, 64,1 % au
+mieux, contre le seuil de 80 %) et sur l'oracle de justesse absent, deux constats du 08-14
+NON RETESTES ici (hors perimetre : mission limitee aux 8 films d'origine). Le signal
+« horloge » n'a jamais ete le facteur bloquant depuis le 08-14 ; il l'etait seulement dans
+le cadrage du 08-08, que le registre n'avait pas mis a jour.
+
+**Conclusion / prochaine etape** : registre L13-14 statuees avec ces chiffres (voir diff).
+Reprise du containment, si jamais, dans l'ordre deja ecrit le 08-14 : (1) le defaut de
+repere ~1 270 m sur 11/32 films du corpus elargi, (2) completer les 16 films restants
+(interet seulement apres (1)), (3) un oracle de justesse via releve Theater date. AUCUN
+branchement de production au-dela de la constante de fenetre — mission tenue.
+
+**DECOUVERTES CONSIGNEES, NON TRAITEES (hors perimetre de cette mesure)** : (a)
+`correctedActions`/`printOriginCorrection` (`measure.go`) est aujourd'hui redondant avec le
+correctif de production (`scoreClock.originMS`) — a simplifier un jour, sans urgence (aucun
+mal a garder un calcul de confirmation qui tombe juste) ; (b) `PLAN_CLOTURE_V75.md` (item
+D3) et `PLAN_SUPERVISION_2026-08-20.md` (entree 2026-08-25, « declencheurs ») citent encore
+`clockOffsets` comme un point ouvert — a corriger par le superviseur, ce ne sont pas des
+documents que ce lot editait ; (c) `go build ./...` flake sporadiquement sous Windows sur
+des paquets CGO SANS RAPPORT (erreur de LINKER, `ld.exe: file truncated`, paquet different a
+chaque tentative, succes systematique en isolation) quand ~100 binaires lient la meme lib
+DuckDB statique en parallele — infrastructure locale, pas ce lot, pas retenu comme gate
+(le paquet touche, lui, construit propre a chaque run).
+
+**Gate** : `gofmt` propre, `go vet ./cmd/zone-attribution/...` clean, hook pre-commit local
+(`go-vet` sur le depot entier, 22,6 s) 0 issue, `go build ./cmd/zone-attribution/...` clean
+a chaque run. Pas de fichier de test dans ce paquet (deja le cas avant ce lot — binaire de
+mesure hors ligne). Aucun `-tags=integration` : rien touche a persist/sync/migration.
