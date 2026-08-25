@@ -40,10 +40,17 @@ func readID(t *testing.T, r *RecoveringReader) (int, error) {
 	return n, err
 }
 
-// captureSlog redirige le logger par défaut vers un buffer pour la durée du test
-// et retourne le buffer. Les logs du helper passent par le logger PACKAGE
-// (slog.WarnContext / slog.ErrorContext), donc capturer le défaut suffit.
-func captureSlog(t *testing.T) *bytes.Buffer {
+// captureSlogText redirige le logger par défaut vers un buffer TEXTE pour la
+// durée du test et retourne le buffer. Les logs du helper passent par le logger
+// PACKAGE (slog.WarnContext / slog.ErrorContext), donc capturer le défaut suffit.
+//
+// Jumeau assumé : `captureSlog` (match_view_scoreboard_objective_degrade_test.go,
+// buffer JSON) fait la même chose, mais ce fichier-là porte `//go:build
+// integration` — ce test-ci doit tourner dans le gate PAR DÉFAUT, il ne peut donc
+// pas s'en servir. Factoriser les deux demande de sortir le helper vers un
+// fichier de test SANS tag (il serait alors compilé dans les deux configurations) :
+// hors périmètre de ce lot, consigné en découverte.
+func captureSlogText(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
 	prev := slog.Default()
@@ -137,7 +144,7 @@ func TestRecoveringReader_CacheOnlyNeverOpensOnMiss(t *testing.T) {
 		t.Fatal("le cache devait être vide après le release du propriétaire (préalable du test)")
 	}
 
-	buf := captureSlog(t)
+	buf := captureSlogText(t)
 	_, err = readID(t, r)
 	if err == nil {
 		t.Fatal("en ReopenCacheOnly sans handle en cache, la lecture doit ÉCHOUER (pas ouvrir un RO neuf)")
@@ -214,7 +221,7 @@ func TestRecoveringReader_FatalClassIsNotReplayed(t *testing.T) {
 	}
 	defer r.Close()
 
-	buf := captureSlog(t)
+	buf := captureSlogText(t)
 	fatal := errors.New("FATAL Error: database has been invalidated because of a previous fatal error")
 	calls := 0
 	err = r.Do(t.Context(), func(*sql.DB) error {
@@ -280,7 +287,7 @@ func TestRecoveringReader_BusinessErrorAfterRecoveryIsNotAnError(t *testing.T) {
 	}
 	ownerRelease() // invalide l'instantané emprunté
 
-	buf := captureSlog(t)
+	buf := captureSlogText(t)
 	err = r.Do(t.Context(), func(db *sql.DB) error {
 		return db.QueryRowContext(t.Context(), `SELECT id FROM t WHERE id = 999`).Scan(new(int))
 	})
@@ -318,7 +325,7 @@ func TestRecoveringReader_RetryBoundedToOne(t *testing.T) {
 	}
 	ownerRelease() // le handle courant devient mort → la re-résolution ouvrira du neuf
 
-	buf := captureSlog(t)
+	buf := captureSlogText(t)
 	sentinel := errors.New("sql: database is closed")
 	calls := 0
 	err = r.Do(t.Context(), func(*sql.DB) error {
