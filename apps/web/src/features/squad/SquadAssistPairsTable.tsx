@@ -1,3 +1,8 @@
+// cross-feature-allow: helpers de tri (NUMERIC_SORT, localeTextSortingFn) importés de
+// features/explorer, comme le voisin SquadSynergyHistoryTable (baseline du ratchet) —
+// 3e consommateur hors explorer au 2026-08-25 (avec MatchEncountersTable/MatchScoreboard) :
+// la règle des 2 copies rend leur déménagement vers lib/ dû ; à faire dans un lot dédié
+// qui migre les 4 importeurs d'un coup (pas ici, fix hors périmètre du chantier notion5).
 /**
  * SquadAssistPairsTable — « qui assiste qui » dans l'escouade (page Synergies).
  *
