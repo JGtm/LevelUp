@@ -51,11 +51,24 @@ Le garde-rail a été vérifié PAR L'ÉCHEC (sonde temporaire réintroduisant l
 (`outstandingReads`) — le swap attend, elles ne sont pas exposées. Les deux autres accès de
 `media_associate.go` visent shared_social (hors périmètre) et sont des écritures.
 
-**Résultats** : gofmt 0 fichier, `go build ./...` 0, `go vet ./...` 0, `go test ./...` 0,
-`go test -tags=integration -p 1` sur sync/persist/duckdb/ops 0 (16 paquets ok),
-`golangci-lint --new-from-merge-base=origin/main` 0 issue. Les deux tests de reprise
-(unitaire dans platform/duckdb, bout-en-bout dans internal/sync) reproduisent la fermeture
-concurrente et prouvent la ré-ouverture.
+**Résultats** (séquence rejouée intégralement à froid sur `d69a0a03e`, après purge des
+process orphelins) : gofmt 0 fichier non formaté, `go build ./...` 0, `go vet ./...` 0,
+`go test ./...` 0, `go test -tags=integration -p 1` sur sync/persist/duckdb/ops 0
+(16 paquets ok), `golangci-lint --new-from-merge-base=origin/main` 0 issue. Les deux tests
+de reprise (unitaire dans platform/duckdb, bout-en-bout dans internal/sync) reproduisent la
+fermeture concurrente et prouvent la ré-ouverture ; le garde-rail a été validé par l'échec.
+
+**Flake consigné, pas corrigé** : `TestStartImport_HappyPathReturns202WithJobID`
+(`internal/api/handlers`) est sorti rouge sur 2 runs de suite complète, avec le symptôme
+`testing.go:1464: TempDir RemoveAll cleanup: ... Le répertoire n'est pas vide`, précédé de
+`jobs.Store: write error path=...jobs.json ... utilisé par un autre processus`. Aucune
+assertion du test ne casse : il lance un job ASYNCHRONE (202 + job_id) et ne l'attend pas,
+donc `t.TempDir()` court contre la goroutine qui écrit encore `jobs.json`. Protocole
+doctrine appliqué : rejoué SEUL ×3 → vert ; rouge uniquement en suite complète → flake
+concurrent connu, on consigne. Confirmé ensuite par 3 runs de suite complète verts puis par
+la séquence rejouée à froid — la charge des process orphelins de la session interrompue
+était l'aggravant. Le chemin de code touché par ce lot n'est pas atteint dans ce test
+(`recomputeCitations` sort avant l'ouverture pve : `matchIDs` vide, `citations_backfilled=false`).
 
 **Découvertes consignées (non traitées)** : `ops.IndexMedia` (media.go:152-163) emprunte
 shared_social via `LookupCachedDB` avec un fallback `sql.Open` nu — même classe d'emprunt
