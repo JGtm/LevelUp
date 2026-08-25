@@ -43,5 +43,5 @@ type PlayerPresence struct {
 // erreur, la présence est une information d'agrément.
 type PresenceSnapshot struct {
 	Players       []PlayerPresence `json:"players"`
-	FriendsInGame int              `json:"friends_in_game" doc:"Nombre d'amis en jeu : parmi les joueurs visibles du titre courant (même périmètre que players, en-tête X-LevelUp-Title), ceux dont l'utilisateur n'est pas propriétaire et qui sont actuellement en jeu sur l'un des titres suivis."`
+	FriendsInGame int              `json:"friends_in_game" doc:"Amis en jeu : joueurs visibles du titre courant (même périmètre que players), non possédés par l'utilisateur, en jeu sur l'un des titres suivis."`
 }

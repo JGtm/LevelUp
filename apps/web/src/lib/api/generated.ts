@@ -9117,7 +9117,7 @@ export interface components {
         PresenceSnapshot: {
             /**
              * Format: int64
-             * @description Nombre d'amis en jeu : parmi les joueurs visibles du titre courant (même périmètre que players, en-tête X-LevelUp-Title), ceux dont l'utilisateur n'est pas propriétaire et qui sont actuellement en jeu sur l'un des titres suivis.
+             * @description Amis en jeu : joueurs visibles du titre courant (même périmètre que players), non possédés par l'utilisateur, en jeu sur l'un des titres suivis.
              */
             friends_in_game: number;
             players: components["schemas"]["PlayerPresence"][] | null;
