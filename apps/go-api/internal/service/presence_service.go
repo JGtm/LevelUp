@@ -93,15 +93,20 @@ type TrackedPresenceSource func() []TrackedPresence
 // (BootstrapService.OwnedPlayers au composition root).
 type OwnedPlayersFunc func(ctx context.Context, sess *domain.SessionData) ([]domain.PlayerSummary, error)
 
-// DirectOwnerFunc dit si l'utilisateur de la session est DIRECTEMENT
-// propriétaire du profil joueur donné — son xuid lié — par opposition à
-// « visible via un groupe » (BootstrapService.OwnsPlayerDirectly au composition
-// root).
+// DirectOwnerFunc dit si le profil joueur donné appartient DIRECTEMENT à
+// l'utilisateur déjà résolu — son xuid lié — par opposition à « visible via un
+// groupe ». Rendu par DirectOwnerResolver, il vaut pour toute la requête.
+type DirectOwnerFunc func(playerXUID string) bool
+
+// DirectOwnerResolver résout l'utilisateur d'une session UNE SEULE FOIS et rend
+// son prédicat de propriété (BootstrapService.DirectOwnerFor au composition
+// root). La fabrique est appelée une fois par snapshot, jamais dans la boucle
+// des joueurs : la résolution passe par le user store, l'identité non.
 //
 // C'est la SEULE chose que ce service a besoin de savoir en plus de la liste
 // qu'il sert déjà : qui est visible, et pourquoi (groupe, famille, rôle admin,
 // mode démo), est décidé par OwnedPlayersFunc et n'est jamais redécidé ici.
-type DirectOwnerFunc func(sess *domain.SessionData, playerXUID string) bool
+type DirectOwnerResolver func(sess *domain.SessionData) DirectOwnerFunc
 
 // PresenceService construit le PresenceSnapshot de GET /api/v1/presence.
 type PresenceService struct {
@@ -110,7 +115,7 @@ type PresenceService struct {
 	// directOwner : nil = comptage des amis désactivé (compteur à zéro). Sans
 	// prédicat de propriété, on ne peut pas dire d'un joueur visible qu'il n'est
 	// pas le sien — et compter ses propres joueurs comme des amis serait faux.
-	directOwner DirectOwnerFunc
+	directOwner DirectOwnerResolver
 }
 
 // NewPresenceService crée le service. Toutes les dépendances sont optionnelles :
@@ -120,9 +125,9 @@ func NewPresenceService(ownedPlayers OwnedPlayersFunc, tracked TrackedPresenceSo
 	return &PresenceService{ownedPlayers: ownedPlayers, tracked: tracked}
 }
 
-// WithFriends branche le comptage des amis en jeu en fournissant le prédicat de
-// propriété directe. Sans lui, friends_in_game vaut toujours 0.
-func (s *PresenceService) WithFriends(directOwner DirectOwnerFunc) *PresenceService {
+// WithFriends branche le comptage des amis en jeu en fournissant la fabrique du
+// prédicat de propriété directe. Sans elle, friends_in_game vaut toujours 0.
+func (s *PresenceService) WithFriends(directOwner DirectOwnerResolver) *PresenceService {
 	s.directOwner = directOwner
 	return s
 }
@@ -154,6 +159,9 @@ func (s *PresenceService) GetSnapshot(ctx context.Context, sess *domain.SessionD
 	if len(byGamertag) == 0 {
 		return snap
 	}
+	// Identité résolue UNE FOIS pour toute la requête : elle ne change pas d'un
+	// joueur à l'autre, et sa résolution coûte une lecture du user store.
+	ownsPlayer := s.resolveDirectOwner(sess)
 	for _, p := range s.loadPlayers(ctx, sess) {
 		t, ok := byGamertag[p.Gamertag]
 		if !ok {
@@ -170,11 +178,22 @@ func (s *PresenceService) GetSnapshot(ctx context.Context, sess *domain.SessionD
 			TitleSlug:  t.TitleSlug,
 			TitleName:  t.TitleName,
 		})
-		if inGame && s.isFriend(sess, p) {
+		if inGame && isFriend(ownsPlayer, p) {
 			snap.FriendsInGame++
 		}
 	}
 	return snap
+}
+
+// resolveDirectOwner rend le prédicat de propriété de la session, résolu une
+// seule fois par snapshot. nil quand le comptage n'est pas câblé — et aussi
+// quand la fabrique elle-même rend nil, qu'isFriend traite de la même façon
+// (personne n'est un ami) plutôt que de paniquer dans la boucle.
+func (s *PresenceService) resolveDirectOwner(sess *domain.SessionData) DirectOwnerFunc {
+	if s.directOwner == nil {
+		return nil
+	}
+	return s.directOwner(sess)
 }
 
 // isFriend : ce joueur visible est-il « un ami » — un joueur de mon cercle dont
@@ -184,11 +203,11 @@ func (s *PresenceService) GetSnapshot(ctx context.Context, sess *domain.SessionD
 // compteur à zéro que compter ses propres joueurs. Un profil sans xuid n'est
 // jamais compté non plus — il ne peut être attribué à personne, et la propriété
 // ne se déduit pas d'un gamertag.
-func (s *PresenceService) isFriend(sess *domain.SessionData, p domain.PlayerSummary) bool {
-	if s.directOwner == nil || p.XUID == "" {
+func isFriend(ownsPlayer DirectOwnerFunc, p domain.PlayerSummary) bool {
+	if ownsPlayer == nil || p.XUID == "" {
 		return false
 	}
-	return !s.directOwner(sess, p.XUID)
+	return !ownsPlayer(p.XUID)
 }
 
 // loadPlayers rend les joueurs accessibles, ou une tranche vide si la source est

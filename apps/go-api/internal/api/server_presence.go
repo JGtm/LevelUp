@@ -32,7 +32,7 @@ func buildPresenceService(
 		return service.NewPresenceService(nil, trackedPresenceFrom(daemon))
 	}
 	return service.NewPresenceService(bootSvc.OwnedPlayers, trackedPresenceFrom(daemon)).
-		WithFriends(bootSvc.OwnsPlayerDirectly)
+		WithFriends(bootSvc.DirectOwnerFor)
 }
 
 // trackedPresenceFrom adapte l'état du watcher en source de présence. nil si le
