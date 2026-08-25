@@ -78,7 +78,7 @@ du lancement, qui compterait les étrangers au groupe.
   → 0 ; watcher éteint → 0 ; la fraîcheur (borne 3 min) s'applique au compte
   comme à la manette. Adapter/retirer les tests des chemins supprimés. Web —
   vitest existants du PlayerSwitcher verts (adaptés si un libellé bouge).
-- [ ] G6 — gates du lot :
+- [x] G6 — gates du lot :
   `cd apps/go-api ; go vet ./... ; go test ./internal/presence/... ./internal/watcher/... ./internal/service/... ./internal/api/... ./internal/platform/netguard/... ./contracttest/...`
   puis `cd apps/web ; npx tsc -b --force ; npx eslint <touchés> ; npx vitest run <PlayerSwitcher + shell>`.
   0 erreur, 0 nouveau warning. Codes retour capturés SANS pipe.
@@ -145,6 +145,21 @@ dans aucune des deux listes. Ajouté aussi `TestOwnsPlayerDirectly_...` :
 propriété ≠ visibilité (co-membre, admin, xuid vide, session nil, enforcement
 désactivé). Tests des chemins supprimés : retirés en G1/G2 (compilation).
 Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly"` EXIT=0.
+
+**G6 (2026-08-25)** — gates du lot, codes retour capturés sans pipe (sorties
+redirigées vers fichier, `echo $?` immédiat) :
+
+| Gate | Commande | Résultat |
+|---|---|---|
+| Go vet | `go vet ./...` | EXIT_VET=0, sortie vide |
+| Go tests | `go test ./internal/presence/... ./internal/watcher/... ./internal/service/... ./internal/api/... ./internal/platform/netguard/... ./contracttest/...` | EXIT_GOTEST=0 — 12 paquets `ok`, 0 FAIL, 2 sans test |
+| Types web | `npx tsc -b --force` | EXIT_TSC=0, sortie vide |
+| Lint web | `npx eslint src/components/shell/usePresence.ts src/lib/api/generated.ts` | EXIT_ESLINT=0, 0 warning |
+| Vitest | `npx vitest run src/components/shell/` | EXIT_VITEST=0 — 16 fichiers, 153 tests passés |
+| Contrat | `make openapi-check` (G3) | EXIT=0 — openapi.yaml à jour + generated.ts dérivé |
+
+Seul message non vert des sorties : l'avertissement Vite `configLoader: 'native'`
+(`__dirname` dans vite.config.ts), préexistant et hors périmètre.
 
 ## Découvertes (à consigner, ne pas traiter)
 
