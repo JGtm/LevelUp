@@ -51,8 +51,13 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   et estompé, avec une infobulle dédiée (nouvelle clé `soundVolumeMutedHint`, FR + EN). La
   RESTAURATION était déjà acquise côté hook (`toggle` coupe le maître du lecteur, il n'écrit
   jamais `volume`) — le zéro affiché est un affichage, pas une écriture ; 3 tests le tiennent.
-- [ ] A4 (pt 9) : à la fin du rejeu, rester sur l'état FINAL (curseur à T_final, scène
+- [x] A4 (pt 9) : à la fin du rejeu, rester sur l'état FINAL (curseur à T_final, scène
   finale affichée) — pas de remise à zéro (`ReplayTransport`). Relancer reste possible.
+  FAIT — l'ancre réelle n'était PAS `ReplayTransport` (qui n'a aucun état) mais la boucle rAF
+  de `ReplayCanvas.tsx` (`if (next >= doc.frameCount - 1) next = 0`). Le canvas était à 2 lignes
+  de son cliquet de taille : la LECTURE part dans `useReplayPlayback.ts` (8e extraction,
+  777 -> 742). Fin = borne à `endFrame`, dernier `draw()` + `soundTick`, puis pause ; « Lecture »
+  sur un rejeu terminé rembobine. 7 tests, mordant prouvé par double mutation.
 - [ ] A5 (pt 3) : DIAGNOSTIC des « traits au bout du cône de visée » (rendu canvas —
   `ReplayCanvas` et calques). Le CR DOIT répondre « c'est quoi » avec fichier:ligne.
   Décision par défaut : artefact de rendu → corriger ; donnée réelle légitime (ex. trace
