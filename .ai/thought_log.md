@@ -1,3 +1,25 @@
+## [2026-08-25] Hotfix CI branche : 2 appelants oublies du retrait LegacyAuthInputs (ADR 0023 Phase 5) — Complete
+
+**Contexte** : CI de feat/v75 ROUGE depuis c42624dd5 (antearieure a la fusion csrf-ouvrier,
+verifiee par run) : golangci-lint (typecheck) et Coverage+Baseline echouent sur
+`cmd/diag_matchstats_dump/main.go:71` — appel de `RefreshHaloTokensViaStoreFirst` a
+l'ancienne signature + `auth_platform.LegacyAuthInputs` supprime par la fusion 422ce4613
+(refactor/adr0023-phase5, retrait des fallbacks auth legacy).
+**Decision technique principale** : correction mecanique des DEUX appelants perimes (grep
+exhaustif : il n'y en a que deux) — `cmd/diag_matchstats_dump/main.go:71` (l'echec CI) et
+`cmd/backfill-team-scores/main.go:334` (silencieux en CI mais CRITIQUE : c'est la CLI du
+gate pre-tag « backfill des 80 scores »). Suppression du dernier argument, signature a 5
+parametres conservee telle que Phase 5 l'a definie. Aucun autre changement.
+**Resultats observes** : gofmt -l vide (exit 0) ; go build + go vet des 2 paquets exit 0 ;
+`go build ./...` COMPLET exit 0 (prouve qu'aucun autre appelant ne reste). A noter : le
+build Windows local passait AVANT le fix ?? Non — il echouait aussi, mais aucun gate
+complet n'avait ete rejoue sur l'arbre fusionne apres 422ce4613 ; la CI Linux a servi de
+premier filet, c'est son role (leçon VF-16 reconfirmee).
+**Conclusion / prochaine etape** : fusion --no-ff dans feat/v75, push, CI a re-verifier au
+niveau job (c'est elle qui statue). Question a rendre a la session du lot Phase 5 : comment
+son gate « go build ./... » n'a pas vu ces deux appelants (build scoped ? arbre non
+fusionne ?) — a consigner de son cote.
+
 ## [2026-08-25] Encadre Notion « REPLAY 2D » (11 points) — pilotage 4 lots — En cours
 
 **Contexte** : demande utilisateur : planifier puis piloter l'encadre Notion « REPLAY 2D »
@@ -14,11 +36,126 @@ objectifs, D0 = plan par mode puis STOP validation). Un seul lot construit du Go
 parallele (cache de build partage). Le rendu objectifs (D1+) attend la fusion de A
 (memes calques web).
 
-**Resultats observes** : (en cours — agents lances, CR attendus).
+**Resultats observes** (25/08 soir) : B0 VALIDE sur pieces (ancrage writeArtifactBytes
+prouve, publication apres ecriture reelle seulement ; go B1 tenu jusqu'a la fin des builds
+Go du lot C). D0 VALIDE sur pieces avec 2 corrections de fait confirmees (schema 19 PRIS
+par le lot « lecture vide » d'une session voisine -> cible 20 ; jauge tag 3 = modes a
+zones SIMULTANEES (Bastion), absente en KOTH — l'inverse de l'hypothese du plan parent) ;
+crane Oddball ROUVERT (recette ti=42 + oracle score de portage schema 12) ; VIP [!]
+definitif. GO utilisateur : KOTH+TC+Oddball a finaliser, ordre D6(D-R)->D2->D3->D4.
+LOT A FUSIONNE (A1-A6, 22 fichiers +618/-851) : 2 ancres du plan etaient fausses (A2 =
+ReplayKillFeed pas ReplayCountersBadge ; A4 = boucle rAF ReplayCanvas pas Transport,
+extraction useReplayPlayback, cliquet 777->742) ; A5 = traits du cone = SIGNE de
+l'elevation (drawPitchTick, donnee reelle gardee + infobulle) ; A6 derivable
+(ZoneSpan.Owner null), token divergent-neutral. Gates rejoues au principal : tsc -b 0
+(cache purge), vitest 1083/1083. Nouvelle demande utilisateur A7 (fiche a la mort :
+bordure gauche, compteur centre, jauge retiree) lancee en 2e passe.
 
 **Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
 fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre
 Notion a la cloture (barrer + « TRAITE jj/mm — fusion <sha> »).
+
+## [2026-08-25] Le protocole ouvrier traverse le CSRF : exemption ciblee du prefixe /api/v1/internal — Complete
+
+**Contexte** : lot `csrf-ouvrier` (branche `wt/csrf-ouvrier`, base `757119c12`). Defaut
+DECOUVERT EN CONDITIONS REELLES, pas par un test : dry run superviseur du 2026-08-25 depuis
+le VPS de calcul, `replay-worker --once` contre `https://lvelup.info/api/v1/internal` rend
+`HTTP 403 {"code":"csrf_rejected","message":"origin non autorisee"}` sur les 4 POST du
+protocole — AVANT tout controle de jeton. Le protocole ouvrier etait mort a l'arrivee en
+production alors que toutes les gates etaient vertes.
+
+**Cause, verifiee sur pieces** : `internal/api/middleware/csrf.go` rejette toute requete
+mutatrice sans `Origin`/`Referer` autorise (`origin == ""` -> 403) ; il est monte
+TRANSVERSALEMENT sur le routeur racine (`server.go`, `applyTransverseMiddlewares`) ; les
+routes `/internal` sont montees SOUS cette pile (`server_apiv1.go`). Un ouvrier est un
+client `net/http` : il n'envoie pas d'`Origin`, par nature et non par oubli.
+
+**POURQUOI LES TESTS N'ONT RIEN VU — la lecon du lot** : la preuve e2e du transport
+(`wire/build_queue_transport_e2e_cgo_test.go`) est complete par ailleurs (vrai serveur HTTP,
+vraie DuckDB, artefact rendu a l'octet pres) mais monte `MountBuildWorkerRoutes` sur un
+`chi.NewRouter()` NU, HORS pile transverse. Ce qui traverse la pile doit etre prouve SUR la
+pile.
+
+**Decision technique principale** : exemption CIBLEE du SEUL controle CSRF sur le prefixe du
+protocole ouvrier, par argument variadique `CSRF(allowedOrigins, exemptPrefixes...)`. Trois
+choix qui comptent :
+
+1. **Variadique plutot que wrapper** : les 5 cas existants de `csrf_test.go` compilent et
+   passent INCHANGES, et le comportement par defaut (aucun prefixe) est strictement le
+   comportement d'avant. L'exemption est opt-in au point de cablage.
+2. **Prefixe ecrit UNE fois** : `apiV1InternalBasePath = apiV1BasePath + apiV1InternalSegment`
+   (`server_apiv1.go`), consomme par les 3 endroits qui doivent parler du meme chemin (montage
+   chi, prefixe OpenAPI, exemption CSRF). Un litteral duplique qui derive sur l'un des trois
+   re-produirait exactement ce defaut, en silence.
+3. **PAS de montage « bare »** : sortir `/internal` de la pile transverse aurait aussi retire
+   le rate-limit, le RequestID et les logs d'audit. On ne leve que le controle qui n'a pas de
+   sens pour un client sans cookie.
+
+**Justification de securite (la premisse est VRAIE, verifiee)** : le CSRF-par-origine protege
+les flux dont l'authentification est AMBIANTE (le navigateur joint le cookie de session tout
+seul). Grep `cookie|session` sur les 3 fichiers du protocole ouvrier
+(`handlers/build_worker.go`, `handlers/build_worker_artifact.go`, `wire/server_build_worker.go`)
+ne rend QU'UNE ligne de COMMENTAIRE (`server_build_worker.go:4`), aucun code : ces routes ne
+lisent aucun cookie et aucune session. Leur unique auth est le Bearer de
+`RequireWorkerToken` (`build_worker.go:254-271`, comparaison a temps constant), qu'une page
+tierce ne peut pas forger cross-site sans preflight CORS. Exempter ne retire donc aucune
+protection reelle.
+
+**Durcissements ajoutes** (anticipation de la revue adversariale) : match sur FRONTIERE DE
+SEGMENT (`/api/v1/internalise` n'herite pas de l'exemption) ; `path.Clean` AVANT comparaison
+(`/api/v1/internal/../session/context` repasse sous controle — sinon un chemin portant le
+prefixe exempte designerait une route protegee) ; prefixe degenere (vide, `/`, relatif)
+IGNORE et journalise plutot qu'applique en silence.
+
+**Resultats — gates, commandes nues, exit codes reels** :
+
+- `gofmt -l <6 fichiers touches>` : sortie vide, exit 0
+- `go build ./...` : exit 0
+- `go vet ./...` : exit 0
+- `go test ./internal/api/...` : exit 0 (api 28,1 s / handlers 11,6 s / humacore / middleware / wire)
+- `go test ./internal/api/ -run TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist -count=1` : exit 0
+- `go test ./internal/archlint/ -count=1` (porte `no_slug_comparison_test`) : exit 0
+- `golangci-lint run --timeout 10m --new-from-rev=757119c12 ./internal/api/...` : `0 issues`, exit 0
+
+Le lot ne touche ni `persist/`, ni `sync/`, ni `migration/` (`git status` : 6 fichiers, tous
+sous `internal/api/` + 2 docs) : `-tags=integration` non requis.
+
+**Couverture de non-regression posee** : `internal/api/csrf_transverse_stack_cgo_test.go`,
+sur le routeur assemble par `api.NewRouter` (via `openapigen.BuildDemoRouter`), 5 tests —
+(a) POST `/api/v1/internal/build-queue/claim` NU (ni Origin, ni Referer, ni cookie) atteint
+le garde de jeton : 503 `build_queue_disabled` ; (b) avec un jeton serveur configure et un
+jeton client faux : 401 `invalid_worker_token` (l'exemption ne court-circuite PAS l'auth) ;
+(c) la reponse porte toujours `X-Request-ID` et `X-Content-Type-Options: nosniff` (la pile
+transverse s'applique encore — un montage bare les aurait perdus) ; (d) POST mutateur hors
+prefixe sans Origin : 403 `csrf_rejected` inchange ; (e) traversee `..` : 403 `csrf_rejected`.
+Le chemin nominal « jeton valide -> job -> artefact -> compte rendu » reste couvert par la
+preuve e2e du package `wire` (qui, elle, a une vraie DuckDB) : le decoupage est ecrit dans
+l'en-tete du fichier.
+
+**Note d'implementation** : `openapigen.Options` gagne un champ `BuildWorkerToken` (vide par
+defaut) pour que le test puisse assembler un routeur « protocole ouvert ». Le document
+OpenAPI et les tests de contrat sont inchanges — les routes sont montees quel que soit le
+jeton, seule la reponse du garde change (golden `TestOpenAPIYAMLIsUpToDate` vert).
+
+**Conclusion / prochaine etape** : la correction est livree sur la branche, NON POUSSEE.
+Elle ne prend effet qu'au deploiement du binaire en production. Le runbook
+(`docs/RUNBOOK_REPLAY_WORKER.md` sections 2 et 3) porte desormais le tableau des codes
+attendus : `403 csrf_rejected` = build ANTERIEUR au correctif (etat mesure de la prod au
+2026-08-25) ; `503 build_queue_disabled` = correct avant l'etape 1 ; `401
+invalid_worker_token` = correct apres ; `404` HTML nginx = routage nginx a corriger. Le
+premier deploiement doit rejouer le curl de pre-vol pour confirmer sur le terrain.
+
+**Revue adversariale (2026-08-25, avant merge)** : 2 relecteurs paralleles a contexte
+frais (lentille controle d'acces / lentille couverture de tests), contrat de lot fourni.
+Verdict : **0 constat recevable**, 24 conditions verifiees qui tiennent (12 + 12), dont une
+MUTATION REELLE par le relecteur tests (exemption retiree de `server.go:616` -> le test de
+pile rougit avec exactement le 403 mesure en prod -> restauree, diff vide) : le test
+discrimine bien le cablage de production. Constat hors perimetre consigne en tache
+separee : doc-rot « trois routes » (le protocole en compte quatre) dans
+`wire/server_build_worker.go:5-9` et `handlers/build_worker.go:248`, fichiers hors diff.
+Boucle close en ronde 1 (rien a corriger, pas de ronde 2).
+
+---
 
 ## [2026-08-25] Ouvrier de rejeu distant : la mecanique de deploiement vers csstat — Complete
 

@@ -19,7 +19,7 @@
  * joueurs sur le film témoin), et un joueur changeait donc de teinte à chaque réapparition.
  * Les tokens de série ne servent plus qu'aux ZONES NOMMÉES, qui sont des lieux, pas des gens.
  */
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -58,6 +58,7 @@ import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
 import { useReplayInks } from './useReplayInks'
+import { useReplayPlayback } from './useReplayPlayback'
 import { useReplayStaticLayers } from './useReplayStaticLayers'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
@@ -153,12 +154,10 @@ export function ReplayCanvas({
 }: ReplayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const sliderRef = useRef<HTMLInputElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
   const publishedAtRef = useRef(0)
 
-  const [playing, setPlaying] = useState(true)
   const [width, setWidth] = useState(0)
   // TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : fermé par défaut, ouvert par un
   // bouton unique dans la barre. Calques, effets et vitesse persistés comme le son — même
@@ -194,7 +193,7 @@ export function ReplayCanvas({
   // double contour du joueur de la page. Elles partageaient huit fois le même corps ici — voir
   // l'en-tête du hook.
   const {
-    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
+    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
@@ -258,7 +257,7 @@ export function ReplayCanvas({
     [doc, mapObjectives],
   )
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge, doc)
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
@@ -615,43 +614,11 @@ export function ReplayCanvas({
     draw()
   }, [draw])
 
-  // Boucle de lecture (requestAnimationFrame) uniquement quand `playing`.
-  //
-  // LE SON BAT AVEC ELLE, et nulle part ailleurs : hors lecture (pause, onglet en
-  // arrière-plan, redessin au changement de thème) il n'y a pas de battement, donc pas un
-  // son. C'est ce qui rend le silence d'un lecteur à l'arrêt structurel, pas conditionnel.
-  const soundTick = sound.tick
-  useEffect(() => {
-    if (!playing || renderWidth === 0) return
-    const fps = baseFps * multiplier
-    let raf = 0
-    let last = 0
-    const step = (ts: number) => {
-      if (last === 0) last = ts
-      const dtSec = (ts - last) / 1000
-      last = ts
-      let next = frameRef.current + dtSec * fps
-      if (next >= doc.frameCount - 1) next = 0
-      frameRef.current = next
-      if (sliderRef.current) sliderRef.current.value = String(Math.round(next))
-      soundTick(frameToMs(next, doc))
-      draw()
-      raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [playing, baseFps, multiplier, doc, renderWidth, draw, soundTick])
-
-  const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
-    frameRef.current = Number(e.currentTarget.value)
-    if (!playing) draw()
-  }
-
-  const restart = () => {
-    frameRef.current = 0
-    if (sliderRef.current) sliderRef.current.value = '0'
-    setPlaying(true)
-  }
+  // LA LECTURE (état lu/pause, boucle rAF, curseur de la frise, ARRÊT SUR L'ÉTAT FINAL) vit
+  // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
+  const { playing, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
+    doc, baseFps, speed: multiplier, renderWidth, frameRef, draw, soundTick: sound.tick,
+  })
 
   return (
     // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour
@@ -700,11 +667,11 @@ export function ReplayCanvas({
                 (demandes du 2026-08-24) — extraite dans ReplayTransport. */}
             <ReplayTransport
               playing={playing}
-              onTogglePlay={() => setPlaying((p) => !p)}
+              onTogglePlay={togglePlay}
               onRestart={restart}
               clockRef={clockRef}
               sliderRef={sliderRef}
-              maxFrame={Math.max(doc.frameCount - 1, 0)}
+              maxFrame={endFrame}
               onScrub={onScrub}
               speed={multiplier}
               onSetSpeed={setMultiplier}

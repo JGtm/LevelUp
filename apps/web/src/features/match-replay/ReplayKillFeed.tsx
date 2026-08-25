@@ -197,14 +197,15 @@ export function ReplayKillFeed({
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border border-border bg-card px-3 py-2">
-      <div className="flex shrink-0 items-baseline justify-between">
+      {/* LE TITRE SEUL (demande utilisateur du 2026-08-25 : retirer le compteur total
+          d'éliminations en haut à droite). Ce que le compteur disait — « le fil est court
+          parce qu'on est en début de match, pas parce que le décodage a échoué » — reste dit,
+          et mieux : par la ligne « Rien à cet instant » quand le fil est vide, et par la
+          FRISE de lecture, qui montre où on en est du match. Un rapport « affichées / total »
+          n'ajoutait qu'un nombre à lire. */}
+      <div className="flex shrink-0 items-baseline">
         <span className="text-3xs uppercase tracking-wider text-muted-foreground">
           {t.killFeedTitle}
-        </span>
-        {/* LE TOTAL EST DIT : un fil court en début de match ne doit pas se lire comme
-            une panne de décodage. */}
-        <span className="font-mono text-3xs tabular-nums text-muted-foreground">
-          {`${count} / ${entries.length}`}
         </span>
       </div>
       <ul

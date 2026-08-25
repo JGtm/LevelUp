@@ -331,7 +331,7 @@ func newAPIClient(ctx context.Context, cfg *config.AppConfig, pr *titlePkg.PathR
 	}
 	store := auth_platform.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(
-		ctx, store, auth_platform.NewSISUProvider(), xuid, gamertag, auth_platform.LegacyAuthInputs{})
+		ctx, store, auth_platform.NewSISUProvider(), xuid, gamertag)
 	if err != nil || exch == nil || exch.Tokens == nil {
 		return nil, fmt.Errorf("auth %s (xuid %s) : %w — diagnostiquer (RT tourné perdu, mauvais xuid), NE PAS re-capturer", gamertag, xuid, err)
 	}
