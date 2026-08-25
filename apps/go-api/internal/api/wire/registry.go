@@ -107,6 +107,14 @@ type ServiceRegistry struct {
 	startedAt            time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
 	metaHandles          []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
 	snapReaders          sync.Map                             // titleSlug → *sync.SnapshotPreferredSharedReader (pilote lecture snapshot SCOPED MatchView) — singleton par titre, cache de queriers :memory: partagé entre requêtes, fermé au shutdown
+
+	// Seams de test de la mise en file de rejeu 2D (EnqueueReplayBuild) — nil = chemin
+	// RÉEL de production, aucun code de prod ne les renseigne. Même parti pris que
+	// sync.engine.customClient : une injection optionnelle rend la frontière Halo et la
+	// lecture des faits exerçables sans réseau ni DuckDB (cf. registry_build_queue_test.go,
+	// durcissement ouvrier volet A).
+	replayFilmResolver filmChunkResolver                                                                               // nil → *sync.HaloAPIClient construit depuis les tokens (resolveFilmChunkURLs)
+	replayJobFactsFn   func(ctx context.Context, titleSlug, matchID string) (string, []string, port.MatchFacts, error) // nil → lecture DuckDB (readReplayJobInputs)
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
