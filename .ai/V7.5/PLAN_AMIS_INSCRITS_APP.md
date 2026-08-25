@@ -68,7 +68,7 @@ du lancement, qui compterait les étrangers au groupe.
   sémantique change → mettre à jour le godoc du DTO (`domain/presence.go`) et le
   commentaire OpenAPI ; régénérer `openapi.yaml` + `make generate-types` ; gate
   openapi vert. Pas de renommage de champ (le front est déjà branché dessus).
-- [ ] G4 — web : rien à changer fonctionnellement (le hook et la pastille lisent
+- [x] G4 — web : rien à changer fonctionnellement (le hook et la pastille lisent
   `friends_in_game`). Vérifier les libellés : « N amis en jeu » / « N friends in
   game » restent justes ; ajuster l'infobulle SEULEMENT si elle nomme la liste
   des Réglages (vérifier sur pièces).
@@ -123,6 +123,14 @@ schéma n'avait aucune description, il en a une maintenant (diff openapi.yaml : 
 ligne ajoutée, aucune autre). `make openapi-gen` EXIT=0, `make generate-types`
 EXIT=0 (4 lignes dans generated.ts), `make openapi-check` EXIT=0 (contrat à jour
 + generated.ts dérivé).
+
+**G4 (2026-08-25)** — vérifié sur pièces : le libellé `common.shell.friends_in_game`
+(« # ami/amis en jeu » / « # friend(s) in game ») et l'infobulle du badge (même
+chaîne, portée par `title` et `aria-label`) ne nomment PAS la liste des Réglages
+— rien à changer, aucun libellé touché, aucun test vitest à adapter. Un seul
+écart trouvé : le godoc de `usePresence.ts` disait « le nombre d'amis (liste des
+Réglages) » et décrivait un TTL Xbox de 45 s ; corrigé (commentaire uniquement,
+zéro changement fonctionnel).
 
 ## Découvertes (à consigner, ne pas traiter)
 

@@ -2,11 +2,13 @@
  * usePresence — « qui est en jeu en ce moment ».
  *
  * Alimente le sélecteur de joueur de la NavL1 : une manette à côté des joueurs
- * en partie, et le nombre d'amis (liste des Réglages) actuellement en jeu.
+ * en partie, et le nombre d'AMIS en jeu — les joueurs inscrits que l'utilisateur
+ * voit dans son cercle sans les posséder (rien à voir avec la liste d'amis des
+ * Réglages, qui ne sert plus à la présence depuis le 2026-08-25).
  *
  * Rafraîchi toutes les 30 s, y compris onglet en arrière-plan : la valeur perd
- * tout son sens si elle date. Le serveur, lui, ne réinterroge Xbox qu'une fois
- * par TTL (45 s) — le poll ne coûte donc pas un appel Xbox par tick.
+ * tout son sens si elle date. Le serveur répond depuis l'état du watcher qu'il
+ * tient déjà en mémoire — un tick ne coûte aucun appel sortant.
  *
  * Jamais bloquant : en cas d'échec (endpoint absent, watcher éteint), le hook
  * rend un instantané vide et l'UI n'affiche simplement aucune manette.
