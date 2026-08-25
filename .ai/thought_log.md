@@ -1,3 +1,46 @@
+## [2026-08-25] Supervision — 3 soaks monitoring Notion soldes + 4 lots prod prets a merger — Complete
+
+**Contexte** : execution des 3 items dates du Backlog Notion (soaks monitoring), pilotage
+par executeurs Opus/Sonnet en worktrees dedies, revues adversariales a 2 relecteurs + rondes 2.
+
+**Verdicts des soaks (mesures prod du 2026-08-25, lecture seule)** :
+- **Soak D2 (legacy_source_used)** : spam eteint le 25/07 (store-first), 3 occurrences isolees
+  ensuite (31/07, 07/08, 11/08 — duckdb_oauth Madina/XxDaemon), **0 depuis le 11/08 (14 j)** ;
+  store watcher_tokens sain (rotations du jour, 0 reauth/AADSTS depuis le 01/08). Phase 5
+  ADR 0023 ARMEE ET EXECUTEE (lot D2, branche `refactor/adr0023-phase5`, 9 commits).
+- **Soak 30 j B7.4** : cascade LUSR eteinte ; ERROR aout ~6/j `/health` 503 (benin documente)
+  + ~2,7/j IndexMedia (famille routee au lot 3) + transitoires halo_api. Endpoint
+  `/admin/monitoring/errors` : 0 hit dans tous les logs conserves (depuis le 13/06) →
+  SUPPRIME (branche `chore/remove-admin-monitoring-errors`).
+- **Sweep player-db-recovery (T0=16/07)** : famille `database is closed (op=OpenReadWrite)`
+  player DB a **0 strict depuis le 01/08 sur tous les repos** (prestige 16/07, handlers/service
+  19/07, scheduler 21/07 en dernieres occurrences). Aucun straggler.
+
+**2 lots derives (decision user du jour)** : `fix/shared-read-recovery` (RecoveringReader +
+ReopenPolicy cache-only — cause racine pve = handle EMPRUNTE au cache ferme par le release du
+premier post-sync ; P0 revue « le lecteur pouvait faire perdre le B-swap » corrige) et
+`fix/citations-terminal-state` (etat terminal des matchs annules : condition = verdict
+`match_registry.events_empty` du pipeline events, apres refutation en revue du seuil d'age 7 j
+qui contredisait la fenetre film 30 j). Le match `5da6fd30` (annule serveur, ~10 000 lignes de
+log sur 4 pipelines depuis juin, marque definitive:true le 02/07) sortira du pool au premier
+cycle post-deploy.
+
+**Methode** : chaque lot = gates complets EXIT=0 (unit + integration -p 1 + lint + front si
+touche) + revue adversariale 2 relecteurs frais + ronde 2 sur les corrections + mutations
+reelles prouvees. Les revues ont attrape : 1 regression CLI `--all` + rotation RT non persistee
+(D2), le P0 B-swap et l'ERROR faux positif (lot 3), le conflit de fenetres 7 j/30 j (lot 4).
+4 branches poussees, CI en cours. MERGE = deploy prod : GO user requis.
+
+**Decouvertes consignees aux thought_log des branches** (a traiter en lots dedies) :
+seed_demo copie oauth_refresh_token vers la demo (hygiene secrets, avec le drop des colonnes
+sync_meta) ; `RunBackfillCompositeOnlyCitations` ouvre en RO direct un chemin provider ;
+fallback `sql.Open` nu media.go/healthcheck.go ; trou de ratchet `ORDER BY start_time` non
+qualifie ; type mort front SetupAuthInfo ; token orphelin `watcher_tokens/2533274796795729.json`
+(xuid hors db_profiles). Registre v7.5 : +2 lignes (voie provider media ; retrait migration
+boot cible 2026-10-01).
+
+---
+
 ## [2026-08-25] Fusion `wt/inventaire-fiches` dans `feat/v75` — l'etat vide greffe DANS la grille a cellules fixes — Complete
 
 **Contexte** : deux intentions ecrites en parallele sur le meme fichier. Cote `feat/v75`
