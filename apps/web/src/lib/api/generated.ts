@@ -3506,6 +3506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Présence en jeu des joueurs suivis et des amis */
+        get: operations["getPresence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profiles/{player_slug}/titles/{slug}/data": {
         parameters: {
             query?: never;
@@ -8893,6 +8910,13 @@ export interface components {
             sync_status?: string;
             xuid: string;
         };
+        PlayerPresence: {
+            gamertag: string;
+            in_game: boolean;
+            player_slug: string;
+            title_name?: string;
+            title_slug?: string;
+        };
         PlayerPresenceStatus: {
             cooldown_left?: string;
             gamertag: string;
@@ -8904,6 +8928,8 @@ export interface components {
             state_duration: string;
             state_since: string;
             subscribe_error?: string;
+            title_name?: string;
+            title_slug?: string;
             xuid: string;
         };
         PlayerProfile: {
@@ -9069,6 +9095,11 @@ export interface components {
             category: string;
             delivery: string;
             enabled: boolean;
+        };
+        PresenceSnapshot: {
+            /** Format: int64 */
+            friends_in_game: number;
+            players: components["schemas"]["PlayerPresence"][] | null;
         };
         PrestigeTelemetryDiag: {
             by_source: components["schemas"]["PrestigeTelemetrySourceStats"][] | null;
@@ -18527,6 +18558,35 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceSnapshot"];
                 };
             };
             /** @description Error */

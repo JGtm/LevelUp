@@ -256,6 +256,10 @@ export const handlers = [
   // Players list
   http.get(p('/players'), () => HttpResponse.json({ items: [playerFixture], default_player_slug: 'test-player' })),
 
+  // Présence en jeu (sélecteur de joueur du shell) — défaut « personne en jeu » :
+  // les tests qui veulent une manette ou un compteur surchargent ce handler.
+  http.get(p('/presence'), () => HttpResponse.json({ players: [], friends_in_game: 0 })),
+
   // Setup
   // GET /setup/status supprimé (sprint 29) — artefact mort
   http.post(p('/setup/players'), () => HttpResponse.json({ player: playerFixture, db_created: true, warnings: [] })),

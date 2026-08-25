@@ -193,6 +193,19 @@ en = "Change title"
 fr = "Sélectionner un joueur"
 en = "Select a player"
 
+# Présence en jeu (sélecteur de joueur, point Notion 4).
+[common.shell.player_in_game]
+fr = "En jeu"
+en = "In game"
+
+[common.shell.player_in_game_on]
+fr = "En jeu sur {title}"
+en = "In game on {title}"
+
+[common.shell.friends_in_game]
+fr = "{n, plural, one {# ami en jeu} other {# amis en jeu}}"
+en = "{n, plural, one {# friend in game} other {# friends in game}}"
+
 # ─── Filter pills (FiltresPill, etc.) ────────────────────────────────────
 
 [common.filters.incompatible_aria]
