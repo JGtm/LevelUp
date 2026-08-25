@@ -72,7 +72,7 @@ type batchPresenceRequest struct {
 // quelles (*HTTPError) pour que l'appelant discrimine 401 / 429 / 5xx comme sur
 // le chemin unitaire.
 //
-// ⚠ Un ami dont la présence est MASQUÉE (privacy Xbox) n'apparaît pas dans la
+// ATTENTION : un ami dont la présence est MASQUÉE (privacy Xbox) n'apparaît pas dans la
 // réponse, ou y apparaît sans titre : il n'est simplement pas compté. Ce n'est
 // pas une erreur — cf. PresenceCounter côté service.
 func (c *PresenceClient) GetPresenceBatch(ctx context.Context, xuids []string) ([]PresenceEvent, error) {
