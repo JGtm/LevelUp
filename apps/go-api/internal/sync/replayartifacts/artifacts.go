@@ -216,6 +216,24 @@ func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
 	}
 }
 
+// etatArtefact dit ce que vaut l'artefact déjà sur disque pour ce match : est-il à la version
+// COURANTE, et porte-t-il ce que les faits permettent d'y mettre.
+//
+// UNE SEULE ÉCRITURE DE LA RÈGLE POUR LES DEUX CHEMINS post-sync (mise en file et construction
+// locale). En deux exemplaires elle aurait divergé au premier ajustement, et un chemin serait
+// resté à figer des artefacts appauvris pendant que l'autre les répare.
+//
+// `complet` est une PRÉSOMPTION, pas une preuve : sans lignes de match, il n'y a rien de mieux
+// à espérer d'une reconstruction, donc l'artefact est réputé complet ; avec des lignes, l'absence
+// de compteurs de joueur le fait présumer appauvri (cf. l'en-tête d'ArtifactHasPlayerCounters
+// pour les trois vacuités légitimes que cette présomption peut confondre).
+func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
+	if !replaybuild.ArtifactUpToDate(path) {
+		return false, false
+	}
+	return true, len(facts.Players) == 0 || replaybuild.ArtifactHasPlayerCounters(path)
+}
+
 // Run — étape post-sync 1.58 : selon le lieu de construction réglé, ou bien pont
 // disque + construction locale des artefacts, ou bien MISE EN FILE des matchs
 // insérés (l'ouvrier fera les deux chez lui), ou bien rien.
@@ -280,30 +298,64 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		return
 	}
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
-	queued, skipped := 0, 0
+	queued, skipped, appauvris, refuses := 0, 0, 0, 0
 	for _, w := range work {
 		if ctx.Err() != nil {
 			break
 		}
+		pourAppauvrissement := false
 		// Idempotence : un artefact déjà à jour ne se reconstruit pas (même règle
 		// que le chemin local ; la mise en file absorbe de son côté les doublons).
-		if replaybuild.ArtifactUpToDate(paths.ReplayArtifactPath(d.TitleSlug, w.matchID)) {
-			skipped++
-			continue
+		//
+		// « À JOUR » NE SE RÉSUME PAS À LA VERSION DE SCHÉMA : un artefact construit sans les
+		// faits porte le bon numéro tout en étant APPAUVRI. Le sauter sur le seul critère de
+		// version le figerait à demeure — c'est ainsi qu'un ouvrier sans faits empoisonnerait
+		// le cache. La règle, et le pourquoi de son critère, vivent dans `etatArtefact`.
+		artefact := paths.ReplayArtifactPath(d.TitleSlug, w.matchID)
+		aJour, complet := etatArtefact(artefact, w.facts)
+		if aJour {
+			if complet {
+				skipped++
+				continue
+			}
+			// Jamais muet : un artefact re-enfilé alors qu'il paraît à jour doit s'expliquer.
+			//
+			// PRÉSOMPTION, PAS PREUVE : l'artefact peut être vide de compteurs pour une raison
+			// légitime (film sans enregistrement d'entité, appariement ambigu, aucun compteur
+			// dans la fenêtre — cf. l'en-tête d'ArtifactHasPlayerCounters). La re-cuisson rendra
+			// alors le même document. Le résidu est BORNÉ des deux côtés : en fréquence, parce
+			// que la sélection ne voit que les matchs INSÉRÉS du cycle (un match ne repasse pas
+			// ici à chaque sync) ; en dégâts, parce que `StoreArtifact` refuse toute régression.
+			// Le pire cas est donc UN cycle d'ouvrier gâché, jamais un artefact rétrogradé.
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, remis en file",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
+			pourAppauvrissement = true
 		}
 		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID); err != nil {
 			// Cas nominal du refus : film absent ou expiré côté serveur (~29 % du
 			// corpus). Journalisé en debug, jamais avalé.
 			slog.DebugContext(ctx, "post-sync: rejeu 2D non mis en file",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "err", err)
+			refuses++
 			continue
 		}
 		queued++
+		// Le compteur ne s'incrémente qu'APRÈS la mise en file effective : un film expiré
+		// (~29 % du corpus) est refusé ici même, et le compter comme « re-enfilé » ferait
+		// sur-déclarer la métrique de tout ce que la file n'a jamais reçu.
+		if pourAppauvrissement {
+			appauvris++
+		}
 	}
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_jobs_enqueued_total", int64(queued))
-	if queued > 0 || skipped > 0 {
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_artifacts_factless_requeued_total", int64(appauvris))
+	// Le résumé sort dès qu'il y a eu du travail à examiner. Le conditionner à
+	// `queued > 0 || skipped > 0` rendait MUET le cas où tout a été refusé (film expiré sur
+	// tout le lot) : un cycle entier sans la moindre trace au niveau INFO.
+	if len(work) > 0 {
 		slog.InfoContext(ctx, "post-sync: rejeu 2D mis en file (construction déléguée à un ouvrier)",
-			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped, "selected", len(work))
+			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped,
+			"appauvris_re_enfiles", appauvris, "refuses", refuses, "selected", len(work))
 	}
 }
 
@@ -322,8 +374,17 @@ func buildAll(ctx context.Context, d Deps, builder *replaybuild.Builder, work []
 		if saved {
 			filmsSaved++
 		}
-		if replaybuild.ArtifactUpToDate(paths.ReplayArtifactPath(d.TitleSlug, w.matchID)) {
+		// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
+		// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
+		// le sauter ici le figerait, sur le chemin même qui a les faits sous la main pour le
+		// réparer (ils sont passés à BuildMatch quinze lignes plus bas).
+		aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
+		if aJour && complet {
 			continue
+		}
+		if aJour {
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, reconstruit",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
 		}
 		short := titlePkg.FilmShortMatchID(w.matchID)
 		out, berr := builder.BuildMatch(w.matchID, w.mapNames, filmcache.ChunkDir(d.CacheRoot, short), w.facts)

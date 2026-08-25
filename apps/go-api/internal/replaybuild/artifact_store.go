@@ -14,6 +14,16 @@
 //  3. le match est BIEN celui du job (un artefact rangé sous le nom d'un autre
 //     match serait servi comme le rejeu de ce match, sans que rien ne le signale).
 //
+// ET UN QUATRIÈME CAS, QUI N'EST NI UN REFUS NI UNE ÉCRITURE : l'artefact est ACCEPTÉ mais
+// RIEN N'EST ÉCRIT, parce qu'il rétrograderait celui déjà en place (compteurs de joueur
+// présents sur le disque, absents dans le candidat, même schéma). L'appelant reçoit un accusé
+// décrivant CE QUI RESTE RANGÉ, un WARN est journalisé et un compteur monte.
+//
+// Ce n'est pas une erreur de protocole : l'expéditeur a bien travaillé, avec ce qu'on lui
+// avait donné. Le lui rendre en 400 lui ferait perdre son bail et re-décoder deux fois de plus
+// pour le même résultat. Le garde ne vit PAS dans ce fichier-ci mais au point d'écriture
+// (`writeArtifactBytes`), que ce dépôt partage avec les trois autres écrivains canoniques.
+//
 // L'ÉCRITURE EST ATOMIQUE (temporaire puis renommage, via platform/atomicfile) :
 // le service de lecture sert le fichier tel quel, sans verrou ni version — une
 // écriture en place lui ferait servir un artefact à moitié écrit à qui consulte
@@ -23,12 +33,14 @@ package replaybuild
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 )
 
@@ -48,18 +60,41 @@ type StoredArtifact struct {
 // Tout refus rend une erreur qui enveloppe domain.ErrBuildArtifactInvalid et
 // n'écrit RIEN.
 func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArtifact, error) {
-	doc, err := validateArtifact(titleSlug, matchID, blob)
-	if err != nil {
+	if _, err := validateArtifact(titleSlug, matchID, blob); err != nil {
 		return StoredArtifact{}, err
 	}
 	outPath := title.NewPathResolver(repoRoot).ReplayArtifactPath(titleSlug, matchID)
-	if err := writeArtifactBytes(outPath, blob); err != nil {
+	// Le garde anti-régression n'est PAS ici : il vit au point d'écriture, que ce dépôt
+	// partage avec les trois autres écrivains (cf. writeArtifactBytes). L'accusé décrit ce
+	// que le disque porte APRÈS l'appel — donc l'artefact conservé quand l'écriture est
+	// refusée, et le nouveau sinon.
+	surDisque, err := writeArtifactBytes(outPath, blob)
+	if err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
 	return StoredArtifact{
-		Path: outPath, MatchID: matchID, Bytes: len(blob),
-		Tracks: len(doc.Tracks), SchemaVersion: doc.SchemaVersion,
+		Path: outPath, MatchID: matchID, Bytes: surDisque.bytes,
+		Tracks: surDisque.tracks, SchemaVersion: surDisque.schemaVersion,
 	}, nil
+}
+
+// wouldDowngrade dit si `blob` RÉTROGRADERAIT l'artefact déjà en place : même version de
+// schéma, mais des compteurs de joueur présents sur le disque et absents dans le candidat.
+// Rend aussi le digest de ce qui est en place, pour que l'appelant sache quoi rapporter.
+//
+// LE GARDE NE MONTE PAS DE VERSION : à schéma DIFFÉRENT il se tait. Une montée de schéma doit
+// TOUJOURS passer — c'est une reconstruction voulue, et un artefact d'un autre schéma ne se
+// compare pas à celui-ci.
+func wouldDowngrade(outPath string, blob []byte) (enPlace artifactDigest, oui bool) {
+	current, ok := readArtifactDigest(outPath)
+	if !ok || current.players == 0 {
+		return artifactDigest{}, false // rien à protéger
+	}
+	incoming, ok := digestFromBytes(blob)
+	if !ok || incoming.players > 0 || incoming.schemaVersion != current.schemaVersion {
+		return current, false
+	}
+	return current, true
 }
 
 // validateArtifact désérialise et contrôle l'artefact. Rend le document lu.
@@ -98,12 +133,45 @@ func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocu
 	return doc, nil
 }
 
-// writeArtifactBytes écrit un artefact déjà sérialisé, ATOMIQUEMENT. Source
-// unique des deux producteurs (construction locale et dépôt d'un ouvrier) : deux
-// façons d'écrire le même fichier finiraient par diverger sur l'atomicité.
-func writeArtifactBytes(outPath string, blob []byte) error {
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return err
+// writeArtifactBytes écrit un artefact déjà sérialisé, ATOMIQUEMENT — SAUF s'il RÉTROGRADERAIT
+// celui déjà en place. Rend le digest de ce que le disque porte APRÈS l'appel : le nouvel
+// artefact s'il a été écrit, l'ancien s'il a été conservé.
+//
+// POURQUOI LE GARDE EST ICI, ET NULLE PART AILLEURS. Quatre écrivains canoniques visent ce même
+// fichier : le dépôt d'un ouvrier (`StoreArtifact`), le fil de l'eau post-sync (`buildAll`), le
+// CLI de rattrapage (`levelup backfill-replay`, y compris `--only-existing`) et l'action admin
+// (`RunReplayBuild`). Les trois derniers passent par `BuildMatch` -> `writeArtifact` ; tous les
+// quatre finissent ICI. C'est le seul endroit qui voit À LA FOIS le document candidat et le
+// fichier en place — le garder à l'étage au-dessus laisserait trois portes ouvertes, et en
+// poser quatre copies violerait la règle des <= 2 exemplaires.
+//
+// LE SCÉNARIO QU'IL FERME. Des faits VIDES produisent un `scoreTimeline.players` vide, donc un
+// artefact appauvri qui porte le bon numéro de schéma. Il écraserait alors un artefact riche,
+// SILENCIEUSEMENT et sans réparation possible (la sélection post-sync ne voit que les matchs
+// insérés d'un cycle). Les occasions sont réelles et connues : un job enfilé AVANT le transport
+// des faits, et `chargerFaitsReplay` qui dégrade à vide pour TOUTE une passe de backfill si son
+// unique ouverture de base échoue.
+//
+// C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. `ArtifactHasPlayerCounters` ne peut que
+// PRÉSUMER l'appauvrissement (trois vacuités légitimes, cf. son en-tête) : avec ce garde, une
+// présomption fausse coûte au pire un décodage gâché, jamais un artefact rétrogradé.
+func writeArtifactBytes(outPath string, blob []byte) (artifactDigest, error) {
+	if enPlace, oui := wouldDowngrade(outPath, blob); oui {
+		// Jamais muet : un artefact non écrit doit s'expliquer, sinon l'admin verra une
+		// construction « réussie » sans comprendre pourquoi le fichier n'a pas changé.
+		slog.Warn("replaybuild: écriture d'artefact REFUSÉE — elle rétrograderait celui en place "+
+			"(compteurs de joueur présents sur disque, absents dans le candidat, même schéma)",
+			"match_id", enPlace.matchID, "path", outPath, "joueurs_en_place", enPlace.players,
+			"schema", enPlace.schemaVersion, "octets_refuses", len(blob))
+		observability.IncCounter("replay_artifact_downgrade_refused_total")
+		return enPlace, nil
 	}
-	return atomicfile.WriteFile(outPath, blob, 0o644)
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return artifactDigest{}, err
+	}
+	if err := atomicfile.WriteFile(outPath, blob, 0o644); err != nil {
+		return artifactDigest{}, err
+	}
+	ecrit, _ := digestFromBytes(blob)
+	return ecrit, nil
 }
