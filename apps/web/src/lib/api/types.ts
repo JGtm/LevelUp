@@ -43,6 +43,12 @@ export type BootstrapResponse = components['schemas']['BootstrapResponse']
 
 export type PlayersListResponse = components['schemas']['PlayersListResponse']
 
+// Présence en jeu (GET /presence) — sélecteur de joueur du shell.
+// `players` est typé `PlayerPresence[] | null` par le contrat généré (toute
+// tranche Go se traduit ainsi) : les consommateurs comblent à la frontière.
+export type PresenceSnapshot = components['schemas']['PresenceSnapshot']
+export type PlayerPresence = components['schemas']['PlayerPresence']
+
 export interface SessionContextRequest {
   player_slug?: string | null
   title_slug?: string | null  // Sprint 44 : switch titre

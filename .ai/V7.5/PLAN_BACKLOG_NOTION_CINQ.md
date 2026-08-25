@@ -507,11 +507,24 @@ Réglages (résolution gamertag → xuid via `shared.v_gamertag_lookup`).
 
 ### Items
 
-- [ ] E1 — Go watcher : stocker le titre courant (`player_watcher.go` : champ +
+- [x] E1 — Go watcher : stocker le titre courant (`player_watcher.go` : champ +
   enregistrement au bon endroit du handler — cf. piège ci-dessus) ; le remonter
   dans `PlayerPresenceStatus` (`provider.go`) : `in_game`, `title_slug`,
   `title_name`.
-- [ ] E2 — Go présence des amis : appel batch
+  → Champs `currentTitleSlug`/`currentTitleName` + `SetCurrentTitle`/`CurrentTitle`.
+  Le piège est traité DANS L'ORDRE : `pw.SetCurrentTitle(td.Slug, td.Name)` est posé
+  juste après le `MatchPresence` réussi, AVANT le test « titre du watcher » qui sort
+  en `OnPresenceInactive`+return ; les deux autres sorties (titre hors registre,
+  payload sans titre) effacent le titre. DÉCISION non écrite au plan : `in_game` de
+  `PlayerPresenceStatus` n'a PAS changé de sens — il reste la sémantique WATCHER
+  (« joue-t-il au titre que CE watcher suit ? ») qui pilote la FSM et qu'affiche la
+  carte admin. Le `in_game` du CONTRAT PUBLIC (E3) est dérivé du titre courant
+  (`title_slug != ""`). Redéfinir le champ existant aurait changé l'affichage de
+  `/watcher/status` sans que personne ne le demande, et fait mentir la FSM.
+  Les deux accesseurs vivent dans `player_watcher_title.go` : `player_watcher.go`
+  est à 508 lignes (dette gelée au-delà du seuil), l'ajout complet l'aurait porté à
+  542 — il finit à 513, l'accroissement incompressible des deux champs.
+- [x] E2 — Go présence des amis : appel batch
   `POST userpresence.xboxlive.com/users/batch` (nouvelle méthode du
   `PresenceClient`, même auth, même contract-version ; réutiliser
   `ParsePresencePayload` par élément) ; résolution des `friend_gamertags` → xuids
@@ -520,14 +533,45 @@ Réglages (résolution gamertag → xuid via `shared.v_gamertag_lookup`).
   30-60 s (patron `privacyTTLCache`), calcul À LA DEMANDE (pas de poller dédié).
   Amis à la présence masquée (privacy) : ignorés silencieusement du compte, avec un
   `slog.DebugContext` — jamais d'erreur utilisateur.
-- [ ] E3 — Go endpoint : `GET /api/v1/presence` sous `RequireAuth` + `NoStore`
+  → `presence/batch_client.go` (fichier dédié : `rest_client.go` documente le poll
+  unitaire). Le corps envoyé porte `"level":"all"` EN PLUS de `users` : sans lui la
+  réponse se limite au niveau « user » et ne contient PAS `devices[].titles[]` — le
+  compteur serait constamment à zéro. Un élément illisible du lot est ignoré (Debug)
+  au lieu d'emporter les autres. Résolution inverse ajoutée au chokepoint existant :
+  `GamertagRepo.ResolveXUIDsByGamertags` (insensible à la CASSE — la liste des
+  Réglages est tapée à la main —, bots exclus, clés = les gamertags demandés).
+  Compteur + cache dans `service/presence_friends.go`, TTL **45 s** (> les 30 s de
+  poll du shell, pour qu'un onglet ouvert ne provoque pas un appel Xbox par tick).
+  Un ÉCHEC n'est pas mis en cache : un incident d'une seconde ne doit pas geler
+  45 s d'affichage.
+- [x] E3 — Go endpoint : `GET /api/v1/presence` sous `RequireAuth` + `NoStore`
   (PAS admin), servi depuis `watcher.WatcherStateProvider` + le calcul E2 :
   `{ players: [{player_slug, gamertag, in_game, title_slug, title_name}],
   friends_in_game: N }` ; joueurs filtrés par `filterOwnedPlayers` (ADR 0029) ;
   si daemon absent/éteint → `players: []`, `friends_in_game: 0` (200, jamais 500).
   Handler sans logique métier : le calcul vit dans un service.
-- [ ] E4 — contrats : openapi + `make generate-types`.
-- [ ] E5 — web : hook `usePresence()` (clé dans `lib/query/keys.ts`,
+  → `service.PresenceService` (+ `domain/presence.go`), handler mince
+  `handlers/presence.go`, wiring dans `api/server_presence.go` (server_apiv1.go est
+  un assembleur exempté : on n'y ajoute pas d'adaptateurs). La liste rendue est
+  l'INTERSECTION watcher × joueurs possédés — watcher éteint ⇒ liste vide, ce que
+  demande le plan et qui est exact (on ne sait rien). `filterOwnedPlayers` n'a pas
+  été recopié : la combinaison « joueurs du titre + visibles + possédés » est
+  extraite en `BootstrapService.OwnedPlayers`, dont `BuildPlayersList` devient un
+  appelant (source unique, règle des 2 copies). Le service ne dépend NI du daemon
+  NI du client Xbox : il consomme des func/types neutres, ce qui le rend testable
+  sans HTTP. `DaemonController` n'a PAS été élargi (son mock de test l'aurait été
+  aussi) : le lot d'amis passe par un type-assert `presenceBatcher` sur la méthode
+  `Daemon.PresenceBatch` — emprunter le client Xbox du daemon n'est pas le
+  contrôler. `reg.FriendGamertags` expose le résolveur d'amis EXISTANT (celui de la
+  page Escouade) plutôt qu'une seconde closure sur le settings store.
+- [x] E4 — contrats : openapi + `make generate-types`.
+  → `openapi-gen` (+57 lignes : `/presence`, `PresenceSnapshot`, `PlayerPresence`,
+  et `title_slug`/`title_name` sur `PlayerPresenceStatus`) puis `generate-types`
+  (+60 lignes) ; `openapi-gen -check` vert, `TestOpenAPIYAMLIsUpToDate` et
+  `TestContractRoutesDocumented` verts. Ré-exports `PresenceSnapshot`/
+  `PlayerPresence` dans `lib/api/types.ts` (le `players: [] | null` du contrat est
+  comblé une seule fois, dans le hook).
+- [x] E5 — web : hook `usePresence()` (clé dans `lib/query/keys.ts`,
   `refetchInterval: 30_000`, `staleTime` cohérent) ; remplacement du `<select>`
   natif de `NavL1.tsx` (l.411-432) par un dropdown custom sur le gabarit
   `SplitButton`/`SettingsSplitButton` du même fichier (`role="menu"`,
@@ -536,10 +580,47 @@ Réglages (résolution gamertag → xuid via `shared.v_gamertag_lookup`).
   pour le joueur ACTIF : badge compteur à droite (« N » + libellé accessible
   « N amis en jeu » FR / « N friends in game » EN) rendu seulement si N > 0.
   Aucune couleur en dur — tokens.
-- [ ] E6 — tests : Go = parser batch + logique « amis en jeu » (fixtures presence)
+  → Le dropdown vit dans `components/shell/PlayerSwitcher.tsx` et non dans
+  `NavL1.tsx` : le fichier était à 449 lignes, l'ajout l'aurait poussé au-delà de
+  500. Le GABARIT est bien celui des split buttons du fichier d'origine (wrapper
+  `relative`, panneau `absolute/bg-popover/z-50/role=menu`, click-outside par
+  `mousedown`), enrichi du clavier attendu d'un menu ARIA : ArrowDown ouvre depuis
+  le déclencheur, flèches haut/bas bouclent entre les joueurs, Échap ferme et rend
+  le focus. Hook `usePresence` à côté de son composant (précédent :
+  `components/ui/useGamertagSuggestions.ts`), clé `queryKeys.presence(titleSlug)`
+  title-scopée + entrée au garde-rail `keys.title-slug.guard.test.ts`.
+  DEUX décisions non écrites au plan : (a) le joueur ACTIF porte AUSSI la manette
+  quand il est en jeu — sinon il faudrait ouvrir le menu pour savoir si on est
+  soi-même en partie ; (b) la pastille d'amis affiche une manette À CÔTÉ du nombre,
+  un « 3 » nu à côté d'un gamertag n'étant pas interprétable. Le titre RÉEL est
+  nommé dans l'infobulle (« En jeu sur Halo 5 ») : c'est tout l'intérêt du champ
+  capté en E1. i18n par le manifeste `common.toml` (mécanisme en place dans NavL1),
+  3 clés FR/EN dont le compteur en pluriel ICU. Le cas `availablePlayers.length <= 1`
+  reste un simple libellé (pas de menu), manette et compteur compris.
+- [x] E6 — tests : Go = parser batch + logique « amis en jeu » (fixtures presence)
   + handler httptest (daemon absent → réponse vide) ; web = vitest du dropdown
   (liste, icône conditionnelle, compteur conditionnel, bascule joueur) ;
   typecheck.
+  → Go, 27 tests : `presence/batch_client_test.go` (6 — corps `users`+`level=all`,
+  en-têtes, xuid vide écarté, liste vide sans appel réseau, élément illisible
+  ignoré, 401 typé `*HTTPError`), `service/presence_friends_test.go` (10 — n'importe
+  quel titre suivi compte, présence masquée et ami absent ignorés, gamertag inconnu,
+  échec Xbox non mis en cache, cache dans le TTL, changement de liste = invalidation,
+  dédoublonnage par xuid, xuid non demandé, aucun ami configuré = zéro appel,
+  dépendance manquante = pas de compteur), `service/presence_service_test.go` (8 —
+  dont le cas du lot : joueur halo_5 sur Infinite EN JEU avec le titre réel, deux
+  watchers d'un même gamertag, watcher absent/arrêté, joueur non possédé exclu,
+  erreur de chargement dégradée), `watcher/presence_title_test.go` (5 — l'ordre du
+  handler, titre effacé sur titre hors registre et hors ligne, lot sans client),
+  `api/handlers/presence_test.go` (3 — daemon absent → 200 vide, aucune source,
+  cas nominal servi). `platform/duckdb/gamertag_resolve_test.go` (+1, tag
+  `integration`) couvre le SQL de résolution inverse — exécuté à la main dans cette
+  session (le gate du lot ne monte pas les tests d'intégration). Web, 16 tests :
+  `PlayerSwitcher.test.tsx` (liste, bascule + fermeture, manette conditionnelle avec
+  titre réel puis sans titre, compteur pluriel/singulier, absence de compteur,
+  endpoint en erreur muet, aria haspopup/expanded, ouverture clavier, flèches qui
+  bouclent, Échap, clic dehors, cas mono-joueur, parité EN, `players: null`).
+  Handler MSW `/presence` ajouté aux fixtures partagées (défaut « personne en jeu »).
 
 ### Gate E
 
@@ -609,6 +690,18 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
   n'empêche le prochain lecteur de tomber dans le piège, le champ étant nommé comme les `slot`
   des trois autres calques, qui eux SONT des slots de piste. Un garde-rail (ou un renommage du
   champ à la prochaine montée de schéma) serait à sa place. Non traité, hors périmètre.
+- Résolution des amis sur le shared du titre PAR DÉFAUT (lot E, 2026-08-25) :
+  `friendXUIDResolverFrom` branche `GamertagRepo` sur `cfg.SharedProvider`, comme la
+  recherche de gamertags existante — donc la vue `v_gamertag_lookup` du titre par
+  défaut, pas celle du titre courant. Sans effet mesurable ici (un ami croisé sur
+  n'importe quel titre y a son xuid, et le compte porte sur TOUS les titres suivis),
+  mais c'est un raccourci mono-titre partagé avec `gamertagSvc`. Non traité, hors
+  périmètre.
+- Écriture non verrouillée de `Daemon.trackerRestClient` (lot E, 2026-08-25) : le
+  champ est ASSIGNÉ dans `Start()` hors de `playersMu` alors que ses lecteurs
+  (`GetStatus`, `initPlayers`, `AddPlayer`, et désormais `PresenceBatch`) le lisent
+  sous ce verrou. Course théorique préexistante, non aggravée (le nouveau lecteur
+  prend le verrou comme ses voisins). Non traité, hors périmètre.
 - `MatchViewPage.tsx` coerce encore `locale === 'en' ? 'en' : 'fr'` sur une valeur
   déjà typée `Locale` (`'fr' | 'en'`) avant de la passer à `MatchMediaTab` et au
   breadcrumb : ternaires no-op héritées. Les deux composants d'onglets extraits

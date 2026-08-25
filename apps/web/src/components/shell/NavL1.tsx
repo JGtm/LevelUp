@@ -16,6 +16,7 @@ import { resolvePlayerSwitch } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { LogoutButton } from './LogoutButton'
 import { NavL1MobileMenu } from './NavL1MobileMenu'
+import { PlayerSwitcher } from './PlayerSwitcher'
 import { NavL1MobileActions, type SettingsTabItem } from './NavL1MobileActions'
 import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
 import { useTitleCapabilities, hasCapabilityIn } from '@/lib/capabilities/capabilities'
@@ -407,29 +408,16 @@ export function NavL1() {
       {/* ── Spacer ──────────────────────────────────────────────────────── */}
       <div className="flex-1" />
 
-      {/* ── Gamertag / sélecteur joueur (visible mobile, tronqué si large) ── */}
-      {availablePlayers.length > 1 ? (
-        <div className="flex min-w-0 items-center gap-1.5">
-          <select
-            value={playerSlug}
-            onChange={(e) => handlePlayerChange(e.target.value)}
-            className="max-w-[32vw] truncate rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 sm:max-w-none"
-            aria-label={t('common.shell.player_select')}
-          >
-            {availablePlayers.map((p) => (
-              <option key={p.player_slug} value={p.player_slug}>
-                {p.gamertag}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        currentPlayer && (
-          <span className="max-w-[32vw] truncate text-sm font-medium text-sidebar-foreground/70 sm:max-w-none">
-            {currentPlayer.gamertag}
-          </span>
-        )
-      )}
+      {/* ── Gamertag / sélecteur joueur (visible mobile, tronqué si large) ──
+          Dropdown maison et non `<select>` natif : une `<option>` ne peut porter
+          ni la manette « en jeu » ni le compteur d'amis (point Notion 4). La
+          bascule reste handlePlayerChange, inchangée. */}
+      <PlayerSwitcher
+        players={availablePlayers}
+        currentPlayer={currentPlayer}
+        locale={locale}
+        onPlayerChange={handlePlayerChange}
+      />
 
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
       {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
