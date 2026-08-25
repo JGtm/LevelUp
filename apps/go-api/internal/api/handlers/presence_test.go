@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -80,8 +81,16 @@ func TestPresenceEndpoint_InGamePlayerIsServed(t *testing.T) {
 			return []domain.PlayerSummary{{PlayerSlug: "jgtm", Gamertag: "JGtm"}}, nil
 		},
 		func() []service.TrackedPresence {
+			// LastEventAt est le témoin de vivacité du poll : sans lui le service
+			// considère le titre comme périmé et ne le sert pas (borne de
+			// fraîcheur, cf. service.presenceFreshnessWindow).
 			return []service.TrackedPresence{
-				{Gamertag: "JGtm", TitleSlug: "halo_infinite", TitleName: "Halo Infinite"},
+				{
+					Gamertag:    "JGtm",
+					TitleSlug:   "halo_infinite",
+					TitleName:   "Halo Infinite",
+					LastEventAt: time.Now(),
+				},
 			}
 		},
 	)

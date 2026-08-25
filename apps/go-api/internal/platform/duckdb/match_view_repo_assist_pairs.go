@@ -59,7 +59,7 @@ import (
 // comptée « non volée » à tort non plus, puisqu'elle reste dans `assist_count`. Aucune des
 // deux parts n'est plafonnée (mesures jusqu'à 228) : la comparaison porte sur l'ordre.
 //
-// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 6 colonnes :
+// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 7 colonnes :
 // match_deaths, measured_deaths, assist_xuid, assist_gamertag, feed_killer_xuid,
 // assist_count, stolen_count — les cinq dernières NULL quand aucune paire ne sort.
 const Q21dAssistPairs = `
