@@ -86,8 +86,17 @@ Elle ne prend effet qu'au deploiement du binaire en production. Le runbook
 attendus : `403 csrf_rejected` = build ANTERIEUR au correctif (etat mesure de la prod au
 2026-08-25) ; `503 build_queue_disabled` = correct avant l'etape 1 ; `401
 invalid_worker_token` = correct apres ; `404` HTML nginx = routage nginx a corriger. Le
-premier deploiement doit rejouer le curl de pre-vol pour confirmer sur le terrain. Ce lot
-touche la posture de securite : revue adversariale a prevoir avant merge.
+premier deploiement doit rejouer le curl de pre-vol pour confirmer sur le terrain.
+
+**Revue adversariale (2026-08-25, avant merge)** : 2 relecteurs paralleles a contexte
+frais (lentille controle d'acces / lentille couverture de tests), contrat de lot fourni.
+Verdict : **0 constat recevable**, 24 conditions verifiees qui tiennent (12 + 12), dont une
+MUTATION REELLE par le relecteur tests (exemption retiree de `server.go:616` -> le test de
+pile rougit avec exactement le 403 mesure en prod -> restauree, diff vide) : le test
+discrimine bien le cablage de production. Constat hors perimetre consigne en tache
+separee : doc-rot « trois routes » (le protocole en compte quatre) dans
+`wire/server_build_worker.go:5-9` et `handlers/build_worker.go:248`, fichiers hors diff.
+Boucle close en ronde 1 (rien a corriger, pas de ronde 2).
 
 ---
 
