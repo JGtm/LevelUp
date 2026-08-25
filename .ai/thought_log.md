@@ -70510,3 +70510,63 @@ DuckDB statique en parallele — infrastructure locale, pas ce lot, pas retenu c
 (`go-vet` sur le depot entier, 22,6 s) 0 issue, `go build ./cmd/zone-attribution/...` clean
 a chaque run. Pas de fichier de test dans ce paquet (deja le cas avant ce lot — binaire de
 mesure hors ligne). Aucun `-tags=integration` : rien touche a persist/sync/migration.
+## [2026-08-25] Monitoring de job — motif explicite pour un film-bombe isole (lot jobmon)
+
+**Statut** : Complete (J1-J4 livres, worktree `wt/job-erreur-explicite`, aucun push).
+
+**Decision technique principale** : Cartographie (J1) prealable a tout code : le blindage
+memoire de `levelup backfill-replay` (processus enfant, codes de sortie >=10, sentinelle
+souple+dure, lot S5 fusionne le 2026-08-24) et la file de monitoring des rejeux a la demande
+(`internal/ops.MonitoringStore` / `build_jobs_latest`, alimentee par `cmd/replay-worker`) sont
+DEUX CHEMINS STRUCTURELLEMENT DISJOINTS — verifie sur pieces (aucun import croise, doc de
+`cmd_backfill_replay.go` : « le CLI de backfill garde son chemin direct »). L'ouvrier distant
+decode `internal/replaybuild.BuildMatch` EN PROCESS, sans aucune protection memoire : un
+film-bombe soumis par la file (mise en file admin ou fil post-sync) ferait crasher tout
+l'ouvrier (fatal error runtime, non recuperable) ou spiraler en GC jusqu'a expiration du bail
+(5 min) — et dans les deux cas le motif qui atterrit dans `build_jobs_latest.error_code` est
+generique (`replay_build_failed`, ou pire `lease_expired` : « ouvrier disparu N fois », un
+message qui accuse l'OUVRIER, jamais le FILM). C'est ce point precis, `processJob` dans
+`cmd/replay-worker/job.go`, que le lot corrige.
+
+Correctif (J2) : nouveau fichier `cmd/replay-worker/memlimit.go`, qui reproduit — sans le
+reimporter, ce sont deux paquets `main` distincts, Go l'interdit — le meme patron que
+`cmd/levelup/backfill_memlimit.go` : plafond souple `debug.SetMemoryLimit` + sentinelle dure a
++25 %, echantillonnage 250 ms, MEMES VALEURS (3 GiB par defaut) mesurees sur le meme film
+(`51101d1d`, 7,9 Go en 2,6 s). Divergence de doctrine assumee et documentee en tete de fichier :
+l'enfant de la CLI meurt TOUJOURS par `os.Exit` (le code de sortie est son protocole vers un
+parent qui l'attend) ; l'ouvrier sert une file HTTP sans parent qui l'attend film par film — sa
+sentinelle RAPPORTE D'ABORD au serveur (`POST /build-queue/complete`, nouveau
+`domain.BuildJobErrorCodeMemoryExceeded = "memory_exceeded"`, message avec match_id + pic
+mesure + « film isole, passe poursuivie ») PUIS arrete le processus. Armee PAR JOB (pas par
+processus) pour que le pic ne confonde jamais deux films ; nouveau drapeau
+`--mem-limit-gib` (defaut 3, memes seuils que la CLI). Le motif ordinaire existant
+(`replay_build_failed`) est nomme en constante (`genericBuildFailedErrorCode`) mais SON
+COMPORTEMENT NE CHANGE PAS — aucun autre chemin d'echec touche.
+
+**Resultats observes** : `go build ./cmd/replay-worker/... ./internal/domain/...` et
+`go vet ./...` propres ; `go test -race ./cmd/replay-worker/...` : 15 tests verts, dont
+`TestWorker_CompleteMemoryExceeded_MotifExplicite` (bout-en-bout via `httptest.Server` : le
+motif poste au serveur est `memory_exceeded`, jamais le motif generique) et
+`TestProcessJob_EchecOrdinaire_GardeSonMotif` (le meme `processJob`, sur un vrai echec de
+travail non resolu, garde `replay_build_failed`) — meme parti pris que
+`backfill_memlimit_test.go` : aucun test n'arme un vrai plafond ni n'appelle la fonction qui
+sort (`os.Exit`), le declenchement de la sentinelle est teste via un plafond dur artificiellement
+bas (1 octet), deterministe en quelques millisecondes. `make go-api-lint`
+(golangci-lint, ratchet `--new-from-merge-base=origin/main`) : 0 issues. `go build ./...`
+(module entier) a d'abord echoue par epuisement de ressources Windows AU LIEN (plusieurs
+binaires DuckDB statiques lies en parallele, `cmd/analyze_media_tz` / `cmd/levelup` /
+`cmd/merge_weapon_kills` — memes symptomes que ceux documentes dans `backfill_child.go`, sans
+rapport avec ce diff : aucun binaire en echec n'etait touche, et aucun n'est
+`cmd/replay-worker`) ; non concluant en isolation faute de temps machine, mais la preuve ciblee
+(build + vet + tests + lint sur les paquets touches) est propre. Pas de regeneration
+`openapi.yaml` necessaire : `error_code` y est un `string` libre, sans enum, la nouvelle valeur
+transite sans changer le contrat.
+
+**Conclusion / prochaine etape** : livre (commits `jobmon(J2)`, `jobmon(J3)`, `jobmon(J4)` sur
+`wt/job-erreur-explicite`), aucun push — la base a avance depuis le fork du worktree
+(`origin/feat/v75` : `3cafdfbe8` -> `6e37e8aea`), pas de rebase sur consigne superviseur qui
+fusionnera. Le profiling du film-bombe lui-meme (confirmer `NamedEventsFrom`/`incrementTimes`
+comme structure responsable des ~26 Gio) reste un chantier a part, deja consigne au registre
+(`.ai/V7.5/REGISTRE_REPORTS.md`, ligne « Profiling `51101d1d` ») : ce lot pose le garde-fou de
+monitoring en attendant, il ne profile rien. A rejouer si besoin sur une machine moins
+contrainte : `go build ./...` en isolation complete (aucun autre process Go/gcc concurrent).
