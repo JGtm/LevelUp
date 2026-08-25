@@ -1,439 +1,374 @@
+// Package service — presence_friends_test.go : LE COMPTEUR « amis en jeu ».
+//
+// Ce que ces tests protègent, c'est une définition produit, pas une mécanique :
+// « mes amis » = les joueurs inscrits que JE VOIS dans mon cercle (ADR 0029)
+// SANS en être le propriétaire. Deux propriétés en découlent, et chacune a son
+// test parce que chacune peut casser silencieusement :
+//
+//   - le compte est PERSONNEL : sur un état de watcher identique, deux
+//     utilisateurs obtiennent deux valeurs (un compte calculé sur l'état global
+//     du watcher, ou sur la seule liste des joueurs possédés, passerait les
+//     autres tests mais pas celui-là) ;
+//   - le compte s'arrête au CERCLE : un joueur d'un utilisateur étranger à mon
+//     groupe n'y entre jamais — la propriété est prise au chokepoint authz, et
+//     le dernier test le joue à travers le VRAI BootstrapService, seul endroit
+//     où cette frontière est réellement décidée.
 package service
 
 import (
 	"context"
-	"errors"
-	"sync"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 )
 
-const (
-	titleIDInfinite = "2043073184"
-	titleIDHalo5    = "219630713"
-	titleIDOther    = "2076696971" // jeu non suivi
-)
-
-// twoTitleRegistry : les deux titres suivis par LevelUp.
-func twoTitleRegistry() *title.Registry {
-	reg := title.NewRegistry()
-	reg.Register(&title.TitleDescriptor{
-		Slug: "halo_infinite", Name: "Halo Infinite", Status: title.StatusActive, XboxTitleID: titleIDInfinite,
-	})
-	reg.Register(&title.TitleDescriptor{
-		Slug: "halo_5", Name: "Halo 5", Status: title.StatusActive, XboxTitleID: titleIDHalo5,
-	})
-	return reg
+// directOwnerOf : l'utilisateur possède EN PROPRE les xuids donnés, et eux
+// seuls. Tient lieu de BootstrapService.DirectOwnerFor dans les tests unitaires
+// (le test bout-en-bout, lui, prend la vraie implémentation).
+func directOwnerOf(xuids ...string) DirectOwnerResolver {
+	owned := make(map[string]bool, len(xuids))
+	for _, x := range xuids {
+		owned[x] = true
+	}
+	return func(*domain.SessionData) DirectOwnerFunc {
+		return func(playerXUID string) bool { return owned[playerXUID] }
+	}
 }
 
-// counterFor assemble un compteur avec des sources en dur ; fetchCalls compte
-// les allers-retours Xbox (le cache TTL en dépend).
-func counterFor(t *testing.T, gamertags []string, resolved map[string]string,
-	presences []FriendPresence, fetchErr error, fetchCalls *int,
-) *FriendPresenceCounter {
+// circle : les trois joueurs visibles du cercle A∪B. Les xuids comptent : c'est
+// sur eux que se décide la propriété.
+func circle() []domain.PlayerSummary {
+	return []domain.PlayerSummary{
+		{PlayerSlug: "p1", Gamertag: "P1", XUID: "111"},
+		{PlayerSlug: "p2", Gamertag: "P2", XUID: "222"},
+		{PlayerSlug: "p3", Gamertag: "P3", XUID: "333"},
+	}
+}
+
+// LE test du lot : MÊME état de watcher, MÊME liste visible, deux utilisateurs —
+// deux comptes. P1 est hors jeu, P2 et P3 en jeu.
+func TestFriendsInGame_IsPersonalToEachUser(t *testing.T) {
+	tracked := trackedSource(
+		offline("P1"),
+		inGame("P2", "halo_infinite", "Halo Infinite"),
+		inGame("P3", "halo_5", "Halo 5"),
+	)
+
+	// A possède p1 : ses amis en jeu sont p2 et p3.
+	svcA := NewPresenceService(ownedPlayers(circle()...), tracked).WithFriends(directOwnerOf("111"))
+	if got := svcA.GetSnapshot(context.Background(), nil).FriendsInGame; got != 2 {
+		t.Errorf("compte de A = %d, attendu 2 (p2 et p3 en jeu, p1 est le sien)", got)
+	}
+
+	// B possède p2 : p1 est bien un ami, mais il n'est pas en jeu — reste p3.
+	svcB := NewPresenceService(ownedPlayers(circle()...), tracked).WithFriends(directOwnerOf("222"))
+	if got := svcB.GetSnapshot(context.Background(), nil).FriendsInGame; got != 1 {
+		t.Errorf("compte de B = %d, attendu 1 (p3 seul : p1 hors jeu, p2 est le sien)", got)
+	}
+}
+
+// Propriétaire de TOUS les joueurs visibles : aucun ami, quel que soit le nombre
+// de manettes allumées.
+func TestFriendsInGame_OwnerOfEverything_CountsZero(t *testing.T) {
+	svc := NewPresenceService(
+		ownedPlayers(circle()...),
+		trackedSource(
+			inGame("P1", "halo_infinite", "Halo Infinite"),
+			inGame("P2", "halo_infinite", "Halo Infinite"),
+			inGame("P3", "halo_infinite", "Halo Infinite"),
+		),
+	).WithFriends(directOwnerOf("111", "222", "333"))
+
+	if got := svc.GetSnapshot(context.Background(), nil).FriendsInGame; got != 0 {
+		t.Errorf("compte = %d, attendu 0 (tous les joueurs visibles sont les siens)", got)
+	}
+}
+
+// Watcher éteint : le service ne sait rien de personne — compteur à zéro, et
+// toujours une réponse (l'endpoint ne connaît pas l'échec).
+func TestFriendsInGame_WatcherOff_CountsZero(t *testing.T) {
+	for nom, source := range map[string]TrackedPresenceSource{
+		"source absente": nil,
+		"daemon arrêté":  trackedSource(),
+		"aucun gamertag": trackedSource(TrackedPresence{Gamertag: ""}),
+	} {
+		t.Run(nom, func(t *testing.T) {
+			svc := NewPresenceService(ownedPlayers(circle()...), source).
+				WithFriends(directOwnerOf("111"))
+			snap := svc.GetSnapshot(context.Background(), nil)
+			if snap.FriendsInGame != 0 {
+				t.Errorf("compte = %d, attendu 0", snap.FriendsInGame)
+			}
+			if snap.Players == nil {
+				t.Error("players ne doit jamais être nil (tranche vide au contrat)")
+			}
+		})
+	}
+}
+
+// La borne de fraîcheur s'applique au COMPTE comme à la manette : un ami dont le
+// poll s'est tu depuis plus de presenceFreshnessWindow n'est plus « en jeu ».
+// Sans ce test, le compteur pourrait servir un titre figé que la liste, elle,
+// blanchit déjà — deux vérités dans la même réponse.
+func TestFriendsInGame_StalePresence_IsNotCounted(t *testing.T) {
+	svc := NewPresenceService(
+		ownedPlayers(circle()...),
+		trackedSource(
+			TrackedPresence{
+				Gamertag:    "P2",
+				TitleSlug:   "halo_infinite",
+				TitleName:   "Halo Infinite",
+				LastEventAt: time.Now().Add(-presenceFreshnessWindow - time.Second),
+			},
+			inGame("P3", "halo_infinite", "Halo Infinite"),
+		),
+	).WithFriends(directOwnerOf("111"))
+
+	snap := svc.GetSnapshot(context.Background(), nil)
+	if snap.FriendsInGame != 1 {
+		t.Errorf("compte = %d, attendu 1 (P2 périmé ne compte pas, P3 oui)", snap.FriendsInGame)
+	}
+	for _, p := range snap.Players {
+		if p.Gamertag == "P2" && p.InGame {
+			t.Errorf("P2 servi en jeu malgré un poll muet: %+v", p)
+		}
+	}
+}
+
+// Sans prédicat de propriété (démo, boot partiel), le compteur reste à zéro :
+// compter ses PROPRES joueurs comme des amis serait pire que ne rien afficher.
+func TestFriendsInGame_NoOwnershipPredicate_CountsZero(t *testing.T) {
+	svc := NewPresenceService(
+		ownedPlayers(circle()...),
+		trackedSource(inGame("P2", "halo_infinite", "Halo Infinite")),
+	)
+
+	if got := svc.GetSnapshot(context.Background(), nil).FriendsInGame; got != 0 {
+		t.Errorf("compte = %d, attendu 0 (aucun prédicat de propriété câblé)", got)
+	}
+}
+
+// Un profil sans xuid n'est attribuable à personne : il n'est jamais compté (la
+// propriété ne se déduit pas d'un gamertag).
+func TestFriendsInGame_PlayerWithoutXUID_IsNotCounted(t *testing.T) {
+	svc := NewPresenceService(
+		ownedPlayers(domain.PlayerSummary{PlayerSlug: "p9", Gamertag: "P9"}),
+		trackedSource(inGame("P9", "halo_infinite", "Halo Infinite")),
+	).WithFriends(directOwnerOf("111"))
+
+	if got := svc.GetSnapshot(context.Background(), nil).FriendsInGame; got != 0 {
+		t.Errorf("compte = %d, attendu 0 (profil sans xuid)", got)
+	}
+}
+
+// Session absente : même fail-closed que le reste de l'endpoint. La vraie
+// implémentation de propriété (DirectOwnerFor) ne reconnaît alors aucun
+// utilisateur, et la liste visible est vide — donc rien à compter.
+func TestFriendsInGame_NoSession_CountsZero(t *testing.T) {
+	snap := presenceCircleService(t).GetSnapshot(context.Background(), nil)
+	if snap.FriendsInGame != 0 {
+		t.Errorf("compte sans session = %d, attendu 0", snap.FriendsInGame)
+	}
+	if len(snap.Players) != 0 {
+		t.Errorf("players sans session = %+v, attendu vide", snap.Players)
+	}
+}
+
+// ─── BOUT EN BOUT : LA FRONTIÈRE DU CERCLE, PAR LE VRAI CHOKEPOINT ─────────────
+
+// presenceCircleService monte un BootstrapService RÉEL (db_profiles temporaire,
+// user store et groupes) et rend le PresenceService branché sur ses deux
+// méthodes — OwnedPlayers (qui voit quoi) et DirectOwnerFor (qui possède quoi).
+// Aucun fake d'autorisation : c'est justement la frontière qu'on teste.
+//
+// Le parc : alice (222) et bob (999) partagent un groupe ; carol (777) est
+// étrangère aux deux. Les trois sont en jeu.
+func presenceCircleService(t *testing.T) *PresenceService {
 	t.Helper()
-	return NewFriendPresenceCounter(
-		func(context.Context) []string { return gamertags },
-		func(context.Context, []string) (map[string]string, error) { return resolved, nil },
-		func(context.Context, []string) ([]FriendPresence, error) {
-			if fetchCalls != nil {
-				*fetchCalls++
+
+	profilesPath := filepath.Join(t.TempDir(), "db_profiles.json")
+	profiles := `{"version":"3.0","profiles":{"halo_infinite":{
+	  "alice":{"db_path":"a.duckdb","xuid":"222"},
+	  "bob":{"db_path":"b.duckdb","xuid":"999"},
+	  "carol":{"db_path":"c.duckdb","xuid":"777"}}}}`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.AppConfig{AuthMode: "password", DBProfilesPath: profilesPath}
+	boot := NewBootstrapService(cfg, &mockBootRepo{}).
+		WithUserLookup(fakeBootstrapLookup{
+			byName: map[string]*domain.User{
+				"alice": {Username: "alice", Role: domain.RoleUser, XUID: "222"},
+				"bob":   {Username: "bob", Role: domain.RoleUser, XUID: "999"},
+				"carol": {Username: "carol", Role: domain.RoleUser, XUID: "777"},
+			},
+		}).
+		WithCoMemberResolver(func(xuid string) map[string]bool {
+			if xuid == "222" || xuid == "999" {
+				return map[string]bool{"222": true, "999": true}
 			}
-			return presences, fetchErr
-		},
-		twoTitleRegistry(),
+			return map[string]bool{xuid: true}
+		})
+
+	tracked := trackedSource(
+		inGame("alice", "halo_infinite", "Halo Infinite"),
+		inGame("bob", "halo_infinite", "Halo Infinite"),
+		inGame("carol", "halo_infinite", "Halo Infinite"),
 	)
+	return NewPresenceService(boot.OwnedPlayers, tracked).WithFriends(boot.DirectOwnerFor)
 }
 
-// Un ami est « en jeu » sur N'IMPORTE quel titre suivi — Halo 5 compte autant
-// qu'Infinite. Un jeu hors registre ne compte pas.
-func TestFriendsCount_AnyTrackedTitleCounts(t *testing.T) {
-	c := counterFor(t,
-		[]string{"Ami1", "Ami2", "Ami3"},
-		map[string]string{"Ami1": "111", "Ami2": "222", "Ami3": "333"},
-		[]FriendPresence{
-			{XUID: "111", TitleID: titleIDInfinite},
-			{XUID: "222", TitleID: titleIDHalo5},
-			{XUID: "333", TitleID: titleIDOther},
-		}, nil, nil)
+// Trois utilisateurs, un seul état de watcher : chacun ne compte que SON cercle,
+// et carol — étrangère au groupe d'alice et bob — n'entre dans aucun des deux
+// comptes (ni eux dans le sien). C'est le cas que la règle « tous les autres
+// joueurs inscrits » aurait raté.
+func TestFriendsInGame_StrangerOutsideGroupIsNeverCounted(t *testing.T) {
+	svc := presenceCircleService(t)
 
-	if got := c.Count(context.Background()); got != 2 {
-		t.Errorf("Count = %d, attendu 2 (Infinite + Halo 5 ; l'autre jeu ne compte pas)", got)
+	cas := []struct {
+		user  string
+		count int
+		// ami : le gamertag qui DOIT être compté (vide = personne).
+		ami string
+	}{
+		{user: "alice", count: 1, ami: "bob"},
+		{user: "bob", count: 1, ami: "alice"},
+		{user: "carol", count: 0},
 	}
-}
+	for _, c := range cas {
+		t.Run(c.user, func(t *testing.T) {
+			sess := &domain.SessionData{Username: strPtr(c.user)}
+			snap := svc.GetSnapshot(context.Background(), sess)
 
-// Présence MASQUÉE (privacy) : l'ami arrive sans titre, ou n'arrive pas du tout.
-// Dans les deux cas il n'est pas compté, et ce n'est PAS une erreur.
-func TestFriendsCount_MaskedPresenceIgnored(t *testing.T) {
-	c := counterFor(t,
-		[]string{"Visible", "Masque", "Absent"},
-		map[string]string{"Visible": "111", "Masque": "222", "Absent": "333"},
-		[]FriendPresence{
-			{XUID: "111", TitleID: titleIDInfinite},
-			{XUID: "222", TitleID: ""}, // présence masquée : aucun titre rendu
-			// "333" : absent de la réponse Xbox
-		}, nil, nil)
-
-	if got := c.Count(context.Background()); got != 1 {
-		t.Errorf("Count = %d, attendu 1 (masqué et absent ignorés)", got)
-	}
-}
-
-// Un ami jamais croisé en match n'a pas de xuid connu : il est ignoré, sans
-// empêcher le comptage des autres.
-func TestFriendsCount_UnknownGamertagIgnored(t *testing.T) {
-	c := counterFor(t,
-		[]string{"Connu", "JamaisCroise"},
-		map[string]string{"Connu": "111"},
-		[]FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil, nil)
-
-	if got := c.Count(context.Background()); got != 1 {
-		t.Errorf("Count = %d, attendu 1", got)
-	}
-}
-
-// Xbox indisponible : compteur à zéro, jamais d'erreur remontée. L'échec n'est
-// pas mémorisé COMME RÉSULTAT — le compteur ne servira jamais un chiffre issu
-// d'un échec — mais il pose un BACKOFF : l'appel suivant rend zéro sans
-// réémettre. Sans lui, une panne Xbox fait repartir chaque poll du shell (30 s)
-// et chaque onglet vers un service qu'on sait indisponible, en payant sa latence
-// d'échec sur une requête que l'utilisateur attend.
-func TestFriendsCount_FetchErrorReturnsZeroAndBacksOff(t *testing.T) {
-	calls := 0
-	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
-		nil, errors.New("xbox 503"), &calls)
-
-	if got := c.Count(context.Background()); got != 0 {
-		t.Errorf("Count = %d, attendu 0", got)
-	}
-	if got := c.Count(context.Background()); got != 0 {
-		t.Errorf("Count (2e appel) = %d, attendu 0", got)
-	}
-	if calls != 1 {
-		t.Errorf("appels Xbox = %d, attendu 1 (le 2e appel est en backoff)", calls)
-	}
-	// Rien n'a été mis en cache comme résultat : le backoff écoulé, on retente.
-	if c.cacheKey != "" {
-		t.Errorf("cacheKey = %q, attendu vide (un échec n'est pas un résultat)", c.cacheKey)
-	}
-}
-
-// Le backoff est COURT et il expire : passé son délai, le compteur retente.
-func TestFriendsCount_RetriesAfterBackoffExpires(t *testing.T) {
-	calls := 0
-	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
-		nil, errors.New("xbox 503"), &calls)
-
-	c.Count(context.Background())
-	// Vieillissement à la main : le backoff est daté, pas minuté.
-	c.failedAt = time.Now().Add(-FriendsPresenceFailureBackoff - time.Second)
-
-	c.Count(context.Background())
-	if calls != 2 {
-		t.Errorf("appels Xbox = %d, attendu 2 (backoff expiré → nouvelle tentative)", calls)
-	}
-}
-
-// Un succès efface la mémoire d'échec : le backoff ne survit pas à la reprise.
-func TestFriendsCount_SuccessClearsBackoff(t *testing.T) {
-	calls := 0
-	var boom error = errors.New("xbox 503")
-	c := NewFriendPresenceCounter(
-		func(context.Context) []string { return []string{"Ami"} },
-		func(context.Context, []string) (map[string]string, error) {
-			return map[string]string{"Ami": "111"}, nil
-		},
-		func(context.Context, []string) ([]FriendPresence, error) {
-			calls++
-			if boom != nil {
-				return nil, boom
+			if snap.FriendsInGame != c.count {
+				t.Errorf("compte de %s = %d, attendu %d", c.user, snap.FriendsInGame, c.count)
 			}
-			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
-		},
-		twoTitleRegistry(),
-	)
-
-	c.Count(context.Background())
-	boom = nil
-	c.failedAt = time.Now().Add(-FriendsPresenceFailureBackoff - time.Second)
-	if got := c.Count(context.Background()); got != 1 {
-		t.Fatalf("Count après reprise = %d, attendu 1", got)
-	}
-	if c.failedKey != "" {
-		t.Errorf("failedKey = %q, attendu vide après un succès", c.failedKey)
-	}
-}
-
-// Changer la liste d'amis relance immédiatement, backoff ou pas : la mémoire
-// d'échec porte la MÊME clé que le cache.
-func TestFriendsCount_ListChangeBypassesBackoff(t *testing.T) {
-	calls := 0
-	gamertags := []string{"Ami1"}
-	c := NewFriendPresenceCounter(
-		func(context.Context) []string { return gamertags },
-		func(context.Context, []string) (map[string]string, error) {
-			return map[string]string{"Ami1": "111", "Ami2": "222"}, nil
-		},
-		func(context.Context, []string) ([]FriendPresence, error) {
-			calls++
-			return nil, errors.New("xbox 503")
-		},
-		twoTitleRegistry(),
-	)
-
-	c.Count(context.Background())
-	gamertags = []string{"Ami1", "Ami2"}
-	c.Count(context.Background())
-	if calls != 2 {
-		t.Errorf("appels Xbox = %d, attendu 2 (la liste a changé)", calls)
-	}
-}
-
-// Le cache évite un appel Xbox par poll du shell (30 s) : deux appels
-// rapprochés ne touchent Xbox qu'une fois.
-func TestFriendsCount_CachedWithinTTL(t *testing.T) {
-	calls := 0
-	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
-		[]FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil, &calls)
-
-	first := c.Count(context.Background())
-	second := c.Count(context.Background())
-	if first != 1 || second != 1 {
-		t.Errorf("Count = %d puis %d, attendu 1 et 1", first, second)
-	}
-	if calls != 1 {
-		t.Errorf("appels Xbox = %d, attendu 1 (2e servi par le cache)", calls)
-	}
-}
-
-// Changer la liste d'amis des Réglages doit invalider le cache : la clé EST la
-// liste des xuids interrogés.
-func TestFriendsCount_ListChangeInvalidatesCache(t *testing.T) {
-	calls := 0
-	gamertags := []string{"Ami1"}
-	resolved := map[string]string{"Ami1": "111", "Ami2": "222"}
-	c := NewFriendPresenceCounter(
-		func(context.Context) []string { return gamertags },
-		func(context.Context, []string) (map[string]string, error) { return resolved, nil },
-		func(_ context.Context, xuids []string) ([]FriendPresence, error) {
-			calls++
-			out := make([]FriendPresence, 0, len(xuids))
-			for _, x := range xuids {
-				out = append(out, FriendPresence{XUID: x, TitleID: titleIDInfinite})
+			// Aucune identité hors cercle ne transite : la liste servie ne porte
+			// que les joueurs visibles, comme avant le lot.
+			for _, p := range snap.Players {
+				if p.Gamertag != c.user && p.Gamertag != c.ami {
+					t.Errorf("%s voit un joueur hors de son cercle: %+v", c.user, p)
+				}
 			}
-			return out, nil
+		})
+	}
+}
+
+// La propriété DIRECTE ne se confond pas avec la visibilité : un co-membre est
+// visible sans être possédé, et un admin voit tout sans rien posséder de plus.
+func TestDirectOwnerFor_DistinguishesOwnershipFromVisibility(t *testing.T) {
+	svc := newOwnershipBootstrap("password")
+	alice := &domain.SessionData{Username: strPtr("alice")} // xuid 222
+	boss := &domain.SessionData{Username: strPtr("boss")}   // admin, xuid 111
+
+	ownsForAlice := svc.DirectOwnerFor(alice)
+	if !ownsForAlice("222") {
+		t.Error("alice doit posséder son propre profil")
+	}
+	if ownsForAlice("999") {
+		t.Error("un profil de co-membre est VISIBLE, pas possédé")
+	}
+	if ownsForAlice("") {
+		t.Error("un profil sans xuid n'est possédé par personne")
+	}
+	if svc.DirectOwnerFor(boss)("222") {
+		t.Error("le rôle admin donne l'accès, pas la propriété")
+	}
+	if svc.DirectOwnerFor(nil)("222") {
+		t.Error("sans session, aucun profil n'est possédé")
+	}
+}
+
+// La fabrique résout l'utilisateur UNE FOIS, pas une fois par joueur : sans cela
+// chaque joueur en jeu coûtait une relecture du user store (users.json en
+// production). Un lookup compteur le prouve sur un cercle de trois joueurs.
+func TestDirectOwnerFor_ResolvesUserOncePerRequest(t *testing.T) {
+	lookup := &countingLookup{inner: fakeBootstrapLookup{
+		byName: map[string]*domain.User{
+			"alice": {Username: "alice", Role: domain.RoleUser, XUID: "222"},
 		},
-		twoTitleRegistry(),
-	)
+	}}
+	svc := NewBootstrapService(&config.AppConfig{AuthMode: "password"}, &mockBootRepo{}).
+		WithUserLookup(lookup)
 
-	if got := c.Count(context.Background()); got != 1 {
-		t.Fatalf("Count initial = %d, attendu 1", got)
+	ownsPlayer := svc.DirectOwnerFor(&domain.SessionData{Username: strPtr("alice")})
+	for _, xuid := range []string{"111", "222", "333"} {
+		ownsPlayer(xuid)
 	}
-	gamertags = []string{"Ami1", "Ami2"}
-	if got := c.Count(context.Background()); got != 2 {
-		t.Errorf("Count après ajout = %d, attendu 2", got)
-	}
-	if calls != 2 {
-		t.Errorf("appels Xbox = %d, attendu 2 (la liste a changé)", calls)
-	}
-}
 
-// Deux gamertags pointant le même compte, ou un doublon de la réponse Xbox, ne
-// comptent qu'une fois : un ami reste un ami.
-func TestFriendsCount_DeduplicatesByXUID(t *testing.T) {
-	c := counterFor(t,
-		[]string{"Ami", "AmiRenomme"},
-		map[string]string{"Ami": "111", "AmiRenomme": "111"},
-		[]FriendPresence{
-			{XUID: "111", TitleID: titleIDInfinite},
-			{XUID: "111", TitleID: titleIDHalo5},
-		}, nil, nil)
-
-	if got := c.Count(context.Background()); got != 1 {
-		t.Errorf("Count = %d, attendu 1", got)
+	if lookup.gets != 1 {
+		t.Errorf("user store interrogé %d fois, attendu 1 (identité invariante sur la requête)", lookup.gets)
 	}
 }
 
-// Une présence rendue par Xbox pour un xuid NON demandé n'entre pas au compte.
-func TestFriendsCount_UnrequestedXUIDIgnored(t *testing.T) {
-	c := counterFor(t,
-		[]string{"Ami"},
-		map[string]string{"Ami": "111"},
-		[]FriendPresence{
-			{XUID: "111", TitleID: titleIDInfinite},
-			{XUID: "999", TitleID: titleIDInfinite},
-		}, nil, nil)
+// countingLookup compte les résolutions d'utilisateur — la lecture qui, en
+// production, ouvre et parse users.json.
+type countingLookup struct {
+	inner fakeBootstrapLookup
+	gets  int
+}
 
-	if got := c.Count(context.Background()); got != 1 {
-		t.Errorf("Count = %d, attendu 1", got)
+func (c *countingLookup) Get(username string) (*domain.User, error) {
+	c.gets++
+	return c.inner.Get(username)
+}
+
+func (c *countingLookup) GetByXUID(xuid string) (*domain.User, error) {
+	c.gets++
+	return c.inner.GetByXUID(xuid)
+}
+
+// ─── RÉGIME NON APPLIQUÉ (LEVELUP_AUTH_MODE=none, configuration par DÉFAUT) ────
+
+// Sans enforcement, il n'existe AUCUN « possédé en propre » : rien n'est à
+// retrancher du cercle visible. Le test verrouille la moitié « propriété » de la
+// règle du 2026-08-25 ; le suivant verrouille sa conséquence visible.
+func TestDirectOwnerFor_NotEnforced_OwnsNothing(t *testing.T) {
+	svc := newOwnershipBootstrap("none")
+	ownsPlayer := svc.DirectOwnerFor(&domain.SessionData{Username: strPtr("alice")}) // xuid 222
+
+	if ownsPlayer("222") {
+		t.Error("sans enforcement, aucun profil n'est possédé EN PROPRE — pas même le sien")
+	}
+	if ownsPlayer("999") {
+		t.Error("sans enforcement, aucun profil n'est possédé EN PROPRE")
 	}
 }
 
-// Réglages sans aucun ami : zéro, sans toucher ni la base ni Xbox.
-func TestFriendsCount_NoFriendsConfigured(t *testing.T) {
-	calls := 0
-	c := counterFor(t, nil, nil, nil, nil, &calls)
-	if got := c.Count(context.Background()); got != 0 {
-		t.Errorf("Count = %d, attendu 0", got)
+// Instance mono-opérateur (le déploiement par défaut) : tous les joueurs
+// visibles en jeu sont comptés. Sans cette règle la pastille resterait à zéro en
+// permanence sur cette configuration — une fonctionnalité livrée éteinte.
+func TestFriendsInGame_NotEnforced_CountsEveryVisiblePlayerInGame(t *testing.T) {
+	profilesPath := filepath.Join(t.TempDir(), "db_profiles.json")
+	profiles := `{"version":"3.0","profiles":{"halo_infinite":{
+	  "alice":{"db_path":"a.duckdb","xuid":"222"},
+	  "bob":{"db_path":"b.duckdb","xuid":"999"}}}}`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if calls != 0 {
-		t.Errorf("appels Xbox = %d, attendu 0", calls)
+
+	// Ni AuthMode ni user store : authz.Enforced est faux, filterOwnedPlayers
+	// rend le parc entier, et personne n'en est propriétaire.
+	cfg := &config.AppConfig{AuthMode: "none", DBProfilesPath: profilesPath}
+	boot := NewBootstrapService(cfg, &mockBootRepo{})
+	svc := NewPresenceService(
+		boot.OwnedPlayers,
+		trackedSource(
+			inGame("alice", "halo_infinite", "Halo Infinite"),
+			inGame("bob", "halo_infinite", "Halo Infinite"),
+		),
+	).WithFriends(boot.DirectOwnerFor)
+
+	snap := svc.GetSnapshot(context.Background(), nil)
+	if snap.FriendsInGame != 2 {
+		t.Errorf("compte = %d, attendu 2 (mode non appliqué : tous les visibles en jeu)", snap.FriendsInGame)
 	}
-}
-
-// ─── LE CACHE : SA CLÉ, SON EXPIRATION, ET LE SINGLEFLIGHT ──────────────────────
-
-// F6 — dans le TTL, la RÉSOLUTION ne repart pas non plus. La clé de cache est la
-// liste de GAMERTAGS ; avec l'ancienne clé (les xuids résolus), il fallait faire
-// la requête DuckDB de résolution avant même de pouvoir consulter le cache, donc
-// à chaque poll du shell, pour une liste qui ne bouge qu'à la main.
-func TestFriendsCount_ResolutionIsBehindTheCache(t *testing.T) {
-	resolves, fetches := 0, 0
-	c := NewFriendPresenceCounter(
-		func(context.Context) []string { return []string{"Ami"} },
-		func(context.Context, []string) (map[string]string, error) {
-			resolves++
-			return map[string]string{"Ami": "111"}, nil
-		},
-		func(context.Context, []string) ([]FriendPresence, error) {
-			fetches++
-			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
-		},
-		twoTitleRegistry(),
-	)
-
-	for i := 0; i < 3; i++ {
-		if got := c.Count(context.Background()); got != 1 {
-			t.Fatalf("Count #%d = %d, attendu 1", i, got)
-		}
-	}
-	if resolves != 1 {
-		t.Errorf("résolutions = %d, attendu 1 (les suivantes sont derrière le cache)", resolves)
-	}
-	if fetches != 1 {
-		t.Errorf("appels Xbox = %d, attendu 1", fetches)
-	}
-}
-
-// L'ORDRE de la liste des Réglages ne doit pas invalider le cache : la clé est la
-// liste TRIÉE et dédoublonnée.
-func TestFriendsCount_ListReorderKeepsCache(t *testing.T) {
-	calls := 0
-	gamertags := []string{"Ami1", "Ami2"}
-	c := NewFriendPresenceCounter(
-		func(context.Context) []string { return gamertags },
-		func(context.Context, []string) (map[string]string, error) {
-			return map[string]string{"Ami1": "111", "Ami2": "222"}, nil
-		},
-		func(context.Context, []string) ([]FriendPresence, error) {
-			calls++
-			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
-		},
-		twoTitleRegistry(),
-	)
-
-	c.Count(context.Background())
-	gamertags = []string{"Ami2", " Ami1 ", "Ami2"} // réordonnée, espacée, dupliquée
-	c.Count(context.Background())
-	if calls != 1 {
-		t.Errorf("appels Xbox = %d, attendu 1 (même liste, autre ordre)", calls)
-	}
-}
-
-// F15b — le TTL EXPIRE. `cachedAt` est vieilli à la main : le cache est daté, pas
-// minuté, et rien d'autre ne prouve qu'il finit par lâcher.
-func TestFriendsCount_CacheExpiresAfterTTL(t *testing.T) {
-	calls := 0
-	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
-		[]FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil, &calls)
-
-	c.Count(context.Background())
-	c.cachedAt = time.Now().Add(-FriendsPresenceTTL - time.Second)
-
-	if got := c.Count(context.Background()); got != 1 {
-		t.Errorf("Count après expiration = %d, attendu 1", got)
-	}
-	if calls != 2 {
-		t.Errorf("appels Xbox = %d, attendu 2 (TTL écoulé → nouvel appel)", calls)
-	}
-}
-
-// F4 — SINGLEFLIGHT : N requêtes simultanées à cache froid ne font PARTIR QU'UN
-// SEUL lot. C'est le scénario nominal au réveil du shell (plusieurs onglets), et
-// sans lui chacune émettait le sien.
-func TestFriendsCount_ConcurrentCallsIssueASingleFetch(t *testing.T) {
-	const concurrents = 8
-	var mu sync.Mutex
-	calls := 0
-	entre := make(chan struct{})
-
-	c := NewFriendPresenceCounter(
-		func(context.Context) []string { return []string{"Ami"} },
-		func(context.Context, []string) (map[string]string, error) {
-			return map[string]string{"Ami": "111"}, nil
-		},
-		func(context.Context, []string) ([]FriendPresence, error) {
-			mu.Lock()
-			calls++
-			premier := calls == 1
-			mu.Unlock()
-			if premier {
-				// Tient la place le temps que les autres arrivent : sans
-				// singleflight, elles émettraient toutes ici.
-				<-entre
-			}
-			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
-		},
-		twoTitleRegistry(),
-	)
-
-	var wg sync.WaitGroup
-	resultats := make([]int, concurrents)
-	for i := 0; i < concurrents; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			resultats[idx] = c.Count(context.Background())
-		}(i)
-	}
-	time.Sleep(20 * time.Millisecond) // laisse les concurrentes s'empiler sur le verrou
-	close(entre)
-	wg.Wait()
-
-	if calls != 1 {
-		t.Errorf("appels Xbox = %d, attendu 1 pour %d requêtes simultanées", calls, concurrents)
-	}
-	for i, n := range resultats {
-		if n != 1 {
-			t.Errorf("requête %d : Count = %d, attendu 1 (résultat du premier)", i, n)
-		}
-	}
-}
-
-// Dépendance manquante (démo, watcher off, shared indisponible) : pas de
-// compteur du tout — le service rendra 0 sans jamais tenter d'appel.
-func TestNewFriendPresenceCounter_NilWhenDependencyMissing(t *testing.T) {
-	cases := map[string]*FriendPresenceCounter{
-		"sans gamertags": NewFriendPresenceCounter(nil,
-			func(context.Context, []string) (map[string]string, error) { return nil, nil },
-			func(context.Context, []string) ([]FriendPresence, error) { return nil, nil },
-			twoTitleRegistry()),
-		"sans résolveur": NewFriendPresenceCounter(func(context.Context) []string { return nil },
-			nil,
-			func(context.Context, []string) ([]FriendPresence, error) { return nil, nil },
-			twoTitleRegistry()),
-		"sans fetch": NewFriendPresenceCounter(func(context.Context) []string { return nil },
-			func(context.Context, []string) (map[string]string, error) { return nil, nil },
-			nil, twoTitleRegistry()),
-		"sans registre": NewFriendPresenceCounter(func(context.Context) []string { return nil },
-			func(context.Context, []string) (map[string]string, error) { return nil, nil },
-			func(context.Context, []string) ([]FriendPresence, error) { return nil, nil }, nil),
-	}
-	for name, c := range cases {
-		if c != nil {
-			t.Errorf("%s : compteur non nil", name)
-		}
+	if len(snap.Players) != 2 {
+		t.Errorf("players = %+v, attendu les 2 joueurs visibles", snap.Players)
 	}
 }

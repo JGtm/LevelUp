@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -108,76 +107,6 @@ func (r *GamertagRepo) ResolveGamertags(ctx context.Context, xuids []string) (ma
 		}
 	}
 	return out, rows.Err()
-}
-
-// ResolveXUIDsByGamertags fait le chemin INVERSE de ResolveGamertags : un set
-// borné de gamertags → leurs xuids, via le même chokepoint v_gamertag_lookup.
-// Utilisé par la présence en jeu pour traduire la liste `friend_gamertags` des
-// Réglages (saisie à la main) en identifiants Xbox interrogeables.
-//
-// Insensible à la CASSE : la liste des Réglages est tapée par un humain, alors
-// que la vue porte l'orthographe officielle du gamertag. Les clés de la map
-// retournée sont les gamertags DEMANDÉS (tels que fournis), pour que l'appelant
-// retrouve les siens sans re-normaliser.
-//
-// Sémantique : un gamertag jamais croisé (absent de la vue) est ABSENT de la
-// map — l'appelant décide (ici : ami non compté). Les bots sont exclus. Si deux
-// xuids partagent un gamertag (compte renommé puis repris), on retient le plus
-// grand — arbitraire mais déterministe, et sans effet sur un compteur d'amis.
-func (r *GamertagRepo) ResolveXUIDsByGamertags(ctx context.Context, gamertags []string) (map[string]string, error) {
-	uniq := dedupNonEmpty(gamertags)
-	out := make(map[string]string, len(uniq))
-	if len(uniq) == 0 {
-		return out, nil
-	}
-
-	lowered := make([]string, 0, len(uniq))
-	for _, gt := range uniq {
-		lowered = append(lowered, strings.ToLower(gt))
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	db, release, err := r.shared.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("GamertagRepo.ResolveXUIDsByGamertags shared reader: %w", err)
-	}
-	defer release()
-
-	q := fmt.Sprintf(`
-		SELECT lower(gamertag) AS gt, MAX(xuid) AS xuid
-		FROM v_gamertag_lookup
-		WHERE gamertag IS NOT NULL AND gamertag != '' AND lower(gamertag) IN (%s)
-		  AND %s
-		GROUP BY lower(gamertag)`,
-		Placeholders(len(lowered)), analysis.SQLIsNotBotCol("xuid"))
-	rows, err := db.QueryContext(ctx, q, ToAnySlice(lowered)...)
-	if err != nil {
-		return nil, fmt.Errorf("GamertagRepo.ResolveXUIDsByGamertags: %w", err)
-	}
-	defer rows.Close()
-
-	byLower := make(map[string]string, len(uniq))
-	for rows.Next() {
-		var gt, xuid string
-		if err := rows.Scan(&gt, &xuid); err != nil {
-			return nil, fmt.Errorf("GamertagRepo.ResolveXUIDsByGamertags scan: %w", err)
-		}
-		if xuid != "" {
-			byLower[gt] = xuid
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	for _, gt := range uniq {
-		if xuid, ok := byLower[strings.ToLower(gt)]; ok {
-			out[gt] = xuid
-		}
-	}
-	return out, nil
 }
 
 // dedupNonEmpty retourne les valeurs uniques non-vides en préservant l'ordre.

@@ -19449,6 +19449,7 @@ components:
       additionalProperties: false
       properties:
         friends_in_game:
+          description: 'Nombre d''amis en jeu : parmi les joueurs visibles du titre courant (même périmètre que players, en-tête X-LevelUp-Title), ceux dont l''utilisateur n''est pas propriétaire et qui sont actuellement en jeu sur l''un des titres suivis.'
           format: int64
           type: integer
         players:
