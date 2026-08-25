@@ -827,11 +827,20 @@ test re-vert.
 
 ## Clôture du chantier (superviseur)
 
-- [ ] Gate global dans le worktree : `cd apps/go-api && go test ./...` +
-  `cd apps/web && npx tsc -b --force && npx vitest run` — verts.
-- [ ] Revue adversariale du diff complet (skill `adversarial-review`) avant fusion.
+- [x] Gate global dans le worktree (2026-08-25) : go vet 0 ; `go test` complet hors
+  `himap` (lenteur locale documentée) — VERT après lot F (le premier passage avait
+  attrapé archlint + netguard, corrigés en F1/F2) ; tsc 0 ; vitest complet 476
+  fichiers / 4592 tests verts. Suite `-tags=integration` non rejouée : aucun
+  fichier de `persist/`, `sync/` (écritures) ni `migration/` touché par le chantier.
+- [x] Revue adversariale du diff complet (2026-08-25) : ronde 1 = 4 relecteurs
+  aveugles (données, accès/concurrence, front, couverture de tests) → 0 P0, 4 P1,
+  ~15 P2 ; P1 + 12 P2 corrigés au lot F ; ronde 2 sur les seuls correctifs →
+  0 P0/P1, 4 P2 consignés (section Découvertes). Décroissance stricte, boucle close.
 - [ ] Fusion `wt/notion-cinq` → `feat/v75` en `--no-ff` (superviseur), journal
   `.ai/thought_log.md` + entrée registre si reports ; suppression worktree+branche.
+  BLOQUÉE en attente : 4 fichiers du chevauchement (`openapi.yaml`, `generated.ts`,
+  `match-replay/i18n.ts`, `i18nContract.ts`) sont modifiés NON COMMITÉS dans le
+  worktree principal (lots utilisateur du 24/08, commit « à sa demande »).
 - [ ] Notion : barrer les items 1-5 au format maison (« TRAITÉ <date> — commit
   <sha> » + note d'une ligne), item par item quand son lot est clos et fusionné.
 - [ ] Gate visuel utilisateur : liste des témoins à vérifier fournie au CR final.
@@ -896,12 +905,10 @@ test re-vert.
   (`GetStatus`, `initPlayers`, `AddPlayer`, et désormais `PresenceBatch`) le lisent
   sous ce verrou. Course théorique préexistante, non aggravée (le nouveau lecteur
   prend le verrou comme ses voisins). Non traité, hors périmètre.
-- EMOJI VERSIONNÉ résiduel du lot E, à traiter AVANT la fusion :
-  `apps/go-api/internal/presence/batch_client.go:75` ouvre un paragraphe de godoc par
-  « ⚠ » (U+26A0). CLAUDE.md règle n°4 l'interdit dans les fichiers versionnés, et aucun
-  garde-rail ne le rattrape (vérifié : le gate F est vert avec). Repéré au lot F en
-  touchant le fichier pour F2, NON traité — le lot F a consigne stricte de n'introduire
-  rien d'autre. Un caractère à retirer, décision superviseur.
+- EMOJI VERSIONNÉ résiduel du lot E (`batch_client.go:75`, « U+26A0 » en godoc) :
+  TRAITÉ par le superviseur (`995bfdc6e`) — remplacé par « ATTENTION : ». Aucun
+  garde-rail ne rattrape ce cas (le gate F était vert avec) : un ratchet « pas
+  d'emoji dans les fichiers versionnés » reste à créer, non traité ici.
 - `formatDurationMMSS` confond « zéro » et « absent » pour TOUS ses appelants (lot F,
   2026-08-25) : son repli sort dès que la valeur est nulle. C'est juste pour une durée
   de MATCH (l'origine du helper) et faux partout où zéro est une mesure. F12 n'a corrigé
@@ -918,3 +925,36 @@ test re-vert.
   déjà typée `Locale` (`'fr' | 'en'`) avant de la passer à `MatchMediaTab` et au
   breadcrumb : ternaires no-op héritées. Les deux composants d'onglets extraits
   reçoivent la `Locale` telle quelle. Nettoyage du reste non tenté (hors périmètre).
+
+### Ronde 2 de revue adversariale (2026-08-25) — 0 P0, 0 P1, 4 P2 consignés
+
+La ronde 2 a relu les seuls correctifs du lot F (diff `4450fa81d..995bfdc6e`) :
+14 conditions vérifiées tiennent (singleflight sans interblocage, clé de cache par
+gamertags saine, timeout sans fuite, ratchets propres, repli du nom d'assistant,
+« 0:00 », tests F non tautologiques sauf un — ci-dessous). Les 4 P2, consignés
+sans ronde 3 (borne du skill `adversarial-review`) :
+
+- **Interaction budget 3 s × backoff d'échec (F7×F4)** : un `Count` qui dépasse le
+  budget avorte le lot Xbox (même contexte), l'échec arme le backoff ~30 s — dans
+  un régime où Xbox dépasse durablement 3 s, `friends_in_game` reste à 0 en
+  permanence (avant lot F : juste mais lent). Dégradation ASSUMÉE, godoc de
+  `friendsCountBudget` corrigé par le superviseur pour dire la vérité (le texte
+  affirmait une poursuite en arrière-plan qui n'existe pas). Condition de
+  reprise : si la pastille d'amis reste à zéro en usage réel, dissocier le
+  contexte du fetch de celui de la requête (fetch détaché qui alimente le cache).
+- **Test F9 partiellement tautologique** (`presence_service_test.go:203-222`) : la
+  fixture « frais sans titre + périmé avec titre » ne discrimine pas le placement
+  de la borne à l'INGESTION (la décision structurante de F9) d'un blanchiment
+  post-arbitrage. Cas discriminant manquant : périmé+titré énuméré en PREMIER,
+  frais+titré en second. Le garde lui-même est correct (vérifié sur pièces).
+- **`enableSorting: false` sur la colonne rejeu = configuration inerte** : une
+  colonne d'affichage sans `accessorFn` n'est jamais triable dans TanStack
+  (`getCanSort` exige `accessorFn`) — le constat de ronde 1 était donc erroné sur
+  la conséquence, le correctif est sans effet rendu, et son test ne peut pas
+  rougir. Gardé pour l'explicite (parité avec la jumelle escouade).
+- **`presenceFreshnessWindow` (3 min) < backoff 429 du poller (5 min)** : pendant
+  un épisode 429 Xbox, un joueur réellement en partie est servi « hors jeu »
+  ~2 min (avant F9 : titre conservé). Rien ne relie les deux constantes (paquets
+  distincts, pas de garde-rail croisé). Arbitrage assumé : mieux vaut un faux
+  « hors jeu » transitoire qu'un faux « en jeu » persistant ; à re-regarder si les
+  429 deviennent fréquents.
