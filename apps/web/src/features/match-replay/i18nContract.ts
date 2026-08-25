@@ -12,6 +12,68 @@
  */
 import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
 
+/**
+ * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet Chronologie). Il compte, sur tout
+ * le match, ce que le rejeu ne montre qu'image par image.
+ *
+ * TROIS RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
+ *
+ *  1. `groupActiveHint` — un épisode de camouflage ou de surbouclier est un ÉTAT MESURÉ, pas
+ *     un geste : le film dit que l'effet court, il ne dit PAS d'où il vient (bonus ramassé au
+ *     socle, ou capacité déclenchée). Compter ces épisodes comme des « utilisations d'objet »
+ *     serait affirmer une origine que rien n'établit.
+ *  2. `powerupPadsHint` — les vidages de socle de bonus sont ANONYMES PAR MESURE
+ *     (`padPickups[].xuid` vaut `null` partout) : la ligne reste au niveau du MATCH, et aucun
+ *     libellé ne doit laisser croire qu'on connaît le ramasseur.
+ *  3. `notMeasured` — répulseur et propulseur n'ont AUCUN canal d'activation dans le film. Pas
+ *     de colonne vide (elle se lirait « zéro utilisation ») : une phrase qui le dit.
+ *
+ * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
+ * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
+ * divergerait au premier ajout du manifeste.
+ */
+export interface EquipmentUsageText {
+  title: string
+  colPlayer: string
+  teamTotal: string
+  /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
+  groupGrapple: string
+  groupGrappleHint: string
+  /** États actifs mesurés (camouflage, surbouclier) : nombre d'épisodes et durée cumulée. */
+  groupActive: string
+  groupActiveHint: string
+  /**
+   * LE NOM COURT des deux familles d'état, et pourquoi il ne se prend nulle part ailleurs.
+   *
+   * `equipmentActive` porte bien ces deux familles, mais ce sont des PHRASES d'infobulle de
+   * fiche (« Camouflage actif — le joueur est invisible à l'écran de jeu ») : illisibles en tête
+   * de colonne. `padEquipmentFamily` porte bien deux noms courts, mais ce sont ceux des SOCLES
+   * de bonus — les employer ici nommerait l'ÉTAT par la source que `groupActiveHint` dit
+   * justement ne pas être établie. D'où deux libellés propres, et le typage tient la parité.
+   */
+  activeFamily: Record<'camo' | 'overshield', string>
+  activeCount: string
+  activeDuration: string
+  groupDeployed: string
+  groupDeployedHint: string
+  groupDropped: string
+  groupDroppedHint: string
+  groupGrenades: string
+  groupGrenadesHint: string
+  /** Repli quand le catalogue du titre ne nomme pas ce rang de grenade (le rang reste vrai). */
+  grenadeRankFmt: (rank: number) => string
+  /** La ligne ANONYME, au niveau du match — jamais rattachée à un joueur. */
+  powerupPads: string
+  powerupPadsHint: string
+  powerupPadsDenomFmt: (pads: number) => string
+  /** Dénominateurs repris de `doc.coverage` : « N épisodes » ne se juge pas sans eux. */
+  coverageActiveFmt: (lives: number) => string
+  coverageGrappleFmt: (pulls: number, lives: number) => string
+  /** Gestes mesurés dont le film ne nomme pas l'auteur : comptés hors tableau, jamais versés. */
+  unattributedFmt: (count: number) => string
+  notMeasured: string
+}
+
 export interface ReplayText {
   title: string
   back: string
@@ -323,6 +385,11 @@ export interface ReplayText {
    * ne reçoit aucun effet.
    */
   equipmentActive: Record<'camo' | 'overshield', string>
+  /**
+   * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
+   * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.
+   */
+  equipmentUsage: EquipmentUsageText
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string

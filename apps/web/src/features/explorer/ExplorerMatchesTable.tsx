@@ -15,7 +15,7 @@
  *  - Playlist + Mode tronqués à 12 chars (truncateName) avec tooltip natif
  *    sur le label complet via attribut HTML `title`.
  *
- * Colonnes : Ouvrir | Waypoint | Date | Carte | Playlist | Mode | Contexte |
+ * Colonnes : Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode | Contexte |
  *            Résultat | Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  *
@@ -23,6 +23,9 @@
  * Halo Waypoint, gatée par la capability `waypoint_match_url` (déclarée par les
  * DEUX titres depuis le 2026-07-24) ET par la préférence locale
  * `localUiPrefs.showWaypointColumn` (Settings → Apparence, défaut ON).
+ *
+ * Colonne « Rejeu » : lien interne vers la page de rejeu 2D, via le composant
+ * partagé `lib/match-nav/MatchReplayLink` (la donnée `has_replay` EST la gate).
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -51,6 +54,7 @@ import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
+import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -437,6 +441,26 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
             />
           </a>
+        ),
+      },
+      {
+        id: 'replay',
+        header: '',
+        // Lien INTERNE vers la page de rejeu 2D — composant partagé avec le tableau
+        // Synergies (lib/match-nav/MatchReplayLink), qui porte la règle d'affichage :
+        // rien n'est rendu sans artefact.
+        //
+        // JAMAIS TRIABLE, comme sa jumelle de SquadSynergyHistoryTable : la colonne n'a
+        // pas de valeur d'accès, donc un tri n'ordonnerait rien — et son en-tête est vide,
+        // ce qui produirait un bouton focalisable sans nom accessible.
+        enableSorting: false,
+        cell: (ctx) => (
+          <MatchReplayLink
+            available={!!ctx.row.original.has_replay}
+            matchId={ctx.row.original.match_id}
+            playerSlug={playerSlug}
+            label={t('explorer.matches.col_replay_aria')}
+          />
         ),
       },
       {

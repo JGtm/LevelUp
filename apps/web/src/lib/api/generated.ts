@@ -3506,6 +3506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Présence en jeu des joueurs suivis et des amis */
+        get: operations["getPresence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profiles/{player_slug}/titles/{slug}/data": {
         parameters: {
             query?: never;
@@ -5970,6 +5987,7 @@ export interface components {
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
             had_bot_teammate?: boolean;
+            has_replay?: boolean;
             is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
@@ -7178,6 +7196,21 @@ export interface components {
             /** Format: int64 */
             updated: number;
         };
+        MatchAssistPair: {
+            /** Format: int64 */
+            assist_count: number;
+            assist_gamertag: string;
+            assist_xuid: string;
+            killer_gamertag?: string;
+            killer_xuid: string;
+            /** Format: int64 */
+            stolen_count: number;
+        };
+        MatchAssistPairs: {
+            /** Format: int64 */
+            measured_deaths: number;
+            pairs: components["schemas"]["MatchAssistPair"][] | null;
+        };
         MatchAssociatedMedia: {
             capture_time?: string;
             /** Format: int64 */
@@ -7221,6 +7254,7 @@ export interface components {
             native_commendations?: components["schemas"]["MatchNativeCommendation"][] | null;
         };
         MatchCombatTab: {
+            assist_pairs?: components["schemas"]["MatchAssistPairs"];
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
@@ -7428,6 +7462,7 @@ export interface components {
             /** Format: double */
             expected_win_prob?: number;
             experience_type_label?: string;
+            has_replay?: boolean;
             is_excluded: boolean;
             is_overtime?: boolean;
             is_with_friends: boolean;
@@ -8893,6 +8928,13 @@ export interface components {
             sync_status?: string;
             xuid: string;
         };
+        PlayerPresence: {
+            gamertag: string;
+            in_game: boolean;
+            player_slug: string;
+            title_name?: string;
+            title_slug?: string;
+        };
         PlayerPresenceStatus: {
             cooldown_left?: string;
             gamertag: string;
@@ -8904,6 +8946,8 @@ export interface components {
             state_duration: string;
             state_since: string;
             subscribe_error?: string;
+            title_name?: string;
+            title_slug?: string;
             xuid: string;
         };
         PlayerProfile: {
@@ -9069,6 +9113,11 @@ export interface components {
             category: string;
             delivery: string;
             enabled: boolean;
+        };
+        PresenceSnapshot: {
+            /** Format: int64 */
+            friends_in_game: number;
+            players: components["schemas"]["PlayerPresence"][] | null;
         };
         PrestigeTelemetryDiag: {
             by_source: components["schemas"]["PrestigeTelemetrySourceStats"][] | null;
@@ -10028,6 +10077,25 @@ export interface components {
             id: string;
             name: string;
         };
+        SquadAssistPair: {
+            /** Format: int64 */
+            assist_count: number;
+            assist_gamertag: string;
+            assist_xuid: string;
+            killer_gamertag: string;
+            killer_xuid: string;
+            /** Format: int64 */
+            stolen_count: number;
+        };
+        SquadAssistPairs: {
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            pairs: components["schemas"]["SquadAssistPair"][] | null;
+            /** Format: int64 */
+            total_assists: number;
+        };
         SquadBreakdownStats: {
             /** Format: double */
             avg_kda: number;
@@ -10192,6 +10260,7 @@ export interface components {
             expected_win_prob?: number;
             /** Format: int64 */
             gameplay_duration_seconds?: number;
+            has_replay?: boolean;
             /** Format: int64 */
             kills: number;
             map_ui: string;
@@ -10794,6 +10863,7 @@ export interface components {
             xuid?: string;
         };
         TeammatesPageResponse: {
+            assist_pairs?: components["schemas"]["SquadAssistPairs"];
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
@@ -18512,6 +18582,35 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceSnapshot"];
                 };
             };
             /** @description Error */

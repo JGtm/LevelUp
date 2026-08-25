@@ -379,6 +379,11 @@ export const queryKeys = {
     authPoll: (attemptId: string) => ['watcher', 'auth', attemptId] as const,
   },
 
+  /** Présence en jeu du shell (joueurs suivis + amis). Title-scopée : la réponse
+   *  ne liste que les joueurs du titre courant — sans le slug, un switch de titre
+   *  laisserait la manette sur le sélecteur de l'autre titre le temps du refetch. */
+  presence: (titleSlug: string) => ['presence', titleSlug] as const,
+
   // Clés feature diverses ex-inline (L5, CLAUDE.md n°13) — centralisées ici.
   changelog: ['changelog'] as const,
   releaseNotes: (lang: string) => ['release-notes', lang] as const,

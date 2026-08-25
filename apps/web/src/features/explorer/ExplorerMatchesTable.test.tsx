@@ -5,8 +5,35 @@
  * SANS expander (retiré — redondant avec la pagination, cf. retour user).
  * Mode legacy (defaultPageSize undefined) : PAGE_SIZE=20 par page.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
+
+// TanStack Router : <Link> exige un RouterProvider, absent en test unitaire. On le
+// remplace par un <a> qui INTERPOLE les params dans le template de route — ce que le
+// test veut vérifier (la route ciblée et ses params), pas le rendu du routeur.
+// Patron : features/synthesis/SynthesisHighlightsSection.test.tsx.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  type LinkStubProps = {
+    children?: React.ReactNode
+    to: string
+    params?: Record<string, string>
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  return {
+    ...actual,
+    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+      let href = to
+      for (const [key, value] of Object.entries(params ?? {})) {
+        href = href.replace(`$${key}`, value)
+      }
+      return (
+        <a href={href} {...rest}>
+          {children}
+        </a>
+      )
+    },
+  }
+})
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { ExplorerMatchRow } from '@/lib/api/types'
@@ -358,6 +385,58 @@ describe('ExplorerMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)'
       />,
     )
     expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
+})
+
+describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
+  const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
+
+  it('rend un lien interne vers la page de rejeu quand has_replay est vrai', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="Chocoboflor" />,
+    )
+    const link = screen.getByRole('link', { name: REPLAY_LABEL })
+    // Lien INTERNE (route de l'app), pas une URL externe.
+    expect(link.getAttribute('href')).toContain('/matches/match-1/replay')
+  })
+
+  it('ne rend RIEN quand has_replay est faux ou absent', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: false }), makeRow(2)]} playerSlug="me" />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('un seul lien par ligne portant un artefact', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={[makeRow(1, { has_replay: true }), makeRow(2), makeRow(3, { has_replay: true })]}
+        playerSlug="me"
+      />,
+    )
+    expect(screen.getAllByRole('link', { name: REPLAY_LABEL })).toHaveLength(2)
+  })
+
+  // En mode triable, une colonne d'ICÔNE (en-tête vide, aucune valeur d'accès) ne doit
+  // porter AUCUN contrôle de tri : le bouton serait focalisable sans nom accessible, et
+  // le clic n'ordonnerait rien. Le test porte sur l'invariant plutôt que sur la colonne
+  // rejeu seule — il couvre du même coup sa voisine Waypoint.
+  it('aucun en-tête vide ne porte de contrôle de tri en mode triable', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={[makeRow(1, { has_replay: true }), makeRow(2, { has_replay: true })]}
+        playerSlug="me"
+        sortable
+      />,
+    )
+    const emptyHeaders = screen
+      .getAllByRole('columnheader')
+      .filter((th) => (th.textContent ?? '').trim() === '')
+    expect(emptyHeaders.length).toBeGreaterThan(0)
+    for (const th of emptyHeaders) {
+      expect(within(th).queryByRole('button')).toBeNull()
+      expect(th.getAttribute('aria-sort')).toBeNull()
+    }
   })
 })
 

@@ -24,6 +24,7 @@ import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
+import { SquadAssistPairsTable } from './SquadAssistPairsTable'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
@@ -90,6 +91,11 @@ export function SquadSynergiesPage() {
   const matchHistory = pageData?.match_history ?? []
   const sessionTimeline = pageData?.session_timeline ?? []
   const mapHeatmap = pageData?.map_heatmap
+  // assist_pairs n'est PAS comblé par un défaut : son absence est un ÉTAT (aucun match
+  // de la sélection n'a d'assistance mesurée — dont le cas d'un titre sans décodeur de
+  // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
+  // qui laisserait croire à une escouade sans entraide.
+  const assistPairs = pageData?.assist_pairs
 
   const outcomeLabels = {
     win: mappings?.outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
@@ -157,6 +163,18 @@ export function SquadSynergiesPage() {
         )}
       </div>
       <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
+      {assistPairs && (
+        <section>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t.assists.title}
+          </p>
+          {/* La description dit CE QUE MESURE le tableau (« qui prépare les éliminations
+              de qui »), que ni le titre ni les en-têtes de colonne ne disent. Même classe
+              que le bandeau de couverture juste en dessous. */}
+          <p className="mb-2 text-xs text-muted-foreground">{t.assists.description}</p>
+          <SquadAssistPairsTable block={assistPairs} />
+        </section>
+      )}
       <SquadMapHeatmapChart
         title={t.heatmap.title}
         emptyMessage={t.empty.noBlockData}

@@ -12,6 +12,7 @@ const fullScope: ExplorerScope = {
   startDate: '2026-04-01',
   endDate: '2026-05-01',
   squadScope: 'squad',
+  replayScope: 'with',
   matchIDSearch: 'abc-123',
   expTypes: new Set(['PVP classé']),
   playlists: new Set(['Ranked Arena', 'Big Team Battle']),
@@ -33,6 +34,7 @@ describe('encode/decode round-trip', () => {
       startDate: '',
       endDate: '',
       squadScope: '',
+      replayScope: '',
       matchIDSearch: '',
       expTypes: new Set(),
       playlists: new Set(),
@@ -62,6 +64,31 @@ describe('decodeExplorerScope', () => {
   it('ignore un squadScope invalide', () => {
     expect(decodeExplorerScope({ scope: 'bogus' as never }).squadScope).toBe('')
     expect(decodeExplorerScope({ scope: 'solo' }).squadScope).toBe('solo')
+  })
+
+  it('ignore un replayScope invalide et accepte les 3 états', () => {
+    expect(decodeExplorerScope({ replay: 'bogus' as never }).replayScope).toBe('')
+    expect(decodeExplorerScope({}).replayScope).toBe('')
+    expect(decodeExplorerScope({ replay: 'with' }).replayScope).toBe('with')
+    expect(decodeExplorerScope({ replay: 'without' }).replayScope).toBe('without')
+  })
+})
+
+describe('replayScope (filtre « Rejeu »)', () => {
+  it('encode le scope rejeu dans le param `replay`, et l’omet quand il est vide', () => {
+    const base = decodeExplorerScope({})
+    expect(encodeExplorerScope({ ...base, replayScope: 'without' }).replay).toBe('without')
+    expect(encodeExplorerScope(base).replay).toBeUndefined()
+  })
+
+  it('survit au round-trip encode → decode', () => {
+    const s = { ...decodeExplorerScope({}), replayScope: 'with' as const }
+    expect(decodeExplorerScope(encodeExplorerScope(s)).replayScope).toBe('with')
+  })
+
+  it('rejette un `replay` hors enum au niveau du schéma de route', () => {
+    expect(() => explorerSearchSchema.parse({ replay: 'bogus' })).toThrow()
+    expect(explorerSearchSchema.parse({ replay: 'with' }).replay).toBe('with')
   })
 })
 

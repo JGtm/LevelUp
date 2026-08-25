@@ -70,6 +70,10 @@ type TeammatesService struct {
 	// suivis) pour l'axe « Objectifs » par opportunité du radar synergie. Câblé
 	// gated par la capability match.objective.stats ; nil → axe retiré du radar.
 	objectiveIndex port.ObjectiveIndexRepository
+	// replaySvc (optionnel) : service de rejeu 2D, appelé UNE FOIS par requête pour
+	// lister les matchs ayant un artefact (colonne « Rejeu » du tableau historique de
+	// l'escouade). Nil → aucune ligne ne porte de rejeu (dégradation gracieuse).
+	replaySvc port.ReplayService
 }
 
 // NewTeammatesService crÃƒÂ©e un TeammatesService.
@@ -120,6 +124,29 @@ func (s *TeammatesService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyReposi
 func (s *TeammatesService) WithObjectiveIndexRepo(repo port.ObjectiveIndexRepository) *TeammatesService {
 	s.objectiveIndex = repo
 	return s
+}
+
+// WithReplay injecte le service de rejeu 2D — MÊME service que l'endpoint /replay
+// (une seule résolution de chemin dans le dépôt). Seul AvailableSet est appelé : un
+// listing de dossier par requête, jamais un accès disque par ligne du tableau.
+// Sans injection : has_replay reste faux sur toutes les lignes.
+func (s *TeammatesService) WithReplay(svc port.ReplayService) *TeammatesService {
+	s.replaySvc = svc
+	return s
+}
+
+// replayAvailability liste les matchs ayant un artefact de rejeu. Service non câblé
+// ou listing en échec (déjà journalisé côté service de rejeu) : ensemble vide — la
+// page se sert sans la colonne plutôt qu'en erreur.
+func (s *TeammatesService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	if s.replaySvc == nil {
+		return nil
+	}
+	set, err := s.replaySvc.AvailableSet(ctx)
+	if err != nil {
+		return nil
+	}
+	return set
 }
 
 // GetPage retourne la page Teammates avec options, comparaisons et solo ref.
@@ -276,6 +303,7 @@ func (s *TeammatesService) GetPage(
 	var fragClasses map[string][]domain.FragClassEntry
 	var nativeKillMechanics *domain.SquadKillMechanics
 	var firstBlood []domain.FirstBloodPlayerSeries
+	var assistPairs *domain.SquadAssistPairs
 	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
 		// Résout map/playlist/mode FR sur les rows (mode via la cascade
@@ -300,7 +328,8 @@ func (s *TeammatesService) GetPage(
 			issues.add(ctx, domain.DataIssueMapStats, "", err)
 		}
 		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
-		matchHistory = buildSquadMatchHistory(allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug)
+		matchHistory = buildSquadMatchHistory(
+			allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug, s.replayAvailability(ctx))
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)
@@ -312,6 +341,7 @@ func (s *TeammatesService) GetPage(
 		weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstBlood = s.buildSquadFirstBlood(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		assistPairs = s.buildSquadAssistPairs(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
 	}
 
@@ -374,6 +404,7 @@ func (s *TeammatesService) GetPage(
 		WeaponAccuracy:      weaponAccuracy,
 		NativeKillMechanics: nativeKillMechanics,
 		FirstBlood:          firstBlood,
+		AssistPairs:         assistPairs,
 		Header:              header,
 		MainPlayer:          s.gamertag,
 		MedalDigest:         medalDigest,

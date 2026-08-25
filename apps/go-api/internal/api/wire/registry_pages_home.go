@@ -79,7 +79,11 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		WithRegulation(r.regulationFor(pdb)).
 		// Image du badge de palier des lignes Explorer/historique : MÊME résolveur
 		// title-aware que la home (skill_rank_image_url de RecentMatchItem).
-		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug))
+		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Rejeu 2D des lignes (colonne « Rejeu » + filtre replay_scope) : MÊME service
+		// que l'endpoint /replay et la Match View — une seule résolution de chemin dans
+		// le dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
@@ -193,7 +197,11 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
 		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
 		// l'escouade. Miroir du câblage Synthesis/Sessions ; nil-safe hors h5.
-		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
+		// Rejeu 2D du tableau historique de l'escouade : MÊME service que l'endpoint
+		// /replay et la Match View (une seule résolution de chemin dans le dépôt).
+		// Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
@@ -218,6 +226,18 @@ func (r *ServiceRegistry) friendGamertagsResolver() teammates.FriendGamertagsRes
 		}
 		return s.FriendGamertags
 	}
+}
+
+// FriendGamertags expose la liste `friend_gamertags` des Réglages aux
+// consommateurs hors registry (présence en jeu). MÊME résolveur que la page
+// Escouade — la liste d'amis a une seule définition dans le produit. Vide si
+// aucun settings store n'est attaché.
+func (r *ServiceRegistry) FriendGamertags(ctx context.Context) []string {
+	resolver := r.friendGamertagsResolver()
+	if resolver == nil {
+		return nil
+	}
+	return resolver(ctx)
 }
 
 // ─── Sprint 54 : Compare + Leaderboard ───────────────────────────────────────

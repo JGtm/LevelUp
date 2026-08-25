@@ -167,6 +167,13 @@ type ReplayService interface {
 	// Contrat : aucune erreur remontée — un artefact illisible, un titre sans rejeu
 	// ou un chemin absent valent tous « pas de rejeu » (dégradation gracieuse).
 	IsAvailable(ctx context.Context, matchID string) bool
+	// AvailableSet liste EN UN SEUL PASSAGE tous les matchs du titre qui ont un
+	// artefact. C'est la forme à utiliser dès qu'on interroge la présence de rejeu
+	// pour une LISTE de matchs (tableaux Explorer/escouade, des centaines de lignes) :
+	// un IsAvailable par ligne serait un os.Stat par ligne.
+	// Erreur : l'appelant dégrade sur un ensemble vide (aucune colonne rejeu), jamais
+	// un 500 — l'absence de rejeu n'est pas une panne de page.
+	AvailableSet(ctx context.Context) (ReplayAvailability, error)
 	// MapBackground retourne le CALAGE du fond de carte du match : où l'image se pose
 	// dans le repère monde, celui-là même où vivent les trajectoires. Retourne
 	// ErrMapBackgroundNotAvailable quand la carte du match n'a pas d'image figée —

@@ -410,7 +410,10 @@ type ExplorerMatchesQueryRequest struct {
 	MapNames        []string   `json:"map_names,omitempty"`
 	ModeNames       []string   `json:"mode_names,omitempty"`
 	SquadScope      string     `json:"squad_scope,omitempty"`
-	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// ReplayScope : présence d'un rejeu 2D — "" (tous) | "with" | "without".
+	// Miroir de MatchHistoryQueryRequest.ReplayScope (même filtre, appliqué côté Go).
+	ReplayScope   string `json:"replay_scope,omitempty"`
+	MatchIDSearch string `json:"match_id_search,omitempty"`
 	// MatchIDs : whitelist exacte de match_id à conserver (Explorer mode Joueur).
 	MatchIDs []string `json:"match_ids,omitempty"`
 	// IncludeBriefing : opt-in du bandeau de briefing (mode Matchs). Propagé au
@@ -433,6 +436,9 @@ type ExplorerMatchesRow struct {
 	IsWithFriends       bool      `json:"is_with_friends"`
 	ExperienceTypeLabel string    `json:"experience_type_label" default:"Non classé"`
 	MatchURL            string    `json:"match_url"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match → la ligne porte un
+	// lien vers la page de rejeu. Faux/absent = rien n'est rendu (pas de lien mort).
+	HasReplay bool `json:"has_replay,omitempty"`
 	// Combat stats
 	Kills   int `json:"kills,omitempty"`
 	Deaths  int `json:"deaths,omitempty"`

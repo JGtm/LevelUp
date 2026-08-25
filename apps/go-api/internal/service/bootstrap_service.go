@@ -352,19 +352,11 @@ func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid str
 // available_players dans Build. En demo/single-user, filterOwnedPlayers no-ope
 // (liste complète) — l'invariant d'onboarding est préservé.
 func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.SessionData) (*domain.PlayersListResponse, error) {
-	titleSlug := ctxkeys.TitleSlug(ctx)
-	players, err := s.cfg.LoadPlayers(titleSlug)
+	players, err := s.OwnedPlayers(ctx, sess)
 	if err != nil {
 		return nil, fmt.Errorf("BuildPlayersList: %w", err)
 	}
-	// Exclure les profils auth-only : cette liste alimente les mêmes surfaces
-	// front-facing que available_players (favoris gamertag, sélecteur joueur).
-	players = excludeAuthOnly(players)
-	// S4 / Couche A (ADR 0029) : restreindre au parc possédé (xuid + famille) —
-	// un utilisateur ne doit pas énumérer les profils des autres via /players.
 	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
-	familyXUIDs := s.resolveCoMembers(sess)
-	players = s.filterOwnedPlayers(sess, players, familyXUIDs)
 	var defaultSlug *string
 	if len(players) > 0 {
 		slug := players[0].PlayerSlug
@@ -374,6 +366,24 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.Se
 		Items:             players,
 		DefaultPlayerSlug: defaultSlug,
 	}, nil
+}
+
+// OwnedPlayers retourne les joueurs du TITRE COURANT (ctx) visibles côté front
+// (profils auth-only exclus) ET accessibles par la session — les siens plus ses
+// co-membres de groupe (Couche A, ADR 0029). En démo / mono-utilisateur le
+// filtre no-ope et la liste complète est rendue.
+//
+// SOURCE UNIQUE de cette combinaison « joueurs du titre + visibles + possédés » :
+// consommée par GET /players (BuildPlayersList) et par la présence en jeu
+// (PresenceService). Toute nouvelle surface listant des joueurs passe par ici —
+// la ré-écrire ailleurs, c'est risquer d'oublier une des trois étapes.
+func (s *BootstrapService) OwnedPlayers(ctx context.Context, sess *domain.SessionData) ([]domain.PlayerSummary, error) {
+	players, err := s.cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("OwnedPlayers: %w", err)
+	}
+	players = excludeAuthOnly(players)
+	return s.filterOwnedPlayers(sess, players, s.resolveCoMembers(sess)), nil
 }
 
 // --- helpers ---

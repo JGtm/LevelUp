@@ -6209,6 +6209,25 @@ paths:
       summary: Suggère des templates de défi Prestige
       tags:
         - prestige
+  /presence:
+    get:
+      operationId: getPresence
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceSnapshot'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Présence en jeu des joueurs suivis et des amis
+      tags:
+        - bootstrap
   /profiles/{player_slug}/titles/{slug}/data:
     delete:
       description: |
@@ -12024,6 +12043,8 @@ components:
         had_bot_teammate:
           description: Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend).
           type: boolean
+        has_replay:
+          type: boolean
         is_overtime:
           type: boolean
         is_with_friends:
@@ -14892,6 +14913,46 @@ components:
       required:
         - updated
       type: object
+    MatchAssistPair:
+      additionalProperties: false
+      properties:
+        assist_count:
+          format: int64
+          type: integer
+        assist_gamertag:
+          type: string
+        assist_xuid:
+          type: string
+        killer_gamertag:
+          type: string
+        killer_xuid:
+          type: string
+        stolen_count:
+          format: int64
+          type: integer
+      required:
+        - assist_xuid
+        - assist_gamertag
+        - killer_xuid
+        - assist_count
+        - stolen_count
+      type: object
+    MatchAssistPairs:
+      additionalProperties: false
+      properties:
+        measured_deaths:
+          format: int64
+          type: integer
+        pairs:
+          items:
+            $ref: '#/components/schemas/MatchAssistPair'
+          type:
+            - array
+            - "null"
+      required:
+        - measured_deaths
+        - pairs
+      type: object
     MatchAssociatedMedia:
       additionalProperties: false
       properties:
@@ -15000,6 +15061,8 @@ components:
     MatchCombatTab:
       additionalProperties: false
       properties:
+        assist_pairs:
+          $ref: '#/components/schemas/MatchAssistPairs'
         cadence:
           $ref: '#/components/schemas/ChartSeriesChartPointStacked'
         frag_distribution:
@@ -15532,6 +15595,8 @@ components:
           type: number
         experience_type_label:
           type: string
+        has_replay:
+          type: boolean
         is_excluded:
           type: boolean
         is_overtime:
@@ -18916,6 +18981,24 @@ components:
         - attempted_at
         - duration_ms
       type: object
+    PlayerPresence:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        in_game:
+          type: boolean
+        player_slug:
+          type: string
+        title_name:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - player_slug
+        - gamertag
+        - in_game
+      type: object
     PlayerPresenceStatus:
       additionalProperties: false
       properties:
@@ -18938,6 +19021,10 @@ components:
         state_since:
           type: string
         subscribe_error:
+          type: string
+        title_name:
+          type: string
+        title_slug:
           type: string
         xuid:
           type: string
@@ -19357,6 +19444,22 @@ components:
         - category
         - enabled
         - delivery
+      type: object
+    PresenceSnapshot:
+      additionalProperties: false
+      properties:
+        friends_in_game:
+          format: int64
+          type: integer
+        players:
+          items:
+            $ref: '#/components/schemas/PlayerPresence'
+          type:
+            - array
+            - "null"
+      required:
+        - players
+        - friends_in_game
       type: object
     PrestigeTelemetryDiag:
       additionalProperties: false
@@ -21846,6 +21949,55 @@ components:
         - created_by
         - created_at
       type: object
+    SquadAssistPair:
+      additionalProperties: false
+      properties:
+        assist_count:
+          format: int64
+          type: integer
+        assist_gamertag:
+          type: string
+        assist_xuid:
+          type: string
+        killer_gamertag:
+          type: string
+        killer_xuid:
+          type: string
+        stolen_count:
+          format: int64
+          type: integer
+      required:
+        - assist_xuid
+        - assist_gamertag
+        - killer_xuid
+        - killer_gamertag
+        - assist_count
+        - stolen_count
+      type: object
+    SquadAssistPairs:
+      additionalProperties: false
+      properties:
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        pairs:
+          items:
+            $ref: '#/components/schemas/SquadAssistPair'
+          type:
+            - array
+            - "null"
+        total_assists:
+          format: int64
+          type: integer
+      required:
+        - matches_measured
+        - matches_total
+        - total_assists
+        - pairs
+      type: object
     SquadBreakdownStats:
       additionalProperties: false
       properties:
@@ -22348,6 +22500,8 @@ components:
         gameplay_duration_seconds:
           format: int64
           type: integer
+        has_replay:
+          type: boolean
         kills:
           format: int64
           type: integer
@@ -23781,6 +23935,8 @@ components:
     TeammatesPageResponse:
       additionalProperties: false
       properties:
+        assist_pairs:
+          $ref: '#/components/schemas/SquadAssistPairs'
         composition_sessions:
           items:
             $ref: '#/components/schemas/SessionLabelEntry'

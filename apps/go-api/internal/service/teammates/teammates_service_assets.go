@@ -231,7 +231,13 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 // titleSlug : titre courant. Quand le titre ne fournit pas de MMR d'équipe
 // (games.ProvidesTeamMMR=false, ex. Halo 5), TeamMMRAvg reste nil (la colonne MMR
 // est masquée côté front) au lieu d'afficher un 0 trompeur.
-func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]int, titleSlug string) []domain.SquadMatchHistoryRow {
+//
+// replays : ensemble des matchs ayant un artefact de rejeu 2D, résolu UNE FOIS par
+// requête (nil = aucun rejeu publié sur les lignes).
+func buildSquadMatchHistory(
+	matches []domain.SquadMatchRow, mapWR map[string][2]int, titleSlug string,
+	replays port.ReplayAvailability,
+) []domain.SquadMatchHistoryRow {
 	provideTeamMMR := games.ProvidesTeamMMR(titleSlug)
 	seen := make(map[string]struct{}, len(matches))
 	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
@@ -296,6 +302,7 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 			EnemyMMRAvg:             enemyMMR,
 			DeltaMMR:                deltaMMR,
 			ScoreLabel:              scoreLabel,
+			HasReplay:               replays.Has(m.MatchID),
 			DurationSeconds:         m.DurationSeconds,
 			GameplayDurationSeconds: m.GameplayDurationSeconds,
 			WinRateHist:             winRate,

@@ -67,6 +67,9 @@ type ChartPointStacked = {
 ```
 
 `componentColors` maps sub-key → SemanticToken. `componentOrder` controls bar stack/group order.
+`tooltipHideZero` drops zero-valued sub-keys from the tooltip; `tooltipComponentNote(category,
+component)` appends a localized note next to a segment value (used by the match assists chart
+for "of which stolen: N"). Either one switches the tooltip to the custom formatter.
 
 ### `<HistogramChart>`
 

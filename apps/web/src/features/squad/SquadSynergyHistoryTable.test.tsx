@@ -17,6 +17,32 @@ vi.mock('@/lib/match-nav/useNavigateToMatch', () => ({
   useNavigateToMatch: () => navigateMock,
 }))
 
+// TanStack Router : <Link> exige un RouterProvider, absent en test unitaire. Le stub
+// INTERPOLE les params dans le template de route — ce que le test vérifie (route
+// ciblée + params). Patron : features/synthesis/SynthesisHighlightsSection.test.tsx.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  type LinkStubProps = {
+    children?: React.ReactNode
+    to: string
+    params?: Record<string, string>
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  return {
+    ...actual,
+    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+      let href = to
+      for (const [key, value] of Object.entries(params ?? {})) {
+        href = href.replace(`$${key}`, value)
+      }
+      return (
+        <a href={href} {...rest}>
+          {children}
+        </a>
+      )
+    },
+  }
+})
+
 function makeRow(overrides: Partial<SquadMatchHistoryRow> = {}): SquadMatchHistoryRow {
   return {
     match_id: 'match-1',
@@ -167,5 +193,27 @@ describe('SquadSynergyHistoryTable — lien « Ouvrir sur Halo Waypoint » (I19)
     )
     fireEvent.click(screen.getByRole('link', { name: WAYPOINT_LABEL }))
     expect(navigateMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
+  const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
+
+  it('rend un lien interne vers la page de rejeu quand has_replay est vrai', () => {
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Chocoboflor" />,
+    )
+    const link = screen.getByRole('link', { name: REPLAY_LABEL })
+    expect(link.getAttribute('href')).toContain('/matches/match-1/replay')
+  })
+
+  it('ne rend RIEN quand has_replay est faux ou absent', () => {
+    renderWithProviders(
+      <SquadSynergyHistoryTable
+        rows={[makeRow({ has_replay: false }), makeRow({ match_id: 'match-2' })]}
+        playerSlug="me"
+      />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
   })
 })

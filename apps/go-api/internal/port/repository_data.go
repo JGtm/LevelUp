@@ -44,6 +44,15 @@ type SquadRepository interface {
 	// (et, côté solo, par HighlightEventsRepo). Retourne nil si matchIDs est vide.
 	LoadKVPairs(ctx context.Context, matchIDs []string) ([]domain.KVPairRaw, error)
 
+	// LoadSquadAssistPairs charge les paires (assistant → tueur assisté) INTERNES à
+	// l'escouade sur une sélection de matchs (Q32d), et le nombre de ces matchs où
+	// l'assistance est mesurée ET publiable ligne à ligne (dénominateur de couverture).
+	//
+	// Les deux xuids sont contraints à `squadXUIDs` : la question posée porte sur
+	// l'escouade. Aucun gamertag n'est rendu — les noms viennent du roster de la page.
+	// Entrées vides ou titre sans décodeur de film → (nil, 0, nil), jamais une erreur.
+	LoadSquadAssistPairs(ctx context.Context, matchIDs, squadXUIDs []string) ([]domain.SquadAssistPairRaw, int, error)
+
 	// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
 	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
 	// team-wide). Pour chaque match dans matchIDs, retourne les rows
@@ -291,6 +300,9 @@ func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 }
 func (n *noopSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return nil, nil
+}
+func (n *noopSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) ([]domain.SquadAssistPairRaw, int, error) {
+	return nil, 0, nil
 }
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return nil, nil

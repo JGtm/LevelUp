@@ -106,6 +106,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   progressionActivity: () => queryKeys.progressionActivity(P, T),
   // Coach.
   coachProposals: () => queryKeys.coachProposals(P, T),
+  // Présence en jeu du shell : pas par joueur, mais bien par titre (la réponse
+  // ne liste que les joueurs du titre courant).
+  presence: () => queryKeys.presence(T),
   // Namespaces imbriqués title-scopés.
   'prestige.me': () => queryKeys.prestige.me(U, T),
   'prestige.templates': () => queryKeys.prestige.templates(U, T),

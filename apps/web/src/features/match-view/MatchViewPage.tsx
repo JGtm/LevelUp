@@ -1,22 +1,11 @@
-/** MatchViewPage — détail d'un match (2 onglets : Général, Détails). */
+/** MatchViewPage — détail d'un match (3 onglets : Général, Chronologie, Joueurs). */
 import { useParams, useSearch, useNavigate, useRouter } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/features/settings/queries'
-import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
-import { MatchAntagonistChart } from './MatchAntagonistChart'
-import { MatchFragDiffChart } from './MatchFragDiffChart'
-import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
-import { MatchKDCumulChart } from './MatchKDCumulChart'
-import { MatchScoreCurveChart } from './MatchScoreCurveChart'
-import { MatchTugOfWarChart } from './MatchTugOfWarChart'
-import { MatchCadenceChart } from './MatchCadenceChart'
-import { MatchNemesisCards } from './MatchNemesisCards'
-import { MatchScoreboard } from './MatchScoreboard'
-import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchFragCard } from './MatchFragCard'
@@ -26,29 +15,16 @@ import {
   MatchCitationsSection,
   MatchNativeCommendationsSection,
 } from './MatchSummaryMedalsAndCitations'
-import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
+import { MatchViewTabChronology } from './MatchViewTabChronology'
+import { MatchViewTabPlayers } from './MatchViewTabPlayers'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
+import type { MatchViewTab } from './tabs'
 import type { MatchViewRadarSeries } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { apiErrorCode } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
-import type { ReactNode } from 'react'
-
-/**
- * DetailSection — titre de section type-1 (catalogue UI d'harmonisation, même
- * format que le Home : titre `text-base font-semibold`) + contenu groupé.
- * Structure l'onglet Détails (dense) en sections lisibles et titrées.
- */
-function DetailSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-4">
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      {children}
-    </section>
-  )
-}
 
 /**
  * Traduit un code stable de partial_reason en impact end-user concret.
@@ -94,12 +70,12 @@ function translatePartialReason(code: string, locale: string): string {
   }
 }
 
-type TabId = 'summary' | 'details'
-
-// Libellés résolus au rendu via MATCH_VIEW_TEXT (GH2-B2 : bilingue).
-const TABS: { id: TabId; labelKey: 'tabGeneral' | 'tabDetails' }[] = [
+// Libellés résolus au rendu via MATCH_VIEW_TEXT (GH2-B2 : bilingue). Les ids
+// canoniques et la rétro-compat des deep-links vivent dans `./tabs`.
+const TABS: { id: MatchViewTab; labelKey: 'tabGeneral' | 'tabChronology' | 'tabPlayers' }[] = [
   { id: 'summary', labelKey: 'tabGeneral' },
-  { id: 'details', labelKey: 'tabDetails' },
+  { id: 'chronology', labelKey: 'tabChronology' },
+  { id: 'players', labelKey: 'tabPlayers' },
 ]
 
 export function MatchViewPage() {
@@ -110,17 +86,20 @@ export function MatchViewPage() {
   const { tab } = useSearch({
     from: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId',
   })
-  const activeTab: TabId = tab ?? 'summary'
+  const activeTab: MatchViewTab = tab ?? 'summary'
   const navigate = useNavigate({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId' })
   const router = useRouter()
-  const setActiveTab = (next: TabId) => {
+  const setActiveTab = (next: MatchViewTab) => {
     navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true }).catch(() => {})
   }
   const { data, isPending, isError, error, refetch } = useMatchView(playerSlug, matchId)
   // Deux calques décodés du film, best-effort : un titre sans film répond 503 et
   // `data` reste undefined — la page s'affiche entière, sans placeholder mort.
-  const { data: objectiveEvents } = useMatchObjectiveEvents(playerSlug, matchId)
-  const { data: matchPositions } = useMatchPositions(playerSlug, matchId)
+  // Tirés UNIQUEMENT sur l'onglet Chronologie : leurs seuls consommateurs (frags
+  // cumulés, dominance, heatmap des positions) y vivent.
+  const isChronology = activeTab === 'chronology'
+  const { data: objectiveEvents } = useMatchObjectiveEvents(playerSlug, matchId, isChronology)
+  const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isChronology)
   const { data: settings } = useSettings()
   const friendGamertags = settings?.friend_gamertags ?? []
   const locale = useAppShellStore((s) => s.locale)
@@ -236,6 +215,10 @@ export function MatchViewPage() {
   const weaponKills = combat_tab.weapon_kills ?? []
   const highlightEvents = combat_tab.highlight_events ?? []
   const killerVictim = combat_tab.killer_victim ?? []
+  // assist_pairs n'est PAS normalisé en objet vide : son absence est un ÉTAT
+  // (aucune ligne de film pour ce match) que le graphe distingue de « mesuré, zéro
+  // assistance ». Le combler ici effacerait la distinction avant l'écran.
+  const assistPairs = combat_tab.assist_pairs
   const impactBadges = combat_tab.impact_badges ?? []
   const tugOfWar = combat_tab.tug_of_war ?? []
 
@@ -328,7 +311,7 @@ export function MatchViewPage() {
       </div>
 
       <div className="p-6 space-y-6">
-        {activeTab === 'summary' ? (
+        {activeTab === 'summary' && (
           <div className="space-y-4">
             <MatchSummaryCardsSection
               kpis={summary_tab.kpis}
@@ -398,124 +381,43 @@ export function MatchViewPage() {
               </div>
             </FeatureGate>
           </div>
-        ) : (
-          <>
-            {/* §1 — Déroulé du match (lecture chronologique) */}
-            <DetailSection title={t.sectionFlow}>
-              {/* Faits marquants | Frags cumulés */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_1fr]">
-                <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} t={t} />
-                <MatchKDCumulChart
-                  events={highlightEvents}
-                  badges={impactBadges}
-                  scoreboard={scoreboard}
-                  meXUID={meXUID}
-                  objectiveEvents={objectiveEvents}
-                  t={t}
-                />
-              </div>
+        )}
 
-              {/* Le SCORE DANS LE TEMPS (film) ouvre le déroulé : c'est le fil du match.
-                  Sans artefact il ne rend rien, et la mise en page ne bouge pas. */}
-              <MatchScoreCurveChart
-                playerSlug={playerSlug}
-                matchId={matchId}
-                replayAvailable={header.replay_available === true}
-                scoreboard={scoreboard}
-                meXUID={meXUID}
-                t={t}
-              />
+        {activeTab === 'chronology' && (
+          <MatchViewTabChronology
+            playerSlug={playerSlug}
+            matchId={matchId}
+            replayAvailable={header.replay_available === true}
+            impactBadges={impactBadges}
+            highlightEvents={highlightEvents}
+            scoreboard={scoreboard}
+            meXUID={meXUID}
+            objectiveEvents={objectiveEvents}
+            matchPositions={matchPositions}
+            tugOfWar={tugOfWar}
+            cadence={combat_tab.cadence}
+            locale={locale}
+            t={t}
+          />
+        )}
 
-              {/* Dominance | Cadence des frags */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <MatchTugOfWarChart
-                  bins={tugOfWar}
-                  events={highlightEvents}
-                  scoreboard={scoreboard}
-                  meXUID={meXUID}
-                  objectiveEvents={objectiveEvents}
-                  t={t}
-                />
-                <MatchCadenceChart
-                  cadence={combat_tab.cadence}
-                  scoreboard={scoreboard}
-                  meXUID={meXUID}
-                  t={t}
-                />
-              </div>
-
-              {/* Heatmap positions (film keyframe, match-level §N). Le composant
-                  se masque lui-même si aucune position n'a été décodée — titre
-                  sans film, ou match non backfillé (503). */}
-              <MatchPositionsHeatmap
-                positions={matchPositions}
-                locale={locale === 'en' ? 'en' : 'fr'}
-              />
-
-              {/* Engagement — remonté ici (avant Frags différentiel cumulé).
-                  Gaté sur `engagement` : évite le fetch + la carte placeholder
-                  pour un titre sans score d'engagement intra-match. */}
-              <FeatureGate capability="engagement">
-                <EngagementMatchSection
-                  playerSlug={playerSlug}
-                  matchId={matchId}
-                  granularity="intra"
-                  emptyBehavior="placeholder"
-                />
-              </FeatureGate>
-            </DetailSection>
-
-            {/* §2 — Duels & confrontations (face-à-face) */}
-            <DetailSection title={t.sectionDuels}>
-              {/* Némésis + Souffre-douleur | Antagonistes */}
-              <div className="flex flex-col gap-4">
-                <MatchNemesisCards
-                  nemesis={nemesis}
-                  scoreboard={scoreboard}
-                  meXUID={meXUID}
-                  t={t}
-                />
-                <MatchAntagonistChart
-                  pairs={killerVictim}
-                  scoreboard={scoreboard}
-                  meXUID={meXUID}
-                  t={t}
-                />
-              </div>
-
-              {/* Frags différentiel cumulé — descendu ici (après Antagonistes) */}
-              <MatchFragDiffChart
-                events={highlightEvents}
-                scoreboard={scoreboard}
-                roster={roster}
-                pairs={killerVictim}
-                meXUID={meXUID}
-                t={t}
-                friendGamertags={friendGamertags}
-              />
-            </DetailSection>
-
-            {/* §3 — Tableau des scores (table sortie de son bloc) */}
-            <DetailSection title={t.scoreboardTitle}>
-              <MatchScoreboard
-                rows={scoreboard}
-                killerVictim={killerVictim}
-                citations={summary_tab.citations ?? []}
-                header={header}
-                rank={rank}
-                t={t}
-              />
-            </DetailSection>
-
-            {/* §4 — Historique des rencontres (table sortie de son bloc) */}
-            <DetailSection title={t.sectionEncounters}>
-              <MatchEncountersTable
-                rows={team_tab.encounters ?? []}
-                locale={locale === 'en' ? 'en' : 'fr'}
-                hideCardWrapper
-              />
-            </DetailSection>
-          </>
+        {activeTab === 'players' && (
+          <MatchViewTabPlayers
+            header={header}
+            rank={rank}
+            scoreboard={scoreboard}
+            roster={roster}
+            nemesis={nemesis}
+            killerVictim={killerVictim}
+            assistPairs={assistPairs}
+            highlightEvents={highlightEvents}
+            citations={summary_tab.citations ?? []}
+            encounters={team_tab.encounters ?? []}
+            meXUID={meXUID}
+            friendGamertags={friendGamertags}
+            locale={locale}
+            t={t}
+          />
         )}
       </div>
     </div>

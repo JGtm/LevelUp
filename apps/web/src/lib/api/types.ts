@@ -43,6 +43,12 @@ export type BootstrapResponse = components['schemas']['BootstrapResponse']
 
 export type PlayersListResponse = components['schemas']['PlayersListResponse']
 
+// Présence en jeu (GET /presence) — sélecteur de joueur du shell.
+// `players` est typé `PlayerPresence[] | null` par le contrat généré (toute
+// tranche Go se traduit ainsi) : les consommateurs comblent à la frontière.
+export type PresenceSnapshot = components['schemas']['PresenceSnapshot']
+export type PlayerPresence = components['schemas']['PlayerPresence']
+
 export interface SessionContextRequest {
   player_slug?: string | null
   title_slug?: string | null  // Sprint 44 : switch titre
@@ -757,6 +763,9 @@ export interface ExplorerMatchRow {
   /** Dépassement réel du temps réglementaire en secondes (tooltip « Prolongation : +X »). */
   overtime_seconds?: number
   match_url?: string
+  /** Un artefact de rejeu 2D existe pour ce match → la ligne porte un lien vers la
+   *  page de rejeu. Absent/false = rien n'est rendu (jamais de lien vers un 404). */
+  has_replay?: boolean
   /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
   dominance_flag?: number
   /**
@@ -813,6 +822,8 @@ export interface ExplorerMatchesQueryRequest {
   map_names?: string[]
   mode_names?: string[]
   squad_scope?: 'solo' | 'squad' | ''
+  /** Présence d'un rejeu 2D : '' (tous) | 'with' | 'without'. Filtré côté Go. */
+  replay_scope?: 'with' | 'without' | ''
   match_id_search?: string
   /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
   match_ids?: string[]
@@ -1331,6 +1342,16 @@ export type MedalDigestItem = components['schemas']['MedalDigestItem'] & {
 
 export type MedalDigestEntry = components['schemas']['MedalDigestEntry']
 
+/** Ligne du tableau « qui assiste qui » de l'escouade (assistant → tueur assisté). */
+export type SquadAssistPair = components['schemas']['SquadAssistPair']
+
+/**
+ * Bloc « assistances » de l'escouade : les paires internes ET la couverture de la
+ * mesure (`matches_measured` / `matches_total`). Ré-export DIRECT du contrat, sans
+ * réécrire le `pairs: […] | null` : le tableau nullable est la forme réelle du fil.
+ */
+export type SquadAssistPairs = components['schemas']['SquadAssistPairs']
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
@@ -1359,6 +1380,9 @@ export interface TeammatesPageResponse {
   native_kill_mechanics?: SquadKillMechanics
   /** Premiers frag/mort PAR MATCH, une série par joueur de l'escouade (onglet Dynamique). */
   first_blood?: FirstBloodPlayerSeriesDTO[]
+  /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
+   *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
+  assist_pairs?: SquadAssistPairs
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
@@ -1739,6 +1763,19 @@ export type MatchKDTimelinePoint = components['schemas']['MatchKDTimelinePoint']
 /** Paire killer→victim agrégée pour le chart match_view.18 (antagonistes). */
 export type MatchKillerVictimPair = components['schemas']['MatchKillerVictimPair']
 
+/** Paire (assistant → tueur assisté) agrégée sur le match. */
+export type MatchAssistPair = components['schemas']['MatchAssistPair']
+
+/**
+ * Bloc « assistances » : les paires ET la portée de leur mesure.
+ *
+ * Ré-export DIRECT du contrat, sans réécriture du `pairs: […] | null` : le tableau
+ * nullable est la forme réelle du fil (huma sérialise toute tranche Go ainsi) et le
+ * masquer ferait porter au composant un `undefined` silencieux. `measured_deaths` à 0
+ * = « non mesuré » ; `pairs` vide avec `measured_deaths` > 0 = « aucune assistance ».
+ */
+export type MatchAssistPairs = components['schemas']['MatchAssistPairs']
+
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
@@ -1750,6 +1787,11 @@ export interface MatchCombatTab {
   nemesis_duels: MatchNemesisRow[]
   /** Paires killer→victim agrégées (match_view.18). Vide si killer_victim_pairs absent. */
   killer_victim?: MatchKillerVictimPair[]
+  /**
+   * Paires (assistant → tueur assisté) + portée de la mesure. ABSENT quand le match
+   * n'a aucune ligne de film : l'UI ne rend alors rien.
+   */
+  assist_pairs?: MatchAssistPairs
   /** Phase 1 MV2 : 8 rôles narratifs typés via narrative.IdentifyImpactRoles. */
   impact_roles?: MatchViewImpactRole[]
   /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */

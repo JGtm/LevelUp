@@ -147,12 +147,30 @@ export interface MatchViewText {
   impactBadgeNames: Record<string, string>
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
-  // Onglets de la page (GH2-B2)
+  // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs)
   tabGeneral: string
-  tabDetails: string
+  tabChronology: string
+  tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
-  // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
+  // Graphe des ASSISTANCES (assistant -> tueur assisté). Les DEUX états vides sont
+  // distincts et ne se remplacent jamais l'un l'autre : « non disponibles » dit qu'on ne
+  // peut rien lire, « aucune » dit qu'on a mesuré zéro.
+  //
+  // `assistNotUsable` couvre DEUX causes que le contrat ne sépare pas (measured_deaths
+  // vaut 0 dans les deux cas) : l'assistance n'a pas été mesurée sur ce match, OU elle
+  // l'a été sans être publiable ligne à ligne — le cas BTB, où nommer deux joueurs sur
+  // une mort n'est pas permis (filtre `publishable`, cf. en-tête de
+  // `platform/duckdb/match_view_repo_assist_pairs.go`). Écrire « non mesurée » y serait
+  // faux.
+  assistTitle: string
+  assistNotUsable: string
+  assistNoData: string
+  // Note d'infobulle d'un segment : les éliminations volées de ce couple
+  // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
+  assistStolenNote: (n: number) => string
+  // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
+  // d'harmonisation)
   sectionFlow: string
   sectionDuels: string
   sectionEncounters: string
@@ -374,8 +392,13 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     },
     back: 'Retour',
     tabGeneral: 'Général',
-    tabDetails: 'Détails',
+    tabChronology: 'Chronologie',
+    tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
+    assistTitle: 'Assistances',
+    assistNotUsable: 'Assistances non disponibles pour ce match (non mesurées ou non publiables).',
+    assistNoData: 'Aucune assistance sur ce match.',
+    assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -648,8 +671,13 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     },
     back: 'Back',
     tabGeneral: 'General',
-    tabDetails: 'Details',
+    tabChronology: 'Timeline',
+    tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
+    assistTitle: 'Assists',
+    assistNotUsable: 'Assists unavailable for this match (not measured or not publishable).',
+    assistNoData: 'No assists in this match.',
+    assistStolenNote: (n) => `${n} stolen`,
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

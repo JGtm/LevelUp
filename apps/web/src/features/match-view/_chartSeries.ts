@@ -13,6 +13,7 @@ import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SemanticToken } from '@/lib/accessibility'
 import type {
+  MatchAssistPair,
   MatchHighlightEvent,
   MatchKillerVictimPair,
   MatchScoreboardRow,
@@ -86,6 +87,93 @@ export function antagonistStackedSeries(
       datapoints,
     },
   ]
+}
+
+/** Construction des séries du graphe des ASSISTANCES (assistant → tueur assisté).
+ *
+ * Sœur de `antagonistStackedSeries`, et son MIROIR : là où le graphe des antagonistes
+ * met le TUEUR en catégorie et ses victimes en segments, celui-ci met l'ASSISTANT en
+ * catégorie et les tueurs qu'il a servis en segments. Même format
+ * (`BarStackedChart` horizontal), même règle de tri — ennemis d'abord, puis total
+ * décroissant — pour que les deux se lisent sans changer de grille de lecture.
+ *
+ * On reçoit déjà les paires agrégées et comptées (`combat_tab.assist_pairs.pairs`) :
+ * aucun décompte ici, y compris pour les éliminations volées (elles voyagent avec la
+ * paire et sont rendues par l'infobulle, pas par la hauteur du segment).
+ *
+ * Un tueur sans gamertag résolu (absent du scoreboard) passe par `displayPlayerName`,
+ * qui rend le repli masqué « Joueur #### » — jamais un xuid brut.
+ */
+export function assistStackedSeries(
+  pairs: MatchAssistPair[],
+  scoreboard?: MatchScoreboardRow[],
+  meXUID?: string | null,
+): ChartSeries<ChartPointStacked>[] {
+  if (pairs.length === 0) return []
+
+  const assistTotals = new Map<string, { gamertag: string; total: number }>()
+  for (const p of pairs) {
+    const acc = assistTotals.get(p.assist_xuid) ?? { gamertag: p.assist_gamertag, total: 0 }
+    acc.total += p.assist_count
+    assistTotals.set(p.assist_xuid, acc)
+  }
+
+  const sb = scoreboard ?? []
+  const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
+  const allyTeam = meRow?.team_side ?? null
+  const xuidToTeam = new Map<string, string | null>(sb.map((r) => [r.xuid, r.team_side]))
+
+  const isEnemy = (xuid: string): boolean => {
+    if (allyTeam == null) return false
+    const t = xuidToTeam.get(xuid)
+    return t != null && t !== allyTeam
+  }
+
+  const orderedAssistants = Array.from(assistTotals.entries()).sort(([xuidA, a], [xuidB, b]) => {
+    const enemyA = isEnemy(xuidA) ? 0 : 1
+    const enemyB = isEnemy(xuidB) ? 0 : 1
+    if (enemyA !== enemyB) return enemyA - enemyB
+    return b.total - a.total
+  })
+
+  const datapoints: ChartPointStacked[] = orderedAssistants.map(([assistXUID, { gamertag }]) => {
+    const components: Record<string, number> = {}
+    for (const p of pairs) {
+      if (p.assist_xuid !== assistXUID) continue
+      const key = displayPlayerName(p.killer_gamertag, p.killer_xuid)
+      components[key] = (components[key] ?? 0) + p.assist_count
+    }
+    return { category: displayPlayerName(gamertag, assistXUID), components }
+  })
+
+  return [
+    {
+      key: 'match_view.combat.assists',
+      datapoints,
+    },
+  ]
+}
+
+/** Clé de consultation d'un couple (assistant affiché, tueur affiché).
+ *
+ * Le séparateur est une TABULATION et non une espace : un gamertag Xbox peut contenir
+ * des espaces, et deux couples distincts ne doivent jamais se confondre sur la clé.
+ */
+export function assistStolenKey(assistant: string, killer: string): string {
+  return `${assistant}\t${killer}`
+}
+
+export function assistStolenLookup(pairs: MatchAssistPair[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const p of pairs) {
+    if (p.stolen_count <= 0) continue
+    const key = assistStolenKey(
+      displayPlayerName(p.assist_gamertag, p.assist_xuid),
+      displayPlayerName(p.killer_gamertag, p.killer_xuid),
+    )
+    out.set(key, (out.get(key) ?? 0) + p.stolen_count)
+  }
+  return out
 }
 
 /** Point de la série "frags différentiel cumulé" pour un joueur. */

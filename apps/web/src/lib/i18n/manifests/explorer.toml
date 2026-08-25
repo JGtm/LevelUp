@@ -144,6 +144,22 @@ en = "Solo"
 fr = "Escouade"
 en = "Squad"
 
+[explorer.filters.replay_all]
+fr = "Rejeu : tous"
+en = "Replay: all"
+
+[explorer.filters.replay_with]
+fr = "Avec rejeu"
+en = "With replay"
+
+[explorer.filters.replay_without]
+fr = "Sans rejeu"
+en = "Without replay"
+
+[explorer.filters.replay_aria]
+fr = "Filtrer par présence de rejeu 2D"
+en = "Filter by 2D replay availability"
+
 [explorer.filters.experience_type]
 fr = "Type d'expérience"
 en = "Experience type"
@@ -351,6 +367,10 @@ en = "Open"
 [explorer.matches.col_waypoint_aria]
 fr = "Ouvrir sur Halo Waypoint"
 en = "Open on Halo Waypoint"
+
+[explorer.matches.col_replay_aria]
+fr = "Ouvrir le rejeu 2D du match"
+en = "Open the 2D replay of the match"
 
 [explorer.matches.sort_by]
 fr = "Trier par {col}"
