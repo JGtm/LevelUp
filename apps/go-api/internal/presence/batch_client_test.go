@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"levelup/go-api/internal/platform/netguard"
 )
 
 // fixtureBatchThreeUsers : réponse batch observable — un ami en jeu sur Halo
@@ -136,6 +138,37 @@ func TestGetPresenceBatch_SkipsUnparsableRecord(t *testing.T) {
 	}
 	if len(events) != 1 || events[0].XUID != "111" {
 		t.Fatalf("events = %+v, attendu le seul élément lisible", events)
+	}
+}
+
+// Mode démo : le lot ne part JAMAIS. Contrairement au poll unitaire (qui
+// appartient au daemon watcher, éteint en démo), celui-ci est déclenché par une
+// requête utilisateur — /api/v1/presence, tiré toutes les 30 s par le shell.
+// Sans le garde, une démo tournant sur un poste porteur de tokens martèlerait
+// Xbox pour les xuids factices de la fixture.
+func TestGetPresenceBatch_DemoMode_NoCall(t *testing.T) {
+	called := false
+	ts := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	defer ts.Close()
+
+	netguard.SetOffline(true)
+	defer netguard.SetOffline(false)
+
+	events, err := presenceClientPointingTo(ts.URL).
+		GetPresenceBatch(context.Background(), []string{"111", "222"})
+	// Pas d'erreur : la dégradation est « aucune présence connue », donc aucun
+	// ami compté. Une erreur ferait journaliser un avertissement au compteur
+	// d'amis pour un refus attendu, et déclencherait son backoff pour rien.
+	if err != nil {
+		t.Fatalf("GetPresenceBatch error = %v, attendu nil (refus démo bénin)", err)
+	}
+	if len(events) != 0 {
+		t.Errorf("events = %d, attendu 0", len(events))
+	}
+	if called {
+		t.Error("aucun appel réseau ne doit partir en mode démo")
 	}
 }
 

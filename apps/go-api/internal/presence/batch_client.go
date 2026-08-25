@@ -27,6 +27,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const (
@@ -44,6 +46,12 @@ const (
 	// « level=all » pèsent ~200 Ko ; 1 Mio laisse une marge large sans exposer
 	// le process à une réponse anormale.
 	batchPresenceMaxBodyBytes = 1 << 20
+
+	// batchPresenceSurface nomme ce point de sortie pour le coupe-circuit démo.
+	// Distinct du poll unitaire (`presence/rest_client.go`) : les deux sortent
+	// vers le même hôte, mais pas par le même chemin ni pour le même
+	// déclencheur — le journal doit pouvoir dire lequel aurait appelé.
+	batchPresenceSurface = "xbox_presence.batch"
 )
 
 // batchPresenceRequest est le corps POST /users/batch.
@@ -59,9 +67,10 @@ type batchPresenceRequest struct {
 // le compteur entier.
 //
 // Les xuids vides sont écartés ; une liste vide après nettoyage retourne nil
-// sans aucun appel réseau. Les erreurs HTTP sont rendues telles quelles
-// (*HTTPError) pour que l'appelant discrimine 401 / 429 / 5xx comme sur le
-// chemin unitaire.
+// sans aucun appel réseau. En MODE DÉMO le lot ne part pas non plus (netguard) :
+// même sortie vide, même absence d'erreur. Les erreurs HTTP sont rendues telles
+// quelles (*HTTPError) pour que l'appelant discrimine 401 / 429 / 5xx comme sur
+// le chemin unitaire.
 //
 // ⚠ Un ami dont la présence est MASQUÉE (privacy Xbox) n'apparaît pas dans la
 // réponse, ou y apparaît sans titre : il n'est simplement pas compté. Ce n'est
@@ -80,6 +89,22 @@ func (c *PresenceClient) GetPresenceBatch(ctx context.Context, xuids []string) (
 		slog.WarnContext(ctx, "rest_presence: lot tronqué",
 			"requested", len(users), "max", maxBatchPresenceUsers)
 		users = users[:maxBatchPresenceUsers]
+	}
+
+	// Coupe-circuit démo. CE CHEMIN-CI EST ATTEIGNABLE EN DÉMO, contrairement au
+	// poll unitaire : le poll appartient au daemon watcher (désactivé par les
+	// app_settings de la démo, d'où son entrée d'allowlist), tandis que le lot
+	// part d'une REQUÊTE UTILISATEUR — GET /api/v1/presence, que le shell tire
+	// toutes les 30 s dès qu'un onglet est ouvert. Sans ce garde, une démo
+	// tournant sur un poste porteur de tokens martèlerait Xbox pour les xuids
+	// factices de la fixture.
+	//
+	// Dégradation : aucune présence connue, donc aucun ami compté — la même
+	// sortie qu'une liste vide (cf. godoc), et NON une erreur. Une erreur ferait
+	// journaliser un avertissement au compteur d'amis toutes les 45 s pour un
+	// refus attendu, et déclencherait son backoff d'échec pour rien.
+	if err := netguard.Check(ctx, batchPresenceSurface); err != nil {
+		return nil, nil
 	}
 
 	body, err := json.Marshal(batchPresenceRequest{Users: users, Level: "all"})
