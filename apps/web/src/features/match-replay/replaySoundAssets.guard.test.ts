@@ -60,7 +60,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // Les explosions de FIN DE VOL (lot R2-G, 2026-08-18) : mêmes fichiers que les quatre
     // explosions de kill, joints par le rang au lieu de la vignette.
     ...EXPLOSION_SOUND_STEMS,
-    ...Object.values(KILL_SPRITE_SOUND_STEMS),
+    ...Object.values(KILL_SPRITE_SOUND_STEMS).map((v) => v.stem),
     // Les équipements (lot du 2026-08-16) : deux stems par famille mesurée.
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
     // Les POSES d'équipement (lot du 2026-08-18) : UN stem par famille — le geste de pose.
@@ -114,11 +114,19 @@ describe('garde-rail : durée livrée par catégorie', () => {
   const courts = [
     ...Object.values(WEAPON_SOUND_STEMS),
     ...THROW_SOUND_STEMS,
-    ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s === 'melee_kill'),
+    ...Object.values(KILL_SPRITE_SOUND_STEMS)
+      .map((v) => v.stem)
+      .filter((s) => s === 'melee_kill'),
   ]
   const longs = [
     ...EXPLOSION_SOUND_STEMS,
-    ...Object.values(KILL_SPRITE_SOUND_STEMS).filter((s) => s !== 'melee_kill'),
+    // Le répulseur (catégorie ARME) tombe ici, PAS dans `courts` : le découpage court/long est
+    // une propriété de la DURÉE DE LA SOURCE (lot R2, 2026-08-16), un axe différent de la
+    // catégorie du filtre du tiroir. `repulsor_kill` (1,852 s, archive utilisateur) est de la
+    // même famille de durée que les explosions et les équipements, pas des armes/lancers/mêlée.
+    ...Object.values(KILL_SPRITE_SOUND_STEMS)
+      .map((v) => v.stem)
+      .filter((s) => s !== 'melee_kill'),
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
     // Les poses relèvent de la MÊME catégorie que les épisodes (Équipements) : elles gardent
     // la durée de leur source, jamais retronquée à la coupe des armes.
@@ -189,7 +197,12 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
   /**
    * CE QUE CHAQUE VIGNETTE DOIT DÉSIGNER, verbatim depuis rules.tsv. GGGL N = l'entrée N de
    * la liste des grenades du jeu (0 Frag, 1 Plasma, 2 Dynamo, 3 Spike) ; CLASSE MELEE = le
-   * geste partagé par tout l'arsenal, qu'aucune arme ne peut nommer.
+   * geste partagé par tout l'arsenal, qu'aucune arme ne peut nommer ; NOM Repulsor = le
+   * répulseur, identifié le 2026-08-25 (lot R6) par RE `himap` du `jpt!` 07104b31 (chaîne
+   * eqip 7ca85adc -> sofa 6845f2b3 -> eqip frère 1e79ebda -> jpt!, propulseur écarté) — le
+   * fil d'alerte posé par le lot R2.4 (2026-08-16, « le son du répulseur attend son
+   * identification ») a fait exactement ce pour quoi il existait : il est devenu rouge
+   * quand la règle killicon a existé, signalant qu'il fallait le retirer et brancher le son.
    */
   const attendu: Record<string, { genre: string; key: string }> = {
     'killfeed-46': { genre: 'GGGL', key: '0' },
@@ -197,6 +210,7 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
     'killfeed-48': { genre: 'GGGL', key: '2' },
     'killfeed-49': { genre: 'GGGL', key: '3' },
     'killfeed-65': { genre: 'CLASSE', key: 'MELEE' },
+    'killfeed-56': { genre: 'NOM', key: 'Repulsor' },
   }
 
   it('la table sonore couvre exactement les vignettes attendues', () => {
@@ -225,7 +239,7 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
   it('rang du lancer et vignette du kill nomment le MÊME fichier d explosion', () => {
     expect(EXPLOSION_SOUND_STEMS).toHaveLength(VIGNETTE_PAR_RANG.length)
     VIGNETTE_PAR_RANG.forEach((sprite, rang) => {
-      expect(KILL_SPRITE_SOUND_STEMS[sprite], `rang ${rang}`).toBe(EXPLOSION_SOUND_STEMS[rang])
+      expect(KILL_SPRITE_SOUND_STEMS[sprite].stem, `rang ${rang}`).toBe(EXPLOSION_SOUND_STEMS[rang])
     })
   })
 
@@ -239,46 +253,47 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
 })
 
 /**
- * LE SON DU RÉPULSEUR : DEMANDÉ, MESURÉ IMPOSSIBLE AUJOURD'HUI, ET CE TEST EST LE FIL QUI
- * PRÉVIENDRA LE JOUR OÙ IL DEVIENDRA POSSIBLE (lot R2.4, 2026-08-16).
+ * LE SON DU RÉPULSEUR : RÉSOLU (lot R6, 2026-08-25) — CE BLOC REMPLACE LE FIL D'ALERTE DU
+ * LOT R2.4 (2026-08-16), QUI A FAIT EXACTEMENT SON TRAVAIL.
  *
- * CE QUI EXISTE : la vignette. L'atlas kill feed du jeu porte bien un pictogramme de
- * répulseur — `killfeed-56`, `nom_jeu: repulsor`, `tags_weap: ["692390e9"]` dans
- * `static/weapons-assets/halo_infinite/jeu/index.json`. Le JEU sait donc afficher un kill au
- * répulseur dans son propre fil.
+ * HISTORIQUE. R2.4 avait mesuré ligne à ligne (2026-08-16) qu'aucune des 473 lignes de
+ * `damagetag/data/labels.tsv` ne nommait le répulseur — la vignette (`killfeed-56`,
+ * `nom_jeu: repulsor`, `static/weapons-assets/halo_infinite/jeu/index.json`) existait sans
+ * source de dégât mesurée pour y mener, et écrire une règle `CLASSE INCONNU` aurait posé le
+ * son sur 206 sources sans rapport. R2.4 avait donc livré un fil d'alerte plutôt qu'une
+ * supposition — exactement la discipline que ce dépôt attend : une icône absente est un
+ * repli, une icône fausse est un mensonge.
  *
- * CE QUI MANQUE : la SOURCE. Le son d'un kill se joint par la vignette, et la vignette se
- * résout depuis le `jpt!` de la mort via `damagetag/data/labels.tsv` — les seules clés que
- * `rules.tsv` sait écrire (NOM, GGGL, BANQUE, CLASSE) sortent toutes de cette table. Or,
- * mesuré ligne à ligne le 2026-08-16 : aucune des 473 lignes de `labels.tsv` ne nomme le
- * répulseur (0 occurrence), les 114 lignes qui portent un nom propre sont TOUTES de classe
- * ARME, et les 6 lignes dont l'effet est un `eqip` sont toutes de statut INCONNU et sans nom
- * (trois d'entre elles — bcabbe43, caaadcb0, a875923f — sont d'ailleurs identifiées par la
- * rétro-ingénierie comme des entrées de la liste `gggl`, c'est-à-dire des GRENADES).
+ * RÉSOLUTION. Le lot R6 a identifié le `jpt!` par RE hors ligne (`himap`, tags du jeu
+ * installé, aucune base ni re-cuisson) : `eqip 7ca85adc` (le répulseur, déjà nommé dans
+ * `replay_labels.toml`) référence le `sofa 6845f2b3`, qui référence à son tour un second
+ * `eqip` frère `1e79ebda` — et CET `eqip` porte directement une dépendance `jpt! 07104b31`.
+ * Le propulseur a été écarté explicitement (ses deux `eqip` connus, 0x430dda48 et
+ * 0xeef5d48d, sont des tags distincts). `07104b31` est désormais nommé "Repulsor",
+ * classe ARME, statut SOUS_RESERVE (`damagetag/data/labels.tsv` — le même statut que TOUTE
+ * arme nommée de cette table, cf. `TestCoherenceDesLignes` côté Go : le nom précis n'est
+ * jamais garanti à 100 %, seule la classe l'est). `killicon/data/rules.tsv` porte la règle
+ * `NOM Repulsor -> killfeed-56`, colonne weapon_key VIDE (arme hors registre, comme
+ * Mutilator et Sandwich) — d'où le passage par `KILL_SPRITE_SOUND_STEMS` et non
+ * `WEAPON_SOUND_STEMS` côté son. Le son livré est `EQUIPMENT/Repulser - Activate (On
+ * Object)` (1,852 s, la variante d'impact SUR UNE CIBLE — seule cohérente avec un kill,
+ * choix déjà écrit par R2.4), normalisé à la recette maison.
  *
- * POURQUOI ON N'ÉCRIT PAS LA RÈGLE QUAND MÊME : la seule clé qui « attraperait » ces lignes
- * serait `CLASSE INCONNU`, qui poserait le pictogramme ET le son du répulseur sur 206 sources
- * sans rapport. C'est la faute que la table refuse explicitement (« une icône absente est un
- * repli, une icône fausse est un mensonge », en-tête de rules.tsv) et que `neutral.go` refuse
- * déjà pour cinq autres pictogrammes de l'atlas qu'aucune donnée mesurée n'atteint.
- * Conséquence : pas de fichier `.wav` de répulseur livré non plus — un asset que rien ne
- * joue casserait le garde-rail « 0 asset mort » ci-dessus.
- *
- * CE QUE CE TEST FAIT : il devient ROUGE le jour où une règle mène à `killfeed-56`. Ce
- * jour-là, il ne reste que deux gestes — livrer `EQUIPMENT/Repulser - Activate (On Object)`
- * (1,85 s, la variante d'impact SUR UNE CIBLE, seule cohérente avec un kill) coupé par la
- * recette du lot, et ajouter la ligne à `KILL_SPRITE_SOUND_STEMS`.
+ * CE QUE CE BLOC VÉRIFIE MAINTENANT : le sens inverse du fil de R2.4 — que la règle killicon
+ * existe bien, UNE SEULE FOIS, et mène à la bonne vignette. Une régression (règle retirée,
+ * dupliquée, ou déviée vers une autre vignette) redevient rouge ici.
  */
-describe('garde-rail : le son du répulseur attend son identification (R2.4)', () => {
+describe('garde-rail : le son du répulseur (résolu, lot R6 2026-08-25)', () => {
   const REPULSEUR = 'killfeed-56'
 
-  it('aucune règle killicon ne mène encore au répulseur — sinon, brancher son son', () => {
+  it('exactement une règle killicon NOM Repulsor mène à killfeed-56', () => {
     const versRepulseur = killiconRules()
       .filter((r) => r.sprite === REPULSEUR)
       .map((r) => `${r.genre} ${r.key}`)
-    expect(
-      versRepulseur,
-      'killicon resout desormais le repulseur : livrer le wav et l ajouter a KILL_SPRITE_SOUND_STEMS',
-    ).toEqual([])
+    expect(versRepulseur).toEqual(['NOM Repulsor'])
+  })
+
+  it('KILL_SPRITE_SOUND_STEMS répond pour le répulseur, catégorie ARME', () => {
+    expect(KILL_SPRITE_SOUND_STEMS[REPULSEUR]).toEqual({ stem: 'repulsor_kill', category: 'weapon' })
   })
 })
