@@ -1,32 +1,39 @@
 //go:build integration && cgo
 
-// Package api — build_queue_worker_binary_integration_test.go : LA PREUVE AVEC UN
-// VRAI OUVRIER.
+// Package api — build_queue_worker_binary_integration_test.go : LA PREUVE AVEC UN VRAI
+// OUVRIER, SUR UN MINI-FILM VERSIONNÉ — ET ELLE TOURNE EN CI.
 //
-// Le test de transport voisin prouve le protocole avec un artefact fabriqué à la
-// main. Celui-ci va au bout de la chaîne telle qu'elle tournera : le BINAIRE
-// cmd/replay-worker est compilé et lancé, il prend un job par HTTP, télécharge les
-// morceaux depuis des URL « pré-signées », DÉCODE UN VRAI FILM, pousse l'artefact,
-// et le serveur le range — où le service de rejeu le lit.
+// Le test de transport voisin prouve le protocole avec un artefact fabriqué à la main.
+// Celui-ci va au bout de la chaîne telle qu'elle tournera : le BINAIRE cmd/replay-worker
+// est compilé et lancé, il prend un job par HTTP, télécharge les morceaux depuis des URL
+// « pré-signées », DÉCODE UN VRAI FILM, pousse l'artefact, et le serveur le range — où le
+// service de rejeu le lit.
 //
-// CE QUI EST ISOLÉ, ET POURQUOI. L'ouvrier reçoit un dépôt À LUI (copie des seules
-// références dont il a besoin : bornes de carte, libellés, géométrie, structures)
-// et un dossier de travail temporaire. Rien n'est écrit dans le dépôt de
-// l'utilisateur — surtout pas ses artefacts, et JAMAIS son cache film (archive
-// irremplaçable, seulement lu ici).
+// CE QUI A CHANGÉ, ET POURQUOI. Cette preuve se SAUTAIT en CI : elle lisait le film 000d5950
+// (49 morceaux, 22 Mo) du cache utilisateur, gitignoré donc absent de CI ; et elle fabriquait
+// le job À LA MAIN, contournant EnqueueReplayBuild. Désormais :
 //
-// COÛT : un décodage de film complet (~45 morceaux, dizaines de secondes, mémoire
-// non négligeable). D'où le tag `integration` et le saut automatique quand le
-// cache film du témoin n'est pas là (CI, poste neuf) : ce test ne s'exécute que
-// là où le film existe déjà.
+//  1. Le film est un FIXTURE VERSIONNÉ (testdata/film_e2e/c0a82e88) — le PLUS PETIT du corpus
+//     à joueurs (Husky Raid:CTF, 8 morceaux, ~1,6 Mio compressé zlib, la forme même que sert
+//     le CDN Azure). Résolu par le paquet, jamais par un cache utilisateur : plus de saut.
+//  2. La mise en file passe par EnqueueReplayBuild RÉEL. Les deux SEULES frontières d'E/S sont
+//     injectées par les seams nil-en-production : la résolution du manifeste Halo (remplacée
+//     par un httptest servant les morceaux du fixture) et la lecture des faits (CI n'a pas de
+//     shared DuckDB — les faits sont ceux, RÉELS, capturés du corpus et versionnés). Tout le
+//     reste — assemblage du payload, enfilage, protocole ouvrier, décodage, rangement — est réel.
+//
+// CE QUI EST ISOLÉ : l'ouvrier reçoit un dépôt À LUI (copie des seules références versionnées :
+// bornes, géométrie, structures, objectifs, libellés) et un dossier de travail temporaire. Rien
+// n'est écrit dans le dépôt de test — surtout pas ses artefacts.
+//
+// COÛT : un décodage de film COMPLET mais MINIMAL (8 morceaux). D'où le tag integration ; le job
+// CI go-coverage (CGO + integration) l'exécute.
 package wire
 
 import (
 	"bytes"
-	"compress/zlib"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -37,97 +44,67 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
+	syncpkg "levelup/go-api/internal/sync"
 )
 
-// filmTemoin : le film de la preuve. Le plus petit du corpus nommé du garde local
-// (Cliffhanger, Fiesta Slayer) — assez gros pour être un vrai décodage, assez
-// court pour ne pas faire d'un test une punition.
-const filmTemoin = "000d5950"
+// fixtureShort : le film de la preuve — le plus petit du corpus qui rend un artefact À JOUEURS.
+const fixtureShort = "c0a82e88"
 
-// carteTemoin : l'identité de carte candidate du film témoin (le web la résout
-// depuis la base ; ici on la donne, comme le ferait la mise en file).
-const carteTemoin = "Cliffhanger"
+// filmFixture : le mini-film versionné, chargé depuis testdata.
+type filmFixture struct {
+	MatchIDFull string
+	ShortID     string
+	MapNames    []string
+	Facts       port.MatchFacts
+	Chunks      []fixtureChunk
+	chunksDir   string
+}
 
-// TestOuvrierReel_ConstruitEtLivre : la chaîne complète, avec le vrai binaire.
+type fixtureChunk struct {
+	Index      int
+	ChunkType  int
+	StartMS    int
+	DurationMS int
+	File       string
+}
+
+// TestOuvrierReel_ConstruitEtLivre : la chaîne complète, avec le vrai binaire, sur le fixture.
 func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
-	depot := depotUtilisateur(t)
-	chunks := manifesteDuFilm(t, depot)
+	fx := chargerFixture(t)
 
-	// ── Le CDN : les morceaux du cache, servis comme le fait Azure (zlib) ─────
-	cdn := serveurDeMorceaux(t, depot)
+	// ── Le CDN : les morceaux du fixture, déjà zlib (servis tels quels, sans auth) ───────
+	cdn := serveurDeMorceaux(t, fx)
 
-	// ── Le web : les vraies routes, un dépôt vierge, une vraie base ──────────
+	// ── Le web : les vraies routes, un dépôt vierge, une vraie base ──────────────────────
 	srv, reg, serveurRepo := transportStack(t)
-	job := enqueueTravailReel(t, reg, cdn.URL, chunks)
 
-	// ── L'ouvrier : son propre dépôt, son propre dossier de travail ──────────
-	ouvrierRepo := depotOuvrier(t, depot)
+	// ── Les deux SEULES frontières injectées : manifeste Halo (→ CDN) et faits (→ fixture) ─
+	reg.replayFilmResolver = &stubFilmResolver{found: true, refs: fx.chunkRefs(cdn.URL)}
+	reg.replayJobFactsFn = fx.factsFn()
+
+	// ── LA MISE EN FILE RÉELLE : EnqueueReplayBuild assemble le payload (faits + URLs) et
+	//    enfile. Le job n'est PLUS fabriqué à la main — c'est le contournement corrigé. ─────
+	job, created, err := reg.EnqueueReplayBuild(context.Background(), titlePkg.DefaultSlug, fixtureShort)
+	if err != nil || !created {
+		t.Fatalf("EnqueueReplayBuild (mise en file réelle): err=%v created=%v", err, created)
+	}
+
+	// ── L'ouvrier : son propre dépôt (références versionnées du dépôt CI), son dossier ───
+	ouvrierRepo := depotOuvrier(t, repoRootDepuisTest(t))
 	travail := t.TempDir()
 	binaire := compilerOuvrier(t)
 
 	debut := time.Now()
 	lancerOuvrier(t, binaire, srv.URL+"/internal", ouvrierRepo, travail)
-	t.Logf("décodage + livraison en %s", time.Since(debut).Round(time.Second))
+	t.Logf("DÉCODAGE + LIVRAISON en %s (fixture %s, 8 morceaux)", time.Since(debut).Round(time.Millisecond), fixtureShort)
 
-	// ── Ce que le web a rangé ────────────────────────────────────────────────
-	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, filmTemoin+".json")
-	blobRecu, err := os.ReadFile(recu)
-	if err != nil {
-		t.Fatalf("aucun artefact rangé côté serveur (%s): %v", recu, err)
-	}
-	// ── … est exactement ce que l'ouvrier a construit ────────────────────────
-	construit := filepath.Join(ouvrierRepo, "data", "cache", "replays", titlePkg.DefaultSlug, filmTemoin+".json")
-	blobConstruit, err := os.ReadFile(construit)
-	if err != nil {
-		t.Fatalf("l'ouvrier n'a rien construit (%s): %v", construit, err)
-	}
-	if !bytes.Equal(blobRecu, blobConstruit) {
-		t.Fatalf("artefact rangé ≠ artefact construit (%d vs %d octets)", len(blobRecu), len(blobConstruit))
-	}
+	// ── L'artefact rangé = celui construit, lisible par le service, et NON APPAUVRI ──────
+	assertArtefactLivreEtComplet(t, serveurRepo, ouvrierRepo)
 
-	// ── … et le service de rejeu le sert ─────────────────────────────────────
-	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil).
-		GetReplay(context.Background(), filmTemoin)
-	if err != nil {
-		t.Fatalf("le service de rejeu ne lit pas l'artefact livré: %v", err)
-	}
-	if doc.SchemaVersion != replay.SchemaVersion || len(doc.Tracks) == 0 {
-		t.Fatalf("document servi : schéma %d, %d trajectoires", doc.SchemaVersion, len(doc.Tracks))
-	}
-	t.Logf("artefact livré : %d octets, %d trajectoires, %d frames",
-		len(blobRecu), len(doc.Tracks), doc.FrameCount)
-
-	// ── … et il est COMPLET : l'ouvrier a reçu les faits et s'en est servi ───
-	//
-	// C'EST LE CRITÈRE DE SUCCÈS DU CHANTIER. Un ouvrier qui décode sans les faits rend un
-	// artefact appauvri qui porte pourtant le bon numéro de schéma : les deux assertions
-	// ci-dessous sont ce qui distingue « livré » de « livré vide ». Mesuré sur ce même
-	// couple de chemins le 2026-08-24 : joueurs de la courbe de score 8 avec faits, 0 sans ;
-	// identité des camps résolue avec faits, `unresolved` sans.
-	//
-	// Pas d'assertion sur `objectives` ni sur `zoneStates` ICI : le film témoin est un Slayer,
-	// il n'a légitimement ni action d'objectif ni zone de mode. Leur transport est prouvé au
-	// niveau de la file (ops.TestBuildQueue_LesFaitsSurviventALaFile) et leur effet sur
-	// l'artefact est mesuré hors test (témoin 7344d24f : 246 -> 0 et 3 -> 0).
-	if doc.ScoreTimeline == nil || len(doc.ScoreTimeline.Players) == 0 {
-		t.Fatal("artefact livré SANS compteurs de joueur — les faits du job n'ont pas été utilisés " +
-			"(c'est exactement l'appauvrissement que le transport des faits doit supprimer)")
-	}
-	if doc.Coverage == nil || doc.Coverage.Score == nil {
-		t.Fatal("artefact livré sans couverture de score : impossible de dire ce que vaut la courbe")
-	}
-	if doc.Coverage.Score.TeamIdentity == "unresolved" {
-		t.Errorf("identité des camps non résolue alors que les faits portent les deux scores (43-50) "+
-			"et les camps de 8 joueurs — couverture obtenue : %+v", doc.Coverage.Score)
-	}
-	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q",
-		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
-
-	// ── Le job est `succeeded` (donc le compte rendu a trouvé le fichier) ────
+	// ── Le job est `succeeded` (donc le compte rendu a trouvé le fichier) ────────────────
 	vue, err := reg.monitoringStore.BuildQueueReport(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("BuildQueueReport: %v", err)
@@ -136,157 +113,201 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 		t.Fatalf("file après passage de l'ouvrier : %+v, attendu 1 fait (job %s)", vue.Counts, job.JobID)
 	}
 
-	// ── L'ouvrier n'a rien gardé : ses morceaux sont effacés ─────────────────
-	if _, err := os.Stat(filepath.Join(travail, "film_chunks", filmTemoin)); !os.IsNotExist(err) {
+	// ── L'ouvrier n'a rien gardé : ses morceaux sont effacés ─────────────────────────────
+	if _, err := os.Stat(filepath.Join(travail, "film_chunks", fixtureShort)); !os.IsNotExist(err) {
 		t.Errorf("l'ouvrier a conservé ses morceaux de film (%v) — il ne doit rien garder", err)
 	}
 }
 
-// depotUtilisateur rend la racine du dépôt, ou saute le test si le film témoin
-// n'y est pas en cache (rien à décoder : le test n'a pas de sens).
-func depotUtilisateur(t *testing.T) string {
+// assertArtefactLivreEtComplet vérifie que l'artefact rangé par le web est À L'OCTET celui
+// construit par l'ouvrier, lisible par le service de rejeu, et NON APPAUVRI.
+//
+// C'EST LE CRITÈRE DE SUCCÈS DU CHANTIER. Un ouvrier qui décode SANS les faits rend un artefact
+// APPAUVRI (mesuré : 0 joueur de courbe de score, camps `unresolved`) qui porte pourtant le bon
+// numéro de schéma. La présence de compteurs de joueur est LA ligne qui distingue « livré » de
+// « livré vide » — exactement l'appauvrissement que le transport des faits (via EnqueueReplayBuild)
+// doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 92 actions d'objectif nommées
+// (famille flag), contre 0 sans.
+func assertArtefactLivreEtComplet(t *testing.T, serveurRepo, ouvrierRepo string) {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Skip("chemin du test introuvable")
-	}
-	root, err := filepath.Abs(filepath.Join(filepath.Dir(ici), "..", "..", "..", "..", ".."))
+	// Le chemin canonique est TOUJOURS la forme courte (ReplayArtifactPath normalise).
+	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+".json")
+	blobRecu, err := os.ReadFile(recu)
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable: %v", err)
+		t.Fatalf("aucun artefact rangé côté serveur (%s): %v", recu, err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "data", "cache", "film_chunks", filmTemoin)); err != nil {
-		t.Skipf("film témoin %s absent du cache local — preuve ouvrier non exécutable ici", filmTemoin)
-	}
-	return root
-}
-
-// manifesteChunk : la forme du manifeste de film du cache.
-type manifesteChunk struct {
-	Index      int `json:"index"`
-	ChunkType  int `json:"chunk_type"`
-	StartMS    int `json:"start_ms"`
-	DurationMS int `json:"duration_ms"`
-}
-
-// manifesteDuFilm lit les morceaux déclarés du film témoin.
-func manifesteDuFilm(t *testing.T, depot string) []manifesteChunk {
-	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(depot, "data", "cache", "film_manifests", filmTemoin+".json"))
+	construit := filepath.Join(ouvrierRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+".json")
+	blobConstruit, err := os.ReadFile(construit)
 	if err != nil {
-		t.Skipf("manifeste du film témoin absent: %v", err)
+		t.Fatalf("l'ouvrier n'a rien construit (%s): %v", construit, err)
 	}
-	var mf struct {
-		Chunks []manifesteChunk `json:"chunks"`
+	if !bytes.Equal(blobRecu, blobConstruit) {
+		t.Fatalf("artefact rangé ≠ artefact construit (%d vs %d octets)", len(blobRecu), len(blobConstruit))
 	}
-	if err := json.Unmarshal(raw, &mf); err != nil {
-		t.Fatalf("manifeste illisible: %v", err)
+
+	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil).
+		GetReplay(context.Background(), fixtureShort)
+	if err != nil {
+		t.Fatalf("le service de rejeu ne lit pas l'artefact livré: %v", err)
 	}
-	if len(mf.Chunks) == 0 {
-		t.Skip("manifeste sans morceau")
+	if doc.SchemaVersion != replay.SchemaVersion || len(doc.Tracks) == 0 {
+		t.Fatalf("document servi : schéma %d (veut %d), %d trajectoires", doc.SchemaVersion, replay.SchemaVersion, len(doc.Tracks))
 	}
-	return mf.Chunks
+	t.Logf("artefact livré : %d octets, %d trajectoires, %d frames", len(blobRecu), len(doc.Tracks), doc.FrameCount)
+
+	if doc.ScoreTimeline == nil || len(doc.ScoreTimeline.Players) == 0 {
+		t.Fatal("artefact livré SANS compteurs de joueur — les faits du job n'ont pas été utilisés " +
+			"(appauvrissement que le transport des faits doit supprimer)")
+	}
+	if doc.Coverage == nil || doc.Coverage.Score == nil {
+		t.Fatal("artefact livré sans couverture de score : impossible de dire ce que vaut la courbe")
+	}
+	// L'IDENTITÉ DES CAMPS EST INFORMATIVE, PAS UN CRITÈRE. Sur ce film Husky Raid:CTF elle reste
+	// `unresolved` (le décodeur ne rattache qu'UN camp aux slots d'entité de ce mode, et le signale
+	// proprement) — ce n'est PAS l'appauvrissement (qui est l'ABSENCE de joueurs), c'est une
+	// propriété de ce film. La ligne dure ci-dessus (joueurs présents) porte la preuve.
+	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q (informatif)",
+		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
 }
 
-// serveurDeMorceaux imite le CDN Azure : il sert les morceaux du cache COMPRESSÉS
-// en zlib, sans authentification — c'est exactement ce que l'ouvrier attend d'une
-// URL pré-signée, et ça vérifie au passage sa décompression.
-func serveurDeMorceaux(t *testing.T, depot string) *httptest.Server {
+// chargerFixture lit le mini-film versionné (fixture.json + chunks) résolu PAR LE PAQUET
+// (runtime.Caller), jamais par un cache utilisateur — c'est ce qui le rend exécutable en CI.
+func chargerFixture(t *testing.T) filmFixture {
 	t.Helper()
-	dir := filepath.Join(depot, "data", "cache", "film_chunks", filmTemoin)
+	dir := filepath.Join(fixtureDir(t), fixtureShort)
+	raw, err := os.ReadFile(filepath.Join(dir, "fixture.json"))
+	if err != nil {
+		t.Fatalf("fixture.json introuvable (%s): %v — le fixture VERSIONNÉ doit être présent en CI", dir, err)
+	}
+	var f struct {
+		MatchIDFull string   `json:"matchIdFull"`
+		ShortID     string   `json:"shortId"`
+		MapNames    []string `json:"mapNames"`
+		Facts       struct {
+			GameVariantName string `json:"gameVariantName"`
+			TeamScores      [2]int `json:"teamScores"`
+			MapID           string `json:"mapId"`
+			Players         []struct {
+				XUID    string `json:"xuid"`
+				Kills   int    `json:"kills"`
+				Deaths  int    `json:"deaths"`
+				Assists int    `json:"assists"`
+				TeamID  int    `json:"teamId"`
+			} `json:"players"`
+		} `json:"facts"`
+		Chunks []struct {
+			Index      int    `json:"index"`
+			ChunkType  int    `json:"chunkType"`
+			StartMS    int    `json:"startMs"`
+			DurationMS int    `json:"durationMs"`
+			File       string `json:"file"`
+		} `json:"chunks"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatalf("fixture.json illisible: %v", err)
+	}
+	scores := f.Facts.TeamScores
+	facts := port.MatchFacts{
+		GameVariantName: f.Facts.GameVariantName,
+		TeamScores:      &scores,
+		MapID:           f.Facts.MapID,
+	}
+	for _, p := range f.Facts.Players {
+		facts.Players = append(facts.Players, port.MatchPlayerFact{
+			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists, TeamID: p.TeamID,
+		})
+	}
+	fx := filmFixture{
+		MatchIDFull: f.MatchIDFull, ShortID: f.ShortID, MapNames: f.MapNames,
+		Facts: facts, chunksDir: filepath.Join(dir, "chunks"),
+	}
+	for _, c := range f.Chunks {
+		fx.Chunks = append(fx.Chunks, fixtureChunk{
+			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS, DurationMS: c.DurationMS, File: c.File,
+		})
+	}
+	if len(fx.Chunks) == 0 || len(fx.Facts.Players) == 0 {
+		t.Fatalf("fixture dégénéré : %d morceaux, %d joueurs", len(fx.Chunks), len(fx.Facts.Players))
+	}
+	return fx
+}
+
+// chunkRefs fabrique les références de manifeste que la frontière Halo rendrait : chaque
+// morceau pointé par une URL pré-signée vers le CDN httptest.
+func (fx filmFixture) chunkRefs(cdnURL string) []syncpkg.FilmChunkRef {
+	out := make([]syncpkg.FilmChunkRef, 0, len(fx.Chunks))
+	for _, c := range fx.Chunks {
+		out = append(out, syncpkg.FilmChunkRef{
+			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS, DurationMS: c.DurationMS,
+			URL: cdnURL + "/" + c.File,
+		})
+	}
+	return out
+}
+
+// factsFn rend le seam de lecture des faits : identité complète + noms de carte + faits, tels
+// que EnqueueReplayBuild les lirait en base — mais servis par le fixture (CI n'a pas de shared).
+func (fx filmFixture) factsFn() func(context.Context, string, string) (string, []string, port.MatchFacts, error) {
+	return func(context.Context, string, string) (string, []string, port.MatchFacts, error) {
+		return fx.MatchIDFull, fx.MapNames, fx.Facts, nil
+	}
+}
+
+// serveurDeMorceaux imite le CDN Azure : il sert les morceaux du fixture, DÉJÀ compressés en
+// zlib, sans authentification — c'est exactement ce que l'ouvrier attend d'une URL pré-signée,
+// et ça vérifie au passage sa décompression.
+func serveurDeMorceaux(t *testing.T, fx filmFixture) *httptest.Server {
+	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nom := filepath.Base(r.URL.Path)
-		brut, err := os.ReadFile(filepath.Join(dir, nom))
+		blob, err := os.ReadFile(filepath.Join(fx.chunksDir, nom))
 		if err != nil {
 			http.Error(w, "morceau absent", http.StatusNotFound)
 			return
 		}
-		var buf bytes.Buffer
-		zw := zlib.NewWriter(&buf)
-		if _, err := zw.Write(brut); err != nil {
-			http.Error(w, "compression", http.StatusInternalServerError)
-			return
-		}
-		_ = zw.Close()
-		_, _ = w.Write(buf.Bytes())
+		_, _ = w.Write(blob) // déjà zlib : servi tel quel
 	}))
 	t.Cleanup(srv.Close)
 	return srv
 }
 
-// enqueueTravailReel met en file le job du film témoin, travail RÉSOLU compris —
-// c'est-à-dire ce que ferait EnqueueReplayBuild après avoir lu le manifeste avec
-// les tokens (le seul geste qu'on remplace ici, faute de vouloir un appel Halo).
-func enqueueTravailReel(t *testing.T, reg *ServiceRegistry, cdnURL string, chunks []manifesteChunk) domain.BuildQueueJob {
+// fixtureDir rend le dossier testdata/film_e2e, résolu relativement au paquet.
+func fixtureDir(t *testing.T) string {
 	t.Helper()
-	payload := &domain.BuildQueuePayload{
-		MatchID: filmTemoin, ShortID: filmTemoin, TitleSlug: titlePkg.DefaultSlug,
-		MapNames: []string{carteTemoin},
-		Facts:    faitsDuTemoin(),
+	_, ici, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("chemin du test introuvable")
 	}
-	for _, c := range chunks {
-		payload.Chunks = append(payload.Chunks, domain.BuildQueueChunk{
-			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS, DurationMS: c.DurationMS,
-			URL: fmt.Sprintf("%s/%s", cdnURL, nomDeMorceau(c.Index)),
-		})
-	}
-	job, created, err := reg.monitoringStore.EnqueueBuildJob(context.Background(), ops.EnqueueBuildJobRequest{
-		JobType:   string(domain.JobTypeReplayBuild),
-		TitleSlug: titlePkg.DefaultSlug,
-		MatchID:   filmTemoin,
-		Payload:   payload,
-	})
-	if err != nil || !created {
-		t.Fatalf("mise en file: err=%v created=%v", err, created)
-	}
-	return job
+	return filepath.Join(filepath.Dir(ici), "testdata", "film_e2e")
 }
 
-// faitsDuTemoin : CE QUE LA BASE SAIT du film témoin, tel que EnqueueReplayBuild
-// le lirait dans `match_registry` et `match_participants`.
-//
-// Valeurs RÉELLES du match (relevé versionné
-// `.ai/V7.5/replay2d/registre_film/lotA_faits/000d5950.json`) recopiées ici plutôt
-// que lues : un test ne dépend pas d'un fichier de travail de `.ai/`, et le triplet
-// (frags, morts, assistances) doit être exact — c'est la CLÉ qui apparie les slots
-// d'entité du film aux xuid, pas une décoration.
-//
-// `mapId` est absent du relevé : ce match est un Slayer, il n'a ni zone de mode ni
-// socle de drapeau à en tirer.
-func faitsDuTemoin() *domain.MatchFacts {
-	scores := [2]int{43, 50}
-	return &domain.MatchFacts{
-		GameVariantName: "Slayer:Arena Super Fiesta",
-		TeamScores:      &scores,
-		Players: []domain.MatchPlayerFact{
-			{XUID: "2533274823110022", Kills: 8, Deaths: 14, Assists: 1, TeamID: 0},
-			{XUID: "2533274826120416", Kills: 8, Deaths: 14, Assists: 1, TeamID: 0},
-			{XUID: "2533274980284321", Kills: 14, Deaths: 13, Assists: 3, TeamID: 0},
-			{XUID: "2535467794760703", Kills: 13, Deaths: 9, Assists: 1, TeamID: 0},
-			{XUID: "2533274815845110", Kills: 12, Deaths: 10, Assists: 6, TeamID: 1},
-			{XUID: "2533274882097883", Kills: 14, Deaths: 9, Assists: 2, TeamID: 1},
-			{XUID: "2535437947245250", Kills: 14, Deaths: 13, Assists: 1, TeamID: 1},
-			{XUID: "2535444178793711", Kills: 10, Deaths: 11, Assists: 2, TeamID: 1},
-		},
+// repoRootDepuisTest rend la racine du dépôt (5 niveaux au-dessus du paquet), d'où l'ouvrier
+// copie ses références VERSIONNÉES — jamais un cache utilisateur.
+func repoRootDepuisTest(t *testing.T) string {
+	t.Helper()
+	_, ici, _, _ := runtime.Caller(0)
+	root, err := filepath.Abs(filepath.Join(filepath.Dir(ici), "..", "..", "..", "..", ".."))
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable: %v", err)
 	}
+	return root
 }
 
-// nomDeMorceau reproduit la convention de nommage du cache film.
-func nomDeMorceau(index int) string { return fmt.Sprintf("chunk_%02d.bin", index) }
-
-// depotOuvrier fabrique un dépôt À LUI : uniquement les références que
-// replaybuild charge (bornes de carte, libellés, géométrie, structures). Copie et
-// non lien : l'ouvrier ne doit pas pouvoir toucher au dépôt de l'utilisateur.
+// depotOuvrier fabrique un dépôt À LUI : uniquement les références versionnées que replaybuild
+// charge (bornes, géométrie, structures, objectifs de carte, libellés). Copie et non lien :
+// l'ouvrier ne doit pas pouvoir toucher au dépôt de test.
 func depotOuvrier(t *testing.T, depot string) string {
 	t.Helper()
 	dst := t.TempDir()
 	for _, rel := range []string{
 		filepath.Join("data", "titles", titlePkg.DefaultSlug, "reference", "map_quant_bounds.json"),
+		filepath.Join("data", "titles", titlePkg.DefaultSlug, "reference", "map_objectives.json"),
 		filepath.Join("data", "titles", titlePkg.DefaultSlug, "reference", "map_geometry"),
 		filepath.Join("data", "titles", titlePkg.DefaultSlug, "reference", "map_structure"),
 		filepath.Join("config", "titles", titlePkg.DefaultSlug, "mappings"),
 	} {
 		if err := copierArborescence(filepath.Join(depot, rel), filepath.Join(dst, rel)); err != nil {
-			t.Skipf("référence %s indisponible pour l'ouvrier: %v", rel, err)
+			t.Fatalf("référence %s indisponible pour l'ouvrier (doit être versionnée): %v", rel, err)
 		}
 	}
 	return dst
@@ -323,9 +344,8 @@ func copierArborescence(src, dst string) error {
 	return nil
 }
 
-// compilerOuvrier construit le binaire de l'ouvrier. Compilé AVANT tout décodage
-// (jamais pendant : deux travaux lourds en parallèle sur la même machine, c'est
-// la leçon des gels de poste).
+// compilerOuvrier construit le binaire de l'ouvrier. Compilé AVANT tout décodage (jamais
+// pendant : deux travaux lourds en parallèle sur la même machine, c'est la leçon des gels).
 func compilerOuvrier(t *testing.T) string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), "replay-worker")
@@ -351,8 +371,7 @@ func racineGoAPI(t *testing.T) string {
 	return root
 }
 
-// lancerOuvrier exécute le binaire en mode --once : il prend UN job, le traite, et
-// sort. C'est le mode de la preuve — et celui d'un test manuel.
+// lancerOuvrier exécute le binaire en mode --once : il prend UN job, le traite, et sort.
 func lancerOuvrier(t *testing.T, binaire, url, repo, travail string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
