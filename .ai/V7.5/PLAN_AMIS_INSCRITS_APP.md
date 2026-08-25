@@ -255,6 +255,22 @@ restauré à l'identique (`git diff` vide). Le harnais `presenceSnapshotFrom` es
 factorisé sur `presenceBodyOf` — aucun autre test touché.
 Gate : `go test ./internal/api/ -run TestPresenceJunction -v` EXIT=0, 7 PASS.
 
+### Gates du lot H (codes retour capturés SANS pipe, sorties redirigées)
+
+| Gate | Commande | Résultat |
+|---|---|---|
+| Go vet | `go vet ./...` | EXIT_VET=0, sortie vide (0 ligne) |
+| Go tests | `go test ./internal/service/... ./internal/api/... ./internal/watcher/... ./contracttest/...` | EXIT_GOTEST=0 — 10 paquets `ok`, 0 FAIL, 2 sans test |
+| Types web | `npx tsc -b --force` | EXIT_TSC=0, sortie vide (0 ligne) |
+| Vitest | `npx vitest run src/components/shell/` | EXIT_VITEST=0 — 16 fichiers, 153 tests passés |
+| Contrat | `make openapi-check` (H3) | EXIT=0 — openapi.yaml à jour + generated.ts dérivé |
+
+Seul message non vert : l'avertissement Vite `configLoader: 'native'`
+(`__dirname` dans vite.config.ts), préexistant et hors périmètre (déjà noté en G6).
+
+Écart assumé du lot : ni entrée `thought_log` ni `REGISTRE_REPORTS` (interdits par
+le superviseur pour ce lot), là où le contrat `plan-execution` les demanderait.
+
 ## Découvertes (à consigner, ne pas traiter)
 
 - **Cas admin (G1)** : un administrateur voit TOUT le parc dans son sélecteur
