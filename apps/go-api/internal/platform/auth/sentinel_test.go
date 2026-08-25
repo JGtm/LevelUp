@@ -1,20 +1,27 @@
 // Package auth — sentinel_test.go : guard-rail anti-régression ADR 0023.
 //
-// Ce test scanne les sources Go du repo pour détecter l'apparition de nouveaux
-// chemins qui contournent MultiUserTokenStore (source unique post-ADR 0023) :
+// Ce test scanne les sources Go de PRODUCTION (hors _test.go) pour détecter
+// l'apparition de chemins qui contournent MultiUserTokenStore, source unique
+// post-ADR 0023 :
 //
-//  1. Toute LECTURE d'env var de refresh token legacy (Getenv / LookupEnv sur
-//     le prefixe SPNKR_OAUTH_REFRESH_TOKEN). Depuis la Phase 5 (2026-08-25), UN SEUL fichier est
-//     autorisé : la migration one-shot du boot (kill-switch daté).
-//  2. Toute LECTURE de sync_meta.oauth_refresh_token via
-//     duckdb.ReadOAuthRefreshToken — même exception unique.
-//  3. cmd/token-capture et cmd/token-import qui écriraient à nouveau des
+//  1. Toute occurrence du littéral de l'env var de refresh token legacy —
+//     lecture, concaténation, format, ou simple mention. Détection LARGE
+//     assumée : c'est ce qui faisait la force du guard d'origine ; un motif
+//     restreint à `Getenv("PREFIX` laissait passer `os.Getenv(prefix + key)`
+//     et `fmt.Sprintf` (trou relevé par la revue adversariale r1).
+//  2. Tout appel à auth.EnvRefreshTokenForGamertag — la fonction reste exportée
+//     pour la migration boot ; hors d'elle, l'appeler revient à ressusciter la
+//     source env SANS jamais écrire le littéral (donc invisible au guard 1).
+//  3. Tout appel à duckdb.ReadOAuthRefreshToken — dernier lecteur du credential
+//     store DuckDB. Motif INDÉPENDANT de l'alias d'import : le package est
+//     importé sous 5 noms différents dans le repo (duckdb, duckdbpkg, ddb,
+//     duckdbPlatform, platform_duckdb) ; un motif `\bduckdb(pkg)?\.` en ratait 3.
+//  4. cmd/token-capture et cmd/token-import qui écriraient à nouveau des
 //     fichiers .txt (régression UX — l'ancien flux exigeait copy-paste manuel).
 //
 // Ces guards garantissent qu'aucun futur refactor ne réintroduit silencieusement
-// le bug Madina (env.local burnt by Air hot-reload) ni un credential store
-// parallèle. Chaque exception doit être listée dans l'allowlist avec
-// justification datée.
+// le bug Madina (env.local brûlé par le hot-reload Air) ni un credential store
+// parallèle. Chaque exception est listée avec justification DATÉE.
 //
 // Sans build tag — exécuté en CI normale (juste grep sur sources).
 package auth
@@ -27,35 +34,22 @@ import (
 	"testing"
 )
 
-// ─── Guard 1 : lecture d'env var de refresh token legacy ──────────────────
-
-// envVarReadPattern détecte une LECTURE d'env var de refresh token legacy :
-// un appel Getenv/LookupEnv dont le premier argument commence par le préfixe
-// SPNKR_OAUTH_REFRESH_TOKEN (forme littérale comme forme concaténée
-// `"…_" + key`). Les simples mentions en commentaire et les t.Setenv des tests
-// ne matchent pas : le guard vise la dépendance runtime, pas le vocabulaire.
-var envVarReadPattern = regexp.MustCompile(`(Getenv|LookupEnv)\(\s*"` + legacyEnvPrefix)
-
 // legacyEnvPrefix est assemblé à l'exécution pour que CE fichier ne matche pas
-// son propre motif (sinon le sentinel s'auto-allowliste, trou classique).
+// son propre motif (sinon le sentinel s'auto-allowliste, trou classique). Les
+// autres fichiers _test.go sont hors périmètre : le guard vise le code livré.
 var legacyEnvPrefix = "SPNKR_OAUTH_REFRESH" + "_TOKEN"
 
-// allowedEnvReaders : fichiers AUTORISÉS à lire SPNKR_OAUTH_REFRESH_TOKEN_*.
-// ADR 0023 Phase 5 (2026-08-25) : l'allowlist est passée de ~30 entrées à UNE.
-// Tout nouveau lecteur doit utiliser MultiUserTokenStore — aucune exception
-// supplémentaire ne sera acceptée (la migration boot elle-même part le 2026-10-01).
-var allowedEnvReaders = map[string]string{
-	"internal/platform/auth/migration.go": "EXCEPTION UNIQUE ADR 0023 Phase 5 : EnvRefreshTokenForGamertag alimente la migration one-shot du boot (env legacy → store). Kill-switch daté — retrait cible 2026-10-01, critère « 0 token migré au boot sur 30 j de logs prod ».",
-}
-
-// TestSentinel_NoNewEnvVarReaders détecte tout nouveau site qui lit
-// SPNKR_OAUTH_REFRESH_TOKEN_*. Toute nouvelle occurrence hors allowlist fail
-// le test → le contributeur doit utiliser MultiUserTokenStore (source unique).
-func TestSentinel_NoNewEnvVarReaders(t *testing.T) {
+// scanProductionGoFiles applique `match` à chaque .go de production sous
+// apps/go-api (hors _test.go, vendor, tmp) et retourne les chemins relatifs
+// qui matchent sans être allowlistés. Factorisé : les 3 guards de littéral
+// partagent exactement cette mécanique (CLAUDE.md règle « ≤ 2 copies »).
+func scanProductionGoFiles(t *testing.T, allowlist map[string]string, match func(content []byte) bool) []string {
+	t.Helper()
 	repoRoot := findRepoRootForSentinel(t)
 	apiRoot := filepath.Join(repoRoot, "apps", "go-api")
 
-	var violations []string
+	var hits []string
+	scanned := 0
 	err := filepath.Walk(apiRoot, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -67,106 +61,127 @@ func TestSentinel_NoNewEnvVarReaders(t *testing.T) {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") {
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-
-		rel, _ := filepath.Rel(apiRoot, path)
-		rel = filepath.ToSlash(rel)
-
 		content, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return nil
 		}
-		if !envVarReadPattern.Match(content) {
+		scanned++
+		if !match(content) {
 			return nil
 		}
-		if _, allowed := allowedEnvReaders[rel]; allowed {
+		rel, _ := filepath.Rel(apiRoot, path)
+		rel = filepath.ToSlash(rel)
+		if _, allowed := allowlist[rel]; allowed {
 			return nil
 		}
-		violations = append(violations,
-			"NEW env var reader detected: "+rel+
-				" — utiliser MultiUserTokenStore au lieu de SPNKR_OAUTH_REFRESH_TOKEN_* (ADR 0023 Phase 5 : l'env var n'est plus une source de credentials)")
+		hits = append(hits, rel)
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
 	}
+	// Anti-pourrissement : un walk qui ne voit plus aucun fichier rendrait tous
+	// les guards verts pour de mauvaises raisons.
+	if scanned == 0 {
+		t.Fatal("aucun fichier de production scanné — les guards ne protègent rien")
+	}
+	return hits
+}
+
+// ─── Guard 1 : littéral de l'env var de refresh token legacy ──────────────
+
+// allowedEnvReaders : fichiers de PRODUCTION autorisés à mentionner
+// SPNKR_OAUTH_REFRESH_TOKEN_*. ADR 0023 Phase 5 (2026-08-25) : l'allowlist est
+// passée de ~30 entrées à 3, toutes justifiées et datées. Tout nouveau code doit
+// lire MultiUserTokenStore — aucune exception supplémentaire ne sera acceptée.
+//
+// Mordant (mutation mentale) : réintroduire `os.Getenv("SPNKR_OAUTH_..." + key)`
+// dans n'importe quel fichier hors de cette liste — y compris via une
+// concaténation, un fmt.Sprintf ou une constante intermédiaire — fait échouer
+// ce test, puisqu'on cherche le LITTÉRAL et non une forme d'appel.
+var allowedEnvReaders = map[string]string{
+	"internal/platform/auth/migration.go":             "EXCEPTION UNIQUE ADR 0023 Phase 5 : EnvRefreshTokenForGamertag alimente la migration one-shot du boot (env legacy → store). Kill-switch daté — retrait cible 2026-10-01, critère « 0 token migré au boot sur 30 j de logs prod ».",
+	"cmd/server/main.go":                              "Wiring + godoc de migrateLegacyAuthTokensAtBoot (même kill-switch daté 2026-10-01). Ne LIT pas l'env var lui-même : il délègue à auth.EnvRefreshTokenForGamertag.",
+	"internal/platform/auth/capturecli/capturecli.go": "ParseRefreshTokenStdin accepte une ligne au format `SPNKR_OAUTH_REFRESH_TOKEN_X=valeur` collée par l'utilisateur (ergonomie de cmd/token-import). String match sur stdin, JAMAIS une lecture d'environnement.",
+}
+
+// TestSentinel_NoNewEnvVarReaders détecte tout fichier de production qui
+// mentionne le littéral de l'env var legacy hors allowlist datée.
+func TestSentinel_NoNewEnvVarReaders(t *testing.T) {
+	pattern := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(legacyEnvPrefix))
+	violations := scanProductionGoFiles(t, allowedEnvReaders, pattern.Match)
 
 	if len(violations) > 0 {
-		t.Errorf("REGRESSION ADR 0023 : %d nouveaux lecteurs d'env var détectés :\n  - %s",
+		t.Errorf("REGRESSION ADR 0023 Phase 5 : %d fichier(s) de production mentionnent l'env var legacy "+
+			"de refresh token hors allowlist — utiliser MultiUserTokenStore (source unique) :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }
 
-// ─── Guard 2 : duckdb.ReadOAuthRefreshToken (sync_meta legacy) ─────────────
+// ─── Guard 2 : auth.EnvRefreshTokenForGamertag ────────────────────────────
+
+// allowedEnvHelperCallers : appelants autorisés du helper exporté qui lit
+// l'env var. Il survit UNIQUEMENT pour la migration boot (kill-switch daté
+// 2026-10-01) ; tout autre appelant recréerait la source legacy sans jamais
+// écrire le littéral, donc sans déclencher le guard 1.
+//
+// Mordant : ajouter `auth.EnvRefreshTokenForGamertag(gt)` dans un CLI ou un
+// service fait échouer ce test même si le fichier ne contient aucun littéral.
+var allowedEnvHelperCallers = map[string]string{
+	"internal/platform/auth/migration.go": "Définition + usage par la migration one-shot du boot (retrait 2026-10-01).",
+	"cmd/server/main.go":                  "legacyAuthSourcesReader de migrateLegacyAuthTokensAtBoot — seul appelant légitime.",
+}
+
+func TestSentinel_NoNewEnvHelperCallers(t *testing.T) {
+	pattern := regexp.MustCompile(`\bEnvRefreshTokenForGamertag\(`)
+	violations := scanProductionGoFiles(t, allowedEnvHelperCallers, pattern.Match)
+
+	if len(violations) > 0 {
+		t.Errorf("REGRESSION ADR 0023 Phase 5 : %d appelant(s) de EnvRefreshTokenForGamertag hors migration boot "+
+			"— ce helper ressuscite la source env var :\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+// ─── Guard 3 : duckdb.ReadOAuthRefreshToken (sync_meta legacy) ─────────────
 
 // duckdbAuthReadPattern détecte les appels au DERNIER lecteur DuckDB du
 // credential store legacy (sync_meta.oauth_refresh_token). Les écritures
 // (WriteOAuthRefreshToken) et les lectures MSAL n'existent plus depuis la
-// Phase 5 : leur simple réapparition compilerait sur une fonction absente.
-var duckdbAuthReadPattern = regexp.MustCompile(`\bduckdb(pkg)?\.ReadOAuthRefreshToken\b`)
+// Phase 5 : leur simple réapparition ne compilerait pas.
+//
+// INDÉPENDANT DE L'ALIAS D'IMPORT : internal/platform/duckdb est importé sous 5
+// noms dans le repo (duckdb, duckdbpkg, ddb, duckdbPlatform, platform_duckdb).
+// Un motif figé sur `duckdb(pkg)?.` en manquait 3 (revue adversariale r1) →
+// `\w+\.` capture n'importe quel alias.
+//
+// Mordant : `ddb.ReadOAuthRefreshToken(ctx, db)` dans un nouveau service fait
+// échouer ce test, là où le motif précédent le laissait passer.
+var duckdbAuthReadPattern = regexp.MustCompile(`\b\w+\.ReadOAuthRefreshToken\b`)
 
-// allowedDuckDBAuthReaders : sites AUTORISÉS à lire sync_meta.oauth_refresh_token.
-// ADR 0023 Phase 5 (2026-08-25) : uniquement la définition et la migration
-// one-shot du boot (kill-switch daté, retrait cible 2026-10-01).
+// allowedDuckDBAuthReaders : sites de PRODUCTION autorisés à lire
+// sync_meta.oauth_refresh_token. ADR 0023 Phase 5 (2026-08-25) : uniquement la
+// définition et la migration one-shot du boot (kill-switch daté, retrait cible
+// 2026-10-01).
 var allowedDuckDBAuthReaders = map[string]string{
 	"internal/platform/duckdb/queries_auth.go": "Définition de la fonction (dernier lecteur legacy, supprimé avec la migration boot le 2026-10-01).",
 	"cmd/server/main.go":                       "EXCEPTION UNIQUE : legacyAuthSourcesReader de migrateLegacyAuthTokensAtBoot (migration one-shot env+sync_meta → store).",
-	// Tests
-	"internal/platform/duckdb/queries_auth_test.go": "Test du dernier lecteur legacy.",
-	"internal/platform/auth/sentinel_test.go":       "Ce fichier — contient les patterns à détecter.",
 }
 
 func TestSentinel_NoNewDuckDBAuthReaders(t *testing.T) {
-	repoRoot := findRepoRootForSentinel(t)
-	apiRoot := filepath.Join(repoRoot, "apps", "go-api")
-
-	var violations []string
-	err := filepath.Walk(apiRoot, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if info.IsDir() {
-			name := info.Name()
-			if name == "vendor" || name == ".git" || name == "node_modules" || name == "tmp" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") {
-			return nil
-		}
-
-		rel, _ := filepath.Rel(apiRoot, path)
-		rel = filepath.ToSlash(rel)
-
-		content, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return nil
-		}
-		if !duckdbAuthReadPattern.Match(content) {
-			return nil
-		}
-		if _, allowed := allowedDuckDBAuthReaders[rel]; allowed {
-			return nil
-		}
-		violations = append(violations,
-			"NEW duckdb.ReadOAuthRefreshToken call: "+rel+
-				" — lire MultiUserTokenStore (ADR 0023 Phase 5 : sync_meta n'est plus un credential store).")
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("walk: %v", err)
-	}
+	violations := scanProductionGoFiles(t, allowedDuckDBAuthReaders, duckdbAuthReadPattern.Match)
 
 	if len(violations) > 0 {
-		t.Errorf("REGRESSION ADR 0023 : %d nouveaux lecteurs DuckDB legacy détectés :\n  - %s",
+		t.Errorf("REGRESSION ADR 0023 Phase 5 : %d lecteur(s) DuckDB du credential store legacy hors allowlist "+
+			"— lire MultiUserTokenStore (sync_meta n'est plus un credential store) :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }
 
-// ─── Guard 3 : token-capture / token-import ne créent pas de fichiers .txt ────
+// ─── Guard 4 : token-capture / token-import ne créent pas de fichiers .txt ────
 
 // fileWritePattern détecte os.WriteFile/ioutil.WriteFile/os.Create avec .txt.
 var txtFilePattern = regexp.MustCompile(`(?i)(os\.WriteFile|os\.Create|ioutil\.WriteFile)[^)]*\.txt`)
@@ -191,7 +206,7 @@ func TestSentinel_TokenCaptureNoTxtFile(t *testing.T) {
 	}
 }
 
-// ─── Guard 4 : pas d'appel direct à os.Getenv sur SPNKR_AZURE_CLIENT_SECRET hors paths attendus ────
+// ─── Guard 5 : pas de nouveau lecteur de SPNKR_AZURE_CLIENT_SECRET ────────
 
 // Anti-pattern : si quelqu'un introduit un Getenv("SPNKR_AZURE_CLIENT_SECRET") dans
 // un chemin de prod (hors oauth_refresh.go qui en a besoin pour Microsoft auth),
@@ -260,6 +275,7 @@ func TestSentinel_AllowlistEntriesPointToExistingFiles(t *testing.T) {
 
 	allowlists := map[string]map[string]string{
 		"allowedEnvReaders":          allowedEnvReaders,
+		"allowedEnvHelperCallers":    allowedEnvHelperCallers,
 		"allowedDuckDBAuthReaders":   allowedDuckDBAuthReaders,
 		"allowedClientSecretReaders": allowedClientSecretReaders,
 	}

@@ -244,17 +244,30 @@ func (r *ServiceRegistry) mintFreshTokensForXUID(ctx context.Context, xuid strin
 // OAuthRefreshToken → TryOAuthRefreshWithRotation (+ écriture rotation au store).
 //
 // ADR 0023 Phase 5 (2026-08-25) : le fallback legacy (sync_meta.msal_token_cache /
-// sync_meta.oauth_refresh_token / env var SPNKR_OAUTH_REFRESH_TOKEN_*) est
+// sync_meta.oauth_refresh_token / variable d'environnement) est
 // supprimé. Un joueur absent du store n'a plus de token — il doit se reconnecter
 // (SSO Xbox) ou passer par cmd/token-capture.
 func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
-	if r.authStore != nil && xuid != "" {
-		if result := r.tryRefreshFromAuthStore(ctx, xuid); result != nil {
-			return result
-		}
+	if r.authStore == nil || xuid == "" {
+		slog.WarnContext(ctx, "halo_auth: store auth non câblé ou xuid absent",
+			"xuid", xuid, "gamertag", pdb.Gamertag)
+		return nil
 	}
-
-	slog.WarnContext(ctx, "halo_auth: aucun token disponible pour le joueur", "xuid", xuid, "gamertag", pdb.Gamertag)
+	result, refreshErr := r.tryRefreshFromAuthStore(ctx, xuid)
+	if result != nil {
+		return result
+	}
+	// Revue adversariale r1 : distinguer « pas de credential » d'un échec de
+	// refresh/exchange. Le message générique « aucun token disponible » sur un
+	// store pourtant peuplé oriente vers une re-capture, interdite (ADR 0023).
+	if refreshErr != nil {
+		slog.WarnContext(ctx, "halo_auth: refresh du token échoué (le store contient pourtant un refresh token)",
+			"xuid", xuid, "gamertag", pdb.Gamertag, "err", refreshErr)
+		return nil
+	}
+	slog.WarnContext(ctx, "halo_auth: aucun refresh token dans le store pour le joueur",
+		"xuid", xuid, "gamertag", pdb.Gamertag,
+		"hint", "SSO Xbox ou `go run ./cmd/token-capture/ <GT>`")
 	return nil
 }
 
@@ -262,10 +275,18 @@ func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.P
 // (OAuth RT avec persistance de la rotation).
 // Au succès, efface l'éventuel flag reauth_required (auto-guérison de la bannière
 // de reconnexion : un refresh par-joueur réussi prouve que le RT est vivant).
-func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, xuid string) *auth.ExchangeResult {
+//
+// Retourne (nil, nil) quand il n'y a rien à tenter (entrée absente/sans RT) et
+// (nil, err) quand une tentative a réellement échoué — le caller a besoin de
+// cette distinction pour ne pas annoncer « aucun token » sur un store sain.
+func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, xuid string) (*auth.ExchangeResult, error) {
 	user, err := r.authStore.Load(xuid)
-	if err != nil || user == nil {
-		return nil
+	if err != nil {
+		slog.WarnContext(ctx, "halo_auth: lecture du store échouée", "xuid", xuid, "err", err)
+		return nil, err
+	}
+	if user == nil {
+		return nil, nil
 	}
 	// Cascade store (rotation persistée) déléguée à la source unique
 	// auth.RefreshFromStoreEntry (K1b dédup). L'erreur classifiée est LOGUÉE (jamais
@@ -285,7 +306,7 @@ func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, xuid stri
 			slog.WarnContext(ctx, "halo_auth: clear reauth_required échoué (non-bloquant)", "xuid", xuid, "err", cerr)
 		}
 	}
-	return result
+	return result, refreshErr
 }
 
 // AnyPlayerTokens retourne les tokens Halo du premier joueur disponible dans le pool.
@@ -308,7 +329,8 @@ func (r *ServiceRegistry) AnyPlayerTokens(ctx context.Context) (*domain.HaloToke
 }
 
 // RefreshTokensForXUID tente un refresh silencieux pour le joueur identifié par son XUID.
-// Recherche le PlayerDB dans le pool, puis tente MSAL ou OAuth v2 refresh.
+// Recherche le PlayerDB dans le pool, puis tente un refresh OAuth v2 depuis le
+// MultiUserTokenStore (source unique ADR 0023).
 // Met à jour le cache process si le refresh réussit.
 // Appelé par PlayerLiveRefresher quand le cache process est expiré.
 func (r *ServiceRegistry) RefreshTokensForXUID(ctx context.Context, xuid string) (*domain.HaloTokens, error) {

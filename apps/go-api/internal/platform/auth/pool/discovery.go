@@ -32,25 +32,17 @@ type discoveryImpl struct {
 	multiUserStore *auth.MultiUserTokenStore
 }
 
-// NewDiscovery crée une nouvelle instance Discovery.
-// cfg : configuration (contient db_profiles.json et RepoRoot)
-// resolver : PathResolver pour accéder aux chemins DuckDB via titleSlug (évite filepath.Join direct)
-// titleSlug : titre courant ("halo_infinite" par défaut)
-//
-// Sans store attaché, le scan ne découvre aucun credential : utiliser
-// NewDiscoveryWithStore pour le câblage de production.
-func NewDiscovery(cfg *config.AppConfig, resolver *titlePkg.PathResolver, titleSlug string) Discovery {
-	return &discoveryImpl{
-		cfg:       cfg,
-		resolver:  resolver,
-		titleSlug: titleSlug,
-	}
-}
-
 // NewDiscoveryWithStore crée un Discovery qui lit le MultiUserTokenStore
 // (data/auth/watcher_tokens/{xuid}.json) — source unique des refresh tokens
-// (ADR 0023). store peut être nil : le scan dégrade alors gracieusement (aucun
-// joueur découvert).
+// (ADR 0023). SEUL constructeur : le variant sans store a été supprimé en
+// Phase 5, car privé de fallback il ne découvrait plus rien et faisait échouer
+// silencieusement les appelants (régression `sync-delta --all`).
+//
+// cfg : configuration (contient db_profiles.json et RepoRoot)
+// resolver : PathResolver pour les chemins par titre (évite filepath.Join direct)
+// titleSlug : titre courant ("halo_infinite" par défaut)
+// multiUserStore : peut être nil — le scan dégrade alors gracieusement (aucun
+// joueur découvert), utile pour un appelant qui n'a délibérément pas de store.
 func NewDiscoveryWithStore(
 	cfg *config.AppConfig,
 	resolver *titlePkg.PathResolver,

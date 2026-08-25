@@ -19,6 +19,8 @@ import (
 	"os"
 	"strings"
 
+	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -30,7 +32,14 @@ func main() {
 	if len(os.Args) > 1 {
 		gamertag = os.Args[1]
 	}
-	storeDir := "data/auth/watcher_tokens"
+	// Chemin résolu depuis la racine repo (jamais un "data/..." relatif au CWD :
+	// l'outil se lance depuis apps/go-api). Override possible en argv[2].
+	cfg, cerr := config.Load()
+	if cerr != nil {
+		fmt.Fprintf(os.Stderr, "config.Load: %v\n", cerr)
+		return
+	}
+	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
 	if len(os.Args) > 2 {
 		storeDir = os.Args[2]
 	}

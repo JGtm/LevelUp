@@ -145,7 +145,7 @@ Les tokens proviennent de la source unique décrite dans [../adr/0023-auth-token
 - Onboarding normal : flux SSO Xbox web -> `/auth/xbox/callback` persiste le refresh token.
 - Onboarding avancé : `go run ./apps/go-api/cmd/token-capture/ <Gamertag>` (device-code) ou `go run ./apps/go-api/cmd/token-import/ <Gamertag>` (RT sur stdin) écrit directement dans le store — aucune édition de `.env.local`.
 
-Les chemins de sync `--all` et les backfills adossés à l'API résolvent les tokens via le pool (Discovery -> Resolver -> Pool), qui gère le refresh OAuth et cache les Spartan tokens (~3h30). Les commandes mono-joueur `levelup sync-delta/sync-full --gamertag` et les backfills `--csr/--weapons` résolvent le refresh token depuis le même token store (`data/auth/watcher_tokens/{xuid}.json`) — depuis l'ADR 0023 Phase 5 (2026-08-25), il n'existe plus de fallback par variable d'environnement. Ne jamais re-capturer un token pour corriger un 401 : une sync verte signifie que les tokens sont bons.
+Les chemins de sync `--all` et les backfills adossés à l'API résolvent les tokens via le pool (Discovery -> Resolver -> Pool), dont le Discovery scanne le token store (`data/auth/watcher_tokens/{xuid}.json`) ; le pool gère le refresh OAuth, réécrit le refresh token rotaté dans ce store, et cache les Spartan tokens (~3h30). Les commandes mono-joueur `levelup sync-delta/sync-full --gamertag` et les backfills `--csr/--weapons` lisent le même store directement. Depuis l'ADR 0023 Phase 5 (2026-08-25), ce store est la SEULE source : ni variable d'environnement, ni `sync_meta`. Ne jamais re-capturer un token pour corriger un 401 : une sync verte signifie que les tokens sont bons.
 
 ## Écritures append-only / ART-safe
 

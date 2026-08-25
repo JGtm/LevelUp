@@ -284,7 +284,7 @@ func loadTokens(ctx context.Context, authFile, gamertag string) (*struct {
 	}
 
 	// ADR 0023 Phase 5 : le refresh token vient du MultiUserTokenStore, seule
-	// source (plus d'env var SPNKR_OAUTH_REFRESH_TOKEN_*).
+	// source (plus aucun repli par variable d'environnement).
 	// data/auth/watcher_tokens.json → data/auth/watcher_tokens (répertoire du store).
 	tokenStore := auth.NewMultiUserTokenStore(strings.TrimSuffix(authFile, ".json"))
 	if user, lerr := tokenStore.LoadByGamertag(gamertag); lerr == nil && user != nil {

@@ -15,7 +15,7 @@
 // internal/sync/no_legacy_source_used_test.go).
 //
 // ADR 0023 Phase 5 (2026-08-25) : les branches legacy (sync_meta DuckDB, env var
-// SPNKR_OAUTH_REFRESH_TOKEN_*) et la télémétrie legacy_source_used associée sont
+// variable d'environnement) et la télémétrie legacy_source_used associée sont
 // supprimées — le store est la seule source.
 package auth
 

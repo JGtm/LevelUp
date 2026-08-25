@@ -68,7 +68,7 @@ func TestTryRefreshFromAuthStore_PersistsRotatedRT(t *testing.T) {
 		provider:  &fakeTokenProvider{rotatedRT: "rt-new"},
 	}
 
-	result := reg.tryRefreshFromAuthStore(context.Background(), "x")
+	result, _ := reg.tryRefreshFromAuthStore(context.Background(), "x")
 	if result == nil {
 		t.Fatal("résultat nil — l'échange aurait dû réussir avec le provider mock")
 	}
@@ -89,7 +89,7 @@ func TestTryRefreshFromAuthStore_NoRotation_NoWrite(t *testing.T) {
 		provider:  &fakeTokenProvider{rotatedRT: "rt-same"},
 	}
 
-	result := reg.tryRefreshFromAuthStore(context.Background(), "x")
+	result, _ := reg.tryRefreshFromAuthStore(context.Background(), "x")
 	if result == nil {
 		t.Fatal("résultat nil inattendu")
 	}
@@ -111,7 +111,7 @@ func TestTryRefreshFromAuthStore_ClearsReauthOnSuccess(t *testing.T) {
 		provider:  &fakeTokenProvider{rotatedRT: "rt-new"},
 	}
 
-	if result := reg.tryRefreshFromAuthStore(context.Background(), "x"); result == nil {
+	if result, _ := reg.tryRefreshFromAuthStore(context.Background(), "x"); result == nil {
 		t.Fatal("résultat nil — l'échange aurait dû réussir avec le provider mock")
 	}
 	if store.clearCalls != 1 || store.clearedXUID != "x" {
@@ -132,7 +132,7 @@ func TestTryRefreshFromAuthStore_NoClearOnFailure(t *testing.T) {
 		provider:  &fakeTokenProvider{failOAuth: true},
 	}
 
-	if result := reg.tryRefreshFromAuthStore(context.Background(), "x"); result != nil {
+	if result, _ := reg.tryRefreshFromAuthStore(context.Background(), "x"); result != nil {
 		t.Fatal("résultat non-nil inattendu — le refresh aurait dû échouer")
 	}
 	if store.clearCalls != 0 {

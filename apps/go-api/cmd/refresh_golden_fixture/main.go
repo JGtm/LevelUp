@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -58,10 +60,17 @@ func run(gamertag, matchID, outPath, manifestPath string) error {
 	ctx := context.Background()
 
 	// ADR 0023 Phase 5 : refresh token depuis le MultiUserTokenStore, seule source.
-	store := auth_platform.NewMultiUserTokenStore("data/auth/watcher_tokens")
+	// Chemin résolu par le PathResolver depuis la racine repo (jamais un
+	// "data/..." relatif au CWD : l'outil se lance depuis apps/go-api).
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("config.Load: %w", err)
+	}
+	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	store := auth_platform.NewMultiUserTokenStore(storeDir)
 	user, err := store.LoadByGamertag(gamertag)
 	if err != nil || user == nil || user.OAuthRefreshToken == "" {
-		return fmt.Errorf("aucun refresh token pour %s dans data/auth/watcher_tokens: %w", gamertag, err)
+		return fmt.Errorf("aucun refresh token pour %s dans %s: %w", gamertag, storeDir, err)
 	}
 	res, err := auth_platform.RefreshHaloTokensViaStoreFirst(
 		ctx, store, auth_platform.NewSISUProvider(), user.XUID, gamertag)
