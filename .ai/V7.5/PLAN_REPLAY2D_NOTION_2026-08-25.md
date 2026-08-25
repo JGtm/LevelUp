@@ -70,9 +70,19 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   de 2° (`AIM_TICK_DEAD_DEG`, `:37`) plus les artefacts antérieurs au schéma 13, qui ne
   portent pas `p`. SEUL CHANGEMENT : l'infobulle du calque « Visée » le décrit désormais
   (FR + EN) — elle ne le mentionnait pas, d'où la question.
-- [ ] A6 (pt 7) : zones/bases non prises (= neutres, aucune équipe propriétaire à
+- [x] A6 (pt 7) : zones/bases non prises (= neutres, aucune équipe propriétaire à
   l'instant t) : contour grisé (token sémantique, pas d'hex). Si l'état « non prise »
   n'est PAS dérivable du document schéma 18 → `[!]` + condition de reprise = lot D.
+  DÉRIVABLE — pas de `[!]`. Preuve : `ZoneSpan.Owner *int` (`document_zones.go:199-205`),
+  « l'equipe qui TIENT la zone, ou `null` quand personne ne la tient (valeur neutre
+  `0xFFFFFFFF` du canal) » — pointeur SANS `omitempty` justement pour que « personne » se
+  distingue d'un artefact plus ancien. Côté client, `spanStateAt` le sert déjà.
+  FAIT : (a) le contour d'une zone non prise passe EN RETRAIT (α 0,95 -> 0,5 ; 2,5 -> 1,6 px) —
+  il s'affirmait auparavant exactement autant que celui d'une base gagnée ; (b) l'encre neutre
+  des objectifs passe de `--muted-foreground` (variable de LAYOUT lue par `readInk`) au TOKEN
+  `divergent-neutral`, celui du fil pour une mort neutre ; (c) le seuil est `owner === null`,
+  PAS `held` — une zone tenue par un camp non situable (aucune ligne « moi ») garde le trait
+  plein. Mordant prouvé par double mutation (dont la confusion `held`/`owner`).
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé

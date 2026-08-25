@@ -193,7 +193,7 @@ export function ReplayCanvas({
   // double contour du joueur de la page. Elles partageaient huit fois le même corps ici — voir
   // l'en-tête du hook.
   const {
-    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor,
+    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
@@ -257,7 +257,7 @@ export function ReplayCanvas({
     [doc, mapObjectives],
   )
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, floorStyle.edge, doc)
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
