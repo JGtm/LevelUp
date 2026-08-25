@@ -156,6 +156,21 @@ describe('drawZoneStates', () => {
   }
 
   /**
+   * L'OPACITÉ EN VIGUEUR AU PREMIER TRAIT — celui du contour de la zone.
+   *
+   * POURQUOI PAS « la plus grande opacité du rendu » : le calque remet `globalAlpha` à 1 avant
+   * d'écrire les lettres, donc TOUS les rendus finissent à 1 et la comparaison ne dirait plus
+   * rien. Viser l'instant du trait dit ce que ces cas veulent réellement dire — même technique
+   * que `encreDeLArc` ci-dessus.
+   */
+  const opaciteDuTrait = (ops: { op: string; args: unknown[] }[]): number | undefined => {
+    const premierTrait = ops.findIndex((o) => o.op === 'stroke')
+    if (premierTrait < 0) return undefined
+    const avant = ops.slice(0, premierTrait).filter((o) => o.op === 'set globalAlpha')
+    return avant.length > 0 ? Number(avant[avant.length - 1].args[0]) : undefined
+  }
+
+  /**
    * Les opérations de la passe GÉOMÉTRIQUE : tout ce qui précède la passe des lettres.
    *
    * LA COUPURE EST `set font`, PAS LE PREMIER GLYPHE : la passe des lettres pose ses encres
@@ -255,6 +270,52 @@ describe('drawZoneStates', () => {
     drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 3)
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'stroke')).toBe(1)
+  })
+
+  // DEMANDE UTILISATEUR DU 2026-08-25 : « bases non prises : contour grisé ». L'encre était
+  // déjà le neutre ; c'est le TRAIT qui s'affirmait autant que celui d'une base gagnée. Ces
+  // cas tiennent le retrait, et surtout ce qui le DÉCLENCHE.
+  it('zone NON PRISE : contour à l’encre neutre, plus fin et plus transparent qu’une zone tenue', () => {
+    const libre = recordingContext()
+    drawZoneStates(libre.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 3)
+    const tenue = recordingContext()
+    drawZoneStates(tenue.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
+    const traitLibre = valuesOf(avantTexte(libre.ops), 'lineWidth') as unknown as number[]
+    const traitTenu = valuesOf(avantTexte(tenue.ops), 'lineWidth') as unknown as number[]
+    expect(traitLibre[0]).toBeLessThan(traitTenu[0])
+    expect(opaciteDuTrait(libre.ops)!).toBeLessThan(opaciteDuTrait(tenue.ops)!)
+    // L'encre reste le neutre du thème — jamais une couleur de camp devinée.
+    const encres = valuesOf(avantTexte(libre.ops), 'strokeStyle') as unknown as string[]
+    expect(encres.every((i) => i === '#neutre')).toBe(true)
+  })
+
+  // LE SEUIL EST `owner === null`, PAS `held`. Une zone TENUE par un camp que la page ne sait
+  // pas situer (aucune ligne « moi ») n'est PAS libre : la griser dirait « à prendre » d'une
+  // base qui est gagnée. Elle garde le trait plein, à l'encre neutre.
+  it('camp inconnu ≠ zone libre : le trait reste PLEIN, seulement neutre', () => {
+    const aveugle = { colorOfOwner: () => null, colorOfCapturer: () => null, neutral: '#neutre' }
+    const inconnu = recordingContext()
+    drawZoneStates(
+      inconnu.ctx,
+      { ...layer([zones()[0]]), style: aveugle },
+      [{ ...ZONE_STATES[0], gauge: [] }],
+      VIEW,
+      14,
+    )
+    const libre = recordingContext()
+    drawZoneStates(libre.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 3)
+    const traitInconnu = valuesOf(avantTexte(inconnu.ops), 'lineWidth') as unknown as number[]
+    const traitLibre = valuesOf(avantTexte(libre.ops), 'lineWidth') as unknown as number[]
+    expect(traitInconnu[0]).toBeGreaterThan(traitLibre[0])
+  })
+
+  // La colline ACTIVE n'a pas de propriétaire non plus, et elle ne doit surtout PAS être
+  // grisée : la surbrillance dit « c'est ici que ça se joue ». Le retrait ne l'atteint pas.
+  it('la colline ACTIVE sans propriétaire garde sa surbrillance, jamais le retrait', () => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer(), [ZONE_STATES[1]], VIEW, 30)
+    expect(count(ops, 'fill')).toBe(1)
+    expect(valuesOf(ops, 'lineWidth')).toContain(3.5)
   })
 
   // La zone ACTIVE est le SEUL cas où le calque remplit sans propriétaire : la surbrillance dit

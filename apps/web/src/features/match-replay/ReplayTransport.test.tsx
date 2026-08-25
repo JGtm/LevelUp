@@ -112,9 +112,34 @@ describe('ReplayTransport — le son au niveau de la lecture', () => {
     expect(screen.queryByRole('button', { name: 'Son' })).toBeNull()
   })
 
-  it('le volume n’apparaît qu’avec le son allumé', () => {
-    renderTransport({ sound: makeSound({ on: true }) })
-    expect(screen.getByLabelText('Volume des sons')).toBeTruthy()
+  it('son allumé : le curseur porte le volume réglé, et il est actionnable', () => {
+    renderTransport({ sound: makeSound({ on: true, volume: 0.4 }) })
+    const slider = screen.getByLabelText('Volume des sons') as HTMLInputElement
+    expect(slider.value).toBe('40')
+    expect(slider.disabled).toBe(false)
+  })
+
+  // DEMANDE UTILISATEUR DU 2026-08-25 : couper le son ne doit PLUS faire disparaître la barre
+  // de volume. Ce cas tient les trois faits qui la composent — elle reste à l'écran, elle
+  // montre zéro, et elle n'agit plus tant que le son est coupé.
+  it('son coupé : le curseur RESTE, à zéro et inerte', () => {
+    renderTransport({ sound: makeSound({ on: false, volume: 0.7 }) })
+    const slider = screen.getByLabelText('Volume des sons') as HTMLInputElement
+    expect(slider.value).toBe('0')
+    expect(slider.disabled).toBe(true)
+    expect(slider.getAttribute('title')).toMatch(/Son coupé/)
+  })
+
+  // LE NIVEAU RÉGLÉ N'EST PAS PERDU : le zéro affiché pendant la coupure est un AFFICHAGE, pas
+  // une écriture. Le composant ne touche jamais `sound.volume` en basculant — la preuve est ici,
+  // sur les deux rendus du même volume 0,7.
+  it('rallumer le son rend le volume précédent — la coupure n’écrit rien', () => {
+    const setVolume = vi.fn()
+    const { unmount } = renderTransport({ sound: makeSound({ on: false, volume: 0.7, setVolume }) })
+    expect(setVolume).not.toHaveBeenCalled()
+    unmount()
+    renderTransport({ sound: makeSound({ on: true, volume: 0.7, setVolume }) })
+    expect((screen.getByLabelText('Volume des sons') as HTMLInputElement).value).toBe('70')
   })
 })
 

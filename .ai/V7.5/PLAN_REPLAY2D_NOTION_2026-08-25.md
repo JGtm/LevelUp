@@ -31,22 +31,58 @@ Source : encadré « REPLAY 2D » (callout jaune) de la page Notion « Backlog L
 
 Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
 
-- [ ] A1 (pt 4) : retirer la donnée « temps morts » des fiches joueur (ancre :
+- [x] A1 (pt 4) : retirer la donnée « temps morts » des fiches joueur (ancre :
   `ReplayTeamsDeadTime*`) ET le symbole ami. Supprimer le code débranché + tests + strings
   i18n orphelines (règle 0 code mort).
-- [ ] A2 (pt 6) : retirer le compteur total d'éliminations en haut à droite du kill feed
+  FAIT : `DeadTimeRow` + `deadTimeLogic.ts` + ses 2 fichiers de tests SUPPRIMÉS, clés
+  `deadTimeLabel` / `deadTimeUnmeasurable` retirées (FR, EN, contrat) ; `<PlayerMark>` retiré
+  de la fiche avec la prop `marks` de `ReplayTeams` et son passage depuis la route. Le
+  composant `PlayerMark` RESTE : le fil des éliminations en est l'autre lecteur.
+- [x] A2 (pt 6) : retirer le compteur total d'éliminations en haut à droite du kill feed
   (ancre candidate : `ReplayCountersBadge`). Même règle 0 code mort.
-- [ ] A3 (pt 8) : couper le son ne fait plus disparaître la barre de volume : le curseur
+  FAIT — **l'ancre candidate du plan était FAUSSE** : `ReplayCountersBadge` est le badge
+  frags/morts/assistances d'UNE FICHE joueur (`ReplayTeams.tsx:308`), il n'a rien à voir avec
+  le fil. Le vrai compteur était le rapport `« affichées / total »` écrit en dur dans l'en-tête
+  du fil (`ReplayKillFeed.tsx`, en-tête `flex justify-between`). Retiré ; `ReplayCountersBadge`
+  est INTACT.
+- [x] A3 (pt 8) : couper le son ne fait plus disparaître la barre de volume : le curseur
   passe à 0 ; ré-activer restaure le volume précédent (`ReplaySoundControls`).
-- [ ] A4 (pt 9) : à la fin du rejeu, rester sur l'état FINAL (curseur à T_final, scène
+  FAIT : le `{sound.on && …}` qui escamotait le curseur est retiré ; il reste, à 0, `disabled`
+  et estompé, avec une infobulle dédiée (nouvelle clé `soundVolumeMutedHint`, FR + EN). La
+  RESTAURATION était déjà acquise côté hook (`toggle` coupe le maître du lecteur, il n'écrit
+  jamais `volume`) — le zéro affiché est un affichage, pas une écriture ; 3 tests le tiennent.
+- [x] A4 (pt 9) : à la fin du rejeu, rester sur l'état FINAL (curseur à T_final, scène
   finale affichée) — pas de remise à zéro (`ReplayTransport`). Relancer reste possible.
-- [ ] A5 (pt 3) : DIAGNOSTIC des « traits au bout du cône de visée » (rendu canvas —
+  FAIT — l'ancre réelle n'était PAS `ReplayTransport` (qui n'a aucun état) mais la boucle rAF
+  de `ReplayCanvas.tsx` (`if (next >= doc.frameCount - 1) next = 0`). Le canvas était à 2 lignes
+  de son cliquet de taille : la LECTURE part dans `useReplayPlayback.ts` (8e extraction,
+  777 -> 742). Fin = borne à `endFrame`, dernier `draw()` + `soundTick`, puis pause ; « Lecture »
+  sur un rejeu terminé rembobine. 7 tests, mordant prouvé par double mutation.
+- [~] A5 (pt 3) : DIAGNOSTIC des « traits au bout du cône de visée » (rendu canvas —
   `ReplayCanvas` et calques). Le CR DOIT répondre « c'est quoi » avec fichier:ligne.
   Décision par défaut : artefact de rendu → corriger ; donnée réelle légitime (ex. trace
   de tir) → NE PAS supprimer, expliquer au CR et statuer `[~]`.
-- [ ] A6 (pt 7) : zones/bases non prises (= neutres, aucune équipe propriétaire à
+  RÉPONSE : c'est `drawPitchTick` (`replayAimCone.ts:139-157`, appelé depuis `drawAimCone`
+  `:87`) — le SIGNE de l'ÉLÉVATION de visée (champ `p`, schéma 13). Le cosinus est PAIR :
+  viser 30° au-dessus et 30° en dessous raccourcissent le cône exactement pareil, le trait est
+  ce qui les départage (dehors = lève la tête, dedans = pique). DONNÉE RÉELLE, mesurée,
+  testée (`replayMarkers.test.ts:154-221`) : NON SUPPRIMÉE. Le « parfois » est la zone morte
+  de 2° (`AIM_TICK_DEAD_DEG`, `:37`) plus les artefacts antérieurs au schéma 13, qui ne
+  portent pas `p`. SEUL CHANGEMENT : l'infobulle du calque « Visée » le décrit désormais
+  (FR + EN) — elle ne le mentionnait pas, d'où la question.
+- [x] A6 (pt 7) : zones/bases non prises (= neutres, aucune équipe propriétaire à
   l'instant t) : contour grisé (token sémantique, pas d'hex). Si l'état « non prise »
   n'est PAS dérivable du document schéma 18 → `[!]` + condition de reprise = lot D.
+  DÉRIVABLE — pas de `[!]`. Preuve : `ZoneSpan.Owner *int` (`document_zones.go:199-205`),
+  « l'equipe qui TIENT la zone, ou `null` quand personne ne la tient (valeur neutre
+  `0xFFFFFFFF` du canal) » — pointeur SANS `omitempty` justement pour que « personne » se
+  distingue d'un artefact plus ancien. Côté client, `spanStateAt` le sert déjà.
+  FAIT : (a) le contour d'une zone non prise passe EN RETRAIT (α 0,95 -> 0,5 ; 2,5 -> 1,6 px) —
+  il s'affirmait auparavant exactement autant que celui d'une base gagnée ; (b) l'encre neutre
+  des objectifs passe de `--muted-foreground` (variable de LAYOUT lue par `readInk`) au TOKEN
+  `divergent-neutral`, celui du fil pour une mort neutre ; (c) le seuil est `owner === null`,
+  PAS `held` — une zone tenue par un camp non situable (aucune ligne « moi ») garde le trait
+  plein. Mordant prouvé par double mutation (dont la confusion `held`/`owner`).
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
@@ -140,4 +176,15 @@ thought_log, mémoire de session.
 
 ## Découvertes (hors périmètre — consigner ici, ne PAS traiter)
 
-- (vide)
+- **Lot A — sentinelle `last === 0` de la boucle de lecture** (`useReplayPlayback.ts`, reprise
+  telle quelle de `ReplayCanvas`) : l'amorce de l'horloge est `let last = 0` puis
+  `if (last === 0) last = ts`. Un horodatage `rAF` valant EXACTEMENT 0 ré-amorcerait l'horloge
+  à chaque pas, et le rejeu n'avancerait plus. Inatteignable en navigateur (le premier `ts`
+  est > 0), rencontré seulement en test — les tests servent donc des horodatages non nuls et
+  le disent. NON TRAITÉ (règle 7). Correctif si un jour on y revient : `let last = -1`.
+- **Lot A — `held` conflate deux états dans `zoneStatesLayer.paintZoneState`** : il est faux
+  autant pour « personne ne tient » que pour « camp non situable » (aucune ligne « moi »).
+  A6 a corrigé la conséquence VISIBLE (le grisé se décide sur `owner`, pas sur `held`), mais
+  le drapeau décide encore du REMPLISSAGE : une zone tenue par un camp non situable n'est pas
+  remplie. C'est le comportement voulu et documenté (« jamais une couleur devinée ») — noté
+  parce que le nom `held` ment sur ce qu'il porte. NON TRAITÉ.

@@ -29,6 +29,25 @@ import { readFxInk, type FxInk } from './fxInk'
 /** Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs). */
 const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
 /**
+ * L'ENCRE DU « AUCUN CAMP », et c'est un TOKEN parce que ça DIT quelque chose.
+ *
+ * Le rejeu servait jusqu'ici `floor.edge` — c'est-à-dire `--muted-foreground` via `readInk` —
+ * partout où il n'y avait pas de camp. C'était l'entorse que `canvasInk.ts` s'interdit
+ * lui-même en toutes lettres : « toute couleur qui DIT quelque chose (une équipe, un tir, une
+ * mort) passe par un token ». « Personne ne tient cette zone » dit quelque chose — c'est même
+ * une MESURE du film (valeur neutre du canal de propriété), pas de la mise en page.
+ *
+ * `divergent-neutral` EST DÉJÀ le neutre sémantique de la feature : le fil des éliminations
+ * l'emploie pour une mort que personne ne revendique. Les objectifs sans camp parlent donc
+ * maintenant la même langue que le fil, et suivent la palette d'accessibilité de
+ * l'utilisateur — ce que `readInk` ne fait pas.
+ *
+ * MÊME TOKEN QUE `GEOMETRY_TOKEN`, ET DEUX CONSTANTES QUAND MÊME : le fond de carte est neutre
+ * parce qu'il n'est pas le sujet, une zone est neutre parce que personne ne la tient. Deux
+ * raisons distinctes, qui doivent pouvoir diverger sans qu'on ait à démêler laquelle on change.
+ */
+const NEUTRAL_TOKEN: SemanticToken = 'divergent-neutral'
+/**
  * Événements ponctuels. Le LANCER emprunte un token d'information ; le TIR, lui, ne prend plus
  * aucun token de données : sa couleur dit la NATURE DE LA DÉCHARGE et vient des teintes
  * diégétiques du thème (fxInk.ts, décision utilisateur du 2026-08-15). Le token d'alerte reste
@@ -76,8 +95,10 @@ export interface ReplayInks {
   shot: string
   /** Lancers de grenade. */
   grenade: string
-  /** Sol reconstruit ; `edge` sert aussi d'encre NEUTRE à tout ce qui n'a pas de camp. */
+  /** Sol reconstruit ; `edge` sert aussi d'encre de mise en page à ce qui n'a pas de rôle. */
   floor: ReplayFloorInk
+  /** Encre SÉMANTIQUE du « aucun camp » : objectifs neutres, zone que personne ne tient. */
+  neutral: string
   /** Teintes des éclairs de bouche, lues une fois par thème (jamais par image). */
   fx: FxInk
   /** Ligne de grappin : l'encre la plus claire du thème (`--foreground`), jamais un hex. */
@@ -116,6 +137,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       shot: resolveToken(SHOT_TOKEN),
       grenade: resolveToken(GRENADE_TOKEN),
       floor: { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') },
+      neutral: resolveToken(NEUTRAL_TOKEN),
       fx: readFxInk(),
       grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),

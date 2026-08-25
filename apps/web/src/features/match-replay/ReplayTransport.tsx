@@ -13,8 +13,9 @@
  * symbole sans nom serait une régression d'accessibilité, pas une simplification. SVG
  * inline en currentColor, comme les autres icônes du dépôt (pas de librairie d'icônes).
  *
- * L'ÉTAT NE VIT PAS ICI : lecture, refs de l'horloge et du curseur, vitesse et son restent
- * au canvas (frameRef, boucle rAF) — cette barre ne fait que les afficher et les commander.
+ * L'ÉTAT NE VIT PAS ICI : la LECTURE (état lu/pause, boucle rAF, curseur de la frise, arrêt
+ * sur la dernière image) vit dans `useReplayPlayback` ; l'image courante, l'horloge, la
+ * vitesse et le son restent au canvas — cette barre ne fait que les afficher et les commander.
  */
 import type { ChangeEvent, ComponentProps, RefObject } from 'react'
 
