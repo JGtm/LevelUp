@@ -1,6 +1,10 @@
 package replay
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/analysis/filmdec"
+)
 
 // inventory_test.go — les propriétés de l'inventaire, pas ses valeurs de sortie.
 //
@@ -144,9 +148,12 @@ func TestBuildInventoryProjectsAndDropsPreOrigin(t *testing.T) {
 		{TimestampUS: 1_200_000, Slot: 512, AbilityRank: 20, DrawnSlot: 2,
 			AmmoRead: true, Ammo: [4]SlotAmmo{{Mag: &mag}}, AmmoCandidates: 1},
 	}
-	got := buildInventory(raw, origin, step)
+	got, dropped := buildInventory(raw, origin, step)
 	if len(got) != 2 {
 		t.Fatalf("l'etat anterieur a l'origine doit etre ecarte, obtenu %d etats", len(got))
+	}
+	if dropped != 1 {
+		t.Errorf("compte des lectures ecartees avant l'origine = %d, attendu 1", dropped)
 	}
 	// Tri par image puis par slot : un artefact reproductible d'un build a l'autre.
 	if got[0].T != 2 || got[0].Slot != 512 || got[1].T != 6 {
@@ -168,7 +175,7 @@ func TestBuildInventoryPublishesZeroCounters(t *testing.T) {
 	// tableau absent (« non lu »). Le confondre effacerait l'information la plus utile.
 	raw := []KeyframeInventory{{TimestampUS: 0, Slot: 1, AbilityRank: -1, DrawnSlot: -1,
 		Grenades: [4]uint32{0, 0, 0, 0}, GrenadesRead: true}}
-	got := buildInventory(raw, 0, 100_000)
+	got, _ := buildInventory(raw, 0, 100_000)
 	if len(got) != 1 || len(got[0].G) != 4 {
 		t.Fatalf("un etat lu a compteurs nuls doit etre publie : %+v", got)
 	}
@@ -190,5 +197,66 @@ func TestKeepInventoryOfPublishedTracks(t *testing.T) {
 	}
 	if keepInventoryOfPublishedTracks(nil, []Track{{Slot: 512}}) != nil {
 		t.Error("sans inventaire, rien n'est invente")
+	}
+}
+
+// TestInventoryCoverageBalances verrouille l'invariant ECRIT dans le commentaire d'InventoryCoverage :
+// `Decoded == DroppedBeforeOrigin + Unpublished + Published`, exactement.
+//
+// POURQUOI UN TEST ET PAS SEULEMENT UN COMMENTAIRE. Les quatre compteurs viennent de TROIS etapes
+// differentes du filtrage ; intervertir deux d'entre elles, ou brancher `Published` sur la mauvaise
+// tranche, rend des chiffres plausibles dont la somme ne tombe plus juste. Les comptes sont pris NON
+// TRIVIAUX (une lecture au moins dans chacune des trois issues) : un jeu de zeros passerait
+// l'egalite sans rien mesurer.
+func TestInventoryCoverageBalances(t *testing.T) {
+	const origin, step = 1_000_000, 100_000
+	decoded := []KeyframeInventory{
+		// Avant l'origine : ECARTEE par buildInventory.
+		{TimestampUS: 400_000, Slot: 512, AbilityRank: -1, DrawnSlot: -1},
+		{TimestampUS: 700_000, Slot: 512, AbilityRank: -1, DrawnSlot: -1},
+		// Apres l'origine, slot d'une piste PUBLIEE : retenue jusqu'au bout.
+		{TimestampUS: 1_200_000, Slot: 512, AbilityRank: -1, DrawnSlot: 0},
+		{TimestampUS: 1_400_000, Slot: 512, AbilityRank: -1, DrawnSlot: 1},
+		{TimestampUS: 1_600_000, Slot: 512, AbilityRank: -1, DrawnSlot: 2},
+		// Apres l'origine, slot SANS piste publiee : ecartee par le second filtre.
+		{TimestampUS: 1_300_000, Slot: 999, AbilityRank: -1, DrawnSlot: -1},
+	}
+	built, dropped := buildInventory(decoded, origin, step)
+	published := keepInventoryOfPublishedTracks(built, []Track{{Slot: 512}})
+	cov := buildInventoryCoverage(decoded, built, published, dropped)
+	if cov.Decoded != 6 || cov.DroppedBeforeOrigin != 2 || cov.Unpublished != 1 || cov.Published != 3 {
+		t.Fatalf("couverture = %+v, attendu {Decoded:6 DroppedBeforeOrigin:2 Unpublished:1 Published:3}", *cov)
+	}
+	if somme := cov.DroppedBeforeOrigin + cov.Unpublished + cov.Published; somme != cov.Decoded {
+		t.Errorf("invariant rompu : %d ecartees avant origine + %d sans piste + %d publiees = %d, "+
+			"pour %d decodees", cov.DroppedBeforeOrigin, cov.Unpublished, cov.Published, somme, cov.Decoded)
+	}
+}
+
+// TestInventoryCoverageAbsentWhenNothingToRead : l'ABSENCE de couverture et une couverture a ZERO
+// sont deux etats differents, et le document doit les distinguer.
+//
+// C'EST LA DOCTRINE DE coverage.go : « son ABSENCE dit encore autre chose — l'appelant n'a rien
+// fourni a lire ». Un inventaire illisible (BuildFromFilm pose `inventory = nil`) ne doit donc PAS
+// publier {0,0,0,0}, qui se lirait « lecture faite, zero trouve ».
+func TestInventoryCoverageAbsentWhenNothingToRead(t *testing.T) {
+	// Deux points sur un slot : le minimum pour que le document soit assemble jusqu'au bout
+	// (sans position, BuildFromPositions rend un document nu, sans aucune couverture).
+	in := []filmdec.BipedPosition{pos(512, 0, 10, 20, 1), pos(512, 100, 11, 21, 1)}
+	sans := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	if sans.Coverage == nil {
+		t.Fatal("document sans couverture : rien a juger")
+	}
+	if sans.Coverage.Inventory != nil {
+		t.Errorf("aucun inventaire fourni : la couverture doit rester ABSENTE, obtenu %+v",
+			*sans.Coverage.Inventory)
+	}
+	vide := BuildFromPositions("m", "halo_infinite", in, nil,
+		Options{FrameIntervalMS: 100, Inventory: []KeyframeInventory{}})
+	if vide.Coverage == nil || vide.Coverage.Inventory == nil {
+		t.Fatal("lecture faite mais vide : la couverture doit etre PRESENTE, a zero")
+	}
+	if got := *vide.Coverage.Inventory; got != (InventoryCoverage{}) {
+		t.Errorf("couverture d'une lecture vide = %+v, attendu quatre zeros", got)
 	}
 }

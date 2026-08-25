@@ -17,15 +17,9 @@
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
-import { catalogText, type CatalogLabel } from './catalogLabel'
-import type { ReplayLocale } from './i18n'
 import type { PlayerMarkKind } from './playerMarks'
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
-import type {
-  ReplayDocumentReady,
-  ReplayInventoryReady,
-  ReplayTrackReady,
-} from './replayNormalize'
+import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 /**
  * ReplayPlayer — un joueur du rejeu : son identité (base) et ses vies (film).
@@ -412,88 +406,4 @@ export function abilityAt(
 ): AbilityReading | null {
   const read = nearestReading(doc.abilities ?? [], slot, frame)
   return read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
-}
-
-/** InventoryReading — l'inventaire d'un slot et l'ÂGE de cette lecture, en frames. */
-export interface InventoryReading {
-  state: ReplayInventoryReady
-  age: number
-}
-
-/**
- * inventoryAt rend le dernier inventaire lu pour un SLOT au plus tard à `frame`, avec son âge.
- *
- * LA RECHERCHE PORTE SUR LE SLOT, PAS SUR LE JOUEUR, et c'est ce qui rend le report SÛR : un
- * slot est réattribué à chaque réapparition, donc une dotation ne peut jamais franchir une
- * mort. Chercher par joueur ferait survivre un inventaire à son porteur.
- *
- * AVANT LA PREMIÈRE IMAGE-CLÉ D'UNE VIE, la lecture rendue est la plus proche À VENIR du
- * même slot — même repli que loadoutAt, et même honnêteté : âge NÉGATIF publié tel quel,
- * estompé sur sa valeur absolue, dit « à venir » en infobulle. DÉCISION UTILISATEUR
- * (2026-08-12) : elle va AU-DELÀ du POC, qui refusait la lecture future pour les compteurs
- * (grenades, munitions) au motif qu'ils sont volatils — l'arbitrage produit est qu'une
- * dotation de spawn affichée avec son âge « à venir » informe mieux que vingt secondes de
- * vide. Le repli ne franchit jamais une mort : un slot est une vie.
- */
-export function inventoryAt(
-  doc: ReplayDocumentReady,
-  slot: number,
-  frame: number,
-): InventoryReading | null {
-  const read = nearestReading(doc.inventory ?? [], slot, frame)
-  return read ? { state: read.value, age: read.age } : null
-}
-
-/**
- * grenadesCarried rend les types de grenade PORTÉS, avec leur nom et leur compteur.
- *
- * LES COMPTEURS À ZÉRO SONT ÉCARTÉS DE L'AFFICHAGE mais pas de la lecture : le tableau publié
- * est complet, et un zéro y signifie « ce type, aucune en réserve ». Montrer quatre types dont
- * trois à zéro noierait celui qui compte.
- */
-export function grenadesCarried(
-  state: ReplayInventoryReady,
-  labels: CatalogLabel[] | undefined,
-  locale: ReplayLocale,
-): { rank: number; name: string; count: number }[] {
-  if (!state.g) return []
-  const out: { rank: number; name: string; count: number }[] = []
-  state.g.forEach((count, rank) => {
-    if (count <= 0) return
-    // Sans table, le RANG s'affiche tel quel : c'est ce que le document dit, et c'est
-    // vrai. Inventer un nom serait pire (cf. catalogLabel.ts).
-    out.push({ rank, name: catalogText(labels?.[rank], locale) ?? `rang ${rank}`, count })
-  })
-  return out
-}
-
-/**
- * GrenadeSelection — le type ÉQUIPÉ, celui qui partira au prochain lancer, avec sa
- * PROVENANCE. Les trois formes ne se confondent jamais :
- *   - { rank, read: true }  : LU dans le film (sélecteur i47 de l'image-clé) ;
- *   - { rank, read: false } : DÉDUIT — un seul type porté, donc c'est lui ;
- *   - 'indeterminate'       : plusieurs types portés et sélecteur non lu — l'écran doit le
- *     DIRE (« sél. ? »), pas choisir ;
- *   - null                  : rien à désigner (compteurs non lus, ou aucun type porté).
- */
-export type GrenadeSelection = { rank: number; read: boolean } | 'indeterminate' | null
-
-/**
- * selectedGrenade désigne le type équipé.
- *
- * LA LECTURE PRIME LA DÉDUCTION : le sélecteur du film (`gs`) est publié sous garde de
- * cohérence (masque == compteurs, unanimité) — quand il est là, c'est lui. À défaut, la
- * déduction ne vaut que quand elle ne peut pas être autre chose : un seul type porté.
- * Dès qu'un joueur porte deux types sans sélecteur lu, on rend 'indeterminate' : deviner
- * reviendrait à afficher une certitude qu'on n'a pas.
- */
-export function selectedGrenade(state: ReplayInventoryReady): GrenadeSelection {
-  const carried = (state.g ?? []).map((c, r) => ({ c, r })).filter((x) => x.c > 0)
-  if (carried.length === 0) return null
-  const gs = state.gs
-  if (gs !== undefined && carried.some((x) => x.r === gs)) {
-    return { rank: gs, read: true }
-  }
-  if (carried.length === 1) return { rank: carried[0].r, read: false }
-  return 'indeterminate'
 }

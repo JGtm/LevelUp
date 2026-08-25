@@ -401,7 +401,7 @@ func renderProjectiles(p func(string, ...any), doc ReplayDocument) {
 }
 
 func renderInventory(p func(string, ...any), doc ReplayDocument) {
-	var gren, ammo, multi int
+	var gren, ammo, multi, mort, inexplique int
 	for _, inv := range doc.Inventory {
 		if len(inv.G) > 0 {
 			gren++
@@ -412,6 +412,12 @@ func renderInventory(p func(string, ...any), doc ReplayDocument) {
 		if inv.Cand > 1 {
 			multi++
 		}
+		switch inv.Empty {
+		case InventoryEmptyDead:
+			mort++
+		case InventoryEmptyUnknown:
+			inexplique++
+		}
 	}
 	p("## INVENTAIRE — lu aux images-cles, jamais interpole entre deux")
 	p("%d etat(s) publie(s) · %d avec grenades lues · %d avec munitions lues",
@@ -419,6 +425,20 @@ func renderInventory(p func(string, ...any), doc ReplayDocument) {
 	p("%d lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le",
 		multi)
 	p("nombre de candidats est publie, pour que le departage reste visible")
+	// LES LECTURES VIDES SONT PUBLIEES ET MARQUEES (schema 19) : une lecture vide n'est pas une
+	// absence de lecture, et sans marqueur elle EFFACE la fiche cote client.
+	p("%d lecture(s) VIDE(S) : %d corroboree(s) par le fil des morts (`dead`), %d inexpliquee(s)",
+		mort+inexplique, mort, inexplique)
+	// LES DENOMINATEURS DU CALQUE, figes comme ceux des poses et des socles : sans eux, « 184
+	// etats publies » ne dit pas si le decodeur en a lu 184 ou 400. La somme des trois derniers
+	// vaut le premier — invariant verrouille a part (TestInventoryCoverageBalances).
+	if c := doc.Coverage.Inventory; c == nil {
+		p("aucune couverture d inventaire (rien n a ete fourni a lire)")
+	} else {
+		p("couverture : %d lecture(s) decodee(s) -> %d ecartee(s) avant l origine du rejeu · "+
+			"%d ecartee(s) faute de piste publiee -> %d publiee(s)",
+			c.Decoded, c.DroppedBeforeOrigin, c.Unpublished, c.Published)
+	}
 	p("rangs de grenade : %s", renderBilingualList(doc.GrenadeLabels))
 	p("")
 }

@@ -77,6 +77,7 @@ var replaySchemas = []struct {
 	{"Projectile", replay.Projectile{}},
 	{"Loadout", replay.Loadout{}},
 	{"Inventory", replay.Inventory{}},
+	{"InventoryCoverage", replay.InventoryCoverage{}},
 	{"AbilityRead", replay.AbilityRead{}},
 	{"EquipmentEpisode", replay.EquipmentEpisode{}},
 	{"EquipmentCoverage", replay.EquipmentCoverage{}},

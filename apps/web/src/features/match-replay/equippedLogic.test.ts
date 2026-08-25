@@ -96,6 +96,44 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
   it('sans loadout lu, rend null — la rangée affiche sa lacune, pas une liste vide', () => {
     expect(equippedWeapons(doc(), 512, 60)).toBeNull()
   })
+
+  it('lecture VIDE : aucune arme en main, même si la lecture pleine antérieure en dégainait une', () => {
+    // LE DÉFAUT QUE CE CAS FERME (revue adversariale, constat 3). `inventoryAt` substitue la
+    // dernière lecture PLEINE pour que la LIGNE D'INVENTAIRE garde un équipement à montrer.
+    // Reprendre le sélecteur de cette lecture-là faisait affirmer une arme DÉGAINÉE pour un
+    // joueur que l'artefact déclare mort : la rangée d'armes affichait `drawn: 0`, `inHand`.
+    const d = doc({
+      loadouts: [{ t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
+      inventory: [
+        { t: 10, slot: 512, g: [0, 2, 0, 0], d: 0 },
+        { t: 100, slot: 512, empty: 'dead' },
+      ],
+    })
+    expect(equippedWeapons(d, 512, 120)).toEqual({
+      weapons: [
+        { id: '0xAAAA', inHand: false },
+        { id: '0xBBBB', inHand: false },
+      ],
+      order: [0, 1],
+      drawn: null,
+      age: 110,
+      // PAS « rangées » : D=2 est une MESURE (« aucune arme dégainée »), une lecture vide n'en
+      // est pas une. L'état est NON AFFIRMÉ, ce que dit `drawnUnread`.
+      holstered: false,
+      drawnUnread: true,
+    })
+  })
+
+  it('lecture VIDE inexpliquée, sans lecture pleine antérieure : même abstention', () => {
+    const d = doc({
+      loadouts: [{ t: 10, slot: 512, w: ['0xAAAA'] }],
+      inventory: [{ t: 20, slot: 512, empty: 'unknown' }],
+    })
+    const r = equippedWeapons(d, 512, 60)
+    expect(r?.drawn).toBeNull()
+    expect(r?.drawnUnread).toBe(true)
+    expect(r?.holstered).toBe(false)
+  })
 })
 
 describe('loadoutSwapAt — le diff des deux dernières lectures d’un slot', () => {
