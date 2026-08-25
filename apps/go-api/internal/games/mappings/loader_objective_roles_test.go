@@ -130,8 +130,13 @@ func errUnwrapAll(err error) error {
 }
 
 // TestObjectiveRoles_FichierDuDepot — le TOML VERSIONNÉ du titre par défaut charge, et
-// porte les sept modes du plan (CTF, Strongholds, Oddball, Stockpile, Extraction, Assaut,
-// King of the Hill — ce dernier depuis le lot C-ter volet 2).
+// porte les huit modes du plan : CTF, Strongholds, Oddball, Stockpile, Extraction, Assaut,
+// King of the Hill (lot C-ter volet 2) et Total Control (lot catalogue, 2026-08-25).
+//
+// `firefight_objective` est un rôle du décodeur qu'AUCUNE entrée ne sert : le fichier
+// l'admet, le catalogue le porte, et la décision de le servir attend une mesure (en-tête du
+// TOML). Ce test ne l'exige donc pas — mais il exige que le compte reste explicite, pour
+// qu'une entrée ajoutée sans intention le fasse rougir.
 func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 	root, err := testutil.RepoRoot()
 	if err != nil {
@@ -143,14 +148,17 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 		t.Fatalf("le fichier versionné doit charger: %v", err)
 	}
 	modes := set.Modes()
-	if len(modes) != 7 {
-		t.Fatalf("modes = %d, attendu 7 (CTF, Strongholds, Oddball, Stockpile, Extraction, Assaut, KOTH)", len(modes))
+	if len(modes) != 8 {
+		t.Fatalf("modes = %d, attendu 8 (CTF, Strongholds, Oddball, Stockpile, Extraction, "+
+			"Assaut, KOTH, Total Control)", len(modes))
 	}
 	// La règle produit du lot 4 : Bastion et Extraction s'affichent NEUTRES (possession
 	// dynamique non décodée) ; le drapeau, lui, garde ses couleurs d'équipe.
 	neutres := map[mapvar.Role]bool{}
+	servis := map[mapvar.Role]bool{}
 	for _, m := range modes {
 		for _, r := range m.Roles {
+			servis[r] = true
 			if m.Neutral {
 				neutres[r] = true
 			}
@@ -161,6 +169,15 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 	}
 	if neutres[mapvar.RoleFlagSpawn] || neutres[mapvar.RoleFlagDelivery] {
 		t.Errorf("les rôles drapeau ne doivent PAS être neutres: %v", neutres)
+	}
+	// Total Control : le fichier déclare un VIVIER de 14 à 18 zones par carte quand une
+	// manche n'en active que 3, et l'activation n'est pas dans la variante de carte. La
+	// zone doit donc être servie NEUTRE, comme Bastion et la colline.
+	if !servis[mapvar.RoleTotalControlZone] {
+		t.Error("totalcontrol_zone doit être servi : 13 cartes ont des matchs Total Control")
+	}
+	if !neutres[mapvar.RoleTotalControlZone] {
+		t.Error("totalcontrol_zone doit être neutre : la possession d'une zone est dynamique")
 	}
 }
 
