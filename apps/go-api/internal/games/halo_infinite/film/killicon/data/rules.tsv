@@ -47,7 +47,7 @@
 # donc aucune icone. Une icone absente est un repli ; une icone fausse est un mensonge.
 # Les 5 noms alternatifs ecartes pour cette raison sont listes en fin de fichier.
 #
-# date=2026-08-11 regles=50
+# date=2026-08-25 regles=51
 genre	cle	sprite	weapon_key	justification
 NOM	BR75	killfeed-00	hinf_br75	NOMMAGE_GATE index 00 ; nom interne battle_rifle concordant
 NOM	VK78 Commando	killfeed-01	hinf_vk78_commando	NOMMAGE_GATE index 01 ; nom interne commando_rifle concordant
@@ -74,6 +74,7 @@ NOM	Pulse Carbine	killfeed-20	hinf_pulse_carbine	NOMMAGE_GATE index 20 (libelle 
 NOM	Cindershot	killfeed-22	hinf_cindershot	NOMMAGE_GATE index 22 ; le nom interne heatwave MENT, cf. en-tete
 NOM	Heatwave	killfeed-23	hinf_heatwave	NOMMAGE_GATE index 23 (libelle humain Calcineur = FR de Heatwave au registre) ; index sans nom interne
 NOM	Sentinel Beam	killfeed-24	hinf_sentinel_beam	NOMMAGE_GATE index 24 ; nom interne sentinelbeam concordant
+NOM	Repulsor	killfeed-56		NOMMAGE_GATE index 56 ; nom interne repulsor concordant (index.json nom_jeu, tags_weap 692390e9 = icone uiwi du sofa ec934480, meme sofa que l eqip repulseur 7ca85adc de replay_labels.toml) ; jpt! identifie par RE himap le 2026-08-25 : eqip 7ca85adc -> sofa 6845f2b3 -> eqip frere 1e79ebda -> jpt! 07104b31 (labels.tsv, statut SOUS_RESERVE comme toute arme nommee de cette table) ; propulseur ECARTE (ses eqip 0x430dda48/0xeef5d48d sont distincts) ; arme HORS registre, donc sans weapon_key
 NOM	Bandit Evo / M392 Bandit	killfeed-73	hinf_bandit	alternative SURE : le registre donne en=M392 Bandit et fr=Bandit EVO, une seule arme ; nom interne bandit concordant
 NOM	Mythic Sandwich / Sandwich	killfeed-76		alternative SURE : base et variante mythique du meme objet ; nom interne sandwich concordant ; hors registre d armes, donc sans weapon_key
 NOM	MA5K Avenger	killfeed-80	hinf_ma5k_avenger	NOMMAGE_GATE index 80 (nom interne ma5k_smg) ; sans weapon_key cote index.json, d ou la colonne vide de la passe humaine
