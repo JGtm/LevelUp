@@ -80,8 +80,8 @@ func main() {
 	defer playerDB.Close()
 	playerDB.SetMaxOpenConns(1)
 
-	// Tokens Halo (canonique ADR 0023 : store-first + legacy depuis sync_meta).
-	tokens, err := loadHaloTokens(ctx, *watcherTokensDir, *xuid, *gamertag, playerDB)
+	// Tokens Halo (canonique ADR 0023 : MultiUserTokenStore, source unique).
+	tokens, err := loadHaloTokens(ctx, *watcherTokensDir, *xuid, *gamertag)
 	if err != nil {
 		fatal("chargement tokens Halo: %v", err)
 	}
@@ -138,19 +138,13 @@ func resolveSeasons(ctx context.Context, metadataDBPath, titleID, only string) (
 	return out, rows.Err()
 }
 
-// loadHaloTokens suit le pipeline canonique ADR 0023 : MultiUserTokenStore en
-// premier, legacy (sync_meta du player DB) en secours. La rotation RT est
-// persistée par le helper.
-func loadHaloTokens(ctx context.Context, watcherTokensDir, xuid, gamertag string, playerDB *sql.DB) (*authTokens, error) {
-	var rt, msal string
-	_ = playerDB.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&rt)
-	_ = playerDB.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&msal)
-
+// loadHaloTokens suit le pipeline canonique ADR 0023 : MultiUserTokenStore,
+// source unique des refresh tokens. La rotation RT est persistée par le helper.
+func loadHaloTokens(ctx context.Context, watcherTokensDir, xuid, gamertag string) (*authTokens, error) {
 	store := auth.NewMultiUserTokenStore(watcherTokensDir)
 	provider := auth.NewSISUProvider()
-	legacy := auth.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
 
-	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag)
 	if err != nil {
 		return nil, err
 	}

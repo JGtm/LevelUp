@@ -13,8 +13,7 @@
 //	./populate-playlists-catalog \
 //	    --metadata-db data/titles/halo_infinite/warehouse/metadata.duckdb \
 //	    --shared-db   data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb \
-//	    --player-db   data/titles/halo_infinite/players/JGtm/stats.duckdb \
-//	    --reset-attempts
+//	    --watcher-tokens-dir data/auth/watcher_tokens
 package main
 
 import (
@@ -47,13 +46,12 @@ func main() {
 	rulesPath := flag.String("experience-rules", "config/titles/halo_infinite/catalog/experience_rules.toml", "chemin experience_rules.toml")
 	dryRun := flag.Bool("dry-run", false, "ne fait que le seed de la queue, pas de fetch DiscoveryUGC")
 	rateLimit := flag.Int("rate-limit", 60, "requêtes max par minute vers Discovery UGC (défaut 60, use 300+ pour batch)")
-	authFile := flag.String("auth-file", "data/auth/watcher_tokens.json", "chemin tokens.json pour accès XSTS/OAuth")
-	playerDB := flag.String("player-db", "", "chemin stats.duckdb d'un joueur (lecture du oauth_refresh_token depuis sync_meta)")
-	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_OAUTH_REFRESH_TOKEN_* et SPNKR_AZURE_CLIENT_ID)")
+	watcherTokensDir := flag.String("watcher-tokens-dir", "data/auth/watcher_tokens", "répertoire MultiUserTokenStore (ADR 0023)")
+	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_AZURE_CLIENT_ID)")
 	fromMatchRegistry := flag.Bool("from-match-registry", false, "peuple les tables catalog directement depuis match_registry (bypass Discovery UGC API)")
 	flag.Parse()
 
-	// Charger .env.local pour exposer SPNKR_OAUTH_REFRESH_TOKEN_* et SPNKR_AZURE_CLIENT_ID.
+	// Charger .env.local pour exposer SPNKR_AZURE_CLIENT_ID.
 	loadEnvLocal(*envFile)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -112,7 +110,7 @@ func main() {
 
 	// 2. Charger les tokens Halo (requis par Discovery UGC).
 	var haloTokens *domain.HaloTokens
-	haloTokens, err = loadHaloTokens(ctx, *authFile, *playerDB)
+	haloTokens, err = loadHaloTokens(ctx, *watcherTokensDir)
 	if err != nil {
 		slog.WarnContext(ctx, "impossible de charger les tokens Halo — requêtes Discovery UGC pourraient échouer (401)",
 			"err", err)
@@ -165,109 +163,32 @@ func main() {
 		"errors", totalErrors)
 }
 
-// loadHaloTokens charge les tokens Halo pour les appels Discovery UGC.
-//
-// Ordre de résolution :
-//  1. XSTS token depuis authFile (watcher_tokens.json) si encore valide → échange → Spartan
-//  2. OAuth access_token depuis authFile si encore valide → échange complet
-//  3. oauth_refresh_token depuis playerDBPath (sync_meta) → refresh → échange complet
-func loadHaloTokens(ctx context.Context, authFile, playerDBPath string) (*domain.HaloTokens, error) {
-	const margin = 5 * time.Minute
-
-	// Chemin 1 & 2 : watcher_tokens.json
-	store := auth.NewTokenStore(authFile)
-	if stored, err := store.Load(); err == nil {
-		if stored.IsXSTSValid(margin) {
-			slog.DebugContext(ctx, "loadHaloTokens: XSTS valide → Spartan token")
-			if tokens, err := auth.ExchangeXSTSForHaloTokens(ctx, stored.XSTSToken); err == nil {
-				return tokens, nil
-			}
-		}
-		if stored.IsOAuthValid(margin) {
-			slog.DebugContext(ctx, "loadHaloTokens: OAuth access_token valide → échange complet")
-			if result, err := auth.ExchangeAccessToken(ctx, stored.AccessToken); err == nil {
-				return result.Tokens, nil
-			}
-		}
-	}
-
-	// Chemin 3 : oauth_refresh_token depuis player DuckDB
-	if playerDBPath != "" {
-		if tokens, err := loadTokensFromPlayerDB(ctx, playerDBPath); err == nil {
-			return tokens, nil
-		} else {
-			slog.DebugContext(ctx, "loadHaloTokens: player DB auth échoué", "err", err)
-		}
-	}
-
-	return nil, fmt.Errorf("aucun token valide trouvé (auth-file=%s, player-db=%s)", authFile, playerDBPath)
-}
-
-// loadTokensFromPlayerDB tente d'obtenir un access_token Microsoft depuis sync_meta
-// du player stats.duckdb (MSAL cache ou oauth_refresh_token), puis l'échange pour des tokens Halo.
-// Même logique que warm_bp_assets/main.go:readAccessTokenFromProfiles.
-func loadTokensFromPlayerDB(ctx context.Context, dbPath string) (*domain.HaloTokens, error) {
-	db, err := sql.Open("duckdb", dbPath+"?access_mode=READ_ONLY")
-	if err != nil {
-		return nil, fmt.Errorf("open player DB: %w", err)
-	}
-	db.SetMaxOpenConns(1)
-	defer db.Close()
-
-	var cacheJSON, refreshToken string
-	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&cacheJSON)
-	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&refreshToken)
-
+// loadHaloTokens charge des tokens Halo pour les appels Discovery UGC depuis le
+// MultiUserTokenStore (source unique ADR 0023). L'API DiscoveryUGC est par-asset,
+// pas par-joueur : le premier joueur authentifié du store convient.
+func loadHaloTokens(ctx context.Context, watcherTokensDir string) (*domain.HaloTokens, error) {
+	store := auth.NewMultiUserTokenStore(watcherTokensDir)
 	provider := auth.NewSISUProvider()
 
-	// Extraire le gamertag depuis le chemin pour vérifier l'env var.
-	gamertag := extractGamertag(dbPath)
-
-	var accessToken string
-	if cacheJSON != "" {
-		if tok, err := provider.TrySilentRefresh(ctx, cacheJSON); err == nil && tok != "" {
-			slog.DebugContext(ctx, "loadTokensFromPlayerDB: MSAL silent refresh OK")
-			accessToken = tok
-		}
-	}
-	if accessToken == "" && refreshToken != "" {
-		if tok, err := provider.TryOAuthRefresh(ctx, refreshToken); err == nil && tok != "" {
-			slog.DebugContext(ctx, "loadTokensFromPlayerDB: OAuth v2 refresh OK")
-			accessToken = tok
-		}
-	}
-	// Fallback : SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> depuis .env.local / environnement.
-	if accessToken == "" && gamertag != "" {
-		envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-		if envRT := os.Getenv(envKey); envRT != "" {
-			if tok, err := provider.TryOAuthRefresh(ctx, envRT); err == nil && tok != "" {
-				slog.DebugContext(ctx, "loadTokensFromPlayerDB: env var OAuth refresh OK", "key", envKey)
-				accessToken = tok
-			}
-		}
-	}
-	if accessToken == "" {
-		return nil, fmt.Errorf("aucun access_token obtenu depuis player DB (msal_cache=%v oauth_rt=%v gamertag=%q)",
-			cacheJSON != "", refreshToken != "", gamertag)
-	}
-
-	result, err := auth.ExchangeAccessToken(ctx, accessToken)
+	all, err := store.LoadAll()
 	if err != nil {
-		return nil, fmt.Errorf("access_token → Halo tokens: %w", err)
+		return nil, fmt.Errorf("scan store %s: %w", watcherTokensDir, err)
 	}
-	return result.Tokens, nil
-}
-
-// extractGamertag extrait le nom du dossier joueur depuis un chemin stats.duckdb.
-// Ex: "data/titles/halo_infinite/players/JGtm/stats.duckdb" → "JGtm"
-func extractGamertag(dbPath string) string {
-	parts := strings.Split(strings.ReplaceAll(dbPath, "\\", "/"), "/")
-	for i, part := range parts {
-		if part == "players" && i+1 < len(parts) {
-			return parts[i+1]
+	for xuid, ut := range all {
+		if ut.OAuthRefreshToken == "" {
+			continue
+		}
+		result, refreshErr := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, ut.Gamertag)
+		if refreshErr != nil {
+			slog.DebugContext(ctx, "loadHaloTokens: refresh échoué pour ce joueur",
+				"xuid", xuid, "err", refreshErr)
+			continue
+		}
+		if tokens := auth.HaloTokensFromExchange(result); tokens != nil {
+			return tokens, nil
 		}
 	}
-	return ""
+	return nil, fmt.Errorf("aucun token Halo valide dans %s (authentifier un joueur : SSO Xbox ou cmd/token-capture)", watcherTokensDir)
 }
 
 // loadEnvLocal lit un fichier .env.local et injecte les variables dans l'environnement

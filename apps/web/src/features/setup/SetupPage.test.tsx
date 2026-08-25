@@ -92,7 +92,7 @@ describe('SetupPage', () => {
     server.use(
       http.post('/api/v1/auth/device-flow/start', () =>
         HttpResponse.json(
-          { code: 'msal_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
+          { code: 'device_flow_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
           { status: 500 },
         ),
       ),

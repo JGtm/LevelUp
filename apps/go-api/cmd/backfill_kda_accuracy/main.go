@@ -68,7 +68,7 @@ func main() {
 	// 3. Auth via MultiUserTokenStore (ADR 0023).
 	store := auth_platform.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	provider := auth_platform.NewSISUProvider()
-	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, *gamertag, auth_platform.LegacyAuthInputs{})
+	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, *gamertag)
 	if err != nil || exch == nil {
 		fmt.Fprintf(os.Stderr, "auth %s: %v\n", *gamertag, err)
 		os.Exit(1)

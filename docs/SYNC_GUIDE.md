@@ -145,7 +145,7 @@ Tokens are the single source described in [adr/0023-auth-tokens-single-source.md
 - Normal onboarding: Xbox SSO web flow -> `/auth/xbox/callback` persists the refresh token.
 - Advanced onboarding: `go run ./apps/go-api/cmd/token-capture/ <Gamertag>` (device-code) or `go run ./apps/go-api/cmd/token-import/ <Gamertag>` (RT on stdin) writes directly to the store — no `.env.local` editing.
 
-The `--all` sync paths and API-backed backfills resolve tokens through the pool (Discovery -> Resolver -> Pool), which handles MSAL/OAuth refresh and caches Spartan tokens (~3h30). Single-player `levelup sync-delta/sync-full --gamertag` and `--csr/--weapons` backfills read the legacy env var `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` as a transitional source — prefer the token store. Never re-capture tokens to fix a 401: a green sync means the tokens are good.
+The `--all` sync paths and API-backed backfills resolve tokens through the pool (Discovery -> Resolver -> Pool), which handles the OAuth refresh and caches Spartan tokens (~3h30). Single-player `levelup sync-delta/sync-full --gamertag` and `--csr/--weapons` backfills resolve the refresh token from the same token store (`data/auth/watcher_tokens/{xuid}.json`) — since ADR 0023 Phase 5 (2026-08-25) there is no env-var fallback left. Never re-capture tokens to fix a 401: a green sync means the tokens are good.
 
 ## Append-only / ART-safe writes
 

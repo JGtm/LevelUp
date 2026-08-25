@@ -78,7 +78,7 @@ func main() {
 	// Token store-first (identique à h5-sync/probe-h5) → ctx (l'adapter h5 lit le token
 	// du ctx). On refresh le token du COMPTE D'AUTH (authGT/authXUID), pas de la cible.
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s (auth_as=%s): err=%v", gt, authGT, err)
 	}

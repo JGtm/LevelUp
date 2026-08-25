@@ -11,7 +11,7 @@
 //   - runAchievementsSync + RunAchievementsOnly : sync Xbox achievements via
 //     TokenProvider (resolveAchievementsAccessToken → XSTS → SyncAchievements).
 //   - hasMatchesNeedingScoreRefresh : heuristique heal-only path.
-//   - resolveAchievementsAccessToken : store-first (ADR 0023) + résidus legacy.
+//   - resolveAchievementsAccessToken : MultiUserTokenStore seul (ADR 0023).
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync

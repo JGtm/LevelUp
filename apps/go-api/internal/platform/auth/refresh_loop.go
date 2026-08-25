@@ -63,12 +63,12 @@ func NewRefreshLoop(store *TokenStore, onXSTSRefreshed RefreshCallback) *Refresh
 	}
 }
 
-// WithMultiUserMirror branche un MultiUserTokenStore qui recevra une copie
-// miroir des écritures XSTS + OAuth du tracker initial (legacy TokenStore).
-// PR 2.5b — pavement pour future migration read-path : maintient la cohérence
-// entre les 2 stores tant que la lecture passe par le legacy.
+// WithMultiUserMirror branche le MultiUserTokenStore. Il joue deux rôles :
+//   - SOURCE du refresh_token du tracker (unique depuis ADR 0023 Phase 5) ;
+//   - destination miroir des écritures XSTS + access_token du tracker.
 //
-// nil → no-op (comportement legacy strict).
+// nil → la boucle ne peut plus rafraîchir (aucune source de refresh_token) :
+// elle skip proprement en Debug.
 func (r *RefreshLoop) WithMultiUserMirror(multi *MultiUserTokenStore) *RefreshLoop {
 	r.multiMirror = multi
 	return r
@@ -120,15 +120,19 @@ func (r *RefreshLoop) check(ctx context.Context) {
 		return
 	}
 
-	if !tokens.HasRefreshToken() {
-		slog.DebugContext(ctx, "refresh_loop: pas de refresh_token, skip")
+	// ADR 0023 Phase 5 (2026-08-25) : le refresh_token vient du
+	// MultiUserTokenStore (source unique), plus du fichier watcher_tokens.json.
+	refreshToken := r.trackerRefreshToken(tokens)
+	if refreshToken == "" {
+		slog.DebugContext(ctx, "refresh_loop: pas de refresh_token dans le store, skip",
+			"xuid", tokens.XSTSXUID)
 		return
 	}
 
 	// Étape 1 : refresh access_token si nécessaire
 	if !tokens.IsOAuthValid(oauthRefreshMargin) {
 		slog.InfoContext(ctx, "refresh_loop: access_token expiré ou proche expiration, refresh...")
-		if err := r.refreshOAuth(ctx, tokens); err != nil {
+		if err := r.refreshOAuth(ctx, tokens, refreshToken); err != nil {
 			slog.ErrorContext(ctx, "refresh_loop: échec refresh OAuth", "err", err)
 			return
 		}
@@ -147,13 +151,26 @@ func (r *RefreshLoop) check(ctx context.Context) {
 	}
 }
 
+// trackerRefreshToken lit le refresh_token du tracker dans le MultiUserTokenStore
+// (source unique ADR 0023, keyé par le xuid du tracker). "" si indisponible.
+func (r *RefreshLoop) trackerRefreshToken(tokens *StoredTokens) string {
+	if r.multiMirror == nil || tokens.XSTSXUID == "" {
+		return ""
+	}
+	u, err := r.multiMirror.Load(tokens.XSTSXUID)
+	if err != nil || u == nil {
+		return ""
+	}
+	return u.OAuthRefreshToken
+}
+
 // refreshOAuth utilise le refresh_token pour obtenir un nouvel access_token.
-func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) error {
+func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens, refreshToken string) error {
 	// D3-03 (revue 2026-06-01) : variante AVEC rotation. Microsoft tourne le
 	// refresh_token à CHAQUE usage ; l'ancienne ExchangeRefreshToken (sans rotation)
 	// jetait le RT rotaté → l'ancien RT stocké finissait par devenir invalide
 	// (classe incident invalid_grant, ADR 0023). On propage le RT rotaté au store.
-	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(ctx, tokens.RefreshToken)
+	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
 	if err != nil {
 		return err
 	}
@@ -162,9 +179,15 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) er
 		r.signalReauthRequired(ctx, tokens)
 		return nil
 	}
-	// rotatedRT == "" → UpdateOAuth préserve l'ancien RT (pas de rotation côté MS) ;
-	// rotatedRT != "" → on stocke le nouveau RT (sinon il serait perdu).
-	if err := r.store.UpdateOAuth(accessToken, rotatedRT, oauthDefaultTTL); err != nil {
+	// Rotation persistée dans le MultiUserTokenStore (source unique) ; le store
+	// mono-user ne reçoit QUE l'access_token (état propre du watcher).
+	if rotatedRT != "" && rotatedRT != refreshToken && tokens.XSTSXUID != "" {
+		if werr := r.multiMirror.UpdateOAuthRefreshToken(tokens.XSTSXUID, rotatedRT); werr != nil {
+			slog.ErrorContext(ctx, "refresh_loop: persistance RT rotaté échouée — chaîne auth à risque",
+				"xuid", tokens.XSTSXUID, "err", werr)
+		}
+	}
+	if err := r.store.UpdateOAuth(accessToken, oauthDefaultTTL); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "refresh_loop: access_token renouvelé")
@@ -262,7 +285,7 @@ func (r *RefreshLoop) mirrorTrackerToMultiUser(ctx context.Context) {
 		slog.DebugContext(ctx, "refresh_loop: mirror — xuid vide, skip")
 		return
 	}
-	// Read-modify-write : PRÉSERVER le refresh_token + MSAL cache + flags reauth
+	// Read-modify-write : PRÉSERVER le refresh_token + les flags reauth
 	// déjà dans le store (ex. RT e1cb35ab frais semé par le callback SSO). Upsert
 	// remplace TOUTE l'entrée ; un UserTokens neuf (sans RT) écraserait le RT du
 	// store à vide → la migration boot le re-remplirait avec un RT env legacy

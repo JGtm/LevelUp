@@ -7,14 +7,14 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
 ### Four Layers
 
 1. **Discovery** (`discovery.go`)
-   - Scans credential sources without network validation
-   - Mixes MSAL cache + OAuth refresh tokens from env and DuckDB
-   - Returns `[]CredentialSource` (gamertag, xuid, token sources)
+   - Scans the MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json) without network validation
+   - Single source since ADR 0023 Phase 5 (2026-08-25): no env var, no sync_meta, no mono-user store
+   - Returns `[]CredentialSource` (gamertag, xuid, refresh token)
 
 2. **Resolver** (`resolver.go`)
    - Exchanges `CredentialSource → ResolvedTokens` (Spartan + Clearance)
    - Caches tokens for ~3h30 (Spartan token lifetime ~4h)
-   - Pipeline: `TrySilentRefresh(MSALCache)` → `TryOAuthRefresh(RefreshToken)` → `provider.Exchange(accessToken)`
+   - Pipeline: `TryOAuthRefreshWithRotation(RefreshToken)` → `provider.Exchange(accessToken)`
 
 3. **Pool** (`pool.go`)
    - Maintains N tokens alive with round-robin or pinned access
@@ -33,15 +33,15 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
 ### Creating a Pool
 
 ```go
-// Scan for credentials in env + DuckDB
-discovery := auth.NewDiscovery(cfg, resolver, titleSlug)
+// Scan the MultiUserTokenStore for credentials
+discovery := pool.NewDiscoveryWithStore(cfg, resolver, titleSlug, tokenStore)
 sources, err := discovery.Scan(ctx)
 if err != nil {
     return err
 }
 
 // Create resolver with caching
-provider := auth.NewMSALProvider()
+provider := auth.NewSISUProvider()
 resolver := auth.NewResolver(provider, 0) // 0 = default TTL ~3h30
 
 // Build pool

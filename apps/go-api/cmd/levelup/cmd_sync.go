@@ -42,25 +42,13 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
-	if refreshToken == "" {
-		return fmt.Errorf("aucun refresh token OAuth trouvé pour %s (%s)", player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
+	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+	if err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
-	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
-	if err != nil {
-		return fmt.Errorf("oauth refresh: %w", err)
-	}
-	if accessToken == "" {
-		return fmt.Errorf("oauth refresh n'a pas retourné d'access_token pour %s", player.Gamertag)
-	}
-	result, err := provider.Exchange(ctx, accessToken)
-	if err != nil {
-		return fmt.Errorf("exchange Halo: %w", err)
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider).
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, provider).
 		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
 	if cache := loadLocalFilmCache(); cache != nil {
 		engine.SetLocalFilmCache(cache)
@@ -233,25 +221,13 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
-	if refreshToken == "" {
-		return fmt.Errorf("aucun refresh token OAuth trouvé pour %s (%s)", player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
+	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+	if err != nil {
+		return err
 	}
 
 	provider := auth_platform.NewSISUProvider()
-	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
-	if err != nil {
-		return fmt.Errorf("oauth refresh: %w", err)
-	}
-	if accessToken == "" {
-		return fmt.Errorf("oauth refresh n'a pas retourné d'access_token pour %s", player.Gamertag)
-	}
-	result, err := provider.Exchange(ctx, accessToken)
-	if err != nil {
-		return fmt.Errorf("exchange Halo: %w", err)
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider).
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, provider).
 		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
 	if cache := loadLocalFilmCache(); cache != nil {
 		engine.SetLocalFilmCache(cache)
@@ -411,19 +387,27 @@ func loadPlayerSummary(cfg *config.AppConfig, gamertag string) (*domain.PlayerSu
 	return nil, fmt.Errorf("joueur introuvable dans db_profiles.json: %s", gamertag)
 }
 
-func oauthRefreshTokenForPlayer(gamertag string) string {
-	return os.Getenv(oauthRefreshEnvKey(gamertag))
-}
-
-func oauthRefreshEnvKey(gamertag string) string {
-	key := strings.ToUpper(strings.TrimSpace(gamertag))
-	key = strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '.' {
-			return '_'
-		}
-		return r
-	}, key)
-	return "SPNKR_OAUTH_REFRESH_TOKEN_" + key
+// haloTokensForPlayer obtient des tokens Halo (Spartan + Clearance) frais pour
+// un joueur depuis le MultiUserTokenStore — source unique ADR 0023 Phase 5
+// (2026-08-25 : l'env var SPNKR_OAUTH_REFRESH_TOKEN_* n'est plus lue).
+// La rotation du refresh token est persistée par le helper canonique.
+func haloTokensForPlayer(ctx context.Context, repoRoot, gamertag string) (*domain.HaloTokens, error) {
+	store := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(repoRoot).WatcherTokensDir())
+	user, err := store.LoadByGamertag(gamertag)
+	if err != nil || user == nil || user.OAuthRefreshToken == "" {
+		return nil, fmt.Errorf("aucun refresh token pour %s dans data/auth/watcher_tokens "+
+			"(se connecter via le SSO Xbox ou lancer `go run ./cmd/token-capture/ %s`)", gamertag, gamertag)
+	}
+	result, err := auth_platform.RefreshHaloTokensViaStoreFirst(
+		ctx, store, auth_platform.NewSISUProvider(), user.XUID, gamertag)
+	if err != nil {
+		return nil, fmt.Errorf("refresh store pour %s: %w", gamertag, err)
+	}
+	tokens := auth_platform.HaloTokensFromExchange(result)
+	if tokens == nil {
+		return nil, fmt.Errorf("aucun token Halo obtenu pour %s", gamertag)
+	}
+	return tokens, nil
 }
 
 // loadLocalFilmCache resout LEVELUP_LEGACY_FILM_CACHE_DIR (ex.

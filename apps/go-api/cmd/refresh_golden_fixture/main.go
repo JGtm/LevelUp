@@ -9,8 +9,9 @@
 // Si `--match-id` est omis, le tool prend le match le plus récent du joueur.
 // Le fixture est écrit dans `internal/analysis/testdata/v41_chunk_he.bin`.
 //
-// **Pré-requis** : refresh token OAuth dans `.env.local` sous la clé
-// `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` (cf. cmd/get-token).
+// **Pré-requis** : refresh token OAuth du joueur dans le MultiUserTokenStore
+// (data/auth/watcher_tokens, source unique ADR 0023), et SPNKR_AZURE_CLIENT_ID
+// dans `.env.local`.
 package main
 
 import (
@@ -34,7 +35,7 @@ const (
 )
 
 func main() {
-	gamertag := flag.String("gamertag", "", "Gamertag pour résoudre le refresh token (.env.local)")
+	gamertag := flag.String("gamertag", "", "Gamertag pour résoudre le refresh token (MultiUserTokenStore)")
 	matchID := flag.String("match-id", "", "Match ID UUID à capturer (par défaut : dernier match du joueur)")
 	out := flag.String("out", defaultFixturePath, "Chemin de sortie du chunk binaire")
 	manifestOut := flag.String("manifest-out", manifestFixturePath, "Chemin de sortie du manifest JSON (optionnel)")
@@ -54,24 +55,24 @@ func main() {
 func run(gamertag, matchID, outPath, manifestPath string) error {
 	loadEnvLocal()
 
-	envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-	refreshToken := os.Getenv(envKey)
-	if refreshToken == "" {
-		return fmt.Errorf("refresh token absent : %s", envKey)
-	}
-
 	ctx := context.Background()
 
-	provider := auth_platform.NewSISUProvider()
-	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
-	if err != nil {
-		return fmt.Errorf("oauth refresh: %w", err)
+	// ADR 0023 Phase 5 : refresh token depuis le MultiUserTokenStore, seule source.
+	store := auth_platform.NewMultiUserTokenStore("data/auth/watcher_tokens")
+	user, err := store.LoadByGamertag(gamertag)
+	if err != nil || user == nil || user.OAuthRefreshToken == "" {
+		return fmt.Errorf("aucun refresh token pour %s dans data/auth/watcher_tokens: %w", gamertag, err)
 	}
-	exch, err := auth_platform.ExchangeAccessToken(ctx, tok)
+	res, err := auth_platform.RefreshHaloTokensViaStoreFirst(
+		ctx, store, auth_platform.NewSISUProvider(), user.XUID, gamertag)
 	if err != nil {
-		return fmt.Errorf("exchange: %w", err)
+		return fmt.Errorf("refresh store: %w", err)
 	}
-	spartan, clearance := exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken
+	tokens := auth_platform.HaloTokensFromExchange(res)
+	if tokens == nil {
+		return fmt.Errorf("aucun token Halo obtenu pour %s", gamertag)
+	}
+	spartan, clearance := tokens.SpartanToken, tokens.ClearanceToken
 
 	client := go_sync.NewHaloAPIClient(spartan, clearance, 2)
 

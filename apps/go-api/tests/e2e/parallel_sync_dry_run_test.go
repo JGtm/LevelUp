@@ -68,10 +68,6 @@ func (p *perPlayerRotationProvider) InitDeviceFlow(_ context.Context) (auth.Devi
 	return nil, fmt.Errorf("not used")
 }
 
-func (p *perPlayerRotationProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
-
 func (p *perPlayerRotationProvider) TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error) {
 	at, _, err := p.TryOAuthRefreshWithRotation(ctx, refreshToken)
 	return at, err

@@ -17,10 +17,10 @@ func testSlotEnv(count int) []CredentialSource {
 	sources := make([]CredentialSource, count)
 	for i := 0; i < count; i++ {
 		sources[i] = CredentialSource{
-			Gamertag:  string([]byte{byte('A') + byte(i)}),
-			XUID:      string(rune(1000 + i)),
-			MSALCache: "cache_" + string(rune('A'+i)),
-			Source:    "test",
+			Gamertag:     string([]byte{byte('A') + byte(i)}),
+			XUID:         string(rune(1000 + i)),
+			RefreshToken: "rt_" + string(rune('A'+i)),
+			Source:       "test",
 		}
 	}
 	return sources
@@ -466,7 +466,7 @@ func TestPoolOn429ForToken_PerTokenNotGlobal(t *testing.T) {
 // le débit du COMPTE par 2 dans le registre partagé (sujet 2 T2) — visible par
 // tous les consommateurs du même xuid.
 func TestPoolOn429ForToken_AIMDHalvesAccountBudget(t *testing.T) {
-	sources := []CredentialSource{{Gamertag: "AimdGT", XUID: "xuid-aimd-pool-1", MSALCache: "c", Source: "test"}}
+	sources := []CredentialSource{{Gamertag: "AimdGT", XUID: "xuid-aimd-pool-1", RefreshToken: "rt", Source: "test"}}
 	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
 	p, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 0, PerTokenRPS: 4})
 	if err != nil {
@@ -710,7 +710,7 @@ func TestPoolAddOrUpdateSource_NewSlot(t *testing.T) {
 	}
 
 	// Hot-add d'un 3e gamertag C.
-	newSrc := CredentialSource{Gamertag: "C", XUID: "1002", MSALCache: "cache_C", Source: "test"}
+	newSrc := CredentialSource{Gamertag: "C", XUID: "1002", RefreshToken: "rt_C", Source: "test"}
 	if err := pool.AddOrUpdateSource(context.Background(), newSrc); err != nil {
 		t.Fatalf("AddOrUpdateSource: %v", err)
 	}
@@ -803,7 +803,7 @@ func TestPoolAddOrUpdateSource_MaxSizeCap(t *testing.T) {
 	defer pool.Close()
 
 	// Tenter d'ajouter un 3e slot avec MaxSize=2.
-	newSrc := CredentialSource{Gamertag: "C", XUID: "1002", MSALCache: "cache_C", Source: "test"}
+	newSrc := CredentialSource{Gamertag: "C", XUID: "1002", RefreshToken: "rt_C", Source: "test"}
 	err = pool.AddOrUpdateSource(context.Background(), newSrc)
 	if err == nil {
 		t.Error("AddOrUpdateSource au-delà de MaxSize doit échouer")
@@ -822,7 +822,7 @@ func TestPoolAddOrUpdateSource_ResolveError(t *testing.T) {
 	}
 	// Custom resolver wrapping that fails on "FAIL".
 	failResolver := &failingResolver{wrapped: resolver, failGamertag: "FAIL"}
-	pool, err := NewPool(context.Background(), failResolver, []CredentialSource{{Gamertag: "A", XUID: "1000", MSALCache: "cache_A", Source: "test"}}, PoolOptions{PerTokenRPS: 1})
+	pool, err := NewPool(context.Background(), failResolver, []CredentialSource{{Gamertag: "A", XUID: "1000", RefreshToken: "rt_A", Source: "test"}}, PoolOptions{PerTokenRPS: 1})
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
