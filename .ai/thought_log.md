@@ -1,3 +1,34 @@
+## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
+
+**Statut** : Complété (même worktree `deps-security`). Le push de `dependabot.yml` a
+déclenché un re-scan immédiat des trois écosystèmes (effet documenté : toute modif du
+fichier relance les version updates sans attendre le rendez-vous mensuel) — 3 PRs ouvertes.
+
+**PR #76 (go-minor-patch : kin-openapi 0.147.0, chi 5.3.2, x/crypto 0.55.0,
+modernc.org/sqlite 1.57.0) et PR #77 (npm-minor-patch : 20 bumps)** : CI de PR
+intégralement verte sur les deux (Coverage Baseline et E2E Playwright compris), mergées
+localement sur main en no-ff puis re-validées SUR L'ÉTAT COMBINÉ dans le worktree :
+npm ci OK, tsc -b cache purgé OK, eslint 0 erreur, generate-types zéro diff, vitest
+complet. Une seule poussée de main pour les deux merges + cette branche = un seul deploy.
+
+**PR #78 (react-table 8.21.3 -> 9.1.2)** : fermée sans merge. Le bump seul casse la
+compilation — 15 fichiers sur l'API v8 (`useReactTable`, row models) — une PR rouge par
+construction n'apporte rien. v9 vaut le coup (jusqu'à -86 % de heap retenu, row model
++79 %, tree-shaking opt-in via `tableFeatures()`, `useLegacyTable` transitoire pour
+migrer graduellement) mais c'est un lot dédié post-v7.5 avec gate visuel sur les
+tableaux (Explorer en tête — table entièrement chargée client). Règle ignore Dependabot
+datée sur le major `@tanstack/react-table` (condition de retrait : ouverture du lot),
+ligne au registre des reports v7.5 avec condition de reprise.
+
+**Flake CI observé au passage** : sur le run main du merge js-yaml,
+`TestCareerLive_NilAPIResponse_NotCached` (internal/service) a échoué à 2.00s pile alors
+que le même arbre était vert en CI de branche et que le diff ne touchait aucun fichier
+Go. Rerun du job seul lancé. Si ce test re-flake : suspecter un timeout 2 s trop juste
+sous la charge du runner Coverage (CGO, ./... complet).
+
+**Prochaine étape** : push main (deploy) après verdict du rerun Coverage, surveiller la
+CI du push.
+
 ## [2026-08-25] Dependabot — js-yaml high corrigé, bump TypeScript 7 refusé sur pièces
 
 **Statut** : Complété (branche `fix/deps-jsyaml` depuis `origin/main` `781daf0c6`, worktree
