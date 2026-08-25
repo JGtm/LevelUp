@@ -228,6 +228,18 @@ func (r *ServiceRegistry) friendGamertagsResolver() teammates.FriendGamertagsRes
 	}
 }
 
+// FriendGamertags expose la liste `friend_gamertags` des Réglages aux
+// consommateurs hors registry (présence en jeu). MÊME résolveur que la page
+// Escouade — la liste d'amis a une seule définition dans le produit. Vide si
+// aucun settings store n'est attaché.
+func (r *ServiceRegistry) FriendGamertags(ctx context.Context) []string {
+	resolver := r.friendGamertagsResolver()
+	if resolver == nil {
+		return nil
+	}
+	return resolver(ctx)
+}
+
 // ─── Sprint 54 : Compare + Leaderboard ───────────────────────────────────────
 
 // Compare retourne un CompareService pour le joueur (slug = joueur A).
