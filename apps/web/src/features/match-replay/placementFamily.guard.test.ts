@@ -178,10 +178,16 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * 791 -> 777 le 2026-08-24 (reglages dans la barre) : le bouton du tiroir rejoint la barre
  * de lecture, et la barre du haut du cadre — qui ne portait plus que lui — disparait avec
  * ses imports.
+ *
+ * 777 -> 742 le 2026-08-25 (fin de rejeu sur l'etat final) : le canvas n'avait plus que deux
+ * lignes de marge et le lot y ajoutait la politique de fin de film. La LECTURE — etat
+ * lu/pause, boucle rAF, curseur de la frise, arret sur la derniere image — part dans
+ * `useReplayPlayback.ts`, huitieme extraction imposee par ce cliquet. Le canvas garde le
+ * DESSIN, le hook porte le TEMPS.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(777)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(742)
   })
 })
