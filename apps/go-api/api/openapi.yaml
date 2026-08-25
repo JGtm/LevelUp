@@ -10721,6 +10721,8 @@ components:
           $ref: '#/components/schemas/LayerCoverage'
         groundWeapons:
           $ref: '#/components/schemas/GroundWeaponCoverage'
+        inventory:
+          $ref: '#/components/schemas/InventoryCoverage'
         objectives:
           $ref: '#/components/schemas/LayerCoverage'
         originResolved:
@@ -13818,6 +13820,8 @@ components:
         d:
           format: int64
           type: integer
+        empty:
+          type: string
         g:
           items:
             format: int32
@@ -13839,6 +13843,27 @@ components:
       required:
         - t
         - slot
+      type: object
+    InventoryCoverage:
+      additionalProperties: false
+      properties:
+        decoded:
+          format: int64
+          type: integer
+        droppedBeforeOrigin:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - decoded
+        - droppedBeforeOrigin
+        - unpublished
+        - published
       type: object
     InviteCode:
       additionalProperties: false

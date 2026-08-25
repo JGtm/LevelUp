@@ -5389,6 +5389,7 @@ export interface components {
             grapple?: components["schemas"]["GrappleCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
+            inventory?: components["schemas"]["InventoryCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
@@ -6724,6 +6725,7 @@ export interface components {
             cand?: number;
             /** Format: int64 */
             d?: number;
+            empty?: string;
             g?: number[] | null;
             /** Format: int64 */
             gs?: number;
@@ -6731,6 +6733,16 @@ export interface components {
             slot: number;
             /** Format: int64 */
             t: number;
+        };
+        InventoryCoverage: {
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            droppedBeforeOrigin: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            unpublished: number;
         };
         InviteCode: {
             code: string;

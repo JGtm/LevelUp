@@ -1,3 +1,242 @@
+## [2026-08-25] Fusion `wt/inventaire-fiches` dans `feat/v75` — l'etat vide greffe DANS la grille a cellules fixes — Complete
+
+**Contexte** : deux intentions ecrites en parallele sur le meme fichier. Cote `feat/v75`
+(commit `10fe3228a`), la REFONTE des fiches : grille a cellules FIXES (`AMMO_CELL_W`,
+`GRENADES_BOX_W`), `AmmoCell` pour l'arme degainee, `familyOf`/`CHARGE_FX` pour les armes a
+charge, parite de gabarit morte/vivante. Cote `wt/inventaire-fiches`, le lot 1 « lecture vide »
+(schema 19) : badge `InventoryEmptyMark`, infobulle a deux ages, extraction de
+`inventoryAt`/`grenadesCarried`/`selectedGrenade` vers `inventoryReading.ts`. 2 fichiers en
+conflit (`.ai/thought_log.md`, `ReplayInventoryRow.tsx`, 4 zones).
+
+**Decision technique principale** : la STRUCTURE vient de la refonte, la FONCTIONNALITE s'y
+greffe. Trois arbitrages. (1) Le `return null` du lot 1 est SUPPRIME et non porte : la refonte
+rend la grille inconditionnellement, donc la garantie « une lecture vide n'efface plus la fiche »
+est tenue a fortiori — porter la garde aurait reintroduit une disparition conditionnelle que la
+refonte avait deja fermee. (2) Le badge d'etat vide est place EN DERNIER dans la rangee, souple
+et tronque, apres les trois cellules fixes : place avant l'une d'elles il decalerait la grille
+des fiches voisines des qu'un joueur meurt, ce que la refonte interdit ; place en dernier il
+occupe la place libre sans toucher a une largeur. L'infobulle porte le texte entier.
+(3) La lacune `drawnUnknown` de la cellule de munitions se tait quand `empty` est present :
+`equippedWeapons` rend deja `drawnUnread` sur une lecture vide (aucune arme en main pour un
+mort), et ecrire « degainee ? » a cote de « Mort » poserait une lacune la ou la cause est connue.
+`HolsterMark`, supprime par la refonte, n'est pas ressuscite.
+
+**Resultats observes** : degat SILENCIEUX trouve hors conflit — la sonde
+`i22_confrontation_research_test.go` (embarquee par le commit de la refonte) appelait
+`ScanFilmKeyframeInventory` a 2 retours alors que le lot 2 lui en a donne 3 : le paquet `replay`
+ne compilait plus. Corrige. Verifications : `rosterLogic.ts` n'exporte plus les 3 fonctions
+extraites et aucun appelant ne les y cherche ; cles i18n des deux lots presentes FR et EN ;
+aucun doublon de rapport dans `.ai/V7.5/replay2d/` (2 fichiers ajoutes, 0 collision) ; journal
+fusionne sans perte (1987 entrees HEAD + 2 du lot = 1989). Gates : `tsc -b --force` 0 ; vitest
+`src/features/match-replay/` 76 fichiers / 1107 tests verts ; `go test
+./internal/analysis/replay/ ./contracttest/...` ok ; `go build ./...` ok ; golangci-lint
+0 issue ; eslint 0 sur les fichiers touches. (`go vet ./...` echoue au LIEN sur quelques `cmd/`
+— fichiers `.o` tronques par le lien CGO parallele ; les memes paquets passent en serie, defaut
+d'environnement hors diff.)
+
+**Incident d'arbre partage** : en cours de resolution, un acteur EXTERNE a la session a fait
+sauter l'etat de fusion (`reflog : reset: moving to HEAD`), effacant les fichiers resolus et le
+`MERGE_MSG` prepare. Fusion refaite a l'identique, `MERGE_MSG` restaure mot pour mot (un
+`git merge --no-ff` nu regenere « Merge branch ... into feat/v75 », pas le message du lot).
+Lecon : sur cet arbre partage, resoudre et committer d'une traite.
+
+**Conclusion / prochaine etape** : merge conclu, non pousse. Re-cuisson des artefacts requise
+(`backfill-replay`, SchemaVersion 19) — les artefacts v18 affichent la note de version en
+attendant. Gate visuel utilisateur ouvert : verifier que le badge « Mort » ne rogne pas la
+derniere colonne des fiches sur les equipes larges (BTB).
+
+## [2026-08-25] Lot 2 rejeu 2D — télémétrie de couverture inventaire + garde SchemaVersion web — Complete
+
+**Contexte** : suite directe du lot 1 (entrée ci-dessous), sur les deux manques restants de
+l'audit `.ai/V7.5/replay2d/AUDIT_AVAL_INVENTAIRE_2026-08-24.md` : point 3 (erreurs de chunk
+avalées sans télémétrie dans `ScanFilmKeyframeInventory`) et point 5 (l'inventaire est le seul
+des quatre calques filtrés par `keepOfPublishedTracks` à ne publier aucune couverture) côté Go ;
+point 1 (le client ne lit jamais `schemaVersion`, le plus grave de l'audit) côté web. Hors
+périmètre par consigne explicite : le rejet des lectures antérieures à l'origine (point 2, sa
+CORRECTION — sa MESURE, elle, entre dans la couverture ajoutée) et le fixture
+`SelectedGrenadeRank` (découverte du lot 1).
+
+**Décision technique principale — Volet A (Go)** : `KeyframeInventoryStats` (chunks lus/
+illisibles, images-clés parcourues, records bipède vus — identiques aux lectures rendues, la
+fonction n'en filtre aucune) intégrée au VOCABULAIRE des scanners frères (`AbilityRankStats`,
+`CamoStateStats`, `GrappleStats`), mais placée dans `inventory.go` plutôt que
+`inventory_decode.go` (seuil de taille : le décodeur touchait 500 lignes pile avec la struct en
+plus). `Coverage.Inventory` (nouveau, `InventoryCoverage`) publie décodées / écartées avant
+origine / écartées sans piste / publiées, symétrique de `Shots`/`Grenades`. **Aucun bump de
+SchemaVersion** : télémétrie pure, aucun rendu client n'en dépend — même règle que
+`Structure`/`StructureBounds` (`TestStructureIsOptionalInDocument`), vérifiée précédent par
+précédent dans la chronique de `document.go` avant de trancher. `buildInventoryCoverage` extrait
+dans `inventory.go` pour limiter l'empreinte dans `build.go` (déjà 607 L avant ce lot, dette
+gelée).
+
+**Décision technique principale — Volet B (web)** : `replaySchemaLogic.ts` (nouveau) —
+`EXPECTED_REPLAY_SCHEMA_VERSION = 19`, copie locale documentée de `replay.SchemaVersion` (le
+contrat généré ne porte aucune valeur littérale pour ce champ, seulement `number`), et
+`replaySchemaState(v)` rendant `current`/`stale`/`ahead`. Garde-rail de parité
+`replaySchemaLogic.guard.test.ts` (même patron que `placementFamily.guard.test.ts` : lit
+`document.go` par `readFileSync`, compare). Note DISCRÈTE dans la route (`replay.tsx`), jamais
+de blocage — la fiche affiche tout ce que l'artefact porte, la note s'ajoute à côté. Deux clés
+FR/EN (`replaySchemaStale`/`replaySchemaAhead`), typées dans `i18nContract.ts`.
+
+**Résultats observés** :
+- Film de référence `000d5950` : `couverture inventaire decodees=184 ecarteesAvantOrigine=0
+  ecarteesSansPiste=0 publiees=184` — 0 perte sur ce film precis (la perte mesurée par l'audit,
+  17,4 %, est ailleurs dans la chaîne, cf. lot 1).
+- `TestScanFilmKeyframeInventoryCountsUnreadableChunks`/`AllChunksUnreadable` (nouveau) :
+  chunk illisible simulé par un RÉPERTOIRE nommé `chunk_NN.bin` (portable, `os.Stat` le voit,
+  `os.ReadFile` échoue dessus sur toutes plateformes) — `ChunksUnread` compté sans faire
+  échouer le balayage tant qu'un chunk reste lisible.
+- `contracttest` : `InventoryCoverage` ajoutée au registre `replaySchemas` ;
+  `wantReplayDocumentFields` INCHANGÉ (37) — `Coverage.Inventory` n'est pas un champ racine.
+  `openapi.yaml` régénéré (+25 lignes additives) et `generated.ts` (+12 lignes).
+
+**État des tests** :
+```
+go test ./internal/analysis/replay/ ./internal/replaybuild/... ./contracttest/...
+ok levelup/go-api/internal/analysis/replay        16.9s
+ok levelup/go-api/internal/analysis/replay/mapvar  0.3s
+ok levelup/go-api/internal/replaybuild             0.5s
+ok levelup/go-api/contracttest                     0.4s
+make go-api-lint : 0 issues
+make check-types : exit 0, aucune sortie
+make test-web    : 472 fichiers passes (+2), 4500 tests passes + 14 skipped (+4)
+npm run lint     : 20 problems (0 errors, 20 warnings) — baseline inchangee
+```
+
+**Découvertes hors périmètre — NON traitées** :
+1. `build.go` dépasse le seuil de 500 L (620 L après ce lot, +13 net malgré l'extraction de
+   `buildInventoryCoverage` vers `inventory.go`) — dette déjà gelée avant ce lot (607 L), que
+   l'ajout d'un cinquième calque de couverture aggrave légèrement. Une extraction structurelle
+   de `BuildFromPositions` (sous-fonctions par calque) réglerait la cause, mais c'est un chantier
+   à part entière, hors périmètre de ce lot.
+2. Les deux découvertes hors périmètre du lot 1 (tension de doctrine sur le mot « slot »,
+   2 lectures sans pont slot->joueur) restent non traitées, inchangées par ce lot.
+
+**Revue adversariale du lot (2026-08-25)** : le diff complet (lots 1 + 2) a été relu par un
+contexte frais. **8 constats recevables, 6 corrigés DANS ce lot, 2 consignés** (les deux
+découvertes hors périmètre ci-dessus). Les six corrections, chacune avec son test de
+non-régression :
+
+1. `Coverage.Inventory` sans témoin — muter `Published` ou `DroppedBeforeOrigin` ne faisait
+   tomber aucun test. Ligne de couverture chiffrée ajoutée au golden d'assemblage
+   (`renderInventory`, `testdata/assembly_000d5950.golden` : `184 -> 0 · 0 -> 184`) + invariant
+   `Decoded == DroppedBeforeOrigin + Unpublished + Published` verrouillé sur des comptes NON
+   TRIVIAUX (6/2/1/3) par `TestInventoryCoverageBalances`. Les trois mutations
+   (`DroppedBeforeOrigin: 0`, `Published: len(built)`, `Decoded-1`) font bien tomber un témoin.
+2. Affectation non gardée : `doc.Coverage.Inventory` était posée inconditionnellement, donc un
+   inventaire ILLISIBLE (`opt.Inventory == nil`) publiait `{0,0,0,0}` — « lecture faite, zéro
+   trouvé » — au lieu de l'ABSENCE que la doctrine de `coverage.go` réserve à « l'appelant n'a
+   rien fourni à lire ». Le type était déjà un pointeur : seule la garde manquait. Extraite dans
+   `attachInventoryCoverage` (`inventory.go`), sur le patron des calques frères
+   (`attachFlagLayer`, `attachZoneStates`). Aucun impact `openapi.yaml` (le champ était déjà
+   optionnel), `contracttest` vert. Test : `TestInventoryCoverageAbsentWhenNothingToRead`
+   (nil -> absent ; tranche VIDE mais non nulle -> présente à zéro).
+3. Arme « en main » pour un joueur mort : quand la lecture qui couvre l'image est vide,
+   `equippedWeapons` reprenait le sélecteur `d` de la lecture PLEINE substituée et rendait
+   `drawn: 0 / inHand: true`. La rangée d'armes revient à l'état NON AFFIRMÉ (`drawn: null`,
+   `drawnUnread: true`) ; la LIGNE D'INVENTAIRE garde la dernière lecture pleine — le contrat du
+   lot 1 n'est pas touché.
+4. Infobulle mensongère : sans AUCUNE lecture pleine antérieure, la fiche affirmait
+   « l'équipement affiché est la dernière lecture pleine, lue il y a X » avec l'âge de la lecture
+   VIDE. L'infobulle a désormais deux moitiés (`emptyHint`) : le POURQUOI + l'âge de la lecture
+   vide, puis soit le report réel (`inventoryFallbackHint` + âge de l'équipement), soit
+   `inventoryNoPriorHint` (« aucune lecture d'inventaire avant cet instant »). FR et EN.
+5. Champ mort documenté comme indispensable : `InventoryEmptyState.age` n'avait aucun
+   consommateur. **Option retenue : l'IMPLÉMENTER, pas le supprimer** — la distinction sert
+   l'utilisateur (« mort il y a 2 s, équipement lu il y a 20 s » n'est pas « mort il y a 20 s »),
+   et c'est précisément ce que la correction 4 avait besoin de dire.
+6. Mesure fondatrice dégradable en silence : `ScanFilmFireEvents` était la seule des cinq
+   branches d'erreur muette du corpus (pont slot->joueur appauvri, donc dénominateur du taux
+   faussé sans mention) — `t.Logf` ajouté ; et `TestInventaireRecordVideCorpus` ne portait AUCUNE
+   assertion. Seuils écrits : signal >= 75 %, témoin <= 10 % (corpus lot 1 : 88,3 % / 1,1 % ;
+   fixture : 93,8 % / 0,7 % — bornes desserrées d'un cran sous celles du test de vérité terrain,
+   qui restent 80 / 10, parce qu'un corpus mêle cartes et modes).
+
+Gates après corrections : `go test ./internal/analysis/replay/ ./internal/replaybuild/...
+./contracttest/...` **3 paquets ok** (17,7 s / 0,5 s / 0,4 s) · `make go-api-lint` **0 issues** ·
+`make check-types` **exit 0** · `make test-web` **472 fichiers, 4504 tests passés + 14 skipped**
+(+4 vs avant revue).
+
+**Conclusion / prochaine étape** : les points 3 et 5 de l'audit aval sont fermés (télémétrie de
+décodage + couverture publiée) ; le point 1 (garde SchemaVersion) est fermé côté note discrète.
+Restent ouverts, par consigne explicite de ce lot : la correction du rejet pré-origine (point 2)
+et l'extraction de `BuildFromPositions` (débit ci-dessus, item 1).
+
+**Ronde 2 de la revue (2026-08-25)** : contexte frais, perimetre strict = les 6 corrections.
+Rendu : **1 P1 corrige, 1 P2 consigne, 18 conditions qui tiennent**. Le P1 : « Mort » affiche
+AVANT la mort — premiere lecture d'un slot vide et A VENIR (age negatif), badge rendu avec
+`Math.abs` ; 8 vies sur 90 du film de reference portaient « Mort » 7,5 a 19,1 s d'avance.
+Correctif dans `inventoryAt` (`inventoryReading.ts`) : lecture vide d'age negatif = lecture
+ordinaire « a venir », ni `empty` ni substitution. Temoins ajoutes (inventoryReading.test.ts x2,
+ReplayTeams.test.tsx x1). Gates re-passes : vitest feature 1 020/1 020, `make test-web` 4 507
+passes + 14 skipped, `tsc -b` propre ; Go intouche. Le P2 (garde `decoded == nil` qui ne
+distingue pas « scan OK zero lecture » de « scan en panne » — telemetrie pure) est consigne au
+rapport §8 avec sa piste. Revue close : P0+P1 de 6 (ronde 1) a 1 (ronde 2) a 0.
+
+## [2026-08-25] Lot 1 rejeu 2D — une lecture d'inventaire VIDE n'efface plus la fiche — Complete
+
+**Contexte** : defaut mesure le 2026-08-24 (`.ai/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`,
+piste 2) : 17,4 % des lectures d'inventaire publiees ne rendent rien, `buildInventory` les publiait
+NUES (`{"t":N,"slot":S}`), `nearestReading` les retenait comme la plus recente <= T, et
+`ReplayInventoryRow` faisait `return null` — la fiche du joueur disparaissait ~20 s alors qu'une
+lecture pleine la precedait. Execute en worktree `wt/inventaire-fiches`, aucun commit (relecture
+superviseur).
+
+**Preuve avant contrat (etape 1)** : l'interpretation « record sans arme = bipede mort » etait
+declaree NON PROUVEE par la mesure. Croisement ecrit et joue avec le fil des morts
+(`deaths_source.go` + pont slot->joueur `buildOwners`), AVEC TEMOIN — la meme fenetre appliquee aux
+lectures PLEINES. Resultats : sur le film de verite terrain 000d5950, 93,8 % des lectures vides
+tombent dans les 8 s qui suivent une mort de leur porteur contre 0,7 % des pleines (137x) ; sur
+8 films (1 419 records, 247 lectures vides), 88,3 % contre 1,1 % (82x). Balayage 2..20 s : la
+separation est MAXIMALE a 8 s, et le temoin s'envole ensuite (7,3 % a 10 s, 13,1 % a 12 s — la
+fenetre attrape des joueurs reapparus). L'etiquette « mort » est donc justifiee (seuil du mandat :
+> 80 %), et la fenetre de 8 s n'est pas choisie : elle coincide avec la mediane de reapparition
+deja relevee par `lives.go`.
+
+**Decision technique principale** : un champ ADDITIF `Inventory.Empty` (`empty,omitempty`) a DEUX
+valeurs, `dead` / `unknown` — meme forme que `EquipmentPlacement.origin`, la convention du paquet.
+`buildInventory` (decodeur) ne sait que « c'est vide » et pose `unknown` ; le croisement avec le fil
+des morts se fait a l'ASSEMBLAGE (`markInventoryDeadReadings`, appele depuis `build.go` ou les morts
+et leur decalage d'horloge existent deja), jamais dans le projecteur. SchemaVersion 18 -> 19 :
+optionnel et additif, mais un artefact v18 ne porte AUCUN marqueur, donc le client ne peut y
+distinguer « vide parce que mort » de « jamais lu » — meme doctrine que les montees v13 et v18, la
+reprise du backfill se faisant par SchemaVersion. Cote web, `inventoryAt` rend desormais la derniere
+lecture PLEINE du slot dans `state` ET l'etat vide dans `empty` (avec SON age, distinct) : les deux
+informations coexistent, aucune ne remplace l'autre. La logique d'inventaire sort de `rosterLogic.ts`
+(474 L, seuil du depot) vers `inventoryReading.ts`.
+
+**Resultats observes** :
+- Production, film de reference : `lectures=184 vides=34 morts=31 inexpliquees=3` (91,2 % requalifie ;
+  l'ecart avec les 93,8 % de la mesure vient de la reconstruction de l'instant depuis la grille de
+  100 ms et des 2 slots sans pont).
+- Le golden d'assemblage gagne une ligne (`34 lecture(s) VIDE(S) : 31 corroboree(s)...`) : la
+  couverture se lit, elle n'est pas seulement journalisee.
+- Etiquette inconnue d'un artefact futur -> `unknown` cote client, jamais « Mort ».
+
+**Gates** : `go test ./internal/analysis/replay/` vert (17,1 s) ; `go test ./internal/analysis/...
+./contracttest/... ./internal/replaybuild/...` : 18 paquets ok, 0 FAIL ; `make check-types` exit 0,
+aucune sortie ; `make test-web` : 470/470 fichiers, 4 496 tests passes + 14 skipped ; `npm run lint`
+exit 0 (20 avertissements, baseline inchangee). `openapi-gen` + `generate-types` rejoues (2 lignes
+au contrat, 1 au genere).
+
+**Decouvertes hors perimetre (non traitees)** :
+1. `golden_inputs_test.go` ne serialise PAS `KeyframeInventory.SelectedGrenadeRank` : le fixture le
+   relit a 0 pour les 184 records, donc le golden verrouille un document ou `Inventory.Gs` vaut 0
+   partout — pas celui que la production sert. La production n'est pas affectee (le fixture ne nourrit
+   que le golden), mais le golden ment sur ce champ.
+2. Tension de doctrine a instruire : `rosterLogic.ts` et `lives.go` ecrivent « le slot migre a chaque
+   reapparition », alors que la mesure trouve des lectures vides d'un slot DANS la fenetre de mort du
+   porteur de ce meme slot, et que `ownersFromLives` mesure 0 collision sur 90 vies. Les deux
+   affirmations ne peuvent pas etre vraies au meme sens du mot « slot ».
+3. 2 lectures vides sur 34 (film de reference) ont un slot sans pont slot->joueur : elles ne pourront
+   JAMAIS etre qualifiees, quelle que soit la fenetre.
+
+**Conclusion / prochaine etape** : le symptome utilisateur (« la fiche de certains joueurs ne donne
+rien par moments ») est ferme. Reste ouvert, et c'est le plus gros volume du rapport de mesure : la
+piste 1 (decoupler R2 de R1 — 4 278 records, 63,7 %, retrouveraient leur ligne de grenades) et la
+piste 3 (R2 : accepter la somme nulle — 104 records, 100 % explicables). Un re-backfill des artefacts
+est necessaire (SchemaVersion 19).
+
 ## [2026-08-25] Compteur « amis en jeu » = le cercle du user dans l'app (corrige D-P4) — Complété et FUSIONNÉ (9a803277f)
 
 **Contexte** : après livraison du chantier notion5, l'utilisateur corrige la sémantique du point 4 en deux temps : (1) pas de PeopleHub — « mes amis inscrits dans l'app » ; (2) précision décisive : l'instance héberge aussi des users qui ne sont PAS ses amis → « amis » = le CERCLE ADR 0029 (ses joueurs + ceux de ses co-membres de groupe), pas tous les inscrits. Lot piloté sur worktree dédié `wt/amis-app` (plan `.ai/V7.5/PLAN_AMIS_INSCRITS_APP.md`), correction produit transmise à l'exécuteur EN VOL avant toute écriture de code.
@@ -320,6 +559,7 @@
 **Resultats observes** (film `000d5950`, 49 chunks, 171 851 records biped delta ancres) : recensement masque -> atteint a **100 %** pour i22 (120), i30 (740), i31 (56), i33 (773), i34 (43), i42 (245), i43 (14), i44 (9), i47 (64), i48 (92) ; seul i57 est a 97,4 %. i22 : compteur R(3) = 4 dans **120/120**, valeurs dans {0,1,2} exclusivement — le test refutable de `unit_weaponstate.go` ne refute pas, et la note « 92,46 % de comptes impossibles » de `frame_records.go:81` est PERIMEE (autre chemin, anterieure aux correctifs i0/i25/i30). Confrontation aux images-cles : **35/36 = 97,2 %**, l'unique divergence etant un ramassage survenu 3,3 s apres le dernier delta (defaut de rappel, pas de justesse). Fraicheur : age median 11,0 s -> **7,0 s** fusionne. MUNITIONS CALIBREES au passage (le handoff les disait « valeurs non calibrees ») : chargeur R(8) = 1 156 lectures toutes dans 1..80 sur un champ 0..255, reserve R(11) = 99 lectures dans 0..240 sur 0..2047 — un curseur mal place donnerait une loi uniforme. i47 : selection dans le masque **44/44** hors valeur 0 (= absence, codage 1-base). i43/i44 quasi absents des deltas (14 et 9) : l'arme en main reste une lecture d'image-cle.
 
 **Conclusion / prochaine etape** : VERDICT FAISABLE, sans aucune RE nouvelle. Plan en 5 lots au §4 du rapport : lot 0 assainir les deux commentaires perimes, lot 1 scanner delta d'inventaire (i22/i47 par hooks de deser), lot 2 munitions (le vrai gisement, x10 en volume), lot 3 mesurer le RAPPEL de l'ancre (seul risque residuel), lot 4 fusion dans le document sur le patron `abilities.go` (publier la SOURCE de chaque lecture). Le NOMMAGE des types de grenade et des rangs de capacite reste hors perimetre (handoff 2026-07-27 §8.1). Mesures sur UN seul film.
+
 
 ## [2026-08-20] Lot G — le son du grappin dans le rejeu 2D — Complete
 

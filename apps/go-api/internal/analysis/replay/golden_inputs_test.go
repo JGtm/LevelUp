@@ -1017,7 +1017,7 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	if g.Loadouts, err = filmdec.ScanFilmKeyframeLoadouts(dir, loadoutFamilies()); err != nil {
 		return nil, err
 	}
-	if g.Inventory, err = ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0); err != nil {
+	if g.Inventory, _, err = ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0); err != nil {
 		return nil, err
 	}
 	if g.AbilityRanks, _, err = filmdec.ScanFilmAbilityRanks(dir); err != nil {

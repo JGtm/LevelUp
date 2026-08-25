@@ -35,10 +35,17 @@ import { catalogText, type CatalogLabel } from './catalogLabel'
 import type { EquippedReading } from './equippedLogic'
 import { grenadeIconOf, type GrenadeIconRef } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import {
+  grenadesCarried,
+  type InventoryEmptyState,
+  inventoryAt,
+  inventoryEmptyHint,
+  selectedGrenade,
+} from './inventoryReading'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { abilityAt } from './rosterLogic'
 import { familyOf } from './shotEffects'
-import { abilityAt, grenadesCarried, inventoryAt, selectedGrenade } from './rosterLogic'
 
 /** Boîte d'une vignette de HUD (grenade, capacité) : la hauteur de la ligne. */
 const HUD_ICON_PX = 16
@@ -78,6 +85,15 @@ export function ReplayInventoryRow({
   const grenades = state ? grenadesCarried(state, doc.grenadeLabels, locale) : []
   const selected = state ? selectedGrenade(state) : null
   const ammo = state?.am ?? []
+  // L'ÉTAT VIDE DE LA LECTURE COURANTE (schéma 19, lot du 2026-08-25) : présent, il veut dire
+  // que la lecture qui couvre l'image ne rend RIEN — `state` porte alors la dernière lecture
+  // PLEINE du même slot, et cet état-ci s'affiche À CÔTÉ (cf. `InventoryEmptyMark`).
+  //
+  // LE `return null` DU LOT « LECTURE VIDE » N'A PLUS LIEU D'ÊTRE : la refonte du 2026-08-24
+  // rend la grille à cellules fixes INCONDITIONNELLEMENT (parité de gabarit morte/vivante), donc
+  // la ligne ne disparaît plus jamais — ni sur une lecture vide, ni sur une lecture pleine sans
+  // contenu. La garantie du lot est tenue a fortiori.
+  const empty = read?.empty
 
   // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. inventoryAt) :
   // l'infobulle le dit — l'estompage porte déjà sur la valeur absolue.
@@ -108,9 +124,14 @@ export function ReplayInventoryRow({
               drawnHint={t.ammoDrawnHint}
               gaugeLabel={t.gaugeLabel}
             />
-          ) : !equipped.holstered ? (
+          ) : !equipped.holstered && !empty ? (
             // Sélecteur non lu : la cellule dit la lacune — armes rangées (D=2), elle,
             // n'affiche RIEN : aucune arme en main, aucune munition à décrire.
+            //
+            // SAUF SUR UNE LECTURE VIDE : `equippedWeapons` y rend volontairement `drawnUnread`
+            // (aucune arme dégainée pour un joueur que l'artefact déclare mort), et le badge
+            // d'état en fin de rangée dit POURQUOI. Écrire « dégainée ? » à côté de « Mort »
+            // poserait une lacune là où la cause est connue.
             <span className="border-b border-dashed border-border opacity-80">
               {t.drawnUnknown}
             </span>
@@ -168,6 +189,19 @@ export function ReplayInventoryRow({
           </span>
         )}
       </span>
+      {/* L'ÉTAT VIDE VIENT APRÈS LES CELLULES FIXES, et c'est ce qui concilie les deux règles.
+          Le lot « lecture vide » le voulait à côté de l'équipement ; la refonte veut que les
+          colonnes des fiches restent alignées. Un badge inséré AVANT une cellule fixe décalerait
+          toute la grille des fiches voisines dès qu'un joueur meurt — placé en DERNIER, il occupe
+          la place libre de la rangée sans toucher à une seule largeur. Il est souple et tronqué
+          (« Inventaire indisponible » est long) : l'infobulle porte le texte entier. */}
+      {empty && read && (
+        <InventoryEmptyMark
+          empty={empty}
+          label={empty.kind === 'dead' ? t.inventoryDeadLabel : t.inventoryEmptyLabel}
+          hint={inventoryEmptyHint(t, read, empty, doc)}
+        />
+      )}
     </div>
   )
 }
@@ -236,6 +270,56 @@ function StateMark({ label, children }: { label: string; children: ReactNode }) 
   return (
     <span role="img" aria-label={label} title={label} className="inline-flex items-center opacity-70">
       {children}
+    </span>
+  )
+}
+
+/**
+ * InventoryEmptyMark — la lecture qui couvre cette image ne rend RIEN, et la ligne le DIT au
+ * lieu de disparaître.
+ *
+ * LES DEUX ÉTATS NE SE CONFONDENT PAS, et c'est tout l'intérêt du marqueur publié par
+ * l'artefact : « Mort » est CORROBORÉ par le fil des éliminations (88,3 % des lectures vides
+ * mesurées, contre 1,1 % des lectures pleines soumises à la même fenêtre) ; « Inventaire
+ * indisponible » dit qu'on ne sait pas. Écrire « Mort » sur le second serait affirmer à l'écran
+ * ce qu'aucune pièce n'établit.
+ *
+ * L'ÉTAT MORT PORTE UN MOT, PAS SEULEMENT UN DESSIN — contrairement aux pictogrammes muets de
+ * `StateMark` (chargeur plein). Ceux-là décorent une lecture PRÉSENTE ; celui-ci explique
+ * pourquoi l'équipement affiché a vingt secondes d'âge, ce qu'un dessin seul ne dit pas.
+ * L'encre vient du token sémantique, jamais d'une valeur.
+ *
+ * IL EST SOUPLE ET TRONQUÉ, seul de la rangée : les autres cellules ont une largeur FIXE parce
+ * que les fiches s'alignent en colonnes, ce badge occupe la place qui reste et ne décale donc
+ * rien. « Inventaire indisponible » y tient rarement en entier — l'infobulle, elle, est complète.
+ */
+function InventoryEmptyMark({
+  empty,
+  label,
+  hint,
+}: {
+  empty: InventoryEmptyState
+  label: string
+  hint: string
+}) {
+  return (
+    <span
+      className={
+        empty.kind === 'dead'
+          ? 'min-w-0 truncate rounded-sm px-0.5 font-semibold uppercase'
+          : 'min-w-0 truncate border-b border-dashed border-border opacity-80'
+      }
+      style={
+        empty.kind === 'dead'
+          ? {
+              color: tokenCssVar('destructive'),
+              boxShadow: `0 0 0 1px ${tokenCssVar('destructive')}`,
+            }
+          : undefined
+      }
+      title={hint}
+    >
+      {label}
     </span>
   )
 }
