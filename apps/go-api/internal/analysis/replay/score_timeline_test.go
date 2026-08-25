@@ -157,6 +157,36 @@ func TestScoreTimelineTeamIdentityByFinalScore(t *testing.T) {
 	}
 }
 
+// TestScoreTimelineTargetScore — LA CIBLE DE VICTOIRE, ET SA GARDE.
+//
+// La cible ne vient jamais du film : c'est la table mesuree de la variante, fournie par
+// l'appelant. Trois issues : publiee telle quelle quand les finals la respectent, ABSENTE
+// quand un final la depasse (table perimee -> se taire), absente quand elle est inconnue.
+func TestScoreTimelineTargetScore(t *testing.T) {
+	recs := func() []objectiveevents.StatRecord {
+		var out []objectiveevents.StatRecord
+		out = append(out, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...) // final 3
+		out = append(out, modeRamp(8, 0, 2_500, 1_000, 1, 2)...)    // final 2
+		return out
+	}
+
+	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs(), TargetScore: 3}, testClock())
+	if tl.TargetScore == nil || *tl.TargetScore != 3 {
+		t.Fatalf("cible = %v, attendu 3 (finals 3 et 2, cible respectee)", tl.TargetScore)
+	}
+
+	tl, _ = buildScoreTimeline(&ScoreInput{Records: recs(), TargetScore: 2}, testClock())
+	if tl.TargetScore != nil {
+		t.Fatalf("cible = %d publiee alors qu'un final (3) la depasse : la table est perimee, "+
+			"le calque doit se taire", *tl.TargetScore)
+	}
+
+	tl, _ = buildScoreTimeline(&ScoreInput{Records: recs()}, testClock())
+	if tl.TargetScore != nil {
+		t.Fatalf("cible = %d publiee sans cible en entree", *tl.TargetScore)
+	}
+}
+
 // TestScoreTimelineTeamIdentityByFrags — PREUVE (b) : a EGALITE de scores, c'est la somme des
 // frags de chaque camp qui designe le slot d'equipe.
 func TestScoreTimelineTeamIdentityByFrags(t *testing.T) {

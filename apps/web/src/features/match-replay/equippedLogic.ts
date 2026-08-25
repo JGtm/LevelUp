@@ -117,62 +117,7 @@ export function drawnSwapAt(
   return age >= 0 && age <= windowFrames ? age : null
 }
 
-/**
- * SwapReading — un CHANGEMENT de dotation entre les deux dernières lectures d'un slot.
- *
- * C'est un ÉTAT DE RÉFÉRENCE à ~20 s de granularité, jamais un suivi continu : le film ne
- * porte aucun événement de ramassage, seul le diff entre deux images-clés le laisse voir.
- * Un aller-retour complet entre deux lectures reste invisible — et on ne l'invente pas.
- */
-export interface SwapReading {
-  /** Identifiants ENTRÉS dans la dotation depuis la lecture précédente. */
-  picked: string[]
-  /** Identifiants SORTIS de la dotation depuis la lecture précédente. */
-  dropped: string[]
-  /** Âge de la lecture courante, en frames : la borne récente de l'intervalle du swap. */
-  age: number
-}
-
-/**
- * loadoutSwapAt compare les DEUX dernières lectures de loadout d'un SLOT au plus tard à
- * `frame`, et rend ce qui a changé — null sans changement, ou sans deux lectures à comparer.
- *
- * La comparaison est un diff de MULTIENSEMBLE : porter deux fois la même arme puis n'en
- * garder qu'une est un changement, et l'ordre des emplacements n'en est pas un.
- */
-export function loadoutSwapAt(
-  doc: ReplayDocumentReady,
-  slot: number,
-  frame: number,
-): SwapReading | null {
-  let cur: { t: number; w: string[] } | null = null
-  let prev: { t: number; w: string[] } | null = null
-  for (const l of doc.loadouts) {
-    if (l.slot !== slot || l.t > frame) continue
-    if (!cur || l.t > cur.t) {
-      prev = cur
-      cur = l
-    } else if (!prev || l.t > prev.t) {
-      prev = l
-    }
-  }
-  if (!cur || !prev) return null
-  const picked = multisetDiff(cur.w, prev.w)
-  const dropped = multisetDiff(prev.w, cur.w)
-  if (picked.length === 0 && dropped.length === 0) return null
-  return { picked, dropped, age: frame - cur.t }
-}
-
-/** multisetDiff rend les éléments de `a` restants après avoir retiré ceux de `b`, occurrence par occurrence. */
-function multisetDiff(a: string[], b: string[]): string[] {
-  const counts = new Map<string, number>()
-  for (const id of b) counts.set(id, (counts.get(id) ?? 0) + 1)
-  return a.filter((id) => {
-    const c = counts.get(id) ?? 0
-    if (c > 0) {
-      counts.set(id, c - 1)
-      return false
-    }
-    return true
-  })
-}
+// Le libellé « échange » et sa lecture (`loadoutSwapAt`, diff de multiensemble entre les
+// deux dernières images-clés) ont été SUPPRIMÉS le 2026-08-24 (demande utilisateur) :
+// l'animation de permutation des vignettes (`drawnSwapAt`) dit déjà le changement d'arme,
+// et le libellé la doublait.

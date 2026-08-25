@@ -21,7 +21,6 @@
  */
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { Button } from '@/components/ui/button'
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
@@ -33,7 +32,7 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { CalloutZoneReady } from './calloutsLayer'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
-import { ReplayLeadMarks } from './ReplayLeadMarks'
+import { ReplayTransport } from './ReplayTransport'
 import { useLeadMarks } from './useLeadMarks'
 import { buildShotFx } from './shotFx'
 import {
@@ -44,7 +43,6 @@ import {
 import { drawZoneStates } from './zoneStatesLayer'
 import { buildFireMarks, drawFireMarks } from './fireMark'
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
-import { SlidersIcon } from './SlidersIcon'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
@@ -53,7 +51,7 @@ import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 import { buildGrenadeRestFx } from './grenadeFx'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n'
 import { buildKillFx } from './killFx'
 import type { PlayerMarkKind } from './playerMarks'
 import { useSlotIdentity } from './useSlotIdentity'
@@ -78,10 +76,11 @@ import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
 
-// 8 tokens de série = une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
-// getSeriesColors). Ils ne colorent plus les joueurs depuis le 2026-08-16 : un joueur porte
-// la couleur de son ÉQUIPE (D1), et une zone n'a pas d'équipe.
-const ZONE_TOKENS: SemanticToken[] = [
+// 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
+// getSeriesColors), et — depuis le 2026-08-24 — la palette des COULEURS DISTINCTES PAR
+// JOUEUR quand l'option du tiroir la choisit. Par défaut un joueur porte la couleur de
+// son ÉQUIPE (D1).
+const SERIES_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
@@ -152,7 +151,6 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   doc, locale, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
 }: ReplayCanvasProps) {
-  const t = REPLAY_TEXT[locale]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
@@ -176,7 +174,7 @@ export function ReplayCanvas({
   }, [])
   const {
     showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
-    showTrail, toggleTrail, compactCards, toggleCompactCards,
+    showTrail, toggleTrail,
     showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
     showShotFx, toggleShotFx, showKillFx, toggleKillFx,
     showPlacements, togglePlacements,
@@ -184,6 +182,7 @@ export function ReplayCanvas({
     showDroppedPlacements, toggleDroppedPlacements,
     showWeaponPads, toggleWeaponPads, showFlagCarries, toggleFlagCarries,
     speed: multiplier, setSpeed: setMultiplier,
+    markerColors, setMarkerColors,
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
   // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
@@ -200,6 +199,13 @@ export function ReplayCanvas({
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
+  // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une couleur de série
+  // stable par joueur du roster, à la place de la couleur d'équipe — pour suivre quelqu'un
+  // dans la mêlée. Le camp reste dit par les fiches, le fil et le bandeau.
+  const distinctColors = useMemo(() => {
+    void paletteVersion
+    return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
+  }, [markerColors, doc.roster.length, paletteVersion])
   // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
   // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
   // scoreboard + descente sur les vies) vit dans useSlotIdentity.
@@ -210,6 +216,7 @@ export function ReplayCanvas({
     marks,
     teamColorOf,
     neutral: floorStyle.edge,
+    distinctColors,
   })
 
   // PRÉFÉRENCE DE MOUVEMENT RÉDUIT. La feuille de style la respecte pour le DOM ; un canvas
@@ -238,7 +245,7 @@ export function ReplayCanvas({
   const zoneColors = useMemo(() => {
     void paletteVersion
     const nBig = calloutZones.reduce((n, z) => n + (z.big ? 1 : 0), 0)
-    return nBig > 0 ? getSeriesColors(nBig, ZONE_TOKENS) : []
+    return nBig > 0 ? getSeriesColors(nBig, SERIES_TOKENS) : []
   }, [calloutZones, paletteVersion])
 
   // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
@@ -657,25 +664,9 @@ export function ReplayCanvas({
             lui prendre sa place, donc le canvas ne se retaille plus et le rendu ne saute
             plus à l'ouverture. */}
         <div ref={containerRef} className="min-w-0 flex-1">
-          <div className="flex items-center justify-end border-b border-border px-3 py-2">
-            {/* TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : un bouton unique, plutôt
-                que la rangée de calques/son/vitesse qui vivait ici — ils sont tous dans le
-                panneau maintenant, avec les nouveaux filtres de son par catégorie. Le bouton
-                est une ICÔNE seule (demande du 2026-08-24) : le libellé reste porté par
-                aria-label/title pour l'infobulle et le lecteur d'écran. */}
-            <Button
-              ref={settingsButtonRef}
-              variant={settingsOpen ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setSettingsOpen((v) => !v)}
-              className="h-7 px-2"
-              aria-expanded={settingsOpen}
-              aria-label={t.settingsButton}
-              title={t.settingsButton}
-            >
-              <SlidersIcon />
-            </Button>
-          </div>
+          {/* Le bouton du TIROIR DE RÉGLAGES vit tout à droite de la barre de lecture
+              (demande du 2026-08-24) : la barre du haut, qui ne portait plus que lui, est
+              supprimée — le rejeu gagne sa hauteur. */}
           <div className="p-3">
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
@@ -705,38 +696,25 @@ export function ReplayCanvas({
               />
               {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
             </div>
-            <div className="mt-2 flex items-center gap-3">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setPlaying((p) => !p)}
-                className="h-8 w-24"
-              >
-                {playing ? t.pause : t.play}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={restart} className="h-8">
-                {t.restart}
-              </Button>
-              <span
-                ref={clockRef}
-                className="min-w-[5.5rem] font-mono text-xs tabular-nums text-muted-foreground"
-                aria-label={t.time}
-              />
-              {/* Les marques de retournement se posent SUR la piste (cf. ReplayLeadMarks). */}
-              <span className="relative flex-1">
-                <input
-                  ref={sliderRef}
-                  type="range"
-                  min={0}
-                  max={Math.max(doc.frameCount - 1, 0)}
-                  defaultValue={0}
-                  onChange={onScrub}
-                  className="block w-full"
-                  aria-label={t.time}
-                />
-                <ReplayLeadMarks {...leadMarks} />
-              </span>
-            </div>
+            {/* LA BARRE DE LECTURE : icônes, vitesse et son au niveau de la lecture
+                (demandes du 2026-08-24) — extraite dans ReplayTransport. */}
+            <ReplayTransport
+              playing={playing}
+              onTogglePlay={() => setPlaying((p) => !p)}
+              onRestart={restart}
+              clockRef={clockRef}
+              sliderRef={sliderRef}
+              maxFrame={Math.max(doc.frameCount - 1, 0)}
+              onScrub={onScrub}
+              speed={multiplier}
+              onSetSpeed={setMultiplier}
+              sound={sound}
+              locale={locale}
+              leadMarks={leadMarks}
+              settingsOpen={settingsOpen}
+              onToggleSettings={() => setSettingsOpen((v) => !v)}
+              settingsButtonRef={settingsButtonRef}
+            />
           </div>
         </div>
         {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
@@ -783,11 +761,11 @@ export function ReplayCanvas({
             }}
             showShotFx={showShotFx}
             onToggleShotFx={toggleShotFx}
-            showKillFx={showKillFx} compactCards={compactCards}
-            onToggleKillFx={toggleKillFx} onToggleCompactCards={toggleCompactCards}
+            showKillFx={showKillFx}
+            onToggleKillFx={toggleKillFx}
             sound={sound}
-            speed={multiplier}
-            onSetSpeed={setMultiplier}
+            markerColors={markerColors}
+            onSetMarkerColors={setMarkerColors}
             triggerRef={settingsButtonRef}
           />
         )}

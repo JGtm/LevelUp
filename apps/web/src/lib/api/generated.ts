@@ -9459,6 +9459,8 @@ export interface components {
         };
         ScoreTimeline: {
             players?: components["schemas"]["PlayerScore"][] | null;
+            /** Format: int64 */
+            targetScore?: number;
             teams?: components["schemas"]["TeamScore"][] | null;
         };
         SeasonCalendar: {

@@ -18,15 +18,12 @@
  */
 import { useEffect, useRef, type RefObject } from 'react'
 
-import { Button } from '@/components/ui/button'
-
-import { SettingsToggle } from './ReplaySettingsToggle'
+import { InfoMark, SettingsToggle } from './ReplaySettingsToggle'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
-import { ReplaySoundControls } from './ReplaySoundControls'
 import { SOUND_CATEGORIES } from './replaySound'
-import { SPEED_MULTIPLIERS } from './useReplaySettings'
+import { MARKER_COLORS_MODES, type MarkerColorsMode } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
 
 /** Réexporté : la section a déménagé (ReplayHeatmapSection), sa surface d'appel non. */
@@ -59,12 +56,12 @@ interface ReplaySettingsDrawerProps {
   onToggleShotFx: () => void
   showKillFx: boolean
   onToggleKillFx: () => void
-  /** Fiches joueur COMPACTES (B2/R2-7) : une option, la validée reste le défaut. */
-  compactCards: boolean
-  onToggleCompactCards: () => void
+  /** Le tiroir ne garde du son que le FILTRE PAR CATÉGORIE : l'interrupteur et le volume
+   *  vivent à la barre de lecture depuis le 2026-08-24 (ReplayTransport). */
   sound: ReplaySound
-  speed: number
-  onSetSpeed: (speed: number) => void
+  /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
+  markerColors: MarkerColorsMode
+  onSetMarkerColors: (mode: MarkerColorsMode) => void
   /**
    * Le bouton qui a ouvert le panneau. Il est EXCLU du « clic dehors » — sans quoi le clic
    * qui referme fermerait puis rouvrirait aussitôt (le même clic atteint ensuite le bouton)
@@ -145,7 +142,10 @@ function LayersSection({
   return (
     <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.layers}</h3>
-      <div className="flex flex-col gap-1">
+      {/* DEUX COLONNES (demande utilisateur du 2026-08-24 : « un élément par ligne c'est
+          inefficace ») : les bascules sont courtes, la grille double la densité du tiroir
+          sans rien perdre — l'infobulle porte déjà le détail de chacune. */}
+      <div className="grid grid-cols-2 gap-1">
         <SettingsToggle label={t.layerAim} pressed={showAim} onToggle={onToggleAim} hint={t.layerAimHint} />
         <SettingsToggle
           label={t.layerNames}
@@ -243,14 +243,18 @@ function EffectsSection({
   const t = REPLAY_TEXT[locale]
   return (
     <section className="space-y-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.effects}</h3>
-      <div className="flex flex-col gap-1">
+      {/* La réserve de mesure (couverture des tirs) se pose sur le TITRE de la section
+          (demande utilisateur du 2026-08-24), plus à côté d'une bascule. */}
+      <h3 className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+        {t.effects}
+        <InfoMark text={t.layerShotFxCoverage} />
+      </h3>
+      <div className="grid grid-cols-2 gap-1">
         <SettingsToggle
           label={t.layerShotFx}
           pressed={showShotFx}
           onToggle={onToggleShotFx}
           hint={t.layerShotFxHint}
-          info={t.layerShotFxCoverage}
         />
         <SettingsToggle
           label={t.layerKillFx}
@@ -265,77 +269,48 @@ function EffectsSection({
 
 
 /**
- * Les FICHES ont leur propre section, minuscule mais à part : elles ne vivent pas sur la
- * carte. Les ranger parmi les calques ferait croire qu'on allume ou éteint un dessin du
- * canvas, alors que le réglage change la COLONNE d'à côté.
+ * LA COULEUR DES POINTS (proposition utilisateur du 2026-08-24) : par équipe — le défaut,
+ * la couleur dit le camp (D1) — ou distincte par joueur, pour suivre quelqu'un dans la
+ * mêlée. Deux lectures exclusives, même grammaire que les choix de la carte de chaleur.
  */
-function CardsSection({
-  locale, compactCards, onToggleCompactCards,
+function ColorsSection({
+  locale, markerColors, onSetMarkerColors,
 }: {
   locale: ReplayLocale
-  compactCards: boolean
-  onToggleCompactCards: () => void
+  markerColors: MarkerColorsMode
+  onSetMarkerColors: (mode: MarkerColorsMode) => void
 }) {
   const t = REPLAY_TEXT[locale]
   return (
     <section className="space-y-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.cards}</h3>
-      <SettingsToggle
-        label={t.cardsCompact}
-        pressed={compactCards}
-        onToggle={onToggleCompactCards}
-        hint={t.cardsCompactHint}
-      />
-    </section>
-  )
-}
-
-function SpeedSection({
-  locale, speed, onSetSpeed,
-}: {
-  locale: ReplayLocale
-  speed: number
-  onSetSpeed: (speed: number) => void
-}) {
-  const t = REPLAY_TEXT[locale]
-  return (
-    <section className="space-y-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.speed}</h3>
-      <div className="flex flex-wrap gap-1">
-        {SPEED_MULTIPLIERS.map((m) => (
-          <Button
-            key={m}
-            type="button"
-            variant={speed === m ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onSetSpeed(m)}
-            className="h-7 px-2 text-xs"
-            // La vitesse en cours est dite, pas seulement peinte : sans `aria-pressed` les
-            // quatre boutons s'annoncent identiques a un lecteur d'ecran, alors que les
-            // bascules voisines (SettingsToggle) le portent toutes.
-            aria-pressed={speed === m}
-          >
-            {m < 1 ? `${m.toFixed(1)}×` : `${m.toFixed(0)}×`}
-          </Button>
+      <h3 className="text-xs font-medium text-muted-foreground">{t.markerColorsTitle}</h3>
+      <div className="grid grid-cols-2 gap-1">
+        {MARKER_COLORS_MODES.map((mode) => (
+          <SettingsToggle
+            key={mode}
+            label={t.markerColorsMode[mode]}
+            pressed={markerColors === mode}
+            onToggle={() => onSetMarkerColors(mode)}
+            hint={t.markerColorsHint[mode]}
+          />
         ))}
       </div>
     </section>
   )
 }
 
-/** Le son n'apparaît qu'avec au moins un événement sonore dans ce match : même règle que
- *  partout ailleurs dans la barre — pas de commande qui ne commande rien. */
+/**
+ * Le tiroir ne garde du son que le FILTRE PAR CATÉGORIE (l'interrupteur et le volume sont à
+ * la barre de lecture, 2026-08-24). Même règle que partout : pas de commande quand il n'y a
+ * rien à commander — un match sans un seul son ne montre pas de filtre.
+ */
 function SoundSection({ locale, sound }: { locale: ReplayLocale; sound: ReplaySound }) {
   const t = REPLAY_TEXT[locale]
   if (!sound.available) return null
   return (
-    <section className="space-y-2">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.sound}</h3>
-      <div className="flex flex-wrap items-center gap-1">
-        <ReplaySoundControls sound={sound} locale={locale} />
-      </div>
+    <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.soundCategoriesTitle}</h3>
-      <div className="flex flex-col gap-1">
+      <div className="grid grid-cols-2 gap-1">
         {SOUND_CATEGORIES.map((category) => (
           <SettingsToggle
             key={category}
@@ -408,11 +383,9 @@ export function ReplaySettingsDrawer({
   onToggleShotFx,
   showKillFx,
   onToggleKillFx,
-  compactCards,
-  onToggleCompactCards,
   sound,
-  speed,
-  onSetSpeed,
+  markerColors,
+  onSetMarkerColors,
   triggerRef,
 }: ReplaySettingsDrawerProps) {
   const t = REPLAY_TEXT[locale]
@@ -426,7 +399,7 @@ export function ReplaySettingsDrawer({
       tabIndex={-1}
       role="region"
       aria-label={t.settingsButton}
-      className="absolute inset-y-0 right-0 z-20 flex w-64 flex-col gap-4 overflow-y-auto border-l border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"
+      className="absolute inset-y-0 right-0 z-20 flex w-72 flex-col gap-3 overflow-y-auto border-l border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t.settingsButton}</h2>
@@ -463,12 +436,11 @@ export function ReplaySettingsDrawer({
         onToggleKillFx={onToggleKillFx}
       />
       <HeatmapSection locale={locale} heatmap={heatmap} />
-      <CardsSection
+      <ColorsSection
         locale={locale}
-        compactCards={compactCards}
-        onToggleCompactCards={onToggleCompactCards}
+        markerColors={markerColors}
+        onSetMarkerColors={onSetMarkerColors}
       />
-      <SpeedSection locale={locale} speed={speed} onSetSpeed={onSetSpeed} />
       <SoundSection locale={locale} sound={sound} />
     </div>
   )

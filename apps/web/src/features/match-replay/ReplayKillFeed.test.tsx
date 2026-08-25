@@ -297,7 +297,7 @@ describe('ReplayKillFeed — les médailles du fil', () => {
 })
 
 describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondus', () => {
-  it('assistant NOMMÉ : le nom, sa part, la part du tueur — et le fond affirme la contribution', () => {
+  it('assistant NOMMÉ : le nom et SA part seule — la part du tueur est sortie (2026-08-24)', () => {
     const { container } = renderFeed(
       [
         kill({
@@ -325,7 +325,9 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
     // continue de dire « Assistance », inchangé depuis le glyphe SVG qu'elle remplace.
     expect(mark.closest('[title="Assistance"]')).toBeTruthy()
     expect(container.textContent).not.toMatch(/assist[ée]/i)
-    expect(screen.getByText(/tueur 63 %/)).toBeTruthy()
+    // La part du TUEUR ne s'écrit plus sur une rangée assistée : celle de l'assistant
+    // suffit (demande utilisateur du 2026-08-24).
+    expect(screen.queryByText(/tueur 63 %/)).toBeNull()
     expect(container.querySelector('li')?.getAttribute('style')).toContain('color-mix')
   })
 
@@ -553,7 +555,7 @@ describe('ReplayKillFeed — tout sur UNE ligne (V5, 2026-08-18)', () => {
     expect(container.querySelector('li .pl-7')).toBeNull()
     expect(container.querySelector('li div')).toBeNull()
     expect(container.querySelectorAll('li')).toHaveLength(1)
-    // Et tout y est encore : le tueur, la victime, la médaille, l'assistant et les deux parts.
+    // Et tout y est encore : le tueur, la victime, la médaille, l'assistant et sa part.
     expect(screen.getByText('Cible')).toBeTruthy()
     expect(screen.getByText('Aidant77')).toBeTruthy()
     expect(screen.getByText('- 37 %')).toBeTruthy()

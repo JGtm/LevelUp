@@ -170,10 +170,18 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * et le lot y ajoutait le calque fireMark. L'icone du bouton de reglages (ajoutee le meme
  * jour) est donc partie dans `SlidersIcon.tsx` AVANT l'ajout, sixieme extraction imposee par
  * ce cliquet ; la suppression du paragraphe de note et du compteur de vies fait le reste.
+ *
+ * 797 -> 791 le 2026-08-24 (barre de lecture) : la barre (icones lecture/recommencer,
+ * vitesse, son, timeline) part dans `ReplayTransport.tsx` — septieme extraction — pendant
+ * que le lot ajoute l'option « couleurs distinctes par joueur ».
+ *
+ * 791 -> 777 le 2026-08-24 (reglages dans la barre) : le bouton du tiroir rejoint la barre
+ * de lecture, et la barre du haut du cadre — qui ne portait plus que lui — disparait avec
+ * ses imports.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(797)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(777)
   })
 })

@@ -77,7 +77,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onSetSpeed = vi.fn()
   const onToggleShotFx = vi.fn()
   const onToggleKillFx = vi.fn()
-  const onToggleCompactCards = vi.fn()
+  const onSetMarkerColors = vi.fn()
   const utils = render(
     <ReplaySettingsDrawer
       locale="fr"
@@ -99,17 +99,15 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleShotFx={onToggleShotFx}
       showKillFx={false}
       onToggleKillFx={onToggleKillFx}
-      compactCards={false}
-      onToggleCompactCards={onToggleCompactCards}
       sound={makeSound()}
-      speed={1}
-      onSetSpeed={onSetSpeed}
+      markerColors="team"
+      onSetMarkerColors={onSetMarkerColors}
       {...over}
     />,
   )
   return {
     ...utils, onClose, onToggleAim, onToggleZones, onToggleNames, onToggleTrail, onSetSpeed,
-    onToggleShotFx, onToggleKillFx,
+    onToggleShotFx, onToggleKillFx, onSetMarkerColors,
   }
 }
 
@@ -268,33 +266,32 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
   })
 })
 
-describe('ReplaySettingsDrawer — vitesse', () => {
-  // Le titre de ce test annonce `aria-pressed` : il l'ASSERTE. Sans la ligne du bas,
-  // inverser la condition de selection (`speed !== m`) ou la supprimer ne casserait rien.
-  it('propose les quatre multiplicateurs, aria-pressed sur celui en cours', () => {
-    renderDrawer({ speed: 2 })
-    for (const label of ['0.5×', '1×', '2×', '4×']) {
-      expect(screen.getByRole('button', { name: label })).toBeTruthy()
-    }
-    const pressed = ['0.5×', '1×', '2×', '4×'].filter(
-      (label) => screen.getByRole('button', { name: label }).getAttribute('aria-pressed') === 'true',
-    )
-    expect(pressed).toEqual(['2×'])
+describe('ReplaySettingsDrawer — couleur des points', () => {
+  it('propose les deux lectures, aria-pressed sur celle en cours', () => {
+    renderDrawer({ markerColors: 'player' })
+    expect(screen.getByRole('button', { name: 'Par équipe' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Par joueur' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('cliquer un multiplicateur appelle onSetSpeed avec cette valeur', () => {
-    const { onSetSpeed } = renderDrawer({ speed: 1 })
-    fireEvent.click(screen.getByRole('button', { name: '4×' }))
-    expect(onSetSpeed).toHaveBeenCalledWith(4)
+  it('cliquer une lecture appelle onSetMarkerColors avec SON mode', () => {
+    const { onSetMarkerColors } = renderDrawer({ markerColors: 'team' })
+    fireEvent.click(screen.getByRole('button', { name: 'Par joueur' }))
+    expect(onSetMarkerColors).toHaveBeenCalledWith('player')
   })
 })
 
-describe('ReplaySettingsDrawer — son', () => {
+describe('ReplaySettingsDrawer — son (le filtre par catégorie seul : l’interrupteur vit à la barre de lecture)', () => {
   it('aucune commande de son ni de catégorie quand le match n a aucun son', () => {
     renderDrawer({ sound: makeSound({ available: false }) })
     expect(screen.queryByText('Sons par catégorie')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Armes' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Son' })).toBeNull()
+  })
+
+  it('l’interrupteur du son n’est PLUS au tiroir, même quand le son est disponible', () => {
+    renderDrawer()
+    expect(screen.queryByRole('button', { name: 'Son' })).toBeNull()
+    expect(screen.getByText('Sons par catégorie')).toBeTruthy()
   })
 
   it('les quatre catégories sont affichées, chacune avec son état', () => {

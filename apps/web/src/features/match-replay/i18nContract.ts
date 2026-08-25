@@ -76,7 +76,6 @@ export interface ReplayText {
    */
   layerTrail: string
   layerTrailHint: string
-  zoneLabel: string
   /**
    * EFFETS D'ÉVÉNEMENT, réglables séparément (décision utilisateur du 16/08) : les éclairs
    * de bouche de TOUS les tirs, et le trait tueur -> victime des éliminations. Le premier
@@ -84,8 +83,6 @@ export interface ReplayText {
    * lorsqu'un dégât est appliqué) : elle ne vit pas dans un commentaire, elle est à l'écran.
    */
   effects: string
-  /** Titre de la section FICHES du tiroir (la colonne d etat, pas le canvas). */
-  cards: string
   layerShotFx: string
   layerShotFxHint: string
   layerShotFxCoverage: string
@@ -173,13 +170,6 @@ export interface ReplayText {
   flagSinceFmt: (seconds: number) => string
   /** La réserve de `carried_open`, en toutes lettres. */
   flagOpenNote: string
-  /**
-   * FICHES COMPACTES (B2/R2-7) : la bascule et ce qu'elle change. L'infobulle DIT ce qu'on
-   * perd — les munitions des armes qui ne sont pas en main — parce qu'un réglage qui retire
-   * de l'information doit l'annoncer.
-   */
-  cardsCompact: string
-  cardsCompactHint: string
   padState: Record<'full' | 'uncertain' | 'empty', string>
   /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
@@ -224,6 +214,14 @@ export interface ReplayText {
   heatmapSpanTitle: string
   heatmapSpan: Record<'match' | 'live', string>
   heatmapSpanHint: Record<'match' | 'live', string>
+  /**
+   * COULEUR DES POINTS des joueurs (option du tiroir, 2026-08-24) : par équipe — le défaut,
+   * la couleur dit le camp (D1) — ou distincte par joueur, pour suivre quelqu'un dans la
+   * mêlée. Les hints disent ce que chaque lecture garde et ce qu'elle déplace.
+   */
+  markerColorsTitle: string
+  markerColorsMode: Record<'team' | 'player', string>
+  markerColorsHint: Record<'team' | 'player', string>
   /** Extrémités de la légende : elles nomment la QUANTITÉ, le titre dit de quoi il s'agit. */
   heatLegendLow: string
   heatLegendHigh: string
@@ -235,20 +233,14 @@ export interface ReplayText {
   teamLabelFmt: (name: string) => string
   teamNumberedFmt: (n: number) => string
   /**
-   * LE SCORE À L'INSTANT LU (schéma 12) — celui de l'équipe en tête de colonne, celui du
-   * joueur sur sa fiche. Ce n'est PAS le score final : il tique avec la lecture.
+   * LE SCORE PERSONNEL À L'INSTANT LU (schéma 12) — celui du joueur sur sa fiche. Ce n'est
+   * PAS le score final : il tique avec la lecture. Le score d'ÉQUIPE, lui, ne vit plus
+   * qu'au bandeau (les chiffres en tête de colonne sont partis le 2026-08-24).
    */
-  scoreLive: string
   playerScoreLive: string
   /** Frags / morts / assistances : deux grandeurs qui ne se confondent pas. */
   countersLive: string
   countersMatch: string
-  /**
-   * MANCHE : les modes qui en ont (Oddball) remettent le compteur à zéro à chaque manche.
-   * L'en-tête affiche le TOTAL du match, et rappelle en second la manche en cours.
-   */
-  roundShortFmt: (index: number) => string
-  roundLabelFmt: (index: number, count: number, value: number) => string
   /**
    * LE BANDEAU DE SCORE au-dessus du terrain : deux barres de camp encadrant l'horloge de
    * lecture. Les deux camps s'y nomment par leur RAPPORT au joueur de la page (allié /
@@ -257,8 +249,7 @@ export interface ReplayText {
    *
    * `roundNumberFmt` est le rang seul, affiché sous l'horloge ; `roundOfCountFmt` le
    * situe dans le match pour l'infobulle. Aucun des deux ne porte de valeur : entre deux
-   * barres, un nombre sans camp ne se rattacherait à personne (`roundLabelFmt`, lui, sert
-   * une colonne, où le camp est acquis).
+   * barres, un nombre sans camp ne se rattacherait à personne.
    */
   scoreBannerLabel: string
   scoreBannerAlly: string
@@ -270,7 +261,12 @@ export interface ReplayText {
   leadChange: string
   leadChangeAtFmt: (time: string, team: string) => string
   unknownPlayer: string
-  /** Marques d'identité devant un nom (fiches, fil) : le joueur de la page, un ami. */
+  /**
+   * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part
+   * (demande utilisateur du 2026-08-24) : `markMe` ne sert plus qu'au libellé lecteur
+   * d'écran du fil (retirer un dessin ne doit pas retirer une information). La marque
+   * « ami » garde son glyphe.
+   */
   markMe: string
   markFriend: string
   healthLabel: string
@@ -280,11 +276,8 @@ export interface ReplayText {
   loadoutAge: string
   loadoutAhead: string
   weaponSecondaryHint: string
-  /** Pictogramme « armes rangées » (sélecteur D=2) : tooltip simple, décision produit 4. */
-  holsteredLabel: string
   /** Badge de lancer sur la fiche (le `.gic` du POC) : l'auteur est écrit dans le film. */
   grenadeThrown: string
-  weaponSwap: string
   respawnIn: string
   respawnUnknown: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */

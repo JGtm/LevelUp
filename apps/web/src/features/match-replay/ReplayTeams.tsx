@@ -22,7 +22,6 @@ import {
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { calloutLabel, zoneAt, type CalloutZoneReady } from './calloutsLayer'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { PlayerMark } from './PlayerMark'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
@@ -30,7 +29,7 @@ import { activeEquipmentAt } from './equipmentFx'
 import { equippedWeapons } from './equippedLogic'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { altitudeAt, msToFrames, positionAt, trackWindow } from './replayLogic'
+import { msToFrames, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { RespawnRow, VitalityBar } from './ReplayVitality'
@@ -42,7 +41,6 @@ import {
   playerStateAt,
   vitalityPresence,
   type ReplayPlayer,
-  type PlayerState,
   type VitalityPresence,
 } from './rosterLogic'
 
@@ -112,30 +110,21 @@ interface ReplayTeamsProps {
   frame: number
   locale: ReplayLocale
   /**
-   * Zones nommées de la carte (normalisées par la route, les mêmes que le calque du
-   * canvas) : la fiche affiche la ZONE COURANTE du joueur. Vide = pas de ligne remplie —
-   * la place reste réservée (hauteur constante).
-   */
-  callouts?: CalloutZoneReady[]
-  /**
-   * Marques d'identité par xuid (« moi », « ami ») — LA MÊME grammaire que la carte et le
-   * fil (décision D5). Absentes = aucune fiche marquée, jamais une marque devinée.
+   * Marques d'identité par xuid (« ami » — le glyphe « moi » ne se dessine plus, cf.
+   * PlayerMark) — LA MÊME grammaire que la carte et le fil (décision D5). Absentes =
+   * aucune fiche marquée, jamais une marque devinée.
    */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
   xuidMeta?: XuidMeta
-  /**
-   * FICHE COMPACTE (B2/R2-7, option du tiroir — la validée reste le défaut). Trois choses
-   * changent, et rien d'autre : la ZONE du joueur disparaît, les armes / grenades /
-   * équipement se rangent sur UNE ligne, et seule l'arme en main garde ses munitions. Tout
-   * le reste — nom, marque, compteurs, vitalité, réapparition, éclats, verre et encadré —
-   * est identique : c'est une fiche plus courte, pas une fiche appauvrie.
-   */
-  compact?: boolean
 }
 
+// LA FICHE COMPACTE EST DEVENUE LA FICHE (décision utilisateur du 2026-08-24 : « fiches
+// compactes va devenir la seule et unique option ») : la variante longue — zone du joueur,
+// deux rangées d'inventaire, munitions des armes rangées — est SUPPRIMÉE avec son réglage.
+
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, callouts, marks, xuidMeta, compact = false,
+  doc, scoreboard, frame, locale, marks, xuidMeta,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const groups = useMemo(
@@ -179,8 +168,6 @@ export function ReplayTeams({
             side={group.side}
             xuidMeta={xuidMeta}
             locale={locale}
-            scoreTimeline={scoreTimeline}
-            frame={frame}
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {group.players.map((p) => (
@@ -194,10 +181,8 @@ export function ReplayTeams({
                 readingFull={readingFull}
                 flashFrames={flashFrames}
                 locale={locale}
-                callouts={callouts}
                 mark={(marks ?? NO_MARKS).get(p.xuid)}
                 scoreTimeline={scoreTimeline}
-                compact={compact}
               />
             ))}
           </div>
@@ -216,16 +201,13 @@ interface PlayerCardProps {
   readingFull: number
   flashFrames: number
   locale: ReplayLocale
-  callouts?: CalloutZoneReady[]
-  /** Marque d'identité du joueur (« moi », « ami »), ou rien. */
+  /** Marque d'identité du joueur (« ami »), ou rien. */
   mark?: PlayerMarkKind
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
-  /** Fiche COMPACTE (cf. ReplayTeamsProps.compact). */
-  compact?: boolean
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, callouts, mark, scoreTimeline, compact = false }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, mark, scoreTimeline }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
   // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
@@ -235,12 +217,6 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   const state = playerStateAt(player, frame, presence)
   const name = playerName(player) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
-  // La ZONE COURANTE, affectée en 3D (zoneAt) : les étages d'une même zone se confondent
-  // en 2D — c'est le z qui départage « Fer à cheval » de sa version inférieure.
-  // La ZONE ne se calcule pas en fiche compacte : elle n'y est pas affichée.
-  const zone = !compact && state.alive && state.life && callouts?.length
-    ? currentZone(callouts, state.life, frame)
-    : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
   const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null
   // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
@@ -316,27 +292,12 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
         </span>
         <ReplayCountersBadge board={player.board} live={live} locale={locale} />
       </div>
-      {/* La zone courante RÉSERVE sa ligne dès que la carte a des zones : vivant elle se
-          remplit, mort elle reste vide — jamais une fiche qui se compacte (règle 1.1). */}
-      {!compact && (callouts?.length ?? 0) > 0 && (
-        <div className="flex h-3 items-center">
-          {zone && (
-            <span
-              className="truncate font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
-              title={t.zoneLabel}
-            >
-              {calloutLabel(zone, locale)}
-            </span>
-          )}
-        </div>
-      )}
-      {/* HAUTEUR CONSTANTE vivant/mort : les trois zones ci-dessous RÉSERVENT leur place
-          dans les DEUX états. La mort remplace le contenu d'une zone, jamais la zone —
-          une fiche qui se compacte fait sauter toute la colonne à chaque mort. Les
-          hauteurs réservées sont celles du contenu vivant : deux barres empilées (14px),
-          une rangée d'icônes d'armes (16px + 2px de souligné), une rangée d'icônes de
-          HUD (16px). */}
-      <div className="flex h-3.5 flex-col justify-center gap-0.5">
+      {/* HAUTEUR CONSTANTE vivant/mort : les deux zones ci-dessous ont une hauteur FIXE
+          dans les DEUX états (h-3.5 puis h-[18px]). La mort remplace le CONTENU d'une
+          zone, jamais la zone — une fiche qui change de hauteur fait sauter toute la
+          colonne à chaque mort (retour utilisateur du 2026-08-24 : la fiche morte
+          paraissait plus haute). `overflow-hidden` est la garantie, pas un ornement. */}
+      <div className="flex h-3.5 flex-col justify-center gap-0.5 overflow-hidden">
         {state.alive ? (
           <>
             {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
@@ -347,17 +308,11 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
         )}
       </div>
-      {/* ARMES ET INVENTAIRE : deux rangées réservées en fiche validée, UNE SEULE en
-          compacte. `flex-nowrap` + `overflow-hidden` y sont la règle, pas de la mise en
-          forme — sans eux la rangée unique se replierait en deux, et la fiche compacte
-          serait plus haute que la validée (leçon C1 du même jour). */}
-      <div
-        className={
-          compact
-            ? 'flex min-h-[18px] flex-nowrap items-center gap-x-2 overflow-hidden'
-            : 'flex min-h-[18px] items-center'
-        }
-      >
+      {/* ARMES ET INVENTAIRE SUR UNE GRILLE À CELLULES FIXES (demande utilisateur du
+          2026-08-24) : chaque rangée émet des cellules à largeur constante — deux armes,
+          munitions de la main, grenades, capacité — pour que les fiches s'alignent en
+          colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne se replie jamais. */}
+      <div className="flex h-[18px] flex-nowrap items-center gap-x-1 overflow-hidden">
         {state.alive && (
           <ReplayWeaponsRow
             doc={doc}
@@ -369,7 +324,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
             locale={locale}
           />
         )}
-        {compact && state.alive && state.life && (
+        {state.alive && state.life && (
           <ReplayInventoryRow
             doc={doc}
             slot={state.life.slot}
@@ -377,42 +332,11 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
             frame={frame}
             readingFull={readingFull}
             locale={locale}
-            compact
           />
         )}
       </div>
-      {!compact && (
-        <div className="flex min-h-4 items-center">
-          {state.alive && state.life && (
-            <ReplayInventoryRow
-              doc={doc}
-              slot={state.life.slot}
-              equipped={equipped}
-              frame={frame}
-              readingFull={readingFull}
-              locale={locale}
-            />
-          )}
-        </div>
-      )}
     </div>
   )
-}
-
-/**
- * currentZone affecte le joueur à sa zone nommée, à l'instant lu : position interpolée
- * de la vie courante (x, y ET z) puis plus-proche-centre 3D (zoneAt, portage POC).
- * Position non transmise = pas de zone — on n'affecte pas quelqu'un qu'on ne situe pas.
- */
-function currentZone(
-  zones: CalloutZoneReady[],
-  life: NonNullable<PlayerState['life']>,
-  frame: number,
-): CalloutZoneReady | null {
-  const p = positionAt(life.points, frame)
-  if (!p) return null
-  const z = altitudeAt(life.points, frame)
-  return zoneAt(zones, p.x, p.y, z ?? 0)
 }
 
 // La rangée d'armes (arme en main, secondaire, indicateur de swap) vit dans

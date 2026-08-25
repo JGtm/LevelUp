@@ -35,7 +35,7 @@ const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
-const COMPACT_CARDS_KEY = 'replay-compact-cards'
+const MARKER_COLORS_KEY = 'replay-marker-colors'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
@@ -135,15 +135,22 @@ const SHOW_WEAPON_PADS_DEFAULT = true
  */
 const SHOW_FLAG_CARRIES_DEFAULT = true
 
+/** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
+export type MarkerColorsMode = 'team' | 'player'
+export const MARKER_COLORS_MODES: readonly MarkerColorsMode[] = ['team', 'player']
+
 /**
- * LES FICHES COMPACTES SONT ÉTEINTES PAR DÉFAUT (B2/R2-7, verdict du 2026-08-18 : « la
- * validée reste le défaut, la compacte est une option »). Ce n'est pas un demi-livrable
- * (CLAUDE.md n°11) : les DEUX fiches sont complètes, et l'utilisateur a explicitement demandé
- * à garder la validée sous la main — « sans supprimer celle-ci qui est validée, je veux
- * tenter autre chose visuellement ». L'interrupteur est un réglage d'affichage, pas un
- * interrupteur de chantier.
+ * LA COULEUR DES POINTS DIT L'ÉQUIPE PAR DÉFAUT (doctrine D1 du 2026-08-16 : la couleur dit
+ * le camp). L'option « distinctes par joueur » (proposition utilisateur du 2026-08-24) donne
+ * à chaque joueur une couleur de série stable — suivre QUELQU'UN dans la mêlée — et le camp
+ * reste dit par les fiches, le fil et le bandeau. Ce n'est pas un demi-livrable (CLAUDE.md
+ * n°11) : les deux lectures sont complètes, l'option est un réglage d'affichage.
  */
-const COMPACT_CARDS_DEFAULT = false
+const MARKER_COLORS_DEFAULT: MarkerColorsMode = 'team'
+
+// LE RÉGLAGE « FICHES COMPACTES » EST SUPPRIMÉ (décision utilisateur du 2026-08-24 :
+// « fiches compactes va devenir la seule et unique option donc on va virer le réglage ») :
+// la fiche compacte est devenue LA fiche, la variante longue est partie avec sa clé.
 
 export interface ReplaySettings {
   /** Calque de visée (direction du regard). Allumé par défaut, comme aujourd'hui. */
@@ -204,13 +211,9 @@ export interface ReplaySettings {
    */
   showFlagCarries: boolean
   toggleFlagCarries: () => void
-  /**
-   * Fiches joueur COMPACTES (B2/R2-7). Éteintes par défaut : la fiche validée le 18/08 reste
-   * le défaut. La compacte ne perd qu'une information — les munitions des armes qui ne sont
-   * PAS en main — et gagne trois lignes de hauteur ; ce qui reste tient sur une seule rangée.
-   */
-  compactCards: boolean
-  toggleCompactCards: () => void
+  /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
+  markerColors: MarkerColorsMode
+  setMarkerColors: (mode: MarkerColorsMode) => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
@@ -229,10 +232,11 @@ export interface ReplaySettings {
  * style. `persistPreference` prévient SYNCHRONEMENT tous les abonnés de la clé, qui appellent
  * `setValue` à leur tour : le faire depuis l'updater, c'est déclencher une mise à jour d'état
  * en pleine phase de rendu, ré-entrante sur ce hook — et sur l'AUTRE instance de la même clé
- * quand elle vit chez un ancêtre (`compactCards` : le tiroir dans ReplayCanvas, les fiches via
- * `useReplayCompactCards` dans la page). React y répondait en gardant l'ancienne valeur une
- * fois sur deux : la bascule « revenait en arrière » toute seule, et StrictMode, qui invoque
- * les updaters deux fois pour débusquer exactement cette impureté, doublait le symptôme.
+ * quand elle vit chez un ancêtre (défaut vécu sur la clé des fiches compactes, aujourd'hui
+ * supprimée : le tiroir et la page lisaient la même clé). React y répondait en gardant
+ * l'ancienne valeur une fois sur deux : la bascule « revenait en arrière » toute seule, et
+ * StrictMode, qui invoque les updaters deux fois pour débusquer exactement cette impureté,
+ * doublait le symptôme.
  *
  * Donc : `next` se calcule ICI, hors updater, à partir de la valeur rendue ; `setValue` reçoit
  * une valeur nue ; la persistance vient APRÈS, depuis le gestionnaire d'événement. `value` est
@@ -251,19 +255,6 @@ function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void]
     persistPreference(key, String(next))
   }, [key, value])
   return [value, toggle]
-}
-
-/**
- * useReplayCompactCards — la SEULE préférence que la colonne des fiches a besoin de lire.
- *
- * Un hook ÉTROIT plutôt que `useReplaySettings` entier : les fiches n'ont rien à faire des
- * calques, de la vitesse ni de la carte de chaleur, et lire tout le paquet les re-rendrait à
- * chaque changement de l'un d'eux. La valeur est la MÊME que celle du tiroir — c'est
- * l'abonnement de `usePersistedFlag` qui le garantit.
- */
-export function useReplayCompactCards(): boolean {
-  const [compact] = usePersistedFlag(COMPACT_CARDS_KEY, COMPACT_CARDS_DEFAULT)
-  return compact
 }
 
 export function useReplaySettings(): ReplaySettings {
@@ -294,15 +285,14 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_FLAG_CARRIES_KEY,
     SHOW_FLAG_CARRIES_DEFAULT,
   )
-  const [compactCards, toggleCompactCards] = usePersistedFlag(
-    COMPACT_CARDS_KEY,
-    COMPACT_CARDS_DEFAULT,
-  )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
   const [heatmapSpan, setHeatmapSpanState] = useState(() =>
     readStoredChoice(HEATMAP_SPAN_KEY, HEATMAP_SPAN_DEFAULT, HEATMAP_SPANS),
+  )
+  const [markerColors, setMarkerColorsState] = useState(() =>
+    readStoredChoice(MARKER_COLORS_KEY, MARKER_COLORS_DEFAULT, MARKER_COLORS_MODES),
   )
   const [speed, setSpeedState] = useState(() =>
     readStoredNumber(SPEED_KEY, SPEED_DEFAULT, (v) => SPEED_MULTIPLIERS.includes(v)),
@@ -321,6 +311,11 @@ export function useReplaySettings(): ReplaySettings {
   const setSpeed = useCallback((next: number) => {
     setSpeedState(next)
     persistPreference(SPEED_KEY, String(next))
+  }, [])
+
+  const setMarkerColors = useCallback((next: MarkerColorsMode) => {
+    setMarkerColorsState(next)
+    persistPreference(MARKER_COLORS_KEY, next)
   }, [])
 
   return {
@@ -352,8 +347,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleWeaponPads,
     showFlagCarries,
     toggleFlagCarries,
-    compactCards,
-    toggleCompactCards,
+    markerColors,
+    setMarkerColors,
     speed,
     setSpeed,
   }

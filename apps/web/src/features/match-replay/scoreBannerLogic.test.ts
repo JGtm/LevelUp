@@ -98,11 +98,49 @@ describe('readScoreBanner — les deux camps au frame lu', () => {
   })
 })
 
-describe('readScoreBanner — le remplissage relatif (aucun objectif publié)', () => {
-  it('remplit la barre du camp en tête et donne à l\'autre son retard relatif', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
-    expect(r?.ally.fill).toBe(1)
-    expect(r?.enemy.fill).toBeCloseTo(30 / 43, 6)
+describe('readScoreBanner — le remplissage sur la cible de victoire (le score final du vainqueur)', () => {
+  it('rapporte chaque barre au score FINAL du vainqueur, pas au camp d\'en face au frame lu', () => {
+    // À mi-match (20-15), la version relative remplissait la barre du meneur : ici les DEUX
+    // disent leur chemin vers la cible (43), et aucune n'est pleine avant qu'elle soit atteinte.
+    const mid = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 100)
+    expect(mid?.ally.fill).toBeCloseTo(20 / 43, 6)
+    expect(mid?.enemy.fill).toBeCloseTo(15 / 43, 6)
+    const end = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
+    expect(end?.ally.fill).toBe(1)
+    expect(end?.enemy.fill).toBeCloseTo(30 / 43, 6)
+  })
+
+  it('préfère la cible PUBLIÉE par l\'artefact : au chrono, le vainqueur ne finit pas plein', () => {
+    // Le témoin Slayer arrêté au chrono à 43-30, avec la cible du mode (50) publiée.
+    const withTarget = timelineOf({
+      targetScore: 50,
+      teams: [
+        equipe(0, [
+          [0, 0],
+          [500, 43],
+        ]),
+        equipe(1, [
+          [0, 0],
+          [500, 30],
+        ]),
+      ],
+      players: [],
+    })
+    const r = readScoreBanner(withTarget, SB_2V2, ALLY_T0, 500)
+    expect(r?.ally.fill).toBeCloseTo(43 / 50, 6)
+    expect(r?.enemy.fill).toBeCloseTo(30 / 50, 6)
+  })
+
+  it('ne se vide JAMAIS en cours de lecture : le dénominateur est constant', () => {
+    let prevAlly = -1
+    let prevEnemy = -1
+    for (const frame of [0, 100, 300, 500]) {
+      const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, frame)
+      expect(r?.ally.fill).toBeGreaterThanOrEqual(prevAlly)
+      expect(r?.enemy.fill).toBeGreaterThanOrEqual(prevEnemy)
+      prevAlly = r?.ally.fill ?? 0
+      prevEnemy = r?.enemy.fill ?? 0
+    }
   })
 
   it('laisse les DEUX barres vides à 0-0 (et ne divise pas par zéro)', () => {

@@ -1,83 +1,43 @@
 /**
- * useSlotIdentity.test.ts — CE QU'UNE VIE SANS PROPRIÉTAIRE VAUT POUR LE CALQUE.
+ * Tests — distinctSlotColors (le mode « couleurs distinctes par joueur » du calque).
  *
- * Le film porte des traces qui ne sont personne : caméras et spectateurs de fin de partie.
- * `buildPlayers` les écarte (`if (!track.xuid) continue`), leur slot n'entre donc dans aucune
- * table d'identité. Ce test épingle ce que `colorOfSlot` en fait — `null`, la convention de
- * `MarkerStyle` pour « ne rien dessiner » — parce que le repli sur l'encre neutre qui existait
- * avant semait des pions gris ne désignant personne (retour utilisateur du 2026-08-20).
+ * Ce qu'ils protègent : la couleur d'un joueur est STABLE — la même pour toutes ses vies,
+ * indexée sur son rang dans la jointure — et la palette CYCLE au-delà de sa taille plutôt
+ * que de laisser des joueurs sans couleur.
  */
-import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import type { ReplayPlayer } from './rosterLogic'
+import { distinctSlotColors } from './useSlotIdentity'
 
-import { testReplayDoc } from './test/testDoc'
-import { useSlotIdentity } from './useSlotIdentity'
-
-/** La vie d'un joueur identifié. */
-const VIE_JOUEUR = {
-  slot: 512,
-  team: -1,
-  xuid: 'A',
-  startFrame: 0,
-  endFrame: 100,
-  points: [{ t: 0, x: 0, y: 0 }],
+function player(xuid: string, slots: number[]): ReplayPlayer {
+  return {
+    xuid,
+    lives: slots.map((slot) => ({ slot, team: -1, points: [] })) as ReplayPlayer['lives'],
+  }
 }
 
-/** La vie que PERSONNE ne possède : pas de xuid, un slot bien à elle. */
-const VIE_ANONYME = {
-  slot: 999,
-  team: -1,
-  startFrame: 0,
-  endFrame: 100,
-  points: [{ t: 0, x: 1, y: 1 }],
-}
-
-const SCOREBOARD = [{ xuid: 'A', gamertag: 'Alpha' }] as unknown as MatchScoreboardRow[]
-const META: XuidMeta = new Map([['A', { gamertag: 'Alpha', ally: true }]])
-
-function identite() {
-  const doc = testReplayDoc({
-    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
-    tracks: [VIE_JOUEUR, VIE_ANONYME],
-  })
-  return renderHook(() =>
-    useSlotIdentity({
-      doc,
-      scoreboard: SCOREBOARD,
-      xuidMeta: META,
-      marks: undefined,
-      teamColorOf: (ally) => (ally ? 'encre-alliee' : 'encre-ennemie'),
-      neutral: 'encre-neutre',
-    }),
-  ).result.current
-}
-
-describe('useSlotIdentity — la vie sans propriétaire ne se dessine pas', () => {
-  it('rend null pour un slot sans propriétaire, JAMAIS l encre neutre', () => {
-    const { colorOfSlot } = identite()
-    // Le repli gris était le bug : il peignait un pion pour une caméra.
-    expect(colorOfSlot(999)).toBeNull()
-    expect(colorOfSlot(999)).not.toBe('encre-neutre')
+describe('distinctSlotColors', () => {
+  it('toutes les vies d’un joueur portent SA couleur, indexée sur son rang', () => {
+    const table = distinctSlotColors(
+      [player('A', [512, 514]), player('B', [513])],
+      ['c1', 'c2'],
+    )
+    expect(table.get(512)).toBe('c1')
+    expect(table.get(514)).toBe('c1')
+    expect(table.get(513)).toBe('c2')
   })
 
-  it('rend bien sa couleur d équipe au slot dont le propriétaire est connu', () => {
-    const { colorOfSlot } = identite()
-    expect(colorOfSlot(512)).toBe('encre-alliee')
+  it('la palette CYCLE au-delà de sa taille : le troisième joueur reprend la première couleur', () => {
+    const table = distinctSlotColors(
+      [player('A', [512]), player('B', [513]), player('C', [514])],
+      ['c1', 'c2'],
+    )
+    expect(table.get(514)).toBe('c1')
   })
 
-  it('la table brute ne porte que les slots possédés', () => {
-    const { slotColors } = identite()
-    expect(slotColors.has(512)).toBe(true)
-    expect(slotColors.has(999)).toBe(false)
-  })
-
-  it('la marque et le nom manquent aussi, sans jamais être inventés', () => {
-    const { markOfSlot, nameOfSlot, sideOfSlot } = identite()
-    expect(markOfSlot(999)).toBeUndefined()
-    expect(nameOfSlot(999)).toBeNull()
-    expect(sideOfSlot(999)).toBeNull()
+  it('un slot hors des vies jointes n’a pas de couleur — la convention « ne rien dessiner »', () => {
+    const table = distinctSlotColors([player('A', [512])], ['c1'])
+    expect(table.get(999)).toBeUndefined()
   })
 })

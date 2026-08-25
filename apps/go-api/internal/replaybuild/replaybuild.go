@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -74,6 +75,10 @@ type Builder struct {
 	// calque d ETAT DES ZONES (cf. zones.go). Meme cache, meme raison que ci-dessus.
 	roles      *mappings.ObjectiveRoleSet
 	rolesTried bool
+	// regulation : la table de reglement du titre (regulation.toml), d ou sort la CIBLE DE
+	// VICTOIRE publiee avec la courbe de score. Chargee une fois au NewBuilder, best-effort :
+	// table absente ou illisible = aucune cible, jamais un echec (le client a son repli).
+	regulation *mappings.RegulationSet
 }
 
 // Outcome décrit un artefact construit.
@@ -107,6 +112,15 @@ func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 	} else if skipped > 0 {
 		slog.Debug("replaybuild: props sans emprise ignorés", "sansEmprise", skipped, "dir", geomDir)
 	}
+	// La table de reglement (cible de victoire) est BEST-EFFORT : un titre sans
+	// regulation.toml construit des artefacts sans cible, et le client a son repli.
+	regulation, err := mappings.LoadRegulationFromFile(
+		filepath.Join(pr.TitleMappingsDir(titleSlug), "regulation.toml"))
+	if err != nil {
+		slog.Warn("replaybuild: table de reglement illisible — artefacts sans cible de victoire",
+			"err", err, "title", titleSlug)
+		regulation = nil
+	}
 	return &Builder{
 		repoRoot:   repoRoot,
 		titleSlug:  titleSlug,
@@ -114,6 +128,7 @@ func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 		labels:     labels,
 		geometry:   geometry,
 		structures: map[string][]replay.Surface{},
+		regulation: regulation,
 	}, nil
 }
 
@@ -170,6 +185,12 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		return Outcome{}, err
 	}
 	stats := readFilmStats(context.Background(), matchID, filmDir, facts)
+	// La CIBLE DE VICTOIRE vient de la table de règlement du titre, jamais du film : elle
+	// s'ajoute à l'entrée du calque de score, et la garde de publication vit chez lui
+	// (`publishableTarget` — une table périmée se tait au lieu de publier une cible fausse).
+	if stats.score != nil {
+		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
+	}
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
 	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)

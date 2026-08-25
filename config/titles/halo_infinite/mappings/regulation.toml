@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 1
+schema_version = 2
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -42,3 +42,80 @@ schema_version = 1
 "Strongholds:Arena"           = 720
 "Arena:Slayer"                = 720
 "Arena:Team Slayer"           = 720
+
+# ---------------------------------------------------------------------------------------
+# CIBLE DE VICTOIRE par variante (score qui termine le match quand il est atteint) —
+# socle du remplissage des barres du bandeau de score du rejeu 2D (schema_version 2).
+#
+# MEME DOCTRINE QUE regulation_seconds : cle = game_variant_name exact, valeur MESUREE,
+# jamais « au juge ». Mesure du 2026-08-24 sur le registre complet : pour chaque variante,
+# la distribution de GREATEST(team_0_score, team_1_score) presente (ou non) un PLATEAU —
+# la valeur maximale observee, atteinte par >= 2 matchs, sans aucun match au-dessus.
+# Les valeurs sous le plateau sont les victoires au chrono (le cas que la cible sert
+# precisement a bien afficher : barre non pleine a la fin).
+#
+# GARDE COTE PRODUCTEUR : une cible n'est publiee dans l'artefact que si AUCUN score
+# final du film ne la depasse — une table perimee (343 change une regle) se tait au lieu
+# de publier une cible fausse.
+#
+# VOLONTAIREMENT ABSENTS :
+#   - Oddball et KOTH : modes a MANCHES — le total du match deborde le plateau d'une
+#     manche (Ranked:Oddball observe a 286-287 au-dessus du 200), et l'oracle du film
+#     differe de l'API en KOTH. Une cible unique n'a pas de sens sur le TOTAL.
+#   - Attrition, Extraction, Land Grab, Sentry Defense, Escalation BTB, variantes UUID,
+#     Firefight PvE : plateau non mesurable (n < 2 au plateau, ou distribution etalee).
+#
+# Exception justifiee : "Ranked:CTF 3 Captures" n'a qu'un match (fini 1) mais la cible
+# est DECLAREE par 343 dans le nom meme de la variante.
+[score_target]
+# Slayer arene : plateau 50 (mesure massive — 417 matchs a 50 sur Super Fiesta seule).
+"Slayer:Arena"               = 50
+"Team Slayer:Arena"          = 50
+"Slayer:Arena Super Fiesta"  = 50
+"Slayer:Arena Fiesta"        = 50
+"Slayer:Arena Tactical"      = 50
+"Arena:Slayer"               = 50
+"Arena:Team Slayer"          = 50
+"Arena:Team Snipers"         = 50
+"Team Snipers:Arena"         = 50
+"Fiesta:Slayer"              = 50
+"Super Fiesta:Slayer"        = 50
+"Tactical:Slayer"            = 50
+"Ranked:Slayer"              = 50
+# Slayer BTB : plateau 100.
+"BTB:Slayer"                 = 100
+"BTB Heavies:Slayer"         = 100
+"BTB:Fiesta Slayer"          = 100
+"BTB:Team Snipers"           = 100
+# CTF : 3 captures partout, SAUF Neutral Flag arene (plateau net a 5, 25 matchs).
+"CTF:Arena"                  = 3
+"Arena:CTF"                  = 3
+"Ranked:CTF"                 = 3
+"Ranked:CTF 3 Captures"      = 3
+"BTB:CTF"                    = 3
+"BTB Heavies:CTF"            = 3
+"BTB:Fiesta CTF"             = 3
+"CTF:BTB"                    = 3
+"Husky Raid:CTF"             = 3
+"Husky Raid:Super CTF"       = 3
+"Super Husky Raid:CTF"       = 3
+"Arena:One Flag CTF"         = 3
+"BTB:One Flag CTF"           = 3
+"CTF:Arena Neutral Flag"     = 5
+# Strongholds : 200 en social, 250 en classe (plateaux mesures ; c'est le score AFFICHE
+# par le jeu, celui que porte la courbe du film — l'API compte des ticks, cf.
+# analysis/replay/document_score.go).
+"Strongholds:Arena"          = 200
+"Arena:Strongholds"          = 200
+"Ranked:Strongholds"         = 250
+# Total Control : 3 series de zones.
+"BTB:Total Control"          = 3
+"BTB Heavies:Total Control"  = 3
+"BTB:Fiesta Total Control"   = 3
+# Autres plateaux mesures.
+"BTB:Stockpile"              = 5
+"Assault:Neutral Bomb"       = 3
+"Assault:One Bomb"           = 3
+"Arena:VIP"                  = 10
+"Arena:Escalation Slayer"    = 11
+"Event:Escalation Slayer"    = 11

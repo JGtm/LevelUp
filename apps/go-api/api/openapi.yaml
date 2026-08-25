@@ -20451,6 +20451,9 @@ components:
           type:
             - array
             - "null"
+        targetScore:
+          format: int64
+          type: integer
         teams:
           items:
             $ref: '#/components/schemas/TeamScore'

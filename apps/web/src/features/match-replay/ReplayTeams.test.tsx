@@ -12,7 +12,6 @@ import { render, screen } from '@testing-library/react'
 import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
-import { normalizeCallouts } from './calloutsLayer'
 import { buildPlayerMarks } from './playerMarks'
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from './test/testDoc'
@@ -181,34 +180,30 @@ describe('ReplayTeams — munitions et sélecteur', () => {
     loadouts: [{ t: 0, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
   }
 
-  it('les cellules suivent l’ordre des armes : la dégainée d’abord, index d’emplacement gardé', () => {
+  it('SEULE l’arme dégainée garde ses munitions (règle de la fiche unique)', () => {
     const view = renderTeams({
       ...TWO_WEAPONS,
       inventory: [
         { t: 0, slot: 512, d: 1, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] },
       ],
     })
-    // Seule la cellule DÉGAINÉE porte une infobulle (item 1.2 : le rattachement méthodique
-    // emplacement↔arme est sorti de l'écran) : c'est elle qui s'identifie, et son index
-    // d'emplacement reste « 1 ».
+    // `d: 1` = l'emplacement 1 est dégainé : ses munitions (5/6) restent, l'autre part.
     const drawn = screen.getByTitle(/DÉGAINÉ/)
-    expect(drawn.textContent).toContain('1')
     expect(drawn.textContent).toContain('5/6')
-    // L'ordre du DOM suit l'ordre des armes : la dégainée (5/6) précède l'autre (10/20).
-    const txt = view.container.textContent ?? ''
-    expect(txt.indexOf('5/6')).toBeGreaterThanOrEqual(0)
-    expect(txt.indexOf('5/6')).toBeLessThan(txt.indexOf('10/20'))
+    expect(view.container.textContent).not.toContain('10/20')
   })
 
-  it('sélecteur disant « rien de dégainé » : pictogramme « Armes rangées » — une mesure, muette', () => {
-    // Décision produit 4 : l'état mesuré D=2 se montre par un dessin discret et UNE
-    // infobulle simple, sans jargon de flux ni jeton de texte.
-    renderTeams({
+  it('sélecteur disant « rien de dégainé » (D=2) : AUCUNE munition — aucune arme en main à décrire', () => {
+    // Le pictogramme « armes rangées » a été supprimé (demande utilisateur du 2026-08-24 :
+    // « je comprends pas ce que c'est ») : l'état se lit à l'absence de soulignement « en
+    // main » sur les armes, la cellule de munitions reste vide.
+    const view = renderTeams({
       ...TWO_WEAPONS,
       inventory: [{ t: 0, slot: 512, d: 2, am: [{ mag: 10 }, { mag: 5 }] }],
     })
-    expect(screen.getByRole('img', { name: 'Armes rangées' })).toBeTruthy()
-    expect(screen.queryByText('rangées')).toBeNull()
+    expect(screen.queryByRole('img', { name: 'Armes rangées' })).toBeNull()
+    expect(view.container.textContent).not.toContain('10')
+    expect(screen.queryByText('dégainée ?')).toBeNull()
   })
 
   it('emplacement jamais écrit : pictogramme « Munitions pleines », jamais « aucune »', () => {
@@ -228,6 +223,31 @@ describe('ReplayTeams — munitions et sélecteur', () => {
       inventory: [{ t: 0, slot: 512, am: [{ mag: 10 }, { mag: 5 }] }],
     })
     expect(screen.getByText('dégainée ?')).toBeTruthy()
+  })
+
+  it('arme À CHARGE en main : pourcentage écrit, jamais le « 1/0 » parasite du film', () => {
+    // Mesure 2026-08-24 : les cellules mag=1/res=0 des armes à charge (épée, marteau,
+    // plasma...) sont des ancrages parasites — la fiche affiche « XXX% » (demande user).
+    const view = renderTeams({
+      weaponLabels: {
+        '0xAAAA': { fr: 'Épée', en: 'Sword', fx: 'melee' },
+        '0xBBBB': { fr: 'Pistolet', en: 'Pistol' },
+      },
+      loadouts: [{ t: 0, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
+      inventory: [{ t: 0, slot: 512, d: 0, am: [{ mag: 1, res: 0 }, { mag: 5 }] }],
+    })
+    // Rien de consommé (aucune jauge émise, flux différentiel) : la charge est PLEINE.
+    expect(screen.getByText('100%')).toBeTruthy()
+    expect(view.container.textContent).not.toContain('1/0')
+  })
+
+  it('arme à charge avec consommation lue : le POURCENTAGE restant (complément du consommé)', () => {
+    renderTeams({
+      weaponLabels: { '0xAAAA': { fr: 'Épée', en: 'Sword', fx: 'melee' } },
+      loadouts: [{ t: 0, slot: 512, w: ['0xAAAA'] }],
+      inventory: [{ t: 0, slot: 512, d: 0, am: [{ gauge: 0.25 }] }],
+    })
+    expect(screen.getByText('75%')).toBeTruthy()
   })
 })
 
@@ -252,60 +272,6 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
     expect(dead.getByText('Réapparition ?')).toBeTruthy()
     expect(cardRows(dead)).toBe(aliveRows)
-  })
-})
-
-describe('ReplayTeams — zone courante (callouts)', () => {
-  const ZONES = normalizeCallouts({
-    module: 'ridgeline',
-    provenance: 'brut',
-    zones: [
-      {
-        volume_index: 1, name: 'yard', en: 'Yard', fr: 'Cour',
-        x: 0, y: 0, z: 0, z_bottom: -1, z_top: 3,
-        polygon: [[-2, -2], [2, -2], [2, 2]],
-      },
-      {
-        volume_index: 2, name: 'far', en: 'Far', fr: 'Loin',
-        x: 50, y: 50, z: 0, z_bottom: -1, z_top: 3,
-        polygon: [[48, 48], [52, 48], [52, 52]],
-      },
-    ],
-  })
-
-  it('affiche la zone du joueur vivant, affectée à sa position', () => {
-    const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
-      tracks: [TRACK],
-    })
-    render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" callouts={ZONES} />)
-    expect(screen.getByTitle('Zone de la carte').textContent).toBe('Cour')
-  })
-
-  it('mort : la ligne de zone RÉSERVE sa place, vide — la fiche ne se compacte pas', () => {
-    const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
-      tracks: [TRACK],
-    })
-    const cardRows = (view: ReturnType<typeof render>) => {
-      const card = view.getByText('Alpha').parentElement?.parentElement as HTMLElement
-      return card.childElementCount
-    }
-    const alive = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" callouts={ZONES} />)
-    const aliveRows = cardRows(alive)
-    alive.unmount()
-    const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" callouts={ZONES} />)
-    expect(dead.queryByTitle('Zone de la carte')).toBeNull()
-    expect(cardRows(dead)).toBe(aliveRows)
-  })
-
-  it('sans callouts : aucune ligne de zone — pas de place réservée pour rien', () => {
-    const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
-      tracks: [TRACK],
-    })
-    render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
-    expect(screen.queryByTitle('Zone de la carte')).toBeNull()
   })
 })
 
@@ -390,7 +356,9 @@ describe('ReplayTeams — dégradation par ABSENCE DE DONNÉE (multi-titre)', ()
     expect(screen.getByText('Alpha')).toBeTruthy()
     expect(screen.queryByLabelText('Bouclier')).toBeNull()
     expect(screen.queryByLabelText('Santé')).toBeNull()
-    expect(screen.getByText('armes non lues sur cette vie')).toBeTruthy()
+    // La lacune vit en INFOBULLE depuis la grille à cellules fixes (2026-08-24) : les
+    // cellules restent, vides en pointillés, et la phrase les explique au survol.
+    expect(screen.getByTitle('armes non lues sur cette vie')).toBeTruthy()
   })
 })
 
@@ -539,97 +507,6 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
   })
 })
 
-describe('ReplayTeams — le score À L’INSTANT LU (schéma 12)', () => {
-  const board = () => [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't1')]
-  const twoLives = {
-    roster: [
-      { xuid: 'A', filmIndex: 0, name: 'Alpha' },
-      { xuid: 'B', filmIndex: 1, name: 'Bravo' },
-    ],
-    tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }],
-  }
-  /** Le témoin Slayer, réduit : t0 monte à 3, t1 à 5 ; un seul joueur a des compteurs. */
-  const slayer = {
-    teams: [
-      { teamId: 0, rounds: [{ round: 0, points: [{ t: 5, v: 1 }, { t: 40, v: 3 }] }], total: [{ t: 5, v: 1 }, { t: 40, v: 3 }] },
-      { teamId: 1, rounds: [{ round: 0, points: [{ t: 3, v: 2 }, { t: 40, v: 5 }] }], total: [{ t: 3, v: 2 }, { t: 40, v: 5 }] },
-    ],
-    players: [
-      {
-        xuid: 'A',
-        score: { rounds: null, total: [{ t: 5, v: 120 }, { t: 40, v: 350 }] },
-        kills: { rounds: null, total: [{ t: 5, v: 1 }, { t: 40, v: 3 }] },
-        deaths: { rounds: null, total: [{ t: 20, v: 2 }] },
-        assists: { rounds: null, total: [{ t: 40, v: 4 }] },
-      },
-    ],
-  }
-
-  it('écrit le score de chaque colonne, LU au frame courant', () => {
-    const doc = testReplayDoc({ ...twoLives, scoreTimeline: slayer })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={10} locale="fr" />)
-    // À l'image 10, les deux équipes en sont à leur premier palier : 1 et 2.
-    expect(view.getAllByTitle("Score de l'équipe à l'instant lu").map((n) => n.textContent)).toEqual(['1', '2'])
-  })
-
-  it('TIQUE avec la lecture : le même document à une autre image donne d’autres valeurs', () => {
-    const doc = testReplayDoc({ ...twoLives, scoreTimeline: slayer })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
-    expect(view.getAllByTitle("Score de l'équipe à l'instant lu").map((n) => n.textContent)).toEqual(['3', '5'])
-  })
-
-  it('affiche ZÉRO pour le camp SANS série — ne pas marquer est une mesure (témoin CTF 3-0)', () => {
-    const ctf = { teams: [slayer.teams[0]], players: null }
-    const doc = testReplayDoc({ ...twoLives, scoreTimeline: ctf })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
-    expect(view.getAllByTitle("Score de l'équipe à l'instant lu").map((n) => n.textContent)).toEqual(['3', '0'])
-  })
-
-  it('n’écrit AUCUN score quand le film n’en publie aucun — « 0 » se lirait comme une mesure', () => {
-    const doc = testReplayDoc(twoLives)
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
-    expect(view.queryAllByTitle("Score de l'équipe à l'instant lu")).toHaveLength(0)
-  })
-
-  it('rappelle la MANCHE courante quand il y en a plusieurs, et sa valeur (pas le total)', () => {
-    const oddball = {
-      teams: [
-        {
-          teamId: 0,
-          rounds: [
-            { round: 0, points: [{ t: 5, v: 100 }] },
-            { round: 1, points: [{ t: 50, v: 43 }] },
-          ],
-          total: [{ t: 5, v: 100 }, { t: 50, v: 143 }],
-        },
-      ],
-      players: null,
-    }
-    const doc = testReplayDoc({ ...twoLives, scoreTimeline: oddball })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={60} locale="fr" />)
-    expect(view.getAllByTitle("Score de l'équipe à l'instant lu")[0].textContent).toBe('143')
-    expect(view.getByTitle('Manche 2 sur 2 : 43').textContent).toContain('M2')
-  })
-
-  it('ne rappelle AUCUNE manche sur un mode à manche unique : elle répéterait le total', () => {
-    const doc = testReplayDoc({ ...twoLives, scoreTimeline: slayer })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
-    expect(view.queryByTitle(/Manche/)).toBeNull()
-  })
-
-  it('MASQUE tout le calque quand l’origine n’est ni résolue ni publiée', () => {
-    // Règle cliente du P2 de la revue : un score qui tique au mauvais instant se lit comme
-    // juste. Mieux vaut ne rien montrer.
-    const doc = testReplayDoc({
-      ...twoLives,
-      scoreTimeline: slayer,
-      coverage: { originResolved: false },
-    } as never)
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
-    expect(view.queryAllByTitle("Score de l'équipe à l'instant lu")).toHaveLength(0)
-  })
-})
-
 describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', () => {
   const board = () => [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't0')]
   const twoLives = {
@@ -696,7 +573,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 })
 
 describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
-  it('marque « Moi » le joueur de la page et « Ami » un ami, rien pour les autres', () => {
+  it('marque « Ami » un ami — le glyphe « Moi » ne se dessine plus (demande du 2026-08-24)', () => {
     const doc = testReplayDoc({
       roster: [
         { xuid: 'A', filmIndex: 0, name: 'Alpha' },
@@ -712,10 +589,12 @@ describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
     ]
     const marks = buildPlayerMarks(board, ['  bRaVo '])
     render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" marks={marks} />)
-    expect(screen.getByRole('img', { name: 'Moi' })).toBeTruthy()
+    // Le joueur de la page (A, marqué `me`) ne porte PLUS de glyphe : « supprimer le point
+    // qui indique qui est le joueur actif de partout ».
+    expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
     expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
-    // Charlie n'est ni l'un ni l'autre : deux glyphes en tout sur la page, pas trois.
-    expect(screen.getAllByRole('img').length).toBe(2)
+    // Un seul glyphe en tout sur la page : celui de l'ami.
+    expect(screen.getAllByRole('img').length).toBe(1)
   })
 
   it('sans marques : aucune fiche n’en porte', () => {
@@ -726,26 +605,12 @@ describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
 })
 
 /**
- * B2/R2-7 (2026-08-18) — LA FICHE COMPACTE, EN OPTION.
- *
- * « Tu pourrais me proposer une version plus compacte ? Sans supprimer celle-ci qui est
- * validée. » Trois choses changent, et ce sont les trois que ces tests tiennent : la ZONE
- * disparaît, les armes et l'inventaire se rangent sur UNE rangée, et seule l'arme EN MAIN
- * garde ses munitions. Tout le reste doit être identique — c'est une fiche plus courte, pas
- * une fiche appauvrie.
+ * LA FICHE UNIQUE (ex-« compacte », devenue LA fiche le 2026-08-24) : armes, munitions de
+ * la seule arme en main, grenades et capacité sur UNE rangée en grille à cellules fixes.
+ * Ces tests tiennent les règles qui restent : munitions de la main seule, rangée qui ne se
+ * replie jamais, et parité de gabarit morte/vivante.
  */
-describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
-  const ZONES = normalizeCallouts({
-    module: 'ridgeline',
-    provenance: 'brut',
-    zones: [
-      {
-        volume_index: 1, name: 'yard', en: 'Yard', fr: 'Cour',
-        x: 0, y: 0, z: 0, z_bottom: -1, z_top: 3,
-        polygon: [[-2, -2], [2, -2], [2, 2]],
-      },
-    ],
-  })
+describe('ReplayTeams — la fiche unique', () => {
   const DEUX_ARMES = {
     weaponLabels: {
       '0xAAAA': { fr: 'Fusil', en: 'Rifle' },
@@ -758,61 +623,30 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
     inventory: [{ t: 0, slot: 512, d: 1, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] }],
   }
 
-  function renderCompact(over: Partial<ReplayDocument>, compact: boolean, frame = 10) {
+  function renderCard(over: Partial<ReplayDocument>, frame = 10) {
     const doc = testReplayDoc({
       roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
       tracks: [TRACK],
       ...over,
     })
-    return render(
-      <ReplayTeams
-        doc={doc}
-        scoreboard={[]}
-        frame={frame}
-        locale="fr"
-        callouts={ZONES}
-        compact={compact}
-      />,
-    )
+    return render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
   }
 
   /** Le nombre de RANGÉES d'une fiche : les enfants directs de la carte d'Alpha. */
   const rangees = (view: ReturnType<typeof render>) =>
     (view.getByText('Alpha').parentElement?.parentElement as HTMLElement).childElementCount
 
-  it('la ZONE du joueur disparaît, et elle ne laisse pas de place vide', () => {
-    const validee = renderCompact({}, false)
-    expect(validee.getByTitle('Zone de la carte')).toBeTruthy()
-    const avant = rangees(validee)
-    validee.unmount()
-    const compacte = renderCompact({}, true)
-    expect(compacte.queryByTitle('Zone de la carte')).toBeNull()
-    // Deux rangées de moins : la zone, et la rangée d'inventaire fondue dans celle des armes.
-    expect(rangees(compacte)).toBe(avant - 2)
-  })
-
-  it('SEULE l’arme en main garde ses munitions', () => {
-    const validee = renderCompact(AMMO, false)
-    expect(validee.container.textContent).toContain('10/20')
-    expect(validee.container.textContent).toContain('5/6')
-    validee.unmount()
-    const compacte = renderCompact(AMMO, true)
-    // `d: 1` = l'emplacement 1 est dégainé : ses munitions (5/6) restent, l'autre part.
-    expect(compacte.container.textContent).toContain('5/6')
-    expect(compacte.container.textContent).not.toContain('10/20')
-  })
-
   it('sans sélecteur lu, AUCUNE munition n’est montrée — jamais une arme désignée au hasard', () => {
     const sansSelecteur = {
       ...DEUX_ARMES,
       inventory: [{ t: 0, slot: 512, am: [{ mag: 10, res: 20 }, { mag: 5, res: 6 }] }],
     }
-    const compacte = renderCompact(sansSelecteur, true)
-    expect(compacte.container.textContent).not.toContain('10/20')
-    expect(compacte.container.textContent).not.toContain('5/6')
+    const vue = renderCard(sansSelecteur)
+    expect(vue.container.textContent).not.toContain('10/20')
+    expect(vue.container.textContent).not.toContain('5/6')
   })
 
-  it('ce qui RESTE est identique : nom, armes, grenades, capacité', () => {
+  it('la fiche porte nom, armes, grenades et capacité sur sa rangée unique', () => {
     const doc = {
       ...AMMO,
       inventory: [
@@ -821,9 +655,9 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
       abilityLabels: { '20': { fr: 'Grappin', en: 'Grappleshot' } },
       abilities: [{ t: 0, slot: 512, r: 20, src: 'i48' }],
     }
-    const compacte = renderCompact(doc, true)
-    const texte = compacte.container.textContent ?? ''
-    expect(compacte.getByText('Alpha')).toBeTruthy()
+    const vue = renderCard(doc)
+    const texte = vue.container.textContent ?? ''
+    expect(vue.getByText('Alpha')).toBeTruthy()
     // Les DEUX armes restent (c'est leur MUNITION qui est réduite, pas la rangée d'armes).
     expect(texte).toContain('Fusil')
     expect(texte).toContain('Pistolet')
@@ -832,50 +666,50 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
     expect(texte).toContain('2')
   })
 
-  it('la rangée unique refuse de se replier — sinon la compacte serait plus HAUTE', () => {
-    const compacte = renderCompact(AMMO, true)
-    const carte = compacte.getByText('Alpha').parentElement?.parentElement as HTMLElement
+  it('la rangée unique refuse de se replier — sinon la fiche changerait de hauteur', () => {
+    const vue = renderCard(AMMO)
+    const carte = vue.getByText('Alpha').parentElement?.parentElement as HTMLElement
     const rangee = [...carte.children].find((e) => e.className.includes('flex-nowrap'))
     expect(rangee, 'la rangée armes + inventaire').toBeTruthy()
     expect(rangee!.className).toContain('overflow-hidden')
   })
 
-  it('la fiche MORTE reste lisible en compact : le retour s’affiche', () => {
-    const compacte = renderCompact({}, true, 140)
-    expect(compacte.getByText('Réapparition ?')).toBeTruthy()
+  it('la fiche MORTE reste lisible : le retour s’affiche', () => {
+    const vue = renderCard({}, 140)
+    expect(vue.getByText('Réapparition ?')).toBeTruthy()
   })
 
   /**
-   * LA PARITÉ DE GABARIT MORTE/VIVANTE, en compact — la règle 1.1 de la fiche, épinglée là
-   * où elle n'était vérifiée qu'en fiche validée. Le nombre de rangées ne doit dépendre que
-   * de `compact`, JAMAIS de l'état vital : une fiche qui perd une rangée à la mort fait
-   * sauter toute la colonne à chaque élimination, et sur une équipe de douze la liste danse
-   * en permanence. La mort remplace le CONTENU d'une rangée, jamais la rangée.
+   * LA PARITÉ DE GABARIT MORTE/VIVANTE — la règle 1.1 de la fiche. Le nombre de rangées ne
+   * dépend JAMAIS de l'état vital : une fiche qui perd une rangée à la mort fait sauter
+   * toute la colonne à chaque élimination (retour utilisateur du 2026-08-24 : la fiche
+   * morte paraissait plus haute). La mort remplace le CONTENU d'une rangée, jamais la
+   * rangée.
    */
-  it('la fiche MORTE en compact a EXACTEMENT le gabarit de la vivante', () => {
-    const vivante = renderCompact({}, true, 10)
+  it('la fiche MORTE a EXACTEMENT le gabarit de la vivante', () => {
+    const vivante = renderCard({}, 10)
     const attendu = rangees(vivante)
     vivante.unmount()
-    const morte = renderCompact({}, true, 140)
+    const morte = renderCard({}, 140)
     expect(morte.getByText('Réapparition ?')).toBeTruthy()
     expect(rangees(morte)).toBe(attendu)
   })
 
   /**
    * AUCUNE CLASSE DE HAUTEUR NE SE CONDITIONNE À L'ÉTAT VITAL — le corollaire de la règle
-   * ci-dessus, et celui qu'un futur `state.alive ? 'h-6' : 'h-4'` casserait sans toucher au
-   * nombre de rangées. Les rangées RÉSERVENT leur place (`h-3.5` fixe pour la vitalité,
-   * `min-h-[18px]` pour les armes) : ce sont les mêmes classes, mortes ou vivantes. Seuls le
+   * ci-dessus, et celui qu'un futur « state.alive ? 'h-6' : 'h-4' » casserait sans toucher
+   * au nombre de rangées. Les rangées ont une hauteur FIXE (h-3.5 pour la vitalité,
+   * h-[18px] pour les armes) : ce sont les mêmes classes, mortes ou vivantes. Seuls le
    * CONTENU et la couleur changent, et la couleur passe par `style`, pas par une classe.
    */
-  it('les classes des rangées sont identiques morte et vivante, en compact', () => {
+  it('les classes des rangées sont identiques morte et vivante', () => {
     const classes = (view: ReturnType<typeof render>) =>
       [...((view.getByText('Alpha').parentElement?.parentElement as HTMLElement).children)]
         .map((e) => e.className)
-    const vivante = renderCompact({}, true, 10)
+    const vivante = renderCard({}, 10)
     const attendues = classes(vivante)
     vivante.unmount()
-    const morte = renderCompact({}, true, 140)
+    const morte = renderCard({}, 140)
     expect(classes(morte)).toEqual(attendues)
   })
 })

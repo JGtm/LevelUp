@@ -26,7 +26,6 @@ import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
-import { useReplayCompactCards } from '@/features/match-replay/useReplaySettings'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
@@ -64,7 +63,6 @@ function ReplayPage() {
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
   const { data: matchView } = useMatchView(playerSlug, matchId)
   const [frame, setFrame] = useState(0)
-  const compactCards = useReplayCompactCards()
 
   // LE FOND DE CARTE, en deux temps assumés : le CALAGE d'abord (quelques centaines
   // d'octets, il dit si la carte a une image et où elle se pose), l'IMAGE ensuite —
@@ -151,27 +149,25 @@ function ReplayPage() {
       )}
 
       {data && data.tracks.length > 0 && (
-        /* UNE SEULE RANGÉE : LE FIL, LA CARTE, LES FICHES (demande utilisateur du 2026-08-16,
-           décision D7). Rien n'est empilé — le regard balaie de l'événement (à gauche) au
-           terrain (au centre) puis aux joueurs (à droite), sans qu'aucun panneau n'en masque
-           un autre et sans défilement de page pour passer de l'un à l'autre.
+        /* DEUX COLONNES : LA CARTE, PUIS FICHES + FIL EMPILÉS À DROITE (demande utilisateur
+           du 2026-08-24, qui remplace la rangée à trois colonnes du 16/08) : le fil passe
+           SOUS les fiches, à la même largeur qu'elles, et la carte récupère toute la place
+           libérée à gauche. La colonne de droite est passée de 28 à 30 rem (+7 %, « élargir
+           les fiches de 5 à 10 % »).
 
            C'EST LA CARTE QUI IMPOSE LA HAUTEUR DE LA RANGÉE, et c'est la technique du POC qui
-           l'obtient : les colonnes latérales sont `relative` et leur contenu `absolute inset-0`
+           l'obtient : la colonne de droite est `relative` et son contenu `absolute inset-0`
            à partir de `xl`. Un contenu absolu ne participe pas au calcul de hauteur de son
            parent — un fil de 80 kills ou un BTB à 24 fiches ne peuvent donc PAS étirer la
-           ligne. Ils défilent à l'intérieur de la hauteur que la carte a fixée (le défilement
-           vit dans la carte, cf. 2.3 et 3.2).
+           ligne. Dedans, les FICHES prennent leur hauteur naturelle (bornée, défilable) et le
+           FIL remplit le reste (« pour la hauteur faudrait que ça s'adapte »).
 
            SOUS 1280 px (`xl`) la rangée n'a plus la place : la carte reprend toute la largeur
-           et le couple fil + fiches passe dessous, côte à côte, chacun borné à 60 % de la
-           hauteur d'écran. L'enveloppe qui les apparie devient `display: contents` à partir de
-           `xl` — elle disparaît alors de la grille et rend ses deux enfants directement à la
-           rangée, sans qu'un niveau de balise supplémentaire vienne s'intercaler. */
-        <div className="grid gap-3 xl:grid-cols-[minmax(240px,300px)_minmax(0,1fr)_minmax(0,28rem)] xl:items-stretch">
+           et fiches puis fil passent dessous, chacun borné à 60 % de la hauteur d'écran. */
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch">
           {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
               contraindre — c'est la colonne que le ResizeObserver du canvas mesure. */}
-          <section className="order-1 min-w-0 xl:order-2">
+          <section className="min-w-0">
             {/* LE BANDEAU DE SCORE COIFFE LE TERRAIN (demande utilisateur du 2026-08-20) :
                 score des deux camps à l'image lue, de part et d'autre de l'horloge. Il est
                 DANS la colonne du canvas, et non en frère de celle-ci : la rangée est une
@@ -204,14 +200,24 @@ function ReplayPage() {
               marks={marks}
             />
           </section>
-          <div className="order-2 grid grid-cols-2 gap-3 xl:contents">
-            {/* LE FIL À GAUCHE DE LA CARTE (et non plus dessous). Il est PERMANENT (verdict
-                user 2026-08-13) : tout ce qui est déjà survenu reste lisible, le plus récent
-                en tête, et descendre va chercher les événements anciens. Le document lui donne
-                le référentiel des pistes : lignes recalées sur les fins de vie (le même
-                instant que le flash des fiches) et morts neutres. */}
-            <aside className="relative min-h-[12rem] xl:order-1 xl:min-h-0">
-              <div className="flex max-h-[60vh] flex-col xl:absolute xl:inset-0 xl:max-h-none">
+          {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
+              rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.
+              Les fiches gardent leur hauteur naturelle (bornée à 62 % de la colonne, elles
+              défilent au-delà — BTB) ; le fil PERMANENT (verdict user 2026-08-13) remplit
+              tout le reste et défile dedans. */}
+          <aside className="relative min-h-[12rem] xl:min-h-0">
+            <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
+              <div className="flex max-h-[60vh] min-h-0 shrink-0 flex-col overflow-hidden xl:max-h-[62%]">
+                <ReplayTeams
+                  doc={data}
+                  scoreboard={scoreboard}
+                  frame={frame}
+                  locale={locale}
+                  marks={marks}
+                  xuidMeta={xuidMeta}
+                />
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col">
                 <ReplayKillFeed
                   kills={kills}
                   medals={medalEvents}
@@ -225,29 +231,8 @@ function ReplayPage() {
                   colorOf={colorOfTeam}
                 />
               </div>
-            </aside>
-            {/* LES FICHES À DROITE DE LA CARTE, une colonne par équipe sous son nom résolu
-                (Équipe Eagle / Équipe Cobra) : un rejeu se lit en balayant du terrain vers le
-                joueur, sans que l'un masque l'autre. */}
-            <aside className="relative min-h-[12rem] xl:order-3 xl:min-h-0">
-              <div className="flex max-h-[60vh] flex-col xl:absolute xl:inset-0 xl:max-h-none">
-                {/* LA FICHE COMPACTE est une OPTION du tiroir (B2/R2-7) : la bascule vit
-                    sous le canvas, les fiches vivent ici. Les deux lisent la MÊME préférence
-                    — c'est l'abonnement de `usePersistedFlag` qui les tient ensemble, deux
-                    `useState` initialisés du même stockage ne se parleraient pas. */}
-                <ReplayTeams
-                  doc={data}
-                  scoreboard={scoreboard}
-                  frame={frame}
-                  locale={locale}
-                  callouts={callouts}
-                  marks={marks}
-                  xuidMeta={xuidMeta}
-                  compact={compactCards}
-                />
-              </div>
-            </aside>
-          </div>
+            </div>
+          </aside>
         </div>
       )}
     </div>

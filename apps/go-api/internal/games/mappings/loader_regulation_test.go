@@ -27,12 +27,34 @@ func TestLoadRegulationTOMLsFromRepo(t *testing.T) {
 		}
 	}
 
+	// Les cibles de victoire mesurées (2026-08-24) : sondage sur les plateaux les plus massifs.
+	for variant, want := range map[string]int{
+		"Slayer:Arena Super Fiesta": 50,
+		"BTB:Slayer":                100,
+		"CTF:Arena":                 3,
+		"CTF:Arena Neutral Flag":    5,
+		"Ranked:Strongholds":        250,
+	} {
+		if target, ok := hi.ScoreTarget(variant); !ok || target != want {
+			t.Errorf("halo_infinite cible %q = (%d, %v), want (%d, true)", variant, target, ok, want)
+		}
+	}
+	// Oddball et KOTH sont VOLONTAIREMENT absents (modes à manches, cf. le TOML).
+	for _, variant := range []string{"Ranked:Oddball", "KOTH:Arena"} {
+		if _, ok := hi.ScoreTarget(variant); ok {
+			t.Errorf("halo_infinite : %q ne doit pas avoir de cible (mode à manches)", variant)
+		}
+	}
+
 	h5, err := LoadRegulationFromFile(filepath.Join(repoRoot, "config", "titles", "halo_5", "mappings", "regulation.toml"))
 	if err != nil {
 		t.Fatalf("halo_5 regulation.toml: %v", err)
 	}
 	if n := len(h5.SecondsMap()); n != 0 {
 		t.Errorf("halo_5 : %d variantes, want 0 (aucune mesure)", n)
+	}
+	if _, ok := h5.ScoreTarget("CTF:Arena"); ok {
+		t.Error("halo_5 : aucune cible de victoire mesurée attendue")
 	}
 }
 
@@ -89,10 +111,48 @@ schema_version = 1
 	}
 }
 
+// La section [score_target] est OPTIONNELLE (un TOML antérieur au schéma 2 n'en a pas)
+// et se valide comme les secondes : clé non vide, valeur > 0.
+func TestLoadRegulation_ScoreTargets(t *testing.T) {
+	set, err := LoadRegulationFromBytes("regulation.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 2
+
+[regulation_seconds]
+"CTF:Arena" = 720
+
+[score_target]
+"CTF:Arena"    = 3
+"Slayer:Arena" = 50
+`))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if target, ok := set.ScoreTarget("CTF:Arena"); !ok || target != 3 {
+		t.Errorf("CTF:Arena: got (%d, %v), want (3, true)", target, ok)
+	}
+	if _, ok := set.ScoreTarget("Ranked:Oddball"); ok {
+		t.Error("variante inconnue : aucune cible attendue")
+	}
+	if _, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 2
+[score_target]
+"CTF:Arena" = 0
+`)); err == nil {
+		t.Error("cible a zero : attendu une erreur")
+	}
+}
+
 func TestRegulationSet_NilIsSafe(t *testing.T) {
 	var set *RegulationSet
 	if secs, ok := set.Seconds("CTF:Arena"); ok || secs != 0 {
 		t.Errorf("nil Seconds: got (%d, %v), want (0, false)", secs, ok)
+	}
+	if target, ok := set.ScoreTarget("CTF:Arena"); ok || target != 0 {
+		t.Errorf("nil ScoreTarget: got (%d, %v), want (0, false)", target, ok)
 	}
 	if n := len(set.SecondsMap()); n != 0 {
 		t.Errorf("nil SecondsMap must be empty: got %d", n)
