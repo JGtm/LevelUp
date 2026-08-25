@@ -38,8 +38,13 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   `deadTimeLabel` / `deadTimeUnmeasurable` retirées (FR, EN, contrat) ; `<PlayerMark>` retiré
   de la fiche avec la prop `marks` de `ReplayTeams` et son passage depuis la route. Le
   composant `PlayerMark` RESTE : le fil des éliminations en est l'autre lecteur.
-- [ ] A2 (pt 6) : retirer le compteur total d'éliminations en haut à droite du kill feed
+- [x] A2 (pt 6) : retirer le compteur total d'éliminations en haut à droite du kill feed
   (ancre candidate : `ReplayCountersBadge`). Même règle 0 code mort.
+  FAIT — **l'ancre candidate du plan était FAUSSE** : `ReplayCountersBadge` est le badge
+  frags/morts/assistances d'UNE FICHE joueur (`ReplayTeams.tsx:308`), il n'a rien à voir avec
+  le fil. Le vrai compteur était le rapport `« affichées / total »` écrit en dur dans l'en-tête
+  du fil (`ReplayKillFeed.tsx`, en-tête `flex justify-between`). Retiré ; `ReplayCountersBadge`
+  est INTACT.
 - [ ] A3 (pt 8) : couper le son ne fait plus disparaître la barre de volume : le curseur
   passe à 0 ; ré-activer restaure le volume précédent (`ReplaySoundControls`).
 - [ ] A4 (pt 9) : à la fin du rejeu, rester sur l'état FINAL (curseur à T_final, scène
