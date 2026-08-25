@@ -163,6 +163,12 @@ frequentee ne peut pas y etre calculee.
 Les onze autres cartes natives cuites n'ont aucun film : elles n'ont ni `h max`, ni seuil, ni
 coupe. Elles apparaissent quand meme au §5.3, qui se lit sans corpus.
 
+**La coupe est chiffree en VOLUMES et en PIXELS, pas en faces.** Le plan demandait « % de faces
+rognees » ; compter les triangles exigerait de decoder le maillage de chaque instance, alors que
+la boite monde de l'instance suffit a dire ce qu'un plafond supprime et ce qu'il decapite, et que
+le z-buffer dit exactement ce que l'image perd. Les deux chiffres publies repondent a la question
+posee ; un compte de triangles ne l'aurait pas mieux tranchee.
+
 **Deux faits sortent de ce tableau.**
 
 1. **Le seuil est TRES au-dessous du plafond actuel** — de 8,2 m (highpower) a 19,9 m (bazaar).
