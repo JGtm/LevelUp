@@ -1,3 +1,25 @@
+## [2026-08-25] Encadre Notion « REPLAY 2D » (11 points) — pilotage 4 lots — En cours
+
+**Contexte** : demande utilisateur : planifier puis piloter l'encadre Notion « REPLAY 2D »
+(page Backlog LevelUp, callout jaune, 11 points) avec des executeurs Opus. Plan :
+`.ai/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`. Triage : points 1 (barre dans Notion) et
+2 (reporte au registre le 24/08) deja clos ; 9 points actifs repartis en 4 lots.
+
+**Decision technique principale** : 4 lots paralleles sur worktrees freres, base
+`origin/feat/v75` (`e2f56e2c7`) — A `wt/ui-rejeu` (pts 3,4,6,7,8,9, web match-replay,
+execution directe), B `wt/notif-rejeu` (pt 5 notif Discord groupee, B0 = mini-plan puis
+STOP validation superviseur), C `wt/plafonds` (pt 10 rognage toits/plafonds, C0 = mesure
+des hauteurs frequentees puis STOP verdict), D `wt/obj-etat` (pt 11 etat vivant des
+objectifs, D0 = plan par mode puis STOP validation). Un seul lot construit du Go en
+parallele (cache de build partage). Le rendu objectifs (D1+) attend la fusion de A
+(memes calques web).
+
+**Resultats observes** : (en cours — agents lances, CR attendus).
+
+**Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
+fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre
+Notion a la cloture (barrer + « TRAITE jj/mm — fusion <sha> »).
+
 ## [2026-08-25] Ouvrier de rejeu distant : la mecanique de deploiement vers csstat — Complete
 
 **Contexte** : lot `ouvrier-vps` (branche `wt/ouvrier-vps`, base `c67b58f6b`). Livrer les
