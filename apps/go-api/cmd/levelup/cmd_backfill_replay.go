@@ -67,6 +67,7 @@ package main
 //	levelup backfill-replay                        # tout (~8 h, artefacts ~2 Go)
 //	levelup backfill-replay --force                # re-cuit meme les artefacts a jour
 //	levelup backfill-replay --only-existing        # re-cuit UNIQUEMENT les artefacts deja la
+//	levelup backfill-replay --repair-impoverished  # re-cuit les artefacts appauvris reparables
 //	levelup backfill-replay --mem-limit-gib 6      # remonte le plafond memoire des enfants
 //
 // `--one <matchID>` est la forme INTERNE : c'est ainsi que le parent appelle l'enfant. La
@@ -79,6 +80,17 @@ package main
 // ordinaire repartirait alors sur les 951 films du cache (des heures) la ou l'on veut
 // seulement remettre a niveau ce qui est deja servi.
 //
+// # `--repair-impoverished` EST LA REMEDIATION DU CACHE APPAUVRI
+//
+// A NE PAS CONFONDRE AVEC `--only-existing`. Un artefact APPAUVRI (cuit sans les faits de match ->
+// `scoreTimeline.players` vide) porte le BON numero de schema : `--only-existing` le SAUTE comme
+// « deja a jour ». Ce mode-ci le RE-CUIT — mais SEULEMENT si la base porte des lignes de match, ce
+// que l'enfant transportera au constructeur. Il saute l'artefact deja riche, la vacuite LEGITIME
+// (base sans joueur : re-cuire ne donnerait rien) et l'artefact hors schema courant. Le predicat et
+// sa mecanique vivent dans cmd_backfill_replay_repair.go ; c'est une SELECTION, pas un second chemin
+// de cuisson. Passe A LANCER AVANT la premiere activation prod de l'ouvrier (dette
+// PLAN_OUVRIER_DISTANT.md §5ter). S'EXCLUT de `--force`.
+//
 // Le cache de films se resout par `--cache`, sinon `LEVELUP_LEGACY_FILM_CACHE_DIR`, sinon
 // `<repo>/data/cache` (meme regle que backfill-killsource). La racine du depot se resout par
 // `LEVELUP_REPO_ROOT` — le parent l'IMPOSE a ses enfants pour que toute la passe ecrive dans
@@ -90,7 +102,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"levelup/go-api/internal/config"
@@ -116,6 +127,9 @@ type replayBackfillOptions struct {
 	dryRun    bool
 	// onlyExisting borne la passe aux matchs qui portent DEJA un artefact sur disque.
 	onlyExisting bool
+	// repairImpoverished re-cuit les artefacts a jour MAIS sans compteurs de joueur alors que la
+	// base a des lignes (remediation du cache appauvri, cf. cmd_backfill_replay_repair.go).
+	repairImpoverished bool
 	// one : forme INTERNE. Non vide = ce processus est un ENFANT et cuit ce seul film.
 	one string
 	// mapNames : les identites de carte candidates, passees par le parent a l'enfant.
@@ -128,6 +142,11 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	o, err := parserOptionsReplay(args)
 	if err != nil {
 		return err
+	}
+	// `--repair-impoverished` EST une selection ciblee (les seuls appauvris-reparables) ; `--force`
+	// re-cuirait TOUT, ce que ce mode existe precisement pour eviter. Les deux s'excluent.
+	if o.repairImpoverished && o.force {
+		return fmt.Errorf("--repair-impoverished et --force s'excluent : le mode reparation est deja une selection ciblee")
 	}
 	ctx := context.Background()
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
@@ -144,10 +163,18 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 	report := replayBackfillReport{horsRegistre: horsRegistre}
-	aFaire := filtrerEtTrierReplay(candidats, pr, o, &report)
-
-	fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d sans artefact)\n",
-		len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.sansArtefact)
+	var aFaire []replayCandidat
+	if o.repairImpoverished {
+		if aFaire, err = passeReparation(ctx, cfg, candidats, o, &report); err != nil {
+			return err
+		}
+		fmt.Printf("artefacts appauvris a reparer : %d (cache %s, %d deja complets, %d vacuites legitimes, %d hors schema courant, %d hors registre, %d sans artefact)\n",
+			len(aFaire), cacheRoot, report.dejaComplets, report.vacuitesLegitimes, report.horsSchemaCourant, report.horsRegistre, report.sansArtefact)
+	} else {
+		aFaire = filtrerEtTrierReplay(candidats, pr, o, &report)
+		fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d sans artefact)\n",
+			len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.sansArtefact)
+	}
 	if o.dryRun {
 		afficherPlanReplay(aFaire)
 		return nil
@@ -170,6 +197,9 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 	fs.BoolVar(&o.dryRun, "dry-run", false, "afficher le plan de passe sans rien construire")
 	fs.BoolVar(&o.onlyExisting, "only-existing", false,
 		"ne traiter que les matchs qui ont deja un artefact sur disque (passe d apres un bump de schema)")
+	fs.BoolVar(&o.repairImpoverished, "repair-impoverished", false,
+		"re-cuire les artefacts a jour MAIS sans compteurs de joueur alors que la base a des lignes "+
+			"(remediation du cache appauvri — passe A LANCER AVANT activation ouvrier)")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
 	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", plafondMemoireDefautGiB,
@@ -203,18 +233,7 @@ func filtrerEtTrierReplay(
 		}
 		aFaire = append(aFaire, c)
 	}
-	// LES GROS EN DERNIER. A cout egal, l'identifiant departage — une passe doit etre
-	// reproductible, y compris dans son ordre.
-	sort.Slice(aFaire, func(i, j int) bool {
-		if aFaire[i].chunks != aFaire[j].chunks {
-			return aFaire[i].chunks < aFaire[j].chunks
-		}
-		return aFaire[i].matchID < aFaire[j].matchID
-	})
-	if o.limit > 0 && len(aFaire) > o.limit {
-		aFaire = aFaire[:o.limit]
-	}
-	return aFaire
+	return trierEtBornerReplay(aFaire, o.limit)
 }
 
 // replaysACuire joint le cache film au registre : pour chaque film du cache, le match et ses
