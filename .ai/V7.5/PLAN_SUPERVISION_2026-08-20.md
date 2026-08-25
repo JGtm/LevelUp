@@ -81,3 +81,5 @@ propre au worktree, jamais de boucle sur le corpus de films.
 - 2026-08-20 — Plan écrit après 5 explorations (UI/équipements/portabilité/dettes/sons —
   3 rapports reçus, E1 UI et E3 portabilité en vol). Décisions ci-dessus tranchées.
   L1+L2 lancés en worktrees frères.
+
+- 2026-08-25 — Journee 2 : ouvrier distant FUSIONNE (2 rondes, P0 ronde 2 corrige au point d'ecriture) ; A1 CLOS sur mesures (repulseur+propulseur, 5 voies) ; grappin sonore livre ; catalogue REGENERE (133->273 collines, +302 TC, +73 Firefight, garde anti-rack repare) ; blindage cuissons valide sur crash reel ; passe only-existing complete (34/35 schema 18). Sons balise : voies jeu epuisees -> decoupes video publiees (designation utilisateur attendue). Worktrees session tous nettoyes. Restent (utilisateur) : designations decoupes, Ghidra compagnon, Theater 0x4396db42, gate visuel, arbitrage garde local ; (declencheurs) : masse, clockOffsets, profiling bombe, remediation cache.
