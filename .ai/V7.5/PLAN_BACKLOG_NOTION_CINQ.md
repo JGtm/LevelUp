@@ -896,6 +896,12 @@ test re-vert.
   (`GetStatus`, `initPlayers`, `AddPlayer`, et désormais `PresenceBatch`) le lisent
   sous ce verrou. Course théorique préexistante, non aggravée (le nouveau lecteur
   prend le verrou comme ses voisins). Non traité, hors périmètre.
+- EMOJI VERSIONNÉ résiduel du lot E, à traiter AVANT la fusion :
+  `apps/go-api/internal/presence/batch_client.go:75` ouvre un paragraphe de godoc par
+  « ⚠ » (U+26A0). CLAUDE.md règle n°4 l'interdit dans les fichiers versionnés, et aucun
+  garde-rail ne le rattrape (vérifié : le gate F est vert avec). Repéré au lot F en
+  touchant le fichier pour F2, NON traité — le lot F a consigne stricte de n'introduire
+  rien d'autre. Un caractère à retirer, décision superviseur.
 - `formatDurationMMSS` confond « zéro » et « absent » pour TOUS ses appelants (lot F,
   2026-08-25) : son repli sort dès que la valeur est nulle. C'est juste pour une durée
   de MATCH (l'origine du helper) et faux partout où zéro est une mesure. F12 n'a corrigé
