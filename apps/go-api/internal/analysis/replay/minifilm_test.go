@@ -527,12 +527,28 @@ func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 	if len(lo) != wantLoadouts {
 		t.Errorf("%d loadouts decodes des images-cles, attendu %d", len(lo), wantLoadouts)
 	}
-	inv, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
+	inv, invStats, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}
 	if len(inv) != wantInventoryRead {
 		t.Errorf("%d inventaires decodes des images-cles, attendu %d", len(inv), wantInventoryRead)
+	}
+	// LA STATS DOIT RACONTER LA MEME HISTOIRE QUE LE RESULTAT : Records est a la fois « records
+	// bipede vus » et « lectures rendues » (keyframeInventories n en filtre aucun), donc egal a
+	// len(inv). Chunks/ChunksUnread/Keyframes bornent le diagnostic (audit point 3) meme quand
+	// tout se lit correctement.
+	if invStats.Records != len(inv) {
+		t.Errorf("Stats.Records = %d, attendu %d (== len(inv))", invStats.Records, len(inv))
+	}
+	if invStats.Chunks == 0 {
+		t.Error("Stats.Chunks = 0 sur un film exploitable")
+	}
+	if invStats.ChunksUnread != 0 {
+		t.Errorf("Stats.ChunksUnread = %d, attendu 0 sur le fixture de reference", invStats.ChunksUnread)
+	}
+	if invStats.Keyframes == 0 {
+		t.Error("Stats.Keyframes = 0 : aucune image-cle parcourue")
 	}
 	perKeyframe := map[uint64]map[uint32]bool{}
 	for _, i := range inv {

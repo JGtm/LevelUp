@@ -27,9 +27,16 @@ import { catalogText, type CatalogLabel } from './catalogLabel'
 import type { EquippedReading } from './equippedLogic'
 import { grenadeIconOf, type GrenadeIconRef } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import {
+  grenadesCarried,
+  type InventoryEmptyState,
+  inventoryAt,
+  inventoryEmptyHint,
+  selectedGrenade,
+} from './inventoryReading'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { abilityAt, grenadesCarried, inventoryAt, selectedGrenade } from './rosterLogic'
+import { abilityAt } from './rosterLogic'
 
 /** Boîte d'une vignette de HUD (grenade, capacité) : la hauteur de la ligne. */
 const HUD_ICON_PX = 16
@@ -77,7 +84,13 @@ export function ReplayInventoryRow({
   const grenades = state ? grenadesCarried(state, doc.grenadeLabels, locale) : []
   const selected = state ? selectedGrenade(state) : null
   const ammo = state?.am ?? []
-  if (grenades.length === 0 && !ability && ammo.length === 0) return null
+  // UNE LECTURE VIDE NE FAIT PLUS DISPARAÎTRE LA LIGNE (schéma 19, lot du 2026-08-25). Elle en
+  // faisait disparaître 17,4 % pendant ~20 s : `inventoryAt` retenait la lecture vide comme la
+  // plus récente, et ce `return null` emportait la fiche entière alors qu'une lecture pleine la
+  // précédait. La ligne survit désormais dès qu'il y a quelque chose à dire — un équipement, ou
+  // l'état vide lui-même. Elle ne disparaît que quand il n'y a RIEN, ce qui reste vrai.
+  const empty = read?.empty
+  if (grenades.length === 0 && !ability && ammo.length === 0 && !empty) return null
 
   // LA LIGNE DES MUNITIONS SUIT L'ORDRE DES ARMES AU-DESSUS (l'arme dégainée d'abord) : les
   // deux lignes partagent la même lecture d'ordre, sinon chaque cellule se rattacherait à la
@@ -101,6 +114,13 @@ export function ReplayInventoryRow({
       style={{ opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
       title={ageTitle}
     >
+      {empty && read && (
+        <InventoryEmptyMark
+          empty={empty}
+          label={empty.kind === 'dead' ? t.inventoryDeadLabel : t.inventoryEmptyLabel}
+          hint={inventoryEmptyHint(t, read, empty, doc)}
+        />
+      )}
       {grenades.map((g) => (
         <GrenadeChip
           key={g.rank}
@@ -238,6 +258,52 @@ function StateMark({ label, children }: { label: string; children: ReactNode }) 
   return (
     <span role="img" aria-label={label} title={label} className="inline-flex items-center opacity-70">
       {children}
+    </span>
+  )
+}
+
+/**
+ * InventoryEmptyMark — la lecture qui couvre cette image ne rend RIEN, et la ligne le DIT au
+ * lieu de disparaître.
+ *
+ * LES DEUX ÉTATS NE SE CONFONDENT PAS, et c'est tout l'intérêt du marqueur publié par
+ * l'artefact : « Mort » est CORROBORÉ par le fil des éliminations (88,3 % des lectures vides
+ * mesurées, contre 1,1 % des lectures pleines soumises à la même fenêtre) ; « Inventaire
+ * indisponible » dit qu'on ne sait pas. Écrire « Mort » sur le second serait affirmer à l'écran
+ * ce qu'aucune pièce n'établit.
+ *
+ * L'ÉTAT MORT PORTE UN MOT, PAS SEULEMENT UN DESSIN — contrairement aux pictogrammes muets de
+ * `StateMark` (armes rangées, chargeur plein). Ces deux-là décorent une lecture PRÉSENTE ;
+ * celui-ci explique pourquoi l'équipement affiché a vingt secondes d'âge, ce qu'un dessin seul
+ * ne dit pas. L'encre vient du token sémantique, jamais d'une valeur.
+ */
+function InventoryEmptyMark({
+  empty,
+  label,
+  hint,
+}: {
+  empty: InventoryEmptyState
+  label: string
+  hint: string
+}) {
+  return (
+    <span
+      className={
+        empty.kind === 'dead'
+          ? 'inline-flex items-center rounded-sm px-0.5 font-semibold uppercase'
+          : 'inline-flex items-center border-b border-dashed border-border opacity-80'
+      }
+      style={
+        empty.kind === 'dead'
+          ? {
+              color: tokenCssVar('destructive'),
+              boxShadow: `0 0 0 1px ${tokenCssVar('destructive')}`,
+            }
+          : undefined
+      }
+      title={hint}
+    >
+      {label}
     </span>
   )
 }

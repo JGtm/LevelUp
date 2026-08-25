@@ -370,7 +370,7 @@ func TestR5ContradictoryReadsRefuse(t *testing.T) {
 // compteurs de grenade lus. Un decodeur qui remonterait a 184/184 ne serait pas « meilleur » —
 // il aurait cesse de refuser, et il faudrait comprendre pourquoi avant de s en rejouir.
 func TestInventoryRulesOnRealBinary(t *testing.T) {
-	inv, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
+	inv, _, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

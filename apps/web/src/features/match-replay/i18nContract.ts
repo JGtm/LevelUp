@@ -325,6 +325,42 @@ export interface ReplayText {
   ammoFullLabel: string
   ammoDrawnHint: string
   drawnUnknown: string
+  /**
+   * Lecture d'inventaire VIDE (schéma 19, `inventory[].empty`). Le LIBELLÉ se lit à l'écran,
+   * l'INDICE porte l'explication et se termine par l'âge de la lecture VIDE — la sienne, pas
+   * celle de l'équipement affiché à côté : les deux lectures ne datent pas du même instant, et
+   * les confondre ferait passer un état de vingt secondes pour frais.
+   *
+   * DEUX ÉTATS ET PAS UN : `dead` est corroboré par le fil des éliminations, `empty` ne l'est
+   * pas. Les fondre sous un seul mot ferait affirmer une mort qu'aucune pièce n'établit.
+   *
+   * LA SECONDE MOITIÉ DE L'INFOBULLE DIT CE QUE L'ÉCRAN MONTRE À CÔTÉ, et elle a DEUX formes
+   * parce qu'il y a deux situations. `inventoryFallbackHint` (suivi de l'âge de la lecture
+   * PLEINE) quand une lecture pleine antérieure est effectivement substituée ;
+   * `inventoryNoPriorHint` quand il n'en existe AUCUNE — la fiche n'affiche alors aucun
+   * équipement, et promettre « la dernière lecture pleine » serait faux.
+   */
+  inventoryDeadLabel: string
+  inventoryDeadHint: string
+  inventoryEmptyLabel: string
+  inventoryEmptyHint: string
+  inventoryFallbackHint: string
+  inventoryNoPriorHint: string
   gaugeLabel: string
   respawnBarLabel: string
+  /**
+   * Garde SchemaVersion (lot 2, audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 1). Note
+   * DISCRÈTE, jamais un blocage — la fiche affiche tout ce que l'artefact porte, ces deux
+   * chaînes s'y ajoutent seulement.
+   *
+   * `replaySchemaStale` : l'artefact est ANTÉRIEUR à ce que ce client sait exploiter (un
+   * backfill n'a pas encore rejoué ce match après un bump de schéma) — des champs ajoutés par
+   * la montée manquent silencieusement sans elle.
+   */
+  replaySchemaStale: string
+  /**
+   * `replaySchemaAhead` : l'artefact est POSTÉRIEUR — ce déploiement du client est en retard
+   * sur le format que le serveur sert désormais. Note symétrique à `replaySchemaStale`.
+   */
+  replaySchemaAhead: string
 }

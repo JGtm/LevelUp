@@ -15,8 +15,9 @@
  *
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
+import { inventoryAt } from './inventoryReading'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { inventoryAt, loadoutAt } from './rosterLogic'
+import { loadoutAt } from './rosterLogic'
 
 /** Une arme de la rangée : son identifiant de famille, et si elle est EN MAIN. */
 export interface EquippedWeapon {
@@ -62,7 +63,14 @@ export function equippedWeapons(
 ): EquippedReading | null {
   const lo = loadoutAt(doc, slot, frame)
   if (!lo) return null
-  const d = inventoryAt(doc, slot, frame)?.state.d
+  const inv = inventoryAt(doc, slot, frame)
+  // UNE LECTURE VIDE NE DÉGAINE RIEN, et c'est le seul point où la rangée d'armes et la ligne
+  // d'inventaire divergent volontairement. `inventoryAt` substitue la dernière lecture PLEINE
+  // pour que la fiche garde un ÉQUIPEMENT à montrer — mais le sélecteur de CETTE lecture-là date
+  // d'avant la lecture vide : le reprendre ferait afficher une arme DÉGAINÉE pour un joueur que
+  // l'artefact déclare mort. L'état de la rangée redevient donc « non affirmé » (`drawnUnread`),
+  // exactement ce que rendait l'ancien chemin quand le sélecteur n'était pas lu.
+  const d = inv && !inv.empty ? inv.state.d : undefined
   const held = d === 0 || d === 1 ? lo.weapons[d] : undefined
   if (held === undefined) {
     return {

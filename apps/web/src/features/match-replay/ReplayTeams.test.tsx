@@ -879,3 +879,95 @@ describe('ReplayTeams — la fiche COMPACTE (option du tiroir)', () => {
     expect(classes(morte)).toEqual(attendues)
   })
 })
+
+describe('ReplayTeams — lecture d’inventaire VIDE (schéma 19)', () => {
+  // LE DÉFAUT CORRIGÉ : une lecture vide, étant la plus récente <= T, gagnait contre la
+  // lecture PLEINE qui la précédait, et `ReplayInventoryRow` rendait `null` — la ligne
+  // entière disparaissait pendant ~20 s. 17,4 % des lectures publiées sont dans ce cas.
+  // DEUX types portes : sans selecteur lu, aucun n'est marque « equipe » et l'infobulle de la
+  // vignette reste le seul nom (meme convention que les blocs de grenades ci-dessus).
+  const LABELS = [
+    { en: 'Frag', fr: 'Fragmentation' },
+    { en: 'Plasma', fr: 'Plasma' },
+  ]
+
+  it('garde l’équipement de la dernière lecture PLEINE, et annonce la mort', () => {
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        inventory: [
+          { t: 0, slot: 512, g: [2, 1] },
+          { t: 50, slot: 512, empty: 'dead' },
+        ],
+      },
+      60,
+    )
+    expect(screen.getByTitle('Fragmentation').textContent).toContain('×2')
+    expect(screen.getByText('Mort')).toBeTruthy()
+  })
+
+  it('lecture vide que le fil des éliminations n’explique pas : « indisponible », jamais « Mort »', () => {
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        inventory: [
+          { t: 0, slot: 512, g: [2, 1] },
+          { t: 50, slot: 512, empty: 'unknown' },
+        ],
+      },
+      60,
+    )
+    expect(screen.getByText('Inventaire indisponible')).toBeTruthy()
+    expect(screen.queryByText('Mort')).toBeNull()
+  })
+
+  it('sans AUCUNE lecture pleine antérieure, la ligne dit l’état au lieu de disparaître', () => {
+    renderTeams({ grenadeLabels: LABELS, inventory: [{ t: 0, slot: 512, empty: 'dead' }] }, 10)
+    expect(screen.getByText('Mort')).toBeTruthy()
+  })
+
+  // L'INFOBULLE NE PROMET UN REPORT QUE QUAND IL A LIEU (revue adversariale, constat 4). Elle
+  // affirmait « l'équipement affiché est la dernière lecture pleine, lue il y a X » dans TOUS les
+  // cas, y compris quand aucune lecture pleine n'existait — et X était alors l'âge de la lecture
+  // VIDE, donné pour celui d'un équipement que la fiche ne montrait même pas.
+  it('report réel : l’infobulle annonce la lecture pleine, et les DEUX âges — le vide, l’équipement', () => {
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        inventory: [
+          { t: 0, slot: 512, g: [2, 1] },
+          { t: 50, slot: 512, empty: 'dead' },
+        ],
+      },
+      60,
+    )
+    const title = screen.getByText('Mort').getAttribute('title') ?? ''
+    expect(title).toContain('l’équipement affiché est la dernière lecture pleine, lue il y a')
+    expect(title).not.toContain('aucune lecture d’inventaire avant cet instant')
+    // La lecture vide date de 10 frames, l'équipement de 60 : deux durées DIFFÉRENTES, et c'est
+    // tout l'objet de la distinction (`InventoryEmptyState.age` contre `InventoryReading.age`).
+    const durees = title.match(/\d+[.,]\d s/g) ?? []
+    expect(durees).toHaveLength(2)
+    expect(durees[0]).not.toBe(durees[1])
+  })
+
+  it('aucun report : l’infobulle dit qu’il n’y a aucune lecture avant, et ne promet rien', () => {
+    renderTeams({ grenadeLabels: LABELS, inventory: [{ t: 0, slot: 512, empty: 'unknown' }] }, 10)
+    const title = screen.getByText('Inventaire indisponible').getAttribute('title') ?? ''
+    expect(title).toContain('aucune lecture d’inventaire avant cet instant')
+    expect(title).not.toContain('dernière lecture pleine')
+    // Un seul âge : celui de la lecture vide. Le second n'existe pas — il n'y a pas
+    // d'équipement affiché à dater.
+    expect(title.match(/\d+[.,]\d s/g) ?? []).toHaveLength(1)
+  })
+
+  it('une lecture vide À VENIR n’affiche pas « Mort » — la mort n’est pas encore survenue', () => {
+    // Ronde 2 de la revue adversariale (2026-08-25) : la première lecture du slot est vide et
+    // FUTURE (t=50, image 10). Le badge s'affichait avec « lue il y a 0,7 s » pendant que la
+    // ligne disait « dans 0,7 s » — une mort affirmée avant qu'elle survienne, jusqu'à ~11 s
+    // d'avance sur le film de référence. La ligne se tait sur l'état, comme avant le lot.
+    renderTeams({ grenadeLabels: LABELS, inventory: [{ t: 50, slot: 512, empty: 'dead' }] }, 10)
+    expect(screen.queryByText('Mort')).toBeNull()
+    expect(screen.queryByText('Inventaire indisponible')).toBeNull()
+  })
+})

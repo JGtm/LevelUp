@@ -285,8 +285,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI EST MESURÉ SUR LES TÉMOINS : le poids de la série (<= +2 % de l'artefact exigé),
 	//   le nombre de points par zone, et « la jauge monte avant la bascule du propriétaire » sur
 	//   >= 90 % des captures de Bastion — chiffres au journal du lot (LOTCTER_VOLET3.md).
-	if SchemaVersion != 18 {
-		t.Fatalf("SchemaVersion = %d, attendu 18 : incrémenter exige une raison écrite ci-dessus "+
+	//   v18 -> v19 (2026-08-25, lot 1 « lecture vide ») : `inventory[].empty` — POURQUOI une
+	//   lecture d'inventaire ne rend rien. Deux valeurs seulement : `dead` quand le FIL DES MORTS
+	//   corrobore (l'instant de la lecture tombe dans les 8 s qui suivent une mort du porteur du
+	//   slot), `unknown` sinon. Le champ est optionnel et ADDITIF, et la version monte quand même —
+	//   POUR CE QUE L'ARTEFACT AFFIRMAIT SANS LE SAVOIR : une lecture vide sortait NUE
+	//   (`{"t":N,"slot":S}`), le client retenait cette lecture-là comme la plus récente <= T, et la
+	//   fiche du joueur DISPARAISSAIT pendant ~20 s alors qu'une lecture pleine la précédait.
+	//   17,4 % des lectures publiées sont dans ce cas (mesure du 2026-08-24, 6 721 records sur
+	//   24 films). Un artefact v18 ne porte AUCUN marqueur : le client ne peut pas y distinguer
+	//   « vide parce que mort » de « jamais lu », donc il se lit « à re-cuire » — et la reprise du
+	//   backfill se fait par SchemaVersion.
+	//   CE QUI EST MESURÉ, ET SON TÉMOIN : sur 8 films (1 419 records, 247 lectures vides), 88,3 %
+	//   des lectures VIDES tombent dans la fenêtre de 8 s, contre 1,1 % des lectures PLEINES
+	//   soumises à la MÊME fenêtre — 82x. Sur le film de vérité terrain : 93,8 % contre 0,7 %
+	//   (137x). La fenêtre de 8 s n'est pas choisie : c'est le point de séparation maximale du
+	//   balayage 2..20 s, et c'est aussi la médiane de réapparition relevée par `lives.go`.
+	//   CE QUI N'EST PAS PUBLIÉ : une étiquette « mort » sur les 11,7 % que le fil des morts
+	//   n'explique pas. Elles gardent `unknown` — le décodeur n'a rien lu, et personne ne sait
+	//   pourquoi.
+	if SchemaVersion != 19 {
+		t.Fatalf("SchemaVersion = %d, attendu 19 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
