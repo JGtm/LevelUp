@@ -154,10 +154,17 @@ export interface MatchViewText {
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
   // Graphe des ASSISTANCES (assistant -> tueur assisté). Les DEUX états vides sont
-  // distincts et ne se remplacent jamais l'un l'autre : « non mesurée » dit qu'on ne
-  // sait pas, « aucune » dit qu'on a mesuré zéro.
+  // distincts et ne se remplacent jamais l'un l'autre : « non disponibles » dit qu'on ne
+  // peut rien lire, « aucune » dit qu'on a mesuré zéro.
+  //
+  // `assistNotUsable` couvre DEUX causes que le contrat ne sépare pas (measured_deaths
+  // vaut 0 dans les deux cas) : l'assistance n'a pas été mesurée sur ce match, OU elle
+  // l'a été sans être publiable ligne à ligne — le cas BTB, où nommer deux joueurs sur
+  // une mort n'est pas permis (filtre `publishable`, cf. en-tête de
+  // `platform/duckdb/match_view_repo_assist_pairs.go`). Écrire « non mesurée » y serait
+  // faux.
   assistTitle: string
-  assistNotMeasured: string
+  assistNotUsable: string
   assistNoData: string
   // Note d'infobulle d'un segment : les éliminations volées de ce couple
   // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
@@ -389,7 +396,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
     assistTitle: 'Assistances',
-    assistNotMeasured: 'Assistance non mesurée pour ce match.',
+    assistNotUsable: 'Assistances non disponibles pour ce match (non mesurées ou non publiables).',
     assistNoData: 'Aucune assistance sur ce match.',
     assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
     sectionFlow: 'Déroulé du match',
@@ -668,7 +675,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
     assistTitle: 'Assists',
-    assistNotMeasured: 'Assists were not measured for this match.',
+    assistNotUsable: 'Assists unavailable for this match (not measured or not publishable).',
     assistNoData: 'No assists in this match.',
     assistStolenNote: (n) => `${n} stolen`,
     sectionFlow: 'Match flow',

@@ -74,6 +74,22 @@ function intCell(n: number | undefined): string {
 }
 
 /**
+ * Une DURÉE cumulée de cellule, en m:ss. MÊME RÈGLE QUE `intCell`, et c'est le sujet.
+ *
+ * `formatDurationMMSS` rend son repli pour toute valeur nulle — juste pour une durée de
+ * MATCH (un match de zéro seconde n'a pas eu lieu), faux ici : la colonne n'existe que
+ * parce que la famille est mesurée sur ce match, et la cellule voisine (nombre d'épisodes)
+ * écrit déjà « 0 » pour le même joueur. Un « — » à côté d'un « 0 » se lit « non mesuré »
+ * alors que la mesure a bien eu lieu et vaut zéro.
+ *
+ * Le repli reste donc à sa place — l'absence de la COLONNE, décidée en amont par
+ * `usage.columns.episodes` — et n'a rien à faire dans la cellule.
+ */
+function durationCell(ms: number | undefined): string {
+  return formatDurationMMSS((ms ?? 0) / 1000, '0:00')
+}
+
+/**
  * usageColumnGroups — les groupes de colonnes que la donnée justifie, dans un ordre écrit.
  *
  * Le grappin d'abord (une activation), les états actifs ensuite (une durée), puis ce qui se pose
@@ -109,8 +125,7 @@ export function usageColumnGroups(
         {
           key: `${fam}.ms`,
           label: `${u.activeFamily[fam]} (${u.activeDuration})`,
-          cell: (x: EquipmentUsageTally) =>
-            formatDurationMMSS((x.episodes[fam]?.ms ?? 0) / 1000, '—'),
+          cell: (x: EquipmentUsageTally) => durationCell(x.episodes[fam]?.ms),
         },
       ]),
     })

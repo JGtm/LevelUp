@@ -449,6 +449,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         // Lien INTERNE vers la page de rejeu 2D — composant partagé avec le tableau
         // Synergies (lib/match-nav/MatchReplayLink), qui porte la règle d'affichage :
         // rien n'est rendu sans artefact.
+        //
+        // JAMAIS TRIABLE, comme sa jumelle de SquadSynergyHistoryTable : la colonne n'a
+        // pas de valeur d'accès, donc un tri n'ordonnerait rien — et son en-tête est vide,
+        // ce qui produirait un bouton focalisable sans nom accessible.
+        enableSorting: false,
         cell: (ctx) => (
           <MatchReplayLink
             available={!!ctx.row.original.has_replay}

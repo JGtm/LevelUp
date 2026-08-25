@@ -416,6 +416,28 @@ describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
     )
     expect(screen.getAllByRole('link', { name: REPLAY_LABEL })).toHaveLength(2)
   })
+
+  // En mode triable, une colonne d'ICÔNE (en-tête vide, aucune valeur d'accès) ne doit
+  // porter AUCUN contrôle de tri : le bouton serait focalisable sans nom accessible, et
+  // le clic n'ordonnerait rien. Le test porte sur l'invariant plutôt que sur la colonne
+  // rejeu seule — il couvre du même coup sa voisine Waypoint.
+  it('aucun en-tête vide ne porte de contrôle de tri en mode triable', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={[makeRow(1, { has_replay: true }), makeRow(2, { has_replay: true })]}
+        playerSlug="me"
+        sortable
+      />,
+    )
+    const emptyHeaders = screen
+      .getAllByRole('columnheader')
+      .filter((th) => (th.textContent ?? '').trim() === '')
+    expect(emptyHeaders.length).toBeGreaterThan(0)
+    for (const th of emptyHeaders) {
+      expect(within(th).queryByRole('button')).toBeNull()
+      expect(th.getAttribute('aria-sort')).toBeNull()
+    }
+  })
 })
 
 // V72-32, corrigé V72-34 : badge « En placement » sur Perf/ΔPerf/Note quand la

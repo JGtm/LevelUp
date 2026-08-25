@@ -6,7 +6,7 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import * as squadContextModule from './SquadContext'
-import type { TeammateRow } from '@/lib/api/types'
+import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadSynergiesPage } from './SquadSynergiesPage'
 
 const ROW = (gamertag: string): TeammateRow => ({
@@ -31,14 +31,41 @@ const ROW = (gamertag: string): TeammateRow => ({
 function mockSquadContext(opts: {
   selectedRows: TeammateRow[]
   confirmedGamertags: string[]
+  pageData?: TeammatesPageResponse | null
 }) {
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows: opts.selectedRows,
     confirmedGamertags: opts.confirmedGamertags,
-    pageData: null,
+    pageData: opts.pageData ?? null,
     playerSlug: 'test',
     currentPlayerXuid: '',
   })
+}
+
+/** Réponse de page minimale portant le seul bloc que le test regarde. */
+function pageWithAssistPairs(): TeammatesPageResponse {
+  return {
+    options: [],
+    teammates: [],
+    total_matches: 2,
+    session_labels: { solo: [], squad: [] },
+    friends_count: 0,
+    assist_pairs: {
+      matches_measured: 2,
+      matches_total: 2,
+      total_assists: 3,
+      pairs: [
+        {
+          assist_xuid: 'x1',
+          assist_gamertag: 'Alpha',
+          killer_xuid: 'x2',
+          killer_gamertag: 'Bravo',
+          assist_count: 3,
+          stolen_count: 1,
+        },
+      ],
+    },
+  } as TeammatesPageResponse
 }
 
 function setTitleCaps(caps: string[]) {
@@ -98,5 +125,33 @@ describe('SquadSynergiesPage — empty states', () => {
     })
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
+  })
+})
+
+// La description de la section Assistances était traduite (FR et EN) mais jamais montée :
+// ni le titre ni les en-têtes de colonne ne disent ce que le tableau MESURE.
+describe('SquadSynergiesPage — section Assistances', () => {
+  it('affiche la description sous le titre quand le bloc est présent', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: pageWithAssistPairs(),
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.getByText('Assistances dans l\'escouade')).toBeInTheDocument()
+    expect(
+      screen.getByText('Qui prépare les éliminations de qui, sur les matchs de la sélection.'),
+    ).toBeInTheDocument()
+  })
+
+  it('bloc absent : ni titre ni description (aucune section vide)', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(
+      screen.queryByText('Qui prépare les éliminations de qui, sur les matchs de la sélection.'),
+    ).toBeNull()
   })
 })
