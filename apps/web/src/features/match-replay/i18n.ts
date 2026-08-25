@@ -253,7 +253,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
-    respawnBarLabel: 'avancement depuis la mort',
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
@@ -506,7 +505,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
-    respawnBarLabel: 'progress since death',
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',

@@ -84,11 +84,21 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   PAS `held` — une zone tenue par un camp non situable (aucune ligne « moi ») garde le trait
   plein. Mordant prouvé par double mutation (dont la confusion `held`/`owner`).
 
-- [ ] A7 (demande utilisateur 25/08, reçue en cours de pilotage) : fiche joueur à l'état
+- [x] A7 (demande utilisateur 25/08, reçue en cours de pilotage) : fiche joueur à l'état
   MORT : (a) retirer l'accentuation de la bordure gauche de la fiche ; (b) centrer le
   compteur de réapparition ; (c) retirer la jauge (barre de progression de réapparition).
   Ancres candidates : `ReplayTeams.tsx` / `ReplayVitality.tsx` — vérifier sur pièces.
   Mêmes gates que A1-A6 ; clés i18n orphelines supprimées le cas échéant ; 0 code mort.
+  Les DEUX ancres étaient bonnes. (a) `[x]` `ReplayTeams.tsx:228` — `style.boxShadow =
+  'inset 2px 0 0 destructive'` supprimé du branchement `!state.alive` ; le FOND teinté et le
+  nom à l'encre `destructive` restent (la mort se lit toujours, vérifié par un test dédié).
+  (b) `[x]` `ReplayVitality.tsx` `RespawnRow` — `justify-center` sur la rangée du compte,
+  `text-center` sur la lacune « Réapparition ? » (même cellule, même centrage).
+  (c) `[x]` jauge `role="progressbar"` supprimée (ex-`:98-109`) avec le calcul `span`/`progress`
+  qui ne servait qu'à elle et la clé i18n orpheline `respawnBarLabel` (FR + EN + contrat).
+  7 tests ; mordant prouvé par double mutation — dont un FAUX VERROU corrigé au passage : le
+  cas de centrage visait le PARENT de la rangée, qui porte déjà `justify-center` pour son
+  centrage vertical, et survivait donc à la mutation.
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé

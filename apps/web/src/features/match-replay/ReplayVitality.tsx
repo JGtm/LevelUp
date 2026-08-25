@@ -64,6 +64,14 @@ export function VitalityBar({
  * même joueur. Mesure publiée sur le film de référence : 90 épisodes de mort, 82 avec un retour
  * lisible, médiane 8,0 s, 66 sur 82 exactement à 7,9-8,0 s. Les 8 sans retour affichent une
  * LACUNE — jamais un délai deviné, ce serait remplacer une mesure absente par une moyenne.
+ *
+ * LE COMPTE SEUL, ET CENTRÉ (demande utilisateur du 2026-08-25 : « centre le compteur de
+ * réapparition et virer la jauge »). La barre d'avancement depuis la mort est SUPPRIMÉE : elle
+ * disait la même chose que le compte à rebours, en moins précis — le compte donne les secondes,
+ * la barre n'en donnait que la fraction, sur 9 px de large. Ce qu'on perd est nul : les deux se
+ * dérivaient des deux MÊMES lectures (fin de la vie précédente, départ de la suivante).
+ * Le centrage vaut pour les DEUX états de la rangée, le compte et la lacune : c'est la même
+ * cellule, elle ne doit pas se décaler selon ce qu'elle porte.
  */
 export function RespawnRow({
   state,
@@ -81,32 +89,14 @@ export function RespawnRow({
     // « retour ? » sans infobulle de méthode : la justification (fin de partie sans vie
     // suivante) vit dans le commentaire de PlayerState.respawnFrame, pas à l'écran.
     return (
-      <span className="font-mono text-[9.5px] text-muted-foreground">
+      <span className="block text-center font-mono text-[9.5px] text-muted-foreground">
         {t.respawnUnknown}
       </span>
     )
   }
   const remainMs = frameToMs(state.respawnFrame - frame, doc)
-  // La barre montre l'AVANCEMENT DEPUIS LA MORT : la mort est datée par la fin de la vie
-  // précédente, le retour par le départ de la suivante — deux lectures, aucune constante.
-  // Quand la mort n'est pas datée (sinceDeath < 0), le compte s'affiche sans barre plutôt
-  // qu'avec un avancement faux.
-  const span = state.sinceDeath >= 0 ? state.respawnFrame - (frame - state.sinceDeath) : 0
-  const progress = span > 0 ? Math.max(0, Math.min(1, state.sinceDeath / span)) : null
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[9.5px] text-muted-foreground">
-      {progress !== null && (
-        <span
-          className="inline-block h-1 w-9 overflow-hidden rounded-sm bg-muted"
-          role="progressbar"
-          aria-label={t.respawnBarLabel}
-        >
-          <span
-            className="block h-full rounded-sm opacity-80"
-            style={{ width: `${(progress * 100).toFixed(1)}%`, background: tokenCssVar('success') }}
-          />
-        </span>
-      )}
+    <span className="flex items-center justify-center gap-1 font-mono text-[9.5px] text-muted-foreground">
       {t.respawnIn} <b className="tabular-nums">{formatSeconds(remainMs)}</b>
     </span>
   )
