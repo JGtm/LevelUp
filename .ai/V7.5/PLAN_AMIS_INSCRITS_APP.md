@@ -43,6 +43,25 @@ chokepoint, MOINS ceux dont il est directement propriétaire, actuellement EN JE
 Cette règle remplace la formulation « état GLOBAL du watcher moins les possédés »
 du lancement, qui compterait les étrangers au groupe.
 
+### Correctif du 2026-08-25 (lot H, décision superviseur GRAVÉE) — les deux régimes
+
+La règle ci-dessus suppose des identités. Sans elles (`LEVELUP_AUTH_MODE=none`,
+la valeur PAR DÉFAUT, ou mode démo, ou aucun user store) il n'existe PAS de
+« possédé en propre » : `OwnsPlayerDirectly` rend donc FAUX pour tout profil, et
+le compteur vaut **tous les joueurs visibles en jeu** — l'instance entière EST le
+cercle de son opérateur. Le comportement d'origine (« sans enforcement, tous les
+profils sont les siens ») mettait la pastille à zéro EN PERMANENCE sur la
+configuration par défaut : une fonctionnalité livrée éteinte (règle n°11).
+
+| Régime | `OwnsPlayerDirectly` | `friends_in_game` |
+|---|---|---|
+| Propriété appliquée (`password` / `xbox` + user store) | vrai pour le xuid lié de l'utilisateur | cercle visible MOINS mes profils |
+| Propriété non appliquée (`none`, démo, pas de store) | toujours faux | tous les joueurs visibles en jeu |
+
+Dans les deux cas la borne reste la LISTE VISIBLE (`OwnedPlayers`, scopée par
+`X-LevelUp-Title`) : le compteur ne voit jamais plus loin que la liste `players`
+servie à côté.
+
 ## Items
 
 - [x] G1 — Go service : remplacer le calcul de `friends_in_game` dans le service
@@ -160,6 +179,33 @@ redirigées vers fichier, `echo $?` immédiat) :
 
 Seul message non vert des sorties : l'avertissement Vite `configLoader: 'native'`
 (`__dirname` dans vite.config.ts), préexistant et hors périmètre.
+
+## LOT H — correctifs de revue (2026-08-25)
+
+Issus de deux relectures adversariales du lot G. Chaque constat a été VÉRIFIÉ SUR
+PIÈCES avant correction ; rien d'autre n'a été introduit.
+
+- [x] H1 (P1) — `bootstrap_ownership.go` : `OwnsPlayerDirectly` rend FAUX quand
+  la propriété n'est pas appliquée (cf. « Correctif du 2026-08-25 » ci-dessus).
+- [ ] H2 (P2) — justification écrite du `return false` (utilisateur sans xuid).
+- [ ] H3 (P2) — contrat : périmètre de titre explicite.
+- [ ] H4 (P2) — identité résolue UNE fois par requête.
+- [ ] H5 — test de jonction sur `buildPresenceService`.
+
+### Journal du lot H
+
+**H1 (2026-08-25)** — constat vérifié : `authz.Enforced` est faux dès
+`AuthMode="none"` (`config.go:241` — c'est le DÉFAUT), et
+`OwnsPlayerDirectly` rendait alors `true` pour tout profil ⇒ `isFriend` toujours
+faux ⇒ pastille à zéro en permanence sur la configuration par défaut. Corrigé en
+`false`, avec le commentaire daté des deux régimes. Le test
+`TestOwnsPlayerDirectly_...` ne verrouille plus l'ancien comportement (l'assertion
+« sans enforcement, tous les profils sont les siens » est retirée) ; deux tests
+neufs le remplacent : `TestOwnsPlayerDirectly_NotEnforced_OwnsNothing` (la
+propriété) et `TestFriendsInGame_NotEnforced_CountsEveryVisiblePlayerInGame`
+(la conséquence : 2 joueurs visibles en jeu → compteur 2, via un
+`BootstrapService` réel en mode `none`). Section décision du plan mise à jour.
+Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly|FilterOwnedPlayers|Presence"` EXIT=0.
 
 ## Découvertes (à consigner, ne pas traiter)
 

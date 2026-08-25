@@ -258,8 +258,7 @@ func TestFriendsInGame_StrangerOutsideGroupIsNeverCounted(t *testing.T) {
 }
 
 // La propriété DIRECTE ne se confond pas avec la visibilité : un co-membre est
-// visible sans être possédé, un admin voit tout sans rien posséder de plus, et
-// une instance sans enforcement considère tous les profils comme les siens.
+// visible sans être possédé, et un admin voit tout sans rien posséder de plus.
 func TestOwnsPlayerDirectly_DistinguishesOwnershipFromVisibility(t *testing.T) {
 	svc := newOwnershipBootstrap("password")
 	alice := &domain.SessionData{Username: strPtr("alice")} // xuid 222
@@ -280,7 +279,54 @@ func TestOwnsPlayerDirectly_DistinguishesOwnershipFromVisibility(t *testing.T) {
 	if svc.OwnsPlayerDirectly(nil, "222") {
 		t.Error("sans session, aucun profil n'est possédé")
 	}
-	if !newOwnershipBootstrap("none").OwnsPlayerDirectly(alice, "999") {
-		t.Error("sans enforcement (mono-utilisateur), tous les profils sont les siens")
+}
+
+// ─── RÉGIME NON APPLIQUÉ (LEVELUP_AUTH_MODE=none, configuration par DÉFAUT) ────
+
+// Sans enforcement, il n'existe AUCUN « possédé en propre » : rien n'est à
+// retrancher du cercle visible. Le test verrouille la moitié « propriété » de la
+// règle du 2026-08-25 ; le suivant verrouille sa conséquence visible.
+func TestOwnsPlayerDirectly_NotEnforced_OwnsNothing(t *testing.T) {
+	svc := newOwnershipBootstrap("none")
+	alice := &domain.SessionData{Username: strPtr("alice")} // xuid 222
+
+	if svc.OwnsPlayerDirectly(alice, "222") {
+		t.Error("sans enforcement, aucun profil n'est possédé EN PROPRE — pas même le sien")
+	}
+	if svc.OwnsPlayerDirectly(alice, "999") {
+		t.Error("sans enforcement, aucun profil n'est possédé EN PROPRE")
+	}
+}
+
+// Instance mono-opérateur (le déploiement par défaut) : tous les joueurs
+// visibles en jeu sont comptés. Sans cette règle la pastille resterait à zéro en
+// permanence sur cette configuration — une fonctionnalité livrée éteinte.
+func TestFriendsInGame_NotEnforced_CountsEveryVisiblePlayerInGame(t *testing.T) {
+	profilesPath := filepath.Join(t.TempDir(), "db_profiles.json")
+	profiles := `{"version":"3.0","profiles":{"halo_infinite":{
+	  "alice":{"db_path":"a.duckdb","xuid":"222"},
+	  "bob":{"db_path":"b.duckdb","xuid":"999"}}}}`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Ni AuthMode ni user store : authz.Enforced est faux, filterOwnedPlayers
+	// rend le parc entier, et personne n'en est propriétaire.
+	cfg := &config.AppConfig{AuthMode: "none", DBProfilesPath: profilesPath}
+	boot := NewBootstrapService(cfg, &mockBootRepo{})
+	svc := NewPresenceService(
+		boot.OwnedPlayers,
+		trackedSource(
+			inGame("alice", "halo_infinite", "Halo Infinite"),
+			inGame("bob", "halo_infinite", "Halo Infinite"),
+		),
+	).WithFriends(boot.OwnsPlayerDirectly)
+
+	snap := svc.GetSnapshot(context.Background(), nil)
+	if snap.FriendsInGame != 2 {
+		t.Errorf("compte = %d, attendu 2 (mode non appliqué : tous les visibles en jeu)", snap.FriendsInGame)
+	}
+	if len(snap.Players) != 2 {
+		t.Errorf("players = %+v, attendu les 2 joueurs visibles", snap.Players)
 	}
 }
