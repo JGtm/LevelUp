@@ -188,7 +188,7 @@ PIÈCES avant correction ; rien d'autre n'a été introduit.
 - [x] H1 (P1) — `bootstrap_ownership.go` : `OwnsPlayerDirectly` rend FAUX quand
   la propriété n'est pas appliquée (cf. « Correctif du 2026-08-25 » ci-dessus).
 - [x] H2 (P2) — justification écrite du `return false` (utilisateur sans xuid).
-- [ ] H3 (P2) — contrat : périmètre de titre explicite.
+- [x] H3 (P2) — contrat : périmètre de titre explicite.
 - [ ] H4 (P2) — identité résolue UNE fois par requête.
 - [ ] H5 — test de jonction sur `buildPresenceService`.
 
@@ -215,6 +215,16 @@ admin sans xuid voit tout le parc. Justification réécrite : le faux tient à
 « rien ne lui appartient en propre », et la conséquence admin (tout le parc en
 jeu compté comme amis) est écrite explicitement, cohérente avec la découverte
 admin du lot G. Comportement inchangé — commentaire seul.
+
+**H3 (2026-08-25)** — vérifié sur pièces : `OwnedPlayers` charge
+`cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))` (`bootstrap_service.go:381`), le parc
+compté est donc celui du TITRE COURANT (en-tête `X-LevelUp-Title`), tandis que
+« en jeu » se lit sur n'importe quel titre suivi (`TitleSlug != ""`, toutes
+sources watcher confondues). Les deux axes sont désormais écrits séparément dans
+le godoc de `domain.PresenceSnapshot` et dans le tag `doc:` du champ. Diff
+généré : 1 ligne dans `openapi.yaml`, 1 ligne dans `generated.ts`.
+Gates : `make openapi-gen` EXIT=0, `make generate-types` EXIT=0,
+`make openapi-check` EXIT=0.
 
 ## Découvertes (à consigner, ne pas traiter)
 
