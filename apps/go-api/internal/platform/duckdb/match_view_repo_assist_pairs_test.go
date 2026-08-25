@@ -13,8 +13,18 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/migration"
 )
+
+// filmCreditOrigin : l'origine `read_origin` d'une ligne produite par le DÉCODEUR DE FILM
+// quand le crédit qu'il lit concorde avec celui du titre. Son propriétaire typé est
+// `games/halo_infinite/film/killsource.OriginCredit` — un paquet TITLE-SPECIFIC, que
+// `platform/duckdb` n'a pas à importer. Elle n'est pas non plus dans `killscope` (qui ne
+// porte que les valeurs partagées par les écrivains crédit) ni dans le ratchet J4R-3 :
+// même traitement que les dix autres fixtures du dépôt qui l'écrivent en clair
+// (migration/, persist/, killcollector/).
+const filmCreditOrigin = "credit-concordant"
 
 // killEventRow : une ligne de `match_kill_events` telle que le test la pose. Les champs
 // nullables sont des pointeurs pour distinguer « non mesuré » de zéro — c'est le sujet
@@ -51,11 +61,17 @@ func newAssistPairsDB(t *testing.T, rows []killEventRow) *sql.DB {
 		(match_id, decode_pass, decoder_rev, publishable, time_ms, victim_gamertag,
 		 feed_killer_xuid, feed_present, assist_known, assist_gamertag, assist_xuid,
 		 killer_damage_pct, assist_damage_pct, read_path, read_origin)
-		VALUES (?, 'pass-1', 'rev-1', ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, 'marche', 'credit-concordant')`
+		VALUES (?, 'pass-1', 'rev-1', ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?)`
+	// La PORTÉE des lignes passe par les constantes de `domain/killscope` et jamais par un
+	// littéral : c'est sur `read_path` que se décide la préséance entre producteurs, et une
+	// copie qui dérive d'un caractère la rend aveugle sans erreur (ratchet J4R-3,
+	// `internal/archlint/no_raw_kill_scope_literal_test.go`). Ici la MARCHE du décodeur de
+	// film : c'est le seul producteur qui connaisse l'assistant — les producteurs crédit
+	// écrivent `OriginCreditOnly`, « le crédit et rien que le crédit ».
 	for i, r := range rows {
 		if _, err := db.Exec(ins, r.matchID, r.publishable, r.timeMS, r.victim,
 			r.killerXUID, r.assistKnown, r.assistGT, r.assistXUID,
-			r.killerPct, r.assistPct); err != nil {
+			r.killerPct, r.assistPct, killscope.ReadPathFilmWalk, filmCreditOrigin); err != nil {
 			t.Fatalf("insert ligne %d: %v", i, err)
 		}
 	}
