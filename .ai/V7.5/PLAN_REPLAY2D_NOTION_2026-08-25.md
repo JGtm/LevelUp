@@ -70,11 +70,20 @@ navigateur (gate visuel = utilisateur, à la fusion).
 
 ## Lot C — `wt/plafonds` (pt 10)
 
-- [ ] C0 (MESURE, stop au verdict) : par carte NON validée, distribution des hauteurs
+- [x] C0 (MESURE, stop au verdict) : par carte NON validée, distribution des hauteurs
   des positions joueurs du corpus d'artefacts cuits (itération film par film — JAMAIS de
   balayage corpus en un processus, leçon bombe RAM) vs hauteur des éléments de géométrie
   rendus. Livrable : tableau par carte (h_max fréquentée, volumes de géométrie au-dessus,
   % de faces rognées), 2 cartes témoins avant/après. STOP — validation superviseur.
+  **FAIT — `.ai/V7.5/MESURE_PLAFONDS_C0.md`** (instrument `cmd/mapplafond-mesure`, planches
+  `.ai/V7.5/dumps/plafonds_c0/`). **VERDICT : non concluant pour le besoin, réfuté comme règle
+  générale.** (a) sur une arène couverte le toit vit dans la même bande que le sol qu'il cache
+  — Aquarius a TOUTE sa matière sous sol+9,9 m, un seuil « h max frequentée + 5 » tombe entre
+  sol+8,1 et sol+14,5 et ne coupe rien ; (b) là où le seuil mord, il mord des cartes VALIDÉES
+  (catalyst 37,5 % de l'image, ridgeline 23,2 %, chasm 14,9 % de ses volumes) ; (c) les cartes
+  réellement non validées sont les 37 fonds Forge, ni mesurables ni re-cuisinables (`.mvar`
+  gitignorés et absents). 3 préalables avant tout C1 : périmètre confirmé par l'utilisateur,
+  `.ai/re_dump/mapvar` restauré, définition de « carte validée » écrite en donnée.
 - [ ] C1 (si concluant) : coupe à h_max + marge 5 m, par étage/prisme (ne jamais rogner
   un niveau praticable sous un plafond), géométrie brute CONSERVÉE à côté de la filtrée,
   cartes validées EXCLUES du rognage. Tests Go du filtre. Gate visuel final = utilisateur
