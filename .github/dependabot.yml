@@ -26,6 +26,24 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # typescript 7.x : bloque tant que l'ecosysteme ne suit pas (verifie le
+      # 2026-08-25 : typescript-eslint 8.68 refuse TS 7.0 en dur — support prevu
+      # TS >= 7.1, https://github.com/typescript-eslint/typescript-eslint/issues/10940 ;
+      # openapi-typescript 7.13 plante aussi, peer "^5.x"). Condition de retrait :
+      # typescript-eslint ET openapi-typescript publient un support TS 7 — retester
+      # alors le bump (tsconfig deja pret : baseUrl retire le 2026-08-25).
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+      # react-table 9.x : le bump seul casse la compilation (15 fichiers sur
+      # l'API v8 - useReactTable, row models). Verifie le 2026-08-25, PR #78
+      # fermee. La migration v9 (useTable, tableFeatures, data/columns readonly)
+      # est un lot dedie post-v7.5 avec gate visuel sur les tableaux. Condition
+      # de retrait : ouverture de ce lot (cf. registre des reports v7.5).
+      - dependency-name: "@tanstack/react-table"
+        update-types:
+          - "version-update:semver-major"
 
   # Backend (Go modules) — apps/go-api
   - package-ecosystem: "gomod"
