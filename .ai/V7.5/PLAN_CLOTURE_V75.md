@@ -90,9 +90,13 @@
       historique, interpretation canonique de `steaktacularMedalIDForTitle`.
 - [ ] D2. Registre : re-statuer chaque ligne ouverte (83 lignes non barrees au 14/08) —
       sortir ce qui est fait, dater ce qui reste.
-- [ ] D3. Containment : `clockOffsets` elargi au-dela de -10 s (~1 h de calcul, machine
-      libre) + oracle de justesse rejouable depuis le lot 5 cartes (Vagabond porte ses
-      3 zones reelles). **DECISION UTILISATEUR en attente depuis le 2026-08-08.**
+- [x] D3. Containment : `clockOffsets`. **CLOS le 2026-08-25** : mesure elargie -10s->-60s
+      sur 8 films = le point etait DEJA resolu le 2026-08-14 (correction exacte `originMS`
+      en production, pas un balayage) ; les 3 films a la borne trouvent un pic interieur,
+      rattachement 57,2 % vs temoin plat 13,4 % (x4,3). Le bloquant du containment n'a
+      jamais ete l'horloge : c'est le taux d'attribution (40,9 %, 64,1 % au mieux vs seuil
+      80 %) et l'absence d'oracle de justesse a 95 %. Oracle de justesse (Vagabond) : reste
+      la vraie porte de reprise, hors v7.5. Registre L13-14 statue.
 - [ ] D4. `make gate-push` complet, puis **UN SEUL merge** `feat/v75` -> `main` (= deploiement
       prod automatique : PREVENIR l'utilisateur avant) et **tag v7.5.0**.
       Note deploiement : au premier demarrage prod, le snapshot est refuse -> lecture live
