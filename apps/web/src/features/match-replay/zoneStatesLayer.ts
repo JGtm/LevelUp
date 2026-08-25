@@ -9,12 +9,17 @@
  * dépôt. Les deux tracent la MÊME forme : le contour vient de `traceZonePath`, jamais d'une
  * seconde copie de la géométrie.
  *
- * CE QUE LE CALQUE MONTRE : la zone TEINTÉE de l'encre du camp qui la tient, la colline ACTIVE
- * en surbrillance, et L'ARC DE LA JAUGE EN DIRECT (schéma 18) : la VALEUR de la jauge à l'image,
- * lue dans la série `gauge` de la zone en escalier — dernière valeur connue, tenue jusqu'au point
- * suivant (une seconde après le dernier de la série). Une zone sans état à cette frame n'est PAS
- * repeinte : elle garde le trait faible du calque statique, et paraît estompée sous celles qui
- * sont tenues.
+ * CE QUE LE CALQUE MONTRE : la zone TEINTÉE de l'encre du camp qui la tient, la zone NON PRISE
+ * d'un contour GRISÉ en retrait, la colline ACTIVE en surbrillance, et L'ARC DE LA JAUGE EN
+ * DIRECT (schéma 18) : la VALEUR de la jauge à l'image, lue dans la série `gauge` de la zone en
+ * escalier — dernière valeur connue, tenue jusqu'au point suivant (une seconde après le dernier
+ * de la série). Une zone sans état à cette frame n'est PAS repeinte : elle garde le trait faible
+ * du calque statique, et paraît estompée sous celles qui sont tenues.
+ *
+ * « NON PRISE » ET « ÉTAT INCONNU » NE SE CONFONDENT PAS, et c'est la raison d'être des deux
+ * traitements ci-dessus. « Non prise » est une MESURE — l'intervalle qui couvre la frame porte
+ * la valeur neutre du canal de propriété (`ZoneSpan.Owner` = `null` côté Go) — et elle se
+ * dessine, en retrait. « État inconnu » est une absence d'intervalle : le calque se tait.
  *
  * CE QUE LE CALQUE NE MONTRE PLUS (2026-08-18, lot C-ter volet 3) : le sommet `progress` de
  * l'intervalle. Le schéma 16 le traçait en arc, une valeur tenue pendant toute la durée de la
@@ -200,6 +205,24 @@ const ZONE_HELD_STROKE_ALPHA = 0.95
 const ZONE_HELD_STROKE_WIDTH = 2.5
 const ZONE_ACTIVE_FILL_ALPHA = 0.3
 const ZONE_ACTIVE_STROKE_WIDTH = 3.5
+/**
+ * ZONE NON PRISE : LE CONTOUR GRISÉ (demande utilisateur du 2026-08-25, « bases non prises :
+ * contour grisé »).
+ *
+ * L'ENCRE ÉTAIT DÉJÀ LA BONNE — le neutre du thème — mais le TRAIT était celui d'une zone
+ * tenue : même opacité (0,95), même épaisseur (2,5). Une base que personne ne tient
+ * s'affirmait donc aussi fort qu'une base gagnée, et ne se distinguait que par sa teinte et
+ * l'absence de remplissage. Elle est maintenant EN RETRAIT : plus fine, plus transparente.
+ * « Personne » est un état faible, il se dessine faible.
+ *
+ * LE SEUIL EST `owner === null`, PAS `held` — et la nuance est du sens. `held` est faux dans
+ * DEUX cas : personne ne tient la zone (une MESURE du film), ou bien quelqu'un la tient mais
+ * la page ne sait pas situer son camp (aucune ligne « moi » au tableau de bord). Le second
+ * n'est pas une zone libre : la griser dirait au lecteur qu'elle est à prendre alors qu'elle
+ * est tenue. Elle garde donc le trait plein, à l'encre neutre.
+ */
+const ZONE_FREE_STROKE_ALPHA = 0.5
+const ZONE_FREE_STROKE_WIDTH = 1.6
 const ZONE_GAUGE_ALPHA = 0.9
 const ZONE_GAUGE_WIDTH = 3
 const ZONE_GAUGE_MIN_RADIUS = 10
@@ -326,26 +349,43 @@ interface ZonePaint {
   px: (p: XY) => XY
   scale: number
   ink: string
-  /** `false` = personne ne tient la zone : LISERÉ SEUL, aucun remplissage. */
+  /**
+   * `false` = pas de camp À TEINTER : LISERÉ SEUL, aucun remplissage. Deux situations
+   * distinctes le produisent — personne ne tient la zone, ou son camp n'est pas situable
+   * (aucune ligne « moi ») — et seule la PREMIÈRE grise le contour (cf. ZONE_FREE_STROKE_*,
+   * qui se décide sur `now.owner`, pas sur ce drapeau).
+   */
   held: boolean
   now: ZoneStateNow
 }
 
-/** Zone tenue : remplissage + liseré à l'encre du camp. Zone active : les deux, renforcés. */
+/**
+ * Zone tenue : remplissage + liseré à l'encre du camp. Zone active : les deux, renforcés.
+ * Zone NON PRISE : contour GRISÉ, en retrait, sans remplissage (cf. ZONE_FREE_STROKE_*).
+ */
 function paintZoneState(
   ctx: CanvasRenderingContext2D,
   e: ObjectiveElementReady,
   p: ZonePaint,
 ): void {
+  // « LIBRE » EST UNE MESURE, pas une absence : `owner === null` est la valeur neutre du canal
+  // de propriété (cf. ZoneSpan.Owner côté Go). Une zone dont AUCUN intervalle ne couvre la
+  // frame n'arrive jamais ici — elle n'est pas repeinte du tout, et c'est voulu : « on ne sait
+  // pas » ne doit pas se lire « personne ne la tient ».
+  const free = p.now.owner === null && !p.now.active
   traceZonePath(ctx, e, p.px, p.scale)
   if (p.held || p.now.active) {
     ctx.globalAlpha = p.now.active ? ZONE_ACTIVE_FILL_ALPHA : ZONE_HELD_FILL_ALPHA
     ctx.fillStyle = p.ink
     ctx.fill()
   }
-  ctx.globalAlpha = ZONE_HELD_STROKE_ALPHA
+  ctx.globalAlpha = free ? ZONE_FREE_STROKE_ALPHA : ZONE_HELD_STROKE_ALPHA
   ctx.strokeStyle = p.ink
-  ctx.lineWidth = p.now.active ? ZONE_ACTIVE_STROKE_WIDTH : ZONE_HELD_STROKE_WIDTH
+  ctx.lineWidth = p.now.active
+    ? ZONE_ACTIVE_STROKE_WIDTH
+    : free
+      ? ZONE_FREE_STROKE_WIDTH
+      : ZONE_HELD_STROKE_WIDTH
   ctx.stroke()
 }
 

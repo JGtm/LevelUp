@@ -22,9 +22,6 @@ import {
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { deadTimeByPlayer, formatDeadTime } from './deadTimeLogic'
-import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
-import { PlayerMark } from './PlayerMark'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
 import { equippedWeapons } from './equippedLogic'
@@ -110,12 +107,6 @@ interface ReplayTeamsProps {
   scoreboard: MatchScoreboardRow[]
   frame: number
   locale: ReplayLocale
-  /**
-   * Marques d'identité par xuid (« ami » — le glyphe « moi » ne se dessine plus, cf.
-   * PlayerMark) — LA MÊME grammaire que la carte et le fil (décision D5). Absentes =
-   * aucune fiche marquée, jamais une marque devinée.
-   */
-  marks?: ReadonlyMap<string, PlayerMarkKind>
   /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
   xuidMeta?: XuidMeta
 }
@@ -125,19 +116,12 @@ interface ReplayTeamsProps {
 // deux rangées d'inventaire, munitions des armes rangées — est SUPPRIMÉE avec son réglage.
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, marks, xuidMeta,
+  doc, scoreboard, frame, locale, xuidMeta,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const groups = useMemo(
     () => groupByTeam(buildPlayers(doc, scoreboard)),
     [doc, scoreboard],
-  )
-  // LE TEMPS MORT EST UN TOTAL DE MATCH : il se calcule UNE FOIS pour toute la colonne, sur
-  // les mêmes joueurs que les fiches, et ne dépend pas de l'image lue. Le recalculer par
-  // fiche et par image ferait balayer toutes les vies de tout le monde à chaque frame.
-  const deadTime = useMemo(
-    () => deadTimeByPlayer(groups.flatMap((g) => g.players), doc),
-    [groups, doc],
   )
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
@@ -189,9 +173,7 @@ export function ReplayTeams({
                 readingFull={readingFull}
                 flashFrames={flashFrames}
                 locale={locale}
-                mark={(marks ?? NO_MARKS).get(p.xuid)}
                 scoreTimeline={scoreTimeline}
-                deadTimeMs={deadTime.get(p.xuid) ?? null}
               />
             ))}
           </div>
@@ -210,19 +192,11 @@ interface PlayerCardProps {
   readingFull: number
   flashFrames: number
   locale: ReplayLocale
-  /** Marque d'identité du joueur (« ami »), ou rien. */
-  mark?: PlayerMarkKind
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
-  /**
-   * TEMPS MORT CUMULÉ du joueur sur tout le match, en millisecondes (`deadTimeLogic`), ou
-   * `null` quand le film ne permet pas de le mesurer. Calculé une fois pour la colonne : la
-   * fiche l'affiche, elle ne le mesure pas — et elle ne remplace jamais `null` par zéro.
-   */
-  deadTimeMs: number | null
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, mark, scoreTimeline, deadTimeMs }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
   // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
@@ -292,12 +266,11 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
       style={style}
       title={equipTitle || undefined}
     >
+      {/* AUCUNE MARQUE D'IDENTITÉ SUR LA FICHE (demande utilisateur du 2026-08-25) : le glyphe
+          « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
+          reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne
+          d'équipe et le nom disent déjà tout ce qu'il y a à savoir. */}
       <div className="flex items-baseline gap-1.5">
-        {/* LA MARQUE AVANT LE NOM, et elle n'en change pas la couleur : le nom dit déjà
-            l'équipe ou la mort, la marque dit l'identité (décision D5). Le glyphe fait 10 px
-            dans une ligne de 11,5 px : la hauteur de la fiche ne bouge pas. Il reste FRÈRE du
-            nom, jamais son parent — la fiche compte ses rangées par la structure. */}
-        <PlayerMark kind={mark} locale={locale} />
         <span
           className="min-w-0 flex-1 truncate text-[11.5px] font-medium"
           style={state.alive ? undefined : { color: tokenCssVar('destructive') }}
@@ -350,40 +323,6 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           />
         )}
       </div>
-      <DeadTimeRow ms={deadTimeMs} locale={locale} />
-    </div>
-  )
-}
-
-/**
- * DeadTimeRow — LE TEMPS MORT CUMULÉ du joueur, en dernière ligne de la fiche.
- *
- * EN BAS, ET C'EST UN CHOIX : c'est la seule ligne de la fiche qui ne change pas avec la
- * lecture. La glisser entre la vitalité et l'inventaire couperait le bloc de l'état
- * courant par un total de match ; en pied de fiche, elle se lit pour ce qu'elle est.
- *
- * ELLE S'AFFICHE TOUJOURS, ET DIT L'UN DES DEUX : une mesure — « 00:00 » compris, un joueur
- * mort zéro fois est une information — ou son REFUS, écrit d'un tiret, quand le film ne permet
- * pas de conclure (`deadTimeLogic` : une vie non rattachée à un joueur vit dans l'un de ses
- * trous, ou bien il n'a aucune vie publiée). Les deux cas occupent la même hauteur FIXE
- * (h-3), et aucun ne dépend de l'état vital : le gabarit constant vivant/mort de la fiche
- * unique tient (fusion du 2026-08-25 : la fiche n'a plus de variante, la ligne est toujours
- * la dernière rangée).
- *
- * LE REFUS N'EST PAS UNE PANNE D'AFFICHAGE, et l'infobulle le dit en toutes lettres. Sans elle,
- * un tiret se lirait comme un bogue ; avec elle, il se lit comme ce qu'il est — le film manque
- * d'un rattachement, et on préfère le taire que de l'inventer.
- */
-function DeadTimeRow({ ms, locale }: { ms: number | null; locale: ReplayLocale }) {
-  const t = REPLAY_TEXT[locale]
-  return (
-    <div className="flex h-3 items-center">
-      <span
-        className="truncate font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
-        title={ms === null ? t.deadTimeUnmeasurable : t.deadTimeLabel}
-      >
-        {t.deadTimeLabel} <span className="tabular-nums">{formatDeadTime(ms)}</span>
-      </span>
     </div>
   )
 }
