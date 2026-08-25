@@ -14,7 +14,6 @@
 //   - GET /monitoring/convergence : backlog d'enrichissement par joueur (lectures seules)
 //   - GET /monitoring/jobs        : jobs asynchrones récents (JobStore)
 //   - GET /monitoring/perf        : agrégats de performance depuis le boot
-//   - GET /monitoring/errors      : logs WARN/ERROR agrégés depuis le boot
 package handlers
 
 import (
@@ -45,10 +44,6 @@ type ConvergenceReportRunner func(ctx context.Context, titleSlug string) (domain
 // PerfStatsRunner retourne les agrégats de performance depuis le boot, filtrés
 // par titre (MT-05 ; implémenté par ServiceRegistry.PerfStats — expvar pur).
 type PerfStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminPerfStats, error)
-
-// ErrorStatsRunner retourne les logs WARN/ERROR agrégés depuis le boot, filtrés
-// par titre (MT-05 ; implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
-type ErrorStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminErrorStats, error)
 
 // DetectionsRunner liste les détections PERSISTÉES avec cycle de vie (vue
 // detections_latest, survit au restart), filtrées. Implémenté par
@@ -82,7 +77,6 @@ type AdminMonitoringHandler struct {
 	overview     MonitoringOverviewRunner
 	convergence  ConvergenceReportRunner
 	perf         PerfStatsRunner
-	errors       ErrorStatsRunner
 	detections   DetectionsRunner             // nil → section détections vide
 	setDetection DetectionStatusRunner        // nil → PATCH 503
 	freshness    FreshnessRunner              // nil → réponse vide
@@ -108,7 +102,6 @@ func NewAdminMonitoringHandler(
 	overview MonitoringOverviewRunner,
 	convergence ConvergenceReportRunner,
 	perf PerfStatsRunner,
-	errors ErrorStatsRunner,
 	detections DetectionsRunner,
 	setDetection DetectionStatusRunner,
 	freshness FreshnessRunner,
@@ -118,7 +111,7 @@ func NewAdminMonitoringHandler(
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
 	return &AdminMonitoringHandler{
-		overview: overview, convergence: convergence, perf: perf, errors: errors,
+		overview: overview, convergence: convergence, perf: perf,
 		detections: detections, setDetection: setDetection, freshness: freshness,
 		resources: resources, crons: crons, sched: sched, jobs: jobStore,
 	}
@@ -145,11 +138,6 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router, opts ...humacore.MountOptio
 		"getAdminMonitoringPerf",
 		"Dashboard monitoring — agrégats de performance depuis le boot : latences API Halo par appel + buckets d'erreurs, phases d'écriture persist par "+
 			"DB, étapes post-sync, fenêtre d'indisponibilité des lectures shared (expvar pur, zéro I/O) (auth admin requis)",
-		"admin"))
-	huma.Get(api, "/monitoring/errors", h.handleGetErrors, humacore.Op(
-		"getAdminMonitoringErrors",
-		"Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon "+
-			"(collecteur mémoire, zéro I/O) (auth admin requis)",
 		"admin"))
 	huma.Get(api, "/monitoring/detections", h.handleGetDetections, humacore.Op(
 		"getAdminMonitoringDetections",
@@ -202,7 +190,6 @@ type adminConvergenceOutput struct {
 	Body domain.AdminConvergenceReport
 }
 type adminPerfOutput struct{ Body domain.AdminPerfStats }
-type adminErrorsOutput struct{ Body domain.AdminErrorStats }
 type adminSchedulerOutput struct {
 	Body AdminSchedulerStatusResponse
 }
@@ -354,18 +341,6 @@ func (h *AdminMonitoringHandler) handleGetPerf(ctx context.Context, in *titleInp
 			"Impossible d'agréger les statistiques de performance.")
 	}
 	return &adminPerfOutput{Body: resp}, nil
-}
-
-// handleGetErrors retourne les logs WARN/ERROR agrégés depuis le boot.
-// GET /admin/monitoring/errors.
-func (h *AdminMonitoringHandler) handleGetErrors(ctx context.Context, in *titleInput) (*adminErrorsOutput, error) {
-	resp, err := h.errors(ctx, titleOrDefaultSlug(in.Title))
-	if err != nil {
-		slog.ErrorContext(ctx, "admin_monitoring: errors failed", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_errors_error",
-			"Impossible d'agréger les erreurs récentes.")
-	}
-	return &adminErrorsOutput{Body: resp}, nil
 }
 
 // handleGetDetections retourne les détections persistées avec leur cycle de vie.

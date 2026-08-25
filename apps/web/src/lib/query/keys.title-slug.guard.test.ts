@@ -168,7 +168,6 @@ const agnosticKeys = new Set<string>([
   'adminMonitoringJobs',
   'adminMonitoringConvergence',
   'adminMonitoringPerf',
-  'adminMonitoringErrors',
   'adminMonitoringDetections',
   'adminMonitoringFreshness',
   'adminMonitoringResources',
