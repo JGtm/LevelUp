@@ -112,6 +112,13 @@ export interface ReplayText {
   sound: string
   soundHint: string
   soundVolume: string
+  /**
+   * LE CURSEUR DE VOLUME QUAND LE SON EST COUPÉ (demande utilisateur du 2026-08-25 : « couper
+   * le son ne doit plus faire disparaître la barre de volume »). Le curseur RESTE, à zéro et
+   * inerte ; ce texte est ce qui l'empêche de se lire comme un réglage cassé — il dit l'état
+   * (zéro) ET ce que fera le retour du son (le niveau réglé revient, il n'est pas perdu).
+   */
+  soundVolumeMutedHint: string
   /** Le son est activé mais tu par la vitesse de lecture — le dire, pas le cacher. */
   soundFastHint: string
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */

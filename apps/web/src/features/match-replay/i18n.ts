@@ -45,6 +45,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     soundHint:
       "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
     soundVolume: 'Volume des sons',
+    soundVolumeMutedHint:
+      'Son coupé : le volume est à zéro. Rallumer le son rend le niveau réglé précédemment.',
     soundFastHint:
       'À cette vitesse de lecture les sons se chevaucheraient : ils reviennent à 2× ou moins.',
     soundCategoriesTitle: 'Sons par catégorie',
@@ -299,6 +301,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     soundHint:
       'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
     soundVolume: 'Sound volume',
+    soundVolumeMutedHint:
+      'Sound is off: the volume sits at zero. Turning the sound back on restores the level you had set.',
     soundFastHint:
       'At this playback speed the sounds would overlap: they come back at 2× or below.',
     soundCategoriesTitle: 'Sounds by category',
