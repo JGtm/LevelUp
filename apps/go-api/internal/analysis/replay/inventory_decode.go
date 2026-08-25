@@ -174,44 +174,47 @@ type KeyframeInventory struct {
 }
 
 // ScanFilmKeyframeInventory décode l'inventaire de tous les keyframes du film de dir.
-//
+// `KeyframeInventoryStats` vit dans inventory.go avec `InventoryCoverage` (seuil de taille).
 // `known` est le prédicat d'appartenance au catalogue de familles d'arme : c'est lui qui borne
 // le bloc de munitions (R4 s'appuie sur la position de la première arme). Sans lui, aucune
-// munition n'est lue.
-//
-// HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+// munition n'est lue. HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de
+// requête.
 func ScanFilmKeyframeInventory(
 	dir string, known map[uint32]bool, grenMax uint32,
-) ([]KeyframeInventory, error) {
+) ([]KeyframeInventory, KeyframeInventoryStats, error) {
+	var st KeyframeInventoryStats
 	if len(known) == 0 {
-		return nil, nil
+		return nil, st, nil
 	}
 	if grenMax == 0 {
 		grenMax = DefaultGrenadeMax
 	}
 	n := filmdec.CountFilmChunks(dir)
+	st.Chunks = n
 	var out []KeyframeInventory
-	read := 0
 	for c := 1; c <= n; c++ {
 		chunk, err := filmdec.ReadFilmChunk(dir, c)
 		if err != nil {
+			st.ChunksUnread++
 			continue
 		}
-		read++
 		for _, p := range filmdec.WalkPackets(chunk) {
 			if p.Type != filmdec.PacketTypeKeyframe {
 				continue
 			}
-			for _, inv := range keyframeInventories(p.Payload(chunk), known, grenMax) {
+			st.Keyframes++
+			invs := keyframeInventories(p.Payload(chunk), known, grenMax)
+			st.Records += len(invs)
+			for _, inv := range invs {
 				inv.TimestampUS, inv.Chunk, inv.PacketIndex = p.TimestampUS, c, p.Index
 				out = append(out, inv)
 			}
 		}
 	}
-	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+	if st.ChunksUnread == st.Chunks {
+		return nil, st, fmt.Errorf("aucun chunk film lisible dans %s", dir)
 	}
-	return out, nil
+	return out, st, nil
 }
 
 // keyframeInventories décode un payload de keyframe, un inventaire par record de biped.

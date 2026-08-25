@@ -2,20 +2,17 @@ import { describe, expect, it } from 'vitest'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import type { ReplayInventoryReady, ReplayTrackReady } from './replayNormalize'
+import type { ReplayTrackReady } from './replayNormalize'
 import { testReplayDoc as doc } from './test/testDoc'
 import {
   buildPlayers,
   colorBySlot,
-  grenadesCarried,
   groupByTeam,
-  inventoryAt,
   loadoutAt,
   markBySlot,
   nameBySlot,
   playerName,
   playerStateAt,
-  selectedGrenade,
   vitalityPresence,
 } from './rosterLogic'
 
@@ -65,11 +62,6 @@ function row(xuid: string, gamertag: string, side: string | null): MatchScoreboa
     melee_kills: null,
     outcome_label: 'Victoire',
   }
-}
-
-/** Un inventaire tel que la frontière le livre : ce qui n'a pas été lu y est un tableau vide. */
-function inv(over: Partial<ReplayInventoryReady> = {}): ReplayInventoryReady {
-  return { t: 0, slot: 1, g: [], am: [], ...over }
 }
 
 describe('buildPlayers', () => {
@@ -307,102 +299,6 @@ describe('loadoutAt', () => {
 
   it('sans loadouts, rend null plutôt qu’un inventaire vide', () => {
     expect(loadoutAt(doc(), 512, 60)).toBeNull()
-  })
-})
-
-describe('inventoryAt', () => {
-  const d = doc({
-    inventory: [
-      // Marqueur de lecture : `gs` (type de grenade sélectionné). Il portait `a` (index de
-      // capacité) jusqu'au schéma 6, qui a RETIRÉ ce champ de l'inventaire — la capacité vit
-      // désormais dans son propre calque `abilities`, avec le RANG et non un index tronqué.
-      // Ces cas ne testent pas la capacité : ils vérifient QUELLE lecture `inventoryAt` rend.
-      { t: 10, slot: 512, g: [0, 2, 0, 0], gs: 4, d: 0 },
-      { t: 200, slot: 512, g: [1, 0, 0, 0] },
-      { t: 10, slot: 513, gs: 9 },
-    ],
-  })
-
-  it('rend la dernière lecture du SLOT, avec son âge', () => {
-    const r = inventoryAt(d, 512, 60)
-    expect(r?.age).toBe(50)
-    expect(r?.state.gs).toBe(4)
-  })
-
-  it('ne lit jamais l’inventaire d’un autre slot', () => {
-    expect(inventoryAt(d, 513, 60)?.state.gs).toBe(9)
-    const solo = doc({ inventory: [{ t: 10, slot: 513, gs: 9 }] })
-    expect(inventoryAt(solo, 512, 5)).toBeNull()
-  })
-
-  it('avant la première image-clé de la vie : la lecture À VENIR, âge NÉGATIF publié tel quel', () => {
-    // Même repli que loadoutAt (décision utilisateur 2026-08-12, au-delà du POC pour les
-    // compteurs) : la dotation de spawn affichée avec son âge « à venir » informe mieux
-    // que vingt secondes de vide. Un slot est une vie : aucun repli ne franchit une mort.
-    const r = inventoryAt(d, 512, 5)
-    expect(r?.age).toBe(-5)
-    expect(r?.state.gs).toBe(4)
-  })
-
-  it('sans inventaire, rend null', () => {
-    expect(inventoryAt(doc(), 512, 60)).toBeNull()
-  })
-})
-
-describe('grenadesCarried', () => {
-  // Les libellés du document sont BILINGUES depuis le schéma v2 : une seule table nomme
-  // les rangs, et c'est le lecteur qui choisit sa langue.
-  const labels = [
-    { en: 'Frag', fr: 'Fragmentation' },
-    { en: 'Plasma', fr: 'Plasma' },
-    { en: 'Dynamo', fr: 'Dynamo' },
-    { en: 'Spike', fr: 'Spike' },
-  ]
-
-  it('n’affiche que les types réellement portés', () => {
-    // Le tableau publié est complet : un zéro y dit « ce type, aucune en réserve ». Montrer
-    // quatre types dont trois à zéro noierait celui qui compte.
-    const got = grenadesCarried(inv({ g: [0, 2, 0, 0] }), labels, 'fr')
-    expect(got).toEqual([{ rank: 1, name: 'Plasma', count: 2 }])
-  })
-
-  it('rend le nom dans la langue du lecteur', () => {
-    expect(grenadesCarried(inv({ g: [2, 0, 0, 0] }), labels, 'fr')[0].name).toBe('Fragmentation')
-    expect(grenadesCarried(inv({ g: [2, 0, 0, 0] }), labels, 'en')[0].name).toBe('Frag')
-  })
-
-  it('sans compteurs lus, ne rend rien — jamais quatre types à zéro', () => {
-    expect(grenadesCarried(inv(), labels, 'fr')).toEqual([])
-  })
-
-  it('sans table de noms, garde le rang plutôt qu’un nom inventé', () => {
-    expect(grenadesCarried(inv({ g: [3, 0, 0, 0] }), undefined, 'fr')[0].name).toBe('rang 0')
-  })
-})
-
-describe('selectedGrenade', () => {
-  it('déduit le type quand il ne peut pas être un autre — et le dit DÉDUIT', () => {
-    expect(selectedGrenade(inv({ g: [0, 0, 2, 0] }))).toEqual({ rank: 2, read: false })
-  })
-
-  it('la LECTURE du film (gs) prime la déduction, et se dit LUE', () => {
-    expect(selectedGrenade(inv({ g: [1, 2, 0, 0], gs: 1 }))).toEqual({ rank: 1, read: true })
-  })
-
-  it('deux types portés sans sélecteur lu : INDÉTERMINÉ, jamais deviné', () => {
-    // L'écran doit le dire (« sél. ? »), pas choisir : deviner afficherait une certitude
-    // qu'on n'a pas.
-    expect(selectedGrenade(inv({ g: [1, 2, 0, 0] }))).toBe('indeterminate')
-  })
-
-  it('un gs qui désigne un rang NON porté ne prime rien — la garde de cohérence du décodeur', () => {
-    // Le décodeur publie gs sous masque == compteurs : ce cas ne doit pas arriver, et s'il
-    // arrivait (artefact d'une autre version), on retombe sur la règle sans lecture.
-    expect(selectedGrenade(inv({ g: [0, 0, 2, 0], gs: 1 }))).toEqual({ rank: 2, read: false })
-  })
-
-  it('ne désigne rien sans lecture', () => {
-    expect(selectedGrenade(inv())).toBeNull()
   })
 })
 

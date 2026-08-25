@@ -207,10 +207,14 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	opt.Loadouts = loadouts
 	// Inventaire complet : MÊMES images-clés, MÊME horloge, même record de biped que les armes
 	// portées. Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
+	inventory, invStats, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
 	if err != nil {
 		slog.Warn("inventaire illisible — rejeu sans grenades ni munitions", "err", err, "filmDir", filmDir)
 		inventory = nil
+	} else {
+		slog.Info("inventaire : lectures de keyframe",
+			"chunks", invStats.Chunks, "chunksIllisibles", invStats.ChunksUnread,
+			"imagesCles", invStats.Keyframes, "records", invStats.Records)
 	}
 	opt.Inventory = inventory
 	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare
@@ -460,8 +464,23 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// l'est : le client déduit ces lignes DE SES PISTES, une entrée sans piste ne rencontrerait
 	// jamais de ligne à décorer (même règle que les tirs, lancers et actions d'objectif).
 	doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(opt.NeutralDeaths, doc.Tracks)
-	doc.Inventory = keepInventoryOfPublishedTracks(
-		buildInventory(opt.Inventory, origin, step), doc.Tracks)
+	builtInv, invDroppedOrigin := buildInventory(opt.Inventory, origin, step)
+	doc.Inventory = keepInventoryOfPublishedTracks(builtInv, doc.Tracks)
+	// COUVERTURE DU CALQUE INVENTAIRE (audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 5),
+	// journalisée comme les autres calques — construction dans inventory.go, avec le type
+	// qu'elle publie.
+	//
+	// L'AFFECTATION EST GARDÉE, comme celles des calques frères (Grapple, FlagCarries, Zones) :
+	// quand l'appelant n'a RIEN fourni à lire — inventaire illisible, cf. le repli `inventory = nil`
+	// de BuildFromFilm —, la couverture reste ABSENTE. Publier {0,0,0,0} affirmerait « lecture
+	// faite, zéro trouvé », qui est le contraire de ce qui s'est passé ; l'ABSENCE dit encore autre
+	// chose, et la doctrine de coverage.go repose sur cette distinction.
+	attachInventoryCoverage(&doc, opt.Inventory, builtInv, invDroppedOrigin)
+	// POURQUOI UNE LECTURE D'INVENTAIRE EST VIDE : le croisement avec le fil des morts se fait
+	// ICI, où les morts et leur decalage d'horloge existent — pas dans le projecteur
+	// (cf. inventory_dead_readings.go).
+	logInventoryEmptyCoverage(doc.Inventory, markInventoryDeadReadings(doc.Inventory, opt.Deaths, own,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount}))
 	// Les rangs de grenade sont publiés dès qu'un calque les référence : l'inventaire
 	// (compteurs portés) OU les lancers (Grenade.Rank). Les conditionner au seul
 	// inventaire laissait des lancers pointer une table absente.

@@ -146,7 +146,16 @@ package replay
 // fusionnes avant nous (regle du depot : un numero par montee, dans l'ordre de fusion). Un v16
 // COMME un v17 se lit donc « a re-cuire » — ni l'un ni l'autre ne porte la serie. Chronique :
 // document_zones.go ; regle et seuils : zone_states_gauge.go.
-const SchemaVersion = 18
+// v19 (2026-08-25, lot 1 « lecture vide ») : `inventory[].empty` — POURQUOI cette lecture ne
+// rend rien (`dead` quand le fil des morts corrobore, `unknown` sinon). Un champ optionnel sur un
+// sous-objet, et pourtant la version monte, pour la raison exacte des montées v13 et v18 : sans
+// lui un artefact AFFIRME, par une lecture nue `{"t":N,"slot":S}`, que le joueur n'a plus rien —
+// et le client, qui retient la lecture la plus recente <= T, EFFACE la fiche pendant ~20 s alors
+// qu'une lecture pleine existait juste avant. 17,4 % des lectures publiees sont dans ce cas
+// (mesure du 2026-08-24). Un artefact v18 doit donc se lire « a re-cuire », pas « a jour » : il
+// ne peut porter aucun marqueur, et la reprise du backfill se fait par SchemaVersion. Chronique,
+// mesure et temoin : inventory.go + inventory_dead_readings.go.
+const SchemaVersion = 19
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
