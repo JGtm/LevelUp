@@ -36,7 +36,20 @@ objectifs, D0 = plan par mode puis STOP validation). Un seul lot construit du Go
 parallele (cache de build partage). Le rendu objectifs (D1+) attend la fusion de A
 (memes calques web).
 
-**Resultats observes** : (en cours — agents lances, CR attendus).
+**Resultats observes** (25/08 soir) : B0 VALIDE sur pieces (ancrage writeArtifactBytes
+prouve, publication apres ecriture reelle seulement ; go B1 tenu jusqu'a la fin des builds
+Go du lot C). D0 VALIDE sur pieces avec 2 corrections de fait confirmees (schema 19 PRIS
+par le lot « lecture vide » d'une session voisine -> cible 20 ; jauge tag 3 = modes a
+zones SIMULTANEES (Bastion), absente en KOTH — l'inverse de l'hypothese du plan parent) ;
+crane Oddball ROUVERT (recette ti=42 + oracle score de portage schema 12) ; VIP [!]
+definitif. GO utilisateur : KOTH+TC+Oddball a finaliser, ordre D6(D-R)->D2->D3->D4.
+LOT A FUSIONNE (A1-A6, 22 fichiers +618/-851) : 2 ancres du plan etaient fausses (A2 =
+ReplayKillFeed pas ReplayCountersBadge ; A4 = boucle rAF ReplayCanvas pas Transport,
+extraction useReplayPlayback, cliquet 777->742) ; A5 = traits du cone = SIGNE de
+l'elevation (drawPitchTick, donnee reelle gardee + infobulle) ; A6 derivable
+(ZoneSpan.Owner null), token divergent-neutral. Gates rejoues au principal : tsc -b 0
+(cache purge), vitest 1083/1083. Nouvelle demande utilisateur A7 (fiche a la mort :
+bordure gauche, compteur centre, jauge retiree) lancee en 2e passe.
 
 **Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
 fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre
