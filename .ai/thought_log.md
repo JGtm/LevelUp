@@ -1,3 +1,25 @@
+## [2026-08-25] Hotfix CI branche : 2 appelants oublies du retrait LegacyAuthInputs (ADR 0023 Phase 5) — Complete
+
+**Contexte** : CI de feat/v75 ROUGE depuis c42624dd5 (antearieure a la fusion csrf-ouvrier,
+verifiee par run) : golangci-lint (typecheck) et Coverage+Baseline echouent sur
+`cmd/diag_matchstats_dump/main.go:71` — appel de `RefreshHaloTokensViaStoreFirst` a
+l'ancienne signature + `auth_platform.LegacyAuthInputs` supprime par la fusion 422ce4613
+(refactor/adr0023-phase5, retrait des fallbacks auth legacy).
+**Decision technique principale** : correction mecanique des DEUX appelants perimes (grep
+exhaustif : il n'y en a que deux) — `cmd/diag_matchstats_dump/main.go:71` (l'echec CI) et
+`cmd/backfill-team-scores/main.go:334` (silencieux en CI mais CRITIQUE : c'est la CLI du
+gate pre-tag « backfill des 80 scores »). Suppression du dernier argument, signature a 5
+parametres conservee telle que Phase 5 l'a definie. Aucun autre changement.
+**Resultats observes** : gofmt -l vide (exit 0) ; go build + go vet des 2 paquets exit 0 ;
+`go build ./...` COMPLET exit 0 (prouve qu'aucun autre appelant ne reste). A noter : le
+build Windows local passait AVANT le fix ?? Non — il echouait aussi, mais aucun gate
+complet n'avait ete rejoue sur l'arbre fusionne apres 422ce4613 ; la CI Linux a servi de
+premier filet, c'est son role (leçon VF-16 reconfirmee).
+**Conclusion / prochaine etape** : fusion --no-ff dans feat/v75, push, CI a re-verifier au
+niveau job (c'est elle qui statue). Question a rendre a la session du lot Phase 5 : comment
+son gate « go build ./... » n'a pas vu ces deux appelants (build scoped ? arbre non
+fusionne ?) — a consigner de son cote.
+
 ## [2026-08-25] Encadre Notion « REPLAY 2D » (11 points) — pilotage 4 lots — En cours
 
 **Contexte** : demande utilisateur : planifier puis piloter l'encadre Notion « REPLAY 2D »
