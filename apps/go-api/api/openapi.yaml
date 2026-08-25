@@ -984,31 +984,6 @@ paths:
       summary: Dashboard monitoring — statuer une détection (Reconnaître / Sourdine / Résoudre) (auth admin requis)
       tags:
         - admin
-  /admin/monitoring/errors:
-    get:
-      operationId: getAdminMonitoringErrors
-      parameters:
-        - explode: false
-          in: query
-          name: title
-          schema:
-            type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminErrorStats'
-          description: Buckets d'erreurs triés par occurrences décroissantes
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-          description: Error
-      summary: Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon (collecteur mémoire, zéro I/O) (auth admin requis)
-      tags:
-        - admin
   /admin/monitoring/freshness:
     get:
       operationId: getAdminMonitoringFreshness
@@ -7178,48 +7153,6 @@ components:
         - generated_at
         - detections
         - open_count
-      type: object
-    AdminErrorBucket:
-      additionalProperties: false
-      properties:
-        count:
-          format: int64
-          type: integer
-        first_seen:
-          type: string
-        last_detail:
-          type: string
-        last_seen:
-          type: string
-        level:
-          type: string
-        message:
-          type: string
-        module:
-          type: string
-        title:
-          type: string
-      required:
-        - level
-        - message
-        - count
-        - first_seen
-        - last_seen
-      type: object
-    AdminErrorStats:
-      additionalProperties: false
-      properties:
-        buckets:
-          items:
-            $ref: '#/components/schemas/AdminErrorBucket'
-          type:
-            - array
-            - "null"
-        generated_at:
-          type: string
-      required:
-        - generated_at
-        - buckets
       type: object
     AdminFreshnessResponse:
       additionalProperties: false

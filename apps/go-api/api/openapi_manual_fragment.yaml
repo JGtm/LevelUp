@@ -1516,11 +1516,6 @@ paths:
       responses:
         '200':
           description: Agrégats count/sum/avg/max par appel/phase/étape
-  /admin/monitoring/errors:
-    get:
-      responses:
-        '200':
-          description: Buckets d'erreurs triés par occurrences décroissantes
   /admin/monitoring/detections:
     get:
       parameters:
