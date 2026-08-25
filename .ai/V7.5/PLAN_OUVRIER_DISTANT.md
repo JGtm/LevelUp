@@ -285,6 +285,42 @@ l'etape 3 empoisonnerait durablement le cache d'artefacts (D3).
 
 ---
 
+## 5bis. Ronde 1 de revue adversariale (2026-08-25) — ce qui a ete corrige, ce qui reste
+
+Verdict d'entree : **0 P0, 4 P1, 4 P2**, et 12 conditions verifiees qui tiennent (alias
+`domain` sans effet de bord, lectures placees avant `closeAll`, aucun elargissement de la
+surface de l'ouvrier, payload borne, seuils de taille).
+
+| # | Constat | Traitement |
+|---|---|---|
+| P1-1 | `openapi.yaml` non regenere — drift PROUVE (1 025 o). Pas cosmetique : `BuildQueuePayload` est `additionalProperties: false`, un validateur strict REFUSERAIT le payload | **corrige** `3a1edbe77` — chaine officielle, +47 l. au contrat, +18 a `generated.ts`, `make openapi-check` exit 0 sur ses deux moities, `tsc -b` exit 0 |
+| P1-2 | Le garde testait `facts.Empty()` : un match au registre SANS participants re-cuisait un artefact identique, verdict qui ne bascule jamais | **corrige** `f269d6bca` — le verdict porte sur `len(Players)` ; test discriminant ajoute |
+| P1-3 | Le predicat prenait « players => lines » pour « lines => players ». Trois vacuites legitimes MALGRE des faits | **corrige** `0a623a414` — renomme `ArtifactHasPlayerCounters` (il dit ce qu'il constate), les deux sens de l'implication ecrits, residu borne |
+| P1-4 | Rien n'empechait un artefact COMPLET d'etre ecrase par un appauvri (jobs deja en file a la bascule) — perte DEFINITIVE | **corrige** `ed2d8c5b5` — `keepRicherArtifact` au rangement, 3 tests (regression refusee, enrichissement accepte, premier depot accepte) |
+| P1-5 | *(trouve en traitant P2-1)* `buildAll` figeait aussi, sur le chemin qui a les faits en main | **corrige** `ed2d8c5b5`+`R1-5` — regle centralisee `etatArtefact`, lue par les deux chemins post-sync |
+| P2-2 | Compteur `appauvris` incremente AVANT la mise en file ; resume muet si tout a ete refuse | **corrige** dans `f269d6bca` (comptage apres succes, resume des qu'il y a du travail, compte des refus publie) |
+| P2-3 | Le commentaire nil/non-nil de `Facts` ne decrivait pas la regle reelle | **corrige** dans `0a623a414` |
+| P2-4 | Cas discriminant manquant ; critere de succes E2E derriere un skip | **corrige** (test ajoute) / **consigne** : la couverture CI reelle de ce lot est l'aller-retour du payload et les gardes unitaires, PAS le E2E ouvrier (il SKIPPE sans cache film) |
+| P2-1 | Portee du predicat plus etroite que sa doc | **partiellement corrige** (les DEUX chemins post-sync sont couverts) + **dette ecrite ci-dessous** |
+
+**Portee reelle, sur pieces** — quatre appelants d'`ArtifactUpToDate` :
+
+1. `replayartifacts.enqueueAll` — conscient des faits ;
+2. `replayartifacts.buildAll` — conscient des faits (R1-5) ;
+3. `wire.requireArtifactBeforeSuccess:261` — **schema seul, A DESSEIN** : c'est une verification
+   de PRESENCE avant de valider un `complete`. La rendre consciente des faits ferait echouer un
+   job dont l'artefact est legitimement appauvri (match hors registre) — un faux refus ;
+4. `cmd/levelup/cmd_backfill_replay.go:145` — **schema seul**, fichier tenu par le lot blindage.
+
+**DETTE OUVERTE — le cache DEJA empoisonne.** Aucun chemin ne repare un artefact appauvri qui
+existe deja et dont le match ne sera plus jamais insere : la selection post-sync ne voit que les
+matchs INSERES d'un cycle. Aujourd'hui c'est sans objet (l'ouvrier n'a jamais tourne en prod, et
+les 34 artefacts du cache ont ete cuits localement), mais ca le deviendra des la premiere passe
+d'ouvrier. **Condition de reprise** : une passe de rattrapage explicite — `levelup
+backfill-replay --only-existing` etendu au critere « a jour MAIS sans compteurs de joueur alors
+que la base a des lignes » — qui depend elle-meme de la bombe RAM `NamedEventsFrom` (§6.1) pour
+etre executable en masse. A ouvrir AVANT la premiere activation prod de l'ouvrier, pas apres.
+
 ## 6. Decouvertes non traitees (consignees, PAS corrigees)
 
 1. **Bombe RAM a la cuisson avec faits** — `NamedEventsFrom`/`incrementTimes`, OOM ~26 Go,
