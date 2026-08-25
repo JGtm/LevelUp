@@ -106,6 +106,27 @@ var sharedReadAllowlist = []sharedReadAllowEntry{
 	},
 }
 
+// isGoCommentLine : ligne de commentaire ligne-à-ligne. Le garde-rail juge le
+// CODE, pas la prose — sans ça il attrape ses propres explications (« passer par
+// X, PAS Y »), ce qui est précisément le travers qu'il combat. Limite assumée :
+// les commentaires de bloc /* */ ne sont pas reconnus (le style Go du dépôt les
+// n'utilise pas) ; une occurrence qui y serait cachée déclencherait un faux
+// positif, à traiter par l'allowlist.
+func isGoCommentLine(line string) bool {
+	return strings.HasPrefix(strings.TrimSpace(line), "//")
+}
+
+// containsInCode cherche needle hors des lignes de commentaire — « exiger
+// l'APPEL réel, pas sa mention » (revue R1).
+func containsInCode(body, needle string) bool {
+	for _, line := range strings.Split(body, "\n") {
+		if !isGoCommentLine(line) && strings.Contains(line, needle) {
+			return true
+		}
+	}
+	return false
+}
+
 // isSharedReadAllowed indique si une occurrence est couverte par une exception.
 func isSharedReadAllowed(rel, construct, line string) bool {
 	for _, a := range sharedReadAllowlist {
@@ -124,11 +145,14 @@ func TestSharedBestEffortReadsUseRecoveringReader(t *testing.T) {
 	for _, f := range sharedReadRecoveryProtectedFiles {
 		body := readProtectedFile(t, root, f.rel)
 
-		if f.mustCall != "" && !strings.Contains(body, f.mustCall) {
-			t.Errorf("%s n'appelle plus %s : la lecture shared best-effort a perdu sa reprise "+
-				"sur invalidation (cf. platform/duckdb/read_recovery.go)", f.rel, f.mustCall)
+		if f.mustCall != "" && !containsInCode(body, f.mustCall) {
+			t.Errorf("%s n'appelle plus %s (hors commentaire) : la lecture shared best-effort a perdu "+
+				"sa reprise sur invalidation (cf. platform/duckdb/read_recovery.go)", f.rel, f.mustCall)
 		}
 		for i, line := range strings.Split(body, "\n") {
+			if isGoCommentLine(line) {
+				continue
+			}
 			for construct, why := range sharedReadForbiddenConstructs {
 				if !strings.Contains(line, construct) || isSharedReadAllowed(f.rel, construct, line) {
 					continue
@@ -167,17 +191,32 @@ func TestLoadPveStatsSignatureIsRecoveryTyped(t *testing.T) {
 // SITE d'appel : shared_matches_v2 est géré par un sharedprovider, sa reprise doit
 // être déclarée ReopenCacheOnly. Avec ReopenAllowed, une ré-ouverture RO émise dans
 // la fenêtre de swap peut faire échouer l'OpenReadWrite du provider (StateError).
+// Le contrôle porte sur la LIGNE D'APPEL, pas sur le fichier : une prose du type
+// « ReopenCacheOnly, PAS ReopenAllowed » doit rester écrivable sans faire rougir
+// le gate (faux positif attrapé au premier run des gates R1).
 func TestProviderManagedReadIsCacheOnly(t *testing.T) {
+	const rel = "internal/ops/media_associate.go"
 	root := findRepoRoot(t)
-	body := readProtectedFile(t, root, "internal/ops/media_associate.go")
+	body := readProtectedFile(t, root, rel)
 
-	if !strings.Contains(body, "ReopenCacheOnly") {
-		t.Error("internal/ops/media_associate.go doit déclarer ReopenCacheOnly : shared_matches_v2 " +
-			"est géré par un sharedprovider, une ouverture RO pendant le swap casse l'OpenReadWrite")
+	calls := 0
+	for i, line := range strings.Split(body, "\n") {
+		if isGoCommentLine(line) || !strings.Contains(line, "OpenRecoveringReader(") {
+			continue
+		}
+		calls++
+		if !strings.Contains(line, "ReopenCacheOnly") {
+			t.Errorf("%s:%d — l'appel doit déclarer ReopenCacheOnly : shared_matches_v2 est géré par "+
+				"un sharedprovider, une ouverture RO pendant le swap fait échouer son OpenReadWrite "+
+				"(provider → StateError, lectures shared en 503)", rel, i+1)
+		}
+		if strings.Contains(line, "ReopenAllowed") {
+			t.Errorf("%s:%d — ReopenAllowed est interdit sur un chemin géré par un sharedprovider "+
+				"(cf. read_recovery.go, section INVARIANT)", rel, i+1)
+		}
 	}
-	if strings.Contains(body, "ReopenAllowed") {
-		t.Error("internal/ops/media_associate.go déclare ReopenAllowed : interdit sur un chemin géré " +
-			"par un sharedprovider (cf. read_recovery.go section INVARIANT)")
+	if calls == 0 {
+		t.Errorf("aucun appel OpenRecoveringReader( trouvé dans %s — garde-rail à mettre à jour", rel)
 	}
 }
 
