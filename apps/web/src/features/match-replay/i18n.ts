@@ -45,6 +45,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     soundHint:
       "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
     soundVolume: 'Volume des sons',
+    soundVolumeMutedHint:
+      'Son coupé : le volume est à zéro. Rallumer le son rend le niveau réglé précédemment.',
     soundFastHint:
       'À cette vitesse de lecture les sons se chevaucheraient : ils reviennent à 2× ou moins.',
     soundCategoriesTitle: 'Sons par catégorie',
@@ -59,7 +61,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
-      "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
+      "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes. Un trait court se pose à la POINTE du cône quand la visée n'est pas à plat : vers l'extérieur si le joueur lève la tête, vers l'intérieur s'il pique. Le cône raccourcit dans les deux cas — sa longueur seule ne les distinguerait pas.",
     layerZones: 'Zones',
     layerZonesHint:
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
@@ -178,9 +180,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     playerScoreLive: "Score personnel à l'instant lu",
     countersLive: "Frags / morts / assistances à l'instant lu",
     countersMatch: 'Frags / morts / assistances du match',
-    deadTimeLabel: 'Temps mort',
-    deadTimeUnmeasurable:
-      'Non mesurable : des vies du film ne sont pas rattachées aux joueurs',
     scoreBannerLabel: "Score des équipes à l'instant lu",
     scoreBannerAlly: 'Équipe alliée',
     scoreBannerEnemy: 'Équipe adverse',
@@ -302,6 +301,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     soundHint:
       'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
     soundVolume: 'Sound volume',
+    soundVolumeMutedHint:
+      'Sound is off: the volume sits at zero. Turning the sound back on restores the level you had set.',
     soundFastHint:
       'At this playback speed the sounds would overlap: they come back at 2× or below.',
     soundCategoriesTitle: 'Sounds by category',
@@ -316,7 +317,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:
-      'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
+      'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds. A short tick sits at the TIP of the cone when the aim is not level: outwards when the player looks up, inwards when they look down. The cone shortens either way — its length alone could not tell them apart.',
     layerZones: 'Zones',
     layerZonesHint:
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
@@ -434,8 +435,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     playerScoreLive: 'Personal score at the moment being played',
     countersLive: 'Kills / deaths / assists at the moment being played',
     countersMatch: 'Kills / deaths / assists for the whole match',
-    deadTimeLabel: 'Time dead',
-    deadTimeUnmeasurable: 'Not measurable: some lives in the film are not bridged to players',
     scoreBannerLabel: 'Team scores at the moment being played',
     scoreBannerAlly: 'Allied team',
     scoreBannerEnemy: 'Enemy team',
