@@ -81,9 +81,11 @@ func buildPveTestFile(t *testing.T) string {
 }
 
 // buildPveTestReader ouvre un lecteur auto-réparant sur une shared_pve peuplée.
+// ReopenAllowed : profil de prod pour shared_pve — aucun sharedprovider ne gère
+// ce chemin, la reprise a donc le droit d'ouvrir un handle RO neuf.
 func buildPveTestReader(t *testing.T) *duckdbpkg.RecoveringReader {
 	t.Helper()
-	reader, err := duckdbpkg.OpenRecoveringReader(buildPveTestFile(t))
+	reader, err := duckdbpkg.OpenRecoveringReader(buildPveTestFile(t), duckdbpkg.ReopenAllowed)
 	if err != nil {
 		t.Fatalf("OpenRecoveringReader shared_pve: %v", err)
 	}

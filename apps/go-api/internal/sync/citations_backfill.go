@@ -45,6 +45,13 @@ import (
 // premier cycle après un restart. Le reader ré-ouvre et rejoue la lecture une
 // fois (read_recovery.go).
 //
+// ReopenAllowed, et c'est vérifié (revue R1) : shared_pve n'est géré par AUCUN
+// sharedprovider — le serveur ne l'ouvre en RW qu'au boot pour les migrations
+// (cmd/server/main.go), jamais en régime établi. Il n'y a donc pas de B-swap à
+// perdre ici, et la reprise a le droit d'ouvrir un handle RO neuf : c'est même
+// indispensable, puisque le propriétaire qui ferme le handle SUPPRIME l'entrée
+// de cache (le mode cache-only ne récupérerait rien sur ce chemin).
+//
 // Dégradation gracieuse — retourne nil sans échec quand :
 //   - pvePath vide ;
 //   - le fichier n'existe pas (titre sans Firefight) ;
@@ -62,7 +69,7 @@ func OpenPveReadForCitations(ctx context.Context, pvePath string) *duckdbpkg.Rec
 			"path", pvePath, "err", err)
 		return nil
 	}
-	reader, err := duckdbpkg.OpenRecoveringReader(pvePath)
+	reader, err := duckdbpkg.OpenRecoveringReader(pvePath, duckdbpkg.ReopenAllowed)
 	if err != nil {
 		slog.WarnContext(ctx, "citations: ouverture shared_pve échouée — stats PvE ignorées",
 			"path", pvePath, "err", err)
