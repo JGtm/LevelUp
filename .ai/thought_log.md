@@ -9717,6 +9717,265 @@ débloque tout est le **nommage des vies que nulle mort ne termine** (§7.2 du v
 l'élargissement de la fenêtre à 500 ms. Hypothèse restante la plus prometteuse : sur `64e8adfa`,
 sept vies se terminent entre 744 s et 750 s sans qu'aucune mort ne l'explique — candidat naturel,
 la réinitialisation d'après-capture du CTF ; à corréler sur les 129 CTF du cache.
+## [2026-08-25] Recovery lectures shared best-effort — IndexMedia + citations pve
+
+**Statut** : Complété (branche `fix/shared-read-recovery` depuis `origin/main` `97a109b0d`,
+worktree dédié). Pas de merge ni de push : rendu au superviseur.
+
+**Le trou, et il était structurel.** `duckdb.OpenReadForQuery(path)` rend un INSTANTANÉ du
+`*sql.DB` porté par le wrapper `*DB` au moment de l'appel. Quand il l'a EMPRUNTÉ au cache
+process (`LookupCachedDB`), l'emprunt est NON POSSÉDANT — aucun incrément de refCount, release
+no-op. Le propriétaire peut donc fermer le `*sql.DB` sous les pieds de l'emprunteur, qui voit
+« sql: database is closed » PENDANT sa requête ou son itération. Les deux familles mesurées en
+prod sont ce cas, avec deux propriétaires différents :
+
+- **IndexMedia** (~67 ERROR en août, `load match windows: query match_registry` sur
+  shared_matches_v2) : le propriétaire est le pool, et c'est le B-swap RO→RW
+  (`PlayerDB.PrepareForSharedSwap`, ADR 0016) qui ferme le handle RO pour laisser le Provider
+  ouvrir en RW.
+- **Citations pve** (372 WARN, `BackfillMatchCitations: pve_stats` sur shared_pve) : CAUSE
+  RACINE = câblage. `OpenPveReadForCitations` (citations_backfill.go:42) capturait l'instantané
+  UNE fois et le gardait pour TOUTE la boucle des matchs de `BackfillMatchCitations`. Or
+  shared_pve n'est tenu par personne en régime établi — le serveur ne l'ouvre en RW qu'au boot
+  pour les migrations (cmd/server/main.go:1705) — donc chaque post-sync joueur l'ouvre
+  lui-même, et `RunPostSync` (ADR 0027) tourne avec `PostSyncParallelism = 0`, c'est-à-dire
+  SANS limite de parallélisme entre joueurs (sync/v2/cycle.go:29). Le premier joueur arrivé
+  possède le refCount, les suivants empruntent ; quand le propriétaire finit sa boucle, son
+  release supprime l'entrée de cache et ferme le `*sql.DB` — les autres, encore dans la leur,
+  lisent une handle morte. D'où l'intermittence (~40 % des passes) et sa présence dès le
+  premier cycle après un restart. Ce n'était donc ni un handle caché périmé, ni un B-swap.
+
+**Décision technique.** Un seul helper canonique, `duckdb.RecoveringReader`
+(`internal/platform/duckdb/read_recovery.go`) : il garde le CHEMIN et non l'instantané, et
+`Do(ctx, fn)` rejoue `fn` UNE fois après ré-ouverture quand l'erreur est
+`IsInvalidatedError` (WARN sur la reprise, ERROR si le retry échoue — même registre que
+`WithReopenOnInvalidated`). Aucun helper existant ne couvrait « handle invalidée en cours de
+requête » : `WithReopenOnInvalidated` et les variantes `*Recovered` s'appliquent à un `*DB`
+possédé, pas à un instantané emprunté.
+
+**Alternative écartée, et c'est important** : rendre l'emprunt POSSÉDANT (refCount++ dans
+`OpenReadForQuery`) supprimerait la classe entière… en cassant le B-swap —
+`pdb.Shared.Close()` deviendrait un simple décrément, le fichier resterait tenu en RO et
+l'`OpenReadWrite` du Provider échouerait en « different configuration ». Le modèle assumé
+reste « le swap gagne, le lecteur se répare ». Consigné dans l'en-tête du helper.
+
+**Garde-rail** : `internal/sync/shared_read_recovery_routing_test.go` (scan statique, sans tag
+`integration`, donc dans le gate par défaut) — les 3 fichiers corrigés ne doivent plus appeler
+`OpenReadForQuery(`, et `loadPveStats` doit prendre un `*duckdbpkg.RecoveringReader`. Le vrai
+verrou de la famille citations est le TYPE : on ne peut plus lui passer un `*sql.DB` capturé.
+Le garde-rail a été vérifié PAR L'ÉCHEC (sonde temporaire réintroduisant le motif → rouge).
+
+**Frères vérifiés sur pièces, pas traités** : les autres lectures de `buildCitationContext`
+(sharedDB, playerDB) passent par `SharedAccess.Read` et son drain lecteurs
+(`outstandingReads`) — le swap attend, elles ne sont pas exposées. Les deux autres accès de
+`media_associate.go` visent shared_social (hors périmètre) et sont des écritures.
+
+**Résultats** (séquence rejouée intégralement à froid sur `d69a0a03e`, après purge des
+process orphelins) : gofmt 0 fichier non formaté, `go build ./...` 0, `go vet ./...` 0,
+`go test ./...` 0, `go test -tags=integration -p 1` sur sync/persist/duckdb/ops 0
+(16 paquets ok), `golangci-lint --new-from-merge-base=origin/main` 0 issue. Les deux tests
+de reprise (unitaire dans platform/duckdb, bout-en-bout dans internal/sync) reproduisent la
+fermeture concurrente et prouvent la ré-ouverture ; le garde-rail a été validé par l'échec.
+
+**Flake consigné, pas corrigé** : `TestStartImport_HappyPathReturns202WithJobID`
+(`internal/api/handlers`) est sorti rouge sur 2 runs de suite complète, avec le symptôme
+`testing.go:1464: TempDir RemoveAll cleanup: ... Le répertoire n'est pas vide`, précédé de
+`jobs.Store: write error path=...jobs.json ... utilisé par un autre processus`. Aucune
+assertion du test ne casse : il lance un job ASYNCHRONE (202 + job_id) et ne l'attend pas,
+donc `t.TempDir()` court contre la goroutine qui écrit encore `jobs.json`. Protocole
+doctrine appliqué : rejoué SEUL ×3 → vert ; rouge uniquement en suite complète → flake
+concurrent connu, on consigne. Confirmé ensuite par 3 runs de suite complète verts puis par
+la séquence rejouée à froid — la charge des process orphelins de la session interrompue
+était l'aggravant. Le chemin de code touché par ce lot n'est pas atteint dans ce test
+(`recomputeCitations` sort avant l'ouverture pve : `matchIDs` vide, `citations_backfilled=false`).
+
+**Découvertes consignées (non traitées)** : `ops.IndexMedia` (media.go:152-163) emprunte
+shared_social via `LookupCachedDB` avec un fallback `sql.Open` nu — même classe d'emprunt
+non possédant, plus un bare connect hors provider ; `ops/healthcheck.go:224` ouvre chaque DB
+par un `sql.Open` direct hors cache (échouerait en « different configuration » si la DB est
+tenue RW). `internal/sync/citations.go` reste un god-file (700 → 711 L, seuil 500) : dette
+préexistante, découpage hors périmètre.
+
+**Revue adversariale R1 — le correctif avait lui-même un défaut bloquant.** Deux relecteurs
+frais, constats convergents. Le helper est sain sur la concurrence interne (générations,
+pas de fuite, Close idempotent, rejouabilité aux 2 sites), mais la STRATÉGIE DE
+RÉ-RÉSOLUTION portait un P0 : sur shared_matches_v2, quand `swapToRW` ferme le dernier
+handle RO (`provider_writer.go:136`), notifie (`:160`) puis appelle `OpenReadWrite`
+(`:162`), mon `refresh` tombait en cache MISS et **ouvrait un handle RO neuf**. S'il gagne
+la course contre l'`OpenReadWrite`, le provider part en `StateError` → lectures shared en
+`ErrSwapFailed`/503 + burst d'écriture abandonné jusqu'au `retryReopenLoop`. Et un
+`RecoveringReader` est INVISIBLE du drain lecteurs (`readersWG`) sur lequel le swap
+s'appuie. C'est aussi une violation frontale de l'invariant que `provider.go:52-55`
+documente : « ce provider est l'unique owner du handle DuckDB pour un chemin donné ».
+J'avais donc échangé une lecture qui échoue (auto-guérissante) contre un risque de casser
+le swap — nettement pire. La famille pve n'était pas exposée (aucun `OpenReadWrite` sur
+shared_pve en régime établi).
+
+**Décision : voie (b), et pourquoi pas (a).** La voie (a) — faire lire le site media par le
+canal DRAINÉ du provider (`Provider.Get`, où le swap ATTEND le lecteur) — est
+architecturalement supérieure et supprimerait l'invalidation de ce site. Elle est
+plumbable : `cmd/server/sync_v2_wiring.go` expose déjà `deps.Cfg.SharedProvider.Get` sous
+forme de `SharedReader`. Mais elle exige de faire descendre le provider jusqu'à `ops` :
+nouveau champ dans `MediaIndexOptions`, 4 sites d'appel dans `internal/service`, et une
+option de construction sur des services qui n'ont aujourd'hui AUCUN accès à `cfg`
+(`NewMediaService(repo, timezone, opts...)`) — 6+ fichiers. Le créneau de build étant tenu
+par un autre lot, livrer ce refactor sans pouvoir le compiler serait pire que le défaut
+qu'il corrige. Voie (b) retenue : `ReopenPolicy` explicite à la construction —
+`ReopenCacheOnly` (media : la reprise n'emprunte QUE `LookupCachedDB`, l'entrée `rw:` posée
+par le swap comptant ; cache miss → erreur d'origine, best-effort d'avant le helper) et
+`ReopenAllowed` (pve, où le propriétaire SUPPRIME l'entrée de cache — le mode cache-only ne
+récupérerait rien). L'invariant est écrit dans l'en-tête du helper, et `current()` applique
+la policy lui aussi (sinon un `Do` ultérieur rouvrait ce que la reprise s'interdit). Voie
+(a) consignée au registre des reports avec son chemin de plomberie exact.
+
+**Autres correctifs de la ronde.** P1 : l'ERROR du retry était un faux positif — après une
+récupération RÉUSSIE, un `sql.ErrNoRows` (match non-Firefight, cas majoritaire) est un
+résultat, pas un incident ; on aurait remplacé 372 WARN/mois par autant d'ERROR. ERROR
+désormais réservé à `IsInvalidatedError(retryErr)`. P2 classe FATAL : `IsInvalidatedError`
+matche aussi « database has been invalidated » / « Failed to delete all rows from index »,
+où le `*sql.DB` n'est PAS fermé ni le cache purgé — la re-résolution rendait LE MÊME
+pointeur mort et le log prétendait une ré-ouverture qui n'avait pas eu lieu. Détection par
+comparaison de pointeur : aucun rejeu, erreur d'origine, log dédié pointant le geste
+correctif ((*DB).Reopen côté PROPRIÉTAIRE) ; en-tête corrigé (il affirmait à tort que la
+re-résolution rend « forcément » un handle vivant). P2 garde-rail : le contrôle initial se
+satisfaisait du MOT « RecoveringReader » dans un commentaire et laissait passer une
+ouverture DuckDB directe — refondu en scan LIGNE À LIGNE interdisant `sql.Open(`,
+`OpenReadForQuery(` et `LookupCachedDB(`, exigeant l'APPEL réel du construct, avec
+allowlist à la ligne près (une seule exception datée : l'emprunt metadata préexistant de
+`citations_backfill.go`) ; test supplémentaire exigeant `ReopenCacheOnly` au site media.
+P2 code mort : `RecoveringReader.Path()` supprimé (0 appelant de prod). Mineur : les
+niveaux de log sont désormais assertés (capture du handler slog par défaut) — c'est ce qui
+verrouille le P1.
+
+**Gates R1 — deux défauts que seul le rejeu pouvait attraper.** La ronde R1 ayant été
+éditée SANS compilateur (créneau machine tenu), le rejeu a servi à quelque chose :
+
+1. *Le garde-rail jugeait la prose.* `TestProviderManagedReadIsCacheOnly` rougissait sur
+   l'arbre CORRECT : il attrapait « ReopenAllowed » dans le COMMENTAIRE de
+   `media_associate.go` (« ReopenCacheOnly, PAS ReopenAllowed ») — précisément le travers
+   « mention au lieu d'appel » que la revue reprochait à la version initiale, reproduit
+   dans son propre correctif. Corrigé : `isGoCommentLine` exclut les lignes de commentaire
+   de TOUS les contrôles, `containsInCode` remplace `strings.Contains` pour `mustCall`, et
+   le contrôle de policy porte sur la LIGNE D'APPEL (numéro de ligne dans le message).
+   Re-vérifié par l'échec avec deux sondes : bascule en `ReopenAllowed` → rouge ;
+   ouverture DuckDB directe réintroduite dans du code → rouge.
+2. *Collision de symbole visible du SEUL gate intégration.* `captureSlog` est déjà déclaré
+   par `match_view_scoreboard_objective_degrade_test.go`, fichier `//go:build integration` :
+   build du paquet `platform/duckdb` cassé sous le tag, invisible du gate par défaut —
+   la classe de collision déjà rencontrée au LOT B (2026-07-03). Renommé `captureSlogText`
+   plutôt que réutilisé : le jumeau vit derrière le tag alors que ce test-ci doit tourner
+   dans le gate PAR DÉFAUT (c'est le verrou du P1). Factoriser demanderait de sortir le
+   helper vers un fichier de test SANS tag — hors périmètre, consigné.
+
+**Verdicts finaux** (séquence complète rejouée à froid sur `2bfee4e2b`, logs
+`scratchpad/gates_r1_final/verdict.log`) : `EXIT_GOFMT=0` (0 fichier non formaté),
+`EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_TEST_UNIT=0`, `EXIT_TEST_INTEGRATION=0` (16 paquets ok,
+`-p 1`), `EXIT_LINT=0` (0 issue). Les 11 tests neufs/durcis tournent dans le gate PAR
+DÉFAUT (`go test ./...`) : 8 `TestRecoveringReader_*` + les 3 du garde-rail ; les 5 tests
+citations pve (dont `TestLoadPveStats_RecoversWhenHandleClosedConcurrently`) tournent dans
+le gate INTÉGRATION. Aucune ligne `^--- FAIL:` dans les deux gates, et le flake connu
+`TestStartImport_HappyPathReturns202WithJobID` n'est pas réapparu.
+
+**Découvertes ajoutées** : duplication `captureSlog`/`captureSlogText` (fusion = sortir le
+helper vers un fichier non taggé) ; `citations_backfill.go:246`
+(`RunBackfillCompositeOnlyCitations`) fait un `OpenReadOnly` direct sur shared, chemin géré
+par le provider — même classe de violation d'invariant que le P0, préexistante et hors
+périmètre, elle mérite son propre lot.
+
+**Ronde 2 — décision d'acceptation datée.** P1, P2 FATAL, garde-rail (4 mutations
+rougissent), code mort et renommage : tous validés, aucun défaut neuf. Le **résidu de
+fenêtre À LA CONSTRUCTION du reader** (cache miss pendant la bascule → `OpenReadForQuery`
+ouvre un RO frais, `read_recovery.go` section INVARIANT) est **ACCEPTÉ le 2026-08-25 par le
+superviseur** : strictement à parité avec l'avant-lot, fenêtre réduite d'une itération
+entière à une seule acquisition, et l'éradication complète = la voie provider déjà
+consignée pour un lot futur. Noté sur place dans l'en-tête du helper, avec le piège à ne
+pas commettre : rendre l'acquisition cache-only priverait de lecture tous les contextes
+SANS provider (CLI, tests, premier appel après boot).
+
+**Micro-ronde R2 — 3 retouches mécaniques.**
+
+1. *Cliquet sur `current()`.* Le relecteur a prouvé que remettre `current()` sur
+   `openLocked()` (au lieu de `resolveLocked()`) laissait TOUS les tests verts :
+   `TestRecoveringReader_CacheOnlyNeverOpensOnMiss` ne faisait qu'un seul `readID` et
+   n'exerçait jamais `current()` avec `r.db == nil`. Une 2e lecture y est ajoutée — après
+   l'échec de reprise le reader est VIDE, et c'est `current()` qui re-résout — avec
+   l'assertion `errNoCachedHandle` + cache toujours vide. La mutation rougit désormais.
+2. *`OpenReadOnly(` interdit sur `media_associate.go`.* C'est la forme moderne de
+   l'incident 2026-06-03 et la classe exacte de la découverte `citations_backfill.go:246`.
+   Le set d'interdits devient PAR FICHIER (socle commun + `alsoForbidden`) : l'interdiction
+   porte sur le site provider sans faire rougir les usages préexistants de
+   `citations_backfill.go`, qui restent une découverte pour leur propre lot.
+3. *Zero-value sûre par construction.* `ReopenAllowed = iota` faisait du PERMISSIF le
+   défaut, en contradiction avec la doc. Ordre inversé : `ReopenCacheOnly` est désormais la
+   zero-value — un oubli ou une struct construite par défaut dégradent vers le sûr. Vérifié
+   sur pièces qu'aucun code ne dépend de la valeur numérique : `r.policy == ReopenCacheOnly`
+   est le SEUL usage (pas de cast, pas de sérialisation, pas de comparaison d'ordre).
+
+**Prochaine étape** : GO GATES ciblé du superviseur (build, vet, gofmt,
+`go test ./internal/platform/duckdb/... ./internal/sync/... ./internal/ops/...`, lint
+new-from-merge-base) — pas de re-passe complète, les changements sont tests + garde-rail +
+réordonnancement de constantes. Puis revue et merge par le superviseur ; aucun run CI sur
+cette branche (pas de push). Voie (a) — lecture media par le canal drainé du provider — à
+ouvrir en lot dédié avec le chemin de plomberie décrit plus haut.
+
+## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
+
+**Statut** : Complété (même worktree `deps-security`). Le push de `dependabot.yml` a
+déclenché un re-scan immédiat des trois écosystèmes (effet documenté : toute modif du
+fichier relance les version updates sans attendre le rendez-vous mensuel) — 3 PRs ouvertes.
+
+**PR #76 (go-minor-patch : kin-openapi 0.147.0, chi 5.3.2, x/crypto 0.55.0,
+modernc.org/sqlite 1.57.0) et PR #77 (npm-minor-patch : 20 bumps)** : CI de PR
+intégralement verte sur les deux (Coverage Baseline et E2E Playwright compris), mergées
+localement sur main en no-ff puis re-validées SUR L'ÉTAT COMBINÉ dans le worktree :
+npm ci OK, tsc -b cache purgé OK, eslint 0 erreur, generate-types zéro diff, vitest
+complet. Une seule poussée de main pour les deux merges + cette branche = un seul deploy.
+
+**PR #78 (react-table 8.21.3 -> 9.1.2)** : fermée sans merge. Le bump seul casse la
+compilation — 15 fichiers sur l'API v8 (`useReactTable`, row models) — une PR rouge par
+construction n'apporte rien. v9 vaut le coup (jusqu'à -86 % de heap retenu, row model
++79 %, tree-shaking opt-in via `tableFeatures()`, `useLegacyTable` transitoire pour
+migrer graduellement) mais c'est un lot dédié post-v7.5 avec gate visuel sur les
+tableaux (Explorer en tête — table entièrement chargée client). Règle ignore Dependabot
+datée sur le major `@tanstack/react-table` (condition de retrait : ouverture du lot),
+ligne au registre des reports v7.5 avec condition de reprise.
+
+**Flake CI observé au passage** : sur le run main du merge js-yaml,
+`TestCareerLive_NilAPIResponse_NotCached` (internal/service) a échoué à 2.00s pile alors
+que le même arbre était vert en CI de branche et que le diff ne touchait aucun fichier
+Go. Rerun du job seul lancé. Si ce test re-flake : suspecter un timeout 2 s trop juste
+sous la charge du runner Coverage (CGO, ./... complet).
+
+**Prochaine étape** : push main (deploy) après verdict du rerun Coverage, surveiller la
+CI du push.
+
+## [2026-08-25] Dependabot — js-yaml high corrigé, bump TypeScript 7 refusé sur pièces
+
+**Statut** : Complété (branche `fix/deps-jsyaml` depuis `origin/main` `781daf0c6`, worktree
+dédié `.claude/worktrees/deps-security` — hotfix sécurité indépendant du chantier v7.5,
+donc PAS depuis `feat/v75`). Merge vers `main` (= deploy prod) laissé au superviseur.
+
+**Point 1 — alerte high js-yaml (CVE-2026-59870, GHSA-5p4m-2wfm-xmqj).** Transitive via
+`openapi-typescript > @redocly/openapi-core`, outillage `generate-types` uniquement — jamais
+exécuté en prod, risque réel quasi nul (CPU quadratique sur YAML hostile `!!omap`). Bump
+lockfile seul 4.3.0 → 4.3.1 par édition ciblée (un `npm update` nu ajoutait 90 lignes de
+churn `libc` dû à npm 11.8 — rejeté pour garder le diff à 3 lignes). L'override `^4.3.0` de
+package.json (posé pour CVE-2026-53550, PR #25) couvrait déjà la plage. Gates : npm ci OK,
+tsc -b cache purgé OK, eslint 0 erreur, vitest 3531 passed, generate-types zéro diff.
+
+**Point 2 — PR #70 dependabot (typescript 6.0.3 → 7.0.2) : NO-GO, vérifié empiriquement.**
+CI de la PR déjà rouge (TS5102 baseUrl supprimé + TS5090 paths non relatifs). TS 7.0.2
+installé dans le worktree pour mesurer l'impact complet : tsc -b passe une fois le tsconfig
+adapté, MAIS `typescript-eslint` 8.68 (dernier publié) refuse TS 7.0 EN DUR (peer
+`<6.1.0`, support prévu TS >= 7.1 — issue typescript-eslint#10940) et `openapi-typescript`
+7.13 plante (peer `^5.x`). Décision : règle `ignore` Dependabot datée sur le major
+typescript (condition de retrait dans le commentaire : typescript-eslint ET
+openapi-typescript publient le support TS 7), tsconfig modernisé dès maintenant (baseUrl
+retiré, paths relatifs, ignoreDeprecations retiré) et validé sous TS 6.0.3 — le jour du
+bump, seul package.json restera à toucher. PR #70 fermée avec le verdict en commentaire.
+
+**Prochaine étape** : CI de branche, puis merge vers main par le superviseur (deploy prod).
+Retest TS 7 quand la condition de reprise est remplie.
 
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 

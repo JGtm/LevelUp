@@ -12,9 +12,12 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 const (
@@ -22,11 +25,10 @@ const (
 	pveTestXUID    = "xuid-pve-player"
 )
 
-// buildPveTestDB crée une shared_pve in-memory (pve_match_stats append-only + vue
+// pveTestDDL — shared_pve minimale (pve_match_stats append-only + vue
 // pve_match_stats_latest, réplique de la migration shared_pve_append_only_v1).
-func buildPveTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	return openFixtureDB(t, `
+func pveTestDDL() string {
+	return `
 CREATE SEQUENCE pve_id_seq;
 -- Fixture ALIGNÉE sur le schéma RÉEL de shared_pve.pve_match_stats (vérifié sur
 -- pièces 2026-07-24 : la colonne est total_enemy_kills, PAS total_kills — la
@@ -52,7 +54,43 @@ CREATE TABLE pve_match_stats (
 CREATE OR REPLACE VIEW pve_match_stats_latest AS
     SELECT * FROM pve_match_stats
     QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
-`)
+`
+}
+
+// buildPveTestFile crée une shared_pve sur DISQUE (et non in-memory) peuplée de
+// la ligne Firefight de référence, puis referme le handle RW pour laisser le
+// cache process vide. Un fichier est indispensable ici : le pipeline citations
+// n'accède plus à shared_pve par un `*sql.DB` capturé mais par un
+// RecoveringReader, qui garde le CHEMIN pour pouvoir ré-ouvrir.
+func buildPveTestFile(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "shared_pve.duckdb")
+	rw, err := duckdbpkg.OpenReadWrite(path)
+	if err != nil {
+		t.Fatalf("OpenReadWrite shared_pve: %v", err)
+	}
+	if err := execScript(t.Context(), rw.SQLDb(), pveTestDDL()); err != nil {
+		_ = rw.Close()
+		t.Fatalf("execScript DDL pve: %v", err)
+	}
+	insertPveRow(t, rw.SQLDb())
+	if err := rw.Close(); err != nil {
+		t.Fatalf("close RW pve: %v", err)
+	}
+	return path
+}
+
+// buildPveTestReader ouvre un lecteur auto-réparant sur une shared_pve peuplée.
+// ReopenAllowed : profil de prod pour shared_pve — aucun sharedprovider ne gère
+// ce chemin, la reprise a donc le droit d'ouvrir un handle RO neuf.
+func buildPveTestReader(t *testing.T) *duckdbpkg.RecoveringReader {
+	t.Helper()
+	reader, err := duckdbpkg.OpenRecoveringReader(buildPveTestFile(t), duckdbpkg.ReopenAllowed)
+	if err != nil {
+		t.Fatalf("OpenRecoveringReader shared_pve: %v", err)
+	}
+	t.Cleanup(reader.Close)
+	return reader
 }
 
 // insertPveRow insère une ligne Firefight de référence pour (pveTestMatchID, pveTestXUID).
@@ -72,8 +110,7 @@ INSERT INTO pve_match_stats (
 // (total_enemy_kills lue telle quelle) et dégradation gracieuse (nil / no rows).
 func TestLoadPveStats(t *testing.T) {
 	ctx := context.Background()
-	pve := buildPveTestDB(t)
-	insertPveRow(t, pve)
+	pve := buildPveTestReader(t)
 
 	stats, err := loadPveStats(ctx, pve, pveTestMatchID, pveTestXUID)
 	if err != nil {
@@ -102,7 +139,7 @@ func TestLoadPveStats(t *testing.T) {
 		t.Errorf("loadPveStats(unknown) = %v, want vide", empty)
 	}
 
-	// pveDB nil (titre sans Firefight / DB absente) → dégradation gracieuse.
+	// reader nil (titre sans Firefight / DB absente) → dégradation gracieuse.
 	nilStats, err := loadPveStats(ctx, nil, pveTestMatchID, pveTestXUID)
 	if err != nil {
 		t.Fatalf("loadPveStats(nil): %v", err)
@@ -137,8 +174,7 @@ func TestBuildCitationContext_MergesPveAndGrenade(t *testing.T) {
 	player := openFixtureDB(t, buildPlayerDDL())
 	seedCtxSharedForPve(t, shared)
 
-	pve := buildPveTestDB(t)
-	insertPveRow(t, pve)
+	pve := buildPveTestReader(t)
 
 	cc, err := buildCitationContext(ctx, shared, player, pve, map[uint64]string{}, pveTestXUID, pveTestMatchID)
 	if err != nil {
@@ -195,5 +231,52 @@ func TestBuildCitationContext_NilPveGraceful(t *testing.T) {
 	}
 	if got := cc.Stats["grenade_kills"]; got != 3 {
 		t.Errorf("Stats[grenade_kills] = %v, want 3 (source match_participants, indépendant du PvE)", got)
+	}
+}
+
+// TestLoadPveStats_RecoversWhenHandleClosedConcurrently est le garde anti-régression
+// des 372 WARN d'août 2026 (`BackfillMatchCitations: pve_stats`, err « sql: database
+// is closed »).
+//
+// Scénario prod reproduit tel quel : le post-sync du joueur A ouvre shared_pve
+// (cache miss → il POSSÈDE le refCount) ; le post-sync du joueur B, lancé en
+// parallèle par RunPostSync (PostSyncParallelism = 0, aucune limite), EMPRUNTE le
+// même handle sans refCount ; A termine sa boucle de matchs et rend son handle,
+// ce qui ferme le `*sql.DB` — B est encore dans la sienne. Avant le fix, toutes les
+// lectures pve_stats restantes de B échouaient jusqu'à la fin de son batch.
+func TestLoadPveStats_RecoversWhenHandleClosedConcurrently(t *testing.T) {
+	ctx := context.Background()
+	path := buildPveTestFile(t)
+
+	// Joueur A : propriétaire du handle (cache miss).
+	ownerDB, ownerRelease, err := duckdbpkg.OpenReadForQuery(path)
+	if err != nil {
+		t.Fatalf("OpenReadForQuery (post-sync joueur A): %v", err)
+	}
+
+	// Joueur B : emprunte le même handle pour toute la durée de son batch.
+	pve := OpenPveReadForCitations(ctx, path)
+	if pve == nil {
+		t.Fatal("OpenPveReadForCitations a rendu nil sur une shared_pve existante")
+	}
+	defer pve.Close()
+
+	if _, err := loadPveStats(ctx, pve, pveTestMatchID, pveTestXUID); err != nil {
+		t.Fatalf("1re lecture du batch: %v", err)
+	}
+
+	// Joueur A termine : entrée de cache supprimée + *sql.DB fermé.
+	ownerRelease()
+	if err := ownerDB.QueryRow(`SELECT 1`).Scan(new(int)); err == nil {
+		t.Fatal("le handle emprunté devait être mort après la fin du joueur A")
+	}
+
+	// Joueur B poursuit sa boucle : le reader doit ré-ouvrir et servir la lecture.
+	stats, err := loadPveStats(ctx, pve, pveTestMatchID, pveTestXUID)
+	if err != nil {
+		t.Fatalf("lecture suivante du batch après fermeture concurrente: %v", err)
+	}
+	if got := stats["total_enemy_kills"]; got != 21 {
+		t.Errorf("total_enemy_kills après récupération = %v, want 21", got)
 	}
 }

@@ -21,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // BackfillMatchCitations calcule et persiste les citations pour une liste de matchs.
@@ -28,16 +29,19 @@ import (
 // metadataDB : connexion à metadata.duckdb (lecture citation_mappings, weapon_labels).
 // sharedDB   : connexion à shared_matches_v2.duckdb (medals, stats, events, weapon_kills).
 // playerDB   : connexion à stats.duckdb du joueur (awards en lecture, match_citations en écriture).
-// pveDB      : connexion RO à shared_pve.duckdb (stats Firefight, type de citation pve_stat).
+// pve        : lecteur auto-réparant sur shared_pve.duckdb (stats Firefight, type
 //
-//	Nil accepté (titre sans Firefight / DB absente) → dégradation gracieuse :
-//	les citations pve_stat restent à 0, aucune erreur (cf. loadPveStats).
+//	de citation pve_stat). RecoveringReader et NON *sql.DB : la boucle ci-dessous
+//	dure le temps du batch et le handle peut être fermé sous ses pieds par un
+//	post-sync concurrent (cf. OpenPveReadForCitations). Nil accepté (titre sans
+//	Firefight / DB absente) → dégradation gracieuse : citations pve_stat à 0.
 //
 // xuid       : identifiant Xbox du joueur.
 // matchIDs   : liste des match_id à traiter (triés en interne par start_time ASC).
 func BackfillMatchCitations(
 	ctx context.Context,
-	metadataDB, sharedDB, playerDB, pveDB *sql.DB,
+	metadataDB, sharedDB, playerDB *sql.DB,
+	pve *duckdbpkg.RecoveringReader,
 	xuid string,
 	matchIDs []string,
 ) error {
@@ -80,7 +84,7 @@ func BackfillMatchCitations(
 
 	written, skipped := 0, 0
 	for _, matchID := range sorted {
-		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, pveDB, weaponNames, xuid, matchID)
+		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, pve, weaponNames, xuid, matchID)
 		if err != nil {
 			slog.WarnContext(ctx, "BackfillMatchCitations: context", "match_id", matchID, "err", err)
 			skipped++
@@ -133,7 +137,8 @@ func BackfillMatchCitations(
 // buildCitationContext charge toutes les données du match pour le moteur.
 func buildCitationContext(
 	ctx context.Context,
-	sharedDB, playerDB, pveDB *sql.DB,
+	sharedDB, playerDB *sql.DB,
+	pve *duckdbpkg.RecoveringReader,
 	weaponNames map[uint64]string,
 	xuid, matchID string,
 ) (domain.CitationContext, error) {
@@ -160,9 +165,9 @@ func buildCitationContext(
 	// les citations de type pve_stat (grunt_kills, elite_kills, boss_kills,
 	// total_enemy_kills, ...) restaient toujours à 0. On les injecte ici dans le
 	// même map Stats que le moteur consulte (dispatchFull, cas pve_stat).
-	// Dégradation gracieuse : pveDB nil / match non-Firefight / DB périmée →
+	// Dégradation gracieuse : pve nil / match non-Firefight / DB périmée →
 	// pveStats vide, WARN best-effort, aucune erreur fatale.
-	pveStats, err := loadPveStats(ctx, pveDB, matchID, xuid)
+	pveStats, err := loadPveStats(ctx, pve, matchID, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "BackfillMatchCitations: pve_stats", "match_id", matchID, "err", err)
 	}
@@ -373,12 +378,16 @@ LIMIT 1`
 // total_kills (nom réel côté shared_pve).
 //
 // Dégradation gracieuse (BUG A, I7) :
-//   - pveDB nil (titre sans Firefight / DB absente) → (nil, nil) ;
+//   - pve nil (titre sans Firefight / DB absente) → (nil, nil) ;
 //   - match non-Firefight (aucune ligne PvE) → (nil, nil), cas normal ;
 //   - vue absente / autre erreur SQL → (nil, err) : le caller logge WARN et
 //     poursuit (les citations pve_stat restent à 0, pas d'échec du pipeline).
-func loadPveStats(ctx context.Context, pveDB *sql.DB, matchID, xuid string) (map[string]float64, error) {
-	if pveDB == nil {
+//
+// Lecture via RecoveringReader.Do et NON via un `*sql.DB` capturé au début du
+// batch : cause racine des WARN « pve_stats: sql: database is closed » d'août
+// 2026, détaillée dans OpenPveReadForCitations (citations_backfill.go).
+func loadPveStats(ctx context.Context, pve *duckdbpkg.RecoveringReader, matchID, xuid string) (map[string]float64, error) {
+	if pve == nil {
 		return nil, nil
 	}
 	const q = `
@@ -398,10 +407,12 @@ WHERE match_id = ? AND xuid = ?
 LIMIT 1`
 
 	var grunt, elite, jackal, hunter, brute, skimmer, sentinel, marine, boss, total int
-	err := pveDB.QueryRowContext(ctx, q, matchID, xuid).Scan(
-		&grunt, &elite, &jackal, &hunter, &brute,
-		&skimmer, &sentinel, &marine, &boss, &total,
-	)
+	err := pve.Do(ctx, func(db *sql.DB) error {
+		return db.QueryRowContext(ctx, q, matchID, xuid).Scan(
+			&grunt, &elite, &jackal, &hunter, &brute,
+			&skimmer, &sentinel, &marine, &boss, &total,
+		)
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil // match non-Firefight : aucune ligne PvE, comportement normal
 	}
