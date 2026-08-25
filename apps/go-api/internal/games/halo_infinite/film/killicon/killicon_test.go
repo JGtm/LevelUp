@@ -329,7 +329,10 @@ func TestEnteteAnnonceLeBonNombreDeRegles(t *testing.T) {
 // consigner.
 func TestCouvertureParClasse(t *testing.T) {
 	attendu := map[damagetag.Class][2]int{ // classe -> {publiables, avec icone}
-		damagetag.ClassArme:     {114, 105},
+		// ARME 114->115 publiables, 105->106 avec icone (2026-08-25) : le repulseur
+		// (jpt! 07104b31, RE himap eqip 7ca85adc -> sofa 6845f2b3 -> eqip frere 1e79ebda)
+		// rejoint la table, cf. killicon/data/rules.tsv "NOM Repulsor".
+		damagetag.ClassArme:     {115, 106},
 		damagetag.ClassMelee:    {14, 14},
 		damagetag.ClassGrenade:  {15, 15},
 		damagetag.ClassVehicule: {89, 46},

@@ -94,7 +94,7 @@
 038ad14c	ARME	SOUS_RESERVE	CQS48 Bulldog	[effet proj e47529eb, PARTAGE par 3 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
 0395f7f4	INCONNU	INCONNU		[effet proj c966ed96]	
 056cce5c	INCONNU	INCONNU		[effet proj 35528da7 #0/2]	
-07104b31	INCONNU	INCONNU		[effet eqip 1e79ebda, PARTAGE par 2 porteurs]	
+07104b31	ARME	SOUS_RESERVE	Repulsor	[effet eqip 1e79ebda, PARTAGE par 2 porteurs]	classe sure, nom propre NON garanti : un nom precis peut designer une autre arme de la meme classe (RE_LOG 7ter.50 (3)5, cas 69fd30b9)
 08fb84a6	VEHICULE	VALIDE		ARME DE VEHICULE (vehi b857fb95, sb_010_tur_un_gausscannon / sb_010_tur_un_machinegun / sb_010_tur_un_rocketturret, classe turret) [effet proj b223db90 #1/2]	
 099377af	VEHICULE	VALIDE		ARME DE VEHICULE (vehi 000df0c4, sb_010_tur_cv_shadeturret, classe fixed) [effet proj 8e77c963]	
 0a67d603	INCONNU	INCONNU		[effet proj 18b437a4 #0/3]	

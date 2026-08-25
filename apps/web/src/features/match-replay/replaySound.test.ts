@@ -660,12 +660,20 @@ describe('killSound', () => {
     expect(killSound({ weaponKey: '', weaponImageUrl: '' })).toBeUndefined()
   })
 
-  it('vignette hors table sonore et sans clé (le répulseur) : SILENCE, pas une voisine', () => {
-    // Le cas du lot R2.4 : l'atlas du jeu porte bien `killfeed-56` (repulsor), mais aucune
-    // source de dégât mesurée n'y mène et aucun son ne lui est associé. Si une vignette
-    // arrivait un jour sans entrée dans la table, elle doit se taire — jamais retomber sur
-    // l'explosion ou la mêlée d'à côté.
-    expect(killSound({ weaponKey: '', weaponImageUrl: vignette('killfeed-56') })).toBeUndefined()
+  it('le répulseur sonne par sa vignette, catégorie ARME (lot R6, jpt! identifié le 2026-08-25)', () => {
+    // Jusqu'au lot R6, ce cas était un SILENCE mesuré (lot R2.4, 2026-08-16) : la vignette
+    // existait sans source de dégât mesurée pour y mener. Le `jpt!` (07104b31) a depuis été
+    // identifié par RE hors ligne (`himap`, cf. replaySoundAssets.guard.test.ts) et nommé
+    // "Repulsor" côté Go, sans weapon_key (arme hors registre, comme Mutilator/Sandwich) —
+    // d'où une catégorie `weapon` qui arrive PAR LA VIGNETTE, pas par la clé canonique.
+    expect(killSound({ weaponKey: '', weaponImageUrl: vignette('killfeed-56') })).toEqual({
+      stem: 'repulsor_kill',
+      category: 'weapon',
+    })
+  })
+
+  it('une vignette hors table sonore et sans clé reste un SILENCE, jamais une voisine', () => {
+    expect(killSound({ weaponKey: '', weaponImageUrl: vignette('killfeed-57') })).toBeUndefined()
   })
 })
 

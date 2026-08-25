@@ -212,34 +212,58 @@ export const WEAPON_SOUND_STEMS: Readonly<Record<string, string>> = {
 }
 
 /**
- * Son d'un KILL dont la SOURCE DE DÉGÂT n'a pas de nom propre — grenades et mêlée : la
- * vignette du kill feed -> stem de fichier.
+ * Son d'un KILL dont la SOURCE DE DÉGÂT n'a pas de weapon_key CÔTÉ REGISTRE D'ARMES —
+ * grenades, mêlée, et désormais le répulseur : la vignette du kill feed -> son + catégorie.
  *
  * LA CLÉ EST LE STEM DE LA VIGNETTE (`killfeed-NN`), parce que c'est la seule quantité que
  * le backend publie pour ces sources : `killicon/data/rules.tsv` leur donne une ligne sans
- * weapon_key (GGGL 3 = grenade à pointes, CLASSE MELEE = geste partagé par tout l'arsenal).
- * L'ordre des grenades est celui du dépôt, établi par deux chaînes indépendantes :
- * 0 Fragmentation, 1 Plasma, 2 Dynamo, 3 Spike (RECETTE_LOADOUT §8, replay_labels.toml),
- * et `rules.tsv` le reporte tel quel sur les vignettes 46 à 49.
+ * weapon_key (GGGL 3 = grenade à pointes, CLASSE MELEE = geste partagé par tout l'arsenal,
+ * NOM Repulsor = équipement hors registre d'armes — cf. ci-dessous). L'ordre des grenades
+ * est celui du dépôt, établi par deux chaînes indépendantes : 0 Fragmentation, 1 Plasma,
+ * 2 Dynamo, 3 Spike (RECETTE_LOADOUT §8, replay_labels.toml), et `rules.tsv` le reporte tel
+ * quel sur les vignettes 46 à 49.
  *
  * CETTE TABLE PASSE AVANT WEAPON_SOUND_STEMS sur un kill : les trois grenades qui ONT une
  * clé (frag, plasma, dynamo) sonneraient sinon deux vérités concurrentes. Une vignette
- * absente de cette table (toutes les armes, les véhicules, les objets) retombe sur la clé
- * canonique, et une source sans vignette du tout reste muette.
+ * absente de cette table (les armes du registre, les véhicules, les objets) retombe sur la
+ * clé canonique, et une source sans vignette du tout reste muette.
  *
  * DEPUIS LE 2026-08-18, ELLE N'EST PLUS LA SEULE SOURCE D'EXPLOSION : la fin de vol de
  * chaque grenade en programme une (EXPLOSION_SOUND_STEMS). Ce que cette table garde en
  * propre, c'est la MÊLÉE — et, pour les grenades, la priorité au dédoublonnage.
  *
- * Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces cinq clés contre `rules.tsv` :
- * un index d'atlas qui bougerait, ou une cinquième grenade, casse le test — jamais l'écoute.
+ * LA VALEUR PORTE LA CATÉGORIE AVEC LE STEM (type `KillSound`, défini plus bas), et ce
+ * n'est plus un simple stem depuis le répulseur (lot R6, 2026-08-25) : avant lui, cette
+ * table ne contenait QUE des grenades et LA mêlée, deux catégories qu'un simple test
+ * `stem === 'melee_kill'` suffisait à distinguer dans `killSound`. Le répulseur casse cette
+ * hypothèse binaire — sa catégorie est ARME (weapon), pas grenade — d'où le passage à une
+ * table qui nomme sa catégorie EXPLICITEMENT plutôt que de la re-déduire d'un stem au point
+ * de lecture (même principe que EQUIPMENT_SOUND_STEMS : une seule vérité, portée par la
+ * table, jamais reconstruite ailleurs).
+ *
+ * LE RÉPULSEUR (`killfeed-56` -> `repulsor_kill`, catégorie `weapon`) REJOINT CETTE TABLE
+ * ET NON `WEAPON_SOUND_STEMS`, alors qu'il a désormais un nom propre côté Go
+ * (`damagetag/data/labels.tsv` : ARME SOUS_RESERVE "Repulsor") : ce nom n'a PAS de
+ * `weapon_key` dans le registre d'armes (`killicon/data/rules.tsv`, règle NOM Repulsor,
+ * colonne weapon_key VIDE — même situation que Mutilator et Sandwich, des armes HORS
+ * registre). Sans weapon_key, `WEAPON_SOUND_STEMS` ne peut jamais répondre pour lui ; seule
+ * la vignette le peut, exactement comme la mêlée et les grenades avant lui. Identification
+ * du `jpt!` (07104b31) par RE hors ligne via `himap` (lot R6, 2026-08-25) : chaîne
+ * `eqip 7ca85adc` (répulseur, `replay_labels.toml`) -> `sofa 6845f2b3` -> `eqip` frère
+ * `1e79ebda` -> `jpt! 07104b31`, propulseur écarté (eqip distincts 0x430dda48/0xeef5d48d).
+ * Détail : `damagetag/data/labels.tsv` et `killicon/data/rules.tsv`.
+ *
+ * Le garde-rail `replaySoundAssets.guard.test.ts` rejoue ces six clés contre `rules.tsv` :
+ * un index d'atlas qui bougerait, ou une sixième source sans weapon_key, casse le test —
+ * jamais l'écoute.
  */
-export const KILL_SPRITE_SOUND_STEMS: Readonly<Record<string, string>> = {
-  'killfeed-46': 'explosion_frag',
-  'killfeed-47': 'explosion_plasma',
-  'killfeed-48': 'explosion_dynamo',
-  'killfeed-49': 'explosion_spike',
-  'killfeed-65': 'melee_kill',
+export const KILL_SPRITE_SOUND_STEMS: Readonly<Record<string, KillSound>> = {
+  'killfeed-46': { stem: 'explosion_frag', category: 'grenade' },
+  'killfeed-47': { stem: 'explosion_plasma', category: 'grenade' },
+  'killfeed-48': { stem: 'explosion_dynamo', category: 'grenade' },
+  'killfeed-49': { stem: 'explosion_spike', category: 'grenade' },
+  'killfeed-65': { stem: 'melee_kill', category: 'melee' },
+  'killfeed-56': { stem: 'repulsor_kill', category: 'weapon' },
 }
 
 /**
@@ -400,24 +424,29 @@ interface KillSound {
 
 /**
  * killSound — DEUX JOINTURES, DANS CET ORDRE : la vignette de la source d'abord (c'est elle
- * qui sait distinguer les quatre grenades et la mêlée, que le registre d'armes ne nomme
- * pas), la clé canonique ensuite (toutes les armes). Aucune des deux ne répond = silence
- * propre. Elle rend le stem ET la catégorie, parce que `buildSoundTimeline` a besoin des
- * deux : le fichier à jouer, et la catégorie que le filtre du tiroir peut couper.
+ * qui sait distinguer les quatre grenades, la mêlée et le répulseur, que le registre d'armes
+ * ne nomme pas), la clé canonique ensuite (les armes DU registre). Aucune des deux ne répond
+ * = silence propre. Elle rend le stem ET la catégorie, parce que `buildSoundTimeline` a
+ * besoin des deux : le fichier à jouer, et la catégorie que le filtre du tiroir peut couper.
+ *
+ * PLUS DE TERNAIRE MELEE/GRENADE ICI (lot R6, 2026-08-25) : tant que
+ * `KILL_SPRITE_SOUND_STEMS` ne portait que des grenades et LA mêlée, un test
+ * `stem === 'melee_kill'` suffisait à trancher la catégorie. Le répulseur (catégorie ARME)
+ * a cassé cette hypothèse binaire — la table nomme désormais sa catégorie EXPLICITEMENT
+ * (type `KillSound`), et cette fonction la restitue telle quelle : une seule vérité, portée
+ * par la table, jamais re-devinée ici à partir du stem.
  *
  * EXPORTÉE POUR ÊTRE TESTÉE À L'UNITÉ, et c'est son seul appelant de production
  * (`buildSoundTimeline`) qui lui donne son sens. La façade `killSoundStem`, qui n'en
  * exposait que le stem, a été SUPPRIMÉE le 2026-08-16 : le filtre par catégorie lui a pris
  * son dernier appelant de production, et un export qui ne survit que par ses tests est le
- * code mort que la règle 7 de CLAUDE.md interdit. Ses quatre cas sont ici, augmentés de la
- * catégorie — l'information neuve du filtre.
+ * code mort que la règle 7 de CLAUDE.md interdit. Ses cas sont testés dans
+ * `replaySound.test.ts`, augmentés de la catégorie — l'information neuve du filtre.
  */
 export function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>): KillSound | undefined {
   const sprite = killSourceSpriteStem(kill.weaponImageUrl)
   const bySprite = sprite ? KILL_SPRITE_SOUND_STEMS[sprite] : undefined
-  if (bySprite) {
-    return { stem: bySprite, category: bySprite === 'melee_kill' ? 'melee' : 'grenade' }
-  }
+  if (bySprite) return bySprite
   const byKey = kill.weaponKey ? WEAPON_SOUND_STEMS[kill.weaponKey] : undefined
   return byKey ? { stem: byKey, category: 'weapon' } : undefined
 }
