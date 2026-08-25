@@ -12,18 +12,14 @@ export const TOKEN_ERROR_KEY: Record<string, CommonManifestKey> = {
 }
 
 /**
- * credentialSourceParts — réduit le label composite du scan (ex.
- * "watcher_msal+watcher_oauth", "duckdb_msal+env_oauth") en familles courtes
- * dédupliquées : store / sync_meta / env / legacy.
+ * credentialSourceParts — réduit le label du scan en familles courtes
+ * dédupliquées. Depuis ADR 0023 Phase 5 (2026-08-25) le scan ne peut produire
+ * que "watcher_oauth" → "store" ; tout autre label est rendu tel quel et
+ * signalé comme dette (cf. hasLegacyCredentialSource) — c'est le garde-rail
+ * visuel si une source legacy réapparaissait côté back.
  */
 export function credentialSourceParts(source: string): string[] {
-  const mapped = source.split('+').map((part) => {
-    if (part === 'watcher_legacy') return 'legacy'
-    if (part.startsWith('watcher_')) return 'store'
-    if (part.startsWith('duckdb_')) return 'sync_meta'
-    if (part === 'env_oauth') return 'env'
-    return part
-  })
+  const mapped = source.split('+').map((part) => (part.startsWith('watcher_') ? 'store' : part))
   return [...new Set(mapped)]
 }
 

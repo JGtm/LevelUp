@@ -272,16 +272,10 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 
 	provider := authpkg.NewSISUProvider()
 
-	// ADR 0023 — pipeline canonique via MultiUserTokenStore puis legacy DuckDB/env.
+	// ADR 0023 — pipeline canonique via MultiUserTokenStore (source unique).
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := authpkg.LegacyAuthInputs{Source: "duckdb_or_env"}
-	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
-	if legacy.OAuthRT == "" {
-		legacy.OAuthRT = envRefreshTokenForGamertag(pdb.Gamertag)
-	}
 
-	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {
 		return nil, rerr
 	}
@@ -289,24 +283,5 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 		fmt.Fprintf(os.Stderr, "auth: tokens obtenus pour xuid=%s\n", pdb.XUID)
 		return tokens, nil
 	}
-	return nil, fmt.Errorf("aucun token disponible pour player %q (ni MSAL cache, ni OAuth refresh DB, ni env SPNKR_OAUTH_REFRESH_TOKEN)", playerSlug)
-}
-
-// envRefreshTokenForGamertag lit SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER>.
-// Convention identique à internal/api/registry.go::oauthRefreshTokenForPlayer.
-func envRefreshTokenForGamertag(gamertag string) string {
-	if gamertag == "" {
-		return ""
-	}
-	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + normalizeGamertagKey(gamertag))
-}
-
-func normalizeGamertagKey(gamertag string) string {
-	key := strings.ToUpper(gamertag)
-	return strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '.' {
-			return '_'
-		}
-		return r
-	}, key)
+	return nil, fmt.Errorf("aucun token disponible pour player %q (aucun refresh token dans le store watcher_tokens)", playerSlug)
 }

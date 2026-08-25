@@ -1,9 +1,9 @@
 // Package auth — watcher_refresh_multistore_test.go : T5 ADR 0023.
 //
-// Couvre le NOUVEAU chemin Phase 3c : EnsureWatcherAccessToken lit le
-// MultiUserTokenStore en priorité avant le legacy TokenStore mono-user et
-// avant l'env var. Persiste la rotation dans le multi-store (canonique) en
-// plus du legacy store (compat).
+// Couvre le chemin Phase 3c, durci en Phase 5 (2026-08-25) :
+// EnsureWatcherAccessToken lit le refresh_token du MultiUserTokenStore — SEULE
+// source — et y persiste la rotation. Le store mono-user (watcher_tokens.json)
+// ne reçoit que l'access_token courant.
 //
 // Pas de cgo : le watcher_refresh ne dépend que du package auth pur.
 package auth
@@ -34,22 +34,18 @@ func newMultiStoreForWatcher(t *testing.T, xuid, gamertag, refreshToken string) 
 	return store
 }
 
-// ─── T5.1 — Multi-store prioritaire sur legacy TokenStore ────────────────
+// ─── T5.1 — Le RT vient du MultiUserTokenStore ────────────────────────────
 
-func TestEnsureWatcherAccessToken_MultiStoreTakesPriorityOverLegacy(t *testing.T) {
-	// Multi-store : RT canonique
+func TestEnsureWatcherAccessToken_UsesMultiStoreRefreshToken(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-from-multi-store")
-
-	// Legacy store : RT différent
-	legacyStore := newStoreWithTokens(t, &StoredTokens{
-		AccessToken:    "", // access expired → trigger refresh
-		RefreshToken:   "rt-from-legacy-STALE",
+	watcherState := newStoreWithTokens(t, &StoredTokens{
+		AccessToken:    "", // access expiré → déclenche le refresh
 		OAuthExpiresAt: time.Now().Add(-time.Hour),
 	})
 
 	prov := &stubProvider{oauthResp: "fresh-access-token"}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("EnsureWatcherAccessToken: %v", err)
 	}
@@ -57,48 +53,47 @@ func TestEnsureWatcherAccessToken_MultiStoreTakesPriorityOverLegacy(t *testing.T
 		t.Errorf("access_token = %q", got)
 	}
 	if prov.lastCall != "rt-from-multi-store" {
-		t.Errorf("provider called with %q, want rt-from-multi-store (multi-store prioritaire)", prov.lastCall)
+		t.Errorf("provider called with %q, want rt-from-multi-store", prov.lastCall)
 	}
 }
 
-// ─── T5.2 — Multi-store vide → fallback legacy TokenStore ─────────────────
+// ─── T5.2 — Store sans entrée pour ce gamertag → aucune source (Phase 5) ──
 
-func TestEnsureWatcherAccessToken_MultiStoreEmpty_FallsBackToLegacy(t *testing.T) {
-	// Multi-store vide (aucune entrée pour JGtm)
+func TestEnsureWatcherAccessToken_MultiStoreEmpty_NoFallback(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "999", "OtherPlayer", "")
-
-	legacyStore := newStoreWithTokens(t, &StoredTokens{
-		RefreshToken:   "rt-from-legacy",
-		OAuthExpiresAt: time.Now().Add(-time.Hour),
-	})
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProvider{oauthResp: "access"}
 
-	_, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if prov.lastCall != "rt-from-legacy" {
-		t.Errorf("lastCall = %q, want rt-from-legacy (fallback legacy)", prov.lastCall)
+	if got != "" {
+		t.Errorf("access_token = %q, want vide (aucune source legacy depuis Phase 5)", got)
+	}
+	if prov.lastCall != "" {
+		t.Errorf("lastCall = %q — aucun RT ne doit être tenté", prov.lastCall)
 	}
 }
 
-// ─── T5.3 — Multi-store vide + legacy vide → fallback env var ────────────
+// ─── T5.3 — env var ignorée (source supprimée Phase 5) ────────────────────
 
-func TestEnsureWatcherAccessToken_MultiStoreAndLegacyEmpty_FallsBackToEnv(t *testing.T) {
+func TestEnsureWatcherAccessToken_EnvVarIgnored(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "999", "OtherPlayer", "")
-	legacyStore := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "rt-from-env-LAST_RESORT")
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "rt-from-env-DOIT-ETRE-IGNORE")
 
 	prov := &stubProvider{oauthResp: "access"}
 
-	_, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if prov.lastCall != "rt-from-env-LAST_RESORT" {
-		t.Errorf("lastCall = %q, want rt-from-env-LAST_RESORT", prov.lastCall)
+	if got != "" || prov.lastCall != "" {
+		t.Errorf("env var servie (got=%q lastCall=%q) — la source env est supprimée (ADR 0023 Phase 5)",
+			got, prov.lastCall)
 	}
 }
 
@@ -117,19 +112,18 @@ func (s *stubProviderWithRotation) TryOAuthRefreshWithRotation(_ context.Context
 
 func TestEnsureWatcherAccessToken_RotationPersistedInMultiStore(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-original")
-	legacyStore := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
 		stubProvider: stubProvider{oauthResp: "access"},
 		rotatedRT:    "rt-rotated-from-microsoft",
 	}
 
-	_, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	_, err := EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
-	// Vérifier que le multi-store a été mis à jour
 	user, err := multiStore.Load("2533274858283686")
 	if err != nil {
 		t.Fatalf("multi-store Load: %v", err)
@@ -139,25 +133,25 @@ func TestEnsureWatcherAccessToken_RotationPersistedInMultiStore(t *testing.T) {
 	}
 }
 
-// ─── T5.5 — Rotation : legacy store aussi mis à jour (compat) ────────────
+// ─── T5.5 — L'état watcher ne reçoit QUE l'access_token ────────────────────
 
-func TestEnsureWatcherAccessToken_RotationAlsoPersistedInLegacyStore(t *testing.T) {
+func TestEnsureWatcherAccessToken_WatcherStateGetsAccessTokenOnly(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-original")
-	legacyStore := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
 		stubProvider: stubProvider{oauthResp: "fresh-access"},
 		rotatedRT:    "rt-rotated",
 	}
 
-	_, _ = EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	_, _ = EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 
-	tokens, _ := legacyStore.Load()
+	tokens, _ := watcherState.Load()
 	if tokens.AccessToken != "fresh-access" {
-		t.Errorf("legacy access_token = %q", tokens.AccessToken)
+		t.Errorf("access_token du watcher = %q, want fresh-access", tokens.AccessToken)
 	}
-	if tokens.RefreshToken != "rt-rotated" {
-		t.Errorf("legacy RT = %q, want rt-rotated (rotation persistée double)", tokens.RefreshToken)
+	if !tokens.IsOAuthValid(time.Minute) {
+		t.Error("OAuthExpiresAt du watcher devrait être rafraîchi")
 	}
 }
 
@@ -165,14 +159,14 @@ func TestEnsureWatcherAccessToken_RotationAlsoPersistedInLegacyStore(t *testing.
 
 func TestEnsureWatcherAccessToken_NoRotationKeepsOriginalInStore(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-original")
-	legacyStore := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
 		stubProvider: stubProvider{oauthResp: "access"},
 		rotatedRT:    "", // Pas de rotation
 	}
 
-	_, _ = EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	_, _ = EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 
 	user, _ := multiStore.Load("2533274858283686")
 	if user.OAuthRefreshToken != "rt-original" {
@@ -180,89 +174,53 @@ func TestEnsureWatcherAccessToken_NoRotationKeepsOriginalInStore(t *testing.T) {
 	}
 }
 
-// ─── T5.7 — Multi-store nil → fonctionnement legacy uniquement ───────────
+// ─── T5.7 — Multi-store nil → aucune source ─────────────────────────────
 
-func TestEnsureWatcherAccessToken_NilMultiStoreFallsBackToLegacy(t *testing.T) {
-	legacyStore := newStoreWithTokens(t, &StoredTokens{
-		RefreshToken:   "rt-legacy",
-		OAuthExpiresAt: time.Now().Add(-time.Hour),
-	})
+func TestEnsureWatcherAccessToken_NilMultiStoreNoSource(t *testing.T) {
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProvider{oauthResp: "access"}
 
-	_, err := EnsureWatcherAccessToken(context.Background(), nil, legacyStore, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if prov.lastCall != "rt-legacy" {
-		t.Errorf("lastCall = %q, want rt-legacy", prov.lastCall)
+	if got != "" || prov.lastCall != "" {
+		t.Errorf("sans multi-store il n'y a plus de source (got=%q lastCall=%q)", got, prov.lastCall)
 	}
 }
 
-// ─── T5.8 — Multi-store erreur lecture → fallback gracieux ───────────────
+// ─── T5.8 — Entrée store sans OAuthRefreshToken → aucune source ─────────
 
-func TestEnsureWatcherAccessToken_MultiStoreLookupFailsGracefully(t *testing.T) {
-	// Store pointing to a dir which won't be writable / valid → LoadByGamertag will fail
-	// But we test that even on error, fallback works.
-	multiStore := newMultiStoreForWatcher(t, "999", "Other", "")
-
-	legacyStore := newStoreWithTokens(t, &StoredTokens{
-		RefreshToken:   "rt-legacy",
-		OAuthExpiresAt: time.Now().Add(-time.Hour),
-	})
-
-	prov := &stubProvider{oauthResp: "access"}
-
-	// JGtm absent du multi-store → LoadByGamertag retourne ErrUserTokensNotFound
-	// → fallback legacy
-	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
-	if err != nil {
-		t.Fatalf("err = %v", err)
-	}
-	if got != "access" {
-		t.Errorf("access = %q", got)
-	}
-	if prov.lastCall != "rt-legacy" {
-		t.Errorf("lastCall = %q, want rt-legacy (fallback)", prov.lastCall)
-	}
-}
-
-// ─── T5.9 — Multi-store sans xuid (entry partielle) → fallback ──────────
-
-func TestEnsureWatcherAccessToken_MultiStoreEntryWithoutOAuthRT_FallsBack(t *testing.T) {
-	// Entry présente dans le multi-store mais sans OAuthRefreshToken
+func TestEnsureWatcherAccessToken_MultiStoreEntryWithoutOAuthRT(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "watcher_tokens_multi")
 	multiStore := NewMultiUserTokenStore(dir)
 	if err := multiStore.Upsert(&UserTokens{
 		XUID:     "2533274858283686",
 		Gamertag: "JGtm",
 		// OAuthRefreshToken vide → lookupRefreshToken doit skipper
-		MSALCacheJSON: "cache-only",
+		XSTSToken: "xsts-only",
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	legacyStore := newStoreWithTokens(t, &StoredTokens{
-		RefreshToken:   "rt-legacy",
-		OAuthExpiresAt: time.Now().Add(-time.Hour),
-	})
-
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 	prov := &stubProvider{oauthResp: "access"}
 
-	_, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if prov.lastCall != "rt-legacy" {
-		t.Errorf("lastCall = %q, want rt-legacy (multi-store entry sans RT → fallback)", prov.lastCall)
+	if got != "" || prov.lastCall != "" {
+		t.Errorf("entrée sans RT → aucune source (got=%q lastCall=%q)", got, prov.lastCall)
 	}
 }
 
-// ─── T5.10 — Provider error sur refresh → access_token reste valide ──────
+// ─── T5.9 — Provider error sur refresh → RT du store intact ──────────────
 
 func TestEnsureWatcherAccessToken_ProviderRefreshError_ReturnsEmpty(t *testing.T) {
 	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-multi")
-	legacyStore := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
+	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
 		stubProvider: stubProvider{
@@ -270,7 +228,7 @@ func TestEnsureWatcherAccessToken_ProviderRefreshError_ReturnsEmpty(t *testing.T
 		},
 	}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, legacyStore, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 	if err != nil {
 		t.Errorf("err devrait être nil (erreur refresh non-fatale) : %v", err)
 	}

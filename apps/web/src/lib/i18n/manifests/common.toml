@@ -610,9 +610,9 @@ en = "XSTS expires on"
 fr = "Refresh"
 en = "Refresh"
 
-[common.admin.token_msal]
-fr = "MSAL"
-en = "MSAL"
+[common.admin.token_access]
+fr = "Accès"
+en = "Access"
 
 [common.admin.token_xsts]
 fr = "XSTS"

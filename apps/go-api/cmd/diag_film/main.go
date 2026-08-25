@@ -347,23 +347,22 @@ func loadTokens(ctx context.Context, authFile, gamertag string) (*struct {
 		}
 	}
 
-	provider := auth.NewSISUProvider()
 	_ = margin
 
-	// Try env var refresh token for gamertag
-	envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-	if rt := os.Getenv(envKey); rt != "" {
-		tok, err := provider.TryOAuthRefresh(ctx, rt)
-		if err == nil && tok != "" {
-			result, err := auth.ExchangeAccessToken(ctx, tok)
-			if err == nil {
+	// ADR 0023 Phase 5 : refresh token depuis le MultiUserTokenStore, seule source.
+	// data/auth/watcher_tokens.json → data/auth/watcher_tokens (répertoire du store).
+	tokenStore := auth.NewMultiUserTokenStore(strings.TrimSuffix(authFile, ".json"))
+	if user, lerr := tokenStore.LoadByGamertag(gamertag); lerr == nil && user != nil {
+		res, rerr := auth.RefreshHaloTokensViaStoreFirst(ctx, tokenStore, auth.NewSISUProvider(), user.XUID, gamertag)
+		if rerr == nil {
+			if tokens := auth.HaloTokensFromExchange(res); tokens != nil {
 				return &struct {
 					SpartanToken   string
 					ClearanceToken string
-				}{result.Tokens.SpartanToken, result.Tokens.ClearanceToken}, nil
+				}{tokens.SpartanToken, tokens.ClearanceToken}, nil
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("impossible de charger les tokens pour %s (vérifier .env.local et %s)", gamertag, authFile)
+	return nil, fmt.Errorf("impossible de charger les tokens pour %s (vérifier data/auth/watcher_tokens et %s)", gamertag, authFile)
 }

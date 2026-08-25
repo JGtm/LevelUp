@@ -40,7 +40,6 @@ func TestRefreshUserXSTS_NoCacheNoValidAccessToken(t *testing.T) {
 		Gamertag:       "TestUser",
 		AccessToken:    "expired-token",
 		OAuthExpiresAt: time.Now().Add(-1 * time.Hour),
-		// MSALCacheJSON vide
 	})
 
 	_, err := RefreshUserXSTS(context.Background(), store, "12345")

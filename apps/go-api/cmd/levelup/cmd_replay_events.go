@@ -20,7 +20,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -45,11 +44,6 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
-	if refreshToken == "" {
-		return fmt.Errorf("aucun refresh token OAuth trouvé pour %s (%s)", player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
-	}
-
 	// 2. Ouvrir la shared DB en RW (échoue si serveur tient le lock).
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
@@ -84,19 +78,14 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 		return nil
 	}
 
-	// 4. Auth OAuth + exchange Halo.
-	provider := auth_platform.NewSISUProvider()
-	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
+	// 4. Tokens Halo depuis le MultiUserTokenStore (source unique ADR 0023).
+	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
 	if err != nil {
-		return fmt.Errorf("oauth refresh: %w", err)
-	}
-	exch, err := auth_platform.ExchangeAccessToken(ctx, tok)
-	if err != nil {
-		return fmt.Errorf("exchange: %w", err)
+		return err
 	}
 
 	// 5. Client + replay.
-	client := go_sync.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, *rps)
+	client := go_sync.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, *rps)
 	beforeAnomaly := observability.LoadCounter("highlight_events_parse_anomaly_total")
 
 	progress := func(done, total int, matchID, status string) {

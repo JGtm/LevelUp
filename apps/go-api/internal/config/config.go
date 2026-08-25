@@ -216,7 +216,7 @@ func BootstrapEnvLocal() {
 func Load() (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
-	// pour que SPNKR_OAUTH_REFRESH_TOKEN_* et autres vars locales soient disponibles.
+	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))

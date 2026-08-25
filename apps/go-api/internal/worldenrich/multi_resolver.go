@@ -74,9 +74,9 @@ func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]XUIDR
 				"gamertag", gt, "err", err)
 			continue
 		}
-		legacy := loadLegacyInputs(cfg, gt)
+
 		hp := auth.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {
-			at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
+			at, e := resolveAccessToken(ctx, provider, store, xuid)
 			if e != nil {
 				return "", e
 			}

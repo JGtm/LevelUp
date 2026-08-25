@@ -1,6 +1,11 @@
-// Package auth — token_health.go : calcul de la santé des tokens (MSAL / XSTS /
+// Package auth — token_health.go : calcul de la santé des tokens (Accès / XSTS /
 // Refresh) à partir de l'état PERSISTÉ d'un UserTokens, SANS appel réseau.
 // Sert le dashboard admin « Santé des tokens ».
+//
+// La famille « Accès » s'appelait « MSAL » jusqu'à ADR 0023 Phase 5 : le champ
+// mesurait déjà l'expiration de l'access_token Microsoft persisté
+// (OAuthExpiresAt), pas un cache MSAL — lequel n'existe plus depuis le retrait
+// de MSAL (2026-07-15).
 package auth
 
 import "time"
@@ -17,7 +22,7 @@ const (
 // TokenHealth agrège la santé des 3 tokens suivis par le dashboard admin.
 type TokenHealth struct {
 	Refresh string // ok | reauth | absent
-	MSAL    string // ok | expiring | expired | absent
+	Access  string // ok | expiring | expired | absent
 	XSTS    string // ok | expiring | expired | absent
 }
 
@@ -25,21 +30,20 @@ type TokenHealth struct {
 // réseau. `now` et `margin` (fenêtre « expire bientôt ») sont injectés pour la
 // testabilité.
 //
-//   - Refresh : capacité à rafraîchir. absent (ni RT ni cache MSAL) → reauth
+//   - Refresh : capacité à rafraîchir. absent (pas de RT) → reauth
 //     (ReauthRequired, RT révoqué) → ok.
-//   - MSAL : cache MSAL présent ? qualifié par l'expiry de l'access token dérivé
-//     (OAuthExpiresAt).
+//   - Access : access_token Microsoft persisté, qualifié par OAuthExpiresAt.
 //   - XSTS : validité du token XSTS (XSTSExpiresAt).
 func (u *UserTokens) Health(now time.Time, margin time.Duration) TokenHealth {
 	return TokenHealth{
 		Refresh: u.refreshStatus(),
-		MSAL:    u.msalStatus(now, margin),
+		Access:  u.accessStatus(now, margin),
 		XSTS:    expiryStatus(u.XSTSToken != "", u.XSTSExpiresAt, now, margin),
 	}
 }
 
 func (u *UserTokens) refreshStatus() string {
-	if u.OAuthRefreshToken == "" && u.MSALCacheJSON == "" {
+	if u.OAuthRefreshToken == "" {
 		return TokenAbsent
 	}
 	if u.ReauthRequired {
@@ -48,12 +52,12 @@ func (u *UserTokens) refreshStatus() string {
 	return TokenOK
 }
 
-func (u *UserTokens) msalStatus(now time.Time, margin time.Duration) string {
-	if u.MSALCacheJSON == "" && u.AccessToken == "" {
+func (u *UserTokens) accessStatus(now time.Time, margin time.Duration) string {
+	if u.AccessToken == "" {
 		return TokenAbsent
 	}
-	// L'expiry de l'access token MSAL dérivé est suivi via OAuthExpiresAt.
-	// Cache présent sans horodatage connu → OK (refresh silencieux possible).
+	// Access token persisté sans horodatage connu → OK (rien ne permet de le
+	// juger expiré ; l'échec réel remonte par le statut Refresh).
 	if u.OAuthExpiresAt.IsZero() {
 		return TokenOK
 	}

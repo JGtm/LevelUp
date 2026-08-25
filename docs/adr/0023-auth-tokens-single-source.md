@@ -58,23 +58,33 @@ type UserTokens struct {
     AccessToken       string
     OAuthExpiresAt    time.Time
     OAuthRefreshToken string  // ADR 0023 — refresh_token OAuth v2 brut Microsoft
-    MSALCacheJSON     string  // ADR 0023 — cache MSAL sérialisé
     CreatedAt         time.Time
     UpdatedAt         time.Time
 }
 ```
 
+> Phase 5 (2026-08-25) : le champ `MSALCacheJSON` a été supprimé — MSAL n'est plus
+> un provider depuis le 2026-07-15, `TrySilentRefresh` était un no-op. La clé JSON
+> résiduelle des fichiers prod est ignorée au décodage et disparaît à la première
+> rotation.
+
 ### Priorité de lecture (ordre canonique)
 
 Pour tout chemin d'auth (HTTP handler, Pool/Discovery, watcher, CLI) :
 
-1. **`MultiUserTokenStore`** (canonique) — MSAL silent refresh puis OAuth refresh
-2. **Legacy** — `sync_meta` DuckDB puis env var `SPNKR_OAUTH_REFRESH_TOKEN_*` (warn log à chaque hit, à supprimer Phase 5)
+1. **`MultiUserTokenStore`** — OAuth refresh du `OAuthRefreshToken` persisté.
+
+Il n'existe plus AUCUNE source secondaire depuis la Phase 5 (2026-08-25) : ni
+`sync_meta` DuckDB, ni env var `SPNKR_OAUTH_REFRESH_TOKEN_*`, ni le store
+mono-user `data/auth/watcher_tokens.json`. Un joueur absent du store n'a pas de
+token : il doit se reconnecter (SSO Xbox) ou passer par `cmd/token-capture`.
 
 ### Priorité d'écriture
 
-- Au boot : `MigrateLegacyTokensAtBoot` copie env+DuckDB → store (idempotent).
-- À chaque rotation : `UpdateOAuthRefreshToken(xuid, rt)` sur le store en priorité, puis DuckDB pour compat transitoire.
+- Au boot : `MigrateLegacyTokensAtBoot` copie env+DuckDB → store (idempotent) —
+  SEULE lecture legacy encore câblée, sous kill-switch daté (cf. Phase 5).
+- À chaque rotation : `UpdateOAuthRefreshToken(xuid, rt)` sur le store, point.
+  (Le double-write `sync_meta` de compat a été retiré en Phase 5.)
 - `cmd/token-capture` et `cmd/token-import` écrivent directement au store (plus de manipulation `.env.local`).
 - `auth_xbox_oauth.Callback` persiste le RT post-SSO au store.
 
@@ -97,12 +107,12 @@ Le `xuid` est global cross-titres. Un seul fichier `{xuid}.json` couvre tous les
 - **CLI tools cessent de brûler des tokens** : Phase 4bis ajoute la persistance de rotation au store dans le helper partagé `RefreshHaloTokensViaStoreFirst`.
 - **SSO Xbox auto-reload** : Phase 4ter persiste le RT au store, plus besoin de re-prompter le user à chaque expiration.
 - **Élimination de DuckDB comme credential store** : nettoyage architectural.
-- **`.env.local` retournera à son rôle de config-only** (Phase 5 supprime les `SPNKR_OAUTH_REFRESH_TOKEN_*`).
+- **`.env.local` est revenu à son rôle de config-only** : Phase 5 (2026-08-25) a supprimé toute lecture runtime des `SPNKR_OAUTH_REFRESH_TOKEN_*`.
 
 ### Négatives / risques
 
 - **Refactor large** : 13 commits sur la branche `refactor/auth-tokens-single-source`.
-- **Période transitoire** : Phase 5 (suppression legacy) doit attendre une semaine de stabilisation en prod avec Phases 2-4. Pendant cette période, le code lit et écrit dans les deux endroits (store + DuckDB compat).
+- **Période transitoire (CLOSE)** : elle a duré de mai à août 2026 — le code lisait et écrivait dans les deux endroits (store + DuckDB compat). Fermée par la Phase 5 le 2026-08-25.
 - **Pas de tests E2E DuckDB** dans la branche : limitation environnementale du shell de dev (cgo + DuckDB native lib). Les tests unitaires couvrent la logique pure (auth package). Les tests DuckDB-dependent (pool/resolver, sync e2e) doivent être validés en prod.
 
 ## Phases livrées
@@ -120,11 +130,66 @@ Le `xuid` est global cross-titres. Un seul fichier `{xuid}.json` couvre tous les
 | 4 | `token-capture` refait + `token-import` nouveau + onRotated→store | `d1c6cf43` |
 | 4bis | 4 CLI tools via helper `RefreshHaloTokensViaStoreFirst` | `bde9f330` |
 | 4ter | `auth_xbox_oauth.Callback` persiste RT au store | `e004b7c6` |
+| 5 | Retrait des fallbacks legacy (+ Phase 6 absorbée) — 2026-08-25 | branche `refactor/adr0023-phase5` |
 
-## Phases différées
+## Phase 5 — retrait des fallbacks legacy (livrée 2026-08-25)
 
-- **Phase 5** — Désactivation des fallbacks legacy (suppression lecture env var + sync_meta). Attend ~1 semaine de stabilisation en prod avec Phases 2-4 actives.
-- **Phase 6 (code cleanup)** — Suppression des fonctions DuckDB `WriteOAuthRefreshToken`/`ReadOAuthRefreshToken`/`ReadMSALCacheJSON` et du code mort, après Phase 5.
+**Critère d'armement (rempli)** : télémétrie prod `legacy_source_used` éteinte —
+spam terminé le 25/07 (fix store-first post-sync achievements), puis seulement 3
+occurrences isolées (31/07, 07/08, 11/08, toutes `source=duckdb_oauth`) et **0
+depuis le 11/08**, soit 14 jours à zéro au moment du retrait (seuil : ≥ 7 j).
+Store prod sain en parallèle : rotations du jour pour les 4 joueurs suivis + 5
+comptes auth-only, aucun `reauth_required`/`AADSTS` depuis le 01/08.
+
+**Supprimé** (lectures ET écritures) :
+
+- `sync_meta.oauth_refresh_token` / `sync_meta.msal_token_cache` comme sources
+  d'auth : `registry_auth.tryRefreshFromLegacy`, `pool.Discovery.adoptLegacySyncMeta`,
+  `sync.readLegacyAuthInputs`, `worldenrich.loadLegacyInputs`, la lecture des ~13 CLI.
+- env var `SPNKR_OAUTH_REFRESH_TOKEN_*` : tous les lecteurs runtime.
+- store mono-user `data/auth/watcher_tokens.json` comme SOURCE de credentials
+  (`pool.Discovery.legacyStore`, `watcher_refresh` fallback, `RefreshLoop`) — le
+  fichier reste l'état propre du watcher RTA (access_token + XSTS), sans
+  `refresh_token`.
+- double-write DuckDB de la rotation (`onRotated`, probe admin, `registry_auth`)
+  et `duckdb.WriteOAuthRefreshToken` / `ReadMSALCacheJSON*` /
+  `ReadOAuthRefreshTokenFromSQL` devenus orphelins.
+- `auth.LegacyAuthInputs`, `auth.RefreshTokenFromEnv`,
+  `TokenProvider.TrySilentRefresh` (no-op SISU) et les champs `MSALCacheJSON`
+  (`UserTokens`, `Attempt`, `CredentialSource.MSALCache`).
+- télémétrie `observability/legacy_source.go` (plus aucun émetteur).
+
+**Phase 6 absorbée** : le nettoyage de code mort prévu séparément est fait dans
+la même passe (règle projet « 0 code mort »). Il ne reste de `queries_auth.go`
+que `ReadOAuthRefreshToken`, pour la seule migration boot.
+
+**Exception unique, sous kill-switch daté** : `MigrateLegacyTokens`
+(`internal/platform/auth/migration.go`) + son wiring `migrateLegacyAuthTokensAtBoot`
+(`cmd/server/main.go`) continuent de lire env + `sync_meta` au boot pour recopier
+un RT resté en legacy vers le store.
+
+- Bascule du défaut : **2026-08-25** (plus aucun fallback runtime).
+- Date cible de retrait : **2026-10-01**.
+- Critère mesurable : 0 token migré au boot sur 30 jours de logs prod, c.-à-d.
+  `auth_migration: scan terminé` avec `rt_migrated=0` à chaque boot et aucun
+  `auth_migration: RT migré vers store` (`grep 'auth_migration: RT migré' sync.log`).
+- Au retrait : supprimer `migration.go` + son test, le wiring boot,
+  `queries_auth.go` et les 2 entrées d'allowlist du sentinel. Le drop physique des
+  colonnes `sync_meta` suit la recette ADR 0026 au prochain rebuild.
+
+**Garde-rails posés** (`internal/platform/auth/sentinel_test.go`) : allowlist des
+lecteurs d'env var réduite de ~30 entrées à 1 (la migration boot), nouveau guard
+sur `duckdb.ReadOAuthRefreshToken` (2 sites + tests) ;
+`internal/sync/no_legacy_source_used_test.go` interdit désormais tout littéral de
+credential legacy dans le package sync ;
+`pool/discovery_legacy_warn_test.go` et `discovery_priority_test.go` vérifient
+qu'un résidu `sync_meta` ou une env var présente n'entre JAMAIS dans le pool.
+
+**Impact contrat** : `PlayerTokenHealth.msal` renommé `access` (le champ mesurait
+déjà l'expiration de l'access_token Microsoft, pas un cache MSAL) ;
+`TokenProbeResult.has_msal_cache` supprimé ; codes d'erreur `msal_init_error` /
+`msal_acquire_error` renommés `device_flow_init_error` /
+`device_flow_acquire_error`. `openapi.yaml` + `generated.ts` régénérés.
 
 ## Alternatives considérées
 

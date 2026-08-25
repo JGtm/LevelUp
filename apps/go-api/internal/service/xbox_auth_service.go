@@ -287,19 +287,14 @@ func (s *XboxSSOLinkStrategy) persistRTATokens(ctx context.Context, attempt *aut
 		XSTSExpiresAt:     attempt.XSTSRTAExpiresAt,
 		AccessToken:       attempt.MicrosoftAccessToken,
 		OAuthExpiresAt:    time.Now().Add(50 * time.Minute), // conservateur (Microsoft expires_in ~1h)
-		MSALCacheJSON:     attempt.MSALCacheJSON,
 		OAuthRefreshToken: attempt.OAuthRefreshToken,
 	}
 	// Upsert remplace le fichier ENTIER (ADR 0023 : source unique par xuid).
-	// Préserver les credentials durables que CE flow ne porte pas : le flow SISU
-	// n'a pas de cache MSAL, le flow MSAL n'expose pas de RT brut — sans ce
-	// merge, chaque login écraserait le credential semé par l'autre provider.
+	// Préserver le refresh_token durable si CE flow ne l'a pas porté — sans ce
+	// merge, un login sans RT effacerait le credential déjà semé.
 	if existing, err := s.tokenStore.Load(attempt.XUID); err == nil && existing != nil {
 		if tokens.OAuthRefreshToken == "" {
 			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
-		}
-		if tokens.MSALCacheJSON == "" {
-			tokens.MSALCacheJSON = existing.MSALCacheJSON
 		}
 	}
 	if err := s.tokenStore.Upsert(tokens); err != nil {

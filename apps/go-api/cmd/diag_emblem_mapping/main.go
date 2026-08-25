@@ -23,9 +23,8 @@ import (
 	"levelup/go-api/internal/platform/auth"
 )
 
-// acquireDiagTokens : pipeline ADR 0023 (MultiUserTokenStore d'abord, env var
-// en fallback legacy). Persiste la rotation au store. Même helper que
-// diag_emblem_colors.
+// acquireDiagTokens : pipeline ADR 0023 (MultiUserTokenStore, source unique).
+// Persiste la rotation au store. Même helper que diag_emblem_colors.
 func acquireDiagTokens(ctx context.Context, gamertag string) (*auth.ExchangeResult, error) {
 	provider := auth.NewSISUProvider()
 	cfg, err := config.Load()
@@ -38,11 +37,7 @@ func acquireDiagTokens(ctx context.Context, gamertag string) (*auth.ExchangeResu
 	if user, err := store.LoadByGamertag(gamertag); err == nil && user != nil {
 		xuid = user.XUID
 	}
-	legacy := auth.LegacyAuthInputs{
-		OAuthRT: os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)),
-		Source:  "env_var",
-	}
-	return auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)
+	return auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag)
 }
 
 func main() {
