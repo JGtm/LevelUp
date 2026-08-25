@@ -122,11 +122,37 @@ type ZoneState struct {
 	// service sert a la requete. C'est la SEULE cle de jointure du calque.
 	//
 	// POURQUOI UN INDEX ET PAS UN IDENTIFIANT. Le DTO des objectifs statiques ne publie
-	// volontairement aucun identifiant (la lettre A/B/C n'existe dans aucune donnee decodee) ;
+	// volontairement aucun identifiant (le catalogue de formes ne porte aucun nom de zone) ;
 	// l'ordre, lui, est deterministe — role par role, puis rang spatial. L'artefact et le
 	// service construisent donc la meme liste, et `coverage.zones.roles` publie de quoi le
-	// verifier.
+	// verifier. La LETTRE, elle, vit dans `LetterRank` — un champ distinct, et ce n'est pas
+	// le rang spatial.
 	ZoneRef int `json:"zoneRef"`
+	// LetterRank est le RANG DE LA LETTRE de la zone : 0 = A, 1 = B, 2 = C. Absent quand le
+	// fallback ne peut pas conclure — et c'est le cas le plus important a comprendre.
+	//
+	// CE N'EST PAS LA LETTRE DU JEU, C'EST UN FALLBACK D'ORDRE, et le champ ne pretend rien
+	// d'autre. La regle vraie du moteur n'est ni dans le catalogue de formes, ni dans la
+	// variante, ni dans le binaire (RE Ghidra du 2026-08-24 : la lettre vient d'un script de
+	// mode, la voie `ti=13` lui est ORTHOGONALE — ni confirmee ni infirmee). Ce qui EST mesure,
+	// c'est que les zones RANGEES PAR NUMERO DE SLOT `ti=13` CROISSANT donnent la meme
+	// permutation d'un match a l'autre sur une meme carte : 8 cartes, 17 films, 8/8 identiques
+	// (phase 0.2 du plan PLAN_LETTRES_BASES_FALLBACK, 2026-08-24). Les slots d'une carte de
+	// Bastion forment des blocs reguliers de pas 5 — un par zone, `[proprietaire, canal neutre,
+	// jauge]` — donc cet ordre est l'ordre d'allocation du moteur, pas une coincidence de vote.
+	// Un ordre stable suffit a dire A, B ou C ; que ce soient LES lettres du jeu reste au
+	// verdict du releve Theater de l'utilisateur.
+	//
+	// LA BIJECTION EST EXIGEE, et c'est la garde du champ : le rang n'est publie que si les
+	// zones appariees couvrent TOUT le catalogue de la carte. Une zone muette (aucune capture
+	// attribuee sur ce match — le cas existe) decalerait sinon les lettres des suivantes, ce
+	// qui serait invisible et credible. Absent aussi au-dela de trois zones : le jeu n'affiche
+	// que A, B et C, et inventer un « D » serait ajouter du faux.
+	//
+	// JAMAIS SUR UNE COLLINE (KOTH) ni dans un mode sans zones simultanees : la colline unique
+	// n'a pas de lettre en jeu. Un artefact anterieur au champ n'en porte pas, et le client s'en
+	// passe sans avertissement — degradation muette.
+	LetterRank *int `json:"letterRank,omitempty"`
 	// Key est la cle de nommage du slot (tag 5) quand il en emet une, 0 sinon. TRACABILITE
 	// SEULEMENT : elle n'est ni stable entre deux matchs de la meme carte, ni presente partout
 	// (cf. l'en-tete). Ne jamais joindre dessus.
@@ -274,6 +300,16 @@ type ZonesCoverage struct {
 	// un index d'equipe connu. Elles n'ouvrent aucun intervalle : publier un camp qu'aucun
 	// joueur n'occupe serait une invention, et la taire empecherait de la voir arriver.
 	UnknownOwner int `json:"unknownOwner"`
+	// Letters est le nombre de zones qui portent un rang de lettre (cf. ZoneState.LetterRank).
+	// C'est sa seule promesse : COMBIEN de lettres ce calque publie.
+	//
+	// ZERO NE DISTINGUE PAS DEUX SITUATIONS, ET IL FAUT LE SAVOIR AVANT DE LIRE CE CHAMP
+	// (releve de revue, 2026-08-25). Un match ou le fallback n'a pas conclu — appariement
+	// incomplet, mode a colline, catalogue de plus de trois zones — et un artefact ANTERIEUR au
+	// champ donnent tous deux `letters: 0` sur le fil, a l'octet pres : l'entier n'est ni un
+	// pointeur ni `omitempty`, donc l'absence dans le JSON stocke se relit en zero. Pour separer
+	// les deux cas, c'est `ReplayDocument.SchemaVersion` qu'il faut regarder, pas ce compteur.
+	Letters int `json:"letters"`
 	// GaugePoints est le nombre de points de jauge en direct publies, toutes zones confondues
 	// (schema 18). C'est le poids du calque vivant, et le denominateur de sa legerete : la
 	// serie est allegee (cf. ZoneState.Gauge), et ce compte dit de combien. ZERO sur un film a

@@ -159,5 +159,8 @@ func tallyZoneStates(states []ZoneState, cov *ZonesCoverage) {
 	for _, s := range states {
 		cov.Spans += len(s.Spans)
 		cov.GaugePoints += len(s.Gauge)
+		if s.LetterRank != nil {
+			cov.Letters++
+		}
 	}
 }
