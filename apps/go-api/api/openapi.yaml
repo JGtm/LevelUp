@@ -6209,6 +6209,25 @@ paths:
       summary: Suggère des templates de défi Prestige
       tags:
         - prestige
+  /presence:
+    get:
+      operationId: getPresence
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceSnapshot'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Présence en jeu des joueurs suivis et des amis
+      tags:
+        - bootstrap
   /profiles/{player_slug}/titles/{slug}/data:
     delete:
       description: |
@@ -18915,6 +18934,24 @@ components:
         - attempted_at
         - duration_ms
       type: object
+    PlayerPresence:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        in_game:
+          type: boolean
+        player_slug:
+          type: string
+        title_name:
+          type: string
+        title_slug:
+          type: string
+      required:
+        - player_slug
+        - gamertag
+        - in_game
+      type: object
     PlayerPresenceStatus:
       additionalProperties: false
       properties:
@@ -18937,6 +18974,10 @@ components:
         state_since:
           type: string
         subscribe_error:
+          type: string
+        title_name:
+          type: string
+        title_slug:
           type: string
         xuid:
           type: string
@@ -19356,6 +19397,22 @@ components:
         - category
         - enabled
         - delivery
+      type: object
+    PresenceSnapshot:
+      additionalProperties: false
+      properties:
+        friends_in_game:
+          format: int64
+          type: integer
+        players:
+          items:
+            $ref: '#/components/schemas/PlayerPresence'
+          type:
+            - array
+            - "null"
+      required:
+        - players
+        - friends_in_game
       type: object
     PrestigeTelemetryDiag:
       additionalProperties: false
