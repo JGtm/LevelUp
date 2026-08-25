@@ -101,8 +101,61 @@ hors migration boot ; `TrySilentRefresh` et `MSALCacheJSON` à 0 dans le code vi
   `feat/v75`) : l'échéance 2026-10-01 de la migration boot n'a pas pu y être
   inscrite depuis cette branche — à reporter par le superviseur.
 
+**Revue adversariale (2 relecteurs frais) + ronde de correction r1.** Verdict :
+14 conditions auth vérifiées tiennent (plus aucun lecteur du fichier mono-user,
+store couvrant les 9 xuids, premier boot sain, aucun secret loggé), et 6 P1 à
+corriger avant merge. Ce que la revue a réellement attrapé, et que mes propres
+gates ne pouvaient pas voir :
+
+1. **Une régression fonctionnelle qu'aucun test ne couvrait** : `sync-delta --all`
+   et `sync-full --all` construisaient leur pool via `NewDiscovery` SANS store.
+   Tant qu'un fallback existait, ça marchait ; privé de fallback, le scan rendait
+   0 source et les deux commandes sortaient en erreur. Leçon : après un retrait de
+   fallback, les appelants qui « marchaient par le fallback » deviennent muets —
+   il faut lister les constructeurs, pas seulement les lectures. `NewDiscovery`
+   supprimé dans la foulée (plus aucun appelant de prod).
+   **Aggravation trouvée en corrigeant** (hors liste de la revue) : ce pool CLI
+   était créé avec `onRotated=nil`, commentaire d'origine « pas de persistance RT
+   en mode CLI ». Anodin quand le RT venait de sync_meta ; destructeur une fois
+   le CLI branché sur le RT CANONIQUE — Microsoft rotate à chaque usage, donc un
+   `--all` brûlait le token du serveur. Corrigé : rotation persistée.
+2. **Un test mort que j'avais écrit moi-même**, relevé indépendamment par les deux
+   relecteurs : `TestDiscoveryScan_SourcesAreStoreOnly` bouclait sur une liste
+   toujours vide (pas de store) — il ne vérifiait rien. Supprimé (couverture
+   réelle déjà dans `discovery_watcher_test.go`), et le test voisin renforcé en
+   ratchet non-cgo avec une env var legacy présente.
+3. **Deux erreurs avalées que j'avais laissées passer** alors que j'avais corrigé
+   la même classe ailleurs : `cli_refresh.go` (Exchange KO → `(nil, nil)` muet) et
+   `watcher_refresh.go` (store corrompu → « aucun refresh_token, lancer
+   token-capture »). Les deux poussaient vers une re-capture, interdite par
+   l'ADR 0023. Corrigé avec un sentinel `ErrHaloExchangeFailed` et la distinction
+   bénin/anormal, calquée sur ce que j'avais déjà fait dans
+   `access_token_store_first.go` — l'incohérence interne était le vrai signal.
+4. **Mes garde-rails avaient des trous que je croyais avoir bouchés.** J'avais
+   resserré le guard 1 sur `Getenv("PREFIX` en pensant gagner en précision : ça
+   laissait passer `os.Getenv(prefix + key)` et `fmt.Sprintf`. Retour à la
+   détection LARGE du littéral (la force du guard d'origine), périmètre limité aux
+   fichiers de production, allowlist à 3 entrées datées. Guard duckdb rendu
+   indépendant de l'alias d'import : le repo importe `platform/duckdb` sous
+   **5 noms** (`duckdb`, `duckdbpkg`, `ddb`, `duckdbPlatform`, `platform_duckdb`)
+   et mon `\bduckdb(pkg)?\.` en ratait 3 — vérifié au grep. Guard 3 neuf sur
+   `EnvRefreshTokenForGamertag(`, qui ressuscite la source env SANS jamais écrire
+   le littéral, donc invisible au guard 1.
+5. Doc inversée résiduelle (summary OpenAPI, 6 commentaires) et 2 chemins `data/`
+   en dur que j'avais introduits (`refresh_golden_fixture`, `get-token`) — relatifs
+   au CWD alors que ces outils se lancent depuis `apps/go-api` : échec systématique.
+
+**Rebase** sur `origin/main` `97a109b0d` (10 commits deps mergés entre-temps).
+Conflits : `.ai/thought_log.md` (résolu en gardant les deux entrées, D2 en tête)
+et `apps/web/package-lock.json` — vérifié par comparaison de blob que HEAD porte
+EXACTEMENT la version d'`origin/main` (les 20 bumps npm du matin priment, et les
+champs `libc` que mon `npm install` Windows avait retirés sont bien là).
+
 **Conclusion / prochaine étape** : ADR 0023 Phase 5 livrée, Phase 6 absorbée. Il
-reste UN chemin legacy, daté et instrumenté. Après merge : surveiller
+reste UN chemin legacy, daté et instrumenté. Les gates de la 1re passe étaient
+tous verts (build/vet/test/intégration 19 pkgs/lint 0 issue, front typecheck +
+3530 tests) — ils sont à REJOUER après la ronde r1 et le rebase : un gate vert
+sur un arbre qui a changé ne vaut plus rien. Après merge : surveiller
 `auth_migration: scan terminé` dans `sync.log` — 30 j à `rt_migrated=0` arment la
 suppression de `migration.go`, de son wiring boot et de `queries_auth.go`
 (2026-10-01). Aucun token n'a été re-capturé, aucun fichier de `data/` touché.
