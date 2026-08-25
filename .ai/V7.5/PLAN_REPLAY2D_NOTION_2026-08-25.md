@@ -45,8 +45,12 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   le fil. Le vrai compteur était le rapport `« affichées / total »` écrit en dur dans l'en-tête
   du fil (`ReplayKillFeed.tsx`, en-tête `flex justify-between`). Retiré ; `ReplayCountersBadge`
   est INTACT.
-- [ ] A3 (pt 8) : couper le son ne fait plus disparaître la barre de volume : le curseur
+- [x] A3 (pt 8) : couper le son ne fait plus disparaître la barre de volume : le curseur
   passe à 0 ; ré-activer restaure le volume précédent (`ReplaySoundControls`).
+  FAIT : le `{sound.on && …}` qui escamotait le curseur est retiré ; il reste, à 0, `disabled`
+  et estompé, avec une infobulle dédiée (nouvelle clé `soundVolumeMutedHint`, FR + EN). La
+  RESTAURATION était déjà acquise côté hook (`toggle` coupe le maître du lecteur, il n'écrit
+  jamais `volume`) — le zéro affiché est un affichage, pas une écriture ; 3 tests le tiennent.
 - [ ] A4 (pt 9) : à la fin du rejeu, rester sur l'état FINAL (curseur à T_final, scène
   finale affichée) — pas de remise à zéro (`ReplayTransport`). Relancer reste possible.
 - [ ] A5 (pt 3) : DIAGNOSTIC des « traits au bout du cône de visée » (rendu canvas —
