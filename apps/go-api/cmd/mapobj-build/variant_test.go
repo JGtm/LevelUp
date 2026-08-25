@@ -121,14 +121,22 @@ func variantePourGarde(empriseCanevas, empriseObjectifs float64) *mapvar.Variant
 }
 
 // TestGrandCanevasNEcartePasLaCarteJouee — LE témoin du plancher absolu, aux chiffres
-// mesurés sur Empyrean (asset d035fc3e) le 2026-08-20. Les deux variantes de cette carte
-// ont un rapport d'emprise à 0,13 point l'une de l'autre — 3,609 % pour la carte JOUÉE,
-// 3,735 % pour le rack — et pourtant l'une doit être retenue et l'autre écartée. Aucun
-// réglage du seuil RELATIF ne les sépare : seule l'emprise absolue le fait.
+// mesurés sur des variantes réelles. Il porte deux démonstrations à la fois.
 //
-// Mutation qui doit le faire rougir : retirer le `&& goalSpread < parkedAbsoluteSpreadM`
-// (la carte jouée d'Empyrean redevient un rack, et 12 des 73 cartes du catalogue
-// redeviennent iningérables par le réseau).
+// 1. Empyrean (asset d035fc3e, 2026-08-20) : les deux variantes de cette carte ont un
+// rapport d'emprise à 0,13 point l'une de l'autre — 3,609 % pour la carte JOUÉE, 3,735 %
+// pour le rack — et pourtant l'une doit être retenue et l'autre écartée. Aucun réglage
+// d'un seuil RELATIF ne les sépare : seule l'emprise absolue le fait.
+//
+// 2. Le canevas ROGNÉ (Dynasty cfd90b63 et Kaiketsu 98a83f87, 2026-08-25) : MÊME rack que
+// celui d'Empyrean (13,30 m), mais sur un canevas de 34,40 m et non de 356 m. Un critère
+// relatif à 5 % y placerait son seuil à 1,72 m et déclarerait ce rack POSÉ — c'est
+// exactement ce qui faisait retenir 25 objectifs de rack contre les 13 et 16 objectifs des
+// cartes jouées. Ces deux lignes sont la recette de non-retour du critère relatif.
+//
+// Mutation qui doit le faire rougir : remplacer le plancher absolu par un rapport à
+// l'emprise du canevas, sous quelque seuil que ce soit (les lignes « canevas rogné »
+// tombent) ; ou retirer le plancher (les lignes Empyrean et cliffside tombent).
 func TestGrandCanevasNEcartePasLaCarteJouee(t *testing.T) {
 	cas := []struct {
 		nom                        string
@@ -139,6 +147,8 @@ func TestGrandCanevasNEcartePasLaCarteJouee(t *testing.T) {
 		{"empyrean fo11_blank.mvar (rack du canevas)", 356.10, 13.30, true},
 		{"vagabond fo08_wetland.mvar (rack, mesure 2026-08-08)", 356.10, 8.20, true},
 		{"cliffside_map (plus petite emprise réellement posée du catalogue)", 5384, 21.21, false},
+		{"dynasty fo08_wetland.mvar (rack sur canevas ROGNÉ)", 34.40, 13.30, true},
+		{"kaiketsu fo05_desert.mvar (rack sur canevas ROGNÉ)", 34.40, 13.30, true},
 	}
 	for _, c := range cas {
 		got := isParkedPalette(variantePourGarde(c.empriseCanevas, c.empriseObj))
