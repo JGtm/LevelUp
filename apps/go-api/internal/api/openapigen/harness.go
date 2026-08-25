@@ -38,6 +38,15 @@ type Options struct {
 	// Prestige : flag d'exposition des routes conditionnelles restantes.
 	// (MultiTitleAPI retiré le 2026-08-02 — routes multi-titres inconditionnelles.)
 	Prestige bool
+	// BuildWorkerToken : jeton du protocole ouvrier vu par le routeur assemblé.
+	// VIDE PAR DÉFAUT — le document OpenAPI et les tests de contrat sont inchangés
+	// (les routes /internal/build-queue/* sont montées quel qu'en soit le jeton ;
+	// seule la RÉPONSE du garde change : 503 sans jeton, 401 sur jeton refusé).
+	// Renseigné uniquement par le test de traversée CSRF de la pile transverse
+	// (csrf_transverse_stack_cgo_test.go, 2026-08-25), qui a besoin d'un serveur
+	// « protocole ouvert » pour prouver que l'exemption CSRF ne court-circuite PAS
+	// l'authentification par jeton.
+	BuildWorkerToken string
 }
 
 // stubBootstrapRepo implémente port.BootstrapRepository sans DuckDB (mode démo).
@@ -87,10 +96,11 @@ func BuildDemoRouter(ctx context.Context, opts Options) (http.Handler, *huma.Ope
 		APIHost:         "127.0.0.1",
 		APIPort:         8000,
 		// Secret par défaut → isProduction=false (cookies non Secure, cf. NewRouter).
-		SessionSecret:   "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
-		CORSOrigins:     []string{},
-		Lang:            "fr",
-		PrestigeEnabled: opts.Prestige,
+		SessionSecret:    "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
+		CORSOrigins:      []string{},
+		Lang:             "fr",
+		PrestigeEnabled:  opts.Prestige,
+		BuildWorkerToken: opts.BuildWorkerToken,
 	}
 
 	repo := stubBootstrapRepo{}
