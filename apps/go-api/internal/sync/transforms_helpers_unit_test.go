@@ -1,7 +1,7 @@
 // Package sync — transforms_helpers_unit_test.go : tests unitaires des helpers purs.
 //
 // Couvre les fonctions stateless qui étaient à 0% : findCoreStats, isRankedPlaylist,
-// isFirefightMatch, extractTeamScoresByID, asString, strPtrNonEmpty, coalesceStrPtr,
+// isFirefightMatch, ExtractTeamScoresByID, asString, strPtrNonEmpty, coalesceStrPtr,
 // intPtrFrom, floatPtrFrom, intFrom, int64From.
 package sync
 
@@ -320,7 +320,7 @@ func TestIsFirefightMatch_Empty(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// extractTeamScoresByID
+// ExtractTeamScoresByID
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestExtractTeamScoresByID_TwoTeams(t *testing.T) {
@@ -340,7 +340,7 @@ func TestExtractTeamScoresByID_TwoTeams(t *testing.T) {
 			},
 		},
 	}
-	t0, t1 := extractTeamScoresByID(match)
+	t0, t1 := ExtractTeamScoresByID(match)
 	if t0 == nil || *t0 != 50 {
 		t.Errorf("team0 = %v, want 50", t0)
 	}
@@ -350,7 +350,7 @@ func TestExtractTeamScoresByID_TwoTeams(t *testing.T) {
 }
 
 func TestExtractTeamScoresByID_NoTeams(t *testing.T) {
-	t0, t1 := extractTeamScoresByID(map[string]any{})
+	t0, t1 := ExtractTeamScoresByID(map[string]any{})
 	if t0 != nil || t1 != nil {
 		t.Error("should return nil, nil when no teams")
 	}
@@ -367,7 +367,7 @@ func TestExtractTeamScoresByID_PartialTeam(t *testing.T) {
 			},
 		},
 	}
-	t0, t1 := extractTeamScoresByID(match)
+	t0, t1 := ExtractTeamScoresByID(match)
 	if t0 == nil || *t0 != 25 {
 		t.Errorf("team0 = %v, want 25", t0)
 	}
@@ -382,7 +382,7 @@ func TestExtractTeamScoresByID_MissingStats(t *testing.T) {
 			map[string]any{"TeamId": float64(0)},
 		},
 	}
-	t0, t1 := extractTeamScoresByID(match)
+	t0, t1 := ExtractTeamScoresByID(match)
 	if t0 != nil || t1 != nil {
 		t.Error("should return nil when Stats missing")
 	}
