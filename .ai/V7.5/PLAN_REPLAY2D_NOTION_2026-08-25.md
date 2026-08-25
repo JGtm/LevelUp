@@ -55,7 +55,12 @@ navigateur (gate visuel = utilisateur, à la fusion).
 
 ## Lot B — `wt/notif-rejeu` (Go, pt 5)
 
-- [ ] B0 : mini-plan de l'exécuteur AVANT tout code, livré comme CR intermédiaire —
+- [x] B0 (validé superviseur 25/08 — vérifié sur pièces : ancrage `writeArtifactBytes`
+  avec publication APRÈS écriture réelle seulement, chaînes locale+ouvrier prouvées ;
+  arbitrages : A1 liens retenus via méthode de repo `OpenReadForQuery` sans SQL inline
+  dans wire, A2 `discord_notify_replay` défaut TRUE retenu, A3 admin notifie aussi ;
+  go B1 TENU jusqu'à la fin des builds Go du lot C — pas de builds concurrents) :
+  mini-plan de l'exécuteur AVANT tout code, livré comme CR intermédiaire —
   STOP jusqu'à validation superviseur. Contenu exigé : point d'ancrage serveur UNIQUE de
   « artefact de rejeu enregistré » couvrant les DEUX chemins (génération locale ET livraison
   par l'ouvrier distant) avec fichier:ligne ; réutilisation du canal webhook Discord
@@ -91,6 +96,16 @@ navigateur (gate visuel = utilisateur, à la fusion).
   re-cuisson des témoins seulement. STOP — validation superviseur.
 - [ ] D1+ : implémentation par mode après go, gate mesuré par phase. CONTRAINTE : le
   rendu (calques objectifs) ne démarre qu'APRÈS fusion du lot A (mêmes fichiers).
+- [ ] D-R (demande utilisateur VALIDÉE le 25/08, en cours de pilotage) : rendu — la
+  progression de capture ET l'appartenance directement SUR LA FORME de la base :
+  remplissage progressif par découpe (`ctx.clip` sur `traceZonePath`) proportionnel à la
+  jauge lue en escalier (schéma 18), en remplacement du seul arc externe (`drawGaugeArc`,
+  `zoneStatesLayer.ts`) ; hiérarchie des encres à trancher à l'implémentation (progression
+  de l'attaquant franche par-dessus la teinte du propriétaire affaiblie) ; évaluer le
+  renforcement des alphas d'appartenance (`ZONE_HELD_FILL_ALPHA`). POINT DE CONTRÔLE
+  DONNÉES : vérifier que la série `gauge` émet aussi sur les zones du mode bases
+  (validée sur KOTH seulement) — si non, statuer `[!]` pour la progression sur ces zones ;
+  l'appartenance sur forme existe déjà et reste. Séquencement : après fusion du lot A.
 
 ## Ordre et parallélisme
 
