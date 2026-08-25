@@ -1,17 +1,27 @@
 // Package service — presence_service.go : « qui est en jeu, là, maintenant ».
 //
 // Sert GET /api/v1/presence : l'état de présence des joueurs suivis (sélecteur
-// de joueur de la navigation) et le nombre d'amis en jeu. Deux sources bien
-// distinctes :
+// de joueur de la navigation) et le nombre d'amis en jeu. UNE SEULE source pour
+// les deux, le watcher, qui poll déjà la présence des joueurs suivis : AUCUN
+// appel Xbox n'est fait ici, ni pour les joueurs, ni pour les amis.
 //
-//   - les JOUEURS suivis viennent du watcher, qui poll déjà leur présence toutes
-//     les 30 s (aucun appel Xbox n'est fait ici) ;
-//   - les AMIS viennent d'un appel batch Xbox à la demande, mis en cache (cf.
-//     presence_friends.go) — il n'y a pas de poller dédié pour eux.
+// « MES AMIS » = LES JOUEURS INSCRITS DANS L'APP QUI NE SONT PAS LES MIENS,
+// dans la limite de mon cercle (ADR 0029) — décision produit du 2026-08-25.
+// Concrètement : les joueurs que l'utilisateur voit déjà dans son sélecteur (les
+// siens plus ceux de ses co-membres de groupe), PRIVÉS de ceux dont il est
+// directement propriétaire, et actuellement en jeu. Le compte est donc PERSONNEL
+// à chaque utilisateur : deux utilisateurs d'une même instance, sur le même état
+// de watcher, obtiennent deux valeurs différentes, et un utilisateur étranger à
+// mon groupe n'entre jamais dans mon compte (il n'est pas dans ma liste visible).
+// La liste `friend_gamertags` des Réglages n'a plus AUCUN rôle dans la présence.
 //
-// Rien de tout cela n'est vital : watcher éteint, Xbox indisponible ou Réglages
-// vides rendent une réponse vide en 200. Une présence manquante est un détail
-// d'affichage ; une erreur 500 toutes les 30 s dans le shell n'en serait pas un.
+// Ce que la réponse expose de ces amis : un ENTIER, rien d'autre. Les identités
+// servies restent celles de la liste `players`, filtrée par visibilité comme
+// avant.
+//
+// Rien de tout cela n'est vital : watcher éteint ou joueurs illisibles rendent
+// une réponse vide en 200. Une présence manquante est un détail d'affichage ;
+// une erreur 500 toutes les 30 s dans le shell n'en serait pas un.
 package service
 
 import (
@@ -21,22 +31,6 @@ import (
 
 	"levelup/go-api/internal/domain"
 )
-
-// friendsCountBudget borne l'attente du comptage d'amis DANS la réponse.
-//
-// Les joueurs suivis viennent du watcher (déjà en mémoire, aucune sortie) ; les
-// amis, eux, peuvent exiger un aller-retour Xbox. Sans borne, /presence hérite
-// de la latence de Xbox — jusqu'à la vingtaine de secondes d'un incident — sur
-// une requête que le shell rejoue toutes les 30 s et dont l'utilisateur attend
-// la liste des JOUEURS. 3 s : large pour un lot nominal (~200 ms), assez court
-// pour qu'un incident ne se voie pas.
-//
-// Dépassement = zéro, pas d'erreur : la pastille d'amis disparaît, la liste des
-// joueurs est servie. Le contexte annulé fait AVORTER le lot en cours : rien
-// n'alimente le cache, et l'échec arme le backoff d'échec du compteur (~30 s).
-// Dans un régime où Xbox dépasse durablement le budget, le compteur reste donc
-// à zéro — dégradation assumée (consignée au plan, lot F ronde 2, constat 1).
-const friendsCountBudget = 3 * time.Second
 
 // presenceFreshnessWindow : au-delà, le titre courant d'un joueur n'est plus
 // servi comme un fait présent.
@@ -99,31 +93,37 @@ type TrackedPresenceSource func() []TrackedPresence
 // (BootstrapService.OwnedPlayers au composition root).
 type OwnedPlayersFunc func(ctx context.Context, sess *domain.SessionData) ([]domain.PlayerSummary, error)
 
+// DirectOwnerFunc dit si l'utilisateur de la session est DIRECTEMENT
+// propriétaire du profil joueur donné — son xuid lié — par opposition à
+// « visible via un groupe » (BootstrapService.OwnsPlayerDirectly au composition
+// root).
+//
+// C'est la SEULE chose que ce service a besoin de savoir en plus de la liste
+// qu'il sert déjà : qui est visible, et pourquoi (groupe, famille, rôle admin,
+// mode démo), est décidé par OwnedPlayersFunc et n'est jamais redécidé ici.
+type DirectOwnerFunc func(sess *domain.SessionData, playerXUID string) bool
+
 // PresenceService construit le PresenceSnapshot de GET /api/v1/presence.
 type PresenceService struct {
 	ownedPlayers OwnedPlayersFunc
 	tracked      TrackedPresenceSource
-	friends      *FriendPresenceCounter // nil = comptage des amis désactivé
-	// friendsBudget : friendsCountBudget en production ; les tests l'abaissent
-	// pour ne pas attendre 3 s (même procédé que RESTPoller.WithInterval).
-	friendsBudget time.Duration
+	// directOwner : nil = comptage des amis désactivé (compteur à zéro). Sans
+	// prédicat de propriété, on ne peut pas dire d'un joueur visible qu'il n'est
+	// pas le sien — et compter ses propres joueurs comme des amis serait faux.
+	directOwner DirectOwnerFunc
 }
 
 // NewPresenceService crée le service. Toutes les dépendances sont optionnelles :
 // une dépendance absente retire sa part de la réponse (liste vide, compteur à
 // zéro) sans jamais faire échouer l'endpoint.
 func NewPresenceService(ownedPlayers OwnedPlayersFunc, tracked TrackedPresenceSource) *PresenceService {
-	return &PresenceService{
-		ownedPlayers:  ownedPlayers,
-		tracked:       tracked,
-		friendsBudget: friendsCountBudget,
-	}
+	return &PresenceService{ownedPlayers: ownedPlayers, tracked: tracked}
 }
 
-// WithFriends branche le comptage des amis en jeu (cf. presence_friends.go).
-// Sans lui, friends_in_game vaut toujours 0.
-func (s *PresenceService) WithFriends(c *FriendPresenceCounter) *PresenceService {
-	s.friends = c
+// WithFriends branche le comptage des amis en jeu en fournissant le prédicat de
+// propriété directe. Sans lui, friends_in_game vaut toujours 0.
+func (s *PresenceService) WithFriends(directOwner DirectOwnerFunc) *PresenceService {
+	s.directOwner = directOwner
 	return s
 }
 
@@ -135,64 +135,60 @@ func (s *PresenceService) WithFriends(c *FriendPresenceCounter) *PresenceService
 // player_slug (que le watcher ignore) vient de la configuration. Watcher éteint
 // ⇒ intersection vide ⇒ liste vide, ce qui est exact : on ne sait rien.
 //
+// LE COMPTEUR D'AMIS SORT DE CETTE MÊME BOUCLE, et c'est délibéré : il compte
+// les joueurs VISIBLES (donc de mon cercle) que je ne possède pas, avec le même
+// prédicat « en jeu » et la même borne de fraîcheur que la manette servie à côté
+// — un seul chemin, pas deux définitions de « en jeu » à faire diverger.
+//
+// Les profils démo et auth-only ne sont pas re-filtrés ici : ils n'ont aucun état
+// de watcher (le daemon ne suit que domain.SyncablePlayers, cf.
+// cmd/server/main.go) et les auth-only sont déjà retirés en amont par
+// BootstrapService.OwnedPlayers — ils tombent donc d'eux-mêmes à l'intersection.
+//
 // Ne retourne jamais d'erreur par conception (cf. en-tête du fichier) : chaque
 // source indisponible est loggée puis remplacée par sa valeur neutre.
 func (s *PresenceService) GetSnapshot(ctx context.Context, sess *domain.SessionData) *domain.PresenceSnapshot {
 	snap := &domain.PresenceSnapshot{Players: []domain.PlayerPresence{}}
 
 	byGamertag := s.trackedByGamertag()
-	if len(byGamertag) > 0 {
-		for _, p := range s.loadPlayers(ctx, sess) {
-			t, ok := byGamertag[p.Gamertag]
-			if !ok {
-				continue
-			}
-			snap.Players = append(snap.Players, domain.PlayerPresence{
-				PlayerSlug: p.PlayerSlug,
-				Gamertag:   p.Gamertag,
-				// « En jeu » = vu sur un titre suivi, PAS `inGame` du watcher :
-				// ce dernier ne vaut vrai que sur le titre configuré du joueur,
-				// et dirait « hors jeu » d'un joueur Halo 5 lançant Infinite.
-				InGame:    t.TitleSlug != "",
-				TitleSlug: t.TitleSlug,
-				TitleName: t.TitleName,
-			})
-		}
+	if len(byGamertag) == 0 {
+		return snap
 	}
-
-	if s.friends != nil {
-		snap.FriendsInGame = s.countFriendsWithinBudget(ctx)
+	for _, p := range s.loadPlayers(ctx, sess) {
+		t, ok := byGamertag[p.Gamertag]
+		if !ok {
+			continue
+		}
+		// « En jeu » = vu sur un titre suivi, PAS `inGame` du watcher : ce
+		// dernier ne vaut vrai que sur le titre configuré du joueur, et dirait
+		// « hors jeu » d'un joueur Halo 5 lançant Infinite.
+		inGame := t.TitleSlug != ""
+		snap.Players = append(snap.Players, domain.PlayerPresence{
+			PlayerSlug: p.PlayerSlug,
+			Gamertag:   p.Gamertag,
+			InGame:     inGame,
+			TitleSlug:  t.TitleSlug,
+			TitleName:  t.TitleName,
+		})
+		if inGame && s.isFriend(sess, p) {
+			snap.FriendsInGame++
+		}
 	}
 	return snap
 }
 
-// countFriendsWithinBudget rend le compteur d'amis, ou zéro si le budget expire.
+// isFriend : ce joueur visible est-il « un ami » — un joueur de mon cercle dont
+// je ne suis pas le propriétaire ?
 //
-// Le comptage tourne dans une goroutine et la réponse ne l'attend que le temps du
-// budget : sans cela, un `Count` bloqué (Xbox lent, ou attente du singleflight
-// d'un appelant précédent) tiendrait la requête HTTP ouverte d'autant. La
-// goroutine n'est pas orpheline — son contexte est annulé au retour, ce qui coupe
-// l'appel sortant, et le canal est tamponné pour qu'elle se termine même si plus
-// personne ne lit.
-func (s *PresenceService) countFriendsWithinBudget(ctx context.Context) int {
-	budget := s.friendsBudget
-	if budget <= 0 {
-		budget = friendsCountBudget
+// Sans prédicat de propriété câblé, personne n'est un ami : mieux vaut un
+// compteur à zéro que compter ses propres joueurs. Un profil sans xuid n'est
+// jamais compté non plus — il ne peut être attribué à personne, et la propriété
+// ne se déduit pas d'un gamertag.
+func (s *PresenceService) isFriend(sess *domain.SessionData, p domain.PlayerSummary) bool {
+	if s.directOwner == nil || p.XUID == "" {
+		return false
 	}
-	cctx, cancel := context.WithTimeout(ctx, budget)
-	defer cancel()
-
-	done := make(chan int, 1)
-	go func() { done <- s.friends.Count(cctx) }()
-
-	select {
-	case n := <-done:
-		return n
-	case <-cctx.Done():
-		slog.DebugContext(ctx, "presence: comptage des amis hors budget — compteur à zéro",
-			"budget", budget, "err", cctx.Err())
-		return 0
-	}
+	return !s.directOwner(sess, p.XUID)
 }
 
 // loadPlayers rend les joueurs accessibles, ou une tranche vide si la source est

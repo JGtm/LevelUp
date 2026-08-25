@@ -19,9 +19,33 @@ Conséquences : la mécanique « présence des amis par lot Xbox » livrée la v
 consommateur → suppression complète (règle 0 code mort). Le constat de revue
 « liste globale d'admin servie à tout authentifié » disparaît par construction.
 
+### Précision utilisateur post-lancement (2026-08-25) — RÈGLE QUI FAIT FOI
+
+Une instance héberge des utilisateurs qui ne sont PAS amis entre eux : « mes
+amis » ne sont donc PAS « tous les autres joueurs inscrits », mais **les joueurs
+de MON CERCLE au sens ADR 0029** — exactement ceux que je vois déjà dans mon
+sélecteur (les miens + ceux de mes co-membres de groupe, chokepoint
+`BootstrapService.OwnedPlayers` / `resolveCoMembers`).
+
+**`friends_in_game` = joueurs VISIBLES pour l'utilisateur courant selon ce
+chokepoint, MOINS ceux dont il est directement propriétaire, actuellement EN JEU
+(même prédicat de titre et de fraîcheur que la manette).** Conséquences :
+
+- un utilisateur sans groupe ne voit que ses joueurs → compte 0 ;
+- un étranger à mon groupe n'entre jamais dans mon compte, ni moi dans le sien ;
+- aucune identité hors cercle ne transite (le compte est un entier ; la liste
+  `players` reste filtrée comme avant) ;
+- la distinction « possédé en propre » vs « visible via co-membre » n'existant
+  pas sur la liste servie, elle est prise au chokepoint authz existant
+  (`authz.Enforced` + `authz.CurrentUser`, via `BootstrapService.OwnsPlayerDirectly`)
+  — la logique de groupe n'est PAS dupliquée.
+
+Cette règle remplace la formulation « état GLOBAL du watcher moins les possédés »
+du lancement, qui compterait les étrangers au groupe.
+
 ## Items
 
-- [ ] G1 — Go service : remplacer le calcul de `friends_in_game` dans le service
+- [x] G1 — Go service : remplacer le calcul de `friends_in_game` dans le service
   de présence (`internal/service/presence_service.go` + `server_presence.go`) :
   compte = joueurs suivis par le watcher, EN JEU (mêmes règles de fraîcheur et de
   titre que la manette — réutiliser exactement le même prédicat), dont le
@@ -59,6 +83,29 @@ consommateur → suppression complète (règle 0 code mort). Le constat de revue
   puis `cd apps/web ; npx tsc -b --force ; npx eslint <touchés> ; npx vitest run <PlayerSwitcher + shell>`.
   0 erreur, 0 nouveau warning. Codes retour capturés SANS pipe.
 
+## Journal d'exécution
+
+**G1 (2026-08-25)** — le compteur sort désormais de la MÊME boucle que la liste
+`players` : pour chaque joueur visible en jeu (même prédicat `TitleSlug != ""`,
+même borne de fraîcheur `presenceFreshnessWindow`), +1 si l'utilisateur n'en est
+pas le propriétaire direct. Prédicat de propriété injecté au composition root
+(`BootstrapService.OwnsPlayerDirectly`, nouveau fichier `bootstrap_ownership.go`
+— `bootstrap_service.go` est à 614 L, dette gelée, on ne l'agrandit pas), pas de
+logique de groupe dupliquée dans le service. `PresenceService.WithFriends` prend
+maintenant ce prédicat au lieu du compteur Xbox ; budget de 3 s, goroutine et
+`friendsBudget` supprimés (plus aucun appel sortant sur ce chemin). Vérifié sur
+pièces : le daemon watcher ne suit que `domain.SyncablePlayers`
+(`cmd/server/main.go:2124`) et `OwnedPlayers` retire déjà les profils auth-only —
+écrit en commentaire, aucun re-filtre ajouté. Deux tests du chemin supprimé
+(`FriendsCountIncluded`, `BlockingFriendsSource`) retirés ici par nécessité de
+compilation ; la couverture neuve arrive en G5.
+Gates locaux : `go build ./...` EXIT=0, `go vet ./internal/service/... ./internal/api/...` EXIT=0.
+
 ## Découvertes (à consigner, ne pas traiter)
 
-(vide au départ)
+- **Cas admin (G1)** : un administrateur voit TOUT le parc dans son sélecteur
+  (`CanAccessPlayer` accorde l'accès sur le rôle) ; par la règle « visibles moins
+  possédés en propre », son compteur inclut donc des joueurs hors de son cercle
+  social. Conforme à la règle gravée (« ce que je vois dans mon sélecteur, moins
+  les miens ») et sans fuite d'identité (le compte est un entier), mais c'est un
+  cas à trancher si le produit veut un compte « social » strict pour les admins.
