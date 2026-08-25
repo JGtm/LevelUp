@@ -68,7 +68,7 @@ func main() {
 	// Auth store-first (ADR 0023) — JAMAIS de re-capture ici.
 	store := auth_platform.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	provider := auth_platform.NewSISUProvider()
-	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, *gamertag, auth_platform.LegacyAuthInputs{})
+	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, *gamertag)
 	if err != nil || exch == nil {
 		fmt.Fprintf(os.Stderr, "auth %s (xuid %s): %v\n", *gamertag, xuid, err)
 		fmt.Fprintln(os.Stderr, "→ diagnostiquer la cause (RT tourne perdu, mauvais xuid) — ne PAS re-capturer de token.")
