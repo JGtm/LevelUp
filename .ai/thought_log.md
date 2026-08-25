@@ -1,3 +1,22 @@
+## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
+
+**Contexte** : apres le hotfix 36bb48187 (appelants LegacyAuthInputs), la CI de feat/v75
+reste ROUGE : `internal/api/handlers/build_queue_e2e_cgo_test.go:47` appelle
+`NewAdminMonitoringHandler` avec 11 arguments quand la fusion 804c32ba4 (retrait de
+GET /admin/monitoring/errors, lot voisin) a reduit le constructeur a 10 (runner ErrorStats
+supprime). Fichier de test sous tag cgo : invisible de `go build ./...` (qui ne compile pas
+les tests) — c'est pour ca que le gate du hotfix precedent ne l'a pas vu non plus.
+**Decision technique principale** : correction mecanique (11 nils -> 10). LE GATE QUI
+ATTRAPE CETTE FAMILLE : `go vet ./...` COMPLET (il typecheck AUSSI les fichiers de test,
+tags cgo compris quand CGO est actif) — execute ici, exit 0, zero autre appelant perime
+dans tout le module, tests compris.
+**Resultats observes** : gofmt -l vide ; `go vet ./internal/api/handlers/` exit 0 ;
+`go vet ./...` complet exit 0 (code reel via PIPESTATUS, pas celui d'un pipe).
+**Conclusion / prochaine etape** : fusion --no-ff, push, CI a re-verifier au niveau job.
+Lecon a faire circuler aux sessions voisines : un lot qui change une signature DOIT rejouer
+`go vet ./...` (pas seulement `go build ./...`) sur l'ARBRE FUSIONNE — deux casses CI le
+meme jour, deux familles d'appelants oublies (CLI puis test cgo).
+
 ## [2026-08-25] Hotfix CI branche : 2 appelants oublies du retrait LegacyAuthInputs (ADR 0023 Phase 5) — Complete
 
 **Contexte** : CI de feat/v75 ROUGE depuis c42624dd5 (antearieure a la fusion csrf-ouvrier,
