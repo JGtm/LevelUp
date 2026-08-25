@@ -22,6 +22,7 @@ import {
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { deadTimeByPlayer, formatDeadTime } from './deadTimeLogic'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { PlayerMark } from './PlayerMark'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
@@ -131,6 +132,13 @@ export function ReplayTeams({
     () => groupByTeam(buildPlayers(doc, scoreboard)),
     [doc, scoreboard],
   )
+  // LE TEMPS MORT EST UN TOTAL DE MATCH : il se calcule UNE FOIS pour toute la colonne, sur
+  // les mêmes joueurs que les fiches, et ne dépend pas de l'image lue. Le recalculer par
+  // fiche et par image ferait balayer toutes les vies de tout le monde à chaque frame.
+  const deadTime = useMemo(
+    () => deadTimeByPlayer(groups.flatMap((g) => g.players), doc),
+    [groups, doc],
+  )
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
@@ -183,6 +191,7 @@ export function ReplayTeams({
                 locale={locale}
                 mark={(marks ?? NO_MARKS).get(p.xuid)}
                 scoreTimeline={scoreTimeline}
+                deadTimeMs={deadTime.get(p.xuid) ?? null}
               />
             ))}
           </div>
@@ -205,9 +214,15 @@ interface PlayerCardProps {
   mark?: PlayerMarkKind
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
+  /**
+   * TEMPS MORT CUMULÉ du joueur sur tout le match, en millisecondes (`deadTimeLogic`), ou
+   * `null` quand le film ne permet pas de le mesurer. Calculé une fois pour la colonne : la
+   * fiche l'affiche, elle ne le mesure pas — et elle ne remplace jamais `null` par zéro.
+   */
+  deadTimeMs: number | null
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, mark, scoreTimeline }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, mark, scoreTimeline, deadTimeMs }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
   // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
@@ -335,6 +350,40 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           />
         )}
       </div>
+      <DeadTimeRow ms={deadTimeMs} locale={locale} />
+    </div>
+  )
+}
+
+/**
+ * DeadTimeRow — LE TEMPS MORT CUMULÉ du joueur, en dernière ligne de la fiche.
+ *
+ * EN BAS, ET C'EST UN CHOIX : c'est la seule ligne de la fiche qui ne change pas avec la
+ * lecture. La glisser entre la vitalité et l'inventaire couperait le bloc de l'état
+ * courant par un total de match ; en pied de fiche, elle se lit pour ce qu'elle est.
+ *
+ * ELLE S'AFFICHE TOUJOURS, ET DIT L'UN DES DEUX : une mesure — « 00:00 » compris, un joueur
+ * mort zéro fois est une information — ou son REFUS, écrit d'un tiret, quand le film ne permet
+ * pas de conclure (`deadTimeLogic` : une vie non rattachée à un joueur vit dans l'un de ses
+ * trous, ou bien il n'a aucune vie publiée). Les deux cas occupent la même hauteur FIXE
+ * (h-3), et aucun ne dépend de l'état vital : le gabarit constant vivant/mort de la fiche
+ * unique tient (fusion du 2026-08-25 : la fiche n'a plus de variante, la ligne est toujours
+ * la dernière rangée).
+ *
+ * LE REFUS N'EST PAS UNE PANNE D'AFFICHAGE, et l'infobulle le dit en toutes lettres. Sans elle,
+ * un tiret se lirait comme un bogue ; avec elle, il se lit comme ce qu'il est — le film manque
+ * d'un rattachement, et on préfère le taire que de l'inventer.
+ */
+function DeadTimeRow({ ms, locale }: { ms: number | null; locale: ReplayLocale }) {
+  const t = REPLAY_TEXT[locale]
+  return (
+    <div className="flex h-3 items-center">
+      <span
+        className="truncate font-mono text-[9px] uppercase tracking-wide text-muted-foreground"
+        title={ms === null ? t.deadTimeUnmeasurable : t.deadTimeLabel}
+      >
+        {t.deadTimeLabel} <span className="tabular-nums">{formatDeadTime(ms)}</span>
+      </span>
     </div>
   )
 }
