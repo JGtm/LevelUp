@@ -23,10 +23,19 @@ import "levelup/go-api/internal/domain"
 //	sinon                   ->  le bloc, avec sa portée. `MeasuredDeaths == 0` y est un
 //	                            ÉTAT PUBLIÉ (« non mesuré »), pas une absence.
 //
-// Le gamertag du tueur est résolu comme dans buildKillerVictimPairs — depuis le scoreboard,
-// et UNIQUEMENT depuis lui. Un tueur absent du scoreboard garde son xuid et un gamertag
-// VIDE : on ne fabrique pas un nom, et on ne recopie pas le xuid dans un champ de nom (le
-// front a déjà son repli masqué « Joueur #### »).
+// LES DEUX NOMS SE RÉSOLVENT AU MÊME ENDROIT — le scoreboard, par xuid.
+//
+// Le tueur l'a toujours fait (comme buildKillerVictimPairs). L'assistant, lui, arrivait
+// nommé PAR LE FILM (Q21d rend `assist_gamertag`) : deux sources de noms dans un seul
+// graphe, donc un même joueur affichable sous deux orthographes — le film écrit le
+// gamertag capté à l'enregistrement, le scoreboard sert celui de l'API (alias compris).
+// C'est exactement la raison pour laquelle Q32d, côté escouade, ne rend AUCUN gamertag.
+//
+// Repli : le nom du film quand le xuid est absent du scoreboard (un assistant peut avoir
+// quitté avant la fin et manquer au tableau des scores) — mieux vaut le nom d'hier que
+// pas de nom. Pour le TUEUR le repli reste la chaîne VIDE : c'est le contrat livré, et le
+// front a déjà son masque « Joueur #### ». On ne fabrique aucun nom, et on ne recopie
+// jamais un xuid dans un champ de nom.
 func buildAssistPairs(
 	raw []domain.MatchAssistPairRaw,
 	scope domain.MatchAssistScopeRaw,
@@ -43,9 +52,13 @@ func buildAssistPairs(
 	}
 	pairs := make([]domain.MatchAssistPair, 0, len(raw))
 	for _, r := range raw {
+		assistGT := gtByXUID[r.AssistXUID]
+		if assistGT == "" {
+			assistGT = r.AssistGamertag
+		}
 		pairs = append(pairs, domain.MatchAssistPair{
 			AssistXUID:     r.AssistXUID,
-			AssistGamertag: r.AssistGamertag,
+			AssistGamertag: assistGT,
 			KillerXUID:     r.KillerXUID,
 			KillerGamertag: gtByXUID[r.KillerXUID],
 			AssistCount:    r.AssistCount,

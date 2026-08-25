@@ -17,9 +17,47 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
+
+// friendsCountBudget borne l'attente du comptage d'amis DANS la réponse.
+//
+// Les joueurs suivis viennent du watcher (déjà en mémoire, aucune sortie) ; les
+// amis, eux, peuvent exiger un aller-retour Xbox. Sans borne, /presence hérite
+// de la latence de Xbox — jusqu'à la vingtaine de secondes d'un incident — sur
+// une requête que le shell rejoue toutes les 30 s et dont l'utilisateur attend
+// la liste des JOUEURS. 3 s : large pour un lot nominal (~200 ms), assez court
+// pour qu'un incident ne se voie pas.
+//
+// Dépassement = zéro, pas d'erreur : la pastille d'amis disparaît, la liste des
+// joueurs est servie. Le comptage se poursuit en arrière-plan jusqu'à
+// l'annulation de son contexte et alimentera le cache pour l'appel suivant.
+const friendsCountBudget = 3 * time.Second
+
+// presenceFreshnessWindow : au-delà, le titre courant d'un joueur n'est plus
+// servi comme un fait présent.
+//
+// POURQUOI CETTE BORNE EXISTE, ET POURQUOI ELLE EST LICITE ICI. Le titre courant
+// est mémorisé par le handler de présence du daemon ; il n'est jamais effacé par
+// un minuteur. Si le poll d'un joueur s'arrête (XSTS mort, 429 prolongé, réseau),
+// la dernière valeur reste en mémoire indéfiniment : le shell afficherait une
+// manette « en jeu » sur un joueur déconnecté depuis des heures.
+//
+// La borne suppose que le témoin de vivacité avance TOUT SEUL tant que le poll
+// vit — vérifié sur pièces : `RESTPoller.tickOnce` (watcher/rest_poller.go)
+// appelle son handler à CHAQUE poll réussi, sans filtre de changement d'état, à
+// `restPollInterval` = 10 s ; et le handler du daemon pose `pw.RecordEvent(...)`
+// AVANT tout filtrage (watcher/daemon.go). Un joueur immobile fait donc avancer
+// LastEventAt toutes les 10 s. Si un jour les events ne partaient qu'aux
+// CHANGEMENTS d'état, cette borne effacerait le titre d'un joueur bel et bien en
+// partie : elle serait à retirer, pas à rallonger.
+//
+// 3 minutes = 18 polls nominaux. Les backoffs d'erreur du poller (30 s réseau /
+// transitoire) tiennent largement dedans ; seuls le backoff rate-limit (5 min) et
+// un arrêt réel dépassent.
+const presenceFreshnessWindow = 3 * time.Minute
 
 // TrackedPresence est l'état de présence d'un joueur suivi, tel que le watcher
 // le connaît. Type neutre volontairement : le package service ne dépend ni du
@@ -27,10 +65,28 @@ import (
 //
 // TitleSlug/TitleName sont le titre TRACKÉ sur lequel le joueur est vu (quel que
 // soit son titre configuré), vides s'il n'est sur aucun titre suivi.
+//
+// LastEventAt est l'instant du dernier event de présence reçu pour ce joueur —
+// le témoin de VIVACITÉ du poll, pas d'activité en jeu. Zéro = aucun event reçu.
 type TrackedPresence struct {
-	Gamertag  string
-	TitleSlug string
-	TitleName string
+	Gamertag    string
+	TitleSlug   string
+	TitleName   string
+	LastEventAt time.Time
+}
+
+// fresh rend l'entrée telle quelle si son témoin de vivacité est récent, et
+// BLANCHIE (aucun titre) sinon. Appliquée à l'INGESTION, avant l'arbitrage entre
+// watchers d'un même gamertag : sans cela une entrée périmée porteuse d'un titre
+// l'emporterait sur une entrée fraîche qui dit « hors jeu ».
+func (t TrackedPresence) fresh(now time.Time) TrackedPresence {
+	if t.TitleSlug == "" && t.TitleName == "" {
+		return t
+	}
+	if t.LastEventAt.IsZero() || now.Sub(t.LastEventAt) > presenceFreshnessWindow {
+		t.TitleSlug, t.TitleName = "", ""
+	}
+	return t
 }
 
 // TrackedPresenceSource rend l'état de présence de tous les joueurs suivis.
@@ -46,13 +102,20 @@ type PresenceService struct {
 	ownedPlayers OwnedPlayersFunc
 	tracked      TrackedPresenceSource
 	friends      *FriendPresenceCounter // nil = comptage des amis désactivé
+	// friendsBudget : friendsCountBudget en production ; les tests l'abaissent
+	// pour ne pas attendre 3 s (même procédé que RESTPoller.WithInterval).
+	friendsBudget time.Duration
 }
 
 // NewPresenceService crée le service. Toutes les dépendances sont optionnelles :
 // une dépendance absente retire sa part de la réponse (liste vide, compteur à
 // zéro) sans jamais faire échouer l'endpoint.
 func NewPresenceService(ownedPlayers OwnedPlayersFunc, tracked TrackedPresenceSource) *PresenceService {
-	return &PresenceService{ownedPlayers: ownedPlayers, tracked: tracked}
+	return &PresenceService{
+		ownedPlayers:  ownedPlayers,
+		tracked:       tracked,
+		friendsBudget: friendsCountBudget,
+	}
 }
 
 // WithFriends branche le comptage des amis en jeu (cf. presence_friends.go).
@@ -96,9 +159,38 @@ func (s *PresenceService) GetSnapshot(ctx context.Context, sess *domain.SessionD
 	}
 
 	if s.friends != nil {
-		snap.FriendsInGame = s.friends.Count(ctx)
+		snap.FriendsInGame = s.countFriendsWithinBudget(ctx)
 	}
 	return snap
+}
+
+// countFriendsWithinBudget rend le compteur d'amis, ou zéro si le budget expire.
+//
+// Le comptage tourne dans une goroutine et la réponse ne l'attend que le temps du
+// budget : sans cela, un `Count` bloqué (Xbox lent, ou attente du singleflight
+// d'un appelant précédent) tiendrait la requête HTTP ouverte d'autant. La
+// goroutine n'est pas orpheline — son contexte est annulé au retour, ce qui coupe
+// l'appel sortant, et le canal est tamponné pour qu'elle se termine même si plus
+// personne ne lit.
+func (s *PresenceService) countFriendsWithinBudget(ctx context.Context) int {
+	budget := s.friendsBudget
+	if budget <= 0 {
+		budget = friendsCountBudget
+	}
+	cctx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+
+	done := make(chan int, 1)
+	go func() { done <- s.friends.Count(cctx) }()
+
+	select {
+	case n := <-done:
+		return n
+	case <-cctx.Done():
+		slog.DebugContext(ctx, "presence: comptage des amis hors budget — compteur à zéro",
+			"budget", budget, "err", cctx.Err())
+		return 0
+	}
 }
 
 // loadPlayers rend les joueurs accessibles, ou une tranche vide si la source est
@@ -118,16 +210,21 @@ func (s *PresenceService) loadPlayers(ctx context.Context, sess *domain.SessionD
 // trackedByGamertag indexe l'état du watcher par gamertag. Un même gamertag peut
 // être suivi sur PLUSIEURS titres (un watcher par titre) : l'entrée qui porte un
 // titre courant gagne, car c'est celle qui sait où le joueur joue réellement.
+//
+// Chaque entrée passe d'abord par `fresh` : un titre dont le témoin de vivacité
+// est périmé n'est plus un titre (cf. presenceFreshnessWindow).
 func (s *PresenceService) trackedByGamertag() map[string]TrackedPresence {
 	if s.tracked == nil {
 		return nil
 	}
 	list := s.tracked()
+	now := time.Now()
 	out := make(map[string]TrackedPresence, len(list))
-	for _, t := range list {
-		if t.Gamertag == "" {
+	for _, raw := range list {
+		if raw.Gamertag == "" {
 			continue
 		}
+		t := raw.fresh(now)
 		if prev, ok := out[t.Gamertag]; ok && prev.TitleSlug != "" {
 			continue
 		}

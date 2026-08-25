@@ -631,6 +631,200 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
 
 ---
 
+## LOT F — correctifs de revue adversariale (2026-08-25)
+
+Origine : le gate global du chantier (2 garde-rails rouges) et QUATRE relectures
+adversariales du diff A→E. Chaque item cite le constat de la revue ; le code du dépôt
+fait foi et a été rouvert avant correction. Aucun élargissement de périmètre : toute
+trouvaille annexe part en « Découvertes ».
+
+### Garde-rails du dépôt (P1 — gate global rouge)
+
+- [x] F1 — `platform/duckdb/match_view_repo_assist_pairs_test.go:54` : le fixture écrit
+  les littéraux bruts de portée kill-events. Passer par les constantes de
+  `internal/domain/killscope`. Gate : `go test ./internal/archlint/` vert.
+  → `killscope.ReadPathFilmWalk` (`match_view_repo_assist_pairs_test.go:63,73`) et non
+  l'une des trois constantes CRÉDIT citées par la revue : le seul littéral que le
+  ratchet J4R-3 refusait était `'marche'`, la MARCHE du décodeur de film, et c'est la
+  seule portée qui ait un sens ici — les producteurs crédit écrivent
+  `OriginCreditOnly`, « le crédit et rien que le crédit », et ne connaissent PAS
+  l'assistant que ce fixture pose. Écrire `ReadPathLiveFeed` aurait rendu le fixture
+  faux. L'origine `credit-concordant` reste un littéral, NOMMÉ et commenté
+  (`filmCreditOrigin`) : son propriétaire typé est `killsource.Origin`, paquet
+  title-specific que `platform/duckdb` n'a pas à importer, elle n'est pas dans
+  `killscope` (qui ne porte que le vocabulaire partagé des écrivains crédit) et le
+  ratchet ne la couvre pas — même traitement que les dix autres fixtures du dépôt.
+- [x] F2 — `internal/presence/batch_client.go` : appel HTTP sortant sans
+  `netguard.Check` (le mode démo fuiterait). Poser le garde AVANT l'émission, erreur
+  traitée par le chemin de dégradation existant. Gate :
+  `go test ./internal/platform/netguard/` vert.
+  → Surface `xbox_presence.batch` (`batch_client.go:48,116`), garde posé après le
+  nettoyage de la liste et avant l'encodage du corps. DÉCISION : la dégradation est
+  `(nil, nil)` et non `ErrOffline`. Le poll unitaire voisin est ALLOWLISTÉ parce qu'il
+  appartient au daemon watcher, éteint en démo ; le lot, lui, part d'une requête
+  utilisateur (`GET /api/v1/presence`, tiré toutes les 30 s par le shell) — il est donc
+  bel et bien atteignable, d'où le garde plutôt qu'une entrée d'allowlist. Rendre une
+  erreur ferait journaliser un `Warn` au compteur d'amis toutes les 45 s pour un refus
+  ATTENDU, et armerait son backoff d'échec (F4) sans raison. Test
+  `TestGetPresenceBatch_DemoMode_NoCall`.
+
+### P1 de revue
+
+- [x] F3 — `features/explorer/queries.ts:26-36` : `matchFiltersKey` ignore
+  `replay_scope` (contrairement à `squad_scope`) — changer le filtre Rejeu ne
+  déclenche aucun refetch et empoisonne le cache sous la même clé. Ajouter le champ à
+  la clé + cas de test.
+  → La clé devient une fonction PURE exportée, `matchFiltersKeyOf`
+  (`explorer/queries.ts:15-41`) : elle était calculée en ligne dans le hook, donc
+  intestable sans monter React — c'est ce qui a laissé le trou passer. Nouveau fichier
+  `explorer/matchFiltersKey.test.ts` (4 cas : `replay_scope` distingue les 3 états,
+  `squad_scope` idem, l'ordre de sélection ne change PAS la clé, vide == absent).
+- [x] F4 — `service/presence_friends.go:94-106` : à cache froid ou en échec, chaque
+  requête part vers Xbox. Ajouter (a) un singleflight (verrou tenu pendant le fetch)
+  et (b) une mémoire d'échec courte (~30 s). Le test
+  `TestFriendsCount_FetchErrorReturnsZeroAndIsNotCached` évolue : l'échec n'est
+  toujours pas mis en cache COMME RÉSULTAT, mais il impose un backoff.
+  → (a) `mu` est désormais tenu sur TOUT le calcul, appel Xbox compris
+  (`presence_friends.go:83,130-151`) — le singleflight le plus simple qui tienne la
+  promesse ; le coût (un appelant peut attendre le fetch d'un autre) est borné par le
+  budget de 3 s posé en F7, et c'est écrit au godoc du champ. (b) `failedKey`/
+  `failedAt` + `FriendsPresenceFailureBackoff = 30 s`, portés par la MÊME clé que le
+  cache (changer la liste relance immédiatement) et effacés par tout succès. Le test
+  est renommé `TestFriendsCount_FetchErrorReturnsZeroAndBacksOff` et vérifie EN PLUS
+  que `cacheKey` reste vide — un échec n'est jamais un résultat. 4 tests neufs :
+  reprise après expiration du backoff, effacement par un succès, contournement par un
+  changement de liste, et 8 requêtes simultanées à cache froid → 1 seul appel sortant.
+- [x] F5 — `service/presence_service_test.go:71-84` : le test du garde « le watcher
+  porteur d'un titre gagne » est tautologique (l'entrée sans titre est énumérée en
+  premier). Jouer LES DEUX ordres de fixture.
+  → `t.Run` sur les deux ordres. Vérifié que le test ÉCHOUE bien sans le garde dans
+  l'ordre « titre en premier » (c'est le seul des deux qui l'éprouve).
+
+### P2 retenus (dans le périmètre du chantier)
+
+- [x] F6 — `presence_friends.go:88-96` : la résolution gamertag→xuid (settings + requête
+  DuckDB) s'exécute AVANT le test de cache à chaque appel. Clé de cache = la LISTE DE
+  GAMERTAGS triée ; dans le TTL, aucun accès settings/DB.
+  → Clé = `normalizedFriendList` (blancs retirés, dédoublonnée, TRIÉE) jointe par
+  retour-ligne ; la résolution DuckDB passe DERRIÈRE la porte du cache, dans `measure`.
+  ÉCART ASSUMÉ sur la lettre de l'item : la lecture des RÉGLAGES, elle, reste en amont
+  du test de cache — c'est elle qui produit la clé, donc le seul moyen de détecter
+  qu'un ami a été ajouté ; c'est un chargement local (`settingsStore.Load`), pas une
+  requête de base, et le test d'invalidation par changement de liste en dépend. Écrit
+  au godoc de `Count`. Deux tests : la résolution n'a lieu qu'UNE fois sur 3 appels, et
+  réordonner/espacer/dupliquer la liste ne casse pas le cache.
+- [x] F7 — `presence_service.go:75-95` : borner le comptage d'amis (contexte à timeout
+  court, 3 s) — la réponse `/presence` ne doit jamais attendre Xbox 20 s.
+  → `friendsCountBudget = 3 s` + `countFriendsWithinBudget` : le comptage tourne dans
+  une goroutine et la réponse ne l'attend que le temps du budget. Un simple
+  `context.WithTimeout` n'aurait PAS suffi depuis F4 — un appelant bloqué sur le verrou
+  du singleflight n'observe pas l'annulation de son contexte (`sync.Mutex.Lock` ignore
+  le ctx). Le canal est tamponné, la goroutine se termine sur l'annulation du contexte.
+  Champ `friendsBudget` abaissé par le test (précédent : `RESTPoller.WithInterval`).
+  Test : source amie qui bloque jusqu'à annulation → réponse immédiate,
+  `friends_in_game = 0`, joueurs intacts.
+- [x] F8 — `watcher/player_watcher_title.go:35` : `CurrentTitle()` exportée sans aucun
+  appelant → SUPPRIMER (règle 0 code mort).
+  → Supprimée. Vérifié sur pièces avant : zéro appelant dans tout le dépôt (l'unique
+  lecteur, `StateProvider.GetStatus`, lit les deux champs directement sous `pw.mu`,
+  avec une dizaine d'autres, d'un seul tenant). Un commentaire à sa place dit POURQUOI
+  il n'y a pas d'accesseur en lecture — sans quoi le prochain passage le rajoute.
+- [x] F9 — fraîcheur de la présence servie : VÉRIFIER d'abord la cadence des events. Si
+  le handler du daemon est invoqué à CHAQUE poll réussi, blanchir titre + `in_game`
+  quand `LastEventAt` date de plus de 3 minutes. Sinon, `[!]` avec preuve.
+  → CONDITION VÉRIFIÉE, donc borne APPLIQUÉE. Preuve : `watcher/rest_poller.go:153-163`
+  (`tickOnce` appelle `p.handler(event)` sur CHAQUE poll réussi, sans aucun filtre de
+  changement d'état) à `restPollInterval = 10 s` (`rest_poller.go:38`), et
+  `watcher/daemon.go:444` pose `pw.RecordEvent(time.Now())` AVANT tout filtrage. Le
+  témoin avance donc tout seul toutes les 10 s tant que le poll vit.
+  Implémentation : `presenceFreshnessWindow = 3 min` + `TrackedPresence.fresh(now)`,
+  appliqué À L'INGESTION dans `trackedByGamertag` — et non après l'arbitrage : une
+  entrée périmée PORTEUSE d'un titre aurait sinon battu une entrée fraîche disant
+  « hors jeu » (test dédié). `LastEventAt` traverse l'adaptateur
+  `server_presence.go` (parse RFC3339 ; vide ou illisible = temps zéro = pas en jeu,
+  avec un `slog.Warn` sur l'illisible). 5 tests service + 2 tests de jonction.
+- [x] F10 — colonne rejeu d'`ExplorerMatchesTable.tsx` : poser `enableSorting: false`
+  comme sa jumelle `SquadSynergyHistoryTable.tsx:200`.
+  → `ExplorerMatchesTable.tsx:452`. Le mécanisme d'exemption existait déjà (le merge
+  des colonnes RESPECTE un `enableSorting: false` explicite, l.921-929) : un mot a
+  suffi. Test formulé en INVARIANT — aucun en-tête vide ne porte de contrôle de tri —
+  donc il couvre aussi la colonne Waypoint voisine.
+- [x] F11 — `squad/i18n.ts` `assists.description` traduit mais jamais monté : l'afficher
+  sous le titre de la section Assistances de `SquadSynergiesPage.tsx`.
+  → `SquadSynergiesPage.tsx:170-173`, classe alignée sur le bandeau de couverture juste
+  en dessous (`text-xs text-muted-foreground`). Deux tests (montée quand le bloc est
+  là, absente sinon) ; le helper de mock du contexte accepte maintenant un `pageData`.
+- [x] F12 — `match-replay/equipmentUsageColumns.ts:113` : une durée MESURÉE à zéro rend
+  « — » alors que la cellule épisodes voisine écrit 0. Zéro mesuré = « 0:00 ».
+  → Helper `durationCell`, jumeau d'`intCell` (`equipmentUsageColumns.ts:76-88`). Le
+  repli d'absence reste à sa place — l'absence de la COLONNE, décidée en amont par
+  `usage.columns.episodes`. Le test existant qui figeait le « — » est corrigé, un
+  second couvre le cas `t1 == t0` (épisode observé, durée nulle).
+- [x] F13 — état vide du graphe des assistances (match-view) : « non mesurée » est FAUX
+  pour un film BTB (mesuré mais non publiable ligne à ligne). Reformuler FR/EN pour
+  couvrir les deux cas, sans changer le contrat.
+  → Clé renommée `assistNotMeasured` → `assistNotUsable` (le nom mentait autant que le
+  texte). FR « Assistances non disponibles pour ce match (non mesurées ou non
+  publiables). » / EN « Assists unavailable for this match (not measured or not
+  publishable). » Contrat inchangé (`measured_deaths` reste le seul discriminant).
+  Commentaires du contrat i18n ET de l'en-tête de `MatchAssistChart.tsx` corrigés — ils
+  affirmaient tous deux « non mesurée » (doc inversée).
+- [x] F14 — `match_view_builders_assists.go:50` : l'ASSISTANT est nommé par le gamertag
+  du film alors que le tueur est résolu au scoreboard (deux orthographes possibles pour
+  un même joueur dans un seul graphe). Résoudre AUSSI l'assistant par xuid, repli sur
+  le gamertag du film.
+  → `match_view_builders_assists.go:55-58`. Repli ASYMÉTRIQUE et voulu : le nom du film
+  pour l'assistant (mieux vaut le nom d'hier que pas de nom, et il en a toujours un —
+  Q21d exige `assist_gamertag IS NOT NULL`), la chaîne VIDE pour le tueur (contrat
+  livré au lot C, le front a son masque « Joueur #### »). L'ancien test figeait
+  explicitement le comportement fautif (« le scoreboard ne le corrige pas ») : corrigé,
+  plus un test dédié (nom changé depuis le film, assistant absent du scoreboard,
+  assistant présent mais anonyme).
+- [x] F15 — tests manquants sur du code du chantier : (a) invoquer réellement
+  `option.tooltip.formatter` de `BarStackedChart` (chemins `tooltipComponentNote` ET
+  `tooltipHideZero`) ; (b) expiration du TTL amis ; (c) jonction httptest de
+  `server_presence.go` (daemon vivant → JSON complet ; daemon arrêté → players vide).
+  → (a) 6 cas dans `BarStackedChart.test.ts` : note sur la bonne paire (les arguments
+  reçus par le rappel sont vérifiés un à un), zéros conservés quand seule la note est
+  demandée, masquage préservé avec `tooltipHideZero`, infobulle VIDE quand tout est
+  masqué, échappement HTML, et AUCUN formateur installé sans option (le comportement
+  des appelants antérieurs). (b) `TestFriendsCount_CacheExpiresAfterTTL` — `cachedAt`
+  vieilli à la main. (c) `internal/api/server_presence_test.go` (5 tests, package `api`
+  pour atteindre `trackedPresenceFrom`) : daemon vivant → JSON complet, daemon arrêté →
+  liste vide, `last_event_at` périmé → titre blanchi, `last_event_at` vide → idem,
+  daemon absent → source nil et 200 vide.
+- [x] F16 — `match_view_repo_assist_pairs.go:62` : le commentaire dit « 6 colonnes », la
+  requête en rend 7. → Corrigé (`match_view_repo_assist_pairs.go:62`).
+
+### Gate F
+
+```
+cd apps/go-api ; go vet ./... ; go test ./internal/archlint/... ./internal/platform/netguard/... ./internal/presence/... ./internal/watcher/... ./internal/service/... ./internal/api/... ./internal/platform/duckdb/... ./contracttest/...
+cd apps/web ; npx tsc -b --force ; npx eslint <fichiers touchés> ; npx vitest run src/features/explorer src/features/squad src/features/match-view src/features/match-replay src/components
+```
+0 erreur, 0 nouveau warning.
+
+Résultats (2026-08-25, worktree `wt/notion-cinq`) :
+
+| Gate | Code | Sortie |
+|---|---|---|
+| `go vet ./...` | `EXIT_VET=0` | aucune ligne hors bruit CGO préexistant (paquets exclus par build constraints) |
+| `go test` (8 paquets du gate) | `EXIT_GO_TESTS=0` | 17 `ok`, 3 `[no test files]`, 0 FAIL |
+| `npx tsc -b --force` | `EXIT_TSC=0` | sortie vide |
+| `npx eslint` (12 fichiers web touchés) | `EXIT_ESLINT=0` | 0 erreur, 1 warning PRÉEXISTANT (`react-hooks/incompatible-library` sur `useReactTable`, `ExplorerMatchesTable.tsx:950` — déjà consigné en Découvertes au lot A, fichier et ligne inchangés par F10) |
+| `npx vitest run` (5 périmètres) | `EXIT_VITEST=0` | 229 fichiers, 2395 tests passés |
+
+Baselines rouges AVANT correction, pour mémoire : `TestNoRawKillScopeLiteral` échouait
+sur `match_view_repo_assist_pairs_test.go:54`, `TestOutboundCallsAreNetguarded` sur
+`presence/batch_client.go`.
+
+Contrôle de mutation sur F5 (le test était tautologique) : garde de préséance retiré à
+la main → `TestPresenceSnapshot_TwoWatchersSameGamertag_TitleWins/titre_en_premier`
+ÉCHOUE, `/sans_titre_en_premier` passe. Fichier restauré à l'identique (`diff` vide),
+test re-vert.
+
+---
+
 ## Clôture du chantier (superviseur)
 
 - [ ] Gate global dans le worktree : `cd apps/go-api && go test ./...` +
@@ -702,6 +896,18 @@ cd apps/web && npx tsc -b --force && npx eslint <fichiers touchés> && npx vites
   (`GetStatus`, `initPlayers`, `AddPlayer`, et désormais `PresenceBatch`) le lisent
   sous ce verrou. Course théorique préexistante, non aggravée (le nouveau lecteur
   prend le verrou comme ses voisins). Non traité, hors périmètre.
+- `formatDurationMMSS` confond « zéro » et « absent » pour TOUS ses appelants (lot F,
+  2026-08-25) : son repli sort dès que la valeur est nulle. C'est juste pour une durée
+  de MATCH (l'origine du helper) et faux partout où zéro est une mesure. F12 n'a corrigé
+  que le tableau des usages d'équipement, par un helper local. Un autre appelant a la
+  même forme et mériterait une vérification : `MatchScoreboard.tsx:110`
+  (`avg_life_seconds`, repli « — »). Non traité, hors périmètre.
+- La borne de fraîcheur de la présence (F9) REPOSE SUR UNE PROPRIÉTÉ DU POLLER : les
+  events partent à chaque poll réussi, pas seulement aux changements d'état (vérifié sur
+  `rest_poller.go:153-163`). Si un jour le poller se met à ne dispatcher que les
+  transitions — une optimisation plausible —, `presenceFreshnessWindow` effacerait le
+  titre d'un joueur bel et bien en partie au bout de 3 minutes. La dépendance est écrite
+  au godoc de la constante ; elle n'a pas de garde-rail automatique.
 - `MatchViewPage.tsx` coerce encore `locale === 'en' ? 'en' : 'fr'` sur une valeur
   déjà typée `Locale` (`'fr' | 'en'`) avant de la passer à `MatchMediaTab` et au
   breadcrumb : ternaires no-op héritées. Les deux composants d'onglets extraits

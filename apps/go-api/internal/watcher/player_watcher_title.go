@@ -30,10 +30,10 @@ func (pw *PlayerWatcher) SetCurrentTitle(slug, name string) {
 	pw.mu.Unlock()
 }
 
-// CurrentTitle retourne le titre tracké courant (slug, nom). Les deux valeurs
-// sont vides si le joueur n'est sur aucun titre du registre.
-func (pw *PlayerWatcher) CurrentTitle() (string, string) {
-	pw.mu.Lock()
-	defer pw.mu.Unlock()
-	return pw.currentTitleSlug, pw.currentTitleName
-}
+// PAS D'ACCESSEUR EN LECTURE ICI. L'unique lecteur est `StateProvider.GetStatus`
+// (provider.go), qui prend déjà `pw.mu` pour lire une DIZAINE de champs du même
+// watcher d'un seul tenant : un `CurrentTitle()` reprenant le verrou lui
+// donnerait un instantané fait de deux prises, et il n'avait de toute façon
+// aucun appelant. Ajouté puis retiré au lot F du backlog Notion (règle 0 code
+// mort). Le jour où un lecteur HORS de ce verrou apparaît, l'accesseur se
+// réécrit en trois lignes.

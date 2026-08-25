@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain/title"
 )
@@ -92,9 +94,13 @@ func TestFriendsCount_UnknownGamertagIgnored(t *testing.T) {
 	}
 }
 
-// Xbox indisponible : compteur à zéro, jamais d'erreur remontée — et l'échec
-// n'est PAS mémorisé, sinon un incident d'une seconde gèlerait 45 s d'affichage.
-func TestFriendsCount_FetchErrorReturnsZeroAndIsNotCached(t *testing.T) {
+// Xbox indisponible : compteur à zéro, jamais d'erreur remontée. L'échec n'est
+// pas mémorisé COMME RÉSULTAT — le compteur ne servira jamais un chiffre issu
+// d'un échec — mais il pose un BACKOFF : l'appel suivant rend zéro sans
+// réémettre. Sans lui, une panne Xbox fait repartir chaque poll du shell (30 s)
+// et chaque onglet vers un service qu'on sait indisponible, en payant sa latence
+// d'échec sur une requête que l'utilisateur attend.
+func TestFriendsCount_FetchErrorReturnsZeroAndBacksOff(t *testing.T) {
 	calls := 0
 	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
 		nil, errors.New("xbox 503"), &calls)
@@ -105,8 +111,83 @@ func TestFriendsCount_FetchErrorReturnsZeroAndIsNotCached(t *testing.T) {
 	if got := c.Count(context.Background()); got != 0 {
 		t.Errorf("Count (2e appel) = %d, attendu 0", got)
 	}
+	if calls != 1 {
+		t.Errorf("appels Xbox = %d, attendu 1 (le 2e appel est en backoff)", calls)
+	}
+	// Rien n'a été mis en cache comme résultat : le backoff écoulé, on retente.
+	if c.cacheKey != "" {
+		t.Errorf("cacheKey = %q, attendu vide (un échec n'est pas un résultat)", c.cacheKey)
+	}
+}
+
+// Le backoff est COURT et il expire : passé son délai, le compteur retente.
+func TestFriendsCount_RetriesAfterBackoffExpires(t *testing.T) {
+	calls := 0
+	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
+		nil, errors.New("xbox 503"), &calls)
+
+	c.Count(context.Background())
+	// Vieillissement à la main : le backoff est daté, pas minuté.
+	c.failedAt = time.Now().Add(-FriendsPresenceFailureBackoff - time.Second)
+
+	c.Count(context.Background())
 	if calls != 2 {
-		t.Errorf("appels Xbox = %d, attendu 2 (un échec ne se met pas en cache)", calls)
+		t.Errorf("appels Xbox = %d, attendu 2 (backoff expiré → nouvelle tentative)", calls)
+	}
+}
+
+// Un succès efface la mémoire d'échec : le backoff ne survit pas à la reprise.
+func TestFriendsCount_SuccessClearsBackoff(t *testing.T) {
+	calls := 0
+	var boom error = errors.New("xbox 503")
+	c := NewFriendPresenceCounter(
+		func(context.Context) []string { return []string{"Ami"} },
+		func(context.Context, []string) (map[string]string, error) {
+			return map[string]string{"Ami": "111"}, nil
+		},
+		func(context.Context, []string) ([]FriendPresence, error) {
+			calls++
+			if boom != nil {
+				return nil, boom
+			}
+			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
+		},
+		twoTitleRegistry(),
+	)
+
+	c.Count(context.Background())
+	boom = nil
+	c.failedAt = time.Now().Add(-FriendsPresenceFailureBackoff - time.Second)
+	if got := c.Count(context.Background()); got != 1 {
+		t.Fatalf("Count après reprise = %d, attendu 1", got)
+	}
+	if c.failedKey != "" {
+		t.Errorf("failedKey = %q, attendu vide après un succès", c.failedKey)
+	}
+}
+
+// Changer la liste d'amis relance immédiatement, backoff ou pas : la mémoire
+// d'échec porte la MÊME clé que le cache.
+func TestFriendsCount_ListChangeBypassesBackoff(t *testing.T) {
+	calls := 0
+	gamertags := []string{"Ami1"}
+	c := NewFriendPresenceCounter(
+		func(context.Context) []string { return gamertags },
+		func(context.Context, []string) (map[string]string, error) {
+			return map[string]string{"Ami1": "111", "Ami2": "222"}, nil
+		},
+		func(context.Context, []string) ([]FriendPresence, error) {
+			calls++
+			return nil, errors.New("xbox 503")
+		},
+		twoTitleRegistry(),
+	)
+
+	c.Count(context.Background())
+	gamertags = []string{"Ami1", "Ami2"}
+	c.Count(context.Background())
+	if calls != 2 {
+		t.Errorf("appels Xbox = %d, attendu 2 (la liste a changé)", calls)
 	}
 }
 
@@ -199,6 +280,135 @@ func TestFriendsCount_NoFriendsConfigured(t *testing.T) {
 	}
 	if calls != 0 {
 		t.Errorf("appels Xbox = %d, attendu 0", calls)
+	}
+}
+
+// ─── LE CACHE : SA CLÉ, SON EXPIRATION, ET LE SINGLEFLIGHT ──────────────────────
+
+// F6 — dans le TTL, la RÉSOLUTION ne repart pas non plus. La clé de cache est la
+// liste de GAMERTAGS ; avec l'ancienne clé (les xuids résolus), il fallait faire
+// la requête DuckDB de résolution avant même de pouvoir consulter le cache, donc
+// à chaque poll du shell, pour une liste qui ne bouge qu'à la main.
+func TestFriendsCount_ResolutionIsBehindTheCache(t *testing.T) {
+	resolves, fetches := 0, 0
+	c := NewFriendPresenceCounter(
+		func(context.Context) []string { return []string{"Ami"} },
+		func(context.Context, []string) (map[string]string, error) {
+			resolves++
+			return map[string]string{"Ami": "111"}, nil
+		},
+		func(context.Context, []string) ([]FriendPresence, error) {
+			fetches++
+			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
+		},
+		twoTitleRegistry(),
+	)
+
+	for i := 0; i < 3; i++ {
+		if got := c.Count(context.Background()); got != 1 {
+			t.Fatalf("Count #%d = %d, attendu 1", i, got)
+		}
+	}
+	if resolves != 1 {
+		t.Errorf("résolutions = %d, attendu 1 (les suivantes sont derrière le cache)", resolves)
+	}
+	if fetches != 1 {
+		t.Errorf("appels Xbox = %d, attendu 1", fetches)
+	}
+}
+
+// L'ORDRE de la liste des Réglages ne doit pas invalider le cache : la clé est la
+// liste TRIÉE et dédoublonnée.
+func TestFriendsCount_ListReorderKeepsCache(t *testing.T) {
+	calls := 0
+	gamertags := []string{"Ami1", "Ami2"}
+	c := NewFriendPresenceCounter(
+		func(context.Context) []string { return gamertags },
+		func(context.Context, []string) (map[string]string, error) {
+			return map[string]string{"Ami1": "111", "Ami2": "222"}, nil
+		},
+		func(context.Context, []string) ([]FriendPresence, error) {
+			calls++
+			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
+		},
+		twoTitleRegistry(),
+	)
+
+	c.Count(context.Background())
+	gamertags = []string{"Ami2", " Ami1 ", "Ami2"} // réordonnée, espacée, dupliquée
+	c.Count(context.Background())
+	if calls != 1 {
+		t.Errorf("appels Xbox = %d, attendu 1 (même liste, autre ordre)", calls)
+	}
+}
+
+// F15b — le TTL EXPIRE. `cachedAt` est vieilli à la main : le cache est daté, pas
+// minuté, et rien d'autre ne prouve qu'il finit par lâcher.
+func TestFriendsCount_CacheExpiresAfterTTL(t *testing.T) {
+	calls := 0
+	c := counterFor(t, []string{"Ami"}, map[string]string{"Ami": "111"},
+		[]FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil, &calls)
+
+	c.Count(context.Background())
+	c.cachedAt = time.Now().Add(-FriendsPresenceTTL - time.Second)
+
+	if got := c.Count(context.Background()); got != 1 {
+		t.Errorf("Count après expiration = %d, attendu 1", got)
+	}
+	if calls != 2 {
+		t.Errorf("appels Xbox = %d, attendu 2 (TTL écoulé → nouvel appel)", calls)
+	}
+}
+
+// F4 — SINGLEFLIGHT : N requêtes simultanées à cache froid ne font PARTIR QU'UN
+// SEUL lot. C'est le scénario nominal au réveil du shell (plusieurs onglets), et
+// sans lui chacune émettait le sien.
+func TestFriendsCount_ConcurrentCallsIssueASingleFetch(t *testing.T) {
+	const concurrents = 8
+	var mu sync.Mutex
+	calls := 0
+	entre := make(chan struct{})
+
+	c := NewFriendPresenceCounter(
+		func(context.Context) []string { return []string{"Ami"} },
+		func(context.Context, []string) (map[string]string, error) {
+			return map[string]string{"Ami": "111"}, nil
+		},
+		func(context.Context, []string) ([]FriendPresence, error) {
+			mu.Lock()
+			calls++
+			premier := calls == 1
+			mu.Unlock()
+			if premier {
+				// Tient la place le temps que les autres arrivent : sans
+				// singleflight, elles émettraient toutes ici.
+				<-entre
+			}
+			return []FriendPresence{{XUID: "111", TitleID: titleIDInfinite}}, nil
+		},
+		twoTitleRegistry(),
+	)
+
+	var wg sync.WaitGroup
+	resultats := make([]int, concurrents)
+	for i := 0; i < concurrents; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			resultats[idx] = c.Count(context.Background())
+		}(i)
+	}
+	time.Sleep(20 * time.Millisecond) // laisse les concurrentes s'empiler sur le verrou
+	close(entre)
+	wg.Wait()
+
+	if calls != 1 {
+		t.Errorf("appels Xbox = %d, attendu 1 pour %d requêtes simultanées", calls, concurrents)
+	}
+	for i, n := range resultats {
+		if n != 1 {
+			t.Errorf("requête %d : Count = %d, attendu 1 (résultat du premier)", i, n)
+		}
 	}
 }
 

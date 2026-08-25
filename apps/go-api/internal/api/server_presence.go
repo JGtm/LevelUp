@@ -12,6 +12,8 @@ package api
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/config"
@@ -63,6 +65,12 @@ func buildPresenceService(
 // trackedPresenceFrom adapte l'état du watcher en source de présence. nil si le
 // watcher est désactivé ; tranche vide si le daemon est arrêté — dans les deux
 // cas la réponse ne liste aucun joueur, ce qui est exact : on ne sait rien.
+//
+// `last_event_at` traverse avec le titre : c'est le témoin de vivacité du poll,
+// dont le service se sert pour ne pas servir un titre figé (cf.
+// service.presenceFreshnessWindow). Le watcher le publie en RFC3339 ; un champ
+// vide ou illisible donne le temps zéro, que le service lit comme « aucune
+// information », donc « pas en jeu ».
 func trackedPresenceFrom(daemon watcher.DaemonController) service.TrackedPresenceSource {
 	if daemon == nil {
 		return nil
@@ -74,10 +82,22 @@ func trackedPresenceFrom(daemon watcher.DaemonController) service.TrackedPresenc
 		}
 		out := make([]service.TrackedPresence, 0, len(status.Players))
 		for _, p := range status.Players {
+			var lastEventAt time.Time
+			if p.LastEventAt != "" {
+				parsed, err := time.Parse(time.RFC3339, p.LastEventAt)
+				if err != nil {
+					slog.WarnContext(context.Background(),
+						"presence: last_event_at illisible — joueur traité comme hors jeu",
+						"gamertag", p.Gamertag, "value", p.LastEventAt, "err", err)
+				} else {
+					lastEventAt = parsed
+				}
+			}
 			out = append(out, service.TrackedPresence{
-				Gamertag:  p.Gamertag,
-				TitleSlug: p.TitleSlug,
-				TitleName: p.TitleName,
+				Gamertag:    p.Gamertag,
+				TitleSlug:   p.TitleSlug,
+				TitleName:   p.TitleName,
+				LastEventAt: lastEventAt,
 			})
 		}
 		return out

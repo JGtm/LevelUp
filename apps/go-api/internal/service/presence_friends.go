@@ -27,6 +27,20 @@ import (
 // qu'un ami qui lance une partie apparaisse en moins d'une minute.
 const FriendsPresenceTTL = 45 * time.Second
 
+// FriendsPresenceFailureBackoff est la mémoire d'ÉCHEC du lot d'amis.
+//
+// Sans elle, une panne Xbox transforme chaque onglet ouvert en marteau : le
+// résultat n'étant pas mis en cache, chaque poll du shell (30 s) et chaque
+// onglet repartent vers un service qu'on sait indisponible — et paient sa
+// latence d'échec (souvent le timeout complet) au passage, sur une requête que
+// l'utilisateur attend.
+//
+// 30 s, soit MOINS que le TTL de succès : un incident d'une seconde ne doit pas
+// geler l'affichage aussi longtemps qu'une mesure réussie. L'échec n'est donc
+// pas « mis en cache » comme un résultat — le compteur ne rend jamais un chiffre
+// issu d'un échec, il rend zéro sans réémettre.
+const FriendsPresenceFailureBackoff = 30 * time.Second
+
 // FriendPresence est la présence brute d'un ami. Type neutre : le service ne
 // dépend pas du client Xbox (l'adaptation se fait au composition root).
 // TitleID est l'identifiant Xbox du titre actif, vide si aucun ou si la
@@ -46,17 +60,34 @@ type FriendXUIDResolver func(ctx context.Context, gamertags []string) (map[strin
 // FriendPresenceFetcher rend la présence Xbox de plusieurs xuids en un appel.
 type FriendPresenceFetcher func(ctx context.Context, xuids []string) ([]FriendPresence, error)
 
-// FriendPresenceCounter compte les amis en jeu, avec cache TTL.
+// FriendPresenceCounter compte les amis en jeu, avec cache TTL, singleflight et
+// mémoire d'échec.
 type FriendPresenceCounter struct {
 	gamertags FriendGamertagsFunc
 	resolve   FriendXUIDResolver
 	fetch     FriendPresenceFetcher
 	titles    *title.Registry
 
+	// mu SÉRIALISE LE CALCUL ENTIER, appel Xbox compris — c'est le singleflight.
+	//
+	// Un verrou pris seulement autour des champs de cache laisserait N requêtes
+	// simultanées trouver le cache froid ensemble et partir toutes vers Xbox : le
+	// scénario nominal au démarrage du shell (plusieurs onglets, ou un onglet qui
+	// remonte après une veille). En le tenant PENDANT le fetch, les suivantes
+	// attendent le résultat de la première et le lisent au cache.
+	//
+	// Ce que cela coûte : un appelant peut attendre la durée du fetch. C'est borné
+	// en amont — PresenceService.GetSnapshot appelle Count sous un contexte de
+	// friendsCountBudget (3 s), justement pour que /presence ne dépende jamais de
+	// la latence de Xbox.
 	mu         sync.Mutex
 	cacheKey   string
 	cacheCount int
 	cachedAt   time.Time
+	// failedKey / failedAt : la mémoire d'échec, portée par la MÊME clé que le
+	// cache — changer la liste d'amis relance immédiatement, sans purger.
+	failedKey string
+	failedAt  time.Time
 }
 
 // NewFriendPresenceCounter crée le compteur d'amis en jeu. Retourne nil si une
@@ -77,44 +108,103 @@ func NewFriendPresenceCounter(
 // Count retourne le nombre d'amis actuellement en jeu sur un titre suivi.
 //
 // Toute défaillance rend 0 : Réglages vides, gamertags inconnus de la base,
-// Xbox indisponible. Un échec n'est PAS mis en cache — le prochain appel
-// retentera, au pire une fois toutes les 30 s.
+// Xbox indisponible. Un échec ne devient JAMAIS un résultat en cache ; il pose
+// seulement un backoff court (FriendsPresenceFailureBackoff) pendant lequel le
+// compteur rend zéro sans réémettre.
+//
+// LA CLÉ DE CACHE EST LA LISTE DE GAMERTAGS, pas les xuids résolus. Avec les
+// xuids, il fallait TOUJOURS faire la requête DuckDB de résolution avant même de
+// pouvoir consulter le cache : le chemin chaud payait une lecture de base à
+// chaque poll du shell, pour une liste qui ne bouge qu'à la main dans les
+// Réglages. Avec les gamertags, la résolution est DERRIÈRE la porte du cache.
+// (La lecture des Réglages, elle, reste en amont : c'est elle qui détecte que la
+// liste a changé, et c'est un chargement local, pas une requête de base.)
 func (c *FriendPresenceCounter) Count(ctx context.Context) int {
-	gts := c.gamertags(ctx)
-	if len(gts) == 0 {
+	friends := normalizedFriendList(c.gamertags(ctx))
+	if len(friends) == 0 {
+		return 0
+	}
+	key := strings.Join(friends, "\n")
+
+	// Verrou tenu jusqu'au retour, appel Xbox compris : cf. godoc du champ `mu`.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.cacheKey == key && time.Since(c.cachedAt) <= FriendsPresenceTTL {
+		return c.cacheCount
+	}
+	if c.failedKey == key && time.Since(c.failedAt) <= FriendsPresenceFailureBackoff {
+		slog.DebugContext(ctx, "presence: lot d'amis en backoff après échec — compteur à zéro",
+			"friends", len(friends), "backoff", FriendsPresenceFailureBackoff)
 		return 0
 	}
 
-	xuids := c.resolveXUIDs(ctx, gts)
+	n, err := c.measure(ctx, friends)
+	if err != nil {
+		c.failedKey, c.failedAt = key, time.Now()
+		return 0
+	}
+	c.cacheKey, c.cacheCount, c.cachedAt = key, n, time.Now()
+	// Un succès efface la mémoire d'échec : le backoff ne survit pas à la reprise.
+	c.failedKey, c.failedAt = "", time.Time{}
+	return n
+}
+
+// measure fait le travail réel : résolution puis lot Xbox. Appelée SOUS le verrou,
+// uniquement quand ni le cache ni le backoff n'ont répondu.
+//
+// Une liste d'amis dont AUCUN n'a de xuid connu est un résultat (zéro), pas un
+// échec : elle est mise en cache comme telle, sinon la requête de résolution
+// repartirait à chaque poll pour rendre le même zéro.
+func (c *FriendPresenceCounter) measure(ctx context.Context, friends []string) (int, error) {
+	xuids, err := c.resolveXUIDs(ctx, friends)
+	if err != nil {
+		slog.WarnContext(ctx, "presence: résolution des amis échouée — compteur à zéro", "err", err)
+		return 0, err
+	}
 	if len(xuids) == 0 {
-		return 0
+		return 0, nil
 	}
-
-	key := strings.Join(xuids, ",")
-	if n, ok := c.cached(key); ok {
-		return n
-	}
-
 	presences, err := c.fetch(ctx, xuids)
 	if err != nil {
 		slog.WarnContext(ctx, "presence: lot d'amis indisponible — compteur à zéro",
 			"friends", len(xuids), "err", err)
-		return 0
+		return 0, err
 	}
+	return c.countInGame(ctx, presences, xuids), nil
+}
 
-	n := c.countInGame(ctx, presences, xuids)
-	c.store(key, n)
-	return n
+// normalizedFriendList rend la liste des Réglages en forme canonique : entrées
+// vidées de leurs blancs, sans doublon, TRIÉE. C'est cette forme qui sert de clé
+// de cache — sans le tri, réordonner la liste dans les Réglages invaliderait un
+// cache encore valable ; sans le dédoublonnage, coller deux fois le même ami en
+// ferait autant.
+func normalizedFriendList(gamertags []string) []string {
+	seen := make(map[string]struct{}, len(gamertags))
+	out := make([]string, 0, len(gamertags))
+	for _, gt := range gamertags {
+		gt = strings.TrimSpace(gt)
+		if gt == "" {
+			continue
+		}
+		if _, dup := seen[gt]; dup {
+			continue
+		}
+		seen[gt] = struct{}{}
+		out = append(out, gt)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // resolveXUIDs traduit les gamertags des Réglages en xuids, triés et
-// dédoublonnés (l'ordre stable sert de clé de cache). Un ami jamais croisé en
-// match n'a pas de xuid connu : il est ignoré, avec une trace en Debug.
-func (c *FriendPresenceCounter) resolveXUIDs(ctx context.Context, gamertags []string) []string {
+// dédoublonnés. Un ami jamais croisé en match n'a pas de xuid connu : il est
+// ignoré, avec une trace en Debug. Une ERREUR de résolution remonte (elle vaut
+// backoff) ; une liste vide n'en est pas une.
+func (c *FriendPresenceCounter) resolveXUIDs(ctx context.Context, gamertags []string) ([]string, error) {
 	byGamertag, err := c.resolve(ctx, gamertags)
 	if err != nil {
-		slog.WarnContext(ctx, "presence: résolution des amis échouée — compteur à zéro", "err", err)
-		return nil
+		return nil, err
 	}
 	seen := make(map[string]struct{}, len(byGamertag))
 	out := make([]string, 0, len(byGamertag))
@@ -131,7 +221,7 @@ func (c *FriendPresenceCounter) resolveXUIDs(ctx context.Context, gamertags []st
 		out = append(out, xuid)
 	}
 	sort.Strings(out)
-	return out
+	return out, nil
 }
 
 // countInGame compte les présences portant un titre du registre. Un ami dont la
@@ -165,23 +255,4 @@ func (c *FriendPresenceCounter) countInGame(ctx context.Context, presences []Fri
 		counted[p.XUID] = struct{}{}
 	}
 	return len(counted)
-}
-
-// cached retourne le compteur mémorisé si la clé (liste d'amis) est la même et
-// que le TTL n'est pas écoulé. Changer la liste des Réglages invalide de fait.
-func (c *FriendPresenceCounter) cached(key string) (int, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.cacheKey != key || time.Since(c.cachedAt) > FriendsPresenceTTL {
-		return 0, false
-	}
-	return c.cacheCount, true
-}
-
-func (c *FriendPresenceCounter) store(key string, count int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cacheKey = key
-	c.cacheCount = count
-	c.cachedAt = time.Now()
 }
