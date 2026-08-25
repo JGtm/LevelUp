@@ -51,7 +51,7 @@ describe('MatchAssistChart — états vides', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('dit « non mesurée » quand measured_deaths vaut 0 — jamais « aucune »', () => {
+  it('dit « non disponibles » quand measured_deaths vaut 0 — jamais « aucune »', () => {
     render(
       <MatchAssistChart
         block={block({ measured_deaths: 0, pairs: [] })}
@@ -60,7 +60,7 @@ describe('MatchAssistChart — états vides', () => {
         t={MATCH_VIEW_TEXT.fr}
       />,
     )
-    expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistNotMeasured)).toBeTruthy()
+    expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistNotUsable)).toBeTruthy()
     expect(screen.queryByText(MATCH_VIEW_TEXT.fr.assistNoData)).toBeNull()
   })
 
@@ -74,7 +74,7 @@ describe('MatchAssistChart — états vides', () => {
       />,
     )
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistNoData)).toBeTruthy()
-    expect(screen.queryByText(MATCH_VIEW_TEXT.fr.assistNotMeasured)).toBeNull()
+    expect(screen.queryByText(MATCH_VIEW_TEXT.fr.assistNotUsable)).toBeNull()
   })
 
   it('traite `pairs: null` (tableau nullable du contrat) comme une liste vide', () => {

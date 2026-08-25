@@ -13,8 +13,11 @@
  * composant plutôt qu'un simple clone :
  *
  *   bloc ABSENT              le match n'a aucune ligne de film — on ne rend RIEN.
- *   measured_deaths === 0    le film est là, l'assistance n'y est pas mesurée :
- *                            « Assistance non mesurée pour ce match ».
+ *   measured_deaths === 0    le film est là, mais aucune mort n'est LISIBLE ligne à
+ *                            ligne : soit l'assistance n'y est pas mesurée, soit elle
+ *                            l'est sans être publiable (cas BTB — nommer deux joueurs
+ *                            sur une mort n'y est pas permis). Le contrat ne sépare pas
+ *                            les deux causes, le libellé les couvre donc toutes deux.
  *   pairs vide, mesuré > 0   MESURÉ : personne n'a assisté personne.
  *                            « Aucune assistance sur ce match ».
  *
@@ -63,9 +66,9 @@ export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
   const series = assistStackedSeries(pairs, scoreboard, meXUID)
   const stolen = assistStolenLookup(pairs)
 
-  // Porte 2 — mesuré ou non. Les deux libellés sont distincts et le choix se fait sur le
+  // Porte 2 — lisible ou non. Les deux libellés sont distincts et le choix se fait sur le
   // DÉNOMINATEUR, jamais sur la longueur de la liste.
-  const emptyMessage = block.measured_deaths === 0 ? t.assistNotMeasured : t.assistNoData
+  const emptyMessage = block.measured_deaths === 0 ? t.assistNotUsable : t.assistNoData
 
   // Couleurs par tueur assisté — cycle ASSIST_TOKENS (11 teintes distinctes).
   const killerSet = new Set<string>()

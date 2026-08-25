@@ -176,13 +176,32 @@ describe('MatchEquipmentUsageSection — le tableau', () => {
     expect(ligneTotal?.querySelectorAll('td')[1]?.textContent).toBe('2')
   })
 
-  it('affiche la durée cumulée en m:ss, et « — » quand la famille n’a aucun épisode', () => {
+  it('affiche la durée cumulée en m:ss, et « 0:00 » quand la mesure vaut zéro', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     const ligneAlpha = vue.getByText('Alpha').closest('tr')
     const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
-    // nom | grappin 1 | camo 1 épisode | camo 0:05 | surbouclier 0 | surbouclier — | ...
-    expect(cellules.slice(0, 6)).toEqual(['Alpha', '1', '1', '0:05', '0', '—'])
+    // nom | grappin 1 | camo 1 épisode | camo 0:05 | surbouclier 0 | surbouclier 0:00 | ...
+    // La 6e cellule est le point du correctif F12 : elle voisine un « 0 » (nombre
+    // d'épisodes de surbouclier d'Alpha). Un « — » y lirait « non mesuré » alors que la
+    // colonne n'existe que parce que la famille EST mesurée sur ce match.
+    expect(cellules.slice(0, 6)).toEqual(['Alpha', '1', '1', '0:05', '0', '0:00'])
+  })
+
+  it('un épisode MESURÉ de durée nulle s’écrit « 0:00 », pas « — »', () => {
+    // t1 === t0 : l'épisode a bien été observé, sa durée vaut zéro. Le nombre d'épisodes
+    // dit « 1 » ; la durée doit dire « 0:00 » et non un repli d'absence.
+    poserArtefact({
+      ...TEMOIN,
+      equipmentEpisodes: [
+        { slot: 1, fam: 'camo', t0: 40, t1: 40 },
+        { slot: 2, fam: 'overshield', t0: 0, t1: 30 },
+      ],
+    } as unknown as Partial<ReplayDocument>)
+    const vue = afficher()
+    const ligneAlpha = vue.getByText('Alpha').closest('tr')
+    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
+    expect(cellules.slice(2, 4)).toEqual(['1', '0:00'])
   })
 
   it('range le joueur HORS SCOREBOARD sous « sans équipe », jamais dans un camp nommé', () => {

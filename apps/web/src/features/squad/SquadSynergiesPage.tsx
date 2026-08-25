@@ -168,6 +168,10 @@ export function SquadSynergiesPage() {
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {t.assists.title}
           </p>
+          {/* La description dit CE QUE MESURE le tableau (« qui prépare les éliminations
+              de qui »), que ni le titre ni les en-têtes de colonne ne disent. Même classe
+              que le bandeau de couverture juste en dessous. */}
+          <p className="mb-2 text-xs text-muted-foreground">{t.assists.description}</p>
           <SquadAssistPairsTable block={assistPairs} />
         </section>
       )}
