@@ -34,6 +34,18 @@ const heartbeatInterval = 30 * time.Second
 // chunkDownloadTimeout borne le téléchargement d'un morceau (CDN Azure).
 const chunkDownloadTimeout = 60 * time.Second
 
+// genericBuildFailedErrorCode : le motif d'échec ORDINAIRE (décodage, réseau, artefact non
+// transmis...). Nommé pour rester DISTINCT, par construction, de
+// domain.BuildJobErrorCodeMemoryExceeded — un film-bombe isolé ne doit jamais se confondre
+// avec une vraie erreur de décodage (cf. memlimit.go, TestProcessJob_EchecOrdinaire_GardeSonMotif).
+const genericBuildFailedErrorCode = "replay_build_failed"
+
+// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire a isolé le job en
+// cours (cf. memlimit.go). Distinct de 1 (arrêt sur erreur de la boucle) et 2 (configuration
+// manquante, cf. main.go) : un opérateur qui lit les journaux du superviseur du processus
+// doit pouvoir distinguer un dépassement mémoire volontaire d'un simple plantage.
+const exitCodeMemoryExceeded = 3
+
 // worker : l'état LOCAL de l'ouvrier. Rien d'autre que des compteurs — l'état de
 // la file vit côté web, et c'est ce qui rend le travail distant observable.
 type worker struct {
@@ -44,8 +56,10 @@ type worker struct {
 	// keepsFilms : le dossier de travail EST le cache film du dépôt (archive
 	// perpétuelle) — les morceaux ne sont alors jamais supprimés. Cf. cleanupFilm.
 	keepsFilms bool
-	jobsDone   int64
-	jobsFailed int64
+	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. memlimit.go.
+	memLimitGiB int
+	jobsDone    int64
+	jobsFailed  int64
 }
 
 // processJob traite un job pris de bout en bout et en rend le résultat. Ne
@@ -64,7 +78,15 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	beatCtx, stopBeat := context.WithCancel(ctx)
 	go w.beatUntil(beatCtx, job.JobID)
 
+	// LA SENTINELLE EST ARMÉE POUR CE JOB SEUL (cf. memlimit.go) : un pic mesuré depuis le
+	// démarrage de l'ouvrier confondrait plusieurs films. onExceeded RAPPORTE l'échec au
+	// serveur PUIS arrête ce processus — l'OS récupère la RAM par construction, même
+	// doctrine que l'enfant de la passe hors ligne (cmd/levelup, blindage 2026-08-20/24).
+	guard := armMemoryGuard(w.memLimitGiB, func(peakBytes uint64) {
+		w.reportMemoryExceeded(ctx, job, peakBytes)
+	})
 	result, err := w.buildAndSend(ctx, job)
+	guard.disarm()
 	stopBeat()
 	w.cleanupFilm(ctx, job)
 
@@ -80,7 +102,7 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	if err != nil {
 		w.jobsFailed++
 		req.Succeeded = false
-		req.ErrorCode = "replay_build_failed"
+		req.ErrorCode = genericBuildFailedErrorCode
 		req.ErrorMessage = err.Error()
 		slog.WarnContext(ctx, "replay-worker: job échoué",
 			"job_id", job.JobID, "match_id", job.MatchID, "err", err)
@@ -100,6 +122,70 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 		slog.ErrorContext(ctx, "replay-worker: rendu du résultat échoué",
 			"job_id", job.JobID, "err", cerr)
 	}
+}
+
+// reportMemoryExceeded rend compte au serveur d'un dépassement du plafond mémoire dur PUIS
+// arrête ce processus (cf. memlimit.go pour le pourquoi de l'arrêt). Le compte rendu est
+// ISOLÉ dans completeMemoryExceeded (testable) : seule la ligne os.Exit ne l'est pas — même
+// parti pris que cmd/levelup/backfill_memlimit_test.go (on teste les pièces, jamais la
+// coupure elle-même, pour ne pas donner à un test le pouvoir de tuer le binaire de test).
+//
+// APPELÉE DEPUIS LA GOROUTINE DE LA SENTINELLE, PENDANT QUE LE DÉCODAGE EST ENCORE EN VOL :
+// c'est voulu, c'est le seul moment où ce processus est encore vivant pour parler au serveur.
+func (w *worker) reportMemoryExceeded(ctx context.Context, job *domain.BuildQueueJob, peakBytes uint64) {
+	w.completeMemoryExceeded(ctx, job, peakBytes)
+	os.Exit(exitCodeMemoryExceeded)
+}
+
+// completeMemoryExceeded envoie le compte rendu explicite du dépassement mémoire. Séparée de
+// reportMemoryExceeded UNIQUEMENT pour rester testable (aucun os.Exit ici) — cf.
+// memlimit_test.go, TestWorker_CompleteMemoryExceeded_MotifExplicite.
+func (w *worker) completeMemoryExceeded(ctx context.Context, job *domain.BuildQueueJob, peakBytes uint64) {
+	slog.ErrorContext(ctx, "replay-worker: PLAFOND MEMOIRE DEPASSE — film isolé, arrêt du processus",
+		"job_id", job.JobID, "match_id", job.MatchID, "pic_octets", peakBytes)
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), httpTimeout)
+	defer cancel()
+	req := memoryExceededRequest(w.identity.workerID, job, peakBytes)
+	if cerr := w.client.complete(rctx, req); cerr != nil {
+		slog.ErrorContext(ctx, "replay-worker: rendu du dépassement mémoire échoué",
+			"job_id", job.JobID, "match_id", job.MatchID, "err", cerr)
+	}
+}
+
+// memoryExceededRequest construit le compte rendu d'échec pour UN dépassement du plafond
+// mémoire dur. Fonction PURE (aucun appel réseau, aucun os.Exit) : c'est elle que les tests
+// exercent pour vérifier le motif, jamais le chemin qui arrête le processus.
+func memoryExceededRequest(workerID string, job *domain.BuildQueueJob, peakBytes uint64) handlers.BuildQueueCompleteRequest {
+	return handlers.BuildQueueCompleteRequest{
+		JobID:        job.JobID,
+		WorkerID:     workerID,
+		Succeeded:    false,
+		ErrorCode:    domain.BuildJobErrorCodeMemoryExceeded,
+		ErrorMessage: memoryExceededMessage(job.MatchID, peakBytes),
+	}
+}
+
+// memoryExceededMessage : le texte lisible par un opérateur qui consulte le tableau de bord
+// admin. Porte les trois informations demandées par le lot : LE MATCH, LE PIC (quand mesuré),
+// et le sort du film — jamais un "failed" anonyme qui obligerait à rouvrir les journaux pour
+// distinguer un film-bombe connu d'une vraie erreur de décodage.
+func memoryExceededMessage(matchID string, peakBytes uint64) string {
+	pic := "pic inconnu"
+	if peakBytes > 0 {
+		pic = "pic " + formatMemGuardBytes(peakBytes)
+	}
+	return fmt.Sprintf("dépassement mémoire (film-bombe) sur le match %s, %s — film isolé, passe poursuivie",
+		matchID, pic)
+}
+
+// formatMemGuardBytes rend une taille lisible ("7.90 GiB" / "512 MiB"). Même forme que
+// libelleOctets de cmd/levelup (paquets main distincts, cf. memlimit.go pour le pourquoi de
+// la duplication).
+func formatMemGuardBytes(n uint64) string {
+	if n >= memGuardOctetsParGiB {
+		return fmt.Sprintf("%.2f GiB", float64(n)/float64(memGuardOctetsParGiB))
+	}
+	return fmt.Sprintf("%.0f MiB", float64(n)/(1024*1024))
 }
 
 // errArtifactNotDelivered : l'artefact a été construit mais n'est pas arrivé chez
