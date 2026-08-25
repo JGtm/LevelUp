@@ -39,6 +39,39 @@ func TestArtifactUpToDate(t *testing.T) {
 	}
 }
 
+// TestArtifactHasPlayerCounters — le prédicat constate une PROPRIÉTÉ DU DOCUMENT
+// (`scoreTimeline.players` non vide), là où la version de schéma ne distingue rien.
+//
+// Il n'affirme PAS que les faits manquaient quand il rend faux : trois vacuités légitimes
+// existent (film sans enregistrement d'entité, appariement ambigu, aucun compteur dans la
+// fenêtre). C'est pourquoi ses appelants exigent une condition de plus. Mesuré sur deux
+// témoins le 2026-08-24 : 8 avec faits, 0 sans, sur 7344d24f comme sur 530820e5.
+func TestArtifactHasPlayerCounters(t *testing.T) {
+	dir := t.TempDir()
+	cas := map[string]struct {
+		contenu string
+		attendu bool
+	}{
+		"avec joueurs de score":  {`{"schemaVersion":18,"scoreTimeline":{"players":[{"xuid":"25332748"}]}}`, true},
+		"joueurs vides":          {`{"schemaVersion":18,"scoreTimeline":{"players":[]}}`, false},
+		"courbe sans joueurs":    {`{"schemaVersion":18,"scoreTimeline":{"teams":[{"team":0}]}}`, false},
+		"aucune courbe de score": {`{"schemaVersion":18,"matchId":"m"}`, false},
+		"json illisible":         {`{pas du json`, false},
+	}
+	for nom, c := range cas {
+		p := filepath.Join(dir, nom+".json")
+		if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
+			t.Fatalf("écriture fixture %s: %v", nom, err)
+		}
+		if got := ArtifactHasPlayerCounters(p); got != c.attendu {
+			t.Errorf("%s : ArtifactHasPlayerCounters = %v, attendu %v", nom, got, c.attendu)
+		}
+	}
+	if ArtifactHasPlayerCounters(filepath.Join(dir, "absent.json")) {
+		t.Error("artefact absent : attendu « sans faits », obtenu « avec faits »")
+	}
+}
+
 // TestResolveMapEntry_SurLeCatalogueLivre — le builder résout les candidats DANS L'ORDRE
 // sur le catalogue de bornes VERSIONNÉ, et rend l'échec voulu quand aucun ne résout.
 // Oracle réel : Cliffhanger -> module ridgeline (la référence du POC).

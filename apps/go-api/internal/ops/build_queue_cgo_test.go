@@ -91,6 +91,96 @@ func TestBuildQueue_EnqueueClaimComplete(t *testing.T) {
 	}
 }
 
+// TestBuildQueue_LesFaitsSurviventALaFile — LES FAITS DU MATCH ARRIVENT INTACTS CHEZ L'OUVRIER.
+//
+// POURQUOI CE TEST EXISTE. L'ouvrier n'a aucune base : les faits du match ne lui parviennent que
+// par le job, et le job les range en TEXTE dans `payload_json` avant d'être relu à la prise. Le
+// trajet traverse donc deux sérialisations et une base — trois occasions de perdre un champ en
+// silence. Ce qu'on perdrait, c'est MESURÉ (témoin 7344d24f, 2026-08-24) : actions d'objectif
+// 246 -> 0, zones du mode 3 -> 0, joueurs de la courbe de score 8 -> 0, identité des camps
+// `b` -> `unresolved`.
+//
+// Le `TeamScores` est un POINTEUR de tableau : c'est le champ qui casse le plus discrètement
+// (un nil rendu à la place de [3,0] ne fait échouer aucune compilation), d'où sa vérification
+// explicite.
+func TestBuildQueue_LesFaitsSurviventALaFile(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	const matchID = "dddddddd-1111-2222-3333-444444444444"
+
+	scores := [2]int{3, 0}
+	facts := &domain.MatchFacts{
+		Players: []domain.MatchPlayerFact{
+			{XUID: "2533274819954312", Kills: 12, Deaths: 7, Assists: 3, TeamID: 0},
+			{XUID: "2535469190789936", Kills: 9, Deaths: 11, Assists: 5, TeamID: 1},
+		},
+		TeamScores:      &scores,
+		GameVariantName: "CTF:Arena",
+		MapID:           "e859cf75-9b8a-429a-91be-2376681c8537",
+	}
+	if _, _, err := st.EnqueueBuildJob(ctx, EnqueueBuildJobRequest{
+		JobType:   string(domain.JobTypeReplayBuild),
+		TitleSlug: "halo_infinite",
+		MatchID:   matchID,
+		Payload: &domain.BuildQueuePayload{
+			MatchID: matchID, ShortID: matchID[:8], TitleSlug: "halo_infinite",
+			MapNames: []string{"Catalyst"},
+			Chunks:   []domain.BuildQueueChunk{{Index: 0, ChunkType: 1, URL: "https://cdn.example/h.bin"}},
+			Facts:    facts,
+		},
+	}); err != nil {
+		t.Fatalf("EnqueueBuildJob: %v", err)
+	}
+
+	claimed, err := st.ClaimBuildJob(ctx, "ouvrier-1", "poste", "test/1")
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimBuildJob: %v (job=%v)", err, claimed)
+	}
+	got := claimed.Payload.Facts
+	if got == nil {
+		t.Fatal("les faits n'ont pas survécu à la file — l'ouvrier construirait un artefact appauvri")
+	}
+	if got.GameVariantName != "CTF:Arena" {
+		t.Errorf("variante = %q, attendu \"CTF:Arena\" (sans elle, aucune action d'objectif n'est nommable)",
+			got.GameVariantName)
+	}
+	if got.MapID != facts.MapID {
+		t.Errorf("mapId = %q, attendu %q (sans lui : ni zones de mode, ni socles de drapeau)",
+			got.MapID, facts.MapID)
+	}
+	if got.TeamScores == nil || *got.TeamScores != scores {
+		t.Errorf("scores des camps = %v, attendu %v", got.TeamScores, scores)
+	}
+	if len(got.Players) != 2 {
+		t.Fatalf("lignes de match = %d, attendu 2 (le triplet est la CLÉ d'appariement des slots)",
+			len(got.Players))
+	}
+	if got.Players[0] != facts.Players[0] || got.Players[1] != facts.Players[1] {
+		t.Errorf("triplet d'appariement altéré : %+v, attendu %+v", got.Players, facts.Players)
+	}
+}
+
+// TestBuildQueue_SansFaitsResteUnJobValide — un match hors registre se met en file quand même.
+//
+// C'est le cas RÉEL d'un film du cache dont le match n'a jamais été synchronisé : il doit
+// produire un artefact appauvri, pas bloquer la file. Le pointeur nil est la forme normale.
+func TestBuildQueue_SansFaitsResteUnJobValide(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	enqueueTestJob(t, st, "eeeeeeee-1111-2222-3333-444444444444")
+
+	claimed, err := st.ClaimBuildJob(ctx, "ouvrier-1", "", "")
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimBuildJob: %v (job=%v)", err, claimed)
+	}
+	if claimed.Payload == nil {
+		t.Fatal("un job sans faits doit garder son travail résolu")
+	}
+	if claimed.Payload.Facts != nil {
+		t.Errorf("faits inventés alors qu'aucun n'a été fourni : %+v", claimed.Payload.Facts)
+	}
+}
+
 // TestBuildQueue_ClaimNeSertJamaisDeuxFoisLeMemeJob : deux ouvriers, un seul job.
 // C'est l'invariant qui justifie le verrou de la section critique.
 func TestBuildQueue_ClaimNeSertJamaisDeuxFoisLeMemeJob(t *testing.T) {
