@@ -2494,12 +2494,6 @@ export type AdminPerfStats = components['schemas']['AdminPerfStats']
 /** Agrégat d'un appel API Halo attribué à un joueur. Miroir de domain.PerfPlayerCallStats. */
 export type PerfPlayerCallStats = components['schemas']['PerfPlayerCallStats']
 
-/** Miroir de domain.AdminErrorStats — logs WARN/ERROR agrégés depuis le boot. */
-export type AdminErrorStats = components['schemas']['AdminErrorStats']
-
-/** Une erreur agrégée par (niveau, message). Miroir de domain.AdminErrorBucket. */
-export type AdminErrorBucket = components['schemas']['AdminErrorBucket']
-
 /** Détection persistée avec cycle de vie. Miroir de domain.MonitoringDetection. */
 export type MonitoringDetection = components['schemas']['MonitoringDetection']
 

@@ -66,20 +66,6 @@ func LoadDurationStatsT(title, name string) (count, sumMS, avgMS, maxMS int64) {
 // pour peupler le champ DTO `Title` (omitempty → absent pour Halo).
 func EffectiveTitle(title string) string { return obsEffectiveTitle(title) }
 
-// ErrorBucketsForTitle retourne les buckets dont le titre effectif correspond
-// à `title` (défaut → buckets nus). Filtrage côté lecture.
-func ErrorBucketsForTitle(title string) []ErrorBucket {
-	et := obsEffectiveTitle(title)
-	all := ErrorBuckets()
-	out := make([]ErrorBucket, 0, len(all))
-	for _, b := range all {
-		if b.Title == et {
-			out = append(out, b)
-		}
-	}
-	return out
-}
-
 // PlayerAPIStatsForTitle retourne les stats player du titre effectif `title`.
 func PlayerAPIStatsForTitle(title string) []PlayerAPIStat {
 	et := obsEffectiveTitle(title)

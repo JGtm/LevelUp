@@ -38,7 +38,7 @@ func MountAdminMonitoringRoutes(
 	reg.WithAutoSyncScheduler(sched)
 
 	monitoringH := handlers.NewAdminMonitoringHandler(
-		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats, reg.ErrorStats,
+		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats,
 		reg.DetectionsReport, reg.SetDetectionStatus, reg.FreshnessReport, reg.ResourcesReport, reg.CronsReport, sched, jobStore).
 		// File de construction + ouvriers : l'état vit côté web, donc le dashboard
 		// voit le travail distant sans jamais interroger l'ouvrier (piste F §4bis).

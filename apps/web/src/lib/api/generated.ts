@@ -580,23 +580,6 @@ export interface paths {
         patch: operations["patchAdminMonitoringDetection"];
         trace?: never;
     };
-    "/admin/monitoring/errors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon (collecteur mémoire, zéro I/O) (auth admin requis) */
-        get: operations["getAdminMonitoringErrors"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/admin/monitoring/freshness": {
         parameters: {
             query?: never;
@@ -4140,21 +4123,6 @@ export interface components {
             generated_at: string;
             /** Format: int64 */
             open_count: number;
-        };
-        AdminErrorBucket: {
-            /** Format: int64 */
-            count: number;
-            first_seen: string;
-            last_detail?: string;
-            last_seen: string;
-            level: string;
-            message: string;
-            module?: string;
-            title?: string;
-        };
-        AdminErrorStats: {
-            buckets: components["schemas"]["AdminErrorBucket"][] | null;
-            generated_at: string;
         };
         AdminFreshnessResponse: {
             backup?: components["schemas"]["FreshnessBackupInfo"];
@@ -12725,37 +12693,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getAdminMonitoringErrors: {
-        parameters: {
-            query?: {
-                title?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Buckets d'erreurs triés par occurrences décroissantes */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminErrorStats"];
-                };
             };
             /** @description Error */
             default: {

@@ -295,7 +295,6 @@ export const queryKeys = {
   adminMonitoringJobs: ['admin', 'monitoring', 'jobs'] as const,
   adminMonitoringConvergence: ['admin', 'monitoring', 'convergence'] as const,
   adminMonitoringPerf: ['admin', 'monitoring', 'perf'] as const,
-  adminMonitoringErrors: ['admin', 'monitoring', 'errors'] as const,
   adminMonitoringDetections: ['admin', 'monitoring', 'detections'] as const,
   adminMonitoringFreshness: ['admin', 'monitoring', 'freshness'] as const,
   adminMonitoringResources: ['admin', 'monitoring', 'resources'] as const,

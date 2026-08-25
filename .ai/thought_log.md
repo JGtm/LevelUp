@@ -10319,6 +10319,56 @@ sur un arbre qui a changé ne vaut plus rien. Après merge : surveiller
 `auth_migration: scan terminé` dans `sync.log` — 30 j à `rt_migrated=0` arment la
 suppression de `migration.go`, de son wiring boot et de `queries_auth.go`
 (2026-10-01). Aucun token n'a été re-capturé, aucun fichier de `data/` touché.
+## [2026-08-25] B7.4 soldé — retrait de l'endpoint /admin/monitoring/errors
+
+**Statut** : Complété (worktree dédié `LevelUp-wt-monitoring-errors`, branche
+`chore/remove-admin-monitoring-errors`, base `origin/main` `97a109b0d`). Endpoint
+UI-orphelin depuis le 10/07 (panneau front remplacé par les détections persistées),
+conservé « diagnostic curl-able » en attendant le soak monitoring B7.4.
+
+**Verdict du soak (25/08)** : 0 hit de `GET /monitoring/errors` dans TOUS les logs prod
+conservés (certains remontent au 13/06). Le collecteur mémoire sous-jacent est amnésique
+(restart = perte de l'historique) et strictement doublonné par les logs fichiers par
+catégorie (module `observability/logging`) pour le diagnostic humain. ERROR/j moyen sur
+août ≈ 6/j `/health` 503 bénin + ~2,7/j `IndexMedia` (consigné dans un lot dédié) +
+transitoires `halo_api` ; la cascade LUSR qui gonflait ce compteur est éteinte depuis le
+11/07. Rien dans ce signal ne justifiait de garder l'endpoint. Décision : suppression.
+
+**Décision technique principale** : retrait complet de la route Huma
+`GET /monitoring/errors` (`handleGetErrors`, `adminErrorsOutput`, `ErrorStatsRunner` +
+son câblage constructeur — le paramètre disparaît, tous les appelants/tests adaptés),
+`ServiceRegistry.ErrorStats`, les DTOs `domain.AdminErrorStats`/`AdminErrorBucket`, le
+test `TestAdminMonitoring_Errors_OK`, l'entrée `openapi_manual_fragment.yaml` + contrat
+régénéré (`make openapi-gen`, `make generate-types`, snapshot contract-surface via son
+mécanisme `UPDATE_CONTRACT_SURFACE=1` dédié — diff vérifié : ne perd QUE
+`/admin/monitoring/errors` / `AdminErrorStats` / `AdminErrorBucket` /
+`getAdminMonitoringErrors`, le reste du diff est une croissance tolérée déjà présente
+avant ce lot). Front : query key `adminMonitoringErrors` + entrée du garde-rail
+title-slug + types miroirs `AdminErrorStats`/`AdminErrorBucket` retirés — 0 consommateur
+UI trouvé (confirmé, conforme au plan de juillet).
+
+**ErrorCollector (`internal/observability/error_collector.go`) CONSERVÉ** : il reste
+consommé par `flushDetections`/`DetectionsReport` (flush vers la vue persistée
+`detections_latest`, source des badges nav) et branché comme tee handler sur TOUT le
+logging de l'app dans `cmd/server/main.go`. Seule sa variante filtrée par titre
+`observability.ErrorBucketsForTitle` (titled.go), qui n'avait plus que ce seul appelant,
+est devenue du code mort par ce retrait et a été supprimée (règle CLAUDE.md n°7) —
+`ErrorBuckets()`, `EffectiveTitle`, `PlayerAPIStatsForTitle` restent inchangés.
+
+**Résultats observés (gates, tous exécutés dans le worktree, exit codes réels)** :
+`gofmt -l` vide (après `gofmt -w` sur `admin_monitoring.go`) ; `go build ./...` OK ;
+`go vet ./...` OK ; `go test ./...` 100% vert (paquets `internal/api`,
+`internal/api/handlers`, `internal/api/wire` inclus — golden test openapi compris) ;
+`golangci-lint run --new-from-merge-base=origin/main` → 0 issue ; `openapi-gen -check`
+→ à jour ; `make check-types` OK ; `make test-web` → 400 fichiers / 3531 tests verts.
+Grep final `monitoring/errors` → 0 dans `apps/go-api/internal` et `apps/web/src`.
+`apps/web/package-lock.json` modifié par `npm install` (worktree sans node_modules) puis
+restauré : bruit de version npm local (suppression de champs `libc`), 0 changement de
+dépendance réelle, hors périmètre du lot.
+
+**Conclusion / prochaine étape** : lot terminé, NON mergé/poussé (consigne explicite).
+Reste au superviseur : revue puis merge de `chore/remove-admin-monitoring-errors` vers
+`main` (déploiement auto).
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 

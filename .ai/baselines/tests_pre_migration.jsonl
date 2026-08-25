@@ -9014,10 +9014,6 @@
 {"Time":"2026-06-26T23:45:38.8911774+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Jobs_ListAndClamp","Output":"=== RUN   TestAdminMonitoring_Jobs_ListAndClamp\n"}
 {"Time":"2026-06-26T23:45:38.8958999+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Jobs_ListAndClamp","Output":"--- PASS: TestAdminMonitoring_Jobs_ListAndClamp (0.00s)\n"}
 {"Time":"2026-06-26T23:45:38.8958999+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Jobs_ListAndClamp","Elapsed":0}
-{"Time":"2026-06-26T23:45:38.8958999+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Errors_OK"}
-{"Time":"2026-06-26T23:45:38.8958999+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Errors_OK","Output":"=== RUN   TestAdminMonitoring_Errors_OK\n"}
-{"Time":"2026-06-26T23:45:38.8969421+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Errors_OK","Output":"--- PASS: TestAdminMonitoring_Errors_OK (0.00s)\n"}
-{"Time":"2026-06-26T23:45:38.8969421+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminMonitoring_Errors_OK","Elapsed":0}
 {"Time":"2026-06-26T23:45:38.8969421+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminTitleDiagnostic_Get"}
 {"Time":"2026-06-26T23:45:38.8969421+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminTitleDiagnostic_Get","Output":"=== RUN   TestAdminTitleDiagnostic_Get\n"}
 {"Time":"2026-06-26T23:45:38.8974638+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAdminTitleDiagnostic_Get","Output":"--- PASS: TestAdminTitleDiagnostic_Get (0.00s)\n"}
