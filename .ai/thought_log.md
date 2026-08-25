@@ -90,6 +90,13 @@ hors migration boot ; `TrySilentRefresh` et `MSALCacheJSON` à 0 dans le code vi
 - `cmd/backfill-csr-history/main.go:46` : le flag `-env-file` dit
   « SPNKR_AZURE_CLIENT_ID requis par MSALProvider » — MSALProvider n'existe plus
   depuis le 15/07 (mention résiduelle, pas un chemin de code).
+- **Hygiène secrets, à escalader** : `internal/ops/seed_demo.go:200` extrait
+  `sync_meta` vers le jeu de démo avec `key NOT IN ('msal_token_cache')` — le
+  filtre exclut le cache MSAL mais PAS `oauth_refresh_token`. Un refresh token
+  résiduel serait donc copié dans un dataset de démo. Pré-existant et
+  indépendant de ce lot (Phase 5 ne change pas le contenu de `sync_meta`), donc
+  non traité ici — mais à corriger dans un lot dédié, idéalement en même temps
+  que le drop physique des colonnes auth de `sync_meta`.
 - `.ai/V7.5/REGISTRE_REPORTS.md` n'existe pas sur `origin/main` (il vit sur
   `feat/v75`) : l'échéance 2026-10-01 de la migration boot n'a pas pu y être
   inscrite depuis cette branche — à reporter par le superviseur.
