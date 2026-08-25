@@ -118,7 +118,7 @@ func (r *ServiceRegistry) WithJobStore(store *jobs_platform.Store) *ServiceRegis
 }
 
 // WithAuthStore attache le MultiUserTokenStore au registry — source unique des
-// tokens auth (RT + MSAL cache) post-ADR 0023. `refreshTokensFromDB` lit le store
+// tokens auth (refresh token) post-ADR 0023. `refreshTokensFromDB` lit le store
 // AVANT de tomber sur les fallbacks legacy (sync_meta DuckDB, env var). Nil
 // possible pour les tests qui veulent l'ancien comportement legacy-only.
 func (r *ServiceRegistry) WithAuthStore(store auth.UserTokenStore) *ServiceRegistry {

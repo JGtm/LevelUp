@@ -20,13 +20,23 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// ErrHaloExchangeFailed marque un échec de l'échange Halo Waypoint : le refresh
+// OAuth a bien rendu un access_token Microsoft, mais Waypoint n'a pas rendu de
+// Spartan/Clearance. À NE PAS confondre avec un refresh token mort — ce cas ne
+// doit jamais déclencher de marquage reauth_required ni de re-capture (ADR 0023).
+var ErrHaloExchangeFailed = errors.New("auth: exchange Halo échoué")
+
 // RefreshHaloTokensViaStoreFirst obtient des HaloTokens (Spartan + Clearance)
 // depuis le MultiUserTokenStore (source unique ADR 0023) : OAuth refresh du RT
 // persisté puis Exchange Halo.
 //
-// Les rotations OAuth sont systématiquement persistées dans le store. Retourne
-// (nil, nil) si le store ne couvre pas le joueur ou si aucun token utilisable
-// n'en sort.
+// Les rotations OAuth sont systématiquement persistées dans le store.
+//
+// Retourne (nil, nil) UNIQUEMENT quand il n'y a rien à tenter : store/xuid
+// absent, entrée introuvable, ou entrée sans refresh token. Tout échec RÉEL
+// (refresh OAuth KO, exchange Halo KO) remonte une erreur — sans quoi les
+// appelants affichent « aucun refresh token » sur un store pourtant sain
+// (constat de la revue adversariale r1).
 func RefreshHaloTokensViaStoreFirst(
 	ctx context.Context,
 	store *MultiUserTokenStore,
@@ -44,10 +54,17 @@ func RefreshHaloTokensViaStoreFirst(
 
 	user, err := store.Load(xuid)
 	if err != nil {
-		if !errors.Is(err, ErrUserTokensNotFound) {
-			slog.WarnContext(ctx, "cli_auth: lecture store échouée", "xuid", xuid, "err", err)
+		if errors.Is(err, ErrUserTokensNotFound) {
+			// Joueur jamais authentifié : rien à tenter, pas une anomalie.
+			slog.InfoContext(ctx, "cli_auth: aucune entrée store pour ce joueur",
+				"xuid", xuid, "gamertag", gamertag,
+				"hint", "SSO Xbox ou `go run ./cmd/token-capture/ <GT>`")
+			return nil, nil
 		}
-		return nil, nil
+		// Store illisible/corrompu : anomalie franche, jamais avalée.
+		slog.ErrorContext(ctx, "cli_auth: lecture store échouée",
+			"xuid", xuid, "gamertag", gamertag, "err", err)
+		return nil, fmt.Errorf("auth: lecture du store pour xuid(%s): %w", xuid, err)
 	}
 	if user == nil {
 		return nil, nil
@@ -72,15 +89,26 @@ func RefreshHaloTokensViaStoreFirst(
 				"xuid", xuid, "gamertag", user.Gamertag)
 		}
 	}
+	// Remonter la cause : sans elle, l'appelant conclut « aucun refresh token »
+	// alors que le store en contient un (revue adversariale r1). Le seul (nil, nil)
+	// légitime restant est l'entrée sans RT — rien à tenter, rien à diagnostiquer.
+	if refreshErr != nil {
+		return nil, refreshErr
+	}
 	return nil, nil
 }
 
 // RefreshFromStoreEntry tente un OAuth refresh (rotation persistée) depuis une
-// entrée store DÉJÀ chargée. Retourne (result, nil) sur succès ; (nil, err) si
-// l'OAuth refresh a échoué — err porte la classe d'échec (cf. ClassifyAuthError),
-// ce qui permet au caller de ne marquer reauth_required QUE pour un RT révoqué.
-// (nil, nil) si aucune source n'a produit de token sans erreur classifiable (ex.
-// Exchange KO).
+// entrée store DÉJÀ chargée.
+//
+//   - (result, nil) : succès.
+//   - (nil, err) : le refresh OAuth a échoué — err porte la classe d'échec
+//     (cf. ClassifyAuthError), ce qui permet au caller de ne marquer
+//     reauth_required QUE pour un RT révoqué ; OU l'exchange Halo a échoué —
+//     err enveloppe alors ErrHaloExchangeFailed, qui ne doit JAMAIS déclencher
+//     de marquage reauth (le RT est vivant, c'est Waypoint qui a refusé).
+//   - (nil, nil) : l'entrée n'a pas de refresh token, ou le refresh a rendu un
+//     access_token vide sans erreur. Rien à diagnostiquer.
 //
 // Source UNIQUE de la cascade store (K1b) : `store` est l'interface
 // `UserTokenStore` (seul `UpdateOAuthRefreshToken` y est appelé) → réutilisable par
@@ -112,8 +140,20 @@ func RefreshFromStoreEntry(
 		}
 	}
 	result, err := provider.Exchange(ctx, at)
-	if err != nil || result == nil {
-		return nil, nil
+	if err != nil {
+		// Revue adversariale r1 : ne JAMAIS avaler cet échec. Le refresh OAuth a
+		// RÉUSSI (access_token Microsoft obtenu) — c'est Waypoint qui n'a pas rendu
+		// de Spartan. Un (nil, nil) faisait afficher « aucun refresh token » aux
+		// appelants : diagnostic faux qui pousse vers une re-capture, interdite
+		// par l'ADR 0023.
+		slog.ErrorContext(ctx, "cli_auth: exchange Halo échoué (refresh OAuth pourtant OK)",
+			"xuid", xuid, "gamertag", user.Gamertag, "err", err)
+		return nil, fmt.Errorf("%w pour xuid(%s): %v", ErrHaloExchangeFailed, xuid, err)
+	}
+	if result == nil {
+		slog.ErrorContext(ctx, "cli_auth: exchange Halo sans erreur mais sans tokens",
+			"xuid", xuid, "gamertag", user.Gamertag)
+		return nil, fmt.Errorf("%w pour xuid(%s): réponse vide", ErrHaloExchangeFailed, xuid)
 	}
 	slog.DebugContext(ctx, "cli_auth: tokens via OAuth (store)", "xuid", xuid)
 	return result, nil

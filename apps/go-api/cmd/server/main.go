@@ -1015,9 +1015,10 @@ func main() {
 		}
 		return nil
 	}
-	// tokenRefresher est un getter lazy qui tente un refresh MSAL/OAuth v2 depuis la DB
-	// quand le cache process de tokens est expiré (~50 min). Évite que le watcher
-	// cesse de rafraîchir le BP après une longue session sans appel HTTP de l'UI.
+	// tokenRefresher est un getter lazy qui tente un refresh OAuth v2 depuis le
+	// MultiUserTokenStore (ADR 0023) quand le cache process de tokens est expiré
+	// (~50 min). Évite que le watcher cesse de rafraîchir le BP après une longue
+	// session sans appel HTTP de l'UI.
 	tokenRefresher := func(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
 		if reg != nil {
 			return reg.RefreshTokensForXUID(ctx, xuid)

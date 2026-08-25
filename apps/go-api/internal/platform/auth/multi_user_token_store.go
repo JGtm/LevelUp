@@ -9,7 +9,7 @@
 //
 // Depuis ADR 0023 Phase 5 (2026-08-25), c'est la SEULE source de credentials
 // auth du projet : aucun chemin de code ne lit plus sync_meta.oauth_refresh_token,
-// sync_meta.msal_token_cache, l'env var SPNKR_OAUTH_REFRESH_TOKEN_* ni le store
+// sync_meta.msal_token_cache, la variable d'environnement de refresh token, ni le store
 // mono-user data/auth/watcher_tokens.json comme credential. Le TokenStore
 // mono-user (token_store.go) ne sert plus qu'à l'état propre du watcher RTA
 // (access_token + XSTS), jamais de refresh token d'un autre joueur.

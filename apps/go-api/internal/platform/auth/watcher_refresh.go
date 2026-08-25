@@ -17,11 +17,12 @@
 //     watcher_tokens.json via store.UpdateOAuth (etat propre du watcher RTA).
 //
 // ADR 0023 Phase 5 (2026-08-25) : les sources de repli (refresh_token du store
-// mono-user, env var SPNKR_OAUTH_REFRESH_TOKEN_*) sont supprimees.
+// mono-user, variable d environnement) sont supprimees.
 package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -95,7 +96,7 @@ func EnsureWatcherAccessToken(
 	}
 
 	// 2. Chercher le refresh_token dans le MultiUserTokenStore (source unique).
-	refreshToken, xuid, source := lookupRefreshToken(multiStore, gamertag)
+	refreshToken, xuid, source := lookupRefreshToken(ctx, multiStore, gamertag)
 	if refreshToken == "" {
 		slog.InfoContext(ctx, "watcher_refresh: aucun refresh_token disponible",
 			"gamertag", gamertag,
@@ -145,12 +146,29 @@ func EnsureWatcherAccessToken(
 // ADR 0023) pour le gamertag du watcher.
 //
 // Retourne (rt, xuid, source) — le xuid permet de persister la rotation.
-func lookupRefreshToken(multiStore *MultiUserTokenStore, gamertag string) (rt, xuid, source string) {
+//
+// Revue adversariale r1 : l'erreur de LoadByGamertag n'est plus jetée en
+// silence. Un store ILLISIBLE (I/O, JSON corrompu) doit se voir : sans ce log,
+// il s'affichait comme « aucun refresh_token, lancer token-capture » — et
+// token-capture ne répare pas un fichier corrompu. Symétrique du traitement de
+// access_token_store_first.go.
+func lookupRefreshToken(ctx context.Context, multiStore *MultiUserTokenStore, gamertag string) (rt, xuid, source string) {
 	if multiStore == nil || gamertag == "" {
 		return "", "", ""
 	}
 	user, err := multiStore.LoadByGamertag(gamertag)
-	if err != nil || user == nil || user.OAuthRefreshToken == "" {
+	if err != nil {
+		if errors.Is(err, ErrUserTokensNotFound) {
+			// Cas bénin et fréquent : ce gamertag n'a jamais été authentifié.
+			slog.DebugContext(ctx, "watcher_refresh: aucune entrée store pour ce gamertag",
+				"gamertag", gamertag)
+			return "", "", ""
+		}
+		slog.ErrorContext(ctx, "watcher_refresh: lecture du store échouée — état anormal (I/O ou JSON corrompu), pas une absence de token",
+			"gamertag", gamertag, "err", err)
+		return "", "", ""
+	}
+	if user == nil || user.OAuthRefreshToken == "" {
 		return "", "", ""
 	}
 	return user.OAuthRefreshToken, user.XUID, "multi_user_store"

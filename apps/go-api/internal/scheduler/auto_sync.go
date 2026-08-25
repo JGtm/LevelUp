@@ -10,7 +10,7 @@
 //  3. Lance SyncEngine.RunDelta avec ce client (fetches parallèles internes).
 //
 // L'auth est entièrement déléguée au Pool/Resolver, qui :
-//   - tente MSAL silent refresh puis OAuth v2 refresh sur le RT découvert par Discovery
+//   - tente un OAuth v2 refresh sur le RT découvert par Discovery (MultiUserTokenStore)
 //   - cache les tokens Halo pour ~3h30 (Spartan token lifetime)
 //   - persiste les RT rotatés par Microsoft via le callback OnTokenRotated injecté
 //     à NewResolver

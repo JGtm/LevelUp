@@ -104,11 +104,18 @@ func TestDiscoveryScan_MultiUserStore_Populates(t *testing.T) {
 	}
 }
 
-// ─── Test 2 : pas de store → 0 source ─────────────────────────────────────
-
+// ─── Test 2 : pas de store → 0 source, MÊME avec une env var legacy ───────
+//
+// Double rôle : (a) comportement défensif d'un store nil ; (b) RATCHET non-cgo
+// de la Phase 5 — une env var SPNKR_OAUTH_REFRESH_TOKEN_* présente ne doit
+// JAMAIS peupler le pool. Le jumeau cgo (avec store) est
+// discovery_legacy_warn_test.go::TestDiscoveryScan_EnvVarNeverAdopted.
 func TestDiscoveryScan_NoStore_NoSource(t *testing.T) {
 	cfg := fakeConfigWithPlayers(t, "NoToken", "1111")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+
+	// Env var legacy renseignée : si un fallback réapparaissait, ce test rougirait.
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_NOTOKEN", "rt-from-env-NEVER_USE")
 
 	d := NewDiscoveryWithStore(cfg, resolver, titlePkg.DefaultSlug, nil)
 	sources, err := d.Scan(context.Background())
@@ -116,7 +123,7 @@ func TestDiscoveryScan_NoStore_NoSource(t *testing.T) {
 		t.Fatalf("Scan: %v", err)
 	}
 	if len(sources) != 0 {
-		t.Errorf("sources = %d, want 0 (aucun store)", len(sources))
+		t.Errorf("sources = %d, want 0 (aucun store, et l'env var n'est plus une source)", len(sources))
 	}
 }
 

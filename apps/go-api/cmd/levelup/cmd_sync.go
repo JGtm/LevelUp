@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/capturecli"
 	auth_pool "levelup/go-api/internal/platform/auth/pool"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -109,21 +110,9 @@ func runSyncDeltaAll(
 	// Note : depuis la migration AutoSyncScheduler→Pool, le mode "sans pool"
 	// n'est plus supporté. tokenPoolSize devient simplement le MaxSize du pool
 	// (0 = tous les sources découverts).
-	discovery := auth_pool.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
-	sources, discoveryErr := discovery.Scan(ctx)
-	if discoveryErr != nil {
-		return fmt.Errorf("pool discovery: %w", discoveryErr)
-	}
-
-	poolResolver := auth_pool.NewResolver(provider, 0, nil) // 0 = default TTL ~3h30 ; pas de persistance RT en mode CLI
-	poolOpts := auth_pool.PoolOptions{
-		MaxSize:     tokenPoolSize, // 0 = utiliser tous les sources
-		PerTokenRPS: rps,
-	}
-
-	pool, poolErr := auth_pool.NewPool(ctx, poolResolver, sources, poolOpts)
+	pool, poolErr := buildCLITokenPool(ctx, cfg, provider, players, tokenPoolSize, rps)
 	if poolErr != nil {
-		return fmt.Errorf("pool creation: %w", poolErr)
+		return poolErr
 	}
 	defer pool.Close()
 
@@ -284,21 +273,9 @@ func runSyncFullAll(
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
-	discovery := auth_pool.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
-	sources, discoveryErr := discovery.Scan(ctx)
-	if discoveryErr != nil {
-		return fmt.Errorf("pool discovery: %w", discoveryErr)
-	}
-
-	poolResolver := auth_pool.NewResolver(provider, 0, nil)
-	poolOpts := auth_pool.PoolOptions{
-		MaxSize:     tokenPoolSize,
-		PerTokenRPS: rps,
-	}
-
-	pool, poolErr := auth_pool.NewPool(ctx, poolResolver, sources, poolOpts)
+	pool, poolErr := buildCLITokenPool(ctx, cfg, provider, players, tokenPoolSize, rps)
 	if poolErr != nil {
-		return fmt.Errorf("pool creation: %w", poolErr)
+		return poolErr
 	}
 	defer pool.Close()
 
@@ -387,9 +364,56 @@ func loadPlayerSummary(cfg *config.AppConfig, gamertag string) (*domain.PlayerSu
 	return nil, fmt.Errorf("joueur introuvable dans db_profiles.json: %s", gamertag)
 }
 
+// buildCLITokenPool construit le pool de tokens des commandes `--all`
+// (sync-delta / sync-full) depuis le MultiUserTokenStore — source unique
+// ADR 0023 Phase 5. Avant la Phase 5 ce chemin passait par `NewDiscovery` sans
+// store, ce qui, une fois les fallbacks retirés, ne découvrait plus AUCUNE
+// source (pool vide → « pool creation » en erreur).
+//
+// La rotation du refresh token est PERSISTÉE dans le store (callback onRotated).
+// C'est non négociable depuis que le CLI consomme le RT canonique du serveur :
+// Microsoft rotate le RT à chaque usage, et ne pas réécrire la rotation
+// brûlerait le token du store — invalid_grant au refresh suivant, côté serveur
+// comme côté CLI (classe d'incident Madina, ADR 0023).
+func buildCLITokenPool(
+	ctx context.Context,
+	cfg *config.AppConfig,
+	provider auth_platform.TokenProvider,
+	players []domain.PlayerSummary,
+	tokenPoolSize, rps int,
+) (auth_pool.Pool, error) {
+	pathResolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	store := auth_platform.NewMultiUserTokenStore(pathResolver.WatcherTokensDir())
+
+	discovery := auth_pool.NewDiscoveryWithStore(cfg, pathResolver, titlePkg.DefaultSlug, store)
+	sources, err := discovery.Scan(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("pool discovery: %w", err)
+	}
+
+	onRotated := func(rctx context.Context, gamertag, newRT string) error {
+		xuid := capturecli.ResolveXUIDForRotation(rctx, store, players, gamertag)
+		if xuid == "" {
+			return fmt.Errorf("rotation RT non persistée : xuid introuvable pour %s", gamertag)
+		}
+		return store.UpdateOAuthRefreshToken(xuid, newRT)
+	}
+
+	// 0 = TTL par défaut du resolver (~3h30, durée de vie Spartan ~4h).
+	poolResolver := auth_pool.NewResolver(provider, 0, onRotated)
+	pool, err := auth_pool.NewPool(ctx, poolResolver, sources, auth_pool.PoolOptions{
+		MaxSize:     tokenPoolSize, // 0 = utiliser toutes les sources découvertes
+		PerTokenRPS: rps,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("pool creation: %w", err)
+	}
+	return pool, nil
+}
+
 // haloTokensForPlayer obtient des tokens Halo (Spartan + Clearance) frais pour
 // un joueur depuis le MultiUserTokenStore — source unique ADR 0023 Phase 5
-// (2026-08-25 : l'env var SPNKR_OAUTH_REFRESH_TOKEN_* n'est plus lue).
+// (2026-08-25 : le repli par variable d'environnement n'est plus lu).
 // La rotation du refresh token est persistée par le helper canonique.
 func haloTokensForPlayer(ctx context.Context, repoRoot, gamertag string) (*domain.HaloTokens, error) {
 	store := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(repoRoot).WatcherTokensDir())
