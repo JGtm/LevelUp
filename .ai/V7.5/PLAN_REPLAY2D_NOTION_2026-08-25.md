@@ -89,6 +89,13 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   compteur de réapparition ; (c) retirer la jauge (barre de progression de réapparition).
   Ancres candidates : `ReplayTeams.tsx` / `ReplayVitality.tsx` — vérifier sur pièces.
   Mêmes gates que A1-A6 ; clés i18n orphelines supprimées le cas échéant ; 0 code mort.
+- [ ] A8 (demande utilisateur 25/08, reçue en cours de pilotage) : (a) retirer le bandeau
+  « Données de rejeu d'une version antérieure — certains éléments peuvent manquer. »
+  (clé i18n FR+EN + contrat + logique d'affichage ; NE PAS supprimer la constante
+  `EXPECTED_REPLAY_SCHEMA_VERSION` si elle a d'autres lecteurs — vérifier sur pièces) ;
+  (b) retirer l'accentuation sur les lignes du kill feed (même esprit que la bordure de
+  fiche A7 — identifier l'accent exact sur pièces avant de retirer). Mêmes gates ;
+  0 code mort.
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
