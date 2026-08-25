@@ -190,7 +190,7 @@ PIÈCES avant correction ; rien d'autre n'a été introduit.
 - [x] H2 (P2) — justification écrite du `return false` (utilisateur sans xuid).
 - [x] H3 (P2) — contrat : périmètre de titre explicite.
 - [x] H4 (P2) — identité résolue UNE fois par requête.
-- [ ] H5 — test de jonction sur `buildPresenceService`.
+- [x] H5 — test de jonction sur `buildPresenceService`.
 
 ### Journal du lot H
 
@@ -239,6 +239,21 @@ reste le seul endroit qui interroge `authz.Enforced`/`CurrentUser`. Test neuf
 `TestDirectOwnerFor_ResolvesUserOncePerRequest` (lookup compteur : 1 résolution
 pour 3 joueurs) — il échoue si la résolution retourne dans la boucle.
 Gates : `go build ./...` EXIT=0 ; `go test ./internal/service/ ./internal/api/` EXIT=0.
+
+**H5 (2026-08-25)** — constat vérifié : aucun test n'appelait
+`buildPresenceService`, et l'assertion `friends_in_game == 0` de
+`server_presence_test.go` portait sur un harnais qui ne branche AUCUN compteur —
+vraie par construction. Assertion tautologique supprimée (remplacée par la raison
+écrite de ne rien y asserter), et deux tests neufs partent du montage réel :
+`TestPresenceJunction_BuildPresenceService_WiresFriendsCounter` (BootstrapService
+réel en mode `none`, db_profiles temporaire de 2 joueurs, watcher simulé les
+donnant tous deux en jeu → compteur 2 servi par le routeur httptest) et
+`..._NoBootstrap_ServesEmpty` (la branche `bootSvc == nil`, jamais exercée
+jusqu'ici). Le premier a été VÉRIFIÉ PAR MUTATION : `.WithFriends(...)` retiré du
+montage, il échoue (« friends_in_game = 0, attendu 2 »), puis le fichier a été
+restauré à l'identique (`git diff` vide). Le harnais `presenceSnapshotFrom` est
+factorisé sur `presenceBodyOf` — aucun autre test touché.
+Gate : `go test ./internal/api/ -run TestPresenceJunction -v` EXIT=0, 7 PASS.
 
 ## Découvertes (à consigner, ne pas traiter)
 
