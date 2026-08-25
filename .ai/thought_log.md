@@ -128,9 +128,44 @@ P2 code mort : `RecoveringReader.Path()` supprimé (0 appelant de prod). Mineur 
 niveaux de log sont désormais assertés (capture du handler slog par défaut) — c'est ce qui
 verrouille le P1.
 
-**Prochaine étape** : GO GATES du superviseur, puis rejeu complet de la séquence (aucun
-build/test/lint n'a pu tourner sur cette ronde, créneau machine tenu par un autre lot).
-Ensuite revue puis merge par le superviseur ; aucun run CI sur cette branche (pas de push).
+**Gates R1 — deux défauts que seul le rejeu pouvait attraper.** La ronde R1 ayant été
+éditée SANS compilateur (créneau machine tenu), le rejeu a servi à quelque chose :
+
+1. *Le garde-rail jugeait la prose.* `TestProviderManagedReadIsCacheOnly` rougissait sur
+   l'arbre CORRECT : il attrapait « ReopenAllowed » dans le COMMENTAIRE de
+   `media_associate.go` (« ReopenCacheOnly, PAS ReopenAllowed ») — précisément le travers
+   « mention au lieu d'appel » que la revue reprochait à la version initiale, reproduit
+   dans son propre correctif. Corrigé : `isGoCommentLine` exclut les lignes de commentaire
+   de TOUS les contrôles, `containsInCode` remplace `strings.Contains` pour `mustCall`, et
+   le contrôle de policy porte sur la LIGNE D'APPEL (numéro de ligne dans le message).
+   Re-vérifié par l'échec avec deux sondes : bascule en `ReopenAllowed` → rouge ;
+   ouverture DuckDB directe réintroduite dans du code → rouge.
+2. *Collision de symbole visible du SEUL gate intégration.* `captureSlog` est déjà déclaré
+   par `match_view_scoreboard_objective_degrade_test.go`, fichier `//go:build integration` :
+   build du paquet `platform/duckdb` cassé sous le tag, invisible du gate par défaut —
+   la classe de collision déjà rencontrée au LOT B (2026-07-03). Renommé `captureSlogText`
+   plutôt que réutilisé : le jumeau vit derrière le tag alors que ce test-ci doit tourner
+   dans le gate PAR DÉFAUT (c'est le verrou du P1). Factoriser demanderait de sortir le
+   helper vers un fichier de test SANS tag — hors périmètre, consigné.
+
+**Verdicts finaux** (séquence complète rejouée à froid sur `2bfee4e2b`, logs
+`scratchpad/gates_r1_final/verdict.log`) : `EXIT_GOFMT=0` (0 fichier non formaté),
+`EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_TEST_UNIT=0`, `EXIT_TEST_INTEGRATION=0` (16 paquets ok,
+`-p 1`), `EXIT_LINT=0` (0 issue). Les 11 tests neufs/durcis tournent dans le gate PAR
+DÉFAUT (`go test ./...`) : 8 `TestRecoveringReader_*` + les 3 du garde-rail ; les 5 tests
+citations pve (dont `TestLoadPveStats_RecoversWhenHandleClosedConcurrently`) tournent dans
+le gate INTÉGRATION. Aucune ligne `^--- FAIL:` dans les deux gates, et le flake connu
+`TestStartImport_HappyPathReturns202WithJobID` n'est pas réapparu.
+
+**Découvertes ajoutées** : duplication `captureSlog`/`captureSlogText` (fusion = sortir le
+helper vers un fichier non taggé) ; `citations_backfill.go:246`
+(`RunBackfillCompositeOnlyCitations`) fait un `OpenReadOnly` direct sur shared, chemin géré
+par le provider — même classe de violation d'invariant que le P0, préexistante et hors
+périmètre, elle mérite son propre lot.
+
+**Prochaine étape** : revue puis merge par le superviseur ; aucun run CI sur cette branche
+(pas de push). Voie (a) — lecture media par le canal drainé du provider — à ouvrir en lot
+dédié avec le chemin de plomberie décrit plus haut.
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
