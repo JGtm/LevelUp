@@ -307,20 +307,10 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		// Idempotence : un artefact déjà à jour ne se reconstruit pas (même règle
 		// que le chemin local ; la mise en file absorbe de son côté les doublons).
 		//
-		// « À JOUR » NE SE RÉSUME PAS À LA VERSION DE SCHÉMA. Un artefact construit sans les
-		// faits du match porte le bon numéro tout en étant APPAUVRI (sans actions d'objectif,
-		// sans zones de mode, sans socles de drapeau, sans compteurs de joueur). Le sauter sur
-		// le seul critère de version le figerait à demeure — c'est précisément ainsi qu'un
-		// ouvrier sans faits empoisonnerait le cache. Ici, et seulement ici, on sait trancher :
-		// la base a été lue (attachMatchFacts), donc on sait de quoi on dispose.
-		//
-		// LA CONDITION PORTE SUR `len(Players)`, PAS SUR `facts.Empty()`, et la nuance a un
-		// coût réel. `Empty()` est faux dès qu'un SEUL champ est renseigné : un match présent
-		// au registre mais SANS participants (variante et scores connus, aucune ligne) passerait
-		// le test tout en étant incapable de produire le moindre compteur de joueur. On
-		// re-cuirait alors un artefact identique — un manifeste authentifié, ~24 Mo et ~50 s de
-		// CPU — pour un verdict qui ne basculerait jamais. Ce sont les LIGNES DE MATCH, et elles
-		// seules, qui peuplent `scoreTimeline.players` : c'est donc leur présence qui décide.
+		// « À JOUR » NE SE RÉSUME PAS À LA VERSION DE SCHÉMA : un artefact construit sans les
+		// faits porte le bon numéro tout en étant APPAUVRI. Le sauter sur le seul critère de
+		// version le figerait à demeure — c'est ainsi qu'un ouvrier sans faits empoisonnerait
+		// le cache. La règle, et le pourquoi de son critère, vivent dans `etatArtefact`.
 		artefact := paths.ReplayArtifactPath(d.TitleSlug, w.matchID)
 		aJour, complet := etatArtefact(artefact, w.facts)
 		if aJour {
