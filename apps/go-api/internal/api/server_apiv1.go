@@ -64,6 +64,18 @@ import (
 // toujours au chemin routé (chantier V72-01 / H1).
 const apiV1BasePath = "/api/v1"
 
+// apiV1InternalSegment / apiV1InternalBasePath — le préfixe du PROTOCOLE OUVRIER,
+// écrit UNE fois. Trois consommateurs doivent parler du même chemin, sinon la
+// panne est silencieuse : (a) le montage chi (r.Route ci-dessous), (b) le préfixe
+// du document OpenAPI partagé, et (c) l'exemption CSRF ciblée du routeur racine
+// (server.go, applyTransverseMiddlewares). Un littéral dupliqué qui dérive sur (c)
+// re-produirait exactement le défaut du 2026-08-25 : 403 csrf_rejected sur tout le
+// protocole, avant même le contrôle de jeton.
+const (
+	apiV1InternalSegment  = "/internal"
+	apiV1InternalBasePath = apiV1BasePath + apiV1InternalSegment
+)
+
 // server_apiv1.go — montage des routes /api/v1, extrait de NewRouter (K2a) pour
 // dé-goder la fonction d'assemblage DI. Le bloc construit ses ~55 handlers en
 // interne et les monte ; les dépendances de la portée NewRouter sont regroupées
@@ -422,9 +434,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// /admin : un ouvrier n'a ni session ni compte, il présente un jeton dédié qui
 	// n'ouvre QUE ces trois routes. Sans jeton configuré, elles répondent 503.
 	// Cf. server_build_worker.go.
-	r.Route("/internal", func(r chi.Router) {
+	// Le contrôle CSRF-par-origine est levé sur ce préfixe (et sur lui seul) par
+	// applyTransverseMiddlewares : un ouvrier n'envoie pas d'Origin et n'a pas de
+	// cookie à protéger. Le RESTE de la pile transverse s'applique normalement.
+	r.Route(apiV1InternalSegment, func(r chi.Router) {
 		wire.MountBuildWorkerRoutes(r, reg,
-			humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/internal"))
+			humacore.WithSharedDoc(d.humaSharedConfig, apiV1InternalBasePath))
 	})
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
