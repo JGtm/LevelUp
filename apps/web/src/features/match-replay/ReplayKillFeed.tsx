@@ -466,8 +466,10 @@ function KillLine({
           <MedalBadges medals={k.medals} />
         </span>
       )}
-      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque, l'assistant, les deux parts. Le nom de
-          l'assistant est le seul élément qui cède — comme celui du tueur et de la victime. */}
+      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque, l'assistant, SA part seule — la part
+          du tueur est sortie de la rangée (demande utilisateur du 2026-08-24 : « celui de
+          l'assistant suffit »). Le nom de l'assistant est le seul élément qui cède — comme
+          celui du tueur et de la victime. */}
       {assisted && (
         <span
           className="flex min-w-0 items-center gap-1 text-3xs text-muted-foreground"
@@ -479,11 +481,6 @@ function KillLine({
           {k.assistDamagePct != null && (
             <span className="shrink-0 font-mono tabular-nums">
               {t.killFeedAssistShare(k.assistDamagePct)}
-            </span>
-          )}
-          {k.killerDamagePct != null && (
-            <span className="shrink-0 font-mono tabular-nums opacity-70">
-              · {t.killFeedKillerShare(k.killerDamagePct)}
             </span>
           )}
         </span>

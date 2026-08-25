@@ -68,9 +68,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerTrail: 'Traînée',
     layerTrailHint:
       "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
-    zoneLabel: 'Zone de la carte',
     effects: 'Effets',
-    cards: 'Fiches',
     layerShotFx: 'Effets de tirs',
     layerShotFxHint:
       'Éclair de bouche sur chaque tir décodé, dans la teinte de la décharge (cinétique, plasma, énergie).',
@@ -133,9 +131,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagSinceFmt: (seconds) => `Depuis ${Math.round(seconds)} s`,
     flagOpenNote:
       "Rien ne date la fin de ce portage : l'intervalle court jusqu'à la fin du film — c'est une borne haute, pas une durée mesurée.",
-    cardsCompact: 'Fiches compactes',
-    cardsCompactHint:
-      "Armes, grenades et équipement sur une seule ligne, sans la zone du joueur. Seule l'arme en main garde ses munitions : celles des armes rangées ne sont plus affichées.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Carte de chaleur',
@@ -161,6 +156,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       live:
         "Seulement ce qui a été joué jusqu'ici : la carte se remplit au fil de la lecture, et revenir en arrière la ramène à ce qu'elle était. Recalculée toutes les deux secondes de match.",
     },
+    markerColorsTitle: 'Couleur des points',
+    markerColorsMode: {
+      team: 'Par équipe',
+      player: 'Par joueur',
+    },
+    markerColorsHint: {
+      team: 'Chaque point porte la couleur de son camp (allié / adverse) — la lecture par défaut.',
+      player:
+        "Une couleur stable et distincte par joueur, pour en suivre un dans la mêlée. Le camp reste dit par les fiches, le fil et le bandeau.",
+    },
     heatLegendLow: 'rare',
     heatLegendHigh: 'fréquent',
     heatLegendHint:
@@ -170,12 +175,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     teamUnknown: 'Sans équipe',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamNumberedFmt: (n) => `Équipe ${n}`,
-    scoreLive: "Score de l'équipe à l'instant lu",
     playerScoreLive: "Score personnel à l'instant lu",
     countersLive: "Frags / morts / assistances à l'instant lu",
     countersMatch: 'Frags / morts / assistances du match',
-    roundShortFmt: (index) => `M${index}`,
-    roundLabelFmt: (index, count, value) => `Manche ${index} sur ${count} : ${value}`,
     scoreBannerLabel: "Score des équipes à l'instant lu",
     scoreBannerAlly: 'Équipe alliée',
     scoreBannerEnemy: 'Équipe adverse',
@@ -195,9 +197,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     loadoutAhead:
       'Armes de la première image-clé de cette vie, lue dans',
     weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
-    holsteredLabel: 'Armes rangées',
     grenadeThrown: 'Grenade lancée',
-    weaponSwap: 'échange',
     respawnIn: 'Réapparition dans',
     respawnUnknown: 'Réapparition ?',
     inventoryAge: 'Inventaire lu il y a',
@@ -274,9 +274,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerTrail: 'Trail',
     layerTrailHint:
       'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
-    zoneLabel: 'Map zone',
     effects: 'Effects',
-    cards: 'Cards',
     layerShotFx: 'Shot effects',
     layerShotFxHint:
       'Muzzle flash on every decoded shot, in the tint of the discharge (kinetic, plasma, energy).',
@@ -339,9 +337,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagSinceFmt: (seconds) => `For ${Math.round(seconds)} s`,
     flagOpenNote:
       'Nothing dates the end of this carry: the interval runs to the end of the film — an upper bound, not a measured duration.',
-    cardsCompact: 'Compact cards',
-    cardsCompactHint:
-      'Weapons, grenades and equipment on a single row, without the player zone. Only the weapon in hand keeps its ammo: holstered weapons no longer show theirs.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Heat map',
@@ -367,6 +362,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       live:
         'Only what has been played so far: the map fills in as the replay runs, and stepping back returns it to what it was. Recomputed every two seconds of match time.',
     },
+    markerColorsTitle: 'Marker colors',
+    markerColorsMode: {
+      team: 'By team',
+      player: 'Per player',
+    },
+    markerColorsHint: {
+      team: 'Every marker carries its side colour (allied / enemy) — the default reading.',
+      player:
+        'A stable, distinct colour per player, to follow one through the fight. The side is still told by the cards, the feed and the banner.',
+    },
     heatLegendLow: 'rare',
     heatLegendHigh: 'frequent',
     heatLegendHint:
@@ -375,12 +380,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
     teamNumberedFmt: (n) => `Team ${n}`,
-    scoreLive: 'Team score at the moment being played',
     playerScoreLive: 'Personal score at the moment being played',
     countersLive: 'Kills / deaths / assists at the moment being played',
     countersMatch: 'Kills / deaths / assists for the whole match',
-    roundShortFmt: (index) => `R${index}`,
-    roundLabelFmt: (index, count, value) => `Round ${index} of ${count}: ${value}`,
     scoreBannerLabel: 'Team scores at the moment being played',
     scoreBannerAlly: 'Allied team',
     scoreBannerEnemy: 'Enemy team',
@@ -399,9 +401,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     loadoutAge: 'Weapons read',
     loadoutAhead: 'Weapons from the first keyframe of this life, read in',
     weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
-    holsteredLabel: 'Weapons holstered',
     grenadeThrown: 'Grenade thrown',
-    weaponSwap: 'swap',
     respawnIn: 'Respawn in',
     respawnUnknown: 'Respawn ?',
     inventoryAge: 'Inventory read',

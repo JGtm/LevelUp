@@ -1,13 +1,15 @@
 /**
- * PlayerMark — le GLYPHE d'identité devant un nom : « moi » ou « ami ».
+ * PlayerMark — le GLYPHE d'identité devant un nom : « ami », deux silhouettes.
  *
  * La même marque dans les fiches et dans le fil (décision D5, plan d'habillage 2026-08-16) :
  * on AJOUTE un signe, on ne change pas la couleur du nom, qui dit déjà l'équipe ou la mort.
- * `currentColor` : le glyphe prend l'encre du texte qu'il précède. Sur la carte, la même
- * grammaire passe par la FORME du marqueur (losange / anneau), cf. replayMarkers.ts.
+ * `currentColor` : le glyphe prend l'encre du texte qu'il précède.
  *
- * Deux dessins, 10 px, sans dépendance d'icônes : `friend` = deux silhouettes,
- * `me` = un disque plein cerclé.
+ * LE GLYPHE « MOI » A ÉTÉ SUPPRIMÉ le 2026-08-24 (demande utilisateur : « supprimer le point
+ * qui indique qui est le joueur actif de partout ») : la marque `me` ne dessine plus RIEN
+ * dans les fiches ni dans le fil. Sur la carte, le marqueur du joueur de la page garde sa
+ * FORME distinctive (double anneau, replayMarkers.ts) — c'est une demande distincte du
+ * 2026-08-18, qui n'est pas ce « point ».
  */
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { PlayerMarkKind } from './playerMarks'
@@ -20,9 +22,9 @@ interface Props {
 }
 
 export function PlayerMark({ kind, locale, size = 10 }: Props) {
-  if (!kind) return null
+  if (kind !== 'friend') return null
   const t = REPLAY_TEXT[locale]
-  const label = kind === 'me' ? t.markMe : t.markFriend
+  const label = t.markFriend
   return (
     <svg
       role="img"
@@ -34,19 +36,10 @@ export function PlayerMark({ kind, locale, size = 10 }: Props) {
       fill="currentColor"
     >
       <title>{label}</title>
-      {kind === 'me' ? (
-        <>
-          <circle cx="5" cy="5" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.1" />
-          <circle cx="5" cy="5" r="2" />
-        </>
-      ) : (
-        <>
-          <circle cx="3.4" cy="3" r="1.7" />
-          <path d="M0.4 8.6c0-1.9 1.3-3.1 3-3.1s3 1.2 3 3.1z" />
-          <circle cx="7.2" cy="3.2" r="1.4" opacity="0.75" />
-          <path d="M6.2 8.6c0-1.6 1-2.6 2.2-2.6 0.6 0 1.1 0.3 1.4 0.7v1.9z" opacity="0.75" />
-        </>
-      )}
+      <circle cx="3.4" cy="3" r="1.7" />
+      <path d="M0.4 8.6c0-1.9 1.3-3.1 3-3.1s3 1.2 3 3.1z" />
+      <circle cx="7.2" cy="3.2" r="1.4" opacity="0.75" />
+      <path d="M6.2 8.6c0-1.6 1-2.6 2.2-2.6 0.6 0 1.1 0.3 1.4 0.7v1.9z" opacity="0.75" />
     </svg>
   )
 }

@@ -18,8 +18,11 @@ import { Button } from '@/components/ui/button'
  * « i cerclé » typographique dépend de la police installée et se rend en carré vide sur les
  * machines qui ne l'ont pas. Elle ne prend pas le focus et n'ouvre rien — tout ce qu'elle a
  * à dire tient dans son infobulle, et le lecteur d'écran lit la même phrase.
+ *
+ * EXPORTÉE depuis le 2026-08-24 : la marque se pose sur le TITRE de la section du tiroir
+ * (demande utilisateur), plus à côté d'une bascule — le tiroir la compose lui-même.
  */
-function InfoMark({ text }: { text: string }) {
+export function InfoMark({ text }: { text: string }) {
   return (
     <span
       role="img"
@@ -47,23 +50,18 @@ function InfoMark({ text }: { text: string }) {
 
 /**
  * Une ligne de bascule : même gabarit pour les calques, les effets et les catégories de son —
- * huit usages dans ce seul fichier, un seul rendu plutôt que huit copies presque identiques
+ * une dizaine d'usages dans le tiroir, un seul rendu plutôt que dix copies presque identiques
  * (CLAUDE.md règle 6, « à la 3e copie, centraliser »).
- *
- * `info` ajoute la marque de réserve À CÔTÉ du bouton, pas dedans : elle porte une phrase
- * longue (la couverture des tirs) que l'infobulle du bouton, déjà prise par son propre
- * `hint`, ne peut pas dire — et une marque cliquable serait un bouton de plus à comprendre.
  */
 export function SettingsToggle({
-  label, pressed, onToggle, hint, info,
+  label, pressed, onToggle, hint,
 }: {
   label: string
   pressed: boolean
   onToggle: () => void
   hint?: string
-  info?: string
 }) {
-  const button = (
+  return (
     <Button
       type="button"
       variant={pressed ? 'default' : 'ghost'}
@@ -75,12 +73,5 @@ export function SettingsToggle({
     >
       {label}
     </Button>
-  )
-  if (!info) return button
-  return (
-    <div className="flex items-center gap-1">
-      <span className="flex min-w-0 flex-1 flex-col">{button}</span>
-      <InfoMark text={info} />
-    </div>
   )
 }

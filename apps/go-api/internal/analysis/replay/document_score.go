@@ -147,6 +147,16 @@ type ScoreTimeline struct {
 	// Players porte les joueurs dont le slot d'entite a ete apparie a une ligne de match.
 	// Vide quand l'appelant n'a pas fourni les lignes (le pont d'identite passe par elles).
 	Players []PlayerScore `json:"players,omitempty"`
+	// TargetScore est la CIBLE DE VICTOIRE du mode (50 frags, 3 drapeaux...) : le score qui
+	// termine le match quand il est atteint. Elle ne vient JAMAIS du film, qui ne la porte
+	// pas — c'est la table MESUREE de la variante (regulation.toml [score_target]), fournie
+	// par l'appelant. ABSENTE quand la variante n'est pas au catalogue, quand le calque n'a
+	// aucune courbe d'equipe, OU quand un score final du film la DEPASSE (table perimee pour
+	// cette variante : se taire vaut mieux que publier une cible fausse). Le client s'en sert
+	// comme denominateur des barres de score ; sans elle, il retombe sur le score final du
+	// vainqueur. Champ optionnel : son ajout n'incremente pas SchemaVersion (regle du depot,
+	// cf. build_test.go).
+	TargetScore *int `json:"targetScore,omitempty"`
 }
 
 // ScoreCoverage dit ce que vaut le calque du score — et ce qu'il ne vaut pas.

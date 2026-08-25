@@ -7,7 +7,7 @@ import { StrictMode } from 'react'
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { SPEED_MULTIPLIERS, useReplayCompactCards, useReplaySettings } from './useReplaySettings'
+import { SPEED_MULTIPLIERS, useReplaySettings } from './useReplaySettings'
 
 describe('useReplaySettings — valeurs par défaut', () => {
   it("visée, zones et noms allumés, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
@@ -144,55 +144,13 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
   })
 })
 
-/**
- * B2/R2-7 — LES FICHES COMPACTES SONT UNE OPTION, ET ELLE EST PARTAGÉE.
- *
- * La bascule vit dans le tiroir (sous le canvas), les fiches vivent dans une autre colonne de
- * la page : deux `useState` initialisés du même stockage ne se parleraient pas. C'est
- * l'abonnement de `usePersistedFlag` qui les tient ensemble, et c'est ce que ce test épingle
- * — sans lui, la bascule bougerait sans que les fiches changent.
- */
-describe('useReplaySettings — fiches compactes', () => {
-  it('ÉTEINTES par défaut : la fiche validée reste le défaut', () => {
+describe('useReplaySettings — couleur des points', () => {
+  it("'team' par défaut (la couleur dit le camp), et le choix se persiste", () => {
     const { result } = renderHook(() => useReplaySettings())
-    expect(result.current.compactCards).toBe(false)
-  })
-
-  it('la bascule du tiroir change AUSSI ce que lit la colonne des fiches', () => {
-    const tiroir = renderHook(() => useReplaySettings())
-    const fiches = renderHook(() => useReplayCompactCards())
-    expect(fiches.result.current).toBe(false)
-    act(() => tiroir.result.current.toggleCompactCards())
-    expect(tiroir.result.current.compactCards).toBe(true)
-    expect(fiches.result.current).toBe(true)
-  })
-
-  /**
-   * LE RETOUR, sur les DEUX instances à la fois — c'est précisément là que le bug vécu se
-   * manifestait. `compactCards` est la seule clé lue par deux hooks distincts (le tiroir dans
-   * ReplayCanvas, les fiches dans la page, qui en est l'ANCÊTRE) : persister depuis l'updater
-   * de `setValue` déclenchait la notification des abonnés en pleine phase de rendu, et une
-   * des deux instances gardait l'ancienne valeur. Le second appel doit ramener les DEUX à
-   * l'état de départ, et le stockage avec.
-   */
-  it('un aller-retour ramène le tiroir ET les fiches à leur état de départ', () => {
-    const tiroir = renderHook(() => useReplaySettings())
-    const fiches = renderHook(() => useReplayCompactCards())
-    act(() => tiroir.result.current.toggleCompactCards())
-    expect(tiroir.result.current.compactCards).toBe(true)
-    expect(fiches.result.current).toBe(true)
-    act(() => tiroir.result.current.toggleCompactCards())
-    expect(tiroir.result.current.compactCards).toBe(false)
-    expect(fiches.result.current).toBe(false)
-    expect(localStorage.getItem('replay-compact-cards')).toBe('false')
-  })
-
-  it('elle survit au rechargement de la page', () => {
-    const premier = renderHook(() => useReplaySettings())
-    act(() => premier.result.current.toggleCompactCards())
-    premier.unmount()
-    const { result } = renderHook(() => useReplaySettings())
-    expect(result.current.compactCards).toBe(true)
+    expect(result.current.markerColors).toBe('team')
+    act(() => result.current.setMarkerColors('player'))
+    expect(result.current.markerColors).toBe('player')
+    expect(localStorage.getItem('replay-marker-colors')).toBe('player')
   })
 })
 
@@ -201,11 +159,13 @@ describe('useReplaySettings — fiches compactes', () => {
  *
  * Deux `renderHook` côte à côte ne le reproduisent PAS : ce sont deux racines React
  * indépendantes, et la notification ré-entrante n'y traverse jamais une frontière
- * ancêtre/descendant. Or c'est exactement ce que fait la page : `useReplayCompactCards` vit
- * dans la route (ANCÊTRE), la bascule vit dans le tiroir de `ReplayCanvas` (DESCENDANT), sur
- * la MÊME clé. Persister depuis l'updater de `setValue` faisait alors notifier les abonnés en
- * pleine phase de rendu du descendant — donc appeler `setValue` de l'ancêtre pendant que le
- * descendant rend, ce que React refuse d'appliquer tel quel.
+ * ancêtre/descendant. Le bug a été vécu sur la clé des fiches compactes (supprimée le
+ * 2026-08-24 avec son réglage) : une préférence lue par DEUX instances de hook, l'une chez
+ * un ANCÊTRE, l'autre chez un DESCENDANT. Persister depuis l'updater de `setValue` faisait
+ * notifier les abonnés en pleine phase de rendu du descendant — donc appeler `setValue` de
+ * l'ancêtre pendant que le descendant rend, ce que React refuse d'appliquer tel quel.
+ * L'INVARIANT PROTÉGÉ SURVIT À LA CLÉ : toute clé partagée entre deux instances y est
+ * exposée — le test le rejoue sur `showAim`.
  *
  * Ce test monte donc l'arbre RÉEL, et sous `StrictMode` — qui invoque les updaters deux fois
  * pour débusquer précisément les updaters impurs. Il ne teste rien de plus que ce que
@@ -213,41 +173,41 @@ describe('useReplaySettings — fiches compactes', () => {
  */
 describe('useReplaySettings — la bascule partagée revient bien en arrière (arbre réel)', () => {
   function Tiroir() {
-    const { compactCards, toggleCompactCards } = useReplaySettings()
+    const { showAim, toggleAim } = useReplaySettings()
     return (
-      <button type="button" data-testid="bascule" onClick={toggleCompactCards}>
-        {String(compactCards)}
+      <button type="button" data-testid="bascule" onClick={toggleAim}>
+        {String(showAim)}
       </button>
     )
   }
 
-  /** La route : elle LIT la préférence, et rend le tiroir plus bas dans l'arbre. */
+  /** L'ancêtre : il LIT la même préférence, et rend le tiroir plus bas dans l'arbre. */
   function Page() {
-    const compact = useReplayCompactCards()
+    const { showAim } = useReplaySettings()
     return (
       <div>
-        <span data-testid="fiches">{String(compact)}</span>
+        <span data-testid="lecteur">{String(showAim)}</span>
         <Tiroir />
       </div>
     )
   }
 
-  it('deux clics ramènent le tiroir ET les fiches à ÉTEINT, sous StrictMode', () => {
+  it('deux clics ramènent le tiroir ET le lecteur à leur état de départ, sous StrictMode', () => {
     render(
       <StrictMode>
         <Page />
       </StrictMode>,
     )
-    expect(screen.getByTestId('fiches')).toHaveTextContent('false')
-    expect(screen.getByTestId('bascule')).toHaveTextContent('false')
-
-    fireEvent.click(screen.getByTestId('bascule'))
-    expect(screen.getByTestId('fiches')).toHaveTextContent('true')
+    expect(screen.getByTestId('lecteur')).toHaveTextContent('true')
     expect(screen.getByTestId('bascule')).toHaveTextContent('true')
 
     fireEvent.click(screen.getByTestId('bascule'))
-    expect(screen.getByTestId('fiches')).toHaveTextContent('false')
+    expect(screen.getByTestId('lecteur')).toHaveTextContent('false')
     expect(screen.getByTestId('bascule')).toHaveTextContent('false')
-    expect(localStorage.getItem('replay-compact-cards')).toBe('false')
+
+    fireEvent.click(screen.getByTestId('bascule'))
+    expect(screen.getByTestId('lecteur')).toHaveTextContent('true')
+    expect(screen.getByTestId('bascule')).toHaveTextContent('true')
+    expect(localStorage.getItem('replay-show-aim')).toBe('true')
   })
 })

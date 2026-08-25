@@ -22,12 +22,18 @@ type RegulationSet struct {
 	schemaVersion int
 	// seconds : game_variant_name → temps réglementaire en secondes (> 0).
 	seconds map[string]int
+	// targets : game_variant_name → CIBLE DE VICTOIRE du mode (score qui termine le match
+	// quand il est atteint). Même doctrine que seconds : valeurs MESURÉES (plateau du score
+	// du vainqueur au registre), variante inconnue → pas de cible, jamais une devinette.
+	// Consommateur : le constructeur d'artefact de rejeu (ScoreTimeline.TargetScore).
+	targets map[string]int
 }
 
 // regulationTOML — projection brute de regulation.toml.
 type regulationTOML struct {
 	Meta    metaSection    `toml:"meta"`
 	Seconds map[string]int `toml:"regulation_seconds"`
+	Targets map[string]int `toml:"score_target"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -37,6 +43,16 @@ func (s *RegulationSet) Seconds(gameVariantName string) (int, bool) {
 		return 0, false
 	}
 	v, ok := s.seconds[strings.TrimSpace(gameVariantName)]
+	return v, ok
+}
+
+// ScoreTarget retourne la cible de victoire de la variante et true si elle est connue.
+// nil-safe et variante inconnue → (0, false) : l'appelant retombe sur son repli.
+func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.targets[strings.TrimSpace(gameVariantName)]
 	return v, ok
 }
 
@@ -105,9 +121,21 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		}
 		seconds[key] = secs
 	}
+	targets := make(map[string]int, len(doc.Targets))
+	for rawName, target := range doc.Targets {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [score_target] game_variant_name vide", path)
+		}
+		if target <= 0 {
+			return nil, fmt.Errorf("%s: variante %q : cible de victoire doit être > 0 (reçu %d)", path, key, target)
+		}
+		targets[key] = target
+	}
 	return &RegulationSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
 		seconds:       seconds,
+		targets:       targets,
 	}, nil
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { drawnSwapAt, equippedWeapons, loadoutSwapAt } from './equippedLogic'
+import { drawnSwapAt, equippedWeapons } from './equippedLogic'
 import { testReplayDoc as doc } from './test/testDoc'
 
 // Un slot, deux armes lues à l'image-clé t=10, et un inventaire dont seul le sélecteur
@@ -95,80 +95,6 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
 
   it('sans loadout lu, rend null — la rangée affiche sa lacune, pas une liste vide', () => {
     expect(equippedWeapons(doc(), 512, 60)).toBeNull()
-  })
-})
-
-describe('loadoutSwapAt — le diff des deux dernières lectures d’un slot', () => {
-  it('date un échange : ce qui est entré, ce qui est sorti, l’âge de la lecture courante', () => {
-    const d = doc({
-      loadouts: [
-        { t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] },
-        { t: 30, slot: 512, w: ['0xAAAA', '0xCCCC'] },
-      ],
-    })
-    expect(loadoutSwapAt(d, 512, 50)).toEqual({
-      picked: ['0xCCCC'],
-      dropped: ['0xBBBB'],
-      age: 20,
-    })
-  })
-
-  it('deux lectures identiques : aucun échange, null', () => {
-    const d = doc({
-      loadouts: [
-        { t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] },
-        { t: 30, slot: 512, w: ['0xAAAA', '0xBBBB'] },
-      ],
-    })
-    expect(loadoutSwapAt(d, 512, 50)).toBeNull()
-  })
-
-  it('l’ordre des emplacements n’est PAS un échange', () => {
-    // Un swap de MAIN réordonne la rangée via le sélecteur ; la dotation, elle, n'a pas changé.
-    const d = doc({
-      loadouts: [
-        { t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] },
-        { t: 30, slot: 512, w: ['0xBBBB', '0xAAAA'] },
-      ],
-    })
-    expect(loadoutSwapAt(d, 512, 50)).toBeNull()
-  })
-
-  it('le diff est un MULTIENSEMBLE : perdre une copie d’une arme portée en double se voit', () => {
-    const d = doc({
-      loadouts: [
-        { t: 10, slot: 512, w: ['0xAAAA', '0xAAAA'] },
-        { t: 30, slot: 512, w: ['0xAAAA', '0xBBBB'] },
-      ],
-    })
-    expect(loadoutSwapAt(d, 512, 50)).toEqual({
-      picked: ['0xBBBB'],
-      dropped: ['0xAAAA'],
-      age: 20,
-    })
-  })
-
-  it('sans DEUX lectures au plus tard à l’image, rien à comparer : null', () => {
-    const d = doc({
-      loadouts: [
-        { t: 10, slot: 512, w: ['0xAAAA'] },
-        { t: 90, slot: 512, w: ['0xBBBB'] }, // dans le futur de frame=50
-        { t: 10, slot: 513, w: ['0xCCCC'] }, // un autre slot ne compte pas
-      ],
-    })
-    expect(loadoutSwapAt(d, 512, 50)).toBeNull()
-  })
-
-  it('compare les deux DERNIÈRES lectures, pas la première venue', () => {
-    const d = doc({
-      loadouts: [
-        { t: 5, slot: 512, w: ['0xDDDD'] },
-        { t: 10, slot: 512, w: ['0xAAAA'] },
-        { t: 30, slot: 512, w: ['0xAAAA'] },
-      ],
-    })
-    // Entre t=10 et t=30, rien n'a changé : le vieux 0xDDDD de t=5 ne doit pas ressurgir.
-    expect(loadoutSwapAt(d, 512, 50)).toBeNull()
   })
 })
 

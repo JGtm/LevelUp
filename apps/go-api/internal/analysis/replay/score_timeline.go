@@ -33,6 +33,9 @@ type ScoreInput struct {
 	// TeamScores porte `team_0_score` / `team_1_score` du registre. Nil = absents : la
 	// resolution (a) ne s'applique pas, on retombe sur (b) puis (c).
 	TeamScores *[2]int
+	// TargetScore est la cible de victoire de la variante (regulation.toml [score_target]).
+	// 0 = inconnue : rien n'est publie, le client retombe sur son repli.
+	TargetScore int
 	// Truncated propage le plafond de lecture des enregistrements : les courbes s'arretent
 	// alors avant la fin du match, et la couverture le dit.
 	Truncated bool
@@ -178,6 +181,7 @@ func buildScoreTimeline(in *ScoreInput, c scoreClock) (*ScoreTimeline, *ScoreCov
 		Teams:   buildTeamScores(slots, teamScore, teamID, c),
 		Players: buildPlayerScores(recs, identity, c),
 	}
+	tl.TargetScore = publishableTarget(in.TargetScore, slots, teamScore, len(tl.Teams))
 	cov := &ScoreCoverage{
 		TeamIdentity:  method,
 		Rounds:        len(objectiveevents.RealRounds(recs)),
@@ -190,6 +194,23 @@ func buildScoreTimeline(in *ScoreInput, c scoreClock) (*ScoreTimeline, *ScoreCov
 		tl = nil
 	}
 	return tl, cov
+}
+
+// publishableTarget applique la garde de la cible de victoire (cf. ScoreTimeline.TargetScore) :
+// elle n'est publiee que si elle est connue (> 0), si le calque porte des courbes d'equipe (une
+// cible sans courbe ne norme rien), et si AUCUN score final du film ne la depasse — un final
+// au-dessus prouve que la table est perimee pour cette variante, et une cible fausse se lirait
+// comme une mesure.
+func publishableTarget(target int, slots []int, score scoreSeriesSet, teams int) *int {
+	if target <= 0 || teams == 0 {
+		return nil
+	}
+	for _, slot := range slots {
+		if final, ok := score.final(slot); ok && final > int64(target) {
+			return nil
+		}
+	}
+	return &target
 }
 
 // teamSlotsOf rend les slots d'entite d'equipe vus par le film, dans l'ordre.

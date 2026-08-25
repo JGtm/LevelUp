@@ -3,7 +3,8 @@
  *
  * CE QU'ILS PROTÈGENT : les quatre affirmations que le bandeau fait à l'écran — le score
  * écrit est celui de l'IMAGE LUE, le camp du joueur de la page est à GAUCHE et porte SA
- * couleur, la barre dit un rapport de force, et le bandeau SE TAIT quand il ne sait pas.
+ * couleur, la barre dit le chemin vers la cible de victoire, et le bandeau SE TAIT quand
+ * il ne sait pas.
  * Le calcul, lui, est éprouvé chez `scoreBannerLogic.test.ts` ; ici on éprouve le rendu.
  */
 import { describe, expect, it } from 'vitest'
@@ -116,11 +117,23 @@ describe('ReplayScoreBanner — les deux camps', () => {
 })
 
 describe('ReplayScoreBanner — le remplissage', () => {
-  it('remplit la barre du camp en tête, et l\'autre à proportion', () => {
+  it('remplit à la cible atteinte, et l\'autre à proportion de la cible', () => {
     renderBanner()
     const bars = screen.getAllByRole('progressbar')
     expect(bars[0]).toHaveAttribute('aria-valuenow', '100')
     expect(bars[1]).toHaveAttribute('aria-valuenow', String(Math.round((30 / 43) * 100)))
+  })
+
+  it('en cours de match, AUCUNE barre n\'est pleine tant que la cible n\'est pas atteinte', () => {
+    renderBanner({ frame: 100 })
+    const bars = screen.getAllByRole('progressbar')
+    expect(bars[0]).toHaveAttribute('aria-valuenow', String(Math.round((20 / 43) * 100)))
+    expect(bars[1]).toHaveAttribute('aria-valuenow', String(Math.round((15 / 43) * 100)))
+  })
+
+  it('peint l\'aplat à la couleur d\'équipe PLEINE, sans mélange', () => {
+    const { container } = renderBanner()
+    expect(container.innerHTML).not.toContain('color-mix')
   })
 
   it('dit la MESURE au lecteur d\'écran, pas le pourcentage relatif', () => {

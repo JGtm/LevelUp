@@ -43,24 +43,21 @@
  * « c'est le camp adverse ». Seules restent écartées les lectures réellement ambiguës — les
  * deux camps alliés, les deux adverses, ou aucun des deux résolu.
  *
- * LE REMPLISSAGE EST RELATIF, FAUTE D'OBJECTIF PUBLIÉ — et c'est le repli prévu par la
- * demande. Un objectif de score (50 frags, 3 drapeaux) donnerait la seule fraction
- * absolument juste, mais AUCUN champ ne le porte, ni au contrat ni dans le film (recherche
- * du 2026-08-20) : `ScoreTimeline` n'a que `players` et `teams`, `TeamScore` que
- * `teamId`/`rounds`/`total`, l'entrée du constructeur (`replay.ScoreInput`) ne reçoit que
- * les scores FINAUX, et le seul champ de score de l'en-tête de match
- * (`MatchViewHeader.score_label`) est ce même score final mis en forme. Les vraies limites
- * (Slayer 50, Oddball 200) n'existent qu'en PROSE, dans le commentaire d'une borne
- * anti-aberration du backend (`objectiveevents/statborg.go`) — jamais en donnée.
+ * LE DÉNOMINATEUR EST LA CIBLE DE VICTOIRE (demande utilisateur du 2026-08-24 : « pleine
+ * quand le match est fini parce que le score de la victoire est atteint, c'est ça le
+ * dénominateur »). Le film ne la porte pas ; c'est l'artefact qui la publie
+ * (`scoreTimeline.targetScore`) depuis la table MESURÉE de la variante
+ * (config regulation.toml [score_target], plateaux du score du vainqueur au registre). Une
+ * victoire AU CHRONO s'affiche donc juste : 43/50, jamais une barre pleine à 43.
  *
- * Le dépôt a déjà tranché ce manque au même endroit : le moteur de comeback, qui a besoin
- * d'un normalisateur, prend `max(scoreFinalA, scoreFinalB)` faute de mieux
- * (`internal/analysis/comeback.go`). On fait donc pareil, au frame lu :
- * `score / max(scoreAllié, scoreAdverse, 1)`. Le camp en tête remplit sa barre, l'autre
- * montre son RETARD RELATIF. Ce que la barre dessine est « où en est ce camp par rapport à
- * l'autre », jamais « où en est ce camp par rapport à la victoire ». Le nombre écrit dans la
- * barre, lui, reste la mesure — c'est lui qui fait foi. Le jour où le producteur publiera une
- * cible, seule `fillOf` change.
+ * À DÉFAUT (artefact antérieur au champ, variante hors table, table périmée que le
+ * producteur a tue), le repli est celui du moteur de comeback
+ * (`internal/analysis/comeback.go`) : `max(scoreFinalA, scoreFinalB)` — dans une partie
+ * gagnée à la cible, le score final du vainqueur EST la cible. Dans les deux cas le
+ * dénominateur est CONSTANT sur toute la lecture : une barre ne recule JAMAIS (la version
+ * relative au camp d'en face au frame lu se vidait quand l'adversaire marquait — refusée
+ * par l'utilisateur). Le nombre écrit dans la barre reste la mesure — c'est lui qui fait
+ * foi.
  *
  * Module PUR : ni React, ni DOM, ni couleur.
  */
@@ -130,9 +127,10 @@ export function readScoreBanner(
   const enemyId = camps[1 - allyIdx]
   const allyScore = teamScoreAtFrame(timeline, allyId, frame)
   const enemyScore = teamScoreAtFrame(timeline, enemyId, frame)
+  const target = victoryTarget(timeline, allyId, enemyId)
   return {
-    ally: { teamId: allyId, score: allyScore, fill: fillOf(allyScore, enemyScore) },
-    enemy: { teamId: enemyId, score: enemyScore, fill: fillOf(enemyScore, allyScore) },
+    ally: { teamId: allyId, score: allyScore, fill: fillOf(allyScore, target) },
+    enemy: { teamId: enemyId, score: enemyScore, fill: fillOf(enemyScore, target) },
     round: roundOf(timeline, allyId, enemyId, frame),
   }
 }
@@ -154,13 +152,38 @@ function identifiedCamps(scoreboard: ScoreboardRows): number[] {
 }
 
 /**
- * fillOf — la part de barre d'un camp, relative au meilleur des deux (cf. en-tête).
+ * victoryTarget — le dénominateur des deux barres, CONSTANT sur toute la lecture (c'est ce
+ * qui garantit qu'une barre ne recule jamais). Deux sources, dans l'ordre :
  *
- * Le `1` du dénominateur tient le début de match : 0 sur 0 remplirait une barre entière
- * alors que personne n'a marqué. Deux barres vides, c'est la vérité du score 0-0.
+ *  1. `timeline.targetScore` — la CIBLE DE VICTOIRE du mode, publiée par l'artefact depuis
+ *     la table mesurée de la variante (regulation.toml [score_target]). C'est la seule
+ *     lecture juste sur une victoire AU CHRONO : un Slayer arrêté à 43 affiche 43/50, pas
+ *     une barre pleine (retour utilisateur du 2026-08-24). Le producteur garantit
+ *     cible >= finals ; un artefact antérieur au champ n'en porte pas.
+ *  2. le score FINAL du vainqueur, à défaut (cf. en-tête — dans une partie gagnée à la
+ *     cible, c'est la cible ; au chrono, c'est une borne basse assumée, faute de donnée).
+ *
+ * Le `1` tient le cas dégénéré d'un match sans le moindre point : 0 sur 0 remplirait une
+ * barre entière alors que personne n'a marqué.
  */
-function fillOf(score: number, other: number): number {
-  return score / Math.max(score, other, 1)
+function victoryTarget(
+  timeline: ReplayScoreTimelineReady,
+  allyId: number,
+  enemyId: number,
+): number {
+  if (timeline.targetScore != null && timeline.targetScore > 0) return timeline.targetScore
+  return Math.max(finalScoreOf(timeline, allyId), finalScoreOf(timeline, enemyId), 1)
+}
+
+/** Le score de FIN DE MATCH d'un camp : son dernier palier, 0 sans série (camp muet). */
+function finalScoreOf(timeline: ReplayScoreTimelineReady, teamId: number): number {
+  const total = teamSeriesFor(timeline, teamId)?.total ?? []
+  return total.length > 0 ? total[total.length - 1].v : 0
+}
+
+/** fillOf — la part de barre d'un camp : son score au frame lu, rapporté à la cible. */
+function fillOf(score: number, target: number): number {
+  return Math.min(score / target, 1)
 }
 
 /**

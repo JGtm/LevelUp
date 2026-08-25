@@ -16,16 +16,20 @@
  * les tokens que les réglages d'accessibilité peuvent surcharger. Un pion bleu sur la carte
  * et une barre rouge pour la même équipe seraient une page cassée.
  *
- * LE NOMBRE NE SE TEINT PAS, LA BARRE SI. Le score est écrit en `text-foreground` par-dessus
- * un aplat de couleur d'équipe mélangé au fond : c'est ce qui le garde lisible aux deux
- * bouts de la course — sur la piste nue quand le camp n'a pas encore marqué, sur l'aplat
- * quand il mène. Écrire le nombre DANS la couleur d'équipe le rendrait illisible sur son
- * propre aplat. Le liseré plein, lui, tient l'identité du camp même à barre vide : c'est le
- * seul endroit où la couleur est franche.
+ * LE NOMBRE NE SE TEINT PAS, LA BARRE SI. L'aplat de remplissage est la couleur d'équipe
+ * PLEINE depuis le 2026-08-24 (retour utilisateur sur la version à 42 % : « c'est pas la
+ * couleur de l'équipe mais une couleur terne ») — la même teinte que les pions sur la
+ * carte, sans mélange. Le score est écrit en `text-foreground` par-dessus : les tokens
+ * d'équipe sont des teintes moyennes, l'encre du thème y reste lisible des deux côtés de
+ * la course — sur la piste nue quand le camp n'a pas marqué, sur l'aplat quand il avance.
+ * Le liseré plein, lui, tient l'identité du camp même à barre vide.
  *
- * LA BARRE SE REMPLIT DEPUIS L'EXTÉRIEUR vers l'horloge — les deux camps se font face. Le
- * score reste ancré à ce même bord extérieur : il ne se déplace pas avec le remplissage, un
- * nombre qui glisse sous l'œil pendant la lecture serait illisible.
+ * LA BARRE SE REMPLIT DEPUIS L'HORLOGE VERS L'EXTÉRIEUR (précision utilisateur du
+ * 2026-08-24, après un premier sens livré à l'envers) : celle de gauche part du bord de
+ * l'horloge et grandit vers la gauche, celle de droite vers la droite. Le liseré franc au
+ * bord EXTÉRIEUR devient une ligne d'arrivée : la barre le rejoint quand la cible est
+ * atteinte. LE SCORE EST ANCRÉ CÔTÉ HORLOGE (même précision utilisateur) : les deux nombres
+ * encadrent l'horloge, là où part le remplissage — ancrés, ils ne glissent pas sous l'œil.
  */
 import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
@@ -38,13 +42,6 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { formatClock } from './replayLogic'
 import { readScoreBanner, type ScoreBannerSide } from './scoreBannerLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-
-/**
- * Part de la couleur d'équipe dans l'aplat de remplissage. Plus franc que la teinte des
- * en-têtes de colonne (14 %) — ici la couleur EST la barre — mais assez transparent pour
- * que `text-foreground` reste lisible par-dessus, dans les deux thèmes.
- */
-const FILL_PCT = 42
 
 interface Props {
   /**
@@ -103,7 +100,10 @@ interface BarProps {
   side: ScoreBannerSide
   label: string
   token: 'team-ally' | 'team-enemy'
-  /** Bord d'où part le remplissage, et où le nombre est ancré : les camps se font face. */
+  /**
+   * Bord EXTÉRIEUR de la barre : celui du liseré et du nombre. Le remplissage, lui, part
+   * du bord opposé (côté horloge) et grandit VERS ce bord — les camps se font face.
+   */
   anchor: 'left' | 'right'
 }
 
@@ -111,17 +111,19 @@ interface BarProps {
  * Une barre de camp : la piste, l'aplat de remplissage, le score écrit dedans.
  *
  * `role="progressbar"` avec `aria-valuetext` FORCÉ AU SCORE : sans lui, un lecteur d'écran
- * annoncerait « 100 % » pour le camp en tête, alors que le remplissage est RELATIF à
- * l'autre camp et non à une victoire (aucun objectif n'est publié — cf. `scoreBannerLogic`).
- * Le pourcentage décrit la barre, le `valuetext` dit la mesure.
+ * annoncerait un pourcentage de la cible déduite (le score final du vainqueur — cf.
+ * `scoreBannerLogic`), qui n'est pas une donnée publiée. Le pourcentage décrit la barre,
+ * le `valuetext` dit la mesure.
  */
 function ScoreBar({ side, label, token, anchor }: BarProps) {
   const accent = tokenCssVar(token)
   const pct = Math.round(side.fill * 100)
+  // L'aplat est ancré au bord INTÉRIEUR (côté horloge) et grandit vers l'extérieur : pour
+  // la barre de gauche il colle à droite, pour celle de droite il colle à gauche.
   const fillStyle: CSSProperties = {
     width: `${pct}%`,
-    background: `color-mix(in srgb, ${accent} ${FILL_PCT}%, transparent)`,
-    ...(anchor === 'left' ? { left: 0 } : { right: 0 }),
+    background: accent,
+    ...(anchor === 'left' ? { right: 0 } : { left: 0 }),
   }
   const trackStyle: CSSProperties =
     anchor === 'left' ? { borderLeft: `3px solid ${accent}` } : { borderRight: `3px solid ${accent}` }
@@ -137,9 +139,11 @@ function ScoreBar({ side, label, token, anchor }: BarProps) {
       style={trackStyle}
     >
       <span className="absolute inset-y-0 block" style={fillStyle} />
+      {/* Le nombre CÔTÉ HORLOGE : bord droit de la barre de gauche, bord gauche de celle
+          de droite — l'inverse de `anchor`, qui nomme le bord extérieur. */}
       <span
         className={`absolute inset-y-0 flex items-center px-2 font-mono text-[15px] font-bold tabular-nums text-foreground ${
-          anchor === 'left' ? 'left-0' : 'right-0'
+          anchor === 'left' ? 'right-0' : 'left-0'
         }`}
       >
         {side.score}
