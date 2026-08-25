@@ -5,8 +5,8 @@
 // pipeline (jeton posé, sortie du pool, réversibilité par force=true,
 // non-régression du chemin « events présents »).
 //
-// La décision isolée (matchAge, isCitationsTerminalNoEvents) est couverte par
-// citations_terminal_state_test.go.
+// La décision isolée (matchAge, isCitationsTerminalNoEvents — citations.go) est
+// couverte par citations_terminal_state_test.go.
 package sync
 
 import (

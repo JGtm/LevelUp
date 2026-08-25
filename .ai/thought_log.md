@@ -25,9 +25,22 @@ imports OpenSpartan portent un start_time naïf décalé). Tempérament d'échec
 `isEventsLoaded` : celle-ci répond true quand elle ne sait pas (legacy), alors qu'ici tout
 âge indéterminable (sharedDB nil, match absent, colonnes illisibles, horodatages NULL)
 donne WARN + false — rester candidat est l'échec sûr, un cycle de plus coûte moins qu'un
-match jetonné à tort. Décision et seuil isolés dans un fichier neuf
-(`citations_terminal_state.go`) : `citations.go` est déjà à 700 lignes, on ne l'alourdit
-que d'une ligne de condition.
+match jetonné à tort.
+
+**Arbitrage de placement (découverte en cours de lot)** : la décision et son seuil ont
+d'abord été isolés dans un fichier neuf (`citations_terminal_state.go`) pour ne pas
+alourdir `citations.go`, déjà à 700 lignes. Le ratchet K3c
+(`archlint/sync_root_freeze_test.go`, ADR 0027) GÈLE le nombre de fichiers `.go` non-test à
+la racine du god-package `internal/sync/` à EXACTEMENT 80 — il échoue aussi bien au-dessus
+qu'en dessous — et impose que le neuf aille dans `sync/v2` ou un sous-package cohésif. Les
+deux issues sont fermées ici : `sync/v2` importe `sync` (cycle si on l'appelle depuis
+`citations.go`), et un paquet d'une seule fonction ne serait pas un « sous-package
+cohésif », il fragmenterait la logique citations. Le bloc est donc replié dans
+`citations.go`, à côté de son unique appelant et de `isEventsLoaded`, avec le motif écrit
+en commentaire. Seuil de 500 L de CLAUDE.md n°5 : dette gelée antérieure, non aggravée
+en nombre de fichiers ; `internal/sync/` est par ailleurs exempté de funlen/lll/gocyclo
+dans `.golangci.yml`. Les deux fichiers de tests neufs ne comptent pas (le ratchet exclut
+`_test.go`).
 
 **Vérifié sur pièces** : `selectMatchesForCitations` (`citations_backfill.go`) ne fait le
 `LEFT JOIN ... IS NULL` sur `match_citations` que dans la branche `force=false` ; `force=true`
@@ -48,7 +61,7 @@ sélectionné par force=true ; match récent : zéro ligne écrite, reste candid
 jeton posé comme avant, sans considération d'âge. Les âges sont posés relativement à
 `time.Now()`, pas aux dates figées de la fixture.
 
-**Découverte (non traitée, hors périmètre)** : `sortMatchIDsChrono` (`citations.go`) trie par
+**Découvertes (non traitées, hors périmètre)** : `sortMatchIDsChrono` (`citations.go`) trie par
 `ORDER BY start_time` brut — dette préexistante gelée par l'allowlist fichier du ratchet
 `no_raw_start_time_literal_test.go`. Non touchée. Le WARN pve `database is closed` du même
 fichier relève du lot `fix/shared-read-recovery`.
