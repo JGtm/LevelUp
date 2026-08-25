@@ -101,7 +101,19 @@ func ratioOf(real, witness float64) string {
 //
 // Si au contraire le taux reel reste colle au temoin quel que soit le decalage, ce n'est
 // pas un probleme d'horloge.
-var clockOffsets = []int{-100, -50, -30, -20, -10, -5, 0, 10}
+//
+// [2026-08-25] Borne elargie de -10 s a -60 s (registre REGISTRE_REPORTS.md L13, mesure
+// executee depuis le worktree wt/clock-offsets). Au lot 4 (2026-08-08), 3 films sur 8
+// piquaient PILE sur l'ancienne borne (-100 = -10 s) : mesure tronquee. Le lot du
+// 2026-08-14 (`PLAN_CONTAINMENT_ZONES.md` etape 1, thought_log meme date) a depuis EXPLIQUE
+// et CORRIGE ce retard : ce n'est pas une latence a chercher par balayage, c'est le
+// decalage de referentiel LU sur l'artefact (`originMs`, mesure 3,6-50,8 s selon le film,
+// cf. `correctedActions` dans measure.go) — une correction EXACTE par film qui fait mieux
+// que n'importe quel decalage balaye ici, sur chacun des 8 films du corpus d'origine. Ce
+// balayage reste donc un DIAGNOSTIC de confirmation (la borne elargie retrouve-t-elle bien
+// un pic INTERIEUR pres de l'origine lue de chaque film ?), plus jamais le mecanisme de
+// correction — voir printOriginCorrection pour celui-ci.
+var clockOffsets = []int{-600, -500, -400, -300, -200, -150, -100, -50, -30, -20, -10, -5, 0, 10}
 
 // clockThresholdsM : deux seuils suffisent — l'appartenance stricte et un seuil relache
 // representatif. Balayer les deux axes en entier n'apprendrait rien de plus.
