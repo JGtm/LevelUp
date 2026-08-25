@@ -143,4 +143,15 @@ thought_log, mémoire de session.
 
 ## Découvertes (hors périmètre — consigner ici, ne PAS traiter)
 
-- (vide)
+- **Lot A — sentinelle `last === 0` de la boucle de lecture** (`useReplayPlayback.ts`, reprise
+  telle quelle de `ReplayCanvas`) : l'amorce de l'horloge est `let last = 0` puis
+  `if (last === 0) last = ts`. Un horodatage `rAF` valant EXACTEMENT 0 ré-amorcerait l'horloge
+  à chaque pas, et le rejeu n'avancerait plus. Inatteignable en navigateur (le premier `ts`
+  est > 0), rencontré seulement en test — les tests servent donc des horodatages non nuls et
+  le disent. NON TRAITÉ (règle 7). Correctif si un jour on y revient : `let last = -1`.
+- **Lot A — `held` conflate deux états dans `zoneStatesLayer.paintZoneState`** : il est faux
+  autant pour « personne ne tient » que pour « camp non situable » (aucune ligne « moi »).
+  A6 a corrigé la conséquence VISIBLE (le grisé se décide sur `owner`, pas sur `held`), mais
+  le drapeau décide encore du REMPLISSAGE : une zone tenue par un camp non situable n'est pas
+  remplie. C'est le comportement voulu et documenté (« jamais une couleur devinée ») — noté
+  parce que le nom `held` ment sur ce qu'il porte. NON TRAITÉ.
