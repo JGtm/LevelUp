@@ -1,9 +1,9 @@
 ## [2026-08-25] Citations — état terminal pour matchs sans events (matchs annulés)
 
-**Statut** : En cours — R1 après revue adversariale (2 relecteurs frais). Le mécanisme est
-validé, la CONDITION DE DÉCLENCHEMENT a été RÉFUTÉE et remplacée ; éditions faites, gates R1
-à rejouer. Branche `fix/citations-terminal-state`, worktree dédié, base `origin/main`
-`97a109b0d`.
+**Statut** : Complété en R1 après revue adversariale (2 relecteurs frais). Le mécanisme était
+validé, la CONDITION DE DÉCLENCHEMENT a été RÉFUTÉE et remplacée ; gates R1 rejoués depuis
+zéro, tous verts. Ni merge ni push — décision du superviseur. Branche
+`fix/citations-terminal-state`, worktree dédié, base `origin/main` `97a109b0d`.
 
 **REVUE ADVERSARIALE — P1 CONVERGENT (trouvé indépendamment par les deux relecteurs)** : le
 seuil d'âge local de 7 jours contredisait la politique film du MÊME package.
@@ -139,11 +139,35 @@ sur sync + persist) · `EXIT_GOLANGCI=0` (« 0 issues », `--new-from-merge-base
 Ratchets cités nommément : `TestSyncRootPackageFrozen`, `TestNoNewRawStartTimeLiteral`,
 `TestStartTimeGuardsAreDiscriminant`, garde-rails anti-ART du package sync — tous PASS.
 
-Ces verdicts portent sur la version PRÉ-REVUE (condition d'âge) ; les gates R1 restent à
-rejouer sur la condition `events_empty`. Le mordant y avait été prouvé par MUTATION
-(condition inversée en `age > seuil` → 3 sous-cas rouges, `EXIT_MUTATION=1`, puis restaurée) ;
-la nouvelle condition est un booléen : sa mutation équivalente (retirer le `&&`, ou inverser
-le booléen retourné) fait rougir le test de câblage bout en bout (1) et l'arbitrage (6 cas).
+Ces verdicts portaient sur la version PRÉ-REVUE (condition d'âge).
+
+**Gates R1 (rejoués depuis zéro sur la condition `events_empty`, logs `scratchpad/gates_r1/`)** :
+`EXIT_GOFMT=0` (sortie vide) · `EXIT_BUILD=0` · `EXIT_VET=0` · `EXIT_HOOK_GOVET=0` (hook
+pre-commit rejoué) · `EXIT_UNIT=0` (0 `--- FAIL:` ancré, 0 paquet FAIL ; `internal/sync` ok
+42,1 s ; le flake connu `TestStartImport_HappyPathReturns202WithJobID` ne s'est pas
+manifesté, aucun rejeu nécessaire) · `EXIT_INTEGRATION=0` (`-p 1 -timeout 1800s` sync+persist ;
+`internal/sync` ok 124,4 s, et `internal/persist` REJOUÉ `-count=1` — `EXIT_PERSIST_NOCACHE=0`,
+61,7 s — parce que le run principal le servait depuis le cache) · `EXIT_GOLANGCI=0`
+(« 0 issues »). Ratchets : `EXIT_ARCHLINT=0`, `EXIT_ART_GUARDS=0`, racine `sync/` à 80
+fichiers (baseline K3c respectée).
+
+**Mordant de la NOUVELLE condition prouvé par DEUX mutations réelles** :
+- M1, verdict inversé (`return !(empty.Valid && empty.Bool)`) → `EXIT_M1_UNIT=1` et
+  `EXIT_M1_INTEG=1` : rougissent `TestReadEventsEmpty_VerdictVsIllisible`,
+  `TestIsEventsEmptyDefinitive` (3 sous-cas), `TestIsEventsEmptyDefinitive_WarnOnIllisible`,
+  `TestCitationsTerminalState_VerdictEventsEmpty`, `..._ForceRecomputeRattrapeLesEvents`,
+  `..._SansVerdictResteCandidat`.
+- M2, CÂBLAGE retiré (la 3e condition ne peut plus déclencher) → `EXIT_M2_INTEG=1` :
+  `TestCitationsTerminalState_VerdictEventsEmpty` rougit sur « jeton _processed = 0, want 1 »
+  puis « la boucle perpétuelle continue ». Le câblage est donc bien gardé, pas seulement les
+  helpers.
+Les deux mutations restaurées ; arbre re-vérifié VIDE (`git status` et `git diff --stat` sans
+sortie) et tests re-verts (`EXIT_POST_UNIT=0`, `EXIT_POST_INTEG=0`).
+
+**Quel gate exécute quoi** : `TestReadEventsEmpty_*`, `TestIsEventsEmptyDefinitive*` (dont
+l'assertion WARN slog) → gate UNITAIRE local (`go test ./...`, sans `-tags=integration`) ;
+`TestCitationsTerminalState_*` (câblage + force renforcé) → gate INTÉGRATION. En CI, voir la
+correction ci-dessous : les deux fichiers ne tournent que dans le job couverture/intégration.
 
 **CORRECTION d'une affirmation FAUSSE de la version précédente** : j'avais écrit que le
 fichier tagué `cgo` « s'exécute dans le gate UNITAIRE ». C'est vrai LOCALEMENT (`go test ./...`
@@ -159,9 +183,11 @@ plus, `CC` est vide, et le seul gcc disponible est msys64 ucrt64 **15.2.0** (la 
 échouait au lien `libduckdb_static` était la 16.1.0). Build, tests unitaires et intégration
 passent avec lui : plus de contournement `CC` nécessaire ici.
 
-**Prochaine étape** : rejouer les gates sur la refonte R1 (gofmt, build, vet, unitaires,
-intégration `-p 1` sync+persist, golangci ratchet), puis décision du superviseur. Aucune CI
-n'a tourné — la branche n'est pas poussée, le verdict d'autorité reste à venir.
+**Prochaine étape** : décision du superviseur (merge). Aucune CI n'a tourné — la branche
+n'est pas poussée, le verdict d'autorité reste à venir. Deux vérifications à faire côté prod
+au déploiement : (1) `events_empty` du match `5da6fd30…` (cf. découverte 3) ; (2) que la
+ligne « citations: état terminal — jeton _processed posé » apparaisse une fois puis que le
+match disparaisse des cycles suivants.
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
