@@ -61,7 +61,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
-      "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes.",
+      "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes. Un trait court se pose à la POINTE du cône quand la visée n'est pas à plat : vers l'extérieur si le joueur lève la tête, vers l'intérieur s'il pique. Le cône raccourcit dans les deux cas — sa longueur seule ne les distinguerait pas.",
     layerZones: 'Zones',
     layerZonesHint:
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
@@ -317,7 +317,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:
-      'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds.',
+      'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds. A short tick sits at the TIP of the cone when the aim is not level: outwards when the player looks up, inwards when they look down. The cone shortens either way — its length alone could not tell them apart.',
     layerZones: 'Zones',
     layerZonesHint:
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',

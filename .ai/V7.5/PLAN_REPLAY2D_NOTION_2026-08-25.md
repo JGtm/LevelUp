@@ -58,10 +58,18 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   de son cliquet de taille : la LECTURE part dans `useReplayPlayback.ts` (8e extraction,
   777 -> 742). Fin = borne à `endFrame`, dernier `draw()` + `soundTick`, puis pause ; « Lecture »
   sur un rejeu terminé rembobine. 7 tests, mordant prouvé par double mutation.
-- [ ] A5 (pt 3) : DIAGNOSTIC des « traits au bout du cône de visée » (rendu canvas —
+- [~] A5 (pt 3) : DIAGNOSTIC des « traits au bout du cône de visée » (rendu canvas —
   `ReplayCanvas` et calques). Le CR DOIT répondre « c'est quoi » avec fichier:ligne.
   Décision par défaut : artefact de rendu → corriger ; donnée réelle légitime (ex. trace
   de tir) → NE PAS supprimer, expliquer au CR et statuer `[~]`.
+  RÉPONSE : c'est `drawPitchTick` (`replayAimCone.ts:139-157`, appelé depuis `drawAimCone`
+  `:87`) — le SIGNE de l'ÉLÉVATION de visée (champ `p`, schéma 13). Le cosinus est PAIR :
+  viser 30° au-dessus et 30° en dessous raccourcissent le cône exactement pareil, le trait est
+  ce qui les départage (dehors = lève la tête, dedans = pique). DONNÉE RÉELLE, mesurée,
+  testée (`replayMarkers.test.ts:154-221`) : NON SUPPRIMÉE. Le « parfois » est la zone morte
+  de 2° (`AIM_TICK_DEAD_DEG`, `:37`) plus les artefacts antérieurs au schéma 13, qui ne
+  portent pas `p`. SEUL CHANGEMENT : l'infobulle du calque « Visée » le décrit désormais
+  (FR + EN) — elle ne le mentionnait pas, d'où la question.
 - [ ] A6 (pt 7) : zones/bases non prises (= neutres, aucune équipe propriétaire à
   l'instant t) : contour grisé (token sémantique, pas d'hex). Si l'état « non prise »
   n'est PAS dérivable du document schéma 18 → `[!]` + condition de reprise = lot D.
