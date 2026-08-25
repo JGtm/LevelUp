@@ -12,7 +12,6 @@ import { render, screen } from '@testing-library/react'
 import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
-import { buildPlayerMarks } from './playerMarks'
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from './test/testDoc'
 
@@ -572,8 +571,15 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   })
 })
 
-describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
-  it('marque « Ami » un ami — le glyphe « Moi » ne se dessine plus (demande du 2026-08-24)', () => {
+/**
+ * LE GLYPHE D'IDENTITÉ A QUITTÉ LES FICHES (demande utilisateur du 2026-08-25). Ces cas sont le
+ * VERROU du retrait, et pas une simple absence constatée : ils montent la situation qui faisait
+ * apparaître la marque — le joueur de la page ET un ami dans la même colonne — et vérifient que
+ * la colonne n'écrit plus rien. Le glyphe, lui, n'est pas supprimé : il reste au FIL des
+ * éliminations (`ReplayFeedName`), où un nom défile au milieu d'autres, et il y est testé.
+ */
+describe('ReplayTeams — plus aucune marque d’identité sur les fiches', () => {
+  it('ni « Moi » ni « Ami », même avec les deux sur le tableau de bord', () => {
     const doc = testReplayDoc({
       roster: [
         { xuid: 'A', filmIndex: 0, name: 'Alpha' },
@@ -587,20 +593,16 @@ describe('ReplayTeams — marques d’identité sur les fiches (D5)', () => {
       sbRow('B', 'Bravo', 't0'),
       sbRow('C', 'Charlie', 't1'),
     ]
-    const marks = buildPlayerMarks(board, ['  bRaVo '])
-    render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" marks={marks} />)
-    // Le joueur de la page (A, marqué `me`) ne porte PLUS de glyphe : « supprimer le point
-    // qui indique qui est le joueur actif de partout ».
-    expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
-    expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
-    // Un seul glyphe en tout sur la page : celui de l'ami.
-    expect(screen.getAllByRole('img').length).toBe(1)
-  })
-
-  it('sans marques : aucune fiche n’en porte', () => {
-    renderTeams({})
+    render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
     expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
     expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
+    // Aucun glyphe du tout : ces fiches ne portent ni capacité ni arme, la colonne est muette.
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
+  })
+
+  it('les noms des trois joueurs restent écrits — c’est la MARQUE qui part, pas l’identité', () => {
+    renderTeams({})
+    expect(screen.getByText('Alpha')).toBeTruthy()
   })
 })
 

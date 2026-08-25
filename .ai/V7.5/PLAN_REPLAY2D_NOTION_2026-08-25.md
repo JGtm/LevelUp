@@ -31,9 +31,13 @@ Source : encadré « REPLAY 2D » (callout jaune) de la page Notion « Backlog L
 
 Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
 
-- [ ] A1 (pt 4) : retirer la donnée « temps morts » des fiches joueur (ancre :
+- [x] A1 (pt 4) : retirer la donnée « temps morts » des fiches joueur (ancre :
   `ReplayTeamsDeadTime*`) ET le symbole ami. Supprimer le code débranché + tests + strings
   i18n orphelines (règle 0 code mort).
+  FAIT : `DeadTimeRow` + `deadTimeLogic.ts` + ses 2 fichiers de tests SUPPRIMÉS, clés
+  `deadTimeLabel` / `deadTimeUnmeasurable` retirées (FR, EN, contrat) ; `<PlayerMark>` retiré
+  de la fiche avec la prop `marks` de `ReplayTeams` et son passage depuis la route. Le
+  composant `PlayerMark` RESTE : le fil des éliminations en est l'autre lecteur.
 - [ ] A2 (pt 6) : retirer le compteur total d'éliminations en haut à droite du kill feed
   (ancre candidate : `ReplayCountersBadge`). Même règle 0 code mort.
 - [ ] A3 (pt 8) : couper le son ne fait plus disparaître la barre de volume : le curseur
