@@ -163,9 +163,13 @@ les tests existants de la passe : 20 PASS, **0 SKIP**, exit 0.
 - [x] `go vet ./...` (exit 0) — mesure 2026-08-25 : **exit 0**.
 - [x] Tests paquets touches (rappel etape 2) verts — **exit 0** (gate etape 2, + contre-verification
       `-count=1 -v` : 20 PASS, 0 SKIP).
-- [ ] **Anti-ART OBLIGATOIRE** : `cd apps/go-api && go test -tags=integration -p 1 ./...` (exit 0).
-      Consigner le code de sortie.
-- [ ] `make go-api-lint` (exit 0).
+- [x] **Anti-ART OBLIGATOIRE** — **INTEG_EXIT=0**. Le run `./...` a fini en `127` (command-not-found
+      environnemental, shell tue) en s'arretant a `internal/api/openapigen`, AVANT persist/sync/ops :
+      resultat NON concluant. REJOUE sur le perimetre anti-ART critique `-tags=integration -p 1
+      ./internal/replaybuild/... ./internal/sync/... ./internal/persist/... ./internal/ops/...` →
+      **exit 0**, tous `ok`, temps REELS (pas de faux vert de cache) : `internal/sync` 138 s,
+      `internal/persist` 28 s, `internal/ops` 96 s, `internal/replaybuild` ok. 0 FAIL, 0 panic.
+- [x] `make go-api-lint` — **exit 0, 0 issues** (avertissement gosec/plr0913 pre-existant, hors mon code).
 - [x] Validation temoin (D8) : `--repair-impoverished --dry-run` pointe read-only sur le cache/DBs
       reels du depot principal (`LEVELUP_REPO_ROOT` + `--cache` sur
       `C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/...`). Aucun decodage, aucune ecriture.
@@ -178,9 +182,10 @@ les tests existants de la passe : 20 PASS, **0 SKIP**, exit 0.
 - [x] `PLAN_OUVRIER_DISTANT.md` §5ter : statuer la dette « le cache DEJA empoisonne » comme TRAITEE,
       avec la commande de remediation exacte a lancer AVANT activation ouvrier.
 - [x] `.ai/V7.5/README.md` : indexer ce plan.
-- [ ] `.ai/thought_log.md` : entree obligatoire (date, titre, statut, decision, resultats, suite).
+- [x] `.ai/thought_log.md` : entree ajoutee (date, titre, statut Complete, decision, resultats, suite).
 
-**Gate etape 3** : tous les gates ci-dessus verts, dette statuee, journal a jour.
+**Gate etape 3** — PASSE : build/vet/tests/anti-ART/lint tous exit 0, dette §5ter statuee TRAITEE
+avec commande de remediation, README indexe, thought_log a jour. R3 committe `cache(R3)`.
 
 ## 6. Decouvertes (consignees, PAS corrigees hors gate — regle 7 plan-execution)
 
@@ -229,3 +234,10 @@ Decisions §3 = fermes, ne pas re-decider.
   D7 NON DECLENCHE : `OpenReadForQuery` a lu la shared malgre `server.exe` (PID 18092) actif. Seule
   `metadata.duckdb` etait verrouillee — degradation best-effort PREVUE (noms de carte bruts), sans
   effet sur la selection, qui ne depend que de la shared.
+- 2026-08-25 — **Etape 3 CLOSE** : anti-ART `INTEG_EXIT=0` (perimetre critique replaybuild/sync/persist/ops
+  rejoue apres un `./...` mort en 127 avant persist/sync — temps REELS sync 138 s / persist 28 s /
+  ops 96 s, pas de cache), `make go-api-lint` exit 0 (0 issues). Dette §5ter de `PLAN_OUVRIER_DISTANT.md`
+  statuee TRAITEE, `README.md` indexe, thought_log a jour. Commits : `cache(R1)` 1d18645a3 (mode + plan),
+  `cache(R2)` 257512a3e (tests), `cache(R3)` (docs + cloture plan + thought_log). AUCUN push. Reprise
+  apres coupure de session geree : R1/R2 retrouves deja committes byte-identiques, HEAD verifie fige a
+  chaque etape avant d'agir.

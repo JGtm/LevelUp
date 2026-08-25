@@ -156,3 +156,10 @@ execution) : `replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`. **Handoff superviseur d
 deuxieme lecture : porteur avant objet, colline par periode ; en attente de l'item 6 et des
 fusions utilisateur) : `replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`.
 - `HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md` — handoff du pilotage « exploitation du Registre du film Theater » (score dans le temps, elevation, ti=13 etat des zones : lot C-bis phase 2b en revue, schema 16).
+- `PLAN_REMEDIATION_CACHE.md` (2026-08-25, branche `wt/remediation-cache`) — **remediation du cache
+  d'artefacts de rejeu APPAUVRIS** : le mode `--repair-impoverished` de `levelup backfill-replay`.
+  Ferme la dette « le cache DEJA empoisonne » de `PLAN_OUVRIER_DISTANT.md` §5ter, qui devait etre
+  ouverte AVANT la premiere activation prod de l'ouvrier. Planification pure du parent (aucun second
+  chemin de cuisson) : re-cuit l'artefact au schema courant, sans compteurs de joueur, dont la base a
+  des lignes — meme predicat que `replayartifacts.etatArtefact`. Temoin dry-run du 2026-08-25 : 2
+  reparables sur 951 films du cache. La commande exacte de remediation est au §5ter du plan ouvrier.

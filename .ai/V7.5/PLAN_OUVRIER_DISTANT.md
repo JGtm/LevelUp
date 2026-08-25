@@ -347,23 +347,58 @@ se tait. Sans lui, le premier increment de `SchemaVersion` figerait tout le cach
 vivant dans `replaybuild`, le CLI en herite sans le savoir. C'est l'argument qui a decide de
 l'emplacement.
 
-**Portee reelle, sur pieces** — quatre appelants d'`ArtifactUpToDate` :
+**Portee reelle, sur pieces** — les appelants d'`ArtifactUpToDate` (releve d'origine a quatre entrees,
+amende le 2026-08-25 par le lot de remediation qui en ajoute une cinquieme) :
 
 1. `replayartifacts.enqueueAll` — conscient des faits ;
 2. `replayartifacts.buildAll` — conscient des faits (R1-5) ;
 3. `wire.requireArtifactBeforeSuccess:261` — **schema seul, A DESSEIN** : c'est une verification
    de PRESENCE avant de valider un `complete`. La rendre consciente des faits ferait echouer un
    job dont l'artefact est legitimement appauvri (match hors registre) — un faux refus ;
-4. `cmd/levelup/cmd_backfill_replay.go:145` — **schema seul**, fichier tenu par le lot blindage.
+4. `cmd/levelup/cmd_backfill_replay.go:230` (`filtrerEtTrierReplay`) — **schema seul**, fichier tenu
+   par le lot blindage. C'EST LE TROU exploite par la dette ci-dessous : un artefact appauvri porte
+   le BON numero de schema, cette passe le saute donc comme « deja a jour » ;
+5. `cmd/levelup/cmd_backfill_replay_repair.go:73` (`classerReparation`) — **conscient des faits**,
+   ajoute le 2026-08-25 par le lot de remediation : c'est le cinquieme appelant, et celui qui ferme
+   la dette. Inventaire re-verifie sur pieces ce jour (`grep ArtifactUpToDate(`, hors tests) : ces
+   quatre lignes-la et aucune autre — les deux entrees 1 et 2 ci-dessus passent toutes deux par
+   l'unique appel d'`etatArtefact`.
 
-**DETTE OUVERTE — le cache DEJA empoisonne.** Aucun chemin ne repare un artefact appauvri qui
-existe deja et dont le match ne sera plus jamais insere : la selection post-sync ne voit que les
-matchs INSERES d'un cycle. Aujourd'hui c'est sans objet (l'ouvrier n'a jamais tourne en prod, et
-les 34 artefacts du cache ont ete cuits localement), mais ca le deviendra des la premiere passe
-d'ouvrier. **Condition de reprise** : une passe de rattrapage explicite — `levelup
-backfill-replay --only-existing` etendu au critere « a jour MAIS sans compteurs de joueur alors
-que la base a des lignes » — qui depend elle-meme de la bombe RAM `NamedEventsFrom` (§6.1) pour
-etre executable en masse. A ouvrir AVANT la premiere activation prod de l'ouvrier, pas apres.
+**DETTE TRAITEE le 2026-08-25** (branche `wt/remediation-cache`, plan
+`.ai/V7.5/PLAN_REMEDIATION_CACHE.md`). Enonce d'origine : aucun chemin ne reparait un artefact
+appauvri deja present dont le match ne sera plus jamais insere — la selection post-sync ne voit que
+les matchs INSERES d'un cycle, donc des la premiere passe d'ouvrier sans faits le cache s'empoisonnait
+A DEMEURE.
+
+Ce qui la ferme : le mode `--repair-impoverished` de `levelup backfill-replay`. C'est une
+PLANIFICATION PURE du parent (aucun second chemin de cuisson : l'enfant, `Builder.BuildMatch` et le
+garde anti-regression `writeArtifactBytes` sont intacts). Il re-cuit un artefact SI ET SEULEMENT SI il
+est au schema COURANT, SANS compteurs de joueur, ET que la base porte des lignes de match — le MEME
+predicat que `replayartifacts.etatArtefact`, avec le MEME port de faits (`ReplayFactsRepo.FactsForMatch`),
+donc zero divergence avec ce que l'enfant obtiendra. Il saute l'artefact deja riche, la vacuite
+LEGITIME (base sans joueur) et l'artefact hors schema courant. La bombe RAM `NamedEventsFrom` (§6.1)
+ne bloque plus cette passe : le blindage un-film-par-processus fait mourir le film-bombe SEUL, en
+`mortsMemoire`, la passe continue.
+
+**COMMANDE DE REMEDIATION — A LANCER AVANT LA PREMIERE ACTIVATION PROD DE L'OUVRIER :**
+
+```bash
+# 1. Constater (READ-ONLY, aucun decodage, aucune ecriture)
+go run ./apps/go-api/cmd/levelup backfill-replay --repair-impoverished --dry-run
+
+# 2. Reparer (un film par processus, plafond memoire 3 GiB par defaut)
+go run ./apps/go-api/cmd/levelup backfill-replay --repair-impoverished
+```
+
+`--repair-impoverished` S'EXCLUT de `--force` (erreur au parse : le mode EST deja une selection
+ciblee). A NE PAS CONFONDRE avec `--only-existing`, qui SAUTE l'appauvri comme « deja a jour » parce
+qu'il porte le bon numero de schema.
+
+**Temoin reel du 2026-08-25** (dry-run read-only sur le cache et les DBs du depot principal, 951 films
+du cache) : **2 artefacts appauvris-reparables** (`24dbb67d…` 29 chunks, `64e8adfa…` 45 chunks), 32
+deja complets, 0 vacuite legitime, 1 hors schema courant, 0 hors registre, 916 sans artefact. 74 chunks
+a decoder au total, aucun film au-dela de 50 chunks : le film-bombe `51101d1d` n'est PAS dans la
+selection. La remediation est donc executable en quelques minutes, avant activation.
 
 ## 6. Decouvertes non traitees (consignees, PAS corrigees)
 
