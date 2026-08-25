@@ -187,7 +187,7 @@ PIÈCES avant correction ; rien d'autre n'a été introduit.
 
 - [x] H1 (P1) — `bootstrap_ownership.go` : `OwnsPlayerDirectly` rend FAUX quand
   la propriété n'est pas appliquée (cf. « Correctif du 2026-08-25 » ci-dessus).
-- [ ] H2 (P2) — justification écrite du `return false` (utilisateur sans xuid).
+- [x] H2 (P2) — justification écrite du `return false` (utilisateur sans xuid).
 - [ ] H3 (P2) — contrat : périmètre de titre explicite.
 - [ ] H4 (P2) — identité résolue UNE fois par requête.
 - [ ] H5 — test de jonction sur `buildPresenceService`.
@@ -206,6 +206,15 @@ propriété) et `TestFriendsInGame_NotEnforced_CountsEveryVisiblePlayerInGame`
 (la conséquence : 2 joueurs visibles en jeu → compteur 2, via un
 `BootstrapService` réel en mode `none`). Section décision du plan mise à jour.
 Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly|FilterOwnedPlayers|Presence"` EXIT=0.
+
+**H2 (2026-08-25)** — doc inversée confirmée sur pièces : le godoc justifiait le
+`return false` (utilisateur sans xuid) par « la liste visible est alors vide »,
+ce qui n'est vrai que pour un utilisateur STANDARD — `authz.CanAccessPlayer`
+(`authz.go:59-64`) accorde sur le rôle admin AVANT de tester `user.XUID`, donc un
+admin sans xuid voit tout le parc. Justification réécrite : le faux tient à
+« rien ne lui appartient en propre », et la conséquence admin (tout le parc en
+jeu compté comme amis) est écrite explicitement, cohérente avec la découverte
+admin du lot G. Comportement inchangé — commentaire seul.
 
 ## Découvertes (à consigner, ne pas traiter)
 

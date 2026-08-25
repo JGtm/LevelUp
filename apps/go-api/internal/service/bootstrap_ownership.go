@@ -35,7 +35,15 @@ import (
 //     pastille à zéro en permanence sur la configuration par défaut, soit une
 //     fonctionnalité livrée éteinte (règle n°11 du dépôt).
 //
-// Utilisateur non identifié (session anonyme, identité Halo non liée) : faux.
+// Utilisateur sans xuid propre — session anonyme, identité Halo non liée, ou
+// compte ADMIN dont le xuid n'est pas renseigné : faux, rien ne lui appartient en
+// propre. Attention à ne PAS justifier ce faux par « sa liste visible est de
+// toute façon vide » : c'est exact pour un utilisateur standard (CanAccessPlayer
+// exige alors un xuid), mais FAUX pour un admin — le rôle accorde l'accès AVANT
+// le test du xuid, sa liste vaut donc tout le parc. Conséquence assumée : un
+// admin sans xuid compte tout le parc en jeu comme des amis, dans la ligne de la
+// découverte admin déjà actée au plan (le compte est « ce que je vois, moins les
+// miens », et un admin sans xuid ne possède rien).
 func (s *BootstrapService) OwnsPlayerDirectly(sess *domain.SessionData, playerXUID string) bool {
 	if !authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) || s.userLookup == nil {
 		return false
