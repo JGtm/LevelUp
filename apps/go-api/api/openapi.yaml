@@ -1435,7 +1435,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: Santé des tokens auth (MSAL / XSTS / Refresh) par joueur (auth admin requis)
+      summary: Santé des tokens auth (Accès / XSTS / Refresh) par joueur (auth admin requis)
       tags:
         - admin
   /admin/users:
@@ -1771,7 +1771,7 @@ paths:
   /auth/device-flow/start:
     post:
       description: |
-        Lance un Device Code Flow pour l'authentification Halo (MSAL).
+        Lance un Device Code Flow pour l'authentification Halo (SISU).
         Non disponible en DEMO_MODE.
       operationId: postAuthDeviceFlowStart
       responses:

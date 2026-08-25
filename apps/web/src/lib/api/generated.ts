@@ -808,7 +808,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Santé des tokens auth (MSAL / XSTS / Refresh) par joueur (auth admin requis) */
+        /** Santé des tokens auth (Accès / XSTS / Refresh) par joueur (auth admin requis) */
         get: operations["getAdminTokenHealth"];
         put?: never;
         post?: never;
@@ -1050,7 +1050,7 @@ export interface paths {
         put?: never;
         /**
          * Initier un Device Code Flow Microsoft
-         * @description Lance un Device Code Flow pour l'authentification Halo (MSAL).
+         * @description Lance un Device Code Flow pour l'authentification Halo (SISU).
          *     Non disponible en DEMO_MODE.
          */
         post: operations["postAuthDeviceFlowStart"];
