@@ -15,12 +15,19 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// OwnsPlayerDirectly indique si l'utilisateur de la session est DIRECTEMENT
-// propriétaire du profil `playerXUID` — son xuid lié, et lui seul. Un profil
-// accessible par appartenance à un groupe (co-membre) ou par le rôle admin
-// n'est PAS possédé directement : c'est précisément la distinction que
-// CanAccessPlayer ne fait pas, puisqu'elle décide de l'accès, pas de la
+// DirectOwnerFor résout l'utilisateur de la session UNE SEULE FOIS et rend le
+// prédicat « ce profil est-il DIRECTEMENT le sien ? » — son xuid lié, et lui
+// seul. Un profil accessible par appartenance à un groupe (co-membre) ou par le
+// rôle admin n'est PAS possédé directement : c'est précisément la distinction
+// que CanAccessPlayer ne fait pas, puisqu'elle décide de l'accès, pas de la
 // propriété.
+//
+// POURQUOI UNE FABRIQUE et non un simple prédicat (sess, xuid) : l'identité est
+// invariante sur toute la requête, alors que la résolution ne l'est pas —
+// authz.CurrentUser passe par le user store, dont l'implémentation de production
+// (platform/userstore) RELIT ET PARSE users.json à chaque appel. Appelée dans la
+// boucle des joueurs en jeu, l'ancienne signature multipliait ces lectures par le
+// nombre de joueurs. La fermeture rendue ici ne capture qu'un xuid.
 //
 // DEUX RÉGIMES, décision produit du 2026-08-25 :
 //
@@ -36,21 +43,28 @@ import (
 //     fonctionnalité livrée éteinte (règle n°11 du dépôt).
 //
 // Utilisateur sans xuid propre — session anonyme, identité Halo non liée, ou
-// compte ADMIN dont le xuid n'est pas renseigné : faux, rien ne lui appartient en
-// propre. Attention à ne PAS justifier ce faux par « sa liste visible est de
-// toute façon vide » : c'est exact pour un utilisateur standard (CanAccessPlayer
-// exige alors un xuid), mais FAUX pour un admin — le rôle accorde l'accès AVANT
-// le test du xuid, sa liste vaut donc tout le parc. Conséquence assumée : un
-// admin sans xuid compte tout le parc en jeu comme des amis, dans la ligne de la
-// découverte admin déjà actée au plan (le compte est « ce que je vois, moins les
-// miens », et un admin sans xuid ne possède rien).
-func (s *BootstrapService) OwnsPlayerDirectly(sess *domain.SessionData, playerXUID string) bool {
+// compte ADMIN dont le xuid n'est pas renseigné : prédicat toujours faux, rien
+// ne lui appartient en propre. Attention à ne PAS justifier ce faux par « sa
+// liste visible est de toute façon vide » : c'est exact pour un utilisateur
+// standard (CanAccessPlayer exige alors un xuid), mais FAUX pour un admin — le
+// rôle accorde l'accès AVANT le test du xuid, sa liste vaut donc tout le parc.
+// Conséquence assumée : un admin sans xuid compte tout le parc en jeu comme des
+// amis, dans la ligne de la découverte admin déjà actée au plan (le compte est
+// « ce que je vois, moins les miens », et un admin sans xuid ne possède rien).
+func (s *BootstrapService) DirectOwnerFor(sess *domain.SessionData) DirectOwnerFunc {
 	if !authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) || s.userLookup == nil {
-		return false
+		return ownsNothing
 	}
 	user := authz.CurrentUser(sess, s.userLookup)
-	if user == nil || user.XUID == "" || playerXUID == "" {
-		return false
+	if user == nil || user.XUID == "" {
+		return ownsNothing
 	}
-	return user.XUID == playerXUID
+	ownXUID := user.XUID
+	return func(playerXUID string) bool {
+		return playerXUID != "" && playerXUID == ownXUID
+	}
 }
+
+// ownsNothing : le prédicat de l'utilisateur qui ne possède aucun profil en
+// propre. Nommé plutôt que dupliqué en fermeture anonyme à chaque sortie.
+func ownsNothing(string) bool { return false }

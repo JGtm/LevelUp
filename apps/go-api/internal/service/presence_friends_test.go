@@ -27,14 +27,16 @@ import (
 )
 
 // directOwnerOf : l'utilisateur possède EN PROPRE les xuids donnés, et eux
-// seuls. Tient lieu de BootstrapService.OwnsPlayerDirectly dans les tests
-// unitaires (le test bout-en-bout, lui, prend la vraie implémentation).
-func directOwnerOf(xuids ...string) DirectOwnerFunc {
+// seuls. Tient lieu de BootstrapService.DirectOwnerFor dans les tests unitaires
+// (le test bout-en-bout, lui, prend la vraie implémentation).
+func directOwnerOf(xuids ...string) DirectOwnerResolver {
 	owned := make(map[string]bool, len(xuids))
 	for _, x := range xuids {
 		owned[x] = true
 	}
-	return func(_ *domain.SessionData, playerXUID string) bool { return owned[playerXUID] }
+	return func(*domain.SessionData) DirectOwnerFunc {
+		return func(playerXUID string) bool { return owned[playerXUID] }
+	}
 }
 
 // circle : les trois joueurs visibles du cercle A∪B. Les xuids comptent : c'est
@@ -164,7 +166,7 @@ func TestFriendsInGame_PlayerWithoutXUID_IsNotCounted(t *testing.T) {
 }
 
 // Session absente : même fail-closed que le reste de l'endpoint. La vraie
-// implémentation de propriété (OwnsPlayerDirectly) ne reconnaît alors aucun
+// implémentation de propriété (DirectOwnerFor) ne reconnaît alors aucun
 // utilisateur, et la liste visible est vide — donc rien à compter.
 func TestFriendsInGame_NoSession_CountsZero(t *testing.T) {
 	snap := presenceCircleService(t).GetSnapshot(context.Background(), nil)
@@ -180,8 +182,8 @@ func TestFriendsInGame_NoSession_CountsZero(t *testing.T) {
 
 // presenceCircleService monte un BootstrapService RÉEL (db_profiles temporaire,
 // user store et groupes) et rend le PresenceService branché sur ses deux
-// méthodes — OwnedPlayers (qui voit quoi) et OwnsPlayerDirectly (qui possède
-// quoi). Aucun fake d'autorisation : c'est justement la frontière qu'on teste.
+// méthodes — OwnedPlayers (qui voit quoi) et DirectOwnerFor (qui possède quoi).
+// Aucun fake d'autorisation : c'est justement la frontière qu'on teste.
 //
 // Le parc : alice (222) et bob (999) partagent un groupe ; carol (777) est
 // étrangère aux deux. Les trois sont en jeu.
@@ -218,7 +220,7 @@ func presenceCircleService(t *testing.T) *PresenceService {
 		inGame("bob", "halo_infinite", "Halo Infinite"),
 		inGame("carol", "halo_infinite", "Halo Infinite"),
 	)
-	return NewPresenceService(boot.OwnedPlayers, tracked).WithFriends(boot.OwnsPlayerDirectly)
+	return NewPresenceService(boot.OwnedPlayers, tracked).WithFriends(boot.DirectOwnerFor)
 }
 
 // Trois utilisateurs, un seul état de watcher : chacun ne compte que SON cercle,
@@ -259,26 +261,66 @@ func TestFriendsInGame_StrangerOutsideGroupIsNeverCounted(t *testing.T) {
 
 // La propriété DIRECTE ne se confond pas avec la visibilité : un co-membre est
 // visible sans être possédé, et un admin voit tout sans rien posséder de plus.
-func TestOwnsPlayerDirectly_DistinguishesOwnershipFromVisibility(t *testing.T) {
+func TestDirectOwnerFor_DistinguishesOwnershipFromVisibility(t *testing.T) {
 	svc := newOwnershipBootstrap("password")
 	alice := &domain.SessionData{Username: strPtr("alice")} // xuid 222
 	boss := &domain.SessionData{Username: strPtr("boss")}   // admin, xuid 111
 
-	if !svc.OwnsPlayerDirectly(alice, "222") {
+	ownsForAlice := svc.DirectOwnerFor(alice)
+	if !ownsForAlice("222") {
 		t.Error("alice doit posséder son propre profil")
 	}
-	if svc.OwnsPlayerDirectly(alice, "999") {
+	if ownsForAlice("999") {
 		t.Error("un profil de co-membre est VISIBLE, pas possédé")
 	}
-	if svc.OwnsPlayerDirectly(boss, "222") {
-		t.Error("le rôle admin donne l'accès, pas la propriété")
-	}
-	if svc.OwnsPlayerDirectly(alice, "") {
+	if ownsForAlice("") {
 		t.Error("un profil sans xuid n'est possédé par personne")
 	}
-	if svc.OwnsPlayerDirectly(nil, "222") {
+	if svc.DirectOwnerFor(boss)("222") {
+		t.Error("le rôle admin donne l'accès, pas la propriété")
+	}
+	if svc.DirectOwnerFor(nil)("222") {
 		t.Error("sans session, aucun profil n'est possédé")
 	}
+}
+
+// La fabrique résout l'utilisateur UNE FOIS, pas une fois par joueur : sans cela
+// chaque joueur en jeu coûtait une relecture du user store (users.json en
+// production). Un lookup compteur le prouve sur un cercle de trois joueurs.
+func TestDirectOwnerFor_ResolvesUserOncePerRequest(t *testing.T) {
+	lookup := &countingLookup{inner: fakeBootstrapLookup{
+		byName: map[string]*domain.User{
+			"alice": {Username: "alice", Role: domain.RoleUser, XUID: "222"},
+		},
+	}}
+	svc := NewBootstrapService(&config.AppConfig{AuthMode: "password"}, &mockBootRepo{}).
+		WithUserLookup(lookup)
+
+	ownsPlayer := svc.DirectOwnerFor(&domain.SessionData{Username: strPtr("alice")})
+	for _, xuid := range []string{"111", "222", "333"} {
+		ownsPlayer(xuid)
+	}
+
+	if lookup.gets != 1 {
+		t.Errorf("user store interrogé %d fois, attendu 1 (identité invariante sur la requête)", lookup.gets)
+	}
+}
+
+// countingLookup compte les résolutions d'utilisateur — la lecture qui, en
+// production, ouvre et parse users.json.
+type countingLookup struct {
+	inner fakeBootstrapLookup
+	gets  int
+}
+
+func (c *countingLookup) Get(username string) (*domain.User, error) {
+	c.gets++
+	return c.inner.Get(username)
+}
+
+func (c *countingLookup) GetByXUID(xuid string) (*domain.User, error) {
+	c.gets++
+	return c.inner.GetByXUID(xuid)
 }
 
 // ─── RÉGIME NON APPLIQUÉ (LEVELUP_AUTH_MODE=none, configuration par DÉFAUT) ────
@@ -286,14 +328,14 @@ func TestOwnsPlayerDirectly_DistinguishesOwnershipFromVisibility(t *testing.T) {
 // Sans enforcement, il n'existe AUCUN « possédé en propre » : rien n'est à
 // retrancher du cercle visible. Le test verrouille la moitié « propriété » de la
 // règle du 2026-08-25 ; le suivant verrouille sa conséquence visible.
-func TestOwnsPlayerDirectly_NotEnforced_OwnsNothing(t *testing.T) {
+func TestDirectOwnerFor_NotEnforced_OwnsNothing(t *testing.T) {
 	svc := newOwnershipBootstrap("none")
-	alice := &domain.SessionData{Username: strPtr("alice")} // xuid 222
+	ownsPlayer := svc.DirectOwnerFor(&domain.SessionData{Username: strPtr("alice")}) // xuid 222
 
-	if svc.OwnsPlayerDirectly(alice, "222") {
+	if ownsPlayer("222") {
 		t.Error("sans enforcement, aucun profil n'est possédé EN PROPRE — pas même le sien")
 	}
-	if svc.OwnsPlayerDirectly(alice, "999") {
+	if ownsPlayer("999") {
 		t.Error("sans enforcement, aucun profil n'est possédé EN PROPRE")
 	}
 }
@@ -320,7 +362,7 @@ func TestFriendsInGame_NotEnforced_CountsEveryVisiblePlayerInGame(t *testing.T) 
 			inGame("alice", "halo_infinite", "Halo Infinite"),
 			inGame("bob", "halo_infinite", "Halo Infinite"),
 		),
-	).WithFriends(boot.OwnsPlayerDirectly)
+	).WithFriends(boot.DirectOwnerFor)
 
 	snap := svc.GetSnapshot(context.Background(), nil)
 	if snap.FriendsInGame != 2 {

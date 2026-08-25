@@ -189,7 +189,7 @@ PIÈCES avant correction ; rien d'autre n'a été introduit.
   la propriété n'est pas appliquée (cf. « Correctif du 2026-08-25 » ci-dessus).
 - [x] H2 (P2) — justification écrite du `return false` (utilisateur sans xuid).
 - [x] H3 (P2) — contrat : périmètre de titre explicite.
-- [ ] H4 (P2) — identité résolue UNE fois par requête.
+- [x] H4 (P2) — identité résolue UNE fois par requête.
 - [ ] H5 — test de jonction sur `buildPresenceService`.
 
 ### Journal du lot H
@@ -225,6 +225,20 @@ le godoc de `domain.PresenceSnapshot` et dans le tag `doc:` du champ. Diff
 généré : 1 ligne dans `openapi.yaml`, 1 ligne dans `generated.ts`.
 Gates : `make openapi-gen` EXIT=0, `make generate-types` EXIT=0,
 `make openapi-check` EXIT=0.
+
+**H4 (2026-08-25)** — constat vérifié : `platform/userstore.Store.Get` fait un
+`os.ReadFile` + `json.Unmarshal` de users.json à CHAQUE appel (`store.go:75-91`,
+`193-208`), et `isFriend` appelait `authz.CurrentUser` par joueur en jeu dans la
+boucle du snapshot. Restructuré en fabrique : `BootstrapService.DirectOwnerFor(sess)`
+résout l'utilisateur une fois et rend une fermeture ne capturant que son xuid ;
+`OwnsPlayerDirectly` disparaît (aucun appelant résiduel, règle n°7). Côté service,
+`DirectOwnerFunc` devient `func(playerXUID) bool`, le nouveau type
+`DirectOwnerResolver` porte la fabrique, `WithFriends` la prend, et `GetSnapshot`
+l'appelle UNE fois avant la boucle. Aucune logique authz dupliquée : la fabrique
+reste le seul endroit qui interroge `authz.Enforced`/`CurrentUser`. Test neuf
+`TestDirectOwnerFor_ResolvesUserOncePerRequest` (lookup compteur : 1 résolution
+pour 3 joueurs) — il échoue si la résolution retourne dans la boucle.
+Gates : `go build ./...` EXIT=0 ; `go test ./internal/service/ ./internal/api/` EXIT=0.
 
 ## Découvertes (à consigner, ne pas traiter)
 
