@@ -64,7 +64,7 @@ du lancement, qui compterait les étrangers au groupe.
   que TOUS leurs tests. `friend_gamertags` lui-même (Réglages, « avec amis »)
   reste intouché — seuls ses usages PRÉSENCE meurent. Grep final :
   aucun symbole orphelin, aucun import mort.
-- [ ] G3 — contrat : `friends_in_game` garde son nom et son type (int) mais sa
+- [x] G3 — contrat : `friends_in_game` garde son nom et son type (int) mais sa
   sémantique change → mettre à jour le godoc du DTO (`domain/presence.go`) et le
   commentaire OpenAPI ; régénérer `openapi.yaml` + `make generate-types` ; gate
   openapi vert. Pas de renommage de champ (le front est déjà branché dessus).
@@ -115,6 +115,14 @@ le ratchet reste vert. Grep final : aucun symbole orphelin de la chaîne (les
 occurrences restantes de `WithFriendXUIDResolver` appartiennent à la carrière,
 chaîne distincte, hors périmètre).
 Gates locaux : `go build ./...` EXIT=0 ; `go test` des 5 paquets du lot EXIT=0.
+
+**G3 (2026-08-25)** — `friends_in_game` garde son nom et son type (`int`, requis
+au schéma) ; seule sa SÉMANTIQUE change. Godoc de `domain.PresenceSnapshot`
+réécrit, godoc du handler aligné, et le champ porte désormais un tag `doc:` — le
+schéma n'avait aucune description, il en a une maintenant (diff openapi.yaml : 1
+ligne ajoutée, aucune autre). `make openapi-gen` EXIT=0, `make generate-types`
+EXIT=0 (4 lignes dans generated.ts), `make openapi-check` EXIT=0 (contrat à jour
++ generated.ts dérivé).
 
 ## Découvertes (à consigner, ne pas traiter)
 

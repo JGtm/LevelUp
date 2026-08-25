@@ -18,11 +18,19 @@ type PlayerPresence struct {
 // PresenceSnapshot est la réponse de GET /api/v1/presence.
 //
 // Players ne contient que les joueurs accessibles à l'utilisateur courant
-// (ADR 0029). FriendsInGame compte les gamertags de `friend_gamertags`
-// (Réglages) vus sur un titre suivi ; les amis à présence masquée ne sont pas
-// comptés. Watcher éteint ou indisponible : liste vide et compteur à zéro —
-// jamais une erreur, la présence est une information d'agrément.
+// (ADR 0029).
+//
+// FriendsInGame compte MES AMIS EN JEU, au sens produit du 2026-08-25 : les
+// joueurs inscrits que l'utilisateur courant voit dans son cercle (les siens et
+// ceux de ses co-membres de groupe) SANS en être le propriétaire, actuellement
+// vus sur un titre suivi. Le compte est donc PERSONNEL — deux utilisateurs de la
+// même instance obtiennent deux valeurs différentes — et un joueur étranger à
+// son cercle n'y entre jamais. Seul l'entier est exposé : les identités servies
+// restent celles de Players.
+//
+// Watcher éteint ou indisponible : liste vide et compteur à zéro — jamais une
+// erreur, la présence est une information d'agrément.
 type PresenceSnapshot struct {
 	Players       []PlayerPresence `json:"players"`
-	FriendsInGame int              `json:"friends_in_game"`
+	FriendsInGame int              `json:"friends_in_game" doc:"Nombre de joueurs du cercle de l'utilisateur (visibles mais non possédés par lui) actuellement en jeu sur un titre suivi."`
 }

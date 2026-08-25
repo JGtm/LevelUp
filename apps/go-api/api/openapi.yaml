@@ -19449,6 +19449,7 @@ components:
       additionalProperties: false
       properties:
         friends_in_game:
+          description: Nombre de joueurs du cercle de l'utilisateur (visibles mais non possédés par lui) actuellement en jeu sur un titre suivi.
           format: int64
           type: integer
         players:

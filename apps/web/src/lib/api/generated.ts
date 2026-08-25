@@ -9115,7 +9115,10 @@ export interface components {
             enabled: boolean;
         };
         PresenceSnapshot: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Nombre de joueurs du cercle de l'utilisateur (visibles mais non possédés par lui) actuellement en jeu sur un titre suivi.
+             */
             friends_in_game: number;
             players: components["schemas"]["PlayerPresence"][] | null;
         };
