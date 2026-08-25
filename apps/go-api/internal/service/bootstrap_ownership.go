@@ -22,17 +22,23 @@ import (
 // CanAccessPlayer ne fait pas, puisqu'elle décide de l'accès, pas de la
 // propriété.
 //
-// Propriété NON appliquée (mode démo, auth désactivée, pas de user store) : vrai
-// pour tout profil. L'instance est alors mono-utilisateur ou publique — tous les
-// profils sont « les siens », et rien ne permettrait d'en désigner un comme
-// appartenant à quelqu'un d'autre.
+// DEUX RÉGIMES, décision produit du 2026-08-25 :
+//
+//   - propriété APPLIQUÉE (auth password/xbox + user store câblé) : possédé =
+//     « le xuid lié de l'utilisateur de la session ». Le compteur d'amis vaut
+//     alors « mon cercle visible MOINS mes propres profils » ;
+//   - propriété NON APPLIQUÉE (LEVELUP_AUTH_MODE=none — la valeur par défaut —,
+//     mode démo, ou aucun user store) : FAUX pour tout profil. Sans identités,
+//     il n'existe aucun « possédé en propre » à retrancher : l'instance ENTIÈRE
+//     est le cercle de son opérateur, et le compteur vaut « tous les joueurs
+//     visibles en jeu ». Rendre vrai ici (comportement d'origine) mettait la
+//     pastille à zéro en permanence sur la configuration par défaut, soit une
+//     fonctionnalité livrée éteinte (règle n°11 du dépôt).
 //
 // Utilisateur non identifié (session anonyme, identité Halo non liée) : faux.
-// Sans conséquence pour l'appelant actuel — la liste des joueurs visibles est
-// alors vide (filterOwnedPlayers rejette tout), donc il n'y a rien à partitionner.
 func (s *BootstrapService) OwnsPlayerDirectly(sess *domain.SessionData, playerXUID string) bool {
 	if !authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) || s.userLookup == nil {
-		return true
+		return false
 	}
 	user := authz.CurrentUser(sess, s.userLookup)
 	if user == nil || user.XUID == "" || playerXUID == "" {
