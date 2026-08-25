@@ -105,14 +105,3 @@ func TestCurrentTitle_Offline_Cleared(t *testing.T) {
 		t.Errorf("title_slug = %q, attendu vide hors ligne", ps.TitleSlug)
 	}
 }
-
-// Daemon jamais démarré : le lot d'amis n'a pas de client, l'appelant dégrade
-// (compteur à zéro) plutôt que de recevoir une panne.
-func TestPresenceBatch_NoClient_ReturnsSentinelError(t *testing.T) {
-	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
-
-	_, err := d.PresenceBatch(context.Background(), []string{"111"})
-	if err != ErrPresenceClientUnavailable {
-		t.Errorf("err = %v, attendu ErrPresenceClientUnavailable", err)
-	}
-}

@@ -56,7 +56,7 @@ du lancement, qui compterait les étrangers au groupe.
   l'état watcher MOINS ceux que l'utilisateur possède. Joueurs démo/auth-only :
   déjà absents du watcher (SyncablePlayers) — le vérifier sur pièces et l'écrire
   en commentaire, pas en re-filtre.
-- [ ] G2 — Go suppression : retirer la chaîne morte `friend_gamertags` → présence :
+- [x] G2 — Go suppression : retirer la chaîne morte `friend_gamertags` → présence :
   `internal/presence/batch_client.go` (+ son entrée de surface netguard si elle
   devient orpheline), `internal/service/presence_friends.go` (compteur, cache,
   singleflight, backoff), le résolveur gamertag→xuid de `server_presence.go`
@@ -100,6 +100,21 @@ pièces : le daemon watcher ne suit que `domain.SyncablePlayers`
 (`FriendsCountIncluded`, `BlockingFriendsSource`) retirés ici par nécessité de
 compilation ; la couverture neuve arrive en G5.
 Gates locaux : `go build ./...` EXIT=0, `go vet ./internal/service/... ./internal/api/...` EXIT=0.
+
+**G2 (2026-08-25)** — chaîne `friend_gamertags` → présence supprimée : 5 fichiers
+effacés (`service/presence_friends.go` + test, `presence/batch_client.go` + test,
+`watcher/daemon_presence_batch.go`), 3 symboles retirés de fichiers vivants
+(`GamertagRepo.ResolveXUIDsByGamertags` + son test d'intégration + l'import
+`analysis` devenu mort, `ServiceRegistry.FriendGamertags`, le test
+`TestPresenceBatch_NoClient_ReturnsSentinelError`), et `buildPresenceService`
+réduit de 5 à 2 paramètres. `friend_gamertags` lui-même est intact : le résolveur
+interne `friendGamertagsResolver` garde ses 5 appelants (Escouade, carrière).
+Entrée netguard : SANS OBJET — `batch_client.go` portait un `netguard.Check`, il
+n'a jamais eu d'entrée d'allowlist (vérifié dans `netguard_coverage_test.go`) ;
+le ratchet reste vert. Grep final : aucun symbole orphelin de la chaîne (les
+occurrences restantes de `WithFriendXUIDResolver` appartiennent à la carrière,
+chaîne distincte, hors périmètre).
+Gates locaux : `go build ./...` EXIT=0 ; `go test` des 5 paquets du lot EXIT=0.
 
 ## Découvertes (à consigner, ne pas traiter)
 
