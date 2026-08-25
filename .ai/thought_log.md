@@ -1,3 +1,31 @@
+## [2026-08-25] Dependabot — js-yaml high corrigé, bump TypeScript 7 refusé sur pièces
+
+**Statut** : Complété (branche `fix/deps-jsyaml` depuis `origin/main` `781daf0c6`, worktree
+dédié `.claude/worktrees/deps-security` — hotfix sécurité indépendant du chantier v7.5,
+donc PAS depuis `feat/v75`). Merge vers `main` (= deploy prod) laissé au superviseur.
+
+**Point 1 — alerte high js-yaml (CVE-2026-59870, GHSA-5p4m-2wfm-xmqj).** Transitive via
+`openapi-typescript > @redocly/openapi-core`, outillage `generate-types` uniquement — jamais
+exécuté en prod, risque réel quasi nul (CPU quadratique sur YAML hostile `!!omap`). Bump
+lockfile seul 4.3.0 → 4.3.1 par édition ciblée (un `npm update` nu ajoutait 90 lignes de
+churn `libc` dû à npm 11.8 — rejeté pour garder le diff à 3 lignes). L'override `^4.3.0` de
+package.json (posé pour CVE-2026-53550, PR #25) couvrait déjà la plage. Gates : npm ci OK,
+tsc -b cache purgé OK, eslint 0 erreur, vitest 3531 passed, generate-types zéro diff.
+
+**Point 2 — PR #70 dependabot (typescript 6.0.3 → 7.0.2) : NO-GO, vérifié empiriquement.**
+CI de la PR déjà rouge (TS5102 baseUrl supprimé + TS5090 paths non relatifs). TS 7.0.2
+installé dans le worktree pour mesurer l'impact complet : tsc -b passe une fois le tsconfig
+adapté, MAIS `typescript-eslint` 8.68 (dernier publié) refuse TS 7.0 EN DUR (peer
+`<6.1.0`, support prévu TS >= 7.1 — issue typescript-eslint#10940) et `openapi-typescript`
+7.13 plante (peer `^5.x`). Décision : règle `ignore` Dependabot datée sur le major
+typescript (condition de retrait dans le commentaire : typescript-eslint ET
+openapi-typescript publient le support TS 7), tsconfig modernisé dès maintenant (baseUrl
+retiré, paths relatifs, ignoreDeprecations retiré) et validé sous TS 6.0.3 — le jour du
+bump, seul package.json restera à toucher. PR #70 fermée avec le verdict en commentaire.
+
+**Prochaine étape** : CI de branche, puis merge vers main par le superviseur (deploy prod).
+Retest TS 7 quand la condition de reprise est remplie.
+
 ## [2026-08-08] v7.5 lot 3 — la suppression d'objectivescore, et deux tables qu'on prenait pour une seule
 
 **Statut** : Complété. Périmètre fermé à L3a–L3f, chaque item statué. Branche
