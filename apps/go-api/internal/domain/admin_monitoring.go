@@ -457,24 +457,3 @@ type PlayerConvergenceReport struct {
 	// CheckError non vide = DBs irrésolvables pour ce joueur (compteurs à 0).
 	CheckError string `json:"check_error,omitempty"`
 }
-
-// AdminErrorStats — agrégat des logs WARN/ERROR depuis le boot (collecteur
-// mémoire observability, panneau « erreurs récurrentes »). Zéro I/O, perdu au
-// reboot (comme l'historique des cycles).
-type AdminErrorStats struct {
-	GeneratedAt string             `json:"generated_at"`
-	Buckets     []AdminErrorBucket `json:"buckets"`
-}
-
-// AdminErrorBucket — une erreur agrégée par (niveau, message). Count = nombre
-// d'occurrences ; LastDetail = dernier échantillon de l'attribut « err ».
-type AdminErrorBucket struct {
-	Title      string `json:"title,omitempty"` // MT-05 : "" pour Halo (byte-identique)
-	Level      string `json:"level"`
-	Module     string `json:"module,omitempty"`
-	Message    string `json:"message"`
-	Count      int64  `json:"count"`
-	FirstSeen  string `json:"first_seen"`
-	LastSeen   string `json:"last_seen"`
-	LastDetail string `json:"last_detail,omitempty"`
-}
