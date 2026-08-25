@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -110,28 +109,40 @@ func BackfillMatchCitations(
 		//
 		// ÉTAT TERMINAL (2026-08-25) : le pari « les events finiront par arriver »
 		// est FAUX pour un match annulé par les serveurs (film réduit à une coquille,
-		// 0 event extractible). Un tel match restait candidat à vie et était retraité
+		// 0 event exploitable). Un tel match restait candidat à vie et était retraité
 		// à chaque cycle de sync, sans fin ni effet — charge qui croît d'une boucle
-		// par match annulé. Passé citationsTerminalNoEventsAge, l'absence d'events
-		// devient un état terminal (isCitationsTerminalNoEvents, plus bas dans ce
-		// fichier) : la 3e condition tombe et le jeton EST posé par writeCitations
-		// ci-dessous. Le jeton n'est PAS une impasse : le chemin
-		// force=true (recompute) sélectionne tous les matchs sans consulter
-		// match_citations — le LEFT JOIN IS NULL ne vit que dans la branche
+		// par match annulé. La 3e condition lit le VERDICT du pipeline events
+		// (match_registry.events_empty, cf. isEventsEmptyDefinitive plus bas) au lieu
+		// de le deviner par un seuil d'âge local, qui contredirait la fenêtre de retry
+		// de 30 jours du même package. Quand le verdict est tombé, la condition tombe
+		// et le jeton EST posé par writeCitations ci-dessous. Le jeton n'est PAS une
+		// impasse : le chemin force=true (recompute) sélectionne tous les matchs sans
+		// consulter match_citations — le LEFT JOIN IS NULL ne vit que dans la branche
 		// force=false de selectMatchesForCitations — donc un match jetonné dont les
 		// events arriveraient plus tard reste rattrapable par un recompute.
-		if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) &&
-			!isCitationsTerminalNoEvents(ctx, sharedDB, matchID) {
-			slog.DebugContext(ctx, "citations: 0 delta + events non chargés → skip sentinel (match reste candidat)",
-				"match_id", matchID)
-			skipped++
-			continue
+		terminalNoEvents := false
+		if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) {
+			terminalNoEvents = isEventsEmptyDefinitive(ctx, sharedDB, matchID)
+			if !terminalNoEvents {
+				slog.DebugContext(ctx, "citations: 0 delta + events non chargés → skip sentinel (match reste candidat)",
+					"match_id", matchID)
+				skipped++
+				continue
+			}
 		}
 
 		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
 			slog.WarnContext(ctx, "BackfillMatchCitations: write", "match_id", matchID, "err", err)
 			skipped++
 			continue
+		}
+		// Logué APRÈS l'écriture, jamais avant : un log posé dans la décision
+		// affirmerait un jeton que writeCitations peut avoir échoué à poser (player
+		// DB read-only, disque plein) — et se répéterait à chaque cycle en mentant.
+		if terminalNoEvents {
+			slog.InfoContext(ctx, "citations: état terminal — jeton _processed posé",
+				"match_id", matchID,
+				"raison", "events_empty — film récupéré, aucun event exploitable")
 		}
 
 		written++
@@ -594,8 +605,8 @@ ORDER BY time_ms ASC`
 // le comportement legacy (poser le sentinel). Sert à décider, en Phase 4, si un
 // match à 0 citation peut recevoir le sentinel "_processed" (events présents) ou
 // doit rester candidat (events pas encore chargés — film retardé). Depuis l'état
-// terminal (2026-08-25), « rester candidat » est en plus borné dans le temps :
-// cf. isCitationsTerminalNoEvents ci-dessous.
+// terminal (2026-08-25), « rester candidat » cesse quand le pipeline events rend
+// son verdict : cf. isEventsEmptyDefinitive ci-dessous.
 func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
 	if sharedDB == nil {
 		return true
@@ -609,60 +620,63 @@ func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool 
 	return loaded.Valid && loaded.Bool
 }
 
-// ─── État terminal : les events n'arriveront jamais ──────────────────────────
+// ─── État terminal : le VERDICT du pipeline events, pas une devinette d'âge ──
 //
 // Contexte (constaté en prod le 2026-08-25) : la règle Phase 4 ci-dessus laisse
 // candidat tout match à 0 citation dont les events ne sont pas chargés, au motif
 // qu'ils finiront par arriver. Pour un match ANNULÉ par les serveurs, ils
-// n'arrivent jamais — le film est une coquille (chunk non vide mais 0 event
-// extractible) — et le match était re-sélectionné, recalculé puis re-rejeté à
-// chaque cycle de sync, indéfiniment, avec ses WARN collatéraux : une boucle
-// perpétuelle de plus par nouveau match annulé.
+// n'arrivent jamais — le film est une coquille (chunk récupéré et parsé sans
+// erreur, mais 0 event exploitable) — et le match était re-sélectionné, recalculé
+// puis re-rejeté à chaque cycle de sync, indéfiniment, avec ses WARN collatéraux :
+// une boucle perpétuelle de plus par nouveau match annulé.
+//
+// La question « les events arriveront-ils encore ? » a DÉJÀ un propriétaire : le
+// pipeline events. Y répondre ici par un seuil d'âge local produirait deux
+// politiques concurrentes — et la nôtre serait la mauvaise, puisque
+// defaultFilmRetryWindow vaut 30 JOURS (engine_highlight_events.go, révisé après
+// les incidents RC-A/RC-E où 48 h avaient marqué définitivement absents des films
+// encore disponibles), fenêtre qu'un opérateur peut même RALLONGER via
+// LEVELUP_FILM_RETRY_WINDOW_HOURS. Tout seuil local plus court jetonnerait des
+// matchs que le pipeline events retente encore — régression Phase 4 rouverte, en
+// masse pendant une panne, et silencieuse (un jeton est indistinguable après coup).
+//
+// On lit donc le verdict au lieu de le deviner : match_registry.events_empty,
+// posé par persist.MarkEventsEmptyDefinitive UNIQUEMENT sous isNoFilmDefinitive
+// (donc au-delà de la fenêtre de retry, par construction). Les trois états du
+// pipeline events sont alors couverts sans recouvrement :
+//   - film définitivement absent (404 hors fenêtre) → MarkNoFilmDefinitive pose
+//     events_loaded=TRUE → chemin sentinel EXISTANT, inchangé ;
+//   - film-coquille (chunk lu, 0 event) → events_empty=TRUE → cette branche ;
+//   - film encore attendu → aucun marqueur → le match reste candidat, retenté.
+//
+// Latence assumée : un match annulé boucle au pire le temps de la fenêtre de
+// retry (~30 j, BORNÉ, contre l'infini d'avant), puis est jetonné au cycle
+// citations suivant le verdict. Les deux pipelines ne se contredisent jamais.
 //
 // Ce bloc vit dans citations.go, et non dans un fichier dédié, parce que le
 // ratchet K3c (archlint/sync_root_freeze_test.go, ADR 0027) gèle le nombre de
 // fichiers à la racine du god-package sync/ : le neuf ne peut y ajouter aucun
 // fichier. La longueur de citations.go est de la dette gelée antérieure.
 
-// citationsTerminalNoEventsAge — âge au-delà duquel un match à 0 citation dont
-// les events ne sont pas chargés est déclaré en état terminal.
-//
-// 7 jours : un film Theater est publié dans les heures qui suivent la fin du
-// match, ou jamais. Passé une semaine il ne reste que deux causes possibles —
-// match annulé par les serveurs (film-coquille) ou film indisponible — et
-// l'attente est perpétuelle dans les deux cas. Le seuil est volontairement large
-// devant le délai réel d'arrivée (heures) : une panne d'API ou un arrêt du
-// watcher de plusieurs jours ne doit pas jetonner un match encore récupérable.
-const citationsTerminalNoEventsAge = 7 * 24 * time.Hour
-
-// matchAge retourne l'âge du match (maintenant − début du match) lu depuis
-// shared.match_registry.
-//
-// Le début du match passe par le fragment timezone CANONIQUE (règle CLAUDE.md
-// n°8, analysis.SQLStartTimeCanonical) — jamais start_time brut : les imports
-// OpenSpartan portent un start_time naïf décalé, et un âge calculé dessus
-// jetonnerait (ou refuserait de jetonner) au mauvais moment.
-//
-// Retourne une ERREUR — jamais un âge par défaut — dès que l'âge est
-// indéterminable : sharedDB nil, match absent du registre, colonnes illisibles,
-// horodatages NULL. Le caller doit alors choisir l'échec sûr.
-func matchAge(ctx context.Context, sharedDB *sql.DB, matchID string) (time.Duration, error) {
+// readEventsEmpty lit match_registry.events_empty pour un match. Retourne une
+// ERREUR — jamais un défaut silencieux — quand le verdict est ILLISIBLE :
+// sharedDB nil, colonne absente (DB non migrée, titre au schéma minimal), match
+// hors registre. NULL n'est pas une erreur : c'est l'absence de verdict (le
+// pipeline events n'a pas conclu), qui se lit false.
+func readEventsEmpty(ctx context.Context, sharedDB *sql.DB, matchID string) (bool, error) {
 	if sharedDB == nil {
-		return 0, errors.New("matchAge: sharedDB nil")
+		return false, errors.New("sharedDB nil")
 	}
-	q := `SELECT ` + analysis.SQLStartTimeCanonical("") + ` FROM match_registry WHERE match_id = ?`
-	var start sql.NullTime
-	if err := sharedDB.QueryRowContext(ctx, q, matchID).Scan(&start); err != nil {
-		return 0, fmt.Errorf("matchAge %s: %w", matchID, err)
+	var empty sql.NullBool
+	if err := sharedDB.QueryRowContext(ctx,
+		`SELECT events_empty FROM match_registry WHERE match_id = ?`, matchID).Scan(&empty); err != nil {
+		return false, err
 	}
-	if !start.Valid {
-		return 0, fmt.Errorf("matchAge %s: début de match canonique NULL", matchID)
-	}
-	return time.Since(start.Time), nil
+	return empty.Valid && empty.Bool, nil
 }
 
-// isCitationsTerminalNoEvents décide si un match à 0 citation dont les events ne
-// sont PAS chargés doit malgré tout recevoir le jeton "_processed".
+// isEventsEmptyDefinitive décide si un match à 0 citation dont les events ne sont
+// PAS chargés doit malgré tout recevoir le jeton "_processed".
 //
 // Appelée UNIQUEMENT dans la branche rare (0 delta ET events absents), par
 // court-circuit du && côté BackfillMatchCitations : le chemin chaud ne paie
@@ -672,24 +686,18 @@ func matchAge(ctx context.Context, sharedDB *sql.DB, matchID string) (time.Durat
 // isEventsLoaded répond true quand elle ne sait pas (poser le jeton = legacy) ;
 // ici, ne pas savoir doit laisser le match candidat — un cycle de plus coûte
 // infiniment moins qu'un match jetonné à tort, dont les citations resteraient
-// vides jusqu'au prochain recompute force=true. Toute lecture d'âge en échec est
-// donc loguée en WARN et retourne false.
-func isCitationsTerminalNoEvents(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
-	age, err := matchAge(ctx, sharedDB, matchID)
+// vides jusqu'au prochain recompute force=true. Tout verdict illisible est donc
+// logué en WARN et retourne false. Effet de bord voulu : sur un titre dont le
+// schéma ne porte pas events_empty, la branche est inerte et le comportement
+// Phase 4 reste exactement celui d'avant.
+func isEventsEmptyDefinitive(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
+	empty, err := readEventsEmpty(ctx, sharedDB, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "citations: âge du match illisible — match laissé candidat (0 delta, events absents)",
+		slog.WarnContext(ctx, "citations: verdict events_empty illisible — match laissé candidat (0 delta, events absents)",
 			"match_id", matchID, "err", err)
 		return false
 	}
-	if age < citationsTerminalNoEventsAge {
-		return false
-	}
-	slog.InfoContext(ctx, "citations: état terminal — jeton _processed posé",
-		"match_id", matchID,
-		"age_days", int(age.Hours()/24),
-		"seuil_jours", int(citationsTerminalNoEventsAge.Hours()/24),
-		"raison", "events jamais arrivés — état terminal")
-	return true
+	return empty
 }
 
 // writeCitations écrit les deltas dans match_citations (idempotent).
@@ -697,9 +705,9 @@ func isCitationsTerminalNoEvents(ctx context.Context, sharedDB *sql.DB, matchID 
 // "_processed" est insérée : cela sort le match du pool de
 // selectMatchesForCitations et évite de le retraiter à chaque sync.
 // NB Phase 4 : ce sentinel n'est posé (cas 0 delta) que si les events sont
-// chargés (isEventsLoaded) OU si le match est assez vieux pour que leur absence
-// soit un état terminal (isCitationsTerminalNoEvents) — décision prise par le
-// caller BackfillMatchCitations.
+// chargés (isEventsLoaded) OU si le pipeline events a rendu son verdict terminal
+// sur le film (isEventsEmptyDefinitive) — décision prise par le caller
+// BackfillMatchCitations.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
 	// Append-only #23046 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
 	// préalable. Chaque réécriture d'un match alloue UNE génération
