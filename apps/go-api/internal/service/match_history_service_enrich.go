@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {
@@ -81,6 +82,10 @@ type rowFormatters struct {
 	// (même contrat que la home : (tier capitalisé, sous-palier 0=Onyx/1..6) → URL).
 	// Nil → aucune image, le front retombe sur le libellé texte du palier.
 	skillBadgeURL func(tierEN string, subTier int) string
+	// replays : ensemble des matchs ayant un artefact de rejeu 2D, construit UNE FOIS
+	// par requête (un listing de dossier) et consulté en O(1) par ligne. Vide → aucune
+	// ligne ne porte de rejeu, ce qui est l'état d'un titre sans film cuit.
+	replays port.ReplayAvailability
 }
 
 // skillRankImageURLFor résout l'image du badge de palier d'une ligne brute via le
@@ -110,6 +115,12 @@ func (f rowFormatters) playlistLabelFor(rawFR string) string {
 		return rawFR
 	}
 	return f.playlistLabel(rawFR)
+}
+
+// hasReplayFor dit si le match a un artefact de rejeu 2D. Lookup O(1) dans l'ensemble
+// construit une fois par requête : aucun accès disque ici.
+func (f rowFormatters) hasReplayFor(matchID string) bool {
+	return f.replays.Has(matchID)
 }
 
 func (f rowFormatters) outcomeLabelFor(code int) string {
@@ -222,6 +233,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		IsOvertime:               isOvertime,
 		OvertimeSeconds:          overtimeSeconds,
 		MatchURL:                 matchURL,
+		HasReplay:                fmts.hasReplayFor(r.MatchID),
 		IsExcluded:               r.IsExcluded,
 		IsWithFriends:            r.IsWithFriends,
 		ExperienceTypeLabel:      explorerExperienceType(r),

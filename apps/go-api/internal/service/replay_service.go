@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
@@ -55,6 +56,40 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 	}
 	return !info.IsDir()
 }
+
+// AvailableSet liste les matchs du titre qui ont un artefact, par UN SEUL listing du
+// dossier d'artefacts — jamais un os.Stat par match. C'est la forme qu'interrogent les
+// TABLEAUX de matchs (Explorer, escouade) : ils affichent des centaines de lignes, et un
+// appel disque par ligne coûterait la page entière pour une icône.
+//
+// Le dossier absent est nominal (titre sans rejeu construit) : ensemble vide, pas
+// d'erreur. Une lecture qui échoue pour une autre raison est journalisée ET remontée —
+// l'appelant dégrade sur l'ensemble vide (aucune icône), jamais sur un 500.
+func (s *replayService) AvailableSet(ctx context.Context) (port.ReplayAvailability, error) {
+	dir := title.NewPathResolver(s.repoRoot).ReplayArtifactsDir(s.titleSlug)
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return port.ReplayAvailability{}, nil
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "rejeu 2D : dossier d'artefacts illisible",
+			"err", err, "dir", dir, "titleSlug", s.titleSlug)
+		return port.ReplayAvailability{}, fmt.Errorf("listing artefacts rejeu %s: %w", s.titleSlug, err)
+	}
+	set := make(port.ReplayAvailability, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, replayArtifactExt) {
+			continue // on ne compte QUE des artefacts {short8}.json
+		}
+		set[strings.TrimSuffix(name, replayArtifactExt)] = struct{}{}
+	}
+	return set, nil
+}
+
+// replayArtifactExt est l'extension des artefacts de rejeu ({short8}.json) — la même
+// convention que PathResolver.ReplayArtifactPath et que la purge récurrente.
+const replayArtifactExt = ".json"
 
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
 // si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.

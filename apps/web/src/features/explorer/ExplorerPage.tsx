@@ -97,6 +97,7 @@ export function ExplorerPage() {
     startDate,
     endDate,
     squadScope,
+    replayScope,
     matchIDSearch,
     expTypes,
     playlists,
@@ -240,6 +241,7 @@ export function ExplorerPage() {
       map_names: mapNames.size > 0 ? [...mapNames] : undefined,
       mode_names: modeNames.size > 0 ? [...modeNames] : undefined,
       squad_scope: squadScope || undefined,
+      replay_scope: replayScope || undefined,
       match_id_search: debouncedMatchIDSearch || undefined,
     },
     filterContextHash,
@@ -334,6 +336,7 @@ export function ExplorerPage() {
     !!startDate ||
     !!endDate ||
     !!squadScope ||
+    !!replayScope ||
     !!matchIDSearch ||
     expTypes.size > 0 ||
     playlists.size > 0 ||
@@ -388,11 +391,13 @@ export function ExplorerPage() {
             endDate={endDate}
             matchIDSearch={matchIDSearch}
             squadScope={squadScope}
+            replayScope={replayScope}
             squadCountByValue={squadCountByValue}
             onStartDateChange={handleStartDate}
             onEndDateChange={(v) => setScope({ endDate: v })}
             onMatchIDSearchChange={(v) => setScope({ matchIDSearch: v })}
             onSquadScopeChange={(v) => setScope({ squadScope: v })}
+            onReplayScopeChange={(v) => setScope({ replayScope: v })}
             seasons={seasons}
             activeSeason={activeSeason}
             saisonOpen={saisonOpen}

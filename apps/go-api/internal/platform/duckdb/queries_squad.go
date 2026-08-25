@@ -214,6 +214,67 @@ WHERE kv.match_id IN (%s)
   AND kv.victim_xuid      IS NOT NULL
 ORDER BY kv.match_id, kv.time_ms`
 
+// Q32dSquadAssistPairsTemplate : les paires (ASSISTANT -> TUEUR ASSISTÉ) INTERNES à
+// l'escouade sur une sélection de matchs, et la COUVERTURE de la mesure.
+//
+// Sœur multi-matchs de Q21d (match_view_repo_assist_pairs.go). Deux différences, toutes
+// deux voulues :
+//
+//  1. les DEUX joueurs sont contraints à l'escouade. La page Synergies pose une question
+//     sur l'escouade : un membre qui assiste un adversaire ou un allié de passage n'y
+//     répond pas, et gonflerait le dénominateur de la colonne « part » ;
+//  2. AUCUN gamertag ne sort. Les deux xuids sont des membres du roster de la page, dont
+//     les noms sont déjà résolus (alias compris) — reprendre le nom écrit dans le film
+//     ferait apparaître un même joueur sous deux orthographes dans un seul tableau.
+//
+// COUVERTURE : `matches_measured` compte les matchs de la sélection portant au moins une
+// ligne `publishable AND assist_known`. Le total, lui, est connu de l'appelant (la taille
+// de sa sélection) et n'est pas redemandé à la base. La portée `publishable` est celle des
+// paires : un tableau qui NOMME deux joueurs est une lecture ligne à ligne.
+//
+// La jointure `LEFT JOIN … ON TRUE` a la même raison d'être que dans Q21d : la couverture
+// doit sortir MÊME quand aucune paire ne sort, sinon « mesuré, aucune assistance interne »
+// et « rien mesuré » rendraient tous deux zéro ligne.
+//
+// Les parts de dégâts ne sont NI plafonnées NI complétées : `assist_damage_pct >
+// killer_damage_pct` compare deux quantités mesurées ; un NULL rend NULL, donc faux au
+// FILTER — la mort reste comptée dans `assist_count`, jamais dans `stolen_count`.
+//
+// Les '%s' positionnels sont, DANS CET ORDRE : match_ids (portée), match_ids (paires),
+// xuids de l'escouade (assistant), xuids de l'escouade (tueur). Ne PAS utiliser
+// directement — passer par squad_repo.LoadSquadAssistPairs().
+const Q32dSquadAssistPairsTemplate = `
+WITH scope AS (
+    SELECT COUNT(DISTINCT match_id) FILTER (
+        WHERE publishable AND assist_known
+    ) AS matches_measured
+    FROM ` + KillEventsCanonicalTable + `
+    WHERE match_id IN (%s)
+),
+pairs AS (
+    SELECT
+        assist_xuid,
+        feed_killer_xuid,
+        COUNT(*)                                                       AS assist_count,
+        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)  AS stolen_count
+    FROM ` + KillEventsCanonicalTable + `
+    WHERE match_id IN (%s)
+      AND publishable
+      AND assist_known
+      AND assist_xuid      IN (%s)
+      AND feed_killer_xuid IN (%s)
+    GROUP BY assist_xuid, feed_killer_xuid
+)
+SELECT
+    s.matches_measured,
+    p.assist_xuid,
+    p.feed_killer_xuid,
+    p.assist_count,
+    p.stolen_count
+FROM scope s
+LEFT JOIN pairs p ON TRUE
+ORDER BY p.assist_count DESC, p.assist_xuid, p.feed_killer_xuid`
+
 // Q32bMainTeamParticipantsTemplate : pour chaque match dans la liste, retourne
 // tous les participants de la même team_id que le joueur principal (le main
 // inclus). Utilisé par buildSquadImpactMatrix pour calculer les badges

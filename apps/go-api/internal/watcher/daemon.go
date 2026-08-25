@@ -463,6 +463,13 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		if event.PresenceDetail != nil {
 			td := d.titleReg.MatchPresence(event.PresenceDetail.TitleID)
 			if td != nil {
+				// Titre tracké reconnu → mémorisé AVANT le test « titre du
+				// watcher » ci-dessous. L'ordre est le fond du sujet : ce test
+				// sort en OnPresenceInactive+return quand le joueur lance un
+				// AUTRE titre tracké ; capter le titre après lui laisserait un
+				// joueur configuré halo_5 jouant à Infinite « hors jeu » pour
+				// l'UI de présence. Cf. godoc de PlayerWatcher.currentTitleSlug.
+				pw.SetCurrentTitle(td.Slug, td.Name)
 				// Multi-titre : ce watcher ne suit QUE pw.titleSlug. Si le joueur
 				// lance un AUTRE titre tracké, ce n'est pas « son » jeu pour CE
 				// watcher → inactif ici (le watcher du même gamertag sur ce titre,
@@ -505,6 +512,7 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 				"state", event.PresenceState,
 				"event", evID,
 			)
+			pw.SetCurrentTitle("", "")
 			pw.OnPresenceInactive(evCtx)
 			return
 		}
@@ -512,6 +520,7 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// Pas de PresenceDetail (state Offline ou payload sans titre)
 		slog.DebugContext(evCtx, "watcher_daemon: présence sans titre actif",
 			"gamertag", pw.gamertag, "state", event.PresenceState, "event", evID)
+		pw.SetCurrentTitle("", "")
 		pw.OnPresenceInactive(evCtx)
 	}
 }

@@ -30,6 +30,8 @@ type mockMatchViewRepo struct {
 	killSources []domain.KillSourceRaw
 	// killAssists : assistances par mort (Q21c), pour l'assistant du kill feed.
 	killAssists []domain.KillAssistRaw
+	assistPairs []domain.MatchAssistPairRaw
+	assistScope domain.MatchAssistScopeRaw
 	kvErr       error
 	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0029).
 	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
@@ -72,6 +74,9 @@ func (m *mockMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]
 }
 func (m *mockMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
 	return m.killAssists, nil
+}
+func (m *mockMatchViewRepo) GetMatchAssistPairs(_ context.Context, _ string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
+	return m.assistPairs, m.assistScope, nil
 }
 func (m *mockMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr

@@ -18,6 +18,7 @@ import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
 import { normalizeExplorerTableRows } from './explorerTableRows'
+import type { ReplayScope } from './explorerScope'
 
 export interface ExplorerMatchesModeProps {
   playerSlug: string
@@ -28,11 +29,14 @@ export interface ExplorerMatchesModeProps {
   endDate: string
   matchIDSearch: string
   squadScope: '' | 'solo' | 'squad'
+  /** Présence d'un rejeu 2D : '' (tous) | 'with' | 'without'. */
+  replayScope: ReplayScope
   squadCountByValue: Map<string, number>
   onStartDateChange: (v: string) => void
   onEndDateChange: (v: string) => void
   onMatchIDSearchChange: (v: string) => void
   onSquadScopeChange: (v: '' | 'solo' | 'squad') => void
+  onReplayScopeChange: (v: ReplayScope) => void
 
   // Seasons
   seasons: SeasonEntry[]
@@ -107,11 +111,13 @@ function ExplorerFiltersBar({
   endDate,
   matchIDSearch,
   squadScope,
+  replayScope,
   squadCountByValue,
   onStartDateChange,
   onEndDateChange,
   onMatchIDSearchChange,
   onSquadScopeChange,
+  onReplayScopeChange,
   seasons,
   activeSeason,
   saisonOpen,
@@ -211,6 +217,28 @@ function ExplorerFiltersBar({
               return (
                 <option key={v} value={v} disabled={c === 0 && !isCurrent}>
                   {t(labelKey)}{c !== undefined ? ` (${c})` : ''}
+                </option>
+              )
+            })}
+          </select>
+          {/* Présence d'un rejeu 2D — 3 états, même forme que le scope escouade.
+              Pas de compte par option : le backend n'expose pas de dimension
+              cascade pour le rejeu (la présence d'artefact n'est pas une donnée
+              de match, c'est un fichier). */}
+          <select
+            value={replayScope}
+            onChange={(e) => onReplayScopeChange(e.target.value as ReplayScope)}
+            aria-label={t('explorer.filters.replay_aria')}
+            className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+          >
+            {(['', 'with', 'without'] as const).map((v) => {
+              const labelKey =
+                v === '' ? 'explorer.filters.replay_all'
+                : v === 'with' ? 'explorer.filters.replay_with'
+                : 'explorer.filters.replay_without'
+              return (
+                <option key={v} value={v}>
+                  {t(labelKey)}
                 </option>
               )
             })}

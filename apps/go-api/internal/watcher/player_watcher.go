@@ -83,6 +83,11 @@ type PlayerWatcher struct {
 	// "Hors-ligne" vs "Absent" vs "En ligne" — plus précis que le state FSM
 	// (qui reste "Idle" dans les 3 cas).
 	lastPresenceState string
+	// currentTitleSlug / currentTitleName : titre TRACKÉ sur lequel le joueur est
+	// vu, quel que soit le titre suivi par CE watcher — à ne pas confondre avec
+	// `inGame` ci-dessus. Accès et sémantique : player_watcher_title.go.
+	currentTitleSlug string
+	currentTitleName string
 	// lastEventAt : instant du dernier event de présence reçu (REST poll ou
 	// RTA), peu importe son contenu. Mis à jour à CHAQUE event dispatché par le
 	// handler — donc à chaque poll REST réussi (cf. rest_poller.tickOnce), pas

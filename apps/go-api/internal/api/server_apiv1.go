@@ -158,6 +158,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt)
 
+	// Présence en jeu (point Notion 4) : qui joue en ce moment parmi les joueurs
+	// de l'utilisateur, et combien de ses amis (liste `friend_gamertags` des
+	// Réglages) sont en jeu. RequireAuth SANS RequireAdmin — contrairement à
+	// /watcher/status, qui expose l'état interne du daemon et reste admin.
+	// NoStore : la donnée est vraie une trentaine de secondes.
+	handlers.NewPresenceHandler(buildPresenceService(cfg, bootSvc, daemon, reg, titleRegistry)).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt)
+
 	// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
 	// Permet de vérifier en 1 ligne si le pipeline a bien capturé les CSR
 	// (matured + placement) ou s'il faut lancer un backfill.

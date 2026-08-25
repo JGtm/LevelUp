@@ -66,6 +66,15 @@ export interface BarStackedChartProps {
    * applique sa palette interne — premières couleurs en bleu).
    */
   componentHexColors?: Record<string, string>
+  /**
+   * Note additionnelle affichée dans l'infobulle, à droite de la valeur d'un segment.
+   * Reçoit la catégorie survolée et la sous-clé, retourne le texte (déjà localisé) ou
+   * `undefined` pour ne rien ajouter.
+   *
+   * Sans cette prop l'infobulle est INCHANGÉE pour tous les appelants existants. Avec
+   * elle, le formateur personnalisé s'active même si `tooltipHideZero` est faux.
+   */
+  tooltipComponentNote?: (category: string, component: string) => string | undefined
 }
 
 export function BarStackedChart({
@@ -80,6 +89,7 @@ export function BarStackedChart({
   componentOrder,
   tooltipHideZero = false,
   componentHexColors,
+  tooltipComponentNote,
 }: BarStackedChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointStacked>[]) =>
@@ -89,8 +99,16 @@ export function BarStackedChart({
         componentOrder,
         tooltipHideZero,
         componentHexColors,
+        tooltipComponentNote,
       }),
-    [orientation, componentColors, componentOrder, tooltipHideZero, componentHexColors],
+    [
+      orientation,
+      componentColors,
+      componentOrder,
+      tooltipHideZero,
+      componentHexColors,
+      tooltipComponentNote,
+    ],
   )
 
   return (
@@ -112,6 +130,7 @@ interface BuildOpts {
   componentOrder?: string[]
   tooltipHideZero?: boolean
   componentHexColors?: Record<string, string>
+  tooltipComponentNote?: (category: string, component: string) => string | undefined
 }
 
 interface TooltipParam {
@@ -137,6 +156,7 @@ export function buildBarStackedOption(
     componentOrder,
     tooltipHideZero = false,
     componentHexColors,
+    tooltipComponentNote,
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -197,24 +217,30 @@ export function buildBarStackedOption(
     trigger: 'axis' as const,
     axisPointer: { type: 'shadow' as const },
   }
-  const tooltip = tooltipHideZero
-    ? {
-        ...tooltipBase,
-        formatter: (raw: unknown) => {
-          const params = (Array.isArray(raw) ? raw : [raw]) as TooltipParam[]
-          if (params.length === 0) return ''
-          const header = params[0]?.axisValueLabel ?? String(params[0]?.axisValue ?? '')
-          const lines = params
-            .filter((p) => typeof p.value === 'number' && p.value !== 0)
-            .map(
-              (p) =>
-                `${p.marker ?? ''}${escapeHtml(p.seriesName ?? '')}: <strong>${p.value}</strong>`,
-            )
-          if (lines.length === 0) return ''
-          return `<div style="margin-bottom:4px;font-weight:600">${escapeHtml(header)}</div>${lines.join('<br/>')}`
-        },
-      }
-    : tooltipBase
+  // Formateur personnalisé dès que l'appelant demande le masquage des zéros OU une note
+  // par segment. Sans ni l'un ni l'autre on laisse le formateur natif d'ECharts — c'est
+  // le comportement de tous les appelants antérieurs.
+  const tooltip =
+    tooltipHideZero || tooltipComponentNote
+      ? {
+          ...tooltipBase,
+          formatter: (raw: unknown) => {
+            const params = (Array.isArray(raw) ? raw : [raw]) as TooltipParam[]
+            if (params.length === 0) return ''
+            const header = params[0]?.axisValueLabel ?? String(params[0]?.axisValue ?? '')
+            const lines = params
+              .filter((p) => !tooltipHideZero || (typeof p.value === 'number' && p.value !== 0))
+              .map((p) => {
+                const name = p.seriesName ?? ''
+                const note = tooltipComponentNote?.(header, name)
+                const suffix = note ? ` <span style="opacity:0.75">${escapeHtml(note)}</span>` : ''
+                return `${p.marker ?? ''}${escapeHtml(name)}: <strong>${p.value}</strong>${suffix}`
+              })
+            if (lines.length === 0) return ''
+            return `<div style="margin-bottom:4px;font-weight:600">${escapeHtml(header)}</div>${lines.join('<br/>')}`
+          },
+        }
+      : tooltipBase
 
   return {
     backgroundColor: CHART_BG,

@@ -216,6 +216,42 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       camo: 'Camouflage actif — le joueur est invisible à l’écran de jeu',
       overshield: 'Surbouclier actif',
     },
+    equipmentUsage: {
+      title: "Usages d'équipement",
+      colPlayer: 'Joueur',
+      teamTotal: 'Total équipe',
+      groupGrapple: 'Grappin',
+      groupGrappleHint:
+        "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
+      groupActive: 'États actifs',
+      groupActiveHint:
+        "Épisodes de camouflage et de surbouclier. Le film mesure que l'effet COURT ; il ne dit pas d'où il vient — un bonus ramassé au socle et une capacité déclenchée produisent le même épisode, et la source n'est pas distinguée. Le nombre et la durée cumulée se lisent ensemble : six épisodes d'une seconde et un épisode de six secondes ne racontent pas la même partie.",
+      activeFamily: { camo: 'Camouflage', overshield: 'Surbouclier' },
+      activeCount: 'épisodes',
+      activeDuration: 'durée',
+      groupDeployed: 'Déploiements',
+      groupDeployedHint:
+        "Les objets qu'un joueur a réellement DÉPLOYÉS en cours de vie, par famille. Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Les lancers de grenade ont leur propre colonne ; le grappin, le propulseur et le répulseur agissent sur leur porteur et ne posent rien sur le terrain.",
+      groupDropped: 'Objets lâchés',
+      groupDroppedHint:
+        "Les objets de puissance laissés au sol en mourant — bonus et équipements déployables. Ils restent ramassables : savoir qui en sème change la lecture des échanges suivants. Les grenades et les capacités lâchées ne sont pas comptées — près de neuf poses sur dix, et elles ne disent rien du terrain.",
+      groupGrenades: 'Grenades lancées',
+      groupGrenadesHint:
+        "Les lancers lus dans le film, par type. L'auteur du lancer est écrit dans le film — ce n'est pas une déduction de proximité.",
+      grenadeRankFmt: (rank) => `Rang ${rank}`,
+      powerupPads: 'Socles de bonus de puissance vidés',
+      powerupPadsHint:
+        "Combien de fois un socle de bonus s'est vidé pendant le match. Ce compte ne descend sur AUCUN joueur, et ce n'est pas un oubli : le film ne publie pas le ramasseur (oracle mesuré à 79,7 %, contre 90 % exigé). Un même socle peut se vider plusieurs fois — le bonus réapparaît.",
+      powerupPadsDenomFmt: (pads) =>
+        `sur ${pads} socle${pads > 1 ? 's' : ''} mesuré${pads > 1 ? 's' : ''}`,
+      coverageActiveFmt: (lives) => `États actifs mesurés sur ${lives} vies publiées.`,
+      coverageGrappleFmt: (pulls, lives) =>
+        `${pulls} traction${pulls > 1 ? 's' : ''} de grappin lue${pulls > 1 ? 's' : ''}, réparties sur ${lives} vie${lives > 1 ? 's' : ''}.`,
+      unattributedFmt: (count) =>
+        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors du tableau.`,
+      notMeasured:
+        "Répulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour ces deux capacités. Une colonne vide se lirait « zéro utilisation ».",
+    },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     respawnBarLabel: 'avancement depuis la mort',
@@ -421,6 +457,41 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     equipmentActive: {
       camo: 'Active camo — the player is invisible on the game screen',
       overshield: 'Overshield active',
+    },
+    equipmentUsage: {
+      title: 'Equipment usage',
+      colPlayer: 'Player',
+      teamTotal: 'Team total',
+      groupGrapple: 'Grappleshot',
+      groupGrappleHint:
+        'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
+      groupActive: 'Active states',
+      groupActiveHint:
+        'Camo and overshield episodes. The film measures that the effect IS RUNNING; it never says where it came from — a power-up picked up from a pad and a triggered ability produce the same episode, and the source is not told apart. Count and cumulative duration read together: six one-second episodes and one six-second episode are not the same game.',
+      activeFamily: { camo: 'Camo', overshield: 'Overshield' },
+      activeCount: 'episodes',
+      activeDuration: 'duration',
+      groupDeployed: 'Deployments',
+      groupDeployedHint:
+        'The objects a player actually DEPLOYED while alive, by family. A deployed drop wall publishes two placements (the device and its panels) and counts as one. Grenade throws have their own column; the grappleshot, thruster and repulsor act on their carrier and put nothing on the ground.',
+      groupDropped: 'Dropped objects',
+      groupDroppedHint:
+        'The power objects left on the ground on death — power-ups and deployable equipment. They remain pickable: knowing who scatters them changes how the next fights read. Dropped grenades and abilities are not counted — nearly nine placements out of ten, and they say nothing about the terrain.',
+      groupGrenades: 'Grenades thrown',
+      groupGrenadesHint:
+        'Throws read from the film, by type. The thrower is written in the film — not inferred from proximity.',
+      grenadeRankFmt: (rank) => `Rank ${rank}`,
+      powerupPads: 'Power-up pads emptied',
+      powerupPadsHint:
+        'How many times a power-up pad went empty during the match. This count is attached to NO player, and that is not an oversight: the film does not publish who took it (measured oracle at 79.7%, against 90% required). One pad can empty several times — the power-up respawns.',
+      powerupPadsDenomFmt: (pads) => `across ${pads} measured pad${pads > 1 ? 's' : ''}`,
+      coverageActiveFmt: (lives) => `Active states measured over ${lives} published lives.`,
+      coverageGrappleFmt: (pulls, lives) =>
+        `${pulls} grapple pull${pulls > 1 ? 's' : ''} read, spread over ${lives} ${lives > 1 ? 'lives' : 'life'}.`,
+      unattributedFmt: (count) =>
+        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside the table.`,
+      notMeasured:
+        'Repulsor and thruster are absent: the film publishes no activation channel for those two abilities. An empty column would read as "zero uses".',
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
