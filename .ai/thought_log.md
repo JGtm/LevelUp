@@ -1,8 +1,7 @@
 ## [2026-08-25] Citations — état terminal pour matchs sans events (matchs annulés)
 
-**Statut** : En cours — éditions et tests écrits, commit local posé ; gates NON joués
-(créneau de build machine réservé à un lot voisin, phasage imposé). Branche
-`fix/citations-terminal-state`, worktree dédié, base `origin/main` `97a109b0d`.
+**Statut** : Complété (gates locaux verts, ni merge ni push — décision du superviseur).
+Branche `fix/citations-terminal-state`, worktree dédié, base `origin/main` `97a109b0d`.
 
 **Défaut** (prouvé en prod, non re-diagnostiqué) : `BackfillMatchCitations`
 (`internal/sync/citations.go`) laissait candidat, SANS jeton `_processed`, tout match à 0
@@ -66,9 +65,29 @@ jeton posé comme avant, sans considération d'âge. Les âges sont posés relat
 `no_raw_start_time_literal_test.go`. Non touchée. Le WARN pve `database is closed` du même
 fichier relève du lot `fix/shared-read-recovery`.
 
-**Prochaine étape** : gates de phase B (gofmt, build, vet, tests, tests intégration
-`-p 1` sur sync+persist, golangci `--new-from-merge-base=origin/main`) puis mise à jour de
-cette entrée en Complété. Pas de merge ni de push depuis ce lot.
+**Gates (locaux, exit codes dans des logs persistants)** : `EXIT_GOFMT=0` · `EXIT_BUILD=0`
+· `EXIT_VET=0` · `EXIT_HOOK_GOVET=0` (le hook pre-commit `go-vet` avait été exclu au commit
+pour ne pas toucher au cache Go pendant le créneau d'un lot voisin — rejoué et vert) ·
+`EXIT_UNIT=0` (0 paquet FAIL) · `EXIT_INTEGRATION=0` (`-tags=integration -p 1 -timeout 1800s`
+sur sync + persist) · `EXIT_GOLANGCI=0` (« 0 issues », `--new-from-merge-base=origin/main`).
+Ratchets cités nommément : `TestSyncRootPackageFrozen`, `TestNoNewRawStartTimeLiteral`,
+`TestStartTimeGuardsAreDiscriminant`, garde-rails anti-ART du package sync — tous PASS.
+
+**Mordant des tests prouvé par MUTATION** : condition inversée en `age > seuil` →
+`TestIsCitationsTerminalNoEvents` rougit sur 3 sous-cas (`m-vieux` want true got false,
+`m-recent` et `m-frais` want false got true), `EXIT_MUTATION=1`. Condition restaurée, arbre
+re-vérifié propre, test re-vert. Le fichier tagué `cgo` s'exécute dans le gate UNITAIRE
+(`go test ./...` sans `-tags=integration`, CGO_ENABLED=1) — 12 sous-cas PASS ; les 3 tests
+bout en bout s'exécutent dans le gate INTÉGRATION.
+
+**Environnement à consigner** : la note `reference_cgo_linker_winlibs_not_msys64` est
+PÉRIMÉE sur ce poste — le gcc winlibs (`C:\Users\Guillaume\mingw-winlibs\...`) n'existe
+plus, `CC` est vide, et le seul gcc disponible est msys64 ucrt64 **15.2.0** (la version qui
+échouait au lien `libduckdb_static` était la 16.1.0). Build, tests unitaires et intégration
+passent avec lui : plus de contournement `CC` nécessaire ici.
+
+**Prochaine étape** : décision du superviseur (revue puis merge). Aucune CI n'a tourné —
+la branche n'est pas poussée, le verdict d'autorité reste à venir.
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
