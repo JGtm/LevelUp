@@ -16,10 +16,8 @@
     "jsx": "react-jsx",
 
     /* Paths */
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     /* Linting */
