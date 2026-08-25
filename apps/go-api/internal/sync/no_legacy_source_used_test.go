@@ -1,17 +1,17 @@
-// Package sync — no_legacy_source_used_test.go : garde-rail anti-régression du
-// câblage store-first de l'access_token achievements (ADR 0023 / gate D2).
+// Package sync — no_legacy_source_used_test.go : RATCHET ADR 0023 (gate D2).
 //
-// Contexte : le post-sync achievements (resolveAccessTokenFromDB, supprimé)
+// Historique : le post-sync achievements (resolveAccessTokenFromDB, supprimé)
 // résolvait l'access_token EXCLUSIVEMENT depuis sync_meta et émettait lui-même
 // legacy_source_used=duckdb_oauth à chaque cycle des 4 joueurs prod, sans jamais
-// consulter le store watcher_tokens (incident 2026-07-12). Le fix centralise
-// l'ordre de résolution dans auth.ResolveMSAccessTokenStoreFirst (store d'abord),
-// SEUL émetteur légitime de la télémétrie legacy (uniquement en vraie absence de
-// RT store).
+// consulter le store watcher_tokens (incident 2026-07-12). Le fix a centralisé
+// l'ordre de résolution dans auth.ResolveMSAccessTokenStoreFirst.
 //
-// Ce test interdit toute ré-introduction d'un émetteur de télémétrie legacy DANS
-// le package sync : la résolution doit rester déléguée au helper canonique auth,
-// sinon la divergence re-crée le faux positif (CLAUDE.md règle « ≤ 2 copies + un
+// Phase 5 (2026-08-25) : les sources legacy et la télémétrie associée ont été
+// SUPPRIMÉES. Ce garde-rail devient l'invariant du package sync : aucun fichier
+// de production ne doit ré-introduire une lecture de credential auth (clé
+// sync_meta d'auth, env var SPNKR_OAUTH_REFRESH_TOKEN_*) ni une télémétrie de
+// dépréciation locale. La résolution DOIT rester déléguée au helper canonique
+// auth.ResolveMSAccessTokenStoreFirst (CLAUDE.md règle « ≤ 2 copies + un
 // garde-rail à la factorisation »).
 package sync
 
@@ -22,12 +22,16 @@ import (
 	"testing"
 )
 
-func TestNoLegacySourceTelemetryInSyncPackage(t *testing.T) {
-	// Motifs interdits dans le package sync (non-test) : la télémétrie de
-	// dépréciation legacy appartient au helper canonique auth, pas ici.
-	forbidden := []string{
-		"RecordLegacySourceUsed", // comptage expvar du gate D2
-		"legacy_source_used",     // littéral du WARN slog
+func TestNoLegacyAuthSourcesInSyncPackage(t *testing.T) {
+	// Motifs interdits dans le package sync (non-test) : plus aucune lecture de
+	// credential auth legacy, plus de télémétrie de dépréciation locale.
+	forbidden := map[string]string{
+		"RecordLegacySourceUsed":    "télémétrie de dépréciation supprimée en Phase 5",
+		"legacy_source_used":        "littéral du WARN slog supprimé en Phase 5",
+		"oauth_refresh_token":       "credential legacy sync_meta — lire MultiUserTokenStore",
+		"msal_token_cache":          "credential legacy sync_meta — le cache MSAL n'existe plus",
+		"SPNKR_OAUTH_REFRESH_TOKEN": "env var legacy — lire MultiUserTokenStore",
+		"MSALCacheJSON":             "champ supprimé du store en Phase 5",
 	}
 
 	entries, err := os.ReadDir(".")
@@ -46,12 +50,12 @@ func TestNoLegacySourceTelemetryInSyncPackage(t *testing.T) {
 		}
 		scanned++
 		content := string(data)
-		for _, pat := range forbidden {
+		for pat, why := range forbidden {
 			if strings.Contains(content, pat) {
-				t.Errorf("%s contient le motif interdit %q — la résolution d'access_token "+
-					"doit déléguer à auth.ResolveMSAccessTokenStoreFirst (seul émetteur "+
-					"légitime de legacy_source_used, store-first). Cf. incident prod 2026-07-12.",
-					name, pat)
+				t.Errorf("%s contient le motif interdit %q (%s) — la résolution d'access_token "+
+					"doit déléguer à auth.ResolveMSAccessTokenStoreFirst (MultiUserTokenStore, "+
+					"source unique ADR 0023 Phase 5). Cf. incident prod 2026-07-12.",
+					name, pat, why)
 			}
 		}
 	}

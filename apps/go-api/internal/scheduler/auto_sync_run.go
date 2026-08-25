@@ -423,9 +423,9 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 	if !s.pool.HasPlayer(p.Gamertag) {
 		slog.InfoContext(ctx, "auto_sync: joueur absent du pool, ignoré",
 			"gamertag", p.Gamertag,
-			"hint", "définir SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local ou faire une sync initiale",
+			"hint", "authentifier le joueur (SSO Xbox) ou `go run ./cmd/token-capture/ <GT>`",
 		)
-		return "joueur absent du pool (pas de token discoverable via Discovery — vérifier .env.local et sync_meta)", false
+		return "joueur absent du pool (aucun refresh token dans data/auth/watcher_tokens)", false
 	}
 	if s.ActivityChecker != nil && s.ActivityChecker.IsPlayerActive(p.Gamertag) {
 		slog.InfoContext(ctx, "auto_sync: watcher actif sur ce joueur — tick cédé",

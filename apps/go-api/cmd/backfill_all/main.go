@@ -1,7 +1,7 @@
 // cmd/backfill_all — backfill rétroactif weapons + PSA pour tous les players.
 //
 // Pour chaque player dans data/titles/<title>/players/, charge ses tokens Halo
-// (msal_token_cache ou oauth_refresh_token), liste les match_ids manquants
+// depuis le MultiUserTokenStore (ADR 0023), liste les match_ids manquants
 // (weapon_kills < 28j, PSA tous matchs), et lance les pipelines en série.
 //
 // Lance ce CLI quand l'audit (cmd/audit_coverage) montre des trous, et que tu
@@ -43,7 +43,6 @@ var (
 	dataRoot     = flag.String("data", "data", "Racine du dossier data/")
 	titleSlug    = flag.String("title", "halo_infinite", "Title slug")
 	envFile      = flag.String("env-file", ".env.local", "Chemin .env.local")
-	authFile     = flag.String("auth-file", "data/auth/watcher_tokens.json", "Chemin tokens.json")
 	playerFilter = flag.String("player", "", "Limiter à un player (vide = tous)")
 	onlyType     = flag.String("only", "", "weapons | psa | both (par défaut)")
 	forceWeapons = flag.Bool("force-weapons", false, "Effacer et re-backfiller weapon_kills même si déjà présents")
@@ -98,7 +97,7 @@ func processPlayer(ctx context.Context, gamertag string) {
 	}
 
 	// Tokens
-	tokens, err := loadTokens(ctx, playerDBPath)
+	tokens, err := loadTokens(ctx, gamertag, xuid)
 	if err != nil {
 		slog.Warn("tokens introuvables, skip", "player", gamertag, "err", err)
 		return
@@ -280,89 +279,20 @@ func readPlayerXUID(dbPath string) (string, error) {
 	return xuid, nil
 }
 
-func loadTokens(ctx context.Context, playerDBPath string) (*domain.HaloTokens, error) {
-	const margin = 5 * time.Minute
-	store := auth.NewTokenStore(*authFile)
-	stored, err := store.Load()
-	if err != nil {
-		slog.Warn("watcher_tokens load failed", "path", *authFile, "err", err)
-	}
-	if stored != nil {
-		slog.Info("watcher_tokens loaded",
-			"xsts_valid", stored.IsXSTSValid(margin),
-			"oauth_valid", stored.IsOAuthValid(margin),
-			"has_refresh", stored.HasRefreshToken(),
-		)
-		if stored.IsXSTSValid(margin) {
-			tokens, err := auth.ExchangeXSTSForHaloTokens(ctx, stored.XSTSToken)
-			if err == nil {
-				return tokens, nil
-			}
-			slog.Warn("ExchangeXSTSForHaloTokens failed", "err", err)
-		}
-		if stored.IsOAuthValid(margin) {
-			result, err := auth.ExchangeAccessToken(ctx, stored.AccessToken)
-			if err == nil {
-				return result.Tokens, nil
-			}
-			slog.Warn("ExchangeAccessToken (watcher) failed", "err", err)
-		}
-	}
-	return loadTokensFromPlayerDB(ctx, playerDBPath)
-}
-
-func loadTokensFromPlayerDB(ctx context.Context, dbPath string) (*domain.HaloTokens, error) {
-	db, err := sql.Open("duckdb", dbPath+"?access_mode=read_only")
+// loadTokens résout les tokens Halo du joueur via le MultiUserTokenStore
+// (source unique ADR 0023) — plus aucun fallback sync_meta / env var / store
+// mono-user depuis la Phase 5 (2026-08-25).
+func loadTokens(ctx context.Context, gamertag, xuid string) (*domain.HaloTokens, error) {
+	store := auth.NewMultiUserTokenStore(filepath.Join(*dataRoot, "auth", "watcher_tokens"))
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), xuid, gamertag)
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
-	db.SetMaxOpenConns(1)
-
-	var cacheJSON, refreshToken string
-	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&cacheJSON)
-	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&refreshToken)
-
-	provider := auth.NewSISUProvider()
-	gamertag := extractGamertag(dbPath)
-
-	var accessToken string
-	if cacheJSON != "" {
-		if tok, err := provider.TrySilentRefresh(ctx, cacheJSON); err == nil && tok != "" {
-			accessToken = tok
-		}
+	tokens := auth.HaloTokensFromExchange(result)
+	if tokens == nil {
+		return nil, fmt.Errorf("aucun token Halo pour %s (xuid=%s) — store watcher_tokens vide", gamertag, xuid)
 	}
-	if accessToken == "" && refreshToken != "" {
-		if tok, err := provider.TryOAuthRefresh(ctx, refreshToken); err == nil && tok != "" {
-			accessToken = tok
-		}
-	}
-	if accessToken == "" && gamertag != "" {
-		envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-		if envRT := os.Getenv(envKey); envRT != "" {
-			if tok, err := provider.TryOAuthRefresh(ctx, envRT); err == nil && tok != "" {
-				accessToken = tok
-			}
-		}
-	}
-	if accessToken == "" {
-		return nil, fmt.Errorf("aucun access token (msal_cache=%v oauth_rt=%v)", cacheJSON != "", refreshToken != "")
-	}
-	result, err := auth.ExchangeAccessToken(ctx, accessToken)
-	if err != nil {
-		return nil, err
-	}
-	return result.Tokens, nil
-}
-
-func extractGamertag(dbPath string) string {
-	parts := strings.Split(strings.ReplaceAll(dbPath, "\\", "/"), "/")
-	for i, part := range parts {
-		if part == "players" && i+1 < len(parts) {
-			return parts[i+1]
-		}
-	}
-	return ""
+	return tokens, nil
 }
 
 func loadEnvLocal(path string) {

@@ -1,8 +1,10 @@
-// Package pool — discovery_watcher_test.go : tests TDD pour E.v1 du refactor
-// auth unification — extension Discovery.Scan() qui lit aussi les watcher
-// token stores (MultiUserTokenStore + TokenStore legacy mono-user).
+// Package pool — discovery_watcher_test.go : Discovery.Scan() lit le
+// MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
 //
-// Cf. `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md` §5 Option E.
+// ADR 0023 Phase 5 (2026-08-25) : le store mono-user (watcher_tokens.json) n'est
+// plus une source de credentials — les tests qui le couvraient ont disparu avec
+// le chemin de code (leur remplaçant est le ratchet
+// discovery_legacy_warn_test.go).
 
 package pool
 
@@ -21,7 +23,7 @@ import (
 
 // fakeConfigWithPlayers fabrique un *config.AppConfig avec un db_profiles.json
 // inline (1 joueur). Le RepoRoot pointe vers un t.TempDir afin que les player
-// DBs n'existent PAS (force le fallback vers les watcher stores).
+// DBs n'existent PAS.
 func fakeConfigWithPlayers(t *testing.T, gamertag, xuid string) *config.AppConfig {
 	t.Helper()
 	repoRoot := t.TempDir()
@@ -56,38 +58,32 @@ func fakeConfigWithPlayers(t *testing.T, gamertag, xuid string) *config.AppConfi
 	return cfg
 }
 
-// ─── Test 1 : MultiUserTokenStore peuple le pool quand DuckDB vide ────────
+// ─── Test 1 : MultiUserTokenStore peuple le pool ──────────────────────────
 
-func TestDiscoveryScan_MultiUserStore_PopulatesWhenDuckDBEmpty(t *testing.T) {
-	// Isolation : neutraliser les env vars que d'autres tests du package
-	// peuvent avoir chargées via config.Load() depuis le .env.local réel
-	// (TestDiscoveryScan_MixedTokenSources etc. — pollution cross-test).
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294", "")
+func TestDiscoveryScan_MultiUserStore_Populates(t *testing.T) {
 	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
-	// Crée le multi-user store avec un MSAL cache pour ce joueur.
 	storeDir := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens")
 	if err := os.MkdirAll(storeDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	store := auth.NewMultiUserTokenStore(storeDir)
 	err := store.Upsert(&auth.UserTokens{
-		XUID:          "2533274858283686",
-		Gamertag:      "Madina97294",
-		MSALCacheJSON: `{"fake": "msal_cache"}`,
-		XSTSToken:     "xsts_value",
-		XSTSUserHash:  "uhs_value",
-		XSTSExpiresAt: time.Now().Add(2 * time.Hour),
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		XUID:              "2533274858283686",
+		Gamertag:          "Madina97294",
+		OAuthRefreshToken: "rt_watcher_store",
+		XSTSToken:         "xsts_value",
+		XSTSUserHash:      "uhs_value",
+		XSTSExpiresAt:     time.Now().Add(2 * time.Hour),
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
 	})
 	if err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
 
-	// Discovery avec watcher store (DuckDB n'existe pas → fallback watcher).
-	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, store, nil)
+	d := NewDiscoveryWithStore(cfg, resolver, titlePkg.DefaultSlug, store)
 	sources, err := d.Scan(context.Background())
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
@@ -100,145 +96,31 @@ func TestDiscoveryScan_MultiUserStore_PopulatesWhenDuckDBEmpty(t *testing.T) {
 	if src.Gamertag != "Madina97294" || src.XUID != "2533274858283686" {
 		t.Errorf("source identity wrong: %+v", src)
 	}
-	if src.MSALCache == "" {
-		t.Errorf("MSALCache vide — devrait être peuplé depuis watcher store")
+	if src.RefreshToken != "rt_watcher_store" {
+		t.Errorf("RefreshToken = %q, want rt_watcher_store", src.RefreshToken)
 	}
-	if src.Source != credSourceWatcherMSAL {
-		t.Errorf("Source = %q, want %q", src.Source, credSourceWatcherMSAL)
-	}
-}
-
-// ─── Test 2 : Legacy mono-user TokenStore peuple le pool ──────────────────
-
-func TestDiscoveryScan_LegacyStore_PopulatesWhenDuckDBEmpty(t *testing.T) {
-	// Isolation : neutraliser env vars pollution cross-test (cf. test précédent).
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "")
-	cfg := fakeConfigWithPlayers(t, "JGtm", "2533274823110022")
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-
-	// Crée le legacy mono-user store avec un refresh token.
-	storePath := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens.json")
-	if err := os.MkdirAll(filepath.Dir(storePath), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	store := auth.NewTokenStore(storePath)
-	err := store.Save(&auth.StoredTokens{
-		RefreshToken: "legacy_refresh_token_value",
-	})
-	if err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-
-	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, nil, store)
-	sources, err := d.Scan(context.Background())
-	if err != nil {
-		t.Fatalf("Scan: %v", err)
-	}
-
-	if len(sources) != 1 {
-		t.Fatalf("sources = %d, want 1", len(sources))
-	}
-	src := sources[0]
-	if src.RefreshToken != "legacy_refresh_token_value" {
-		t.Errorf("RefreshToken = %q, want legacy_refresh_token_value", src.RefreshToken)
-	}
-	if src.Source != credSourceWatcherLegacy {
-		t.Errorf("Source = %q, want %q", src.Source, credSourceWatcherLegacy)
+	if src.Source != credSourceWatcherOAuth {
+		t.Errorf("Source = %q, want %q", src.Source, credSourceWatcherOAuth)
 	}
 }
 
-// ─── Test 3 : Pas de stores → comportement legacy (skip si DuckDB vide) ───
+// ─── Test 2 : pas de store → 0 source ─────────────────────────────────────
 
-func TestDiscoveryScan_NoStores_BackwardCompat(t *testing.T) {
+func TestDiscoveryScan_NoStore_NoSource(t *testing.T) {
 	cfg := fakeConfigWithPlayers(t, "NoToken", "1111")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
-	// Pas de stores attachés, pas de DuckDB, pas d'env var → 0 source.
-	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, nil, nil)
+	d := NewDiscoveryWithStore(cfg, resolver, titlePkg.DefaultSlug, nil)
 	sources, err := d.Scan(context.Background())
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
 	if len(sources) != 0 {
-		t.Errorf("sources = %d, want 0 (no token anywhere)", len(sources))
+		t.Errorf("sources = %d, want 0 (aucun store)", len(sources))
 	}
 }
 
-// ─── Test 4 : DuckDB a priorité sur watcher store ─────────────────────────
-//
-// Si DuckDB sync_meta contient un MSAL cache OU OAuth, le watcher store
-// n'est PAS consulté (priorité au scan DuckDB pour préserver le comportement
-// legacy). Skip ici si la création d'une vraie player DB est trop lourde —
-// le code source suit la condition `if msal == "" && oauth == ""`.
-
-// ─── Test 4b : LegacyStore attribué à UN SEUL joueur (fix bug 2026-05-24) ─
-
-// Vérifie que le legacy mono-user store n'est PAS dupliqué sur plusieurs
-// joueurs. Sinon le même RT serait attribué à N joueurs → mismatch API.
-
-func TestDiscoveryScan_LegacyStore_AttributedToSinglePlayerOnly(t *testing.T) {
-	// 3 joueurs configurés, AUCUN n'a de token DuckDB/env. Legacy store
-	// contient 1 RT. Seul le 1er joueur doit le recevoir, les 2 autres skip.
-	repoRoot := t.TempDir()
-
-	profiles := map[string]any{
-		"version": "3.0",
-		"profiles": map[string]any{
-			"halo_infinite": map[string]any{
-				"Alice": map[string]any{
-					"db_path": "data/titles/halo_infinite/players/Alice/stats.duckdb",
-					"xuid":    "1111", "waypoint_player": "Alice",
-				},
-				"Bob": map[string]any{
-					"db_path": "data/titles/halo_infinite/players/Bob/stats.duckdb",
-					"xuid":    "2222", "waypoint_player": "Bob",
-				},
-				"Carol": map[string]any{
-					"db_path": "data/titles/halo_infinite/players/Carol/stats.duckdb",
-					"xuid":    "3333", "waypoint_player": "Carol",
-				},
-			},
-		},
-	}
-	data, err := json.MarshalIndent(profiles, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
-	if err := os.WriteFile(profilesPath, data, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cfg := &config.AppConfig{
-		RepoRoot:        repoRoot,
-		DBProfilesPath:  profilesPath,
-		AppSettingsPath: filepath.Join(repoRoot, "app_settings.json"),
-	}
-
-	storePath := filepath.Join(repoRoot, "data", "auth", "watcher_tokens.json")
-	if err := os.MkdirAll(filepath.Dir(storePath), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	store := auth.NewTokenStore(storePath)
-	if err := store.Save(&auth.StoredTokens{RefreshToken: "single_legacy_rt"}); err != nil {
-		t.Fatal(err)
-	}
-
-	resolver := titlePkg.NewPathResolver(repoRoot)
-	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, nil, store)
-	sources, err := d.Scan(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(sources) != 1 {
-		t.Fatalf("sources = %d, want 1 (legacy attribué à 1 SEUL joueur), got %+v", len(sources), sources)
-	}
-	if sources[0].RefreshToken != "single_legacy_rt" {
-		t.Errorf("RT = %q, want single_legacy_rt", sources[0].RefreshToken)
-	}
-}
-
-// ─── Test 5 : XUID safe — store skipped si XUID vide ──────────────────────
+// ─── Test 3 : XUID vide → store non adressable, joueur exclu ──────────────
 
 func TestDiscoveryScan_MultiUserStore_SkippedIfXUIDEmpty(t *testing.T) {
 	cfg := fakeConfigWithPlayers(t, "NoXuid", "")
@@ -250,7 +132,7 @@ func TestDiscoveryScan_MultiUserStore_SkippedIfXUIDEmpty(t *testing.T) {
 	}
 	store := auth.NewMultiUserTokenStore(storeDir)
 
-	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, store, nil)
+	d := NewDiscoveryWithStore(cfg, resolver, titlePkg.DefaultSlug, store)
 	sources, err := d.Scan(context.Background())
 	if err != nil {
 		t.Fatal(err)

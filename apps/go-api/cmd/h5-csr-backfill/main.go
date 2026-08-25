@@ -69,7 +69,7 @@ func main() {
 	// Token store-first du COMPTE D'AUTH (emprunt possible). Le service record est
 	// indexé par gamertag cible → un token valide quelconque suffit.
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s (auth_as=%s): err=%v", gt, authGT, err)
 	}

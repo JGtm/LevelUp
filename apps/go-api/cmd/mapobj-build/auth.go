@@ -48,7 +48,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug, title
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 
 	result, err := authpkg.RefreshHaloTokensViaStoreFirst(
-		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag, authpkg.LegacyAuthInputs{})
+		ctx, store, authpkg.NewSISUProvider(), xuid, gamertag)
 	if err != nil {
 		return nil, err
 	}

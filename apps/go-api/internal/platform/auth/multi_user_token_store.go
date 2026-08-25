@@ -7,9 +7,12 @@
 //   - Permissions 0600 fichiers / 0700 répertoire.
 //   - Au boot : LoadAll() scanne le dossier et reconstruit le map RAM.
 //
-// LEGACY : le watcher daemon historique utilise TokenStore (mono-user, fichier
-// data/auth/watcher_tokens.json). MultiUserTokenStore est utilisé par le flow
-// SSO Xbox PR 2.5a uniquement. Migration du watcher : différée à PR 2.5b.
+// Depuis ADR 0023 Phase 5 (2026-08-25), c'est la SEULE source de credentials
+// auth du projet : aucun chemin de code ne lit plus sync_meta.oauth_refresh_token,
+// sync_meta.msal_token_cache, l'env var SPNKR_OAUTH_REFRESH_TOKEN_* ni le store
+// mono-user data/auth/watcher_tokens.json comme credential. Le TokenStore
+// mono-user (token_store.go) ne sert plus qu'à l'état propre du watcher RTA
+// (access_token + XSTS), jamais de refresh token d'un autre joueur.
 package auth
 
 import (
@@ -26,15 +29,15 @@ import (
 
 // UserTokens regroupe les tokens persistés pour un utilisateur Xbox SSO.
 //
-// Le `MSALCacheJSON` est le cache MSAL sérialisé : il contient le refresh_token
-// Microsoft (que le SDK n'expose pas directement) et permet à `AcquireTokenSilent`
-// de rafraîchir l'access_token plus tard.
-//
-// Le `OAuthRefreshToken` est le refresh_token OAuth v2 brut Microsoft (mode
-// "advanced" — via cmd/token-capture device flow ou cmd/token-import). Source
-// alternative au MSALCacheJSON pour les flows qui n'utilisent pas le SDK MSAL.
+// Le `OAuthRefreshToken` est le refresh_token OAuth v2 brut Microsoft (SSO web,
+// cmd/token-capture device flow, cmd/token-import). SEULE credential de refresh
+// depuis le retrait de MSAL (2026-07-15) et de ses caches (ADR 0023 Phase 5).
 // Rotaté par Microsoft à chaque usage (cf. ADR 0023) — toute mise à jour passe
 // par UpdateOAuthRefreshToken pour préserver l'atomicité.
+//
+// NB : les entrées prod écrites avant Phase 5 peuvent encore contenir une clé
+// JSON `msal_cache_json` — elle est simplement ignorée au décodage et disparaît
+// à la première réécriture du fichier (rotation, ~50 min).
 type UserTokens struct {
 	XUID              string    `json:"xuid"`
 	Gamertag          string    `json:"gamertag"`
@@ -44,7 +47,6 @@ type UserTokens struct {
 	AccessToken       string    `json:"access_token,omitempty"`
 	OAuthExpiresAt    time.Time `json:"oauth_expires_at,omitempty"`
 	OAuthRefreshToken string    `json:"oauth_refresh_token,omitempty"`
-	MSALCacheJSON     string    `json:"msal_cache_json,omitempty"`
 	// TokenClientFamily : famille du CLIENT OAuth qui a émis le token (provenance,
 	// AU4/F12). Détermine le préfixe RpsTicket de l'échange XBL user-token
 	// (TokenFamilyAzure → "d=", TokenFamilyXboxNative → "t="). Apprise et posée à
@@ -253,7 +255,7 @@ func (s *MultiUserTokenStore) Remove(xuid string) error {
 }
 
 // UpdateOAuthRefreshToken met à jour le champ OAuthRefreshToken pour un xuid en
-// préservant tous les autres champs (XSTS, MSAL cache, gamertag, CreatedAt).
+// préservant tous les autres champs (XSTS, gamertag, CreatedAt).
 // Appelée par le callback onRotated du Pool/Resolver à chaque rotation Microsoft.
 //
 // Crée l'entrée si elle n'existe pas (utile pour cmd/token-capture sur un
@@ -281,35 +283,6 @@ func (s *MultiUserTokenStore) UpdateOAuthRefreshToken(xuid, refreshToken string)
 		existing = &UserTokens{XUID: xuid}
 	}
 	existing.OAuthRefreshToken = refreshToken
-
-	return s.upsertLocked(existing)
-}
-
-// UpdateMSALCache met à jour le champ MSALCacheJSON pour un xuid en préservant
-// les autres champs. Symétrique de UpdateOAuthRefreshToken.
-//
-// Appelée après une session MSAL (silent refresh ou device flow) qui a rafraîchi
-// le cache. Le cache encapsule le refresh_token Microsoft que le SDK MSAL ne
-// nous expose pas directement.
-func (s *MultiUserTokenStore) UpdateMSALCache(xuid, cacheJSON string) error {
-	if !xuidIsSafe(xuid) {
-		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
-	}
-	if cacheJSON == "" {
-		return fmt.Errorf("multi_user_token_store: cacheJSON vide pour xuid=%q", xuid)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	existing, err := s.loadLocked(xuid)
-	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
-		return fmt.Errorf("multi_user_token_store: lecture pour update: %w", err)
-	}
-	if existing == nil {
-		existing = &UserTokens{XUID: xuid}
-	}
-	existing.MSALCacheJSON = cacheJSON
 
 	return s.upsertLocked(existing)
 }
@@ -518,17 +491,14 @@ func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
 		} else if tokens.CreatedAt.IsZero() {
 			tokens.CreatedAt = time.Now().UTC()
 		}
-		// Merge-preserve des credentials COÛTEUX à ré-obtenir : un Upsert PARTIEL
+		// Merge-preserve du credential COÛTEUX à ré-obtenir : un Upsert PARTIEL
 		// (mirror, link/AddPlayer… qui ne poussent que XSTS/access) ne doit JAMAIS
-		// effacer le refresh_token / MSAL cache déjà persistés. Aucun appelant ne les
-		// vide volontairement via Upsert (clear = Delete du fichier). Incident
+		// effacer le refresh_token déjà persisté. Aucun appelant ne le vide
+		// volontairement via Upsert (clear = Delete du fichier). Incident
 		// 2026-06-13/14 : RT e1cb35ab frais écrasé à vide par le mirror PUIS par le
 		// link → migration boot refill un RT mort (39829f7a) → AADSTS70000 en boucle.
 		if tokens.OAuthRefreshToken == "" && existing.OAuthRefreshToken != "" {
 			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
-		}
-		if tokens.MSALCacheJSON == "" && existing.MSALCacheJSON != "" {
-			tokens.MSALCacheJSON = existing.MSALCacheJSON
 		}
 	} else if tokens.CreatedAt.IsZero() {
 		tokens.CreatedAt = time.Now().UTC()

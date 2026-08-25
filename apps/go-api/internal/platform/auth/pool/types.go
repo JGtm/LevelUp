@@ -16,23 +16,23 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// CredentialSource décrit une source de credentials (MSAL cache ou refresh token).
-// Obtenue par scan env + DuckDB, sans aucune validation réseau.
+// CredentialSource décrit une source de credentials (refresh token OAuth v2).
+// Obtenue par scan du MultiUserTokenStore, sans aucune validation réseau.
 type CredentialSource struct {
 	Gamertag     string // "Bob", "Alice", etc.
 	TitleSlug    string // "halo_infinite" — titre propriétaire du token (Phase 1.6 : clé pool (titleSlug,gamertag))
 	XUID         string // "1234567890", numérique sans "xuid()"
 	PlayerDBPath string // data/titles/halo_infinite/players/Bob/stats.duckdb (pour logs/debuggage)
-	MSALCache    string // JSON sérialisé du cache MSAL (sync_meta.msal_token_cache), "" si absent
-	RefreshToken string // refresh token OAuth v2 (sync_meta.oauth_refresh_token ou env), "" si absent
-	Source       string // "duckdb_msal" | "duckdb_oauth" | "env_oauth" — pour logs
+	RefreshToken string // refresh token OAuth v2 (MultiUserTokenStore), "" si absent
+	Source       string // "watcher_oauth" (source unique ADR 0023) — pour logs
 }
 
 // Discovery scanne les sources de credentials disponibles.
-// Aucune validation réseau — juste le scan env + DuckDB pour découvrir quels joueurs ont un token.
+// Aucune validation réseau — juste le scan du MultiUserTokenStore pour découvrir
+// quels joueurs ont un refresh token.
 type Discovery interface {
 	// Scan retourne la liste des CredentialSource découvertes.
-	// Exclut automatiquement les joueurs sans MSAL cache ET sans refresh token.
+	// Exclut automatiquement les joueurs sans refresh token.
 	Scan(ctx context.Context) ([]CredentialSource, error)
 }
 
@@ -42,7 +42,7 @@ type ResolvedTokens struct {
 	XUID      string             // xuid numérique
 	Tokens    *domain.HaloTokens // Spartan + Clearance
 	ExpiresAt time.Time          // expiration estimée du Spartan token (best-effort ~4h)
-	Source    string             // "duckdb_msal" | "duckdb_oauth" | "env_oauth"
+	Source    string             // "watcher_oauth" (source unique ADR 0023)
 }
 
 // Resolver échange CredentialSource → ResolvedTokens frais.

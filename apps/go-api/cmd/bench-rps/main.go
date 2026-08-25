@@ -73,10 +73,12 @@ func main() {
 	xuid := flag.String("xuid", "", "XUID joueur (mode real uniquement). Sans 'xuid()'.")
 	gamertagsRaw := flag.String("gamertags", "",
 		"Mode real-multi : liste 'NAME:XUID,NAME:XUID' (ex: 'JGTM:2533274823110022,CHOCOBOFLOR:2535469190789936'). "+
-			"NAME sert à lire SPNKR_OAUTH_REFRESH_TOKEN_<NAME> depuis .env.local.")
+			"NAME est le gamertag (libellé), XUID la clé du MultiUserTokenStore.")
 	count := flag.Int("count", 25, "Nombre de matchs à fetcher (max 25).")
 	rpsListRaw := flag.String("rps", "1,3,5", "Liste RPS à bencher, séparés par virgule.")
 	latencyMs := flag.Int("latency-ms", 150, "Latence simulée par requête (mode sim uniquement).")
+	watcherTokensDir := flag.String("watcher-tokens-dir", "data/auth/watcher_tokens",
+		"Répertoire MultiUserTokenStore (mode real-multi).")
 	flag.Parse()
 
 	rpsList, err := parseRPSList(*rpsListRaw)
@@ -101,7 +103,7 @@ func main() {
 		if *gamertagsRaw == "" {
 			fatalf("flag -gamertags requis en mode real-multi (ex: 'JGTM:2533274823110022,CHOCOBOFLOR:2535469190789936')")
 		}
-		runRealMultiMode(ctx, *gamertagsRaw, *count, rpsList)
+		runRealMultiMode(ctx, *gamertagsRaw, *watcherTokensDir, *count, rpsList)
 	default:
 		fatalf("flag -mode invalide : %q (attendu : sim|real|real-multi)", *mode)
 	}
@@ -298,8 +300,8 @@ func newSimulatorServer(latency time.Duration, count int) *httptest.Server {
 
 // gamertagSpec parse un item "NAME:XUID" du flag -gamertags.
 type gamertagSpec struct {
-	Name string // upper-case suffix de SPNKR_OAUTH_REFRESH_TOKEN_*
-	XUID string
+	Name string // gamertag (libellé des rapports)
+	XUID string // clé du MultiUserTokenStore
 }
 
 func parseGamertagsFlag(raw string) ([]gamertagSpec, error) {
@@ -310,7 +312,7 @@ func parseGamertagsFlag(raw string) ([]gamertagSpec, error) {
 		if len(kv) != 2 || kv[0] == "" || kv[1] == "" {
 			return nil, fmt.Errorf("entrée invalide %q (attendu NAME:XUID)", p)
 		}
-		out = append(out, gamertagSpec{Name: strings.ToUpper(kv[0]), XUID: kv[1]})
+		out = append(out, gamertagSpec{Name: kv[0], XUID: kv[1]})
 	}
 	if len(out) < 2 {
 		return nil, fmt.Errorf("mode real-multi nécessite ≥ 2 gamertags (reçu %d)", len(out))
@@ -348,25 +350,24 @@ func loadEnvLocal() {
 	}
 }
 
-// exchangeTokens convertit un refresh_token OAuth en (Spartan, Clearance) tokens
-// frais via le pipeline MSAL + Halo Waypoint exchange. Réplique cmd/get-token.
-func exchangeTokens(ctx context.Context, refreshToken string) (spartan, clearance string, err error) {
-	provider := auth.NewSISUProvider()
-	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
+// exchangeTokens obtient des (Spartan, Clearance) frais pour un xuid depuis le
+// MultiUserTokenStore (source unique ADR 0023).
+func exchangeTokens(ctx context.Context, store *auth.MultiUserTokenStore, xuid, gamertag string) (spartan, clearance string, err error) {
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), xuid, gamertag)
 	if err != nil {
-		return "", "", fmt.Errorf("TryOAuthRefresh: %w", err)
+		return "", "", fmt.Errorf("refresh store: %w", err)
 	}
-	result, err := auth.ExchangeAccessToken(ctx, tok)
-	if err != nil {
-		return "", "", fmt.Errorf("ExchangeAccessToken: %w", err)
+	tokens := auth.HaloTokensFromExchange(result)
+	if tokens == nil {
+		return "", "", fmt.Errorf("aucun token pour xuid(%s) dans le store watcher_tokens", xuid)
 	}
-	return result.Tokens.SpartanToken, result.Tokens.ClearanceToken, nil
+	return tokens.SpartanToken, tokens.ClearanceToken, nil
 }
 
 // runRealMultiMode : pour chaque RPS configuré, lance N cycles concurrents
 // (1 par gamertag), chacun avec son propre HaloAPIClient à RPS dédié. Mesure
 // le wall-clock global + 429 par token. Reproduit l'option 2 (5 RPS par-token).
-func runRealMultiMode(ctx context.Context, gamertagsRaw string, count int, rpsList []int) {
+func runRealMultiMode(ctx context.Context, gamertagsRaw, watcherTokensDir string, count int, rpsList []int) {
 	loadEnvLocal()
 	specs, err := parseGamertagsFlag(gamertagsRaw)
 	if err != nil {
@@ -387,13 +388,10 @@ func runRealMultiMode(ctx context.Context, gamertagsRaw string, count int, rpsLi
 		spartan   string
 		clearance string
 	}
+	tokenStore := auth.NewMultiUserTokenStore(watcherTokensDir)
 	tokensets := make([]tokenSet, len(specs))
 	for i, spec := range specs {
-		rt := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + spec.Name)
-		if rt == "" {
-			fatalf("SPNKR_OAUTH_REFRESH_TOKEN_%s absent de .env.local", spec.Name)
-		}
-		spartan, clearance, err := exchangeTokens(ctx, rt)
+		spartan, clearance, err := exchangeTokens(ctx, tokenStore, spec.XUID, spec.Name)
 		if err != nil {
 			fatalf("exchange tokens pour %s : %v", spec.Name, err)
 		}

@@ -17512,6 +17512,8 @@ components:
     PlayerTokenHealth:
       additionalProperties: false
       properties:
+        access:
+          type: string
         credential_source:
           type: string
         gamertag:
@@ -17523,8 +17525,6 @@ components:
         last_auth_error_class:
           type: string
         load_error:
-          type: string
-        msal:
           type: string
         oauth_expires_at:
           type: string
@@ -17545,7 +17545,7 @@ components:
         - gamertag
         - xuid
         - refresh
-        - msal
+        - access
         - xsts
       type: object
     PlayerWeaponKillRow:
@@ -22868,8 +22868,6 @@ components:
           type: boolean
         gamertag:
           type: string
-        has_msal_cache:
-          type: boolean
         has_refresh_token:
           type: boolean
         refresh_token_len:
@@ -22891,7 +22889,6 @@ components:
       required:
         - gamertag
         - discovered_in_pool
-        - has_msal_cache
         - has_refresh_token
         - resolve_ok
         - refresh_token_was_rotated

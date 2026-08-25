@@ -293,14 +293,14 @@ func TestDeviceFlowStatusResponse_Failed(t *testing.T) {
 	a := &auth_platform.Attempt{
 		AttemptID:   "att-3",
 		Status:      "failed",
-		ErrorCode:   "msal_acquire_error",
+		ErrorCode:   "device_flow_acquire_error",
 		ErrorDetail: "timeout",
 	}
 	resp := deviceFlowStatusResponse(a)
 	if resp.Status != "failed" {
 		t.Errorf("Status = %q", resp.Status)
 	}
-	if resp.ErrorCode == nil || *resp.ErrorCode != "msal_acquire_error" {
+	if resp.ErrorCode == nil || *resp.ErrorCode != "device_flow_acquire_error" {
 		t.Errorf("ErrorCode = %v", resp.ErrorCode)
 	}
 	if resp.ErrorDetail == nil || *resp.ErrorDetail != "timeout" {

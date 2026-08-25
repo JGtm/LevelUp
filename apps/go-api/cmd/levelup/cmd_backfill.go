@@ -30,7 +30,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
-	"levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -644,7 +643,7 @@ func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) e
 			continue
 		}
 
-		tokens, tokErr := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+		tokens, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
 		if tokErr != nil {
 			skipped++
 			fmt.Printf("backfill csr SKIP: gamertag=%s reason=%v\n", player.Gamertag, tokErr)
@@ -672,7 +671,7 @@ func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) e
 }
 
 func runBackfillCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force bool) error {
-	tokens, err := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+	tokens, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
 	if err != nil {
 		return fmt.Errorf("backfill csr: tokens Halo indisponibles pour %s: %w", player.Gamertag, err)
 	}
@@ -719,7 +718,7 @@ func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, 
 
 		var tokens *domain.HaloTokens
 		if !dryRun {
-			t, tokErr := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+			t, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
 			if tokErr != nil {
 				skipped++
 				fmt.Printf("backfill shared-csr SKIP: gamertag=%s reason=%v (try --dry-run)\n", player.Gamertag, tokErr)
@@ -758,7 +757,7 @@ func runBackfillSharedCSRForPlayer(ctx context.Context, cfg *config.AppConfig, p
 
 	var tokens *domain.HaloTokens
 	if !dryRun {
-		t, err := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+		t, err := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
 		if err != nil {
 			return fmt.Errorf("backfill shared-csr: tokens Halo indisponibles pour %s: %w (utiliser --dry-run pour compter sans appel API)", player.Gamertag, err)
 		}
@@ -774,27 +773,6 @@ func runBackfillSharedCSRForPlayer(ctx context.Context, cfg *config.AppConfig, p
 		player.Gamertag, res.RankedMatches, res.AlreadyComplete, res.NeedBackfill,
 		res.Fetched, res.Inserted, res.SkippedNoRankRecap, res.SkillErrors+res.UpsertErrors, force, res.DryRun)
 	return nil
-}
-
-// refreshHaloTokensForPlayer charge le refresh token OAuth du joueur et le
-// rafraîchit via MSAL pour obtenir des tokens Halo (Spartan + Clearance)
-// utilisables par les backfills qui appellent l'API. Retourne une erreur
-// descriptive si le refresh_token est absent ou si l'échange MSAL/Halo échoue.
-func refreshHaloTokensForPlayer(ctx context.Context, gamertag string) (*domain.HaloTokens, error) {
-	refreshToken := oauthRefreshTokenForPlayer(gamertag)
-	if refreshToken == "" {
-		return nil, fmt.Errorf("no_refresh_token (%s)", oauthRefreshEnvKey(gamertag))
-	}
-	provider := auth.NewSISUProvider()
-	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
-	if err != nil || accessToken == "" {
-		return nil, fmt.Errorf("oauth_refresh_failed: %w", err)
-	}
-	result, err := provider.Exchange(ctx, accessToken)
-	if err != nil {
-		return nil, fmt.Errorf("halo_exchange_failed: %w", err)
-	}
-	return result.Tokens, nil
 }
 
 // ── Performance score backfill ─────────────────────────────────────────────────
@@ -928,30 +906,13 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig, force boo
 			continue
 		}
 
-		// Load Halo API tokens via OAuth refresh token (same pattern as cmd_sync.go)
-		refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
-		if refreshToken == "" {
-			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_refresh_token (%s)\n",
-				player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
+		// Tokens Halo depuis le MultiUserTokenStore (source unique ADR 0023).
+		tokens, tokErr := haloTokensForPlayer(ctx, cfg.RepoRoot, player.Gamertag)
+		if tokErr != nil {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_halo_tokens err=%v\n", player.Gamertag, tokErr)
 			skipped++
 			continue
 		}
-
-		provider := auth.NewSISUProvider()
-		accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
-		if err != nil || accessToken == "" {
-			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=oauth_refresh_failed err=%v\n", player.Gamertag, err)
-			skipped++
-			continue
-		}
-
-		result, err := provider.Exchange(ctx, accessToken)
-		if err != nil {
-			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=exchange_failed err=%v\n", player.Gamertag, err)
-			skipped++
-			continue
-		}
-		tokens := result.Tokens
 
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
 

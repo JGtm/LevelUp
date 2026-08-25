@@ -194,10 +194,10 @@ func (r *resolverImpl) resolveExpensive(ctx context.Context, src CredentialSourc
 			r.recordPermanentFailure(ctx, src, err) // mémorise config+revoked, skip transient
 			return nil, err
 		}
-		// accessToken == "" sans erreur → aucune credential exploitable (pas de MSAL
-		// cache utilisable ni de refresh_token) → ré-authentification requise.
+		// accessToken == "" sans erreur → aucune credential exploitable (pas de
+		// refresh_token) → ré-authentification requise.
 		r.signalReauth(ctx, src, true)
-		nerr := fmt.Errorf("pool/resolver: aucun accessToken obtenu pour %s (pas de MSAL cache et pas de refresh_token)", src.Gamertag)
+		nerr := fmt.Errorf("pool/resolver: aucun accessToken obtenu pour %s (pas de refresh_token)", src.Gamertag)
 		slog.ErrorContext(ctx, "pool/resolver: impossible d'obtenir accessToken",
 			"gamertag", src.Gamertag, "err", nerr)
 		return nil, nerr
@@ -291,7 +291,7 @@ func (r *resolverImpl) signalReauth(ctx context.Context, src CredentialSource, r
 	if r.onReauth == nil {
 		return
 	}
-	if required && src.MSALCache == "" && src.RefreshToken == "" {
+	if required && src.RefreshToken == "" {
 		return
 	}
 	if required {
@@ -316,29 +316,10 @@ func (r *resolverImpl) lookupCachedToken(ctx context.Context, gamertag string) (
 	return nil, false
 }
 
-// acquireAccessToken applique le pipeline TrySilentRefresh → TryOAuthRefresh.
-// Mute src.RefreshToken si Microsoft rotate le RT (propagation via onRotated).
+// acquireAccessToken exécute le refresh OAuth v2 du RT de la source (ADR 0023
+// Phase 5 : plus de cache MSAL, plus de TrySilentRefresh). Mute src.RefreshToken
+// si Microsoft rotate le RT (propagation via onRotated).
 func (r *resolverImpl) acquireAccessToken(ctx context.Context, src *CredentialSource) (string, error) {
-	// Étape 1 : TrySilentRefresh (si MSAL cache présent).
-	if src.MSALCache != "" {
-		token, err := r.provider.TrySilentRefresh(ctx, src.MSALCache)
-		if err != nil {
-			slog.WarnContext(ctx, "pool/resolver: TrySilentRefresh erreur, fallback OAuth",
-				"gamertag", src.Gamertag, "err", err)
-		} else if token != "" {
-			slog.DebugContext(ctx, "pool/resolver: TrySilentRefresh OK",
-				"gamertag", src.Gamertag)
-			return token, nil
-		} else {
-			slog.InfoContext(ctx, "pool/resolver: TrySilentRefresh impossible (cache expiré?), fallback OAuth",
-				"gamertag", src.Gamertag)
-		}
-	} else {
-		slog.DebugContext(ctx, "pool/resolver: pas de MSAL cache, tentative OAuth directe",
-			"gamertag", src.Gamertag)
-	}
-
-	// Étape 2 : TryOAuthRefreshWithRotation (si refresh_token présent).
 	if src.RefreshToken == "" {
 		return "", nil
 	}

@@ -1,3 +1,105 @@
+## [2026-08-25] LOT D2 — ADR 0023 Phase 5 : retrait des fallbacks auth legacy
+
+**Statut** : Complété (D2b + D2c). Branche `refactor/adr0023-phase5` depuis
+`origin/main` (`781daf0c6`), worktree dédié `LevelUp-wt-adr0023-phase5`. NON mergée —
+le merge (= déploiement prod) reste au superviseur. D2a (lecture de la télémétrie
+prod) avait été fait par le superviseur : `legacy_source_used` à 0 depuis le 11/08
+(14 j, seuil ≥ 7 j), store prod sain pour les 4 joueurs suivis + 5 comptes auth-only.
+
+**Décision technique principale** : `MultiUserTokenStore` devient la source
+EXCLUSIVE des credentials auth. Toutes les branches de repli disparaissent — pas
+« désactivées », supprimées avec leurs helpers, leurs tests et leurs imports :
+
+- `sync_meta.oauth_refresh_token` / `msal_token_cache` : `tryRefreshFromLegacy`
+  (registry_auth), `adoptLegacySyncMeta` (pool/discovery), `readLegacyAuthInputs`
+  (sync), `loadLegacyInputs` (worldenrich), + la lecture des CLI.
+- env var `SPNKR_OAUTH_REFRESH_TOKEN_*` : tous les lecteurs runtime (13 CLI +
+  scripts + serveur). Un seul `os.Getenv` subsiste, dans la migration boot.
+- store mono-user `watcher_tokens.json` comme SOURCE : `pool.legacyStore`,
+  le fallback de `watcher_refresh`, la lecture du `RefreshLoop`. Le fichier reste
+  l'état propre du watcher RTA (access_token + XSTS) ; son champ `refresh_token`
+  est retiré de `StoredTokens` (plus écrit → plus jamais lu).
+- double-write DuckDB de la rotation (onRotated serveur, probe admin,
+  registry_auth) et les helpers orphelins `WriteOAuthRefreshToken`,
+  `ReadMSALCacheJSON*`, `ReadOAuthRefreshTokenFromSQL`.
+- `LegacyAuthInputs`, `RefreshTokenFromEnv`, `TokenProvider.TrySilentRefresh`
+  (no-op SISU depuis le 15/07) et les champs `MSALCacheJSON` (`UserTokens`,
+  `Attempt`, `CredentialSource.MSALCache`) — les 3 items différés « jusqu'au lot D2 »
+  par l'entrée [2026-07-15] SISU.
+- `observability/legacy_source.go` + son test : plus aucun émetteur, fichier supprimé.
+  La Phase 6 de l'ADR (cleanup) est donc absorbée ici, sauf la migration boot.
+
+**Exception unique, sous kill-switch daté** (CLAUDE.md règle 11) :
+`auth.MigrateLegacyTokens` + `migrateLegacyAuthTokensAtBoot` lisent encore env +
+`sync_meta` au boot pour recopier un RT résiduel vers le store. Bascule du défaut
+2026-08-25, **cible de retrait 2026-10-01**, critère mesurable « 0 token migré au
+boot sur 30 j de logs prod » (`auth_migration: scan terminé` avec `rt_migrated=0`,
+aucun `auth_migration: RT migré vers store`). Documenté au même endroit dans
+migration.go, main.go, l'ADR, CLAUDE.md et la checklist de déploiement.
+
+**Ce que la vérification sur pièces a changé par rapport au plan de juillet** : le
+plan listait « supprimer la whitelist sentinel_test.go:150 ». En rouvrant le
+fichier, l'allowlist ne se supprimait pas — elle se RÉDUISAIT, et le guard était
+trop large pour être utile : il matchait toute MENTION de la chaîne
+`SPNKR_OAUTH_REFRESH_TOKEN` (commentaires et `t.Setenv` compris), ce qui obligeait
+à allowlister ~30 fichiers dont la plupart ne lisaient rien. Guard 1 détecte
+désormais une vraie LECTURE (`Getenv`/`LookupEnv` sur le préfixe) → allowlist à
+**1 entrée** (la migration boot). Le motif est assemblé à l'exécution
+(`"SPNKR_OAUTH_REFRESH" + "_TOKEN"`) pour que le sentinel ne s'auto-allowliste pas :
+ma première version matchait son propre commentaire d'en-tête, trou qu'un guard
+ne doit jamais avoir. Guard 2 (`duckdb.WriteOAuthRefreshToken`, fonction
+supprimée) est remplacé par un guard sur `ReadOAuthRefreshToken`, le dernier
+lecteur legacy. `sync/no_legacy_source_used_test.go` passe de « pas de télémétrie
+legacy » à « aucun littéral de credential legacy » dans le package sync.
+
+**Décisions prises en autonomie** (conventions du repo, non déléguées) :
+- `PlayerTokenHealth.msal` → `access`, clé i18n `token_msal` → `token_access`
+  (FR « Accès » / EN « Access »). Le champ mesurait DÉJÀ l'expiration de
+  l'access_token Microsoft (`OAuthExpiresAt`), jamais un cache MSAL : le garder
+  nommé « MSAL » après le retrait de MSAL était une doc inversée (anti-pattern 9).
+  Renommer préserve un signal vivant ; supprimer aurait perdu de l'information.
+- codes wire `msal_init_error` / `msal_acquire_error` → `device_flow_init_error` /
+  `device_flow_acquire_error` (leurs émetteurs existent toujours, seul le nom
+  mentait). Fixtures front alignées.
+- `TokenProbeResult.has_msal_cache` supprimé (jamais consommé par l'UI).
+- `credentialSourceParts` (front) : les branches `duckdb_*`/`env_oauth`/
+  `watcher_legacy` retirées, un label non-`watcher_*` passe désormais TEL QUEL et
+  reste flaggé « legacy » → garde-rail visuel si une source legacy réapparaissait.
+- fixtures `config_helpers_test.go` : les 3 variables de test renommées en
+  `LEVELUP_TEST_ENVLOCAL_*` (elles testent `loadEnvLocal`, pas l'auth) — supprime
+  un faux positif permanent du sentinel.
+
+**Résultats observés (gates, exit codes réels)** : `gofmt -l ./internal ./cmd
+./scripts` → vide ; `go build ./...` EXIT_BUILD=0 ; `go vet ./...` EXIT_VET=0 ;
+`go test ./...` EXIT_TEST=0 ; `go test -tags=integration -p 1 -timeout 1800s`
+(sync, persist, platform/auth, platform/duckdb, worldenrich, scheduler)
+EXIT_INTEG=0, 19 packages `ok` ; `golangci-lint run
+--new-from-merge-base=origin/main` EXIT_LINT=0, « 0 issues ». Contrat régénéré
+(`openapi-gen` + `generate-types`) : `TestOpenAPIYAMLIsUpToDate` vert. Front :
+`npm run typecheck` EXIT=0 ; `npm run test:run` EXIT=0 — 400 fichiers, 3530 tests
+passés. Greps de clôture : plus aucun `os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN…")`
+hors `migration.go` ; plus aucune lecture `oauth_refresh_token`/`msal_token_cache`
+hors migration boot ; `TrySilentRefresh` et `MSALCacheJSON` à 0 dans le code vivant.
+
+**Découvertes consignées, NON traitées (hors périmètre)** :
+- `apps/web/src/lib/api/types.ts` : `SetupAuthInfo` / `SetupStatusResponse` sont
+  marqués `@deprecated` « artefact mort » depuis le sprint 29 et portent encore
+  `has_msal_cache`. Le type ENTIER est mort (aucun émetteur back, aucun
+  consommateur front) — sa suppression est un lot à part (il figure dans
+  l'allowlist de `response-types.guard.test.ts`).
+- `cmd/backfill-csr-history/main.go:46` : le flag `-env-file` dit
+  « SPNKR_AZURE_CLIENT_ID requis par MSALProvider » — MSALProvider n'existe plus
+  depuis le 15/07 (mention résiduelle, pas un chemin de code).
+- `.ai/V7.5/REGISTRE_REPORTS.md` n'existe pas sur `origin/main` (il vit sur
+  `feat/v75`) : l'échéance 2026-10-01 de la migration boot n'a pas pu y être
+  inscrite depuis cette branche — à reporter par le superviseur.
+
+**Conclusion / prochaine étape** : ADR 0023 Phase 5 livrée, Phase 6 absorbée. Il
+reste UN chemin legacy, daté et instrumenté. Après merge : surveiller
+`auth_migration: scan terminé` dans `sync.log` — 30 j à `rt_migrated=0` arment la
+suppression de `migration.go`, de son wiring boot et de `queries_auth.go`
+(2026-10-01). Aucun token n'a été re-capturé, aucun fichier de `data/` touché.
+
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
 **Statut** : Complété (même worktree `deps-security`). Le push de `dependabot.yml` a

@@ -94,7 +94,7 @@ func main() {
 	store := auth.NewMultiUserTokenStore(storeDir)
 	provider := auth.NewSISUProvider()
 
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, ownerXUID, ownerGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, ownerXUID, ownerGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatalf("refresh tokens %s: err=%v res=%v", ownerGT, err, res)
 	}

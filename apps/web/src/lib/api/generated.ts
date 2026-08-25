@@ -8206,13 +8206,13 @@ export interface components {
             xuid: string;
         };
         PlayerTokenHealth: {
+            access: string;
             credential_source?: string;
             gamertag: string;
             last_auth_error?: string;
             last_auth_error_at?: string;
             last_auth_error_class?: string;
             load_error?: string;
-            msal: string;
             oauth_expires_at?: string;
             player_slug: string;
             refresh: string;
@@ -10284,7 +10284,6 @@ export interface components {
         TokenProbeResult: {
             discovered_in_pool: boolean;
             gamertag: string;
-            has_msal_cache: boolean;
             has_refresh_token: boolean;
             /** Format: int64 */
             refresh_token_len?: number;

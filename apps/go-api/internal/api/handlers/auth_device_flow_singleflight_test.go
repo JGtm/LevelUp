@@ -51,9 +51,6 @@ func (g *gatedTokenProvider) InitDeviceFlow(ctx context.Context) (auth_platform.
 	return auth_platform.NewStubDeviceFlow("GATE1234", "https://microsoft.com/link", "Entrez GATE1234", 900, "sisu"), nil
 }
 
-func (g *gatedTokenProvider) TrySilentRefresh(context.Context, string) (string, error) {
-	return "", nil
-}
 func (g *gatedTokenProvider) TryOAuthRefresh(context.Context, string) (string, error) {
 	return "", nil
 }
@@ -203,9 +200,6 @@ func (g *failAfterGateProvider) InitDeviceFlow(ctx context.Context) (auth_platfo
 	return nil, context.DeadlineExceeded
 }
 
-func (g *failAfterGateProvider) TrySilentRefresh(context.Context, string) (string, error) {
-	return "", nil
-}
 func (g *failAfterGateProvider) TryOAuthRefresh(context.Context, string) (string, error) {
 	return "", nil
 }

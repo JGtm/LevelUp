@@ -50,7 +50,7 @@ const SETTINGS_BASE = {
   outcome_badge_sensitivity: 'standard',
   can_self_provision: true,
   can_start_initial_sync: true,
-  auth_provider: 'msal',
+  auth_provider: 'sisu',
 }
 
 function renderWithClient(

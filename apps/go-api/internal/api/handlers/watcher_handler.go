@@ -192,10 +192,10 @@ func (h *WatcherHandler) handleStartAuth(ctx context.Context, _ *struct{}) (*wat
 	if err != nil {
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "msal_init_error"
+			a.ErrorCode = "device_flow_init_error"
 			a.ErrorDetail = err.Error()
 		})
-		return nil, humacore.NewError(http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
+		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
 
 	h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
@@ -289,7 +289,7 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = errCodeMSALAcquire
+			a.ErrorCode = errCodeDeviceFlowAcquire
 			a.ErrorDetail = err.Error()
 		})
 		slog.Warn("watcher_handler: Device Code Flow échoué", "attempt_id", attemptID, "err", err)

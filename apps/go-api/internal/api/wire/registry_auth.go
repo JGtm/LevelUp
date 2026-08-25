@@ -1,7 +1,7 @@
 // Package api — registry_auth.go : factories services Halo auth-bound
 // (HomeCtxWithAuth, SeasonPassCtxWithAuth) + helpers token refresh
 // (buildHaloProvider, enrichWithHaloTokens, refreshTokensFromDB,
-// oauthRefreshTokenForPlayer, AnyPlayerTokens, RefreshTokensForXUID).
+// AnyPlayerTokens, RefreshTokensForXUID).
 // Découpé de registry.go (god-file split, refactor 2026-05-27).
 package wire
 
@@ -9,13 +9,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -25,7 +22,7 @@ import (
 
 // HomeCtxWithAuth retourne un HomeService + contexte enrichi avec les HaloTokens du joueur.
 // Si la session HTTP porte déjà des tokens, ils sont réutilisés.
-// Sinon, tente un refresh silencieux depuis le cache MSAL stocké dans sync_meta.
+// Sinon, tente un refresh depuis le refresh token du MultiUserTokenStore (ADR 0023).
 // Un PersistSink est configuré pour la persistance fire-and-forget des données BP/challenges.
 // Le HomeService créé est enregistré comme SessionNotifier pour ce joueur (TTL dynamique).
 func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (port.HomeService, context.Context, string, string, error) {
@@ -221,7 +218,7 @@ func (r *ServiceRegistry) WireGlobalTokenRefresher() {
 }
 
 // mintFreshTokensForXUID MINTE des tokens Halo frais pour un joueur (résolution pool +
-// refresh MSAL/OAuth), SANS lire ni écrire le cache process — c'est le hook branché sur
+// refresh OAuth), SANS lire ni écrire le cache process — c'est le hook branché sur
 // halo.SetPlayerTokenRefresher (ResolveFreshPlayerTokens gère cache + singleflight).
 func (r *ServiceRegistry) mintFreshTokensForXUID(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
 	var pdb *duckdb.PlayerDB
@@ -242,46 +239,35 @@ func (r *ServiceRegistry) mintFreshTokensForXUID(ctx context.Context, xuid strin
 	return result.Tokens, nil
 }
 
-// refreshTokensFromDB obtient des tokens Halo en exécutant un refresh OAuth/MSAL.
-// Source des credentials, par ordre de priorité :
-//  1. MultiUserTokenStore (ADR 0023 — source unique post-migration) :
-//     a. MSALCacheJSON → TrySilentRefresh
-//     b. OAuthRefreshToken → TryOAuthRefreshWithRotation (+ écriture rotation au store)
-//  2. Fallback legacy (DEPRECATED — log warn à chaque hit, à supprimer Phase 5) :
-//     a. sync_meta.msal_token_cache → TrySilentRefresh
-//     b. sync_meta.oauth_refresh_token → TryOAuthRefreshWithRotation
-//     c. env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> → TryOAuthRefreshWithRotation
+// refreshTokensFromDB obtient des tokens Halo en exécutant un refresh OAuth v2
+// depuis le MultiUserTokenStore (ADR 0023 — source unique) :
+// OAuthRefreshToken → TryOAuthRefreshWithRotation (+ écriture rotation au store).
 //
-// La Phase 2 migration (boot-time) garantit que le store contient les valeurs des
-// sources legacy si elles existaient. Le chemin legacy ne devrait être atteint
-// que sur des installs non encore migrées ou en cas de corruption du store.
+// ADR 0023 Phase 5 (2026-08-25) : le fallback legacy (sync_meta.msal_token_cache /
+// sync_meta.oauth_refresh_token / env var SPNKR_OAUTH_REFRESH_TOKEN_*) est
+// supprimé. Un joueur absent du store n'a plus de token — il doit se reconnecter
+// (SSO Xbox) ou passer par cmd/token-capture.
 func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
-	// --- Source 1 : MultiUserTokenStore (canonique) ---
 	if r.authStore != nil && xuid != "" {
-		if result := r.tryRefreshFromAuthStore(ctx, pdb, xuid); result != nil {
+		if result := r.tryRefreshFromAuthStore(ctx, xuid); result != nil {
 			return result
 		}
-	}
-
-	// --- Source 2 : sync_meta DuckDB + env var (DEPRECATED) ---
-	if result := r.tryRefreshFromLegacy(ctx, pdb, xuid); result != nil {
-		return result
 	}
 
 	slog.WarnContext(ctx, "halo_auth: aucun token disponible pour le joueur", "xuid", xuid, "gamertag", pdb.Gamertag)
 	return nil
 }
 
-// tryRefreshFromAuthStore tente un refresh via le MultiUserTokenStore.
-// MSAL cache prioritaire (silent refresh), puis OAuth RT avec persistance rotation.
+// tryRefreshFromAuthStore tente un refresh via le MultiUserTokenStore
+// (OAuth RT avec persistance de la rotation).
 // Au succès, efface l'éventuel flag reauth_required (auto-guérison de la bannière
 // de reconnexion : un refresh par-joueur réussi prouve que le RT est vivant).
-func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
+func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, xuid string) *auth.ExchangeResult {
 	user, err := r.authStore.Load(xuid)
 	if err != nil || user == nil {
 		return nil
 	}
-	// Cascade store MSAL→OAuth (rotation persistée) déléguée à la source unique
+	// Cascade store (rotation persistée) déléguée à la source unique
 	// auth.RefreshFromStoreEntry (K1b dédup). L'erreur classifiée est LOGUÉE (jamais
 	// avalée) mais N'entraîne PAS de marquage reauth_required : le chemin serveur
 	// haute-fréquence conserve sa politique historique (clear-on-success uniquement ;
@@ -300,90 +286,6 @@ func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, pdb *duck
 		}
 	}
 	return result
-}
-
-// tryRefreshFromLegacy tente un refresh via sync_meta DuckDB + env var.
-// DEPRECATED : sera supprimé Phase 5. Logue chaque hit pour identifier les
-// installs pas encore migrées vers le store.
-func (r *ServiceRegistry) tryRefreshFromLegacy(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
-	cacheJSON, err := duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	if err == nil && cacheJSON != "" {
-		slog.WarnContext(ctx, "halo_auth: legacy source MSAL utilisée (sync_meta DuckDB) — à migrer",
-			"xuid", xuid, "gamertag", pdb.Gamertag, "deprecated_since", "ADR-0023")
-		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
-		if accessToken, err := r.provider.TrySilentRefresh(ctx, cacheJSON); err == nil && accessToken != "" {
-			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
-				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache (legacy)", "xuid", xuid)
-				return result
-			}
-		}
-	}
-
-	refreshToken, _ := duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
-	source := "legacy_duckdb"
-	if refreshToken == "" {
-		refreshToken = oauthRefreshTokenForPlayer(pdb.Gamertag)
-		source = "legacy_env_var"
-	}
-	if refreshToken == "" {
-		return nil
-	}
-
-	slog.WarnContext(ctx, "halo_auth: legacy source RT utilisée — à migrer",
-		"xuid", xuid, "gamertag", pdb.Gamertag, "source", source, "deprecated_since", "ADR-0023")
-	if source == "legacy_env_var" {
-		observability.RecordLegacySourceUsed(observability.LegacySourceEnvOAuth)
-	} else {
-		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
-	}
-
-	accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
-	if err != nil || accessToken == "" {
-		if err != nil {
-			slog.WarnContext(ctx, "halo_auth: OAuth refresh échoué (legacy)", "xuid", xuid, "err", err)
-		}
-		return nil
-	}
-
-	// Persistance rotation : store si disponible, sinon DuckDB (legacy).
-	if rotatedRT != "" && rotatedRT != refreshToken {
-		if r.authStore != nil && xuid != "" {
-			if werr := r.authStore.UpdateOAuthRefreshToken(xuid, rotatedRT); werr != nil {
-				slog.WarnContext(ctx, "halo_auth: persistance RT rotaté store échouée (legacy refresh)", "xuid", xuid, "err", werr)
-			}
-		} else if werr := duckdb.WriteOAuthRefreshToken(ctx, pdb.Player, rotatedRT); werr != nil {
-			slog.WarnContext(ctx, "halo_auth: persistance RT rotaté DuckDB échouée", "xuid", xuid, "err", werr)
-		}
-	}
-
-	result, err := r.provider.Exchange(ctx, accessToken)
-	if err != nil || result == nil {
-		if err != nil {
-			slog.WarnContext(ctx, "halo_auth: Exchange échoué (legacy)", "xuid", xuid, "err", err)
-		}
-		return nil
-	}
-	slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth refresh (legacy)", "xuid", xuid, "source", source)
-	return result
-}
-
-// oauthRefreshTokenForPlayer retourne le refresh_token OAuth v2 depuis l'environnement
-// pour un gamertag donné.
-// Convention : SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_MAJUSCULES_SANS_ESPACES>
-// Exemple : gamertag "JGtm" → SPNKR_OAUTH_REFRESH_TOKEN_JGTM
-func oauthRefreshTokenForPlayer(gamertag string) string {
-	if gamertag == "" {
-		return ""
-	}
-	// Normalisation : majuscules, espaces/tirets/points → underscore.
-	key := strings.ToUpper(gamertag)
-	key = strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '.' {
-			return '_'
-		}
-		return r
-	}, key)
-	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
 }
 
 // AnyPlayerTokens retourne les tokens Halo du premier joueur disponible dans le pool.
