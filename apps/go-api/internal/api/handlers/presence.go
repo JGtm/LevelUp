@@ -1,7 +1,9 @@
 // Package handlers — presence.go : GET /api/v1/presence.
 //
 // Qui est en jeu en ce moment (joueurs suivis accessibles à l'utilisateur) et
-// combien d'amis le sont. Sert la manette du sélecteur de joueur et son badge
+// combien d'amis le sont — « amis » au sens produit du 2026-08-25 : les joueurs
+// inscrits que l'utilisateur voit dans son cercle sans les posséder (cf.
+// domain.PresenceSnapshot). Sert la manette du sélecteur de joueur et son badge
 // « N amis en jeu » dans la navigation.
 //
 // Monté sous RequireAuth + NoStore — PAS RequireAdmin : c'est une information
