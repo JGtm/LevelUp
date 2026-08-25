@@ -51,6 +51,11 @@ Responses to expect from those routes:
 | Token configured, none or wrong one presented | `401 invalid_worker_token` |
 | Valid token, empty queue | `200` with an empty body (a resting worker is nominal) |
 
+That token is the **only** authentication on these routes: they accept no cookie and read no
+session. That is also why they are exempt from the server-wide CSRF origin check — see
+section 3, "The CSRF blocker". A `403 csrf_rejected` here is a deployment symptom, not an
+authentication one.
+
 **Where the work comes from.** `replaybuild.DecidePlacement` (`internal/replaybuild/placement.go`)
 is the single decision point. In production the default is `worker`: the web VPS never
 decodes a film itself (`ErrLocalBuildInProduction`, `placement.go:43-44`). If the worker
@@ -101,6 +106,29 @@ protocol goes through.
 `levelup.conf`) and certbot rewrites parts of them. The repository copy does not establish
 what is actually running.
 
+**The CSRF blocker, measured on 2026-08-25.** A supervisor dry run of `replay-worker --once`
+from csstat against production returned, for every worker route:
+
+```
+HTTP 403 {"code":"csrf_rejected","message":"origin non autorisée"}
+```
+
+nginx was not at fault, and neither was the token. The Go server mounts a CSRF
+origin check across the **whole** root router (`applyTransverseMiddlewares` in
+`internal/api/server.go`), and it rejects any mutating request that carries no allowed
+`Origin`/`Referer` — which is exactly what a `net/http` client such as the worker sends. The
+protocol was dead on arrival, *before* any token check. The existing end-to-end proof could
+not see it: it mounted the worker routes on a bare `chi.NewRouter()`, outside the transverse
+stack.
+
+Fixed by a **targeted CSRF exemption** for the `/api/v1/internal` prefix only
+(`internal/api/middleware/csrf.go`, `CSRF(origins, exemptPrefixes...)`). These routes accept
+no cookie and read no session — their only authentication is the dedicated Bearer token — so
+the origin check protects nothing there. The rest of the transverse stack (security headers,
+request id, rate limit, slog, compression) still applies, and CSRF is unchanged everywhere
+else. Regression cover: `internal/api/csrf_transverse_stack_cgo_test.go` exercises the real
+assembled router, not a bare mount.
+
 **Verify on production before activating.** From any machine, no token:
 
 ```bash
@@ -108,12 +136,17 @@ curl -sS -i -X POST -H 'Content-Type: application/json' -d '{}' \
   https://lvelup.info/api/v1/internal/build-queue/claim
 ```
 
-- Expected **before** step 1 below: `HTTP/2 503` with a JSON body containing
-  `"code":"build_queue_disabled"`.
-- Expected **after** step 1: `HTTP/2 401` with `"code":"invalid_worker_token"`.
-- **A 404 with an nginx HTML body means nginx does not route this path** — fix the
-  production nginx configuration before going further; the worker would silently never get
-  any work. A JSON body, whatever the status code, means the request reached the Go server.
+Expected status codes, in order of what they tell you:
+
+| Response | Meaning |
+|---|---|
+| `403` + `"code":"csrf_rejected"` | The running build **predates the CSRF fix** (the state measured in production on 2026-08-25). No token change will help — deploy a build that contains it. |
+| `503` + `"code":"build_queue_disabled"` | Correct answer **before** step 1: the request reached the worker guard, no token is configured server-side yet. |
+| `401` + `"code":"invalid_worker_token"` | Correct answer **after** step 1: token configured, the one presented (here: none) does not match. |
+| `404` + an nginx HTML body | nginx does not route this path — fix the production nginx configuration before going further, the worker would silently never get any work. |
+
+A JSON body, whatever the status code, means the request reached the Go server. After the
+fix is deployed, `403 csrf_rejected` must never appear on these routes again.
 
 Never put the token in the URL. It travels as `Authorization: Bearer <token>`.
 
