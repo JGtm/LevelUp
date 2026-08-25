@@ -9,13 +9,15 @@
 // Mesuré le 2026-08-08 sur Vagabond (asset 105f5d84) :
 //
 //	fo08_wetland.mvar :  100 objets,  20 objectifs, tous à z = 50,50 exactement,
-//	                     étalés sur 8,2 m alors que ses objets couvrent 356 m  ->  2,3 %
+//	                     étalés sur 8,20 m   (rack)
 //	map.mvar          : 4709 objets,   4 objectifs (3 zones de Bastion + 1 crâne),
-//	                     étalés sur 22,3 m                                     -> 12,7 %
+//	                     étalés sur 22,30 m  (terrain)
 //
-// L'ancien critère retenait le rack : trois « zones de Bastion » de 1 m de rayon, à 2 m
+// Le critère du nombre retenait le rack : trois « zones de Bastion » de 1 m de rayon, à 2 m
 // l'une de l'autre, au même millimètre d'altitude. Publier ça, c'est publier un objectif
-// au mauvais endroit — ce que l'en-tête de fetch.go dit vouloir éviter.
+// au mauvais endroit — ce que l'en-tête de fetch.go dit vouloir éviter. Ce que le rack et
+// le terrain ne partagent pas, c'est l'ÉCHELLE de leurs objectifs : voir
+// parkedAbsoluteSpreadM, qui porte la règle et l'histoire de ses deux calibrations.
 package main
 
 import (
@@ -26,41 +28,55 @@ import (
 	"levelup/go-api/internal/analysis/replay/mapvar"
 )
 
-// parkedSpreadRatio : sous cette fraction de l'emprise des objets de la variante,
-// l'emprise des objectifs n'est plus un placement mais un rangement.
+// parkedAbsoluteSpreadM : sous cette emprise ABSOLUE, les objectifs d'une variante sont
+// RANGÉS (rack du canevas) ; au-dessus, ils sont POSÉS sur un terrain.
 //
-// Calibration sur les 37 cartes du catalogue (2026-08-08) : le rack de Vagabond est à
-// 2,3 %, la carte la plus basse ensuite est `corpo_map` à 15,8 %, puis 44,4 %. Le seuil
-// est posé entre les deux, avec un facteur ~2 de marge de part et d'autre.
-const parkedSpreadRatio = 0.05
-
-// parkedAbsoluteSpreadM : au-dessus de cette emprise ABSOLUE, des objectifs sont POSÉS,
-// quel que soit leur rapport à l'emprise du canevas.
-//
-// POURQUOI UN SECOND CRITÈRE, ET POURQUOI ABSOLU (mesuré le 2026-08-20). Le rapport
-// ci-dessus compare l'emprise des objectifs à celle de TOUS les objets de la variante.
-// Sur une carte bâtie dans Forge, cet ensemble n'est PAS le terrain : c'est le CANEVAS
-// entier, décor lointain et volumes de bord compris. Le rapport répond alors à « les
-// objectifs sont-ils petits devant le monde constructible ? », qui n'est pas la question
-// que ce garde-fou pose. Les deux variantes d'Empyrean (asset d035fc3e) le montrent :
+// POURQUOI UN CRITÈRE ABSOLU (mesuré le 2026-08-20). Le garde-fou d'origine (2026-08-08)
+// comparait l'emprise des objectifs à celle de TOUS les objets de la variante — un RAPPORT,
+// seuil 5 %. Sur une carte bâtie dans Forge, cet ensemble n'est PAS le terrain : c'est le
+// CANEVAS entier, décor lointain et volumes de bord compris. Le rapport répond alors à
+// « les objectifs sont-ils petits devant le monde constructible ? », qui n'est pas la
+// question que ce garde-fou pose. Les deux variantes d'Empyrean (asset d035fc3e) le
+// montrent :
 //
 //	map.mvar (la carte JOUÉE)  : 5 297 objets sur 1 061,64 m, 10 objectifs sur 38,32 m
-//	                             -> 3,609 %  ->  ÉCARTÉE À TORT
+//	                             -> 3,609 %  ->  ÉCARTÉE À TORT par le rapport
 //	fo11_blank.mvar (le rack)  :   100 objets sur   356,10 m, 25 objectifs sur 13,30 m
 //	                             -> 3,735 %  ->  écartée, à raison
 //
 // Les deux rapports sont à 0,13 point l'un de l'autre : AUCUN recalibrage du seuil relatif
-// ne les sépare — le critère lui-même est aveugle ici. Ce qui les sépare est l'emprise
-// ABSOLUE : un rack range un exemplaire de chaque objet de mode côte à côte, à l'échelle
-// de l'OBJET ; un terrain place ses objectifs à l'échelle du JEU. Le coût du faux négatif
-// est mesuré : au 2026-08-20, 12 des 73 cartes du catalogue sont INGÉRABLES par le réseau
-// (« aucune variante exploitable : 2 fichier(s), 2 écarté(s) »).
+// ne les sépare. Ce qui les sépare est l'emprise ABSOLUE : un rack range un exemplaire de
+// chaque objet de mode côte à côte, à l'échelle de l'OBJET ; un terrain place ses objectifs
+// à l'échelle du JEU.
 //
-// Calibration, même méthode que parkedSpreadRatio : sur les 73 entrées RETENUES du
-// catalogue, la plus petite emprise d'objectifs réellement posés est 21,21 m
-// (`cliffside_map`, 9 objectifs), puis 22,20 et 22,73 m ; le plus grand rack connu est
-// 13,30 m (Empyrean), le plus petit 8,20 m (Vagabond). Le plancher est posé entre les deux
-// (moyenne géométrique 16,79 m), avec un facteur ~1,27 de marge de part et d'autre.
+// POURQUOI LE RAPPORT A ÉTÉ RETIRÉ (mesuré le 2026-08-25, lot catalogue). Le correctif du
+// 2026-08-20 avait gardé le rapport EN PLUS du plancher, en ET, par prudence : « le ET ne
+// peut que relâcher le garde-fou ». C'est vrai, et c'est le défaut — le rapport garde un
+// droit de VETO sur une détection de rack correcte. Il l'exerce sur un canevas ROGNÉ :
+//
+//	Dynasty  (cfd90b63) fo08_wetland.mvar :  82 objets sur 34,40 m, 25 objectifs sur 13,30 m
+//	Kaiketsu (98a83f87) fo05_desert.mvar  :  82 objets sur 34,40 m, 25 objectifs sur 13,30 m
+//
+// Le rack est le MÊME (13,30 m, collines à z = 50,50, un exemplaire de chaque objet de
+// mode), mais le canevas ne fait plus 356 m : il en fait 34,40. Le seuil relatif tombe donc
+// à 1,72 m, le rack de 13,30 m passe au-dessus, et le ET le déclare POSÉ. Les deux cartes
+// retenaient ainsi leur rack (25 objectifs) contre leur carte jouée (`map.mvar`, 5 540 et
+// 5 497 objets, 13 et 16 objectifs) — cinq fausses collines et de fausses zones de Bastion
+// d'un mètre de rayon chacune.
+//
+// Le plancher seul tranche le corpus ENTIER sans exception : sur les 73 entrées du
+// catalogue, exactement deux tombent sous 17,0 m — les deux racks ci-dessus, à 13,30 m — et
+// la suivante est à 21,21 m. Les quatre témoins de TestGrandCanevasNEcartePasLaCarteJouee
+// (38,32 / 13,30 / 8,20 / 21,21 m) gardent tous leur verdict. Le rapport n'était donc plus
+// défendu par aucune mesure, et il coûtait deux cartes : il est supprimé.
+//
+// Calibration : sur les entrées RETENUES du catalogue, la plus petite emprise d'objectifs
+// réellement posés est 21,21 m (`cliffside_map`, 9 objectifs), puis 22,20 et 22,73 m ; le
+// plus grand rack connu est 13,30 m (Empyrean, Dynasty, Kaiketsu), le plus petit 8,20 m
+// (Vagabond). Le plancher est posé entre les deux (moyenne géométrique 16,79 m), avec un
+// facteur ~1,27 de marge de part et d'autre. Une carte dont TOUTES les variantes tombent
+// sous le plancher échoue bruyamment (« aucune variante exploitable », ingestRemote) : le
+// faux positif est visible, jamais silencieux.
 const parkedAbsoluteSpreadM = 17.0
 
 // minObjectivesForSpread : à un seul objectif l'emprise vaut 0 et ne dit rien.
@@ -73,25 +89,12 @@ func isParkedPalette(v *mapvar.Variant) bool {
 	if len(objectives) < minObjectivesForSpread || len(v.Objects) == 0 {
 		return false
 	}
-	objMinX, objMinY, objMaxX, objMaxY := inf, inf, -inf, -inf
-	for _, o := range v.Objects {
-		objMinX, objMaxX = min(objMinX, o.Pos.X), max(objMaxX, o.Pos.X)
-		objMinY, objMaxY = min(objMinY, o.Pos.Y), max(objMaxY, o.Pos.Y)
-	}
-	objSpread := max(objMaxX-objMinX, objMaxY-objMinY)
-	if objSpread <= 0 {
-		return false
-	}
 	gMinX, gMinY, gMaxX, gMaxY := inf, inf, -inf, -inf
 	for _, o := range objectives {
 		gMinX, gMaxX = min(gMinX, o.Pos.X), max(gMaxX, o.Pos.X)
 		gMinY, gMaxY = min(gMinY, o.Pos.Y), max(gMaxY, o.Pos.Y)
 	}
-	goalSpread := max(gMaxX-gMinX, gMaxY-gMinY)
-	// Un rangement est compact DANS LES DEUX SENS : devant le canevas ET dans l'absolu.
-	// Le ET ne peut que RELÂCHER le garde-fou — aucune variante déjà retenue ne peut
-	// devenir un rack par cet ajout.
-	return goalSpread < parkedSpreadRatio*objSpread && goalSpread < parkedAbsoluteSpreadM
+	return max(gMaxX-gMinX, gMaxY-gMinY) < parkedAbsoluteSpreadM
 }
 
 // inf sert de borne initiale aux min/max (pas de math.Inf pour rester en float64 littéral

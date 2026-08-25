@@ -68,10 +68,15 @@ func (s *replayService) mapObjectivesForKeys(ctx context.Context, matchID string
 	}
 	specs := s.objectiveRoleSpecs(ctx, keys.PairName)
 	if len(specs) == 0 {
-		// Mode sans objectifs statiques : le cas nominal. Slayer, Land Grab, Total Control —
-		// PAS King of the Hill, qui sert le rôle `hill` depuis le lot C-ter volet 2 (la
-		// table du titre le déclare ; l'exemple d'avant était devenu faux : revue ronde 1,
-		// R1-5).
+		// Mode sans objectifs statiques : le cas nominal. Slayer, Land Grab — PAS King of
+		// the Hill (rôle `hill`, lot C-ter volet 2) ni Total Control (rôle
+		// `totalcontrol_zone`, lot catalogue 2026-08-25), que la table du titre déclare.
+		//
+		// CET EXEMPLE A DÉJÀ VIEILLI DEUX FOIS (KOTH en 2026-08-19, Total Control en
+		// 2026-08-25) : la liste des modes réellement sans objectif est
+		// objective_roles.toml en creux, pas ce commentaire. Le vérifier avant d'y ajouter
+		// un nom — Land Grab, par exemple, a bien ses hashs `landgrab_zone` dans le
+		// fichier de carte, il n'a simplement ni rôle ni entrée.
 		return nil
 	}
 	res := title.NewPathResolver(s.repoRoot)

@@ -27,8 +27,16 @@
 #
 # Les roles admis sont ceux du decodeur (mapvar) : flag_spawn, flag_delivery,
 # stockpile_socket, stockpile_navpoint, strongholds_zone, extraction_zone,
-# oddball_spawn, assault_bomb, hill. Un role inconnu est une erreur de configuration
-# (validation stricte au chargement), jamais un silence.
+# oddball_spawn, assault_bomb, hill, totalcontrol_zone, firefight_objective. Un role
+# inconnu est une erreur de configuration (validation stricte au chargement), jamais un
+# silence.
+#
+# UN ROLE DU DECODEUR PEUT N'ETRE SERVI PAR AUCUN MODE, et c'est un etat legitime :
+# `firefight_objective` (5 volumes avec forme par carte de Firefight, mesure du 2026-08-20)
+# entre au CATALOGUE mais aucune entree ci-dessous ne le sert. La decision de le servir
+# demande de savoir quel libelle de manche Firefight le porte, ce qu'aucune mesure ne dit
+# encore — la servir « au cas ou » afficherait cinq zones sur une carte PvE sans savoir
+# laquelle est active. Consigne au registre, a trancher sur mesure.
 
 [meta]
 title_slug     = "halo_infinite"
@@ -74,10 +82,40 @@ roles = ["assault_bomb"]
 # "Heroic King of the Hill" / "Heroic KOTH" (Firefight PvE) : ces cartes ne portent aucun
 # objet du role, rien n'est servi — degradation par absence, pas une erreur.
 #
-# La colline se pose par la PAIRE de hashs de mapvar (LabelHashHillRole + LabelHashHillInclude,
-# noms non retrouves) ; le catalogue en porte 5 a 6 par carte, toutes neutres dans le fichier.
+# La colline se pose par le hash de ROLE de mapvar (LabelHashHillRole, nom non retrouve), sauf
+# revendication de l'objet par un autre mode — la regle exacte est sur isHill, et elle a ete
+# CORRIGEE le 2026-08-20 : exiger la paire role+filtre ecartait les collines que leur fichier
+# declare sans filtre. Le catalogue en porte 3 a 7 par carte, toutes neutres dans le fichier.
 # neutral = true par coherence avec Bastion/Extraction : la colline ACTIVE et son proprietaire
 # sont l'affaire de zoneStates (etat vivant), jamais du team_index du fichier.
 match   = ["King of the Hill", "KOTH"]
 roles   = ["hill"]
+neutral = true
+
+[[modes]]
+# Total Control (lot catalogue, 2026-08-25). Le jeton attrape les pair_name
+# "Arena:Total Control on X" / "BTB:Total Control on X" une fois normalises.
+#
+# CE QUE CETTE ENTREE SERT, ET CE QU'ELLE NE SERT PAS. Le fichier declare un VIVIER de 13 a
+# 18 zones par carte (Command 18, Fortitude 18, Breaker 16, Deadlock 15, Highpower 15, Oasis
+# 14, Scarr 14 ; 302 zones sur 21 entrees, TOUTES avec forme). Une manche de Total Control
+# n'en ACTIVE que 3. Le choix de ces 3 n'est PAS dans la variante de carte : ce role publie
+# donc des FORMES, jamais un etat, et le rejeu ne doit pas les presenter comme trois zones
+# tenues.
+#
+# C'est la difference de fond avec Bastion, ou le fichier declare exactement les 3 zones du
+# mode (verifie 2026-08-20 : toute carte du catalogue ayant un match Strongholds en a
+# exactement 3, sans exception). C'est en revanche la MEME situation que la colline de KOTH,
+# dont le fichier declare 3 a 7 emplacements et dont l'ACTIVE est designee par le film (tag 5
+# du slot de l'objet de mode, lot C-ter volet 1). Le vivant de Total Control viendra du meme
+# canal, et c'est a ce moment-la seulement que `totalcontrol_zone` pourra rejoindre
+# heldZoneRoles (replaybuild/zones.go) — pas avant : sans designateur, un etat de zone
+# publierait 14 a 18 zones tenues la ou il y en a 3.
+#
+# neutral = true, meme raison que Bastion et la colline : la possession est dynamique. Ici la
+# MESURE l'exige en plus de la symetrie : 296 des 302 zones sont neutres dans le fichier, mais
+# 3 sont en equipe 0, 2 en equipe 2 et UNE en equipe 7 — une equipe 7 sur un mode a deux camps
+# etablit que ce champ ne porte rien pour ce role.
+match   = ["Total Control"]
+roles   = ["totalcontrol_zone"]
 neutral = true
