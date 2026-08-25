@@ -84,10 +84,23 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   PAS `held` — une zone tenue par un camp non situable (aucune ligne « moi ») garde le trait
   plein. Mordant prouvé par double mutation (dont la confusion `held`/`owner`).
 
+- [ ] A7 (demande utilisateur 25/08, reçue en cours de pilotage) : fiche joueur à l'état
+  MORT : (a) retirer l'accentuation de la bordure gauche de la fiche ; (b) centrer le
+  compteur de réapparition ; (c) retirer la jauge (barre de progression de réapparition).
+  Ancres candidates : `ReplayTeams.tsx` / `ReplayVitality.tsx` — vérifier sur pièces.
+  Mêmes gates que A1-A6 ; clés i18n orphelines supprimées le cas échéant ; 0 code mort.
+
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
 `match-replay`, lint web. i18n : toute string FR **et** EN. Pas de vérification
 navigateur (gate visuel = utilisateur, à la fusion).
+
+STATUT LOT A (25/08) : A1-A6 FUSIONNÉS dans feat/v75 (merge --no-ff, gates rejoués au
+principal après fusion : tsc -b exit 0 cache purgé, vitest 75 fichiers / 1083 tests
+exit 0). Arbitrages superviseur : phrase `layerAimHint` GARDÉE (elle répond à la question
+utilisateur dans le produit) ; cliquet canvas 742 GARDÉ (croissance par extraction
+uniquement — consigne transmise au lot D). A7 en vol (2e passe du même exécuteur,
+même branche `wt/ui-rejeu`, 2e fusion à son CR).
 
 ## Lot B — `wt/notif-rejeu` (Go, pt 5)
 
