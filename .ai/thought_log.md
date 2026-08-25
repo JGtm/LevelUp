@@ -77,8 +77,60 @@ par un `sql.Open` direct hors cache (échouerait en « different configuration �
 tenue RW). `internal/sync/citations.go` reste un god-file (700 → 711 L, seuil 500) : dette
 préexistante, découpage hors périmètre.
 
-**Prochaine étape** : revue puis merge par le superviseur ; aucun run CI sur cette branche
-(pas de push, conformément à la consigne du lot).
+**Revue adversariale R1 — le correctif avait lui-même un défaut bloquant.** Deux relecteurs
+frais, constats convergents. Le helper est sain sur la concurrence interne (générations,
+pas de fuite, Close idempotent, rejouabilité aux 2 sites), mais la STRATÉGIE DE
+RÉ-RÉSOLUTION portait un P0 : sur shared_matches_v2, quand `swapToRW` ferme le dernier
+handle RO (`provider_writer.go:136`), notifie (`:160`) puis appelle `OpenReadWrite`
+(`:162`), mon `refresh` tombait en cache MISS et **ouvrait un handle RO neuf**. S'il gagne
+la course contre l'`OpenReadWrite`, le provider part en `StateError` → lectures shared en
+`ErrSwapFailed`/503 + burst d'écriture abandonné jusqu'au `retryReopenLoop`. Et un
+`RecoveringReader` est INVISIBLE du drain lecteurs (`readersWG`) sur lequel le swap
+s'appuie. C'est aussi une violation frontale de l'invariant que `provider.go:52-55`
+documente : « ce provider est l'unique owner du handle DuckDB pour un chemin donné ».
+J'avais donc échangé une lecture qui échoue (auto-guérissante) contre un risque de casser
+le swap — nettement pire. La famille pve n'était pas exposée (aucun `OpenReadWrite` sur
+shared_pve en régime établi).
+
+**Décision : voie (b), et pourquoi pas (a).** La voie (a) — faire lire le site media par le
+canal DRAINÉ du provider (`Provider.Get`, où le swap ATTEND le lecteur) — est
+architecturalement supérieure et supprimerait l'invalidation de ce site. Elle est
+plumbable : `cmd/server/sync_v2_wiring.go` expose déjà `deps.Cfg.SharedProvider.Get` sous
+forme de `SharedReader`. Mais elle exige de faire descendre le provider jusqu'à `ops` :
+nouveau champ dans `MediaIndexOptions`, 4 sites d'appel dans `internal/service`, et une
+option de construction sur des services qui n'ont aujourd'hui AUCUN accès à `cfg`
+(`NewMediaService(repo, timezone, opts...)`) — 6+ fichiers. Le créneau de build étant tenu
+par un autre lot, livrer ce refactor sans pouvoir le compiler serait pire que le défaut
+qu'il corrige. Voie (b) retenue : `ReopenPolicy` explicite à la construction —
+`ReopenCacheOnly` (media : la reprise n'emprunte QUE `LookupCachedDB`, l'entrée `rw:` posée
+par le swap comptant ; cache miss → erreur d'origine, best-effort d'avant le helper) et
+`ReopenAllowed` (pve, où le propriétaire SUPPRIME l'entrée de cache — le mode cache-only ne
+récupérerait rien). L'invariant est écrit dans l'en-tête du helper, et `current()` applique
+la policy lui aussi (sinon un `Do` ultérieur rouvrait ce que la reprise s'interdit). Voie
+(a) consignée au registre des reports avec son chemin de plomberie exact.
+
+**Autres correctifs de la ronde.** P1 : l'ERROR du retry était un faux positif — après une
+récupération RÉUSSIE, un `sql.ErrNoRows` (match non-Firefight, cas majoritaire) est un
+résultat, pas un incident ; on aurait remplacé 372 WARN/mois par autant d'ERROR. ERROR
+désormais réservé à `IsInvalidatedError(retryErr)`. P2 classe FATAL : `IsInvalidatedError`
+matche aussi « database has been invalidated » / « Failed to delete all rows from index »,
+où le `*sql.DB` n'est PAS fermé ni le cache purgé — la re-résolution rendait LE MÊME
+pointeur mort et le log prétendait une ré-ouverture qui n'avait pas eu lieu. Détection par
+comparaison de pointeur : aucun rejeu, erreur d'origine, log dédié pointant le geste
+correctif ((*DB).Reopen côté PROPRIÉTAIRE) ; en-tête corrigé (il affirmait à tort que la
+re-résolution rend « forcément » un handle vivant). P2 garde-rail : le contrôle initial se
+satisfaisait du MOT « RecoveringReader » dans un commentaire et laissait passer une
+ouverture DuckDB directe — refondu en scan LIGNE À LIGNE interdisant `sql.Open(`,
+`OpenReadForQuery(` et `LookupCachedDB(`, exigeant l'APPEL réel du construct, avec
+allowlist à la ligne près (une seule exception datée : l'emprunt metadata préexistant de
+`citations_backfill.go`) ; test supplémentaire exigeant `ReopenCacheOnly` au site media.
+P2 code mort : `RecoveringReader.Path()` supprimé (0 appelant de prod). Mineur : les
+niveaux de log sont désormais assertés (capture du handler slog par défaut) — c'est ce qui
+verrouille le P1.
+
+**Prochaine étape** : GO GATES du superviseur, puis rejeu complet de la séquence (aucun
+build/test/lint n'a pu tourner sur cette ronde, créneau machine tenu par un autre lot).
+Ensuite revue puis merge par le superviseur ; aucun run CI sur cette branche (pas de push).
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 

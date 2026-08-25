@@ -1,5 +1,5 @@
 // Package sync — shared_read_recovery_routing_test.go : garde-rail anti-régression
-// du lot « recovery des lectures shared best-effort » (2026-08-25).
+// du lot « recovery des lectures shared best-effort » (2026-08-25, durci en revue R1).
 //
 // **Contexte.** `duckdb.OpenReadForQuery(path)` rend un INSTANTANÉ du `*sql.DB`.
 // Quand il l'a EMPRUNTÉ au cache process (`LookupCachedDB`), l'emprunt est NON
@@ -11,8 +11,18 @@
 //
 // **Le correctif** : ces chemins gardent le CHEMIN (`duckdb.RecoveringReader`,
 // platform/duckdb/read_recovery.go) et rejouent la lecture UNE fois après
-// ré-ouverture, au lieu de conserver l'instantané. Ce test échoue si un de ces
-// fichiers reprend un `OpenReadForQuery` nu — la forme exacte de la régression.
+// re-résolution, au lieu de conserver l'instantané.
+//
+// **Ce que ce test interdit** (revue R1 — la version initiale se contentait du MOT
+// « RecoveringReader », qu'un simple commentaire satisfaisait, et laissait passer
+// une ouverture DuckDB directe) :
+//
+//  1. toute acquisition de handle CONTOURNANTE dans les fichiers couverts :
+//     ouverture DuckDB directe (`sql.Open(`), instantané (`OpenReadForQuery(`),
+//     emprunt nu au cache (`LookupCachedDB(`). L'ouverture directe est
+//     précisément l'incident 2026-06-03 (médias sans match) ;
+//  2. la disparition de l'APPEL au construct sanctionné — `mustCall` exige la
+//     construction réelle, pas sa mention en commentaire.
 //
 // **Sans build tag `integration`** (comme no_art_patterns_test.go) : scan statique
 // PUR — aucune connexion DuckDB, aucun CGO. Il DOIT tourner dans le gate par défaut
@@ -23,8 +33,11 @@
 //     d'OpenReadForQuery du dépôt (pas de sweep repo-wide : décision de périmètre du
 //     lot). Les autres appelants sont soit courts (une requête, aucune fenêtre
 //     d'invalidation utile), soit protégés par le drain lecteurs de `SharedAccess`
-//     (`outstandingReads`) — ils restent des découvertes consignées, pas des trous
-//     couverts ici.
+//     (`outstandingReads`) — ils restent des découvertes consignées.
+//   - `OpenReadOnly(` n'est PAS interdit : `citations_backfill.go` en contient deux
+//     usages ANTÉRIEURS au lot (metadata, et shared dans
+//     RunBackfillCompositeOnlyCitations). Le second vise un chemin géré par le
+//     provider et mérite son propre lot — consigné en découverte, pas traité ici.
 //   - Le vrai verrou de la famille citations est le TYPE : `loadPveStats` prend un
 //     `*duckdbpkg.RecoveringReader`, donc on ne PEUT PLUS lui passer un `*sql.DB`
 //     capturé au début du batch (erreur de compilation). Ce grep est la ceinture ;
@@ -38,40 +51,92 @@ import (
 	"testing"
 )
 
-// sharedReadRecoveryProtectedFiles — fichiers des deux familles corrigées, chemins
-// relatifs à la racine du module (apps/go-api).
-var sharedReadRecoveryProtectedFiles = []string{
-	"internal/ops/media_associate.go",     // IndexMedia → shared_matches_v2 (B-swap)
-	"internal/sync/citations.go",          // loadPveStats → shared_pve
-	"internal/sync/citations_backfill.go", // acquisition du handle shared_pve
+// sharedReadRecoveryFile décrit un fichier protégé et ce qu'il doit APPELER.
+type sharedReadRecoveryFile struct {
+	rel string
+	// mustCall : fragment d'APPEL (avec la parenthèse ouvrante) qui doit être
+	// présent. Vide = aucune exigence positive (fichier couvert par le TYPE).
+	mustCall string
 }
 
-// sharedReadRecoveryAllowlist — exceptions DATÉES et justifiées, idéalement vide.
-// Clé = chemin relatif protégé ; valeur = justification. Une entrée neutralise le
-// contrôle « pas d'OpenReadForQuery » pour ce fichier : ne l'ajouter qu'avec une
-// raison écrite et une date, jamais pour faire passer un gate.
-var sharedReadRecoveryAllowlist = map[string]string{}
+// sharedReadRecoveryProtectedFiles — fichiers des deux familles corrigées, chemins
+// relatifs à la racine du module (apps/go-api).
+var sharedReadRecoveryProtectedFiles = []sharedReadRecoveryFile{
+	// IndexMedia → shared_matches_v2 (chemin géré par un sharedprovider : la
+	// reprise doit être cache-only, cf. read_recovery.go section INVARIANT).
+	{rel: "internal/ops/media_associate.go", mustCall: "OpenRecoveringReader("},
+	// Acquisition du handle shared_pve pour le batch citations.
+	{rel: "internal/sync/citations_backfill.go", mustCall: "OpenRecoveringReader("},
+	// loadPveStats : verrouillé par le TYPE (cf. test de signature ci-dessous).
+	{rel: "internal/sync/citations.go"},
+}
+
+// sharedReadForbiddenConstructs — acquisitions de handle qui contournent le
+// lecteur auto-réparant. Chaque entrée porte la raison de son interdiction.
+var sharedReadForbiddenConstructs = map[string]string{
+	"sql.Open(": "ouverture DuckDB directe hors cache/provider — incident 2026-06-03 (médias sans match) " +
+		"et violation de l'invariant sharedprovider « unique owner du handle »",
+	"OpenReadForQuery(": "instantané *sql.DB : meurt si le propriétaire ferme la handle pendant la lecture",
+	"LookupCachedDB(":   "emprunt nu au cache, non possédant et sans reprise — même mort que l'instantané",
+}
+
+// sharedReadAllowEntry : exception DATÉE et justifiée, à la LIGNE près. Une
+// occurrence n'est tolérée que si `rel` et `construct` correspondent ET que
+// `needle` apparaît sur la ligne — ainsi seule l'acquisition visée est exemptée,
+// pas tout le fichier (une NOUVELLE occurrence y serait quand même prise).
+type sharedReadAllowEntry struct {
+	rel       string
+	construct string
+	needle    string
+	reason    string
+}
+
+// sharedReadAllowlist : exceptions au routage. Idéalement vide.
+var sharedReadAllowlist = []sharedReadAllowEntry{
+	// allowlist(2026-08-25) : emprunt du handle metadata déjà ouvert par le pool
+	// serveur, ANTÉRIEUR à ce lot et hors de son périmètre (les deux familles
+	// traitées sont shared_matches_v2 et shared_pve). metadata.duckdb n'est géré
+	// par aucun sharedprovider. L'emprunt reste non possédant : consigné en
+	// découverte, à traiter dans un lot dédié aux lectures metadata.
+	{
+		rel:       "internal/sync/citations_backfill.go",
+		construct: "LookupCachedDB(",
+		needle:    "metadataDBPath",
+		reason:    "emprunt metadata preexistant au lot, hors perimetre",
+	},
+}
+
+// isSharedReadAllowed indique si une occurrence est couverte par une exception.
+func isSharedReadAllowed(rel, construct, line string) bool {
+	for _, a := range sharedReadAllowlist {
+		if a.rel == rel && a.construct == construct && strings.Contains(line, a.needle) {
+			return true
+		}
+	}
+	return false
+}
 
 // TestSharedBestEffortReadsUseRecoveringReader vérifie que les lectures shared
-// best-effort corrigées n'ont pas re-régressé vers un instantané `OpenReadForQuery`.
+// best-effort corrigées n'ont pas re-régressé vers une acquisition contournante.
 func TestSharedBestEffortReadsUseRecoveringReader(t *testing.T) {
 	root := findRepoRoot(t)
 
-	for _, rel := range sharedReadRecoveryProtectedFiles {
-		body := readProtectedFile(t, root, rel)
+	for _, f := range sharedReadRecoveryProtectedFiles {
+		body := readProtectedFile(t, root, f.rel)
 
-		if !strings.Contains(body, "RecoveringReader") {
-			t.Errorf("%s ne référence plus RecoveringReader : la lecture shared best-effort "+
-				"a perdu sa reprise sur invalidation (cf. platform/duckdb/read_recovery.go)", rel)
+		if f.mustCall != "" && !strings.Contains(body, f.mustCall) {
+			t.Errorf("%s n'appelle plus %s : la lecture shared best-effort a perdu sa reprise "+
+				"sur invalidation (cf. platform/duckdb/read_recovery.go)", f.rel, f.mustCall)
 		}
-		if reason, allowed := sharedReadRecoveryAllowlist[rel]; allowed {
-			t.Logf("%s : contrôle OpenReadForQuery neutralisé (allowlist) — %s", rel, reason)
-			continue
-		}
-		if strings.Contains(body, "OpenReadForQuery(") {
-			t.Errorf("%s appelle OpenReadForQuery : l'instantané rendu meurt si le handle est "+
-				"fermé pendant la requête (B-swap RO→RW, post-sync concurrent). Passer par "+
-				"duckdb.OpenRecoveringReader + Do, ou justifier via sharedReadRecoveryAllowlist", rel)
+		for i, line := range strings.Split(body, "\n") {
+			for construct, why := range sharedReadForbiddenConstructs {
+				if !strings.Contains(line, construct) || isSharedReadAllowed(f.rel, construct, line) {
+					continue
+				}
+				t.Errorf("%s:%d contient %q — %s. Passer par duckdb.OpenRecoveringReader + Do, "+
+					"ou justifier via sharedReadAllowlist (exception datée, à la ligne près)",
+					f.rel, i+1, construct, why)
+			}
 		}
 	}
 }
@@ -95,6 +160,24 @@ func TestLoadPveStatsSignatureIsRecoveryTyped(t *testing.T) {
 		t.Errorf("signature de loadPveStats = %q : elle doit prendre un *duckdbpkg.RecoveringReader "+
 			"(un *sql.DB capturé au début du batch meurt quand un post-sync concurrent rend shared_pve)",
 			strings.Join(strings.Fields(signature), " "))
+	}
+}
+
+// TestProviderManagedReadIsCacheOnly verrouille le correctif P0 de la revue R1 au
+// SITE d'appel : shared_matches_v2 est géré par un sharedprovider, sa reprise doit
+// être déclarée ReopenCacheOnly. Avec ReopenAllowed, une ré-ouverture RO émise dans
+// la fenêtre de swap peut faire échouer l'OpenReadWrite du provider (StateError).
+func TestProviderManagedReadIsCacheOnly(t *testing.T) {
+	root := findRepoRoot(t)
+	body := readProtectedFile(t, root, "internal/ops/media_associate.go")
+
+	if !strings.Contains(body, "ReopenCacheOnly") {
+		t.Error("internal/ops/media_associate.go doit déclarer ReopenCacheOnly : shared_matches_v2 " +
+			"est géré par un sharedprovider, une ouverture RO pendant le swap casse l'OpenReadWrite")
+	}
+	if strings.Contains(body, "ReopenAllowed") {
+		t.Error("internal/ops/media_associate.go déclare ReopenAllowed : interdit sur un chemin géré " +
+			"par un sharedprovider (cf. read_recovery.go section INVARIANT)")
 	}
 }
 
