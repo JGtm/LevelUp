@@ -24,6 +24,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -46,21 +47,12 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 	if r.monitoringStore == nil {
 		return domain.BuildQueueJob{}, false, fmt.Errorf("file de construction indisponible (store monitoring non ouvert)")
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
-	if err != nil {
-		return domain.BuildQueueJob{}, false, err
-	}
-	fullID, names, err := replayMatchIdentity(ctx, sharedSQL, metaSQL, matchID)
-	// LES FAITS SE LISENT ICI, ET C'EST LE SEUL ENDROIT OÙ ILS PEUVENT L'ÊTRE : l'ouvrier
-	// n'a pas de base, et le job est tout ce qu'il recevra jamais. Deux SELECT courts, sous
-	// les mêmes handles que l'identité du match, avant de les relâcher — même geste que
-	// RunReplayBuild, pour la même raison (on ne tient pas une lecture shared pendant la
-	// suite, qui va sur le réseau résoudre un manifeste).
-	var facts domain.MatchFacts
-	if err == nil {
-		facts = replayMatchFacts(ctx, sharedSQL, fullID)
-	}
-	closeAll()
+	// L'IDENTITÉ ET LES FAITS SE LISENT ICI, ET C'EST LE SEUL ENDROIT OÙ ILS PEUVENT L'ÊTRE :
+	// l'ouvrier n'a pas de base, et le job est tout ce qu'il recevra jamais. Deux SELECT
+	// courts sous les handles data-quality, relâchés AVANT la résolution réseau du manifeste
+	// (même geste que RunReplayBuild — on ne tient pas une lecture shared pendant un
+	// aller-retour réseau). readReplayJobInputs porte ce contrat et le seam qui l'exerce sans base.
+	fullID, names, facts, err := r.readReplayJobInputs(ctx, titleSlug, matchID)
 	if err != nil {
 		return domain.BuildQueueJob{}, false, err
 	}
@@ -136,15 +128,37 @@ func (r *ServiceRegistry) EnqueueReplayBuildJob(ctx context.Context, titleSlug, 
 	return err
 }
 
+// filmChunkResolver est la SEULE opération Halo de la mise en file : résoudre le
+// manifeste d'un film (authentifié) et rendre les références de ses morceaux (URL CDN
+// pré-signées). Extrait en interface pour que la frontière soit exerçable sans réseau
+// (cf. registry_build_queue_test.go, volet A) ; le seul implémenteur de production est
+// *syncpkg.HaloAPIClient, construit à la volée depuis les tokens.
+type filmChunkResolver interface {
+	GetFilmChunkURLs(ctx context.Context, matchID string) ([]syncpkg.FilmChunkRef, bool, error)
+}
+
 // resolveFilmChunkURLs résout le manifeste du film et rend les URL pré-signées de
-// ses morceaux. C'est LE geste qui exige les tokens — et le seul.
+// ses morceaux. C'est LE geste qui exige les tokens — et le seul. Le seam
+// r.replayFilmResolver (nil en production) court-circuite la construction du client
+// pour que les tests exercent la frontière sans réseau.
 func (r *ServiceRegistry) resolveFilmChunkURLs(ctx context.Context, titleSlug, matchID string) ([]domain.BuildQueueChunk, error) {
-	tokens, err := r.haloTokensForDrain(ctx, titleSlug)
-	if err != nil {
-		return nil, fmt.Errorf("résolution du manifeste de film: %w", err)
+	resolver := r.replayFilmResolver
+	if resolver == nil {
+		tokens, err := r.haloTokensForDrain(ctx, titleSlug)
+		if err != nil {
+			return nil, fmt.Errorf("résolution du manifeste de film: %w", err)
+		}
+		resolver = syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, replayManifestRPS)
 	}
-	client := syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, replayManifestRPS)
-	refs, found, err := client.GetFilmChunkURLs(ctx, matchID)
+	return chunksFromResolver(ctx, resolver, matchID)
+}
+
+// chunksFromResolver mappe les références de morceaux du manifeste en travail de job
+// (URL pré-signées). Séparé de la construction du client — donc de tout token — pour
+// être testable avec un résolveur mocké. Un film absent/expiré côté serveur (~29 % du
+// corpus) est une ERREUR de mise en file, dite tout de suite à celui qui clique.
+func chunksFromResolver(ctx context.Context, resolver filmChunkResolver, matchID string) ([]domain.BuildQueueChunk, error) {
+	refs, found, err := resolver.GetFilmChunkURLs(ctx, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("résolution du manifeste de film: %w", err)
 	}
@@ -159,6 +173,28 @@ func (r *ServiceRegistry) resolveFilmChunkURLs(ctx context.Context, titleSlug, m
 		})
 	}
 	return out, nil
+}
+
+// readReplayJobInputs lit l'identité (match_id complet + noms de carte candidats) et
+// les faits d'un match pour la mise en file : deux SELECT courts sous les handles
+// data-quality, relâchés au retour (defer) AVANT que l'appelant ne parte résoudre le
+// manifeste sur le réseau. Une erreur d'identité est fatale à la mise en file ; des
+// faits illisibles dégradent (facts vide), jamais fatals — même contrat que
+// RunReplayBuild. Le seam r.replayJobFactsFn (nil en production) l'exerce sans base.
+func (r *ServiceRegistry) readReplayJobInputs(ctx context.Context, titleSlug, matchID string) (string, []string, port.MatchFacts, error) {
+	if r.replayJobFactsFn != nil {
+		return r.replayJobFactsFn(ctx, titleSlug, matchID)
+	}
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	if err != nil {
+		return "", nil, port.MatchFacts{}, err
+	}
+	defer closeAll()
+	fullID, names, err := replayMatchIdentity(ctx, sharedSQL, metaSQL, matchID)
+	if err != nil {
+		return "", nil, port.MatchFacts{}, err
+	}
+	return fullID, names, replayMatchFacts(ctx, sharedSQL, fullID), nil
 }
 
 // StoreBuildArtifact valide l'artefact rendu par un ouvrier et le range à la
