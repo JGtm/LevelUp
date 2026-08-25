@@ -10,8 +10,10 @@ package replaybuild
 
 import (
 	"encoding/json"
+	"expvar"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay"
@@ -38,6 +40,108 @@ func docJSON(t *testing.T, matchID string, avecCompteurs bool) []byte {
 		t.Fatalf("marshal: %v", err)
 	}
 	return blob
+}
+
+// compteurRefus lit le compteur de refus publié par expvar.
+func compteurRefus(t *testing.T) int64 {
+	t.Helper()
+	m, ok := expvar.Get("levelup").(*expvar.Map)
+	if !ok || m == nil {
+		t.Skip("map expvar « levelup » indisponible")
+	}
+	v := m.Get("replay_artifact_downgrade_refused_total")
+	if v == nil {
+		return 0
+	}
+	n, err := strconv.ParseInt(v.String(), 10, 64)
+	if err != nil {
+		t.Fatalf("compteur illisible (%q) : %v", v.String(), err)
+	}
+	return n
+}
+
+// TestWriteArtifact_NEcrasePasUnArtefactRiche — LE CHEMIN DÉCOUVERT EN RONDE 2.
+//
+// `StoreArtifact` (la porte de l'ouvrier) n'est qu'UN des quatre écrivains de ce fichier. Les
+// trois autres — le fil de l'eau post-sync (`buildAll`), le CLI de rattrapage
+// (`levelup backfill-replay`, y compris `--only-existing`) et l'action admin
+// (`RunReplayBuild`) — passent par `BuildMatch` -> `writeArtifact`. Avec des faits VIDES, ils
+// produisent un document sans compteurs de joueur : sans garde AU POINT D'ÉCRITURE, ils
+// écrasaient silencieusement un artefact riche, sans réparation possible.
+//
+// Les occasions sont réelles et connues : un job enfilé avant le transport des faits, et
+// `chargerFaitsReplay` qui dégrade à vide pour TOUTE une passe si son unique ouverture de base
+// échoue.
+func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "000d5950.json")
+	riche := docJSON(t, "000d5950", true)
+	if err := os.WriteFile(path, riche, 0o644); err != nil {
+		t.Fatalf("pose de l'artefact riche: %v", err)
+	}
+
+	avant := compteurRefus(t)
+	// Ce que fait BuildMatch avec des faits vides : un document sans compteurs de joueur.
+	appauvri := replay.ReplayDocument{
+		SchemaVersion: replay.SchemaVersion,
+		MatchID:       "000d5950",
+		TitleSlug:     title.DefaultSlug,
+		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+	}
+	taille, err := writeArtifact(path, appauvri)
+	if err != nil {
+		t.Fatalf("writeArtifact: %v", err)
+	}
+	surDisque, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("relecture: %v", err)
+	}
+	if string(surDisque) != string(riche) {
+		t.Fatal("un artefact RICHE a été écrasé par un appauvri via le chemin BuildMatch — " +
+			"la perte serait définitive et silencieuse")
+	}
+	// La taille rendue doit être celle du disque : annoncer celle du candidat ferait croire à
+	// une écriture qui n'a pas eu lieu.
+	if taille != len(riche) {
+		t.Errorf("taille rendue = %d, attendu %d (celle de l'artefact réellement en place)",
+			taille, len(riche))
+	}
+	if apres := compteurRefus(t); apres != avant+1 {
+		t.Errorf("compteur de refus = %d, attendu %d : un refus doit être compté, jamais muet",
+			apres, avant+1)
+	}
+}
+
+// TestWriteArtifact_MonteeDeSchemaToujoursEcrite — LE CAS CONTRÔLE.
+//
+// Le garde ne doit jamais empêcher une MONTÉE DE SCHÉMA : c'est une reconstruction voulue, et
+// un artefact d'un autre schéma ne se compare pas à celui en place. Sans ce contrôle, le garde
+// figerait tout le cache au premier incrément de version.
+func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "000d5950.json")
+	// En place : RICHE, mais à un schéma ANTÉRIEUR.
+	ancien := `{"schemaVersion":1,"matchId":"000d5950","scoreTimeline":{"players":[{"xuid":"2533274819954312"}]}}`
+	if err := os.WriteFile(path, []byte(ancien), 0o644); err != nil {
+		t.Fatalf("pose: %v", err)
+	}
+	nouveau := replay.ReplayDocument{
+		SchemaVersion: replay.SchemaVersion,
+		MatchID:       "000d5950",
+		TitleSlug:     title.DefaultSlug,
+		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+	}
+	if _, err := writeArtifact(path, nouveau); err != nil {
+		t.Fatalf("writeArtifact: %v", err)
+	}
+	surDisque, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("relecture: %v", err)
+	}
+	if string(surDisque) == ancien {
+		t.Fatal("une montée de schéma a été bloquée par le garde — tout le cache resterait figé " +
+			"au premier incrément de version")
+	}
 }
 
 // TestStoreArtifact_RefuseLaRegression : un dépôt SANS compteurs ne remplace pas un artefact

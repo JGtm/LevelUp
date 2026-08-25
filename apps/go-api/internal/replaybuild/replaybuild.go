@@ -347,6 +347,7 @@ func ArtifactHasPlayerCounters(path string) bool {
 // de lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le
 // nom d'un champ, et le garde deviendrait muet sans que rien ne le signale.
 type artifactDigest struct {
+	matchID       string
 	schemaVersion int
 	players       int
 	tracks        int
@@ -367,6 +368,7 @@ func readArtifactDigest(path string) (artifactDigest, bool) {
 // le blob est là, le relire depuis le disque serait absurde).
 func digestFromBytes(raw []byte) (artifactDigest, bool) {
 	var head struct {
+		MatchID       string            `json:"matchId"`
 		SchemaVersion int               `json:"schemaVersion"`
 		Tracks        []json.RawMessage `json:"tracks"`
 		ScoreTimeline struct {
@@ -377,6 +379,7 @@ func digestFromBytes(raw []byte) (artifactDigest, bool) {
 		return artifactDigest{}, false
 	}
 	return artifactDigest{
+		matchID:       head.MatchID,
 		schemaVersion: head.SchemaVersion,
 		players:       len(head.ScoreTimeline.Players),
 		tracks:        len(head.Tracks),
@@ -388,10 +391,17 @@ func digestFromBytes(raw []byte) (artifactDigest, bool) {
 // writeArtifactBytes, artifact_store.go) ; renvoie la taille en octets. Même
 // écriture que le dépôt d'un ouvrier : le service de lecture sert le fichier tel
 // quel, il ne doit jamais tomber sur un artefact à moitié écrit.
+// La taille rendue est celle de ce qui est FINALEMENT sur le disque, pas celle du document
+// qu'on voulait écrire : quand le garde anti-régression conserve l'artefact en place, annoncer
+// la taille du candidat ferait croire à une écriture qui n'a pas eu lieu.
 func writeArtifact(outPath string, doc replay.ReplayDocument) (int, error) {
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return 0, err
 	}
-	return len(blob), writeArtifactBytes(outPath, blob)
+	surDisque, err := writeArtifactBytes(outPath, blob)
+	if err != nil {
+		return 0, err
+	}
+	return surDisque.bytes, nil
 }
