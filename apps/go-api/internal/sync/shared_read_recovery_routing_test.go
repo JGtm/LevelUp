@@ -34,8 +34,11 @@
 //     lot). Les autres appelants sont soit courts (une requête, aucune fenêtre
 //     d'invalidation utile), soit protégés par le drain lecteurs de `SharedAccess`
 //     (`outstandingReads`) — ils restent des découvertes consignées.
-//   - `OpenReadOnly(` n'est PAS interdit : `citations_backfill.go` en contient deux
-//     usages ANTÉRIEURS au lot (metadata, et shared dans
+//   - Le set d'interdits est PAR FICHIER (socle commun + `alsoForbidden`).
+//     `OpenReadOnly(` est interdit sur `media_associate.go` — forme moderne de
+//     l'incident 2026-06-03, et sur un chemin géré par un provider elle fait
+//     échouer l'OpenReadWrite du swap — mais PAS sur `citations_backfill.go`, qui
+//     en contient deux usages ANTÉRIEURS au lot (metadata, et shared dans
 //     RunBackfillCompositeOnlyCitations). Le second vise un chemin géré par le
 //     provider et mérite son propre lot — consigné en découverte, pas traité ici.
 //   - Le vrai verrou de la famille citations est le TYPE : `loadPveStats` prend un
@@ -57,6 +60,10 @@ type sharedReadRecoveryFile struct {
 	// mustCall : fragment d'APPEL (avec la parenthèse ouvrante) qui doit être
 	// présent. Vide = aucune exigence positive (fichier couvert par le TYPE).
 	mustCall string
+	// alsoForbidden : constructs interdits EN PLUS du socle commun, propres à ce
+	// fichier. Permet d'interdire une acquisition sur un chemin géré par un
+	// provider sans faire rougir un usage légitime ailleurs.
+	alsoForbidden map[string]string
 }
 
 // sharedReadRecoveryProtectedFiles — fichiers des deux familles corrigées, chemins
@@ -64,20 +71,46 @@ type sharedReadRecoveryFile struct {
 var sharedReadRecoveryProtectedFiles = []sharedReadRecoveryFile{
 	// IndexMedia → shared_matches_v2 (chemin géré par un sharedprovider : la
 	// reprise doit être cache-only, cf. read_recovery.go section INVARIANT).
-	{rel: "internal/ops/media_associate.go", mustCall: "OpenRecoveringReader("},
+	{
+		rel:      "internal/ops/media_associate.go",
+		mustCall: "OpenRecoveringReader(",
+		alsoForbidden: map[string]string{
+			// Interdit ICI et pas dans le socle commun : c'est la forme MODERNE de
+			// l'incident 2026-06-03 (l'ouverture RO forcée d'un fichier tenu en RW),
+			// et sur un chemin géré par un provider elle peut faire échouer
+			// l'OpenReadWrite du swap → StateError. citations_backfill.go en contient
+			// deux usages ANTÉRIEURS au lot, qui relèvent de leur propre lot.
+			"OpenReadOnly(": "ouverture RO forcée sur un chemin géré par un sharedprovider — " +
+				"forme moderne de l'incident 2026-06-03, et fait échouer l'OpenReadWrite du swap",
+		},
+	},
 	// Acquisition du handle shared_pve pour le batch citations.
 	{rel: "internal/sync/citations_backfill.go", mustCall: "OpenRecoveringReader("},
 	// loadPveStats : verrouillé par le TYPE (cf. test de signature ci-dessous).
 	{rel: "internal/sync/citations.go"},
 }
 
-// sharedReadForbiddenConstructs — acquisitions de handle qui contournent le
-// lecteur auto-réparant. Chaque entrée porte la raison de son interdiction.
+// sharedReadForbiddenConstructs — socle commun : acquisitions de handle qui
+// contournent le lecteur auto-réparant, interdites dans TOUS les fichiers
+// couverts. Chaque entrée porte la raison de son interdiction.
 var sharedReadForbiddenConstructs = map[string]string{
 	"sql.Open(": "ouverture DuckDB directe hors cache/provider — incident 2026-06-03 (médias sans match) " +
 		"et violation de l'invariant sharedprovider « unique owner du handle »",
 	"OpenReadForQuery(": "instantané *sql.DB : meurt si le propriétaire ferme la handle pendant la lecture",
 	"LookupCachedDB(":   "emprunt nu au cache, non possédant et sans reprise — même mort que l'instantané",
+}
+
+// forbiddenFor retourne le set effectif de constructs interdits pour un fichier :
+// socle commun + interdictions propres au fichier.
+func forbiddenFor(f sharedReadRecoveryFile) map[string]string {
+	out := make(map[string]string, len(sharedReadForbiddenConstructs)+len(f.alsoForbidden))
+	for k, v := range sharedReadForbiddenConstructs {
+		out[k] = v
+	}
+	for k, v := range f.alsoForbidden {
+		out[k] = v
+	}
+	return out
 }
 
 // sharedReadAllowEntry : exception DATÉE et justifiée, à la LIGNE près. Une
@@ -144,6 +177,7 @@ func TestSharedBestEffortReadsUseRecoveringReader(t *testing.T) {
 
 	for _, f := range sharedReadRecoveryProtectedFiles {
 		body := readProtectedFile(t, root, f.rel)
+		forbidden := forbiddenFor(f)
 
 		if f.mustCall != "" && !containsInCode(body, f.mustCall) {
 			t.Errorf("%s n'appelle plus %s (hors commentaire) : la lecture shared best-effort a perdu "+
@@ -153,7 +187,7 @@ func TestSharedBestEffortReadsUseRecoveringReader(t *testing.T) {
 			if isGoCommentLine(line) {
 				continue
 			}
-			for construct, why := range sharedReadForbiddenConstructs {
+			for construct, why := range forbidden {
 				if !strings.Contains(line, construct) || isSharedReadAllowed(f.rel, construct, line) {
 					continue
 				}

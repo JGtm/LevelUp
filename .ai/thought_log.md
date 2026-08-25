@@ -163,9 +163,41 @@ helper vers un fichier non taggé) ; `citations_backfill.go:246`
 par le provider — même classe de violation d'invariant que le P0, préexistante et hors
 périmètre, elle mérite son propre lot.
 
-**Prochaine étape** : revue puis merge par le superviseur ; aucun run CI sur cette branche
-(pas de push). Voie (a) — lecture media par le canal drainé du provider — à ouvrir en lot
-dédié avec le chemin de plomberie décrit plus haut.
+**Ronde 2 — décision d'acceptation datée.** P1, P2 FATAL, garde-rail (4 mutations
+rougissent), code mort et renommage : tous validés, aucun défaut neuf. Le **résidu de
+fenêtre À LA CONSTRUCTION du reader** (cache miss pendant la bascule → `OpenReadForQuery`
+ouvre un RO frais, `read_recovery.go` section INVARIANT) est **ACCEPTÉ le 2026-08-25 par le
+superviseur** : strictement à parité avec l'avant-lot, fenêtre réduite d'une itération
+entière à une seule acquisition, et l'éradication complète = la voie provider déjà
+consignée pour un lot futur. Noté sur place dans l'en-tête du helper, avec le piège à ne
+pas commettre : rendre l'acquisition cache-only priverait de lecture tous les contextes
+SANS provider (CLI, tests, premier appel après boot).
+
+**Micro-ronde R2 — 3 retouches mécaniques.**
+
+1. *Cliquet sur `current()`.* Le relecteur a prouvé que remettre `current()` sur
+   `openLocked()` (au lieu de `resolveLocked()`) laissait TOUS les tests verts :
+   `TestRecoveringReader_CacheOnlyNeverOpensOnMiss` ne faisait qu'un seul `readID` et
+   n'exerçait jamais `current()` avec `r.db == nil`. Une 2e lecture y est ajoutée — après
+   l'échec de reprise le reader est VIDE, et c'est `current()` qui re-résout — avec
+   l'assertion `errNoCachedHandle` + cache toujours vide. La mutation rougit désormais.
+2. *`OpenReadOnly(` interdit sur `media_associate.go`.* C'est la forme moderne de
+   l'incident 2026-06-03 et la classe exacte de la découverte `citations_backfill.go:246`.
+   Le set d'interdits devient PAR FICHIER (socle commun + `alsoForbidden`) : l'interdiction
+   porte sur le site provider sans faire rougir les usages préexistants de
+   `citations_backfill.go`, qui restent une découverte pour leur propre lot.
+3. *Zero-value sûre par construction.* `ReopenAllowed = iota` faisait du PERMISSIF le
+   défaut, en contradiction avec la doc. Ordre inversé : `ReopenCacheOnly` est désormais la
+   zero-value — un oubli ou une struct construite par défaut dégradent vers le sûr. Vérifié
+   sur pièces qu'aucun code ne dépend de la valeur numérique : `r.policy == ReopenCacheOnly`
+   est le SEUL usage (pas de cast, pas de sérialisation, pas de comparaison d'ordre).
+
+**Prochaine étape** : GO GATES ciblé du superviseur (build, vet, gofmt,
+`go test ./internal/platform/duckdb/... ./internal/sync/... ./internal/ops/...`, lint
+new-from-merge-base) — pas de re-passe complète, les changements sont tests + garde-rail +
+réordonnancement de constantes. Puis revue et merge par le superviseur ; aucun run CI sur
+cette branche (pas de push). Voie (a) — lecture media par le canal drainé du provider — à
+ouvrir en lot dédié avec le chemin de plomberie décrit plus haut.
 
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 

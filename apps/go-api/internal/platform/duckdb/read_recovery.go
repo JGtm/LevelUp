@@ -57,13 +57,16 @@
 //     en régime établi, le serveur ne l'ouvre en RW qu'au boot pour les
 //     migrations) : la reprise peut ouvrir un handle RO neuf.
 //
-// Nuance assumée : l'acquisition INITIALE passe par `OpenReadForQuery` dans les
-// deux modes, donc peut encore ouvrir un RO neuf sur cache miss. C'est la parité
-// stricte avec le code d'avant ce lot (les deux sites appelaient déjà
-// `OpenReadForQuery`) — aucune régression introduite ici, mais la fenêtre
-// théorique subsiste au PREMIER appel. La fermer demande le canal drainé du
-// provider (`Provider.Get`, où le swap ATTEND le lecteur) : voie consignée au
-// journal, elle exige de faire descendre `cfg.SharedProvider` jusqu'à `ops`.
+// Résidu ACCEPTÉ (2026-08-25, décision superviseur) : l'acquisition INITIALE
+// passe par `OpenReadForQuery` dans les deux modes, donc peut encore ouvrir un
+// RO neuf sur cache miss. C'est la parité STRICTE avec le code d'avant ce lot
+// (les deux sites appelaient déjà `OpenReadForQuery`) — aucune régression, et la
+// fenêtre passe d'une itération entière à une seule acquisition. L'éradication
+// complète demande le canal drainé du provider (`Provider.Get`, où le swap ATTEND
+// le lecteur) : voie consignée au journal pour un lot dédié, elle exige de faire
+// descendre `cfg.SharedProvider` jusqu'à `ops`. Ne pas « refermer » ce résidu en
+// rendant l'acquisition cache-only : les contextes SANS provider (CLI, tests,
+// premier appel après boot) n'ont alors plus aucun handle et perdent la lecture.
 //
 // # Le contrat
 //
@@ -95,21 +98,27 @@ import (
 )
 
 // ReopenPolicy décide ce qu'un RecoveringReader a le droit de faire pour
-// re-résoudre son handle après une invalidation. Choix EXPLICITE à la
-// construction — il n'y a pas de défaut sûr pour les deux familles de chemins
-// (cf. section INVARIANT de l'en-tête).
+// re-résoudre son handle après une invalidation. Le choix reste EXPLICITE à la
+// construction (cf. section INVARIANT de l'en-tête), mais la ZERO-VALUE est le
+// mode RESTRICTIF : un oubli, une struct construite par défaut ou un futur
+// champ non initialisé dégradent vers le sûr (aucune ouverture) plutôt que vers
+// le risqué (ouverture RO pendant un swap).
 type ReopenPolicy int
 
 const (
-	// ReopenAllowed autorise la reprise à ouvrir un handle RO neuf si rien n'est
-	// en cache. Réservé aux chemins qu'AUCUN sharedprovider ne gère (shared_pve).
-	ReopenAllowed ReopenPolicy = iota
-
 	// ReopenCacheOnly interdit toute ouverture : la reprise n'emprunte que le
 	// cache process. OBLIGATOIRE sur un chemin géré par un sharedprovider
 	// (shared_matches_v2) — une ouverture RO dans la fenêtre de swap peut faire
 	// échouer l'OpenReadWrite du provider et l'envoyer en StateError.
-	ReopenCacheOnly
+	//
+	// Volontairement la zero-value (`iota`) : le défaut doit être le mode sûr.
+	ReopenCacheOnly ReopenPolicy = iota
+
+	// ReopenAllowed autorise la reprise à ouvrir un handle RO neuf si rien n'est
+	// en cache. Réservé aux chemins qu'AUCUN sharedprovider ne gère (shared_pve),
+	// où le propriétaire SUPPRIME l'entrée de cache en partant — le mode
+	// cache-only n'y récupérerait rien. À déclarer en connaissance de cause.
+	ReopenAllowed
 )
 
 // RecoveringReader porte un handle de LECTURE sur une DB DuckDB partagée et le

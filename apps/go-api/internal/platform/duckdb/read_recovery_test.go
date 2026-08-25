@@ -159,6 +159,21 @@ func TestRecoveringReader_CacheOnlyNeverOpensOnMiss(t *testing.T) {
 	if logs := buf.String(); !strings.Contains(logs, "aucun handle en cache") {
 		t.Errorf("log d'abandon best-effort attendu, got: %s", logs)
 	}
+
+	// 2e lecture — couvre le chemin current(), DISTINCT de refresh() : la reprise
+	// ayant échoué, le reader est désormais VIDE (r.db == nil), et c'est current()
+	// qui re-résout. Sans cette passe, remettre current() sur openLocked() (au lieu
+	// de resolveLocked()) laisse toute la suite verte : un Do ultérieur rouvrirait
+	// alors un RO neuf, exactement ce que la reprise s'interdit — mutation prouvée
+	// survivante en revue R2, d'où ce cliquet.
+	_, err = readID(t, r)
+	if !errors.Is(err, errNoCachedHandle) {
+		t.Errorf("2e lecture (chemin current, reader vide) = %v, want errNoCachedHandle "+
+			"— current() doit lui aussi respecter la ReopenPolicy", err)
+	}
+	if _, ok := LookupCachedDB(path); ok {
+		t.Error("current() a ouvert un handle en ReopenCacheOnly — l'invariant sharedprovider est violé")
+	}
 }
 
 // TestRecoveringReader_CacheOnlyBorrowsRWHandle : pendant une fenêtre RW du
