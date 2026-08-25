@@ -36,6 +36,14 @@ updates:
       - dependency-name: "typescript"
         update-types:
           - "version-update:semver-major"
+      # react-table 9.x : le bump seul casse la compilation (15 fichiers sur
+      # l'API v8 - useReactTable, row models). Verifie le 2026-08-25, PR #78
+      # fermee. La migration v9 (useTable, tableFeatures, data/columns readonly)
+      # est un lot dedie post-v7.5 avec gate visuel sur les tableaux. Condition
+      # de retrait : ouverture de ce lot (cf. registre des reports v7.5).
+      - dependency-name: "@tanstack/react-table"
+        update-types:
+          - "version-update:semver-major"
 
   # Backend (Go modules) — apps/go-api
   - package-ecosystem: "gomod"
