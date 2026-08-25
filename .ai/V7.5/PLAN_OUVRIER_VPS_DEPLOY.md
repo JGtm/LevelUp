@@ -112,40 +112,75 @@ Gate : le fichier existe et porte les cases des etapes 2 a 4.
 
 ### Etape 2 — Les 4 fichiers
 
-- [ ] `scripts/deploy-worker.sh` (D2 + D3-ter).
-- [ ] `packaging/systemd/levelup-worker.service` (D3 + D3-bis).
-- [ ] Job `deploy-worker` dans `.github/workflows/deploy.yml` (D1 + D5).
-- [ ] `docs/RUNBOOK_REPLAY_WORKER.md` (D4).
+- [x] `scripts/deploy-worker.sh` (D2 + D3-ter).
+- [x] `packaging/systemd/levelup-worker.service` (D3 + D3-bis).
+- [x] Job `deploy-worker` dans `.github/workflows/deploy.yml` (D1 + D5).
+- [x] `docs/RUNBOOK_REPLAY_WORKER.md` (D4).
 
 Gate : les 4 fichiers existent ; aucun emoji dans les fichiers livres (regle n°4) ; le
 `paths-ignore` de `deploy.yml` est inchange (verification par `git diff`).
+
+**Gate PASSE (2026-08-25)** : `git diff -- .github/workflows/deploy.yml` = 45 insertions,
+**0 ligne touchant `paths-ignore`** ; recherche de plages Unicode emoji sur les 4 fichiers
+livres = aucune correspondance ; `git status --short` ne montre que les fichiers de ce lot.
 
 ### Etape 3 — Gates
 
 Commandes NUES, exit code reel consigne. **Jamais de pipe pour rendre un verdict** (lecon
 payee deux fois : `cmd | grep | head` -> SIGPIPE -> faux vert).
 
-- [ ] actionlint **1.7.12 EXACT**, memes deux lignes que le step « Validation workflows » de
+- [x] actionlint **1.7.12 EXACT**, memes deux lignes que le step « Validation workflows » de
       `deploy.yml` / `test-deploy-precheck.yml` :
       ```bash
       bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
       ./actionlint -color
       ```
-      Attendu : exit 0.
-- [ ] `bash -n scripts/deploy-worker.sh` -> exit 0.
-- [ ] `shellcheck scripts/deploy-worker.sh` si disponible, sinon consigner « non disponible ».
-- [ ] `cd apps/go-api && go test ./internal/archlint/` -> exit 0.
-- [ ] `systemd-analyze verify` : **indisponible sous Windows** -> statuer `[~]`, renvoi
-      « verifie par le superviseur sur csstat ».
+      **EXIT 0** (2026-08-25). Telechargement : `Done: 1.7.12`, `built with go1.26.1 compiler
+      for windows/amd64`, exit 0. Analyse : **aucune sortie, exit 0** (zero finding sur les
+      8 workflows). Binaire supprime de l'arbre apres le gate (`rm -f actionlint.exe`),
+      `git status` verifie.
+- [x] `bash -n scripts/deploy-worker.sh` -> **EXIT 0**.
+- [x] `shellcheck scripts/deploy-worker.sh` -> **DISPONIBLE** (winget koalaman.shellcheck),
+      **EXIT 0**, aucune sortie.
+- [x] `cd apps/go-api && go test ./internal/archlint/` -> **EXIT 0**
+      (`ok levelup/go-api/internal/archlint 3.646s`) : le garde-rail des declencheurs D29
+      reste vert avec le diff.
+- [~] `systemd-analyze verify` : **indisponible sous Windows**. A jouer par le superviseur
+      sur csstat : `systemd-analyze verify /opt/levelup/packaging/systemd/levelup-worker.service`.
+      Renvoi ecrit aussi dans `docs/RUNBOOK_REPLAY_WORKER.md` §6.
+
+Toutes les commandes ont ete jouees NUES, exit code lu directement — aucun pipe pour rendre
+un verdict.
 
 ### Etape 4 — Cloture
 
-- [ ] Ligne au registre `.ai/V7.5/REGISTRE_REPORTS.md` (lot ouvrier-vps : fichiers livres,
+- [x] Ligne au registre `.ai/V7.5/REGISTRE_REPORTS.md` (lot ouvrier-vps : fichiers livres,
       activation = condition de reprise a la release).
-- [ ] Entree en tete de `.ai/thought_log.md` ([2026-08-25], titre, statut, decision,
+- [x] Entree en tete de `.ai/thought_log.md` ([2026-08-25], titre, statut, decision,
       resultats avec exit codes, prochaine etape).
-- [ ] Toutes les cases de ce plan statuees.
-- [ ] 2 commits maximum, uniquement les fichiers de ce lot. Aucun push.
+- [x] Toutes les cases de ce plan statuees.
+- [x] 2 commits : `ouvrier-vps(V1)` (plan) et `ouvrier-vps(V2)` (les 4 fichiers + cloture).
+      Uniquement les fichiers de ce lot. **Aucun push.**
+
+## Ce que le superviseur doit provisionner EXACTEMENT (contrat du script)
+
+Le script et l'unite livres attendent ces chemins et ces droits, au caractere pres :
+
+| Element | Valeur attendue |
+|---|---|
+| Racine du clone | `/opt/levelup`, proprietaire `deploy` |
+| Toolchain Go | `/usr/local/go/bin/go` (le script etend `PATH` a `/usr/local/go/bin`) |
+| Binaire produit | `/opt/levelup/bin/replay-worker` (repertoire cree par le script) |
+| Nom d'unite | `levelup-worker` (aucune variante : le script compare `is-enabled` a `enabled`) |
+| Installation de l'unite | **par lien** : `sudo systemctl link /opt/levelup/packaging/systemd/levelup-worker.service` puis `sudo systemctl daemon-reload`, et **rester DESACTIVEE** |
+| Fichier d'environnement | `/etc/levelup-worker.env`, root, 0600, portant `LEVELUP_BUILD_WORKER_TOKEN=` |
+| Dossier d'etat | cree par systemd via `StateDirectory=levelup-worker` -> `/var/lib/levelup-worker` (le sous-dossier `work/` est cree au premier job) |
+| sudoers de `deploy` | `systemctl daemon-reload` **et** `systemctl restart levelup-worker`, sans mot de passe (le script les appelle en non-interactif) |
+| Secrets GitHub | `VPS2_HOST`, `VPS2_SSH_KEY` |
+
+Le jeton pose dans `/etc/levelup-worker.env` doit etre BYTE-IDENTIQUE a celui qui sera
+branche cote prod (`/opt/levelup/.env.local` sur lvelup) : la comparaison est a temps
+constant, toute divergence rend 401.
 
 ## Ce que la verification sur pieces a etabli (a citer, pas a re-verifier)
 
