@@ -87,7 +87,16 @@ navigateur (gate visuel = utilisateur, à la fusion).
 
 ## Lot D — `wt/obj-etat` (pt 11)
 
-- [ ] D0 (PLAN, stop au verdict) : écrire `PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md` :
+- [x] D0 (VALIDÉ superviseur 25/08, CR vérifié sur pièces — plan `662b6c953` sur
+  `wt/obj-etat`, 559 L. DEUX CORRECTIONS DE FAIT confirmées : (1) schéma 19 DÉJÀ PRIS
+  (`document.go:158`) par le lot « lecture vide » d'une session voisine → cible du lot =
+  20, bump UNIQUE en D5 ; (2) la jauge tag 3 est publiée sur les modes à zones
+  SIMULTANÉES (Bastion) et volontairement ABSENTE en KOTH (`zone_states_gauge.go:33-36`)
+  — l'inverse de ce que ce plan affirmait. ARBITRAGES : ordre D6(D-R)→D2→D3→D4 ; TC
+  statique gardé en l'état jusqu'à D3 (pas de churn intermédiaire, remonter au user si
+  D3 échoue) ; mandat d'amender `[[objective_objects]]` accordé SI gate D4 passe, avec
+  justification datée ; VIP `[!]` DÉFINITIF ; Extraction/Stockpile/Land Grab/Firefight
+  `[!]` corpus avec conditions de reprise) : écrire `PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md` :
   inventaire PAR MODE de l'état vivant manquant (acquis : KOTH colline désignée + jauge
   schéma 18, CTF `flagCarries` + rendu drapeau ; à inventorier : Strongholds/Total
   Control possession vivante, Extraction, Oddball (crâne `[!]` corpus), VIP → mesurer le
@@ -102,10 +111,14 @@ navigateur (gate visuel = utilisateur, à la fusion).
   jauge lue en escalier (schéma 18), en remplacement du seul arc externe (`drawGaugeArc`,
   `zoneStatesLayer.ts`) ; hiérarchie des encres à trancher à l'implémentation (progression
   de l'attaquant franche par-dessus la teinte du propriétaire affaiblie) ; évaluer le
-  renforcement des alphas d'appartenance (`ZONE_HELD_FILL_ALPHA`). POINT DE CONTRÔLE
-  DONNÉES : vérifier que la série `gauge` émet aussi sur les zones du mode bases
-  (validée sur KOTH seulement) — si non, statuer `[!]` pour la progression sur ces zones ;
-  l'appartenance sur forme existe déjà et reste. Séquencement : après fusion du lot A.
+  renforcement des alphas d'appartenance (`ZONE_HELD_FILL_ALPHA`). DONNÉES (corrigé
+  25/08 après D0, vérifié sur pièces) : la série `gauge` est publiée sur les modes à
+  zones SIMULTANÉES (Bastion — exactement le « mode base » de la demande) et absente en
+  KOTH par construction (`zone_states_gauge.go:33-36`, tag 3 = compteur de transfert sur
+  une colline) : D-R cible Bastion d'abord, Total Control après D3, jamais KOTH.
+  L'appartenance sur forme existe déjà et reste. Séquencement : après fusion du lot A ;
+  D-R (= D6 du plan fils) passe AVANT D2 (gain visible tôt, web seul — peut chevaucher
+  un lot Go).
 
 ## Ordre et parallélisme
 
