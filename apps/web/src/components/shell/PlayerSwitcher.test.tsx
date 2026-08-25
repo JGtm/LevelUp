@@ -67,6 +67,17 @@ describe('PlayerSwitcher', () => {
     expect(items[1]).toHaveTextContent('Madina')
   })
 
+  it('calibre le déclencheur sur TOUS les gamertags (largeur stable comme le select natif)', () => {
+    renderSwitcher([JGTM, MADINA])
+
+    // Le calibre invisible rend chaque gamertag : le plus long fixe la largeur
+    // du bouton, la bascule de joueur ne la fait plus varier (gate visuel 25/08).
+    const sizer = screen.getByTestId('player-switcher-sizer')
+    expect(sizer).toHaveTextContent('JGtm')
+    expect(sizer).toHaveTextContent('Madina')
+    expect(sizer).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it('bascule de joueur via le callback de la NavL1 et referme le menu', () => {
     const onPlayerChange = vi.fn()
     renderSwitcher([JGTM, MADINA], onPlayerChange)
