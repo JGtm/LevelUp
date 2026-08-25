@@ -96,7 +96,7 @@ type ServiceRegistry struct {
 	rankImageURLsByTitle map[string]map[int]*string           // PAR TITRE (slug → rank_id → imageURL) ; map manquante/nil → CareerService.rank_image_url et next_rank_image_url absents pour ce titre. Title-agnostic : les images HINF (keyées 1..272) ne fuient plus sur un SR Halo 5 (D.2)
 	prestigeBundle       *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
 	advisorBundle        *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore            auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	authStore            auth.UserTokenStore                  // ADR 0023 : SEULE source des tokens auth (nil → aucun refresh possible, refreshTokensFromDB rend nil)
 	publicReadTokenSrc   pooledTokenSource                    // A1 : source de token SAIN du pool pour les LECTURES PUBLIQUES de tiers (Explorer) ; nil → pas de fallback pool (comportement historique)
 	jobStore             *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
 	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
@@ -117,10 +117,14 @@ func (r *ServiceRegistry) WithJobStore(store *jobs_platform.Store) *ServiceRegis
 	return r
 }
 
-// WithAuthStore attache le MultiUserTokenStore au registry — source unique des
-// tokens auth (refresh token) post-ADR 0023. `refreshTokensFromDB` lit le store
-// AVANT de tomber sur les fallbacks legacy (sync_meta DuckDB, env var). Nil
-// possible pour les tests qui veulent l'ancien comportement legacy-only.
+// WithAuthStore attache le MultiUserTokenStore au registry — SEULE source des
+// tokens auth (refresh token) depuis ADR 0023 Phase 5 (2026-08-25). Il n'existe
+// plus de fallback : ni sync_meta DuckDB, ni env var, ni store mono-user.
+//
+// Nil laisse le registry SANS aucune source : `refreshTokensFromDB` rend nil
+// immédiatement (avec un WARN explicite). C'est la dégradation attendue d'un
+// câblage partiel ou d'un test qui n'exerce pas l'auth — jamais un mode
+// « legacy-only », lequel n'existe plus.
 func (r *ServiceRegistry) WithAuthStore(store auth.UserTokenStore) *ServiceRegistry {
 	r.authStore = store
 	return r

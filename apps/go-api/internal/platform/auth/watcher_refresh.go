@@ -147,11 +147,17 @@ func EnsureWatcherAccessToken(
 //
 // Retourne (rt, xuid, source) — le xuid permet de persister la rotation.
 //
-// Revue adversariale r1 : l'erreur de LoadByGamertag n'est plus jetée en
-// silence. Un store ILLISIBLE (I/O, JSON corrompu) doit se voir : sans ce log,
-// il s'affichait comme « aucun refresh_token, lancer token-capture » — et
+// Revue adversariale r1 puis r2 : l'erreur de LoadByGamertag n'est plus jetée en
+// silence. Un store ILLISIBLE (I/O, JSON corrompu) doit se voir : sans ce log, il
+// s'affichait comme « aucun refresh_token, lancer token-capture » — et
 // token-capture ne répare pas un fichier corrompu. Symétrique du traitement de
 // access_token_store_first.go.
+//
+// La branche ERROR ci-dessous n'était atteignable qu'en cas d'erreur de
+// RÉPERTOIRE tant que LoadByGamertag avalait les fichiers corrompus dans un
+// `continue` nu (r2) : elle ne l'est réellement que depuis que LoadByGamertag
+// distingue « aucun match » (ErrUserTokensNotFound) de « au moins un fichier
+// illisible » (erreur enveloppant la cause).
 func lookupRefreshToken(ctx context.Context, multiStore *MultiUserTokenStore, gamertag string) (rt, xuid, source string) {
 	if multiStore == nil || gamertag == "" {
 		return "", "", ""

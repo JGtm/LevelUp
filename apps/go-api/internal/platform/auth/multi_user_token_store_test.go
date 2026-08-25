@@ -482,6 +482,43 @@ func TestMultiUserTokenStore_LoadByGamertag_EmptyDir(t *testing.T) {
 	}
 }
 
+// TestMultiUserTokenStore_LoadByGamertag_CorruptFileIsNotNotFound — revue
+// adversariale r2 : un fichier de tokens illisible était avalé par un `continue`
+// nu, si bien qu'un store CORROMPU se présentait aux appelants comme une simple
+// absence de token. Le remède affiché (« lancer token-capture ») ne répare pas un
+// fichier corrompu, et la branche ERROR de watcher_refresh.lookupRefreshToken
+// était de fait inatteignable. Ce test verrouille la distinction.
+func TestMultiUserTokenStore_LoadByGamertag_CorruptFileIsNotNotFound(t *testing.T) {
+	dir := tempTokenDir(t)
+	s := NewMultiUserTokenStore(dir)
+	// Crée le répertoire via une écriture valide, puis corrompt un AUTRE fichier.
+	if err := s.Upsert(&UserTokens{XUID: "111", Gamertag: "alice", XSTSToken: "tok"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "222.json"), []byte("{ pas du JSON"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Gamertag absent + un fichier illisible → PAS ErrUserTokensNotFound.
+	_, err := s.LoadByGamertag("bob")
+	if err == nil {
+		t.Fatal("err = nil, want une erreur (fichier illisible dans le store)")
+	}
+	if errors.Is(err, ErrUserTokensNotFound) {
+		t.Errorf("err = %v : « introuvable » et « illisible » appellent des remèdes "+
+			"opposés (authentifier vs réparer le fichier) — ne pas les confondre", err)
+	}
+
+	// Un fichier corrompu ne doit PAS empêcher de trouver un gamertag sain.
+	got, err := s.LoadByGamertag("alice")
+	if err != nil {
+		t.Fatalf("le scan doit continuer malgré un fichier corrompu : %v", err)
+	}
+	if got == nil || got.XUID != "111" {
+		t.Errorf("got = %+v, want l'entrée saine 111", got)
+	}
+}
+
 func TestMultiUserTokenStore_FilePermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permissions POSIX non applicables sur Windows")
