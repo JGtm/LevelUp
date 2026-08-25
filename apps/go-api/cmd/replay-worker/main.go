@@ -22,10 +22,18 @@
 // Usage :
 //
 //	replay-worker --url http://127.0.0.1:8000/api/v1/internal --token <jeton> \
-//	              [--id ouvrier-1] [--once] [--poll 5s] [--work <dir>]
+//	              [--id ouvrier-1] [--once] [--poll 5s] [--work <dir>] [--mem-limit-gib 3]
 //
 // --once prend UN job, le traite, et sort : c'est le mode de la preuve de bout en
 // bout (et celui d'un test manuel). Sans --once, il boucle jusqu'à Ctrl-C.
+//
+// --mem-limit-gib POSE LE MÊME BLINDAGE QUE cmd/levelup backfill-replay (lot 2026-08-20/24,
+// cf. memlimit.go) : un film-bombe (empreinte hors norme, ex. 51101d1d à 7,9 Go en 2,6 s) fait
+// arrêter CE PROCESSUS plutôt que de le laisser spiraler en GC pendant des heures — mais
+// contrairement à l'enfant de la passe hors ligne, l'ouvrier RAPPORTE d'abord au serveur un
+// échec explicite (error_code=memory_exceeded) avant de s'arrêter : sans ce compte rendu, le
+// job resterait `running` jusqu'à l'expiration de son bail et repartirait avec un motif
+// générique qui ne dit rien du film-bombe. 0 désarme (mesure seule, aucune coupure).
 package main
 
 import (
@@ -66,6 +74,8 @@ func main() {
 	work := flag.String("work", "", "dossier de travail pour les morceaux téléchargés, effacés après chaque job (défaut : <repo>/data/cache, cache film du dépôt — jamais effacé)")
 	poll := flag.Duration("poll", defaultPollInterval, "cadence d'interrogation quand la file est vide")
 	once := flag.Bool("once", false, "prendre un seul job puis sortir")
+	memLimit := flag.Int("mem-limit-gib", memGuardDefaultGiB,
+		"plafond mémoire dur du décodage de CHAQUE job, en GiB (0 = désarmé ; cf. memlimit.go)")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
@@ -101,15 +111,16 @@ func main() {
 	defer stop()
 
 	w := &worker{
-		identity:   identity,
-		client:     newProtocolClient(*url, *token),
-		repoRoot:   *repoRoot,
-		workDir:    workDir,
-		keepsFilms: keepsFilms,
+		identity:    identity,
+		client:      newProtocolClient(*url, *token),
+		repoRoot:    *repoRoot,
+		workDir:     workDir,
+		keepsFilms:  keepsFilms,
+		memLimitGiB: *memLimit,
 	}
 	slog.InfoContext(ctx, "replay-worker: démarré",
 		"worker_id", identity.workerID, "url", *url, "work_dir", workDir,
-		"films_conserves", keepsFilms, "once", *once)
+		"films_conserves", keepsFilms, "once", *once, "mem_limit_gib", *memLimit)
 
 	if err := w.run(ctx, *poll, *once); err != nil {
 		slog.ErrorContext(ctx, "replay-worker: arrêt sur erreur", "err", err)
