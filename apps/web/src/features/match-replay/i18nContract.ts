@@ -402,7 +402,6 @@ export interface ReplayText {
   inventoryFallbackHint: string
   inventoryNoPriorHint: string
   gaugeLabel: string
-  respawnBarLabel: string
   /**
    * Garde SchemaVersion (lot 2, audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 1). Note
    * DISCRÈTE, jamais un blocage — la fiche affiche tout ce que l'artefact porte, ces deux
