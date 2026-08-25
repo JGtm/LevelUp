@@ -3,8 +3,8 @@
 // Package sync — citations_terminal_state_test.go : état terminal des citations
 // (matchs annulés dont les events n'arrivent jamais).
 //
-// Ces tests couvrent la DÉCISION isolée (matchAge + isCitationsTerminalNoEvents)
-// sur un match_registry minimal. Le comportement de bout en bout à travers
+// Ces tests couvrent la DÉCISION isolée (matchAge + isCitationsTerminalNoEvents,
+// citations.go) sur un match_registry minimal. Le comportement de bout en bout à travers
 // BackfillMatchCitations (jeton posé, sortie du pool, non-régression du chemin
 // events présents) est couvert par citations_terminal_state_pipeline_test.go,
 // qui a besoin de la fixture complète (build tag integration).

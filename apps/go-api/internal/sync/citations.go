@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -112,9 +113,9 @@ func BackfillMatchCitations(
 		// 0 event extractible). Un tel match restait candidat à vie et était retraité
 		// à chaque cycle de sync, sans fin ni effet — charge qui croît d'une boucle
 		// par match annulé. Passé citationsTerminalNoEventsAge, l'absence d'events
-		// devient un état terminal (isCitationsTerminalNoEvents,
-		// citations_terminal_state.go) : la 3e condition tombe et le jeton EST posé
-		// par writeCitations ci-dessous. Le jeton n'est PAS une impasse : le chemin
+		// devient un état terminal (isCitationsTerminalNoEvents, plus bas dans ce
+		// fichier) : la 3e condition tombe et le jeton EST posé par writeCitations
+		// ci-dessous. Le jeton n'est PAS une impasse : le chemin
 		// force=true (recompute) sélectionne tous les matchs sans consulter
 		// match_citations — le LEFT JOIN IS NULL ne vit que dans la branche
 		// force=false de selectMatchesForCitations — donc un match jetonné dont les
@@ -594,7 +595,7 @@ ORDER BY time_ms ASC`
 // match à 0 citation peut recevoir le sentinel "_processed" (events présents) ou
 // doit rester candidat (events pas encore chargés — film retardé). Depuis l'état
 // terminal (2026-08-25), « rester candidat » est en plus borné dans le temps :
-// cf. isCitationsTerminalNoEvents (citations_terminal_state.go).
+// cf. isCitationsTerminalNoEvents ci-dessous.
 func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
 	if sharedDB == nil {
 		return true
@@ -606,6 +607,89 @@ func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool 
 		return true // best-effort : ne pas bloquer le pipeline
 	}
 	return loaded.Valid && loaded.Bool
+}
+
+// ─── État terminal : les events n'arriveront jamais ──────────────────────────
+//
+// Contexte (constaté en prod le 2026-08-25) : la règle Phase 4 ci-dessus laisse
+// candidat tout match à 0 citation dont les events ne sont pas chargés, au motif
+// qu'ils finiront par arriver. Pour un match ANNULÉ par les serveurs, ils
+// n'arrivent jamais — le film est une coquille (chunk non vide mais 0 event
+// extractible) — et le match était re-sélectionné, recalculé puis re-rejeté à
+// chaque cycle de sync, indéfiniment, avec ses WARN collatéraux : une boucle
+// perpétuelle de plus par nouveau match annulé.
+//
+// Ce bloc vit dans citations.go, et non dans un fichier dédié, parce que le
+// ratchet K3c (archlint/sync_root_freeze_test.go, ADR 0027) gèle le nombre de
+// fichiers à la racine du god-package sync/ : le neuf ne peut y ajouter aucun
+// fichier. La longueur de citations.go est de la dette gelée antérieure.
+
+// citationsTerminalNoEventsAge — âge au-delà duquel un match à 0 citation dont
+// les events ne sont pas chargés est déclaré en état terminal.
+//
+// 7 jours : un film Theater est publié dans les heures qui suivent la fin du
+// match, ou jamais. Passé une semaine il ne reste que deux causes possibles —
+// match annulé par les serveurs (film-coquille) ou film indisponible — et
+// l'attente est perpétuelle dans les deux cas. Le seuil est volontairement large
+// devant le délai réel d'arrivée (heures) : une panne d'API ou un arrêt du
+// watcher de plusieurs jours ne doit pas jetonner un match encore récupérable.
+const citationsTerminalNoEventsAge = 7 * 24 * time.Hour
+
+// matchAge retourne l'âge du match (maintenant − début du match) lu depuis
+// shared.match_registry.
+//
+// Le début du match passe par le fragment timezone CANONIQUE (règle CLAUDE.md
+// n°8, analysis.SQLStartTimeCanonical) — jamais start_time brut : les imports
+// OpenSpartan portent un start_time naïf décalé, et un âge calculé dessus
+// jetonnerait (ou refuserait de jetonner) au mauvais moment.
+//
+// Retourne une ERREUR — jamais un âge par défaut — dès que l'âge est
+// indéterminable : sharedDB nil, match absent du registre, colonnes illisibles,
+// horodatages NULL. Le caller doit alors choisir l'échec sûr.
+func matchAge(ctx context.Context, sharedDB *sql.DB, matchID string) (time.Duration, error) {
+	if sharedDB == nil {
+		return 0, errors.New("matchAge: sharedDB nil")
+	}
+	q := `SELECT ` + analysis.SQLStartTimeCanonical("") + ` FROM match_registry WHERE match_id = ?`
+	var start sql.NullTime
+	if err := sharedDB.QueryRowContext(ctx, q, matchID).Scan(&start); err != nil {
+		return 0, fmt.Errorf("matchAge %s: %w", matchID, err)
+	}
+	if !start.Valid {
+		return 0, fmt.Errorf("matchAge %s: début de match canonique NULL", matchID)
+	}
+	return time.Since(start.Time), nil
+}
+
+// isCitationsTerminalNoEvents décide si un match à 0 citation dont les events ne
+// sont PAS chargés doit malgré tout recevoir le jeton "_processed".
+//
+// Appelée UNIQUEMENT dans la branche rare (0 delta ET events absents), par
+// court-circuit du && côté BackfillMatchCitations : le chemin chaud ne paie
+// aucune requête supplémentaire.
+//
+// Tempérament symétrique de isEventsLoaded, mais d'échec sûr INVERSE :
+// isEventsLoaded répond true quand elle ne sait pas (poser le jeton = legacy) ;
+// ici, ne pas savoir doit laisser le match candidat — un cycle de plus coûte
+// infiniment moins qu'un match jetonné à tort, dont les citations resteraient
+// vides jusqu'au prochain recompute force=true. Toute lecture d'âge en échec est
+// donc loguée en WARN et retourne false.
+func isCitationsTerminalNoEvents(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
+	age, err := matchAge(ctx, sharedDB, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "citations: âge du match illisible — match laissé candidat (0 delta, events absents)",
+			"match_id", matchID, "err", err)
+		return false
+	}
+	if age < citationsTerminalNoEventsAge {
+		return false
+	}
+	slog.InfoContext(ctx, "citations: état terminal — jeton _processed posé",
+		"match_id", matchID,
+		"age_days", int(age.Hours()/24),
+		"seuil_jours", int(citationsTerminalNoEventsAge.Hours()/24),
+		"raison", "events jamais arrivés — état terminal")
+	return true
 }
 
 // writeCitations écrit les deltas dans match_citations (idempotent).
