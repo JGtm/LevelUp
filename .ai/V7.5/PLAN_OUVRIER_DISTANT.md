@@ -303,6 +303,50 @@ surface de l'ouvrier, payload borne, seuils de taille).
 | P2-4 | Cas discriminant manquant ; critere de succes E2E derriere un skip | **corrige** (test ajoute) / **consigne** : la couverture CI reelle de ce lot est l'aller-retour du payload et les gardes unitaires, PAS le E2E ouvrier (il SKIPPE sans cache film) |
 | P2-1 | Portee du predicat plus etroite que sa doc | **partiellement corrige** (les DEUX chemins post-sync sont couverts) + **dette ecrite ci-dessous** |
 
+## 5ter. Ronde 2 (2026-08-25) — un P0 : le garde etait pose sur la PORTE, pas sur le PASSAGE
+
+R1-1, R1-2, R1-3, R1-5 et R1-6 sont **fermees avec preuve** (gates rejoues par le relecteur,
+test discriminant verifie rouge contre l'ancien code). **R1-4 ne l'etait PAS.**
+
+**Le defaut.** Le garde anti-regression n'etait cable que dans `StoreArtifact`, la porte HTTP de
+l'ouvrier. Or QUATRE ecrivains canoniques visent le meme fichier du meme `repoRoot`, et les trois
+autres passent par `Builder.BuildMatch` -> `writeArtifact` -> `writeArtifactBytes`, sans garde :
+
+1. `StoreArtifact` — le depot d'un ouvrier (etait garde) ;
+2. `replayartifacts.buildAll` — le fil de l'eau post-sync ;
+3. `cmd_backfill_replay.go:185` — le CLI de rattrapage, **y compris `--only-existing`, la passe
+   concue precisement pour re-cuire des artefacts EXISTANTS et riches** ; et son
+   `chargerFaitsReplay` degrade A VIDE pour TOUTE la passe si son unique ouverture de base
+   echoue (commentaire `:354-357`) ;
+4. `wire.RunReplayBuild` — l'action admin.
+
+Des faits vides donnent un `scoreTimeline.players` vide, donc un artefact appauvri qui porte le
+BON numero de schema : il ecrasait un artefact riche **silencieusement**, sans WARN, sans
+compteur, et sans reparation possible. Le poste ouvrier n'est pas concerne (son `repoRoot` est un
+transit local).
+
+**La correction (R2-1), une seule, au point de convergence.** Le garde descend dans
+`writeArtifactBytes` — le SEUL endroit qui voit a la fois le document candidat et le fichier en
+place, et par lequel les quatre ecrivains passent. `StoreArtifact` ne garde PAS de copie : il
+appelle la meme implementation (sinon on recreait la divergence que la regle des <= 2 copies
+interdit). Son comportement observable est INCHANGE — no-op en succes, accuse = disque — et ses
+trois tests d'origine passent **sans modification**.
+
+`writeArtifactBytes` rend desormais le digest de ce que le disque porte APRES l'appel, si bien
+que `writeArtifact` annonce la taille REELLE : annoncer celle du candidat ferait croire a une
+ecriture qui n'a pas eu lieu.
+
+**Preuve que le test mord** : garde neutralise temporairement,
+`TestWriteArtifact_NEcrasePasUnArtefactRiche` ET `TestStoreArtifact_RefuseLaRegression` passent
+au ROUGE ; fichier restaure a l'identique (`diff` exact) et les 5 tests repassent au vert.
+
+**Cas controle** : `TestWriteArtifact_MonteeDeSchemaToujoursEcrite` — a schema DIFFERENT le garde
+se tait. Sans lui, le premier increment de `SchemaVersion` figerait tout le cache.
+
+**Frontiere** : `cmd/levelup/cmd_backfill_replay.go` n'a **aucune ligne touchee** — le garde
+vivant dans `replaybuild`, le CLI en herite sans le savoir. C'est l'argument qui a decide de
+l'emplacement.
+
 **Portee reelle, sur pieces** — quatre appelants d'`ArtifactUpToDate` :
 
 1. `replayartifacts.enqueueAll` — conscient des faits ;
