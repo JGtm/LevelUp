@@ -72,7 +72,7 @@ du lancement, qui compterait les étrangers au groupe.
   `friends_in_game`). Vérifier les libellés : « N amis en jeu » / « N friends in
   game » restent justes ; ajuster l'infobulle SEULEMENT si elle nomme la liste
   des Réglages (vérifier sur pièces).
-- [ ] G5 — tests : Go — deux utilisateurs différents obtiennent des comptes
+- [x] G5 — tests : Go — deux utilisateurs différents obtiennent des comptes
   différents sur le même état watcher (A possède p1 : voit p2+p3 en jeu = 2 ;
   B possède p2 : voit p1 [hors jeu] + p3 = 1) ; utilisateur propriétaire de tout
   → 0 ; watcher éteint → 0 ; la fraîcheur (borne 3 min) s'applique au compte
@@ -131,6 +131,20 @@ chaîne, portée par `title` et `aria-label`) ne nomment PAS la liste des Régla
 écart trouvé : le godoc de `usePresence.ts` disait « le nombre d'amis (liste des
 Réglages) » et décrivait un TTL Xbox de 45 s ; corrigé (commentaire uniquement,
 zéro changement fonctionnel).
+
+**G5 (2026-08-25)** — `internal/service/presence_friends_test.go` réécrit de zéro
+(8 tests) : compte PERSONNEL (même état watcher, A possède p1 → 2, B possède p2 →
+1) ; propriétaire de tout → 0 ; watcher éteint sous 3 formes → 0 avec `players`
+non nil ; borne de fraîcheur appliquée au compte comme à la manette ; prédicat de
+propriété absent → 0 ; profil sans xuid non compté ; session absente → 0 et liste
+vide (fail-closed) ; ÉTRANGER HORS GROUPE jamais compté — ce dernier joué à
+travers le VRAI `BootstrapService` (db_profiles temporaire, user store, résolveur
+de co-membres), le seul endroit où la frontière du cercle est décidée : alice et
+bob (même groupe) comptent 1 chacun, carol (hors groupe) compte 0 et n'apparaît
+dans aucune des deux listes. Ajouté aussi `TestOwnsPlayerDirectly_...` :
+propriété ≠ visibilité (co-membre, admin, xuid vide, session nil, enforcement
+désactivé). Tests des chemins supprimés : retirés en G1/G2 (compilation).
+Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly"` EXIT=0.
 
 ## Découvertes (à consigner, ne pas traiter)
 
