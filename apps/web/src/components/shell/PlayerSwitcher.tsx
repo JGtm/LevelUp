@@ -184,13 +184,17 @@ export function PlayerSwitcher({ players, currentPlayer, locale, onPlayerChange 
         aria-expanded={open}
         className="flex max-w-[32vw] cursor-pointer items-center gap-1.5 rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/80 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 sm:max-w-none"
       >
+        {/* Emplacement de la manette RÉSERVÉ même hors jeu (son apparition ne
+            doit pas élargir le bouton), À GAUCHE du nom — gate visuel 25/08. */}
+        <span className="inline-flex w-3.5 shrink-0 justify-center">
+          {currentPlayer && inGameBadge(currentPlayer.player_slug)}
+        </span>
         {/* Largeur STABLE, comme le <select> natif d'origine : un select se
             dimensionne sur sa plus LONGUE option, donc changer de joueur ne
             bougeait rien. Le calibre invisible (h-0) rend tous les gamertags en
-            bloc — le plus large fixe la largeur — et le gamertag courant se
-            tronque dedans. Gate visuel du 25/08 : sans lui, le bouton respirait
-            à chaque bascule. */}
-        <span className="min-w-0">
+            bloc — le plus large fixe la largeur — et le gamertag courant,
+            ALIGNÉ À DROITE (contre le chevron), se tronque dedans. */}
+        <span className="min-w-0 text-right">
           <span aria-hidden className="pointer-events-none invisible block h-0 overflow-hidden" data-testid="player-switcher-sizer">
             {players.map((p) => (
               <span key={p.player_slug} className="block">
@@ -199,11 +203,6 @@ export function PlayerSwitcher({ players, currentPlayer, locale, onPlayerChange 
             ))}
           </span>
           <span className="block truncate">{currentPlayer?.gamertag ?? ''}</span>
-        </span>
-        {/* Emplacement de la manette RÉSERVÉ même hors jeu : son apparition ne
-            doit pas élargir le bouton. */}
-        <span className="inline-flex w-3.5 shrink-0 justify-center">
-          {currentPlayer && inGameBadge(currentPlayer.player_slug)}
         </span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
