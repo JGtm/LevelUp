@@ -37,7 +37,7 @@ chokepoint, MOINS ceux dont il est directement propriétaire, actuellement EN JE
   `players` reste filtrée comme avant) ;
 - la distinction « possédé en propre » vs « visible via co-membre » n'existant
   pas sur la liste servie, elle est prise au chokepoint authz existant
-  (`authz.Enforced` + `authz.CurrentUser`, via `BootstrapService.OwnsPlayerDirectly`)
+  (`authz.Enforced` + `authz.CurrentUser`, via `BootstrapService.DirectOwnerFor`)
   — la logique de groupe n'est PAS dupliquée.
 
 Cette règle remplace la formulation « état GLOBAL du watcher moins les possédés »
@@ -47,13 +47,13 @@ du lancement, qui compterait les étrangers au groupe.
 
 La règle ci-dessus suppose des identités. Sans elles (`LEVELUP_AUTH_MODE=none`,
 la valeur PAR DÉFAUT, ou mode démo, ou aucun user store) il n'existe PAS de
-« possédé en propre » : `OwnsPlayerDirectly` rend donc FAUX pour tout profil, et
+« possédé en propre » : `DirectOwnerFor (fabrique, H4)` rend donc FAUX pour tout profil, et
 le compteur vaut **tous les joueurs visibles en jeu** — l'instance entière EST le
 cercle de son opérateur. Le comportement d'origine (« sans enforcement, tous les
 profils sont les siens ») mettait la pastille à zéro EN PERMANENCE sur la
 configuration par défaut : une fonctionnalité livrée éteinte (règle n°11).
 
-| Régime | `OwnsPlayerDirectly` | `friends_in_game` |
+| Régime | `DirectOwnerFor` | `friends_in_game` |
 |---|---|---|
 | Propriété appliquée (`password` / `xbox` + user store) | vrai pour le xuid lié de l'utilisateur | cercle visible MOINS mes profils |
 | Propriété non appliquée (`none`, démo, pas de store) | toujours faux | tous les joueurs visibles en jeu |
@@ -163,7 +163,7 @@ bob (même groupe) comptent 1 chacun, carol (hors groupe) compte 0 et n'apparaî
 dans aucune des deux listes. Ajouté aussi `TestOwnsPlayerDirectly_...` :
 propriété ≠ visibilité (co-membre, admin, xuid vide, session nil, enforcement
 désactivé). Tests des chemins supprimés : retirés en G1/G2 (compilation).
-Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly"` EXIT=0.
+Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly|DirectOwnerFor"` EXIT=0.
 
 **G6 (2026-08-25)** — gates du lot, codes retour capturés sans pipe (sorties
 redirigées vers fichier, `echo $?` immédiat) :
@@ -205,7 +205,7 @@ neufs le remplacent : `TestOwnsPlayerDirectly_NotEnforced_OwnsNothing` (la
 propriété) et `TestFriendsInGame_NotEnforced_CountsEveryVisiblePlayerInGame`
 (la conséquence : 2 joueurs visibles en jeu → compteur 2, via un
 `BootstrapService` réel en mode `none`). Section décision du plan mise à jour.
-Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly|FilterOwnedPlayers|Presence"` EXIT=0.
+Gate : `go test ./internal/service/ -run "Friends|OwnsPlayerDirectly|DirectOwnerFor|FilterOwnedPlayers|Presence"` EXIT=0.
 
 **H2 (2026-08-25)** — doc inversée confirmée sur pièces : le godoc justifiait le
 `return false` (utilisateur sans xuid) par « la liste visible est alors vide »,
