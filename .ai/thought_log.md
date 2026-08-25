@@ -1,3 +1,72 @@
+## [2026-08-25] Ouvrier de rejeu distant : la mecanique de deploiement vers csstat — Complete
+
+**Contexte** : lot `ouvrier-vps` (branche `wt/ouvrier-vps`, base `c67b58f6b`). Livrer les
+FICHIERS VERSIONNES du deploiement de `cmd/replay-worker` vers le second VPS (machine de
+calcul « csstat »). Le provisionnement machine est tenu par le superviseur en parallele ;
+cette session n'a touche que le depot (aucun SSH, aucun `gh secret`, aucun push).
+Plan : `.ai/V7.5/PLAN_OUVRIER_VPS_DEPLOY.md`.
+
+**Decision technique principale — deux amendements ecrits AVANT de coder, sur pieces** :
+
+1. **L'`ExecStart` prescrit ne demarrerait JAMAIS** (D3-bis). `cmd/replay-worker/main.go:73`
+   declare `--repo` avec pour defaut `LEVELUP_REPO_ROOT`, et `main.go:87-90` sort en
+   **exit 2** si la valeur est vide. `WorkingDirectory=` ne renseigne pas cette racine.
+   L'unite porte donc `--repo /opt/levelup` EXPLICITE : ecrit dans le fichier versionne, il
+   ne depend pas du contenu d'un fichier d'environnement pose a la main.
+2. **L'unite s'installe PAR LIEN, pas par copie** (D3-ter). Le sudoers de `deploy` est
+   limite a `daemon-reload` + `restart levelup-worker` : aucun `sudo cp` possible.
+   « Rafraichir l'unite si le fichier versionne a change » n'a donc de sens que si
+   `/etc/systemd/system/levelup-worker.service` est un lien vers le fichier du depot — le
+   `git reset` met le contenu a jour, `daemon-reload` le prend en compte. Le script traite
+   les trois etats reels (lien / copie divergente / absent) et n'echoue sur aucun : a ce
+   stade le binaire est deja a jour, une unite mal installee se signale, elle ne rougit pas
+   un deploiement.
+
+**Livre** : job `deploy-worker` dans `.github/workflows/deploy.yml` (`needs: [deploy]`,
+condition identique a celle du job `deploy` — un `needs` legitimement saute ferait sinon
+sauter ce job ; `command_timeout: 40m` pour un build CGO a froid, `timeout-minutes: 50`
+au-dessus) ; `scripts/deploy-worker.sh` (fetch/reset, build CGO vers un temporaire du meme
+repertoire puis `mv` atomique, rafraichissement d'unite, restart CONDITIONNEL) ;
+`packaging/systemd/levelup-worker.service` ; `docs/RUNBOOK_REPLAY_WORKER.md` (EN-only,
+regle n°15). **Zero motif ajoute au `paths-ignore`** (invariant D29).
+
+**Verifie sur pieces (cite, non suppose)** : `--work` hors du depot -> `keepsFilms` faux ->
+les morceaux sont effaces apres chaque job (`main.go:99-108`, `job.go:282-299`) ; le jeton
+vient de `LEVELUP_BUILD_WORKER_TOKEN` (`main.go:71`), jamais de la ligne de commande ; exit
+codes 0/1/2/3 ; **`Restart=on-failure` est sur vis-a-vis de l'exit 3** — le compte rendu
+`memory_exceeded` part au serveur sur un contexte frais AVANT `os.Exit(3)`
+(`job.go:135-153`), le job est deja `failed` avec son motif ; le jeton n'ouvre que les
+quatre routes `build-queue` (`build_worker.go:88-103`, `:254-271`), 503 sans jeton, 401 sur
+mauvais jeton ; `LEVELUP_REPLAY_PUBLIC=1` leve le middleware `LocalOnlyReplay` (404
+`replay_not_available` hors loopback, `replay_local_gate.go:74`, `:110-119`), monte sur les
+seules routes de rejeu (`server_apiv1.go:687`) — sans effet sur le protocole ouvrier.
+
+**Nginx / `/api/v1/internal`** : les deux confs versionnees (`packaging/nginx/levelup.conf`,
+`demo.conf`) proxifient TOUT `location /api/` vers `127.0.0.1:8000` (`client_max_body_size
+2g`, `proxy_read_timeout 3600s`) et ne portent **aucun `deny`/`allow`, aucune mention de
+`internal`** : rien n'y bloque le protocole ouvrier. Limite honnete ecrite au runbook : ces
+fichiers sont installes a la main et reecrits par certbot, donc le depot ne prouve pas ce
+qui tourne. D'ou la commande de controle a jouer sur la prod (curl POST du claim sans
+jeton : 503 avant branchement du jeton, 401 apres — **jamais un 404 nginx**).
+
+**Resultats des gates (commandes nues, exit code lu directement, aucun pipe)** :
+`bash <(curl -sSf .../v1.7.12/scripts/download-actionlint.bash) 1.7.12` **EXIT 0** puis
+`./actionlint -color` **EXIT 0** (zero finding, 8 workflows ; binaire supprime de l'arbre
+apres coup) ; `bash -n scripts/deploy-worker.sh` **EXIT 0** ; `shellcheck
+scripts/deploy-worker.sh` disponible, **EXIT 0** ; `go test ./internal/archlint/` **EXIT 0**
+(garde-rail des declencheurs D29 vert avec le diff). `systemd-analyze verify` : `[~]`
+indisponible sous Windows, renvoye au superviseur sur csstat (ecrit au runbook §6).
+
+**Conclusion / prochaine etape** : **rien n'est active**, aucune modification du
+comportement de la prod ; le workflow ne s'executera qu'apres fusion sur `main` (release
+v7.5), et l'unite etant desactivee le script sortira en 0 sans redemarrer. La sequence
+d'activation en 5 temps (jeton prod, remediation `--repair-impoverished`, `enable --now`,
+decision user sur `LEVELUP_REPLAY_PUBLIC`, verifications) est au runbook et au registre
+comme condition de reprise. Provisionnement attendu, au caractere pres : tableau « Ce que le
+superviseur doit provisionner EXACTEMENT » du plan.
+
+---
+
 ## [2026-08-25] Supervision — 3 soaks monitoring Notion soldes + 4 lots prod prets a merger — Complete
 
 **Contexte** : execution des 3 items dates du Backlog Notion (soaks monitoring), pilotage
