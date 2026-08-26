@@ -1210,3 +1210,60 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   bien au moins un film-bombe, celui-la meme qui a fait suffoquer la machine deux fois. Le
   recap le DIT (« 1 film n'a PAS ete mesure — un taux calcule dessus ne porte pas sur ce qu'il
   annonce »), ce qui est exactement pourquoi ce compteur existe.
+
+### D3-bis — TOTAL CONTROL : le SEUIL (2) SEUL, mesure reduite avant fermeture
+
+> **PROTOCOLE ECRIT ET COMMITE AVANT LA MESURE.** Ce commit ne contient aucun chiffre de
+> resultat. Arbitrage superviseur du 2026-08-27 : la possession vivante TC est `[!]` (pas de
+> 4e oracle — lecon KOTH), mais le seuil (2) reste DU parce qu'il ne depend PAS de l'attribution
+> des prises qui a coule le seuil (1).
+
+**POURQUOI CE SEUIL SURVIT AU NAUFRAGE DU PREMIER.** Le seuil (1) mesurait « dans quelle ZONE se
+tenait le capteur » — de la geometrie, sur des instants approximatifs. Le seuil (2) ne demande
+aucune position : il compte des IDENTITES designees par le film. Les deux echouent ou reussissent
+pour des raisons independantes.
+
+**CE QUI EST TESTE, EN UNE PHRASE** : par MANCHE, le film designe-t-il exactement TROIS zones ?
+
+- [ ] D3b.1 Les DESIGNATEURS : les slots `ti=13` portant une serie de tag 5 CHAINEE (meme
+      predicat de chainage que le volet colline — le tag 5 non chaine est de la contamination
+      d'ancrage). Denombrer les slots, leurs valeurs distinctes, leurs bascules.
+- [ ] D3b.2 Les MANCHES : `objectiveevents.RealRounds` sur les enregistrements d'entite. Un
+      film sans manche lisible n'est pas exploitable, et le dit.
+- [ ] D3b.3 Par manche, l'ENSEMBLE DESIGNE : les valeurs de tag 5 DISTINCTES en vigueur pendant
+      la manche. Le verdict porte sur son CARDINAL.
+- [ ] D3b.4 Verdict et fermeture.
+
+**« EXACTEMENT 3 », DEFINI AVANT DE COMPTER.** Le cardinal de l'ensemble designe d'une manche
+vaut **3**. Ni « au moins 3 » (14 zones designees contiendraient 3 et passeraient), ni « 3 en
+moyenne » (une moyenne masque une manche a 1 et une a 5).
+
+**TOLERANCE SUR LES ROTATIONS DE MANCHE : +/- 2 s AUTOUR DE CHAQUE BORNE, EXCLUES DES DEUX
+MANCHES.** A la bascule, le jeu retire trois zones et en pose trois autres ; les emissions de
+cette fenetre appartiennent a la rotation elle-meme, pas a l'une des deux manches. Les compter
+ferait mecaniquement six zones sur toute manche — un faux negatif garanti. Deux secondes est
+l'ordre de grandeur mesure des bascules de designateur en KOTH (13 a 21 ms apres la capture,
+volet 1) elargi d'un facteur de securite : on exclut large plutot que de trancher fin sur une
+grandeur qu'on n'a pas mesuree ici.
+
+**SEUIL** : cardinal == 3 sur **>= 80 %** des manches exploitables, et sur **>= 2 films**.
+Une manche est exploitable si elle porte **>= 1** emission de designateur hors fenetre de
+rotation.
+
+**ESCALADE, ECRITE D'AVANCE** : un film sans designateur elu, ou sans manche lisible, n'est PAS
+exploitable et ne compte ni pour ni contre. **`a349fea8` est EXCLU D'OFFICE** — bombe memoire
+connue (3,17 Gio en 3,6 s), on ne la relance pas pour un comptage. S'il reste **moins de 2**
+films exploitables, la mesure s'arrete : **TC entierement `[!]`**.
+
+**LES DEUX ISSUES, ET ELLES SONT TOUTES DEUX DES RESULTATS** :
+- **OUI** -> publication **ACTIVES SEULEMENT** : le calque TC sert les 3 zones designees du
+  match, NEUTRES et sans possession (le seuil (3) n'a jamais ete evalue — on ne publie pas un
+  proprietaire). Cela repond a la decision produit en attente : un rejeu TC cesse de dessiner
+  13 a 18 formes la ou 3 sont actives.
+- **NON** -> TC entierement `[!]`, et l'affichage du vivier repart en DECISION PRODUIT.
+
+**Gate D3-bis** — commandes NUES, un film par processus, sous l'executeur borne :
+
+    go vet ./internal/analysis/replay/
+    ZONE_FILM=<chunks d'un film> go test ./internal/analysis/replay/ -run TotalControlDesignateur -v -timeout 60m
+    go test ./internal/analysis/replay/...
