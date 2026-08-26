@@ -182,7 +182,16 @@ D6/D-R FUSIONNE (capture SUR la forme : clip traceZonePath + bande bas->haut,
 drawGaugeArc supprime, extraction zoneStatesPaint.ts, hierarchie d'encres par ordre ;
 D6.4 [~] controle gaugePoints au prochain creneau Go). Gates rejoues au principal a
 chaque fusion (tsc 0 purge, vitest 1087 puis 1088). RESTE : CR B1 (Go en cours), passe
-visuelle utilisateur groupee, puis D2 KOTH -> D3 TC -> D4 Oddball.
+visuelle utilisateur groupee, puis D2 KOTH -> D3 TC -> D4 Oddball. (26/08 apres-midi)
+Signalements utilisateur traites : FIX-CTF-ZONES fusionne (points_only par mode, 3 roles
+a forme recenses) ; FIX-SOCLES = diagnostic web SAIN (fixture reelle, 6 tests), cause =
+binaire serveur local perime + serveur tombe, RELANCE code a jour (sonde claim 503).
+B1+B2 fusionnes (notif Discord groupee). D6.4 clos par lecture pure (jauge : 3 Bastion
+467-1794 points, 4 collines a 0). D2 KOTH : gate NON atteint, arret propre — oracle du
+plan FAUX (score de mode = collines gagnees, pas secondes de garde ; 2 films/4 a un seul
+camp) ; canal sain, proprietaire NON MESURE ; arbitrage = D2-bis oracle th=10 puis
+escalade score personnel ; decouverte scoreTimeline partiel/mal nomme sur films KOTH ->
+registre (bandeau de score concerne).
 
 **Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
 fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre
