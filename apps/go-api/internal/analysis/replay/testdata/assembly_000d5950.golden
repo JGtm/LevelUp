@@ -46,7 +46,7 @@ par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=22
 75 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-184 etat(s) publie(s) · 120 avec grenades lues · 150 avec munitions lues
+184 etat(s) publie(s) · 150 avec grenades lues · 150 avec munitions lues
 51 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
 34 lecture(s) VIDE(S) : 31 corroboree(s) par le fil des morts (`dead`), 3 inexpliquee(s)
