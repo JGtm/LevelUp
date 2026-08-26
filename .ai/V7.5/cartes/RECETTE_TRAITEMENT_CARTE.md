@@ -26,7 +26,7 @@ dans `data/titles/halo_infinite/reference/map_fond_reglages.json`, une entree pa
 | axe | champ JSON | defaut | ce qu'il corrige |
 |---|---|---|---|
 | habillage | `style` | `jeu` | `encre` = quasi monochrome ; la teinte ne bascule pas, seule la valeur varie |
-| echelle | `echelle` | 0,0920 m/px | une petite arene rend une petite image, pixelisee des qu'on l'agrandit |
+| echelle | `echelle` | **auto**, 3 000 px de grille | une petite arene rend une petite image, pixelisee des qu'on l'agrandit |
 | toits | `ecreteToits` | absent | vide les pixels dont aucune surface n'est a hauteur de jeu |
 | plafond | `plafondArene` | 6 m | le cran de l'ecretage : 4 m si « encore trop de toits », 8 m si « trop vide » |
 | zones | `rogneAuxZones` | absent | efface la matiere hors des callouts dilates de 4 m |
@@ -74,17 +74,26 @@ inconnu. Ces seuils ne se relevent pas pour faire passer une entree.
 L'ordre est celui des matchs decroissants parmi les non closes — il est tenu a jour au
 registre. Ne pas devier sans raison ecrite.
 
-### 2. Choisir l'echelle AVANT de cuire
+### 2. L'echelle est AUTOMATIQUE — ne plus la calculer a la main
 
-Mesurer la matiere utile du fond publie :
+**Change le 2026-08-26, apres douze entrees ecrites une par une.** `himap.EchellePourCadre`
+vise `CibleCadrePx` = 3 000 px sur le plus grand cote de la GRILLE et en deduit le cote du
+pixel, borne a [0,025 ; 0,0920 m/px]. Le rognage au cadre utile garde ensuite 42 a 55 pour
+cent de la grille, soit environ 1 300 a 1 600 px publies.
+
+Pourquoi la main etait une erreur : le cadre monde est connu AVANT le rendu — il vient des
+ancres — donc la valeur n'exprimait rien de propre a la carte, seulement la taille de son
+arene. Douze copies d'un meme calcul, c'est le « copy-paste config » que la revue interdit
+des la troisieme.
+
+**Une `echelle` explicite reste PRIORITAIRE** : les onze cartes deja gatees gardent la leur au
+pixel pres, la regle ne repasse pas dessus. Garde-rail : `TestEchelleExpliciteGagneToujours`.
+
+Pour mesurer la matiere utile d'un fond publie (diagnostic, plus pour regler) :
 
 ```
 CGO_ENABLED=0 go -C apps/go-api run ./cmd/mapfond-cadrage --dir <.../map_backgrounds>
 ```
-
-La colonne `matiereLPx`/`matiereHPx` x 0,0920 donne la taille utile en metres. Viser environ
-**1 700 px sur le grand cote** : `echelle = taille utile (m) / 1700`. Valeurs deja retenues :
-Streets 0,036 · Bazaar 0,034 · Recharge 0,029.
 
 ### 3. Ecrire l'entree de reglages
 

@@ -143,15 +143,9 @@ type OptionsCuisson struct {
 	// `metersPerPixel`, les lecteurs s'y fient, et le banc de non-regression compare a
 	// 0,0920 m/px (`TestEchelleDeProductionEgaleCelleDuBanc`).
 	Echelle float64
-}
-
-// echelleOuDefaut rend l'echelle demandee, ou celle de production si aucune ne l'est. Une
-// echelle negative ou nulle n'est pas une erreur a remonter : c'est le champ laisse vide.
-func (o OptionsCuisson) echelleOuDefaut() float64 {
-	if o.Echelle > 0 {
-		return o.Echelle
-	}
-	return EchelleFondCarte
+	// CibleCadrePx demande une echelle AUTOMATIQUE quand Echelle est nulle : voir
+	// EchellePourCadre (echelle_cible.go). Zero = echelle de production.
+	CibleCadrePx int
 }
 
 // BilanCuisson chiffre ce que la cuisson a fait. Il est publie avec l'asset : un fond de carte
@@ -230,7 +224,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	if len(opts.Ancres) == 0 {
 		return nil, b, ErrSansAncre
 	}
-	r := CadreSurAncresEchelle(opts.Ancres, opts.echelleOuDefaut())
+	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
 	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
 	b.NiveauDeJeu = zJeu
 	// La tranche est TRANSLATEE AU SOL JOUE — meme regle que la chaine Forge, et pour la meme

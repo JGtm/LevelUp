@@ -81,6 +81,7 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			CheminModule:           c.chemin,
 			Ancres:                 c.ancres,
 			Echelle:                e.echelleDe(c.cle),
+			CibleCadrePx:           himap.CibleCadrePx,
 			EcreteToits:            e.ecreteToitsDe(c.cle),
 			PlafondArene:           e.plafondAreneDe(c.cle),
 			SansEau:                e.sansEauDe(c.cle),
@@ -194,6 +195,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			CheminModuleCanevas: himap.CheminCanevasForge(carte),
 			Cle:                 carte.MapID,
 			Echelle:             e.echelleDe(carte.MapID),
+			CibleCadrePx:        himap.CibleCadrePx,
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
