@@ -402,19 +402,4 @@ export interface ReplayText {
   inventoryFallbackHint: string
   inventoryNoPriorHint: string
   gaugeLabel: string
-  /**
-   * Garde SchemaVersion (lot 2, audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 1). Note
-   * DISCRÈTE, jamais un blocage — la fiche affiche tout ce que l'artefact porte, ces deux
-   * chaînes s'y ajoutent seulement.
-   *
-   * `replaySchemaStale` : l'artefact est ANTÉRIEUR à ce que ce client sait exploiter (un
-   * backfill n'a pas encore rejoué ce match après un bump de schéma) — des champs ajoutés par
-   * la montée manquent silencieusement sans elle.
-   */
-  replaySchemaStale: string
-  /**
-   * `replaySchemaAhead` : l'artefact est POSTÉRIEUR — ce déploiement du client est en retard
-   * sur le format que le serveur sert désormais. Note symétrique à `replaySchemaStale`.
-   */
-  replaySchemaAhead: string
 }
