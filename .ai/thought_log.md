@@ -38,9 +38,26 @@ fichiers NON COMMITES a efface deux fois des editions (lot A r1 puis healthcheck
 reconstruites a l'identique depuis les diffs lus ; protocole corrige : COMMITTER avant
 toute mutation de preuve.
 
-**Decouvertes consignees non traitees** : les autres `sql.Open("duckdb"` d'internal/ops
-(archive, backup, backup_service, diagnose, media_hls, restore, seed*, snapshot_read) —
-hors chemins provider, classe differente, a auditer dans un lot dedie si besoin.
+**Revue adversariale (2026-08-26)** : le code TIENT (14 conditions — refcount cache
+hit/miss, ordre des defers, aucune entree residuelle, regimes d'erreur preserves,
+allowlists vivantes, portee exacte de forbiddenFor). 3 P2 de JUSTESSE DOCUMENTAIRE
+corriges en r1 : (C1) healthcheck — le routage est un no-op au site d'appel reel (CLI,
+cache vide -> meme ouverture RO qu'avant ; le KO cross-process est un diagnostic correct) ;
+le commentaire revendiquait une reparation sans declencheur -> reecrit (apport reel =
+uniformite + securite in-process future + connecteur custom). (C2) citations_backfill —
+le vrai mecanisme est le VERROU FICHIER cross-process : la CLI tenait shared_matches_v2
+en RO pendant toute la boucle et bloquait le swapToRW du SERVEUR ; la justification
+in-process (StateError) etait fausse (provider nil dans la CLI) -> reecrite, raisons du
+garde-rail alignees. (C3) media — sur cache miss le handle d'IndexMedia devient
+empruntable par les emprunteurs NUS du cache (ticker checkpoint main.go, attach du
+backup) : WARN best-effort benin possible a la fermeture, fenetre ASSUMEE et documentee.
+
+**Decouvertes consignees non traitees** : (1) les emprunteurs NUS du cache —
+`cmd/server/main.go` (ticker checkpoint 5 min, sans indexLock ni refcount) et
+`ops/backup_service.go` (`attachExistingHandles`, release no-op pendant tout l'export) —
+exactement la classe « emprunt nu » que le socle du garde-rail interdit : lot dedie ;
+(2) les autres `sql.Open("duckdb"` d'internal/ops (archive, backup, diagnose, media_hls,
+restore, seed*, snapshot_read) — hors chemins provider, a auditer si besoin.
 
 ---
 

@@ -157,6 +157,16 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// ouverture RW via le MÊME connecteur custom, indexée sous la MÊME clé "rw:".
 	// C'est bien un handle RW qu'il faut ici : IndexMedia fait du DDL, des INSERT,
 	// des UPDATE et un CHECKPOINT — jamais OpenReadForQuery, qui rendrait un RO.
+	//
+	// FENÊTRE ASSUMÉE (revue 2026-08-26) : sur cache MISS, le handle ouvert ici est
+	// inscrit au cache le temps de l'indexation — il devient donc visible des
+	// emprunteurs NUS (sans indexLock ni refcount) : le ticker checkpoint de
+	// cmd/server/main.go et l'attach du backup. Si l'un d'eux capture le pointeur
+	// juste avant notre Close, il verra « database is closed » — un WARN best-effort
+	// bénin (le checkpoint suivant ou celui du shutdown rattrape), impossible avant
+	// puisque sql.Open était invisible du cache. Le vrai défaut est chez ces
+	// emprunteurs nus (classe interdite par le garde-rail de routage) — consigné
+	// pour un lot dédié, pas traité ici.
 	tz := SanitizeMediaTimezone(opts.Timezone)
 	handle, err := platform_duckdb.OpenReadWriteShared(targetPath, tz)
 	if err != nil {

@@ -116,13 +116,15 @@ var sharedReadRecoveryProtectedFiles = []sharedReadRecoveryFile{
 		rel:      "internal/sync/citations_backfill.go",
 		mustCall: "OpenRecoveringReader(",
 		alsoForbidden: map[string]string{
-			// shared_matches_v2 est géré par un sharedprovider : l'ouverture RO
-			// forcée y laisse une entrée `ro:` en cache qui fait échouer
-			// l'OpenReadWrite du swap (StateError). Les DEUX emprunts metadata
-			// (metadata.duckdb n'est géré par aucun provider) restent tolérés via
-			// l'allowlist ci-dessous, à la ligne près.
-			"OpenReadOnly(": "ouverture RO forcée : échoue en « different configuration » sur une DB tenue " +
-				"en RW, et fait échouer l'OpenReadWrite du swap sur un chemin géré par un sharedprovider",
+			// Ce fichier tourne dans le CLI (process séparé, provider nil) : le vrai
+			// coût d'une ouverture RO forcée y est le VERROU FICHIER cross-process,
+			// tenu pendant toute la durée de vie du handle, qui bloque le swapToRW
+			// du SERVEUR (« Could not set lock on file »). L'emprunt borné
+			// OpenReadForQuery réduit la fenêtre à la seule requête. Les DEUX
+			// emprunts metadata (metadata.duckdb n'est géré par aucun provider)
+			// restent tolérés via l'allowlist ci-dessous, à la ligne près.
+			"OpenReadOnly(": "ouverture RO forcée tenue longtemps : verrou fichier cross-process qui bloque " +
+				"le swapToRW du serveur pendant toute la duree de vie du handle — emprunt borne prescrit",
 		},
 	},
 	// loadPveStats : verrouillé par le TYPE (cf. test de signature ci-dessous).
@@ -152,8 +154,12 @@ var sharedReadRecoveryProtectedFiles = []sharedReadRecoveryFile{
 				"remède prescrit du lot RO-invariant, pas une lecture longue",
 		},
 		alsoForbidden: map[string]string{
-			"OpenReadOnly(": "ouverture RO forcée : échoue en « different configuration » sur une DB " +
-				"tenue en RW — le diagnostic rendrait un KO qui ne décrit que son propre contournement",
+			// Honnêteté (revue 2026-08-26) : au site d'appel réel (CLI, cache vide),
+			// OpenReadForQuery fait la MÊME ouverture RO sur cache miss — on
+			// n'interdit pas un mécanisme éradiqué, on impose le canal canonique
+			// (emprunt in-process si un handle est tenu, connecteur custom, refcount).
+			"OpenReadOnly(": "hors canal canonique — meme ouverture que OpenReadForQuery sur cache miss, " +
+				"mais sans l'emprunt in-process ni le connecteur custom : rester sur le canal sanctionne",
 		},
 	},
 }

@@ -332,16 +332,17 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 // sortMatchIDsChronoOnShared trie les match_ids par ordre chronologique en
 // empruntant shared_matches_v2 le temps STRICT de la requête.
 //
-// INVARIANT provider (read_recovery.go, ADR 0013/0016) : shared_matches_v2 est
-// géré par un sharedprovider, qui en est l'unique owner du handle. L'ancienne
-// version ouvrait ce fichier via `OpenReadOnly` — une ouverture RO FORCÉE, qui
-// (a) échoue en « different configuration » si le process tient déjà le fichier
-// en RW, et (b) laisse une entrée `ro:` en cache pendant TOUTE la boucle de
-// recalcul, fenêtre pendant laquelle l'`OpenReadWrite` du swap provider échoue
-// (StateError → lectures shared en 503). `OpenReadForQuery` emprunte le handle
-// déjà tenu (RW ou RO — une lecture marche sur un RW) et n'ouvre en RO que sur
-// cache miss ; le release rendu ici borne l'emprunt à la seule requête de tri,
-// au lieu de la boucle entière.
+// MÉCANISME RÉEL (revue 2026-08-26) : l'unique appelant est le CLI
+// `levelup backfill --composite-only` (cmd_backfill.go), un process SÉPARÉ du
+// serveur, construit avec provider nil — il n'y a donc AUCUN swap in-process à
+// protéger ici. Le vrai coût de l'ancienne version (`OpenReadOnly` tenu pendant
+// TOUTE la boucle writeCitations) était le VERROU FICHIER cross-process : tant
+// que la CLI tenait shared_matches_v2 en RO, le `swapToRW` du SERVEUR échouait
+// (« Could not set lock on file ») pendant toute la durée du recalcul — des
+// minutes sur un gros backlog. Borner l'emprunt à la seule requête de tri réduit
+// cette fenêtre au strict minimum. `OpenReadForQuery` garde par ailleurs la
+// sécurité in-process (emprunt du handle tenu) si ce chemin est un jour appelé
+// depuis le serveur.
 //
 // Deux régimes d'erreur, volontairement DISTINCTS (parité avec l'ancien code) :
 //   - acquisition impossible → erreur DURE remontée au caller. Le tri conditionne
