@@ -2,37 +2,37 @@
   "schemaVersion": 1,
   "module": "chasm",
   "mapNames": [
-    "chasm",
+    "Chasm",
     "chasm_map"
   ],
   "image": "chasm.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-12T23:19:00.1336781Z",
-  "style": "jeu",
+  "generatedAt": "2026-08-26T18:02:36.1788391Z",
+  "style": "encre",
   "calibration": {
-    "metersPerPixel": 0.092,
-    "originX": -132.40003204345703,
-    "originY": 6.517996948242171,
-    "widthPx": 1418,
-    "heightPx": 1479,
+    "metersPerPixel": 0.059,
+    "originX": -95.99703204345704,
+    "originY": -30.961003051757807,
+    "widthPx": 932,
+    "heightPx": 1103,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {
-    "anchors": 17,
-    "anchorsInFrame": 17,
-    "anchorsWithGround": 17,
-    "anchorMedianGapM": -0.08866349474055824,
+    "anchors": 22,
+    "anchorsInFrame": 22,
+    "anchorsWithGround": 22,
+    "anchorMedianGapM": -0.09058610216243324,
     "instancesDrawn": 1507,
     "instancesScenery": 97,
-    "playLevelZ": -136.7340460205078,
+    "playLevelZ": -136.7401953125,
     "boundaryApplied": true,
     "boundaryPlanes": 12,
-    "boundaryCellsCleared": 1158506,
+    "boundaryCellsCleared": 2844842,
     "waterVolumes": 0,
     "waterCells": 0,
-    "coveredShare": 0.371662812697078,
+    "coveredShare": 0.3712170018702682,
     "covered": true,
-    "cellsSubstituted": 121549
+    "cellsSubstituted": 366039
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de chasm-rtx-new.module"

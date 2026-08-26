@@ -46,11 +46,25 @@ type reglageCarte struct {
 	SubstitutionSansPortee bool `json:"substitutionSansPortee,omitempty"`
 	// CombleTrous : poser un aplat de sol suppose dans les trous des zones nommees.
 	CombleTrous bool `json:"combleTrous,omitempty"`
+	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
+	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
+	PlancherTranche float64 `json:"plancherTranche,omitempty"`
 	// RogneAuxZones : effacer la matiere hors des zones nommees dilatees
 	// (himap/masque_zones.go). A ne poser qu apres avoir regarde le taux mesure.
-	RogneAuxZones bool   `json:"rogneAuxZones,omitempty"`
-	Raison        string `json:"raison"`
-	GateLe        string `json:"gateLe"`
+	RogneAuxZones bool `json:"rogneAuxZones,omitempty"`
+	// MargeZones : dilatation du masque en metres. Zero = 4 m. Une valeur NEGATIVE demande
+	// explicitement aucune dilatation.
+	MargeZones float64 `json:"margeZones,omitempty"`
+	// ZonesContourSeul : ne garder que le CONTOUR principal de chaque zone, sans ses `parts`.
+	// Les parties d une zone en provenance « decoupe » suivent le masque praticable et peuvent
+	// s etendre loin — sur Catalyst elles longent les bras de la station. Les exclure serre le
+	// masque au coeur des zones, au risque d amputer des zones reelles.
+	ZonesContourSeul bool `json:"zonesContourSeul,omitempty"`
+	// BoiteUtile : rectangle monde [minX, minY, maxX, maxY] hors duquel la matiere est effacee.
+	// LEVIER MANUEL — voir OptionsCuisson.BoiteUtile.
+	BoiteUtile []float64 `json:"boiteUtile,omitempty"`
+	Raison     string    `json:"raison"`
+	GateLe     string    `json:"gateLe"`
 }
 
 type reglagesFond struct {
@@ -151,15 +165,27 @@ func (e *environnement) zonesNommeesDe(cle string) [][][2]float64 {
 		return nil
 	}
 	var out [][][2]float64
+	contourSeul := false
+	if e.reglages != nil {
+		if c, ok := e.reglages.Cartes[cle]; ok {
+			contourSeul = c.ZonesContourSeul
+		}
+	}
 	for _, z := range entree.Zones {
 		if len(z.Polygon) >= 3 {
 			out = append(out, z.Polygon)
+		}
+		if contourSeul {
+			continue
 		}
 		for _, p := range z.Parts {
 			if len(p) >= 3 {
 				out = append(out, p)
 			}
 		}
+	}
+	if contourSeul {
+		slog.Info("mapfond: masque limite au contour des zones, parties exclues", "carte", cle, "polygones", len(out))
 	}
 	return out
 }
@@ -231,4 +257,47 @@ func (e *environnement) combleTrousDe(cle string) bool {
 	}
 	slog.Info("mapfond: comblement des trous arme (aplat, pas un releve)", "carte", cle, "gateLe", c.GateLe)
 	return true
+}
+
+// plancherTrancheDe rend le plancher de tranche propre à une carte (négatif), ou zéro pour
+// celui de production. Journalisé : il retire de la matière du bas de la carte.
+func (e *environnement) plancherTrancheDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.PlancherTranche >= 0 {
+		return 0
+	}
+	slog.Info("mapfond: plancher de tranche propre a la carte", "carte", cle,
+		"plancher", c.PlancherTranche, "gateLe", c.GateLe)
+	return c.PlancherTranche
+}
+
+// margeZonesDe rend la dilatation du masque propre à une carte, ou zéro pour celle de production.
+func (e *environnement) margeZonesDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.MargeZones == 0 {
+		return 0
+	}
+	slog.Info("mapfond: marge du masque propre a la carte", "carte", cle, "marge", c.MargeZones,
+		"gateLe", c.GateLe)
+	return c.MargeZones
+}
+
+// boiteUtileDe rend le rectangle monde declaré pour cette carte, ou zéro s'il n'y en a pas.
+func (e *environnement) boiteUtileDe(cle string) [4]float64 {
+	var out [4]float64
+	if e.reglages == nil {
+		return out
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || len(c.BoiteUtile) != 4 {
+		return out
+	}
+	copy(out[:], c.BoiteUtile)
+	return out
 }

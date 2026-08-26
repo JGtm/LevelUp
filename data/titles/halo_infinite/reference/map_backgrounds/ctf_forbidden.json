@@ -2,36 +2,38 @@
   "schemaVersion": 1,
   "module": "ctf_forbidden",
   "mapNames": [
-    "forbidden",
-    "forbidden_map"
+    "Forbidden",
+    "ctf_forbidden"
   ],
   "image": "ctf_forbidden.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-12T23:14:08.9058155Z",
-  "style": "jeu",
+  "generatedAt": "2026-08-26T19:35:39.810111Z",
+  "style": "encre",
   "calibration": {
-    "metersPerPixel": 0.092,
-    "originX": -62.05194282531738,
-    "originY": 61.727999237060544,
-    "widthPx": 1345,
-    "heightPx": 1434,
+    "metersPerPixel": 0.045,
+    "originX": -32.21694282531739,
+    "originY": 34.78499923706053,
+    "widthPx": 1354,
+    "heightPx": 1550,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {
-    "anchors": 13,
-    "anchorsInFrame": 13,
-    "anchorsWithGround": 12,
-    "anchorMedianGapM": -0.21068797094539793,
+    "anchors": 17,
+    "anchorsInFrame": 17,
+    "anchorsWithGround": 16,
+    "anchorMedianGapM": -0.26921291391023194,
     "instancesDrawn": 7116,
     "instancesScenery": 343,
-    "playLevelZ": 1.9431724166870117,
+    "playLevelZ": 1.9364654636383056,
     "boundaryApplied": true,
     "boundaryPlanes": 28,
-    "boundaryCellsCleared": 1528847,
+    "boundaryCellsCleared": 6551920,
     "waterVolumes": 208,
-    "waterCells": 7430,
-    "coveredShare": 0.3510351972548224,
+    "waterCells": 32465,
+    "coveredShare": 0.3569896627669483,
     "covered": true,
-    "cellsSubstituted": 390850
+    "cellsSubstituted": 849495,
+    "cellsClipped": 1116640,
+    "cellsAssumedFloor": 109750
   }
 }

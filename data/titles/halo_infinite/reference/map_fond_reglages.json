@@ -2,6 +2,49 @@
   "schemaVersion": 1,
   "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage jeu, echelle 0,0920 m/px).",
   "cartes": {
+    "catalyst": {
+      "carte": "Catalyst",
+      "style": "encre",
+      "echelle": 0.038,
+      "boiteUtile": [
+        -20.5,
+        -27,
+        21,
+        27
+      ],
+      "ecreteToits": true,
+      "plafondArene": 4,
+      "combleTrous": true,
+      "rogneAuxZones": true,
+      "raison": "Gate du 2026-08-26, carte 9. CIBLE ECRITE DES LE MATIN : reproduire le temoin du 10/08 12:24 (Desktop/COULEUR_jeu_catalyst_COQUILLE.png), que l utilisateur a declare meilleur que la production. Le defaut a corriger est nomme : Catalyst porte un ecart mediane-ancres / sol de -13,33 m, le quatrieme plus fort des 56 fonds, et au-dela de PorteeNiveauDeJeu (10 m) la teinte peint la surface JOUEE au recul maximal — d ou une arene sombre. La carte est mesuree couverte a 28,4 pour cent, SOUS le seuil d un tiers : la voie de reference native ne s y declenche donc JAMAIS et l ecretage est la seule voie, exactement comme sur Streets ou il avait ramene l ecart de -2,48 m a -0,29. Echelle 0,038 m/px : matiere utile 64,7 x 59,2 m soit 703 x 643 px a l echelle de production. 28 zones de callout. VALIDEE par l utilisateur le 2026-08-26. Ce qui a ferme la carte : (1) l ecart mediane-ancres / sol ramene de -13,33 m a -0,19, valeur d etalonnage, par le seul ecretage ; (2) la BOITE DERIVEE DES POSITIONS DE JOUEURS — trois matchs decodes des films en cache, environ 105 000 positions, enveloppe jouee 40 x 52 m contre 69,3 x 60,3 rendus : 42 pour cent de la largeur n etait JAMAIS foulee, ce sont les aplats gris que l utilisateur avait repere a gauche et a droite. 142 484 cellules retirees, cadre 1 824 -> 1 408 px. PREMIERE boite de la serie qui ne soit pas tracee a l oeil (Chasm) mais MESUREE, donc reproductible : 951 films en cache, 24 a 38 par carte sur la file restante. Reserves assumees : 26 ancres sur 29, trois perdues par l ecretage a 4 m ; et la boite est calee sur les EXTREMES des positions et non sur des quantiles — un des trois artefacts porte des aberrations a -231/-213 m, exactement les bornes d un canevas Forge, ecartees a l oeil.",
+      "gateLe": "2026-08-26"
+    },
+    "sgh_crystalcaves": {
+      "carte": "Prism",
+      "style": "encre",
+      "echelle": 0.037,
+      "rogneAuxZones": true,
+      "ecreteToits": true,
+      "plafondArene": 2,
+      "combleTrous": true,
+      "raison": "Gate du 2026-08-26, carte 8. Prism etait dans le lot de refus du 10/08 avec Illusion et Aquarius, meme motif : rendent les toits pas l arene. Elle est la DEUXIEME plus couverte des natives mesurees le 13/08, 61,2 pour cent contre 66,7 pour Aquarius. Combinaison d Illusion, qui est la plus proche par le taux : ecretage a 6 m plus comblement des trous fermes. Echelle 0,037 m/px : matiere utile 63,4 x 72,9 m soit 689 x 792 px a l echelle de production. MASQUE DES ZONES VOLONTAIREMENT NON ARME : la lecon de Chasm du meme jour est qu il casse la symetrie des cartes symetriques, et il ne sera desormais arme que si la carte en a besoin ET n est pas symetrique. Ecart mediane-ancres / sol -0,23 m, a l etalonnage. Plafond descendu a 2 m apres 6 et 4 : a 6 m la carte se lisait comme un amas de roche, la voute vivant SOUS le plafond de coupe. MASQUE FINALEMENT ARME apres remarque utilisateur — un « bras » hors zone jouable subsistait en haut a gauche ; il retire 11 pour cent et ne coute aucune ancre de plus. Faute de methode consignee : j avais desarme le masque par reflexe apres la lecon de Chasm, en appliquant le « pas par defaut » sans me demander si la carte en avait besoin. VALIDEE le 2026-08-26. Reserve assumee : 16 ancres sur 20 seulement, le taux le plus eleve de la serie (20 pour cent), du fait du plafond a 2 m et non du masque ; et 250 145 cellules d aplat suppose.",
+      "gateLe": "2026-08-26"
+    },
+    "chasm": {
+      "carte": "Chasm",
+      "style": "encre",
+      "echelle": 0.059,
+      "boiteUtile": [
+        -90,
+        -90,
+        -47,
+        -37
+      ],
+      "substitutionSansPortee": true,
+      "plancherTranche": -12,
+      "raison": "Gate du 2026-08-26, carte 7. Chasm faisait partie des cartes que l utilisateur jugeait non satisfaisantes des le 10/08, et elle est mesuree couverte a 37,2 pour cent le 13/08 — au-dessus du seuil, comme Illusion. Plafond a 4 m en premiere intention : c est le milieu de ce qui a ete valide jusqu ici (Illusion 6 m, Recharge 4 m, Aquarius 2 m), et le cran se descend ou se monte a l image. Echelle 0,077 m/px : sa matiere utile fait 130,5 x 59,4 m, la plus allongee des natives — son cadre publie occupe 100 pour cent de la largeur mais 43,7 pour cent de la hauteur seulement. Ecart mediane-ancres / sol -0,09 m, a l etalonnage. VALIDEE par l utilisateur le 2026-08-26 : « PARFAIT ». NEUF cuissons ont ete necessaires et la carte a fait sortir DEUX enseignements majeurs. (1) LE MASQUE DES ZONES CASSE LA SYMETRIE : les polygones de callout sont dessines a la main, ils NOMMENT des lieux et ne decrivent pas une geometrie — rien n impose que la zone du haut et celle du bas aient le meme contour. Sur Chasm il retirait 10 pour cent de la matiere et rendait asymetrique une carte qui ne l est pas. Masque RETIRE ici. DECISION UTILISATEUR du 2026-08-26, a ne pas rouvrir : « Bazaar et Illusion c est valide, on y revient pas » — leur masque a 39,5 et 41,5 pour cent reste tel quel, la symetrie n y sera pas re-controlee. La regle ne vaut donc que pour les cartes A VENIR. (2) LE PLANCHER DE TRANCHE frappe d abord ce qui DESCEND : a -5 m il retirait le fond du gouffre mais aussi une pente du nord. Remis a -12 m, la coupe est faite par la BOITE MANUELLE. Celle-ci ([-90 -90 -47 -37], 171 322 cellules) n existe que parce que SIX leviers derives des donnees ont echoue avant elle : altitude haute, altitude basse, appartenance aux zones, marge du masque, boite a l enveloppe des callouts, boite a l emprise des bases. Les rails avaient la meme emprise en X que les bases, la meme altitude que les ponts et les memes zones — aucun critere de POSITION ne les separait, il aurait fallu un critere de FORME. 22 ancres sur 22 aux neuf cuissons.",
+      "gateLe": "2026-08-26"
+    },
     "ctf_aquarius": {
       "carte": "Aquarius",
       "style": "encre",
@@ -10,7 +53,7 @@
       "plafondArene": 2,
       "combleTrous": true,
       "rogneAuxZones": true,
-      "raison": "Gate du 2026-08-26, carte 6. Meme combinaison qu Illusion, qui vient d etre validee avec elle : ecretage a 6 m plus comblement des trous fermes. Aquarius est la plus couverte des natives mesurees le 13/08 — 66,7 pour cent contre 38,5 pour Illusion — et l utilisateur l avait refusee des le 10/08 avec le meme motif, rendent les toits pas l arene. Echelle 0,027 m/px : sa matiere utile ne fait que 46,6 x 30,9 m, soit 506 x 336 px a l echelle de production, la plus petite des natives. Ecart mediane-ancres / sol -0,05 m, a l etalonnage : le defaut de niveau de jeu ne joue pas ici. 31 zones de callout. TEMOIN a valider.",
+      "raison": "Gate du 2026-08-26, carte 6. Meme combinaison qu Illusion, qui vient d etre validee avec elle : ecretage a 6 m plus comblement des trous fermes. Aquarius est la plus couverte des natives mesurees le 13/08 — 66,7 pour cent contre 38,5 pour Illusion — et l utilisateur l avait refusee des le 10/08 avec le meme motif, rendent les toits pas l arene. Echelle 0,027 m/px : sa matiere utile ne fait que 46,6 x 30,9 m, soit 506 x 336 px a l echelle de production, la plus petite des natives. Ecart mediane-ancres / sol -0,05 m, a l etalonnage : le defaut de niveau de jeu ne joue pas ici. 31 zones de callout. VALIDEE par l utilisateur le 2026-08-26 au plafond de 2 m, apres les crans 6, 4 et 3 : « validé 2m ». Les VINGT-CINQ ancres gardent leur sol aux quatre crans — le seul cas de la serie ou l oracle ne se declenche jamais, donc le choix a ete purement visuel. A 2 m : 1 091 114 cellules substituees, 221 072 vides, 146 437 d aplat suppose. 2 m est le PLANCHER DE SENS et non un cran arbitraire : la constante d origine se decompose en 2 m (un Spartan tient debout) + 3 m (sols en pente) + 1 m de marge ; en dessous on coupe dans l epaisseur d une dalle. Erreur de lecture consignee : a 6 m l ecretage ne vidait que 16 444 cellules et je l ai pris pour un bon signe — il ratait sa cible, les toits d Aquarius vivant ENTRE 4 et 6 m.",
       "gateLe": "2026-08-26"
     },
     "ctf_illusion": {
@@ -59,6 +102,17 @@
       "rogneAuxZones": true,
       "raison": "Gate du 2026-08-26, carte 2. Meme choix que Cliffhanger, et il porte ici un benefice mesurable en plus de l'esthetique : Streets a un ecart mediane-ancres / sol de -4,33 m, donc le style jeu peint une partie de son arene en recul froid. L'encre ne fait varier que la VALEUR (au plus -45 %) et ne bascule pas la teinte : le defaut de niveau de jeu, qui reste a corriger, y pese beaucoup moins. Echelle portee a 0,036 m/px : la matiere utile de Streets ne fait que 50,5 x 39,2 m, donc a l echelle de production (0,0920) elle ne pesait que 549 x 426 px — minuscule et pixelisee des qu on l agrandit. A 0,036 elle passe a environ 1 740 x 1 420 px. Toits ecretes : 495 752 pixels substitues, 0 vide — chaque toit avait un sol dessous, rien n a ete perdu, et l ecart mediane-ancres / sol est passe de -2,48 m a -0,29 m. Rogne aux 33 zones de callout dilatees de 4 m : 306 810 cellules sur 1 526 464 (20,1 %) etaient hors zones, essentiellement la ceinture exterieure qui faisait de la carte une dalle rectangulaire. VALIDE par l utilisateur sur planche a quatre etats.",
       "gateLe": "2026-08-26"
+    },
+    "ctf_forbidden": {
+      "carte": "Forbidden",
+      "style": "encre",
+      "ecreteToits": true,
+      "plafondArene": 4,
+      "combleTrous": true,
+      "raison": "Gate du 2026-08-26, carte 10. Forbidden etait dans la liste a finaliser du 26/08. LE DEFAUT N ETAIT PAS LE NIVEAU DE JEU : son ecart mediane-ancres / sol vaut -0,21 m, deja a l etalonnage, contrairement a Catalyst (-13,33). Le defaut reel est LE CADRE — le fond en production datait du 12/08 et ne portait pas le rognage au cadre utile : l arene occupait environ 40 pour cent de la largeur de l image, le reste etant du vide et des dalles de toit hors zone jouable. Couverte a 44,7 pour cent, au-dessus du seuil d un tiers, donc la voie de reference native s y declenche. Echelle 0,045 m/px : matiere utile 66,5 x 71,9 m soit 723 x 782 px a l echelle de production, portee a 1 354 x 1 550 px pour ne pas pixeliser dans le rejeu. MASQUE DES ZONES ARME et peu invasif : 63 zones de callout, carte franchement ASYMETRIQUE — la lecon de Chasm (le masque casse les cartes symetriques) ne s applique donc pas. Il retire 3,3 pour cent de la matiere a 4 m et ne coute AUCUNE ancre : 16 sur 17 dans les quatre cuissons, la dix-septieme manquant deja avant. PLAFOND A 4 M choisi sur piece contre 2 et 6 : a 6 m les grandes dalles de toit reviennent detachees en haut et en bas de l image (12,4 pour cent hors zones, le defaut meme de la production), a 2 m le dessin s aplatit et le relief interieur se lit moins. VALIDEE par l utilisateur le 2026-08-26 : « prop 3 valide encre plafond 4m ». RESERVE ECRITE, NON TRAITEE : de longues poutres sombres depassent a droite et a gauche, comme les rails de Chasm ; elles sont DANS les zones de callout, le masque ne les atteint pas. La coupe aux positions de joueurs (methode Catalyst) n a pas pu etre tentee, shared_matches_v2 etant tenue en ecriture par un server.exe local.",
+      "gateLe": "2026-08-26",
+      "echelle": 0.045,
+      "rogneAuxZones": true
     }
   }
 }
