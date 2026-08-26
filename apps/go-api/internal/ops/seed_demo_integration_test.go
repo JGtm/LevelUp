@@ -119,7 +119,17 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 	mustExec(t, playerDB, `INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES ('m1', 'kills', 15), ('m2', 'kills', 8)`)
 	mustExec(t, playerDB, `INSERT INTO sessions (session_id, label) VALUES (1, 'Session 1'), (2, 'Session 2')`)
 	mustExec(t, playerDB, `INSERT INTO career_progression (xuid, rank, recorded_at) VALUES ('`+sourceXUID+`', 10, TIMESTAMP '2026-05-22 18:00:00')`)
-	mustExec(t, playerDB, `INSERT INTO sync_meta (key, value) VALUES ('xuid', '`+sourceXUID+`'), ('msal_token_cache', 'SECRET_DO_NOT_LEAK')`)
+	// sync_meta source réaliste : QUE des clés qui ne doivent PAS traverser —
+	// credentials connus, les deux porteuses du xuid réel ('xuid' et 'player_xuid',
+	// sans lecteur de production côté démo), et une clé inconnue qui joue le rôle du
+	// credential FUTUR (défaut-refus de la liste d'inclusion). Les 2 sentinelles
+	// autorisées, elles, sont posées par RunForDB sur cette fixture (cf. plus haut).
+	mustExec(t, playerDB, `INSERT INTO sync_meta (key, value) VALUES
+		('xuid', '`+sourceXUID+`'),
+		('msal_token_cache', 'SECRET_DO_NOT_LEAK'),
+		('oauth_refresh_token', 'RT_DO_NOT_LEAK'),
+		('player_xuid', '`+sourceXUID+`'),
+		('cle_future_inconnue', 'FUTURE_DO_NOT_LEAK')`)
 	mustExec(t, playerDB, `INSERT INTO match_skill_rank (match_id, rating_type, rating_value) VALUES ('m1', 'csr', 1200.5)`)
 
 	return tmpDir, srcPlayer, srcShared, srcMeta
@@ -461,19 +471,34 @@ func verifyPlayerExtracted(t *testing.T, path, sourceXUID string) {
 		t.Errorf("player_match_enrichment rows = %d, want 2", n)
 	}
 
-	// sync_meta : msal_token_cache exclu, xuid mis à jour.
-	if err := db.QueryRow(`SELECT COUNT(*) FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&n); err != nil {
-		t.Fatal(err)
+	// sync_meta : liste d'INCLUSION (défaut-refus) — seules les clés autorisées
+	// traversent. Preuve end-to-end de seed_demo_sync_meta.go. 'xuid' est dans la liste
+	// des refusées depuis la revue R1 (2026-08-26) : aucun lecteur de production, et le
+	// xuid démo vient de db_profiles.json, pas de la base.
+	for _, leaked := range []string{"msal_token_cache", "oauth_refresh_token", "player_xuid", "cle_future_inconnue", "xuid"} {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM sync_meta WHERE key = ?`, leaked).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != 0 {
+			t.Errorf("%s LEAKED dans sync_meta démo (jeu de données PUBLIC)", leaked)
+		}
 	}
-	if n != 0 {
-		t.Errorf("msal_token_cache LEAKED dans sync_meta démo")
-	}
-	var demoXUIDValue string
-	if err := db.QueryRow(`SELECT value FROM sync_meta WHERE key = 'xuid'`).Scan(&demoXUIDValue); err != nil {
-		t.Fatal(err)
-	}
-	if demoXUIDValue != DefaultDemoXUID {
-		t.Errorf("sync_meta.xuid = %q, want %q", demoXUIDValue, DefaultDemoXUID)
+	// NB : on n'assert pas « aucune clé hors liste » sur la base finale — les
+	// migrations rejouées après l'extraction (applyMigrationsOnPath) y posent
+	// légitimement leurs propres sentinelles. Ce qui se prouve ici, c'est qu'aucune
+	// clé de la SOURCE hors liste n'a survécu au filtre, 'cle_future_inconnue'
+	// jouant le rôle du credential futur (défaut-refus).
+	// Symétrique : les 2 sentinelles de migration DOIVENT être là à l'arrivée — sinon
+	// la base démo rejouerait un rebuild de schéma figé au seed suivant. Honnêteté sur
+	// la portée : c'est l'état FINAL attendu qui est vérifié, pas le chemin — sans
+	// l'extraction, applyMigrationsOnPath les reposerait de toute façon.
+	for _, kept := range demoSyncMetaAllowedKeys {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM sync_meta WHERE key = ?`, kept).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n == 0 {
+			t.Errorf("clé autorisée %q absente de sync_meta démo", kept)
+		}
 	}
 
 	// sessions : copié intégralement (2 rows : sess1 + sess2).

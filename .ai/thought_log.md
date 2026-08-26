@@ -95,6 +95,85 @@ Suites, dans l'ordre : (1) retrouver ou reinstaller vgmstream ; (2) rendre les 3
 tags du mode ; (4) designer le geste de pose du translocateur (23 evenements, un seul nomme
 et au second rang) par l'ecoute, comme le lot du 18/08 le prevoyait deja.
 Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`.
+## [2026-08-26] Hygiene secrets — seed de demo n'extrait plus aucun credential — Complete
+
+**Contexte** : lot A, worktree dedie `wt/lot-a-secrets-demo` (base 3177a57a2). La revue du
+lot ADR 0023 Phase 5 signalait que l'extraction `sync_meta` du seed de demo excluait
+`msal_token_cache` mais PAS `oauth_refresh_token`. Verifie sur pieces avant correction :
+`internal/ops/seed_demo.go:200`, `{name: "sync_meta", where: "key NOT IN ('msal_token_cache')"}`
+— le refresh token OAuth du joueur source traversait donc VRAIMENT vers le jeu de donnees
+de demo (conteneur public). Les colonnes auth de `sync_meta` ne sont plus ni lues ni ecrites
+depuis la Phase 5 (2026-08-25) mais elles portent encore leurs dernieres valeurs jusqu'au
+drop physique (recette ADR 0026, prochain rebuild, hors perimetre de ce lot).
+
+**Decision technique principale** : liste d'EXCLUSION remplacee par une liste d'INCLUSION a
+defaut-refus (`internal/ops/seed_demo_sync_meta.go`, nouveau fichier — le god-file
+seed_demo.go n'est pas grossi). Le raisonnement qui tranche : une exclusion laisse passer
+PAR DEFAUT toute cle future, credential compris, et rien n'oblige celui qui l'introduit a
+venir l'exclure ; l'inclusion inverse la charge de la preuve. Inventaire exhaustif des cles
+`sync_meta` fait avant de choisir (grep des ecritures + archeologie git sur 250 revisions) :
+credentials `oauth_refresh_token` / `msal_token_cache` ; identite `xuid` / `player_xuid` ;
+horodatages `last_sync` / `last_delta_sync` / `last_post_sync_at` / `last_career_sync_at` ;
+`current_rank`, `live_update`, `last_seen_app_version`, `title_ready_announced_<slug>` ;
+sentinelles de migration. Liste retenue = 3 cles : `xuid` (necessaire — duckdb.ResolveXUID,
+et extractPlayerTables la reecrit en DemoXUID) + les 2 sentinelles de migration player
+`career_progression_rebuilt_v1` / `career_xp_total_default_fixed_v1`. Les sentinelles
+voyagent DELIBEREMENT : sans elles, applyMigrationsOnPath rejouerait sur la base de demo
+`rebuild_career_progression`, dont le DDL est un CLICHE FIGE (avertissement date du
+2026-08-05 en tete de la fonction) — toute colonne non enumeree y est perdue. Tout le reste
+est ecarte : la demo a la synchronisation coupee, ces cles n'y ont aucun lecteur.
+
+**Resultats observes** : garde-rail `seed_demo_sync_meta_guard_test.go` (6 tests unitaires,
+package ops, sans CGO) — credentials connus refuses, defaut-refus prouve sur 15 cles hors
+liste dont des credentials futurs plausibles, liste elle-meme interdite d'accueillir une cle
+de forme credential, clause SQL derivee de la liste (un retour au `NOT IN` casse), et
+verification que les 2 sentinelles autorisees existent encore cote migrations (une entree
+perimee ferait rejouer un rebuild silencieusement). Mordant prouve par 3 MUTATIONS REELLES,
+pas mentales : retour a la liste d'exclusion -> FAIL ; `oauth_refresh_token` ajoute a la
+liste -> FAIL sur 2 tests ; meme mutation sous tag integration -> FAIL
+`oauth_refresh_token LEAKED dans sync_meta demo`, ce qui prouve aussi que le RT atterrissait
+bien dans la base publiee. Fixture d'integration etendue (RT + `player_xuid` + une cle
+inconnue). Gates : gofmt -l vide (EXIT 0), go build ./... 0, go vet ./... 0,
+go test -count=1 ./internal/ops/... 0, go test -tags=integration -run TestSeedDemo
+./internal/ops/ 0, golangci-lint --new-from-merge-base=origin/feat/v75 0 apres correction
+d'un goconst (litteral "xuid" -> constante dediee `syncMetaKeyXUID` : le meme litteral
+designe ailleurs dans le package une colonne SQL et un champ JSON, la constante nomme
+laquelle des trois est visee). `go test ./...` : EXIT 1, unique echec
+`internal/himap` en timeout a 601 s (defaut 10 min). C'est le rouge local documente
+(reference himap : le paquet balaie les modules de carte du JEU INSTALLE, mesure > 3602 s
+sans finir, et il SKIPPE en CI faute de jeu — le verdict d'autorite reste la CI). Conduite
+tenue, conforme a la reference : aucun fichier du diff n'est dans `internal/himap` ni dans
+ses trois imports internes (`analysis/replay`, `analysis/replay/mapvar`, `himodule`) —
+verifie par grep ; le rejeu isole `-timeout 45m` a ete lance puis ABANDONNE a ~30 min sans
+verdict (il n'en aurait pas rendu avant l'heure), on ne bloque donc pas la livraison dessus.
+Arbre de travail verifie propre apres coup (aucun artefact `.png` de himap embarque).
+
+**Conclusion / prochaine etape** : le CODE ne copie plus aucun credential. MAIS le jeu de
+donnees de demo DEJA PUBLIE en prod a ete genere par l'ancien code : verification SQL du
+superviseur (copie locale, 2026-08-26) — il porte un RT REEL de 417 caracteres (M.C525...,
+source JGtm, re-seede au deploy du 25/08 12:41). Remediation ACTEE (revue R1) : (a) un RT
+expose se traite par ROTATION, pas par effacement de la copie — elle est automatique
+(~50 min, les vieux RT meurent a la rotation), la valeur publiee est tres vraisemblablement
+deja morte ; JAMAIS de re-capture (ADR 0023) ; (b) le prochain `seed-demo` remplace de toute
+facon l'inode (`removeDuckDBForFreshWrite` + CTAS) ; (c) MAIS chaque deploy `main` re-copie
+un RT frais tant que ce lot n'atteint pas main → decision superviseur : portage en hotfix
+`fix/*` vers main (un correctif securite n'attend pas le train v7.5.0), GO utilisateur en
+attente.
+
+**Ronde R1 (revue adversariale, 2026-08-26)** : verrou VALIDE (12 conditions tiennent),
+4 P2 corriges — (1) `xuid` SORT de la liste d'inclusion : sa justification citait du code
+mort (ResolveXUID/Q3ResolveXUID, seuls appelants en test ; le xuid demo vient de
+db_profiles.json) → liste reduite aux 2 sentinelles de migration, taille verrouillee par
+test ; (2) ce retrait supprime aussi la reecriture DemoXUID conditionnee a une egalite non
+verifiee (`WHERE key='xuid' AND value=?` sans RowsAffected) qui pouvait publier le xuid
+REEL en silence ; (3) doc inversee corrigee (la migration boot lit encore
+`sync_meta.oauth_refresh_token` a chaque demarrage jusqu'au kill-switch 2026-10-01) ;
+(4) ce paragraphe (rotation, pas purge). Chemin synthetique statue (aucune donnee de prod
+ne le traverse, residu `sync_meta.xuid` de parite de schema signale non traite). Decouvertes non traitees (regle zero fix
+opportuniste) : (1) `player_xuid` portait le xuid REEL du joueur source et n'etait PAS
+anonymise par extractPlayerTables (seule la cle `xuid` l'est) — la liste d'inclusion le
+neutralise au passage, mais la meme classe de fuite est a re-auditer sur les autres tables
+extraites ; (2) le drop physique des colonnes auth de `sync_meta` (ADR 0026) reste du.
 
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
