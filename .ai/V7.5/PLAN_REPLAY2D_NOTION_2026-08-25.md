@@ -136,7 +136,10 @@ bases CTF disparues — les correctifs sont VALIDÉS visuellement) :
   sources : (1) le glyphe de repli de `drawPadIcon` — un disque plein du même rayon que le
   point, ~10 px sous lui — supprimé ; (2) la vignette posée SOUS le point — désormais CENTRÉE
   dessus. 3 tests neufs ; 2 cas existants (composition R3.6) amendés avec date et raison.
-- [!] A10 : une zone de callout est nommée EN ARABE sur ce match. DIAGNOSTIC : d'où
+- [~] A10 RÉSOLU par l'utilisateur (26/08) : « c'était le fusil sniper » — pas une zone
+  en arabe, une confusion visuelle avec le rendu du sniper. Le balayage négatif de
+  l'exécuteur (0 caractère non latin sur tout le catalogue + i18n) était donc juste.
+  Aucun correctif. Détail d'origine : une zone de callout est nommée EN ARABE sur ce match. DIAGNOSTIC : d'où
   vient le libellé (résolution de locale côté client ? donnée du catalogue callouts
   versionné ?). Si la donnée versionnée est en cause : CR sans fix (regen de référence =
   hors périmètre web, je re-route).
@@ -176,6 +179,14 @@ bases CTF disparues — les correctifs sont VALIDÉS visuellement) :
   le POINT prend l'encre de sa nature ; BORDURE = anneau de la nature qui enferme la marque,
   à l'opacité du point (un socle vide garde son contour). Aucun token dans le calque —
   `inkOf` est résolu par l'appelant, mapping dans `useReplayInks`.
+
+- [ ] A14 (demande utilisateur 26/08) : les marques des socles d'armes et de power-ups
+  passent du POINT ROND au LOSANGE (« ça facilite la lecture sinon on peut confondre
+  avec des points de joueurs ») : marque ET bordure en losange, encres par nature (A13)
+  et états (plein/pointillé/discret) conservés. Point d'attention : les marqueurs
+  d'objectifs (`drawMarker`, objectivesLayer) sont DÉJÀ des losanges — garder les deux
+  familles distinguables (les socles ont vignette + anneau de nature ; vérifier le
+  rendu combiné).
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
