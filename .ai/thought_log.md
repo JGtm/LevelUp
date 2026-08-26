@@ -1,3 +1,28 @@
+## [2026-08-26] feat/v75 — merge origin/main + reparation des sentinelles auth — Complete
+
+**Contexte** : apres le merge du lot capture dans feat/v75, la CI de branche etait deja
+rouge AVANT ce merge (push 21e19260f, campagne soaks du matin) : deux sentinelles du
+package auth. Diagnostic sur pieces : (1) feat/v75 portait l'iteration ANTERIEURE de
+seed_demo_sync_meta.go (lot A) alors que main a recu l'iteration finale revue R1 —
+TestSentinel_NoNewDuckDBAuthReaders ; (2) le commit d'hygiene b9df08807 a ecrit le
+litteral du secret Azure dans deux COMMENTAIRES de cmd/backfill-csr-history/main.go,
+et la garde 5 greppe ce litteral hors allowlist — TestSentinel_NoNewClientSecretReaders.
+
+**Decision technique principale** : merge origin/main (9c64fc751) dans feat/v75 — seul
+delta reel : seed_demo_sync_meta.go, 9 lignes, version finale revue ; conflits resolus
+(add/add = version main, thought_log = union). Pour la garde 5 : REFORMULATION des deux
+commentaires sans le litteral (le sens est conserve, renvoi vers azure_credentials.go),
+PAS d'elargissement de l'allowlist — elle protege contre de vrais lecteurs et un cmd/
+allowliste pour un commentaire laisserait passer un futur Getenv reel.
+
+**Resultats observes** : sentinelles auth OK (package complet TestSentinel, exit 0),
+go build ops + backfill-csr-history OK, go test ./internal/ops/ OK. Le startup_failure
+du run 32984936255 etait une panne majeure GitHub Actions (incident 15:11 UTC), pas le
+code.
+
+**Prochaine etape** : push feat/v75 et verdict CI au niveau job des la fin de l'incident
+GitHub Actions ; gate visuel utilisateur de la capture/enregistrement (5 temoins au plan).
+
 ## [2026-08-26] Rejeu 2D — capture et enregistrement : cloture du plan (lot 4/4) — Complete
 
 **Contexte** : cloture du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md sur
