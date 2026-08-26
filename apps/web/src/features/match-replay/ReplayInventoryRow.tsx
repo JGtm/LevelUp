@@ -22,7 +22,12 @@
  * les munitions d'une arme rangée ne se lisent que pour préparer une permutation, ce qui
  * n'est pas ce qu'on regarde dans un rejeu.
  *
- * L'ensemble pâlit avec l'âge de la lecture, comme les armes portées et pour la même raison.
+ * CHAQUE CELLULE PÂLIT AVEC L'ÂGE DE LA LECTURE QUI LA DÉCRIT, et non avec celui de la rangée :
+ * les munitions viennent de l'inventaire (images-clés, ~20 s), la capacité du canal i48, les
+ * grenades de l'axe `grenadeReads` (deux canaux, dont les paquets delta). Un estompage unique
+ * posé sur le conteneur multipliait l'opacité propre de chaque cellule par celle de l'inventaire
+ * et rendait toute cellule plus fraîche PLUS PÂLE que la rangée — l'inverse de ce qu'un
+ * estompage dit. C'est la même raison que pour les armes portées, appliquée par lecture.
  */
 import type { ReactNode } from 'react'
 
@@ -36,11 +41,13 @@ import type { EquippedReading } from './equippedLogic'
 import { grenadeIconOf, type GrenadeIconRef } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import {
-  grenadesCarried,
+  grenadeBoxAt,
+  grenadeBoxHint,
+  grenadesCarriedFrom,
   type InventoryEmptyState,
   inventoryAt,
   inventoryEmptyHint,
-  selectedGrenade,
+  selectedGrenadeFrom,
 } from './inventoryReading'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -82,8 +89,21 @@ export function ReplayInventoryRow({
   const abilityRead = abilityAt(doc, slot, frame)
   const ability = abilityText(doc, abilityRead?.rank, t, locale)
   const state = read?.state
-  const grenades = state ? grenadesCarried(state, doc.grenadeLabels, locale) : []
-  const selected = state ? selectedGrenade(state) : null
+  // LES GRENADES ONT LEUR PROPRE LECTURE, et donc leur propre age (schema 20, lot 4.4 du suivi
+  // delta). L axe `grenadeReads` porte DEUX canaux sur la meme grandeur : les images-cles
+  // (~20 s) et les paquets delta, transmis AU CHANGEMENT — donc la ou l etat bouge. La plus
+  // recente gagne, et l age median de ce qui s affiche tombe de 10,00 s a 8,09 s.
+  //
+  // LE REPLI EST LE POINT : un artefact anterieur au schema 20 ne porte pas cet axe, et la
+  // boite retombe alors sur la lecture d inventaire — exactement l affichage d avant. Un
+  // artefact ancien ne se vide pas, il est seulement moins frais.
+  //
+  // LE DEPARTAGE VIT DANS `grenadeBoxAt`, PAS ICI : une lecture A VENIR ne prime jamais une
+  // information passee (meme doctrine que la « lecture vide A VENIR »), et le composant ne
+  // fait qu afficher ce que la fonction pure a tranche.
+  const box = grenadeBoxAt(doc, slot, frame, read)
+  const grenades = box ? grenadesCarriedFrom(box.g, doc.grenadeLabels, locale) : []
+  const selected = box ? selectedGrenadeFrom(box.g, box.gs) : null
   const ammo = state?.am ?? []
   // L'ÉTAT VIDE DE LA LECTURE COURANTE (schéma 19, lot du 2026-08-25) : présent, il veut dire
   // que la lecture qui couvre l'image ne rend RIEN — `state` porte alors la dernière lecture
@@ -111,10 +131,18 @@ export function ReplayInventoryRow({
   return (
     <div
       className="flex items-center gap-1 font-mono text-[9.5px] text-muted-foreground"
-      style={{ opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
+      // LA RANGÉE N'IMPOSE PLUS SON ÂGE À TOUTE LA GRILLE. L'estompage vivait ici tant que
+      // l'inventaire était la seule lecture de la ligne ; il ne l'est plus (capacité par i48,
+      // grenades par l'axe `grenadeReads`). Laissé au conteneur, il MULTIPLIAIT l'opacité
+      // propre de chaque cellule par celle de l'inventaire : une lecture de grenades de 8,1 s
+      // s'affichait plus PÂLE qu'avant le lot, et le gain de fraîcheur devenait invisible.
+      // Chaque cellule porte donc l'âge de la lecture qui la décrit, et rien d'autre.
       title={ageTitle}
     >
-      <span className="inline-flex shrink-0 items-center" style={{ width: AMMO_CELL_W }}>
+      <span
+        className="inline-flex shrink-0 items-center"
+        style={{ width: AMMO_CELL_W, opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
+      >
         {equipped && ammo.length > 0 && (
           equipped.drawn !== null ? (
             <AmmoCell
@@ -140,8 +168,15 @@ export function ReplayInventoryRow({
       </span>
       <span
         className="inline-flex shrink-0 items-center gap-1 overflow-hidden"
-        style={{ width: GRENADES_BOX_W }}
-        title={grenades.map((g) => `${g.name} ×${g.count}`).join(' · ') || undefined}
+        // ÂGE PROPRE AUX GRENADES, comme pour la capacité et pour la même raison : l'axe
+        // `grenadeReads` ne tombe pas sur les images-clés de l'inventaire, l'estompage de
+        // l'inventaire ne le décrit donc pas. Un âge négatif est une lecture À VENIR : la
+        // valeur absolue estompe, l'infobulle dit « dans X s ».
+        style={{
+          width: GRENADES_BOX_W,
+          opacity: box ? freshness(box.age, readingFull, READING_FADE) : 1,
+        }}
+        title={box ? grenadeBoxHint(t, box, grenades, doc) : undefined}
       >
         {grenades.map((g) => (
           <GrenadeChip
@@ -200,6 +235,9 @@ export function ReplayInventoryRow({
           empty={empty}
           label={empty.kind === 'dead' ? t.inventoryDeadLabel : t.inventoryEmptyLabel}
           hint={inventoryEmptyHint(t, read, empty, doc)}
+          // L'ÂGE DU BADGE EST CELUI DE LA LECTURE VIDE, pas celui de l'équipement affiché à
+          // côté (`read.age`) : c'est la même distinction que porte déjà son infobulle.
+          fade={freshness(empty.age, readingFull, READING_FADE)}
         />
       )}
     </div>
@@ -297,25 +335,29 @@ function InventoryEmptyMark({
   empty,
   label,
   hint,
+  fade,
 }: {
   empty: InventoryEmptyState
   label: string
   hint: string
+  /** Estompage de l'âge de la LECTURE VIDE — la rangée ne l'impose plus (cf. le conteneur). */
+  fade: number
 }) {
   return (
     <span
       className={
         empty.kind === 'dead'
           ? 'min-w-0 truncate rounded-sm px-0.5 font-semibold uppercase'
-          : 'min-w-0 truncate border-b border-dashed border-border opacity-80'
+          : 'min-w-0 truncate border-b border-dashed border-border'
       }
       style={
         empty.kind === 'dead'
           ? {
+              opacity: fade,
               color: tokenCssVar('destructive'),
               boxShadow: `0 0 0 1px ${tokenCssVar('destructive')}`,
             }
-          : undefined
+          : { opacity: fade * 0.8 }
       }
       title={hint}
     >

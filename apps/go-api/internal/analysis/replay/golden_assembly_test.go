@@ -308,6 +308,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderGrenades(p, doc)
 	renderProjectiles(p, doc)
 	renderInventory(p, doc)
+	renderGrenadeReads(p, doc)
 	renderAbilities(p, doc)
 	renderEquipment(p, doc)
 	renderGrapple(p, doc)
@@ -440,6 +441,38 @@ func renderInventory(p func(string, ...any), doc ReplayDocument) {
 			c.Decoded, c.DroppedBeforeOrigin, c.Unpublished, c.Published)
 	}
 	p("rangs de grenade : %s", renderBilingualList(doc.GrenadeLabels))
+	p("")
+}
+
+// renderGrenadeReads publie l AXE DES GRENADES PORTEES et sa ventilation par canal.
+//
+// CE QUE CE BLOC PROTEGE : le second canal. Sans lui, le golden figerait un document ou les
+// lectures delta pourraient disparaitre sans qu une seule ligne bouge — un fixture qui ne rend
+// pas ce qu il verrouille ne verrouille rien. La ventilation par SOURCE est le point : c est
+// elle qui dirait qu un canal s est tu.
+//
+// L ECART D AGE EST PUBLIE parce qu il est la raison d etre du lot : entre deux images-cles la
+// fiche affiche la derniere lecture connue, et le canal delta la rajeunit. Sur le corpus de
+// 70 films l age median passe de 10,00 s a 8,09 s.
+func renderGrenadeReads(p func(string, ...any), doc ReplayDocument) {
+	bySrc := map[string]int{}
+	withSel := 0
+	for _, g := range doc.GrenadeReads {
+		bySrc[g.Src]++
+		if g.Gs != nil {
+			withSel++
+		}
+	}
+	p("## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient")
+	p("%d lecture(s) · %d par image-cle (~20 s) · %d par delta (transmis AU CHANGEMENT)",
+		len(doc.GrenadeReads), bySrc[GrenadeSrcKeyframe], bySrc[GrenadeSrcDelta])
+	p("%d lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas", withSel)
+	if c := doc.Coverage.GrenadeReads; c != nil {
+		p("couverture : %d image-cle · %d delta · %d ecartee(s) sans piste · canal munitions refuse : %v",
+			c.FromKeyframe, c.FromDelta, c.Unpublished, c.AmmoRefused)
+	} else {
+		p("couverture : ABSENTE — aucun canal n a rien rendu sur ce film")
+	}
 	p("")
 }
 

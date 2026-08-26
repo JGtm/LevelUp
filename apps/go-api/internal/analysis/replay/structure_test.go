@@ -304,8 +304,29 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI N'EST PAS PUBLIÉ : une étiquette « mort » sur les 11,7 % que le fil des morts
 	//   n'explique pas. Elles gardent `unknown` — le décodeur n'a rien lu, et personne ne sait
 	//   pourquoi.
-	if SchemaVersion != 19 {
-		t.Fatalf("SchemaVersion = %d, attendu 19 : incrémenter exige une raison écrite ci-dessus "+
+	//   v19 -> v20 (2026-08-25, lot 4.4 « suivi delta de l'inventaire ») : `grenadeReads` — LES
+	//   GRENADES PORTÉES SUR LEUR PROPRE AXE, alimentées par DEUX canaux qui n'ont pas la même
+	//   cadence : le record de biped des images-clés (~toutes les 20 s) et les composants i22/i47
+	//   des paquets DELTA (transmis AU CHANGEMENT). Chaque lecture publie sa SOURCE (`kf` /
+	//   `delta`), exactement comme `abilities` — le remède éprouvé contre « deux canaux, une seule
+	//   étiquette ».
+	//   POURQUOI LA VERSION MONTE : le client CONSOMME cet axe pour la boîte de grenades. L'âge
+	//   médian de la lecture affichée passe de 10,00 s à 8,09 s (mesure sur 70 films, 28
+	//   confrontables, 12 454 lectures delta). Un artefact v19 ne porte AUCUNE lecture delta —
+	//   il se lit donc « à re-cuire », et la reprise du backfill se fait par SchemaVersion.
+	//   CE QUI EST MESURÉ, ET SON TÉMOIN : les deux canaux sont décodés par des chemins SANS
+	//   étape commune (motif d'ancrage dans les images-clés, marche de composants par les désers
+	//   de production dans les deltas) et ils concordent à 97,94 % (714 couples sur 729). Contrôle
+	//   croisé interne au canal delta : le masque d'i47 égale le bitmap des compteurs d'i22 sur
+	//   1 925 records sur 1 925 — 100,0 %. Rappel de l'ancre sur les transitions attestées par les
+	//   images-clés : 95,17 % (138 sur 145).
+	//   CE QUI N'EST PAS PUBLIÉ, ET POURQUOI : les MUNITIONS delta. Implémentées et mesurées, elles
+	//   sont REFUSÉES par leur propre mesure — concordance plafonnant à 92,80 %, et qui DESCEND
+	//   quand on rapproche les deux lectures (88,06 % à 0,10 s contre 93,19 % à 2 s), ce qu'une
+	//   consommation réelle entre les deux mesures ferait à l'envers. `Inventory.Am` reste donc
+	//   alimenté par les seules images-clés. Détail : .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
+	if SchemaVersion != 20 {
+		t.Fatalf("SchemaVersion = %d, attendu 20 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -5,12 +5,21 @@ import "fmt"
 // grenade_events.go — LANCERS DE GRENADE, lus par balayage d'un marqueur dans les paquets
 // delta (type-0).
 //
-// POURQUOI PAS LA CHAÎNE DE COMPOSANTS. i22 (biped-grenade-count) est ATTEINT à 100 % par
-// le walk séquentiel, et pourtant 91,19 % des comptes lus violent une borne du jeu (2 types
-// au plus, 2 unités de chaque) — on y lit jusqu'à 255. Ce n'est PAS du bruit dans le film :
-// c'est notre curseur qui dérive en amont. Le remède est celui, déjà éprouvé, de
-// keyframe_loadout.go : ancrer sur une CONSTANTE cherchée bit à bit plutôt que dérouler une
-// chaîne dont le masque de présence est faux.
+// POURQUOI CE DÉCODEUR EXISTE, ET CE QU'IL EST SEUL À DONNER. Il a été écrit quand la marche
+// de composants NON ancrée (DecodeFrameRecords) rendait 91,19 % de comptes i22 violant une
+// borne du jeu (2 types au plus, 2 unités de chaque) — on y lisait jusqu'à 255. Le remède
+// retenu alors fut celui de keyframe_loadout.go : ancrer sur une CONSTANTE cherchée bit à bit.
+//
+// CETTE JUSTIFICATION-LÀ N'EST PLUS LA BONNE, et le dire évite de reproduire le raisonnement.
+// La chaîne de composants MARCHE désormais, sur le chemin ANCRÉ (matchBipedHeader +
+// walkRecordTo) : sur 000d5950, i22 y rend 120 lectures sur 120 avec compteur == 4 et valeurs
+// dans {0, 1, 2} (étude du 2026-08-24,
+// .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3), et c'est ce chemin
+// que ScanFilmInventoryDeltas (inventory_delta.go) exploite pour SUIVRE les compteurs.
+//
+// CE DÉCODEUR RESTE, pour ce qu'i22 ne donne pas : le TYPE lancé et son AUTEUR à l'instant du
+// lancer. i22 donne un ÉTAT (combien il en reste, par rang) ; ce fichier donne un ÉVÉNEMENT.
+// Les deux sont complémentaires, ils ne se remplacent pas.
 //
 // GRAMMAIRE (méthode acurtis166 ; cf. .ai/GRENADE_MELEE_DETECTION.md et
 // .ai/V7.5/killweapon/FIRE_MELEE_GRENADE_EVENTS.md §8, qui la classe FIABLE : 70 événements, joueurs 0-7
@@ -24,8 +33,9 @@ import "fmt"
 // des index dans 0..7. LA VALIDATION NE VIENT PAS DU MARQUEUR SEUL : c'est l'appartenance
 // de l'identifiant 32 bits à la liste blanche des quatre grenades qui fait la sélectivité.
 //
-// CE QUE CE DÉCODEUR NE DONNE PAS : ni le compte de grenades en réserve (c'est i22, non
-// résolu), ni la trajectoire du projectile, ni l'impact. Un lancer, son type, son auteur.
+// CE QUE CE DÉCODEUR NE DONNE PAS : ni le compte de grenades en réserve (c'est i22, lu par
+// ScanFilmInventoryDeltas), ni la trajectoire du projectile, ni l'impact. Un lancer, son
+// type, son auteur.
 
 // Identifiants 32 bits des grenades.
 //

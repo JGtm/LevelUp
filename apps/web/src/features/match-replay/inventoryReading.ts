@@ -154,29 +154,6 @@ export function inventoryEmptyHint(
 }
 
 /**
- * grenadesCarried rend les types de grenade PORTÉS, avec leur nom et leur compteur.
- *
- * LES COMPTEURS À ZÉRO SONT ÉCARTÉS DE L'AFFICHAGE mais pas de la lecture : le tableau publié
- * est complet, et un zéro y signifie « ce type, aucune en réserve ». Montrer quatre types dont
- * trois à zéro noierait celui qui compte.
- */
-export function grenadesCarried(
-  state: ReplayInventoryReady,
-  labels: CatalogLabel[] | undefined,
-  locale: ReplayLocale,
-): { rank: number; name: string; count: number }[] {
-  if (!state.g) return []
-  const out: { rank: number; name: string; count: number }[] = []
-  state.g.forEach((count, rank) => {
-    if (count <= 0) return
-    // Sans table, le RANG s'affiche tel quel : c'est ce que le document dit, et c'est
-    // vrai. Inventer un nom serait pire (cf. catalogLabel.ts).
-    out.push({ rank, name: catalogText(labels?.[rank], locale) ?? `rang ${rank}`, count })
-  })
-  return out
-}
-
-/**
  * GrenadeSelection — le type ÉQUIPÉ, celui qui partira au prochain lancer, avec sa
  * PROVENANCE. Les trois formes ne se confondent jamais :
  *   - { rank, read: true }  : LU dans le film (sélecteur i47 de l'image-clé) ;
@@ -188,21 +165,168 @@ export function grenadesCarried(
 export type GrenadeSelection = { rank: number; read: boolean } | 'indeterminate' | null
 
 /**
- * selectedGrenade désigne le type équipé.
+ * GrenadeReading — les grenades portées qui couvrent l'image, et l'ÂGE de cette lecture.
+ *
+ * `src` dit par quel canal elle est arrivée : 'kf' (image-clé, ~20 s) ou 'delta' (paquet
+ * delta, transmis AU CHANGEMENT). La fiche ne l'affiche pas ; elle sert au diagnostic et aux
+ * tests — un canal qui se tairait ne se verrait autrement nulle part.
+ */
+export interface GrenadeReading {
+  g: number[]
+  gs?: number
+  age: number
+  src: string
+}
+
+/**
+ * grenadeReadingAt — LA lecture de grenades à afficher pour ce slot à cette image.
+ *
+ * POURQUOI UN AXE À PART, ET POURQUOI LA FICHE LE PRÉFÈRE (schéma 20, lot 4.4 du suivi delta).
+ * L'inventaire est lu aux images-clés, soit toutes les ~20 s ; entre deux, la fiche affichait
+ * la dernière lecture connue, d'âge médian 10,00 s. Les paquets DELTA transmettent les mêmes
+ * compteurs AU CHANGEMENT — un ramassage, un lancer — donc exactement là où l'état bouge.
+ * `doc.grenadeReads` porte les DEUX canaux sur la même grandeur ; la plus récente gagne, et
+ * l'âge médian tombe à 8,09 s (mesure sur 70 films, 28 confrontables).
+ *
+ * ON NE DÉPARTAGE PAS LES DEUX CANAUX QUAND ILS DIVERGENT : on ne sait pas lequel aurait tort.
+ * Ce que la mesure dit, c'est qu'ils divergent peu — 714 accords sur 729 couples confrontables,
+ * soit 97,94 %.
+ *
+ * RETOUR À NULL = l'artefact ne porte pas cet axe (antérieur au schéma 20) ou le film n'en
+ * transmet rien. L'appelant retombe alors sur `inventory`, exactement comme avant : un artefact
+ * ancien continue de s'afficher, il est seulement moins frais.
+ */
+export function grenadeReadingAt(
+  doc: ReplayDocumentReady,
+  slot: number,
+  frame: number,
+): GrenadeReading | null {
+  const read = nearestReading(doc.grenadeReads ?? [], slot, frame)
+  if (!read) return null
+  return {
+    g: read.value.g,
+    gs: read.value.gs ?? undefined,
+    age: read.age,
+    src: read.value.src,
+  }
+}
+
+/**
+ * GrenadeBox — CE QUE LA BOÎTE DE GRENADES AFFICHE, et l'ÂGE de la lecture qui le porte.
+ *
+ * L'ÂGE EST CELUI DE LA LECTURE RETENUE, jamais celui de l'inventaire : c'est toute la raison
+ * d'être du type. La boîte s'estompe et s'explique sur SON âge, exactement comme la cellule de
+ * capacité, dont la lecture ne tombe pas non plus sur les images-clés de l'inventaire.
+ */
+export interface GrenadeBox {
+  g: readonly number[]
+  gs?: number
+  age: number
+}
+
+/**
+ * grenadeBoxAt compose les DEUX sources de la boîte de grenades — l'axe `grenadeReads`
+ * (schéma 20) et la lecture d'inventaire — et tranche laquelle s'affiche.
+ *
+ * UNE LECTURE À VENIR NE PRIME JAMAIS UNE INFORMATION PASSÉE. C'est la MÊME doctrine que la
+ * « lecture vide À VENIR » ci-dessus (inventoryAt), et elle est ici née du même défaut mesuré :
+ * `nearestReading` se replie sur la lecture la plus proche À VENIR quand aucune ne précède
+ * l'image, et la boîte préférait cette lecture sans regarder le signe de son âge. Résultat
+ * observé au slot 554 du film de référence : une plasma affichée ~60 s AVANT sa première
+ * mesure, à pleine opacité, sous une infobulle « lu il y a X ». La boîte affirmait l'avenir au
+ * passé.
+ *
+ * LA RÈGLE, DONC :
+ *   - grenadeRead d'âge >= 0 : elle gagne — c'est le gain du lot (âge médian 10,00 s -> 8,09 s),
+ *     l'axe portant les deux canaux (image-clé et delta) sur la même grandeur ;
+ *   - grenadeRead à VENIR et lecture d'inventaire PASSÉE porteuse de compteurs : les compteurs
+ *     passés gagnent, avec l'âge de LEUR lecture ;
+ *   - grenadeRead à VENIR et RIEN de passé : la lecture à venir s'affiche, mais ASSUMÉE — son
+ *     âge négatif voyage tel quel, et l'infobulle dit « dans X s », comme le fait la rangée.
+ *     Un affichage à venir déguisé en passé serait pire qu'une boîte vide ;
+ *   - aucun axe (artefact antérieur au schéma 20) : la lecture d'inventaire, telle quelle.
+ *
+ * `g` VIDE = COMPTEURS NON LUS, pas « aucune grenade » (cf. `grenadesCarriedFrom`) : une
+ * lecture d'inventaire sans compteurs n'est donc pas une information passée sur les grenades,
+ * et ne peut pas départager quoi que ce soit.
+ */
+export function grenadeBoxAt(
+  doc: ReplayDocumentReady,
+  slot: number,
+  frame: number,
+  inv: InventoryReading | null,
+): GrenadeBox | null {
+  const fromInv: GrenadeBox | null = inv
+    ? { g: inv.state.g ?? [], gs: inv.state.gs ?? undefined, age: inv.age }
+    : null
+  const gren = grenadeReadingAt(doc, slot, frame)
+  if (!gren) return fromInv
+  const box: GrenadeBox = { g: gren.g, gs: gren.gs, age: gren.age }
+  if (gren.age >= 0) return box
+  const past = fromInv && fromInv.age >= 0 && fromInv.g.length > 0 ? fromInv : null
+  return past ?? box
+}
+
+/**
+ * grenadeBoxHint — l'infobulle de la boîte : ce qu'elle montre, puis QUAND ça a été lu.
+ *
+ * ELLE VIT ICI, comme le reste des compositions de texte de ce fichier : une infobulle bâtie
+ * dans le composant ne se teste qu'au travers d'un rendu. Un âge négatif est une lecture À
+ * VENIR et se dit comme telle — même honnêteté que `abilityAgeTitle` et que la rangée.
+ */
+export function grenadeBoxHint(
+  t: (typeof REPLAY_TEXT)[ReplayLocale],
+  box: GrenadeBox,
+  carried: readonly { name: string; count: number }[],
+  doc: ReplayDocumentReady,
+): string {
+  const ms = formatSeconds(frameToMs(Math.abs(box.age), doc))
+  const when = box.age < 0 ? `${t.grenadeAhead} ${ms}` : `${t.grenadeAge} ${ms}`
+  if (carried.length === 0) return when
+  return `${carried.map((g) => `${g.name} ×${g.count}`).join(' · ')} · ${when}`
+}
+
+/**
+ * grenadesCarriedFrom rend les types de grenade PORTÉS, avec leur nom et leur compteur, à
+ * partir des COMPTEURS BRUTS — d'où qu'ils viennent (axe `grenadeReads` ou inventaire).
+ *
+ * LES COMPTEURS À ZÉRO SONT ÉCARTÉS DE L'AFFICHAGE mais pas de la lecture : le tableau publié
+ * est complet, et un zéro y signifie « ce type, aucune en réserve ». Montrer quatre types dont
+ * trois à zéro noierait celui qui compte. Un tableau VIDE, lui, dit « compteurs NON LUS ».
+ *
+ * Sans table de noms, le RANG s'affiche tel quel : c'est ce que le document dit, et c'est vrai.
+ * Inventer un nom serait pire (cf. catalogLabel.ts).
+ */
+export function grenadesCarriedFrom(
+  counts: readonly number[],
+  labels: CatalogLabel[] | undefined,
+  locale: ReplayLocale,
+): { rank: number; name: string; count: number }[] {
+  const out: { rank: number; name: string; count: number }[] = []
+  counts.forEach((count, rank) => {
+    if (count <= 0) return
+    out.push({ rank, name: catalogText(labels?.[rank], locale) ?? `rang ${rank}`, count })
+  })
+  return out
+}
+
+/**
+ * selectedGrenadeFrom désigne le type ÉQUIPÉ à partir des COMPTEURS BRUTS et du sélecteur lu.
  *
  * LA LECTURE PRIME LA DÉDUCTION : le sélecteur du film (`gs`) est publié sous garde de
- * cohérence (masque == compteurs, unanimité) — quand il est là, c'est lui. À défaut, la
- * déduction ne vaut que quand elle ne peut pas être autre chose : un seul type porté.
- * Dès qu'un joueur porte deux types sans sélecteur lu, on rend 'indeterminate' : deviner
- * reviendrait à afficher une certitude qu'on n'a pas.
+ * cohérence (masque == compteurs, unanimité) — quand il est là, c'est lui.
+ *
+ * La règle ne change pas d'un canal à l'autre : une sélection lue et cohérente avec les
+ * compteurs gagne ; un seul type porté se DÉDUIT ; plusieurs types sans sélection lue restent
+ * indéterminés — on ne devine pas laquelle partira.
  */
-export function selectedGrenade(state: ReplayInventoryReady): GrenadeSelection {
-  const carried = (state.g ?? []).map((c, r) => ({ c, r })).filter((x) => x.c > 0)
+export function selectedGrenadeFrom(
+  counts: readonly number[],
+  gs: number | undefined,
+): GrenadeSelection {
+  const carried = counts.map((c, r) => ({ c, r })).filter((x) => x.c > 0)
   if (carried.length === 0) return null
-  const gs = state.gs
-  if (gs !== undefined && carried.some((x) => x.r === gs)) {
-    return { rank: gs, read: true }
-  }
+  if (gs !== undefined && carried.some((x) => x.r === gs)) return { rank: gs, read: true }
   if (carried.length === 1) return { rank: carried[0].r, read: false }
   return 'indeterminate'
 }

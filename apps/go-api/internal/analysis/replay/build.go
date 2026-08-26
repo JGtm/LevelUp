@@ -50,6 +50,13 @@ type Options struct {
 	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
 	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
 	Inventory []KeyframeInventory
+	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades). Absentes =
+	// le film n'en transmet pas, ou le balayage a echoue : l'axe des grenades retombe alors sur
+	// les seules images-cles.
+	InventoryDeltas []filmdec.InventoryDelta
+	// InventoryDeltaAmmoRefused reporte la porte du scanner : le canal MUNITIONS de ce film a
+	// ete refuse en bloc. Pure telemetrie — les grenades ne sont pas concernees.
+	InventoryDeltaAmmoRefused bool
 	// AbilityRanks : les identites de capacite transmises par i48 dans les paquets DELTA
 	// (cf. abilities.go). Entree de DONNEES, comme Inventory. C'est le canal qui voit TOUTE
 	// la palette ; celui des images-cles, porte par Inventory, n'en voit que la fenetre
@@ -217,6 +224,24 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"imagesCles", invStats.Keyframes, "records", invStats.Records)
 	}
 	opt.Inventory = inventory
+	// Inventaire suivi dans les paquets DELTA : les compteurs de grenades (i22) et le jeu
+	// selectionne (i47), transmis AU CHANGEMENT donc places la ou l'etat bouge. Absence non
+	// fatale — l'axe des grenades retombe sur les seules images-cles.
+	invDeltas, dStats, err := filmdec.ScanFilmInventoryDeltas(filmDir)
+	if err != nil {
+		slog.Warn("inventaire delta illisible — grenades sans rafraichissement entre images-cles",
+			"err", err, "filmDir", filmDir)
+		invDeltas = nil
+	} else {
+		slog.Info("inventaire delta : lectures",
+			"recordsDelta", dStats.Records, "masqueAvecI22", dStats.WithI22,
+			"i22Lues", dStats.I22Read, "i22Implausibles", dStats.Implausible,
+			"masqueAvecI47", dStats.WithI47, "i47Lues", dStats.I47Read,
+			"accord", dStats.Accord, "accordVerifies", dStats.AccordChecked,
+			"canalMunitionsRefuse", dStats.AmmoRefused)
+	}
+	opt.InventoryDeltas = invDeltas
+	opt.InventoryDeltaAmmoRefused = dStats.AmmoRefused
 	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare
 	// (une transmission par vie environ) mais elle porte le rang COMPLET, la ou les images-cles
 	// ne voient que 16..23. Absence non fatale — le rejeu retombe sur cette seule fenetre.
@@ -481,10 +506,17 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// (cf. inventory_dead_readings.go).
 	logInventoryEmptyCoverage(doc.Inventory, markInventoryDeadReadings(doc.Inventory, opt.Deaths, own,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount}))
+	// LES GRENADES ONT LEUR PROPRE AXE, alimente par les deux canaux (cf. grenade_reads.go) :
+	// ils n'ont pas la meme cadence, et les verser dans `Inventory` ferait masquer une lecture
+	// pleine par une lecture partielle — la cellule de munitions se viderait.
+	builtGren := buildGrenadeReads(opt.Inventory, opt.InventoryDeltas, origin, step)
+	doc.GrenadeReads = keepGrenadeReadsOfPublishedTracks(builtGren, doc.Tracks)
+	attachGrenadeReadCoverage(&doc, builtGren, opt.InventoryDeltaAmmoRefused)
+
 	// Les rangs de grenade sont publiés dès qu'un calque les référence : l'inventaire
 	// (compteurs portés) OU les lancers (Grenade.Rank). Les conditionner au seul
 	// inventaire laissait des lancers pointer une table absente.
-	if len(doc.Inventory) > 0 || len(doc.Grenades) > 0 {
+	if len(doc.Inventory) > 0 || len(doc.Grenades) > 0 || len(doc.GrenadeReads) > 0 {
 		doc.GrenadeLabels = opt.Labels.Grenades
 	}
 	// La capacite portee a son PROPRE calque : ses deux canaux ne vivent pas sur la meme

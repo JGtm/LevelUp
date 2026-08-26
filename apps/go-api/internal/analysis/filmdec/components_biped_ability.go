@@ -14,10 +14,42 @@ package filmdec
 // Total: 9 bits, unconditional. CONFIRMED bit-exact from the decompile: FUN_140c6a638
 // advances the bit counter by 6 (no leading gate-bit sentinel), then FUN_1424d9a30 by
 // 3 (same flat R(3) primitive used by consumeUnitLowFrequency).
+// i47MaskBits / i47SelBits : les deux largeurs de la grammaire de FUN_140c6a638, dans
+// l'ordre du flux. Nommées parce qu'elles servent AUSSI au balayage d'inventaire
+// (inventory_delta.go) et à ses garde-rails — trois copies des littéraux 6 et 3 auraient
+// re-divergé (CLAUDE.md n°6).
+const (
+	i47MaskBits = 6
+	i47SelBits  = 3
+)
+
+// GrenadeSetNoSelection est la valeur de sélection qui dit « AUCUN type sélectionné ». Le
+// codage d'i47 est 1-BASE : la sélection 1..4 désigne le bit `sel−1` du masque, et 0 est
+// l'absence. Mesuré sur 000d5950 : 20 lectures à 0, et 44/44 des sélections non nulles
+// appartiennent au masque (étude du 2026-08-24 §2.5). Confondre 0 avec « le premier type »
+// afficherait une grenade sélectionnée là où le film n'en désigne aucune.
+const GrenadeSetNoSelection = 0
+
+// LES BITS NE SONT PLUS JETÉS (2026-08-25, lot 4.1 du suivi delta de l'inventaire). Le déser
+// consommait ses neuf bits pour rester aligné et les abandonnait ; ils portent le masque des
+// types de grenade portés et le type SÉLECTIONNÉ — la même grandeur que
+// `Inventory.Gs`, que le canal des images-clés ne rafraîchit que toutes les ~20 s. Le
+// parcours de bits est INCHANGÉ : le hook ne fait que publier ce que le déser lisait déjà.
 func consumeBipedDesiredGrenadeSet(br *BitReader) {
-	br.ReadBits(6) // FUN_140c6a638 flat R(6)
-	br.ReadBits(3) // FUN_1424d9a30 flat R(3)
+	mask := br.ReadBits(i47MaskBits) // FUN_140c6a638 flat R(6)
+	sel := br.ReadBits(i47SelBits)   // FUN_1424d9a30 flat R(3)
+	if grenadeSetHook != nil {
+		grenadeSetHook(uint32(mask), int(sel))
+	}
 }
+
+// grenadeSetHook, si non nil, reçoit d'i47 : le masque R(6) des types portés et la sélection
+// R(3) — GrenadeSetNoSelection quand aucun type n'est désigné. Le déser reste inchangé bit
+// pour bit.
+var grenadeSetHook func(mask uint32, sel int)
+
+// SetGrenadeSetHook installe (ou retire, avec nil) la sonde de lecture d'i47.
+func SetGrenadeSetHook(h func(mask uint32, sel int)) { grenadeSetHook = h }
 
 // ---------------------------------------------------------------------------
 // i48 biped-desired-ability-set-component  (deser FUN_1406d0ff0)
