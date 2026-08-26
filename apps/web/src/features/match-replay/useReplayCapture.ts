@@ -11,8 +11,9 @@
  *
  * CE QUE CE HOOK NE DÉCIDE PAS : le nom du fichier, le téléchargement et la lecture des pixels
  * sont de la logique pure et vivent dans `replayCapture.ts` ; le choix du conteneur vidéo, dans
- * `replayRecording.ts`. Ici, seule la couture — lire les refs au moment du clic, tenir l'état
- * de l'enregistreur, et refermer proprement.
+ * `replayRecording.ts` ; la piste audio, dans `replayAudio.ts` (le lecteur ouvre une seconde
+ * sortie en parallèle des haut-parleurs). Ici, seule la couture — lire les refs au moment du
+ * clic, tenir l'état de l'enregistreur, et refermer proprement.
  *
  * # ON FILME L'ÉCRAN, ET C'EST ASSUMÉ
  *
@@ -52,6 +53,12 @@ export interface ReplayCaptureOptions {
   playing: boolean
   /** Lance la lecture. Appelé au démarrage si le rejeu est en pause (décision 3). */
   play: () => void
+  /**
+   * La piste audio du rejeu, DEMANDÉE au démarrage de l'enregistrement (cf. `ReplaySound`).
+   * `null` = son coupé ou lecteur pas né : le clip sort muet, ce qui est le cas nominal
+   * puisque le son du rejeu est coupé par défaut.
+   */
+  audioTrack?: () => MediaStreamTrack | null
 }
 
 /** Ce que la barre de lecture reçoit (même forme que `ReplaySound` : un objet, pas des props). */
@@ -70,7 +77,7 @@ export interface ReplayCapture {
 }
 
 export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
-  const { canvasRef, doc, frameRef, playing, play } = o
+  const { canvasRef, doc, frameRef, playing, play, audioTrack } = o
   const [recording, setRecording] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -116,7 +123,15 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
     if (!canvas || recorderRef.current) return
     const choice = pickVideoMimeType(isVideoTypeSupported)
     if (!choice) return
-    const stream = canvas.captureStream(CAPTURE_FPS)
+    const canvasStream = canvas.captureStream(CAPTURE_FPS)
+    // LE SON REJOINT L'IMAGE ICI, ET SEULEMENT ICI (décision 6) : la piste est demandée au
+    // DÉMARRAGE, donc activer le son ensuite n'ajoute rien au clip en cours. Sans piste — son
+    // coupé, ce qui est le cas par défaut — on enregistre le flux de la toile tel quel.
+    const audio = audioTrack?.() ?? null
+    const stream =
+      audio && typeof MediaStream === 'function'
+        ? new MediaStream([...canvasStream.getTracks(), audio])
+        : canvasStream
     const recorder = new MediaRecorder(stream, { mimeType: choice.mime })
     chunksRef.current = []
     filenameRef.current = buildCaptureFilename(
@@ -132,9 +147,11 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
       const parts = chunksRef.current
       chunksRef.current = []
       recorderRef.current = null
-      // LES PISTES SE COUPENT ICI, pas avant : la capture de la toile doit tourner jusqu'à la
-      // dernière tranche, sans quoi le clip perdrait sa fin.
-      for (const track of stream.getTracks()) track.stop()
+      // LES PISTES DE LA TOILE SE COUPENT ICI, pas avant : la capture doit tourner jusqu'à la
+      // dernière tranche, sans quoi le clip perdrait sa fin. LA PISTE AUDIO, elle, N'EST PAS
+      // COUPÉE — elle appartient au lecteur de son, qui vit plus longtemps que le clip ; la
+      // fermer ici rendrait muet tout enregistrement suivant.
+      for (const track of canvasStream.getTracks()) track.stop()
       setRecording(false)
       // Rien d'enregistré (arrêt immédiat, encodeur muet) : pas de fichier vide.
       if (!liveRef.current || parts.length === 0) return
@@ -145,7 +162,7 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
     setRecording(true)
     // FILMER UNE IMAGE FIGÉE N'A AUCUN SENS (décision 3) : un rejeu en pause repart.
     if (!playing) play()
-  }, [canvasRef, doc, frameRef, playing, play])
+  }, [canvasRef, doc, frameRef, playing, play, audioTrack])
 
   const toggleRecording = useCallback(() => {
     if (recorderRef.current) stopRecording()

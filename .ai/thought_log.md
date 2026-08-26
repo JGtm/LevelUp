@@ -1,3 +1,35 @@
+## [2026-08-26] Rejeu 2D — le son rejoint la video enregistree (lot 3/4) — Complete
+
+**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres l'image (lot 1) et la
+video muette (lot 2). Le clip doit porter le son du rejeu quand celui-ci est actif.
+
+**Decision technique principale** : le lecteur Web Audio ouvre un ROBINET — un
+MediaStreamAudioDestinationNode branche EN PARALLELE de ctx.destination — dont la piste part au
+MediaRecorder. Le piege etait le point de branchement : la classe atteignait ctx.destination a
+TROIS endroits (constructeur, et les deux branches de setDistance), et brancher le robinet sur
+le maitre alors que la chaine de distance est posee aurait donne un clip MUET pendant que les
+haut-parleurs continuent de sortir du son — une panne qui ne leve rien et que rien n'affiche.
+Les trois sites passent donc par un connectOut(node) prive qui branche les deux sorties et
+memorise le dernier noeud avant la sortie. Le robinet naît a la premiere demande seulement (un
+rejeu qu'on ne filme pas ne paie pas un noeud) et RESTE ensuite (le recreer par clip laisserait
+des noeuds derriere lui). Regle d'appartenance a l'arret : on coupe les pistes de la TOILE, pas
+la piste audio — celle-ci appartient au lecteur de son, qui vit plus longtemps que le clip, et
+la fermer rendrait muet tout enregistrement suivant. Decision 6 tenue : la piste est demandee au
+DEMARRAGE, donc activer le son en cours de route n'ajoute rien au clip courant — un fichier dont
+le son demarrerait a mi-course passerait pour un fichier abime.
+
+**Resultats observes** : la doublure Web Audio partagee (test/fakeAudio.ts) a du gagner le suivi
+des BRANCHEMENTS, le passe-bas et le robinet — sans quoi la question « le clip sort-il du meme
+endroit que les haut-parleurs ? » n'est pas mesurable. tsc -b = 0 (apres ajout du champ manquant
+dans la fixture ReplaySound de ReplaySettingsDrawer.test.tsx) ; vitest match-replay = 0 (76
+fichiers, 1164 tests, +10) ; eslint --max-warnings 0 sur les 10 fichiers du perimetre = 0 ;
+ReplayCanvas.tsx toujours a 706 lignes, l'appel du hook s'etendant une troisieme fois sans
+s'allonger.
+
+**Conclusion / prochaine etape** : lot 4 — cloture (lint web entier, make check-types,
+make test-web, relecture du diff, statut de tous les items). Puis GATE VISUEL UTILISATEUR :
+c'est lui qui a la main sur le navigateur, jamais un agent.
+
 ## [2026-08-26] Rejeu 2D — enregistrement video du canvas (lot 2/4) — Complete
 
 **Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres le lot 1 (image PNG).

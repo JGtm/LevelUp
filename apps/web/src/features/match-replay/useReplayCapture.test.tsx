@@ -35,7 +35,11 @@ vi.mock('./replayCapture', async (importOriginal) => {
 /** 20 images par seconde : l'image 40 tombe donc à la 2e seconde de match. */
 const DOC = testReplayDoc({ matchId: 'match-témoin', frameIntervalMs: 50 })
 
-function mount(frame: number, canvas: HTMLCanvasElement | null = document.createElement('canvas')) {
+function mount(
+  frame: number,
+  canvas: HTMLCanvasElement | null = document.createElement('canvas'),
+  audioTrack?: () => MediaStreamTrack | null,
+) {
   const canvasRef = createRef<HTMLCanvasElement>() as RefObject<HTMLCanvasElement | null>
   canvasRef.current = canvas
   const frameRef = createRef<number>() as RefObject<number>
@@ -43,7 +47,7 @@ function mount(frame: number, canvas: HTMLCanvasElement | null = document.create
   const play = vi.fn()
   const view = renderHook(
     ({ playing }: { playing: boolean }) =>
-      useReplayCapture({ canvasRef, doc: DOC, frameRef, playing, play }),
+      useReplayCapture({ canvasRef, doc: DOC, frameRef, playing, play, audioTrack }),
     { initialProps: { playing: true } },
   )
   return { ...view, play }
@@ -117,10 +121,10 @@ class FakeMediaRecorder {
   state: 'inactive' | 'recording' = 'inactive'
   ondataavailable: ((e: { data: Blob }) => void) | null = null
   onstop: (() => void) | null = null
-  stream: { getTracks: () => { stop: () => void }[] }
+  stream: { getTracks: () => unknown[] }
   options: { mimeType: string }
   constructor(
-    stream: { getTracks: () => { stop: () => void }[] },
+    stream: { getTracks: () => unknown[] },
     options: { mimeType: string },
   ) {
     this.stream = stream
@@ -140,13 +144,28 @@ class FakeMediaRecorder {
 /** Les pistes du flux : on vérifie qu'elles sont bien coupées à la fin, pas avant. */
 let tracksStopped = 0
 
+/** Le flux à plusieurs pistes que l'assemblage image + son fabrique. */
+class FakeMediaStream {
+  tracks: unknown[]
+  constructor(tracks: unknown[]) {
+    this.tracks = tracks
+  }
+  getTracks() {
+    return this.tracks
+  }
+}
+
+/** La piste vidéo de la toile — celle qui doit être coupée à l'arrêt, et elle seule. */
+const PISTE_VIDEO = { kind: 'video', stop: () => (tracksStopped += 1) }
+
 function armerLEnregistrement(supported = ['video/mp4;codecs=avc1']) {
   FakeMediaRecorder.supported = supported
   FakeMediaRecorder.last = null
   tracksStopped = 0
   vi.stubGlobal('MediaRecorder', FakeMediaRecorder)
+  vi.stubGlobal('MediaStream', FakeMediaStream)
   HTMLCanvasElement.prototype.captureStream = () =>
-    ({ getTracks: () => [{ stop: () => (tracksStopped += 1) }] }) as unknown as MediaStream
+    ({ getTracks: () => [PISTE_VIDEO] }) as unknown as MediaStream
 }
 
 afterEach(() => {
@@ -230,6 +249,40 @@ describe('useReplayCapture — enregistrer la vidéo', () => {
       rerender({ playing: true })
     })
     expect(result.current.recording).toBe(true)
+  })
+
+  // DÉCISION 6 — le son rejoint la vidéo AU DÉMARRAGE, et seulement s'il est déjà actif.
+  it('avec le son actif : DEUX pistes, l’image et le son', () => {
+    const piste = { kind: 'audio', stop: vi.fn() } as unknown as MediaStreamTrack
+    const { result } = mount(40, document.createElement('canvas'), () => piste)
+    act(() => {
+      result.current.toggleRecording()
+    })
+    expect(FakeMediaRecorder.last?.stream.getTracks()).toEqual([PISTE_VIDEO, piste])
+  })
+
+  it('sans son : UNE piste, et le flux de la toile passe tel quel', () => {
+    const { result } = mount(40, document.createElement('canvas'), () => null)
+    act(() => {
+      result.current.toggleRecording()
+    })
+    expect(FakeMediaRecorder.last?.stream.getTracks()).toEqual([PISTE_VIDEO])
+  })
+
+  it('à l’arrêt, la piste AUDIO survit — elle appartient au lecteur de son', () => {
+    // La couper ici rendrait muet tout enregistrement suivant : le lecteur vit plus
+    // longtemps que le clip, et c'est lui qui possède cette piste.
+    const stop = vi.fn()
+    const piste = { kind: 'audio', stop } as unknown as MediaStreamTrack
+    const { result } = mount(40, document.createElement('canvas'), () => piste)
+    act(() => {
+      result.current.toggleRecording()
+    })
+    act(() => {
+      result.current.toggleRecording()
+    })
+    expect(tracksStopped).toBe(1) // la piste de la toile, elle, est bien coupée
+    expect(stop).not.toHaveBeenCalled()
   })
 
   it('quitter la page pendant un enregistrement referme SANS déposer de fichier', () => {

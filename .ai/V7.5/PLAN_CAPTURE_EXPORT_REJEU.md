@@ -190,20 +190,35 @@ cf. D2), `eslint --max-warnings 0` sur les 8 fichiers du périmètre = 0.
 
 ## Lot 3 — Le son dans la vidéo
 
-- [ ] **`replayAudio.ts`** : méthode `recordingTrack(): MediaStreamTrack | null` — crée
-  une seule fois un `MediaStreamAudioDestinationNode` et y connecte les MÊMES nœuds que
-  ceux qui se connectent à `ctx.destination` (master aux deux points + distFilter —
-  re-vérifier les sites exacts sur pièces). Le nœud n'existe que si le lecteur existe.
-- [ ] **`useReplaySound.ts`** : exposer `recordingTrack: () => MediaStreamTrack | null`
-  dans l'interface `ReplaySound` (`null` si son coupé ou lecteur non né — décision 6).
-- [ ] **`useReplayCapture.ts`** : au démarrage, si une piste audio est rendue →
-  `new MediaStream([pisteVideo, pisteAudio])` avant le `MediaRecorder`.
-- [ ] **Tests** : regarder comment les tests existants de `replayAudio`/`useReplaySound`
-  mockent Web Audio et s'aligner ; au minimum — le hook assemble un flux à 2 pistes
-  quand une piste audio est fournie, 1 piste sinon (piste factice en test).
+- [x] **`replayAudio.ts`** : `recordingTrack(): MediaStreamTrack | null` — robinet créé UNE
+  fois, à la première demande. Les TROIS sites vérifiés sur pièces (constructeur, et les
+  deux branches de `setDistance`) passent désormais par un `connectOut(node)` privé qui
+  branche haut-parleurs ET robinet, et mémorise le dernier nœud avant la sortie (`out`).
+  Sans cela, poser la chaîne de distance en cours d'enregistrement aurait coupé le son du
+  CLIP sans couper celui des haut-parleurs — panne muette par excellence.
+- [x] **`useReplaySound.ts`** : `recordingTrack` dans `ReplaySound`, lu sur les refs
+  (`onRef`, `playerRef`) pour rester stable ; `null` si son coupé ou lecteur non né.
+- [x] **`useReplayCapture.ts`** : au démarrage, `new MediaStream([...pistes toile, piste
+  audio])` si une piste est rendue, sinon le flux de la toile tel quel. La piste audio
+  n'est PAS coupée à l'arrêt — elle appartient au lecteur de son, la fermer rendrait muet
+  tout enregistrement suivant.
+- [x] **Tests** : la doublure Web Audio partagée (`test/fakeAudio.ts`) gagne le suivi des
+  BRANCHEMENTS (`FakeGain.connections`), le passe-bas (`FakeFilter`) et le robinet
+  (`FakeStreamDestination`) — c'est la seule façon de mesurer « le clip sort-il du même
+  endroit que les haut-parleurs ? ». Cas : robinet branché sur le maître EN PLUS de la
+  sortie ; un seul robinet même redemandé ; le robinet SUIT la chaîne de distance ;
+  navigateur sans flux audio → `null` ; côté hook du son, `null` si coupé, la piste si
+  activé, `null` de nouveau après coupure, et aucun contexte ouvert quand le son est
+  coupé ; côté capture, flux à 2 pistes avec son, 1 sans, et la piste audio qui survit à
+  l'arrêt.
 
 **Gate Lot 3** : mêmes commandes, sorties à 0, puis **commit**
 `feat(rejeu-capture): le son du rejeu rejoint la video enregistree`.
+
+**Résultat Lot 3** : `typecheck` = 0 ; `vitest src/features/match-replay` = 0 (76 fichiers,
+1164 tests) ; `eslint` dossier = 1 (même unique warning de baseline, cf. D2),
+`eslint --max-warnings 0` sur les 10 fichiers du périmètre = 0. `ReplayCanvas.tsx` toujours
+à 706 lignes — l'appel du hook s'est étendu une troisième fois sans s'allonger.
 
 ## Lot 4 — Clôture
 
