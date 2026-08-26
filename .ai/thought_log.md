@@ -1,3 +1,64 @@
+## [2026-08-26] provider.log — le cycle B-swap nominal passe en Debug, seuil de lenteur en Info
+
+**Statut** : Complete (lot C de-bruitage, worktree `wt/lot-c-provider-log`, aucun push).
+
+**Contexte (mesure superviseur 2026-08-25, fait acquis)** : `provider.log` prenait ~100 Mo/JOUR
+en prod (rotation quotidienne pleine, 4 fichiers retenus ~430 Mo permanents sur un VPS au
+disque contraint) : 77 331 INFO en 8 h (~2,7 lignes/s), dont 77 329 pour QUATRE messages — le
+cycle B-swap journalisait 4 lignes a CHAQUE prise du writer, pour ~40 acquisitions/minute
+(`AcquireWriter demarre` 19 423, `readers draines` 19 304, `swap RO->RW termine` 19 301,
+`swap RW->RO termine` 19 301). Le signal utile de la meme fenetre (121 WARN « drain timeout,
+rollback vers RO » + 2 recoveries StateError) etait noye a 1 pour 640.
+
+**Decision technique principale** : demotion CONDITIONNELLE, jamais suppression. Nouveau seuil
+nomme `defaultSlowSwapThreshold = 2 * time.Second` (provider.go) + champ `slowSwapThreshold`
+injectable en test, et un helper unique `logSwapPhase(ctx, msg, duree, attrs...)`
+(provider_writer.go) par lequel passent les 3 phases CHRONOMETREES du cycle : DEBUG tant que
+la duree est nominale, INFO des qu'elle atteint le seuil, avec sa duree ET `threshold_ms` —
+une anomalie reste donc lisible SANS reactiver le niveau debug. Le 4e message (`AcquireWriter
+demarre`) n'a aucune duree a qualifier : DEBUG inconditionnel, et son `label` de detenteur est
+desormais reporte sur les logs de fin de phase ET sur le WARN de drain timeout, qui ne le
+portait pas — aucune anomalie ne perd son attribution. Seuil calque sur `defaultRWHoldWatchdog`
+(meme frontiere « sain vs suspect » : fenetres saines sub-seconde, budget de lecture
+user-facing fail-fast a 3 s, `middleware.DefaultUserFacingReadBudget`), donc pre-alerte AVANT
+l'impact utilisateur. Regle CLAUDE.md n.3 tenue : AUCUN log d'erreur touche — les WARN/ERROR du
+cycle (drain timeout, echec d'open RW, reopen RO echoue, watchdog de detention) ne passent pas
+par le helper et restent inconditionnels. La demotion est effective au niveau fichier car
+`logging.Config.FileLevel` vaut INFO par defaut.
+
+**Resultats observes** : gofmt -l ./internal vide ; `go build ./...` exit 0 ; `go vet ./...`
+COMPLET exit 0 ; `go test -count=1 ./internal/platform/duckdb/...` exit 0 ;
+`go test -tags=integration -count=1 -p 1 -timeout 1800s ./internal/platform/duckdb/...` exit 0 ;
+`golangci-lint run --new-from-merge-base=origin/feat/v75` 0 issues (et 0 issue aussi en lint
+COMPLET du paquet, verifie expressement : la fonction AcquireWriter, allongee de 6 lignes, ne
+franchit pas funlen). Deux tests neufs : `provider_log_levels_integration_test.go` (capture
+slog JSON niveau DEBUG + SetDefault, records filtres sur le `path` de la base du test) — cycle
+nominal = 0 INFO pour cette base ET les 4 messages presents en DEBUG (contre-epreuve : une
+suppression pure passerait la 1re assertion, pas la 2e) ; cycle au-dela du seuil = les 3 phases
+en INFO avec duree + threshold_ms. Et `no_nominal_info_log_test.go`, ratchet du gate PAR DEFAUT
+(allowlist explicite a 2 entrees) qui interdit la reapparition d'un INFO nominal dans le
+paquet — la factorisation porte son garde-rail, regle des <= 2 copies. MORDANT PROUVE PAR
+MUTATION REELLE, committee AVANT la mutation : re-INFO inconditionnel dans `logSwapPhase` ->
+les DEUX tests rougissent (3 INFO inattendus au nominal, `INFO sans threshold_ms` au lent),
+restauration `git checkout --`, re-vert.
+
+**Reduction estimee** : ~232 000 lignes/jour de bruit nominal (77 329 INFO / 8 h x 3) -> ~0 au
+niveau par defaut. Ne subsistent que le signal (~363 WARN + ~6 INFO de recovery par jour a la
+cadence mesuree) et les cycles reellement lents. Soit ~100 Mo/jour -> < 1 Mo/jour, et les
+~430 Mo permanents de `provider.log*` ramenes a quelques Mo.
+
+**Decouvertes (non traitees, hors perimetre)** : (1) sur Windows, une phase de drain sans
+reader en vol mesure 0 ns — un seuil abaisse a 1 ns ne suffit donc PAS a qualifier un cycle de
+« lent » dans un test ; le test retient un vrai reader 20 ms (les deux autres phases portent des
+I/O fichier et sont mesurables sans artifice). (2) `golangci-lint` emet un warning global
+« unknown linters in //nolint directives: plr0913 » — directive heritee du monde Python
+(PLR0913), inoperante depuis la migration. (3) `internal/observability/logging/README.md`
+(l.177, historique des 2,1 Go de 2026-07-26) reste exact apres ce lot : aucune MAJ doc due.
+
+**Conclusion / prochaine etape** : livre sur `wt/lot-c-provider-log` (2 commits), aucun push —
+le superviseur fusionne. A verifier au deploiement : que `LEVELUP_LOGS_FILE_LEVEL` n'est pas
+force a `debug` en prod, sinon les 4 messages continueraient d'ecrire (en DEBUG cette fois).
+
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
 **Contexte** : apres le hotfix 36bb48187 (appelants LegacyAuthInputs), la CI de feat/v75
