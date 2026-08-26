@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
@@ -48,7 +49,17 @@ type censusMode struct {
 	avecArtefact int
 	// schemas : combien d'artefacts par version de schema.
 	schemas map[int]int
+	// films : les identifiants COURTS des matchs dont le film est en cache. Ils ne sont
+	// imprimes que pour les modes RARES (cf. censusMaxListe) : un mode a quatre films, c'est
+	// un corpus qu'on va nommer film par film pour le mesurer ; un mode a deux cents, c'est un
+	// agregat. La liste est gardee pour tous, le filtre est a l'impression.
+	films []string
 }
+
+// censusMaxListe : au-dela de ce nombre de films, un mode reste agrege. Douze est le seuil ou
+// une liste cesse d'etre lisible sur une ligne, et il couvre largement les modes que les phases
+// D3 et D4 doivent nommer (Total Control 4, Oddball 7, Stockpile 2, Extraction 2).
+const censusMaxListe = 12
 
 // runCensus recense le corpus par mode et l'imprime. LECTURE SEULE de bout en bout.
 func runCensus(ctx context.Context, db *sql.DB, slug, cacheDir, repoRoot string) error {
@@ -75,6 +86,7 @@ func runCensus(ctx context.Context, db *sql.DB, slug, cacheDir, repoRoot string)
 		m.matchs++
 		if st, err := os.Stat(filmcache.ChunkDir(cacheDir, c.short)); err == nil && st.IsDir() {
 			m.avecFilm++
+			m.films = append(m.films, c.short)
 		}
 		if v, ok := artifactSchema(res.ReplayArtifactPath(slug, c.full)); ok {
 			m.avecArtefact++
@@ -124,6 +136,13 @@ func printCensus(byMode map[string]*censusMode, total, sansMode int) {
 	for _, m := range modes {
 		fmt.Printf("  %-34s %8d %8d %10d  %s\n",
 			m.label, m.matchs, m.avecFilm, m.avecArtefact, formatSchemas(m.schemas))
+		// LES MODES RARES SONT NOMMES FILM PAR FILM : c'est leur corpus entier, et c'est ce
+		// qu'une phase de mesure a besoin de citer. Trie pour que deux recensements se
+		// comparent.
+		if n := len(m.films); n > 0 && n <= censusMaxListe {
+			sort.Strings(m.films)
+			fmt.Printf("  %-34s %s\n", "", strings.Join(m.films, " "))
+		}
 	}
 }
 
