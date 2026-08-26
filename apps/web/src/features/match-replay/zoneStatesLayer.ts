@@ -9,12 +9,40 @@
  * dépôt. Les deux tracent la MÊME forme : le contour vient de `traceZonePath`, jamais d'une
  * seconde copie de la géométrie.
  *
+ * ET LA PEINTURE VIT DANS UN TROISIÈME FICHIER depuis le 2026-08-25 (`zoneStatesPaint.ts`).
+ * Ici se décide CE QU'IL FAUT peindre — quel intervalle couvre la frame, quelle valeur porte la
+ * jauge, quelle lettre revient à la zone ; là-bas COMMENT — les opacités, leur hiérarchie,
+ * l'ordre des passes et le découpage de la progression. La coupure a été faite quand le passage
+ * de l'arc extérieur au remplissage de la forme a poussé ce fichier de 417 à 568 lignes,
+ * au-dessus du seuil du dépôt : extraire, jamais exempter. Elle suit une couture réelle, pas un
+ * compte de lignes — un réglage d'encre se change sans rouvrir la lecture d'état, et
+ * réciproquement.
+ *
  * CE QUE LE CALQUE MONTRE : la zone TEINTÉE de l'encre du camp qui la tient, la zone NON PRISE
- * d'un contour GRISÉ en retrait, la colline ACTIVE en surbrillance, et L'ARC DE LA JAUGE EN
- * DIRECT (schéma 18) : la VALEUR de la jauge à l'image, lue dans la série `gauge` de la zone en
- * escalier — dernière valeur connue, tenue jusqu'au point suivant (une seconde après le dernier
- * de la série). Une zone sans état à cette frame n'est PAS repeinte : elle garde le trait faible
- * du calque statique, et paraît estompée sous celles qui sont tenues.
+ * d'un contour GRISÉ en retrait, la colline ACTIVE en surbrillance, et LA CAPTURE EN COURS
+ * REMPLISSANT LA FORME (schéma 18) : la VALEUR de la jauge à l'image, lue dans la série `gauge`
+ * de la zone en escalier — dernière valeur connue, tenue jusqu'au point suivant (une seconde
+ * après le dernier de la série). Une zone sans état à cette frame n'est PAS repeinte : elle
+ * garde le trait faible du calque statique, et paraît estompée sous celles qui sont tenues.
+ *
+ * LA PROGRESSION SE LIT SUR LA FORME, PLUS AUTOUR (2026-08-25, item D-R du plan
+ * `.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md`). Jusqu'ici la jauge était un ARC tracé HORS
+ * de la zone, à un rayon dérivé de sa plus grande demi-dimension. Deux défauts, et le second
+ * est le vrai : l'arc parlait d'une base sans la toucher, et surtout SA FRACTION D'ANGLE N'EST
+ * PAS UNE FRACTION D'AIRE dès que la forme n'est pas un disque — sur une boîte orientée, un
+ * demi-tour d'arc recouvre une part de la base qui dépend de son orientation, pas de la
+ * capture. Le remplissage, lui, est un BALAYAGE VERTICAL bas -> haut découpé par la forme
+ * elle-même (`ctx.clip` sur `traceZonePath`) : sa hauteur est exactement la fraction publiée,
+ * sur une boîte comme sur un cylindre, et il ne recouvre pas la lettre centrale comme l'aurait
+ * fait un secteur angulaire.
+ *
+ * LA HIÉRARCHIE DES ENCRES, ET CE QU'ELLE DIT. Une zone en cours de capture montre DEUX camps à
+ * la fois : celui qui la tient encore, et celui qui la prend. Le propriétaire s'EFFACE pendant
+ * la capture (`ZONE_UNDER_CAPTURE_FILL_ALPHA`) et la progression de l'attaquant passe FRANCHE
+ * par-dessus (`ZONE_CAPTURE_FILL_ALPHA`) — l'inverse laisserait la base « gagnée » dominer
+ * l'écran au moment précis où elle est en train d'être perdue. L'échelle complète, du plus
+ * faible au plus fort : libre (aucun remplissage) < tenue EN COURS DE PERTE < tenue < ACTIVE <
+ * progression de l'attaquant.
  *
  * « NON PRISE » ET « ÉTAT INCONNU » NE SE CONFONDENT PAS, et c'est la raison d'être des deux
  * traitements ci-dessus. « Non prise » est une MESURE — l'intervalle qui couvre la frame porte
@@ -25,7 +53,16 @@
  * l'intervalle. Le schéma 16 le traçait en arc, une valeur tenue pendant toute la durée de la
  * propriété — souvent 1,0, des minutes durant — et il se lisait comme « capture en cours »
  * alors qu'il n'en était que le maximum atteint. Sur un artefact qui ne porte pas `gauge`
- * (schéma <= 17), il n'y a donc PLUS D'ARC DU TOUT : mieux vaut rien qu'un signe qui ment.
+ * (schéma <= 17), il n'y a donc AUCUNE PROGRESSION DU TOUT : mieux vaut rien qu'un signe qui
+ * ment. Cette décision survit au changement de forme du 2026-08-25 — c'est la SÉRIE qui
+ * autorise à dessiner, pas la géométrie employée pour le faire.
+ *
+ * ET LA PROGRESSION NE CONCERNE PAS LES COLLINES, PAR CONSTRUCTION. `ZoneState.Gauge` n'est
+ * publiée que sur les modes à zones SIMULTANÉES (Bastion) : sur une colline de KOTH le même
+ * canal du film est un compteur de transfert d'une seconde, pas une progression de garde, et le
+ * producteur n'en pose aucune série (`zone_states_gauge.go`, « EN KOTH, RIEN »). Une colline
+ * n'affiche donc que son appartenance et sa surbrillance — le client n'a aucune règle à écrire
+ * pour ça, il reçoit une série vide.
  *
  * UN SEUL TEXTE, ET C'EST LA LETTRE DE LA ZONE (2026-08-24). Le calque n'écrivait rien, parce que
  * la lettre A/B/C du HUD n'existe dans aucune donnée décodée. Elle n'y est toujours pas : ce que
@@ -35,12 +72,9 @@
  * conséquence : il autorise LE glyphe d'une lettre A-C, et continue d'interdire tout AUTRE texte.
  * Le verdict « ce sont bien les lettres du jeu » appartient au relevé Theater de l'utilisateur.
  */
-import {
-  traceZonePath,
-  type CanvasView,
-  type ObjectiveElementReady,
-} from './objectivesLayer'
+import type { CanvasView, ObjectiveElementReady } from './objectivesLayer'
 import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
 import type { ReplayGaugePoint } from '@/lib/api/types'
 import type { ReplayZoneStateReady } from './replayNormalize'
@@ -55,21 +89,9 @@ import type { ReplayZoneStateReady } from './replayNormalize'
  * et revient à zéro d'une seule émission — que le producteur publie comme dernier point de la
  * rampe. Un silence entre deux points est donc une jauge FIGÉE, et l'escalier la garde à l'écran.
  * Seul le dernier point de la série n'a rien après lui pour dire ce qu'il devient : il tient une
- * seconde (la borne du producteur entre deux points d'une rampe), puis l'arc s'efface.
+ * seconde (la borne du producteur entre deux points d'une rampe), puis la progression s'efface.
  */
 export const ZONE_GAUGE_HOLD_MS = 1_000
-
-/**
- * ZoneStateNow — ce qu'une zone montre à une frame donnée.
- *
- * `owner` vaut `null` quand PERSONNE ne la tient : c'est une mesure (la valeur neutre du canal
- * de propriété), pas une absence de donnée — d'où le champ, plutôt qu'un état omis. Le sommet
- * `progress` de l'intervalle n'y figure plus : le rendu ne le lit plus (cf. l'en-tête).
- */
-interface ZoneStateNow {
-  owner: number | null
-  active: boolean
-}
 
 /**
  * spanStateAt rend l'état porté par l'intervalle qui couvre la frame (bornes INCLUSES), ou `null`
@@ -197,36 +219,6 @@ export interface ZoneStatesLayerInput {
   gaugeHoldFrames: number
 }
 
-// Réglages du calque vivant. Plus francs que le calque statique (qui reste dessous) : c'est le
-// contraste entre les deux qui fait lire la bascule, et les zones sans état courant gardent
-// leur trait faible — elles paraissent estompées sans qu'on ait à les repeindre.
-const ZONE_HELD_FILL_ALPHA = 0.22
-const ZONE_HELD_STROKE_ALPHA = 0.95
-const ZONE_HELD_STROKE_WIDTH = 2.5
-const ZONE_ACTIVE_FILL_ALPHA = 0.3
-const ZONE_ACTIVE_STROKE_WIDTH = 3.5
-/**
- * ZONE NON PRISE : LE CONTOUR GRISÉ (demande utilisateur du 2026-08-25, « bases non prises :
- * contour grisé »).
- *
- * L'ENCRE ÉTAIT DÉJÀ LA BONNE — le neutre du thème — mais le TRAIT était celui d'une zone
- * tenue : même opacité (0,95), même épaisseur (2,5). Une base que personne ne tient
- * s'affirmait donc aussi fort qu'une base gagnée, et ne se distinguait que par sa teinte et
- * l'absence de remplissage. Elle est maintenant EN RETRAIT : plus fine, plus transparente.
- * « Personne » est un état faible, il se dessine faible.
- *
- * LE SEUIL EST `owner === null`, PAS `held` — et la nuance est du sens. `held` est faux dans
- * DEUX cas : personne ne tient la zone (une MESURE du film), ou bien quelqu'un la tient mais
- * la page ne sait pas situer son camp (aucune ligne « moi » au tableau de bord). Le second
- * n'est pas une zone libre : la griser dirait au lecteur qu'elle est à prendre alors qu'elle
- * est tenue. Elle garde donc le trait plein, à l'encre neutre.
- */
-const ZONE_FREE_STROKE_ALPHA = 0.5
-const ZONE_FREE_STROKE_WIDTH = 1.6
-const ZONE_GAUGE_ALPHA = 0.9
-const ZONE_GAUGE_WIDTH = 3
-const ZONE_GAUGE_MIN_RADIUS = 10
-
 // LA LETTRE DE LA ZONE. Même technique que les libellés de callouts (`calloutsLayer.ts`) :
 // blanc cerné de noir, volontairement HORS thème, cerne arrondi pour que les angles des lettres
 // ne produisent pas de pointes. C'est une encre STRUCTURELLE de calque — elle ne dit aucun rôle
@@ -242,17 +234,19 @@ const ZONE_LETTERS = ['A', 'B', 'C'] as const
 
 /**
  * drawZoneStates peint, PAR-DESSUS le calque statique, ce que le film dit de chaque zone à
- * l'image courante : teinte du propriétaire, surbrillance de la zone ACTIVE, et l'arc de la
- * JAUGE EN DIRECT quand la série en porte une valeur à cette frame.
+ * l'image courante : teinte du propriétaire, surbrillance de la zone ACTIVE, et le REMPLISSAGE
+ * DE LA CAPTURE EN COURS quand la série de jauge en porte une valeur à cette frame.
  *
  * CE CALQUE N'EST PAS STATIQUE, et c'est tout le point : sa géométrie ne bouge pas, son ÉTAT
  * change à chaque image — comme les socles d'arme. Il se peint donc dans la boucle, pas dans un
  * canvas cuit une fois.
  *
- * L'ARC NE DÉPEND PAS DE L'INTERVALLE COURANT : la jauge est une mesure de la ZONE, publiée par
- * frame ; une rampe qui précède la première émission du canal de propriété se dessine quand
- * même — à l'encre neutre, faute de savoir qui tient la zone. Quand un intervalle la couvre et
- * que son propriétaire est connu, l'arc prend l'encre du camp d'en face : celui qui capture.
+ * LA PROGRESSION NE DÉPEND PAS DE L'INTERVALLE COURANT : la jauge est une mesure de la ZONE,
+ * publiée par frame ; une rampe qui précède la première émission du canal de propriété se
+ * dessine quand même — à l'encre neutre, faute de savoir qui tient la zone, et SANS contour
+ * (aucun intervalle ne couvre la frame, donc aucune appartenance à affirmer). Quand un
+ * intervalle la couvre et que son propriétaire est connu, la progression prend l'encre du camp
+ * d'en face : celui qui capture.
  *
  * LA LETTRE DE LA ZONE se pose EN DERNIER, dans une seconde passe : une lettre recouverte par le
  * remplissage de la zone suivante serait illisible une fois sur trois, au hasard de l'ordre du
@@ -278,16 +272,22 @@ export function drawZoneStates(
     const st = states.find((s) => s.zoneRef === ref)
     if (!st) return
     const now = spanStateAt(st.spans, frame)
-    const ownerInk = now && now.owner !== null ? style.colorOfOwner(now.owner) : null
-    if (now) {
-      paintZoneState(ctx, e, { px, scale, ink: ownerInk ?? style.neutral, held: ownerInk !== null, now })
-    }
-    // Une jauge à ZÉRO (au repos, ou revenue à zéro) n'a pas d'arc : un arc d'angle nul ne trace
-    // rien, autant ne pas l'émettre.
+    // Une jauge à ZÉRO (au repos, ou revenue à zéro) n'a pas de progression : un remplissage de
+    // hauteur nulle ne trace rien, autant ne pas l'émettre.
     const value = zoneGaugeAt(st.gauge, frame, zones.gaugeHoldFrames)
-    if (value !== null && value > 0) {
-      const capturer = now && now.owner !== null ? style.colorOfCapturer(now.owner) : null
-      drawGaugeArc(ctx, e, { px, scale, value, ink: capturer ?? style.neutral })
+    const capture = value !== null && value > 0 ? value : null
+    if (now || capture !== null) {
+      const ownerInk = now && now.owner !== null ? style.colorOfOwner(now.owner) : null
+      const capturerInk = now && now.owner !== null ? style.colorOfCapturer(now.owner) : null
+      paintZoneState(ctx, e, {
+        px,
+        scale,
+        ink: ownerInk ?? style.neutral,
+        held: ownerInk !== null,
+        now,
+        capture,
+        captureInk: capturerInk ?? style.neutral,
+      })
     }
     const text = zoneLetterOf(st.letterRank)
     if (text !== null) letters.push({ at: px(e), text })
@@ -342,76 +342,4 @@ function drawZoneLetters(ctx: CanvasRenderingContext2D, letters: { at: XY; text:
   }
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
-}
-
-/** Ce que le tracé d'une zone vivante a besoin de savoir (règle des 5 paramètres). */
-interface ZonePaint {
-  px: (p: XY) => XY
-  scale: number
-  ink: string
-  /**
-   * `false` = pas de camp À TEINTER : LISERÉ SEUL, aucun remplissage. Deux situations
-   * distinctes le produisent — personne ne tient la zone, ou son camp n'est pas situable
-   * (aucune ligne « moi ») — et seule la PREMIÈRE grise le contour (cf. ZONE_FREE_STROKE_*,
-   * qui se décide sur `now.owner`, pas sur ce drapeau).
-   */
-  held: boolean
-  now: ZoneStateNow
-}
-
-/**
- * Zone tenue : remplissage + liseré à l'encre du camp. Zone active : les deux, renforcés.
- * Zone NON PRISE : contour GRISÉ, en retrait, sans remplissage (cf. ZONE_FREE_STROKE_*).
- */
-function paintZoneState(
-  ctx: CanvasRenderingContext2D,
-  e: ObjectiveElementReady,
-  p: ZonePaint,
-): void {
-  // « LIBRE » EST UNE MESURE, pas une absence : `owner === null` est la valeur neutre du canal
-  // de propriété (cf. ZoneSpan.Owner côté Go). Une zone dont AUCUN intervalle ne couvre la
-  // frame n'arrive jamais ici — elle n'est pas repeinte du tout, et c'est voulu : « on ne sait
-  // pas » ne doit pas se lire « personne ne la tient ».
-  const free = p.now.owner === null && !p.now.active
-  traceZonePath(ctx, e, p.px, p.scale)
-  if (p.held || p.now.active) {
-    ctx.globalAlpha = p.now.active ? ZONE_ACTIVE_FILL_ALPHA : ZONE_HELD_FILL_ALPHA
-    ctx.fillStyle = p.ink
-    ctx.fill()
-  }
-  ctx.globalAlpha = free ? ZONE_FREE_STROKE_ALPHA : ZONE_HELD_STROKE_ALPHA
-  ctx.strokeStyle = p.ink
-  ctx.lineWidth = p.now.active
-    ? ZONE_ACTIVE_STROKE_WIDTH
-    : free
-      ? ZONE_FREE_STROKE_WIDTH
-      : ZONE_HELD_STROKE_WIDTH
-  ctx.stroke()
-}
-
-/** Ce que l'arc de jauge a besoin de savoir (règle des 5 paramètres — regroupé le 2026-08-18). */
-interface ZoneGaugeArc {
-  px: (p: XY) => XY
-  scale: number
-  /** La valeur de la jauge à l'image, dans [0, 1] (cf. zoneGaugeAt). */
-  value: number
-  ink: string
-}
-
-/**
- * drawGaugeArc dessine LA JAUGE EN DIRECT : un arc qui part du haut et se referme à mesure que la
- * capture avance — à la valeur lue à cette image, jamais au sommet de l'intervalle. Il est tracé
- * HORS de la forme (rayon un peu plus grand) pour rester lisible sur une zone déjà teintée.
- */
-function drawGaugeArc(ctx: CanvasRenderingContext2D, e: ObjectiveElementReady, a: ZoneGaugeArc): void {
-  const c = a.px(e)
-  const half = e.family === 'cylinder' ? e.radius : Math.max(e.halfX, e.halfY)
-  const r = Math.max(half * a.scale + ZONE_GAUGE_WIDTH, ZONE_GAUGE_MIN_RADIUS)
-  const start = -Math.PI / 2
-  ctx.globalAlpha = ZONE_GAUGE_ALPHA
-  ctx.strokeStyle = a.ink
-  ctx.lineWidth = ZONE_GAUGE_WIDTH
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, r, start, start + 2 * Math.PI * Math.min(Math.max(a.value, 0), 1))
-  ctx.stroke()
 }
