@@ -68,7 +68,7 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 	// partage avec les trois autres écrivains (cf. writeArtifactBytes). L'accusé décrit ce
 	// que le disque porte APRÈS l'appel — donc l'artefact conservé quand l'écriture est
 	// refusée, et le nouveau sinon.
-	surDisque, err := writeArtifactBytes(outPath, blob)
+	surDisque, err := writeArtifactBytes(outPath, titleSlug, matchID, blob)
 	if err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
@@ -155,7 +155,17 @@ func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocu
 // C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. `ArtifactHasPlayerCounters` ne peut que
 // PRÉSUMER l'appauvrissement (trois vacuités légitimes, cf. son en-tête) : avec ce garde, une
 // présomption fausse coûte au pire un décodage gâché, jamais un artefact rétrogradé.
-func writeArtifactBytes(outPath string, blob []byte) (artifactDigest, error) {
+//
+// C'EST ENFIN LE POINT D'OBSERVATION de « un rejeu vient de devenir disponible »
+// (artifact_events.go) : parce que les quatre écrivains finissent ici, un seul appel suffit
+// à couvrir la construction locale COMME la livraison d'un ouvrier. La publication est
+// placée APRÈS l'écriture réelle, et NULLE PART AILLEURS : le refus anti-régression
+// ci-dessus rend un digest sans erreur alors que RIEN n'a été écrit — annoncer un rejeu
+// « prêt » sur ce chemin annoncerait un fichier que personne n'a touché.
+//
+// titleSlug et matchID sont ceux de l'APPELANT (identité du job / du registre), pas ceux du
+// document : cf. ArtifactStored.
+func writeArtifactBytes(outPath, titleSlug, matchID string, blob []byte) (artifactDigest, error) {
 	if enPlace, oui := wouldDowngrade(outPath, blob); oui {
 		// Jamais muet : un artefact non écrit doit s'expliquer, sinon l'admin verra une
 		// construction « réussie » sans comprendre pourquoi le fichier n'a pas changé.
@@ -173,5 +183,9 @@ func writeArtifactBytes(outPath string, blob []byte) (artifactDigest, error) {
 		return artifactDigest{}, err
 	}
 	ecrit, _ := digestFromBytes(blob)
+	publishArtifactStored(ArtifactStored{
+		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
+		Bytes: ecrit.bytes, Tracks: ecrit.tracks, SchemaVersion: ecrit.schemaVersion,
+	})
 	return ecrit, nil
 }

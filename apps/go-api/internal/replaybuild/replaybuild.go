@@ -218,7 +218,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		return Outcome{}, fmt.Errorf("%w (match %s)", ErrNoTracks, matchID)
 	}
 	outPath := title.NewPathResolver(b.repoRoot).ReplayArtifactPath(b.titleSlug, matchID)
-	size, err := writeArtifact(outPath, doc)
+	size, err := writeArtifact(outPath, b.titleSlug, matchID, doc)
 	if err != nil {
 		return Outcome{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
@@ -415,12 +415,12 @@ func digestFromBytes(raw []byte) (artifactDigest, bool) {
 // La taille rendue est celle de ce qui est FINALEMENT sur le disque, pas celle du document
 // qu'on voulait écrire : quand le garde anti-régression conserve l'artefact en place, annoncer
 // la taille du candidat ferait croire à une écriture qui n'a pas eu lieu.
-func writeArtifact(outPath string, doc replay.ReplayDocument) (int, error) {
+func writeArtifact(outPath, titleSlug, matchID string, doc replay.ReplayDocument) (int, error) {
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return 0, err
 	}
-	surDisque, err := writeArtifactBytes(outPath, blob)
+	surDisque, err := writeArtifactBytes(outPath, titleSlug, matchID, blob)
 	if err != nil {
 		return 0, err
 	}

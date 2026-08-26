@@ -251,6 +251,24 @@ type ReplayFactsRepo interface {
 	FactsForMatch(ctx context.Context, matchID string) (MatchFacts, error)
 }
 
+// ReplayLinkTarget est la cible de lien d'un match. Défini et documenté dans
+// `internal/domain/replay_link.go`.
+type ReplayLinkTarget = domain.ReplayLinkTarget
+
+// ReplayLinkRepo résout, pour un LOT de matchs, de quoi construire un lien vers leur page
+// de rejeu : un joueur connu qui y a participé, et le nom de carte.
+//
+// Port SÉPARÉ de ReplayFactsRepo bien que le même type concret l'implémente : les faits
+// servent à CONSTRUIRE un artefact, ces cibles à ANNONCER un artefact déjà construit. Deux
+// besoins, deux contrats — un appelant qui n'a besoin que du second ne doit pas dépendre
+// du premier.
+type ReplayLinkRepo interface {
+	// LinkTargetsForMatches rend une entrée PAR MATCH TROUVÉ au registre, indexée par
+	// match_id. knownXUIDs borne la recherche de participant aux joueurs de l'instance ;
+	// vide = aucun lien résolu (les entrées sortent avec le nom de carte seul).
+	LinkTargetsForMatches(ctx context.Context, matchIDs, knownXUIDs []string) (map[string]ReplayLinkTarget, error)
+}
+
 // MatchEventsService construit la timeline canonique d'events d'un match
 // (kill-feed / timeline, chargée on-demand), avec résolution des gamertags via
 // le chokepoint canonique. Capability-gated : retourne games.ErrCapabilityNotSupported
