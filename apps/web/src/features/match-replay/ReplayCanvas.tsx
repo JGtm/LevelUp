@@ -193,7 +193,7 @@ export function ReplayCanvas({
   // double contour du joueur de la page. Elles partageaient huit fois le même corps ici — voir
   // l'en-tête du hook.
   const {
-    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk,
+    teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
@@ -348,7 +348,7 @@ export function ReplayCanvas({
     view: canvasView,
     frameRef,
     enabled: showWeaponPads,
-    ink: { neutral: floorStyle.edge, fill: markInk.fill, outline: markInk.outline },
+    ink: { neutral: floorStyle.edge, fill: markInk.fill, outline: markInk.outline, family: padInk },
     locale,
     redraw,
   })

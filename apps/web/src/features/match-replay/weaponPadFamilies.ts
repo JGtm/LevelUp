@@ -30,6 +30,34 @@
 export type PadScale = 'power' | 'classic'
 
 /**
+ * LES TROIS NATURES D'UN SOCLE (retour utilisateur du 2026-08-26 : « une couleur pour chaque
+ * type, en respectant les couleurs accessibles »).
+ *
+ * ELLE N'EST PAS LA TAILLE, et c'est pour cela qu'elle a son propre type. `PadScale` répond à
+ * « est-ce stratégique ? » et n'a que deux valeurs : un power-up et un sniper sont tous deux
+ * GRANDS. La nature, elle, répond à « qu'est-ce que c'est ? » et en distingue trois — un
+ * bonus qu'on ramasse, une arme de puissance, un râtelier ordinaire. Les confondre obligerait
+ * à teinter pareil le surbouclier et l'épée.
+ *
+ * L'ORDRE DE RÉSOLUTION EST LE MÊME QUE PARTOUT DANS CE FICHIER : la table des familles
+ * d'équipement d'abord (elle seule sait qu'une clé n'est pas une arme), le registre des armes
+ * de puissance ensuite, le repli ordinaire enfin.
+ */
+export type PadFamily = 'powerup' | 'power' | 'classic'
+
+/**
+ * padFamilyOf — la nature d'un socle, d'après ce qu'il porte.
+ *
+ * `key` est la clé canonique du titre (`weaponLabels[id].key`), absente pour une arme hors
+ * catalogue : un socle qu'on ne sait pas nommer reste `classic`, jamais promu — la même règle
+ * prudente que `padScaleOf` juste en dessous.
+ */
+export function padFamilyOf(weapon: string, key: string | null | undefined): PadFamily {
+  if (padEquipmentFamilyOf(weapon)) return 'powerup'
+  return key && POWER_PAD_WEAPON_KEYS.includes(key) ? 'power' : 'classic'
+}
+
+/**
  * LES ARMES DE PUISSANCE ET LES POWER-UPS, nommés un par un (demande utilisateur du 18/08 :
  * « liste EXPLICITE »). Ce sont les `weapon_key` du registre du titre
  * (`config/titles/halo_infinite/mappings/weapon_names.toml`) — un garde-rail les y vérifie.
