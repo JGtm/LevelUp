@@ -50,6 +50,7 @@ func main() {
 		"ou map_id UGC (Forge) ; vide = tout ce qui est installé")
 	outDir := flag.String("out-dir", "", "répertoire de sortie (défaut : PathResolver.MapBackgroundDir)")
 	style := flag.String("style", string(himap.StyleFondParDefaut), "habillage : "+stylesConnus())
+	mpp := flag.Float64("mpp", 0, "cote du pixel en metres (0 = "+fmt.Sprintf("%.4f", himap.EchelleFondCarte)+", celle de production)")
 	rapport := flag.String("rapport", "", "écrit un rapport Markdown à ce chemin")
 	natives := flag.Bool("natives", true, "cuire les cartes cuites dans un module")
 	forge := flag.Bool("forge", true, "cuire les cartes Forge (posées depuis leur .mvar)")
@@ -67,6 +68,7 @@ func main() {
 	}
 	env.style = himap.StyleFond(*style)
 	env.filtre = filtreDe(*maps)
+	env.echelle = *mpp
 
 	var bilans []bilanAsset
 	if *natives {
@@ -97,7 +99,10 @@ type environnement struct {
 	racineJeu string
 	catalogue *replay.MapObjectivesCatalog
 	style     himap.StyleFond
-	filtre    map[string]bool
+	// echelle : cote du pixel en metres. Zero = celle de production (`EchelleFondCarte`).
+	// Reglage PAR CARTE au sens du gate du 26/08 — ici il vaut pour toute la cuisson demandee.
+	echelle float64
+	filtre  map[string]bool
 	// nomsAffiches : module installé -> noms de carte affichés, lus dans
 	// map_quant_bounds.json. C'est LA table déclarée du lien nom affiché -> module ; on ne
 	// la recopie pas, on la lit.
@@ -244,4 +249,14 @@ func resume(ctx context.Context, bilans []bilanAsset, env *environnement) int {
 		"ancresAvecSol", fmt.Sprintf("%d/%d", avecSol, ancres),
 		"octets", octets, "style", string(env.style), "sortie", env.sortieDir)
 	return echecs
+}
+
+// echelleEffective rend l'echelle vraiment appliquee : celle demandee, ou celle de production.
+// Le rapport de cuisson la publie — un tableau qui annoncerait 0,0920 m/px alors que la
+// cuisson en a utilise une autre serait un faux temoin.
+func (e *environnement) echelleEffective() float64 {
+	if e.echelle > 0 {
+		return e.echelle
+	}
+	return himap.EchelleFondCarte
 }

@@ -79,6 +79,7 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			RacineDeploy: e.racineJeu,
 			CheminModule: c.chemin,
 			Ancres:       c.ancres,
+			Echelle:      e.echelle,
 		})
 		if err != nil {
 			if errors.Is(err, himap.ErrAucunTagSbsp) {
@@ -181,6 +182,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			Ancres:              c.ancres,
 			CheminModuleCanevas: himap.CheminCanevasForge(carte),
 			Cle:                 carte.MapID,
+			Echelle:             e.echelle,
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
@@ -320,7 +322,7 @@ func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "# Cuisson des fonds de carte — %s\n\n", time.Now().UTC().Format("2006-01-02"))
 	fmt.Fprintf(&sb, "Habillage `%s` · %.4f m/px · sortie `%s`\n\n",
-		env.style, himap.EchelleFondCarte, env.sortieDir)
+		env.style, env.echelleEffective(), env.sortieDir)
 	fmt.Fprintln(&sb, "`ancres avec sol` est l'ORACLE FAIBLE : une ancre d'objectif sans sol dessine")
 	fmt.Fprintln(&sb, "sous elle est un trou de reconstruction. `matiere` compte les instances de bsp")
 	fmt.Fprintln(&sb, "dessinees pour une carte native, et les OBJETS poses pour une carte Forge — une")

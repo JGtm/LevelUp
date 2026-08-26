@@ -239,8 +239,33 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target, sav
 		return fmt.Errorf("aucune variante exploitable : %d fichier(s), %d écarté(s) pour objectifs rangés",
 			len(files), parked)
 	}
+	gardeModuleConnu(cat, best)
 	cat.addVariant(best, bestVariant)
 	return nil
+}
+
+// gardeModuleConnu empêche un tirage RÉSEAU d'effacer le module déjà connu d'une carte.
+//
+// LE DÉFAUT QU'ELLE CORRIGE, et il a coûté huit cartes (mesuré le 2026-08-26). `Module` est
+// dérivé du NOM DU FICHIER `.mvar`. Depuis le dépôt de variantes ce nom est descriptif
+// (`cliffhanger_ridgeline.mvar`) et le module s'y lit ; depuis le réseau, il ne l'est pas —
+// `saveVariantFile` documente déjà que « plusieurs cartes exposent un fichier nommé
+// `map.mvar` ». Le re-tirage du 2026-08-25 (`d50f3b728`) a donc écrasé `module` par `map` sur
+// **58 des 73 entrées** : le catalogue est passé de 71 modules distincts à 12, et
+// `mapfond-build` ne savait plus cuire que 11 des 19 fonds natifs publiés — dont Cliffhanger,
+// Aquarius, Prism, Streets, Recharge, Chasm, Launch Site et Behemoth.
+//
+// Le garde-rail de ce lot-là comptait les collines (« 0 perdue ») et n'a rien vu : il mesurait
+// un autre champ. `TestCatalogueObjectifsModulesDistincts` mesure celui-ci.
+//
+// LA RÈGLE : le réseau ne connaît PAS le module d'une carte, donc il ne peut pas le corriger —
+// il ne peut que le perdre. Un module déjà au catalogue est conservé tel quel.
+func gardeModuleConnu(cat *catalog, e *mapEntry) {
+	prev, ok := cat.Maps[e.MapID]
+	if !ok || prev == nil || prev.Module == "" {
+		return
+	}
+	e.Module = prev.Module
 }
 
 // saveVariantFile dépose un .mvar téléchargé dans un SOUS-DOSSIER par map_id.
