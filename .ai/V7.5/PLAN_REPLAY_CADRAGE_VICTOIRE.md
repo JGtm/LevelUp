@@ -304,13 +304,19 @@ son logo, sa couleur — un test vérifie que le rouge Cobra n'apparaît nulle p
 
 ## Clôture (après Lot B)
 
-- [ ] C1. Suite complète : `npm run test` (tout apps/web), typecheck purgé, lint.
-- [ ] C2. Grep anti-régression : `formatClock(` hors helper D-A2 (aucun appel sur l'axe
+- [x] C1. Suite complète : `npm run test` (tout apps/web), typecheck purgé, lint.
+      PASSÉ PAR LE PILOTE (2026-08-26) : TSC=0, VITEST=0 (4784 passés / 14 skips
+      antérieurs), LINT=0.
+- [x] C2. Grep anti-régression : `formatClock(` hors helper D-A2 (aucun appel sur l'axe
       brut), littéral de recette hors `teamColor.ts`.
-- [ ] C3. Entrée `.ai/thought_log.md` (date, décisions D-A1..D-B6, mesures, résultat
-      des gates).
-- [ ] C4. Commits sur `wt/replay-cadrage-victoire` (préfixe `feat(v7.5-rejeu):`), un
-      commit par lot minimum. NE PAS merger dans `feat/v75`, NE PAS pousser sans
+      PASSÉ (2026-08-26) : les 3 `formatClock` restants du fil lisent un `replayMs` déjà
+      recalé au montage de la rangée ; `useReplayClock` recale avant d'écrire ; le littéral
+      `22%, transparent` ne vit que dans `teamColor.ts` + son guard.
+- [x] C3. Entrée `.ai/thought_log.md` (date, décisions D-A1..D-B6, mesures, résultat
+      des gates). ÉCRITE (2026-08-26, en tête du journal).
+- [x] C4. Commits sur `wt/replay-cadrage-victoire` (préfixe `feat(v7.5-rejeu):`), un
+      commit par lot minimum. FAIT : `3a29f2e2f` (lot A), `50d24e848` (lot B), + commit
+      de clôture (docs). NE PAS merger dans `feat/v75`, NE PAS pousser sans
       instruction du pilote.
 - [ ] C5. Gate visuel : à la main de l'UTILISATEUR (jamais l'agent) — témoins à ouvrir :
       000d5950 (victoire au score, T0 connu), e94163af (clamp début), 606d9844 (T0
