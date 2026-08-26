@@ -61,26 +61,40 @@ arrondis ; ne pas copier ces valeurs sans les recalculer.)
 - D-A3 : sans `originMs` (artefact pré-v4) ou sans `playable_duration_seconds` → aucun
   cadrage, aucun écran de victoire : comportement strictement actuel. `t0_ms` absent →
   début frame 0, la fin et l'écran restent actifs.
-- D-B1 : écran de victoire pour les matchs à 2 ÉQUIPES uniquement. FFA, > 2 équipes,
-  DNF : pas d'écran (noter en Découvertes si un cas fréquent apparaît). Égalité
-  (outcome_code 1) : panneau « Égalité » neutre, sans logo, couleurs de thème.
-- D-B2 : vainqueur déterminé par `header.outcome_code` du joueur de la page (1 = égalité,
-  2 = victoire, 3 = défaite — confirmé par les tests Explorer) + son camp
-  (`is_me`→`team_side` du scoreboard) : 2 → son équipe gagne, 3 → l'autre. Pas de
-  déduction par le score timeline.
-- D-B3 : couleur de l'écran = cascade d'IDENTITÉ (`teamColorResolver` de
+> **AMENDEMENT DU 2026-08-26 (décision utilisateur, en cours de Lot B) — L'ÉCRAN PREND LE
+> POINT DE VUE DU JOUEUR DE LA PAGE.** Il n'est plus « l'écran du vainqueur » mais SON écran,
+> comme dans le jeu : le TITRE est son verdict (`header.outcome_label`, déjà localisé côté
+> serveur — aucun titre i18n local pour ces trois cas), et l'HABILLAGE (logo, couleur, nom
+> d'équipe) est celui de SON équipe en victoire COMME en défaite. D-B1, D-B2, D-B3 et D-B5
+> ci-dessous sont amendés en conséquence ; les cas SANS écran et la ligne de score ne changent
+> pas.
+
+- D-B1 (amendé) : écran de fin pour les matchs à 2 ÉQUIPES uniquement. FFA, > 2 équipes,
+  DNF (code 4) : pas d'écran (noter en Découvertes si un cas fréquent apparaît). Égalité
+  (outcome_code 1) : panneau neutre, sans logo ni couleur d'équipe, couleurs de thème —
+  titre = `outcome_label` (« Égalité »), et la ligne de score reste.
+- D-B2 (amendé) : issue déterminée par `header.outcome_code` du joueur de la page
+  (1 = égalité, 2 = victoire, 3 = défaite — confirmé par les tests Explorer) + son camp
+  (`is_me`→`team_side` du scoreboard). La lecture rend TROIS choses distinctes : l'issue,
+  SON équipe (qui habille l'écran, toujours), et l'équipe qui gagne (2 → la sienne, 3 →
+  l'autre). Pas de déduction par le score timeline. Le TITRE ne se fabrique pas côté front :
+  c'est `header.outcome_label`, le même mot que la Match View.
+- D-B3 (amendé) : couleur de l'écran = cascade d'IDENTITÉ (`teamColorResolver` de
   `features/match-view/teamColor.ts` : team_color backend → couleur officielle par
-  team_id → token allié/adverse). C'est une EXCEPTION assumée à la décision D1 de la
-  page rejeu (tokens seuls) — décision utilisateur du 2026-08-26 (« même couleur que
-  les en-têtes du scoreboard Match View »). La documenter dans l'en-tête du composant.
-  Le TEXTE reste en `--foreground` (jamais teinté), comme au scoreboard.
+  team_id → token allié/adverse), appliquée à l'équipe DU JOUEUR DE LA PAGE. C'est une
+  EXCEPTION assumée à la décision D1 de la page rejeu (tokens seuls) — décision utilisateur
+  du 2026-08-26 (« même couleur que les en-têtes du scoreboard Match View »). La documenter
+  dans l'en-tête du composant. Le TEXTE reste en `--foreground` (jamais teinté), comme au
+  scoreboard.
 - D-B4 : score final affiché via `readScoreBanner` évalué à la borne de fin (réutilise
   la logique existante) ; s'il rend `null` (mode sans compteur), l'écran s'affiche sans
   ligne de score.
-- D-B5 : pas de bouton de fermeture. L'écran est dérivé de la position de lecture :
+- D-B5 (amendé) : pas de bouton de fermeture. L'écran est dérivé de la position de lecture :
   visible quand `frame ≥ borne de fin` (borne atteinte en lecture OU frise tirée au
   bout) ; recommencer ou remonter la frise le fait disparaître. Il COIFFE le canvas
-  (absolute), il ne remplace pas le terrain.
+  (absolute), il ne remplace pas le terrain. AJOUT D'EXÉCUTION : il est transparent au
+  pointeur (`pointer-events-none`) — la frise vit sous le voile, et le seul geste qui fait
+  disparaître l'écran serait sinon celui que le voile bloque.
 - D-B6 : libellés i18n FR **et** EN (`Record<Locale, T>` — parité par typage), aucun
   anglicisme FR. Logo via `teamLogoPath` (`/titles/{slug}/teams/{id}.png`), `onError`
   → masqué proprement (l'écran reste valable sans logo).
@@ -172,35 +186,51 @@ lecture), qui ne datent rien.
 
 ## Lot B — Écran de victoire
 
-- [ ] B1. Constantes d'outcome : chercher une constante front existante pour les codes
+- [x] B1. Constantes d'outcome : chercher une constante front existante pour les codes
       1/2/3 (`grep -ri "outcome.*=.*2" apps/web/src/lib`). Si aucune : les nommer dans
       `apps/web/src/lib/halo/outcomes.ts` (nouveau, avec commentaire source « tests
       Explorer + API Halo ») — pas de nombre magique dans la logique.
-- [ ] B2. NOUVEAU `victoryLogic.ts` (pur) :
+      RÉSOLU PAR L'EXISTANT : `apps/web/src/lib/outcome.ts` (`outcomeCodeToValue`, 2=win /
+      3=loss / 1=tie / 4=dnf, défaut `null` hors contrat) est déjà LA source unique du
+      dépôt, et elle porte son garde-rail (`outcome.guard.test.ts`, qui interdit tout
+      mapping code→issue recopié ailleurs). Aucun fichier créé : en écrire un aurait été
+      la 6e copie que ce garde-rail existe pour empêcher.
+- [x] B2. NOUVEAU `victoryLogic.ts` (pur) :
       `readVictory(scoreboard, outcomeCode) → { teamID, teamSide, ally } | { tie: true } | null`
       selon D-B1/D-B2. Détermination des 2 camps par les `team_side` distincts du
       scoreboard (exactement 2, sinon null) ; camp du joueur = ligne `is_me`.
-- [ ] B3. NOUVEAU `victoryLogic.test.ts` : victoire de mon camp, victoire adverse,
+      FORME AMENDÉE (point de vue du joueur, 2026-08-26) : la lecture rend
+      `{ outcome: 'win'|'loss'|'tie', mine: VictoryTeam | null, winner: VictoryTeam | null }`
+      ou `null`. `mine` habille l'écran quelle que soit l'issue ; l'égalité rend les deux
+      équipes à `null`, ce qui rend sa neutralité impossible à contourner au rendu.
+- [x] B3. NOUVEAU `victoryLogic.test.ts` : victoire de mon camp, victoire adverse,
       égalité, FFA (pas de team_side) → null, 3 équipes → null, outcome_code absent →
-      null, scoreboard sans `is_me` → null.
-- [ ] B4. Recette de teinte : dans `features/match-view/teamColor.ts`, NOUVEAU
+      null, scoreboard sans `is_me` → null. + le cas qui porte l'amendement : en défaite,
+      `mine` reste MON équipe et `winner` désigne l'autre.
+- [x] B4. Recette de teinte : dans `features/match-view/teamColor.ts`, NOUVEAU
       `teamTintStyles(color)` rendant `{ background, border, accent }` (color-mix oklab
       22 % / 55 % / pleine — les trois littéraux actuels de `MatchScoreboard.tsx`).
       Migrer l'en-tête d'équipe de `MatchScoreboard.tsx` dessus DANS LE MÊME COMMIT +
       garde-rail (`teamTint.guard.test.ts` : le littéral `22%, transparent` interdit
       dans `features/` hors `teamColor.ts`) — règle CLAUDE.md n°6.
-- [ ] B5. NOUVEAU `ReplayVictoryOverlay.tsx` : monté par la page au-dessus du canvas
+- [x] B5. NOUVEAU `ReplayVictoryOverlay.tsx` : monté par la page au-dessus du canvas
       (conteneur `relative` de la section carte, overlay `absolute inset-0` centré,
-      voile `bg` du thème semi-opaque). Contenu : logo (`teamLogoPath`) en filigrane
-      grand format derrière le panneau, panneau avec `teamTintStyles`, titre
-      « Victoire — {resolveTeamLabel} » (ou « Égalité »), ligne de score final (D-B4).
-      Visible selon D-B5. `aria-live="polite"`, `role="status"`. En-tête : documenter
-      l'exception D1 (D-B3).
-- [ ] B6. i18n : clés FR + EN dans `match-replay/i18n.ts` (`victoryTitleFmt`,
-      `tieTitle`, aria du panneau). FR sans anglicismes.
-- [ ] B7. Test composant `ReplayVictoryOverlay.test.tsx` : rendu victoire (logo, label,
+      voile `bg` du thème semi-opaque). Contenu AMENDÉ (2026-08-26) : logo
+      (`teamLogoPath`) de MON équipe en filigrane grand format derrière le panneau,
+      panneau avec `teamTintStyles` de MA couleur, titre = `header.outcome_label` servi
+      par le backend, sous-titre = `resolveTeamLabel` de MON équipe, ligne de score final
+      (D-B4). Égalité : panneau neutre, titre seul. Visible selon D-B5.
+      `aria-live="polite"`, `role="status"`. En-tête : documenter l'exception D1 (D-B3)
+      et le point de vue du joueur.
+- [x] B6. i18n : clés FR + EN dans `match-replay/i18n.ts` (aria du panneau, libellé de la
+      ligne de score). FR sans anglicismes. AMENDÉ : PAS de clé de titre — le verdict est
+      `header.outcome_label`, déjà localisé côté serveur (les clés `victoryTitleFmt` /
+      `tieTitle` écrites en début de lot ont été retirées, règle « 0 code mort »).
+- [x] B7. Test composant `ReplayVictoryOverlay.test.tsx` : rendu victoire (logo, label,
       couleur passée), rendu égalité (ni logo ni couleur d'équipe), masqué avant la
-      borne, masqué quand `readVictory` rend null.
+      borne, masqué quand `readVictory` rend null. + les cas de l'amendement : DÉFAITE
+      habillée de MON équipe (jamais l'emblème adverse), verdict backend écrit tel quel,
+      libellé absent → pas d'écran, abandon → pas d'écran.
 
 Gate Lot B :
 ```
@@ -212,6 +242,65 @@ npm run lint
 ```
 Critère : 0 erreur ; garde-rail B4 vert ; grep hex : aucun `#RRGGBB` introduit dans
 `features/` (les hex d'équipe restent dans `lib/halo/teamNames.ts`, référentiel toléré).
+
+### Journal d'exécution — Lot B (2026-08-26, clos)
+
+Gate passé dans cette session, codes de sortie relevés un par un : `EXIT_TYPECHECK=0` ·
+`EXIT_TEST=0` (105 fichiers, 1457 tests, 0 échec, sur `match-replay` + `match-view`) ·
+`EXIT_LINT=0` (21 warnings, le même compte qu'au Lot A, tous antérieurs et hors fichiers
+touchés). Grep hex : aucun `#RRGGBB` dans les fichiers non-test touchés.
+
+**B1 n'a rien créé, et c'est le bon résultat.** La recherche a trouvé `lib/outcome.ts`,
+source unique déjà en place ET déjà gardée (`outcome.guard.test.ts` interdit tout mapping
+code→issue recopié hors de ce fichier). `victoryLogic` consomme `outcomeCodeToValue` :
+aucune comparaison numérique n'apparaît dans le lot, le garde-rail existant reste vert.
+
+**La lecture d'égalité exige elle aussi DEUX camps** (précision de D-B1, tranchée à
+l'exécution) : le panneau annonce la fin d'un affrontement à deux camps, et l'afficher sur
+un FFA laisserait croire que les huit joueurs ont fini à égalité. Un cas de test le fixe.
+
+**Un cas de non-rendu de plus, non prévu par le plan : `outcome_label` absent.** Depuis
+l'amendement, le titre EST ce libellé ; sans lui, le panneau n'annoncerait rien tout en
+masquant le terrain. Le backend le garantit non vide au schéma — la garde n'existe que pour
+la fenêtre où la Match View n'est pas encore chargée.
+
+**L'overlay laisse passer les clics (`pointer-events-none`), et ce n'était pas prévu par le
+plan.** La frise de lecture vit DANS `ReplayCanvas`, donc sous le voile : un overlay opaque
+au pointeur aurait enfermé l'utilisateur dans l'écran de victoire, puisque le seul geste qui
+le fait disparaître (remonter la frise, D-B5) est précisément celui que le voile aurait
+bloqué. Le panneau n'a aucun élément interactif — rien ne se perd.
+
+**Un élargissement de signature, hors lettre du plan mais imposé par B5** :
+`teamColorResolver` prend désormais `readonly MatchScoreboardRow[]`. Le résolveur ne fait
+que lire, et l'overlay tient son scoreboard en lecture seule. Généralisation stricte, aucun
+appelant affecté.
+
+**Découpe de la recette (B4)** : `teamTintStyles` rend les trois COULEURS (fond 22 %,
+trait 55 %, accent plein) et laisse les ÉPAISSEURS au point d'appel — 2 px sous l'en-tête du
+scoreboard, 4 px sur son bord gauche, 6 px sur le liseré du panneau de victoire : trois
+rôles, trois mesures, une seule teinte. Le garde-rail ne surveille que le littéral du fond
+(22 %) : le 55 % est un motif d'habillage général du dépôt (badges, pastilles Explorer) sans
+rapport avec une couleur d'équipe, et l'interdire ferait rougir des surfaces innocentes.
+Preuve du garde-rail relevée en session : littéral réintroduit dans `MatchScoreboard.tsx` →
+test ROUGE (`offenders: ["src/features\\match-view\\MatchScoreboard.tsx"]`) ; sonde retirée
+→ test VERT, tests du scoreboard inchangés.
+
+**L'AMENDEMENT DU POINT DE VUE est arrivé en cours de lot** (décision utilisateur du
+2026-08-26, alors que B5/B6/B7 étaient écrits et verts) : l'écran n'est plus celui du
+vainqueur mais celui du JOUEUR DE LA PAGE. Trois conséquences, toutes reprises avant commit —
+le titre passe de la clé i18n locale à `header.outcome_label` (les deux clés locales de titre
+sont supprimées, pas laissées mortes), `readVictory` sépare l'issue / MON équipe / le
+vainqueur, et l'habillage suit `mine` au lieu de `winner`. Le lot n'a jamais été committé sous
+l'ancien contrat.
+
+**Ce que l'overlay rend, dans les quatre cas** (mesuré par `ReplayVictoryOverlay.test.tsx`) :
+victoire → titre « Victoire » (mot du backend), sous-titre « Équipe Eagle », logo
+`/titles/halo_infinite/teams/0.png` en filigrane, teinte Eagle `#3B9DFF` (22 %/55 %/plein),
+score final « 50 - 30 » ; DÉFAITE → titre « Défaite », et TOUT LE RESTE IDENTIQUE (Eagle,
+son logo, sa couleur — un test vérifie que le rouge Cobra n'apparaît nulle part), score
+« 50 - 30 » toujours des deux camps ; égalité → titre « Égalité », panneau neutre
+(`bg-card`, `border-border`), ni logo ni couleur d'équipe, score conservé ; lecture nulle
+(FFA, > 2 camps, abandon, code ou libellé absent, hors cadrage) → DOM vide, pas même un voile.
 
 ## Clôture (après Lot B)
 
@@ -243,6 +332,16 @@ Critère : 0 erreur ; garde-rail B4 vert ; grep hex : aucun `#RRGGBB` introduit 
 - **Lot A, 2026-08-26 — cinq fichiers de test du dossier dépassent 500 lignes**
   (`ReplayTeams.test.tsx` 960, `replaySound.test.ts` 741, `ReplayKillFeed.test.tsx` 656,
   `zoneStatesLayer.test.ts` 574, `useReplayWeaponPads.test.ts` 550). Dette antérieure.
+- **Lot B, 2026-08-26 — `i18n.ts` du rejeu est à 534 lignes**, au-dessus du seuil de 500.
+  Le fichier était DÉJÀ à 530 avant le lot (dette antérieure : la découpe du 2026-08-18 avait
+  sorti le contrat, et les deux tables l'ont regarni depuis). Le lot y ajoute 4 lignes — 2
+  clés × 2 langues, indivisibles. La découpe naturelle serait par BLOC (fil, fiches, réglages)
+  plutôt qu'une nouvelle extraction transverse. Non traité : hors périmètre.
+- **Lot B, 2026-08-26 — la ligne de score de l'overlay dépend de `readScoreBanner`**, donc
+  du côté allié : un scoreboard sans `xuidMeta` fait disparaître le score alors que le
+  VAINQUEUR, lui, reste affiché (il ne dépend que de `outcome_code` et de `is_me`). Ce n'est
+  pas incohérent — le titre affirme moins que deux nombres — mais c'est une asymétrie à
+  connaître si un témoin montre un panneau sans chiffres.
 - **Lot A, 2026-08-26 — invariant utile pour le Lot B** : quand la fenêtre existe et que le
   début n'est pas clampé, l'instant AFFICHÉ du fil retombe exactement sur `event_time_ms` de
   l'API — le recalage `+t0−originMs` de `killFeedLogic` est annulé par le retrait de

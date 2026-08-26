@@ -27,6 +27,7 @@ import { frameToMs } from '@/features/match-replay/replayLogic'
 import { replayWindow } from '@/features/match-replay/replayWindow'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
+import { ReplayVictoryOverlay } from '@/features/match-replay/ReplayVictoryOverlay'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
@@ -177,7 +178,10 @@ function ReplayPage() {
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch">
           {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
               contraindre — c'est la colonne que le ResizeObserver du canvas mesure. */}
-          <section className="min-w-0">
+          {/* `relative` : c'est le repère de l'ÉCRAN DE VICTOIRE, qui coiffe toute la colonne
+              de la carte (bandeau, terrain, frise) à la fin du match. Il se monte ICI et non
+              dans le canvas, qui est déjà au plafond de taille du dépôt. */}
+          <section className="relative min-w-0">
             {/* LE BANDEAU DE SCORE COIFFE LE TERRAIN (demande utilisateur du 2026-08-20) :
                 score des deux camps à l'image lue, de part et d'autre de l'horloge. Il est
                 DANS la colonne du canvas, et non en frère de celle-ci : la rangée est une
@@ -210,6 +214,20 @@ function ReplayPage() {
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               marks={marks}
+            />
+            {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
+                quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la
+                frise. Il laisse passer les clics — la frise est dessous. */}
+            <ReplayVictoryOverlay
+              doc={data}
+              scoreboard={scoreboard}
+              xuidMeta={xuidMeta}
+              outcomeCode={matchView?.header.outcome_code}
+              outcomeLabel={matchView?.header.outcome_label}
+              playWindow={playWindow}
+              frame={frame}
+              titleSlug={params.titleSlug}
+              locale={locale}
             />
           </section>
           {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un

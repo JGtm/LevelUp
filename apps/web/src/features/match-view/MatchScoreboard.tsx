@@ -19,7 +19,7 @@ import {
 } from '@tanstack/react-table'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
-import { teamColorResolver } from './teamColor'
+import { teamColorResolver, teamTintStyles } from './teamColor'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -517,13 +517,14 @@ function TeamScoreboard({
   // (`teamColor.ts` — backend `team_color`, puis couleur officielle par team_id, puis token
   // allié/ennemi surchargeable par les réglages d'accessibilité). Chaque équipe obtient
   // ainsi sa couleur distincte (> 2 équipes = > 2 couleurs).
-  const teamColorVar = teamColorResolver(rows)(teamID, isMyTeam)
   // Accent lisible : fond subtil + soulignement + bordure gauche marquée. Le TEXTE reste
   // en `var(--foreground)` (jamais teinté par une couleur d'identité potentiellement vive
-  // comme le jaune Valor) pour garantir le contraste.
-  const teamHeaderBg = `color-mix(in oklab, ${teamColorVar} 22%, transparent)`
-  const teamHeaderBorder = `2px solid color-mix(in oklab, ${teamColorVar} 55%, transparent)`
-  const teamHeaderLeftBorder = `4px solid ${teamColorVar}`
+  // comme le jaune Valor) pour garantir le contraste. La RECETTE (22 % / 55 % / plein) est
+  // celle du dépôt — `teamTintStyles`, partagée avec l'écran de victoire du rejeu ; seules
+  // les ÉPAISSEURS restent ici, parce qu'elles disent le rôle de chaque trait.
+  const tint = teamTintStyles(teamColorResolver(rows)(teamID, isMyTeam))
+  const teamHeaderBorder = `2px solid ${tint.border}`
+  const teamHeaderLeftBorder = `4px solid ${tint.accent}`
   // Logo d'équipe : `/titles/{slug}/teams/{id}.png`. null si slug/team_id absent → pas de
   // logo ; onError masque proprement les team_id sans asset.
   const teamLogoSrc = teamLogoPath(slug, teamID)
@@ -538,7 +539,7 @@ function TeamScoreboard({
               colSpan={columns.length}
               className="border border-border px-3 py-2 text-left text-sm font-bold uppercase tracking-wider"
               style={{
-                background: teamHeaderBg,
+                background: tint.background,
                 borderBottom: teamHeaderBorder,
                 borderLeft: teamHeaderLeftBorder,
               }}
