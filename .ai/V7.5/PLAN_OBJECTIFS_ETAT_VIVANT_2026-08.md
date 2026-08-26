@@ -361,6 +361,60 @@ tient la colline. Deux pistes, dans l'ordre de cout :
 
 (le meme `go test` sans `ETAT_FILM` doit SKIP proprement — c'est ce qui tourne en CI.)
 
+### D2-bis — KOTH : le meme canal, un ORACLE DE BASCULES (arbitrage superviseur du 2026-08-26)
+
+> **CE BLOC EST ECRIT AVANT LA MESURE, ET COMMITE AVANT ELLE.** C'est la condition meme de sa
+> validite : une tolerance choisie apres avoir vu les resultats ne serait plus un seuil, ce serait
+> un reglage. Le commit qui porte ce texte ne contient AUCUN chiffre de mesure.
+
+**POURQUOI UN SECOND ORACLE, ET PAS UNE COURSE D'ORACLES.** D2 a rendu un negatif dont la cause
+est nommee : le score de MODE en KOTH compte des collines GAGNEES, pas des secondes de garde, et
+deux films sur quatre n'en portent qu'un camp. Les evenements `th=10` de prise, eux, existent
+INDEPENDAMMENT de ce compteur — ils sont lus au footer, un par prise, avec l'acteur en xuid. Les
+quatre films redeviennent donc exploitables. Le canal teste ne change pas : c'est toujours le
+tag 4 du slot voisin du designateur.
+
+**CE QUI EST TESTE, EN UNE PHRASE** : a chaque prise de colline, le canal de propriete BASCULE
+vers le camp du preneur.
+
+- [ ] D2b.1 Oracle : les evenements `th=10` de type prise de colline du film (acteur -> xuid ->
+      camp par le ROSTER FIGE du corpus, aucune base ouverte), poses sur l'axe de frames du rejeu
+      par `p2aFrameOf` (l'origine est retranchee — sans quoi tout serait decale de `originMs`).
+- [ ] D2b.2 Canal : les BASCULES du tag 4 du slot voisin — les changements de valeur vers une
+      valeur NOMMEE (0 ou 1), le neutre n'etant pas une prise. Segmentation par `mergeZoneRuns`,
+      comme la production.
+- [ ] D2b.3 Appariement et accord : pour chaque prise, la bascule la PLUS PROCHE dans la
+      tolerance ; accord sous la MEILLEURE bijection valeur <-> camp, denominateurs publies.
+- [ ] D2b.4 Temoins, et le verdict.
+
+**LA TOLERANCE : +/- 20 s, ET ELLE VIENT DE LA DONNEE, PAS D'UN REGLAGE.** Le decodeur qualifie
+lui-meme ces evenements d'`approx (~5-20s)` (`objectiveevents/extract.go`, `extractFromTh10`) :
+l'instant lu est celui du bloc de temps fort, pas celui de l'action. Vingt secondes est la BORNE
+HAUTE de cette imprecision documentee ; la retenir, c'est refuser de trancher plus finement que
+l'oracle ne le permet.
+
+**ET C'EST POURQUOI LE TEMOIN DE DECALAGE PASSE A +60 s — correction assumee a la consigne.**
+L'arbitrage demandait « temoins permutation + decalage 20 s inchanges ». Un decalage de 20 s
+tombe EXACTEMENT DANS une fenetre de tolerance de +/- 20 s : il ne deplacerait pas l'appariement,
+et rendrait donc le meme taux que le signal — un temoin qui ne peut pas echouer n'est pas un
+temoin. Le decalage temoin est porte a **+60 s** (trois fois la tolerance). Le +20 s est mesure
+et publie QUAND MEME, pour la continuite avec D2, mais il est lu comme ce qu'il est : un controle
+de stabilite interne a la fenetre, jamais un temoin negatif.
+
+**LES SEUILS SONT INCHANGES** : accord >= **90 %** sur >= **3 des 4** films exploitables ;
+temoin de permutation <= **60 %** ; temoin de decalage +60 s <= **60 %**.
+
+**REGLE D'ESCALADE, ECRITE D'AVANCE** : un film offrant moins de **6** prises confrontables ne
+compte NI POUR NI CONTRE (denominateur insuffisant, il sort du calcul et le dit). S'il reste
+**moins de 3** films exploitables, la mesure S'ARRETE et bascule sur l'oracle du score PERSONNEL
+— jamais les deux a la fois, et jamais apres avoir vu le resultat du premier sur le meme film.
+
+**Gate D2-bis** : les trois seuils ci-dessus. Commandes NUES, un film par processus :
+
+    go vet ./internal/analysis/replay/
+    ZONE_FILM=<chunks d'un film> go test ./internal/analysis/replay/ -run CollineProprietaireD2Bis -v -timeout 60m
+    go test ./internal/analysis/replay/...
+
 ### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
 
 - [ ] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
