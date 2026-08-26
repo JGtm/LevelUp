@@ -251,8 +251,13 @@ function allyOf(xuidMeta: XuidMeta, xuid: string, fallback: boolean): boolean {
 
 /**
  * FeedLine — UNE ligne du fil, au format du POC : tueur, arme, victime, horodatage,
- * médailles puis assistance en dessous. Le liseré gauche porte la couleur d'équipe de
- * l'acteur (tueur, ou décoré pour une médaille seule) — NEUTRE pour une mort sans tueur.
+ * médailles puis assistance en dessous.
+ *
+ * PLUS DE LISERÉ GAUCHE (demande utilisateur du 2026-08-25, la même que pour la fiche morte) :
+ * les trois formes de ligne portaient un trait de 3 px à la couleur d'équipe de leur acteur.
+ * Le camp est DÉJÀ dit par la couleur du nom du tueur et par celle de sa victime, sur la même
+ * ligne — le liseré en était la troisième copie, et il empilait des barres colorées sur toute
+ * la hauteur d'un fil qui défile.
  */
 function FeedLine({
   entry,
@@ -291,7 +296,7 @@ function FeedLine({
     if (!m) return null
     const color = colorOf(m.teamID, allyOf(xuidMeta, m.xuid, true))
     return (
-      <li className={FEED_ROW} style={{ borderLeft: `3px solid ${color}` }}>
+      <li className={FEED_ROW}>
         <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className="font-medium"
           name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)} />
         <MedalBadges medals={[m]} />
@@ -352,7 +357,6 @@ function DeathLine({
   return (
     <li
       className={FEED_ROW}
-      style={{ borderLeft: `3px solid ${tokenCssVar('divergent-neutral')}` }}
       title={kindLabel ? `${kindLabel} — ${t.killFeedDeathHint}` : t.killFeedDeathHint}
     >
       {death.img ? (
@@ -421,7 +425,6 @@ function KillLine({
     <li
       className={FEED_ROW}
       style={{
-        borderLeft: `3px solid ${killerColor}`,
         background: assisted ? `color-mix(in srgb, ${tokenCssVar('info')} 10%, transparent)` : undefined,
       }}
       title={lineHint}

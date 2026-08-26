@@ -100,6 +100,26 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   cas de centrage visait le PARENT de la rangée, qui porte déjà `justify-center` pour son
   centrage vertical, et survivait donc à la mutation.
 
+- [x] A8 (demande utilisateur 25/08) : (a) retirer le bandeau « Données de rejeu d'une version
+  antérieure » ; (b) retirer l'accentuation sur les LIGNES du kill feed.
+  (a) `[x]` bandeau retiré de `replay.tsx` (le `<p>` conditionnel + le calcul `schemaState` +
+  l'import). VÉRIFICATION SUR PIÈCES DES CONSOMMATEURS, comme demandé : `replaySchemaState()`
+  et le type `ReplaySchemaState` n'avaient AUCUN autre lecteur que ce bandeau — supprimés avec
+  `replaySchemaLogic.test.ts`, sans quoi ils devenaient du code mort à tests verts.
+  `EXPECTED_REPLAY_SCHEMA_VERSION` **et** `replaySchemaLogic.guard.test.ts` sont **CONSERVÉS** :
+  le garde-rail de parité avec la constante Go en est un consommateur vivant. Clés
+  `replaySchemaStale` / `replaySchemaAhead` retirées (FR + EN + contrat).
+  POINT D'ARBITRAGE : la constante n'a plus de lecteur À L'EXÉCUTION, son seul consommateur est
+  désormais son propre garde-rail de parité. Conservée sur consigne explicite ; l'en-tête du
+  fichier le dit noir sur blanc pour qui reviendra.
+  (b) `[x]` les TROIS `borderLeft: 3px solid …` du fil retirés (`ReplayKillFeed.tsx` — ligne de
+  kill, mort neutre, médaille seule). **CONSERVÉ ET SIGNALÉ** : le fond BLEUTÉ des morts
+  assistées (`color-mix(info 10%)`) — c'est une information mesurée (assistant nommé), pas un
+  ornement ; un test existant l'ancrait déjà, mutation vérifiée. Le camp reste dit par la
+  couleur du nom du tueur et de sa victime sur la même ligne.
+  3 tests ; mordant prouvé par double mutation (liseré médaille restauré -> 1 échec ; fond
+  assisté retiré -> 1 échec, le verrou de l'assistance).
+
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
 `match-replay`, lint web. i18n : toute string FR **et** EN. Pas de vérification
