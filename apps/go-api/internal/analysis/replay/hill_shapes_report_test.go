@@ -87,9 +87,9 @@ func hillAvantApres(t *testing.T, film p2aFilm, ser zoneSeries, c zoneCtx, hills
 	}
 	avant = zoneCatalogOf(avant)
 	covA := &ZonesCoverage{}
-	statesA := buildHillStates(avant, ser, c, covA)
+	statesA := buildHillStates(avant, ser, nil, c, covA)
 	covB := &ZonesCoverage{}
-	statesB := buildHillStates(zoneCatalogOf(hills), ser, c, covB)
+	statesB := buildHillStates(zoneCatalogOf(hills), ser, nil, c, covB)
 	t.Logf("  AVANT (Bastion+Extraction, %d formes) : %d periodes, %d zones, %d rampes non appariees",
 		len(avant), covA.HillPeriods, len(statesA), covA.Unpaired)
 	t.Logf("  APRES (collines, %d formes)            : %d periodes, %d zones, %d rampes non appariees",

@@ -1059,3 +1059,16 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   **ACCEPTE** pour le calque du proprietaire de colline (precedent : la garde de l'ouvrier a
   88 %). L'erreur residuelle est concentree aux BASCULES, dans la fenetre de +/- 20 s de l'oracle.
   D2 passe donc en IMPLEMENTATION, sans bump de schema (la publication attend le bump unique de D5).
+
+- 2026-08-26 — **D2 IMPLEMENTE : le proprietaire de la colline est publie.** Le canal (tag 4 du
+  slot voisin du designateur) entre dans `hillStatesOf` : une periode se SUBDIVISE aux
+  changements de main, chaque morceau porte son camp, le neutre sort en `Owner` nil. **Aucun bump
+  de schema** — `ZoneSpan.Owner` existe deja, seul son CONTENU change sur la voie colline ; la
+  publication attend le bump unique de D5. Le niveau de preuve accepte (88-89 % contre temoin
+  56 %, decision utilisateur du 26/08, erreur concentree aux bascules) est ecrit EN TETE du
+  producteur, avec les trois campagnes — le prochain lecteur le trouve sur place. Deux defauts
+  attrapes en cours d'implementation : un fixture de test qui confondait « un seul camp » et
+  « une seule emission » (l'election du designateur exige 2 echantillons), et surtout **une
+  periode partiellement couverte par le canal perdait sa partie non couverte** — corrige, les
+  trous sortent en intervalles ACTIFS sans camp. Mordant par double mutation (camp retire : 3
+  echecs ; comblement des trous retire : 1 echec).
