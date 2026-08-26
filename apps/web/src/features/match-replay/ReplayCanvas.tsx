@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { MatchScoreboardRow, ReplayMapBackgroundCalibration } from '@/lib/api/types'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
@@ -58,12 +58,12 @@ import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
 import { useReplayInks } from './useReplayInks'
+import { useReplayCapture } from './useReplayCapture'
 import { useReplayPlayback } from './useReplayPlayback'
 import { useReplayStaticLayers } from './useReplayStaticLayers'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplaySound } from './useReplaySound'
-import { backgroundRect, coversPlayedArea } from './mapBackground'
-import { buildFloorGrid } from './mapFloor'
+import { backgroundRect } from './mapBackground'
 import type { ReplayDocumentReady } from './replayNormalize'
 import {
   drawGeometryLayer,
@@ -72,10 +72,11 @@ import {
   drawShotsLayer,
 } from './replayDraw'
 import { drawGrenadeRestLayer } from './grenadeRestLayer'
-import { fitWidth, formatClock, frameToMs, sceneBounds } from './replayLogic'
+import { formatClock, frameToMs } from './replayLogic'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
+import { CANVAS_HEIGHT, CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
 
 // 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
 // getSeriesColors), et — depuis le 2026-08-24 — la palette des COULEURS DISTINCTES PAR
@@ -85,11 +86,6 @@ const SERIES_TOKENS: SemanticToken[] = [
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
 ]
-// Les TOKENS des encres du canvas vivent avec elles, dans useReplayInks ; les DURÉES et leur
-// conversion en images, dans useReplayTiming.
-const CANVAS_HEIGHT = 480
-const CANVAS_PAD = 24
-
 /** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
 const EMPTY_ZONES: CalloutZoneReady[] = []
 
@@ -102,16 +98,6 @@ const EMPTY_ZONES: CalloutZoneReady[] = []
  * perçoit comme un retard sur un compteur, et divise le travail de React par dix.
  */
 const FRAME_PUBLISH_MS = 150
-
-/**
- * Le FOND DE CARTE : l'image cuite de la carte, et le calage qui la pose dans le repère
- * monde du rejeu. Les deux voyagent ensemble — une image sans calage ne se superpose à rien,
- * et l'appelant ne doit jamais pouvoir en fournir une seule.
- */
-export interface ReplayMapBackgroundLayer {
-  calibration: ReplayMapBackgroundCalibration
-  image: HTMLImageElement
-}
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -225,19 +211,13 @@ export function ReplayCanvas({
     [],
   )
 
-  // LE FOND DE CARTE PREND LA PLACE DU SOL RECONSTRUIT, il ne s'y ajoute pas : l'image
-  // porte la carte telle que le jeu la dessine, la trame d'altitudes n'en est que
-  // l'approximation. Les superposer ne ferait que voiler la meilleure des deux.
-  //
-  // Il est ÉCARTÉ quand il ne recouvre pas la zone jouée : un fond qui ne contient pas le
-  // terrain n'est pas un défaut d'affichage, c'est le signe que les deux repères ne sont
-  // pas le même — mieux vaut alors le sol reconstruit qu'une carte posée à côté des joueurs.
-  const mapImage = useMemo(() => {
-    if (!background) return null
-    return coversPlayedArea(background.calibration, doc.bounds) ? background : null
-  }, [background, doc.bounds])
-  // Le cadrage se décide APRÈS le fond : une image posée écarte les props du cadre (sceneBounds).
-  const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
+  // LE CADRAGE — fond retenu ou écarté, bornes de la scène, largeur de dessin, amplitude
+  // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
+  // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
+  // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
+  const { mapImage, bounds, renderWidth, zRange, canvasView, floorGrid } = useReplayView({
+    doc, background, width,
+  })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -261,26 +241,6 @@ export function ReplayCanvas({
 
   const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
-  // La trame d'altitudes ne dépend QUE du document : construite une fois, pas à chaque resize.
-  const floorGrid = useMemo(
-    () => (!mapImage && doc.structure?.length ? buildFloorGrid(doc.structure, doc.bounds) : null),
-    [doc.structure, doc.bounds, mapImage],
-  )
-  // Largeur de dessin = ratio de la scène à hauteur fixée (évite les marges latérales).
-  const renderWidth = useMemo(
-    () => (width === 0 ? 0 : Math.floor(fitWidth(bounds, width, CANVAS_HEIGHT, CANVAS_PAD))),
-    [bounds, width],
-  )
-  const zRange = useMemo(
-    () => ({ min: doc.bounds.minZ ?? 0, max: doc.bounds.maxZ ?? 0 }),
-    [doc.bounds.minZ, doc.bounds.maxZ],
-  )
-  // LE CADRAGE, une fois : le dessin ET le survol doivent lire la MÊME projection — un
-  // pointeur qui viserait un autre cadre que celui peint ne toucherait rien.
-  const canvasView = useMemo(
-    () => ({ bounds, width: renderWidth, height: CANVAS_HEIGHT, pad: CANVAS_PAD }),
-    [bounds, renderWidth],
-  )
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
   const { baseFps, timing, eventHoldFrames, shotHoldFrames, restWindow } = useReplayTiming(doc)
@@ -619,6 +579,9 @@ export function ReplayCanvas({
   const { playing, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
     doc, baseFps, speed: multiplier, renderWidth, frameRef, draw, soundTick: sound.tick,
   })
+  // CE QUI SORT DU REJEU (image PNG, puis enregistrement vidéo) vit dans useReplayCapture : le
+  // canvas ne prête que sa TOILE et son HORLOGE, et repasse l'objet tel quel à la barre.
+  const capture = useReplayCapture({ canvasRef, doc, frameRef })
 
   return (
     // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour
@@ -676,6 +639,7 @@ export function ReplayCanvas({
               speed={multiplier}
               onSetSpeed={setMultiplier}
               sound={sound}
+              capture={capture}
               locale={locale}
               leadMarks={leadMarks}
               settingsOpen={settingsOpen}
