@@ -377,15 +377,17 @@ tag 4 du slot voisin du designateur.
 **CE QUI EST TESTE, EN UNE PHRASE** : a chaque prise de colline, le canal de propriete BASCULE
 vers le camp du preneur.
 
-- [ ] D2b.1 Oracle : les evenements `th=10` de type prise de colline du film (acteur -> xuid ->
+- [x] D2b.1 Oracle : les evenements `th=10` de type prise de colline du film (acteur -> xuid ->
       camp par le ROSTER FIGE du corpus, aucune base ouverte), poses sur l'axe de frames du rejeu
       par `p2aFrameOf` (l'origine est retranchee — sans quoi tout serait decale de `originMs`).
-- [ ] D2b.2 Canal : les BASCULES du tag 4 du slot voisin — les changements de valeur vers une
+      **FAIT** — 43 a 92 prises par film, camp connu, zero prise hors axe.
+- [x] D2b.2 Canal : les BASCULES du tag 4 du slot voisin — les changements de valeur vers une
       valeur NOMMEE (0 ou 1), le neutre n'etant pas une prise. Segmentation par `mergeZoneRuns`,
-      comme la production.
-- [ ] D2b.3 Appariement et accord : pour chaque prise, la bascule la PLUS PROCHE dans la
+      comme la production. **FAIT** — 13 a 213 emissions selon le film.
+- [x] D2b.3 Appariement et accord : pour chaque prise, la bascule la PLUS PROCHE dans la
       tolerance ; accord sous la MEILLEURE bijection valeur <-> camp, denominateurs publies.
-- [ ] D2b.4 Temoins, et le verdict.
+      **FAIT** — instrument `colline_proprietaire_d2bis_test.go`.
+- [x] D2b.4 Temoins, et le verdict. **FAIT — GATE NON ATTEINT**, chiffres ci-dessous.
 
 **LA TOLERANCE : +/- 20 s, ET ELLE VIENT DE LA DONNEE, PAS D'UN REGLAGE.** Le decodeur qualifie
 lui-meme ces evenements d'`approx (~5-20s)` (`objectiveevents/extract.go`, `extractFromTh10`) :
@@ -414,6 +416,59 @@ compte NI POUR NI CONTRE (denominateur insuffisant, il sort du calcul et le dit)
     go vet ./internal/analysis/replay/
     ZONE_FILM=<chunks d'un film> go test ./internal/analysis/replay/ -run CollineProprietaireD2Bis -v -timeout 60m
     go test ./internal/analysis/replay/...
+
+**Gate D2-bis : NON ATTEINT (2026-08-26), SUR SES DEUX CLAUSES. Mais le negatif a change de
+nature — le canal n'est plus muet, il est INSUFFISANT.**
+
+| film | duree | emissions du canal | SIGNAL | temoin a (permutation) | temoin b (+60 s) | controle (+20 s) |
+|---|---|---|---|---|---|---|
+| `01e1f945` | 540 s | 99 | **89,1 %** (57/64) | 100 % mais DEGENERE (7/7 sur 66) | **55,6 %** | 50,0 % |
+| `0a247154` | 787 s | 213 | **88,0 %** (81/92) | 100 % mais DEGENERE (5/5 sur 92) | **56,6 %** | 57,3 % |
+| `606d9844` | 235 s | 13 | **87,1 %** (27/31) | **82,8 %** | **93,8 %** (degenere) | 71,9 % |
+| `8076f97f` | 349 s | 35 | **71,7 %** (38/53) | **83,3 %** (10/12) | **76,7 %** | 70,8 % |
+
+- **Accord >= 90 % : 0 film sur 4.** Les quatre films sont EXPLOITABLES (31 a 92 prises
+  confrontables, tous au-dessus du minimum de 6) — la regle d'escalade ne se declenche donc PAS,
+  et le gate echoue sur son seuil, pas sur son corpus.
+- **Temoin de decalage <= 60 % : 2 films sur 4 seulement.**
+
+**LE SEUIL N'EST PAS REBAISSE, ET IL NE DOIT PAS L'ETRE ICI** — mais ce qu'on voit merite d'etre
+dit avec precision, parce que ce n'est pas le meme negatif qu'en D2 :
+
+*Sur les DEUX films longs*, le canal se detache nettement de ses temoins : 89,1 % contre 55,6 %,
+88,0 % contre 56,6 %. Un ecart de plus de trente points, dans le bon sens, avec des denominateurs
+de 64 et 92. **Ce canal porte quelque chose.** Il manque 1 a 2 points au seuil.
+
+*Sur les DEUX films courts*, tout se confond : le signal tombe a 87,1 % et 71,7 %, les temoins
+montent a 82,8 % et 93,8 %. Ces deux films sont precisement ceux dont le canal ne parle presque
+pas (13 et 35 emissions, 2 bascules de designateur) — le meme trait qui les avait deja rendus
+inexploitables en D2, pour une autre raison.
+
+**LA TOLERANCE N'A PAS ETE ABUSIVE** : l'ecart median prise <-> bascule vaut 31 a 124 frames
+(3,1 a 12,4 s) pour une fenetre de 20 s, et le controle a +20 s tombe a 50 % sur le meilleur film
+— l'appariement est donc temporellement NET, bien plus que la fenetre ne l'autorisait.
+
+**UNE RESERVE METHODOLOGIQUE, ECRITE ET NON CORRIGEE.** Sur `606d9844`, le « pire autre canal »
+elu par le temoin de permutation est le slot **1500**, c'est-a-dire `d.slot+2` — le CAPTEUR du
+MEME objet de mode ([tag 5 designateur][tag 4 proprietaire][tag 4 capteur][tag 3 jauge],
+`zone_states_hill.go`). Un canal frere du meme objet n'est pas une permutation : il porte
+plausiblement une information voisine, et l'opposer au signal revient a comparer l'objet a
+lui-meme. **Ce defaut n'est PAS corrige apres coup** — redefinir un temoin en ayant vu son
+resultat serait exactement le reglage que le protocole interdit. Il est signale au superviseur,
+qui peut decider d'un temoin excluant les slots `d.slot..d.slot+3` et d'une REMESURE, protocole
+re-ecrit d'abord.
+
+**CE QUI RESTE VRAI APRES DEUX ORACLES** : le canal existe, il est elu sur 4 films sur 4, et il
+n'a jamais ete refute — il n'a pas atteint le niveau de preuve exige. **NON MESURE AU SEUIL, pas
+refute.** Rien n'est publie, `hillStatesOf` n'est pas touche.
+
+**CONDITION DE REPRISE — UNE SEULE PISTE RESTE, et elle etait deja ecrite** : l'oracle du score
+PERSONNEL (`PersonalScoreComponent` + pont slot -> xuid), le seul oracle CONTINU disponible. La
+regle d'escalade ne l'a pas declenche (les 4 films sont exploitables) : y aller demande un
+arbitrage explicite du superviseur, pas une initiative d'executeur. Deuxieme option, non
+technique : le superviseur ou l'utilisateur peut juger que 88-89 % avec un temoin a 56 % suffit
+pour un calque de rejeu — c'est une decision PRODUIT sur le niveau de preuve, et elle ne
+m'appartient pas.
 
 ### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
 
@@ -789,3 +844,17 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   brute). Zero film sur quatre a un denominateur exploitable. Le proprietaire de la colline est
   **NON MESURE, pas refute** ; deux pistes de reprise sont ecrites au gate. **STOP — arret
   propre au seuil, aucun contournement, aucun changement de production.**
+
+- 2026-08-26 — **D2-bis : GATE NON ATTEINT sur ses deux clauses, mais le negatif change de
+  nature.** Protocole ecrit et commite AVANT la mesure (`6470e7ca1`), instrument
+  `colline_proprietaire_d2bis_test.go`, oracle = prises `th=10`, tolerance +/- 20 s derivee de
+  l'imprecision documentee du decodeur, temoin de decalage porte a +60 s (20 s tombait DANS la
+  fenetre). Les 4 films sont exploitables (31 a 92 prises confrontables) : la regle d'escalade ne
+  se declenche pas. Accord >= 90 % sur **0 film sur 4** (89,1 / 88,0 / 87,1 / 71,7 %). MAIS sur
+  les deux films LONGS le canal se detache nettement de ses temoins (89,1 % contre 55,6 % ;
+  88,0 % contre 56,6 %) — il porte quelque chose, il manque 1 a 2 points. Sur les deux films
+  COURTS (13 et 35 emissions) tout se confond. Reserve methodologique ECRITE ET NON CORRIGEE : le
+  temoin de permutation elit parfois un slot FRERE du meme objet de mode (`d.slot+2`, le
+  capteur), ce qui n'est pas une permutation — signale, pas repare apres coup. **NON MESURE AU
+  SEUIL, toujours pas refute.** Reprise : l'oracle du score PERSONNEL (arbitrage superviseur
+  requis), ou une decision PRODUIT sur le niveau de preuve exige. **STOP.**
