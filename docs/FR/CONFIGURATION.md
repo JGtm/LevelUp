@@ -297,6 +297,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_notify_coach` | bool | `false` | Relaie les proposals coach les plus fortes (signaux de progression) vers le webhook Discord. **OFF par défaut — opt-in** : requiert `discord_notifications_enabled` + un webhook. Émettre vers un service externe est une décision vie privée volontaire, jamais activée par défaut. Catégories relayées = catégories coach uniquement. |
 | `discord_notify_new_media` | bool | `true` | Notifie sur nouveau média. |
 | `discord_notify_disk` | bool | `true` | Alertes disque (warn > 80 % utilisés ou < 2 Go libres, critical > 90 % ou < 500 Mo) sur le volume data, envoyées au changement de statut + rappel quotidien + rétablissement. |
+| `discord_notify_replay` | bool | `true` | Notification groupée « rejeux 2D prêts ». Un message par fenêtre de 10 minutes et par titre, jamais un par artefact : le premier artefact rangé arme la fenêtre, le message énumère les matchs à l'échéance. Couvre tous les chemins d'écriture du serveur — construction locale post-sync, livraison d'un ouvrier distant et action admin. Le backfill CLI tourne dans un autre process et ne notifie jamais. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
 | `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |

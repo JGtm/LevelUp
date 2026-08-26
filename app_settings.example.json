@@ -18,6 +18,7 @@
   "discord_notifications_enabled": false,
   "discord_notify_coach": false,
   "discord_notify_new_media": true,
+  "discord_notify_replay": true,
   "tailscale_enabled": false,
   "user_timezone": "Europe/Paris",
   "watcher_presence_enabled": true,

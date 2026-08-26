@@ -88,7 +88,7 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 		TitleSlug:     title.DefaultSlug,
 		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
 	}
-	taille, err := writeArtifact(path, appauvri)
+	taille, err := writeArtifact(path, title.DefaultSlug, "000d5950", appauvri)
 	if err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 		TitleSlug:     title.DefaultSlug,
 		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
 	}
-	if _, err := writeArtifact(path, nouveau); err != nil {
+	if _, err := writeArtifact(path, title.DefaultSlug, "000d5950", nouveau); err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
 	surDisque, err := os.ReadFile(path)

@@ -34,6 +34,11 @@ import (
 // ce type concret (même convention que port.ReplayMapNameRepo).
 var _ port.ReplayFactsRepo = (*ReplayFactsRepo)(nil)
 
+// Le même type sert la résolution des cibles de lien (notification « rejeux prêts ») : ce
+// sont les deux mêmes tables, lues en lecture seule et courte. Un second repo aurait
+// dupliqué l'ouverture, le contrat « n'ouvre ni ne ferme rien » et les pièges d'identité.
+var _ port.ReplayLinkRepo = (*ReplayFactsRepo)(nil)
+
 // ReplayFactsRepo lit les faits d'un match (registre + participants).
 type ReplayFactsRepo struct {
 	shared *sql.DB
@@ -112,4 +117,70 @@ func (r *ReplayFactsRepo) playerFacts(ctx context.Context, matchID string) ([]po
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// LinkTargetsForMatches résout, EN UNE REQUÊTE pour tout le lot, de quoi lier chaque match
+// à sa page de rejeu : un joueur connu qui y a participé, et le nom de carte du registre.
+//
+// UNE JOINTURE À GAUCHE, ET C'EST LE POINT : un match sans participant connu doit quand
+// même sortir, avec son nom de carte et un xuid vide. La notification affichera la ligne
+// sans lien plutôt que d'escamoter le match.
+//
+// `MIN(xuid)` plutôt qu'un `LIMIT 1` implicite : quand plusieurs joueurs de l'instance ont
+// joué le même match, le lien doit être STABLE d'un appel à l'autre (un ordre de lignes
+// DuckDB ne l'est pas).
+//
+// Lecture SEULE et COURTE, sur un handle déjà ouvert par l'appelant (contrat du repo :
+// il n'ouvre ni ne ferme rien).
+func (r *ReplayFactsRepo) LinkTargetsForMatches(
+	ctx context.Context, matchIDs, knownXUIDs []string,
+) (map[string]port.ReplayLinkTarget, error) {
+	out := map[string]port.ReplayLinkTarget{}
+	if r == nil || r.shared == nil || len(matchIDs) == 0 {
+		return out, nil
+	}
+	args := make([]any, 0, len(matchIDs)+len(knownXUIDs))
+	for _, id := range matchIDs {
+		args = append(args, id)
+	}
+	join := ""
+	if len(knownXUIDs) > 0 {
+		for _, x := range knownXUIDs {
+			args = append(args, x)
+		}
+		join = ` LEFT JOIN match_participants mp
+			ON mp.match_id = mr.match_id AND mp.xuid IN (` + placeholders(len(knownXUIDs)) + `)`
+	}
+	xuidExpr := "NULL"
+	if join != "" {
+		xuidExpr = "MIN(mp.xuid)"
+	}
+	q := `SELECT mr.match_id, mr.map_name, ` + xuidExpr + `
+		FROM match_registry mr` + join + `
+		WHERE mr.match_id IN (` + placeholders(len(matchIDs)) + `)
+		GROUP BY mr.match_id, mr.map_name`
+	rows, err := r.shared.QueryContext(ctx, q, args...)
+	if err != nil {
+		return out, fmt.Errorf("cibles de lien de rejeu : lecture : %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var id string
+		var mapName, xuid sql.NullString
+		if err := rows.Scan(&id, &mapName, &xuid); err != nil {
+			return out, fmt.Errorf("cibles de lien de rejeu : lecture (scan) : %w", err)
+		}
+		out[id] = port.ReplayLinkTarget{
+			MatchID: id,
+			XUID:    strings.TrimSpace(xuid.String),
+			MapName: strings.TrimSpace(mapName.String),
+		}
+	}
+	return out, rows.Err()
+}
+
+// placeholders rend "?, ?, ?" pour n valeurs (n > 0 garanti par les appelants).
+func placeholders(n int) string {
+	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
 }
