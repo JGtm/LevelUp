@@ -440,7 +440,7 @@ recoupe sur pieces) :
       libre 0 < en perte 0,16 < tenue 0,30 < active 0,42 < progression 0,55 —, testee par son
       ORDRE et non par ses valeurs, precisement pour que le gate visuel puisse toutes les bouger.
       **Verdict VISUEL a l'utilisateur.**
-- [~] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
+- [x] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
       artefacts TEMOINS que `coverage.zones.gaugePoints > 0` la ou la progression doit se voir.
       **CORRECTION AU BRIEF DE L'AJOUT DE PERIMETRE** : la serie `gauge` n'a PAS ete validee sur
       KOTH — c'est l'inverse. Elle est publiee **sur les modes a zones SIMULTANEES SEULEMENT
@@ -452,14 +452,32 @@ recoupe sur pieces) :
       Strongholds = points ATTENDUS (si zero sur un temoin Bastion : `[!]`, condition de reprise) ;
       KOTH = zero ATTENDU, ce n'est pas un defaut, et la colline garde son seul etat
       d'appartenance ; Total Control = INCONNU tant que D3 n'a pas mesure, donc `[!]` par defaut.
-      **`[~]` — COUVERT PAR LE CODE ET LES TESTS, PAS PAR UNE LECTURE D'ARTEFACT.** Le contrat
-      « aucune serie = aucune progression » est verrouille par test (fixture `gauge: []`, et la
-      colline du fixture qui publie un sommet `progress` sans serie ne dessine rien). La lecture
-      des artefacts TEMOINS (`coverage.zones.gaugePoints`) exige de cuire des films, donc des
-      commandes Go — INTERDITES sur ce creneau (autre lot en build). Reste donc a faire, en une
-      lecture, quand un creneau Go s'ouvre : `gaugePoints > 0` sur un temoin Bastion, `= 0` sur
-      un temoin KOTH. Aucun code n'en depend : le client se comporte identiquement dans les deux
-      cas, c'est un controle de la DONNEE, pas du rendu.
+      **`[x]` — FAIT LE 2026-08-26, PAR LECTURE PURE DU CACHE. Aucune cuisson n'a ete
+      necessaire** : sept artefacts du cache local portent deja `coverage.zones`, tous au
+      schema 18, et ils separent les deux methodes sans ambiguite.
+
+      | artefact | methode | `gaugePoints` | zones | spans |
+      |---|---|---|---|---|
+      | `7344d24f` | `captures+geometry` | **1 701** | 3 | 39 |
+      | `696a9d7c` | `captures+geometry` | **1 794** | 3 | 37 |
+      | `af13e2b2` | `captures+geometry` | **467** | 3 | 8 |
+      | `0a247154` | `designator+geometry` | **0** | 5 | 6 |
+      | `01e1f945` | `designator+geometry` | **0** | 4 | 5 |
+      | `606d9844` | `designator+geometry` | **0** | 3 | 3 |
+      | `8076f97f` | `designator+geometry` | **0** | 3 | 3 |
+
+      **VERDICT : le contrat du producteur est tenu sur pieces.** Les trois artefacts a zones
+      SIMULTANEES portent tous une serie de jauge fournie (467 a 1 794 points) ; les quatre
+      films a COLLINE en portent zero, exactement comme `zone_states_gauge.go` l'annonce
+      (« EN KOTH, RIEN »). La correction de fait du §6.2 est donc confirmee une seconde fois,
+      et par la donnee cette fois : la jauge est une affaire de Bastion, jamais de colline.
+      Le rendu de D6 est cadre par cette mesure — sur une colline, la progression ne peut pas
+      s'afficher faute de serie, et le calque ne le devine pas : il recoit un tableau vide.
+
+      DENOMINATEUR DE LA LECTURE : 40 artefacts au cache, dont 7 portent `coverage.zones` —
+      les 33 autres sont des modes sans zone tenue (le calque ne publie alors rien, et son
+      ABSENCE est distincte du zero, cf. `ZonesCoverage`). Total Control reste INCONNU : aucun
+      artefact du cache n'en porte, ce que D1 confirmera au recensement.
 - [x] D6.5 **Le pulse ponctuel de capture est CONSERVE** : il marque un INSTANT, la progression
       decrit une DUREE — les deux se lisent ensemble (c'est deja l'arbitrage ecrit en tete
       d'`objectivesLayer.ts`). Rien n'est retire de ce cote.
