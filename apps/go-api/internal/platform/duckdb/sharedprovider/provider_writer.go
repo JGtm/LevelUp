@@ -24,8 +24,11 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		return nil, ErrProviderClosed
 	}
 
-	slog.InfoContext(ctx, "provider: AcquireWriter démarré",
-		"path", p.path, "label", ctxkeys.DBWriterLabel(ctx))
+	// Début d'acquisition : aucune durée à qualifier, donc DEBUG inconditionnel
+	// (cf. logSwapPhase). Le label est reporté sur les logs de fin de phase et
+	// sur le WARN de drain timeout — aucune anomalie ne perd son attribution.
+	label := ctxkeys.DBWriterLabel(ctx)
+	slog.DebugContext(ctx, "provider: AcquireWriter démarré", "path", p.path, "label", label)
 	lease, err := dblease.AcquireWriterCtx(ctx, nil, p.path, dblease.KindSharedMatches)
 	if err != nil {
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
@@ -49,20 +52,23 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		lease.Release()
 		swapFailuresTotal.Add(failReasonDrainTimeout, 1)
 		slog.WarnContext(ctx, "provider: drain timeout, rollback vers RO",
-			"path", p.path, "drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
+			"path", p.path, "label", label,
+			"drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
 		return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w", err)
 	}
-	drainMs := time.Since(drainStart).Milliseconds()
-	getWaitMsTotal.Add(drainMs)
-	slog.InfoContext(ctx, "provider: readers drainés", "path", p.path, "drain_ms", drainMs)
+	drainDur := time.Since(drainStart)
+	getWaitMsTotal.Add(drainDur.Milliseconds())
+	p.logSwapPhase(ctx, "provider: readers drainés", drainDur,
+		"path", p.path, "label", label, "drain_ms", drainDur.Milliseconds())
 
 	rwHandle, err := p.swapToRW(ctx, swapStart)
 	if err != nil {
 		lease.Release()
 		return nil, err
 	}
-	slog.InfoContext(ctx, "provider: swap RO→RW terminé",
-		"path", p.path, "total_ms", time.Since(swapStart).Milliseconds())
+	acquireDur := time.Since(swapStart)
+	p.logSwapPhase(ctx, "provider: swap RO→RW terminé", acquireDur,
+		"path", p.path, "label", label, "total_ms", acquireDur.Milliseconds())
 
 	// WriterHandle construit via closure (refacto commit 8b) — la struct
 	// ne référence plus *providerImpl directement, ce qui permet à
@@ -99,6 +105,23 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 			p.releaseWriter(releaseCtx, rwHandle)
 		},
 	}, nil
+}
+
+// logSwapPhase journalise une phase du cycle B-swap au niveau que sa durée
+// mérite : DEBUG tant qu'elle est nominale (le cycle sain tourne ~40 fois par
+// minute en prod et saturait provider.log — cf. defaultSlowSwapThreshold), INFO
+// dès qu'elle atteint p.slowSwapThreshold, avec sa durée et threshold_ms pour
+// que l'anomalie soit lisible SANS réactiver le niveau debug.
+//
+// Ne couvre que le nominal : les WARN/ERROR du même cycle (drain timeout, échec
+// d'open RW, reopen RO échoué, watchdog de détention) sont émis directement et
+// restent inconditionnels.
+func (p *providerImpl) logSwapPhase(ctx context.Context, msg string, d time.Duration, attrs ...any) {
+	if threshold := p.slowSwapThreshold; threshold > 0 && d >= threshold {
+		slog.InfoContext(ctx, msg, append(attrs, "threshold_ms", threshold.Milliseconds())...)
+		return
+	}
+	slog.DebugContext(ctx, msg, attrs...)
 }
 
 // gateToDraining transitionne l'état RO → Draining sous p.mu pour gater
@@ -313,9 +336,10 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 		}
 		close(p.ready)
 		p.mu.Unlock()
-		slog.InfoContext(ctx, "provider: swap RW→RO terminé",
+		releaseDur := time.Since(swapStart)
+		p.logSwapPhase(ctx, "provider: swap RW→RO terminé", releaseDur,
 			"path", p.path, "label", holderLabel,
-			"total_ms", time.Since(swapStart).Milliseconds())
+			"total_ms", releaseDur.Milliseconds())
 		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
 		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
 		//
