@@ -182,26 +182,56 @@ func maskHas(idx []int, target int) bool {
 // payload : au-delà, la position du curseur ne serait plus digne de confiance, et lire du
 // bruit vaut moins que ne rien lire.
 //
-// LE SEUL EXEMPLAIRE de la marche biped de production (règle des <= 2 copies) : i48
-// (ScanFilmAbilityRanks) et i28 (ScanFilmCamoStates) la partagent. La marche ti=37 vit à
-// part (equipmentWalk.walk) : autre archétype, autre en-tête.
+// walkRecordTo s'exprime en UNE ligne de walkRecordComponents : la marche elle-même n'existe
+// qu'à un seul exemplaire (règle des <= 2 copies, CLAUDE.md n°6).
 func walkRecordTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, target int) bool {
+	found := false
+	walkRecordComponents(pay, i0, total, idx, lay, arch, func(id int) bool {
+		if id == target {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
+}
+
+// walkRecordComponents est LE SEUL EXEMPLAIRE de la marche biped de production (règle des
+// <= 2 copies) : i48 (ScanFilmAbilityRanks), i28 (ScanFilmCamoStates) et l'inventaire delta
+// (ScanFilmInventoryDeltas) la partagent. La marche ti=37 vit à part (equipmentWalk.walk) :
+// autre archétype, autre en-tête.
+//
+// Elle appelle visit(id) APRÈS la consommation de chaque composant du masque — c'est cette
+// consommation qui a déclenché les hooks du déser, donc à cet instant la publication du
+// composant `id` est disponible. visit rend false pour arrêter la marche (l'appelant a ce
+// qu'il voulait) ; walkRecordComponents rend alors false comme sur un arrêt d'erreur : c'est
+// visit, et lui seul, qui sait si la marche a abouti.
+//
+// LE PARCOURS S'INTERROMPT dès qu'un composant intermédiaire n'est pas porté ou que la marche
+// déborde du payload : au-delà, la position du curseur ne serait plus digne de confiance, et
+// lire du bruit vaut moins que ne rien lire.
+//
+// UN SEUL PARCOURS POUR N CIBLES. Appeler walkRecordTo une fois par composant recherché
+// relirait le record autant de fois ; l'inventaire en veut six (i22, i30, i31, i33, i34,
+// i47) et paierait six fois le même travail.
+func walkRecordComponents(
+	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, visit func(id int) bool,
+) {
 	at := i0 + lay.TotalBits() + i0TailBits
 	for _, id := range idx[1:] {
 		name := arch.component(id)
 		if name == "" {
-			return false
+			return
 		}
 		br := NewBitReader(pay)
 		br.SetBitPos(at)
 		_, _, ported := consumeByName(br, name, uint32(BipedTypeIndex), arch.Level(id))
 		if !ported || br.BitPos() > total {
-			return false
+			return
 		}
 		at = br.BitPos()
-		if id == target {
-			return true
+		if !visit(id) {
+			return
 		}
 	}
-	return false
 }

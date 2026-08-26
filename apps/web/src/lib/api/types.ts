@@ -2668,6 +2668,12 @@ export type ReplayProjectile = components['schemas']['Projectile']
 export type ReplayLoadout = components['schemas']['Loadout']
 export type ReplayAmmoSlot = components['schemas']['AmmoSlot']
 export type ReplayInventory = components['schemas']['Inventory']
+/**
+ * ReplayGrenadeRead — UNE lecture des grenades portees sur l axe `grenadeReads` (schema 20).
+ * Deux canaux l alimentent, et `src` dit lequel : 'kf' (image-cle, ~20 s) ou 'delta' (paquet
+ * delta, transmis AU CHANGEMENT).
+ */
+export type ReplayGrenadeRead = components['schemas']['GrenadeRead']
 // L'état ACTIF d'un équipement (schéma 7) : épisodes datés par vie, deux familles
 // mesurées (`camo`, `overshield`) — cf. equipmentFx.ts pour la lecture côté rendu.
 export type ReplayEquipmentEpisode = components['schemas']['EquipmentEpisode']

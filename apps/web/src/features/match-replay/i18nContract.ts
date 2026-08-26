@@ -356,6 +356,13 @@ export interface ReplayText {
   grenadeSelectedRead: string
   grenadeSelUnknown: string
   /**
+   * ÂGE PROPRE À LA BOÎTE DE GRENADES (schéma 20) : l'axe `grenadeReads` ne tombe pas sur les
+   * images-clés de l'inventaire, la boîte ne peut donc pas emprunter l'âge de la rangée. Un âge
+   * négatif est une lecture À VENIR et se dit comme telle — jamais déguisée en passé.
+   */
+  grenadeAge: string
+  grenadeAhead: string
+  /**
    * Capacité absente de la table du titre : la fiche pose un GLYPHE NEUTRE (pas un
    * caractère, décision utilisateur du 16/08) et dit en infobulle ce qu'on ne sait pas —
    * le RANG lu reste écrit, parce qu'il est la seule chose de vraie à cet endroit.

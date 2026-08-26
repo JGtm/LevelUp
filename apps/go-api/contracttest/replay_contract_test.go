@@ -328,7 +328,7 @@ var replaySchemas = []struct {
 //
 // Les douze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 37
+const wantReplayDocumentFields = 38
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

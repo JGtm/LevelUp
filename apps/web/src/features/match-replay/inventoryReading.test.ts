@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  grenadesCarried,
+  grenadeBoxAt,
+  grenadeReadingAt,
+  grenadesCarriedFrom,
   inventoryAt,
-  selectedGrenade,
+  selectedGrenadeFrom,
 } from './inventoryReading'
-import type { ReplayInventoryReady } from './replayNormalize'
 import { testReplayDoc as doc } from './test/testDoc'
-
-/** Un inventaire tel que la frontière le livre : ce qui n'a pas été lu y est un tableau vide. */
-function inv(over: Partial<ReplayInventoryReady> = {}): ReplayInventoryReady {
-  return { t: 0, slot: 1, g: [], am: [], ...over }
-}
 
 describe('inventoryAt', () => {
   const d = doc({
@@ -49,63 +45,6 @@ describe('inventoryAt', () => {
 
   it('sans inventaire, rend null', () => {
     expect(inventoryAt(doc(), 512, 60)).toBeNull()
-  })
-})
-
-describe('grenadesCarried', () => {
-  // Les libellés du document sont BILINGUES depuis le schéma v2 : une seule table nomme
-  // les rangs, et c'est le lecteur qui choisit sa langue.
-  const labels = [
-    { en: 'Frag', fr: 'Fragmentation' },
-    { en: 'Plasma', fr: 'Plasma' },
-    { en: 'Dynamo', fr: 'Dynamo' },
-    { en: 'Spike', fr: 'Spike' },
-  ]
-
-  it('n’affiche que les types réellement portés', () => {
-    // Le tableau publié est complet : un zéro y dit « ce type, aucune en réserve ». Montrer
-    // quatre types dont trois à zéro noierait celui qui compte.
-    const got = grenadesCarried(inv({ g: [0, 2, 0, 0] }), labels, 'fr')
-    expect(got).toEqual([{ rank: 1, name: 'Plasma', count: 2 }])
-  })
-
-  it('rend le nom dans la langue du lecteur', () => {
-    expect(grenadesCarried(inv({ g: [2, 0, 0, 0] }), labels, 'fr')[0].name).toBe('Fragmentation')
-    expect(grenadesCarried(inv({ g: [2, 0, 0, 0] }), labels, 'en')[0].name).toBe('Frag')
-  })
-
-  it('sans compteurs lus, ne rend rien — jamais quatre types à zéro', () => {
-    expect(grenadesCarried(inv(), labels, 'fr')).toEqual([])
-  })
-
-  it('sans table de noms, garde le rang plutôt qu’un nom inventé', () => {
-    expect(grenadesCarried(inv({ g: [3, 0, 0, 0] }), undefined, 'fr')[0].name).toBe('rang 0')
-  })
-})
-
-describe('selectedGrenade', () => {
-  it('déduit le type quand il ne peut pas être un autre — et le dit DÉDUIT', () => {
-    expect(selectedGrenade(inv({ g: [0, 0, 2, 0] }))).toEqual({ rank: 2, read: false })
-  })
-
-  it('la LECTURE du film (gs) prime la déduction, et se dit LUE', () => {
-    expect(selectedGrenade(inv({ g: [1, 2, 0, 0], gs: 1 }))).toEqual({ rank: 1, read: true })
-  })
-
-  it('deux types portés sans sélecteur lu : INDÉTERMINÉ, jamais deviné', () => {
-    // L'écran doit le dire (« sél. ? »), pas choisir : deviner afficherait une certitude
-    // qu'on n'a pas.
-    expect(selectedGrenade(inv({ g: [1, 2, 0, 0] }))).toBe('indeterminate')
-  })
-
-  it('un gs qui désigne un rang NON porté ne prime rien — la garde de cohérence du décodeur', () => {
-    // Le décodeur publie gs sous masque == compteurs : ce cas ne doit pas arriver, et s'il
-    // arrivait (artefact d'une autre version), on retombe sur la règle sans lecture.
-    expect(selectedGrenade(inv({ g: [0, 0, 2, 0], gs: 1 }))).toEqual({ rank: 2, read: false })
-  })
-
-  it('ne désigne rien sans lecture', () => {
-    expect(selectedGrenade(inv())).toBeNull()
   })
 })
 
@@ -197,5 +136,154 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
     expect(r?.age).toBe(-40)
     // La lecture rendue est bien la VIDE (t=50), pas la pleine future (t=80).
     expect(r?.state.g).toEqual([])
+  })
+})
+
+/**
+ * L'AXE DES GRENADES (schéma 20) — ce que ces cas verrouillent.
+ *
+ * Le lot 4.4 ajoute un SECOND canal sur la même grandeur : les paquets delta, transmis au
+ * changement, qui rafraîchissent entre deux images-clés. Deux choses peuvent casser sans que
+ * rien d'autre ne bouge — le repli sur un artefact ancien (la boîte se viderait) et la
+ * préférence pour la lecture la plus récente (le gain de fraîcheur disparaîtrait).
+ */
+describe('grenadeReadingAt', () => {
+  it('rend la lecture la PLUS RÉCENTE du slot, quel que soit le canal', () => {
+    const d = doc({
+      grenadeReads: [
+        { t: 10, slot: 512, g: [0, 2, 0, 0], gs: 1, src: 'kf' },
+        { t: 45, slot: 512, g: [0, 1, 0, 0], gs: 1, src: 'delta' },
+        { t: 20, slot: 513, g: [1, 0, 0, 0], src: 'kf' },
+      ],
+    })
+    const r = grenadeReadingAt(d, 512, 60)
+    expect(r?.src, 'la lecture delta est plus récente que la kf').toBe('delta')
+    expect(r?.g).toEqual([0, 1, 0, 0])
+    expect(r?.age, "l'âge est compté en frames depuis la lecture").toBe(15)
+  })
+
+  it("rend null quand l'artefact ne porte pas l'axe — le repli est le point", () => {
+    expect(grenadeReadingAt(doc({}), 512, 60)).toBeNull()
+  })
+
+  it('ignore les autres slots', () => {
+    const d = doc({ grenadeReads: [{ t: 10, slot: 999, g: [1, 0, 0, 0], src: 'delta' }] })
+    expect(grenadeReadingAt(d, 512, 60)).toBeNull()
+  })
+})
+
+/**
+ * grenadeBoxAt — LE DÉPARTAGE des deux sources de la boîte, éprouvé sans rendu.
+ *
+ * UNE LECTURE À VENIR NE PRIME JAMAIS UNE INFORMATION PASSÉE : même doctrine que la « lecture
+ * vide À VENIR » ci-dessus, née du même défaut (slot 554 du film de référence — une plasma
+ * affichée ~60 s avant sa première mesure, sous une infobulle « lu il y a X »).
+ */
+describe('grenadeBoxAt', () => {
+  const withBoth = doc({
+    inventory: [{ t: 0, slot: 512, g: [2, 0] }],
+    grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
+  })
+
+  it('la lecture de l’axe PASSÉE gagne, avec son âge — c’est le gain du lot', () => {
+    const d = doc({
+      inventory: [{ t: 0, slot: 512, g: [2, 0] }],
+      grenadeReads: [{ t: 60, slot: 512, g: [0, 3], src: 'delta' }],
+    })
+    expect(grenadeBoxAt(d, 512, 90, inventoryAt(d, 512, 90))).toEqual({
+      g: [0, 3],
+      gs: undefined,
+      age: 30,
+    })
+  })
+
+  it('sans axe (artefact ≤ 19), retombe sur l’inventaire — le repli est le point', () => {
+    const d = doc({ inventory: [{ t: 0, slot: 512, g: [1, 2], gs: 1 }] })
+    expect(grenadeBoxAt(d, 512, 60, inventoryAt(d, 512, 60))).toEqual({
+      g: [1, 2],
+      gs: 1,
+      age: 60,
+    })
+  })
+
+  it('lecture de l’axe À VENIR : les compteurs PASSÉS de l’inventaire priment', () => {
+    expect(grenadeBoxAt(withBoth, 512, 30, inventoryAt(withBoth, 512, 30))).toEqual({
+      g: [2, 0],
+      gs: undefined,
+      age: 30,
+    })
+  })
+
+  it('lecture À VENIR sans rien de passé : elle s’affiche, âge NÉGATIF assumé', () => {
+    const d = doc({ grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }] })
+    expect(grenadeBoxAt(d, 512, 30, inventoryAt(d, 512, 30))?.age).toBe(-60)
+  })
+
+  it('un inventaire passé SANS compteurs lus ne départage rien — `g` vide = non lu', () => {
+    // Un tableau vide dit « compteurs NON LUS », pas « aucune grenade » : ce n'est donc pas une
+    // information passée sur les grenades, et la lecture à venir reste le seul état à montrer.
+    const d = doc({
+      inventory: [{ t: 0, slot: 512, g: [] }],
+      grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
+    })
+    const box = grenadeBoxAt(d, 512, 30, inventoryAt(d, 512, 30))
+    expect(box?.g).toEqual([0, 5])
+    // L'ÂGE RESTE CELUI DE LA LECTURE À VENIR (négatif) : un mutant qui daterait ces compteurs
+    // de l'inventaire passé (age 30) fabriquerait une boîte « il y a X » pour des compteurs
+    // que rien n'a encore mesurés — exactement ce que le godoc de grenadeBoxAt interdit.
+    expect(box?.age).toBe(-60)
+  })
+
+  it('rend null quand ni l’axe ni l’inventaire ne portent ce slot', () => {
+    expect(grenadeBoxAt(doc({}), 512, 30, null)).toBeNull()
+  })
+})
+
+describe('selectedGrenadeFrom', () => {
+  it('retient la sélection LUE quand elle est cohérente avec les compteurs', () => {
+    expect(selectedGrenadeFrom([0, 2, 0, 1], 3)).toEqual({ rank: 3, read: true })
+  })
+
+  it('DÉDUIT le type quand un seul est porté, et le dit', () => {
+    expect(selectedGrenadeFrom([0, 2, 0, 0], undefined)).toEqual({ rank: 1, read: false })
+  })
+
+  it("reste indéterminé sur plusieurs types sans sélection lue — on ne devine pas", () => {
+    expect(selectedGrenadeFrom([1, 2, 0, 0], undefined)).toBe('indeterminate')
+  })
+
+  it('rend null quand aucune grenade n est portée', () => {
+    expect(selectedGrenadeFrom([0, 0, 0, 0], 2)).toBeNull()
+  })
+
+  it('ignore une sélection qui ne correspond à aucun compteur porté', () => {
+    expect(selectedGrenadeFrom([0, 2, 0, 0], 3)).toEqual({ rank: 1, read: false })
+  })
+})
+
+describe('grenadesCarriedFrom', () => {
+  // Les libellés du document sont BILINGUES depuis le schéma v2 : une seule table nomme les
+  // rangs, et c'est le lecteur qui choisit sa langue.
+  const labels = [
+    { en: 'Frag', fr: 'Fragmentation' },
+    { en: 'Plasma', fr: 'Plasma' },
+  ]
+
+  it("n'affiche que les types réellement portés, et garde le rang sans table", () => {
+    // Le tableau publié est complet : un zéro y dit « ce type, aucune en réserve ». Montrer
+    // quatre types dont trois à zéro noierait celui qui compte.
+    expect(grenadesCarriedFrom([0, 2, 0, 1], undefined, 'fr')).toEqual([
+      { rank: 1, name: 'rang 1', count: 2 },
+      { rank: 3, name: 'rang 3', count: 1 },
+    ])
+  })
+
+  it('rend le nom dans la langue du lecteur', () => {
+    expect(grenadesCarriedFrom([2, 0], labels, 'fr')[0].name).toBe('Fragmentation')
+    expect(grenadesCarriedFrom([2, 0], labels, 'en')[0].name).toBe('Frag')
+  })
+
+  it('sans compteurs lus, ne rend rien — jamais quatre types à zéro', () => {
+    expect(grenadesCarriedFrom([], labels, 'fr')).toEqual([])
   })
 })
