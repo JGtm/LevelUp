@@ -30,8 +30,15 @@ type reglageCarte struct {
 	Carte   string  `json:"carte,omitempty"`
 	Style   string  `json:"style,omitempty"`
 	Echelle float64 `json:"echelle,omitempty"`
-	Raison  string  `json:"raison"`
-	GateLe  string  `json:"gateLe"`
+	// EcreteToits : vider les pixels dont aucune surface n est a hauteur de jeu
+	// (himap/ecretage_toits.go). Jamais un defaut — il efface les rochers hauts d une carte
+	// qui en fait son identite.
+	EcreteToits bool `json:"ecreteToits,omitempty"`
+	// RogneAuxZones : effacer la matiere hors des zones nommees dilatees
+	// (himap/masque_zones.go). A ne poser qu apres avoir regarde le taux mesure.
+	RogneAuxZones bool   `json:"rogneAuxZones,omitempty"`
+	Raison        string `json:"raison"`
+	GateLe        string `json:"gateLe"`
 }
 
 type reglagesFond struct {
@@ -100,4 +107,61 @@ func (e *environnement) echelleDe(cle string) float64 {
 	slog.Info("mapfond: echelle propre a la carte", "carte", cle, "mpp", c.Echelle,
 		"gateLe", c.GateLe)
 	return c.Echelle
+}
+
+// ecreteToitsDe dit si cette carte demande l'écrêtage des toits. Le choix est JOURNALISÉ :
+// c'est la seule voie qui SUPPRIME de la matière, elle ne doit jamais passer inaperçue.
+func (e *environnement) ecreteToitsDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.EcreteToits {
+		return false
+	}
+	slog.Info("mapfond: ecretage des toits arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// zonesNommeesDe rend les polygones des callouts d'une carte : le contour principal de chaque
+// zone, plus ses PARTIES (provenance « decoupe »).
+//
+// LES TROUS NE SONT PAS SOUSTRAITS, et c'est délibéré : le masque sert à décider ce qu'on
+// GARDE. Un trou rempli garde un peu plus de matière — l'erreur va dans le sens prudent. Les
+// soustraire demanderait une règle pair-impair globale et ferait disparaître, au moindre défaut
+// de découpe, du terrain que personne n'a jugé.
+func (e *environnement) zonesNommeesDe(cle string) [][][2]float64 {
+	if e.callouts == nil {
+		return nil
+	}
+	entree, ok := e.callouts.Maps[cle]
+	if !ok {
+		return nil
+	}
+	var out [][][2]float64
+	for _, z := range entree.Zones {
+		if len(z.Polygon) >= 3 {
+			out = append(out, z.Polygon)
+		}
+		for _, p := range z.Parts {
+			if len(p) >= 3 {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
+}
+
+// rogneAuxZonesDe dit si cette carte demande le rognage sur ses zones nommées. Journalisé :
+// c'est, avec l'écrêtage, l'une des deux voies qui SUPPRIMENT de la matière.
+func (e *environnement) rogneAuxZonesDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.RogneAuxZones {
+		return false
+	}
+	slog.Info("mapfond: rognage aux zones nommees arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
 }

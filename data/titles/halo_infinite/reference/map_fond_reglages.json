@@ -1,11 +1,29 @@
 {
   "schemaVersion": 1,
-  "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage `jeu`, echelle 0,0920 m/px).",
+  "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage jeu, echelle 0,0920 m/px).",
   "cartes": {
+    "ctf_bazaar": {
+      "carte": "Bazaar",
+      "style": "encre",
+      "echelle": 0.034,
+      "ecreteToits": true,
+      "rogneAuxZones": true,
+      "raison": "Gate du 2026-08-26, carte 3. Meme traitement que Streets, qui est la carte la plus proche par sa nature : une rue couverte, dense, dont les toits cachent le terrain. Echelle 0,034 m/px parce que la matiere utile de Bazaar ne fait que 57,1 x 52,2 m, soit 621 x 567 px a l echelle de production. Ecart mediane-ancres / sol -4,22 m avant traitement, le meme ordre que Streets (-4,33 m) dont les toits expliquaient l ecart. 29 zones de callout au catalogue. TEMOIN a valider : rien n est publie tant que le gate n a pas eu lieu.",
+      "gateLe": "2026-08-26"
+    },
     "ridgeline": {
       "carte": "Cliffhanger",
       "style": "encre",
-      "raison": "Gate du 2026-08-26 : l'utilisateur a compare les deux habillages sur planche et retenu `encre` pour cette carte. Le fond en production etait en `jeu` (fond noir, arene claire) ; sur une arene a ciel ouvert bordee de rochers hauts, `encre` garde les rochers lisibles en gris au lieu de les noyer dans le noir, et la riviere reste le seul aplat colore.",
+      "raison": "Gate du 2026-08-26, carte 1, VALIDEE. L'utilisateur a compare les deux habillages sur planche et retenu l'encre pour cette carte. Le fond en production etait en style jeu (fond noir, arene claire) ; sur une arene a ciel ouvert bordee de rochers hauts, l'encre garde les rochers lisibles en gris au lieu de les noyer dans le noir, et la riviere reste le seul aplat colore.",
+      "gateLe": "2026-08-26"
+    },
+    "sgh_streets": {
+      "carte": "Streets",
+      "style": "encre",
+      "echelle": 0.036,
+      "ecreteToits": true,
+      "rogneAuxZones": true,
+      "raison": "Gate du 2026-08-26, carte 2. Meme choix que Cliffhanger, et il porte ici un benefice mesurable en plus de l'esthetique : Streets a un ecart mediane-ancres / sol de -4,33 m, donc le style jeu peint une partie de son arene en recul froid. L'encre ne fait varier que la VALEUR (au plus -45 %) et ne bascule pas la teinte : le defaut de niveau de jeu, qui reste a corriger, y pese beaucoup moins. Echelle portee a 0,036 m/px : la matiere utile de Streets ne fait que 50,5 x 39,2 m, donc a l echelle de production (0,0920) elle ne pesait que 549 x 426 px — minuscule et pixelisee des qu on l agrandit. A 0,036 elle passe a environ 1 740 x 1 420 px. Toits ecretes : 495 752 pixels substitues, 0 vide — chaque toit avait un sol dessous, rien n a ete perdu, et l ecart mediane-ancres / sol est passe de -2,48 m a -0,29 m. Rogne aux 33 zones de callout dilatees de 4 m : 306 810 cellules sur 1 526 464 (20,1 %) etaient hors zones, essentiellement la ceinture exterieure qui faisait de la carte une dalle rectangulaire. VALIDE par l utilisateur sur planche a quatre etats.",
       "gateLe": "2026-08-26"
     }
   }

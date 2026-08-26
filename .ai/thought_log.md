@@ -72844,3 +72844,49 @@ cote de l'habillage de cuisson.
 (https://claude.ai/code/artifact/e3f8f959-14a3-44a8-b426-26a27f13832b), en attente du verdict.
 Les deux defauts connus de Cliffhanger restent entiers et viendront a leur tour : largeur utile
 68,6 % du cadre, et l'echelle. Ordre des suivantes au registre.
+
+---
+
+## [2026-08-26] Cartes 1 et 2 closes — les quatre axes du fond existent, et le code s'arrete la
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : la boucle une-carte-a-la-fois a fait sortir QUATRE axes de
+reglage, chacun ne devant son existence qu'a un defaut mesure sur une carte reelle :
+
+1. **habillage** (`styleDe`) — le gate a demande `encre` la ou `jeu` etait publie ;
+2. **echelle** (`OptionsCuisson.Echelle`, `CadreSurAncresEchelle`, `--mpp`) — la matiere utile
+   de Streets ne pesait que 549 x 426 px, minuscule et pixelisee des qu'on l'agrandit ;
+3. **cadre utile** (`himap/cadre_utile.go`) — le cadre publie etait la boite des ancres plus
+   50 m CONSTANTS, jamais recalcule apres la coquille de mort : 53,5 % de largeur occupee en
+   mediane sur les 19 natifs. Le cadre publie est desormais la boite de la MATIERE plus 6 m ;
+   l'origine du calage suit le rognage, l'echelle NON (temoin dedie : confondre les deux
+   decalerait toutes les positions du rejeu) ;
+4. **ecretage des toits** (`himap/ecretage_toits.go`) et **rognage aux zones nommees**
+   (`himap/masque_zones.go`) — les deux seules voies qui SUPPRIMENT de la matiere, donc toutes
+   deux journalisees et chiffrees au sidecar.
+
+Les quatre sont des ENTREES de `OptionsCuisson`, choisies en DONNEE
+(`map_fond_reglages.json`, une entree par carte avec raison ecrite et date de gate).
+`internal/himap` ne gagne aucune branche par carte.
+
+**Resultats observes** : **carte 1 Cliffhanger VALIDEE** (`encre` seul ; son cadre a 68,6 % et
+son echelle restent a repasser, mais NI ecretage NI masque : ses rochers sont a plus de 6 m de
+la reference et hors de ses zones nommees, les deux les effaceraient et l'utilisateur les a
+valides). **Carte 2 Streets VALIDEE avec les quatre traitements** : matiere 549 x 426 ->
+1 737 x 1 422 px, largeur utile 40,6 % -> 80,8 %, 495 752 pixels substitues par l'ecretage
+(0 vide — chaque toit avait un sol dessous), ecart mediane-ancres / sol **-2,48 m -> -0,29 m**
+(la valeur d'etalonnage : sur Streets l'ecart au sol ETAIT les toits), et 306 810 cellules sur
+1 526 464 (20,1 %) retirees par le masque des 33 zones de callout.
+
+Trois constats a garder : (a) le vrai coupable du probleme des toits est le SEUIL
+`SeuilCarteCouverte` (1/3) et non le mecanisme — Streets, mesuree a 7,1 %, n'a jamais declenche
+la voie de reference qui lui allait ; (b) le contour du masque porte des marches rectilignes,
+ce sont les carres de la dilatation, une dilatation circulaire les supprimerait ; (c) le
+rognage aux zones ne vaudra JAMAIS pour les 37 fonds Forge — 0 callout dessus, et ce sont les
+plus mal cadres.
+
+**Conclusion / prochaine etape** : le lot de CODE est clos. Les cartes suivantes ne font plus
+bouger que deux choses — leur ligne de reglages et leur PNG — donc plus de passe de tests par
+carte (remarque de l'utilisateur, actee). Carte 3 = Bazaar : `encre`, 0,034 m/px, ecretage,
+masque des 29 zones ; temoin d'abord.
