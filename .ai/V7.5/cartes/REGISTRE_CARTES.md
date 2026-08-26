@@ -227,12 +227,14 @@ de travail pour atteindre une version valide, pas de regle de rendu final.
 |---|---|---|
 | 2026-08-26 | `sceneBounds` gonflait le cadre du rejeu avec `geometryBounds` (props Forge) MEME quand un fond de carte est pose — or les props ne sont alors PAS dessines (`else if` du fond dans `ReplayCanvas`). Cadre dimensionne sur de la matiere invisible, carte reduite a un timbre. | CORRIGE (`replayLogic.ts`, 3 temoins, mutation verifiee) |
 | 2026-08-26 | Le cadre des fonds PUBLIES est la boite des ancres plus 50 m constants, jamais recalcule apres la coquille : mediane 53,5 % de largeur utile sur les natifs. | phase 2 du plan |
+| 2026-08-26 | **Le catalogue d objectifs avait perdu 59 modules sur 71** (`d50f3b728`, re-tirage reseau du 25/08) : `module` ecrase par le nom de fichier servi par le reseau (`map.mvar`) sur 58 des 73 entrees. `mapfond-build` ne savait plus cuire que 11 des 19 fonds natifs PUBLIES — Cliffhanger, Aquarius, Prism, Streets, Recharge, Chasm, Launch Site, Behemoth incuisables, dont SIX sur la liste a finaliser du jour. Le garde-rail du lot fautif comptait les collines, il etait vert. | CORRIGE `d014fce69` (donnee reparee, `gardeModuleConnu`, `TestCatalogueObjectifsModulesDistincts`, mordant par mutation) |
 
 ## Planches de gate
 
 | date | lot | planche | contenu |
 |---|---|---|---|
 | 2026-08-26 | etat des lieux | https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40 | les 56 fonds publies + Catalyst a trois etats (publie / re-cuisson 26/08 / temoin 10/08) |
+| 2026-08-26 | style `jeu` / `encre` | https://claude.ai/code/artifact/6c9ec756-95e6-451a-8977-5e61debb8bae | les 19 fonds natifs dans les deux habillages, ordre des verdicts du 26/08 |
 
 Outil : `cmd/mapfond-planche` — manifeste TSV (cle, libelle, sous-titre, statut, colonne,
 chemin PNG), une page HTML autonome, vignettes en data URI. Plusieurs lignes de meme cle
