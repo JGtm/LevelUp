@@ -393,3 +393,54 @@ describe('useReplayWeaponPads — quand, et SEULEMENT quand, le calque se tait',
     expect(count(ops, 'arc')).toBeGreaterThanOrEqual(5)
   })
 })
+
+/**
+ * A9 — UN SOCLE, UNE MARQUE (retour utilisateur du 2026-08-26 : « j'ai l'impression qu'il y en
+ * a deux »).
+ *
+ * CE QUE LA MESURE A MONTRÉ, et c'est la preuve du doublon : sur les CINQ socles réels de
+ * `530820e5`, le calque émettait DIX arcs. Cinq points, plus cinq disques pleins posés une
+ * dizaine de pixels sous eux — le glyphe de repli de `drawPadIcon`, du même rayon que le point.
+ * Aucune duplication de DONNÉE (`crossedWeaponPads` rendait bien cinq socles) : le doublon
+ * était entièrement au tracé.
+ */
+describe('useReplayWeaponPads — A9 : un socle ne se dessine JAMAIS deux fois', () => {
+  it('cinq socles réels, CINQ marques — plus dix', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    expect(count(ops, 'arc')).toBe(5)
+  })
+
+  it('chaque arc est SUR un socle : aucune marque décalée sous un autre', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const centres = SOCLES_530820E5.map((p) =>
+      worldToCanvas(p, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad),
+    )
+    for (const o of ops.filter((op) => op.op === 'arc')) {
+      const [x, y] = o.args as number[]
+      const surUnSocle = centres.some((c) => Math.abs(c.x - x) < 0.01 && Math.abs(c.y - y) < 0.01)
+      expect(surUnSocle, `arc à (${x}, ${y}) hors de tout socle`).toBe(true)
+    }
+  })
+
+  it('la vignette se pose SUR le point, jamais en dessous', () => {
+    const doc = DOC_530820E5()
+    const { ops, ctx } = recordingContext()
+    const image = { width: 40, height: 20 } as unknown as CanvasImageSource
+    drawWeaponPadsLayer(ctx, doc.weaponPads, VUE_REELLE, { frame: 0, frameMs: 100, k: 1 }, {
+      ...STYLE,
+      scaleOf: () => 'classic',
+      iconOf: () => ({ fill: image, outline: null }),
+    })
+    const c = worldToCanvas(
+      SOCLES_530820E5[0], VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad,
+    )
+    const images = ops.filter((o) => o.op === 'drawImage').map((o) => o.args as number[])
+    // `drawImage(src, x, y, w, h)` : le centre vertical de la vignette est y + h/2.
+    const surLePoint = images.some(([, , y, , h]) => Math.abs(y + h / 2 - c.y) < 0.01)
+    expect(surLePoint, 'la vignette est décalée par rapport au point').toBe(true)
+  })
+})

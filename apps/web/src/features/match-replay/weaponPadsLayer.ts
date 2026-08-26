@@ -282,12 +282,11 @@ function drawPadIcon(
   icon: PadIcon | null,
 ): void {
   const h = PAD_ICON_H_PX[scale] * time.k
-  if (!icon) {
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, PAD_DOT_PX[scale] * time.k * 0.5, 0, Math.PI * 2)
-    ctx.fill()
-    return
-  }
+  // PAS DE GLYPHE DE REPLI (retour utilisateur du 2026-08-26 : « j'ai l'impression qu'il y en
+  // a deux »). Sans vignette, ce bloc posait un DISQUE PLEIN du même rayon que le point, à une
+  // dizaine de pixels sous lui : deux ronds empilés pour un seul socle, que l'œil lisait comme
+  // deux socles. Le point porte déjà la position ET l'état — il se suffit.
+  if (!icon) return
   const source = icon.fill
   const natW = 'width' in source && typeof source.width === 'number' ? source.width : 0
   const natH = 'height' in source && typeof source.height === 'number' ? source.height : 0
@@ -360,14 +359,16 @@ export function drawWeaponPadsLayer(
     ctx.strokeStyle = style.ink
     ctx.fillStyle = style.ink
     drawDot(ctx, c, radius, state, time)
-    // LA VIGNETTE, SOUS le point : son centre est décalé de son propre demi-cadre, sinon
-    // c'est son bord haut qui viendrait toucher le point.
+    // LA VIGNETTE SUR LE POINT, PLUS SOUS LUI (retour utilisateur du 2026-08-26). Elle était
+    // posée une dizaine de pixels plus bas — un point ici, une image là — et les deux se
+    // lisaient comme DEUX socles voisins plutôt que comme un seul. Centrée, elle coiffe le
+    // point : UN socle, UNE marque. Le point reste dessous et garde son rôle, qui n'a jamais
+    // été d'être vu pour lui-même : il porte l'ÉTAT (plein / incertain / vide) par sa forme.
     const iconAlpha = PAD_ALPHA[state].icon
     if (iconAlpha > 0) {
       ctx.globalAlpha = iconAlpha
       ctx.fillStyle = style.fill
-      const dy = radius + (PAD_GAP_PX + PAD_ICON_H_PX[scale] / 2) * time.k
-      drawPadIcon(ctx, { x: c.x, y: c.y + dy }, scale, time, style.iconOf(pad.weapon))
+      drawPadIcon(ctx, c, scale, time, style.iconOf(pad.weapon))
     }
     // LE COMPTE À REBOURS, AU-DESSUS du point.
     const left = padRespawnSecondsAt(pad, time.frame, time.frameMs)
