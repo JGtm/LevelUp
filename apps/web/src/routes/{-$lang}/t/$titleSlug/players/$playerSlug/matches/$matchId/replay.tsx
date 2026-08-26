@@ -24,6 +24,7 @@ import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
+import { replayWindow } from '@/features/match-replay/replayWindow'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { collectKillEvents } from '@/features/match-view/_momentum'
@@ -121,6 +122,15 @@ function ReplayPage() {
   // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
   const t0Ms = matchView?.header.t0_ms ?? 0
   const nowMs = data ? frameToMs(frame, data) : 0
+  // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (et nulle part ailleurs) : le film
+  // déborde le match du countdown d'avant-partie et d'une queue de 5-6 s, et les deux bornes
+  // demandent l'artefact ET l'en-tête — deux requêtes distinctes qui ne se rejoignent qu'à ce
+  // niveau. La lecture, la frise, l'horloge, le fil et les infobulles la reçoivent ; aucun ne
+  // la recalcule. `null` = pas de cadrage établi, tout le monde retombe sur le film entier.
+  const playWindow = useMemo(
+    () => (data ? replayWindow(data, matchView?.header) : null),
+    [data, matchView?.header],
+  )
 
   const hasReplay = !!data && data.tracks.length > 0
 
@@ -185,11 +195,13 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               frame={frame}
               nowMs={nowMs}
+              playWindow={playWindow}
               locale={locale}
             />
             <ReplayCanvas
               doc={data}
               locale={locale}
+              playWindow={playWindow}
               kills={kills}
               t0Ms={t0Ms}
               onFrameChange={setFrame}
@@ -225,6 +237,7 @@ function ReplayPage() {
                   medals={medalEvents}
                   t0Ms={t0Ms}
                   nowMs={nowMs}
+                  playWindow={playWindow}
                   doc={data}
                   scoreboard={scoreboard}
                   xuidMeta={xuidMeta}

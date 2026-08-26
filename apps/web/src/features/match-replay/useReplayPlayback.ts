@@ -24,17 +24,35 @@
  * cf. useReplaySound — le laisser en arrière ferait repartir un son enjambé au prochain clic).
  *
  * RELANCER RESTE À UN CLIC, et c'est la convention des lecteurs vidéo : « Lecture » sur un
- * rejeu terminé repart de zéro plutôt que de rester bloqué sur la dernière image, où la boucle
+ * rejeu terminé repart du début plutôt que de rester bloqué sur la dernière image, où la boucle
  * se rendormirait aussitôt. « Recommencer » ne change pas — il ramène au début à tout instant.
+ *
+ * # « LE DÉBUT » ET « LA FIN » SONT CEUX DU MATCH, PAS CEUX DU FILM
+ *
+ * Depuis le 2026-08-26, les deux bornes viennent de la FENÊTRE DE GAMEPLAY (`replayWindow.ts`) :
+ * la lecture démarre au coup d'envoi et s'arrête à la fin déclarée, sans le countdown
+ * d'avant-match ni la queue de 5-6 s que le film garde après. La mécanique ne change pas d'un
+ * pas — seules les deux valeurs changent. Sans fenêtre (artefact ancien, en-tête sans durée
+ * jouable), les bornes redeviennent celles du film : image zéro et dernière image.
+ *
+ * LE CURSEUR SE POSE AU DÉBUT QUAND LA FENÊTRE SE CONNAÎT, et pas avant : elle vient de la
+ * Match View, qui arrive APRÈS le document du rejeu. Le repositionnement ne va donc que vers
+ * l'AVANT (jamais un retour en arrière sous les doigts de qui a déjà déplacé la frise).
  */
 import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
 
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayWindowBounds } from './replayWindow'
 
 /** Ce dont la lecture a besoin (objet unique : la règle des 5 paramètres du dépôt). */
 export interface ReplayPlaybackOptions {
   doc: ReplayDocumentReady
+  /**
+   * La fenêtre de gameplay du match (cf. `replayWindow.ts`). `null` = pas de cadrage établi :
+   * la lecture reprend les bornes du film entier, exactement comme avant ce lot.
+   */
+  playWindow: ReplayWindowBounds | null
   /** Cadence « 1× » du document, en images par seconde (cf. useReplayTiming). */
   baseFps: number
   /** Multiplicateur de vitesse choisi dans la barre de lecture. */
@@ -53,8 +71,14 @@ export interface ReplayPlaybackOptions {
 export interface ReplayPlayback {
   playing: boolean
   /**
-   * LA DERNIÈRE IMAGE du document : la borne de la frise ET l'instant où la lecture s'arrête.
-   * Une seule valeur pour les deux, sinon le curseur pourrait buter avant (ou après) l'arrêt.
+   * LA PREMIÈRE IMAGE DU GAMEPLAY : la borne basse de la frise ET le point de départ de la
+   * lecture, de « Recommencer » et du rembobinage de fin. Sans fenêtre : l'image zéro.
+   */
+  startFrame: number
+  /**
+   * LA DERNIÈRE IMAGE DU GAMEPLAY : la borne haute de la frise ET l'instant où la lecture
+   * s'arrête. Une seule valeur pour les deux, sinon le curseur pourrait buter avant (ou
+   * après) l'arrêt. Sans fenêtre : la dernière image du document.
    */
   endFrame: number
   /** Le curseur de la frise : piloté par la boucle, jamais contrôlé par React. */
@@ -65,10 +89,22 @@ export interface ReplayPlayback {
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
-  const { doc, baseFps, speed, renderWidth, frameRef, draw, soundTick } = o
+  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, soundTick } = o
   const sliderRef = useRef<HTMLInputElement>(null)
   const [playing, setPlaying] = useState(true)
-  const endFrame = Math.max(doc.frameCount - 1, 0)
+  const lastFrame = Math.max(doc.frameCount - 1, 0)
+  const startFrame = playWindow?.startFrame ?? 0
+  const endFrame = playWindow?.endFrame ?? lastFrame
+
+  // LE COUP D'ENVOI, DÈS QUE LA FENÊTRE SE CONNAÎT (cf. l'en-tête) : elle arrive avec la Match
+  // View, donc après le premier rendu. On ne pose le curseur que s'il est encore EN DEÇÀ du
+  // début — le repositionnement ne recule jamais la lecture.
+  useEffect(() => {
+    if (frameRef.current >= startFrame) return
+    frameRef.current = startFrame
+    if (sliderRef.current) sliderRef.current.value = String(startFrame)
+    draw()
+  }, [startFrame, frameRef, draw])
 
   // Boucle de lecture (requestAnimationFrame) uniquement quand `playing`.
   //
@@ -109,9 +145,13 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     if (!playing) draw()
   }
 
+  const rewind = () => {
+    frameRef.current = startFrame
+    if (sliderRef.current) sliderRef.current.value = String(startFrame)
+  }
+
   const restart = () => {
-    frameRef.current = 0
-    if (sliderRef.current) sliderRef.current.value = '0'
+    rewind()
     setPlaying(true)
   }
 
@@ -119,12 +159,9 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     // REPARTIR DU DÉBUT SUR UN REJEU TERMINÉ (cf. l'en-tête) : sans ce rembobinage, la boucle
     // relancée à `endFrame` conclurait « fin » à son premier pas et se rendormirait — le bouton
     // « Lecture » n'aurait aucun effet visible.
-    if (!playing && frameRef.current >= endFrame) {
-      frameRef.current = 0
-      if (sliderRef.current) sliderRef.current.value = '0'
-    }
+    if (!playing && frameRef.current >= endFrame) rewind()
     setPlaying((p) => !p)
   }
 
-  return { playing, endFrame, sliderRef, togglePlay, restart, onScrub }
+  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub }
 }

@@ -43,6 +43,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       onRestart={onRestart}
       clockRef={createRef<HTMLSpanElement>()}
       sliderRef={createRef<HTMLInputElement>()}
+      minFrame={0}
       maxFrame={100}
       onScrub={vi.fn()}
       speed={1}
@@ -58,6 +59,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       leadMarks={{
         changes: [],
         frameCount: 101,
+        playWindow: null,
         allyOf: () => null,
         labelOf: () => '',
         locale: 'fr',
@@ -99,6 +101,16 @@ describe('ReplayTransport — lecture en icônes', () => {
     expect(btn.querySelector('svg')).toBeTruthy()
     fireEvent.click(btn)
     expect(onRestart).toHaveBeenCalledTimes(1)
+  })
+
+  it('LA FRISE NE SORT PAS DE LA FENÊTRE DE GAMEPLAY : un scrub est borné aux deux bouts', () => {
+    renderTransport({ minFrame: 149, maxFrame: 4_929 })
+    const frise = screen.getAllByLabelText('Temps de match').find((el) => el.tagName === 'INPUT')
+    expect(frise).toBeTruthy()
+    expect(frise).toHaveAttribute('min', '149')
+    expect(frise).toHaveAttribute('max', '4929')
+    // Le curseur démarre AU coup d'envoi, pas au premier paquet du film.
+    expect((frise as HTMLInputElement).value).toBe('149')
   })
 })
 
