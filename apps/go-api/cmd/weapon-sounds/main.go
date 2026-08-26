@@ -230,6 +230,8 @@ func main() {
 		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb, toutes)
 	case "eqip-durees":
 		err = triageDurees(chemin, *sortie, parserHexa(*exclure), *sortieTir, *emb, *limite)
+	case "deps-ordre":
+		err = dependancesEnOrdre(chemin, temoins[0], *limite)
 	case "audit-modes":
 		err = auditModesConteneurs(chemin, parserHexa(*banksSup))
 	case "banks-noms":
