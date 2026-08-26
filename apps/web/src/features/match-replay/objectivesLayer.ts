@@ -355,6 +355,36 @@ export function drawObjectivePulses(
 }
 
 /**
+ * zoneCornersWorld rend les QUATRE COINS MONDE d'une zone en boîte : centre ± fwd·halfX ±
+ * perp·halfY. La perpendiculaire est le fwd tourné de +90° monde — l'inversion d'axe Y est
+ * portée par `worldToCanvas`, jamais ici.
+ *
+ * IL EST EXPORTÉ, ET C'EST LA RAISON D'ÊTRE DE L'EXTRACTION (2026-08-25, item D-R). Deux
+ * lecteurs ont besoin de cette formule : le TRACÉ du contour (`traceZonePath`) et l'EMPRISE
+ * écran de la zone (`zoneStatesLayer`, pour clipper le remplissage progressif de capture). La
+ * recopier ferait exactement ce que l'en-tête de `traceZonePath` interdisait déjà — deux
+ * géométries qui divergent au premier correctif, avec un écart invisible parce que crédible.
+ */
+export function zoneCornersWorld(e: ObjectiveElementReady): XY[] {
+  const perp = { x: -e.fwd.y, y: e.fwd.x }
+  return [
+    { x: e.x + e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX + perp.y * e.halfY },
+    { x: e.x - e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX + perp.y * e.halfY },
+    { x: e.x - e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX - perp.y * e.halfY },
+    { x: e.x + e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX - perp.y * e.halfY },
+  ]
+}
+
+/**
+ * zoneCanvasRadius rend le rayon ÉCRAN d'une zone cylindrique, plancher compris. Exporté pour
+ * la même raison que `zoneCornersWorld` : le tracé et l'emprise doivent lire le MÊME rayon, y
+ * compris son plancher — sinon l'emprise et le contour se décalent sur les toutes petites zones.
+ */
+export function zoneCanvasRadius(e: ObjectiveElementReady, scale: number): number {
+  return Math.max(e.radius * scale, 2)
+}
+
+/**
  * traceZonePath pose le contour d'une zone — boîte ORIENTÉE (4 coins monde) ou cylindre (rayon
  * monde -> pixels).
  *
@@ -372,19 +402,10 @@ export function traceZonePath(
   ctx.beginPath()
   if (e.family === 'cylinder') {
     const c = px(e)
-    ctx.arc(c.x, c.y, Math.max(e.radius * scale, 2), 0, Math.PI * 2)
+    ctx.arc(c.x, c.y, zoneCanvasRadius(e, scale), 0, Math.PI * 2)
     return
   }
-  // Coins monde : centre ± fwd·halfX ± perp·halfY. La perpendiculaire est le fwd tourné de
-  // +90° monde — l'inversion d'axe Y est portée par worldToCanvas.
-  const perp = { x: -e.fwd.y, y: e.fwd.x }
-  const corners: XY[] = [
-    { x: e.x + e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX + perp.y * e.halfY },
-    { x: e.x - e.fwd.x * e.halfX + perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX + perp.y * e.halfY },
-    { x: e.x - e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y - e.fwd.y * e.halfX - perp.y * e.halfY },
-    { x: e.x + e.fwd.x * e.halfX - perp.x * e.halfY, y: e.y + e.fwd.y * e.halfX - perp.y * e.halfY },
-  ]
-  corners.forEach((w, i) => {
+  zoneCornersWorld(e).forEach((w, i) => {
     const c = px(w)
     if (i === 0) ctx.moveTo(c.x, c.y)
     else ctx.lineTo(c.x, c.y)

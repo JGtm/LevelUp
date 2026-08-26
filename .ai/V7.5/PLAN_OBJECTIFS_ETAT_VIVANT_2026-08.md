@@ -1,0 +1,636 @@
+# Plan — L'ETAT VIVANT DES OBJECTIFS DE MODE (rejeu 2D), inventaire par mode et suite
+
+> Ecrit le 2026-08-25 par la phase D0 du LOT D de `PLAN_REPLAY2D_NOTION_2026-08-25.md` (point 11
+> de l'encadre Notion « REPLAY 2D » : « Objectifs de mode : PLACEMENT statique acquis, ETAT vivant
+> a faire »). Branche `wt/obj-etat`, base `c42624dd5`. Contrat d'execution : skill
+> `plan-execution` — il fait foi, ce plan ne le paraphrase pas.
+>
+> **D0 EST UNE PHASE DE PLAN. Aucune implementation n'a ete faite, aucune mesure lancee.** Tout
+> ce qui suit est etabli SUR PIECES par lecture du code et des archives de chantier ; chaque fait
+> porte son `fichier:ligne` ou son document. Les seuils, eux, sont ECRITS AVANT MESURE et ne se
+> rebaissent pas.
+
+---
+
+## 1. Ce qui est DEJA vivant (verifie sur pieces — ne pas re-mesurer, ne pas reimplementer)
+
+| ce qui vit | ou, dans le code | schema |
+|---|---|---|
+| **Zones de Bastion (Strongholds)** : proprietaire par intervalle, `null` = personne, jauge de capture en direct | `replay/zone_states.go`, `zone_states_owner.go`, `zone_states_gauge.go` ; contrat `document_zones.go` | 16 puis 18 |
+| **Colline de KOTH** : la colline DESIGNEE par le film (tag 5 de l'objet de mode), periodes fermees a la bascule, forme appariee par la grappe des positions, `Active = true` | `replay/zone_states_hill.go:41-135` ; role `hill` au catalogue et a la table du titre | 18 |
+| **Drapeau de CTF** : la vie de chaque drapeau (`carried` / `carried_open` / `dropped` / `home`), porteur en xuid, lacher volontaire date par l'OBJET `ti=42` | `replay/flag_carries.go`, `flag_objects.go`, `document_objectives_live.go` | 14 puis 15 |
+| **Score dans le temps** (l'oracle transverse de tout ce plan) : score de MODE par camp et score PERSONNEL par joueur, a la milliseconde, par manche | `objectiveevents/score.go:26-38`, `replay/document_score.go` | 12 |
+| **Objectifs STATIQUES** de tous les modes servis (formes + marqueurs), croises A LA REQUETE | `service/replay_map_objectives.go`, `replay/map_objectives.go` | — |
+| **Calques web** : geometrie statique / etat vivant separes | `objectivesLayer.ts` (393 l.), `zoneStatesLayer.ts` (377 l.), `flagCarriesLayer.ts` (279 l.) | — |
+
+Etat du depot a la base `c42624dd5` : `replay.SchemaVersion = 19` (`replay/document.go:158`),
+`wantReplayDocumentFields = 37` (`contracttest/replay_contract_test.go:331`),
+`EXPECTED_REPLAY_SCHEMA_VERSION = 19` (`apps/web/src/features/match-replay/replaySchemaLogic.ts:33`).
+
+**CORRECTION AU BRIEF DU LOT D** : le brief annonce « schema courant 18, prochain libre 19 ». Le
+19 est PRIS depuis le 2026-08-25 par le lot 1 « lecture vide » (`inventory[].empty`, chronique en
+tete de `document.go`). Le prochain numero libre est **20** — et la regle du depot est « un numero
+par montee, DANS L'ORDRE DE FUSION » : le numero exact se fixe a la phase de publication, pas
+maintenant. Arbitrage n°1 pour le superviseur (§6).
+
+---
+
+## 2. INVENTAIRE PAR MODE de l'etat vivant manquant
+
+Colonnes : le CANAL mesurable (offline-pur obligatoire — aucune dependance Cheat Engine ni Ghidra
+a l'extraction), l'ORACLE et son TEMOIN NEGATIF, le SEUIL, et le verdict de faisabilite.
+
+### 2.1 Strongholds / Bastion — `[~]` COUVERT, deux residus ecrits
+
+Le proprietaire vivant EST publie : canal `ti=13` **tag 4** (`0xFFFFFFFF` = personne, sinon index
+d'equipe), appariement slot -> zone par les prises NOMMEES du statborg attribuees geometriquement
+(`ZoneMethodCaptures`, mesure 93,1 % et 98,4 %, temoins 41-48 % et 51-57 %). L'etat CONTINU et
+l'etat NEUTRE sortent tous deux du meme canal — **les evenements de prise ne suffisent pas et ne
+sont pas ce qui porte l'etat** : ils ne servent qu'a APPARIER un slot a une zone, une fois par
+match. C'est la reponse a la question du brief.
+
+Deux residus, ECRITS et non traites par ce plan :
+
+- **`contested` est REFUTE** (pas reporte) : les slots de rampe ne portent PAS de tag 4, les deux
+  familles sont disjointes — la question est VIDE sur ce corpus (`document_zones.go`, § « ce que
+  la mesure a refuse de publier »).
+- **Les zones a `ownerUnpaired`** (jauge appariee, aucun canal de propriete elu) ne sont pas
+  publiees, et c'est deliberement : `coverage.zones.ownerUnpaired` les compte pour que le silence
+  ne soit pas muet.
+
+La DONNEE de Bastion est donc complete ; ce qui reste est du RENDU, et c'est l'item D-R
+(phase D6) : la progression de capture doit se lire SUR la forme de la base au lieu d'un arc
+externe, et l'appartenance y est jugee trop discrete.
+
+### 2.2 KOTH — `[ ]` LE PROPRIETAIRE DE LA COLLINE MANQUE (le trou le moins cher du lot)
+
+Ce qui manque, exactement : `hillStatesOf` (`zone_states_hill.go:341-371`) construit ses
+intervalles avec `Active: true` et **`Owner` jamais renseigne** — le rejeu sait QUELLE colline est
+active, jamais QUI la tient. C'est ecrit noir sur blanc en tete du fichier : « CE QUE CE VOLET NE
+PUBLIE PAS : le PROPRIETAIRE. Le tag 4 du slot voisin est un canal de propriete au sens de la
+phase 2a, mais il n'a pas ete confronte au roster sur les KOTH — on ne publie pas ce qu'on n'a pas
+mesure. »
+
+| | |
+|---|---|
+| **canal** | `ti=13` tag 4 du slot voisin du designateur — DEJA lu par le code (`ser.owner[d.slot+1]`, condition d'election du designateur, `zone_states_hill.go:70`). Offline-pur, aucun balayage neuf. |
+| **oracle** | Le SCORE DE MODE par camp (`scoreTimeline.teams[]`, schema 12) : en KOTH le score de mode EST le temps de colline (« l'API compte des secondes de colline », chronique 33->34 du contrat). Le camp dont le score MONTE pendant un intervalle est celui qui tient la colline. Oracle a la milliseconde, deja en production, aucune base ouverte. |
+| **corroboration** | Les evenements `th=10` de prise de colline, acteur nomme par le pont bipede (`SlotIdentityResolved`) puis equipe par le roster. Approximatif (5-20 s) : publie comme controle, jamais comme gate. |
+| **temoins negatifs** | (a) PERMUTATION : la serie de tag 4 d'un slot appliquee a une autre colline ; (b) DECALAGE : le meme accord mesure avec les intervalles decales de +20 s. Ce sont les deux temoins de la phase 2a, reutilises tels quels. |
+| **seuil (ECRIT AVANT MESURE)** | accord >= **90 %** des confrontations possibles (intervalle portant >= 2 emissions non neutres de tag 4 ET >= 1 increment de score de mode), sur >= **3 des 4** films KOTH du corpus ; temoin (a) <= **60 %** ET temoin (b) <= **60 %**. Denominateurs publies, jamais un taux nu. |
+| **verdict** | **FAISABLE** — canal, oracle et temoins existent tous ; rien a decoder de neuf. |
+
+### 2.3 Total Control — `[ ]` AUCUN ETAT VIVANT (le plus gros trou du lot)
+
+Etat actuel : le role `totalcontrol_zone` est SERVI statiquement depuis le 2026-08-25
+(`objective_roles.toml`, entree `match = ["Total Control"]`) — le rejeu dessine donc aujourd'hui
+**13 a 18 formes neutres** sur une partie de Total Control, alors que le mode n'en ACTIVE QUE 3
+par manche. Le role est explicitement HORS de `heldZoneRoles`
+(`replaybuild/zones.go:75-78`) : aucun etat n'est publie, et le commentaire de la table dit
+pourquoi et a quelle condition il pourra y entrer (« sans designateur, un etat de zone publierait
+14 a 18 zones tenues la ou il y en a 3 »).
+
+| | |
+|---|---|
+| **canal (etat)** | `ti=13` tag 4, le MEME que Bastion. `ObjectiveTypeOf` classe deja Total Control en `zone` (`objectiveevents/extract.go:136`) : la table d'emplacements nommes `zone_captures` / `zone_secures` s'applique donc, et avec elle la methode `ZoneMethodCaptures`. |
+| **canal (les 3 ACTIVES)** | deux hypotheses a departager, dans cet ordre : (H1) un DESIGNATEUR tag 5 comme en KOTH, mais qui designe trois zones ou change par manche ; (H2) pas de designateur — les 3 actives se DEDUISENT de l'appariement lui-meme (seules les zones qui recoivent des prises nommees existent dans le match). |
+| **oracle** | (a) les prises NOMMEES `zone_captures` du statborg, a la milliseconde, attribuees geometriquement a une forme du catalogue ; (b) les MANCHES, deja publiees (`scoreTimeline.teams[].rounds`) — c'est ce qui borne « les 3 actives DE CETTE manche ». |
+| **temoin negatif** | formes DECALEES de 12 m en x et y (la convention de `cmd/zone-attribution`, `defaultWitnessOffsetM`) : le taux d'attribution doit s'effondrer. |
+| **seuils (ECRITS AVANT MESURE)** | (1) attribution : >= **80 %** des prises nommees tombent dans UNE forme du catalogue, temoin decale <= **20 %** ; (2) cardinalite : l'ensemble des zones appariees par manche vaut **exactement 3** sur >= **2** films ; (3) proprietaire : accord tag 4 / equipe du capteur >= **90 %** (le chiffre tenu par Bastion : 48/48 et 51/56). Les trois doivent passer pour que `totalcontrol_zone` rejoigne `heldZoneRoles`. |
+| **verdict** | **FAISABLE SOUS RESERVE DE CORPUS** — tout l'outillage existe ; il faut des films de Total Control (recensement, phase D1). |
+
+### 2.4 Oddball — `[ ]` LE CRANE : la voie du MARQUEUR est morte, une AUTRE voie s'est ouverte
+
+Trois negatifs independants sont acquis et ne se rejouent pas (registre des reports, ligne « Le
+CRANE d'Oddball n'est ni lu ni publie ») : le marqueur de portage du drapeau est TOTALEMENT absent
+du film Oddball (0 porteur sur 26 images-cles) ; le statborg ne replique AUCUN compteur de crane ;
+la signature structurelle seule laisse 195 motifs candidats. **Ce plan ne repasse par aucun des
+trois.**
+
+Ce qui a CHANGE depuis ce report (2026-08-18), et qui le rouvre :
+
+1. **La recette d'identite d'un objet d'objectif existe et a fait ses preuves.** Le drapeau a ete
+   identifie comme le mot de 32 bits `0x2A392328` du bloc `object-multiplayer-properties` d'un
+   record de CREATION `ti=42`, par trois lectures et un temoin de selectivite
+   (`replay_labels.toml`, § OBJETS D'OBJECTIF ; instrument `attachement_phase0_drapeau_test.go`).
+   La table `[[objective_objects]]` est une liste FERMEE dont le commentaire dit que le crane n'y
+   est pas « faute de canal ET d'oracle » — c'est cette phrase que ce plan attaque.
+2. **L'oracle qui manquait est en production.** La condition de reprise ecrite au registre nommait
+   « (a) le SCORE PAR SECONDE DE PORTAGE ». Le score PERSONNEL par joueur, a la milliseconde, est
+   publie depuis le schema 12 (`scoreTimeline.players[]`).
+
+| | |
+|---|---|
+| **canal (identite)** | le mot MPP de 32 bits des creations `ti=42` ECARTEES du catalogue d'armes — deja balaye par la chaine des socles, zero lecture de film ajoutee. |
+| **canal (portage)** | l'ABSENCE de replication : un objet porte cesse d'emettre sa position (etabli par `flag_objects.go`, § « Le principe »). Un trou entre deux vies libres du crane = un portage. |
+| **oracle** | le SCORE PERSONNEL : en Oddball il monte a ~1 Hz pendant qu'on tient le crane. Le joueur dont le score personnel s'incremente pendant un trou EST le porteur. |
+| **corroboration** | les 87 evenements `th=10` de crane du film `24dbb67d`, 87 acteurs, **87/87 nommes par le pont bipede** (mesure du 2026-08-18, saine). |
+| **temoins negatifs** | (a) SELECTIVITE : aucun AUTRE mot ecarte ne reunit « naitre a <= 3 m d'un `oddball_spawn` » ET « coincider a <= 1 s d'un evenement `th=10` de crane » — c'est le temoin exact qui a etabli le drapeau ; (b) PORTEUR : un joueur tire au hasard hors trou <= 5 %. |
+| **seuils (ECRITS AVANT MESURE)** | (1) identite : **UN SEUL** mot candidat, LE MEME sur >= **2** films Oddball, temoin (a) = **0** autre candidat ; (2) portage : >= **90 %** des trous ont EXACTEMENT UN joueur dont le score personnel s'incremente sur toute leur duree, temoin (b) <= **5 %**. |
+| **verdict** | **FAISABLE SOUS RESERVE DE CORPUS** (>= 2 films Oddball exiges ; un seul est cite au corpus historique, `24dbb67d`). Si l'identite ne sort pas : `[!]` MESURE, et la ligne du registre est mise a jour, pas contournee. |
+
+### 2.5 Extraction — `[!]` NI CANAL NI ORACLE, ET PROBABLEMENT NI CORPUS
+
+- Le role `extraction_zone` est servi STATIQUEMENT (`objective_roles.toml`, `neutral = true`) et
+  explicitement EXCLU de `heldZoneRoles` (`replaybuild/zones.go`, § « Seules les zones TENUES »).
+- **`ObjectiveTypeOf` ne connait pas Extraction** (`objectiveevents/extract.go:120-145` : ni
+  `extraction` ni aucun synonyme). Aucun evenement nomme, aucune table d'emplacements, donc
+  **aucun oracle** — et donc aucun appariement slot -> zone possible par la methode de Bastion.
+- Le mode est marginal en base (releve `.ai/BACKLOG.md` : 2 matchs Extraction).
+
+**Condition de reprise** : (1) >= 2 films d'Extraction en cache ; ALORS (2) chercher un canal
+`ti=13` (slots, tags emis) sur ces films, et un oracle dans le score de mode. Sans (1), rien.
+
+### 2.6 Stockpile — `[!]` CORPUS (report deja acte, maintenu)
+
+Roles `stockpile_socket` / `stockpile_navpoint` servis statiquement. `ObjectiveTypeOf` ne connait
+pas Stockpile non plus : aucun evenement nomme. Le report « Stockpile : aucun film exploitable
+(404 Theater) » date du 2026-08-17 (`PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`, corpus). Le noyau est
+un objet PORTE : si un film apparait, la recette d'identite `ti=42` du §2.4 s'y applique telle
+quelle, avec `stockpile_socket` pour socle. **Condition de reprise : >= 1 film de Stockpile.**
+
+### 2.7 Assaut (bombe) — `[!]` NI ORACLE NI CORPUS ETABLI
+
+Role `assault_bomb` servi statiquement (4/4 objets en `team_index = -1`). `ObjectiveTypeOf` ne le
+connait pas : aucun evenement nomme. La bombe est un objet porte : meme recette que §2.4.
+**Condition de reprise : >= 2 films d'Assaut au recensement D1**, sinon le mode ne s'ouvre pas.
+
+### 2.8 Land Grab — `[!]` UNE INCOHERENCE A SIGNALER, PAS A CORRIGER ICI
+
+`ObjectiveTypeOf` classe Land Grab en `zone` (`extract.go:135`) — il a donc des evenements nommes
+— **mais aucune entree de `objective_roles.toml` ne le sert**, et ses hashs `landgrab_zone` sont
+presents dans les fichiers de carte sans role associe (dit en toutes lettres par
+`service/replay_map_objectives.go`, commentaire du cas nominal). Ni formes servies, ni etat.
+**Condition de reprise : decision produit** (le mode vaut-il un calque ?), puis ajout du role au
+decodeur `mapvar` + entree de table. Hors perimetre de ce lot.
+
+### 2.9 Firefight (PvE) — `[!]` ROLE AU CATALOGUE, SERVI PAR AUCUN MODE, ET C'EST VOULU
+
+`firefight_objective` (5 volumes avec forme par carte, mesure du 2026-08-20) entre au catalogue
+mais aucune entree ne le sert : « la decision de le servir demande de savoir quel libelle de
+manche Firefight le porte, ce qu'aucune mesure ne dit encore — le servir au cas ou afficherait
+cinq zones sur une carte PvE sans savoir laquelle est active » (`objective_roles.toml`, en-tete).
+**Condition de reprise : etablir le libelle de manche qui active un objectif Firefight.**
+
+### 2.10 VIP — `[!]` DEFINITIF SUR CE QUE LE FILM PORTE
+
+**Ce que dit le depot du substitut `managed-objective-object-reference`** — c'est le composant
+**i3 de l'archetype `ti=11`** (`filmdec/testdata/ecs_table.tsv:271`), decrit comme « LA REFERENCE
+vers l'objet physique (le drapeau, le crane, le noyau) », priorite HAUTE, statut **`non_porte`,
+deser inconnu, 0 appelant**. La couverture de dispatch de `ti=11` est **0 / 34** composants.
+
+Et il est INATTEIGNABLE par les deux voies du film, chacune refutee PAR SON TEMOIN (lot R4,
+`PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`, ligne 205 du registre des reports) :
+
+- voie DELTA : `matchWorldObjectRecord` ne reconnait pas ces records — 4 680 contre 6 421 pour un
+  fantome de meme taille et de meme voisinage (0,73x ; 0,37x sur le second film), 45,9 % et 36,4 %
+  d'index hors grammaire ;
+- voie IMAGE-CLE : bloquee par la grammaire du CORPS d'un record d'image-cle, resolue nulle part —
+  et la lignee R7 (a..e) a mesure que la bit-exactitude plafonne a 0,51-0,85 % sur le bipede, avant
+  que **l'utilisateur n'ARRETE la RE de l'image-cle** (borne d'arret R7-e, respectee depuis).
+
+Cote binaire, le releve de l'utilisateur (Notion) et le lot Ghidra du 24/08 concordent : le bit VIP
+vit dans un octet d'attributs de SCRIPT (poseur, effaceur, `Player:IsVIP()`), **sans aucun
+serialiseur**, et `ApplyVIPPlayerFX` n'existe pas dans l'executable
+(`PLAN_RE_LETTRE_HUD_GHIDRA.md:29-31`) — meme cause que la lettre A/B/C, dont le lot Ghidra a
+etabli qu'elle sort du SCRIPT (`Navpoint_SetDisplayText`) et non du moteur. Enfin, aucun role VIP
+n'existe au catalogue statique (597 objectifs, 7 roles a l'origine).
+
+**Statut : `[!]` — le plan ne promet PAS le VIP.** Condition de reprise, une seule et elle est
+chere : la grammaire du CORPS d'un record d'image-cle (le meme deblocage qui servirait `ti=42`),
+aujourd'hui hors v7.5 par decision utilisateur. **Ce qu'il faudrait MESURER si elle tombait**, dans
+l'ordre : `i5 type`, `i12`/`i13 progress`, `i14 state`, puis SEULEMENT `i3 object-reference` —
+c'est l'ordre ecrit par R4, et il n'a pas bouge.
+
+---
+
+## 3. CONTRAINTES D'ARCHITECTURE (elles gouvernent le decoupage du §4)
+
+1. **UN SEUL bump de schema pour tout le lot.** Consequence directe : **aucune phase de mesure ne
+   touche la production**, et TOUTES les publications se font dans UNE phase terminale (D5). Le
+   numero se fixe a ce moment-la (>= 20), jamais avant : la regle du depot est « un numero par
+   montee, dans l'ordre de FUSION », et deux sessions concurrentes en ont deja echange
+   (chroniques v15/v16 et v17/v18).
+2. **La montee de schema est un TRIPLET, pas un entier.** `replay.SchemaVersion`,
+   `contracttest.wantReplayDocumentFields` (+ sa ligne de chronique), et
+   **`EXPECTED_REPLAY_SCHEMA_VERSION` cote web** (`replaySchemaLogic.ts:33`, ajoutee le
+   2026-08-25). Oublier le troisieme ferait lire « stale » a tous les artefacts neufs — mais un
+   garde-rail de PARITE le rattrape : `replaySchemaLogic.guard.test.ts` LIT le fichier Go et
+   echoue si les deux divergent. Le gate web de D5 le joue ; ne pas s'en etonner, le corriger.
+3. **Re-cuisson des TEMOINS seulement** — jamais de cuisson de masse. Un film par PROCESSUS
+   (lecon « balayage corpus = bombe RAM »), et **un seul decodage `filmdec` par process** (le
+   balayage `ti=13` installe un hook global).
+4. **Title-agnostic strict.** Aucune comparaison `slug == "..."` (ratchet
+   `no_slug_comparison_test.go`). Ce qui est propre au titre va en DONNEE :
+   `config/titles/{slug}/mappings/objective_roles.toml` (quels roles pour quel mode) et
+   `replay_labels.toml` (`[[objective_objects]]` : identite et nom d'un objet d'objectif, EN+FR).
+   La degradation se fait **par ABSENCE de donnee** — un titre sans table n'a pas de calque, et
+   `coverage` dit lequel des deux silences. C'est deja le patron de `flagCarries` et `zoneStates`.
+5. **Aucune base en ecriture, aucun serveur de dev.** Les lectures de `match_registry` se font en
+   LECTURE SEULE (`duckdb.OpenReadForQuery`, correct meme si le serveur tient la base — ADR
+   0013/0016). Un `server.exe` tourne sur ce poste : ne jamais ouvrir la base en RW.
+6. **Le RENDU ne demarre qu'APRES la fusion du lot A.** Les deux lots ecrivent dans
+   `apps/web/src/features/match-replay/`. **D6 (item D-R) et D7** sont donc apres A, et c'est
+   l'ordre du §4. D6 ne depend QUE de A (il consomme de la donnee deja publiee au schema 18) ;
+   D7 depend en plus de D5.
+7. **Zero code mort, zero flag OFF.** Ce qu'un calque vivant remplace (par ex. les pulses
+   substituts d'une famille) se RETIRE quand la donnee arrive, jamais « au cas ou ».
+
+---
+
+## 4. DECOUPAGE EN PHASES
+
+> Regle d'ordre : **une phase a la fois**. Une phase est CLOSE quand tous ses items sont statues
+> (`[x]` fait / `[~]` couvert ailleurs avec reference / `[!]` non traite avec justification
+> ECRITE), son gate joue DANS la session avec ses codes de retour au journal du plan, et le plan
+> mis a jour et commite avec le lot. Aucune case vide a la cloture. Aucun fix hors perimetre : les
+> decouvertes vont au §7, elles ne se traitent pas.
+>
+> Commits : prefixe `obj-etat(D<n>):`, sur `wt/obj-etat` uniquement, jamais `git add -A`, jamais de
+> push. `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` ne sont PAS touches par cette
+> branche : leurs TEXTES sont fournis au CR de lot, le superviseur les consigne a la fusion.
+
+### D1 — RECENSEMENT DU CORPUS, et verdict de faisabilite par mode (STOP au verdict)
+
+Sans lui, chaque phase suivante decouvrirait son corpus en cours de route. 951 films sont en cache
+(`data/cache/film_chunks`), mais leur MODE n'est pas dans le manifeste : il se lit dans
+`match_registry.game_variant_name`.
+
+- [ ] D1.1 Export LECTURE SEULE d'un recensement : `match_id`, `game_variant_name`, `map_id`,
+      `map_name`, `start_time` pour tout `match_registry`. Meme recette que l'oracle du lot A
+      (`registre_film/oracle_export.sql`) : un `COPY (...) TO '<repo>/.ai/V7.5/replay2d/registre_film/census_modes_2026-08.tsv' (HEADER, DELIMITER E'\t')`.
+      **La base ne s'ouvre JAMAIS en RW** (§3.5).
+- [ ] D1.2 Croiser le TSV avec la presence d'un repertoire `data/cache/film_chunks/<8 premiers
+      caracteres>` : un film present ou absent, par match.
+- [ ] D1.3 Table par mode, versee au journal du plan : Total Control, Oddball, Extraction,
+      Stockpile, Assaut, Land Grab, KOTH, Strongholds, CTF — pour chacun : matchs au registre,
+      matchs AVEC film, cartes distinctes, et la liste des identifiants courts retenus.
+- [ ] D1.4 Statuer CHAQUE mode du §2 : ouvert (phase dediee) ou `[!]` corpus avec son chiffre.
+      Un mode a moins de films que son seuil exige (§2) est `[!]` — le seuil ne se rebaisse pas.
+
+**Gate D1** : le TSV est commite, la table est au journal, chaque mode du §2 porte un statut chiffre.
+Commandes NUES (depuis `apps/go-api`) :
+
+    go build ./...
+    go vet ./...
+
+**STOP — validation superviseur.** D1 peut retirer D3 et/ou D4 du lot ; il ne peut pas en ajouter.
+
+### D2 — KOTH : MESURER le proprietaire de la colline (aucun changement de production)
+
+- [ ] D2.1 Instrument sous garde `ETAT_FILM` (racine du cache film), LECTURE SEULE, dans
+      `internal/analysis/replay` : pour chaque film KOTH du corpus, rendre le designateur elu, ses
+      periodes, et la serie de tag 4 du slot voisin — en APPELANT le code de production
+      (`hillDesignatorOf`), jamais en recopiant sa grammaire.
+- [ ] D2.2 Confronter, periode par periode, la valeur de tag 4 au camp dont le SCORE DE MODE monte
+      (`objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)` — les slots
+      d'equipe 6 et 8). Publier numerateur ET denominateur, par film.
+- [ ] D2.3 Les DEUX temoins du §2.2 : permutation des collines, decalage +20 s. Publier les deux.
+- [ ] D2.4 Corroboration `th=10` : acteur de chaque prise de colline -> xuid (`SlotIdentityResolved`)
+      -> equipe (roster fige au corpus, aucune base ouverte). Publie comme CONTROLE.
+- [ ] D2.5 Verdict au journal : seuil du §2.2 tenu ou NON TENU, avec les chiffres. Non tenu =
+      NEGATIF ecrit, item `[!]`, et D5 ne publie rien pour KOTH.
+
+**Gate D2** : accord >= 90 % sur >= 3 des 4 films, temoins <= 60 % chacun. Commandes NUES :
+
+    go build ./...
+    go vet ./...
+    go test ./internal/analysis/replay/ -run TestEtatVivantKoth -v -timeout 60m
+    golangci-lint run --new-from-merge-base=origin/main
+
+(le meme `go test` sans `ETAT_FILM` doit SKIP proprement — c'est ce qui tourne en CI.)
+
+### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
+
+- [ ] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
+      chainage (le temoin de largeur du balayage, `ManagedPropertyScan.Chained` vs `Walked`).
+- [ ] D3.2 Chercher un DESIGNATEUR (H1) par le predicat de production `hillDesignatorOf` : existe-t-il
+      un slot de tag 5 chaine dont le voisin porte un proprietaire qui parle ? Combien de bascules,
+      et tombent-elles sur les bornes de MANCHE (`objectiveevents.RealRounds` /
+      `SeriesByRound`) ?
+- [ ] D3.3 Appariement (H2) : prises nommees `zone_captures` -> forme du catalogue par la position
+      de leur auteur ; taux d'attribution et temoin decale de 12 m. Cardinalite de l'ensemble
+      apparie PAR MANCHE.
+- [ ] D3.4 Proprietaire : accord tag 4 / equipe du capteur, avec ses denominateurs.
+- [ ] D3.5 Verdict : les trois seuils du §2.3 sont-ils tenus ? Quelle hypothese (H1 ou H2) porte
+      les 3 actives ? Non tenu = NEGATIF ecrit, `[!]`, et `totalcontrol_zone` NE rejoint PAS
+      `heldZoneRoles`.
+
+**Gate D3** : (1) attribution >= 80 % / temoin <= 20 % ; (2) exactement 3 zones appariees par
+manche sur >= 2 films ; (3) accord proprietaire >= 90 %. Commandes NUES :
+
+    go build ./...
+    go vet ./...
+    go test ./internal/analysis/replay/ -run TestEtatVivantTotalControl -v -timeout 60m
+    golangci-lint run --new-from-merge-base=origin/main
+
+### D4 — ODDBALL : MESURER l'identite du crane puis son portage (ouverte seulement si D1 le permet)
+
+- [ ] D4.1 Identite : sur chaque film Oddball, les creations `ti=42` ECARTEES du catalogue d'armes ;
+      pour chaque mot de 32 bits distinct, la distance de naissance au plus proche `oddball_spawn`
+      du catalogue de carte et l'ecart au plus proche evenement `th=10` de crane. Meme instrument
+      de forme que `attachement_phase0_drapeau_test.go`.
+- [ ] D4.2 Temoin de SELECTIVITE : compter les AUTRES mots qui reunissent les deux conditions.
+      Le seuil exige **zero**.
+- [ ] D4.3 Portage : decouper la vie du crane en TROUS (l'objet cesse d'emettre) ; pour chaque
+      trou, chercher le joueur dont le score PERSONNEL s'incremente sur toute sa duree
+      (`objectiveevents.SeriesTotal(recs, objectiveevents.PersonalScoreComponent, false)`, slot ->
+      xuid par `SlotIdentityResolved`). Temoin : un joueur tire au hasard hors trou.
+- [ ] D4.4 Verdict : les deux seuils du §2.4. Non tenu = NEGATIF ecrit, `[!]`, la ligne du registre
+      des reports est mise a JOUR (texte fourni au CR), et D5 ne publie rien pour Oddball.
+
+**Gate D4** : (1) UN seul mot candidat, le meme sur >= 2 films, 0 autre candidat ; (2) >= 90 % des
+trous a porteur unique, temoin <= 5 %. Commandes NUES :
+
+    go build ./...
+    go vet ./...
+    go test ./internal/analysis/replay/ -run TestEtatVivantOddball -v -timeout 60m
+    golangci-lint run --new-from-merge-base=origin/main
+
+### D5 — PUBLICATION : un SEUL bump de schema pour tout ce que D2-D4 ont tenu
+
+Cette phase ne mesure rien : elle publie ce que les gates precedents ont valide, et RIEN d'autre.
+
+- [ ] D5.1 Producteurs, un par verdict tenu (KOTH `Owner` sur les intervalles de colline ; Total
+      Control : `totalcontrol_zone` dans `heldZoneRoles` + la voie des 3 actives ; Oddball : entree
+      `[[objective_objects]]` `family = "ball"` EN+FR + calque de portage du crane). Un verdict non
+      tenu n'a AUCUN code.
+- [ ] D5.2 `Coverage` : chaque calque publie ses DENOMINATEURS et ses rejets par cause. Regle du
+      depot : un calque sans couverture se lit comme une exhaustivite ; l'ABSENCE du bloc doit
+      rester distincte du zero.
+- [ ] D5.3 Le TRIPLET de version (§3.2) : `replay.SchemaVersion` (numero libre au moment du lot,
+      >= 20) avec sa chronique en tete de `document.go` ET dans le fichier de contrat du calque ;
+      `wantReplayDocumentFields` + sa ligne de chronique ; `EXPECTED_REPLAY_SCHEMA_VERSION`.
+- [ ] D5.4 Contrat client : `go run ./cmd/openapi-gen` (jamais d'edition a la main de
+      `api/openapi.yaml`), `make generate-types`, frontiere de nullabilite web
+      (`NULLABLE_ARRAYS` / `NULLABLE_ARRAY_PATHS` et `normalizeReplayDocument` — tableaux
+      IMBRIQUES compris).
+- [ ] D5.5 Golden d'assemblage re-congele (`testdata/assembly_000d5950.golden`) et TEMOINS
+      re-cuits : les films des gates D2-D4 UNIQUEMENT, **un film par processus**, via
+      `cmd/replay-build --map <carte> --facts <faits.json> <matchId>` (aucune base ouverte).
+- [ ] D5.6 Tests : producteurs testes PURS (sans film) ; un test de non-regression par calque.
+
+**Gate D5** : commandes NUES (depuis `apps/go-api` puis `apps/web`) :
+
+    go build ./...
+    go vet ./...
+    go test ./internal/analysis/... ./internal/replaybuild/... ./contracttest/... ./internal/archlint/...
+    go run ./cmd/openapi-gen -check
+    golangci-lint run --new-from-merge-base=origin/main
+    npx tsc -b --force
+    npx eslint .
+    npx vitest run src/features/match-replay src/lib
+
+Mise en garde mesuree deux fois (journaux des 18/08) : **ne pas cuire de film pendant le gate
+web** — les garde-rails qui balaient `src/` expirent au delai de 5 000 ms sur machine chargee, et
+ces echecs ne sont pas des regressions.
+
+### D6 — **ITEM D-R** : la progression de capture et l'appartenance SUR LA FORME de la base
+
+> Ajout de perimetre valide par l'utilisateur le 2026-08-25 (item D-R du plan parent
+> `PLAN_REPLAY2D_NOTION_2026-08-25.md`, lot D). **Cette phase ne demarre qu'APRES la fusion du lot
+> A** (memes fichiers de calque). Elle est INDEPENDANTE de D2-D5 : elle ne consomme que de la
+> donnee DEJA publiee (schema 18) — le superviseur peut donc la resequencer avant D2 sans rien
+> casser, tant que A est fusionne.
+
+**CE QUI EXISTE DEJA, et qu'il ne faut ni re-prouver ni reecrire** (releve du superviseur,
+recoupe sur pieces) :
+
+- l'appartenance TEINTE DEJA la forme reelle : `paintZoneState`
+  (`apps/web/src/features/match-replay/zoneStatesLayer.ts:335-350`) remplit le trace de
+  `traceZonePath`, la MEME fonction que le calque statique — jamais une seconde geometrie ;
+- le « cercle » vu a la capture est l'arc de jauge EXTERNE `drawGaugeArc`
+  (`zoneStatesLayer.ts:366-377`), plus le pulse ponctuel de capture d'`objectivesLayer.ts` ;
+- une hierarchie d'encres existe deja en embryon : l'arc est trace avec `colorOfCapturer(owner)`
+  (`useZoneStates.ts:80-81`), c'est-a-dire l'encre du camp OPPOSE au proprietaire courant.
+
+- [x] D6.1 **Remplissage progressif de la FORME**, proportionnel a la jauge lue en escalier
+      (`zoneGaugeAt`, `zoneStatesLayer.ts:100`), par decoupe canvas (`ctx.clip` sur
+      `traceZonePath`) puis balayage — **agnostique de la forme** : une boite orientee comme un
+      cylindre passent par le meme trace. Il REMPLACE l'arc externe (`drawGaugeArc` est retire
+      avec son alpha et ses tests : regle 0 code mort, pas de bascule qui garde les deux).
+      **FAIT** — `paintCaptureFill` (`zoneStatesPaint.ts:181-203`), balayage VERTICAL bas ->
+      haut. Le sens du balayage est un ARBITRAGE que le plan laissait ouvert : une fraction
+      d'ANGLE n'est pas une fraction d'AIRE sur une boite orientee (un demi-tour d'arc y couvre
+      une part qui depend de l'orientation, pas de la capture), alors qu'une bande horizontale
+      clippee est proportionnelle sur toute forme — et elle ne balaie pas la lettre centrale.
+      `drawGaugeArc`, `ZONE_GAUGE_ALPHA`, `ZONE_GAUGE_WIDTH`, `ZONE_GAUGE_MIN_RADIUS` et
+      `ZoneGaugeArc` sont SUPPRIMES.
+- [x] D6.2 **Hierarchie des encres** quand une equipe capture une base tenue par l'adversaire :
+      progression de l'attaquant FRANCHE par-dessus la teinte du proprietaire AFFAIBLIE. Le
+      detail (valeurs d'alpha, sens du balayage, ordre de peinture) se TRANCHE DANS CE PLAN au
+      moment de l'ouverture de la phase, jamais en cours d'implementation.
+      **LIMITE DE DONNEE A INSCRIRE, ET ELLE EST STRUCTURELLE** : le film ne dit PAS qui capture.
+      Le tag 4 dit qui TIENT ; l'attaquant n'est deduit que par opposition, ce qui ne vaut que
+      dans un match a deux camps ET sur une zone DEJA TENUE. Sur une zone NEUTRE, `colorOfCapturer`
+      rend `null` aujourd'hui et l'arc se peint en encre neutre : la progression y restera
+      NEUTRE — ne pas inventer un attaquant.
+      **FAIT** — `ZONE_UNDER_CAPTURE_FILL_ALPHA = 0,16` (le proprietaire recule) contre
+      `ZONE_CAPTURE_FILL_ALPHA = 0,55` (l'attaquant passe franc), `zoneStatesPaint.ts:88-89`.
+      La limite de donnee est tenue et testee : une zone neutre en capture rend une progression
+      NEUTRE, une zone tenue par un camp non situable aussi.
+- [x] D6.3 **Alphas d'appartenance** : evaluer le renforcement de `ZONE_HELD_FILL_ALPHA` (0,22
+      aujourd'hui, `zoneStatesLayer.ts:198`) et de `ZONE_ACTIVE_FILL_ALPHA` (0,3) — la teinte
+      actuelle est jugee trop discrete par l'utilisateur. Valeurs proposees au plan, verdict au
+      gate VISUEL.
+      **FAIT** — tenue 0,22 -> **0,30**, active 0,30 -> **0,42**. L'ECART entre les deux se
+      creuse en meme temps qu'ils montent : renforcer la seule zone tenue aurait efface ce qui
+      distingue la colline active, le repere le plus utile de la carte. L'echelle COMPLETE
+      compose avec le retrait des zones libres du lot A et vit dans `ZONE_ALPHA_ORDER` —
+      libre 0 < en perte 0,16 < tenue 0,30 < active 0,42 < progression 0,55 —, testee par son
+      ORDRE et non par ses valeurs, precisement pour que le gate visuel puisse toutes les bouger.
+      **Verdict VISUEL a l'utilisateur.**
+- [~] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
+      artefacts TEMOINS que `coverage.zones.gaugePoints > 0` la ou la progression doit se voir.
+      **CORRECTION AU BRIEF DE L'AJOUT DE PERIMETRE** : la serie `gauge` n'a PAS ete validee sur
+      KOTH — c'est l'inverse. Elle est publiee **sur les modes a zones SIMULTANEES SEULEMENT
+      (Bastion)**, la ou le tag 3 est la vraie rampe de capture (97 % des captures precedees
+      d'une rampe, lot C-bis), et elle est **DELIBEREMENT ABSENTE sur une colline de KOTH**, ou
+      le meme tag est un compteur de transfert d'environ une seconde
+      (`replay/zone_states_gauge.go:34-37` ; `document_zones.go`, § `ZoneState.Gauge` :
+      « `coverage.zones.gaugePoints` y vaut 0 »). Le controle se lit donc ainsi :
+      Strongholds = points ATTENDUS (si zero sur un temoin Bastion : `[!]`, condition de reprise) ;
+      KOTH = zero ATTENDU, ce n'est pas un defaut, et la colline garde son seul etat
+      d'appartenance ; Total Control = INCONNU tant que D3 n'a pas mesure, donc `[!]` par defaut.
+      **`[~]` — COUVERT PAR LE CODE ET LES TESTS, PAS PAR UNE LECTURE D'ARTEFACT.** Le contrat
+      « aucune serie = aucune progression » est verrouille par test (fixture `gauge: []`, et la
+      colline du fixture qui publie un sommet `progress` sans serie ne dessine rien). La lecture
+      des artefacts TEMOINS (`coverage.zones.gaugePoints`) exige de cuire des films, donc des
+      commandes Go — INTERDITES sur ce creneau (autre lot en build). Reste donc a faire, en une
+      lecture, quand un creneau Go s'ouvre : `gaugePoints > 0` sur un temoin Bastion, `= 0` sur
+      un temoin KOTH. Aucun code n'en depend : le client se comporte identiquement dans les deux
+      cas, c'est un controle de la DONNEE, pas du rendu.
+- [x] D6.5 **Le pulse ponctuel de capture est CONSERVE** : il marque un INSTANT, la progression
+      decrit une DUREE — les deux se lisent ensemble (c'est deja l'arbitrage ecrit en tete
+      d'`objectivesLayer.ts`). Rien n'est retire de ce cote.
+      **FAIT — par NON-ACTION verifiee** : `buildObjectivePulses` et `drawObjectivePulses` ne
+      sont pas touches, la famille ZONE garde son role entier.
+- [x] D6.6 Tokens semantiques uniquement (aucun hex, aucune classe Tailwind couleur) ; aucun texte
+      neuf sur le canvas ; tests : forme du remplissage a 0 / 0,5 / 1, agnosticite boite/cylindre,
+      hierarchie sur zone tenue ET sur zone neutre, garde « aucune couleur en dur ».
+      **FAIT** — aucune valeur de couleur n'est ecrite dans le lot (les encres arrivent resolues
+      de `useZoneStates`, inchange) ; aucun texte neuf (la garde « rien hors le glyphe A-C »
+      passe telle quelle). 35 cas sur le calque, dont 6 neufs. **Mordant prouve par DOUBLE
+      MUTATION** : remplissage par le HAUT (`box.top` au lieu de `box.bottom - h`) = 1 echec ;
+      hierarchie des encres INVERSEE (0,16 / 0,55 permutes) = 2 echecs. Les deux mutations ont
+      ete revertees.
+
+**Gate D6** : volet TECHNIQUE = les trois commandes web NUES de D5, plus le point de controle
+D6.4 statue sur les temoins. Volet VISUEL = **l'utilisateur** (planche + en app).
+
+**Gate D6 (volet TECHNIQUE) : TENU (2026-08-26).** Depuis `apps/web` du worktree, apres
+`npm ci` et purge de `node_modules/.tmp` : `npm run typecheck` = **0** ; `npx vitest run
+src/features/match-replay` = **0** (75 fichiers, 1 088 tests) ; `npx eslint` sur les quatre
+fichiers touches = **0** (zero erreur, zero avertissement). Cliquet `ReplayCanvas.tsx` :
+**742 lignes, INCHANGE** — le lot ne touche pas le canvas. Aucune commande Go n'a ete lancee.
+**Le volet VISUEL reste ouvert** : il appartient a l'utilisateur, et il porte deux questions
+precises — les nouveaux aplats (tenue 0,30 / active 0,42) et le sens de balayage bas -> haut.
+
+**UNE EXTRACTION QUE LE PLAN NE PREVOYAIT PAS, ET CE QUI L'A IMPOSEE.** Le passage de l'arc
+exterieur au remplissage de la forme a porte `zoneStatesLayer.ts` de 417 a 568 lignes, au-dessus
+du seuil du depot. La regle etant d'extraire et jamais d'exempter, la peinture est partie dans
+`zoneStatesPaint.ts` (259 l.) : le calque decide CE QU'IL FAUT peindre (etat couvrant la frame,
+valeur de jauge, lettre), la peinture decide COMMENT (opacites, hierarchie, ordre des passes,
+decoupage). Trois fichiers source sous le seuil apres coup : calque 345, peinture 259,
+`objectivesLayer` 414. La coupure suit une couture reelle — un reglage d'encre se change sans
+rouvrir la lecture d'etat — et la GEOMETRIE n'a pas ete dupliquee : `traceZonePath` reste la
+seule source de la forme, et l'emprise ecran passe par `zoneCornersWorld` / `zoneCanvasRadius`,
+deux helpers EXTRAITS de `traceZonePath` lui-meme plutot que recopies.
+
+### D7 — RENDU des calques NEUFS de D5 (web) — **apres D5 ET apres la fusion du lot A**
+
+- [ ] D7.1 KOTH : la colline active se TEINTE de l'encre du camp qui la tient (le patron
+      `paintZoneState` existe deja pour Bastion — la meme fonction, pas une seconde copie) ;
+      neutre = pas de teinte, trait faible du calque statique.
+- [ ] D7.2 Total Control : seules les zones APPARIEES de la manche courante se peignent ; les
+      formes du vivier restent au trait faible. Arbitrage n°3 (§6) s'applique ici.
+- [ ] D7.3 Oddball : le crane colle au marqueur de son porteur, pose a sa position quand il est
+      libre, socle `oddball_spawn` present/absent. Meme frontiere que `flagCarriesLayer.ts` :
+      geometrie hors ecran, etat dans la boucle.
+- [ ] D7.4 Les pulses SUBSTITUTS de la famille concernee sont RETIRES des que la donnee vivante
+      arrive (`buildObjectivePulses`, meme regle que le drapeau). Zero code mort. La famille ZONE
+      n'est PAS concernee : son pulse reste (cf. D6.5).
+- [ ] D7.5 Tokens semantiques uniquement, strings FR **et** EN, aucun texte dessine sur le canvas
+      hors le glyphe de lettre deja autorise.
+- [ ] D7.6 Tests : formes, etats, garde « aucune couleur en dur », parite i18n.
+
+Un verdict `[!]` en D2-D4 retire simplement son item ici : **on ne dessine pas ce qui n'est pas
+publie.**
+
+**Gate D7** : volet TECHNIQUE = les trois commandes web NUES de D5. Volet VISUEL = **l'utilisateur**
+(planche + en app) — il n'appartient pas a l'agent, et aucune verification navigateur n'est faite
+par le lot.
+
+### D8 — CLOTURE DU LOT
+
+- [ ] D8.1 Tous les items du plan statues, aucune case vide.
+- [ ] D8.2 CR de lot : mesures, seuils tenus ou non, chiffres, et les TEXTES prets a coller pour
+      `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` (le superviseur les consigne).
+- [ ] D8.3 Les lignes de registre a AMENDER sont nommees : crane d'Oddball, `ti=11` objectifs
+      vivants, VIP, et toute condition de reprise creee par une phase `[!]`.
+
+---
+
+## 5. Regles dures de ce plan
+
+Mesure AVANT production ; un seuil ecrit ne se rebaisse pas ; un canal refute s'ECRIT ; aucun
+rendu avant la donnee ; aucun mode publie sans sa couverture ; **le plan ne promet pas ce que le
+film ne porte pas** (VIP, Extraction, Stockpile, Assaut, Land Grab, Firefight sont `[!]` par
+construction) ; un seul decodage `filmdec` par process ; un film par processus ; aucune base en
+ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
+
+---
+
+## 6. ARBITRAGES DEMANDES AU SUPERVISEUR (avant de lancer D1)
+
+1. **Le numero de schema.** Le brief dit 19 ; 19 est PRIS (lot 1 « lecture vide », 2026-08-25). Le
+   lot prendra le premier numero libre au moment de sa fusion (>= 20). Confirmer que « UN SEUL
+   bump » signifie bien « toutes les publications dans la phase D5 », ce qui est le decoupage
+   propose.
+2. **La priorite si le corpus est maigre.** Ordre propose, par cout croissant et valeur
+   decroissante : **D2 (KOTH proprietaire)** — le moins cher, canal et oracle deja en main ;
+   **D3 (Total Control)** — le plus gros trou produit ; **D4 (Oddball)** — un pari de recherche,
+   avec un negatif honorable pour issue. Confirmer ou reordonner.
+3. **Total Control aujourd'hui, en attendant D3.** Le rejeu d'une partie de Total Control dessine
+   deja 13 a 18 formes neutres la ou 3 seulement sont actives (entree servie depuis le 2026-08-25).
+   Trois options : (a) laisser en l'etat jusqu'a D3 ; (b) retirer l'entree de la table du titre
+   jusqu'a ce que l'etat vivant existe ; (c) la garder et le dire dans l'UI. **Decision produit,
+   pas technique.**
+4. **Les modes fermes.** Confirmer que Extraction, Stockpile, Assaut, Land Grab, Firefight et VIP
+   restent `[!]` pour v7.5, avec leurs conditions de reprise au registre — le plan ne les ouvre pas.
+5. **La table `[[objective_objects]]` est FERMEE par son commentaire** (« le crane n'y est PAS, et
+   ce n'est pas un oubli »). D4 est precisement la mesure qui autoriserait a l'ouvrir : confirmer
+   que le lot a mandat pour l'amender SI le gate D4 passe.
+6. **La sequence de l'item D-R (D6).** Il ne depend QUE de la fusion du lot A, pas de D2-D5 :
+   c'est un rendu de donnee deja publiee. Le superviseur peut donc le placer AVANT D2 (livrer un
+   gain visible tot) ou le laisser ou il est. **Et une correction de fait a acter au passage** :
+   le brief de l'ajout de perimetre dit que la serie `gauge` « n'a ete validee que sur KOTH » —
+   c'est l'INVERSE (§ D6.4). Elle est publiee sur les modes a zones simultanees (Bastion) et
+   volontairement absente sur une colline. La progression sur forme concerne donc Bastion
+   d'abord, Total Control apres D3, et JAMAIS la colline de KOTH — qui garde sa seule
+   appartenance. Confirmer que ce perimetre reduit est bien celui attendu.
+
+---
+
+## 7. Decouvertes (hors perimetre — consignees, NON traitees)
+
+- (2026-08-26, D6) **`colorOfCapturer` est appele avec le PROPRIETAIRE, et rend le camp d'en
+  face** (`useZoneStates.ts:90-91`). C'est une DEDUCTION a deux camps, correcte sur une zone
+  tenue et muette ailleurs — sur une zone NEUTRE en cours de capture, la page ne peut nommer
+  personne et la progression reste neutre. Ce n'est pas un defaut du client : le film ne
+  replique aucun proprietaire sur les slots de rampe (mesure du lot C-bis). Si D3 ouvrait un
+  mode a plus de deux camps, cette deduction cesserait d'etre valide — la nommer ici pour que
+  personne ne la prenne pour une lecture.
+- (2026-08-26, D6) **Le fixture de test du calque publie `progress` sur ses intervalles** alors
+  que plus rien ne le lit depuis le schema 18 (le client ne dessine plus le sommet). Le champ
+  est CONSERVE au fixture a dessein — c'est lui qui rend le cas « sans `gauge`, le sommet ne
+  remplace pas la progression » non tautologique — mais il n'a plus aucun lecteur de production.
+- **Land Grab est classe `zone` par `ObjectiveTypeOf` mais n'a ni role ni entree de table.** Il a
+  donc des evenements nommes que rien ne consomme, et ses hashs `landgrab_zone` sont dans les
+  fichiers de carte sans role. Incoherence reelle, non traitee ici (§2.8).
+- **`ObjectiveTypeOf` ne connait ni Extraction, ni Stockpile, ni Assaut** : trois modes servis
+  statiquement dont AUCUN evenement nomme ne peut sortir. La liste des modes du classifieur et
+  celle de `objective_roles.toml` ont diverge sans que rien ne le signale.
+- **Une exception au catalogue Total Control** : sur Sylvanus, un objet porte `totalcontrol_zone`
+  SANS `totalcontrol_include`, boite de 2,74 x 2,20 x 0,16 m — un decoy probable, publie quand meme
+  par contrat (le role vient d'un label explicite, jamais d'une heuristique de taille). Deja au
+  registre.
+- **`firefight_objective`** : role au catalogue (5 volumes par carte de Firefight), servi par aucun
+  mode, faute de savoir quel libelle de manche l'active.
+
+---
+
+## 8. Protocole de reprise de session
+
+1. Lire ce plan de haut en bas : les **statuts d'items** du §4 disent ou en est le lot, le
+   **journal du plan** (§9) porte les mesures et les verdicts.
+2. Lire la tete de `.ai/thought_log.md` (le superviseur y consigne les fusions).
+3. Verifier SUR PIECES avant de coder et avant de cocher : rouvrir le fichier et la ligne cites —
+   le code a bouge deux fois pendant la redaction de ce plan (schema 19, entree Total Control).
+4. Une phase a la fois, dans l'ordre. Le contrat complet est le skill `plan-execution`.
+
+## 9. Journal du plan (avancement — source de verite pour la reprise)
+
+- 2026-08-25 — **D0 CLOSE.** Plan ecrit sur pieces (code, catalogues, archives de chantier).
+  Aucune mesure lancee, aucun code de production touche. Verdicts de faisabilite : KOTH
+  proprietaire FAISABLE ; Total Control et Oddball FAISABLES SOUS RESERVE DE CORPUS ; Extraction,
+  Stockpile, Assaut, Land Grab, Firefight et VIP `[!]` avec conditions de reprise. Six arbitrages
+  au §6, dont DEUX corrections de fait au brief : le numero de schema (19 est PRIS depuis le
+  2026-08-25, prochain libre 20) et le perimetre de la serie `gauge` (validee sur Bastion, PAS sur
+  KOTH — l'inverse de ce que dit l'ajout de perimetre). **Ajout de perimetre du 2026-08-25 integre**
+  en phase D6 (item D-R : progression et appartenance sur la FORME), independante de D2-D5 et
+  conditionnee a la seule fusion du lot A ; les anciennes phases D6/D7 deviennent D7/D8.
+  **STOP — validation superviseur avant D1.**
+
+- 2026-08-26 — **D6 (item D-R) CLOSE, volet technique.** Base : fusion d'`origin/feat/v75`
+  (`ae12cb1a0`, qui apporte le lot A — retrait des zones libres a 0,5 / 1,6 px, seuil
+  `owner === null`, encre neutre `divergent-neutral`) puis relecture integrale de
+  `zoneStatesLayer.ts` AVANT d'ecrire une ligne. La progression de capture se lit desormais SUR
+  la forme (balayage vertical bas -> haut, `ctx.clip` sur `traceZonePath`), l'arc exterieur et
+  ses quatre reglages sont supprimes, la hierarchie d'encres compose avec le retrait du lot A
+  (`ZONE_ALPHA_ORDER`). Items : D6.1, D6.2, D6.3, D6.5, D6.6 `[x]` ; **D6.4 `[~]`** — le contrat
+  « aucune serie = aucune progression » est verrouille par test, mais la lecture de
+  `coverage.zones.gaugePoints` sur les temoins exige de cuire des films, donc du Go, interdit sur
+  ce creneau. Gates web verts (0 / 0 / 0), `ReplayCanvas.tsx` inchange a 742. Extraction non
+  prevue de `zoneStatesPaint.ts` (seuil des 500 lignes franchi par le lot). Mordant prouve par
+  double mutation. **STOP — D2 attend le signal du superviseur.**
