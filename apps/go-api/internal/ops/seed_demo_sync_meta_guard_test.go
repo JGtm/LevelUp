@@ -57,8 +57,14 @@ func TestDemoSyncMetaDefaultDeny(t *testing.T) {
 		"api_client_secret":      "credential futur",
 		"oauth_refresh_token_v3": "credential futur (variante de nom)",
 		"discord_webhook_url":    "secret d'intégration",
-		// Clé de dé-anonymisation : player_xuid porte le xuid RÉEL du joueur source
-		// et n'est PAS réécrite par extractPlayerTables (seule 'xuid' l'est).
+		// Clés de dé-anonymisation : elles portent le xuid RÉEL du joueur source et
+		// l'extraction ne les réécrit plus (la réécriture de 'xuid' a été supprimée
+		// avec la clé — revue R1, 2026-08-26). 'xuid' est ici et pas dans la liste
+		// d'inclusion PARCE QU'ELLE N'A AUCUN LECTEUR DE PRODUCTION : ResolveXUID /
+		// Q3ResolveXUID sont morts (seuls appelants dans player_repos_test.go) et le
+		// xuid démo vient de db_profiles.json (writeDemoConfigsMulti). La réintroduire
+		// doit rougir ici.
+		"xuid":        "aucun lecteur de production ; le xuid démo vient de la config, pas de la base",
 		"player_xuid": "xuid réel du joueur source, jamais anonymisé",
 		// Clés bénignes mais NON nécessaires : la démo a la synchronisation coupée
 		// (app_settings spnkr_refresh_* = false), ces horodatages/compteurs n'y ont
@@ -101,13 +107,15 @@ func TestDemoSyncMetaAllowlistHasNoCredentialShapedKey(t *testing.T) {
 	}
 }
 
-// TestDemoSyncMetaCoversDemoRuntimeNeeds : sentinelle anti-faux-vert. Une liste
-// vidée ferait passer tous les tests ci-dessus au vert tout en cassant la démo
-// (ResolveXUID sans clé xuid) — et une liste trop maigre ferait rejouer les
-// migrations de schéma figé sur la base démo.
+// TestDemoSyncMetaCoversDemoRuntimeNeeds : sentinelle anti-faux-vert. Une liste vidée
+// ferait passer tous les tests ci-dessus au vert tout en faisant rejouer les migrations
+// de schéma figé sur la base démo.
+//
+// La liste est volontairement REDUITE AUX SEULES SENTINELLES (revue R1, 2026-08-26) :
+// aucune donnée de joueur, même anonymisée, n'a de raison d'être publiée depuis
+// sync_meta — cf. le retrait de 'xuid', statué dans TestDemoSyncMetaDefaultDeny.
 func TestDemoSyncMetaCoversDemoRuntimeNeeds(t *testing.T) {
 	required := map[string]string{
-		"xuid":                             "duckdb.ResolveXUID (Q3ResolveXUID) — sans elle la player DB démo ne résout plus son joueur",
 		"career_progression_rebuilt_v1":    "sans la sentinelle, rebuild_career_progression rejoue son DDL FIGÉ sur la base démo",
 		"career_xp_total_default_fixed_v1": "sans la sentinelle, fix_career_xp_total_default_zero rejoue sur la base démo",
 	}
@@ -115,6 +123,13 @@ func TestDemoSyncMetaCoversDemoRuntimeNeeds(t *testing.T) {
 		if !demoSyncMetaKeyAllowed(key) {
 			t.Errorf("clé %q retirée de demoSyncMetaAllowedKeys : %s", key, why)
 		}
+	}
+	// La liste ne contient QUE ces sentinelles : toute entrée supplémentaire est une
+	// donnée publiée en plus, donc une décision à justifier explicitement.
+	if len(demoSyncMetaAllowedKeys) != len(required) {
+		t.Errorf("demoSyncMetaAllowedKeys = %v (%d entrées), attendu exactement les %d sentinelles.\n"+
+			"Ajouter une clé = affirmer qu'elle a un lecteur réel côté démo ET la statuer dans ce test.",
+			demoSyncMetaAllowedKeys, len(demoSyncMetaAllowedKeys), len(required))
 	}
 }
 

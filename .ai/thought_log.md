@@ -52,9 +52,27 @@ verdict (il n'en aurait pas rendu avant l'heure), on ne bloque donc pas la livra
 Arbre de travail verifie propre apres coup (aucun artefact `.png` de himap embarque).
 
 **Conclusion / prochaine etape** : le CODE ne copie plus aucun credential. MAIS le jeu de
-donnees de demo DEJA PUBLIE en prod a ete genere par l'ancien code : il porte donc
-vraisemblablement le RT du joueur source — purge/regeneration = operation prod, hors
-perimetre de ce lot, a traiter par le superviseur. Decouvertes non traitees (regle zero fix
+donnees de demo DEJA PUBLIE en prod a ete genere par l'ancien code : verification SQL du
+superviseur (copie locale, 2026-08-26) — il porte un RT REEL de 417 caracteres (M.C525...,
+source JGtm, re-seede au deploy du 25/08 12:41). Remediation ACTEE (revue R1) : (a) un RT
+expose se traite par ROTATION, pas par effacement de la copie — elle est automatique
+(~50 min, les vieux RT meurent a la rotation), la valeur publiee est tres vraisemblablement
+deja morte ; JAMAIS de re-capture (ADR 0023) ; (b) le prochain `seed-demo` remplace de toute
+facon l'inode (`removeDuckDBForFreshWrite` + CTAS) ; (c) MAIS chaque deploy `main` re-copie
+un RT frais tant que ce lot n'atteint pas main → decision superviseur : portage en hotfix
+`fix/*` vers main (un correctif securite n'attend pas le train v7.5.0), GO utilisateur en
+attente.
+
+**Ronde R1 (revue adversariale, 2026-08-26)** : verrou VALIDE (12 conditions tiennent),
+4 P2 corriges — (1) `xuid` SORT de la liste d'inclusion : sa justification citait du code
+mort (ResolveXUID/Q3ResolveXUID, seuls appelants en test ; le xuid demo vient de
+db_profiles.json) → liste reduite aux 2 sentinelles de migration, taille verrouillee par
+test ; (2) ce retrait supprime aussi la reecriture DemoXUID conditionnee a une egalite non
+verifiee (`WHERE key='xuid' AND value=?` sans RowsAffected) qui pouvait publier le xuid
+REEL en silence ; (3) doc inversee corrigee (la migration boot lit encore
+`sync_meta.oauth_refresh_token` a chaque demarrage jusqu'au kill-switch 2026-10-01) ;
+(4) ce paragraphe (rotation, pas purge). Chemin synthetique statue (aucune donnee de prod
+ne le traverse, residu `sync_meta.xuid` de parite de schema signale non traite). Decouvertes non traitees (regle zero fix
 opportuniste) : (1) `player_xuid` portait le xuid REEL du joueur source et n'etait PAS
 anonymise par extractPlayerTables (seule la cle `xuid` l'est) — la liste d'inclusion le
 neutralise au passage, mais la meme classe de fuite est a re-auditer sur les autres tables
