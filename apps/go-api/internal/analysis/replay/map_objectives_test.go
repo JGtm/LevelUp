@@ -95,8 +95,82 @@ func TestBuildMapObjectives_PointsOnlyGardeLesPonctuels(t *testing.T) {
 		},
 	)
 	mo := BuildMapObjectives(e, []ObjectiveRoleSpec{{Role: mapvar.RoleFlagDelivery, PointsOnly: true}})
+	// DEUX CAMPS DISTINCTS (0 pour le point, 1 pour le cylindre) : chacun sert le sien.
 	if mo == nil || len(mo.Zones) != 0 || len(mo.Markers) != 2 {
 		t.Fatalf("attendu 0 zone / 2 marqueurs (le cylindre ET le point), reçu %+v", mo)
+	}
+}
+
+// TestBuildMapObjectives_PointsOnlyNeDedoublePasUnCamp — LE CORRECTIF DU 2026-08-26 : quand un
+// (rôle, camp) porte DÉJÀ un objet ponctuel, la forme du MÊME camp n'est pas servie en plus.
+//
+// CE QUE CE CAS REPRODUIT : sur Catalyst, chaque camp de CTF servait DEUX marqueurs de livraison
+// — le point d'origine et le centre du volume converti, quasi superposés (1,3 u pour l'équipe 0,
+// 8,7 u pour l'équipe 1). Le volume est l'aire de validation AUTOUR du point, pas un second
+// objectif.
+func TestBuildMapObjectives_PointsOnlyNeDedoublePasUnCamp(t *testing.T) {
+	r := 4.0
+	forme := &mapvar.Shape{
+		Family: mapvar.ShapeCylinder, Radius: &r, UpZ: 2, DownZ: 1,
+		Forward: mapvar.Vec3{X: 0, Y: 1}, Up: mapvar.Vec3{Z: 1},
+	}
+	e := entreeObjectifs()
+	e.Objectives = append(e.Objectives,
+		// Camp 0 : un ponctuel ET une forme — la forme doit disparaître.
+		mapvar.Objective{Role: mapvar.RoleFlagDelivery, Pos: mapvar.Vec3{X: 9, Y: 1}, TeamIndex: 0, InstanceID: 4},
+		mapvar.Objective{Role: mapvar.RoleFlagDelivery, Pos: mapvar.Vec3{X: 9.1, Y: 1}, TeamIndex: 0, InstanceID: 5, Shape: forme},
+		// Camp 1 : une forme SEULE — son centre doit rester servi.
+		mapvar.Objective{Role: mapvar.RoleFlagDelivery, Pos: mapvar.Vec3{X: -9, Y: 1}, TeamIndex: 1, InstanceID: 6, Shape: forme},
+	)
+	mo := BuildMapObjectives(e, []ObjectiveRoleSpec{{Role: mapvar.RoleFlagDelivery, PointsOnly: true}})
+	if mo == nil || len(mo.Zones) != 0 {
+		t.Fatalf("attendu 0 zone, reçu %+v", mo)
+	}
+	parCamp := map[int]int{}
+	for _, m := range mo.Markers {
+		parCamp[m.Team]++
+	}
+	if parCamp[0] != 1 {
+		t.Errorf("camp 0 : %d marqueur(s), attendu 1 — le ponctuel est canonique, sa forme est "+
+			"son aire de validation, pas un second objectif", parCamp[0])
+	}
+	if parCamp[1] != 1 {
+		t.Errorf("camp 1 : %d marqueur(s), attendu 1 — sans ponctuel, le centre de la forme "+
+			"reste le seul objectif servi (le cas `stockpile_navpoint`)", parCamp[1])
+	}
+	// Le marqueur du camp 0 est le PONCTUEL (x = 9), pas le centre de la forme (x = 9,1).
+	for _, m := range mo.Markers {
+		if m.Team == 0 && m.X != 9 {
+			t.Errorf("camp 0 : marqueur en x=%v, attendu le ponctuel x=9", m.X)
+		}
+	}
+}
+
+// TestBuildMapObjectives_PointsOnlyCampNeutreEstUnCamp — le camp NEUTRE (-1) compte comme un
+// camp a part entiere : son ponctuel ecarte sa forme, et il n'ecarte la forme d'aucun autre.
+func TestBuildMapObjectives_PointsOnlyCampNeutreEstUnCamp(t *testing.T) {
+	r := 4.0
+	forme := &mapvar.Shape{
+		Family: mapvar.ShapeCylinder, Radius: &r, UpZ: 2, DownZ: 1,
+		Forward: mapvar.Vec3{X: 0, Y: 1}, Up: mapvar.Vec3{Z: 1},
+	}
+	e := entreeObjectifs()
+	e.Objectives = append(e.Objectives,
+		mapvar.Objective{Role: mapvar.RoleFlagDelivery, Pos: mapvar.Vec3{X: 0, Y: 0}, TeamIndex: TeamNeutral, InstanceID: 7},
+		mapvar.Objective{Role: mapvar.RoleFlagDelivery, Pos: mapvar.Vec3{X: 0.5, Y: 0}, TeamIndex: TeamNeutral, InstanceID: 8, Shape: forme},
+		mapvar.Objective{Role: mapvar.RoleFlagDelivery, Pos: mapvar.Vec3{X: -9, Y: 1}, TeamIndex: 1, InstanceID: 9, Shape: forme},
+	)
+	mo := BuildMapObjectives(e, []ObjectiveRoleSpec{{Role: mapvar.RoleFlagDelivery, PointsOnly: true}})
+	parCamp := map[int]int{}
+	for _, m := range mo.Markers {
+		parCamp[m.Team]++
+	}
+	if parCamp[TeamNeutral] != 1 {
+		t.Errorf("camp neutre : %d marqueur(s), attendu 1", parCamp[TeamNeutral])
+	}
+	if parCamp[1] != 1 {
+		t.Errorf("camp 1 : %d marqueur(s), attendu 1 — le ponctuel NEUTRE ne doit pas écarter "+
+			"la forme d'un AUTRE camp", parCamp[1])
 	}
 }
 

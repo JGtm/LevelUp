@@ -1,0 +1,26 @@
+01e1f945 : designateur slot 1471 (4 bascule(s)) ; canal slot 1472 (99 emission(s)) ; pont 8 slot(s) nomme(s), 8 rattache(s) a un camp ; axe 5343 frames a 100 ms
+SIGNAL    01e1f945 : 8/15 = 53.3 % (intervalles 21, sans dominance 6, 0->slot1, 1->slot0)
+DIAGNOSTIC 01e1f945 : delta personnel par intervalle confrontable — dominant median 150, domine median 25 (un frag vaut ~100, un tic de colline quelques points)
+EXPLOITABLE     01e1f945 : 15 intervalle(s) confrontable(s) >= 6
+TEMOIN a  01e1f945 : aucun autre canal confrontable hors de l'objet de mode — temoin sans objet
+TEMOIN b  01e1f945 : decalage +60 s (temoin FAIBLE par nature) : 5/9 = 55.6 % (intervalles 17, sans dominance 8, 0->slot0, 1->slot1)
+
+0a247154 : designateur slot 1622 (5 bascule(s)) ; canal slot 1623 (213 emission(s)) ; pont 8 slot(s) nomme(s), 8 rattache(s) a un camp ; axe 7838 frames a 100 ms
+SIGNAL    0a247154 : 18/26 = 69.2 % (intervalles 36, sans dominance 10, 0->slot0, 1->slot1)
+DIAGNOSTIC 0a247154 : delta personnel par intervalle confrontable — dominant median 150, domine median 0 (un frag vaut ~100, un tic de colline quelques points)
+EXPLOITABLE     0a247154 : 26 intervalle(s) confrontable(s) >= 6
+TEMOIN a  0a247154 : aucun autre canal confrontable hors de l'objet de mode — temoin sans objet
+TEMOIN b  0a247154 : decalage +60 s (temoin FAIBLE par nature) : 14/23 = 60.9 % (intervalles 34, sans dominance 11, 0->slot1, 1->slot0)
+
+606d9844 : designateur slot 1498 (2 bascule(s)) ; canal slot 1499 (13 emission(s)) ; pont 5 slot(s) nomme(s), 5 rattache(s) a un camp ; axe 2342 frames a 100 ms
+SIGNAL    606d9844 : 4/5 = 80.0 % (intervalles 5, sans dominance 0, 0->slot0, 1->slot1)
+NON EXPLOITABLE 606d9844 : 5 intervalle(s) confrontable(s) < 6 — ce film ne compte NI POUR NI CONTRE
+TEMOIN a  606d9844 : permutation (freres 1498..1501 exclus), pire des 1 autres canaux (slot 1488) : 1/1 = 100.0 % (intervalles 1, sans dominance 0, valeur unique 3253797079 — bijection DEGENEREE)
+TEMOIN b  606d9844 : decalage +60 s (temoin FAIBLE par nature) : 3/3 = 100.0 % (intervalles 4, sans dominance 1, valeur unique 0 — bijection DEGENEREE)
+
+8076f97f : designateur slot 1540 (2 bascule(s)) ; canal slot 1541 (35 emission(s)) ; pont 8 slot(s) nomme(s), 8 rattache(s) a un camp ; axe 3398 frames a 100 ms
+SIGNAL    8076f97f : 6/6 = 100.0 % (intervalles 13, sans dominance 7, 0->slot0, 1->slot1)
+EXPLOITABLE     8076f97f : 6 intervalle(s) confrontable(s) >= 6
+TEMOIN a  8076f97f : permutation (freres 1540..1543 exclus), pire des 3 autres canaux (slot 1459) : 1/1 = 100.0 % (intervalles 2, sans dominance 1, valeur unique 86650472 — bijection DEGENEREE)
+TEMOIN b  8076f97f : decalage +60 s (temoin FAIBLE par nature) : 4/6 = 66.7 % (intervalles 10, sans dominance 4, 0->slot1, 1->slot0)
+
