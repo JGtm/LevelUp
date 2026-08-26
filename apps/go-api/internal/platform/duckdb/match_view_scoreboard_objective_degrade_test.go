@@ -23,14 +23,12 @@ import (
 )
 
 // captureSlog redirige le logger par défaut vers un buffer JSON pour la durée du
-// test et le restaure ensuite.
+// test et le restaure ensuite (délègue à captureSlogWith, slog_capture_test.go —
+// fichier SANS build tag, partagé avec captureSlogText).
 func captureSlog(t *testing.T) *bytes.Buffer {
-	t.Helper()
-	var buf bytes.Buffer
-	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	return &buf
+	return captureSlogWith(t, func(buf *bytes.Buffer) slog.Handler {
+		return slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	})
 }
 
 // hasWarnContaining indique si le buffer porte une ligne WARN dont le message

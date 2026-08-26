@@ -296,6 +296,65 @@ I/O fichier et sont mesurables sans artifice). (2) `golangci-lint` emet un warni
 **Conclusion / prochaine etape** : livre sur `wt/lot-c-provider-log` (2 commits), aucun push —
 le superviseur fusionne. A verifier au deploiement : que `LEVELUP_LOGS_FILE_LEVEL` n'est pas
 force a `debug` en prod, sinon les 4 messages continueraient d'ecrire (en DEBUG cette fois).
+## [2026-08-26] Micro-hygiène — type front mort, commentaire MSAL, statut captureSlog — Complete
+
+**Contexte** : lot D « micro-hygiène mécanique », worktree dédié `wt/lot-d-micro-hygiene`
+(base `3177a57a2`). 3 items mécaniques consignés par des revues precedentes, chacun
+RE-VÉRIFIÉ sur pièces avant action (consigne explicite : le code a pu bouger).
+
+**Décisions techniques principales** :
+1. `apps/web/src/lib/api/types.ts` — `SetupAuthInfo` et `SetupStatusResponse`
+   (`@deprecated` sprint 29) : zéro consommateur confirmé (grep `apps/web/src`, seule
+   mention restante = un commentaire non-importeur dans `setupFlowStore.ts`, laissé en
+   l'état, hors périmètre). Supprimés avec leur entrée dans l'allowlist de
+   `response-types.guard.test.ts` (26 → 25 entrées). `SetupPlayerInfo`/`SetupNextStep`
+   deviennent orphelins par ricochet (seuls consommateurs = le type supprimé) : NON
+   traités (hors périmètre explicite de l'item), consignés en découverte.
+2. `apps/go-api/cmd/backfill-csr-history/main.go` — le commentaire ne se trompait pas
+   que sur « MSALProvider » (retiré 2026-07-15) : `SPNKR_AZURE_CLIENT_ID` n'est PLUS LU
+   DU TOUT (remplacé par `LEVELUP_OAUTH_CLIENT_ID`/`SPNKR_AZURE_CLIENT_SECRET` via
+   `ResolveAzureOAuthClient` ; ADR 0023 Phase 5, 2026-08-25, a retiré toute branche env
+   var legacy). Les 2 commentaires du fichier (flag `-env-file` + doc `loadEnvLocal`)
+   corrigés pour décrire le pipeline réel : SISUProvider + MultiUserTokenStore.
+3. `captureSlog`/`captureSlogText` (package `internal/platform/duckdb`) — la prémisse du
+   lot (« packages différents ») était FAUSSE : les deux vivent dans le MÊME package
+   `duckdb`, seulement séparés par le tag `integration`. Vraie duplication intra-package,
+   déjà documentée comme « jumeau assumé » par une revue antérieure dans
+   `read_recovery_test.go`. Dédupliquée vers `slog_capture_test.go` (SANS tag) : le
+   helper générique `captureSlogWith` + le wrapper `captureSlogText` (consommé par du
+   code non-taggé) y vivent ; le wrapper `captureSlog` (JSON) RESTE dans le fichier taggé
+   `integration` et délègue à `captureSlogWith` — sinon golangci-lint (linter `unused`,
+   qui ne voit que le build PAR DÉFAUT) classe `captureSlog` comme mort puisque son seul
+   appelant est invisible sans le tag. Piège découvert en cours de route, contourné sans
+   `//nolint`.
+
+**Résultats observés** : gofmt -l vide ; `go build ./...` exit 0 ; `go vet ./...` exit 0 ;
+`go vet -tags=integration ./internal/platform/duckdb/...` exit 0 ; `go test -count=1
+./internal/platform/duckdb/...` exit 0 (37,7s) ; `go test -tags=integration -p 1 -run
+'^(TestGetMatchScoreboard_MissingObjectiveView_ServesScoreboardAndWarns|TestGetMatch
+Scoreboard_ObjectiveViewPresent_PopulatesObjective)$' ./internal/platform/duckdb/...`
+exit 0 (PASS explicite des 2 tests consommant `captureSlog`) ; `go build`/`go test` de
+`cmd/backfill-csr-history` (tag cgo) exit 0 ; `golangci-lint run
+--new-from-merge-base=origin/feat/v75` exit 0 (1er essai : 1 issue `unused` sur
+`captureSlog` avant le réaménagement ci-dessus). Front : `npm ci` (node_modules absent
+malgré un premier grep trompeur), `make check-types` exit 0, `make test-web` exit 0,
+`response-types.guard.test.ts` exit 0 (5/5, allowlist réduite), `eslint` ciblé exit 0.
+
+**Découvertes consignées (hors périmètre, non traitées)** :
+- `SetupPlayerInfo`/`SetupNextStep` orphelins depuis la suppression de
+  `SetupStatusResponse` (voir item 1 ci-dessus).
+- Commentaire de `setupFlowStore.ts` (ligne 9) décrit un flux déjà mort
+  (`useSetupStatus()`/clé `['setup-status']`, supprimés sprint 29) — doc-drift
+  préexistant, non touché.
+- Le pattern stale « SPNKR_AZURE_CLIENT_ID requis par MSAL(Provider) » existe aussi dans
+  `cmd/get-token/main.go`, `cmd/probe-world-stats/main.go`,
+  `cmd/populate-playlists-catalog/main.go`, `cmd/refresh_golden_fixture/main.go`,
+  `scripts/warm_bp_assets/main.go` — hors périmètre (item 2 ne visait que
+  `backfill-csr-history`).
+
+**Conclusion / prochaine étape** : les 3 items sont clos, aucun report invalide. Prêt pour
+commit(s) `chore(hygiene): ...` dans le worktree dédié. Pas de push/merge (hors périmètre
+de ce lot).
 
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
