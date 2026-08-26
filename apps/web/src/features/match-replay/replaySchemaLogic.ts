@@ -30,7 +30,7 @@
  * (replaySchemaLogic.guard.test.ts) fait échouer la CI si cette valeur diverge de la
  * constante Go — la mettre à jour ici NE SUFFIT PAS à faire mentir le garde-rail.
  */
-export const EXPECTED_REPLAY_SCHEMA_VERSION = 19
+export const EXPECTED_REPLAY_SCHEMA_VERSION = 20
 
 /**
  * ReplaySchemaState — les trois lectures possibles d'un `schemaVersion` reçu face à ce que ce

@@ -155,7 +155,22 @@ package replay
 // (mesure du 2026-08-24). Un artefact v18 doit donc se lire « a re-cuire », pas « a jour » : il
 // ne peut porter aucun marqueur, et la reprise du backfill se fait par SchemaVersion. Chronique,
 // mesure et temoin : inventory.go + inventory_dead_readings.go.
-const SchemaVersion = 19
+// v20 (2026-08-25, lot 4.4 du suivi delta de l'inventaire) : `grenadeReads` — LES GRENADES
+// PORTEES SUR LEUR PROPRE AXE, alimentees par les images-cles ET par les paquets delta, chaque
+// lecture publiant sa SOURCE (`kf` / `delta`). Le champ est optionnel, mais la version monte
+// pour la raison exacte des montees v6 et v13 : le client CONSOMME cet axe pour la boite de
+// grenades — il y lit desormais une lecture d'age median 8,09 s la ou `inventory` seul en
+// donnait une de 10,00 s (mesure sur 70 films, 28 confrontables) — et la reprise du backfill se
+// fait par SchemaVersion. Un artefact v19 doit donc se lire « a re-cuire », pas « a jour » : il
+// ne peut porter aucune lecture delta.
+//
+// CE QUE LA VERSION 20 NE PORTE PAS, ET POURQUOI C'EST ECRIT ICI. Les MUNITIONS delta ont ete
+// implementees et mesurees, puis REFUSEES par leur propre mesure : leur concordance avec les
+// images-cles plafonne a 92,80 % et DESCEND quand on rapproche les deux lectures (88,06 % a
+// 0,10 s contre 93,19 % a 2 s), ce qu'une consommation reelle entre les deux mesures ferait a
+// l'envers. `Inventory.Am` reste donc alimente par les seules images-cles. Chronique complete,
+// chiffres et porte par film : .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
+const SchemaVersion = 20
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -231,6 +246,14 @@ type ReplayDocument struct {
 	// Abilities est le RANG DE PALETTE de la capacité d'armure portée, lu au fil du film
 	// (cf. abilities.go). Absent si aucun canal n'a rien rendu.
 	Abilities []AbilityRead `json:"abilities,omitempty"`
+	// GrenadeReads est l'axe des GRENADES PORTEES, alimente par DEUX canaux : le record de
+	// biped des images-cles et les composants i22/i47 des paquets delta, chaque lecture disant
+	// d'ou elle vient (cf. grenade_reads.go). Absent si aucun canal n'a rien rendu.
+	//
+	// IL NE REMPLACE PAS `Inventory` : celui-ci reste la source des munitions, de l'emplacement
+	// degaine et du marqueur de lecture vide. Les deux axes coexistent parce qu'ils n'ont pas la
+	// meme cadence, et les melanger ferait masquer une lecture pleine par une lecture partielle.
+	GrenadeReads []GrenadeRead `json:"grenadeReads,omitempty"`
 	// AbilityLabels nomme les RANGS de capacité que le document emploie.
 	//
 	// LA TABLE EST PARTIELLE, et un rang absent GARDE SON NUMÉRO à l'écran, marqué non

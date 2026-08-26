@@ -10717,6 +10717,8 @@ components:
           $ref: '#/components/schemas/FlagCarriesCoverage'
         grapple:
           $ref: '#/components/schemas/GrappleCoverage'
+        grenadeReads:
+          $ref: '#/components/schemas/GrenadeReadCoverage'
         grenades:
           $ref: '#/components/schemas/LayerCoverage'
         groundWeapons:
@@ -13211,6 +13213,54 @@ components:
         - "y"
         - rank
         - s
+      type: object
+    GrenadeRead:
+      additionalProperties: false
+      properties:
+        g:
+          items:
+            format: int32
+            minimum: 0
+            type: integer
+          type:
+            - array
+            - "null"
+        gs:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        src:
+          type: string
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+        - g
+        - src
+      type: object
+    GrenadeReadCoverage:
+      additionalProperties: false
+      properties:
+        ammoRefused:
+          type: boolean
+        fromDelta:
+          format: int64
+          type: integer
+        fromKeyframe:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - fromKeyframe
+        - fromDelta
+        - unpublished
       type: object
     GroundWeaponCoverage:
       additionalProperties: false
@@ -20276,6 +20326,12 @@ components:
         grenadeLabels:
           items:
             $ref: '#/components/schemas/Label'
+          type:
+            - array
+            - "null"
+        grenadeReads:
+          items:
+            $ref: '#/components/schemas/GrenadeRead'
           type:
             - array
             - "null"

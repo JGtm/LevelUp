@@ -25,6 +25,7 @@ import {
 import type {
   ReplayDocument,
   ReplayFlagCarry,
+  ReplayGrenadeRead,
   ReplayInventory,
   ReplayLoadout,
   ReplayProjectile,
@@ -46,6 +47,7 @@ type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]>
 export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
 type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
+export type ReplayGrenadeReadReady = Filled<ReplayGrenadeRead, 'g'>
 export type ReplaySurfaceReady = Omit<ReplaySurface, 'poly'> & { poly: ReplayXY[] }
 export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplayStep[] }
 /**
@@ -98,6 +100,7 @@ export type ReplayDocumentReady = Omit<
   | 'geometry'
   | 'grappleLines'
   | 'grenadeLabels'
+  | 'grenadeReads'
   | 'grenades'
   | 'inventory'
   | 'loadouts'
@@ -120,6 +123,13 @@ export type ReplayDocumentReady = Omit<
   geometry: NonNullable<ReplayDocument['geometry']>
   grappleLines: NonNullable<ReplayDocument['grappleLines']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
+  /**
+   * L'AXE DES GRENADES PORTÉES (schéma 20), alimenté par DEUX canaux : les images-clés
+   * (~20 s) et les paquets delta (transmis AU CHANGEMENT). Chaque lecture porte sa `src`.
+   * Vide = artefact antérieur au schéma 20, ou film qui n'en transmet pas : la fiche
+   * retombe alors sur `inventory`, exactement comme avant.
+   */
+  grenadeReads: ReplayGrenadeReadReady[]
   grenades: NonNullable<ReplayDocument['grenades']>
   inventory: ReplayInventoryReady[]
   loadouts: ReplayLoadoutReady[]
@@ -182,6 +192,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // ne se trace, jamais une ligne devinée.
     grappleLines: raw.grappleLines ?? [],
     grenadeLabels: raw.grenadeLabels ?? [],
+    // `g` est comblé comme partout ailleurs : le contrat le déclare nullable, et une lecture
+    // qui arriverait avec `g: null` ferait tomber la boîte de grenades à l'exécution.
+    grenadeReads: (raw.grenadeReads ?? []).map((gr) => ({ ...gr, g: gr.g ?? [] })),
     grenades: raw.grenades ?? [],
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
     loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),

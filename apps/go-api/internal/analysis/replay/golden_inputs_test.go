@@ -47,6 +47,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -67,6 +68,18 @@ func goldenInputsPath() string {
 
 // goldenInputsMagic identifie le format et sa version. Un fixture d une autre version est une
 // ERREUR, jamais une lecture « au mieux » : un decodage decale rendrait des chiffres plausibles.
+//
+// LA MAGIE S INCREMENTE DANS LE MEME COMMIT QUE LA SUITE DES SECTIONS — c est la seule chose
+// qui rend la garde utile. Laisser la magie en arriere (constat de revue du 2026-08-25 : le
+// commentaire annoncait v10, la constante disait encore v9) fait ACCEPTER un fixture d une
+// autre version par la garde, et le decodage decale meurt plus loin sur un « uvarint illisible »
+// a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
+// quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
+//
+// v10 (2026-08-25, lot 4.4 du suivi delta de l inventaire) : le fixture porte les lectures
+// d INVENTAIRE DELTA (compteurs de grenades i22 et jeu selectionne i47) que BuildFromFilm
+// decode desormais. Sans elles le golden d assemblage n exercerait JAMAIS le second canal de
+// l axe `grenadeReads` — il figerait un document que la production ne produit plus.
 //
 // v4 (2026-08-16, PLAN_EQUIPEMENT_TI37 phase 1) : la position serialise AUSSI le QUANTUM
 // brut du bouclier (Shield.Q — la regle du surbouclier est `q > 64`, et le clamp de
@@ -100,7 +113,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS9\n"
+const goldenInputsMagic = "REPLAYINPUTS10\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -143,6 +156,9 @@ type goldenInputs struct {
 	// est l etat de l unite, pas celui du seul equipement rang 8 (controle du
 	// 2026-08-16, cf. renderEquipment).
 	CamoStates []filmdec.CamoRead
+	// InventoryDeltas : les lectures d inventaire des paquets DELTA (grenades). Second canal de
+	// l axe `grenadeReads` — cf. grenade_reads.go.
+	InventoryDeltas []filmdec.InventoryDelta
 	// GrappleReads : les evenements de grappin (corps tag==3 d i59, tir et accroche avec
 	// leurs quanta d ancre). MEME raison : l assemblage en fait les tractions du schema 8 —
 	// sans elles le golden verrouillerait un document sans grappin, donc pas celui que la
@@ -181,6 +197,7 @@ func (g *goldenInputs) options() Options {
 		Inventory:         g.Inventory,
 		AbilityRanks:      g.AbilityRanks,
 		CamoStates:        g.CamoStates,
+		InventoryDeltas:   g.InventoryDeltas,
 		GrappleReads:      g.GrappleReads,
 		Placements:        g.Placements,
 		PlacementStats:    g.PlacementStats,
@@ -424,6 +441,21 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		for _, a := range inv.Ammo {
 			encodeAmmo(w, a)
 		}
+	}
+
+	w.u(uint64(len(g.InventoryDeltas)))
+	lastTS = 0
+	for _, d := range g.InventoryDeltas {
+		w.u(d.TimestampUS - lastTS) // horodatages non decroissants dans l ordre du film
+		lastTS = d.TimestampUS
+		w.u(uint64(d.Slot))
+		w.u(uint64(len(d.Grenades)))
+		for _, c := range d.Grenades {
+			w.u(uint64(c))
+		}
+		w.bool8(d.SelRead)
+		w.i(int64(d.Sel))
+		w.u(uint64(d.Mask))
 	}
 
 	w.u(uint64(len(g.AbilityRanks)))
@@ -814,6 +846,24 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	}
 
 	n = int(r.u())
+	g.InventoryDeltas = make([]filmdec.InventoryDelta, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		d := filmdec.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
+		if gn := int(r.u()); gn > 0 {
+			d.Grenades = make([]uint32, 0, gn)
+			for j := 0; j < gn && r.err == nil; j++ {
+				d.Grenades = append(d.Grenades, uint32(r.u()))
+			}
+		}
+		d.SelRead = r.bool8()
+		d.Sel = int(r.i())
+		d.Mask = uint32(r.u())
+		g.InventoryDeltas = append(g.InventoryDeltas, d)
+	}
+
+	n = int(r.u())
 	g.AbilityRanks = make([]filmdec.AbilityRank, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -944,6 +994,30 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 	}
 }
 
+// TestGoldenInputsVersionGuard : un fixture d une AUTRE version est refuse par la MAGIE, et le
+// message dit quoi faire.
+//
+// C EST LE VERROU DU CONSTAT DE REVUE DU 2026-08-25. La section `InventoryDeltas` a ete inseree
+// au milieu du flux sans que la magie bouge : un fixture de la version precedente passait la
+// garde, puis mourait plus loin sur « uvarint illisible a l offset N » — un message qui parle
+// d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
+// magie PRECEDENTE : la seule reponse acceptable est le refus de version.
+func TestGoldenInputsVersionGuard(t *testing.T) {
+	const previousMagic = "REPLAYINPUTS9\n"
+	if previousMagic == goldenInputsMagic {
+		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
+	}
+	body := encodeGoldenInputs(loadGoldenInputs(t))[len(goldenInputsMagic):]
+	stale := append([]byte(previousMagic), body...)
+	_, err := decodeGoldenInputs(stale)
+	if err == nil {
+		t.Fatal("un fixture d une autre version a ete accepte : la garde de version ne sert a rien")
+	}
+	if !strings.Contains(err.Error(), "version inconnue") {
+		t.Fatalf("la version doit etre refusee POUR CE QU ELLE EST ; message obtenu : %v", err)
+	}
+}
+
 // TestGoldenInputsRegenerate : LA SEULE PORTE D ECRITURE DU FIXTURE.
 //
 // Elle exige DEUX conditions explicites — `-update` et `REPLAY_FILM_DIR` — parce qu une
@@ -1021,6 +1095,9 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	if g.AbilityRanks, _, err = filmdec.ScanFilmAbilityRanks(dir); err != nil {
+		return nil, err
+	}
+	if g.InventoryDeltas, _, err = filmdec.ScanFilmInventoryDeltas(dir); err != nil {
 		return nil, err
 	}
 	if g.CamoStates, _, err = filmdec.ScanFilmCamoStates(dir); err != nil {

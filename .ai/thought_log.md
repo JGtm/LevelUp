@@ -1,3 +1,65 @@
+## [2026-08-25] Suivi DELTA de l'inventaire — lot 4 en 5 sous-lots : grenades FUSIONNEES (schema 20), munitions REFUSEES par leur propre mesure — Complete
+
+**Contexte** : l'inventaire du rejeu 2D est lu aux images-cles (~20 s) ; l'etude de faisabilite
+du 2026-08-24 concluait que le suivi DELTA etait faisable sans RE nouvelle, avec DEUX reserves
+explicites — tout est mesure sur UN film, et le RAPPEL de l'ancre n'est pas mesure. Execution du
+plan en 5 lots de son §4, sous contrat `plan-execution`, branche `wt/suivi-delta-inventaire`.
+
+**Decision technique principale** : les lectures delta N'ENTRENT PAS dans `Inventory`. Le client
+retient la lecture d'`Inventory` la plus recente <= T et lit sur ELLE le chargeur, la reserve et
+l'emplacement degaine autant que les grenades ; y verser des lectures delta — qui ne portent QUE
+des grenades — ferait masquer une lecture pleine par une lecture partielle et VIDERAIT la cellule
+de munitions. C'est le defaut que la v19 vient de fermer (« une lecture vide EFFACE »), sous une
+autre forme. Un axe a part (`grenadeReads`, schema 20) porte donc les DEUX canaux sur la seule
+grandeur GRENADES, chaque lecture publiant sa source (`kf` / `delta`) — patron d'`abilities.go`.
+Verrouille par `TestGrenadeReadsNAffectePasLInventaire`.
+
+**Resultats observes** — LE VERROU MULTI-FILMS EST LEVE POUR LES GRENADES. 70 films balayes,
+28 rendant des couples confrontables (>= 15 exige) : concordance delta <-> images-cles
+714/729 = 97,94 % (SUPERIEURE au 97,2 % du film unique) ; controle croise interne au canal delta
+— masque i47 == bitmap des compteurs i22 — 1 925/1 925 = 100,00 % sur deux desers a des positions
+differentes du meme record ; i22 plausible a 99,73 % sur 4 065 lectures / 4 355 683 records
+ancres ; RAPPEL de l'ancre (2e reserve de l'etude) 138/145 = 95,17 % des transitions attestees
+par les images-cles ; age median de la lecture affichee 10,00 s -> 8,09 s (-19,1 %).
+
+IL EST REFUTE POUR LES MUNITIONS, et c'est le resultat le plus important. Le film temoin
+reproduit l'etude AU CHIFFRE PRES (563/593 lectures, max 80), mais sur 25 films 4,50 % des
+55 544 chargeurs depassent 120 (max 250, 251 valeurs distinctes sur 256). DEUX hypotheses de
+correction ecrites AVANT mesure et toutes deux REFUTEES : (1) « je lis les 4 emplacements au lieu
+de 2 » — faux, les emplacements 2/3 ne transmettent quasi rien (n=1, n=1) ; (2) « la corroboration
+par i22 filtrerait » — inexploitable, 17 chargeurs sur 55 544 partagent un record avec i22. Le
+vrai diagnostic est BIMODAL PAR FILM : 18 films a 0,00-0,25 % contre 7 a 1,73-24,99 %, deux
+populations separees par un VIDE ou le seuil de 1 % tombe sans etre sensible. D'ou une porte TOUT
+OU RIEN par film (`refuseAmmoIfContaminated`) : sur un film ou le curseur derive, les valeurs qui
+tombent SOUS l'enveloppe ne sont pas plus vraies, elles sont indiscernables — filtrer valeur par
+valeur fabriquerait des chargeurs plausibles et FAUX. Et le gate du plan (>= 95 %) n'est pas
+atteint : 1 069/1 152 = 92,80 % a 1 s. L'explication innocente (« c'est du tir entre les deux
+lectures ») a ete testee par un PROFIL a plusieurs ecarts et REFUTEE — la concordance DESCEND
+quand on rapproche les mesures (88,06 % a 0,10 s contre 93,19 % a 2 s), alors que du tir ferait
+l'inverse. Les munitions sont donc livrees comme scanner mesure et statuees `[!]` : elles
+n'alimentent pas la fiche.
+
+Trois decouvertes hors perimetre, notees et non traitees : `traverse.go:135` porte la meme
+doctrine perimee que le lot 0 a corrigee ailleurs ; le canal des IMAGES-CLES est muet sur ~60 %
+du corpus pour les grenades (42 films sur 70) alors que le canal delta y livre des milliers de
+lectures — le canal delta est le plus COUVRANT des deux, l'inverse de la reserve attendue ; et
+`0014603f` ne transmet ni i22 ni i47 ni i48 en delta alors qu'i28 y est lu 766/766.
+
+**Gates** : `go test` replay + filmdec + contracttest verts ; `go vet` vert ; `golangci-lint`
+0 issue (deux lints corriges avant cloture — un booleen de retour que personne ne lisait, une
+constante morte) ; `tsc -b --force` vert ; `vitest run` 483 fichiers / 4674 tests ; eslint 0 sur
+les fichiers touches ; contrat regenere (`openapi-gen` puis `openapi-typescript`) ; goldens
+regeneres — fixture d'entrees porte v9 -> v10 pour EMBARQUER les lectures delta, sans quoi le
+golden n'aurait jamais exerce le second canal.
+
+**Conclusion / prochaine etape** : rapport complet dans
+`.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` (statut des 5 sous-lots, tous les chiffres,
+decisions de contrat, decouvertes). AUCUN COMMIT — working tree, en attente du superviseur.
+Points a trancher avec l'utilisateur : (a) lever le `[!]` des munitions suppose de comprendre
+pourquoi 22 films sur 70 ont une distribution de chargeurs contaminee ALORS QUE les grenades du
+meme film passent tous leurs tests (l'empreinte de registre ECS n'est pas le discriminant) ;
+(b) les 4 sondes jetables de l'etude sont conservees en l'etat, leur retrait sort du perimetre.
+
 ## [2026-08-25] Fusion `wt/inventaire-fiches` dans `feat/v75` — l'etat vide greffe DANS la grille a cellules fixes — Complete
 
 **Contexte** : deux intentions ecrites en parallele sur le meme fichier. Cote `feat/v75`
@@ -70819,3 +70881,56 @@ comme structure responsable des ~26 Gio) reste un chantier a part, deja consigne
 (`.ai/V7.5/REGISTRE_REPORTS.md`, ligne « Profiling `51101d1d` ») : ce lot pose le garde-fou de
 monitoring en attendant, il ne profile rien. A rejouer si besoin sur une machine moins
 contrainte : `go build ./...` en isolation complete (aucun autre process Go/gcc concurrent).
+
+---
+
+## [2026-08-26] Revue du lot 4 « suivi delta grenades » — 5 constats, 5 corriges
+
+**Ronde 2 de la revue lot 4 (2026-08-26)** : perimetre strict = les 4 corrections. Rendu :
+1 P1 (l'estompage par cellule n'etait verrouille par AUCUN test — les deux mutations,
+conteneur reintroduit et cellule amputee, laissaient 1119 tests verts), 1 P2 (l'assertion du
+cas « g vide ne departage rien » ne fixait pas l'age), 15 conditions qui tiennent. Correctifs
+poses par le superviseur : assertions d'opacite dans le cas « artefact 20 » de
+ReplayTeams.test.tsx (boite = opacite propre non vide dans (0,1], rangee = aucune opacite
+inline) + `expect(box?.age).toBe(-60)` dans inventoryReading.test.ts. Mordant verifie par
+mutation (conteneur 0.6 + retrait de l'opacite de la boite → 1 test tombe ; restaure).
+Suite complete re-passee : 76 fichiers / 1119 tests verts, tsc vert. Revue close :
+P0+P1 de 3 (ronde 1) a 1 (ronde 2) a 0.
+
+
+**Statut** : Complete (worktree `wt/suivi-delta-inventaire`, diff non committe).
+
+**Decision technique principale** : la doctrine « une lecture A VENIR ne prime jamais une
+information passee », deja posee au lot precedent sur les lectures d inventaire VIDES, est
+etendue a l axe `grenadeReads` et centralisee dans une fonction PURE neuve, `grenadeBoxAt`
+(`apps/web/src/features/match-replay/inventoryReading.ts`) : l axe gagne quand il est passe ; a
+venir, les compteurs passes de l inventaire priment ; a venir SANS rien de passe, la lecture
+s affiche ASSUMEE (age negatif tel quel, infobulle « dans X s », cles i18n neuves
+`grenadeAge`/`grenadeAhead`). Le composant ne fait plus que rendre ce que la fonction a tranche.
+Corollaire non evident : pour que l age propre de la boite soit VISIBLE, l estompage a du etre
+RETIRE du conteneur de la rangee — laisse la, il multipliait l opacite de chaque cellule par
+celle de l inventaire, et une lecture de grenades de 8,1 s s affichait plus PALE qu avant le lot.
+Chaque cellule porte desormais l age de la lecture qui la decrit (munitions : inventaire ;
+capacite : i48 ; grenades : l axe ; badge d etat vide : `empty.age`).
+
+Cote Go : la magie du fixture d entrees est passee a `REPLAYINPUTS10\n` (elle disait encore v9
+alors que la section `InventoryDeltas` avait ete inseree au milieu du flux), fixture et golden
+d assemblage regeneres par les portes documentees ; et la godoc de `renderAbilities`, collee sans
+ligne vide a celle de `renderGrenadeReads`, a ete rendue a sa fonction.
+
+**Resultats observes** : verrous — `TestGoldenInputsVersionGuard` (Go), `grenadeBoxAt` (6 cas
+purs) et le describe « boite de grenades : quelle lecture, et de quel age » (4 cas de rendu,
+`ReplayTeams.test.tsx`). Mordant prouve par TROIS mutations : le fixture v9 restaure depuis HEAD
+tombe maintenant sur « magie absente ou version inconnue — regenerer » (et non sur un uvarint
+illisible) ; preference inversee vers l axe meme a venir -> le cas « A VENIR / inventaire passe »
+tombe ; preference inversee vers l inventaire (annulation du benefice du lot) -> le cas
+« delta plus recente que l image-cle » tombe. Gates : Go 572 tests verts sur
+`replay` + `filmdec` + `contracttest`, `go vet` propre, golangci-lint 0 issue, `make check-types`
+vert, vitest `src/features/match-replay/` 76 fichiers / 1119 tests (1113 avant les nouveaux cas),
+ESLint 0 sur les 6 fichiers touches. Consequence assumee du correctif : `grenadesCarried` et
+`selectedGrenade`, enveloppes devenues sans appelant, supprimees avec leurs cas (les deux non
+couverts ailleurs portes sur `grenadesCarriedFrom`) — regle « 0 code mort ».
+
+**Conclusion / prochaine etape** : les 5 constats sont clos, rien d autre n a ete touche ; les
+decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par constat :
+`.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
