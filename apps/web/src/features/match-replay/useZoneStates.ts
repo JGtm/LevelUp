@@ -56,6 +56,16 @@ export function useZoneStates(
   objectives: readonly ObjectiveElementReady[],
   scoreboard: MatchScoreboardRow[] | null | undefined,
   teamColorOf: (isAlly: boolean) => string,
+  /**
+   * L'encre du « AUCUN CAMP » : objectif neutre du catalogue, et zone que personne ne tient.
+   *
+   * C'EST UN TOKEN SÉMANTIQUE, pas une encre de mise en page (`useReplayInks.neutral`,
+   * `divergent-neutral` — le même neutre que le fil emploie pour une mort que personne ne
+   * revendique). Le calque servait `floor.edge` jusqu'au 2026-08-25, c'est-à-dire
+   * `--muted-foreground` : une variable de LAYOUT employée pour dire un fait de jeu, ce que
+   * `canvasInk.ts` s'interdit lui-même. Elle ne suivait pas non plus la palette
+   * d'accessibilité de l'utilisateur.
+   */
   neutral: string,
   /** Le document : `coverage.zones.catalog` (jointure) et sa cadence (tenue de la jauge). */
   doc: ReplayDocumentReady,

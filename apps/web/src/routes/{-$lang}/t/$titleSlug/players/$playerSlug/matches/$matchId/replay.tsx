@@ -218,12 +218,14 @@ function ReplayPage() {
           <aside className="relative min-h-[12rem] xl:min-h-0">
             <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
               <div className="flex max-h-[60vh] min-h-0 shrink-0 flex-col overflow-hidden xl:max-h-[62%]">
+                {/* PAS DE `marks` ICI (2026-08-25) : les fiches ne portent plus de glyphe
+                    d'identité. La table reste servie à la CARTE (forme du point) et au FIL
+                    (glyphe devant un nom), ses deux derniers lecteurs. */}
                 <ReplayTeams
                   doc={data}
                   scoreboard={scoreboard}
                   frame={frame}
                   locale={locale}
-                  marks={marks}
                   xuidMeta={xuidMeta}
                 />
               </div>

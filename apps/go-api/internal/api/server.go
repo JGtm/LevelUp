@@ -606,7 +606,14 @@ func applyTransverseMiddlewares(
 	r.Use(middleware.SecurityHeaders(cfg.TrustProxyHeaders))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
-	r.Use(middleware.CSRF(cfg.CORSOrigins))
+	// CSRF : contrôle d'origine sur les requêtes mutatrices, SAUF sous le préfixe du
+	// protocole ouvrier. Mesuré le 2026-08-25 (dry run superviseur depuis le VPS de
+	// calcul) : sans cette exemption, `replay-worker --once` reçoit 403 csrf_rejected
+	// avant tout contrôle de jeton — un client net/http n'envoie pas d'Origin. Ces
+	// routes n'acceptent AUCUN cookie (seule auth : Bearer RequireWorkerToken), donc
+	// aucune autorité ambiante n'y est exposée : cf. l'en-tête de middleware/csrf.go.
+	// Les autres middlewares transverses restent appliqués au protocole ouvrier.
+	r.Use(middleware.CSRF(cfg.CORSOrigins, apiV1InternalBasePath))
 	r.Use(middleware.RateLimit(cfg.DemoMode, cfg.RateLimitRPM))
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
