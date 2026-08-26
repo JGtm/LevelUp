@@ -1145,3 +1145,24 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   periode partiellement couverte par le canal perdait sa partie non couverte** — corrige, les
   trous sortent en intervalles ACTIFS sans camp. Mordant par double mutation (camp retire : 3
   echecs ; comblement des trous retire : 1 echec).
+
+- 2026-08-26 — **LOT RUNNER : l'executeur canonique « un film = un processus BORNE ».** La mesure
+  D3 a sature la machine DE TRAVAIL de l'utilisateur DEUX fois — d'abord 7 films BTB dans un
+  processus, puis, apres correction, un film par processus mais SANS plafond ni priorite basse.
+  **« Un film = un processus » est necessaire et PAS suffisant.** Nouveau paquet
+  `internal/filmproc` : sentinelle memoire a deux plafonds (souple `debug.SetMemoryLimit` + dur
+  par echantillonnage), lanceur parent/enfant avec protocole par CODE DE SORTIE, et **priorite
+  CPU basse** de l'enfant (`BELOW_NORMAL_PRIORITY_CLASS` sous Windows — le poste de travail est
+  la ; sans effet ailleurs, et c'est ecrit comme une decision). Plafond de MESURE a **2 Gio**,
+  distinct des 3 Gio des passes de production : une mesure tourne pendant que l'utilisateur
+  travaille. `zone-attribution` est cable dessus (`-child`), et sa boucle passe TOUJOURS par
+  l'executeur, meme pour un seul film — c'est UN film BTB qui a suffi a prendre la machine.
+  **Garde-rail** `archlint/no_unbounded_film_loop_test.go` : tout site d'appel de `BuildMatch` /
+  `BuildFromFilm` doit etre DECLARE avec sa justification datee et son REGIME de decodage ;
+  l'allowlist se perime toute seule (une entree qui ne designe plus d'appel fait rougir).
+  **DECOUVERTE MAJEURE DU GARDE-RAIL** : `internal/sync/replayartifacts.buildAll` enchaine
+  jusqu'a 5 films a travers `BuildMatch` DANS LE PROCESSUS DU SERVEUR, sans sentinelle — la
+  forme exacte du sinistre du 2026-08-20 (effondrement sur le cinquieme). Local uniquement et
+  best-effort, mais non borne en pic. Declare comme DETTE, pas comme exemption : l'executeur ne
+  s'y transpose pas tel quel (son arret de processus est interdit la ou des handles d'ecriture
+  DuckDB sont tenus, ADR 0013/0019/0030). **Arbitrage superviseur requis.**

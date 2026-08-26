@@ -13,6 +13,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -68,5 +69,29 @@ func TestFormatSchemas(t *testing.T) {
 				t.Errorf("formatSchemas = %q, attendu %q", got, c.veut)
 			}
 		})
+	}
+}
+
+// TestChildArgsNeTransmetAucunDrapeauDePlanification — LA REGLE DU PATRON PARENT/ENFANT :
+// `-census` et `-select-only` appartiennent au PARENT. Les transmettre porterait a un enfant
+// l'ordre de ne rien mesurer — il sortirait 0, et la passe compterait un succes sur un film
+// jamais decode.
+func TestChildArgsNeTransmetAucunDrapeauDePlanification(t *testing.T) {
+	args := childArgs("64e8adfa", runTuning{
+		role: "totalcontrol_zone", cacheDir: "/cache", census: true, selectOnly: true, dump: true,
+	})
+	joint := strings.Join(args, " ")
+	for _, interdit := range []string{"-census", "-select-only"} {
+		if strings.Contains(joint, interdit) {
+			t.Errorf("drapeau de planification %q transmis a l'enfant : %q", interdit, joint)
+		}
+	}
+	for _, attendu := range []string{childFlag, "-match 64e8adfa", "-role totalcontrol_zone", "-cache /cache", "-dump"} {
+		if !strings.Contains(joint, attendu) {
+			t.Errorf("argument %q absent de la ligne de l'enfant : %q", attendu, joint)
+		}
+	}
+	if !hasChildFlag(args) {
+		t.Error("la ligne de l'enfant ne porte pas le drapeau -child")
 	}
 }

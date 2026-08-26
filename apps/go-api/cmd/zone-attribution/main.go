@@ -62,15 +62,22 @@ func main() {
 			"aucun filtre de mode, aucun film decode")
 	dump := flag.Bool("dump", false,
 		"detailler chaque action (confrontation a un releve terrain)")
+	child := flag.Bool("child", false,
+		"ENFANT d'une passe : mesure le seul film de -match sous plafond memoire et rend un "+
+			"code de protocole (pose par le parent, pas par l'operateur)")
 	flag.Parse()
 
-	if err := run(*slug, *cacheDir, *matchArg, runTuning{
+	code, err := run(*slug, *cacheDir, *matchArg, runTuning{
 		witness: *witness, maxGap: *maxGap, selectOnly: *selectOnly, dump: *dump,
-		census: *census, role: *role,
-	}); err != nil {
+		census: *census, role: *role, child: *child, cacheDir: *cacheDir,
+	})
+	if err != nil {
 		slog.Error("mesure d'attribution de zone", "err", err)
 		os.Exit(1)
 	}
+	// LE CODE DE SORTIE EST LE PROTOCOLE quand ce processus est un enfant (cf. passe.go). Sur
+	// le chemin du parent il vaut zero, et `os.Exit(0)` est un no-op lisible.
+	os.Exit(code)
 }
 
 // runTuning regroupe les reglages numeriques : sans ce regroupement, run() depasserait
@@ -96,12 +103,18 @@ type runTuning struct {
 	// catalogue » — un diagnostic plus parlant qu'un refus au demarrage. La liste fermee des
 	// roles vit ou elle doit vivre : au chargement de la table du titre (loader_objective_roles).
 	role string
+	// child : ce processus est l'ENFANT d'une passe (cf. passe.go). Il mesure UN film sous la
+	// sentinelle memoire et rend un code de protocole.
+	child bool
+	// cacheDir est recopie ici pour que le parent puisse le RETRANSMETTRE a ses enfants : sans
+	// lui, un enfant re-deduirait la racine du cache et pourrait viser une autre arborescence.
+	cacheDir string
 }
 
-func run(slug, cacheDir, matchArg string, tune runTuning) error {
+func run(slug, cacheDir, matchArg string, tune runTuning) (int, error) {
 	repoRoot, err := title.FindRepoRoot()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if cacheDir == "" {
 		cacheDir = filepath.Join(repoRoot, "data", "cache")
@@ -110,17 +123,17 @@ func run(slug, cacheDir, matchArg string, tune runTuning) error {
 
 	bounds, err := filmdec.LoadMapQuantCatalog(paths.MapQuantBoundsPath(slug))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	zonesCat, err := replay.LoadMapObjectives(paths.MapObjectivesPath(slug))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	// Lecture SEULE : OpenReadForQuery reste correct meme si le serveur tient la base en
 	// ecriture (modele mono-process, ADR 0013/0016).
 	db, release, err := duckdb.OpenReadForQuery(paths.SharedDBPath(slug))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer release()
 
@@ -128,11 +141,11 @@ func run(slug, cacheDir, matchArg string, tune runTuning) error {
 	// LE RECENSEMENT PASSE AVANT TOUT LE RESTE : il ne filtre aucun mode et n'a besoin ni des
 	// bornes de carte ni du catalogue de formes, que la MESURE exige.
 	if tune.census {
-		return runCensus(ctx, db, slug, cacheDir, repoRoot)
+		return 0, runCensus(ctx, db, slug, cacheDir, repoRoot)
 	}
 	candidates, err := loadCandidates(ctx, db, matchArg)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	r := &runner{
 		slug: slug, cacheDir: cacheDir, db: db,
@@ -143,13 +156,19 @@ func run(slug, cacheDir, matchArg string, tune runTuning) error {
 		results: nil,
 	}
 	eligible := r.selectEligible(candidates)
-	printSelection(candidates, eligible, r.rejects)
+	// L'ENFANT NE REIMPRIME PAS LA SELECTION : le parent l'a deja publiee, et la repeter par
+	// film noierait le journal de la passe.
+	if !tune.child {
+		printSelection(candidates, eligible, r.rejects)
+	}
 	if tune.selectOnly {
-		return nil
+		return 0, nil
 	}
-	for _, m := range eligible {
-		r.results = append(r.results, r.measure(ctx, m))
+	if tune.child {
+		return runChild(ctx, r, eligible, tune), nil
 	}
-	printResults(r.results, tune)
-	return nil
+	// LA BOUCLE SUR LES FILMS PASSE PAR L'EXECUTEUR BORNE, TOUJOURS — meme pour un seul film.
+	// Un cas particulier « un film, autant le faire ici » rouvrirait exactement la breche du
+	// 2026-08-26 : c'est UN film BTB qui a suffi a prendre la machine.
+	return 0, runParent(ctx, repoRoot, eligible, tune)
 }
