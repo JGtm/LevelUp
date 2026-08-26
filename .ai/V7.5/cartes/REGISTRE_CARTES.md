@@ -67,8 +67,8 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Chasm | `chasm` | 52 | 100.0 | -0,09 | natif | A FINALISER |
 | Forest - Ranked / Forest | `forest` | 49 | 35.8 | -0,30 | natif | VALIDEE 26/08 |
 | Prism | `sgh_crystalcaves` | 49 | 49.2 | -0,23 | natif | A FINALISER |
-| Catalyst | `catalyst` | 48 | 50.0 | -13,33 | natif | A RETRAVAILLER — cible = temoin 10/08 |
-| Forbidden | `ctf_forbidden` | 46 | 44.7 | -0,21 | natif | A FINALISER |
+| Catalyst | `catalyst` | 48 | 50.0 | -0,19 | natif | VALIDEE `encre` 26/08 — boite mesuree sur positions |
+| Forbidden | `ctf_forbidden` | 46 | 44.7 | -0,21 | natif | VALIDEE `encre` 26/08 — plafond 4 m + masque 63 zones |
 | Behemoth | `va_behemoth` | 44 | 83.2 | -17,51 | natif | VALIDEE 26/08 |
 | Empyrean | `d035fc3e` | 29 | 68.7 | -14,41 | forge | REFUSEE 13/08 |
 | Origin | `b302eb62` | 24 | 85.7 | 0,01 | forge | REFUSEE 13/08 |
@@ -258,7 +258,7 @@ carte par carte :
 
 Ordre retenu (matchs decroissants parmi les non closes) : **Cliffhanger** (58, publiee, en
 attente de verdict) → Streets (62) → Bazaar (56) → Recharge (56) → Illusion (56) → Aquarius
-(54) → Chasm (52) → Prism (49) → Catalyst (48) → Launch Site (24) → Vagabond (16, gros
+(54) → Chasm (52) → Prism (49) → Catalyst (48) → Forbidden (46) → Launch Site (24) → Vagabond (16, gros
 retravail). Streets pese plus que Cliffhanger, mais Cliffhanger etait deja tranchee.
 
 ### 2026-08-26 — carte 1, Cliffhanger
@@ -392,3 +392,69 @@ carte couverte il faudrait les DEUX** ; aujourd'hui c'est l'un ou l'autre. Lot d
 seulement — la premiere version comblait tout vide du masque dilate et posait 611 959 cellules,
 noyant l'arene) et `substitutionSansPortee` (retirer la limite de 25 m ; NO-OP ici, mesure
 identique au bit, car les cellules gagnees tombent hors zones et sont retirees ensuite).
+
+### 2026-08-26 — carte 9, Catalyst
+
+**Verbatim** : « valide on passe a la suivante ? On revient a la technique classique avec
+les zones de callout et tout »
+
+**Reglage retenu** : `encre`, echelle 0,038, ecretage a 4 m, comblement des trous fermes,
+masque des zones arme, et une **boite utile `[-20.5 -27.0 21.0 27.0]` DERIVEE DES
+POSITIONS DE JOUEURS**.
+
+**Ce qui a ferme la carte, deux mesures, aucun jugement** :
+
+1. **L ecart mediane-ancres / sol tombe de -13,33 m a -0,19** (etalonnage : -0,29). Le
+   defaut avait ete nomme le matin sans savoir s il expliquait quoi que ce soit : le niveau
+   de jeu est un SCALAIRE, et au-dela de `PorteeNiveauDeJeu` (10 m) la teinte peint la
+   surface JOUEE au recul maximal — d ou l arene sombre en production. Catalyst est mesuree
+   couverte a 28,4 pour cent, SOUS le seuil d un tiers : la voie de reference native ne s y
+   declenche jamais, l ecretage etait la seule voie. Meme configuration que Streets.
+2. **L enveloppe jouee, sur proposition de l utilisateur.** Trois matchs decodes depuis les
+   films en cache (28 disponibles pour Catalyst), environ 105 000 positions : elles tiennent
+   dans 40 x 52 m quand le fond publie en faisait 69,3 x 60,3. **42 pour cent de la largeur
+   n etait JAMAIS foulee** — exactement les aplats gris que l utilisateur avait repere a
+   gauche et a droite avant toute mesure. 142 484 cellules retirees, cadre 1 824 -> 1 408 px.
+
+**Portee methodologique** : c est la PREMIERE boite de la serie qui ne soit pas tracee a
+l oeil (Chasm) mais mesuree, donc reproductible partout ou il y a des films — 951 en cache,
+24 a 38 par carte sur toute la file restante.
+
+**Reserves assumees** : 26 ancres sur 29, trois perdues par l ecretage a 4 m ; et la boite
+est calee sur les EXTREMES des positions et non sur des quantiles — un des trois artefacts
+porte des aberrations a -231 / -213 m, exactement les bornes d un canevas Forge, ecartees a
+l oeil et non par un critere.
+
+**Correctif de plomberie du jour** : `borneALaBoite` effacait la matiere mais PAS
+`solSuppose` — l aplat de sol continuait donc a peindre hors boite, et le reglage
+`boiteUtile` semblait sans effet. Un garde-rail ne protege que le champ qu il compte.
+
+### 2026-08-26 — carte 10, Forbidden
+
+Planche : https://claude.ai/code/artifact/daae2007-4ee0-41e5-aca7-c0e00bbb5d21
+
+**Verbatim** : « ok prop 3 valide encre plafond 4m »
+
+**Reglage retenu** : `encre`, echelle 0,045, ecretage a 4 m, comblement des trous fermes,
+masque des zones arme. Cadre 1 354 x 1 550 px, 16/17 ancres.
+
+**Le defaut n etait PAS le niveau de jeu** : ecart mediane-ancres / sol -0,21 m, deja a
+l etalonnage. Le defaut reel etait le CADRE — fond du 12/08 sans rognage au cadre utile,
+arene sur environ 40 pour cent de la largeur de l image.
+
+**Le masque des zones ne pose pas de probleme ici** : 63 zones, carte franchement
+ASYMETRIQUE, donc la lecon de Chasm ne s applique pas. 3,3 pour cent de matiere retiree,
+zero ancre perdue. C est la premiere carte ou la regle « masque seulement si la carte en a
+besoin ET n est pas symetrique » se decide par la FORME de la carte et non par tatonnement.
+
+**Le plafond s est tranche sur piece, contre 2 et 6** : a 6 m les grandes dalles de toit
+reviennent detachees en haut et en bas (12,4 pour cent hors zones) — le defaut meme de la
+production ; a 2 m le dessin s aplatit.
+
+**Reserve ecrite, NON TRAITEE** : de longues poutres sombres depassent a droite et a gauche,
+comme les rails de Chasm, et elles sont DANS les zones de callout — le masque ne les atteint
+pas. La coupe aux positions de joueurs n a pas pu etre tentee : `shared_matches_v2.duckdb`
+est tenue en ecriture par un `server.exe` local (PID 6640 au moment du gate), et il n existe
+pas de source du couple match -> carte hors de cette base (les artefacts de rejeu et le cache
+des films ne portent pas le nom de carte). **Condition de reprise** : fermer le serveur local,
+lister les matchs Forbidden, decoder deux ou trois films et mesurer l enveloppe jouee.

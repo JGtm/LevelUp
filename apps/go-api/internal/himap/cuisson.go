@@ -103,6 +103,14 @@ type OptionsCuisson struct {
 	// les zones nommees. Ce n est PAS une mesure : c est un aplat assume, peint autrement et
 	// compte au sidecar. Exige `ZonesNommees`.
 	CombleTrous bool
+	// PlancherTranche : profondeur, en metres SOUS le niveau de jeu, en deca de laquelle la
+	// matiere n appartient plus a la carte. ZERO = `TrancheDeJeuMin` (-12 m).
+	//
+	// POURQUOI UN REGLAGE PAR CARTE (2026-08-26, Chasm). -12 m couvre les sous-sols d une
+	// arene ordinaire, mais sur une carte a gouffre il laisse entrer LE FOND DU GOUFFRE : une
+	// forme qui traverse la carte de part en part, qu aucun joueur n atteint sans mourir.
+	// Remonter le plancher la fait sortir de la tranche, sans toucher a la geometrie jouee.
+	PlancherTranche float64
 	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
 	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
 	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
@@ -110,6 +118,19 @@ type OptionsCuisson struct {
 	// RogneAuxZones EFFACE la matiere hors des zones nommees dilatees. Reglage PAR CARTE, a
 	// ne poser qu apres avoir regarde le taux mesure.
 	RogneAuxZones bool
+	// MargeZones : dilatation du masque des zones, en metres. ZERO = `MargeMasqueZones` (4 m).
+	// Une marge large garde le mur qui borde une zone ; une marge nulle serre au ras du sol
+	// praticable. Reglage par carte : sur une carte dont des structures LONGUES frolent les
+	// zones (garde-corps, rebord de gouffre), 4 m suffit a les faire entrer.
+	MargeZones float64
+	// BoiteUtile borne la matiere a un rectangle MONDE (minX, minY, maxX, maxY). Zero = pas de
+	// bornage.
+	//
+	// C EST LE LEVIER MANUEL, et il est assume comme tel : quand aucun critere derive des
+	// fichiers ne separe ce qu on veut garder de ce qu on veut retirer, on trace la boite a la
+	// main. Il ne se justifie que par sa raison ecrite et il ne doit jamais devenir la voie
+	// normale — un rectangle ne connait pas la carte.
+	BoiteUtile [4]float64
 	// Echelle est le cote d'un pixel du fond, en metres. ZERO = `EchelleFondCarte`.
 	//
 	// POURQUOI CE N'EST PLUS UNE CONSTANTE (2026-08-26). Le cadre est propre a chaque carte,
@@ -171,6 +192,8 @@ type BilanCuisson struct {
 	// le rognage. CellulesHorsZones est ce qui a ete reellement efface.
 	MatiereHorsZones  int
 	CellulesHorsZones int
+	// CellulesHorsBoite : matiere effacee par le bornage MANUEL (BoiteUtile).
+	CellulesHorsBoite int
 	// CellulesSolSuppose : cellules comblees par un APLAT, pas relevees. Publie au sidecar.
 	CellulesSolSuppose int
 	// PlansFrontiere / FrontiereAppliquee / CellulesEffacees : la coquille de mort declaree
@@ -212,7 +235,11 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	b.NiveauDeJeu = zJeu
 	// La tranche est TRANSLATEE AU SOL JOUE — meme regle que la chaine Forge, et pour la meme
 	// raison. Justification chiffree : cf. `TrancheDeJeu` (rendu.go).
-	r.Tranche(TrancheDeJeu(zJeu))
+	min, max := TrancheDeJeu(zJeu)
+	if opts.PlancherTranche < 0 {
+		min = zJeu + opts.PlancherTranche
+	}
+	r.Tranche(min, max)
 	r.NiveauDeJeu(zJeu)
 	// La voie de reference contre les TOITS : armee avant de projeter, decidee juste apres —
 	// et AVANT la frontiere, pour que celle-ci efface sur l'image finale.
@@ -232,6 +259,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	}
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
 	mesureEtRogneZones(ctx, r, &b, opts)
+	borneALaBoite(ctx, r, &b, opts)
 	JugeParLesAncres(r, &b, opts.Ancres)
 	if !opts.SansEau {
 		PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
@@ -522,7 +550,13 @@ func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 	if len(opts.ZonesNommees) == 0 {
 		return
 	}
-	m := MasqueZones(r, opts.ZonesNommees, MargeMasqueZones)
+	marge := MargeMasqueZones
+	if opts.MargeZones > 0 {
+		marge = opts.MargeZones
+	} else if opts.MargeZones < 0 {
+		marge = 0 // negatif = demande explicite de NE PAS dilater
+	}
+	m := MasqueZones(r, opts.ZonesNommees, marge)
 	matiere, dehors := r.MesureHorsZones(m)
 	b.MatiereHorsZones = dehors
 	part := 0.0
@@ -540,4 +574,40 @@ func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 		slog.InfoContext(ctx, "mapfond: sol suppose pose sur les trous des zones", "carte", b.Module,
 			"cellules", b.CellulesSolSuppose)
 	}
+}
+
+// borneALaBoite efface la matiere hors du rectangle monde declare, s'il l'est. LEVIER MANUEL :
+// il est journalise avec ses bornes, pour qu'un fond borne a la main se reconnaisse au premier
+// coup d'oeil dans les logs.
+func borneALaBoite(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuisson) {
+	bo := opts.BoiteUtile
+	if bo[2] <= bo[0] || bo[3] <= bo[1] {
+		return
+	}
+	efface := 0
+	for j := 0; j < r.NY; j++ {
+		y := r.Min[1] + (float64(j)+0.5)*r.Cell
+		for i := 0; i < r.NX; i++ {
+			k := j*r.NX + i
+			vide := math.IsInf(r.z[k], -1)
+			if vide && (r.solSuppose == nil || !r.solSuppose[k]) {
+				continue
+			}
+			x := r.Min[0] + (float64(i)+0.5)*r.Cell
+			if x >= bo[0] && x <= bo[2] && y >= bo[1] && y <= bo[3] {
+				continue
+			}
+			r.z[k] = math.Inf(-1)
+			// Le SOL SUPPOSE se peint sans matiere : sans cette ligne, un aplat pose hors de la
+			// boite y resterait dessine et le bornage n aurait aucun effet visible (mesure du
+			// 2026-08-26 sur Catalyst : 44 331 cellules effacees, image quasi inchangee).
+			if r.solSuppose != nil {
+				r.solSuppose[k] = false
+			}
+			efface++
+		}
+	}
+	b.CellulesHorsBoite = efface
+	slog.InfoContext(ctx, "mapfond: matiere bornee a la boite manuelle", "carte", b.Module,
+		"boite", fmt.Sprintf("[%.1f %.1f %.1f %.1f]", bo[0], bo[1], bo[2], bo[3]), "effacees", efface)
 }

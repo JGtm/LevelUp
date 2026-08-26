@@ -72968,3 +72968,63 @@ seule l'image departage.
 **Conclusion / prochaine etape** : 5 cartes closes sur 11. Aquarius attend le choix du plafond
 (4 / 3 / 2 m, ancres intactes aux trois). 2 m est le plancher de sens : la constante d'origine
 se decompose en 2 m (un Spartan debout) + 3 m (sols en pente) + 1 m de marge.
+
+## [2026-08-26] Fonds de rejeu 2D — cartes 6 a 10 : Aquarius, Chasm, Prism, Catalyst, Forbidden
+
+**Statut** : Complete pour ces cinq cartes ; file restante : Launch Site (24 matchs) et
+Vagabond (16, gros retravail), plus une re-passe cadre + echelle sur Cliffhanger.
+
+**Decision technique principale** : deux leviers nouveaux, et une regle de decision pour le
+masque des zones.
+
+1. **La boite utile derivee des POSITIONS DE JOUEURS** (proposition de l'utilisateur), armee
+   sur Catalyst. Trois matchs decodes depuis les films en cache, environ 105 000 positions :
+   l'enveloppe jouee tient dans 40 x 52 m quand le fond publie en faisait 69,3 x 60,3. **42
+   pour cent de la largeur de l'image n'etait JAMAIS foulee** — exactement les aplats gris
+   que l'utilisateur avait repere a l'oeil avant toute mesure. 142 484 cellules retirees.
+   C'est la premiere boite de la serie qui ne soit pas tracee a la main (Chasm) mais MESUREE,
+   donc reproductible : 951 films en cache, 24 a 38 par carte sur la file restante.
+2. **Le masque des zones de callout ne s'arme que si la carte en a besoin ET n'est pas
+   symetrique.** Les polygones de callout sont dessines a la main : ils NOMMENT des lieux,
+   ils ne decrivent pas une geometrie, et rien n'impose que la zone du haut et celle du bas
+   aient le meme contour. Sur Chasm (symetrique) le masque retirait 10 pour cent de matiere
+   et cassait la symetrie ; sur Forbidden (franchement asymetrique) il retire 3,3 pour cent
+   sans couter une seule ancre. Sur Prism j'avais d'abord DESARME le masque par reflexe,
+   en appliquant « pas par defaut » sans me demander si la carte en avait besoin — il a fallu
+   la remarque de l'utilisateur (un « bras » hors zone jouable en haut a gauche) pour le
+   rearmer.
+
+**Resultats observes** :
+
+- Catalyst : ecart mediane-ancres / sol ramene de **-13,33 m a -0,19** (etalonnage -0,29) par
+  le seul ecretage. La carte est couverte a 28,4 pour cent, SOUS le seuil d'un tiers : la voie
+  de reference native ne s'y declenche jamais, l'ecretage etait la seule voie — meme
+  configuration que Streets. Le defaut nomme le matin sans preuve d'effet a bien ete la cause.
+- Forbidden : ecart deja a -0,21 m ; le defaut reel etait le CADRE (fond du 12/08 sans rognage
+  au cadre utile, arene sur 40 pour cent de la largeur). Plafond tranche sur piece a 4 m contre
+  2 (dessin plat) et 6 (les dalles de toit reviennent, 12,4 pour cent hors zones).
+- Chasm a demande NEUF cuissons et a impose la boite manuelle : six leviers derives des
+  donnees avaient echoue avant elle a separer les rails de l'arene — aucun critere de POSITION
+  ne les distinguait, il aurait fallu un critere de FORME.
+- Dix cartes closes, huit validees en production.
+
+**Bug de plomberie paye** : `borneALaBoite` effacait la matiere mais PAS `solSuppose` —
+l'aplat de sol continuait donc de peindre hors boite et le reglage `boiteUtile` semblait
+sans effet. Lecon deja ecrite, re-payee : un garde-rail ne protege que le champ qu'il compte.
+
+**Dette corrigee au passage** : `AppliqueReference` avait pris un parametre `sansPortee`
+(reglage `substitutionSansPortee`, arme sur Chasm) sans que `rendu_reference_test.go` soit
+mis a jour — le package himap ne COMPILAIT plus en test. Quatre appels corriges et un test
+ajoute sur le chemin `sansPortee=true`, qui n'en avait aucun.
+
+**Reserves ecrites, non traitees** : (1) sur Forbidden, de longues poutres sombres depassent
+a droite et a gauche, DANS les zones de callout donc hors d'atteinte du masque ; la coupe aux
+positions n'a pas pu etre tentee, `shared_matches_v2.duckdb` etant tenue en ecriture par un
+`server.exe` local et le couple match -> carte n'existant nulle part ailleurs (ni les
+artefacts de rejeu ni le cache des films ne portent le nom de carte). (2) la boite de Catalyst
+est calee sur les EXTREMES des positions et non sur des quantiles — un artefact porte des
+aberrations a -231 / -213 m, exactement les bornes d'un canevas Forge, ecartees a l'oeil.
+(3) le defaut de conception note le 26/08 tient : l'ecretage REMPLACE la voie de reference
+native au lieu de s'y ajouter.
+
+**Conclusion / prochaine etape** : Launch Site, puis Vagabond, puis la re-passe Cliffhanger.

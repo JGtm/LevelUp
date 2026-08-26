@@ -86,8 +86,11 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			SansEau:                e.sansEauDe(c.cle),
 			SubstitutionSansPortee: e.substitutionSansPorteeDe(c.cle),
 			CombleTrous:            e.combleTrousDe(c.cle),
+			PlancherTranche:        e.plancherTrancheDe(c.cle),
 			ZonesNommees:           e.zonesNommeesDe(c.cle),
 			RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
+			MargeZones:             e.margeZonesDe(c.cle),
+			BoiteUtile:             e.boiteUtileDe(c.cle),
 		})
 		if err != nil {
 			if errors.Is(err, himap.ErrAucunTagSbsp) {
