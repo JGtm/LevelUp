@@ -1,3 +1,67 @@
+## [2026-08-26] RE sons manquants : les banques Wwise se NOMMENT par hachage — objectifs, bobines, equipements — Complete
+
+**Contexte** : demande utilisateur — les sons qui manquent au rejeu (objets d'objectif :
+dispositif d'extraction, prise de bastion, activation de bombe, capture de drapeau, avec la
+question « distinction de son par equipe ? » ; bobines lancees, precisee en cours de lot en
+« le son du KILL » ; equipements : translocateur quantique, traqueur de menaces, ecran
+occultant, champ de reparation). Le plafond du chantier sons etait connu : une banque ne se
+nommait que si un de ses `.wem` vivait dans un `.pck` nomme — 3 banques d'equipement sur 17,
+et AUCUNE banque de mode.
+
+**Decision technique principale** : ne pas chercher les sons par la chaine de tags mais par
+le NOM DE LA BANQUE. L'identifiant Wwise du chunk `BKHD` est le FNV-1 32 bits du nom de
+fichier en minuscules — convention que `calibrerNommage` confrontait deja sur les banques a
+pack. Mode neuf `cmd/weapon-sounds -mode banks-noms` (`banks_noms.go` + `banks_dico.go`) :
+une passe par module, il imprime CALIBRATION, puis ESPERANCE DE COLLISION, puis les
+resultats, dans cet ordre impose. Sortie JSON {sbnk_gid, id_wwise, nom, provenance,
+wem_embarques} : tout le cassage ulterieur se fait HORS module, en secondes.
+
+**Resultats observes** :
+- CALIBRATION : **647 banques sur 1697** (dix modules balayes) portent l'identifiant FNV-1
+  d'un nom de `.pck` du disque. La convention est verifiee avant qu'un nom ne soit casse.
+- BANQUES NOMMEES (esperance 0,0708) : `sb_004_mod_mp_ctf` (52 wem), `..._assault` (38),
+  `..._extraction` (33), `..._landgrab` (39), `..._shared_ui` (33), `..._shared_global` (14),
+  `sb_007_abl_shroud` (38), `sb_007_abl_quantum` (70), `sb_007_abl_grapplinghook` (69),
+  `sb_007_abl_knockback` (33), `activecamo`, `overshield`, `evade`, `shared`.
+- **`sb_007_abl_shroud` EST la banque `92c830f5`** que le lot du 18/08 avait attribuee au rang
+  10 anonyme (`eqip 0x4396db42`) sans pouvoir le nommer. L'equipement est l'ECRAN OCCULTANT,
+  comme l'utilisateur le pensait. Le negatif murmur3 du 18/08 n'est pas contredit : il portait
+  sur le `string_id` du TAG, espace de hachage different de celui de la BANQUE.
+- GRAMMAIRE DES EVENEMENTS, mesuree sur 17 temoins puis exploitee :
+  `play_<nom de banque sans « sb_ »>_<nom>_<verbe>[_<modulation>]`. **46 evenements nommes a
+  esperance cumulee 0,0408**, dont `play_004_mod_mp_ctf_flag_scored_team/_enemy`,
+  `play_004_mod_mp_assault_bomb_planted_loop`, `play_004_mod_mp_extraction_zone_spawn`,
+  `play_007_abl_shroud_deploy_player`.
+- **DISTINCTION PAR EQUIPE : OUI, mesuree.** La modulation terminale `_team` / `_enemy` existe
+  cote a cote sur six couples (drapeau marque / pris / ramasse, bombe prise / ramassee,
+  extraction marquee), avec des `.wem` DIFFERENTS — pas un Switch sur un meme son. Sans
+  variante d'equipe : drapeau rendu, apparitions, detonation, boucles d'armement/desamorcage.
+- **BOBINES** : la chaine etait deja versionnee dans `damagetag/data/labels.tsv` et n'avait
+  jamais ete lue comme la reponse a cette demande. Un seul objet, cinq variantes d'ENERGIE
+  (verdict 7ter.57), une banque nommee par variante :
+  `sb_008_exp_single_small_{hardlight, kineticunsc, plasma, shock}`. Chacune porte 3
+  evenements dont UN SEUL a 5 couches simultanees : c'est l'explosion complete.
+- PARAMETRES DE RENDU releves pour les 39 evenements cibles (annexe
+  `RE_FICHES_RENDU_SONS_2026-08-26.txt`) : couches, gain de chemin par `.wem`, delai,
+  fourchette RANGED. **0 delai non nul et 0 paquet RANGED sur 275 couches** — ces sons se
+  jouent PURS, a l'inverse des armes.
+- NEGATIF avec denominateur : **aucune banque de bastion (« Strongholds ») n'existe** sur les
+  1697 banques, ni sous ce nom ni sous aucune variante a un jeton tiree des 150 075
+  identifiants extraits du binaire du jeu. La prise de bastion sonne depuis une banque
+  partagee (`landgrab`, `shared_ui` ou `shared_global`) — a trancher par la chaine de tags.
+- EXTRACTION SUR DISQUE (scratchpad) : 894 `.wem` (517 globals + 129 common + 248 packs de
+  bobine).
+
+**Conclusion / prochaine etape** : **BLOCAGE POUR L'ECOUTE** — les `.wem` sont en Wwise Vorbis
+(`fmt` = `0xFFFF`, verifie sur piece) ; `ffmpeg` 8.0.1 ne les decode pas
+(`unknown codec`), et `vgmstream-cli.exe` n'est plus sur cette machine (le dossier
+`Desktop/Halo Infinite - Sons armes/_outils/` n'existe pas ici). Aucun `.wav` sans lui.
+Suites, dans l'ordre : (1) retrouver ou reinstaller vgmstream ; (2) rendre les 39 fiches
+(somme des couches aux gains releves) ; (3) trancher la banque du bastion par la chaine de
+tags du mode ; (4) designer le geste de pose du translocateur (23 evenements, un seul nomme
+et au second rang) par l'ecoute, comme le lot du 18/08 le prevoyait deja.
+Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`.
+
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
 **Contexte** : apres le hotfix 36bb48187 (appelants LegacyAuthInputs), la CI de feat/v75
@@ -191,7 +255,14 @@ B1+B2 fusionnes (notif Discord groupee). D6.4 clos par lecture pure (jauge : 3 B
 plan FAUX (score de mode = collines gagnees, pas secondes de garde ; 2 films/4 a un seul
 camp) ; canal sain, proprietaire NON MESURE ; arbitrage = D2-bis oracle th=10 puis
 escalade score personnel ; decouverte scoreTimeline partiel/mal nomme sur films KOTH ->
-registre (bandeau de score concerne).
+registre (bandeau de score concerne). D2-bis (oracle th=10) : gate encore rate (87-89 %
+pour 90) mais canal DETACHE de 30 points des temoins sur les films longs ; defaut de
+temoin (slot frere) releve et non corrige apres coup — arbitrage : D2-ter oracle score
+personnel, protocole re-ecrit, temoins excluant les slots freres ; si encore ~88 %
+propre -> decision produit user. D1 bloque sur outillage -> etendre zone-attribution.
+FENETRE OPS OUVERTE (go user, 26/08 midi) : serveur+air arretes, backfill-killsource
+lance (dry-run : 2 films seulement a decoder + passe credit 1940 matchs — la passe film
+etait quasi a jour, le trou du user est probablement la passe CREDIT jamais rejouee).
 
 **Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
 fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre
