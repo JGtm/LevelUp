@@ -57,6 +57,64 @@ conflit git, et un gate qui ne joue pas la suite CGO du paquet touche ne le verr
 c'est le second defaut de ce type sur feat/v75 en une journee (cf. l'entree hotfix
 LegacyAuthInputs ci-dessous), donc un signal de procedure de fusion, pas un accident isole.
 
+## [2026-08-25] Filet local : hook pre-push go-vet-cgo bloquant (angle mort cgo du pre-commit) — Complete
+
+**Contexte** : une rupture de compilation dans un fichier `_test.go` tagge `//go:build cgo`
+traversait TOUT le filet local. Cas vecu : `build_queue_e2e_cgo_test.go:47` appelle
+`NewAdminMonitoringHandler` avec 11 args au lieu de 10 (auto-merge `wt/csrf-ouvrier`
+b687c2c39, posterieur au retrait d'ErrorStats c42624dd5), pousse sans bruit ; repare en
+de615564f. Pourquoi rien ne l'a vu localement : le hook pre-commit `go-vet.sh` tourne en
+`CGO_ENABLED=0` — les fichiers tagges cgo sortent alors du build (« build constraints
+exclude all Go files ») — ET termine par `|| true` ; il est donc aveugle par construction,
+deux fois. Cote CI, le job `go-build` ne couvre que domain/analysis sans CGO. Le pre-push,
+lui, ne jouait AUCUN controle de compilation Go. Ce qui couvrait deja la classe, et qu'on
+ne touche pas : le job CI `go-coverage` (`go test -tags=integration`, CGO=1, `./...`),
+prouve rouge sur le run du merge csrf — sa gate baseline listait les tests handlers
+disparus du fait que le paquet ne compilait plus ; et `make gate-push` (check_test_baseline
+en mode autonome). Le trou etait donc strictement LOCAL, et il coutait un aller-retour CI
+par occurrence.
+
+**Decision technique principale** : fermer le trou local par un hook pre-push BLOQUANT,
+`scripts/git-hooks/lefthook/go-vet-cgo.sh` = `CGO_ENABLED=1 go vet -tags=integration ./...`
+sur le module entier (donc `_test.go` compris), place AVANT `govulncheck` dans un pre-push
+sequentiel pour rendre un echec de compilation avant le scan de vulns. Cout mesure
+(Windows, cache chaud) : ~54 s vert, ~31 s pour detecter le cas vecu ; cache froid =
+plusieurs minutes (compile DuckDB), assume car on est en pre-push et non en pre-commit.
+Le pre-commit reste INCHANGE dans son comportement (doctrine : jamais bloquer un commit sur
+la dette situee ailleurs dans l'arbre) — seule sa documentation est corrigee, en-tete de
+`go-vet.sh` et commentaire `lefthook.yml`, pour nommer la limite structurelle CGO=0 et
+renvoyer au nouveau hook. Tags niche laisses HORS filet, en parite avec la CI (`dev`,
+`art_repro`, `bug_repro`, `ignore` : fichiers a lancement manuel voulu) — les ajouter
+rendrait le hook plus strict que la CI et fabriquerait des rouges locaux sans verdict CI
+correspondant. Aucune modification de la CI ni de `make gate-push` : deja couvrants,
+l'autorite du verdict reste la CI.
+
+**Resultats observes** : validations toutes vertes au sens attendu.
+(a) TEST DE MUTATION, depuis la racine du worktree `prepush-vet-cgo` : exit 1 avec
+l'erreur exacte `build_queue_e2e_cgo_test.go:47:88: too many arguments in call to
+NewAdminMonitoringHandler / have (nil x11) / want (... 10 params)`. Particularite : la
+branche demontre le garde SUR ELLE-MEME — sa base (feat/v75) porte encore le defaut, le
+rouge est donc prouve sur son propre arbre, sans mutation fabriquee.
+(b) CAS VERT, meme script lance depuis le worktree `fix-e2e-cgo-args` (qui porte
+de615564f) : exit 0, sortie vide, arbre cible inchange. Le garde discrimine donc bien les
+deux etats, et n'est pas un test qui ne peut pas echouer.
+(c) `lefthook dump` exit 0 (YAML valide, `go-vet-cgo` bien serialise avant `govulncheck`) ;
+`lefthook run pre-push --commands go-vet-cgo` exit 1 en 4,37 s avec la meme erreur — le
+cablage bout en bout (glob + run) est prouve, pas seulement le script.
+(d) `bash -n` exit 0 sur `go-vet-cgo.sh` et sur `go-vet.sh`.
+Anomalies notees : `de615564f` n'est PAS fusionne dans feat/v75 (il vit sur
+`fix/build-queue-e2e-cgo-args`), la tete actuelle 151de8037 porte toujours les 11 nil ;
+et la base de ce lot (4ffbb3c36) est un ancetre de cette tete, feat/v75 ayant avance
+pendant le lot.
+
+**Conclusion / prochaine etape** : ORDRE DE FUSION REQUIS — fusionner d'abord
+`fix/build-queue-e2e-cgo-args` (de615564f) dans feat/v75, PUIS `chore/prepush-vet-cgo`.
+Dans l'ordre inverse, le premier push suivant la fusion du hook serait bloque par le hook
+lui-meme sur le defaut encore present : comportement correct du garde, mais surprise
+evitable. Le hook ne s'activera que chez les devs ayant deja `lefthook install` en place
+(aucune action supplementaire requise de leur part). Fusion dans feat/v75 avec le train
+v7.5.
+
 ## [2026-08-25] Hotfix CI branche : 2 appelants oublies du retrait LegacyAuthInputs (ADR 0023 Phase 5) — Complete
 
 **Contexte** : CI de feat/v75 ROUGE depuis c42624dd5 (antearieure a la fusion csrf-ouvrier,
