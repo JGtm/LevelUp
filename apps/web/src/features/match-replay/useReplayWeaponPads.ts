@@ -40,7 +40,14 @@ import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
 import { frameToMs, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from './replayNormalize'
-import { PAD_EQUIPMENT_FAMILIES, padEquipmentFamilyOf, padScaleOf, type PadScale } from './weaponPadFamilies'
+import {
+  PAD_EQUIPMENT_FAMILIES,
+  padEquipmentFamilyOf,
+  padFamilyOf,
+  padScaleOf,
+  type PadFamily,
+  type PadScale,
+} from './weaponPadFamilies'
 import {
   drawWeaponPadsLayer,
   padAt,
@@ -177,7 +184,13 @@ export interface WeaponPadsInput {
    * Les encres du calque : le NEUTRE du terrain (le point) et le couple REMPLISSAGE /
    * LISERÉ du marquage (la vignette et le compte à rebours). Toutes viennent du canvas.
    */
-  ink: { neutral: string; fill: string; outline: string }
+  ink: {
+    neutral: string
+    fill: string
+    outline: string
+    /** Encre par NATURE de socle (A13) : power-up, arme de puissance, râtelier ordinaire. */
+    family: Readonly<Record<PadFamily, string>>
+  }
   locale: ReplayLocale
   /** Repeindre la scène : les vignettes arrivent après coup (chargement asynchrone). */
   redraw: () => void
@@ -220,6 +233,12 @@ export function useReplayWeaponPads({
   // qu'est écrit lequel des deux vocabulaires s'applique.
   const labels = doc.weaponLabels
   const scaleOf = useCallback((weapon: string) => padScaleFor(weapon, labels), [labels])
+  // L'ENCRE DE LA NATURE (A13) : la famille se résout de la même clé canonique que la taille,
+  // et l'appelant a déjà résolu les trois tokens — ce hook ne fait que les apparier.
+  const inkOf = useCallback(
+    (weapon: string) => ink.family[padFamilyOf(weapon, labels?.[weapon]?.key)],
+    [labels, ink.family],
+  )
   const nameOf = useCallback(
     (weapon: string) => padNameFor(weapon, labels, t, locale),
     [labels, t, locale],
@@ -272,11 +291,12 @@ export function useReplayWeaponPads({
           outline: ink.outline,
           iconOf: (weapon) => iconsRef.current.get(weapon) ?? null,
           scaleOf,
+          inkOf,
           countdownLabel: t.padCountdownFmt,
         },
       )
     },
-    [enabled, pads, view, frameMs, ink.neutral, ink.fill, ink.outline, scaleOf, t.padCountdownFmt],
+    [enabled, pads, view, frameMs, ink.neutral, ink.fill, ink.outline, scaleOf, inkOf, t.padCountdownFmt],
   )
 
   const onPointerMove = useCallback(
@@ -298,6 +318,7 @@ export function useReplayWeaponPads({
         outline: ink.outline,
         iconOf: () => null,
         scaleOf,
+        inkOf,
         countdownLabel: t.padCountdownFmt,
       }
       const found = padAt(pads, view, style, window.devicePixelRatio || 1, at)
@@ -324,7 +345,7 @@ export function useReplayWeaponPads({
         return next
       })
     },
-    [enabled, pads, view, ink.neutral, ink.fill, ink.outline, scaleOf, t.padCountdownFmt, frameRef, frameMs, nameOf],
+    [enabled, pads, view, ink.neutral, ink.fill, ink.outline, scaleOf, inkOf, t.padCountdownFmt, frameRef, frameMs, nameOf],
   )
 
   const onPointerLeave = useCallback(() => {

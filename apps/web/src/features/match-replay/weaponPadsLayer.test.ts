@@ -50,6 +50,8 @@ function style(over: Partial<PadStyle> = {}): PadStyle {
     outline: 'contour',
     iconOf: () => ICON,
     scaleOf: (weapon) => (KEYS[weapon] === 'hinf_s7_sniper' ? 'power' : 'classic'),
+    // A13 : l'encre de la NATURE du socle, résolue par l'appelant comme toutes les autres.
+    inkOf: () => 'nature',
     countdownLabel: (s) => `${Math.ceil(s)} s`,
     ...over,
   }
@@ -158,13 +160,16 @@ describe('padRespawnSecondsAt — le compte à rebours n’existe qu’avec un c
  * n'existe plus.
  */
 describe('le tracé — point, vignette dessous, compte à rebours dessus', () => {
-  it('PLEIN : le point est REMPLI, et la vignette à pleine encre', () => {
+  // DEUX ARCS DEPUIS A13, ET C'EST UNE SEULE MARQUE : le point, puis la BORDURE de sa nature
+  // posée autour. Ils sont CONCENTRIQUES — ce que le cas « un socle, une marque » vérifie chez
+  // l'appelant en comptant les centres distincts. Le point, lui, garde sa règle : plein.
+  it('PLEIN : le point est REMPLI, la bordure l’entoure, et la vignette à pleine encre', () => {
     const ops = draw([pad()], 50)
-    expect(count(ops, 'arc')).toBe(1)
+    expect(count(ops, 'arc')).toBe(2)
     expect(count(ops, 'drawImage')).toBeGreaterThan(0)
-    // Un point PLEIN se remplit : il n'est ni tracé ni pointillé.
+    // Un point PLEIN se remplit : il n'est ni tracé ni pointillé. Le seul `stroke` est la bordure.
     expect(count(ops, 'setLineDash')).toBe(0)
-    expect(count(ops, 'stroke')).toBe(0)
+    expect(count(ops, 'stroke')).toBe(1)
     expect(count(ops, 'fill')).toBe(1)
     expect(Math.max(...valuesOf(ops, 'globalAlpha'))).toBeGreaterThan(0.9)
   })
@@ -179,10 +184,11 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     expect(Math.max(...valuesOf(ops, 'globalAlpha').slice(0, -1))).toBeLessThan(0.6)
   })
 
-  it('VIDE : plus de vignette, mais le point reste — le lieu ne disparaît pas', () => {
+  it('VIDE : plus de vignette, mais le point ET sa bordure restent — le lieu ne disparaît pas', () => {
     const ops = draw([pad()], 200)
     expect(count(ops, 'drawImage')).toBe(0)
-    expect(count(ops, 'arc')).toBe(1)
+    // Le point et sa bordure, concentriques : la marque du lieu tient sans ce qu'il portait.
+    expect(count(ops, 'arc')).toBe(2)
   })
 
   it('VIDE avec cycle : le compte à rebours s’écrit, cerné pour rester lisible', () => {
@@ -205,12 +211,19 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     expect(count(ops, 'strokeText')).toBe(0)
   })
 
-  it('SANS VIGNETTE : un glyphe neutre, jamais l’icône d’une arme voisine', () => {
+  // AMENDÉ LE 2026-08-26 (retour utilisateur : « j'ai l'impression qu'il y en a deux »). Ce cas
+  // verrouillait le GLYPHE DE REPLI : sans vignette, le calque posait un disque plein du même
+  // rayon que le point, une dizaine de pixels sous lui. Deux ronds empilés pour UN socle — et
+  // c'est exactement ce que l'œil comptait deux fois. Le repli est supprimé : le point porte
+  // déjà la position ET l'état. Ce qui reste garanti, et qui était le vrai sujet du cas :
+  // aucune image n'est empruntée à une arme voisine.
+  it('SANS VIGNETTE : le point SEUL, et surtout jamais l’icône d’une arme voisine', () => {
     const ops = draw([pad()], 50, { iconOf: () => null })
     expect(count(ops, 'drawImage')).toBe(0)
-    // Deux arcs : le point, puis le disque du glyphe qui remplace la vignette.
+    // Le point et sa bordure, CONCENTRIQUES : une seule marque pour un seul socle. Ce qui a
+    // disparu, c'est le disque décalé — pas un second cercle au même endroit.
     expect(count(ops, 'arc')).toBe(2)
-    expect(count(ops, 'fill')).toBe(2)
+    expect(count(ops, 'fill')).toBe(1)
   })
 
   /**
@@ -254,15 +267,19 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     expect(ty).toBeLessThan(c.y - rayon)
   })
 
-  it('la vignette est entièrement SOUS le point, jamais centrée dessus', () => {
+  // RÈGLE INVERSÉE LE 2026-08-26, et c'est le même retour utilisateur. La vignette était posée
+  // ENTIÈREMENT SOUS le point : un rond ici, une image dix pixels plus bas, deux marques pour un
+  // socle. Elle est désormais CENTRÉE sur le point — un socle, une marque. Le point ne disparaît
+  // pas pour autant : il reste dessous et continue de porter l'ÉTAT par sa forme (plein,
+  // pointillé, discret), ce que la vignette ne sait pas dire.
+  it('la vignette est CENTRÉE sur le point, jamais décalée dessous', () => {
     const ops = draw([pad({ x: 2, y: 8 })], 50)
     const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
-    const rayon = ops.find((o) => o.op === 'arc')!.args[2] as number
     // Le CORPS est le dernier posé (le liseré vient d'abord, tout autour).
     const images = ops.filter((o) => o.op === 'drawImage')
-    const [, dx, dy, w] = images[images.length - 1].args as number[]
+    const [, dx, dy, w, h] = images[images.length - 1].args as number[]
     expect(dx + w / 2).toBeCloseTo(c.x, 6)
-    expect(dy).toBeGreaterThan(c.y + rayon)
+    expect(dy + h / 2).toBeCloseTo(c.y, 6)
   })
 
   it('aucune COULEUR n’est écrite ici : les encres viennent toutes de l’appelant', () => {
@@ -272,7 +289,9 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
       .filter((o) => o.op === 'set fillStyle' || o.op === 'set strokeStyle')
       .map((o) => o.args[0])
     expect(encres.length).toBeGreaterThan(0)
-    for (const e of encres) expect(['encre', 'remplissage', 'contour']).toContain(e)
+    // `nature` rejoint la liste depuis A13 : c'est l'encre de la FAMILLE du socle, et elle
+    // vient de l'appelant exactement comme les trois autres — ce cas garde son sujet entier.
+    for (const e of encres) expect(['encre', 'remplissage', 'contour', 'nature']).toContain(e)
   })
 
   it('aucun socle : rien n’est dessiné, pas même un cadre vide (témoin 000d5950)', () => {

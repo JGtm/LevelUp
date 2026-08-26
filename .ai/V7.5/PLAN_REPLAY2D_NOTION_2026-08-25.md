@@ -126,24 +126,56 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
 Retours utilisateur du 26/08 après vérification visuelle de `530820e5` (socles OK,
 bases CTF disparues — les correctifs sont VALIDÉS visuellement) :
 
-- [ ] A9 : les socles semblent EN DOUBLE (« j'ai l'impression qu'il y en a deux »).
+- [x] A9 : les socles semblent EN DOUBLE (« j'ai l'impression qu'il y en a deux »).
   DIAGNOSTIC obligatoire : superposition probable des socles du FILM (`weaponPads`) et
   des emplacements du CATALOGUE (`mapWeaponPads`) — le croisement devait déplacer, pas
   dupliquer. Prouver par fixture (les deux couches servies ensemble), corriger la dédup.
-- [ ] A10 : une zone de callout est nommée EN ARABE sur ce match. DIAGNOSTIC : d'où
+  PREUVE : sur les 5 socles réels de `530820e5`, le calque émettait **10 arcs**. L'hypothèse
+  film × catalogue est ÉCARTÉE — `crossedWeaponPads` rend bien 5 socles (`pads.map`, longueur
+  constante), vérifié avec la couche `mapWeaponPads` servie. Le doublon était AU TRACÉ, deux
+  sources : (1) le glyphe de repli de `drawPadIcon` — un disque plein du même rayon que le
+  point, ~10 px sous lui — supprimé ; (2) la vignette posée SOUS le point — désormais CENTRÉE
+  dessus. 3 tests neufs ; 2 cas existants (composition R3.6) amendés avec date et raison.
+- [!] A10 : une zone de callout est nommée EN ARABE sur ce match. DIAGNOSTIC : d'où
   vient le libellé (résolution de locale côté client ? donnée du catalogue callouts
   versionné ?). Si la donnée versionnée est en cause : CR sans fix (regen de référence =
   hors périmètre web, je re-route).
-- [ ] A11 : glyphe du DRAPEAU (porteur/lâché/base) un peu plus gros (« un tout petit
+  NON REPRODUIT — **ni la donnée versionnée ni la résolution client** ne peuvent produire cela,
+  et aucun correctif n'est donc posé. Preuves : (a) balayage non-latin de TOUT
+  `map_callouts.json` (22 cartes + section `brut`) → **0 occurrence** ; (b) idem sur les 818
+  lignes de `callouts_i18n.csv` (colonnes `en`/`fr` seules) → **0** ; (c) les 28 callouts de
+  Catalyst sont tous en FR/EN propre ; (d) `calloutLabel` (`calloutsLayer.ts:122`) est un
+  binaire `locale === 'fr' ? zone.fr : zone.en` — aucune clé dynamique, aucun 3e alphabet
+  atteignable. CONDITION DE REPRISE : que l'utilisateur identifie le libellé (capture ou nom
+  de zone). Piste à écarter d'abord : « Crête iroquoise » (Mohawk), traduction FR exacte mais
+  d'aspect inhabituel.
+- [x] A11 : glyphe du DRAPEAU (porteur/lâché/base) un peu plus gros (« un tout petit
   peu ») — ajustement fin, pas un doublement.
-- [ ] A12 : le socle/marqueur d'ÉQUIPE est BLEU alors que le paramètre utilisateur de
+  FAIT : `FLAG_GLYPH_SCALE = 1.2` (+20 %) appliqué aux TROIS cotes ensemble (hampe 13→15,6 ;
+  fanion 9×6,5→10,8×7,8) et au rayon de survol (12→14,4). Le décalage d'ancrage ne bouge pas.
+- [x] A12 : le socle/marqueur d'ÉQUIPE est BLEU alors que le paramètre utilisateur de
   couleur d'équipe est vert (jade/menthe) : le calque doit passer par la MÊME source de
   couleur d'équipe que le reste de l'app (préférence + palette accessible), jamais un
   bleu/rouge en dur.
-- [ ] A13 : socles par FAMILLE (power-ups, armes spéciales/power, armes classiques/rack) :
+  CAUSE RACINE, une ligne : `useZoneStates.colorOfTeam` appelait `resolveTeamColorFromID`,
+  c.-à-d. `TEAM_COLORS_HALO_INFINITE` — le bleu/rouge OFFICIELS du jeu en dur. Ce résolveur
+  teinte le calque statique des objectifs (dont les socles de base) et les pulses. Il passe
+  désormais par `teamColorOf` (`team-ally`/`team-enemy`), la source des fiches, du fil et des
+  points — les deux étaient DÉJÀ dans ce hook pour `colorOfOwner`. Sans ligne « moi » : neutre,
+  jamais deviné. Import supprimé. 4 tests.
+- [x] A13 : socles par FAMILLE (power-ups, armes spéciales/power, armes classiques/rack) :
   bordure + couleur plus vive, UNE couleur par type, STRICTEMENT dans les tokens
   sémantiques accessibles de l'app (skill color-tokens — aucune valeur hex, palette
   daltonisme-compatible existante) ; proposer le mapping famille→token au CR.
+  MAPPING PROPOSÉ (à valider) — 3 tokens DÉJÀ en service dans le rejeu, aucun neuf :
+  `powerup` → **`legendary`** (l'or de l'encadré de surbouclier des fiches) ; `power` →
+  **`warning`** (déjà le mur de protection, teinte des objets de terrain à fort enjeu) ;
+  `classic` → **`divergent-neutral`** (le neutre du rejeu, qui recule). La HIÉRARCHIE est le
+  point, pas la teinte : deux natures fortes distinctes, une troisième qui s'efface.
+  FAIT : type `PadFamily` + `padFamilyOf` (distinct de `PadScale`, qui n'a que 2 valeurs) ;
+  le POINT prend l'encre de sa nature ; BORDURE = anneau de la nature qui enferme la marque,
+  à l'opacité du point (un socle vide garde son contour). Aucun token dans le calque —
+  `inkOf` est résolu par l'appelant, mapping dans `useReplayInks`.
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
