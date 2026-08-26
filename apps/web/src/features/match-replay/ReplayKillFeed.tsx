@@ -81,6 +81,7 @@ import {
 } from './killFeedLogic'
 import { formatClock } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 
 /** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed. */
 const ICON_W = 22
@@ -128,8 +129,9 @@ interface Props {
   medals: MedalEvent[]
   /** Offset du countdown pré-match, en ms (`header.t0_ms`). 0 = inconnu. */
   t0Ms: number
-  /** Instant courant du rejeu, en ms depuis le début du match. */
+  /** Instant courant sur l'axe BRUT du film (il décide du VISIBLE) ; `playWindow` recale l'AFFICHÉ (D-A2). */
   nowMs: number
+  playWindow: ReplayWindowBounds | null
   /**
    * Le document du rejeu : ses pistes datent les fins de vie, le référentiel sur lequel
    * le fil se recale (cf. killFeedLogic.ts) et dont sortent les lignes de mort neutre.
@@ -154,7 +156,7 @@ interface Props {
 }
 
 export function ReplayKillFeed({
-  kills, medals, t0Ms, nowMs, doc, scoreboard, xuidMeta, locale, marks, colorOf,
+  kills, medals, t0Ms, nowMs, playWindow, doc, scoreboard, xuidMeta, locale, marks, colorOf,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   // L'assemblage ne dépend PAS de l'image courante : le refaire soixante fois par
@@ -220,7 +222,7 @@ export function ReplayKillFeed({
         {visibles.map((entry) => (
           <FeedLine
             key={entry.key}
-            entry={entry}
+            entry={{ ...entry, replayMs: displayClockMs(entry.replayMs, playWindow) }}
             colorOf={colorOfTeam}
             xuidMeta={xuidMeta}
             teamIDByXuid={teamIDByXuid}

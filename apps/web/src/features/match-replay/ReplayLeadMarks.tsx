@@ -15,6 +15,10 @@
  * LA COULEUR EST CELLE DU NOUVEAU MENEUR, dans la grammaire de la page : `team-ally` /
  * `team-enemy`, les mêmes tokens que les points de la carte et les titres de colonnes. Un
  * camp non reconnu prend l'encre neutre du thème — jamais l'une des deux par défaut.
+ *
+ * ELLES SE POSENT SUR LA FRISE, DONC SUR SES BORNES : depuis que la frise est cadrée sur le
+ * gameplay (`replayWindow.ts`), l'échelle n'est plus le film entier mais la fenêtre du match.
+ * Une marque calculée sur l'ancienne échelle se poserait à côté de l'instant qu'elle désigne.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { formatClockMMSS } from '@/lib/formatters'
@@ -22,6 +26,7 @@ import { formatClockMMSS } from '@/lib/formatters'
 import type { LeadChange } from '@/lib/replay/scoreTimeline'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 
 /**
  * Largeur supposée du curseur natif, en pixels. La piste d'un `input[type=range]` court de
@@ -34,10 +39,12 @@ const THUMB_PX = 16
 
 export interface ReplayLeadMarksProps {
   changes: readonly LeadChange[]
-  /** Nombre d'images du document : c'est lui qui donne l'échelle de la frise. */
+  /** Nombre d'images du document : l'échelle de la frise quand le match n'est pas cadré. */
   frameCount: number
   /** Durée d'une image, pour dater la marque en mm:ss dans son infobulle. */
   frameIntervalMs?: number
+  /** La fenêtre de gameplay : elle donne l'échelle de la frise ET l'origine de l'horloge. */
+  playWindow: ReplayWindowBounds | null
   /** Camp du meneur, du point de vue du joueur de la page (`null` = inconnu). */
   allyOf: (teamId: number) => boolean | null
   /** Libellé de l'équipe qui passe devant, tel que la colonne l'écrit. */
@@ -49,19 +56,21 @@ export function ReplayLeadMarks({
   changes,
   frameCount,
   frameIntervalMs,
+  playWindow,
   allyOf,
   labelOf,
   locale,
 }: ReplayLeadMarksProps) {
   const t = REPLAY_TEXT[locale]
-  const span = frameCount - 1
+  const from = playWindow?.startFrame ?? 0
+  const span = (playWindow?.endFrame ?? frameCount - 1) - from
   if (changes.length === 0 || span <= 0) return null
   return (
     <span className="pointer-events-none absolute inset-0 block">
       {changes.map((c) => {
         const ally = allyOf(c.teamId)
         const color = ally === null ? 'var(--border)' : tokenCssVar(ally ? 'team-ally' : 'team-enemy')
-        const ratio = Math.min(1, Math.max(0, c.frame / span))
+        const ratio = Math.min(1, Math.max(0, (c.frame - from) / span))
         return (
           <span
             key={`${c.frame}-${c.teamId}`}
@@ -70,7 +79,7 @@ export function ReplayLeadMarks({
               left: `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${ratio})`,
               background: color,
             }}
-            title={t.leadChangeAtFmt(formatClock(c.frame, frameIntervalMs), labelOf(c.teamId))}
+            title={t.leadChangeAtFmt(markClock(c.frame, frameIntervalMs, playWindow), labelOf(c.teamId))}
             aria-label={t.leadChange}
           />
         )
@@ -80,11 +89,16 @@ export function ReplayLeadMarks({
 }
 
 /**
- * formatClock date une image depuis le début du rejeu. Sans échelle temporelle (artefact
- * sans `frameIntervalMs`), l'axe T n'est qu'un index : on rend le NUMÉRO d'image plutôt
- * qu'une durée fabriquée. La mise en forme M:SS, elle, vient du foyer du dépôt.
+ * markClock date une image sur l'horloge du GAMEPLAY (D-A2), comme le bandeau et le fil.
+ * Sans échelle temporelle (artefact sans `frameIntervalMs`), l'axe T n'est qu'un index : on
+ * rend le NUMÉRO d'image plutôt qu'une durée fabriquée. La mise en forme M:SS, elle, vient du
+ * foyer du dépôt.
  */
-function formatClock(frame: number, frameIntervalMs?: number): string {
+function markClock(
+  frame: number,
+  frameIntervalMs: number | undefined,
+  playWindow: ReplayWindowBounds | null,
+): string {
   if (!frameIntervalMs) return `#${Math.round(frame)}`
-  return formatClockMMSS(frame * frameIntervalMs)
+  return formatClockMMSS(displayClockMs(frame * frameIntervalMs, playWindow))
 }

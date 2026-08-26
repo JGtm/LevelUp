@@ -9,11 +9,16 @@
  * LA BOUCLE D'ANIMATION EST PILOTÉE À LA MAIN : `requestAnimationFrame` est remplacé par une
  * file qu'on vide pas à pas. Sans cela un test de fin de film dépendrait de la cadence réelle
  * du navigateur de test — c'est-à-dire de rien de reproductible.
+ *
+ * ET DEPUIS LE 2026-08-26, « le début » et « la fin » sont ceux du MATCH : la dernière série
+ * vérifie que la fenêtre de gameplay (`replayWindow.ts`) déplace les deux bornes — départ,
+ * arrêt, « Recommencer » et rembobinage — sans rien changer quand elle vaut `null`.
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRef, type RefObject } from 'react'
 
+import type { ReplayWindowBounds } from './replayWindow'
 import { testReplayDoc } from './test/testDoc'
 import { useReplayPlayback } from './useReplayPlayback'
 
@@ -53,10 +58,16 @@ function tick(ts: number) {
   })
 }
 
-function mount(frameRef: RefObject<number>, draw = vi.fn(), soundTick = vi.fn()) {
+function mount(
+  frameRef: RefObject<number>,
+  playWindow: ReplayWindowBounds | null = null,
+  draw = vi.fn(),
+  soundTick = vi.fn(),
+) {
   const view = renderHook(() =>
     useReplayPlayback({
       doc: DOC,
+      playWindow,
       baseFps: 10,
       speed: 1,
       renderWidth: 480,
@@ -66,6 +77,14 @@ function mount(frameRef: RefObject<number>, draw = vi.fn(), soundTick = vi.fn())
     }),
   )
   return { ...view, draw, soundTick }
+}
+
+/** Une fenêtre de gameplay dans le document de test : le match court de l'image 10 à la 40. */
+const FENETRE: ReplayWindowBounds = {
+  startFrame: 10,
+  endFrame: 40,
+  startMs: 10_000,
+  endMs: 40_000,
 }
 
 describe('useReplayPlayback — la lecture avance', () => {
@@ -148,6 +167,78 @@ describe('useReplayPlayback — la fin du rejeu reste sur l’état final', () =
     })
     expect(frameRef.current).toBe(0)
     expect(result.current.playing).toBe(true)
+  })
+})
+
+describe('useReplayPlayback — la fenêtre de gameplay borne la lecture', () => {
+  it('expose les DEUX bornes du match, pas celles du film', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef, FENETRE)
+    expect(result.current.startFrame).toBe(10)
+    expect(result.current.endFrame).toBe(40)
+  })
+
+  it('la PREMIÈRE lecture démarre au coup d’envoi, et la scène y est peinte', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { draw } = mount(frameRef, FENETRE)
+    expect(frameRef.current).toBe(10)
+    expect(draw).toHaveBeenCalled()
+  })
+
+  it('ne RECULE jamais la lecture déjà engagée au-delà du coup d’envoi', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 25
+    mount(frameRef, FENETRE)
+    expect(frameRef.current).toBe(25)
+  })
+
+  it('s’arrête à la FIN DÉCLARÉE, pas à la dernière image du film', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 39
+    const { result } = mount(frameRef, FENETRE)
+    tick(1_000)
+    tick(11_000) // 100 images demandées : très au-delà des deux bornes
+    expect(frameRef.current).toBe(40)
+    expect(result.current.playing).toBe(false)
+    expect(pending).toHaveLength(0)
+  })
+
+  it('« Recommencer » ramène au coup d’envoi, pas à l’image zéro', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 33
+    const { result } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.restart()
+    })
+    expect(frameRef.current).toBe(10)
+    expect(result.current.playing).toBe(true)
+  })
+
+  it('« Lecture » sur un rejeu terminé repart du coup d’envoi', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 40
+    const { result } = mount(frameRef, FENETRE)
+    tick(1_000)
+    expect(result.current.playing).toBe(false)
+    act(() => {
+      result.current.togglePlay()
+    })
+    expect(frameRef.current).toBe(10)
+    expect(result.current.playing).toBe(true)
+  })
+
+  it('SANS fenêtre, les bornes restent celles du film — rien ne change', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    expect(result.current.startFrame).toBe(0)
+    expect(result.current.endFrame).toBe(50)
+    act(() => {
+      result.current.restart()
+    })
+    expect(frameRef.current).toBe(0)
   })
 })
 
