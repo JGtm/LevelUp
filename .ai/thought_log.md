@@ -73028,3 +73028,42 @@ aberrations a -231 / -213 m, exactement les bornes d'un canevas Forge, ecartees 
 native au lieu de s'y ajouter.
 
 **Conclusion / prochaine etape** : Launch Site, puis Vagabond, puis la re-passe Cliffhanger.
+
+## [2026-08-26] Fonds de rejeu 2D — carte 11 Launch Site : le taux de couverture decide de l'ecretage
+
+**Statut** : Complete. 11 cartes closes, 9 validees en production. Reste Vagabond (gros
+retravail) et la re-passe cadre + echelle de Cliffhanger.
+
+**Decision technique principale** : l'ecretage des toits, outil qui avait sauve les cinq
+cartes precedentes, doit etre REFUSE sur les cartes deja couvertes — et le critere n'est pas
+un jugement d'image, c'est un chiffre deja journalise.
+
+| Regime | Taux de couverture | Voie de reference native | Ecretage |
+|---|---|---|---|
+| Catalyst, Streets | 28,4 % — sous `SeuilCarteCouverte` (1/3) | ne se declenche JAMAIS | seul chemin possible |
+| Launch Site | 53,5 % — au-dessus | se declenche et remet le sol | ne peut que RETIRER du sol |
+
+Cause : le defaut de conception deja consigne — armer l'ecretage REMPLACE la voie native au
+lieu de s'y ajouter. Mesure sur Launch Site : 162 139 cellules de matiere avec ecretage a 4 m
+contre 245 307 sans lui, 16 ancres sur 28 contre 20, l'arene reduite a un contour creux.
+Meme cause, autre effet sur Illusion : 108 810 cellules substituees contre 1 338 343 par la
+voie native, d'ou une arene sans relief. La regle est portee dans la recette.
+
+**Deuxieme regle degagee** : devant un vide au milieu d'une arene, ce sont LES ANCRES qui
+tranchent « trou reel ou matiere manquante », pas l'oeil. Une ancre d'objectif est du terrain
+joue par definition. Launch Site : 8 ancres sur 28 flottaient sans sol dans la bande blanche
+qui traversait l'arene — donc matiere manquante, comblement justifie (440 000 cellules
+d'aplat, 2 ancres recuperees, 22/28). Chasm : aucune ancre dans le gouffre — vide reel,
+comblement a tort. Cela clot par un critere l'hesitation qui avait coute une cuisson sur
+Chasm et une premiere intention prudente ici.
+
+**Resultats observes** : Launch Site cuite en production, 1 502 x 1 478 px, 22/28 ancres,
+sans ecretage, avec comblement, masque des 52 zones (5,7 % retire, zero ancre perdue), eau
+ecartee a la demande de l'utilisateur (la nappe du flanc ouest occupait un cinquieme de
+l'image pour une zone ou l'on ne joue pas).
+
+**Reserves ecrites, non traitees** : six ancres restent sans sol (il subsiste des trous
+ailleurs, et on ignore pourquoi cette portion d'arene n'a pas de triangles) ; un aplat n'est
+pas un releve ; un petit fragment isole flotte sur le flanc ouest, la ou l'eau etait peinte.
+
+**Conclusion / prochaine etape** : Vagabond, puis la re-passe Cliffhanger.

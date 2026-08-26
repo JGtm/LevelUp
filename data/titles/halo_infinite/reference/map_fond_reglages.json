@@ -113,6 +113,16 @@
       "gateLe": "2026-08-26",
       "echelle": 0.045,
       "rogneAuxZones": true
+    },
+    "va_launchsite": {
+      "carte": "Launch Site",
+      "style": "encre",
+      "raison": "Gate du 2026-08-26, carte 11. Derniere carte de la liste a finaliser du 26/08 avant Vagabond. ECRETAGE REFUSE ICI, et c est l enseignement de la carte : a 4 m il eventre l arene, qui devient un contour creux — 162 139 cellules de matiere contre 245 307 sans lui, et 16 ancres sur 28 contre 20. C est le defaut de conception consigne le meme jour : armer l ecretage REMPLACE la voie de reference native au lieu de s y ajouter. Launch Site est couverte a 53,5 pour cent, donc la voie native se declenche et fait deja le travail ; la remplacer par une coupe a hauteur fixe ne peut que retirer du sol. Catalyst, couverte a 28,4 pour cent, etait dans le regime INVERSE — la voie native ne s y declenchait jamais et l ecretage etait le seul chemin. Le taux de couverture separe les deux regimes, il ne s agit pas d un reglage a tatonner. COMBLEMENT DES TROUS ARME, contre la prudence de premiere intention : une grande bande blanche traversait l arene en diagonale, deja presente dans le fond de production, la ou les joueurs marchent. L ORACLE A TRANCHE — huit ancres d objectif sur vingt-huit flottaient sans sol dessous, et une ancre d objectif est du terrain joue par definition : le vide n etait pas reel, c etait de la matiere manquante au rendu. Le comblement pose environ 440 000 cellules d aplat et recupere deux ancres (22 sur 28). Reserve : un aplat n est pas un releve, la surface posee est plate. EAU ECARTEE a la demande de l utilisateur : la grande nappe bleue du flanc ouest occupait un cinquieme de l image pour une zone ou l on ne joue pas. Echelle 0,055 m/px : matiere utile 84,1 x 81,3 m soit 914 x 884 px a l echelle de production, portee a 1 502 x 1 478 px pour ne pas pixeliser dans le rejeu. Masque des zones arme, 52 zones, 5,7 pour cent de matiere retiree, zero ancre perdue ; carte asymetrique (arene posee en diagonale), la lecon de Chasm ne s applique pas. VALIDEE par l utilisateur le 2026-08-26 : « Prop 3 ok mais vire l eau, ensuite ce sera valide ». RESERVES ECRITES, NON TRAITEES : six ancres restent sans sol, donc il subsiste des trous ailleurs ; et un petit fragment isole flotte a mi-hauteur sur le flanc ouest, la ou l eau etait peinte.",
+      "gateLe": "2026-08-26",
+      "echelle": 0.055,
+      "combleTrous": true,
+      "rogneAuxZones": true,
+      "sansEau": true
     }
   }
 }
