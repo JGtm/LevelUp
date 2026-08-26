@@ -264,12 +264,18 @@ thought_log, mémoire de session.
   bombe au minimum) — un objet à forme d'un rôle points_only part en MARQUEUR (centre),
   jamais en zone ; le catalogue JSON n'est PAS modifié (la forme est une donnée réelle).
   Garde : test « un pair CTF ne sert jamais de zones ». Exécuteur : agent lot D.
-- [~] Socles invisibles sur `530820e5` (2e signalement) : SERVEUR HORS DE CAUSE, vérifié
-  sur pièces — artefact schéma 18 avec 5 `weaponPads`, positions concordantes au
-  catalogue (5/11 confirmables), `SHOW_WEAPON_PADS_DEFAULT = true`, calques pads non
-  touchés par les lots A/D-R. Piste restante : bascule « Socles » désactivée dans le
-  tiroir de réglages du joueur (localStorage). Demandé à l'utilisateur ; si la bascule
-  est active et rien ne s'affiche, investigation client dédiée.
+- [ ] FIX-SOCLES-INVISIBLES : socles/power-ups invisibles sur `530820e5` MÊME AVEC
+  toutes les bascules actives (confirmé utilisateur 26/08). SERVEUR HORS DE CAUSE,
+  vérifié superviseur : artefact schéma 18 avec 5 `weaponPads` + 22 `padPickups`,
+  positions concordantes au catalogue f7e8cde9 (5/11 confirmables), défauts des
+  bascules à true. => BUG CLIENT (ou réponse). Pistes à vérifier sur pièces par
+  l'exécuteur : (a) chemin de rendu `useReplayWeaponPads`/`weaponPadsLayer` — le repli
+  « socles du film » quand `mapWeaponPads` est absent existe-t-il encore depuis le
+  calque emplacements-dès-l'image-0 (`f8e488a6c`) ? (b) un garde de schéma côté client
+  (parité 19 vs artefact 18) qui éteindrait le calque ; (c) l'interaction des 4 bascules
+  (placements / unnamed / dropped / weaponPads). Reproduction : normaliser le VRAI
+  artefact `530820e5` dans un test (fixture dérivée, pas de dépendance au cache).
+  Exécuteur : agent lot A (web SEUL — créneau Go tenu par l'agent D).
 
 ## Découvertes (hors périmètre — consigner ici, ne PAS traiter)
 
