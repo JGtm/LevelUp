@@ -105,17 +105,28 @@ export interface FlagCarriesStyle {
   reducedMotion: boolean
 }
 
-// Réglages du calque. Le glyphe est volontairement PLUS PETIT que le marqueur d'un joueur : il
-// se pose À CÔTÉ du porteur, il ne doit pas le remplacer.
-const FLAG_POLE_H = 13
-const FLAG_WING_W = 9
-const FLAG_WING_H = 6.5
+// Réglages du calque. Le glyphe reste volontairement PLUS PETIT que le marqueur d'un joueur :
+// il se pose À CÔTÉ du porteur, il ne doit pas le remplacer.
+//
+// ÉLARGI DE 20 % LE 2026-08-26 (retour utilisateur : « le drapeau faudrait les faire un tout
+// petit peu plus gros »). C'est un AJUSTEMENT, pas un changement d'échelle : à 13 px de hampe le
+// fanion faisait 9 × 6,5 px, et sur un fond de carte chargé il se confondait avec les repères
+// voisins. Les trois cotes du glyphe montent ensemble — les élargir séparément déformerait le
+// dessin — et le décalage ne bouge PAS : le glyphe grandit vers le haut et la droite, donc son
+// ancrage sur le point qu'il qualifie reste le même.
+//
+// LE RAYON DE SURVOL SUIT, et il le doit : il couvre la hampe et le fanion. Le laisser à 12
+// aurait rendu insurvolable la part de glyphe gagnée par l'élargissement.
+const FLAG_GLYPH_SCALE = 1.2
+const FLAG_POLE_H = 13 * FLAG_GLYPH_SCALE
+const FLAG_WING_W = 9 * FLAG_GLYPH_SCALE
+const FLAG_WING_H = 6.5 * FLAG_GLYPH_SCALE
 /** Décalage du glyphe par rapport au point qu'il qualifie (au-dessus et à droite du marqueur). */
 const FLAG_OFFSET_X = 6
 const FLAG_OFFSET_Y = 2
 const FLAG_STROKE_WIDTH = 1.6
 /** Rayon de SURVOL, en pixels : il couvre la hampe et le fanion, sans déborder sur le voisin. */
-export const FLAG_HIT_RADIUS = 12
+export const FLAG_HIT_RADIUS = 12 * FLAG_GLYPH_SCALE
 
 /** Opacité pleine : un fait daté (drapeau porté, ou à sa base). */
 const ALPHA_SOLID = 0.95
