@@ -30,7 +30,7 @@
 import { useCallback, useMemo } from 'react'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { parseTeamSideID, resolveTeamColorFromID } from '@/lib/halo/teamNames'
+import { parseTeamSideID } from '@/lib/halo/teamNames'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
 import { msToFrames } from './replayLogic'
@@ -45,9 +45,11 @@ import {
 /** Ce que le canvas recopie tel quel dans ses appels de dessin. */
 export interface ReplayZoneStates extends ZoneStatesLayerInput {
   /**
-   * Couleur d'un index d'équipe pour le calque STATIQUE et les pulses : le référentiel
-   * d'identité du jeu (donnée de domaine, pas un choix d'UI), encre neutre du thème pour -1 ou
-   * un index hors référentiel. `team` y est DÉJÀ arbitré côté serveur (Bastion = neutre).
+   * Couleur d'un index d'équipe pour le calque STATIQUE et les pulses : celle que
+   * L'UTILISATEUR a réglée (`team-ally` / `team-enemy`), la MÊME que les fiches, le fil et les
+   * points des joueurs — jamais le bleu et le rouge officiels du jeu (cf. `colorOfTeam` plus
+   * bas). Encre neutre pour -1, et pour tout camp quand aucune ligne « moi » ne permet de
+   * situer les camps. `team` est DÉJÀ arbitré côté serveur (Bastion = neutre).
    */
   colorOfTeam: (team: number) => string
 }
@@ -73,13 +75,31 @@ export function useZoneStates(
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
   const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)
   const gaugeHoldFrames = useMemo(() => msToFrames(ZONE_GAUGE_HOLD_MS, doc), [doc])
-  const colorOfTeam = useCallback(
-    (team: number) => (team >= 0 ? resolveTeamColorFromID(team) : null) ?? neutral,
-    [neutral],
-  )
   const allyTeamID = useMemo(
     () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
     [scoreboard],
+  )
+  /**
+   * L'ENCRE D'UN CAMP VIENT DES RÉGLAGES DE L'UTILISATEUR, plus du référentiel du jeu
+   * (retour du 2026-08-26 : « le socle de l'équipe est en bleu alors que j'utilise une
+   * couleur verte »).
+   *
+   * CE QUI SE PASSAIT : ce calque appelait `resolveTeamColorFromID`, c'est-à-dire la table
+   * `TEAM_COLORS_HALO_INFINITE` — le bleu et le rouge OFFICIELS du jeu, écrits en dur. Les
+   * fiches, le fil et les points des joueurs, eux, passent tous par `teamColorOf`
+   * (`team-ally` / `team-enemy`, tokens que la palette d'accessibilité de l'utilisateur
+   * surcharge). Les objectifs parlaient donc seuls une autre langue que le reste de la page.
+   *
+   * LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : le camp se dit par son RAPPORT au joueur
+   * de la page — allié ou adverse — dans les couleurs qu'il a choisies. `resolveTeamColorFromID`
+   * n'est donc plus lu ici.
+   *
+   * SANS LIGNE « MOI », AUCUN CAMP N'EST SITUABLE, et rien n'est deviné : l'encre neutre
+   * sert alors, comme pour une zone que personne ne tient (même règle que `colorOfOwner`).
+   */
+  const colorOfTeam = useCallback(
+    (team: number) => (team >= 0 && allyTeamID !== null ? teamColorOf(team === allyTeamID) : neutral),
+    [allyTeamID, teamColorOf, neutral],
   )
   const style = useMemo(
     () => ({

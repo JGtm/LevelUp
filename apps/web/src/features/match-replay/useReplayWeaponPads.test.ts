@@ -33,6 +33,7 @@ import {
   padScaleFor,
   useReplayWeaponPads,
 } from './useReplayWeaponPads'
+import { padFamilyOf } from './weaponPadFamilies'
 import { drawWeaponPadsLayer, padStateAt, type PadStyle } from './weaponPadsLayer'
 
 /** Le S7 Sniper tel que le document le sert : clé canonique, libellé bilingue, masque. */
@@ -153,6 +154,7 @@ const STYLE: PadStyle = {
   outline: 'contour',
   iconOf: () => null,
   scaleOf: () => 'power',
+  inkOf: () => 'nature',
   countdownLabel: (s) => `${Math.ceil(s)} s`,
 }
 
@@ -319,7 +321,12 @@ function monterCalque(doc: ReplayDocumentReady, enabled = true) {
       view: VUE_REELLE,
       frameRef,
       enabled,
-      ink: { neutral: 'encre', fill: 'remplissage', outline: 'contour' },
+      ink: {
+        neutral: 'encre',
+        fill: 'remplissage',
+        outline: 'contour',
+        family: { powerup: '#powerup', power: '#power', classic: '#classic' },
+      },
       locale: 'fr',
       redraw: vi.fn(),
     }),
@@ -391,5 +398,121 @@ describe('useReplayWeaponPads — quand, et SEULEMENT quand, le calque se tait',
     expect(padStateAt(SOCLES_530820E5[3], 500)).toBe('empty')
     result.current.paint(ctx, 500, 1)
     expect(count(ops, 'arc')).toBeGreaterThanOrEqual(5)
+  })
+})
+
+/**
+ * A9 — UN SOCLE, UNE MARQUE (retour utilisateur du 2026-08-26 : « j'ai l'impression qu'il y en
+ * a deux »).
+ *
+ * CE QUE LA MESURE A MONTRÉ, et c'est la preuve du doublon : sur les CINQ socles réels de
+ * `530820e5`, le calque émettait DIX arcs. Cinq points, plus cinq disques pleins posés une
+ * dizaine de pixels sous eux — le glyphe de repli de `drawPadIcon`, du même rayon que le point.
+ * Aucune duplication de DONNÉE (`crossedWeaponPads` rendait bien cinq socles) : le doublon
+ * était entièrement au tracé.
+ */
+describe('useReplayWeaponPads — A9 : un socle ne se dessine JAMAIS deux fois', () => {
+  // L'INVARIANT EST LE NOMBRE DE LIEUX MARQUÉS, PAS LE NOMBRE D'ARCS. Depuis A13 un socle en
+  // émet deux — son point et sa bordure — mais CONCENTRIQUES : c'est une seule marque. Le
+  // défaut d'A9 était tout autre, deux arcs à des centres DIFFÉRENTS (le point ici, le glyphe
+  // dix pixels plus bas). Compter les centres distincts dit donc exactement ce qu'on veut, et
+  // continue de le dire quelle que soit la richesse du dessin.
+  it('cinq socles réels, CINQ lieux marqués — plus dix', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const centres = new Set(
+      ops.filter((o) => o.op === 'arc').map((o) => {
+        const [x, y] = o.args as number[]
+        return `${Math.round(x * 100)},${Math.round(y * 100)}`
+      }),
+    )
+    expect(centres.size).toBe(5)
+  })
+
+  it('chaque arc est SUR un socle : aucune marque décalée sous un autre', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const centres = SOCLES_530820E5.map((p) =>
+      worldToCanvas(p, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad),
+    )
+    for (const o of ops.filter((op) => op.op === 'arc')) {
+      const [x, y] = o.args as number[]
+      const surUnSocle = centres.some((c) => Math.abs(c.x - x) < 0.01 && Math.abs(c.y - y) < 0.01)
+      expect(surUnSocle, `arc à (${x}, ${y}) hors de tout socle`).toBe(true)
+    }
+  })
+
+  it('la vignette se pose SUR le point, jamais en dessous', () => {
+    const doc = DOC_530820E5()
+    const { ops, ctx } = recordingContext()
+    const image = { width: 40, height: 20 } as unknown as CanvasImageSource
+    drawWeaponPadsLayer(ctx, doc.weaponPads, VUE_REELLE, { frame: 0, frameMs: 100, k: 1 }, {
+      ...STYLE,
+      scaleOf: () => 'classic',
+      iconOf: () => ({ fill: image, outline: null }),
+    })
+    const c = worldToCanvas(
+      SOCLES_530820E5[0], VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad,
+    )
+    const images = ops.filter((o) => o.op === 'drawImage').map((o) => o.args as number[])
+    // `drawImage(src, x, y, w, h)` : le centre vertical de la vignette est y + h/2.
+    const surLePoint = images.some(([, , y, , h]) => Math.abs(y + h / 2 - c.y) < 0.01)
+    expect(surLePoint, 'la vignette est décalée par rapport au point').toBe(true)
+  })
+})
+
+/**
+ * A13 — UNE COULEUR PAR NATURE DE SOCLE (retour utilisateur du 2026-08-26 : « bordure et
+ * couleur plus vive, une couleur pour chaque type, en respectant les couleurs accessibles »).
+ *
+ * LA RÉSOLUTION RESTE CHEZ L'APPELANT (règle color-tokens) : le calque reçoit trois chaînes
+ * déjà résolues et ne connaît aucun token. Ce que ces cas verrouillent, c'est l'APPARIEMENT —
+ * quelle nature reçoit laquelle — et le fait qu'un socle qu'on ne sait pas nommer ne soit
+ * jamais promu.
+ */
+describe('weaponPadFamilies — la nature d’un socle (A13)', () => {
+  it('un POWER-UP est reconnu par sa famille d’équipement, sans clé d’arme', () => {
+    expect(padFamilyOf('powerup_overshield', undefined)).toBe('powerup')
+    expect(padFamilyOf('powerup_camo', null)).toBe('powerup')
+  })
+
+  it('une ARME DE PUISSANCE est reconnue par sa clé canonique', () => {
+    expect(padFamilyOf(SNIPER, 'hinf_s7_sniper')).toBe('power')
+    expect(padFamilyOf('0xFFFF', 'hinf_energy_sword')).toBe('power')
+  })
+
+  it('tout le reste est CLASSIQUE — et une arme sans clé n’est jamais promue', () => {
+    expect(padFamilyOf('0x2B1824D5', 'hinf_br75')).toBe('classic')
+    expect(padFamilyOf(INCONNUE, undefined)).toBe('classic')
+    expect(padFamilyOf(INCONNUE, null)).toBe('classic')
+  })
+})
+
+describe('useReplayWeaponPads — chaque nature prend SON encre (A13)', () => {
+  it('les trois natures se distinguent à l’écran', () => {
+    const doc = DOC_530820E5()
+    const { result } = monterCalque(doc)
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const encres = new Set(
+      ops.filter((o) => o.op === 'set strokeStyle').map((o) => String(o.args[0])),
+    )
+    // La fixture ne porte pas de clé canonique (elle est posée à la requête, pas dans
+    // l'artefact) : ses cinq socles sont donc tous CLASSIQUES, et n'emploient que cette encre.
+    expect(encres).toEqual(new Set(['#classic']))
+  })
+
+  it('un socle de POWER-UP prend l’encre du power-up, pas celle d’un râtelier', () => {
+    const doc = testReplayDoc({
+      weaponPads: [{ x: 0, y: 0, z: 0, weapon: 'powerup_overshield', spawns: [0], presence: [{ t0: 0, tLow: 99, tHigh: 99 }] }],
+    })
+    const { result } = monterCalque(doc)
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const encres = ops.filter((o) => o.op === 'set strokeStyle').map((o) => String(o.args[0]))
+    expect(encres.length).toBeGreaterThan(0)
+    expect(new Set(encres)).toEqual(new Set(['#powerup']))
   })
 })

@@ -81,6 +81,13 @@ const PAD_DOT_WIDTH = 1.2
 
 /** Écart entre le bord du point et ce qu'on pose au-dessus ou en dessous, en pixels d'écran. */
 const PAD_GAP_PX = 2.5
+/**
+ * LA BORDURE DU SOCLE (A13, 2026-08-26) : l'anneau qui enferme la marque, à l'encre de sa
+ * nature. `GAP` l'écarte de la vignette pour qu'il la cerne sans la mordre ; `WIDTH` est le
+ * plus fin qui se lise encore sur un fond de carte imprimé.
+ */
+const PAD_BORDER_GAP_PX = 2
+const PAD_BORDER_WIDTH = 1.4
 
 /**
  * Épaisseur du LISERÉ de la vignette, en pixels d'écran, et le nombre de directions où on la
@@ -141,6 +148,12 @@ export interface PadStyle {
   iconOf: (weapon: string) => PadIcon | null
   /** La taille à donner au socle, d'après ce qu'il porte (cf. weaponPadFamilies). */
   scaleOf: (weapon: string) => PadScale
+  /**
+   * L'encre de la NATURE du socle — power-up, arme de puissance, râtelier (A13, 2026-08-26).
+   * RÉSOLUE PAR L'APPELANT comme toutes les autres (règle color-tokens) : ce fichier ne
+   * connaît aucun token, il ne fait qu'employer la chaîne qu'on lui donne.
+   */
+  inkOf: (weapon: string) => string
   /** Le compte à rebours déjà localisé ; appelé seulement quand un cycle est établi. */
   countdownLabel: (seconds: number) => string
 }
@@ -282,12 +295,11 @@ function drawPadIcon(
   icon: PadIcon | null,
 ): void {
   const h = PAD_ICON_H_PX[scale] * time.k
-  if (!icon) {
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, PAD_DOT_PX[scale] * time.k * 0.5, 0, Math.PI * 2)
-    ctx.fill()
-    return
-  }
+  // PAS DE GLYPHE DE REPLI (retour utilisateur du 2026-08-26 : « j'ai l'impression qu'il y en
+  // a deux »). Sans vignette, ce bloc posait un DISQUE PLEIN du même rayon que le point, à une
+  // dizaine de pixels sous lui : deux ronds empilés pour un seul socle, que l'œil lisait comme
+  // deux socles. Le point porte déjà la position ET l'état — il se suffit.
+  if (!icon) return
   const source = icon.fill
   const natW = 'width' in source && typeof source.width === 'number' ? source.width : 0
   const natH = 'height' in source && typeof source.height === 'number' ? source.height : 0
@@ -356,19 +368,37 @@ export function drawWeaponPadsLayer(
     const scale = style.scaleOf(pad.weapon)
     const radius = PAD_DOT_PX[scale] * time.k
     const state = padStateAt(pad, time.frame)
-    // LE POINT, à l'encre neutre du terrain.
-    ctx.strokeStyle = style.ink
-    ctx.fillStyle = style.ink
+    // LE POINT, À L'ENCRE DE SA NATURE (A13, 2026-08-26 : « bordure et couleur plus vive, une
+    // couleur pour chaque type »). Il portait l'encre neutre du terrain, la même pour les
+    // trois : un socle de surbouclier ne se distinguait d'un râtelier que par sa taille.
+    // `style.ink` reste servi et reste le NEUTRE — il ne teint plus le point, mais l'appelant
+    // le passe toujours, et le râtelier ordinaire y retombe par sa propre famille.
+    const encre = style.inkOf(pad.weapon)
+    ctx.strokeStyle = encre
+    ctx.fillStyle = encre
     drawDot(ctx, c, radius, state, time)
-    // LA VIGNETTE, SOUS le point : son centre est décalé de son propre demi-cadre, sinon
-    // c'est son bord haut qui viendrait toucher le point.
+    // LA VIGNETTE SUR LE POINT, PLUS SOUS LUI (retour utilisateur du 2026-08-26). Elle était
+    // posée une dizaine de pixels plus bas — un point ici, une image là — et les deux se
+    // lisaient comme DEUX socles voisins plutôt que comme un seul. Centrée, elle coiffe le
+    // point : UN socle, UNE marque. Le point reste dessous et garde son rôle, qui n'a jamais
+    // été d'être vu pour lui-même : il porte l'ÉTAT (plein / incertain / vide) par sa forme.
     const iconAlpha = PAD_ALPHA[state].icon
     if (iconAlpha > 0) {
       ctx.globalAlpha = iconAlpha
       ctx.fillStyle = style.fill
-      const dy = radius + (PAD_GAP_PX + PAD_ICON_H_PX[scale] / 2) * time.k
-      drawPadIcon(ctx, { x: c.x, y: c.y + dy }, scale, time, style.iconOf(pad.weapon))
+      drawPadIcon(ctx, c, scale, time, style.iconOf(pad.weapon))
     }
+    // LA BORDURE, par-dessus tout le reste : un anneau à l'encre de la nature, qui ENFERME la
+    // marque (A13). C'est elle qui fait la « couleur plus vive » demandée — un liseré se lit sur
+    // n'importe quel fond de carte, là où un aplat se dilue. Elle suit l'opacité du POINT, pas
+    // celle de la vignette : elle appartient au socle, pas à ce qu'il porte, et un socle vide
+    // doit garder un contour visible.
+    ctx.globalAlpha = PAD_ALPHA[state].dot
+    ctx.strokeStyle = encre
+    ctx.lineWidth = PAD_BORDER_WIDTH * time.k
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, (PAD_ICON_H_PX[scale] / 2 + PAD_BORDER_GAP_PX) * time.k, 0, Math.PI * 2)
+    ctx.stroke()
     // LE COMPTE À REBOURS, AU-DESSUS du point.
     const left = padRespawnSecondsAt(pad, time.frame, time.frameMs)
     if (left !== null) {

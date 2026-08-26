@@ -136,3 +136,40 @@ describe('zoneCatalogMatches', () => {
     expect(zoneCatalogMatches(null, 3)).toBe(false)
   })
 })
+
+/**
+ * A12 — L'ENCRE D'UN CAMP VIENT DES RÉGLAGES, PAS DU JEU (retour utilisateur du 2026-08-26 :
+ * « le socle de l'équipe est en bleu alors que j'utilise une couleur verte »).
+ *
+ * `colorOfTeam` teinte le calque STATIQUE des objectifs et les pulses. Il appelait
+ * `resolveTeamColorFromID` — le bleu et le rouge officiels du jeu, écrits en dur dans
+ * `TEAM_COLORS_HALO_INFINITE` — alors que les fiches, le fil et les points des joueurs passent
+ * tous par `teamColorOf`, que la palette d'accessibilité de l'utilisateur surcharge. Les
+ * objectifs parlaient donc seuls une autre langue que le reste de la page.
+ */
+describe('useZoneStates — colorOfTeam suit la palette de l’utilisateur (A12)', () => {
+  const rendre = (tableau: MatchScoreboardRow[] | null) =>
+    renderHook(() => useZoneStates(OBJECTIFS, tableau, ENCRE, '#neutre', DOC)).result
+
+  it('le camp du joueur prend l’encre ALLIÉE réglée, jamais une couleur du jeu', () => {
+    const { current } = rendre(TABLEAU)
+    // `t1` est la ligne « moi » : le camp 1 est donc allié, le camp 0 adverse.
+    expect(current.colorOfTeam(1)).toBe('#allie')
+    expect(current.colorOfTeam(0)).toBe('#adverse')
+  })
+
+  it('AUCUNE couleur officielle du jeu ne sort de ce résolveur', () => {
+    const { current } = rendre(TABLEAU)
+    const sorties = [0, 1, 2, 3, 7].map((t) => current.colorOfTeam(t))
+    for (const s of sorties) expect(['#allie', '#adverse', '#neutre']).toContain(s)
+  })
+
+  it('sans ligne « moi », aucun camp n’est situable : encre NEUTRE, jamais une couleur devinée', () => {
+    expect(rendre(null).current.colorOfTeam(0)).toBe('#neutre')
+    expect(rendre([] as unknown as MatchScoreboardRow[]).current.colorOfTeam(1)).toBe('#neutre')
+  })
+
+  it('l’index neutre (-1) reste neutre, comme avant', () => {
+    expect(rendre(TABLEAU).current.colorOfTeam(-1)).toBe('#neutre')
+  })
+})
