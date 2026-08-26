@@ -72807,3 +72807,40 @@ reference PAR PIXEL, pas sur un scalaire — 13 fonds hors clou, jusqu'a -17,51 
 l'asset (mediane 53,5 % de largeur utile sur les natifs), et le choix de la taille utile
 minimale qui fixera l'echelle. **Point de vigilance ouvert** : verifier si d'autres assets
 derives du catalogue ont ete cuits entre le 25/08 et aujourd'hui avec les modules effaces.
+
+---
+
+## [2026-08-26] Cartes — le reglage par carte vit en DONNEE, et Cliffhanger est la premiere publiee
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : recadrage demande par l'utilisateur — « il faut retravailler
+une a une celles qui sont non validees ». La planche de masse est close ; la boucle devient :
+cuire la carte SEULE vers la PRODUCTION, publier son avant/apres, verdict, corriger sur elle,
+puis seulement la suivante. Consigne ecrite au registre.
+
+Le mecanisme a ete construit sur la premiere carte, parce que c'est la qu'il fallait le faire.
+`data/titles/halo_infinite/reference/map_fond_reglages.json` (chemin par `PathResolver.MapFondReglagesPath`)
+porte une entree par carte : habillage, echelle, **raison ecrite et date du gate**.
+`mapfond-build` la lit (`styleDe`, `echelleDe`) et JOURNALISE tout choix propre a une carte —
+un fond publie dans un habillage qu'on n'a pas vu passer est un fond qu'on ne saura pas
+expliquer. `internal/himap` ne gagne AUCUNE branche par carte : le reglage est une entree, la
+chaine ne sait toujours pas quelle carte elle cuit.
+
+**Resultats observes** : Cliffhanger cuite en `encre` vers le dossier de PRODUCTION, journal a
+l'appui (`habillage propre a la carte carte=ridgeline style=encre gateLe=2026-08-26`), sidecar
+publie `"style": "encre"`. Ce qui n'a PAS bouge : cadre 1633x1627, calage, geometrie, 23/24
+ancres avec sol — seule la mise en couleur change. Garde-rails : `TestReglagesFondJustifies`
+(raison >= 80 caracteres, date au format d'un gate, entree sans effet refusee, habillage inconnu
+refuse), `TestChargeReglagesRefuseUnHabillageInconnu`, `TestChargeReglagesAbsentEstNominal`.
+`go test ./cmd/mapfond-build/` vert, `go build` propre, gofmt propre.
+
+Detail attrape au passage, et c'est l'anti-pattern « doc inversee » : la ligne de bilan de la
+cuisson annoncait `style=jeu` alors que la carte venait d'etre publiee en `encre` — le drapeau
+global etait affiche seul. Le bilan et le rapport comptent desormais les reglages par carte a
+cote de l'habillage de cuisson.
+
+**Conclusion / prochaine etape** : planche de la carte 1 publiee
+(https://claude.ai/code/artifact/e3f8f959-14a3-44a8-b426-26a27f13832b), en attente du verdict.
+Les deux defauts connus de Cliffhanger restent entiers et viendront a leur tour : largeur utile
+68,6 % du cadre, et l'echelle. Ordre des suivantes au registre.

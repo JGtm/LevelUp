@@ -740,6 +740,20 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
 }
 
+// MapFondReglagesPath retourne le chemin des RÉGLAGES DE CUISSON PAR CARTE des fonds de
+// rejeu 2D (habillage, échelle).
+//
+// POURQUOI CE FICHIER EXISTE. La chaîne de cuisson (`internal/himap`) ne porte aucune branche
+// par carte, et c'est ce qui la rend transférable. Mais le gate utilisateur du 2026-08-26 a
+// établi, images à l'appui, que le meilleur rendu n'est pas le même d'une carte à l'autre.
+// Le choix vit donc ICI, en DONNÉE, avec sa raison écrite et la date de son gate — jamais
+// dans le code. Entrée de cuisson uniquement : l'application lit le PNG figé, jamais ce
+// fichier.
+// Ex: data/titles/halo_infinite/reference/map_fond_reglages.json
+func (p *PathResolver) MapFondReglagesPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_fond_reglages.json")
+}
+
 // MapObjectivesPath retourne le chemin du catalogue des objets d'objectif par carte
 // (socles de drapeau, points de livraison, sockets Stockpile, zones...), extrait des
 // variantes de carte UGC (.mvar) par cmd/mapobj-build. Donnée de RÉFÉRENCE versionnée
