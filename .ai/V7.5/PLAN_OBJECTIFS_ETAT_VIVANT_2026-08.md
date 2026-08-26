@@ -278,20 +278,81 @@ Commandes NUES (depuis `apps/go-api`) :
 
 ### D2 — KOTH : MESURER le proprietaire de la colline (aucun changement de production)
 
-- [ ] D2.1 Instrument sous garde `ETAT_FILM` (racine du cache film), LECTURE SEULE, dans
+- [x] D2.1 Instrument sous garde `ETAT_FILM` (racine du cache film), LECTURE SEULE, dans
       `internal/analysis/replay` : pour chaque film KOTH du corpus, rendre le designateur elu, ses
       periodes, et la serie de tag 4 du slot voisin — en APPELANT le code de production
       (`hillDesignatorOf`), jamais en recopiant sa grammaire.
-- [ ] D2.2 Confronter, periode par periode, la valeur de tag 4 au camp dont le SCORE DE MODE monte
+      **FAIT** — `colline_proprietaire_d2_test.go`. **ECART ASSUME SUR LA GARDE** : l'instrument
+      reutilise `ctCharge` (harnais du lot C-ter volet 1) et donc la garde **`ZONE_FILM`**, un
+      film par processus, au lieu d'inventer un `ETAT_FILM` et un troisieme chargeur de film. La
+      regle des deux copies l'emporte sur le nom ecrit au plan. Appelle bien la production :
+      `zoneSeriesOf`, `hillDesignatorOf`, `mergeZoneRuns`, `zoneNeutralOwner` — zero grammaire
+      recopiee. Saute proprement sans film (verifie : SKIP, exit 0).
+- [x] D2.2 Confronter, periode par periode, la valeur de tag 4 au camp dont le SCORE DE MODE monte
       (`objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)` — les slots
       d'equipe 6 et 8). Publier numerateur ET denominateur, par film.
-- [ ] D2.3 Les DEUX temoins du §2.2 : permutation des collines, decalage +20 s. Publier les deux.
-- [ ] D2.4 Corroboration `th=10` : acteur de chaque prise de colline -> xuid (`SlotIdentityResolved`)
+      **FAIT, ET C'EST LA QUE LA MESURE S'ARRETE** : l'ORACLE ne tient pas (chiffres au journal
+      ci-dessous). La confrontation se fait par INTERVALLE DE PROPRIETE CONSTANTE plutot que par
+      periode designee — plus fin, plus de confrontations possibles, et c'est exactement la
+      granularite ou le score tique. Ce raffinement n'a pas suffi.
+- [x] D2.3 Les DEUX temoins du §2.2 : permutation des collines, decalage +20 s. Publier les deux.
+      **FAIT** — mesures au journal. Ils ne tranchent rien, faute de signal a departager.
+- [!] D2.4 Corroboration `th=10` : acteur de chaque prise de colline -> xuid (`SlotIdentityResolved`)
       -> equipe (roster fige au corpus, aucune base ouverte). Publie comme CONTROLE.
-- [ ] D2.5 Verdict au journal : seuil du §2.2 tenu ou NON TENU, avec les chiffres. Non tenu =
-      NEGATIF ecrit, item `[!]`, et D5 ne publie rien pour KOTH.
+      **NON ATTEINT** : le gate se juge sur D2.2, et D2.2 a rendu un negatif. Enchainer sur un
+      SECOND oracle apres l'echec du premier serait changer d'oracle en cours de phase — le
+      contournement exact que le contrat interdit. C'est au superviseur d'arbitrer une reprise
+      sur cet oracle-la (cf. condition de reprise ci-dessous), pas a l'executeur de la decider.
+- [x] D2.5 Verdict au journal : seuil du §2.2 tenu ou NON TENU, avec les chiffres. Non tenu =
+      NEGATIF ecrit, item `[!]`, et D5 ne publie rien pour KOTH. **NEGATIF ECRIT.**
 
-**Gate D2** : accord >= 90 % sur >= 3 des 4 films, temoins <= 60 % chacun. Commandes NUES :
+**Gate D2 : NON ATTEINT (2026-08-26). NEGATIF ECRIT — ET IL PORTE SUR L'ORACLE, PAS SUR LE
+CANAL.**
+
+| film | canal tag 4 (slot voisin) | oracle : slots d'equipe | confrontables | accord | temoin decalage |
+|---|---|---|---|---|---|
+| `01e1f945` | slot 1472, **99** emissions | 2 (series de 3 et 2 points) | **2** | 2/2 | 2/3 = 66,7 % |
+| `0a247154` | slot 1623, **213** emissions | 2 (series de 4 et 3 points) | **1** (bijection DEGENEREE) | 1/1 | 2/3 = 66,7 % |
+| `606d9844` | slot 1499, **13** emissions | **1 SEUL** (strict ET brut) | 0 | — | — |
+| `8076f97f` | slot 1541, **35** emissions | **1 SEUL** (strict ET brut) | 0 | — | — |
+
+**FILMS AVEC UN DENOMINATEUR EXPLOITABLE : 0 SUR 4.** Le seuil demandait >= 90 % sur >= 3 films ;
+deux films rendent UNE ou DEUX confrontations (dont une a bijection degeneree — une seule valeur
+observee, qui « explique » tout par construction), et les deux autres n'ont aucun oracle. Le seuil
+n'est pas rebaisse, et un accord de 2/2 ne se presente pas comme un resultat : sur deux
+confrontations, il est indistinguable du hasard.
+
+**LA CAUSE EST NOMMEE, ET ELLE INVALIDE L'HYPOTHESE D'ORACLE DU §2.2.** Le score de mode KOTH
+tel que le FILM le replique n'est PAS un compteur de secondes de colline : c'est un compteur de
+**COLLINES GAGNEES**. Ses series valent 3 et 2 points sur `01e1f945`, 4 et 3 sur `0a247154` —
+exactement les scores que l'API publie pour ces matchs (3-2 et 4-2). Il ne s'incremente donc
+qu'a la FIN d'une periode, quelques fois par match, et non pendant la garde. La remarque de la
+chronique du contrat (« l'API compte des secondes de colline en KOTH ») decrit certains matchs,
+pas ce composant : elle ne pouvait pas servir d'oracle continu, et c'est ce que la mesure etablit.
+
+**ET SUR DEUX FILMS LE FILM NE REPLIQUE QU'UN SEUL CAMP.** `606d9844` ne porte que le slot 8,
+`8076f97f` que le slot 6 — et le DIAGNOSTIC ecarte notre propre filtre : la lecture NON STRICTE
+(sans `longestRun`) rend exactement les memes slots. Ce n'est pas nous qui jetons la serie du
+second camp, c'est le film qui ne la porte pas. Ces deux matchs sont precisement ceux dont l'API
+publie de GROS scores (105-8 et 78-105), ce qui rend la divergence de nature encore plus nette.
+
+**CE QUI N'EST PAS EN CAUSE, ET QU'IL FAUT DIRE** : le canal. Le slot voisin du designateur
+emet 13 a 213 valeurs par film, le designateur est elu sur les quatre films (2 a 5 bascules), et
+la structure de l'objet de mode se confirme a chaque fois. **Le proprietaire de la colline reste
+donc NON MESURE, pas REFUTE.**
+
+**CONDITION DE REPRISE (a arbitrer par le superviseur, cf. §6)** : un oracle CONTINU du camp qui
+tient la colline. Deux pistes, dans l'ordre de cout :
+1. **Les evenements `th=10` de prise de colline** (item D2.4, non atteint) : acteur -> xuid par
+   `SlotIdentityResolved` -> camp par le roster fige. Approximatifs (5-20 s) et peu nombreux,
+   mais ils datent des PRISES, ce qui suffirait a orienter la bijection sans exiger une serie
+   continue. C'est la reprise la moins chere.
+2. **Le score PERSONNEL** (`PersonalScoreComponent`) : en KOTH il monte pendant la garde pour
+   chaque joueur present sur la colline. Il donnerait l'oracle continu qui manque, au prix du
+   pont slot -> xuid -> camp. C'est la piste qui rendrait le gate du §2.2 jugeable tel qu'il est
+   ecrit.
+
+**Commandes NUES du gate (inchangees, pour la reprise)** :
 
     go build ./...
     go vet ./...
@@ -440,7 +501,7 @@ recoupe sur pieces) :
       libre 0 < en perte 0,16 < tenue 0,30 < active 0,42 < progression 0,55 —, testee par son
       ORDRE et non par ses valeurs, precisement pour que le gate visuel puisse toutes les bouger.
       **Verdict VISUEL a l'utilisateur.**
-- [~] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
+- [x] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
       artefacts TEMOINS que `coverage.zones.gaugePoints > 0` la ou la progression doit se voir.
       **CORRECTION AU BRIEF DE L'AJOUT DE PERIMETRE** : la serie `gauge` n'a PAS ete validee sur
       KOTH — c'est l'inverse. Elle est publiee **sur les modes a zones SIMULTANEES SEULEMENT
@@ -452,14 +513,32 @@ recoupe sur pieces) :
       Strongholds = points ATTENDUS (si zero sur un temoin Bastion : `[!]`, condition de reprise) ;
       KOTH = zero ATTENDU, ce n'est pas un defaut, et la colline garde son seul etat
       d'appartenance ; Total Control = INCONNU tant que D3 n'a pas mesure, donc `[!]` par defaut.
-      **`[~]` — COUVERT PAR LE CODE ET LES TESTS, PAS PAR UNE LECTURE D'ARTEFACT.** Le contrat
-      « aucune serie = aucune progression » est verrouille par test (fixture `gauge: []`, et la
-      colline du fixture qui publie un sommet `progress` sans serie ne dessine rien). La lecture
-      des artefacts TEMOINS (`coverage.zones.gaugePoints`) exige de cuire des films, donc des
-      commandes Go — INTERDITES sur ce creneau (autre lot en build). Reste donc a faire, en une
-      lecture, quand un creneau Go s'ouvre : `gaugePoints > 0` sur un temoin Bastion, `= 0` sur
-      un temoin KOTH. Aucun code n'en depend : le client se comporte identiquement dans les deux
-      cas, c'est un controle de la DONNEE, pas du rendu.
+      **`[x]` — FAIT LE 2026-08-26, PAR LECTURE PURE DU CACHE. Aucune cuisson n'a ete
+      necessaire** : sept artefacts du cache local portent deja `coverage.zones`, tous au
+      schema 18, et ils separent les deux methodes sans ambiguite.
+
+      | artefact | methode | `gaugePoints` | zones | spans |
+      |---|---|---|---|---|
+      | `7344d24f` | `captures+geometry` | **1 701** | 3 | 39 |
+      | `696a9d7c` | `captures+geometry` | **1 794** | 3 | 37 |
+      | `af13e2b2` | `captures+geometry` | **467** | 3 | 8 |
+      | `0a247154` | `designator+geometry` | **0** | 5 | 6 |
+      | `01e1f945` | `designator+geometry` | **0** | 4 | 5 |
+      | `606d9844` | `designator+geometry` | **0** | 3 | 3 |
+      | `8076f97f` | `designator+geometry` | **0** | 3 | 3 |
+
+      **VERDICT : le contrat du producteur est tenu sur pieces.** Les trois artefacts a zones
+      SIMULTANEES portent tous une serie de jauge fournie (467 a 1 794 points) ; les quatre
+      films a COLLINE en portent zero, exactement comme `zone_states_gauge.go` l'annonce
+      (« EN KOTH, RIEN »). La correction de fait du §6.2 est donc confirmee une seconde fois,
+      et par la donnee cette fois : la jauge est une affaire de Bastion, jamais de colline.
+      Le rendu de D6 est cadre par cette mesure — sur une colline, la progression ne peut pas
+      s'afficher faute de serie, et le calque ne le devine pas : il recoit un tableau vide.
+
+      DENOMINATEUR DE LA LECTURE : 40 artefacts au cache, dont 7 portent `coverage.zones` —
+      les 33 autres sont des modes sans zone tenue (le calque ne publie alors rien, et son
+      ABSENCE est distincte du zero, cf. `ZonesCoverage`). Total Control reste INCONNU : aucun
+      artefact du cache n'en porte, ce que D1 confirmera au recensement.
 - [x] D6.5 **Le pulse ponctuel de capture est CONSERVE** : il marque un INSTANT, la progression
       decrit une DUREE — les deux se lisent ensemble (c'est deja l'arbitrage ecrit en tete
       d'`objectivesLayer.ts`). Rien n'est retire de ce cote.
@@ -574,6 +653,14 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
 
 ## 7. Decouvertes (hors perimetre — consignees, NON traitees)
 
+- (2026-08-26, D2) **Le composant de score de MODE ne compte pas la meme grandeur d'un film KOTH
+  a l'autre, et deux films n'en portent qu'un camp.** `01e1f945` et `0a247154` rendent des series
+  de 2 a 4 points (des collines gagnees) ; `606d9844` et `8076f97f` ne rendent qu'UN slot
+  d'equipe, lecture stricte comme brute. La courbe de score PUBLIEE au document (schema 12) est
+  donc, sur ces films, partielle ou d'une autre nature que ce que son nom laisse croire — le
+  calque `scoreTimeline` publie bien ce que le film porte, mais un lecteur qui attendrait « le
+  temps de colline » y trouverait autre chose. NON TRAITE ici : c'est le chantier du score, pas
+  celui des objectifs. A verser au registre.
 - (2026-08-26, D6) **`colorOfCapturer` est appele avec le PROPRIETAIRE, et rend le camp d'en
   face** (`useZoneStates.ts:90-91`). C'est une DEDUCTION a deux camps, correcte sur une zone
   tenue et muette ailleurs — sur une zone NEUTRE en cours de capture, la page ne peut nommer
@@ -634,3 +721,17 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   ce creneau. Gates web verts (0 / 0 / 0), `ReplayCanvas.tsx` inchange a 742. Extraction non
   prevue de `zoneStatesPaint.ts` (seuil des 500 lignes franchi par le lot). Mordant prouve par
   double mutation. **STOP — D2 attend le signal du superviseur.**
+
+- 2026-08-26 — **D6.4 CLOSE par lecture pure** (7 artefacts du cache, tableau a l'item) : la
+  jauge est publiee sur Bastion (467 a 1 794 points) et vaut ZERO sur les quatre films KOTH. La
+  phase D6 est integralement close cote technique.
+
+- 2026-08-26 — **D2 : GATE NON ATTEINT, NEGATIF ECRIT.** Instrument
+  `colline_proprietaire_d2_test.go` (garde `ZONE_FILM`, un film par processus, lecture seule,
+  aucune base). Les quatre films KOTH mesures. Le CANAL est vivant — designateur elu sur 4/4,
+  slot voisin de propriete a 13-213 emissions — mais **l'ORACLE du plan est faux** : le score de
+  mode KOTH du film compte des COLLINES GAGNEES (3-2, 4-2 : les scores de l'API), pas des
+  secondes de garde, et deux films ne repliquent qu'UN SEUL camp (confirme lecture stricte ET
+  brute). Zero film sur quatre a un denominateur exploitable. Le proprietaire de la colline est
+  **NON MESURE, pas refute** ; deux pistes de reprise sont ecrites au gate. **STOP — arret
+  propre au seuil, aucun contournement, aucun changement de production.**
