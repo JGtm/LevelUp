@@ -3,10 +3,18 @@
  *
  * CE QU'ILS PROTÈGENT : l'état se lit sur l'intervalle qui couvre la frame (bornes incluses),
  * « personne ne la tient » est une MESURE, le calque n'écrit jamais de texte, il refuse de
- * peindre quand la jointure du catalogue est douteuse — et, depuis le schéma 18, L'ARC SUIT LA
- * SÉRIE DE LA JAUGE EN DIRECT en escalier : jamais le sommet de l'intervalle (le test échoue si
- * l'on y repasse), AUCUN arc sans `gauge`, la valeur TENUE jusqu'au point suivant (une capture figée reste
- * affichée) et retour à rien une seconde après le dernier point de la série.
+ * peindre quand la jointure du catalogue est douteuse — et, depuis le schéma 18, LA PROGRESSION
+ * SUIT LA SÉRIE DE LA JAUGE EN DIRECT en escalier : jamais le sommet de l'intervalle (le test
+ * échoue si l'on y repasse), AUCUNE progression sans `gauge`, la valeur TENUE jusqu'au point
+ * suivant (une capture figée reste affichée) et retour à rien une seconde après le dernier point
+ * de la série.
+ *
+ * LA PROGRESSION EST UN REMPLISSAGE DE LA FORME depuis le 2026-08-25 (item D-R), plus un arc
+ * extérieur. Les cas qui la visaient ont donc changé d'INSTRUMENT — hauteur de `fillRect`
+ * rapportée à l'emprise, au lieu d'angle d'`arc` — mais pas de PROMESSE : ce sont les mêmes
+ * frames, les mêmes valeurs attendues et les mêmes encres. Deux cas neufs tiennent ce que la
+ * forme apporte et que l'arc ne pouvait pas donner : le découpage PAR la zone, et
+ * l'agnosticité boîte / cylindre.
  *
  * Extraits de `objectivesLayer.test.ts` le 2026-08-18 (lot C-ter volet 3) : le calque a son
  * fichier, ses tests aussi.
@@ -16,9 +24,13 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { normalizeMapObjectives, OBJECTIVE_TEAM_NEUTRAL } from './objectivesLayer'
-import { count, recordingContext, valuesOf } from './test/recordingContext'
+import { count, recordingContext, valuesOf, type CanvasOp } from './test/recordingContext'
 import type { ReplayZoneStateReady } from './replayNormalize'
 import { drawZoneStates, zoneElementsOf, zoneGaugeAt } from './zoneStatesLayer'
+// L'échelle d'opacités vit avec la peinture (`zoneStatesPaint.ts`), pas avec la lecture d'état :
+// c'est de là qu'elle est importée, plutôt que ré-exportée par le calque pour la commodité d'un
+// test — une ré-exportation de complaisance brouillerait la frontière que l'extraction pose.
+import { ZONE_ALPHA_ORDER } from './zoneStatesPaint'
 
 const MO: ReplayMapObjectives = {
   zones: [
@@ -129,11 +141,30 @@ describe('drawZoneStates', () => {
   const zones = () => zoneElementsOf(normalizeMapObjectives(MO))
   /** L'entrée du calque telle que `useZoneStates` la rend : jointure ACCORDÉE sauf dit autrement. */
   const layer = (zoneElements = zones(), joinable = true) => ({ zoneElements, joinable, style, gaugeHoldFrames: HOLD })
-  /** L'angle de fin du DERNIER arc émis, ramené à la fraction de tour qu'il couvre. */
-  const arcFraction = (ops: { op: string; args: unknown[] }[]) => {
-    const arcs = ops.filter((o) => o.op === 'arc')
-    const a = arcs[arcs.length - 1].args
-    return ((a[4] as number) - (a[3] as number)) / (2 * Math.PI)
+  /** Combien de remplissages de PROGRESSION ce rendu a émis (un `fillRect` = une capture). */
+  const progressions = (ops: CanvasOp[]) => count(ops, 'fillRect')
+
+  /**
+   * LA FRACTION LUE SUR LE DERNIER REMPLISSAGE DE PROGRESSION : sa hauteur rapportée à celle de
+   * l'emprise de la zone.
+   *
+   * L'EMPRISE SE DÉDUIT DU RECTANGLE LUI-MÊME, et c'est ce qui rend ce contrôle non
+   * tautologique : le rendu émet `fillRect(x, bottom - h, w, h)`, donc `y + h` vaut le BAS de
+   * l'emprise quelle que soit la valeur — et le HAUT se retrouve en ajoutant la hauteur totale.
+   * On la reconstruit ici par une seconde lecture à valeur pleine, jamais en recopiant la
+   * formule de géométrie du calque.
+   */
+  const fractionDe = (ops: CanvasOp[], hauteurPleine: number) => {
+    const rects = ops.filter((o) => o.op === 'fillRect')
+    return (rects[rects.length - 1].args[3] as number) / hauteurPleine
+  }
+
+  /** La hauteur d'emprise d'une zone : la progression à valeur 1, mesurée une fois. */
+  const hauteurPleineDe = (etat: ReplayZoneStateReady, elems = [zones()[0]]) => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer(elems), [{ ...etat, gauge: [{ t: 0, v: 1 }] }], VIEW, 1)
+    const rects = ops.filter((o) => o.op === 'fillRect')
+    return rects[rects.length - 1].args[3] as number
   }
 
   /** Les textes écrits par un rendu, dans l'ordre d'émission. */
@@ -141,18 +172,35 @@ describe('drawZoneStates', () => {
     ops.filter((o) => o.op === 'fillText' || o.op === 'strokeText').map((o) => String(o.args[0]))
 
   /**
-   * L'encre EN VIGUEUR AU MOMENT DU DERNIER ARC.
+   * L'encre EN VIGUEUR AU MOMENT DU DERNIER REMPLISSAGE DE PROGRESSION.
    *
-   * POURQUOI PAS « LA DERNIÈRE `strokeStyle` DU RENDU », qui était l'écriture d'origine : depuis
-   * que le calque écrit la lettre de la zone (2026-08-24), la dernière encre posée est celle du
-   * cerne du glyphe — une encre STRUCTURELLE, qui n'a rien à voir avec l'arc. Viser l'instant de
-   * l'arc dit ce que ces cas veulent réellement dire, et ne dépend plus de ce qui est peint après.
+   * POURQUOI PAS « LA DERNIÈRE `fillStyle` DU RENDU » : le calque écrit la lettre de la zone
+   * après la passe géométrique (2026-08-24), et son remplissage est une encre STRUCTURELLE qui
+   * ne dit aucun camp. Viser l'instant du remplissage dit ce que ces cas veulent réellement
+   * dire, et ne dépend pas de ce qui est peint après. (Même technique que l'ancien
+   * `encreDeLArc`, transposée du trait au remplissage.)
    */
-  const encreDeLArc = (ops: { op: string; args: unknown[] }[]): string | undefined => {
-    const dernierArc = ops.map((o) => o.op).lastIndexOf('arc')
-    if (dernierArc < 0) return undefined
-    const avant = ops.slice(0, dernierArc).filter((o) => o.op === 'set strokeStyle')
+  const encreDeLaProgression = (ops: CanvasOp[]): string | undefined => {
+    const dernier = ops.map((o) => o.op).lastIndexOf('fillRect')
+    if (dernier < 0) return undefined
+    const avant = ops.slice(0, dernier).filter((o) => o.op === 'set fillStyle')
     return avant.length > 0 ? String(avant[avant.length - 1].args[0]) : undefined
+  }
+
+  /** L'opacité en vigueur au moment du DERNIER remplissage de progression. */
+  const opaciteDeLaProgression = (ops: CanvasOp[]): number | undefined => {
+    const dernier = ops.map((o) => o.op).lastIndexOf('fillRect')
+    if (dernier < 0) return undefined
+    const avant = ops.slice(0, dernier).filter((o) => o.op === 'set globalAlpha')
+    return avant.length > 0 ? Number(avant[avant.length - 1].args[0]) : undefined
+  }
+
+  /** L'opacité en vigueur au PREMIER `fill` — la teinte d'appartenance. */
+  const opaciteDeLaTeinte = (ops: CanvasOp[]): number | undefined => {
+    const premier = ops.findIndex((o) => o.op === 'fill')
+    if (premier < 0) return undefined
+    const avant = ops.slice(0, premier).filter((o) => o.op === 'set globalAlpha')
+    return avant.length > 0 ? Number(avant[avant.length - 1].args[0]) : undefined
   }
 
   /**
@@ -335,88 +383,173 @@ describe('drawZoneStates', () => {
     expect(count(ops, 'fill') + count(ops, 'stroke')).toBe(0)
   })
 
-  // LE VERROU DU SCHÉMA 17 : l'arc se remplit avec la VALEUR de la jauge à l'image. À la frame
-  // 14 la série dit 0,3 alors que le sommet de l'intervalle dit 0,75 — repasser au sommet fait
-  // échouer ce cas, exactement comme dessiner 0,55 à la frame 15 (l'escalier tient 0,3).
-  it("l'arc SUIT la série de la jauge, en escalier — jamais le sommet de l'intervalle", () => {
+  // LE VERROU DU SCHÉMA 17 : la progression se remplit avec la VALEUR de la jauge à l'image. À
+  // la frame 14 la série dit 0,3 alors que le sommet de l'intervalle dit 0,75 — repasser au
+  // sommet fait échouer ce cas, exactement comme dessiner 0,55 à la frame 15 (l'escalier tient
+  // 0,3).
+  it('la progression SUIT la série de la jauge, en escalier — jamais le sommet de l’intervalle', () => {
+    const H = hauteurPleineDe(ZONE_STATES[0])
     const a14 = recordingContext()
     drawZoneStates(a14.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
-    expect(count(a14.ops, 'arc')).toBe(1)
-    expect(arcFraction(a14.ops)).toBeCloseTo(0.3, 6)
+    expect(progressions(a14.ops)).toBe(1)
+    expect(fractionDe(a14.ops, H)).toBeCloseTo(0.3, 6)
     const a15 = recordingContext()
     drawZoneStates(a15.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 15)
-    expect(arcFraction(a15.ops)).toBeCloseTo(0.3, 6)
+    expect(fractionDe(a15.ops, H)).toBeCloseTo(0.3, 6)
     const a18 = recordingContext()
     drawZoneStates(a18.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 18)
-    expect(arcFraction(a18.ops)).toBeCloseTo(0.75, 6)
+    expect(fractionDe(a18.ops, H)).toBeCloseTo(0.75, 6)
   })
 
-  it("aucun arc AVANT la rampe ni APRÈS son retour à zéro ; l'arc TIENT pendant un blocage", () => {
+  // LE REMPLISSAGE PART DU BAS : à valeur croissante, le rectangle grandit ET son bord haut
+  // MONTE, le bas restant fixe. Sans ce cas, un remplissage par le haut passerait les fractions.
+  it('la progression monte du BAS vers le haut : le bord bas ne bouge pas', () => {
+    const bas = (ops: CanvasOp[]) => {
+      const r = ops.filter((o) => o.op === 'fillRect')
+      const a = r[r.length - 1].args
+      return (a[1] as number) + (a[3] as number)
+    }
+    const haut = (ops: CanvasOp[]) => {
+      const r = ops.filter((o) => o.op === 'fillRect')
+      return r[r.length - 1].args[1] as number
+    }
+    const petit = recordingContext()
+    drawZoneStates(petit.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
+    const grand = recordingContext()
+    drawZoneStates(grand.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 18)
+    expect(bas(grand.ops)).toBeCloseTo(bas(petit.ops), 6)
+    // L'axe Y du canvas descend : « plus haut » = ordonnée plus PETITE.
+    expect(haut(grand.ops)).toBeLessThan(haut(petit.ops))
+  })
+
+  // CE QUE LA FORME APPORTE, ET QUE L'ARC EXTÉRIEUR NE POUVAIT PAS DONNER : le remplissage est
+  // DÉCOUPÉ PAR LA ZONE. Sans `clip`, le rectangle déborderait sur la carte.
+  it('la progression est DÉCOUPÉE par la forme de la zone (clip), et rendue sous save/restore', () => {
+    const { ctx, ops } = recordingContext()
+    drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
+    const noms = ops.map((o) => o.op)
+    const clip = noms.indexOf('clip')
+    expect(clip).toBeGreaterThan(-1)
+    // Le découpage suit un tracé de forme, et précède le remplissage.
+    expect(noms.lastIndexOf('beginPath', clip)).toBeGreaterThan(-1)
+    expect(noms.indexOf('fillRect')).toBeGreaterThan(clip)
+    // Le découpage est REFERMÉ : sans restore, tout ce qui suit resterait clippé à la zone.
+    expect(noms.lastIndexOf('save')).toBeLessThan(clip)
+    expect(noms.indexOf('restore')).toBeGreaterThan(noms.indexOf('fillRect'))
+  })
+
+  // AGNOSTICITÉ DE FORME : c'est l'argument qui a fait abandonner l'arc (une fraction d'ANGLE
+  // n'est pas une fraction d'AIRE sur une boîte orientée). La MÊME valeur doit rendre la MÊME
+  // fraction d'emprise sur une boîte et sur un cylindre.
+  it('la fraction est la même sur une BOÎTE et sur un CYLINDRE', () => {
+    const boite = zones()[0]
+    const cylindre = zones()[1]
+    expect(boite.family).toBe('box')
+    expect(cylindre.family).toBe('cylinder')
+    for (const [elem, etat] of [
+      [boite, ZONE_STATES[0]],
+      [cylindre, ZONE_STATES[0]],
+    ] as const) {
+      const H = hauteurPleineDe(etat, [elem])
+      const { ctx, ops } = recordingContext()
+      drawZoneStates(ctx, layer([elem]), [etat], VIEW, 18)
+      expect(fractionDe(ops, H)).toBeCloseTo(0.75, 6)
+    }
+  })
+
+  it('aucune progression AVANT la rampe ni APRÈS son retour à zéro ; elle TIENT pendant un blocage', () => {
+    const H = hauteurPleineDe(ZONE_STATES[0])
     const avant = recordingContext()
     drawZoneStates(avant.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 11)
-    expect(count(avant.ops, 'arc')).toBe(0)
-    // Frame 25 : la jauge est revenue à zéro (point de la frame 19) — rien à tracer.
+    expect(progressions(avant.ops)).toBe(0)
+    // Frame 25 : la jauge est revenue à zéro (point de la frame 19) — rien à remplir.
     const retombe = recordingContext()
     drawZoneStates(retombe.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 25)
-    expect(count(retombe.ops, 'arc')).toBe(0)
-    // Frame 45 : la capture est FIGÉE à 0,2 depuis la frame 32 — l'arc reste, à 0,2.
+    expect(progressions(retombe.ops)).toBe(0)
+    // Frame 45 : la capture est FIGÉE à 0,2 depuis la frame 32 — le remplissage reste, à 0,2.
     const fige = recordingContext()
     drawZoneStates(fige.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 45)
-    expect(count(fige.ops, 'arc')).toBe(1)
-    expect(arcFraction(fige.ops)).toBeCloseTo(0.2, 6)
+    expect(progressions(fige.ops)).toBe(1)
+    expect(fractionDe(fige.ops, H)).toBeCloseTo(0.2, 6)
     // Une seconde après le DERNIER point de la série (62, retour à zéro), plus rien.
     const eteint = recordingContext()
     drawZoneStates(eteint.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 62 + HOLD + 1)
-    expect(count(eteint.ops, 'arc')).toBe(0)
+    expect(progressions(eteint.ops)).toBe(0)
   })
 
-  // LA DÉCISION DU PLAN : sur un artefact qui ne porte pas `gauge` (schéma <= 17), il n'y a
-  // PLUS D'ARC DU TOUT — même quand l'intervalle publie un sommet. Le sommet statique se lisait
-  // comme une jauge ; mieux vaut rien.
-  it("sans `gauge`, AUCUN arc — le sommet `progress` de l'intervalle ne le remplace pas", () => {
+  // LA DÉCISION DU PLAN, INCHANGÉE PAR LE CHANGEMENT DE FORME : sur un artefact qui ne porte pas
+  // `gauge` (schéma <= 17), il n'y a AUCUNE PROGRESSION — même quand l'intervalle publie un
+  // sommet. Le sommet statique se lisait comme une jauge ; mieux vaut rien.
+  it('sans `gauge`, AUCUNE progression — le sommet `progress` de l’intervalle ne la remplace pas', () => {
     const sansJauge = [{ ...ZONE_STATES[0], gauge: [] }]
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), sansJauge, VIEW, 14)
-    expect(count(ops, 'arc')).toBe(0)
-    // La colline active de la zone 1 publie un sommet (0,5) et aucune série : pas d'arc non plus.
+    expect(progressions(ops)).toBe(0)
+    // La colline active de la zone 1 publie un sommet (0,5) et aucune série : rien non plus.
+    // C'est aussi le cas de TOUTE colline en production — le producteur ne publie jamais de
+    // série de jauge en KOTH (`zone_states_gauge.go`, « EN KOTH, RIEN »).
     const colline = recordingContext()
-    // (sur la BOÎTE : le contour d'un cylindre est lui-même un `arc`, ce qui brouillerait le compte)
     drawZoneStates(colline.ctx, layer([zones()[0]]), [{ ...ZONE_STATES[1], zoneRef: 0 }], VIEW, 30)
-    expect(count(colline.ops, 'arc')).toBe(0)
+    expect(progressions(colline.ops)).toBe(0)
   })
 
-  it("l'arc prend l'encre du camp QUI CAPTURE (le camp d'en face du propriétaire)", () => {
+  it('la progression prend l’encre du camp QUI CAPTURE (le camp d’en face du propriétaire)', () => {
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
-    // Le propriétaire à la frame 14 est le camp 0 (allié) : l'arc est ADVERSE.
-    expect(encreDeLArc(ops)).toBe('#adverse')
+    // Le propriétaire à la frame 14 est le camp 0 (allié) : la progression est ADVERSE.
+    expect(encreDeLaProgression(ops)).toBe('#adverse')
   })
 
-  it("propriétaire inconnu (zone neutre) : l'arc est NEUTRE, jamais une couleur devinée", () => {
+  // LA HIÉRARCHIE DEMANDÉE : progression FRANCHE de l'attaquant, teinte du propriétaire
+  // AFFAIBLIE. Ce cas oppose la MÊME zone tenue avec et sans capture en cours.
+  it('pendant une capture, la teinte du propriétaire S’EFFACE sous une progression plus franche', () => {
+    const sous = recordingContext()
+    drawZoneStates(sous.ctx, layer([zones()[0]]), [ZONE_STATES[0]], VIEW, 14)
+    const tranquille = recordingContext()
+    drawZoneStates(tranquille.ctx, layer([zones()[0]]), [{ ...ZONE_STATES[0], gauge: [] }], VIEW, 14)
+    // La teinte d'appartenance recule pendant la capture...
+    expect(opaciteDeLaTeinte(sous.ops)!).toBeLessThan(opaciteDeLaTeinte(tranquille.ops)!)
+    // ...et la progression passe au-dessus d'elle, plus franche que toute appartenance.
+    expect(opaciteDeLaProgression(sous.ops)!).toBeGreaterThan(opaciteDeLaTeinte(tranquille.ops)!)
+  })
+
+  // L'ÉCHELLE COMPLÈTE. Ces opacités ne valent que les unes par rapport aux autres : c'est leur
+  // ORDRE qui porte la lecture, et le gate visuel peut toutes les bouger.
+  it('l’échelle d’appartenance est STRICTEMENT croissante : libre < en perte < tenue < active < progression', () => {
+    for (let i = 1; i < ZONE_ALPHA_ORDER.length; i++) {
+      expect(ZONE_ALPHA_ORDER[i]).toBeGreaterThan(ZONE_ALPHA_ORDER[i - 1])
+    }
+  })
+
+  it('propriétaire inconnu (zone neutre) : la progression est NEUTRE, jamais une couleur devinée', () => {
     const neutre = [{ ...ZONE_STATES[0], gauge: [{ t: 2, v: 0.4 }] }]
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), neutre, VIEW, 3)
-    expect(count(ops, 'arc')).toBe(1)
-    expect(encreDeLArc(ops)).toBe('#neutre')
+    expect(progressions(ops)).toBe(1)
+    expect(encreDeLaProgression(ops)).toBe('#neutre')
   })
 
-  it("une rampe AVANT le premier intervalle se dessine quand même, à l'encre neutre", () => {
+  it('une rampe AVANT le premier intervalle se dessine quand même, à l’encre neutre et sans contour', () => {
     const tot = [{ ...ZONE_STATES[0], spans: ZONE_STATES[0].spans.slice(1), gauge: [{ t: 2, v: 0.4 }] }]
     const { ctx, ops } = recordingContext()
     drawZoneStates(ctx, layer([zones()[0]]), tot, VIEW, 3)
-    expect(count(ops, 'arc')).toBe(1)
+    expect(progressions(ops)).toBe(1)
+    // Aucune appartenance à affirmer : ni teinte, ni liseré.
     expect(count(ops, 'fill')).toBe(0)
-    expect(encreDeLArc(ops)).toBe('#neutre')
+    expect(count(ops, 'stroke')).toBe(0)
+    expect(encreDeLaProgression(ops)).toBe('#neutre')
   })
 
   it('camp inconnu (aucune ligne « moi ») : encre NEUTRE, jamais une couleur devinée', () => {
     const { ctx, ops } = recordingContext()
     const aveugle = { colorOfOwner: () => null, colorOfCapturer: () => null, neutral: '#neutre' }
     drawZoneStates(ctx, { ...layer([zones()[0]]), style: aveugle }, [ZONE_STATES[0]], VIEW, 14)
-    // Aucun remplissage : une zone TENUE par un camp qu'on ne sait pas situer garde le liseré
-    // seul. Les deux tracés sont le contour et l'arc de jauge, tous deux à l'encre neutre.
+    // Aucune TEINTE d'appartenance : une zone TENUE par un camp qu'on ne sait pas situer garde
+    // le liseré seul — un unique trait, à l'encre neutre. La progression de capture, elle, est
+    // bien peinte (c'est une mesure de la zone, pas une appartenance) et elle est neutre aussi.
     expect(count(ops, 'fill')).toBe(0)
-    expect(count(ops, 'stroke')).toBe(2)
+    expect(count(ops, 'stroke')).toBe(1)
+    expect(encreDeLaProgression(ops)).toBe('#neutre')
     // La passe GÉOMÉTRIQUE n'emploie que l'encre neutre. Le cerne de la lettre, posé après, est
     // une encre structurelle hors thème et ne dit aucun camp : il n'entre pas dans ce compte.
     const encres = valuesOf(avantTexte(ops), 'strokeStyle') as unknown as string[]
