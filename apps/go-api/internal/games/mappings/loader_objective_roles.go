@@ -33,6 +33,23 @@ type ObjectiveModeEntry struct {
 	// leur donne un team_index : la possession d'une zone de Bastion/Extraction est
 	// DYNAMIQUE et n'est pas decodee — la colorer affirmerait une allegeance inventee.
 	Neutral bool
+	// PointsOnly dit que les objectifs de ce mode sont des POINTS, quelle que soit la forme
+	// que le fichier de carte leur donne : un objet a forme sort en MARQUEUR (son centre),
+	// jamais en zone dessinee.
+	//
+	// POURQUOI CE DRAPEAU EXISTE (correctif du 2026-08-26, signalement utilisateur « des
+	// bases s'affichent sur un CTF »). Le catalogue porte des formes sur des roles qui ne
+	// sont PAS des zones a tenir — recensement du jour sur les 73 entrees : `flag_delivery`
+	// 28 objets a forme sur 14 cartes (l'aire de capture declaree par le fichier),
+	// `stockpile_navpoint` 32 sur 16, `assault_bomb` 2 sur 2. `BuildMapObjectives`
+	// transformait tout objet a forme en ZONE, si bien qu'un CTF dessinait des bases de
+	// Bastion a l'emplacement de ses livraisons.
+	//
+	// LE CATALOGUE N'EST PAS CORRIGE, ET C'EST DELIBERE : cette forme est une donnee REELLE
+	// du fichier de carte (l'aire ou la capture est validee). Ce qui etait faux, c'est de la
+	// PRESENTER comme une base. La distinction « objectif qu'on TIENT » contre « objectif
+	// qu'on TOUCHE » est un savoir du titre, donc elle vit ici, en donnee.
+	PointsOnly bool
 }
 
 // ObjectiveRoleSet porte la table d'un titre, dans l'ordre du fichier.
@@ -49,9 +66,10 @@ type objectiveRolesTOML struct {
 }
 
 type objectiveModeEntryTOML struct {
-	Match   []string `toml:"match"`
-	Roles   []string `toml:"roles"`
-	Neutral bool     `toml:"neutral"`
+	Match      []string `toml:"match"`
+	Roles      []string `toml:"roles"`
+	Neutral    bool     `toml:"neutral"`
+	PointsOnly bool     `toml:"points_only"`
 }
 
 // objectiveRolesAdmis — la liste FERMEE des roles du decodeur. Un role libre tomberait en
@@ -66,6 +84,22 @@ var objectiveRolesAdmis = map[mapvar.Role]bool{
 	mapvar.RoleExtractionZone:     true,
 	mapvar.RoleOddballSpawn:       true,
 	mapvar.RoleAssaultBomb:        true,
+	mapvar.RoleHill:               true,
+	mapvar.RoleTotalControlZone:   true,
+	mapvar.RoleFirefightObjective: true,
+}
+
+// objectiveRolesSurfaciques — les roles dont l'objectif EST une aire qu'on tient, et qui ne
+// peuvent donc jamais etre servis par une entree `points_only`.
+//
+// LA LISTE EST LA POUR REFUSER UNE ERREUR PRECISE, pas pour classer joliment : poser
+// `points_only = true` sur l'entree Bastion ferait disparaitre les trois bases de la carte —
+// une regression majeure, en une ligne de configuration, et parfaitement silencieuse (le
+// calque publierait des marqueurs au centre des zones, ce qui reste credible a l'ecran). Un
+// role absent d'ici est ponctuel par nature : le drapeau se TOUCHE, la base se TIENT.
+var objectiveRolesSurfaciques = map[mapvar.Role]bool{
+	mapvar.RoleStrongholdZone:     true,
+	mapvar.RoleExtractionZone:     true,
 	mapvar.RoleHill:               true,
 	mapvar.RoleTotalControlZone:   true,
 	mapvar.RoleFirefightObjective: true,
@@ -143,7 +177,7 @@ func LoadObjectiveRolesFromBytes(path string, raw []byte) (*ObjectiveRoleSet, er
 }
 
 func parseObjectiveMode(path string, idx int, e objectiveModeEntryTOML) (ObjectiveModeEntry, error) {
-	out := ObjectiveModeEntry{Neutral: e.Neutral}
+	out := ObjectiveModeEntry{Neutral: e.Neutral, PointsOnly: e.PointsOnly}
 	for _, tok := range e.Match {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
@@ -158,6 +192,12 @@ func parseObjectiveMode(path string, idx int, e objectiveModeEntryTOML) (Objecti
 		role := mapvar.Role(strings.TrimSpace(r))
 		if !objectiveRolesAdmis[role] {
 			return ObjectiveModeEntry{}, fmt.Errorf("%s: [[modes]] #%d : rôle %q inconnu du décodeur (mapvar)", path, idx, r)
+		}
+		if out.PointsOnly && objectiveRolesSurfaciques[role] {
+			return ObjectiveModeEntry{}, fmt.Errorf(
+				"%s: [[modes]] #%d : points_only interdit sur le rôle surfacique %q — "+
+					"l'objectif de ce rôle est une AIRE qu'on tient, le réduire à un marqueur "+
+					"effacerait les zones de la carte sans que rien ne le signale", path, idx, r)
 		}
 		out.Roles = append(out.Roles, role)
 	}

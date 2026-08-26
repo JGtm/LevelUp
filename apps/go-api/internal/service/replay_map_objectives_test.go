@@ -170,10 +170,15 @@ func TestMapObjectives_TitreSansTable(t *testing.T) {
 // TestMapObjectives_DonneesReelles — L'ORACLE SUR LE CATALOGUE VERSIONNÉ (même règle que
 // les callouts : pas de SKIP quand le catalogue manque, il est versionné).
 //
-// Catalyst en CTF (le match de vérification du gate, 64e8adfa) : 3 apparitions de
-// drapeau + 2 livraisons ponctuelles = 5 marqueurs, et 2 livraisons en cylindre =
-// 2 zones — relevé au champ près du catalogue le 2026-08-13. La zone de Bastion, les
-// zones d'Extraction et les apparitions d'Oddball de la même carte ne sortent PAS.
+// Catalyst en CTF (le match de vérification du gate, 64e8adfa) : 3 apparitions de drapeau,
+// 2 livraisons ponctuelles et 2 livraisons EN CYLINDRE = **7 marqueurs, 0 zone**. La zone de
+// Bastion, les zones d'Extraction et les apparitions d'Oddball de la même carte ne sortent PAS.
+//
+// CE TEST FIGEAIT LE DÉFAUT JUSQU'AU 2026-08-26 : il attendait 5 marqueurs et 2 ZONES, et
+// c'étaient ces deux zones que l'utilisateur voyait s'afficher comme des bases sur un CTF. Il
+// passait sa propre liste de rôles, sans le drapeau `points_only` de la table du titre — donc
+// il attestait d'un comportement que la production n'a jamais eu à avoir. Il lit désormais la
+// TABLE VERSIONNÉE, comme le service, et c'est la seule façon qu'il avait d'attraper ça.
 func TestMapObjectives_DonneesReelles(t *testing.T) {
 	root, err := testutil.RepoRoot()
 	if err != nil {
@@ -191,17 +196,22 @@ func TestMapObjectives_DonneesReelles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Catalyst absent du catalogue : %v", err)
 	}
-	mo := replay.BuildMapObjectives(entry, []replay.ObjectiveRoleSpec{
-		{Role: "flag_spawn"}, {Role: "flag_delivery"},
-	})
-	if mo == nil || len(mo.Markers) != 5 || len(mo.Zones) != 2 {
-		t.Fatalf("Catalyst CTF : markers=%d zones=%d, attendu 5/2",
-			len(mo.Markers), len(mo.Zones))
+	svc := &replayService{titleSlug: title.DefaultSlug, repoRoot: root}
+	mo := replay.BuildMapObjectives(entry, svc.objectiveRoleSpecs(context.Background(), "Arena:CTF on Catalyst"))
+	if mo == nil || len(mo.Markers) != 7 || len(mo.Zones) != 0 {
+		t.Fatalf("Catalyst CTF : markers=%d zones=%d, attendu 7/0",
+			markersCount(mo), zonesCount(mo))
 	}
-	for _, z := range mo.Zones {
-		if z.Role != "flag_delivery" || z.Family != "cylinder" {
-			t.Errorf("zone CTF inattendue: %+v", z)
+	livraisons := 0
+	for _, m := range mo.Markers {
+		if m.Role == "flag_delivery" {
+			livraisons++
 		}
+	}
+	// LES QUATRE LIVRAISONS SORTENT, pas seulement les deux ponctuelles : le correctif
+	// REDESSINE les objets à forme, il ne les écarte pas.
+	if livraisons != 4 {
+		t.Errorf("livraisons servies = %d, attendu 4 (2 ponctuelles + 2 cylindres redessinés)", livraisons)
 	}
 	// Le spawn NEUTRE (drapeau du milieu, team -1) est servi tel quel : c'est le
 	// variant Neutral Flag qui l'emploie, et l'absence de camp est une donnée.
@@ -213,6 +223,82 @@ func TestMapObjectives_DonneesReelles(t *testing.T) {
 	}
 	if neutres != 1 {
 		t.Errorf("marqueurs neutres = %d, attendu 1 (le drapeau central)", neutres)
+	}
+}
+
+// TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue — LA GARDE DU CORRECTIF
+// « des bases s'affichent sur un CTF » (2026-08-26).
+//
+// Elle ne vise pas une carte : elle balaie les 73 entrées du catalogue VERSIONNÉ pour les
+// quatre modes dont l'objectif se TOUCHE au lieu de se TENIR. Aucune ne doit produire une
+// seule zone — y compris les 14 cartes dont le fichier donne une FORME à leurs livraisons de
+// drapeau, les 16 dont tous les navpoints de Stockpile en portent une, et les 2 de la bombe
+// d'Assaut.
+//
+// POURQUOI SUR TOUT LE CATALOGUE ET PAS SUR CATALYST SEUL : le défaut n'était pas propre à une
+// carte, et une garde posée sur un seul exemplaire laisserait passer la prochaine carte
+// extraite dont le fichier donnerait une forme à un objectif ponctuel. Le compte des cartes
+// RÉELLEMENT porteuses de formes est vérifié au passage — sans lui, le test resterait vert le
+// jour où le catalogue perdrait ces formes, et il ne prouverait plus rien.
+func TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue(t *testing.T) {
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	res := title.NewPathResolver(root)
+	cat, err := replay.LoadMapObjectives(res.MapObjectivesPath(title.DefaultSlug))
+	if err != nil {
+		t.Fatalf("catalogue versionné illisible : %v", err)
+	}
+	svc := &replayService{titleSlug: title.DefaultSlug, repoRoot: root}
+	ctx := context.Background()
+	pairs := map[string]string{
+		"CTF":       "Arena:CTF on X",
+		"Oddball":   "Arena:Oddball on X",
+		"Stockpile": "BTB:Stockpile on X",
+		"Assault":   "Arena:Assault on X",
+	}
+	// avecForme compte les cartes qui portent AU MOINS un objet à forme sur un rôle du mode :
+	// c'est le dénominateur qui rend la garde non tautologique.
+	avecForme := map[string]int{}
+	for mode, pair := range pairs {
+		specs := svc.objectiveRoleSpecs(ctx, pair)
+		if len(specs) == 0 {
+			t.Fatalf("%s : la table du titre ne sert aucun rôle — le mode n'est plus reconnu", mode)
+		}
+		for _, spec := range specs {
+			if !spec.PointsOnly {
+				t.Errorf("%s : le rôle %q n'est pas points_only dans la table versionnée", mode, spec.Role)
+			}
+		}
+		for mapID, entry := range cat.Maps {
+			formes := 0
+			for _, spec := range specs {
+				formes += len(entry.ZonesOfRole(spec.Role).Zones)
+			}
+			if formes > 0 {
+				avecForme[mode]++
+			}
+			mo := replay.BuildMapObjectives(entry, specs)
+			if zonesCount(mo) != 0 {
+				t.Errorf("%s sur %s : %d zone(s) servie(s) — un mode ponctuel ne dessine JAMAIS de base",
+					mode, mapID, zonesCount(mo))
+			}
+			// L'objet à forme n'est pas perdu : il est redessiné en marqueur.
+			if formes > 0 && markersCount(mo) < formes {
+				t.Errorf("%s sur %s : %d objet(s) à forme pour seulement %d marqueur(s) — des objectifs ont disparu",
+					mode, mapID, formes, markersCount(mo))
+			}
+		}
+	}
+	// Relevé du 2026-08-26 sur le catalogue versionné. Ces comptes SONT la preuve que la garde
+	// a quelque chose à attraper : à zéro, elle ne testerait plus rien.
+	for mode, attendu := range map[string]int{"CTF": 14, "Stockpile": 16, "Assault": 2} {
+		if avecForme[mode] != attendu {
+			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-08-26 — "+
+				"le catalogue a bougé, revérifier le correctif avant d'ajuster ce compte",
+				mode, avecForme[mode], attendu)
+		}
 	}
 }
 

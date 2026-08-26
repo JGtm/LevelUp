@@ -128,7 +128,9 @@ func (s *replayService) objectiveRoleSpecs(ctx context.Context, pairName string)
 			continue
 		}
 		for _, role := range mode.Roles {
-			specs = append(specs, replay.ObjectiveRoleSpec{Role: role, Neutral: mode.Neutral})
+			specs = append(specs, replay.ObjectiveRoleSpec{
+				Role: role, Neutral: mode.Neutral, PointsOnly: mode.PointsOnly,
+			})
 		}
 	}
 	return specs
