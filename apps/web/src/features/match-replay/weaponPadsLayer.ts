@@ -88,6 +88,38 @@ const PAD_GAP_PX = 2.5
  */
 const PAD_BORDER_GAP_PX = 2
 const PAD_BORDER_WIDTH = 1.4
+/**
+ * LE SOCLE EST UN LOSANGE, PLUS UN ROND (A14, retour utilisateur du 2026-08-26 : « les socles
+ * d'armes et de power up je veux pas de cercles, des points en losanges ce serait mieux, ça
+ * facilite la lecture sinon on peut confondre avec des points de joueurs »).
+ *
+ * C'EST UNE FORME, PAS UNE TAILLE : le losange remplace le disque À LA MÊME PLACE, avec les
+ * mêmes encres et les mêmes états. Un marqueur de JOUEUR reste un rond ; le vocabulaire de la
+ * carte gagne donc une distinction franche, lisible même en petit et même en niveaux de gris.
+ *
+ * LA COMPENSATION D'AIRE N'EST PAS UN ORNEMENT. À demi-diagonale égale, un losange couvre
+ * `2r²` quand un disque couvre `πr²` — soit 64 % seulement. Remplacer l'un par l'autre sans
+ * corriger aurait AMAIGRI tous les socles d'un tiers, ce qui n'est pas ce qui a été demandé.
+ * Le facteur est `sqrt(π/2)` ≈ 1,2533, arrondi : à ce grossissement, les deux formes pèsent le
+ * même poids d'encre à l'écran.
+ */
+const PAD_DIAMOND_GROWTH = 1.25
+
+/**
+ * traceDiamond pose le contour d'un losange centré, de demi-diagonale `half` (sommet en haut).
+ *
+ * UNE SEULE COPIE POUR LES DEUX USAGES — la marque et sa bordure de nature. Deux tracés de la
+ * même forme divergeraient au premier réglage, et l'écart serait invisible : un liseré
+ * légèrement désaligné de son point reste crédible.
+ */
+function traceDiamond(ctx: CanvasRenderingContext2D, c: XY, half: number): void {
+  ctx.beginPath()
+  ctx.moveTo(c.x, c.y - half)
+  ctx.lineTo(c.x + half, c.y)
+  ctx.lineTo(c.x, c.y + half)
+  ctx.lineTo(c.x - half, c.y)
+  ctx.closePath()
+}
 
 /**
  * Épaisseur du LISERÉ de la vignette, en pixels d'écran, et le nombre de directions où on la
@@ -264,8 +296,7 @@ function drawDot(
   time: PadTime,
 ): void {
   ctx.globalAlpha = PAD_ALPHA[state].dot
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, radius, 0, Math.PI * 2)
+  traceDiamond(ctx, c, radius * PAD_DIAMOND_GROWTH)
   if (state === 'full') {
     ctx.fill()
     return
@@ -393,11 +424,17 @@ export function drawWeaponPadsLayer(
     // n'importe quel fond de carte, là où un aplat se dilue. Elle suit l'opacité du POINT, pas
     // celle de la vignette : elle appartient au socle, pas à ce qu'il porte, et un socle vide
     // doit garder un contour visible.
+    // ELLE SUIT LA FORME DE LA MARQUE (A14) : un liseré LOSANGE, concentrique au point. Un
+    // anneau autour d'un losange aurait rendu la distinction avec un marqueur de joueur
+    // illisible — c'est le contour extérieur que l'œil attrape en premier.
     ctx.globalAlpha = PAD_ALPHA[state].dot
     ctx.strokeStyle = encre
     ctx.lineWidth = PAD_BORDER_WIDTH * time.k
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, (PAD_ICON_H_PX[scale] / 2 + PAD_BORDER_GAP_PX) * time.k, 0, Math.PI * 2)
+    traceDiamond(
+      ctx,
+      c,
+      (PAD_ICON_H_PX[scale] / 2 + PAD_BORDER_GAP_PX) * time.k * PAD_DIAMOND_GROWTH,
+    )
     ctx.stroke()
     // LE COMPTE À REBOURS, AU-DESSUS du point.
     const left = padRespawnSecondsAt(pad, time.frame, time.frameMs)

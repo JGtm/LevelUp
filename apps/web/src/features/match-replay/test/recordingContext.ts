@@ -65,3 +65,30 @@ export const count = (ops: CanvasOp[], op: string): number => ops.filter((o) => 
 /** valuesOf rend les valeurs successives affectées à une propriété (lineWidth, globalAlpha…). */
 export const valuesOf = (ops: CanvasOp[], prop: string): number[] =>
   ops.filter((o) => o.op === `set ${prop}`).map((o) => o.args[0] as number)
+
+/**
+ * diamondCentres rend le CENTRE de chaque losange tracé, dans l'ordre d'émission.
+ *
+ * POURQUOI CE HELPER EXISTE (A14, 2026-08-26). Les socles étaient des disques : un `arc` par
+ * marque, et le compte des arcs suffisait à dire « combien de socles ». Depuis qu'ils sont des
+ * LOSANGES, une marque n'émet plus d'`arc` du tout mais quatre segments — et compter des
+ * `lineTo` ne dit plus rien de lisible. Ce helper reconstitue ce que les cas veulent réellement
+ * observer : COMBIEN de lieux sont marqués, et OÙ.
+ *
+ * LA FORME EST CELLE DE `traceDiamond` : `moveTo` au sommet HAUT, puis droite, bas, gauche. Le
+ * centre est donc à mi-hauteur du sommet et du point bas — c'est-à-dire de la 2e ligne. Un
+ * `moveTo` qui n'est pas suivi de trois `lineTo` n'est pas un losange et est ignoré : le calque
+ * trace aussi du texte et des images.
+ */
+export const diamondCentres = (ops: CanvasOp[]): { x: number; y: number }[] => {
+  const out: { x: number; y: number }[] = []
+  for (let i = 0; i < ops.length; i++) {
+    if (ops[i].op !== 'moveTo') continue
+    const suite = ops.slice(i + 1, i + 4)
+    if (suite.length < 3 || suite.some((o) => o.op !== 'lineTo')) continue
+    const sommet = ops[i].args as number[]
+    const bas = suite[1].args as number[]
+    out.push({ x: sommet[0], y: (sommet[1] + bas[1]) / 2 })
+  }
+  return out
+}

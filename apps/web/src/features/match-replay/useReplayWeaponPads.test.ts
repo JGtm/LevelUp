@@ -25,7 +25,7 @@ import { REPLAY_TEXT } from './i18n'
 import { worldToCanvas } from './replayLogic'
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from './replayNormalize'
 import { testReplayDoc } from './test/testDoc'
-import { count, recordingContext } from './test/recordingContext'
+import { count, diamondCentres, recordingContext } from './test/recordingContext'
 import {
   crossedWeaponPads,
   padIconRefFor,
@@ -233,7 +233,7 @@ describe('DES LA PREMIERE IMAGE — ce que le calque pose a l’image 0', () => 
     drawWeaponPadsLayer(ctx, croises, VUE, { frame: 0, frameMs: 100, k: 1 }, STYLE)
     // Un point par socle a l’image 0 (l’arc du point ; le glyphe neutre en pose un second
     // quand l’etat n’est pas vide — d’ou le compte par socle et non le compte brut).
-    const arcs = ops.filter((o) => o.op === 'arc').map((o) => o.args as number[])
+    const arcs = diamondCentres(ops).map((c) => [c.x, c.y])
     expect(arcs.length).toBeGreaterThanOrEqual(2)
     for (const [i, spot] of [
       { x: -9.738, y: -0.003 },
@@ -341,11 +341,11 @@ describe('useReplayWeaponPads — le calque bout en bout sur l’artefact réel 
     expect(result.current.available).toBe(true)
   })
 
-  it('le calque POSE cinq points à l’image 0 — le défaut signalé le 2026-08-26', () => {
+  it('le calque POSE cinq marques à l’image 0 — le défaut signalé le 2026-08-26', () => {
     const { result } = monterCalque(DOC_530820E5())
     const { ops, ctx } = recordingContext()
     result.current.paint(ctx, 0, 1)
-    const arcs = ops.filter((o) => o.op === 'arc').map((o) => o.args as number[])
+    const arcs = diamondCentres(ops).map((c) => [c.x, c.y])
     for (const [i, socle] of SOCLES_530820E5.entries()) {
       const c = worldToCanvas(socle, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad)
       const trouve = arcs.some(([px, py]) => Math.abs(px - c.x) < 0.01 && Math.abs(py - c.y) < 0.01)
@@ -397,7 +397,7 @@ describe('useReplayWeaponPads — quand, et SEULEMENT quand, le calque se tait',
     // Frame 500 : la première occupation de chaque socle est finie (tHigh = 346).
     expect(padStateAt(SOCLES_530820E5[3], 500)).toBe('empty')
     result.current.paint(ctx, 500, 1)
-    expect(count(ops, 'arc')).toBeGreaterThanOrEqual(5)
+    expect(new Set(diamondCentres(ops).map((c) => `${c.x},${c.y}`)).size).toBe(5)
   })
 })
 
@@ -422,10 +422,7 @@ describe('useReplayWeaponPads — A9 : un socle ne se dessine JAMAIS deux fois',
     const { ops, ctx } = recordingContext()
     result.current.paint(ctx, 0, 1)
     const centres = new Set(
-      ops.filter((o) => o.op === 'arc').map((o) => {
-        const [x, y] = o.args as number[]
-        return `${Math.round(x * 100)},${Math.round(y * 100)}`
-      }),
+      diamondCentres(ops).map((c) => `${Math.round(c.x * 100)},${Math.round(c.y * 100)}`),
     )
     expect(centres.size).toBe(5)
   })
@@ -437,10 +434,9 @@ describe('useReplayWeaponPads — A9 : un socle ne se dessine JAMAIS deux fois',
     const centres = SOCLES_530820E5.map((p) =>
       worldToCanvas(p, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad),
     )
-    for (const o of ops.filter((op) => op.op === 'arc')) {
-      const [x, y] = o.args as number[]
+    for (const { x, y } of diamondCentres(ops)) {
       const surUnSocle = centres.some((c) => Math.abs(c.x - x) < 0.01 && Math.abs(c.y - y) < 0.01)
-      expect(surUnSocle, `arc à (${x}, ${y}) hors de tout socle`).toBe(true)
+      expect(surUnSocle, `marque à (${x}, ${y}) hors de tout socle`).toBe(true)
     }
   })
 
@@ -514,5 +510,41 @@ describe('useReplayWeaponPads — chaque nature prend SON encre (A13)', () => {
     const encres = ops.filter((o) => o.op === 'set strokeStyle').map((o) => String(o.args[0]))
     expect(encres.length).toBeGreaterThan(0)
     expect(new Set(encres)).toEqual(new Set(['#powerup']))
+  })
+})
+
+/**
+ * A14 — LE SOCLE EST UN LOSANGE (retour utilisateur du 2026-08-26 : « les socles d'armes et de
+ * power up je veux pas de cercles, des points en losanges ce serait mieux, ça facilite la
+ * lecture sinon on peut confondre avec des points de joueurs »).
+ *
+ * C'EST LA FORME QUI PORTE LA DISTINCTION, et rien d'autre : un marqueur de JOUEUR reste un
+ * rond (`replayMarkers`). Ces cas verrouillent donc l'absence d'arc autant que la présence du
+ * losange — un socle qui redeviendrait rond passerait tous les autres tests de ce fichier.
+ */
+describe('useReplayWeaponPads — A14 : la marque d’un socle est un LOSANGE', () => {
+  it('aucun cercle n’est tracé pour un socle, quel que soit son état', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    for (const frame of [0, 200, 500, 3000]) {
+      const { ops, ctx } = recordingContext()
+      result.current.paint(ctx, frame, 1)
+      expect(count(ops, 'arc'), `un arc subsiste à l'image ${frame}`).toBe(0)
+      expect(diamondCentres(ops).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('la marque ET sa bordure sont deux losanges CONCENTRIQUES, la bordure la plus large', () => {
+    const doc = testReplayDoc({
+      weaponPads: [{ x: 0, y: 0, z: 0, weapon: '0x0A1992BC', spawns: [0], presence: [{ t0: 0, tLow: 99, tHigh: 99 }] }],
+    })
+    const { result } = monterCalque(doc)
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const centres = diamondCentres(ops)
+    expect(centres).toHaveLength(2)
+    expect(centres[0]).toEqual(centres[1])
+    // Les deux demi-diagonales, lues sur les sommets : la bordure enferme la marque.
+    const sommets = ops.filter((o) => o.op === 'moveTo').map((o) => (o.args as number[])[1])
+    expect(sommets[1]).toBeLessThan(sommets[0])
   })
 })
