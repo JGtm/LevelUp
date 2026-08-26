@@ -1,3 +1,33 @@
+## [2026-08-26] Rejeu 2D — enregistrement video du canvas (lot 2/4) — Complete
+
+**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres le lot 1 (image PNG).
+Un bouton REC dans la barre de lecture filme la toile via captureStream + MediaRecorder et
+depose le clip a l'arret.
+
+**Decision technique principale** : UN SEUL CHEMIN DE SORTIE. Trois gestes arretent
+l'enregistrement — second clic, pause manuelle, fin du film — et les trois passent par le meme
+stopRecording, donc un clip est toujours assemble et remis UNE fois : jamais zero (un
+enregistrement oublie qui tourne dans le vide), jamais deux. L'auto-arret guette la TRANSITION
+de `playing` (vrai -> faux), jamais l'etat : demarrer depuis une pause laisse `playing` a faux
+le temps d'un rendu, et lire l'etat refermerait le clip dans la seconde qui suit son ouverture
+— le bouton serait inutilisable sur un rejeu en pause. L'assemblage et le telechargement vivent
+dans `onstop`, pas apres `stop()` : la derniere tranche arrive APRES ce retour, et les pistes du
+flux ne se coupent qu'a ce moment-la, sans quoi le clip perdrait sa fin. Choix du conteneur dans
+replayRecording.ts, pur et teste sans navigateur : mp4/avc1 -> mp4 -> webm/vp9 -> webm, et
+l'EXTENSION SUIT le type retenu (un .mp4 contenant du WebM ne s'ouvrirait nulle part). Decision
+7 tenue litteralement : sans MediaRecorder, sans captureStream ou sans conteneur accepte, le
+bouton ne se rend PAS — une commande grisee laisserait croire a une panne reparable.
+ReplayCanvas.tsx n'a gagne AUCUNE ligne : l'appel du hook s'est etendu, pas allonge (c'etait la
+condition posee au lot 1 pour que le cliquet a 706 tienne sur les trois lots).
+
+**Resultats observes** : tsc -b = 0 (apres correction d'un TS1294 — `erasableSyntaxOnly`
+interdit les proprietes de parametre de constructeur dans la doublure MediaRecorder) ; vitest
+match-replay = 0 (76 fichiers, 1154 tests, +13) ; eslint --max-warnings 0 sur les 8 fichiers du
+perimetre = 0 ; ReplayCanvas.tsx toujours a 706 lignes.
+
+**Conclusion / prochaine etape** : lot 3 — la piste audio du rejeu rejoint la video, cablee au
+DEMARRAGE de l'enregistrement et seulement si le son est alors actif (decision 6).
+
 ## [2026-08-26] Rejeu 2D — capture d'image PNG du canvas (lot 1/4) — Complete
 
 **Contexte** : plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, branche wt/rejeu-capture-image-video
