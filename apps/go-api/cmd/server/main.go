@@ -67,6 +67,7 @@ import (
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaychild"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -103,6 +104,17 @@ func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescri
 }
 
 func main() {
+	// --- 0 bis. Mode ENFANT DE CUISSON (lot BUILDALL, 2026-08-26) ---
+	//
+	// LE SERVEUR SE RÉ-EXÉCUTE LUI-MÊME pour décoder un film hors de son propre processus : le
+	// décodage est un amplificateur mémoire, et l'enchaîner in-process a tué la machine trois
+	// fois. L'interception est ICI, AVANT TOUT LE RESTE — un enfant qui démarrerait le serveur
+	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
+	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
+	if replaychild.IsChild(os.Args) {
+		os.Exit(replaychild.RunChild(os.Args))
+	}
+
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
 	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
 		hcClient := &http.Client{Timeout: 5 * time.Second}
