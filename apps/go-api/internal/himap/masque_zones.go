@@ -130,8 +130,19 @@ func (r *Rendu) MesureHorsZones(masque []bool) (matiere, dehors int) {
 // effacees. A n'appeler qu'apres avoir regarde `MesureHorsZones`.
 func (r *Rendu) EffaceHorsZones(masque []bool) int {
 	efface := 0
+	if r.ecrete == nil {
+		r.ecrete = make([]bool, len(r.z))
+	}
+	// UNE CELLULE HORS ZONE EST RETIREE DE LA CARTE, qu elle porte de la matiere ou non :
+	// l eau se peint meme sans matiere (c est sa raison d etre), et sans ce marquage un volume
+	// d eau situe hors des zones nommees reste dessine sur une carte dont on vient de retirer
+	// le toit qui le cachait. Mesure du 2026-08-26 sur Recharge : dalle bleue en travers.
 	for k := range r.z {
-		if math.IsInf(r.z[k], -1) || (k < len(masque) && masque[k]) {
+		if k < len(masque) && masque[k] {
+			continue
+		}
+		r.ecrete[k] = true
+		if math.IsInf(r.z[k], -1) {
 			continue
 		}
 		r.z[k] = math.Inf(-1)

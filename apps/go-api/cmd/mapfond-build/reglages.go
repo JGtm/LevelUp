@@ -34,6 +34,13 @@ type reglageCarte struct {
 	// (himap/ecretage_toits.go). Jamais un defaut — il efface les rochers hauts d une carte
 	// qui en fait son identite.
 	EcreteToits bool `json:"ecreteToits,omitempty"`
+	// PlafondArene : hauteur en metres au-dela de la reference locale a partir de laquelle une
+	// surface cesse d etre un etage joue. Zero = 6 m. Le cran prevu : 4 m si « encore trop de
+	// toits », 8 m si « trop vide ». Un seul cran a la fois, et re-gate.
+	PlafondArene float64 `json:"plafondArene,omitempty"`
+	// SansEau : ecarter l habillage d eau. Voir OptionsCuisson.SansEau — l eau est peinte par
+	// la boite englobante de son volume, ce qui donne un rectangle bleu sur certaines cartes.
+	SansEau bool `json:"sansEau,omitempty"`
 	// RogneAuxZones : effacer la matiere hors des zones nommees dilatees
 	// (himap/masque_zones.go). A ne poser qu apres avoir regarde le taux mesure.
 	RogneAuxZones bool   `json:"rogneAuxZones,omitempty"`
@@ -163,5 +170,33 @@ func (e *environnement) rogneAuxZonesDe(cle string) bool {
 		return false
 	}
 	slog.Info("mapfond: rognage aux zones nommees arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// plafondAreneDe rend le plafond d'arène propre à une carte, ou zéro pour celui de production.
+func (e *environnement) plafondAreneDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.PlafondArene <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: plafond d arene propre a la carte", "carte", cle, "plafond", c.PlafondArene,
+		"gateLe", c.GateLe)
+	return c.PlafondArene
+}
+
+// sansEauDe dit si cette carte écarte l'habillage d'eau. Journalisé : retirer un calque
+// entier de l'asset ne doit jamais passer inaperçu.
+func (e *environnement) sansEauDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.SansEau {
+		return false
+	}
+	slog.Info("mapfond: habillage d eau ecarte pour cette carte", "carte", cle, "gateLe", c.GateLe)
 	return true
 }

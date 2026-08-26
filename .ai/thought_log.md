@@ -72890,3 +72890,42 @@ plus mal cadres.
 bouger que deux choses — leur ligne de reglages et leur PNG — donc plus de passe de tests par
 carte (remarque de l'utilisateur, actee). Carte 3 = Bazaar : `encre`, 0,034 m/px, ecretage,
 masque des 29 zones ; temoin d'abord.
+
+---
+
+## [2026-08-26] Cartes 3 et 4 — deux axes de plus, et trois diagnostics faux sur Recharge
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : Bazaar et Recharge closes ; deux axes de reglage neufs,
+tous deux nes d'un defaut mesure et tous deux en DONNEE : `plafondArene` (le cran prevu depuis
+le 13/08, « 6 -> 4 si encore trop de toits ») et `sansEau` (ecarter l'habillage d'eau).
+La chaine `himap` ne gagne toujours aucune branche par carte — six entrees de `OptionsCuisson`.
+
+Recette de traitement ECRITE a la demande de l'utilisateur (« quand on sera arrives au bout de
+ton contexte ca va etre la misere de continuer s'il n'y a pas de recette ») :
+`.ai/V7.5/cartes/RECETTE_TRAITEMENT_CARTE.md` — boucle en 8 etapes, les six axes avec leur
+champ JSON, ce qui reste ouvert, les cartes a NE PAS ecreter, et les pieges deja payes.
+
+**Resultats observes** : Bazaar VALIDEE (621 x 567 -> 2 032 x 1 462 px ; masque a 39,5 %,
+signale AVANT le verdict ; ecart au sol -3,20 m APRES ecretage, donc sur elle les toits
+n'expliquent PAS l'ecart — le correctif « reference par pixel » reste du). Recharge VALIDEE
+(403 x 542 -> 1 605 x 1 914 ; largeur occupee 28,8 %, la pire des 19 natives, -> quasi tout le
+cadre ; plafond 4 m : 2 382 213 pixels vides contre 2 043 451 a 6 m, et **24 ancres sur 25**
+contre 25/25 — l'ancre perdue est la limite, une ancre est du terrain joue par definition).
+
+**Le detour le plus cher de la journee, ecrit pour ne pas etre rejoue** : trois diagnostics
+faux d'affilee sur la dalle bleue de Recharge. (1) « L'ecretage fait fuir l'eau » — refute : la
+comparaison 30 970 -> 325 353 cellules mettait en regard 0,0920 et 0,029 m/px, un rapport de
+3,17 dont le carre vaut exactement 10 ; la surface d'eau n'avait pas bouge. (2) « L'eau est
+hors des zones nommees, le masque la retirera » — refute : 130 cellules sur 1 353 118 tombent
+hors zones, l'eau est DEDANS, et ce chiffre etait sous les yeux depuis deux mesures. (3)
+« L'ecretage revele l'eau » — refute : la dalle est dans le fond PUBLIE depuis le 10/08, ou
+aucun ecretage n'a jamais tourne. **Ce qui a tranche : ouvrir le PNG en production**, ce qui
+aurait du etre le premier geste. Verse a la recette comme piege n°2.
+
+**Conclusion / prochaine etape** : 4 cartes sur 11 closes. Carte 5 = Illusion (56 matchs,
+ecart au sol -0,26 m, donc sans le defaut de niveau de jeu). Restent au registre, non
+resolus : le niveau de jeu SCALAIRE (13 fonds hors clou, correctif nomme), la dalle d'eau
+(hypothese : `PoseEau` peint la BOITE ENGLOBANTE du volume), les marches rectilignes du masque
+(dilatation carree), et les 37 fonds Forge sans aucun callout.
