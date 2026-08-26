@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
@@ -72,7 +71,7 @@ func notifServiceFor(pdb *duckdb.PlayerDB, appSettingsPath string) *notification
 		Player:          pdb.Gamertag,
 		XUID:            pdb.XUID,
 		TitleSlug:       pdb.TitleSlug,
-		AppBaseURL:      os.Getenv("LEVELUP_PUBLIC_BASE_URL"),
+		AppBaseURL:      publicBaseURL(),
 	})
 	svc := notifications.NewService(repo,
 		notifications.WithWriterAcquirer(acquirer),
