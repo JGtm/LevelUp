@@ -216,20 +216,18 @@ func checkBinary(name string) HealthCheck {
 
 // checkDuckDB vérifie qu'une DB DuckDB s'ouvre et répond à COUNT(*).
 //
-// INVARIANT provider (read_recovery.go, ADR 0013/0016) : l'acquisition passe par
-// `OpenReadForQuery`, jamais par une ouverture RO FORCÉE. L'ancienne version
-// faisait `sql.Open("duckdb", path+"?access_mode=read_only")` — hors cache et
-// hors provider (anti-pattern n°5 CLAUDE.md), avec deux conséquences : sur une
-// DB déjà tenue en RW dans le process (pool, sharedprovider, writer de sync)
-// DuckDB refuse l'ouverture (« Can't open a connection to same database file
-// with a different configuration ») et le diagnostic rendait un KO qui ne
-// décrivait que son propre contournement ; et sur shared_matches_v2, l'entrée RO
-// ainsi créée fait échouer l'`OpenReadWrite` du swap provider (StateError).
-//
-// `OpenReadForQuery` emprunte le handle déjà tenu (RW ou RO — un COUNT marche
-// sur un RW) et n'ouvre en RO, via le cache, que sur cache miss : c'est le cas
-// nominal du CLI `levelup healthcheck`, seul appelant de RunHealthcheck. Le
-// release rendu ne ferme QUE le handle ouvert ici.
+// HONNÊTETÉ sur ce routage (revue 2026-08-26) : au seul site d'appel réel —
+// le CLI `levelup healthcheck`, process séparé qui n'a ouvert aucune DB —
+// le cache est vide, donc `OpenReadForQuery` dégrade en ouverture RO exactement
+// comme l'ancien `sql.Open` forcé. Le comportement cross-process est INCHANGÉ :
+// une DB tenue RW par le serveur rend toujours un KO (verrou fichier DuckDB,
+// « Could not set lock on file ») — et ce KO est une information de diagnostic
+// correcte. Ce que ce routage apporte : (1) l'uniformité avec le canal canonique
+// (anti-pattern n°5 « bare connect » éliminé, garde-rail de routage applicable) ;
+// (2) la sécurité IN-PROCESS si un futur appelant héberge un jour le pool ou un
+// provider (emprunt du handle tenu au lieu d'un refus d'ouverture) ; (3) le
+// connecteur custom (bornes mémoire/threads) au lieu du driver nu. Le release
+// rendu ne ferme QUE le handle ouvert ici (refcount).
 func checkDuckDB(ctx context.Context, name, path string) HealthCheck {
 	if _, err := os.Stat(path); err != nil {
 		return HealthCheck{Name: name, OK: false, Message: "fichier absent"}
