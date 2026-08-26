@@ -205,12 +205,18 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     expect(count(ops, 'strokeText')).toBe(0)
   })
 
-  it('SANS VIGNETTE : un glyphe neutre, jamais l’icône d’une arme voisine', () => {
+  // AMENDÉ LE 2026-08-26 (retour utilisateur : « j'ai l'impression qu'il y en a deux »). Ce cas
+  // verrouillait le GLYPHE DE REPLI : sans vignette, le calque posait un disque plein du même
+  // rayon que le point, une dizaine de pixels sous lui. Deux ronds empilés pour UN socle — et
+  // c'est exactement ce que l'œil comptait deux fois. Le repli est supprimé : le point porte
+  // déjà la position ET l'état. Ce qui reste garanti, et qui était le vrai sujet du cas :
+  // aucune image n'est empruntée à une arme voisine.
+  it('SANS VIGNETTE : le point SEUL, et surtout jamais l’icône d’une arme voisine', () => {
     const ops = draw([pad()], 50, { iconOf: () => null })
     expect(count(ops, 'drawImage')).toBe(0)
-    // Deux arcs : le point, puis le disque du glyphe qui remplace la vignette.
-    expect(count(ops, 'arc')).toBe(2)
-    expect(count(ops, 'fill')).toBe(2)
+    // UN arc, UN remplissage : une seule marque pour un seul socle.
+    expect(count(ops, 'arc')).toBe(1)
+    expect(count(ops, 'fill')).toBe(1)
   })
 
   /**
@@ -254,15 +260,19 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     expect(ty).toBeLessThan(c.y - rayon)
   })
 
-  it('la vignette est entièrement SOUS le point, jamais centrée dessus', () => {
+  // RÈGLE INVERSÉE LE 2026-08-26, et c'est le même retour utilisateur. La vignette était posée
+  // ENTIÈREMENT SOUS le point : un rond ici, une image dix pixels plus bas, deux marques pour un
+  // socle. Elle est désormais CENTRÉE sur le point — un socle, une marque. Le point ne disparaît
+  // pas pour autant : il reste dessous et continue de porter l'ÉTAT par sa forme (plein,
+  // pointillé, discret), ce que la vignette ne sait pas dire.
+  it('la vignette est CENTRÉE sur le point, jamais décalée dessous', () => {
     const ops = draw([pad({ x: 2, y: 8 })], 50)
     const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
-    const rayon = ops.find((o) => o.op === 'arc')!.args[2] as number
     // Le CORPS est le dernier posé (le liseré vient d'abord, tout autour).
     const images = ops.filter((o) => o.op === 'drawImage')
-    const [, dx, dy, w] = images[images.length - 1].args as number[]
+    const [, dx, dy, w, h] = images[images.length - 1].args as number[]
     expect(dx + w / 2).toBeCloseTo(c.x, 6)
-    expect(dy).toBeGreaterThan(c.y + rayon)
+    expect(dy + h / 2).toBeCloseTo(c.y, 6)
   })
 
   it('aucune COULEUR n’est écrite ici : les encres viennent toutes de l’appelant', () => {
