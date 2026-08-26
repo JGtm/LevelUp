@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { count, recordingContext, valuesOf } from './test/recordingContext'
+import { count, diamondCentres, recordingContext, valuesOf } from './test/recordingContext'
 import type { ReplayWeaponPadReady } from './replayNormalize'
 import { worldToCanvas } from './replayLogic'
 import {
@@ -159,13 +159,15 @@ describe('padRespawnSecondsAt — le compte à rebours n’existe qu’avec un c
  * dessous (remplie et cernée), le COMPTE À REBOURS dessus. L'anneau qui enfermait la vignette
  * n'existe plus.
  */
-describe('le tracé — point, vignette dessous, compte à rebours dessus', () => {
+describe('le tracé — losange de nature, vignette centrée, compte à rebours dessus', () => {
   // DEUX ARCS DEPUIS A13, ET C'EST UNE SEULE MARQUE : le point, puis la BORDURE de sa nature
   // posée autour. Ils sont CONCENTRIQUES — ce que le cas « un socle, une marque » vérifie chez
   // l'appelant en comptant les centres distincts. Le point, lui, garde sa règle : plein.
   it('PLEIN : le point est REMPLI, la bordure l’entoure, et la vignette à pleine encre', () => {
     const ops = draw([pad()], 50)
-    expect(count(ops, 'arc')).toBe(2)
+    // DEUX LOSANGES CONCENTRIQUES depuis A14 : la marque et sa bordure de nature.
+    expect(diamondCentres(ops)).toHaveLength(2)
+    expect(count(ops, 'arc')).toBe(0)
     expect(count(ops, 'drawImage')).toBeGreaterThan(0)
     // Un point PLEIN se remplit : il n'est ni tracé ni pointillé. Le seul `stroke` est la bordure.
     expect(count(ops, 'setLineDash')).toBe(0)
@@ -188,7 +190,7 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     const ops = draw([pad()], 200)
     expect(count(ops, 'drawImage')).toBe(0)
     // Le point et sa bordure, concentriques : la marque du lieu tient sans ce qu'il portait.
-    expect(count(ops, 'arc')).toBe(2)
+    expect(diamondCentres(ops)).toHaveLength(2)
   })
 
   it('VIDE avec cycle : le compte à rebours s’écrit, cerné pour rester lisible', () => {
@@ -221,8 +223,10 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     const ops = draw([pad()], 50, { iconOf: () => null })
     expect(count(ops, 'drawImage')).toBe(0)
     // Le point et sa bordure, CONCENTRIQUES : une seule marque pour un seul socle. Ce qui a
-    // disparu, c'est le disque décalé — pas un second cercle au même endroit.
-    expect(count(ops, 'arc')).toBe(2)
+    // disparu, c'est le disque décalé — pas un second losange au même endroit.
+    const centres = diamondCentres(ops)
+    expect(centres).toHaveLength(2)
+    expect(centres[0]).toEqual(centres[1])
     expect(count(ops, 'fill')).toBe(1)
   })
 
@@ -243,8 +247,12 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
   it('la TAILLE suit l’arme : une arme de puissance est plus grande qu’une classique', () => {
     const puissance = draw([pad()], 50)
     const classique = draw([pad({ weapon: BR75 })], 50)
-    const rayon = (ops: ReturnType<typeof draw>) =>
-      (ops.find((o) => o.op === 'arc')?.args[2] as number) ?? 0
+    // La demi-diagonale du losange se lit sur son sommet : centre - sommet (cf. traceDiamond).
+    const rayon = (ops: ReturnType<typeof draw>) => {
+      const c = diamondCentres(ops)[0]
+      const sommet = ops.find((o) => o.op === 'moveTo')?.args as number[] | undefined
+      return c && sommet ? c.y - sommet[1] : 0
+    }
     expect(rayon(puissance)).toBeGreaterThan(rayon(classique))
     const hauteur = (ops: ReturnType<typeof draw>) =>
       (ops.find((o) => o.op === 'drawImage')?.args[4] as number) ?? 0
@@ -260,9 +268,11 @@ describe('le tracé — point, vignette dessous, compte à rebours dessus', () =
     const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
     const ops = draw([pad({ x: 2, y: 8, cycle })], 320)
     const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
-    const [px, py, rayon] = ops.find((o) => o.op === 'arc')!.args as number[]
-    expect(px).toBeCloseTo(c.x, 6)
-    expect(py).toBeCloseTo(c.y, 6)
+    const marque = diamondCentres(ops)[0]
+    const sommet = ops.find((o) => o.op === 'moveTo')!.args as number[]
+    const rayon = marque.y - sommet[1]
+    expect(marque.x).toBeCloseTo(c.x, 6)
+    expect(marque.y).toBeCloseTo(c.y, 6)
     const [, , ty] = ops.find((o) => o.op === 'fillText')!.args as number[]
     expect(ty).toBeLessThan(c.y - rayon)
   })

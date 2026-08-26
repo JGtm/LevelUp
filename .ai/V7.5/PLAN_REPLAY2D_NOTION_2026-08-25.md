@@ -180,13 +180,32 @@ bases CTF disparues — les correctifs sont VALIDÉS visuellement) :
   à l'opacité du point (un socle vide garde son contour). Aucun token dans le calque —
   `inkOf` est résolu par l'appelant, mapping dans `useReplayInks`.
 
-- [ ] A14 (demande utilisateur 26/08) : les marques des socles d'armes et de power-ups
+- [x] A14 (demande utilisateur 26/08) : les marques des socles d'armes et de power-ups
   passent du POINT ROND au LOSANGE (« ça facilite la lecture sinon on peut confondre
   avec des points de joueurs ») : marque ET bordure en losange, encres par nature (A13)
   et états (plein/pointillé/discret) conservés. Point d'attention : les marqueurs
   d'objectifs (`drawMarker`, objectivesLayer) sont DÉJÀ des losanges — garder les deux
   familles distinguables (les socles ont vignette + anneau de nature ; vérifier le
   rendu combiné).
+  FAIT : `traceDiamond` (une seule copie pour la marque ET sa bordure) ; encres, états et
+  rayon de survol inchangés. COMPENSATION D'AIRE `PAD_DIAMOND_GROWTH = 1,25` (= `sqrt(π/2)`) :
+  à demi-diagonale égale un losange ne couvre que 64 % d'un disque, la substitution nue aurait
+  amaigri tous les socles d'un tiers.
+  RENDU COMBINÉ MESURÉ (le point d'attention) — demi-diagonales en px écran :
+  | | socle `power` | socle `classic` | marqueur d'objectif |
+  |---|---|---|---|
+  | marque | 5,75 (pleine si le socle est plein) | 4,0 | **5,5 pleine** |
+  | bordure | 10,6 losange | 7,5 losange | aucune (sauf anneau ROND de livraison, r=8) |
+  | vignette centrée | oui | oui | **non** |
+  VERDICT : distinguables, mais **la marque intérieure seule d'un socle `power` (5,75) est à
+  4 % de celle d'un objectif (5,5)** — ce qui les sépare est le liseré losange concentrique et
+  la vignette, jamais la forme ni la taille. Cas résiduel le plus fragile : un socle VIDE
+  (sans vignette, opacité 0,35) à côté d'un `flag_spawn` (opacité 0,9) — l'écart d'opacité
+  fait le travail, mais c'est le seul indice. RECOMMANDATION si l'utilisateur confirme la
+  confusion, par ordre de coût croissant : (1) descendre `MARKER_SIZE` des objectifs à ~4 pour
+  écarter les deux tailles ; (2) rendre le marqueur d'objectif CREUX (liseré seul), le plein
+  restant la signature du socle ; (3) tourner le losange des objectifs de 45° (carré). Non
+  arbitré ici.
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
