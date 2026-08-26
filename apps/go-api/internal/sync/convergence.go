@@ -619,6 +619,7 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 	// (c'est l'ouvrier qui le fera), donc ce chemin-là reste ouvert.
 	fetcher, _ := s.client.(replayartifacts.ChunksFetcher)
 	replayartifacts.Run(ctx, replayartifacts.Deps{
+		BuildOne:        e.replayArtifacts.BuildOne,
 		Fetcher:         fetcher,
 		WithRead:        s.withRead,
 		MetaDB:          e.metaDB,
