@@ -189,3 +189,17 @@ func TeinteAltitude(t, eclairement float64) color.RGBA {
 	}
 	return color.RGBA{c[0], c[1], c[2], 255}
 }
+
+// TeinteSolSuppose rend l'aplat des cellules comblees (cf. Rendu.CombleTrous).
+//
+// IL DOIT SE DISTINGUER DU RELEVE, sans crier. Un gris neutre, sans arete ni ombrage — c'est
+// justement l'absence de modele qui le caracterise : la ou le rendu a des surfaces, il a aussi
+// des aretes et un eclairement, et un aplat parfaitement uni se lit comme « ici, on ne sait
+// pas ». La valeur est prise LEGEREMENT SOUS le sol joue moyen des deux habillages, pour que
+// le comblement recule au lieu d'attirer l'oeil.
+func TeinteSolSuppose(style StyleFond) color.RGBA {
+	if style == StyleEncre {
+		return color.RGBA{178, 178, 178, 255}
+	}
+	return color.RGBA{92, 96, 104, 255}
+}

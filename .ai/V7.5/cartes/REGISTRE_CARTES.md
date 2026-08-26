@@ -61,7 +61,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | VALIDEE `encre` 26/08 |
 | Scarr | `btb_engine` | 57 | 65.9 | -0,13 | natif | VALIDEE 26/08 |
 | Bazaar | `ctf_bazaar` | 56 | 39.3 | -4,22 | natif | VALIDEE 26/08 — les quatre traitements |
-| Illusion | `ctf_illusion` | 56 | 76.3 | -0,26 | natif | A FINALISER |
+| Illusion | `ctf_illusion` | 56 | 76.3 | -0,26 | natif | VALIDEE 26/08 — ecretage 6 m + comblement |
 | Recharge - Ranked / Recharge | `sgh_blueprint` | 56 | 28.8 | -5,29 | natif | VALIDEE 26/08 — 6 reglages (plafond 4 m, sans eau) |
 | Aquarius / Aquarius - Ranked | `ctf_aquarius` | 54 | 33.7 | -0,05 | natif | A FINALISER |
 | Chasm | `chasm` | 52 | 100.0 | -0,09 | natif | A FINALISER |
@@ -363,3 +363,32 @@ ecretage a **plafond 4 m**, masque des zones, **sans eau**. Matiere utile 403 x 
 dalle bleue (fuite d'eau due a l'ecretage / eau hors zones / ecretage qui revele l'eau), tous
 refutes. Ce qui a tranche : OUVRIR LE PNG EN PRODUCTION, ou la dalle etait deja, depuis le
 10/08. Verse a la recette comme piege n°2.
+
+### 2026-08-26 — carte 5, Illusion
+
+Planche : https://claude.ai/code/artifact/a28c6c5e-93a7-4be7-894f-02fb2ff7ca99
+
+**Verbatim** : « ok validé, on peut passer à la suivante »
+
+`ctf_illusion` passe `VALIDEE` : `encre`, 0,031 m/px, cadre rogne, masque des zones,
+ecretage a **6 m** + **comblement des trous fermes**.
+
+**Chemin non lineaire, consigne pour ne pas etre rejoue** : 6 m REFUSE (criblee de trous,
+13/16 ancres) -> sans ecretage juge trop couvert -> 8 m -> 10 m, plus plats encore -> retour
+a 6 m APRES l'ajout du comblement. Les trous reproches au premier essai sont exactement ceux
+que le comblement bouche.
+
+**Reserves assumees au verdict** : 13 ancres sur 16 (le pire des variantes) et 464 358 cellules
+d'aplat suppose, soit pres de 12 % du cadre.
+
+**DEFAUT DE CONCEPTION MIS AU JOUR PAR CETTE CARTE, non corrige** : armer l'ecretage REMPLACE
+la voie de reference native au lieu de s'y ajouter — les deux liberent les memes tampons. Or
+leurs regles de substitution different : la native substitue PARTOUT dans la portee des ancres,
+l'ecretage seulement au-dela du plafond. Plus le plafond monte, moins il substitue — a 10 m,
+108 810 cellules contre 1 338 343 pour la voie native, et l'arene perd son relief. **Sur une
+carte couverte il faudrait les DEUX** ; aujourd'hui c'est l'un ou l'autre. Lot de code a part.
+
+**Deux axes neufs nes de cette carte** : `combleTrous` (aplat de sol suppose, TROUS FERMES
+seulement — la premiere version comblait tout vide du masque dilate et posait 611 959 cellules,
+noyant l'arene) et `substitutionSansPortee` (retirer la limite de 25 m ; NO-OP ici, mesure
+identique au bit, car les cellules gagnees tombent hors zones et sont retirees ensuite).

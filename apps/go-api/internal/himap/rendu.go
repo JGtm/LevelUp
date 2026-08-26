@@ -101,6 +101,8 @@ type Rendu struct {
 	// elle remplissait alors le trou laisse par l ecretage — 30 970 cellules d eau devenues
 	// 325 353 sur Recharge, une dalle bleue en travers de la carte (mesure du 2026-08-26).
 	ecrete []bool
+	// solSuppose marque les cellules SANS matiere comblees par un aplat (CombleTrous).
+	solSuppose []bool
 }
 
 // NewRendu prepare un rendu sur une emprise et une resolution donnees.

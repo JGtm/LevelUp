@@ -2,6 +2,29 @@
   "schemaVersion": 1,
   "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage jeu, echelle 0,0920 m/px).",
   "cartes": {
+    "ctf_aquarius": {
+      "carte": "Aquarius",
+      "style": "encre",
+      "echelle": 0.027,
+      "ecreteToits": true,
+      "plafondArene": 2,
+      "combleTrous": true,
+      "rogneAuxZones": true,
+      "raison": "Gate du 2026-08-26, carte 6. Meme combinaison qu Illusion, qui vient d etre validee avec elle : ecretage a 6 m plus comblement des trous fermes. Aquarius est la plus couverte des natives mesurees le 13/08 — 66,7 pour cent contre 38,5 pour Illusion — et l utilisateur l avait refusee des le 10/08 avec le meme motif, rendent les toits pas l arene. Echelle 0,027 m/px : sa matiere utile ne fait que 46,6 x 30,9 m, soit 506 x 336 px a l echelle de production, la plus petite des natives. Ecart mediane-ancres / sol -0,05 m, a l etalonnage : le defaut de niveau de jeu ne joue pas ici. 31 zones de callout. TEMOIN a valider.",
+      "gateLe": "2026-08-26"
+    },
+    "ctf_illusion": {
+      "carte": "Illusion",
+      "style": "encre",
+      "echelle": 0.031,
+      "combleTrous": true,
+      "ecreteToits": true,
+      "plafondArene": 6,
+      "substitutionSansPortee": true,
+      "rogneAuxZones": true,
+      "raison": "Gate du 2026-08-26, carte 5. Illusion faisait partie des trois cartes que l utilisateur avait refusees des le 10/08 avec le motif « rendent les TOITS, pas l arene » — c est donc la carte type pour l ecretage, et son taux de couverture mesure au 13/08 etait de 38,5 pour cent, au-dessus du seuil. Echelle 0,031 m/px : la matiere utile ne fait que 92,1 x 97,4 m soit 1 001 x 1 059 px a l echelle de production. Ecart mediane-ancres / sol -0,26 m, donc a l etalonnage : le defaut de niveau de jeu ne joue PAS ici, contrairement a Bazaar et Recharge. 63 zones de callout, le catalogue le plus fourni des natives. VALIDEE par l utilisateur le 2026-08-26. Chemin non lineaire, consigne pour ne pas etre rejoue : ecretage a 6 m d abord REFUSE (criblee de trous, 13/16 ancres), sans ecretage juge trop couvert, 8 m puis 10 m rendus plus plats — a 10 m l ecretage ne substitue plus que 108 810 cellules contre 1 338 343 pour la voie native, parce qu il la REMPLACE au lieu de s y ajouter. Retour a 6 m APRES l ajout du comblement des trous fermes : les trous reproches au depart sont exactement ceux que le comblement bouche. Reserves assumees au verdict : 13 ancres sur 16 (le pire des variantes) et 464 358 cellules d aplat suppose, soit pres de 12 pour cent du cadre.",
+      "gateLe": "2026-08-26"
+    },
     "sgh_blueprint": {
       "carte": "Recharge",
       "style": "encre",

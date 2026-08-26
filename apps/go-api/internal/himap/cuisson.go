@@ -91,6 +91,18 @@ type OptionsCuisson struct {
 	// 2026-08-10 en production. Tant que le defaut de fond n est pas instruit, l ecarter carte
 	// par carte vaut mieux que publier un aplat faux.
 	SansEau bool
+	// SubstitutionSansPortee retire la limite de PorteeAncre (25 m) de la voie de reference.
+	//
+	// LE DEFAUT QU ELLE CORRIGE, ecrit des le 2026-08-13 et non rapproche du symptome jusqu au
+	// 26/08 : la substitution ne touche que les cellules a moins de 25 m d une ancre, alors que
+	// le cadre va bien plus loin. Sur une carte dont les ancres sont groupees, les toits
+	// restent intacts des qu on s en eloigne. Elle ne VIDE jamais — contrairement a
+	// l ecretage — donc elle ne peut pas percer le sol d une carte a plusieurs niveaux.
+	SubstitutionSansPortee bool
+	// CombleTrous pose un APLAT de sol suppose sur les cellules sans matiere qui tombent dans
+	// les zones nommees. Ce n est PAS une mesure : c est un aplat assume, peint autrement et
+	// compte au sidecar. Exige `ZonesNommees`.
+	CombleTrous bool
 	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
 	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
 	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
@@ -159,6 +171,8 @@ type BilanCuisson struct {
 	// le rognage. CellulesHorsZones est ce qui a ete reellement efface.
 	MatiereHorsZones  int
 	CellulesHorsZones int
+	// CellulesSolSuppose : cellules comblees par un APLAT, pas relevees. Publie au sidecar.
+	CellulesSolSuppose int
 	// PlansFrontiere / FrontiereAppliquee / CellulesEffacees : la coquille de mort declaree
 	// par la carte.
 	PlansFrontiere     int
@@ -214,7 +228,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
 		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
 	} else {
-		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
+		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
 	}
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
 	mesureEtRogneZones(ctx, r, &b, opts)
@@ -520,5 +534,10 @@ func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 		"part", fmt.Sprintf("%.1f%%", 100*part), "rogne", opts.RogneAuxZones)
 	if opts.RogneAuxZones {
 		b.CellulesHorsZones = r.EffaceHorsZones(m)
+	}
+	if opts.CombleTrous {
+		b.CellulesSolSuppose = r.CombleTrous(m)
+		slog.InfoContext(ctx, "mapfond: sol suppose pose sur les trous des zones", "carte", b.Module,
+			"cellules", b.CellulesSolSuppose)
 	}
 }

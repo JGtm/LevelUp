@@ -77,15 +77,17 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 	var out []bilanAsset
 	for _, c := range e.ciblesNatives() {
 		rendu, bilan, err := himap.CuitCarteNative(ctx, himap.OptionsCuisson{
-			RacineDeploy:  e.racineJeu,
-			CheminModule:  c.chemin,
-			Ancres:        c.ancres,
-			Echelle:       e.echelleDe(c.cle),
-			EcreteToits:   e.ecreteToitsDe(c.cle),
-			PlafondArene:  e.plafondAreneDe(c.cle),
-			SansEau:       e.sansEauDe(c.cle),
-			ZonesNommees:  e.zonesNommeesDe(c.cle),
-			RogneAuxZones: e.rogneAuxZonesDe(c.cle),
+			RacineDeploy:           e.racineJeu,
+			CheminModule:           c.chemin,
+			Ancres:                 c.ancres,
+			Echelle:                e.echelleDe(c.cle),
+			EcreteToits:            e.ecreteToitsDe(c.cle),
+			PlafondArene:           e.plafondAreneDe(c.cle),
+			SansEau:                e.sansEauDe(c.cle),
+			SubstitutionSansPortee: e.substitutionSansPorteeDe(c.cle),
+			CombleTrous:            e.combleTrousDe(c.cle),
+			ZonesNommees:           e.zonesNommeesDe(c.cle),
+			RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
 		})
 		if err != nil {
 			if errors.Is(err, himap.ErrAucunTagSbsp) {
@@ -325,9 +327,10 @@ func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
 		BoundaryCellsCleared: b.CellulesEffacees,
 		WaterVolumes:         b.VolumesEau, WaterCells: b.CellulesEau,
 		CoveredShare: b.TauxCouverture, Covered: b.CarteCouverte,
-		CellsSubstituted: b.CellulesSubstituees,
-		CellsClipped:     b.CellulesEcretees,
-		ForgeObjects:     b.ObjetsForge, ForgeObjectsDrawn: b.ObjetsDessines,
+		CellsSubstituted:  b.CellulesSubstituees,
+		CellsClipped:      b.CellulesEcretees,
+		CellsAssumedFloor: b.CellulesSolSuppose,
+		ForgeObjects:      b.ObjetsForge, ForgeObjectsDrawn: b.ObjetsDessines,
 		ForgeObjectsWithoutModel: b.ObjetsSansModele, ForgeDeathVolumes: b.VolumesDeMort,
 	}
 	// L'écart médian est ABSENT quand aucune ancre n'a trouvé de sol : publier un zéro le

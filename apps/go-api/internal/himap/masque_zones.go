@@ -150,3 +150,76 @@ func (r *Rendu) EffaceHorsZones(masque []bool) int {
 	}
 	return efface
 }
+
+// CombleTrous marque, comme SOL SUPPOSE, chaque cellule sans matiere qui tombe DANS le masque
+// des zones nommees. Rend le nombre de cellules marquees.
+//
+// CE QUE C EST, ET CE QUE CE N EST PAS. Ce n'est pas une mesure : c'est un APLAT. Une zone
+// nommee est du terrain joue par construction — si le rendu n'y a dessine aucune surface, c'est
+// que la geometrie de ce sol est hors de la tranche d'altitude, sous un atrium, ou simplement
+// absente du maillage de rendu. Plutot que de laisser un trou noir au milieu de l'arene, on y
+// pose un sol suppose, et on le PEINT AUTREMENT pour que personne ne le prenne pour du releve.
+//
+// Le nombre de cellules comblees est publie au sidecar (`cellsAssumedFloor`) : un aplat qu'on
+// ne compte pas est un mensonge qui grandit sans qu'on le voie.
+// SEULS LES TROUS FERMES SONT COMBLES, et la premiere version ne le faisait pas : comblee sur
+// toute cellule vide du masque dilate, elle a pose 611 959 cellules d'aplat sur Illusion et
+// noye l'arene sous des dalles grises (mesure du 2026-08-26). Un vide OUVERT sur l'exterieur
+// n'est pas un trou de relevé — c'est le bord de la carte, ou une cour, ou du vide reel.
+//
+// La regle : on inonde le vide depuis les bords de l'image ; ce que l'inondation n'atteint
+// PAS est un trou ferme, entoure de matiere. Ceux-la seulement sont combles.
+func (r *Rendu) CombleTrous(masque []bool) int {
+	vide := func(k int) bool { return math.IsInf(r.z[k], -1) }
+	atteint := make([]bool, len(r.z))
+	pile := make([]int, 0, r.NX+r.NY)
+	pousse := func(i, j int) {
+		if i < 0 || i >= r.NX || j < 0 || j >= r.NY {
+			return
+		}
+		k := j*r.NX + i
+		if atteint[k] || !vide(k) {
+			return
+		}
+		atteint[k] = true
+		pile = append(pile, k)
+	}
+	for i := 0; i < r.NX; i++ {
+		pousse(i, 0)
+		pousse(i, r.NY-1)
+	}
+	for j := 0; j < r.NY; j++ {
+		pousse(0, j)
+		pousse(r.NX-1, j)
+	}
+	for len(pile) > 0 {
+		k := pile[len(pile)-1]
+		pile = pile[:len(pile)-1]
+		i, j := k%r.NX, k/r.NX
+		pousse(i-1, j)
+		pousse(i+1, j)
+		pousse(i, j-1)
+		pousse(i, j+1)
+	}
+
+	comble := 0
+	for k := range r.z {
+		if !vide(k) || atteint[k] || k >= len(masque) || !masque[k] {
+			continue
+		}
+		if r.solSuppose == nil {
+			r.solSuppose = make([]bool, len(r.z))
+		}
+		r.solSuppose[k] = true
+		comble++
+	}
+	return comble
+}
+
+// SolSuppose dit si une cellule porte un sol suppose (cf. CombleTrous).
+func (r *Rendu) SolSuppose(i, j int) bool {
+	if r.solSuppose == nil || i < 0 || i >= r.NX || j < 0 || j >= r.NY {
+		return false
+	}
+	return r.solSuppose[j*r.NX+i]
+}
