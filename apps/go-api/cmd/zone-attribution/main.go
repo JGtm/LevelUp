@@ -55,6 +55,8 @@ func main() {
 	maxGap := flag.Int("max-gap", replay.DefaultMaxGapFrames, "tolerance position/action, en frames")
 	selectOnly := flag.Bool("select-only", false,
 		"dimensionner le corpus et s'arreter (aucun film decode)")
+	role := flag.String("role", string(mapvar.RoleStrongholdZone),
+		"role de zone mesure (`strongholds_zone`, `totalcontrol_zone`, ...)")
 	census := flag.Bool("census", false,
 		"recenser le corpus PAR MODE (films en cache, artefacts, schemas) et s'arreter ; "+
 			"aucun filtre de mode, aucun film decode")
@@ -64,7 +66,7 @@ func main() {
 
 	if err := run(*slug, *cacheDir, *matchArg, runTuning{
 		witness: *witness, maxGap: *maxGap, selectOnly: *selectOnly, dump: *dump,
-		census: *census,
+		census: *census, role: *role,
 	}); err != nil {
 		slog.Error("mesure d'attribution de zone", "err", err)
 		os.Exit(1)
@@ -85,6 +87,15 @@ type runTuning struct {
 	// census recense le corpus PAR MODE et s'arrete (cf. census.go). Il precede selectOnly :
 	// il ne filtre aucun mode, la ou selectOnly ne dimensionne que celui de la mesure.
 	census bool
+	// role est le ROLE de zone mesure. Il etait ecrit en dur (`strongholds_zone`) tant que
+	// Bastion etait la seule zone TENUE decodee ; Total Control a ouvert la question, et rien
+	// dans la mesure n'etait propre a Bastion — seule la constante l'etait.
+	//
+	// LE ROLE N'EST PAS VALIDE ICI, ET C'EST VOULU : un role inconnu du catalogue ne rend
+	// simplement AUCUNE forme, et le corpus sort a zero eligible avec « sans formes au
+	// catalogue » — un diagnostic plus parlant qu'un refus au demarrage. La liste fermee des
+	// roles vit ou elle doit vivre : au chargement de la table du titre (loader_objective_roles).
+	role string
 }
 
 func run(slug, cacheDir, matchArg string, tune runTuning) error {
@@ -126,7 +137,7 @@ func run(slug, cacheDir, matchArg string, tune runTuning) error {
 	r := &runner{
 		slug: slug, cacheDir: cacheDir, db: db,
 		bounds: bounds, zones: zonesCat,
-		role:    mapvar.RoleStrongholdZone,
+		role:    mapvar.Role(tune.role),
 		offset:  mapvar.Vec3{X: tune.witness, Y: tune.witness},
 		maxGap:  tune.maxGap,
 		results: nil,
