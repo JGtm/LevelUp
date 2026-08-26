@@ -14,6 +14,7 @@ import {
   buildSoundTimeline,
   killSound,
   killSourceSpriteStem,
+  SOUND_VARIANTS,
   type ReplaySoundEvent,
   type SoundCategoryFilter,
 } from './replaySound'
@@ -338,7 +339,12 @@ describe('buildSoundTimeline', () => {
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'sensor_activate' },
-      { ms: 7_000, stem: 'repair_field_activate' },
+      // Le champ de réparation TIRE une variante (lot du 2026-08-26) : l'événement porte les
+      // trois fichiers, le choix se fait à la lecture.
+      { ms: 7_000, stem: 'repair_field_activate', variants: SOUND_VARIANTS.repair_field_activate },
+      // ET IL SONNE SA FIN, à `t1` — décision produit de l'utilisateur du 2026-08-26. C'est la
+      // SEULE famille dans ce cas : le mur et le capteur n'ont pas de son d'extinction propre.
+      { ms: 9_500, stem: 'repair_field_end', variants: SOUND_VARIANTS.repair_field_end },
     ])
   })
 
@@ -412,8 +418,8 @@ describe('buildSoundTimeline', () => {
       0,
     )
     expect(tl).toEqual([
-      { ms: 500, stem: 'grapple_fire' },
-      { ms: 1_200, stem: 'grapple_fire' },
+      { ms: 500, stem: 'grapple_fire', variants: SOUND_VARIANTS.grapple_fire },
+      { ms: 1_200, stem: 'grapple_fire', variants: SOUND_VARIANTS.grapple_fire },
     ])
   })
 
@@ -536,9 +542,9 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
 })
 
 describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, phase 2)', () => {
-  const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true }
+  const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true, objective: true }
 
-  it('sans 4e paramètre, comportement INCHANGÉ : les quatre catégories sonnent', () => {
+  it('sans 4e paramètre, comportement INCHANGÉ : les cinq catégories sonnent', () => {
     const tl = buildSoundTimeline(docAvecTirs(2), [], 0)
     expect(tl.map((e) => e.stem)).toEqual(['hinf_br75', 'hinf_br75'])
   })
@@ -605,7 +611,7 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
       docWithCouple({ grenades: [grenade({ t: 50, rank: 0 })] }),
       [kill()],
       0,
-      { weapon: false, grenade: false, melee: false, equipment: false },
+      { weapon: false, grenade: false, melee: false, equipment: false, objective: false },
     )
     expect(tl).toEqual([])
   })

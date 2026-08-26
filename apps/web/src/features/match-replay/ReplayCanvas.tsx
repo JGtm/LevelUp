@@ -183,9 +183,9 @@ export function ReplayCanvas({
     speed: multiplier, setSpeed: setMultiplier,
     markerColors, setMarkerColors,
   } = useReplaySettings()
-  // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
-  // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
-  const sound = useReplaySound(doc, kills, t0Ms, multiplier)
+  // SON : coupé par défaut, préférences persistées, tout le câblage dans le hook (règles dans
+  // replaySound.ts, lecture dans replayAudio.ts, camp des objectifs dans objectiveSound.ts).
+  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs

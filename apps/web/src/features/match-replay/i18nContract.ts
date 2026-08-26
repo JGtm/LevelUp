@@ -123,7 +123,7 @@ export interface ReplayText {
   soundFastHint: string
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
   soundCategoriesTitle: string
-  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
+  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective', string>
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
