@@ -40,6 +40,7 @@ import (
 // deliberement).
 var filmBuildCalls = []string{
 	"BuildMatch(",
+	"BuildBytes(",
 	"BuildFromFilm(",
 }
 
@@ -63,28 +64,8 @@ var filmBuildAllowedCallers = map[string]string{
 		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via internal/filmproc",
 	"internal/analysis/replay/build.go": "2026-08-26 — la DEFINITION de BuildFromFilm ; elle " +
 		"ne boucle sur rien",
-
-	// LA SEULE ENTREE QUI N'EST PAS UNE EXEMPTION MAIS UNE DETTE, et elle est ecrite comme
-	// telle plutot que maquillee en regime sain.
-	//
-	// `buildAll` enchaine jusqu'a `maxPerCycle` = 5 films a travers BuildMatch, DANS LE
-	// PROCESSUS DU SERVEUR, sans sentinelle memoire. C'est exactement la forme du sinistre du
-	// 2026-08-20 — quatre petits films cuits, effondrement sur le CINQUIEME.
-	//
-	// CE QUI LIMITE LE RISQUE AUJOURD'HUI, et il faut le dire pour ne pas alarmer a tort :
-	// l'etape n'existe qu'en environnement NON-PRODUCTION (le wiring ne l'installe pas sur le
-	// VPS — « le VPS web ne decode JAMAIS »), elle est best-effort, et le cap de 5 borne le
-	// nombre, pas le pic.
-	//
-	// POURQUOI CE LOT NE LA CORRIGE PAS : l'executeur canonique ne s'y transpose PAS tel quel.
-	// Sa sentinelle mene a un arret du processus, ce qui est interdit la ou des handles
-	// d'ecriture DuckDB sont tenus (ADR 0013/0019/0030) ; et re-executer le binaire du SERVEUR
-	// en enfant n'a pas de sens. Il faut une conception a part — donc un arbitrage, pas une
-	// initiative d'executeur. Consigne au registre le 2026-08-26.
-	"internal/sync/replayartifacts/artifacts.go": "2026-08-26 — DETTE CONNUE, pas une " +
-		"exemption : boucle de 5 films max dans le processus du serveur, sans sentinelle. " +
-		"Local uniquement, best-effort. Migration = lot a part (l'arret du processus est " +
-		"interdit la ou des handles d'ecriture sont tenus)",
+	"internal/replaychild/replaychild.go": "2026-08-26 — ENFANT BORNE du post-sync : un film " +
+		"par processus, sentinelle armee, aucune base ouverte ; le PARENT range les octets",
 }
 
 func TestNoUnboundedFilmLoop(t *testing.T) {
