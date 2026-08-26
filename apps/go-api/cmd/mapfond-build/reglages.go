@@ -41,6 +41,11 @@ type reglageCarte struct {
 	// SansEau : ecarter l habillage d eau. Voir OptionsCuisson.SansEau — l eau est peinte par
 	// la boite englobante de son volume, ce qui donne un rectangle bleu sur certaines cartes.
 	SansEau bool `json:"sansEau,omitempty"`
+	// SubstitutionSansPortee : etendre la substitution a tout le cadre au lieu du disque de
+	// 25 m autour des ancres. Voir OptionsCuisson.SubstitutionSansPortee.
+	SubstitutionSansPortee bool `json:"substitutionSansPortee,omitempty"`
+	// CombleTrous : poser un aplat de sol suppose dans les trous des zones nommees.
+	CombleTrous bool `json:"combleTrous,omitempty"`
 	// RogneAuxZones : effacer la matiere hors des zones nommees dilatees
 	// (himap/masque_zones.go). A ne poser qu apres avoir regarde le taux mesure.
 	RogneAuxZones bool   `json:"rogneAuxZones,omitempty"`
@@ -198,5 +203,32 @@ func (e *environnement) sansEauDe(cle string) bool {
 		return false
 	}
 	slog.Info("mapfond: habillage d eau ecarte pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// substitutionSansPorteeDe dit si cette carte etend la substitution a tout le cadre.
+func (e *environnement) substitutionSansPorteeDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.SubstitutionSansPortee {
+		return false
+	}
+	slog.Info("mapfond: substitution etendue a tout le cadre", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// combleTrousDe dit si cette carte comble ses trous par un aplat. Journalisé : c'est du
+// dessin, pas du relevé.
+func (e *environnement) combleTrousDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.CombleTrous {
+		return false
+	}
+	slog.Info("mapfond: comblement des trous arme (aplat, pas un releve)", "carte", cle, "gateLe", c.GateLe)
 	return true
 }

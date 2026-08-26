@@ -115,7 +115,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
 	}
-	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
+	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, false)
 	if b.VolumesDeMort == 0 {
 		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
 	}

@@ -101,7 +101,7 @@ func (r *Rendu) CandidatsReference(i, j int) (zHaut, zProche, ref float64, ok bo
 //
 // Rend la part de matiere couverte, le nombre de cellules substituees et le verdict. La voie
 // de reference est liberee en sortie : la decision est prise, les buffers n'ont plus d'objet.
-func (r *Rendu) AppliqueReference(s *SurfaceReference) (taux float64, substituees int, couverte bool) {
+func (r *Rendu) AppliqueReference(s *SurfaceReference, sansPortee bool) (taux float64, substituees int, couverte bool) {
 	if r.zRef == nil || s.Vide() {
 		return 0, 0, false
 	}
@@ -110,7 +110,7 @@ func (r *Rendu) AppliqueReference(s *SurfaceReference) (taux float64, substituee
 	if taux <= SeuilCarteCouverte {
 		return taux, 0, false
 	}
-	return taux, r.substitueParReference(s), true
+	return taux, r.substitueParReference(s, sansPortee), true
 }
 
 // tauxCouverture rend la part de la matiere dessinee dont la surface haute cache un sol
@@ -134,7 +134,7 @@ func (r *Rendu) tauxCouverture() float64 {
 
 // substitueParReference remplace, dans la portee des ancres, la surface haute par la surface
 // la plus proche de la reference, et rend le nombre de cellules touchees.
-func (r *Rendu) substitueParReference(s *SurfaceReference) int {
+func (r *Rendu) substitueParReference(s *SurfaceReference, sansPortee bool) int {
 	substituees := 0
 	for j := 0; j < r.NY; j++ {
 		y := r.Min[1] + (float64(j)+0.5)*r.Cell
@@ -143,7 +143,7 @@ func (r *Rendu) substitueParReference(s *SurfaceReference) int {
 			if math.IsInf(r.z[k], -1) || math.IsNaN(r.zRef[k]) || r.z[k] == r.zRef[k] {
 				continue
 			}
-			if s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) > PorteeAncre {
+			if !sansPortee && s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) > PorteeAncre {
 				continue
 			}
 			r.z[k], r.n[k] = r.zRef[k], r.nRef[k]

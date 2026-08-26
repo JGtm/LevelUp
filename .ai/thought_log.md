@@ -72929,3 +72929,42 @@ ecart au sol -0,26 m, donc sans le defaut de niveau de jeu). Restent au registre
 resolus : le niveau de jeu SCALAIRE (13 fonds hors clou, correctif nomme), la dalle d'eau
 (hypothese : `PoseEau` peint la BOITE ENGLOBANTE du volume), les marches rectilignes du masque
 (dilatation carree), et les 37 fonds Forge sans aucun callout.
+
+---
+
+## [2026-08-26] Carte 5 Illusion — le comblement sauve le 6 m, et un defaut de conception sort
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : Illusion close apres SIX cuissons, chemin non lineaire
+consigne au registre : ecretage 6 m refuse (criblee de trous, 13/16 ancres) -> sans ecretage
+juge trop couvert -> 8 m -> 10 m, plus plats -> retour a 6 m APRES l'ajout du comblement des
+trous. Les trous reproches au premier essai etaient exactement ceux que le comblement bouche —
+l'utilisateur l'a vu avant moi (« tente 6m »).
+
+Deux axes neufs, tous deux en donnee : `combleTrous` et `substitutionSansPortee`. Le premier a
+du etre CORRIGE apres mesure : sa version naive comblait tout vide du masque dilate, 611 959
+cellules d'aplat, l'arene noyee sous des dalles grises. La regle qui tient : **seuls les trous
+FERMES** — on inonde le vide depuis les bords de l'image, ce que l'inondation n'atteint pas est
+entoure de matiere. Un vide ouvert sur l'exterieur est un bord, pas un trou de releve.
+Le second est un NO-OP mesure sur cette carte (identique au bit) : les 183 361 cellules gagnees
+tombent hors des zones nommees et sont retirees ensuite.
+
+**Resultats observes** : Illusion VALIDEE avec 13/16 ancres et 464 358 cellules d'aplat (12 %
+du cadre) — reserves donnees AVANT le verdict. Aquarius (carte 6) en cours : 25/25 ancres a 4,
+3 et 2 m, l'utilisateur arbitre le cran.
+
+**DEFAUT DE CONCEPTION MIS AU JOUR, non corrige** : armer l'ecretage REMPLACE la voie de
+reference native au lieu de s'y ajouter (memes tampons liberes). Leurs regles de substitution
+different — la native substitue partout dans la portee des ancres, l'ecretage seulement au-dela
+du plafond. A 10 m sur Illusion : 108 810 cellules substituees contre 1 338 343 pour la voie
+native, d'ou une arene sans relief. Sur une carte couverte il faudrait les DEUX. Lot de code.
+
+**Trois lectures optimistes d'un compteur bas, dans la meme journee** : « peu de pixels vides
+donc peu a retirer » sur Aquarius a 6 m — en fait l'ecretage n'attrapait rien parce que les
+toits vivent ENTRE 4 et 6 m. Un chiffre faible veut dire soit rien a faire, soit cible ratee ;
+seule l'image departage.
+
+**Conclusion / prochaine etape** : 5 cartes closes sur 11. Aquarius attend le choix du plafond
+(4 / 3 / 2 m, ancres intactes aux trois). 2 m est le plancher de sens : la constante d'origine
+se decompose en 2 m (un Spartan debout) + 3 m (sols en pente) + 1 m de marge.
