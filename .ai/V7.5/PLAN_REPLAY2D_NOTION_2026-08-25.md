@@ -360,6 +360,17 @@ thought_log, mémoire de session.
   artefact `530820e5` dans un test (fixture dérivée, pas de dépendance au cache).
   Exécuteur : agent lot A (web SEUL — créneau Go tenu par l'agent D).
 
+- [ ] FIX-CTF-DEDOUBLE (signalement utilisateur 26/08 : « les socles de drapeaux,
+  toujours l'impression qu'il y en a deux ») : CONFIRMÉ SUR PIÈCES par le superviseur —
+  sur `f7e8cde9` (Catalyst), chaque camp porte DEUX `flag_delivery` (le point d'origine
+  ET le centre du volume converti en marqueur par FIX-CTF-ZONES : équipe 0 à 1,3 u
+  d'écart, équipe 1 à 8,7 u). Le volume est l'aire de validation AUTOUR du point : les
+  deux marqueurs disent la même chose. CORRECTIF : dans un rôle `points_only`, par
+  (rôle, camp), si des objets SANS forme existent, seuls eux sont servis (le point est
+  canonique) ; les objets à forme ne servent leur centre QUE si le (rôle, camp) n'a
+  aucun ponctuel (cas `stockpile_navpoint`, tous à forme). Garde : Catalyst CTF sert
+  exactement 2 livraisons + 3 apparitions. Exécuteur : agent D, APRÈS son CR en cours.
+
 ## Découvertes (hors périmètre — consigner ici, ne PAS traiter)
 
 - **Lot A — sentinelle `last === 0` de la boucle de lecture** (`useReplayPlayback.ts`, reprise
