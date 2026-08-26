@@ -174,6 +174,68 @@ opportuniste) : (1) `player_xuid` portait le xuid REEL du joueur source et n'eta
 anonymise par extractPlayerTables (seule la cle `xuid` l'est) — la liste d'inclusion le
 neutralise au passage, mais la meme classe de fuite est a re-auditer sur les autres tables
 extraites ; (2) le drop physique des colonnes auth de `sync_meta` (ADR 0026) reste du.
+## [2026-08-26] Ouvertures RO hors invariant provider — 3 sites routes — Complete
+
+**Contexte** : lot B des decouvertes de la campagne soaks (decision user). Trois sites
+violaient l'invariant du sharedprovider (« unique owner du handle », read_recovery.go) :
+une ouverture RO forcee sur un chemin gere echoue en « different configuration » si la DB
+est tenue RW, et laisse une entree `ro:` qui fait echouer l'OpenReadWrite du swap
+(StateError, 503).
+
+**Les 3 remedes** (le plus simple qui respecte l'invariant, par site) :
+- `ops/healthcheck.go` (checkDuckDB) : sql.Open force RO -> emprunt `OpenReadForQuery`
+  borne au COUNT de diagnostic.
+- `sync/citations_backfill.go` (RunBackfillCompositeOnlyCitations) : `OpenReadOnly` force
+  sur shared_matches_v2 pendant TOUTE la boucle -> emprunt `OpenReadForQuery` borne a la
+  seule requete de tri (`sortMatchIDsChronoOnShared`). Les 2 regimes d'erreur preexistants
+  CONSERVES : acquisition impossible = erreur dure (l'ordre conditionne le cumulPre des
+  paliers composites), requete de tri en echec = WARN + ordre d'origine (best-effort).
+- `ops/media.go` (IndexMedia) : emprunt LookupCachedDB NON POSSEDANT + fallback sql.Open
+  nu -> `OpenReadWriteShared` refcounte (cache hit = handle du pool refCount++, cache miss
+  = ouverture RW via le MEME connecteur custom, meme cle `rw:`). RW requis (DDL, INSERT,
+  CHECKPOINT) ; SET TimeZone conserve (un cache hit porte la tz du pool, pas la notre).
+
+**Garde-rail etendu** (`shared_read_recovery_routing_test.go`) : socle commun d'interdits
+(sql.Open, OpenReadForQuery instantane, LookupCachedDB nu) module par fichier — exemptions
+NOMINATIVES datees (OpenReadForQuery exempte sur healthcheck : c'est le remede prescrit,
+acquisition bornee) + interdits propres (OpenReadOnly sur les chemins provider) + mustCall
+par fichier. Allowlist a la ligne pres inchangee (emprunts metadata preexistants).
+
+**Gates** (etat complet avant mutation) : gofmt 0, build 0, vet 0, unit sync+ops+duckdb
+0 FAIL, integration -p 1 0 FAIL, lint --new-from-merge-base 0. **Mordant prouve par
+mutation COMPILABLE** (bascule healthcheck vers OpenReadOnly) : 2 assertions rouges
+(mustCall absent + interdit detecte ligne exacte avec message de remediation),
+restauration verte, arbre propre.
+
+**Note d'execution** : lot code par un executeur interrompu par la limite de quota AVANT
+gates et commit ; verifie sur pieces, gate, prouve et committe par le superviseur.
+Incident de supervision consigne : une restauration `git checkout` post-mutation sur des
+fichiers NON COMMITES a efface deux fois des editions (lot A r1 puis healthcheck) —
+reconstruites a l'identique depuis les diffs lus ; protocole corrige : COMMITTER avant
+toute mutation de preuve.
+
+**Revue adversariale (2026-08-26)** : le code TIENT (14 conditions — refcount cache
+hit/miss, ordre des defers, aucune entree residuelle, regimes d'erreur preserves,
+allowlists vivantes, portee exacte de forbiddenFor). 3 P2 de JUSTESSE DOCUMENTAIRE
+corriges en r1 : (C1) healthcheck — le routage est un no-op au site d'appel reel (CLI,
+cache vide -> meme ouverture RO qu'avant ; le KO cross-process est un diagnostic correct) ;
+le commentaire revendiquait une reparation sans declencheur -> reecrit (apport reel =
+uniformite + securite in-process future + connecteur custom). (C2) citations_backfill —
+le vrai mecanisme est le VERROU FICHIER cross-process : la CLI tenait shared_matches_v2
+en RO pendant toute la boucle et bloquait le swapToRW du SERVEUR ; la justification
+in-process (StateError) etait fausse (provider nil dans la CLI) -> reecrite, raisons du
+garde-rail alignees. (C3) media — sur cache miss le handle d'IndexMedia devient
+empruntable par les emprunteurs NUS du cache (ticker checkpoint main.go, attach du
+backup) : WARN best-effort benin possible a la fermeture, fenetre ASSUMEE et documentee.
+
+**Decouvertes consignees non traitees** : (1) les emprunteurs NUS du cache —
+`cmd/server/main.go` (ticker checkpoint 5 min, sans indexLock ni refcount) et
+`ops/backup_service.go` (`attachExistingHandles`, release no-op pendant tout l'export) —
+exactement la classe « emprunt nu » que le socle du garde-rail interdit : lot dedie ;
+(2) les autres `sql.Open("duckdb"` d'internal/ops (archive, backup, diagnose, media_hls,
+restore, seed*, snapshot_read) — hors chemins provider, a auditer si besoin.
+
+---
 
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
