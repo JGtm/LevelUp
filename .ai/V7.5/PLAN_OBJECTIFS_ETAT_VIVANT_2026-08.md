@@ -621,8 +621,32 @@ passe a l'utilisateur.**
 
 ### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
 
-- [ ] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
+- [x] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
       chainage (le temoin de largeur du balayage, `ManagedPropertyScan.Chained` vs `Walked`).
+      **CORPUS ETABLI (2026-08-26)** — `-census` nomme les films, `-role totalcontrol_zone
+      -select-only` les dimensionne : **7 films mesurables**, tous avec leur vivier de zones.
+
+      | film | carte | zones au catalogue | chunks | taille |
+      |---|---|---|---|---|
+      | `d2c64f8c` | Fortitude | 18 | 59 | 61 Mo |
+      | `0862dce4` | Highpower | 13 | 50 | 54 Mo |
+      | `66aa5f0b` | Command | 18 | 16 | 15 Mo |
+      | `2f05dc98` | Refuge | 15 | — | — |
+      | `bf831a6b` | Command | 18 | — | — |
+      | `a521164d` | Fragmentation Heavies | 15 | 21 | 27 Mo |
+      | `a349fea8` | Fragmentation Heavies | 15 | 51 | 67 Mo |
+
+      Le vivier de 13 a 18 zones par carte est CONFIRME film par film — c'est exactement ce que
+      decrit la table du titre, et c'est ce qui rend le seuil (2) discriminant : si
+      l'appariement en retenait 13 a 18 au lieu de 3, le calque publierait un mode qui n'existe
+      pas. Le seuil de 2 films du plan est tenu trois fois.
+
+      **UN FAIT DE COUT, MESURE ET A RETENIR** : ces films sont des BTB (24 joueurs, cartes
+      larges) et pesent 15 a 67 Mo contre 11 a 33 Mo pour les KOTH d'arene. La mesure complete
+      d'UN SEUL de ces films par `zone-attribution` — qui construit l'artefact ENTIER avant de
+      croiser — depasse dix minutes. Le corpus entier ne se mesure donc pas en avant-plan : il
+      faut une fenetre longue, et c'est une contrainte d'ordonnancement, pas un obstacle de
+      methode.
 - [ ] D3.2 Chercher un DESIGNATEUR (H1) par le predicat de production `hillDesignatorOf` : existe-t-il
       un slot de tag 5 chaine dont le voisin porte un proprietaire qui parle ? Combien de bascules,
       et tombent-elles sur les bornes de MANCHE (`objectiveevents.RealRounds` /
@@ -636,12 +660,61 @@ passe a l'utilisateur.**
       `heldZoneRoles`.
 
 **Gate D3** : (1) attribution >= 80 % / temoin <= 20 % ; (2) exactement 3 zones appariees par
-manche sur >= 2 films ; (3) accord proprietaire >= 90 %. Commandes NUES :
+manche sur >= 2 films ; (3) accord proprietaire >= 90 %.
 
-    go build ./...
-    go vet ./...
-    go test ./internal/analysis/replay/ -run TestEtatVivantTotalControl -v -timeout 60m
-    golangci-lint run --new-from-merge-base=origin/main
+---
+
+#### PROTOCOLE OPERATIONNEL — ECRIT ET COMMITE AVANT LA MESURE (2026-08-26)
+
+> Meme regime que D2-bis et D2-ter : le commit qui porte ce texte ne contient AUCUN chiffre de
+> resultat. Les seuils ci-dessus ne bougent pas ; ce qui suit dit COMMENT ils se mesurent.
+
+**LE CORPUS.** Les films de Total Control du recensement D1 (4 en « Total Control », 3 en
+« Fiesta Total Control »). Leurs identifiants sont listes par `-census`, qui imprime desormais
+les identifiants courts des modes a **12 films ou moins** — les modes rares sont precisement ceux
+dont on a besoin nommement, les modes massifs restent agreges.
+
+**L'OUTILLAGE, ET POURQUOI IL N'Y A PAS D'INSTRUMENT NEUF POUR LE SEUIL (1).**
+`cmd/zone-attribution` EST l'outil de cette mesure — son en-tete le dit : « MESURE le croisement
+quel joueur est DANS quelle zone a l'instant d'une prise », avec son temoin negatif a 12 m
+obligatoire. Il ne lui manque qu'une chose : son role est ECRIT EN DUR
+(`mapvar.RoleStrongholdZone`). Un drapeau `-role` l'ouvre a `totalcontrol_zone` sans toucher a
+sa logique. C'est la meme extension que `-census` : le tri des outils existants avant l'ecriture
+d'un neuf.
+
+**LA DIVISION DU TRAVAIL ENTRE LES TROIS SEUILS**, parce qu'ils n'ont pas les memes besoins :
+
+	seuil (1) attribution   `zone-attribution -role totalcontrol_zone` — il a la base, donc le
+	                        ROSTER, que les instruments du paquet `replay` n'ont pas le droit
+	                        d'ouvrir.
+	seuil (2) cardinalite   les manches viennent du FILM (`objectiveevents.RealRounds`), les
+	                        zones appariees du meme croisement que (1).
+	seuil (3) proprietaire  tag 4 confronte a l'equipe du CAPTEUR — donc au roster, donc dans le
+	                        meme outil que (1).
+
+**REGLE D'ESCALADE, ECRITE D'AVANCE** : un film offrant moins de **6** prises attribuables ne
+compte NI POUR NI CONTRE (denominateur insuffisant). S'il reste **moins de 2** films
+exploitables, le seuil (2) est inatteignable par construction et la mesure S'ARRETE — `[!]`
+corpus, sans chercher d'oracle de remplacement.
+
+**L'ORDRE EST CELUI DU COUT, ET IL S'ARRETE AU PREMIER ECHEC.** (1) d'abord : sans attribution,
+ni la cardinalite ni le proprietaire n'ont de sens, puisque les deux se lisent sur des zones
+appariees. Puis (2). Puis (3). Un seuil rate = NEGATIF ecrit, `totalcontrol_zone` NE rejoint PAS
+`heldZoneRoles`, et l'entree du titre reste `neutral = true` en formes seules.
+
+**LE NIVEAU DE PREUVE DU SEUIL (3) EST DEJA TRANCHE.** Si l'accord du proprietaire retombe sur le
+plafond d'environ 88 % du MEME canal tag 4, avec le meme type d'oracle qu'en D2-bis, la
+**decision utilisateur du 2026-08-26 (option a)** s'etend par coherence : c'est le meme canal,
+mesure de la meme facon, et il serait incoherent de l'accepter sur la colline et de le refuser
+sur les zones. Elle se CITE, elle ne se redemande pas. Elle ne couvre en revanche PAS les seuils
+(1) et (2), qui portent sur l'appariement et non sur le canal.
+
+**Gate D3 — commandes NUES** :
+
+    go vet ./cmd/zone-attribution/ ./internal/analysis/replay/
+    LEVELUP_REPO_ROOT=<repo> go run ./cmd/zone-attribution -census -cache <repo>/data/cache
+    LEVELUP_REPO_ROOT=<repo> go run ./cmd/zone-attribution -role totalcontrol_zone -cache <repo>/data/cache
+    go test ./internal/analysis/replay/... ./cmd/zone-attribution/...
 
 ### D4 — ODDBALL : MESURER l'identite du crane puis son portage (ouverte seulement si D1 le permet)
 
@@ -1072,3 +1145,24 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   periode partiellement couverte par le canal perdait sa partie non couverte** — corrige, les
   trous sortent en intervalles ACTIFS sans camp. Mordant par double mutation (camp retire : 3
   echecs ; comblement des trous retire : 1 echec).
+
+- 2026-08-26 — **LOT RUNNER : l'executeur canonique « un film = un processus BORNE ».** La mesure
+  D3 a sature la machine DE TRAVAIL de l'utilisateur DEUX fois — d'abord 7 films BTB dans un
+  processus, puis, apres correction, un film par processus mais SANS plafond ni priorite basse.
+  **« Un film = un processus » est necessaire et PAS suffisant.** Nouveau paquet
+  `internal/filmproc` : sentinelle memoire a deux plafonds (souple `debug.SetMemoryLimit` + dur
+  par echantillonnage), lanceur parent/enfant avec protocole par CODE DE SORTIE, et **priorite
+  CPU basse** de l'enfant (`BELOW_NORMAL_PRIORITY_CLASS` sous Windows — le poste de travail est
+  la ; sans effet ailleurs, et c'est ecrit comme une decision). Plafond de MESURE a **2 Gio**,
+  distinct des 3 Gio des passes de production : une mesure tourne pendant que l'utilisateur
+  travaille. `zone-attribution` est cable dessus (`-child`), et sa boucle passe TOUJOURS par
+  l'executeur, meme pour un seul film — c'est UN film BTB qui a suffi a prendre la machine.
+  **Garde-rail** `archlint/no_unbounded_film_loop_test.go` : tout site d'appel de `BuildMatch` /
+  `BuildFromFilm` doit etre DECLARE avec sa justification datee et son REGIME de decodage ;
+  l'allowlist se perime toute seule (une entree qui ne designe plus d'appel fait rougir).
+  **DECOUVERTE MAJEURE DU GARDE-RAIL** : `internal/sync/replayartifacts.buildAll` enchaine
+  jusqu'a 5 films a travers `BuildMatch` DANS LE PROCESSUS DU SERVEUR, sans sentinelle — la
+  forme exacte du sinistre du 2026-08-20 (effondrement sur le cinquieme). Local uniquement et
+  best-effort, mais non borne en pic. Declare comme DETTE, pas comme exemption : l'executeur ne
+  s'y transpose pas tel quel (son arret de processus est interdit la ou des handles d'ecriture
+  DuckDB sont tenus, ADR 0013/0019/0030). **Arbitrage superviseur requis.**
