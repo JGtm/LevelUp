@@ -252,7 +252,15 @@ thought_log, mémoire de session.
 
 ## Correctif en cours de pilotage (signalement utilisateur 26/08)
 
-- [ ] FIX-CTF-ZONES : sur `530820e5` (CTF Catalyst) l'utilisateur voit des « bases ».
+- [x] FIX-CTF-ZONES FUSIONNÉ (26/08, tests Go rejoués au principal exit 0). Diagnostic
+  ÉLARGI par l'exécuteur : 3 rôles portaient des formes (flag_delivery 28/14 cartes,
+  stockpile_navpoint 32/16 — tous à forme, assault_bomb 2/2). `points_only` posé PAR
+  MODE sur les 4 modes « qu'on touche » (CTF, Oddball, Stockpile, Assaut) — robuste à
+  une régénération du catalogue ; refusé au chargement sur les rôles surfaciques ;
+  garde 73 entrées x 4 modes avec comptes anti-tautologie ; un test qui FIGEAIT le
+  défaut corrigé (il passait sa propre liste de rôles au lieu de la table versionnée).
+  Aucun changement de contrat. Détail d'origine :
+  sur `530820e5` (CTF Catalyst) l'utilisateur voit des « bases ».
   MÉCANISME ÉTABLI SUR PIÈCES (superviseur) : `map_objectives.json` porte DEUX entrées
   Catalyst (`e859cf75` module=catalyst, drapeaux sans forme ; `f7e8cde9` module="map",
   2 `flag_delivery` AVEC FORME — l'aire de capture du fichier de carte) ; 28
