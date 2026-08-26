@@ -95,6 +95,12 @@ type Rendu struct {
 	// eau : cellules couvertes par un volume d'eau (PoseEau, cf. sddt.go). Un habillage —
 	// jamais consulte par le z-buffer ni par les metriques du banc.
 	eau []bool
+	// ecrete marque les cellules RETIREES de la carte — par l ecretage des toits ou par le
+	// masque des zones nommees. L eau ne s y pose pas :
+	// elle est peinte meme sans matiere (c est sa raison d etre), et sur une carte couverte
+	// elle remplissait alors le trou laisse par l ecretage — 30 970 cellules d eau devenues
+	// 325 353 sur Recharge, une dalle bleue en travers de la carte (mesure du 2026-08-26).
+	ecrete []bool
 }
 
 // NewRendu prepare un rendu sur une emprise et une resolution donnees.

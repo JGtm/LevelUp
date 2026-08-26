@@ -82,6 +82,8 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			Ancres:        c.ancres,
 			Echelle:       e.echelleDe(c.cle),
 			EcreteToits:   e.ecreteToitsDe(c.cle),
+			PlafondArene:  e.plafondAreneDe(c.cle),
+			SansEau:       e.sansEauDe(c.cle),
 			ZonesNommees:  e.zonesNommeesDe(c.cle),
 			RogneAuxZones: e.rogneAuxZonesDe(c.cle),
 		})

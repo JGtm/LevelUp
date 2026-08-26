@@ -440,7 +440,13 @@ func (r *Rendu) Eau(i, j int) bool {
 	if r.eau == nil || i < 0 || i >= r.NX || j < 0 || j >= r.NY {
 		return false
 	}
-	return r.eau[j*r.NX+i]
+	k := j*r.NX + i
+	// Pas d eau dans un pixel VIDE par l ecretage : la peindre la reviendrait a remplir le
+	// trou laisse par un toit retire (cf. Rendu.ecrete).
+	if r.ecrete != nil && r.ecrete[k] {
+		return false
+	}
+	return r.eau[k]
 }
 
 // BordEau dit si une cellule d'eau borde une cellule qui n'en est pas — la berge.

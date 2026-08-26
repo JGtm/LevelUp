@@ -60,9 +60,9 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Streets - Ranked / Streets | `sgh_streets` | 62 | 40.6 | -4,33 | natif | VALIDEE 26/08 — `encre` + cadre + echelle + toits + zones |
 | Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | VALIDEE `encre` 26/08 |
 | Scarr | `btb_engine` | 57 | 65.9 | -0,13 | natif | VALIDEE 26/08 |
-| Bazaar | `ctf_bazaar` | 56 | 39.3 | -4,22 | natif | A FINALISER |
+| Bazaar | `ctf_bazaar` | 56 | 39.3 | -4,22 | natif | VALIDEE 26/08 — les quatre traitements |
 | Illusion | `ctf_illusion` | 56 | 76.3 | -0,26 | natif | A FINALISER |
-| Recharge - Ranked / Recharge | `sgh_blueprint` | 56 | 28.8 | -5,29 | natif | A FINALISER |
+| Recharge - Ranked / Recharge | `sgh_blueprint` | 56 | 28.8 | -5,29 | natif | VALIDEE 26/08 — 6 reglages (plafond 4 m, sans eau) |
 | Aquarius / Aquarius - Ranked | `ctf_aquarius` | 54 | 33.7 | -0,05 | natif | A FINALISER |
 | Chasm | `chasm` | 52 | 100.0 | -0,09 | natif | A FINALISER |
 | Forest - Ranked / Forest | `forest` | 49 | 35.8 | -0,30 | natif | VALIDEE 26/08 |
@@ -298,3 +298,68 @@ Planche : https://claude.ai/code/artifact/b74cff7f-c885-423c-b04e-aa854c260ba9 (
   Ce sont pourtant les plus mal cadrees (88,3 % de largeur occupee, la « bouillie » refusee).
 - Le seuil `SeuilCarteCouverte` (1/3) est en cause plus que le mecanisme de substitution :
   Streets, mesuree a 7,1 %, n'a jamais declenche la voie de reference qui lui allait.
+
+### 2026-08-26 — carte 3, Bazaar
+
+Planche : https://claude.ai/code/artifact/4aa211a3-cd31-423b-b3ad-780f8fbf2e41
+
+**Verbatim** : « validé, on passe à la suivante »
+
+`ctf_bazaar` passe `VALIDEE` avec les quatre traitements (`encre`, 0,034 m/px, cadre rogne,
+ecretage, masque des 29 zones). Matiere utile 621 x 567 -> **2 032 x 1 462 px**.
+
+**Trois chiffres l'ecartent de Streets, et ils sont assumes au verdict** :
+
+1. Le masque retire **39,5 %** de la matiere (1 012 535 sur 2 564 541) contre 20,1 % sur
+   Streets — presque le double. Signale AVANT le verdict, pas apres.
+2. L'ecart mediane-ancres / sol reste a **-3,20 m APRES ecretage** (Streets tombait a -0,29).
+   **Sur Bazaar, les toits n'expliquent PAS l'ecart au sol.** Le defaut de niveau de jeu est
+   donc reel et distinct — le correctif « reference par pixel au lieu d'une mediane unique »
+   reste du, et l'ecretage ne le rendra pas inutile.
+3. L'ecretage a **VIDE 20 856 pixels** (zero sur Streets) : Bazaar a de vrais couvercles sans
+   rien dessous. Le mecanisme sert enfin a ce pour quoi il a ete ecrit.
+
+### 2026-08-26 — carte 4, Recharge : PARKEE, defaut anterieur
+
+`sgh_blueprint` reste `A FINALISER`. Le temoin n'a PAS ete soumis au gate.
+
+**Ce qui bloque** : le fond de Recharge **publie depuis le 2026-08-10** porte deja une DALLE
+BLEUE rectangulaire par-dessus sa structure haute. Verifie en ouvrant le PNG en production.
+Ce n'est donc ni l'ecretage, ni l'echelle, ni le masque — c'est un defaut ANTERIEUR a tout ce
+chantier, simplement rendu voyant par le rognage du cadre (la dalle occupait une petite part
+d'un grand cadre vide ; elle occupe maintenant une grande part d'un cadre serre).
+
+**Hypothese, NON confirmee** : `PoseEau` peint la BOITE ENGLOBANTE d'un volume d'eau
+(`AABBMin`/`AABBMax`, sddt.go). Un volume a grande boite peint donc un grand rectangle. A
+mesurer avant d'y toucher.
+
+**Trois diagnostics successifs faux sur cette carte** — a garder ecrit, la lecon vaut plus que
+les tentatives : (1) « l'ecretage a fait fuir l'eau », refute — la comparaison 30 970 -> 325 353
+mettait en regard deux echelles differentes (0,0920 contre 0,029 m/px, rapport 10 exactement) ;
+(2) « l'eau est hors des zones nommees, le masque la retirera », refute — 130 cellules sur
+1 353 118 tombent hors zones, l'eau est DEDANS ; (3) « l'ecretage revele l'eau », refute — la
+dalle est dans le fond publie, ou aucun ecretage n'a jamais tourne.
+
+**Ce qui a tranche, et qui aurait du etre fait en premier** : ouvrir le PNG en production.
+
+### 2026-08-26 — carte 4, Recharge
+
+Planche : https://claude.ai/code/artifact/93a76c47-17d7-44af-8967-286abce19130
+
+**Verbatim** : « Ok avec 4m, par contre vire l'eau stp »
+
+`sgh_blueprint` passe `VALIDEE` avec SIX reglages : `encre`, 0,029 m/px, cadre rogne,
+ecretage a **plafond 4 m**, masque des zones, **sans eau**. Matiere utile 403 x 542 ->
+1 605 x 1 914 px ; largeur occupee 28,8 % (le pire des 19 natifs) -> quasi tout le cadre.
+
+**Deux axes neufs sont nes de cette carte**, tous deux en donnee :
+
+- `plafondArene` — le cran prevu depuis le 13/08 (« 6 -> 4 si encore trop de toits »).
+  A 4 m : 2 382 213 pixels vides contre 2 043 451, et **24 ancres sur 25** contre 25/25.
+  L'ancre perdue est la LIMITE : une ancre d'objectif est du terrain joue par definition.
+- `sansEau` — l'eau est ECARTEE, pas corrigee. La cause garde son lot.
+
+**Le detour qui a coute le plus cher de la journee** : trois diagnostics faux d'affilee sur la
+dalle bleue (fuite d'eau due a l'ecretage / eau hors zones / ecretage qui revele l'eau), tous
+refutes. Ce qui a tranche : OUVRIR LE PNG EN PRODUCTION, ou la dalle etait deja, depuis le
+10/08. Verse a la recette comme piege n°2.

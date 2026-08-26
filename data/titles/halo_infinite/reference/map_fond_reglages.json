@@ -2,13 +2,24 @@
   "schemaVersion": 1,
   "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage jeu, echelle 0,0920 m/px).",
   "cartes": {
+    "sgh_blueprint": {
+      "carte": "Recharge",
+      "style": "encre",
+      "echelle": 0.029,
+      "ecreteToits": true,
+      "plafondArene": 4,
+      "sansEau": true,
+      "rogneAuxZones": true,
+      "raison": "Gate du 2026-08-26, carte 4. Meme traitement que Streets et Bazaar. Echelle 0,029 m/px : la matiere utile de Recharge ne fait que 37,1 x 49,9 m, soit 403 x 542 px a l echelle de production — c est le fond le plus mal cadre des 19 natifs, 28,8 pour cent de largeur occupee. Ecart mediane-ancres / sol -5,29 m avant traitement, le plus fort des cartes d arene ; Bazaar a montre que l ecretage ne le resorbe pas toujours, donc ce chiffre sera lu APRES cuisson et non suppose. 24 zones de callout au catalogue. ECRETAGE DES TOITS ECARTE SUR CETTE CARTE, en attente d instruction : il vide 2 043 451 pixels, ce qui est enorme, et son effet n a pas pu etre juge parce qu un AUTRE defaut, ANTERIEUR et sans rapport, domine l image. DEFAUT PREEXISTANT A INSTRUIRE : le fond de Recharge publie depuis le 2026-08-10 porte deja une DALLE BLEUE rectangulaire par-dessus sa structure haute. Verifie sur pieces le 2026-08-26 en ouvrant le PNG en production. L eau est posee par la BOITE ENGLOBANTE de son volume (PoseEau lit AABBMin/AABBMax) : sur une carte dont un volume d eau a une grande boite, c est tout le rectangle qui se peint. Hypothese non confirmee — trois diagnostics successifs se sont averes faux sur ce point, celui-ci attend sa mesure et garde son propre lot. VALIDEE par l utilisateur le 2026-08-26 : « Ok avec 4m, par contre vire l eau stp ». Plafond d arene abaisse a 4 m sur son cran documente (6 -> 4 si « encore trop de toits ») : 2 382 213 pixels vides contre 2 043 451 a 6 m, et 24 ancres sur 25 gardent leur sol contre 25 sur 25 — CETTE ANCRE PERDUE EST LA LIMITE, une ancre d objectif est du terrain joue par definition. Eau ECARTEE, pas corrigee.",
+      "gateLe": "2026-08-26"
+    },
     "ctf_bazaar": {
       "carte": "Bazaar",
       "style": "encre",
       "echelle": 0.034,
       "ecreteToits": true,
       "rogneAuxZones": true,
-      "raison": "Gate du 2026-08-26, carte 3. Meme traitement que Streets, qui est la carte la plus proche par sa nature : une rue couverte, dense, dont les toits cachent le terrain. Echelle 0,034 m/px parce que la matiere utile de Bazaar ne fait que 57,1 x 52,2 m, soit 621 x 567 px a l echelle de production. Ecart mediane-ancres / sol -4,22 m avant traitement, le meme ordre que Streets (-4,33 m) dont les toits expliquaient l ecart. 29 zones de callout au catalogue. TEMOIN a valider : rien n est publie tant que le gate n a pas eu lieu.",
+      "raison": "Gate du 2026-08-26, carte 3. Meme traitement que Streets, qui est la carte la plus proche par sa nature : une rue couverte, dense, dont les toits cachent le terrain. Echelle 0,034 m/px parce que la matiere utile de Bazaar ne fait que 57,1 x 52,2 m, soit 621 x 567 px a l echelle de production. Ecart mediane-ancres / sol -4,22 m avant traitement, le meme ordre que Streets (-4,33 m) dont les toits expliquaient l ecart. 29 zones de callout au catalogue. VALIDE par l utilisateur le 2026-08-26. Trois chiffres la separent de Streets et sont assumes : le masque retire 39,5 pour cent de la matiere (1 012 535 cellules sur 2 564 541) contre 20,1 sur Streets ; l ecart mediane-ancres / sol reste a -3,20 m APRES ecretage, donc ici les toits n expliquent PAS l ecart au sol et le defaut de niveau de jeu est reel et distinct ; l ecretage a VIDE 20 856 pixels, contre zero sur Streets, Bazaar ayant de vrais couvercles sans rien dessous.",
       "gateLe": "2026-08-26"
     },
     "ridgeline": {

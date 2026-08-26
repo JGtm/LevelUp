@@ -82,6 +82,15 @@ type OptionsCuisson struct {
 	// hauteur de jeu est VIDE au lieu d etre rendu. Reglage PAR CARTE, jamais un defaut — sur
 	// une carte dont les rochers hauts font l identite, il les efface.
 	EcreteToits bool
+	// PlafondArene : hauteur, en metres, au-dela de la reference locale, a partir de laquelle
+	// une surface cesse d etre tenue pour un etage joue. ZERO = `himap.PlafondArene` (6 m).
+	PlafondArene float64
+	// SansEau ecarte l habillage d eau de cette carte. Reglage PAR CARTE, et il en faut un :
+	// l eau est peinte par la BOITE ENGLOBANTE de son volume (sddt.go), donc une carte dont un
+	// volume a une grande boite recoit un grand rectangle bleu. Recharge en porte un depuis le
+	// 2026-08-10 en production. Tant que le defaut de fond n est pas instruit, l ecarter carte
+	// par carte vaut mieux que publier un aplat faux.
+	SansEau bool
 	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
 	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
 	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
@@ -202,7 +211,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	if opts.EcreteToits {
 		// Voie PAR CARTE, declaree en donnee : elle SUPPRIME de la matiere, ce que la voie de
 		// reference ne fait jamais. Les deux liberent les memes buffers, elles ne se cumulent pas.
-		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s)
+		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
 		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
 	} else {
 		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
@@ -210,7 +219,9 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
 	mesureEtRogneZones(ctx, r, &b, opts)
 	JugeParLesAncres(r, &b, opts.Ancres)
-	PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
+	if !opts.SansEau {
+		PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
+	}
 	slog.InfoContext(ctx, "carte cuite", "module", b.Module,
 		"instances", b.Dessinees, "decor", b.EcarteesDecor,
 		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre),
