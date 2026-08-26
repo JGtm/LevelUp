@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -198,20 +199,22 @@ func TestMapObjectives_DonneesReelles(t *testing.T) {
 	}
 	svc := &replayService{titleSlug: title.DefaultSlug, repoRoot: root}
 	mo := replay.BuildMapObjectives(entry, svc.objectiveRoleSpecs(context.Background(), "Arena:CTF on Catalyst"))
-	if mo == nil || len(mo.Markers) != 7 || len(mo.Zones) != 0 {
-		t.Fatalf("Catalyst CTF : markers=%d zones=%d, attendu 7/0",
+	if mo == nil || len(mo.Markers) != 5 || len(mo.Zones) != 0 {
+		t.Fatalf("Catalyst CTF : markers=%d zones=%d, attendu 5/0",
 			markersCount(mo), zonesCount(mo))
 	}
-	livraisons := 0
+	parRole := map[string]int{}
 	for _, m := range mo.Markers {
-		if m.Role == "flag_delivery" {
-			livraisons++
-		}
+		parRole[m.Role]++
 	}
-	// LES QUATRE LIVRAISONS SORTENT, pas seulement les deux ponctuelles : le correctif
-	// REDESSINE les objets à forme, il ne les écarte pas.
-	if livraisons != 4 {
-		t.Errorf("livraisons servies = %d, attendu 4 (2 ponctuelles + 2 cylindres redessinés)", livraisons)
+	// DEUX LIVRAISONS, PAS QUATRE (correctif du 2026-08-26). Chaque camp porte un ponctuel ET
+	// un volume : le volume est l'AIRE de validation autour du point, pas un second objectif.
+	// Les servir tous les deux affichait deux marqueurs quasi superposés par camp (1,3 u pour
+	// l'équipe 0, 8,7 u pour l'équipe 1) — le premier correctif `points_only` avait échangé une
+	// fausse zone contre un doublon.
+	if parRole["flag_delivery"] != 2 || parRole["flag_spawn"] != 3 {
+		t.Errorf("Catalyst CTF : %d livraison(s) et %d apparition(s), attendu 2 et 3",
+			parRole["flag_delivery"], parRole["flag_spawn"])
 	}
 	// Le spawn NEUTRE (drapeau du milieu, team -1) est servi tel quel : c'est le
 	// variant Neutral Flag qui l'emploie, et l'absence de camp est une donnée.
@@ -284,10 +287,40 @@ func TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue(t *testing.T)
 				t.Errorf("%s sur %s : %d zone(s) servie(s) — un mode ponctuel ne dessine JAMAIS de base",
 					mode, mapID, zonesCount(mo))
 			}
-			// L'objet à forme n'est pas perdu : il est redessiné en marqueur.
-			if formes > 0 && markersCount(mo) < formes {
-				t.Errorf("%s sur %s : %d objet(s) à forme pour seulement %d marqueur(s) — des objectifs ont disparu",
-					mode, mapID, formes, markersCount(mo))
+			// LE (ROLE, CAMP) EST L'UNITE DE LA REGLE (correctif du 2026-08-26) : le ponctuel
+			// est canonique, la forme n'est que son aire. Attendu par (role, camp) : les
+			// ponctuels s'ils existent, SINON les centres des formes — jamais les deux.
+			attendu, parRoleCamp := 0, map[string]int{}
+			for _, spec := range specs {
+				pts, zones := map[int]int{}, map[int]int{}
+				for _, p := range entry.PointsOfRole(spec.Role) {
+					pts[p.TeamIndex]++
+				}
+				for _, z := range entry.ZonesOfRole(spec.Role).Zones {
+					zones[z.TeamIndex]++
+				}
+				camps := map[int]bool{}
+				for tm := range pts {
+					camps[tm] = true
+				}
+				for tm := range zones {
+					camps[tm] = true
+				}
+				for tm := range camps {
+					if pts[tm] > 0 {
+						attendu += pts[tm]
+					} else {
+						attendu += zones[tm]
+					}
+				}
+			}
+			for _, m := range markersOf(mo) {
+				parRoleCamp[fmt.Sprintf("%s/%d", m.Role, m.Team)]++
+			}
+			if markersCount(mo) != attendu {
+				t.Errorf("%s sur %s : %d marqueur(s) servi(s), %d attendu(s) — un (role, camp) sert "+
+					"soit ses ponctuels, soit les centres de ses formes, JAMAIS les deux (%v)",
+					mode, mapID, markersCount(mo), attendu, parRoleCamp)
 			}
 		}
 	}
@@ -357,4 +390,12 @@ func markersCount(mo *replay.MapObjectives) int {
 		return 0
 	}
 	return len(mo.Markers)
+}
+
+// markersOf rend les marqueurs servis, ou rien — evite un deref dans les boucles de garde.
+func markersOf(mo *replay.MapObjectives) []replay.ObjectiveMarkerDTO {
+	if mo == nil {
+		return nil
+	}
+	return mo.Markers
 }
