@@ -12,33 +12,44 @@
 // qui l'introduit à venir l'exclure ici. L'inclusion inverse la charge : une clé
 // inconnue ne sort pas.
 //
-// Rappel ADR 0023 Phase 5 (2026-08-25) : les clés auth de `sync_meta` ne sont plus
-// ni lues ni écrites par l'application, mais elles CONTIENNENT encore leurs
-// dernières valeurs jusqu'au drop physique (recette ADR 0026, prochain rebuild).
-// Un RT résiduel y est donc réel, pas théorique.
+// État réel des clés auth de `sync_meta` (ADR 0023 Phase 5, 2026-08-25) : plus aucun
+// lecteur de RUNTIME — À UNE EXCEPTION PRÈS, la migration one-shot du boot
+// `migrateLegacyAuthTokensAtBoot` (cmd/server/main.go) qui, à CHAQUE démarrage,
+// relit encore `sync_meta.oauth_refresh_token` via duckdb.ReadOAuthRefreshToken
+// (platform/duckdb/queries_auth.go) pour recopier un RT résiduel vers le store.
+// Kill-switch daté : retrait cible 2026-10-01. Les valeurs sont donc non seulement
+// TOUJOURS PRÉSENTES en base (le drop physique des colonnes suit la recette ADR 0026
+// au prochain rebuild), mais encore activement lues : un RT résiduel y est réel, pas
+// théorique.
 //
-// Ajouter une clé ci-dessous = affirmer, avec justification datée, qu'elle n'est
-// PAS un credential ET qu'elle est nécessaire à la démo.
+// Ajouter une clé ci-dessous = affirmer, avec justification datée ET vérifiée sur
+// pièces, qu'elle n'est PAS un credential ET qu'elle a un lecteur réel côté démo.
 // Garde-rails : seed_demo_sync_meta_guard_test.go.
+//
+// PORTÉE : ce verrou couvre le chemin d'EXTRACTION (une player DB de prod → la démo),
+// seul chemin par lequel une donnée réelle peut fuiter. Le seeder SYNTHÉTIQUE
+// (seed_demo_synthetic_player.go) fabrique une base ex nihilo : aucune donnée de prod
+// ne le traverse, donc aucun credential n'y est possible et il n'a pas besoin du même
+// verrou. Il insère encore une ligne `sync_meta.xuid` que personne ne lit (cf. ci-
+// dessous) — résidu de parité de schéma, signalé au journal, non traité ici.
 package ops
 
 import "strings"
 
-// syncMetaKeyXUID : la clé `sync_meta` qui porte le xuid du joueur. Constante
-// dédiée parce que le littéral "xuid" désigne AUSSI, ailleurs dans le package, une
-// colonne SQL et un champ JSON de db_profiles — trois choses distinctes qu'il ne
-// faut pas confondre au moment de toucher l'une d'elles.
-const syncMetaKeyXUID = "xuid"
-
 // demoSyncMetaAllowedKeys : les SEULES clés `sync_meta` recopiées dans la player DB
 // démo. Tout le reste est laissé côté source.
+//
+// La clé `xuid` N'Y EST PAS, et c'est délibéré (revue R1, 2026-08-26) : elle n'a
+// aucun lecteur de production. `duckdb.ResolveXUID` (platform/duckdb/pool.go) et sa
+// requête `Q3ResolveXUID` (platform/duckdb/queries.go) sont du code mort — vérifié
+// sur pièces, leurs seuls appelants sont dans player_repos_test.go. Le xuid du joueur
+// démo vient de la CONFIG écrite par writeDemoConfigsMulti (db_profiles.json), pas de
+// la base. La faire voyager n'apportait rien et coûtait un risque : sa réécriture en
+// DemoXUID était conditionnée à une égalité de valeur (`WHERE key='xuid' AND value=?`)
+// dont personne ne vérifiait le nombre de lignes touchées — deux sources divergentes
+// et le xuid RÉEL du joueur source était publié en silence. Clé retirée, réécriture
+// devenue morte supprimée avec elle.
 var demoSyncMetaAllowedKeys = []string{
-	// NÉCESSAIRE : duckdb.ResolveXUID (Q3ResolveXUID, platform/duckdb/pool.go) résout
-	// le xuid du joueur depuis cette clé quand la config ne le porte pas.
-	// extractPlayerTables la réécrit ensuite en DemoXUID : la valeur publiée est
-	// l'identité démo, jamais celle du joueur source.
-	syncMetaKeyXUID,
-
 	// Sentinelles de migration de la player DB (booléens techniques, aucune donnée
 	// joueur). NÉCESSAIRES : leur absence ferait REJOUER la migration correspondante
 	// sur la base démo lors du applyMigrationsOnPath du seed. Or

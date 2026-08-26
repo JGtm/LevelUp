@@ -887,8 +887,9 @@ func extractSharedTables(
 	return counts, nil
 }
 
-// extractPlayerTables extrait les tables enrichment/citations/sessions/career/sync_meta/skill_rank.
-// Anonymise sourceXUID → demoXUID + met à jour sync_meta.xuid si présent.
+// extractPlayerTables extrait les tables enrichment/citations/sessions/career/sync_meta/skill_rank
+// et anonymise sourceXUID → demoXUID. La table sync_meta est filtrée par la liste
+// d'INCLUSION de seed_demo_sync_meta.go : elle ne porte plus de xuid à réécrire.
 func extractPlayerTables(
 	ctx context.Context,
 	srcPath, dstPath string,
@@ -946,12 +947,10 @@ func extractPlayerTables(
 		// Non bloquant
 		slog.WarnContext(ctx, "seed-demo: anonymize player partielle", "err", err)
 	}
-	// sync_meta.value pour la clé 'xuid' canonique.
-	if _, err := dst.ExecContext(ctx,
-		`UPDATE sync_meta SET value = ? WHERE key = 'xuid' AND value = ?`,
-		demoXUID, sourceXUID); err != nil {
-		slog.WarnContext(ctx, "seed-demo: update sync_meta xuid partielle", "err", err)
-	}
+	// Pas de réécriture de sync_meta.xuid : la clé ne traverse plus (liste d'inclusion,
+	// seed_demo_sync_meta.go). L'UPDATE qui vivait ici était conditionné à une égalité
+	// de valeur (`WHERE key='xuid' AND value=?`) sans contrôle des lignes touchées : sur
+	// deux sources divergentes il n'anonymisait rien et publiait le xuid RÉEL en silence.
 	return counts, nil
 }
 
