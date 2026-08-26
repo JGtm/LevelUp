@@ -1112,6 +1112,16 @@ func main() {
 	// data health + l'action POST /admin/actions/data-health/run.
 	reg.WithHealthScheduler(healthScheduler)
 
+	// Notification Discord groupée « rejeux 2D prêts » (lot B v7.5) : câble le puits
+	// d'artefacts de internal/replaybuild, par lequel passent la construction locale
+	// (post-sync), la livraison d'un ouvrier distant et l'action admin. UN SEUL câblage
+	// dans tout le dépôt (garde-rail archlint/no_second_artifact_sink_test.go) : un
+	// second REMPLACERAIT celui-ci. Posé ici, donc avant le montage des routes
+	// ouvrier et bien avant l'ouverture du port HTTP ; le scheduler d'auto-sync, lui,
+	// démarre quelques lignes plus haut — au pire les tout premiers artefacts d'un cycle
+	// déjà en cours au boot ne sont pas annoncés, jamais un artefact perdu.
+	reg.InstallReplayNotify()
+
 	// Auto-heal LUSR (garde-fou trous d'intérieur) : le cron data_health peut
 	// déclencher un replay du joueur le plus impacté. Câblé vers le runner du
 	// registry (in-server, leases coordonnés). Ne fire que si le kill-switch
@@ -1158,6 +1168,16 @@ func main() {
 	go func() {
 		defer schedulerWG.Done()
 		reg.RunDiskWatchLoop(schedulerCtx)
+	}()
+
+	// Flush des lots de rejeux prêts (lot B v7.5) : à chaque tick, les fenêtres de
+	// groupement échues sortent en UN message chacune. Sur schedulerCtx/schedulerWG comme
+	// la surveillance disque — la boucle ne fait que des lectures shared courtes, drainées
+	// avant duckdb.CloseAll.
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		reg.RunReplayNotifyLoop(schedulerCtx)
 	}()
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
