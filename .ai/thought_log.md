@@ -42,9 +42,14 @@ go test -count=1 ./internal/ops/... 0, go test -tags=integration -run TestSeedDe
 d'un goconst (litteral "xuid" -> constante dediee `syncMetaKeyXUID` : le meme litteral
 designe ailleurs dans le package une colonne SQL et un champ JSON, la constante nomme
 laquelle des trois est visee). `go test ./...` : EXIT 1, unique echec
-`internal/himap` en timeout a 601 s (defaut 10 min) — lenteur locale connue et documentee,
-sans lien avec ce lot (himap n'importe pas internal/ops, verifie par grep) ; corrobore par
-un rejeu isole `-timeout 45m` du meme package.
+`internal/himap` en timeout a 601 s (defaut 10 min). C'est le rouge local documente
+(reference himap : le paquet balaie les modules de carte du JEU INSTALLE, mesure > 3602 s
+sans finir, et il SKIPPE en CI faute de jeu — le verdict d'autorite reste la CI). Conduite
+tenue, conforme a la reference : aucun fichier du diff n'est dans `internal/himap` ni dans
+ses trois imports internes (`analysis/replay`, `analysis/replay/mapvar`, `himodule`) —
+verifie par grep ; le rejeu isole `-timeout 45m` a ete lance puis ABANDONNE a ~30 min sans
+verdict (il n'en aurait pas rendu avant l'heure), on ne bloque donc pas la livraison dessus.
+Arbre de travail verifie propre apres coup (aucun artefact `.png` de himap embarque).
 
 **Conclusion / prochaine etape** : le CODE ne copie plus aucun credential. MAIS le jeu de
 donnees de demo DEJA PUBLIE en prod a ete genere par l'ancien code : il porte donc
