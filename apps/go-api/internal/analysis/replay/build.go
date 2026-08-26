@@ -214,7 +214,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	} else {
 		slog.Info("inventaire : lectures de keyframe",
 			"chunks", invStats.Chunks, "chunksIllisibles", invStats.ChunksUnread,
-			"imagesCles", invStats.Keyframes, "records", invStats.Records)
+			"imagesCles", invStats.Keyframes, "records", invStats.Records,
+			"grenadesParAncre", invStats.GrenadesByAnchor, "grenadesParPosition", invStats.GrenadesByPosition)
 	}
 	opt.Inventory = inventory
 	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare

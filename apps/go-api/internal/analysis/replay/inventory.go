@@ -242,6 +242,17 @@ type KeyframeInventoryStats struct {
 	// lecture, lue ou non — donc ce compte est AUSSI le nombre de lectures rendues : la même
 	// grandeur n'est pas dupliquée sous deux noms.
 	Records int
+	// GrenadesByAnchor / GrenadesByPosition comptent les lectures de compteurs de grenade PAR
+	// VOIE : R2a, ancrée sur la capacité, et R2b, le repli positionnel livré le 2026-08-25
+	// (cf. inventory_grenades_rules.go). Leur somme est le nombre de records dont les grenades
+	// ont été lues ; `Records` en reste le dénominateur.
+	//
+	// LES DEUX SONT COMPTÉES SÉPARÉMENT PARCE QU'ELLES N'ONT PAS LE MÊME STATUT. R2a est exacte
+	// par construction — l'ancre borne le champ. R2b repose sur une LOI DE POSITION mesurée sur
+	// 24 films ; fondue dans un total, une dérive du repli sur un film d'une autre version du
+	// jeu ne se verrait nulle part.
+	GrenadesByAnchor   int
+	GrenadesByPosition int
 }
 
 // InventoryCoverage est la couverture du calque INVENTAIRE (munitions, grenades, capacité,

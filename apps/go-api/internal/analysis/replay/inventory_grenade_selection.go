@@ -7,14 +7,26 @@ package replay
 // invGrenadeSelLo / invGrenadeSelHi bornent, en bits APRÈS la fin de la dernière occurrence
 // de famille d'arme du record, la fenêtre où vit le composant i47 (jeu de grenades :
 // [6 bits masque][3 bits sélection en base 1] — grammaire du dispatch, accord i22↔i47
-// 194/194, RECETTE_LOADOUT_2026-07-27 §1). Position MESURÉE sur les 120 records à i22 lu de
-// 000d5950 : 69 lectures sur 92 tombent à +203..+205, le reste du jitter venant de petits
-// champs à porte en amont ; la fenêtre l'absorbe. LA PUBLICATION NE REPOSE PAS SUR LA
-// POSITION : elle exige masque == bitmap des compteurs i22 ET une sélection UNANIME dans la
-// fenêtre — un débordement rend « non lu », jamais un faux. Validation interne : stabilité
-// intra-vie 26/29, et l'oracle des décréments (un compteur qui décroît entre deux keyframes
-// dit le type lancé) donne 7/7 d'accord côté AVANT, dont 2/2 non tautologiques (porteur à
-// 2+ types). Instrument rejouable : i47_research_test.go (garde I47_FILM).
+// 194/194, RECETTE_LOADOUT_2026-07-27 §1). Position MESURÉE sur les 120 records à i22 lu PAR
+// L'ANCRE (R2a) de 000d5950 — seule voie qui existait alors, et celle que rejoue
+// i47_research_test.go : 69 lectures sur 92 tombent à +203..+205, le reste du jitter venant de
+// petits champs à porte en amont ; la fenêtre l'absorbe.
+//
+// LA POPULATION A GRANDI LE 2026-08-25 (lot grenades-sans-ancre, R2b — voir
+// inventory_grenades_rules.go) : R2a rend TOUJOURS ses 120 lectures inchangées, mais la voie
+// positionnelle en ajoute 30 de plus, portant à 150 le nombre de records à i22 lu sur
+// 000d5950, et à 106 (contre 92) le nombre de sélections i47 rendues (wantInvGrenadeSel,
+// inventory_rules_test.go) — la fenêtre elle-même n'a PAS été recalibrée sur ces 30 records
+// supplémentaires. Un futur recalibrage d'invGrenadeSelLo/Hi part donc de 150 comme
+// dénominateur de population, 106 comme cran de rendement actuel — pas des chiffres 120/92
+// ci-dessus, qui restent la mesure d'origine sur la seule voie R2a.
+//
+// LA PUBLICATION NE REPOSE PAS SUR LA POSITION : elle exige masque == bitmap des compteurs
+// i22 ET une sélection UNANIME dans la fenêtre — un débordement rend « non lu », jamais un
+// faux. Validation interne : stabilité intra-vie 26/29, et l'oracle des décréments (un
+// compteur qui décroît entre deux keyframes dit le type lancé) donne 7/7 d'accord côté AVANT,
+// dont 2/2 non tautologiques (porteur à 2+ types). Instrument rejouable : i47_research_test.go
+// (garde I47_FILM) — mesure toujours limitée à la voie R2a (cf. ci-dessus).
 const (
 	invGrenadeSelLo = 200
 	invGrenadeSelHi = 210

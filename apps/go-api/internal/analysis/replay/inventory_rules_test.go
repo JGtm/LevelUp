@@ -366,11 +366,17 @@ func TestR5ContradictoryReadsRefuse(t *testing.T) {
 // verifie ce qu elles RENDENT ENSEMBLE sur les images-cles du film de reference — les seuls
 // chiffres qui disent si la grammaire tient encore.
 //
-// LES NON-LECTURES SONT PUBLIEES, ET C EST LE POINT : 184 etats pour 132 capacites et 120
+// LES NON-LECTURES SONT PUBLIEES, ET C EST LE POINT : 184 etats pour 132 capacites et 150
 // compteurs de grenade lus. Un decodeur qui remonterait a 184/184 ne serait pas « meilleur » —
 // il aurait cesse de refuser, et il faudrait comprendre pourquoi avant de s en rejouir.
+//
+// LES GRENADES SONT PASSEES DE 120 A 150 LE 2026-08-25, et le chiffre d arrivee n est pas
+// quelconque : 150 est EXACTEMENT le nombre de records dont les munitions sont lues. La voie
+// positionnelle R2b (inventory_grenades_rules.go) se borne au bloc de munitions ; elle rend donc
+// une lecture partout ou ce bloc existe, et nulle part ailleurs. Les 34 records restants sont
+// ceux qui ne portent AUCUNE arme — les lectures vides deja etiquetees (cf. Inventory.Empty).
 func TestInventoryRulesOnRealBinary(t *testing.T) {
-	inv, _, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
+	inv, st, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}
@@ -416,6 +422,8 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 		{"munitions lues (R3+R4)", ammo, wantInvAmmo},
 		{"lectures a plusieurs candidats", multi, wantInvMultiCandidate},
 		{"selection de grenade lue (R5)", grenSel, wantInvGrenadeSel},
+		{"grenades par l ancre (R2a)", st.GrenadesByAnchor, wantInvGrenAnchor},
+		{"grenades par la position (R2b)", st.GrenadesByPosition, wantInvGrenPosition},
 	} {
 		if c.got != c.want {
 			t.Errorf("%s : %d, attendu %d — une regle d ancrage a change de rendement",
@@ -432,8 +440,14 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 // derivees : une valeur attendue qui se recalcule depuis la sortie ne teste rien.
 const (
 	wantInvAbility        = 132
-	wantInvGrenades       = 120
+	wantInvGrenades       = 150
 	wantInvAmmo           = 150
 	wantInvMultiCandidate = 51
-	wantInvGrenadeSel     = 92
+	wantInvGrenadeSel     = 106
+	// LA REPARTITION PAR VOIE EST TENUE A PART de son total : si une regression faisait basculer
+	// des lectures de l ancre vers la position (ou l inverse) sans changer la somme, seul ce
+	// couple de crans le dirait. R2a garde ses 120 lectures — la voie par l ancre reste
+	// prioritaire, donc AUCUNE lecture existante n a change de valeur.
+	wantInvGrenAnchor   = 120
+	wantInvGrenPosition = 30
 )

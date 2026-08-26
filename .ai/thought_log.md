@@ -70819,3 +70819,92 @@ comme structure responsable des ~26 Gio) reste un chantier a part, deja consigne
 (`.ai/V7.5/REGISTRE_REPORTS.md`, ligne « Profiling `51101d1d` ») : ce lot pose le garde-fou de
 monitoring en attendant, il ne profile rien. A rejouer si besoin sur une machine moins
 contrainte : `go build ./...` en isolation complete (aucun autre process Go/gcc concurrent).
+
+## [2026-08-25] Rejeu 2D — LOT 3 : les grenades lues SANS l'ancre de capacite (R2 decouple de R1)
+
+**Statut** : Complete (branche `wt/grenades-sans-ancre`, working tree, aucun commit).
+
+**Decision technique principale** : la lecture des compteurs de grenade (motif i22) ne part plus
+de l'ancre 28 bits de la capacite, mais d'une LOI DE POSITION mesuree avant toute implementation.
+R4 (munitions) borne le debut de son bloc au bit pres par un critere de LARGEUR, sans aucune
+information de capacite ; i22 le precede a un offset mesure dans `[-204, -139]` bits. La regle
+livree — « le PREMIER motif i22 dont le debut tombe dans `[-216, -127]` du debut du bloc de
+munitions » — est un REPLI : R2a (la voie par l'ancre) reste prioritaire, donc aucune lecture
+existante ne change de valeur. Cinq reperes candidats ont ete mis en concurrence sur le meme
+corpus et c'est la mesure qui a tranche (debut de record 76 valeurs d'offset distinctes, fin de
+record 490, derniere famille 81 — contre 22 pour le debut du bloc de munitions). Trois strategies
+de departage ont ete balayees : « premier » est la seule complete ET exacte (1 167/1 167), contre
+« unique » (71,5 % rendues) et « dernier » (78 % justes). Bornee par la position, R2b accepte la
+somme NULLE — « aucune grenade portee » redevient une mesure, ce que le critere `somme > 0` de
+R2a rendait indistinguable d'une non-lecture (104/104 records, mesure du 24/08 §4.4).
+
+**Resultats observes** (memes 24 films, 6 721 records que
+`MESURE_TROUS_INVENTAIRE_2026-08-24.md`) : records ARMES SANS GRENADE **4 278 (63,7 %) -> 1
+(0,015 %)** ; compteurs lus **1 271 (18,9 %) -> 5 551 (82,6 %)** dont 4 379 par la voie
+positionnelle ; **11 films qui ne rendaient AUCUNE grenade en rendent desormais 106 a 230
+chacun**. Trois controles refutables, tous passes : (1) le TEMOIN — meme regle sur une fenetre
+decalee de deux largeurs : 5,4 % de lectures seulement, **100 % de somme nulle et 92 % au meme
+offset unique** (du remplissage), contre 100,0 % pour la fenetre de la loi ; (2) la FORME — les
+offsets trouves sur les records sans ancre tombent sur les MEMES modes que la reference, pas
+etales sur la fenetre ; (3) l'ORACLE INDEPENDANT — les types PORTES (images-cles) contre les
+types LANCES (paquets delta, aucun bit commun) : **0 contre-exemple sur 63 couples (film, rang)**,
+et sur les 20 films ou les deux canaux parlent les vecteurs sont IDENTIQUES ; le temoin (rang
+decale de 1) produit 11 contradictions. Marge : le candidat parasite le plus proche sous une
+position vraie est a 105 bits (minimum sur 1 167 records). Golden du film de reference : **une
+seule ligne bougee, par ajout** (`120 -> 150 avec grenades lues`, soit exactement le nombre de
+records dont les munitions sont lues) ; aucun autre chiffre du document assemble ne change.
+Telemetrie `KeyframeInventoryStats.GrenadesByAnchor/ByPosition` ajoutee, **aucun champ de contrat,
+aucun bump de SchemaVersion**. Gates : `go vet` propre, `go test ./internal/analysis/replay/
+./internal/analysis/filmdec/` vert, `./contracttest/...` vert, `golangci-lint` 0 issue.
+
+**Conclusion / prochaine etape** : la piste 1 du rapport du 24/08 est fermee et livree ; rapport
+detaille dans `.ai/V7.5/replay2d/LOT3_GRENADES_SANS_ANCRE_2026-08-25.md`. Restent ouvertes, et
+notees hors perimetre : le fixture d'entrees fige n'est pas sensible au decodage (le golden
+assemble a porte `120` alors que le decodeur rendait `150` — seul le cran de rendement l'a
+attrape) ; le canal des LANCERS a son propre trou (4 films sur 24 n'en rendent aucun, tous a
+grande equipe) ; la coherence par vie des compteurs (qui demande le pont `FilmIndex -> slot`)
+n'est pas mesuree. La CAPACITE, elle, reste dependante de l'ancre aux images-cles — elle est
+rattrapee par le canal i48 des deltas, et son cas releve toujours du chantier R7.
+
+## [2026-08-25] Rejeu 2D — LOT 3 : revue adversariale, 4 constats corriges
+
+**Statut** : Complete (branche `wt/grenades-sans-ancre`, working tree, aucun commit).
+
+**Decision technique principale** : une revue adversariale du LOT 3 (grenades sans ancre, R2b)
+a releve 4 constats, tous corriges sans fix opportuniste hors perimetre. (1) Telemetrie non
+observee : le slog de `BuildFromFilm` (`build.go`) ne journalisait pas
+`GrenadesByAnchor`/`GrenadesByPosition` alors que leur raison d'etre ecrite l'exigeait — ajoutees
+au meme log (`grenadesParAncre`, `grenadesParPosition`). (2) Seuil de taille : `inventory_decode.go`
+etait a 502 lignes ; le bloc MUNITIONS (R3+R4 : `SlotAmmo`, `readAmmo`, `invParseAmmoBlock`,
+`invSolveAmmoBlock`) en a ete extrait vers un nouveau fichier voisin `inventory_ammo_rules.go`
+(156 L, meme precedent que l'extraction anterieure de `inventory_grenades_rules.go`) —
+`inventory_decode.go` retombe a 360 lignes, comportement inchange. (3) Doc inversee : l'en-tete
+de R5 (`inventory_grenade_selection.go`) citait encore la mesure pre-R2b (120 records, 69/92) ;
+mise a jour avec les chiffres actuels (150 records, `wantInvGrenadeSel`=106) et la mention
+explicite que la mesure d'origine 120/92 ne porte que sur la voie R2a. (4) Population non
+controlee : les records ANCRES a somme nulle (motif i22 entierement nul apres l'ancre — le cas
+« 104/104 » du 24/08 §4.4) etaient classes `invPosHorsSujet` par `invPosObserve` et donc invisibles
+du corpus d'entrainement ET des trois controles refutables. Nouvelle categorie
+`invPosAncreSommeNulle` (`inventory_position_i22_test.go`) + verification dediee
+(`invPosVerifieAncreSommeNulle`) qui reutilise la fonction de PRODUCTION `invGrenadesNearAmmo` et
+le meme oracle des types (lance vs porte) que `TestOracleTypesPortesEtLances` — aucun nouveau
+framework.
+
+**Resultats observes** : rejeu du corpus de reference (INV_CACHE local, `INV_SAMPLE=24`,
+`TestPositionI22`, **436,7 s**) — la nouvelle population `invPosAncreSommeNulle` denombre **102**
+records, dont **102** lus par R2b a somme nulle (0 desaccord avec l'oracle des types, 0 lecture
+R2b muette, 0 film/record ou l'oracle est muet). Ce chiffre reconcilie exactement l'ecart entre
+le §2.1 du rapport (4 278 records CIBLES, sans ancre) et le §4 (4 379 lectures R2b au total) :
+4 277 (cibles lues, le seul restant `97b34406` etant l'« arme sans grenade » isolee) + 102
+(ancres somme nulle, lues) = 4 379. `inventory_rules_test.go` (deja modifie par le lot) verrouille
+`wantInvGrenAnchor=120` / `wantInvGrenPosition=30` sur le film de reference — inchange par cette
+revue. Gates : `go test ./internal/analysis/replay/... ./contracttest/...` vert, `go vet ./...`
+propre, `golangci-lint run --allow-parallel-runners ./internal/analysis/replay/...` 0 issues
+(une CRLF hors perimetre dans `build.go` normalisee en LF pour satisfaire gofmt — meme contenu),
+`wc -l inventory_decode.go` = 360 (seuil 500 respecte).
+
+**Conclusion / prochaine etape** : les 4 constats de la revue sont clos ; rapport reconcilie dans
+`.ai/V7.5/replay2d/LOT3_GRENADES_SANS_ANCRE_2026-08-25.md` (§4, nouvelle sous-section) et §8
+(gates + recapitulatif de la revue). Rien de nouveau ouvert par cette passe : les limites deja
+notees hors perimetre (fixture fige non sensible au decodage, trou du canal des lancers,
+coherence par vie non mesuree, capacite dependante de l'ancre) restent telles quelles.
