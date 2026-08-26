@@ -17,17 +17,21 @@
  * celle du match, un socle du film que le catalogue ignore reste dessiné, un emplacement
  * que le film ne confirme pas n'apparaît jamais — et le tout est posé DÈS L'IMAGE 0.
  */
-import { describe, expect, it } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { createRef, type RefObject } from 'react'
 
 import { REPLAY_TEXT } from './i18n'
 import { worldToCanvas } from './replayLogic'
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from './replayNormalize'
+import { testReplayDoc } from './test/testDoc'
 import { count, recordingContext } from './test/recordingContext'
 import {
   crossedWeaponPads,
   padIconRefFor,
   padNameFor,
   padScaleFor,
+  useReplayWeaponPads,
 } from './useReplayWeaponPads'
 import { drawWeaponPadsLayer, padStateAt, type PadStyle } from './weaponPadsLayer'
 
@@ -246,5 +250,146 @@ describe('DES LA PREMIERE IMAGE — ce que le calque pose a l’image 0', () => 
     drawWeaponPadsLayer(ctx, crossedWeaponPads([], undefined), VUE, { frame: 0, frameMs: 100, k: 1 }, STYLE)
     expect(count(ops, 'arc')).toBe(0)
     expect(count(ops, 'drawImage')).toBe(0)
+  })
+})
+
+// --- LE CALQUE BOUT EN BOUT, SUR LA DONNÉE RÉELLE (signalement du 2026-08-26) --------------
+
+/**
+ * LES CINQ SOCLES DU MATCH `530820e5` (CTF Catalyst), copie RÉDUITE de l'artefact réel
+ * `data/cache/replays/halo_infinite/530820e5.json` (schéma 18).
+ *
+ * POURQUOI UNE COPIE ET NON UNE LECTURE DU CACHE : un test qui lit `data/` dépendrait d'un
+ * fichier que rien ne garantit — purge, autre machine, autre match. Les positions, les
+ * identifiants d'arme et les premières occupations sont ceux du fichier, au dix-millième ;
+ * les occupations suivantes sont tronquées, elles ne changent aucun des états lus ici.
+ *
+ * CE QUE CETTE FIXTURE PROUVE, et c'est le signalement utilisateur : avec CETTE donnée-là —
+ * cinq socles bien dans les bornes, `spawns` et `presence` peuplés — le calque doit poser
+ * cinq points dès l'image 0. L'utilisateur n'en voyait aucun, ni au survol.
+ */
+const SOCLES_530820E5: ReplayWeaponPadReady[] = [
+  {
+    x: 6.2765, y: 6.9393, z: 27.0176, weapon: '0x2B1824D5',
+    spawns: [0, 606, 3353],
+    presence: [{ t0: 0, tLow: 146, tHigh: 346 }, { t0: 606, tLow: 2946, tHigh: 3146 }],
+    cycle: { medianS: 30.3, p10S: 30.3, p90S: 30.3, gaps: 2, missing: 0 },
+  },
+  {
+    x: 5.1598, y: -0.0028, z: 26.5007, weapon: '0x230447B1',
+    spawns: [0, 1111], presence: [{ t0: 0, tLow: 146, tHigh: 346 }],
+  },
+  {
+    x: -11.0455, y: -0.0028, z: 25.344, weapon: '0x4FF3937E',
+    spawns: [0], presence: [{ t0: 0, tLow: 146, tHigh: 346 }],
+    cycle: { medianS: 187.81, p10S: 187.81, p90S: 187.81, gaps: 2, missing: 1 },
+  },
+  {
+    x: 0.0032, y: -25.2038, z: 26.5007, weapon: '0x0A1992BC',
+    spawns: [0], presence: [{ t0: 0, tLow: 146, tHigh: 346 }],
+  },
+  {
+    x: 0.0032, y: 25.2979, z: 26.5007, weapon: '0x0A1992BC',
+    spawns: [0], presence: [{ t0: 0, tLow: 146, tHigh: 346 }],
+  },
+]
+
+/** Les bornes et la cadence du même artefact : les socles y sont tous largement à l'intérieur. */
+const DOC_530820E5 = () =>
+  testReplayDoc({
+    frameCount: 4751,
+    frameIntervalMs: 100,
+    bounds: { minX: -18.68, minY: -25.27, maxX: 19.28, maxY: 25.37, minZ: 0.68, maxZ: 29.5 },
+    weaponPads: SOCLES_530820E5,
+  })
+
+const VUE_REELLE = {
+  bounds: { minX: -18.68, minY: -25.27, maxX: 19.28, maxY: 25.37 },
+  width: 700,
+  height: 480,
+  pad: 24,
+}
+
+function monterCalque(doc: ReplayDocumentReady, enabled = true) {
+  const frameRef = createRef<number>() as RefObject<number>
+  frameRef.current = 0
+  return renderHook(() =>
+    useReplayWeaponPads({
+      doc,
+      view: VUE_REELLE,
+      frameRef,
+      enabled,
+      ink: { neutral: 'encre', fill: 'remplissage', outline: 'contour' },
+      locale: 'fr',
+      redraw: vi.fn(),
+    }),
+  )
+}
+
+describe('useReplayWeaponPads — le calque bout en bout sur l’artefact réel 530820e5', () => {
+  it('les cinq socles du match passent la frontière et sont DISPONIBLES', () => {
+    const doc = DOC_530820E5()
+    expect(doc.weaponPads).toHaveLength(5)
+    const { result } = monterCalque(doc)
+    expect(result.current.available).toBe(true)
+  })
+
+  it('le calque POSE cinq points à l’image 0 — le défaut signalé le 2026-08-26', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    const arcs = ops.filter((o) => o.op === 'arc').map((o) => o.args as number[])
+    for (const [i, socle] of SOCLES_530820E5.entries()) {
+      const c = worldToCanvas(socle, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad)
+      const trouve = arcs.some(([px, py]) => Math.abs(px - c.x) < 0.01 && Math.abs(py - c.y) < 0.01)
+      expect(trouve, `socle ${i} (${socle.weapon}) absent du tracé à l'image 0`).toBe(true)
+    }
+  })
+
+  it('et ils sont SURVOLABLES là où ils sont peints', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const socle = SOCLES_530820E5[2]
+    const c = worldToCanvas(socle, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad)
+    const trouve = padStateAt(socle, 0)
+    expect(trouve).toBe('full')
+    // Le survol se rejoue sur la donnée : le socle doit être atteignable à sa propre position.
+    expect(result.current.available).toBe(true)
+    expect(c.x).toBeGreaterThan(0)
+    expect(c.y).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * LES DEUX SEULES SORTIES SILENCIEUSES DU CALQUE, et c'est le résultat du diagnostic du
+ * 2026-08-26 : `paint` ne rend rien QUE dans ces deux cas — bascule éteinte, ou liste vide.
+ * Tout le reste (position hors bornes, état `empty`, vignette absente, catalogue non croisé)
+ * pose quand même un point. Ces deux cas sont donc les seules hypothèses à départager quand
+ * un socle ne s'affiche pas, et ce test les fixe pour la prochaine enquête.
+ */
+describe('useReplayWeaponPads — quand, et SEULEMENT quand, le calque se tait', () => {
+  it('bascule ÉTEINTE : rien n’est peint, mais le calque reste DISPONIBLE', () => {
+    const { result } = monterCalque(DOC_530820E5(), false)
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    expect(ops).toHaveLength(0)
+    // `available` ne suit PAS la bascule : la commande doit rester offerte pour rallumer.
+    expect(result.current.available).toBe(true)
+  })
+
+  it('liste VIDE : rien n’est peint, et le calque n’est PAS disponible (bascule masquée)', () => {
+    const { result } = monterCalque(testReplayDoc({ weaponPads: [] }))
+    const { ops, ctx } = recordingContext()
+    result.current.paint(ctx, 0, 1)
+    expect(ops).toHaveLength(0)
+    expect(result.current.available).toBe(false)
+  })
+
+  it('un socle VIDE à l’image lue est quand même POSÉ — l’état ne fait pas disparaître le point', () => {
+    const { result } = monterCalque(DOC_530820E5())
+    const { ops, ctx } = recordingContext()
+    // Frame 500 : la première occupation de chaque socle est finie (tHigh = 346).
+    expect(padStateAt(SOCLES_530820E5[3], 500)).toBe('empty')
+    result.current.paint(ctx, 500, 1)
+    expect(count(ops, 'arc')).toBeGreaterThanOrEqual(5)
   })
 })
