@@ -20,10 +20,31 @@ export class FakeParam {
   cancelScheduledValues(t: number) { this.calls.push(['cancel', 0, t]) }
 }
 
+/**
+ * FakeGain note VERS QUOI il est branché depuis le 2026-08-26 (robinet d'enregistrement) :
+ * la question « le son du clip sort-il du même endroit que celui des haut-parleurs ? » ne se
+ * répond pas autrement, et elle casserait en silence — un clip muet ne lève aucune erreur.
+ */
 export class FakeGain {
   gain = new FakeParam()
-  connect() {}
-  disconnect() {}
+  connections: unknown[] = []
+  connect(dest?: unknown) { this.connections.push(dest) }
+  disconnect() { this.connections.length = 0 }
+}
+
+/** Le passe-bas de la chaîne de distance ; il note ses branchements comme le gain. */
+export class FakeFilter {
+  type = ''
+  frequency = new FakeParam()
+  connections: unknown[] = []
+  connect(dest?: unknown) { this.connections.push(dest) }
+  disconnect() { this.connections.length = 0 }
+}
+
+/** Le robinet d'enregistrement : un nœud de sortie qui expose une piste audio. */
+export class FakeStreamDestination {
+  track = { kind: 'audio' } as unknown as MediaStreamTrack
+  stream = { getAudioTracks: () => [this.track] }
 }
 
 export class FakeSource {
@@ -44,9 +65,17 @@ export class FakeContext {
   destination = {}
   gains: FakeGain[] = []
   sources: FakeSource[] = []
+  filters: FakeFilter[] = []
+  streamDests: FakeStreamDestination[] = []
   resumed = 0
   closed = 0
   createGain() { const g = new FakeGain(); this.gains.push(g); return g }
+  createBiquadFilter() { const f = new FakeFilter(); this.filters.push(f); return f }
+  createMediaStreamDestination() {
+    const d = new FakeStreamDestination()
+    this.streamDests.push(d)
+    return d
+  }
   createBufferSource() { const s = new FakeSource(); this.sources.push(s); return s }
   decodeAudioData(raw: ArrayBuffer) {
     // La « durée » du buffer est encodée dans la taille du tampon (1 octet = 0,1 s) : le

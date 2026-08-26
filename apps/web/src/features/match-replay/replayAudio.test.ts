@@ -191,3 +191,52 @@ describe('ReplayAudioPlayer — voix et volume', () => {
     expect(ctx.closed).toBe(1)
   })
 })
+
+/**
+ * LE ROBINET D'ENREGISTREMENT — la sortie parallèle qui alimente la vidéo capturée.
+ *
+ * CE QUI CASSE EN SILENCE ICI, et c'est la raison d'être de ces trois cas : un clip muet ne
+ * lève aucune erreur. Si le robinet se branche ailleurs que la sortie réelle — sur le maître
+ * alors que la chaîne de distance est posée — le son continue de sortir des haut-parleurs et
+ * le fichier, lui, ne contient rien. Rien dans l'interface ne le dirait.
+ */
+describe('ReplayAudioPlayer — la piste d’enregistrement', () => {
+  it('branche le MAÎTRE sur le robinet, en PLUS des haut-parleurs', () => {
+    const p = new ReplayAudioPlayer(1)
+    const master = ctx.gains[0]
+    expect(ctx.streamDests).toHaveLength(0) // rien tant qu'on ne filme pas
+    const track = p.recordingTrack()
+    expect(ctx.streamDests).toHaveLength(1)
+    expect(track).toBe(ctx.streamDests[0].track)
+    // Les DEUX sorties, pas l'une à la place de l'autre : filmer ne coupe pas l'écoute.
+    expect(master.connections).toContain(ctx.destination)
+    expect(master.connections).toContain(ctx.streamDests[0])
+  })
+
+  it('n’ouvre qu’UN robinet, même demandé plusieurs fois', () => {
+    // Un clip suivant reprend la même piste ; en recréer un par enregistrement laisserait
+    // des nœuds derrière lui, et le graphe grossirait à chaque bouton pressé.
+    const p = new ReplayAudioPlayer(1)
+    const a = p.recordingTrack()
+    const b = p.recordingTrack()
+    expect(ctx.streamDests).toHaveLength(1)
+    expect(a).toBe(b)
+  })
+
+  it('suit la CHAÎNE DE DISTANCE : c’est le dernier nœud qui alimente le robinet', () => {
+    const p = new ReplayAudioPlayer(1)
+    p.recordingTrack()
+    p.setDistance({ gainDb: -6, cutoffHz: 4_000 })
+    const filtre = ctx.filters[0]
+    expect(filtre.connections).toContain(ctx.destination)
+    expect(filtre.connections).toContain(ctx.streamDests[0])
+    // Et le maître ne double PLUS la sortie : il passe désormais par la chaîne.
+    expect(ctx.gains[0].connections).not.toContain(ctx.streamDests[0])
+  })
+
+  it('un navigateur sans flux audio rend `null` plutôt que de lever', () => {
+    ;(ctx as unknown as Record<string, unknown>).createMediaStreamDestination = undefined
+    const p = new ReplayAudioPlayer(1)
+    expect(p.recordingTrack()).toBeNull()
+  })
+})
