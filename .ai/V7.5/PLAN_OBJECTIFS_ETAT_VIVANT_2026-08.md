@@ -636,12 +636,61 @@ passe a l'utilisateur.**
       `heldZoneRoles`.
 
 **Gate D3** : (1) attribution >= 80 % / temoin <= 20 % ; (2) exactement 3 zones appariees par
-manche sur >= 2 films ; (3) accord proprietaire >= 90 %. Commandes NUES :
+manche sur >= 2 films ; (3) accord proprietaire >= 90 %.
 
-    go build ./...
-    go vet ./...
-    go test ./internal/analysis/replay/ -run TestEtatVivantTotalControl -v -timeout 60m
-    golangci-lint run --new-from-merge-base=origin/main
+---
+
+#### PROTOCOLE OPERATIONNEL — ECRIT ET COMMITE AVANT LA MESURE (2026-08-26)
+
+> Meme regime que D2-bis et D2-ter : le commit qui porte ce texte ne contient AUCUN chiffre de
+> resultat. Les seuils ci-dessus ne bougent pas ; ce qui suit dit COMMENT ils se mesurent.
+
+**LE CORPUS.** Les films de Total Control du recensement D1 (4 en « Total Control », 3 en
+« Fiesta Total Control »). Leurs identifiants sont listes par `-census`, qui imprime desormais
+les identifiants courts des modes a **12 films ou moins** — les modes rares sont precisement ceux
+dont on a besoin nommement, les modes massifs restent agreges.
+
+**L'OUTILLAGE, ET POURQUOI IL N'Y A PAS D'INSTRUMENT NEUF POUR LE SEUIL (1).**
+`cmd/zone-attribution` EST l'outil de cette mesure — son en-tete le dit : « MESURE le croisement
+quel joueur est DANS quelle zone a l'instant d'une prise », avec son temoin negatif a 12 m
+obligatoire. Il ne lui manque qu'une chose : son role est ECRIT EN DUR
+(`mapvar.RoleStrongholdZone`). Un drapeau `-role` l'ouvre a `totalcontrol_zone` sans toucher a
+sa logique. C'est la meme extension que `-census` : le tri des outils existants avant l'ecriture
+d'un neuf.
+
+**LA DIVISION DU TRAVAIL ENTRE LES TROIS SEUILS**, parce qu'ils n'ont pas les memes besoins :
+
+	seuil (1) attribution   `zone-attribution -role totalcontrol_zone` — il a la base, donc le
+	                        ROSTER, que les instruments du paquet `replay` n'ont pas le droit
+	                        d'ouvrir.
+	seuil (2) cardinalite   les manches viennent du FILM (`objectiveevents.RealRounds`), les
+	                        zones appariees du meme croisement que (1).
+	seuil (3) proprietaire  tag 4 confronte a l'equipe du CAPTEUR — donc au roster, donc dans le
+	                        meme outil que (1).
+
+**REGLE D'ESCALADE, ECRITE D'AVANCE** : un film offrant moins de **6** prises attribuables ne
+compte NI POUR NI CONTRE (denominateur insuffisant). S'il reste **moins de 2** films
+exploitables, le seuil (2) est inatteignable par construction et la mesure S'ARRETE — `[!]`
+corpus, sans chercher d'oracle de remplacement.
+
+**L'ORDRE EST CELUI DU COUT, ET IL S'ARRETE AU PREMIER ECHEC.** (1) d'abord : sans attribution,
+ni la cardinalite ni le proprietaire n'ont de sens, puisque les deux se lisent sur des zones
+appariees. Puis (2). Puis (3). Un seuil rate = NEGATIF ecrit, `totalcontrol_zone` NE rejoint PAS
+`heldZoneRoles`, et l'entree du titre reste `neutral = true` en formes seules.
+
+**LE NIVEAU DE PREUVE DU SEUIL (3) EST DEJA TRANCHE.** Si l'accord du proprietaire retombe sur le
+plafond d'environ 88 % du MEME canal tag 4, avec le meme type d'oracle qu'en D2-bis, la
+**decision utilisateur du 2026-08-26 (option a)** s'etend par coherence : c'est le meme canal,
+mesure de la meme facon, et il serait incoherent de l'accepter sur la colline et de le refuser
+sur les zones. Elle se CITE, elle ne se redemande pas. Elle ne couvre en revanche PAS les seuils
+(1) et (2), qui portent sur l'appariement et non sur le canal.
+
+**Gate D3 — commandes NUES** :
+
+    go vet ./cmd/zone-attribution/ ./internal/analysis/replay/
+    LEVELUP_REPO_ROOT=<repo> go run ./cmd/zone-attribution -census -cache <repo>/data/cache
+    LEVELUP_REPO_ROOT=<repo> go run ./cmd/zone-attribution -role totalcontrol_zone -cache <repo>/data/cache
+    go test ./internal/analysis/replay/... ./cmd/zone-attribution/...
 
 ### D4 — ODDBALL : MESURER l'identite du crane puis son portage (ouverte seulement si D1 le permet)
 
