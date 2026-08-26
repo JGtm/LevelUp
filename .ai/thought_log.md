@@ -72692,3 +72692,87 @@ cache des calques cuits.
 **Conclusion / prochaine etape** : point A du plan (style par carte en donnee + garde-rail +
 planche de comparaison `jeu`/`encre` sur les 11 cartes non closes). Les zones jamais foulees
 restent une SECONDE BASE DE TRAVAIL (precision utilisateur), pas une regle de rendu final.
+
+---
+
+## [2026-08-26] Cartes — l'echelle du fond devient une entree, et la doctrine « aucun reglage par carte » est amendee
+
+**Statut** : En cours (branche `wt/cartes-revue-par-carte`, cuisson `encre` des 19 natifs en fond).
+
+**Decision technique principale** : demande utilisateur du jour — « faut generer des fonds de
+cartes a une taille minimale au moins pour pas que ce soit trop pixelise ». Le cadre etant
+propre a chaque carte et l'echelle FIXE (`EchelleFondCarte` = 0,0920 m/px), une petite arene
+rend une petite image : mesure du jour sur la matiere reellement dessinee, Aquarius 506 x 336 px,
+Recharge 403 x 542, Forest 509 x 615, Streets 549 x 426, Bazaar 621 x 567. Agrandies a l'ecran
+elles pixelisent, et le zoom demande le meme jour ne ferait qu'aggraver le defaut.
+
+`OptionsCuisson.Echelle` et `OptionsCuissonForge.Echelle` (zero = production),
+`CadreSurAncresEchelle`, drapeau `--mpp` sur `mapfond-build`. Le CADRE MONDE ne bouge pas :
+seule la finesse de la grille change, donc deux echelles de la meme carte se superposent
+exactement une fois remises a l'echelle — c'est ce qui rend le reglage comparable au gate.
+
+**L'amendement de doctrine, et il devait etre ecrit dans le meme commit** : l'en-tete de
+`cuisson.go` proclamait « AUCUN REGLAGE PAR CARTE. C'est la propriete qui rend la chaine
+transferable ». Le gate du 26/08 l'a tranchee dans l'autre sens sur DEUX axes, images a
+l'appui : l'habillage (`encre` sur Cliffhanger, `jeu` sur Catalyst) et l'echelle. L'en-tete est
+donc reecrit — laisser la doctrine d'origine en place aurait fabrique une doc inversee sur la
+regle la plus structurante du paquet. Ce qui reste interdit, et c'est la vraie regle : une
+BRANCHE par carte dans `himap`. Les deux axes sont des ENTREES, choisies en DONNEE par
+l'appelant, avec raison ecrite et date de gate ; la chaine ne sait pas quelle carte elle cuit.
+
+**Resultats observes** : a completer — cuisson `encre` des 19 natifs en cours, gates Go non
+encore rejoues (regle « pas deux commandes Go concurrentes » : la compilation attend la fin de
+la cuisson).
+
+**Conclusion / prochaine etape** : planche de comparaison `jeu` / `encre` a publier des la fin
+de la cuisson, puis choix de N (taille utile minimale en pixels) sur planche et non au juge.
+Point de vigilance ecrit au plan : `metersPerPixel` est PUBLIE dans le sidecar, les lecteurs
+s'y fient, et le banc de non-regression compare a 0,0920 m/px — toute carte re-cuite a une
+autre echelle doit repasser le banc, pas le contourner.
+
+---
+
+## [2026-08-26] REGRESSION DE DONNEE — le catalogue d'objectifs avait perdu 59 modules sur 71
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : trouvee en cuisant les 19 natifs en style `encre` — la
+cuisson n'en a rendu que **11**, sans erreur ni echec. Cause etablie sur pieces, par comparaison
+des versions du catalogue :
+
+| version | entrees | modules distincts | a `module: "map"` |
+|---|---:|---:|---:|
+| `79cf8e803` (13/08) | 72 | 71 | 2 |
+| `fec6b9bf9` (20/08) | 73 | 71 | 2 |
+| **`d50f3b728` (25/08)** | 73 | **12** | **58** |
+
+`d50f3b728` est le re-tirage reseau des 73 cartes (« 133 -> 273 collines, 0 perdue »).
+`mapEntry.Module` est derive du NOM DU FICHIER `.mvar` : depuis le depot de variantes ce nom
+est descriptif (`cliffhanger_ridgeline.mvar`), depuis le RESEAU il ne l'est pas — le code le
+documentait deja ailleurs (`saveVariantFile` : « plusieurs cartes exposent un fichier nomme
+`map.mvar` »). Le re-tirage a donc ecrase `module` par `map` sur 58 entrees.
+
+**Consequence, et c'est elle qui bloquait le chantier** : `mapfond-build` ne savait plus cuire
+que **11 des 19 fonds natifs publies**. Devenues incuisables : Cliffhanger, Aquarius, Prism,
+Streets, Recharge, Chasm, Launch Site, Behemoth — dont **six sont exactement les cartes que
+l'utilisateur venait de demander a retravailler** le jour meme. Une re-cuisson de masse aurait
+produit 11 fonds sur 19 et signale zero echec.
+
+**Pourquoi rien ne l'a vu** : le garde-rail du lot fautif comptait les COLLINES (« 0 perdue »)
+et il etait vert. Un garde-rail ne protege que le champ qu'il compte.
+
+**Resultats observes** : (1) donnee reparee — `module` restaure par map_id depuis `fec6b9bf9`,
+**66 entrees corrigees**, catalogue de nouveau a 71 modules distincts et 73 entrees, les deux
+seules entrees restant a `map` etant Vagabond et une variante de Highpower (les deux cartes dont
+le reseau sert reellement un `map.mvar`, mesure du 08/08). (2) cause corrigee — `gardeModuleConnu`
+dans `mapobj-build` : le reseau ne connait pas le module d'une carte, il ne peut que le perdre,
+donc un module deja au catalogue est conserve tel quel. (3) garde-rail pose sur le champ
+lui-meme — `TestCatalogueObjectifsModulesDistincts` sur l'asset PUBLIE (>= 70 modules distincts,
+<= 2 entrees par module), avec ses seuils documentes comme non relevables. **Mordant verifie par
+mutation** : remis le catalogue de HEAD, le test rougit sur les trois assertions (12 modules,
+`map` porte par 58 entrees) ; donnee restauree ensuite.
+
+**Conclusion / prochaine etape** : le chantier des cartes est debloque ; re-cuisson `encre` des
+19 natifs relancee pour la planche de comparaison `jeu` / `encre`. A verifier au passage : les
+autres assets derives du catalogue depuis le 25/08 (bornes, socles) n'ont-ils pas ete cuits
+avec les modules effaces.

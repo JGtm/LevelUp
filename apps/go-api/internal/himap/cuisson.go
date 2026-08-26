@@ -18,9 +18,17 @@
 //	eau       volumes sddt (PoseEau)                             tag de la carte
 //	niveau    mediane des ancres moins AncrageDecalageSol        ancres
 //
-// AUCUN REGLAGE PAR CARTE. C'est la propriete qui rend la chaine transferable : une seule carte
-// (Cliffhanger) possede l'oracle fort des positions de joueur, regler carte par carte serait
-// donc impossible en principe, pas seulement penible.
+// LA RECETTE EST UNIVERSELLE, SES REGLAGES NE LE SONT PLUS TOUS. Jusqu'au 2026-08-26 la chaine
+// ne portait aucun reglage par carte, et c'est ce qui la rendait transferable : une seule carte
+// (Cliffhanger) possede l'oracle fort des positions de joueur, donc regler carte par carte etait
+// impossible en principe. Le gate utilisateur du 26/08 a tranche l'inverse sur DEUX axes, et il
+// avait des images a l'appui : l'habillage (`encre` sur Cliffhanger, `jeu` sur Catalyst) et
+// l'ECHELLE (une petite arene rend une petite image, donc pixelisee a l'ecran).
+//
+// CE QUI RESTE INTERDIT, et c'est la vraie regle : une BRANCHE par carte dans ce paquet. Les
+// deux axes ci-dessus sont des ENTREES (`OptionsCuisson`), choisies en DONNEE par l'appelant,
+// avec leur raison ecrite et la date de leur gate. La chaine, elle, ne sait pas quelle carte
+// elle cuit.
 //
 // DEGRADATIONS : une carte sans tag sddt, sans volume d'eau, ou dont la frontiere exclut des
 // ancres, est SIGNALEE (journal + `BilanCuisson.Degradations`) et cuite quand meme. Jamais
@@ -70,6 +78,27 @@ type OptionsCuisson struct {
 	// SansFrontiere neutralise la coquille de mort. TEMOIN de comparaison uniquement :
 	// jamais une option de production.
 	SansFrontiere bool
+	// Echelle est le cote d'un pixel du fond, en metres. ZERO = `EchelleFondCarte`.
+	//
+	// POURQUOI CE N'EST PLUS UNE CONSTANTE (2026-08-26). Le cadre est propre a chaque carte,
+	// donc a echelle FIXE une petite arene rend une petite image : mesure du jour, la matiere
+	// d'Aquarius n'occupe que 506 x 336 px. Agrandie a l'ecran, elle pixelise. L'echelle est
+	// donc un reglage PAR CARTE — comme le style — et la regle qui la choisit se derive d'une
+	// taille utile minimale, elle ne se decrete pas carte par carte.
+	//
+	// Toute valeur autre que `EchelleFondCarte` change le calage publie : le sidecar porte
+	// `metersPerPixel`, les lecteurs s'y fient, et le banc de non-regression compare a
+	// 0,0920 m/px (`TestEchelleDeProductionEgaleCelleDuBanc`).
+	Echelle float64
+}
+
+// echelleOuDefaut rend l'echelle demandee, ou celle de production si aucune ne l'est. Une
+// echelle negative ou nulle n'est pas une erreur a remonter : c'est le champ laisse vide.
+func (o OptionsCuisson) echelleOuDefaut() float64 {
+	if o.Echelle > 0 {
+		return o.Echelle
+	}
+	return EchelleFondCarte
 }
 
 // BilanCuisson chiffre ce que la cuisson a fait. Il est publie avec l'asset : un fond de carte
@@ -136,7 +165,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	if len(opts.Ancres) == 0 {
 		return nil, b, ErrSansAncre
 	}
-	r := CadreSurAncres(opts.Ancres)
+	r := CadreSurAncresEchelle(opts.Ancres, opts.echelleOuDefaut())
 	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
 	b.NiveauDeJeu = zJeu
 	// La tranche est TRANSLATEE AU SOL JOUE — meme regle que la chaine Forge, et pour la meme
@@ -166,6 +195,16 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 
 // CadreSurAncres prepare un rendu borne au voisinage des ancres, a l'echelle de production.
 func CadreSurAncres(ancres [][3]float64) *Rendu {
+	return CadreSurAncresEchelle(ancres, EchelleFondCarte)
+}
+
+// CadreSurAncresEchelle est `CadreSurAncres` a une echelle choisie (cote du pixel, en metres).
+//
+// Le CADRE MONDE est le meme — seule la finesse de la grille change, donc la taille en pixels
+// de l'image et son `metersPerPixel` publie. Deux fonds de la meme carte a deux echelles se
+// superposent donc exactement une fois remis a l'echelle : c'est ce qui rend le reglage
+// comparable au gate.
+func CadreSurAncresEchelle(ancres [][3]float64, cell float64) *Rendu {
 	lo := [2]float64{math.Inf(1), math.Inf(1)}
 	hi := [2]float64{math.Inf(-1), math.Inf(-1)}
 	for _, a := range ancres {
@@ -174,7 +213,7 @@ func CadreSurAncres(ancres [][3]float64) *Rendu {
 			hi[k] = math.Max(hi[k], a[k]+MargeCadre)
 		}
 	}
-	return NewRendu(lo, hi, EchelleFondCarte)
+	return NewRendu(lo, hi, cell)
 }
 
 // peupleDepuisModule resout l'index de modules, choisit le bsp par les ancres, et peuple.

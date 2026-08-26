@@ -177,7 +177,7 @@ cuissons durent 25 a 30 min, lancees en fond, rien d'autre en Go pendant.
 
 Verdicts et verbatim : `REGISTRE_CARTES.md`, journal des verdicts. Trois consequences.
 
-### A. Le STYLE devient un choix par carte — le premier levier, et le moins cher
+### A. Le STYLE et l'ECHELLE deviennent des choix par carte — le premier levier
 
 Le gate a demande le style `encre` sur Cliffhanger et le rendu du temoin (style `jeu`) sur
 Catalyst : **le meilleur habillage n'est pas le meme d'une carte a l'autre**. Or les deux
@@ -217,3 +217,34 @@ demande. Le gel n'a plus de raison d'etre et doit etre retire AVEC sa justificat
 - **Zones jamais foulees** : precision utilisateur — elles sont une SECONDE BASE DE TRAVAIL
   pour converger vers une version valide, PAS une regle de rendu final. Elles restent
   l'instrument de la phase 2.2 ; rien ne se publie a partir d'elles sans gate.
+
+### E. L'ECHELLE : une taille utile minimale, pas une constante (demande du 26/08)
+
+> « faut generer des fonds de cartes a une taille minimale au moins pour pas que ce soit trop
+> pixelise »
+
+Le cadre etant propre a chaque carte et l'echelle etant FIXE (`EchelleFondCarte` = 0,0920 m/px),
+une petite arene rend une petite image. Mesure du jour, sur la matiere reellement dessinee :
+
+| carte | matiere (px) |
+|---|---|
+| Aquarius | 506 x 336 |
+| Recharge | 403 x 542 |
+| Forest | 509 x 615 |
+| Streets | 549 x 426 |
+| Bazaar | 621 x 567 |
+
+Agrandies a l'ecran, elles pixelisent — et le zoom demande le meme jour ne ferait qu'aggraver
+le defaut. **La regle n'est pas « une echelle par carte decretee a la main »** : c'est une
+TAILLE UTILE MINIMALE, d'ou l'echelle se derive (`mpp = min(0,0920 ; taille utile monde / N`).
+Une regle, un resultat par carte.
+
+- [x] E.1 `OptionsCuisson.Echelle` / `OptionsCuissonForge.Echelle` (zero = production),
+      `CadreSurAncresEchelle`, drapeau `--mpp` sur `mapfond-build`. Le CADRE MONDE ne bouge
+      pas : deux echelles de la meme carte se superposent exactement une fois remises a
+      l'echelle, ce qui rend le reglage comparable au gate.
+- [ ] E.2 Choisir N (taille utile minimale, en pixels) sur planche, pas au jugé.
+- [ ] E.3 Consequence a ne pas manquer : `metersPerPixel` est PUBLIE dans le sidecar et les
+      lecteurs s'y fient ; le banc de non-regression compare a 0,0920 m/px
+      (`TestEchelleDeProductionEgaleCelleDuBanc`). Toute carte re-cuite a une autre echelle
+      doit repasser le banc, pas le contourner.
