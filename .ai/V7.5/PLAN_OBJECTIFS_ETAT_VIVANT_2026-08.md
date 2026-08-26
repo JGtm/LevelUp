@@ -498,6 +498,59 @@ technique : le superviseur ou l'utilisateur peut juger que 88-89 % avec un temoi
 pour un calque de rejeu — c'est une decision PRODUIT sur le niveau de preuve, et elle ne
 m'appartient pas.
 
+### D2-ter — KOTH : le meme canal, l'oracle CONTINU du score PERSONNEL
+
+> **ECRIT ET COMMITE AVANT LA MESURE**, comme D2-bis. Le commit qui porte ce texte ne contient
+> aucun chiffre de resultat.
+
+**LA JUSTIFICATION D'ARBITRAGE, ET ELLE EST FINE.** D2-bis a mesure 87-89 % avec une tolerance
+de +/- 20 s. Or cette tolerance porte l'imprecision de l'ORACLE, pas celle du canal : les
+evenements `th=10` sont dates au bloc de temps fort, pas a l'action. Les 11 a 13 % d'ecart
+pourraient donc etre le PLANCHER DE BRUIT de l'oracle et non l'erreur du canal. Un oracle
+CONTINU — qui ne demande aucune tolerance d'appariement — mesure le canal lui-meme. C'est le
+dernier oracle disponible ; il n'y en aura pas de quatrieme.
+
+**CE QUI EST TESTE** : pendant qu'un camp TIENT la colline selon le canal, ce sont les joueurs
+DE CE CAMP dont le score personnel monte.
+
+- [ ] D2t.1 Pont slot -> xuid par les INSTANTS DE MORT (`objectiveevents.SlotIdentityByDeaths`,
+      celui de la production) puis xuid -> camp par le ROSTER FIGE du corpus. Aucune base.
+- [ ] D2t.2 Oracle : `SeriesTotal(recs, PersonalScoreComponent, false)`, serie cumulee par slot
+      de JOUEUR. Delta par CAMP sur chaque intervalle = somme des deltas de ses joueurs.
+- [ ] D2t.3 Intervalles : les memes qu'en D2 — valeur du tag 4 CONSTANTE et NOMMEE, segmentation
+      `mergeZoneRuns`. Duree minimale **5 s** : le score personnel tique a la seconde, et un
+      intervalle plus court n'accumule rien de lisible.
+- [ ] D2t.4 Temoins et verdict.
+
+**LA CONFRONTATION EXIGE UNE DOMINANCE, ET LE SEUIL EST ECRIT ICI.** En KOTH le score personnel
+monte AUSSI par les frags, des deux cotes : « un seul camp marque » ne se produirait presque
+jamais. Un intervalle est donc CONFRONTABLE quand un camp domine nettement —
+`max >= 2 x min` **ET** `max >= 5` points. Sinon il s'abstient, et l'abstention est COMPTEE.
+Ces deux nombres sont poses avant la mesure : 2x ecarte le coude a coude ou le bruit des frags
+decide, 5 points ecarte les intervalles ou personne n'a rien accumule.
+
+**TEMOIN (a) — PERMUTATION, AVEC LA LECON DE `606d9844`.** En D2-bis, le « pire autre canal »
+elu etait `d.slot+2`, le capteur du MEME objet de mode : un frere, pas une permutation.
+L'exclusion est desormais **STRUCTURELLE** et non une liste : l'objet de mode occupe quatre
+slots consecutifs a partir du designateur ([tag 5][tag 4 proprietaire][tag 4 capteur][tag 3
+jauge], `zone_states_hill.go`), donc **tout slot de `d.slot` a `d.slot+3` est exclu du temoin**.
+Un canal frere ne peut plus etre oppose a l'objet dont il fait partie.
+
+**TEMOIN (b) — DECALAGE +60 s.** Sans fenetre de tolerance ici, le decalage est un temoin plus
+faible qu'en D2-bis (le score s'accumule continument) : il est mesure et publie, mais c'est le
+temoin (a) qui porte la charge de la preuve. Le dire d'avance evite de le surinterpreter apres.
+
+**SEUILS INCHANGES** : accord >= **90 %** sur >= **3 des 4** films exploitables ; temoins
+<= **60 %**. **ESCALADE** : moins de **6** intervalles confrontables = film non exploitable.
+**IL N'Y A PAS DE D2-quater** : si le gate echoue encore avec un contraste propre, la decision
+passe a l'utilisateur, elle ne se remesure pas.
+
+**Gate D2-ter** — commandes NUES, un film par processus :
+
+    go vet ./internal/analysis/replay/
+    ZONE_FILM=<chunks d'un film> go test ./internal/analysis/replay/ -run CollineProprietaireD2Ter -v -timeout 60m
+    go test ./internal/analysis/replay/...
+
 ### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
 
 - [ ] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
