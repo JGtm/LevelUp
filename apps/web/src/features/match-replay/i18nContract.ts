@@ -112,6 +112,13 @@ export interface ReplayText {
   sound: string
   soundHint: string
   soundVolume: string
+  /**
+   * LE CURSEUR DE VOLUME QUAND LE SON EST COUPÉ (demande utilisateur du 2026-08-25 : « couper
+   * le son ne doit plus faire disparaître la barre de volume »). Le curseur RESTE, à zéro et
+   * inerte ; ce texte est ce qui l'empêche de se lire comme un réglage cassé — il dit l'état
+   * (zéro) ET ce que fera le retour du son (le niveau réglé revient, il n'est pas perdu).
+   */
+  soundVolumeMutedHint: string
   /** Le son est activé mais tu par la vitesse de lecture — le dire, pas le cacher. */
   soundFastHint: string
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
@@ -303,27 +310,6 @@ export interface ReplayText {
   /** Frags / morts / assistances : deux grandeurs qui ne se confondent pas. */
   countersLive: string
   countersMatch: string
-  /**
-   * TEMPS MORT CUMULÉ du joueur sur tout le match (`deadTimeLogic`) : la somme des
-   * intervalles entre une mort et le retour suivant, écrite `mm:ss`.
-   *
-   * C'EST UN TOTAL DE MATCH, PAS UNE VALEUR À L'INSTANT LU — il ne tique pas avec la lecture,
-   * contrairement aux compteurs ci-dessus. Le libellé le porte donc seul : il nomme la
-   * grandeur, et sa méthode (intervalles LUS, sans constante de réapparition, sans compter
-   * avant la première vie ni après la dernière) vit dans `deadTimeLogic.ts`.
-   */
-  deadTimeLabel: string
-  /**
-   * LA MESURE REFUSÉE, et POURQUOI elle l'est. La ligne écrit alors un tiret, et ce texte est
-   * ce qui empêche de le lire comme une panne d'affichage : le film porte des vies que son
-   * pont slot -> xuid ne rattache à personne, et l'une d'elles vit dans un trou de ce joueur
-   * (ou bien il n'a AUCUNE vie publiée). Le trou n'est donc pas prouvé être une mort.
-   *
-   * IL DIT LA CAUSE EN LANGUE DE L'UTILISATEUR, PAS LE MÉCANISME : ni « xuid », ni « slot »,
-   * ni « track » — un lecteur du rejeu n'a pas à connaître le transport pour comprendre qu'il
-   * manque un rattachement.
-   */
-  deadTimeUnmeasurable: string
   /**
    * LE BANDEAU DE SCORE au-dessus du terrain : deux barres de camp encadrant l'horloge de
    * lecture. Les deux camps s'y nomment par leur RAPPORT au joueur de la page (allié /

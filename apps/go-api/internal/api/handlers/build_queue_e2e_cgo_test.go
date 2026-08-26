@@ -44,7 +44,7 @@ func e2eStack(t *testing.T) (*httptest.Server, *ops.MonitoringStore) {
 		st.ClaimBuildJob,
 		st.CompleteBuildJob,
 		st.HeartbeatBuildWorker)
-	adminH := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).
+	adminH := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).
 		WithBuildQueue(func(ctx context.Context, limit int) (domain.AdminBuildQueueResponse, error) {
 			resp, rerr := st.BuildQueueReport(ctx, limit)
 			resp.Enabled = true

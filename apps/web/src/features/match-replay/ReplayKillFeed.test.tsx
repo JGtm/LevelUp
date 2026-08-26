@@ -118,9 +118,14 @@ describe('ReplayKillFeed — synchronisation et permanence', () => {
     expect(screen.getByText('Cobra01')).toBeTruthy()
   })
 
-  it('dit le compte : lignes affichées / total du match', () => {
-    renderFeed(kills, 35_400)
-    expect(screen.getByText('1 / 2')).toBeTruthy()
+  // VERROU DU RETRAIT (demande utilisateur du 2026-08-25) : le compteur « affichées / total »
+  // du coin haut-droit est parti. Ce cas montait exactement la situation où il s'écrivait
+  // (une ligne visible sur deux du match) — il vérifie maintenant qu'aucun rapport de ce
+  // genre ne s'écrit plus, quel qu'en soit le libellé.
+  it("n'écrit AUCUN compteur « affichées / total » dans son en-tête", () => {
+    const { container } = renderFeed(kills, 35_400)
+    expect(screen.queryByText('1 / 2')).toBeNull()
+    expect(container.textContent).not.toMatch(/\d+\s*\/\s*\d+/)
   })
 
   it('SANS RECALAGE, le même kill serait affiché ~18 s trop tôt — le témoin le montre', () => {
