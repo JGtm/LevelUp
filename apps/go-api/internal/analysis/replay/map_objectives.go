@@ -73,6 +73,10 @@ type ObjectiveRoleSpec struct {
 	// Neutral force Team=-1 sur tous les objets du rôle (possession dynamique non
 	// décodée : afficher la couleur du fichier affirmerait une allégeance inventée).
 	Neutral bool
+	// PointsOnly force le rôle en PONCTUEL : un objet à forme sort en MARQUEUR posé à son
+	// centre, jamais en zone dessinée. Cf. `mappings.ObjectiveModeEntry.PointsOnly` pour
+	// le pourquoi (correctif « des bases s'affichent sur un CTF », 2026-08-26).
+	PointsOnly bool
 }
 
 // BuildMapObjectives pose les objets des rôles demandés en DTO. Rend nil quand rien
@@ -81,6 +85,11 @@ type ObjectiveRoleSpec struct {
 // Les rôles sont traités DANS L'ORDRE DONNÉ et dédupliqués (première spécification
 // gagne) : deux entrées de la table qui matchent le même mode ne servent pas deux fois
 // les mêmes objets.
+//
+// UN RÔLE `PointsOnly` NE PRODUIT AUCUNE ZONE, quoi que porte le catalogue : ses objets à
+// forme sortent en marqueurs, AVANT ceux qui n'en ont jamais eu (ordre déterministe — les
+// deux sous-listes sont chacune triées spatialement, et le rendu ne lit pas cet ordre : seul
+// `zones` porte un index de jointure, `zoneStates[].zoneRef`).
 func BuildMapObjectives(e MapObjectivesEntry, specs []ObjectiveRoleSpec) *MapObjectives {
 	out := &MapObjectives{}
 	seen := map[mapvar.Role]bool{}
@@ -90,6 +99,20 @@ func BuildMapObjectives(e MapObjectivesEntry, specs []ObjectiveRoleSpec) *MapObj
 		}
 		seen[spec.Role] = true
 		for _, z := range e.ZonesOfRole(spec.Role).Zones {
+			// PONCTUEL PAR DÉCISION DU TITRE : l'objet a bien une forme dans le fichier de
+			// carte — on ne la nie pas, on refuse de la PRÉSENTER comme une zone à tenir.
+			// Il sort au même endroit (son centre) et par la même porte que les objets qui
+			// n'ont jamais eu de forme, donc le client n'a aucune règle à apprendre.
+			if spec.PointsOnly {
+				out.Markers = append(out.Markers, ObjectiveMarkerDTO{
+					Role: string(z.Role),
+					Team: displayTeam(z.TeamIndex, spec.Neutral),
+					X:    float32(z.Center.X),
+					Y:    float32(z.Center.Y),
+					Z:    float32(z.Center.Z),
+				})
+				continue
+			}
 			dto := ObjectiveZoneDTO{
 				Role: string(z.Role),
 				Team: displayTeam(z.TeamIndex, spec.Neutral),
