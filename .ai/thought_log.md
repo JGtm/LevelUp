@@ -1,3 +1,34 @@
+## [2026-08-26] Rejeu 2D — capture et enregistrement : cloture du plan (lot 4/4) — Complete
+
+**Contexte** : cloture du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md sur
+wt/rejeu-capture-image-video. Quatre lots, quatre commits, aucun push, aucun merge.
+
+**Decision technique principale** : la relecture de seuils a trouve un depassement DANS le
+perimetre — useReplayCapture faisait 115 lignes pour un seuil de 80. Corrige plutot que
+justifie par exemption : deux sous-hooks (useImageCapture, useVideoRecording) plus un
+assembleur HORS React (openRecording, qui monte le flux et l'enregistreur sans toucher a un
+etat de composant). C'est le patron que useReplaySound.ts avait deja pose pour la meme raison
+en extrayant useSoundCategoryFilter et useInstanceSoundTuning. Mesures finales : 37 / 19 / 63 /
+18 lignes, plus useReplayView a 38. Les gates ont ete REJOUES apres cette decoupe, pas avant.
+
+**Resultats observes** : npm run lint sur tout apps/web = 0 erreur et 21 warnings, soit
+exactement la baseline consignee au journal du meme jour — zero warning nouveau. make
+check-types = 0. make test-web = 0 (483 fichiers, 4721 tests, 14 skips). Diff relu : aucune
+valeur hex, aucune classe Tailwind de couleur (icones en currentColor), aucun emoji, aucune
+string UI hors i18n.ts. ReplayCanvas.tsx a fini a 706 lignes contre 742 au depart, cliquet
+abaisse d'autant et tenu sans une seule remontee sur les trois lots.
+
+Quatre decouvertes consignees au plan, dont deux NON TRAITEES par decision : le gate
+`eslint --max-warnings 0` du plan est plus strict que la politique du depot (un warning
+react-refresh de baseline sur ReplayFeedName.tsx, fichier non touche ; le script du depot est
+`eslint .` sans seuil), et i18n.ts repasse au-dessus de 500 lignes — il y etait deja a 520
+avant ce chantier, les quatre libelles x deux langues l'amenent a 530.
+
+**Conclusion / prochaine etape** : GATE VISUEL UTILISATEUR, hors portee agent (cinq temoins
+listes au plan : PNG net en lecture et en pause, clip de 15 s lisible, son present et
+synchrone, telechargement automatique en fin de film, libelles FR/EN + focus clavier + themes
+sombre et clair). Rien ne part vers main avant ce gate.
+
 ## [2026-08-26] Rejeu 2D — le son rejoint la video enregistree (lot 3/4) — Complete
 
 **Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres l'image (lot 1) et la

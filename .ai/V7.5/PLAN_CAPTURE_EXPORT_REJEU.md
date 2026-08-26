@@ -222,14 +222,25 @@ cf. D2), `eslint --max-warnings 0` sur les 8 fichiers du périmètre = 0.
 
 ## Lot 4 — Clôture
 
-- [ ] `cd apps/web && npm run lint` (repo web entier) — zéro erreur nouvelle
-- [ ] `make check-types` et `make test-web` depuis la racine du worktree — verts
-- [ ] Seuils : chaque nouveau fichier ≤ 500 L, chaque fonction ≤ 80 L, ≤ 5 paramètres
-- [ ] `git diff f4fcbfa72 -- apps/web` relu : aucune couleur hex / classe Tailwind
-  couleur, aucune string UI hors i18n, aucun emoji
-- [ ] Entrée datée dans `.ai/thought_log.md` (règle du dépôt : sinon tâche non terminée)
-- [ ] Chaque item de CE fichier statué `[x]` / `[~]` / `[!]` — aucune case vide
-- [ ] **Commit final** `docs(rejeu-capture): plan statue et journal` (plan + journal)
+- [x] `cd apps/web && npm run lint` (repo web entier) — code 0, **0 erreur, 21 warnings**,
+  soit EXACTEMENT la baseline consignée au journal du 2026-08-26 (« eslint 0 erreur
+  (21 warnings pre-existants) ») : zéro warning nouveau.
+- [x] `make check-types` = 0 et `make test-web` = 0 (483 fichiers, 4721 tests, 14 skips),
+  rejoués APRÈS la découpe de `useReplayCapture` ci-dessous.
+- [x] Seuils. Un dépassement TROUVÉ ET CORRIGÉ dans le périmètre : `useReplayCapture`
+  faisait 115 lignes (seuil 80). Découpé en deux sous-hooks + un assembleur hors React
+  (`openRecording`), patron exact de `useReplaySound.ts` qui a extrait `useSoundCategoryFilter`
+  et `useInstanceSoundTuning` pour la même raison. Mesures finales : `openRecording` 37 L,
+  `useImageCapture` 19 L, `useVideoRecording` 63 L, `useReplayCapture` 18 L,
+  `useReplayView` 38 L. Fichiers neufs : 231 / 111 / 100 / 73 L — tous sous 500. Aucune
+  fonction au-delà de 5 paramètres (`openRecording` en a 4, le reste passe par un objet).
+- [x] `git diff f4fcbfa72 -- apps/web` relu : aucune valeur hex, aucune classe Tailwind de
+  couleur (les icônes sont en `currentColor`), aucun emoji, aucune string UI hors `i18n.ts`
+  (le lint `@levelup/no-hardcoded-strings`, en `error`, le tient aussi).
+- [x] Entrée datée dans `.ai/thought_log.md` — une par lot (règle du dépôt : entrée avant
+  tout commit), soit quatre.
+- [x] Chaque item de CE fichier statué — aucune case vide.
+- [x] **Commit final** `docs(rejeu-capture): plan statue et journal`.
 
 **Gate Lot 4** : commandes vertes + plan entièrement statué. PAS de push, PAS de merge —
 la suite appartient à l'utilisateur après le gate visuel.
@@ -265,10 +276,31 @@ sans un refactor hors périmètre que la politique du dépôt a explicitement di
 TRAITÉ. Critère retenu à chaque lot : 0 erreur sur le dossier, ET 0 problème
 (`--max-warnings 0`) sur les fichiers du périmètre.
 
+**D4 — `i18n.ts` repasse au-dessus du seuil de 500 lignes.** Il était DÉJÀ à 520 avant ce
+chantier (le découpage du 2026-08-18 l'avait ramené sous le seuil en sortant le contrat dans
+`i18nContract.ts` ; les tables ont regrossi depuis). Les quatre libellés de ce lot × deux
+langues l'amènent à 530. Le dépassement n'est pas causé ici et le corriger demanderait une
+nouvelle découpe des tables FR/EN — hors périmètre. NON TRAITÉ. `i18nContract.ts` reste sous
+le seuil (412 -> 441).
+
 **D3 — collision de nom à surveiller.** `canvasRecording.test.ts` existe déjà dans la
 feature et NE PARLE PAS d'enregistrement vidéo : c'est le test du « contexte enregistreur »
 (la doublure qui empile les primitives de dessin). Les fichiers de ce chantier s'en
 écartent (`replayCapture`, `replayRecording`, `useReplayCapture`). Aucune action.
+
+## État à la clôture agent (2026-08-26)
+
+Les quatre lots sont clos, gates verts, quatre commits sur `wt/rejeu-capture-image-video` :
+
+| Lot | Commit | Gate |
+|---|---|---|
+| 1 — image PNG | `15c766e52` | tsc 0 · vitest 0 (1141) · eslint périmètre 0 |
+| 2 — vidéo | `03e12486b` | tsc 0 · vitest 0 (1154) · eslint périmètre 0 |
+| 3 — son | `1bff05f55` | tsc 0 · vitest 0 (1164) · eslint périmètre 0 |
+| 4 — clôture | (ce commit) | lint web 0 err/21 warns baseline · check-types 0 · test-web 0 (4721) |
+
+PAS de push, PAS de merge. La suite appartient à l'utilisateur : le gate visuel ci-dessus,
+qu'aucun agent ne peut jouer à sa place.
 
 ## Reprise de session
 
