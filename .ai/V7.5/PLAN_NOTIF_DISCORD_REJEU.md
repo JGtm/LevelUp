@@ -7,7 +7,8 @@
 > Exécuteur : ne touche NI `thought_log` NI `REGISTRE_REPORTS` NI Notion ; jamais
 > `git add -A` ; jamais de push. Verdicts de gates : commandes NUES.
 >
-> Etat : B0 (ce document) LIVRÉ — B1 et B2 sont BLOQUÉS jusqu'à validation superviseur.
+> Etat : B0 LIVRÉ et VALIDÉ (superviseur, 3 arbitrages tranchés au §5) — B1 et B2 LIVRÉS,
+> gates verts (§7). Reste : relecture / fusion par le superviseur.
 
 Besoin produit (encadré Notion « REPLAY 2D », point 5) : « Quand un replay a été
 généré/récupéré par le local ou le worker, envoyer une notif Discord, attention au spam,
@@ -143,21 +144,24 @@ wire : RunReplayNotifyLoop(ctx)  --tick-->  Grouper.Due(now) --> []Batch
                        notify.NotifyReplayBatch(cfg, batch)  --> SendWebhookCtx
 ```
 
-Fichiers **NEUFS** (4) :
+Fichiers **NEUFS** — 5 de production (+ 4 de test, §7) :
 
-| Fichier | Rôle | Taille visée |
+| Fichier | Rôle | Livré |
 |---|---|---|
-| `internal/replaybuild/artifact_events.go` | type `ArtifactStored` + `SetArtifactStoredSink` + `publishArtifactStored` (RWMutex, nil = no-op) | ~70 L |
-| `internal/replaynotify/group.go` | groupeur PUR (aucun timer, aucune goroutine, `now` en paramètre) | ~150 L |
-| `internal/notify/replay.go` | `NotifyReplayBatch(cfg, batch) bool` — construction de l'embed | ~90 L |
-| `internal/api/wire/registry_replay_notify.go` | câblage du puits + `RunReplayNotifyLoop` + résolution des liens | ~150 L |
+| `internal/replaybuild/artifact_events.go` | `ArtifactStored` + `SetArtifactStoredSink` + `publishArtifactStored` (RWMutex, nil = no-op, panique récupérée) | 89 L |
+| `internal/replaynotify/group.go` | groupeur PUR (aucun timer, aucune goroutine, `now` en paramètre) | 181 L |
+| `internal/notify/replay.go` | `NotifyReplayBatch` + `buildReplayEmbed` | 101 L |
+| `internal/api/wire/registry_replay_notify.go` | câblage du puits + boucle + résolution des liens | 226 L |
+| `internal/domain/replay_link.go` | `ReplayLinkTarget` (arbitrage A1) | 24 L |
 
-Fichiers **TOUCHÉS** (5) : `internal/replaybuild/artifact_store.go` (publication + 1 param
-`titleSlug`), `internal/replaybuild/replaybuild.go` (passage du `titleSlug` à
-`writeArtifact`), `internal/notify/discord.go` (4 clés i18n + champ `NotifyReplay`),
-`cmd/server/main.go` (lancement de la boucle, sur le modèle des lignes 1157-1161),
-`app_settings.example.json` + `docs/CONFIGURATION.md` + `docs/FR/CONFIGURATION.md`
-(réglage `discord_notify_replay`).
+Fichiers **TOUCHÉS** (9) : `internal/replaybuild/artifact_store.go` (publication + params
+d'identité), `internal/replaybuild/replaybuild.go` (passage de l'identité à
+`writeArtifact`), `internal/replaybuild/artifact_store_test.go` (2 appels mis à jour),
+`internal/notify/discord.go` (4 clés i18n + champ `NotifyReplay` + sa lecture),
+`internal/port/services.go` (`ReplayLinkRepo`), `internal/platform/duckdb/replay_facts_repo.go`
+(`LinkTargetsForMatches`), `internal/api/wire/registry_notifications.go` (bascule sur
+`publicBaseURL()`), `cmd/server/main.go` (câblage + boucle), `app_settings.example.json` +
+`docs/CONFIGURATION.md` + `docs/FR/CONFIGURATION.md`.
 
 Respect des règles transverses : logique **hors handler HTTP** (le handler
 `build_worker_artifact.go` n'est pas modifié) ; `slog.InfoContext/ErrorContext`
@@ -302,82 +306,102 @@ Discord. Aucun impact front (aucun de ces réglages n'est exposé dans `apps/web
 6. Aucune persistance de l'état du groupeur (§3.3).
 7. Aucun retry d'envoi (§3.2 invariant 6).
 
-## 5. Arbitrages demandés au superviseur (avant B1)
+## 5. Arbitrages — TRANCHÉS par le superviseur (2026-08-26)
 
-- **A1 — les liens (§3.5).** Retenu : lecture shared courte au flush pour résoudre
-  `playerSlug` + `map_name`. C'est la SEULE partie de B1 qui touche la base. Repli
-  possible si le superviseur veut un B1 plus serré : message sans lien profond
-  (match_id court + rien d'autre), zéro accès base, ~40 L et 1 test de moins.
-- **A2 — le réglage `discord_notify_replay` (§3.6).** Retenu : ajouté, défaut TRUE, docs
-  bilingues mises à jour. Alternative : s'en passer et ne dépendre que de
-  `discord_notifications_enabled` (moins de fichiers touchés, mais plus aucun moyen de
-  couper cette seule catégorie).
-- **A3 — l'action admin notifie aussi.** Retenu (§1.1) : un artefact construit à la main
-  déclenche un message groupé comme les autres. Si le superviseur préfère l'exclure, il
-  faudrait un critère au point d'ancrage — que l'ancrage n'a pas — donc ce serait un
-  retour à l'émission par appelant, avec ses 3 copies. Recommandation : garder tel quel.
+- **A1 — les liens (§3.5) : RETENU**, avec une CONDITION d'architecture ajoutée par le
+  superviseur — la résolution `playerSlug` + `map_name` passe par une MÉTHODE DE REPO
+  (chemin de lecture canonique `OpenReadForQuery`), **jamais** de SQL inline dans `wire`.
+  Appliqué : `port.ReplayLinkRepo` + `duckdb.ReplayFactsRepo.LinkTargetsForMatches`.
+- **A2 — `discord_notify_replay` défaut TRUE : RETENU**, docs bilingues dans le même commit.
+- **A3 — l'action admin notifie aussi : RETENU** tel quel.
 
 ---
 
-## 6. B1 — implémentation (BLOQUÉ jusqu'au go du superviseur)
+## 6. B1 — implémentation (LIVRÉE)
 
-- [ ] B1.1 `internal/replaybuild/artifact_events.go` : type `ArtifactStored`
+- [x] B1.1 `internal/replaybuild/artifact_events.go` (NEUF, 89 L) : `ArtifactStored`
   (`TitleSlug`, `MatchID`, `Path`, `Bytes`, `Tracks`, `SchemaVersion`),
-  `SetArtifactStoredSink(fn)` + `publishArtifactStored(ev)` sous RWMutex, no-op si nil.
-  En-tête expliquant POURQUOI un puits process (§2.1) avec le renvoi à `labels_resolver.go`.
-- [ ] B1.2 `artifact_store.go` : `writeArtifactBytes` prend `titleSlug`, publie APRÈS
-  `atomicfile.WriteFile` réussi, et **jamais** sur le chemin de refus anti-régression ni
-  sur erreur. `replaybuild.go` : `writeArtifact` et son appelant `BuildMatch` passent
-  `b.titleSlug`. Commentaires du fichier d'ancrage mis à jour dans le MÊME commit.
-- [ ] B1.3 `internal/replaynotify/group.go` : groupeur pur (§3.1/§3.2) — `Add(now, ev)`,
-  `Due(now) []Batch`, constantes `DefaultWindow` (10 min), `MaxListed` (20),
-  `MaxPending` (200). Aucune goroutine, aucun `time.Now`. En-tête portant la décision
-  §3.3 (perte au redémarrage ACCEPTÉE, et pourquoi elle diverge de `disk_watch`).
-- [ ] B1.4 `internal/notify/replay.go` + 4 clés i18n FR/EN dans `discordStrings` + champ
-  `NotifyReplay` dans `NotifyConfig` et sa lecture `boolValDefault(..., true)`.
-  `NotifyReplayBatch` : no-op si webhook vide ou `NotifyReplay` false, `SendWebhookCtx`
-  sinon, retour bool.
-- [ ] B1.5 `internal/api/wire/registry_replay_notify.go` : câblage du puits au boot,
-  `RunReplayNotifyLoop(ctx)` (ticker 1 min, sortie sur `ctx.Done()`, patron
-  `RunDiskWatchLoop`), résolution des liens (§3.5, arbitrage A1), envoi, compteurs
-  expvar `replay_notify_batches_sent_total` / `replay_notify_artifacts_total` /
-  `replay_notify_failed_total` / `replay_notify_links_unresolved_total` /
-  `replay_notify_pending_overflow_total`, logs `slog.InfoContext` à message STABLE.
-- [ ] B1.6 `cmd/server/main.go` : lancement de la boucle sur `schedulerCtx`/`schedulerWG`
-  (modèle lignes 1157-1161) + câblage du puits AVANT le montage des routes ouvrier.
-- [ ] B1.7 Docs : `app_settings.example.json`, `docs/CONFIGURATION.md` et
-  `docs/FR/CONFIGURATION.md` (parité FR/EN dans le même commit).
+  `SetArtifactStoredSink` (`:62`) + `publishArtifactStored` (`:74`) sous RWMutex, no-op si
+  nil, panique du puits RÉCUPÉRÉE et journalisée (une notification cassée ne fait jamais
+  échouer une écriture d'artefact).
+- [x] B1.2 `artifact_store.go` : `writeArtifactBytes(outPath, titleSlug, matchID, blob)`
+  (`:168`), publication APRÈS `atomicfile.WriteFile` (`:186`) et nulle part ailleurs ;
+  `StoreArtifact` (`:71`) et `replaybuild.go` `writeArtifact` (`:418`) / `BuildMatch`
+  (`:221`) mis à jour. En-têtes des deux fonctions actualisés dans le même commit.
+  ÉCART ASSUMÉ vs plan : 4 paramètres au lieu de 3 — `matchID` est passé par l'appelant
+  au lieu d'être lu dans le digest, parce que `doc.MatchID` peut porter la forme COURTE
+  côté ouvrier (`validateArtifact` ne compare que les formes courtes) alors que
+  `match_registry` est indexé par la forme COMPLÈTE : la résolution du lien échouerait.
+- [x] B1.3 `internal/replaynotify/group.go` (NEUF, 181 L) : `New` / `Add(now, ev)` /
+  `Due(now)` / `Pending()`, constantes `DefaultWindow` (10 min), `MaxListed` (20),
+  `MaxPending` (200). Aucune goroutine, aucun `time.Now`. En-tête portant §3.3.
+- [x] B1.4 `internal/notify/replay.go` (NEUF, 101 L) : `ReplayReadyItem`,
+  `NotifyReplayBatch` + `buildReplayEmbed` (extrait pour être exerçable sans réseau, comme
+  `BuildCoachEmbed`) ; 4 clés i18n FR/EN dans `discordStrings` (`discord.go:354`) ; champ
+  `NotifyReplay` (`discord.go:96`) lu `boolValDefault(s, "discord_notify_replay", true)`
+  (`discord.go:184`).
+- [x] B1.5 `internal/api/wire/registry_replay_notify.go` (NEUF, 226 L) :
+  `InstallReplayNotify` (`:56`), `RunReplayNotifyLoop` (`:82`), `flushReplayNotify` (`:96`),
+  `sendReplayBatch` (`:108`), `replayReadyItems` (`:141`), `replayLinkTargets` (`:176`),
+  `publicBaseURL` (`:224`). Compteurs : `replay_notify_events_total`,
+  `replay_notify_events_invalid_total`, `replay_notify_batches_sent_total`,
+  `replay_notify_artifacts_total`, `replay_notify_failed_total`,
+  `replay_notify_links_unresolved_total`, `replay_notify_link_read_failed_total` ; jauges
+  `replay_notify_pending_titles` / `_artifacts`.
+  A1 (condition du superviseur) : `internal/domain/replay_link.go` (NEUF, 24 L),
+  `port.ReplayLinkRepo` (`services.go:265`), `duckdb.ReplayFactsRepo.LinkTargetsForMatches`
+  (`replay_facts_repo.go:135`) — zéro SQL dans `wire`, ouverture via
+  `duckdb.OpenReadForQuery`.
+  `registry_notifications.go:75` bascule sur `publicBaseURL()` (centralisation : la lecture
+  d'env était sur le point de passer à 2 copies).
+- [x] B1.6 `cmd/server/main.go` : `reg.InstallReplayNotify()` (`:1123`, dans le bloc de
+  câblage du registry, avant le montage des routes ouvrier) + boucle sur
+  `schedulerCtx`/`schedulerWG` (`:1180`, juste après `RunDiskWatchLoop`).
+- [x] B1.7 Docs : `app_settings.example.json:21`, `docs/CONFIGURATION.md:297` et
+  `docs/FR/CONFIGURATION.md:300` (EN + FR dans le même commit — le hook `docs-fr-sync` du
+  pre-commit l'exige et l'a vérifié).
 
-## 7. B2 — tests et gates (BLOQUÉ jusqu'au go)
+## 7. B2 — tests et gates (LIVRÉS, verts)
 
-- [ ] B2.1 `internal/replaynotify/group_test.go` — unitaires PURS, horloge injectée :
-  (a) 1er événement arme, rien avant T+10 ; (b) à T+10 un lot unique de N ; (c) dédup
-  `(title, match)` sans décaler l'échéance ; (d) après flush, la fenêtre est désarmée et
-  l'événement suivant en réarme une neuve ; (e) deux titres = deux fenêtres indépendantes ;
-  (f) `MaxListed` -> troncature + reste compté ; (g) `MaxPending` -> débordement compté,
-  pas de fuite mémoire ; (h) groupeur vide -> aucun lot.
-- [ ] B2.2 `internal/replaybuild/artifact_events_test.go` — **test du point d'ancrage** :
-  (a) `StoreArtifact` (chaîne ouvrier) publie exactement 1 événement, champs exacts ;
-  (b) `writeArtifact` (chaîne locale) publie exactement 1 événement ; (c) un dépôt
-  RÉTROGRADANT (le cas de `TestStoreArtifact_RefuseLaRegression`,
-  `artifact_store_test.go:149`) ne publie RIEN ; (d) puits nil = aucun panic.
-- [ ] B2.3 Garde-rail : un seul appelant de production de `SetArtifactStoredSink`
-  (test grep sur les sources hors `_test.go`, patron `internal/archlint/`).
-- [ ] B2.4 `internal/notify` : parité FR/EN des 4 clés (le paquet a déjà ses tests de
-  libellés — étendre plutôt que dupliquer) + no-op quand `NotifyReplay` est false.
-- [ ] B2.5 Gates, commandes NUES (jamais de pipe qui masque l'exit), depuis
-  `apps/go-api` :
-  ```
-  go test ./internal/replaynotify/...
-  go test ./internal/replaybuild/...
-  go test ./internal/notify/...
-  go test ./internal/api/wire/...
-  go test ./internal/archlint/...
-  go vet ./internal/replaynotify/... ./internal/replaybuild/... ./internal/notify/... ./internal/api/wire/...
-  ```
-  puis, à la racine : `make go-api-lint`.
-  PAS de `-race` (incompatible DuckDB dans ce dépôt). CGO requis (msys64) pour les paquets
-  qui tirent le driver.
+- [x] B2.1 `internal/replaynotify/group_test.go` (NEUF, 8 tests) : armement et non-sortie
+  avant échéance (jusqu'à T+10-1ns) ; un seul lot pour toute la fenêtre, ordre d'arrivée
+  conservé ; dédup sans décalage d'échéance ; fenêtre désarmée après flush et réarmée par
+  l'événement suivant ; deux titres = deux fenêtres + ordre de sortie stable ; troncature
+  `MaxListed` avec reste compté ; débordement `MaxPending` compté ; groupeur vide et
+  événements sans identité.
+- [x] B2.2 `internal/replaybuild/artifact_events_test.go` (NEUF, 5 tests) : chaîne ouvrier
+  (`StoreArtifact`) et chaîne locale (`writeArtifact`) publient exactement 1 événement aux
+  champs exacts ; refus anti-régression = 0 événement ; erreur d'écriture = 0 événement ;
+  puits nil et puits en PANIQUE n'empêchent pas l'artefact d'atterrir.
+  MORDANT PROUVÉ : `publishArtifactStored` neutralisé -> 2 tests FAIL, restauré -> verts.
+- [x] B2.3 `internal/archlint/no_second_artifact_sink_test.go` (NEUF) — ÉCART vs plan :
+  placé dans `archlint` (convention du dépôt pour les greps repo-wide) et non dans
+  `replaybuild`. Allowlist datée à 2 entrées (le setter lui-même + le câblage de boot).
+  MORDANT PROUVÉ : un appel ajouté dans `internal/ops/` -> FAIL nommant le fichier et la
+  ligne ; mutation retirée.
+- [x] B2.4 `internal/notify/replay_test.go` (NEUF, 5 tests) — ÉCART vs plan : fichier neuf
+  plutôt qu'extension, car AUCUN test de parité sur `discordStrings` n'existait (vérifié
+  sur pièces). Couvre : parité FR/EN des 4 clés + FR sans anglicisme (« rejeu », jamais
+  « replay ») ; rendu liste/liens/reste omis ; singulier FR et EN ; les 3 portes de no-op ;
+  défaut `NotifyReplay` ACTIF et coupure respectée.
+- [x] B2.5 Gates, commandes NUES depuis `apps/go-api` (exit codes réels) :
+
+  | Commande | Exit |
+  |---|---|
+  | `go test ./internal/replaynotify/` | `EXIT_1_REPLAYNOTIFY=0` |
+  | `go test ./internal/replaybuild/` | `EXIT_2_REPLAYBUILD=0` |
+  | `go test ./internal/notify/` | `EXIT_3_NOTIFY=0` |
+  | `go test ./internal/platform/duckdb/` | `EXIT_4_DUCKDB=0` (37,4 s) |
+  | `go test ./internal/api/wire/` | `EXIT_5_WIRE=0` |
+  | `go test ./internal/archlint/` | `EXIT_6_ARCHLINT=0` |
+  | `go test ./internal/port/ ./internal/domain/` | `EXIT_7_PORT_DOMAIN=0` |
+  | `go vet ./...` (module COMPLET, typecheck des tests inclus) | `EXIT_8_VET_COMPLET=0` |
+  | `gofmt -l` (arbres touchés) | `EXIT_9_GOFMT=0` (aucun fichier listé) |
+  | `make go-api-lint` (racine) | `EXIT_10_GOLANGCI=0` — « 0 issues » |
+
+  Pas de `-race` (incompatible DuckDB ici). CGO msys64. `go vet ./...` complet retenu en
+  plus du plan : c'est le gate qui attrape les appelants de test périmés après un
+  changement de signature (leçon du hotfix `3177a57a2`), et j'en ai changé une.
 
 ## 8. Risques et anti-régressions
 
@@ -398,6 +422,18 @@ Discord. Aucun impact front (aucun de ces réglages n'est exposé dans `apps/web
 - `internal/notifications/external/dispatcher.go:83` relit `app_settings.json` à CHAQUE
   relais ; `notify.LoadNotifyConfig` fait de même à chaque appel. Sans conséquence à la
   fréquence d'un flush toutes les 10 min — noté, non traité.
+- **SQL inline dans `wire`** : `registry_notifications.go:141` (`loadRecentMediaMatchIDs`)
+  et `:169` (`loadParticipantXUIDs`) portent des requêtes en dur dans la couche de
+  câblage — exactement ce que la condition A1 interdit désormais pour le neuf. Dette
+  antérieure, NON traitée (hors périmètre du lot B).
+- **Construction de placeholders SQL dupliquée** : `strings.Repeat("?,", n)` apparaît en
+  15+ exemplaires (surtout sous `cmd/`, plus `internal/sync/enrichments.go:249` et
+  `internal/sync/replayartifacts/artifacts.go:448`). Ma copie est un helper LOCAL à un
+  fichier (`replay_facts_repo.go:184`, 2 usages dans la même fonction). Centraliser
+  l'ensemble déborde très largement du lot — noté, non traité.
+- `internal/notify` n'avait AUCUN test de parité FR/EN sur `discordStrings` avant ce lot :
+  les ~45 clés préexistantes ne sont donc couvertes par rien de systématique. Mon test ne
+  couvre QUE les 4 clés du lot (périmètre fermé) ; généraliser serait un lot à soi seul.
 
 ## 10. Journal d'exécution
 
@@ -407,5 +443,20 @@ Discord. Aucun impact front (aucun de ces réglages n'est exposé dans `apps/web
   in-app examiné et écarté avec justification citée, groupeur spécifié (fenêtre 10 min,
   horloge injectée, perte au redémarrage acceptée et argumentée), B1/B2 découpés avec
   gates nus. Aucun code écrit. STOP — validation superviseur requise (3 arbitrages §5).
-- B1 `[ ]` — bloqué.
-- B2 `[ ]` — bloqué.
+- **2026-08-26 — sync `[x]`** : `git fetch` + `git merge origin/feat/v75` (lot A UI, lot C0
+  plafonds, schéma 19) — merge `efa1fdf53`, sans conflit. Vérification sur pièces APRÈS
+  merge : `git diff --stat` de mes fichiers Go cibles entre le commit B0 et HEAD = VIDE ;
+  `writeArtifactBytes` et `writeArtifact` relus, identiques au constat B0. Le schéma
+  courant est bien passé à 19 (visible dans les logs de test), sans effet sur ce lot.
+- **2026-08-26 — B1 `[x]` (B1.1 → B1.7)** : voir §6. Un point du plan CONTREDIT sur pièces
+  et corrigé : l'accesseur des joueurs connus n'est PAS `domain.SyncablePlayers` (qui est
+  un FILTRE d'activité de sync appliqué à une liste, `auto_sync_run.go:109`) mais
+  `cfg.LoadPlayers(titleSlug)` — la source canonique de `db_profiles.json`, déjà utilisée
+  pour le même besoin (xuid -> player_slug) par `xuidsToSlugs`
+  (`registry_notifications.go:215`). Le filtre d'activité n'est délibérément PAS appliqué :
+  un joueur dont le sync est en pause reste un propriétaire de lien parfaitement valide.
+- **2026-08-26 — B2 `[x]` (B2.1 → B2.5)** : voir §7. Deux mordants prouvés par mutation
+  (puits neutralisé ; second câblage ajouté), les deux mutations retirées. 10 gates nus à
+  l'exit 0, dont `go vet ./...` complet et `make go-api-lint` (« 0 issues »).
+- **RESTE** : relecture adversariale et fusion par le superviseur. Non exécuté ici (hors
+  mandat de l'exécuteur) : entrée `thought_log`, `REGISTRE_REPORTS`, push, Notion.
