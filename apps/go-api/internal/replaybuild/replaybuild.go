@@ -168,10 +168,17 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, err
 	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", ErrMapNotInCatalog, mapNames)
 }
 
-// BuildMatch décode le film de filmDir et écrit l'artefact de rejeu du match. mapNames
-// sont les identités de carte candidates (cf. ResolveMapEntry). Le décodage est sérialisé
-// par le verrou process de filmdec (dans replay.BuildFromFilm) — jamais deux films en
-// parallèle dans un même process.
+// BuildBytes décode le film de filmDir et rend l'artefact SÉRIALISÉ — il n'écrit RIEN.
+// mapNames sont les identités de carte candidates (cf. ResolveMapEntry). Le décodage est
+// sérialisé par le verrou process de filmdec (dans replay.BuildFromFilm) — jamais deux films
+// en parallèle dans un même process.
+//
+// C'EST LA MOITIÉ QUI EXPLOSE, ET C'EST POURQUOI ELLE EST SÉPARABLE (lot BUILDALL,
+// 2026-08-26). Le décodage est un amplificateur mémoire (7,9 Go en 2,6 s sur `51101d1d`) ;
+// l'écriture, elle, porte le garde anti-régression et publie l'événement de notification.
+// Les rendre appelables séparément permet de les mettre dans DEUX PROCESSUS : un enfant borné
+// construit, le serveur range (cf. sync/replayartifacts/buildone.go). `BuildMatch` reste la
+// composition des deux pour les appelants in-processus.
 //
 // `facts` est CE QUE LA BASE SAIT DU MATCH et que le film ne dit pas (cf. port.MatchFacts) :
 // les lignes de match qui apparient les slots d'entité aux joueurs, les scores des deux camps
@@ -179,10 +186,10 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (filmdec.MapQuantEntry, err
 // où il sait le faire. Des faits vides restent un cas nominal (ouvrier distant, CLI unitaire) :
 // l'artefact sort sans compteurs de joueur ni actions d'objectif, et la dégradation est
 // journalisée.
-func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Outcome, error) {
+func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Built, error) {
 	entry, err := b.ResolveMapEntry(mapNames)
 	if err != nil {
-		return Outcome{}, err
+		return Built{}, err
 	}
 	stats := readFilmStats(context.Background(), matchID, filmDir, facts)
 	// La CIBLE DE VICTOIRE vient de la table de règlement du titre, jamais du film : elle
@@ -212,17 +219,53 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		MapQuant: &entry,
 	})
 	if err != nil {
-		return Outcome{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
+		return Built{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
 	}
 	if len(doc.Tracks) == 0 {
-		return Outcome{}, fmt.Errorf("%w (match %s)", ErrNoTracks, matchID)
+		return Built{}, fmt.Errorf("%w (match %s)", ErrNoTracks, matchID)
+	}
+	blob, err := json.Marshal(doc)
+	if err != nil {
+		return Built{}, fmt.Errorf("sérialisation artefact %s: %w", matchID, err)
+	}
+	return Built{Blob: blob, Module: entry.Module, Tracks: len(doc.Tracks)}, nil
+}
+
+// Built : un artefact CONSTRUIT mais PAS ENCORE RANGÉ.
+//
+// POURQUOI CE TYPE EXISTE (lot BUILDALL, 2026-08-26). Le décodage est un amplificateur mémoire ;
+// l'écriture, elle, porte le garde anti-régression et publie l'événement qui déclenche la
+// notification Discord. Les deux doivent pouvoir vivre dans DEUX PROCESSUS DIFFÉRENTS : un
+// enfant borné construit, le serveur range. Sans cette frontière, déléguer le décodage
+// emporterait la notification avec lui (cf. sync/replayartifacts/buildone.go).
+type Built struct {
+	// Blob est le document SÉRIALISÉ — ce qui traverse la frontière de processus.
+	Blob []byte
+	// Module est le module de carte retenu (traçabilité du choix d'identité).
+	Module string
+	// Tracks est le nombre de trajectoires du document CONSTRUIT — pas de celui qui finira sur
+	// le disque : quand le garde anti-régression conserve l'artefact en place, les deux
+	// diffèrent, et c'est l'écriture qui fait foi (cf. StoreArtifact).
+	Tracks int
+}
+
+// BuildMatch construit l'artefact d'un match et le RANGE à sa place canonique.
+//
+// C'est `BuildBytes` suivi de l'écriture — la composition que les appelants IN-PROCESSUS
+// utilisent (CLI unitaire, enfant de backfill, action admin). Le post-sync, lui, sépare les
+// deux moitiés entre son enfant et lui-même.
+func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Outcome, error) {
+	built, err := b.BuildBytes(matchID, mapNames, filmDir, facts)
+	if err != nil {
+		return Outcome{}, err
 	}
 	outPath := title.NewPathResolver(b.repoRoot).ReplayArtifactPath(b.titleSlug, matchID)
-	size, err := writeArtifact(outPath, b.titleSlug, matchID, doc)
+	surDisque, err := writeArtifactBytes(outPath, b.titleSlug, matchID, built.Blob)
 	if err != nil {
 		return Outcome{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
-	return Outcome{ArtifactPath: outPath, Module: entry.Module, Tracks: len(doc.Tracks), Bytes: size}, nil
+	return Outcome{ArtifactPath: outPath, Module: built.Module, Tracks: built.Tracks,
+		Bytes: surDisque.bytes}, nil
 }
 
 // neutralDeaths décode les morts que PERSONNE ne revendique et rend les entrées d'artefact
