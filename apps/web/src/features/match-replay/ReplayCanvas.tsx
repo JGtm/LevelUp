@@ -225,8 +225,6 @@ export function ReplayCanvas({
     [],
   )
 
-  const bounds = useMemo(() => sceneBounds(doc), [doc])
-
   // LE FOND DE CARTE PREND LA PLACE DU SOL RECONSTRUIT, il ne s'y ajoute pas : l'image
   // porte la carte telle que le jeu la dessine, la trame d'altitudes n'en est que
   // l'approximation. Les superposer ne ferait que voiler la meilleure des deux.
@@ -238,6 +236,8 @@ export function ReplayCanvas({
     if (!background) return null
     return coversPlayedArea(background.calibration, doc.bounds) ? background : null
   }, [background, doc.bounds])
+  // Le cadrage se décide APRÈS le fond : une image posée écarte les props du cadre (sceneBounds).
+  const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES

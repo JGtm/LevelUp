@@ -72533,3 +72533,77 @@ couverts ailleurs portes sur `grenadesCarriedFrom`) — regle « 0 code mort ».
 **Conclusion / prochaine etape** : les 5 constats sont clos, rien d autre n a ete touche ; les
 decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par constat :
 `.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
+
+---
+
+## [2026-08-26] Cartes — etat de l'art verifie sur pieces, registre de revue et mesure de cadrage
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : ouverture du chantier « revue carte par carte » sur la
+decision utilisateur d'abandonner une formule valable pour toutes les cartes. Les regles
+universelles restent la BASE, le reglage final est PAR CARTE, et il vit EN DONNEE (entree +
+raison ecrite + date de gate), jamais en branche de code — precedent `CarteForge.FondFige`.
+Le suivi repose sur deux objets : `REGISTRE_CARTES.md` (source de verite, un statut par ligne,
+journal des verdicts avec verbatim) et une planche avant/apres par lot d'environ 10 cartes.
+Regle anti-derive posee : toute cuisson qui modifie un PNG repasse sa ligne en `ATTENTE`.
+
+**Resultats observes** : corpus `match_registry` **123 map_id / 1 940 matchs** ; **56 fonds
+publies** (19 natifs keyes par module, 37 Forge keyes par map_id), tous servis ; couverture
+**79 map_id / 1 731 matchs (89,2 %)**, **44 map_id / 209 matchs sans fond**. Verdicts reels
+reconstitues : **14 fonds valides sur 56** (12 natifs 10/08, 2 Forge geles 13/08), 7 natifs
+re-cuits le 13/08 JAMAIS soumis, 35 Forge refuses en bloc le 13/08. Nouvel instrument
+`cmd/mapfond-cadrage` (lecture seule, hors ligne, sans CGO) : la matiere dessinee occupe en
+mediane **53,5 % de la largeur du cadre sur les natifs** contre **88,3 % sur les Forge** —
+les deux familles ont le defaut INVERSE. Pires natifs : sgh_blueprint 28,8 %, ctf_aquarius
+33,7 %, forest 35,8 %, catalyst 50,0 % (12,0 % en aire). Cause identifiee : `CadreSurAncres`
+pose le cadre a la boite des ancres plus une CONSTANTE (`MargeCadre` = 50 m, `cuisson.go:47`)
+et la coquille de mort efface ensuite hors frontiere **sans que le cadre soit recalcule**.
+Confirme la remarque utilisateur sortie de l'enquete socles (match `530820e5` = Catalyst).
+Second constat : le temoin `Desktop/COULEUR_jeu_catalyst_COQUILLE.png` (10/08 12:24) est
+ANTERIEUR a l'entree en production de la coquille (`f78f2ebfa`, 12:41) et a sa correction par
+parite de rayon (`7652fff83`, 14:46) — il n'a jamais ete en production ; le `catalyst.png`
+publie porte pourtant memes style, coquille, `playLevelZ` et `instancesDrawn`, et les deux
+images ne coincident pas a l'oeil. Ecart NON explique, mesure prevue en phase 1.
+
+**Conclusion / prochaine etape** : plan `PLAN_REVUE_CARTE_PAR_CARTE.md` (6 phases, gates
+nommes) et `REGISTRE_CARTES.md` ecrits. Prochaine etape = phase 1 (re-cuire Catalyst vers un
+`--out-dir` scratch et comparer au publie, puis reproduire le temoin du 10/08 pour nommer
+l'ecart). Rien de committe : le go commit reste a demander.
+
+---
+
+## [2026-08-26] Rejeu 2D — la carte s'affichait en timbre : le cadre suivait des props INVISIBLES
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : defaut signale par l'utilisateur sur capture (carte
+minuscule et decentree dans le cadre du rejeu). Cause etablie sur pieces, pas devinee :
+`sceneBounds` (`apps/web/src/features/match-replay/replayLogic.ts`) cadrait sur l'union
+`doc.bounds` + `doc.geometryBounds`, or `geometryBounds` est l'etendue des props Forge, qui
+« debordent de la zone parcourue » — c'est ecrit dans la godoc de
+`ReplayDocument.GeometryBounds` (`internal/analysis/replay/document.go:217`). Et quand un fond
+de carte est pose, `ReplayCanvas` ne dessine PAS ces props : ils sont le `else if` du fond
+(`ReplayCanvas.tsx:399`). Le cadre etait donc dimensionne sur de la matiere INVISIBLE, et
+l'image se reduisait a un timbre dans un canvas vide. La regle qui corrige existait deja,
+ecrite pour `structure` (« avec un sol reconstruit, le cadre est la zone jouee, sinon le
+terrain se reduit a un timbre au centre de l'ecran ») : elle est ETENDUE au fond de carte,
+`sceneBounds(doc, hasMapImage)`, plutot que d'en ecrire une seconde. `ReplayCanvas` calcule
+desormais `mapImage` AVANT `bounds` (aucun cycle : `mapImage` ne depend que de `doc.bounds`).
+
+**Resultats observes** : trois temoins neufs dans `replayLogic.test.ts` (« ecarte les props du
+cadre », « sans image, les props cadrent encore », « le cadre avec image est stable meme quand
+les props explosent »). **Mordant prouve par mutation** : le retrait de `hasMapImage` de la
+condition rend 2 des 3 rouges, restaure ensuite. Gates : vitest `src/features/match-replay/`
+**74 fichiers / 1 127 tests verts**, `npm run typecheck` vert sur cache `.tsbuildinfo` PURGE,
+ESLint 0 sur les 3 fichiers touches. Le garde-rail de taille de `ReplayCanvas.tsx`
+(`placementFamily.guard.test.ts`, plafond 742 lignes) a d'abord rougi a 744 : il n'a PAS ete
+releve — le commentaire ajoute a ete resserre pour retomber a **741**. Effet de bord utile :
+le cadre devenant la zone jouee et `coversPlayedArea` garantissant que l'image la couvre, les
+marges vides des fonds natifs sont rognees a l'affichage.
+
+**Conclusion / prochaine etape** : le defaut de VUE est corrige ; le defaut d'ASSET reste entier
+(le cadre des PNG publies est la boite des ancres plus 50 m constants, jamais recalcule apres
+la coquille — mediane 53,5 % de largeur utile sur les natifs). C'est la phase 2 du
+`PLAN_REVUE_CARTE_PAR_CARTE.md`. Consigne au registre : `REGISTRE_CARTES.md`, section
+« Decouvertes hors fonds ».
