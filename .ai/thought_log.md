@@ -1,3 +1,128 @@
+## [2026-08-26] Rejeu 2D — capture et enregistrement : cloture du plan (lot 4/4) — Complete
+
+**Contexte** : cloture du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md sur
+wt/rejeu-capture-image-video. Quatre lots, quatre commits, aucun push, aucun merge.
+
+**Decision technique principale** : la relecture de seuils a trouve un depassement DANS le
+perimetre — useReplayCapture faisait 115 lignes pour un seuil de 80. Corrige plutot que
+justifie par exemption : deux sous-hooks (useImageCapture, useVideoRecording) plus un
+assembleur HORS React (openRecording, qui monte le flux et l'enregistreur sans toucher a un
+etat de composant). C'est le patron que useReplaySound.ts avait deja pose pour la meme raison
+en extrayant useSoundCategoryFilter et useInstanceSoundTuning. Mesures finales : 37 / 19 / 63 /
+18 lignes, plus useReplayView a 38. Les gates ont ete REJOUES apres cette decoupe, pas avant.
+
+**Resultats observes** : npm run lint sur tout apps/web = 0 erreur et 21 warnings, soit
+exactement la baseline consignee au journal du meme jour — zero warning nouveau. make
+check-types = 0. make test-web = 0 (483 fichiers, 4721 tests, 14 skips). Diff relu : aucune
+valeur hex, aucune classe Tailwind de couleur (icones en currentColor), aucun emoji, aucune
+string UI hors i18n.ts. ReplayCanvas.tsx a fini a 706 lignes contre 742 au depart, cliquet
+abaisse d'autant et tenu sans une seule remontee sur les trois lots.
+
+Quatre decouvertes consignees au plan, dont deux NON TRAITEES par decision : le gate
+`eslint --max-warnings 0` du plan est plus strict que la politique du depot (un warning
+react-refresh de baseline sur ReplayFeedName.tsx, fichier non touche ; le script du depot est
+`eslint .` sans seuil), et i18n.ts repasse au-dessus de 500 lignes — il y etait deja a 520
+avant ce chantier, les quatre libelles x deux langues l'amenent a 530.
+
+**Conclusion / prochaine etape** : GATE VISUEL UTILISATEUR, hors portee agent (cinq temoins
+listes au plan : PNG net en lecture et en pause, clip de 15 s lisible, son present et
+synchrone, telechargement automatique en fin de film, libelles FR/EN + focus clavier + themes
+sombre et clair). Rien ne part vers main avant ce gate.
+
+## [2026-08-26] Rejeu 2D — le son rejoint la video enregistree (lot 3/4) — Complete
+
+**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres l'image (lot 1) et la
+video muette (lot 2). Le clip doit porter le son du rejeu quand celui-ci est actif.
+
+**Decision technique principale** : le lecteur Web Audio ouvre un ROBINET — un
+MediaStreamAudioDestinationNode branche EN PARALLELE de ctx.destination — dont la piste part au
+MediaRecorder. Le piege etait le point de branchement : la classe atteignait ctx.destination a
+TROIS endroits (constructeur, et les deux branches de setDistance), et brancher le robinet sur
+le maitre alors que la chaine de distance est posee aurait donne un clip MUET pendant que les
+haut-parleurs continuent de sortir du son — une panne qui ne leve rien et que rien n'affiche.
+Les trois sites passent donc par un connectOut(node) prive qui branche les deux sorties et
+memorise le dernier noeud avant la sortie. Le robinet naît a la premiere demande seulement (un
+rejeu qu'on ne filme pas ne paie pas un noeud) et RESTE ensuite (le recreer par clip laisserait
+des noeuds derriere lui). Regle d'appartenance a l'arret : on coupe les pistes de la TOILE, pas
+la piste audio — celle-ci appartient au lecteur de son, qui vit plus longtemps que le clip, et
+la fermer rendrait muet tout enregistrement suivant. Decision 6 tenue : la piste est demandee au
+DEMARRAGE, donc activer le son en cours de route n'ajoute rien au clip courant — un fichier dont
+le son demarrerait a mi-course passerait pour un fichier abime.
+
+**Resultats observes** : la doublure Web Audio partagee (test/fakeAudio.ts) a du gagner le suivi
+des BRANCHEMENTS, le passe-bas et le robinet — sans quoi la question « le clip sort-il du meme
+endroit que les haut-parleurs ? » n'est pas mesurable. tsc -b = 0 (apres ajout du champ manquant
+dans la fixture ReplaySound de ReplaySettingsDrawer.test.tsx) ; vitest match-replay = 0 (76
+fichiers, 1164 tests, +10) ; eslint --max-warnings 0 sur les 10 fichiers du perimetre = 0 ;
+ReplayCanvas.tsx toujours a 706 lignes, l'appel du hook s'etendant une troisieme fois sans
+s'allonger.
+
+**Conclusion / prochaine etape** : lot 4 — cloture (lint web entier, make check-types,
+make test-web, relecture du diff, statut de tous les items). Puis GATE VISUEL UTILISATEUR :
+c'est lui qui a la main sur le navigateur, jamais un agent.
+
+## [2026-08-26] Rejeu 2D — enregistrement video du canvas (lot 2/4) — Complete
+
+**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres le lot 1 (image PNG).
+Un bouton REC dans la barre de lecture filme la toile via captureStream + MediaRecorder et
+depose le clip a l'arret.
+
+**Decision technique principale** : UN SEUL CHEMIN DE SORTIE. Trois gestes arretent
+l'enregistrement — second clic, pause manuelle, fin du film — et les trois passent par le meme
+stopRecording, donc un clip est toujours assemble et remis UNE fois : jamais zero (un
+enregistrement oublie qui tourne dans le vide), jamais deux. L'auto-arret guette la TRANSITION
+de `playing` (vrai -> faux), jamais l'etat : demarrer depuis une pause laisse `playing` a faux
+le temps d'un rendu, et lire l'etat refermerait le clip dans la seconde qui suit son ouverture
+— le bouton serait inutilisable sur un rejeu en pause. L'assemblage et le telechargement vivent
+dans `onstop`, pas apres `stop()` : la derniere tranche arrive APRES ce retour, et les pistes du
+flux ne se coupent qu'a ce moment-la, sans quoi le clip perdrait sa fin. Choix du conteneur dans
+replayRecording.ts, pur et teste sans navigateur : mp4/avc1 -> mp4 -> webm/vp9 -> webm, et
+l'EXTENSION SUIT le type retenu (un .mp4 contenant du WebM ne s'ouvrirait nulle part). Decision
+7 tenue litteralement : sans MediaRecorder, sans captureStream ou sans conteneur accepte, le
+bouton ne se rend PAS — une commande grisee laisserait croire a une panne reparable.
+ReplayCanvas.tsx n'a gagne AUCUNE ligne : l'appel du hook s'est etendu, pas allonge (c'etait la
+condition posee au lot 1 pour que le cliquet a 706 tienne sur les trois lots).
+
+**Resultats observes** : tsc -b = 0 (apres correction d'un TS1294 — `erasableSyntaxOnly`
+interdit les proprietes de parametre de constructeur dans la doublure MediaRecorder) ; vitest
+match-replay = 0 (76 fichiers, 1154 tests, +13) ; eslint --max-warnings 0 sur les 8 fichiers du
+perimetre = 0 ; ReplayCanvas.tsx toujours a 706 lignes.
+
+**Conclusion / prochaine etape** : lot 3 — la piste audio du rejeu rejoint la video, cablee au
+DEMARRAGE de l'enregistrement et seulement si le son est alors actif (decision 6).
+
+## [2026-08-26] Rejeu 2D — capture d'image PNG du canvas (lot 1/4) — Complete
+
+**Contexte** : plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, branche wt/rejeu-capture-image-video
+(worktree dedie, base f4fcbfa72). Deux commandes nouvelles sur la page de rejeu : capturer
+l'image, enregistrer la video. Lot 1 = l'image seule.
+
+**Decision technique principale** : le cliquet de taille de ReplayCanvas.tsx etait a ZERO
+marge (742 lignes pour un plafond de 742), ce que l'etat des lieux du plan n'avait pas mesure.
+La doctrine du garde-rail (« le franchir se corrige en extrayant, pas en relevant le nombre »)
+impose donc d'extraire AVANT d'ajouter : le CADRAGE — fond retenu ou ecarte, bornes de scene,
+largeur de dessin, amplitude verticale, projection partagee, trame d'altitudes — part dans
+useReplayView.ts, neuvieme extraction. Les six noms sortent inchanges via destructuration,
+donc pas une ligne du dessin ne bouge. 742 -> 706, cliquet abaisse d'autant. Conception qui
+en decoule et qui tient les lots suivants : le hook useReplayCapture rend UN objet
+(ReplayCapture, patron exact de ReplaySound) que le canvas repasse tel quel a la barre —
+l'enregistrement video puis son audio s'y branchent en ETENDANT l'appel, pas en l'allongeant,
+donc le canvas ne gagnera plus une ligne. Logique de sortie (nom de fichier, telechargement,
+lecture des pixels) isolee dans replayCapture.ts, sans React. Le nom porte l'INSTANT DU MATCH
+(rejeu-<matchId>-12m34s.png) et jamais « 0m00s » par defaut : un instant inconnu bascule sur
+le repli horodate plutot que d'affirmer le coup d'envoi. L'identifiant vient de doc.matchId
+(le document le porte deja), rien a descendre de la route.
+
+**Resultats observes** : tsc -b = 0 ; vitest src/features/match-replay = 0 (76 fichiers,
+1141 tests, +14) ; eslint sur les 11 fichiers du perimetre avec --max-warnings 0 = 0. Le gate
+litteral du plan (eslint sur tout le dossier, --max-warnings 0) sort a 1 : 0 erreur, 1 warning
+react-refresh/only-export-components pre-existant sur ReplayFeedName.tsx, fichier non touche —
+la regle est en `warn` par decision documentee du depot (eslint.config.js), le script du depot
+est `eslint .` sans seuil. Consigne en Decouverte D2, non traite.
+
+**Conclusion / prochaine etape** : lot 2 — enregistrement video (captureStream + MediaRecorder),
+ordre de types mp4 avc1 -> mp4 -> webm vp9 -> webm, auto-arret quand la lecture s'arrete.
+
 ## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
 
 **Contexte** : 3 agents interrompus avant leur fusion dans feat/v75. Reprise sur leurs derniers
@@ -72533,3 +72658,162 @@ couverts ailleurs portes sur `grenadesCarriedFrom`) — regle « 0 code mort ».
 **Conclusion / prochaine etape** : les 5 constats sont clos, rien d autre n a ete touche ; les
 decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par constat :
 `.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
+
+---
+
+## [2026-08-26] Cartes — etat de l'art verifie sur pieces, registre de revue et mesure de cadrage
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : ouverture du chantier « revue carte par carte » sur la
+decision utilisateur d'abandonner une formule valable pour toutes les cartes. Les regles
+universelles restent la BASE, le reglage final est PAR CARTE, et il vit EN DONNEE (entree +
+raison ecrite + date de gate), jamais en branche de code — precedent `CarteForge.FondFige`.
+Le suivi repose sur deux objets : `REGISTRE_CARTES.md` (source de verite, un statut par ligne,
+journal des verdicts avec verbatim) et une planche avant/apres par lot d'environ 10 cartes.
+Regle anti-derive posee : toute cuisson qui modifie un PNG repasse sa ligne en `ATTENTE`.
+
+**Resultats observes** : corpus `match_registry` **123 map_id / 1 940 matchs** ; **56 fonds
+publies** (19 natifs keyes par module, 37 Forge keyes par map_id), tous servis ; couverture
+**79 map_id / 1 731 matchs (89,2 %)**, **44 map_id / 209 matchs sans fond**. Verdicts reels
+reconstitues : **14 fonds valides sur 56** (12 natifs 10/08, 2 Forge geles 13/08), 7 natifs
+re-cuits le 13/08 JAMAIS soumis, 35 Forge refuses en bloc le 13/08. Nouvel instrument
+`cmd/mapfond-cadrage` (lecture seule, hors ligne, sans CGO) : la matiere dessinee occupe en
+mediane **53,5 % de la largeur du cadre sur les natifs** contre **88,3 % sur les Forge** —
+les deux familles ont le defaut INVERSE. Pires natifs : sgh_blueprint 28,8 %, ctf_aquarius
+33,7 %, forest 35,8 %, catalyst 50,0 % (12,0 % en aire). Cause identifiee : `CadreSurAncres`
+pose le cadre a la boite des ancres plus une CONSTANTE (`MargeCadre` = 50 m, `cuisson.go:47`)
+et la coquille de mort efface ensuite hors frontiere **sans que le cadre soit recalcule**.
+Confirme la remarque utilisateur sortie de l'enquete socles (match `530820e5` = Catalyst).
+Second constat : le temoin `Desktop/COULEUR_jeu_catalyst_COQUILLE.png` (10/08 12:24) est
+ANTERIEUR a l'entree en production de la coquille (`f78f2ebfa`, 12:41) et a sa correction par
+parite de rayon (`7652fff83`, 14:46) — il n'a jamais ete en production ; le `catalyst.png`
+publie porte pourtant memes style, coquille, `playLevelZ` et `instancesDrawn`, et les deux
+images ne coincident pas a l'oeil. Ecart NON explique, mesure prevue en phase 1.
+
+**Conclusion / prochaine etape** : plan `PLAN_REVUE_CARTE_PAR_CARTE.md` (6 phases, gates
+nommes) et `REGISTRE_CARTES.md` ecrits. Prochaine etape = phase 1 (re-cuire Catalyst vers un
+`--out-dir` scratch et comparer au publie, puis reproduire le temoin du 10/08 pour nommer
+l'ecart). Rien de committe : le go commit reste a demander.
+
+---
+
+## [2026-08-26] Rejeu 2D — la carte s'affichait en timbre : le cadre suivait des props INVISIBLES
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : defaut signale par l'utilisateur sur capture (carte
+minuscule et decentree dans le cadre du rejeu). Cause etablie sur pieces, pas devinee :
+`sceneBounds` (`apps/web/src/features/match-replay/replayLogic.ts`) cadrait sur l'union
+`doc.bounds` + `doc.geometryBounds`, or `geometryBounds` est l'etendue des props Forge, qui
+« debordent de la zone parcourue » — c'est ecrit dans la godoc de
+`ReplayDocument.GeometryBounds` (`internal/analysis/replay/document.go:217`). Et quand un fond
+de carte est pose, `ReplayCanvas` ne dessine PAS ces props : ils sont le `else if` du fond
+(`ReplayCanvas.tsx:399`). Le cadre etait donc dimensionne sur de la matiere INVISIBLE, et
+l'image se reduisait a un timbre dans un canvas vide. La regle qui corrige existait deja,
+ecrite pour `structure` (« avec un sol reconstruit, le cadre est la zone jouee, sinon le
+terrain se reduit a un timbre au centre de l'ecran ») : elle est ETENDUE au fond de carte,
+`sceneBounds(doc, hasMapImage)`, plutot que d'en ecrire une seconde. `ReplayCanvas` calcule
+desormais `mapImage` AVANT `bounds` (aucun cycle : `mapImage` ne depend que de `doc.bounds`).
+
+**Resultats observes** : trois temoins neufs dans `replayLogic.test.ts` (« ecarte les props du
+cadre », « sans image, les props cadrent encore », « le cadre avec image est stable meme quand
+les props explosent »). **Mordant prouve par mutation** : le retrait de `hasMapImage` de la
+condition rend 2 des 3 rouges, restaure ensuite. Gates : vitest `src/features/match-replay/`
+**74 fichiers / 1 127 tests verts**, `npm run typecheck` vert sur cache `.tsbuildinfo` PURGE,
+ESLint 0 sur les 3 fichiers touches. Le garde-rail de taille de `ReplayCanvas.tsx`
+(`placementFamily.guard.test.ts`, plafond 742 lignes) a d'abord rougi a 744 : il n'a PAS ete
+releve — le commentaire ajoute a ete resserre pour retomber a **741**. Effet de bord utile :
+le cadre devenant la zone jouee et `coversPlayedArea` garantissant que l'image la couvre, les
+marges vides des fonds natifs sont rognees a l'affichage.
+
+**Conclusion / prochaine etape** : le defaut de VUE est corrige ; le defaut d'ASSET reste entier
+(le cadre des PNG publies est la boite des ancres plus 50 m constants, jamais recalcule apres
+la coquille — mediane 53,5 % de largeur utile sur les natifs). C'est la phase 2 du
+`PLAN_REVUE_CARTE_PAR_CARTE.md`. Consigne au registre : `REGISTRE_CARTES.md`, section
+« Decouvertes hors fonds ».
+
+---
+
+## [2026-08-26] Cartes phase 1 — la re-cuisson de Catalyst, et le defaut qu'elle a fait sortir
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : phase 1 du `PLAN_REVUE_CARTE_PAR_CARTE.md`. Catalyst
+re-cuit avec la chaine d'aujourd'hui vers un `--out-dir` scratch : **NON identique au publie**
+(`heightPx` 1553 -> 1546, `originY` 71,476 -> 71,120, ancres **24 -> 19**, `playLevelZ`
+24,410 -> 24,907, `mapNames` perd `catalyst_map`). Cause : le catalogue d'objectifs a ete
+regenere depuis par les lots KOTH (`a96db3048` 19/08, `fec6b9bf9` 20/08, `d50f3b728` 25/08).
+**Consequence pour tout le chantier : les fonds publies sont perimes vis-a-vis du catalogue**,
+une re-cuisson de masse deplacera d'autres cartes que Catalyst. A l'oeil la re-cuisson est
+indiscernable du publie : l'ecart est metrique, il n'explique PAS la difference avec le temoin
+du 10/08 12:24, qui reste NON expliquee et est declaree telle quelle.
+
+Ce que la mesure a trouve A LA PLACE, et qui vaut plus que l'archeologie : `zJeu` est un
+SCALAIRE, `MedianeZ(ancres) - AncrageDecalageSol` (`cuisson.go:140`, `cuisson_forge.go:93`),
+et la constante `AncrageDecalageSol = 0,29 m` est etalonnee sur UNE carte (Cliffhanger). Sur
+une carte dont les objectifs vivent a plusieurs etages, la mediane des ancres n'est le sol
+d'aucun d'eux. Le sidecar mesurait deja l'erreur sans que personne la lise
+(`anchorMedianGapM`, `cuisson.go:355`).
+
+**Resultats observes** : sur les 56 fonds, **43 sont entre -0,40 et +0,03 m** (l'etalonnage
+tient) mais **13 sont hors clou** : Behemoth -17,51 m, The Pit -15,53, Empyrean -14,41,
+Catalyst -13,33, Fragmentation -11,71, Fortress -10,60, Domicile -8,62, Banished Narrows
+-6,05, Recharge -5,29, Oasis -4,38, Streets -4,33, Bazaar -4,22, Breaker -3,29. Or
+`TeinteNiveauDeJeu` ecrete a `PorteeNiveauDeJeu = 10 m` : au-dela, la surface JOUEE est peinte
+au maximum de recul (`recul = 0,38`, teinte froide) — **exactement l'inversion de hierarchie
+visuelle que cette teinte a ete ecrite pour supprimer**. Six cartes depassent la portee et
+rendent donc leur arene au recul maximal. Le correctif n'est PAS un reglage par carte : la
+surface de reference par pixel existe deja (`SurfaceReference`, armee au rendu par
+`ArmeReference`) — il suffit que la teinte lise cette surface au lieu du scalaire.
+
+Second livrable : `cmd/mapfond-planche` (sans CGO, hors ligne) — manifeste TSV -> une page
+HTML autonome, vignettes en data URI, reduction par MOYENNE DE BLOC en alpha premultiplie (un
+plus-proche-voisin perdrait la moitie des traits fins d'une carte). Le cadre de chaque image
+est trace et le damier rend le vide transparent VISIBLE : c'est ce qui fait lire le defaut de
+cadrage, qu'aucun oracle ne voit. Premiere planche publiee (4,95 Mo, 57 fiches, 59 vignettes) :
+https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40
+
+**Conclusion / prochaine etape** : gate 1 rendu — l'ecart au temoin reste ouvert et ecrit comme
+tel, un defaut distinct est mesure sur 13 cartes avec son correctif nomme. Attente du verdict
+utilisateur sur la planche, puis phase 2 (cadrage de l'asset) et le correctif de la teinte,
+groupes en UNE re-cuisson pour ne pas faire juger deux fois les memes cartes.
+
+---
+
+## [2026-08-26] Cartes — gate utilisateur : 9 valides, 9 a finaliser, et le style devient par carte
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : premiere planche de gate publiee et JUGEE
+(https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40, 57 fiches). Le verdict
+est entre au registre avec son verbatim. Repartition des 56 fonds apres gate : **9 VALIDEE, 9
+A FINALISER, 1 A TRANCHER, 2 A RETRAVAILLER, 35 REFUSEE**. L'ambiguite du 13/08 est LEVEE :
+les 7 natifs re-cuits sont juges (Scarr valide, les six autres a finaliser), et trois natifs
+tenus pour valides depuis le 10/08 en sortent (Streets, Bazaar, Recharge).
+
+Ce que le gate a ouvert, et qui n'etait pas au plan : **le style est un choix PAR CARTE**.
+L'utilisateur veut `encre` sur Cliffhanger et le rendu du temoin sur Catalyst. Verifie sur
+pieces : le fond `ridgeline.png` en production est en style `jeu` (fond noir, arene claire) ;
+`Desktop/COULEUR_encre_cliffhanger.png` est en style `encre` (quasi monochrome sur blanc,
+riviere bleue) — ce ne sont pas les memes, et le style prefere n'est pas celui qui est livre.
+Or `StyleJeu` et `StyleEncre` existent DEJA en production (`fond_png.go`), le sidecar publie
+deja le style retenu, et seul `mapfond-build --style` est global. Une table de reglages par
+carte en DONNEE (style + raison + date de gate) suffit : aucune regle de rendu neuve, aucune
+branche. C'est le levier « chaque carte a sa maniere » le moins cher, et il devient le point A
+du plan.
+
+**Resultats observes** : Catalyst est declare REGRESSION — le temoin du 10/08, jamais livre,
+est meilleur que la production ; la cible de la carte est donc « reproduire ce temoin », pas
+« faire mieux ». Vagabond perd son gel `CarteForge.FondFige` (pose le 13/08 « a revoir » ; le
+gate a eu lieu, gros retravail demande). Honnetete de la correlation, ecrite au plan : sur les
+8 natifs dont l'ecart mediane-ancres/sol depasse l'etalonnage, **4 sont sur la liste a
+finaliser et 4 sont acceptes** — le defaut de teinte mesure a la phase 1.3 est reel mais
+n'explique pas a lui seul les verdicts. Demande produit hors perimetre : un ZOOM dans la page
+de rejeu ; verifie qu'il n'en existe aucun (`CANVAS_HEIGHT` fige a 480 px, `fitWidth` ajuste
+la scene a cette hauteur) — lot a part, il touche la projection partagee dessin/survol et le
+cache des calques cuits.
+
+**Conclusion / prochaine etape** : point A du plan (style par carte en donnee + garde-rail +
+planche de comparaison `jeu`/`encre` sur les 11 cartes non closes). Les zones jamais foulees
+restent une SECONDE BASE DE TRAVAIL (precision utilisateur), pas une regle de rendu final.

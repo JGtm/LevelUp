@@ -103,6 +103,21 @@ export class ReplayAudioPlayer {
    *  le chemin du signal reste celui d'origine, source -> enveloppe -> maître. */
   private distGain: GainNode | null = null
   private distFilter: BiquadFilterNode | null = null
+  /**
+   * LE ROBINET D'ENREGISTREMENT (2026-08-26) : une seconde sortie, branchée EN PARALLÈLE de
+   * `ctx.destination`, dont la piste va au `MediaRecorder` de la capture vidéo.
+   *
+   * Il n'existe que si on l'a demandé (`recordingTrack`) : un rejeu qu'on ne filme pas ne
+   * paie pas un nœud de plus. Une fois né il RESTE — un enregistrement suivant reprend la
+   * même piste, et le recréer à chaque clip laisserait des nœuds derrière lui.
+   */
+  private recordDest: MediaStreamAudioDestinationNode | null = null
+  /**
+   * Le dernier nœud AVANT la sortie : `master` sans chaîne de distance, `distFilter` avec.
+   * Le suivre est ce qui permet au robinet de se brancher au BON endroit — brancher `master`
+   * alors que la chaîne de distance est posée enregistrerait un son que personne n'entend.
+   */
+  private out: AudioNode
 
   /** `volume` est posé À LA CONSTRUCTION : un gain par défaut à 1 ferait passer le premier
    *  son à plein régime avant que la préférence de l'utilisateur ne soit appliquée. */
@@ -110,7 +125,35 @@ export class ReplayAudioPlayer {
     this.ctx = new AudioContext()
     this.master = this.ctx.createGain()
     this.master.gain.value = Math.min(Math.max(volume, 0), 1)
-    this.master.connect(this.ctx.destination)
+    this.out = this.master
+    this.connectOut(this.master)
+  }
+
+  /**
+   * connectOut branche un nœud sur la ou les SORTIES : les haut-parleurs toujours, et le
+   * robinet d'enregistrement quand il existe. Les trois points de la classe qui atteignaient
+   * `ctx.destination` passent par ici — sans quoi poser la chaîne de distance en cours
+   * d'enregistrement couperait le son du clip sans couper celui des haut-parleurs.
+   */
+  private connectOut(node: AudioNode): void {
+    this.out = node
+    node.connect(this.ctx.destination)
+    if (this.recordDest) node.connect(this.recordDest)
+  }
+
+  /**
+   * recordingTrack rend la piste audio à joindre à une vidéo, ou `null` si ce navigateur ne
+   * sait pas en fabriquer. Le robinet est créé À LA PREMIÈRE DEMANDE, puis conservé.
+   */
+  recordingTrack(): MediaStreamTrack | null {
+    if (typeof this.ctx.createMediaStreamDestination !== 'function') return null
+    if (!this.recordDest) {
+      this.recordDest = this.ctx.createMediaStreamDestination()
+      // Le robinet naît APRÈS le câblage : il faut donc le raccrocher à la sortie courante,
+      // celle-là même que les haut-parleurs reçoivent.
+      this.out.connect(this.recordDest)
+    }
+    return this.recordDest.stream.getAudioTracks()[0] ?? null
   }
 
   /**
@@ -134,7 +177,7 @@ export class ReplayAudioPlayer {
   setDistance(chain: DistanceChain | null): void {
     this.master.disconnect()
     if (!chain) {
-      this.master.connect(this.ctx.destination)
+      this.connectOut(this.master)
       return
     }
     if (!this.distGain || !this.distFilter) {
@@ -146,7 +189,7 @@ export class ReplayAudioPlayer {
     this.distGain.gain.value = gainFromDb(chain.gainDb)
     this.distFilter.frequency.value = chain.cutoffHz
     this.distFilter.disconnect()
-    this.distFilter.connect(this.ctx.destination)
+    this.connectOut(this.distFilter)
     this.master.connect(this.distGain)
   }
 
