@@ -1,3 +1,60 @@
+## [2026-08-26] Hygiene secrets — seed de demo n'extrait plus aucun credential — Complete
+
+**Contexte** : lot A, worktree dedie `wt/lot-a-secrets-demo` (base 3177a57a2). La revue du
+lot ADR 0023 Phase 5 signalait que l'extraction `sync_meta` du seed de demo excluait
+`msal_token_cache` mais PAS `oauth_refresh_token`. Verifie sur pieces avant correction :
+`internal/ops/seed_demo.go:200`, `{name: "sync_meta", where: "key NOT IN ('msal_token_cache')"}`
+— le refresh token OAuth du joueur source traversait donc VRAIMENT vers le jeu de donnees
+de demo (conteneur public). Les colonnes auth de `sync_meta` ne sont plus ni lues ni ecrites
+depuis la Phase 5 (2026-08-25) mais elles portent encore leurs dernieres valeurs jusqu'au
+drop physique (recette ADR 0026, prochain rebuild, hors perimetre de ce lot).
+
+**Decision technique principale** : liste d'EXCLUSION remplacee par une liste d'INCLUSION a
+defaut-refus (`internal/ops/seed_demo_sync_meta.go`, nouveau fichier — le god-file
+seed_demo.go n'est pas grossi). Le raisonnement qui tranche : une exclusion laisse passer
+PAR DEFAUT toute cle future, credential compris, et rien n'oblige celui qui l'introduit a
+venir l'exclure ; l'inclusion inverse la charge de la preuve. Inventaire exhaustif des cles
+`sync_meta` fait avant de choisir (grep des ecritures + archeologie git sur 250 revisions) :
+credentials `oauth_refresh_token` / `msal_token_cache` ; identite `xuid` / `player_xuid` ;
+horodatages `last_sync` / `last_delta_sync` / `last_post_sync_at` / `last_career_sync_at` ;
+`current_rank`, `live_update`, `last_seen_app_version`, `title_ready_announced_<slug>` ;
+sentinelles de migration. Liste retenue = 3 cles : `xuid` (necessaire — duckdb.ResolveXUID,
+et extractPlayerTables la reecrit en DemoXUID) + les 2 sentinelles de migration player
+`career_progression_rebuilt_v1` / `career_xp_total_default_fixed_v1`. Les sentinelles
+voyagent DELIBEREMENT : sans elles, applyMigrationsOnPath rejouerait sur la base de demo
+`rebuild_career_progression`, dont le DDL est un CLICHE FIGE (avertissement date du
+2026-08-05 en tete de la fonction) — toute colonne non enumeree y est perdue. Tout le reste
+est ecarte : la demo a la synchronisation coupee, ces cles n'y ont aucun lecteur.
+
+**Resultats observes** : garde-rail `seed_demo_sync_meta_guard_test.go` (6 tests unitaires,
+package ops, sans CGO) — credentials connus refuses, defaut-refus prouve sur 15 cles hors
+liste dont des credentials futurs plausibles, liste elle-meme interdite d'accueillir une cle
+de forme credential, clause SQL derivee de la liste (un retour au `NOT IN` casse), et
+verification que les 2 sentinelles autorisees existent encore cote migrations (une entree
+perimee ferait rejouer un rebuild silencieusement). Mordant prouve par 3 MUTATIONS REELLES,
+pas mentales : retour a la liste d'exclusion -> FAIL ; `oauth_refresh_token` ajoute a la
+liste -> FAIL sur 2 tests ; meme mutation sous tag integration -> FAIL
+`oauth_refresh_token LEAKED dans sync_meta demo`, ce qui prouve aussi que le RT atterrissait
+bien dans la base publiee. Fixture d'integration etendue (RT + `player_xuid` + une cle
+inconnue). Gates : gofmt -l vide (EXIT 0), go build ./... 0, go vet ./... 0,
+go test -count=1 ./internal/ops/... 0, go test -tags=integration -run TestSeedDemo
+./internal/ops/ 0, golangci-lint --new-from-merge-base=origin/feat/v75 0 apres correction
+d'un goconst (litteral "xuid" -> constante dediee `syncMetaKeyXUID` : le meme litteral
+designe ailleurs dans le package une colonne SQL et un champ JSON, la constante nomme
+laquelle des trois est visee). `go test ./...` : EXIT 1, unique echec
+`internal/himap` en timeout a 601 s (defaut 10 min) — lenteur locale connue et documentee,
+sans lien avec ce lot (himap n'importe pas internal/ops, verifie par grep) ; corrobore par
+un rejeu isole `-timeout 45m` du meme package.
+
+**Conclusion / prochaine etape** : le CODE ne copie plus aucun credential. MAIS le jeu de
+donnees de demo DEJA PUBLIE en prod a ete genere par l'ancien code : il porte donc
+vraisemblablement le RT du joueur source — purge/regeneration = operation prod, hors
+perimetre de ce lot, a traiter par le superviseur. Decouvertes non traitees (regle zero fix
+opportuniste) : (1) `player_xuid` portait le xuid REEL du joueur source et n'etait PAS
+anonymise par extractPlayerTables (seule la cle `xuid` l'est) — la liste d'inclusion le
+neutralise au passage, mais la meme classe de fuite est a re-auditer sur les autres tables
+extraites ; (2) le drop physique des colonnes auth de `sync_meta` (ADR 0026) reste du.
+
 ## [2026-08-25] Dependabot suite — vague mineure mergée, react-table 9 reporté en lot dédié
 
 **Statut** : Complété (même worktree `deps-security`). Le push de `dependabot.yml` a
