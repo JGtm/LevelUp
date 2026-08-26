@@ -21,12 +21,12 @@
 // LA RECETTE EST UNIVERSELLE, SES REGLAGES NE LE SONT PLUS TOUS. Jusqu'au 2026-08-26 la chaine
 // ne portait aucun reglage par carte, et c'est ce qui la rendait transferable : une seule carte
 // (Cliffhanger) possede l'oracle fort des positions de joueur, donc regler carte par carte etait
-// impossible en principe. Le gate utilisateur du 26/08 a tranche l'inverse sur DEUX axes, et il
+// impossible en principe. Le gate utilisateur du 26/08 a tranche l'inverse, et il
 // avait des images a l'appui : l'habillage (`encre` sur Cliffhanger, `jeu` sur Catalyst) et
-// l'ECHELLE (une petite arene rend une petite image, donc pixelisee a l'ecran).
+// l'ECHELLE (une petite arene rend une petite image, donc pixelisee a l'ecran) ; l'ECRETAGE des toits s'y est ajoute le meme jour (ecretage_toits.go).
 //
 // CE QUI RESTE INTERDIT, et c'est la vraie regle : une BRANCHE par carte dans ce paquet. Les
-// deux axes ci-dessus sont des ENTREES (`OptionsCuisson`), choisies en DONNEE par l'appelant,
+// axes ci-dessus sont des ENTREES (`OptionsCuisson`), choisies en DONNEE par l'appelant,
 // avec leur raison ecrite et la date de leur gate. La chaine, elle, ne sait pas quelle carte
 // elle cuit.
 //
@@ -78,6 +78,17 @@ type OptionsCuisson struct {
 	// SansFrontiere neutralise la coquille de mort. TEMOIN de comparaison uniquement :
 	// jamais une option de production.
 	SansFrontiere bool
+	// EcreteToits arme l ECRETAGE (ecretage_toits.go) : un pixel dont aucune surface n est a
+	// hauteur de jeu est VIDE au lieu d etre rendu. Reglage PAR CARTE, jamais un defaut — sur
+	// une carte dont les rochers hauts font l identite, il les efface.
+	EcreteToits bool
+	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
+	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
+	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
+	ZonesNommees [][][2]float64
+	// RogneAuxZones EFFACE la matiere hors des zones nommees dilatees. Reglage PAR CARTE, a
+	// ne poser qu apres avoir regarde le taux mesure.
+	RogneAuxZones bool
 	// Echelle est le cote d'un pixel du fond, en metres. ZERO = `EchelleFondCarte`.
 	//
 	// POURQUOI CE N'EST PLUS UNE CONSTANTE (2026-08-26). Le cadre est propre a chaque carte,
@@ -131,6 +142,14 @@ type BilanCuisson struct {
 	TauxCouverture      float64
 	CarteCouverte       bool
 	CellulesSubstituees int
+	// CellulesEcretees : pixels VIDES par l ecretage des toits (voie par carte). Zero partout
+	// ailleurs — la voie de reference ne supprime jamais de matiere.
+	CellulesEcretees int
+	// MatiereHorsZones : cellules de matiere qui tombent HORS des zones nommees dilatees.
+	// MESURE, publiee meme quand on ne rogne pas — c est le chiffre qui autorise ou interdit
+	// le rognage. CellulesHorsZones est ce qui a ete reellement efface.
+	MatiereHorsZones  int
+	CellulesHorsZones int
 	// PlansFrontiere / FrontiereAppliquee / CellulesEffacees : la coquille de mort declaree
 	// par la carte.
 	PlansFrontiere     int
@@ -180,8 +199,16 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	if err := peupleDepuisModule(ctx, r, &b, opts); err != nil {
 		return nil, b, err
 	}
-	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
+	if opts.EcreteToits {
+		// Voie PAR CARTE, declaree en donnee : elle SUPPRIME de la matiere, ce que la voie de
+		// reference ne fait jamais. Les deux liberent les memes buffers, elles ne se cumulent pas.
+		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s)
+		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
+	} else {
+		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
+	}
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
+	mesureEtRogneZones(ctx, r, &b, opts)
 	JugeParLesAncres(r, &b, opts.Ancres)
 	PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
 	slog.InfoContext(ctx, "carte cuite", "module", b.Module,
@@ -461,4 +488,26 @@ func Centile(v []float64, p float64) float64 {
 	c := append([]float64(nil), v...)
 	sort.Float64s(c)
 	return c[int(p*float64(len(c)-1))]
+}
+
+// mesureEtRogneZones mesure la matiere hors des zones nommees, et ne l'efface que si la carte
+// le demande. La MESURE est inconditionnelle : c'est elle qui dit si le rognage est defendable
+// sur cette carte, et un chiffre qu'on ne publie pas est un chiffre que personne ne regarde.
+func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuisson) {
+	if len(opts.ZonesNommees) == 0 {
+		return
+	}
+	m := MasqueZones(r, opts.ZonesNommees, MargeMasqueZones)
+	matiere, dehors := r.MesureHorsZones(m)
+	b.MatiereHorsZones = dehors
+	part := 0.0
+	if matiere > 0 {
+		part = float64(dehors) / float64(matiere)
+	}
+	slog.InfoContext(ctx, "mapfond: matiere hors des zones nommees", "carte", b.Module,
+		"zones", len(opts.ZonesNommees), "matiere", matiere, "dehors", dehors,
+		"part", fmt.Sprintf("%.1f%%", 100*part), "rogne", opts.RogneAuxZones)
+	if opts.RogneAuxZones {
+		b.CellulesHorsZones = r.EffaceHorsZones(m)
+	}
 }

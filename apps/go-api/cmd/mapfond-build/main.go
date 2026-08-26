@@ -101,6 +101,9 @@ type environnement struct {
 	style     himap.StyleFond
 	// reglages : les choix PAR CARTE (habillage, echelle), lus en donnee. Jamais nil.
 	reglages *reglagesFond
+	// callouts : les zones nommees par carte. Nil si le catalogue est absent — la mesure hors
+	// zones est alors muette, jamais un zero silencieux.
+	callouts *replay.MapCalloutsCatalog
 	// echelle : cote du pixel en metres. Zero = celle de production (`EchelleFondCarte`).
 	// Reglage PAR CARTE au sens du gate du 26/08 — ici il vaut pour toute la cuisson demandee.
 	echelle float64
@@ -152,6 +155,7 @@ func prepare(titleSlug, outDir string) (*environnement, error) {
 		levelsDir:    levels,
 		liens:        liensDuDepot(root, levels),
 		reglages:     reg,
+		callouts:     chargeCallouts(res.MapCalloutsPath(titleSlug)),
 	}, nil
 }
 
@@ -267,4 +271,17 @@ func (e *environnement) echelleEffective() float64 {
 		return e.echelle
 	}
 	return himap.EchelleFondCarte
+}
+
+// chargeCallouts lit le catalogue des zones nommées. ABSENT ou illisible n'arrête pas la
+// cuisson — mais c'est SIGNALÉ : une mesure muette qu'on prendrait pour un zéro serait pire
+// que pas de mesure du tout.
+func chargeCallouts(chemin string) *replay.MapCalloutsCatalog {
+	cat, err := replay.LoadMapCallouts(chemin)
+	if err != nil {
+		slog.Warn("mapfond: catalogue de callouts indisponible — mesure hors zones muette",
+			"err", err, "path", chemin)
+		return nil
+	}
+	return cat
 }

@@ -19,7 +19,7 @@ const feuilleDeStyle = `
 :root {
   --sol: #e9ecf0;
   --plaque: #f8fafb;
-  --damier: #dfe4ea;
+  --damier: #b9c4d0;
   --encre: #111820;
   --sourd: #5a6675;
   --trait: #ccd3db;
@@ -34,7 +34,7 @@ const feuilleDeStyle = `
   :root:not([data-theme="light"]) {
     --sol: #0b0f14;
     --plaque: #141a21;
-    --damier: #1b232b;
+    --damier: #313f4c;
     --encre: #dfe6ee;
     --sourd: #7d8b9b;
     --trait: #232c36;
@@ -47,7 +47,7 @@ const feuilleDeStyle = `
 :root[data-theme="dark"] {
   --sol: #0b0f14;
   --plaque: #141a21;
-  --damier: #1b232b;
+  --damier: #313f4c;
   --encre: #dfe6ee;
   --sourd: #7d8b9b;
   --trait: #232c36;

@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/draw"
 	"image/png"
 	"log/slog"
 	"os"
@@ -76,10 +77,13 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 	var out []bilanAsset
 	for _, c := range e.ciblesNatives() {
 		rendu, bilan, err := himap.CuitCarteNative(ctx, himap.OptionsCuisson{
-			RacineDeploy: e.racineJeu,
-			CheminModule: c.chemin,
-			Ancres:       c.ancres,
-			Echelle:      e.echelleDe(c.cle),
+			RacineDeploy:  e.racineJeu,
+			CheminModule:  c.chemin,
+			Ancres:        c.ancres,
+			Echelle:       e.echelleDe(c.cle),
+			EcreteToits:   e.ecreteToitsDe(c.cle),
+			ZonesNommees:  e.zonesNommeesDe(c.cle),
+			RogneAuxZones: e.rogneAuxZonesDe(c.cle),
 		})
 		if err != nil {
 			if errors.Is(err, himap.ErrAucunTagSbsp) {
@@ -228,8 +232,20 @@ func (e *environnement) cibleForge(carte himap.CarteForge) (cible, []mapvar.Obje
 
 // publie écrit le PNG et son sidecar de calage.
 func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu, b himap.BilanCuisson) bilanAsset {
-	ba := bilanAsset{Cle: c.cle, Noms: c.noms, Bilan: b, LargeurPx: rendu.NX, HauteurPx: rendu.NY}
+	ba := bilanAsset{Cle: c.cle, Noms: c.noms, Bilan: b}
 	img := himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, e.styleDe(c.cle))
+	// LE CADRE PUBLIÉ EST CELUI DE LA MATIÈRE, pas celui de la grille : la coquille de mort a
+	// effacé hors frontière et personne ne recalculait le cadre après elle (cadre_utile.go).
+	rogne, ok := himap.CadreUtile(img, rendu.Cell)
+	if !ok {
+		slog.WarnContext(ctx, "fond entierement vide — publie sans rognage", "carte", c.cle)
+	} else if rogne != img.Bounds() {
+		slog.InfoContext(ctx, "mapfond: cadre rogne sur la matiere", "carte", c.cle,
+			"avant", fmt.Sprintf("%dx%d", img.Bounds().Dx(), img.Bounds().Dy()),
+			"apres", fmt.Sprintf("%dx%d", rogne.Dx(), rogne.Dy()))
+	}
+	img = extraitSousImage(img, rogne)
+	ba.LargeurPx, ba.HauteurPx = img.Bounds().Dx(), img.Bounds().Dy()
 	cheminPNG := filepath.Join(e.sortieDir, c.cle+".png")
 	octets, err := ecritPNG(cheminPNG, img)
 	if err != nil {
@@ -238,13 +254,14 @@ func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu,
 		return ba
 	}
 	ba.OctetsPNG = octets
-	if err := e.ecritSidecar(c, rendu, b); err != nil {
+	if err := e.ecritSidecar(c, rendu, b, rogne); err != nil {
 		ba.Err = err
 		slog.ErrorContext(ctx, "écriture sidecar", "err", err, "carte", c.cle)
 		return ba
 	}
 	slog.InfoContext(ctx, "fond de carte figé", "carte", c.cle, "noms", strings.Join(c.noms, ", "),
-		"px", fmt.Sprintf("%dx%d", rendu.NX, rendu.NY), "octets", octets,
+		"px", fmt.Sprintf("%dx%d", ba.LargeurPx, ba.HauteurPx), "grille", fmt.Sprintf("%dx%d", rendu.NX, rendu.NY),
+		"octets", octets,
 		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre),
 		"path", cheminPNG)
 	return ba
@@ -271,8 +288,10 @@ func ecritPNG(chemin string, img image.Image) (int64, error) {
 }
 
 // ecritSidecar écrit le calage et les stats à côté du PNG.
-func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanCuisson) error {
+func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanCuisson, rogne image.Rectangle) error {
 	x0, y1, mpp := himap.CalageDuRendu(rendu)
+	// Le PNG publie est ROGNE a la matiere : l'origine suit, l'echelle NON (cadre_utile.go).
+	x0, y1 = himap.CalageRogne(x0, y1, mpp, rogne)
 	meta := replay.MapBackground{
 		SchemaVersion: replay.MapBackgroundSchemaVersion,
 		Module:        c.cle,
@@ -283,7 +302,7 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 		Style:         string(e.styleDe(c.cle)),
 		Calibration: replay.MapBackgroundCalibration{
 			MetersPerPixel: mpp, OriginX: x0, OriginY: y1,
-			WidthPx: rendu.NX, HeightPx: rendu.NY, Convention: himap.ConventionCalage,
+			WidthPx: rogne.Dx(), HeightPx: rogne.Dy(), Convention: himap.ConventionCalage,
 		},
 		Stats:        statsDeBilan(b),
 		Degradations: b.Degradations,
@@ -305,6 +324,7 @@ func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
 		WaterVolumes:         b.VolumesEau, WaterCells: b.CellulesEau,
 		CoveredShare: b.TauxCouverture, Covered: b.CarteCouverte,
 		CellsSubstituted: b.CellulesSubstituees,
+		CellsClipped:     b.CellulesEcretees,
 		ForgeObjects:     b.ObjetsForge, ForgeObjectsDrawn: b.ObjetsDessines,
 		ForgeObjectsWithoutModel: b.ObjetsSansModele, ForgeDeathVolumes: b.VolumesDeMort,
 	}
@@ -369,4 +389,18 @@ func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error 
 			len(env.nonInstalle), strings.Join(env.nonInstalle, ", "))
 	}
 	return os.WriteFile(chemin, []byte(sb.String()), 0o644) //nolint:gosec // rapport de chantier
+}
+
+// extraitSousImage rend une image RGBA autonome bornee a `r`, origine ramenee a (0,0).
+//
+// `SubImage` partagerait le tableau de pixels et garderait des bornes decalees : l'encodeur PNG
+// les respecte, mais tout ce qui lit `Bounds().Min` ensuite doit y penser. Une copie coute une
+// fois, a la cuisson, et supprime le piege.
+func extraitSousImage(src *image.RGBA, r image.Rectangle) *image.RGBA {
+	if r == src.Bounds() {
+		return src
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, r.Dx(), r.Dy()))
+	draw.Draw(dst, dst.Bounds(), src, r.Min, draw.Src)
+	return dst
 }

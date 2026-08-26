@@ -57,8 +57,8 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Oasis / Oasis Heavies | `btb_exiled` | 92 | 61.0 | -4,38 | natif | VALIDEE 26/08 |
 | Fragmentation / Fragmentation Heavies | `btb_fragmentation` | 92 | 87.4 | -11,71 | natif | VALIDEE 26/08 |
 | Breaker / Breaker Heavies | `ctf_breaker` | 76 | 52.4 | -3,29 | natif | VALIDEE 26/08 |
-| Streets - Ranked / Streets | `sgh_streets` | 62 | 40.6 | -4,33 | natif | A FINALISER |
-| Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | PUBLIEE `encre` 26/08 — a valider |
+| Streets - Ranked / Streets | `sgh_streets` | 62 | 40.6 | -4,33 | natif | VALIDEE 26/08 — `encre` + cadre + echelle + toits + zones |
+| Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | VALIDEE `encre` 26/08 |
 | Scarr | `btb_engine` | 57 | 65.9 | -0,13 | natif | VALIDEE 26/08 |
 | Bazaar | `ctf_bazaar` | 56 | 39.3 | -4,22 | natif | A FINALISER |
 | Illusion | `ctf_illusion` | 56 | 76.3 | -0,26 | natif | A FINALISER |
@@ -236,6 +236,7 @@ de travail pour atteindre une version valide, pas de regle de rendu final.
 | 2026-08-26 | etat des lieux | https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40 | les 56 fonds publies + Catalyst a trois etats (publie / re-cuisson 26/08 / temoin 10/08) |
 | 2026-08-26 | style `jeu` / `encre` | https://claude.ai/code/artifact/6c9ec756-95e6-451a-8977-5e61debb8bae | les 19 fonds natifs dans les deux habillages, ordre des verdicts du 26/08 |
 | 2026-08-26 | carte 1 — Cliffhanger | https://claude.ai/code/artifact/e3f8f959-14a3-44a8-b426-26a27f13832b | avant/apres de la SEULE carte publiee en `encre` |
+| 2026-08-26 | carte 2 — Streets | https://claude.ai/code/artifact/b74cff7f-c885-423c-b04e-aa854c260ba9 | avant/apres, publiee en `encre` |
 
 Outil : `cmd/mapfond-planche` — manifeste TSV (cle, libelle, sous-titre, statut, colonne,
 chemin PNG), une page HTML autonome, vignettes en data URI. Plusieurs lignes de meme cle
@@ -259,3 +260,41 @@ Ordre retenu (matchs decroissants parmi les non closes) : **Cliffhanger** (58, p
 attente de verdict) → Streets (62) → Bazaar (56) → Recharge (56) → Illusion (56) → Aquarius
 (54) → Chasm (52) → Prism (49) → Catalyst (48) → Launch Site (24) → Vagabond (16, gros
 retravail). Streets pese plus que Cliffhanger, mais Cliffhanger etait deja tranchee.
+
+### 2026-08-26 — carte 1, Cliffhanger
+
+Planche : https://claude.ai/code/artifact/e3f8f959-14a3-44a8-b426-26a27f13832b
+
+**Verbatim** : « je valide cliffhanger comme ca on peut passer a la suivante ? »
+
+`ridgeline` passe `VALIDEE encre 26/08`. Le fond publie est en style `encre`, reglage declare
+en donnee avec sa raison et sa date. Ses deux defauts connus restent OUVERTS et ne sont pas
+couverts par ce verdict : largeur utile 68,6 % du cadre, et l'echelle.
+
+### 2026-08-26 — carte 2, Streets
+
+Planche : https://claude.ai/code/artifact/b74cff7f-c885-423c-b04e-aa854c260ba9 (quatre etats)
+
+**Verbatim** : « ok avec le rendu 4, je valide on peut passer a la suite »
+
+`sgh_streets` passe `VALIDEE` avec les QUATRE traitements, tous declares en donnee :
+
+| axe | valeur | effet mesure |
+|---|---|---|
+| habillage | `encre` | la teinte ne bascule plus, seule la valeur varie |
+| echelle | 0,036 m/px | matiere utile 549 x 426 px -> 1 737 x 1 422 px |
+| cadre | rogne a la matiere + 6 m | 40,6 % de largeur utile -> 80,8 % |
+| toits | ecretes | 495 752 pixels substitues, 0 vide ; ecart au sol -2,48 m -> -0,29 m |
+| zones | rogne aux callouts + 4 m | 306 810 cellules effacees sur 1 526 464, soit 20,1 % |
+
+**Ce que ce gate etablit au-dela de Streets** :
+
+- Le rognage aux zones nommees est **defendable** : la ceinture exterieure qui faisait de la
+  carte une dalle rectangulaire disparait, la silhouette devient celle d'une carte.
+- **Limite connue et non corrigee** : le contour porte des marches rectilignes — les carres de
+  la dilatation, pas le terrain. Une dilatation circulaire les supprimerait ; la marge de 4 m
+  est un reglage, pas une verite.
+- **Ce rognage ne vaudra JAMAIS pour les cartes Forge** : 0 callout sur les 37 fonds Forge.
+  Ce sont pourtant les plus mal cadrees (88,3 % de largeur occupee, la « bouillie » refusee).
+- Le seuil `SeuilCarteCouverte` (1/3) est en cause plus que le mecanisme de substitution :
+  Streets, mesuree a 7,1 %, n'a jamais declenche la voie de reference qui lui allait.

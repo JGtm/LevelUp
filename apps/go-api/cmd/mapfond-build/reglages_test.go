@@ -48,8 +48,8 @@ func TestReglagesFondJustifies(t *testing.T) {
 			t.Errorf("réglage %q : gateLe = %q, attendu AAAA-MM-JJ — la date du gate qui l'a décidé",
 				cle, c.GateLe)
 		}
-		if c.Style == "" && c.Echelle <= 0 {
-			t.Errorf("réglage %q : ne déclare NI habillage NI échelle — entrée sans effet, à retirer", cle)
+		if c.Style == "" && c.Echelle <= 0 && !c.EcreteToits {
+			t.Errorf("réglage %q : ne déclare ni habillage, ni échelle, ni écrêtage — entrée sans effet, à retirer", cle)
 		}
 		if c.Style != "" && !himap.StyleFondValide(himap.StyleFond(c.Style)) {
 			t.Errorf("réglage %q : habillage inconnu %q", cle, c.Style)
