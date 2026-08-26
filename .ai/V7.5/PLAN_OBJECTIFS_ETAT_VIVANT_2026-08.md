@@ -647,15 +647,15 @@ passe a l'utilisateur.**
       croiser — depasse dix minutes. Le corpus entier ne se mesure donc pas en avant-plan : il
       faut une fenetre longue, et c'est une contrainte d'ordonnancement, pas un obstacle de
       methode.
-- [ ] D3.2 Chercher un DESIGNATEUR (H1) par le predicat de production `hillDesignatorOf` : existe-t-il
+- [x] D3.2 Chercher un DESIGNATEUR (H1) par le predicat de production `hillDesignatorOf` : existe-t-il
       un slot de tag 5 chaine dont le voisin porte un proprietaire qui parle ? Combien de bascules,
       et tombent-elles sur les bornes de MANCHE (`objectiveevents.RealRounds` /
       `SeriesByRound`) ?
-- [ ] D3.3 Appariement (H2) : prises nommees `zone_captures` -> forme du catalogue par la position
+- [x] D3.3 Appariement (H2) : prises nommees `zone_captures` -> forme du catalogue par la position
       de leur auteur ; taux d'attribution et temoin decale de 12 m. Cardinalite de l'ensemble
       apparie PAR MANCHE.
-- [ ] D3.4 Proprietaire : accord tag 4 / equipe du capteur, avec ses denominateurs.
-- [ ] D3.5 Verdict : les trois seuils du §2.3 sont-ils tenus ? Quelle hypothese (H1 ou H2) porte
+- [x] D3.4 Proprietaire : accord tag 4 / equipe du capteur, avec ses denominateurs.
+- [x] D3.5 Verdict : les trois seuils du §2.3 sont-ils tenus ? Quelle hypothese (H1 ou H2) porte
       les 3 actives ? Non tenu = NEGATIF ecrit, `[!]`, et `totalcontrol_zone` NE rejoint PAS
       `heldZoneRoles`.
 
@@ -1166,3 +1166,47 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   best-effort, mais non borne en pic. Declare comme DETTE, pas comme exemption : l'executeur ne
   s'y transpose pas tel quel (son arret de processus est interdit la ou des handles d'ecriture
   DuckDB sont tenus, ADR 0013/0019/0030). **Arbitrage superviseur requis.**
+
+- 2026-08-27 — **D3 : GATE NON ATTEINT SUR LE SEUIL (1). Negatif ecrit, arret propre.** Mesure
+  des 7 films sous l'executeur borne (protocole commite avant : `025aea2be`).
+
+  | film | carte | posees | dedans | **attribution** | temoin temporel | rapport |
+  |---|---|---|---|---|---|---|
+  | `bf831a6b` | Command | 12 | 9 | **75,0 %** | 16,7 % | 4,5 |
+  | `66aa5f0b` | Command | 11 | 7 | **63,6 %** | 18,2 % | 3,5 |
+  | `2f05dc98` | Refuge | 27 | 13 | **48,1 %** | 18,5 % | 2,6 |
+  | `0862dce4` | Highpower | 44 | 16 | **36,4 %** | 6,8 % | 5,3 |
+  | `d2c64f8c` | Fortitude | 50 | 10 | **20,0 %** | 10,0 % | 2,0 |
+  | `a521164d` | Frag. Heavies | 0 | 0 | — | — | NON EXPLOITABLE (aucune prise) |
+  | `a349fea8` | Frag. Heavies | — | — | — | — | NON MESURE (plafond memoire) |
+
+  **CORPUS : 55 prises rattachees sur 144 = 38,2 %.** Le seuil (1) exige >= 80 % : **0 film sur
+  5 exploitables** l'atteint, le meilleur plafonne a 75,0 % sur douze prises. Le seuil n'est pas
+  rebaisse. Par le protocole (ordre par cout, arret au premier echec), les seuils (2)
+  cardinalite et (3) proprietaire **ne sont PAS evalues** — les deux se lisent sur des zones
+  appariees, et l'appariement ne tient pas.
+
+  **CE N'EST PAS UN CORPUS ABSENT, C'EST UN APPARIEMENT QUI NE TIENT PAS.** Cinq films
+  exploitables (11 a 50 prises), la regle d'escalade ne se declenche pas. Et le canal n'est pas
+  muet : les temoins temporels restent bas (6,8 a 18,5 %) et le rapport reel/temoin vaut 2,0 a
+  5,3 — il y a du signal, il est simplement tres loin du niveau qu'une publication exige.
+
+  **CAUSE PROBABLE, NON INSTRUITE (le protocole arrete au seuil)** : les prises `zone_captures`
+  sont approximatives (`th=10`, 5-20 s) et Total Control est du BTB — 24 joueurs, cartes larges,
+  13 a 18 zones. A l'instant enregistre, le capteur est souvent deja sorti de la zone. Les
+  compteurs le suggerent : sur Fortitude, 16 prises sans position et 13 ambigues sur 66
+  identifiees. Instruire cela demanderait un oracle plus fin que le `th=10`, donc une phase
+  a part.
+
+  **`totalcontrol_zone` NE REJOINT PAS `heldZoneRoles`.** L'entree du titre reste `neutral = true`
+  en formes seules. Rien n'est publie.
+
+- 2026-08-27 — **L'EXECUTEUR BORNE A ATTRAPE UNE VRAIE BOMBE, et c'est la validation du lot
+  RUNNER sur pieces.** `a349fea8` (Fragmentation Heavies, 51 chunks, 67 Mo) alloue **3,17 Gio en
+  3,6 secondes** et franchit le plafond dur : l'enfant meurt avec son motif, le parent le compte
+  en `memoire`, **et la passe continue**. Les six autres films culminent entre **0,07 et
+  0,22 Gio**. Deux enseignements : (a) la machine ne mourait pas d'un film moyen mais de la
+  SOMME des pics dans un processus unique — d'ou l'accumulation ; (b) le corpus contient bel et
+  bien au moins un film-bombe, celui-la meme qui a fait suffoquer la machine deux fois. Le
+  recap le DIT (« 1 film n'a PAS ete mesure — un taux calcule dessus ne porte pas sur ce qu'il
+  annonce »), ce qui est exactement pourquoi ce compteur existe.
