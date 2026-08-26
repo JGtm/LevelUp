@@ -272,7 +272,17 @@ thought_log, mémoire de session.
   bombe au minimum) — un objet à forme d'un rôle points_only part en MARQUEUR (centre),
   jamais en zone ; le catalogue JSON n'est PAS modifié (la forme est une donnée réelle).
   Garde : test « un pair CTF ne sert jamais de zones ». Exécuteur : agent lot D.
-- [ ] FIX-SOCLES-INVISIBLES : socles/power-ups invisibles sur `530820e5` MÊME AVEC
+- [~] FIX-SOCLES-INVISIBLES — DIAGNOSTIC CLOS (26/08, fusionné) : le chemin WEB est SAIN,
+  prouvé par fixture réduite de l'artefact réel (5 socles -> 5 points dès l'image 0),
+  3 pistes écartées sur pièces, 6 tests verrouillent les 2 seules sorties muettes de
+  `paint`. Cause restante : la réponse reçue par le navigateur ne portait pas de
+  `weaponPads` = binaire serveur local PÉRIMÉ (désérialisation dans de vieilles
+  structures qui perd les champs récents) ; serveur trouvé TOMBÉ au diagnostic (aucun
+  processus air/server), RELANCÉ par le superviseur avec le code à jour. Vérification
+  finale = l'utilisateur recharge la page. DÉCOUVERTE consignée (non traitée) :
+  `sceneBounds` unionne `geometryBounds` quand `structure` est absent -> vue étirée
+  (~60 % de largeur utile sur `530820e5`), vrai défaut de cadrage, touche le périmètre
+  du lot C. Détail d'origine : socles/power-ups invisibles sur `530820e5` MÊME AVEC
   toutes les bascules actives (confirmé utilisateur 26/08). SERVEUR HORS DE CAUSE,
   vérifié superviseur : artefact schéma 18 avec 5 `weaponPads` + 22 `padPickups`,
   positions concordantes au catalogue f7e8cde9 (5/11 confirmables), défauts des
