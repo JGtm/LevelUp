@@ -144,10 +144,10 @@ describe('useReplaySound — silences voulus', () => {
 })
 
 describe('useReplaySound — catégories (tiroir de réglages, phase 2)', () => {
-  it('les quatre catégories sont actives par défaut', () => {
+  it('les cinq catégories sont actives par défaut', () => {
     const { result } = mount()
     expect(result.current.categories).toEqual({
-      weapon: true, grenade: true, melee: true, equipment: true,
+      weapon: true, grenade: true, melee: true, equipment: true, objective: true,
     })
   })
 

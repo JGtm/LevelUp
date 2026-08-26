@@ -34,6 +34,8 @@ import {
   type SoundCategory,
   type SoundCategoryFilter,
 } from './replaySound'
+import { sideResolverFromScoreboard, type ScoreboardSide } from './objectiveSound'
+import { pickVariantStem, stemsOf } from './replaySoundVariants'
 import {
   advanceSoundCursor,
   resyncSoundCursor,
@@ -101,6 +103,7 @@ function useSoundCategoryFilter(): {
     grenade: !categoriesOff.has('grenade'),
     melee: !categoriesOff.has('melee'),
     equipment: !categoriesOff.has('equipment'),
+    objective: !categoriesOff.has('objective'),
   }), [categoriesOff])
 
   const toggleCategory = useCallback((category: SoundCategory) => {
@@ -125,10 +128,16 @@ function hasSoundEvents(doc: ReplayDocumentReady, kills: KillEvent[], t0Ms: numb
 
 /** Les URL des sons EFFECTIVEMENT présents dans une piste : on ne précharge jamais le pack
  *  entier (27 fichiers) pour un match qui n'en joue que cinq. */
-function soundURLsFor(timeline: readonly { stem: string }[]): Map<string, string> {
+function soundURLsFor(
+  timeline: readonly { stem: string; variants?: readonly string[] }[],
+): Map<string, string> {
   const urls = new Map<string, string>()
   for (const e of timeline) {
-    if (!urls.has(e.stem)) urls.set(e.stem, staticAssetURL('sound', e.stem, '.wav'))
+    // TOUTES les variantes sont préchargées, pas seulement celle qui sortira du tirage : le
+    // tirage a lieu à la lecture, et un fichier pas encore décodé y serait un silence.
+    for (const stem of stemsOf(e)) {
+      if (!urls.has(stem)) urls.set(stem, staticAssetURL('sound', stem, '.wav'))
+    }
   }
   return urls
 }
@@ -164,7 +173,13 @@ export function useReplaySound(
   kills: KillEvent[] | undefined,
   t0Ms: number | undefined,
   speed: number,
+  // Le tableau de score, d'où se DÉDUIT le camp de l'auteur d'une action d'objectif (résolveur
+  // pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
+  // deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
+  // que l'encre des calques.
+  scoreboard?: readonly ScoreboardSide[],
 ): ReplaySound {
+  const sideOfXuid = useMemo(() => sideResolverFromScoreboard(scoreboard), [scoreboard])
   const [on, setOn] = useState(() => readStoredFlag(SOUND_ON_KEY, false))
   const [volume, setVolumeState] = useState(() =>
     readStoredNumber(SOUND_VOLUME_KEY, SOUND_VOLUME_DEFAULT, (v) => v > 0 && v <= 1),
@@ -176,8 +191,8 @@ export function useReplaySound(
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
   const timeline = useMemo(
-    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories),
-    [doc, kills, t0Ms, categories],
+    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid),
+    [doc, kills, t0Ms, categories, sideOfXuid],
   )
   const hasAnySound = useMemo(
     () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0),
@@ -262,11 +277,15 @@ export function useReplaySound(
     const { cursor, fire } = advanceSoundCursor(tl, cursorRef.current, ms)
     cursorRef.current = cursor
     for (const e of fire) {
-      const url = urlsRef.current.get(e.stem)
+      // LE TIRAGE DE VARIANTE A LIEU ICI, pas à la construction de la piste : une piste est
+      // bâtie une fois pour tout le match, y tirer ferait rejouer le même fichier à chaque
+      // occurrence du geste — exactement ce que la variante évite (`replaySoundVariants.ts`).
+      const stem = pickVariantStem(e)
+      const url = urlsRef.current.get(stem)
       if (!url) continue
       // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
       // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact).
-      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[e.stem], tuning.variationPercentRef.current))
+      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current))
     }
   }, [tuning])
 

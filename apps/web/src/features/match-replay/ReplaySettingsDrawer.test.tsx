@@ -61,7 +61,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     volume: 0.7,
     setVolume: vi.fn(),
     mutedBySpeed: false,
-    categories: { weapon: true, grenade: true, melee: true, equipment: true },
+    categories: { weapon: true, grenade: true, melee: true, equipment: true, objective: true },
     toggleCategory: vi.fn(),
     tick: vi.fn(),
     ...over,
@@ -297,7 +297,7 @@ describe('ReplaySettingsDrawer — son (le filtre par catégorie seul : l’inte
   it('les quatre catégories sont affichées, chacune avec son état', () => {
     renderDrawer({
       sound: makeSound({
-        categories: { weapon: true, grenade: false, melee: true, equipment: false },
+        categories: { weapon: true, grenade: false, melee: true, equipment: false, objective: false },
       }),
     })
     expect(screen.getByRole('button', { name: 'Armes' })).toHaveAttribute('aria-pressed', 'true')

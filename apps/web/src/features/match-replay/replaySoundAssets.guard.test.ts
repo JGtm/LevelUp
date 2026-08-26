@@ -35,9 +35,18 @@ import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS,
   EQUIPMENT_SOUND_STEMS,
   GRAPPLE_SOUND_STEM,
+  EQUIPMENT_PLACEMENT_SOUND_STEMS_END,
   KILL_SPRITE_SOUND_STEMS,
+  OBJECTIVE_SOUND_STEMS,
+  SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
 } from './replaySound'
+
+/** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
+ *  l oreille reste muet), et le garde-rail ne doit pas r00e9clamer un fichier pour un stem absent. */
+function stemsObjectif(v: { ally?: string; enemy?: string } | { any: string }): string[] {
+  return 'any' in v ? [v.any] : [v.ally, v.enemy].filter((s): s is string => s !== undefined)
+}
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
@@ -65,8 +74,18 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
     // Les POSES d'équipement (lot du 2026-08-18) : UN stem par famille — le geste de pose.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
+    // Et la FIN de pose, pour les familles qui ont un son d'extinction propre (2026-08-26).
+    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
     // Le TIR de grappin (lot G, 2026-08-20) : UN SEUL stem, aucune famille.
     GRAPPLE_SOUND_STEM,
+    // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : un ou deux stems par statistique, selon
+    // que le jeu distingue les camps.
+    ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
+    // Les VARIANTES (lot du 2026-08-26) : un geste que le jeu tire dans un `RandomSequence`
+    // livre TOUS ses fichiers, pas seulement le premier. Sans cette ligne, `grapple_fire_v2`
+    // et `_v3` seraient des « assets morts » aux yeux du deuxième test — alors qu'ils sont
+    // exactement ce que la table déclare jouer.
+    ...Object.values(SOUND_VARIANTS).flat(),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -131,9 +150,20 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // Les poses relèvent de la MÊME catégorie que les épisodes (Équipements) : elles gardent
     // la durée de leur source, jamais retronquée à la coupe des armes.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
-    // Le grappin (lot G, 2026-08-20) : catégorie Équipement, même règle. Sa source fait
-    // 1,687 s, déjà au-dessus de la coupe des armes — aucune entrée SOURCES_COURTES requise.
+    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
+    // Le grappin : catégorie Équipement, même règle. SA SOURCE A CHANGÉ LE 2026-08-26 — le
+    // fichier de l'archive utilisateur (1,687 s) est remplacé par le geste du JEU
+    // (`play_007_abl_grapplinghook_deploy_player`, 0,745 s). Il passe donc SOUS la coupe des
+    // armes et demande désormais une entrée `SOURCES_COURTES`, ce que l'ancienne rédaction de
+    // ce commentaire déclarait inutile.
     GRAPPLE_SOUND_STEM,
+    // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : catégorie Objectifs, même règle de durée que
+    // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
+    // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.
+    ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
+    // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
+    // MÊME `RandomSequence`, pas d'autres sons.
+    ...Object.values(SOUND_VARIANTS).flat(),
   ]
 
   it('aucun son ne dépasse le plafond de sûreté du lecteur', () => {
@@ -157,13 +187,29 @@ describe('garde-rail : durée livrée par catégorie', () => {
    * re-livraison qui retronquerait tout à la coupe des armes. Un fichier dont la SOURCE fait
    * moins que la coupe ne peut pas en être la victime — mais il échoue quand même le proxy.
    *
-   * Chaque entrée porte donc la durée MESURÉE de sa source et la raison. `repair_field_activate`
-   * (2026-08-18) : les trois variantes du `RandomSequence` de la banque `5724312f` font 0,31 /
-   * 0,35 / 0,38 s dans le jeu — c'est un « pop » de déploiement, pas un son écourté. Allonger le
-   * fichier serait inventer de la matière ; l'exclure de la catégorie mentirait sur sa nature.
+   * Chaque entrée porte donc la durée MESURÉE de sa source et la raison.
+   *
+   * `repair_field_activate` et ses variantes : les trois tirages du `RandomSequence` de
+   * l'événement `play_007_abl_repairfield_deploy_player` (banque `5724312f`) font 0,380 /
+   * 0,313 / 0,349 s dans le jeu — c'est un « pop » de déploiement, pas un son écourté.
+   * CORRECTION DU 2026-08-26, et elle change la source du fichier : le lot du 18/08 écrivait
+   * que les DEUX événements du `snd!` `22c2323a` « rendent LES MÊMES trois `.wem` ». C'est
+   * faux, mesure à l'appui — `_activate` tire dans {143632032, 222530989, 640887009} (2,8 à
+   * 3,9 s) et `_deploy_player` dans {894865279, 899552962, 1001730562} (0,31 à 0,38 s). Le
+   * fichier livré en août était bien celui de la POSE, ce que cette table joue ; c'est
+   * l'affirmation d'équivalence qui était fausse, pas le fichier.
+   *
+   * `grapple_fire` et ses variantes (2026-08-26) : le geste du jeu
+   * (`play_007_abl_grapplinghook_deploy_player`) fait 0,745 / 0,765 / 0,757 s. Il remplace le
+   * fichier de l'archive utilisateur, qui faisait 1,687 s — d'où l'apparition de ces entrées.
    */
   const SOURCES_COURTES: Readonly<Record<string, number>> = {
-    repair_field_activate: 0.381,
+    repair_field_activate: 0.38,
+    repair_field_activate_v2: 0.313,
+    repair_field_activate_v3: 0.349,
+    grapple_fire: 0.745,
+    grapple_fire_v2: 0.765,
+    grapple_fire_v3: 0.757,
   }
 
   it('explosions et équipements gardent la durée de leur source, jamais retronquée à 1,2 s', () => {

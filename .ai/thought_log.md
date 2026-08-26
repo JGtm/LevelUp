@@ -1,3 +1,187 @@
+## [2026-08-26] Sons du jeu branches sur le rejeu : objectifs CTF, variantes tirees, et la banque de Bastion trouvee — Complete
+
+**Contexte** : suite directe de la RE du meme jour (banques Wwise nommees par hachage). Demande
+utilisateur apres validation de la planche : brancher les sons sur le rejeu, avec un mode
+ALEATOIRE quand un geste a plusieurs variantes, puis perseverer sur la capture de zone
+(Controle total, Roi de la colline, Bastion). Precision utilisateur : le son
+`attrition_enemy_captured` trouve la veille est probablement propre au mode Attrition, jamais
+entendu ailleurs.
+
+**Decision technique principale** : brancher par le NOM CANONIQUE DE STATISTIQUE
+(`doc.objectives`, champ `stat`), pas par un libelle — c'est la seule quantite que le film
+donne pour une action d'objectif. Le CAMP (`_team` / `_enemy`, mesure de la RE) se resout par
+la meme source que l'encre des calques : la ligne « moi » du tableau de score. Camp inconnu =
+SILENCE, jamais un camp suppose. Le TIRAGE de variante se fait A LA LECTURE et non a la
+construction de la piste : une piste est batie une fois pour tout le match, y tirer figerait le
+choix et deux poses sonneraient identiques.
+
+**Resultats observes** :
+- **7 sons d'objectif branches** : capture de drapeau (`flag_captures`), drapeau pris
+  (`flag_steals`), drapeau ramasse (`flag_grabs`) — chacun en DEUX fichiers selon le camp — et
+  drapeau rendu (`flag_returns`), qui n'a pas de variante d'equipe dans le jeu.
+- **Cinquieme categorie `objective`** dans le tiroir de reglages (FR « Objectifs », EN
+  « Objectives »), coupable comme les quatre autres, active par defaut.
+- **Trois gestes tirent desormais une variante** : grappin, repulseur, champ de reparation
+  (3 fichiers chacun, tirage uniforme comme le `RandomSequence` du jeu). Leurs sons viennent
+  maintenant du JEU et remplacent le pack utilisateur A STEM CONSTANT.
+- **DEUX FICHIERS EXTRAITS ET DEUX VOISINS** : `replaySoundVariants.ts` (type d'evenement,
+  manifeste des variantes, tirage) et `objectiveSound.ts` (table par statistique, resolveur de
+  camp, emission). `replaySound.ts` etait a 528 lignes, il en fait 550 apres extraction — le
+  cliquet de `ReplayCanvas.tsx` (742 lignes) est TENU en faisant porter le resolveur par le
+  hook et non par le composant.
+- **CORRECTION D'UNE AFFIRMATION DU LOT DU 18/08** : il ecrivait que les deux evenements du
+  `snd!` `22c2323a` « rendent LES MEMES trois `.wem` ». Mesure : `_activate` tire dans
+  {143632032, 222530989, 640887009} (2,8 a 3,9 s) et `_deploy_player` dans {894865279,
+  899552962, 1001730562} (0,31 a 0,38 s). Le fichier livre en aout etait bien celui de la POSE
+  — c'est l'equivalence qui etait fausse. Le stem `repair_field_activate` porte donc les trois
+  variantes de la POSE, et le garde-rail le dit.
+- **CE QUI N'A PAS DE DECLENCHEUR, et ce n'est pas un manque de son** : la BOMBE (Assaut) et le
+  DISPOSITIF D'EXTRACTION. Leurs sons sont extraits et rendus, mais `objectiveevents/named.go`
+  ne decode QUE deux familles d'objectif (`ObjectiveTypeFlag`, `ObjectiveTypeZone`) : aucune
+  statistique d'Assaut ni d'Extraction n'arrive dans `doc.objectives`. Ca se repare cote
+  DECODEUR, pas cote son.
+- **BASTION : LA BANQUE EXISTE, ET C'EST L'ACQUIS DU JOUR.** Le negatif de la veille
+  (« aucune banque `sb_004_mod_mp_strongholds` ») portait sur le NOM DE BANQUE et il tient ;
+  mais le balayage structurel complet (`eqip-arbre -banks all` : 1 645 banques, **6 819
+  evenements**, quelques secondes) permet de chercher un NOM D'EVENEMENT dans tout le jeu sans
+  savoir ou il vit. `play_004_mod_mp_strongholds_contested` est tombe ainsi :
+  **la banque est `1c609526` (module `common`, 88 evenements, 84 `.wem`)**. Deux autres noms
+  ont suivi : `..._zone_exit_team` et `..._zone_exit_enemy` — la modulation d'equipe existe
+  donc aussi sur les zones.
+- **LA CAPTURE DE ZONE RESISTE, avec son denominateur.** Trois passes : vocabulaire curie
+  (esperance 0,014), puis les 135 580 identifiants du binaire (0,072), puis les **142 023**
+  obtenus en decoupant AUSSI le camelCase (`StrongholdCaptures` -> `stronghold` + `captures`),
+  soit **2 982 483 candidats a esperance 0,061** sur les 88 evenements de la banque. Les trois
+  memes noms sortent, jamais un quatrieme. La voie du hachage est epuisee a discipline
+  constante ; la voie suivante est l'OREILLE (regle `RECETTE_SONS_ARMES` §5, « les votes
+  priment »).
+- Gates : `tsc -b` exit 0 (cache `.tmp` purge), `npm run lint` 0 erreur (21 avertissements, tous
+  hors des fichiers de ce lot), `vitest run src/features/match-replay` **76 fichiers /
+  1 143 tests, 0 echec** — dont 19 tests neufs (`objectiveSound.test.ts`,
+  `replaySoundVariants.test.ts`) et le garde-rail d'assets etendu aux 13 fichiers ajoutes.
+
+### Complement du 2026-08-27 — DEUX SONS DE PLUS BRANCHES, et trois negatifs mesures
+
+**Retour utilisateur sur la planche de validation** : tout est bon, a brancher ; ignorer
+l'entree/la sortie du nuage occultant, l'accroche de l'ecran et l'equipement detruit ; ajouter
+la DISPARITION du champ de reparation ; « equipement ramasse » correspond au ramassage sur les
+socles de BONUS. Et quatre reperes a l'oreille sur la banque des zones `1c609526` :
+`d8a2fcb8` = base capturee (alliee), `6b8081a2` = base en cours de capture (alliee),
+`c3327c0b` = base contestee, `71cb04b8` = avant l'apparition d'une nouvelle zone (KOTH).
+
+**CONTROLE CROISE QUI VALIDE TOUTE LA METHODE DE NOMMAGE** : `c3327c0b`, que le hachage avait
+casse en `play_004_mod_mp_strongholds_contested`, est identifie INDEPENDAMMENT par l'oreille
+comme « base contestee ». Le nom et l'ecoute concordent sans s'etre parle.
+
+**BRANCHE** :
+- `zone_captures` (Bastion, Roi de la colline, Controle total) -> `objective_zone_captured_team`,
+  rendu de l'evenement `d8a2fcb8`. PAIRE INCOMPLETE ASSUMEE : seul le cote ALLIE est designe,
+  le cote adverse reste MUET. Le type de la table passe a `{ally?, enemy?}` et un test epingle
+  le silence — jouer le son allie sur une capture adverse annoncerait un gain quand on perd
+  une base.
+- `repair_field_end` (3 variantes tirees) -> la FIN de la pose du champ de reparation, a `t1`.
+  Table neuve `EQUIPMENT_PLACEMENT_SOUND_STEMS_END`. Elle AMENDE la regle « rien ne sonne a la
+  fin » de `replaySound.ts`, qui reste vraie pour le mur : le champ, lui, est un emetteur qui
+  s'ETEINT et le jeu lui donne un evenement propre. Reserve d'horloge ecrite : `t1` est une
+  BORNE INFERIEURE (mise au repos mesuree), pas la disparition.
+
+**TROIS NEGATIFS, chacun avec son denominateur** :
+1. **LE RAMASSAGE SUR SOCLE N'EST PAS DATABLE**, et les deux canaux que l'utilisateur cite sont
+   les memes : `padPickups` publie un INTERVALLE `[tLow, tHigh]` et non un instant (« le socle
+   s'est vide quelque part dans [tLow, tHigh] », `document_ground_weapons.go`), et l'INVENTAIRE
+   ne vient QUE des images-cles (`inventory.go` : une toutes les ~20 s, age median d'affichage
+   8,4 s, 7,1 % seulement des affichages ont moins d'une seconde). Le son de ramassage existe et
+   est valide ; il n'a pas d'instant ou se poser. Reprise : un oracle plus rapproche que 20 s
+   (l'inventaire lu dans le flux DELTA), condition deja au registre des reports.
+2. **LE BINAIRE DU JEU NE PEUT PAS NOMMER CES EVENEMENTS**, et c'est mesure : il porte TROIS
+   noms d'evenement Wwise en clair sur les ~6 800 du jeu —
+   `Play_002_UI_Menu_Global_TutorialPopup_Open`, `..._Close`,
+   `play_002_ui_menu_forge_grabobject`. Le moteur poste ses evenements par identifiant
+   PRE-HACHE, jamais par nom. Ghidra ne peut donc rien ajouter ici, et c'est la reponse a
+   l'etonnement de l'utilisateur (« pourquoi tu n'as pas pu les nommer tout seul »).
+3. **LE HACHAGE EST EPUISE SUR LES TROIS AUTRES REPERES** : 162 831 744 candidats batis sur
+   36 noms de mode x 4 familles x les 141 347 identifiants du binaire x 8 modulations, et seul
+   le TEMOIN (`c3327c0b`) en ressort. `d8a2fcb8`, `6b8081a2` et `71cb04b8` gardent leur
+   identifiant pour nom — ce qui n'empeche rien : c'est l'OREILLE qui les designe, exactement
+   comme pour les armes (`RECETTE_SONS_ARMES` §5).
+
+**RESTE A FAIRE, et ce n'est pas fait** : la pose de l'ECRAN OCCULTANT. Son son est designe
+(`play_007_abl_shroud_deploy_player`) mais sa famille s'appelle encore `other` au manifeste —
+la brancher demande de nommer `shroud_screen` dans `replay_labels.toml` ET dans la liste fermee
+du loader Go, ce qui touche aussi le DESSIN du calque. Lot a part.
+
+**Gates** : web `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur, `vitest
+src/features/match-replay` 76 fichiers / **1 144 tests**, 0 echec.
+
+### Complement du 2026-08-26 (soir) — LE MODE DE LECTURE DES CONTENEURS, ET LA BANQUE DE LA BALISE
+
+**Ce qui a declenche la reprise** : l'utilisateur, apres ecoute, ne reconnait AUCUN des
+23 gestes du translocateur comme la pose de la balise, et decrit le vrai geste — « c'est comme
+si on le chargeait, ca monte en intensite, et ensuite il est pose ». Une montee suivie d'une
+pose decrit une SEQUENCE de phases, pas un tirage de variantes.
+
+**CINQUIEME OUBLI DE FORMAT, TROUVE ET LU.** Le type 5 de Wwise est `CAkRanSeqCntr` : il couvre
+DEUX comportements et le champ `eMode` dit lequel (0 = aleatoire, les enfants sont des
+VARIANTES ; 1 = sequence, les enfants sont des PHASES jouees dans l'ordre). L'outil supposait
+le premier depuis son premier jour (`arbre.go` : « Random (type 5, mode aleatoire) ») et
+l'audit n'avait jamais mesure que la table de POIDS, qui ne dit rien du mode. Lecteur neuf
+(`conteneurs_mode.go`) + mode `audit-modes`, ancre = les 4 octets qui precedent le nombre
+d'enfants, position DEDUITE de deux ancres deja validees (liste d'enfants, table de poids qui
+la suit immediatement).
+**Mesure sur `pc/globals` : 7 069 conteneurs, plausibilite 98,9 %, ALEATOIRES 96,61 %,
+SEQUENCES 237 (3,39 %) dont 196 CONTINUES.** Le temoin ecrit d'avance passe : les banques
+d'armes sont massivement aleatoires, ce qui est coherent avec huit mois d'ecoute validee.
+
+**MAIS LA SEQUENCE N'EST PAS LA REPONSE DU TRANSLOCATEUR** : sur les 9 banques d'equipement et
+de mode ciblees (235 conteneurs), **100 % sont aleatoires, 0 sequence**. Hypothese refutee
+proprement ; l'instrument, lui, reste — 237 sequences existent ailleurs dans le jeu et le
+rendu les traite aujourd'hui comme des variantes, ce qui est FAUX pour elles.
+
+**LA VRAIE CAUSE, ET ELLE ETAIT DANS LA CHAINE DU TAG.** `eqip-sons` sur les deux `eqip` du
+translocateur montre que la chaine atteint **QUATRE banques**, pas une :
+
+	eqip 730dc70f (LA BALISE, l'objet que le rejeu pose)
+	  snd! 7b5cbe75      -> b29ac6de   banque PROPRE a la balise (2 evenements, 8 .wem)
+	  effe > snd! 7ff6244a -> de65048f  banque generique des objets poses (7 evenements)
+	  snd! 725186aa      -> 15c5b355   sb_007_abl_shared (15 evenements)
+	eqip a1344fc2 (L'APPAREIL, celui qu'on tient)
+	  9 x effe > snd!    -> dcfaa487   sb_007_abl_quantum (23 evenements)
+
+**La planche du matin ne portait que `dcfaa487` — la banque de l'APPAREIL.** La pose de la
+balise ne pouvait pas s'y trouver. Les 24 evenements des trois autres banques sont desormais
+rendus et publies : la planche d'identification passe de 111 a **135 sons, cinq sections**.
+
+**TROIS DEFAUTS DE MON RENDU D'EXPLORATION, releves par l'utilisateur et mesures.** Ils ne
+touchent PAS les fichiers livres (controle : les 16 assets branches mesurent tous une crete a
+-1,0 dBTP et un niveau moyen de -10 a -22 dB), mais ils ont fait perdre du temps a l'ecoute :
+
+1. **INTERMEDIAIRE EN 16 BITS.** Le melange intermediaire etait ecrit en `pcm_s16le`. Une
+   couche dont le gain declare vaut **-96 dB** (la convention Wwise pour « muet ») y tombe
+   sous le pas de quantification : le signal est DETRUIT avant la normalisation, qui ne peut
+   plus rien remonter. **11 rendus sur 135 sortaient silencieux.** Temoin : le `.wem`
+   `107469862` mesure -9,5 dB de crete a la source et sortait a -91 dB. Correctif :
+   intermediaires en `pcm_f32le`. Apres correctif, **226 rendus, 0 silencieux**.
+2. **UNE SEULE VARIANTE RENDUE.** Le rendu d'exploration ne prenait que `Wems[0]`, le plus
+   petit identifiant. Les variantes d'un meme geste n'ont pas la meme duree : la banque du
+   translocateur porte des sons de 0,4 a **6,77 s**, et on ne servait que les courts.
+3. **LES ORPHELINS N'ETAIENT PAS RENDUS.** Un `.wem` qu'aucun evenement de la banque n'atteint
+   n'est pas un dechet : c'est un son que notre lecture de la hierarchie ne relie pas encore.
+   **Les deux plus longs sons de la banque du translocateur (6,77 s et 6,22 s) SONT ses deux
+   orphelins.**
+
+**MESURE QUI FERME UNE PISTE** : la banque propre a la BALISE (`b29ac6de`) porte 8 `.wem`, tous
+entre **0,41 et 0,48 s**. Elle ne peut donc pas porter la « montee en charge » decrite par
+l'utilisateur — c'est du cote de l'APPAREIL (`dcfaa487`) qu'il faut chercher, et c'est la que
+sont les sons longs.
+
+**Gates** : `gofmt` propre, `go vet` exit 0, `go build ./...` OK, `go test ./cmd/weapon-sounds/`
+OK, `golangci-lint` 0 issue.
+
+**Conclusion / prochaine etape** : la planche d identification porte desormais 135 sons en cinq sections (zones, balise du translocateur, objets poses, sons communs d equipement, appareil du translocateur). EN ATTENTE de la designation par l utilisateur. A traiter ensuite : les 237 conteneurs en SEQUENCE que le rendu traite encore comme des variantes ; nommer la famille `shroud_screen` au manifeste ; publier la flaveur d energie des objets explosifs au contrat.
+
+Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
+`.ai/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
+
 ## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
 
 **Contexte** : 3 agents interrompus avant leur fusion dans feat/v75. Reprise sur leurs derniers
@@ -86,15 +270,24 @@ wem_embarques} : tout le cassage ulterieur se fait HORS module, en secondes.
 - EXTRACTION SUR DISQUE (scratchpad) : 894 `.wem` (517 globals + 129 common + 248 packs de
   bobine).
 
-**Conclusion / prochaine etape** : **BLOCAGE POUR L'ECOUTE** — les `.wem` sont en Wwise Vorbis
-(`fmt` = `0xFFFF`, verifie sur piece) ; `ffmpeg` 8.0.1 ne les decode pas
-(`unknown codec`), et `vgmstream-cli.exe` n'est plus sur cette machine (le dossier
-`Desktop/Halo Infinite - Sons armes/_outils/` n'existe pas ici). Aucun `.wav` sans lui.
-Suites, dans l'ordre : (1) retrouver ou reinstaller vgmstream ; (2) rendre les 39 fiches
-(somme des couches aux gains releves) ; (3) trancher la banque du bastion par la chaine de
-tags du mode ; (4) designer le geste de pose du translocateur (23 evenements, un seul nomme
-et au second rang) par l'ecoute, comme le lot du 18/08 le prevoyait deja.
-Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`.
+**LE DECODEUR MANQUAIT, IL A ETE REINSTALLE** (mise a jour du soir — l'ancienne redaction
+disait « BLOCAGE POUR L'ECOUTE » et serait devenue une doc inversee) : les `.wem` sont en
+Wwise Vorbis (`fmt` = `0xFFFF`, verifie sur piece) et `ffmpeg` 8.0.1 ne les decode pas
+(`unknown codec`). `vgmstream-cli.exe` n'etait plus sur cette machine (le dossier
+`Desktop/Halo Infinite - Sons armes/_outils/` n'existe pas ici) ; reinstalle depuis la release
+GitHub officielle du projet (`vgmstream/vgmstream` r2117) vers
+`C:\Users\Guillaume\Downloads\vgmstream\`, sur accord explicite de l'utilisateur.
+
+**Rendu livre et VALIDE** : les 39 evenements sont reconstruits (une variante par couche, gain
+de chemin applique, somme a t = 0, gain LINEAIRE strict jusqu'a -1 dBTP) — 74 `.wav` plus leurs
+`.mp3` d'ecoute dans `C:\Users\Guillaume\Downloads\Halo Infinite - Sons v75\`, publies en
+planche de validation. L'utilisateur les a valides le jour meme, en signalant deux manques :
+la capture de base et la pose du translocateur.
+
+**Conclusion / prochaine etape** : la suite est l'entree du meme jour ci-dessus (branchement
+sur le rejeu, mode de lecture des conteneurs, banque de la balise).
+Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
+`.ai/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
 
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 

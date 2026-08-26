@@ -24,6 +24,10 @@
 //
 //	eqip-sons   passe 1, module `any/globals` : eqip -> effe -> snd! -> sbnk
 //	eqip-banks  passe 2, module `pc/globals`  : sbnk -> .wem -> pack nomme
+//	banks-noms  module `pc/globals` : NOMME les 1305 banques par hachage FNV-1 de leur
+//	            identifiant Wwise (chunk BKHD). C'est ce qui permet de trouver une banque
+//	            qui n'a AUCUN pack sur le disque — les banques de mode (drapeau, bastion,
+//	            extraction) et 14 des 17 banques d'equipement. Detail dans `banks_noms.go`.
 //	eqip-arbre  module `pc/globals` : la STRUCTURE des evenements d'une banque
 //	            (couches simultanees vs variantes, gains, delais, couverture). Detail
 //	            dans `eqip_arbre.go` — c'est ce qui manque pour RECONSTRUIRE un son.
@@ -226,6 +230,14 @@ func main() {
 		err = structureDesBanques(chemin, gids, *sortie, *sortieTir, *emb, toutes)
 	case "eqip-durees":
 		err = triageDurees(chemin, *sortie, parserHexa(*exclure), *sortieTir, *emb, *limite)
+	case "audit-modes":
+		err = auditModesConteneurs(chemin, parserHexa(*banksSup))
+	case "banks-noms":
+		dossier := *sfx
+		if dossier == "" {
+			dossier = dossierSFXParDefaut(racine)
+		}
+		err = nommerBanques(chemin, dossier, *sortie)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
