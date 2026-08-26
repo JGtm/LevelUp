@@ -25,6 +25,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import { readInk } from './canvasInk'
 import { readFxInk, type FxInk } from './fxInk'
+import type { PadFamily } from './weaponPadFamilies'
 
 /** Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs). */
 const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
@@ -80,6 +81,29 @@ const SELF_TOKEN: SemanticToken = 'success'
  */
 const WALL_TOKEN: SemanticToken = 'warning'
 
+/**
+ * LES ENCRES DES TROIS NATURES DE SOCLE (retour utilisateur du 2026-08-26 : « une couleur pour
+ * chaque type, en respectant les couleurs accessibles »).
+ *
+ * TROIS TOKENS DÉJÀ EN SERVICE DANS LE REJEU, aucun nouveau — c'est la condition pour que la
+ * palette d'accessibilité de l'utilisateur (et ses variantes daltonisme) continue de valoir
+ * sans qu'on ait à la ré-étalonner :
+ *   - `legendary` pour un POWER-UP : c'est déjà l'or de l'encadré de surbouclier sur les fiches
+ *     (cf. ReplayTeams). Un bonus au sol et l'état qu'il donne se disent de la même couleur ;
+ *   - `warning` pour une ARME DE PUISSANCE : c'est déjà le token du mur de protection, retenu
+ *     le 2026-08-18 comme la teinte des objets de terrain à fort enjeu ;
+ *   - `divergent-neutral` pour un RÂTELIER ordinaire : le neutre sémantique du rejeu, celui qui
+ *     recule — un socle classique ne doit pas concurrencer les deux autres.
+ *
+ * LA HIÉRARCHIE EST LE POINT, pas la teinte exacte : deux natures à fort enjeu qui se
+ * distinguent l'une de l'autre, et une troisième qui s'efface. L'utilisateur tranche à l'écran.
+ */
+const PAD_FAMILY_TOKENS: Readonly<Record<PadFamily, SemanticToken>> = {
+  powerup: 'legendary',
+  power: 'warning',
+  classic: 'divergent-neutral',
+}
+
 /** Les encres de mise en page du sol reconstruit : son aplat et l'arête de ses marches. */
 export interface ReplayFloorInk {
   fill: string
@@ -99,6 +123,8 @@ export interface ReplayInks {
   floor: ReplayFloorInk
   /** Encre SÉMANTIQUE du « aucun camp » : objectifs neutres, zone que personne ne tient. */
   neutral: string
+  /** Encre par NATURE de socle (cf. PAD_FAMILY_TOKENS) : power-up, arme de puissance, râtelier. */
+  pad: Readonly<Record<PadFamily, string>>
   /** Teintes des éclairs de bouche, lues une fois par thème (jamais par image). */
   fx: FxInk
   /** Ligne de grappin : l'encre la plus claire du thème (`--foreground`), jamais un hex. */
@@ -138,6 +164,11 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       grenade: resolveToken(GRENADE_TOKEN),
       floor: { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') },
       neutral: resolveToken(NEUTRAL_TOKEN),
+      pad: {
+        powerup: resolveToken(PAD_FAMILY_TOKENS.powerup),
+        power: resolveToken(PAD_FAMILY_TOKENS.power),
+        classic: resolveToken(PAD_FAMILY_TOKENS.classic),
+      },
       fx: readFxInk(),
       grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),
