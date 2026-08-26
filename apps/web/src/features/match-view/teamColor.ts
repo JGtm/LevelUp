@@ -28,7 +28,10 @@ export type TeamColorResolver = (teamID: number | null, ally: boolean) => string
  * chaque ligne.
  */
 export function teamColorResolver(
-  scoreboard: MatchScoreboardRow[] | null | undefined,
+  // `readonly` : le résolveur ne fait que LIRE le scoreboard, et ses appelants le tiennent
+  // souvent en lecture seule (props de composant). Élargir le paramètre ne coûte rien et
+  // évite une copie défensive au point d'appel.
+  scoreboard: readonly MatchScoreboardRow[] | null | undefined,
 ): TeamColorResolver {
   const backendByTeamID = new Map<number, string>()
   for (const r of scoreboard ?? []) {
@@ -45,5 +48,48 @@ export function teamColorResolver(
       if (official) return official
     }
     return tokenCssVar(ally ? 'team-ally' : 'team-enemy')
+  }
+}
+
+/**
+ * LA RECETTE DE TEINTE D'UN HABILLAGE D'ÉQUIPE : un fond, un trait, un accent plein.
+ *
+ * Elle vivait en toutes lettres dans l'en-tête d'équipe du scoreboard ; l'écran de victoire du
+ * rejeu en aurait été la deuxième copie (2026-08-26). Deux surfaces qui écrivent la MÊME
+ * identité d'équipe avec deux dosages différents, ce sont deux bleus Eagle sur deux pages du
+ * même match — le motif exact qui a fait centraliser la CASCADE juste au-dessus. Règle
+ * CLAUDE.md n°6 : centraliser ET poser un garde-rail (`teamTint.guard.test.ts`, qui interdit le
+ * littéral de fond hors de ce fichier).
+ *
+ * LES DOSAGES SONT CEUX DU SCOREBOARD, INCHANGÉS : 22 % pour teinter un fond sans disputer la
+ * lisibilité du texte, 55 % pour un trait qui se voit sans crier, la couleur PLEINE pour
+ * l'accent qui porte l'identité. `oklab` et non `srgb` : le mélange y garde la teinte perçue
+ * d'une couleur vive (le jaune Valor ne vire pas au vert olive en s'éclaircissant).
+ *
+ * CE QUE LA RECETTE NE DIT PAS, ET C'EST VOULU : ni l'ÉPAISSEUR des traits (2 px sous l'en-tête
+ * du scoreboard, 4 px sur son bord gauche — deux rôles, deux mesures), ni la couleur du TEXTE,
+ * qui reste `--foreground` partout. Une couleur d'identité peut être très claire ou très vive ;
+ * l'encre du thème est le seul contraste garanti.
+ */
+export interface TeamTintStyles {
+  /** Aplat de fond : la couleur d'équipe à peine posée, pour teinter une surface. */
+  background: string
+  /** COULEUR d'un trait (bordure, soulignement) — l'épaisseur reste au point d'appel. */
+  border: string
+  /** La couleur d'identité PLEINE : liserés marqués, pastilles, filets. */
+  accent: string
+}
+
+/** Part de couleur d'équipe dans un fond teinté. */
+const TINT_BACKGROUND_PCT = 22
+/** Part de couleur d'équipe dans un trait. */
+const TINT_BORDER_PCT = 55
+
+/** teamTintStyles applique la recette ci-dessus à une couleur d'identité déjà résolue. */
+export function teamTintStyles(color: string): TeamTintStyles {
+  return {
+    background: `color-mix(in oklab, ${color} ${TINT_BACKGROUND_PCT}%, transparent)`,
+    border: `color-mix(in oklab, ${color} ${TINT_BORDER_PCT}%, transparent)`,
+    accent: color,
   }
 }
