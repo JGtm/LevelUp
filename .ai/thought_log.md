@@ -72776,3 +72776,34 @@ mutation** : remis le catalogue de HEAD, le test rougit sur les trois assertions
 19 natifs relancee pour la planche de comparaison `jeu` / `encre`. A verifier au passage : les
 autres assets derives du catalogue depuis le 25/08 (bornes, socles) n'ont-ils pas ete cuits
 avec les modules effaces.
+
+---
+
+## [2026-08-26] Cartes — la reparation prouvee de bout en bout, et la planche des deux habillages
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : la reparation du catalogue est prouvee par la cuisson
+elle-meme, pas par une relecture du diff — meme commande, meme sortie, avant/apres :
+**11 cartes cuites avant, 19 apres** (`cartes=19 echecs=0`), Cliffhanger, Aquarius, Prism,
+Streets, Recharge, Chasm, Launch Site et Behemoth de retour. C'est l'oracle le plus direct
+disponible ici : la cuisson est le consommateur du champ repare.
+
+Planche de comparaison des deux habillages publiee (19 fiches, 38 vignettes, 2,8 Mo) :
+https://claude.ai/code/artifact/6c9ec756-95e6-451a-8977-5e61debb8bae — ordre pose par les
+verdicts du jour (Cliffhanger, Catalyst, les neuf a finaliser, puis les huit validees en
+comparaison seulement). L'outil `mapfond-planche` a servi tel quel : deux lignes de meme cle
+dans le manifeste font les deux colonnes d'une fiche, ce pour quoi il a ete ecrit.
+
+**Resultats observes** : cuisson `encre` des 19 natifs, 0 echec, 1 non cuisinable (la carte
+sans tag sbsp deja instruite), 9 degradees (absence de volume d'eau, deja au registre),
+509/579 ancres avec sol. Gates Go : `go build` sur `himap` + les trois cmd touchees, propre ;
+`go test ./cmd/mapobj-build/` vert ; `gofmt` propre ; hook pre-commit (gofmt, gitleaks,
+go-vet) vert sur les deux commits du lot.
+
+**Conclusion / prochaine etape** : attente des verdicts de style sur la planche. Restent au
+plan, dans l'ordre : le correctif de la teinte (le niveau de jeu doit se lire sur la surface de
+reference PAR PIXEL, pas sur un scalaire — 13 fonds hors clou, jusqu'a -17,51 m), le cadrage de
+l'asset (mediane 53,5 % de largeur utile sur les natifs), et le choix de la taille utile
+minimale qui fixera l'echelle. **Point de vigilance ouvert** : verifier si d'autres assets
+derives du catalogue ont ete cuits entre le 25/08 et aujourd'hui avec les modules effaces.
