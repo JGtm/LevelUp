@@ -241,15 +241,6 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	defer metaHandle.Close()
 	metaDB := metaHandle.SQLDb()
 
-	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (audit residuel 2026-05-25) :
-	// sharedDB via cache duckdbpkg.OpenReadOnly pour DSN aligne.
-	sharedHandle, err := duckdbpkg.OpenReadOnly(e.sharedDBPath)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open shared: %w", err)
-	}
-	defer sharedHandle.Close()
-	sharedDB := sharedHandle.SQLDb()
-
 	mappings, err := loadFullCitationMappings(ctx, metaDB)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations mappings: %w", err)
@@ -282,10 +273,9 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	for id := range nonCompositesPerMatch {
 		allMatchIDs = append(allMatchIDs, id)
 	}
-	sorted, err := sortMatchIDsChrono(ctx, sharedDB, allMatchIDs)
+	sorted, err := e.sortMatchIDsChronoOnShared(ctx, allMatchIDs)
 	if err != nil {
-		slog.WarnContext(ctx, "composite-only: sort chrono failed, ordre non garanti", "err", err)
-		sorted = allMatchIDs
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open shared: %w", err)
 	}
 
 	slog.InfoContext(ctx, "composite-only: recalcul démarré",
@@ -337,6 +327,41 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	slog.InfoContext(ctx, "composite-only: terminé",
 		"player", e.gamertag, "matches_updated", written)
 	return written, nil
+}
+
+// sortMatchIDsChronoOnShared trie les match_ids par ordre chronologique en
+// empruntant shared_matches_v2 le temps STRICT de la requête.
+//
+// INVARIANT provider (read_recovery.go, ADR 0013/0016) : shared_matches_v2 est
+// géré par un sharedprovider, qui en est l'unique owner du handle. L'ancienne
+// version ouvrait ce fichier via `OpenReadOnly` — une ouverture RO FORCÉE, qui
+// (a) échoue en « different configuration » si le process tient déjà le fichier
+// en RW, et (b) laisse une entrée `ro:` en cache pendant TOUTE la boucle de
+// recalcul, fenêtre pendant laquelle l'`OpenReadWrite` du swap provider échoue
+// (StateError → lectures shared en 503). `OpenReadForQuery` emprunte le handle
+// déjà tenu (RW ou RO — une lecture marche sur un RW) et n'ouvre en RO que sur
+// cache miss ; le release rendu ici borne l'emprunt à la seule requête de tri,
+// au lieu de la boucle entière.
+//
+// Deux régimes d'erreur, volontairement DISTINCTS (parité avec l'ancien code) :
+//   - acquisition impossible → erreur DURE remontée au caller. Le tri conditionne
+//     l'exactitude du cumulPre (un ordre faux fait franchir les paliers composites
+//     au mauvais match) : mieux vaut ne rien écrire ;
+//   - requête de tri en échec → WARN + ordre d'origine. Best-effort PRÉEXISTANT,
+//     conservé tel quel — ce lot ne l'élargit pas.
+func (e *SyncEngine) sortMatchIDsChronoOnShared(ctx context.Context, matchIDs []string) ([]string, error) {
+	sharedDB, release, err := duckdbpkg.OpenReadForQuery(e.sharedDBPath)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	sorted, err := sortMatchIDsChrono(ctx, sharedDB, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "composite-only: sort chrono failed, ordre non garanti", "err", err)
+		return matchIDs, nil
+	}
+	return sorted, nil
 }
 
 // buildCompositeNameSet retourne l'ensemble des citation_name_norm de type composite.

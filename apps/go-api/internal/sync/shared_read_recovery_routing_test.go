@@ -28,23 +28,41 @@
 // PUR — aucune connexion DuckDB, aucun CGO. Il DOIT tourner dans le gate par défaut
 // `go test ./...`, sinon il ne protège rien.
 //
+// **Extension du 2026-08-26 (lot « ouvertures RO hors invariant provider »).** Le
+// périmètre couvre désormais les 3 sites qui acquéraient un handle HORS cache /
+// hors provider, chacun avec le patron le plus simple qui respecte l'invariant :
+//
+//  1. `internal/sync/citations_backfill.go` — `RunBackfillCompositeOnlyCitations`
+//     ouvrait shared_matches_v2 en `OpenReadOnly` FORCÉ et gardait l'entrée `ro:`
+//     pendant TOUTE la boucle de recalcul. Routé en `OpenReadForQuery` borné à la
+//     seule requête de tri chrono (acquisition → requête → release) ;
+//  2. `internal/ops/media.go` — `IndexMedia` empruntait `LookupCachedDB` avec un
+//     FALLBACK `sql.Open` nu. Routé en `OpenReadWriteShared` (c'est un WRITER :
+//     DDL + INSERT + CHECKPOINT), qui couvre les deux branches via le cache ;
+//  3. `internal/ops/healthcheck.go` — `checkDuckDB` faisait un `sql.Open` avec
+//     `?access_mode=read_only`, qui échoue en « different configuration » sur une
+//     DB tenue en RW. Routé en `OpenReadForQuery`.
+//
 // **Portée et limites (à connaître).**
-//   - Couvre les 3 fichiers des DEUX familles corrigées, PAS tous les appelants
+//   - Couvre les 5 fichiers des familles corrigées, PAS tous les appelants
 //     d'OpenReadForQuery du dépôt (pas de sweep repo-wide : décision de périmètre du
 //     lot). Les autres appelants sont soit courts (une requête, aucune fenêtre
 //     d'invalidation utile), soit protégés par le drain lecteurs de `SharedAccess`
 //     (`outstandingReads`) — ils restent des découvertes consignées.
-//   - Le set d'interdits est PAR FICHIER (socle commun + `alsoForbidden`).
-//     `OpenReadOnly(` est interdit sur `media_associate.go` — forme moderne de
-//     l'incident 2026-06-03, et sur un chemin géré par un provider elle fait
-//     échouer l'OpenReadWrite du swap — mais PAS sur `citations_backfill.go`, qui
-//     en contient deux usages ANTÉRIEURS au lot (metadata, et shared dans
-//     RunBackfillCompositeOnlyCitations). Le second vise un chemin géré par le
-//     provider et mérite son propre lot — consigné en découverte, pas traité ici.
+//   - Le set d'interdits est PAR FICHIER : socle commun, `alsoForbidden` (ajouts)
+//     et `exemptFromBase` (retraits justifiés). `OpenReadForQuery(` est dans le
+//     socle parce que l'INSTANTANÉ qu'il rend meurt quand la lecture DURE (boucle
+//     de matchs, itération de rows) ; il est au contraire le remède PRESCRIT quand
+//     l'acquisition est bornée à une requête unique — d'où les retraits explicites
+//     sur `healthcheck.go` (fichier entier) et la ligne de tri chrono de
+//     `citations_backfill.go` (allowlist à la ligne près).
 //   - Le vrai verrou de la famille citations est le TYPE : `loadPveStats` prend un
 //     `*duckdbpkg.RecoveringReader`, donc on ne PEUT PLUS lui passer un `*sql.DB`
 //     capturé au début du batch (erreur de compilation). Ce grep est la ceinture ;
 //     l'assertion de signature ci-dessous vérifie que les bretelles tiennent.
+//   - Reste HORS périmètre et consigné en découverte : les autres `sql.Open("duckdb"`
+//     de `internal/ops` (archive, backup, backup_service, diagnose, media_hls,
+//     restore, seed*, snapshot_read).
 package sync
 
 import (
@@ -64,6 +82,13 @@ type sharedReadRecoveryFile struct {
 	// fichier. Permet d'interdire une acquisition sur un chemin géré par un
 	// provider sans faire rougir un usage légitime ailleurs.
 	alsoForbidden map[string]string
+	// exemptFromBase : constructs du socle commun qui NE s'appliquent PAS à ce
+	// fichier, avec leur justification. Contrepartie soustractive d'alsoForbidden :
+	// le socle interdit l'INSTANTANÉ (OpenReadForQuery) parce qu'il meurt sur une
+	// lecture longue — mais c'est le remède prescrit quand l'acquisition est bornée
+	// à une requête unique. Chaque retrait est nominatif : le reste du socle
+	// continue de mordre sur le fichier.
+	exemptFromBase map[string]string
 }
 
 // sharedReadRecoveryProtectedFiles — fichiers des deux familles corrigées, chemins
@@ -84,10 +109,53 @@ var sharedReadRecoveryProtectedFiles = []sharedReadRecoveryFile{
 				"forme moderne de l'incident 2026-06-03, et fait échouer l'OpenReadWrite du swap",
 		},
 	},
-	// Acquisition du handle shared_pve pour le batch citations.
-	{rel: "internal/sync/citations_backfill.go", mustCall: "OpenRecoveringReader("},
+	// Acquisition du handle shared_pve pour le batch citations, ET (depuis le lot
+	// RO-invariant du 2026-08-26) emprunt borné de shared_matches_v2 pour le tri
+	// chrono du recalcul composite-only.
+	{
+		rel:      "internal/sync/citations_backfill.go",
+		mustCall: "OpenRecoveringReader(",
+		alsoForbidden: map[string]string{
+			// shared_matches_v2 est géré par un sharedprovider : l'ouverture RO
+			// forcée y laisse une entrée `ro:` en cache qui fait échouer
+			// l'OpenReadWrite du swap (StateError). Les DEUX emprunts metadata
+			// (metadata.duckdb n'est géré par aucun provider) restent tolérés via
+			// l'allowlist ci-dessous, à la ligne près.
+			"OpenReadOnly(": "ouverture RO forcée : échoue en « different configuration » sur une DB tenue " +
+				"en RW, et fait échouer l'OpenReadWrite du swap sur un chemin géré par un sharedprovider",
+		},
+	},
 	// loadPveStats : verrouillé par le TYPE (cf. test de signature ci-dessous).
 	{rel: "internal/sync/citations.go"},
+	// IndexMedia → shared_social (ou player DB en mode legacy) : chemin d'ÉCRITURE
+	// (DDL + INSERT + UPDATE + CHECKPOINT), donc handle RW obligatoire. Le socle
+	// s'applique en entier : ni bare connect, ni emprunt nu, ni instantané RO.
+	{
+		rel:      "internal/ops/media.go",
+		mustCall: "OpenReadWriteShared(",
+		alsoForbidden: map[string]string{
+			"OpenReadOnly(": "IndexMedia écrit (DDL + INSERT + CHECKPOINT) : un handle RO y échouerait " +
+				"à l'exécution, et l'ouverture RO forcée viole l'invariant du cache mono-process",
+		},
+	},
+	// checkDuckDB : une seule requête COUNT par DB diagnostiquée, sur des chemins
+	// que le process peut tenir en RW (pool, sharedprovider, writer de sync).
+	{
+		rel:      "internal/ops/healthcheck.go",
+		mustCall: "OpenReadForQuery(",
+		exemptFromBase: map[string]string{
+			// Retrait NOMINATIF (2026-08-26) : ici l'instantané n'a pas de fenêtre
+			// de mort — acquisition, un COUNT, release. C'est le remède prescrit
+			// du lot, l'interdire reviendrait à interdire le correctif. `sql.Open(`
+			// et `LookupCachedDB(` restent interdits sur ce fichier.
+			"OpenReadForQuery(": "acquisition BORNÉE à une requête unique (COUNT de diagnostic) : " +
+				"remède prescrit du lot RO-invariant, pas une lecture longue",
+		},
+		alsoForbidden: map[string]string{
+			"OpenReadOnly(": "ouverture RO forcée : échoue en « different configuration » sur une DB " +
+				"tenue en RW — le diagnostic rendrait un KO qui ne décrit que son propre contournement",
+		},
+	},
 }
 
 // sharedReadForbiddenConstructs — socle commun : acquisitions de handle qui
@@ -101,10 +169,13 @@ var sharedReadForbiddenConstructs = map[string]string{
 }
 
 // forbiddenFor retourne le set effectif de constructs interdits pour un fichier :
-// socle commun + interdictions propres au fichier.
+// socle commun − exemptions nominatives + interdictions propres au fichier.
 func forbiddenFor(f sharedReadRecoveryFile) map[string]string {
 	out := make(map[string]string, len(sharedReadForbiddenConstructs)+len(f.alsoForbidden))
 	for k, v := range sharedReadForbiddenConstructs {
+		if _, exempt := f.exemptFromBase[k]; exempt {
+			continue
+		}
 		out[k] = v
 	}
 	for k, v := range f.alsoForbidden {
@@ -136,6 +207,28 @@ var sharedReadAllowlist = []sharedReadAllowEntry{
 		construct: "LookupCachedDB(",
 		needle:    "metadataDBPath",
 		reason:    "emprunt metadata preexistant au lot, hors perimetre",
+	},
+	// allowlist(2026-08-26) : les DEUX ouvertures RO de metadata.duckdb du fichier
+	// (RunBackfillCitations + RunBackfillCompositeOnlyCitations). metadata n'est
+	// géré par AUCUN sharedprovider : il n'y a pas de swap RO→RW à casser, et le
+	// handle est possédé (Close apparié), pas emprunté. L'interdiction
+	// `OpenReadOnly(` ajoutée au fichier vise shared_matches_v2, pas metadata.
+	{
+		rel:       "internal/sync/citations_backfill.go",
+		construct: "OpenReadOnly(",
+		needle:    "metadataDBPath",
+		reason:    "ouverture metadata (aucun sharedprovider sur ce chemin), handle possede + Close apparie",
+	},
+	// allowlist(2026-08-26) : emprunt BORNÉ de shared_matches_v2 pour le tri chrono
+	// du recalcul composite-only (sortMatchIDsChronoOnShared). L'instantané que le
+	// socle interdit n'a ici aucune fenêtre de mort : acquisition → une requête →
+	// release. L'exception est à la LIGNE : une 2e acquisition dans ce fichier
+	// serait quand même prise.
+	{
+		rel:       "internal/sync/citations_backfill.go",
+		construct: "OpenReadForQuery(",
+		needle:    "e.sharedDBPath",
+		reason:    "emprunt borne a la requete de tri chrono (acquisition -> requete -> release)",
 	},
 }
 
@@ -180,8 +273,9 @@ func TestSharedBestEffortReadsUseRecoveringReader(t *testing.T) {
 		forbidden := forbiddenFor(f)
 
 		if f.mustCall != "" && !containsInCode(body, f.mustCall) {
-			t.Errorf("%s n'appelle plus %s (hors commentaire) : la lecture shared best-effort a perdu "+
-				"sa reprise sur invalidation (cf. platform/duckdb/read_recovery.go)", f.rel, f.mustCall)
+			t.Errorf("%s n'appelle plus %s (hors commentaire) : l'acquisition du handle DuckDB a "+
+				"régressé vers un chemin non sanctionné (cf. platform/duckdb/read_recovery.go, "+
+				"section INVARIANT)", f.rel, f.mustCall)
 		}
 		for i, line := range strings.Split(body, "\n") {
 			if isGoCommentLine(line) {
@@ -191,9 +285,65 @@ func TestSharedBestEffortReadsUseRecoveringReader(t *testing.T) {
 				if !strings.Contains(line, construct) || isSharedReadAllowed(f.rel, construct, line) {
 					continue
 				}
-				t.Errorf("%s:%d contient %q — %s. Passer par duckdb.OpenRecoveringReader + Do, "+
-					"ou justifier via sharedReadAllowlist (exception datée, à la ligne près)",
+				t.Errorf("%s:%d contient %q — %s. Router par le patron sanctionné du site "+
+					"(OpenRecoveringReader + Do pour une lecture longue, OpenReadForQuery borné à "+
+					"une requête, OpenReadWriteShared pour un writer), ou justifier via "+
+					"sharedReadAllowlist (exception datée, à la ligne près)",
 					f.rel, i+1, construct, why)
+			}
+		}
+	}
+}
+
+// TestSharedReadExceptionsAreAlive refuse les exceptions devenues obsolètes. Une
+// allowlist (ou une exemption de socle) qui ne correspond plus à rien ne protège
+// personne : elle ne fait qu'élargir silencieusement la surface tolérée le jour où
+// un construct du même nom réapparaît dans le fichier pour une AUTRE raison.
+func TestSharedReadExceptionsAreAlive(t *testing.T) {
+	root := findRepoRoot(t)
+
+	protectedBody := func(rel string) (string, bool) {
+		for _, f := range sharedReadRecoveryProtectedFiles {
+			if f.rel == rel {
+				return readProtectedFile(t, root, rel), true
+			}
+		}
+		return "", false
+	}
+
+	for _, a := range sharedReadAllowlist {
+		body, ok := protectedBody(a.rel)
+		if !ok {
+			t.Errorf("allowlist : %s n'est plus un fichier protégé — entrée à retirer", a.rel)
+			continue
+		}
+		found := false
+		for _, line := range strings.Split(body, "\n") {
+			if !isGoCommentLine(line) && strings.Contains(line, a.construct) && strings.Contains(line, a.needle) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("allowlist obsolète : aucune ligne de code de %s ne contient à la fois %q et %q "+
+				"(raison enregistrée : %q) — retirer l'entrée", a.rel, a.construct, a.needle, a.reason)
+		}
+	}
+
+	for _, f := range sharedReadRecoveryProtectedFiles {
+		if len(f.exemptFromBase) == 0 {
+			continue
+		}
+		body := readProtectedFile(t, root, f.rel)
+		for construct, reason := range f.exemptFromBase {
+			if _, inBase := sharedReadForbiddenConstructs[construct]; !inBase {
+				t.Errorf("exemptFromBase[%q] sur %s ne correspond à aucun construct du socle commun "+
+					"(faute de frappe ? l'exemption ne retire rien)", construct, f.rel)
+				continue
+			}
+			if !containsInCode(body, construct) {
+				t.Errorf("exemption obsolète : %s n'utilise plus %q (raison enregistrée : %q) — "+
+					"retirer l'exemption pour que le socle remorde", f.rel, construct, reason)
 			}
 		}
 	}

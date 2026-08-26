@@ -24,8 +24,6 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -133,38 +131,43 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	unlock := indexLock(targetPath)
 	defer unlock()
 
-	// ROOT CAUSE FIX (2026-05-25) : réutiliser le handle du pool process-wide
-	// au lieu d'ouvrir une connexion directe via sql.Open. Sans ça :
-	//   1. Le pool ouvre shared_social.duckdb via duckdb.NewConnector(path, initFn)
-	//      pour appliquer SET TimeZone (cf. openSQLDBFor avec timezone != "").
+	// ROOT CAUSE FIX (2026-05-25, re-routé 2026-08-26) : passer par le cache
+	// process-wide duckdb au lieu d'ouvrir une connexion directe via sql.Open.
+	// Sans ça :
+	//   1. Le pool ouvre shared_social.duckdb via OpenReadWriteShared → clé de
+	//      cache "rw:"+path, DSN et connecteur custom (SET TimeZone + bornes
+	//      mémoire/threads, cf. openSQLDBFor).
 	//   2. IndexMedia ouvrait via sql.Open("duckdb", path) — driver standard,
-	//      pas de connecteur custom. Les opérations DDL (DROP TABLE / CREATE TABLE
-	//      dans dropLegacyMediaFilesIfNeeded + ensureMediaTables) partaient dans
-	//      le WAL.
+	//      pas de connecteur custom, HORS cache. Les opérations DDL (DROP TABLE /
+	//      CREATE TABLE dans dropLegacyMediaFilesIfNeeded + ensureMediaTables)
+	//      partaient dans le WAL.
 	//   3. Au prochain restart serveur, le pool réouvrait avec son connecteur custom
 	//      → DuckDB tentait de rejouer le WAL → INTERNAL Error :
 	//      "Calling DatabaseManager::GetDefaultDatabase with no default database set"
 	//      → SharedSocial = nil pour tous les joueurs → media rail vide partout.
 	//
-	// Fix : si la DB est déjà dans le pool (cas normal après openPlayerDB),
-	// on emprunte le *sql.DB existant (sans Close — c'est le pool qui possède).
-	// Sinon (cas tests ou bootstrap), fallback sur sql.Open + Close apparié.
-	var db *sql.DB
-	if cached, ok := platform_duckdb.LookupCachedDB(targetPath); ok {
-		db = cached.SQLDb()
-		slog.Debug("IndexMedia: réutilisation du handle pool", "path", targetPath)
-	} else {
-		var openErr error
-		db, openErr = sql.Open("duckdb", targetPath)
-		if openErr != nil {
-			return MediaIndexResult{}, fmt.Errorf("ouverture DB: %w", openErr)
-		}
-		defer db.Close()
-		slog.Debug("IndexMedia: handle pool absent, fallback sql.Open", "path", targetPath)
-	}
-
-	// Appliquer la timezone après ouverture pour un DATEDIFF correct (DST).
+	// L'emprunt `LookupCachedDB` + fallback `sql.Open` qui corrigeait (3) laissait
+	// deux trous : le fallback restait un bare connect (hors cache, hors provider
+	// — anti-pattern n°5 CLAUDE.md), et l'emprunt était NON POSSÉDANT (aucun
+	// refCount : le propriétaire pouvait fermer le handle en cours d'indexation).
+	//
+	// `OpenReadWriteShared` couvre les DEUX branches d'un seul appel : cache hit →
+	// réutilisation du handle du pool avec refCount++ (le Close différé ci-dessous
+	// ne fait que décrémenter, il ne ferme pas le handle du pool) ; cache miss →
+	// ouverture RW via le MÊME connecteur custom, indexée sous la MÊME clé "rw:".
+	// C'est bien un handle RW qu'il faut ici : IndexMedia fait du DDL, des INSERT,
+	// des UPDATE et un CHECKPOINT — jamais OpenReadForQuery, qui rendrait un RO.
 	tz := SanitizeMediaTimezone(opts.Timezone)
+	handle, err := platform_duckdb.OpenReadWriteShared(targetPath, tz)
+	if err != nil {
+		return MediaIndexResult{}, fmt.Errorf("ouverture DB: %w", err)
+	}
+	defer handle.Close()
+	db := handle.SQLDb()
+
+	// Appliquer la timezone après ouverture pour un DATEDIFF correct (DST) : sur
+	// un cache hit, le handle du pool porte SA timezone (celle du profil joueur),
+	// pas celle passée ci-dessus — le SET reste donc nécessaire.
 	if tz != "" {
 		if _, err := db.ExecContext(ctx, "SET TimeZone = '"+tz+"'"); err != nil {
 			slog.Warn("IndexMedia: SET TimeZone échoué, DST possiblement incorrect",

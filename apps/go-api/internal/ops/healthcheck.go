@@ -15,7 +15,6 @@ package ops
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,8 +24,7 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-
-	_ "github.com/duckdb/duckdb-go/v2"
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,15 +215,30 @@ func checkBinary(name string) HealthCheck {
 }
 
 // checkDuckDB vérifie qu'une DB DuckDB s'ouvre et répond à COUNT(*).
+//
+// INVARIANT provider (read_recovery.go, ADR 0013/0016) : l'acquisition passe par
+// `OpenReadForQuery`, jamais par une ouverture RO FORCÉE. L'ancienne version
+// faisait `sql.Open("duckdb", path+"?access_mode=read_only")` — hors cache et
+// hors provider (anti-pattern n°5 CLAUDE.md), avec deux conséquences : sur une
+// DB déjà tenue en RW dans le process (pool, sharedprovider, writer de sync)
+// DuckDB refuse l'ouverture (« Can't open a connection to same database file
+// with a different configuration ») et le diagnostic rendait un KO qui ne
+// décrivait que son propre contournement ; et sur shared_matches_v2, l'entrée RO
+// ainsi créée fait échouer l'`OpenReadWrite` du swap provider (StateError).
+//
+// `OpenReadForQuery` emprunte le handle déjà tenu (RW ou RO — un COUNT marche
+// sur un RW) et n'ouvre en RO, via le cache, que sur cache miss : c'est le cas
+// nominal du CLI `levelup healthcheck`, seul appelant de RunHealthcheck. Le
+// release rendu ne ferme QUE le handle ouvert ici.
 func checkDuckDB(ctx context.Context, name, path string) HealthCheck {
 	if _, err := os.Stat(path); err != nil {
 		return HealthCheck{Name: name, OK: false, Message: "fichier absent"}
 	}
-	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	db, release, err := platform_duckdb.OpenReadForQuery(path)
 	if err != nil {
 		return HealthCheck{Name: name, OK: false, Message: fmt.Sprintf("ouverture: %v", err)}
 	}
-	defer db.Close()
+	defer release()
 
 	var count int
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_type = 'BASE TABLE'").Scan(&count); err != nil {
