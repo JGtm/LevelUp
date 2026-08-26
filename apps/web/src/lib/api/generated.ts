@@ -5355,6 +5355,7 @@ export interface components {
             equipment?: components["schemas"]["EquipmentCoverage"];
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
+            grenadeReads?: components["schemas"]["GrenadeReadCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
@@ -6434,6 +6435,25 @@ export interface components {
             x: number;
             /** Format: float */
             y: number;
+        };
+        GrenadeRead: {
+            g: number[] | null;
+            /** Format: int64 */
+            gs?: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t: number;
+        };
+        GrenadeReadCoverage: {
+            ammoRefused?: boolean;
+            /** Format: int64 */
+            fromDelta: number;
+            /** Format: int64 */
+            fromKeyframe: number;
+            /** Format: int64 */
+            unpublished: number;
         };
         GroundWeaponCoverage: {
             /** Format: int64 */
@@ -9388,6 +9408,7 @@ export interface components {
             geometryBounds?: components["schemas"]["Bounds"];
             grappleLines?: components["schemas"]["GrappleLine"][] | null;
             grenadeLabels?: components["schemas"]["Label"][] | null;
+            grenadeReads?: components["schemas"]["GrenadeRead"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
             inventory?: components["schemas"]["Inventory"][] | null;
             killEffects?: {

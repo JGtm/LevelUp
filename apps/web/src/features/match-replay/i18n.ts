@@ -208,6 +208,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeSelectedRead:
       'Type équipé, LU dans le film (sélecteur de grenade de l’image-clé) : celui qui partira au prochain lancer.',
     grenadeSelUnknown: 'sél. ?',
+    grenadeAge: 'Grenades lues il y a',
+    grenadeAhead: 'Grenades lues dans',
     abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
@@ -457,6 +459,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeSelectedRead:
       'Equipped type, READ from the film (keyframe grenade selector): the one the next throw will use.',
     grenadeSelUnknown: 'sel. ?',
+    grenadeAge: 'Grenades read',
+    grenadeAhead: 'Grenades read in',
     abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',

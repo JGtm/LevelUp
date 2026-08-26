@@ -731,17 +731,58 @@ func consumeUnitCrouch(br *BitReader) {
 // FUN_140ea1018. Recoupement de mesure independant : l'oracle Rosette donne la largeur VRAIE de
 // i30/i33 = 10 bits = 1 (FUN_1406cf008) + 8 (chargeur) + 1 (gate a 1, flottant ABSENT) ;
 // l'ancien port produisait 22 sur les memes records.
+// LES DEUX VALEURS NE SONT PLUS JETÉES (2026-08-25, lot 4.2 du suivi delta de l'inventaire).
+// Le déser consommait ses bits pour rester aligné et les abandonnait ; ils portent le CHARGEUR
+// et la fraction de charge — les mêmes grandeurs que `AmmoSlot.Mag` / `AmmoSlot.Gauge`, que le
+// canal des images-clés ne rafraîchit que toutes les ~20 s. Le parcours de bits est INCHANGÉ :
+// le hook ne fait que publier ce que le déser lisait déjà.
 func consumeWeaponStateAmmo(br *BitReader) {
+	var mag, frac uint64
+	hasMag, hasFrac := false, false
 	if !br.ReadBit() { // gate1 == 0 -> chargeur present
-		br.ReadBits(8)
+		mag, hasMag = br.ReadBits(8), true
 	}
 	if !br.ReadBit() { // gate2 == 0 -> fraction presente
-		br.ReadBits(12) // FUN_1406d84b4 dequant [0,1], W=12
+		frac, hasFrac = br.ReadBits(12), true // FUN_1406d84b4 dequant [0,1], W=12
+	}
+	if weaponAmmoHook != nil {
+		weaponAmmoHook(hasMag, uint32(mag), hasFrac, uint32(frac))
 	}
 }
 
+// weaponAmmoHook, si non nil, reçoit CHAQUE lecture d'un `weapon-state-ammo` : le chargeur
+// R(8) et sa présence (porte ACTIVE-BAS), puis le quantum R(12) de fraction et sa présence.
+//
+// LE HOOK NE SAIT PAS DE QUEL EMPLACEMENT IL PARLE : le déser est le même pour les quatre
+// occurrences (i30/i33/i36/i39). C'est l'APPELANT qui associe la publication à l'emplacement,
+// depuis l'index de composant que la marche vient de consommer (cf. inventory_delta.go).
+var weaponAmmoHook func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32)
+
+// SetWeaponAmmoHook installe (ou retire, avec nil) la sonde des chargeurs.
+func SetWeaponAmmoHook(h func(hasMag bool, mag uint32, hasFrac bool, fracQ uint32)) {
+	weaponAmmoHook = h
+}
+
+// weaponRoundsBits est la largeur du champ de réserve de FUN_140fe4e88. Nommée parce qu'elle
+// sert aussi aux garde-rails du balayage (inventory_delta.go).
+const weaponRoundsBits = 11
+
 // consumeWeaponStateRoundsInventory mirrors FUN_140fe4e88: fixed R(11).
-func consumeWeaponStateRoundsInventory(br *BitReader) { br.ReadBits(11) }
+//
+// LA VALEUR N'EST PLUS JETÉE (même lot, même règle) : c'est la RÉSERVE de l'emplacement.
+func consumeWeaponStateRoundsInventory(br *BitReader) {
+	rounds := br.ReadBits(weaponRoundsBits)
+	if weaponRoundsHook != nil {
+		weaponRoundsHook(uint32(rounds))
+	}
+}
+
+// weaponRoundsHook, si non nil, reçoit CHAQUE lecture d'un `weapon-state-rounds-inventory`.
+// Même remarque que weaponAmmoHook : l'emplacement vient de l'appelant, pas du déser.
+var weaponRoundsHook func(rounds uint32)
+
+// SetWeaponRoundsHook installe (ou retire, avec nil) la sonde des réserves.
+func SetWeaponRoundsHook(h func(rounds uint32)) { weaponRoundsHook = h }
 
 // consumeWeaponStateOverheated mirrors FUN_142f04c6c: dequant R(7) + R(1) + R(1).
 func consumeWeaponStateOverheated(br *BitReader) {

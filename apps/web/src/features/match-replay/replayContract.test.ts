@@ -95,6 +95,12 @@ const NULLABLE_ARRAYS = [
   // [t0, t1] par vie + point d'accroche en coordonnées monde.
   'grappleLines',
   'grenadeLabels',
+  // `grenadeReads` : L'AXE DES GRENADES PORTEES (schema 20, 2026-08-25) — DEUX canaux sur une
+  // seule grandeur, chaque lecture disant d'ou elle vient (`src` : 'kf' / 'delta'). Il ne
+  // remplace PAS `inventory` : celui-ci reste la source des munitions, de l'emplacement degaine
+  // et du marqueur de lecture vide. Les melanger ferait masquer une lecture pleine par une
+  // lecture partielle, et la cellule de munitions se viderait — le defaut ferme en v19.
+  'grenadeReads',
   'grenades',
   'inventory',
   'loadouts',
@@ -174,6 +180,7 @@ const NULLABLE_ARRAY_PATHS = [
   'geometry',
   'grappleLines',
   'grenadeLabels',
+  'grenadeReads',
   'grenades',
   'inventory',
   'loadouts',
@@ -195,6 +202,10 @@ const NULLABLE_ARRAY_PATHS = [
   // jauge pendant ses rampes. Absente sur un artefact de schéma <= 17 : la frontière la comble
   // à VIDE, et le rendu ne dessine alors aucun arc.
   'zoneStates[].gauge',
+  // `grenadeReads[].g` : le quadruplet de compteurs de l'axe des grenades (schema 20). Comble
+  // a VIDE par la frontiere, comme `inventory[].g` : une lecture qui arriverait avec `g: null`
+  // ferait tomber la boite de grenades a l'execution — pas a la compilation.
+  'grenadeReads[].g',
   'inventory[].am',
   'inventory[].g',
   'loadouts[].w',

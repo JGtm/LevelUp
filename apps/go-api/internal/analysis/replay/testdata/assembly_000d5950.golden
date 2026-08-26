@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 19 · titre halo_infinite
+schema 20 · titre halo_infinite
 origine de la frame 0 sur l horloge du fil : 3604 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
@@ -52,6 +52,11 @@ nombre de candidats est publie, pour que le departage reste visible
 34 lecture(s) VIDE(S) : 31 corroboree(s) par le fil des morts (`dead`), 3 inexpliquee(s)
 couverture : 184 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 184 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
+
+## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
+270 lecture(s) · 150 par image-cle (~20 s) · 120 par delta (transmis AU CHANGEMENT)
+194 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 150 image-cle · 120 delta · 0 ecartee(s) sans piste · canal munitions refuse : false
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 214 lecture(s) · 82 par i48 (rang complet, paquets delta) · 132 par image-cle (fenetre 16..23)

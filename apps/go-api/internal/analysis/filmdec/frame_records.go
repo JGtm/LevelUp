@@ -78,12 +78,22 @@ type FrameConfig struct {
 //	  niveau du hasard mesure     : 10,67 %   (critere evalue a des decalages arbitraires)
 //	  verite terrain              : 99,86 %
 //
-// NECESSAIRE MAIS PAS SUFFISANT — a ne pas oublier. Apres cette correction, i22 lit encore
-// 92,46 % de comptes de grenades impossibles (le compteur doit valoir 4 ; il est uniforme sur
-// 0..7). Il reste donc au moins une faute dans le CORPS des records. Cette amorce est gardee
-// parce qu'elle repose sur trois temoins independants d'i22 et concordants — le R(1) du
-// desassemblage, le bit 0 a 100 %, et la forme des masques — et non parce qu'elle "ameliore"
-// un chiffre.
+// CE QUI RESTE FAUX, ET OU. Sur CE chemin — DecodeFrameRecords, dont la marche n'est PAS
+// ancree sur la bande de slots bipedes des images-cles — i22 lit encore 92,46 % de comptes
+// de grenades impossibles (le compteur doit valoir 4 ; il est uniforme sur 0..7) : il reste
+// au moins une faute dans le CORPS des records parcourus ici.
+//
+// CE CHIFFRE NE VAUT QUE POUR CE CHEMIN, et il est ANTERIEUR aux correctifs de largeur d'i0
+// (47 bits), d'i25/i26/i27 et de la polarite de porte d'i30/i33. Le chemin ANCRE
+// (matchBipedHeader + walkRecordTo, cf. ability_rank.go et inventory_delta.go) mesure sur le
+// meme film 000d5950 : compteur R(3) == 4 dans 120 lectures sur 120 (100,00 %) et valeurs
+// R(8) dans {0, 1, 2} exclusivement (etude du 2026-08-24,
+// .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3). Ne pas lire les
+// 92,46 % comme un verdict sur i22 : c'est un verdict sur la marche non ancree.
+//
+// Cette amorce est gardee parce qu'elle repose sur trois temoins independants d'i22 et
+// concordants — le R(1) du desassemblage, le bit 0 a 100 %, et la forme des masques — et non
+// parce qu'elle "ameliore" un chiffre.
 const DefaultPacketPreambleBits = 2
 
 // DefaultFrameConfig is the starting hypothesis for an offline Theater film.

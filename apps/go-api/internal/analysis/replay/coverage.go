@@ -167,6 +167,9 @@ type Coverage struct {
 	// dépend (audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 5 ; même règle que
 	// Structure/StructureBounds, cf. TestStructureIsOptionalInDocument).
 	Inventory *InventoryCoverage `json:"inventory,omitempty"`
+	// GrenadeReads dit ce que chaque canal a apporte a l'axe des grenades portees, et si le
+	// canal MUNITIONS du film a ete refuse en bloc (cf. grenade_reads.go).
+	GrenadeReads *GrenadeReadCoverage `json:"grenadeReads,omitempty"`
 	// Zones est la couverture de L'ÉTAT DES ZONES (schéma 16, cf. document_zones.go) : la
 	// MÉTHODE d'appariement employée et les rôles du catalogue qui composent `mapObjectives.zones`
 	// (sans quoi `zoneRef` ne serait pas vérifiable), les slots lus, ceux qu'aucune capture n'a

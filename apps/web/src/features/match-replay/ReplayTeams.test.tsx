@@ -7,7 +7,7 @@
  * la mesure s'affiche, l'absence de mesure se dit.
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 
 import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
@@ -167,6 +167,112 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
     // Aucun des deux types n'est marqué sélectionné (title = nom seul).
     expect(screen.getByTitle('Plasma')).toBeTruthy()
     expect(screen.getByTitle('Fragmentation')).toBeTruthy()
+  })
+})
+
+/**
+ * LE BRANCHEMENT CLIENT DE L'AXE `grenadeReads` (schéma 20, lot 4 du suivi delta).
+ *
+ * CE QUE CES CAS PROTÈGENT, ET POURQUOI ILS EXISTENT. La revue du 2026-08-25 a constaté que
+ * l'inversion COMPLÈTE de la préférence — la boîte retombant sur l'inventaire au lieu de l'axe,
+ * donc l'annulation pure et simple du bénéfice du lot — laissait 1116 tests verts : aucun test
+ * de rendu n'éprouvait la boîte de grenades sur cet axe. Un gain de fraîcheur que rien ne
+ * verrouille se perd au premier refactor.
+ *
+ * LES QUATRE CAS SONT LES QUATRE BRANCHES de `grenadeBoxAt`, et chacune dit une chose vraie
+ * différente : l'axe gagne quand il est PASSÉ, l'artefact ancien retombe sur l'inventaire, une
+ * lecture À VENIR ne prime pas une information passée, et une lecture à venir SEULE s'affiche
+ * en le disant.
+ */
+describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge', () => {
+  const LABELS = [
+    { en: 'Frag', fr: 'Fragmentation' },
+    { en: 'Plasma', fr: 'Plasma' },
+  ]
+
+  it('artefact 20 : la lecture DELTA plus récente que l’image-clé gagne, avec SON âge', () => {
+    // Le point du lot : entre deux images-clés (~20 s) le paquet delta rajeunit la boîte. Elle
+    // doit afficher les compteurs delta ET dater son infobulle de la lecture delta — pas de
+    // l'inventaire, dont l'image-clé est trois fois plus vieille ici.
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        inventory: [{ t: 0, slot: 512, g: [2, 0] }],
+        grenadeReads: [
+          { t: 0, slot: 512, g: [2, 0], src: 'kf' },
+          { t: 60, slot: 512, g: [0, 3], src: 'delta' },
+        ],
+      },
+      90,
+    )
+    const box = screen.getByTitle(/Grenades lues il y a 0\.5 s/)
+    expect(box.textContent, 'les compteurs delta, pas ceux de l’image-clé').toContain('×3')
+    expect(box.textContent).not.toContain('Fragmentation')
+    // L'ESTOMPAGE EST CELUI DE LA CELLULE, PAS CELUI DE LA RANGÉE (ronde 2 de la revue :
+    // les deux mutations — réintroduire l'opacité du conteneur, retirer celle de la boîte —
+    // laissaient 1119 tests verts). La boîte porte sa propre opacité, calculée sur SON âge ;
+    // le conteneur n'en impose aucune, sinon les deux se MULTIPLIENT et une lecture delta
+    // fraîche s'affiche plus pâle qu'avant le lot.
+    expect(box.style.opacity, 'la boîte porte son estompage propre').not.toBe('')
+    expect(Number(box.style.opacity)).toBeGreaterThan(0)
+    expect(Number(box.style.opacity)).toBeLessThanOrEqual(1)
+    expect(
+      (box.parentElement as HTMLElement).style.opacity,
+      'la rangée n’impose plus son âge à la grille',
+    ).toBe('')
+  })
+
+  it('artefact ≤ 19 (aucun `grenadeReads`) : la boîte retombe sur l’inventaire, âge inchangé', () => {
+    // LE REPLI EST LE POINT : un artefact ancien ne se vide pas, il est seulement moins frais.
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        inventory: [{ t: 0, slot: 512, g: [1, 2] }],
+      },
+      60,
+    )
+    const box = screen.getByTitle(/Grenades lues il y a 1\.0 s/)
+    expect(within(box).getByRole('img', { name: 'Fragmentation' })).toBeTruthy()
+    expect(within(box).getByRole('img', { name: 'Plasma' })).toBeTruthy()
+    expect(box.textContent).toContain('×1')
+    expect(box.textContent).toContain('×2')
+  })
+
+  it('lecture de grenades À VENIR : l’information PASSÉE de l’inventaire prime', () => {
+    // Même doctrine que la « lecture vide À VENIR » : une lecture à venir n'affirme rien du
+    // présent. Sans cette règle, la fiche affichait au slot 554 du film de référence une plasma
+    // mesurée ~60 s plus tard, à pleine opacité, sous une infobulle « lu il y a X ».
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        inventory: [{ t: 0, slot: 512, g: [2, 0] }],
+        grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
+      },
+      30,
+    )
+    const box = screen.getByTitle(/Grenades lues il y a 0\.5 s/)
+    expect(
+      within(box).getByRole('img', { name: 'Fragmentation' }),
+      'les compteurs de l’inventaire passé',
+    ).toBeTruthy()
+    expect(box.textContent).toContain('×2')
+    expect(box.textContent, 'jamais la lecture à venir').not.toContain('×5')
+    expect(within(box).queryByRole('img', { name: 'Plasma' })).toBeNull()
+  })
+
+  it('lecture À VENIR sans RIEN de passé : elle s’affiche, et l’infobulle dit « dans »', () => {
+    // Rien de passé à préférer : la lecture à venir informe mieux qu'une boîte vide — à
+    // condition d'être ASSUMÉE. Âge négatif, infobulle « dans X s », jamais « il y a ».
+    renderTeams(
+      {
+        grenadeLabels: LABELS,
+        grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
+      },
+      30,
+    )
+    const box = screen.getByTitle(/Grenades lues dans 1\.0 s/)
+    expect(box.textContent).toContain('×5')
+    expect(screen.queryByTitle(/Grenades lues il y a/)).toBeNull()
   })
 })
 
