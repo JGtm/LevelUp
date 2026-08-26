@@ -76,7 +76,15 @@ Forge non re-cuisinables, .mvar absents) ; C1 NON OUVERTE, 2 entrees au registre
 pt 10 avec 3 conditions de reprise ; decouverte map_objectives.json module casse par le
 re-tirage d50f3b728 — bloquant pour toute re-cuisson de fonds). Executeurs A (fin A8) et
 D (extraction zoneStatesLayer en cours de D6) tombes sur la limite de session 2h30,
-relances au matin ; creneau builds Go libere -> go B1 envoye.
+relances au matin ; creneau builds Go libere -> go B1 envoye. (26/08 matin, suite)
+A7+A8 FUSIONNES (fiche morte depouillee, bandeau version retire, 3 liseres du fil
+retires ; fond bleute des morts assistees CONSERVE — information assist_state ; constante
+EXPECTED_REPLAY_SCHEMA_VERSION tautologique -> registre, sort a la cloture du lot D).
+D6/D-R FUSIONNE (capture SUR la forme : clip traceZonePath + bande bas->haut,
+drawGaugeArc supprime, extraction zoneStatesPaint.ts, hierarchie d'encres par ordre ;
+D6.4 [~] controle gaugePoints au prochain creneau Go). Gates rejoues au principal a
+chaque fusion (tsc 0 purge, vitest 1087 puis 1088). RESTE : CR B1 (Go en cours), passe
+visuelle utilisateur groupee, puis D2 KOTH -> D3 TC -> D4 Oddball.
 
 **Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
 fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre

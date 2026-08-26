@@ -208,7 +208,12 @@ CONSERVÉS avec condition au registre (à la clôture du lot D : si toujours auc
   ordre D6(D-R) -> D2 -> D3 -> D4 confirmé. CONTRAINTE inchangée : le rendu (calques
   objectifs) ne démarre qu'APRÈS fusion du lot A (mêmes fichiers) ; les phases Go
   attendent un créneau de build libre (jamais deux builds Go concurrents).
-- [ ] D-R (demande utilisateur VALIDÉE le 25/08, en cours de pilotage) : rendu — la
+- [x] D-R (FUSIONNÉ 26/08 = phase D6 du plan fils, gates rejoués au principal : tsc 0,
+  vitest 1088. Balayage vertical bas->haut clippé sur `traceZonePath` (une fraction
+  d'angle n'est pas une fraction d'aire), `drawGaugeArc` supprimé, hiérarchie d'encres
+  testée par ordre, extraction `zoneStatesPaint.ts` — tout sous 500 L. RESTE : D6.4 `[~]`
+  contrôle de donnée gaugePoints (>0 Bastion, =0 KOTH) au prochain créneau Go ; VOLET
+  VISUEL utilisateur : aplats tenue 0,30 / active 0,42 + sens du balayage) : rendu — la
   progression de capture ET l'appartenance directement SUR LA FORME de la base :
   remplissage progressif par découpe (`ctx.clip` sur `traceZonePath`) proportionnel à la
   jauge lue en escalier (schéma 18), en remplacement du seul arc externe (`drawGaugeArc`,
