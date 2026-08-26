@@ -145,10 +145,13 @@ même branche `wt/ui-rejeu`, 2e fusion à son CR).
   réellement non validées sont les 37 fonds Forge, ni mesurables ni re-cuisinables (`.mvar`
   gitignorés et absents). 3 préalables avant tout C1 : périmètre confirmé par l'utilisateur,
   `.ai/re_dump/mapvar` restauré, définition de « carte validée » écrite en donnée.
-- [ ] C1 (si concluant) : coupe à h_max + marge 5 m, par étage/prisme (ne jamais rogner
-  un niveau praticable sous un plafond), géométrie brute CONSERVÉE à côté de la filtrée,
-  cartes validées EXCLUES du rognage. Tests Go du filtre. Gate visuel final = utilisateur
-  (planche fournie par le superviseur à la fusion).
+- [!] C1 NON OUVERTE (validation superviseur 26/08, CR C0 vérifié sur pièces : commits,
+  mesure, claim `map_objectives.json` re-comptée 58-63/73 selon le motif). Le verdict C0
+  réfute la coupe par plafond global ; l'ouvrir quand même produirait des régressions sur
+  des cartes validées. Conditions de reprise consignées au registre (confirmation du
+  périmètre par l'utilisateur, restauration `.ai/re_dump/mapvar` depuis la clé PNY,
+  « carte validée » écrite en donnée). Lot fusionné pour l'instrument + la mesure
+  (réfutation datée et rejouable).
 
 ## Lot D — `wt/obj-etat` (pt 11)
 

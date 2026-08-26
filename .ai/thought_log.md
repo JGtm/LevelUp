@@ -68,7 +68,15 @@ extraction useReplayPlayback, cliquet 777->742) ; A5 = traits du cone = SIGNE de
 l'elevation (drawPitchTick, donnee reelle gardee + infobulle) ; A6 derivable
 (ZoneSpan.Owner null), token divergent-neutral. Gates rejoues au principal : tsc -b 0
 (cache purge), vitest 1083/1083. Nouvelle demande utilisateur A7 (fiche a la mort :
-bordure gauche, compteur centre, jauge retiree) lancee en 2e passe.
+bordure gauche, compteur centre, jauge retiree) lancee en 2e passe, puis A8 (bandeau
+version anterieure + accent des lignes du kill feed). (26/08 matin) LOT C0 FUSIONNE :
+verdict NON CONCLUANT, refute comme regle generale (arene couverte = toit dans la bande
+du sol ; un seuil qui mord mord des cartes validees ; vraies non-validees = 37 fonds
+Forge non re-cuisinables, .mvar absents) ; C1 NON OUVERTE, 2 entrees au registre (report
+pt 10 avec 3 conditions de reprise ; decouverte map_objectives.json module casse par le
+re-tirage d50f3b728 — bloquant pour toute re-cuisson de fonds). Executeurs A (fin A8) et
+D (extraction zoneStatesLayer en cours de D6) tombes sur la limite de session 2h30,
+relances au matin ; creneau builds Go libere -> go B1 envoye.
 
 **Conclusion / prochaine etape** : verifier chaque CR sur pieces, valider B0/C0/D0,
 fusionner `--no-ff` lot par lot, push, CI verte au niveau JOB, mise a jour de l'encadre
