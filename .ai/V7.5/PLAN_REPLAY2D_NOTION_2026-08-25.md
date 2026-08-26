@@ -151,7 +151,16 @@ CONSERVÉS avec condition au registre (à la clôture du lot D : si toujours auc
   « artefact de rejeu enregistré » couvrant les DEUX chemins (génération locale ET livraison
   par l'ouvrier distant) avec fichier:ligne ; réutilisation du canal webhook Discord
   existant (pattern `discord_webhook_present`, env ou store) ; mécanisme de groupement.
-- [ ] B1 : implémentation après go. Cadre imposé : groupement par fenêtre (défaut 10 min,
+- [x] B1+B2 FUSIONNÉS (26/08, CR vérifié sur pièces : publication posée APRÈS
+  `atomicfile.WriteFile` réussi, jamais sur le refus anti-régression — relu dans le diff ;
+  écart au plan B0 justifié et accepté : source des joueurs = `cfg.LoadPlayers`, PAS
+  `domain.SyncablePlayers` qui est un filtre d'activité ; `writeArtifactBytes` porte le
+  matchID de l'APPELANT — doc.MatchID peut être court côté ouvrier ; garde-rail du puits
+  dans archlint. Gates exécuteur 10/10 exit 0, tests Go ciblés rejoués au principal
+  après fusion : 4 paquets ok, exit 0). Découverte consignée : SQL inline PRÉEXISTANT
+  dans `wire/registry_notifications.go:141/169` (dette antérieure, hors périmètre) ;
+  `internal/notify` sans test de parité FR/EN global (seules les 4 clés du lot couvertes).
+- [ ] B1 (spec d'origine) : implémentation après go. Cadre imposé : groupement par fenêtre (défaut 10 min,
   1er événement arme le timer, un seul message « N rejeux prêts » + liste des matchs) ;
   perte du groupe en cours au redémarrage = ACCEPTÉE et documentée ; logique dans un
   service/notifier (JAMAIS dans un handler HTTP) ; `slog.InfoContext/ErrorContext`
@@ -240,6 +249,27 @@ Par lot : CR vérifié SUR PIÈCES → fusion `--no-ff` → journal + registre (
 push → CI JOB verte → suppression worktree + branche. Clôture générale : encadré Notion
 mis à jour (barrer + « TRAITÉ jj/mm — fusion <sha> » par point, style existant),
 thought_log, mémoire de session.
+
+## Correctif en cours de pilotage (signalement utilisateur 26/08)
+
+- [ ] FIX-CTF-ZONES : sur `530820e5` (CTF Catalyst) l'utilisateur voit des « bases ».
+  MÉCANISME ÉTABLI SUR PIÈCES (superviseur) : `map_objectives.json` porte DEUX entrées
+  Catalyst (`e859cf75` module=catalyst, drapeaux sans forme ; `f7e8cde9` module="map",
+  2 `flag_delivery` AVEC FORME — l'aire de capture du fichier de carte) ; 28
+  `flag_delivery` avec forme sur ~12 cartes (déjà 34 avant le re-tirage du 25/08 — angle
+  mort du service depuis la table de rôles du 13/08, pas une régression du re-tirage) ;
+  `BuildMapObjectives` transforme TOUT objet à forme d'un rôle servi en ZONE dessinée =>
+  un CTF dessine des « bases ». Verdict utilisateur : deux modes ne coexistent pas.
+  CORRECTIF : sémantique `points_only` par entrée de `objective_roles.toml` (drapeaux,
+  bombe au minimum) — un objet à forme d'un rôle points_only part en MARQUEUR (centre),
+  jamais en zone ; le catalogue JSON n'est PAS modifié (la forme est une donnée réelle).
+  Garde : test « un pair CTF ne sert jamais de zones ». Exécuteur : agent lot D.
+- [~] Socles invisibles sur `530820e5` (2e signalement) : SERVEUR HORS DE CAUSE, vérifié
+  sur pièces — artefact schéma 18 avec 5 `weaponPads`, positions concordantes au
+  catalogue (5/11 confirmables), `SHOW_WEAPON_PADS_DEFAULT = true`, calques pads non
+  touchés par les lots A/D-R. Piste restante : bascule « Socles » désactivée dans le
+  tiroir de réglages du joueur (localStorage). Demandé à l'utilisateur ; si la bascule
+  est active et rien ne s'affiche, investigation client dédiée.
 
 ## Découvertes (hors périmètre — consigner ici, ne PAS traiter)
 
