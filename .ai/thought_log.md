@@ -1,3 +1,49 @@
+## [2026-08-26] Ouvertures RO hors invariant provider — 3 sites routes — Complete
+
+**Contexte** : lot B des decouvertes de la campagne soaks (decision user). Trois sites
+violaient l'invariant du sharedprovider (« unique owner du handle », read_recovery.go) :
+une ouverture RO forcee sur un chemin gere echoue en « different configuration » si la DB
+est tenue RW, et laisse une entree `ro:` qui fait echouer l'OpenReadWrite du swap
+(StateError, 503).
+
+**Les 3 remedes** (le plus simple qui respecte l'invariant, par site) :
+- `ops/healthcheck.go` (checkDuckDB) : sql.Open force RO -> emprunt `OpenReadForQuery`
+  borne au COUNT de diagnostic.
+- `sync/citations_backfill.go` (RunBackfillCompositeOnlyCitations) : `OpenReadOnly` force
+  sur shared_matches_v2 pendant TOUTE la boucle -> emprunt `OpenReadForQuery` borne a la
+  seule requete de tri (`sortMatchIDsChronoOnShared`). Les 2 regimes d'erreur preexistants
+  CONSERVES : acquisition impossible = erreur dure (l'ordre conditionne le cumulPre des
+  paliers composites), requete de tri en echec = WARN + ordre d'origine (best-effort).
+- `ops/media.go` (IndexMedia) : emprunt LookupCachedDB NON POSSEDANT + fallback sql.Open
+  nu -> `OpenReadWriteShared` refcounte (cache hit = handle du pool refCount++, cache miss
+  = ouverture RW via le MEME connecteur custom, meme cle `rw:`). RW requis (DDL, INSERT,
+  CHECKPOINT) ; SET TimeZone conserve (un cache hit porte la tz du pool, pas la notre).
+
+**Garde-rail etendu** (`shared_read_recovery_routing_test.go`) : socle commun d'interdits
+(sql.Open, OpenReadForQuery instantane, LookupCachedDB nu) module par fichier — exemptions
+NOMINATIVES datees (OpenReadForQuery exempte sur healthcheck : c'est le remede prescrit,
+acquisition bornee) + interdits propres (OpenReadOnly sur les chemins provider) + mustCall
+par fichier. Allowlist a la ligne pres inchangee (emprunts metadata preexistants).
+
+**Gates** (etat complet avant mutation) : gofmt 0, build 0, vet 0, unit sync+ops+duckdb
+0 FAIL, integration -p 1 0 FAIL, lint --new-from-merge-base 0. **Mordant prouve par
+mutation COMPILABLE** (bascule healthcheck vers OpenReadOnly) : 2 assertions rouges
+(mustCall absent + interdit detecte ligne exacte avec message de remediation),
+restauration verte, arbre propre.
+
+**Note d'execution** : lot code par un executeur interrompu par la limite de quota AVANT
+gates et commit ; verifie sur pieces, gate, prouve et committe par le superviseur.
+Incident de supervision consigne : une restauration `git checkout` post-mutation sur des
+fichiers NON COMMITES a efface deux fois des editions (lot A r1 puis healthcheck) —
+reconstruites a l'identique depuis les diffs lus ; protocole corrige : COMMITTER avant
+toute mutation de preuve.
+
+**Decouvertes consignees non traitees** : les autres `sql.Open("duckdb"` d'internal/ops
+(archive, backup, backup_service, diagnose, media_hls, restore, seed*, snapshot_read) —
+hors chemins provider, classe differente, a auditer dans un lot dedie si besoin.
+
+---
+
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
 **Contexte** : apres le hotfix 36bb48187 (appelants LegacyAuthInputs), la CI de feat/v75
