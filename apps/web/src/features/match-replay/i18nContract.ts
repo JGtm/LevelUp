@@ -134,6 +134,25 @@ export interface ReplayText {
    * bouton d'enregistrement, lui, en a une — parce que son comportement, LUI, surprend.
    */
   captureImage: string
+  /**
+   * L'ENREGISTREMENT VIDÉO (2026-08-26) : un bouton à état, comme lecture/pause — le nom
+   * accessible dit ce que le CLIC va faire, pas où l'on en est.
+   */
+  recordVideo: string
+  stopRecording: string
+  /**
+   * L'INFOBULLE DU BOUTON, et elle porte deux faits qui SURPRENNENT (décisions 3 et 4) :
+   *
+   *  1. on filme l'écran tel qu'il défile — changer de vitesse ou déplacer le curseur
+   *     pendant l'enregistrement SE VOIT dans le fichier ;
+   *  2. mettre en pause, ou laisser le film finir, arrête l'enregistrement ET télécharge.
+   *
+   * Sans cette phrase, le second point se découvre en perdant un clip qu'on croyait encore
+   * en cours. Le nom du bouton, lui, reste dans `recordVideo`/`stopRecording` : cette
+   * infobulle explique le COMPORTEMENT, elle ne double pas le libellé (même partage que
+   * `sound` / `soundHint`).
+   */
+  recordHint: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string

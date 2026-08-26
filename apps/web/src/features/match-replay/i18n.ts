@@ -57,6 +57,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       equipment: 'Équipements',
     },
     captureImage: "Capturer l'image",
+    recordVideo: 'Enregistrer la vidéo',
+    stopRecording: "Arrêter l'enregistrement",
+    recordHint:
+      "L'enregistrement filme le rejeu tel qu'il défile : changer de vitesse ou déplacer le curseur se voit dans le fichier. Démarrer relance la lecture si elle est en pause ; mettre en pause ou laisser le film finir arrête l'enregistrement et télécharge le clip.",
     settingsButton: 'Réglages',
     settingsClose: 'Fermer les réglages',
     layers: 'Calques',
@@ -311,6 +315,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       equipment: 'Equipment',
     },
     captureImage: 'Capture image',
+    recordVideo: 'Record video',
+    stopRecording: 'Stop recording',
+    recordHint:
+      'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
     settingsButton: 'Settings',
     settingsClose: 'Close settings',
     layers: 'Layers',

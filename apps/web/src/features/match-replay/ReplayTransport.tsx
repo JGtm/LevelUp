@@ -149,6 +149,24 @@ export function ReplayTransport({
       >
         <CameraIcon />
       </Button>
+      {/* LE BOUTON D'ENREGISTREMENT NE SE REND PAS quand le navigateur ne sait pas filmer une
+          toile (décision 7) : une commande grisée laisserait croire à une panne réparable,
+          alors qu'il n'y a rien à réparer. Le bouton d'image, lui, reste — `toBlob` est
+          universel. Même patron d'état que lecture/pause : le nom accessible dit ce que le
+          CLIC va faire, l'icône dit où l'on en est. */}
+      {capture.recordingSupported && (
+        <Button
+          variant={capture.recording ? 'default' : 'ghost'}
+          size="sm"
+          onClick={capture.toggleRecording}
+          className="h-8 w-9"
+          aria-pressed={capture.recording}
+          aria-label={capture.recording ? t.stopRecording : t.recordVideo}
+          title={t.recordHint}
+        >
+          {capture.recording ? <StopIcon /> : <RecordIcon />}
+        </Button>
+      )}
       {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
       <Button
         ref={settingsButtonRef}
@@ -200,6 +218,24 @@ function CameraIcon() {
     >
       <path d="M1.8 5.2h2.6l1.1-1.7h4.9l1.1 1.7h2.7v7.3H1.8z" />
       <circle cx="8" cy="8.9" r="2.4" />
+    </svg>
+  )
+}
+
+/** Icône enregistrer : le disque plein, convention universelle du « REC ». */
+function RecordIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <circle cx="8" cy="8" r="5" />
+    </svg>
+  )
+}
+
+/** Icône arrêter : le carré. Il remplace le disque pendant l'enregistrement. */
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="1.2" />
     </svg>
   )
 }

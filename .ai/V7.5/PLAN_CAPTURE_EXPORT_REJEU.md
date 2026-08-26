@@ -146,33 +146,47 @@ avec `--max-warnings 0`. Voir Découvertes D2.
 
 ## Lot 2 — Enregistrement vidéo (image seule)
 
-- [ ] **`replayRecording.ts`** (nouveau, logique PURE) :
-  `pickVideoMimeType(isSupported: (t: string) => boolean): { mime: string; ext: string } | null`
-  — ordre exact de la décision 5, `null` si rien n'est supporté.
-- [ ] **`useReplayCapture.ts`** (nouveau hook) :
-  - état `recording: boolean` ;
-  - `startRecording()` : `canvas.captureStream(30)` → `MediaRecorder(stream, { mimeType })`,
-    collecte des chunks sur `dataavailable`, mémorise le temps de match de départ (pour
-    le nom de fichier) ; si la lecture est en pause, la lancer (décision 3) ;
-  - `stopRecording()` : `recorder.stop()` → assemble le Blob → `triggerDownload` (Lot 1) ;
-  - **auto-arrêt** : quand `playing` passe à `false` pendant un enregistrement →
-    `stopRecording()` (décision 3 — un seul chemin de sortie) ;
-  - `supported: boolean` — détection `MediaRecorder` + `captureStream` (décision 7) ;
-  - garde de démontage : l'unmount pendant un enregistrement arrête proprement sans
-    télécharger (le composant meurt, pas de download fantôme).
-- [ ] **`ReplayTransport.tsx`** : bouton REC à état (icône caméra / icône carré d'arrêt,
-  `variant` selon `recording`, aria-pressed) ; rendu seulement si `supported`.
-- [ ] **i18n** : champs `recordVideo` / `stopRecording` (+ hint expliquant décisions 3-4)
-  dans `i18nContract.ts` + FR/EN dans `i18n.ts`.
-- [ ] **`ReplayCanvas.tsx`** : brancher le hook (canvasRef, `playing`, `togglePlay` ou
-  équivalent pour lancer la lecture, identifiant de match) — câblage minimal.
-- [ ] **`useReplayCapture.test.tsx`** : `pickVideoMimeType` (mp4 prioritaire, repli vp9,
-  aucun → null) ; cycle avec un `FakeMediaRecorder` (start → `recording`, chunks,
-  stop → download appelé une fois avec la bonne extension) ; auto-arrêt quand `playing`
-  tombe ; `supported=false` quand l'API manque ; unmount en cours → pas de download.
+- [x] **`replayRecording.ts`** (nouveau, logique PURE) :
+  `pickVideoMimeType(isSupported)` — ordre exact de la décision 5, `null` si rien n'est
+  supporté. Ajouts assumés dans le même fichier : `CAPTURE_FPS` (30, avec sa raison écrite),
+  `isVideoTypeSupported` (interroge le navigateur sans lever) et `canRecordCanvas`
+  (les TROIS conditions de la décision 7 en un seul endroit).
+- [x] **`useReplayCapture.ts`** (le hook, né au Lot 1, étendu ici) :
+  - [x] état `recording: boolean` ;
+  - [x] `startRecording()` : `canvas.captureStream(CAPTURE_FPS)` → `MediaRecorder`, chunks
+    sur `dataavailable`, nom FIGÉ au démarrage sur le temps de match ; lecture relancée si
+    en pause (décision 3) ;
+  - [x] `stopRecording()` : `recorder.stop()` → assemblage et `triggerDownload` dans
+    `onstop` (la dernière tranche arrive APRÈS le retour de `stop()`) ; les pistes du flux
+    ne se coupent qu'à ce moment-là, sans quoi le clip perdrait sa fin ;
+  - [x] **auto-arrêt** sur la RETOMBÉE de `playing` (transition vraie → fausse, jamais
+    l'état : au démarrage depuis une pause `playing` vaut encore `false` le temps d'un
+    rendu, et lire l'état refermerait le clip aussitôt ouvert) ;
+  - [x] `recordingSupported: boolean` — nommé ainsi et non `supported` (l'objet porte aussi
+    la capture d'image, qui elle est toujours possible) ; couvre `MediaRecorder`,
+    `captureStream` ET l'existence d'un conteneur accepté (décision 7) ;
+  - [x] garde de démontage (`liveRef`) : l'unmount referme l'enregistreur sans déposer de
+    fichier.
+- [x] **`ReplayTransport.tsx`** : bouton REC à état (disque plein / carré d'arrêt, `variant`
+  selon `recording`, `aria-pressed`, nom accessible = ce que le CLIC fera) ; rendu seulement
+  si `capture.recordingSupported`.
+- [x] **i18n** : `recordVideo` / `stopRecording` / `recordHint` (l'infobulle porte les
+  décisions 3 et 4) dans `i18nContract.ts` + FR/EN dans `i18n.ts`.
+- [x] **`ReplayCanvas.tsx`** : ZÉRO ligne ajoutée — l'appel existant s'ÉTEND
+  (`playing`, `play: togglePlay`). Le cliquet reste à 706 sans être touché.
+- [x] **`useReplayCapture.test.tsx`** : `pickVideoMimeType` (mp4 prioritaire, repli vp9,
+  aucun → null) ; cycle avec `FakeMediaRecorder` (start → `recording`, conteneur retenu,
+  stop → un seul download, bonne extension, pistes coupées après la dernière tranche) ;
+  repli WebM ; auto-arrêt sur retombée de `playing` ; démarrage sur pause (relance + pas de
+  fermeture immédiate) ; `recordingSupported=false` quand l'API manque, l'image marchant
+  toujours ; unmount en cours → pas de download.
 
 **Gate Lot 2** : mêmes commandes que le gate Lot 1, sorties à 0, puis **commit**
 `feat(rejeu-capture): enregistrement video du rejeu (MediaRecorder)`.
+
+**Résultat Lot 2** : `typecheck` = 0 ; `vitest src/features/match-replay` = 0 (76 fichiers,
+1154 tests) ; `eslint` dossier = 1 (même unique warning de baseline sur `ReplayFeedName.tsx`,
+cf. D2), `eslint --max-warnings 0` sur les 8 fichiers du périmètre = 0.
 
 ## Lot 3 — Le son dans la vidéo
 

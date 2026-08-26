@@ -579,9 +579,9 @@ export function ReplayCanvas({
   const { playing, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
     doc, baseFps, speed: multiplier, renderWidth, frameRef, draw, soundTick: sound.tick,
   })
-  // CE QUI SORT DU REJEU (image PNG, puis enregistrement vidéo) vit dans useReplayCapture : le
-  // canvas ne prête que sa TOILE et son HORLOGE, et repasse l'objet tel quel à la barre.
-  const capture = useReplayCapture({ canvasRef, doc, frameRef })
+  // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
+  // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
+  const capture = useReplayCapture({ canvasRef, doc, frameRef, playing, play: togglePlay })
 
   return (
     // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour

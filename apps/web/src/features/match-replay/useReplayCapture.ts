@@ -4,18 +4,40 @@
  *
  * POURQUOI UN HOOK PLUTÔT QU'UN HANDLER DANS LE CANVAS. `ReplayCanvas.tsx` vit sous un cliquet
  * de taille (`placementFamily.guard.test.ts`, neuf extractions imposées à ce jour) : tout ce
- * qui n'est pas du DESSIN en sort. Le canvas ne prête donc que sa TOILE et son HORLOGE, et
- * reçoit en retour un objet unique qu'il repasse tel quel à la barre — exactement le patron du
- * son (`useReplaySound` -> `ReplaySound`), et pour la même raison : brancher une commande de
- * plus ne doit pas coûter une ligne de canvas.
+ * qui n'est pas du DESSIN en sort. Le canvas ne prête donc que sa TOILE, son HORLOGE et son
+ * état de lecture, et reçoit en retour un objet unique qu'il repasse tel quel à la barre —
+ * exactement le patron du son (`useReplaySound` -> `ReplaySound`), et pour la même raison :
+ * brancher une commande de plus ne doit pas coûter une ligne de canvas.
  *
  * CE QUE CE HOOK NE DÉCIDE PAS : le nom du fichier, le téléchargement et la lecture des pixels
- * sont de la logique pure et vivent dans `replayCapture.ts`. Ici, seule la couture — lire les
- * refs au moment du clic, et jamais pendant le rendu.
+ * sont de la logique pure et vivent dans `replayCapture.ts` ; le choix du conteneur vidéo, dans
+ * `replayRecording.ts`. Ici, seule la couture — lire les refs au moment du clic, tenir l'état
+ * de l'enregistreur, et refermer proprement.
+ *
+ * # ON FILME L'ÉCRAN, ET C'EST ASSUMÉ
+ *
+ * L'enregistrement capture ce que la toile MONTRE, image par image, pendant qu'elle le montre.
+ * Changer de vitesse ou déplacer le curseur en cours d'enregistrement se voit donc dans le
+ * fichier (décision 4) : ce n'est pas un défaut, c'est le contrat, et l'infobulle du bouton le
+ * dit. Un rendu hors écran à vitesse fixe serait un autre produit — et un autre chantier.
+ *
+ * # UN SEUL CHEMIN DE SORTIE
+ *
+ * Trois gestes arrêtent l'enregistrement, et les trois passent par `stopRecording` : le second
+ * clic sur le bouton, la mise en pause, et la fin du film. C'est ce qui garantit qu'un clip est
+ * toujours assemblé et remis une fois — jamais zéro (un enregistrement oublié qui tourne dans
+ * le vide), jamais deux (deux téléchargements pour un seul clip). Symétriquement, un clic sur
+ * un rejeu EN PAUSE lance la lecture (décision 3) : filmer une image figée n'a aucun sens.
  */
-import { useCallback, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { buildCaptureFilename, captureCanvasImage, triggerDownload } from './replayCapture'
+import {
+  CAPTURE_FPS,
+  canRecordCanvas,
+  isVideoTypeSupported,
+  pickVideoMimeType,
+} from './replayRecording'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
@@ -26,15 +48,42 @@ export interface ReplayCaptureOptions {
   doc: ReplayDocumentReady
   /** L'image courante, partagée avec le dessin — lue au clic, jamais au rendu. */
   frameRef: RefObject<number>
+  /** L'état de lecture. Sa RETOMBÉE à `false` clôt l'enregistrement (pause, fin du film). */
+  playing: boolean
+  /** Lance la lecture. Appelé au démarrage si le rejeu est en pause (décision 3). */
+  play: () => void
 }
 
 /** Ce que la barre de lecture reçoit (même forme que `ReplaySound` : un objet, pas des props). */
 export interface ReplayCapture {
   /** Télécharge la scène courante en PNG. Sans toile lisible : ne fait rien, ne casse rien. */
   captureImage: () => void
+  /**
+   * `false` = ce navigateur ne sait pas filmer une toile (pas de `MediaRecorder`, pas de
+   * `captureStream`, ou aucun conteneur accepté). Le bouton ne se rend alors PAS du tout
+   * (décision 7) : une commande grisée laisserait croire à une panne réparable.
+   */
+  recordingSupported: boolean
+  recording: boolean
+  /** Démarre, ou arrête ET télécharge. Le même bouton, les deux sens. */
+  toggleRecording: () => void
 }
 
-export function useReplayCapture({ canvasRef, doc, frameRef }: ReplayCaptureOptions): ReplayCapture {
+export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
+  const { canvasRef, doc, frameRef, playing, play } = o
+  const [recording, setRecording] = useState(false)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  // Le nom est FIGÉ au démarrage : il porte l'instant où le clip commence, pas celui où il
+  // s'arrête. Un clip nommé sur sa fin ne se replacerait pas dans le match.
+  const filenameRef = useRef('')
+  // LE DÉMONTAGE NE TÉLÉCHARGE PAS. Quitter la page pendant un enregistrement doit refermer
+  // l'enregistreur, pas déposer un fichier que plus personne n'attend.
+  const liveRef = useRef(true)
+
+  // La capacité ne dépend que du navigateur : elle ne change pas d'un rendu à l'autre.
+  const recordingSupported = useMemo(() => canRecordCanvas(), [])
+
   const captureImage = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -54,5 +103,74 @@ export function useReplayCapture({ canvasRef, doc, frameRef }: ReplayCaptureOpti
     })
   }, [canvasRef, doc, frameRef])
 
-  return { captureImage }
+  const stopRecording = useCallback(() => {
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state === 'inactive') return
+    // L'assemblage et le téléchargement se font dans `onstop` : `stop()` vide d'abord ce que
+    // l'encodeur retient encore, et cette dernière tranche arrive APRÈS ce retour.
+    recorder.stop()
+  }, [])
+
+  const startRecording = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || recorderRef.current) return
+    const choice = pickVideoMimeType(isVideoTypeSupported)
+    if (!choice) return
+    const stream = canvas.captureStream(CAPTURE_FPS)
+    const recorder = new MediaRecorder(stream, { mimeType: choice.mime })
+    chunksRef.current = []
+    filenameRef.current = buildCaptureFilename(
+      doc.matchId,
+      frameToMs(frameRef.current, doc),
+      choice.ext,
+      new Date(),
+    )
+    recorder.ondataavailable = (e: BlobEvent) => {
+      if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+    }
+    recorder.onstop = () => {
+      const parts = chunksRef.current
+      chunksRef.current = []
+      recorderRef.current = null
+      // LES PISTES SE COUPENT ICI, pas avant : la capture de la toile doit tourner jusqu'à la
+      // dernière tranche, sans quoi le clip perdrait sa fin.
+      for (const track of stream.getTracks()) track.stop()
+      setRecording(false)
+      // Rien d'enregistré (arrêt immédiat, encodeur muet) : pas de fichier vide.
+      if (!liveRef.current || parts.length === 0) return
+      triggerDownload(new Blob(parts, { type: choice.mime }), filenameRef.current)
+    }
+    recorderRef.current = recorder
+    recorder.start()
+    setRecording(true)
+    // FILMER UNE IMAGE FIGÉE N'A AUCUN SENS (décision 3) : un rejeu en pause repart.
+    if (!playing) play()
+  }, [canvasRef, doc, frameRef, playing, play])
+
+  const toggleRecording = useCallback(() => {
+    if (recorderRef.current) stopRecording()
+    else startRecording()
+  }, [startRecording, stopRecording])
+
+  // AUTO-ARRÊT SUR LA RETOMBÉE DE LA LECTURE — pause manuelle ou fin du film, c'est le même
+  // signal et la même sortie. On guette la TRANSITION, jamais l'état : au démarrage depuis une
+  // pause, `playing` vaut encore `false` le temps d'un rendu, et lire l'état arrêterait le
+  // clip dans la seconde qui suit son ouverture.
+  const wasPlayingRef = useRef(playing)
+  useEffect(() => {
+    const was = wasPlayingRef.current
+    wasPlayingRef.current = playing
+    if (was && !playing) stopRecording()
+  }, [playing, stopRecording])
+
+  // Démontage : on referme l'enregistreur sans rien déposer (cf. `liveRef`).
+  useEffect(() => {
+    return () => {
+      liveRef.current = false
+      const recorder = recorderRef.current
+      if (recorder && recorder.state !== 'inactive') recorder.stop()
+    }
+  }, [])
+
+  return { captureImage, recordingSupported, recording, toggleRecording }
 }
