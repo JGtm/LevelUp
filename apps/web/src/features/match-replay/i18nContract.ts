@@ -124,6 +124,16 @@ export interface ReplayText {
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
   soundCategoriesTitle: string
   soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
+  /**
+   * LA CAPTURE D'IMAGE (2026-08-26) : un bouton en icône dans la barre de lecture, qui
+   * télécharge la scène courante en PNG. Le libellé dit le GESTE, pas la technique — « PNG »,
+   * « export » ou « canvas » ne veulent rien dire pour qui regarde un match.
+   *
+   * PAS D'INFOBULLE SÉPARÉE : ce que la commande fait tient dans son nom, et une phrase
+   * d'explication sous un bouton d'une évidence pareille serait du bruit. Le
+   * bouton d'enregistrement, lui, en a une — parce que son comportement, LUI, surprend.
+   */
+  captureImage: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string

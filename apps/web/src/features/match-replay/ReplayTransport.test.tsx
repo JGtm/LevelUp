@@ -33,6 +33,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
   const onRestart = vi.fn()
   const onSetSpeed = vi.fn()
   const onToggleSettings = vi.fn()
+  const captureImage = vi.fn()
   const utils = render(
     <ReplayTransport
       playing
@@ -45,6 +46,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       speed={1}
       onSetSpeed={onSetSpeed}
       sound={makeSound()}
+      capture={{ captureImage }}
       locale="fr"
       leadMarks={{
         changes: [],
@@ -59,7 +61,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       {...over}
     />,
   )
-  return { ...utils, onTogglePlay, onRestart, onSetSpeed, onToggleSettings }
+  return { ...utils, onTogglePlay, onRestart, onSetSpeed, onToggleSettings, captureImage }
 }
 
 describe('ReplayTransport — lecture en icônes', () => {
@@ -140,6 +142,16 @@ describe('ReplayTransport — le son au niveau de la lecture', () => {
     unmount()
     renderTransport({ sound: makeSound({ on: true, volume: 0.7, setVolume }) })
     expect((screen.getByLabelText('Volume des sons') as HTMLInputElement).value).toBe('70')
+  })
+})
+
+describe('ReplayTransport — ce qui sort du rejeu', () => {
+  it('« Capturer l’image » est une icône nommée, et commande la capture', () => {
+    const { captureImage } = renderTransport()
+    const btn = screen.getByRole('button', { name: "Capturer l'image" })
+    expect(btn.querySelector('svg')).toBeTruthy()
+    fireEvent.click(btn)
+    expect(captureImage).toHaveBeenCalledTimes(1)
   })
 })
 

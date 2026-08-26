@@ -1,3 +1,35 @@
+## [2026-08-26] Rejeu 2D — capture d'image PNG du canvas (lot 1/4) — Complete
+
+**Contexte** : plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, branche wt/rejeu-capture-image-video
+(worktree dedie, base f4fcbfa72). Deux commandes nouvelles sur la page de rejeu : capturer
+l'image, enregistrer la video. Lot 1 = l'image seule.
+
+**Decision technique principale** : le cliquet de taille de ReplayCanvas.tsx etait a ZERO
+marge (742 lignes pour un plafond de 742), ce que l'etat des lieux du plan n'avait pas mesure.
+La doctrine du garde-rail (« le franchir se corrige en extrayant, pas en relevant le nombre »)
+impose donc d'extraire AVANT d'ajouter : le CADRAGE — fond retenu ou ecarte, bornes de scene,
+largeur de dessin, amplitude verticale, projection partagee, trame d'altitudes — part dans
+useReplayView.ts, neuvieme extraction. Les six noms sortent inchanges via destructuration,
+donc pas une ligne du dessin ne bouge. 742 -> 706, cliquet abaisse d'autant. Conception qui
+en decoule et qui tient les lots suivants : le hook useReplayCapture rend UN objet
+(ReplayCapture, patron exact de ReplaySound) que le canvas repasse tel quel a la barre —
+l'enregistrement video puis son audio s'y branchent en ETENDANT l'appel, pas en l'allongeant,
+donc le canvas ne gagnera plus une ligne. Logique de sortie (nom de fichier, telechargement,
+lecture des pixels) isolee dans replayCapture.ts, sans React. Le nom porte l'INSTANT DU MATCH
+(rejeu-<matchId>-12m34s.png) et jamais « 0m00s » par defaut : un instant inconnu bascule sur
+le repli horodate plutot que d'affirmer le coup d'envoi. L'identifiant vient de doc.matchId
+(le document le porte deja), rien a descendre de la route.
+
+**Resultats observes** : tsc -b = 0 ; vitest src/features/match-replay = 0 (76 fichiers,
+1141 tests, +14) ; eslint sur les 11 fichiers du perimetre avec --max-warnings 0 = 0. Le gate
+litteral du plan (eslint sur tout le dossier, --max-warnings 0) sort a 1 : 0 erreur, 1 warning
+react-refresh/only-export-components pre-existant sur ReplayFeedName.tsx, fichier non touche —
+la regle est en `warn` par decision documentee du depot (eslint.config.js), le script du depot
+est `eslint .` sans seuil. Consigne en Decouverte D2, non traite.
+
+**Conclusion / prochaine etape** : lot 2 — enregistrement video (captureStream + MediaRecorder),
+ordre de types mp4 avc1 -> mp4 -> webm vp9 -> webm, auto-arret quand la lecture s'arrete.
+
 ## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
 
 **Contexte** : 3 agents interrompus avant leur fusion dans feat/v75. Reprise sur leurs derniers
