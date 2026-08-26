@@ -1,3 +1,37 @@
+## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
+
+**Contexte** : 3 agents interrompus avant leur fusion dans feat/v75. Reprise sur leurs derniers
+mots : (1) fix/build-queue-e2e-cgo-args AVANT chore/prepush-vet-cgo (ordre consigne) ;
+(2) supervision deja entierement fusionnee (rien a faire) ; (3) lots 3 et 4 du rejeu 2D non
+committes dans leurs worktrees (wt/grenades-sans-ancre, wt/suivi-delta-inventaire).
+
+**Decision technique principale** : quatre fusions --no-ff dans l'ordre consigne. Le correctif
+11->10 args de fix/build-queue-e2e-cgo-args etait DEJA porte par le hotfix d5b98b76f (la pointe
+151de8037 citee par l'agent avait ete depassee) — la fusion n'apporte que son entree de journal ;
+l'ordre reste honore, le hook pre-push go-vet-cgo entre APRES. Lots 3 puis 4 : commit un-par-lot
+dans chaque worktree (messages detailles depuis leurs rapports), puis fusion. Conflits du lot 4
+resolus SANS reintroduire le code supprime par A8 : replaySchemaLogic.ts garde la seule constante
+EXPECTED_REPLAY_SCHEMA_VERSION, portee 19 -> 20 (replaySchemaState reste mort). Fixture d'entrees
+(v10) et golden d'assemblage REGENERES SUR L'ARBRE FUSIONNE par les portes documentees — le
+fixture du lot 4 avait ete genere sans le R2b du lot 3 ; le golden fusionne porte bien la
+combinaison (270 lectures de grenades = 150 image-cle R2b + 120 delta).
+
+**Resultats observes** : gates sur l'arbre fusionne — go test replay+filmdec+contracttest verts,
+go vet (pre-commit) vert, tsc -b 0 apres purge de node_modules/.tmp, vitest 4661 tests verts
+(14 skip), eslint 0 erreur (21 warnings pre-existants). Passe `backfill-replay --only-existing`
+(la passe post-bump documentee, une seule passe couvre 18->20) : 35 films planifies, 34
+construits, 0 erreur de decodage, 1h31m47s. L'unique echec est la MORT MEMOIRE ATTENDUE du
+film-bombe connu 51101d1d (tue par le plafond en 1,5 s, pic 4,09 GiB — le garde-fou du lot
+wt-jobmon a fait exactement son travail ; le profiling reste au registre des reports). Serveur
+air arrete PENDANT la passe (il tenait metadata.duckdb : les artefacts auraient ete cuits avec
+les noms EN degrades) puis relance, port 8000 verifie. Telemetrie de passe : les deux nouveaux
+canaux actifs (grenadesParPosition, lectures delta accordees), canalMunitionsRefuse=true observe
+sur au moins un film (la porte tout-ou-rien du lot 4 s'exerce).
+
+**Conclusion / prochaine etape** : push de feat/v75 et verification CI au niveau job. Worktrees
+des 4 branches fusionnees a nettoyer apres CI verte. NOTE : un agent sons travaille dans le
+worktree principal (diff weapon-sounds non committe) — ce commit n'embarque QUE cette entree.
+
 ## [2026-08-26] RE sons manquants : les banques Wwise se NOMMENT par hachage — objectifs, bobines, equipements — Complete
 
 **Contexte** : demande utilisateur — les sons qui manquent au rejeu (objets d'objectif :
