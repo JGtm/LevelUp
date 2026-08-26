@@ -45,9 +45,16 @@ import (
 // d'une arene tout en gardant la page sous le plafond de 16 Mo pour une soixantaine de cartes.
 const coteMaxParDefaut = 380
 
+// coteLoupeParDefaut : cote de l image servie par la LOUPE, en pixels. La vignette de la
+// grille ne sert qu a reperer la carte ; le verdict se prend sur cette image-la. 900 px tient
+// sur un ecran courant sans que soixante cartes fassent exploser le plafond de 16 Mo de la
+// page (mesure : ~150 Ko par carte a ce cote, contre ~35 Ko pour la vignette).
+const coteLoupeParDefaut = 900
+
 type vignette struct {
 	colonne   string
 	dataURI   string
+	loupeURI  string
 	largeur   int
 	hauteur   int
 	occupL    float64
@@ -69,13 +76,14 @@ func main() {
 	titre := flag.String("titre", "Planche des fonds de carte", "titre de la page")
 	intro := flag.String("intro", "", "paragraphe d'introduction (texte brut)")
 	cote := flag.Int("cote", coteMaxParDefaut, "cote maximal d'une vignette, en pixels")
+	coteLoupe := flag.Int("cote-loupe", coteLoupeParDefaut, "cote de l'image servie par la loupe, en pixels ; 0 = pas de loupe")
 	flag.Parse()
 
 	if *manifeste == "" {
 		slog.Error("manifeste requis")
 		os.Exit(1)
 	}
-	fiches, err := lisManifeste(*manifeste, *cote)
+	fiches, err := lisManifeste(*manifeste, *cote, *coteLoupe)
 	if err != nil {
 		slog.Error("lecture du manifeste", "err", err, "path", *manifeste)
 		os.Exit(1)
@@ -95,7 +103,7 @@ func main() {
 
 // lisManifeste lit le TSV et cuit une vignette par ligne. Une ligne illisible est SIGNALEE et
 // sautee : une planche amputee et qui le dit vaut mieux qu'un arret sur la 40e carte.
-func lisManifeste(chemin string, cote int) ([]fiche, error) {
+func lisManifeste(chemin string, cote, coteLoupe int) ([]fiche, error) {
 	f, err := os.Open(chemin)
 	if err != nil {
 		return nil, err
@@ -116,7 +124,7 @@ func lisManifeste(chemin string, cote int) ([]fiche, error) {
 			slog.Warn("ligne ignoree : 6 colonnes attendues", "ligne", ligne)
 			continue
 		}
-		v, err := cuitVignette(c[5], cote)
+		v, err := cuitVignette(c[5], cote, coteLoupe)
 		if err != nil {
 			slog.Warn("vignette ignoree", "err", err, "path", c[5])
 			continue
@@ -136,7 +144,7 @@ func lisManifeste(chemin string, cote int) ([]fiche, error) {
 // cuitVignette reduit un fond a la taille d'affichage et mesure son occupation. La reduction
 // est une MOYENNE DE BLOC (pas un echantillonnage) : sur une carte faite de traits fins, un
 // plus-proche-voisin en perdrait la moitie et donnerait a juger une image qui n'existe pas.
-func cuitVignette(chemin string, cote int) (vignette, error) {
+func cuitVignette(chemin string, cote, coteLoupe int) (vignette, error) {
 	blob, err := os.ReadFile(chemin)
 	if err != nil {
 		return vignette{}, err
@@ -153,12 +161,29 @@ func cuitVignette(chemin string, cote int) (vignette, error) {
 	draw.Draw(rgba, rgba.Bounds(), src, b.Min, draw.Src)
 	petit := reduitParBloc(rgba, cote)
 
-	var buf bytes.Buffer
-	if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, petit); err != nil {
+	buf, err := encodePNG(petit)
+	if err != nil {
 		return vignette{}, err
 	}
-	v.dataURI = "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+	v.dataURI = buf
+	if coteLoupe > cote {
+		grande, err := encodePNG(reduitParBloc(rgba, coteLoupe))
+		if err != nil {
+			return vignette{}, err
+		}
+		v.loupeURI = grande
+	}
 	return v, nil
+}
+
+// encodePNG encode une image en data URI PNG, compression maximale : la page embarque tout,
+// chaque kilo-octet compte contre le plafond de 16 Mo.
+func encodePNG(img *image.RGBA) (string, error) {
+	var buf bytes.Buffer
+	if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, img); err != nil {
+		return "", err
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
 // mesureOccupation rend la part de la LARGEUR et de l'AIRE du cadre reellement couvertes par
@@ -242,6 +267,7 @@ func rendPage(titre, intro string, fiches []fiche) string {
 		b.WriteString(rendFiche(f))
 	}
 	b.WriteString("</main>\n")
+	b.WriteString(calqueLoupe)
 	return b.String()
 }
 
@@ -259,7 +285,15 @@ func rendFiche(f fiche) string {
 	b.WriteString(`<div class="colonnes">` + "\n")
 	for _, v := range f.vignettes {
 		b.WriteString(`<figure>` + "\n")
-		b.WriteString(`<div class="cadre"><img alt="` + html.EscapeString(f.libelle+" — "+v.colonne) + `" src="` + v.dataURI + `"></div>` + "\n")
+		alt := html.EscapeString(f.libelle + " — " + v.colonne)
+		if v.loupeURI != "" {
+			// La vignette devient un BOUTON : la loupe se prend a la souris comme au clavier.
+			b.WriteString(`<button class="cadre loupe" type="button" data-grande="` + v.loupeURI +
+				`" data-titre="` + alt + `"><img alt="` + alt + `" src="` + v.dataURI +
+				`"><span class="loupe-ind" aria-hidden="true">agrandir</span></button>` + "\n")
+		} else {
+			b.WriteString(`<div class="cadre"><img alt="` + alt + `" src="` + v.dataURI + `"></div>` + "\n")
+		}
 		b.WriteString(`<figcaption><span class="col">` + html.EscapeString(v.colonne) + `</span>`)
 		b.WriteString(fmt.Sprintf(`<span class="chiffres">%d&times;%d px &middot; largeur utile <b>%.0f&nbsp;%%</b> &middot; aire <b>%.0f&nbsp;%%</b></span>`,
 			v.largeur, v.hauteur, 100*v.occupL, 100*v.occupA))

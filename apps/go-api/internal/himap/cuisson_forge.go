@@ -73,14 +73,8 @@ type OptionsCuissonForge struct {
 	// Echelle est le cote d'un pixel du fond, en metres. ZERO = `EchelleFondCarte`.
 	// Meme reglage et memes consequences que `OptionsCuisson.Echelle` — voir cuisson.go.
 	Echelle float64
-}
-
-// echelleOuDefaut rend l'echelle demandee, ou celle de production si aucune ne l'est.
-func (o OptionsCuissonForge) echelleOuDefaut() float64 {
-	if o.Echelle > 0 {
-		return o.Echelle
-	}
-	return EchelleFondCarte
+	// CibleCadrePx : meme role que OptionsCuisson.CibleCadrePx.
+	CibleCadrePx int
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -97,7 +91,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		return nil, b, err
 	}
 
-	r := CadreSurAncresEchelle(opts.Ancres, opts.echelleOuDefaut())
+	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
 	// LA TRANCHE, TRANSLATEE AU SOL DES ANCRES. Le sol de Vagabond vit vers z=52 : c'est ici
 	// qu'on a compris qu'une tranche absolue n'avait pas de sens, et la chaine native applique
 	// desormais la meme regle (cf. `TrancheDeJeu`).

@@ -123,6 +123,12 @@
       "combleTrous": true,
       "rogneAuxZones": true,
       "sansEau": true
+    },
+    "105f5d84-8de1-4908-af3a-1c4f3bf9d642": {
+      "carte": "Vagabond",
+      "style": "encre",
+      "raison": "Gate du 2026-08-26, carte 12. Vagabond est la carte que l utilisateur a designee comme demandant un GROS RETRAVAIL, et son fond de production le confirme : de grandes dalles sombres — canevas Forge et decor de fond — couvrent l image, l arene jouee n etant que l amas de detail du centre. C est une carte FORGE, donc ZERO zone de callout : le masque des zones n existe pas ici, et les leviers disponibles sont l ecretage, la boite utile et l echelle. Premiere intention : mesurer le taux de couverture et les ancres avant tout reglage. EN COURS.",
+      "gateLe": "2026-08-26"
     }
   }
 }
