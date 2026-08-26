@@ -67,6 +67,17 @@ export interface ReplaySound {
   toggleCategory: (category: SoundCategory) => void
   /** À appeler à chaque pas d'animation avec l'instant courant du rejeu, en ms. */
   tick: (ms: number) => void
+  /**
+   * LA PISTE AUDIO À JOINDRE À UNE VIDÉO enregistrée, ou `null`.
+   *
+   * `null` dans deux cas qui n'en font qu'un du point de vue de l'utilisateur : le son est
+   * coupé, ou le lecteur n'est pas né (il ne naît que dans le geste qui active le son). Le
+   * clip sort alors muet, et c'est la décision 6 du plan — la piste est câblée AU DÉMARRAGE
+   * de l'enregistrement, donc activer le son ensuite ne l'ajoute pas au clip en cours. La
+   * raison n'est pas technique mais de lisibilité : un fichier dont le son démarrerait en
+   * cours de route passerait pour un fichier abîmé.
+   */
+  recordingTrack: () => MediaStreamTrack | null
 }
 
 /** Lit les catégories COUPÉES ; une valeur inconnue (ancienne clé, JSON corrompu) est
@@ -245,6 +256,14 @@ export function useReplaySound(
     if (onRef.current) playerRef.current?.setVolume(clamped)
   }, [])
 
+  // La piste d'enregistrement se lit sur les REFS (`onRef`, `playerRef`) et non sur l'état :
+  // elle est demandée au moment d'un clic sur « Enregistrer », jamais pendant un rendu, et
+  // cette fonction doit rester stable pour ne pas recréer l'objet de capture à chaque son.
+  const recordingTrack = useCallback((): MediaStreamTrack | null => {
+    if (!onRef.current) return null
+    return playerRef.current?.recordingTrack() ?? null
+  }, [])
+
   const tick = useCallback((ms: number) => {
     const tl = timelineRef.current
     const player = playerRef.current
@@ -280,5 +299,6 @@ export function useReplaySound(
     categories,
     toggleCategory,
     tick,
+    recordingTrack,
   }
 }

@@ -24,6 +24,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     categories: { weapon: true, grenade: true, melee: true, equipment: true },
     toggleCategory: vi.fn(),
     tick: vi.fn(),
+    recordingTrack: () => null,
     ...over,
   }
 }
@@ -33,6 +34,8 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
   const onRestart = vi.fn()
   const onSetSpeed = vi.fn()
   const onToggleSettings = vi.fn()
+  const captureImage = vi.fn()
+  const toggleRecording = vi.fn()
   const utils = render(
     <ReplayTransport
       playing
@@ -45,6 +48,12 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       speed={1}
       onSetSpeed={onSetSpeed}
       sound={makeSound()}
+      capture={{
+        captureImage,
+        recordingSupported: true,
+        recording: false,
+        toggleRecording,
+      }}
       locale="fr"
       leadMarks={{
         changes: [],
@@ -59,7 +68,15 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       {...over}
     />,
   )
-  return { ...utils, onTogglePlay, onRestart, onSetSpeed, onToggleSettings }
+  return {
+    ...utils,
+    onTogglePlay,
+    onRestart,
+    onSetSpeed,
+    onToggleSettings,
+    captureImage,
+    toggleRecording,
+  }
 }
 
 describe('ReplayTransport — lecture en icônes', () => {
@@ -140,6 +157,53 @@ describe('ReplayTransport — le son au niveau de la lecture', () => {
     unmount()
     renderTransport({ sound: makeSound({ on: true, volume: 0.7, setVolume }) })
     expect((screen.getByLabelText('Volume des sons') as HTMLInputElement).value).toBe('70')
+  })
+})
+
+describe('ReplayTransport — ce qui sort du rejeu', () => {
+  it('« Capturer l’image » est une icône nommée, et commande la capture', () => {
+    const { captureImage } = renderTransport()
+    const btn = screen.getByRole('button', { name: "Capturer l'image" })
+    expect(btn.querySelector('svg')).toBeTruthy()
+    fireEvent.click(btn)
+    expect(captureImage).toHaveBeenCalledTimes(1)
+  })
+
+  it('à l’arrêt : le bouton dit « Enregistrer la vidéo » et lance au clic', () => {
+    const { toggleRecording } = renderTransport()
+    const btn = screen.getByRole('button', { name: 'Enregistrer la vidéo' })
+    expect(btn.querySelector('svg')).toBeTruthy()
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(toggleRecording).toHaveBeenCalledTimes(1)
+  })
+
+  it('en cours : le nom accessible dit ce que le CLIC fera, pas l’état', () => {
+    renderTransport({
+      capture: {
+        captureImage: vi.fn(),
+        recordingSupported: true,
+        recording: true,
+        toggleRecording: vi.fn(),
+      },
+    })
+    const btn = screen.getByRole('button', { name: "Arrêter l'enregistrement" })
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  // DÉCISION 7 : un navigateur qui ne sait pas filmer une toile n'a pas de bouton du tout. Une
+  // commande grisée laisserait croire à une panne réparable — il n'y a rien à réparer.
+  it('navigateur sans enregistrement : PAS de bouton vidéo, mais le bouton image reste', () => {
+    renderTransport({
+      capture: {
+        captureImage: vi.fn(),
+        recordingSupported: false,
+        recording: false,
+        toggleRecording: vi.fn(),
+      },
+    })
+    expect(screen.queryByRole('button', { name: 'Enregistrer la vidéo' })).toBeNull()
+    expect(screen.getByRole('button', { name: "Capturer l'image" })).toBeTruthy()
   })
 })
 

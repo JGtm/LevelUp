@@ -217,3 +217,33 @@ describe('useReplaySound — préférences', () => {
     expect(result.current.volume).toBe(0)
   })
 })
+
+/**
+ * LA PISTE POUR LA VIDÉO (décision 6 du plan de capture). Ce que ces cas tiennent : un rejeu
+ * muet ne fabrique AUCUN nœud audio — le son est coupé par défaut, et filmer un match ne doit
+ * pas ouvrir un contexte que personne n'a demandé.
+ */
+describe('useReplaySound — la piste d’enregistrement', () => {
+  it('son coupé : pas de piste, et surtout aucun contexte ouvert au passage', () => {
+    const { result } = mount()
+    expect(result.current.recordingTrack()).toBeNull()
+    expect(ctx.streamDests).toHaveLength(0)
+  })
+
+  it('son activé : la piste existe et vient du lecteur en cours', async () => {
+    const { result } = mount()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(result.current.recordingTrack()).toBe(ctx.streamDests[0].track)
+  })
+
+  it('couper le son après coup rend de nouveau `null`', async () => {
+    // Le clip EN COURS garde sa piste (elle est câblée au démarrage) : ce que ce cas dit,
+    // c'est qu'un enregistrement lancé APRÈS la coupure repart muet.
+    const { result } = mount()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.toggle())
+    expect(result.current.recordingTrack()).toBeNull()
+  })
+})
