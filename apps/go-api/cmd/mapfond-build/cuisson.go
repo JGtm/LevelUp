@@ -79,7 +79,7 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			RacineDeploy: e.racineJeu,
 			CheminModule: c.chemin,
 			Ancres:       c.ancres,
-			Echelle:      e.echelle,
+			Echelle:      e.echelleDe(c.cle),
 		})
 		if err != nil {
 			if errors.Is(err, himap.ErrAucunTagSbsp) {
@@ -182,7 +182,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			Ancres:              c.ancres,
 			CheminModuleCanevas: himap.CheminCanevasForge(carte),
 			Cle:                 carte.MapID,
-			Echelle:             e.echelle,
+			Echelle:             e.echelleDe(carte.MapID),
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
@@ -229,7 +229,7 @@ func (e *environnement) cibleForge(carte himap.CarteForge) (cible, []mapvar.Obje
 // publie écrit le PNG et son sidecar de calage.
 func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu, b himap.BilanCuisson) bilanAsset {
 	ba := bilanAsset{Cle: c.cle, Noms: c.noms, Bilan: b, LargeurPx: rendu.NX, HauteurPx: rendu.NY}
-	img := himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, e.style)
+	img := himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, e.styleDe(c.cle))
 	cheminPNG := filepath.Join(e.sortieDir, c.cle+".png")
 	octets, err := ecritPNG(cheminPNG, img)
 	if err != nil {
@@ -280,7 +280,7 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 		Image:         c.cle + ".png",
 		Source:        sourceCuisson,
 		GeneratedAt:   time.Now().UTC(),
-		Style:         string(e.style),
+		Style:         string(e.styleDe(c.cle)),
 		Calibration: replay.MapBackgroundCalibration{
 			MetersPerPixel: mpp, OriginX: x0, OriginY: y1,
 			WidthPx: rendu.NX, HeightPx: rendu.NY, Convention: himap.ConventionCalage,
@@ -321,8 +321,11 @@ func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
 func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "# Cuisson des fonds de carte — %s\n\n", time.Now().UTC().Format("2006-01-02"))
-	fmt.Fprintf(&sb, "Habillage `%s` · %.4f m/px · sortie `%s`\n\n",
-		env.style, env.echelleEffective(), env.sortieDir)
+	// L'habillage et l'échelle annoncés sont ceux de la CUISSON ; les cartes qui portent leur
+	// propre réglage sont comptées à côté — sans ça le tableau annoncerait `jeu` pour une carte
+	// publiée en `encre`.
+	fmt.Fprintf(&sb, "Habillage `%s` · %.4f m/px · %d réglage(s) par carte · sortie `%s`\n\n",
+		env.style, env.echelleEffective(), len(env.reglages.Cartes), env.sortieDir)
 	fmt.Fprintln(&sb, "`ancres avec sol` est l'ORACLE FAIBLE : une ancre d'objectif sans sol dessine")
 	fmt.Fprintln(&sb, "sous elle est un trou de reconstruction. `matiere` compte les instances de bsp")
 	fmt.Fprintln(&sb, "dessinees pour une carte native, et les OBJETS poses pour une carte Forge — une")

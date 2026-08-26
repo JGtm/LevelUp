@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage `jeu`, echelle 0,0920 m/px).",
+  "cartes": {
+    "ridgeline": {
+      "carte": "Cliffhanger",
+      "style": "encre",
+      "raison": "Gate du 2026-08-26 : l'utilisateur a compare les deux habillages sur planche et retenu `encre` pour cette carte. Le fond en production etait en `jeu` (fond noir, arene claire) ; sur une arene a ciel ouvert bordee de rochers hauts, `encre` garde les rochers lisibles en gris au lieu de les noyer dans le noir, et la riviere reste le seul aplat colore.",
+      "gateLe": "2026-08-26"
+    }
+  }
+}

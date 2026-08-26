@@ -58,7 +58,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Fragmentation / Fragmentation Heavies | `btb_fragmentation` | 92 | 87.4 | -11,71 | natif | VALIDEE 26/08 |
 | Breaker / Breaker Heavies | `ctf_breaker` | 76 | 52.4 | -3,29 | natif | VALIDEE 26/08 |
 | Streets - Ranked / Streets | `sgh_streets` | 62 | 40.6 | -4,33 | natif | A FINALISER |
-| Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | A TRANCHER — style `encre` ? |
+| Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | PUBLIEE `encre` 26/08 — a valider |
 | Scarr | `btb_engine` | 57 | 65.9 | -0,13 | natif | VALIDEE 26/08 |
 | Bazaar | `ctf_bazaar` | 56 | 39.3 | -4,22 | natif | A FINALISER |
 | Illusion | `ctf_illusion` | 56 | 76.3 | -0,26 | natif | A FINALISER |
@@ -235,7 +235,27 @@ de travail pour atteindre une version valide, pas de regle de rendu final.
 |---|---|---|---|
 | 2026-08-26 | etat des lieux | https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40 | les 56 fonds publies + Catalyst a trois etats (publie / re-cuisson 26/08 / temoin 10/08) |
 | 2026-08-26 | style `jeu` / `encre` | https://claude.ai/code/artifact/6c9ec756-95e6-451a-8977-5e61debb8bae | les 19 fonds natifs dans les deux habillages, ordre des verdicts du 26/08 |
+| 2026-08-26 | carte 1 — Cliffhanger | https://claude.ai/code/artifact/e3f8f959-14a3-44a8-b426-26a27f13832b | avant/apres de la SEULE carte publiee en `encre` |
 
 Outil : `cmd/mapfond-planche` — manifeste TSV (cle, libelle, sous-titre, statut, colonne,
 chemin PNG), une page HTML autonome, vignettes en data URI. Plusieurs lignes de meme cle
 deviennent les colonnes d'une meme fiche : c'est la comparaison avant / apres.
+
+## Boucle de travail — UNE carte a la fois (consigne utilisateur du 2026-08-26)
+
+> « je pense que tu n'as pas compris quand je te dis qu'il faut retravailler une a une celles
+> qui sont non validees. On devrait travailler une a une non ? »
+
+La planche de masse a servi a UNE chose : obtenir le verdict de style. Elle est close. Desormais,
+carte par carte :
+
+1. cuire la carte SEULE vers le dossier de PRODUCTION (pas un scratch) ;
+2. publier sa planche avant/apres, cette carte seule ;
+3. verdict utilisateur ; s'il refuse, corriger sur ELLE et republier ;
+4. la ligne passe `VALIDEE` avec le verbatim, l'entree de reglage porte sa raison et sa date ;
+5. seulement alors, la carte suivante.
+
+Ordre retenu (matchs decroissants parmi les non closes) : **Cliffhanger** (58, publiee, en
+attente de verdict) → Streets (62) → Bazaar (56) → Recharge (56) → Illusion (56) → Aquarius
+(54) → Chasm (52) → Prism (49) → Catalyst (48) → Launch Site (24) → Vagabond (16, gros
+retravail). Streets pese plus que Cliffhanger, mais Cliffhanger etait deja tranchee.

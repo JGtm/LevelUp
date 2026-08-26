@@ -99,6 +99,8 @@ type environnement struct {
 	racineJeu string
 	catalogue *replay.MapObjectivesCatalog
 	style     himap.StyleFond
+	// reglages : les choix PAR CARTE (habillage, echelle), lus en donnee. Jamais nil.
+	reglages *reglagesFond
 	// echelle : cote du pixel en metres. Zero = celle de production (`EchelleFondCarte`).
 	// Reglage PAR CARTE au sens du gate du 26/08 — ici il vaut pour toute la cuisson demandee.
 	echelle float64
@@ -139,12 +141,17 @@ func prepare(titleSlug, outDir string) (*environnement, error) {
 	if err != nil {
 		return nil, err
 	}
+	reg, err := chargeReglages(res.MapFondReglagesPath(titleSlug))
+	if err != nil {
+		return nil, err
+	}
 	return &environnement{
 		titleSlug: titleSlug, repoRoot: root, sortieDir: dir,
 		racineJeu: racine, catalogue: cat,
 		nomsAffiches: nomsAffichesParModule(res.MapQuantBoundsPath(titleSlug)),
 		levelsDir:    levels,
 		liens:        liensDuDepot(root, levels),
+		reglages:     reg,
 	}, nil
 }
 
@@ -247,7 +254,8 @@ func resume(ctx context.Context, bilans []bilanAsset, env *environnement) int {
 		"cartes", len(bilans)-echecs-nonCuisinables, "échecs", echecs,
 		"nonCuisinables", nonCuisinables, "dégradées", degrades,
 		"ancresAvecSol", fmt.Sprintf("%d/%d", avecSol, ancres),
-		"octets", octets, "style", string(env.style), "sortie", env.sortieDir)
+		"octets", octets, "style", string(env.style), "reglagesParCarte", len(env.reglages.Cartes),
+		"sortie", env.sortieDir)
 	return echecs
 }
 
