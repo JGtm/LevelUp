@@ -1,0 +1,32 @@
+01e1f945 : designateur slot 1471 (4 bascule(s)) ; canal de propriete slot 1472 (99 emission(s)) ; axe 5343 frames a 100 ms
+01e1f945 : 66 prise(s) de colline posee(s) sur l'axe, camp connu ; tolerance 20 s = 200 frames
+SIGNAL    01e1f945 : 57/64 = 89.1 % (prises 66, sans bascule 2, ecart median 34 frames, 0->slot0, 1->slot1)
+EXPLOITABLE     01e1f945 : 64 prise(s) confrontable(s) >= 6
+TEMOIN a  01e1f945 : permutation, pire des 10 autres canaux (slot 1385) : 7/7 = 100.0 % (prises 66, sans bascule 59, ecart median 55 frames, valeur unique 542360584 — bijection DEGENEREE)
+TEMOIN b  01e1f945 : decalage +60 s : 30/54 = 55.6 % (prises 54, sans bascule 0, ecart median 29 frames, 0->slot1, 1->slot0)
+CONTROLE  01e1f945 : decalage +20 s (DANS la fenetre, pas un temoin) : 29/58 = 50.0 % (prises 61, sans bascule 3, ecart median 28 frames, 0->slot0, 1->slot1)
+
+0a247154 : designateur slot 1622 (5 bascule(s)) ; canal de propriete slot 1623 (213 emission(s)) ; axe 7838 frames a 100 ms
+0a247154 : 92 prise(s) de colline posee(s) sur l'axe, camp connu ; tolerance 20 s = 200 frames
+SIGNAL    0a247154 : 81/92 = 88.0 % (prises 92, sans bascule 0, ecart median 31 frames, 0->slot0, 1->slot1)
+EXPLOITABLE     0a247154 : 92 prise(s) confrontable(s) >= 6
+TEMOIN a  0a247154 : permutation, pire des 7 autres canaux (slot 1586) : 5/5 = 100.0 % (prises 92, sans bascule 87, ecart median 94 frames, 180680332->slot1, 2795653120->slot0)
+TEMOIN b  0a247154 : decalage +60 s : 47/83 = 56.6 % (prises 83, sans bascule 0, ecart median 20 frames, 0->slot1, 1->slot0)
+CONTROLE  0a247154 : decalage +20 s (DANS la fenetre, pas un temoin) : 51/89 = 57.3 % (prises 89, sans bascule 0, ecart median 21 frames, 0->slot0, 1->slot1)
+
+606d9844 : designateur slot 1498 (2 bascule(s)) ; canal de propriete slot 1499 (13 emission(s)) ; axe 2342 frames a 100 ms
+606d9844 : 43 prise(s) de colline posee(s) sur l'axe, camp connu ; tolerance 20 s = 200 frames
+SIGNAL    606d9844 : 27/31 = 87.1 % (prises 43, sans bascule 12, ecart median 124 frames, 0->slot0, 1->slot1)
+EXPLOITABLE     606d9844 : 31 prise(s) confrontable(s) >= 6
+TEMOIN a  606d9844 : permutation, pire des 2 autres canaux (slot 1500) : 24/29 = 82.8 % (prises 43, sans bascule 14, ecart median 129 frames, 0->slot0, 1->slot1)
+TEMOIN b  606d9844 : decalage +60 s : 30/32 = 93.8 % (prises 35, sans bascule 3, ecart median 93 frames, valeur unique 0 — bijection DEGENEREE)
+CONTROLE  606d9844 : decalage +20 s (DANS la fenetre, pas un temoin) : 23/32 = 71.9 % (prises 39, sans bascule 7, ecart median 55 frames, 0->slot0, 1->slot1)
+
+8076f97f : designateur slot 1540 (2 bascule(s)) ; canal de propriete slot 1541 (35 emission(s)) ; axe 3398 frames a 100 ms
+8076f97f : 53 prise(s) de colline posee(s) sur l'axe, camp connu ; tolerance 20 s = 200 frames
+SIGNAL    8076f97f : 38/53 = 71.7 % (prises 53, sans bascule 0, ecart median 73 frames, 0->slot0, 1->slot1)
+EXPLOITABLE     8076f97f : 53 prise(s) confrontable(s) >= 6
+TEMOIN a  8076f97f : permutation, pire des 7 autres canaux (slot 1459) : 10/12 = 83.3 % (prises 53, sans bascule 41, ecart median 83 frames, 86650472->slot0, 1647637379->slot1)
+TEMOIN b  8076f97f : decalage +60 s : 33/43 = 76.7 % (prises 43, sans bascule 0, ecart median 58 frames, 0->slot1, 1->slot0)
+CONTROLE  8076f97f : decalage +20 s (DANS la fenetre, pas un temoin) : 34/48 = 70.8 % (prises 50, sans bascule 2, ecart median 32 frames, 0->slot1, 1->slot0)
+
