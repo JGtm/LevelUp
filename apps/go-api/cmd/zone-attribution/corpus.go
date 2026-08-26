@@ -26,6 +26,11 @@ type candidate struct {
 	mapID   string
 	mapName string
 	variant string
+	// pairName est le libelle de mode DU REGISTRE (« Arena:Total Control on Streets »). Il
+	// sert au RECENSEMENT (census.go), qui le normalise comme le service — la mesure, elle,
+	// classe par `game_variant_name` (cf. selectEligible). Les deux libelles ne portent pas le
+	// mode dans le meme ordre, et c'est mesure : `Strongholds:Arena` contre `Arena:Strongholds`.
+	pairName string
 }
 
 // rejects compte les maillons manquants, par motif.
@@ -38,7 +43,8 @@ type rejects struct {
 
 // loadCandidates lit le registre. matchArg vide = tout le registre.
 func loadCandidates(ctx context.Context, db *sql.DB, matchArg string) ([]candidate, error) {
-	q := `SELECT match_id, COALESCE(map_id,''), COALESCE(map_name,''), COALESCE(game_variant_name,'')
+	q := `SELECT match_id, COALESCE(map_id,''), COALESCE(map_name,''), COALESCE(game_variant_name,''),
+	             COALESCE(pair_name,'')
 	      FROM match_registry`
 	var args []any
 	if matchArg != "" {
@@ -54,7 +60,7 @@ func loadCandidates(ctx context.Context, db *sql.DB, matchArg string) ([]candida
 	var out []candidate
 	for rows.Next() {
 		var c candidate
-		if err := rows.Scan(&c.full, &c.mapID, &c.mapName, &c.variant); err != nil {
+		if err := rows.Scan(&c.full, &c.mapID, &c.mapName, &c.variant, &c.pairName); err != nil {
 			return nil, err
 		}
 		c.short = title.FilmShortMatchID(c.full)

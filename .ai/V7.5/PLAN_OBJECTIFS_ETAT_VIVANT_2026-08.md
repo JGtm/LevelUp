@@ -256,7 +256,41 @@ Sans lui, chaque phase suivante decouvrirait son corpus en cours de route. 951 f
 (`data/cache/film_chunks`), mais leur MODE n'est pas dans le manifeste : il se lit dans
 `match_registry.game_variant_name`.
 
-> **D1 EST BLOQUE SUR SON OUTILLAGE (2026-08-26), et voici jusqu'ou il est alle.** L'item D1.1
+> **D1 EST FAIT (2026-08-26, second passage).** Le blocage d'outillage ci-dessous est LEVE :
+> `cmd/zone-attribution` porte desormais un drapeau `-census` qui recense le corpus PAR MODE, en
+> lecture seule (`OpenReadForQuery`), sans MCP ni binaire neuf. Le mode vient du `pair_name` du
+> registre, normalise par la MEME fonction que le service (`analysis.NormalizeModeLabel`) —
+> aucune liste de modes n'est ecrite dans le code, le recensement rend ce que le registre
+> contient.
+>
+>	LEVELUP_REPO_ROOT=<repo> go run ./cmd/zone-attribution -census -cache <repo>/data/cache
+>
+> **1 940 matchs, 45 modes distincts, 87 sans `pair_name` exploitable.** Sortie brute figee :
+> `.ai/V7.5/replay2d/registre_film/D1_recensement_modes.log`. Ce qui decide des phases D3 et D4 :
+>
+> | mode | matchs | **films en cache** | artefacts (schemas) | verdict |
+> |---|---|---|---|---|
+> | **Total Control** | 110 | **4** (+3 en « Fiesta Total Control ») | 0 | **D3 OUVRABLE** — le seuil du §2.3 est >= 2 films |
+> | **Oddball** | 26 | **7** | 1 (schema 20) | **D4 OUVRABLE** — le seuil du §2.4 est >= 2 films |
+> | **Stockpile** | 39 | **2** | 0 | condition de reprise du §2.6 (>= 1 film) ATTEINTE |
+> | **Extraction** | 2 | **2** | 0 | condition (1) du §2.5 ATTEINTE ; la condition (2) — trouver un canal ET un oracle — reste entiere |
+> | Assaut (`Neutral Bomb` / `One Bomb` / `Neutral Bomb Squad`) | 8 | **8** | 0 | condition du §2.7 (>= 2 films) ATTEINTE |
+> | KOTH | 52 | 47 | 4 (schema 20) | corpus large, mais le canal proprietaire est bloque sur la DECISION PRODUIT (D2/D2-bis/D2-ter) |
+> | Strongholds | 75 | 50 | 3 (schema 20) | deja couvert |
+>
+> **CE QUE CE RECENSEMENT CORRIGE, ET C'EST L'ESSENTIEL.** Le plan tenait Oddball pour limite a
+> UN film (`24dbb67d`) et Stockpile pour `[!]` CORPUS DEFINITIF (« aucun film exploitable, 404
+> Theater », report du 2026-08-17). Les deux sont FAUX aujourd'hui : 7 films d'Oddball et 2 de
+> Stockpile sont en cache. Le report Stockpile est a AMENDER au registre — il decrivait l'etat du
+> cache a sa date, pas une impossibilite.
+>
+> **VIP : 3 matchs, 3 FILMS EN CACHE — et cela ne change RIEN.** Le §2.10 ne bute pas sur le
+> corpus mais sur le film lui-meme (le bit vit dans un octet d'attributs de script, sans aucun
+> serialiseur). Avoir les films ne cree pas la donnee : VIP reste `[!]` definitif.
+>
+> Le detail du premier passage, et pourquoi il ne suffisait pas, est conserve ci-dessous.
+>
+> **D1 EST BLOQUE SUR SON OUTILLAGE (2026-08-26, PREMIER PASSAGE — LEVE DEPUIS).** L'item D1.1
 > prescrit un `COPY (...) TO ...` en lecture seule, sur le modele de `oracle_export.sql`. Cette
 > recette suppose un client SQL : le serveur MCP `duckdb` documente par `CLAUDE.md`, ou le binaire
 > `duckdb`. **Aucun des deux n'est disponible dans cette session** (`duckdb` absent du PATH, MCP
@@ -284,16 +318,16 @@ Sans lui, chaque phase suivante decouvrirait son corpus en cours de route. 951 f
 > comptage ponctuel est une decision, pas une initiative d'executeur : elle revient au
 > superviseur.
 
-- [ ] D1.1 Export LECTURE SEULE d'un recensement : `match_id`, `game_variant_name`, `map_id`,
+- [x] D1.1 Export LECTURE SEULE d'un recensement : `match_id`, `game_variant_name`, `map_id`,
       `map_name`, `start_time` pour tout `match_registry`. Meme recette que l'oracle du lot A
       (`registre_film/oracle_export.sql`) : un `COPY (...) TO '<repo>/.ai/V7.5/replay2d/registre_film/census_modes_2026-08.tsv' (HEADER, DELIMITER E'\t')`.
       **La base ne s'ouvre JAMAIS en RW** (§3.5).
-- [ ] D1.2 Croiser le TSV avec la presence d'un repertoire `data/cache/film_chunks/<8 premiers
+- [x] D1.2 Croiser le TSV avec la presence d'un repertoire `data/cache/film_chunks/<8 premiers
       caracteres>` : un film present ou absent, par match.
-- [ ] D1.3 Table par mode, versee au journal du plan : Total Control, Oddball, Extraction,
+- [x] D1.3 Table par mode, versee au journal du plan : Total Control, Oddball, Extraction,
       Stockpile, Assaut, Land Grab, KOTH, Strongholds, CTF — pour chacun : matchs au registre,
       matchs AVEC film, cartes distinctes, et la liste des identifiants courts retenus.
-- [ ] D1.4 Statuer CHAQUE mode du §2 : ouvert (phase dediee) ou `[!]` corpus avec son chiffre.
+- [x] D1.4 Statuer CHAQUE mode du §2 : ouvert (phase dediee) ou `[!]` corpus avec son chiffre.
       Un mode a moins de films que son seuil exige (§2) est `[!]` — le seuil ne se rebaisse pas.
 
 **Gate D1** : le TSV est commite, la table est au journal, chaque mode du §2 porte un statut chiffre.
@@ -895,6 +929,14 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
 
 ## 7. Decouvertes (hors perimetre — consignees, NON traitees)
 
+- (2026-08-26, D1) **87 matchs du registre n'ont pas de `pair_name` exploitable, et 8 modes
+  sortent du recensement sous un UUID BRUT** (`100e12e4-...`, `f526fb9e-...`). Le libelle de mode
+  du registre n'est donc pas toujours un libelle : sur ces lignes, la table de roles du titre ne
+  peut rien servir — degradation propre, mais silencieuse. NON TRAITE : c'est la qualite du
+  registre, pas le chantier des objectifs.
+- (2026-08-26, D1) **`NormalizeModeLabel` rend « urvive The Undead 3.0 »** — le « S » de
+  « Survive » est mange par le retrait de prefixe. Un mode s'affiche donc ampute quelque part
+  dans le produit. Defaut REEL de la normalisation partagee, hors perimetre de ce plan.
 - (2026-08-26, D2) **Le composant de score de MODE ne compte pas la meme grandeur d'un film KOTH
   a l'autre, et deux films n'en portent qu'un camp.** `01e1f945` et `0a247154` rendent des series
   de 2 a 4 points (des collines gagnees) ; `606d9844` et `8076f97f` ne rendent qu'UN slot
@@ -991,3 +1033,29 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   capteur), ce qui n'est pas une permutation — signale, pas repare apres coup. **NON MESURE AU
   SEUIL, toujours pas refute.** Reprise : l'oracle du score PERSONNEL (arbitrage superviseur
   requis), ou une decision PRODUIT sur le niveau de preuve exige. **STOP.**
+
+- 2026-08-26 — **D2-ter : GATE NON ATTEINT, et l'oracle est en cause une TROISIEME fois.**
+  Protocole commite avant la mesure (`d92c436a2`). Score personnel : 53,3 % et 69,2 % sur les deux
+  films les plus fournis, 100 % sur six confrontations du troisieme, un quatrieme non exploitable.
+  **La cause est mesuree** : delta dominant MEDIAN de 150 points contre 0-25 pour le camp domine —
+  un frag vaut ~100, un tic de colline quelques-uns. L'oracle regarde qui a TUE, pas qui tient la
+  colline. L'hypothese d'arbitrage (« 87-89 % = plancher de bruit de l'oracle th=10 ») est donc
+  CONTREDITE : l'oracle continu fait nettement moins bien. Le temoin de permutation, une fois les
+  slots freres exclus structurellement, s'est revele SANS OBJET. **Trois oracles epuises ; pas de
+  D2-quater ; decision produit a l'utilisateur.**
+
+- 2026-08-26 — **D1 FAIT, et il ROUVRE D3 ET D4.** `cmd/zone-attribution -census` (drapeau neuf,
+  lecture seule, meme normalisation de mode que le service) recense 1 940 matchs et 45 modes.
+  **Total Control : 4 films** (+3 en variante Fiesta) — le seuil de D3 est >= 2, la phase est
+  OUVRABLE. **Oddball : 7 films** — le plan n'en connaissait qu'UN, D4 est OUVRABLE. **Stockpile :
+  2 films** alors que le report du 2026-08-17 le disait sans corpus exploitable : ce report est a
+  AMENDER, il decrivait l'etat du cache a sa date. **Extraction : 2 films** (condition 1 du §2.5
+  atteinte ; canal et oracle restent a trouver). **VIP : 3 films en cache, et cela ne change
+  rien** — le §2.10 bute sur le film, pas sur le corpus. Sortie figee dans
+  `registre_film/D1_recensement_modes.log`.
+
+- 2026-08-26 — **DECISION PRODUIT RENDUE (utilisateur) : option (a).** Le niveau de preuve de
+  D2-bis — 88-89 % d'accord contre un temoin a 56 %, canal jamais refute, elu 4 films sur 4 — est
+  **ACCEPTE** pour le calque du proprietaire de colline (precedent : la garde de l'ouvrier a
+  88 %). L'erreur residuelle est concentree aux BASCULES, dans la fenetre de +/- 20 s de l'oracle.
+  D2 passe donc en IMPLEMENTATION, sans bump de schema (la publication attend le bump unique de D5).
