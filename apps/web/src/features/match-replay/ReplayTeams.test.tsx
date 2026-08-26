@@ -274,24 +274,69 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
   })
 })
 
+/**
+ * LA FICHE MORTE, DÉPOUILLÉE (demande utilisateur du 2026-08-25 : « virer l'accentuation sur la
+ * bordure gauche de la fiche quand le joueur est mort ? Et centre le compteur de réapparition et
+ * virer la jauge »). Trois retraits, trois verrous — et ce qui RESTE est vérifié aussi : la mort
+ * doit continuer de se lire, sans quoi le dépouillement l'aurait effacée.
+ */
 describe('ReplayTeams — mort et réapparition', () => {
-  it('mort avec retour lu : compte à rebours ET barre d’avancement depuis la mort', () => {
-    const doc = testReplayDoc({
+  /** La fiche d'Alpha : deux niveaux au-dessus de son nom (marque retirée, cf. A1). */
+  const carte = (view: ReturnType<typeof render>) =>
+    view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+
+  const docAvecRetour = () =>
+    testReplayDoc({
       roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
       tracks: [
         TRACK,
         { slot: 514, team: -1, xuid: 'A', startFrame: 180, endFrame: 260, points: [{ t: 180, x: 0, y: 0 }] },
       ],
     })
-    render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
+
+  it('mort avec retour lu : le compte à rebours, et AUCUNE jauge', () => {
+    render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
     expect(screen.getByText('Réapparition dans')).toBeTruthy()
-    expect(screen.getByRole('progressbar')).toBeTruthy()
+    expect(screen.queryByRole('progressbar')).toBeNull()
   })
 
-  it('mort sans vie suivante : « Réapparition ? », jamais un délai deviné, et pas de barre', () => {
+  // LA RANGÉE ELLE-MÊME, PAS SON PARENT : la cellule qui l'accueille porte DÉJÀ
+  // `justify-center` — pour son centrage VERTICAL (elle est en `flex-col`). Viser le parent
+  // ferait passer ce cas quoi qu'on écrive dans `RespawnRow` ; un premier essai l'a montré,
+  // la mutation survivait. `getByText` rend bien la rangée : elle porte le libellé en enfant
+  // texte DIRECT, le compte étant dans un `<b>`.
+  it('le compte à rebours est CENTRÉ dans sa rangée', () => {
+    const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    expect(view.getByText('Réapparition dans').className).toContain('justify-center')
+  })
+
+  it('la LACUNE est centrée elle aussi — la cellule ne se décale pas selon ce qu’elle porte', () => {
+    const view = renderTeams({}, 140)
+    expect(view.getByText('Réapparition ?').className).toContain('text-center')
+  })
+
+  it('mort sans vie suivante : « Réapparition ? », jamais un délai deviné', () => {
     renderTeams({}, 140)
     expect(screen.getByText('Réapparition ?')).toBeTruthy()
-    expect(screen.queryByRole('progressbar')).toBeNull()
+  })
+
+  // (a) DU VERBATIM : plus de liseré gauche sur une fiche morte. Le `boxShadow` était le seul
+  // porteur de cet accent — sa disparition du style en ligne est donc la mesure exacte.
+  it('aucun liseré gauche sur une fiche morte', () => {
+    const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    expect(carte(view).style.boxShadow).toBe('')
+  })
+
+  // CE QUI RESTE, et qui doit rester : la mort se lit encore au fond teinté et au nom. Retirer
+  // le liseré ne devait pas rendre une fiche morte indistinguable d'une fiche vivante.
+  it('la mort reste DITE : fond teinté et nom à l’encre d’alerte', () => {
+    const mort = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    expect(carte(mort).style.background).toContain('color-mix')
+    expect(mort.getByText('Alpha').style.color).not.toBe('')
+    mort.unmount()
+    const vivant = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={10} locale="fr" />)
+    expect(carte(vivant).style.background).toBe('')
+    expect(vivant.getByText('Alpha').style.color).toBe('')
   })
 })
 

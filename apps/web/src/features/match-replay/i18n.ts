@@ -253,7 +253,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
-    respawnBarLabel: 'avancement depuis la mort',
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
@@ -265,10 +264,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Lecture d’image-clé sans grenade ni munition, que le fil des éliminations n’explique pas — lue il y a',
     inventoryFallbackHint: 'l’équipement affiché est la dernière lecture pleine, lue il y a',
     inventoryNoPriorHint: 'aucune lecture d’inventaire avant cet instant',
-    replaySchemaStale:
-      'Données de rejeu d’une version antérieure — certains éléments peuvent manquer.',
-    replaySchemaAhead:
-      'Cette page est plus ancienne que le format de ces données de rejeu — certains éléments peuvent manquer.',
   },
   en: {
     title: '2D replay',
@@ -506,7 +501,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
-    respawnBarLabel: 'progress since death',
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',
@@ -518,9 +512,5 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Keyframe reading with no grenade and no ammo, which the kill feed does not explain — taken',
     inventoryFallbackHint: 'the gear shown is the last full reading, taken',
     inventoryNoPriorHint: 'no inventory reading before this moment',
-    replaySchemaStale:
-      'Replay data from an earlier version — some elements may be missing.',
-    replaySchemaAhead:
-      'This page is older than the format of this replay data — some elements may be missing.',
   },
 }
