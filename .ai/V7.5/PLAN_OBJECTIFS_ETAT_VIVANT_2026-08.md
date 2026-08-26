@@ -621,8 +621,32 @@ passe a l'utilisateur.**
 
 ### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
 
-- [ ] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
+- [x] D3.1 Denombrer, par film de Total Control : slots `ti=13` emetteurs, tags observes, taux de
       chainage (le temoin de largeur du balayage, `ManagedPropertyScan.Chained` vs `Walked`).
+      **CORPUS ETABLI (2026-08-26)** — `-census` nomme les films, `-role totalcontrol_zone
+      -select-only` les dimensionne : **7 films mesurables**, tous avec leur vivier de zones.
+
+      | film | carte | zones au catalogue | chunks | taille |
+      |---|---|---|---|---|
+      | `d2c64f8c` | Fortitude | 18 | 59 | 61 Mo |
+      | `0862dce4` | Highpower | 13 | 50 | 54 Mo |
+      | `66aa5f0b` | Command | 18 | 16 | 15 Mo |
+      | `2f05dc98` | Refuge | 15 | — | — |
+      | `bf831a6b` | Command | 18 | — | — |
+      | `a521164d` | Fragmentation Heavies | 15 | 21 | 27 Mo |
+      | `a349fea8` | Fragmentation Heavies | 15 | 51 | 67 Mo |
+
+      Le vivier de 13 a 18 zones par carte est CONFIRME film par film — c'est exactement ce que
+      decrit la table du titre, et c'est ce qui rend le seuil (2) discriminant : si
+      l'appariement en retenait 13 a 18 au lieu de 3, le calque publierait un mode qui n'existe
+      pas. Le seuil de 2 films du plan est tenu trois fois.
+
+      **UN FAIT DE COUT, MESURE ET A RETENIR** : ces films sont des BTB (24 joueurs, cartes
+      larges) et pesent 15 a 67 Mo contre 11 a 33 Mo pour les KOTH d'arene. La mesure complete
+      d'UN SEUL de ces films par `zone-attribution` — qui construit l'artefact ENTIER avant de
+      croiser — depasse dix minutes. Le corpus entier ne se mesure donc pas en avant-plan : il
+      faut une fenetre longue, et c'est une contrainte d'ordonnancement, pas un obstacle de
+      methode.
 - [ ] D3.2 Chercher un DESIGNATEUR (H1) par le predicat de production `hillDesignatorOf` : existe-t-il
       un slot de tag 5 chaine dont le voisin porte un proprietaire qui parle ? Combien de bascules,
       et tombent-elles sur les bornes de MANCHE (`objectiveevents.RealRounds` /
