@@ -12,14 +12,15 @@
 // qui l'introduit à venir l'exclure ici. L'inclusion inverse la charge : une clé
 // inconnue ne sort pas.
 //
-// État réel des clés auth de `sync_meta` (ADR 0023 Phase 5, 2026-08-25) : plus aucun
-// lecteur de RUNTIME — À UNE EXCEPTION PRÈS, la migration one-shot du boot
-// `migrateLegacyAuthTokensAtBoot` (cmd/server/main.go) qui, à CHAQUE démarrage,
-// relit encore `sync_meta.oauth_refresh_token` via duckdb.ReadOAuthRefreshToken
-// (platform/duckdb/queries_auth.go) pour recopier un RT résiduel vers le store.
-// Kill-switch daté : retrait cible 2026-10-01. Les valeurs sont donc non seulement
-// TOUJOURS PRÉSENTES en base (le drop physique des colonnes suit la recette ADR 0026
-// au prochain rebuild), mais encore activement lues : un RT résiduel y est réel, pas
+// État réel des clés auth de `sync_meta` — NOTE HOTFIX (2026-08-26) : ce fichier est
+// porté sur main AVANT la Phase 5 ADR 0023 (qui arrive avec v7.5.0). Sur ce main-ci,
+// `oauth_refresh_token` est donc encore ÉCRIT à chaque rotation (double-write de
+// compat) et lu par les fallbacks legacy : un RT FRAIS y est présent en permanence —
+// raison d'être immédiate de ce verrou (la démo publique en recopiait un à chaque
+// deploy). Après v7.5.0 : plus aucun lecteur de runtime sauf la migration one-shot du
+// boot `migrateLegacyAuthTokensAtBoot` (kill-switch daté, retrait cible 2026-10-01),
+// et les valeurs restent présentes jusqu'au drop physique des colonnes (recette
+// ADR 0026, prochain rebuild). Dans les deux mondes : un RT résiduel y est réel, pas
 // théorique.
 //
 // Ajouter une clé ci-dessous = affirmer, avec justification datée ET vérifiée sur
