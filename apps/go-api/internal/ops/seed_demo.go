@@ -197,7 +197,10 @@ var playerTablesWhere = []extractTable{
 	{name: "match_citations", where: matchIDInClause},
 	{name: "sessions", where: "1=1"},
 	{name: "career_progression", where: "1=1"},
-	{name: "sync_meta", where: "key NOT IN ('msal_token_cache')"},
+	// sync_meta : liste d'INCLUSION (défaut-refus) — aucun credential ne peut
+	// traverser, pas même une clé credential future. Politique + justification de
+	// chaque clé retenue : seed_demo_sync_meta.go.
+	{name: "sync_meta", where: demoSyncMetaWhere()},
 	{name: "match_skill_rank", where: matchIDInClause, appendOnly: true},
 	{name: "player_csr_snapshots", where: "1=1", appendOnly: true},
 	{name: "battlepass_snapshots", where: "1=1"},
