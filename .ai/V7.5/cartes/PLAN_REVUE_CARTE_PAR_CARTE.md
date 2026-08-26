@@ -67,14 +67,50 @@ raison ecrite et la date de son gate — jamais un `if` sur un nom de carte. Le 
 - [x] 0.3 `REGISTRE_CARTES.md` : 56 fonds + 44 cartes sans fond, statuts d'entree etablis
       sur pieces (14 valides sur 56).
 
-### Phase 1 — le temoin Catalyst : d'ou vient l'ecart
+### Phase 1 — le temoin Catalyst : d'ou vient l'ecart — MESUREE (2026-08-26)
 
-- [ ] 1.1 Re-cuire Catalyst avec la chaine d'aujourd'hui vers un `--out-dir` scratch, et
-      comparer au PNG publie : identique au bit ou non. Tranche la question « la chaine
-      a-t-elle bouge depuis le 10/08 sans que le fond soit re-cuit ».
-- [ ] 1.2 Reproduire le temoin du 10/08 12:24 (coquille d'alors + couleur d'alors) et
-      diffuser les trois images cote a cote. Objectif : nommer l'ecart, pas le supposer.
-- **Gate 1** : l'ecart est explique par une cause ecrite, ou la piste est declaree refutee.
+- [x] 1.1 Re-cuisson de Catalyst avec la chaine d'aujourd'hui (`--out-dir` scratch) : **NON
+      identique** au publie. `heightPx` 1553 -> 1546, `originY` 71,476 -> 71,120, ancres
+      **24 -> 19**, `playLevelZ` 24,410 -> 24,907, `mapNames` perd `catalyst_map`. Cause : le
+      catalogue d'objectifs a ete regenere depuis (`a96db3048`, `fec6b9bf9`, `d50f3b728` —
+      lots KOTH des 19-25/08). **Les fonds publies sont donc PERIMES vis-a-vis du catalogue**,
+      et une re-cuisson de masse deplacera d'autres cartes que Catalyst.
+- [x] 1.2 A l'oeil, la re-cuisson est indiscernable du publie : l'ecart parametrique est
+      metrique, il n'explique PAS la difference avec le temoin du 10/08 12:24.
+- [x] 1.3 **CE QUE LA MESURE A TROUVE A LA PLACE — un defaut universel, chiffre.** `zJeu` est
+      un SCALAIRE : `MedianeZ(ancres) - AncrageDecalageSol` (`cuisson.go:140`, idem
+      `cuisson_forge.go:93`), et `AncrageDecalageSol = 0,29 m` est etalonne sur UNE carte
+      (Cliffhanger, `reference.go:20-30`). Sur une carte dont les objectifs vivent a plusieurs
+      etages, la mediane des ancres n'est le sol d'AUCUN d'eux. Le sidecar mesure deja
+      l'erreur (`anchorMedianGapM`, `cuisson.go:355`) et elle est enorme sur 13 des 56 fonds.
+      Or `TeinteNiveauDeJeu` ecrete a `PorteeNiveauDeJeu = 10 m` : au-dela, la surface JOUEE
+      est peinte au maximum de recul (`recul = 0,38`, teinte froide) — **exactement
+      l'inversion de hierarchie visuelle que cette teinte a ete ecrite pour supprimer.**
+
+      | carte | ecart mediane-ancres / sol | effet |
+      |---|---:|---|
+      | Behemoth | -17,51 m | arene ecretee, recul maximal |
+      | The Pit | -15,53 m | idem |
+      | Empyrean | -14,41 m | idem |
+      | **Catalyst** | **-13,33 m** | idem |
+      | Fragmentation | -11,71 m | idem |
+      | Fortress | -10,60 m | idem |
+      | Domicile | -8,62 m | recul partiel (86 %) |
+      | Banished Narrows | -6,05 m | recul partiel |
+      | Recharge | -5,29 m | recul partiel |
+      | Oasis | -4,38 m | recul partiel |
+      | Streets | -4,33 m | recul partiel |
+      | Bazaar | -4,22 m | recul partiel |
+      | Breaker | -3,29 m | recul partiel |
+
+      Les 43 autres fonds sont entre -0,40 et +0,03 m, soit l'etalonnage de Cliffhanger : la
+      constante tient partout ailleurs. **Le correctif n'est pas un reglage par carte** : la
+      surface de reference PAR PIXEL existe deja (`SurfaceReference`, `reference.go:46-50`,
+      armee au rendu par `ArmeReference`) — il suffit que la teinte lise CETTE surface au lieu
+      du scalaire. Une regle, une donnee par carte, aucune branche.
+
+- **Gate 1** : l'ecart au temoin du 10/08 reste NON explique et est declare tel quel ; ce que
+  la phase a etabli est un defaut distinct, mesure sur 13 cartes, avec son correctif nomme.
 
 ### Phase 1 bis — le cadrage COTE REJEU — FAITE (2026-08-26)
 
@@ -136,3 +172,48 @@ zone. La phase 2 reste due : elle corrige l'ASSET, pas seulement sa vue.
 Entree `.ai/thought_log.md` a chaque cloture de phase ; tout report au `REGISTRE_REPORTS.md`
 avec sa condition de reprise ; jamais deux commandes Go concurrentes (cache corrompu) ; les
 cuissons durent 25 a 30 min, lancees en fond, rien d'autre en Go pendant.
+
+## Ce que le gate du 2026-08-26 change au plan
+
+Verdicts et verbatim : `REGISTRE_CARTES.md`, journal des verdicts. Trois consequences.
+
+### A. Le STYLE devient un choix par carte — le premier levier, et le moins cher
+
+Le gate a demande le style `encre` sur Cliffhanger et le rendu du temoin (style `jeu`) sur
+Catalyst : **le meilleur habillage n'est pas le meme d'une carte a l'autre**. Or les deux
+styles sont DEJA en production (`fond_png.go`, `StylesFond`), le sidecar publie deja le style
+retenu (`"style": "jeu"`), et seul `mapfond-build --style` est global.
+
+- [ ] A.1 Table de reglages PAR CARTE en donnee (cle du fond -> style + raison + date de gate),
+      lue par `mapfond-build`. Aucune branche de code, aucune regle de rendu neuve.
+- [ ] A.2 Garde-rail : aucune entree sans raison ecrite ni date.
+- [ ] A.3 Planche de comparaison `jeu` / `encre` sur les 11 cartes non closes, en une passe.
+
+### B. Catalyst : la production est une REGRESSION, et la cible est ecrite
+
+Le temoin du 10/08 12:24 est declare meilleur que ce qui est livre. Il n'a jamais ete en
+production et l'ecart n'est pas explique par les parametres (phase 1). L'hypothese mesurable
+reste le niveau de jeu SCALAIRE (`-13,33 m` d'ecart au sol sous les ancres, phase 1.3) :
+la teinte peint l'arene au recul maximal. **Reproduire le temoin est le critere de la carte**,
+pas « faire mieux ».
+
+Nuance a garder honnete : la correlation n'est PAS totale. Sur les 8 natifs dont l'ecart
+depasse l'etalonnage, 4 sont sur la liste a finaliser (Catalyst, Recharge, Streets, Bazaar) et
+4 sont acceptes (Behemoth, Fragmentation, Oasis, Breaker). Le defaut de teinte est reel et
+mesure ; il n'explique pas a lui seul les verdicts.
+
+### C. Vagabond perd son gel
+
+`CarteForge.FondFige` avait ete pose sur Vagabond le 13/08 avec la raison « a revoir, ni
+l'ameliorer ni le degrader avant son propre gate ». Le gate a eu lieu : gros retravail
+demande. Le gel n'a plus de raison d'etre et doit etre retire AVEC sa justification.
+
+### D. Hors perimetre des fonds — a lancer a part
+
+- **Zoom dans la page de rejeu** (demande du 26/08). Verifie : aucun zoom aujourd'hui,
+  `CANVAS_HEIGHT` fige a 480 px et `fitWidth` ajuste la scene a cette hauteur. Un zoom touche
+  la projection partagee dessin/survol (`canvasView`) et le cache des calques cuits — c'est un
+  lot en soi, avec ses temoins.
+- **Zones jamais foulees** : precision utilisateur — elles sont une SECONDE BASE DE TRAVAIL
+  pour converger vers une version valide, PAS une regle de rendu final. Elles restent
+  l'instrument de la phase 2.2 ; rien ne se publie a partir d'elles sans gate.
