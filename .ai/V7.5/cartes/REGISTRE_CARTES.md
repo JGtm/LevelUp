@@ -72,7 +72,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Behemoth | `va_behemoth` | 44 | 83.2 | -17,51 | natif | VALIDEE 26/08 |
 | Empyrean | `d035fc3e` | 29 | 68.7 | -14,41 | forge | REFUSEE 13/08 |
 | Origin | `b302eb62` | 24 | 85.7 | 0,01 | forge | REFUSEE 13/08 |
-| Launch Site | `va_launchsite` | 24 | 53.5 | -0,40 | natif | A FINALISER |
+| Launch Site | `va_launchsite` | 24 | 53.5 | -0,40 | natif | VALIDEE `encre` 26/08 — SANS ecretage, comblement + sans eau |
 | Starboard | `7a9265af` | 24 | 53.6 | -0,29 | forge | REFUSEE 13/08 |
 | Snowbound | `410f1c01` | 23 | 100.0 | -0,00 | forge | REFUSEE 13/08 |
 | The Pit | `648ae7aa` | 22 | 81.5 | -15,53 | forge | REFUSEE 13/08 |
@@ -458,3 +458,38 @@ est tenue en ecriture par un `server.exe` local (PID 6640 au moment du gate), et
 pas de source du couple match -> carte hors de cette base (les artefacts de rejeu et le cache
 des films ne portent pas le nom de carte). **Condition de reprise** : fermer le serveur local,
 lister les matchs Forbidden, decoder deux ou trois films et mesurer l enveloppe jouee.
+
+### 2026-08-26 — carte 11, Launch Site
+
+Planche : https://claude.ai/code/artifact/3f860567-49e0-4d3d-b175-1f12589e2178
+
+**Verbatim** : « Prop 3 ok mais vire l'eau, ensuite ce sera valide »
+
+**Reglage retenu** : `encre`, echelle 0,055, **PAS d ecretage**, comblement des trous fermes,
+masque des 52 zones, eau ecartee. Cadre 1 502 x 1 478 px, 22/28 ancres.
+
+**LA CARTE QUI DONNE LA REGLE DES DEUX REGIMES.** L ecretage, qui a sauve les cinq cartes
+precedentes, doit etre ECARTE ici : a 4 m il eventre l arene, qui devient un contour creux
+(162 139 cellules de matiere contre 245 307 sans lui, et 16 ancres sur 28 contre 20). Cause
+connue et deja consignee : armer l ecretage REMPLACE la voie de reference native au lieu de
+s y ajouter.
+
+| Regime | Taux de couverture | Voie native | Ecretage |
+|---|---|---|---|
+| Catalyst, Streets | 28,4 % — SOUS le seuil d un tiers | ne se declenche JAMAIS | seul chemin possible |
+| Launch Site | 53,5 % — au-dessus | se declenche et fait le travail | ne peut que retirer du sol |
+
+Ce n est donc pas un reglage a tatonner carte par carte : **le taux de couverture, deja
+mesure et journalise, decide.** A porter dans la recette.
+
+**Le comblement a ete arme CONTRE la prudence de premiere intention**, et c est l oracle qui
+l a impose : une grande bande blanche traversait l arene en diagonale — deja presente dans le
+fond de production, donc pas une regression du jour — et **huit ancres d objectif sur
+vingt-huit flottaient sans sol dessous**. Une ancre d objectif etant du terrain joue par
+definition, le vide n etait pas reel : c etait de la matiere manquante au rendu. Le
+comblement pose environ 440 000 cellules d aplat et recupere deux ancres.
+
+**Reserves ecrites, NON TRAITEES** : (1) six ancres restent sans sol — il subsiste des trous
+ailleurs, et on ne sait toujours pas pourquoi cette portion d arene n a pas de triangles ;
+(2) un aplat n est pas un releve, la surface comblee est plate ; (3) un petit fragment isole
+flotte a mi-hauteur du flanc ouest, la ou l eau etait peinte.

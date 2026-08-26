@@ -31,6 +31,35 @@ dans `data/titles/halo_infinite/reference/map_fond_reglages.json`, une entree pa
 | plafond | `plafondArene` | 6 m | le cran de l'ecretage : 4 m si « encore trop de toits », 8 m si « trop vide » |
 | zones | `rogneAuxZones` | absent | efface la matiere hors des callouts dilates de 4 m |
 
+## Le taux de couverture decide de l'ecretage — ne pas tatonner
+
+Ajoute le 2026-08-26 apres Launch Site. `mapfond-build` journalise le taux de couverture
+de chaque carte. **Il faut le lire AVANT de choisir d'armer l'ecretage**, parce que les deux
+regimes sont opposes et qu'aucune image ne les distingue avant cuisson :
+
+| taux de couverture | ce qui se passe | ecretage |
+|---|---|---|
+| **sous 1/3** (`SeuilCarteCouverte`) | la voie de reference native ne se declenche JAMAIS | **seul chemin** — Catalyst 28,4 %, Streets |
+| **au-dessus de 1/3** | la voie native se declenche et remet deja le sol | **le REFUSER** — Launch Site 53,5 % |
+
+Cause : armer l'ecretage REMPLACE la voie native au lieu de s'y ajouter (memes tampons
+liberes). Sur une carte deja couverte, substituer une coupe a hauteur fixe a la voie native
+ne peut que retirer du sol : sur Launch Site, 162 139 cellules de matiere contre 245 307 sans
+lui, et 16 ancres sur 28 contre 20 — l'arene devient un contour creux. Sur Illusion, meme
+cause, autre effet : 108 810 cellules substituees contre 1 338 343 par la voie native, donc
+une arene sans relief.
+
+**Tant que ce defaut n'est pas corrige, une carte couverte ne s'ecrete pas.**
+
+## Un vide dans l'arene : ce sont les ancres qui tranchent, pas l'oeil
+
+Ajoute le 2026-08-26. Devant une zone blanche au milieu d'une arene, la question « trou reel
+ou matiere manquante ? » se decide par les ancres d'objectif : **une ancre d'objectif est du
+terrain joue par definition.** Des ancres sans sol dessous DANS le vide = matiere manquante,
+et le comblement est justifie (Launch Site : 8 ancres sur 28 flottaient, comblement arme,
+2 recuperees). Aucune ancre dans le vide = vide probablement reel, ne pas combler (Chasm :
+le gouffre, comble a tort).
+
 Le **cadre** n'est pas un reglage : il est toujours rogne a la matiere plus 6 m
 (`himap/cadre_utile.go`). L'origine du calage suit le rognage, l'echelle NON.
 
