@@ -24,9 +24,15 @@ package replay
 // donc au PREMIER CONTACT avec l'objet (premiere emission de sa jauge, de son proprietaire ou de
 // son designateur) — une borne HAUTE de l'activation, jamais une invention.
 //
-// CE QUE CE VOLET NE PUBLIE PAS : le PROPRIETAIRE. Le tag 4 du slot voisin est un canal de
-// propriete au sens de la phase 2a, mais il n'a pas ete confronte au roster sur les KOTH — on ne
-// publie pas ce qu'on n'a pas mesure.
+// CE QUE CE VOLET PUBLIE DEPUIS LE 2026-08-26 : le PROPRIETAIRE. Le tag 4 du slot voisin du
+// designateur a ete confronte a trois oracles successifs ; deux se sont reveles inutilisables, le
+// troisieme donne 88-89 % d'accord contre un temoin a 56 %. Sous le seuil de 90 % que le plan
+// s'etait fixe — et publie quand meme, par DECISION UTILISATEUR datee. Le verdict complet, les
+// trois campagnes et la reserve (l'erreur est concentree aux bascules) vivent en tete de
+// `hillStatesOf` : c'est la qu'il faut lire avant de toucher a ce canal.
+//
+// CE QUE CE VOLET NE PUBLIE TOUJOURS PAS : un proprietaire sur le repli par les RAMPES. Sans
+// designateur il n'y a pas d'objet de mode, donc pas de slot voisin ou lire le camp.
 
 import "sort"
 
@@ -41,13 +47,24 @@ const hillDesignatorMinOwnerSamples = 2
 const hillDesignatorSpan = 3
 
 // buildHillStates rend les periodes de garde de la zone ACTIVE, appariees par la grappe.
-func buildHillStates(zones []Zone, ser zoneSeries, c zoneCtx,
+//
+// `teams` est l'ensemble des index d'equipe admis (roster). Il ne sert QUE sur la voie du
+// designateur, qui seule publie un proprietaire : le repli par les rampes n'a pas d'objet de
+// mode, donc pas de slot voisin ou lire le camp.
+func buildHillStates(zones []Zone, ser zoneSeries, teams map[uint64]bool, c zoneCtx,
 	cov *ZonesCoverage,
 ) []ZoneState {
 	if d, ok := hillDesignatorOf(ser); ok {
-		return buildDesignatedHills(zones, ser, d, c, cov)
+		return buildDesignatedHills(zones, ser, hillCtx{d: d, teams: teams}, c, cov)
 	}
 	return buildRampHills(zones, ser, c, cov)
+}
+
+// hillCtx regroupe ce que la voie du designateur ajoute a la construction : le designateur elu
+// et le referentiel d'equipes (regle des 5 parametres).
+type hillCtx struct {
+	d     hillDesignator
+	teams map[uint64]bool
 }
 
 // hillDesignator est le slot qui DESIGNE la colline courante, et ses bascules.
@@ -105,13 +122,13 @@ func hillFirstContact(ser zoneSeries, d hillDesignator) int {
 // buildDesignatedHills decoupe le match en periodes bornees par le designateur, apparie chaque
 // periode par la grappe des positions pendant les montees de la jauge qu'elle contient (a defaut,
 // pendant toute la periode), et publie les periodes localisees.
-func buildDesignatedHills(zones []Zone, ser zoneSeries, d hillDesignator, c zoneCtx,
+func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 	cov *ZonesCoverage,
 ) []ZoneState {
 	cov.Method = ZoneMethodDesignator
 	ramps := zoneRampsOf(ser)
 	pts := zonePointsByFrame(c.tracks)
-	periods := hillDesignatedPeriods(d, c.frames)
+	periods := hillDesignatedPeriods(h.d, c.frames)
 	cov.HillPeriods = len(periods)
 	kept := make([]hillPeriod, 0, len(periods))
 	for _, p := range periods {
@@ -128,7 +145,9 @@ func buildDesignatedHills(zones []Zone, ser zoneSeries, d hillDesignator, c zone
 		}
 		kept = append(kept, p)
 	}
-	states := hillStatesOf(kept)
+	// LE CANAL DE PROPRIETE EST LE SLOT VOISIN DU DESIGNATEUR — celui que l'election exige deja
+	// (`hillDesignatorMinOwnerSamples`). Niveau de preuve accepte et reserve : cf. hillStatesOf.
+	states := hillStatesOf(kept, ser.owner[h.d.slot+1], h.teams, cov)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
@@ -229,7 +248,10 @@ func buildRampHills(zones []Zone, ser zoneSeries, c zoneCtx, cov *ZonesCoverage)
 	// calque. Publier cette rampe comme jauge montrerait un arc qui se remplit en une seconde a
 	// chaque prise — credible et faux. `ZoneState.Gauge` reste donc nil ici, et
 	// `coverage.zones.gaugePoints` vaut 0 sur un film a colline.
-	states := hillStatesOf(periods)
+	// AUCUN PROPRIETAIRE SUR CE REPLI : sans designateur, il n'y a pas d'objet de mode, donc pas
+	// de slot voisin ou lire le camp. Une colline localisee par la seule grappe des positions
+	// reste ACTIVE et sans camp — la deduire de la grappe serait une invention.
+	states := hillStatesOf(periods, nil, nil, cov)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
@@ -333,12 +355,50 @@ func closeHillTail(out []hillPeriod, t0 int) []hillPeriod {
 	return out
 }
 
-// hillStatesOf regroupe les periodes par zone et rend les intervalles ACTIFS.
+// hillStatesOf regroupe les periodes par zone et rend les intervalles ACTIFS, avec leur
+// PROPRIETAIRE quand le canal le donne.
 //
-// AUCUN PROPRIETAIRE N'EST PUBLIE ICI, et c'est la limite du mode : le canal de propriete ne
-// parle que la ou il y a des captures nommees. Une colline gardee ne dit pas, dans le film, PAR
-// QUI — l'affirmer d'apres la grappe serait une deduction, pas une lecture.
-func hillStatesOf(periods []hillPeriod) []ZoneState {
+// # LE PROPRIETAIRE DE LA COLLINE, ET LE NIVEAU DE PREUVE QUI L'A AUTORISE (2026-08-26)
+//
+// Le canal est le tag 4 du slot VOISIN du designateur (`d.slot+1`) — celui-la meme que la
+// condition d'election du designateur exige deja (`hillDesignatorMinOwnerSamples`). Trois
+// campagnes de mesure l'ont confronte a trois oracles differents, et il faut lire leur verdict
+// ensemble parce qu'il n'est PAS unanime :
+//
+//	D2      score de MODE : REFUTE COMME ORACLE — en KOTH il compte des collines GAGNEES
+//	        (3-2, 4-2 : les scores de l'API), pas des secondes de garde, et deux films sur
+//	        quatre n'en repliquent qu'UN camp. Aucun denominateur exploitable.
+//	D2-bis  prises `th=10` : **88-89 % d'accord sur les deux films longs, contre un temoin de
+//	        decalage a 56 %** — plus de trente points d'ecart, sur 64 et 92 confrontations.
+//	        Sous le seuil de 90 % que le plan s'etait fixe. Sur les deux films COURTS (13 et 35
+//	        emissions du canal) signal et temoins se confondent.
+//	D2-ter  score PERSONNEL : REFUTE COMME ORACLE — delta dominant median de 150 points contre
+//	        0-25 pour le camp domine, quand un frag vaut ~100 et un tic de colline quelques
+//	        points. Il mesure qui a TUE, pas qui tient.
+//
+// **LE SEUIL DE 90 % N'A JAMAIS ETE ATTEINT NI REBAISSE.** Ce qui a change, c'est la DECISION :
+// l'utilisateur a accepte ce niveau de preuve le 2026-08-26 pour ce calque, avec le precedent de
+// la garde de l'ouvrier de rejeu (retenue a 88 %). Le canal n'a jamais ete refute — il a ete
+// mesure sous le seuil, ce qui n'est pas la meme chose.
+//
+// **OU VIT L'ERREUR RESIDUELLE, ET C'EST CE QUI REND LE RISQUE ACCEPTABLE** : elle est
+// concentree aux BASCULES. L'oracle `th=10` date ses prises au bloc de temps fort, pas a
+// l'action — d'ou une fenetre d'appariement de +/- 20 s. Les 11 a 12 % de desaccord se lisent
+// donc comme un flottement AUTOUR de l'instant du changement de main, pas comme une teinte
+// fausse sur toute la duree d'une garde. Un lecteur qui trouverait une colline de la mauvaise
+// couleur PENDANT une garde entiere tiendrait une regression, pas cette reserve.
+//
+// # CE QUE CE PRODUCTEUR NE PUBLIE PAS, ET POURQUOI
+//
+// `OwnerChecked` / `OwnerAgreed` restent a ZERO sur ce chemin. Ce sont les compteurs du CONTROLE
+// INDEPENDANT de la methode par captures (la valeur du tag 4 confrontee a l'equipe du capteur) ;
+// la colline n'a pas d'equivalent en production — son controle vit dans les instruments de D2-bis,
+// sous garde `ZONE_FILM`. Publier des compteurs a zero comme s'ils avaient ete verifies serait
+// pire que leur absence.
+func hillStatesOf(periods []hillPeriod, owner []zoneSample, teams map[uint64]bool,
+	cov *ZonesCoverage,
+) []ZoneState {
+	runs := hillOwnerRuns(owner, teams, cov)
 	byRef := map[int][]ZoneSpan{}
 	for _, p := range periods {
 		if p.t1 < p.t0 {
@@ -354,7 +414,7 @@ func hillStatesOf(periods []hillPeriod) []ZoneState {
 			v := gaugeProgressOf(p.top)
 			prog = &v
 		}
-		byRef[p.ref] = append(byRef[p.ref], ZoneSpan{T0: p.t0, T1: p.t1, Active: true, Progress: prog})
+		byRef[p.ref] = append(byRef[p.ref], hillSpansOf(p, runs, prog)...)
 	}
 	refs := make([]int, 0, len(byRef))
 	for ref := range byRef {
@@ -366,6 +426,88 @@ func hillStatesOf(periods []hillPeriod) []ZoneState {
 		spans := byRef[ref]
 		sort.SliceStable(spans, func(i, j int) bool { return spans[i].T0 < spans[j].T0 })
 		out = append(out, ZoneState{ZoneRef: ref, Spans: spans})
+	}
+	return out
+}
+
+// hillOwnerRun est un intervalle de propriete CONSTANTE, bornes incluses. `team` vaut nil pour
+// la valeur neutre du canal — « personne ne la tient » est une MESURE, pas une absence.
+type hillOwnerRun struct {
+	t0, t1 int
+	team   *int
+}
+
+// hillOwnerRuns decoupe la serie du canal de propriete en intervalles de valeur constante.
+//
+// LA SEGMENTATION EST CELLE DE LA METHODE PAR CAPTURES (`mergeZoneRuns` puis « chaque groupe
+// court jusqu'a la veille du suivant ») : une seconde ecriture de ce decoupage divergerait au
+// premier correctif, et l'ecart serait invisible. Une valeur qui n'est ni le neutre ni un camp
+// connu n'ouvre AUCUN intervalle et se compte (`UnknownOwner`) — publier un camp qu'aucun
+// joueur n'occupe serait une invention, et la taire empecherait de la voir arriver.
+//
+// LA DERNIERE VALEUR COURT JUSQU'A LA FIN DE L'AXE, comme sur les zones simultanees : le canal
+// est un ETAT, pas un evenement — il ne re-emet pas tant que rien ne change.
+func hillOwnerRuns(owner []zoneSample, teams map[uint64]bool, cov *ZonesCoverage) []hillOwnerRun {
+	groups := mergeZoneRuns(owner)
+	out := make([]hillOwnerRun, 0, len(groups))
+	for i, g := range groups {
+		t1 := int(^uint(0) >> 1) // le dernier groupe court jusqu'a la fin : borne ouverte a droite
+		if i+1 < len(groups) {
+			t1 = groups[i+1].t - 1
+		}
+		if t1 < g.t {
+			continue
+		}
+		team, known := zoneOwnerTeam(g.v, teams)
+		if !known {
+			cov.UnknownOwner++
+			continue
+		}
+		out = append(out, hillOwnerRun{t0: g.t, t1: t1, team: team})
+	}
+	return out
+}
+
+// hillSpansOf decoupe UNE periode de colline par les changements de proprietaire qui la
+// traversent. Rend un seul intervalle — sans proprietaire — quand le canal ne dit rien d'elle.
+//
+// # LE SOMMET DE JAUGE NE SE DUPLIQUE PAS SUR LES SOUS-INTERVALLES, ET C'EST DELIBERE
+//
+// `Progress` est le sommet atteint sur LA PERIODE. Quand la colline change de main en cours de
+// periode, ce sommet n'est la propriete d'AUCUN des sous-intervalles : le recopier sur chacun
+// affirmerait que chacun l'a atteint. Il n'est donc porte que par la periode qui sort d'un seul
+// tenant. C'est une perte assumee, et elle ne coute rien a l'ecran : le client ne dessine plus
+// `progress` depuis le schema 18 (le sommet statique se lisait comme une jauge en cours).
+// # LA PERIODE EST COUVERTE ENTIEREMENT, MEME LA OU LE CANAL SE TAIT
+//
+// Un trou entre deux intervalles de propriete — ou avant la premiere emission du canal — ne
+// FERME PAS la colline : elle est active, on ne sait simplement pas qui la tient. Ces morceaux
+// sortent donc en intervalles SANS camp. Les omettre eteindrait la surbrillance au milieu d'une
+// garde, ce qui se lirait comme « il ne se passe rien ici » — un contresens, et c'est le defaut
+// que ce decoupage a eu avant d'etre corrige (le cas `606d9844` / `8076f97f`, ou le film ne
+// replique qu'un camp et se tait sur tout le debut du match).
+func hillSpansOf(p hillPeriod, runs []hillOwnerRun, prog *float32) []ZoneSpan {
+	var out []ZoneSpan
+	curseur := p.t0
+	for _, r := range runs {
+		t0, t1 := max(r.t0, p.t0), min(r.t1, p.t1)
+		if t0 > t1 {
+			continue
+		}
+		if t0 > curseur {
+			out = append(out, ZoneSpan{T0: curseur, T1: t0 - 1, Active: true})
+		}
+		out = append(out, ZoneSpan{T0: t0, T1: t1, Owner: r.team, Active: true})
+		curseur = t1 + 1
+	}
+	if curseur <= p.t1 {
+		// Trou de fin — ou periode entiere quand le canal ne dit RIEN d'elle : la colline reste
+		// ACTIVE et sans proprietaire, exactement ce que ce producteur publiait avant le
+		// 2026-08-26. Une colline dont on ne lit pas le camp n'est pas une colline neutre.
+		out = append(out, ZoneSpan{T0: curseur, T1: p.t1, Active: true})
+	}
+	if len(out) == 1 {
+		out[0].Progress = prog
 	}
 	return out
 }

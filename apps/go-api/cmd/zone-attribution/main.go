@@ -55,12 +55,16 @@ func main() {
 	maxGap := flag.Int("max-gap", replay.DefaultMaxGapFrames, "tolerance position/action, en frames")
 	selectOnly := flag.Bool("select-only", false,
 		"dimensionner le corpus et s'arreter (aucun film decode)")
+	census := flag.Bool("census", false,
+		"recenser le corpus PAR MODE (films en cache, artefacts, schemas) et s'arreter ; "+
+			"aucun filtre de mode, aucun film decode")
 	dump := flag.Bool("dump", false,
 		"detailler chaque action (confrontation a un releve terrain)")
 	flag.Parse()
 
 	if err := run(*slug, *cacheDir, *matchArg, runTuning{
 		witness: *witness, maxGap: *maxGap, selectOnly: *selectOnly, dump: *dump,
+		census: *census,
 	}); err != nil {
 		slog.Error("mesure d'attribution de zone", "err", err)
 		os.Exit(1)
@@ -78,6 +82,9 @@ type runTuning struct {
 	selectOnly bool
 	// dump detaille chaque action au lieu des seuls agregats (cf. dump.go).
 	dump bool
+	// census recense le corpus PAR MODE et s'arrete (cf. census.go). Il precede selectOnly :
+	// il ne filtre aucun mode, la ou selectOnly ne dimensionne que celui de la mesure.
+	census bool
 }
 
 func run(slug, cacheDir, matchArg string, tune runTuning) error {
@@ -107,6 +114,11 @@ func run(slug, cacheDir, matchArg string, tune runTuning) error {
 	defer release()
 
 	ctx := context.Background()
+	// LE RECENSEMENT PASSE AVANT TOUT LE RESTE : il ne filtre aucun mode et n'a besoin ni des
+	// bornes de carte ni du catalogue de formes, que la MESURE exige.
+	if tune.census {
+		return runCensus(ctx, db, slug, cacheDir, repoRoot)
+	}
 	candidates, err := loadCandidates(ctx, db, matchArg)
 	if err != nil {
 		return err

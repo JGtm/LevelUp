@@ -65,33 +65,58 @@ func TestZoneStatesCollineDesignateurFermeLesPeriodesALaBascule(t *testing.T) {
 		t.Fatalf("periodes %d / non localisees %d / zones %d, attendu 3 / 0 / 2 : %+v",
 			cov.HillPeriods, cov.Unpaired, cov.Paired, states)
 	}
+	// LES BORNES SONT CELLES DU DESIGNATEUR — c'est le sujet de ce cas, et il tient sur l'UNION
+	// des intervalles d'une zone. Depuis le 2026-08-26 une periode se SUBDIVISE quand la colline
+	// change de main (cf. hillStatesOf) : le proprietaire est teste a part
+	// (zone_states_hill_owner_test.go), ici on verifie que le decoupage ne DEBORDE pas de la
+	// periode et ne laisse pas de trou dedans.
 	want := map[int][][2]int{0: {{200, 399}}, 1: {{50, 199}, {400, 599}}}
 	for _, st := range states {
+		got := fusionneSpansContigus(st.Spans)
 		spans := want[st.ZoneRef]
-		if len(st.Spans) != len(spans) {
-			t.Fatalf("zone %d : %d intervalle(s), attendu %d : %+v", st.ZoneRef, len(st.Spans),
-				len(spans), st.Spans)
+		if len(got) != len(spans) {
+			t.Fatalf("zone %d : %d periode(s) apres fusion, attendu %d : %+v", st.ZoneRef,
+				len(got), len(spans), st.Spans)
 		}
-		for i, sp := range st.Spans {
-			if sp.T0 != spans[i][0] || sp.T1 != spans[i][1] || !sp.Active || sp.Owner != nil {
-				t.Errorf("zone %d intervalle %d : [%d ; %d] actif=%v proprietaire=%v, attendu"+
-					" [%d ; %d] actif sans proprietaire — les bornes doivent etre celles du"+
-					" DESIGNATEUR, pas de la jauge", st.ZoneRef, i, sp.T0, sp.T1, sp.Active,
-					sp.Owner, spans[i][0], spans[i][1])
+		for i, sp := range got {
+			if sp[0] != spans[i][0] || sp[1] != spans[i][1] {
+				t.Errorf("zone %d periode %d : [%d ; %d], attendu [%d ; %d] — les bornes doivent"+
+					" etre celles du DESIGNATEUR, pas de la jauge", st.ZoneRef, i, sp[0], sp[1],
+					spans[i][0], spans[i][1])
+			}
+		}
+		for _, sp := range st.Spans {
+			if !sp.Active {
+				t.Errorf("zone %d : intervalle [%d ; %d] non marque ACTIF", st.ZoneRef, sp.T0, sp.T1)
 			}
 		}
 	}
-	// La progression suit la jauge quand une rampe tombe dans la periode, et reste absente
-	// sur la colline vide.
+	// LA PROGRESSION NE SE DUPLIQUE PAS SUR UNE PERIODE SUBDIVISEE (cf. hillSpansOf) : le sommet
+	// est celui de la PERIODE, il n'est la propriete d'aucun de ses morceaux. Seule la periode
+	// [200 ; 399] sort d'un seul tenant ET porte une rampe.
 	for _, st := range states {
 		for _, sp := range st.Spans {
-			hasRamp := sp.T0 != 400
-			if (sp.Progress != nil) != hasRamp {
+			veut := sp.T0 == 200
+			if (sp.Progress != nil) != veut {
 				t.Errorf("zone %d [%d ; %d] : progression %v, attendu presente=%v", st.ZoneRef,
-					sp.T0, sp.T1, sp.Progress, hasRamp)
+					sp.T0, sp.T1, sp.Progress, veut)
 			}
 		}
 	}
+}
+
+// fusionneSpansContigus rend les bornes des suites d'intervalles qui se touchent — la PERIODE
+// telle que le designateur l'a fermee, quels que soient les changements de main dedans.
+func fusionneSpansContigus(spans []ZoneSpan) [][2]int {
+	var out [][2]int
+	for _, sp := range spans {
+		if n := len(out); n > 0 && out[n-1][1]+1 == sp.T0 {
+			out[n-1][1] = sp.T1
+			continue
+		}
+		out = append(out, [2]int{sp.T0, sp.T1})
+	}
+	return out
 }
 
 // TestZoneStatesCollineDesignateurNonChaineRetombeSurLesRampes — un tag 5 dont le record ne
