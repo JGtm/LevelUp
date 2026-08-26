@@ -17,6 +17,46 @@ Lecon a faire circuler aux sessions voisines : un lot qui change une signature D
 `go vet ./...` (pas seulement `go build ./...`) sur l'ARBRE FUSIONNE — deux casses CI le
 meme jour, deux familles d'appelants oublies (CLI puis test cgo).
 
+## [2026-08-25] Reparation build_queue_e2e_cgo_test : 11 args vers un constructeur a 10 — Complete
+
+**Contexte** : constat remonte par la tache doc-quatre-routes. Le paquet
+`internal/api/handlers` ne COMPILE PLUS sous CGO sur feat/v75 :
+`apps/go-api/internal/api/handlers/build_queue_e2e_cgo_test.go:47` (fichier sous tag
+`//go:build cgo`) appelle `NewAdminMonitoringHandler` avec 11 arguments `nil` alors que le
+constructeur (`admin_monitoring.go:101`) n'en prend plus que 10. Collision de deux fusions
+independantes : `c42624dd5` a retire le parametre `ErrorStats` du constructeur (retrait de
+`GET /admin/monitoring/errors`), tandis que `b687c2c39` (`wt/csrf-ouvrier`) apportait ce
+fichier e2e ecrit sur une base ANTERIEURE a ce retrait. L'auto-merge textuel n'a rien vu :
+les deux modifications touchent des fichiers differents, aucun conflit n'a ete leve — un
+defaut d'arite ne se voit qu'au compilateur, et seulement avec CGO actif.
+
+**Decision technique principale** : correction mecanique minimale — retrait d'UN `nil`
+(11 -> 10), le `.WithBuildQueue(...)` chaine derriere reste intact. Aucune signature n'est
+touchee : c'est l'appelant qui est perime, pas le constructeur. Verification sur pieces
+avant edition : grep exhaustif de `NewAdminMonitoringHandler(` sur tout l'arbre = 18
+occurrences, dont le wire de production (`internal/api/wire/server_admin_monitoring.go:40`)
+et les 16 appels de `admin_monitoring_test.go`, TOUS deja a 10 arguments. Ce fichier e2e
+etait donc le seul appelant casse du repo, ce qui exclut un retrait incomplet cote
+`c42624dd5` et confirme le diagnostic d'auto-merge.
+
+**Resultats observes** : worktree `fix/build-queue-e2e-cgo-args` base sur la tete courante
+de feat/v75 — `36bb48187` et non `b687c2c39` (la branche a avance de 2 commits entre-temps
+avec le hotfix des appelants auth ; defaut inchange, verifie sur pieces). `CGO_ENABLED=1`.
+Gates depuis `apps/go-api` : `gofmt -l ./internal/api/handlers` sortie vide, exit 0 ;
+`go vet ./internal/api/handlers` exit 0 ; `go test ./internal/api/handlers` exit 0,
+0 ligne ancree `^--- FAIL:`, derniere ligne
+`ok  levelup/go-api/internal/api/handlers  9.725s`. Preuve que le test cgo n'est pas
+silencieusement exclu du build (le piege d'un tag de build) plutot que reellement vert :
+`go test -v -run TestBuildQueue_DeBoutEnBout` execute bien les DEUX tests du fichier,
+`--- PASS: TestBuildQueue_DeBoutEnBout` et
+`--- PASS: TestBuildQueue_DeBoutEnBout_SurvitAuRedemarrage`, exit 0.
+
+**Conclusion / prochaine etape** : fusion dans feat/v75 avec le train v7.5. Lecon a
+consigner : deux lots paralleles peuvent casser la compilation sans jamais produire de
+conflit git, et un gate qui ne joue pas la suite CGO du paquet touche ne le verra pas —
+c'est le second defaut de ce type sur feat/v75 en une journee (cf. l'entree hotfix
+LegacyAuthInputs ci-dessous), donc un signal de procedure de fusion, pas un accident isole.
+
 ## [2026-08-25] Hotfix CI branche : 2 appelants oublies du retrait LegacyAuthInputs (ADR 0023 Phase 5) — Complete
 
 **Contexte** : CI de feat/v75 ROUGE depuis c42624dd5 (antearieure a la fusion csrf-ouvrier,
