@@ -86,10 +86,13 @@ type ObjectiveRoleSpec struct {
 // gagne) : deux entrées de la table qui matchent le même mode ne servent pas deux fois
 // les mêmes objets.
 //
-// UN RÔLE `PointsOnly` NE PRODUIT AUCUNE ZONE, quoi que porte le catalogue : ses objets à
-// forme sortent en marqueurs, AVANT ceux qui n'en ont jamais eu (ordre déterministe — les
-// deux sous-listes sont chacune triées spatialement, et le rendu ne lit pas cet ordre : seul
-// `zones` porte un index de jointure, `zoneStates[].zoneRef`).
+// UN RÔLE `PointsOnly` NE PRODUIT AUCUNE ZONE, quoi que porte le catalogue. Ses objets à forme
+// sortent en marqueurs — mais SEULEMENT quand leur camp n'a aucun objet ponctuel, le ponctuel
+// étant canonique et la forme n'étant que son aire de validation (cf. `campsPonctuels`). Un
+// (rôle, camp) ne sert donc JAMAIS à la fois un ponctuel et un centre de forme.
+//
+// LE CAMP NEUTRE (-1) EST UN CAMP COMME UN AUTRE dans cette règle : le drapeau central d'une
+// variante « Neutral Flag » a son propre ponctuel, et sa propre aire.
 func BuildMapObjectives(e MapObjectivesEntry, specs []ObjectiveRoleSpec) *MapObjectives {
 	out := &MapObjectives{}
 	seen := map[mapvar.Role]bool{}
@@ -98,15 +101,32 @@ func BuildMapObjectives(e MapObjectivesEntry, specs []ObjectiveRoleSpec) *MapObj
 			continue
 		}
 		seen[spec.Role] = true
+		// LE PONCTUEL EST CANONIQUE, LA FORME EST SON AIRE (correctif du 2026-08-26). Quand un
+		// (rôle, camp) porte DÉJÀ un objet sans forme, le volume du même camp est l'aire de
+		// validation AUTOUR de ce point : servir les deux affichait DEUX marqueurs par camp,
+		// quasi superposés (Catalyst : 1,3 u d'écart pour l'équipe 0, 8,7 u pour l'équipe 1).
+		// Le centre d'une forme n'est donc servi QUE si son camp n'a aucun ponctuel — ce qui
+		// garde `stockpile_navpoint`, dont AUCUN objet n'est ponctuel, entièrement servi.
+		campsPonctuels := map[int]bool{}
+		if spec.PointsOnly {
+			for _, p := range e.PointsOfRole(spec.Role) {
+				campsPonctuels[displayTeam(p.TeamIndex, spec.Neutral)] = true
+			}
+		}
 		for _, z := range e.ZonesOfRole(spec.Role).Zones {
 			// PONCTUEL PAR DÉCISION DU TITRE : l'objet a bien une forme dans le fichier de
 			// carte — on ne la nie pas, on refuse de la PRÉSENTER comme une zone à tenir.
 			// Il sort au même endroit (son centre) et par la même porte que les objets qui
 			// n'ont jamais eu de forme, donc le client n'a aucune règle à apprendre.
 			if spec.PointsOnly {
+				team := displayTeam(z.TeamIndex, spec.Neutral)
+				// Le camp a son ponctuel : cette forme est son aire, pas un second objectif.
+				if campsPonctuels[team] {
+					continue
+				}
 				out.Markers = append(out.Markers, ObjectiveMarkerDTO{
 					Role: string(z.Role),
-					Team: displayTeam(z.TeamIndex, spec.Neutral),
+					Team: team,
 					X:    float32(z.Center.X),
 					Y:    float32(z.Center.Y),
 					Z:    float32(z.Center.Z),
