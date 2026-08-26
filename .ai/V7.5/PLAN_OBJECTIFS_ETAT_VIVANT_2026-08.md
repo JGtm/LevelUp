@@ -513,14 +513,14 @@ dernier oracle disponible ; il n'y en aura pas de quatrieme.
 **CE QUI EST TESTE** : pendant qu'un camp TIENT la colline selon le canal, ce sont les joueurs
 DE CE CAMP dont le score personnel monte.
 
-- [ ] D2t.1 Pont slot -> xuid par les INSTANTS DE MORT (`objectiveevents.SlotIdentityByDeaths`,
+- [x] D2t.1 Pont slot -> xuid par les INSTANTS DE MORT (`objectiveevents.SlotIdentityByDeaths`,
       celui de la production) puis xuid -> camp par le ROSTER FIGE du corpus. Aucune base.
-- [ ] D2t.2 Oracle : `SeriesTotal(recs, PersonalScoreComponent, false)`, serie cumulee par slot
+- [x] D2t.2 Oracle : `SeriesTotal(recs, PersonalScoreComponent, false)`, serie cumulee par slot
       de JOUEUR. Delta par CAMP sur chaque intervalle = somme des deltas de ses joueurs.
-- [ ] D2t.3 Intervalles : les memes qu'en D2 — valeur du tag 4 CONSTANTE et NOMMEE, segmentation
+- [x] D2t.3 Intervalles : les memes qu'en D2 — valeur du tag 4 CONSTANTE et NOMMEE, segmentation
       `mergeZoneRuns`. Duree minimale **5 s** : le score personnel tique a la seconde, et un
       intervalle plus court n'accumule rien de lisible.
-- [ ] D2t.4 Temoins et verdict.
+- [x] D2t.4 Temoins et verdict.
 
 **LA CONFRONTATION EXIGE UNE DOMINANCE, ET LE SEUIL EST ECRIT ICI.** En KOTH le score personnel
 monte AUSSI par les frags, des deux cotes : « un seul camp marque » ne se produirait presque
@@ -550,6 +550,40 @@ passe a l'utilisateur, elle ne se remesure pas.
     go vet ./internal/analysis/replay/
     ZONE_FILM=<chunks d'un film> go test ./internal/analysis/replay/ -run CollineProprietaireD2Ter -v -timeout 60m
     go test ./internal/analysis/replay/...
+
+**Gate D2-ter : NON ATTEINT (2026-08-26). ET L'ORACLE EST EN CAUSE UNE TROISIEME FOIS —
+CETTE FOIS LA DEMONSTRATION EST DIRECTE.**
+
+| film | pont | SIGNAL | exploitable | delta dominant / domine (median) | temoin b (+60 s) |
+|---|---|---|---|---|---|
+| `01e1f945` | 8/8 | **53,3 %** (8/15) | oui (15) | **150 / 25** | 55,6 % |
+| `0a247154` | 8/8 | **69,2 %** (18/26) | oui (26) | **150 / 0** | 60,9 % |
+| `606d9844` | 5/5 | 80,0 % (4/5) | **NON** (5 < 6) | — | degenere |
+| `8076f97f` | 8/8 | **100 %** (6/6) | oui (6, tout juste) | — | 66,7 % |
+
+Trois films exploitables ; accord >= 90 % sur **1 sur 3** (et sur six confrontations). **GATE
+NON ATTEINT.** Le temoin de permutation est SANS OBJET sur les deux films les plus fournis : une
+fois les slots freres exclus structurellement, aucun autre canal ne porte assez d'intervalles
+confrontables. L'exclusion demandee a donc bien ete appliquee — et elle a vide le temoin.
+
+**LA CAUSE EST MESUREE, PAS SUPPOSEE.** Le diagnostic d'ampleur (pose apres le verdict, sans le
+changer) donne un delta dominant MEDIAN de **150 points** contre **0 a 25** pour le camp domine.
+Un frag vaut environ cent points, un tic de colline quelques-uns : **ce que « domine » mesure,
+ce sont les FRAGS, pas la garde.** L'oracle continu ne regarde donc pas la colline — il regarde
+qui a tue pendant l'intervalle, ce qui n'est pas la meme chose et peut meme s'y opposer (l'equipe
+qui pousse pour reprendre la colline tue en entrant). Sur `01e1f945` la bijection retenue est
+d'ailleurs INVERSEE par rapport a celle de D2-bis, ce qui est la signature d'un signal absent.
+
+**CE QUE CELA CHANGE POUR LA LECTURE DE D2-bis, ET C'EST L'INVERSE DE L'HYPOTHESE D'ARBITRAGE.**
+L'arbitrage supposait que les 87-89 % de D2-bis pouvaient etre le plancher de bruit de son
+oracle. L'oracle continu ne fait pas mieux : il fait NETTEMENT MOINS BIEN, pour une raison
+nommee et chiffree. **Le meilleur etat des connaissances sur ce canal reste donc D2-bis :
+88-89 % d'accord contre un temoin a 56 %, sur les deux films longs.**
+
+**IL N'Y A PAS DE D2-quater** — le protocole le disait d'avance, et les trois oracles disponibles
+sont epuises : score de MODE (compte des collines gagnees, un camp manquant sur deux films),
+prises `th=10` (imprecision de +/- 20 s), score PERSONNEL (domine par les frags). **La decision
+passe a l'utilisateur.**
 
 ### D3 — TOTAL CONTROL : MESURER l'etat des zones (ouverte seulement si D1 le permet)
 
@@ -850,6 +884,12 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
    FRERES de l'objet de mode (defaut signale, deliberement NON corrige apres coup) ; ou trancher
    que ce niveau de preuve suffit pour un calque de rejeu — cette derniere est une decision
    PRODUIT, elle ne m'appartient pas.
+   **TRANCHE EN PARTIE LE 2026-08-26 : LES DEUX PREMIERES OPTIONS SONT EPUISEES.** D2-ter a
+   mesure l'oracle du score PERSONNEL — 53-69 % sur les deux films les plus fournis, domine par
+   les frags (delta dominant median 150 points contre 0-25 pour le camp domine) — et le temoin
+   de permutation FRERES-EXCLUS s'y est revele SANS OBJET. Les trois oracles disponibles sont
+   consommes. **Il ne reste que la decision PRODUIT** : 88-89 % d'accord contre un temoin a 56 %
+   (D2-bis, films longs) suffit-il pour teinter une colline dans un rejeu ?
 
 ---
 
