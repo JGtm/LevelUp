@@ -123,6 +123,28 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   3 tests ; mordant prouvé par double mutation (liseré médaille restauré -> 1 échec ; fond
   assisté retiré -> 1 échec, le verrou de l'assistance).
 
+Retours utilisateur du 26/08 après vérification visuelle de `530820e5` (socles OK,
+bases CTF disparues — les correctifs sont VALIDÉS visuellement) :
+
+- [ ] A9 : les socles semblent EN DOUBLE (« j'ai l'impression qu'il y en a deux »).
+  DIAGNOSTIC obligatoire : superposition probable des socles du FILM (`weaponPads`) et
+  des emplacements du CATALOGUE (`mapWeaponPads`) — le croisement devait déplacer, pas
+  dupliquer. Prouver par fixture (les deux couches servies ensemble), corriger la dédup.
+- [ ] A10 : une zone de callout est nommée EN ARABE sur ce match. DIAGNOSTIC : d'où
+  vient le libellé (résolution de locale côté client ? donnée du catalogue callouts
+  versionné ?). Si la donnée versionnée est en cause : CR sans fix (regen de référence =
+  hors périmètre web, je re-route).
+- [ ] A11 : glyphe du DRAPEAU (porteur/lâché/base) un peu plus gros (« un tout petit
+  peu ») — ajustement fin, pas un doublement.
+- [ ] A12 : le socle/marqueur d'ÉQUIPE est BLEU alors que le paramètre utilisateur de
+  couleur d'équipe est vert (jade/menthe) : le calque doit passer par la MÊME source de
+  couleur d'équipe que le reste de l'app (préférence + palette accessible), jamais un
+  bleu/rouge en dur.
+- [ ] A13 : socles par FAMILLE (power-ups, armes spéciales/power, armes classiques/rack) :
+  bordure + couleur plus vive, UNE couleur par type, STRICTEMENT dans les tokens
+  sémantiques accessibles de l'app (skill color-tokens — aucune valeur hex, palette
+  daltonisme-compatible existante) ; proposer le mapping famille→token au CR.
+
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
 `match-replay`, lint web. i18n : toute string FR **et** EN. Pas de vérification
