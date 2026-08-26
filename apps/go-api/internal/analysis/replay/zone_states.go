@@ -144,7 +144,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 				"attribuees", cov.Attributed)
 			return nil, cov
 		}
-		return buildHillStates(cat, ser, c, cov), cov
+		return buildHillStates(cat, ser, zoneTeamSet(in.TeamByXUID), c, cov), cov
 	}
 	states := zoneOwnerStates(in, ser, pairs, c, cov)
 	tallyZoneStates(states, cov)
